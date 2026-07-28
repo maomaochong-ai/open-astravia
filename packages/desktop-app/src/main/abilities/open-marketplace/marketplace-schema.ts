@@ -82,8 +82,16 @@ const pluginAbilitySchema = abilityBaseSchema.extend({
 		.passthrough()
 		.default({}),
 });
+const mcpAbilitySchema = abilityBaseSchema.extend({
+	type: z.literal("mcp"),
+	source: sourceSchema,
+	config: z
+		.object({ mcp: z.record(z.string(), z.unknown()).optional() })
+		.passthrough()
+		.default({}),
+});
 const bundleMemberSchema = z.object({
-	type: z.enum(["skill", "scene", "plugin"]),
+	type: z.enum(["skill", "scene", "mcp", "plugin"]),
 	slug: z.string().regex(SLUG_PATTERN),
 });
 const bundleAbilitySchema = abilityBaseSchema.extend({
@@ -94,6 +102,7 @@ const bundleAbilitySchema = abilityBaseSchema.extend({
 export const marketplaceAbilitySchema = z.discriminatedUnion("type", [
 	skillAbilitySchema,
 	sceneAbilitySchema,
+	mcpAbilitySchema,
 	pluginAbilitySchema,
 	bundleAbilitySchema,
 ]);
@@ -126,6 +135,22 @@ export function normalizeMarketplaceSourcePath(value: string): string {
 }
 
 export function parseMarketplaceManifest(input: unknown): MarketplaceManifest {
+	if (input != null && typeof input === "object" && !Array.isArray(input)) {
+		const abilities = (input as Record<string, unknown>).abilities;
+		if (Array.isArray(abilities)) {
+			for (const ability of abilities) {
+				if (
+					ability != null &&
+					typeof ability === "object" &&
+					!Array.isArray(ability) &&
+					(ability as Record<string, unknown>).type === "mcp" &&
+					"config" in ability
+				) {
+					throw new Error("MCP configuration must be stored in source.path/mcp.json");
+				}
+			}
+		}
+	}
 	const manifest = marketplaceManifestSchema.parse(input);
 	const seen = new Set<string>();
 	for (const ability of manifest.abilities) {

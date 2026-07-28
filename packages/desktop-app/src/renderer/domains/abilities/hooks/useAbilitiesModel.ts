@@ -143,12 +143,12 @@ export function useAbilitiesModel(): AbilitiesModel {
 		toggle: actions.toggle,
 		setup: (item) => {
 			if (item.canConfigure && item.preset) {
-				mcp.onConfigureBuiltinSecrets(item.serverName);
+				mcp.onConfigureBuiltinSecrets(item.serverName, item.preset);
 				return;
 			}
 			if (item.usesOAuth && !item.authorized) void mcp.onAuthorizeOAuth(item.serverName);
 		},
-		configure: (item) => mcp.onConfigureBuiltinSecrets(item.serverName),
+		configure: (item) => mcp.onConfigureBuiltinSecrets(item.serverName, item.preset),
 		edit: (item) => mcp.onToggleEditServer(item.serverName),
 		revokeAuthorization: (item) => {
 			void mcp.onRevokeOAuth(item.serverName);

@@ -8,6 +8,7 @@ import type {
 	InstalledPlugin,
 	InstalledSkill,
 	McpConfigData,
+	McpServerConfigData,
 	PluginPermission,
 	SkillInfo,
 } from "@preload/api";
@@ -15,12 +16,14 @@ import type { AbilityMember, MarketAbility } from "@shared/lib/api";
 import type { TFunction } from "i18next";
 import {
 	type BuiltinMcpPreset,
-	builtinMcpIconUrl,
 	getListedBuiltinMcpPresets,
 	isBuiltinMcpServer,
 	matchBuiltinMcpPreset,
 	missingRequiredSecrets,
 	resolveMcpIcon,
+	resolveMcpPresetDescription,
+	resolveMcpPresetDisplayName,
+	resolveMcpPresetIconUrl,
 	serverUsesOAuth,
 } from "../../settings/mcp/builtin-mcp-presets";
 import type { AbilityItem, BundleAbility, McpAbility, PluginAbility, SkillAbility } from "../types";
@@ -193,14 +196,59 @@ interface McpBuildInput {
 	entry?: MarketAbility;
 }
 
+interface OpenMarketMcpParameter {
+	key: string;
+	label: string;
+	required: boolean;
+	secret: boolean;
+	placeholder?: string;
+	helpUrl?: string;
+	valueTemplate?: string;
+}
+
+interface OpenMarketMcpConfig {
+	mcp?: Record<string, unknown>;
+	mcp_parameters?: OpenMarketMcpParameter[];
+}
+
+function createMarketMcpPreset(entry: MarketAbility): BuiltinMcpPreset | undefined {
+	const config = entry.config as OpenMarketMcpConfig;
+	if (!config.mcp || !config.mcp_parameters?.length) return undefined;
+	return {
+		id: entry.slug,
+		name: entry.slug,
+		iconUrl: entry.icon,
+		displayName: entry.name,
+		description: entry.description,
+		config: config.mcp as unknown as McpServerConfigData,
+		secrets: config.mcp_parameters.map((parameter) => ({
+			envKey: parameter.key,
+			label: parameter.label,
+			required: parameter.required,
+			secret: parameter.secret,
+			placeholder: parameter.placeholder,
+			helpUrl: parameter.helpUrl,
+			valueTemplate: parameter.valueTemplate,
+		})),
+		browserAuth: false,
+	};
+}
+
 function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFunction<"settings">): McpAbility {
 	const { slug, entry } = input;
 	const servers = state.mcpConfig?.mcpServers ?? {};
 	const server = servers[slug];
-	const preset = input.preset ?? (server ? matchBuiltinMcpPreset(slug, server) : undefined);
+	const preset =
+		input.preset ??
+		(entry ? createMarketMcpPreset(entry) : undefined) ??
+		(server ? matchBuiltinMcpPreset(slug, server) : undefined);
 	const id = abilityId("mcp", slug);
-	const title = preset ? t(preset.displayNameKey) : server?.displayName || entry?.name || slug;
-	const description = preset ? t(preset.descriptionKey) : server?.description?.trim() || entry?.description || "";
+	const title = preset
+		? resolveMcpPresetDisplayName(preset, (key) => t(key))
+		: server?.displayName || entry?.name || slug;
+	const description = preset
+		? resolveMcpPresetDescription(preset, (key) => t(key))
+		: server?.description?.trim() || entry?.description || "";
 	const usesOAuth = server ? serverUsesOAuth(slug, server) : false;
 	const authorized = usesOAuth && Boolean(state.oauthAuthByName[slug]);
 	const needsSecrets = Boolean(server && preset && missingRequiredSecrets(preset, server).length > 0);
@@ -209,7 +257,7 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 	const icon = server
 		? (resolveMcpIcon(slug, server) ?? entry?.icon)
 		: preset
-			? builtinMcpIconUrl(preset.iconFile)
+			? resolveMcpPresetIconUrl(preset)
 			: entry?.icon;
 
 	return {
@@ -236,6 +284,9 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 		isCustom: installed && !preset && !entry,
 		isBuiltin: false,
 		fromMarket: Boolean(entry),
+		origin:
+			(entry ? getOpenCatalogOrigin(entry) : undefined) ??
+			(state.ledger[id]?.origin?.kind === "github-marketplace" ? state.ledger[id].origin : undefined),
 		market: entry,
 		preset,
 		usesOAuth,

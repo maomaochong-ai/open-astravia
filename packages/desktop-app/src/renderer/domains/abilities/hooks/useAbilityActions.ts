@@ -4,7 +4,7 @@
  */
 import type { PluginPermission } from "@preload/api";
 import { i18n } from "@shared/i18n";
-import { abilityToMarketMcpServer, downloadAbility } from "@shared/lib/api";
+import { abilityToMarketMcpServer, downloadAbility, type MarketAbility } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useState } from "react";
@@ -109,11 +109,19 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				});
 				return "installed";
 			}
+			const market = item.market as (MarketAbility & { configVersion?: number }) | undefined;
+			const installOptions = market
+				? {
+						abilityVersion: market.version,
+						...(item.origin ? { origin: item.origin } : {}),
+						...(market.configVersion ? { configVersion: market.configVersion } : {}),
+					}
+				: undefined;
 			if (item.preset) {
-				return mcp.onAddBuiltinServer(item.preset, { abilityVersion: item.market?.version });
+				return mcp.onAddBuiltinServer(item.preset, installOptions);
 			}
-			if (item.market) {
-				await mcp.onAddRemoteServer(abilityToMarketMcpServer(item.market), { abilityVersion: item.market.version });
+			if (market) {
+				await mcp.onAddRemoteServer(abilityToMarketMcpServer(market), installOptions);
 				return "installed";
 			}
 			return "skipped";

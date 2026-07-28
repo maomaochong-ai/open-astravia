@@ -11,6 +11,7 @@ import type {
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
 import { type MarketplaceManifest, parseMarketplaceManifest } from "./marketplace-schema.js";
+import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp.js";
 import { validateOpenMarketplacePlugin } from "./open-marketplace-plugin.js";
 import { validateSkillPackage } from "./skill-package.js";
 
@@ -332,7 +333,9 @@ export class OpenMarketplaceService {
 			if (!isContained(marketplaceRoot, sourceDir)) {
 				throw new Error(`Unsafe ability source: ${ability.source.path}`);
 			}
-			if (ability.type === "plugin") {
+			if (ability.type === "mcp") {
+				ability.config = validateOpenMarketplaceMcp(sourceDir, ability);
+			} else if (ability.type === "plugin") {
 				ability.config = validateOpenMarketplacePlugin(sourceDir, ability);
 			} else {
 				validateSkillPackage(sourceDir, ability);

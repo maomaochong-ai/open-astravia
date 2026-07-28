@@ -78,11 +78,25 @@ function pluginBundleArchive(pluginId = "demo-plugin"): Buffer {
 				source: { path: "abilities/plugins/demo-plugin" },
 			},
 			{
+				type: "mcp",
+				slug: "context7",
+				name: "Context7",
+				description: "Open MCP server",
+				version: "1.0.0",
+				configVersion: 3,
+				source: { path: "abilities/mcp/context7" },
+			},
+			{
 				type: "bundle",
 				slug: "starter-bundle",
 				name: "Starter Bundle",
 				version: "1.0.0",
-				config: { members: [{ type: "plugin", slug: "demo-plugin" }] },
+				config: {
+					members: [
+						{ type: "plugin", slug: "demo-plugin" },
+						{ type: "mcp", slug: "context7" },
+					],
+				},
 			},
 		],
 	};
@@ -102,6 +116,17 @@ function pluginBundleArchive(pluginId = "demo-plugin"): Buffer {
 		Buffer.from(JSON.stringify(pluginManifest)),
 	);
 	zip.addFile("vetta-abilities-main/abilities/plugins/demo-plugin/dist/index.js", Buffer.from("export default {};\n"));
+	zip.addFile(
+		"vetta-abilities-main/abilities/mcp/context7/mcp.json",
+		Buffer.from(
+			JSON.stringify({
+				schemaVersion: 1,
+				slug: "context7",
+				version: "1.0.0",
+				server: { type: "http", url: "https://mcp.context7.com/mcp" },
+			}),
+		),
+	);
 	return zip.toBuffer();
 }
 
@@ -205,7 +230,7 @@ describe("OpenMarketplaceService", () => {
 		});
 	});
 
-	it("validates, lists and routes installation for plugin and bundle entries", async () => {
+	it("validates and lists MCP, plugin and bundle entries", async () => {
 		const rootDir = await temporaryRoot();
 		const installAbility = vi.fn(
 			async (_snapshotRoot: string, _ability: object, _origin: GitHubMarketplaceOrigin) => undefined,
@@ -219,11 +244,18 @@ describe("OpenMarketplaceService", () => {
 
 		const snapshot = await service.refresh();
 		const plugin = snapshot.abilities.find((ability) => ability.type === "plugin");
+		const mcp = snapshot.abilities.find((ability) => ability.type === "mcp");
 		const bundle = snapshot.abilities.find((ability) => ability.type === "bundle");
 		expect(plugin?.config).toEqual({
 			api_version: "1.1.0",
 			permissions: ["storage.read"],
 			commands: ["git"],
+		});
+		expect(mcp).toMatchObject({
+			slug: "context7",
+			configVersion: 3,
+			config: { mcp: { type: "http", url: "https://mcp.context7.com/mcp" } },
+			origin: { kind: "github-marketplace", sourceId: "vetta-official" },
 		});
 		expect(bundle?.config.members).toEqual([
 			{
@@ -231,6 +263,14 @@ describe("OpenMarketplaceService", () => {
 				slug: "demo-plugin",
 				exists: true,
 				name: "Demo Plugin",
+				icon: "",
+				version: "1.0.0",
+			},
+			{
+				type: "mcp",
+				slug: "context7",
+				exists: true,
+				name: "Context7",
 				icon: "",
 				version: "1.0.0",
 			},

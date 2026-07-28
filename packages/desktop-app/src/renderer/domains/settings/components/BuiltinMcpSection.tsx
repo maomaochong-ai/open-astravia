@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 import { BuiltinMcpSectionView } from "@vetta/theme-ui/settings";
 import {
 	BUILTIN_MCP_PRESETS,
-	builtinMcpIconUrl,
 	type BuiltinMcpPreset,
 	getListedBuiltinMcpPresets,
 	presetRequiresSecrets,
+	resolveMcpPresetDescription,
+	resolveMcpPresetDisplayName,
+	resolveMcpPresetIconUrl,
 } from "../mcp/builtin-mcp-presets";
 import { SETTINGS_SECTION } from "../registry";
 
@@ -31,9 +33,9 @@ export function BuiltinMcpSection({
 			listedPresets.map((preset) => ({
 				id: String(preset.id),
 				name: preset.name,
-				displayName: t(preset.displayNameKey),
-				description: t(preset.descriptionKey),
-				iconUrl: builtinMcpIconUrl(preset.iconFile),
+				displayName: resolveMcpPresetDisplayName(preset, (key) => t(key)),
+				description: resolveMcpPresetDescription(preset, (key) => t(key)),
+				iconUrl: resolveMcpPresetIconUrl(preset),
 				needsKey: presetRequiresSecrets(preset),
 			})),
 		[listedPresets, t],

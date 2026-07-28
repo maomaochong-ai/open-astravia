@@ -31,6 +31,7 @@ export async function installOpenMarketplaceAbilityInDesktop(
 	origin: GitHubMarketplaceOrigin,
 ): Promise<void> {
 	if (ability.type === "bundle") throw new Error("Bundles are installed through their members");
+	if (ability.type === "mcp") throw new Error("MCP abilities are installed through MCP settings");
 	if (ability.type === "plugin") {
 		const sourceDir = join(snapshotRoot, ability.source.path);
 		validateOpenMarketplacePlugin(sourceDir, ability);

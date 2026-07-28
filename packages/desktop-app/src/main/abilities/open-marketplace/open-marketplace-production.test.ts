@@ -39,6 +39,36 @@ afterEach(async () => {
 });
 
 describe("installOpenMarketplaceAbilityInDesktop", () => {
+	it("does not route MCP configuration through the file installer", async () => {
+		const manifest = parseMarketplaceManifest({
+			schemaVersion: 1,
+			name: "test-market",
+			marketplaceVersion: "2026.07.3",
+			repository: "https://github.com/example/test-market",
+			minAppVersion: "0.5.11",
+			abilities: [
+				{
+					type: "mcp",
+					slug: "context7",
+					name: "Context7",
+					version: "1.0.0",
+					source: { path: "abilities/mcp/context7" },
+				},
+			],
+		});
+		const ability = manifest.abilities[0];
+		if (!ability || ability.type !== "mcp") throw new Error("MCP fixture is missing");
+
+		await expect(
+			installOpenMarketplaceAbilityInDesktop("unused", ability, {
+				kind: "github-marketplace",
+				marketplace: "test-market",
+				marketplaceVersion: "2026.07.3",
+				repository: "https://github.com/example/test-market",
+			}),
+		).rejects.toThrow("MCP abilities are installed through MCP settings");
+	});
+
 	it("installs an open plugin through the plugin store and records its GitHub origin", async () => {
 		const snapshotRoot = await mkdtemp(join(tmpdir(), "vetta-open-production-test-"));
 		temporaryRoots.push(snapshotRoot);
