@@ -33,14 +33,13 @@
 	"loginDialog": {
 		"title": "Sign in to Vetta",
 		"subtitle": "Sign in with your Vetta account",
-		"accountPlaceholder": "Account",
-		"passwordPlaceholder": "Password",
-		"login": "Sign In",
-		"loggingIn": "Signing in...",
-		"oauthDivider": "Or",
 		"oauthButton": "Authorize & Sign In",
-		"footerHint": "By signing in, you agree to the Terms of Service and Privacy Policy",
-		"error": "Sign-in failed"
+		"waitingTitle": "Waiting for browser authorization",
+		"waitingHint": "The authorization page is open in your browser. You'll be signed in automatically.",
+		"reopen": "Open the link again",
+		"openFailed": "Couldn't open your browser. Please try again.",
+		"rejected": "This authorization link is no longer valid. Please sign in again.",
+		"footerHint": "By signing in, you agree to the Terms of Service and Privacy Policy"
 	},
 	"actionApproval": {
 		"reject": "Reject",
