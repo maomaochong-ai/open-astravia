@@ -21,6 +21,10 @@ deploy/config.*.yaml
 !deploy/config.*.example.yaml
 # TLS 私钥（Cloudflare Origin Certificate）与本地生成的 htpasswd
 deploy/certs/
+# 部署实例文件：由 example 复制而来，随机器不同，且 upgrade.sh 会 git pull
+deploy/docker-compose.yml
+deploy/data/
+deploy/logs/
 *.pem
 *.key
 
