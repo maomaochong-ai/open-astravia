@@ -121,8 +121,8 @@ export function useAbilityData(): AbilityData {
 	}, [load]);
 
 	const market = useMemo(
-		() => mergeAbilityCatalogs(serverMarket, openMarketplace.snapshots, ledger),
-		[ledger, openMarketplace.snapshots, serverMarket],
+		() => mergeAbilityCatalogs(serverMarket, openMarketplace.snapshots),
+		[openMarketplace.snapshots, serverMarket],
 	);
 
 	return { market, ledger, skillManifest, localSkills, plugins, loading, refreshing, error, refresh };

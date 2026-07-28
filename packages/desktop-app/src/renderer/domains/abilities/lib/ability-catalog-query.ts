@@ -26,10 +26,7 @@ export function compareAbilities(a: AbilityItem, b: AbilityItem): number {
 }
 
 function sourceId(item: AbilityItem): string {
-	if (item.origin?.kind === "github-marketplace") return item.origin.sourceId ?? item.origin.repository;
-	if (item.fromMarket) return "server";
-	if (item.isBuiltin) return "builtin";
-	return "local";
+	return item.catalogSource.id;
 }
 
 export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQuery): AbilityCatalogPage {

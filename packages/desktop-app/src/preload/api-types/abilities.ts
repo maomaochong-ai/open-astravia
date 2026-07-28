@@ -25,9 +25,23 @@ export interface AbilityLedgerEntry {
 	origin?: AbilityInstallOrigin;
 	/** 能力配置结构版本，用于后续配置迁移。 */
 	configVersion?: number;
+	/** 来源感知的目录标识；旧台账可能没有。 */
+	catalogId?: string;
+	/** 市场目录中的 slug；MCP 的台账 key 可能使用不同的 runtimeName。 */
+	slug?: string;
+	/** MCP 在 `mcp.json` 中实际使用的 key；仅 MCP 条目携带。 */
+	runtimeName?: string;
 }
 
-/** 键为 `<type>:<slug>`，例如 `skill:figma-ui`、`mcp:github`。 */
+export interface AbilityInstallMetadata {
+	origin?: AbilityInstallOrigin;
+	configVersion?: number;
+	catalogId?: string;
+	slug?: string;
+	runtimeName?: string;
+}
+
+/** 键为 `<type>:<physical-name>`；MCP 的 physical-name 是 runtimeName。 */
 export type AbilityLedger = Record<string, AbilityLedgerEntry>;
 
 export interface OpenMarketplaceMetaEntry {
@@ -72,6 +86,7 @@ export interface OpenMarketplaceBundleMember {
 
 export interface OpenMarketplaceAbilityConfig {
 	mcp?: Record<string, unknown>;
+	mcp_browser_auth?: boolean;
 	mcp_parameters?: Array<{
 		key: string;
 		label: string;
@@ -162,11 +177,7 @@ export interface DesktopAbilitiesApi {
 	 * skill / scene / plugin 的写入由各自主进程安装流程完成，mcp 的写入路径在渲染层
 	 * （整份 mcp.json 覆写），故单独开这条通道；server 不在 mcp.json 时不落账。
 	 */
-	recordMcpInstall(
-		slug: string,
-		version: string,
-		metadata?: { origin?: AbilityInstallOrigin; configVersion?: number },
-	): Promise<void>;
+	recordMcpInstall(runtimeName: string, version: string, metadata?: AbilityInstallMetadata): Promise<void>;
 	/** 读取 GitHub 开源能力市场；无缓存或缓存过期时会尝试同步。 */
 	listOpenMarketplace(): Promise<OpenMarketplaceSnapshot>;
 	/** 强制从 GitHub 刷新，失败时返回最后一次可用快照。 */

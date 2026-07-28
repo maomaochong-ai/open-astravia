@@ -63,7 +63,7 @@ const batchTasksRoute = createRoute({
 	component: BatchTasksPage,
 });
 
-/** 能力详情是页内右侧抽屉，由 `?detail=<type>:<slug>` 驱动（返回键即关闭）。 */
+/** 能力详情是页内右侧抽屉，由来源感知的 `?detail=<catalog-id>` 驱动（返回键即关闭）。 */
 const abilitiesRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/abilities",

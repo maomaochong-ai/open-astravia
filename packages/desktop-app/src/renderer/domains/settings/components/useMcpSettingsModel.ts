@@ -32,6 +32,9 @@ export interface McpAbilityInstallOptions {
 	abilityVersion?: string;
 	origin?: AbilityInstallOrigin;
 	configVersion?: number;
+	catalogId?: string;
+	slug?: string;
+	runtimeName?: string;
 }
 
 export interface McpServerFormState {
@@ -691,6 +694,9 @@ async function recordMcpAbilityInstall(name: string, options: McpAbilityInstallO
 	await window.vetta.abilities.recordMcpInstall(name, options.abilityVersion, {
 		...(options.origin ? { origin: options.origin } : {}),
 		...(options.configVersion ? { configVersion: options.configVersion } : {}),
+		...(options.catalogId ? { catalogId: options.catalogId } : {}),
+		...(options.slug ? { slug: options.slug } : {}),
+		runtimeName: options.runtimeName ?? name,
 	});
 }
 

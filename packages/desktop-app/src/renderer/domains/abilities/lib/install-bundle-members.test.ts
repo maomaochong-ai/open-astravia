@@ -7,6 +7,7 @@ function member(slug: string, overrides: Partial<SkillAbility> = {}): SkillAbili
 		type: "skill",
 		id: `skill:${slug}`,
 		slug,
+		catalogSource: { kind: "server", id: "server" },
 		title: slug,
 		description: "",
 		category: "",

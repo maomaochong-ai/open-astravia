@@ -14,6 +14,7 @@ import {
 	buildSkillAbilities,
 	type LocalAbilityState,
 } from "../lib/build-ability-items";
+import { decorateAbilityConflicts } from "../lib/decorate-ability-conflicts";
 import {
 	ABILITY_CATEGORY_UNCATEGORIZED,
 	type AbilitiesModel,
@@ -65,7 +66,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 			...buildMcpAbilities(data.market, localState, t),
 			...buildPluginAbilities(data.market, localState, trPlugin),
 		];
-		return [...singles, ...buildBundleAbilities(data.market, singles, localState, t)];
+		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(data.market, singles, localState, t)]);
 	}, [data.market, localState, t, trPlugin]);
 
 	const changeScope = useCallback((nextScope: AbilityScope) => {
@@ -111,7 +112,24 @@ export function useAbilitiesModel(): AbilitiesModel {
 		[allItems],
 	);
 
-	const findById = useCallback((id: string) => allItems.find((item) => item.id === id) ?? null, [allItems]);
+	const findById = useCallback(
+		(id: string) => {
+			const exact = allItems.find((item) => item.id === id);
+			if (exact) return exact;
+			const separator = id.indexOf(":");
+			if (separator < 1) return null;
+			const type = id.slice(0, separator);
+			const slug = id.slice(separator + 1);
+			const legacyMatches = allItems.filter((item) => item.type === type && item.slug === slug);
+			return (
+				legacyMatches.find((item) => item.installed) ??
+				legacyMatches.find((item) => item.catalogSource.kind === "server") ??
+				legacyMatches[0] ??
+				null
+			);
+		},
+		[allItems],
+	);
 
 	const errors = useMemo(
 		() => Array.from(new Set([data.error, actions.error].filter((value): value is string => Boolean(value)))),

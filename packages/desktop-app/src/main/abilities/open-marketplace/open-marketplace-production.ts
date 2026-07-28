@@ -43,6 +43,8 @@ export async function installOpenMarketplaceAbilityInDesktop(
 		recordAbilityInstall("plugin", installed.id, installed.activeVersion, {
 			origin,
 			configVersion: ability.configVersion,
+			catalogId: `github:${origin.sourceId ?? origin.repository}:plugin:${ability.slug}`,
+			slug: ability.slug,
 		});
 		return;
 	}

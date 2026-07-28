@@ -10,7 +10,12 @@ const DEMO_API_KEY_PLACEHOLDER = `\${DEMO_API_KEY}`;
 
 async function fixture(
 	server: Record<string, unknown>,
-	overrides?: { slug?: string; version?: string; parameters?: Array<Record<string, unknown>> },
+	overrides?: {
+		slug?: string;
+		version?: string;
+		parameters?: Array<Record<string, unknown>>;
+		browserAuth?: boolean;
+	},
 ) {
 	const root = await mkdtemp(join(tmpdir(), "vetta-open-mcp-test-"));
 	temporaryRoots.push(root);
@@ -23,6 +28,7 @@ async function fixture(
 			version: overrides?.version ?? "1.0.0",
 			server,
 			parameters: overrides?.parameters,
+			browserAuth: overrides?.browserAuth,
 		}),
 		"utf-8",
 	);
@@ -57,8 +63,18 @@ describe("validateOpenMarketplaceMcp", () => {
 
 		expect(validateOpenMarketplaceMcp(root, ability)).toEqual({
 			mcp: { type: "http", url: "https://mcp.example.com/mcp" },
+			mcp_browser_auth: false,
 			mcp_parameters: [],
 		});
+	});
+
+	it("preserves an explicit browser OAuth requirement", async () => {
+		const { root, ability } = await fixture(
+			{ type: "http", url: "https://mcp.example.com/mcp" },
+			{ browserAuth: true },
+		);
+
+		expect(validateOpenMarketplaceMcp(root, ability).mcp_browser_auth).toBe(true);
 	});
 
 	it("supports stdio command arguments and environment placeholders", async () => {
@@ -74,6 +90,7 @@ describe("validateOpenMarketplaceMcp", () => {
 				args: ["-y", "@example/demo-mcp", "--stdio"],
 				env: { DEMO_API_KEY: DEMO_API_KEY_PLACEHOLDER },
 			},
+			mcp_browser_auth: false,
 			mcp_parameters: [],
 		});
 	});

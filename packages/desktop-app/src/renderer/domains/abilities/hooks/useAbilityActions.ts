@@ -115,13 +115,16 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 						abilityVersion: market.version,
 						...(item.origin ? { origin: item.origin } : {}),
 						...(market.configVersion ? { configVersion: market.configVersion } : {}),
+						catalogId: item.id,
+						slug: item.slug,
+						runtimeName: item.serverName,
 					}
 				: undefined;
 			if (item.preset) {
 				return mcp.onAddBuiltinServer(item.preset, installOptions);
 			}
 			if (market) {
-				await mcp.onAddRemoteServer(abilityToMarketMcpServer(market), installOptions);
+				await mcp.onAddRemoteServer({ ...abilityToMarketMcpServer(market), name: item.serverName }, installOptions);
 				return "installed";
 			}
 			return "skipped";
@@ -131,6 +134,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 
 	const installOne = useCallback(
 		async (item: AbilityItem): Promise<InstallOutcome> => {
+			if (item.installConflictIds?.length) {
+				throw new Error(i18n.t("abilities:error.installSourceConflict"));
+			}
 			if (item.type === "plugin") return installPlugin(item);
 			if (item.type === "mcp") return installMcp(item);
 			if (item.type === "bundle") return "skipped";
@@ -169,6 +175,10 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		(item: AbilityItem) => {
 			if (item.readonly) return;
 			if (item.type === "bundle") return;
+			if (item.installConflictIds?.length) {
+				setError(i18n.t("abilities:error.installSourceConflict"));
+				return;
+			}
 			run(item.id, async () => {
 				await installOne(item);
 			});

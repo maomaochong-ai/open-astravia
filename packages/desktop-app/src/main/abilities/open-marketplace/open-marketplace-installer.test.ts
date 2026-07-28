@@ -93,6 +93,8 @@ describe("installOpenMarketplaceAbility", () => {
 		expect(deps.recordInstall).toHaveBeenCalledWith("skill", "demo-skill", "1.0.0", {
 			origin,
 			configVersion: 3,
+			catalogId: "github:https://github.com/example/vetta-abilities:skill:demo-skill",
+			slug: "demo-skill",
 		});
 	});
 

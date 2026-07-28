@@ -176,6 +176,13 @@ kebab-case namespace。默认根目录为 `~/.vetta/cache/`，例如 Marketplace
 必须不影响其他 namespace 和正式功能；临时文件使用 namespace 的 `createTemporaryDirectory()`，需要清理时使用
 `clear()`。新增缓存使用方时应补充命名空间隔离、路径逃逸和清理边界测试。
 
+## 配置迁移
+
+持久化 JSON 配置需要演进结构时，复用 `packages/toolkit/src` 提供的迁移能力：
+纯 `schemaVersion` 转换使用 `@vetta/toolkit/versioned-config`，文件读写可使用
+`@vetta/toolkit/config-store`。业务 schema 与连续 migration 留在 desktop-app 对应领域内，
+不要在业务模块重复实现迁移框架。
+
 ## 日志规范
 
 desktop-app 的文本日志统一由 `src/main/logger.ts` 管理。新增或修改日志时，优先使用这里的入口，不要直接手写 `appendFileSync`、`console.log` 文件重定向，或重新实现独立轮转逻辑。

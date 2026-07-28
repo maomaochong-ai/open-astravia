@@ -57,6 +57,7 @@ function installedSkill(slug: string): AbilityItem {
 		type: "skill",
 		id: `skill:${slug}`,
 		slug,
+		catalogSource: { kind: "server", id: "server" },
 		title: slug,
 		description: "",
 		category: "",
@@ -215,6 +216,70 @@ describe("buildMcpAbilities", () => {
 			type: "http",
 			headers: { CONTEXT7_API_KEY: "demo-key" },
 		});
+	});
+
+	it("creates an OAuth preset for a parameterless marketplace MCP", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "notion",
+			name: "Notion",
+			config: {
+				mcp: { type: "http", url: "https://mcp.notion.com/mcp" },
+				mcp_browser_auth: true,
+				mcp_parameters: [],
+			},
+		};
+
+		const item = buildMcpAbilities([ability], createState(), t).find((candidate) => candidate.slug === "notion");
+
+		expect(item?.preset).toMatchObject({
+			name: "notion",
+			browserAuth: true,
+			secrets: [],
+		});
+		expect(item?.setupRequired).toBe(false);
+	});
+
+	it("keeps a built-in MCP and a same-slug GitHub MCP as separate catalog entries", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "github",
+			name: "GitHub",
+			config: {
+				mcp: { type: "http", url: "https://api.githubcopilot.com/mcp/" },
+			},
+			origin: {
+				kind: "github-marketplace" as const,
+				sourceId: "test-source",
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.07.3",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+			catalogSource: {
+				kind: "github" as const,
+				id: "test-source",
+				name: "Test source",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		};
+		const state = createState({
+			mcpConfig: {
+				mcpServers: {
+					github: { type: "http", url: "https://api.githubcopilot.com/mcp/" },
+				},
+			},
+		});
+
+		const items = buildMcpAbilities([ability], state, t);
+		const builtin = items.find((item) => item.id === "builtin:builtin:mcp:github");
+		const github = items.find((item) => item.id === "github:test-source:mcp:github");
+
+		expect(builtin).toMatchObject({ installed: true, serverName: "github" });
+		expect(github).toMatchObject({ installed: false });
+		expect(github?.serverName).toMatch(/^github--[a-f0-9]{8}$/);
+		expect(github?.serverName).not.toContain("_");
 	});
 });
 
