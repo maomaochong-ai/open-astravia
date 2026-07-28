@@ -1,11 +1,15 @@
 /**
- * 把登录凭据下沉到 `~/.vetta/auth.json`，供**独立进程**读取。
+ * 把登录凭据下沉到 `~/.vetta/auth.json`，供**客户端进程之外**的消费者读取。
  *
- * 起因：内置的 vetta MCP server 以子进程方式运行，读不到 renderer 的 localStorage，
- * 也读不到主进程内存。让它去翻 settings.json 又会把「客户端配置文件的内部结构」
- * 变成外部契约。故单独落一份最小契约文件：只有 baseUrl 与 token 两个字段。
+ * 起因：登录态原本只活在 renderer 的 localStorage 与主进程内存里，而 agent-rpc 子
+ * 进程、skill 内置脚本（publish-ability）都读不到。让它们去翻 settings.json 又会把
+ * 「客户端配置文件的内部结构」变成外部契约。故单独落一份最小契约文件：只有 baseUrl
+ * 与 token 两个字段。
  *
- * 权限收到 0600：这是长期有效的访问令牌，不能让同机其它用户直接读走。
+ * 消费者一律**按需重读**而不缓存：token 会轮换，这里每次刷新都会覆写本文件，
+ * 缓存住就等于把过期凭据钉死在调用方手里。
+ *
+ * 权限收到 0600：这是有效的访问令牌，不能让同机其它用户直接读走。
  */
 
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -16,7 +20,11 @@ import { getAppLogger } from "../logger.js";
 
 const log = getAppLogger("auth");
 
-/** 与 `@vetta/vetta-mcp` 的 credentials 模块共用的契约，字段只增不改。 */
+/**
+ * 与外部消费者共用的契约，字段只增不改。
+ * 现有读方：coding-agent 的 `core/mcp/vetta-credentials.ts`、
+ * skill-presets 的 `publish-ability/scripts/publish.mjs`。
+ */
 interface StoredCredentials {
 	baseUrl: string;
 	token: string;

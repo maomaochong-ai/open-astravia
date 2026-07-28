@@ -43,6 +43,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **`~/.vetta/auth.json` 的消费者换人**：内建 vetta MCP 改为远程 HTTP 服务后不再有本地子进程，这份下沉凭据的读方变成 coding-agent 的 `core/mcp/vetta-credentials.ts` 与 `publish-ability` skill 的上传脚本。文件形状与写入时机（登录 / 刷新 / 登出三处 `syncCredentialFile`）不变；消费者一律按需重读、不缓存，token 轮换后自动生效。
+- **`stage-system-skills` 放行 skill-presets 下的工程目录**：`test` / `node_modules` 不再被「内置 Skill 未在 manifest 注册」这条检查误伤。用白名单而不是放宽检查——真漏注册一个 skill 仍然必须炸。
 - **「让 Vetta 帮您配置」不再自动跳转对话页**：提交后在当前设置页后台创建会话并发送协助 prompt，侧栏高亮对应新会话；同时用一颗主色小球从 CTA 飞向该会话行作引导（`prefers-reduced-motion` 时跳过动效）。用户可自行点击侧栏会话进入聊天。
 - **设置 AI 协助飞球起点对齐弹窗提交**：小球在点击提交瞬间从弹窗内发送按钮位置出现并短暂停留，会话创建与侧栏刷新在后台进行，就绪后再飞向对应会话行；不再等 `openSession`/`sendMessage` 结束后才出球。
 - **设置 AI 协助弹窗与飞球动效**：提交后弹窗与会话创建解耦（截取起点后即关，可随时再开再关）；发送不绑定会话 busy/streaming，可连续发起多个协助会话（后台串行建会话+发消息）；飞球用 **GSAP** 单段二次抛物线 `MotionPath`（`M0,0 Q…`，弧高约 20% 路程 / 峰值约 72–148px，`ease: none`），侧栏目标短轮询/列表兜底。

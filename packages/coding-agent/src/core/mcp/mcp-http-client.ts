@@ -98,6 +98,7 @@ export class HttpMcpClient implements IMcpClient {
 		this.transport = new StreamableHTTPClientTransport(url, {
 			requestInit,
 			authProvider: this.oauthProvider ?? undefined,
+			fetch: buildHeaderResolvingFetch(this.config.resolveHeaders),
 		});
 		this.client = new Client(
 			{ name: params.clientInfo.name, version: params.clientInfo.version },
@@ -211,6 +212,34 @@ export class HttpMcpClient implements IMcpClient {
 			console.error(`[MCPClient:${this.name}] ${message}`);
 		}
 	}
+}
+
+/**
+ * Wrap global fetch so `resolveHeaders` is consulted on every request.
+ *
+ * Returns undefined when there is no provider, letting the SDK use its own default
+ * fetch — we only pay for the indirection where a rotating credential needs it.
+ *
+ * A failing provider must not take the request down: a transient read error on the
+ * credential file should surface as the server's own 401, which callers already
+ * handle, rather than as an opaque transport crash.
+ */
+function buildHeaderResolvingFetch(
+	resolveHeaders: McpHttpServerConfig["resolveHeaders"],
+): ((input: string | URL, init?: RequestInit) => Promise<Response>) | undefined {
+	if (!resolveHeaders) return undefined;
+
+	return async (input, init) => {
+		const headers = new Headers(init?.headers);
+		try {
+			for (const [key, value] of Object.entries(await resolveHeaders())) {
+				headers.set(key, value);
+			}
+		} catch {
+			// Fall through with whatever static headers exist.
+		}
+		return fetch(input, { ...init, headers });
+	};
 }
 
 function isUnauthorizedLike(error: unknown): boolean {
