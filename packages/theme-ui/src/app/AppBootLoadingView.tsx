@@ -1,10 +1,18 @@
 import type { JSX } from "react";
+import { isMac } from "../utils/platform";
 
 export function AppBootLoadingView(): JSX.Element {
 	return (
 		<div className="flex h-screen w-screen overflow-hidden bg-background p-2" aria-busy="true">
 			<div className="flex w-[220px] shrink-0 flex-col rounded-xl border border-border/50 bg-muted/60 p-3">
-				<div className="h-8 w-24 animate-pulse rounded-lg bg-foreground/10" />
+				{/* macOS 用 hiddenInset 标题栏，交通灯就落在窗口左上角（trafficLightPosition x:16 y:20），
+				    这里不画骨架块，只留等高占位——否则脉冲方块正压在红黄绿三个按钮下面。
+				    留占位而非直接删，是为了下方条目不会上移到交通灯区域。 */}
+				{isMac ? (
+					<div className="h-8" />
+				) : (
+					<div className="h-8 w-24 animate-pulse rounded-lg bg-foreground/10" />
+				)}
 				<div className="mt-6 space-y-2">
 					{Array.from({ length: 4 }, (_, index) => (
 						<div key={index} className="h-8 animate-pulse rounded-lg bg-foreground/5" />
