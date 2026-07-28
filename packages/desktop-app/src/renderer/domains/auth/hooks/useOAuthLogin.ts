@@ -14,12 +14,10 @@ export interface OAuthLoginModel {
 	readonly start: () => void;
 	/** 浏览器没弹出来时重开同一条授权链接。 */
 	readonly reopen: () => void;
-	/** 只收起 UI，不取消这次授权——晚到且 state 匹配的回调仍会正常登录。 */
-	readonly cancel: () => void;
 }
 
 /**
- * 授权登录的发起与等待态，登录弹窗和引导页登录步共用。
+ * 授权登录的发起与等待态，侧边栏授权浮层与引导页登录步共用。
  *
  * 这里不处理登录成功：token 由主进程经 `onOAuthCallback` 广播，
  * 统一在 `useAuth` 落地（写 atom / localStorage / settings）。本 hook 只管
@@ -43,7 +41,7 @@ export function useOAuthLogin(): OAuthLoginModel {
 	useEffect(() => {
 		return window.vetta.auth.onOAuthRejected(() => {
 			setPhase("idle");
-			setError(t("loginDialog.rejected"));
+			setError(t("login.rejected"));
 		});
 	}, [t]);
 
@@ -53,7 +51,7 @@ export function useOAuthLogin(): OAuthLoginModel {
 		window.vetta.auth.startOAuth().catch((e: unknown) => {
 			console.error("OAuth login start failed:", e);
 			setPhase("idle");
-			setError(t("loginDialog.openFailed"));
+			setError(t("login.openFailed"));
 		});
 	}, [t]);
 
@@ -61,14 +59,9 @@ export function useOAuthLogin(): OAuthLoginModel {
 		setError("");
 		window.vetta.auth.reopenOAuth().catch((e: unknown) => {
 			console.error("OAuth login reopen failed:", e);
-			setError(t("loginDialog.openFailed"));
+			setError(t("login.openFailed"));
 		});
 	}, [t]);
 
-	const cancel = useCallback(() => {
-		setPhase("idle");
-		setError("");
-	}, []);
-
-	return { phase, error, start, reopen, cancel };
+	return { phase, error, start, reopen };
 }

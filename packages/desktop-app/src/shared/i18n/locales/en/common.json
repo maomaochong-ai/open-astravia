@@ -30,16 +30,14 @@
 		"download": "Download",
 		"close": "Close (Esc)"
 	},
-	"loginDialog": {
-		"title": "Sign in to Vetta",
-		"subtitle": "Sign in with your Vetta account",
+	"login": {
 		"oauthButton": "Authorize & Sign In",
 		"waitingTitle": "Waiting for browser authorization",
-		"waitingHint": "The authorization page is open in your browser. You'll be signed in automatically.",
+		"waitingHint": "You'll be signed in automatically",
 		"reopen": "Open the link again",
+		"retry": "Authorize again",
 		"openFailed": "Couldn't open your browser. Please try again.",
-		"rejected": "This authorization link is no longer valid. Please sign in again.",
-		"footerHint": "By signing in, you agree to the Terms of Service and Privacy Policy"
+		"rejected": "This authorization link is no longer valid. Please sign in again."
 	},
 	"actionApproval": {
 		"reject": "Reject",

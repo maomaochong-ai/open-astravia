@@ -1,5 +1,5 @@
 import { authTokenAtom } from "@shared/store/atoms";
-import { Button } from "@vetta/ui";
+import { Button, Spin } from "@vetta/ui";
 import { useAtomValue } from "jotai";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef } from "react";
@@ -30,13 +30,17 @@ export function LoginStep({ onSuccess }: LoginStepProps): JSX.Element {
 		<div className="mx-auto flex w-full max-w-[340px] flex-col gap-5">
 			<div className="text-center">
 				<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-border/50 bg-card/40">
-					<span className="icon-[solar--user-circle-linear] h-6 w-6 text-primary" />
+					{waiting ? (
+						<Spin size="md" className="text-primary" />
+					) : (
+						<span className="icon-[solar--user-circle-linear] h-6 w-6 text-primary" />
+					)}
 				</div>
 				<h2 className="text-[15px] font-semibold text-foreground">
-					{waiting ? t("loginDialog.waitingTitle") : t("setupWizard.login.title")}
+					{waiting ? t("login.waitingTitle") : t("setupWizard.login.title")}
 				</h2>
 				<p className="mt-1 text-[12px] text-muted-foreground">
-					{waiting ? t("loginDialog.waitingHint") : t("setupWizard.login.subtitle")}
+					{waiting ? t("login.waitingHint") : t("setupWizard.login.subtitle")}
 				</p>
 			</div>
 
@@ -58,14 +62,14 @@ export function LoginStep({ onSuccess }: LoginStepProps): JSX.Element {
 				<Button variant="outline" className="h-10 w-full rounded-lg text-[13px]" onClick={reopen}>
 					<span className="flex items-center gap-2">
 						<span className="icon-[solar--square-top-down-linear] h-4 w-4" />
-						{t("loginDialog.reopen")}
+						{t("login.reopen")}
 					</span>
 				</Button>
 			) : (
 				<Button className="h-10 w-full rounded-lg text-[13px]" onClick={start}>
 					<span className="flex items-center gap-2">
 						<span className="icon-[solar--login-2-linear] h-4 w-4" />
-						{t("loginDialog.oauthButton")}
+						{t("login.oauthButton")}
 					</span>
 				</Button>
 			)}
