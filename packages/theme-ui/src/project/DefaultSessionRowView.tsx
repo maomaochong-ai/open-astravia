@@ -12,6 +12,8 @@ export interface DefaultSessionRowViewProps {
 	/** When false, context menu is ignored (e.g. claw filter). */
 	contextMenuEnabled: boolean;
 	label: string;
+	/** On-disk session path; used for fly-to-sidebar targeting. */
+	sessionPath?: string;
 	/** Tooltip / secondary label (e.g. forked-from preview). */
 	titleExtra?: string;
 	/** Session was forked from another session. */
@@ -31,6 +33,7 @@ export function DefaultSessionRowView({
 	active,
 	contextMenuEnabled,
 	label,
+	sessionPath,
 	titleExtra,
 	forked,
 	onBeforeSelect,
@@ -48,6 +51,7 @@ export function DefaultSessionRowView({
 		<button
 			type="button"
 			data-session-active={active ? "true" : undefined}
+			data-session-path={sessionPath || undefined}
 			onClick={(event) => {
 				if (renaming) return;
 				const panelWillMove = onBeforeSelect?.() ?? false;

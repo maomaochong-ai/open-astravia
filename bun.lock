@@ -266,7 +266,7 @@
     },
     "packages/desktop-app": {
       "name": "@vetta/desktop-app",
-      "version": "0.5.11",
+      "version": "0.5.12",
       "dependencies": {
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
@@ -300,6 +300,7 @@
         "driver.js": "^1.8.0",
         "electron-liquid-glass": "^1.1.1",
         "electron-log": "^5.4.4",
+        "gsap": "^3.15.0",
         "i18next": "^26.3.2",
         "jotai": "^2.15.1",
         "lucide-react": "^1.6.0",

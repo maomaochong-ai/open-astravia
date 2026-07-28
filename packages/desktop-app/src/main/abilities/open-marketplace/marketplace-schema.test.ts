@@ -66,11 +66,77 @@ describe("parseMarketplaceManifest", () => {
 		expect(() => parseMarketplaceManifest(manifest)).toThrow("Duplicate ability slug");
 	});
 
-	it("rejects unsupported ability types in schema version 1", () => {
+	it("accepts MCP, plugin and bundle entries", () => {
 		const manifest = validManifest();
 		const abilities = manifest.abilities as Array<Record<string, unknown>>;
-		abilities[0] = { ...abilities[0], type: "plugin" };
+		abilities.push({
+			type: "mcp",
+			slug: "context7",
+			name: "Context7",
+			version: "1.0.0",
+			source: { path: "abilities/mcp/context7" },
+		});
+		abilities.push({
+			type: "plugin",
+			slug: "demo-plugin",
+			name: "Demo Plugin",
+			version: "1.0.0",
+			source: { path: "abilities/plugins/demo-plugin" },
+		});
+		abilities.push({
+			type: "bundle",
+			slug: "starter-bundle",
+			name: "Starter Bundle",
+			version: "1.0.0",
+			config: {
+				members: [
+					{ type: "mcp", slug: "context7" },
+					{ type: "plugin", slug: "demo-plugin" },
+				],
+			},
+		});
 
-		expect(() => parseMarketplaceManifest(manifest)).toThrow();
+		expect(parseMarketplaceManifest(manifest).abilities.map((ability) => ability.type)).toEqual([
+			"skill",
+			"mcp",
+			"plugin",
+			"bundle",
+		]);
+	});
+
+	it("rejects inline MCP configuration", () => {
+		const manifest = validManifest();
+		(manifest.abilities as Array<Record<string, unknown>>).push({
+			type: "mcp",
+			slug: "broken-mcp",
+			name: "Broken MCP",
+			version: "1.0.0",
+			config: { mcp: { type: "http" } },
+			source: { path: "abilities/mcp/broken-mcp" },
+		});
+
+		expect(() => parseMarketplaceManifest(manifest)).toThrow(
+			"MCP configuration must be stored in source.path/mcp.json",
+		);
+	});
+
+	it("rejects missing and nested bundle members", () => {
+		const missing = validManifest();
+		(missing.abilities as Array<Record<string, unknown>>).push({
+			type: "bundle",
+			slug: "starter-bundle",
+			name: "Starter Bundle",
+			version: "1.0.0",
+			config: { members: [{ type: "plugin", slug: "missing" }] },
+		});
+		expect(() => parseMarketplaceManifest(missing)).toThrow("Bundle member not found");
+
+		const nested = structuredClone(missing);
+		const abilities = nested.abilities as Array<Record<string, unknown>>;
+		abilities[1] = {
+			...abilities[1],
+			config: { members: [{ type: "bundle", slug: "starter-bundle" }] },
+		};
+		expect(() => parseMarketplaceManifest(nested)).toThrow();
 	});
 });

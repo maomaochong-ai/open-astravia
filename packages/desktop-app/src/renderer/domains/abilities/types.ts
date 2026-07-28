@@ -124,12 +124,13 @@ export interface AbilitiesModel {
 	loading: boolean;
 	refreshing: boolean;
 	errors: string[];
-	message: string | null;
 	importing: boolean;
 	mcp: McpSettingsModel;
 	findById: (id: string) => AbilityItem | null;
 	refresh: () => void;
 	install: (item: AbilityItem) => void;
+	/** 安装 bundle 时只处理用户勾选的成员。 */
+	installBundleMembers: (bundle: BundleAbility, members: AbilityItem[]) => void;
 	uninstall: (item: AbilityItem) => void;
 	toggle: (item: AbilityItem) => void;
 	setup: (item: McpAbility) => void;

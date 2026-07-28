@@ -18,11 +18,8 @@ export interface AbilityCatalogPage {
 	pageCount: number;
 }
 
-/** 排序：待配置 > 可更新 > 已安装 > 热度 > 标题 > id。 */
+/** 只使用不会随安装操作变化的字段排序，避免卡片在操作后跳位。 */
 export function compareAbilities(a: AbilityItem, b: AbilityItem): number {
-	if (a.setupRequired !== b.setupRequired) return a.setupRequired ? -1 : 1;
-	if (a.needsUpdate !== b.needsUpdate) return a.needsUpdate ? -1 : 1;
-	if (a.installed !== b.installed) return a.installed ? -1 : 1;
 	if (a.downloadCount !== b.downloadCount) return b.downloadCount - a.downloadCount;
 	const titleOrder = a.title.localeCompare(b.title);
 	return titleOrder || a.id.localeCompare(b.id);

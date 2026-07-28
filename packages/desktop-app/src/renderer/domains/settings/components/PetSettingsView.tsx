@@ -20,6 +20,8 @@ export function PetSettingsView({ model }: { model: PetSettingsModel }): JSX.Ele
 			alwaysOnTop={model.config.alwaysOnTop}
 			debugFrame={model.config.debugFrame}
 			decorations={model.decorations}
+			// 装饰分区暂时隐藏；组件、数据与注册项均保留，恢复时改回 true 即可。
+			showDecorationSection={false}
 			aiAssistSlot={<SettingsAiAssist tabId="pet" />}
 			bubbleGrid={
 				<div className="grid grid-cols-2 gap-3 p-4">

@@ -92,7 +92,7 @@ function InstalledMoreMenu({
 					{t("actions.viewDetails")}
 				</DropdownMenuItem>
 				{item.needsUpdate && (
-					<DropdownMenuItem onSelect={() => model.install(item)}>
+					<DropdownMenuItem onSelect={() => (item.type === "bundle" ? onOpenDetail() : model.install(item))}>
 						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
 						{t("actions.update")}
 					</DropdownMenuItem>
@@ -157,7 +157,7 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 						size="sm"
 						disabled={item.busy}
 						className="border border-border bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-						onClick={() => model.install(item)}
+						onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
 					>
 						{item.busy ? <span className="icon-[solar--refresh-linear] h-3.5 w-3.5 animate-spin" /> : null}
 						{t("actions.add")}

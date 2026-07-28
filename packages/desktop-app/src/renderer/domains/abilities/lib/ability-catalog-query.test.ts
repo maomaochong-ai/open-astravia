@@ -79,4 +79,21 @@ describe("queryAbilityCatalog", () => {
 
 		expect(page.items.map((item) => item.id)).toEqual([first.id, second.id]);
 	});
+
+	it("keeps discover ordering stable when installation state changes", () => {
+		const popular = ability(1, { downloadCount: 100 });
+		const other = ability(2, { downloadCount: 10, installed: true, needsUpdate: true, setupRequired: true });
+
+		const before = queryAbilityCatalog([other, popular], { scope: "discover", page: 1, pageSize: 60 });
+		const after = queryAbilityCatalog(
+			[
+				{ ...other, installed: false, needsUpdate: false, setupRequired: false },
+				{ ...popular, installed: true },
+			],
+			{ scope: "discover", page: 1, pageSize: 60 },
+		);
+
+		expect(before.items.map((item) => item.id)).toEqual([popular.id, other.id]);
+		expect(after.items.map((item) => item.id)).toEqual([popular.id, other.id]);
+	});
 });

@@ -156,7 +156,8 @@ export function readAbilityLedger(): AbilityLedger {
 }
 
 /**
- * 记录一次安装/升级。已有条目保留原 installedAt（它表示首次安装时间），仅更新版本。
+ * 记录一次安装/升级。已有条目保留原 installedAt；调用方未传 metadata 时也保留已有
+ * origin / configVersion，避免插件 reload 等纯版本切换丢失 GitHub 来源。
  * 内置能力（skill-presets、系统插件）不进台账，调用方不应对其调用本函数。
  */
 export function recordAbilityInstall(
@@ -170,11 +171,13 @@ export function recordAbilityInstall(
 	}
 	const ledger = readLedgerFile();
 	const key = buildAbilityLedgerKey(type, slug);
+	const previous = ledger[key];
+	const configVersion = metadata?.configVersion ?? previous?.configVersion;
 	ledger[key] = {
 		version,
-		installedAt: ledger[key]?.installedAt ?? new Date().toISOString(),
-		origin: metadata?.origin ?? { kind: "server" },
-		...(metadata?.configVersion ? { configVersion: metadata.configVersion } : {}),
+		installedAt: previous?.installedAt ?? new Date().toISOString(),
+		origin: metadata?.origin ?? previous?.origin ?? { kind: "server" },
+		...(configVersion ? { configVersion } : {}),
 	};
 	writeLedgerFile(ledger);
 }

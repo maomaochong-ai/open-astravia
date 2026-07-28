@@ -6,6 +6,8 @@ import type { InstalledSkill } from "../../skills/skill-service.js";
 import type { MarketplaceAbilityManifest } from "./marketplace-schema.js";
 import { assertSafeSkillTree, validateSkillPackage } from "./skill-package.js";
 
+export type OpenMarketplaceSkillManifest = Extract<MarketplaceAbilityManifest, { type: "skill" | "scene" }>;
+
 export interface OpenMarketplaceInstallerDependencies {
 	getBaseDir: (type: "skill" | "scene") => string;
 	tmpBaseDir: string;
@@ -37,7 +39,7 @@ function ensureDirWritable(dir: string): void {
 
 export async function installOpenMarketplaceAbility(
 	snapshotRoot: string,
-	ability: MarketplaceAbilityManifest,
+	ability: OpenMarketplaceSkillManifest,
 	origin: GitHubMarketplaceOrigin,
 	dependencies: OpenMarketplaceInstallerDependencies,
 ): Promise<void> {

@@ -95,7 +95,12 @@ function modelKeyToParts(key: string | null | undefined): { provider: string; id
 }
 
 interface SessionManagerResult {
-	openSession: (cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>;
+	openSession: (
+		cwd: string,
+		sessionPath?: string,
+		executionMode?: SessionExecutionMode,
+		options?: { navigate?: boolean },
+	) => Promise<void>;
 	/**
 	 * overrideText：以指定文本作为独立 prompt 直发（输入预测建议 / 设置 AI 协助等），省略则按输入框内容发送。
 	 * options.metadata：合并进本轮 PromptRequest.metadata（仅宿主/input-pipeline 消费，不进用户气泡正文）。
@@ -109,7 +114,13 @@ interface SessionManagerResult {
 	/** 立即发送某条排队消息：streaming 时先中止当前流、等 aborted 再发，空闲则直发。 */
 	sendQueuedNow: (runtimeId: string, id: string) => Promise<void>;
 	openSessionRef: React.MutableRefObject<
-		((cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>) | undefined
+		| ((
+				cwd: string,
+				sessionPath?: string,
+				executionMode?: SessionExecutionMode,
+				options?: { navigate?: boolean },
+		  ) => Promise<void>)
+		| undefined
 	>;
 }
 
@@ -171,7 +182,13 @@ export function useSessionManager(): SessionManagerResult {
 	defaultConversationCwdRef.current = defaultConversationCwd;
 	const activeSessionRef = useRef<{ cwd: string; sessionPath: string; runtimeId: string } | null>(null);
 	const openSessionRef = useRef<
-		((cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>) | undefined
+		| ((
+				cwd: string,
+				sessionPath?: string,
+				executionMode?: SessionExecutionMode,
+				options?: { navigate?: boolean },
+		  ) => Promise<void>)
+		| undefined
 	>(undefined);
 	// Sessions for which auto-title has already been attempted (or skipped because
 	// the session was opened with prior history / already had a name).
@@ -258,10 +275,16 @@ export function useSessionManager(): SessionManagerResult {
 	}, []);
 
 	const openSession = useCallback(
-		async (cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => {
+		async (
+			cwd: string,
+			sessionPath?: string,
+			executionMode?: SessionExecutionMode,
+			options?: { navigate?: boolean },
+		) => {
 			// 取自己的调用令牌；若中途被新的 openSession 抢跑，会在 subscribe()
 			// 返回后被发现并立即清理自己刚建好的 IPC 订阅，避免泄漏。
 			const myOpenToken = bumpOpenSessionToken();
+			const shouldNavigate = options?.navigate !== false;
 			// 切换 session 前清掉内嵌文件预览（指向旧 cwd 的某个具体文件），但
 			// **保留**活动面板的展开状态：用户在上一个 session 打开过 ActivityPanel
 			// 后，切到新 session 仍维持打开，避免每次切换都要重新点开。
@@ -321,14 +344,17 @@ export function useSessionManager(): SessionManagerResult {
 			// 这里以 main 返回的 effective cwd 为准，保证 FilesPanel/调试 cwd 都指向子目录。
 			const effectiveCwd = createResult.cwd ?? cwd;
 
-			// 拿到 sessionId 就立即写 activeSession 并 navigate，让用户尽快看到 ChatView。
+			// 拿到 sessionId 就立即写 activeSession；默认再 navigate 到 ChatView。
 			// 真实 sessionPath 解析（可能还要再走一次 IPC）放到后面，等好了再补一次写入。
 			// 这样 Welcome → Chat 的转场就不会被 getFullHistory / getState / getSessionPath
 			// 的串行 IPC 拖住，体感保持瞬时。
+			// navigate:false：设置页 AI 协助等场景只后台建会话，留在当前路由，由侧栏高亮 + 飞球引导。
 			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: sessionPath ?? "", runtimeId: sessionId };
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
-			void navigate({ to: "/" });
+			if (shouldNavigate) {
+				void navigate({ to: "/" });
+			}
 
 			// Fire history + state in parallel so renderer doesn't wait on two
 			// sequential IPC round-trips. History is rendered as soon as it lands;

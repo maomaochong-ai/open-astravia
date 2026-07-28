@@ -8,6 +8,7 @@ import { AbilityDetailHeader } from "./AbilityDetailHeader";
 import { AbilityMarkdownBody } from "./AbilityMarkdownBody";
 import { AbilityMetaList } from "./AbilityMetaList";
 import { AbilityShowcaseList } from "./AbilityShowcaseList";
+import { BundleInstallDialog } from "./BundleInstallDialog";
 import { BundleMembersSection } from "./BundleMembersSection";
 import { BundleUninstallDialog } from "./BundleUninstallDialog";
 import { McpAbilitySection } from "./McpAbilitySection";
@@ -28,6 +29,7 @@ export function AbilityDetailView({
 	// raw.detail.i18n[locale] 覆盖块的取值语言，与界面语言一致。
 	const language = i18n.language;
 	const [bundleDialogOpen, setBundleDialogOpen] = useState(false);
+	const [bundleInstallDialogOpen, setBundleInstallDialogOpen] = useState(false);
 	const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
 
 	const detail = useMemo(
@@ -37,6 +39,10 @@ export function AbilityDetailView({
 
 	const handlePrimary = (): void => {
 		if (!item.installed || item.needsUpdate) {
+			if (item.type === "bundle") {
+				setBundleInstallDialogOpen(true);
+				return;
+			}
 			model.install(item);
 			return;
 		}
@@ -165,6 +171,15 @@ export function AbilityDetailView({
 					model={model}
 					open={permissionsDialogOpen}
 					onOpenChange={setPermissionsDialogOpen}
+				/>
+			) : null}
+
+			{item.type === "bundle" ? (
+				<BundleInstallDialog
+					bundle={item}
+					open={bundleInstallDialogOpen}
+					onOpenChange={setBundleInstallDialogOpen}
+					onConfirm={(members) => model.installBundleMembers(item, members)}
 				/>
 			) : null}
 

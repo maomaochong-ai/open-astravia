@@ -74,6 +74,8 @@ function normalizeTarget(value: string): string {
 
 function isSettingsSectionVisible(section: SettingsSectionRegistration): boolean {
 	if (section.id === "appearance-ui-theme") return isAppearanceUiThemeEnabled();
+	// 桌宠装饰分区暂隐藏（与 PetSettingsView.showDecorationSection=false 对齐）
+	if (section.id === "pet-decoration") return false;
 	return true;
 }
 

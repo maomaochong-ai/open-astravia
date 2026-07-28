@@ -25,7 +25,7 @@ function toMarketAbility(ability: OpenMarketplaceAbility, syncedAt: string | nul
 		tags: ability.tags,
 		sha256: "",
 		download_count: 0,
-		config: {},
+		config: ability.config,
 		detail: ability.detail,
 		updated_at: syncedAt ?? "",
 		origin: ability.origin,

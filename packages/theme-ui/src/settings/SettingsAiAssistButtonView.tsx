@@ -41,6 +41,7 @@ export const SettingsAiAssistButtonView = forwardRef<HTMLButtonElement, Settings
 				onClick={onClick}
 				title={label}
 				aria-label={label}
+				data-settings-ai-assist-trigger=""
 				initial="idle"
 				animate={reduceMotion ? "idle" : "pulse"}
 				whileHover={reduceMotion ? undefined : "hover"}

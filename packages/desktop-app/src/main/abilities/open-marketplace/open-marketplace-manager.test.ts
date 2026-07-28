@@ -88,11 +88,11 @@ describe("OpenMarketplaceManager", () => {
 		});
 
 		await manager.list();
-		await manager.install("skill", "demo", cached.id);
+		await manager.install("plugin", "demo", cached.id);
 
 		expect(list).not.toHaveBeenCalled();
 		expect(listCached).toHaveBeenCalledOnce();
-		expect(install).toHaveBeenCalledWith("skill", "demo");
+		expect(install).toHaveBeenCalledWith("plugin", "demo");
 	});
 
 	it("uses a different cache directory after source configuration changes", async () => {
@@ -124,5 +124,36 @@ describe("OpenMarketplaceManager", () => {
 		expect(cacheRoots[0]).not.toBe(cacheRoots[1]);
 		expect(cacheRoots[0]).toContain(join("cache", catalog.id));
 		expect(cacheRoots[1]).toContain(join("cache", catalog.id));
+	});
+
+	it("publishes successful background updates to subscribers", async () => {
+		const root = await temporaryRoot();
+		const catalog = source("catalog", 100);
+		const store = new MarketplaceSourceStore({ filePath: join(root, "sources.json"), defaultSources: [catalog] });
+		let publishBackgroundUpdate: (() => void) | undefined;
+		const manager = new OpenMarketplaceManager({
+			appVersion: "0.5.11",
+			store,
+			cacheRoot: join(root, "cache"),
+			workerFactory: (item, _cacheRoot, onBackgroundUpdate) => {
+				publishBackgroundUpdate = onBackgroundUpdate;
+				return {
+					list: vi.fn(async () => snapshot(item.id)),
+					listCached: vi.fn(async () => snapshot(item.id)),
+					refresh: vi.fn(async () => snapshot(item.id)),
+					install: vi.fn(async () => undefined),
+				};
+			},
+		});
+		const listener = vi.fn();
+		const unsubscribe = manager.subscribeToUpdates(listener);
+		await manager.list();
+
+		publishBackgroundUpdate?.();
+
+		expect(listener).toHaveBeenCalledWith(catalog.id);
+		unsubscribe();
+		publishBackgroundUpdate?.();
+		expect(listener).toHaveBeenCalledOnce();
 	});
 });

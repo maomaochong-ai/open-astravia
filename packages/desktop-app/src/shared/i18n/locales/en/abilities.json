@@ -79,6 +79,7 @@
 	},
 	"message": {
 		"installed": "Installed {{name}}",
+		"installedCount": "Installed {{count}} abilities",
 		"setupRequired": "{{name}} needs setup before it is added",
 		"uninstalled": "Removed {{name}}",
 		"uninstalledCount": "Removed {{count}} abilities",
@@ -146,6 +147,12 @@
 		"oauthNotAuthorized": "Not authorized"
 	},
 	"bundle": {
+		"install": {
+			"title": "Choose abilities to install",
+			"description": "Choose which members of \"{{name}}\" to install. Members already up to date will not be installed again.",
+			"nothing": "This bundle has no members to install or update.",
+			"confirm": "Install {{count}}"
+		},
 		"members": "Contains {{count}} abilities",
 		"inline": "Inline",
 		"missing": "Delisted",

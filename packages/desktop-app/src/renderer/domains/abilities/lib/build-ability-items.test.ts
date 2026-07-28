@@ -2,9 +2,11 @@ import type { InstalledPlugin } from "@preload/api";
 import type { AbilityMember, MarketAbility } from "@shared/lib/api";
 import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
+import { buildBuiltinMcpServerConfig } from "../../settings/mcp/builtin-mcp-presets";
 import type { AbilityItem, McpAbility } from "../types";
 import {
 	buildBundleAbilities,
+	buildMcpAbilities,
 	buildPluginAbilities,
 	buildSkillAbilities,
 	type LocalAbilityState,
@@ -123,6 +125,25 @@ describe("buildPluginAbilities", () => {
 		expect(items[0]?.title).toBe("Cowart 画布");
 		expect(items[0]?.description).toBe("无限画布能力包");
 	});
+
+	it("preserves GitHub marketplace origin for open plugin installation", () => {
+		const ability = {
+			...createBundle([]),
+			type: "plugin" as const,
+			slug: "open-plugin",
+			origin: {
+				kind: "github-marketplace" as const,
+				sourceId: "test-source",
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.07.3",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		};
+
+		const items = buildPluginAbilities([ability], createState(), trPlugin);
+
+		expect(items[0]?.origin).toEqual(ability.origin);
+	});
 });
 
 describe("buildSkillAbilities", () => {
@@ -142,6 +163,58 @@ describe("buildSkillAbilities", () => {
 		const items = buildSkillAbilities([ability], createState());
 
 		expect(items[0]?.origin).toEqual(ability.origin);
+	});
+});
+
+describe("buildMcpAbilities", () => {
+	it("preserves GitHub marketplace origin for ledger recording", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "context7",
+			name: "Context7",
+			config: {
+				mcp: { type: "http", url: "https://mcp.context7.com/mcp" },
+				mcp_parameters: [
+					{
+						key: "CONTEXT7_API_KEY",
+						label: "Context7 API Key",
+						required: false,
+						secret: true,
+					},
+				],
+			},
+			origin: {
+				kind: "github-marketplace" as const,
+				sourceId: "test-source",
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.07.3",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		};
+
+		const items = buildMcpAbilities([ability], createState(), t);
+
+		const item = items.find((candidate) => candidate.slug === "context7");
+		expect(item?.origin).toEqual(ability.origin);
+		expect(item?.preset).toMatchObject({
+			name: "context7",
+			displayName: "Context7",
+			secrets: [{ envKey: "CONTEXT7_API_KEY", label: "Context7 API Key", required: false, secret: true }],
+		});
+		if (!item?.preset) throw new Error("Marketplace MCP install preset is missing");
+		expect(
+			buildBuiltinMcpServerConfig(
+				item.preset,
+				{ displayName: item.title, description: item.description },
+				{
+					CONTEXT7_API_KEY: "demo-key",
+				},
+			),
+		).toMatchObject({
+			type: "http",
+			headers: { CONTEXT7_API_KEY: "demo-key" },
+		});
 	});
 });
 

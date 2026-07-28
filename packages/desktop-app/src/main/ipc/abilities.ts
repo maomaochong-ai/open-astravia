@@ -1,5 +1,9 @@
-import { app, ipcMain } from "electron";
-import type { AddMarketplaceSourceInput, UpdateMarketplaceSourceInput } from "../../preload/api-types/abilities.js";
+import { app, BrowserWindow, ipcMain } from "electron";
+import type {
+	AbilityInstallOrigin,
+	AddMarketplaceSourceInput,
+	UpdateMarketplaceSourceInput,
+} from "../../preload/api-types/abilities.js";
 import { readAbilityLedger, recordAbilityInstall } from "../abilities/ability-ledger.js";
 import { getOpenMarketplaceManager } from "../abilities/open-marketplace/open-marketplace-manager.js";
 import { DEFAULT_MARKETPLACE_SOURCE_ID } from "../abilities/open-marketplace/open-marketplace-service.js";
@@ -45,8 +49,53 @@ function parseUpdateSourceInput(value: unknown): UpdateMarketplaceSourceInput {
 	};
 }
 
+function parseAbilityInstallOrigin(value: unknown): AbilityInstallOrigin | undefined {
+	if (value === undefined) return undefined;
+	if (value == null || typeof value !== "object" || Array.isArray(value)) {
+		throw new Error("origin must be an object");
+	}
+	const origin = value as Record<string, unknown>;
+	if (origin.kind === "server") return { kind: "server" };
+	if (origin.kind !== "github-marketplace") throw new Error("origin kind is invalid");
+	return {
+		kind: "github-marketplace",
+		...(origin.sourceId === undefined ? {} : { sourceId: requireString(origin.sourceId, "origin.sourceId") }),
+		marketplace: requireString(origin.marketplace, "origin.marketplace"),
+		marketplaceVersion: requireString(origin.marketplaceVersion, "origin.marketplaceVersion"),
+		repository: requireString(origin.repository, "origin.repository"),
+	};
+}
+
+function parseMcpInstallMetadata(
+	value: unknown,
+): { origin?: AbilityInstallOrigin; configVersion?: number } | undefined {
+	if (value === undefined) return undefined;
+	if (value == null || typeof value !== "object" || Array.isArray(value)) {
+		throw new Error("recordMcpInstall metadata must be an object");
+	}
+	const metadata = value as Record<string, unknown>;
+	if (
+		metadata.configVersion !== undefined &&
+		(typeof metadata.configVersion !== "number" ||
+			!Number.isInteger(metadata.configVersion) ||
+			metadata.configVersion < 1)
+	) {
+		throw new Error("configVersion must be a positive integer");
+	}
+	const origin = parseAbilityInstallOrigin(metadata.origin);
+	return {
+		...(origin ? { origin } : {}),
+		...(typeof metadata.configVersion === "number" ? { configVersion: metadata.configVersion } : {}),
+	};
+}
+
 export function registerAbilitiesIpc(): () => void {
 	const openMarketplace = getOpenMarketplaceManager(app.getVersion());
+	const unsubscribeFromUpdates = openMarketplace.subscribeToUpdates(() => {
+		for (const win of BrowserWindow.getAllWindows()) {
+			if (!win.isDestroyed()) win.webContents.send("vetta:abilities:open-marketplaces-updated");
+		}
+	});
 	// 一次性下发全量台账；读取时顺带剔除漂移条目（ADR-0049）。
 	ipcMain.handle("vetta:abilities:get-ledger", () => readAbilityLedger());
 	ipcMain.handle("vetta:abilities:list-open-marketplace", async () => {
@@ -75,8 +124,8 @@ export function registerAbilitiesIpc(): () => void {
 	ipcMain.handle(
 		"vetta:abilities:install-open-ability",
 		async (_event, type: unknown, slug: unknown, sourceId: unknown) => {
-			if ((type !== "skill" && type !== "scene") || typeof slug !== "string" || !slug.trim()) {
-				throw new Error("installOpenAbility requires a skill/scene type and non-empty slug");
+			if ((type !== "skill" && type !== "scene" && type !== "plugin") || typeof slug !== "string" || !slug.trim()) {
+				throw new Error("installOpenAbility requires a skill/scene/plugin type and non-empty slug");
 			}
 			const resolvedSourceId = sourceId === undefined ? undefined : requireString(sourceId, "sourceId");
 			await openMarketplace.install(type, slug, resolvedSourceId);
@@ -85,17 +134,22 @@ export function registerAbilitiesIpc(): () => void {
 
 	// 市场 MCP 装完后补记台账：mcp.json 由渲染层整份覆写，主进程无从得知市场版本。
 	// 只接受确实已写进 mcp.json 的 server，避免渲染层写出幽灵条目。
-	ipcMain.handle("vetta:abilities:record-mcp-install", async (_event, slug: unknown, version: unknown) => {
-		if (typeof slug !== "string" || typeof version !== "string") {
-			throw new Error("recordMcpInstall requires slug and version strings");
-		}
-		if (!slug.trim() || !version.trim()) return;
-		const config = await readMcpConfig();
-		if (!config.mcpServers[slug]) return;
-		recordAbilityInstall("mcp", slug, version);
-	});
+	ipcMain.handle(
+		"vetta:abilities:record-mcp-install",
+		async (_event, slug: unknown, version: unknown, metadata: unknown) => {
+			if (typeof slug !== "string" || typeof version !== "string") {
+				throw new Error("recordMcpInstall requires slug and version strings");
+			}
+			if (!slug.trim() || !version.trim()) return;
+			const parsedMetadata = parseMcpInstallMetadata(metadata);
+			const config = await readMcpConfig();
+			if (!config.mcpServers[slug]) return;
+			recordAbilityInstall("mcp", slug, version, parsedMetadata);
+		},
+	);
 
 	return () => {
+		unsubscribeFromUpdates();
 		ipcMain.removeHandler("vetta:abilities:get-ledger");
 		ipcMain.removeHandler("vetta:abilities:record-mcp-install");
 		ipcMain.removeHandler("vetta:abilities:list-open-marketplace");

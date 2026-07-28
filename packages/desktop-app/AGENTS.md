@@ -165,6 +165,17 @@ src/
 - **不抽**：代码注释、日志（`*.warn`/`console`）、发给 LLM 或协议/IPC channel 的串——保持原样。
 - 增量推进：尚未抽离的 domain 仍是硬编码中文，**改到这些 domain 时，新增文案必须走 i18n**，并尽量顺手把所在文件抽干净（流程：发现文案 → 给语义 key → 包 `t()`/`<Trans>` → 文案进对应 ns 的 zh.json）。
 
+## 缓存规范
+
+主进程需要持久化可重新生成或重新下载的内容时，统一使用
+`src/main/cache/application-cache-service.ts` 的 `ApplicationCacheService`，并为每个业务模块分配独立的
+kebab-case namespace。默认根目录为 `~/.vetta/cache/`，例如 Marketplace 使用
+`~/.vetta/cache/marketplace/`；不要再直接拼接 `*-cache` 或 `open-marketplace` 目录。
+
+缓存中不得保存用户配置、安装台账、正式安装内容、凭证或其他不可重建数据。删除某个 cache namespace
+必须不影响其他 namespace 和正式功能；临时文件使用 namespace 的 `createTemporaryDirectory()`，需要清理时使用
+`clear()`。新增缓存使用方时应补充命名空间隔离、路径逃逸和清理边界测试。
+
 ## 日志规范
 
 desktop-app 的文本日志统一由 `src/main/logger.ts` 管理。新增或修改日志时，优先使用这里的入口，不要直接手写 `appendFileSync`、`console.log` 文件重定向，或重新实现独立轮转逻辑。

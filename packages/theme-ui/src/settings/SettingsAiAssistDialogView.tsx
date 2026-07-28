@@ -15,7 +15,6 @@ export interface SettingsAiAssistDialogViewLabels {
 	readonly approvalHint: string;
 	readonly cancel: string;
 	readonly start: string;
-	readonly starting: string;
 }
 
 export interface SettingsAiAssistDialogViewProps {
@@ -25,11 +24,11 @@ export interface SettingsAiAssistDialogViewProps {
 	readonly examples: readonly string[];
 	readonly intent: string;
 	readonly placeholder: string;
-	readonly submitting: boolean;
 	readonly submitError: string | null;
 	readonly onApplyExample: (text: string) => void;
 	readonly onIntentChange: (value: string) => void;
-	readonly onSubmit: () => void;
+	/** Optional origin rect (submit button) so the fly-orb starts at the click point. */
+	readonly onSubmit: (originRect?: DOMRect | null) => void;
 	readonly labels: SettingsAiAssistDialogViewLabels;
 	readonly className?: string;
 }
@@ -48,7 +47,6 @@ export function SettingsAiAssistDialogView({
 	examples,
 	intent,
 	placeholder,
-	submitting,
 	submitError,
 	onApplyExample,
 	onIntentChange,
@@ -59,13 +57,7 @@ export function SettingsAiAssistDialogView({
 	const reduceMotion = useReducedMotion();
 
 	return (
-		<Popover
-			open={open}
-			onOpenChange={(next) => {
-				if (!next && submitting) return;
-				onOpenChange(next);
-			}}
-		>
+		<Popover open={open} onOpenChange={onOpenChange}>
 			<PopoverTrigger asChild>
 				<SettingsAiAssistButtonView label={triggerLabel} className={className} />
 			</PopoverTrigger>
@@ -86,7 +78,13 @@ export function SettingsAiAssistDialogView({
 				className={cn(
 					// Solid surface; overflow-visible so the badge can sit on the top edge.
 					"w-[min(21rem,calc(100vw-1.5rem))] gap-0 overflow-visible border-border bg-popover p-0 text-popover-foreground shadow-md",
-					"data-open:animate-none data-closed:animate-none",
+					// Shell enter/leave (children also have motion springs). Requires tw-animate-css +
+					// data-open/data-closed → data-state mapping in the host stylesheet.
+					"origin-(--radix-popover-content-transform-origin)",
+					"data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-1",
+					"data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-1",
+					"data-[state=open]:duration-200 data-[state=closed]:duration-220",
+					"ease-out",
 				)}
 			>
 				{/* Floating badge — peeks above the border */}
@@ -164,7 +162,6 @@ export function SettingsAiAssistDialogView({
 									<motion.button
 										key={example}
 										type="button"
-										disabled={submitting}
 										onClick={() => onApplyExample(example)}
 										initial={reduceMotion ? false : { opacity: 0, x: -8, scale: 0.96 }}
 										animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -178,7 +175,6 @@ export function SettingsAiAssistDialogView({
 										className={cn(
 											"max-w-full rounded-2xl rounded-bl-md border border-border bg-muted px-2.5 py-1.5 text-left text-[11px] leading-snug text-foreground/90",
 											"transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground",
-											"disabled:pointer-events-none disabled:opacity-50",
 										)}
 									>
 										<span className="mr-1 text-primary">✦</span>
@@ -199,17 +195,16 @@ export function SettingsAiAssistDialogView({
 								value={intent}
 								onChange={(event) => onIntentChange(event.target.value)}
 								placeholder={placeholder}
-								disabled={submitting}
 								rows={3}
 								className={cn(
 									"field-sizing-content min-h-[4.5rem] w-full resize-none bg-transparent px-2.5 py-2 pr-11 pb-10 text-[13px] text-foreground outline-none",
 									"placeholder:text-muted-foreground",
-									"disabled:cursor-not-allowed disabled:opacity-50",
 								)}
 								onKeyDown={(event) => {
-									if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !submitting) {
+									if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
 										event.preventDefault();
-										onSubmit();
+										// Keyboard path: no click rect; consumer falls back to DOM snapshot.
+										onSubmit(null);
 									}
 								}}
 							/>
@@ -218,17 +213,15 @@ export function SettingsAiAssistDialogView({
 									type="button"
 									variant="primary"
 									size="icon-sm"
-									disabled={submitting}
-									onClick={onSubmit}
-									title={submitting ? labels.starting : labels.start}
-									aria-label={submitting ? labels.starting : labels.start}
+									data-settings-ai-assist-submit=""
+									onClick={(event) => {
+										onSubmit(event.currentTarget.getBoundingClientRect());
+									}}
+									title={labels.start}
+									aria-label={labels.start}
 									className="size-8 rounded-full"
 								>
-									{submitting ? (
-										<span className="icon-[solar--refresh-linear] h-3.5 w-3.5 animate-spin" />
-									) : (
-										<span className="icon-[solar--arrow-to-top-left-linear] h-3.5 w-3.5" />
-									)}
+									<span className="icon-[solar--arrow-to-top-left-linear] h-3.5 w-3.5" />
 								</Button>
 							</div>
 						</div>

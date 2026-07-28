@@ -42,7 +42,9 @@ export type BuiltinMcpGuideKey =
 export interface BuiltinMcpSecretField {
 	/** 写入 mcpServers[].env 的键名 */
 	envKey: string;
-	labelKey: BuiltinMcpSecretLabelKey;
+	/** 内置预设使用 i18n key，市场 MCP 使用定义文件提供的 label。 */
+	labelKey?: BuiltinMcpSecretLabelKey;
+	label?: string;
 	/** 是否必填 */
 	required?: boolean;
 	/** 输入框用 password */
@@ -57,23 +59,29 @@ export interface BuiltinMcpSecretField {
 	valueTemplate?: string;
 }
 
-/** 内置 MCP 预设：仅提供配置模板与 UI 元数据，不自动写入 mcp.json，也不预装依赖。 */
+/** MCP 安装预设：内置项与市场 MCP 参数表单共用，不自动写入 mcp.json，也不预装依赖。 */
 export interface BuiltinMcpPreset {
 	/** 稳定 id，用于图标文件名与 i18n key */
 	id: string;
 	/** 写入 mcp.json 的默认 key */
 	name: string;
-	/** public/mcp 下的图标文件名 */
-	iconFile: string;
-	displayNameKey: BuiltinMcpLabelKey;
-	descriptionKey: BuiltinMcpLabelKey;
+	/** 内置项使用 public/mcp 文件名，市场项直接使用已解析 iconUrl。 */
+	iconFile?: string;
+	iconUrl?: string;
+	displayNameKey?: BuiltinMcpLabelKey;
+	descriptionKey?: BuiltinMcpLabelKey;
+	displayName?: string;
+	description?: string;
 	config: McpStdioServerConfigData | Extract<McpServerConfigData, { type: "http" }>;
 	/** 需要用户提供的密钥；有则添加前弹出表单 */
 	secrets?: readonly BuiltinMcpSecretField[];
 	/** 弹窗内展示的「怎么获取」简短步骤（i18n，可用换行） */
 	setupGuideKey?: BuiltinMcpGuideKey;
+	setupGuide?: string;
 	/** 总览型帮助链接（弹窗顶部「打开说明」） */
 	setupHelpUrl?: string;
+	/** 市场定义显式声明是否需要浏览器授权；缺省保持内置预设原有推断。 */
+	browserAuth?: boolean;
 	/** args 中用于回退识别的包名片段 */
 	packageHint?: string;
 	/**
@@ -268,6 +276,27 @@ export function builtinMcpIconUrl(iconFile: string): string {
 	return `${MCP_ICON_BASE}/${iconFile}`;
 }
 
+export function resolveMcpPresetIconUrl(preset: BuiltinMcpPreset): string {
+	if (preset.iconUrl?.trim()) return preset.iconUrl.trim();
+	return preset.iconFile ? builtinMcpIconUrl(preset.iconFile) : "";
+}
+
+export function resolveMcpPresetDisplayName(
+	preset: BuiltinMcpPreset,
+	translate: (key: BuiltinMcpLabelKey) => string,
+): string {
+	if (preset.displayName?.trim()) return preset.displayName.trim();
+	return preset.displayNameKey ? translate(preset.displayNameKey) : preset.name;
+}
+
+export function resolveMcpPresetDescription(
+	preset: BuiltinMcpPreset,
+	translate: (key: BuiltinMcpLabelKey) => string,
+): string {
+	if (preset.description?.trim()) return preset.description.trim();
+	return preset.descriptionKey ? translate(preset.descriptionKey) : "";
+}
+
 export function getBuiltinMcpPresetByName(name: string): BuiltinMcpPreset | undefined {
 	return BUILTIN_MCP_PRESETS.find((preset) => preset.name === name);
 }
@@ -305,7 +334,8 @@ export function matchBuiltinMcpPreset(name: string, config: McpServerConfigData)
 
 /** 远程 HTTP MCP：走 OAuth 浏览器授权（无必填密钥） */
 export function presetUsesOAuth(preset: BuiltinMcpPreset): boolean {
-	return preset.config.type === "http" && !presetRequiresSecrets(preset);
+	if (preset.config.type !== "http") return false;
+	return preset.browserAuth ?? !presetRequiresSecrets(preset);
 }
 
 /**
@@ -326,7 +356,7 @@ export function serverUsesOAuth(name: string, config: McpServerConfigData): bool
 /** 有配置图标时返回 URL；否则 null（UI 使用默认 SVG）。 */
 export function resolveMcpIcon(name: string, config: McpServerConfigData): string | null {
 	const preset = matchBuiltinMcpPreset(name, config);
-	if (preset) return builtinMcpIconUrl(preset.iconFile);
+	if (preset) return resolveMcpPresetIconUrl(preset);
 	const icon = config.icon?.trim();
 	if (icon) return icon;
 	return null;
@@ -392,5 +422,5 @@ export function presetRequiresSecrets(preset: BuiltinMcpPreset): boolean {
  * （有 setup 说明、且没有必填密钥）
  */
 export function presetUsesBrowserAuth(preset: BuiltinMcpPreset): boolean {
-	return Boolean(preset.setupGuideKey) && !presetRequiresSecrets(preset);
+	return preset.browserAuth ?? (Boolean(preset.setupGuideKey) && !presetRequiresSecrets(preset));
 }

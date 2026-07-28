@@ -1,6 +1,7 @@
 @layer vetta-plugins, theme, base, components, utilities;
 
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "@vetta/theme-ui/styles.css";
 @plugin "@iconify/tailwind4";
 
@@ -12,6 +13,9 @@
 @source "../../../ui/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:is([data-mode="dark"] *));
+/* Radix sets data-state="open"|"closed"; @vetta/ui uses data-open:/data-closed: utilities. */
+@custom-variant data-open (&:is([data-state="open"]));
+@custom-variant data-closed (&:is([data-state="closed"]));
 
 /* ─── Dark mode (default) ─── */
 :root,

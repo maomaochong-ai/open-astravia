@@ -105,6 +105,17 @@ export function useAbilityData(): AbilityData {
 
 	const refresh = useCallback(() => load(true), [load]);
 
+	useEffect(
+		() =>
+			window.vetta.abilities.onOpenMarketplacesUpdated(() => {
+				void window.vetta.abilities
+					.listOpenMarketplaces()
+					.then(setOpenMarketplace)
+					.catch(() => undefined);
+			}),
+		[],
+	);
+
 	useEffect(() => {
 		load(false);
 	}, [load]);

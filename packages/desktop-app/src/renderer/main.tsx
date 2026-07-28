@@ -33,10 +33,10 @@ const bootPaintedPromise = new Promise<void>((resolve) => {
 		});
 	});
 });
+const renderAppPromise = import("./renderApp");
 
-void Promise.all([appReadyPromise, bootPaintedPromise])
-	.then(async () => {
-		const { renderApp } = await import("./renderApp");
+void Promise.all([appReadyPromise, bootPaintedPromise, renderAppPromise])
+	.then(([, , { renderApp }]) => {
 		renderApp(root);
 	})
 	.catch((error: unknown) => {

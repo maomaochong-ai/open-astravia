@@ -104,12 +104,6 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 							<span>{t("error.partial", { error: model.errors.join(" / ") })}</span>
 						</div>
 					)}
-					{model.message && (
-						<div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-500">
-							{model.message}
-						</div>
-					)}
-
 					<div data-tour="capabilities-list">
 						{model.loading ? (
 							<div className="flex min-h-52 flex-col items-center justify-center gap-2 text-muted-foreground/60">

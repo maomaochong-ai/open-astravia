@@ -35,6 +35,7 @@ export function useDefaultSessionRowModel({
 		active,
 		contextMenuEnabled: filter !== "claw",
 		label: sessionDisplayLabel(session),
+		sessionPath: session.path,
 		forked,
 		titleExtra: forked ? t("sidebar.session.forkedTooltip") : undefined,
 		renaming,

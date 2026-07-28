@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type BuiltinMcpPreset, builtinMcpIconUrl } from "../mcp/builtin-mcp-presets";
+import {
+	type BuiltinMcpPreset,
+	resolveMcpPresetDisplayName,
+	resolveMcpPresetIconUrl,
+} from "../mcp/builtin-mcp-presets";
 
 function resolvePrimaryHelpUrl(preset: BuiltinMcpPreset): string | undefined {
 	if (preset.setupHelpUrl) return preset.setupHelpUrl;
@@ -86,22 +90,22 @@ export function useBuiltinMcpSecretsDialogModel({
 
 	return useMemo(() => {
 		if (!preset) return null;
-		const guide = preset.setupGuideKey ? t(preset.setupGuideKey) : "";
+		const guide = preset.setupGuide?.trim() || (preset.setupGuideKey ? t(preset.setupGuideKey) : "");
 		const guideLines = guide
 			.split("\n")
 			.map((line) => line.trim())
 			.filter(Boolean);
 		const hasFields = fields.length > 0;
-		const connectorName = t(preset.displayNameKey);
+		const connectorName = resolveMcpPresetDisplayName(preset, (key) => t(key));
 		return {
 			appIconUrl: "./icon.png",
 			canSubmit,
-			connectorIconUrl: builtinMcpIconUrl(preset.iconFile),
+			connectorIconUrl: resolveMcpPresetIconUrl(preset),
 			connectorName,
 			fields: fields.map((field) => ({
 				envKey: field.envKey,
 				helpUrl: field.helpUrl,
-				label: t(field.labelKey),
+				label: field.label?.trim() || (field.labelKey ? t(field.labelKey) : field.envKey),
 				optionalSuffix: `（${t("optional")}）`,
 				placeholder: field.placeholder,
 				required: Boolean(field.required),

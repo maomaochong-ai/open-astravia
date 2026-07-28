@@ -60,10 +60,90 @@ function archive(options?: {
 	return zip.toBuffer();
 }
 
+function pluginBundleArchive(pluginId = "demo-plugin"): Buffer {
+	const manifest = {
+		schemaVersion: 1,
+		name: "vetta-open-abilities",
+		marketplaceVersion: "2026.07.3",
+		repository: "https://github.com/example/vetta-abilities",
+		minAppVersion: APP_VERSION,
+		abilities: [
+			{
+				type: "plugin",
+				slug: "demo-plugin",
+				name: "Demo Plugin",
+				description: "Open plugin",
+				version: "1.0.0",
+				configVersion: 2,
+				source: { path: "abilities/plugins/demo-plugin" },
+			},
+			{
+				type: "mcp",
+				slug: "context7",
+				name: "Context7",
+				description: "Open MCP server",
+				version: "1.0.0",
+				configVersion: 3,
+				source: { path: "abilities/mcp/context7" },
+			},
+			{
+				type: "bundle",
+				slug: "starter-bundle",
+				name: "Starter Bundle",
+				version: "1.0.0",
+				config: {
+					members: [
+						{ type: "plugin", slug: "demo-plugin" },
+						{ type: "mcp", slug: "context7" },
+					],
+				},
+			},
+		],
+	};
+	const pluginManifest = {
+		id: pluginId,
+		name: "Demo Plugin",
+		version: "1.0.0",
+		pluginApiVersion: "1.1.0",
+		entry: "dist/index.js",
+		permissions: ["storage.read"],
+		commands: ["git"],
+	};
+	const zip = new AdmZip();
+	zip.addFile("vetta-abilities-main/.vetta/marketplace.json", Buffer.from(JSON.stringify(manifest)));
+	zip.addFile(
+		"vetta-abilities-main/abilities/plugins/demo-plugin/plugin.json",
+		Buffer.from(JSON.stringify(pluginManifest)),
+	);
+	zip.addFile("vetta-abilities-main/abilities/plugins/demo-plugin/dist/index.js", Buffer.from("export default {};\n"));
+	zip.addFile(
+		"vetta-abilities-main/abilities/mcp/context7/mcp.json",
+		Buffer.from(
+			JSON.stringify({
+				schemaVersion: 1,
+				slug: "context7",
+				version: "1.0.0",
+				server: { type: "http", url: "https://mcp.context7.com/mcp" },
+			}),
+		),
+	);
+	return zip.toBuffer();
+}
+
 function response(buffer: Buffer): Response {
 	return new Response(new Uint8Array(buffer), {
 		status: 200,
 		headers: { "content-type": "application/zip", "content-length": String(buffer.byteLength) },
+	});
+}
+
+function manifestResponse(buffer: Buffer): Response {
+	const entry = new AdmZip(buffer).getEntry("vetta-abilities-main/.vetta/marketplace.json");
+	if (!entry) throw new Error("Marketplace manifest fixture is missing");
+	const body = entry.getData();
+	return new Response(new Uint8Array(body), {
+		status: 200,
+		headers: { "content-type": "application/json", "content-length": String(body.byteLength) },
 	});
 }
 
@@ -150,6 +230,71 @@ describe("OpenMarketplaceService", () => {
 		});
 	});
 
+	it("validates and lists MCP, plugin and bundle entries", async () => {
+		const rootDir = await temporaryRoot();
+		const installAbility = vi.fn(
+			async (_snapshotRoot: string, _ability: object, _origin: GitHubMarketplaceOrigin) => undefined,
+		);
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(pluginBundleArchive()),
+			installAbility,
+		});
+
+		const snapshot = await service.refresh();
+		const plugin = snapshot.abilities.find((ability) => ability.type === "plugin");
+		const mcp = snapshot.abilities.find((ability) => ability.type === "mcp");
+		const bundle = snapshot.abilities.find((ability) => ability.type === "bundle");
+		expect(plugin?.config).toEqual({
+			api_version: "1.1.0",
+			permissions: ["storage.read"],
+			commands: ["git"],
+		});
+		expect(mcp).toMatchObject({
+			slug: "context7",
+			configVersion: 3,
+			config: { mcp: { type: "http", url: "https://mcp.context7.com/mcp" } },
+			origin: { kind: "github-marketplace", sourceId: "vetta-official" },
+		});
+		expect(bundle?.config.members).toEqual([
+			{
+				type: "plugin",
+				slug: "demo-plugin",
+				exists: true,
+				name: "Demo Plugin",
+				icon: "",
+				version: "1.0.0",
+			},
+			{
+				type: "mcp",
+				slug: "context7",
+				exists: true,
+				name: "Context7",
+				icon: "",
+				version: "1.0.0",
+			},
+		]);
+
+		await service.install("plugin", "demo-plugin");
+		expect(installAbility).toHaveBeenCalledOnce();
+		expect(installAbility.mock.calls[0]?.[1]).toMatchObject({ type: "plugin", slug: "demo-plugin" });
+	});
+
+	it("rejects a plugin package whose manifest identity does not match", async () => {
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir: await temporaryRoot(),
+			fetchArchive: async () => response(pluginBundleArchive("other-plugin")),
+		});
+
+		expect(await service.refresh()).toMatchObject({
+			abilities: [],
+			marketplaceVersion: null,
+			error: "sync-failed",
+		});
+	});
+
 	it("keeps the last usable snapshot when content changes without a marketplace version bump", async () => {
 		const rootDir = await temporaryRoot();
 		let body = archive({ description: "First" });
@@ -222,21 +367,90 @@ describe("OpenMarketplaceService", () => {
 		expect(snapshot).toMatchObject({ abilities: [], marketplaceVersion: null, error: "sync-failed" });
 	});
 
-	it("serves a fresh local snapshot without downloading again", async () => {
+	it("returns cached data immediately and skips the archive when the remote version is unchanged", async () => {
 		const rootDir = await temporaryRoot();
+		const initial = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive()),
+		});
+		await initial.refresh();
 		const fetchArchive = vi.fn(async () => response(archive()));
+		const fetchManifest = vi.fn(async () => manifestResponse(archive()));
 		const service = new OpenMarketplaceService({
 			appVersion: APP_VERSION,
 			rootDir,
 			fetchArchive,
-			now: () => new Date("2026-07-28T00:00:00.000Z"),
+			fetchManifest,
 		});
-		await service.refresh();
 
 		const snapshot = await service.list();
 
+		expect(snapshot.marketplaceVersion).toBe("2026.07.1");
 		expect(snapshot.error).toBeUndefined();
-		expect(fetchArchive).toHaveBeenCalledTimes(1);
+		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
+		expect(fetchManifest).toHaveBeenCalledWith(
+			"https://github.com/example/vetta-abilities/raw/refs/heads/main/.vetta/marketplace.json",
+			expect.objectContaining({ redirect: "follow" }),
+		);
+		expect(fetchArchive).not.toHaveBeenCalled();
+	});
+
+	it("updates the cache in the background and exposes it on the next list", async () => {
+		const rootDir = await temporaryRoot();
+		const initial = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive({ marketplaceVersion: "2026.07.1", description: "Old" })),
+		});
+		await initial.refresh();
+		const updatedArchive = archive({ marketplaceVersion: "2026.07.2", description: "Updated" });
+		const fetchArchive = vi.fn(async () => response(updatedArchive));
+		const onBackgroundUpdate = vi.fn();
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive,
+			fetchManifest: async () => manifestResponse(updatedArchive),
+			onBackgroundUpdate,
+		});
+
+		const current = await service.list();
+
+		expect(current).toMatchObject({ marketplaceVersion: "2026.07.1" });
+		await vi.waitFor(async () => {
+			const state: unknown = JSON.parse(await readFile(join(rootDir, "state.json"), "utf-8"));
+			expect(state).toMatchObject({ marketplaceVersion: "2026.07.2" });
+		});
+		expect(fetchArchive).toHaveBeenCalledOnce();
+		expect(onBackgroundUpdate).toHaveBeenCalledWith(expect.objectContaining({ marketplaceVersion: "2026.07.2" }));
+		const next = await service.list();
+		expect(next).toMatchObject({ marketplaceVersion: "2026.07.2" });
+		expect(next.abilities[0]?.description).toBe("Updated");
+	});
+
+	it("keeps cached data without surfacing background update failures", async () => {
+		const rootDir = await temporaryRoot();
+		const initial = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive()),
+		});
+		await initial.refresh();
+		const fetchManifest = vi.fn(async () => {
+			throw new Error("offline");
+		});
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchManifest,
+		});
+
+		const snapshot = await service.list();
+
+		expect(snapshot).toMatchObject({ marketplaceVersion: "2026.07.1", stale: false });
+		expect(snapshot.error).toBeUndefined();
+		await vi.waitFor(() => expect(fetchManifest).toHaveBeenCalledOnce());
 	});
 
 	it("can read cached data without triggering a download", async () => {

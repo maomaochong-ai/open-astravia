@@ -4,14 +4,18 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { InstalledSkill } from "../../skills/skill-service";
 import { parseMarketplaceManifest } from "./marketplace-schema";
-import { installOpenMarketplaceAbility, type OpenMarketplaceInstallerDependencies } from "./open-marketplace-installer";
+import {
+	installOpenMarketplaceAbility,
+	type OpenMarketplaceInstallerDependencies,
+	type OpenMarketplaceSkillManifest,
+} from "./open-marketplace-installer";
 
 const temporaryRoots: string[] = [];
 
 async function createFixture(version = "1.0.0"): Promise<{
 	root: string;
 	snapshotRoot: string;
-	ability: ReturnType<typeof parseMarketplaceManifest>["abilities"][number];
+	ability: OpenMarketplaceSkillManifest;
 }> {
 	const root = await mkdtemp(join(tmpdir(), "vetta-open-installer-test-"));
 	temporaryRoots.push(root);
@@ -42,7 +46,7 @@ async function createFixture(version = "1.0.0"): Promise<{
 		],
 	});
 	const ability = manifest.abilities[0];
-	if (!ability) throw new Error("Fixture ability missing");
+	if (!ability || (ability.type !== "skill" && ability.type !== "scene")) throw new Error("Fixture ability missing");
 	return { root, snapshotRoot, ability };
 }
 

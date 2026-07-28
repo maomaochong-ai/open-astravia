@@ -217,6 +217,12 @@ let ipcTeardown: IpcTeardown | undefined;
 let teardownSchedulerIpc: (() => void) | undefined;
 let teardownBatchTasksIpc: (() => void) | undefined;
 let localRpcServer: DesktopLocalRpcServerHandle | undefined;
+let appMonitorInitializationPromise: Promise<void> | undefined;
+
+function ensureAppMonitorInitialized(): Promise<void> {
+	appMonitorInitializationPromise ??= initializeAppMonitor();
+	return appMonitorInitializationPromise;
+}
 
 function attachMainWindowLifecycle(mainWindow: BrowserWindow): void {
 	const sendWindowMaximizedChanged = () => {
@@ -402,6 +408,7 @@ if (!gotSingleLock) {
 		attachMainWindowLifecycle(mainWindow);
 		void loadMainWindow(mainWindow);
 		const rendererBootPaintPromise = appLifecycle.waitForRendererBootPaint();
+		const rendererContentPaintPromise = appLifecycle.waitForRendererContentPaint();
 		void rendererBootPaintPromise.then((result) => {
 			if (mainWindow.isDestroyed()) return;
 			mainWindow.show();
@@ -426,11 +433,8 @@ if (!gotSingleLock) {
 			const capability = await initializeSandboxCapability();
 			mainLog.info("sandbox startup probe", capability, { durationMs: Date.now() - sandboxProbeStartedAt });
 		};
-		// Linux/macOS 的 RuntimeHost 需要探测结果提供 sandbox 可执行文件路径；Windows
-		// 可直接解析内置 host，因此主动能力探测可以移到窗口首帧之后。
-		if (process.platform === "linux" || process.platform === "darwin") {
-			await initializeSandbox();
-		}
+		// sandbox 会在首次请求 sandbox mode 时按需探测；主动预热放到真实内容绘制后，
+		// 避免与 renderer 首屏和会话恢复竞争。
 
 		// 开发模式下覆盖 About 面板信息，避免显示 Electron 框架版本
 		if (!app.isPackaged) {
@@ -625,10 +629,11 @@ if (!gotSingleLock) {
 			}
 		};
 
-		await initializeAppMonitor();
 		if (mainWindow.isDestroyed()) return;
 		const actionApprovalBroker = new ActionApprovalBroker(mainWindow.webContents);
 		const batchTaskService = initializeDesktopBatchTaskService(getSharedRuntime);
+		// 批量项目元数据参与恢复会话的 scenario 判定，需要尽早加载；初始化 Promise
+		// 本身不作为 appLifecycle ready 的门闩。
 		const batchTaskReadyPromise = batchTaskService.initialize();
 		const schedulerService = initializeDesktopSchedulerService({
 			getRuntime: getSharedRuntime,
@@ -641,63 +646,42 @@ if (!gotSingleLock) {
 		// Register IPC handlers
 		ipcTeardown = registerAllIpc(mainWindow.webContents, { actionApprovalBroker, pluginActionService });
 		teardownBatchTasksIpc = registerBatchTasksIpc(mainWindow.webContents, batchTaskService, batchTaskReadyPromise);
+		// 知识库手动操作 IPC 只做桥接，先注册以保证 renderer 不会遇到缺失 handler；
+		// 后台 poller 等真实内容绘制后再启动。
+		registerKnowledgeIpc();
 		appLifecycle.markReady();
-		void rendererBootPaintPromise.then(() => {
-			const deferredStartupTimer = setTimeout(() => {
-				void (async () => {
-					await initializeManagedRuntimeAndCli();
-					if (process.platform === "win32") await initializeSandbox();
-				})().catch((error: unknown) => {
-					mainLog.error("deferred startup initialization failed", error);
+
+		app.on("activate", () => {
+			showMainWindow();
+		});
+
+		// 本地 RPC 与 scheduler 可能在窗口内容完成前收到外部请求，保持尽早启动；
+		// 它们位于 markReady 之后，不再构成 renderer 的全局门闩。
+		void startDesktopLocalRpcServer(
+			{
+				actions: createActionRpcRuntime(actionSystem.runtime),
+				debug: app.isPackaged ? undefined : createDebugRpcRuntime(createAppDebugRuntime({ rendererCdp })),
+			},
+			{
+				endpointFilePath: getLocalRpcServerEndpointFilePath(),
+			},
+		)
+			.then((server) => {
+				localRpcServer = server;
+				mainLog.info("local RPC server ready", {
+					transport: server.endpoint.transport,
+					url: server.endpoint.url,
+					debugEnabled: !app.isPackaged,
 				});
-			}, 500);
-			deferredStartupTimer.unref?.();
-		});
-		initializePetWindow();
-		startPetIdleGuard();
-		// 快捷面板：预创建隐藏窗口（按需 show/hide，不每次重建），随后据配置启停双击功能键监听。
-		// registerAllIpc 已注册快捷面板 IPC（含 RELOAD_HOTKEY），这里仅补窗口与初次触发器同步。
-		createQuickPanelWindow();
-		void syncQuickPanelTrigger().catch((err) => {
-			mainLog.error("failed to sync quick panel trigger", err);
-		});
-		// Appshot：据配置启停「双键同按」手势监听（与快捷面板共享 uiohook 单例）。
-		void syncAppshotGesture().catch((err) => {
-			mainLog.error("failed to sync appshot gesture", err);
-		});
-
-		try {
-			localRpcServer = await startDesktopLocalRpcServer(
-				{
-					actions: createActionRpcRuntime(actionSystem.runtime),
-					debug: app.isPackaged ? undefined : createDebugRpcRuntime(createAppDebugRuntime({ rendererCdp })),
-				},
-				{
-					endpointFilePath: getLocalRpcServerEndpointFilePath(),
-				},
-			);
-			mainLog.info("local RPC server ready", {
-				transport: localRpcServer.endpoint.transport,
-				url: localRpcServer.endpoint.url,
-				debugEnabled: !app.isPackaged,
+			})
+			.catch((err: unknown) => {
+				mainLog.error("failed to start local RPC server", err);
 			});
-		} catch (err) {
-			mainLog.error("failed to start local RPC server", err);
-		}
 
-		// 启动 Updater：恢复 pending-install + 后台检查一次
-		updaterService.setMainWindow(mainWindow);
-		void updaterService.onAppReady();
-
-		// 创建托盘/状态栏图标（三平台均启用；行为差异见 tray-manager.ts）
-		createTray();
-
-		// Initialize scheduler
 		if (teardownSchedulerIpc) {
 			teardownSchedulerIpc();
 			teardownSchedulerIpc = undefined;
 		}
-
 		void initScheduler().then(() => {
 			const win = getMainWindow();
 			if (win) {
@@ -705,24 +689,62 @@ if (!gotSingleLock) {
 			}
 		});
 
-		// 知识库后台加工：注册手动操作 IPC，并据设置调度惰性轮询器。
-		registerKnowledgeIpc();
-		void reloadKnowledgePoller().catch((err) => {
-			mainLog.error("failed to start knowledge poller:", err);
-		});
+		// 托盘属于桌面应用生命周期入口，需要及时可用，但创建不再位于 ready 之前。
+		createTray();
 
-		// Bootstrap IM bridge subsystem (im-gateway sidecar). Errors during
-		// bootstrap are non-fatal — IM is an opt-in feature and the rest of
-		// the desktop-app must keep working.
-		void getImHost()
-			.bootstrap()
-			.catch((err: unknown) => {
-				mainLog.error("im-host bootstrap failed", err);
+		void rendererContentPaintPromise
+			.then((contentPaintResult) => {
+				if (mainWindow.isDestroyed()) return;
+				mainLog.info("renderer content frame visible", {
+					durationMs: Date.now() - rendererBootStartedAt,
+					result: contentPaintResult,
+				});
+
+				// App Monitor 是纯旁路能力：迁移和历史统计读取不得阻塞 renderer 或业务 IPC。
+				void ensureAppMonitorInitialized().catch((error: unknown) => {
+					mainLog.warn("app monitor background initialization failed", error);
+				});
+
+				const deferredStartupTimer = setTimeout(() => {
+					void Promise.all([initializeManagedRuntimeAndCli(), initializeSandbox()]).catch((error: unknown) => {
+						mainLog.error("deferred startup initialization failed", error);
+					});
+				}, 500);
+				deferredStartupTimer.unref?.();
+
+				initializePetWindow();
+				startPetIdleGuard();
+				// 快捷面板：预创建隐藏窗口（按需 show/hide，不每次重建），随后据配置启停双击功能键监听。
+				// registerAllIpc 已注册快捷面板 IPC（含 RELOAD_HOTKEY），这里仅补窗口与初次触发器同步。
+				createQuickPanelWindow();
+				void syncQuickPanelTrigger().catch((err) => {
+					mainLog.error("failed to sync quick panel trigger", err);
+				});
+				// Appshot：据配置启停「双键同按」手势监听（与快捷面板共享 uiohook 单例）。
+				void syncAppshotGesture().catch((err) => {
+					mainLog.error("failed to sync appshot gesture", err);
+				});
+
+				// 启动 Updater：恢复 pending-install + 后台检查一次
+				updaterService.setMainWindow(mainWindow);
+				void updaterService.onAppReady();
+
+				void reloadKnowledgePoller().catch((err) => {
+					mainLog.error("failed to start knowledge poller:", err);
+				});
+
+				// Bootstrap IM bridge subsystem (im-gateway sidecar). Errors during
+				// bootstrap are non-fatal — IM is an opt-in feature and the rest of
+				// the desktop-app must keep working.
+				void getImHost()
+					.bootstrap()
+					.catch((err: unknown) => {
+						mainLog.error("im-host bootstrap failed", err);
+					});
+			})
+			.catch((error: unknown) => {
+				mainLog.error("post-renderer startup failed", error);
 			});
-
-		app.on("activate", () => {
-			showMainWindow();
-		});
 	});
 }
 
@@ -776,7 +798,12 @@ app.on("before-quit", async (event) => {
 		}
 		localRpcServer = undefined;
 	}
-	await shutdownAppMonitor();
+	try {
+		await ensureAppMonitorInitialized();
+		await shutdownAppMonitor();
+	} catch (err) {
+		mainLog.warn("app monitor shutdown failed", err);
+	}
 	await shutdownMainTelemetry();
 	app.exit(0);
 });

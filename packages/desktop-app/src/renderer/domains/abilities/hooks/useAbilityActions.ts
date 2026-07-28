@@ -1,32 +1,27 @@
 /**
  * 能力操作层：三条安装轨道（skills 目录 / plugins 目录 / mcp.json）的差异只在这里展开。
- * 每个操作统一登记 busy id、刷新数据源，并把结果写进 message / error。
+ * 每个操作统一登记 busy id、刷新数据源，并保留错误反馈。
  */
 import type { PluginPermission } from "@preload/api";
 import { i18n } from "@shared/i18n";
-import { abilityToMarketMcpServer, downloadAbility } from "@shared/lib/api";
+import { abilityToMarketMcpServer, downloadAbility, type MarketAbility } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useState } from "react";
 import { notifyPluginsChanged } from "../../plugins/runtime/plugin-events";
 import type { McpSettingsModel } from "../../settings/components/useMcpSettingsModel";
-import type { AbilityItem, McpAbility, PluginAbility } from "../types";
+import { type InstallOutcome, installSelectedBundleMembers } from "../lib/install-bundle-members";
+import type { AbilityItem, BundleAbility, McpAbility, PluginAbility } from "../types";
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-/**
- * 一次安装尝试的结果。`needs-setup` 表示只弹出了凭证/授权引导，尚未真正落盘——
- * 套装安装遇到它必须停下，否则会给出「已安装」却什么都没装成。
- */
-type InstallOutcome = "installed" | "needs-setup" | "skipped";
-
 export interface AbilityActions {
 	busyIds: ReadonlySet<string>;
-	message: string | null;
 	error: string | null;
 	install: (item: AbilityItem) => void;
+	installBundleMembers: (bundle: BundleAbility, members: AbilityItem[]) => void;
 	uninstall: (item: AbilityItem) => void;
 	toggle: (item: AbilityItem) => void;
 	setPluginPermission: (item: PluginAbility, permission: PluginPermission, granted: boolean) => void;
@@ -40,17 +35,14 @@ export interface AbilityActions {
 export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; refresh: () => void }): AbilityActions {
 	const token = useAtomValue(authTokenAtom);
 	const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set<string>());
-	const [message, setMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
 
 	const run = useCallback(
-		(id: string, operation: () => Promise<string | null>) => {
+		(id: string, operation: () => Promise<void>) => {
 			setBusyIds((prev) => new Set(prev).add(id));
 			setError(null);
-			setMessage(null);
 			void operation()
-				.then((next) => setMessage(next))
 				.catch((err: unknown) => setError(errorMessage(err)))
 				.finally(() => {
 					setBusyIds((prev) => {
@@ -86,6 +78,11 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 
 	const installPlugin = useCallback(
 		async (item: PluginAbility): Promise<InstallOutcome> => {
+			if (item.origin?.kind === "github-marketplace") {
+				await window.vetta.abilities.installOpenAbility("plugin", item.slug, item.origin.sourceId);
+				notifyPluginsChanged();
+				return "installed";
+			}
 			if (!token) throw new Error(i18n.t("abilities:error.notLoggedIn"));
 			const buffer = await downloadAbility(token, "plugin", item.slug);
 			await window.vetta.plugins.installFromArchive(buffer, {
@@ -112,11 +109,19 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				});
 				return "installed";
 			}
+			const market = item.market as (MarketAbility & { configVersion?: number }) | undefined;
+			const installOptions = market
+				? {
+						abilityVersion: market.version,
+						...(item.origin ? { origin: item.origin } : {}),
+						...(market.configVersion ? { configVersion: market.configVersion } : {}),
+					}
+				: undefined;
 			if (item.preset) {
-				return mcp.onAddBuiltinServer(item.preset, { abilityVersion: item.market?.version });
+				return mcp.onAddBuiltinServer(item.preset, installOptions);
 			}
-			if (item.market) {
-				await mcp.onAddRemoteServer(abilityToMarketMcpServer(item.market), { abilityVersion: item.market.version });
+			if (market) {
+				await mcp.onAddRemoteServer(abilityToMarketMcpServer(market), installOptions);
 				return "installed";
 			}
 			return "skipped";
@@ -135,7 +140,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	);
 
 	const uninstallOne = useCallback(
-		async (item: AbilityItem): Promise<string | null> => {
+		async (item: AbilityItem): Promise<void> => {
 			if (item.type === "plugin") {
 				await window.vetta.plugins.uninstall(item.slug);
 				notifyPluginsChanged();
@@ -144,48 +149,31 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			} else if (item.type === "skill" || item.type === "scene") {
 				await window.vetta.skills.uninstall(item.slug, item.type);
 			} else {
-				return null;
+				return;
 			}
-			return i18n.t("abilities:message.uninstalled", { name: item.title });
 		},
 		[mcp],
 	);
 
-	const outcomeMessage = useCallback((outcome: InstallOutcome, name: string): string | null => {
-		if (outcome === "installed") return i18n.t("abilities:message.installed", { name });
-		if (outcome === "needs-setup") return i18n.t("abilities:message.setupRequired", { name });
-		return null;
-	}, []);
+	const installBundleMembers = useCallback(
+		(bundle: BundleAbility, members: AbilityItem[]) => {
+			if (members.length === 0) return;
+			run(bundle.id, async () => {
+				await installSelectedBundleMembers(members, installOne);
+			});
+		},
+		[installOne, run],
+	);
 
 	const install = useCallback(
 		(item: AbilityItem) => {
 			if (item.readonly) return;
-			if (item.type === "bundle") {
-				run(item.id, async () => {
-					// 以服务端声明的成员清单为准：解析不到的成员（已下架 / 未上架）必须报错，
-					// 不能只遍历 memberItems 后无条件返回「已安装」
-					const resolvedById = new Map(item.memberItems.map((member) => [member.id, member]));
-					const unavailable: string[] = [];
-					for (const member of item.members) {
-						const target = resolvedById.get(`${member.type}:${member.slug}`);
-						if (!target) {
-							unavailable.push(member.name || member.slug);
-							continue;
-						}
-						if (target.readonly || (target.installed && !target.needsUpdate)) continue;
-						const outcome = await installOne(target);
-						if (outcome === "needs-setup") return outcomeMessage(outcome, target.title);
-					}
-					if (unavailable.length > 0) {
-						throw new Error(i18n.t("abilities:error.membersUnavailable", { names: unavailable.join(", ") }));
-					}
-					return outcomeMessage("installed", item.title);
-				});
-				return;
-			}
-			run(item.id, async () => outcomeMessage(await installOne(item), item.title));
+			if (item.type === "bundle") return;
+			run(item.id, async () => {
+				await installOne(item);
+			});
 		},
-		[installOne, outcomeMessage, run],
+		[installOne, run],
 	);
 
 	const uninstall = useCallback(
@@ -205,7 +193,6 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				for (const member of members) {
 					await uninstallOne(member);
 				}
-				return i18n.t("abilities:message.uninstalledCount", { count: members.length });
 			});
 		},
 		[run, uninstallOne],
@@ -236,13 +223,11 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				const targets = item.memberItems.filter((member) => member.installed && member.enabled === item.enabled);
 				run(item.id, async () => {
 					for (const member of targets) await toggleOne(member);
-					return null;
 				});
 				return;
 			}
 			run(item.id, async () => {
 				await toggleOne(item);
-				return null;
 			});
 		},
 		[run, toggleOne],
@@ -254,7 +239,6 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				if (granted) await window.vetta.plugins.grantPermissions(item.slug, [permission]);
 				else await window.vetta.plugins.revokePermissions(item.slug, [permission]);
 				notifyPluginsChanged();
-				return null;
 			});
 		},
 		[run],
@@ -266,7 +250,6 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				if (granted) await window.vetta.plugins.grantCommands(item.slug, [command]);
 				else await window.vetta.plugins.revokeCommands(item.slug, [command]);
 				notifyPluginsChanged();
-				return null;
 			});
 		},
 		[run],
@@ -275,9 +258,8 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const reloadPlugin = useCallback(
 		(item: PluginAbility) => {
 			run(item.id, async () => {
-				const plugin = await window.vetta.plugins.reload(item.slug);
+				await window.vetta.plugins.reload(item.slug);
 				notifyPluginsChanged();
-				return i18n.t("abilities:message.reloaded", { name: plugin.name, version: plugin.activeVersion });
 			});
 		},
 		[run],
@@ -287,11 +269,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		(file: File) => {
 			setImporting(true);
 			setError(null);
-			setMessage(null);
 			void file
 				.arrayBuffer()
 				.then((buffer) => window.vetta.skills.importCustom(buffer))
-				.then((result) => setMessage(i18n.t("abilities:message.imported", { name: result.name })))
 				.catch((err: unknown) => setError(errorMessage(err)))
 				.finally(() => {
 					setImporting(false);
@@ -303,9 +283,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 
 	return {
 		busyIds,
-		message,
 		error,
 		install,
+		installBundleMembers,
 		uninstall,
 		toggle,
 		setPluginPermission,

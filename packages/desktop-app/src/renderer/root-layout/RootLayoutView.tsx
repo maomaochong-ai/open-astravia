@@ -3,15 +3,15 @@ import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta/theme-ui/layout";
 import { useThemeComponent, useThemeSurface } from "@vetta/theme-sdk";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
 import { PageHeader } from "../shared/app-shell/page-header";
 import { TooltipProvider } from "../shared/components/ui/tooltip";
+import { useActiveThemePageRoute } from "../shared/theme/pages";
 import { SidebarTour } from "../shared/tour";
 import { AppBackground } from "./app-background/AppBackground";
 import { RootGlobalOverlays } from "./RootGlobalOverlays";
 import type { RootLayoutModel } from "./types";
-import { useActiveThemePageRoute } from "../shared/theme/pages";
 
 interface RootLayoutViewProps {
 	model: RootLayoutModel;
@@ -34,6 +34,19 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	const ensureSidebarVisible = useCallback(() => {
 		if (narrow) actions.openOverlay();
 	}, [actions.openOverlay, narrow]);
+	useEffect(() => {
+		if (routePending) return;
+		let contentPaintFrame = 0;
+		const layoutFrame = requestAnimationFrame(() => {
+			contentPaintFrame = requestAnimationFrame(() => {
+				window.vetta.appLifecycle.reportRendererContentPainted();
+			});
+		});
+		return () => {
+			cancelAnimationFrame(layoutFrame);
+			if (contentPaintFrame !== 0) cancelAnimationFrame(contentPaintFrame);
+		};
+	}, [routePending]);
 	const pageHeader =
 		pageLayout === "content" ? (
 			<PageHeader

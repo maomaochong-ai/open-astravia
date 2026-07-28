@@ -79,6 +79,7 @@
 	},
 	"message": {
 		"installed": "已安装 {{name}}",
+		"installedCount": "已安装 {{count}} 项能力",
 		"setupRequired": "{{name}} 还需完成配置后才会添加",
 		"uninstalled": "已移除 {{name}}",
 		"uninstalledCount": "已移除 {{count}} 项能力",
@@ -146,6 +147,12 @@
 		"oauthNotAuthorized": "尚未授权"
 	},
 	"bundle": {
+		"install": {
+			"title": "选择要安装的能力",
+			"description": "选择要从「{{name}}」批量安装的成员。已安装且无需更新的成员不会重复安装。",
+			"nothing": "该套装当前没有可安装或更新的成员。",
+			"confirm": "安装 {{count}} 项"
+		},
 		"members": "包含 {{count}} 项能力",
 		"inline": "内联",
 		"missing": "已下架",

@@ -483,10 +483,26 @@ export const visibleActionButtonsAtom = atom((get) => {
 /** Registry mapping button id → click handler */
 export const actionButtonHandlersAtom = atom<Map<string, () => void>>(new Map());
 
+/** Options for {@link openSessionFnRef} / useSessionManager.openSession. */
+export interface OpenSessionOptions {
+	/**
+	 * When false, create/subscribe the session and set it active, but stay on the
+	 * current route (e.g. Settings AI assist fly-to-sidebar). Default true.
+	 */
+	navigate?: boolean;
+}
+
 /** Global callback to open a session (set by useSessionManager, consumed by other pages) */
 // Use a module-level ref instead of atom to avoid structured clone issues with functions
 export const openSessionFnRef: {
-	current: ((cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>) | null;
+	current:
+		| ((
+				cwd: string,
+				sessionPath?: string,
+				executionMode?: SessionExecutionMode,
+				options?: OpenSessionOptions,
+		  ) => Promise<void>)
+		| null;
 } = {
 	current: null,
 };

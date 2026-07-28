@@ -41,6 +41,7 @@ function openAbility(slug: string, sourceId = "official"): OpenMarketplaceAbilit
 		icon: "",
 		category: "",
 		tags: [],
+		config: {},
 		detail: {},
 		origin: {
 			kind: "github-marketplace",
@@ -84,6 +85,38 @@ describe("mergeAbilityCatalogs", () => {
 
 		expect(merged[0]).toMatchObject({ slug: "demo", download_count: 0, updated_at: "2026-07-28T00:00:00.000Z" });
 		expect(getOpenCatalogOrigin(merged[0] as MarketAbility)).toMatchObject({ kind: "github-marketplace" });
+	});
+
+	it("preserves plugin and bundle configuration for the existing ability builders", () => {
+		const plugin = {
+			...openAbility("demo-plugin"),
+			type: "plugin" as const,
+			config: { permissions: ["storage.read"] },
+		};
+		const bundle = {
+			...openAbility("starter-bundle"),
+			type: "bundle" as const,
+			config: {
+				members: [
+					{
+						type: "plugin" as const,
+						slug: "demo-plugin",
+						exists: true,
+						name: "Demo Plugin",
+						icon: "",
+						version: "2.0.0",
+					},
+				],
+			},
+		};
+
+		const merged = mergeAbilityCatalogs([], [snapshot("official", [plugin, bundle])], {});
+
+		expect(merged.find((ability) => ability.type === "plugin")?.config.permissions).toEqual(["storage.read"]);
+		expect(merged.find((ability) => ability.type === "bundle")?.config.members?.[0]).toMatchObject({
+			type: "plugin",
+			slug: "demo-plugin",
+		});
 	});
 
 	it("keeps the server entry when type and slug conflict", () => {
