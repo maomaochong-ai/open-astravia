@@ -1,0 +1,158 @@
+# macOS 桌面端发版：签名 + 公证 + 上传 Release。
+#
+# 触发：只在推 v* tag 时自动跑。workflow_dispatch 仅供手动调试签名链路，
+# 不会自动触发；不需要就删掉那两行。
+#
+# 依赖 6 个 Secret（缺任意一个，prepare-pack 会直接报错而不是产出未签名包）：
+#   MAC_CSC_LINK             developer-id.p12 的 base64（base64 -i developer-id.p12 | pbcopy）
+#   MAC_CSC_KEY_PASSWORD     导出 .p12 时设的密码
+#   APPLE_TEAM_ID            10 位团队 ID
+#   APPLE_API_ISSUER         App Store Connect Issuer ID（UUID）
+#   APPLE_API_KEY_ID         API Key ID（10 位）
+#   APPLE_API_KEY_P8_BASE64  AuthKey_<KeyID>.p8 的 base64
+#
+# 申请与本地复现流程见 docs/deploy/apple-code-signing.md。
+
+name: desktop-mac-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-mac-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: mac ${{ matrix.arch }}
+    runs-on: macos-latest
+    # 内置运行时下载 + 逐个二进制签名 + Apple 公证排队，单架构 40～80 分钟是常态。
+    timeout-minutes: 150
+
+    strategy:
+      # 一个架构挂掉不连累另一个，便于只重跑失败的那个。
+      fail-fast: false
+      matrix:
+        arch: [arm64, x64]
+
+    env:
+      # prepare-pack 的 loadBuildEnv 缺省读 .env.development（CI 上不存在），
+      # 显式指到 production 才会读进 .env.production 的正式后端地址。
+      VETTA_BUILD_ENV: production
+      # 内置 Node/Python 运行时与 vetta CLI、im-gateway sidecar 的目标平台。
+      VETTA_VENDOR_PLATFORM: darwin-${{ matrix.arch }}
+      VETTA_CLI_TARGET_PLATFORMS: darwin-${{ matrix.arch }}
+      # 把 os.tmpdir() 钉到已知路径：prepare-pack 的 staging 与 vendor 下载缓存
+      # 都落在 tmpdir 下，macOS 默认的 /var/folders/... 无法稳定命中 actions/cache。
+      TMPDIR: ${{ runner.temp }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.4"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # prepare-pack 会交叉编译 im-gateway sidecar（Go）
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: packages/im-gateway/go.sum
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Node + python-build-standalone 每次几百 MB，且 Python 只有 GitHub 源。
+      # prepare-pack 命中缓存目录里的同名压缩包就跳过下载。
+      - name: Cache vendor runtimes
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/vetta-desktop-vendor-cache
+          key: vendor-darwin-${{ matrix.arch }}-${{ hashFiles('packages/desktop-app/src/main/runtimes/manifest.json') }}
+
+      - name: Cache Electron downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+          key: electron-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            electron-${{ runner.os }}-${{ matrix.arch }}-
+
+      # 先按依赖顺序构建 workspace 库（含 preset 插件 zip）。desktop-app 自身的
+      # 产物由下面的 prebuild:pack 负责，这里不重复。
+      - name: Build workspace libraries
+        run: bun run build
+
+      # electron-builder 直接吃 base64 形式的 CSC_LINK，.p12 不用落盘；
+      # 但 APPLE_API_KEY 必须是文件路径，所以 .p8 要解出来。
+      - name: Write notarization key
+        env:
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+        run: |
+          printf '%s' "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/AuthKey.p8"
+          test -s "$RUNNER_TEMP/AuthKey.p8"
+
+      - name: Build, sign and notarize
+        working-directory: packages/desktop-app
+        env:
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY: ${{ runner.temp }}/AuthKey.p8
+        run: bun run dist:desktop -- --platform mac --arch ${{ matrix.arch }}
+
+      # 公证票据没钉上就等于白签，必须卡在这里而不是等用户反馈。
+      - name: Verify signature and notarization
+        working-directory: packages/desktop-app
+        run: |
+          set -euo pipefail
+          for dmg in release/*.dmg; do
+            echo "== $dmg"
+            xcrun stapler validate "$dmg"
+          done
+          mountpoint="$(mktemp -d)"
+          hdiutil attach release/*.dmg -mountpoint "$mountpoint" -nobrowse -quiet
+          codesign -dv --verbose=4 "$mountpoint/Vetta.app"
+          codesign --verify --deep --strict --verbose=2 "$mountpoint/Vetta.app"
+          spctl -a -vvv -t install "$mountpoint/Vetta.app"
+          hdiutil detach "$mountpoint" -quiet
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vetta-mac-${{ matrix.arch }}
+          path: |
+            packages/desktop-app/release/*.dmg
+            packages/desktop-app/release/*.zip
+            packages/desktop-app/release/*.blockmap
+          if-no-files-found: error
+          retention-days: 14
+
+      # 两个架构的 job 各自往同一个 Release 追加文件。建成草稿，人工确认后再发布。
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            packages/desktop-app/release/*.dmg
+            packages/desktop-app/release/*.zip
+            packages/desktop-app/release/*.blockmap
