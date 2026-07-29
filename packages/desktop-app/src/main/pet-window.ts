@@ -305,13 +305,11 @@ function shouldShowPetDevToolsMenuItem(): boolean {
 	return !app.isPackaged || process.env.VETTA_PET_DEVTOOLS === "1";
 }
 
-async function closePetFromContextMenu(win: BrowserWindow): Promise<void> {
+async function disablePetFromContextMenu(win: BrowserWindow): Promise<void> {
 	const nextConfig = { ...petConfig, enabled: false };
 	await writePetConfig(nextConfig);
 	petConfig = nextConfig;
-	if (!win.isDestroyed()) {
-		win.close();
-	}
+	if (!win.isDestroyed()) win.hide();
 }
 
 function showContextMenu(win: BrowserWindow): void {
@@ -347,7 +345,12 @@ function showContextMenu(win: BrowserWindow): void {
 		{ type: "separator" },
 		{
 			label: "隐藏桌宠",
-			click: () => win.hide(),
+			click: () => {
+				void disablePetFromContextMenu(win).catch((error: unknown) => {
+					log.error("hide from context menu failed", error);
+					if (!win.isDestroyed()) win.hide();
+				});
+			},
 		},
 		{
 			label: alwaysOnTop ? "取消置顶" : "保持置顶",
@@ -370,10 +373,10 @@ function showContextMenu(win: BrowserWindow): void {
 		{
 			label: "关闭桌宠",
 			click: () => {
-				void closePetFromContextMenu(win).catch((error: unknown) => {
+				void disablePetFromContextMenu(win).catch((error: unknown) => {
 					log.error("close from context menu failed", error);
 					if (!win.isDestroyed()) {
-						win.close();
+						win.hide();
 					}
 				});
 			},
