@@ -24,9 +24,12 @@ export interface PetBubbleStyleAsset {
 	url?: string;
 }
 
+export type PetConfigListener = (config: PetConfig) => void;
+
 export interface DesktopPetApi {
 	getConfig(): Promise<PetConfig>;
 	setConfig(patch: Partial<PetConfig>): Promise<PetConfig>;
+	onConfigChanged(listener: PetConfigListener): () => void;
 	show(): Promise<PetConfig>;
 	hide(): Promise<PetConfig>;
 	setAction(actionId: string): Promise<void>;
