@@ -12,8 +12,13 @@ The JSON passed to `publish.mjs --input`.
 | `slug` | `mcp`, `bundle` | Machine identifier, unique per type. Letters, digits, `.` `_` `-` only. For packaged types the slug comes from the manifest (`plugin.json` `id`, `SKILL.md` `name`) — passing one is ignored. |
 | `mcp_config` | `mcp` | The config block written verbatim into the user's `mcp.json`, e.g. `{command, args}` or `{type: "http", url}`. |
 | `members` | `bundle` | Member list, always one level — a bundle cannot nest a bundle. Members must already be published. |
-| `category` | no | Managed category name (设计/开发/写作…). Unmatched values fall back to uncategorised. |
-| `version` | no | Letters, digits, `.` `_` `-` only. `plugin` always takes the version from `plugin.json`. Omitted → `1.0.0` for a new entry, patch+1 on re-submission. |
+| `category` | no | Managed category **name**, not an id. Read the live list with `scripts/categories.mjs` — an unmatched name is not an error, it silently lands in uncategorised. Matching is case-insensitive and also accepts a category's translated name. |
+| `version` | no | Letters, digits, `.` `_` `-` only. Honoured for `skill`/`scene`/`mcp`/`bundle`; **`plugin` always takes the version from `plugin.json`** and ignores this. Omitted → `1.0.0` for a new entry, patch+1 on re-submission. |
+
+Where a package carries the same information, the payload wins and the package is the fallback:
+`skill`/`scene` fall back to `SKILL.md` frontmatter (`metadata.category`, `metadata.version`,
+`metadata.tags`), `plugin` to `plugin.json`. On a re-submission that specifies neither, the
+existing category is kept rather than cleared.
 
 ## `detail`
 
@@ -27,22 +32,69 @@ columns for display fields.
 | `author` | yes | Attribution |
 | `content` | yes | Detail-page body, markdown |
 | `license` | no | e.g. `MIT` |
-| `icon` | no | Empty, `solar:<name>-bold` (Iconify Solar), or an `http(s)://` URL. **Nothing else validates.** |
-| `tags` | no | Free-form; orthogonal to `category` |
+| `icon` | no | Empty, one of the built-in Solar names below, or an `http(s)://` URL. See [Icons](#icons). |
+| `tags` | no | Free-form; orthogonal to `category`. For `skill`/`scene` the package's own `SKILL.md` frontmatter tags apply unless you set this. |
 | `showcases` | no | Structured hero panels, see below |
 | `meta` | no | Ordered list of `{key?, label?, value}`; `key` must be `homepage`/`repository`/`docs`/`license`, otherwise use `label` |
 | `i18n` | no | `{ "<locale>": { …same fields… } }` |
 
+## Icons
+
+`detail.icon` has three forms: empty (client picks a default by type), an `http(s)://` image URL,
+or one of the **30 built-in Solar names** below. The host renders Solar icons from a literal
+allow-list compiled into its stylesheet, so a name outside it uploads fine but displays as the
+default icon. `scripts/publish.mjs` rejects unknown `solar:` names for that reason.
+
+```
+solar:star-bold            solar:magic-stick-3-bold   solar:bolt-bold
+solar:fire-bold            solar:heart-bold           solar:cup-star-bold
+solar:code-bold            solar:widget-2-bold        solar:layers-bold
+solar:cpu-bolt-bold        solar:database-bold        solar:cloud-bold
+solar:server-bold          solar:shield-bold          solar:lock-keyhole-bold
+solar:key-bold             solar:chat-round-bold      solar:letter-bold
+solar:document-bold        solar:folder-bold          solar:gallery-bold
+solar:camera-bold          solar:videocamera-record-bold
+solar:music-note-bold      solar:chart-2-bold         solar:graph-up-bold
+solar:map-point-bold       solar:global-bold          solar:rocket-2-bold
+solar:lightbulb-bolt-bold
+```
+
 ## Showcases
 
-Each entry needs `template`, `user_prompt`, and `assistant_reply`.
+Each entry needs `template`, `user_prompt`, and `assistant_reply`. These are the detail page's
+hero panels — the host draws them, you supply the text.
 
-`template` is either `chat-over-canvas` (the ability produces an artifact — also pass `canvas` as
-`design`/`code`/`docs`/`generic`) or `chat-thread` (conversation only; `canvas` is rejected here).
+`template`:
+
+- `chat-over-canvas` — a mock product window beside the conversation. Also pass `canvas`.
+- `chat-thread` — conversation only. `canvas` is rejected here.
+
+`canvas` picks **which mock window is drawn**. It is not a screenshot and you cannot supply one:
+each value is a fixed CSS composition, sized small (roughly a third of the panel) next to the
+chat bubbles. Pick whichever resembles what the ability produces:
+
+| Value | Drawn as |
+| --- | --- |
+| `design` | Hero block, swatch row, control bar — design-tool look |
+| `code` | Gutter plus syntax-coloured code lines with one highlighted row |
+| `docs` | Heading, paragraph lines, and a callout card |
+| `generic` | Area chart plus two stat tiles — dashboard look |
 
 Optional: `brand_icon_url` (must be `http(s)://`), `brand_name`.
 
 Write prompts that show a real use of the ability, not placeholders.
+
+## Shipping `detail` inside the package
+
+`vetta.json` at the package root (next to `SKILL.md` / `plugin.json`) holds exactly the same
+object as `detail`. It is the second delivery route for the same data: **the `detail` field wins,
+the file is the fallback**, and it is read only when the payload omits `detail` entirely — there
+is no per-field merge between the two.
+
+Use it when the package is the thing being maintained (the description then travels with the
+code and stays right on every re-submission). Use the payload field for one-off submissions or
+for marketplace copy you do not want in the package. A malformed `vetta.json` fails the upload
+rather than being skipped.
 
 ## Multi-language
 

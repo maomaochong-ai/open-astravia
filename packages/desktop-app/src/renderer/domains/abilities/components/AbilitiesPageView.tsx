@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { CapabilitiesTour } from "@shared/tour";
 import { SettingsAiAssist } from "../../settings/ai-assist";
+import { resolveCategoryLabel } from "../lib/ability-presentation";
 import { ABILITY_CATEGORY_UNCATEGORIZED, type AbilitiesModel, type AbilityScope } from "../types";
 import { AbilitiesBanner } from "./AbilitiesBanner";
 import { AbilityCard } from "./AbilityCard";
@@ -14,7 +15,7 @@ import { AddAbilityMenu } from "./AddAbilityMenu";
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
 export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Element {
-	const { t } = useTranslation("abilities");
+	const { t, i18n } = useTranslation("abilities");
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	return (
@@ -134,7 +135,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 											<h2 className="text-[13px] font-semibold text-foreground/90">
 												{group.category === ABILITY_CATEGORY_UNCATEGORIZED
 													? t("group.uncategorized")
-													: group.category}
+													: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
 											</h2>
 											<span className="text-[11px] tabular-nums text-muted-foreground/50">
 												{group.items.length}

@@ -41,6 +41,20 @@ export function isIconifyIcon(icon: string | undefined): boolean {
 	return Boolean(icon?.trim().startsWith("solar:"));
 }
 
+/**
+ * 分类展示名：`i18n[locale] ?? 规范名`，与 `raw.detail` 的取值口径一致。
+ *
+ * 规范名（服务端 `AbilityCategory.Name`）同时是分组与筛选的 key，不参与翻译；
+ * 界面上看到的永远是这里解析出来的展示名。
+ */
+export function resolveCategoryLabel(
+	category: string,
+	i18n: Record<string, string> | undefined,
+	locale: string,
+): string {
+	return i18n?.[locale]?.trim() || category;
+}
+
 export interface AbilityDetailContent {
 	/** markdown 正文；可能为空。 */
 	content: string;
