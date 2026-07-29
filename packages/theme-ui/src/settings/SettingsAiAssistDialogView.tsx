@@ -187,8 +187,8 @@ export function SettingsAiAssistDialogView({
 						<div
 							className={cn(
 								"relative rounded-xl border border-input bg-background",
-								"transition-[border-color,box-shadow]",
-								"focus-within:border-primary/50 focus-within:ring-3 focus-within:ring-primary/20",
+								"transition-[border-color]",
+								"focus-within:border-primary/50",
 							)}
 						>
 							<textarea

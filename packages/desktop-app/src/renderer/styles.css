@@ -455,10 +455,9 @@ textarea:disabled,
 	color: var(--foreground);
 }
 
-/* Focus ring — only on interactive elements, not textareas */
+/* Focus: no global outline/ring; interactive controls use 1px border color change */
 :focus-visible {
-	outline: 2px solid color-mix(in srgb, var(--ring) 50%, transparent);
-	outline-offset: -2px;
+	outline: none;
 }
 textarea:focus-visible,
 textarea:focus {

@@ -21,7 +21,7 @@ export function XianxiaCultivationCompositionContent({
 				<div className="flex w-full items-center justify-between gap-3 text-[13px] leading-5 text-slate-600">
 					<span className="min-w-0">完成任务、引用知识库、生成有效结果、建立自动化都会累计修为。</span>
 					<button
-						className="inline-flex shrink-0 items-center gap-1 font-semibold text-slate-700 outline-none transition hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+						className="inline-flex shrink-0 items-center gap-1 font-semibold text-slate-700 outline-none transition hover:text-slate-900 border border-transparent focus-visible:border-amber-200/80"
 						onClick={onOpenRules}
 						type="button"
 					>

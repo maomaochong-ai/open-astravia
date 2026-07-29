@@ -49,7 +49,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
-- **输入框去掉 focus ring**：模型选择搜索框、共享 `Input`/`Textarea`、搜索栏与设置表单等文本输入聚焦时不再画 ring 光晕，仅保留边框色变化；按钮/开关的键盘 focus ring 保留。
+- **聚焦样式统一为 1px border**：去掉输入框、按钮、开关及全局 `:focus-visible` 的 ring/outline 叠加光晕，仅保留边框色变化（`@vetta/ui` Button/Switch、`theme-ui` 控件与桌面端相关入口同步）。
 - **侧边栏顶栏品牌区改为纯文字**：去掉顶部 Vetta 头像/图标，Windows/Linux 仅显示「Vetta」文案（macOS 仍因交通灯占位不显示品牌字）。
 - **助手消息头像改回 `BotAvatar` 方块**：消息列表「Vetta」左侧由静态猫爪图恢复为带动画的 `BotAvatar`（流式 `active` 光晕 + 手势循环，点击触发）。
 - **新会话页设置默认值**：场景卡片列表与引导词轮播改为默认关闭；技能徽章列表仍默认开启。未在配置里显式写入的项按新缺省解析；已持久化的 true/false 不受影响。

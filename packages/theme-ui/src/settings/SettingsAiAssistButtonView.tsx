@@ -47,10 +47,10 @@ export const SettingsAiAssistButtonView = forwardRef<HTMLButtonElement, Settings
 				whileHover={reduceMotion ? undefined : "hover"}
 				whileTap={reduceMotion ? undefined : { scale: 0.95 }}
 				className={cn(
-					"group relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 overflow-visible rounded-md px-1",
+					"group relative inline-flex h-7 shrink-0 cursor-pointer items-center gap-1.5 overflow-visible rounded-md border border-transparent px-1",
 					"bg-transparent text-[12px] font-medium text-primary outline-none select-none",
 					"transition-opacity duration-200 ease-out hover:opacity-90",
-					"focus-visible:ring-3 focus-visible:ring-ring/50",
+					"focus-visible:border-ring",
 					"disabled:pointer-events-none disabled:opacity-50",
 					className,
 				)}

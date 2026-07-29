@@ -49,7 +49,7 @@ export function BatchTasksPageView({
 						<button
 							type="button"
 							onClick={onNewProject}
-							className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-2.5 text-sm font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/90 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+							className="inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-2.5 text-sm font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/90 focus-visible:border-ring"
 						>
 							<span className="icon-[solar--add-circle-linear] text-[15px]" />
 							{labels.newProject}
@@ -116,7 +116,7 @@ function EmptyState({ labels, onNew }: { labels: BatchTasksPageLabels; onNew: ()
 			<button
 				type="button"
 				onClick={onNew}
-				className="mt-2 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-2.5 text-sm font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/90 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+				className="mt-2 inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-2.5 text-sm font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/90 focus-visible:border-ring"
 			>
 				<span className="icon-[solar--add-circle-linear] text-[15px]" />
 				{labels.emptyAction}
