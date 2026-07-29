@@ -113,7 +113,7 @@ function XianxiaAchievementCell({
 			)}
 			<button
 				aria-pressed={selected}
-				className="relative z-10 flex min-w-0 flex-col items-center rounded-[16px] outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+				className="relative z-10 flex min-w-0 flex-col items-center rounded-[16px] outline-none transition hover:brightness-110 border border-transparent focus-visible:border-amber-200/80"
 				onClick={() => onSelect(achievement.id)}
 				type="button"
 			>

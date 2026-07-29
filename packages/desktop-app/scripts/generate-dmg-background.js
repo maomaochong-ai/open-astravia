@@ -21,9 +21,14 @@ if (process.platform !== "darwin") {
 }
 
 // 设计稿坐标系：@2x，1320×880。@1x DMG 窗口是 660×440。
-// 三个图标位水平居中，间距相等。这里只画背景视觉指引；图标本身由 electron-builder
-// 通过 dmg.contents 摆放到对应 (x, y) 上（坐标用 @1x）。
-const ICON_CENTERS_X_2X = [200, 660, 1120]; // @1x: 100, 330, 560
+// 图标位水平居中，间距相等。这里只画背景视觉指引；图标本身由 electron-builder
+// 通过 dmg.contents 摆放到对应 (x, y) 上（坐标用 @1x），两处必须对齐。
+//
+// --two-icons：签名+公证构建，DMG 不带「修复已损坏.app」，退回两图标常规版式。
+const twoIcons = process.argv.includes("--two-icons");
+const ICON_CENTERS_X_2X = twoIcons
+	? [360, 960] // @1x: 180, 480
+	: [200, 660, 1120]; // @1x: 100, 330, 560
 const ICON_CENTER_Y_2X = 400; // @1x: 200
 
 // 配色：warm off-white 背景 + 暖灰文字，贴合 Apple 自家 DMG 的极简调性。
@@ -45,20 +50,25 @@ function arrow(fromX, toX) {
 }
 
 const ARROW_GAP = 110; // 图标边到箭头端的间距（@2x）
-const arrow1 = arrow(ICON_CENTERS_X_2X[0] + ARROW_GAP, ICON_CENTERS_X_2X[1] - ARROW_GAP);
-const arrow2 = arrow(ICON_CENTERS_X_2X[1] + ARROW_GAP, ICON_CENTERS_X_2X[2] - ARROW_GAP);
+const arrows = ICON_CENTERS_X_2X.slice(1)
+	.map((center, index) => arrow(ICON_CENTERS_X_2X[index] + ARROW_GAP, center - ARROW_GAP))
+	.join("");
+
+// 「已损坏」提示只对未签名产物有意义。
+const repairHint = twoIcons
+	? ""
+	: `<text x="660" y="744" font-family="-apple-system, Helvetica Neue, Helvetica" font-size="20" fill="${COLORS.subtle}" text-anchor="middle">
+		若提示「已损坏」，请右键点击「修复已损坏」选「打开」
+	</text>`;
 
 const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="1320" height="1320" viewBox="0 0 1320 880" preserveAspectRatio="xMidYMid meet">
 	<rect width="1320" height="880" fill="${COLORS.bg}"/>
-	${arrow1}
-	${arrow2}
+	${arrows}
 	<text x="660" y="700" font-family="-apple-system, Helvetica Neue, Helvetica" font-size="26" fill="${COLORS.text}" text-anchor="middle">
 		拖动 Vetta 到 Applications 完成安装
 	</text>
-	<text x="660" y="744" font-family="-apple-system, Helvetica Neue, Helvetica" font-size="20" fill="${COLORS.subtle}" text-anchor="middle">
-		若提示「已损坏」，请右键点击「修复已损坏」选「打开」
-	</text>
+	${repairHint}
 </svg>
 `;
 

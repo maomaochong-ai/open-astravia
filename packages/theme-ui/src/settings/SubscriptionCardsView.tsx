@@ -1,5 +1,5 @@
 import { Button, cn } from "@vetta/ui";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 export type ModelCost = { cacheRead: number; cacheWrite: number; input: number; output: number };
@@ -25,7 +25,11 @@ export interface SubscriptionWindowViewModel {
 }
 
 export interface SubscriptionCardsViewModel {
-	actions: { refresh: () => Promise<void> };
+	actions: {
+		refresh: () => Promise<void>;
+		/** 打开官网定价页外链（ADR-0051：desktop 不做站内支付，仅外链引流）。缺省不渲染按钮。 */
+		upgrade?: () => void;
+	};
 	expiry: string | null;
 	goProvider: RemoteProvider | undefined;
 	labels: {
@@ -40,6 +44,7 @@ export interface SubscriptionCardsViewModel {
 		tokenPlan: string;
 		unlimitedQuota: string;
 		updated: string;
+		upgrade?: string;
 		vision: string;
 	};
 	now: number;
@@ -81,122 +86,52 @@ function VettaGoBrand({ currentPlan }: { currentPlan: string }): JSX.Element {
 	);
 }
 
-function VettaGoCard({ model }: { model: SubscriptionCardsViewModel }): JSX.Element {
-	const [showDone, setShowDone] = useState(false);
-	const prevRefreshing = useRef(model.refreshing);
-	const models = model.goProvider?.models ?? [];
-	const unlimited = model.windows.length > 0 && model.windows.every((windowInfo) => windowInfo.limit <= 0);
-
-	useEffect(() => {
-		if (prevRefreshing.current && !model.refreshing) {
-			setShowDone(true);
-			const timer = setTimeout(() => setShowDone(false), 1600);
-			prevRefreshing.current = model.refreshing;
-			return () => clearTimeout(timer);
-		}
-		prevRefreshing.current = model.refreshing;
-	}, [model.refreshing]);
+function QuotaWindows({
+	model,
+	unlimited,
+}: {
+	model: SubscriptionCardsViewModel;
+	unlimited: boolean;
+}): JSX.Element | null {
+	if (unlimited) {
+		return (
+			<div className="mt-4 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-[13px] font-medium text-foreground">
+				<span className="icon-[solar--infinity-linear] h-4 w-4 shrink-0 text-primary" />
+				{model.labels.unlimitedQuota}
+			</div>
+		);
+	}
+	if (model.windows.length === 0) return null;
 
 	return (
-		<div className="mb-6 rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
-			<div className="flex items-start justify-between gap-3">
-				<VettaGoBrand currentPlan={model.labels.currentPlan} />
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => void model.actions.refresh()}
-					disabled={model.refreshing}
-					className={cn(
-						"h-7 shrink-0 gap-1.5 px-2 text-[12px] font-medium",
-						showDone && "text-emerald-400",
-					)}
-				>
-					{showDone ? (
-						<>
-							<span className="icon-[solar--check-circle-linear] h-3.5 w-3.5" />
-							{model.labels.updated}
-						</>
-					) : (
-						<>
-							<span
-								className={cn(
-									"icon-[solar--refresh-linear] h-3.5 w-3.5",
-									model.refreshing && "animate-spin",
-								)}
-							/>
-							{model.refreshing ? model.labels.refreshing : model.labels.refresh}
-						</>
-					)}
-				</Button>
-			</div>
-
-			<div className="mt-3 flex flex-wrap items-center gap-2">
-				{model.status.badge_text && (
-					<span
-						className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
-						style={{ backgroundColor: model.status.badge_color || "var(--primary)" }}
+		<div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,148px),1fr))] gap-2">
+			{model.windows.map((windowInfo) => {
+				const pct =
+					windowInfo.limit > 0
+						? Math.min(100, Math.round((windowInfo.consumed / windowInfo.limit) * 100))
+						: 0;
+				const resetLabel = formatWindowReset(windowInfo.resetAt, model.now);
+				return (
+					<div
+						key={windowInfo.kind}
+						className="min-w-0 rounded-lg border border-border/50 bg-background/40 px-3 py-2.5"
 					>
-						{model.status.badge_text}
-					</span>
-				)}
-				<span className="text-[12px] text-muted-foreground">
-					{model.status.description ||
-						`${model.status.tier_name || model.labels.tokenPlan} · ${model.labels.modelsCount(models.length)}`}
-				</span>
-			</div>
-
-			{model.expiry && (
-				<div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-					<span className="icon-[solar--calendar-linear] h-3.5 w-3.5 shrink-0" />
-					{model.labels.expiryDate(model.expiry)}
-				</div>
-			)}
-
-			{unlimited ? (
-				<div className="mt-4 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-[13px] font-medium text-foreground">
-					<span className="icon-[solar--infinity-linear] h-4 w-4 shrink-0 text-primary" />
-					{model.labels.unlimitedQuota}
-				</div>
-			) : model.windows.length > 0 ? (
-				<div className="mt-4 space-y-2">
-					{model.windows.map((windowInfo) => {
-						const pct =
-							windowInfo.limit > 0
-								? Math.min(100, Math.round((windowInfo.consumed / windowInfo.limit) * 100))
-								: 0;
-						const resetLabel = formatWindowReset(windowInfo.resetAt, model.now);
-						return (
+						<div className="flex items-center justify-between gap-2 text-[12px]">
+							<span className="truncate font-medium text-foreground">{windowInfo.label}</span>
+							<span className="shrink-0 tabular-nums text-muted-foreground">{pct}%</span>
+						</div>
+						<div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border">
 							<div
-								key={windowInfo.kind}
-								className="rounded-lg border border-border/50 bg-background/40 px-3 py-2.5"
-							>
-								<div className="flex items-center justify-between text-[12px]">
-									<span className="font-medium text-foreground">{windowInfo.label}</span>
-									<span className="tabular-nums text-muted-foreground">{pct}%</span>
-								</div>
-								<div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border">
-									<div
-										className="h-full rounded-full bg-primary transition-[width] duration-300"
-										style={{ width: `${pct}%` }}
-									/>
-								</div>
-								{resetLabel && (
-									<div className="mt-1 text-[10px] text-muted-foreground">{resetLabel}</div>
-								)}
-							</div>
-						);
-					})}
-				</div>
-			) : null}
-
-			{models.length > 0 && (
-				<div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
-					{models.map((remoteModel) => (
-						<ModelChip key={remoteModel.id} model={remoteModel} labels={model.labels} />
-					))}
-				</div>
-			)}
+								className="h-full rounded-full bg-primary transition-[width] duration-300"
+								style={{ width: `${pct}%` }}
+							/>
+						</div>
+						{resetLabel && (
+							<div className="mt-1 text-[10px] text-muted-foreground">{resetLabel}</div>
+						)}
+					</div>
+				);
+			})}
 		</div>
 	);
 }
@@ -249,7 +184,135 @@ function ModelChip({
 	);
 }
 
-export function SubscriptionCardsView({ model }: { model: SubscriptionCardsViewModel }): JSX.Element | null {
-	if (!model.showGoCard) return null;
-	return <VettaGoCard model={model} />;
+function ModelsGrid({ model }: { model: SubscriptionCardsViewModel }): JSX.Element | null {
+	const models = model.goProvider?.models ?? [];
+	if (models.length === 0) return null;
+
+	return (
+		<div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
+			{models.map((remoteModel) => (
+				<ModelChip key={remoteModel.id} model={remoteModel} labels={model.labels} />
+			))}
+		</div>
+	);
+}
+
+function VettaGoCard({
+	model,
+	children,
+}: {
+	model: SubscriptionCardsViewModel;
+	children?: ReactNode;
+}): JSX.Element {
+	const [showDone, setShowDone] = useState(false);
+	const prevRefreshing = useRef(model.refreshing);
+	const models = model.goProvider?.models ?? [];
+	const unlimited = model.windows.length > 0 && model.windows.every((windowInfo) => windowInfo.limit <= 0);
+
+	useEffect(() => {
+		if (prevRefreshing.current && !model.refreshing) {
+			setShowDone(true);
+			const timer = setTimeout(() => setShowDone(false), 1600);
+			prevRefreshing.current = model.refreshing;
+			return () => clearTimeout(timer);
+		}
+		prevRefreshing.current = model.refreshing;
+	}, [model.refreshing]);
+
+	return (
+		<div className="mb-6 rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
+			<div className="flex items-start justify-between gap-3">
+				<VettaGoBrand currentPlan={model.labels.currentPlan} />
+				<div className="flex shrink-0 items-center gap-1">
+				{model.actions.upgrade && model.labels.upgrade ? (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => model.actions.upgrade?.()}
+						className="h-7 gap-1.5 px-2 text-[12px] font-medium"
+					>
+						<span className="icon-[solar--course-up-linear] h-3.5 w-3.5" />
+						{model.labels.upgrade}
+					</Button>
+				) : null}
+				<Button
+					type="button"
+					variant="ghost"
+					size="sm"
+					onClick={() => void model.actions.refresh()}
+					disabled={model.refreshing}
+					className={cn(
+						"h-7 shrink-0 gap-1.5 px-2 text-[12px] font-medium",
+						showDone && "text-emerald-400",
+					)}
+				>
+					{showDone ? (
+						<>
+							<span className="icon-[solar--check-circle-linear] h-3.5 w-3.5" />
+							{model.labels.updated}
+						</>
+					) : (
+						<>
+							<span
+								className={cn(
+									"icon-[solar--refresh-linear] h-3.5 w-3.5",
+									model.refreshing && "animate-spin",
+								)}
+							/>
+							{model.refreshing ? model.labels.refreshing : model.labels.refresh}
+						</>
+					)}
+				</Button>
+				</div>
+			</div>
+
+			<div className="mt-3 flex flex-wrap items-center gap-2">
+				{model.status.badge_text && (
+					<span
+						className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
+						style={{ backgroundColor: model.status.badge_color || "var(--primary)" }}
+					>
+						{model.status.badge_text}
+					</span>
+				)}
+				<span className="text-[12px] text-muted-foreground">
+					{model.status.description ||
+						`${model.status.tier_name || model.labels.tokenPlan} · ${model.labels.modelsCount(models.length)}`}
+				</span>
+			</div>
+
+			{model.expiry && (
+				<div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+					<span className="icon-[solar--calendar-linear] h-3.5 w-3.5 shrink-0" />
+					{model.labels.expiryDate(model.expiry)}
+				</div>
+			)}
+
+			<QuotaWindows model={model} unlimited={unlimited} />
+
+			{children ? <div className="mt-4">{children}</div> : null}
+
+			<ModelsGrid model={model} />
+		</div>
+	);
+}
+
+export function SubscriptionCardsView({
+	model,
+	children,
+}: {
+	model: SubscriptionCardsViewModel;
+	/** Rendered between quota windows and models (e.g. embedded token usage chart). */
+	children?: ReactNode;
+}): JSX.Element | null {
+	if (!model.showGoCard) {
+		// Standalone chrome when there is no Go plan card to nest into.
+		return children ? (
+			<div className="mb-6 rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
+				{children}
+			</div>
+		) : null;
+	}
+	return <VettaGoCard model={model}>{children}</VettaGoCard>;
 }

@@ -80,7 +80,7 @@ function ChartPanel({ item }: { item: ChartItem }) {
 					type="button"
 					aria-label={t("action.downloadPng")}
 					title={t("action.downloadPng")}
-					className="shrink-0 rounded-md p-1.5 text-[var(--muted-foreground)] opacity-0 transition-opacity hover:bg-[var(--muted)]/20 hover:text-[var(--foreground)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] group-hover:opacity-100"
+					className="shrink-0 rounded-md border border-transparent p-1.5 text-[var(--muted-foreground)] opacity-0 transition-opacity hover:bg-[var(--muted)]/20 hover:text-[var(--foreground)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:border-[var(--ring)] group-hover:opacity-100"
 					onClick={download}
 				>
 					<svg

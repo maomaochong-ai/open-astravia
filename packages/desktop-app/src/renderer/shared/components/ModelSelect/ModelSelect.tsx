@@ -248,7 +248,7 @@ export function ModelSelect({
 												onClick={handleSearchClick}
 												placeholder={t("modelSelect.searchPlaceholder")}
 												aria-label={t("modelSelect.searchPlaceholder")}
-												className="h-8 w-full rounded-md border border-border/60 bg-background/70 pl-8 pr-8 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+												className="h-8 w-full rounded-md border border-border/60 bg-background/70 pl-8 pr-8 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50"
 											/>
 											{searchQuery && (
 												<button

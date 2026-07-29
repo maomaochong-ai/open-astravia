@@ -1,10 +1,6 @@
 /* 快捷面板局部样式：透明窗口下隐藏滚动条占位、保留圆角内的细滚动条。 */
 
-/*
- * 去掉输入框 focus 描边。全局 styles.css 的 `:focus-visible` 描边规则是非分层(unlayered)的，
- * 优先级高于 Tailwind `outline-none` 工具类，且只豁免了 textarea；这里用更高特异性的
- * `input:focus-visible` 覆盖掉，作用域仅本面板窗口。
- */
+/* 快捷面板输入框明确关掉浏览器默认 outline（与主窗口 focus = border 策略一致） */
 .quickpanel-input:focus,
 .quickpanel-input:focus-visible {
 	outline: none;

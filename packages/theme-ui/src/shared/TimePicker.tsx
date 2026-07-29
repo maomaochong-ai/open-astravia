@@ -70,7 +70,7 @@ export function TimePicker({ hour, minute, onHourChange, onMinuteChange, classNa
 				onBlur={handleHourBlur}
 				className={cn(
 					"h-8 w-12 rounded-md border border-border bg-muted px-2 py-1 text-center text-sm text-foreground",
-					"focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary",
+					"focus:border-primary focus:outline-none",
 					"[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
 				)}
 				aria-label="小时"
@@ -86,7 +86,7 @@ export function TimePicker({ hour, minute, onHourChange, onMinuteChange, classNa
 				onBlur={handleMinuteBlur}
 				className={cn(
 					"h-8 w-12 rounded-md border border-border bg-muted px-2 py-1 text-center text-sm text-foreground",
-					"focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary",
+					"focus:border-primary focus:outline-none",
 					"[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
 				)}
 				aria-label="分钟"

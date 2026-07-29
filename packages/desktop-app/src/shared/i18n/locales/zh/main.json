@@ -14,5 +14,14 @@
 	},
 	"pet": {
 		"openDevTools": "打开桌宠开发者工具"
+	},
+	"updater": {
+		"errors": {
+			"developmentUnsupported": "开发模式不支持自动更新",
+			"configurationUnavailable": "当前构建未配置更新源",
+			"checkFailed": "检查更新失败",
+			"downloadFailed": "下载更新失败",
+			"installFailed": "安装更新失败"
+		}
 	}
 }

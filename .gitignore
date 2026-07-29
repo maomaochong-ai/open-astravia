@@ -36,6 +36,10 @@ deploy/logs/
 *.swo
 *~
 
+# Local runtime SQLite (accidental empty DBs at repo root)
+/applog.db
+/hr-applog.db
+
 # Package specific
 .npm/
 coverage/

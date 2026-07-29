@@ -14,12 +14,19 @@ export const monoTheme: ThemeDef = {
 		card: "rgb(18, 18, 18)",
 		// 覆盖经典偏蓝 popover/border，侧栏设置菜单等浮层保持中性灰
 		popover: "rgb(28, 28, 28)",
-		popoverForeground: "rgb(245, 245, 245)",
+		// 纯黑底上正文再压一档（约 82%），避免近白发飘；muted 拉开层级
+		foreground: "rgb(208, 208, 208)",
+		cardForeground: "rgb(208, 208, 208)",
+		popoverForeground: "rgb(208, 208, 208)",
+		secondaryForeground: "rgb(208, 208, 208)",
+		accentForeground: "rgb(208, 208, 208)",
+		mutedForeground: "rgb(128, 128, 128)",
 		border: "rgb(42, 42, 42)",
 		input: "rgb(48, 48, 48)",
-		primary: "rgb(245, 245, 245)",
+		// 强调色仍偏亮但略软于纯白，实心按钮不刺眼
+		primary: "rgb(228, 228, 228)",
 		primaryForeground: "rgb(8, 8, 10)",
-		ring: "rgb(245, 245, 245)",
+		ring: "rgb(228, 228, 228)",
 		// hover（card / popover item 的 hover:bg-accent）；须明显高于 popover(28)
 		accent: "rgb(48, 48, 48)",
 	},

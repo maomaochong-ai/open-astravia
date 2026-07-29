@@ -6,9 +6,8 @@ import type {
 	NewSessionSkillBadgeRowProps,
 	NewSessionSkillItem,
 } from "@vetta/theme-ui";
-import { ThemeSurface } from "@vetta/theme-ui";
+import { ThemeSurface, useHorizontalDragScroll } from "@vetta/theme-ui";
 import type { JSX } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { xianxiaAssets } from "../assets";
 
 const sceneIcons = [
@@ -35,36 +34,6 @@ function scrollMaskClass(canPrev: boolean, canNext: boolean): string | undefined
 	return undefined;
 }
 
-function useHorizontalScroll<TItems extends readonly unknown[]>(items: TItems) {
-	const scrollRef = useRef<HTMLDivElement>(null);
-	const [canPrev, setCanPrev] = useState(false);
-	const [canNext, setCanNext] = useState(false);
-
-	const updateEdges = useCallback(() => {
-		const el = scrollRef.current;
-		if (!el) return;
-		setCanPrev(el.scrollLeft > 1);
-		setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
-	}, []);
-
-	useEffect(() => {
-		updateEdges();
-		const el = scrollRef.current;
-		if (!el) return;
-		const ro = new ResizeObserver(updateEdges);
-		ro.observe(el);
-		return () => ro.disconnect();
-	}, [items.length, updateEdges]);
-
-	const scrollByPage = useCallback((dir: -1 | 1) => {
-		const el = scrollRef.current;
-		if (!el) return;
-		el.scrollBy({ behavior: "smooth", left: dir * el.clientWidth * 0.85 });
-	}, []);
-
-	return { canNext, canPrev, scrollByPage, scrollRef, updateEdges };
-}
-
 export function XianxiaSkillBadgeRow({
 	className,
 	labels,
@@ -73,15 +42,32 @@ export function XianxiaSkillBadgeRow({
 	skills,
 	...props
 }: NewSessionSkillBadgeRowProps): JSX.Element {
-	const { canNext, canPrev, scrollByPage, scrollRef, updateEdges } = useHorizontalScroll(skills);
+	const {
+		canNext,
+		canPrev,
+		onLostPointerCapture,
+		onPointerCancel,
+		onPointerDown,
+		onPointerMove,
+		onPointerUp,
+		onScroll,
+		scrollByPage,
+		scrollRef,
+		shouldSuppressClick,
+	} = useHorizontalDragScroll({ itemCount: skills.length, pageFactor: 0.85 });
 
 	return (
 		<div className={cn("group relative mt-4 w-[80%]", className)} {...props}>
 			<div
 				ref={scrollRef}
-				onScroll={updateEdges}
+				onScroll={onScroll}
+				onPointerDown={onPointerDown}
+				onPointerMove={onPointerMove}
+				onPointerUp={onPointerUp}
+				onPointerCancel={onPointerCancel}
+				onLostPointerCapture={onLostPointerCapture}
 				className={cn(
-					"no-scrollbar flex items-center gap-2 overflow-x-auto px-1 py-1.5",
+					"no-scrollbar flex items-center gap-2 overflow-x-auto px-1 py-1.5 select-none touch-pan-y",
 					scrollMaskClass(canPrev, canNext),
 				)}
 			>
@@ -91,7 +77,10 @@ export function XianxiaSkillBadgeRow({
 						active={selected?.name === skill.name && selected?.type === "skill"}
 						icon={iconByIndex(skillIcons, index)}
 						item={skill}
-						onClick={() => onSelect(skill)}
+						onClick={() => {
+							if (shouldSuppressClick()) return;
+							onSelect(skill);
+						}}
 					/>
 				))}
 			</div>
@@ -156,15 +145,32 @@ export function XianxiaSceneCarousel({
 	selected,
 	...props
 }: NewSessionSceneCarouselProps): JSX.Element {
-	const { canNext, canPrev, scrollByPage, scrollRef, updateEdges } = useHorizontalScroll(scenes);
+	const {
+		canNext,
+		canPrev,
+		onLostPointerCapture,
+		onPointerCancel,
+		onPointerDown,
+		onPointerMove,
+		onPointerUp,
+		onScroll,
+		scrollByPage,
+		scrollRef,
+		shouldSuppressClick,
+	} = useHorizontalDragScroll({ itemCount: scenes.length, pageFactor: 0.85 });
 
 	return (
 		<div className={cn("group relative mt-6 w-[70%]", className)} {...props}>
 			<div
 				ref={scrollRef}
-				onScroll={updateEdges}
+				onScroll={onScroll}
+				onPointerDown={onPointerDown}
+				onPointerMove={onPointerMove}
+				onPointerUp={onPointerUp}
+				onPointerCancel={onPointerCancel}
+				onLostPointerCapture={onLostPointerCapture}
 				className={cn(
-					"no-scrollbar flex min-h-[5.75rem] snap-x snap-mandatory gap-2.5 overflow-x-auto py-1",
+					"no-scrollbar flex min-h-[5.75rem] snap-x snap-mandatory gap-2.5 overflow-x-auto py-1 select-none touch-pan-y",
 					scrollMaskClass(canPrev, canNext),
 				)}
 			>
@@ -174,7 +180,10 @@ export function XianxiaSceneCarousel({
 						action={actions[scene.name] ?? "idle"}
 						icon={iconByIndex(sceneIcons, index)}
 						item={scene}
-						onClick={() => onSceneClick(scene)}
+						onClick={() => {
+							if (shouldSuppressClick()) return;
+							onSceneClick(scene);
+						}}
 						selected={selected?.name === scene.name && selected?.type === "scene"}
 						title={scene.state === "uninstalled" ? labels.installPrompt : scene.description || scene.name}
 					/>

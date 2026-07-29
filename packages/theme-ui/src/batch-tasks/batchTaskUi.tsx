@@ -89,7 +89,7 @@ export function ActionIconButton({
 			disabled={disabled}
 			onClick={onClick}
 			title={title}
-			className={`inline-flex size-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] text-sm font-medium transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 ${
+			className={`inline-flex size-7 shrink-0 items-center justify-center rounded-[min(var(--radius-md),12px)] border border-transparent text-sm font-medium transition-all outline-none select-none focus-visible:border-ring disabled:pointer-events-none disabled:opacity-50 ${
 				variant === "danger"
 					? "text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive"
 					: "text-muted-foreground/60 hover:bg-primary/10 hover:text-primary"

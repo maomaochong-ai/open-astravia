@@ -64,7 +64,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 									placeholder={t("search.placeholder")}
 									value={model.searchQuery}
 									onChange={(event) => model.setSearchQuery(event.target.value)}
-									className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none focus:ring-1 focus:ring-primary/30"
+									className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
 								/>
 							</div>
 							<AddAbilityMenu

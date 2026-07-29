@@ -1,18 +1,10 @@
+import { BotAvatar } from "@shared/components/BotAvatar";
 import type { ChatMessage } from "@shared/store/atoms";
-import vettaAvatar from "@shared/assets/vetta-avatar.webp";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import {
 	AssistantMessageView,
 	StreamingIndicator as ThemeStreamingIndicator,
 } from "@vetta/theme-ui/chat";
-
-/** Desktop wrapper: injects i18n streaming phrases into theme-ui indicator. */
-export function StreamingIndicator(): JSX.Element {
-	const { t } = useTranslation("chat");
-	const phrases = t("messageList.streamingPhrases", { returnObjects: true });
-	const list = Array.isArray(phrases) ? (phrases as string[]) : [];
-	return <ThemeStreamingIndicator phrases={list} />;
-}
 import { memo, useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";
@@ -24,6 +16,14 @@ import { useExpansion } from "./expansionStore";
 import { workSegmentKey } from "./progressGroupModel";
 import { WorkSegmentRenderer } from "./WorkSegmentRenderer";
 import { CopyButton, formatDuration, formatTime, RelativeTimeLabel } from "./MessageActions";
+
+/** Desktop wrapper: injects i18n streaming phrases into theme-ui indicator. */
+export function StreamingIndicator(): JSX.Element {
+	const { t } = useTranslation("chat");
+	const phrases = t("messageList.streamingPhrases", { returnObjects: true });
+	const list = Array.isArray(phrases) ? (phrases as string[]) : [];
+	return <ThemeStreamingIndicator phrases={list} />;
+}
 
 interface AssistantMessageProps {
 	exportMode?: boolean;
@@ -115,15 +115,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 			conclusionText={conclusionText}
 			fold={fold}
 			labels={labels}
-			botAvatar={
-				<img
-					aria-hidden="true"
-					alt=""
-					className="h-5 w-5 shrink-0 select-none object-contain"
-					draggable={false}
-					src={vettaAvatar}
-				/>
-			}
+			botAvatar={<BotAvatar active={isCurrentlyStreaming} />}
 			segments={
 				hasBlocks ? (
 					<>

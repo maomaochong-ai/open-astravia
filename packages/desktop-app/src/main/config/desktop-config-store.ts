@@ -90,7 +90,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	shortcuts: { bindings: {} },
 	quickPanel: { trigger: "none", postSendBehavior: "foreground" },
 	appshot: { enabled: false, gesture: "both-shift" },
-	newSessionPage: { showSceneCards: true, showSkillBadges: true, showGuidingWords: true },
+	newSessionPage: { showSceneCards: false, showSkillBadges: true, showGuidingWords: false },
 };
 
 function migrateProjectEntries(entries: unknown): ProjectEntry[] {
@@ -164,13 +164,14 @@ export function normalizeAppshot(value: unknown): AppshotConfig {
 
 export function normalizeNewSessionPage(value: unknown): NewSessionPageConfig {
 	if (typeof value !== "object" || value === null) {
-		return { showSceneCards: true, showSkillBadges: true, showGuidingWords: true };
+		return { showSceneCards: false, showSkillBadges: true, showGuidingWords: false };
 	}
 	const input = value as Record<string, unknown>;
 	return {
-		showSceneCards: input.showSceneCards !== false,
+		// 场景卡片 / 引导词默认关；技能徽章默认开。显式 true/false 以配置为准。
+		showSceneCards: input.showSceneCards === true,
 		showSkillBadges: input.showSkillBadges !== false,
-		showGuidingWords: input.showGuidingWords !== false,
+		showGuidingWords: input.showGuidingWords === true,
 	};
 }
 

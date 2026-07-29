@@ -7193,8 +7193,7 @@
         "type": "object",
         "required": [
           "phase",
-          "currentVersion",
-          "pendingInstall"
+          "currentVersion"
         ],
         "properties": {
           "phase": {
@@ -7256,9 +7255,6 @@
           },
           "error": {
             "type": "string"
-          },
-          "pendingInstall": {
-            "type": "boolean"
           }
         }
       },
@@ -7290,8 +7286,7 @@
         "type": "object",
         "required": [
           "phase",
-          "currentVersion",
-          "pendingInstall"
+          "currentVersion"
         ],
         "properties": {
           "phase": {
@@ -7353,9 +7348,6 @@
           },
           "error": {
             "type": "string"
-          },
-          "pendingInstall": {
-            "type": "boolean"
           }
         }
       },
@@ -7374,8 +7366,7 @@
         "type": "object",
         "required": [
           "phase",
-          "currentVersion",
-          "pendingInstall"
+          "currentVersion"
         ],
         "properties": {
           "phase": {
@@ -7437,9 +7428,6 @@
           },
           "error": {
             "type": "string"
-          },
-          "pendingInstall": {
-            "type": "boolean"
           }
         }
       },

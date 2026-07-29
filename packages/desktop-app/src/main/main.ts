@@ -736,7 +736,7 @@ if (!gotSingleLock) {
 					mainLog.error("failed to sync appshot gesture", err);
 				});
 
-				// 启动 Updater：恢复 pending-install + 后台检查一次
+				// 启动 Updater：绑定主窗口并在打包环境后台检查一次
 				updaterService.setMainWindow(mainWindow);
 				void updaterService.onAppReady();
 

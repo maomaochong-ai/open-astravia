@@ -1,6 +1,6 @@
 {
 	"name": "@vetta/desktop-app",
-	"version": "0.5.21",
+	"version": "0.5.24",
 	"description": "Vetta Desktop App",
 	"author": "Vetta",
 	"type": "module",
@@ -44,6 +44,7 @@
 		"prepare:bwrap": "node scripts/prepare-bwrap.js",
 		"prebuild:pack": "bun run clean && bun run prepare:windows && bun run prepare:bwrap && bun run prepare:ocr-models && bun run build && node scripts/prepare-pack.js",
 		"dist:desktop": "bun run prebuild:pack && node scripts/run-electron-builder.js",
+		"publish:updates:r2": "node scripts/publish-update-artifacts-r2.mjs",
 		"pack": "bun run dist:desktop -- --target dir",
 		"pack:linux": "cross-env VETTA_VENDOR_PLATFORM=linux-x64 VETTA_CLI_TARGET_PLATFORMS=linux-x64 bun run dist:desktop -- --platform linux --target dir",
 		"pack:win": "cross-env VETTA_VENDOR_PLATFORM=win32-x64 VETTA_CLI_TARGET_PLATFORMS=win32-x64 bun run dist:desktop -- --platform win --target dir",
@@ -95,6 +96,7 @@
 		"@xyflow/react": "^12.10.2",
 		"adm-zip": "^0.5.16",
 		"ajv": "^8.20.0",
+		"builder-util-runtime": "9.7.0",
 		"canvas-confetti": "^1.9.4",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
@@ -104,6 +106,7 @@
 		"driver.js": "^1.8.0",
 		"electron-liquid-glass": "^1.1.1",
 		"electron-log": "^5.4.4",
+		"electron-updater": "^6.8.9",
 		"gsap": "^3.15.0",
 		"i18next": "^26.3.2",
 		"jotai": "^2.15.1",
@@ -137,6 +140,8 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@aws-sdk/client-s3": "^3.1097.0",
+		"@aws-sdk/lib-storage": "^3.1097.0",
 		"@iconify-json/flat-color-icons": "^1.2.3",
 		"@iconify-json/mdi": "^1.2.3",
 		"@iconify-json/vscode-icons": "^1.2.59",
@@ -168,6 +173,7 @@
 		"typescript": "^5.9.2",
 		"vite": "^7.1.7",
 		"wait-on": "^9.0.1",
-		"webdriverio": "^9.30.0"
+		"webdriverio": "^9.30.0",
+		"yaml": "^2.9.0"
 	}
 }

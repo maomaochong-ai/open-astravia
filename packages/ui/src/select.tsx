@@ -38,9 +38,9 @@ function SelectTrigger({
 			className={cn(
 				"flex w-fit items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground transition-colors outline-none select-none",
 				"hover:bg-accent data-[state=open]:bg-accent",
-				"focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary/30",
+				"focus-visible:border-primary/50",
 				"disabled:cursor-not-allowed disabled:opacity-50",
-				"aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/30",
+				"aria-invalid:border-destructive",
 				"data-placeholder:text-muted-foreground",
 				"data-[size=default]:h-8 data-[size=sm]:h-7",
 				"*:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5",

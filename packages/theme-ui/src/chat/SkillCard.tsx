@@ -29,7 +29,6 @@ export const SkillCard = forwardRef<HTMLButtonElement, SkillCardProps>(function 
 		<motion.button
 			ref={ref}
 			type="button"
-			whileHover={{ y: -2, scale: 1.04 }}
 			whileTap={{ scale: 0.96 }}
 			className={cn(
 				"relative shrink-0 overflow-visible whitespace-nowrap rounded-full border text-[11px] font-medium transition-colors",

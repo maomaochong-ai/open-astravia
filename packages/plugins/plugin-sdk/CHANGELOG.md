@@ -6,6 +6,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Breaking Changes
 
+- Removed `pendingInstall` from `PluginOfficialUpdaterState`; the `ready` phase is now the single source of truth, and downloaded updates are installed by `electron-updater` when the app quits.
 - Replaced the image-specific `PluginContext.images` / `images.generate` surface with generic `PluginContext.network` and plugin-private `PluginContext.storage` capabilities and their `network.fetch`, `storage.read`, and `storage.write` permissions.
 - Replaced image-specific prompt attachment APIs with `PluginUiApi.setPromptAttachment()` and `usePromptAttachment()`.
 

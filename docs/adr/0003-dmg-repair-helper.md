@@ -16,4 +16,5 @@ Vetta 的 macOS 构建当前刻意不做代码签名与公证（`mac.identity: n
 - `修复已损坏.app` 是 DMG 用户首次安装路径上的**显式步骤**之一。一旦发布后改名、删除或换成 `.command`，老用户复装时会找不到熟悉的入口，所以这个交付形态是难撤销的决策。
 - helper.app 把 `/Applications/Vetta.app` 与 `~/Applications/Vetta.app` 两个候选路径硬编码在 AppleScript 里。如果未来 `productName` 从 `Vetta` 改名，AppleScript 源 `packages/desktop-app/build/repair.applescript` 必须同步改路径，否则修复会静默失败为「请先拖入 Applications」错提示。
 - 一旦后续启用代码签名 + 公证（`mac.identity` / `notarize` 改为有效值），quarantine 不再成为首次启动障碍，此 helper 即可移除。届时应删除 `修复已损坏.app`、`build-mac-repair-helper.js`、DMG 中第三个图标位与背景图上的「右键打开」提示文字，并把本 ADR 标记为 superseded。
+  - **现状（2026-07）**：签名+公证已按环境变量接入（`prepare-pack.js` 的 `resolveMacSigning()`，流程见 [docs/deploy/apple-code-signing.md](../deploy/apple-code-signing.md)）。凭据齐全的构建自动走两图标版式、不带 helper；未配凭据的构建仍是本 ADR 描述的三图标形态。等到不再产出未签名包时再按上一条彻底移除并标 superseded。
 - DMG 视觉布局（660×440、三列水平、底部一行右键打开提示）是为容纳 helper.app 第三个图标位而定的。移除 helper 后窗口尺寸与背景图也应一并瘦回两图标常规版式。

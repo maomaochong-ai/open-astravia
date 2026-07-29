@@ -108,11 +108,9 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 			</SettingsEnterItem>
 
 			<SettingsEnterItem>
-				<SubscriptionCards />
-			</SettingsEnterItem>
-
-			<SettingsEnterItem className="mb-6">
-				<TokenActivityChart />
+				<SubscriptionCards>
+					<TokenActivityChart embedded />
+				</SubscriptionCards>
 			</SettingsEnterItem>
 
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -140,7 +138,7 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 							}}
 							placeholder={model.labels.enterNickname}
 							maxLength={50}
-							className="h-10 w-full rounded-lg border-none bg-muted px-3 text-[14px] text-foreground outline-none transition-colors focus:ring-1 focus:ring-primary/40"
+							className="h-10 w-full rounded-lg border-none bg-muted px-3 text-[14px] text-foreground outline-none transition-colors"
 						/>
 						{error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
 					</div>

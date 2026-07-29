@@ -16,6 +16,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **订阅卡「升级套餐」外链按钮（ADR-0051）**：设置页 Vetta Go 订阅卡右上角新增按钮，`shell.openExternal` 跳官网 `/pricing` 完成购买。desktop 刻意不做站内支付——3DS 验证、银行跳转、PayPal 弹窗在 `BrowserWindow` 里均不可靠，支付闭环收敛在官网。theme-ui 的 `SubscriptionCardsViewModel` 新增可选 `actions.upgrade` / `labels.upgrade`（缺省不渲染，旧主题不受影响）。
 - **全局统一的加载指示器 `Spin`（`@vetta/ui`）**：两颗小球黏连、分离、整体旋转的「果冻」效果，黏连靠 SVG 高斯模糊 + `feColorMatrix` 拉伸 alpha 实现。颜色取 `currentColor`，跟随容器文字色，用主题类切换即可（`<Spin className="text-primary" />`）；尺寸只开 `sm`/`md`/`lg` 三档，避免各处随手写像素值。keyframes 经 React 19 的 `<style href precedence>` 全页去重只插一次，SVG filter id 用 `useId()` 隔离，同页多个实例不串扰；`prefers-reduced-motion` 下停在两球分离的静止态而非塌成一个点。授权等待浮层与引导页登录步已换用，后续需要 loading 的地方统一从 `@vetta/ui` 引。
 - **授权登录的等待态与 state 校验**：发起授权后浮层/引导步显示「正在等待浏览器授权」，提供「重新打开链接」补救；关闭浮层只收起 UI，晚到的回调仍会正常登录，不设超时。主进程在发起时生成一次性 state 塞进 `client_redirect`，回调必须带回同一 state 才被接受——挡掉客户端未发起授权时被塞入的回调；state 只存内存（进程重启即失效），校验不通过时丢弃 token 并广播 `vetta:auth:oauth-rejected`，界面提示「授权链接已失效」而不是一直干等。新增 IPC `vetta:auth:start-oauth` / `vetta:auth:reopen-oauth`，URL 拼接与校验都在主进程，未校验的 token 不进渲染层。注意这挡不住 `vetta://` scheme 劫持本身（需 PKCE/一次性 code，单独排期）。
 - **预设服务商改为客户端内置 + 模型列表动态拉取（ADR-0050）**：Claude / OpenAI / DeepSeek / Z.ai(GLM) / Kimi / Gemini 六家的 `baseUrl`、`api`、图标内置在客户端，不再依赖服务端 `/providers/templates.json`，离线冷启动也有预设服务商可选。客户端不内置任何默认模型清单：未填 key 时展示 models.dev 公共目录里该家的模型（含价格与上下文，标注「公共目录，填入 Key 后按账号刷新」）；填入 key 后立即请求该家 `/models`，换成该账号实际可用的模型列表（Anthropic / OpenAI 兼容 / Gemini 三套适配器，分别处理游标分页与能力位），之后每 12 小时后台同步一次，设置页每行提供手动刷新按钮并展示上次同步时间。接口不返回的上下文长度 / 视觉 / 思考能力与价格由 [models.dev](https://models.dev/api.json) 目录补齐（随模型列表同步、裁到六家后本地缓存 12 小时，拉不到退回缓存），目录里查不到的模型不显示价格。目录带一份随包快照兜底（`models-dev-snapshot.generated.ts`，`bun run snapshot:models-dev` 更新）：国内网络下 models.dev 常被 TLS 阻断，新装用户既无缓存也拉不到，退到快照后照样有完整模型与价格，线上拉到即覆盖。区块标题右上角新增刷新图标（清失败冷却强制重拉），失败经全局站内通知（Toaster）提示、原文进控制台与界面横幅；预设链路的错误改为主进程回传结构化错误码 + 参数、渲染层查 i18n 出文案（zh/en 双份），主进程不再产出面向用户的中文；密钥被上游拒绝单独归为 `invalid-key`（各家状态码不一：Bearer 系 401/403，Gemini 的无效 key 是 400），**启用即校验：拉不到模型一律不落盘、不启用**（认证失败、网络不通、超时、空列表都算），输入面板与草稿保留供修改；密钥被上游拒绝时标题直说「密钥校验未通过」，其它失败说「密钥未能校验」，都注明密钥未保存。已下线的旧条目无上游可校验，只改 key 不校验；服务商行内的 key 输入框与「启用」按钮合并为一个钥匙图标，点开才展开输入面板。默认每个系列只保留最新一档（按目录的 family + release_date 折叠，整族发布超过一年的淘汰，目录里查不到的一律保留），Claude 15→4、OpenAI 38→9、Gemini 22→5，不提供切回全量的开关。
@@ -28,6 +29,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件条目的名称/描述走 NLS catalog 解析**：`plugin.json` 的 `name` / `description` 可以是 `%key%` 占位符（ADR-0033），能力卡片与详情页统一经插件自带 catalog 解析后再展示，不再直接渲染原始占位符；未安装的市场条目没有本地 catalog，由服务端在上传时解析好下发。
 - **GitHub 开源能力市场**：能力页支持从环境变量配置的 GitHub 仓库整库同步 skill / scene / plugin / bundle，并以校验后的本地快照提供离线回退与安装；Plugin 配置从包内 `plugin.json` 派生并复用现有安全安装链路，Bundle 复用客户端成员批量安装逻辑；新增持久化多来源管理、来源级失败隔离、配置指纹缓存和确定性冲突策略，已安装能力锁定原来源；搜索、筛选与分页全部基于下载后的本地目录执行，不向 GitHub 发分页请求；单一 `marketplace.json` 强制声明 `minAppVersion`，不兼容的新内容不会覆盖旧的可用快照。
 - **开源能力自带展示资源**：GitHub 能力目录可通过 `ability.json` 提供本地图标、Markdown 详情或宿主白名单 Rich Blocks，并支持按 locale 选择详情文件和 Markdown 回退；本地图片路径限定在能力目录内并随市场版本缓存。市场索引继续只承担列表元信息，仓库内容不能注入 HTML、脚本、CSS 或安全相关操作。
+- **macOS 代码签名与公证接入**：`dist:mac` 检测到完整的签名凭据（`CSC_LINK`/`CSC_NAME` + `APPLE_TEAM_ID` + App Store Connect API Key 或 App 专用密码）时，自动开启 Developer ID 签名、hardened runtime（新增 `build/entitlements.mac.plist` 与 `build/entitlements.mac.inherit.plist`）与公证；DMG 随之退回两图标常规版式，不再打包「修复已损坏.app」、背景图也去掉「右键打开」提示。凭据一个都不设时行为与之前完全一致（未签名 + 修复助手），只设一部分会直接报错并列出缺项，避免产出「签了名但没公证」的半成品。证书申请与注入流程见 `docs/deploy/apple-code-signing.md`。
 
 ### Removed
 
@@ -38,6 +40,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **开发版主进程无法加载 `electron-updater`**：主进程 ESM 产物将 CommonJS 的 `electron-updater` 保持为 external 时，命名导入 `autoUpdater` 会在 Electron 启动阶段抛出 `Named export not found`。改为从 CommonJS 默认导出解构，恢复开发版与打包版启动。
+- **新会话页 skill 徽章行支持拖动横向滑动**：原先 `DefaultSkillBadgeRow` / 仙侠主题 skill 行只有左右箭头，桌面鼠标无法拖动。抽出 `useHorizontalDragScroll`（指针捕获 + 阈值抑制 click），默认主题与仙侠主题 skill 行接入；仙侠场景轮播一并复用。
+- **新会话页 skill 徽章悬浮不再放大**：`SkillCard` 去掉 `whileHover` 的 scale / 上移，仅保留颜色过渡与点击缩放。
+- **新会话页 skill 横向拖动使用默认光标**：去掉 `cursor-grab` / `cursor-grabbing`，拖动时保持普通鼠标样式。
 - **能力市场可用时仍显示 `Failed to fetch`**：服务端、GitHub 与本地来源改为独立判定；单个来源失败但其它市场来源或旧缓存可用时静默降级，不再把浏览器原始网络异常暴露给用户。详情 Drawer 只显示当前安装或配置操作错误，不再重复列表级来源错误。
 - **macOS 启动骨架屏压住交通灯**：`AppBootLoadingView` 侧边栏顶部的骨架块正落在窗口左上角的红黄绿按钮下面（macOS 用 `hiddenInset` 标题栏，`trafficLightPosition` 为 x:16 y:20）。macOS 下改为只留等高占位、不画脉冲块；保留占位是为了下方条目不会上移到交通灯区域。Windows / Linux 不变。
 - **侧边栏会话相对时间 i18n**：会话列表 `timeLabel` 改为经 `useTranslation` 的 `t` 渲染（`project:sidebar.time.*`，插值用 `n` 避免 `count` 复数解析），并在列表 `useMemo` 中依赖 `i18n.language`，切换界面语言后时间文案立即更新；消息中心相对时间同步改为 `message:time.*` + `n`。
@@ -45,9 +51,18 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **暗色正文略压亮度**：各主题色板暗色 `foreground` / `muted-foreground` 从近白改为约 82–86% 灰阶，减轻深底刺眼；默认黑白主题（mono）纯黑底上再软一档，强调色 `primary` 同步略降。
+- **新会话问候语跟正文色**：`你好，{{nickname}}` 由 `primary` 渐变改为 `foreground` 渐变（与能力页等标题一致），暗色/黑白主题下不再用近白 primary 发亮。
+- **输入栏窄宽不再折成两行**：工具栏去掉 `flex-wrap`，按输入区容器宽度折叠文案——窄时隐藏执行模式名、推理档位、快捷键提示与动作条标签（保留图标与 `title`），模型名缩短截断；宽了再逐步显示。
+- **Popover/Select 去掉菜单项 stagger**：侧边栏设置菜单、`MotionSelect`、执行模式选择仅保留面板整体淡入缩放，内部选项与分隔线不再逐项滑入渐现。
+- **账户设置额度/用量/模型合一卡**：计划、五小时/周等额度（容器内 `auto-fit` 并排）、Token 使用量、可用模型同处一张卡片，顺序为额度 → 用量 → 模型。
+- **聚焦样式统一为 1px border**：去掉输入框、按钮、开关及全局 `:focus-visible` 的 ring/outline 叠加光晕，仅保留边框色变化（`@vetta/ui` Button/Switch、`theme-ui` 控件与桌面端相关入口同步）。
+- **侧边栏顶栏品牌区改为纯文字**：去掉顶部 Vetta 头像/图标，Windows/Linux 仅显示「Vetta」文案（macOS 仍因交通灯占位不显示品牌字）。
+- **助手消息头像改回 `BotAvatar` 方块**：消息列表「Vetta」左侧由静态猫爪图恢复为带动画的 `BotAvatar`（流式 `active` 光晕 + 手势循环，点击触发）。
+- **新会话页设置默认值**：场景卡片列表与引导词轮播改为默认关闭；技能徽章列表仍默认开启。未在配置里显式写入的项按新缺省解析；已持久化的 true/false 不受影响。
 - **能力市场的分类分组标题按界面语言显示**：服务端随每个市场条目下发 `category_i18n`，分组标题取 `category_i18n[locale] ?? category`（`resolveCategoryLabel`，与 `raw.detail` 的取值口径一致）。分组与筛选仍按分类的**规范名**，所以切换语言只换标题文案，不改分组划分、也不改分组顺序。GitHub 开放市场清单没有译名块，这类条目继续显示原名。
 
-- **应用更新改为后台静默下载 + 断点续传**：`check()` 发现新版本后延迟 20 秒自动开始下载（避开启动期的磁盘/网络争抢），用户看到侧边栏「有新版本」时安装包通常已经躺在本地，不再需要点一下然后干等整包（当前 mac-arm64 安装包 238MB）。下载字节先写 `<asset>.part`，中断后保留残片，重试带 `Range: bytes=<已有>-` 续传，已下的部分喂进 sha256 以便整包摘要仍可验；服务端忽略 Range 回 200 时自动丢弃残片重下。只有校验（sha256 + 体积）通过才 rename 到最终路径，因此**安装包存在即内容完整**——顺带修掉 `readPendingRecord()` 仅靠 `existsSync` 可能把半截文件当成可安装包的问题。静默下载失败按 30s / 2min / 10min 自动重试三次且不打扰 UI（退回 `available` 而非 `error`），手动点击走同一续传路径。用户主动取消后不再自动拉起下载。下载逻辑抽到 `src/main/updater-download.ts`（不依赖 electron，带单测）。
+- **桌面更新源从业务服务端解耦**：客户端更新引擎切换为 `electron-updater`，发现新版后延迟 20 秒静默下载及失败重试；打包时可通过 `VETTA_UPDATE_PROVIDER` 在 R2/任意静态 CDN（generic）和公开 GitHub Releases 之间切换。electron-builder 生成各平台 `latest*.yml` 与 blockmap，下载缓存、完整性校验、差分更新和退出时自动安装由标准更新器接管；旧的自定义下载/安装模块、兼容 IPC 与 `pendingInstall` 假持久态全部删除。R2 发布改为大文件分片上传、只发布清单实际引用的产物并在安装包可公开读取后最后覆盖清单；新增三平台 GitHub Actions 发布工作流与从版本 Changelog 注入的 Release Notes。业务服务端与管理后台的 release 接口、数据模型及发版页面同步删除，不保留双轨兼容。
 
 - **`~/.vetta/auth.json` 的消费者换人**：内建 vetta MCP 改为远程 HTTP 服务后不再有本地子进程，这份下沉凭据的读方变成 coding-agent 的 `core/mcp/vetta-credentials.ts` 与 `publish-ability` skill 的上传脚本。文件形状与写入时机（登录 / 刷新 / 登出三处 `syncCredentialFile`）不变；消费者一律按需重读、不缓存，token 轮换后自动生效。
 - **`stage-system-skills` 放行 skill-presets 下的工程目录**：`test` / `node_modules` 不再被「内置 Skill 未在 manifest 注册」这条检查误伤。用白名单而不是放宽检查——真漏注册一个 skill 仍然必须炸。
@@ -83,7 +98,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件产物不再被大折叠吞掉**：`registerToolCallSlot` 注册的自定义 UI 工具一律视为产物，消息级折叠的答案区起点改为「第一个产物之前最后一次真实工具调用之后」与「最后一个过程块之后」中更靠前者，work 与 coding 同时生效；产物上方引出它的结论文字一并留在答案区，产物之后的过程块也不再折叠。答案区之前无内容可折时不再显示折叠条。
 
 - **本地服务商模型一键拉取**：设置 → 模型的本地服务商展开后新增「从接口拉取」，按 provider 的 `baseUrl`/`apiKey`/`headers` 请求 `GET {baseUrl}/models`（兼容 OpenAI `data[].id` 与 `models[].name`），勾选后批量写入 models.json；仅写 modelId，其余字段继承服务商默认，已存在的模型默认不勾选。
-- **新会话页设置**：设置新增「新会话页」页，可分别控制场景卡片列表、技能徽章列表、引导词轮播的显示/隐藏（默认均显示）；配置持久化到 `desktop-config.json` 的 `newSessionPage`。
+- **新会话页设置**：设置新增「新会话页」页，可分别控制场景卡片列表、技能徽章列表、引导词轮播的显示/隐藏（技能徽章默认开，场景卡片与引导词默认关）；配置持久化到 `desktop-config.json` 的 `newSessionPage`。
 - **会话页文本右键菜单**：输入栏支持剪切 / 复制 / 粘贴（依选区与剪贴板启用）；消息列表在选中文字后可复制或清空输入框后写入选中内容，未选中时不弹出菜单。
 - **官方 App Action 第二批迁移**：`vetta-actions` 系统插件与 `ctx.official` 宿主能力扩展覆盖 `skills`、`shortcuts`、`im`、`mcp`、`models`、`projects`、`knowledge`、`plugins`；继续以同 id 静态实现为 fallback，写操作复用既有领域审批 UI。
 - **官方 App Action 第三批迁移（收尾）**：完成 `batch-tasks`、`scheduler`、`appearance`、`navigation`；`ctx.official` 新增批量/定时窄 API、渲染器内主题读写与 hash 导航；插件审批 presentation 映射同时识别 `operation` 与 `type` 字段。

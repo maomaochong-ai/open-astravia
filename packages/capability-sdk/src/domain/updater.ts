@@ -43,7 +43,6 @@ const updaterStateType = Type.Object(
 		totalBytes: Type.Optional(Type.Number({ minimum: 0 })),
 		assetFileName: Type.Optional(Type.String()),
 		error: Type.Optional(Type.String()),
-		pendingInstall: Type.Boolean(),
 	},
 	{ additionalProperties: false },
 );

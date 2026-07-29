@@ -60,7 +60,7 @@ export function AgentSettingsView({ model }: AgentSettingsViewProps): JSX.Elemen
 						value={model.customPrompt}
 						onChange={(event) => model.actions.setCustomPrompt(event.target.value)}
 						placeholder={model.labels.customInstructionsPlaceholder}
-						className="mt-3 w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none transition-colors focus:ring-1 focus:ring-primary/30"
+						className="mt-3 w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-[13px] leading-relaxed text-foreground outline-none transition-colors focus:border-primary/50"
 						style={{ minHeight: "120px" }}
 					/>
 				</div>

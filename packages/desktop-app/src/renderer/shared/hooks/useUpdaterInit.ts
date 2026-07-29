@@ -16,8 +16,7 @@ export function useUpdaterInit(): void {
 		void window.vetta.updater.getState().then((s) => {
 			if (cancelled) return;
 			setState(s);
-			// 启动时若已存在 ready + pendingInstall（上次"稍后"留下的）：直接弹 Dialog
-			if (s.phase === "ready" && s.pendingInstall) {
+			if (s.phase === "ready") {
 				setDialogOpen(true);
 			}
 			prevPhaseRef.current = s.phase;

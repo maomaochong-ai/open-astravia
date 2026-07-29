@@ -297,7 +297,7 @@ export function AchievementCarousel({
 									>
 										<button
 											type="button"
-											className="flex flex-col items-center rounded-xl p-2 outline-none transition-[background-color,opacity] duration-200 focus-visible:ring-1 focus-visible:ring-ring"
+											className="flex flex-col items-center rounded-xl border border-transparent p-2 outline-none transition-[background-color,opacity,border-color] duration-200 focus-visible:border-ring"
 											style={{
 												backgroundColor: focused ? "rgba(244, 213, 138, 0.12)" : undefined,
 											}}

@@ -240,7 +240,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 		capabilityId === DOMAIN_UPDATER_CAPABILITIES.CHECK.id ||
 		capabilityId === DOMAIN_UPDATER_CAPABILITIES.DOWNLOAD.id
 	) {
-		return { phase: "idle", currentVersion: "1.0.0", pendingInstall: false };
+		return { phase: "idle", currentVersion: "1.0.0" };
 	}
 	if (capabilityId === DOMAIN_KNOWLEDGE_CAPABILITIES.LIST_BASES.id) {
 		return [

@@ -1,5 +1,5 @@
 import { ipcMain } from "electron";
-import { checkForUpdate, getAppVersion, updaterService } from "../updater.js";
+import { getAppVersion, updaterService } from "../updater.js";
 
 export function registerUpdaterIpc(): () => void {
 	ipcMain.handle("vetta:updater:check", async () => {
@@ -30,11 +30,6 @@ export function registerUpdaterIpc(): () => void {
 		updaterService.cancel();
 	});
 
-	// 保留旧入口：兼容老的 renderer 代码（如果存在的话），同样走 service
-	ipcMain.handle("vetta:updater:check-legacy", async () => {
-		return checkForUpdate();
-	});
-
 	return () => {
 		ipcMain.removeHandler("vetta:updater:check");
 		ipcMain.removeHandler("vetta:updater:get-state");
@@ -43,6 +38,5 @@ export function registerUpdaterIpc(): () => void {
 		ipcMain.removeHandler("vetta:updater:install");
 		ipcMain.removeHandler("vetta:updater:dismiss");
 		ipcMain.removeHandler("vetta:updater:cancel");
-		ipcMain.removeHandler("vetta:updater:check-legacy");
 	};
 }

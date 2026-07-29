@@ -45,6 +45,7 @@ function parseCliOptions(argv) {
 	const options = {
 		archs: [],
 		platform: undefined,
+		publish: undefined,
 		targets: [],
 	};
 
@@ -69,6 +70,13 @@ function parseCliOptions(argv) {
 		if (arg === "--target") {
 			if (!nextArg) throw new Error("Missing value for --target");
 			options.targets.push(...parseCommaSeparatedValue(nextArg.trim(), []));
+			index += 1;
+			continue;
+		}
+
+		if (arg === "--publish") {
+			if (!nextArg) throw new Error("Missing value for --publish");
+			options.publish = nextArg.trim();
 			index += 1;
 			continue;
 		}
@@ -121,6 +129,10 @@ function main() {
 	}
 
 	const targets = cliOptions.targets.length > 0 ? cliOptions.targets : defaultTargetsByPlatform[platform];
+	const publishModes = new Set(["always", "never", "onTag", "onTagOrDraft"]);
+	if (cliOptions.publish && !publishModes.has(cliOptions.publish)) {
+		throw new Error(`Unsupported electron-builder publish mode: ${cliOptions.publish}`);
+	}
 	const args = [
 		"electron-builder",
 		`--project=${buildStageDir}`,
@@ -128,6 +140,7 @@ function main() {
 		platformArgMap[platform],
 		...targets,
 		...archs.map((arch) => archArgMap[arch]),
+		...(cliOptions.publish ? [`--publish=${cliOptions.publish}`] : []),
 	];
 
 	console.log(

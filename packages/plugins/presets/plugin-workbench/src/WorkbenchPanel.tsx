@@ -91,7 +91,7 @@ const btnIcon =
 	"flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
 
 const fieldClass =
-	"w-full rounded-md border border-border/60 bg-input/30 px-2.5 py-1.5 text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-inset focus:ring-primary/30";
+	"w-full rounded-md border border-border/60 bg-input/30 px-2.5 py-1.5 text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/50";
 
 function shortPath(path: string): string {
 	const parts = path.replace(/\\/g, "/").split("/").filter(Boolean);

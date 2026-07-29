@@ -41,9 +41,9 @@ export function useNewSessionSettingsModel(): NewSessionSettingsModel {
 		void window.vetta.config.get().then((config) => {
 			const page = config.newSessionPage;
 			setVisibility({
-				showSceneCards: page?.showSceneCards !== false,
+				showSceneCards: page?.showSceneCards === true,
 				showSkillBadges: page?.showSkillBadges !== false,
-				showGuidingWords: page?.showGuidingWords !== false,
+				showGuidingWords: page?.showGuidingWords === true,
 			});
 		});
 	}, [setVisibility]);

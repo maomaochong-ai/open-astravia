@@ -7,6 +7,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
+/** 官网定价页（升级套餐外链目标） */
+const PRICING_URL = "https://openvetta.com/pricing";
+
 export type ModelCost = { cacheRead: number; cacheWrite: number; input: number; output: number };
 export type RemoteModel = {
 	api?: string;
@@ -32,6 +35,8 @@ export interface SubscriptionWindowViewModel {
 export interface SubscriptionCardsModel {
 	actions: {
 		refresh: () => Promise<void>;
+		/** 打开官网定价页（ADR-0051：desktop 不做站内支付，仅外链引流） */
+		upgrade?: () => void;
 	};
 	expiry: string | null;
 	goProvider: RemoteProvider | undefined;
@@ -47,6 +52,7 @@ export interface SubscriptionCardsModel {
 		tokenPlan: string;
 		unlimitedQuota: string;
 		updated: string;
+		upgrade?: string;
 		vision: string;
 	};
 	now: number;
@@ -119,6 +125,7 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 			tokenPlan: t("tokenPlan"),
 			unlimitedQuota: t("unlimitedQuota"),
 			updated: t("updated"),
+			upgrade: t("upgradePlan"),
 			vision: t("vision"),
 		}),
 		[t],
@@ -136,9 +143,16 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 		[subscriptionStatus.windows, t],
 	);
 
+	const handleUpgrade = useCallback(() => {
+		// ADR-0051：desktop 不内嵌收银台（3DS/银行跳转在 BrowserWindow 里不可靠），外链官网定价页
+		void window.vetta.shell.openExternal(PRICING_URL);
+		recordSettingsUsage({ tab: "subscription", action: "selected", target: "upgrade-pricing-link" });
+	}, []);
+
 	return {
 		actions: {
 			refresh: handleRefreshRemote,
+			upgrade: handleUpgrade,
 		},
 		expiry: formatExpiry(subscriptionStatus.expires_at),
 		goProvider,
