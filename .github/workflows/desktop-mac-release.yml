@@ -120,20 +120,21 @@ jobs:
         run: bun run dist:desktop -- --platform mac --arch ${{ matrix.arch }}
 
       # 公证票据没钉上就等于白签，必须卡在这里而不是等用户反馈。
+      #
+      # 注意校验对象是 DMG 里的 Vetta.app，不是 DMG 本身：electron-builder 的顺序是
+      # 「签 app → 公证 app → 钉票据 → 再打 DMG」，容器自己从未被提交公证，对 DMG 跑
+      # stapler validate 一定报 does not have a ticket，会把成功的构建误判成失败。
       - name: Verify signature and notarization
         working-directory: packages/desktop-app
         run: |
           set -euo pipefail
-          for dmg in release/*.dmg; do
-            echo "== $dmg"
-            xcrun stapler validate "$dmg"
-          done
           mountpoint="$(mktemp -d)"
           hdiutil attach release/*.dmg -mountpoint "$mountpoint" -nobrowse -quiet
+          trap 'hdiutil detach "$mountpoint" -quiet || true' EXIT
+          xcrun stapler validate "$mountpoint/Vetta.app"
           codesign -dv --verbose=4 "$mountpoint/Vetta.app"
           codesign --verify --deep --strict --verbose=2 "$mountpoint/Vetta.app"
           spctl -a -vvv -t install "$mountpoint/Vetta.app"
-          hdiutil detach "$mountpoint" -quiet
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
