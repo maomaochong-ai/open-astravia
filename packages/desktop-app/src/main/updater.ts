@@ -1,11 +1,11 @@
-import { createHash } from "node:crypto";
-import { createWriteStream, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getAgentDir } from "@vetta/coding-agent";
 import { app, type BrowserWindow } from "electron";
 
 import { DEFAULT_SERVER_URL } from "./constants.js";
+import { downloadWithResume } from "./updater-download.js";
 import { canPerformInPlaceUpdate, installAndRestart, preferredAssetExtension } from "./updater-install.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -222,6 +222,11 @@ export async function checkForUpdate(): Promise<UpdateCheckResult> {
 
 const EVENT_CHANNEL = "vetta:updater:state";
 
+/** 发现新版后延迟多久开始静默下载：避开启动期的磁盘/网络争抢 */
+const AUTO_DOWNLOAD_DELAY_MS = 20_000;
+/** 静默下载失败后的重试间隔；数组长度即最大重试次数 */
+const AUTO_DOWNLOAD_RETRY_DELAYS_MS = [30_000, 120_000, 600_000];
+
 class UpdaterService {
 	private state: UpdaterState;
 	private mainWindow: BrowserWindow | null = null;
@@ -229,6 +234,10 @@ class UpdaterService {
 	private selectedAsset: ReleaseAsset | null = null;
 	private downloadAbort: AbortController | null = null;
 	private lastEmitAt = 0;
+	private autoDownloadTimer: NodeJS.Timeout | null = null;
+	private autoDownloadAttempts = 0;
+	/** 用户主动取消过：不再自动下载，避免刚取消又被后台拉起 */
+	private autoDownloadOptOut = false;
 
 	constructor() {
 		this.state = {
@@ -325,7 +334,43 @@ class UpdaterService {
 			totalBytes: asset.file_size,
 			error: undefined,
 		});
+		this.autoDownloadAttempts = 0;
+		this.scheduleAutoDownload(AUTO_DOWNLOAD_DELAY_MS);
 		return this.getState();
+	}
+
+	// ─── 静默后台下载 ───
+
+	/**
+	 * 安排一次后台静默下载。用户看到"有新版本"时安装包通常已经在本地，
+	 * 省掉手动点击后干等整包的过程。
+	 */
+	private scheduleAutoDownload(delayMs: number): void {
+		if (this.autoDownloadOptOut) return;
+		// 装不上的平台（dev / 非 AppImage 的 Linux）不必白下一个包
+		if (!canPerformInPlaceUpdate()) return;
+		if (this.autoDownloadTimer) return;
+		this.autoDownloadTimer = setTimeout(() => {
+			this.autoDownloadTimer = null;
+			void this.runAutoDownload();
+		}, delayMs);
+	}
+
+	private async runAutoDownload(): Promise<void> {
+		if (this.state.phase !== "available") return;
+		this.autoDownloadAttempts += 1;
+		const result = await this.startDownload({ auto: true });
+		if (result.phase === "ready" || this.autoDownloadOptOut) return;
+		// 失败：残片已保留，下次续传。间隔用完就不再自动重试，
+		// 用户仍可手动点 sidebar 触发（同样会续传）。
+		const retryDelay = AUTO_DOWNLOAD_RETRY_DELAYS_MS[this.autoDownloadAttempts - 1];
+		if (retryDelay !== undefined) this.scheduleAutoDownload(retryDelay);
+	}
+
+	private cancelScheduledAutoDownload(): void {
+		if (!this.autoDownloadTimer) return;
+		clearTimeout(this.autoDownloadTimer);
+		this.autoDownloadTimer = null;
 	}
 
 	private async fetchLatestRelease(): Promise<LatestRelease | null> {
@@ -350,16 +395,26 @@ class UpdaterService {
 		}
 	}
 
-	/** 用户点击 sidebar icon 触发后台静默下载 */
-	async startDownload(): Promise<UpdaterState> {
+	/**
+	 * 下载安装包。用户点击 sidebar icon 或后台静默调度都走这里。
+	 * auto=true 时失败不打扰 UI（退回 available 而非 error）。
+	 */
+	async startDownload(options?: { auto?: boolean }): Promise<UpdaterState> {
+		const auto = options?.auto === true;
 		if (this.state.phase === "downloading") return this.getState();
 		if (this.state.phase === "ready") return this.getState();
+		if (!auto) {
+			// 用户显式要下载：撤销之前的取消意愿，并取消待触发的静默下载（避免重复）
+			this.autoDownloadOptOut = false;
+			this.cancelScheduledAutoDownload();
+		}
 		if (!this.selectedAsset || !this.latestRelease) {
 			// 没 check 过：自动 check 一次
 			await this.check();
 			if (this.state.phase !== "available") return this.getState();
 		}
 		if (!canPerformInPlaceUpdate()) {
+			if (auto) return this.getState();
 			this.setState({
 				phase: "error",
 				error: app.isPackaged ? "当前平台不支持无感更新，请前往发版页面手动下载" : "开发模式不支持无感更新",
@@ -374,6 +429,7 @@ class UpdaterService {
 		const settings = getSettings();
 		const serverToken = settings.serverToken as string | undefined;
 		if (!serverToken) {
+			if (auto) return this.getState();
 			this.setState({ phase: "error", error: "未登录，无法下载更新" });
 			return this.getState();
 		}
@@ -390,17 +446,27 @@ class UpdaterService {
 			error: undefined,
 		});
 
-		this.downloadAbort = new AbortController();
-		try {
-			await this.downloadStream(release.version, serverToken, assetPath, asset.file_size, asset.sha256);
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : "下载失败";
-			rmSync(assetPath, { force: true });
+		// 已有完整安装包（上次下载完但 pending 记录丢了）：直接复用，别重下整包
+		if (!this.isAssetAlreadyComplete(assetPath, asset.file_size)) {
+			this.downloadAbort = new AbortController();
+			try {
+				await this.downloadStream(release.version, serverToken, assetPath, asset.file_size, asset.sha256);
+			} catch (err) {
+				this.downloadAbort = null;
+				// cancel() 触发的中断：状态已由 cancel() 置为 idle，不要覆盖
+				if (err instanceof Error && err.name === "AbortError") return this.getState();
+				const msg = err instanceof Error ? err.message : "下载失败";
+				// 残片由 updater-download 决定去留（校验失败才删），这里不清文件，
+				// 下次续传能接着下。
+				if (auto) {
+					this.setState({ phase: "available", progress: undefined, downloadedBytes: undefined });
+					return this.getState();
+				}
+				this.setState({ phase: "error", error: msg });
+				return this.getState();
+			}
 			this.downloadAbort = null;
-			this.setState({ phase: "error", error: msg });
-			return this.getState();
 		}
-		this.downloadAbort = null;
 
 		// 落 pending-install 记录
 		writePendingRecord({
@@ -422,6 +488,17 @@ class UpdaterService {
 		return this.getState();
 	}
 
+	/** destPath 只在校验通过后才存在，所以体积对得上就可以直接安装 */
+	private isAssetAlreadyComplete(assetPath: string, expectedSize: number): boolean {
+		if (!existsSync(assetPath)) return false;
+		if (expectedSize <= 0) return true;
+		try {
+			return statSync(assetPath).size === expectedSize;
+		} catch {
+			return false;
+		}
+	}
+
 	private async downloadStream(
 		version: string,
 		serverToken: string,
@@ -429,57 +506,15 @@ class UpdaterService {
 		expectedSize: number,
 		expectedSha256?: string,
 	): Promise<void> {
-		const url = `${getServerUrl()}/releases/${version}/download?platform=${getPlatformId()}&arch=${getArchId()}`;
-		const response = await fetch(url, {
-			signal: this.downloadAbort?.signal,
+		await downloadWithResume({
+			url: `${getServerUrl()}/releases/${version}/download?platform=${getPlatformId()}&arch=${getArchId()}`,
 			headers: { Authorization: `Bearer ${serverToken}` },
+			destPath,
+			expectedSize,
+			expectedSha256,
+			signal: this.downloadAbort?.signal,
+			onProgress: (received, total) => this.maybeEmitProgress(received, total),
 		});
-		if (!response.ok || !response.body) {
-			throw new Error(`下载失败：HTTP ${response.status}`);
-		}
-
-		const total = Number(response.headers.get("Content-Length") || expectedSize || 0);
-		const writeStream = createWriteStream(destPath);
-		const reader = response.body.getReader();
-		// 边下边算摘要，避免安装包落盘后再整个读一遍
-		const hash = createHash("sha256");
-		let received = 0;
-
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				if (value) {
-					received += value.byteLength;
-					hash.update(value);
-					await new Promise<void>((resolve, reject) => {
-						writeStream.write(value, (err) => (err ? reject(err) : resolve()));
-					});
-					this.maybeEmitProgress(received, total);
-				}
-			}
-		} finally {
-			await new Promise<void>((resolve) => writeStream.end(resolve));
-		}
-
-		// 摘要校验：服务端提供了 sha256 才做（存量安装包没有）
-		if (expectedSha256) {
-			const actual = hash.digest("hex");
-			if (actual !== expectedSha256.toLowerCase()) {
-				throw new Error(`安装包校验失败：内容摘要与服务端不一致（期望 ${expectedSha256}，实际 ${actual}）`);
-			}
-		}
-
-		// 大小校验（弱完整性检查，缺 hash 时的兜底）
-		try {
-			const actualSize = statSync(destPath).size;
-			if (expectedSize > 0 && actualSize !== expectedSize) {
-				throw new Error(`下载文件大小不匹配（${actualSize} vs ${expectedSize}）`);
-			}
-		} catch (err) {
-			if (err instanceof Error && err.message.includes("不匹配")) throw err;
-			// stat 失败忽略
-		}
 	}
 
 	private maybeEmitProgress(received: number, total: number): void {
@@ -524,6 +559,9 @@ class UpdaterService {
 
 	/** 用户主动取消下载或丢弃已下载的更新 */
 	cancel(): void {
+		// 取消是明确的"我现在不想更新"，静默下载不该马上把它拉回来
+		this.autoDownloadOptOut = true;
+		this.cancelScheduledAutoDownload();
 		if (this.downloadAbort) {
 			this.downloadAbort.abort();
 			this.downloadAbort = null;
@@ -532,6 +570,16 @@ class UpdaterService {
 		if (pending) {
 			rmSync(pending.stagingDir, { recursive: true, force: true });
 			clearPendingRecord();
+		}
+		// 未完成的残片也一并清掉：staging 目录按版本建，整个删掉即可。
+		// abort 是异步的，写流的 fd 可能还没关，Windows 上删目录会 EBUSY——
+		// 删不掉不影响正确性（残片会被下次续传或重下覆盖），忽略即可。
+		if (this.latestRelease) {
+			try {
+				rmSync(join(getUpdatesDir(), this.latestRelease.version), { recursive: true, force: true });
+			} catch {
+				// ignore
+			}
 		}
 		this.latestRelease = null;
 		this.selectedAsset = null;
