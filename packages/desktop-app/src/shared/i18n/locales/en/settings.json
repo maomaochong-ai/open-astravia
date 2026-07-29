@@ -1497,6 +1497,7 @@
   "creditsPerMTok": "Credits/MTok",
   "unlimitedQuota": "Unlimited · Enjoy unlimited quota",
   "tokenPlan": "Token Plan",
+  "upgradePlan": "Upgrade",
   "expiryDate": "Expires {{date}}",
   "viewModelsCount": "View {{count}} models",
   "noModelsRefresh": "No models. Click refresh above.",

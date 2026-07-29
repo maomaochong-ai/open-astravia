@@ -25,7 +25,11 @@ export interface SubscriptionWindowViewModel {
 }
 
 export interface SubscriptionCardsViewModel {
-	actions: { refresh: () => Promise<void> };
+	actions: {
+		refresh: () => Promise<void>;
+		/** 打开官网定价页外链（ADR-0051：desktop 不做站内支付，仅外链引流）。缺省不渲染按钮。 */
+		upgrade?: () => void;
+	};
 	expiry: string | null;
 	goProvider: RemoteProvider | undefined;
 	labels: {
@@ -40,6 +44,7 @@ export interface SubscriptionCardsViewModel {
 		tokenPlan: string;
 		unlimitedQuota: string;
 		updated: string;
+		upgrade?: string;
 		vision: string;
 	};
 	now: number;
@@ -218,6 +223,19 @@ function VettaGoCard({
 		<div className="mb-6 rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
 			<div className="flex items-start justify-between gap-3">
 				<VettaGoBrand currentPlan={model.labels.currentPlan} />
+				<div className="flex shrink-0 items-center gap-1">
+				{model.actions.upgrade && model.labels.upgrade ? (
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						onClick={() => model.actions.upgrade?.()}
+						className="h-7 gap-1.5 px-2 text-[12px] font-medium"
+					>
+						<span className="icon-[solar--course-up-linear] h-3.5 w-3.5" />
+						{model.labels.upgrade}
+					</Button>
+				) : null}
 				<Button
 					type="button"
 					variant="ghost"
@@ -246,6 +264,7 @@ function VettaGoCard({
 						</>
 					)}
 				</Button>
+				</div>
 			</div>
 
 			<div className="mt-3 flex flex-wrap items-center gap-2">
