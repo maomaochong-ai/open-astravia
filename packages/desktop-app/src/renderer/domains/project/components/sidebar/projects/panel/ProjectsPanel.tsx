@@ -43,6 +43,7 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 	const model = useProjectsPanelModel(props);
 	const [splitRatio, setSplitRatio] = useAtom(sidebarProjectsSplitRatioAtom);
 	const splitContainerRef = useRef<HTMLDivElement>(null);
+	const defaultConversationRegionRef = useRef<HTMLDivElement>(null);
 	const [projectsScrollEl, setProjectsScrollEl] = useState<HTMLDivElement | null>(null);
 	const [autoFitExpandedProject, setAutoFitExpandedProject] = useState(false);
 	const [splitDragging, setSplitDragging] = useState(false);
@@ -115,11 +116,26 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 	}, [autoFitExpandedProject, projectsScrollEl, showSplit, splitDragging, splitRatio]);
 	const handleDefaultSessionInteract = useCallback(() => {
 		const container = splitContainerRef.current;
-		if (!container || !projectsScrollEl) return false;
+		const defaultConversationRegion = defaultConversationRegionRef.current;
+		if (!container || !defaultConversationRegion || !projectsScrollEl) return false;
 		const contentHeight = container.clientHeight - SPLIT_HANDLE_HEIGHT;
 		if (contentHeight <= 0) return false;
-		const defaultConversationHeight = contentHeight - projectsScrollEl.clientHeight;
-		if (defaultConversationHeight / contentHeight >= DEFAULT_CONVERSATION_MIN_RATIO) return false;
+
+		const renderedProjectsRatio = autoFitExpandedProject
+			? SIDEBAR_PROJECTS_SPLIT_MAX
+			: splitRatio;
+		// The pixel minimum can lift the actual conversation ratio above the trigger threshold.
+		// Use the requested ratio to detect project-expanded mode, but skip work when the
+		// conversation region has already reached the restored 60% through natural sizing.
+		const requestedDefaultConversationRatio = 1 - renderedProjectsRatio;
+		const restoredDefaultConversationRatio = 1 - RESTORED_PROJECTS_RATIO;
+		const actualDefaultConversationRatio = defaultConversationRegion.clientHeight / contentHeight;
+		if (
+			requestedDefaultConversationRatio >= DEFAULT_CONVERSATION_MIN_RATIO ||
+			actualDefaultConversationRatio >= restoredDefaultConversationRatio
+		) {
+			return false;
+		}
 
 		const panelResizeWait =
 			splitDragging || window.matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -128,7 +144,7 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 		setAutoFitExpandedProject(false);
 		setSplitRatio(RESTORED_PROJECTS_RATIO);
 		return panelResizeWait;
-	}, [projectsScrollEl, setSplitRatio, splitDragging]);
+	}, [autoFitExpandedProject, projectsScrollEl, setSplitRatio, splitDragging, splitRatio]);
 
 	const defaultSection =
 		showDefaultRegion && model.defaultProject ? (
@@ -149,6 +165,7 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 
 	return (
 		<ProjectsPanelView
+			defaultConversationRegionRef={defaultConversationRegionRef}
 			defaultSection={defaultSection}
 			emptyState={<ProjectsPanelEmptyState />}
 			menus={<ProjectsPanelMenus model={model} />}
