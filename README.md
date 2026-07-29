@@ -48,8 +48,8 @@ cd packages/im-gateway && make build   # 构建 IM 旁路网关
 
 | 包 | 角色 | 技术栈 |
 |----|------|--------|
-| [packages/api](packages/api) | 企业后端：鉴权、Provider 管理、技能市场、发版分发、工作流、SSE 推送 | Go 1.25 · Gin · GORM · PostgreSQL · Redis · Casbin · S3 |
-| [packages/admin](packages/admin) | 后台管理控制台：用户/组织/团队、Provider 审批、技能审核、发版管理 | React + Vite + shadcn/ui |
+| [packages/api](packages/api) | 企业后端：鉴权、Provider 管理、技能市场、工作流、SSE 推送 | Go 1.25 · Gin · GORM · PostgreSQL · Redis · Casbin · S3 |
+| [packages/admin](packages/admin) | 后台管理控制台：用户/组织/团队、Provider 审批、技能审核 | React + Vite + shadcn/ui |
 | [packages/im-gateway](packages/im-gateway) | IM 平台旁路（飞书先行，Telegram/钉钉规划中）。作为桌面应用的 sidecar，桥接 IM 消息至本地 `coding-agent --mode rpc` | Go · NDJSON IPC |
 
 ### 核心库
@@ -114,7 +114,6 @@ cd packages/im-gateway && make build   # 构建 IM 旁路网关
   - `auth` / `user` / `org` / `team` — 鉴权、用户、组织、团队
   - `provider` — LLM Provider 管理与审批
   - `skill` — 技能市场（CRUD、审核、分发）
-  - `release` — 版本发布与分发
   - `chat` — 基础聊天与流式响应
   - `workflow_admin` / `workflow` — 工作流管理与执行
   - `flowing_admin` / `flowing` — 工作流流转
@@ -187,6 +186,8 @@ bun run release:minor    # API Breaking
 ```
 
 发布脚本完成版本号同步、CHANGELOG 定版、commit、tag、可选私服发布，并为下一轮补充 `[Unreleased]` 节。默认**不推送**私服；设置 `RELEASE_PUBLISH=true` 方可发布到配置的私有 registry。产物与安装指引生成于 `releases/v<version>/`，供上传到 Gitee Releases。
+
+桌面安装包由 `.github/workflows/desktop-release.yml` 在三个操作系统分别构建，再发布到官方 R2/CDN 或公开 GitHub Releases；详见 [`docs/deploy/desktop-releases.md`](docs/deploy/desktop-releases.md)。
 
 ---
 

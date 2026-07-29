@@ -6,11 +6,11 @@ import electronUpdater from "electron-updater";
 
 import { mainT } from "./i18n/index.js";
 import { ElectronUpdaterEngine } from "./updater-engine.js";
-import { type UpdateCheckResult, type UpdaterPhase, UpdaterService, type UpdaterState } from "./updater-service.js";
+import { type UpdaterPhase, UpdaterService, type UpdaterState } from "./updater-service.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export type { UpdateCheckResult, UpdaterPhase, UpdaterState };
+export type { UpdaterPhase, UpdaterState };
 
 export function getAppVersion(): string {
 	return app.isPackaged
@@ -23,16 +23,3 @@ export function getAppVersion(): string {
 const { autoUpdater } = electronUpdater;
 const updaterEngine = new ElectronUpdaterEngine(autoUpdater);
 export const updaterService = new UpdaterService(updaterEngine, getAppVersion(), app.isPackaged, mainT);
-
-/** 兼容旧调用方：底层检查已切换为 electron-updater。 */
-export async function checkForUpdate(): Promise<UpdateCheckResult> {
-	const state = await updaterService.check();
-	return {
-		hasUpdate: state.phase === "available" || state.phase === "downloading" || state.phase === "ready",
-		currentVersion: state.currentVersion,
-		latestVersion: state.latestVersion,
-		releaseNote: state.releaseNote,
-		downloadUrl: updaterService.getDownloadUrl(),
-		error: state.error,
-	};
-}

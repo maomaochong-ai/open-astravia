@@ -7,15 +7,6 @@ const EVENT_CHANNEL = "vetta:updater:state";
 const DEFAULT_AUTO_DOWNLOAD_DELAY_MS = 20_000;
 const DEFAULT_AUTO_DOWNLOAD_RETRY_DELAYS_MS = [30_000, 120_000, 600_000];
 
-export interface UpdateCheckResult {
-	hasUpdate: boolean;
-	currentVersion: string;
-	latestVersion?: string;
-	releaseNote?: string;
-	downloadUrl?: string;
-	error?: string;
-}
-
 export type UpdaterPhase = "idle" | "checking" | "available" | "downloading" | "ready" | "installing" | "error";
 
 export interface UpdaterState {
@@ -29,7 +20,6 @@ export interface UpdaterState {
 	totalBytes?: number;
 	assetFileName?: string;
 	error?: string;
-	pendingInstall: boolean;
 }
 
 export type UpdaterTranslate = (key: string, options?: Record<string, unknown>) => string;
@@ -62,7 +52,6 @@ export class UpdaterService {
 		this.state = {
 			phase: "idle",
 			currentVersion,
-			pendingInstall: false,
 		};
 		this.autoDownloadDelayMs = options.autoDownloadDelayMs ?? DEFAULT_AUTO_DOWNLOAD_DELAY_MS;
 		this.autoDownloadRetryDelaysMs = options.autoDownloadRetryDelaysMs ?? DEFAULT_AUTO_DOWNLOAD_RETRY_DELAYS_MS;
@@ -75,10 +64,6 @@ export class UpdaterService {
 
 	getState(): UpdaterState {
 		return { ...this.state };
-	}
-
-	getDownloadUrl(): string | undefined {
-		return this.latestInfo?.downloadUrl;
 	}
 
 	async onAppReady(): Promise<void> {
@@ -95,7 +80,6 @@ export class UpdaterService {
 	}
 
 	private async runCheck(): Promise<UpdaterState> {
-		if (this.state.pendingInstall && this.state.phase === "ready") return this.getState();
 		if (!this.isPackaged) {
 			this.setState({
 				phase: "error",
@@ -140,7 +124,6 @@ export class UpdaterService {
 				totalBytes: result.info.totalBytes,
 				progress: undefined,
 				downloadedBytes: undefined,
-				pendingInstall: false,
 				error: undefined,
 			});
 			this.scheduleAutoDownload(this.autoDownloadDelayMs);
@@ -196,7 +179,6 @@ export class UpdaterService {
 				progress: 1,
 				downloadedBytes: this.state.totalBytes,
 				assetFileName: downloadedPath ? basename(downloadedPath) : this.state.assetFileName,
-				pendingInstall: true,
 				error: undefined,
 			});
 		} catch (error) {
@@ -230,7 +212,6 @@ export class UpdaterService {
 			this.setState({
 				phase: "error",
 				error: this.translate("updater.errors.installFailed"),
-				pendingInstall: true,
 			});
 		}
 		return Promise.resolve();
@@ -241,6 +222,7 @@ export class UpdaterService {
 	}
 
 	cancel(): void {
+		if (this.state.phase === "ready" || this.state.phase === "installing") return;
 		this.autoDownloadOptOut = true;
 		this.cancelScheduledAutoDownload();
 		const download = this.activeDownload;
@@ -255,7 +237,6 @@ export class UpdaterService {
 			downloadedBytes: undefined,
 			totalBytes: undefined,
 			assetFileName: undefined,
-			pendingInstall: false,
 			error: undefined,
 		});
 	}

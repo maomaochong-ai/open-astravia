@@ -182,16 +182,19 @@ VETTA_R2_ACCESS_KEY_ID
 VETTA_R2_SECRET_ACCESS_KEY
 VETTA_R2_BUCKET
 VETTA_R2_PREFIX=desktop/stable
+VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/stable
 ```
 
-脚本先上传版本化安装包和 blockmap，最后覆盖 `latest*.yml`，避免客户端读到尚未完整发布的版本。R2 自定义域名应对安装包启用长期缓存；`latest*.yml` 保持短缓存，不要被 Cache Everything 规则强制长缓存。
+脚本解析 `latest*.yml`，只发布清单引用的版本化安装包和对应 blockmap；大文件使用 16 MiB S3 multipart 分片。安装包经公开域名验证可读后才覆盖 `latest*.yml`，避免客户端读到尚未完整发布的版本。R2 自定义域名应对安装包启用长期缓存；`latest*.yml` 保持短缓存，不要被 Cache Everything 规则强制长缓存。
 
 ### 发布到 GitHub Releases
 
-开源构建只需覆盖发布源，不需要改客户端代码：
+开源构建只需覆盖发布源，不需要改客户端代码。仓库工作流默认使用 GitHub Releases；官方仓库设置 `VETTA_RELEASE_TARGET=r2` 后切到 R2：
 
 ```bash
 bunx cross-env VETTA_UPDATE_PROVIDER=github VETTA_UPDATE_GITHUB_OWNER=owner VETTA_UPDATE_GITHUB_REPO=repository bun run dist:desktop -- --publish always
 ```
 
 发布机需要提供 `GH_TOKEN`。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。
+
+打包时会从本包 `CHANGELOG.md` 提取与当前版本完全匹配的 `## [version]` 区段作为更新说明。正式发布必须先完成 Changelog 定版；找不到版本区段的本地 QA 构建只告警并省略更新说明。

@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadBuildEnv } from "./load-build-env.mjs";
+import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 import { resolveTenant, stageSystemPluginsFromArchives } from "./stage-system-plugins.mjs";
 import { stageSystemSkills } from "./stage-system-skills.mjs";
@@ -44,6 +45,7 @@ const electronVersion = JSON.parse(readFileSync(electronPkgPath, "utf8")).versio
 
 // 应用版本号以 packages/desktop-app/package.json 为唯一真源
 const appVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")).version;
+const releaseInfo = resolveReleaseInfo(join(projectRoot, "CHANGELOG.md"), appVersion);
 
 function resolveCliAppCompileTargets() {
 	const rawTargets = process.env.VETTA_CLI_TARGET_PLATFORMS ?? process.env.VETTA_VENDOR_PLATFORM;
@@ -640,6 +642,7 @@ const builderConfig = {
 	electronLanguages: ["zh-CN", "en-US"],
 	npmRebuild: false,
 	...(updatePublishConfig ? { publish: [updatePublishConfig] } : {}),
+	...(releaseInfo ? { releaseInfo } : {}),
 	protocols: {
 		name: "Vetta",
 		schemes: ["vetta"],

@@ -49,7 +49,6 @@ function createAvailableEngine(): FakeUpdateEngine {
 		info: {
 			version: "0.6.0",
 			releaseNote: "Release notes",
-			downloadUrl: "https://releases.example.com/Vetta-0.6.0.exe",
 			assetFileName: "Vetta-0.6.0.exe",
 			totalBytes: 1_000,
 		},
@@ -80,9 +79,7 @@ describe("UpdaterService", () => {
 			releaseNote: "Release notes",
 			assetFileName: "Vetta-0.6.0.exe",
 			totalBytes: 1_000,
-			pendingInstall: false,
 		});
-		expect(service.getDownloadUrl()).toBe("https://releases.example.com/Vetta-0.6.0.exe");
 	});
 
 	it("reports progress and marks the downloaded update ready", async () => {
@@ -110,7 +107,6 @@ describe("UpdaterService", () => {
 		expect(service.getState()).toMatchObject({
 			phase: "ready",
 			progress: 1,
-			pendingInstall: true,
 		});
 		await service.install();
 		expect(engine.installCalls).toBe(1);
@@ -127,9 +123,22 @@ describe("UpdaterService", () => {
 		expect(engine.cancelCalls).toBe(1);
 		expect(service.getState()).toMatchObject({
 			phase: "idle",
-			pendingInstall: false,
 			error: undefined,
 		});
+	});
+
+	it("keeps a downloaded update ready when cancel is requested", async () => {
+		const engine = createAvailableEngine();
+		const service = new UpdaterService(engine, "0.5.21", true, translate);
+		await service.check();
+		const downloadPromise = service.startDownload();
+		engine.completeDownload(["C:\\updates\\Vetta-0.6.0.exe"]);
+		await downloadPromise;
+
+		service.cancel();
+
+		expect(engine.cancelCalls).toBe(0);
+		expect(service.getState().phase).toBe("ready");
 	});
 
 	it("does not check update feeds in development mode", async () => {

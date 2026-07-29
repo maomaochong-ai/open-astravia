@@ -158,7 +158,6 @@ describe("PluginCapabilityAdapter official domain capabilities", () => {
 		await expect(adapter.getUpdaterState(sessionId)).resolves.toEqual({
 			phase: "idle",
 			currentVersion: "1.0.0",
-			pendingInstall: false,
 		});
 		await expect(adapter.installUpdater(sessionId)).resolves.toBeUndefined();
 		await expect(adapter.listKnowledgeBases(sessionId)).resolves.toHaveLength(1);

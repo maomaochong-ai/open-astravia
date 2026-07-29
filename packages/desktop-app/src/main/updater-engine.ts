@@ -5,7 +5,6 @@ import type { AppUpdater } from "electron-updater";
 export interface UpdateEngineInfo {
 	version: string;
 	releaseNote?: string;
-	downloadUrl?: string;
 	assetFileName?: string;
 	totalBytes?: number;
 }
@@ -52,7 +51,6 @@ function mapUpdateInfo(info: UpdateInfo): UpdateEngineInfo {
 	return {
 		version: info.version,
 		releaseNote: normalizeReleaseNotes(info.releaseNotes),
-		downloadUrl: file?.url,
 		assetFileName: file ? getAssetFileName(file.url) : undefined,
 		totalBytes: file?.size,
 	};
@@ -61,7 +59,7 @@ function mapUpdateInfo(info: UpdateInfo): UpdateEngineInfo {
 export class ElectronUpdaterEngine implements UpdateEngine {
 	constructor(private readonly updater: AppUpdater) {
 		this.updater.autoDownload = false;
-		this.updater.autoInstallOnAppQuit = false;
+		this.updater.autoInstallOnAppQuit = true;
 		this.updater.allowDowngrade = false;
 		this.updater.logger = {
 			info: (message?: unknown) => console.info("[updater]", message),
@@ -101,6 +99,6 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 	}
 
 	quitAndInstall(): void {
-		this.updater.quitAndInstall(true, true);
+		this.updater.quitAndInstall();
 	}
 }
