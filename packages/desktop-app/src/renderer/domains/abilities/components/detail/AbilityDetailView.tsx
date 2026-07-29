@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { resolveAbilityDetailContent } from "../../lib/ability-presentation";
 import type { AbilitiesModel, AbilityItem } from "../../types";
 import { AbilityDetailEnter } from "./AbilityDetailEnter";
+import { AbilityDetailBlocks } from "./AbilityDetailBlocks";
 import { AbilityDetailHeader } from "./AbilityDetailHeader";
 import { AbilityMarkdownBody } from "./AbilityMarkdownBody";
 import { AbilityMetaList } from "./AbilityMetaList";
@@ -142,19 +143,27 @@ export function AbilityDetailView({
 				</div>
 			) : null}
 
-			{detail.showcases.length > 0 ? (
+			{detail.blocks.length > 0 ? (
 				<AbilityDetailEnter index={2}>
-					<AbilityShowcaseList showcases={detail.showcases} />
+					<AbilityDetailBlocks blocks={detail.blocks} abilityType={item.type} />
 				</AbilityDetailEnter>
-			) : null}
+			) : (
+				<>
+					{detail.showcases.length > 0 ? (
+						<AbilityDetailEnter index={2}>
+							<AbilityShowcaseList showcases={detail.showcases} />
+						</AbilityDetailEnter>
+					) : null}
 
-			<AbilityDetailEnter index={3}>
-				{detail.content ? (
-					<AbilityMarkdownBody content={detail.content} />
-				) : (
-					<p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.noContent")}</p>
-				)}
-			</AbilityDetailEnter>
+					<AbilityDetailEnter index={3}>
+						{detail.content ? (
+							<AbilityMarkdownBody content={detail.content} />
+						) : (
+							<p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.noContent")}</p>
+						)}
+					</AbilityDetailEnter>
+				</>
+			)}
 
 			{/* 页尾附属信息：与正文之间只用一条分隔线 */}
 			<div className="mt-1 flex flex-col gap-6 border-t border-border/50 pt-6">

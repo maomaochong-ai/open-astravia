@@ -100,7 +100,7 @@ MCP 没有可执行安装产物，但必须有独立包目录。`marketplace.jso
 }
 ```
 
-Bundle 没有 `source` 和独立安装产物，只声明同一 Manifest 中的成员。成员支持 `skill`、`scene`、`mcp` 和 `plugin`，不允许嵌套 Bundle。安装和卸载时均由用户在确认弹窗中选择成员，不强制一次处理全部成员。
+Bundle 没有独立安装产物，只声明同一 Manifest 中的成员。成员支持 `skill`、`scene`、`mcp` 和 `plugin`，不允许嵌套 Bundle。安装和卸载时均由用户在确认弹窗中选择成员，不强制一次处理全部成员。Bundle 可以提供可选的 `source.path`，但该目录只能承载下述展示文件。
 
 ```json
 {
@@ -117,6 +117,76 @@ Bundle 没有 `source` 和独立安装产物，只声明同一 Manifest 中的�
   }
 }
 ```
+
+## 能力自带图标与详情
+
+`marketplace.json` 负责列表检索所需的轻量元信息；图标、长详情和展示图片可以与能力包放在同一 `source.path` 下：
+
+```text
+abilities/mcp/context7/
+├── mcp.json
+├── ability.json
+├── README.md
+├── detail.json
+└── assets/
+    ├── icon.svg
+    └── preview.webp
+```
+
+`ability.json` 是展示入口，身份字段必须与 `marketplace.json` 中的能力完全一致：
+
+```json
+{
+  "schemaVersion": 1,
+  "type": "mcp",
+  "slug": "context7",
+  "version": "1.0.0",
+  "icon": "assets/icon.svg",
+  "detail": {
+    "format": "blocks",
+    "path": "detail.json",
+    "fallback": "README.md",
+    "meta": [
+      { "key": "docs", "value": "https://context7.com/docs" }
+    ],
+    "i18n": {
+      "zh-CN": { "format": "markdown", "path": "README.zh-CN.md" }
+    }
+  }
+}
+```
+
+- `icon` 支持能力目录内的相对图片、`https://` 图片和已有的 `solar:` 图标；本地图片优先，离线可用且随市场版本缓存。
+- `detail.format: "markdown"` 时，`path` 直接指向 Markdown 文件。
+- `detail.format: "blocks"` 时，`path` 指向结构化详情 JSON；解析失败且声明了 `fallback` 时回退到 Markdown。
+- `i18n[locale]` 可以覆盖格式和文件路径；未命中语言时使用顶层详情。
+- 所有相对路径都必须留在当前能力目录内。客户端限制描述文件、详情文件和图片大小，并拒绝非图片资源。
+
+结构化详情由客户端白名单组件渲染，不执行仓库提供的 HTML、JavaScript、CSS、iframe 或自定义操作。当前区块包括 `feature-grid`、`steps`、`showcase`、`image`、`callout`、`markdown` 和 `links`：
+
+```json
+{
+  "schemaVersion": 1,
+  "blocks": [
+    {
+      "type": "feature-grid",
+      "title": "Capabilities",
+      "items": [
+        { "title": "Current docs", "description": "Fetch version-specific documentation." },
+        { "title": "Code examples", "description": "Add relevant examples to the context." }
+      ]
+    },
+    { "type": "image", "src": "assets/preview.webp", "alt": "Context7 preview" },
+    { "type": "markdown", "content": "## Usage\nSelect the MCP and finish its setup." },
+    {
+      "type": "links",
+      "items": [{ "label": "Documentation", "href": "https://context7.com/docs" }]
+    }
+  ]
+}
+```
+
+安装、权限、MCP 参数和 Bundle 成员选择仍由客户端固定区域渲染，详情文件不能覆盖这些安全相关交互。
 
 ## 兼容规则
 

@@ -27,6 +27,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件详情展示内聚的 MCP 与技能**：插件详情页新增「本插件提供」区块，列出该插件经 `agent.mcpServers` / `agent.skillPaths` 自带的 MCP server 与 skill（名称 + 简介），未安装时同样可见。数据来自服务端上传时对 zip 的解析；仅本地安装且用内联 server map 声明的插件从 manifest 兜底取名。
 - **插件条目的名称/描述走 NLS catalog 解析**：`plugin.json` 的 `name` / `description` 可以是 `%key%` 占位符（ADR-0033），能力卡片与详情页统一经插件自带 catalog 解析后再展示，不再直接渲染原始占位符；未安装的市场条目没有本地 catalog，由服务端在上传时解析好下发。
 - **GitHub 开源能力市场**：能力页支持从环境变量配置的 GitHub 仓库整库同步 skill / scene / plugin / bundle，并以校验后的本地快照提供离线回退与安装；Plugin 配置从包内 `plugin.json` 派生并复用现有安全安装链路，Bundle 复用客户端成员批量安装逻辑；新增持久化多来源管理、来源级失败隔离、配置指纹缓存和确定性冲突策略，已安装能力锁定原来源；搜索、筛选与分页全部基于下载后的本地目录执行，不向 GitHub 发分页请求；单一 `marketplace.json` 强制声明 `minAppVersion`，不兼容的新内容不会覆盖旧的可用快照。
+- **开源能力自带展示资源**：GitHub 能力目录可通过 `ability.json` 提供本地图标、Markdown 详情或宿主白名单 Rich Blocks，并支持按 locale 选择详情文件和 Markdown 回退；本地图片路径限定在能力目录内并随市场版本缓存。市场索引继续只承担列表元信息，仓库内容不能注入 HTML、脚本、CSS 或安全相关操作。
 
 ### Removed
 

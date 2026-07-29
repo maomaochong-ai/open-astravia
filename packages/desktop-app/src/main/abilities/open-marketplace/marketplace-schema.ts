@@ -6,7 +6,7 @@ const SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const VERSION_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const appVersionSchema = z.string().trim().refine(isValidAppVersion, "Must be a semantic app version");
 
-const metaEntrySchema = z
+export const marketplaceMetaEntrySchema = z
 	.object({
 		key: z.enum(["homepage", "repository", "docs", "license"]).optional(),
 		label: z.string().min(1).optional(),
@@ -25,17 +25,58 @@ const showcaseSchema = z
 	})
 	.passthrough();
 
+export const marketplaceDetailBlockSchema = z.discriminatedUnion("type", [
+	z.object({
+		type: z.literal("feature-grid"),
+		title: z.string().optional(),
+		items: z
+			.array(
+				z.object({
+					title: z.string().min(1),
+					description: z.string(),
+					icon: z.string().optional(),
+				}),
+			)
+			.min(1),
+	}),
+	z.object({
+		type: z.literal("steps"),
+		title: z.string().optional(),
+		items: z.array(z.object({ title: z.string().min(1), description: z.string().optional() })).min(1),
+	}),
+	z.object({ type: z.literal("showcase"), showcase: showcaseSchema }),
+	z.object({
+		type: z.literal("image"),
+		src: z.string().min(1),
+		alt: z.string().optional(),
+		caption: z.string().optional(),
+	}),
+	z.object({
+		type: z.literal("callout"),
+		tone: z.enum(["info", "success", "warning"]).default("info"),
+		title: z.string().optional(),
+		content: z.string(),
+	}),
+	z.object({ type: z.literal("markdown"), content: z.string() }),
+	z.object({
+		type: z.literal("links"),
+		title: z.string().optional(),
+		items: z.array(z.object({ label: z.string().min(1), href: z.string().url() })).min(1),
+	}),
+]);
+
 const detailLocaleSchema = z
 	.object({
 		name: z.string().optional(),
 		description: z.string().optional(),
 		content: z.string().optional(),
 		showcases: z.array(showcaseSchema).optional(),
-		meta: z.array(metaEntrySchema).optional(),
+		meta: z.array(marketplaceMetaEntrySchema).optional(),
+		blocks: z.array(marketplaceDetailBlockSchema).optional(),
 	})
 	.passthrough();
 
-const detailSchema = detailLocaleSchema.extend({
+export const marketplaceDetailSchema = detailLocaleSchema.extend({
 	license: z.string().optional(),
 	author: z.string().optional(),
 	icon: z.string().optional(),
@@ -56,7 +97,7 @@ const abilityBaseSchema = z
 		icon: z.string().default(""),
 		category: z.string().default(""),
 		tags: z.array(z.string()).default([]),
-		detail: detailSchema.default({}),
+		detail: marketplaceDetailSchema.default({}),
 	})
 	.passthrough();
 
@@ -96,6 +137,7 @@ const bundleMemberSchema = z.object({
 });
 const bundleAbilitySchema = abilityBaseSchema.extend({
 	type: z.literal("bundle"),
+	source: sourceSchema.optional(),
 	config: z.object({ members: z.array(bundleMemberSchema).min(1) }).passthrough(),
 });
 
@@ -156,9 +198,8 @@ export function parseMarketplaceManifest(input: unknown): MarketplaceManifest {
 	for (const ability of manifest.abilities) {
 		if (seen.has(ability.slug)) throw new Error(`Duplicate ability slug in marketplace: ${ability.slug}`);
 		seen.add(ability.slug);
-		if (ability.type !== "bundle") {
-			ability.source.path = normalizeMarketplaceSourcePath(ability.source.path);
-		}
+		const source = ability.source;
+		if (source) source.path = normalizeMarketplaceSourcePath(source.path);
 	}
 	const bySlug = new Map(manifest.abilities.map((ability) => [ability.slug, ability]));
 	for (const ability of manifest.abilities) {
