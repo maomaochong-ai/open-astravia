@@ -49,6 +49,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **新会话页设置默认值**：场景卡片列表与引导词轮播改为默认关闭；技能徽章列表仍默认开启。未在配置里显式写入的项按新缺省解析；已持久化的 true/false 不受影响。
 - **能力市场的分类分组标题按界面语言显示**：服务端随每个市场条目下发 `category_i18n`，分组标题取 `category_i18n[locale] ?? category`（`resolveCategoryLabel`，与 `raw.detail` 的取值口径一致）。分组与筛选仍按分类的**规范名**，所以切换语言只换标题文案，不改分组划分、也不改分组顺序。GitHub 开放市场清单没有译名块，这类条目继续显示原名。
 
 - **桌面更新源从业务服务端解耦**：客户端更新引擎切换为 `electron-updater`，保持原 IPC、侧边栏状态契约、发现新版后延迟 20 秒静默下载及失败重试；打包时可通过 `VETTA_UPDATE_PROVIDER` 在 R2/任意静态 CDN（generic）和公开 GitHub Releases 之间切换。electron-builder 生成各平台 `latest*.yml` 与 blockmap，下载缓存、完整性校验及差分更新由标准更新器接管；新增 R2 发布脚本，安装包先上传、更新清单最后覆盖。现有服务端 release 接口暂时保留，供旧客户端与回滚使用。
@@ -87,7 +88,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件产物不再被大折叠吞掉**：`registerToolCallSlot` 注册的自定义 UI 工具一律视为产物，消息级折叠的答案区起点改为「第一个产物之前最后一次真实工具调用之后」与「最后一个过程块之后」中更靠前者，work 与 coding 同时生效；产物上方引出它的结论文字一并留在答案区，产物之后的过程块也不再折叠。答案区之前无内容可折时不再显示折叠条。
 
 - **本地服务商模型一键拉取**：设置 → 模型的本地服务商展开后新增「从接口拉取」，按 provider 的 `baseUrl`/`apiKey`/`headers` 请求 `GET {baseUrl}/models`（兼容 OpenAI `data[].id` 与 `models[].name`），勾选后批量写入 models.json；仅写 modelId，其余字段继承服务商默认，已存在的模型默认不勾选。
-- **新会话页设置**：设置新增「新会话页」页，可分别控制场景卡片列表、技能徽章列表、引导词轮播的显示/隐藏（默认均显示）；配置持久化到 `desktop-config.json` 的 `newSessionPage`。
+- **新会话页设置**：设置新增「新会话页」页，可分别控制场景卡片列表、技能徽章列表、引导词轮播的显示/隐藏（技能徽章默认开，场景卡片与引导词默认关）；配置持久化到 `desktop-config.json` 的 `newSessionPage`。
 - **会话页文本右键菜单**：输入栏支持剪切 / 复制 / 粘贴（依选区与剪贴板启用）；消息列表在选中文字后可复制或清空输入框后写入选中内容，未选中时不弹出菜单。
 - **官方 App Action 第二批迁移**：`vetta-actions` 系统插件与 `ctx.official` 宿主能力扩展覆盖 `skills`、`shortcuts`、`im`、`mcp`、`models`、`projects`、`knowledge`、`plugins`；继续以同 id 静态实现为 fallback，写操作复用既有领域审批 UI。
 - **官方 App Action 第三批迁移（收尾）**：完成 `batch-tasks`、`scheduler`、`appearance`、`navigation`；`ctx.official` 新增批量/定时窄 API、渲染器内主题读写与 hash 导航；插件审批 presentation 映射同时识别 `operation` 与 `type` 字段。

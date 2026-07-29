@@ -55,9 +55,9 @@ export function useAppInit(): void {
 			}
 			const page = config.newSessionPage;
 			setNewSessionPageVisibility({
-				showSceneCards: page?.showSceneCards !== false,
+				showSceneCards: page?.showSceneCards === true,
 				showSkillBadges: page?.showSkillBadges !== false,
-				showGuidingWords: page?.showGuidingWords !== false,
+				showGuidingWords: page?.showGuidingWords === true,
 			});
 		});
 		// 恢复新会话全局模型偏好；无偏好时才回落到配置的 defaultModel。
