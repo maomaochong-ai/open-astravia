@@ -17,7 +17,7 @@ function useNarrowViewport(): boolean {
 }
 
 /**
- * 能力详情：能力页右侧滑出的抽屉，由 `?detail=<type>:<slug>` 驱动。
+ * 能力详情：能力页右侧滑出的抽屉，由来源感知的 `?detail=<catalog-id>` 驱动。
  * 复用页面的 model 实例，安装/启停结果直接反映到身后的列表。
  */
 export function AbilityDetailSheet({

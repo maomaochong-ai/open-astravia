@@ -126,6 +126,8 @@ describe("installOpenMarketplaceAbilityInDesktop", () => {
 		expect(mocks.recordAbilityInstall).toHaveBeenCalledWith("plugin", "demo-plugin", "1.0.0", {
 			origin,
 			configVersion: 2,
+			catalogId: "github:test-source:plugin:demo-plugin",
+			slug: "demo-plugin",
 		});
 	});
 });

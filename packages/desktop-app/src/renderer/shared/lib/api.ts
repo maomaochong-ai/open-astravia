@@ -247,22 +247,6 @@ export interface UserInfo {
 	created_at: string;
 }
 
-export interface LoginResponse {
-	/** deprecated alias，等同于 access_token；保留兼容字段 */
-	token: string;
-	access_token: string;
-	refresh_token: string;
-	user: UserInfo;
-}
-
-export async function loginByAccount(account: string, password: string): Promise<LoginResponse> {
-	return request<LoginResponse>("/auth/login", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ account, password }),
-	});
-}
-
 /** 主动注销 refresh token（登出时调用，失败不阻塞本地清理） */
 export async function logoutOnServer(refreshToken: string | undefined): Promise<void> {
 	if (!refreshToken) return;

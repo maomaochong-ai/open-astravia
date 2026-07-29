@@ -2,7 +2,7 @@ import { cn } from "@vetta/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import { ABILITY_TYPE_ICON, ABILITY_TYPE_LABEL_KEY } from "../../lib/ability-presentation";
-import type { AbilitiesModel, BundleAbility } from "../../types";
+import type { BundleAbility } from "../../types";
 import { AbilityIcon } from "../AbilityIcon";
 
 /**
@@ -12,10 +12,8 @@ import { AbilityIcon } from "../AbilityIcon";
  */
 export function BundleMembersSection({
 	item,
-	model,
 }: {
 	item: BundleAbility;
-	model: AbilitiesModel;
 }): JSX.Element {
 	const { t } = useTranslation("abilities");
 	const navigate = useNavigate();
@@ -27,7 +25,9 @@ export function BundleMembersSection({
 			</h2>
 			<ul className="flex flex-col gap-1.5">
 				{item.members.map((member) => {
-					const resolved = model.findById(`${member.type}:${member.slug}`);
+					const resolved = item.memberItems.find(
+						(candidate) => candidate.type === member.type && candidate.slug === member.slug,
+					);
 					const inline = Boolean(member.inline);
 					const navigable = !inline && member.exists;
 					return (
@@ -38,7 +38,7 @@ export function BundleMembersSection({
 								onClick={() =>
 									void navigate({
 										to: "/abilities",
-										search: { detail: `${member.type}:${member.slug}` },
+										search: { detail: resolved?.id },
 									})
 								}
 								className={cn(

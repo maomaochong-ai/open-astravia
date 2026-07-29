@@ -217,8 +217,11 @@ export function createSystemApi(
 		},
 		auth: {
 			openExternal: (url) => ipc.invoke("vetta:shell:open-external", url),
+			startOAuth: () => ipc.invoke("vetta:auth:start-oauth"),
+			reopenOAuth: () => ipc.invoke("vetta:auth:reopen-oauth"),
 			refreshToken: () => ipc.invoke("vetta:auth:refresh-token"),
 			onOAuthCallback: (handler) => onIpcEvent(ipc, "vetta:auth:oauth-callback", handler),
+			onOAuthRejected: (handler) => onIpcVoidEvent(ipc, "vetta:auth:oauth-rejected", handler),
 			onUnauthorized: (handler) => onIpcVoidEvent(ipc, "vetta:auth:unauthorized", handler),
 			onTokenRefreshed: (handler) => onIpcEvent(ipc, "vetta:auth:token-refreshed", handler),
 		},

@@ -1,22 +1,18 @@
 /**
- * upload_ability 的本地严格校验。
+ * 提交前的本地严格校验。
  *
- * 服务端也校验同一套规则（`internal/service/ability_submit.go`），这里再做一遍不是重复：
- * agent 拿到「HTTP 400: detail.author 必填」时只知道失败了，而这里能在**一次调用里**
- * 把所有问题一次性列全，agent 一轮就能补齐重试，不必来回试探。
+ * 服务端也校验同一套规则（`internal/service/ability_submit.go`），这里再做一遍不是
+ * 重复：agent 拿到「HTTP 400: detail.author 必填」时只知道失败了，而这里能在**一次
+ * 执行里**把所有问题一次性列全，agent 一轮就能补齐重试，不必来回试探。
  *
  * 因此本模块的产出是**错误清单**而非首个错误。
  */
 
-import {
-	ABILITY_TYPES,
-	type AbilityBundleMember,
-	type AbilityDetail,
-	type AbilityMetaEntry,
-	type AbilityShowcase,
-	ARTIFACT_TYPES,
-	type UploadAbilityInput,
-} from "./types.js";
+/** 能力形态。与服务端 model.AbilityType* 一一对应。 */
+export const ABILITY_TYPES = ["skill", "scene", "mcp", "plugin", "bundle"];
+
+/** 有产物的形态：必须随包提交，产物是安装的物理来源。 */
+export const ARTIFACT_TYPES = ["skill", "scene", "plugin"];
 
 /** 宿主已实现的头图模板白名单，与服务端 showcaseTemplates 保持一致。 */
 const SHOWCASE_TEMPLATES = new Set(["chat-over-canvas", "chat-thread"]);
@@ -27,21 +23,25 @@ const META_KEYS = new Set(["homepage", "repository", "docs", "license"]);
 /** slug / version 会拼进对象存储 key，白名单防路径注入。 */
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
 
-function isBlank(value: unknown): boolean {
+function isBlank(value) {
 	return typeof value !== "string" || value.trim() === "";
 }
 
 /** 校验图标三态：空 / solar:xxx-bold / http(s):// */
-function validateIcon(icon: string | undefined, errors: string[]): void {
-	if (icon === undefined || icon.trim() === "") return;
-	const trimmed = icon.trim();
+function validateIcon(icon, errors) {
+	if (icon === undefined || icon === null || String(icon).trim() === "") return;
+	const trimmed = String(icon).trim();
 	if (trimmed.startsWith("solar:")) return;
 	if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return;
 	errors.push(`detail.icon 非法：${trimmed}。只能是空、solar:xxx-bold 形式的 Iconify 图标，或 http(s):// 外链`);
 }
 
-function validateShowcases(showcases: AbilityShowcase[] | undefined, path: string, errors: string[]): void {
+function validateShowcases(showcases, path, errors) {
 	if (!showcases) return;
+	if (!Array.isArray(showcases)) {
+		errors.push(`${path} 必须是数组`);
+		return;
+	}
 	showcases.forEach((sc, i) => {
 		const at = `${path}[${i}]`;
 		if (!SHOWCASE_TEMPLATES.has(sc?.template)) {
@@ -62,8 +62,12 @@ function validateShowcases(showcases: AbilityShowcase[] | undefined, path: strin
 	});
 }
 
-function validateMeta(meta: AbilityMetaEntry[] | undefined, path: string, errors: string[]): void {
+function validateMeta(meta, path, errors) {
 	if (!meta) return;
+	if (!Array.isArray(meta)) {
+		errors.push(`${path} 必须是数组`);
+		return;
+	}
 	meta.forEach((entry, i) => {
 		const at = `${path}[${i}]`;
 		const key = entry?.key?.trim();
@@ -79,7 +83,7 @@ function validateMeta(meta: AbilityMetaEntry[] | undefined, path: string, errors
 }
 
 /** 展示信息的必填与形状校验。所有形态共用。 */
-function validateDetail(detail: AbilityDetail | undefined, errors: string[]): void {
+function validateDetail(detail, errors) {
 	if (!detail || typeof detail !== "object") {
 		errors.push("detail 必填：它是能力全部展示信息的唯一来源");
 		return;
@@ -104,19 +108,17 @@ function validateDetail(detail: AbilityDetail | undefined, errors: string[]): vo
 	}
 }
 
-function validateMembers(members: AbilityBundleMember[] | undefined, errors: string[]): void {
-	if (!members || members.length === 0) {
+function validateMembers(members, errors) {
+	if (!Array.isArray(members) || members.length === 0) {
 		errors.push("bundle 必须提供 members（至少一个成员）");
 		return;
 	}
-	const seen = new Set<string>();
-	// 入参来自 agent 的 JSON，运行时可能是任何东西——放宽静态类型才能校验声明上不该出现的值
-	const raw = members as readonly { type?: string; slug?: string; inline?: Record<string, unknown> }[];
-	raw.forEach((m, i) => {
+	const seen = new Set();
+	members.forEach((m, i) => {
 		const at = `members[${i}]`;
 		if (m?.type === "bundle") {
 			errors.push(`${at}.type 非法：bundle 不能嵌套 bundle`);
-		} else if (!ABILITY_TYPES.some((t) => t === m?.type)) {
+		} else if (!ABILITY_TYPES.includes(m?.type)) {
 			errors.push(`${at}.type 非法：${m?.type}`);
 		}
 		if (isBlank(m?.slug)) {
@@ -133,14 +135,11 @@ function validateMembers(members: AbilityBundleMember[] | undefined, errors: str
 }
 
 /**
- * 校验 upload_ability 入参，返回全部问题。空数组表示通过。
+ * 校验提交入参，返回全部问题。空数组表示通过。
  * `packageExists` 由调用方注入（默认不查文件系统），便于测试与关注点分离。
  */
-export function validateUploadInput(
-	input: UploadAbilityInput,
-	options: { packageExists?: (path: string) => boolean } = {},
-): string[] {
-	const errors: string[] = [];
+export function validateUploadInput(input, options = {}) {
+	const errors = [];
 
 	if (!ABILITY_TYPES.includes(input?.type)) {
 		// type 决定后续每一条规则，它错了继续校验只会产出误导性的报错
@@ -149,7 +148,7 @@ export function validateUploadInput(
 
 	validateDetail(input.detail, errors);
 
-	if (input.version !== undefined && input.version.trim() !== "" && !SAFE_SEGMENT.test(input.version.trim())) {
+	if (input.version !== undefined && String(input.version).trim() !== "" && !SAFE_SEGMENT.test(String(input.version).trim())) {
 		errors.push(`version 含非法字符：${input.version}（仅允许字母数字 . _ -）`);
 	}
 
@@ -159,7 +158,7 @@ export function validateUploadInput(
 				`${input.type} 必须提供 package_path：本地安装包路径（plugin 为 .zip，skill/scene 为 .zip 或 .tar.gz）`,
 			);
 		} else {
-			const path = input.package_path as string;
+			const path = input.package_path;
 			if (!/\.(zip|tar\.gz|tgz)$/i.test(path)) {
 				errors.push(`package_path 后缀不支持：${path}。只接受 .zip / .tar.gz / .tgz`);
 			}
@@ -174,7 +173,7 @@ export function validateUploadInput(
 	} else {
 		if (isBlank(input.slug)) {
 			errors.push(`${input.type} 必须提供 slug（机器标识，与 type 联合唯一）`);
-		} else if (!SAFE_SEGMENT.test((input.slug as string).trim())) {
+		} else if (!SAFE_SEGMENT.test(input.slug.trim())) {
 			errors.push(`slug 含非法字符：${input.slug}（仅允许字母数字 . _ -）`);
 		}
 	}

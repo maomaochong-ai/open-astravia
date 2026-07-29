@@ -28,6 +28,7 @@ const openMarketplaceMcpManifestSchema = z
 		version: z.string().min(1),
 		server: z.record(z.string(), z.unknown()),
 		parameters: z.array(mcpParameterSchema).default([]),
+		browserAuth: z.boolean().default(false),
 	})
 	.strict();
 
@@ -36,6 +37,7 @@ type OpenMarketplaceMcpAbility = Extract<MarketplaceAbilityManifest, { type: "mc
 export interface OpenMarketplaceMcpConfig {
 	[key: string]: unknown;
 	mcp: Record<string, unknown>;
+	mcp_browser_auth: boolean;
 	mcp_parameters: Array<{
 		key: string;
 		label: string;
@@ -67,5 +69,9 @@ export function validateOpenMarketplaceMcp(
 	}
 	const server = validateMcpConfig({ mcpServers: { [ability.slug]: manifest.server } }).mcpServers[ability.slug];
 	if (!server) throw new Error(`MCP package server is missing: ${ability.slug}`);
-	return { mcp: { ...server }, mcp_parameters: manifest.parameters };
+	return {
+		mcp: { ...server },
+		mcp_browser_auth: manifest.browserAuth,
+		mcp_parameters: manifest.parameters,
+	};
 }

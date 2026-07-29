@@ -14,6 +14,7 @@ import { createDebugRpcRuntime } from "./app-debug/rpc.js";
 import { configureRendererCdp } from "./app-debug/ui/renderer-cdp.js";
 import { registerAppLifecycleIpc } from "./app-lifecycle.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
+import { consumeOAuthCallback, reopenOAuthLogin, startOAuthLogin } from "./auth/oauth-login.js";
 import { initializeDesktopBatchTaskService } from "./batch-tasks/batch-task-service.js";
 import { parseActionCliCommand, runActionCliCommand } from "./cli/action-command.js";
 import { parseAgentRpcCommand, runAgentRpcCommand } from "./cli/agent-rpc-command.js";
@@ -283,15 +284,15 @@ function handleProtocolUrl(rawUrl: string): void {
 	try {
 		const parsed = new URL(rawUrl);
 		if (parsed.hostname === "oauth" && parsed.pathname.startsWith("/callback")) {
-			// 兼容旧参数名 token（API 直接回调）和新参数名 access_token（Next.js oauth-redirect）
-			const token = parsed.searchParams.get("access_token") ?? parsed.searchParams.get("token");
-			const refreshToken = parsed.searchParams.get("refresh_token");
 			const mainWindow = getMainWindow();
-			if (token && mainWindow) {
-				mainWindow.webContents.send("vetta:auth:oauth-callback", {
-					token,
-					refreshToken: refreshToken ?? undefined,
-				});
+			if (!mainWindow) return;
+			// state 不匹配时 tokens 为 null——绝不把未校验的 token 转给渲染层，
+			// 只通知它把「等待授权」切回可重试状态，否则用户会一直干等。
+			const tokens = consumeOAuthCallback(parsed);
+			if (tokens) {
+				mainWindow.webContents.send("vetta:auth:oauth-callback", tokens);
+			} else {
+				mainWindow.webContents.send("vetta:auth:oauth-rejected");
 			}
 		}
 	} catch {
@@ -562,6 +563,16 @@ if (!gotSingleLock) {
 
 		ipcMain.handle("vetta:auth:open-external", async (_event, url: string) => {
 			await openExternalUrl(url);
+		});
+
+		// 授权登录由主进程发起：state 的生成与校验都在这里，渲染层碰不到，
+		// 未通过校验的 token 也就永远进不了渲染层。
+		ipcMain.handle("vetta:auth:start-oauth", async () => {
+			await startOAuthLogin();
+		});
+
+		ipcMain.handle("vetta:auth:reopen-oauth", async () => {
+			await reopenOAuthLogin();
 		});
 
 		if (process.platform === "darwin") {

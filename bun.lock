@@ -209,7 +209,6 @@
         "@vetta/ai": "workspace:*",
         "@vetta/ecosystem-adapter": "workspace:*",
         "@vetta/runtime-telemetry": "workspace:*",
-        "@vetta/vetta-mcp": "workspace:*",
         "ajv": "^8.17.1",
         "ajv-formats": "^3.0.1",
         "chalk": "^5.5.0",
@@ -266,7 +265,7 @@
     },
     "packages/desktop-app": {
       "name": "@vetta/desktop-app",
-      "version": "0.5.12",
+      "version": "0.5.20",
       "dependencies": {
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
@@ -848,6 +847,10 @@
         "typescript": "~5.9.3",
       },
     },
+    "packages/skill-presets": {
+      "name": "@vetta/skill-presets",
+      "version": "0.0.0",
+    },
     "packages/theme-sdk": {
       "name": "@vetta/theme-sdk",
       "version": "0.0.1",
@@ -963,20 +966,6 @@
       "peerDependencies": {
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-      },
-    },
-    "packages/vetta-mcp": {
-      "name": "@vetta/vetta-mcp",
-      "version": "0.0.1",
-      "bin": {
-        "vetta-mcp": "./dist/bin.js",
-      },
-      "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.29.0",
-      },
-      "devDependencies": {
-        "@types/node": "^22.10.5",
-        "typescript": "^5.9.2",
       },
     },
   },
@@ -2531,6 +2520,8 @@
 
     "@vetta/site": ["@vetta/site@workspace:packages/site"],
 
+    "@vetta/skill-presets": ["@vetta/skill-presets@workspace:packages/skill-presets"],
+
     "@vetta/theme-sdk": ["@vetta/theme-sdk@workspace:packages/theme-sdk"],
 
     "@vetta/theme-ui": ["@vetta/theme-ui@workspace:packages/theme-ui"],
@@ -2540,8 +2531,6 @@
     "@vetta/toolkit": ["@vetta/toolkit@workspace:packages/toolkit"],
 
     "@vetta/ui": ["@vetta/ui@workspace:packages/ui"],
-
-    "@vetta/vetta-mcp": ["@vetta/vetta-mcp@workspace:packages/vetta-mcp"],
 
     "@visx/bounds": ["@visx/bounds@4.0.0", "https://registry.npmmirror.com/@visx/bounds/-/bounds-4.0.0.tgz", { "peerDependencies": { "@types/react": "^18.0.0 || ^19.0.0", "@types/react-dom": "^18.0.0 || ^19.0.0", "react": "^18.0.0 || ^19.0.0", "react-dom": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["@types/react", "@types/react-dom"] }, "sha512-3wAfN5fg2bxg/5f3MlKWzGDTKU2hdKkxq8bVWXpPZQV0UiVc0myuU1qa34c7tN3hg5SDe6MJi/bae2eTQDgEiQ=="],
 

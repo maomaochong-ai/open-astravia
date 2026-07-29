@@ -11,6 +11,7 @@ import { basename, dirname } from "node:path";
 import type { TSchema } from "@sinclair/typebox";
 import type { AgentMessage, AgentTool } from "@vetta/agent-core";
 import { resetApiProviders } from "@vetta/ai";
+import { VERSION } from "../../config.js";
 import { matchesAgentMode } from "../agent-mode.js";
 import type { AgentSession, ExtensionBindings } from "../agent-session.js";
 import type { BackgroundTaskManager } from "../background-tasks/index.js";
@@ -238,8 +239,9 @@ export class RuntimeManager {
 			projectRoot: this.ctx.cwd,
 			debug: this._mcpDebug,
 			enabled: true,
-			// 宿主自带、用户无感：不写 mcp.json，也不在能力市场里露面
-			builtinServers: buildBuiltinMcpServers(),
+			// 宿主自带、用户无感：不写 mcp.json，也不在能力市场里露面。
+			// 带上版本，服务端才能把需要客户端配合的新工具只发给够新的客户端。
+			builtinServers: buildBuiltinMcpServers({ clientVersion: VERSION }),
 		});
 
 		// Initialize MCP servers asynchronously, then rebuild runtime to include MCP tools.

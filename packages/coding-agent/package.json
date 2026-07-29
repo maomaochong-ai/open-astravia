@@ -68,7 +68,6 @@
 		"@vetta/ai": "workspace:*",
 		"@vetta/ecosystem-adapter": "workspace:*",
 		"@vetta/runtime-telemetry": "workspace:*",
-		"@vetta/vetta-mcp": "workspace:*",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"chalk": "^5.5.0",

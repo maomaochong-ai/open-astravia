@@ -31,7 +31,8 @@
 		"custom": "自定义",
 		"builtin": "内置",
 		"readonly": "只读",
-		"openSource": "开源"
+		"openSource": "开源",
+		"sameName": "{{count}} 个同名"
 	},
 	"card": {
 		"noDescription": "暂无能力说明"
@@ -73,6 +74,7 @@
 		"loadFailed": "能力列表加载失败",
 		"downloadFailed": "下载失败：{{status}}",
 		"notLoggedIn": "请先登录后再安装能力",
+		"installSourceConflict": "同一能力标识已由其它来源安装，不会自动覆盖。请在详情页确认来源。",
 		"membersUnavailable": "以下成员暂不可用，未能安装：{{names}}",
 		"partial": "部分能力暂时无法加载：{{error}}",
 		"openMarketplaceSyncFailed": "开源能力同步失败，已保留上次可用内容"
@@ -89,6 +91,14 @@
 	"detail": {
 		"noContent": "暂无更多介绍。添加后即可在对话中使用该能力。",
 		"notFound": "没有找到这个能力，它可能已下架或被移除。",
+		"source": {
+			"title": "来源",
+			"builtin": "应用内置",
+			"local": "本地添加",
+			"server": "Vetta 能力服务器",
+			"sameNameTitle": "另有 {{count}} 个同名能力",
+			"installConflict": "同一安装位置已被其它来源占用。当前不会自动覆盖，请先移除已安装项或等待显式替换功能。"
+		},
 		"status": {
 			"available": "未添加",
 			"setup_required": "需配置",

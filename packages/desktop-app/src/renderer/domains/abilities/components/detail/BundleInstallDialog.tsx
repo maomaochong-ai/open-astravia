@@ -7,7 +7,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@vetta/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { AbilityItem, BundleAbility } from "../../types";
 import { AbilityIcon } from "../AbilityIcon";
@@ -24,10 +24,11 @@ export function BundleInstallDialog({
 	onConfirm: (members: AbilityItem[]) => void;
 }): JSX.Element {
 	const { t } = useTranslation("abilities");
-	const byId = useMemo(() => new Map(bundle.memberItems.map((member) => [member.id, member])), [bundle.memberItems]);
 	const rows = bundle.members.map((member) => ({
 		declared: member,
-		resolved: byId.get(`${member.type}:${member.slug}`),
+		resolved: bundle.memberItems.find(
+			(candidate) => candidate.type === member.type && candidate.slug === member.slug,
+		),
 	}));
 	const selectable = rows
 		.map(({ resolved }) => resolved)
@@ -67,7 +68,7 @@ export function BundleInstallDialog({
 							const canSelect = Boolean(
 								resolved && !resolved.readonly && (!resolved.installed || resolved.needsUpdate),
 							);
-							const id = `${declared.type}:${declared.slug}`;
+							const id = resolved?.id ?? `${declared.type}:${declared.slug}`;
 							return (
 								<li key={id}>
 									<label className="flex items-center gap-3 rounded-lg border border-border/50 px-2.5 py-2 has-[:enabled]:cursor-pointer has-[:enabled]:hover:bg-accent/50">

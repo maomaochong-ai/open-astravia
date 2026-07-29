@@ -1,0 +1,10 @@
+{
+	"name": "@vetta/skill-presets",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "随客户端发布的内置 Skill 资产。无构建产物，只有 SKILL.md、参考文档与零依赖脚本。",
+	"scripts": {
+		"test": "vitest --run"
+	}
+}

@@ -66,6 +66,18 @@ export interface McpHttpServerConfig extends McpServerCommonConfig {
 	oauthDeviceFlow?: boolean;
 	/** Space-separated OAuth scopes to request during the device flow. */
 	oauthScopes?: string;
+	/**
+	 * Per-request header provider. **Runtime-only — never present in mcp.json**
+	 * (JSON cannot carry a function); only code-constructed servers set it.
+	 *
+	 * Why this exists: `headers` is baked into the transport when the connection is
+	 * established, so a rotating credential goes stale the moment it rotates and the
+	 * server 401s until the whole client restarts. A provider is consulted on every
+	 * request, so the connection always carries the current token.
+	 *
+	 * Merged over `headers`, so a static header of the same name loses.
+	 */
+	resolveHeaders?: () => Promise<Record<string, string>> | Record<string, string>;
 }
 
 /**

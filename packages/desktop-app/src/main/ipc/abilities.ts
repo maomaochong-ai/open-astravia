@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import type {
+	AbilityInstallMetadata,
 	AbilityInstallOrigin,
 	AddMarketplaceSourceInput,
 	UpdateMarketplaceSourceInput,
@@ -66,9 +67,7 @@ function parseAbilityInstallOrigin(value: unknown): AbilityInstallOrigin | undef
 	};
 }
 
-function parseMcpInstallMetadata(
-	value: unknown,
-): { origin?: AbilityInstallOrigin; configVersion?: number } | undefined {
+function parseMcpInstallMetadata(value: unknown): AbilityInstallMetadata | undefined {
 	if (value === undefined) return undefined;
 	if (value == null || typeof value !== "object" || Array.isArray(value)) {
 		throw new Error("recordMcpInstall metadata must be an object");
@@ -83,9 +82,16 @@ function parseMcpInstallMetadata(
 		throw new Error("configVersion must be a positive integer");
 	}
 	const origin = parseAbilityInstallOrigin(metadata.origin);
+	const catalogId = metadata.catalogId === undefined ? undefined : requireString(metadata.catalogId, "catalogId");
+	const slug = metadata.slug === undefined ? undefined : requireString(metadata.slug, "slug");
+	const runtimeName =
+		metadata.runtimeName === undefined ? undefined : requireString(metadata.runtimeName, "runtimeName");
 	return {
 		...(origin ? { origin } : {}),
 		...(typeof metadata.configVersion === "number" ? { configVersion: metadata.configVersion } : {}),
+		...(catalogId ? { catalogId } : {}),
+		...(slug ? { slug } : {}),
+		...(runtimeName ? { runtimeName } : {}),
 	};
 }
 
@@ -136,15 +142,21 @@ export function registerAbilitiesIpc(): () => void {
 	// 只接受确实已写进 mcp.json 的 server，避免渲染层写出幽灵条目。
 	ipcMain.handle(
 		"vetta:abilities:record-mcp-install",
-		async (_event, slug: unknown, version: unknown, metadata: unknown) => {
-			if (typeof slug !== "string" || typeof version !== "string") {
-				throw new Error("recordMcpInstall requires slug and version strings");
+		async (_event, runtimeName: unknown, version: unknown, metadata: unknown) => {
+			if (typeof runtimeName !== "string" || typeof version !== "string") {
+				throw new Error("recordMcpInstall requires runtimeName and version strings");
 			}
-			if (!slug.trim() || !version.trim()) return;
+			if (!runtimeName.trim() || !version.trim()) return;
 			const parsedMetadata = parseMcpInstallMetadata(metadata);
+			if (parsedMetadata?.runtimeName && parsedMetadata.runtimeName !== runtimeName) {
+				throw new Error("metadata.runtimeName must match runtimeName");
+			}
 			const config = await readMcpConfig();
-			if (!config.mcpServers[slug]) return;
-			recordAbilityInstall("mcp", slug, version, parsedMetadata);
+			if (!config.mcpServers[runtimeName]) return;
+			recordAbilityInstall("mcp", runtimeName, version, {
+				...parsedMetadata,
+				runtimeName,
+			});
 		},
 	);
 

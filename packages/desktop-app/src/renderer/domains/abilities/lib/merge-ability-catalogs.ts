@@ -1,17 +1,21 @@
-import type {
-	AbilityLedger,
-	GitHubMarketplaceOrigin,
-	OpenMarketplaceAbility,
-	OpenMarketplaceSourceSnapshot,
-} from "@preload/api";
+import type { GitHubMarketplaceOrigin, OpenMarketplaceAbility, OpenMarketplaceSourceSnapshot } from "@preload/api";
 import type { MarketAbility } from "@shared/lib/api";
+import type { AbilityCatalogSource } from "../types";
 
 export type OpenCatalogMarketAbility = MarketAbility & {
 	origin: GitHubMarketplaceOrigin;
 	configVersion: number;
+	catalogSource: Extract<AbilityCatalogSource, { kind: "github" }>;
 };
 
-function toMarketAbility(ability: OpenMarketplaceAbility, syncedAt: string | null): OpenCatalogMarketAbility {
+export type CatalogMarketAbility = MarketAbility & {
+	catalogSource: AbilityCatalogSource;
+};
+
+function toMarketAbility(
+	ability: OpenMarketplaceAbility,
+	snapshot: OpenMarketplaceSourceSnapshot,
+): OpenCatalogMarketAbility {
 	return {
 		slug: ability.slug,
 		type: ability.type,
@@ -27,73 +31,48 @@ function toMarketAbility(ability: OpenMarketplaceAbility, syncedAt: string | nul
 		download_count: 0,
 		config: ability.config,
 		detail: ability.detail,
-		updated_at: syncedAt ?? "",
+		updated_at: snapshot.syncedAt ?? "",
 		origin: ability.origin,
 		configVersion: ability.configVersion,
+		catalogSource: {
+			kind: "github",
+			id: snapshot.sourceId,
+			name: snapshot.source.name,
+			repository: snapshot.repository,
+		},
 	};
 }
 
-function abilityId(ability: Pick<MarketAbility, "slug" | "type">): string {
-	return `${ability.type}:${ability.slug}`;
+function toServerMarketAbility(ability: MarketAbility): CatalogMarketAbility {
+	return {
+		...ability,
+		catalogSource: { kind: "server", id: "server" },
+	};
 }
 
-function matchesInstalledOrigin(ability: OpenMarketplaceAbility, origin: GitHubMarketplaceOrigin): boolean {
-	if (origin.sourceId) return ability.origin.sourceId === origin.sourceId;
-	return ability.origin.repository === origin.repository && ability.origin.marketplace === origin.marketplace;
+export function getMarketCatalogSource(ability: MarketAbility): AbilityCatalogSource {
+	const candidate = ability as Partial<CatalogMarketAbility>;
+	return candidate.catalogSource ?? { kind: "server", id: "server" };
+}
+
+export function buildMarketAbilityId(ability: Pick<MarketAbility, "slug" | "type">): string {
+	const source = getMarketCatalogSource(ability as MarketAbility);
+	return `${source.kind}:${source.id}:${ability.type}:${ability.slug}`;
 }
 
 /**
- * 服务端默认优先；多个 GitHub 来源按来源优先级（snapshots 顺序）取第一项。
- * 已安装的 GitHub 能力锁定原来源，避免同名服务端或其它来源在刷新后静默接管升级。
+ * 服务端与每个 GitHub 来源都保留独立目录行。
+ * 来源优先级只决定展示顺序，不再用于覆盖同 type + slug 的其它来源。
  */
 export function mergeAbilityCatalogs(
 	serverAbilities: MarketAbility[],
 	snapshots: OpenMarketplaceSourceSnapshot[],
-	ledger: AbilityLedger,
 ): MarketAbility[] {
-	const serverById = new Map<string, MarketAbility>();
-	const openById = new Map<string, Array<{ ability: OpenMarketplaceAbility; syncedAt: string | null }>>();
-	const orderedIds: string[] = [];
-	const seenIds = new Set<string>();
-
-	for (const ability of serverAbilities) {
-		const id = abilityId(ability);
-		if (!serverById.has(id)) serverById.set(id, ability);
-		if (!seenIds.has(id)) {
-			seenIds.add(id);
-			orderedIds.push(id);
-		}
-	}
+	const merged: MarketAbility[] = serverAbilities.map(toServerMarketAbility);
 	for (const snapshot of snapshots) {
 		for (const ability of snapshot.abilities) {
-			const id = abilityId(ability);
-			const candidates = openById.get(id);
-			const candidate = { ability, syncedAt: snapshot.syncedAt };
-			if (candidates) candidates.push(candidate);
-			else openById.set(id, [candidate]);
-			if (!seenIds.has(id)) {
-				seenIds.add(id);
-				orderedIds.push(id);
-			}
+			merged.push(toMarketAbility(ability, snapshot));
 		}
-	}
-
-	const merged: MarketAbility[] = [];
-	for (const id of orderedIds) {
-		const installedOrigin = ledger[id]?.origin;
-		const candidates = openById.get(id) ?? [];
-		if (installedOrigin?.kind === "github-marketplace") {
-			const installedCandidate = candidates.find(({ ability }) => matchesInstalledOrigin(ability, installedOrigin));
-			if (installedCandidate) merged.push(toMarketAbility(installedCandidate.ability, installedCandidate.syncedAt));
-			continue;
-		}
-		const server = serverById.get(id);
-		if (server) {
-			merged.push(server);
-			continue;
-		}
-		const firstOpen = candidates[0];
-		if (firstOpen) merged.push(toMarketAbility(firstOpen.ability, firstOpen.syncedAt));
 	}
 	return merged;
 }

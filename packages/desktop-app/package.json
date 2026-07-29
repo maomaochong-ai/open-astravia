@@ -1,6 +1,6 @@
 {
 	"name": "@vetta/desktop-app",
-	"version": "0.5.20",
+	"version": "0.5.21",
 	"description": "Vetta Desktop App",
 	"author": "Vetta",
 	"type": "module",
@@ -29,7 +29,7 @@
 		"stage:themes:dev": "node scripts/build-themes.mjs --development",
 		"dev:themes": "bun run --cwd ../themes/builtin/xianxia dev",
 		"build:ocr-runner:dev": "bun run prepare:ocr-models && bun run build:ocr-runner",
-		"build:dev-processes": "concurrently --kill-others-on-fail --names \"preload,ocr-preload,ocr-runner,main\" \"bun run build:preload\" \"bun run build:ocr-preload\" \"bun run build:ocr-runner:dev\" \"cross-env VETTA_BUILD_ENV=development bun run build:main\"",
+		"build:dev-processes": "concurrently --kill-others-on-fail --names \"preload,ocr-preload,ocr-runner,main\" \"cross-env VETTA_BUILD_ENV=development bun run build:preload\" \"bun run build:ocr-preload\" \"bun run build:ocr-runner:dev\" \"cross-env VETTA_BUILD_ENV=development bun run build:main\"",
 		"dev:electron": "bun run build:dev-processes && node scripts/run-dev-electron.mjs",
 		"start": "bun run prepare:windows && bun run prepare:ocr-models && bun run build && NODE_OPTIONS='--import tsx' electron src/main/main.ts",
 		"dev": "bun run prepare:windows:dev && node scripts/build-appshot-helper.js && cross-env VETTA_THEME_DEV_SERVER=1 concurrently -k --success command-electron --names \"renderer,themes,electron\" \"bun run build:presets:dev && bun run stage:themes:dev && bun ./node_modules/vite/bin/vite.js --config vite.config.ts\" \"bun run dev:themes\" \"bun run dev:electron\"",

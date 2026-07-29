@@ -31,7 +31,8 @@
 		"custom": "Custom",
 		"builtin": "Built-in",
 		"readonly": "Read-only",
-		"openSource": "Open source"
+		"openSource": "Open source",
+		"sameName": "{{count}} with same name"
 	},
 	"card": {
 		"noDescription": "No description"
@@ -73,6 +74,7 @@
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
 		"notLoggedIn": "Sign in before installing abilities",
+		"installSourceConflict": "The same ability identifier is installed from another source and will not be overwritten. Check the source on the details page.",
 		"membersUnavailable": "These members are unavailable and were not installed: {{names}}",
 		"partial": "Some abilities could not be loaded: {{error}}",
 		"openMarketplaceSyncFailed": "Open abilities could not be synced; the last usable snapshot was kept"
@@ -89,6 +91,14 @@
 	"detail": {
 		"noContent": "No further description. Add it and use it straight from chat.",
 		"notFound": "Ability not found — it may have been delisted or removed.",
+		"source": {
+			"title": "Source",
+			"builtin": "Built into the app",
+			"local": "Added locally",
+			"server": "Vetta ability server",
+			"sameNameTitle": "{{count}} other abilities have the same name",
+			"installConflict": "Another source already occupies this install location. It will not be overwritten automatically; remove the installed item first or wait for an explicit replace flow."
+		},
 		"status": {
 			"available": "Not added",
 			"setup_required": "Setup required",

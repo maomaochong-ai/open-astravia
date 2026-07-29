@@ -8,6 +8,7 @@ function ability(index: number, overrides: Partial<SkillAbility> = {}): SkillAbi
 		id: `skill:${slug}`,
 		slug,
 		type: "skill",
+		catalogSource: { kind: "server", id: "server" },
 		title: `Ability ${String(index).padStart(3, "0")}`,
 		description: "",
 		category: "General",
@@ -44,6 +45,12 @@ describe("queryAbilityCatalog", () => {
 	it("filters locally by keyword, category, type and source", () => {
 		const github = ability(1, {
 			category: "Design",
+			catalogSource: {
+				kind: "github",
+				id: "community",
+				name: "Community",
+				repository: "https://github.com/example/community",
+			},
 			origin: {
 				kind: "github-marketplace",
 				sourceId: "community",

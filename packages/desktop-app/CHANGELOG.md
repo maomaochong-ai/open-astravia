@@ -6,11 +6,18 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Breaking Changes
 
+- **客户端只保留授权登录，账号密码登录移除**：登录入口与引导页登录步不再有账号/密码输入框，点「登录」直接唤起系统浏览器走站点授权，回跳 `vetta://oauth/callback` 完成登录。渲染层 `loginByAccount` / `LoginResponse` 删除（服务端 `/auth/login` 不受影响）。非 GitHub/Google 账号经站点 `/login` 的邮箱验证码或邮箱密码登录，客户端不再提供第二条入口。
+- **登录弹窗改为侧边栏左下角浮层**：全屏 `LoginDialog` 删除，改为锚在侧边栏底部的 `LoginPopover`。设置菜单点「登录」即关闭设置菜单、弹出授权浮层并**同时发起授权**——浮层里不再有「授权登录」按钮，不需要第二次点击。浮层只呈现等待态（「正在等待浏览器授权 / 完成后将自动登录」+「重新打开链接」）与失败态（错误文案 +「重新授权」）。
+- **主题槽位改名与契约变更**：`root.loginDialog` / `root.loginDialogView` → `root.loginPopover` / `root.loginPopoverView`；`LoginDialogViewProps` 由表单模型改为 `LoginPopoverViewProps { phase, error, labels, onReopen, onRetry }`，`open` / `account` / `password` / `onAccountChange` / `onPasswordChange` / `onSubmit` / `onStart` / `onClose` / `loginLoading` / `oauthLoading` 全部移除（开合交给 Radix Popover）；labels 收敛为 `waitingTitle` / `waitingHint` / `reopen` / `retry`。覆盖该槽位的主题需要跟着改。
+- **i18n 命名空间 `common.loginDialog` 改名为 `common.login`**：并去掉 `title` / `subtitle` / `footerHint` / `accountPlaceholder` / `passwordPlaceholder` / `login` / `loggingIn` / `oauthDivider` / `error`，新增 `waitingTitle` / `waitingHint` / `reopen` / `retry` / `openFailed` / `rejected`。
+- **`loginDialogOpenAtom` 改名为 `loginPopoverOpenAtom`**。
 - **`/skills` 与 `/plugins` 路由移除**：两者重定向到 `/abilities`（`/skills?tab=scene` 仍去 `/scenes`）。渲染层不再有独立插件页与插件卡片/详情 Drawer。
 - **市场接口收敛为 `/abilities/*`**：`fetchMarketSkills` / `fetchMarketPlugins` / `fetchMarketMcpServers` 与 `downloadSkill` / `downloadPlugin` / `fetchSkillInfo` / `fetchPluginInfo` 由 `fetchMarketAbilities` / `fetchAbilityInfo` / `downloadAbility` 取代。
 
 ### Added
 
+- **全局统一的加载指示器 `Spin`（`@vetta/ui`）**：两颗小球黏连、分离、整体旋转的「果冻」效果，黏连靠 SVG 高斯模糊 + `feColorMatrix` 拉伸 alpha 实现。颜色取 `currentColor`，跟随容器文字色，用主题类切换即可（`<Spin className="text-primary" />`）；尺寸只开 `sm`/`md`/`lg` 三档，避免各处随手写像素值。keyframes 经 React 19 的 `<style href precedence>` 全页去重只插一次，SVG filter id 用 `useId()` 隔离，同页多个实例不串扰；`prefers-reduced-motion` 下停在两球分离的静止态而非塌成一个点。授权等待浮层与引导页登录步已换用，后续需要 loading 的地方统一从 `@vetta/ui` 引。
+- **授权登录的等待态与 state 校验**：发起授权后浮层/引导步显示「正在等待浏览器授权」，提供「重新打开链接」补救；关闭浮层只收起 UI，晚到的回调仍会正常登录，不设超时。主进程在发起时生成一次性 state 塞进 `client_redirect`，回调必须带回同一 state 才被接受——挡掉客户端未发起授权时被塞入的回调；state 只存内存（进程重启即失效），校验不通过时丢弃 token 并广播 `vetta:auth:oauth-rejected`，界面提示「授权链接已失效」而不是一直干等。新增 IPC `vetta:auth:start-oauth` / `vetta:auth:reopen-oauth`，URL 拼接与校验都在主进程，未校验的 token 不进渲染层。注意这挡不住 `vetta://` scheme 劫持本身（需 PKCE/一次性 code，单独排期）。
 - **预设服务商改为客户端内置 + 模型列表动态拉取（ADR-0050）**：Claude / OpenAI / DeepSeek / Z.ai(GLM) / Kimi / Gemini 六家的 `baseUrl`、`api`、图标内置在客户端，不再依赖服务端 `/providers/templates.json`，离线冷启动也有预设服务商可选。客户端不内置任何默认模型清单：未填 key 时展示 models.dev 公共目录里该家的模型（含价格与上下文，标注「公共目录，填入 Key 后按账号刷新」）；填入 key 后立即请求该家 `/models`，换成该账号实际可用的模型列表（Anthropic / OpenAI 兼容 / Gemini 三套适配器，分别处理游标分页与能力位），之后每 12 小时后台同步一次，设置页每行提供手动刷新按钮并展示上次同步时间。接口不返回的上下文长度 / 视觉 / 思考能力与价格由 [models.dev](https://models.dev/api.json) 目录补齐（随模型列表同步、裁到六家后本地缓存 12 小时，拉不到退回缓存），目录里查不到的模型不显示价格。目录带一份随包快照兜底（`models-dev-snapshot.generated.ts`，`bun run snapshot:models-dev` 更新）：国内网络下 models.dev 常被 TLS 阻断，新装用户既无缓存也拉不到，退到快照后照样有完整模型与价格，线上拉到即覆盖。区块标题右上角新增刷新图标（清失败冷却强制重拉），失败经全局站内通知（Toaster）提示、原文进控制台与界面横幅；预设链路的错误改为主进程回传结构化错误码 + 参数、渲染层查 i18n 出文案（zh/en 双份），主进程不再产出面向用户的中文；密钥被上游拒绝单独归为 `invalid-key`（各家状态码不一：Bearer 系 401/403，Gemini 的无效 key 是 400），**启用即校验：拉不到模型一律不落盘、不启用**（认证失败、网络不通、超时、空列表都算），输入面板与草稿保留供修改；密钥被上游拒绝时标题直说「密钥校验未通过」，其它失败说「密钥未能校验」，都注明密钥未保存。已下线的旧条目无上游可校验，只改 key 不校验；服务商行内的 key 输入框与「启用」按钮合并为一个钥匙图标，点开才展开输入面板。默认每个系列只保留最新一档（按目录的 family + release_date 折叠，整族发布超过一年的淘汰，目录里查不到的一律保留），Claude 15→4、OpenAI 38→9、Gemini 22→5，不提供切回全量的开关。
 - **能力（Ability）统一页与独立详情页（ADR-0049）**：Skill / 场景 / MCP / 插件 / 能力套装（bundle）合并为一个 `/abilities` 列表，筛选轴改为正交两条——分类（用途）与类型（五种 type）；「发现」/「我的」两个 scope 保留。新增 `/abilities/$type/$slug` 独立详情页（不再是侧边 Drawer，返回走 history.back）：通用壳层（图标/标题/作者/版本/状态/主次 CTA）+ `raw.detail.content` 的 markdown 正文 + `showcases` 结构化头图（沿用 `chat-over-canvas` / `chat-thread` 宿主呈现模板）+ type 专属区块（plugin → 权限与命令开关，mcp → 凭证与 OAuth，bundle → 成员列表可逐个跳详情）。
 - **能力套装（bundle）**：恒无产物，`installed` / `enabled` / `needsUpdate` 全部由成员派生；卸载弹确认框列出将被卸载的成员并允许逐项取消勾选。
@@ -30,11 +37,14 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **macOS 启动骨架屏压住交通灯**：`AppBootLoadingView` 侧边栏顶部的骨架块正落在窗口左上角的红黄绿按钮下面（macOS 用 `hiddenInset` 标题栏，`trafficLightPosition` 为 x:16 y:20）。macOS 下改为只留等高占位、不画脉冲块；保留占位是为了下方条目不会上移到交通灯区域。Windows / Linux 不变。
 - **侧边栏会话相对时间 i18n**：会话列表 `timeLabel` 改为经 `useTranslation` 的 `t` 渲染（`project:sidebar.time.*`，插值用 `n` 避免 `count` 复数解析），并在列表 `useMemo` 中依赖 `i18n.language`，切换界面语言后时间文案立即更新；消息中心相对时间同步改为 `message:time.*` + `n`。
 - **侧边栏会话时间简写**：相对时间改为紧凑文案（zh：`5分`/`3时`/`2天`；en：`5m`/`3h`/`2d`），适配侧栏窄列。
 
 ### Changed
 
+- **`~/.vetta/auth.json` 的消费者换人**：内建 vetta MCP 改为远程 HTTP 服务后不再有本地子进程，这份下沉凭据的读方变成 coding-agent 的 `core/mcp/vetta-credentials.ts` 与 `publish-ability` skill 的上传脚本。文件形状与写入时机（登录 / 刷新 / 登出三处 `syncCredentialFile`）不变；消费者一律按需重读、不缓存，token 轮换后自动生效。
+- **`stage-system-skills` 放行 skill-presets 下的工程目录**：`test` / `node_modules` 不再被「内置 Skill 未在 manifest 注册」这条检查误伤。用白名单而不是放宽检查——真漏注册一个 skill 仍然必须炸。
 - **「让 Vetta 帮您配置」不再自动跳转对话页**：提交后在当前设置页后台创建会话并发送协助 prompt，侧栏高亮对应新会话；同时用一颗主色小球从 CTA 飞向该会话行作引导（`prefers-reduced-motion` 时跳过动效）。用户可自行点击侧栏会话进入聊天。
 - **设置 AI 协助飞球起点对齐弹窗提交**：小球在点击提交瞬间从弹窗内发送按钮位置出现并短暂停留，会话创建与侧栏刷新在后台进行，就绪后再飞向对应会话行；不再等 `openSession`/`sendMessage` 结束后才出球。
 - **设置 AI 协助弹窗与飞球动效**：提交后弹窗与会话创建解耦（截取起点后即关，可随时再开再关）；发送不绑定会话 busy/streaming，可连续发起多个协助会话（后台串行建会话+发消息）；飞球用 **GSAP** 单段二次抛物线 `MotionPath`（`M0,0 Q…`，弧高约 20% 路程 / 峰值约 72–148px，`ease: none`），侧栏目标短轮询/列表兜底。

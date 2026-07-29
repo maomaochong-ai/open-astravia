@@ -1,6 +1,20 @@
 ## [Unreleased]
 
+### Breaking Changes
+
+- **内建 vetta MCP 由本地 stdio 子进程改为远程 HTTP 服务**：`buildBuiltinMcpServers()` 现在返回 `McpHttpServerConfig`（指向服务端 `POST /api/v1/mcp`），签名由 `(entry?: string | null)` 改为 `(options?: BuildBuiltinMcpOptions)`，`resolveVettaMcpEntry` 与 `@vetta/vetta-mcp` 包一并删除。
+  - **动机**：工具清单原先写死在客户端，加一个工具就要发一次客户端版本。改远程后清单由服务端按调用者身份与客户端版本动态下发，客户端不需要知道有哪些工具。（顺带修掉了打包后内置工具整组静默消失的问题——打包产物里根本没有 `@vetta/vetta-mcp` 包，`require.resolve` 必然失败且不打日志。）
+  - **未登录时不再注册**：内置 MCP 是登录用户的增值服务，注册一个必然 401 的 server 只会让每次会话启动白连一次、等一次超时。登录后新开会话即可拿到。
+  - **`upload_ability` 从 MCP 移除**：它要读用户磁盘上的能力包，而远程服务摸不到本地文件系统。上传改由 `skill-presets/publish-ability/scripts/publish.mjs` 承担，由 agent 在本地执行。
+  - 启动超时从通用默认的 30s 收到 3s：内置服务不可用只该少一组工具，不该让每次新会话先干等半分钟。
+
 ### Added
+
+- **`McpHttpServerConfig.resolveHeaders`：按请求解析 HTTP header**（运行时字段，`mcp.json` 里不存在，只有代码构造的 server 会设）。`mcp-http-client.ts` 据此包一层自定义 `fetch` 传给 SDK transport。
+  - 解决的是一类通病而非个案：`headers` 在建立连接时被烘进 transport，凭据一轮换就持续 401 直到整个客户端重启。内建 MCP 用它每次请求重读 `~/.vetta/auth.json`；同一条链路对用户自装的第三方 HTTP MCP 同样可用。
+  - 解析器抛错不拖垮请求：凭据文件的瞬时读失败应表现为服务端的 401（调用方已有处理），而不是不透明的传输层崩溃。
+- **`core/mcp/vetta-credentials.ts`**：读取客户端下沉在 `~/.vetta/auth.json` 的登录态（原 `@vetta/vetta-mcp/credentials` 的职责）。每次调用都重读、不缓存——token 会轮换，缓存住就等于把过期凭据钉死在连接上。
+- **内建 MCP 携带 `X-Vetta-Client-Version` 头**：服务端据此决定下发哪些工具。必须每一版都带——老客户端不会补发这个头，闸门一旦漏发就永久失效。
 
 - **外部生态 Hook `SessionEnd` / `PostToolUseFailure` 宿主接线**：`newSession` / `switchSession` / `fork` 在切换会话 id 前 `await runSessionEnd`（Vetta cause：`new_session` / `switch_session` / `fork_session`）；`dispose` best-effort `runSessionEnd("dispose")`（同步捕获 session 元数据）。Claude wire `reason` 仅在 ecosystem-adapter Claude profile 映射。工具 wrapper 在真实 `execute` 抛错后触发 `PostToolUseFailure`（`error` / `is_interrupt` / `duration_ms`），Pre/Post 阻断不计入失败；失败 hook 的 `additionalContext` / exit 2 反馈可进入模型上下文或错误消息。
 - **外部生态 Hook `PermissionRequest` / `SubagentStart` / `SubagentStop` 宿主接线**：沙箱权限 UI 弹出前经 `ExtensionContext.requestEcosystemPermission` 跑 `PermissionRequest`（allow/deny 短路、否则回落用户 UI；会话 grant 缓存命中时不触发）。`SubagentCoordinator` 在子会话创建后首轮 prompt 前 `runSubagentStart`（可阻断 spawn、additionalContext 注入任务消息），正常结束可 `SubagentStop` 续跑（≤8 次），interrupt/failed 终态 best-effort `SubagentStop`（不续跑）。

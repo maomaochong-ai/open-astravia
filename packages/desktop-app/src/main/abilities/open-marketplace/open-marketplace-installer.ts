@@ -17,7 +17,12 @@ export interface OpenMarketplaceInstallerDependencies {
 		type: "skill" | "scene",
 		slug: string,
 		version: string,
-		metadata: { origin: GitHubMarketplaceOrigin; configVersion: number },
+		metadata: {
+			origin: GitHubMarketplaceOrigin;
+			configVersion: number;
+			catalogId: string;
+			slug: string;
+		},
 	) => void;
 	recordEvent: (input: {
 		name: string;
@@ -91,6 +96,8 @@ export async function installOpenMarketplaceAbility(
 		dependencies.recordInstall(ability.type, ability.slug, ability.version, {
 			origin,
 			configVersion: ability.configVersion,
+			catalogId: `github:${origin.sourceId ?? origin.repository}:${ability.type}:${ability.slug}`,
+			slug: ability.slug,
 		});
 		dependencies.recordEvent({
 			name: ability.slug,

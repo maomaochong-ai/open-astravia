@@ -3,7 +3,7 @@ import { cancelProactiveRefresh, scheduleProactiveRefresh } from "@shared/lib/to
 import {
 	authTokenAtom,
 	authUserAtom,
-	loginDialogOpenAtom,
+	loginPopoverOpenAtom,
 	remoteProvidersAtom,
 	sseClientAtom,
 	sseConnectionStateAtom,
@@ -19,7 +19,7 @@ const REFRESH_TOKEN_KEY = "vetta-refresh-token";
 export function useAuth() {
 	const [token, setToken] = useAtom(authTokenAtom);
 	const [user, setUser] = useAtom(authUserAtom);
-	const setLoginOpen = useSetAtom(loginDialogOpenAtom);
+	const setLoginOpen = useSetAtom(loginPopoverOpenAtom);
 	const setRemoteProviders = useSetAtom(remoteProvidersAtom);
 	const setSubscriptionStatus = useSetAtom(subscriptionStatusAtom);
 	const sseClient = useAtomValue(sseClientAtom);

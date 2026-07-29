@@ -9,13 +9,20 @@ import type { BuiltinMcpPreset } from "../settings/mcp/builtin-mcp-presets";
 
 export type AbilityScope = "discover" | "mine";
 
+export type AbilityCatalogSource =
+	| { kind: "builtin"; id: "builtin" }
+	| { kind: "local"; id: "local" }
+	| { kind: "server"; id: "server" }
+	| { kind: "github"; id: string; name: string; repository: string };
+
 /** 分组 key：无分类的条目归到这一组。 */
 export const ABILITY_CATEGORY_UNCATEGORIZED = "__uncategorized__";
 
 export interface AbilityBase {
-	/** `<type>:<slug>`，与服务端引用形式一致。 */
+	/** 来源感知的目录唯一标识；同 type + slug 可以跨来源并存。 */
 	id: string;
 	slug: string;
+	catalogSource: AbilityCatalogSource;
 	title: string;
 	description: string;
 	/** 已解析的图标值：空 / `solar:xxx` / 绝对 URL / `vetta-plugin://…`。 */
@@ -49,6 +56,10 @@ export interface AbilityBase {
 	/** 仅 GitHub 开源市场能力携带；服务端市场与本地能力为空。 */
 	origin?: GitHubMarketplaceOrigin;
 	market?: MarketAbility;
+	/** 同类型、同展示名或同 slug 的其它目录条目。 */
+	sameNameIds?: string[];
+	/** 已占用同一物理安装位置的其它来源条目；显式替换流程完成前禁止覆盖。 */
+	installConflictIds?: string[];
 	searchTerms: string[];
 }
 

@@ -6,8 +6,8 @@ export function createAbilitiesApi(ipc: IpcRenderer): Pick<DesktopApi, "abilitie
 	return {
 		abilities: {
 			getLedger: () => ipc.invoke("vetta:abilities:get-ledger"),
-			recordMcpInstall: (slug, version, metadata) =>
-				ipc.invoke("vetta:abilities:record-mcp-install", slug, version, metadata),
+			recordMcpInstall: (runtimeName, version, metadata) =>
+				ipc.invoke("vetta:abilities:record-mcp-install", runtimeName, version, metadata),
 			listOpenMarketplace: () => ipc.invoke("vetta:abilities:list-open-marketplace"),
 			refreshOpenMarketplace: () => ipc.invoke("vetta:abilities:refresh-open-marketplace"),
 			listOpenMarketplaces: () => ipc.invoke("vetta:abilities:list-open-marketplaces"),

@@ -12,7 +12,7 @@ export interface AuthUser {
 
 export const authTokenAtom = atom<string | null>(localStorage.getItem("vetta-auth-token"));
 export const authUserAtom = atom<AuthUser | null>(null);
-export const loginDialogOpenAtom = atom<boolean>(false);
+export const loginPopoverOpenAtom = atom<boolean>(false);
 
 // ─── Remote providers (from server) ───
 

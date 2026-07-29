@@ -3,11 +3,13 @@ import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import type {
+	AbilityInstallMetadata,
 	AbilityInstallOrigin,
 	AbilityLedger,
 	AbilityLedgerEntry,
 	AbilityLedgerType,
 } from "../../preload/api-types/abilities.js";
+import { ABILITY_LEDGER_SCHEMA_VERSION, migrateAbilityLedgerConfig } from "./ability-ledger-migrations.js";
 
 /**
  * 能力安装台账（ADR-0049）。
@@ -31,8 +33,13 @@ const mcpConfigPath = join(getVettaHomePath(), "agent", "mcp.json");
 
 const LEDGER_TYPES = new Set<string>(["skill", "scene", "plugin", "mcp"]);
 
-function buildAbilityLedgerKey(type: AbilityLedgerType, slug: string): string {
-	return `${type}:${slug}`;
+interface PersistedAbilityLedger {
+	schemaVersion: typeof ABILITY_LEDGER_SCHEMA_VERSION;
+	entries: AbilityLedger;
+}
+
+function buildAbilityLedgerKey(type: AbilityLedgerType, physicalName: string): string {
+	return `${type}:${physicalName}`;
 }
 
 function parseAbilityLedgerKey(key: string): { type: AbilityLedgerType; slug: string } | null {
@@ -72,27 +79,46 @@ function parseEntry(value: unknown): AbilityLedgerEntry | null {
 		typeof entry.configVersion === "number" && Number.isInteger(entry.configVersion) && entry.configVersion > 0
 			? entry.configVersion
 			: undefined;
+	const catalogId = typeof entry.catalogId === "string" && entry.catalogId.trim() ? entry.catalogId : undefined;
+	const slug = typeof entry.slug === "string" && entry.slug.trim() ? entry.slug : undefined;
+	const runtimeName =
+		typeof entry.runtimeName === "string" && entry.runtimeName.trim() ? entry.runtimeName : undefined;
 	return {
 		version: entry.version,
 		installedAt: entry.installedAt,
 		...(origin ? { origin } : {}),
 		...(configVersion ? { configVersion } : {}),
+		...(catalogId ? { catalogId } : {}),
+		...(slug ? { slug } : {}),
+		...(runtimeName ? { runtimeName } : {}),
 	};
 }
 
-/** 原样读盘（不做漂移剔除），只丢弃结构非法的键值。 */
+function normalizeLedgerConfig(value: unknown): PersistedAbilityLedger {
+	const record =
+		value != null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+	const rawEntries =
+		record.entries != null && typeof record.entries === "object" && !Array.isArray(record.entries)
+			? (record.entries as Record<string, unknown>)
+			: {};
+	const entries: AbilityLedger = {};
+	for (const [key, rawEntry] of Object.entries(rawEntries)) {
+		if (!parseAbilityLedgerKey(key)) continue;
+		const entry = parseEntry(rawEntry);
+		if (entry) entries[key] = entry;
+	}
+	return { schemaVersion: ABILITY_LEDGER_SCHEMA_VERSION, entries };
+}
+
+/** 原样读盘（不做漂移剔除），并把旧版扁平台账迁移为带 schemaVersion 的配置。 */
 function readLedgerFile(): AbilityLedger {
 	if (!existsSync(ledgerPath)) return {};
 	try {
 		const parsed: unknown = JSON.parse(readFileSync(ledgerPath, "utf-8"));
-		if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
-		const ledger: AbilityLedger = {};
-		for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-			if (!parseAbilityLedgerKey(key)) continue;
-			const entry = parseEntry(value);
-			if (entry) ledger[key] = entry;
-		}
-		return ledger;
+		const migration = migrateAbilityLedgerConfig(parsed);
+		const config = normalizeLedgerConfig(migration.config);
+		if (migration.migrated) atomicWriteJSON(ledgerPath, config);
+		return config.entries;
 	} catch {
 		// 台账损坏时按空台账处理：下一次安装会重新写出（与 skills-manifest / plugins-manifest 同惯例）。
 		return {};
@@ -100,7 +126,10 @@ function readLedgerFile(): AbilityLedger {
 }
 
 function writeLedgerFile(ledger: AbilityLedger): void {
-	atomicWriteJSON(ledgerPath, ledger);
+	atomicWriteJSON(ledgerPath, {
+		schemaVersion: ABILITY_LEDGER_SCHEMA_VERSION,
+		entries: ledger,
+	} satisfies PersistedAbilityLedger);
 }
 
 /**
@@ -162,15 +191,15 @@ export function readAbilityLedger(): AbilityLedger {
  */
 export function recordAbilityInstall(
 	type: AbilityLedgerType,
-	slug: string,
+	physicalName: string,
 	version: string,
-	metadata?: { origin?: AbilityInstallOrigin; configVersion?: number },
+	metadata?: AbilityInstallMetadata,
 ): void {
-	if (!slug.trim() || !version.trim()) {
-		throw new Error(`Invalid ability ledger entry: ${type}:${slug}@${version}`);
+	if (!physicalName.trim() || !version.trim()) {
+		throw new Error(`Invalid ability ledger entry: ${type}:${physicalName}@${version}`);
 	}
 	const ledger = readLedgerFile();
-	const key = buildAbilityLedgerKey(type, slug);
+	const key = buildAbilityLedgerKey(type, physicalName);
 	const previous = ledger[key];
 	const configVersion = metadata?.configVersion ?? previous?.configVersion;
 	ledger[key] = {
@@ -178,6 +207,11 @@ export function recordAbilityInstall(
 		installedAt: previous?.installedAt ?? new Date().toISOString(),
 		origin: metadata?.origin ?? previous?.origin ?? { kind: "server" },
 		...(configVersion ? { configVersion } : {}),
+		...((metadata?.catalogId ?? previous?.catalogId)
+			? { catalogId: metadata?.catalogId ?? previous?.catalogId }
+			: {}),
+		...((metadata?.slug ?? previous?.slug) ? { slug: metadata?.slug ?? previous?.slug } : {}),
+		...(type === "mcp" ? { runtimeName: metadata?.runtimeName ?? previous?.runtimeName ?? physicalName } : {}),
 	};
 	writeLedgerFile(ledger);
 }
