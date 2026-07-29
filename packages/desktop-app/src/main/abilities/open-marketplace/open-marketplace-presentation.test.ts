@@ -51,7 +51,23 @@ describe("loadOpenMarketplacePresentation", () => {
 						type: "feature-grid",
 						items: [{ title: "Fast", description: "Local first", icon: "assets/icon.svg" }],
 					},
+					{
+						type: "steps",
+						title: "Install",
+						items: [{ title: "Choose ability", description: "Review its configuration" }],
+					},
+					{
+						type: "showcase",
+						showcase: {
+							template: "chat-over-canvas",
+							canvas: "code",
+							user_prompt: "Review this change",
+							assistant_reply: "I will inspect the diff first.",
+						},
+					},
 					{ type: "image", src: "assets/icon.svg", alt: "Demo" },
+					{ type: "callout", tone: "warning", title: "Permission", content: "Use least privilege." },
+					{ type: "markdown", content: "## Usage\n\nAsk a concrete question." },
 					{ type: "links", items: [{ label: "Docs", href: "https://example.com/docs" }] },
 				],
 			}),
@@ -78,10 +94,20 @@ describe("loadOpenMarketplacePresentation", () => {
 		const presentation = loadOpenMarketplacePresentation(root, ability, "2026.07.8");
 
 		expect(presentation?.icon).toMatch(/^vetta-file:\/\/local\/.+\?v=2026\.07\.8$/);
-		expect(presentation?.detail.blocks).toHaveLength(3);
+		expect(presentation?.detail.blocks).toHaveLength(7);
 		expect(presentation?.detail.blocks?.[0]).toMatchObject({
 			type: "feature-grid",
 			items: [{ icon: expect.stringContaining("vetta-file://local/") }],
+		});
+		expect(presentation?.detail.blocks?.[2]).toMatchObject({
+			type: "showcase",
+			showcase: { template: "chat-over-canvas", canvas: "code" },
+		});
+		expect(presentation?.detail.blocks?.[4]).toEqual({
+			type: "callout",
+			tone: "warning",
+			title: "Permission",
+			content: "Use least privilege.",
 		});
 		expect(presentation?.detail.i18n?.["zh-CN"]?.content).toBe("# 中文详情");
 		expect(presentation?.detail.meta).toEqual([{ key: "docs", value: "https://example.com/docs" }]);

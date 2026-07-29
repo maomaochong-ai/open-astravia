@@ -9,7 +9,6 @@ import { AbilityDetailHeader } from "./AbilityDetailHeader";
 import { AbilityMarkdownBody } from "./AbilityMarkdownBody";
 import { AbilityMetaList } from "./AbilityMetaList";
 import { AbilityShowcaseList } from "./AbilityShowcaseList";
-import { AbilitySourceSection } from "./AbilitySourceSection";
 import { BundleInstallDialog } from "./BundleInstallDialog";
 import { BundleMembersSection } from "./BundleMembersSection";
 import { BundleUninstallDialog } from "./BundleUninstallDialog";
@@ -133,10 +132,6 @@ export function AbilityDetailView({
 				/>
 			</AbilityDetailEnter>
 
-			<AbilityDetailEnter index={1}>
-				<AbilitySourceSection item={item} model={model} />
-			</AbilityDetailEnter>
-
 			{model.detailErrors.length > 0 ? (
 				<div className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] text-muted-foreground/70">
 					{t("error.partial", { error: model.detailErrors.join(" / ") })}
@@ -144,18 +139,18 @@ export function AbilityDetailView({
 			) : null}
 
 			{detail.blocks.length > 0 ? (
-				<AbilityDetailEnter index={2}>
+				<AbilityDetailEnter index={1}>
 					<AbilityDetailBlocks blocks={detail.blocks} abilityType={item.type} />
 				</AbilityDetailEnter>
 			) : (
 				<>
 					{detail.showcases.length > 0 ? (
-						<AbilityDetailEnter index={2}>
+						<AbilityDetailEnter index={1}>
 							<AbilityShowcaseList showcases={detail.showcases} />
 						</AbilityDetailEnter>
 					) : null}
 
-					<AbilityDetailEnter index={3}>
+					<AbilityDetailEnter index={2}>
 						{detail.content ? (
 							<AbilityMarkdownBody content={detail.content} />
 						) : (
@@ -167,15 +162,15 @@ export function AbilityDetailView({
 
 			{/* 页尾附属信息：与正文之间只用一条分隔线 */}
 			<div className="mt-1 flex flex-col gap-6 border-t border-border/50 pt-6">
-				<AbilityDetailEnter index={4}>
+				<AbilityDetailEnter index={3}>
 					{item.type === "plugin" ? <PluginAbilitySection item={item} model={model} /> : null}
 					{item.type === "mcp" ? <McpAbilitySection item={item} model={model} /> : null}
 					{item.type === "bundle" ? <BundleMembersSection item={item} /> : null}
 				</AbilityDetailEnter>
 
 				{/* 元信息表固定在页尾 */}
-				<AbilityDetailEnter index={5}>
-					<AbilityMetaList meta={detail.meta} />
+				<AbilityDetailEnter index={4}>
+					<AbilityMetaList meta={detail.meta} item={item} model={model} />
 				</AbilityDetailEnter>
 			</div>
 

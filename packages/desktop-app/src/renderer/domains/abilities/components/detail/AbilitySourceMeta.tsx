@@ -2,66 +2,69 @@ import { useNavigate } from "@tanstack/react-router";
 import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useAbilityText } from "../../hooks/useAbilityText";
-import type { AbilitiesModel, AbilityCatalogSource, AbilityItem } from "../../types";
+import { resolveAbilitySourcePresentation } from "../../lib/ability-source-presentation";
+import type { AbilitiesModel, AbilityItem } from "../../types";
 import { AbilityIcon } from "../AbilityIcon";
 
-function sourceName(source: AbilityCatalogSource, t: TFunction<"abilities">): string {
-	switch (source.kind) {
-		case "builtin":
-			return t("detail.source.builtin");
-		case "local":
-			return t("detail.source.local");
-		case "server":
-			return t("detail.source.server");
-		case "github":
-			return source.name;
-	}
+function sourceName(item: AbilityItem, t: TFunction<"abilities">): string {
+	const source = resolveAbilitySourcePresentation(item.catalogSource);
+	return "name" in source ? source.name : t(source.nameKey);
 }
 
-export function AbilitySourceSection({
+/** 来源作为 Meta 的最后一行展示；GitHub 仓库链接与来源名收在同一个值区域。 */
+export function AbilitySourceMetaRow({ item }: { item: AbilityItem }): JSX.Element {
+	const { t } = useTranslation("abilities");
+	const source = resolveAbilitySourcePresentation(item.catalogSource);
+
+	return (
+		<div className="flex items-start gap-3">
+			<dt className="w-20 shrink-0 text-muted-foreground/50">{t("detail.source.title")}</dt>
+			<dd className="min-w-0 flex-1 text-muted-foreground">
+				<span className="block text-foreground/80">{"name" in source ? source.name : t(source.nameKey)}</span>
+				{source.repository ? (
+					<a
+						href={source.repository}
+						target="_blank"
+						rel="noreferrer"
+						className="mt-1 inline-flex max-w-full items-center gap-1 break-all text-primary underline-offset-2 hover:underline"
+					>
+						{source.repository}
+						<span className="icon-[solar--arrow-right-up-linear] h-3 w-3 shrink-0" />
+					</a>
+				) : null}
+			</dd>
+		</div>
+	);
+}
+
+/** 保留来源冲突和同名能力切换，但与来源元信息一起下沉到页尾。 */
+export function AbilitySourceRelations({
 	item,
 	model,
 }: {
 	item: AbilityItem;
 	model: AbilitiesModel;
-}): JSX.Element {
+}): JSX.Element | null {
 	const { t } = useTranslation("abilities");
 	const navigate = useNavigate();
 	const resolveText = useAbilityText();
 	const sameNameItems = (item.sameNameIds ?? [])
 		.map((id) => model.findById(id))
 		.filter((candidate): candidate is AbilityItem => candidate !== null);
+	const hasConflict = Boolean(item.installConflictIds?.length);
+
+	if (!hasConflict && sameNameItems.length === 0) return null;
 
 	return (
-		<section className="flex flex-col gap-3 rounded-xl border border-border/50 bg-card/30 p-4">
-			<div>
-				<h2 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/60">
-					{t("detail.source.title")}
-				</h2>
-				<p className="mt-1 text-[13px] font-medium text-foreground">
-					{sourceName(item.catalogSource, t)}
-				</p>
-				{item.catalogSource.kind === "github" ? (
-					<a
-						href={item.catalogSource.repository}
-						target="_blank"
-						rel="noreferrer"
-						className="mt-1 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
-					>
-						{item.catalogSource.repository}
-						<span className="icon-[solar--arrow-right-up-linear] h-3 w-3" />
-					</a>
-				) : null}
-			</div>
-
-			{item.installConflictIds?.length ? (
+		<div className="mt-3 flex flex-col gap-3 border-t border-border/50 pt-3">
+			{hasConflict ? (
 				<p className="rounded-lg bg-amber-500/15 px-3 py-2 text-[11px] text-amber-400">
 					{t("detail.source.installConflict")}
 				</p>
 			) : null}
 
 			{sameNameItems.length > 0 ? (
-				<div className="border-t border-border/50 pt-3">
+				<div>
 					<h3 className="text-[11px] font-medium text-muted-foreground/70">
 						{t("detail.source.sameNameTitle", { count: sameNameItems.length })}
 					</h3>
@@ -91,7 +94,7 @@ export function AbilitySourceSection({
 												{text.title}
 											</span>
 											<span className="block truncate text-[10px] text-muted-foreground/60">
-												{sourceName(candidate.catalogSource, t)}
+												{sourceName(candidate, t)}
 											</span>
 										</span>
 										<span className="icon-[solar--alt-arrow-right-linear] h-3.5 w-3.5 text-muted-foreground/50" />
@@ -102,6 +105,6 @@ export function AbilitySourceSection({
 					</ul>
 				</div>
 			) : null}
-		</section>
+		</div>
 	);
 }
