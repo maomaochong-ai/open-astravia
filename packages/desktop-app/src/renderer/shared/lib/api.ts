@@ -375,6 +375,32 @@ export interface AbilityShowcase {
 	brand_name?: string;
 }
 
+export interface AbilityFeatureItem {
+	title: string;
+	description: string;
+	icon?: string;
+}
+
+export interface AbilityStepItem {
+	title: string;
+	description?: string;
+}
+
+export interface AbilityLinkItem {
+	label: string;
+	href: string;
+}
+
+/** 仓库只能声明宿主支持的区块，不能注入 HTML、脚本、样式或任意操作。 */
+export type AbilityDetailBlock =
+	| { type: "feature-grid"; title?: string; items: AbilityFeatureItem[] }
+	| { type: "steps"; title?: string; items: AbilityStepItem[] }
+	| { type: "showcase"; showcase: AbilityShowcase }
+	| { type: "image"; src: string; alt?: string; caption?: string }
+	| { type: "callout"; tone: "info" | "success" | "warning"; title?: string; content: string }
+	| { type: "markdown"; content: string }
+	| { type: "links"; title?: string; items: AbilityLinkItem[] };
+
 /** 预置元信息键，label 由客户端按 locale 解析。 */
 export type AbilityMetaKey = "homepage" | "repository" | "docs" | "license";
 
@@ -398,6 +424,7 @@ export interface AbilityDetailLocale {
 	content?: string;
 	showcases?: AbilityShowcase[];
 	meta?: AbilityMetaEntry[];
+	blocks?: AbilityDetailBlock[];
 }
 
 /**
@@ -418,6 +445,8 @@ export interface AbilityDetail {
 	meta?: AbilityMetaEntry[];
 	/** markdown 正文。 */
 	content?: string;
+	/** 宿主白名单渲染的结构化详情；存在时优先于旧的 showcases + content。 */
+	blocks?: AbilityDetailBlock[];
 	i18n?: Record<string, AbilityDetailLocale>;
 }
 
@@ -432,8 +461,10 @@ export interface MarketAbility {
 	author: string;
 	/** 四态：空=默认 / solar:xxx-bold / http(s) 外链 / 已解析的绝对图 URL */
 	icon: string;
-	/** 分类名（服务端已 resolve），未分类为空串。 */
+	/** 分类的规范名（服务端已 resolve），未分类为空串。分组与筛选都用它，不随界面语言变。 */
 	category: string;
+	/** 分类译名，取 `category_i18n[locale] ?? category` 得到展示名；无译名时字段缺省。 */
+	category_i18n?: Record<string, string>;
 	tags: string[];
 	/** 产物摘要，安装前校验；mcp / bundle 恒为空。 */
 	sha256: string;

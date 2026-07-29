@@ -40,21 +40,36 @@ the built-in `vetta` MCP server. It is always available and needs no setup.
    install. Write what the ability does, when to use it, and any setup it needs. A one-line
    `content` is not acceptable.
 
-3. **Write the payload to a JSON file**, then pass it with `--input`. Never try to pass fields as
+3. **Read the available categories before you set one.** `category` is matched by **name** —
+   a name that matches nothing is not an error, it silently lands in "uncategorised". So never
+   invent one:
+
+   ```bash
+   node "$SKILL_DIR/scripts/categories.mjs"          # human-readable
+   node "$SKILL_DIR/scripts/categories.mjs" --json   # machine-readable
+   ```
+
+   Put the `name` field verbatim into the payload's `category`. The `i18n` values are display
+   translations only — matching accepts them, but the canonical name is what you should write.
+   Omit `category` entirely if nothing fits.
+
+4. **Write the payload to a JSON file**, then pass it with `--input`. Never try to pass fields as
    command-line arguments: `content` is multi-line markdown containing backticks, quotes and `$`,
    and the shell will mangle it.
 
    Full field reference: [references/payload.md](references/payload.md) — read it when you need
-   anything beyond the four required `detail` fields.
+   anything beyond the four required `detail` fields. It is also where the **valid icon names**
+   and the meaning of each `showcase.canvas` value are listed; both are closed sets, and a wrong
+   value either fails validation or renders as a fallback.
 
-4. **Dry-run first** when the payload is non-trivial. This runs the same validation without
+5. **Dry-run first** when the payload is non-trivial. This runs the same validation without
    submitting, so you spend no network round-trip on a payload that was never going to pass:
 
    ```bash
    node "$SKILL_DIR/scripts/publish.mjs" --input payload.json --dry-run
    ```
 
-5. **Submit.** On failure the script returns *all* problems at once — fix the whole list before
+6. **Submit.** On failure the script returns *all* problems at once — fix the whole list before
    retrying rather than resubmitting after each single fix.
 
 ## Script contract

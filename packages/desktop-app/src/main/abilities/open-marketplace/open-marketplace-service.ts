@@ -10,9 +10,10 @@ import type {
 } from "../../../preload/api-types/abilities.js";
 import { getApplicationCacheService } from "../../cache/application-cache-service.js";
 import { isAppVersionCompatible, isValidAppVersion } from "./marketplace-compatibility.js";
-import { type MarketplaceManifest, parseMarketplaceManifest } from "./marketplace-schema.js";
+import { type MarketplaceManifest, marketplaceDetailSchema, parseMarketplaceManifest } from "./marketplace-schema.js";
 import { validateOpenMarketplaceMcp } from "./open-marketplace-mcp.js";
 import { validateOpenMarketplacePlugin } from "./open-marketplace-plugin.js";
+import { loadOpenMarketplacePresentation } from "./open-marketplace-presentation.js";
 import { validateSkillPackage } from "./skill-package.js";
 
 export const DEFAULT_MARKETPLACE_SOURCE_ID = "vetta-official";
@@ -328,17 +329,31 @@ export class OpenMarketplaceService {
 
 	private validateAbilityPackages(marketplaceRoot: string, manifest: MarketplaceManifest): void {
 		for (const ability of manifest.abilities) {
-			if (ability.type === "bundle") continue;
-			const sourceDir = resolve(marketplaceRoot, ability.source.path);
+			const source = ability.source;
+			if (!source) continue;
+			const sourceDir = resolve(marketplaceRoot, source.path);
 			if (!isContained(marketplaceRoot, sourceDir)) {
-				throw new Error(`Unsafe ability source: ${ability.source.path}`);
+				throw new Error(`Unsafe ability source: ${source.path}`);
 			}
 			if (ability.type === "mcp") {
 				ability.config = validateOpenMarketplaceMcp(sourceDir, ability);
 			} else if (ability.type === "plugin") {
 				ability.config = validateOpenMarketplacePlugin(sourceDir, ability);
-			} else {
+			} else if (ability.type !== "bundle") {
 				validateSkillPackage(sourceDir, ability);
+			}
+			const presentation = loadOpenMarketplacePresentation(sourceDir, ability, manifest.marketplaceVersion);
+			if (presentation) {
+				ability.icon = presentation.icon ?? ability.icon;
+				ability.detail = marketplaceDetailSchema.parse({
+					...ability.detail,
+					...presentation.detail,
+					icon: presentation.icon ?? ability.detail.icon,
+					i18n: {
+						...(ability.detail.i18n ?? {}),
+						...(presentation.detail.i18n ?? {}),
+					},
+				});
 			}
 		}
 	}

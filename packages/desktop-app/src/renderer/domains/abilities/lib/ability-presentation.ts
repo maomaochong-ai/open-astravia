@@ -2,7 +2,13 @@
  * 呈现期常量与解析：图标三态判定、type 的图标 class、详情文案的 locale 覆盖。
  * 模块级常量只存 i18n key / icon class，中文一律在渲染期由 t() 解析。
  */
-import type { AbilityDetail, AbilityMetaEntry, AbilityShowcase, AbilityType } from "@shared/lib/api";
+import type {
+	AbilityDetail,
+	AbilityDetailBlock,
+	AbilityMetaEntry,
+	AbilityShowcase,
+	AbilityType,
+} from "@shared/lib/api";
 
 /** type → 卡片角标图标 class（写在 TS 中便于 UnoCSS 扫描）。 */
 export const ABILITY_TYPE_ICON: Record<AbilityType, string> = {
@@ -35,10 +41,26 @@ export function isIconifyIcon(icon: string | undefined): boolean {
 	return Boolean(icon?.trim().startsWith("solar:"));
 }
 
+/**
+ * 分类展示名：`i18n[locale] ?? 规范名`，与 `raw.detail` 的取值口径一致。
+ *
+ * 规范名（服务端 `AbilityCategory.Name`）同时是分组与筛选的 key，不参与翻译；
+ * 界面上看到的永远是这里解析出来的展示名。
+ */
+export function resolveCategoryLabel(
+	category: string,
+	i18n: Record<string, string> | undefined,
+	locale: string,
+): string {
+	return i18n?.[locale]?.trim() || category;
+}
+
 export interface AbilityDetailContent {
 	/** markdown 正文；可能为空。 */
 	content: string;
 	showcases: AbilityShowcase[];
+	/** 宿主白名单渲染的结构化详情区块。 */
+	blocks: AbilityDetailBlock[];
 	/** 元信息条目，按运营排定的顺序。 */
 	meta: AbilityMetaEntry[];
 	/** 当前 locale 下的展示名 / 简介；detail 未提供时为 undefined，由调用方回落条目自身字段。 */
@@ -57,6 +79,7 @@ export function resolveAbilityDetailContent(detail: AbilityDetail | undefined, l
 	return {
 		content: override?.content ?? base.content ?? "",
 		showcases: override?.showcases ?? base.showcases ?? [],
+		blocks: override?.blocks ?? base.blocks ?? [],
 		meta: override?.meta ?? base.meta ?? [],
 		name: override?.name ?? base.name,
 		description: override?.description ?? base.description,

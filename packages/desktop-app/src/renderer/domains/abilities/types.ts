@@ -27,8 +27,10 @@ export interface AbilityBase {
 	description: string;
 	/** 已解析的图标值：空 / `solar:xxx` / 绝对 URL / `vetta-plugin://…`。 */
 	icon?: string;
-	/** 分类名；未分类为空串。 */
+	/** 分类的规范名；未分类为空串。它是分组与筛选的 key，展示名另见 `categoryI18n`。 */
 	category: string;
+	/** 分类译名，展示时取 `categoryI18n[locale] ?? category`；仅市场条目带。 */
+	categoryI18n?: Record<string, string>;
 	tags: string[];
 	author: string;
 	license: string;
@@ -104,7 +106,10 @@ export type AbilityItem = SkillAbility | McpAbility | PluginAbility | BundleAbil
 
 /** 列表分组：按能力分类聚合，`category` 为 `ABILITY_CATEGORY_UNCATEGORIZED` 时表示未分类。 */
 export interface AbilityGroup {
+	/** 规范名（或 `ABILITY_CATEGORY_UNCATEGORIZED`），分组 key。 */
 	category: string;
+	/** 该分类的译名块，渲染分组标题时按 locale 取。 */
+	categoryI18n?: Record<string, string>;
 	items: AbilityItem[];
 }
 
@@ -135,6 +140,8 @@ export interface AbilitiesModel {
 	loading: boolean;
 	refreshing: boolean;
 	errors: string[];
+	/** 详情页只展示当前操作错误，不继承列表级来源加载错误。 */
+	detailErrors: string[];
 	importing: boolean;
 	mcp: McpSettingsModel;
 	findById: (id: string) => AbilityItem | null;

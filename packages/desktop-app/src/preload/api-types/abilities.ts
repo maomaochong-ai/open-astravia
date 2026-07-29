@@ -59,12 +59,38 @@ export interface OpenMarketplaceShowcase {
 	brand_name?: string;
 }
 
+export interface OpenMarketplaceFeatureItem {
+	title: string;
+	description: string;
+	icon?: string;
+}
+
+export interface OpenMarketplaceStepItem {
+	title: string;
+	description?: string;
+}
+
+export interface OpenMarketplaceLinkItem {
+	label: string;
+	href: string;
+}
+
+export type OpenMarketplaceDetailBlock =
+	| { type: "feature-grid"; title?: string; items: OpenMarketplaceFeatureItem[] }
+	| { type: "steps"; title?: string; items: OpenMarketplaceStepItem[] }
+	| { type: "showcase"; showcase: OpenMarketplaceShowcase }
+	| { type: "image"; src: string; alt?: string; caption?: string }
+	| { type: "callout"; tone: "info" | "success" | "warning"; title?: string; content: string }
+	| { type: "markdown"; content: string }
+	| { type: "links"; title?: string; items: OpenMarketplaceLinkItem[] };
+
 export interface OpenMarketplaceDetailLocale {
 	name?: string;
 	description?: string;
 	content?: string;
 	showcases?: OpenMarketplaceShowcase[];
 	meta?: OpenMarketplaceMetaEntry[];
+	blocks?: OpenMarketplaceDetailBlock[];
 }
 
 export interface OpenMarketplaceDetail extends OpenMarketplaceDetailLocale {

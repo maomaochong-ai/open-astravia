@@ -18,6 +18,47 @@ export const ARTIFACT_TYPES = ["skill", "scene", "plugin"];
 const SHOWCASE_TEMPLATES = new Set(["chat-over-canvas", "chat-thread"]);
 /** chat-over-canvas 的画布母题白名单。 */
 const CANVAS_MOTIFS = new Set(["design", "code", "docs", "generic"]);
+/**
+ * 宿主真正能渲染的 Solar 图标。
+ *
+ * 与 `packages/theme-ui/src/skills/skill-icon.tsx` 的 SOLAR_SKILL_ICON_CLASS 一一对应：
+ * 客户端用 Tailwind + @iconify/tailwind4，图标 class 必须在构建期被扫到，
+ * 所以只有这份字面量名单里的图标有对应 CSS，**其余 solar:* 会静默回落成默认图标**。
+ * 服务端只校验前缀，不认这份名单——所以拦在这里，否则就是「传成功了但图标不显示」。
+ */
+const SOLAR_ICONS = new Set([
+	"solar:star-bold",
+	"solar:magic-stick-3-bold",
+	"solar:bolt-bold",
+	"solar:fire-bold",
+	"solar:heart-bold",
+	"solar:cup-star-bold",
+	"solar:code-bold",
+	"solar:widget-2-bold",
+	"solar:layers-bold",
+	"solar:cpu-bolt-bold",
+	"solar:database-bold",
+	"solar:cloud-bold",
+	"solar:server-bold",
+	"solar:shield-bold",
+	"solar:lock-keyhole-bold",
+	"solar:key-bold",
+	"solar:chat-round-bold",
+	"solar:letter-bold",
+	"solar:document-bold",
+	"solar:folder-bold",
+	"solar:gallery-bold",
+	"solar:camera-bold",
+	"solar:videocamera-record-bold",
+	"solar:music-note-bold",
+	"solar:chart-2-bold",
+	"solar:graph-up-bold",
+	"solar:map-point-bold",
+	"solar:global-bold",
+	"solar:rocket-2-bold",
+	"solar:lightbulb-bolt-bold",
+]);
+
 /** meta 预置键白名单，与服务端 abilityMetaKeys 保持一致。 */
 const META_KEYS = new Set(["homepage", "repository", "docs", "license"]);
 /** slug / version 会拼进对象存储 key，白名单防路径注入。 */
@@ -27,13 +68,20 @@ function isBlank(value) {
 	return typeof value !== "string" || value.trim() === "";
 }
 
-/** 校验图标三态：空 / solar:xxx-bold / http(s):// */
+/** 校验图标三态：空 / 白名单内的 solar 图标 / http(s):// */
 function validateIcon(icon, errors) {
 	if (icon === undefined || icon === null || String(icon).trim() === "") return;
 	const trimmed = String(icon).trim();
-	if (trimmed.startsWith("solar:")) return;
 	if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return;
-	errors.push(`detail.icon 非法：${trimmed}。只能是空、solar:xxx-bold 形式的 Iconify 图标，或 http(s):// 外链`);
+	if (SOLAR_ICONS.has(trimmed)) return;
+	if (trimmed.startsWith("solar:")) {
+		errors.push(
+			`detail.icon 不在宿主内置的 Solar 图标名单内：${trimmed}。` +
+				`服务端会收下它，但客户端渲染不出来、会回落成默认图标。可选值：${[...SOLAR_ICONS].join(" / ")}`,
+		);
+		return;
+	}
+	errors.push(`detail.icon 非法：${trimmed}。只能是空、内置 Solar 图标名，或 http(s):// 外链`);
 }
 
 function validateShowcases(showcases, path, errors) {

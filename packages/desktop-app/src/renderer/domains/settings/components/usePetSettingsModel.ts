@@ -54,11 +54,23 @@ export function usePetSettingsModel(): PetSettingsModel {
 	const [bubbleStyleAssets, setBubbleStyleAssets] = useState<PetBubbleStyleAsset[]>([]);
 
 	useEffect(() => {
-		void window.vetta.pet.getConfig().then(setConfig);
+		let disposed = false;
+		let receivedConfigEvent = false;
+		const unsubscribe = window.vetta.pet.onConfigChanged((next) => {
+			receivedConfigEvent = true;
+			if (!disposed) setConfig(next);
+		});
+		void window.vetta.pet.getConfig().then((next) => {
+			if (!disposed && !receivedConfigEvent) setConfig(next);
+		});
 		void window.vetta.pet.getDecorations().then(setDecorations);
 		void window.vetta.pet.getBubbleStyleAssets().then((next) => {
 			setBubbleStyleAssets(next);
 		});
+		return () => {
+			disposed = true;
+			unsubscribe();
+		};
 	}, []);
 
 	const persist = useCallback(async (patch: Partial<PetConfig>) => {

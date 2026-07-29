@@ -27,6 +27,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件详情展示内聚的 MCP 与技能**：插件详情页新增「本插件提供」区块，列出该插件经 `agent.mcpServers` / `agent.skillPaths` 自带的 MCP server 与 skill（名称 + 简介），未安装时同样可见。数据来自服务端上传时对 zip 的解析；仅本地安装且用内联 server map 声明的插件从 manifest 兜底取名。
 - **插件条目的名称/描述走 NLS catalog 解析**：`plugin.json` 的 `name` / `description` 可以是 `%key%` 占位符（ADR-0033），能力卡片与详情页统一经插件自带 catalog 解析后再展示，不再直接渲染原始占位符；未安装的市场条目没有本地 catalog，由服务端在上传时解析好下发。
 - **GitHub 开源能力市场**：能力页支持从环境变量配置的 GitHub 仓库整库同步 skill / scene / plugin / bundle，并以校验后的本地快照提供离线回退与安装；Plugin 配置从包内 `plugin.json` 派生并复用现有安全安装链路，Bundle 复用客户端成员批量安装逻辑；新增持久化多来源管理、来源级失败隔离、配置指纹缓存和确定性冲突策略，已安装能力锁定原来源；搜索、筛选与分页全部基于下载后的本地目录执行，不向 GitHub 发分页请求；单一 `marketplace.json` 强制声明 `minAppVersion`，不兼容的新内容不会覆盖旧的可用快照。
+- **开源能力自带展示资源**：GitHub 能力目录可通过 `ability.json` 提供本地图标、Markdown 详情或宿主白名单 Rich Blocks，并支持按 locale 选择详情文件和 Markdown 回退；本地图片路径限定在能力目录内并随市场版本缓存。市场索引继续只承担列表元信息，仓库内容不能注入 HTML、脚本、CSS 或安全相关操作。
 
 ### Removed
 
@@ -37,11 +38,16 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **能力市场可用时仍显示 `Failed to fetch`**：服务端、GitHub 与本地来源改为独立判定；单个来源失败但其它市场来源或旧缓存可用时静默降级，不再把浏览器原始网络异常暴露给用户。详情 Drawer 只显示当前安装或配置操作错误，不再重复列表级来源错误。
 - **macOS 启动骨架屏压住交通灯**：`AppBootLoadingView` 侧边栏顶部的骨架块正落在窗口左上角的红黄绿按钮下面（macOS 用 `hiddenInset` 标题栏，`trafficLightPosition` 为 x:16 y:20）。macOS 下改为只留等高占位、不画脉冲块；保留占位是为了下方条目不会上移到交通灯区域。Windows / Linux 不变。
 - **侧边栏会话相对时间 i18n**：会话列表 `timeLabel` 改为经 `useTranslation` 的 `t` 渲染（`project:sidebar.time.*`，插值用 `n` 避免 `count` 复数解析），并在列表 `useMemo` 中依赖 `i18n.language`，切换界面语言后时间文案立即更新；消息中心相对时间同步改为 `message:time.*` + `n`。
 - **侧边栏会话时间简写**：相对时间改为紧凑文案（zh：`5分`/`3时`/`2天`；en：`5m`/`3h`/`2d`），适配侧栏窄列。
 
 ### Changed
+
+- **能力市场的分类分组标题按界面语言显示**：服务端随每个市场条目下发 `category_i18n`，分组标题取 `category_i18n[locale] ?? category`（`resolveCategoryLabel`，与 `raw.detail` 的取值口径一致）。分组与筛选仍按分类的**规范名**，所以切换语言只换标题文案，不改分组划分、也不改分组顺序。GitHub 开放市场清单没有译名块，这类条目继续显示原名。
+
+- **应用更新改为后台静默下载 + 断点续传**：`check()` 发现新版本后延迟 20 秒自动开始下载（避开启动期的磁盘/网络争抢），用户看到侧边栏「有新版本」时安装包通常已经躺在本地，不再需要点一下然后干等整包（当前 mac-arm64 安装包 238MB）。下载字节先写 `<asset>.part`，中断后保留残片，重试带 `Range: bytes=<已有>-` 续传，已下的部分喂进 sha256 以便整包摘要仍可验；服务端忽略 Range 回 200 时自动丢弃残片重下。只有校验（sha256 + 体积）通过才 rename 到最终路径，因此**安装包存在即内容完整**——顺带修掉 `readPendingRecord()` 仅靠 `existsSync` 可能把半截文件当成可安装包的问题。静默下载失败按 30s / 2min / 10min 自动重试三次且不打扰 UI（退回 `available` 而非 `error`），手动点击走同一续传路径。用户主动取消后不再自动拉起下载。下载逻辑抽到 `src/main/updater-download.ts`（不依赖 electron，带单测）。
 
 - **`~/.vetta/auth.json` 的消费者换人**：内建 vetta MCP 改为远程 HTTP 服务后不再有本地子进程，这份下沉凭据的读方变成 coding-agent 的 `core/mcp/vetta-credentials.ts` 与 `publish-ability` skill 的上传脚本。文件形状与写入时机（登录 / 刷新 / 登出三处 `syncCredentialFile`）不变；消费者一律按需重读、不缓存，token 轮换后自动生效。
 - **`stage-system-skills` 放行 skill-presets 下的工程目录**：`test` / `node_modules` 不再被「内置 Skill 未在 manifest 注册」这条检查误伤。用白名单而不是放宽检查——真漏注册一个 skill 仍然必须炸。
