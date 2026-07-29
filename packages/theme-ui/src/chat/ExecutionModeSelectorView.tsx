@@ -48,7 +48,8 @@ export function ExecutionModeSelectorView({
 						disabled={disabled}
 						title={selectedOption.title}
 						className={cn(
-							"no-drag flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-lg px-2 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40",
+							// 窄容器只保留图标（title 仍可悬停查看模式名），宽了再显示文案
+							"no-drag flex h-7 max-w-full min-w-0 items-center gap-1 rounded-lg px-1.5 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40 @[22rem]:gap-1.5 @[22rem]:px-2",
 							open
 								? "bg-accent text-foreground"
 								: "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -56,7 +57,7 @@ export function ExecutionModeSelectorView({
 						)}
 					>
 						<span className={cn(selectedOption.icon, "h-3.5 w-3.5 shrink-0")} />
-						<span className="truncate">{selectedOption.label}</span>
+						<span className="hidden min-w-0 max-w-[5.5rem] truncate @[22rem]:inline">{selectedOption.label}</span>
 					</button>
 				</PopoverTrigger>
 				<AnimatePresence>

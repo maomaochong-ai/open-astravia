@@ -67,7 +67,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 
 			<div
 				className={[
-					"relative mx-auto w-full max-w-2xl transition-opacity duration-150",
+					// @container：工具栏/动作条按输入区宽度折叠文案（非视口），避免窄栏换行
+					"relative mx-auto w-full max-w-2xl @container transition-opacity duration-150",
 					model.pendingQuestion ? "pointer-events-none opacity-0" : "",
 					classNames?.stack,
 				]

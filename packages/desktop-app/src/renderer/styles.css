@@ -23,19 +23,19 @@
 	color-scheme: dark;
 
 	--background: rgb(20, 22, 30);
-	--foreground: rgb(240, 242, 248);
+	--foreground: rgb(220, 224, 234);
 	--card: rgb(26, 28, 36);
-	--card-foreground: rgb(240, 242, 248);
+	--card-foreground: rgb(220, 224, 234);
 	--popover: rgb(50, 53, 67);
-	--popover-foreground: rgb(240, 242, 248);
+	--popover-foreground: rgb(220, 224, 234);
 	--primary: rgb(99, 102, 241);
 	--primary-foreground: rgb(255, 255, 255);
 	--secondary: rgb(36, 38, 48);
-	--secondary-foreground: rgb(240, 242, 248);
+	--secondary-foreground: rgb(220, 224, 234);
 	--muted: rgb(28, 30, 38);
-	--muted-foreground: rgb(155, 161, 178);
+	--muted-foreground: rgb(138, 144, 160);
 	--accent: rgb(38, 41, 52);
-	--accent-foreground: rgb(240, 242, 248);
+	--accent-foreground: rgb(220, 224, 234);
 	--destructive: rgb(255, 91, 91);
 	--destructive-foreground: rgb(0, 0, 0);
 	--border: rgb(42, 45, 56);
