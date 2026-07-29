@@ -80,6 +80,8 @@
 		"release:patch": "node scripts/release.mjs patch",
 		"release:minor": "node scripts/release.mjs minor",
 		"release:major": "node scripts/release.mjs major",
+		"release:desktop:patch": "node scripts/release-desktop.mjs patch",
+		"release:desktop:minor": "node scripts/release-desktop.mjs minor",
 		"prepare": "husky"
 	},
 	"devDependencies": {
