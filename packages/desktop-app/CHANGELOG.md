@@ -38,6 +38,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **新会话页 skill 徽章行支持拖动横向滑动**：原先 `DefaultSkillBadgeRow` / 仙侠主题 skill 行只有左右箭头，桌面鼠标无法拖动。抽出 `useHorizontalDragScroll`（指针捕获 + 阈值抑制 click），默认主题与仙侠主题 skill 行接入；仙侠场景轮播一并复用。
+- **新会话页 skill 徽章悬浮不再放大**：`SkillCard` 去掉 `whileHover` 的 scale / 上移，仅保留颜色过渡与点击缩放。
 - **能力市场可用时仍显示 `Failed to fetch`**：服务端、GitHub 与本地来源改为独立判定；单个来源失败但其它市场来源或旧缓存可用时静默降级，不再把浏览器原始网络异常暴露给用户。详情 Drawer 只显示当前安装或配置操作错误，不再重复列表级来源错误。
 - **macOS 启动骨架屏压住交通灯**：`AppBootLoadingView` 侧边栏顶部的骨架块正落在窗口左上角的红黄绿按钮下面（macOS 用 `hiddenInset` 标题栏，`trafficLightPosition` 为 x:16 y:20）。macOS 下改为只留等高占位、不画脉冲块；保留占位是为了下方条目不会上移到交通灯区域。Windows / Linux 不变。
 - **侧边栏会话相对时间 i18n**：会话列表 `timeLabel` 改为经 `useTranslation` 的 `t` 渲染（`project:sidebar.time.*`，插值用 `n` 避免 `count` 复数解析），并在列表 `useMemo` 中依赖 `i18n.language`，切换界面语言后时间文案立即更新；消息中心相对时间同步改为 `message:time.*` + `n`。
@@ -47,7 +49,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **能力市场的分类分组标题按界面语言显示**：服务端随每个市场条目下发 `category_i18n`，分组标题取 `category_i18n[locale] ?? category`（`resolveCategoryLabel`，与 `raw.detail` 的取值口径一致）。分组与筛选仍按分类的**规范名**，所以切换语言只换标题文案，不改分组划分、也不改分组顺序。GitHub 开放市场清单没有译名块，这类条目继续显示原名。
 
-- **应用更新改为后台静默下载 + 断点续传**：`check()` 发现新版本后延迟 20 秒自动开始下载（避开启动期的磁盘/网络争抢），用户看到侧边栏「有新版本」时安装包通常已经躺在本地，不再需要点一下然后干等整包（当前 mac-arm64 安装包 238MB）。下载字节先写 `<asset>.part`，中断后保留残片，重试带 `Range: bytes=<已有>-` 续传，已下的部分喂进 sha256 以便整包摘要仍可验；服务端忽略 Range 回 200 时自动丢弃残片重下。只有校验（sha256 + 体积）通过才 rename 到最终路径，因此**安装包存在即内容完整**——顺带修掉 `readPendingRecord()` 仅靠 `existsSync` 可能把半截文件当成可安装包的问题。静默下载失败按 30s / 2min / 10min 自动重试三次且不打扰 UI（退回 `available` 而非 `error`），手动点击走同一续传路径。用户主动取消后不再自动拉起下载。下载逻辑抽到 `src/main/updater-download.ts`（不依赖 electron，带单测）。
+- **桌面更新源从业务服务端解耦**：客户端更新引擎切换为 `electron-updater`，保持原 IPC、侧边栏状态契约、发现新版后延迟 20 秒静默下载及失败重试；打包时可通过 `VETTA_UPDATE_PROVIDER` 在 R2/任意静态 CDN（generic）和公开 GitHub Releases 之间切换。electron-builder 生成各平台 `latest*.yml` 与 blockmap，下载缓存、完整性校验及差分更新由标准更新器接管；新增 R2 发布脚本，安装包先上传、更新清单最后覆盖。现有服务端 release 接口暂时保留，供旧客户端与回滚使用。
 
 - **`~/.vetta/auth.json` 的消费者换人**：内建 vetta MCP 改为远程 HTTP 服务后不再有本地子进程，这份下沉凭据的读方变成 coding-agent 的 `core/mcp/vetta-credentials.ts` 与 `publish-ability` skill 的上传脚本。文件形状与写入时机（登录 / 刷新 / 登出三处 `syncCredentialFile`）不变；消费者一律按需重读、不缓存，token 轮换后自动生效。
 - **`stage-system-skills` 放行 skill-presets 下的工程目录**：`test` / `node_modules` 不再被「内置 Skill 未在 manifest 注册」这条检查误伤。用白名单而不是放宽检查——真漏注册一个 skill 仍然必须炸。

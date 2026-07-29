@@ -145,3 +145,53 @@ cd packages/desktop-app && bunx tsc --noEmit
 cd packages/desktop-app && bun run build:ocr-runner
 cd packages/desktop-app && bun run build:main
 ```
+
+## Desktop 自动更新发布
+
+客户端统一使用 `electron-updater`，更新源由打包时的环境变量决定，与目标操作系统无关：
+
+- `VETTA_UPDATE_PROVIDER=generic`：R2、自建对象存储或任意静态 HTTP/CDN。
+- `VETTA_UPDATE_PROVIDER=github`：公开 GitHub Releases。
+- `VETTA_UPDATE_PROVIDER=none`：不生成更新源配置，适合开发和 QA 包。
+
+正式环境默认读取：
+
+```text
+https://releases.openvetta.com/desktop/stable
+```
+
+electron-builder 会随各平台产物生成更新清单：
+
+- Windows：`latest.yml`、NSIS 安装包与 blockmap。
+- macOS：`latest-mac.yml`、ZIP/DMG 与 blockmap；自动安装需后续补齐代码签名。
+- Linux：`latest-linux.yml`、AppImage 与 blockmap。
+
+### 发布到 R2
+
+在 `packages/desktop-app` 下先完成对应平台的 `dist:*`，再从 CI 或发布机上传 `release/` 中的更新文件：
+
+```bash
+bun run publish:updates:r2
+```
+
+上传脚本要求通过 CI Secret 注入：
+
+```text
+VETTA_R2_ACCOUNT_ID
+VETTA_R2_ACCESS_KEY_ID
+VETTA_R2_SECRET_ACCESS_KEY
+VETTA_R2_BUCKET
+VETTA_R2_PREFIX=desktop/stable
+```
+
+脚本先上传版本化安装包和 blockmap，最后覆盖 `latest*.yml`，避免客户端读到尚未完整发布的版本。R2 自定义域名应对安装包启用长期缓存；`latest*.yml` 保持短缓存，不要被 Cache Everything 规则强制长缓存。
+
+### 发布到 GitHub Releases
+
+开源构建只需覆盖发布源，不需要改客户端代码：
+
+```bash
+bunx cross-env VETTA_UPDATE_PROVIDER=github VETTA_UPDATE_GITHUB_OWNER=owner VETTA_UPDATE_GITHUB_REPO=repository bun run dist:desktop -- --publish always
+```
+
+发布机需要提供 `GH_TOKEN`。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。

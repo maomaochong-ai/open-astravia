@@ -4,12 +4,14 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { loadBuildEnv } from "./load-build-env.mjs";
+import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 import { resolveTenant, stageSystemPluginsFromArchives } from "./stage-system-plugins.mjs";
 import { stageSystemSkills } from "./stage-system-skills.mjs";
 import { stageSystemThemesFromArchives } from "./stage-system-themes.mjs";
 
 // 从 .env.<mode>/.env 注入构建期变量（如 VETTA_TENANT），命令行内联优先。
 loadBuildEnv();
+const updatePublishConfig = resolveUpdatePublishConfig();
 
 const projectRoot = join(import.meta.dirname, "..");
 const buildStageDir = join(tmpdir(), "vetta-desktop-build");
@@ -153,7 +155,7 @@ function resolveSandboxResourceFilters() {
 // 否则 packaged 环境 require 不到。uiohook 各平台都有 prebuild、需全平台带；
 // electron-liquid-glass 是 darwin-only（`os:["darwin"]`），仅 mac 主机/包需要，
 // 非 mac 主机上可能未安装，故标记为 optional：解析不到就跳过、不阻断打包。
-const externalDeps = ["@silvia-odwyer/photon-node", "uiohook-napi"];
+const externalDeps = ["@silvia-odwyer/photon-node", "builder-util-runtime", "electron-updater", "uiohook-napi"];
 const optionalExternalDeps = ["electron-liquid-glass"];
 
 function resolvePackageRoot(dep, fromDir = projectRoot) {
@@ -637,6 +639,7 @@ const builderConfig = {
 	electronVersion,
 	electronLanguages: ["zh-CN", "en-US"],
 	npmRebuild: false,
+	...(updatePublishConfig ? { publish: [updatePublishConfig] } : {}),
 	protocols: {
 		name: "Vetta",
 		schemes: ["vetta"],
