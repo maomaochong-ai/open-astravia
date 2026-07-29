@@ -461,8 +461,10 @@ export interface MarketAbility {
 	author: string;
 	/** 四态：空=默认 / solar:xxx-bold / http(s) 外链 / 已解析的绝对图 URL */
 	icon: string;
-	/** 分类名（服务端已 resolve），未分类为空串。 */
+	/** 分类的规范名（服务端已 resolve），未分类为空串。分组与筛选都用它，不随界面语言变。 */
 	category: string;
+	/** 分类译名，取 `category_i18n[locale] ?? category` 得到展示名；无译名时字段缺省。 */
+	category_i18n?: Record<string, string>;
 	tags: string[];
 	/** 产物摘要，安装前校验；mcp / bundle 恒为空。 */
 	sha256: string;
