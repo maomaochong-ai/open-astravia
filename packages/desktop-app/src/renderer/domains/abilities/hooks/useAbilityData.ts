@@ -9,6 +9,7 @@ import { fetchMarketAbilities } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { areAllAttemptedMarketSourcesUnavailable, getOpenMarketplaceLoadState } from "../lib/ability-load-policy";
 import { mergeAbilityCatalogs } from "../lib/merge-ability-catalogs";
 
 export interface AbilityData {
@@ -70,28 +71,30 @@ export function useAbilityData(): AbilityData {
 						setLocalSkills(skills.filter((skill) => isReadonlySkillSource(skill.source)));
 						setPlugins(installedPlugins);
 					} else {
-						errors.push(
-							localResult.reason instanceof Error
-								? localResult.reason.message
-								: i18n.t("abilities:error.loadFailed"),
-						);
+						console.warn("Ability local state load failed", localResult.reason);
+						errors.push(i18n.t("abilities:error.loadFailed"));
 					}
+					const serverState = {
+						attempted: Boolean(token),
+						usable: remoteResult.status === "fulfilled",
+					};
 					if (remoteResult.status === "fulfilled") {
 						setServerMarket(remoteResult.value);
 					} else {
-						errors.push(
-							remoteResult.reason instanceof Error
-								? remoteResult.reason.message
-								: i18n.t("abilities:error.loadFailed"),
-						);
+						console.warn("Ability server marketplace load failed", remoteResult.reason);
 					}
+					let openState = { attempted: true, usable: false };
 					if (openResult.status === "fulfilled") {
 						setOpenMarketplace(openResult.value);
+						openState = getOpenMarketplaceLoadState(openResult.value);
 						if (openResult.value.failedSourceIds.length > 0) {
-							errors.push(i18n.t("abilities:error.openMarketplaceSyncFailed"));
+							console.warn("Open marketplace sources failed", openResult.value.failedSourceIds);
 						}
 					} else {
-						errors.push(i18n.t("abilities:error.openMarketplaceSyncFailed"));
+						console.warn("Open marketplace catalog load failed", openResult.reason);
+					}
+					if (areAllAttemptedMarketSourcesUnavailable([serverState, openState])) {
+						errors.push(i18n.t("abilities:error.loadFailed"));
 					}
 					setError(errors.length > 0 ? errors.join("; ") : null);
 				})

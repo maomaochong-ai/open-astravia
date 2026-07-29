@@ -135,6 +135,8 @@ export interface AbilitiesModel {
 	loading: boolean;
 	refreshing: boolean;
 	errors: string[];
+	/** 详情页只展示当前操作错误，不继承列表级来源加载错误。 */
+	detailErrors: string[];
 	importing: boolean;
 	mcp: McpSettingsModel;
 	findById: (id: string) => AbilityItem | null;

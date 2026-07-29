@@ -135,6 +135,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		() => Array.from(new Set([data.error, actions.error].filter((value): value is string => Boolean(value)))),
 		[actions.error, data.error],
 	);
+	const detailErrors = useMemo(() => (actions.error ? [actions.error] : []), [actions.error]);
 
 	return {
 		scope,
@@ -151,6 +152,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		loading: data.loading || mcp.config === null,
 		refreshing: data.refreshing,
 		errors,
+		detailErrors,
 		importing: actions.importing,
 		mcp,
 		findById,

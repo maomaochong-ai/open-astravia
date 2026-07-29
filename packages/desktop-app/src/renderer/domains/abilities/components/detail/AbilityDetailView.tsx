@@ -137,9 +137,9 @@ export function AbilityDetailView({
 				<AbilitySourceSection item={item} model={model} />
 			</AbilityDetailEnter>
 
-			{model.errors.length > 0 ? (
+			{model.detailErrors.length > 0 ? (
 				<div className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] text-muted-foreground/70">
-					{t("error.partial", { error: model.errors.join(" / ") })}
+					{t("error.partial", { error: model.detailErrors.join(" / ") })}
 				</div>
 			) : null}
 
