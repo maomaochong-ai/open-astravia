@@ -26,7 +26,6 @@ export interface UseHorizontalDragScrollOptions {
 export interface UseHorizontalDragScrollResult {
 	readonly canNext: boolean;
 	readonly canPrev: boolean;
-	readonly dragging: boolean;
 	readonly scrollRef: RefObject<HTMLDivElement | null>;
 	readonly onLostPointerCapture: () => void;
 	readonly onPointerCancel: (event: ReactPointerEvent<HTMLDivElement>) => void;
@@ -53,7 +52,6 @@ export function useHorizontalDragScroll({
 	const suppressClickRef = useRef(false);
 	const [canPrev, setCanPrev] = useState(false);
 	const [canNext, setCanNext] = useState(false);
-	const [dragging, setDragging] = useState(false);
 
 	const updateEdges = useCallback(() => {
 		const el = scrollRef.current;
@@ -91,7 +89,6 @@ export function useHorizontalDragScroll({
 		if (track.hasPointerCapture(event.pointerId)) {
 			track.releasePointerCapture(event.pointerId);
 		}
-		setDragging(false);
 		if (drag.moved) {
 			// Clear after the click that follows pointerup (same event loop turn).
 			window.setTimeout(() => {
@@ -110,7 +107,6 @@ export function useHorizontalDragScroll({
 			moved: false,
 		};
 		track.setPointerCapture(event.pointerId);
-		setDragging(true);
 	}, []);
 
 	const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
@@ -129,7 +125,6 @@ export function useHorizontalDragScroll({
 
 	const onLostPointerCapture = useCallback(() => {
 		dragRef.current = null;
-		setDragging(false);
 	}, []);
 
 	const shouldSuppressClick = useCallback(() => suppressClickRef.current, []);
@@ -137,7 +132,6 @@ export function useHorizontalDragScroll({
 	return {
 		canNext,
 		canPrev,
-		dragging,
 		scrollRef,
 		onLostPointerCapture,
 		onPointerCancel: finishDrag,

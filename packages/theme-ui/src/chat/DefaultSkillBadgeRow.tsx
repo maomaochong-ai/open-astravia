@@ -25,7 +25,6 @@ export function DefaultSkillBadgeRow({
 	const {
 		canNext,
 		canPrev,
-		dragging,
 		onLostPointerCapture,
 		onPointerCancel,
 		onPointerDown,
@@ -50,7 +49,6 @@ export function DefaultSkillBadgeRow({
 				className={cn(
 					"no-scrollbar flex items-center gap-1.5 overflow-x-auto px-1 py-1 select-none touch-pan-y",
 					NEW_SESSION_SKILL_BADGE_SLOT_MIN_H_CLASS,
-					dragging ? "cursor-grabbing" : "cursor-grab",
 				)}
 			>
 				{skills.map((s) => {

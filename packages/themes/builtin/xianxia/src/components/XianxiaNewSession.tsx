@@ -45,7 +45,6 @@ export function XianxiaSkillBadgeRow({
 	const {
 		canNext,
 		canPrev,
-		dragging,
 		onLostPointerCapture,
 		onPointerCancel,
 		onPointerDown,
@@ -69,7 +68,6 @@ export function XianxiaSkillBadgeRow({
 				onLostPointerCapture={onLostPointerCapture}
 				className={cn(
 					"no-scrollbar flex items-center gap-2 overflow-x-auto px-1 py-1.5 select-none touch-pan-y",
-					dragging ? "cursor-grabbing" : "cursor-grab",
 					scrollMaskClass(canPrev, canNext),
 				)}
 			>
@@ -150,7 +148,6 @@ export function XianxiaSceneCarousel({
 	const {
 		canNext,
 		canPrev,
-		dragging,
 		onLostPointerCapture,
 		onPointerCancel,
 		onPointerDown,
@@ -174,7 +171,6 @@ export function XianxiaSceneCarousel({
 				onLostPointerCapture={onLostPointerCapture}
 				className={cn(
 					"no-scrollbar flex min-h-[5.75rem] snap-x snap-mandatory gap-2.5 overflow-x-auto py-1 select-none touch-pan-y",
-					dragging ? "cursor-grabbing" : "cursor-grab",
 					scrollMaskClass(canPrev, canNext),
 				)}
 			>
