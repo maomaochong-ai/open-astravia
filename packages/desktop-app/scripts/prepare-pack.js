@@ -145,6 +145,11 @@ function resolveMacSigning() {
 }
 
 const macSigning = resolveMacSigning();
+console.log(
+	macSigning.enabled
+		? `[prepare-pack] macOS 签名与公证已启用（team=${macSigning.teamId}）`
+		: "[prepare-pack] macOS 签名凭据未配置，产出未签名包",
+);
 
 function resolveBuildResourceFilters() {
 	const filters = new Set(["pet/**/*"]);
@@ -700,7 +705,9 @@ const builderConfig = {
 					gatekeeperAssess: false,
 					entitlements: "build/entitlements.mac.plist",
 					entitlementsInherit: "build/entitlements.mac.inherit.plist",
-					notarize: { teamId: macSigning.teamId },
+					// electron-builder 26 起 notarize 只接受布尔值，团队与密钥
+					// 一律从 APPLE_TEAM_ID / APPLE_API_* 环境变量读取。
+					notarize: true,
 				}
 			: {
 					identity: null,
