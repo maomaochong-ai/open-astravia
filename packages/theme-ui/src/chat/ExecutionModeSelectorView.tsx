@@ -29,11 +29,6 @@ export interface ExecutionModeSelectorViewProps {
 	readonly onSelect: (mode: string) => void;
 }
 
-const itemVariants = {
-	hidden: { opacity: 0, x: -12 },
-	show: { opacity: 1, x: 0 },
-};
-
 export function ExecutionModeSelectorView({
 	open,
 	disabled,
@@ -86,45 +81,38 @@ export function ExecutionModeSelectorView({
 								className="relative overflow-visible rounded-[inherit]"
 							>
 								<ThemeSurface slot="chat.executionModeMenu" />
-								<motion.div
-									variants={{
-										hidden: {},
-										show: { transition: { staggerChildren: 0.025, delayChildren: 0.02 } },
-									}}
-									initial="hidden"
-									animate="show"
+								<div
 									className={cn(
 										"relative z-10 overflow-hidden rounded-[inherit] p-1",
 										classNames?.contentInner,
 									)}
 								>
 									{options.map((option) => (
-										<motion.div key={option.mode} variants={itemVariants}>
-											<button
-												type="button"
-												title={option.title}
-												disabled={option.disabled}
-												onClick={() => {
-													onOpenChange(false);
-													onSelect(option.mode);
-												}}
-												className={cn(
-													"flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45",
-													option.selected
-														? "bg-accent text-foreground"
-														: "text-foreground hover:bg-accent",
-													classNames?.item,
-												)}
-											>
-												<span className={cn(option.icon, "h-3.5 w-3.5 shrink-0")} />
-												<span className="truncate">{option.label}</span>
-												{option.selected && (
-													<span className="icon-[solar--check-circle-linear] ml-auto h-3.5 w-3.5 text-primary" />
-												)}
-											</button>
-										</motion.div>
+										<button
+											key={option.mode}
+											type="button"
+											title={option.title}
+											disabled={option.disabled}
+											onClick={() => {
+												onOpenChange(false);
+												onSelect(option.mode);
+											}}
+											className={cn(
+												"flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45",
+												option.selected
+													? "bg-accent text-foreground"
+													: "text-foreground hover:bg-accent",
+												classNames?.item,
+											)}
+										>
+											<span className={cn(option.icon, "h-3.5 w-3.5 shrink-0")} />
+											<span className="truncate">{option.label}</span>
+											{option.selected && (
+												<span className="icon-[solar--check-circle-linear] ml-auto h-3.5 w-3.5 text-primary" />
+											)}
+										</button>
 									))}
-								</motion.div>
+								</div>
 							</motion.div>
 						</PopoverContent>
 					)}

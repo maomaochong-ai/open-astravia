@@ -9,12 +9,8 @@ import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
  * 到触发器，Content 关闭卸载后触发器会空白。本组件用 Popover + 显式 label。
  *
  * 视觉与 `@vetta/ui` Select 默认皮一致。
+ * 仅保留面板整体入场，选项列表不再逐项 stagger。
  */
-
-const itemVariants = {
-	hidden: { opacity: 0, x: -12 },
-	show: { opacity: 1, x: 0 },
-};
 
 export interface MotionSelectOption {
 	readonly value: string;
@@ -91,45 +87,35 @@ export function MotionSelect({
 							exit={{ opacity: 0, scale: 0.96, y: -8 }}
 							transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
 						>
-							<motion.div
-								variants={{
-									hidden: {},
-									show: { transition: { staggerChildren: 0.025, delayChildren: 0.02 } },
-								}}
-								initial="hidden"
-								animate="show"
-							>
-								{options.map((option) => {
-									const isSelected = option.value === value;
-									return (
-										<motion.div key={option.value} variants={itemVariants}>
-											<button
-												type="button"
-												disabled={option.disabled}
-												title={option.title}
-												onClick={() => {
-													if (option.disabled) return;
-													setOpen(false);
-													onValueChange(option.value);
-												}}
-												className={cn(
-													// 与 @vetta/ui SelectItem / 原 Agent 菜单项同皮
-													"flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium transition-colors outline-none",
-													"disabled:pointer-events-none disabled:opacity-50",
-													isSelected
-														? "bg-accent text-foreground"
-														: "text-foreground hover:bg-accent",
-												)}
-											>
-												<span className="min-w-0 flex-1 truncate text-left">{option.label}</span>
-												{isSelected ? (
-													<span className="icon-[mdi--check] ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
-												) : null}
-											</button>
-										</motion.div>
-									);
-								})}
-							</motion.div>
+							{options.map((option) => {
+								const isSelected = option.value === value;
+								return (
+									<button
+										key={option.value}
+										type="button"
+										disabled={option.disabled}
+										title={option.title}
+										onClick={() => {
+											if (option.disabled) return;
+											setOpen(false);
+											onValueChange(option.value);
+										}}
+										className={cn(
+											// 与 @vetta/ui SelectItem / 原 Agent 菜单项同皮
+											"flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium transition-colors outline-none",
+											"disabled:pointer-events-none disabled:opacity-50",
+											isSelected
+												? "bg-accent text-foreground"
+												: "text-foreground hover:bg-accent",
+										)}
+									>
+										<span className="min-w-0 flex-1 truncate text-left">{option.label}</span>
+										{isSelected ? (
+											<span className="icon-[mdi--check] ml-auto h-3.5 w-3.5 shrink-0 text-primary" />
+										) : null}
+									</button>
+								);
+							})}
 						</motion.div>
 					</PopoverContent>
 				) : null}

@@ -49,6 +49,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **Popover/Select 去掉菜单项 stagger**：侧边栏设置菜单、`MotionSelect`、执行模式选择仅保留面板整体淡入缩放，内部选项与分隔线不再逐项滑入渐现。
+- **账户设置额度/用量/模型合一卡**：计划、五小时/周等额度（容器内 `auto-fit` 并排）、Token 使用量、可用模型同处一张卡片，顺序为额度 → 用量 → 模型。
 - **聚焦样式统一为 1px border**：去掉输入框、按钮、开关及全局 `:focus-visible` 的 ring/outline 叠加光晕，仅保留边框色变化（`@vetta/ui` Button/Switch、`theme-ui` 控件与桌面端相关入口同步）。
 - **侧边栏顶栏品牌区改为纯文字**：去掉顶部 Vetta 头像/图标，Windows/Linux 仅显示「Vetta」文案（macOS 仍因交通灯占位不显示品牌字）。
 - **助手消息头像改回 `BotAvatar` 方块**：消息列表「Vetta」左侧由静态猫爪图恢复为带动画的 `BotAvatar`（流式 `active` 光晕 + 手势循环，点击触发）。

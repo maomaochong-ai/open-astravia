@@ -1,5 +1,5 @@
 import { Button, cn } from "@vetta/ui";
-import type { JSX } from "react";
+import type { JSX, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 export type ModelCost = { cacheRead: number; cacheWrite: number; input: number; output: number };
@@ -81,7 +81,124 @@ function VettaGoBrand({ currentPlan }: { currentPlan: string }): JSX.Element {
 	);
 }
 
-function VettaGoCard({ model }: { model: SubscriptionCardsViewModel }): JSX.Element {
+function QuotaWindows({
+	model,
+	unlimited,
+}: {
+	model: SubscriptionCardsViewModel;
+	unlimited: boolean;
+}): JSX.Element | null {
+	if (unlimited) {
+		return (
+			<div className="mt-4 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-[13px] font-medium text-foreground">
+				<span className="icon-[solar--infinity-linear] h-4 w-4 shrink-0 text-primary" />
+				{model.labels.unlimitedQuota}
+			</div>
+		);
+	}
+	if (model.windows.length === 0) return null;
+
+	return (
+		<div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,148px),1fr))] gap-2">
+			{model.windows.map((windowInfo) => {
+				const pct =
+					windowInfo.limit > 0
+						? Math.min(100, Math.round((windowInfo.consumed / windowInfo.limit) * 100))
+						: 0;
+				const resetLabel = formatWindowReset(windowInfo.resetAt, model.now);
+				return (
+					<div
+						key={windowInfo.kind}
+						className="min-w-0 rounded-lg border border-border/50 bg-background/40 px-3 py-2.5"
+					>
+						<div className="flex items-center justify-between gap-2 text-[12px]">
+							<span className="truncate font-medium text-foreground">{windowInfo.label}</span>
+							<span className="shrink-0 tabular-nums text-muted-foreground">{pct}%</span>
+						</div>
+						<div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border">
+							<div
+								className="h-full rounded-full bg-primary transition-[width] duration-300"
+								style={{ width: `${pct}%` }}
+							/>
+						</div>
+						{resetLabel && (
+							<div className="mt-1 text-[10px] text-muted-foreground">{resetLabel}</div>
+						)}
+					</div>
+				);
+			})}
+		</div>
+	);
+}
+
+function ModelChip({
+	labels,
+	model,
+}: {
+	labels: SubscriptionCardsViewModel["labels"];
+	model: RemoteModel;
+}): JSX.Element {
+	const mul = model.multiplier;
+	const showMultiplier = !!mul && (mul.input > 0 || mul.output > 0);
+	const isFree = !!mul && mul.input === 0 && mul.output === 0;
+	return (
+		<div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2.5 transition-colors duration-200 hover:border-border hover:bg-background/60">
+			<div className="flex items-center gap-1.5">
+				<span className="truncate text-[12px] font-medium text-foreground">{model.name || model.id}</span>
+				{model.reasoning && (
+					<span className="shrink-0 rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">
+						{labels.thinking}
+					</span>
+				)}
+			</div>
+			{(model.input?.includes("image") || (model.tags?.length ?? 0) > 0) && (
+				<div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
+					{model.input?.includes("image") && (
+						<span className="rounded bg-primary/10 px-1 py-0.5 text-primary">{labels.vision}</span>
+					)}
+					{model.tags?.map((tag) => (
+						<span key={tag} className="rounded bg-accent px-1 py-0.5 text-muted-foreground">
+							{tag.trim()}
+						</span>
+					))}
+				</div>
+			)}
+			{showMultiplier && mul && (
+				<div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+					<span className="icon-[solar--layers-minimalistic-linear] h-3 w-3 shrink-0 opacity-70" />
+					<span className="tabular-nums">{labels.modelMultiplier(formatMultiplier(mul.input))}</span>
+				</div>
+			)}
+			{isFree && (
+				<div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
+					<span className="icon-[solar--layers-minimalistic-linear] h-3 w-3 shrink-0 opacity-70" />
+					<span>{labels.freeModel}</span>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function ModelsGrid({ model }: { model: SubscriptionCardsViewModel }): JSX.Element | null {
+	const models = model.goProvider?.models ?? [];
+	if (models.length === 0) return null;
+
+	return (
+		<div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
+			{models.map((remoteModel) => (
+				<ModelChip key={remoteModel.id} model={remoteModel} labels={model.labels} />
+			))}
+		</div>
+	);
+}
+
+function VettaGoCard({
+	model,
+	children,
+}: {
+	model: SubscriptionCardsViewModel;
+	children?: ReactNode;
+}): JSX.Element {
 	const [showDone, setShowDone] = useState(false);
 	const prevRefreshing = useRef(model.refreshing);
 	const models = model.goProvider?.models ?? [];
@@ -153,103 +270,30 @@ function VettaGoCard({ model }: { model: SubscriptionCardsViewModel }): JSX.Elem
 				</div>
 			)}
 
-			{unlimited ? (
-				<div className="mt-4 flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2.5 text-[13px] font-medium text-foreground">
-					<span className="icon-[solar--infinity-linear] h-4 w-4 shrink-0 text-primary" />
-					{model.labels.unlimitedQuota}
-				</div>
-			) : model.windows.length > 0 ? (
-				<div className="mt-4 space-y-2">
-					{model.windows.map((windowInfo) => {
-						const pct =
-							windowInfo.limit > 0
-								? Math.min(100, Math.round((windowInfo.consumed / windowInfo.limit) * 100))
-								: 0;
-						const resetLabel = formatWindowReset(windowInfo.resetAt, model.now);
-						return (
-							<div
-								key={windowInfo.kind}
-								className="rounded-lg border border-border/50 bg-background/40 px-3 py-2.5"
-							>
-								<div className="flex items-center justify-between text-[12px]">
-									<span className="font-medium text-foreground">{windowInfo.label}</span>
-									<span className="tabular-nums text-muted-foreground">{pct}%</span>
-								</div>
-								<div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-border">
-									<div
-										className="h-full rounded-full bg-primary transition-[width] duration-300"
-										style={{ width: `${pct}%` }}
-									/>
-								</div>
-								{resetLabel && (
-									<div className="mt-1 text-[10px] text-muted-foreground">{resetLabel}</div>
-								)}
-							</div>
-						);
-					})}
-				</div>
-			) : null}
+			<QuotaWindows model={model} unlimited={unlimited} />
 
-			{models.length > 0 && (
-				<div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
-					{models.map((remoteModel) => (
-						<ModelChip key={remoteModel.id} model={remoteModel} labels={model.labels} />
-					))}
-				</div>
-			)}
+			{children ? <div className="mt-4">{children}</div> : null}
+
+			<ModelsGrid model={model} />
 		</div>
 	);
 }
 
-function ModelChip({
-	labels,
+export function SubscriptionCardsView({
 	model,
+	children,
 }: {
-	labels: SubscriptionCardsViewModel["labels"];
-	model: RemoteModel;
-}): JSX.Element {
-	const mul = model.multiplier;
-	const showMultiplier = !!mul && (mul.input > 0 || mul.output > 0);
-	const isFree = !!mul && mul.input === 0 && mul.output === 0;
-	return (
-		<div className="rounded-lg border border-border/50 bg-background/40 px-3 py-2.5 transition-colors duration-200 hover:border-border hover:bg-background/60">
-			<div className="flex items-center gap-1.5">
-				<span className="truncate text-[12px] font-medium text-foreground">{model.name || model.id}</span>
-				{model.reasoning && (
-					<span className="shrink-0 rounded bg-primary/10 px-1 py-0.5 text-[10px] text-primary">
-						{labels.thinking}
-					</span>
-				)}
+	model: SubscriptionCardsViewModel;
+	/** Rendered between quota windows and models (e.g. embedded token usage chart). */
+	children?: ReactNode;
+}): JSX.Element | null {
+	if (!model.showGoCard) {
+		// Standalone chrome when there is no Go plan card to nest into.
+		return children ? (
+			<div className="mb-6 rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
+				{children}
 			</div>
-			{(model.input?.includes("image") || (model.tags?.length ?? 0) > 0) && (
-				<div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-muted-foreground">
-					{model.input?.includes("image") && (
-						<span className="rounded bg-primary/10 px-1 py-0.5 text-primary">{labels.vision}</span>
-					)}
-					{model.tags?.map((tag) => (
-						<span key={tag} className="rounded bg-accent px-1 py-0.5 text-muted-foreground">
-							{tag.trim()}
-						</span>
-					))}
-				</div>
-			)}
-			{showMultiplier && mul && (
-				<div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-					<span className="icon-[solar--layers-minimalistic-linear] h-3 w-3 shrink-0 opacity-70" />
-					<span className="tabular-nums">{labels.modelMultiplier(formatMultiplier(mul.input))}</span>
-				</div>
-			)}
-			{isFree && (
-				<div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-					<span className="icon-[solar--layers-minimalistic-linear] h-3 w-3 shrink-0 opacity-70" />
-					<span>{labels.freeModel}</span>
-				</div>
-			)}
-		</div>
-	);
-}
-
-export function SubscriptionCardsView({ model }: { model: SubscriptionCardsViewModel }): JSX.Element | null {
-	if (!model.showGoCard) return null;
-	return <VettaGoCard model={model} />;
+		) : null;
+	}
+	return <VettaGoCard model={model}>{children}</VettaGoCard>;
 }

@@ -108,11 +108,9 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 			</SettingsEnterItem>
 
 			<SettingsEnterItem>
-				<SubscriptionCards />
-			</SettingsEnterItem>
-
-			<SettingsEnterItem className="mb-6">
-				<TokenActivityChart />
+				<SubscriptionCards>
+					<TokenActivityChart embedded />
+				</SubscriptionCards>
 			</SettingsEnterItem>
 
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

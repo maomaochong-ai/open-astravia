@@ -19,6 +19,8 @@ function cn(...parts: Array<string | false | null | undefined>): string {
 export interface TokenActivityChartViewProps {
 	points: UsageSeriesPointLike[];
 	loading?: boolean;
+	/** When true, omit outer card chrome (for nesting inside another panel). */
+	embedded?: boolean;
 	labels: {
 		title: string;
 		daily: string;
@@ -49,6 +51,7 @@ const FILLED_ACTIVE_CLASS: Record<number, string> = {
 export function TokenActivityChartView({
 	points,
 	loading,
+	embedded,
 	labels,
 }: TokenActivityChartViewProps): JSX.Element {
 	const [mode, setMode] = useState<TokenActivityMode>("cumulative");
@@ -85,7 +88,13 @@ export function TokenActivityChartView({
 	};
 
 	return (
-		<div className="rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
+		<div
+			className={
+				embedded
+					? undefined
+					: "rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm"
+			}
+		>
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
 				<h3 className="text-[13px] font-semibold text-foreground">{labels.title}</h3>
 				<div className="flex rounded-lg border border-border/50 bg-muted/30 p-0.5">
