@@ -59,7 +59,7 @@ export function MotionSelect({
 						// 与 @vetta/ui SelectTrigger 同皮
 						"flex h-8 w-fit items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium whitespace-nowrap transition-colors outline-none",
 						"hover:bg-accent data-[state=open]:bg-accent",
-						"focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary/30",
+						"focus-visible:border-primary/50",
 						"disabled:cursor-not-allowed disabled:opacity-50",
 						!selected && placeholder ? "text-muted-foreground" : "text-foreground",
 						triggerClassName,

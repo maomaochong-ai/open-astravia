@@ -1,3 +1,4 @@
+import { BotAvatar } from "@shared/components/BotAvatar";
 import type { ChatMessage } from "@shared/store/atoms";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import {
@@ -8,7 +9,6 @@ import { memo, useId, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";
 import { MessageCardsHost } from "../MessageCardsHost";
-import { CatPawAvatar } from "./CatPawAvatar";
 import { SegmentRenderer } from "./MessageBlockSegments";
 import type { BlockSegment } from "./messageBlockModel";
 import { segmentKey } from "./messageBlockModel";
@@ -115,7 +115,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 			conclusionText={conclusionText}
 			fold={fold}
 			labels={labels}
-			botAvatar={<CatPawAvatar active={isCurrentlyStreaming} />}
+			botAvatar={<BotAvatar active={isCurrentlyStreaming} />}
 			segments={
 				hasBlocks ? (
 					<>

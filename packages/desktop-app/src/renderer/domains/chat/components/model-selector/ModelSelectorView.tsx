@@ -180,7 +180,7 @@ export function ModelSelectorView({
 												onClick={handleSearchClick}
 												placeholder={labels.searchPlaceholder}
 												aria-label={labels.searchPlaceholder}
-												className="h-7 w-full rounded-md border border-border/60 bg-background/70 pl-7 pr-7 text-[11px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+												className="h-7 w-full rounded-md border border-border/60 bg-background/70 pl-7 pr-7 text-[11px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50"
 											/>
 											{searchQuery && (
 												<button

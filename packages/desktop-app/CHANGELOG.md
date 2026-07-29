@@ -49,8 +49,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **输入框去掉 focus ring**：模型选择搜索框、共享 `Input`/`Textarea`、搜索栏与设置表单等文本输入聚焦时不再画 ring 光晕，仅保留边框色变化；按钮/开关的键盘 focus ring 保留。
 - **侧边栏顶栏品牌区改为纯文字**：去掉顶部 Vetta 头像/图标，Windows/Linux 仅显示「Vetta」文案（macOS 仍因交通灯占位不显示品牌字）。
-- **助手消息猫爪头像动画**：消息列表「Vetta」左侧猫爪（`vetta-avatar.webp`）接入位图友好手势——歪头 / 弹跳挤压 / 轻晃 / 轻点，流式时 idle 循环 + 光晕，点击可触发；不套用 `BotAvatar` 的眨眼/思考泡/sleep-z（依赖方块眼睛结构，猫爪图不适用）。`prefers-reduced-motion` 下静止。
+- **助手消息头像改回 `BotAvatar` 方块**：消息列表「Vetta」左侧由静态猫爪图恢复为带动画的 `BotAvatar`（流式 `active` 光晕 + 手势循环，点击触发）。
 - **新会话页设置默认值**：场景卡片列表与引导词轮播改为默认关闭；技能徽章列表仍默认开启。未在配置里显式写入的项按新缺省解析；已持久化的 true/false 不受影响。
 - **能力市场的分类分组标题按界面语言显示**：服务端随每个市场条目下发 `category_i18n`，分组标题取 `category_i18n[locale] ?? category`（`resolveCategoryLabel`，与 `raw.detail` 的取值口径一致）。分组与筛选仍按分类的**规范名**，所以切换语言只换标题文案，不改分组划分、也不改分组顺序。GitHub 开放市场清单没有译名块，这类条目继续显示原名。
 
