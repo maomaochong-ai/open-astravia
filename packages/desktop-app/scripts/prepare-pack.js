@@ -108,6 +108,44 @@ function resolvePlatformFamilies() {
 	return families;
 }
 
+// macOS 代码签名 / 公证：凭据齐全时自动开启，一个都不设时保持未签名产物。
+// 变量含义与申请流程见 docs/deploy/apple-code-signing.md。
+const MAC_SIGN_ENV_KEYS = [
+	"CSC_LINK",
+	"CSC_NAME",
+	"APPLE_TEAM_ID",
+	"APPLE_ID",
+	"APPLE_APP_SPECIFIC_PASSWORD",
+	"APPLE_API_KEY",
+	"APPLE_API_KEY_ID",
+	"APPLE_API_ISSUER",
+];
+
+function resolveMacSigning() {
+	const has = (key) => typeof process.env[key] === "string" && process.env[key].trim().length > 0;
+	if (!MAC_SIGN_ENV_KEYS.some(has)) return { enabled: false };
+
+	// 半配置状态最危险：签了名却没公证的产物照样被 Gatekeeper 拦，
+	// 而 DMG 里的修复助手此时已被移除。宁可直接失败。
+	const missing = [];
+	if (!has("CSC_LINK") && !has("CSC_NAME")) missing.push("CSC_LINK 或 CSC_NAME");
+	if (!has("APPLE_TEAM_ID")) missing.push("APPLE_TEAM_ID");
+	const hasApiKey = has("APPLE_API_KEY") && has("APPLE_API_KEY_ID") && has("APPLE_API_ISSUER");
+	const hasAppleId = has("APPLE_ID") && has("APPLE_APP_SPECIFIC_PASSWORD");
+	if (!hasApiKey && !hasAppleId) {
+		missing.push("APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER，或 APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD");
+	}
+	if (missing.length > 0) {
+		throw new Error(
+			`[prepare-pack] macOS 签名凭据不完整，缺少：${missing.join("；")}。` +
+				"申请与注入流程见 docs/deploy/apple-code-signing.md；要出未签名包请清空所有 CSC_* / APPLE_* 变量。",
+		);
+	}
+	return { enabled: true, teamId: process.env.APPLE_TEAM_ID.trim() };
+}
+
+const macSigning = resolveMacSigning();
+
 function resolveBuildResourceFilters() {
 	const filters = new Set(["pet/**/*"]);
 	const families = resolvePlatformFamilies();
@@ -234,15 +272,21 @@ cpSync(join(projectRoot, "dist/ocr-runner"), join(buildStageDir, "ocr-runner"), 
 
 // macOS DMG: 生成背景图（写入 repo build/，下面 cpSync 会一并带到 staging）。
 // 仅 darwin host 跑；非 darwin 上即使存在 mac target，也不会真正出 dmg。
+// 签名构建没有「已损坏」问题，不带修复助手，背景图退回两图标版式。
 if (process.platform === "darwin") {
-	execFileSync("node", [join(import.meta.dirname, "generate-dmg-background.js")], { stdio: "inherit" });
+	execFileSync(
+		"node",
+		[join(import.meta.dirname, "generate-dmg-background.js"), ...(macSigning.enabled ? ["--two-icons"] : [])],
+		{ stdio: "inherit" },
+	);
 }
 
 // Copy icons
 cpSync(join(projectRoot, "build"), join(buildStageDir, "build"), { recursive: true });
 
 // macOS DMG: 编译「修复已损坏.app」直接落到 staging build/，由下面 dmg.contents 引用。
-if (process.platform === "darwin") {
+// 仅未签名构建需要；签名+公证后 quarantine 不再拦截，且该 helper 自身未签名会拖累公证。
+if (process.platform === "darwin" && !macSigning.enabled) {
 	execFileSync(
 		"node",
 		[join(import.meta.dirname, "build-mac-repair-helper.js"), join(buildStageDir, "build")],
@@ -645,16 +689,24 @@ const builderConfig = {
 		target: ["dmg", "zip"],
 		category: "public.app-category.productivity",
 		icon: "build/icon.icns",
-		identity: null,
-		// Notarization deliberately disabled for the early-access build.
-		// To enable later: set notarize: { teamId: "..." } and provide
-		// APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD env vars.
-		notarize: false,
-		// Sidecar runs as a child process from the bundle; allow it to
-		// be invoked under the hardened runtime by relaxing the most
-		// restrictive entitlements. Provided as inline strings so the
-		// staging dir doesn't need a separate entitlements.plist file.
-		hardenedRuntime: false,
+		// 签名/公证开关由 resolveMacSigning() 按环境变量决定（见
+		// docs/deploy/apple-code-signing.md）：凭据齐全 → Developer ID 签名 +
+		// hardened runtime + 公证；一个都不设 → 维持未签名产物，配套 DMG 里的
+		// 「修复已损坏.app」。签名身份由 electron-builder 从 CSC_LINK / CSC_NAME
+		// 自动发现，因此签名分支不写 identity。
+		...(macSigning.enabled
+			? {
+					hardenedRuntime: true,
+					gatekeeperAssess: false,
+					entitlements: "build/entitlements.mac.plist",
+					entitlementsInherit: "build/entitlements.mac.inherit.plist",
+					notarize: { teamId: macSigning.teamId },
+				}
+			: {
+					identity: null,
+					notarize: false,
+					hardenedRuntime: false,
+				}),
 		// 用户的本地模型（Ollama / LM Studio / vLLM 等）通常监听在局域网
 		// 明文 HTTP（http://192.168.x.x:port）。macOS 14+ 的 TCC 与 ATS 默认
 		// 会静默拦截这种请求，表现为 Finder 双击启动后随机出现 "Connection
@@ -672,22 +724,29 @@ const builderConfig = {
 			NSBonjourServices: ["_http._tcp", "_https._tcp"],
 		},
 	},
-	// DMG 视觉与三图标布局。详见 docs/adr/0003-dmg-repair-helper.md。
+	// DMG 视觉与图标布局。详见 docs/adr/0003-dmg-repair-helper.md。
 	// 坐标以 @1x 660×440 为准；背景图 build/background.png 与 build/background@2x.png
-	// 由 scripts/generate-dmg-background.js 在 prebuild 阶段生成。
-	// 「修复已损坏.app」由 scripts/build-mac-repair-helper.js osacompile 生成，
-	// 与未签名主 app 配套：用户首次需 control-click → 「打开」绕过 Gatekeeper，
+	// 由 scripts/generate-dmg-background.js 在 prebuild 阶段生成（两种版式的图标
+	// 位置必须与那里的 ICON_CENTERS_X_2X 对齐）。
+	// 未签名构建为三图标：多出的「修复已损坏.app」由 scripts/build-mac-repair-helper.js
+	// osacompile 生成，用户首次需 control-click → 「打开」绕过 Gatekeeper，
 	// 之后弹原生密码框对 /Applications/Vetta.app 执行 xattr -dr com.apple.quarantine。
+	// 签名+公证构建不存在「已损坏」问题，退回两图标常规版式。
 	dmg: {
 		background: "build/background.png",
 		window: { width: 660, height: 440 },
 		iconSize: 100,
 		iconTextSize: 12,
-		contents: [
-			{ x: 100, y: 200, type: "file" }, // Vetta.app（electron-builder 自动填入产物路径）
-			{ x: 330, y: 200, type: "link", path: "/Applications" },
-			{ x: 560, y: 200, type: "file", path: join(buildStageDir, "build", "修复已损坏.app") },
-		],
+		contents: macSigning.enabled
+			? [
+					{ x: 180, y: 200, type: "file" }, // Vetta.app（electron-builder 自动填入产物路径）
+					{ x: 480, y: 200, type: "link", path: "/Applications" },
+				]
+			: [
+					{ x: 100, y: 200, type: "file" },
+					{ x: 330, y: 200, type: "link", path: "/Applications" },
+					{ x: 560, y: 200, type: "file", path: join(buildStageDir, "build", "修复已损坏.app") },
+				],
 	},
 	win: {
 		target: ["nsis"],
