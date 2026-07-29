@@ -1,10 +1,21 @@
 import type { ChatMessage } from "@shared/store/atoms";
-import vettaAvatar from "@shared/assets/vetta-avatar.webp";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import {
 	AssistantMessageView,
 	StreamingIndicator as ThemeStreamingIndicator,
 } from "@vetta/theme-ui/chat";
+import { memo, useId, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";
+import { MessageCardsHost } from "../MessageCardsHost";
+import { CatPawAvatar } from "./CatPawAvatar";
+import { SegmentRenderer } from "./MessageBlockSegments";
+import type { BlockSegment } from "./messageBlockModel";
+import { segmentKey } from "./messageBlockModel";
+import { useExpansion } from "./expansionStore";
+import { workSegmentKey } from "./progressGroupModel";
+import { WorkSegmentRenderer } from "./WorkSegmentRenderer";
+import { CopyButton, formatDuration, formatTime, RelativeTimeLabel } from "./MessageActions";
 
 /** Desktop wrapper: injects i18n streaming phrases into theme-ui indicator. */
 export function StreamingIndicator(): JSX.Element {
@@ -13,17 +24,6 @@ export function StreamingIndicator(): JSX.Element {
 	const list = Array.isArray(phrases) ? (phrases as string[]) : [];
 	return <ThemeStreamingIndicator phrases={list} />;
 }
-import { memo, useId, useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { useAssistantMessageModel } from "../../hooks/useAssistantMessageModel";
-import { MessageCardsHost } from "../MessageCardsHost";
-import { SegmentRenderer } from "./MessageBlockSegments";
-import type { BlockSegment } from "./messageBlockModel";
-import { segmentKey } from "./messageBlockModel";
-import { useExpansion } from "./expansionStore";
-import { workSegmentKey } from "./progressGroupModel";
-import { WorkSegmentRenderer } from "./WorkSegmentRenderer";
-import { CopyButton, formatDuration, formatTime, RelativeTimeLabel } from "./MessageActions";
 
 interface AssistantMessageProps {
 	exportMode?: boolean;
@@ -115,15 +115,7 @@ export const AssistantMessage = memo(function AssistantMessage({
 			conclusionText={conclusionText}
 			fold={fold}
 			labels={labels}
-			botAvatar={
-				<img
-					aria-hidden="true"
-					alt=""
-					className="h-5 w-5 shrink-0 select-none object-contain"
-					draggable={false}
-					src={vettaAvatar}
-				/>
-			}
+			botAvatar={<CatPawAvatar active={isCurrentlyStreaming} />}
 			segments={
 				hasBlocks ? (
 					<>

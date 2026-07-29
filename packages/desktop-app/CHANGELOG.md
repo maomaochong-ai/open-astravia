@@ -49,10 +49,12 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **侧边栏顶栏品牌区改为纯文字**：去掉顶部 Vetta 头像/图标，Windows/Linux 仅显示「Vetta」文案（macOS 仍因交通灯占位不显示品牌字）。
+- **助手消息猫爪头像动画**：消息列表「Vetta」左侧猫爪（`vetta-avatar.webp`）接入位图友好手势——歪头 / 弹跳挤压 / 轻晃 / 轻点，流式时 idle 循环 + 光晕，点击可触发；不套用 `BotAvatar` 的眨眼/思考泡/sleep-z（依赖方块眼睛结构，猫爪图不适用）。`prefers-reduced-motion` 下静止。
 - **新会话页设置默认值**：场景卡片列表与引导词轮播改为默认关闭；技能徽章列表仍默认开启。未在配置里显式写入的项按新缺省解析；已持久化的 true/false 不受影响。
 - **能力市场的分类分组标题按界面语言显示**：服务端随每个市场条目下发 `category_i18n`，分组标题取 `category_i18n[locale] ?? category`（`resolveCategoryLabel`，与 `raw.detail` 的取值口径一致）。分组与筛选仍按分类的**规范名**，所以切换语言只换标题文案，不改分组划分、也不改分组顺序。GitHub 开放市场清单没有译名块，这类条目继续显示原名。
 
-- **桌面更新源从业务服务端解耦**：客户端更新引擎切换为 `electron-updater`，保持原 IPC、侧边栏状态契约、发现新版后延迟 20 秒静默下载及失败重试；打包时可通过 `VETTA_UPDATE_PROVIDER` 在 R2/任意静态 CDN（generic）和公开 GitHub Releases 之间切换。electron-builder 生成各平台 `latest*.yml` 与 blockmap，下载缓存、完整性校验及差分更新由标准更新器接管；新增 R2 发布脚本，安装包先上传、更新清单最后覆盖。现有服务端 release 接口暂时保留，供旧客户端与回滚使用。
+- **桌面更新源从业务服务端解耦**：客户端更新引擎切换为 `electron-updater`，发现新版后延迟 20 秒静默下载及失败重试；打包时可通过 `VETTA_UPDATE_PROVIDER` 在 R2/任意静态 CDN（generic）和公开 GitHub Releases 之间切换。electron-builder 生成各平台 `latest*.yml` 与 blockmap，下载缓存、完整性校验、差分更新和退出时自动安装由标准更新器接管；旧的自定义下载/安装模块、兼容 IPC 与 `pendingInstall` 假持久态全部删除。R2 发布改为大文件分片上传、只发布清单实际引用的产物并在安装包可公开读取后最后覆盖清单；新增三平台 GitHub Actions 发布工作流与从版本 Changelog 注入的 Release Notes。业务服务端与管理后台的 release 接口、数据模型及发版页面同步删除，不保留双轨兼容。
 
 - **`~/.vetta/auth.json` 的消费者换人**：内建 vetta MCP 改为远程 HTTP 服务后不再有本地子进程，这份下沉凭据的读方变成 coding-agent 的 `core/mcp/vetta-credentials.ts` 与 `publish-ability` skill 的上传脚本。文件形状与写入时机（登录 / 刷新 / 登出三处 `syncCredentialFile`）不变；消费者一律按需重读、不缓存，token 轮换后自动生效。
 - **`stage-system-skills` 放行 skill-presets 下的工程目录**：`test` / `node_modules` 不再被「内置 Skill 未在 manifest 注册」这条检查误伤。用白名单而不是放宽检查——真漏注册一个 skill 仍然必须炸。
