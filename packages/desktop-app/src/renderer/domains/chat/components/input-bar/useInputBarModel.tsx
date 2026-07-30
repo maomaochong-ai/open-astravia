@@ -524,6 +524,7 @@ export function useInputBarModel({
 				removeDefault: t("inputBar.capsule.removeDefault"),
 				removeImage: t("inputBar.capsule.removeImage"),
 				removeTooltip: (path) => t("inputBar.capsule.removeTooltip", { path }),
+				activeGroup: (count) => t("inputBar.capsule.activeGroup", { count }),
 			},
 			permission: {
 				deny: t("inputBar.permission.deny"),

@@ -264,6 +264,7 @@
 			"removeDefault": "点击移除",
 			"removeImage": "移除图片",
 			"removeTooltip": "{{path}}\n点击移除",
+			"activeGroup": "{{count}} 个插件",
 			"imageBadge": "图 {{index}}"
 		},
 		"drawer": {

@@ -264,6 +264,7 @@
 			"removeDefault": "Click to remove",
 			"removeImage": "Remove image",
 			"removeTooltip": "{{path}}\nClick to remove",
+			"activeGroup": "{{count}} plugins",
 			"imageBadge": "Image {{index}}"
 		},
 		"drawer": {

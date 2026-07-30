@@ -25,6 +25,8 @@ export interface InputBarLabels {
 		removeDefault: string;
 		removeImage: string;
 		removeTooltip: (path: string) => string;
+		/** 多个 input action 折叠成一枚胶囊时的文案，如「3 个插件」。 */
+		activeGroup: (count: number) => string;
 	};
 	permission: {
 		deny: string;

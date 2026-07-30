@@ -61,6 +61,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **多个已激活 input action 折叠成一枚胶囊**：工具栏是单行不换行的，平铺两三个 action 就把执行模式和模型挤没了。现在一个时保持平铺（图标 + 名称，点图标即取消）；两个及以上折叠为「图标堆叠 + N 个插件」，最多堆 4 格、超出时最后一格显示 `+n`；点胶囊在上方升起 popover，逐条 hover 出关闭键。
 - **命令区与输入卡片接缝去掉台阶**：展开形态下输入卡片去上圆角、上边框置透明（不减 1px，避免整条 bar 抖动），命令区左右各外扩 1px 与卡片描边对齐——此前命令区被卡片内容盒内缩，两侧各差 1px 看着像锯齿。
 - **展开形态保留发送按钮**：工具栏右侧改为只收起模型选择与上下文用量环，发送按钮常驻。
 - **命令区去掉顶部标题行**，最大高度由 `min(420px, 45vh)` 压到 `min(320px, 40vh)`；skill 条目去掉 source badge，只留名称与描述（`SkillListLabels.sourceLabel` 改为可选，批量任务的 skill 选择器仍显示）。

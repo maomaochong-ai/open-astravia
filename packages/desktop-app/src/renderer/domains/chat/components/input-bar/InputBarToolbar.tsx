@@ -107,7 +107,11 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 						<ExecutionModeSelector />
 					</div>
 				)}
-				<ActiveActionCapsules items={activeActions} removeHint={labels.capsule.removeDefault} />
+				<ActiveActionCapsules
+					items={activeActions}
+					removeHint={labels.capsule.removeDefault}
+					groupLabel={labels.capsule.activeGroup}
+				/>
 			</div>
 
 			<div
