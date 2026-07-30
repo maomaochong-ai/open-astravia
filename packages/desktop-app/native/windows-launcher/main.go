@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"syscall"
 )
 
 const executableName = "Vetta.exe"
@@ -91,7 +90,10 @@ func resolveLaunchTarget(installRoot string, localRoot string) string {
 func startDetached(target string, args []string) error {
 	command := exec.Command(target, args...)
 	command.Dir = filepath.Dir(target)
-	command.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	// Do NOT set HideWindow / STARTF_USESHOWWINDOW+SW_HIDE.
+	// That overrides the child GUI process's first ShowWindow and leaves the
+	// Electron main window with WS_VISIBLE cleared (tray-only, no UI).
+	// Launcher itself is built with -H=windowsgui so no console flashes.
 	if err := command.Start(); err != nil {
 		return err
 	}

@@ -154,9 +154,18 @@ describe("Windows Inno update paths", () => {
 		expect(isVersionedWindowsExecutable("C:\\Vetta\\versions\\1.2.2\\Vetta.exe", "1.2.3")).toBe(false);
 	});
 
-	it("uses the stable per-user application root", () => {
-		expect(resolveInnoUpdateStoreRoot("C:\\Users\\test\\AppData\\Local")).toBe(
-			"C:\\Users\\test\\AppData\\Local\\Vetta",
+	it("derives the store root from the running versioned executable", () => {
+		expect(resolveInnoUpdateStoreRoot("D:\\Custom Apps\\Vetta\\versions\\1.2.3\\Vetta.exe", "1.2.3")).toBe(
+			"D:\\Custom Apps\\Vetta",
+		);
+	});
+
+	it("rejects executables outside the matching version directory", () => {
+		expect(() => resolveInnoUpdateStoreRoot("C:\\Vetta\\Vetta.exe", "1.2.3")).toThrow(
+			"outside the expected version directory",
+		);
+		expect(() => resolveInnoUpdateStoreRoot("C:\\Vetta\\versions\\1.2.2\\Vetta.exe", "1.2.3")).toThrow(
+			"outside the expected version directory",
 		);
 	});
 

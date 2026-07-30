@@ -48,6 +48,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **Windows 安装版启动后只有托盘、主窗口不显示**：版本启动器曾用 `HideWindow: true` 拉起 Electron，会写入 `STARTF_USESHOWWINDOW` + `SW_HIDE`，导致进程第一次 `ShowWindow` 被系统强制隐藏（日志里已有 `show`，但 HWND 无 `WS_VISIBLE`）。去掉启动器 `HideWindow`；主进程 `revealMainWindow` 在 Windows 上再 show 一次，兼容尚未替换的旧启动器。
 - **展开态的「插图 / 附件」点不出文件选择器**：命令区的 click-outside 走 mousedown，会在 click 之前把面板连同这两个按钮一起卸载，click 因此落空。两个按钮加 `data-command-panel-keep-open`，与「+」一样被 click-outside 跳过。
 - **开发版主进程无法加载 `electron-updater`**：主进程 ESM 产物将 CommonJS 的 `electron-updater` 保持为 external 时，命名导入 `autoUpdater` 会在 Electron 启动阶段抛出 `Named export not found`。改为从 CommonJS 默认导出解构，恢复开发版与打包版启动。
 - **新会话页 skill 徽章行支持拖动横向滑动**：原先 `DefaultSkillBadgeRow` / 仙侠主题 skill 行只有左右箭头，桌面鼠标无法拖动。抽出 `useHorizontalDragScroll`（指针捕获 + 阈值抑制 click），默认主题与仙侠主题 skill 行接入；仙侠场景轮播一并复用。

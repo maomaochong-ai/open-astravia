@@ -31,7 +31,7 @@ const innoWindowsUpdate =
 	process.platform === "win32" && app.isPackaged && isVersionedWindowsExecutable(process.execPath, currentVersion)
 		? new InnoWindowsUpdateController({
 				currentVersion,
-				storeRoot: resolveInnoUpdateStoreRoot(),
+				storeRoot: resolveInnoUpdateStoreRoot(process.execPath, currentVersion),
 				relaunch: (executablePath) => {
 					app.relaunch({ execPath: executablePath, args: process.argv.slice(1) });
 				},

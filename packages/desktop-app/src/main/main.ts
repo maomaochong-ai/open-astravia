@@ -74,7 +74,14 @@ import {
 	setHideToTrayOnClose,
 } from "./tray-manager.js";
 import { getAppVersion, updaterService } from "./updater.js";
-import { createWindow, getMainWindow, loadMainWindow, setMainWindow, showMainWindow } from "./window-manager.js";
+import {
+	createWindow,
+	getMainWindow,
+	loadMainWindow,
+	revealMainWindow,
+	setMainWindow,
+	showMainWindow,
+} from "./window-manager.js";
 
 // 启动早期修复 GUI 进程的 PATH(补回 homebrew 等登录 shell 路径),必须先于
 // RuntimeManager.applyEnv() 与 coding-agent 的 bash 执行。详见 fix-path.ts。
@@ -412,7 +419,9 @@ if (!gotSingleLock) {
 		const rendererContentPaintPromise = appLifecycle.waitForRendererContentPaint();
 		void rendererBootPaintPromise.then((result) => {
 			if (mainWindow.isDestroyed()) return;
-			mainWindow.show();
+			// Windows: first ShowWindow may be swallowed by STARTUPINFO SW_HIDE
+			// from an older version launcher; revealMainWindow double-shows on win32.
+			revealMainWindow(mainWindow);
 			mainLog.info("renderer boot frame visible", {
 				durationMs: Date.now() - rendererBootStartedAt,
 				result,

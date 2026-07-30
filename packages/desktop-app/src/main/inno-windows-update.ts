@@ -225,9 +225,11 @@ export function isVersionedWindowsExecutable(executablePath: string, version: st
 	);
 }
 
-export function resolveInnoUpdateStoreRoot(localAppData = process.env.LOCALAPPDATA): string {
-	if (!localAppData) throw new Error("LOCALAPPDATA is unavailable");
-	return win32.resolve(localAppData, "Vetta");
+export function resolveInnoUpdateStoreRoot(executablePath: string, version: string): string {
+	if (!isVersionedWindowsExecutable(executablePath, version)) {
+		throw new Error(`Executable is outside the expected version directory: ${executablePath}`);
+	}
+	return win32.dirname(win32.dirname(win32.dirname(executablePath)));
 }
 
 export class InnoWindowsUpdateController {
