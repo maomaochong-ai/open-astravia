@@ -35,7 +35,7 @@ class FakeUpdateEngine implements UpdateEngine {
 		this.resolveDownload?.(paths);
 	}
 
-	quitAndInstall(): void {
+	async quitAndInstall(): Promise<void> {
 		this.installCalls += 1;
 	}
 }

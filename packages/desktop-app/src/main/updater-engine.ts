@@ -1,6 +1,10 @@
+import { copyFile, link, rename, rm } from "node:fs/promises";
+import { join } from "node:path";
 import type { ProgressInfo, UpdateInfo } from "builder-util-runtime";
-import { CancellationToken } from "builder-util-runtime";
-import type { AppUpdater } from "electron-updater";
+import { CancellationError, CancellationToken, CURRENT_APP_INSTALLER_FILE_NAME } from "builder-util-runtime";
+import type { AppUpdater, ResolvedUpdateFileInfo } from "electron-updater";
+
+import type { StagedWindowsUpdateController } from "./staged-windows-update.js";
 
 export interface UpdateEngineInfo {
 	version: string;
@@ -20,9 +24,41 @@ export interface UpdateEngineDownload {
 }
 
 export interface UpdateEngine {
+	onAppReady?(): Promise<void>;
 	checkForUpdates(): Promise<UpdateEngineCheckResult | null>;
 	downloadUpdate(onProgress: (progress: ProgressInfo) => void): UpdateEngineDownload;
-	quitAndInstall(): void;
+	quitAndInstall(): Promise<void>;
+}
+
+interface UpdateProviderAccess {
+	updateInfoAndProvider: {
+		provider: {
+			resolveFiles(info: UpdateInfo): Array<ResolvedUpdateFileInfo>;
+		};
+	} | null;
+	downloadedUpdateHelper: {
+		cacheDir: string;
+	} | null;
+}
+
+function resolveUpdateFiles(updater: AppUpdater, info: UpdateInfo): Array<ResolvedUpdateFileInfo> {
+	const provider = (updater as unknown as UpdateProviderAccess).updateInfoAndProvider?.provider;
+	return provider?.resolveFiles(info) ?? [];
+}
+
+async function promoteDownloadedInstaller(updater: AppUpdater, installerPath: string): Promise<void> {
+	const cacheDir = (updater as unknown as UpdateProviderAccess).downloadedUpdateHelper?.cacheDir;
+	if (!cacheDir) return;
+	const currentInstallerPath = join(cacheDir, CURRENT_APP_INSTALLER_FILE_NAME);
+	const temporaryPath = `${currentInstallerPath}.${process.pid}.tmp`;
+	await rm(temporaryPath, { force: true });
+	try {
+		await link(installerPath, temporaryPath);
+	} catch {
+		await copyFile(installerPath, temporaryPath);
+	}
+	await rm(currentInstallerPath, { force: true });
+	await rename(temporaryPath, currentInstallerPath);
 }
 
 function normalizeReleaseNotes(releaseNotes: UpdateInfo["releaseNotes"]): string | undefined {
@@ -57,10 +93,16 @@ function mapUpdateInfo(info: UpdateInfo): UpdateEngineInfo {
 }
 
 export class ElectronUpdaterEngine implements UpdateEngine {
-	constructor(private readonly updater: AppUpdater) {
+	private useStagedUpdate = false;
+
+	constructor(
+		private readonly updater: AppUpdater,
+		private readonly stagedWindowsUpdate?: StagedWindowsUpdateController,
+	) {
 		this.updater.autoDownload = false;
-		this.updater.autoInstallOnAppQuit = true;
+		this.updater.autoInstallOnAppQuit = !stagedWindowsUpdate;
 		this.updater.allowDowngrade = false;
+		this.updater.disableWebInstaller = true;
 		this.updater.logger = {
 			info: (message?: unknown) => console.info("[updater]", message),
 			warn: (message?: unknown) => console.warn("[updater]", message),
@@ -74,31 +116,78 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		});
 	}
 
+	async onAppReady(): Promise<void> {
+		await this.stagedWindowsUpdate?.markCurrentVersionHealthy();
+	}
+
 	async checkForUpdates(): Promise<UpdateEngineCheckResult | null> {
 		const result = await this.updater.checkForUpdates();
 		if (!result) return null;
+		const info = mapUpdateInfo(result.updateInfo);
+		const stagedAsset = result.isUpdateAvailable
+			? this.stagedWindowsUpdate?.select(result.updateInfo, resolveUpdateFiles(this.updater, result.updateInfo))
+			: null;
+		this.useStagedUpdate = stagedAsset !== null && stagedAsset !== undefined;
 		return {
 			hasUpdate: result.isUpdateAvailable,
-			info: mapUpdateInfo(result.updateInfo),
+			info: stagedAsset ? { ...info, ...stagedAsset } : info,
 		};
 	}
 
 	downloadUpdate(onProgress: (progress: ProgressInfo) => void): UpdateEngineDownload {
 		const cancellationToken = new CancellationToken();
-		const listener = (progress: ProgressInfo) => onProgress(progress);
+		const abortController = new AbortController();
+		const listener = (progress: ProgressInfo) => {
+			onProgress(
+				this.useStagedUpdate
+					? {
+							...progress,
+							percent: Math.min(90, progress.percent * 0.9),
+						}
+					: progress,
+			);
+		};
 		this.updater.on("download-progress", listener);
 
-		const promise = this.updater.downloadUpdate(cancellationToken).finally(() => {
-			this.updater.off("download-progress", listener);
-		});
+		const promise = this.updater
+			.downloadUpdate(cancellationToken)
+			.then(async (downloadedPaths) => {
+				if (!this.useStagedUpdate || !this.stagedWindowsUpdate) return downloadedPaths;
+				const installerPath = downloadedPaths[0];
+				if (!installerPath) throw new Error("electron-updater did not return a Windows installer");
+				try {
+					const stagedPaths = await this.stagedWindowsUpdate.stageDownloadedInstaller(
+						installerPath,
+						onProgress,
+						abortController.signal,
+					);
+					await promoteDownloadedInstaller(this.updater, installerPath);
+					return stagedPaths;
+				} catch (error) {
+					if (error instanceof CancellationError || abortController.signal.aborted) throw error;
+					console.error("[updater] staged EXE extraction failed; falling back to NSIS install", error);
+					this.useStagedUpdate = false;
+					return downloadedPaths;
+				}
+			})
+			.finally(() => {
+				this.updater.off("download-progress", listener);
+			});
 
 		return {
 			promise,
-			cancel: () => cancellationToken.cancel(),
+			cancel: () => {
+				abortController.abort();
+				cancellationToken.cancel();
+			},
 		};
 	}
 
-	quitAndInstall(): void {
-		this.updater.quitAndInstall();
+	async quitAndInstall(): Promise<void> {
+		if (this.useStagedUpdate && this.stagedWindowsUpdate) {
+			await this.stagedWindowsUpdate.activate();
+			return;
+		}
+		this.updater.quitAndInstall(true, true);
 	}
 }

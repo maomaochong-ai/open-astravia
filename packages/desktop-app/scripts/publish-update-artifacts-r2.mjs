@@ -1,8 +1,9 @@
+import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { join, posix } from "node:path";
 import { pathToFileURL } from "node:url";
-import { S3Client } from "@aws-sdk/client-s3";
+import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { parse } from "yaml";
 
@@ -24,6 +25,35 @@ function normalizePrefix(rawPrefix) {
 		.map((part) => part.trim())
 		.filter(Boolean)
 		.join("/");
+}
+
+function normalizeUrlPrefix(rawUrl) {
+	const url = new URL(rawUrl);
+	if (url.protocol !== "https:" && url.protocol !== "http:") {
+		throw new Error("[publish-updates-r2] VETTA_UPDATE_URL must use http or https");
+	}
+	if (url.username || url.password || url.search || url.hash) {
+		throw new Error("[publish-updates-r2] VETTA_UPDATE_URL must not contain credentials, query, or hash");
+	}
+	return decodeURIComponent(url.pathname)
+		.split("/")
+		.map((part) => part.trim())
+		.filter(Boolean)
+		.join("/");
+}
+
+export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion }) {
+	const urlPrefix = normalizeUrlPrefix(updateUrl);
+	if (urlPrefix !== prefix) {
+		throw new Error(
+			`[publish-updates-r2] VETTA_UPDATE_URL path "${urlPrefix}" does not match VETTA_R2_PREFIX "${prefix}"`,
+		);
+	}
+	if (prefix.split("/").at(-1) === "stable" && releaseVersion !== packageVersion) {
+		throw new Error(
+			`[publish-updates-r2] refusing QA version ${releaseVersion} on stable; package version is ${packageVersion}`,
+		);
+	}
 }
 
 function contentTypeFor(fileName) {
@@ -83,8 +113,83 @@ export async function collectArtifacts(directory = releaseDir) {
 	return [...artifacts].sort().concat(metadataFiles);
 }
 
+export async function readReleaseVersion(directory = releaseDir) {
+	const metadataFiles = (await readdir(directory, { withFileTypes: true }))
+		.filter((entry) => entry.isFile() && metadataPattern.test(entry.name))
+		.map((entry) => entry.name);
+	const versions = new Set();
+	for (const metadataFile of metadataFiles) {
+		const document = parse(await readFile(join(directory, metadataFile), "utf8"));
+		if (typeof document?.version !== "string" || !/^\d+\.\d+\.\d+$/.test(document.version)) {
+			throw new Error(`[publish-updates-r2] ${metadataFile} has an invalid version`);
+		}
+		versions.add(document.version);
+	}
+	if (versions.size !== 1) {
+		throw new Error(`[publish-updates-r2] updater metadata must contain exactly one version`);
+	}
+	return [...versions][0];
+}
+
+async function hashFile(filePath) {
+	const hash = createHash("sha512");
+	for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+	return hash.digest("hex");
+}
+
+async function inspectVersionedObject(client, bucket, key, filePath, contentLength) {
+	const sha512 = await hashFile(filePath);
+	try {
+		const existing = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+		if (existing.ContentLength === contentLength && existing.Metadata?.sha512 === sha512) {
+			return { sha512, shouldUpload: false };
+		}
+		throw new Error(
+			`[publish-updates-r2] refusing to overwrite existing versioned object ${key}; content differs or lacks sha512 metadata`,
+		);
+	} catch (error) {
+		if (error?.$metadata?.httpStatusCode === 404 || error?.name === "NotFound") {
+			return { sha512, shouldUpload: true };
+		}
+		throw error;
+	}
+}
+
+async function uploadFile({ client, bucket, prefix, fileName, isMetadata }) {
+	const filePath = join(releaseDir, fileName);
+	const fileStat = await stat(filePath);
+	const key = prefix ? posix.join(prefix, fileName) : fileName;
+	let sha512;
+	if (!isMetadata) {
+		const inspection = await inspectVersionedObject(client, bucket, key, filePath, fileStat.size);
+		sha512 = inspection.sha512;
+		if (!inspection.shouldUpload) {
+			console.log(`[publish-updates-r2] verified existing ${key}`);
+			return;
+		}
+	}
+	const upload = new Upload({
+		client,
+		queueSize: 4,
+		partSize: multipartPartSize,
+		leavePartsOnError: false,
+		params: {
+			Bucket: bucket,
+			Key: key,
+			Body: createReadStream(filePath),
+			ContentLength: fileStat.size,
+			ContentType: contentTypeFor(fileName),
+			CacheControl: isMetadata
+				? "public, max-age=60, s-maxage=60, must-revalidate"
+				: "public, max-age=31536000, immutable",
+			...(sha512 ? { Metadata: { sha512 } } : {}),
+		},
+	});
+	await upload.done();
+	console.log(`[publish-updates-r2] uploaded ${key}`);
+}
+
 async function verifyPublicFiles(baseUrl, fileNames) {
-	if (!baseUrl) return;
 	const normalizedBaseUrl = `${baseUrl.replace(/\/+$/, "")}/`;
 	for (const fileName of fileNames) {
 		const url = new URL(fileName.split("/").map(encodeURIComponent).join("/"), normalizedBaseUrl);
@@ -102,6 +207,10 @@ export async function main() {
 	const secretAccessKey = requireEnv("VETTA_R2_SECRET_ACCESS_KEY");
 	const bucket = requireEnv("VETTA_R2_BUCKET");
 	const prefix = normalizePrefix(process.env.VETTA_R2_PREFIX ?? "desktop/stable");
+	const updateUrl = requireEnv("VETTA_UPDATE_URL");
+	const releaseVersion = await readReleaseVersion();
+	const packageVersion = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8")).version;
+	validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion });
 	const client = new S3Client({
 		region: "auto",
 		endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
@@ -111,34 +220,14 @@ export async function main() {
 	const files = await collectArtifacts();
 	const artifactFiles = files.filter((fileName) => !metadataPattern.test(fileName));
 	const metadataFiles = files.filter((fileName) => metadataPattern.test(fileName));
-	for (const fileName of files) {
-		const filePath = join(releaseDir, fileName);
-		const fileStat = await stat(filePath);
-		const isMetadata = metadataPattern.test(fileName);
-		const key = prefix ? posix.join(prefix, fileName) : fileName;
-		const upload = new Upload({
-			client,
-			queueSize: 4,
-			partSize: multipartPartSize,
-			leavePartsOnError: false,
-			params: {
-				Bucket: bucket,
-				Key: key,
-				Body: createReadStream(filePath),
-				ContentLength: fileStat.size,
-				ContentType: contentTypeFor(fileName),
-				CacheControl: isMetadata
-					? "public, max-age=60, s-maxage=60, must-revalidate"
-					: "public, max-age=31536000, immutable",
-			},
-		});
-		await upload.done();
-		console.log(`[publish-updates-r2] uploaded ${key}`);
-		if (fileName === artifactFiles.at(-1)) {
-			await verifyPublicFiles(process.env.VETTA_UPDATE_URL?.trim(), artifactFiles);
-		}
+	for (const fileName of artifactFiles) {
+		await uploadFile({ client, bucket, prefix, fileName, isMetadata: false });
 	}
-	await verifyPublicFiles(process.env.VETTA_UPDATE_URL?.trim(), metadataFiles);
+	await verifyPublicFiles(updateUrl, artifactFiles);
+	for (const fileName of metadataFiles) {
+		await uploadFile({ client, bucket, prefix, fileName, isMetadata: true });
+	}
+	await verifyPublicFiles(updateUrl, metadataFiles);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

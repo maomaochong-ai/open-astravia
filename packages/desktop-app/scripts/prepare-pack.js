@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
@@ -42,10 +42,21 @@ const imGatewayTargetByPlatformTag = {
 const require = createRequire(import.meta.url);
 const electronPkgPath = require.resolve("electron/package.json");
 const electronVersion = JSON.parse(readFileSync(electronPkgPath, "utf8")).version;
+const sevenZipBinRoot = dirname(require.resolve("7zip-bin-full/package.json"));
 
-// 应用版本号以 packages/desktop-app/package.json 为唯一真源
-const appVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")).version;
-const releaseInfo = resolveReleaseInfo(join(projectRoot, "CHANGELOG.md"), appVersion);
+// 正式发布以 packages/desktop-app/package.json 为唯一真源。本地更新闭环测试可用
+// VETTA_DESKTOP_BUILD_VERSION 生成更高版本产物，不修改源码版本或创建 tag。
+const packageVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")).version;
+const buildVersionOverride = process.env.VETTA_DESKTOP_BUILD_VERSION?.trim();
+const appVersion = buildVersionOverride || packageVersion;
+if (!/^\d+\.\d+\.\d+$/.test(appVersion)) {
+	throw new Error(`[prepare-pack] invalid desktop version: ${appVersion}`);
+}
+if (buildVersionOverride && buildVersionOverride !== packageVersion) {
+	console.warn(`[prepare-pack] QA build version override: ${packageVersion} -> ${appVersion}`);
+}
+const releaseInfo =
+	appVersion === packageVersion ? resolveReleaseInfo(join(projectRoot, "CHANGELOG.md"), appVersion) : undefined;
 
 function resolveCliAppCompileTargets() {
 	const rawTargets = process.env.VETTA_CLI_TARGET_PLATFORMS ?? process.env.VETTA_VENDOR_PLATFORM;
@@ -679,6 +690,13 @@ function resolveExtraResources() {
 			filter: ["**/*"],
 		});
 	}
+	if (resolvePlatformFamilies().has("win32")) {
+		extraResources.push({
+			from: join(sevenZipBinRoot, "win", "x64"),
+			to: "tools/7zip",
+			filter: ["7z.dll", "7z.exe"],
+		});
+	}
 	return extraResources;
 }
 
@@ -687,6 +705,7 @@ const builderConfig = {
 	appId: "com.vetta.desktop",
 	productName: "Vetta",
 	executableName: "Vetta",
+	afterPack: join(projectRoot, "scripts", "windows-version-layout.mjs"),
 	electronVersion,
 	electronLanguages: ["zh-CN", "en-US"],
 	npmRebuild: false,
@@ -763,6 +782,7 @@ const builderConfig = {
 	},
 	win: {
 		target: ["nsis"],
+		artifactName: "${productName}-${version}-win-${arch}.${ext}",
 		icon: "build/icon.ico",
 	},
 	linux: {
@@ -777,11 +797,13 @@ const builderConfig = {
 		oneClick: false,
 		perMachine: false,
 		allowToChangeInstallationDirectory: true,
+		include: "build/installer.nsh",
 	},
 	directories: {
 		output: join(projectRoot, "release"),
 	},
 	asar: true,
+	disableSanityCheckAsar: resolvePlatformFamilies().has("win32"),
 	// photon-node 是 createRequire 加载的 external 包，其 photon_rs_bg.wasm
 	// 通过 readFileSync(__dirname + "/photon_rs_bg.wasm") 读取。asar 虚拟
 	// 文件系统对 readFileSync 透明，但 wasm 这类二进制在部分 Electron 版本

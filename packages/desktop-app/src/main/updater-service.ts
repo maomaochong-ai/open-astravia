@@ -68,6 +68,7 @@ export class UpdaterService {
 
 	async onAppReady(): Promise<void> {
 		if (!this.isPackaged) return;
+		await this.engine.onAppReady?.();
 		void this.check();
 	}
 
@@ -202,11 +203,11 @@ export class UpdaterService {
 		return this.getState();
 	}
 
-	install(): Promise<void> {
+	async install(): Promise<void> {
 		if (this.state.phase !== "ready") return Promise.resolve();
 		this.setState({ phase: "installing" });
 		try {
-			this.engine.quitAndInstall();
+			await this.engine.quitAndInstall();
 		} catch (error) {
 			console.error("[updater] install failed", error);
 			this.setState({
@@ -214,7 +215,6 @@ export class UpdaterService {
 				error: this.translate("updater.errors.installFailed"),
 			});
 		}
-		return Promise.resolve();
 	}
 
 	dismissReady(): void {

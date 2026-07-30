@@ -265,7 +265,7 @@
     },
     "packages/desktop-app": {
       "name": "@vetta/desktop-app",
-      "version": "0.5.21",
+      "version": "0.5.23",
       "dependencies": {
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
@@ -334,6 +334,7 @@
         "zod": "^4.4.3",
       },
       "devDependencies": {
+        "7zip-bin-full": "26.2.1",
         "@aws-sdk/client-s3": "^3.1097.0",
         "@aws-sdk/lib-storage": "^3.1097.0",
         "@iconify-json/flat-color-icons": "^1.2.3",
@@ -979,6 +980,8 @@
     "rimraf": "6.1.2",
   },
   "packages": {
+    "7zip-bin-full": ["7zip-bin-full@26.2.1", "https://registry.npmmirror.com/7zip-bin-full/-/7zip-bin-full-26.2.1.tgz", {}, "sha512-h1DE4G8WEJ3/LI4HTcuOpouP7cy9JGqYfZm5fzLhdzw8jI3wFyA9RFu5MP+ICzelKEYmWweRWApEvVWKmJIdVQ=="],
+
     "@aiden0z/pptx-renderer": ["@aiden0z/pptx-renderer@1.2.4", "https://registry.npmmirror.com/@aiden0z/pptx-renderer/-/pptx-renderer-1.2.4.tgz", { "dependencies": { "echarts": "^6.0.0", "jszip": "^3.10.1" }, "peerDependencies": { "pdfjs-dist": ">=5 <7" }, "optionalPeers": ["pdfjs-dist"] }, "sha512-/4X/BApiknc/JM4nAWQRp5zrnA2GKSMv5r1u3XLsMvySw9DTQjyXIKRtltRsmIYfoN32tHGFnrSlGok7nFS60w=="],
 
     "@alloc/quick-lru": ["@alloc/quick-lru@5.2.0", "https://registry.npmmirror.com/@alloc/quick-lru/-/quick-lru-5.2.0.tgz", {}, "sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw=="],

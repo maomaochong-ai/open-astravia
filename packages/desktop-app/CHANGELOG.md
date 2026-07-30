@@ -53,7 +53,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **暗色正文略压亮度**：各主题色板暗色 `foreground` / `muted-foreground` 从近白改为约 82–86% 灰阶，减轻深底刺眼；默认黑白主题（mono）纯黑底上再软一档，强调色 `primary` 同步略降。
 - **新会话问候语跟正文色**：`你好，{{nickname}}` 由 `primary` 渐变改为 `foreground` 渐变（与能力页等标题一致），暗色/黑白主题下不再用近白 primary 发亮。
 - **输入栏窄宽不再折成两行**：工具栏去掉 `flex-wrap`，按输入区容器宽度折叠文案——窄时隐藏执行模式名、推理档位、快捷键提示与动作条标签（保留图标与 `title`），模型名缩短截断；宽了再逐步显示。
-- **Popover/Select 去掉菜单项 stagger**：侧边栏设置菜单、`MotionSelect`、执行模式选择仅保留面板整体淡入缩放，内部选项与分隔线不再逐项滑入渐现。
+- **Popover/Select 面板动效更轻**：侧边栏设置菜单、`MotionSelect`、执行模式选择仅保留约 120ms 淡入淡出，去掉缩放与位移；内部选项不再逐项 stagger。
 - **账户设置额度/用量/模型合一卡**：计划、五小时/周等额度（容器内 `auto-fit` 并排）、Token 使用量、可用模型同处一张卡片，顺序为额度 → 用量 → 模型。
 - **聚焦样式统一为 1px border**：去掉输入框、按钮、开关及全局 `:focus-visible` 的 ring/outline 叠加光晕，仅保留边框色变化（`@vetta/ui` Button/Switch、`theme-ui` 控件与桌面端相关入口同步）。
 - **侧边栏顶栏品牌区改为纯文字**：去掉顶部 Vetta 头像/图标，Windows/Linux 仅显示「Vetta」文案（macOS 仍因交通灯占位不显示品牌字）。

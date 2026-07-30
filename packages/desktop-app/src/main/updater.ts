@@ -5,6 +5,12 @@ import { app } from "electron";
 import electronUpdater from "electron-updater";
 
 import { mainT } from "./i18n/index.js";
+import {
+	isVersionedWindowsExecutable,
+	resolveStagedUpdateStoreRoot,
+	resolveWindowsUpdateExtractorPath,
+	StagedWindowsUpdateController,
+} from "./staged-windows-update.js";
 import { ElectronUpdaterEngine } from "./updater-engine.js";
 import { type UpdaterPhase, UpdaterService, type UpdaterState } from "./updater-service.js";
 
@@ -21,5 +27,18 @@ export function getAppVersion(): string {
 // electron-updater 是 CommonJS 包；主进程产物为 ESM 且将它 externalize，
 // 因此必须从默认导出解构，不能保留 ESM 命名导入。
 const { autoUpdater } = electronUpdater;
-const updaterEngine = new ElectronUpdaterEngine(autoUpdater);
-export const updaterService = new UpdaterService(updaterEngine, getAppVersion(), app.isPackaged, mainT);
+const currentVersion = getAppVersion();
+const stagedWindowsUpdate =
+	process.platform === "win32" && app.isPackaged && isVersionedWindowsExecutable(process.execPath, currentVersion)
+		? new StagedWindowsUpdateController({
+				currentVersion,
+				storeRoot: resolveStagedUpdateStoreRoot(),
+				extractorPath: resolveWindowsUpdateExtractorPath(process.resourcesPath),
+				relaunch: (executablePath) => {
+					app.relaunch({ execPath: executablePath, args: process.argv.slice(1) });
+				},
+				quit: () => app.quit(),
+			})
+		: undefined;
+const updaterEngine = new ElectronUpdaterEngine(autoUpdater, stagedWindowsUpdate);
+export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT);
