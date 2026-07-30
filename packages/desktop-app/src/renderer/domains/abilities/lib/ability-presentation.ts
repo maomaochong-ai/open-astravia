@@ -34,7 +34,8 @@ export function isRenderableImageIcon(icon: string | undefined): boolean {
 	const trimmed = icon.trim();
 	if (!trimmed) return false;
 	if (trimmed.startsWith("solar:")) return false;
-	return trimmed.includes("://") || trimmed.startsWith("/") || trimmed.startsWith("data:");
+	// `./mcp/xxx.png`：内置 MCP 预设图标是相对路径（打包后走 file://，vite base 为 "./"）
+	return trimmed.includes("://") || trimmed.startsWith("/") || trimmed.startsWith("./") || trimmed.startsWith("data:");
 }
 
 export function isIconifyIcon(icon: string | undefined): boolean {
