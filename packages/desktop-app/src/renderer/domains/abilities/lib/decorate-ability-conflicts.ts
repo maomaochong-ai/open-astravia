@@ -4,6 +4,15 @@ function normalizedName(item: AbilityItem): string {
 	return item.title.trim().toLocaleLowerCase();
 }
 
+/**
+ * 通用 Agent Skill 目录（`~/.agents/skills`、`<cwd>/.agents/skills`）不受 Vetta 托管，
+ * 其同名条目按 ADR-0020 一律让位于 Vetta 原生 skill，因此不占安装位、不判冲突。
+ */
+function occupiesInstallSlot(item: AbilityItem): boolean {
+	if (item.type !== "skill" && item.type !== "scene") return true;
+	return !item.skillSource?.startsWith("agents-");
+}
+
 function appendToGroup(groups: Map<string, AbilityItem[]>, key: string, item: AbilityItem): void {
 	const group = groups.get(key);
 	if (group) group.push(item);
@@ -35,7 +44,7 @@ export function decorateAbilityConflicts(items: AbilityItem[]): AbilityItem[] {
 
 	const installConflictIds = new Map<string, string[]>();
 	for (const group of physicalGroups.values()) {
-		const installed = group.filter((item) => item.installed);
+		const installed = group.filter((item) => item.installed && occupiesInstallSlot(item));
 		if (installed.length === 0) continue;
 		for (const item of group) {
 			if (item.installed) continue;
