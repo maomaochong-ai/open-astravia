@@ -115,7 +115,7 @@ function GroupedCapsule({
 					title={groupLabel(items.length)}
 					className={[CAPSULE_CLASS, open ? "bg-accent text-foreground" : ""].filter(Boolean).join(" ")}
 				>
-					{/* 摞在一起的图标：右边压左边，所以后面的要更低一层 */}
+					{/* 摞在一起的图标：圆角矩形容器（带内边距），右边压左边，所以后面的要更低一层 */}
 					<span className="flex shrink-0 items-center">
 						<AnimatePresence initial={false}>
 							{stacked.map((item, index) => (
@@ -127,7 +127,7 @@ function GroupedCapsule({
 									exit={{ opacity: 0, scale: 0.6 }}
 									transition={POP}
 									style={{ zIndex: MAX_STACK - index }}
-									className={`relative flex h-[18px] w-[18px] items-center justify-center rounded-full border border-border bg-card ${index === 0 ? "" : "-ml-1.5"}`}
+									className={`relative flex h-5 w-5 items-center justify-center rounded-[7px] border border-border bg-card p-[3px] ${index === 0 ? "" : "-ml-1.5"}`}
 								>
 									<span className="flex h-3 w-3 items-center justify-center [&>*]:h-3 [&>*]:w-3">
 										{item.icon}
@@ -141,7 +141,7 @@ function GroupedCapsule({
 								initial={{ opacity: 0, scale: 0.6 }}
 								animate={{ opacity: 1, scale: 1 }}
 								transition={POP}
-								className="relative -ml-1.5 flex h-[18px] items-center justify-center rounded-full border border-border bg-card px-1 text-[9px] font-semibold leading-none text-muted-foreground"
+								className="relative -ml-1.5 flex h-5 items-center justify-center rounded-[7px] border border-border bg-card px-1.5 text-[9px] font-semibold leading-none text-muted-foreground"
 							>
 								+{overflow}
 							</motion.span>
