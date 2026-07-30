@@ -169,6 +169,7 @@ export type { ShortcutRecorderViewProps } from "./ShortcutRecorderView";
 export { ShortcutRecorderView } from "./ShortcutRecorderView";
 export type { ShortcutActionRowView, ShortcutsSettingsViewProps } from "./ShortcutsSettingsView";
 export { ShortcutsSettingsView } from "./ShortcutsSettingsView";
+export { SubscriptionActionsView } from "./SubscriptionActionsView";
 export type {
 	RemoteModel as SubscriptionRemoteModel,
 	SubscriptionCardsViewModel,
@@ -205,6 +206,8 @@ export { TeamSettingsView } from "./TeamSettingsView";
 export type { TokenActivityChartViewProps } from "./TokenActivityChartView";
 export { TokenActivityChartView } from "./TokenActivityChartView";
 export * from "./token-activity";
+export type { UsageStatsMetric, UsageStatsRange, UsageStatsViewProps } from "./UsageStatsView";
+export { USAGE_STATS_RANGES, UsageStatsView } from "./UsageStatsView";
 export type {
 	WebhookEndpointListViewLabels,
 	WebhookEndpointListViewProps,

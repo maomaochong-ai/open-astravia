@@ -6,8 +6,10 @@ import {
 } from "@vetta/theme-ui/settings";
 import { Button, Dialog, DialogContent, DialogTitle } from "@vetta/ui";
 import { useEffect, useState } from "react";
+import { SubscriptionActions } from "./SubscriptionActions";
 import { SubscriptionCards } from "./SubscriptionCards";
 import { TokenActivityChart } from "./TokenActivityChart";
+import { UsageStats } from "./UsageStats";
 import type { AccountSettingsModel } from "./useAccountSettingsModel";
 
 /** Theme presentation linked for migration inventory (Views implemented in theme-ui). */
@@ -61,7 +63,7 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-6">
-			<SettingsEnterItem className="mb-8 flex items-center gap-5">
+			<SettingsEnterItem className="mb-5 flex items-center gap-5">
 				<div className="relative shrink-0">
 					<div className="rounded-2xl bg-gradient-to-br from-primary/40 to-primary/10 p-[2px]">
 						<UserAvatar
@@ -105,10 +107,14 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 						</div>
 					)}
 				</div>
+
+				<div className="shrink-0 self-start">
+					<SubscriptionActions />
+				</div>
 			</SettingsEnterItem>
 
 			<SettingsEnterItem>
-				<SubscriptionCards>
+				<SubscriptionCards beforeWindows={<UsageStats />}>
 					<TokenActivityChart embedded />
 				</SubscriptionCards>
 			</SettingsEnterItem>

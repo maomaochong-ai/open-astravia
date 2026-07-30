@@ -1,4 +1,3 @@
-import type { SubscriptionStatus } from "@preload/api.js";
 import type { ResetCountdown } from "@shared/lib/subscription-format";
 import { formatExpiry, getResetCountdown, WINDOW_LABEL_KEYS } from "@shared/lib/subscription-format";
 import { remoteProvidersAtom, subscriptionStatusAtom } from "@shared/store/atoms";
@@ -41,14 +40,12 @@ export interface SubscriptionCardsModel {
 	expiry: string | null;
 	goProvider: RemoteProvider | undefined;
 	labels: {
-		currentPlan: string;
 		expiryDate: (date: string) => string;
 		freeModel: string;
 		modelMultiplier: (value: string) => string;
 		refresh: string;
 		refreshing: string;
 		thinking: string;
-		tokenPlan: string;
 		unlimitedQuota: string;
 		updated: string;
 		upgrade?: string;
@@ -57,7 +54,6 @@ export interface SubscriptionCardsModel {
 	now: number;
 	refreshing: boolean;
 	showGoCard: boolean;
-	status: SubscriptionStatus;
 	windows: SubscriptionWindowViewModel[];
 }
 
@@ -113,14 +109,12 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 
 	const labels = useMemo(
 		() => ({
-			currentPlan: t("subCurrentPlan"),
 			expiryDate: (date: string) => t("expiryDate", { date }),
 			freeModel: t("freeModel"),
 			modelMultiplier: (value: string) => t("modelMultiplier", { value }),
 			refresh: t("refresh"),
 			refreshing: t("refreshing"),
 			thinking: t("thinking"),
-			tokenPlan: t("tokenPlan"),
 			unlimitedQuota: t("unlimitedQuota"),
 			updated: t("updated"),
 			upgrade: t("upgradePlan"),
@@ -158,7 +152,6 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 		now,
 		refreshing,
 		showGoCard,
-		status: subscriptionStatus,
 		windows,
 	};
 }

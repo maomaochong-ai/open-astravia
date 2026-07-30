@@ -794,6 +794,17 @@
   },
   "saveFailed": "Save failed",
   "pleaseLogin": "Please log in first",
+  "usageStats": {
+    "streak": "Streak",
+    "days": "{{count}} d",
+    "unitTokens": "tokens",
+    "unitRequests": "reqs",
+    "range": {
+      "7d": "7d",
+      "30d": "30d",
+      "all": "All"
+    }
+  },
   "tokenActivity": {
     "title": "Token activity",
     "daily": "Daily",
@@ -1496,7 +1507,6 @@
   "vision": "Vision",
   "creditsPerMTok": "Credits/MTok",
   "unlimitedQuota": "Unlimited · Enjoy unlimited quota",
-  "tokenPlan": "Token Plan",
   "upgradePlan": "Upgrade",
   "expiryDate": "Expires {{date}}",
   "viewModelsCount": "View {{count}} models",
@@ -1524,7 +1534,6 @@
   "imbFeishuAppIdRequired": "App ID is required",
   "teamCreateOrJoin": "Create or join a team to collaborate with {{members}}",
   "teamJoinViaCode": "No teams yet. Create one or join via {{codeLabel}}",
-  "subCurrentPlan": "Current Plan",
   "subTokenPlan": "Token Plan",
   "subResetImminent": "Resetting soon",
   "subResetInDays": "Resets in {{days}}d {{hours}}h",
