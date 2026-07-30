@@ -438,6 +438,19 @@ textarea:disabled,
 	z-index: 1;
 }
 
+/* 侧边栏样式「经典」：抵消 AppFrame 的 p-2，让常驻侧边栏贴住窗口左/上/下边，
+   并去掉圆角与四周边框，只保留右侧一条分隔线。窄屏 overlay 侧边栏不受影响。
+   取值见 shared/theme/sidebar-style.ts。 */
+:root[data-sidebar-style="classic"] .sidebar-dock {
+	margin: -0.5rem 0 -0.5rem -0.5rem;
+}
+
+:root[data-sidebar-style="classic"] .sidebar-dock .sidebar-surface {
+	border-radius: 0;
+	border-width: 0;
+	border-right-width: 1px;
+}
+
 .project-list-containment {
 	contain: layout paint style;
 }

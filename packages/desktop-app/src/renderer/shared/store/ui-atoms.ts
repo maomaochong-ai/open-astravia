@@ -10,6 +10,7 @@ import {
 	type LanguagePreference,
 } from "@/shared/i18n/config";
 import { type CursorStyle, getStoredCursorStyle } from "../theme/cursor";
+import { getStoredSidebarStyle, type SidebarStyle } from "../theme/sidebar-style";
 
 // ─── i18n ───
 // 初值取主进程同步暴露的语言状态（preference + 解析后 language）。
@@ -74,6 +75,8 @@ export const themeNameAtom = atom<string>(
 );
 export type { CursorStyle };
 export const cursorStyleAtom = atom<CursorStyle>(getStoredCursorStyle());
+export type { SidebarStyle };
+export const sidebarStyleAtom = atom<SidebarStyle>(getStoredSidebarStyle());
 
 // ─── Confirm dialog ───
 

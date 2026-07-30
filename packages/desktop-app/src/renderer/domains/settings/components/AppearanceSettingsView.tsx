@@ -7,11 +7,13 @@ import appearanceMascot from "../assets/appearance-mascot.webp";
 import themeLock from "../assets/theme-lock.webp";
 import { SETTINGS_SECTION } from "../registry";
 import { MotionSelect, SettingHeading } from "@vetta/theme-ui/settings";
+import type { SidebarStyle } from "@shared/theme/sidebar-style";
 import type {
 	AppearanceCursorOption,
 	AppearanceLanguageOption,
 	AppearanceModeOption,
 	AppearanceSettingsModel,
+	AppearanceSidebarStyleOption,
 	AppearanceUiThemeOption,
 } from "./useAppearanceSettingsModel";
 
@@ -238,6 +240,55 @@ function UiThemeCard({
 	);
 }
 
+/** 迷你窗口示意图：经典=侧栏贴边仅右侧分隔线；悬浮=侧栏四周留白带圆角边框。 */
+function SidebarStylePreview({ style }: { style: SidebarStyle }): JSX.Element {
+	const classic = style === "classic";
+	return (
+		<div
+			className={cn(
+				"flex h-9 w-14 overflow-hidden rounded-md border border-border bg-background",
+				!classic && "gap-1 p-1",
+			)}
+		>
+			<div
+				className={cn(
+					"w-[34%] shrink-0 bg-muted",
+					classic ? "border-r border-border" : "rounded-[3px] border border-border",
+				)}
+			/>
+			<div className="flex-1" />
+		</div>
+	);
+}
+
+function SidebarStyleCard({
+	active,
+	hint,
+	id,
+	label,
+	onSelect,
+}: AppearanceSidebarStyleOption & {
+	onSelect: (style: SidebarStyle) => void;
+}): JSX.Element {
+	return (
+		<button
+			type="button"
+			onClick={() => onSelect(id)}
+			className={cn(
+				"group relative flex min-h-[72px] items-center gap-3 rounded-xl border bg-card px-3.5 py-3 text-left transition-all",
+				active ? SELECTION_ACTIVE : SELECTION_IDLE,
+			)}
+		>
+			<SidebarStylePreview style={id} />
+			<div className="min-w-0 flex-1 pr-5">
+				<div className="text-[13px] font-medium text-foreground">{label}</div>
+				<div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-muted-foreground">{hint}</div>
+			</div>
+			{active && <SelectionCheckBadge />}
+		</button>
+	);
+}
+
 function CursorStyleCard({
 	active,
 	hint,
@@ -316,6 +367,15 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 							active={model.mode === mode.value}
 							onSelect={(value, event) => model.actions.changeMode(value, { x: event.clientX, y: event.clientY })}
 						/>
+					))}
+				</div>
+			</div>
+
+			<div className="mb-6">
+				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-3" />
+				<div className="grid grid-cols-2 gap-3">
+					{model.sidebarStyleOptions.map((option) => (
+						<SidebarStyleCard key={option.id} {...option} onSelect={model.actions.setSidebarStyle} />
 					))}
 				</div>
 			</div>

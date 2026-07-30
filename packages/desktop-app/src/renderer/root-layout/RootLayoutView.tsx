@@ -67,7 +67,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 			>
 				{showSidebar && (
 					<>
-						<SidebarDock visible={!narrow && !sidebarCollapsed}>
+						<SidebarDock className="sidebar-dock" visible={!narrow && !sidebarCollapsed}>
 							<Sidebar onOpenSession={onOpenSession} onCollapse={actions.toggleSidebar} />
 						</SidebarDock>
 						<SidebarOverlay
