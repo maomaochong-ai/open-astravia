@@ -120,6 +120,22 @@
 		"confirmDeleteSuffix": "吗？{{folderNote}}此操作无法撤销。",
 		"confirmDeleteFolderNote": " 此操作将删除文件夹内的所有内容。",
 		"cancel": "取消"
+		,"transfer": {
+			"title": "将文件添加到项目",
+			"description": "将 {{count}} 项放入「{{destination}}」",
+			"moveWarning": "选择移动后，传输成功的项目会从原位置删除。",
+			"conflictLabel": "有 {{count}} 项名称冲突",
+			"keepBoth": "保留两者",
+			"replace": "替换现有项目",
+			"skip": "跳过冲突项目",
+			"copy": "复制",
+			"move": "移动",
+			"cancel": "取消",
+			"processing": "处理中…",
+			"prepareFailed": "无法读取拖入的文件",
+			"commitFailed": "文件传输失败",
+			"failedCount": "有 {{count}} 项传输失败"
+		}
 	},
 	"appshot": {
 		"errorSelfCapture": "Appshot 已忽略：前台窗口是 Vetta 自身",

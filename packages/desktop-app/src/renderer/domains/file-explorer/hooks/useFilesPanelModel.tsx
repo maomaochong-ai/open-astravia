@@ -1,4 +1,9 @@
 import { Button } from "@shared/components/ui/button";
+import type {
+	FileTransferAction,
+	FileTransferConflictPolicy,
+	FileTransferPlan,
+} from "@preload/fs-types";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
 import { pathDirname } from "@shared/lib/utils";
 import {
@@ -18,11 +23,13 @@ import {
 } from "@shared/store/atoms";
 import type { FilesPanelViewProps } from "@vetta/theme-ui/file-explorer";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { FileContextMenu } from "../components/FileContextMenu";
+import { FileTransferDialog } from "../components/FileTransferDialog";
 import { FileTree } from "../components/FileTree";
+import { isProjectInternalDrop } from "../services/file-drop";
 import { useFileTree } from "./useFileTree";
 
 export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
@@ -48,6 +55,10 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 	const panelWidth = useAtomValue(activityPanelWidthAtom);
 	const [deleteTarget, setDeleteTarget] = useState<FsEntry | null>(null);
 	const [errorToast, setErrorToast] = useState<string | null>(null);
+	const [transferPlan, setTransferPlan] = useState<FileTransferPlan | null>(null);
+	const [transferBusy, setTransferBusy] = useState(false);
+	const transferBusyRef = useRef(false);
+	const [conflictPolicy, setConflictPolicy] = useState<FileTransferConflictPolicy>("keep-both");
 	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
 	const imCwd = useAtomValue(defaultImConversationCwdAtom);
 	const setConfirm = useSetAtom(confirmDialogAtom);
@@ -160,6 +171,69 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		[moveEntry, t],
 	);
 
+	const onExternalDrop = useCallback(
+		(files: readonly File[], destinationDirectory: string) => {
+			if (!rootDir || files.length === 0) return;
+			const paths = files.map((file) => window.vetta.fs.pathForFile(file)).filter(Boolean);
+			if (isProjectInternalDrop(paths, rootDir)) {
+				for (const path of paths) onFileMove(path, destinationDirectory);
+				return;
+			}
+			void window.vetta.fs
+				.prepareDrop(files, destinationDirectory)
+				.then((plan) => {
+					setConflictPolicy("keep-both");
+					setTransferPlan(plan);
+				})
+				.catch((error: unknown) => {
+					console.warn("[file-explorer] prepare drop failed", error);
+					setErrorToast(t("fileExplorer.transfer.prepareFailed"));
+				});
+		},
+		[onFileMove, rootDir, t],
+	);
+
+	const onNativeDragStart = useCallback((paths: readonly string[]) => {
+		window.vetta.fs.startDrag(paths);
+	}, []);
+
+	const cancelTransfer = useCallback(() => {
+		if (!transferPlan || transferBusyRef.current) return;
+		void window.vetta.fs.cancelDrop(transferPlan.id);
+		setTransferPlan(null);
+	}, [transferPlan]);
+
+	useEffect(() => {
+		return () => {
+			if (transferPlan) void window.vetta.fs.cancelDrop(transferPlan.id);
+		};
+	}, [transferPlan]);
+
+	const commitTransfer = useCallback(
+		async (action: FileTransferAction) => {
+			if (!transferPlan || transferBusyRef.current) return;
+			transferBusyRef.current = true;
+			setTransferBusy(true);
+			try {
+				const result = await window.vetta.fs.commitDrop(transferPlan.id, action, conflictPolicy);
+				const failures = result.items.filter((item) => item.status === "failed");
+				if (failures.length > 0) {
+					setErrorToast(t("fileExplorer.transfer.failedCount", { count: failures.length }));
+				}
+				await refreshDir(transferPlan.destinationDirectory);
+				setTransferPlan(null);
+			} catch (error: unknown) {
+				console.warn("[file-explorer] commit drop failed", error);
+				setErrorToast(t("fileExplorer.transfer.commitFailed"));
+				setTransferPlan(null);
+			} finally {
+				transferBusyRef.current = false;
+				setTransferBusy(false);
+			}
+		},
+		[conflictPolicy, refreshDir, t, transferPlan],
+	);
+
 	const onContextMenu = useCallback(
 		(entry: FsEntry, x: number, y: number) => {
 			setContextMenu({ x, y, entry });
@@ -179,6 +253,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			tree: null,
 			contextMenu: null,
 			deleteDialog: null,
+			transferDialog: null,
 			errorToast,
 		};
 	}
@@ -229,6 +304,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			onSelectFile={handleSelectFile}
 			onRename={renameEntry}
 			onFileMove={onFileMove}
+			onExternalDrop={onExternalDrop}
+			onNativeDragStart={onNativeDragStart}
 			onContextMenu={onContextMenu}
 		/>
 	);
@@ -254,6 +331,17 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		/>
 	) : null;
 
+	const transferDialog = transferPlan ? (
+		<FileTransferDialog
+			plan={transferPlan}
+			conflictPolicy={conflictPolicy}
+			busy={transferBusy}
+			onConflictPolicyChange={setConflictPolicy}
+			onConfirm={(action) => void commitTransfer(action)}
+			onCancel={cancelTransfer}
+		/>
+	) : null;
+
 	return {
 		rootDir,
 		labels: {
@@ -266,6 +354,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		tree,
 		contextMenu: contextMenuNode,
 		deleteDialog,
+		transferDialog,
 		errorToast,
 	};
 }

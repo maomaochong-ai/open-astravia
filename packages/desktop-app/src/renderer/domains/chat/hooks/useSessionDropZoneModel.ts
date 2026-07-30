@@ -1,6 +1,6 @@
 import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
 import { isImagePath } from "@shared/lib/input-tokens";
-import { pathBasename } from "@shared/lib/utils";
+import { isSubPath, pathBasename } from "@shared/lib/utils";
 import { activeSessionAtom, type MentionedFile, mentionedFilesAtom } from "@shared/store/atoms";
 import type { SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
@@ -26,6 +26,7 @@ export interface SessionDropZoneModel extends Omit<SessionDropZoneViewProps, "ch
 export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneModel {
 	const { t } = useTranslation("chat");
 	const activeSession = useAtomValue(activeSessionAtom);
+	const rootDirectory = cwdOverride ?? activeSession?.cwd ?? null;
 	// 只读投影：用来跳过已经在输入框里的路径，避免重复插 token。
 	const mentionedFiles = useAtomValue(mentionedFilesAtom);
 	const [dragKind, setDragKind] = useState<DragKind | null>(null);
@@ -127,10 +128,6 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 				const file = files[i];
 				if (!file) continue;
 				const item = items[i];
-				if (file.type.startsWith("image/")) {
-					imageFiles.push(file);
-					continue;
-				}
 				let isDirectory = false;
 				if (item && typeof item.webkitGetAsEntry === "function") {
 					const entry = item.webkitGetAsEntry();
@@ -139,6 +136,14 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 				if (!isDirectory && file.type === "" && file.size === 0) isDirectory = true;
 
 				const path = window.vetta.fs.pathForFile(file);
+				if (path && rootDirectory && isSubPath(path, rootDirectory)) {
+					otherEntries.push({ path, name: file.name || pathBasename(path), isDirectory, sizeBytes: file.size });
+					continue;
+				}
+				if (file.type.startsWith("image/")) {
+					imageFiles.push(file);
+					continue;
+				}
 				if (!path) continue;
 				otherEntries.push({ path, name: file.name || pathBasename(path), isDirectory, sizeBytes: file.size });
 			}
@@ -150,7 +155,7 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 			}
 			pushMentioned(otherEntries);
 		},
-		[activeSession?.runtimeId, enabled, pushMentioned, resetDrag],
+		[activeSession?.runtimeId, enabled, pushMentioned, resetDrag, rootDirectory],
 	);
 
 	return {

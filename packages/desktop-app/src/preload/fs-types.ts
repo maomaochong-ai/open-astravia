@@ -19,6 +19,32 @@ export interface FsStatResult {
 	createdAt: number;
 }
 
+export type FileTransferAction = "copy" | "move";
+export type FileTransferConflictPolicy = "keep-both" | "replace" | "skip";
+
+export interface FileTransferPlanItem {
+	name: string;
+	isDirectory: boolean;
+	hasConflict: boolean;
+}
+
+export interface FileTransferPlan {
+	id: string;
+	destinationDirectory: string;
+	items: FileTransferPlanItem[];
+}
+
+export interface FileTransferItemResult {
+	name: string;
+	status: "copied" | "moved" | "skipped" | "failed";
+	destinationPath?: string;
+	error?: string;
+}
+
+export interface FileTransferResult {
+	items: FileTransferItemResult[];
+}
+
 export interface DesktopFsApi {
 	readDir(dirPath: string): Promise<FsEntry[]>;
 	readFile(filePath: string): Promise<{ content: string; encoding: "utf8" | "base64" }>;
@@ -28,6 +54,15 @@ export interface DesktopFsApi {
 	rename(oldPath: string, newPath: string): Promise<void>;
 	delete(targetPath: string): Promise<void>;
 	move(sourcePath: string, destDir: string): Promise<void>;
+	prepareDrop(files: readonly File[], destinationDirectory: string): Promise<FileTransferPlan>;
+	commitDrop(
+		planId: string,
+		action: FileTransferAction,
+		conflictPolicy: FileTransferConflictPolicy,
+	): Promise<FileTransferResult>;
+	cancelDrop(planId: string): Promise<void>;
+	/** Starts an operating-system drag synchronously from a renderer dragstart event. */
+	startDrag(paths: readonly string[]): void;
 	createDirectory(dirPath: string): Promise<void>;
 	listSubDirs(dirPath: string): Promise<FsEntry[]>;
 	/** 递归列出 rootPath 下所有文件（跳过隐藏/重型目录，有数量上限），用于 @ 引用的全局模糊匹配。 */

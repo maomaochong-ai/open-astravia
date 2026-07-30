@@ -13,6 +13,8 @@ export function useFileTreeNodeModel(input: {
 	onSelectFile: (entry: FsEntry) => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
 	onFileMove: (srcPath: string, destDir: string) => void;
+	onExternalDrop: (files: readonly File[], destDir: string) => void;
+	onNativeDragStart: (paths: readonly string[]) => void;
 }): FileTreeNodeViewProps {
 	const [, setContextMenu] = useAtom(fileContextMenuAtom);
 	const [renamingPath, setRenamingPath] = useAtom(renamingPathAtom);
@@ -49,5 +51,7 @@ export function useFileTreeNodeModel(input: {
 		onRenameSubmit,
 		onRenameCancel,
 		onFileMove: input.onFileMove,
+		onExternalDrop: input.onExternalDrop,
+		onNativeDragStart: input.onNativeDragStart,
 	};
 }

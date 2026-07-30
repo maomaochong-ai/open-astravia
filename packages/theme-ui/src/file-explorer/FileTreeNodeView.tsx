@@ -19,6 +19,8 @@ export interface FileTreeNodeViewProps {
 	onRenameCancel: () => void;
 	/** Called when a path is dropped onto this directory node. */
 	onFileMove: (srcPath: string, destDir: string) => void;
+	onExternalDrop: (files: readonly File[], destDir: string) => void;
+	onNativeDragStart: (paths: readonly string[]) => void;
 }
 
 function pathDirname(path: string): string {
@@ -55,6 +57,8 @@ export function FileTreeNodeView({
 	onRenameSubmit,
 	onRenameCancel,
 	onFileMove,
+	onExternalDrop,
+	onNativeDragStart,
 }: FileTreeNodeViewProps): JSX.Element {
 	const [dragOver, setDragOver] = useState(false);
 	const [renameValue, setRenameValue] = useState(entry.name);
@@ -109,14 +113,17 @@ export function FileTreeNodeView({
 			JSON.stringify({ isDirectory: entry.isDirectory, name: entry.name }),
 		);
 		e.dataTransfer.effectAllowed = "copyMove";
+		onNativeDragStart([entry.path]);
 	}
 
 	function handleDragOver(e: React.DragEvent) {
 		if (!entry.isDirectory) return;
-		const srcPath = e.dataTransfer.types.includes(DRAG_MIME) ? "" : null;
-		if (srcPath === null) return;
+		const types = Array.from(e.dataTransfer.types);
+		const internal = types.includes(DRAG_MIME);
+		if (!internal && !types.includes("Files")) return;
 		e.preventDefault();
-		e.dataTransfer.dropEffect = "move";
+		e.stopPropagation();
+		e.dataTransfer.dropEffect = internal ? "move" : "copy";
 		setDragOver(true);
 	}
 
@@ -128,12 +135,17 @@ export function FileTreeNodeView({
 		setDragOver(false);
 		if (!entry.isDirectory) return;
 		const srcPath = e.dataTransfer.getData(DRAG_MIME);
-		if (!srcPath) return;
 		e.preventDefault();
-		if (isSubPath(entry.path, srcPath)) return;
-		const srcParent = pathDirname(srcPath);
-		if (srcParent === entry.path) return;
-		onFileMove(srcPath, entry.path);
+		e.stopPropagation();
+		if (srcPath) {
+			if (isSubPath(entry.path, srcPath)) return;
+			const srcParent = pathDirname(srcPath);
+			if (srcParent === entry.path) return;
+			onFileMove(srcPath, entry.path);
+			return;
+		}
+		const files = Array.from(e.dataTransfer.files);
+		if (files.length > 0) onExternalDrop(files, entry.path);
 	}
 
 	return (
@@ -153,7 +165,7 @@ export function FileTreeNodeView({
 			className={cn(
 				"flex items-center gap-1.5 rounded-md px-1.5 py-[3px] text-[12px] cursor-default select-none transition-colors",
 				isSelected && !isRenaming ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/50",
-				dragOver && "ring-1 ring-primary bg-accent/50",
+				dragOver && "bg-primary/10 ring-1 ring-inset ring-primary/40",
 			)}
 			style={{ paddingLeft: `${depth * 16 + 6}px` }}
 		>
@@ -162,10 +174,10 @@ export function FileTreeNodeView({
 					className={cn(
 						"h-3 w-3 shrink-0 transition-transform",
 						isLoading
-							? "icon-[mdi--loading] animate-spin text-muted-foreground"
+							? "icon-[solar--refresh-linear] animate-spin text-muted-foreground"
 							: isExpanded
-								? "icon-[mdi--chevron-down]"
-								: "icon-[mdi--chevron-right]",
+								? "icon-[solar--alt-arrow-down-linear]"
+								: "icon-[solar--alt-arrow-right-linear]",
 					)}
 				/>
 			) : (

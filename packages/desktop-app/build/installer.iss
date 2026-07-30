@@ -56,8 +56,12 @@ Name: "{app}\versions"; Check: IsNotBackgroundUpdate
 [Files]
 Source: "{#SourceDir}\Vetta.exe"; DestDir: "{app}"; Flags: ignoreversion; Check: IsNotBackgroundUpdate
 Source: "{#SourceDir}\current.json"; DestDir: "{app}"; Flags: ignoreversion; Check: IsNotBackgroundUpdate
-Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{app}\versions\{#AppVersion}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsNotBackgroundUpdate
-Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{code:GetUpdateVersionDirectory}"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsBackgroundUpdate
+; app.asar is already an archive. Keeping it uncompressed lets the outer blockmap
+; reuse unchanged chunks instead of invalidating one large LZMA2 stream.
+Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{app}\versions\{#AppVersion}"; Excludes: "resources\app.asar"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsNotBackgroundUpdate
+Source: "{#SourceDir}\versions\{#AppVersion}\resources\app.asar"; DestDir: "{app}\versions\{#AppVersion}\resources"; Flags: ignoreversion nocompression; Check: IsNotBackgroundUpdate
+Source: "{#SourceDir}\versions\{#AppVersion}\*"; DestDir: "{code:GetUpdateVersionDirectory}"; Excludes: "resources\app.asar"; Flags: ignoreversion recursesubdirs createallsubdirs; Check: IsBackgroundUpdate
+Source: "{#SourceDir}\versions\{#AppVersion}\resources\app.asar"; DestDir: "{code:GetUpdateVersionDirectory}\resources"; Flags: ignoreversion nocompression; Check: IsBackgroundUpdate
 
 [Icons]
 Name: "{group}\Vetta"; Filename: "{app}\Vetta.exe"; Check: IsNotBackgroundUpdate

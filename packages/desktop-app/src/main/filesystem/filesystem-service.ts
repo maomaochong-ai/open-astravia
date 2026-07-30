@@ -1,5 +1,5 @@
 import type { Dirent, Stats } from "node:fs";
-import { copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import type { FsEntry, FsFileRef, FsStatResult } from "../../preload/fs-types.js";
@@ -62,7 +62,7 @@ function isWithinAllowedRoots(targetPath: string): boolean {
 	return false;
 }
 
-function assertPathWithinProject(targetPath: string): void {
+export function assertFilesystemPathWithinProject(targetPath: string): void {
 	if (!isWithinAllowedRoots(targetPath)) {
 		throw new Error("Path is outside any known project directory");
 	}
@@ -79,7 +79,7 @@ export function assertPathReadableForPreview(targetPath: string): void {
 }
 
 export async function readFilesystemDirectory(dirPath: string): Promise<FsEntry[]> {
-	assertPathWithinProject(dirPath);
+	assertFilesystemPathWithinProject(dirPath);
 	const resolved = resolve(dirPath);
 	const entries = await readdir(resolved, { withFileTypes: true });
 	const results: FsEntry[] = [];
@@ -159,7 +159,7 @@ export async function writeFilesystemFile(
 	content: string,
 	encoding: "utf8" | "base64" = "utf8",
 ): Promise<void> {
-	assertPathWithinProject(filePath);
+	assertFilesystemPathWithinProject(filePath);
 	const resolved = resolve(filePath);
 	await mkdir(dirname(resolved), { recursive: true });
 	if (encoding === "base64") {
@@ -170,7 +170,7 @@ export async function writeFilesystemFile(
 }
 
 export async function statFilesystemPath(filePath: string): Promise<FsStatResult | null> {
-	assertPathWithinProject(filePath);
+	assertFilesystemPathWithinProject(filePath);
 	try {
 		const stats = await stat(resolve(filePath));
 		return { size: stats.size, modifiedAt: stats.mtimeMs, createdAt: stats.birthtimeMs };
@@ -180,35 +180,26 @@ export async function statFilesystemPath(filePath: string): Promise<FsStatResult
 }
 
 export async function renameFilesystemPath(oldPath: string, newPath: string): Promise<void> {
-	assertPathWithinProject(oldPath);
-	assertPathWithinProject(newPath);
+	assertFilesystemPathWithinProject(oldPath);
+	assertFilesystemPathWithinProject(newPath);
 	await rename(resolve(oldPath), resolve(newPath));
 }
 
 export async function deleteFilesystemPath(targetPath: string): Promise<void> {
-	assertPathWithinProject(targetPath);
+	assertFilesystemPathWithinProject(targetPath);
 	await rm(resolve(targetPath), { recursive: true, force: true });
 }
 
 export async function moveFilesystemPath(sourcePath: string, destinationDirectory: string): Promise<void> {
-	assertPathWithinProject(sourcePath);
-	assertPathWithinProject(destinationDirectory);
+	assertFilesystemPathWithinProject(sourcePath);
+	assertFilesystemPathWithinProject(destinationDirectory);
 	const resolvedSource = resolve(sourcePath);
 	const resolvedDestination = join(resolve(destinationDirectory), basename(resolvedSource));
 	try {
 		await rename(resolvedSource, resolvedDestination);
 	} catch (error: unknown) {
 		if ((error as NodeJS.ErrnoException).code !== "EXDEV") throw error;
-		const sourceStat = await stat(resolvedSource);
-		if (sourceStat.isDirectory()) {
-			await mkdir(resolvedDestination, { recursive: true });
-			const children = await readdir(resolvedSource, { withFileTypes: true });
-			for (const child of children) {
-				await copyFile(join(resolvedSource, child.name), join(resolvedDestination, child.name));
-			}
-		} else {
-			await copyFile(resolvedSource, resolvedDestination);
-		}
+		await cp(resolvedSource, resolvedDestination, { recursive: true, errorOnExist: true, force: false });
 		await rm(resolvedSource, { recursive: true, force: true });
 	}
 }
@@ -218,7 +209,7 @@ export async function createFilesystemDirectory(dirPath: string): Promise<void> 
 }
 
 export async function listFilesystemFilesRecursive(rootPath: string): Promise<FsFileRef[]> {
-	assertPathWithinProject(rootPath);
+	assertFilesystemPathWithinProject(rootPath);
 	const root = resolve(rootPath);
 	const results: FsFileRef[] = [];
 	async function walk(dir: string): Promise<void> {

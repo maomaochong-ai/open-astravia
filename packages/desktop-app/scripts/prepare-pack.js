@@ -713,6 +713,8 @@ function resolveExtraResources() {
 	return extraResources;
 }
 
+const extraResources = resolveExtraResources();
+
 // Write electron-builder config
 const builderConfig = {
 	appId: "com.vetta.desktop",
@@ -724,6 +726,7 @@ const builderConfig = {
 	npmRebuild: false,
 	...(updatePublishConfig ? { publish: [updatePublishConfig] } : {}),
 	...(releaseInfo ? { releaseInfo } : {}),
+	files: ["**/*", ...extraResources.map(({ from }) => `!${from}/**/*`)],
 	protocols: {
 		name: "Vetta",
 		schemes: ["vetta"],
@@ -805,7 +808,7 @@ const builderConfig = {
 	},
 	// Sidecar binaries are picked up from the staged ./im-gateway dir
 	// (populated above by the cross-build step).
-	extraResources: resolveExtraResources(),
+	extraResources,
 	directories: {
 		output: join(projectRoot, "release"),
 	},

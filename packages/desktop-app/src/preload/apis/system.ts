@@ -118,6 +118,14 @@ export function createSystemApi(
 			rename: (oldPath, newPath) => ipc.invoke("vetta:fs:rename", oldPath, newPath),
 			delete: (targetPath) => ipc.invoke("vetta:fs:delete", targetPath),
 			move: (sourcePath, destDir) => ipc.invoke("vetta:fs:move", sourcePath, destDir),
+			prepareDrop: (files, destinationDirectory) => {
+				const sourcePaths = files.map((file) => webUtils.getPathForFile(file)).filter(Boolean);
+				return ipc.invoke("vetta:file-transfer:prepare-drop", sourcePaths, destinationDirectory);
+			},
+			commitDrop: (planId, action, conflictPolicy) =>
+				ipc.invoke("vetta:file-transfer:commit-drop", planId, action, conflictPolicy),
+			cancelDrop: (planId) => ipc.invoke("vetta:file-transfer:cancel-drop", planId),
+			startDrag: (paths) => ipc.send("vetta:file-transfer:start-drag", [...paths]),
 			createDirectory: (dirPath) => ipc.invoke("vetta:fs:create-directory", dirPath),
 			listSubDirs: (dirPath) => ipc.invoke("vetta:fs:list-sub-dirs", dirPath),
 			listFilesRecursive: (rootPath) => ipc.invoke("vetta:fs:list-files-recursive", rootPath),

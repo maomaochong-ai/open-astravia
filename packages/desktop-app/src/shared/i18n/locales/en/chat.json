@@ -120,6 +120,22 @@
 		"confirmDeleteSuffix": "?{{folderNote}} This cannot be undone.",
 		"confirmDeleteFolderNote": " All contents inside the folder will be deleted.",
 		"cancel": "Cancel"
+		,"transfer": {
+			"title": "Add files to project",
+			"description": "Place {{count}} item(s) in “{{destination}}”",
+			"moveWarning": "Move removes successfully transferred items from their original location.",
+			"conflictLabel": "{{count}} item(s) have name conflicts",
+			"keepBoth": "Keep both",
+			"replace": "Replace existing items",
+			"skip": "Skip conflicting items",
+			"copy": "Copy",
+			"move": "Move",
+			"cancel": "Cancel",
+			"processing": "Processing…",
+			"prepareFailed": "Unable to read dropped files",
+			"commitFailed": "File transfer failed",
+			"failedCount": "{{count}} item(s) failed to transfer"
+		}
 	},
 	"appshot": {
 		"errorSelfCapture": "Appshot skipped: the frontmost window is Vetta itself",

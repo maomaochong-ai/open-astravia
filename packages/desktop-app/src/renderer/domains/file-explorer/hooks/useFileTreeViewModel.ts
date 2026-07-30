@@ -14,6 +14,8 @@ export function useFileTreeViewModel(input: {
 	onSelectFile: (entry: FsEntry) => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
 	onFileMove: (srcPath: string, destDir: string) => void;
+	onExternalDrop: (files: readonly File[], destDir: string) => void;
+	onNativeDragStart: (paths: readonly string[]) => void;
 	onContextMenu: (entry: FsEntry, x: number, y: number) => void;
 }): FileTreeViewProps {
 	const { t } = useTranslation("chat");
@@ -45,5 +47,7 @@ export function useFileTreeViewModel(input: {
 		onRenameSubmit,
 		onRenameCancel,
 		onFileMove: input.onFileMove,
+		onExternalDrop: input.onExternalDrop,
+		onNativeDragStart: input.onNativeDragStart,
 	};
 }
