@@ -41,6 +41,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **命令面板（Splash 完全体）**：`/` 或「+」唤出的面板顶部新增**已接入连接器宫格**——列出 mcp.json 里已添加、未禁用且必填密钥齐的内置连接器（canva / notion / figma / github / slack / gmail / google-calendar / google-drive），列数自适应以避免末行只剩单个（2→2、3→3、4→2、5/6→3、7→4）；点击插入 `@mcp:名字` 行内胶囊，与 skill 同为软引用，模型自行决定是否调用该 MCP。下方 skill 列表把场景与技能合成单列，按**调用次数 → 类别（内置 > 插件 > Vetta 原生 > 通用）→ 最近使用 → 名称**排序；调用次数取自 app-monitor 已落盘的 per-skill 统计（新增 IPC `vetta:app-monitor:get-prompt-ref-usage`）。item 高度 46px→32px 单行（图标 + 名称 + 来源标签 + 同行右侧描述），面板总高 320→420，宫格随内容滚动、只有头部与底部动作条固定；输入过滤词时隐藏宫格、键盘上下键只在列表内移动。
 ### Removed
 
+- **新会话页的场景轮播 / 技能徽章 / 引导词三个区块**：欢迎页只保留问候语、模式切换与输入栏。随之删除 `useNewSessionResources`（本地 skill + 市场场景 + 安装清单的拉取）、场景点击安装链路、`GuidingWords` / `SkillBadgeRow` / `SceneCarousel` 及 `useGuidingWordsModel`，以及主题槽位 `chat.newSessionSceneCarousel` / `chat.newSessionSceneCard` / `chat.newSessionSkillBadgeRow` 在 desktop 侧的声明（theme-ui 的组件与契约保留，主题覆盖它们对客户端不再有效果）。`chat.newSession` 的 `sceneCarouselNext` / `sceneCarouselPrev` / `sceneInstallPrompt` / `skillScrollLeft` / `skillScrollRight` 文案一并删除。
+- **设置 → 新会话页**：整个 tab（含「页面元素」三个开关）与 `NewSessionSettings*` / `useNewSessionSettingsModel` 删除，`SettingsTab` 不再有 `newSession`；`newSessionPageVisibilityAtom` 与 desktop-config 的 `newSessionPage` 字段（主进程 `normalizeNewSessionPage`、preload 类型）一并移除。已有 `desktop-config.json` 里的该字段会在下次写入时被丢弃。
+- **侧边栏「更多」里的「场景」入口**：`/scenes` 路由本身保留，只是不再从侧边栏进入。
 - **服务端预设模板目录**：`/providers/templates.json` 的拉取、启动时的在线合并与 `vetta:models:fetch-templates` IPC 删除，改为 `vetta:models:list-presets` / `vetta:models:refresh-preset-models`。早期由服务端模板采纳、现已不在内置目录里的条目仍展示（标记「已下线」），但不提供刷新入口。
 - **能力详情的结构化 section 体系**：`CapabilityDetailSections` 的 featureList / scenarios / permissions / reviews 与 `catalog.ts` 中 Figma / GitHub / Notion 的客户端硬编码正文按 ADR-0049 作废，正文改由服务端下发 markdown。
 - **插件独立入口**：`PluginsPage` / `PluginsPanel` / `PluginCard` / `PluginDetailSheet` 及侧边栏「插件」导航项删除；插件的 dev 热更新、devLinks、从路径安装等开发者功能保持不变。
@@ -61,6 +64,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **新会话页欢迎区版式**：工作 / 编程模式切换从问候语右侧移到标题上方；右侧吉祥物插画改为绝对定位并下移，视觉上趴在输入栏顶边上（原先在流内、下方还有一条分隔线）。
 - **输入框工具栏整排改用正文色**：「+」/ 插图 / 附件按钮、执行模式、模型选择与已激活 action 的静默态由 `muted-foreground` 改为 `foreground`，hover 仍只上底色；此前整排偏灰，和输入区正文对比过弱。
 - **多个已激活 input action 折叠成一枚胶囊**：工具栏是单行不换行的，平铺两三个 action 就把执行模式和模型挤没了。现在一个时保持平铺（图标 + 名称，点图标即取消）；两个及以上折叠为「图标堆叠 + N 个插件」，最多堆 4 格、超出时最后一格显示 `+n`；点胶囊在上方升起 popover，逐条 hover 出关闭键。
 - **命令区与输入卡片接缝去掉台阶**：展开形态下输入卡片去上圆角、上边框置透明（不减 1px，避免整条 bar 抖动），命令区左右各外扩 1px 与卡片描边对齐——此前命令区被卡片内容盒内缩，两侧各差 1px 看着像锯齿。

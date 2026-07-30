@@ -430,11 +430,6 @@
 	"newSession": {
 		"greetingDefault": "今天怎么样？",
 		"greetingTitle": "你好，{{nickname}}",
-		"sceneCarouselNext": "下一组",
-		"sceneCarouselPrev": "上一组",
-		"sceneInstallPrompt": "点击安装并使用",
-		"skillScrollLeft": "向左",
-		"skillScrollRight": "向右",
 		"subtitle": "我可以帮助你处理工作，有什么我可以帮你的吗？",
 		"defaultContext": "普通会话",
 		"projectContext": "项目 · {{name}}"

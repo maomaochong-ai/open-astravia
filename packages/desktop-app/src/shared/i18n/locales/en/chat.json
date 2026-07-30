@@ -430,11 +430,6 @@
 	"newSession": {
 		"greetingDefault": "How's it going today?",
 		"greetingTitle": "Hi, {{nickname}}",
-		"sceneCarouselNext": "Next",
-		"sceneCarouselPrev": "Previous",
-		"sceneInstallPrompt": "Click to install and use",
-		"skillScrollLeft": "Scroll left",
-		"skillScrollRight": "Scroll right",
 		"subtitle": "I can help you get work done. What can I do for you?",
 		"defaultContext": "General conversation",
 		"projectContext": "Project · {{name}}"

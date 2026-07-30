@@ -30,13 +30,11 @@ import {
 	KB_PROCESSING_CWD,
 	KB_PROCESSING_SESSION_DIR,
 	type KnowledgeBaseConfig,
-	type NewSessionPageConfig,
 	normalizeAgentMode,
 	normalizeAppshot,
 	normalizeExecutionMode,
 	normalizeExperimental,
 	normalizeKnowledgeBase,
-	normalizeNewSessionPage,
 	normalizeQuickPanel,
 	normalizeShortcuts,
 	type ProjectEntry,
@@ -99,7 +97,6 @@ export {
 	KB_PROCESSING_CWD,
 	KB_PROCESSING_SESSION_DIR,
 	type KnowledgeBaseConfig,
-	type NewSessionPageConfig,
 	persistVettaCliPaths,
 	type ProjectEntry,
 	type QuickPanelConfig,
@@ -360,10 +357,6 @@ export function registerFsIpc(): () => void {
 					: current.quickPanel,
 			appshot:
 				patch.appshot !== undefined ? normalizeAppshot({ ...current.appshot, ...patch.appshot }) : current.appshot,
-			newSessionPage:
-				patch.newSessionPage !== undefined
-					? normalizeNewSessionPage({ ...current.newSessionPage, ...patch.newSessionPage })
-					: current.newSessionPage,
 		};
 		// Allow all known roots for file operations
 		for (const p of next.projects) allowProjectRoot(p.path);
