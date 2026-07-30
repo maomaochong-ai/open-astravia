@@ -451,18 +451,18 @@ textarea:disabled,
 	border-right-width: 1px;
 }
 
-/* 顶栏内容与 macOS 红绿灯对齐：红绿灯中线实测在 y≈27（trafficLightPosition y=20 + 按钮半径）。
-   悬浮时顶栏占 8~52、h-11 居中在 30，偏下；经典下从 y=0 起算、居中在 22，偏上。
-   两边各补一侧内边距把中线压到 27。padding 记在 h-11 元素自身（border-box，总高不变），
-   drag-region 仍覆盖整条顶栏。 */
+/* 顶栏内容与 macOS 红绿灯对齐。h-11 自身居中：悬浮时顶栏占 8~52、中线 30 偏下；
+   经典下从 y=0 起算、中线 22 偏上。两边各补一侧内边距把中线挪到实测位置
+   （悬浮 28、经典 29）。padding 记在 h-11 元素自身（border-box，总高不变），
+   drag-region 仍覆盖整条顶栏。数值是照实机目测调的，要挪就改这两个。 */
 :root[data-platform="mac"] .sidebar-dock .sidebar-top-bar {
-	padding-bottom: 0.375rem;
+	padding-bottom: 0.25rem;
 }
 
 :root[data-platform="mac"][data-sidebar-style="classic"]
 	.sidebar-dock
 	.sidebar-top-bar {
-	padding-top: 0.75rem;
+	padding-top: 0.875rem;
 	padding-bottom: 0;
 }
 
