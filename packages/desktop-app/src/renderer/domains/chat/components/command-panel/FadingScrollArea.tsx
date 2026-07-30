@@ -13,9 +13,15 @@ const FADE_MASK = "[mask-image:linear-gradient(to_bottom,black_calc(100%-24px),t
 export function FadingScrollArea({
 	children,
 	className,
+	suspended = false,
 }: {
 	children: React.ReactNode;
 	className?: string;
+	/**
+	 * 暂时不挂 mask。展开动画期间用：mask 让这块无法复用光栅缓存，
+	 * 每帧都要多合成一次，低配设备上是白花的开销。
+	 */
+	suspended?: boolean;
 }): JSX.Element {
 	const ref = useRef<HTMLDivElement>(null);
 	const [fading, setFading] = useState(false);
@@ -45,7 +51,7 @@ export function FadingScrollArea({
 				// 隐藏滚动条只能用 no-scrollbar：全局 overlay 滚动条规则是无 layer 的，
 				// Tailwind 的 `[&::-webkit-scrollbar]:hidden` 在 layer 里压不过它。
 				"no-scrollbar min-h-0 flex-1 overflow-y-auto",
-				fading ? FADE_MASK : "",
+				fading && !suspended ? FADE_MASK : "",
 				className,
 			]
 				.filter(Boolean)

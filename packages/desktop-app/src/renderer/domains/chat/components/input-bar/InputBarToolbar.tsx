@@ -84,29 +84,33 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 				{/*
 				 * 展开形态下这个位置让给「插图 / 附件」——命令区已经占满上方，
 				 * 此时执行模式与模型收起，工具栏只服务于「往输入框里添东西」+ 发送。
+				 *
+				 * 两套控件都常驻挂载、只切 display：换形态时卸载 / 挂载
+				 * ExecutionModeSelector 与 ModelSelector 是一次同步 render（各自的 model
+				 * hook + i18n + IPC），正好落在展开动画的第一帧上，低配设备直接顿一下。
 				 */}
-				{slashOpen ? (
-					// keep-open：命令区的 click-outside 走 mousedown，不标记的话这两个按钮
-					// 会在 click 之前随面板一起卸载，文件选择器永远弹不出来。
-					<span data-command-panel-keep-open="true" className="flex shrink-0 items-center gap-0.5">
-						<InputBarToolbarButton
-							icon="icon-[solar--gallery-linear]"
-							title={labels.toolbar.addImage}
-							disabled={!hasSession}
-							onClick={onSelectImages}
-						/>
-						<InputBarToolbarButton
-							icon="icon-[solar--paperclip-linear]"
-							title={labels.toolbar.attachFile}
-							disabled={!hasSession}
-							onClick={onSelectFiles}
-						/>
-					</span>
-				) : (
-					<div className="min-w-0 shrink">
-						<ExecutionModeSelector />
-					</div>
-				)}
+				{/* keep-open：命令区的 click-outside 走 mousedown，不标记的话这两个按钮
+				    会在 click 之前随面板一起卸载，文件选择器永远弹不出来。 */}
+				<span
+					data-command-panel-keep-open="true"
+					className={slashOpen ? "flex shrink-0 items-center gap-0.5" : "hidden"}
+				>
+					<InputBarToolbarButton
+						icon="icon-[solar--gallery-linear]"
+						title={labels.toolbar.addImage}
+						disabled={!hasSession}
+						onClick={onSelectImages}
+					/>
+					<InputBarToolbarButton
+						icon="icon-[solar--paperclip-linear]"
+						title={labels.toolbar.attachFile}
+						disabled={!hasSession}
+						onClick={onSelectFiles}
+					/>
+				</span>
+				<div className={slashOpen ? "hidden" : "min-w-0 shrink"}>
+					<ExecutionModeSelector />
+				</div>
 				<ActiveActionCapsules
 					items={activeActions}
 					removeHint={labels.capsule.removeDefault}
@@ -123,15 +127,14 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					.join(" ")}
 				data-theme-surface-root="chat.inputBarToolbarRight"
 			>
-				{/* 展开形态只留发送：模型与上下文圆环让位给命令区 */}
-				{!slashOpen && (
-					<>
-						<div className="min-w-0 shrink">
-							<ModelSelector />
-						</div>
-						<ContextRing className="mr-1 shrink-0" />
-					</>
-				)}
+				{/* 展开形态只留发送：模型与上下文圆环让位给命令区（同上，只切 display 不卸载） */}
+				<div className={slashOpen ? "hidden" : "min-w-0 shrink"}>
+					<ModelSelector />
+				</div>
+				{/* 包一层控制显隐：ContextRingView 自带 `flex`，直接叠 `hidden` 压不住它。 */}
+				<div className={slashOpen ? "hidden" : "contents"}>
+					<ContextRing className="mr-1 shrink-0" />
+				</div>
 				{isStreaming && !isEmpty ? (
 					<motion.button
 						type="button"

@@ -30,6 +30,7 @@ import { filePreviewAtom } from "@shared/store/file-preview-atoms";
 import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
 import type { SelectedFile } from "../AtPanel";
 import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
+import { PANEL_REVEAL_MS } from "../command-panel/constants";
 import {
 	focusInputEditor,
 	insertConnectorToken,
@@ -209,6 +210,18 @@ export function useInputBarModel({
 	useEffect(() => {
 		onExpandedChange?.(slashOpen);
 	}, [onExpandedChange, slashOpen]);
+
+	// 展开态立即生效、收起态等命令区退场动画跑完再撤：卡片圆角与上边框比面板先恢复的话，
+	// 那 190ms 里接缝处会露出两个缺口（两块面本该是一整块）。
+	const [slashVisible, setSlashVisible] = useState(false);
+	useEffect(() => {
+		if (slashOpen) {
+			setSlashVisible(true);
+			return;
+		}
+		const timer = window.setTimeout(() => setSlashVisible(false), PANEL_REVEAL_MS);
+		return () => window.clearTimeout(timer);
+	}, [slashOpen]);
 
 	useEffect(() => {
 		if (sandboxPermission) setDrawerActiveTab("sandbox-permission");
@@ -583,6 +596,7 @@ export function useInputBarModel({
 		placeholderRotating,
 		isFocused,
 		slashOpen,
+		slashVisible,
 		slashFilter,
 		atOpen,
 		atFilter,

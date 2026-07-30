@@ -56,6 +56,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **方向键移到输入框里的 token 上会把光标吞掉**：技能 / 连接器 / 文件 / 图片四种行内 token 都声明了 `isKeyboardSelectable() = true`，光标左右移到 token 上时 Lexical 会把 RangeSelection 换成 NodeSelection，caret 随之消失；而输入框用的是 `PlainTextPlugin`，它不像 RichText 那样注册 NodeSelection 下的方向键处理，选区就此卡死——再按方向键没有任何反应，此时继续打字还会插到整段开头，只能用鼠标点一下才能恢复。四种 token 改为不可键盘选中，光标像跨过一个普通字符那样跨过 token，Backspace 删除 token 的行为不变。
+- **通用 Agent 目录里的同名 skill 会挡住能力广场安装**：`~/.agents/skills` 下有同名 skill（如 `xlsx` / `docx`）时，安装市场同名能力被判为「同一能力标识已由其它来源安装」而拒绝。通用目录不受 Vetta 托管、也无法预测别的 agent 往里放什么，按 ADR-0020 它本就该让位于 Vetta 原生 skill，因此不再让 `agents-user` / `agents-project` 来源的只读条目占据物理安装位。装好之后该同名条目按既有加载优先级被 Vetta 的版本盖掉（输入框命令区与 agent 感知都只看得到一份），与 Vetta 受控能力不重名的通用 skill 不受影响。
+- **输入框「默认态 → 展开态」在低配设备上卡顿**：上一轮只清掉了首次展开时撞进动画的异步数据，结构性开销还在。命令区的高度生长是 `height: 0 → auto` 的弹簧，而 height 不可合成，每帧都要 style → layout → paint → raster 整块面板（几十行列表 + 每行一个内联 SVG 图标）——偏偏命令区是 `absolute bottom-full`，压根不参与布局流，这段高度动画对其它元素毫无影响，纯粹为了「生长感」却付了整条不可合成路径的代价；`height: "auto"` 还会在过滤词每变一次时重新测量并重定向弹簧，打字期间是持续的 layout 抖动。现在改成 `clip-path: inset()` 从上往下揭幕：布局与绘制内容全程停在终态，每帧只重新裁剪一次，layout 一次都不跑。刻意不用更便宜的 transform 位移——内容一动，描边、圆角与「和输入卡片接成一整块」的接缝在动画中途就都不在终态位置上，半像素接缝会显出一条线，与卡片相接的两角会短暂露出背后的消息列表。同时：揭幕期间列表只渲染可视区的 12 行（剩下的动画结束再补，不再在首帧一次性布局上百行）、渐隐 mask 暂不挂载；工具栏切形态不再卸载 / 挂载 `ExecutionModeSelector`、`ModelSelector`、`ContextRing`（那次同步 render 正好落在动画第一帧），改为只切 display；新会话页的 hero 淡出、输入栏位移与命令区揭幕改为共用一条固定时长的曲线（各跑各的弹簧时掉帧时能看出它们互相在追），并接上 `prefers-reduced-motion`。输入卡片的圆角与透明上边框改为跟随新的 `slashVisible`（命令区是否还在屏上，含退场动画）而不是 `slashOpen`——两块面本该是一整块，`slashOpen` 一变卡片就立刻恢复圆角，命令区还没退完，那 190ms 里接缝处会露出两个缺口。`InputBarModel` 因此新增 `slashVisible`，覆盖 `chat.inputBarView` 槽位的主题可以按需使用。
+- **展开态命令区与输入区之间有一条贯穿全宽的细线**：那 1px 正对着输入卡片的上描边——展开态它被置成透明（不用 `border-t-0`，否则整条 bar 会抖 1px），但没有任何东西盖住它，边框区显示什么取决于 `background-clip`，透出来就是一条把两块面切开的线。命令区的 bottom 从 `100%` 压到 `calc(100% - 1px)`，用它自己无描边的底边补平。
 - **进入应用后第一次展开命令面板会顿一下再继续展开**：`height: 0 → auto` 的弹簧全程跑在主线程，首次展开时有三处异步在动画中间才到位——skill 列表的预取挂在 `requestIdleCallback`（冷启动主线程被占满，一路拖到 2s 超时才发起，赶不上第一次展开）、缓存命中时展开那一刻仍无条件重拉一次、图标目录（要打网络）只在 `open` 时才开始加载。数据一到就是几十行重渲染加整列远程 `<img>` 换图，动画因此顿住。现在 skill 列表预取挂载即发起、图标目录同样提前预热，缓存命中时的「反映磁盘增删」重拉推到空闲再做。
 - **Windows 安装版启动后只有托盘、主窗口不显示**：版本启动器曾用 `HideWindow: true` 拉起 Electron，会写入 `STARTF_USESHOWWINDOW` + `SW_HIDE`，导致进程第一次 `ShowWindow` 被系统强制隐藏（日志里已有 `show`，但 HWND 无 `WS_VISIBLE`）。去掉启动器 `HideWindow`；主进程 `revealMainWindow` 在 Windows 上再 show 一次，兼容尚未替换的旧启动器。
 - **输入栏「图像生成」等 badge 时有时无**：`activeToolNamesAtom` 只在 `openSession` 时用 `getState` 取一次快照，而 `generate_image` 是 image-gen 插件 activate 后才动态注册的。冷启动恢复会话时会话创建早于插件就绪，那个会话的 `requiresActiveTool` 闸门就一直把 badge 挡住。现在订阅 runtime 新增的 `active_tools_update` 事件刷新该 atom，并在 `session.subscribe` 时回放一次当前工具集，堵住 getState 与 subscribe 之间的丢事件窗口。
@@ -71,6 +75,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **新会话页展开命令区时，能力条目不足 7 条就不再下沉输入栏**：条目少时面板长不到会盖住 hero 的高度，那趟 120px 位移纯属多余。判定用不带过滤词的完整列表条目数（与命令区共用模块级缓存），因此不会随用户打字过滤而抖；hero 淡出仍跟展开态本身走。
 - **外观设置里「侧边栏样式」下移到「主题」之后**：原先夹在「外观模式」与「界面主题」之间，现在排到主题色区段下方（页面末尾），`SETTINGS_SECTIONS` 的顺序同步调整以对齐设置搜索结果。
 - **工具栏里已激活 action 胶囊常驻底色**：紧跟权限/沙箱右侧的激活胶囊由「透明、hover 才上底色」改为常驻 `bg-accent/60`（hover 加深到 `bg-accent`）。它表示的是持续生效的状态，全透明时和旁边的普通工具栏按钮分不出来。多个 action 折叠后堆叠的图标容器由圆形改为圆角矩形（20px、`rounded-[7px]`、3px 内边距），`+n` 角标同步跟上。折叠态 popover 宽度跟随触发胶囊（`--radix-popover-trigger-width`），条目改用与未折叠胶囊完全一致的外观与关闭手势（h-7 / `rounded-lg` / `bg-accent/60`，图标 hover 变关闭键、整行可点），看起来就是把几枚胶囊竖着收纳了。
 - **命令区 skill 列表空态改为卡片**：「未找到匹配项」/「暂无可用的技能或场景」由一行灰字换成占满命令区宽度的虚线卡片（左侧圆形图标 + 右侧标题与提示，横排以免撑高命令区），新增 `SkillListEmpty` 组件与 `chat.slashPanel.emptyNoMatchHint` / `emptyNoSkillsHint` 两条文案（zh/en），`SkillListLabels` 随之新增两个必填字段。聊天侧命令面板与 dialog 侧 skill 选择器共用。
