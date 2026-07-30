@@ -107,6 +107,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							onSelectConnector={model.actions.handleConnectorSelect}
 							filter={model.slashFilter}
 							cwd={model.effectiveCwd || undefined}
+							className={model.isFocused ? "border-primary/20" : undefined}
 						/>
 
 						{/*
