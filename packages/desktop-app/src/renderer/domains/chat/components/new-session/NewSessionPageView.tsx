@@ -63,15 +63,11 @@ export function NewSessionPageView({
 			background={<NewSessionBackground />}
 			themedBackground={<ThemedNewSessionBackground />}
 			dropZone={(children) => (
-				<SessionDropZone
-					cwdOverride={cwd}
-					className={cn(
-						"relative flex h-full flex-1 flex-col overflow-hidden bg-background",
-						className,
-					)}
+				<div
+					className={cn("relative flex h-full flex-1 flex-col overflow-hidden bg-background", className)}
 				>
 					{children}
-				</SessionDropZone>
+				</div>
 			)}
 			hero={
 				// 命令区向上生长会盖到 hero 上，模式切换与吉祥物会浮在面板前面挡住内容，
@@ -93,17 +89,19 @@ export function NewSessionPageView({
 				</motion.div>
 			}
 			inputBar={
-				<motion.div
-					animate={{ y: commandPanelShift ? PANEL_SHIFT_Y : 0 }}
-					transition={shiftTransition}
-				>
-					<InputBar
-						onSend={onSend}
-						onAbort={onAbort}
-						cwdOverride={cwd}
-						onExpandedChange={onCommandPanelExpandedChange}
-					/>
-				</motion.div>
+				<SessionDropZone cwdOverride={cwd} className="relative">
+					<motion.div
+						animate={{ y: commandPanelShift ? PANEL_SHIFT_Y : 0 }}
+						transition={shiftTransition}
+					>
+						<InputBar
+							onSend={onSend}
+							onAbort={onAbort}
+							cwdOverride={cwd}
+							onExpandedChange={onCommandPanelExpandedChange}
+						/>
+					</motion.div>
+				</SessionDropZone>
 			}
 		/>
 	);

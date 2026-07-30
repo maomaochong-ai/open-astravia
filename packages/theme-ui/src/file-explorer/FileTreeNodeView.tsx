@@ -1,6 +1,7 @@
 import { cn } from "@vetta/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { getFileIcon } from "./fileIcons";
+import { beginNativeFileDrag } from "./nativeFileDrag";
 import type { FileExplorerEntry } from "./types";
 
 const DRAG_MIME = "application/vetta-path";
@@ -107,13 +108,7 @@ export function FileTreeNodeView({
 	}
 
 	function handleDragStart(e: React.DragEvent) {
-		e.dataTransfer.setData(DRAG_MIME, entry.path);
-		e.dataTransfer.setData(
-			"application/vetta-path-meta",
-			JSON.stringify({ isDirectory: entry.isDirectory, name: entry.name }),
-		);
-		e.dataTransfer.effectAllowed = "copyMove";
-		onNativeDragStart([entry.path]);
+		beginNativeFileDrag(e, entry.path, onNativeDragStart);
 	}
 
 	function handleDragOver(e: React.DragEvent) {

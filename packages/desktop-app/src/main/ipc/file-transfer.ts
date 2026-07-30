@@ -10,6 +10,7 @@ import type {
 } from "../../preload/fs-types.js";
 import { inspectFilesystemTransfer, transferFilesystemEntries } from "../filesystem/file-transfer-service.js";
 import { assertFilesystemPathWithinProject } from "../filesystem/filesystem-service.js";
+import { createNativeDragFilePayload } from "../filesystem/native-file-drag.js";
 import { getAppLogger } from "../logger.js";
 import { iconPath } from "../window-manager.js";
 
@@ -117,8 +118,11 @@ export function registerFileTransferIpc(): () => void {
 				assertFilesystemPathWithinProject(path);
 				if (!existsSync(path)) throw new Error("Drag source does not exist");
 			}
-			const icon = nativeImage.createFromPath(iconPath[process.platform] ?? iconPath.win32 ?? "");
-			event.sender.startDrag({ file: paths[0] ?? "", files: paths, icon });
+			const icon = nativeImage.createFromPath(iconPath.linux ?? "").resize({ width: 32, height: 32 });
+			if (icon.isEmpty()) throw new Error("Native drag icon could not be loaded");
+			const payload = createNativeDragFilePayload(paths);
+			log.info("starting native drag", { itemCount: paths.length, platform: process.platform });
+			event.sender.startDrag({ ...payload, icon });
 		} catch (error) {
 			log.warn("native drag failed", error);
 		}

@@ -83,6 +83,13 @@ Type: filesandordirs; Name: "{localappdata}\Vetta\staging"
 Type: files; Name: "{localappdata}\Vetta\current.json"
 
 [Code]
+function CreateHardLinkW(
+  NewFileName: String;
+  ExistingFileName: String;
+  SecurityAttributes: LongWord
+): Boolean;
+  external 'CreateHardLinkW@kernel32.dll stdcall';
+
 function IsBackgroundUpdate(): Boolean;
 begin
   Result := CompareText(ExpandConstant('{param:VETTAUPDATE|false}'), 'true') = 0;
@@ -106,6 +113,56 @@ begin
     Log('VETTASTOREROOT is required for a background update.');
     Result := False;
   end;
+end;
+
+procedure SeedUpdaterDifferentialCache();
+var
+  CacheDirectory: String;
+  CachedBlockmapPath: String;
+  CachedInstallerPath: String;
+  SourceInstallerPath: String;
+  TemporaryInstallerPath: String;
+begin
+  CacheDirectory := ExpandConstant('{localappdata}\vetta-updater');
+  CachedBlockmapPath := AddBackslash(CacheDirectory) + 'current.blockmap';
+  CachedInstallerPath := AddBackslash(CacheDirectory) + 'installer.exe';
+  SourceInstallerPath := ExpandConstant('{srcexe}');
+  TemporaryInstallerPath := AddBackslash(CacheDirectory) + 'installer.exe.installing';
+
+  if not ForceDirectories(CacheDirectory) then
+  begin
+    Log('Unable to create updater cache directory: ' + CacheDirectory);
+    exit;
+  end;
+
+  DeleteFile(TemporaryInstallerPath);
+  if not CreateHardLinkW(TemporaryInstallerPath, SourceInstallerPath, 0) then
+  begin
+    if not FileCopy(SourceInstallerPath, TemporaryInstallerPath, False) then
+    begin
+      Log('Unable to stage updater installer cache: ' + SourceInstallerPath);
+      exit;
+    end;
+  end;
+
+  if FileExists(CachedInstallerPath) and not DeleteFile(CachedInstallerPath) then
+  begin
+    DeleteFile(TemporaryInstallerPath);
+    Log('Unable to replace updater installer cache: ' + CachedInstallerPath);
+    exit;
+  end;
+
+  if not RenameFile(TemporaryInstallerPath, CachedInstallerPath) then
+  begin
+    DeleteFile(TemporaryInstallerPath);
+    Log('Unable to commit updater installer cache: ' + CachedInstallerPath);
+    exit;
+  end;
+
+  { A manually installed version may replace an older cached installer. Remove
+    the old blockmap so electron-updater fetches the matching versioned one. }
+  DeleteFile(CachedBlockmapPath);
+  Log('Updater differential cache seeded: ' + CachedInstallerPath);
 end;
 
 var
@@ -149,6 +206,9 @@ begin
         RaiseException('Failed to write update completion marker.');
     end
     else
+    begin
+      SeedUpdaterDifferentialCache();
       DeleteFile(ExpandConstant('{localappdata}\Vetta\current.json'));
+    end;
   end;
 end;

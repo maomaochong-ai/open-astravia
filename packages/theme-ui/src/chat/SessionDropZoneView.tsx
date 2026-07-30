@@ -24,7 +24,7 @@ export interface SessionDropZoneViewProps {
 }
 
 /**
- * Full-page drag-and-drop shell with overlay. Host handles atom writes / path IPC.
+ * Scoped drag-and-drop shell with overlay. Host decides the concrete drop target range.
  */
 export function SessionDropZoneView({
 	className,
@@ -39,6 +39,7 @@ export function SessionDropZoneView({
 }: SessionDropZoneViewProps): JSX.Element {
 	return (
 		<div
+			data-vetta-drop-scope="input"
 			className={className}
 			onDragEnter={onDragEnter}
 			onDragOver={onDragOver}
