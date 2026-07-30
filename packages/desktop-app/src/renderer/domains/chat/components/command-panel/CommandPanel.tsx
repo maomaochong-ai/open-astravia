@@ -9,6 +9,9 @@ export interface CommandPanelProps {
 	onClose: () => void;
 	onSelect: (skill: SkillInfo) => void;
 	onSelectConnector: (connector: ConnectorGridItem) => void;
+	/** 面板底部的一次性命令：打开系统图片 / 文件选择器。 */
+	onSelectImages: () => void;
+	onSelectFiles: () => void;
 	/** 触发词原文（含 `/`）。 */
 	filter: string;
 	/** 当前会话/项目 cwd，用于列出项目级 skill 目录。 */

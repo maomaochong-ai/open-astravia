@@ -37,8 +37,6 @@ export interface InputBarLabels {
 	};
 	toolbar: {
 		skills: string;
-		addImage: string;
-		attachFile: string;
 		queue: string;
 	};
 }

@@ -18,6 +18,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **斜杠面板重构为命令面板，主题槽位一分为二**：`chat.slashPanelView` 拆成 `chat.commandPanelView`（聊天侧，含连接器宫格与底部动作条）与 `chat.skillPickerView`（批量任务 / 自动化 dialog 侧，纯 skill 选择器）；theme-ui 的 `SlashPanelView` 及其 `SlashPanelViewProps` / `SlashPanelItemModel` / `SlashPanelLabels` / `SlashPanelSkillItem` / `SlashPanelClassNames` 一并删除，面板不再有「场景 / 技能」两段分区（合成单列）。覆盖该槽位的主题需要跟着改。
 - **输入卡片下方的动作条（知识检索 / 插件 input action）移入命令面板底部**：desktop 不再渲染 `InputActionBar`；已激活的开关改为在输入卡片内显示为可点关闭的小胶囊，避免面板关闭后激活态完全不可见。theme-ui 的 `InputActionBarView` 与 `chat.inputActionBar` surface 保留（官网 demo 仍在用），但对 desktop 已无效果——xianxia 主题里那条 `mx-auto w-[93%]` 因此不再影响客户端。
+- **选图 / 选附件按钮移入命令面板底部**：输入卡片工具栏只留「+」（唤出面板）、执行模式、模型与发送；插图与附件改为面板底部动作条左侧的一次性命令（点击即开系统选择器并关闭面板），与右侧可开关的知识检索 / 插件 action 用分隔线隔开。`InputBarToolbarProps` 的 `onSelectImages` / `onSelectFiles` 与 `InputBarLabels.toolbar.addImage` / `attachFile` 随之移除。
 ### Added
 
 - **订阅卡「升级套餐」外链按钮（ADR-0051）**：设置页 Vetta Go 订阅卡右上角新增按钮，`shell.openExternal` 跳官网 `/pricing` 完成购买。desktop 刻意不做站内支付——3DS 验证、银行跳转、PayPal 弹窗在 `BrowserWindow` 里均不可靠，支付闭环收敛在官网。theme-ui 的 `SubscriptionCardsViewModel` 新增可选 `actions.upgrade` / `labels.upgrade`（缺省不渲染，旧主题不受影响）。

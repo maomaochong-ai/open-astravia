@@ -22,6 +22,7 @@ export function CommandPanelView({
 	activeIndex,
 	connectors,
 	connectorColumns,
+	commands,
 	actions,
 	labels,
 	panelRef,

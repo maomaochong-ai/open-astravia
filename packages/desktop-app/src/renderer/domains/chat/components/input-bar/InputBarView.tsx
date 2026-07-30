@@ -75,6 +75,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					onClose={model.actions.handleSlashClose}
 					onSelect={model.actions.handleSlashSelect}
 					onSelectConnector={model.actions.handleConnectorSelect}
+					onSelectImages={() => void model.actions.handleSelectImages()}
+					onSelectFiles={() => void model.actions.handleSelectFiles()}
 					filter={model.slashFilter}
 					cwd={model.effectiveCwd || undefined}
 				/>
@@ -227,8 +229,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							labels={model.labels}
 							onAbort={model.actions.handleAbort}
 							onPlusClick={model.actions.handlePlusClick}
-							onSelectFiles={model.actions.handleSelectFiles}
-							onSelectImages={model.actions.handleSelectImages}
 							onSend={model.actions.handleSend}
 							slashOpen={model.slashOpen}
 						/>

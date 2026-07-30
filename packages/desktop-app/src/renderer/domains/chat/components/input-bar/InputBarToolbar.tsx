@@ -24,8 +24,6 @@ interface InputBarToolbarProps {
 	labels: Pick<InputBarLabels, "hint" | "toolbar">;
 	onAbort: () => void;
 	onPlusClick: () => void;
-	onSelectFiles: () => Promise<void>;
-	onSelectImages: () => Promise<void>;
 	onSend: () => void;
 	slashOpen: boolean;
 }
@@ -39,8 +37,6 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 	labels,
 	onAbort,
 	onPlusClick,
-	onSelectFiles,
-	onSelectImages,
 	onSend,
 	slashOpen,
 }: InputBarToolbarProps): JSX.Element {
@@ -72,18 +68,6 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					disabled={!hasSession}
 					onClick={onPlusClick}
 					active={slashOpen}
-				/>
-				<InputBarToolbarButton
-					icon="icon-[solar--gallery-linear]"
-					title={labels.toolbar.addImage}
-					disabled={!hasSession}
-					onClick={() => void onSelectImages()}
-				/>
-				<InputBarToolbarButton
-					icon="icon-[solar--paperclip-linear]"
-					title={labels.toolbar.attachFile}
-					disabled={!hasSession}
-					onClick={() => void onSelectFiles()}
 				/>
 				<div className="ml-1 h-4 w-px shrink-0 bg-border/70" />
 				<div className="min-w-0 shrink">

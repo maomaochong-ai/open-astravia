@@ -537,8 +537,6 @@ export function useInputBarModel({
 			},
 			toolbar: {
 				skills: t("inputBar.toolbar.skills"),
-				addImage: t("inputBar.toolbar.addImage"),
-				attachFile: t("inputBar.toolbar.attachFile"),
 				queue: t("inputBar.drawer.queueLabel"),
 			},
 		}),
