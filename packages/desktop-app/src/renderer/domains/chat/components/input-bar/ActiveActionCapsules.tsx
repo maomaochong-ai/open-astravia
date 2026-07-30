@@ -46,7 +46,8 @@ export function ActiveActionCapsules({
 						) : null}
 						<span className="icon-[solar--close-circle-linear] absolute inset-0 h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
 					</button>
-					<span className="min-w-0 max-w-[6rem] truncate">{item.label}</span>
+					{/* 与执行模式一致：窄容器只留图标，名称仍可由 title 悬停查看 */}
+					<span className="hidden min-w-0 max-w-[6rem] truncate @[22rem]:inline">{item.label}</span>
 				</div>
 			))}
 		</div>
