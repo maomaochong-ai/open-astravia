@@ -261,6 +261,27 @@ for (const dep of optionalExternalDeps) {
 	}
 }
 
+function assertPackagedMainHasNoWorkspaceImports(mainOutputDir) {
+	const workspaceImportPattern = /^\s*import(?:\s+.+\s+from)?\s+["']@vetta\//;
+	const invalidImports = [];
+	for (const fileName of readdirSync(mainOutputDir)) {
+		if (!fileName.endsWith(".js")) continue;
+		const lines = readFileSync(join(mainOutputDir, fileName), "utf8").split(/\r?\n/);
+		for (const [index, line] of lines.entries()) {
+			if (workspaceImportPattern.test(line)) invalidImports.push(`${fileName}:${index + 1}: ${line.trim()}`);
+		}
+	}
+	if (invalidImports.length > 0) {
+		throw new Error(
+			"[prepare-pack] desktop main output contains external @vetta workspace imports. " +
+				"Rebuild main with VETTA_BUILD_ENV=production before packaging:\n" +
+				invalidImports.join("\n"),
+		);
+	}
+}
+
+assertPackagedMainHasNoWorkspaceImports(join(projectRoot, "dist/main"));
+
 // Clean previous build stage
 rmSync(buildStageDir, { recursive: true, force: true });
 mkdirSync(buildStageDir, { recursive: true });
