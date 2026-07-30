@@ -1,4 +1,5 @@
 import { Outlet } from "@tanstack/react-router";
+import { cn } from "@shared/lib/utils";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta/theme-ui/layout";
@@ -61,7 +62,7 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	return (
 		<TooltipProvider>
 			<AppFrame
-				className={appFrameSurface?.rootClassName}
+				className={cn("app-frame", appFrameSurface?.rootClassName)}
 				decoration={<ThemedAppBackground />}
 				overlay={<ThemeSurface className="z-20" slot="app.frameOverlay" />}
 			>
@@ -81,11 +82,11 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 					</>
 				)}
 				{pageLayout === "app" ? (
-					<div className="flex min-h-0 min-w-[320px] flex-1 overflow-visible">
+					<div className="app-main-frame relative flex min-h-0 min-w-[320px] flex-1 overflow-visible">
 						{routePending ? <RouteContentLoadingView /> : <Outlet />}
 					</div>
 				) : (
-					<MainContentFrame header={pageHeader}>
+					<MainContentFrame className="app-main-frame" header={pageHeader}>
 						{routePending ? <RouteContentLoadingView /> : <Outlet />}
 					</MainContentFrame>
 				)}

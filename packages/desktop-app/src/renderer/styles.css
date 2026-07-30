@@ -451,6 +451,25 @@ textarea:disabled,
 	border-right-width: 1px;
 }
 
+/* macOS 经典侧边栏用系统原生毛玻璃（窗口已带 vibrancy: "sidebar"，见 main/window-manager.ts）。
+   放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
+   ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
+   只有侧边栏那一条透出桌面。 */
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-frame,
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: transparent;
+}
+
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
+	content: "";
+	position: absolute;
+	inset: -0.5rem -0.5rem -0.5rem 0;
+	z-index: -1;
+	background-color: var(--background);
+}
+
 .project-list-containment {
 	contain: layout paint style;
 }

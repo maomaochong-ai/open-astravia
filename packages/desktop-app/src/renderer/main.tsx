@@ -1,5 +1,6 @@
 import { AppBootLoadingView } from "@vetta/theme-ui/app-boot";
 import { createRoot } from "react-dom/client";
+import { applyPlatformAttribute } from "./shared/lib/platform";
 import { applyInitialTheme } from "./shared/theme/apply";
 import { applyStoredCursorStyle } from "./shared/theme/cursor";
 import { applyStoredSidebarStyle } from "./shared/theme/sidebar-style";
@@ -9,6 +10,7 @@ import "./styles.css";
 initializeRendererErrorMonitoring("main");
 
 // 在首个 React 节点挂载前同步恢复持久化主题与光标，保证窗口首次可见时已使用实际设计令牌。
+applyPlatformAttribute();
 applyInitialTheme();
 applyStoredCursorStyle();
 applyStoredSidebarStyle();
