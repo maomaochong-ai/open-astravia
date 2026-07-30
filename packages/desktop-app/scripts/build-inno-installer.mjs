@@ -44,6 +44,19 @@ function unpackedDirectory(arch) {
 	return join(releaseDir, "win-unpacked");
 }
 
+export async function writeAppUpdateConfig(sourceDir, version, publishConfig) {
+	const appUpdateConfigPath = join(sourceDir, "versions", version, "resources", "app-update.yml");
+	if (publishConfig) {
+		await writeFile(
+			appUpdateConfigPath,
+			stringify({ ...publishConfig, updaterCacheDirName: "vetta-updater" }),
+			"utf8",
+		);
+		return;
+	}
+	await rm(appUpdateConfigPath, { force: true });
+}
+
 async function main() {
 	const arch = readOption("--arch");
 	const sourceDir = unpackedDirectory(arch);
@@ -57,17 +70,10 @@ async function main() {
 		throw new Error(`[build-inno] versioned Electron output not found: ${sourceDir}`);
 	}
 
-	const appUpdateConfigPath = join(sourceDir, "resources", "app-update.yml");
 	const publishConfig = Array.isArray(builderConfig.publish) ? builderConfig.publish[0] : undefined;
+	await writeAppUpdateConfig(sourceDir, version, publishConfig);
 	if (publishConfig) {
-		await writeFile(
-			appUpdateConfigPath,
-			stringify({ ...publishConfig, updaterCacheDirName: "vetta-updater" }),
-			"utf8",
-		);
 		console.log(`[build-inno] wrote app-update.yml for ${publishConfig.provider}`);
-	} else {
-		await rm(appUpdateConfigPath, { force: true });
 	}
 
 	const compiler = resolveInnoCompiler();

@@ -42,14 +42,14 @@ function normalizeUrlPrefix(rawUrl) {
 		.join("/");
 }
 
-export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion, allowQaStable = false }) {
+export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion }) {
 	const urlPrefix = normalizeUrlPrefix(updateUrl);
 	if (urlPrefix !== prefix) {
 		throw new Error(
 			`[publish-updates-r2] VETTA_UPDATE_URL path "${urlPrefix}" does not match VETTA_R2_PREFIX "${prefix}"`,
 		);
 	}
-	if (prefix.split("/").at(-1) === "stable" && releaseVersion !== packageVersion && !allowQaStable) {
+	if (prefix.split("/").at(-1) === "stable" && releaseVersion !== packageVersion) {
 		throw new Error(
 			`[publish-updates-r2] refusing QA version ${releaseVersion} on stable; package version is ${packageVersion}`,
 		);
@@ -223,8 +223,7 @@ export async function main() {
 	const updateUrl = requireEnv("VETTA_UPDATE_URL");
 	const releaseVersion = await readReleaseVersion();
 	const packageVersion = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8")).version;
-	const allowQaStable = process.env.VETTA_R2_ALLOW_QA_STABLE?.trim().toLowerCase() === "true";
-	validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion, allowQaStable });
+	validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion });
 	const client = new S3Client({
 		region: "auto",
 		endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
