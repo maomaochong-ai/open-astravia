@@ -28,13 +28,14 @@ import {
 	resolveMcpPresetIconUrl,
 	serverUsesOAuth,
 } from "../../settings/mcp/builtin-mcp-presets";
-import type {
-	AbilityCatalogSource,
-	AbilityItem,
-	BundleAbility,
-	McpAbility,
-	PluginAbility,
-	SkillAbility,
+import {
+	ABILITY_CATEGORY_CONNECTORS,
+	type AbilityCatalogSource,
+	type AbilityItem,
+	type BundleAbility,
+	type McpAbility,
+	type PluginAbility,
+	type SkillAbility,
 } from "../types";
 import { buildMarketAbilityId, getMarketCatalogSource, getOpenCatalogOrigin } from "./merge-ability-catalogs";
 
@@ -457,7 +458,8 @@ export function buildMcpAbilities(
 			t,
 		);
 		if (item.installed) claimedServerNames.add(serverName);
-		items.push(item);
+		// 内置预设没有服务端分类，统一归到「连接」分组
+		items.push({ ...item, category: ABILITY_CATEGORY_CONNECTORS });
 	}
 	items.push(...marketItems);
 	for (const serverName of Object.keys(state.mcpConfig?.mcpServers ?? {})) {

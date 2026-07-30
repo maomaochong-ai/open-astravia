@@ -1,6 +1,8 @@
+import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
-import type { SkillAbility } from "../types";
+import { ABILITY_CATEGORY_CONNECTORS, type SkillAbility } from "../types";
 import { queryAbilityCatalog } from "./ability-catalog-query";
+import { buildMcpAbilities } from "./build-ability-items";
 
 function ability(index: number, overrides: Partial<SkillAbility> = {}): SkillAbility {
 	const slug = `ability-${String(index).padStart(3, "0")}`;
@@ -85,6 +87,34 @@ describe("queryAbilityCatalog", () => {
 		});
 
 		expect(page.items.map((item) => item.id)).toEqual([first.id, second.id]);
+	});
+
+	it("keeps built-in MCP connector presets visible in discover before they are added", () => {
+		const t = ((key: string) => key) as unknown as TFunction<"settings">;
+		const presets = buildMcpAbilities(
+			[],
+			{
+				ledger: {},
+				skillManifest: {},
+				localSkills: [],
+				plugins: [],
+				mcpConfig: { mcpServers: {} },
+				oauthAuthByName: {},
+				busyIds: new Set<string>(),
+			},
+			t,
+		);
+
+		const page = queryAbilityCatalog(presets, { scope: "discover", page: 1, pageSize: 60 });
+
+		expect(page.items.map((item) => item.slug).sort()).toEqual(["figma", "github", "notion"]);
+		// 全部归入「连接」分组，且带得到相对路径图标
+		expect(page.items.every((item) => item.category === ABILITY_CATEGORY_CONNECTORS)).toBe(true);
+		expect(page.items.map((item) => item.icon).sort()).toEqual([
+			"./mcp/figma.png",
+			"./mcp/github.png",
+			"./mcp/notion.png",
+		]);
 	});
 
 	it("keeps discover ordering stable when installation state changes", () => {

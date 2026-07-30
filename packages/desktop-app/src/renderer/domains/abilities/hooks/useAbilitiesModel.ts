@@ -16,6 +16,7 @@ import {
 } from "../lib/build-ability-items";
 import { decorateAbilityConflicts } from "../lib/decorate-ability-conflicts";
 import {
+	ABILITY_CATEGORY_CONNECTORS,
 	ABILITY_CATEGORY_UNCATEGORIZED,
 	type AbilitiesModel,
 	type AbilityBannerIcon,
@@ -101,13 +102,19 @@ export function useAbilitiesModel(): AbilitiesModel {
 			else byCategory.set(key, [item]);
 			if (item.categoryI18n && !i18nByCategory.has(key)) i18nByCategory.set(key, item.categoryI18n);
 		}
+		// 两个合成分组固定首尾，其余按规范名排序：分组顺序不随界面语言跳动
+		const connectors = byCategory.get(ABILITY_CATEGORY_CONNECTORS);
+		byCategory.delete(ABILITY_CATEGORY_CONNECTORS);
 		const uncategorized = byCategory.get(ABILITY_CATEGORY_UNCATEGORIZED);
 		byCategory.delete(ABILITY_CATEGORY_UNCATEGORIZED);
-		// 按规范名排序：分组顺序不随界面语言跳动
 		const sorted = Array.from(byCategory.entries())
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([category, list]) => ({ category, categoryI18n: i18nByCategory.get(category), items: list }));
-		return uncategorized ? [...sorted, { category: ABILITY_CATEGORY_UNCATEGORIZED, items: uncategorized }] : sorted;
+		return [
+			...(connectors ? [{ category: ABILITY_CATEGORY_CONNECTORS, items: connectors }] : []),
+			...sorted,
+			...(uncategorized ? [{ category: ABILITY_CATEGORY_UNCATEGORIZED, items: uncategorized }] : []),
+		];
 	}, [items]);
 
 	const bannerIcons = useMemo<AbilityBannerIcon[]>(

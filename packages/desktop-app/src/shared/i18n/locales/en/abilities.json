@@ -20,6 +20,7 @@
 		"mine": "Mine"
 	},
 	"group": {
+		"connectors": "Connections",
 		"uncategorized": "Uncategorized"
 	},
 	"search": {

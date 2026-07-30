@@ -1497,6 +1497,7 @@
   "creditsPerMTok": "积分/百万tok",
   "unlimitedQuota": "无限制 · 畅享不限额度",
   "tokenPlan": "Token 套餐",
+  "upgradePlan": "升级套餐",
   "expiryDate": "到期日 {{date}}",
   "viewModelsCount": "查看 {{count}} 个模型",
   "noModelsRefresh": "暂无模型，点击上方刷新",
