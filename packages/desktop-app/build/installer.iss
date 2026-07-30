@@ -73,10 +73,10 @@ Root: HKCU; Subkey: "Software\Classes\vetta\shell\open\command"; ValueType: stri
 Filename: "{app}\Vetta.exe"; Description: "{cm:LaunchProgram,Vetta}"; Flags: nowait postinstall skipifsilent; Check: IsNotBackgroundUpdate
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{app}\versions"
-Type: filesandordirs; Name: "{app}\installer"
-Type: filesandordirs; Name: "{app}\staging"
-Type: files; Name: "{app}\current.json"
+Type: filesandordirs; Name: "{localappdata}\Vetta\versions"
+Type: filesandordirs; Name: "{localappdata}\Vetta\installer"
+Type: filesandordirs; Name: "{localappdata}\Vetta\staging"
+Type: files; Name: "{localappdata}\Vetta\current.json"
 
 [Code]
 function IsBackgroundUpdate(): Boolean;
@@ -134,5 +134,5 @@ end;
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if (CurStep = ssPostInstall) and IsNotBackgroundUpdate() then
-    DeleteFile(ExpandConstant('{app}\current.json'));
+    DeleteFile(ExpandConstant('{localappdata}\Vetta\current.json'));
 end;

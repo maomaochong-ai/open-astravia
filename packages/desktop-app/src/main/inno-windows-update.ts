@@ -8,6 +8,7 @@ import type { ResolvedUpdateFileInfo } from "electron-updater";
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const WINDOWS_EXECUTABLE_NAME = "Vetta.exe";
 const PROGRESS_POLL_INTERVAL_MS = 250;
+const INNO_COMPLETION_TIMEOUT_MS = 30_000;
 
 interface InnoUpdateSelection {
 	version: string;
@@ -215,6 +216,22 @@ async function assertCompleteVersionDirectory(versionDir: string): Promise<void>
 	]);
 }
 
+async function waitForCompleteVersionDirectory(versionDir: string, signal: AbortSignal): Promise<void> {
+	const deadline = Date.now() + INNO_COMPLETION_TIMEOUT_MS;
+	let lastError: unknown;
+	do {
+		if (signal.aborted) throw new CancellationError();
+		try {
+			await assertCompleteVersionDirectory(versionDir);
+			return;
+		} catch (error) {
+			lastError = error;
+		}
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, PROGRESS_POLL_INTERVAL_MS));
+	} while (Date.now() < deadline);
+	throw lastError;
+}
+
 export function isVersionedWindowsExecutable(executablePath: string, version: string): boolean {
 	if (!isValidVersion(version)) return false;
 	const versionDir = win32.dirname(executablePath);
@@ -225,11 +242,9 @@ export function isVersionedWindowsExecutable(executablePath: string, version: st
 	);
 }
 
-export function resolveInnoUpdateStoreRoot(executablePath: string, version: string): string {
-	if (!isVersionedWindowsExecutable(executablePath, version)) {
-		throw new Error(`Executable is outside the expected version directory: ${executablePath}`);
-	}
-	return win32.dirname(win32.dirname(win32.dirname(executablePath)));
+export function resolveInnoUpdateStoreRoot(localAppData = process.env.LOCALAPPDATA): string {
+	if (!localAppData) throw new Error("LOCALAPPDATA is unavailable");
+	return win32.resolve(localAppData, "Vetta");
 }
 
 export class InnoWindowsUpdateController {
@@ -281,9 +296,17 @@ export class InnoWindowsUpdateController {
 
 		report(0);
 		console.info("[updater] preparing Windows version with Inno Setup", installerPath);
-		await this.installInstaller(installerPath, this.runtime.storeRoot, selection.version, report, signal);
-		if (signal.aborted) throw new CancellationError();
-		await assertCompleteVersionDirectory(destinationDir);
+		let installError: unknown;
+		try {
+			await this.installInstaller(installerPath, this.runtime.storeRoot, selection.version, report, signal);
+		} catch (error) {
+			installError = error;
+		}
+		try {
+			await waitForCompleteVersionDirectory(destinationDir, signal);
+		} catch (error) {
+			throw installError ?? error;
+		}
 		this.prepared = { version: selection.version, executablePath };
 		onProgress({
 			bytesPerSecond: 0,
