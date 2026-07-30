@@ -1,6 +1,7 @@
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { AnimatePresence, motion } from "motion/react";
 import { ConnectorGrid } from "./ConnectorGrid";
+import { FadingScrollArea } from "./FadingScrollArea";
 import { SkillList } from "./SkillList";
 import type { CommandPanelProps } from "./types";
 
@@ -63,7 +64,7 @@ export function CommandPanelView({
 				>
 					<ThemeSurface slot="chat.slashPanel" />
 					<div className="relative z-10 flex flex-col" style={{ maxHeight: MAX_HEIGHT }}>
-						<div className="min-h-0 flex-1 overflow-y-auto pt-2">
+						<FadingScrollArea className="pt-2">
 							{/* 过滤态隐藏宫格：此时用户在找 skill，键盘导航也只走列表 */}
 							{!filtering && (
 								<ConnectorGrid
@@ -82,7 +83,7 @@ export function CommandPanelView({
 								onHover={onHoverItem}
 								onSelect={onSelectItem}
 							/>
-						</div>
+						</FadingScrollArea>
 
 						{actions.length > 0 && (
 							<div className="flex shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-3 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">

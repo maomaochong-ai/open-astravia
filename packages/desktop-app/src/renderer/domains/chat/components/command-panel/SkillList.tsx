@@ -17,7 +17,7 @@ function SkillListItem({
 	index: number;
 	active: boolean;
 	icon?: string;
-	sourceLabel: string;
+	sourceLabel?: string;
 	onHover: () => void;
 	onSelect: () => void;
 }): JSX.Element {
@@ -48,9 +48,11 @@ function SkillListItem({
 			<span className="shrink-0 truncate text-[12.5px] font-medium text-foreground">
 				{skill.alias || skill.name}
 			</span>
-			<span className="shrink-0 rounded-full bg-primary/10 px-1.5 text-[9px] font-medium text-muted-foreground/60">
-				{sourceLabel}
-			</span>
+			{sourceLabel && (
+				<span className="shrink-0 rounded-full bg-primary/10 px-1.5 text-[9px] font-medium text-muted-foreground/60">
+					{sourceLabel}
+				</span>
+			)}
 			{skill.description && (
 				<span className="min-w-0 flex-1 truncate text-right text-[11px] text-muted-foreground/50">
 					{skill.description}
@@ -89,7 +91,7 @@ export function SkillList({
 					index={index}
 					active={index === activeIndex}
 					icon={resolveIcon?.(skill)}
-					sourceLabel={labels.sourceLabel(skill.source, skill.type)}
+					sourceLabel={labels.sourceLabel?.(skill.source, skill.type)}
 					onHover={() => onHover(index)}
 					onSelect={() => onSelect(skill)}
 				/>

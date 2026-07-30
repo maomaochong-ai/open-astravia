@@ -5,7 +5,6 @@ import type { CommandPanelLabels, CommandPanelProps } from "../components/comman
 import type { ConnectorGridItem } from "./useConnectorGrid";
 import { useConnectorGrid } from "./useConnectorGrid";
 import { useInputActionBarModel } from "../components/useInputActionBarModel";
-import { skillSourceLabelKey } from "../lib/skill-source-label";
 import { skillIconOf, useSkillIconMap } from "./useSkillIconMap";
 import { useSkillList } from "./useSkillList";
 
@@ -94,7 +93,14 @@ export function useCommandPanelModel({
 			const target = event.target as Node;
 			if (!panelRef.current || panelRef.current.contains(target)) return;
 			// 「+」按钮自己负责开合，别让这里先把它关掉（否则它永远只能开、不能收）。
-			if (target instanceof Element && target.closest("[data-command-panel-toggle]")) return;
+			// keep-open 是展开态才出现的「插图 / 附件」：mousedown 就收面板会把按钮连带卸载，
+			// 后续的 click 落不到元素上，文件选择器根本弹不出来。
+			if (
+				target instanceof Element &&
+				target.closest("[data-command-panel-toggle],[data-command-panel-keep-open]")
+			) {
+				return;
+			}
 			onClose();
 		}
 		// 延后一帧再挂：打开面板的那次 mousedown 否则会立刻把它关掉。
@@ -117,10 +123,6 @@ export function useCommandPanelModel({
 			connectorsSection: t("slashPanel.connectorsSection"),
 			emptyNoMatch: t("slashPanel.emptyNoMatch"),
 			emptyNoSkills: t("slashPanel.emptyNoSkills"),
-			sourceLabel: (source, type) => {
-				const key = skillSourceLabelKey(source, type);
-				return key ? t(key) : source;
-			},
 		}),
 		[items.length, t],
 	);

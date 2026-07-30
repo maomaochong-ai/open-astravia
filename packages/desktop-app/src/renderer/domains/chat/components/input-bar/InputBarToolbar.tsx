@@ -86,7 +86,9 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 				 * 此时执行模式与模型收起，工具栏只服务于「往输入框里添东西」+ 发送。
 				 */}
 				{slashOpen ? (
-					<>
+					// keep-open：命令区的 click-outside 走 mousedown，不标记的话这两个按钮
+					// 会在 click 之前随面板一起卸载，文件选择器永远弹不出来。
+					<span data-command-panel-keep-open="true" className="flex shrink-0 items-center gap-0.5">
 						<InputBarToolbarButton
 							icon="icon-[solar--gallery-linear]"
 							title={labels.toolbar.addImage}
@@ -99,7 +101,7 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 							disabled={!hasSession}
 							onClick={onSelectFiles}
 						/>
-					</>
+					</span>
 				) : (
 					<div className="min-w-0 shrink">
 						<ExecutionModeSelector />

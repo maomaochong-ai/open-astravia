@@ -48,6 +48,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **展开态的「插图 / 附件」点不出文件选择器**：命令区的 click-outside 走 mousedown，会在 click 之前把面板连同这两个按钮一起卸载，click 因此落空。两个按钮加 `data-command-panel-keep-open`，与「+」一样被 click-outside 跳过。
 - **开发版主进程无法加载 `electron-updater`**：主进程 ESM 产物将 CommonJS 的 `electron-updater` 保持为 external 时，命名导入 `autoUpdater` 会在 Electron 启动阶段抛出 `Named export not found`。改为从 CommonJS 默认导出解构，恢复开发版与打包版启动。
 - **新会话页 skill 徽章行支持拖动横向滑动**：原先 `DefaultSkillBadgeRow` / 仙侠主题 skill 行只有左右箭头，桌面鼠标无法拖动。抽出 `useHorizontalDragScroll`（指针捕获 + 阈值抑制 click），默认主题与仙侠主题 skill 行接入；仙侠场景轮播一并复用。
 - **新会话页 skill 徽章悬浮不再放大**：`SkillCard` 去掉 `whileHover` 的 scale / 上移，仅保留颜色过渡与点击缩放。
@@ -61,7 +62,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **命令区与输入卡片接缝去掉台阶**：展开形态下输入卡片去上圆角、上边框置透明（不减 1px，避免整条 bar 抖动），命令区左右各外扩 1px 与卡片描边对齐——此前命令区被卡片内容盒内缩，两侧各差 1px 看着像锯齿。
 - **展开形态保留发送按钮**：工具栏右侧改为只收起模型选择与上下文用量环，发送按钮常驻。
-- **命令区去掉顶部标题行**，最大高度由 `min(420px, 45vh)` 压到 `min(320px, 40vh)`。
+- **命令区去掉顶部标题行**，最大高度由 `min(420px, 45vh)` 压到 `min(320px, 40vh)`；skill 条目去掉 source badge，只留名称与描述（`SkillListLabels.sourceLabel` 改为可选，批量任务的 skill 选择器仍显示）。
+- **命令区滚动条隐藏，改用底部渐隐提示还能往下滚**：渐隐走 mask 而非叠渐变色块，换主题不会露色差；只在真的还能滚时才挂，内容不满一屏时最后一行不会被淡掉。
 - **命令区 skill 图标沿用能力广场那套**：市场目录的图（图片 / `solar:` 预设）→ type 默认图，不再所有条目都是同一个魔法棒。图标按 `type:slug` 从市场目录（服务端 + 开放市场本地缓存）解析，命令区首次展开时才拉取并按登录态缓存；未登录 / 离线 / 目录里查不到时落默认图。选中后插入文本流的行内胶囊复用同一张图（`SkillTokenNode` 新增可选 `icon`，随 EditorState 序列化）。
 - **「经典」（default）主题的中性表面去蓝偏**：`secondary` / `muted` / `accent` 的色相改为中性灰，亮度不变——深色 `secondary` `rgb(36, 38, 48)` → `rgb(38, 38, 40)`、`muted` `rgb(28, 30, 38)` → `rgb(30, 30, 32)`、`accent` `rgb(38, 41, 52)` → `rgb(41, 41, 43)`；浅色 `muted` `rgb(242, 242, 245)` → `rgb(242, 242, 242)`（浅色 `secondary` / `accent` 本就是中性灰，未动）。
 - **暗色正文略压亮度**：各主题色板暗色 `foreground` / `muted-foreground` 从近白改为约 82–86% 灰阶，减轻深底刺眼；默认黑白主题（mono）纯黑底上再软一档，强调色 `primary` 同步略降。
