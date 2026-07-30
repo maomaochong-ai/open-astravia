@@ -460,19 +460,25 @@ textarea:disabled,
 }
 
 /* 侧边栏不全透：在毛玻璃上再铺一层半透明 --background，压住桌面壁纸的杂色，
-   同时保留 vibrancy 的通透感。透明度调这里的百分比即可。 */
+   同时保留 vibrancy 的通透感。浓淡调 --sidebar-vibrancy-tint 即可。 */
 :root[data-platform="mac"][data-sidebar-style="classic"]
 	.sidebar-dock
 	.sidebar-surface {
-	background-color: color-mix(in srgb, var(--background) 60%, transparent);
+	background-color: color-mix(
+		in srgb,
+		var(--background) var(--sidebar-vibrancy-tint, 60%),
+		transparent
+	);
 	transition: background-color 240ms ease;
 }
 
-/* 浅色下毛玻璃的底噪会吃掉 bg-accent（rgb(235,235,235)）那点对比，选中态几乎看不出来。
+/* 浅色的 --background 是纯白，同样的浓度压得比深色狠得多，透明感几乎没了，
+   所以单独调淡。相应地毛玻璃底噪会吃掉 bg-accent（rgb(235,235,235)）那点对比，
    在侧边栏子树内把 --accent 换成更重的中性色，导航指示条、会话行选中与 hover 一起生效。 */
 :root[data-platform="mac"][data-sidebar-style="classic"][data-mode="light"]
 	.sidebar-dock
 	.sidebar-surface {
+	--sidebar-vibrancy-tint: 35%;
 	--accent: color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
