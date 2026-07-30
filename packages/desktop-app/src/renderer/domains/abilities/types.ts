@@ -18,6 +18,12 @@ export type AbilityCatalogSource =
 /** 分组 key：无分类的条目归到这一组。 */
 export const ABILITY_CATEGORY_UNCATEGORIZED = "__uncategorized__";
 
+/**
+ * 分组 key：内置 MCP 连接器预设（Notion/Figma/GitHub…）。
+ * 客户端合成、没有服务端分类，展示名走 i18n（`abilities:group.connectors`）而非 `categoryI18n`。
+ */
+export const ABILITY_CATEGORY_CONNECTORS = "__connectors__";
+
 export interface AbilityBase {
 	/** 来源感知的目录唯一标识；同 type + slug 可以跨来源并存。 */
 	id: string;

@@ -3,6 +3,11 @@
 export const isMac = navigator.platform.toUpperCase().includes("MAC");
 export const isWindows = navigator.platform.toUpperCase().includes("WIN");
 
+/** 把平台写到 `<html data-platform>`，供仅在某个平台生效的样式（如 macOS 原生毛玻璃）选择。 */
+export function applyPlatformAttribute(): void {
+	document.documentElement.dataset.platform = isMac ? "mac" : isWindows ? "windows" : "linux";
+}
+
 /** Display-friendly modifier key name */
 export const modKey = isMac ? "⌘" : "Ctrl";
 export const altKey = isMac ? "⌥" : "Alt";

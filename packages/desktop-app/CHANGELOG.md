@@ -13,9 +13,16 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **`loginDialogOpenAtom` 改名为 `loginPopoverOpenAtom`**。
 - **`/skills` 与 `/plugins` 路由移除**：两者重定向到 `/abilities`（`/skills?tab=scene` 仍去 `/scenes`）。渲染层不再有独立插件页与插件卡片/详情 Drawer。
 - **市场接口收敛为 `/abilities/*`**：`fetchMarketSkills` / `fetchMarketPlugins` / `fetchMarketMcpServers` 与 `downloadSkill` / `downloadPlugin` / `fetchSkillInfo` / `fetchPluginInfo` 由 `fetchMarketAbilities` / `fetchAbilityInfo` / `downloadAbility` 取代。
+- **输入框改为多模态编辑器，`chat.inputBarView` 契约变更**：`InputBarModel` 不再有 `inputValue` / `textareaRef` / `mentionedFiles` / `attachedImages` / `imageFiles` / `nonImageFiles` / `imagePreviewItems` / `hasImages`，`actions` 里的 `handleChange` / `handleKeyDown` / `handlePaste` / `getAtFilter` / `removeFile` 移除，新增 `handleEnter` / `handleTriggerChange` / `imageAttachments` / `atFilter` / `removeImage(path)`；`classNames.textareaWrap` 改名 `editorWrap`。覆盖该槽位的主题需要跟着改。
+- **输入框里的 skill 由硬展开改为软引用**：选中 skill 不再写 `PromptRequest.promptRef`、也不再由 coding-agent 把 skill 正文注入成隐藏 `<skill>` 块，而是在消息文本里留 `@skill:名字` 标记，由模型经 `invoke_skill` 自行决定是否调用，因此一条消息可以引用多个 skill。场景（scene）不变，仍走 `promptRef` 硬展开以保留 `tasks.json` 自动建 todo 与 todo 锁定；定时任务与批量任务的 `promptRef` 链路同样不变。
 
+- **斜杠面板重构为命令面板，主题槽位一分为二**：`chat.slashPanelView` 拆成 `chat.commandPanelView`（聊天侧，含连接器宫格与底部动作条）与 `chat.skillPickerView`（批量任务 / 自动化 dialog 侧，纯 skill 选择器）；theme-ui 的 `SlashPanelView` 及其 `SlashPanelViewProps` / `SlashPanelItemModel` / `SlashPanelLabels` / `SlashPanelSkillItem` / `SlashPanelClassNames` 一并删除，面板不再有「场景 / 技能」两段分区（合成单列）。覆盖该槽位的主题需要跟着改。
+- **输入卡片下方的动作条（知识检索 / 插件 input action）移入命令面板底部**：desktop 不再渲染 `InputActionBar`；已激活的开关改为在工具栏里紧跟执行模式（权限/沙箱）右侧显示（无底色无描边，点一下即关闭），避免面板关闭后激活态完全不可见。theme-ui 的 `InputActionBarView` 与 `chat.inputActionBar` surface 保留（官网 demo 仍在用），但对 desktop 已无效果——xianxia 主题里那条 `mx-auto w-[93%]` 因此不再影响客户端。
+- **工具栏按形态切换**：收缩形态下是「+」+ 执行模式（左）与模型 / 用量环 / 发送（右）；展开形态下执行模式、模型与发送一并收起，执行模式的位置让给「插图 / 附件」——命令区已占满上方，此时工具栏只服务于「往输入框里添东西」。命令区底部只保留可开关的知识检索 / 插件 action。
 ### Added
 
+- **外观设置新增「侧边栏样式」**：「经典」（默认）让侧边栏贴紧窗口左侧，去掉圆角与四周边框、只保留右侧一条分隔线；「悬浮」是原来的留白 + 圆角 + 边框形态。偏好存 localStorage `vetta-sidebar-style`，首帧前写到 `<html data-sidebar-style>`，避免启动时闪一下悬浮态。窄屏 overlay 侧边栏不受影响，仍是圆角浮层。macOS 下经典侧边栏透出系统原生毛玻璃（窗口本就带 `vibrancy: "sidebar"`，此前被整帧底色盖住）：整帧不上底色、侧边栏改铺一层 60% 的半透明 `--background`（压住壁纸杂色又保留通透感），主内容区用 `::before` 溢出 8px 补回不透明底色，因此布局与其它平台完全一致，只有侧边栏那一条是毛玻璃。`<html data-platform>` 由 `applyPlatformAttribute()` 写入，供仅某平台生效的样式选择。
+- **侧边栏「更多」菜单新增设置直达项**：模型设置 / Agent 设置 / 外观，分别跳 `/settings/models`、`/settings/context`、`/settings/appearance`。`SidebarNavItem` 新增可选 `settingsTab`（与 `path` 互斥）。
 - **订阅卡「升级套餐」外链按钮（ADR-0051）**：设置页 Vetta Go 订阅卡右上角新增按钮，`shell.openExternal` 跳官网 `/pricing` 完成购买。desktop 刻意不做站内支付——3DS 验证、银行跳转、PayPal 弹窗在 `BrowserWindow` 里均不可靠，支付闭环收敛在官网。theme-ui 的 `SubscriptionCardsViewModel` 新增可选 `actions.upgrade` / `labels.upgrade`（缺省不渲染，旧主题不受影响）。
 - **全局统一的加载指示器 `Spin`（`@vetta/ui`）**：两颗小球黏连、分离、整体旋转的「果冻」效果，黏连靠 SVG 高斯模糊 + `feColorMatrix` 拉伸 alpha 实现。颜色取 `currentColor`，跟随容器文字色，用主题类切换即可（`<Spin className="text-primary" />`）；尺寸只开 `sm`/`md`/`lg` 三档，避免各处随手写像素值。keyframes 经 React 19 的 `<style href precedence>` 全页去重只插一次，SVG filter id 用 `useId()` 隔离，同页多个实例不串扰；`prefers-reduced-motion` 下停在两球分离的静止态而非塌成一个点。授权等待浮层与引导页登录步已换用，后续需要 loading 的地方统一从 `@vetta/ui` 引。
 - **授权登录的等待态与 state 校验**：发起授权后浮层/引导步显示「正在等待浏览器授权」，提供「重新打开链接」补救；关闭浮层只收起 UI，晚到的回调仍会正常登录，不设超时。主进程在发起时生成一次性 state 塞进 `client_redirect`，回调必须带回同一 state 才被接受——挡掉客户端未发起授权时被塞入的回调；state 只存内存（进程重启即失效），校验不通过时丢弃 token 并广播 `vetta:auth:oauth-rejected`，界面提示「授权链接已失效」而不是一直干等。新增 IPC `vetta:auth:start-oauth` / `vetta:auth:reopen-oauth`，URL 拼接与校验都在主进程，未校验的 token 不进渲染层。注意这挡不住 `vetta://` scheme 劫持本身（需 PKCE/一次性 code，单独排期）。
@@ -30,9 +37,18 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **GitHub 开源能力市场**：能力页支持从环境变量配置的 GitHub 仓库整库同步 skill / scene / plugin / bundle，并以校验后的本地快照提供离线回退与安装；Plugin 配置从包内 `plugin.json` 派生并复用现有安全安装链路，Bundle 复用客户端成员批量安装逻辑；新增持久化多来源管理、来源级失败隔离、配置指纹缓存和确定性冲突策略，已安装能力锁定原来源；搜索、筛选与分页全部基于下载后的本地目录执行，不向 GitHub 发分页请求；单一 `marketplace.json` 强制声明 `minAppVersion`，不兼容的新内容不会覆盖旧的可用快照。
 - **开源能力自带展示资源**：GitHub 能力目录可通过 `ability.json` 提供本地图标、Markdown 详情或宿主白名单 Rich Blocks，并支持按 locale 选择详情文件和 Markdown 回退；本地图片路径限定在能力目录内并随市场版本缓存。市场索引继续只承担列表元信息，仓库内容不能注入 HTML、脚本、CSS 或安全相关操作。
 - **macOS 代码签名与公证接入**：`dist:mac` 检测到完整的签名凭据（`CSC_LINK`/`CSC_NAME` + `APPLE_TEAM_ID` + App Store Connect API Key 或 App 专用密码）时，自动开启 Developer ID 签名、hardened runtime（新增 `build/entitlements.mac.plist` 与 `build/entitlements.mac.inherit.plist`）与公证；DMG 随之退回两图标常规版式，不再打包「修复已损坏.app」、背景图也去掉「右键打开」提示。凭据一个都不设时行为与之前完全一致（未签名 + 修复助手），只设一部分会直接报错并列出缺项，避免产出「签了名但没公证」的半成品。证书申请与注入流程见 `docs/deploy/apple-code-signing.md`。
+- **多模态输入框：文本与 skill / 文件 / 图片胶囊同处一条文本流**：输入区由 `textarea` 换成 Lexical 编辑器，`/` 选中的 skill、`@` 引用的文件、粘贴或拖入的图片都成为行内原子胶囊，可插在句子任意位置（「先 `@skill:审查` 这个 `@/path/a.ts`，没问题再 `@skill:上传`」），不再是输入框上方的一排附件。触发符从「整个输入开头」放宽到词首；图片在输入框内显示为「图 N」胶囊，缩略图集中在输入卡片上方并带同号角标，用户气泡按同一形态回放。文本形态 `@skill:名字` / `@绝对路径` 既是发给模型的内容也是持久化格式，旧会话的行首前缀格式（`/skill:name` + `@path` 整行）仍能解析并归一呈现，重编辑回填与气泡渲染共用同一个解析器。
 
+- **命令面板是 InputBar 的一种形态，而非浮层**：命令区与编辑区同处一张输入卡片，`/` 或「+」展开时只是这张卡片长高（高度弹簧过渡），两者之间既没有接缝也没有分界线；收起即回到原来的一行形态。命令区绝对定位、底边钉在卡片顶沿向上生长，因此会话页的消息列表不会被顶走。skill 列表与连接器在空闲时段预取并按 cwd 缓存——否则第一次展开要等扫盘，数据在动画途中到位会把高度目标反复重测，表现为「第一次卡一下、第二次就顺」。因此 `CommandPanelProps` 没有 `placement`——浮层形态只保留给 dialog 侧的 `SkillPickerPanel`。「+」按钮成为真正的开合开关（此前 mousedown 会先触发面板的click-outside 收起、紧接着的 click 又把它打开，导致按钮只能开不能关）。
+- **命令面板（Splash 完全体）**：`/` 或「+」唤出的面板顶部新增**已接入连接器宫格**——列出 mcp.json 里已添加、未禁用且必填密钥齐的内置连接器（canva / notion / figma / github / slack / gmail / google-calendar / google-drive），列数自适应以避免末行只剩单个（2→2、3→3、4→2、5/6→3、7→4）；点击插入 `@mcp:名字` 行内胶囊，与 skill 同为软引用，模型自行决定是否调用该 MCP。下方 skill 列表把场景与技能合成单列，按**调用次数 → 类别（内置 > 插件 > Vetta 原生 > 通用）→ 最近使用 → 名称**排序；调用次数取自 app-monitor 已落盘的 per-skill 统计（新增 IPC `vetta:app-monitor:get-prompt-ref-usage`）。item 高度 46px→32px 单行（图标 + 名称 + 来源标签 + 同行右侧描述），面板总高 320→420，宫格随内容滚动、只有头部与底部动作条固定；输入过滤词时隐藏宫格、键盘上下键只在列表内移动。
 ### Removed
 
+- **「电光」/「翠玉」/「青石」三个主题色**：`voltage.ts` / `emerald.ts` / `slate.ts` 与四处 `COLOR_THEME_LABEL_KEYS`、zh/en `colorThemes.*` 文案一并删除，主题色只剩「默认」「珊瑚」「经典」三档（引导页主题选择随之从 2×3 变一排三列）。已选中被删主题的用户经 `resolveThemeId` 回落到默认主题 `mono`；`github → slate` 的历史别名同时移除（老 id 一样回落默认）。
+- **设置页的骨架屏与块级入场动画**：`SettingsContentLoadingView`、`SettingsTabEnter` / `SettingsEnterItem` / `useSettingsEnterDelay` 与 `SETTINGS_ENTER_*` 常量从 theme-ui 删除（覆盖设置页排版的主题若引用了它们需要跟着改），`settings-highlight.css` 里的 `settings-element-enter` CSS 兜底动画一并移除。设置 tab 的 `Suspense fallback` 改为 `null`，`SettingSection` / `SettingsPageShellView` / 账号页的标题块换回普通 `div`（`data-setting-section-highlight-target` 等锚点属性不变，跳转高亮不受影响）。
+- **设置 / 自动化 / 批量任务的切页骨架**：三个路由单独设 `pendingComponent: () => null`，pending 期间留空白、内容就绪后直出，不再闪一屏 `RouteContentLoadingView` 脉冲块。其余路由仍保留全局 `defaultPendingComponent`。
+- **新会话页的场景轮播 / 技能徽章 / 引导词三个区块**：欢迎页只保留问候语、模式切换与输入栏。随之删除 `useNewSessionResources`（本地 skill + 市场场景 + 安装清单的拉取）、场景点击安装链路、`GuidingWords` / `SkillBadgeRow` / `SceneCarousel` 及 `useGuidingWordsModel`，以及主题槽位 `chat.newSessionSceneCarousel` / `chat.newSessionSceneCard` / `chat.newSessionSkillBadgeRow` 在 desktop 侧的声明（theme-ui 的组件与契约保留，主题覆盖它们对客户端不再有效果）。`chat.newSession` 的 `sceneCarouselNext` / `sceneCarouselPrev` / `sceneInstallPrompt` / `skillScrollLeft` / `skillScrollRight` 文案一并删除。
+- **设置 → 新会话页**：整个 tab（含「页面元素」三个开关）与 `NewSessionSettings*` / `useNewSessionSettingsModel` 删除，`SettingsTab` 不再有 `newSession`；`newSessionPageVisibilityAtom` 与 desktop-config 的 `newSessionPage` 字段（主进程 `normalizeNewSessionPage`、preload 类型）一并移除。已有 `desktop-config.json` 里的该字段会在下次写入时被丢弃。
+- **侧边栏「更多」里的「场景」入口**：`/scenes` 路由本身保留，只是不再从侧边栏进入。
 - **服务端预设模板目录**：`/providers/templates.json` 的拉取、启动时的在线合并与 `vetta:models:fetch-templates` IPC 删除，改为 `vetta:models:list-presets` / `vetta:models:refresh-preset-models`。早期由服务端模板采纳、现已不在内置目录里的条目仍展示（标记「已下线」），但不提供刷新入口。
 - **能力详情的结构化 section 体系**：`CapabilityDetailSections` 的 featureList / scenarios / permissions / reviews 与 `catalog.ts` 中 Figma / GitHub / Notion 的客户端硬编码正文按 ADR-0049 作废，正文改由服务端下发 markdown。
 - **插件独立入口**：`PluginsPage` / `PluginsPanel` / `PluginCard` / `PluginDetailSheet` 及侧边栏「插件」导航项删除；插件的 dev 热更新、devLinks、从路径安装等开发者功能保持不变。
@@ -40,6 +56,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **进入应用后第一次展开命令面板会顿一下再继续展开**：`height: 0 → auto` 的弹簧全程跑在主线程，首次展开时有三处异步在动画中间才到位——skill 列表的预取挂在 `requestIdleCallback`（冷启动主线程被占满，一路拖到 2s 超时才发起，赶不上第一次展开）、缓存命中时展开那一刻仍无条件重拉一次、图标目录（要打网络）只在 `open` 时才开始加载。数据一到就是几十行重渲染加整列远程 `<img>` 换图，动画因此顿住。现在 skill 列表预取挂载即发起、图标目录同样提前预热，缓存命中时的「反映磁盘增删」重拉推到空闲再做。
+- **Windows 安装版启动后只有托盘、主窗口不显示**：版本启动器曾用 `HideWindow: true` 拉起 Electron，会写入 `STARTF_USESHOWWINDOW` + `SW_HIDE`，导致进程第一次 `ShowWindow` 被系统强制隐藏（日志里已有 `show`，但 HWND 无 `WS_VISIBLE`）。去掉启动器 `HideWindow`；主进程 `revealMainWindow` 在 Windows 上再 show 一次，兼容尚未替换的旧启动器。
+- **输入栏「图像生成」等 badge 时有时无**：`activeToolNamesAtom` 只在 `openSession` 时用 `getState` 取一次快照，而 `generate_image` 是 image-gen 插件 activate 后才动态注册的。冷启动恢复会话时会话创建早于插件就绪，那个会话的 `requiresActiveTool` 闸门就一直把 badge 挡住。现在订阅 runtime 新增的 `active_tools_update` 事件刷新该 atom，并在 `session.subscribe` 时回放一次当前工具集，堵住 getState 与 subscribe 之间的丢事件窗口。
+- **展开态的「插图 / 附件」点不出文件选择器**：命令区的 click-outside 走 mousedown，会在 click 之前把面板连同这两个按钮一起卸载，click 因此落空。两个按钮加 `data-command-panel-keep-open`，与「+」一样被 click-outside 跳过。
 - **开发版主进程无法加载 `electron-updater`**：主进程 ESM 产物将 CommonJS 的 `electron-updater` 保持为 external 时，命名导入 `autoUpdater` 会在 Electron 启动阶段抛出 `Named export not found`。改为从 CommonJS 默认导出解构，恢复开发版与打包版启动。
 - **新会话页 skill 徽章行支持拖动横向滑动**：原先 `DefaultSkillBadgeRow` / 仙侠主题 skill 行只有左右箭头，桌面鼠标无法拖动。抽出 `useHorizontalDragScroll`（指针捕获 + 阈值抑制 click），默认主题与仙侠主题 skill 行接入；仙侠场景轮播一并复用。
 - **新会话页 skill 徽章悬浮不再放大**：`SkillCard` 去掉 `whileHover` 的 scale / 上移，仅保留颜色过渡与点击缩放。
@@ -51,10 +71,23 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **外观设置里「侧边栏样式」下移到「主题」之后**：原先夹在「外观模式」与「界面主题」之间，现在排到主题色区段下方（页面末尾），`SETTINGS_SECTIONS` 的顺序同步调整以对齐设置搜索结果。
+- **工具栏里已激活 action 胶囊常驻底色**：紧跟权限/沙箱右侧的激活胶囊由「透明、hover 才上底色」改为常驻 `bg-accent/60`（hover 加深到 `bg-accent`）。它表示的是持续生效的状态，全透明时和旁边的普通工具栏按钮分不出来。多个 action 折叠后堆叠的图标容器由圆形改为圆角矩形（20px、`rounded-[7px]`、3px 内边距），`+n` 角标同步跟上。折叠态 popover 宽度跟随触发胶囊（`--radix-popover-trigger-width`），条目改用与未折叠胶囊完全一致的外观与关闭手势（h-7 / `rounded-lg` / `bg-accent/60`，图标 hover 变关闭键、整行可点），看起来就是把几枚胶囊竖着收纳了。
+- **命令区 skill 列表空态改为卡片**：「未找到匹配项」/「暂无可用的技能或场景」由一行灰字换成占满命令区宽度的虚线卡片（左侧圆形图标 + 右侧标题与提示，横排以免撑高命令区），新增 `SkillListEmpty` 组件与 `chat.slashPanel.emptyNoMatchHint` / `emptyNoSkillsHint` 两条文案（zh/en），`SkillListLabels` 随之新增两个必填字段。聊天侧命令面板与 dialog 侧 skill 选择器共用。
+- **新会话页命令区展开时输入栏整体下移 120px**：命令区向上生长会把视觉重心整体抬起、下方留出大片空白，现在输入栏随展开/收起沿同一条弹簧（`stiffness 420 / damping 34`）平移，与面板一起动。`InputBarProps` 新增可选 `onExpandedChange`（仅新会话页传），会话页不受影响。展开期间 hero（模式切换 + 吉祥物）整块淡出并禁用命中——命令区盖在 hero 上时，这两个元素会浮在面板前面挡住列表。
+- **新会话页欢迎区版式**：工作 / 编程模式切换从问候语右侧移到标题上方；右侧吉祥物插画改为绝对定位并下移，视觉上趴在输入栏顶边上（原先在流内、下方还有一条分隔线）。
+- **输入框工具栏整排改用正文色**：「+」/ 插图 / 附件按钮、执行模式、模型选择与已激活 action 的静默态由 `muted-foreground` 改为 `foreground`，hover 仍只上底色；此前整排偏灰，和输入区正文对比过弱。
+- **多个已激活 input action 折叠成一枚胶囊**：工具栏是单行不换行的，平铺两三个 action 就把执行模式和模型挤没了。现在一个时保持平铺（图标 + 名称，点图标即取消）；两个及以上折叠为「图标堆叠 + N 个插件」，最多堆 4 格、超出时最后一格显示 `+n`；点胶囊在上方升起 popover，逐条 hover 出关闭键。
+- **命令区与输入卡片接缝去掉台阶**：展开形态下输入卡片去上圆角、上边框置透明（不减 1px，避免整条 bar 抖动），命令区左右各外扩 1px 与卡片描边对齐——此前命令区被卡片内容盒内缩，两侧各差 1px 看着像锯齿。
+- **展开形态保留发送按钮**：工具栏右侧改为只收起模型选择与上下文用量环，发送按钮常驻。
+- **命令区去掉顶部标题行**，最大高度由 `min(420px, 45vh)` 压到 `min(320px, 40vh)`；skill 条目去掉 source badge，只留名称与描述（`SkillListLabels.sourceLabel` 改为可选，批量任务的 skill 选择器仍显示）。
+- **命令区滚动条隐藏，改用底部渐隐提示还能往下滚**：渐隐走 mask 而非叠渐变色块，换主题不会露色差；只在真的还能滚时才挂，内容不满一屏时最后一行不会被淡掉。
+- **命令区 skill 图标沿用能力广场那套**：市场目录的图（图片 / `solar:` 预设）→ type 默认图，不再所有条目都是同一个魔法棒。图标按 `type:slug` 从市场目录（服务端 + 开放市场本地缓存）解析，命令区首次展开时才拉取并按登录态缓存；未登录 / 离线 / 目录里查不到时落默认图。选中后插入文本流的行内胶囊复用同一张图（`SkillTokenNode` 新增可选 `icon`，随 EditorState 序列化）。
+- **「经典」（default）主题的中性表面去蓝偏**：`secondary` / `muted` / `accent` 的色相改为中性灰，亮度不变——深色 `secondary` `rgb(36, 38, 48)` → `rgb(38, 38, 40)`、`muted` `rgb(28, 30, 38)` → `rgb(30, 30, 32)`、`accent` `rgb(38, 41, 52)` → `rgb(41, 41, 43)`；浅色 `muted` `rgb(242, 242, 245)` → `rgb(242, 242, 242)`（浅色 `secondary` / `accent` 本就是中性灰，未动）。
 - **暗色正文略压亮度**：各主题色板暗色 `foreground` / `muted-foreground` 从近白改为约 82–86% 灰阶，减轻深底刺眼；默认黑白主题（mono）纯黑底上再软一档，强调色 `primary` 同步略降。
 - **新会话问候语跟正文色**：`你好，{{nickname}}` 由 `primary` 渐变改为 `foreground` 渐变（与能力页等标题一致），暗色/黑白主题下不再用近白 primary 发亮。
 - **输入栏窄宽不再折成两行**：工具栏去掉 `flex-wrap`，按输入区容器宽度折叠文案——窄时隐藏执行模式名、推理档位、快捷键提示与动作条标签（保留图标与 `title`），模型名缩短截断；宽了再逐步显示。
-- **Popover/Select 去掉菜单项 stagger**：侧边栏设置菜单、`MotionSelect`、执行模式选择仅保留面板整体淡入缩放，内部选项与分隔线不再逐项滑入渐现。
+- **Popover/Select 面板动效更轻**：侧边栏设置菜单、`MotionSelect`、执行模式选择仅保留约 120ms 淡入淡出，去掉缩放与位移；内部选项不再逐项 stagger。
 - **账户设置额度/用量/模型合一卡**：计划、五小时/周等额度（容器内 `auto-fit` 并排）、Token 使用量、可用模型同处一张卡片，顺序为额度 → 用量 → 模型。
 - **聚焦样式统一为 1px border**：去掉输入框、按钮、开关及全局 `:focus-visible` 的 ring/outline 叠加光晕，仅保留边框色变化（`@vetta/ui` Button/Switch、`theme-ui` 控件与桌面端相关入口同步）。
 - **侧边栏顶栏品牌区改为纯文字**：去掉顶部 Vetta 头像/图标，Windows/Linux 仅显示「Vetta」文案（macOS 仍因交通灯占位不显示品牌字）。

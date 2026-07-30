@@ -18,6 +18,7 @@
 	--color-destructive-foreground: var(--destructive-foreground);
 	--color-foreground: var(--foreground);
 	--color-input: var(--input);
+	--color-input-bar-bg: var(--input-bar-bg);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
 	--color-popover: var(--popover);

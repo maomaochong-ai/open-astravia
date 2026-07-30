@@ -773,10 +773,7 @@
   "colorThemes": {
     "mono": "默认",
     "default": "经典",
-    "emerald": "翠玉",
-    "sand": "珊瑚",
-    "slate": "青石",
-    "voltage": "电光"
+    "sand": "珊瑚"
   },
   "personas": {
     "default": {
@@ -794,6 +791,17 @@
   },
   "saveFailed": "保存失败",
   "pleaseLogin": "请先登录",
+  "usageStats": {
+    "streak": "连续使用",
+    "days": "{{count}} 天",
+    "unitTokens": "Token",
+    "unitRequests": "请求",
+    "range": {
+      "7d": "7 天",
+      "30d": "30 天",
+      "all": "累计"
+    }
+  },
   "tokenActivity": {
     "title": "Token 活动",
     "daily": "每日",
@@ -858,7 +866,6 @@
   "tabKnowledge": "知识库设置",
   "tabPet": "Vetta Vivi",
   "tabPermissions": "权限管理",
-  "tabNewSession": "新会话页",
   "section_general-basics": "基础",
   "section_general-app": "应用",
   "section_general-developer": "开发者",
@@ -871,6 +878,11 @@
   "cursorDefaultHint": "使用系统原生鼠标指针。",
   "cursorStoatTitle": "白鼬",
   "cursorStoatHint": "使用应用内置的白鼬鼠标指针样式。",
+  "section_appearance-sidebar": "侧边栏样式",
+  "sidebarStyleClassicTitle": "经典",
+  "sidebarStyleClassicHint": "侧边栏贴紧窗口左侧，无圆角与四周边框，仅右侧一条分隔线。",
+  "sidebarStyleFloatingTitle": "悬浮",
+  "sidebarStyleFloatingHint": "侧边栏四周留白，带圆角和边框。",
   "section_account-profile": "个人信息",
   "section_team-management": "团队管理",
   "section_team-my-teams": "我的团队",
@@ -910,17 +922,6 @@
   "section_pet-decoration": "桌宠装饰",
   "section_pet-bubble": "气泡样式",
   "section_pet-developer": "开发调试",
-  "section_new-session-elements": "页面元素",
-  "newSessionSettings": {
-    "title": "新会话页",
-    "pageDescription": "控制新建会话欢迎页上各区块的显示与隐藏。",
-    "sceneCards": "场景卡片",
-    "sceneCardsDesc": "显示场景卡片列表，可快速选择场景并开始对话。",
-    "skillBadges": "技能徽章",
-    "skillBadgesDesc": "显示技能徽章列表，可快速附加技能。",
-    "guidingWords": "引导词轮播",
-    "guidingWordsDesc": "显示引导词轮播，可一键发送推荐提示。"
-  },
   "updaterChecking": "正在检查...",
   "updaterIdle": "当前已是最新版本（{{version}}）",
   "updaterCheck": "检查更新",
@@ -1496,7 +1497,6 @@
   "vision": "视觉",
   "creditsPerMTok": "积分/百万tok",
   "unlimitedQuota": "无限制 · 畅享不限额度",
-  "tokenPlan": "Token 套餐",
   "upgradePlan": "升级套餐",
   "expiryDate": "到期日 {{date}}",
   "viewModelsCount": "查看 {{count}} 个模型",
@@ -1524,7 +1524,6 @@
   "imbFeishuAppIdRequired": "App ID 不能为空",
   "teamCreateOrJoin": "创建或加入团队，与{{members}}协作",
   "teamJoinViaCode": "暂无团队，创建一个或通过{{codeLabel}}加入",
-  "subCurrentPlan": "当前订阅",
   "subTokenPlan": "Token 套餐",
   "subResetImminent": "即将重置",
   "subResetInDays": "{{days}}天{{hours}}小时后重置",

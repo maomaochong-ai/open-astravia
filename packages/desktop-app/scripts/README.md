@@ -162,7 +162,7 @@ https://releases.openvetta.com/desktop/stable
 
 electron-builder 会随各平台产物生成更新清单：
 
-- Windows：`latest.yml`、NSIS 安装包与 blockmap。
+- Windows：`latest.yml`、Inno Setup 安装包与 blockmap。应用运行时由 Inno Setup 静默安装到新版本目录，重启时由稳定启动器切换版本。
 - macOS：`latest-mac.yml`、ZIP/DMG 与 blockmap；自动安装需后续补齐代码签名。
 - Linux：`latest-linux.yml`、AppImage 与 blockmap。
 
@@ -192,9 +192,9 @@ VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/stable
 开源构建只需覆盖发布源，不需要改客户端代码。仓库工作流默认使用 GitHub Releases；官方仓库设置 `VETTA_RELEASE_TARGET=r2` 后切到 R2：
 
 ```bash
-bunx cross-env VETTA_UPDATE_PROVIDER=github VETTA_UPDATE_GITHUB_OWNER=owner VETTA_UPDATE_GITHUB_REPO=repository bun run dist:desktop -- --publish always
+bun run dist:win
 ```
 
-发布机需要提供 `GH_TOKEN`。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。
+Windows 的 Inno Setup 安装包是自定义产物，应由仓库的 release workflow（或 `gh release upload`）连同 `latest.yml` 和 blockmap 上传。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。
 
 打包时会从本包 `CHANGELOG.md` 提取与当前版本完全匹配的 `## [version]` 区段作为更新说明。正式发布必须先完成 Changelog 定版；找不到版本区段的本地 QA 构建只告警并省略更新说明。

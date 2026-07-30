@@ -1,6 +1,15 @@
 import type { AbilityDetail } from "@shared/lib/api";
 import { describe, expect, it } from "vitest";
-import { resolveAbilityDetailContent } from "./ability-presentation";
+import { isRenderableImageIcon, resolveAbilityDetailContent } from "./ability-presentation";
+
+describe("isRenderableImageIcon", () => {
+	it("接受内置 MCP 预设的相对路径图标", () => {
+		expect(isRenderableImageIcon("./mcp/figma.png")).toBe(true);
+		expect(isRenderableImageIcon("https://example.com/a.png")).toBe(true);
+		expect(isRenderableImageIcon("solar:plug-circle-linear")).toBe(false);
+		expect(isRenderableImageIcon("")).toBe(false);
+	});
+});
 
 describe("resolveAbilityDetailContent", () => {
 	const detail: AbilityDetail = {

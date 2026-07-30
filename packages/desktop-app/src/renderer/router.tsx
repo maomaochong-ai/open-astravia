@@ -51,16 +51,21 @@ const indexRoute = createRoute({
 	component: ChatPage,
 });
 
+/** 设置 / 自动化 / 批量任务不显示切页骨架：pending 期间留空白，内容就绪后直出。 */
+const NoPendingComponent = (): null => null;
+
 const automationRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/automation",
 	component: AutomationPage,
+	pendingComponent: NoPendingComponent,
 });
 
 const batchTasksRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/batch-tasks",
 	component: BatchTasksPage,
+	pendingComponent: NoPendingComponent,
 });
 
 /** 能力详情是页内右侧抽屉，由来源感知的 `?detail=<catalog-id>` 驱动（返回键即关闭）。 */
@@ -128,6 +133,7 @@ const settingsTabRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/settings/$tab",
 	component: SettingsPage,
+	pendingComponent: NoPendingComponent,
 	validateSearch: (search: Record<string, unknown>) => {
 		const section = typeof search.section === "string" ? search.section : undefined;
 		const h2 = typeof search.h2 === "string" ? search.h2 : undefined;

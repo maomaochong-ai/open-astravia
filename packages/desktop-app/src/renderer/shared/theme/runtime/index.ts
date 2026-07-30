@@ -1,4 +1,5 @@
-export { ThemeRuntimeProvider, useThemeRuntime } from "./ThemeRuntimeProvider";
+export { useThemeRuntime } from "./ThemeRuntimeContext";
+export { ThemeRuntimeProvider } from "./ThemeRuntimeProvider";
 export type {
 	ThemePackageDescriptor,
 	ThemePackageSource,

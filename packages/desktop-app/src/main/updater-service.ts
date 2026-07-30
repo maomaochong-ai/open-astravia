@@ -6,6 +6,7 @@ import type { UpdateEngine, UpdateEngineDownload, UpdateEngineInfo } from "./upd
 const EVENT_CHANNEL = "vetta:updater:state";
 const DEFAULT_AUTO_DOWNLOAD_DELAY_MS = 20_000;
 const DEFAULT_AUTO_DOWNLOAD_RETRY_DELAYS_MS = [30_000, 120_000, 600_000];
+const DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS = 120_000;
 
 export type UpdaterPhase = "idle" | "checking" | "available" | "downloading" | "ready" | "installing" | "error";
 
@@ -27,6 +28,7 @@ export type UpdaterTranslate = (key: string, options?: Record<string, unknown>) 
 export interface UpdaterServiceOptions {
 	autoDownloadDelayMs?: number;
 	autoDownloadRetryDelaysMs?: readonly number[];
+	downloadStallTimeoutMs?: number;
 }
 
 export class UpdaterService {
@@ -35,12 +37,14 @@ export class UpdaterService {
 	private latestInfo: UpdateEngineInfo | null = null;
 	private activeDownload: UpdateEngineDownload | null = null;
 	private autoDownloadTimer: NodeJS.Timeout | null = null;
+	private downloadStallTimer: NodeJS.Timeout | null = null;
 	private autoDownloadAttempts = 0;
 	private autoDownloadOptOut = false;
 	private lastProgressEmitAt = 0;
 	private checkPromise: Promise<UpdaterState> | null = null;
 	private readonly autoDownloadDelayMs: number;
 	private readonly autoDownloadRetryDelaysMs: readonly number[];
+	private readonly downloadStallTimeoutMs: number;
 
 	constructor(
 		private readonly engine: UpdateEngine,
@@ -55,6 +59,7 @@ export class UpdaterService {
 		};
 		this.autoDownloadDelayMs = options.autoDownloadDelayMs ?? DEFAULT_AUTO_DOWNLOAD_DELAY_MS;
 		this.autoDownloadRetryDelaysMs = options.autoDownloadRetryDelaysMs ?? DEFAULT_AUTO_DOWNLOAD_RETRY_DELAYS_MS;
+		this.downloadStallTimeoutMs = options.downloadStallTimeoutMs ?? DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS;
 	}
 
 	setMainWindow(win: BrowserWindow): void {
@@ -68,6 +73,7 @@ export class UpdaterService {
 
 	async onAppReady(): Promise<void> {
 		if (!this.isPackaged) return;
+		await this.engine.onAppReady?.();
 		void this.check();
 	}
 
@@ -169,10 +175,12 @@ export class UpdaterService {
 
 		const download = this.engine.downloadUpdate((progress) => this.onProgress(progress));
 		this.activeDownload = download;
+		this.resetDownloadStallTimer(download);
 		try {
 			const paths = await download.promise;
 			if (this.activeDownload !== download) return this.getState();
 			const downloadedPath = paths.at(-1);
+			this.clearDownloadStallTimer();
 			this.activeDownload = null;
 			this.setState({
 				phase: "ready",
@@ -183,6 +191,7 @@ export class UpdaterService {
 			});
 		} catch (error) {
 			if (this.activeDownload !== download) return this.getState();
+			this.clearDownloadStallTimer();
 			this.activeDownload = null;
 			console.error("[updater] download failed", error);
 			if (auto) {
@@ -202,11 +211,11 @@ export class UpdaterService {
 		return this.getState();
 	}
 
-	install(): Promise<void> {
+	async install(): Promise<void> {
 		if (this.state.phase !== "ready") return Promise.resolve();
 		this.setState({ phase: "installing" });
 		try {
-			this.engine.quitAndInstall();
+			await this.engine.quitAndInstall();
 		} catch (error) {
 			console.error("[updater] install failed", error);
 			this.setState({
@@ -214,7 +223,6 @@ export class UpdaterService {
 				error: this.translate("updater.errors.installFailed"),
 			});
 		}
-		return Promise.resolve();
 	}
 
 	dismissReady(): void {
@@ -226,6 +234,7 @@ export class UpdaterService {
 		this.autoDownloadOptOut = true;
 		this.cancelScheduledAutoDownload();
 		const download = this.activeDownload;
+		this.clearDownloadStallTimer();
 		this.activeDownload = null;
 		download?.cancel();
 		this.latestInfo = null;
@@ -242,6 +251,7 @@ export class UpdaterService {
 	}
 
 	private onProgress(progress: { percent: number; transferred: number; total: number }): void {
+		if (this.activeDownload) this.resetDownloadStallTimer(this.activeDownload);
 		const now = Date.now();
 		if (now - this.lastProgressEmitAt < 250 && progress.transferred < progress.total) return;
 		this.lastProgressEmitAt = now;
@@ -275,6 +285,28 @@ export class UpdaterService {
 		if (!this.autoDownloadTimer) return;
 		clearTimeout(this.autoDownloadTimer);
 		this.autoDownloadTimer = null;
+	}
+
+	private resetDownloadStallTimer(download: UpdateEngineDownload): void {
+		this.clearDownloadStallTimer();
+		this.downloadStallTimer = setTimeout(() => {
+			if (this.activeDownload !== download) return;
+			this.downloadStallTimer = null;
+			this.activeDownload = null;
+			download.cancel();
+			this.setState({
+				phase: "error",
+				progress: undefined,
+				downloadedBytes: undefined,
+				error: this.translate("updater.errors.downloadFailed"),
+			});
+		}, this.downloadStallTimeoutMs);
+	}
+
+	private clearDownloadStallTimer(): void {
+		if (!this.downloadStallTimer) return;
+		clearTimeout(this.downloadStallTimer);
+		this.downloadStallTimer = null;
 	}
 
 	private setState(patch: Partial<UpdaterState>): void {

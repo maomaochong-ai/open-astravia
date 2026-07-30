@@ -229,17 +229,14 @@ export type {
 	SkillPromptAreaViewProps,
 } from "./SkillPromptAreaView";
 export { SkillPromptAreaView } from "./SkillPromptAreaView";
-export type {
-	SlashPanelClassNames,
-	SlashPanelItemModel,
-	SlashPanelLabels,
-	SlashPanelSkillItem,
-	SlashPanelViewProps,
-} from "./SlashPanelView";
-export { SlashPanelView } from "./SlashPanelView";
 export type { SuggestionBubblesViewProps } from "./SuggestionBubblesView";
 export { SuggestionBubblesView } from "./SuggestionBubblesView";
-export type { TextBlockViewLabels, TextBlockViewProps } from "./TextBlockView";
+export type {
+	InlineTokenPiece,
+	InlineTokenSupport,
+	TextBlockViewLabels,
+	TextBlockViewProps,
+} from "./TextBlockView";
 export { TextBlockView } from "./TextBlockView";
 export type { TextPreviewLabels, TextPreviewProps } from "./TextPreview";
 export { TextPreview } from "./TextPreview";

@@ -153,12 +153,29 @@ export async function loadMainWindow(win: BrowserWindow): Promise<void> {
 	}
 }
 
+/**
+ * Show a BrowserWindow, with a Windows STARTUPINFO workaround.
+ *
+ * If the process was started with STARTF_USESHOWWINDOW + SW_HIDE (older
+ * windows-launcher used HideWindow:true), Windows ignores the first
+ * ShowWindow nCmdShow and forces hide. Electron still emits "show", but
+ * the HWND has WS_VISIBLE cleared. A second show makes it actually visible.
+ * Harmless when the launcher no longer sets HideWindow.
+ */
+export function revealMainWindow(win: BrowserWindow): void {
+	if (win.isDestroyed()) return;
+	win.show();
+	if (process.platform === "win32" && !win.isDestroyed()) {
+		win.show();
+	}
+}
+
 export function showMainWindow(): BrowserWindow {
 	if (!mainWindow || mainWindow.isDestroyed()) {
 		const win = createWindow();
 		win.once("ready-to-show", () => {
 			if (win.isDestroyed()) return;
-			win.show();
+			revealMainWindow(win);
 			win.focus();
 		});
 		void loadMainWindow(win);
@@ -171,12 +188,10 @@ export function showMainWindow(): BrowserWindow {
 		app.focus({ steal: true });
 	}
 
-	if (!mainWindow.isVisible()) {
-		mainWindow.show();
-	}
 	if (mainWindow.isMinimized()) {
 		mainWindow.restore();
 	}
+	revealMainWindow(mainWindow);
 	mainWindow.focus();
 	return mainWindow;
 }

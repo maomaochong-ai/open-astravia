@@ -26,7 +26,7 @@ describe("acquireSessionLock", () => {
 		expect(existsSync(handle.lockPath)).toBe(false);
 	});
 
-	it("records pid + hostname + openedAt in the lockfile", () => {
+	it("records pid + hostname + openedAt + processStartedAt in the lockfile", () => {
 		const sessionFile = join(tempDir, "b.jsonl");
 		const handle = acquireSessionLock(sessionFile);
 		try {
@@ -36,6 +36,8 @@ describe("acquireSessionLock", () => {
 			expect(info.hostname.length).toBeGreaterThan(0);
 			expect(typeof info.openedAt).toBe("string");
 			expect(Number.isFinite(Date.parse(info.openedAt))).toBe(true);
+			expect(typeof info.processStartedAt).toBe("string");
+			expect(Number.isFinite(Date.parse(info.processStartedAt))).toBe(true);
 		} finally {
 			handle.release();
 		}
@@ -116,6 +118,53 @@ describe("acquireSessionLock", () => {
 		const sessionFile = join(tempDir, "h.jsonl");
 		const lockPath = `${sessionFile}.lock`;
 		writeFileSync(lockPath, "not json at all");
+
+		const handle = acquireSessionLock(sessionFile);
+		try {
+			expect(existsSync(handle.lockPath)).toBe(true);
+		} finally {
+			handle.release();
+		}
+	});
+
+	it("reclaims a legacy lock when the live pid started after the lock (PID reuse)", () => {
+		const sessionFile = join(tempDir, "i.jsonl");
+		const lockPath = `${sessionFile}.lock`;
+		// Current process pid is alive, but openedAt is far in the past relative to
+		// this process start → treated as a reused pid from a dead holder.
+		const openedAt = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+		writeFileSync(
+			lockPath,
+			JSON.stringify({
+				pid: process.pid,
+				hostname: require("os").hostname(),
+				openedAt,
+			}),
+		);
+
+		const handle = acquireSessionLock(sessionFile);
+		try {
+			const info = JSON.parse(readFileSync(handle.lockPath, "utf8"));
+			expect(info.pid).toBe(process.pid);
+			expect(typeof info.processStartedAt).toBe("string");
+		} finally {
+			handle.release();
+		}
+	});
+
+	it("reclaims a lock when processStartedAt does not match the live process", () => {
+		const sessionFile = join(tempDir, "j.jsonl");
+		const lockPath = `${sessionFile}.lock`;
+		writeFileSync(
+			lockPath,
+			JSON.stringify({
+				pid: process.pid,
+				hostname: require("os").hostname(),
+				openedAt: new Date().toISOString(),
+				// Far-past start time cannot match this process instance.
+				processStartedAt: "2000-01-01T00:00:00.000Z",
+			}),
+		);
 
 		const handle = acquireSessionLock(sessionFile);
 		try {

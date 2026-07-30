@@ -7,6 +7,7 @@ import {
 	recordInputActionsUsed,
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
+import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
@@ -821,6 +822,16 @@ export function useSessionManager(): SessionManagerResult {
 					return;
 				}
 
+				// ── 激活工具集变化（插件在会话创建之后才注册工具）──
+				// openSession 时拿到的 getState 快照可能早于插件 activate，不刷新的话
+				// 输入栏 badge 的 requiresActiveTool 闸门会一直按旧集合隐藏。
+				if (event.type === "active_tools_update") {
+					if (event.sessionId === activeSessionRef.current?.runtimeId) {
+						setActiveToolNames(new Set(event.activeToolNames));
+					}
+					return;
+				}
+
 				// ── Todo update ──
 				if (event.type === "todo_update") {
 					const sid = activeSessionRef.current?.runtimeId;
@@ -1000,6 +1011,13 @@ export function useSessionManager(): SessionManagerResult {
 							},
 						}),
 			});
+			// 行内 skill 是软引用，不进 promptRef，但调用次数仍要计入 app-monitor
+			// （命令面板按使用频次排序依赖这份统计）。每个被引用的 skill 记一次。
+			if (!hasOverride) {
+				for (const name of deriveSkillNames(parseInputSegments(rawText).segments)) {
+					recordInputContextUsed({ promptRef: { kind: "skill", name } });
+				}
+			}
 			if (!hasOverride) {
 				setInputValue("");
 				setAttachedImages([]);

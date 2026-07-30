@@ -30,6 +30,7 @@
 
 ### Fixed
 
+- **会话文件锁在 PID 复用后永久占死**：`.jsonl.lock` 原先只靠 `pid + process.kill(pid,0)` 判断持有者是否仍存活。Windows 上 PID 会很快被无关进程（如 VS Code 子进程）复用，导致「没有 Vetta 在用、会话却永远 SESSION_LOCKED」。现写入 `processStartedAt`，抢锁时校验是否仍是**同一进程实例**；无该字段的旧锁若「存活进程启动时间晚于锁写入时间」则按复用回收。顺带：`EPERM` 视为进程仍在；hostname 大小写不敏感；进程 exit/信号时 best-effort 清理本进程持有的 sentinel。
 - **Subagent/workflow 子会话继承父 `ModelRegistry`**：`createDefaultSubagentSessionFactory` 原先只传 `model`，子 session 会新建 registry，读不到父进程内存里的 `serverToken` / remote models，导致父用云端 provider（如 `vetta-go`）时子 agent 报 `No API key found for vetta-go`、workflow「均未执行」。现 `SubagentParentContext` / coordinator 传入父 `modelRegistry`，create/reopen 子会话复用同一实例。
 
 

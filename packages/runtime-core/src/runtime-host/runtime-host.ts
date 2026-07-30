@@ -58,6 +58,12 @@ import type { InFlightBuffer, RunningChangedReason, RuntimeHostOptions, SessionH
 export type { RunningChangedReason, RuntimeHostOptions } from "./types.js";
 
 /**
+ * 空闲会话提前 apply 挂起插件配置的防抖窗口。插件 activate 期间会按工具逐个
+ * reconfigure，这个窗口把它们合成一次 runtime 重建。
+ */
+const IDLE_AGENT_PLUGIN_APPLY_DELAY_MS = 300;
+
+/**
  * 运行时宿主：会话生命周期、事件订阅、执行模式与沙箱授权的编排层。
  * 历史解析 / 事件映射 / 周边 LLM 任务已拆到同目录独立模块。
  */
@@ -185,7 +191,39 @@ export class RuntimeHost implements SessionFacade {
 			handle.pendingAgentPlugins = nextAgentPlugins;
 			handle.hasPendingAgentPlugins = true;
 			debugPluginAgent("runtime reconfigure deferred until prompt", { sessionId });
+			this.scheduleIdleAgentPluginApply(sessionId, handle);
 		}
+	}
+
+	/**
+	 * 空闲会话不必等到下一次 prompt 才 apply：插件是在会话创建之后才异步 activate 的，
+	 * 若一直挂起，renderer 拿到的 activeToolNames 会长期停在插件就绪之前的旧集合
+	 * （输入栏 badge 因此不出现）。streaming / bash 运行中仍走原来的 turn 边界路径。
+	 */
+	private scheduleIdleAgentPluginApply(sessionId: string, handle: SessionHandle): void {
+		if (handle.idleAgentPluginTimer) clearTimeout(handle.idleAgentPluginTimer);
+		handle.idleAgentPluginTimer = setTimeout(() => {
+			handle.idleAgentPluginTimer = undefined;
+			if (!this.sessions.has(sessionId)) return;
+			void this.applyPendingAgentPlugins(sessionId, handle).catch((error: unknown) => {
+				console.warn(`[RuntimeHost.scheduleIdleAgentPluginApply] session=${sessionId} apply failed:`, error);
+			});
+		}, IDLE_AGENT_PLUGIN_APPLY_DELAY_MS);
+	}
+
+	/**
+	 * 激活工具集变化时向订阅者广播一次快照（同一集合不重复广播）。
+	 */
+	private broadcastActiveToolNames(sessionId: string, handle: SessionHandle): void {
+		const activeToolNames = handle.session.getActiveToolNames();
+		const fingerprint = [...activeToolNames].sort().join(" ");
+		if (handle.lastBroadcastActiveToolNames === fingerprint) return;
+		handle.lastBroadcastActiveToolNames = fingerprint;
+		this.broadcastSyntheticEvent(sessionId, {
+			...baseSessionEvent(sessionId, "runtime-core"),
+			type: "active_tools_update",
+			activeToolNames,
+		});
 	}
 
 	listSandboxGrants(sessionId: string): RuntimeSandboxGrantInfo[] {
@@ -317,6 +355,7 @@ export class RuntimeHost implements SessionFacade {
 					existing.handle.agentPluginsEnabled = true;
 					existing.handle.pendingAgentPlugins = this.withAdditionalSkillPaths(config.agentPlugins);
 					existing.handle.hasPendingAgentPlugins = true;
+					this.scheduleIdleAgentPluginApply(existing.sessionId, existing.handle);
 				}
 				await existing.handle.session.bindExtensions({
 					uiContext: this.createExtensionUIContext({ current: existing.sessionId }),
@@ -417,6 +456,9 @@ export class RuntimeHost implements SessionFacade {
 			agentMode: config.agentMode,
 			pendingAgentMode: undefined,
 			hasPendingAgentMode: false,
+			idleAgentPluginTimer: undefined,
+			agentPluginApplyInFlight: undefined,
+			lastBroadcastActiveToolNames: undefined,
 		});
 		debugPluginAgent("runtime createSession registered", {
 			sessionId,
@@ -1064,6 +1106,10 @@ export class RuntimeHost implements SessionFacade {
 	async disposeSession(sessionId: string): Promise<void> {
 		const handle = this.sessions.get(sessionId);
 		if (!handle) return;
+		if (handle.idleAgentPluginTimer) {
+			clearTimeout(handle.idleAgentPluginTimer);
+			handle.idleAgentPluginTimer = undefined;
+		}
 		this.inFlightUnsubscribers.get(sessionId)?.();
 		this.inFlightUnsubscribers.delete(sessionId);
 		this.inFlightBuffers.delete(sessionId);
@@ -1084,6 +1130,10 @@ export class RuntimeHost implements SessionFacade {
 	async disposeAllSessions(): Promise<void> {
 		for (const [sessionId, handle] of this.sessions) {
 			try {
+				if (handle.idleAgentPluginTimer) {
+					clearTimeout(handle.idleAgentPluginTimer);
+					handle.idleAgentPluginTimer = undefined;
+				}
 				this.inFlightUnsubscribers.get(sessionId)?.();
 				handle.session.dispose();
 			} catch (err) {
@@ -1118,8 +1168,27 @@ export class RuntimeHost implements SessionFacade {
 	}
 
 	private async applyPendingAgentPlugins(sessionId: string, handle: SessionHandle): Promise<void> {
+		// 空闲期定时 apply 可能正在跑；先等它落定，否则本次 prompt 会跑在重建到一半的工具集上。
+		if (handle.agentPluginApplyInFlight) {
+			await handle.agentPluginApplyInFlight.catch(() => {
+				// 失败已由发起方记录，这里只做同步点。
+			});
+		}
 		if (!handle.agentPluginsEnabled || !handle.hasPendingAgentPlugins) return;
 		if (handle.session.isStreaming || handle.session.isBashRunning) return;
+		const apply = this.applyPendingAgentPluginsOnce(sessionId, handle);
+		handle.agentPluginApplyInFlight = apply.then(
+			() => undefined,
+			() => undefined,
+		);
+		try {
+			await apply;
+		} finally {
+			handle.agentPluginApplyInFlight = undefined;
+		}
+	}
+
+	private async applyPendingAgentPluginsOnce(sessionId: string, handle: SessionHandle): Promise<void> {
 		debugPluginAgent("runtime deferred reconfigure apply", { sessionId });
 		const pendingAgentPlugins = handle.pendingAgentPlugins;
 		handle.pendingAgentPlugins = undefined;
@@ -1133,6 +1202,7 @@ export class RuntimeHost implements SessionFacade {
 			}
 			throw error;
 		}
+		this.broadcastActiveToolNames(sessionId, handle);
 	}
 
 	/**

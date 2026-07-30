@@ -9,9 +9,9 @@ export const monoTheme: ThemeDef = {
 	label: "Default",
 	dark: {
 		...defaultTheme.dark,
-		background: "rgb(10, 10, 10)",
-		muted: "rgb(22, 22, 22)",
-		card: "rgb(18, 18, 18)",
+		background: "rgb(18, 18, 18)",
+		muted: "rgb(24, 24, 24)",
+		card: "rgb(29, 29, 29)",
 		// 覆盖经典偏蓝 popover/border，侧栏设置菜单等浮层保持中性灰
 		popover: "rgb(28, 28, 28)",
 		// 纯黑底上正文再压一档（约 82%），避免近白发飘；muted 拉开层级
@@ -23,6 +23,7 @@ export const monoTheme: ThemeDef = {
 		mutedForeground: "rgb(128, 128, 128)",
 		border: "rgb(42, 42, 42)",
 		input: "rgb(48, 48, 48)",
+		inputBarBg: "rgb(29, 29, 29)",
 		// 强调色仍偏亮但略软于纯白，实心按钮不刺眼
 		primary: "rgb(228, 228, 228)",
 		primaryForeground: "rgb(8, 8, 10)",
@@ -42,6 +43,7 @@ export const monoTheme: ThemeDef = {
 		// 比经典浅色 border 更浅，避免灰框过重
 		border: "rgb(238, 238, 238)",
 		input: "rgb(238, 238, 238)",
+		inputBarBg: "rgb(255, 255, 255)",
 		primary: "rgb(0, 0, 0)",
 		primaryForeground: "rgb(255, 255, 255)",
 		ring: "rgb(0, 0, 0)",

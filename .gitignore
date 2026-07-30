@@ -79,3 +79,4 @@ terminals
 mcps
 agent-tools
 .playwright-cli
+.tmp*

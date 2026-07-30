@@ -5,32 +5,33 @@ import { ContextRing } from "../ContextRing";
 import { ExecutionModeSelector } from "../ExecutionModeSelector";
 import { ModelSelector } from "../ModelSelector";
 import { SendButton } from "../SendButton";
+import { ActiveActionCapsules, type ActiveActionCapsule } from "./ActiveActionCapsules";
 import { InputBarToolbarButton } from "./InputBarToolbarButton";
 import type { InputBarLabels } from "./types";
 
 const SPRING = { type: "spring" as const, stiffness: 460, damping: 32, mass: 0.9 };
 const TOOLBAR_BUTTON_HOVER = { scale: 1.06 };
 const TOOLBAR_BUTTON_TAP = { scale: 0.92 };
-const SEND_HINT_INITIAL = { opacity: 0, y: 2 };
-const SEND_HINT_ANIMATE = { opacity: 1, y: 0 };
-const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
 interface InputBarToolbarProps {
+	/** 已激活的 input action，紧跟执行模式右侧显示。 */
+	activeActions: readonly ActiveActionCapsule[];
 	canSend: boolean;
 	className?: string;
 	hasSession: boolean;
 	isEmpty: boolean;
 	isStreaming: boolean;
-	labels: Pick<InputBarLabels, "hint" | "toolbar">;
+	labels: Pick<InputBarLabels, "capsule" | "toolbar">;
 	onAbort: () => void;
 	onPlusClick: () => void;
-	onSelectFiles: () => Promise<void>;
-	onSelectImages: () => Promise<void>;
+	onSelectFiles: () => void;
+	onSelectImages: () => void;
 	onSend: () => void;
 	slashOpen: boolean;
 }
 
 export const InputBarToolbar = memo(function InputBarToolbar({
+	activeActions,
 	canSend,
 	className,
 	hasSession,
@@ -66,29 +67,51 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					.join(" ")}
 				data-theme-surface-root="chat.inputBarToolbarLeft"
 			>
-				<InputBarToolbarButton
-					icon="icon-[solar--add-circle-linear]"
-					title={labels.toolbar.skills}
-					disabled={!hasSession}
-					onClick={onPlusClick}
-					active={slashOpen}
-				/>
-				<InputBarToolbarButton
-					icon="icon-[solar--gallery-linear]"
-					title={labels.toolbar.addImage}
-					disabled={!hasSession}
-					onClick={() => void onSelectImages()}
-				/>
-				<InputBarToolbarButton
-					icon="icon-[solar--paperclip-linear]"
-					title={labels.toolbar.attachFile}
-					disabled={!hasSession}
-					onClick={() => void onSelectFiles()}
-				/>
+				{/*
+				 * 标记给命令区的 click-outside 判定用：不跳过的话，mousedown 先把命令区
+				 * 收起、紧接着的 click 又把它打开，这个按钮就永远关不掉面板。
+				 */}
+				<span data-command-panel-toggle="true" className="flex shrink-0">
+					<InputBarToolbarButton
+						icon="icon-[solar--code-scan-bold-duotone]"
+						title={labels.toolbar.skills}
+						disabled={!hasSession}
+						onClick={onPlusClick}
+						active={slashOpen}
+					/>
+				</span>
 				<div className="ml-1 h-4 w-px shrink-0 bg-border/70" />
-				<div className="min-w-0 shrink">
-					<ExecutionModeSelector />
-				</div>
+				{/*
+				 * 展开形态下这个位置让给「插图 / 附件」——命令区已经占满上方，
+				 * 此时执行模式与模型收起，工具栏只服务于「往输入框里添东西」+ 发送。
+				 */}
+				{slashOpen ? (
+					// keep-open：命令区的 click-outside 走 mousedown，不标记的话这两个按钮
+					// 会在 click 之前随面板一起卸载，文件选择器永远弹不出来。
+					<span data-command-panel-keep-open="true" className="flex shrink-0 items-center gap-0.5">
+						<InputBarToolbarButton
+							icon="icon-[solar--gallery-linear]"
+							title={labels.toolbar.addImage}
+							disabled={!hasSession}
+							onClick={onSelectImages}
+						/>
+						<InputBarToolbarButton
+							icon="icon-[solar--paperclip-linear]"
+							title={labels.toolbar.attachFile}
+							disabled={!hasSession}
+							onClick={onSelectFiles}
+						/>
+					</span>
+				) : (
+					<div className="min-w-0 shrink">
+						<ExecutionModeSelector />
+					</div>
+				)}
+				<ActiveActionCapsules
+					items={activeActions}
+					removeHint={labels.capsule.removeDefault}
+					groupLabel={labels.capsule.activeGroup}
+				/>
 			</div>
 
 			<div
@@ -100,19 +123,15 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					.join(" ")}
 				data-theme-surface-root="chat.inputBarToolbarRight"
 			>
-				<div className="min-w-0 shrink">
-					<ModelSelector />
-				</div>
-				<ContextRing className="mr-1 shrink-0" />
-				<motion.span
-					key={isStreaming ? "s" : isEmpty ? "e" : "n"}
-					initial={SEND_HINT_INITIAL}
-					animate={SEND_HINT_ANIMATE}
-					transition={SOFT}
-					className="mx-1 hidden shrink-0 text-[10.5px] text-muted-foreground/50 select-none @[32rem]:inline"
-				>
-					{isStreaming ? "" : isEmpty ? labels.hint.send : labels.hint.newline}
-				</motion.span>
+				{/* 展开形态只留发送：模型与上下文圆环让位给命令区 */}
+				{!slashOpen && (
+					<>
+						<div className="min-w-0 shrink">
+							<ModelSelector />
+						</div>
+						<ContextRing className="mr-1 shrink-0" />
+					</>
+				)}
 				{isStreaming && !isEmpty ? (
 					<motion.button
 						type="button"

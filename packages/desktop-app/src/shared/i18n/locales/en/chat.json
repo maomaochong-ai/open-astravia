@@ -263,7 +263,9 @@
 			"appshotIconAlt": "App icon",
 			"removeDefault": "Click to remove",
 			"removeImage": "Remove image",
-			"removeTooltip": "{{path}}\nClick to remove"
+			"removeTooltip": "{{path}}\nClick to remove",
+			"activeGroup": "{{count}} plugins",
+			"imageBadge": "Image {{index}}"
 		},
 		"drawer": {
 			"permissionDesc": "Awaiting confirmation",
@@ -276,10 +278,6 @@
 			"queueEmpty": "No queued messages",
 			"queueLabel": "Queued",
 			"queueSendNow": "Send now"
-		},
-		"hint": {
-			"newline": "⇧⏎ Newline",
-			"send": "⏎ Send"
 		},
 		"permission": {
 			"allow": "Allow once",
@@ -432,11 +430,6 @@
 	"newSession": {
 		"greetingDefault": "How's it going today?",
 		"greetingTitle": "Hi, {{nickname}}",
-		"sceneCarouselNext": "Next",
-		"sceneCarouselPrev": "Previous",
-		"sceneInstallPrompt": "Click to install and use",
-		"skillScrollLeft": "Scroll left",
-		"skillScrollRight": "Scroll right",
 		"subtitle": "I can help you get work done. What can I do for you?",
 		"defaultContext": "General conversation",
 		"projectContext": "Project · {{name}}"
@@ -496,7 +489,9 @@
 	},
 	"slashPanel": {
 		"emptyNoMatch": "No matches found",
+		"emptyNoMatchHint": "Try another keyword, or just type your request.",
 		"emptyNoSkills": "No skills or scenes available",
+		"emptyNoSkillsHint": "Install a skill or scene from the ability market to call it here.",
 		"header": "Select a scene or skill",
 		"resultCount": "{{count}} results",
 		"scenesSection": "Scenes",
@@ -507,8 +502,12 @@
 			"path": "Custom",
 			"project": "Project",
 			"scene": "Scene",
-			"user": "User"
-		}
+			"user": "User",
+			"builtin": "Built-in",
+			"plugin": "Plugin",
+			"market": "Market"
+		},
+		"connectorsSection": "Connected"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "Click to send this suggestion"

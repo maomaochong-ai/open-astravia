@@ -18,6 +18,8 @@ export interface ThemeColorTokens {
 	readonly destructiveForeground: string;
 	readonly foreground: string;
 	readonly input: string;
+	/** AI 输入栏及其附属浮层（命令面板 / @ 面板 / ledge）的底色。浅色为纯白，深色跟随 card。 */
+	readonly inputBarBg: string;
 	readonly muted: string;
 	readonly mutedForeground: string;
 	readonly popover: string;

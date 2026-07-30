@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
@@ -43,9 +43,19 @@ const require = createRequire(import.meta.url);
 const electronPkgPath = require.resolve("electron/package.json");
 const electronVersion = JSON.parse(readFileSync(electronPkgPath, "utf8")).version;
 
-// 应用版本号以 packages/desktop-app/package.json 为唯一真源
-const appVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")).version;
-const releaseInfo = resolveReleaseInfo(join(projectRoot, "CHANGELOG.md"), appVersion);
+// 正式发布以 packages/desktop-app/package.json 为唯一真源。本地更新闭环测试可用
+// VETTA_DESKTOP_BUILD_VERSION 生成更高版本产物，不修改源码版本或创建 tag。
+const packageVersion = JSON.parse(readFileSync(join(projectRoot, "package.json"), "utf8")).version;
+const buildVersionOverride = process.env.VETTA_DESKTOP_BUILD_VERSION?.trim();
+const appVersion = buildVersionOverride || packageVersion;
+if (!/^\d+\.\d+\.\d+$/.test(appVersion)) {
+	throw new Error(`[prepare-pack] invalid desktop version: ${appVersion}`);
+}
+if (buildVersionOverride && buildVersionOverride !== packageVersion) {
+	console.warn(`[prepare-pack] QA build version override: ${packageVersion} -> ${appVersion}`);
+}
+const releaseInfo =
+	appVersion === packageVersion ? resolveReleaseInfo(join(projectRoot, "CHANGELOG.md"), appVersion) : undefined;
 
 function resolveCliAppCompileTargets() {
 	const rawTargets = process.env.VETTA_CLI_TARGET_PLATFORMS ?? process.env.VETTA_VENDOR_PLATFORM;
@@ -249,6 +259,27 @@ for (const dep of optionalExternalDeps) {
 		console.warn(`[prepare-pack] optional external dep ${dep} not resolvable on this host; skipping`);
 	}
 }
+
+function assertPackagedMainHasNoWorkspaceImports(mainOutputDir) {
+	const workspaceImportPattern = /^\s*import(?:\s+.+\s+from)?\s+["']@vetta\//;
+	const invalidImports = [];
+	for (const fileName of readdirSync(mainOutputDir)) {
+		if (!fileName.endsWith(".js")) continue;
+		const lines = readFileSync(join(mainOutputDir, fileName), "utf8").split(/\r?\n/);
+		for (const [index, line] of lines.entries()) {
+			if (workspaceImportPattern.test(line)) invalidImports.push(`${fileName}:${index + 1}: ${line.trim()}`);
+		}
+	}
+	if (invalidImports.length > 0) {
+		throw new Error(
+			"[prepare-pack] desktop main output contains external @vetta workspace imports. " +
+				"Rebuild main with VETTA_BUILD_ENV=production before packaging:\n" +
+				invalidImports.join("\n"),
+		);
+	}
+}
+
+assertPackagedMainHasNoWorkspaceImports(join(projectRoot, "dist/main"));
 
 // Clean previous build stage
 rmSync(buildStageDir, { recursive: true, force: true });
@@ -687,6 +718,7 @@ const builderConfig = {
 	appId: "com.vetta.desktop",
 	productName: "Vetta",
 	executableName: "Vetta",
+	afterPack: join(projectRoot, "scripts", "windows-version-layout.mjs"),
 	electronVersion,
 	electronLanguages: ["zh-CN", "en-US"],
 	npmRebuild: false,
@@ -762,7 +794,8 @@ const builderConfig = {
 				],
 	},
 	win: {
-		target: ["nsis"],
+		target: ["dir"],
+		artifactName: "${productName}-${version}-win-${arch}.${ext}",
 		icon: "build/icon.ico",
 	},
 	linux: {
@@ -773,15 +806,11 @@ const builderConfig = {
 	// Sidecar binaries are picked up from the staged ./im-gateway dir
 	// (populated above by the cross-build step).
 	extraResources: resolveExtraResources(),
-	nsis: {
-		oneClick: false,
-		perMachine: false,
-		allowToChangeInstallationDirectory: true,
-	},
 	directories: {
 		output: join(projectRoot, "release"),
 	},
 	asar: true,
+	disableSanityCheckAsar: resolvePlatformFamilies().has("win32"),
 	// photon-node 是 createRequire 加载的 external 包，其 photon_rs_bg.wasm
 	// 通过 readFileSync(__dirname + "/photon_rs_bg.wasm") 读取。asar 虚拟
 	// 文件系统对 readFileSync 透明，但 wasm 这类二进制在部分 Electron 版本

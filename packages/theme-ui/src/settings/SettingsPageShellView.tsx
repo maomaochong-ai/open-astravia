@@ -1,5 +1,4 @@
 import type { JSX, ReactNode } from "react";
-import { SettingsEnterItem } from "./settingsEnter";
 
 export interface SettingsPageShellViewProps {
 	readonly title: string;
@@ -43,7 +42,7 @@ export function SettingsPageShellView({
 
 	return (
 		<div className={`mx-auto w-full max-w-[680px] px-8 pt-2 pb-4${pb ? " pb-10" : ""}`}>
-			<SettingsEnterItem className="mb-6">
+			<div className="mb-6">
 				<div
 					className={
 						headerAction
@@ -77,7 +76,7 @@ export function SettingsPageShellView({
 						{description}
 					</p>
 				)}
-			</SettingsEnterItem>
+			</div>
 			{children}
 			{footer}
 		</div>
