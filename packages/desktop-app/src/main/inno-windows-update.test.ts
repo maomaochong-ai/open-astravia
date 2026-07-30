@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { UpdateInfo } from "builder-util-runtime";
+import { CancellationError, type UpdateInfo } from "builder-util-runtime";
 import type { ResolvedUpdateFileInfo } from "electron-updater";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -141,10 +141,84 @@ describe("InnoWindowsUpdateController", () => {
 		});
 		controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
 
+		const abortController = new AbortController();
+		setTimeout(() => abortController.abort(), 10);
+		await expect(
+			controller.prepareDownloadedInstaller(installerPath, vi.fn(), abortController.signal),
+		).rejects.toBeInstanceOf(CancellationError);
+		await expect(controller.activate()).rejects.toThrow("not ready");
+	});
+
+	it("waits for core files to become visible after a successful Inno installation", async () => {
+		const root = await createTemporaryRoot();
+		const storeRoot = join(root, "store");
+		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		await writeFile(installerPath, "installer");
+		const controller = new InnoWindowsUpdateController({
+			currentVersion: "1.2.2",
+			storeRoot,
+			installInstaller: async (_installerPath, destinationRoot, version) => {
+				const versionDir = join(destinationRoot, "versions", version);
+				await mkdir(join(versionDir, "resources"), { recursive: true });
+				await writeFile(join(versionDir, ".install-complete"), version);
+				setTimeout(() => {
+					void Promise.all([
+						writeFile(join(versionDir, "Vetta.exe"), "executable"),
+						writeFile(join(versionDir, "resources", "app.asar"), "asar"),
+					]);
+				}, 10);
+			},
+			relaunch: vi.fn(),
+			quit: vi.fn(),
+		});
+		controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
+
 		await expect(
 			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
-		).rejects.toThrow(".install-complete");
-		await expect(controller.activate()).rejects.toThrow("not ready");
+		).resolves.toEqual([join(storeRoot, "versions", "1.2.3", "Vetta.exe")]);
+	});
+
+	it("validates installed files through the physical filesystem and restores ASAR handling", async () => {
+		const root = await createTemporaryRoot();
+		const storeRoot = join(root, "store");
+		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		await writeFile(installerPath, "installer");
+		const originalDescriptor = Object.getOwnPropertyDescriptor(process, "noAsar");
+		const assignments: boolean[] = [];
+		let noAsar = false;
+		Object.defineProperty(process, "noAsar", {
+			configurable: true,
+			get: () => noAsar,
+			set: (value: boolean) => {
+				assignments.push(value);
+				noAsar = value;
+			},
+		});
+
+		try {
+			const controller = new InnoWindowsUpdateController({
+				currentVersion: "1.2.2",
+				storeRoot,
+				installInstaller: async (_installerPath, destinationRoot, version) => {
+					const versionDir = join(destinationRoot, "versions", version);
+					await mkdir(join(versionDir, "resources"), { recursive: true });
+					await writeFile(join(versionDir, "Vetta.exe"), "executable");
+					await writeFile(join(versionDir, "resources", "app.asar"), "asar");
+					await writeFile(join(versionDir, ".install-complete"), version);
+				},
+				relaunch: vi.fn(),
+				quit: vi.fn(),
+			});
+			controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
+
+			await controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal);
+
+			expect(assignments).toContain(true);
+			expect(noAsar).toBe(false);
+		} finally {
+			if (originalDescriptor) Object.defineProperty(process, "noAsar", originalDescriptor);
+			else Reflect.deleteProperty(process, "noAsar");
+		}
 	});
 
 	it("rejects a failed installer even when it leaves core files behind", async () => {

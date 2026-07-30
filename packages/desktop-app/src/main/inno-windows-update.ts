@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { statSync } from "node:fs";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, win32 } from "node:path";
 import type { ProgressInfo, UpdateInfo } from "builder-util-runtime";
 import { CancellationError } from "builder-util-runtime";
@@ -9,6 +10,7 @@ const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const WINDOWS_EXECUTABLE_NAME = "Vetta.exe";
 const INSTALL_COMPLETE_FILE_NAME = ".install-complete";
 const PROGRESS_POLL_INTERVAL_MS = 250;
+const INSTALL_VISIBILITY_TIMEOUT_MS = 30_000;
 
 interface InnoUpdateSelection {
 	version: string;
@@ -206,11 +208,16 @@ async function installWithInno(
 }
 
 async function assertFile(path: string): Promise<void> {
+	const previousNoAsar = process.noAsar;
+	process.noAsar = true;
 	try {
-		const info = await stat(path);
+		// Electron otherwise exposes the app.asar archive itself as a virtual directory.
+		const info = statSync(path);
 		if (info.isFile()) return;
 	} catch {
 		// Report one stable validation error below.
+	} finally {
+		process.noAsar = previousNoAsar;
 	}
 	throw new Error(`Expected file: ${path}`);
 }
@@ -221,6 +228,22 @@ async function assertCompleteVersionDirectory(versionDir: string): Promise<void>
 		assertFile(join(versionDir, WINDOWS_EXECUTABLE_NAME)),
 		assertFile(join(versionDir, "resources", "app.asar")),
 	]);
+}
+
+async function waitForCompleteVersionDirectory(versionDir: string, signal: AbortSignal): Promise<void> {
+	const deadline = Date.now() + INSTALL_VISIBILITY_TIMEOUT_MS;
+	let lastError: unknown;
+	do {
+		if (signal.aborted) throw new CancellationError();
+		try {
+			await assertCompleteVersionDirectory(versionDir);
+			return;
+		} catch (error) {
+			lastError = error;
+		}
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, PROGRESS_POLL_INTERVAL_MS));
+	} while (Date.now() < deadline);
+	throw lastError;
 }
 
 export function isVersionedWindowsExecutable(executablePath: string, version: string): boolean {
@@ -290,7 +313,7 @@ export class InnoWindowsUpdateController {
 		console.info("[updater] preparing Windows version with Inno Setup", installerPath);
 		await this.installInstaller(installerPath, this.runtime.storeRoot, selection.version, report, signal);
 		if (signal.aborted) throw new CancellationError();
-		await assertCompleteVersionDirectory(destinationDir);
+		await waitForCompleteVersionDirectory(destinationDir, signal);
 		this.prepared = { version: selection.version, executablePath };
 		onProgress({
 			bytesPerSecond: 0,
