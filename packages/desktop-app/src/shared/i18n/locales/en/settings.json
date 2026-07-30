@@ -773,10 +773,7 @@
   "colorThemes": {
     "mono": "Default",
     "default": "Classic",
-    "emerald": "Emerald",
-    "sand": "Coral",
-    "slate": "Slate",
-    "voltage": "Voltage"
+    "sand": "Coral"
   },
   "personas": {
     "default": {

@@ -13,10 +13,7 @@ import { useTranslation } from "react-i18next";
 const COLOR_THEME_LABEL_KEYS = {
 	mono: "colorThemes.mono",
 	default: "colorThemes.default",
-	emerald: "colorThemes.emerald",
 	sand: "colorThemes.sand",
-	slate: "colorThemes.slate",
-	voltage: "colorThemes.voltage",
 } as const;
 
 export function AppearanceActionPicker({

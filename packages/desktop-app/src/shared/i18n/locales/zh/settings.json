@@ -773,10 +773,7 @@
   "colorThemes": {
     "mono": "默认",
     "default": "经典",
-    "emerald": "翠玉",
-    "sand": "珊瑚",
-    "slate": "青石",
-    "voltage": "电光"
+    "sand": "珊瑚"
   },
   "personas": {
     "default": {

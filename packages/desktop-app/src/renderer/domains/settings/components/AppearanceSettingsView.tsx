@@ -371,15 +371,6 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 				</div>
 			</div>
 
-			<div className="mb-6">
-				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-3" />
-				<div className="grid grid-cols-2 gap-3">
-					{model.sidebarStyleOptions.map((option) => (
-						<SidebarStyleCard key={option.id} {...option} onSelect={model.actions.setSidebarStyle} />
-					))}
-				</div>
-			</div>
-
 			{model.showUiTheme && (
 				<div className="mb-6">
 					<SettingHeading title={model.labels.sections.uiTheme} section={SETTINGS_SECTION["appearance-ui-theme"]} className="mb-3" />
@@ -420,6 +411,15 @@ export function AppearanceSettingsView({ model }: { model: AppearanceSettingsMod
 					</div>
 				</div>
 			)}
+
+			<div className="mb-6">
+				<SettingHeading title={model.labels.sections.sidebar} section={SETTINGS_SECTION["appearance-sidebar"]} className="mb-3" />
+				<div className="grid grid-cols-2 gap-3">
+					{model.sidebarStyleOptions.map((option) => (
+						<SidebarStyleCard key={option.id} {...option} onSelect={model.actions.setSidebarStyle} />
+					))}
+				</div>
+			</div>
 		</div>
 	);
 }

@@ -43,6 +43,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **命令面板（Splash 完全体）**：`/` 或「+」唤出的面板顶部新增**已接入连接器宫格**——列出 mcp.json 里已添加、未禁用且必填密钥齐的内置连接器（canva / notion / figma / github / slack / gmail / google-calendar / google-drive），列数自适应以避免末行只剩单个（2→2、3→3、4→2、5/6→3、7→4）；点击插入 `@mcp:名字` 行内胶囊，与 skill 同为软引用，模型自行决定是否调用该 MCP。下方 skill 列表把场景与技能合成单列，按**调用次数 → 类别（内置 > 插件 > Vetta 原生 > 通用）→ 最近使用 → 名称**排序；调用次数取自 app-monitor 已落盘的 per-skill 统计（新增 IPC `vetta:app-monitor:get-prompt-ref-usage`）。item 高度 46px→32px 单行（图标 + 名称 + 来源标签 + 同行右侧描述），面板总高 320→420，宫格随内容滚动、只有头部与底部动作条固定；输入过滤词时隐藏宫格、键盘上下键只在列表内移动。
 ### Removed
 
+- **「电光」/「翠玉」/「青石」三个主题色**：`voltage.ts` / `emerald.ts` / `slate.ts` 与四处 `COLOR_THEME_LABEL_KEYS`、zh/en `colorThemes.*` 文案一并删除，主题色只剩「默认」「珊瑚」「经典」三档（引导页主题选择随之从 2×3 变一排三列）。已选中被删主题的用户经 `resolveThemeId` 回落到默认主题 `mono`；`github → slate` 的历史别名同时移除（老 id 一样回落默认）。
 - **设置页的骨架屏与块级入场动画**：`SettingsContentLoadingView`、`SettingsTabEnter` / `SettingsEnterItem` / `useSettingsEnterDelay` 与 `SETTINGS_ENTER_*` 常量从 theme-ui 删除（覆盖设置页排版的主题若引用了它们需要跟着改），`settings-highlight.css` 里的 `settings-element-enter` CSS 兜底动画一并移除。设置 tab 的 `Suspense fallback` 改为 `null`，`SettingSection` / `SettingsPageShellView` / 账号页的标题块换回普通 `div`（`data-setting-section-highlight-target` 等锚点属性不变，跳转高亮不受影响）。
 - **设置 / 自动化 / 批量任务的切页骨架**：三个路由单独设 `pendingComponent: () => null`，pending 期间留空白、内容就绪后直出，不再闪一屏 `RouteContentLoadingView` 脉冲块。其余路由仍保留全局 `defaultPendingComponent`。
 - **新会话页的场景轮播 / 技能徽章 / 引导词三个区块**：欢迎页只保留问候语、模式切换与输入栏。随之删除 `useNewSessionResources`（本地 skill + 市场场景 + 安装清单的拉取）、场景点击安装链路、`GuidingWords` / `SkillBadgeRow` / `SceneCarousel` 及 `useGuidingWordsModel`，以及主题槽位 `chat.newSessionSceneCarousel` / `chat.newSessionSceneCard` / `chat.newSessionSkillBadgeRow` 在 desktop 侧的声明（theme-ui 的组件与契约保留，主题覆盖它们对客户端不再有效果）。`chat.newSession` 的 `sceneCarouselNext` / `sceneCarouselPrev` / `sceneInstallPrompt` / `skillScrollLeft` / `skillScrollRight` 文案一并删除。
@@ -70,6 +71,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **外观设置里「侧边栏样式」下移到「主题」之后**：原先夹在「外观模式」与「界面主题」之间，现在排到主题色区段下方（页面末尾），`SETTINGS_SECTIONS` 的顺序同步调整以对齐设置搜索结果。
 - **工具栏里已激活 action 胶囊常驻底色**：紧跟权限/沙箱右侧的激活胶囊由「透明、hover 才上底色」改为常驻 `bg-accent/60`（hover 加深到 `bg-accent`）。它表示的是持续生效的状态，全透明时和旁边的普通工具栏按钮分不出来。多个 action 折叠后堆叠的图标容器由圆形改为圆角矩形（20px、`rounded-[7px]`、3px 内边距），`+n` 角标同步跟上。折叠态 popover 宽度跟随触发胶囊（`--radix-popover-trigger-width`），条目改用与未折叠胶囊完全一致的外观与关闭手势（h-7 / `rounded-lg` / `bg-accent/60`，图标 hover 变关闭键、整行可点），看起来就是把几枚胶囊竖着收纳了。
 - **命令区 skill 列表空态改为卡片**：「未找到匹配项」/「暂无可用的技能或场景」由一行灰字换成占满命令区宽度的虚线卡片（左侧圆形图标 + 右侧标题与提示，横排以免撑高命令区），新增 `SkillListEmpty` 组件与 `chat.slashPanel.emptyNoMatchHint` / `emptyNoSkillsHint` 两条文案（zh/en），`SkillListLabels` 随之新增两个必填字段。聊天侧命令面板与 dialog 侧 skill 选择器共用。
 - **新会话页命令区展开时输入栏整体下移 120px**：命令区向上生长会把视觉重心整体抬起、下方留出大片空白，现在输入栏随展开/收起沿同一条弹簧（`stiffness 420 / damping 34`）平移，与面板一起动。`InputBarProps` 新增可选 `onExpandedChange`（仅新会话页传），会话页不受影响。展开期间 hero（模式切换 + 吉祥物）整块淡出并禁用命中——命令区盖在 hero 上时，这两个元素会浮在面板前面挡住列表。
