@@ -455,11 +455,16 @@ textarea:disabled,
    放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
    ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
    只有侧边栏那一条透出桌面。 */
-:root[data-platform="mac"][data-sidebar-style="classic"] .app-frame,
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-frame {
+	background-color: transparent;
+}
+
+/* 侧边栏不全透：在毛玻璃上再铺一层半透明 --background，压住桌面壁纸的杂色，
+   同时保留 vibrancy 的通透感。透明度调这里的百分比即可。 */
 :root[data-platform="mac"][data-sidebar-style="classic"]
 	.sidebar-dock
 	.sidebar-surface {
-	background-color: transparent;
+	background-color: color-mix(in srgb, var(--background) 60%, transparent);
 }
 
 :root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
