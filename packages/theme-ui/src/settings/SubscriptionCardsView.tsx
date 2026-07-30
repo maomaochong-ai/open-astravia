@@ -37,7 +37,6 @@ export interface SubscriptionCardsViewModel {
 		expiryDate: (date: string) => string;
 		freeModel: string;
 		modelMultiplier: (value: string) => string;
-		modelsCount: (count: number) => string;
 		refresh: string;
 		refreshing: string;
 		thinking: string;
@@ -72,14 +71,30 @@ function formatWindowReset(resetAt: string, now: number): string {
 	return m + "m";
 }
 
-function VettaGoBrand({ currentPlan }: { currentPlan: string }): JSX.Element {
+function VettaGoBrand({
+	currentPlan,
+	status,
+}: {
+	currentPlan: string;
+	status: SubscriptionCardsViewModel["status"];
+}): JSX.Element {
 	return (
 		<div className="flex items-center gap-3">
 			<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 ring-1 ring-inset ring-primary/20">
 				<span className="icon-[solar--rocket-2-linear] h-4 w-4 text-primary" />
 			</div>
 			<div className="flex min-w-0 flex-col leading-tight">
-				<span className="text-[15px] font-semibold text-foreground">Vetta Go</span>
+				<div className="flex min-w-0 items-center gap-1.5">
+					<span className="text-[15px] font-semibold text-foreground">Vetta Go</span>
+					{status.badge_text && (
+						<span
+							className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
+							style={{ backgroundColor: status.badge_color || "var(--primary)" }}
+						>
+							{status.badge_text}
+						</span>
+					)}
+				</div>
 				<span className="text-[11px] text-muted-foreground">{currentPlan}</span>
 			</div>
 		</div>
@@ -104,7 +119,7 @@ function QuotaWindows({
 	if (model.windows.length === 0) return null;
 
 	return (
-		<div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,148px),1fr))] gap-2">
+		<div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,148px),1fr))] gap-x-5 gap-y-3">
 			{model.windows.map((windowInfo) => {
 				const pct =
 					windowInfo.limit > 0
@@ -112,10 +127,7 @@ function QuotaWindows({
 						: 0;
 				const resetLabel = formatWindowReset(windowInfo.resetAt, model.now);
 				return (
-					<div
-						key={windowInfo.kind}
-						className="min-w-0 rounded-lg border border-border/50 bg-background/40 px-3 py-2.5"
-					>
+					<div key={windowInfo.kind} className="min-w-0">
 						<div className="flex items-center justify-between gap-2 text-[12px]">
 							<span className="truncate font-medium text-foreground">{windowInfo.label}</span>
 							<span className="shrink-0 tabular-nums text-muted-foreground">{pct}%</span>
@@ -206,8 +218,12 @@ function VettaGoCard({
 }): JSX.Element {
 	const [showDone, setShowDone] = useState(false);
 	const prevRefreshing = useRef(model.refreshing);
-	const models = model.goProvider?.models ?? [];
 	const unlimited = model.windows.length > 0 && model.windows.every((windowInfo) => windowInfo.limit <= 0);
+	const refreshLabel = showDone
+		? model.labels.updated
+		: model.refreshing
+			? model.labels.refreshing
+			: model.labels.refresh;
 
 	useEffect(() => {
 		if (prevRefreshing.current && !model.refreshing) {
@@ -222,64 +238,46 @@ function VettaGoCard({
 	return (
 		<div className="mb-6 rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
 			<div className="flex items-start justify-between gap-3">
-				<VettaGoBrand currentPlan={model.labels.currentPlan} />
+				<VettaGoBrand currentPlan={model.labels.currentPlan} status={model.status} />
 				<div className="flex shrink-0 items-center gap-1">
-				{model.actions.upgrade && model.labels.upgrade ? (
 					<Button
 						type="button"
-						variant="outline"
-						size="sm"
-						onClick={() => model.actions.upgrade?.()}
-						className="h-7 gap-1.5 px-2 text-[12px] font-medium"
+						variant="ghost"
+						size="icon"
+						onClick={() => void model.actions.refresh()}
+						disabled={model.refreshing}
+						title={refreshLabel}
+						aria-label={refreshLabel}
+						className={cn("h-7 w-7 shrink-0", showDone && "text-emerald-400")}
 					>
-						<span className="icon-[solar--course-up-linear] h-3.5 w-3.5" />
-						{model.labels.upgrade}
-					</Button>
-				) : null}
-				<Button
-					type="button"
-					variant="ghost"
-					size="sm"
-					onClick={() => void model.actions.refresh()}
-					disabled={model.refreshing}
-					className={cn(
-						"h-7 shrink-0 gap-1.5 px-2 text-[12px] font-medium",
-						showDone && "text-emerald-400",
-					)}
-				>
-					{showDone ? (
-						<>
+						{showDone ? (
 							<span className="icon-[solar--check-circle-linear] h-3.5 w-3.5" />
-							{model.labels.updated}
-						</>
-					) : (
-						<>
+						) : (
 							<span
 								className={cn(
 									"icon-[solar--refresh-linear] h-3.5 w-3.5",
 									model.refreshing && "animate-spin",
 								)}
 							/>
-							{model.refreshing ? model.labels.refreshing : model.labels.refresh}
-						</>
-					)}
-				</Button>
+						)}
+					</Button>
+					{model.actions.upgrade && model.labels.upgrade ? (
+						<Button
+							type="button"
+							variant="default"
+							size="sm"
+							onClick={() => model.actions.upgrade?.()}
+							className="h-7 gap-1.5 px-2 text-[12px] font-medium"
+						>
+							<span className="icon-[solar--course-up-linear] h-3.5 w-3.5" />
+							{model.labels.upgrade}
+						</Button>
+					) : null}
 				</div>
 			</div>
 
-			<div className="mt-3 flex flex-wrap items-center gap-2">
-				{model.status.badge_text && (
-					<span
-						className="rounded-full px-2 py-0.5 text-[10px] font-semibold text-primary-foreground"
-						style={{ backgroundColor: model.status.badge_color || "var(--primary)" }}
-					>
-						{model.status.badge_text}
-					</span>
-				)}
-				<span className="text-[12px] text-muted-foreground">
-					{model.status.description ||
-						`${model.status.tier_name || model.labels.tokenPlan} · ${model.labels.modelsCount(models.length)}`}
-				</span>
+			<div className="mt-3 text-[12px] text-muted-foreground">
+				{model.status.description || model.status.tier_name || model.labels.tokenPlan}
 			</div>
 
 			{model.expiry && (

@@ -45,7 +45,6 @@ export interface SubscriptionCardsModel {
 		expiryDate: (date: string) => string;
 		freeModel: string;
 		modelMultiplier: (value: string) => string;
-		modelsCount: (count: number) => string;
 		refresh: string;
 		refreshing: string;
 		thinking: string;
@@ -118,7 +117,6 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 			expiryDate: (date: string) => t("expiryDate", { date }),
 			freeModel: t("freeModel"),
 			modelMultiplier: (value: string) => t("modelMultiplier", { value }),
-			modelsCount: (count: number) => t("modelsCount", { count }),
 			refresh: t("refresh"),
 			refreshing: t("refreshing"),
 			thinking: t("thinking"),
