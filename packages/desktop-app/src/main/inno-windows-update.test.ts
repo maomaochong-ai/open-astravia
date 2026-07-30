@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { UpdateInfo } from "builder-util-runtime";
+import { CancellationError, type UpdateInfo } from "builder-util-runtime";
 import type { ResolvedUpdateFileInfo } from "electron-updater";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -140,10 +140,41 @@ describe("InnoWindowsUpdateController", () => {
 		});
 		controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
 
+		const abortController = new AbortController();
+		setTimeout(() => abortController.abort(), 10);
+		await expect(
+			controller.prepareDownloadedInstaller(installerPath, vi.fn(), abortController.signal),
+		).rejects.toBeInstanceOf(CancellationError);
+		await expect(controller.activate()).rejects.toThrow("not ready");
+	});
+
+	it("accepts a complete version written after the Inno launcher exits", async () => {
+		const root = await createTemporaryRoot();
+		const storeRoot = join(root, "store");
+		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		await writeFile(installerPath, "installer");
+		const controller = new InnoWindowsUpdateController({
+			currentVersion: "1.2.2",
+			storeRoot,
+			installInstaller: async (_installerPath, destinationRoot, version) => {
+				setTimeout(() => {
+					void (async () => {
+						const versionDir = join(destinationRoot, "versions", version);
+						await mkdir(join(versionDir, "resources"), { recursive: true });
+						await writeFile(join(versionDir, "Vetta.exe"), "executable");
+						await writeFile(join(versionDir, "resources", "app.asar"), "asar");
+					})();
+				}, 10);
+				throw new Error("Inno Setup exited with code 5");
+			},
+			relaunch: vi.fn(),
+			quit: vi.fn(),
+		});
+		controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
+
 		await expect(
 			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
-		).rejects.toThrow("app.asar");
-		await expect(controller.activate()).rejects.toThrow("not ready");
+		).resolves.toEqual([join(storeRoot, "versions", "1.2.3", "Vetta.exe")]);
 	});
 });
 
@@ -154,18 +185,9 @@ describe("Windows Inno update paths", () => {
 		expect(isVersionedWindowsExecutable("C:\\Vetta\\versions\\1.2.2\\Vetta.exe", "1.2.3")).toBe(false);
 	});
 
-	it("derives the store root from the running versioned executable", () => {
-		expect(resolveInnoUpdateStoreRoot("D:\\Custom Apps\\Vetta\\versions\\1.2.3\\Vetta.exe", "1.2.3")).toBe(
-			"D:\\Custom Apps\\Vetta",
-		);
-	});
-
-	it("rejects executables outside the matching version directory", () => {
-		expect(() => resolveInnoUpdateStoreRoot("C:\\Vetta\\Vetta.exe", "1.2.3")).toThrow(
-			"outside the expected version directory",
-		);
-		expect(() => resolveInnoUpdateStoreRoot("C:\\Vetta\\versions\\1.2.2\\Vetta.exe", "1.2.3")).toThrow(
-			"outside the expected version directory",
+	it("uses the stable per-user application root", () => {
+		expect(resolveInnoUpdateStoreRoot("C:\\Users\\test\\AppData\\Local")).toBe(
+			"C:\\Users\\test\\AppData\\Local\\Vetta",
 		);
 	});
 
