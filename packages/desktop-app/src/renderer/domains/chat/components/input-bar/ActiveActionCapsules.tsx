@@ -158,7 +158,8 @@ function GroupedCapsule({
 						side="top"
 						align="start"
 						sideOffset={6}
-						className="w-[200px] overflow-hidden rounded-lg border border-border p-1"
+							// 宽度跟随触发胶囊：展开只是把收纳的几枚胶囊竖着摊开，不是另开一张面板。
+							className="w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg border border-border p-1"
 						style={{ animation: "none" }}
 					>
 						<motion.div
@@ -166,6 +167,7 @@ function GroupedCapsule({
 							animate={{ opacity: 1, y: 0, scale: 1 }}
 							exit={{ opacity: 0, y: 4, scale: 0.98 }}
 							transition={SOFT}
+							className="flex flex-col gap-1"
 						>
 							<AnimatePresence initial={false}>
 								{items.map((item) => (
@@ -178,23 +180,27 @@ function GroupedCapsule({
 										transition={SOFT}
 										className="overflow-hidden"
 									>
-										<div className="group/item flex items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent">
-											<span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center text-muted-foreground [&>*]:h-3.5 [&>*]:w-3.5">
-												{item.icon}
+										{/* 与未折叠形态同一副外观与关闭手势：图标 hover 变关闭键，点一下即取消 */}
+										<button
+											type="button"
+											onClick={() => {
+												// 关到只剩一个时 popover 自己收起：此时已经平铺可见，留着是空壳
+												if (items.length <= 2) setOpen(false);
+												item.onToggle();
+											}}
+											title={`${item.label} · ${removeHint}`}
+											className="group/item flex h-7 w-full min-w-0 items-center gap-1.5 rounded-lg bg-accent/60 px-2 text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+										>
+											<span className="relative h-3.5 w-3.5 shrink-0">
+												{item.icon ? (
+													<span className="absolute inset-0 flex items-center justify-center transition-opacity group-hover/item:opacity-0">
+														{item.icon}
+													</span>
+												) : null}
+												<span className="icon-[solar--close-circle-linear] absolute inset-0 h-3.5 w-3.5 opacity-0 transition-opacity group-hover/item:opacity-100" />
 											</span>
-											<span className="min-w-0 flex-1 truncate">{item.label}</span>
-											{/* 悬浮才露出关闭键，静默时这行只是一条状态提示 */}
-											<button
-												type="button"
-												onClick={() => {
-													// 关到只剩一个时 popover 自己收起：此时已经平铺可见，留着是空壳
-													if (items.length <= 2) setOpen(false);
-													item.onToggle();
-												}}
-												title={`${item.label} · ${removeHint}`}
-												className="icon-[solar--close-circle-linear] h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/item:opacity-100"
-											/>
-										</div>
+											<span className="min-w-0 flex-1 truncate text-left">{item.label}</span>
+										</button>
 									</motion.div>
 								))}
 							</AnimatePresence>
