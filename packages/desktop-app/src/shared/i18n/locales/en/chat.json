@@ -508,8 +508,12 @@
 			"path": "Custom",
 			"project": "Project",
 			"scene": "Scene",
-			"user": "User"
-		}
+			"user": "User",
+			"builtin": "Built-in",
+			"plugin": "Plugin",
+			"market": "Market"
+		},
+		"connectorsSection": "Connected"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "Click to send this suggestion"

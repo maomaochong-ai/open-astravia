@@ -4,19 +4,18 @@ import { useThemeComponent } from "@vetta/theme-sdk";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { InputBarContextMenuView, InputBarPlaceholder } from "@vetta/theme-ui/chat";
-import { SlashPanel } from "../SlashPanel";
+import { CommandPanel } from "../command-panel/CommandPanel";
 import { AtPanel } from "../AtPanel";
 import { ActionButtonBar } from "../ActionButtonBar";
-import { InputActionBar } from "../InputActionBar";
 import { QuestionPanel } from "../QuestionPanel";
 import { AppshotCard } from "../AppshotCard";
 import { InputBarBackground } from "./InputBarBackground";
+import { ActiveActionCapsules } from "./ActiveActionCapsules";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarToolbar } from "./InputBarToolbar";
 import { InputEditor } from "./editor/InputEditor";
 import type { InputBarViewProps } from "./types";
-import "../InputBar.css";
 
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 const COLLAPSE_INITIAL = { height: 0, opacity: 0 };
@@ -71,10 +70,11 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					.join(" ")}
 				aria-hidden={model.pendingQuestion ? true : undefined}
 			>
-				<SlashPanel
+				<CommandPanel
 					open={model.slashOpen}
 					onClose={model.actions.handleSlashClose}
 					onSelect={model.actions.handleSlashSelect}
+					onSelectConnector={model.actions.handleConnectorSelect}
 					filter={model.slashFilter}
 					cwd={model.effectiveCwd || undefined}
 				/>
@@ -127,6 +127,11 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 												</button>
 											</div>
 										)}
+
+										<ActiveActionCapsules
+											items={model.activeActions}
+											removeHint={model.labels.capsule.removeDefault}
+										/>
 
 										{model.appshotAttachment && (
 											<AppshotCard data={model.appshotAttachment} onRemove={model.actions.removeAppshot} />
@@ -230,7 +235,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					</div>
 				</div>
 
-				<InputActionBar />
 			</div>
 
 			{model.contextMenu

@@ -3,8 +3,10 @@ import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
 import type { ComponentProps, MouseEvent } from "react";
+import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { SelectedFile } from "../AtPanel";
 import type { QuestionPanel } from "../QuestionPanel";
+import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { TriggerMatch } from "./editor/tokens/trigger";
 
 export interface InputBarProps {
@@ -83,6 +85,8 @@ export interface InputBarModel {
 	firstSuggestion?: string;
 	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */
 	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
+	/** 已激活的 input action；全量开关在命令面板里，这里只留激活提示。 */
+	activeActions: readonly ActiveActionCapsule[];
 	/** 仅场景（scene）：它走 promptRef 硬展开，不进文本流，用顶部胶囊展示。 */
 	selectedSkill: { name: string; alias?: string; type: string } | null;
 	appshotAttachment: AppshotAttachment | null;
@@ -125,6 +129,8 @@ export interface InputBarModel {
 		handleContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
 		handleSlashClose: () => void;
 		handleSlashSelect: (skill: SkillInfo) => void;
+		/** 面板里点连接器宫格：插入一个 `@mcp:名字` 行内 token。 */
+		handleConnectorSelect: (connector: ConnectorGridItem) => void;
 		handleAtClose: () => void;
 		handleAtSelect: (file: SelectedFile) => void;
 		removeSkill: () => void;

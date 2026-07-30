@@ -1,6 +1,7 @@
 export { parseInputSegments } from "./parse";
 export { isAttachmentPath, isImagePath } from "./paths";
 export {
+	connectorTokenText,
 	type DerivedAttachment,
 	deriveAttachments,
 	deriveSkillNames,

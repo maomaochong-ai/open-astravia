@@ -8,8 +8,8 @@ import type { InputSegment, LegacyPromptRef, ParsedInput } from "./types";
  * 裸写形式排除全角句读——中文里 `@/a/b.ts。还有` 没有空白可依，
  * 只能靠这些字符断开路径（文件名中出现它们的情况可忽略；真有就加引号）。
  */
-const TOKEN_RE =
-	/(?<=^|\s)@(?:skill:(?:"([^"]*)"|([^\s"。，、；：！？（）【】「」『』]+))|(?:"([^"]*)"|([^\s"。，、；：！？（）【】「」『』]+)))/g;
+const BARE = String.raw`[^\s"。，、；：！？（）【】「」『』]+`;
+const TOKEN_RE = new RegExp(`(?<=^|\\s)@(?:(skill|mcp):(?:"([^"]*)"|(${BARE}))|(?:"([^"]*)"|(${BARE})))`, "g");
 
 /** 裸路径末尾的半角句读；它们属于句子而不属于路径。 */
 const TRAILING_PUNCTUATION = /[,;:!?)\]]+$/;
@@ -72,14 +72,14 @@ function scanInline(body: string, segments: InputSegment[]): void {
 	let cursor = 0;
 	TOKEN_RE.lastIndex = 0;
 	for (let match = TOKEN_RE.exec(body); match !== null; match = TOKEN_RE.exec(body)) {
-		const [raw, quotedSkill, bareSkill, quotedPath, barePath] = match;
+		const [raw, namespace, quotedName, bareName, quotedPath, barePath] = match;
 		const start = match.index;
 
-		if (quotedSkill !== undefined || bareSkill !== undefined) {
-			const name = quotedSkill ?? bareSkill ?? "";
+		if (namespace !== undefined) {
+			const name = quotedName ?? bareName ?? "";
 			if (name === "") continue;
 			pushText(segments, body.slice(cursor, start));
-			segments.push({ kind: "skill", name });
+			segments.push({ kind: namespace === "mcp" ? "connector" : "skill", name });
 			cursor = start + raw.length;
 			continue;
 		}

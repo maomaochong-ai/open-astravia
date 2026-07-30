@@ -3,7 +3,11 @@
  *
  * 文本形态（发给模型、也是会话里持久化的那份）：
  * - skill 软引用：`@skill:名字`（名字含空白或引号时 `@skill:"名字"`）
+ * - 连接器（内置 MCP）软引用：`@mcp:名字`
  * - 文件 / 目录 / 图片：`@/abs/path`（含空白时 `@"/abs/path"`）
+ *
+ * 连接器刻意不用裸 `@notion`：那样无法与手敲的 `@某个词` 区分——文件 token 靠
+ * 「是不是绝对路径」判定，而连接器名不是路径，只能靠命名空间前缀消歧。
  *
  * scene 不出现在文本里：它仍走 PromptRequest.promptRef 硬展开
  * （coding-agent 侧会注入 tasks.json 生成的 todo 并锁定列表）。
@@ -12,6 +16,7 @@
 export type InputSegment =
 	| { kind: "text"; text: string }
 	| { kind: "skill"; name: string }
+	| { kind: "connector"; name: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
 	| { kind: "image"; path: string };
 

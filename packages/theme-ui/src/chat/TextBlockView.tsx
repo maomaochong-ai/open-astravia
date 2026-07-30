@@ -50,6 +50,7 @@ function resolveFileLinkPath(href: string | undefined): string | null {
 export type InlineTokenPiece =
 	| { kind: "text"; text: string }
 	| { kind: "skill"; name: string }
+	| { kind: "connector"; name: string }
 	| { kind: "file"; path: string; isDirectory?: boolean }
 	| { kind: "image"; path: string };
 
@@ -60,6 +61,8 @@ export interface InlineTokenSupport {
 	 * 它们集中在气泡上方并带同样的编号，因此这里只要一个标签。
 	 */
 	getImageLabel: (path: string) => string;
+	/** 连接器的展示名与 logo；查不到时回退成真实名 + 通用图标。 */
+	getConnector?: (name: string) => { label: string; iconUrl?: string } | undefined;
 }
 
 const INLINE_TOKEN_TAG = "vetta-inline-token";
@@ -94,7 +97,8 @@ function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
 							tagName: INLINE_TOKEN_TAG,
 							properties: {
 								"data-token-kind": piece.kind,
-								"data-token-value": piece.kind === "skill" ? piece.name : piece.path,
+								"data-token-value":
+									piece.kind === "skill" || piece.kind === "connector" ? piece.name : piece.path,
 								"data-token-directory": piece.kind === "file" && piece.isDirectory ? "true" : "false",
 							},
 							children: [],
@@ -544,6 +548,23 @@ export const TextBlockView = memo(function TextBlockView({
 						<span className={INLINE_TOKEN_CLASS} title={value}>
 							<span className={cn("icon-[solar--magic-stick-linear]", INLINE_TOKEN_ICON_CLASS)} />
 							{value}
+						</span>
+					);
+				}
+				if (kind === "connector") {
+					const connector = inlineTokensRef.current?.getConnector?.(value);
+					return (
+						<span className={INLINE_TOKEN_CLASS} title={value}>
+							{connector?.iconUrl ? (
+								<img
+									src={connector.iconUrl}
+									alt=""
+									className={cn(INLINE_TOKEN_ICON_CLASS, "rounded-sm object-contain")}
+								/>
+							) : (
+								<span className={cn("icon-[solar--plug-circle-linear]", INLINE_TOKEN_ICON_CLASS)} />
+							)}
+							{connector?.label ?? value}
 						</span>
 					);
 				}

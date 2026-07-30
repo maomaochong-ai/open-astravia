@@ -1,6 +1,12 @@
 import type { InputSegment } from "@shared/lib/input-tokens";
 import { $getSelection, $isRangeSelection, $nodesOfType, type LexicalEditor, type LexicalNode } from "lexical";
-import { $createFileTokenNode, $createImageTokenNode, $createSkillTokenNode, ImageTokenNode } from "./nodes";
+import {
+	$createConnectorTokenNode,
+	$createFileTokenNode,
+	$createImageTokenNode,
+	$createSkillTokenNode,
+	ImageTokenNode,
+} from "./nodes";
 import { $applySegments, $insertTokenNodes } from "./tokens/segments";
 import { $removeTriggerBeforeCaret } from "./tokens/trigger";
 
@@ -40,6 +46,15 @@ function insert(nodes: () => LexicalNode[], options?: InsertTokenOptions): void 
 
 export function insertSkillToken(name: string, alias?: string, options?: InsertTokenOptions): void {
 	insert(() => [$createSkillTokenNode(name, alias)], options);
+}
+
+export function insertConnectorToken(
+	name: string,
+	label: string,
+	iconUrl?: string,
+	options?: InsertTokenOptions,
+): void {
+	insert(() => [$createConnectorTokenNode(name, label, iconUrl)], options);
 }
 
 export function insertFileToken(path: string, isDirectory = false, options?: InsertTokenOptions): void {

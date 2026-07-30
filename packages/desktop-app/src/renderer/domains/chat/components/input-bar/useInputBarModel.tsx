@@ -29,8 +29,10 @@ import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import { filePreviewAtom } from "@shared/store/file-preview-atoms";
 import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
 import type { SelectedFile } from "../AtPanel";
+import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import {
 	focusInputEditor,
+	insertConnectorToken,
 	insertFileToken,
 	insertImageToken,
 	insertPlainText,
@@ -46,6 +48,8 @@ import {
 	inputPlaceholderVisibleAtom,
 } from "./editor/tokens/projectionAtoms";
 import type { TriggerMatch } from "./editor/tokens/trigger";
+import { useInputActionBarModel } from "../useInputActionBarModel";
+import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { InputBarModel, InputBarProps, InputBarDrawerItem } from "./types";
 
 const CONTEXT_MENU_WIDTH = 160;
@@ -133,6 +137,7 @@ export function useInputBarModel({
 		() => getQueueForSession(queueMap, activeSession?.runtimeId ?? null),
 		[queueMap, activeSession?.runtimeId],
 	);
+	const actionBar = useInputActionBarModel();
 	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
 	const [drawerActiveTab, setDrawerActiveTab] = useState<string | null>(null);
@@ -158,8 +163,38 @@ export function useInputBarModel({
 		[imagePaths, t],
 	);
 
+	/**
+	 * 已激活的 action 在输入卡片里留一枚小胶囊。
+	 * 全量开关列表已搬进命令面板，但激活态是跨消息持续的，面板一关就看不见会让
+	 * 用户忘记自己开着知识检索之类的开关。
+	 */
+	const activeActions = useMemo<ActiveActionCapsule[]>(
+		() => [
+			...(actionBar.knowledge?.active
+				? [
+						{
+							id: "__builtin_knowledge_retrieval__",
+							label: actionBar.knowledge.label,
+							icon: <span className="icon-[mdi--book-search-outline] h-3 w-3" />,
+							onToggle: actionBar.actions.toggleKnowledge,
+						},
+					]
+				: []),
+			...actionBar.items
+				.filter((item) => item.active)
+				.map((item) => ({
+					id: item.id,
+					label: item.label,
+					icon: item.icon,
+					onToggle: () => actionBar.actions.toggleItem(item.id),
+				})),
+		],
+		[actionBar],
+	);
+
 	/** 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、插件上下文、重编辑提示。 */
 	const hasCapsules =
+		activeActions.length > 0 ||
 		imageAttachments.length > 0 ||
 		Boolean(selectedSkill) ||
 		Boolean(promptAttachment) ||
@@ -237,6 +272,13 @@ export function useInputBarModel({
 		},
 		[setSelectedSkill],
 	);
+
+	const handleConnectorSelect = useCallback((connector: ConnectorGridItem) => {
+		// 与 skill 同为软引用：只把「用哪个连接器」写进文本，不做工具门控。
+		insertConnectorToken(connector.name, connector.label, connector.iconUrl, { replaceTrigger: true });
+		setTrigger(null);
+		focusInputEditor();
+	}, []);
 
 	const handleRemoveSkill = useCallback(() => {
 		setSelectedSkill(null);
@@ -527,6 +569,7 @@ export function useInputBarModel({
 		pendingQuestion,
 		firstSuggestion,
 		imageAttachments,
+		activeActions,
 		selectedSkill,
 		appshotAttachment,
 		hasSession,
@@ -560,6 +603,7 @@ export function useInputBarModel({
 			handleContextMenu,
 			handleSlashClose: dismissTrigger,
 			handleSlashSelect,
+			handleConnectorSelect,
 			handleAtClose: dismissTrigger,
 			handleAtSelect,
 			removeSkill: handleRemoveSkill,

@@ -12,9 +12,11 @@ import {
 	type LexicalNode,
 } from "lexical";
 import {
+	$createConnectorTokenNode,
 	$createFileTokenNode,
 	$createImageTokenNode,
 	$createSkillTokenNode,
+	$isConnectorTokenNode,
 	$isFileTokenNode,
 	$isImageTokenNode,
 	$isSkillTokenNode,
@@ -33,6 +35,10 @@ function pushText(out: InputSegment[], text: string): void {
 function collect(node: LexicalNode, out: InputSegment[]): void {
 	if ($isSkillTokenNode(node)) {
 		out.push({ kind: "skill", name: node.getName() });
+		return;
+	}
+	if ($isConnectorTokenNode(node)) {
+		out.push({ kind: "connector", name: node.getName() });
 		return;
 	}
 	if ($isFileTokenNode(node)) {
@@ -72,6 +78,9 @@ function segmentNodes(segment: InputSegment): LexicalNode[] {
 	switch (segment.kind) {
 		case "skill":
 			return [$createSkillTokenNode(segment.name)];
+		case "connector":
+			// 从文本还原时拿不到展示名与 logo，用真实名兜底；由面板插入的那份带 logo。
+			return [$createConnectorTokenNode(segment.name, segment.name)];
 		case "file":
 			return [$createFileTokenNode(segment.path, segment.isDirectory ?? false)];
 		case "image":

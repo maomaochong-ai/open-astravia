@@ -8,10 +8,13 @@
  */
 export function TokenChip({
 	icon,
+	iconUrl,
 	label,
 	title,
 }: {
 	icon: string;
+	/** 有真实图标（连接器 logo）时优先用图片，回退到 icon 字体类。 */
+	iconUrl?: string;
 	label: string;
 	title?: string;
 }): JSX.Element {
@@ -21,7 +24,16 @@ export function TokenChip({
 			title={title ?? label}
 			data-input-token="true"
 		>
-			<span className={`${icon} mr-1 inline-block h-3 w-3 align-[-0.15em]`} />
+			{iconUrl ? (
+				<img
+					src={iconUrl}
+					alt=""
+					draggable={false}
+					className="mr-1 inline-block h-3 w-3 rounded-sm align-[-0.15em] object-contain"
+				/>
+			) : (
+				<span className={`${icon} mr-1 inline-block h-3 w-3 align-[-0.15em]`} />
+			)}
 			{label}
 		</span>
 	);

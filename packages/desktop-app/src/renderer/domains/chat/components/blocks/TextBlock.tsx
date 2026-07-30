@@ -1,5 +1,9 @@
 import { parseInputSegments } from "@shared/lib/input-tokens";
 import {
+	getBuiltinMcpPresetByName,
+	resolveMcpPresetIconUrl,
+} from "@domains/settings/mcp/builtin-mcp-presets";
+import {
 	type InlineTokenPiece,
 	type InlineTokenSupport,
 	TextBlockView as ThemeTextBlockView,
@@ -23,6 +27,14 @@ interface MarkdownContentProps {
 /** 语法住在 shared/lib/input-tokens，theme-ui 只认结构，因此解析器由宿主注入。 */
 const parseTokens = (text: string): InlineTokenPiece[] => parseInputSegments(text).segments;
 
+/** 连接器的展示名与 logo 来自内置预设表；查不到（已删除的条目）就用真实名兜底。 */
+function lookupConnector(name: string): { label: string; iconUrl?: string } | undefined {
+	const preset = getBuiltinMcpPresetByName(name);
+	if (!preset) return undefined;
+	const iconUrl = resolveMcpPresetIconUrl(preset);
+	return { label: preset.name, ...(iconUrl ? { iconUrl } : {}) };
+}
+
 /**
  * Memo'd markdown renderer. Re-rendering is throttled upstream by rAF
  * delta batching in useSessionManager (~16fps), so we render directly
@@ -37,7 +49,14 @@ export const MarkdownContent = memo(function MarkdownContent({
 	const model = useTextBlockModel();
 	// 引用要稳定：rehype 插件数组一换，ReactMarkdown 就整树重建。
 	const inlineTokenSupport = useMemo<InlineTokenSupport | undefined>(
-		() => (inlineTokens ? { parse: parseTokens, getImageLabel: inlineTokens.getImageLabel } : undefined),
+		() =>
+			inlineTokens
+				? {
+						parse: parseTokens,
+						getImageLabel: inlineTokens.getImageLabel,
+						getConnector: lookupConnector,
+					}
+				: undefined,
 		[inlineTokens],
 	);
 	return (

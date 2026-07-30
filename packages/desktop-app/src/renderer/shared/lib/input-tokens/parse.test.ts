@@ -20,6 +20,16 @@ describe("parseInputSegments", () => {
 		expect(deriveSkillNames(segments)).toEqual(["review", "upload"]);
 	});
 
+	it("连接器走 @mcp: 命名空间，与手敲的 @词 区分开", () => {
+		const { segments } = parseInputSegments("用 @mcp:notion 查一下 @notion 这个词");
+		expect(segments).toEqual([
+			{ kind: "text", text: "用 " },
+			{ kind: "connector", name: "notion" },
+			{ kind: "text", text: " 查一下 @notion 这个词" },
+		]);
+		expect(segmentsToText(segments)).toBe("用 @mcp:notion 查一下 @notion 这个词");
+	});
+
 	it("中文名与带空格的路径用引号包裹", () => {
 		const { segments } = parseInputSegments('@skill:"审查文件" 看 @"/Users/a/my file.ts"');
 		expect(segments).toEqual([

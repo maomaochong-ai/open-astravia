@@ -12,6 +12,11 @@ export function skillTokenText(name: string): string {
 	return `@skill:${quoteIfNeeded(name)}`;
 }
 
+/** 单个连接器 token 的文本形式。 */
+export function connectorTokenText(name: string): string {
+	return `@mcp:${quoteIfNeeded(name)}`;
+}
+
 /** 单个文件/图片 token 的文本形式。 */
 export function pathTokenText(path: string): string {
 	return `@${quoteIfNeeded(path)}`;
@@ -23,6 +28,8 @@ function segmentToText(segment: InputSegment): string {
 			return segment.text;
 		case "skill":
 			return skillTokenText(segment.name);
+		case "connector":
+			return connectorTokenText(segment.name);
 		case "file":
 		case "image":
 			return pathTokenText(segment.path);
