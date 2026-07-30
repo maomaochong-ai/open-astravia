@@ -38,7 +38,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 		"input-card relative z-10 overflow-visible border bg-input-bar-bg shadow-[0_8px_28px_-14px_rgb(0_0_0/0.10)] transition-[border-color,box-shadow,transform] duration-200 dark:shadow-none",
 		// 展开态：命令区钉在卡片上沿，这里去掉上圆角，上边框改为透明（见下方 inline style，
 		// 用 border-t-0 会少 1px 让整条 bar 抖一下），两块面才是连续的一整块。
-		model.slashOpen ? "rounded-b-[20px] rounded-t-none" : "rounded-[20px]",
+		// 跟 slashVisible 而非 slashOpen：收起时要等命令区退场动画跑完才恢复圆角。
+		model.slashVisible ? "rounded-b-[20px] rounded-t-none" : "rounded-[20px]",
 		model.isFocused ? "border-primary/20" : "border-border",
 		surface?.rootClassName,
 		classNames?.card,
@@ -94,7 +95,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 				<div
 					style={{
 						opacity: model.hasSession ? 1 : 0.55,
-						...(model.slashOpen ? { borderTopColor: "transparent" } : null),
+						...(model.slashVisible ? { borderTopColor: "transparent" } : null),
 					}}
 					className={cardClass}
 				>
