@@ -157,7 +157,7 @@ export function ModelSelectorView({
 						align="start"
 						className={cn(
 							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
-						"w-[min(19rem,calc(100vw-2rem))] min-w-[200px] max-w-[19rem] overflow-visible bg-background p-0",
+						"w-[min(16rem,calc(100vw-2rem))] min-w-[180px] max-w-[16rem] overflow-visible bg-background p-0",
 							classNames?.content,
 						)}
 						style={{ animation: "none" }}
@@ -190,7 +190,7 @@ export function ModelSelectorView({
 												onClick={handleSearchClick}
 												placeholder={labels.searchPlaceholder}
 												aria-label={labels.searchPlaceholder}
-												className="h-7 w-full rounded-md border border-border/60 pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
+												className="h-7 w-full rounded-md pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
 											/>
 											{searchQuery && (
 												<button
