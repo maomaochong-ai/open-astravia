@@ -1,3 +1,4 @@
+import { isAttachmentPath, isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename } from "@shared/lib/utils";
 import type {
 	AskUserQuestionResolution,
@@ -44,28 +45,14 @@ export function extractResultText(result: unknown): string {
  * - persistImages / appshot → absolute path under image-cache
  * Hand-typed "@foo" or "@src/bar.ts" (relative / non-path) must stay in the body.
  */
-export function isUserMessageAttachmentPath(path: string): boolean {
-	if (!path) return false;
-	if (path.startsWith("/")) return true;
-	if (/^[A-Za-z]:[\\/]/.test(path)) return true;
-	// UNC paths (Windows network shares)
-	if (path.startsWith("\\\\") || path.startsWith("//")) return true;
-	return false;
-}
+export const isUserMessageAttachmentPath = isAttachmentPath;
 
 /** System-injected attachment paths (images / appshot), not panel file badges. */
 export function isSystemAttachmentPath(path: string): boolean {
 	return /[/\\]image-cache[/\\]/.test(path);
 }
 
-const USER_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"]);
-
-export function isUserImageFile(path: string): boolean {
-	const basename = pathBasename(path);
-	const dotIndex = basename.lastIndexOf(".");
-	const extension = dotIndex === -1 ? "" : basename.slice(dotIndex + 1).toLowerCase();
-	return USER_IMAGE_EXTENSIONS.has(extension);
-}
+export const isUserImageFile = isImagePath;
 
 /**
  * Parse prefixes from user message text: /skill:<name>, /scene:<name>, and @<path> lines.

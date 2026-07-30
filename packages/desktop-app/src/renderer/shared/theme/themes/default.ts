@@ -29,12 +29,12 @@ export const defaultTheme: ThemeDef = {
 		popoverForeground: "rgb(220, 224, 234)",
 		primary: "rgb(99, 102, 241)",
 		primaryForeground: "rgb(255, 255, 255)",
-		// secondary 抬升以与背景可辨（约 +16，高于 muted）
-		secondary: "rgb(36, 38, 48)",
+		// secondary 抬升以与背景可辨（约 +16，高于 muted）；色相取中性灰，不带蓝偏
+		secondary: "rgb(38, 38, 40)",
 		secondaryForeground: "rgb(220, 224, 234)",
-		muted: "rgb(28, 30, 38)",
+		muted: "rgb(30, 30, 32)",
 		mutedForeground: "rgb(138, 144, 160)",
-		accent: "rgb(38, 41, 52)",
+		accent: "rgb(41, 41, 43)",
 		accentForeground: "rgb(220, 224, 234)",
 		destructive: "rgb(255, 91, 91)",
 		destructiveForeground: "rgb(0, 0, 0)",
@@ -72,7 +72,7 @@ export const defaultTheme: ThemeDef = {
 		// secondary 压深以与背景可辨（约 -17，深于 muted）
 		secondary: "rgb(235, 235, 235)",
 		secondaryForeground: "rgb(0, 0, 0)",
-		muted: "rgb(242, 242, 245)",
+		muted: "rgb(242, 242, 242)",
 		mutedForeground: "rgb(82, 82, 82)",
 		accent: "rgb(235, 235, 235)",
 		accentForeground: "rgb(0, 0, 0)",

@@ -1,13 +1,14 @@
 import type { ActivityPanelFrame } from "@domains/activity-panel/components/activity-panel/ActivityPanelFrame";
 import type { LoginPopoverView } from "@domains/auth/components/LoginPopoverView";
 import type { AtPanelView } from "@domains/chat/components/at-panel/AtPanelView";
+import type { CommandPanelView } from "@domains/chat/components/command-panel/CommandPanelView";
+import type { SkillPickerPanelView } from "@domains/chat/components/command-panel/SkillPickerPanel";
 import type { ExecutionModeSelectorView } from "@domains/chat/components/execution-mode-selector/ExecutionModeSelectorView";
 import type { InputBarView } from "@domains/chat/components/input-bar/InputBarView";
 import type { ModelSelectorView } from "@domains/chat/components/model-selector/ModelSelectorView";
 import type { SceneCard } from "@domains/chat/components/new-session/SceneCard";
 import type { SkillCard } from "@domains/chat/components/new-session/SkillCard";
 import type { QuestionPanelView } from "@domains/chat/components/question-panel/QuestionPanelView";
-import type { SlashPanelView } from "@domains/chat/components/slash-panel/SlashPanelView";
 import type { FilePreviewDialogView } from "@domains/file-preview/components/FilePreviewDialogView";
 import type { KnowledgeDropOverlayView } from "@domains/knowledge-base/components/KnowledgeDropOverlayView";
 import type { SidebarNavItemButton } from "@domains/project/components/sidebar/SidebarNavItemButton";
@@ -62,7 +63,8 @@ declare module "@vetta/theme-sdk" {
 		readonly "chat.newSessionSkillBadgeRow"?: ComponentType<NewSessionSkillBadgeRowProps>;
 		readonly "chat.newSessionSkillCard"?: typeof SkillCard;
 		readonly "chat.questionPanelView"?: typeof QuestionPanelView;
-		readonly "chat.slashPanelView"?: typeof SlashPanelView;
+		readonly "chat.commandPanelView"?: typeof CommandPanelView;
+		readonly "chat.skillPickerView"?: typeof SkillPickerPanelView;
 		readonly "root.approval.appearancePicker"?: ComponentType;
 		readonly "root.approval.appearanceDrawerView"?: typeof AppearanceApprovalDrawerView;
 		readonly "root.approval.batchTasksExecution"?: ComponentType;

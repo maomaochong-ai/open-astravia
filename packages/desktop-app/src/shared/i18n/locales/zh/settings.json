@@ -794,6 +794,17 @@
   },
   "saveFailed": "保存失败",
   "pleaseLogin": "请先登录",
+  "usageStats": {
+    "streak": "连续使用",
+    "days": "{{count}} 天",
+    "unitTokens": "Token",
+    "unitRequests": "请求",
+    "range": {
+      "7d": "7 天",
+      "30d": "30 天",
+      "all": "累计"
+    }
+  },
   "tokenActivity": {
     "title": "Token 活动",
     "daily": "每日",
@@ -1496,7 +1507,6 @@
   "vision": "视觉",
   "creditsPerMTok": "积分/百万tok",
   "unlimitedQuota": "无限制 · 畅享不限额度",
-  "tokenPlan": "Token 套餐",
   "upgradePlan": "升级套餐",
   "expiryDate": "到期日 {{date}}",
   "viewModelsCount": "查看 {{count}} 个模型",
@@ -1524,7 +1534,6 @@
   "imbFeishuAppIdRequired": "App ID 不能为空",
   "teamCreateOrJoin": "创建或加入团队，与{{members}}协作",
   "teamJoinViaCode": "暂无团队，创建一个或通过{{codeLabel}}加入",
-  "subCurrentPlan": "当前订阅",
   "subTokenPlan": "Token 套餐",
   "subResetImminent": "即将重置",
   "subResetInDays": "{{days}}天{{hours}}小时后重置",

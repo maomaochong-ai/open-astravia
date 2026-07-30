@@ -263,7 +263,8 @@
 			"appshotIconAlt": "App icon",
 			"removeDefault": "Click to remove",
 			"removeImage": "Remove image",
-			"removeTooltip": "{{path}}\nClick to remove"
+			"removeTooltip": "{{path}}\nClick to remove",
+			"imageBadge": "Image {{index}}"
 		},
 		"drawer": {
 			"permissionDesc": "Awaiting confirmation",
@@ -276,10 +277,6 @@
 			"queueEmpty": "No queued messages",
 			"queueLabel": "Queued",
 			"queueSendNow": "Send now"
-		},
-		"hint": {
-			"newline": "⇧⏎ Newline",
-			"send": "⏎ Send"
 		},
 		"permission": {
 			"allow": "Allow once",
@@ -507,8 +504,12 @@
 			"path": "Custom",
 			"project": "Project",
 			"scene": "Scene",
-			"user": "User"
-		}
+			"user": "User",
+			"builtin": "Built-in",
+			"plugin": "Plugin",
+			"market": "Market"
+		},
+		"connectorsSection": "Connected"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "Click to send this suggestion"

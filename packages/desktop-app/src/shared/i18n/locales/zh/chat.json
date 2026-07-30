@@ -263,7 +263,8 @@
 			"appshotIconAlt": "应用图标",
 			"removeDefault": "点击移除",
 			"removeImage": "移除图片",
-			"removeTooltip": "{{path}}\n点击移除"
+			"removeTooltip": "{{path}}\n点击移除",
+			"imageBadge": "图 {{index}}"
 		},
 		"drawer": {
 			"permissionDesc": "等待确认",
@@ -276,10 +277,6 @@
 			"queueEmpty": "暂无排队消息",
 			"queueLabel": "队列",
 			"queueSendNow": "立即发送"
-		},
-		"hint": {
-			"newline": "⇧⏎ 换行",
-			"send": "⏎ 发送"
 		},
 		"permission": {
 			"allow": "允许本次",
@@ -507,8 +504,12 @@
 			"path": "自定义",
 			"project": "项目",
 			"scene": "场景",
-			"user": "用户"
-		}
+			"user": "用户",
+			"builtin": "内置",
+			"plugin": "插件",
+			"market": "市场"
+		},
+		"connectorsSection": "已接入"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "点击发送此建议"

@@ -7,6 +7,7 @@ import {
 	recordInputActionsUsed,
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
+import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
@@ -1000,6 +1001,13 @@ export function useSessionManager(): SessionManagerResult {
 							},
 						}),
 			});
+			// 行内 skill 是软引用，不进 promptRef，但调用次数仍要计入 app-monitor
+			// （命令面板按使用频次排序依赖这份统计）。每个被引用的 skill 记一次。
+			if (!hasOverride) {
+				for (const name of deriveSkillNames(parseInputSegments(rawText).segments)) {
+					recordInputContextUsed({ promptRef: { kind: "skill", name } });
+				}
+			}
 			if (!hasOverride) {
 				setInputValue("");
 				setAttachedImages([]);

@@ -13,7 +13,12 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **`loginDialogOpenAtom` 改名为 `loginPopoverOpenAtom`**。
 - **`/skills` 与 `/plugins` 路由移除**：两者重定向到 `/abilities`（`/skills?tab=scene` 仍去 `/scenes`）。渲染层不再有独立插件页与插件卡片/详情 Drawer。
 - **市场接口收敛为 `/abilities/*`**：`fetchMarketSkills` / `fetchMarketPlugins` / `fetchMarketMcpServers` 与 `downloadSkill` / `downloadPlugin` / `fetchSkillInfo` / `fetchPluginInfo` 由 `fetchMarketAbilities` / `fetchAbilityInfo` / `downloadAbility` 取代。
+- **输入框改为多模态编辑器，`chat.inputBarView` 契约变更**：`InputBarModel` 不再有 `inputValue` / `textareaRef` / `mentionedFiles` / `attachedImages` / `imageFiles` / `nonImageFiles` / `imagePreviewItems` / `hasImages`，`actions` 里的 `handleChange` / `handleKeyDown` / `handlePaste` / `getAtFilter` / `removeFile` 移除，新增 `handleEnter` / `handleTriggerChange` / `imageAttachments` / `atFilter` / `removeImage(path)`；`classNames.textareaWrap` 改名 `editorWrap`。覆盖该槽位的主题需要跟着改。
+- **输入框里的 skill 由硬展开改为软引用**：选中 skill 不再写 `PromptRequest.promptRef`、也不再由 coding-agent 把 skill 正文注入成隐藏 `<skill>` 块，而是在消息文本里留 `@skill:名字` 标记，由模型经 `invoke_skill` 自行决定是否调用，因此一条消息可以引用多个 skill。场景（scene）不变，仍走 `promptRef` 硬展开以保留 `tasks.json` 自动建 todo 与 todo 锁定；定时任务与批量任务的 `promptRef` 链路同样不变。
 
+- **斜杠面板重构为命令面板，主题槽位一分为二**：`chat.slashPanelView` 拆成 `chat.commandPanelView`（聊天侧，含连接器宫格与底部动作条）与 `chat.skillPickerView`（批量任务 / 自动化 dialog 侧，纯 skill 选择器）；theme-ui 的 `SlashPanelView` 及其 `SlashPanelViewProps` / `SlashPanelItemModel` / `SlashPanelLabels` / `SlashPanelSkillItem` / `SlashPanelClassNames` 一并删除，面板不再有「场景 / 技能」两段分区（合成单列）。覆盖该槽位的主题需要跟着改。
+- **输入卡片下方的动作条（知识检索 / 插件 input action）移入命令面板底部**：desktop 不再渲染 `InputActionBar`；已激活的开关改为在工具栏里紧跟执行模式（权限/沙箱）右侧显示（无底色无描边，点一下即关闭），避免面板关闭后激活态完全不可见。theme-ui 的 `InputActionBarView` 与 `chat.inputActionBar` surface 保留（官网 demo 仍在用），但对 desktop 已无效果——xianxia 主题里那条 `mx-auto w-[93%]` 因此不再影响客户端。
+- **工具栏按形态切换**：收缩形态下是「+」+ 执行模式（左）与模型 / 用量环 / 发送（右）；展开形态下执行模式、模型与发送一并收起，执行模式的位置让给「插图 / 附件」——命令区已占满上方，此时工具栏只服务于「往输入框里添东西」。命令区底部只保留可开关的知识检索 / 插件 action。
 ### Added
 
 - **订阅卡「升级套餐」外链按钮（ADR-0051）**：设置页 Vetta Go 订阅卡右上角新增按钮，`shell.openExternal` 跳官网 `/pricing` 完成购买。desktop 刻意不做站内支付——3DS 验证、银行跳转、PayPal 弹窗在 `BrowserWindow` 里均不可靠，支付闭环收敛在官网。theme-ui 的 `SubscriptionCardsViewModel` 新增可选 `actions.upgrade` / `labels.upgrade`（缺省不渲染，旧主题不受影响）。
@@ -30,7 +35,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **GitHub 开源能力市场**：能力页支持从环境变量配置的 GitHub 仓库整库同步 skill / scene / plugin / bundle，并以校验后的本地快照提供离线回退与安装；Plugin 配置从包内 `plugin.json` 派生并复用现有安全安装链路，Bundle 复用客户端成员批量安装逻辑；新增持久化多来源管理、来源级失败隔离、配置指纹缓存和确定性冲突策略，已安装能力锁定原来源；搜索、筛选与分页全部基于下载后的本地目录执行，不向 GitHub 发分页请求；单一 `marketplace.json` 强制声明 `minAppVersion`，不兼容的新内容不会覆盖旧的可用快照。
 - **开源能力自带展示资源**：GitHub 能力目录可通过 `ability.json` 提供本地图标、Markdown 详情或宿主白名单 Rich Blocks，并支持按 locale 选择详情文件和 Markdown 回退；本地图片路径限定在能力目录内并随市场版本缓存。市场索引继续只承担列表元信息，仓库内容不能注入 HTML、脚本、CSS 或安全相关操作。
 - **macOS 代码签名与公证接入**：`dist:mac` 检测到完整的签名凭据（`CSC_LINK`/`CSC_NAME` + `APPLE_TEAM_ID` + App Store Connect API Key 或 App 专用密码）时，自动开启 Developer ID 签名、hardened runtime（新增 `build/entitlements.mac.plist` 与 `build/entitlements.mac.inherit.plist`）与公证；DMG 随之退回两图标常规版式，不再打包「修复已损坏.app」、背景图也去掉「右键打开」提示。凭据一个都不设时行为与之前完全一致（未签名 + 修复助手），只设一部分会直接报错并列出缺项，避免产出「签了名但没公证」的半成品。证书申请与注入流程见 `docs/deploy/apple-code-signing.md`。
+- **多模态输入框：文本与 skill / 文件 / 图片胶囊同处一条文本流**：输入区由 `textarea` 换成 Lexical 编辑器，`/` 选中的 skill、`@` 引用的文件、粘贴或拖入的图片都成为行内原子胶囊，可插在句子任意位置（「先 `@skill:审查` 这个 `@/path/a.ts`，没问题再 `@skill:上传`」），不再是输入框上方的一排附件。触发符从「整个输入开头」放宽到词首；图片在输入框内显示为「图 N」胶囊，缩略图集中在输入卡片上方并带同号角标，用户气泡按同一形态回放。文本形态 `@skill:名字` / `@绝对路径` 既是发给模型的内容也是持久化格式，旧会话的行首前缀格式（`/skill:name` + `@path` 整行）仍能解析并归一呈现，重编辑回填与气泡渲染共用同一个解析器。
 
+- **命令面板是 InputBar 的一种形态，而非浮层**：命令区与编辑区同处一张输入卡片，`/` 或「+」展开时只是这张卡片长高（高度弹簧过渡），两者之间既没有接缝也没有分界线；收起即回到原来的一行形态。命令区绝对定位、底边钉在卡片顶沿向上生长，因此会话页的消息列表不会被顶走。skill 列表与连接器在空闲时段预取并按 cwd 缓存——否则第一次展开要等扫盘，数据在动画途中到位会把高度目标反复重测，表现为「第一次卡一下、第二次就顺」。因此 `CommandPanelProps` 没有 `placement`——浮层形态只保留给 dialog 侧的 `SkillPickerPanel`。「+」按钮成为真正的开合开关（此前 mousedown 会先触发面板的click-outside 收起、紧接着的 click 又把它打开，导致按钮只能开不能关）。
+- **命令面板（Splash 完全体）**：`/` 或「+」唤出的面板顶部新增**已接入连接器宫格**——列出 mcp.json 里已添加、未禁用且必填密钥齐的内置连接器（canva / notion / figma / github / slack / gmail / google-calendar / google-drive），列数自适应以避免末行只剩单个（2→2、3→3、4→2、5/6→3、7→4）；点击插入 `@mcp:名字` 行内胶囊，与 skill 同为软引用，模型自行决定是否调用该 MCP。下方 skill 列表把场景与技能合成单列，按**调用次数 → 类别（内置 > 插件 > Vetta 原生 > 通用）→ 最近使用 → 名称**排序；调用次数取自 app-monitor 已落盘的 per-skill 统计（新增 IPC `vetta:app-monitor:get-prompt-ref-usage`）。item 高度 46px→32px 单行（图标 + 名称 + 来源标签 + 同行右侧描述），面板总高 320→420，宫格随内容滚动、只有头部与底部动作条固定；输入过滤词时隐藏宫格、键盘上下键只在列表内移动。
 ### Removed
 
 - **服务端预设模板目录**：`/providers/templates.json` 的拉取、启动时的在线合并与 `vetta:models:fetch-templates` IPC 删除，改为 `vetta:models:list-presets` / `vetta:models:refresh-preset-models`。早期由服务端模板采纳、现已不在内置目录里的条目仍展示（标记「已下线」），但不提供刷新入口。
@@ -40,6 +48,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **展开态的「插图 / 附件」点不出文件选择器**：命令区的 click-outside 走 mousedown，会在 click 之前把面板连同这两个按钮一起卸载，click 因此落空。两个按钮加 `data-command-panel-keep-open`，与「+」一样被 click-outside 跳过。
 - **开发版主进程无法加载 `electron-updater`**：主进程 ESM 产物将 CommonJS 的 `electron-updater` 保持为 external 时，命名导入 `autoUpdater` 会在 Electron 启动阶段抛出 `Named export not found`。改为从 CommonJS 默认导出解构，恢复开发版与打包版启动。
 - **新会话页 skill 徽章行支持拖动横向滑动**：原先 `DefaultSkillBadgeRow` / 仙侠主题 skill 行只有左右箭头，桌面鼠标无法拖动。抽出 `useHorizontalDragScroll`（指针捕获 + 阈值抑制 click），默认主题与仙侠主题 skill 行接入；仙侠场景轮播一并复用。
 - **新会话页 skill 徽章悬浮不再放大**：`SkillCard` 去掉 `whileHover` 的 scale / 上移，仅保留颜色过渡与点击缩放。
@@ -51,6 +60,12 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **命令区与输入卡片接缝去掉台阶**：展开形态下输入卡片去上圆角、上边框置透明（不减 1px，避免整条 bar 抖动），命令区左右各外扩 1px 与卡片描边对齐——此前命令区被卡片内容盒内缩，两侧各差 1px 看着像锯齿。
+- **展开形态保留发送按钮**：工具栏右侧改为只收起模型选择与上下文用量环，发送按钮常驻。
+- **命令区去掉顶部标题行**，最大高度由 `min(420px, 45vh)` 压到 `min(320px, 40vh)`；skill 条目去掉 source badge，只留名称与描述（`SkillListLabels.sourceLabel` 改为可选，批量任务的 skill 选择器仍显示）。
+- **命令区滚动条隐藏，改用底部渐隐提示还能往下滚**：渐隐走 mask 而非叠渐变色块，换主题不会露色差；只在真的还能滚时才挂，内容不满一屏时最后一行不会被淡掉。
+- **命令区 skill 图标沿用能力广场那套**：市场目录的图（图片 / `solar:` 预设）→ type 默认图，不再所有条目都是同一个魔法棒。图标按 `type:slug` 从市场目录（服务端 + 开放市场本地缓存）解析，命令区首次展开时才拉取并按登录态缓存；未登录 / 离线 / 目录里查不到时落默认图。选中后插入文本流的行内胶囊复用同一张图（`SkillTokenNode` 新增可选 `icon`，随 EditorState 序列化）。
+- **「经典」（default）主题的中性表面去蓝偏**：`secondary` / `muted` / `accent` 的色相改为中性灰，亮度不变——深色 `secondary` `rgb(36, 38, 48)` → `rgb(38, 38, 40)`、`muted` `rgb(28, 30, 38)` → `rgb(30, 30, 32)`、`accent` `rgb(38, 41, 52)` → `rgb(41, 41, 43)`；浅色 `muted` `rgb(242, 242, 245)` → `rgb(242, 242, 242)`（浅色 `secondary` / `accent` 本就是中性灰，未动）。
 - **暗色正文略压亮度**：各主题色板暗色 `foreground` / `muted-foreground` 从近白改为约 82–86% 灰阶，减轻深底刺眼；默认黑白主题（mono）纯黑底上再软一档，强调色 `primary` 同步略降。
 - **新会话问候语跟正文色**：`你好，{{nickname}}` 由 `primary` 渐变改为 `foreground` 渐变（与能力页等标题一致），暗色/黑白主题下不再用近白 primary 发亮。
 - **输入栏窄宽不再折成两行**：工具栏去掉 `flex-wrap`，按输入区容器宽度折叠文案——窄时隐藏执行模式名、推理档位、快捷键提示与动作条标签（保留图标与 `title`），模型名缩短截断；宽了再逐步显示。

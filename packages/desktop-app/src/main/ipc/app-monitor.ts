@@ -24,6 +24,7 @@ import { captureProductEvent } from "../telemetry/index.js";
 const USER_ACTIVITY_CHANNEL = "vetta:app-monitor:user-activity";
 const RECORD_EVENT_CHANNEL = "vetta:app-monitor:record-event";
 const GET_ACHIEVEMENT_USAGE_CHANNEL = "vetta:app-monitor:get-achievement-usage";
+const GET_PROMPT_REF_USAGE_CHANNEL = "vetta:app-monitor:get-prompt-ref-usage";
 
 const INPUT_ATTACHMENT_SOURCES = new Set<AppMonitorInputAttachmentSource>([
 	"at-panel",
@@ -122,10 +123,21 @@ export function registerAppMonitorIpc(): () => void {
 			turns: snapshot.sessions.turns,
 		};
 	});
+	// 命令面板的「按使用频次排序」：把已落盘的 per-skill 统计原样交给渲染层，
+	// 只保留排序需要的 used / lastUsedAt 两个字段。
+	ipcMain.handle(GET_PROMPT_REF_USAGE_CHANNEL, () => {
+		const byRef = getAppMonitorSnapshot().inputPromptRefs.byRef;
+		const usage: Record<string, { used: number; lastUsedAt: number }> = {};
+		for (const [key, stats] of Object.entries(byRef)) {
+			usage[key] = { used: stats.used, lastUsedAt: stats.lastUsedAt };
+		}
+		return usage;
+	});
 	return () => {
 		ipcMain.removeListener(USER_ACTIVITY_CHANNEL, onUserActivity);
 		ipcMain.removeListener(RECORD_EVENT_CHANNEL, onRecordEvent);
 		ipcMain.removeHandler(GET_ACHIEVEMENT_USAGE_CHANNEL);
+		ipcMain.removeHandler(GET_PROMPT_REF_USAGE_CHANNEL);
 	};
 }
 
