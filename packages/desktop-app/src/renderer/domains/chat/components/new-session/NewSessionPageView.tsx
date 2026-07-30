@@ -11,6 +11,8 @@ import { SessionDropZone } from "../SessionDropZone";
 const PANEL_SHIFT = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.7 };
 /** 命令区展开时输入栏下移的距离：面板向上生长，下方留白同步收掉。 */
 const PANEL_SHIFT_Y = 120;
+/** hero 淡出比位移更快收掉，避免吉祥物在面板前面停留。 */
+const HERO_FADE = { duration: 0.15, ease: [0.22, 0.61, 0.36, 1] as const };
 
 interface NewSessionPageViewProps {
 	avatarAutoplay: boolean;
@@ -61,12 +63,20 @@ export function NewSessionPageView({
 				</SessionDropZone>
 			)}
 			hero={
-				<NewSessionHero
-					avatarAutoplay={avatarAutoplay}
-					greetingTitle={greetingTitle}
-					mounted={mounted}
-					subtitle={subtitle}
-				/>
+				// 命令区向上生长会盖到 hero 上，模式切换与吉祥物会浮在面板前面挡住内容，
+				// 因此展开期间把 hero 整块淡出并禁用命中。
+				<motion.div
+					animate={{ opacity: commandPanelExpanded ? 0 : 1 }}
+					transition={HERO_FADE}
+					className={cn("flex w-full flex-col items-center", commandPanelExpanded && "pointer-events-none")}
+				>
+					<NewSessionHero
+						avatarAutoplay={avatarAutoplay}
+						greetingTitle={greetingTitle}
+						mounted={mounted}
+						subtitle={subtitle}
+					/>
+				</motion.div>
 			}
 			inputBar={
 				<motion.div
