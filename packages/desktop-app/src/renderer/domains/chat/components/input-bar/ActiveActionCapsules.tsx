@@ -23,9 +23,9 @@ const MAX_STACK = 4;
 const SOFT = { duration: 0.16, ease: [0.22, 0.61, 0.36, 1] as const };
 const POP = { type: "spring" as const, stiffness: 520, damping: 34, mass: 0.7 };
 
-/** 与执行模式（权限/沙箱）对齐的外观：h-7 / rounded-lg / 静默灰、hover 才上底色。 */
+/** 与执行模式（权限/沙箱）对齐的外观：h-7 / rounded-lg / 正文色，hover 才上底色。 */
 const CAPSULE_CLASS =
-	"group flex h-7 min-w-0 shrink items-center gap-1 rounded-lg px-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground @[22rem]:gap-1.5 @[22rem]:px-2";
+	"group flex h-7 min-w-0 shrink items-center gap-1 rounded-lg px-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-accent/60 @[22rem]:gap-1.5 @[22rem]:px-2";
 
 /**
  * 已激活的 input action（知识检索、插件开关）在工具栏里的常驻提示，
