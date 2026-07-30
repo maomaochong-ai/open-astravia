@@ -52,6 +52,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **进入应用后第一次展开命令面板会顿一下再继续展开**：`height: 0 → auto` 的弹簧全程跑在主线程，首次展开时有三处异步在动画中间才到位——skill 列表的预取挂在 `requestIdleCallback`（冷启动主线程被占满，一路拖到 2s 超时才发起，赶不上第一次展开）、缓存命中时展开那一刻仍无条件重拉一次、图标目录（要打网络）只在 `open` 时才开始加载。数据一到就是几十行重渲染加整列远程 `<img>` 换图，动画因此顿住。现在 skill 列表预取挂载即发起、图标目录同样提前预热，缓存命中时的「反映磁盘增删」重拉推到空闲再做。
 - **Windows 安装版启动后只有托盘、主窗口不显示**：版本启动器曾用 `HideWindow: true` 拉起 Electron，会写入 `STARTF_USESHOWWINDOW` + `SW_HIDE`，导致进程第一次 `ShowWindow` 被系统强制隐藏（日志里已有 `show`，但 HWND 无 `WS_VISIBLE`）。去掉启动器 `HideWindow`；主进程 `revealMainWindow` 在 Windows 上再 show 一次，兼容尚未替换的旧启动器。
 - **输入栏「图像生成」等 badge 时有时无**：`activeToolNamesAtom` 只在 `openSession` 时用 `getState` 取一次快照，而 `generate_image` 是 image-gen 插件 activate 后才动态注册的。冷启动恢复会话时会话创建早于插件就绪，那个会话的 `requiresActiveTool` 闸门就一直把 badge 挡住。现在订阅 runtime 新增的 `active_tools_update` 事件刷新该 atom，并在 `session.subscribe` 时回放一次当前工具集，堵住 getState 与 subscribe 之间的丢事件窗口。
 - **展开态的「插图 / 附件」点不出文件选择器**：命令区的 click-outside 走 mousedown，会在 click 之前把面板连同这两个按钮一起卸载，click 因此落空。两个按钮加 `data-command-panel-keep-open`，与「+」一样被 click-outside 跳过。
