@@ -1,11 +1,11 @@
 import type { SkillInfo } from "@preload/api";
-import type { AppshotAttachment, AttachedImage, MentionedFile } from "@shared/store/atoms";
-import type { FilePreviewItem } from "@shared/store/file-preview-atoms";
+import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
-import type { ChangeEvent, ClipboardEvent, ComponentProps, KeyboardEvent, MouseEvent, RefObject } from "react";
+import type { ComponentProps, MouseEvent } from "react";
 import type { SelectedFile } from "../AtPanel";
 import type { QuestionPanel } from "../QuestionPanel";
+import type { TriggerMatch } from "./editor/tokens/trigger";
 
 export interface InputBarProps {
 	onSend: (overrideText?: string) => Promise<void>;
@@ -78,17 +78,13 @@ export type InputBarDrawerItem =
 	  };
 
 export interface InputBarModel {
-	inputValue: string;
 	isStreaming: boolean;
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
 	firstSuggestion?: string;
-	attachedImages: AttachedImage[];
+	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */
+	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
+	/** 仅场景（scene）：它走 promptRef 硬展开，不进文本流，用顶部胶囊展示。 */
 	selectedSkill: { name: string; alias?: string; type: string } | null;
-	mentionedFiles: MentionedFile[];
-	imageFiles: MentionedFile[];
-	nonImageFiles: MentionedFile[];
-	imagePreviewItems: FilePreviewItem[];
-	hasImages: boolean;
 	appshotAttachment: AppshotAttachment | null;
 	hasSession: boolean;
 	canSend: boolean;
@@ -105,6 +101,8 @@ export interface InputBarModel {
 	slashOpen: boolean;
 	slashFilter: string;
 	atOpen: boolean;
+	/** `@` 触发词原文（含 `@`），AtPanel 用它过滤。 */
+	atFilter: string;
 	drawerItems: InputBarDrawerItem[];
 	drawerActiveTab: string | null;
 	hasPromptAttachment: boolean;
@@ -114,28 +112,27 @@ export interface InputBarModel {
 	pendingMessageEdit: boolean;
 	pendingEditHint: string;
 	cancelPendingEditLabel: string;
-	textareaRef: RefObject<HTMLTextAreaElement | null>;
-	/** Textarea right-click cut/copy/paste menu; null when closed. */
+	/** 输入区右键剪切/复制/粘贴菜单；关闭时为 null。 */
 	contextMenu: InputBarContextMenuViewProps | null;
 	labels: InputBarLabels;
 	actions: {
 		setFocused: (focused: boolean) => void;
 		setDrawerActiveTab: (tabId: string | null) => void;
-		handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
-		handleChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
-		handlePaste: (e: ClipboardEvent) => Promise<void>;
-		handleContextMenu: (e: MouseEvent<HTMLTextAreaElement>) => void;
+		/** 回车键；返回 true 表示已当作发送处理，编辑器不再插换行。 */
+		handleEnter: () => boolean;
+		/** 编辑器上报光标前的 `/` / `@` 触发词。 */
+		handleTriggerChange: (trigger: TriggerMatch | null) => void;
+		handleContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
 		handleSlashClose: () => void;
 		handleSlashSelect: (skill: SkillInfo) => void;
 		handleAtClose: () => void;
 		handleAtSelect: (file: SelectedFile) => void;
-		getAtFilter: () => string;
-		removeImage: (id: string) => void;
 		removeSkill: () => void;
-		removeFile: (path: string) => void;
+		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
+		removeImage: (path: string) => void;
+		openImagePreview: (index: number) => void;
 		removePromptAttachment: () => void;
 		removeAppshot: () => void;
-		openImagePreview: (index: number) => void;
 		handlePlusClick: () => void;
 		handleSelectImages: () => Promise<void>;
 		handleSelectFiles: () => Promise<void>;
@@ -151,7 +148,7 @@ export interface InputBarViewClassNames {
 	card?: string;
 	cardContent?: string;
 	capsules?: string;
-	textareaWrap?: string;
+	editorWrap?: string;
 	toolbar?: string;
 }
 

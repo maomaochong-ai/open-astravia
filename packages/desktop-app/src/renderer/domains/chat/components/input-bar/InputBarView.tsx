@@ -14,19 +14,14 @@ import { InputBarBackground } from "./InputBarBackground";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarToolbar } from "./InputBarToolbar";
+import { InputEditor } from "./editor/InputEditor";
 import type { InputBarViewProps } from "./types";
 import "../InputBar.css";
 
-const MIN_HEIGHT = 24;
-const MAX_HEIGHT = 140;
-
-const SPRING = { type: "spring" as const, stiffness: 460, damping: 32, mass: 0.9 };
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 const COLLAPSE_INITIAL = { height: 0, opacity: 0 };
 const COLLAPSE_ANIMATE = { height: "auto", opacity: 1 };
 const COLLAPSE_EXIT = { height: 0, opacity: 0 };
-const IMAGE_INITIAL = { scale: 0.8, opacity: 0 };
-const IMAGE_ANIMATE = { scale: 1, opacity: 1 };
 
 export function InputBarView({ model, className, classNames }: InputBarViewProps): JSX.Element {
 	const surface = useThemeSurface("chat.inputBar");
@@ -88,7 +83,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					open={model.atOpen}
 					onClose={model.actions.handleAtClose}
 					onSelect={model.actions.handleAtSelect}
-					filter={model.actions.getAtFilter()}
+					filter={model.atFilter}
 					cwd={model.effectiveCwd}
 				/>
 
@@ -105,8 +100,12 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					<ThemeSurface slot="chat.inputBar" />
 					<ThemedInputBarBackground />
 					<div className={["relative z-10 rounded-[inherit]", classNames?.cardContent].filter(Boolean).join(" ")}>
+						{/*
+						 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
+						 * 插件上下文、场景胶囊。文件 / 图片 / skill 都已进入文本流。
+						 */}
 						<AnimatePresence initial={false}>
-							{(model.hasCapsules || model.attachedImages.length > 0) && (
+							{model.hasCapsules && (
 								<motion.div
 									key="capsules"
 									initial={COLLAPSE_INITIAL}
@@ -128,173 +127,83 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 												</button>
 											</div>
 										)}
-										{/* 附件第1行：Appshot 卡片 */}
-										<AnimatePresence initial={false}>
-											{model.appshotAttachment && (
-												<motion.div
-													key="appshot-capsule"
-													initial={IMAGE_INITIAL}
-													animate={IMAGE_ANIMATE}
-													exit={IMAGE_INITIAL}
-													transition={SPRING}
-												>
-													<AppshotCard data={model.appshotAttachment} onRemove={model.actions.removeAppshot} />
-												</motion.div>
-											)}
-										</AnimatePresence>
 
-										{/* 附件第2行：图片组（粘贴图片 + @文件中的图片） */}
-										<AnimatePresence>
-											{(model.attachedImages.length > 0 || model.hasImages) && (
-												<motion.div
-													key="image-row"
-													initial={COLLAPSE_INITIAL}
-													animate={COLLAPSE_ANIMATE}
-													exit={COLLAPSE_EXIT}
-													transition={SOFT}
-													className="flex flex-wrap items-center gap-1.5"
-												>
-													{model.attachedImages.map((img) => (
-														<motion.div
-															key={img.id}
-															initial={IMAGE_INITIAL}
-															animate={IMAGE_ANIMATE}
-															exit={IMAGE_INITIAL}
-															transition={SPRING}
-															className="group relative"
+										{model.appshotAttachment && (
+											<AppshotCard data={model.appshotAttachment} onRemove={model.actions.removeAppshot} />
+										)}
+
+										{/* 图片缩略图行：文本流里对应「图 N」胶囊，编号在角标上复现 */}
+										{model.imageAttachments.length > 0 && (
+											<div className="flex flex-wrap items-center gap-1.5">
+												{model.imageAttachments.map((image, index) => (
+													<div key={image.path} className="group relative">
+														<button
+															type="button"
+															onClick={() => model.actions.openImagePreview(index)}
+															className="block h-12 w-12 overflow-hidden rounded-lg border border-border ring-1 ring-border/40"
+															title={image.name}
 														>
-															<div className="h-12 w-12 overflow-hidden rounded-lg border border-border ring-1 ring-border/40">
-																<img
-																	src={`data:${img.mimeType};base64,${img.data}`}
-																	alt={img.name}
-																	className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-																/>
-															</div>
-															<button
-																type="button"
-																onClick={() => model.actions.removeImage(img.id)}
-																className="absolute -right-1.5 -top-1.5 flex items-center justify-center rounded-full border border-border bg-card text-muted-foreground opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 hover:text-destructive"
-																title={model.labels.capsule.removeImage}
-																style={{ height: 18, width: 18 }}
-															>
-																<span className="icon-[solar--close-circle-linear] h-3 w-3" />
-															</button>
-														</motion.div>
-													))}
-													{model.imagePreviewItems.map((item, idx) => (
-														<motion.div
-															key={`img-file-${item.url}`}
-															initial={IMAGE_INITIAL}
-															animate={IMAGE_ANIMATE}
-															exit={IMAGE_INITIAL}
-															transition={SPRING}
-															className="group relative cursor-pointer"
+															<img
+																src={image.url}
+																alt={image.name}
+																className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+															/>
+														</button>
+														<span className="pointer-events-none absolute bottom-0.5 right-0.5 rounded bg-foreground/45 px-1 text-[9px] font-medium leading-[1.4] text-background/90">
+															{image.label}
+														</span>
+														<button
+															type="button"
+															onClick={() => model.actions.removeImage(image.path)}
+															className="absolute -right-1.5 -top-1.5 flex items-center justify-center rounded-full border border-border bg-card text-muted-foreground opacity-0 shadow-sm transition-opacity duration-150 group-hover:opacity-100 hover:text-destructive"
+															title={model.labels.capsule.removeImage}
+															style={{ height: 18, width: 18 }}
 														>
-															<div
-																onClick={() => model.actions.openImagePreview(idx)}
-																className="h-12 w-12 overflow-hidden rounded-lg border border-border ring-1 ring-border/40"
-																title={item.name}
-															>
-																<img
-																	src={item.url ?? item.path ?? ''}
-																	alt={item.name}
-																	className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-																/>
-															</div>
-														</motion.div>
-													))}
-												</motion.div>
-											)}
-										</AnimatePresence>
+															<span className="icon-[solar--close-circle-linear] h-3 w-3" />
+														</button>
+													</div>
+												))}
+											</div>
+										)}
 
-										{/* 附件第3行：插件上下文 + skill/scene badge */}
-										<AnimatePresence initial={false}>
-											{(model.hasPromptAttachment || model.selectedSkill) && (
-												<motion.div
-													key="meta-row"
-													initial={COLLAPSE_INITIAL}
-													animate={COLLAPSE_ANIMATE}
-													exit={COLLAPSE_EXIT}
-													transition={SOFT}
-													className="flex flex-wrap items-center gap-1.5"
-												>
-													{model.hasPromptAttachment && model.promptAttachmentLabel && (
-														<InputBarCapsule
-															key="plugin-prompt-attachment"
-															icon={model.promptAttachmentIcon ?? "icon-[solar--paperclip-linear]"}
-															label={model.promptAttachmentLabel}
-															labels={model.labels.capsule}
-															tone="primary"
-															onRemove={model.actions.removePromptAttachment}
-														/>
-													)}
-													{model.selectedSkill && (
-														<InputBarCapsule
-															key="skill-capsule"
-															icon={
-																model.selectedSkill.type === "scene"
-																	? "icon-[solar--clapperboard-open-linear]"
-																	: "icon-[solar--magic-stick-linear]"
-															}
-															label={model.selectedSkill.alias || model.selectedSkill.name}
-															labels={model.labels.capsule}
-															tone="primary"
-															onRemove={model.actions.removeSkill}
-														/>
-													)}
-												</motion.div>
-											)}
-										</AnimatePresence>
-
-										{/* 附件第4行：非图片文件胶囊 */}
-										<AnimatePresence initial={false}>
-											{model.nonImageFiles.length > 0 && (
-												<motion.div
-													key="file-row"
-													initial={COLLAPSE_INITIAL}
-													animate={COLLAPSE_ANIMATE}
-													exit={COLLAPSE_EXIT}
-													transition={SOFT}
-													className="flex flex-wrap items-center gap-1.5"
-												>
-													{model.nonImageFiles.map((file) => (
-														<InputBarCapsule
-															key={`file-${file.path}`}
-															icon={file.isDirectory ? "icon-[solar--folder-linear]" : "icon-[solar--file-linear]"}
-															label={file.name}
-															labels={model.labels.capsule}
-															title={file.path}
-															tone="muted"
-															onRemove={() => model.actions.removeFile(file.path)}
-														/>
-													))}
-												</motion.div>
-											)}
-										</AnimatePresence>
+										{(model.hasPromptAttachment || model.selectedSkill) && (
+											<div className="flex flex-wrap items-center gap-1.5">
+												{model.hasPromptAttachment && model.promptAttachmentLabel && (
+													<InputBarCapsule
+														key="plugin-prompt-attachment"
+														icon={model.promptAttachmentIcon ?? "icon-[solar--paperclip-linear]"}
+														label={model.promptAttachmentLabel}
+														labels={model.labels.capsule}
+														tone="primary"
+														onRemove={model.actions.removePromptAttachment}
+													/>
+												)}
+												{model.selectedSkill && (
+													<InputBarCapsule
+														key="scene-capsule"
+														icon="icon-[solar--clapperboard-open-linear]"
+														label={model.selectedSkill.alias || model.selectedSkill.name}
+														labels={model.labels.capsule}
+														tone="primary"
+														onRemove={model.actions.removeSkill}
+													/>
+												)}
+											</div>
+										)}
 									</div>
 								</motion.div>
 							)}
 						</AnimatePresence>
 
-						<div className={["px-4 pb-1 pt-3", classNames?.textareaWrap].filter(Boolean).join(" ")}>
+						<div className={["px-4 pb-1 pt-3", classNames?.editorWrap].filter(Boolean).join(" ")}>
 							<div className="relative">
-								<textarea
-									ref={model.textareaRef}
-									rows={1}
-									value={model.inputValue}
-									onChange={model.actions.handleChange}
-									onKeyDown={model.actions.handleKeyDown}
-									onPaste={(e) => void model.actions.handlePaste(e)}
+								<InputEditor
+									ariaLabel={model.placeholderTexts[0]}
+									editable={model.hasSession}
 									onContextMenu={model.actions.handleContextMenu}
-									onFocus={() => model.actions.setFocused(true)}
-									onBlur={() => model.actions.setFocused(false)}
-									disabled={!model.hasSession}
-									aria-label={model.placeholderTexts[0]}
-									className="w-full resize-none bg-transparent text-[13.5px] leading-[1.6] text-foreground outline-none disabled:cursor-not-allowed"
-									style={{
-										minHeight: `${MIN_HEIGHT}px`,
-										maxHeight: `${MAX_HEIGHT}px`,
-									}}
+									onEnter={model.actions.handleEnter}
+									onFocusChange={model.actions.setFocused}
+									onTriggerChange={model.actions.handleTriggerChange}
 								/>
 								<ThemedInputBarPlaceholder
 									texts={model.placeholderTexts}

@@ -43,6 +43,78 @@ function resolveFileLinkPath(href: string | undefined): string | null {
 	return null;
 }
 
+/**
+ * 用户消息里的行内 token（skill 引用 / 文件 / 图片）。
+ * 语法归宿主所有——theme-ui 只负责渲染，解析函数由 inlineTokens.parse 注入。
+ */
+export type InlineTokenPiece =
+	| { kind: "text"; text: string }
+	| { kind: "skill"; name: string }
+	| { kind: "file"; path: string; isDirectory?: boolean }
+	| { kind: "image"; path: string };
+
+export interface InlineTokenSupport {
+	parse: (text: string) => InlineTokenPiece[];
+	/**
+	 * 图片 token 的胶囊文案（如「图 1」）。缩略图不在文本流里渲染，
+	 * 它们集中在气泡上方并带同样的编号，因此这里只要一个标签。
+	 */
+	getImageLabel: (path: string) => string;
+}
+
+const INLINE_TOKEN_TAG = "vetta-inline-token";
+
+/**
+ * 与输入框 TokenChip 保持一致：inline-block + 基线对齐。
+ * 用 inline-flex 会让基线落在空的图标 span 上，徽标相对正文被抬高。
+ */
+const INLINE_TOKEN_CLASS =
+	"mx-px inline-block max-w-full whitespace-pre rounded-md border border-primary/25 bg-primary/10 px-1.5 align-baseline text-[12px] font-medium leading-[1.6] text-primary";
+const INLINE_TOKEN_ICON_CLASS = "mr-1 inline-block h-3 w-3 align-[-0.15em]";
+
+/** 把文本节点里的 token 换成自定义元素；代码块与链接文本内不处理。 */
+function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
+	return (tree: HastRoot): void => {
+		function visit(node: HastRoot | HastElement, inLiteral: boolean): void {
+			const newChildren: Array<(typeof node.children)[number]> = [];
+			for (const child of node.children) {
+				if (child.type === "text" && !inLiteral) {
+					const pieces = parse((child as HastText).value);
+					if (pieces.length === 1 && pieces[0].kind === "text") {
+						newChildren.push(child);
+						continue;
+					}
+					for (const piece of pieces) {
+						if (piece.kind === "text") {
+							newChildren.push({ type: "text", value: piece.text } as HastText);
+							continue;
+						}
+						newChildren.push({
+							type: "element",
+							tagName: INLINE_TOKEN_TAG,
+							properties: {
+								"data-token-kind": piece.kind,
+								"data-token-value": piece.kind === "skill" ? piece.name : piece.path,
+								"data-token-directory": piece.kind === "file" && piece.isDirectory ? "true" : "false",
+							},
+							children: [],
+						});
+					}
+					continue;
+				}
+				newChildren.push(child);
+				if (child.type === "element") {
+					const tag = child.tagName;
+					visit(child, inLiteral || tag === "code" || tag === "pre" || tag === "a");
+				}
+			}
+			node.children = newChildren as typeof node.children;
+		}
+
+		visit(tree, false);
+	};
+}
+
 const STREAMING_CHUNK_SIZE = 10;
 
 function rehypeStreamingChunks() {
@@ -270,6 +342,14 @@ export interface TextBlockViewProps {
 	getFileIconClass: (fileName: string) => string;
 	onOpenFile: (path: string) => void;
 	onOpenUrl: (url: string) => void;
+	/** 传入即启用行内 token 渲染；仅用户消息需要，助手 markdown 不受影响。 */
+	inlineTokens?: InlineTokenSupport;
+}
+
+function basename(path: string): string {
+	const normalized = path.replace(/[\\/]+$/, "");
+	const idx = Math.max(normalized.lastIndexOf("/"), normalized.lastIndexOf("\\"));
+	return idx === -1 ? normalized : normalized.slice(idx + 1);
 }
 
 function CodeBlockShell({
@@ -330,6 +410,7 @@ export const TextBlockView = memo(function TextBlockView({
 	getFileIconClass,
 	onOpenFile,
 	onOpenUrl,
+	inlineTokens,
 }: TextBlockViewProps): JSX.Element {
 	const { displayText, animateChunks } = useStreamingDisplayText(text, isStreamingTail);
 
@@ -337,10 +418,12 @@ export const TextBlockView = memo(function TextBlockView({
 	const getFileIconClassRef = useRef(getFileIconClass);
 	const onOpenFileRef = useRef(onOpenFile);
 	const onOpenUrlRef = useRef(onOpenUrl);
+	const inlineTokensRef = useRef(inlineTokens);
 	labelsRef.current = labels;
 	getFileIconClassRef.current = getFileIconClass;
 	onOpenFileRef.current = onOpenFile;
 	onOpenUrlRef.current = onOpenUrl;
+	inlineTokensRef.current = inlineTokens;
 
 	const components = useMemo<Components>(
 		() => ({
@@ -442,18 +525,62 @@ export const TextBlockView = memo(function TextBlockView({
 			},
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
 			em: ({ children }) => <em className="italic">{children}</em>,
+			// 行内 token：与输入框里的胶囊同款（半透明主题色底 + 描边，align-middle 对齐正文）。
+			[INLINE_TOKEN_TAG]: ({ node }: { node?: HastElement }) => {
+				const properties = node?.properties ?? {};
+				const kind = String(properties["data-token-kind"] ?? "");
+				const value = String(properties["data-token-value"] ?? "");
+				if (!kind || !value) return null;
+				if (kind === "image") {
+					return (
+						<span className={INLINE_TOKEN_CLASS} title={basename(value)}>
+							<span className={cn("icon-[solar--gallery-linear]", INLINE_TOKEN_ICON_CLASS)} />
+							{inlineTokensRef.current?.getImageLabel(value) ?? basename(value)}
+						</span>
+					);
+				}
+				if (kind === "skill") {
+					return (
+						<span className={INLINE_TOKEN_CLASS} title={value}>
+							<span className={cn("icon-[solar--magic-stick-linear]", INLINE_TOKEN_ICON_CLASS)} />
+							{value}
+						</span>
+					);
+				}
+				const isDirectory = properties["data-token-directory"] === "true";
+				const fileName = basename(value);
+				return (
+					<button
+						type="button"
+						title={value}
+						className={cn(INLINE_TOKEN_CLASS, "cursor-pointer hover:bg-primary/20")}
+						onClick={() => onOpenFileRef.current(value)}
+					>
+						<span
+							className={cn(
+								isDirectory ? "icon-[solar--folder-linear]" : getFileIconClassRef.current(fileName),
+								INLINE_TOKEN_ICON_CLASS,
+							)}
+						/>
+						{fileName}
+					</button>
+				);
+			},
 		}),
 		// theme 进 deps：代码块高亮主题变化时需要换组件树。其余 host 注入值走 ref。
 		[theme],
 	);
 
+	const rehypePlugins = useMemo(() => {
+		const plugins = [];
+		if (animateChunks) plugins.push(rehypeStreamingChunks);
+		if (inlineTokens) plugins.push(() => rehypeInlineTokens(inlineTokens.parse));
+		return plugins.length > 0 ? plugins : undefined;
+	}, [animateChunks, inlineTokens]);
+
 	return (
 		<div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
-			<ReactMarkdown
-				remarkPlugins={remarkPlugins}
-				rehypePlugins={animateChunks ? streamingRehypePlugins : undefined}
-				components={components}
-			>
+			<ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
 				{displayText}
 			</ReactMarkdown>
 		</div>

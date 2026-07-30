@@ -263,7 +263,8 @@
 			"appshotIconAlt": "App icon",
 			"removeDefault": "Click to remove",
 			"removeImage": "Remove image",
-			"removeTooltip": "{{path}}\nClick to remove"
+			"removeTooltip": "{{path}}\nClick to remove",
+			"imageBadge": "Image {{index}}"
 		},
 		"drawer": {
 			"permissionDesc": "Awaiting confirmation",

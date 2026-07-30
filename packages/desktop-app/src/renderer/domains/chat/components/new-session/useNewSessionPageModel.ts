@@ -29,6 +29,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionManager } from "../../hooks/useSessionManager";
+import { focusInputEditor, insertSkillToken } from "../input-bar/editor/inputEditorHandle";
 import type { GuidingGroup, SceneActionState, SceneItem, SkillSelection } from "./types";
 import { useNewSessionResources } from "./useNewSessionResources";
 import { useShortViewport } from "./useShortViewport";
@@ -244,6 +245,13 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 
 	const handleSelectSkill = useCallback(
 		(skill: SkillInfo) => {
+			// skill 是软引用：点一下往输入框插一个行内 token（可多个、可删）。
+			// scene 仍是「整条消息生效」的硬展开，保持单选切换语义。
+			if (skill.type !== "scene") {
+				insertSkillToken(skill.name, skill.alias);
+				focusInputEditor();
+				return;
+			}
 			const isSelected = selectedSkill?.name === skill.name && selectedSkill?.type === skill.type;
 			setSelectedSkill(isSelected ? null : { name: skill.name, alias: skill.alias, type: skill.type });
 		},

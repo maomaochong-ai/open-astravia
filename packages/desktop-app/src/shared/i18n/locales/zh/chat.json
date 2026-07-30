@@ -263,7 +263,8 @@
 			"appshotIconAlt": "应用图标",
 			"removeDefault": "点击移除",
 			"removeImage": "移除图片",
-			"removeTooltip": "{{path}}\n点击移除"
+			"removeTooltip": "{{path}}\n点击移除",
+			"imageBadge": "图 {{index}}"
 		},
 		"drawer": {
 			"permissionDesc": "等待确认",
