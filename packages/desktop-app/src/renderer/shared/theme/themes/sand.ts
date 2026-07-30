@@ -10,7 +10,8 @@ const PRIMARY_FG = "rgb(255, 255, 255)";
 
 // ── dark ──
 const DARK_BG = "rgb(32, 32, 32)"; // #202020
-const DARK_MUTED = "rgb(30, 30, 30)"; // #1e1e1e
+// muted 抬到明显高于 bg(32)：原 30 与背景只差 2 级，bg-muted 的块在深色下几乎看不出
+const DARK_MUTED = "rgb(44, 44, 44)"; // #2c2c2c
 const DARK_SECONDARY = "rgb(26, 26, 26)"; // 略深于 muted
 const DARK_CARD = "rgb(28, 28, 28)"; // #1c1c1c
 const DARK_POPOVER = DARK_CARD;
