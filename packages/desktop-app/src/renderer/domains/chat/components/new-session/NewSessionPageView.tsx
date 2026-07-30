@@ -19,6 +19,7 @@ interface NewSessionPageViewProps {
 	avatarAutoplay: boolean;
 	className?: string;
 	commandPanelExpanded: boolean;
+	commandPanelShift: boolean;
 	cwd: string;
 	greetingTitle: string;
 	isShort: boolean;
@@ -33,6 +34,7 @@ export function NewSessionPageView({
 	avatarAutoplay,
 	className,
 	commandPanelExpanded,
+	commandPanelShift,
 	cwd,
 	greetingTitle,
 	isShort,
@@ -92,7 +94,7 @@ export function NewSessionPageView({
 			}
 			inputBar={
 				<motion.div
-					animate={{ y: commandPanelExpanded ? PANEL_SHIFT_Y : 0 }}
+					animate={{ y: commandPanelShift ? PANEL_SHIFT_Y : 0 }}
 					transition={shiftTransition}
 				>
 					<InputBar

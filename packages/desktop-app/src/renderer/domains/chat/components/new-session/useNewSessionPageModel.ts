@@ -25,12 +25,19 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionManager } from "../../hooks/useSessionManager";
+import { useSkillList } from "../../hooks/useSkillList";
+import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
 import { useShortViewport } from "./useShortViewport";
 
 interface NewSessionPageModel {
 	avatarAutoplay: boolean;
-	/** 命令区（`/` 或「+」展开）是否打开：打开时输入栏整体下移，补上下方留白。 */
+	/** 命令区（`/` 或「+」展开）是否打开：hero 随之淡出让位。 */
 	commandPanelExpanded: boolean;
+	/**
+	 * 输入栏是否要为命令区下沉。
+	 * 条目少时面板长不到会盖住 hero 的高度，那趟位移纯属多余，因此不跟 expanded 一致。
+	 */
+	commandPanelShift: boolean;
 	cwd: string;
 	greetingTitle: string;
 	isShort: boolean;
@@ -75,6 +82,14 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const executionMode = useAtomValue(sessionExecutionModeAtom);
 	const { openSession, sendMessage, abortMessage } = useSessionManager();
 	const isShort = useShortViewport();
+	// 不带过滤词：要的是面板刚展开时那份完整列表的条目数，不能随用户打字过滤而抖。
+	// 数据与命令区共用模块级缓存（InputBar 里的 CommandPanel 挂载即预取），命中即立即可用。
+	const { items: skillItems } = useSkillList({
+		open: commandPanelExpanded,
+		cwd: decodedCwd,
+		filter: "",
+		prefetch: true,
+	});
 
 	// 进入页面时清空上下文输入态，避免从别处带过来未发的内容。
 	useEffect(() => {
@@ -160,6 +175,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	return {
 		avatarAutoplay,
 		commandPanelExpanded,
+		commandPanelShift: commandPanelExpanded && skillItems.length > PANEL_SHIFT_MIN_ITEMS,
 		cwd: decodedCwd,
 		greetingTitle,
 		isShort,

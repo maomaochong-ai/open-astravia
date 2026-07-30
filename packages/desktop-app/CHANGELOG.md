@@ -73,6 +73,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **新会话页展开命令区时，能力条目不足 7 条就不再下沉输入栏**：条目少时面板长不到会盖住 hero 的高度，那趟 120px 位移纯属多余。判定用不带过滤词的完整列表条目数（与命令区共用模块级缓存），因此不会随用户打字过滤而抖；hero 淡出仍跟展开态本身走。
 - **外观设置里「侧边栏样式」下移到「主题」之后**：原先夹在「外观模式」与「界面主题」之间，现在排到主题色区段下方（页面末尾），`SETTINGS_SECTIONS` 的顺序同步调整以对齐设置搜索结果。
 - **工具栏里已激活 action 胶囊常驻底色**：紧跟权限/沙箱右侧的激活胶囊由「透明、hover 才上底色」改为常驻 `bg-accent/60`（hover 加深到 `bg-accent`）。它表示的是持续生效的状态，全透明时和旁边的普通工具栏按钮分不出来。多个 action 折叠后堆叠的图标容器由圆形改为圆角矩形（20px、`rounded-[7px]`、3px 内边距），`+n` 角标同步跟上。折叠态 popover 宽度跟随触发胶囊（`--radix-popover-trigger-width`），条目改用与未折叠胶囊完全一致的外观与关闭手势（h-7 / `rounded-lg` / `bg-accent/60`，图标 hover 变关闭键、整行可点），看起来就是把几枚胶囊竖着收纳了。
 - **命令区 skill 列表空态改为卡片**：「未找到匹配项」/「暂无可用的技能或场景」由一行灰字换成占满命令区宽度的虚线卡片（左侧圆形图标 + 右侧标题与提示，横排以免撑高命令区），新增 `SkillListEmpty` 组件与 `chat.slashPanel.emptyNoMatchHint` / `emptyNoSkillsHint` 两条文案（zh/en），`SkillListLabels` 随之新增两个必填字段。聊天侧命令面板与 dialog 侧 skill 选择器共用。
