@@ -13,10 +13,6 @@ export interface CommandPanelModelInput {
 	onClose: () => void;
 	onSelect: (skill: SkillInfo) => void;
 	onSelectConnector: (connector: ConnectorGridItem) => void;
-	/** 从面板里打开系统图片选择器。 */
-	onSelectImages: () => void;
-	/** 从面板里打开系统文件选择器。 */
-	onSelectFiles: () => void;
 	/** 触发词原文（含 `/`）。 */
 	filter: string;
 	cwd?: string;
@@ -32,16 +28,15 @@ export function useCommandPanelModel({
 	onClose,
 	onSelect,
 	onSelectConnector,
-	onSelectImages,
-	onSelectFiles,
 	filter,
 	cwd,
 	className,
 }: CommandPanelModelInput): CommandPanelModel {
 	const { t } = useTranslation("chat");
 	const normalizedFilter = filter.startsWith("/") ? filter.slice(1) : filter;
-	const { items } = useSkillList({ open, cwd, filter: normalizedFilter });
-	const { items: connectors, columns } = useConnectorGrid(open);
+	// 预取：命令区第一次展开时不必再等扫盘，避免与高度动画抢主线程。
+	const { items } = useSkillList({ open, cwd, filter: normalizedFilter, prefetch: true });
+	const { items: connectors, columns } = useConnectorGrid(open, true);
 	const actionBar = useInputActionBarModel();
 	const [activeIndex, setActiveIndex] = useState(0);
 	const panelRef = useRef<HTMLDivElement>(null);
@@ -122,35 +117,6 @@ export function useCommandPanelModel({
 		[items.length, t],
 	);
 
-	/**
-	 * 选图 / 选文件从输入卡片的工具栏移到了这里：它们与 skill、连接器同属
-	 * 「往输入框里添东西」，散在两处反而要多记一个位置。
-	 * 选完即关面板——系统选择器是模态的，用户此刻的意图已经完成。
-	 */
-	const commands = useMemo(
-		() => [
-			{
-				id: "add-image",
-				label: t("inputBar.toolbar.addImage"),
-				icon: "icon-[solar--gallery-linear]",
-				onSelect: () => {
-					onClose();
-					onSelectImages();
-				},
-			},
-			{
-				id: "attach-file",
-				label: t("inputBar.toolbar.attachFile"),
-				icon: "icon-[solar--paperclip-linear]",
-				onSelect: () => {
-					onClose();
-					onSelectFiles();
-				},
-			},
-		],
-		[onClose, onSelectFiles, onSelectImages, t],
-	);
-
 	const actions = useMemo(
 		() => [
 			...(actionBar.knowledge
@@ -185,7 +151,6 @@ export function useCommandPanelModel({
 			activeIndex,
 			connectors,
 			connectorColumns: columns,
-			commands,
 			actions,
 			labels,
 			panelRef: panelRef as RefObject<HTMLDivElement | null>,

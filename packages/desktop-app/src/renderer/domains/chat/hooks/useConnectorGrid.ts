@@ -35,13 +35,16 @@ function isConfigured(name: string, config: McpServerConfigData): boolean {
 	return missingRequiredSecrets(preset, config).length === 0;
 }
 
-/** 命令面板顶部宫格：用户已接入的内置连接器。 */
-export function useConnectorGrid(open: boolean): ConnectorGridModel {
+/**
+ * 命令区顶部宫格：用户已接入的内置连接器。
+ * `prefetch` 让它在展开前就把 mcp.json 读好——否则第一次展开时读盘与高度动画撞在一起。
+ */
+export function useConnectorGrid(open: boolean, prefetch = false): ConnectorGridModel {
 	const { t } = useTranslation("settings");
 	const [servers, setServers] = useState<Record<string, McpServerConfigData>>({});
 
 	useEffect(() => {
-		if (!open) return;
+		if (!open && !prefetch) return;
 		let cancelled = false;
 		void window.vetta.mcp
 			.get()
@@ -54,7 +57,7 @@ export function useConnectorGrid(open: boolean): ConnectorGridModel {
 		return () => {
 			cancelled = true;
 		};
-	}, [open]);
+	}, [open, prefetch]);
 
 	return useMemo(() => {
 		const items: ConnectorGridItem[] = [];

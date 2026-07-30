@@ -18,7 +18,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **斜杠面板重构为命令面板，主题槽位一分为二**：`chat.slashPanelView` 拆成 `chat.commandPanelView`（聊天侧，含连接器宫格与底部动作条）与 `chat.skillPickerView`（批量任务 / 自动化 dialog 侧，纯 skill 选择器）；theme-ui 的 `SlashPanelView` 及其 `SlashPanelViewProps` / `SlashPanelItemModel` / `SlashPanelLabels` / `SlashPanelSkillItem` / `SlashPanelClassNames` 一并删除，面板不再有「场景 / 技能」两段分区（合成单列）。覆盖该槽位的主题需要跟着改。
 - **输入卡片下方的动作条（知识检索 / 插件 input action）移入命令面板底部**：desktop 不再渲染 `InputActionBar`；已激活的开关改为在工具栏里紧跟执行模式（权限/沙箱）右侧显示（无底色无描边，点一下即关闭），避免面板关闭后激活态完全不可见。theme-ui 的 `InputActionBarView` 与 `chat.inputActionBar` surface 保留（官网 demo 仍在用），但对 desktop 已无效果——xianxia 主题里那条 `mx-auto w-[93%]` 因此不再影响客户端。
-- **选图 / 选附件按钮移入命令面板底部**：输入卡片工具栏只留「+」（唤出面板）、执行模式、模型与发送；插图与附件改为面板底部动作条左侧的一次性命令（点击即开系统选择器并关闭面板），与右侧可开关的知识检索 / 插件 action 用分隔线隔开。`InputBarToolbarProps` 的 `onSelectImages` / `onSelectFiles` 与 `InputBarLabels.toolbar.addImage` / `attachFile` 随之移除。
+- **工具栏按形态切换**：收缩形态下是「+」+ 执行模式（左）与模型 / 用量环 / 发送（右）；展开形态下执行模式、模型与发送一并收起，执行模式的位置让给「插图 / 附件」——命令区已占满上方，此时工具栏只服务于「往输入框里添东西」。命令区底部只保留可开关的知识检索 / 插件 action。
 ### Added
 
 - **订阅卡「升级套餐」外链按钮（ADR-0051）**：设置页 Vetta Go 订阅卡右上角新增按钮，`shell.openExternal` 跳官网 `/pricing` 完成购买。desktop 刻意不做站内支付——3DS 验证、银行跳转、PayPal 弹窗在 `BrowserWindow` 里均不可靠，支付闭环收敛在官网。theme-ui 的 `SubscriptionCardsViewModel` 新增可选 `actions.upgrade` / `labels.upgrade`（缺省不渲染，旧主题不受影响）。
@@ -37,7 +37,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **macOS 代码签名与公证接入**：`dist:mac` 检测到完整的签名凭据（`CSC_LINK`/`CSC_NAME` + `APPLE_TEAM_ID` + App Store Connect API Key 或 App 专用密码）时，自动开启 Developer ID 签名、hardened runtime（新增 `build/entitlements.mac.plist` 与 `build/entitlements.mac.inherit.plist`）与公证；DMG 随之退回两图标常规版式，不再打包「修复已损坏.app」、背景图也去掉「右键打开」提示。凭据一个都不设时行为与之前完全一致（未签名 + 修复助手），只设一部分会直接报错并列出缺项，避免产出「签了名但没公证」的半成品。证书申请与注入流程见 `docs/deploy/apple-code-signing.md`。
 - **多模态输入框：文本与 skill / 文件 / 图片胶囊同处一条文本流**：输入区由 `textarea` 换成 Lexical 编辑器，`/` 选中的 skill、`@` 引用的文件、粘贴或拖入的图片都成为行内原子胶囊，可插在句子任意位置（「先 `@skill:审查` 这个 `@/path/a.ts`，没问题再 `@skill:上传`」），不再是输入框上方的一排附件。触发符从「整个输入开头」放宽到词首；图片在输入框内显示为「图 N」胶囊，缩略图集中在输入卡片上方并带同号角标，用户气泡按同一形态回放。文本形态 `@skill:名字` / `@绝对路径` 既是发给模型的内容也是持久化格式，旧会话的行首前缀格式（`/skill:name` + `@path` 整行）仍能解析并归一呈现，重编辑回填与气泡渲染共用同一个解析器。
 
-- **命令面板是 InputBar 的一种形态，而非浮层**：命令区与编辑区同处一张输入卡片，`/` 或「+」展开时只是这张卡片长高（高度弹簧过渡），两者之间既没有接缝也没有分界线；收起即回到原来的一行形态。因此 `CommandPanelProps` 没有 `placement`——浮层形态只保留给 dialog 侧的 `SkillPickerPanel`。「+」按钮成为真正的开合开关（此前 mousedown 会先触发面板的click-outside 收起、紧接着的 click 又把它打开，导致按钮只能开不能关）。
+- **命令面板是 InputBar 的一种形态，而非浮层**：命令区与编辑区同处一张输入卡片，`/` 或「+」展开时只是这张卡片长高（高度弹簧过渡），两者之间既没有接缝也没有分界线；收起即回到原来的一行形态。命令区绝对定位、底边钉在卡片顶沿向上生长，因此会话页的消息列表不会被顶走。skill 列表与连接器在空闲时段预取并按 cwd 缓存——否则第一次展开要等扫盘，数据在动画途中到位会把高度目标反复重测，表现为「第一次卡一下、第二次就顺」。因此 `CommandPanelProps` 没有 `placement`——浮层形态只保留给 dialog 侧的 `SkillPickerPanel`。「+」按钮成为真正的开合开关（此前 mousedown 会先触发面板的click-outside 收起、紧接着的 click 又把它打开，导致按钮只能开不能关）。
 - **命令面板（Splash 完全体）**：`/` 或「+」唤出的面板顶部新增**已接入连接器宫格**——列出 mcp.json 里已添加、未禁用且必填密钥齐的内置连接器（canva / notion / figma / github / slack / gmail / google-calendar / google-drive），列数自适应以避免末行只剩单个（2→2、3→3、4→2、5/6→3、7→4）；点击插入 `@mcp:名字` 行内胶囊，与 skill 同为软引用，模型自行决定是否调用该 MCP。下方 skill 列表把场景与技能合成单列，按**调用次数 → 类别（内置 > 插件 > Vetta 原生 > 通用）→ 最近使用 → 名称**排序；调用次数取自 app-monitor 已落盘的 per-skill 统计（新增 IPC `vetta:app-monitor:get-prompt-ref-usage`）。item 高度 46px→32px 单行（图标 + 名称 + 来源标签 + 同行右侧描述），面板总高 320→420，宫格随内容滚动、只有头部与底部动作条固定；输入过滤词时隐藏宫格、键盘上下键只在列表内移动。
 ### Removed
 

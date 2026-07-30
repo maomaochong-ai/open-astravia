@@ -24,6 +24,8 @@ interface InputBarToolbarProps {
 	labels: Pick<InputBarLabels, "capsule" | "toolbar">;
 	onAbort: () => void;
 	onPlusClick: () => void;
+	onSelectFiles: () => void;
+	onSelectImages: () => void;
 	onSend: () => void;
 	slashOpen: boolean;
 }
@@ -38,6 +40,8 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 	labels,
 	onAbort,
 	onPlusClick,
+	onSelectFiles,
+	onSelectImages,
 	onSend,
 	slashOpen,
 }: InputBarToolbarProps): JSX.Element {
@@ -77,9 +81,30 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					/>
 				</span>
 				<div className="ml-1 h-4 w-px shrink-0 bg-border/70" />
-				<div className="min-w-0 shrink">
-					<ExecutionModeSelector />
-				</div>
+				{/*
+				 * 展开形态下这个位置让给「插图 / 附件」——命令区已经占满上方，
+				 * 此时执行模式、模型与发送都收起，工具栏只服务于「往输入框里添东西」。
+				 */}
+				{slashOpen ? (
+					<>
+						<InputBarToolbarButton
+							icon="icon-[solar--gallery-linear]"
+							title={labels.toolbar.addImage}
+							disabled={!hasSession}
+							onClick={onSelectImages}
+						/>
+						<InputBarToolbarButton
+							icon="icon-[solar--paperclip-linear]"
+							title={labels.toolbar.attachFile}
+							disabled={!hasSession}
+							onClick={onSelectFiles}
+						/>
+					</>
+				) : (
+					<div className="min-w-0 shrink">
+						<ExecutionModeSelector />
+					</div>
+				)}
 				<ActiveActionCapsules items={activeActions} removeHint={labels.capsule.removeDefault} />
 			</div>
 
@@ -92,11 +117,13 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					.join(" ")}
 				data-theme-surface-root="chat.inputBarToolbarRight"
 			>
-				<div className="min-w-0 shrink">
-					<ModelSelector />
-				</div>
+				{!slashOpen && (
+					<div className="min-w-0 shrink">
+						<ModelSelector />
+					</div>
+				)}
 				<ContextRing className="mr-1 shrink-0" />
-				{isStreaming && !isEmpty ? (
+				{slashOpen ? null : isStreaming && !isEmpty ? (
 					<motion.button
 						type="button"
 						onClick={onSend}

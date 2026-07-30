@@ -23,14 +23,6 @@ export interface CommandPanelLabels extends SkillListLabels {
 	connectorsSection: string;
 }
 
-/** 一次性命令（点开系统选择器等），与可开关的 action 区分开。 */
-export interface CommandPanelCommandItem {
-	id: string;
-	label: string;
-	icon: string;
-	onSelect: () => void;
-}
-
 export interface CommandPanelActionItem {
 	id: string;
 	label: string;
@@ -48,7 +40,6 @@ export interface CommandPanelProps {
 	activeIndex: number;
 	connectors: readonly ConnectorGridItem[];
 	connectorColumns: number;
-	commands: readonly CommandPanelCommandItem[];
 	actions: readonly CommandPanelActionItem[];
 	labels: CommandPanelLabels;
 	panelRef: React.RefObject<HTMLDivElement | null>;
