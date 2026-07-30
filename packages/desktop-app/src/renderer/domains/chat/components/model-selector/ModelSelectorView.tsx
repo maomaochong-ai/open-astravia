@@ -156,7 +156,8 @@ export function ModelSelectorView({
 						asChild
 						align="start"
 						className={cn(
-							"w-[min(19rem,calc(100vw-2rem))] min-w-[200px] max-w-[19rem] overflow-visible p-0",
+							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
+						"w-[min(19rem,calc(100vw-2rem))] min-w-[200px] max-w-[19rem] overflow-visible bg-background p-0",
 							classNames?.content,
 						)}
 						style={{ animation: "none" }}
@@ -189,7 +190,7 @@ export function ModelSelectorView({
 												onClick={handleSearchClick}
 												placeholder={labels.searchPlaceholder}
 												aria-label={labels.searchPlaceholder}
-												className="h-7 w-full rounded-md border border-border/60 bg-background/70 pl-7 pr-7 text-[11px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50"
+												className="h-7 w-full rounded-md border border-border/60 pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
 											/>
 											{searchQuery && (
 												<button
@@ -219,7 +220,7 @@ export function ModelSelectorView({
 														<DropdownMenuSubContent
 															forceMount
 															asChild
-															className="min-w-[130px] overflow-visible p-0"
+															className="min-w-[130px] overflow-visible bg-background p-0"
 															style={{ animation: "none" }}
 														>
 															<motion.div
