@@ -451,6 +451,16 @@ textarea:disabled,
 	border-right-width: 1px;
 }
 
+/* 经典下顶栏从 y=0 起算（悬浮时被 AppFrame 的 p-2 顶下去 8px），h-11 居中后
+   比红绿灯高了一截。补 8px 上内边距把内容区压到 8~44，中线落在 26px，
+   正好对上红绿灯（trafficLightPosition y=20 + 12px 直径的一半）。
+   padding 记在 h-11 元素自身，drag-region 仍覆盖整条顶栏。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-top-bar {
+	padding-top: 0.5rem;
+}
+
 /* macOS 经典侧边栏用系统原生毛玻璃（窗口已带 vibrancy: "sidebar"，见 main/window-manager.ts）。
    放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
    ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
