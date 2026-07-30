@@ -5,7 +5,11 @@ export interface SkillListLabels {
 	/** source → 展示用的小标签（内置 / 插件 / 场景 …）；不传则不渲染这枚 badge。 */
 	sourceLabel?: (source: string, type: SkillInfo["type"]) => string;
 	emptyNoMatch: string;
+	/** 空态卡片里的第二行提示（有过滤词但没命中）。 */
+	emptyNoMatchHint: string;
 	emptyNoSkills: string;
+	/** 空态卡片里的第二行提示（本来就没有可用条目）。 */
+	emptyNoSkillsHint: string;
 }
 
 export interface SkillListProps {

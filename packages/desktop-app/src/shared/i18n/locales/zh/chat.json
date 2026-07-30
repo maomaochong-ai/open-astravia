@@ -489,7 +489,9 @@
 	},
 	"slashPanel": {
 		"emptyNoMatch": "未找到匹配项",
+		"emptyNoMatchHint": "换个关键词试试，或直接输入你的需求。",
 		"emptyNoSkills": "暂无可用的技能或场景",
+		"emptyNoSkillsHint": "去能力广场安装技能或场景后，这里就能直接调用。",
 		"header": "选择场景或技能",
 		"resultCount": "{{count}} 个结果",
 		"scenesSection": "场景",

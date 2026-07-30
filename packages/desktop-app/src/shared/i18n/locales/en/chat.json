@@ -489,7 +489,9 @@
 	},
 	"slashPanel": {
 		"emptyNoMatch": "No matches found",
+		"emptyNoMatchHint": "Try another keyword, or just type your request.",
 		"emptyNoSkills": "No skills or scenes available",
+		"emptyNoSkillsHint": "Install a skill or scene from the ability market to call it here.",
 		"header": "Select a scene or skill",
 		"resultCount": "{{count}} results",
 		"scenesSection": "Scenes",
