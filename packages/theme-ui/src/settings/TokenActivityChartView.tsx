@@ -178,7 +178,7 @@ export function TokenActivityChartView({
 															key={row}
 															className={cn(
 																"aspect-square w-full rounded-[2px] transition-colors",
-																isFilled ? fillClass : "bg-muted/50",
+																isFilled ? fillClass : "bg-muted",
 															)}
 														/>
 													);

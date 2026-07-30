@@ -773,10 +773,7 @@
   "colorThemes": {
     "mono": "Default",
     "default": "Classic",
-    "emerald": "Emerald",
-    "sand": "Coral",
-    "slate": "Slate",
-    "voltage": "Voltage"
+    "sand": "Coral"
   },
   "personas": {
     "default": {
@@ -881,6 +878,11 @@
   "cursorDefaultHint": "Use the system native mouse cursor.",
   "cursorStoatTitle": "Stoat",
   "cursorStoatHint": "Use the built-in white stoat cursor style.",
+  "section_appearance-sidebar": "Sidebar Style",
+  "sidebarStyleClassicTitle": "Classic",
+  "sidebarStyleClassicHint": "Sidebar sits flush against the window edge, with a single divider on its right.",
+  "sidebarStyleFloatingTitle": "Floating",
+  "sidebarStyleFloatingHint": "Sidebar floats with padding, rounded corners and a border.",
   "section_account-profile": "Profile",
   "section_team-management": "Team Management",
   "section_team-my-teams": "My Teams",

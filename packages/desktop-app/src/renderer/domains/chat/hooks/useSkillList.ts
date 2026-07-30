@@ -77,37 +77,47 @@ export function useSkillList({
 	const [loading, setLoading] = useState(false);
 
 	// 预取：不进入 loading 态，也不覆盖已展开时的实时结果。
+	// 刻意不等 requestIdleCallback：冷启动那几秒主线程被插件与主题占满，idle 会一路拖到
+	// 超时才跑，预取赶不上第一次展开就等于没预取。IPC 本身是异步的，挂载即发起不阻塞渲染。
 	useEffect(() => {
 		if (!prefetch || open || cache.has(cwd ?? "")) return;
-		return whenIdle(() => {
-			void load(cwd).catch(() => undefined);
-		});
+		void load(cwd).catch(() => undefined);
 	}, [cwd, open, prefetch]);
 
 	useEffect(() => {
 		if (!open) return;
 		let cancelled = false;
+		const apply = (data: SkillListData): void => {
+			if (cancelled) return;
+			setSkills(data.skills);
+			setUsage(data.usage);
+		};
+		const refresh = (): void => {
+			void load(cwd)
+				.then(apply)
+				.catch((error) => {
+					console.error("[useSkillList] load failed:", error);
+				})
+				.finally(() => {
+					if (!cancelled) setLoading(false);
+				});
+		};
 		const seeded = cache.get(cwd ?? "");
-		if (seeded) {
-			setSkills(seeded.skills);
-			setUsage(seeded.usage);
-		} else {
+		if (!seeded) {
 			setLoading(true);
+			refresh();
+			return () => {
+				cancelled = true;
+			};
 		}
-		void load(cwd)
-			.then((data) => {
-				if (cancelled) return;
-				setSkills(data.skills);
-				setUsage(data.usage);
-			})
-			.catch((error) => {
-				console.error("[useSkillList] load failed:", error);
-			})
-			.finally(() => {
-				if (!cancelled) setLoading(false);
-			});
+		setSkills(seeded.skills);
+		setUsage(seeded.usage);
+		// 已有缓存时把「反映磁盘增删」的那次重拉推到空闲：展开那一刻重拉会让 setState
+		// 落在高度动画中间，几十行重渲染足以把动画顿住。
+		const cancelIdle = whenIdle(refresh);
 		return () => {
 			cancelled = true;
+			cancelIdle();
 		};
 	}, [cwd, open]);
 

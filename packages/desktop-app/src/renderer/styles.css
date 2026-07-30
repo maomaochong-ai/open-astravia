@@ -40,6 +40,8 @@
 	--destructive-foreground: rgb(0, 0, 0);
 	--border: rgb(42, 45, 56);
 	--input: rgb(48, 51, 64);
+	/* AI 输入栏底色：深色跟随 card，浅色为纯白 */
+	--input-bar-bg: rgb(26, 28, 36);
 	--ring: rgb(129, 132, 248);
 	--chart-1: rgb(255, 174, 4);
 	--chart-2: rgb(38, 113, 244);
@@ -101,6 +103,7 @@
 	--destructive-foreground: rgb(255, 255, 255);
 	--border: rgb(230, 230, 230);
 	--input: rgb(230, 230, 230);
+	--input-bar-bg: rgb(255, 255, 255);
 	--ring: rgb(79, 70, 229);
 	--chart-1: rgb(255, 174, 4);
 	--chart-2: rgb(45, 98, 239);
@@ -433,6 +436,67 @@ textarea:disabled,
 .sidebar-surface > *:not(.absolute) {
 	position: relative;
 	z-index: 1;
+}
+
+/* 侧边栏样式「经典」：抵消 AppFrame 的 p-2，让常驻侧边栏贴住窗口左/上/下边，
+   并去掉圆角与四周边框，只保留右侧一条分隔线。窄屏 overlay 侧边栏不受影响。
+   取值见 shared/theme/sidebar-style.ts。 */
+:root[data-sidebar-style="classic"] .sidebar-dock {
+	margin: -0.5rem 0 -0.5rem -0.5rem;
+}
+
+:root[data-sidebar-style="classic"] .sidebar-dock .sidebar-surface {
+	border-radius: 0;
+	border-width: 0;
+	border-right-width: 1px;
+}
+
+/* macOS 经典侧边栏用系统原生毛玻璃（窗口已带 vibrancy: "sidebar"，见 main/window-manager.ts）。
+   放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
+   ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
+   只有侧边栏那一条透出桌面。 */
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-frame {
+	background-color: transparent;
+}
+
+/* 侧边栏不全透：在毛玻璃上再铺一层半透明 --background，压住桌面壁纸的杂色，
+   同时保留 vibrancy 的通透感。浓淡调 --sidebar-vibrancy-tint 即可。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: color-mix(
+		in srgb,
+		var(--background) var(--sidebar-vibrancy-tint, 60%),
+		transparent
+	);
+	transition: background-color 240ms ease;
+}
+
+/* 浅色的 --background 是纯白，同样的浓度压得比深色狠得多，透明感几乎没了，
+   所以单独调淡。相应地毛玻璃底噪会吃掉 bg-accent（rgb(235,235,235)）那点对比，
+   在侧边栏子树内把 --accent 换成更重的中性色，导航指示条、会话行选中与 hover 一起生效。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	--sidebar-vibrancy-tint: 35%;
+	--accent: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* 明暗切换期间先遮住原生 vibrancy（它由主进程翻转，动不了也不进 View Transition 快照，
+   否则会比页面动画早一步瞬变）；属性移除后按上面的 240ms 淡回半透明。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme-transition]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: var(--background);
+	transition: none;
+}
+
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
+	content: "";
+	position: absolute;
+	inset: -0.5rem -0.5rem -0.5rem 0;
+	z-index: -1;
+	background-color: var(--background);
 }
 
 .project-list-containment {

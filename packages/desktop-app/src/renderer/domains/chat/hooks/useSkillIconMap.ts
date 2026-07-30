@@ -42,13 +42,18 @@ async function loadSkillIconMap(token: string | null): Promise<SkillIconMap> {
 	return map;
 }
 
-/** enabled 为 false 时不发起加载：命令区没展开过就不该为图标去拉目录。 */
-export function useSkillIconMap(enabled: boolean): SkillIconMap {
+/**
+ * enabled 为 false 时不发起加载：命令区没展开过就不该为图标去拉目录。
+ *
+ * `prefetch` 为真时提前拉：目录解析要打网络，等展开那一刻才发起的话，结果会在高度动画
+ * 进行中才到位，整列图标同时换图（远程 `<img>` 首次还要走网络与解码），动画就顿在那里。
+ */
+export function useSkillIconMap(enabled: boolean, prefetch = false): SkillIconMap {
 	const token = useAtomValue(authTokenAtom);
 	const [map, setMap] = useState<SkillIconMap>(EMPTY_ICON_MAP);
 
 	useEffect(() => {
-		if (!enabled) return;
+		if (!enabled && !prefetch) return;
 		let alive = true;
 		const cacheKey = token ?? "";
 		let pending = iconMapCache.get(cacheKey);
@@ -62,7 +67,7 @@ export function useSkillIconMap(enabled: boolean): SkillIconMap {
 		return () => {
 			alive = false;
 		};
-	}, [enabled, token]);
+	}, [enabled, prefetch, token]);
 
 	return map;
 }

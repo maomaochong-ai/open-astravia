@@ -21,6 +21,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **工具栏按形态切换**：收缩形态下是「+」+ 执行模式（左）与模型 / 用量环 / 发送（右）；展开形态下执行模式、模型与发送一并收起，执行模式的位置让给「插图 / 附件」——命令区已占满上方，此时工具栏只服务于「往输入框里添东西」。命令区底部只保留可开关的知识检索 / 插件 action。
 ### Added
 
+- **外观设置新增「侧边栏样式」**：「经典」（默认）让侧边栏贴紧窗口左侧，去掉圆角与四周边框、只保留右侧一条分隔线；「悬浮」是原来的留白 + 圆角 + 边框形态。偏好存 localStorage `vetta-sidebar-style`，首帧前写到 `<html data-sidebar-style>`，避免启动时闪一下悬浮态。窄屏 overlay 侧边栏不受影响，仍是圆角浮层。macOS 下经典侧边栏透出系统原生毛玻璃（窗口本就带 `vibrancy: "sidebar"`，此前被整帧底色盖住）：整帧不上底色、侧边栏改铺一层 60% 的半透明 `--background`（压住壁纸杂色又保留通透感），主内容区用 `::before` 溢出 8px 补回不透明底色，因此布局与其它平台完全一致，只有侧边栏那一条是毛玻璃。`<html data-platform>` 由 `applyPlatformAttribute()` 写入，供仅某平台生效的样式选择。
 - **侧边栏「更多」菜单新增设置直达项**：模型设置 / Agent 设置 / 外观，分别跳 `/settings/models`、`/settings/context`、`/settings/appearance`。`SidebarNavItem` 新增可选 `settingsTab`（与 `path` 互斥）。
 - **订阅卡「升级套餐」外链按钮（ADR-0051）**：设置页 Vetta Go 订阅卡右上角新增按钮，`shell.openExternal` 跳官网 `/pricing` 完成购买。desktop 刻意不做站内支付——3DS 验证、银行跳转、PayPal 弹窗在 `BrowserWindow` 里均不可靠，支付闭环收敛在官网。theme-ui 的 `SubscriptionCardsViewModel` 新增可选 `actions.upgrade` / `labels.upgrade`（缺省不渲染，旧主题不受影响）。
 - **全局统一的加载指示器 `Spin`（`@vetta/ui`）**：两颗小球黏连、分离、整体旋转的「果冻」效果，黏连靠 SVG 高斯模糊 + `feColorMatrix` 拉伸 alpha 实现。颜色取 `currentColor`，跟随容器文字色，用主题类切换即可（`<Spin className="text-primary" />`）；尺寸只开 `sm`/`md`/`lg` 三档，避免各处随手写像素值。keyframes 经 React 19 的 `<style href precedence>` 全页去重只插一次，SVG filter id 用 `useId()` 隔离，同页多个实例不串扰；`prefers-reduced-motion` 下停在两球分离的静止态而非塌成一个点。授权等待浮层与引导页登录步已换用，后续需要 loading 的地方统一从 `@vetta/ui` 引。
@@ -42,6 +43,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **命令面板（Splash 完全体）**：`/` 或「+」唤出的面板顶部新增**已接入连接器宫格**——列出 mcp.json 里已添加、未禁用且必填密钥齐的内置连接器（canva / notion / figma / github / slack / gmail / google-calendar / google-drive），列数自适应以避免末行只剩单个（2→2、3→3、4→2、5/6→3、7→4）；点击插入 `@mcp:名字` 行内胶囊，与 skill 同为软引用，模型自行决定是否调用该 MCP。下方 skill 列表把场景与技能合成单列，按**调用次数 → 类别（内置 > 插件 > Vetta 原生 > 通用）→ 最近使用 → 名称**排序；调用次数取自 app-monitor 已落盘的 per-skill 统计（新增 IPC `vetta:app-monitor:get-prompt-ref-usage`）。item 高度 46px→32px 单行（图标 + 名称 + 来源标签 + 同行右侧描述），面板总高 320→420，宫格随内容滚动、只有头部与底部动作条固定；输入过滤词时隐藏宫格、键盘上下键只在列表内移动。
 ### Removed
 
+- **「电光」/「翠玉」/「青石」三个主题色**：`voltage.ts` / `emerald.ts` / `slate.ts` 与四处 `COLOR_THEME_LABEL_KEYS`、zh/en `colorThemes.*` 文案一并删除，主题色只剩「默认」「珊瑚」「经典」三档（引导页主题选择随之从 2×3 变一排三列）。已选中被删主题的用户经 `resolveThemeId` 回落到默认主题 `mono`；`github → slate` 的历史别名同时移除（老 id 一样回落默认）。
+- **设置页的骨架屏与块级入场动画**：`SettingsContentLoadingView`、`SettingsTabEnter` / `SettingsEnterItem` / `useSettingsEnterDelay` 与 `SETTINGS_ENTER_*` 常量从 theme-ui 删除（覆盖设置页排版的主题若引用了它们需要跟着改），`settings-highlight.css` 里的 `settings-element-enter` CSS 兜底动画一并移除。设置 tab 的 `Suspense fallback` 改为 `null`，`SettingSection` / `SettingsPageShellView` / 账号页的标题块换回普通 `div`（`data-setting-section-highlight-target` 等锚点属性不变，跳转高亮不受影响）。
+- **设置 / 自动化 / 批量任务的切页骨架**：三个路由单独设 `pendingComponent: () => null`，pending 期间留空白、内容就绪后直出，不再闪一屏 `RouteContentLoadingView` 脉冲块。其余路由仍保留全局 `defaultPendingComponent`。
 - **新会话页的场景轮播 / 技能徽章 / 引导词三个区块**：欢迎页只保留问候语、模式切换与输入栏。随之删除 `useNewSessionResources`（本地 skill + 市场场景 + 安装清单的拉取）、场景点击安装链路、`GuidingWords` / `SkillBadgeRow` / `SceneCarousel` 及 `useGuidingWordsModel`，以及主题槽位 `chat.newSessionSceneCarousel` / `chat.newSessionSceneCard` / `chat.newSessionSkillBadgeRow` 在 desktop 侧的声明（theme-ui 的组件与契约保留，主题覆盖它们对客户端不再有效果）。`chat.newSession` 的 `sceneCarouselNext` / `sceneCarouselPrev` / `sceneInstallPrompt` / `skillScrollLeft` / `skillScrollRight` 文案一并删除。
 - **设置 → 新会话页**：整个 tab（含「页面元素」三个开关）与 `NewSessionSettings*` / `useNewSessionSettingsModel` 删除，`SettingsTab` 不再有 `newSession`；`newSessionPageVisibilityAtom` 与 desktop-config 的 `newSessionPage` 字段（主进程 `normalizeNewSessionPage`、preload 类型）一并移除。已有 `desktop-config.json` 里的该字段会在下次写入时被丢弃。
 - **侧边栏「更多」里的「场景」入口**：`/scenes` 路由本身保留，只是不再从侧边栏进入。
@@ -52,6 +56,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **进入应用后第一次展开命令面板会顿一下再继续展开**：`height: 0 → auto` 的弹簧全程跑在主线程，首次展开时有三处异步在动画中间才到位——skill 列表的预取挂在 `requestIdleCallback`（冷启动主线程被占满，一路拖到 2s 超时才发起，赶不上第一次展开）、缓存命中时展开那一刻仍无条件重拉一次、图标目录（要打网络）只在 `open` 时才开始加载。数据一到就是几十行重渲染加整列远程 `<img>` 换图，动画因此顿住。现在 skill 列表预取挂载即发起、图标目录同样提前预热，缓存命中时的「反映磁盘增删」重拉推到空闲再做。
 - **Windows 安装版启动后只有托盘、主窗口不显示**：版本启动器曾用 `HideWindow: true` 拉起 Electron，会写入 `STARTF_USESHOWWINDOW` + `SW_HIDE`，导致进程第一次 `ShowWindow` 被系统强制隐藏（日志里已有 `show`，但 HWND 无 `WS_VISIBLE`）。去掉启动器 `HideWindow`；主进程 `revealMainWindow` 在 Windows 上再 show 一次，兼容尚未替换的旧启动器。
 - **输入栏「图像生成」等 badge 时有时无**：`activeToolNamesAtom` 只在 `openSession` 时用 `getState` 取一次快照，而 `generate_image` 是 image-gen 插件 activate 后才动态注册的。冷启动恢复会话时会话创建早于插件就绪，那个会话的 `requiresActiveTool` 闸门就一直把 badge 挡住。现在订阅 runtime 新增的 `active_tools_update` 事件刷新该 atom，并在 `session.subscribe` 时回放一次当前工具集，堵住 getState 与 subscribe 之间的丢事件窗口。
 - **展开态的「插图 / 附件」点不出文件选择器**：命令区的 click-outside 走 mousedown，会在 click 之前把面板连同这两个按钮一起卸载，click 因此落空。两个按钮加 `data-command-panel-keep-open`，与「+」一样被 click-outside 跳过。
@@ -66,6 +71,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **外观设置里「侧边栏样式」下移到「主题」之后**：原先夹在「外观模式」与「界面主题」之间，现在排到主题色区段下方（页面末尾），`SETTINGS_SECTIONS` 的顺序同步调整以对齐设置搜索结果。
 - **工具栏里已激活 action 胶囊常驻底色**：紧跟权限/沙箱右侧的激活胶囊由「透明、hover 才上底色」改为常驻 `bg-accent/60`（hover 加深到 `bg-accent`）。它表示的是持续生效的状态，全透明时和旁边的普通工具栏按钮分不出来。多个 action 折叠后堆叠的图标容器由圆形改为圆角矩形（20px、`rounded-[7px]`、3px 内边距），`+n` 角标同步跟上。折叠态 popover 宽度跟随触发胶囊（`--radix-popover-trigger-width`），条目改用与未折叠胶囊完全一致的外观与关闭手势（h-7 / `rounded-lg` / `bg-accent/60`，图标 hover 变关闭键、整行可点），看起来就是把几枚胶囊竖着收纳了。
 - **命令区 skill 列表空态改为卡片**：「未找到匹配项」/「暂无可用的技能或场景」由一行灰字换成占满命令区宽度的虚线卡片（左侧圆形图标 + 右侧标题与提示，横排以免撑高命令区），新增 `SkillListEmpty` 组件与 `chat.slashPanel.emptyNoMatchHint` / `emptyNoSkillsHint` 两条文案（zh/en），`SkillListLabels` 随之新增两个必填字段。聊天侧命令面板与 dialog 侧 skill 选择器共用。
 - **新会话页命令区展开时输入栏整体下移 120px**：命令区向上生长会把视觉重心整体抬起、下方留出大片空白，现在输入栏随展开/收起沿同一条弹簧（`stiffness 420 / damping 34`）平移，与面板一起动。`InputBarProps` 新增可选 `onExpandedChange`（仅新会话页传），会话页不受影响。展开期间 hero（模式切换 + 吉祥物）整块淡出并禁用命中——命令区盖在 hero 上时，这两个元素会浮在面板前面挡住列表。

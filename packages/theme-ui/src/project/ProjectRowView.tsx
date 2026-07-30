@@ -51,7 +51,7 @@ export function ProjectRowView({
 			ref={rowRef}
 			className={cn(
 				"group flex w-full items-center gap-2 rounded-lg px-2.5 py-[6px] text-left transition-colors duration-100",
-				isActive ? "bg-primary/15 text-foreground" : "hover:bg-accent/50",
+				isActive ? "bg-accent text-foreground" : "hover:bg-accent/50",
 			)}
 			title={projectCwd}
 			onContextMenu={onOpenContextMenu}

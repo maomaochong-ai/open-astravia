@@ -1,5 +1,4 @@
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
-import { SettingsContentLoadingView, SettingsTabEnter } from "@vetta/theme-ui/settings";
 import type { SettingsTab } from "@shared/store/atoms";
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from "react";
 import { SettingsPageView } from "./SettingsPageView";
@@ -66,11 +65,11 @@ export function SettingsPage(): JSX.Element {
 	return (
 		<SettingsPageView
 			content={
-				<Suspense fallback={<SettingsContentLoadingView />}>
-					{/* key=tab：切换侧栏时重挂载，触发 SettingsEnterItem stagger 与 CSS 兜底入场 */}
-					<SettingsTabEnter key={activeTab} className="settings-tab-enter w-full min-h-0">
+				<Suspense fallback={null}>
+					{/* key=tab：切换侧栏时重挂载，避免不同 tab 复用同一组件实例的残留状态 */}
+					<div key={activeTab} className="w-full min-h-0">
 						<Content />
-					</SettingsTabEnter>
+					</div>
 				</Suspense>
 			}
 			contentSurfaceRootClassName={contentSurface?.rootClassName}
