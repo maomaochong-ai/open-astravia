@@ -1,29 +1,3 @@
-/*
- * 设置页块级入场（DESIGN.md §5.1：opacity + y 8→0，duration ≤ 0.5s）。
- * - SettingSection / SettingsPageShell 标题走 SettingsEnterItem（motion + stagger context）
- * - 其它页面根子节点（裸 h1、自定义卡片区等）用 CSS 兜底，避免遗漏
- */
-@keyframes settings-element-enter {
-	from {
-		opacity: 0;
-		transform: translateY(8px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-.settings-tab-enter > * > *:not([data-settings-enter-item]) {
-	animation: settings-element-enter 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.04s both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.settings-tab-enter > * > *:not([data-settings-enter-item]) {
-		animation: none;
-	}
-}
-
 .setting-section-breathe {
 	position: relative;
 	border-radius: 0.75rem;

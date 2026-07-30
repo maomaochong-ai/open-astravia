@@ -152,7 +152,6 @@ export type {
 	SettingsAiAssistDialogViewProps,
 } from "./SettingsAiAssistDialogView";
 export { SettingsAiAssistDialogView } from "./SettingsAiAssistDialogView";
-export { SettingsContentLoadingView } from "./SettingsContentLoadingView";
 export {
 	CheckboxField,
 	InputField,
@@ -176,16 +175,6 @@ export type {
 	SubscriptionWindowViewModel,
 } from "./SubscriptionCardsView";
 export { SubscriptionCardsView } from "./SubscriptionCardsView";
-export type { SettingsEnterItemProps } from "./settingsEnter";
-export {
-	SETTINGS_ENTER_DELAY_CHILDREN,
-	SETTINGS_ENTER_DURATION,
-	SETTINGS_ENTER_EASE,
-	SETTINGS_ENTER_STAGGER,
-	SettingsEnterItem,
-	SettingsTabEnter,
-	useSettingsEnterDelay,
-} from "./settingsEnter";
 export type {
 	TeamDetailViewData,
 	TeamDetailViewLabels,
