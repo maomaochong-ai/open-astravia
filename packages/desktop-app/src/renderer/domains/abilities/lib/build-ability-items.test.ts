@@ -52,10 +52,11 @@ function member(overrides: Partial<AbilityMember> & Pick<AbilityMember, "type" |
 	return { exists: true, name: "", icon: "", version: "", ...overrides };
 }
 
+/** id 必须与 buildMarketAbilityId 一致（`kind:sourceId:type:slug`），否则 bundle 成员认领不到。 */
 function installedSkill(slug: string): AbilityItem {
 	return {
 		type: "skill",
-		id: `skill:${slug}`,
+		id: `server:server:skill:${slug}`,
 		slug,
 		catalogSource: { kind: "server", id: "server" },
 		title: slug,
@@ -231,10 +232,15 @@ describe("buildMcpAbilities", () => {
 			},
 		};
 
-		const item = buildMcpAbilities([ability], createState(), t).find((candidate) => candidate.slug === "notion");
+		// 同 slug 的内置预设也在列表里（且排在前面），必须按 catalogId 取市场那一条
+		const item = buildMcpAbilities([ability], createState(), t).find(
+			(candidate) => candidate.id === "server:server:mcp:notion",
+		);
 
+		// 与内置 notion 预设撞名，运行时 key 会被限定为 `notion--<hash>`
+		expect(item?.serverName).toMatch(/^notion--[a-f0-9]{8}$/);
 		expect(item?.preset).toMatchObject({
-			name: "notion",
+			name: item?.serverName,
 			browserAuth: true,
 			secrets: [],
 		});
