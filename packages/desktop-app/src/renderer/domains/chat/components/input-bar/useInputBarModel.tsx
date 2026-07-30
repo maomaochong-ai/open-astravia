@@ -98,6 +98,7 @@ export function useInputBarModel({
 	onAbort,
 	onSendQueued,
 	cwdOverride,
+	onExpandedChange,
 }: InputBarProps): InputBarModel {
 	const { t } = useTranslation("chat");
 	/**
@@ -204,6 +205,10 @@ export function useInputBarModel({
 	const atOpen = trigger?.kind === "at" && dismissedTriggerRef.current !== `@${trigger.query}`;
 	const slashFilter = trigger?.kind === "slash" ? `/${trigger.query}` : "";
 	const atFilter = trigger?.kind === "at" ? `@${trigger.query}` : "";
+
+	useEffect(() => {
+		onExpandedChange?.(slashOpen);
+	}, [onExpandedChange, slashOpen]);
 
 	useEffect(() => {
 		if (sandboxPermission) setDrawerActiveTab("sandbox-permission");

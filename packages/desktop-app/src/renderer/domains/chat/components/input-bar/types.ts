@@ -18,6 +18,11 @@ export interface InputBarProps {
 	 * 把该项目的 cwd 传进来：InputBar 把它视为「有会话」、@ 文件面板用它作为根目录。
 	 */
 	cwdOverride?: string;
+	/**
+	 * 命令区展开 / 收起时回调。命令区向上生长，宿主可以据此腾出空间
+	 * （新会话页把整条输入栏下移，避免下方留白过大）。
+	 */
+	onExpandedChange?: (expanded: boolean) => void;
 }
 
 export interface InputBarLabels {

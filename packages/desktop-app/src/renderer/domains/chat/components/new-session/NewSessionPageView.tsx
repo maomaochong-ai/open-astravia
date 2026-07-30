@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { cn } from "@shared/lib/utils";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { NewSessionPageLayoutView } from "@vetta/theme-ui/chat";
@@ -6,14 +7,21 @@ import { NewSessionHero } from "./NewSessionHero";
 import { InputBar } from "../InputBar";
 import { SessionDropZone } from "../SessionDropZone";
 
+// 与命令区自身的高度生长同一条弹簧，两者一起动才不显得输入栏在「追」面板。
+const PANEL_SHIFT = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.7 };
+/** 命令区展开时输入栏下移的距离：面板向上生长，下方留白同步收掉。 */
+const PANEL_SHIFT_Y = 120;
+
 interface NewSessionPageViewProps {
 	avatarAutoplay: boolean;
 	className?: string;
+	commandPanelExpanded: boolean;
 	cwd: string;
 	greetingTitle: string;
 	isShort: boolean;
 	mounted: boolean;
 	onAbort: () => Promise<void>;
+	onCommandPanelExpandedChange: (expanded: boolean) => void;
 	onSend: () => Promise<void>;
 	subtitle: string;
 }
@@ -21,11 +29,13 @@ interface NewSessionPageViewProps {
 export function NewSessionPageView({
 	avatarAutoplay,
 	className,
+	commandPanelExpanded,
 	cwd,
 	greetingTitle,
 	isShort,
 	mounted,
 	onAbort,
+	onCommandPanelExpandedChange,
 	onSend,
 	subtitle,
 }: NewSessionPageViewProps): JSX.Element {
@@ -58,7 +68,19 @@ export function NewSessionPageView({
 					subtitle={subtitle}
 				/>
 			}
-			inputBar={<InputBar onSend={onSend} onAbort={onAbort} cwdOverride={cwd} />}
+			inputBar={
+				<motion.div
+					animate={{ y: commandPanelExpanded ? PANEL_SHIFT_Y : 0 }}
+					transition={PANEL_SHIFT}
+				>
+					<InputBar
+						onSend={onSend}
+						onAbort={onAbort}
+						cwdOverride={cwd}
+						onExpandedChange={onCommandPanelExpandedChange}
+					/>
+				</motion.div>
+			}
 		/>
 	);
 }

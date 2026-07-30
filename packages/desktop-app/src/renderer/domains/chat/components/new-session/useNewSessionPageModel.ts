@@ -29,11 +29,14 @@ import { useShortViewport } from "./useShortViewport";
 
 interface NewSessionPageModel {
 	avatarAutoplay: boolean;
+	/** 命令区（`/` 或「+」展开）是否打开：打开时输入栏整体下移，补上下方留白。 */
+	commandPanelExpanded: boolean;
 	cwd: string;
 	greetingTitle: string;
 	isShort: boolean;
 	mounted: boolean;
 	onAbort: () => Promise<void>;
+	onCommandPanelExpandedChange: (expanded: boolean) => void;
 	onSend: () => Promise<void>;
 	subtitle: string;
 }
@@ -54,6 +57,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	// Hero 首帧即挂载（仅用 opacity 入场），避免 idle 延迟插入导致输入栏被顶动。
 	const [mounted, setMounted] = useState(false);
 	const [avatarAutoplay, setAvatarAutoplay] = useState(false);
+	const [commandPanelExpanded, setCommandPanelExpanded] = useState(false);
 	const setSelectedSkill = useSetAtom(selectedSkillAtom);
 	const setInputValue = useSetAtom(inputValueAtom);
 	const setAttachedImages = useSetAtom(attachedImagesAtom);
@@ -155,11 +159,13 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 
 	return {
 		avatarAutoplay,
+		commandPanelExpanded,
 		cwd: decodedCwd,
 		greetingTitle,
 		isShort,
 		mounted,
 		onAbort: abortMessage,
+		onCommandPanelExpandedChange: setCommandPanelExpanded,
 		onSend: handleSend,
 		subtitle: i18n.t("chat:newSession.subtitle"),
 	};
