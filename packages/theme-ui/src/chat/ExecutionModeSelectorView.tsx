@@ -52,7 +52,7 @@ export function ExecutionModeSelectorView({
 							"no-drag flex h-7 max-w-full min-w-0 items-center gap-1 rounded-lg px-1.5 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40 @[22rem]:gap-1.5 @[22rem]:px-2",
 							open
 								? "bg-accent text-foreground"
-								: "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+								: "text-foreground hover:bg-accent/60",
 							classNames?.trigger,
 						)}
 					>

@@ -8,6 +8,9 @@
 			"skills": "能力",
 			"scenes": "场景",
 			"plugins": "插件",
+			"modelSettings": "模型设置",
+			"agentSettings": "Agent 设置",
+			"appearance": "外观",
 			"more": "更多",
 			"betaBadge": "BETA"
 		},

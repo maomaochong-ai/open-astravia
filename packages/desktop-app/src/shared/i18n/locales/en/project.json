@@ -8,6 +8,9 @@
 			"skills": "Capabilities",
 			"scenes": "Scenes",
 			"plugins": "Plugins",
+			"modelSettings": "Model Settings",
+			"agentSettings": "Agent Settings",
+			"appearance": "Appearance",
 			"more": "More",
 			"betaBadge": "BETA"
 		},

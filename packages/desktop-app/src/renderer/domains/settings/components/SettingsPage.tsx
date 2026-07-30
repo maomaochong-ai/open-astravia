@@ -24,9 +24,6 @@ const KnowledgeBaseSettings = lazy(async () => ({
 	default: (await import("./KnowledgeBaseSettings")).KnowledgeBaseSettings,
 }));
 const ModelsSettings = lazy(async () => ({ default: (await import("./ModelsSettings")).ModelsSettings }));
-const NewSessionSettings = lazy(async () => ({
-	default: (await import("./NewSessionSettings")).NewSessionSettings,
-}));
 const PermissionsSettings = lazy(async () => ({
 	default: (await import("./PermissionsSettings")).PermissionsSettings,
 }));
@@ -56,7 +53,6 @@ const SETTINGS_CONTENT: Record<Exclude<SettingsTab, "mcp">, LazyExoticComponent<
 	plugins: PluginsSettings,
 	knowledge: KnowledgeBaseSettings,
 	pet: PetSettings,
-	newSession: NewSessionSettings,
 };
 
 export function SettingsPage(): JSX.Element {

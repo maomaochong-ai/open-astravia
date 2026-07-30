@@ -127,7 +127,7 @@ export function ModelSelectorView({
 					title={selectedOption?.displayName ?? labels.placeholder}
 					className={cn(
 						// 输入卡 @container：窄宽缩短模型名、藏推理档，避免工具栏换行
-						"flex min-w-0 max-w-[5.5rem] items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:outline-none data-[state=open]:bg-accent/60 data-[state=open]:text-foreground @[22rem]:max-w-[9rem] @[28rem]:max-w-[13rem]",
+						"flex min-w-0 max-w-[5.5rem] items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] text-foreground transition-colors focus:outline-none focus-visible:outline-none data-[state=open]:bg-accent/60 data-[state=open]:text-foreground @[22rem]:max-w-[9rem] @[28rem]:max-w-[13rem]",
 						className,
 						classNames?.trigger,
 					)}
@@ -156,7 +156,8 @@ export function ModelSelectorView({
 						asChild
 						align="start"
 						className={cn(
-							"w-[min(19rem,calc(100vw-2rem))] min-w-[200px] max-w-[19rem] overflow-visible p-0",
+							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
+						"w-[min(16rem,calc(100vw-2rem))] min-w-[180px] max-w-[16rem] overflow-visible bg-background p-0",
 							classNames?.content,
 						)}
 						style={{ animation: "none" }}
@@ -189,7 +190,7 @@ export function ModelSelectorView({
 												onClick={handleSearchClick}
 												placeholder={labels.searchPlaceholder}
 												aria-label={labels.searchPlaceholder}
-												className="h-7 w-full rounded-md border border-border/60 bg-background/70 pl-7 pr-7 text-[11px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50"
+												className="h-7 w-full rounded-md pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
 											/>
 											{searchQuery && (
 												<button
@@ -219,7 +220,7 @@ export function ModelSelectorView({
 														<DropdownMenuSubContent
 															forceMount
 															asChild
-															className="min-w-[130px] overflow-visible p-0"
+															className="min-w-[130px] overflow-visible bg-background p-0"
 															style={{ animation: "none" }}
 														>
 															<motion.div

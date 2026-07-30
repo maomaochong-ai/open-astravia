@@ -434,6 +434,16 @@ export interface SubagentsUpdateEvent extends SessionEventBase {
 	agents: SubagentInfo[];
 }
 
+/**
+ * 会话激活工具集发生变化（插件在会话创建之后才注册/注销工具时触发）。
+ * renderer 据此刷新输入栏 badge 的 `requiresActiveTool` 闸门——否则打开会话那一刻
+ * 拿到的 `getState().activeToolNames` 快照会一直停留在插件就绪之前的旧集合。
+ */
+export interface ActiveToolsUpdateEvent extends SessionEventBase {
+	type: "active_tools_update";
+	activeToolNames: string[];
+}
+
 export interface CompactionStartEvent extends SessionEventBase {
 	type: "compaction.start";
 	reason: "threshold" | "overflow";
@@ -526,6 +536,7 @@ export type SessionEvent =
 	| TodoUpdateEvent
 	| BackgroundTasksUpdateEvent
 	| SubagentsUpdateEvent
+	| ActiveToolsUpdateEvent
 	| CompactionStartEvent
 	| CompactionEndEvent;
 

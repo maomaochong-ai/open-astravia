@@ -17,6 +17,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- **插件在会话创建之后注册工具时，宿主拿不到新的激活工具集**：`reconfigureAgentPlugins` 原先一律挂起到下一次 prompt 才 apply，空闲会话的 `getState().activeToolNames` 会长期停在插件 activate 之前的旧集合。现在空闲会话经 300ms 防抖提前 apply（streaming / bash 运行中仍走 turn 边界），并新增 `SessionEvent` `active_tools_update` 广播新的激活工具集；prompt 侧会先等待进行中的 apply 落定。
 - **`RuntimeHost.prompt` 在开跑前确保 session cwd 存在**：desktop per-session 目录被删后 handle 仍存活时，mkdir 自愈，避免 bash/read 等工具报 Working directory does not exist。
 
 ### Changed

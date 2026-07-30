@@ -1,6 +1,7 @@
 import type { SkillInfo } from "@preload/api";
 import { SkillTypeIcon } from "@vetta/theme-ui/skills";
 import { motion } from "motion/react";
+import { SkillListEmpty } from "./SkillListEmpty";
 import type { SkillListProps } from "./types";
 
 /** 单行 32px：20px 图标 + 名称 + source 小标签 + 同行右侧灰色描述。 */
@@ -76,11 +77,7 @@ export function SkillList({
 	onSelect,
 }: SkillListProps): JSX.Element {
 	if (items.length === 0) {
-		return (
-			<div className="flex items-center justify-center py-8 text-[12px] text-muted-foreground/50">
-				{filtering ? labels.emptyNoMatch : labels.emptyNoSkills}
-			</div>
-		);
+		return <SkillListEmpty filtering={filtering} labels={labels} />;
 	}
 	return (
 		<div className="py-1">
