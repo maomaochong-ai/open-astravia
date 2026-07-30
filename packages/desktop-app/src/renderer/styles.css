@@ -494,9 +494,18 @@ textarea:disabled,
 :root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
 	content: "";
 	position: absolute;
-	inset: -0.5rem -0.5rem -0.5rem 0;
+	inset: -0.5rem;
 	z-index: -1;
 	background-color: var(--background);
+}
+
+/* 侧边栏在位时，左边那 8px 已经被它自己盖住，::before 不能再往左伸——否则会压住毛玻璃右缘。
+   侧边栏收起（或窄屏浮层态）时 .sidebar-dock 整个不渲染，此规则不命中，
+   ::before 就按上面的 inset 一路铺到窗口左边，不会留下透出桌面的空白条。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	~ .app-main-frame::before {
+	left: 0;
 }
 
 .project-list-containment {
