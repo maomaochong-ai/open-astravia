@@ -61,14 +61,14 @@
 		"dist:linux:deb": "cross-env VETTA_VENDOR_PLATFORM=linux-x64 VETTA_CLI_TARGET_PLATFORMS=linux-x64 bun run dist:desktop -- --platform linux --target deb",
 		"dist:linux:rpm": "cross-env VETTA_VENDOR_PLATFORM=linux-x64 VETTA_CLI_TARGET_PLATFORMS=linux-x64 bun run dist:desktop -- --platform linux --target rpm",
 		"dist:linux:tar.gz": "cross-env VETTA_VENDOR_PLATFORM=linux-x64 VETTA_CLI_TARGET_PLATFORMS=linux-x64 bun run dist:desktop -- --platform linux --target tar.gz",
-		"dist:win:nsis": "cross-env VETTA_VENDOR_PLATFORM=win32-x64 VETTA_CLI_TARGET_PLATFORMS=win32-x64 bun run dist:desktop -- --platform win --target nsis",
+		"dist:win:inno": "cross-env VETTA_VENDOR_PLATFORM=win32-x64 VETTA_CLI_TARGET_PLATFORMS=win32-x64 bun run dist:desktop -- --platform win --target inno",
 		"dist:win:portable": "cross-env VETTA_VENDOR_PLATFORM=win32-x64 VETTA_CLI_TARGET_PLATFORMS=win32-x64 bun run dist:desktop -- --platform win --target portable",
 		"dist:win:zip": "cross-env VETTA_VENDOR_PLATFORM=win32-x64 VETTA_CLI_TARGET_PLATFORMS=win32-x64 bun run dist:desktop -- --platform win --target zip",
 		"dist:linux:appimage:test": "cross-env VETTA_BUILD_ENV=test bun run dist:linux:appimage",
 		"dist:linux:deb:test": "cross-env VETTA_BUILD_ENV=test bun run dist:linux:deb",
 		"dist:linux:rpm:test": "cross-env VETTA_BUILD_ENV=test bun run dist:linux:rpm",
 		"dist:linux:tar.gz:test": "cross-env VETTA_BUILD_ENV=test bun run dist:linux:tar.gz",
-		"dist:win:nsis:test": "cross-env VETTA_BUILD_ENV=test bun run dist:win:nsis",
+		"dist:win:inno:test": "cross-env VETTA_BUILD_ENV=test bun run dist:win:inno",
 		"dist:win:portable:test": "cross-env VETTA_BUILD_ENV=test bun run dist:win:portable",
 		"dist:win:zip:test": "cross-env VETTA_BUILD_ENV=test bun run dist:win:zip"
 	},
@@ -140,7 +140,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"7zip-bin-full": "26.2.1",
+		"app-builder-bin": "5.0.0-alpha.12",
 		"@aws-sdk/client-s3": "^3.1097.0",
 		"@aws-sdk/lib-storage": "^3.1097.0",
 		"@iconify-json/flat-color-icons": "^1.2.3",

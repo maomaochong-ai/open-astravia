@@ -1,10 +1,10 @@
-import { copyFile, link, rename, rm } from "node:fs/promises";
+import { link, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { ProgressInfo, UpdateInfo } from "builder-util-runtime";
-import { CancellationError, CancellationToken, CURRENT_APP_INSTALLER_FILE_NAME } from "builder-util-runtime";
+import { CancellationToken, CURRENT_APP_INSTALLER_FILE_NAME } from "builder-util-runtime";
 import type { AppUpdater, ResolvedUpdateFileInfo } from "electron-updater";
 
-import type { StagedWindowsUpdateController } from "./staged-windows-update.js";
+import type { InnoWindowsUpdateController } from "./inno-windows-update.js";
 
 export interface UpdateEngineInfo {
 	version: string;
@@ -54,11 +54,16 @@ async function promoteDownloadedInstaller(updater: AppUpdater, installerPath: st
 	await rm(temporaryPath, { force: true });
 	try {
 		await link(installerPath, temporaryPath);
-	} catch {
-		await copyFile(installerPath, temporaryPath);
+		await rm(currentInstallerPath, { force: true });
+		await rename(temporaryPath, currentInstallerPath);
+	} catch (error) {
+		await Promise.all([
+			rm(temporaryPath, { force: true }),
+			rm(currentInstallerPath, { force: true }),
+			rm(join(cacheDir, "current.blockmap"), { force: true }),
+		]);
+		throw error;
 	}
-	await rm(currentInstallerPath, { force: true });
-	await rename(temporaryPath, currentInstallerPath);
 }
 
 function normalizeReleaseNotes(releaseNotes: UpdateInfo["releaseNotes"]): string | undefined {
@@ -93,14 +98,14 @@ function mapUpdateInfo(info: UpdateInfo): UpdateEngineInfo {
 }
 
 export class ElectronUpdaterEngine implements UpdateEngine {
-	private useStagedUpdate = false;
+	private useInnoUpdate = false;
 
 	constructor(
 		private readonly updater: AppUpdater,
-		private readonly stagedWindowsUpdate?: StagedWindowsUpdateController,
+		private readonly innoWindowsUpdate?: InnoWindowsUpdateController,
 	) {
 		this.updater.autoDownload = false;
-		this.updater.autoInstallOnAppQuit = !stagedWindowsUpdate;
+		this.updater.autoInstallOnAppQuit = !innoWindowsUpdate;
 		this.updater.allowDowngrade = false;
 		this.updater.disableWebInstaller = true;
 		this.updater.logger = {
@@ -117,20 +122,20 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 	}
 
 	async onAppReady(): Promise<void> {
-		await this.stagedWindowsUpdate?.markCurrentVersionHealthy();
+		await this.innoWindowsUpdate?.markCurrentVersionHealthy();
 	}
 
 	async checkForUpdates(): Promise<UpdateEngineCheckResult | null> {
 		const result = await this.updater.checkForUpdates();
 		if (!result) return null;
 		const info = mapUpdateInfo(result.updateInfo);
-		const stagedAsset = result.isUpdateAvailable
-			? this.stagedWindowsUpdate?.select(result.updateInfo, resolveUpdateFiles(this.updater, result.updateInfo))
+		const innoAsset = result.isUpdateAvailable
+			? this.innoWindowsUpdate?.select(result.updateInfo, resolveUpdateFiles(this.updater, result.updateInfo))
 			: null;
-		this.useStagedUpdate = stagedAsset !== null && stagedAsset !== undefined;
+		this.useInnoUpdate = innoAsset !== null && innoAsset !== undefined;
 		return {
 			hasUpdate: result.isUpdateAvailable,
-			info: stagedAsset ? { ...info, ...stagedAsset } : info,
+			info: innoAsset ? { ...info, ...innoAsset } : info,
 		};
 	}
 
@@ -139,7 +144,7 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		const abortController = new AbortController();
 		const listener = (progress: ProgressInfo) => {
 			onProgress(
-				this.useStagedUpdate
+				this.useInnoUpdate
 					? {
 							...progress,
 							percent: Math.min(90, progress.percent * 0.9),
@@ -152,23 +157,20 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		const promise = this.updater
 			.downloadUpdate(cancellationToken)
 			.then(async (downloadedPaths) => {
-				if (!this.useStagedUpdate || !this.stagedWindowsUpdate) return downloadedPaths;
+				if (!this.useInnoUpdate || !this.innoWindowsUpdate) return downloadedPaths;
 				const installerPath = downloadedPaths[0];
 				if (!installerPath) throw new Error("electron-updater did not return a Windows installer");
-				try {
-					const stagedPaths = await this.stagedWindowsUpdate.stageDownloadedInstaller(
-						installerPath,
-						onProgress,
-						abortController.signal,
-					);
-					await promoteDownloadedInstaller(this.updater, installerPath);
-					return stagedPaths;
-				} catch (error) {
-					if (error instanceof CancellationError || abortController.signal.aborted) throw error;
-					console.error("[updater] staged EXE extraction failed; falling back to NSIS install", error);
-					this.useStagedUpdate = false;
-					return downloadedPaths;
-				}
+				await promoteDownloadedInstaller(this.updater, installerPath)
+					.then(() => console.info("[updater] differential cache baseline promoted"))
+					.catch((error) => console.warn("[updater] unable to promote differential cache baseline", error));
+				console.info("[updater] preparing downloaded Windows version with Inno Setup", installerPath);
+				const preparedPaths = await this.innoWindowsUpdate.prepareDownloadedInstaller(
+					installerPath,
+					onProgress,
+					abortController.signal,
+				);
+				console.info("[updater] downloaded Windows version is ready", preparedPaths[0]);
+				return preparedPaths;
 			})
 			.finally(() => {
 				this.updater.off("download-progress", listener);
@@ -184,8 +186,8 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 	}
 
 	async quitAndInstall(): Promise<void> {
-		if (this.useStagedUpdate && this.stagedWindowsUpdate) {
-			await this.stagedWindowsUpdate.activate();
+		if (this.useInnoUpdate && this.innoWindowsUpdate) {
+			await this.innoWindowsUpdate.activate();
 			return;
 		}
 		this.updater.quitAndInstall(true, true);

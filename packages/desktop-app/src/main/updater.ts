@@ -6,11 +6,10 @@ import electronUpdater from "electron-updater";
 
 import { mainT } from "./i18n/index.js";
 import {
+	InnoWindowsUpdateController,
 	isVersionedWindowsExecutable,
-	resolveStagedUpdateStoreRoot,
-	resolveWindowsUpdateExtractorPath,
-	StagedWindowsUpdateController,
-} from "./staged-windows-update.js";
+	resolveInnoUpdateStoreRoot,
+} from "./inno-windows-update.js";
 import { ElectronUpdaterEngine } from "./updater-engine.js";
 import { type UpdaterPhase, UpdaterService, type UpdaterState } from "./updater-service.js";
 
@@ -28,17 +27,16 @@ export function getAppVersion(): string {
 // 因此必须从默认导出解构，不能保留 ESM 命名导入。
 const { autoUpdater } = electronUpdater;
 const currentVersion = getAppVersion();
-const stagedWindowsUpdate =
+const innoWindowsUpdate =
 	process.platform === "win32" && app.isPackaged && isVersionedWindowsExecutable(process.execPath, currentVersion)
-		? new StagedWindowsUpdateController({
+		? new InnoWindowsUpdateController({
 				currentVersion,
-				storeRoot: resolveStagedUpdateStoreRoot(),
-				extractorPath: resolveWindowsUpdateExtractorPath(process.resourcesPath),
+				storeRoot: resolveInnoUpdateStoreRoot(),
 				relaunch: (executablePath) => {
 					app.relaunch({ execPath: executablePath, args: process.argv.slice(1) });
 				},
 				quit: () => app.quit(),
 			})
 		: undefined;
-const updaterEngine = new ElectronUpdaterEngine(autoUpdater, stagedWindowsUpdate);
+const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate);
 export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT);

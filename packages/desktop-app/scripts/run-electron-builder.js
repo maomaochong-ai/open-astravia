@@ -6,6 +6,7 @@ import { join } from "node:path";
 const buildStageDir = join(tmpdir(), "vetta-desktop-build");
 const builderConfigPath = join(buildStageDir, "electron-builder.json");
 const runtimeCoreLinuxSandboxDir = join(import.meta.dirname, "..", "..", "runtime-core", "sandbox", "linux");
+const buildInnoInstallerPath = join(import.meta.dirname, "build-inno-installer.mjs");
 
 const platformArgMap = {
 	linux: "--linux",
@@ -23,7 +24,7 @@ const archArgMap = {
 const defaultTargetsByPlatform = {
 	linux: ["AppImage"],
 	mac: ["dmg", "zip"],
-	win: ["nsis"],
+	win: ["inno"],
 };
 
 function resolveDefaultPlatform() {
@@ -129,6 +130,17 @@ function main() {
 	}
 
 	const targets = cliOptions.targets.length > 0 ? cliOptions.targets : defaultTargetsByPlatform[platform];
+	const usesInno = targets.some((target) => target.toLowerCase() === "inno");
+	if (usesInno && (platform !== "win" || targets.length !== 1)) {
+		throw new Error("The inno target must be the only target of a Windows build.");
+	}
+	if (usesInno && process.platform !== "win32") {
+		throw new Error("The inno target requires a Windows build host.");
+	}
+	if (usesInno && cliOptions.publish) {
+		throw new Error("The inno target creates custom artifacts; publish them through the release workflow.");
+	}
+	const electronBuilderTargets = usesInno ? ["dir"] : targets;
 	const publishModes = new Set(["always", "never", "onTag", "onTagOrDraft"]);
 	if (cliOptions.publish && !publishModes.has(cliOptions.publish)) {
 		throw new Error(`Unsupported electron-builder publish mode: ${cliOptions.publish}`);
@@ -138,7 +150,7 @@ function main() {
 		`--project=${buildStageDir}`,
 		`--config=${builderConfigPath}`,
 		platformArgMap[platform],
-		...targets,
+		...electronBuilderTargets,
 		...archs.map((arch) => archArgMap[arch]),
 		...(cliOptions.publish ? [`--publish=${cliOptions.publish}`] : []),
 	];
@@ -152,12 +164,19 @@ function main() {
 		execSync(command, {
 			stdio: "inherit",
 		});
-		return;
+	} else {
+		execFileSync("bunx", args, {
+			stdio: "inherit",
+		});
 	}
 
-	execFileSync("bunx", args, {
-		stdio: "inherit",
-	});
+	if (usesInno) {
+		for (const arch of archs) {
+			execFileSync(process.platform === "win32" ? "node.exe" : "node", [buildInnoInstallerPath, "--arch", arch], {
+				stdio: "inherit",
+			});
+		}
+	}
 }
 
 main();

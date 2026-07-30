@@ -42,14 +42,14 @@ function normalizeUrlPrefix(rawUrl) {
 		.join("/");
 }
 
-export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion }) {
+export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion, allowQaStable = false }) {
 	const urlPrefix = normalizeUrlPrefix(updateUrl);
 	if (urlPrefix !== prefix) {
 		throw new Error(
 			`[publish-updates-r2] VETTA_UPDATE_URL path "${urlPrefix}" does not match VETTA_R2_PREFIX "${prefix}"`,
 		);
 	}
-	if (prefix.split("/").at(-1) === "stable" && releaseVersion !== packageVersion) {
+	if (prefix.split("/").at(-1) === "stable" && releaseVersion !== packageVersion && !allowQaStable) {
 		throw new Error(
 			`[publish-updates-r2] refusing QA version ${releaseVersion} on stable; package version is ${packageVersion}`,
 		);
@@ -194,9 +194,22 @@ async function verifyPublicFiles(baseUrl, fileNames) {
 	for (const fileName of fileNames) {
 		const url = new URL(fileName.split("/").map(encodeURIComponent).join("/"), normalizedBaseUrl);
 		url.searchParams.set("publish-check", Date.now().toString());
-		const response = await fetch(url, { method: "HEAD", cache: "no-store" });
-		if (!response.ok) {
-			throw new Error(`[publish-updates-r2] public verification failed for ${url}: HTTP ${response.status}`);
+		let lastError;
+		for (let attempt = 1; attempt <= 4; attempt += 1) {
+			try {
+				const response = await fetch(url, { method: "HEAD", cache: "no-store" });
+				if (response.ok) {
+					lastError = undefined;
+					break;
+				}
+				lastError = new Error(`HTTP ${response.status}`);
+			} catch (error) {
+				lastError = error;
+			}
+			if (attempt < 4) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+		}
+		if (lastError) {
+			throw new Error(`[publish-updates-r2] public verification failed for ${url}`, { cause: lastError });
 		}
 	}
 }
@@ -210,7 +223,8 @@ export async function main() {
 	const updateUrl = requireEnv("VETTA_UPDATE_URL");
 	const releaseVersion = await readReleaseVersion();
 	const packageVersion = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8")).version;
-	validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion });
+	const allowQaStable = process.env.VETTA_R2_ALLOW_QA_STABLE?.trim().toLowerCase() === "true";
+	validatePublishTarget({ prefix, updateUrl, releaseVersion, packageVersion, allowQaStable });
 	const client = new S3Client({
 		region: "auto",
 		endpoint: `https://${accountId}.r2.cloudflarestorage.com`,

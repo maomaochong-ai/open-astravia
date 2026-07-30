@@ -87,4 +87,13 @@ test("validatePublishTarget rejects QA versions on stable and allows test", () =
 			packageVersion: "1.2.3",
 		}),
 	);
+	assert.doesNotThrow(() =>
+		validatePublishTarget({
+			prefix: "desktop/stable",
+			updateUrl: "https://releases.example.com/desktop/stable",
+			releaseVersion: "1.2.4",
+			packageVersion: "1.2.3",
+			allowQaStable: true,
+		}),
+	);
 });

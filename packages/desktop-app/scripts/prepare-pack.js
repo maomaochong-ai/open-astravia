@@ -42,7 +42,6 @@ const imGatewayTargetByPlatformTag = {
 const require = createRequire(import.meta.url);
 const electronPkgPath = require.resolve("electron/package.json");
 const electronVersion = JSON.parse(readFileSync(electronPkgPath, "utf8")).version;
-const sevenZipBinRoot = dirname(require.resolve("7zip-bin-full/package.json"));
 
 // 正式发布以 packages/desktop-app/package.json 为唯一真源。本地更新闭环测试可用
 // VETTA_DESKTOP_BUILD_VERSION 生成更高版本产物，不修改源码版本或创建 tag。
@@ -711,13 +710,6 @@ function resolveExtraResources() {
 			filter: ["**/*"],
 		});
 	}
-	if (resolvePlatformFamilies().has("win32")) {
-		extraResources.push({
-			from: join(sevenZipBinRoot, "win", "x64"),
-			to: "tools/7zip",
-			filter: ["7z.dll", "7z.exe"],
-		});
-	}
 	return extraResources;
 }
 
@@ -802,7 +794,7 @@ const builderConfig = {
 				],
 	},
 	win: {
-		target: ["nsis"],
+		target: ["dir"],
 		artifactName: "${productName}-${version}-win-${arch}.${ext}",
 		icon: "build/icon.ico",
 	},
@@ -814,12 +806,6 @@ const builderConfig = {
 	// Sidecar binaries are picked up from the staged ./im-gateway dir
 	// (populated above by the cross-build step).
 	extraResources: resolveExtraResources(),
-	nsis: {
-		oneClick: false,
-		perMachine: false,
-		allowToChangeInstallationDirectory: true,
-		include: "build/installer.nsh",
-	},
 	directories: {
 		output: join(projectRoot, "release"),
 	},

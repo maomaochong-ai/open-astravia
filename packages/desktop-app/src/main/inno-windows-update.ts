@@ -1,4 +1,4 @@
-import { type ChildProcess, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, win32 } from "node:path";
 import type { ProgressInfo, UpdateInfo } from "builder-util-runtime";
@@ -7,8 +7,9 @@ import type { ResolvedUpdateFileInfo } from "electron-updater";
 
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const WINDOWS_EXECUTABLE_NAME = "Vetta.exe";
+const PROGRESS_POLL_INTERVAL_MS = 250;
 
-interface StagedUpdateSelection {
+interface InnoUpdateSelection {
 	version: string;
 	size: number;
 	fileName: string;
@@ -25,19 +26,19 @@ interface VersionPointer {
 	pending?: boolean;
 }
 
-export interface StagedUpdateAsset {
+export interface InnoUpdateAsset {
 	assetFileName: string;
 	totalBytes: number;
 }
 
-export interface StagedUpdateRuntime {
+export interface InnoUpdateRuntime {
 	currentVersion: string;
 	storeRoot: string;
-	extractorPath: string;
-	extractInstaller?: (
+	installInstaller?: (
 		installerPath: string,
-		destination: string,
+		storeRoot: string,
 		version: string,
+		onProgress: (percent: number) => void,
 		signal: AbortSignal,
 	) => Promise<void>;
 	relaunch(executablePath: string): void;
@@ -99,7 +100,7 @@ function fileNameFromUrl(url: string): string {
 function findWindowsInstaller(
 	info: UpdateInfo,
 	resolvedFiles: readonly ResolvedUpdateFileInfo[],
-): StagedUpdateSelection | null {
+): InnoUpdateSelection | null {
 	for (const file of resolvedFiles) {
 		if (!file.url.pathname.toLowerCase().endsWith(".exe")) continue;
 		if (typeof file.info.sha512 !== "string" || file.info.sha512.length === 0) return null;
@@ -116,35 +117,85 @@ function findWindowsInstaller(
 	return null;
 }
 
-async function extractWith7Zip(
-	extractorPath: string,
+export function buildInnoUpdateArguments(storeRoot: string, progressPath: string, logPath: string): string[] {
+	return [
+		"/VERYSILENT",
+		"/SUPPRESSMSGBOXES",
+		"/NORESTART",
+		"/NOCLOSEAPPLICATIONS",
+		"/NORESTARTAPPLICATIONS",
+		"/SP-",
+		"/VETTAUPDATE=true",
+		`/VETTASTOREROOT=${storeRoot}`,
+		`/VETTAPROGRESS=${progressPath}`,
+		`/LOG=${logPath}`,
+	];
+}
+
+async function readInstallProgress(progressPath: string): Promise<number | null> {
+	try {
+		const [currentRaw, maximumRaw] = (await readFile(progressPath, "utf8")).trim().split(",");
+		const current = Number(currentRaw);
+		const maximum = Number(maximumRaw);
+		if (!Number.isFinite(current) || !Number.isFinite(maximum) || maximum <= 0) return null;
+		return Math.max(0, Math.min(100, (current / maximum) * 100));
+	} catch {
+		return null;
+	}
+}
+
+async function installWithInno(
 	installerPath: string,
-	destination: string,
+	storeRoot: string,
 	version: string,
+	onProgress: (percent: number) => void,
 	signal: AbortSignal,
 ): Promise<void> {
-	await new Promise<void>((resolvePromise, reject) => {
-		const child: ChildProcess = spawn(
-			extractorPath,
-			["x", "-t7z", "-y", `-o${destination}`, installerPath, `versions\\${version}\\*`],
-			{
+	const workRoot = join(storeRoot, "installer", `${version}-${process.pid}-${Date.now()}`);
+	const progressPath = join(workRoot, "progress");
+	const logPath = join(workRoot, "install.log");
+	await mkdir(workRoot, { recursive: true });
+
+	try {
+		await new Promise<void>((resolvePromise, reject) => {
+			const child = spawn(installerPath, buildInnoUpdateArguments(storeRoot, progressPath, logPath), {
+				detached: true,
 				stdio: "ignore",
 				windowsHide: true,
-			},
-		);
-		const abort = () => child.kill();
-		signal.addEventListener("abort", abort, { once: true });
-		child.once("error", reject);
-		child.once("exit", (code) => {
-			signal.removeEventListener("abort", abort);
-			if (signal.aborted) {
-				reject(new CancellationError());
-				return;
-			}
-			if (code === 0) resolvePromise();
-			else reject(new Error(`7-Zip exited with code ${code ?? "unknown"}`));
+			});
+			child.unref();
+			let readingProgress = false;
+			const pollProgress = () => {
+				if (readingProgress) return;
+				readingProgress = true;
+				void readInstallProgress(progressPath)
+					.then((percent) => {
+						if (percent !== null) onProgress(percent);
+					})
+					.finally(() => {
+						readingProgress = false;
+					});
+			};
+			const progressTimer = setInterval(pollProgress, PROGRESS_POLL_INTERVAL_MS);
+			child.once("error", (error) => {
+				clearInterval(progressTimer);
+				reject(error);
+			});
+			child.once("close", (code) => {
+				clearInterval(progressTimer);
+				if (signal.aborted) {
+					reject(new CancellationError());
+					return;
+				}
+				if (code === 0) resolvePromise();
+				else reject(new Error(`Inno Setup exited with code ${code ?? "unknown"}`));
+			});
 		});
-	});
+	} finally {
+		void rm(workRoot, { recursive: true, force: true }).catch((error) => {
+			console.warn("[updater] unable to remove Inno Setup working directory", error);
+		});
+	}
 }
 
 async function assertFile(path: string): Promise<void> {
@@ -152,7 +203,7 @@ async function assertFile(path: string): Promise<void> {
 		const info = await stat(path);
 		if (info.isFile()) return;
 	} catch {
-		// Report one stable extraction validation error below.
+		// Report one stable validation error below.
 	}
 	throw new Error(`Expected file: ${path}`);
 }
@@ -174,33 +225,21 @@ export function isVersionedWindowsExecutable(executablePath: string, version: st
 	);
 }
 
-export function resolveStagedUpdateStoreRoot(localAppData = process.env.LOCALAPPDATA): string {
+export function resolveInnoUpdateStoreRoot(localAppData = process.env.LOCALAPPDATA): string {
 	if (!localAppData) throw new Error("LOCALAPPDATA is unavailable");
-	return win32.resolve(localAppData, "OpenVetta", "Desktop");
+	return win32.resolve(localAppData, "Vetta");
 }
 
-export function resolveWindowsUpdateExtractorPath(resourcesPath: string): string {
-	return win32.resolve(resourcesPath, "tools", "7zip", "7z.exe");
-}
-
-export class StagedWindowsUpdateController {
-	private selection: StagedUpdateSelection | null = null;
+export class InnoWindowsUpdateController {
+	private selection: InnoUpdateSelection | null = null;
 	private prepared: PreparedUpdate | null = null;
-	private readonly extractInstaller: (
-		installerPath: string,
-		destination: string,
-		version: string,
-		signal: AbortSignal,
-	) => Promise<void>;
+	private readonly installInstaller: NonNullable<InnoUpdateRuntime["installInstaller"]>;
 
-	constructor(private readonly runtime: StagedUpdateRuntime) {
-		this.extractInstaller =
-			runtime.extractInstaller ??
-			((installerPath, destination, version, signal) =>
-				extractWith7Zip(runtime.extractorPath, installerPath, destination, version, signal));
+	constructor(private readonly runtime: InnoUpdateRuntime) {
+		this.installInstaller = runtime.installInstaller ?? installWithInno;
 	}
 
-	select(info: UpdateInfo, resolvedFiles: readonly ResolvedUpdateFileInfo[]): StagedUpdateAsset | null {
+	select(info: UpdateInfo, resolvedFiles: readonly ResolvedUpdateFileInfo[]): InnoUpdateAsset | null {
 		this.selection = findWindowsInstaller(info, resolvedFiles);
 		this.prepared = null;
 		return this.selection
@@ -211,27 +250,57 @@ export class StagedWindowsUpdateController {
 			: null;
 	}
 
-	async stageDownloadedInstaller(
+	async prepareDownloadedInstaller(
 		installerPath: string,
 		onProgress: (progress: ProgressInfo) => void,
 		signal: AbortSignal,
 	): Promise<string[]> {
 		const selection = this.selection;
-		if (!selection) throw new Error("No staged Windows update selected");
-		const prepared = await this.stage(selection, installerPath, onProgress, signal);
-		return [prepared.executablePath];
+		if (!selection) throw new Error("No Inno Setup Windows update selected");
+		const destinationDir = join(this.runtime.storeRoot, "versions", selection.version);
+		const executablePath = join(destinationDir, WINDOWS_EXECUTABLE_NAME);
+		const report = (percent: number) =>
+			onProgress({
+				bytesPerSecond: 0,
+				delta: 0,
+				percent: 91 + Math.max(0, Math.min(100, percent)) * 0.08,
+				total: selection.size,
+				transferred: selection.size,
+			});
+
+		try {
+			await assertCompleteVersionDirectory(destinationDir);
+			this.prepared = { version: selection.version, executablePath };
+			report(100);
+			return [executablePath];
+		} catch {
+			// Continue with the downloaded installer.
+		}
+
+		report(0);
+		console.info("[updater] preparing Windows version with Inno Setup", installerPath);
+		await this.installInstaller(installerPath, this.runtime.storeRoot, selection.version, report, signal);
+		if (signal.aborted) throw new CancellationError();
+		await assertCompleteVersionDirectory(destinationDir);
+		this.prepared = { version: selection.version, executablePath };
+		onProgress({
+			bytesPerSecond: 0,
+			delta: 0,
+			percent: 100,
+			total: selection.size,
+			transferred: selection.size,
+		});
+		return [executablePath];
 	}
 
 	async activate(): Promise<void> {
 		const prepared = this.prepared;
-		if (!prepared) throw new Error("Staged Windows update is not ready");
-		const pointerPath = join(this.runtime.storeRoot, "current.json");
-		const pointer: VersionPointer = {
+		if (!prepared) throw new Error("Inno Setup Windows update is not ready");
+		await writePointer(join(this.runtime.storeRoot, "current.json"), {
 			version: prepared.version,
 			previousVersion: this.runtime.currentVersion,
 			pending: true,
-		};
-		await writePointer(pointerPath, pointer);
+		});
 		this.runtime.relaunch(prepared.executablePath);
 		this.runtime.quit();
 	}
@@ -242,73 +311,6 @@ export class StagedWindowsUpdateController {
 		if (!pointer || pointer.version !== this.runtime.currentVersion || !pointer.pending) return;
 		await writePointer(pointerPath, { ...pointer, pending: false });
 		await this.cleanupVersions(pointer);
-	}
-
-	private async stage(
-		selection: StagedUpdateSelection,
-		installerPath: string,
-		onProgress: (progress: ProgressInfo) => void,
-		signal: AbortSignal,
-	): Promise<PreparedUpdate> {
-		const destinationDir = join(this.runtime.storeRoot, "versions", selection.version);
-		const destinationExecutable = join(destinationDir, WINDOWS_EXECUTABLE_NAME);
-		try {
-			await assertCompleteVersionDirectory(destinationDir);
-			const prepared = { version: selection.version, executablePath: destinationExecutable };
-			this.prepared = prepared;
-			onProgress({
-				bytesPerSecond: 0,
-				delta: 0,
-				percent: 100,
-				total: selection.size,
-				transferred: selection.size,
-			});
-			return prepared;
-		} catch {
-			// Continue with download and staging.
-		}
-
-		try {
-			await rm(destinationDir, {
-				recursive: true,
-				force: true,
-				maxRetries: 20,
-				retryDelay: 250,
-			});
-			await mkdir(this.runtime.storeRoot, { recursive: true });
-			onProgress({
-				bytesPerSecond: 0,
-				delta: 0,
-				percent: 95,
-				total: selection.size,
-				transferred: selection.size,
-			});
-			await this.extractInstaller(installerPath, this.runtime.storeRoot, selection.version, signal);
-			if (signal.aborted) throw new CancellationError();
-
-			await assertCompleteVersionDirectory(destinationDir);
-
-			const prepared = { version: selection.version, executablePath: destinationExecutable };
-			this.prepared = prepared;
-			onProgress({
-				bytesPerSecond: 0,
-				delta: 0,
-				percent: 100,
-				total: selection.size,
-				transferred: selection.size,
-			});
-			return prepared;
-		} catch (error) {
-			void rm(destinationDir, {
-				recursive: true,
-				force: true,
-				maxRetries: 20,
-				retryDelay: 250,
-			}).catch((cleanupError) => {
-				console.warn("[updater] unable to remove incomplete staged version", cleanupError);
-			});
-			throw error;
-		}
 	}
 
 	private async cleanupVersions(pointer: VersionPointer): Promise<void> {

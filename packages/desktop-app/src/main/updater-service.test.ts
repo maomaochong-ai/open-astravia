@@ -127,6 +127,34 @@ describe("UpdaterService", () => {
 		});
 	});
 
+	it("cancels a stalled download and allows the user to retry", async () => {
+		const engine = createAvailableEngine();
+		const service = new UpdaterService(engine, "0.5.21", true, translate, {
+			downloadStallTimeoutMs: 1_000,
+		});
+		await service.check();
+		void service.startDownload();
+
+		await vi.advanceTimersByTimeAsync(900);
+		engine.emitProgress({
+			bytesPerSecond: 100,
+			delta: 100,
+			percent: 10,
+			total: 1_000,
+			transferred: 100,
+		});
+		await vi.advanceTimersByTimeAsync(900);
+		expect(engine.cancelCalls).toBe(0);
+
+		await vi.advanceTimersByTimeAsync(100);
+		expect(engine.cancelCalls).toBe(1);
+		expect(service.getState()).toMatchObject({
+			phase: "error",
+			progress: undefined,
+			error: "updater.errors.downloadFailed",
+		});
+	});
+
 	it("keeps a downloaded update ready when cancel is requested", async () => {
 		const engine = createAvailableEngine();
 		const service = new UpdaterService(engine, "0.5.21", true, translate);

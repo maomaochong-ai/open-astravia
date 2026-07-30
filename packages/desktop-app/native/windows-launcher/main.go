@@ -108,7 +108,7 @@ func main() {
 		return
 	}
 	installRoot := filepath.Dir(launcherPath)
-	localRoot := filepath.Join(localAppData, "OpenVetta", "Desktop")
+	localRoot := filepath.Join(localAppData, "Vetta")
 	target := resolveLaunchTarget(installRoot, localRoot)
 	if target == "" {
 		return

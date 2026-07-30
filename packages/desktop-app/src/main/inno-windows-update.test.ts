@@ -6,16 +6,16 @@ import type { ResolvedUpdateFileInfo } from "electron-updater";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+	buildInnoUpdateArguments,
+	InnoWindowsUpdateController,
 	isVersionedWindowsExecutable,
-	resolveStagedUpdateStoreRoot,
-	resolveWindowsUpdateExtractorPath,
-	StagedWindowsUpdateController,
-} from "./staged-windows-update.js";
+	resolveInnoUpdateStoreRoot,
+} from "./inno-windows-update.js";
 
 const temporaryRoots: string[] = [];
 
 async function createTemporaryRoot(): Promise<string> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-staged-update-"));
+	const root = await mkdtemp(join(tmpdir(), "vetta-inno-update-"));
 	temporaryRoots.push(root);
 	return root;
 }
@@ -43,33 +43,37 @@ function createResolvedFiles(content: Buffer): Array<ResolvedUpdateFileInfo> {
 	];
 }
 
-describe("StagedWindowsUpdateController", () => {
+describe("InnoWindowsUpdateController", () => {
 	afterEach(async () => {
 		await Promise.all(temporaryRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 	});
 
-	it("extracts a downloaded installer, activates it, and marks the version healthy", async () => {
+	it("prepares a downloaded installer, activates it, and marks the version healthy", async () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
-		const installer = Buffer.from("staged installer");
+		const installer = Buffer.from("inno installer");
 		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
 		await writeFile(installerPath, installer);
-		const incompleteVersionDir = join(storeRoot, "versions", "1.2.3");
-		await mkdir(incompleteVersionDir, { recursive: true });
-		await writeFile(join(incompleteVersionDir, "Vetta.exe"), "incomplete");
 		const relaunch = vi.fn();
 		const quit = vi.fn();
-		const extractInstaller = vi.fn(async (_installerPath: string, destination: string) => {
-			const versionDir = join(destination, "versions", "1.2.3");
-			await mkdir(join(versionDir, "resources"), { recursive: true });
-			await writeFile(join(versionDir, "Vetta.exe"), "executable");
-			await writeFile(join(versionDir, "resources", "app.asar"), "asar");
-		});
-		const controller = new StagedWindowsUpdateController({
+		const installInstaller = vi.fn(
+			async (
+				_installerPath: string,
+				destinationRoot: string,
+				version: string,
+				onProgress: (percent: number) => void,
+			) => {
+				onProgress(50);
+				const versionDir = join(destinationRoot, "versions", version);
+				await mkdir(join(versionDir, "resources"), { recursive: true });
+				await writeFile(join(versionDir, "Vetta.exe"), "executable");
+				await writeFile(join(versionDir, "resources", "app.asar"), "asar");
+			},
+		);
+		const controller = new InnoWindowsUpdateController({
 			currentVersion: "1.2.2",
 			storeRoot,
-			extractorPath: "C:\\Vetta\\resources\\tools\\7zip\\7z.exe",
-			extractInstaller,
+			installInstaller,
 			relaunch,
 			quit,
 		});
@@ -79,12 +83,13 @@ describe("StagedWindowsUpdateController", () => {
 			totalBytes: installer.length,
 		});
 		const progress = vi.fn();
-		const [executablePath] = await controller.stageDownloadedInstaller(
+		const [executablePath] = await controller.prepareDownloadedInstaller(
 			installerPath,
 			progress,
 			new AbortController().signal,
 		);
 		expect(executablePath).toBe(join(storeRoot, "versions", "1.2.3", "Vetta.exe"));
+		expect(progress).toHaveBeenCalledWith(expect.objectContaining({ percent: 95 }));
 		expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ percent: 100 }));
 
 		await controller.activate();
@@ -96,10 +101,9 @@ describe("StagedWindowsUpdateController", () => {
 			pending: true,
 		});
 
-		const healthyController = new StagedWindowsUpdateController({
+		const healthyController = new InnoWindowsUpdateController({
 			currentVersion: "1.2.3",
 			storeRoot,
-			extractorPath: "C:\\Vetta\\resources\\tools\\7zip\\7z.exe",
 			relaunch,
 			quit,
 		});
@@ -109,35 +113,41 @@ describe("StagedWindowsUpdateController", () => {
 			previousVersion: "1.2.2",
 			pending: false,
 		});
-		expect(extractInstaller).toHaveBeenCalledWith(installerPath, storeRoot, "1.2.3", expect.any(AbortSignal));
+		expect(installInstaller).toHaveBeenCalledWith(
+			installerPath,
+			storeRoot,
+			"1.2.3",
+			expect.any(Function),
+			expect.any(AbortSignal),
+		);
 	});
 
-	it("rejects an installer that does not contain a complete version", async () => {
+	it("does not activate an incomplete Inno Setup installation", async () => {
 		const root = await createTemporaryRoot();
-		const installer = Buffer.from("staged installer");
+		const storeRoot = join(root, "store");
 		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
-		await writeFile(installerPath, installer);
-		const controller = new StagedWindowsUpdateController({
+		await writeFile(installerPath, "installer");
+		const controller = new InnoWindowsUpdateController({
 			currentVersion: "1.2.2",
-			storeRoot: join(root, "store"),
-			extractorPath: "C:\\Vetta\\resources\\tools\\7zip\\7z.exe",
-			extractInstaller: async (_installerPath, destination) => {
-				const versionDir = join(destination, "versions", "1.2.3");
+			storeRoot,
+			installInstaller: async (_installerPath, destinationRoot, version) => {
+				const versionDir = join(destinationRoot, "versions", version);
 				await mkdir(versionDir, { recursive: true });
-				await writeFile(join(versionDir, "Vetta.exe"), "executable");
+				await writeFile(join(versionDir, "Vetta.exe"), "incomplete");
 			},
 			relaunch: vi.fn(),
 			quit: vi.fn(),
 		});
-		controller.select(createUpdateInfo(), createResolvedFiles(installer));
+		controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
 
 		await expect(
-			controller.stageDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
-		).rejects.toThrow(/Expected file/);
+			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
+		).rejects.toThrow("app.asar");
+		await expect(controller.activate()).rejects.toThrow("not ready");
 	});
 });
 
-describe("Windows staged update paths", () => {
+describe("Windows Inno update paths", () => {
 	it("recognizes only executables inside the matching version directory", () => {
 		expect(isVersionedWindowsExecutable("C:\\Vetta\\versions\\1.2.3\\Vetta.exe", "1.2.3")).toBe(true);
 		expect(isVersionedWindowsExecutable("C:\\Vetta\\Vetta.exe", "1.2.3")).toBe(false);
@@ -145,14 +155,20 @@ describe("Windows staged update paths", () => {
 	});
 
 	it("uses the stable per-user application root", () => {
-		expect(resolveStagedUpdateStoreRoot("C:\\Users\\test\\AppData\\Local")).toBe(
-			"C:\\Users\\test\\AppData\\Local\\OpenVetta\\Desktop",
+		expect(resolveInnoUpdateStoreRoot("C:\\Users\\test\\AppData\\Local")).toBe(
+			"C:\\Users\\test\\AppData\\Local\\Vetta",
 		);
 	});
 
-	it("resolves the packaged Windows 7-Zip binary", () => {
-		expect(resolveWindowsUpdateExtractorPath("C:\\Vetta\\resources")).toBe(
-			"C:\\Vetta\\resources\\tools\\7zip\\7z.exe",
+	it("builds a fully silent background update command", () => {
+		expect(buildInnoUpdateArguments("C:\\Store Root", "C:\\Temp\\progress", "C:\\Temp\\install.log")).toEqual(
+			expect.arrayContaining([
+				"/VERYSILENT",
+				"/SUPPRESSMSGBOXES",
+				"/NOCLOSEAPPLICATIONS",
+				"/VETTAUPDATE=true",
+				"/VETTASTOREROOT=C:\\Store Root",
+			]),
 		);
 	});
 });
