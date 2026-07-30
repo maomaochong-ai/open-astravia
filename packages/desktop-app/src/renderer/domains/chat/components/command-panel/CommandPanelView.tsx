@@ -88,7 +88,7 @@ export function CommandPanelView({
 						</FadingScrollArea>
 
 						{actions.length > 0 && (
-							<div className="flex shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-3 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+							<div className="no-scrollbar flex shrink-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-3 pb-1 pt-1">
 								{actions.map((action) => (
 									<button
 										key={action.id}

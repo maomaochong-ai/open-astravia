@@ -42,7 +42,9 @@ export function FadingScrollArea({
 			ref={ref}
 			onScroll={sync}
 			className={[
-				"min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+				// 隐藏滚动条只能用 no-scrollbar：全局 overlay 滚动条规则是无 layer 的，
+				// Tailwind 的 `[&::-webkit-scrollbar]:hidden` 在 layer 里压不过它。
+				"no-scrollbar min-h-0 flex-1 overflow-y-auto",
 				fading ? FADE_MASK : "",
 				className,
 			]
