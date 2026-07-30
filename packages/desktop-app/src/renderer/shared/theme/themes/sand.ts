@@ -5,7 +5,8 @@ import { defaultTheme } from "./default";
 // dark accent 抬高以便 bg-accent 与 dropdown 的 hover:bg-accent/50 可辨；
 // light secondary 用于用户消息气泡，须明显深于背景。
 
-const PRIMARY = "rgb(247, 111, 83)"; // #f76f53
+// 原 #f76f53 偏亮偏粉，压暗并减少蓝分量让珊瑚更暖
+const PRIMARY = "rgb(224, 88, 60)"; // #e0583c
 const PRIMARY_FG = "rgb(255, 255, 255)";
 
 // ── dark ──
