@@ -23,9 +23,13 @@ const MAX_STACK = 4;
 const SOFT = { duration: 0.16, ease: [0.22, 0.61, 0.36, 1] as const };
 const POP = { type: "spring" as const, stiffness: 520, damping: 34, mass: 0.7 };
 
-/** 与执行模式（权限/沙箱）对齐的外观：h-7 / rounded-lg / 正文色，hover 才上底色。 */
+/**
+ * 与执行模式（权限/沙箱）对齐的尺寸：h-7 / rounded-lg / 正文色。
+ * 但底色常驻（不是 hover 才上）——它表示的是「已激活」这个持续状态，
+ * 全透明时和旁边的普通工具栏按钮分不出来。
+ */
 const CAPSULE_CLASS =
-	"group flex h-7 min-w-0 shrink items-center gap-1 rounded-lg px-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-accent/60 @[22rem]:gap-1.5 @[22rem]:px-2";
+	"group flex h-7 min-w-0 shrink items-center gap-1 rounded-lg bg-accent/60 px-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-accent @[22rem]:gap-1.5 @[22rem]:px-2";
 
 /**
  * 已激活的 input action（知识检索、插件开关）在工具栏里的常驻提示，
