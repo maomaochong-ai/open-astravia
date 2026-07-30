@@ -822,6 +822,16 @@ export function useSessionManager(): SessionManagerResult {
 					return;
 				}
 
+				// ── 激活工具集变化（插件在会话创建之后才注册工具）──
+				// openSession 时拿到的 getState 快照可能早于插件 activate，不刷新的话
+				// 输入栏 badge 的 requiresActiveTool 闸门会一直按旧集合隐藏。
+				if (event.type === "active_tools_update") {
+					if (event.sessionId === activeSessionRef.current?.runtimeId) {
+						setActiveToolNames(new Set(event.activeToolNames));
+					}
+					return;
+				}
+
 				// ── Todo update ──
 				if (event.type === "todo_update") {
 					const sid = activeSessionRef.current?.runtimeId;
