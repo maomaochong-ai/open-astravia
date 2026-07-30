@@ -21,6 +21,18 @@
 			"types": "./src/activity/index.ts",
 			"import": "./src/activity/index.ts"
 		},
+		"./activity/code-preview": {
+			"types": "./src/activity/CodePreview.tsx",
+			"import": "./src/activity/CodePreview.tsx"
+		},
+		"./activity/html-preview": {
+			"types": "./src/activity/HtmlPreviewView.tsx",
+			"import": "./src/activity/HtmlPreviewView.tsx"
+		},
+		"./activity/markdown-preview": {
+			"types": "./src/activity/MarkdownPreviewView.tsx",
+			"import": "./src/activity/MarkdownPreviewView.tsx"
+		},
 
 		"./batch-tasks": {
 			"types": "./src/batch-tasks/index.ts",
