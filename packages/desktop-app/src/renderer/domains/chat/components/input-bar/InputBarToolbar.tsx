@@ -12,9 +12,6 @@ import type { InputBarLabels } from "./types";
 const SPRING = { type: "spring" as const, stiffness: 460, damping: 32, mass: 0.9 };
 const TOOLBAR_BUTTON_HOVER = { scale: 1.06 };
 const TOOLBAR_BUTTON_TAP = { scale: 0.92 };
-const SEND_HINT_INITIAL = { opacity: 0, y: 2 };
-const SEND_HINT_ANIMATE = { opacity: 1, y: 0 };
-const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
 interface InputBarToolbarProps {
 	/** 已激活的 input action，紧跟执行模式右侧显示。 */
@@ -24,7 +21,7 @@ interface InputBarToolbarProps {
 	hasSession: boolean;
 	isEmpty: boolean;
 	isStreaming: boolean;
-	labels: Pick<InputBarLabels, "capsule" | "hint" | "toolbar">;
+	labels: Pick<InputBarLabels, "capsule" | "toolbar">;
 	onAbort: () => void;
 	onPlusClick: () => void;
 	onSend: () => void;
@@ -67,7 +64,7 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 				data-theme-surface-root="chat.inputBarToolbarLeft"
 			>
 				<InputBarToolbarButton
-					icon="icon-[solar--add-circle-linear]"
+					icon="icon-[solar--code-scan-bold-duotone]"
 					title={labels.toolbar.skills}
 					disabled={!hasSession}
 					onClick={onPlusClick}
@@ -93,15 +90,6 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					<ModelSelector />
 				</div>
 				<ContextRing className="mr-1 shrink-0" />
-				<motion.span
-					key={isStreaming ? "s" : isEmpty ? "e" : "n"}
-					initial={SEND_HINT_INITIAL}
-					animate={SEND_HINT_ANIMATE}
-					transition={SOFT}
-					className="mx-1 hidden shrink-0 text-[10.5px] text-muted-foreground/50 select-none @[32rem]:inline"
-				>
-					{isStreaming ? "" : isEmpty ? labels.hint.send : labels.hint.newline}
-				</motion.span>
 				{isStreaming && !isEmpty ? (
 					<motion.button
 						type="button"

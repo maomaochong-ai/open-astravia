@@ -525,10 +525,6 @@ export function useInputBarModel({
 				removeImage: t("inputBar.capsule.removeImage"),
 				removeTooltip: (path) => t("inputBar.capsule.removeTooltip", { path }),
 			},
-			hint: {
-				send: t("inputBar.hint.send"),
-				newline: t("inputBar.hint.newline"),
-			},
 			permission: {
 				deny: t("inputBar.permission.deny"),
 				allow: t("inputBar.permission.allow"),

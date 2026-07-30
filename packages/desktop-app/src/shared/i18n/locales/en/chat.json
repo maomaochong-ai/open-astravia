@@ -278,10 +278,6 @@
 			"queueLabel": "Queued",
 			"queueSendNow": "Send now"
 		},
-		"hint": {
-			"newline": "⇧⏎ Newline",
-			"send": "⏎ Send"
-		},
 		"permission": {
 			"allow": "Allow once",
 			"allowSession": "Don't ask again this session",

@@ -278,10 +278,6 @@
 			"queueLabel": "队列",
 			"queueSendNow": "立即发送"
 		},
-		"hint": {
-			"newline": "⇧⏎ 换行",
-			"send": "⏎ 发送"
-		},
 		"permission": {
 			"allow": "允许本次",
 			"allowSession": "本会话不再询问",

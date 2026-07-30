@@ -26,10 +26,6 @@ export interface InputBarLabels {
 		removeImage: string;
 		removeTooltip: (path: string) => string;
 	};
-	hint: {
-		send: string;
-		newline: string;
-	};
 	permission: {
 		deny: string;
 		allow: string;
