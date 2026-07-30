@@ -462,7 +462,7 @@ textarea:disabled,
 :root[data-platform="mac"][data-sidebar-style="classic"]
 	.sidebar-dock
 	.sidebar-top-bar {
-	padding-top: 0.625rem;
+	padding-top: 0.75rem;
 	padding-bottom: 0;
 }
 
