@@ -5,6 +5,7 @@ import { ContextRing } from "../ContextRing";
 import { ExecutionModeSelector } from "../ExecutionModeSelector";
 import { ModelSelector } from "../ModelSelector";
 import { SendButton } from "../SendButton";
+import { ActiveActionCapsules, type ActiveActionCapsule } from "./ActiveActionCapsules";
 import { InputBarToolbarButton } from "./InputBarToolbarButton";
 import type { InputBarLabels } from "./types";
 
@@ -16,12 +17,14 @@ const SEND_HINT_ANIMATE = { opacity: 1, y: 0 };
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
 interface InputBarToolbarProps {
+	/** 已激活的 input action，紧跟执行模式右侧显示。 */
+	activeActions: readonly ActiveActionCapsule[];
 	canSend: boolean;
 	className?: string;
 	hasSession: boolean;
 	isEmpty: boolean;
 	isStreaming: boolean;
-	labels: Pick<InputBarLabels, "hint" | "toolbar">;
+	labels: Pick<InputBarLabels, "capsule" | "hint" | "toolbar">;
 	onAbort: () => void;
 	onPlusClick: () => void;
 	onSend: () => void;
@@ -29,6 +32,7 @@ interface InputBarToolbarProps {
 }
 
 export const InputBarToolbar = memo(function InputBarToolbar({
+	activeActions,
 	canSend,
 	className,
 	hasSession,
@@ -73,6 +77,7 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 				<div className="min-w-0 shrink">
 					<ExecutionModeSelector />
 				</div>
+				<ActiveActionCapsules items={activeActions} removeHint={labels.capsule.removeDefault} />
 			</div>
 
 			<div

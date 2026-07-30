@@ -10,7 +10,6 @@ import { ActionButtonBar } from "../ActionButtonBar";
 import { QuestionPanel } from "../QuestionPanel";
 import { AppshotCard } from "../AppshotCard";
 import { InputBarBackground } from "./InputBarBackground";
-import { ActiveActionCapsules } from "./ActiveActionCapsules";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
 import { InputBarToolbar } from "./InputBarToolbar";
@@ -130,10 +129,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 											</div>
 										)}
 
-										<ActiveActionCapsules
-											items={model.activeActions}
-											removeHint={model.labels.capsule.removeDefault}
-										/>
 
 										{model.appshotAttachment && (
 											<AppshotCard data={model.appshotAttachment} onRemove={model.actions.removeAppshot} />
@@ -221,6 +216,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 						</div>
 
 						<InputBarToolbar
+							activeActions={model.activeActions}
 							canSend={model.canSend}
 							className={classNames?.toolbar}
 							hasSession={model.hasSession}

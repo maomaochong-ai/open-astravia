@@ -164,7 +164,7 @@ export function useInputBarModel({
 	);
 
 	/**
-	 * 已激活的 action 在输入卡片里留一枚小胶囊。
+	 * 已激活的 action 在工具栏里紧跟执行模式（权限/沙箱）右侧显示。
 	 * 全量开关列表已搬进命令面板，但激活态是跨消息持续的，面板一关就看不见会让
 	 * 用户忘记自己开着知识检索之类的开关。
 	 */
@@ -194,7 +194,6 @@ export function useInputBarModel({
 
 	/** 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、插件上下文、重编辑提示。 */
 	const hasCapsules =
-		activeActions.length > 0 ||
 		imageAttachments.length > 0 ||
 		Boolean(selectedSkill) ||
 		Boolean(promptAttachment) ||

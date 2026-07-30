@@ -17,7 +17,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **输入框里的 skill 由硬展开改为软引用**：选中 skill 不再写 `PromptRequest.promptRef`、也不再由 coding-agent 把 skill 正文注入成隐藏 `<skill>` 块，而是在消息文本里留 `@skill:名字` 标记，由模型经 `invoke_skill` 自行决定是否调用，因此一条消息可以引用多个 skill。场景（scene）不变，仍走 `promptRef` 硬展开以保留 `tasks.json` 自动建 todo 与 todo 锁定；定时任务与批量任务的 `promptRef` 链路同样不变。
 
 - **斜杠面板重构为命令面板，主题槽位一分为二**：`chat.slashPanelView` 拆成 `chat.commandPanelView`（聊天侧，含连接器宫格与底部动作条）与 `chat.skillPickerView`（批量任务 / 自动化 dialog 侧，纯 skill 选择器）；theme-ui 的 `SlashPanelView` 及其 `SlashPanelViewProps` / `SlashPanelItemModel` / `SlashPanelLabels` / `SlashPanelSkillItem` / `SlashPanelClassNames` 一并删除，面板不再有「场景 / 技能」两段分区（合成单列）。覆盖该槽位的主题需要跟着改。
-- **输入卡片下方的动作条（知识检索 / 插件 input action）移入命令面板底部**：desktop 不再渲染 `InputActionBar`；已激活的开关改为在输入卡片内显示为可点关闭的小胶囊，避免面板关闭后激活态完全不可见。theme-ui 的 `InputActionBarView` 与 `chat.inputActionBar` surface 保留（官网 demo 仍在用），但对 desktop 已无效果——xianxia 主题里那条 `mx-auto w-[93%]` 因此不再影响客户端。
+- **输入卡片下方的动作条（知识检索 / 插件 input action）移入命令面板底部**：desktop 不再渲染 `InputActionBar`；已激活的开关改为在工具栏里紧跟执行模式（权限/沙箱）右侧显示（无底色无描边，点一下即关闭），避免面板关闭后激活态完全不可见。theme-ui 的 `InputActionBarView` 与 `chat.inputActionBar` surface 保留（官网 demo 仍在用），但对 desktop 已无效果——xianxia 主题里那条 `mx-auto w-[93%]` 因此不再影响客户端。
 - **选图 / 选附件按钮移入命令面板底部**：输入卡片工具栏只留「+」（唤出面板）、执行模式、模型与发送；插图与附件改为面板底部动作条左侧的一次性命令（点击即开系统选择器并关闭面板），与右侧可开关的知识检索 / 插件 action 用分隔线隔开。`InputBarToolbarProps` 的 `onSelectImages` / `onSelectFiles` 与 `InputBarLabels.toolbar.addImage` / `attachFile` 随之移除。
 ### Added
 
