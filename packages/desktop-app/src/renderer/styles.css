@@ -451,6 +451,21 @@ textarea:disabled,
 	border-right-width: 1px;
 }
 
+/* 顶栏内容与 macOS 红绿灯对齐。h-11 自身居中：悬浮时顶栏占 8~52、中线 30 偏下；
+   经典下从 y=0 起算、中线 22 偏上。两边各补一侧内边距把中线挪到实测位置
+   （悬浮 28、经典 29）。padding 记在 h-11 元素自身（border-box，总高不变），
+   drag-region 仍覆盖整条顶栏。数值是照实机目测调的，要挪就改这两个。 */
+:root[data-platform="mac"] .sidebar-dock .sidebar-top-bar {
+	padding-bottom: 0.25rem;
+}
+
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-top-bar {
+	padding-top: 0.875rem;
+	padding-bottom: 0;
+}
+
 /* macOS 经典侧边栏用系统原生毛玻璃（窗口已带 vibrancy: "sidebar"，见 main/window-manager.ts）。
    放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
    ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
@@ -494,9 +509,18 @@ textarea:disabled,
 :root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
 	content: "";
 	position: absolute;
-	inset: -0.5rem -0.5rem -0.5rem 0;
+	inset: -0.5rem;
 	z-index: -1;
 	background-color: var(--background);
+}
+
+/* 侧边栏在位时，左边那 8px 已经被它自己盖住，::before 不能再往左伸——否则会压住毛玻璃右缘。
+   侧边栏收起（或窄屏浮层态）时 .sidebar-dock 整个不渲染，此规则不命中，
+   ::before 就按上面的 inset 一路铺到窗口左边，不会留下透出桌面的空白条。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	~ .app-main-frame::before {
+	left: 0;
 }
 
 .project-list-containment {
