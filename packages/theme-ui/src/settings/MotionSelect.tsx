@@ -9,7 +9,7 @@ import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
  * 到触发器，Content 关闭卸载后触发器会空白。本组件用 Popover + 显式 label。
  *
  * 视觉与 `@vetta/ui` Select 默认皮一致。
- * 仅保留面板整体入场，选项列表不再逐项 stagger。
+ * 仅保留面板极轻淡入（无缩放/位移），选项列表不再逐项 stagger。
  */
 
 export interface MotionSelectOption {
@@ -82,10 +82,10 @@ export function MotionSelect({
 						style={{ animation: "none" }}
 					>
 						<motion.div
-							initial={{ opacity: 0, scale: 0.96, y: -8 }}
-							animate={{ opacity: 1, scale: 1, y: 0 }}
-							exit={{ opacity: 0, scale: 0.96, y: -8 }}
-							transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.12, ease: "easeOut" }}
 						>
 							{options.map((option) => {
 								const isSelected = option.value === value;
