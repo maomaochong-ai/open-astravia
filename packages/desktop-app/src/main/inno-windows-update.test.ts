@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CancellationError, type UpdateInfo } from "builder-util-runtime";
+import type { UpdateInfo } from "builder-util-runtime";
 import type { ResolvedUpdateFileInfo } from "electron-updater";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -68,6 +68,7 @@ describe("InnoWindowsUpdateController", () => {
 				await mkdir(join(versionDir, "resources"), { recursive: true });
 				await writeFile(join(versionDir, "Vetta.exe"), "executable");
 				await writeFile(join(versionDir, "resources", "app.asar"), "asar");
+				await writeFile(join(versionDir, ".install-complete"), version);
 			},
 		);
 		const controller = new InnoWindowsUpdateController({
@@ -140,15 +141,13 @@ describe("InnoWindowsUpdateController", () => {
 		});
 		controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
 
-		const abortController = new AbortController();
-		setTimeout(() => abortController.abort(), 10);
 		await expect(
-			controller.prepareDownloadedInstaller(installerPath, vi.fn(), abortController.signal),
-		).rejects.toBeInstanceOf(CancellationError);
+			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
+		).rejects.toThrow(".install-complete");
 		await expect(controller.activate()).rejects.toThrow("not ready");
 	});
 
-	it("accepts a complete version written after the Inno launcher exits", async () => {
+	it("rejects a failed installer even when it leaves core files behind", async () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
 		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
@@ -157,14 +156,10 @@ describe("InnoWindowsUpdateController", () => {
 			currentVersion: "1.2.2",
 			storeRoot,
 			installInstaller: async (_installerPath, destinationRoot, version) => {
-				setTimeout(() => {
-					void (async () => {
-						const versionDir = join(destinationRoot, "versions", version);
-						await mkdir(join(versionDir, "resources"), { recursive: true });
-						await writeFile(join(versionDir, "Vetta.exe"), "executable");
-						await writeFile(join(versionDir, "resources", "app.asar"), "asar");
-					})();
-				}, 10);
+				const versionDir = join(destinationRoot, "versions", version);
+				await mkdir(join(versionDir, "resources"), { recursive: true });
+				await writeFile(join(versionDir, "Vetta.exe"), "executable");
+				await writeFile(join(versionDir, "resources", "app.asar"), "asar");
 				throw new Error("Inno Setup exited with code 5");
 			},
 			relaunch: vi.fn(),
@@ -174,7 +169,36 @@ describe("InnoWindowsUpdateController", () => {
 
 		await expect(
 			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
-		).resolves.toEqual([join(storeRoot, "versions", "1.2.3", "Vetta.exe")]);
+		).rejects.toThrow("Inno Setup exited with code 5");
+	});
+
+	it("removes an incomplete version before retrying the installer", async () => {
+		const root = await createTemporaryRoot();
+		const storeRoot = join(root, "store");
+		const versionDir = join(storeRoot, "versions", "1.2.3");
+		const installerPath = join(root, "Vetta-1.2.3-win-x64.exe");
+		await mkdir(versionDir, { recursive: true });
+		await writeFile(join(versionDir, "stale.txt"), "stale");
+		await writeFile(installerPath, "installer");
+		const controller = new InnoWindowsUpdateController({
+			currentVersion: "1.2.2",
+			storeRoot,
+			installInstaller: async (_installerPath, destinationRoot, version) => {
+				const destinationDir = join(destinationRoot, "versions", version);
+				await expect(readFile(join(destinationDir, "stale.txt"), "utf8")).rejects.toThrow();
+				await mkdir(join(destinationDir, "resources"), { recursive: true });
+				await writeFile(join(destinationDir, "Vetta.exe"), "executable");
+				await writeFile(join(destinationDir, "resources", "app.asar"), "asar");
+				await writeFile(join(destinationDir, ".install-complete"), version);
+			},
+			relaunch: vi.fn(),
+			quit: vi.fn(),
+		});
+		controller.select(createUpdateInfo(), createResolvedFiles(Buffer.from("installer")));
+
+		await expect(
+			controller.prepareDownloadedInstaller(installerPath, vi.fn(), new AbortController().signal),
+		).resolves.toEqual([join(versionDir, "Vetta.exe")]);
 	});
 });
 

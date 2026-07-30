@@ -7,8 +7,8 @@ import type { ResolvedUpdateFileInfo } from "electron-updater";
 
 const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const WINDOWS_EXECUTABLE_NAME = "Vetta.exe";
+const INSTALL_COMPLETE_FILE_NAME = ".install-complete";
 const PROGRESS_POLL_INTERVAL_MS = 250;
-const INNO_COMPLETION_TIMEOUT_MS = 30_000;
 
 interface InnoUpdateSelection {
 	version: string;
@@ -156,6 +156,7 @@ async function installWithInno(
 	const progressPath = join(workRoot, "progress");
 	const logPath = join(workRoot, "install.log");
 	await mkdir(workRoot, { recursive: true });
+	let installSucceeded = false;
 
 	try {
 		await new Promise<void>((resolvePromise, reject) => {
@@ -192,10 +193,15 @@ async function installWithInno(
 				else reject(new Error(`Inno Setup exited with code ${code ?? "unknown"}`));
 			});
 		});
+		installSucceeded = true;
 	} finally {
-		void rm(workRoot, { recursive: true, force: true }).catch((error) => {
-			console.warn("[updater] unable to remove Inno Setup working directory", error);
-		});
+		if (installSucceeded) {
+			void rm(workRoot, { recursive: true, force: true }).catch((error) => {
+				console.warn("[updater] unable to remove Inno Setup working directory", error);
+			});
+		} else {
+			console.error("[updater] Inno Setup log retained after failure", logPath);
+		}
 	}
 }
 
@@ -210,26 +216,11 @@ async function assertFile(path: string): Promise<void> {
 }
 
 async function assertCompleteVersionDirectory(versionDir: string): Promise<void> {
+	await assertFile(join(versionDir, INSTALL_COMPLETE_FILE_NAME));
 	await Promise.all([
 		assertFile(join(versionDir, WINDOWS_EXECUTABLE_NAME)),
 		assertFile(join(versionDir, "resources", "app.asar")),
 	]);
-}
-
-async function waitForCompleteVersionDirectory(versionDir: string, signal: AbortSignal): Promise<void> {
-	const deadline = Date.now() + INNO_COMPLETION_TIMEOUT_MS;
-	let lastError: unknown;
-	do {
-		if (signal.aborted) throw new CancellationError();
-		try {
-			await assertCompleteVersionDirectory(versionDir);
-			return;
-		} catch (error) {
-			lastError = error;
-		}
-		await new Promise((resolvePromise) => setTimeout(resolvePromise, PROGRESS_POLL_INTERVAL_MS));
-	} while (Date.now() < deadline);
-	throw lastError;
 }
 
 export function isVersionedWindowsExecutable(executablePath: string, version: string): boolean {
@@ -294,19 +285,12 @@ export class InnoWindowsUpdateController {
 			// Continue with the downloaded installer.
 		}
 
+		await rm(destinationDir, { recursive: true, force: true });
 		report(0);
 		console.info("[updater] preparing Windows version with Inno Setup", installerPath);
-		let installError: unknown;
-		try {
-			await this.installInstaller(installerPath, this.runtime.storeRoot, selection.version, report, signal);
-		} catch (error) {
-			installError = error;
-		}
-		try {
-			await waitForCompleteVersionDirectory(destinationDir, signal);
-		} catch (error) {
-			throw installError ?? error;
-		}
+		await this.installInstaller(installerPath, this.runtime.storeRoot, selection.version, report, signal);
+		if (signal.aborted) throw new CancellationError();
+		await assertCompleteVersionDirectory(destinationDir);
 		this.prepared = { version: selection.version, executablePath };
 		onProgress({
 			bytesPerSecond: 0,

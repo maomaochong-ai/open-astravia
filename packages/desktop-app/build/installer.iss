@@ -133,6 +133,18 @@ end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
-  if (CurStep = ssPostInstall) and IsNotBackgroundUpdate() then
-    DeleteFile(ExpandConstant('{localappdata}\Vetta\current.json'));
+  if CurStep = ssPostInstall then
+  begin
+    if IsBackgroundUpdate() then
+    begin
+      if not SaveStringToFile(
+        AddBackslash(GetUpdateVersionDirectory('')) + '.install-complete',
+        '{#AppVersion}',
+        False
+      ) then
+        RaiseException('Failed to write update completion marker.');
+    end
+    else
+      DeleteFile(ExpandConstant('{localappdata}\Vetta\current.json'));
+  end;
 end;
