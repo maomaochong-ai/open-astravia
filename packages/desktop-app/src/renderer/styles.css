@@ -40,6 +40,8 @@
 	--destructive-foreground: rgb(0, 0, 0);
 	--border: rgb(42, 45, 56);
 	--input: rgb(48, 51, 64);
+	/* AI 输入栏底色：深色跟随 card，浅色为纯白 */
+	--input-bar-bg: rgb(26, 28, 36);
 	--ring: rgb(129, 132, 248);
 	--chart-1: rgb(255, 174, 4);
 	--chart-2: rgb(38, 113, 244);
@@ -101,6 +103,7 @@
 	--destructive-foreground: rgb(255, 255, 255);
 	--border: rgb(230, 230, 230);
 	--input: rgb(230, 230, 230);
+	--input-bar-bg: rgb(255, 255, 255);
 	--ring: rgb(79, 70, 229);
 	--chart-1: rgb(255, 174, 4);
 	--chart-2: rgb(45, 98, 239);

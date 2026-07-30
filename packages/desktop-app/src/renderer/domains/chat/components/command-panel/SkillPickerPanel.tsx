@@ -49,7 +49,7 @@ export function SkillPickerPanelView({
 					exit={{ opacity: 0, y: placement === "top" ? 8 : -8, scaleY: 0.96 }}
 					transition={{ duration: 0.15, ease: [0.25, 0.1, 0.25, 1] }}
 					className={[
-						"absolute inset-x-0 z-50 overflow-visible rounded-2xl border border-border bg-card",
+						"absolute inset-x-0 z-50 overflow-visible rounded-2xl border border-border bg-input-bar-bg",
 						placement === "top" ? "bottom-full mb-1.5 origin-bottom" : "top-full mt-1.5 origin-top",
 						className,
 					]

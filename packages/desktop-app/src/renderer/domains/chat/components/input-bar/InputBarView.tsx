@@ -33,7 +33,9 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 	);
 
 	const cardClass = [
-		"input-card relative z-10 overflow-visible border bg-card transition-[border-color,box-shadow,transform] duration-200",
+		// 浅色下输入栏与页面同为白底，靠一层大扩散低透明的外投影把它从背景里托起
+		//（近距离叠色会在白底上发灰）；深色底色本身有层级差，不投影。
+		"input-card relative z-10 overflow-visible border bg-input-bar-bg shadow-[0_8px_28px_-14px_rgb(0_0_0/0.10)] transition-[border-color,box-shadow,transform] duration-200 dark:shadow-none",
 		// 展开态：命令区钉在卡片上沿，这里去掉上圆角，上边框改为透明（见下方 inline style，
 		// 用 border-t-0 会少 1px 让整条 bar 抖一下），两块面才是连续的一整块。
 		model.slashOpen ? "rounded-b-[20px] rounded-t-none" : "rounded-[20px]",

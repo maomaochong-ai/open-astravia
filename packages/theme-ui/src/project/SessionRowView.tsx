@@ -59,7 +59,7 @@ export function SessionRowView({
 			onContextMenu={onOpenContextMenu}
 			className={cn(
 				"relative flex w-full items-center gap-2 rounded-lg px-2.5 py-[6px] text-left transition-colors duration-100",
-				active ? "bg-primary/15 text-foreground" : "hover:bg-accent/50",
+				active ? "bg-accent text-foreground" : "hover:bg-accent/50",
 			)}
 			title={title}
 		>

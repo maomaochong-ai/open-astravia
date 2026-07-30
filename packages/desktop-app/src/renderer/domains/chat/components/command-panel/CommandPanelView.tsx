@@ -58,7 +58,7 @@ export function CommandPanelView({
 						// 不外扩这 1px 的话本区描边会比卡片描边窄一圈，接缝处看着像台阶。
 						// 不写描边色：缺省吃 base 层的 `* { border-border }`，聚焦态由 className
 						// 传 `border-primary/20` 覆盖，和输入卡片一起亮，否则接缝上下两截颜色不一样。
-						"absolute -inset-x-px bottom-full z-10 overflow-hidden rounded-t-[20px] border border-b-0 bg-card transition-[border-color] duration-200",
+						"absolute -inset-x-px bottom-full z-10 overflow-hidden rounded-t-[20px] border border-b-0 bg-input-bar-bg transition-[border-color] duration-200",
 						className,
 					]
 						.filter(Boolean)
