@@ -465,6 +465,24 @@ textarea:disabled,
 	.sidebar-dock
 	.sidebar-surface {
 	background-color: color-mix(in srgb, var(--background) 60%, transparent);
+	transition: background-color 240ms ease;
+}
+
+/* 浅色下毛玻璃的底噪会吃掉 bg-accent（rgb(235,235,235)）那点对比，选中态几乎看不出来。
+   在侧边栏子树内把 --accent 换成更重的中性色，导航指示条、会话行选中与 hover 一起生效。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	--accent: color-mix(in srgb, var(--foreground) 10%, transparent);
+}
+
+/* 明暗切换期间先遮住原生 vibrancy（它由主进程翻转，动不了也不进 View Transition 快照，
+   否则会比页面动画早一步瞬变）；属性移除后按上面的 240ms 淡回半透明。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme-transition]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: var(--background);
+	transition: none;
 }
 
 :root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
