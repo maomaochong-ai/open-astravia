@@ -13,6 +13,8 @@ export interface SkillListProps {
 	activeIndex: number;
 	labels: SkillListLabels;
 	filtering: boolean;
+	/** 市场目录里的图标（`solar:xxx` 或图片 URL）；返回 undefined 时落 type 默认图。 */
+	resolveIcon?: (skill: SkillInfo) => string | undefined;
 	onHover: (index: number) => void;
 	onSelect: (skill: SkillInfo) => void;
 }
@@ -42,6 +44,7 @@ export interface CommandPanelProps {
 	connectorColumns: number;
 	actions: readonly CommandPanelActionItem[];
 	labels: CommandPanelLabels;
+	resolveIcon: (skill: SkillInfo) => string | undefined;
 	panelRef: React.RefObject<HTMLDivElement | null>;
 	className?: string;
 	onHoverItem: (index: number) => void;

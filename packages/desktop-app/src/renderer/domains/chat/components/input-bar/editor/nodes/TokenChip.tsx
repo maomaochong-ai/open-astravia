@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 /**
  * 行内 token 的统一外观：半透明主题色底 + 描边的小徽标，随文本流换行。
  *
@@ -9,12 +11,16 @@
 export function TokenChip({
 	icon,
 	iconUrl,
+	iconNode,
 	label,
 	title,
 }: {
-	icon: string;
+	/** iconify 字体类；iconNode / iconUrl 都没给时用它。 */
+	icon?: string;
 	/** 有真实图标（连接器 logo）时优先用图片，回退到 icon 字体类。 */
 	iconUrl?: string;
+	/** 自带渲染逻辑的图标（skill 走能力广场那套「图片 / Solar / 默认图」三态），优先级最高。 */
+	iconNode?: ReactNode;
 	label: string;
 	title?: string;
 }): JSX.Element {
@@ -24,16 +30,20 @@ export function TokenChip({
 			title={title ?? label}
 			data-input-token="true"
 		>
-			{iconUrl ? (
+			{iconNode ? (
+				<span className="mr-1 inline-flex h-3 w-3 items-center justify-center overflow-hidden align-[-0.15em]">
+					{iconNode}
+				</span>
+			) : iconUrl ? (
 				<img
 					src={iconUrl}
 					alt=""
 					draggable={false}
 					className="mr-1 inline-block h-3 w-3 rounded-sm align-[-0.15em] object-contain"
 				/>
-			) : (
+			) : icon ? (
 				<span className={`${icon} mr-1 inline-block h-3 w-3 align-[-0.15em]`} />
-			)}
+			) : null}
 			{label}
 		</span>
 	);

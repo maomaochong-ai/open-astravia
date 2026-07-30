@@ -124,7 +124,8 @@ export interface InputBarModel {
 		handleTriggerChange: (trigger: TriggerMatch | null) => void;
 		handleContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
 		handleSlashClose: () => void;
-		handleSlashSelect: (skill: SkillInfo) => void;
+		/** icon 由命令区从市场目录解析后带下来，行内胶囊沿用同一张图。 */
+		handleSlashSelect: (skill: SkillInfo, icon?: string) => void;
 		/** 面板里点连接器宫格：插入一个 `@mcp:名字` 行内 token。 */
 		handleConnectorSelect: (connector: ConnectorGridItem) => void;
 		handleAtClose: () => void;

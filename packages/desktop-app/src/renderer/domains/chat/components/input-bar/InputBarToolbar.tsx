@@ -83,7 +83,7 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 				<div className="ml-1 h-4 w-px shrink-0 bg-border/70" />
 				{/*
 				 * 展开形态下这个位置让给「插图 / 附件」——命令区已经占满上方，
-				 * 此时执行模式、模型与发送都收起，工具栏只服务于「往输入框里添东西」。
+				 * 此时执行模式与模型收起，工具栏只服务于「往输入框里添东西」+ 发送。
 				 */}
 				{slashOpen ? (
 					<>
@@ -117,13 +117,16 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					.join(" ")}
 				data-theme-surface-root="chat.inputBarToolbarRight"
 			>
+				{/* 展开形态只留发送：模型与上下文圆环让位给命令区 */}
 				{!slashOpen && (
-					<div className="min-w-0 shrink">
-						<ModelSelector />
-					</div>
+					<>
+						<div className="min-w-0 shrink">
+							<ModelSelector />
+						</div>
+						<ContextRing className="mr-1 shrink-0" />
+					</>
 				)}
-				<ContextRing className="mr-1 shrink-0" />
-				{slashOpen ? null : isStreaming && !isEmpty ? (
+				{isStreaming && !isEmpty ? (
 					<motion.button
 						type="button"
 						onClick={onSend}

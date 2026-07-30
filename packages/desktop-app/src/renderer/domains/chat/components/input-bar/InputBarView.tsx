@@ -33,7 +33,10 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 	);
 
 	const cardClass = [
-		"input-card relative z-10 overflow-visible rounded-[20px] border bg-card transition-[border-color,box-shadow,transform] duration-200",
+		"input-card relative z-10 overflow-visible border bg-card transition-[border-color,box-shadow,transform] duration-200",
+		// 展开态：命令区钉在卡片上沿，这里去掉上圆角，上边框改为透明（见下方 inline style，
+		// 用 border-t-0 会少 1px 让整条 bar 抖一下），两块面才是连续的一整块。
+		model.slashOpen ? "rounded-b-[20px] rounded-t-none" : "rounded-[20px]",
 		model.isFocused ? "border-primary/20" : "border-border",
 		surface?.rootClassName,
 		classNames?.card,
@@ -86,7 +89,13 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					permissionLabels={model.labels.permission}
 				/>
 
-				<div style={{ opacity: model.hasSession ? 1 : 0.55 }} className={cardClass}>
+				<div
+					style={{
+						opacity: model.hasSession ? 1 : 0.55,
+						...(model.slashOpen ? { borderTopColor: "transparent" } : null),
+					}}
+					className={cardClass}
+				>
 					<ThemeSurface slot="chat.inputBar" />
 					<ThemedInputBarBackground />
 					<div className={["relative z-10 rounded-[inherit]", classNames?.cardContent].filter(Boolean).join(" ")}>

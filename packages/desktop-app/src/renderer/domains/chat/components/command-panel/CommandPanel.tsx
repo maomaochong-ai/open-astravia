@@ -7,7 +7,8 @@ import { CommandPanelView } from "./CommandPanelView";
 export interface CommandPanelProps {
 	open: boolean;
 	onClose: () => void;
-	onSelect: (skill: SkillInfo) => void;
+	/** icon 是从市场目录解析出的那张图，交给调用方在行内胶囊上复用。 */
+	onSelect: (skill: SkillInfo, icon?: string) => void;
 	onSelectConnector: (connector: ConnectorGridItem) => void;
 	/** 触发词原文（含 `/`）。 */
 	filter: string;

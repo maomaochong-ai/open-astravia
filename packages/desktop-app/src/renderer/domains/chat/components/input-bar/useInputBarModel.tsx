@@ -258,13 +258,13 @@ export function useInputBarModel({
 	}, [trigger]);
 
 	const handleSlashSelect = useCallback(
-		(skill: SkillInfo) => {
+		(skill: SkillInfo, icon?: string) => {
 			if (skill.type === "scene") {
 				// 场景仍走 PromptRequest.promptRef 硬展开（tasks.json 自动建 todo + 锁列表），
 				// 因此它不进文本流，只在输入卡片顶部保留一枚胶囊，且同时只能有一个。
 				setSelectedSkill({ name: skill.name, alias: skill.alias, type: skill.type });
 			} else {
-				insertSkillToken(skill.name, skill.alias, { replaceTrigger: true });
+				insertSkillToken(skill.name, skill.alias, icon, { replaceTrigger: true });
 			}
 			setTrigger(null);
 			focusInputEditor();

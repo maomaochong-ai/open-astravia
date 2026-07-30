@@ -6,12 +6,13 @@ import type { ConnectorGridItem } from "./useConnectorGrid";
 import { useConnectorGrid } from "./useConnectorGrid";
 import { useInputActionBarModel } from "../components/useInputActionBarModel";
 import { skillSourceLabelKey } from "../lib/skill-source-label";
+import { skillIconOf, useSkillIconMap } from "./useSkillIconMap";
 import { useSkillList } from "./useSkillList";
 
 export interface CommandPanelModelInput {
 	open: boolean;
 	onClose: () => void;
-	onSelect: (skill: SkillInfo) => void;
+	onSelect: (skill: SkillInfo, icon?: string) => void;
 	onSelectConnector: (connector: ConnectorGridItem) => void;
 	/** 触发词原文（含 `/`）。 */
 	filter: string;
@@ -37,6 +38,13 @@ export function useCommandPanelModel({
 	// 预取：命令区第一次展开时不必再等扫盘，避免与高度动画抢主线程。
 	const { items } = useSkillList({ open, cwd, filter: normalizedFilter, prefetch: true });
 	const { items: connectors, columns } = useConnectorGrid(open, true);
+	const iconMap = useSkillIconMap(open);
+	const resolveIcon = useCallback((skill: SkillInfo) => skillIconOf(iconMap, skill), [iconMap]);
+	// 选中时把解析好的图标一起带出去：行内胶囊要和列表里显示的是同一张图。
+	const selectSkill = useCallback(
+		(skill: SkillInfo) => onSelect(skill, resolveIcon(skill)),
+		[onSelect, resolveIcon],
+	);
 	const actionBar = useInputActionBarModel();
 	const [activeIndex, setActiveIndex] = useState(0);
 	const panelRef = useRef<HTMLDivElement>(null);
@@ -64,14 +72,14 @@ export function useCommandPanelModel({
 				event.preventDefault();
 				event.stopPropagation();
 				const target = items[activeIndex];
-				if (target) onSelect(target);
+				if (target) selectSkill(target);
 			} else if (event.key === "Escape") {
 				event.preventDefault();
 				event.stopPropagation();
 				onClose();
 			}
 		},
-		[activeIndex, items, onClose, onSelect, open],
+		[activeIndex, items, onClose, open, selectSkill],
 	);
 
 	useEffect(() => {
@@ -153,10 +161,11 @@ export function useCommandPanelModel({
 			connectorColumns: columns,
 			actions,
 			labels,
+			resolveIcon,
 			panelRef: panelRef as RefObject<HTMLDivElement | null>,
 			className,
 			onHoverItem: setActiveIndex,
-			onSelectItem: onSelect,
+			onSelectItem: selectSkill,
 			onSelectConnector,
 		},
 	};

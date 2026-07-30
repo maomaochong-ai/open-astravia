@@ -1,4 +1,5 @@
 import type { SkillInfo } from "@preload/api";
+import { SkillTypeIcon } from "@vetta/theme-ui/skills";
 import { motion } from "motion/react";
 import type { SkillListProps } from "./types";
 
@@ -7,6 +8,7 @@ function SkillListItem({
 	skill,
 	index,
 	active,
+	icon,
 	sourceLabel,
 	onHover,
 	onSelect,
@@ -14,6 +16,7 @@ function SkillListItem({
 	skill: SkillInfo;
 	index: number;
 	active: boolean;
+	icon?: string;
 	sourceLabel: string;
 	onHover: () => void;
 	onSelect: () => void;
@@ -38,14 +41,9 @@ function SkillListItem({
 					transition={{ type: "spring", stiffness: 500, damping: 32 }}
 				/>
 			)}
-			<span
-				className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-					isScene ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-				}`}
-			>
-				<span
-					className={`${isScene ? "icon-[solar--clapperboard-open-linear]" : "icon-[solar--magic-stick-linear]"} h-3 w-3`}
-				/>
+			{/* 与能力广场同一套图标：市场目录的图 → Solar 预设 → type 默认图 */}
+			<span className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded border border-border/40 bg-accent/50 text-foreground">
+				<SkillTypeIcon type={isScene ? "scene" : "skill"} icon={icon} className="h-3 w-3" />
 			</span>
 			<span className="shrink-0 truncate text-[12.5px] font-medium text-foreground">
 				{skill.alias || skill.name}
@@ -71,6 +69,7 @@ export function SkillList({
 	activeIndex,
 	labels,
 	filtering,
+	resolveIcon,
 	onHover,
 	onSelect,
 }: SkillListProps): JSX.Element {
@@ -89,6 +88,7 @@ export function SkillList({
 					skill={skill}
 					index={index}
 					active={index === activeIndex}
+					icon={resolveIcon?.(skill)}
 					sourceLabel={labels.sourceLabel(skill.source, skill.type)}
 					onHover={() => onHover(index)}
 					onSelect={() => onSelect(skill)}

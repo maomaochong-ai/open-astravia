@@ -9,7 +9,7 @@ import type { CommandPanelProps } from "./types";
  * 它与编辑区、工具栏共处一张卡片，因此还要给短窗口留余量——纯 420 在小屏上
  * 会把整条 bar 顶到占掉大半个视口。
  */
-const MAX_HEIGHT = "min(420px, 45vh)";
+const MAX_HEIGHT = "min(320px, 40vh)";
 
 /** 展开 / 收缩的高度过渡：带阻尼的弹簧，避免线性 easing 的生硬感。 */
 const GROW = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.7 };
@@ -22,7 +22,7 @@ const FADE = { duration: 0.12 };
  * 卡片顶沿、向上生长。否则在会话页里展开会把消息列表整体顶上去，正在读的内容
  * 会跳走。相接侧不留圆角与描边，视觉上仍是同一块面长高了。
  *
- * 区内结构：header（固定）→ 连接器宫格 + skill 列表（同一滚动容器）→ 命令条（固定在底部）。
+ * 区内结构：连接器宫格 + skill 列表（同一滚动容器）→ 命令条（固定在底部）。
  * 宫格随内容滚动、向下滚时让位给 skills；否则 8 个连接器就能把可滚区压到只剩几行。
  */
 export function CommandPanelView({
@@ -34,6 +34,7 @@ export function CommandPanelView({
 	connectorColumns,
 	actions,
 	labels,
+	resolveIcon,
 	panelRef,
 	className,
 	onHoverItem,
@@ -52,7 +53,9 @@ export function CommandPanelView({
 					exit={{ height: 0, opacity: 0 }}
 					transition={{ height: GROW, opacity: FADE }}
 					className={[
-						"absolute inset-x-0 bottom-full z-10 overflow-hidden rounded-t-[20px] border border-b-0 border-inherit bg-card",
+						// -inset-x-px：定位父级是卡片的内容盒（已被卡片 1px 描边内缩），
+						// 不外扩这 1px 的话本区描边会比卡片描边窄一圈，接缝处看着像台阶。
+						"absolute -inset-x-px bottom-full z-10 overflow-hidden rounded-t-[20px] border border-b-0 border-inherit bg-card",
 						className,
 					]
 						.filter(Boolean)
@@ -60,15 +63,7 @@ export function CommandPanelView({
 				>
 					<ThemeSurface slot="chat.slashPanel" />
 					<div className="relative z-10 flex flex-col" style={{ maxHeight: MAX_HEIGHT }}>
-						<div className="flex shrink-0 items-center gap-2 px-4 pb-1 pt-2.5">
-							<span className="icon-[solar--slash-circle-linear] h-4 w-4 text-muted-foreground/50" />
-							<span className="text-[12px] font-medium text-muted-foreground/50">{labels.header}</span>
-							{filtering && (
-								<span className="ml-auto text-[11px] text-muted-foreground/50">{labels.resultCount}</span>
-							)}
-						</div>
-
-						<div className="min-h-0 flex-1 overflow-y-auto">
+						<div className="min-h-0 flex-1 overflow-y-auto pt-2">
 							{/* 过滤态隐藏宫格：此时用户在找 skill，键盘导航也只走列表 */}
 							{!filtering && (
 								<ConnectorGrid
@@ -83,6 +78,7 @@ export function CommandPanelView({
 								activeIndex={activeIndex}
 								labels={labels}
 								filtering={filtering}
+								resolveIcon={resolveIcon}
 								onHover={onHoverItem}
 								onSelect={onSelectItem}
 							/>

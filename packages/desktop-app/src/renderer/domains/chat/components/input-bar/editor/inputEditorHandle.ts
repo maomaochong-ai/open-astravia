@@ -44,8 +44,8 @@ function insert(nodes: () => LexicalNode[], options?: InsertTokenOptions): void 
 	});
 }
 
-export function insertSkillToken(name: string, alias?: string, options?: InsertTokenOptions): void {
-	insert(() => [$createSkillTokenNode(name, alias)], options);
+export function insertSkillToken(name: string, alias?: string, icon?: string, options?: InsertTokenOptions): void {
+	insert(() => [$createSkillTokenNode(name, alias, icon)], options);
 }
 
 export function insertConnectorToken(
