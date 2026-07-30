@@ -123,6 +123,31 @@ describe("InnoWindowsUpdateController", () => {
 		);
 	});
 
+	it("retries physical cleanup of obsolete versions after the pointer is already healthy", async () => {
+		const root = await createTemporaryRoot();
+		const storeRoot = join(root, "store");
+		const obsoleteAsar = join(storeRoot, "versions", "1.2.1", "resources", "app.asar");
+		await mkdir(join(storeRoot, "versions", "1.2.1", "resources"), { recursive: true });
+		await writeFile(obsoleteAsar, "obsolete");
+		await mkdir(join(storeRoot, "versions", "1.2.2"), { recursive: true });
+		await mkdir(join(storeRoot, "versions", "1.2.3"), { recursive: true });
+		await writeFile(
+			join(storeRoot, "current.json"),
+			JSON.stringify({ version: "1.2.3", previousVersion: "1.2.2", pending: false }),
+		);
+		const controller = new InnoWindowsUpdateController({
+			currentVersion: "1.2.3",
+			storeRoot,
+			relaunch: vi.fn(),
+			quit: vi.fn(),
+		});
+
+		await controller.markCurrentVersionHealthy();
+
+		await expect(readFile(obsoleteAsar)).rejects.toMatchObject({ code: "ENOENT" });
+		await expect(readFile(join(storeRoot, "current.json"), "utf8")).resolves.toContain('"pending":false');
+	});
+
 	it("does not activate an incomplete Inno Setup installation", async () => {
 		const root = await createTemporaryRoot();
 		const storeRoot = join(root, "store");
