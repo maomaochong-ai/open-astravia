@@ -19,7 +19,6 @@ export interface CommandPanelModelInput {
 	onSelectFiles: () => void;
 	/** 触发词原文（含 `/`）。 */
 	filter: string;
-	placement?: "top" | "bottom";
 	cwd?: string;
 	className?: string;
 }
@@ -36,7 +35,6 @@ export function useCommandPanelModel({
 	onSelectImages,
 	onSelectFiles,
 	filter,
-	placement = "top",
 	cwd,
 	className,
 }: CommandPanelModelInput): CommandPanelModel {
@@ -90,7 +88,11 @@ export function useCommandPanelModel({
 	useEffect(() => {
 		if (!open) return;
 		function handleClick(event: MouseEvent): void {
-			if (panelRef.current && !panelRef.current.contains(event.target as Node)) onClose();
+			const target = event.target as Node;
+			if (!panelRef.current || panelRef.current.contains(target)) return;
+			// 「+」按钮自己负责开合，别让这里先把它关掉（否则它永远只能开、不能收）。
+			if (target instanceof Element && target.closest("[data-command-panel-toggle]")) return;
+			onClose();
 		}
 		// 延后一帧再挂：打开面板的那次 mousedown 否则会立刻把它关掉。
 		const timer = setTimeout(() => document.addEventListener("mousedown", handleClick), 0);
@@ -178,7 +180,6 @@ export function useCommandPanelModel({
 	return {
 		viewProps: {
 			open,
-			placement,
 			filter: normalizedFilter,
 			items,
 			activeIndex,

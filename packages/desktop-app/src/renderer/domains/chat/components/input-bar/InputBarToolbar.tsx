@@ -63,13 +63,19 @@ export const InputBarToolbar = memo(function InputBarToolbar({
 					.join(" ")}
 				data-theme-surface-root="chat.inputBarToolbarLeft"
 			>
-				<InputBarToolbarButton
-					icon="icon-[solar--code-scan-bold-duotone]"
-					title={labels.toolbar.skills}
-					disabled={!hasSession}
-					onClick={onPlusClick}
-					active={slashOpen}
-				/>
+				{/*
+				 * 标记给命令区的 click-outside 判定用：不跳过的话，mousedown 先把命令区
+				 * 收起、紧接着的 click 又把它打开，这个按钮就永远关不掉面板。
+				 */}
+				<span data-command-panel-toggle="true" className="flex shrink-0">
+					<InputBarToolbarButton
+						icon="icon-[solar--code-scan-bold-duotone]"
+						title={labels.toolbar.skills}
+						disabled={!hasSession}
+						onClick={onPlusClick}
+						active={slashOpen}
+					/>
+				</span>
 				<div className="ml-1 h-4 w-px shrink-0 bg-border/70" />
 				<div className="min-w-0 shrink">
 					<ExecutionModeSelector />

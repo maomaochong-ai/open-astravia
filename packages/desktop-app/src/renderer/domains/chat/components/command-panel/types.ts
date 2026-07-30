@@ -40,8 +40,8 @@ export interface CommandPanelActionItem {
 }
 
 export interface CommandPanelProps {
+	/** 展开 / 收缩：命令区是 InputBar 的一种形态，不是浮层。 */
 	open: boolean;
-	placement: "top" | "bottom";
 	/** 归一化后的过滤词（不含 `/`）。 */
 	filter: string;
 	items: readonly SkillInfo[];

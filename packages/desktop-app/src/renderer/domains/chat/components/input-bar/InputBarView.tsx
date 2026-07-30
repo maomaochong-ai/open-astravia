@@ -69,17 +69,6 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					.join(" ")}
 				aria-hidden={model.pendingQuestion ? true : undefined}
 			>
-				<CommandPanel
-					open={model.slashOpen}
-					onClose={model.actions.handleSlashClose}
-					onSelect={model.actions.handleSlashSelect}
-					onSelectConnector={model.actions.handleConnectorSelect}
-					onSelectImages={() => void model.actions.handleSelectImages()}
-					onSelectFiles={() => void model.actions.handleSelectFiles()}
-					filter={model.slashFilter}
-					cwd={model.effectiveCwd || undefined}
-				/>
-
 				<AtPanel
 					open={model.atOpen}
 					onClose={model.actions.handleAtClose}
@@ -101,6 +90,18 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					<ThemeSurface slot="chat.inputBar" />
 					<ThemedInputBarBackground />
 					<div className={["relative z-10 rounded-[inherit]", classNames?.cardContent].filter(Boolean).join(" ")}>
+						{/* 展开形态：命令区与编辑区同处这张卡片，两者之间没有接缝 */}
+						<CommandPanel
+							open={model.slashOpen}
+							onClose={model.actions.handleSlashClose}
+							onSelect={model.actions.handleSlashSelect}
+							onSelectConnector={model.actions.handleConnectorSelect}
+							onSelectImages={() => void model.actions.handleSelectImages()}
+							onSelectFiles={() => void model.actions.handleSelectFiles()}
+							filter={model.slashFilter}
+							cwd={model.effectiveCwd || undefined}
+						/>
+
 						{/*
 						 * 顶部附件区只剩「不是一个词」的东西：重编辑提示、Appshot 复合卡片、
 						 * 插件上下文、场景胶囊。文件 / 图片 / skill 都已进入文本流。
