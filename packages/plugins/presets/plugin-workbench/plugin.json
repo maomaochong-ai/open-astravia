@@ -1,7 +1,7 @@
 {
 	"id": "plugin-workbench",
 	"name": "%plugin.name%",
-	"icon": "solar:widget-add-bold",
+	"icon": "icon.png",
 	"version": "0.1.6",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",

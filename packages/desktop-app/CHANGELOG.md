@@ -4,6 +4,22 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ## [Unreleased] — 内测版（未公证）
 
+### Added
+
+- **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。
+
+### Changed
+
+- **能力广场不再要求登录**：市场列表与安装（skill / scene / plugin 的下载安装）在未登录状态下照常可用，服务端对应接口已开放匿名访问。`fetchMarketAbilities` / `fetchAbilityInfo` / `downloadAbility` 的 token 参数改为可选并移到末位，有 token 时仍带 `Authorization`。移除安装前的「请先登录」拦截与 `abilities:error.notLoggedIn` 文案。
+- **内置 Skill 展示文案接入 i18n**：「创建技能」「发布能力」的名称与描述改由宿主 catalog（`skills:builtin.<name>.*`）按当前语言给出，`skills-manifest.json` 里的中文降级为缺译回退。切语言时能力广场与输入栏命令面板都会重新取数（命令面板的模块级缓存改为按语言分键）。
+- **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、vetta-actions、git 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
+- **Git 插件不再限定 coding 工作模式**：manifest 去掉 `agent_mode: ["coding"]`（agent_mode 轴改为通用）。面板与 turn 卡的显隐仍只看当前 cwd 是不是 git 工作区（`git rev-parse --is-inside-work-tree`），非仓库目录照旧不占标签位。
+- **「插件工作台」更名为「制作插件」**：插件名、活动面板标题、Activity Tab、输入栏 mode 开关及配套 skill / prompt 文案统一改名（英文 `Create Plugin`）。
+
+### Removed
+
+- **系统插件「我能帮你」(guiding-words) 移除**：不再随 App 构建/打包，preset 源码目录一并删除。
+
 ### Breaking Changes
 
 - **客户端只保留授权登录，账号密码登录移除**：登录入口与引导页登录步不再有账号/密码输入框，点「登录」直接唤起系统浏览器走站点授权，回跳 `vetta://oauth/callback` 完成登录。渲染层 `loginByAccount` / `LoginResponse` 删除（服务端 `/auth/login` 不受影响）。非 GitHub/Google 账号经站点 `/login` 的邮箱验证码或邮箱密码登录，客户端不再提供第二条入口。
@@ -83,6 +99,13 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **侧边栏会话时间简写**：相对时间改为紧凑文案（zh：`5分`/`3时`/`2天`；en：`5m`/`3h`/`2d`），适配侧栏窄列。
 
 ### Changed
+
+- **更新提示从侧边栏顶部图标改为底部提示条**：顶栏那个带进度环的小图标去掉（`SidebarUpdateButton` / `SidebarUpdateIcon` / `useSidebarUpdateButtonModel` 删除），改为在侧边栏底部设置项上方插一条与侧栏等宽的提示条，只在后台下载完成（`phase === "ready"`）后出现。条上是版本文案 +「重启更新」按钮（`updater.install()` 立即重启安装）；鼠标悬浮时左侧图标变为关闭图标，点击忽略本条（调 `updater.dismiss()`，安装交给退出时的自动流程），忽略状态按版本记忆，下一个版本就绪时重新出现。
+- **能力列表把随 App 分发的内置能力单独成组「Vetta 内置」**：内置 skill / 通用 Agent 与系统插件（`isBuiltin`）不再按各自分类混进市场能力与 `~/.agents/skills` 里，统一聚到一个分组，排在各分类之后、未分类（本地技能）之前。从内置预设添加的 MCP 连接器仍留在「连接」分组。分组逻辑从 `useAbilitiesModel` 抽到 `lib/group-abilities.ts`。
+
+- **能力卡片去掉来源类 badge 与只读锁图标**：标题右侧不再有「内置」「自定义」「只读」标签（来源已由分组和详情页的来源信息表达），只保留需要用户处理的「需要配置」「可更新」「N 个同名」；只读条目右侧不再用锁图标占位，直接留空。详情页头部同步。
+
+- **修正 `listSkills` 列出的 skill 一律被当成内置**：`~/.agents/skills` 里用户自己放的、以及插件贡献的 skill 之前被硬标成 `isBuiltin` + builtin 来源（跟着进了「Vetta 内置」分组），现在只有 `source=builtin`（随 App 分发）才算内置，其余归本地来源。同时按 `type:name` 去重：市场装的 skill 也会被 `listSkills` 列出，此前会额外多出一条只读条目。
 
 - **macOS 发版改出 arm64 与 x64 两套产物**：此前 `desktop-release` 只在 arm64 runner 上按宿主架构构建一次，Intel Mac 既没有安装包，检查更新时也会因 `MacUpdater.filterFilesForArch` 过滤掉 arm64 文件而报 `ERR_UPDATER_ZIP_FILE_NOT_FOUND`。内置的 node/python 运行时按 `VETTA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套，因此拆成 `dist:mac:arm64` / `dist:mac:x64` 两个 matrix 任务；两次构建都会写同名 `latest-mac.yml`，各自重命名为 `latest-mac-<arch>.yml` 上传，再由发布任务的 `merge:updates:mac`（`scripts/merge-mac-update-metadata.mjs`）合并回单一元数据（ZIP 在前、x64 在 arm64 之前，与 electron-builder 单次多架构构建的产物顺序一致）。
 

@@ -21,6 +21,7 @@
 	},
 	"group": {
 		"connectors": "连接",
+		"vettaBuiltin": "Vetta 内置",
 		"uncategorized": "未分类"
 	},
 	"search": {
@@ -29,9 +30,6 @@
 	"status": {
 		"setupRequired": "需要配置",
 		"updateAvailable": "可更新",
-		"custom": "自定义",
-		"builtin": "内置",
-		"readonly": "只读",
 		"openSource": "开源",
 		"sameName": "{{count}} 个同名"
 	},
@@ -76,7 +74,6 @@
 	"error": {
 		"loadFailed": "能力列表加载失败",
 		"downloadFailed": "下载失败：{{status}}",
-		"notLoggedIn": "请先登录后再安装能力",
 		"installSourceConflict": "同一能力标识已由其它来源安装，不会自动覆盖。请在详情页确认来源。",
 		"membersUnavailable": "以下成员暂不可用，未能安装：{{names}}",
 		"partial": "部分能力暂时无法加载：{{error}}",

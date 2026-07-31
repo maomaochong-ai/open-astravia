@@ -197,7 +197,7 @@ export function useSkillsPageModel(): SkillsPageModel {
 		(skill: MergedSkill) => {
 			if (!token) return;
 			setActionState(skill.name, "loading");
-			void downloadAbility(token, skill.type, skill.name)
+			void downloadAbility(skill.type, skill.name, token)
 				.then((buffer) =>
 					window.vetta.skills.installFromMarket(skill.name, buffer, skill.type, {
 						alias: skill.alias,

@@ -21,6 +21,7 @@
 	},
 	"group": {
 		"connectors": "Connections",
+		"vettaBuiltin": "Built into Vetta",
 		"uncategorized": "Uncategorized"
 	},
 	"search": {
@@ -29,9 +30,6 @@
 	"status": {
 		"setupRequired": "Setup required",
 		"updateAvailable": "Update available",
-		"custom": "Custom",
-		"builtin": "Built-in",
-		"readonly": "Read-only",
 		"openSource": "Open source",
 		"sameName": "{{count}} with same name"
 	},
@@ -76,7 +74,6 @@
 	"error": {
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
-		"notLoggedIn": "Sign in before installing abilities",
 		"installSourceConflict": "The same ability identifier is installed from another source and will not be overwritten. Check the source on the details page.",
 		"membersUnavailable": "These members are unavailable and were not installed: {{names}}",
 		"partial": "Some abilities could not be loaded: {{error}}",

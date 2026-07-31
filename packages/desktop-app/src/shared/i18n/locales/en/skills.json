@@ -67,5 +67,15 @@
 				"description": "Each card is one capability. View details, add or enable it; you will be prompted when credentials are required."
 			}
 		}
+	},
+	"builtin": {
+		"create-skill": {
+			"name": "Create Skill",
+			"description": "Create or update an Agent Skill that follows the Vetta spec: place the files, register it in skills-manifest.json, or update the plugin config."
+		},
+		"publish-ability": {
+			"name": "Publish Ability",
+			"description": "Submit a skill, scene, MCP server, plugin, or ability bundle to the Vetta marketplace, covering required fields, localization, and the review flow."
+		}
 	}
 }

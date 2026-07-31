@@ -48,6 +48,8 @@ export function isImageSkillIcon(icon: string | null | undefined): boolean {
 		v.startsWith("http://") ||
 		v.startsWith("https://") ||
 		v.startsWith("/") ||
+		// `./skills/xxx.png`：宿主内置 Skill 的图标是相对路径（打包后走 file://，vite base 为 "./"）
+		v.startsWith("./") ||
 		v.startsWith("data:") ||
 		v.startsWith("blob:")
 	);

@@ -6,7 +6,12 @@ import { DefaultResourceLoader } from "@vetta/coding-agent";
 import type { AppMonitorResourceOperation } from "../../preload/api-types/app-monitor.js";
 import { removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
-import { getBuiltinSkillPaths, isBuiltinSkillFile, readBuiltinSkillsManifest } from "../builtin-skills.js";
+import {
+	builtinSkillText,
+	getBuiltinSkillPaths,
+	isBuiltinSkillFile,
+	readBuiltinSkillsManifest,
+} from "../builtin-skills.js";
 import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
 import { buildAgentPluginRuntimeConfig } from "../plugins/plugin-store.js";
@@ -139,11 +144,13 @@ export class SkillService {
 				const entry = isBuiltin ? undefined : manifest[skill.name];
 				return {
 					name: skill.name,
-					alias: skill.alias || builtinEntry?.alias || entry?.alias,
-					description:
-						builtinEntry?.description ||
-						(entry?.source === "market" ? entry.marketDescription : entry?.description) ||
-						skill.description,
+					// 内置 Skill 的展示文案跟随宿主语言（catalog 缺译才回落清单里的中文）。
+					alias: isBuiltin
+						? builtinSkillText(skill.name, "name", builtinEntry?.alias || skill.alias)
+						: skill.alias || entry?.alias,
+					description: isBuiltin
+						? (builtinSkillText(skill.name, "description", builtinEntry?.description) ?? skill.description)
+						: (entry?.source === "market" ? entry.marketDescription : entry?.description) || skill.description,
 					source: isBuiltin ? "builtin" : isUnderPluginRoot(skill.filePath) ? "plugin" : skill.source,
 					type: skill.type,
 				};
