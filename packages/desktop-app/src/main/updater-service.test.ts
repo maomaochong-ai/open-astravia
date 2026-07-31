@@ -170,10 +170,18 @@ describe("UpdaterService", () => {
 		await service.check();
 		const downloadPromise = service.startDownload();
 
+		// 引擎把网络阶段压缩到 0～90%，暂存期间进度停在这里不再变化。
+		engine.emitProgress({
+			bytesPerSecond: 100,
+			delta: 1_000,
+			percent: 90,
+			total: 1_000,
+			transferred: 1_000,
+		});
 		engine.emitStaging();
 		expect(service.getState()).toMatchObject({
 			phase: "downloading",
-			progress: 1,
+			progress: 0.9,
 			downloadedBytes: 1_000,
 		});
 

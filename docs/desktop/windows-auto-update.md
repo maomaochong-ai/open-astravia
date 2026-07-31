@@ -195,19 +195,27 @@ Windows 发布 EXE 的原因：
 
 ### 7.1 环境变量
 
-本地敏感变量写在已忽略的 `packages/desktop-app/.env.development`，不要提交真实凭据：
+构建期变量写在已忽略的 `packages/desktop-app/.env.development`：
 
 ```dotenv
 VETTA_UPDATE_PROVIDER=generic
 VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
-VETTA_R2_ACCOUNT_ID=<account-id>
-VETTA_R2_ACCESS_KEY_ID=<access-key-id>
-VETTA_R2_SECRET_ACCESS_KEY=<secret-access-key>
-VETTA_R2_BUCKET=vetta-releases
-VETTA_R2_PREFIX=desktop/test
 ```
 
-构建脚本默认 `VETTA_BUILD_ENV=development`，因此会读取 `.env.development`；Shell 中显式设置的变量优先级更高。
+构建脚本默认 `VETTA_BUILD_ENV=development`，`prepare-pack.js` 显式调用 `loadBuildEnv()` 读取 `.env.development`；Shell 中显式设置的变量优先级更高。**没有设 `VETTA_UPDATE_PROVIDER` 就不会生成 `latest*.yml`**，后续验证与发布全部无从谈起。
+
+发布期变量必须写在 Shell 里，**放进 `.env.development` 无效**：
+
+```bash
+export VETTA_R2_ACCOUNT_ID=<account-id>
+export VETTA_R2_ACCESS_KEY_ID=<access-key-id>
+export VETTA_R2_SECRET_ACCESS_KEY=<secret-access-key>
+export VETTA_R2_BUCKET=vetta-releases
+export VETTA_R2_PREFIX=desktop/test
+export VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
+```
+
+原因：`publish-update-artifacts-r2.mjs` 直接读 `process.env`，不调用 `loadBuildEnv()`；而 `publish:updates:r2` 是 `bun run` 拉起 `node` 子进程，Bun 的 dotenv 自动加载只作用于 Bun 运行时自身的进程，不会传给它 spawn 的 node。凭据缺失时报 `[publish-updates-r2] missing VETTA_R2_ACCOUNT_ID`。
 
 R2 Token 只授予目标 Bucket 的对象读写权限。凭据只供发布脚本访问 R2 S3 API，不会写入桌面安装包；安装包只包含公开更新 URL。
 
@@ -618,6 +626,7 @@ install failed
 - [ ] workflow_dispatch 三平台只构建演练已通过，且没有改动 stable。
 - [ ] `desktop-production` environment 的审核与允许分支已配置。
 - [ ] macOS 当前是明确接受的未签名阶段，或签名/公证校验已经通过。
+- [ ] Windows build job 的 `verify:updates:windows` 通过（Inno 预检只在 Windows runner 上跑）。
 - [ ] 失败回滚策略、上一版本清单和诊断负责人已明确。
 
 ## 14. 关键实现文件

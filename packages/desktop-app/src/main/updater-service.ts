@@ -273,15 +273,11 @@ export class UpdaterService {
 		this.emit();
 	}
 
+	// 安装准备阶段没有进度事件，进度停在引擎给出的最后一个网络值（90%），
+	// 与 Windows 的 Inno 阶段语义一致；这里只把停滞超时换成更长的兜底。
 	private onStaging(): void {
 		const download = this.activeDownload;
 		if (!download || this.state.phase !== "downloading") return;
-		this.state = {
-			...this.state,
-			progress: 1,
-			downloadedBytes: this.state.totalBytes,
-		};
-		this.emit();
 		this.resetDownloadStallTimer(download, this.stagingTimeoutMs);
 	}
 

@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CURRENT_APP_INSTALLER_FILE_NAME, type UpdateInfo } from "builder-util-runtime";
+import { CURRENT_APP_INSTALLER_FILE_NAME, type ProgressInfo, type UpdateInfo } from "builder-util-runtime";
 import type { AppUpdater, ResolvedUpdateFileInfo } from "electron-updater";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { InnoWindowsUpdateController } from "./inno-windows-update";
@@ -45,7 +45,14 @@ describe("ElectronUpdaterEngine", () => {
 		} as unknown as AppUpdater;
 		const engine = new ElectronUpdaterEngine(updater, undefined, nativeMacUpdateEvents);
 		const onStaging = vi.fn();
-		const download = engine.downloadUpdate(vi.fn(), onStaging);
+		const onProgress = vi.fn();
+		const download = engine.downloadUpdate(onProgress, onStaging);
+		const progressListener = vi.mocked(updater.on).mock.calls.find(([event]) => event === "download-progress")?.[1] as
+			| ((progress: ProgressInfo) => void)
+			| undefined;
+		progressListener?.({ bytesPerSecond: 1, delta: 1, percent: 100, total: 1, transferred: 1 });
+		// 网络阶段压缩到 0～90%，剩下的 10% 留给 Squirrel.Mac 的暂存。
+		expect(onProgress).toHaveBeenCalledWith(expect.objectContaining({ percent: 90 }));
 		let completed = false;
 		void download.promise.then(() => {
 			completed = true;

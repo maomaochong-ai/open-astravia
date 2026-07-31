@@ -177,9 +177,13 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 	downloadUpdate(onProgress: (progress: ProgressInfo) => void, onStaging?: () => void): UpdateEngineDownload {
 		const cancellationToken = new CancellationToken();
 		const abortController = new AbortController();
+		// 两个平台的下载后都还有一段本地安装准备（Windows 的 Inno 展开版本目录、
+		// macOS 的 Squirrel.Mac 解包与验签），因此网络阶段统一压缩到 0～90%，
+		// 「90% 之后是本地准备而非网络问题」这条排障语义在两端一致。
 		const listener = (progress: ProgressInfo) => {
+			const hasLocalPreparation = this.useInnoUpdate || this.nativeMacUpdateEvents !== undefined;
 			onProgress(
-				this.useInnoUpdate
+				hasLocalPreparation
 					? {
 							...progress,
 							percent: Math.min(90, progress.percent * 0.9),
