@@ -120,16 +120,37 @@ desktop/
 
 ### 5.4 差分下载基线
 
-electron-updater 把每次下载的 ZIP 复制到缓存目录作为下一次的差分基线：
+差分需要三样东西同时具备：
+
+| 需要 | 从哪来 |
+|---|---|
+| 新版 blockmap | 随产物发布，`<zip>.blockmap` |
+| **旧版** blockmap | 把新版 URL 里的版本号替换成旧版号推出来（`Provider.getBlockMapFiles`），因此**旧版本的 blockmap 不能从 R2 删掉** |
+| 本地基线 `update.zip` | electron-updater 每次下载完成后复制一份 |
+
+缓存目录由 `app-update.yml` 的 `updaterCacheDirName` 决定，当前是 `vetta-updater`，与 Windows 的 `%LOCALAPPDATA%\vetta-updater\` 同名：
 
 ```text
-~/Library/Caches/com.vetta.desktop.ShipIt/    # Squirrel 暂存区
-~/Library/Application Support/Caches/vetta-desktop-updater/
+~/Library/Caches/vetta-updater/
   update.zip                                  # 差分基线
-  <version>/                                  # pending 下载
+  pending/                                    # 下载中的新版本
+~/Library/Caches/com.vetta.desktop.ShipIt/    # Squirrel 暂存区
 ```
 
-首次安装没有基线，必定全量下载；第二次更新起才走差分。反复测试全量下载时删掉 `update.zip` 即可。
+**从 DMG 安装后的第一次更新必定是全量下载**，日志会打 `Unable to locate previous update.zip for differential download (is this first install?)`。因为 `MacUpdater` 只在 electron-updater 完成一次下载后才写 `update.zip`，而 DMG 安装不经过它。Windows 靠 Inno 安装器的 `SeedUpdaterDifferentialCache()` 播种基线，macOS 没有等价物，也做不出来——基线必须与线上 ZIP 逐字节一致，无法从已安装的 `.app` 反推。第二次更新起才走差分。
+
+测试时可以手工播种，跳过那一轮全量（ZIP 必须正是当前已安装版本的那一份）：
+
+```bash
+mkdir -p ~/Library/Caches/vetta-updater
+cp release/Vetta-<installed-version>-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip
+# 核对与线上清单一致
+shasum -a 512 -b ~/Library/Caches/vetta-updater/update.zip | awk '{print $1}' | xxd -r -p | base64
+```
+
+反过来要复现全量下载，删掉 `update.zip` 即可。
+
+**不要拿 Windows 的差分效果做基准。** Windows 实测 250MB 只下 741KB（见 `windows-auto-update.md` 第 11 节），macOS 达不到：公证要求每个 Mach-O 带 Apple 安全时间戳，每次构建重新签名都会拿到新的时间戳，于是所有二进制的签名段都变。好在签名追加在 `LC_CODE_SIGNATURE`、代码页哈希不变，ZIP 又是逐条目 deflate，所以变的是每个二进制的尾部而非整体。
 
 ## 6. 为什么 ZIP 和 DMG 都要发
 
