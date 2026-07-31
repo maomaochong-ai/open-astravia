@@ -30,6 +30,8 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DESKTOP_DIR="${REPO_ROOT}/packages/desktop-app"
 SIGNING_ENV="${HOME}/.config/vetta/mac-signing.env"
+# 一切都以脚本自身位置为准，不依赖调用者的 cwd。
+cd "${REPO_ROOT}"
 
 CHANNEL=""
 VERSION=""
