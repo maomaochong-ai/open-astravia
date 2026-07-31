@@ -62,7 +62,7 @@ export const pluginFileExplorerContextMenuActionsAtom = atom<RegisteredFileExplo
 export const pluginFileExplorerToolbarActionsAtom = atom<RegisteredFileExplorerToolbarAction[]>([]);
 export const pluginFileExplorerDecorationProvidersAtom = atom<RegisteredFileExplorerDecorationProvider[]>([]);
 
-/** An activity-tab contribution registered by a loaded plugin（可添加池条目）. */
+/** An activity-tab contribution registered by a loaded plugin. */
 export interface RegisteredActivityTab {
 	pluginId: string;
 	/** Owning plugin display name, shown as the picker row subtitle. */
@@ -76,8 +76,9 @@ export interface RegisteredActivityTab {
 }
 
 /**
- * 活动面板插件 tab 的「可添加池」，由 PluginGlobalSlotHost 发布、ActivityPanel
- * 消费。注册不直接渲染——attach 记录 ∩ 此池才渲染为 tab。
+ * 活动面板插件 tab 注册表，由 PluginGlobalSlotHost 发布、ActivityPanel 消费。
+ * 已注册的 tab 全部常驻渲染，可见性只由 scope_use 与硬隔离开关决定
+ * （见 selectVisiblePluginTabs）；不需要的由用户减号隐藏。
  */
 export const pluginActivityTabsAtom = atom<RegisteredActivityTab[]>([]);
 

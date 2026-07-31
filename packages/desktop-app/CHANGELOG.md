@@ -56,6 +56,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **活动面板里插件标签卡（Git 面板、插件工作台等）全部不再出现**：插件 tab 的渲染被加回了「attach 记录」过滤，但 attach 勾选模型早已废弃、"+"下拉里只剩「已隐藏」与「收纳」两类，没有任何入口能写出 attach 记录，于是除非插件自己调 `openActivityTab`，注册的标签卡永不显示。恢复常驻语义：可见性只由 `scope_use`（fail-closed）与硬隔离开关（ADR-0041）决定，不需要的用减号隐藏。判定逻辑抽成纯函数 `selectVisiblePluginTabs` 并补单测锁住。
 - **macOS 更新在 Squirrel 暂存阶段被误判为「下载失败」**：传输结束后 Squirrel.Mac 还要解包近 1GB 的 bundle 并逐个校验签名，这一段不产生任何 `download-progress` 事件，而 120 秒的停滞超时只由进度事件重置，慢机器上必然超时：`UpdaterService` 取消下载并置为 error，之后 Squirrel 其实暂存成功、promise 回来时又因 `activeDownload` 不匹配被丢弃，界面永久停在「下载失败」。`UpdateEngine.downloadUpdate` 新增可选的 `onStaging` 回调标记进入安装准备阶段，该阶段改用 10 分钟的兜底超时（只防死锁），进度显示为 100%。Windows 的 Inno 准备阶段本就持续上报进度，不受影响。
 - **命令区 / skill 选择器 / @ 文件面板：鼠标滑过列表会带动滚动**：高亮项 `scrollIntoView` 原先挂在 `activeIndex` 上，键盘与鼠标 hover 共用同一路径，移到底部附近时滚动位置会被不断拽动。现仅在方向键改高亮时滚进视口，hover 只改高亮。
 - **方向键移到输入框里的 token 上会把光标吞掉**：技能 / 连接器 / 文件 / 图片四种行内 token 都声明了 `isKeyboardSelectable() = true`，光标左右移到 token 上时 Lexical 会把 RangeSelection 换成 NodeSelection，caret 随之消失；而输入框用的是 `PlainTextPlugin`，它不像 RichText 那样注册 NodeSelection 下的方向键处理，选区就此卡死——再按方向键没有任何反应，此时继续打字还会插到整段开头，只能用鼠标点一下才能恢复。四种 token 改为不可键盘选中，光标像跨过一个普通字符那样跨过 token，Backspace 删除 token 的行为不变。
