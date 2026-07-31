@@ -597,8 +597,23 @@ async function stageVendorRuntimes() {
 			throw new Error(`[prepare-pack] 无法下载 vendor ${type}(${platformTag});检查构建机网络或设 VETTA_SKIP_VENDOR=1`);
 		}
 
-		// 保留上游原始归档，避免每个桌面版本都让 Inno 重建数千个不变小文件。
+		// macOS 必须内置解压目录：electron-builder 只签得到文件系统上可见的 Mach-O，
+		// 而 Apple 公证服务会解开归档递归校验，归档内的 python/node 二进制一律被判
+		// 「未签名 / 无安全时间戳 / 未启用 hardened runtime」。解压后 osx-sign 会像
+		// 处理 im-gateway、cli-app 那样逐个签名。详见 docs/desktop/macos-auto-update.md。
+		//
+		// 其余平台保留上游原始归档，避免每个桌面版本都让 Inno 重建数千个不变小文件；
 		// RuntimeManager 仅在托管运行时缺失或升级时解压一次。
+		if (platformTag.startsWith("darwin-")) {
+			execFileSync("tar", ["-xf", archivePath, "-C", destTypeDir], { stdio: "inherit" });
+			const extractedDir = join(destTypeDir, entry.dir);
+			if (!existsSync(extractedDir)) {
+				throw new Error(`[prepare-pack] vendor ${type} 解压后未找到预期目录: ${extractedDir}`);
+			}
+			console.log(`[prepare-pack] vendor ${type} ${def.version} extracted -> ${extractedDir}`);
+			continue;
+		}
+
 		const stagedArchivePath = join(destTypeDir, entry.filename);
 		cpSync(archivePath, stagedArchivePath);
 		console.log(`[prepare-pack] vendor ${type} ${def.version} archive staged -> ${stagedArchivePath}`);

@@ -20,8 +20,9 @@ import {
 	runtimesDir,
 	runtimeVersion,
 	vendorRuntimeArchivePath,
+	vendorRuntimeDir,
 } from "./paths.js";
-import { installRuntimeArchive } from "./runtime-archive-installer.js";
+import { installRuntimeArchive, installRuntimeDirectory } from "./runtime-archive-installer.js";
 import type { RuntimeRegistryData, RuntimeStatus, RuntimesStatus } from "./types.js";
 
 const log = getAppLogger("runtimes");
@@ -98,7 +99,7 @@ export class RuntimeManager {
 		delete this.data.systemDetection[type];
 	}
 
-	/** 内置 vendor 归档 → ~/.vetta/runtimes 首启解压。返回是否完成 seed。 */
+	/** 内置 vendor → ~/.vetta/runtimes 首启安装。返回是否完成 seed。 */
 	private async seedFromVendor(type: RuntimeType): Promise<boolean> {
 		const entry = platformEntry(type);
 		if (!entry) return false;
@@ -106,13 +107,22 @@ export class RuntimeManager {
 		const target = installDir(type, version);
 		const marker = join(target, ".vendor-version");
 		if (existsSync(executablePathFor(type, version)) && this.readMarker(marker) === version) {
-			return true; // 已 seed 且版本一致,跳过解压
+			return true; // 已 seed 且版本一致,跳过安装
 		}
-		const source = vendorRuntimeArchivePath(type);
-		if (!existsSync(source)) return false;
 
-		log.info(`seeding ${type} ${version} from vendor`, { source, target });
-		await this.installArchive(type, source, entry, version);
+		// macOS 内置的是解压目录（归档过不了公证），其余平台内置原始归档。
+		const directorySource = vendorRuntimeDir(type);
+		if (existsSync(directorySource)) {
+			log.info(`seeding ${type} ${version} from vendor directory`, { source: directorySource, target });
+			await this.installDirectory(type, directorySource, version);
+			return true;
+		}
+
+		const archiveSource = vendorRuntimeArchivePath(type);
+		if (!existsSync(archiveSource)) return false;
+
+		log.info(`seeding ${type} ${version} from vendor archive`, { source: archiveSource, target });
+		await this.installArchive(type, archiveSource, entry, version);
 		return true;
 	}
 
@@ -129,8 +139,17 @@ export class RuntimeManager {
 			innerDirectory: entry.dir,
 			targetDirectory: target,
 		});
+		await this.finishInstall(type, version);
+	}
+
+	private async installDirectory(type: RuntimeType, sourceDirectory: string, version: string): Promise<void> {
+		await installRuntimeDirectory({ sourceDirectory, targetDirectory: installDir(type, version) });
+		await this.finishInstall(type, version);
+	}
+
+	private async finishInstall(type: RuntimeType, version: string): Promise<void> {
 		await this.makeExecutable(type, version);
-		writeFileSync(join(target, ".vendor-version"), version);
+		writeFileSync(join(installDir(type, version), ".vendor-version"), version);
 	}
 
 	private readMarker(path: string): string | undefined {

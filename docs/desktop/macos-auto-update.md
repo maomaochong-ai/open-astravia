@@ -354,7 +354,28 @@ tag v<version>
 - 让用户跑 `xattr -l /Applications/Vetta.app`，若只有 `com.apple.quarantine` 而 app 是公证过的，通常是下载过程被网络中间设备改写导致签名失效，换直链或换网络重下。
 - 其余排查见 `../deploy/apple-code-signing.md` 第 6 节。
 
-### 10.5 公证返回 Invalid
+### 10.5 公证报 vendor 运行时未签名
+
+**现象**：`notarytool` 返回 `Invalid`，issues 里全是这种路径：
+
+```
+Vetta.app/Contents/Resources/vendor/python/cpython-...tar.gz/cpython-...tar/python/bin/python3.13
+  The binary is not signed with a valid Developer ID certificate.
+  The signature does not include a secure timestamp.
+  The executable does not have the hardened runtime enabled.
+```
+
+注意 `.tar.gz/` 后面还有路径——**Apple 的公证服务会解开归档递归校验里面的 Mach-O**。
+
+**原因**：内置运行时曾统一以原始 `tar.gz` 形态打包（为了避免 Inno 每次重建数千个不变小文件）。electron-builder 只签得到文件系统上可见的二进制，签不进归档内部，于是 `python3.13`、`libpython3.13.dylib`、`libtcl9.0.dylib` 和一堆 `.so` 全部裸奔。
+
+**修复**：`prepare-pack.js` 按目标平台分支——darwin 内置**解压目录**，Windows / Linux 保留归档。解压后 osx-sign 会像处理 `im-gateway`、`cli-app` 那样逐个签名（可用 `codesign -dvv` 验证它们带 `flags=0x10000(runtime)`）。`RuntimeManager.seedFromVendor` 相应地优先使用解压目录，找不到才回退归档解压。
+
+代价是 macOS 的 `.app` 体积增大，Squirrel 暂存也更慢——5.3 的 600 秒兜底超时正是为此留的余量。
+
+**注意**：从解压目录 seed 时必须用 `cp(..., { verbatimSymlinks: true })`。Node 的 `fs.cp` 默认会把相对符号链接（`python3 -> python3.13`）重写成指向源目录的绝对路径，安装后就指回了 app bundle 内部，更新替换 `.app` 时整片悬空。
+
+### 10.6 公证返回 Invalid（其它嵌套二进制）
 
 产物里有没签到的嵌套 Mach-O 二进制。`Contents/Resources/` 下带了 `im-gateway`、`cli-app`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，用 `xcrun notarytool log <submissionId>` 看具体路径。排查时可先 `VETTA_SKIP_VENDOR=1` 摘掉内置运行时缩小范围。
 

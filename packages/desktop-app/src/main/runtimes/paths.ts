@@ -109,3 +109,15 @@ export function vendorRuntimeArchivePath(type: RuntimeType): string {
 	if (!entry) return join(vendorDir(), type, "missing");
 	return join(vendorDir(), type, entry.filename);
 }
+
+/**
+ * 内置 vendor 中某运行时的解压目录。
+ * macOS 只能以这种形态内置——归档内部的 Mach-O 签不到名，而 Apple 公证会解开
+ * 归档逐个校验，详见 docs/desktop/macos-auto-update.md。其余平台内置归档，
+ * 该目录不存在。
+ */
+export function vendorRuntimeDir(type: RuntimeType): string {
+	const entry = platformEntry(type);
+	if (!entry) return join(vendorDir(), type, "missing");
+	return join(vendorDir(), type, entry.dir);
+}
