@@ -415,6 +415,56 @@ tag v<version>
 
 **排查提示**：日志里 `close` 之后如果跟着 `hide`，就是被守卫拦了；正常应该是 `closed` 并且进程随即结束。
 
+### 10.2.1 排查安装阶段的三个权威信息源
+
+「点了重启但版本没变」有好几种成因，症状几乎一样，靠应用日志分不出来。按这个顺序查，五分钟能定位：
+
+**① launchd 作业状态**——最有信息量的一个：
+
+```bash
+launchctl print "gui/$(id -u)/com.vetta.desktop.ShipIt"
+```
+
+| 看到什么 | 含义 |
+|---|---|
+| 报错「Could not find service」 | Squirrel 还没提交作业。应用退得太早（交棒后立刻 `app.exit(0)` 实测只需 41ms）。 |
+| `runs = 0` + `port = 0x0` + `active = 0` | 作业提交了但从没被启动。它是按需 mach service，需要有人连上去或 `launchctl kickstart`。 |
+| `runs = 1` + `last exit code = 0` | ShipIt 跑过了，去看它的日志。 |
+| `state = running` 但版本没变 | ShipIt 在等目标进程退出——检查是不是还有 Vetta 进程活着。 |
+
+**② ShipIt 自己的日志**——Squirrel 只在作业真正 spawn 后才创建这两个文件，**文件不存在本身就是结论**：
+
+```bash
+cat ~/Library/Caches/com.vetta.desktop.ShipIt/ShipIt_stderr.log
+```
+
+成功的样子：
+
+```text
+Detected this as an install request
+Beginning installation
+Moved bundle contents from ... to file:///Applications/Vetta.app/
+Installation completed successfully
+Successfully launched application at file:///Applications/Vetta.app/
+```
+
+**③ 待安装状态**（安装完成后会被清掉）：
+
+```bash
+plutil -p ~/Library/Caches/com.vetta.desktop.ShipIt/ShipItState.plist
+```
+
+`updateBundleURL` 指向暂存的新 bundle，可以直接读它的 `Info.plist` 确认暂存的是哪个版本；`launchAfterInstallation` 决定装完是否自动拉起。
+
+**手动推进一次卡住的安装**（也是验证「问题只出在没人启动作业」的最快方式）：
+
+```bash
+launchctl kickstart "gui/$(id -u)/com.vetta.desktop.ShipIt"
+pkill -f "Vetta.app/Contents/MacOS/Vetta"   # ShipIt 必须等目标退出才替换
+```
+
+**别用应用窗口判断应用是否还在跑。** 单实例锁会让新启动的实例退出并把老进程的窗口调出来，看着像「重启了但版本没变」，实际是同一个老进程。用 `pgrep -f "Vetta.app/Contents/MacOS/Vetta"` 看 pid，并和 `launchctl print` 里的 `submitted by Vetta[pid]` 对照。
+
 ### 10.3 提示重启过早出现（暂存尚未完成）
 
 **原因**：早期实现在 `MacUpdater` resolve 时就置 ready，此时 Squirrel 还没暂存完，`quitAndInstall` 走的是 `squirrelDownloadedUpdate === false` 的分支——只注册监听器等待，不会立刻退出。

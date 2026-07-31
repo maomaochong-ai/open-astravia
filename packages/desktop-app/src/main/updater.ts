@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getVettaHomePath } from "@vetta/action-rpc";
 import { app, autoUpdater as nativeAutoUpdater } from "electron";
 import electronUpdater from "electron-updater";
 
@@ -12,6 +13,7 @@ import {
 } from "./inno-windows-update.js";
 import { handOffToInstaller, MACOS_SHIPIT_JOB_LABEL } from "./mac-installer-handoff.js";
 import { runQuitCleanup } from "./quit-cleanup.js";
+import { markPendingUpdateRelaunch } from "./update-relaunch-marker.js";
 import { ElectronUpdaterEngine } from "./updater-engine.js";
 import { type UpdaterPhase, UpdaterService, type UpdaterState } from "./updater-service.js";
 
@@ -56,6 +58,9 @@ const nativeMacUpdateEvents =
 // 交棒前：标记 isQuitting（窗口 close 守卫只有看到它才真正销毁窗口），并跑完退出清理。
 const prepareQuit = async () => {
 	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
+	// 安装器会以守护进程身份把应用拉回来，那样起来的窗口不会自动到前台，
+	// 打个标记让下次启动主动抢焦点（见 update-relaunch-marker.ts）。
+	markPendingUpdateRelaunch(getVettaHomePath());
 	console.info("[updater] running quit cleanup before handing off to the installer");
 	await runQuitCleanup();
 };

@@ -74,6 +74,7 @@ import {
 	rebuildTrayContextMenu,
 	setHideToTrayOnClose,
 } from "./tray-manager.js";
+import { consumePendingUpdateRelaunch } from "./update-relaunch-marker.js";
 import { getAppVersion, updaterService } from "./updater.js";
 import {
 	createWindow,
@@ -420,6 +421,11 @@ if (!gotSingleLock) {
 		const rendererContentPaintPromise = appLifecycle.waitForRendererContentPaint();
 		void rendererBootPaintPromise.then((result) => {
 			if (mainWindow.isDestroyed()) return;
+			// 被安装器重启时应用不是活动应用（ShipIt 以守护进程身份拉起），
+			// 窗口 show() 出不来，用户以为没重启。仅这一种情况主动抢焦点。
+			if (consumePendingUpdateRelaunch(getVettaHomePath()) && isMac) {
+				app.focus({ steal: true });
+			}
 			// Windows: first ShowWindow may be swallowed by STARTUPINFO SW_HIDE
 			// from an older version launcher; revealMainWindow double-shows on win32.
 			revealMainWindow(mainWindow);
