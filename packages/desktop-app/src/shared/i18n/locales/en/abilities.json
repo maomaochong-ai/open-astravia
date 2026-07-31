@@ -74,7 +74,6 @@
 	"error": {
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
-		"notLoggedIn": "Sign in before installing abilities",
 		"installSourceConflict": "The same ability identifier is installed from another source and will not be overwritten. Check the source on the details page.",
 		"membersUnavailable": "These members are unavailable and were not installed: {{names}}",
 		"partial": "Some abilities could not be loaded: {{error}}",

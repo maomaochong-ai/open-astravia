@@ -56,7 +56,8 @@ export function useAbilityData(): AbilityData {
 				window.vetta.plugins.list(),
 			]);
 
-			const remote = token ? fetchMarketAbilities(token) : Promise.resolve([]);
+			// 市场浏览无需登录；有 token 时仍带上。
+			const remote = fetchMarketAbilities(token);
 			const open = forceOpenMarketplaceRefresh
 				? window.vetta.abilities.refreshOpenMarketplaces()
 				: window.vetta.abilities.listOpenMarketplaces();
@@ -75,7 +76,7 @@ export function useAbilityData(): AbilityData {
 						errors.push(i18n.t("abilities:error.loadFailed"));
 					}
 					const serverState = {
-						attempted: Boolean(token),
+						attempted: true,
 						usable: remoteResult.status === "fulfilled",
 					};
 					if (remoteResult.status === "fulfilled") {

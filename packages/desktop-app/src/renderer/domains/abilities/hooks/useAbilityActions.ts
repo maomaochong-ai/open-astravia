@@ -64,8 +64,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				await window.vetta.abilities.installOpenAbility(item.type, item.slug, item.origin.sourceId);
 				return "installed";
 			}
-			if (!token) throw new Error(i18n.t("abilities:error.notLoggedIn"));
-			const buffer = await downloadAbility(token, item.type, item.slug);
+			const buffer = await downloadAbility(item.type, item.slug, token);
 			await window.vetta.skills.installFromMarket(item.slug, buffer, item.type, {
 				alias: item.title,
 				marketDescription: item.description,
@@ -84,8 +83,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				notifyPluginsChanged();
 				return "installed";
 			}
-			if (!token) throw new Error(i18n.t("abilities:error.notLoggedIn"));
-			const buffer = await downloadAbility(token, "plugin", item.slug);
+			const buffer = await downloadAbility("plugin", item.slug, token);
 			await window.vetta.plugins.installFromArchive(buffer, {
 				source: "remote",
 				expectedSha256: item.sha256,
