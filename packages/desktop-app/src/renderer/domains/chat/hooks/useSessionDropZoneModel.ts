@@ -4,7 +4,7 @@ import { isSubPath, pathBasename } from "@shared/lib/utils";
 import { activeSessionAtom, type MentionedFile, mentionedFilesAtom } from "@shared/store/atoms";
 import type { SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { insertFileToken, insertImageToken } from "../components/input-bar/editor/inputEditorHandle";
 import { persistImageFiles } from "../components/input-bar/editor/persistImages";
@@ -30,7 +30,6 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 	// 只读投影：用来跳过已经在输入框里的路径，避免重复插 token。
 	const mentionedFiles = useAtomValue(mentionedFilesAtom);
 	const [dragKind, setDragKind] = useState<DragKind | null>(null);
-	const dragCounter = useRef(0);
 
 	const enabled = Boolean(activeSession) || Boolean(cwdOverride);
 
@@ -40,7 +39,7 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 			if (!kind || !enabled) return;
 			e.preventDefault();
 			e.stopPropagation();
-			dragCounter.current += 1;
+			// Child enter events bubble; just keep/refresh highlight (no enter counter).
 			setDragKind(kind);
 		},
 		[enabled],
@@ -60,15 +59,15 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 	const handleDragLeave = useCallback((e: React.DragEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		// Child chrome (buttons, tokens) fires leave; only clear when really outside.
+		// Only clear when the pointer actually leaves the drop zone (not when
+		// moving between children). Do not mix this with enter/leave counters —
+		// bubbled child enters would desync the counter and leave the overlay stuck on.
 		const related = e.relatedTarget;
 		if (related instanceof Node && e.currentTarget.contains(related)) return;
-		dragCounter.current = Math.max(0, dragCounter.current - 1);
-		if (dragCounter.current === 0) setDragKind(null);
+		setDragKind(null);
 	}, []);
 
 	const resetDrag = useCallback(() => {
-		dragCounter.current = 0;
 		setDragKind(null);
 	}, []);
 

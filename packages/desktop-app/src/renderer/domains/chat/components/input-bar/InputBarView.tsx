@@ -3,12 +3,13 @@ import { AnimatePresence, motion } from "motion/react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { useThemeSurface } from "@vetta/theme-sdk/appearance";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
-import { InputBarContextMenuView, InputBarPlaceholder } from "@vetta/theme-ui/chat";
+import { InputBarContextMenuView, InputBarPlaceholder, SessionDropZoneView } from "@vetta/theme-ui/chat";
 import { CommandPanel } from "../command-panel/CommandPanel";
 import { AtPanel } from "../AtPanel";
 import { ActionButtonBar } from "../ActionButtonBar";
 import { QuestionPanel } from "../QuestionPanel";
 import { AppshotCard } from "../AppshotCard";
+import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
@@ -31,6 +32,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 		"chat.inputBarPlaceholder",
 		InputBarPlaceholder,
 	);
+	// Drop target = the visual input card only (not outer padding / max-width gutters).
+	const dropZone = useSessionDropZoneModel(model.effectiveCwd || undefined);
 
 	const cardClass = [
 		// 浅色下输入栏与页面同为白底，靠一层大扩散低透明的外投影把它从背景里托起
@@ -92,7 +95,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					permissionLabels={model.labels.permission}
 				/>
 
-				<div
+				<SessionDropZoneView
+					{...dropZone}
 					style={{
 						opacity: model.hasSession ? 1 : 0.55,
 						...(model.slashVisible ? { borderTopColor: "transparent" } : null),
@@ -243,7 +247,7 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 							slashOpen={model.slashOpen}
 						/>
 					</div>
-				</div>
+				</SessionDropZoneView>
 
 			</div>
 

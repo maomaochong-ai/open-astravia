@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import type { JSX, ReactNode } from "react";
+import type { CSSProperties, JSX, ReactNode } from "react";
 
 const SOFT = { duration: 0.18, ease: [0.22, 0.61, 0.36, 1] as const };
 
@@ -12,7 +12,9 @@ export interface SessionDropZoneViewLabels {
 }
 
 export interface SessionDropZoneViewProps {
+	/** Should be the same box as the visual input card (padding/max-width outside). */
 	className?: string;
+	style?: CSSProperties;
 	children: ReactNode;
 	dragKind: SessionDropDragKind | null;
 	enabled: boolean;
@@ -24,10 +26,11 @@ export interface SessionDropZoneViewProps {
 }
 
 /**
- * Scoped drag-and-drop shell with overlay. Host decides the concrete drop target range.
+ * Drag-and-drop shell whose overlay matches this element's box (use on the input card).
  */
 export function SessionDropZoneView({
 	className,
+	style,
 	children,
 	dragKind,
 	enabled,
@@ -41,6 +44,7 @@ export function SessionDropZoneView({
 		<div
 			data-vetta-drop-scope="input"
 			className={className}
+			style={style}
 			onDragEnter={onDragEnter}
 			onDragOver={onDragOver}
 			onDragLeave={onDragLeave}
@@ -55,7 +59,7 @@ export function SessionDropZoneView({
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 						transition={SOFT}
-						className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/25 bg-primary/5"
+						className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-1.5 rounded-[inherit] border border-dashed border-primary/25 bg-primary/5"
 					>
 						<span className="icon-[mdi--file-arrow-up-down-outline] h-6 w-6 text-primary/70" />
 						<div className="text-[12px] font-medium text-primary/90">{labels.releaseToRef}</div>

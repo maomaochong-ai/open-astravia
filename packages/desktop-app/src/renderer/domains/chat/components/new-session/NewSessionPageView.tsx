@@ -10,7 +10,7 @@ import {
 import { NewSessionBackground } from "./NewSessionBackground";
 import { NewSessionHero } from "./NewSessionHero";
 import { InputBar } from "../InputBar";
-import { SessionDropZone } from "../SessionDropZone";
+
 
 /** 命令区展开时输入栏下移的距离：面板向上生长，下方留白同步收掉。 */
 const PANEL_SHIFT_Y = 120;
@@ -92,19 +92,19 @@ export function NewSessionPageView({
 				</motion.div>
 			}
 			inputBar={
-				<SessionDropZone cwdOverride={cwd} className="relative">
-					<motion.div
-						animate={{ y: commandPanelShift ? PANEL_SHIFT_Y : 0 }}
-						transition={shiftTransition}
-					>
-						<InputBar
-							onSend={onSend}
-							onAbort={onAbort}
-							cwdOverride={cwd}
-							onExpandedChange={onCommandPanelExpandedChange}
-						/>
-					</motion.div>
-				</SessionDropZone>
+				<motion.div
+					className="relative"
+					animate={{ y: commandPanelShift ? PANEL_SHIFT_Y : 0 }}
+					transition={shiftTransition}
+				>
+					{/* Drop target is the input card; cwdOverride enables drop before a session exists. */}
+					<InputBar
+						onSend={onSend}
+						onAbort={onAbort}
+						cwdOverride={cwd}
+						onExpandedChange={onCommandPanelExpandedChange}
+					/>
+				</motion.div>
 			}
 		/>
 	);
