@@ -285,10 +285,6 @@ jobs:
         working-directory: packages/desktop-app
         run: bun run merge:updates:mac
 
-      - name: Generate website download manifest
-        working-directory: packages/desktop-app
-        run: bun run generate:downloads
-
       - name: Publish release after all assets are ready
         env:
           GH_TOKEN: ${{ github.token }}
