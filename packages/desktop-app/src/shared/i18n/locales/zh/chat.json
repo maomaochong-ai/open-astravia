@@ -104,7 +104,7 @@
 		"moveFailed": "移动失败",
 		"deleteFailed": "删除失败",
 		"selectProject": "选择一个项目以浏览文件",
-		"fileList": "文件列表",
+		"fileList": "项目文件",
 		"clearArtifacts": "清空产物",
 		"refresh": "刷新",
 		"newFile": "新建文件",

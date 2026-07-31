@@ -3,7 +3,10 @@ import { EditorView } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { useEffect, useRef, type JSX } from "react";
 import { textCodeEditorTheme } from "./text-code-editor-theme";
-import { getTextEditorLanguageExtension } from "./text-editor-language";
+import {
+	getTextEditorLanguageExtension,
+	normalizeFileExtension,
+} from "./text-editor-language";
 
 export interface TextCodeEditorViewProps {
 	documentKey: string;
@@ -25,6 +28,7 @@ export function TextCodeEditorView({
 	const onChangeRef = useRef(onChange);
 	initialValueRef.current = initialValue;
 	onChangeRef.current = onChange;
+	const languageKey = normalizeFileExtension(extension);
 
 	useEffect(() => {
 		const host = hostRef.current;
@@ -34,7 +38,7 @@ export function TextCodeEditorView({
 			extensions: [
 				basicSetup,
 				EditorState.lineSeparator.of(lineEnding === "crlf" ? "\r\n" : "\n"),
-				getTextEditorLanguageExtension(extension),
+				getTextEditorLanguageExtension(languageKey),
 				textCodeEditorTheme,
 				EditorView.updateListener.of((update) => {
 					if (update.docChanged) onChangeRef.current(update.state.doc.toString());
@@ -44,7 +48,7 @@ export function TextCodeEditorView({
 		const view = new EditorView({ state, parent: host });
 		view.focus();
 		return () => view.destroy();
-	}, [documentKey, extension, lineEnding]);
+	}, [documentKey, languageKey, lineEnding]);
 
 	return <div ref={hostRef} className="min-h-0 flex-1 overflow-hidden bg-background" />;
 }

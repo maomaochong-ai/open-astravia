@@ -22,6 +22,15 @@ export type {
 export { PreviewBodyView } from "./PreviewBodyView";
 export type { PreviewErrorBoundaryProps } from "./PreviewErrorBoundary";
 export { PreviewErrorBoundary } from "./PreviewErrorBoundary";
+export type { SyntaxTokenId } from "./syntax-tokens";
+export {
+	SYNTAX_PALETTE_VSCODE_DARK,
+	SYNTAX_PALETTE_VSCODE_LIGHT,
+	SYNTAX_TOKEN_CSS_VARS,
+	SYNTAX_TOKEN_IDS,
+	syntaxPaletteToCssDeclarations,
+	syntaxVar,
+} from "./syntax-tokens";
 export type { TextCodeEditorViewProps } from "./TextCodeEditorView";
 export { TextCodeEditorView } from "./TextCodeEditorView";
 export type {
@@ -31,6 +40,11 @@ export type {
 	TextFileEditorViewState,
 } from "./TextFileEditorView";
 export { TextFileEditorView } from "./TextFileEditorView";
+export {
+	getTextEditorLanguageExtension,
+	getTextEditorLanguageId,
+	normalizeFileExtension,
+} from "./text-editor-language";
 export type { FilePreviewContext, FilePreviewItem, FilePreviewKind } from "./types";
 export {
 	AUDIO_EXTENSIONS,

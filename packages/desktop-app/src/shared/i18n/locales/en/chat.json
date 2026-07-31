@@ -104,7 +104,7 @@
 		"moveFailed": "Move failed",
 		"deleteFailed": "Delete failed",
 		"selectProject": "Select a project to browse files",
-		"fileList": "File list",
+		"fileList": "Project files",
 		"clearArtifacts": "Clear artifacts",
 		"refresh": "Refresh",
 		"newFile": "New file",

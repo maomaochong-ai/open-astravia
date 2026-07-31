@@ -408,7 +408,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			rootDir: null,
 			labels: {
 				selectProject: t("fileExplorer.selectProject"),
-				headerTitle: "",
+				headerTitle: t("fileExplorer.fileList"),
 			},
 			refreshButton: null,
 			loadingRoot: false,
@@ -421,17 +421,6 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 	}
 
 	const projectName = getProjectDisplayName(rootDir, defaultCwd);
-	const isHashedSubCwd = (() => {
-		const root =
-			defaultCwd && rootDir.startsWith(`${defaultCwd}/`)
-				? defaultCwd
-				: imCwd && rootDir.startsWith(`${imCwd}/`)
-					? imCwd
-					: null;
-		if (!root) return false;
-		const rest = rootDir.slice(root.length + 1);
-		return rest.length > 0 && !rest.includes("/");
-	})();
 
 	const clearArtifactsButton: ReactNode = clearArtifactsScope ? (
 		<Button
@@ -570,7 +559,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		rootDir,
 		labels: {
 			selectProject: t("fileExplorer.selectProject"),
-			headerTitle: isHashedSubCwd ? t("fileExplorer.fileList") : projectName,
+			headerTitle: t("fileExplorer.fileList"),
 		},
 		clearArtifactsButton,
 		toolbarActions,
