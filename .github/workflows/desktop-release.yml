@@ -60,13 +60,15 @@ jobs:
           # arm64 与 x64 必须分两次构建：内置的 node/python 运行时按
           # VETTA_VENDOR_PLATFORM 单架构落盘，一次构建出不了两套。两次都会写同名的
           # latest-mac.yml，因此各自重命名后上传，由发布任务合并回单一元数据。
+          # 私有仓库的 GitHub 托管 macOS runner 按 10 倍扣分钟数，两次签名+公证的
+          # 构建足以吃光免费额度，因此 mac 走自持 runner（标签 vetta-mac）。
           - platform: macos-arm64
-            runner: macos-latest
+            runner: vetta-mac
             command: dist:mac:arm64
             verify: verify:updates:mac
             macArch: arm64
           - platform: macos-x64
-            runner: macos-latest
+            runner: vetta-mac
             command: dist:mac:x64
             verify: verify:updates:mac
             macArch: x64
@@ -91,20 +93,37 @@ jobs:
         if: matrix.macArch != ''
         shell: bash
         env:
-          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # 一律加 SECRET_ 前缀：自持 runner 通过自身环境提供同名的 APPLE_* 变量，
+          # 未配置的 Secret 会展开成空串并把它们盖掉。
+          SECRET_MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          SECRET_MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          SECRET_APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          SECRET_APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          SECRET_APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          SECRET_APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
+          # 自持 runner 把凭据放在 runner 目录的 .env 里，证书不进 CI Secret。
+          if [[ -n "${CSC_LINK:-}${CSC_NAME:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+            HAS_API_KEY=0
+            HAS_APPLE_ID=0
+            [[ -n "${APPLE_API_KEY:-}" && -n "${APPLE_API_KEY_ID:-}" && -n "${APPLE_API_ISSUER:-}" ]] && HAS_API_KEY=1
+            [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" ]] && HAS_APPLE_ID=1
+            if [[ "${HAS_API_KEY}" -eq 0 && "${HAS_APPLE_ID}" -eq 0 ]]; then
+              echo "Runner-provided macOS signing configuration is missing notarization credentials." >&2
+              exit 1
+            fi
+            echo "VETTA_REQUIRE_MAC_SIGNATURE=1" >> "${GITHUB_ENV}"
+            echo "Using macOS signing credentials provided by the runner environment."
+            exit 0
+          fi
+
           REQUIRED=(
-            MACOS_CERTIFICATE_P12_BASE64
-            MACOS_CERTIFICATE_PASSWORD
-            APPLE_API_KEY_P8_BASE64
-            APPLE_API_KEY_ID
-            APPLE_API_ISSUER
-            APPLE_TEAM_ID
+            SECRET_MACOS_CERTIFICATE_P12_BASE64
+            SECRET_MACOS_CERTIFICATE_PASSWORD
+            SECRET_APPLE_API_KEY_P8_BASE64
+            SECRET_APPLE_API_KEY_ID
+            SECRET_APPLE_API_ISSUER
+            SECRET_APPLE_TEAM_ID
           )
           PROVIDED=0
           MISSING=()
@@ -116,7 +135,13 @@ jobs:
             fi
           done
           if [[ "${PROVIDED}" -eq 0 ]]; then
-            echo "No macOS signing secrets configured; building an unsigned macOS package."
+            # publish-r2 已收紧为「只在 push tag 时发布」，但那拦不住「打了 tag 却没配
+            # 凭据」——那样会把未签名包发到 stable。两道闸互补，这里保留 tag 硬失败。
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              echo "A tagged macOS release requires signing and notarization credentials." >&2
+              exit 1
+            fi
+            echo "No macOS signing credentials configured; workflow_dispatch will build an unsigned test package."
             exit 0
           fi
           if [[ "${#MISSING[@]}" -ne 0 ]]; then
@@ -125,21 +150,27 @@ jobs:
           fi
 
           CERTIFICATE_PATH="${RUNNER_TEMP}/vetta-developer-id.p12"
-          API_KEY_PATH="${RUNNER_TEMP}/AuthKey_${APPLE_API_KEY_ID}.p8"
-          PAYLOAD="${MACOS_CERTIFICATE_P12_BASE64}" OUTPUT_PATH="${CERTIFICATE_PATH}" \
+          API_KEY_PATH="${RUNNER_TEMP}/AuthKey_${SECRET_APPLE_API_KEY_ID}.p8"
+          PAYLOAD="${SECRET_MACOS_CERTIFICATE_P12_BASE64}" OUTPUT_PATH="${CERTIFICATE_PATH}" \
             node -e 'require("node:fs").writeFileSync(process.env.OUTPUT_PATH, Buffer.from(process.env.PAYLOAD, "base64"))'
-          PAYLOAD="${APPLE_API_KEY_P8_BASE64}" OUTPUT_PATH="${API_KEY_PATH}" \
+          PAYLOAD="${SECRET_APPLE_API_KEY_P8_BASE64}" OUTPUT_PATH="${API_KEY_PATH}" \
             node -e 'require("node:fs").writeFileSync(process.env.OUTPUT_PATH, Buffer.from(process.env.PAYLOAD, "base64"))'
           chmod 600 "${CERTIFICATE_PATH}" "${API_KEY_PATH}"
           {
             echo "CSC_LINK=${CERTIFICATE_PATH}"
-            echo "CSC_KEY_PASSWORD=${MACOS_CERTIFICATE_PASSWORD}"
+            echo "CSC_KEY_PASSWORD=${SECRET_MACOS_CERTIFICATE_PASSWORD}"
             echo "APPLE_API_KEY=${API_KEY_PATH}"
-            echo "APPLE_API_KEY_ID=${APPLE_API_KEY_ID}"
-            echo "APPLE_API_ISSUER=${APPLE_API_ISSUER}"
-            echo "APPLE_TEAM_ID=${APPLE_TEAM_ID}"
+            echo "APPLE_API_KEY_ID=${SECRET_APPLE_API_KEY_ID}"
+            echo "APPLE_API_ISSUER=${SECRET_APPLE_API_ISSUER}"
+            echo "APPLE_TEAM_ID=${SECRET_APPLE_TEAM_ID}"
             echo "VETTA_REQUIRE_MAC_SIGNATURE=1"
           } >> "${GITHUB_ENV}"
+
+      # 自持 runner 复用工作目录，而 release/ 不在版本控制里，actions/checkout 清不掉。
+      # 残留的旧版本 latest*.yml 会让合并与发布脚本读到多个版本直接失败。
+      - name: Clean previous release artifacts
+        shell: bash
+        run: rm -rf packages/desktop-app/release
 
       - name: Build updater artifacts
         working-directory: packages/desktop-app
