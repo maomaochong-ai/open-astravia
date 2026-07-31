@@ -5,7 +5,7 @@ import type {
 	FileTransferPlan,
 } from "@preload/fs-types";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
-import { pathDirname } from "@shared/lib/utils";
+import { isSubPath, pathDirname } from "@shared/lib/utils";
 import {
 	activityPanelWidthAtom,
 	ACTIVITY_PANEL_PREVIEW_MIN_WIDTH,
@@ -13,6 +13,7 @@ import {
 	defaultConversationCwdAtom,
 	defaultImConversationCwdAtom,
 	fileContextMenuAtom,
+	fileTreeCacheAtom,
 	filePreviewAtom,
 	getProjectDisplayName,
 	inlineFilePreviewAtom,
@@ -20,16 +21,24 @@ import {
 	openInlineFilePreviewAtom,
 	type FilePreviewItem,
 	type FsEntry,
+	pluginFileExplorerToolbarActionsAtom,
 } from "@shared/store/atoms";
 import type { FilesPanelViewProps } from "@vetta/theme-ui/file-explorer";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import {
+	bindPluginFileExplorerHost,
+	emitPluginFileExplorerFilesChanged,
+	emitPluginFileExplorerSelectionChanged,
+} from "../../plugins/runtime/plugin-file-explorer-host";
+import { PluginInlineI18nBoundary, usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { FileContextMenu } from "../components/FileContextMenu";
 import { FileTransferDialog } from "../components/FileTransferDialog";
 import { FileTree } from "../components/FileTree";
 import { isProjectInternalDrop } from "../services/file-drop";
+import { sortFileExplorerActions } from "../services/plugin-contributions";
 import { useFileTree } from "./useFileTree";
 
 export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
@@ -44,6 +53,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		deleteEntry,
 		moveEntry,
 		refreshDir,
+		revealPath,
 	} = useFileTree(cwd);
 
 	const [contextMenu, setContextMenu] = useAtom(fileContextMenuAtom);
@@ -62,6 +72,9 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
 	const imCwd = useAtomValue(defaultImConversationCwdAtom);
 	const setConfirm = useSetAtom(confirmDialogAtom);
+	const pluginToolbarActions = useAtomValue(pluginFileExplorerToolbarActionsAtom);
+	const resolvePluginText = usePluginTextResolver();
+	const [selectedEntry, setSelectedEntry] = useState<FsEntry | null>(null);
 
 	const clearArtifactsScope: "conversation" | "claw" | null =
 		rootDir && defaultCwd && rootDir === defaultCwd
@@ -92,6 +105,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 
 	const handleSelectFile = useCallback(
 		(entry: FsEntry) => {
+			setSelectedEntry(entry);
+			emitPluginFileExplorerSelectionChanged([entry]);
 			const dir = pathDirname(entry.path);
 			let siblings: FsEntry[] = (cache.get(dir) ?? []).filter((e) => !e.isDirectory);
 
@@ -124,7 +139,50 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		[cache, narrow, openInlinePreview, setGlobalPreview],
 	);
 
-	const selectedPath = previewCtx?.items[previewCtx.index]?.path ?? null;
+	const selectedPath = selectedEntry?.path ?? previewCtx?.items[previewCtx.index]?.path ?? null;
+
+	useEffect(() => {
+		setSelectedEntry(null);
+		emitPluginFileExplorerSelectionChanged([]);
+	}, [rootDir]);
+
+	useEffect(() => {
+		const handle = bindPluginFileExplorerHost({
+			getWorkspaceRoot: () =>
+				rootDir ? { name: getProjectDisplayName(rootDir, defaultCwd), path: rootDir } : null,
+			getSelection: () => (selectedEntry ? [selectedEntry] : []),
+			reveal: async (path, options) => {
+				if (!rootDir) throw new Error("File explorer has no active workspace");
+				await revealPath(path);
+				const entries = [...getDefaultStore().get(fileTreeCacheAtom).values()].flat();
+				const entry = entries.find((candidate) => candidate.path === path);
+				if (!entry) throw new Error(`Path is not visible in the active workspace: ${path}`);
+				if (options?.select !== false) {
+					setSelectedEntry(entry);
+					emitPluginFileExplorerSelectionChanged([entry]);
+				}
+				if (options?.focus) {
+					requestAnimationFrame(() => {
+						const rows = document.querySelectorAll<HTMLElement>("[data-file-path]");
+						for (const row of rows) {
+							if (row.dataset.filePath !== path) continue;
+							row.focus();
+							break;
+						}
+					});
+				}
+			},
+			refresh: async (path) => {
+				const target = path ?? rootDir;
+				if (!target) throw new Error("File explorer has no active workspace");
+				if (!rootDir || !isSubPath(target, rootDir)) {
+					throw new Error(`Path is outside the active workspace: ${target}`);
+				}
+				await refreshDir(target);
+			},
+		});
+		return () => handle.dispose();
+	}, [defaultCwd, refreshDir, revealPath, rootDir, selectedEntry]);
 
 	useEffect(() => {
 		if (narrow || previewCtx != null || !rootDir) return;
@@ -221,6 +279,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 					setErrorToast(t("fileExplorer.transfer.failedCount", { count: failures.length }));
 				}
 				await refreshDir(transferPlan.destinationDirectory);
+				emitPluginFileExplorerFilesChanged([{ type: "changed", path: transferPlan.destinationDirectory }]);
 				setTransferPlan(null);
 			} catch (error: unknown) {
 				console.warn("[file-explorer] commit drop failed", error);
@@ -236,6 +295,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 
 	const onContextMenu = useCallback(
 		(entry: FsEntry, x: number, y: number) => {
+			setSelectedEntry(entry);
+			emitPluginFileExplorerSelectionChanged([entry]);
 			setContextMenu({ x, y, entry });
 		},
 		[setContextMenu],
@@ -293,6 +354,30 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		</Button>
 	);
 
+	const workspaceRoot = { name: projectName, path: rootDir };
+	const toolbarActions = sortFileExplorerActions(pluginToolbarActions).map((action) => (
+		<Button
+			key={action.actionId}
+			variant="ghost"
+			size="icon-xs"
+			title={resolvePluginText(action.pluginId, action.label)}
+			onClick={() => {
+				void Promise.resolve(
+					action.run({
+						workspaceRoot: { ...workspaceRoot },
+						selection: selectedEntry ? [{ ...selectedEntry }] : [],
+					}),
+				).catch((error: unknown) => {
+					console.error(`Plugin ${action.pluginId} file explorer toolbar action failed`, error);
+				});
+			}}
+		>
+			<PluginInlineI18nBoundary pluginId={action.pluginId}>
+				{action.icon ?? <span className="icon-[solar--magic-stick-3-linear] h-3.5 w-3.5" />}
+			</PluginInlineI18nBoundary>
+		</Button>
+	));
+
 	const tree = (
 		<FileTree
 			rootDir={rootDir}
@@ -349,6 +434,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			headerTitle: isHashedSubCwd ? t("fileExplorer.fileList") : projectName,
 		},
 		clearArtifactsButton,
+		toolbarActions,
 		refreshButton,
 		loadingRoot: loadingDirs.has(rootDir) && !cache.has(rootDir),
 		tree,

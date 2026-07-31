@@ -1,6 +1,6 @@
 import { useState, type JSX } from "react";
 import { FileTreeNodeView } from "./FileTreeNodeView";
-import type { FileExplorerEntry } from "./types";
+import type { FileExplorerEntry, FileExplorerNodeDecoration } from "./types";
 
 export interface FileTreeViewProps {
 	rootDir: string;
@@ -11,6 +11,7 @@ export interface FileTreeViewProps {
 	selectedPath: string | null;
 	renamingPath: string | null;
 	emptyLabel: string;
+	getDecoration?: (entry: FileExplorerEntry) => FileExplorerNodeDecoration | null;
 	onToggleDir: (path: string) => void;
 	onSelectFile: (entry: FileExplorerEntry) => void;
 	onContextMenu: (entry: FileExplorerEntry, x: number, y: number) => void;
@@ -59,6 +60,7 @@ export function FileTreeView({
 	selectedPath,
 	renamingPath,
 	emptyLabel,
+	getDecoration,
 	onToggleDir,
 	onSelectFile,
 	onContextMenu,
@@ -122,6 +124,7 @@ export function FileTreeView({
 					isLoading={loadingDirs.has(node.entry.path)}
 					isSelected={selectedPath === node.entry.path}
 					isRenaming={renamingPath === node.entry.path}
+					decoration={getDecoration?.(node.entry)}
 					onToggleDir={onToggleDir}
 					onSelectFile={onSelectFile}
 					onContextMenu={onContextMenu}

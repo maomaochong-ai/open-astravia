@@ -3,6 +3,9 @@ import {
 	pluginActivityTabsAtom,
 	pluginCardRenderersAtom,
 	pluginFilePreviewsAtom,
+	pluginFileExplorerContextMenuActionsAtom,
+	pluginFileExplorerDecorationProvidersAtom,
+	pluginFileExplorerToolbarActionsAtom,
 	type PluginI18nEntry,
 	pluginI18nByIdAtom,
 	pluginInputActionsAtom,
@@ -11,6 +14,9 @@ import {
 	type RegisteredActivityTab,
 	type RegisteredCardRenderer,
 	type RegisteredFilePreview,
+	type RegisteredFileExplorerContextMenuAction,
+	type RegisteredFileExplorerDecorationProvider,
+	type RegisteredFileExplorerToolbarAction,
 	type RegisteredInputAction,
 	type RegisteredToolCallSlot,
 	type RegisteredTurnCard,
@@ -56,6 +62,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	/** True while remotes are (re)loading — keep last published contributions to avoid tab flash. */
 	const [hostLoading, setHostLoading] = useState(true);
 	const setFilePreviews = useSetAtom(pluginFilePreviewsAtom);
+	const setFileExplorerContextMenuActions = useSetAtom(pluginFileExplorerContextMenuActionsAtom);
+	const setFileExplorerToolbarActions = useSetAtom(pluginFileExplorerToolbarActionsAtom);
+	const setFileExplorerDecorationProviders = useSetAtom(pluginFileExplorerDecorationProvidersAtom);
 	const setActivityTabs = useSetAtom(pluginActivityTabsAtom);
 	const setInputActions = useSetAtom(pluginInputActionsAtom);
 	const setCardRenderers = useSetAtom(pluginCardRenderersAtom);
@@ -173,6 +182,39 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		if (previews.length > 0 || !hostLoading) setFilePreviews(previews);
 	}, [plugins, revision, hostLoading, setFilePreviews]);
 
+	useEffect(() => {
+		const actions: RegisteredFileExplorerContextMenuAction[] = plugins.flatMap((plugin) =>
+			plugin.fileExplorerContextMenuActions.map((action) => ({
+				...action,
+				pluginId: plugin.id,
+				actionId: action.id,
+			})),
+		);
+		if (actions.length > 0 || !hostLoading) setFileExplorerContextMenuActions(actions);
+	}, [plugins, revision, hostLoading, setFileExplorerContextMenuActions]);
+
+	useEffect(() => {
+		const actions: RegisteredFileExplorerToolbarAction[] = plugins.flatMap((plugin) =>
+			plugin.fileExplorerToolbarActions.map((action) => ({
+				...action,
+				pluginId: plugin.id,
+				actionId: action.id,
+			})),
+		);
+		if (actions.length > 0 || !hostLoading) setFileExplorerToolbarActions(actions);
+	}, [plugins, revision, hostLoading, setFileExplorerToolbarActions]);
+
+	useEffect(() => {
+		const providers: RegisteredFileExplorerDecorationProvider[] = plugins.flatMap((plugin) =>
+			plugin.fileExplorerDecorationProviders.map((provider) => ({
+				...provider,
+				pluginId: plugin.id,
+				providerId: provider.id,
+			})),
+		);
+		if (providers.length > 0 || !hostLoading) setFileExplorerDecorationProviders(providers);
+	}, [plugins, revision, hostLoading, setFileExplorerDecorationProviders]);
+
 	// Publish activity-tab contributions (the addable pool) so ActivityPanel
 	// can render attached tabs and the "+" picker.
 	useEffect(() => {
@@ -272,6 +314,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	useEffect(() => {
 		return () => {
 			setFilePreviews([]);
+			setFileExplorerContextMenuActions([]);
+			setFileExplorerToolbarActions([]);
+			setFileExplorerDecorationProviders([]);
 			setActivityTabs([]);
 			setInputActions([]);
 			setCardRenderers([]);
@@ -281,6 +326,9 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		};
 	}, [
 		setFilePreviews,
+		setFileExplorerContextMenuActions,
+		setFileExplorerToolbarActions,
+		setFileExplorerDecorationProviders,
 		setActivityTabs,
 		setInputActions,
 		setCardRenderers,

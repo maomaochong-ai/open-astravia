@@ -4,6 +4,7 @@ export type {
 } from "./ConfirmDeleteDialogView";
 export { ConfirmDeleteDialogView } from "./ConfirmDeleteDialogView";
 export type {
+	FileContextMenuPluginAction,
 	FileContextMenuViewLabels,
 	FileContextMenuViewProps,
 } from "./FileContextMenuView";
@@ -15,4 +16,4 @@ export { FileTreeNodeView } from "./FileTreeNodeView";
 export type { FileTreeViewProps } from "./FileTreeView";
 export { FileTreeView } from "./FileTreeView";
 export { getFileIcon } from "./fileIcons";
-export type { FileExplorerEntry } from "./types";
+export type { FileExplorerEntry, FileExplorerNodeDecoration } from "./types";

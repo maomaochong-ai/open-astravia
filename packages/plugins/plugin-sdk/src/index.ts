@@ -12,6 +12,22 @@ export type { PluginPermission } from "./permissions.js";
 export type { Disposable } from "./disposable.js";
 export type { PluginMcpServerConfig, PluginAgentManifest } from "./manifest.js";
 
+// File explorer
+export type {
+	PluginFileExplorerEntry,
+	PluginWorkspaceRoot,
+	PluginFileExplorerWhen,
+	PluginFileExplorerActionContext,
+	PluginFileExplorerContextMenuContribution,
+	PluginFileExplorerToolbarContext,
+	PluginFileExplorerToolbarContribution,
+	PluginFileExplorerDecoration,
+	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerChange,
+	PluginFileExplorerRevealOptions,
+	PluginFileExplorerApi,
+} from "./file-explorer.js";
+
 // Conversation
 export type {
 	ConversationState,

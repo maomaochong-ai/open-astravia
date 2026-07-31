@@ -1,9 +1,12 @@
 import { isMac } from "@shared/lib/platform";
-import { type FsEntry, renamingPathAtom } from "@shared/store/atoms";
+import { type FsEntry, pluginFileExplorerContextMenuActionsAtom, renamingPathAtom } from "@shared/store/atoms";
 import type { FileContextMenuViewProps } from "@vetta/theme-ui/file-explorer";
-import { useSetAtom } from "jotai";
-import { useCallback } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { createElement, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { getPluginFileExplorerWorkspaceRoots } from "../../plugins/runtime/plugin-file-explorer-host";
+import { PluginInlineI18nBoundary, usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
+import { matchesFileExplorerWhen, sortFileExplorerActions } from "../services/plugin-contributions";
 
 export function useFileContextMenuModel(
 	entry: FsEntry,
@@ -12,6 +15,8 @@ export function useFileContextMenuModel(
 ): FileContextMenuViewProps {
 	const { t } = useTranslation("chat");
 	const setRenamingPath = useSetAtom(renamingPathAtom);
+	const pluginActions = useAtomValue(pluginFileExplorerContextMenuActionsAtom);
+	const resolvePluginText = usePluginTextResolver();
 
 	const onOpenInFolder = useCallback(() => {
 		if (entry.isDirectory) {
@@ -36,6 +41,31 @@ export function useFileContextMenuModel(
 		onDelete(entry);
 	}, [entry, onDelete]);
 
+	const resolvedPluginActions = useMemo(
+		() =>
+			sortFileExplorerActions(pluginActions)
+				.filter((action) => matchesFileExplorerWhen(entry, action.when))
+				.map((action) => ({
+					id: action.actionId,
+					label: resolvePluginText(action.pluginId, action.label),
+					icon: action.icon
+						? createElement(PluginInlineI18nBoundary, { pluginId: action.pluginId }, action.icon)
+						: undefined,
+					onSelect: () => {
+						onClose();
+						void Promise.resolve(
+							action.run({
+								entry: { ...entry },
+								workspaceRoot: getPluginFileExplorerWorkspaceRoots()[0] ?? null,
+							}),
+						).catch((error: unknown) => {
+							console.error(`Plugin ${action.pluginId} file explorer action failed`, error);
+						});
+					},
+				})),
+		[entry, onClose, pluginActions, resolvePluginText],
+	);
+
 	return {
 		x: 0,
 		y: 0,
@@ -50,5 +80,6 @@ export function useFileContextMenuModel(
 		onCopyName,
 		onRename,
 		onDelete: handleDelete,
+		pluginActions: resolvedPluginActions,
 	};
 }

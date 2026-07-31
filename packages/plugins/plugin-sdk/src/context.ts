@@ -3,6 +3,7 @@ import type { PluginAppActionsApi } from "./app-actions.js";
 import type { PluginCommandApi } from "./command.js";
 import type { PluginConversationApi } from "./conversation.js";
 import type { Disposable } from "./disposable.js";
+import type { PluginFileExplorerApi } from "./file-explorer.js";
 import type { PluginFsApi } from "./fs.js";
 import type { PluginI18nApi } from "./i18n.js";
 import type { PluginNetworkApi } from "./network.js";
@@ -27,6 +28,7 @@ export interface PluginContext {
 	};
 	permissions: PluginPermissionApi;
 	ui: PluginUiApi;
+	fileExplorer: PluginFileExplorerApi;
 	conversation: PluginConversationApi;
 	agent: PluginAgentApi;
 	appActions: PluginAppActionsApi;

@@ -8,6 +8,7 @@ import {
 } from "@shared/store/atoms";
 import { useAtom, useAtomValue } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
+import { emitPluginFileExplorerFilesChanged } from "../../plugins/runtime/plugin-file-explorer-host";
 
 /**
  * @param cwdOverride 显式指定的根目录。不传则回退到当前活动 session 的 cwd，
@@ -62,6 +63,7 @@ export function useFileTree(cwdOverride?: string | null) {
 		async (oldPath: string, newName: string) => {
 			const newPath = pathJoin(pathDirname(oldPath), newName);
 			await window.vetta.fs.rename(oldPath, newPath);
+			emitPluginFileExplorerFilesChanged([{ type: "moved", oldPath, path: newPath }]);
 			// Refresh parent directory
 			const parentDir = pathDirname(oldPath);
 			await loadDir(parentDir);
@@ -72,6 +74,7 @@ export function useFileTree(cwdOverride?: string | null) {
 	const deleteEntry = useCallback(
 		async (entryPath: string) => {
 			await window.vetta.fs.delete(entryPath);
+			emitPluginFileExplorerFilesChanged([{ type: "deleted", path: entryPath }]);
 			const parentDir = pathDirname(entryPath);
 			// Remove from cache
 			setCache((prev) => {
@@ -138,6 +141,7 @@ export function useFileTree(cwdOverride?: string | null) {
 
 			try {
 				await window.vetta.fs.move(srcPath, destDir);
+				emitPluginFileExplorerFilesChanged([{ type: "moved", oldPath: srcPath, path: pathJoin(destDir, name) }]);
 			} catch (err) {
 				console.error("Move failed, refreshing:", err);
 				// Rollback by reloading both directories
@@ -152,6 +156,29 @@ export function useFileTree(cwdOverride?: string | null) {
 			await loadDir(dirPath);
 		},
 		[loadDir],
+	);
+
+	const revealPath = useCallback(
+		async (entryPath: string) => {
+			if (!rootCwd || !isSubPath(entryPath, rootCwd)) {
+				throw new Error(`Path is outside the active workspace: ${entryPath}`);
+			}
+			const directories: string[] = [rootCwd];
+			let parent = pathDirname(entryPath);
+			while (parent !== rootCwd && isSubPath(parent, rootCwd)) {
+				directories.splice(1, 0, parent);
+				const next = pathDirname(parent);
+				if (next === parent) break;
+				parent = next;
+			}
+			for (const directory of directories) await loadDir(directory);
+			setExpandedDirs((previous) => {
+				const next = new Set(previous);
+				for (const directory of directories.slice(1)) next.add(directory);
+				return next;
+			});
+		},
+		[rootCwd, loadDir, setExpandedDirs],
 	);
 
 	// When the resolved cwd changes, clear cache and load new root
@@ -204,6 +231,7 @@ export function useFileTree(cwdOverride?: string | null) {
 	// Subscribe to dir-changed events from main process
 	useEffect(() => {
 		const unsub = window.vetta.fs.onDirChanged((dirPath: string) => {
+			emitPluginFileExplorerFilesChanged([{ type: "changed", path: dirPath }]);
 			// Only reload if this dir is currently visible (root or expanded)
 			if (watchedDirsRef.current.has(dirPath)) {
 				void loadDir(dirPath);
@@ -222,5 +250,6 @@ export function useFileTree(cwdOverride?: string | null) {
 		deleteEntry,
 		moveEntry,
 		refreshDir,
+		revealPath,
 	};
 }

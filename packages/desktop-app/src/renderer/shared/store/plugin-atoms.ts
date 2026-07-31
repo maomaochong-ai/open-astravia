@@ -2,6 +2,9 @@ import type {
 	ConversationScenario,
 	PluginActivityTabContribution,
 	PluginCardRendererContribution,
+	PluginFileExplorerContextMenuContribution,
+	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerToolbarContribution,
 	PluginFilePreviewContribution,
 	PluginInputActionContribution,
 	PluginLocales,
@@ -39,6 +42,25 @@ export interface RegisteredFilePreview {
  * PluginGlobalSlotHost and consumed by FilePreviewView. First match wins.
  */
 export const pluginFilePreviewsAtom = atom<RegisteredFilePreview[]>([]);
+
+export interface RegisteredFileExplorerContextMenuAction extends PluginFileExplorerContextMenuContribution {
+	pluginId: string;
+	actionId: string;
+}
+
+export interface RegisteredFileExplorerToolbarAction extends PluginFileExplorerToolbarContribution {
+	pluginId: string;
+	actionId: string;
+}
+
+export interface RegisteredFileExplorerDecorationProvider extends PluginFileExplorerDecorationProvider {
+	pluginId: string;
+	providerId: string;
+}
+
+export const pluginFileExplorerContextMenuActionsAtom = atom<RegisteredFileExplorerContextMenuAction[]>([]);
+export const pluginFileExplorerToolbarActionsAtom = atom<RegisteredFileExplorerToolbarAction[]>([]);
+export const pluginFileExplorerDecorationProvidersAtom = atom<RegisteredFileExplorerDecorationProvider[]>([]);
 
 /** An activity-tab contribution registered by a loaded plugin（可添加池条目）. */
 export interface RegisteredActivityTab {

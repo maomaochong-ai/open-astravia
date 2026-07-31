@@ -13,6 +13,8 @@ export interface FilesPanelViewProps {
 	clearArtifactsButton?: ReactNode;
 	/** Host refresh Button. */
 	refreshButton: ReactNode;
+	/** Plugin-contributed toolbar actions. */
+	toolbarActions?: ReactNode;
 	/** Loading spinner for root. */
 	loadingRoot: boolean;
 	/** FileTree (or spinner already handled). */
@@ -34,6 +36,7 @@ export function FilesPanelView({
 	labels,
 	clearArtifactsButton,
 	refreshButton,
+	toolbarActions,
 	loadingRoot,
 	tree,
 	contextMenu,
@@ -58,6 +61,7 @@ export function FilesPanelView({
 				</span>
 				<div className="flex items-center gap-0.5">
 					{clearArtifactsButton}
+					{toolbarActions}
 					{refreshButton}
 				</div>
 			</div>

@@ -50,7 +50,7 @@ export function usePluginTextResolver(): (
  * against this plugin's catalogs and generated plugin CSS stays inside this
  * plugin's DOM subtree.
  */
-export function PluginI18nBoundary({ pluginId, children }: { pluginId: string; children: ReactNode }): JSX.Element {
+export function PluginI18nBoundary({ pluginId, children }: { pluginId: string; children?: ReactNode }): JSX.Element {
 	const registry = useAtomValue(pluginI18nByIdAtom);
 	const entry = registry[pluginId];
 	return (
@@ -60,6 +60,27 @@ export function PluginI18nBoundary({ pluginId, children }: { pluginId: string; c
 			<div className="contents" data-vetta-plugin-root={pluginId}>
 				{children}
 			</div>
+		</__PluginI18nContext.Provider>
+	);
+}
+
+/** Inline variant for plugin-owned icons rendered inside host buttons and tree rows. */
+export function PluginInlineI18nBoundary({
+	pluginId,
+	children,
+}: {
+	pluginId: string;
+	children?: ReactNode;
+}): JSX.Element {
+	const registry = useAtomValue(pluginI18nByIdAtom);
+	const entry = registry[pluginId];
+	return (
+		<__PluginI18nContext.Provider
+			value={{ locales: entry?.locales ?? {}, defaultLocale: entry?.defaultLocale ?? "zh" }}
+		>
+			<span className="contents" data-vetta-plugin-root={pluginId}>
+				{children}
+			</span>
 		</__PluginI18nContext.Provider>
 	);
 }

@@ -33,6 +33,9 @@ import type {
 	PluginContext,
 	PluginConversationApi,
 	PluginDefinition,
+	PluginFileExplorerContextMenuContribution,
+	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerToolbarContribution,
 	PluginFilePreviewContribution,
 	PluginFsApi,
 	PluginGlobalSlotContribution,
@@ -55,6 +58,14 @@ import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
 import {
+	getPluginFileExplorerSelection,
+	getPluginFileExplorerWorkspaceRoots,
+	onPluginFileExplorerFilesChanged,
+	onPluginFileExplorerSelectionChanged,
+	refreshPluginFileExplorer,
+	revealPluginFileExplorerPath,
+} from "./plugin-file-explorer-host";
+import {
 	pluginHostBridge,
 	registerPluginAgentToolHandler,
 	registerPluginAppActionHandler,
@@ -75,6 +86,9 @@ export interface LoadedPlugin {
 	locales: PluginLocales;
 	slots: PluginGlobalSlotContribution[];
 	filePreviews: PluginFilePreviewContribution[];
+	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[];
+	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[];
+	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[];
 	activityTabs: PluginActivityTabContribution[];
 	inputActions: PluginInputActionContribution[];
 	cardRenderers: PluginCardRendererContribution[];
@@ -519,6 +533,9 @@ function createContext(
 	plugin: InstalledPlugin,
 	slots: PluginGlobalSlotContribution[],
 	filePreviews: PluginFilePreviewContribution[],
+	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[],
+	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[],
+	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[],
 	activityTabs: PluginActivityTabContribution[],
 	inputActions: PluginInputActionContribution[],
 	cardRenderers: PluginCardRendererContribution[],
@@ -593,6 +610,82 @@ function createContext(
 			dispose: () => {
 				const index = filePreviews.indexOf(normalized);
 				if (index >= 0) filePreviews.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const registerFileExplorerContextMenuAction = (
+		contribution: PluginFileExplorerContextMenuContribution,
+	): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.context-menu");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer context-menu action id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("File explorer context-menu action label is required");
+		}
+		if (typeof contribution.run !== "function") {
+			throw new Error("File explorer context-menu action handler is required");
+		}
+		const normalized: PluginFileExplorerContextMenuContribution = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+			label: contribution.label.trim(),
+		};
+		fileExplorerContextMenuActions.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerContextMenuActions.indexOf(normalized);
+				if (index >= 0) fileExplorerContextMenuActions.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const registerFileExplorerToolbarAction = (contribution: PluginFileExplorerToolbarContribution): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.toolbar");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer toolbar action id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("File explorer toolbar action label is required");
+		}
+		if (typeof contribution.run !== "function") {
+			throw new Error("File explorer toolbar action handler is required");
+		}
+		const normalized: PluginFileExplorerToolbarContribution = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+			label: contribution.label.trim(),
+		};
+		fileExplorerToolbarActions.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerToolbarActions.indexOf(normalized);
+				if (index >= 0) fileExplorerToolbarActions.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const registerFileExplorerDecorationProvider = (contribution: PluginFileExplorerDecorationProvider): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.decorations");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer decoration provider id is required");
+		}
+		if (typeof contribution.provideDecoration !== "function") {
+			throw new Error("File explorer decoration provider is required");
+		}
+		const normalized: PluginFileExplorerDecorationProvider = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+		};
+		fileExplorerDecorationProviders.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerDecorationProviders.indexOf(normalized);
+				if (index >= 0) fileExplorerDecorationProviders.splice(index, 1);
 				onChanged();
 			},
 		};
@@ -891,6 +984,39 @@ function createContext(
 			openPluginSettings,
 			captureRegion,
 			notify,
+		},
+		fileExplorer: {
+			getWorkspaceRoots: () => {
+				createPermissionApi(plugin).require("workspace.read");
+				return getPluginFileExplorerWorkspaceRoots();
+			},
+			getSelection: () => {
+				createPermissionApi(plugin).require("workspace.read");
+				return getPluginFileExplorerSelection();
+			},
+			reveal: (path, options) => {
+				createPermissionApi(plugin).require("workspace.read");
+				return revealPluginFileExplorerPath(path, options);
+			},
+			refresh: (path) => {
+				createPermissionApi(plugin).require("workspace.read");
+				return refreshPluginFileExplorer(path);
+			},
+			onDidChangeSelection: (listener) => {
+				createPermissionApi(plugin).require("workspace.read");
+				const handle = onPluginFileExplorerSelectionChanged(listener);
+				disposers.push(() => handle.dispose());
+				return handle;
+			},
+			onDidChangeFiles: (listener) => {
+				createPermissionApi(plugin).require("workspace.read");
+				const handle = onPluginFileExplorerFilesChanged(listener);
+				disposers.push(() => handle.dispose());
+				return handle;
+			},
+			registerContextMenuAction: registerFileExplorerContextMenuAction,
+			registerToolbarAction: registerFileExplorerToolbarAction,
+			registerDecorationProvider: registerFileExplorerDecorationProvider,
 		},
 		conversation,
 		fs,
@@ -1210,6 +1336,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 	});
 	const slots: PluginGlobalSlotContribution[] = [];
 	const filePreviews: PluginFilePreviewContribution[] = [];
+	const fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[] = [];
+	const fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[] = [];
+	const fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[] = [];
 	const activityTabs: PluginActivityTabContribution[] = [];
 	const inputActions: PluginInputActionContribution[] = [];
 	const cardRenderers: PluginCardRendererContribution[] = [];
@@ -1225,6 +1354,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		for (const dispose of disposers) dispose();
 		slots.splice(0, slots.length);
 		filePreviews.splice(0, filePreviews.length);
+		fileExplorerContextMenuActions.splice(0, fileExplorerContextMenuActions.length);
+		fileExplorerToolbarActions.splice(0, fileExplorerToolbarActions.length);
+		fileExplorerDecorationProviders.splice(0, fileExplorerDecorationProviders.length);
 		activityTabs.splice(0, activityTabs.length);
 		inputActions.splice(0, inputActions.length);
 		cardRenderers.splice(0, cardRenderers.length);
@@ -1260,6 +1392,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			plugin,
 			slots,
 			filePreviews,
+			fileExplorerContextMenuActions,
+			fileExplorerToolbarActions,
+			fileExplorerDecorationProviders,
 			activityTabs,
 			inputActions,
 			cardRenderers,
@@ -1298,6 +1433,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			locales: plugin.locales,
 			slots,
 			filePreviews,
+			fileExplorerContextMenuActions,
+			fileExplorerToolbarActions,
+			fileExplorerDecorationProviders,
 			activityTabs,
 			inputActions,
 			cardRenderers,

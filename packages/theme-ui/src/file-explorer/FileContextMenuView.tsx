@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, type JSX } from "react";
+import { useEffect, useRef, type JSX, type ReactNode } from "react";
 
 export interface FileContextMenuViewLabels {
 	openInFolder: string;
@@ -17,6 +17,14 @@ export interface FileContextMenuViewProps {
 	onCopyName: () => void;
 	onRename: () => void;
 	onDelete: () => void;
+	pluginActions?: readonly FileContextMenuPluginAction[];
+}
+
+export interface FileContextMenuPluginAction {
+	id: string;
+	label: string;
+	icon?: ReactNode;
+	onSelect: () => void;
 }
 
 /**
@@ -31,6 +39,7 @@ export function FileContextMenuView({
 	onCopyName,
 	onRename,
 	onDelete,
+	pluginActions = [],
 }: FileContextMenuViewProps): JSX.Element {
 	const menuRef = useRef<HTMLDivElement>(null);
 
@@ -83,6 +92,20 @@ export function FileContextMenuView({
 					{labels.copyName}
 				</button>
 				<div className="mx-1.5 my-1 h-px bg-border" />
+				{pluginActions.map((action) => (
+					<button
+						key={action.id}
+						type="button"
+						onClick={action.onSelect}
+						className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+					>
+						<span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+							{action.icon ?? <span className="icon-[solar--magic-stick-3-linear] h-3.5 w-3.5" />}
+						</span>
+						<span className="truncate">{action.label}</span>
+					</button>
+				))}
+				{pluginActions.length > 0 ? <div className="mx-1.5 my-1 h-px bg-border" /> : null}
 				<button
 					type="button"
 					onClick={onRename}

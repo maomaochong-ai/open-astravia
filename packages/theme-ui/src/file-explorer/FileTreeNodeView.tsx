@@ -2,7 +2,7 @@ import { cn } from "@vetta/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { getFileIcon } from "./fileIcons";
 import { beginNativeFileDrag } from "./nativeFileDrag";
-import type { FileExplorerEntry } from "./types";
+import type { FileExplorerEntry, FileExplorerNodeDecoration } from "./types";
 
 const DRAG_MIME = "application/vetta-path";
 
@@ -13,6 +13,7 @@ export interface FileTreeNodeViewProps {
 	isLoading: boolean;
 	isSelected: boolean;
 	isRenaming: boolean;
+	decoration?: FileExplorerNodeDecoration | null;
 	onToggleDir: (path: string) => void;
 	onSelectFile: (entry: FileExplorerEntry) => void;
 	onContextMenu: (entry: FileExplorerEntry, x: number, y: number) => void;
@@ -52,6 +53,7 @@ export function FileTreeNodeView({
 	isLoading,
 	isSelected,
 	isRenaming,
+	decoration,
 	onToggleDir,
 	onSelectFile,
 	onContextMenu,
@@ -146,6 +148,7 @@ export function FileTreeNodeView({
 	return (
 		<div
 			role="treeitem"
+			data-file-path={entry.path}
 			tabIndex={0}
 			draggable={!isRenaming}
 			onClick={handleClick}
@@ -163,6 +166,7 @@ export function FileTreeNodeView({
 				dragOver && "bg-primary/10 ring-1 ring-inset ring-primary/40",
 			)}
 			style={{ paddingLeft: `${depth * 16 + 6}px` }}
+			title={decoration?.tooltip}
 		>
 			{entry.isDirectory ? (
 				<span
@@ -179,13 +183,17 @@ export function FileTreeNodeView({
 				<span className="h-3 w-3 shrink-0" />
 			)}
 
-			<span
-				className={cn(
-					icon,
-					"h-3.5 w-3.5 shrink-0",
-					entry.isDirectory ? "text-primary" : "text-muted-foreground",
-				)}
-			/>
+			{decoration?.icon ? (
+				<span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">{decoration.icon}</span>
+			) : (
+				<span
+					className={cn(
+						icon,
+						"h-3.5 w-3.5 shrink-0",
+						entry.isDirectory ? "text-primary" : "text-muted-foreground",
+					)}
+				/>
+			)}
 
 			{isRenaming ? (
 				<input
@@ -199,7 +207,14 @@ export function FileTreeNodeView({
 					onClick={(e) => e.stopPropagation()}
 				/>
 			) : (
-				<span className="min-w-0 flex-1 truncate">{entry.name}</span>
+				<>
+					<span className="min-w-0 flex-1 truncate">{entry.name}</span>
+					{decoration?.badge ? (
+						<span className="max-w-8 shrink-0 truncate rounded-full bg-accent px-1.5 text-[10px] text-muted-foreground">
+							{decoration.badge}
+						</span>
+					) : null}
+				</>
 			)}
 		</div>
 	);

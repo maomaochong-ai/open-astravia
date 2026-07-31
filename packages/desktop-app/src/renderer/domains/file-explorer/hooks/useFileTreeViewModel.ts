@@ -1,8 +1,10 @@
-import { type FsEntry, renamingPathAtom } from "@shared/store/atoms";
+import { type FsEntry, pluginFileExplorerDecorationProvidersAtom, renamingPathAtom } from "@shared/store/atoms";
 import type { FileTreeViewProps } from "@vetta/theme-ui/file-explorer";
-import { useAtom } from "jotai";
-import { useCallback } from "react";
+import { useAtom, useAtomValue } from "jotai";
+import { createElement, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { PluginInlineI18nBoundary, usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
+import { resolveFileExplorerDecoration } from "../services/plugin-contributions";
 
 export function useFileTreeViewModel(input: {
 	rootDir: string;
@@ -20,6 +22,8 @@ export function useFileTreeViewModel(input: {
 }): FileTreeViewProps {
 	const { t } = useTranslation("chat");
 	const [renamingPath, setRenamingPath] = useAtom(renamingPathAtom);
+	const decorationProviders = useAtomValue(pluginFileExplorerDecorationProvidersAtom);
+	const resolvePluginText = usePluginTextResolver();
 
 	const onRenameSubmit = useCallback(
 		(oldPath: string, newName: string) => {
@@ -33,6 +37,22 @@ export function useFileTreeViewModel(input: {
 		setRenamingPath(null);
 	}, [setRenamingPath]);
 
+	const getDecoration = useCallback(
+		(entry: FsEntry) => {
+			const resolved = resolveFileExplorerDecoration(entry, decorationProviders);
+			if (!resolved) return null;
+			const { decoration } = resolved;
+			return {
+				...decoration,
+				tooltip: decoration.tooltip ? resolvePluginText(resolved.pluginId, decoration.tooltip) : undefined,
+				icon: decoration.icon
+					? createElement(PluginInlineI18nBoundary, { pluginId: resolved.pluginId }, decoration.icon)
+					: undefined,
+			};
+		},
+		[decorationProviders, resolvePluginText],
+	);
+
 	return {
 		rootDir: input.rootDir,
 		cache: input.cache,
@@ -41,6 +61,7 @@ export function useFileTreeViewModel(input: {
 		selectedPath: input.selectedPath,
 		renamingPath,
 		emptyLabel: t("fileExplorer.emptyFolder"),
+		getDecoration,
 		onToggleDir: input.onToggleDir,
 		onSelectFile: input.onSelectFile,
 		onContextMenu: input.onContextMenu,
