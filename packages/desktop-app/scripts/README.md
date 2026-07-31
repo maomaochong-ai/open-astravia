@@ -163,7 +163,7 @@ https://releases.openvetta.com/desktop/stable
 electron-builder 会随各平台产物生成更新清单：
 
 - Windows：`latest.yml`、Inno Setup 安装包与 blockmap。应用运行时由 Inno Setup 静默安装到新版本目录，重启时由稳定启动器切换版本。
-- macOS：`latest-mac.yml`、ZIP/DMG 与 blockmap；自动安装需后续补齐代码签名。
+- macOS：`latest-mac.yml`、ZIP/DMG 与 blockmap。签名并公证后由 Squirrel.Mac 原位替换应用；客户端会等到原生 `update-downloaded` 事件后才显示“可重启”，不会把“ZIP 下载完成”误当成“更新已可安装”。
 - Linux：`latest-linux.yml`、AppImage 与 blockmap。
 
 ### 发布到 R2
@@ -173,6 +173,15 @@ electron-builder 会随各平台产物生成更新清单：
 ```bash
 bun run publish:updates:r2
 ```
+
+发布前会按当前目录中的平台清单执行门禁：Windows 在 Windows 上校验 Inno 版本，macOS 在任意系统校验 `latest-mac.yml`、ZIP、大小、SHA-512 和 blockmap。在 macOS 正式签名构建中还应设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，此时会解压 ZIP 并执行 `codesign`、`spctl` 与 `stapler` 校验。也可以单独执行：
+
+```bash
+bun run verify:updates:windows
+bun run verify:updates:mac
+```
+
+Windows 的运行时安装校验只能在 Windows 执行；R2 汇总发布任务运行在 Linux 时会跳过这项系统相关检查，依赖各平台构建 Job 已通过自己的门禁。
 
 上传脚本要求通过 CI Secret 注入：
 

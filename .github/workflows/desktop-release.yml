@@ -24,12 +24,15 @@ jobs:
           - platform: windows
             runner: windows-latest
             command: dist:win
+            verify: verify:updates:windows
           - platform: macos
             runner: macos-latest
             command: dist:mac
+            verify: verify:updates:mac
           - platform: linux
             runner: ubuntu-latest
             command: dist:linux
+            verify: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +52,64 @@ jobs:
           VERSION="$(node -p "require('./packages/desktop-app/package.json').version")"
           test "${GITHUB_REF_NAME}" = "v${VERSION}"
 
+      - name: Configure macOS signing and notarization
+        if: matrix.platform == 'macos'
+        shell: bash
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          REQUIRED=(
+            MACOS_CERTIFICATE_P12_BASE64
+            MACOS_CERTIFICATE_PASSWORD
+            APPLE_API_KEY_P8_BASE64
+            APPLE_API_KEY_ID
+            APPLE_API_ISSUER
+            APPLE_TEAM_ID
+          )
+          PROVIDED=0
+          MISSING=()
+          for NAME in "${REQUIRED[@]}"; do
+            if [[ -n "${!NAME}" ]]; then
+              PROVIDED=$((PROVIDED + 1))
+            else
+              MISSING+=("${NAME}")
+            fi
+          done
+          if [[ "${PROVIDED}" -eq 0 ]]; then
+            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+              echo "A tagged macOS release requires signing and notarization secrets." >&2
+              exit 1
+            fi
+            echo "No macOS signing secrets configured; workflow_dispatch will build an unsigned test package."
+            exit 0
+          fi
+          if [[ "${#MISSING[@]}" -ne 0 ]]; then
+            echo "Incomplete macOS signing configuration: ${MISSING[*]}" >&2
+            exit 1
+          fi
+
+          CERTIFICATE_PATH="${RUNNER_TEMP}/vetta-developer-id.p12"
+          API_KEY_PATH="${RUNNER_TEMP}/AuthKey_${APPLE_API_KEY_ID}.p8"
+          PAYLOAD="${MACOS_CERTIFICATE_P12_BASE64}" OUTPUT_PATH="${CERTIFICATE_PATH}" \
+            node -e 'require("node:fs").writeFileSync(process.env.OUTPUT_PATH, Buffer.from(process.env.PAYLOAD, "base64"))'
+          PAYLOAD="${APPLE_API_KEY_P8_BASE64}" OUTPUT_PATH="${API_KEY_PATH}" \
+            node -e 'require("node:fs").writeFileSync(process.env.OUTPUT_PATH, Buffer.from(process.env.PAYLOAD, "base64"))'
+          chmod 600 "${CERTIFICATE_PATH}" "${API_KEY_PATH}"
+          {
+            echo "CSC_LINK=${CERTIFICATE_PATH}"
+            echo "CSC_KEY_PASSWORD=${MACOS_CERTIFICATE_PASSWORD}"
+            echo "APPLE_API_KEY=${API_KEY_PATH}"
+            echo "APPLE_API_KEY_ID=${APPLE_API_KEY_ID}"
+            echo "APPLE_API_ISSUER=${APPLE_API_ISSUER}"
+            echo "APPLE_TEAM_ID=${APPLE_TEAM_ID}"
+            echo "VETTA_REQUIRE_MAC_SIGNATURE=1"
+          } >> "${GITHUB_ENV}"
+
       - name: Build updater artifacts
         working-directory: packages/desktop-app
         env:
@@ -57,6 +118,11 @@ jobs:
           VETTA_UPDATE_GITHUB_OWNER: ${{ github.repository_owner }}
           VETTA_UPDATE_GITHUB_REPO: ${{ github.event.repository.name }}
         run: bun run ${{ matrix.command }}
+
+      - name: Verify platform updater artifacts
+        if: matrix.verify != ''
+        working-directory: packages/desktop-app
+        run: bun run ${{ matrix.verify }}
 
       - name: Upload updater artifacts
         uses: actions/upload-artifact@v4
