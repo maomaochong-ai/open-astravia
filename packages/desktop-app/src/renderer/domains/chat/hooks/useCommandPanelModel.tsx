@@ -1,4 +1,5 @@
 import type { SkillInfo } from "@preload/api";
+import { useShortcutScope, type ShortcutBinding } from "@shared/shortcuts";
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CommandPanelLabels, CommandPanelProps } from "../components/command-panel/types";
@@ -62,38 +63,45 @@ export function useCommandPanelModel({
 		panelRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex, open]);
 
-	const handleKeyDown = useCallback(
-		(event: KeyboardEvent) => {
-			if (!open || items.length === 0) return;
-			if (event.key === "ArrowDown") {
-				event.preventDefault();
-				event.stopPropagation();
-				shouldScrollActiveIntoViewRef.current = true;
-				setActiveIndex((index) => (index + 1) % items.length);
-			} else if (event.key === "ArrowUp") {
-				event.preventDefault();
-				event.stopPropagation();
-				shouldScrollActiveIntoViewRef.current = true;
-				setActiveIndex((index) => (index - 1 + items.length) % items.length);
-			} else if (event.key === "Enter") {
-				event.preventDefault();
-				event.stopPropagation();
-				const target = items[activeIndex];
-				if (target) selectSkill(target);
-			} else if (event.key === "Escape") {
-				event.preventDefault();
-				event.stopPropagation();
-				onClose();
-			}
-		},
-		[activeIndex, items, onClose, open, selectSkill],
-	);
+	const keyBindings = useMemo((): ShortcutBinding[] => {
+		return [
+			{
+				key: "arrowdown",
+				run: () => {
+					if (items.length === 0) return;
+					shouldScrollActiveIntoViewRef.current = true;
+					setActiveIndex((index) => (index + 1) % items.length);
+				},
+			},
+			{
+				key: "arrowup",
+				run: () => {
+					if (items.length === 0) return;
+					shouldScrollActiveIntoViewRef.current = true;
+					setActiveIndex((index) => (index - 1 + items.length) % items.length);
+				},
+			},
+			{
+				key: "enter",
+				run: () => {
+					const target = items[activeIndex];
+					if (target) selectSkill(target);
+				},
+			},
+			{
+				key: "escape",
+				run: () => onClose(),
+			},
+		];
+	}, [activeIndex, items, onClose, selectSkill]);
 
-	useEffect(() => {
-		if (!open) return;
-		document.addEventListener("keydown", handleKeyDown, true);
-		return () => document.removeEventListener("keydown", handleKeyDown, true);
-	}, [handleKeyDown, open]);
+	useShortcutScope({
+		id: "overlay:command-panel",
+		kind: "overlay",
+		active: open,
+		exclusive: false,
+		bindings: keyBindings,
+	});
 
 	useEffect(() => {
 		if (!open) return;

@@ -10,6 +10,7 @@ export {
 } from "./FilePreviewDialogView";
 export type { FilePreviewViewLabels, FilePreviewViewProps } from "./FilePreviewView";
 export { FilePreviewView } from "./FilePreviewView";
+export { isEditableKeyboardTarget } from "./keyboard-target";
 export type { LightboxImageViewProps } from "./LightboxImageView";
 export { LightboxImageView } from "./LightboxImageView";
 export type { PluginFilePreviewViewProps } from "./PluginFilePreviewView";

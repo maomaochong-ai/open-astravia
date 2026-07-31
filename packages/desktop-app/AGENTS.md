@@ -62,8 +62,9 @@ src/
     shared/            — 跨领域公共代码
       components/ui/     shadcn 基础组件 (Button, Dialog, Input, Select...)
       components/        TitleBar, ResizeHandle, WelcomeScreen, UpdateChecker...
-      hooks/             useTheme, useShortcuts
-      lib/               utils, platform, shortcuts, api
+      hooks/             useTheme, useShortcuts（全局 app 层快捷键）
+      shortcuts/         ShortcutScopeStack + useShortcutScope（作用域快捷键中心）
+      lib/               utils, platform, shortcuts（绑定读写）, api
       store/             Jotai atoms（按领域拆分 + re-export hub）
         atoms.ts           re-export hub（所有消费者从这里导入）
         chat-atoms.ts      聊天相关 atoms
@@ -165,6 +166,58 @@ src/
 - **新增 ns** 要在三处注册：`src/shared/i18n/config.ts` 的 `NAMESPACES`、`src/shared/i18n/resources.ts`、`src/renderer/shared/i18n/i18next.d.ts`。
 - **不抽**：代码注释、日志（`*.warn`/`console`）、发给 LLM 或协议/IPC channel 的串——保持原样。
 - 增量推进：尚未抽离的 domain 仍是硬编码中文，**改到这些 domain 时，新增文案必须走 i18n**，并尽量顺手把所在文件抽干净（流程：发现文案 → 给语义 key → 包 `t()`/`<Trans>` → 文案进对应 ns 的 zh.json）。
+
+### 8. 快捷键（**禁止 ad-hoc `window/document.addEventListener("keydown")`**）
+
+渲染层快捷键走 **统一作用域栈**，不要在组件里各自挂 `keydown`。
+
+**代码位置**
+- 栈与匹配：`src/renderer/shared/shortcuts/`（`ShortcutScopeStack`、`useShortcutScope`）
+- 全局可配置动作：`src/shared/shortcuts.ts`（`SHORTCUT_ACTIONS`）+ `useGlobalShortcuts`（注册 `kind: "app"`）
+- 键串格式与 `matchesShortcut`：`src/renderer/shared/lib/platform.ts`（如 `mod+s`、`arrowleft`、`escape`）
+
+**作用域 kind（高 → 低）**
+
+| kind | 用途 | 示例 |
+|------|------|------|
+| `modal` | 对话框，常 `exclusive: true` | 确认删除、更新重启 |
+| `overlay` | 浮层面板 | 命令面板、@ 文件、skill picker |
+| `surface` | 当前主内容面 | 文件预览/图廊、项目详情编辑 |
+| `app` | 全局可配置快捷键 | Cmd/Ctrl+N 新建会话、Cmd/Ctrl+S 保存文件 |
+
+同 kind 内后注册优先。匹配到绑定则 `preventDefault` + `stopPropagation`；`exclusive` 的 scope 未命中也不再向下传。
+
+**怎么写**
+
+```ts
+import { useShortcutScope } from "@shared/shortcuts";
+
+useShortcutScope({
+  id: "surface:file-preview", // 稳定 id，便于排查
+  kind: "surface",
+  active: previewOpen,        // false 时不注册
+  exclusive: false,
+  bindings: [
+    { key: "arrowleft", run: goPrev, when: "not-editable" },
+    { key: "escape", run: onClose, when: "not-editable" },
+  ],
+});
+```
+
+- `when`：`always`（默认）| `editable` | `not-editable`。编辑器（CodeMirror contenteditable）内要留给光标的键用 `not-editable`，避免预览 ←→ 抢走方向键。
+- **theme-ui 视图不绑全局键**；快捷键在 desktop-app 的 hook/model 里用 `useShortcutScope` 注册。
+- 设置页「全局快捷键」只覆盖 `SHORTCUT_ACTIONS`；surface/overlay 的导航键一般写死合理默认，不必进设置。
+- 新增可配置全局动作：先扩 `src/shared/shortcuts.ts` 的 `SHORTCUT_ACTIONS`，再在 `useRootLayoutModel` 的 handler 里处理。
+
+**反例（禁止）**
+
+```ts
+// BAD — 与栈并行抢键，作用域混乱
+useEffect(() => {
+  window.addEventListener("keydown", onKey);
+  return () => window.removeEventListener("keydown", onKey);
+}, []);
+```
 
 ## 缓存规范
 

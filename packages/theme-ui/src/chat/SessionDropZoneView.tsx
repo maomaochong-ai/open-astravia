@@ -55,16 +55,11 @@ export function SessionDropZoneView({
 						animate={{ opacity: 1 }}
 						exit={{ opacity: 0 }}
 						transition={SOFT}
-						className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-2"
-						style={{
-							background: "color-mix(in srgb, var(--primary) 8%, transparent)",
-							backdropFilter: "blur(2px)",
-							border: "1.5px dashed color-mix(in srgb, var(--primary) 60%, transparent)",
-						}}
+						className="pointer-events-none absolute inset-0 z-40 flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-primary/25 bg-primary/5"
 					>
-						<span className="icon-[mdi--file-arrow-up-down-outline] h-9 w-9 text-primary" />
-						<div className="text-[14px] font-medium text-primary">{labels.releaseToRef}</div>
-						<div className="text-[12px] text-primary/70">
+						<span className="icon-[mdi--file-arrow-up-down-outline] h-6 w-6 text-primary/70" />
+						<div className="text-[12px] font-medium text-primary/90">{labels.releaseToRef}</div>
+						<div className="text-[11px] text-muted-foreground">
 							{dragKind === "internal" ? labels.internalRef : labels.externalRef}
 						</div>
 					</motion.div>

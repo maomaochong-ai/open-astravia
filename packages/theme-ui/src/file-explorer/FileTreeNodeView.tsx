@@ -1,5 +1,6 @@
 import { cn } from "@vetta/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
+import { FILE_TREE_NODE_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { getFileIcon } from "./fileIcons";
 import { beginNativeFileDrag } from "./nativeFileDrag";
 import type { FileExplorerEntry, FileExplorerNodeDecoration } from "./types";
@@ -126,7 +127,9 @@ export function FileTreeNodeView({
 		setDragOver(true);
 	}
 
-	function handleDragLeave() {
+	function handleDragLeave(e: React.DragEvent) {
+		// Icon / label children fire leave when the pointer crosses them.
+		if (!isDragLeavingElement(e)) return;
 		setDragOver(false);
 	}
 
@@ -165,7 +168,7 @@ export function FileTreeNodeView({
 			className={cn(
 				"flex items-center gap-1.5 rounded-md px-1.5 py-[3px] text-[12px] cursor-default select-none transition-colors",
 				isSelected && !isRenaming ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/50",
-				dragOver && "bg-primary/10 ring-1 ring-inset ring-primary/40",
+				dragOver && FILE_TREE_NODE_DROP_CLASS,
 			)}
 			style={{ paddingLeft: `${depth * 16 + 6}px` }}
 			title={decoration?.tooltip}

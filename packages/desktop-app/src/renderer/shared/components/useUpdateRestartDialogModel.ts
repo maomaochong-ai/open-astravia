@@ -1,6 +1,7 @@
+import { useShortcutScope } from "@shared/shortcuts";
 import { updaterRestartDialogOpenAtom, updaterStateAtom } from "@shared/store/atoms";
 import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { UpdateRestartDialogViewProps } from "./UpdateRestartDialogView";
 
@@ -14,16 +15,15 @@ export function useUpdateRestartDialogModel(): UpdateRestartDialogModel {
 
 	const close = () => setOpen(false);
 
-	useEffect(() => {
-		if (!open) return;
-		function handleKey(e: KeyboardEvent) {
-			if (e.key === "Escape") setOpen(false);
-		}
-		document.addEventListener("keydown", handleKey);
-		return () => document.removeEventListener("keydown", handleKey);
-	}, [open, setOpen]);
-
 	const visible = open && state.phase === "ready";
+
+	useShortcutScope({
+		id: "modal:update-restart",
+		kind: "modal",
+		active: visible,
+		exclusive: true,
+		bindings: [{ key: "escape", run: () => setOpen(false) }],
+	});
 
 	const handleInstall = () => {
 		setOpen(false);

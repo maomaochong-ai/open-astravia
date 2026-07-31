@@ -60,6 +60,9 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 	const handleDragLeave = useCallback((e: React.DragEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
+		// Child chrome (buttons, tokens) fires leave; only clear when really outside.
+		const related = e.relatedTarget;
+		if (related instanceof Node && e.currentTarget.contains(related)) return;
 		dragCounter.current = Math.max(0, dragCounter.current - 1);
 		if (dragCounter.current === 0) setDragKind(null);
 	}, []);

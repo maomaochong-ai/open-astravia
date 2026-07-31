@@ -1,4 +1,5 @@
 import { Fragment, useState, type JSX } from "react";
+import { FILE_TREE_ROOT_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { FileTreeCreateRow } from "./FileTreeCreateRow";
 import { FileTreeNodeView } from "./FileTreeNodeView";
 import type { FileExplorerCreatingEntry, FileExplorerEntry, FileExplorerNodeDecoration } from "./types";
@@ -93,6 +94,12 @@ export function FileTreeView({
 		setRootDragOver(true);
 	}
 
+	function handleRootDragLeave(event: React.DragEvent): void {
+		// Entering a child row fires leave on the root; ignore those.
+		if (!isDragLeavingElement(event)) return;
+		setRootDragOver(false);
+	}
+
 	function handleRootDrop(event: React.DragEvent): void {
 		setRootDragOver(false);
 		event.preventDefault();
@@ -128,9 +135,9 @@ export function FileTreeView({
 			<div
 				onContextMenu={handleRootContextMenu}
 				onDragOver={handleRootDragOver}
-				onDragLeave={() => setRootDragOver(false)}
+				onDragLeave={handleRootDragLeave}
 				onDrop={handleRootDrop}
-				className={`flex min-h-full items-center justify-center px-4 py-6 text-center text-[11px] text-muted-foreground ${rootDragOver ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+				className={`flex min-h-full items-center justify-center px-4 py-6 text-center text-[11px] text-muted-foreground transition-colors ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`}
 			>
 				{emptyLabel}
 			</div>
@@ -142,9 +149,9 @@ export function FileTreeView({
 			role="tree"
 			onContextMenu={handleRootContextMenu}
 			onDragOver={handleRootDragOver}
-			onDragLeave={() => setRootDragOver(false)}
+			onDragLeave={handleRootDragLeave}
 			onDrop={handleRootDrop}
-			className={`min-h-full py-0.5 ${rootDragOver ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
+			className={`min-h-full py-0.5 transition-colors ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`}
 		>
 			{rootCreateRow}
 			{flatList.map((node) => (
