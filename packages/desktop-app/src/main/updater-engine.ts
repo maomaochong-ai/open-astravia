@@ -26,7 +26,11 @@ export interface UpdateEngineDownload {
 export interface UpdateEngine {
 	onAppReady?(): Promise<void>;
 	checkForUpdates(): Promise<UpdateEngineCheckResult | null>;
-	downloadUpdate(onProgress: (progress: ProgressInfo) => void): UpdateEngineDownload;
+	/**
+	 * `onStaging` 表示传输已结束、进入不再产生 progress 的安装准备阶段
+	 * （macOS 下即 Squirrel.Mac 解包与签名校验），调用方据此改用更长的兜底超时。
+	 */
+	downloadUpdate(onProgress: (progress: ProgressInfo) => void, onStaging?: () => void): UpdateEngineDownload;
 	quitAndInstall(): Promise<void>;
 }
 
@@ -170,7 +174,7 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		};
 	}
 
-	downloadUpdate(onProgress: (progress: ProgressInfo) => void): UpdateEngineDownload {
+	downloadUpdate(onProgress: (progress: ProgressInfo) => void, onStaging?: () => void): UpdateEngineDownload {
 		const cancellationToken = new CancellationToken();
 		const abortController = new AbortController();
 		const listener = (progress: ProgressInfo) => {
@@ -192,8 +196,16 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		}
 
 		const updaterDownloadPromise = this.updater.downloadUpdate(cancellationToken);
+		// electron-updater 在把 ZIP 喂完给 Squirrel.Mac 的那一刻就 resolve，之后的解包与
+		// 签名校验不再产生 download-progress 事件，必须显式告知调用方进入了暂存阶段。
 		const stagedDownloadPromise = nativeMacReadiness
-			? Promise.all([updaterDownloadPromise, nativeMacReadiness.promise]).then(([downloadedPaths]) => {
+			? Promise.all([
+					updaterDownloadPromise.then((downloadedPaths) => {
+						onStaging?.();
+						return downloadedPaths;
+					}),
+					nativeMacReadiness.promise,
+				]).then(([downloadedPaths]) => {
 					console.info("[updater] Squirrel.Mac update is ready to install");
 					return downloadedPaths;
 				})

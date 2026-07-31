@@ -44,13 +44,14 @@ describe("ElectronUpdaterEngine", () => {
 			downloadUpdate: vi.fn().mockResolvedValue(["/tmp/Vetta.zip"]),
 		} as unknown as AppUpdater;
 		const engine = new ElectronUpdaterEngine(updater, undefined, nativeMacUpdateEvents);
-		const download = engine.downloadUpdate(vi.fn());
+		const onStaging = vi.fn();
+		const download = engine.downloadUpdate(vi.fn(), onStaging);
 		let completed = false;
 		void download.promise.then(() => {
 			completed = true;
 		});
 
-		await Promise.resolve();
+		await vi.waitFor(() => expect(onStaging).toHaveBeenCalledOnce());
 		expect(completed).toBe(false);
 		updateDownloadedListener?.();
 
