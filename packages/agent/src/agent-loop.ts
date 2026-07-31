@@ -147,6 +147,11 @@ async function runLoop(
 					firstTurn = false;
 				}
 
+				// 每轮重新取工具集/系统提示词：本轮内的改动（如 tool_search 激活 MCP 工具）
+				// 必须马上对下一次请求生效，而不是等下一次 run。
+				if (config.getTools) currentContext.tools = config.getTools();
+				if (config.getSystemPrompt) currentContext.systemPrompt = config.getSystemPrompt();
+
 				// Process pending messages (inject before next assistant response)
 				if (pendingMessages.length > 0) {
 					for (const message of pendingMessages) {

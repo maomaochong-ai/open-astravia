@@ -494,6 +494,11 @@ export class Agent {
 				return this.dequeueSteeringMessages();
 			},
 			getContinuationMessages: () => this.collectContinuationMessages(this.abortController?.signal),
+			// loop 复制了 context，运行中 setTools/setSystemPrompt 的改动只能靠这两个钩子
+			// 传进去。否则 tool_search 这类"运行中激活工具"的场景本轮拿不到新 schema，
+			// 模型只会反复检索同一个工具。
+			getTools: () => this._state.tools,
+			getSystemPrompt: () => this._state.systemPrompt,
 		};
 
 		let partial: AgentMessage | null = null;
