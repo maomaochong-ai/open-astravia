@@ -264,9 +264,9 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		await this.quitHooks.prepare?.();
 		if (this.useInnoUpdate && this.innoWindowsUpdate) {
 			await this.innoWindowsUpdate.activate();
-			return;
+		} else {
+			this.updater.quitAndInstall(true, true);
 		}
-		this.updater.quitAndInstall(true, true);
 		// 交棒后：等安装器接手再结束进程。既不能立刻硬 exit（Squirrel 还没提交
 		// launchd 作业），也不能不 exit（本进程挂着 sidecar 等句柄不会自行退出，而
 		// launchd 要等目标进程退出才 spawn ShipIt）。两种都实测失败过，

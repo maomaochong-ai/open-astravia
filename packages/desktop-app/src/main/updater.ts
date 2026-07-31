@@ -67,14 +67,17 @@ const prepareQuit = async () => {
 // 交棒后：等 Squirrel 把 ShipIt 的 launchd 作业提交上去，再硬结束本进程——
 // 本进程挂着 sidecar 等句柄不会自行退出，而 launchd 要等目标退出才 spawn ShipIt。
 // 三种失败模式与取舍见 mac-installer-handoff.ts。
-const finalizeQuit =
-	process.platform === "darwin"
-		? async () => {
-				const result = await handOffToInstaller({ label: MACOS_SHIPIT_JOB_LABEL });
-				console.info(`[updater] installer handoff: ${result}; exiting so ShipIt can replace the app`);
-				app.exit(0);
-			}
-		: undefined;
+// 所有平台都必须走到最后的 app.exit(0)：before-quit 在清理跑过后是直通的，
+// 不再兜底硬退出，而本进程挂着 IM sidecar、uiohook、RPC server 等句柄，
+// Electron 的正常退出流程结束不了它。Windows 的 app.relaunch() 同样只在进程
+// 真正退出后才生效，不 exit 就是「指针切了、新版本起不来」。
+const finalizeQuit = async () => {
+	if (process.platform === "darwin") {
+		const result = await handOffToInstaller({ label: MACOS_SHIPIT_JOB_LABEL });
+		console.info(`[updater] installer handoff: ${result}; exiting so the installer can replace the app`);
+	}
+	app.exit(0);
+};
 const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate, nativeMacUpdateEvents, {
 	prepare: prepareQuit,
 	finalize: finalizeQuit,

@@ -103,12 +103,21 @@ describe("ElectronUpdaterEngine", () => {
 		const prepareQuit = vi.fn(() => {
 			order.push("prepareQuit");
 		});
-		const engine = new ElectronUpdaterEngine(updater, innoUpdate, undefined, { prepare: prepareQuit });
+		// Windows 也必须走 finalize：activate() 只是 app.relaunch() + app.quit()，
+		// 而 before-quit 在清理跑过后是直通的，没人再兜底 app.exit(0)；进程挂着
+		// sidecar 等句柄不会自行退出，relaunch 也就永远不生效。
+		const finalizeQuit = vi.fn(async () => {
+			order.push("finalize");
+		});
+		const engine = new ElectronUpdaterEngine(updater, innoUpdate, undefined, {
+			prepare: prepareQuit,
+			finalize: finalizeQuit,
+		});
 
 		await engine.checkForUpdates();
 		await engine.quitAndInstall();
 
-		expect(order).toEqual(["prepareQuit", "activate"]);
+		expect(order).toEqual(["prepareQuit", "activate", "finalize"]);
 	});
 
 	it("waits for Squirrel.Mac to stage the update before reporting download completion", async () => {
