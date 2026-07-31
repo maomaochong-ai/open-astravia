@@ -87,6 +87,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **更新提示从侧边栏顶部图标改为底部提示条**：顶栏那个带进度环的小图标去掉（`SidebarUpdateButton` / `SidebarUpdateIcon` / `useSidebarUpdateButtonModel` 删除），改为在侧边栏底部设置项上方插一条与侧栏等宽的提示条，只在后台下载完成（`phase === "ready"`）后出现。条上是版本文案 +「重启更新」按钮（`updater.install()` 立即重启安装）；鼠标悬浮时左侧图标变为关闭图标，点击忽略本条（调 `updater.dismiss()`，安装交给退出时的自动流程），忽略状态按版本记忆，下一个版本就绪时重新出现。
 - **能力列表把随 App 分发的内置能力单独成组「Vetta 内置」**：内置 skill / 通用 Agent 与系统插件（`isBuiltin`）不再按各自分类混进市场能力与 `~/.agents/skills` 里，统一聚到一个分组，排在各分类之后、未分类（本地技能）之前。从内置预设添加的 MCP 连接器仍留在「连接」分组。分组逻辑从 `useAbilitiesModel` 抽到 `lib/group-abilities.ts`。
 
+- **能力卡片去掉来源类 badge 与只读锁图标**：标题右侧不再有「内置」「自定义」「只读」标签（来源已由分组和详情页的来源信息表达），只保留需要用户处理的「需要配置」「可更新」「N 个同名」；只读条目右侧不再用锁图标占位，直接留空。详情页头部同步。
+
 - **修正 `listSkills` 列出的 skill 一律被当成内置**：`~/.agents/skills` 里用户自己放的、以及插件贡献的 skill 之前被硬标成 `isBuiltin` + builtin 来源（跟着进了「Vetta 内置」分组），现在只有 `source=builtin`（随 App 分发）才算内置，其余归本地来源。同时按 `type:name` 去重：市场装的 skill 也会被 `listSkills` 列出，此前会额外多出一条只读条目。
 
 - **macOS 发版改出 arm64 与 x64 两套产物**：此前 `desktop-release` 只在 arm64 runner 上按宿主架构构建一次，Intel Mac 既没有安装包，检查更新时也会因 `MacUpdater.filterFilesForArch` 过滤掉 arm64 文件而报 `ERR_UPDATER_ZIP_FILE_NOT_FOUND`。内置的 node/python 运行时按 `VETTA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套，因此拆成 `dist:mac:arm64` / `dist:mac:x64` 两个 matrix 任务；两次构建都会写同名 `latest-mac.yml`，各自重命名为 `latest-mac-<arch>.yml` 上传，再由发布任务的 `merge:updates:mac`（`scripts/merge-mac-update-metadata.mjs`）合并回单一元数据（ZIP 在前、x64 在 arm64 之前，与 electron-builder 单次多架构构建的产物顺序一致）。

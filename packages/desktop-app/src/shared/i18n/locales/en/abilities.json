@@ -30,9 +30,6 @@
 	"status": {
 		"setupRequired": "Setup required",
 		"updateAvailable": "Update available",
-		"custom": "Custom",
-		"builtin": "Built-in",
-		"readonly": "Read-only",
 		"openSource": "Open source",
 		"sameName": "{{count}} with same name"
 	},

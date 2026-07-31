@@ -30,9 +30,6 @@
 	"status": {
 		"setupRequired": "需要配置",
 		"updateAvailable": "可更新",
-		"custom": "自定义",
-		"builtin": "内置",
-		"readonly": "只读",
 		"openSource": "开源",
 		"sameName": "{{count}} 个同名"
 	},

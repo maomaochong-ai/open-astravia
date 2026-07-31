@@ -61,19 +61,11 @@ function InstalledMoreMenu({
 	item: AbilityItem;
 	model: AbilitiesModel;
 	onOpenDetail: () => void;
-}): JSX.Element {
+}): JSX.Element | null {
 	const { t } = useTranslation("abilities");
 
-	if (item.readonly) {
-		return (
-			<span
-				className="flex h-8 w-8 items-center justify-center text-muted-foreground/60"
-				title={t("status.readonly")}
-			>
-				<span className="icon-[solar--lock-keyhole-minimalistic-linear] h-3.5 w-3.5" />
-			</span>
-		);
-	}
+	// 只读能力没有可执行的操作，右侧留空即可，不用「锁」占位。
+	if (item.readonly) return null;
 
 	return (
 		<DropdownMenu>
