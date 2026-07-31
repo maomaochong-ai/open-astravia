@@ -1,7 +1,7 @@
 {
 	"id": "mobile-ui-preview",
 	"name": "%plugin.name%",
-	"version": "0.2.1",
+	"version": "0.3.0",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",

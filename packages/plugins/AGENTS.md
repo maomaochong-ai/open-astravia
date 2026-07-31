@@ -84,8 +84,7 @@ packages/plugins/<presets|externals>/<id>/
 ```
 
 Preset 可参考 `presets/svg-viewer`；外置插件可
-参考 `externals/drawio-viewer`、`externals/global-slot-demo` 和
-`externals/mobile-ui-preview`。
+参考 `externals/global-slot-demo` 和 `externals/mobile-ui-preview`。
 
 ### package.json
 
