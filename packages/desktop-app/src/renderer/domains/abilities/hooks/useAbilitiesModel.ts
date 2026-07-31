@@ -15,15 +15,8 @@ import {
 	type LocalAbilityState,
 } from "../lib/build-ability-items";
 import { decorateAbilityConflicts } from "../lib/decorate-ability-conflicts";
-import {
-	ABILITY_CATEGORY_CONNECTORS,
-	ABILITY_CATEGORY_UNCATEGORIZED,
-	type AbilitiesModel,
-	type AbilityBannerIcon,
-	type AbilityGroup,
-	type AbilityItem,
-	type AbilityScope,
-} from "../types";
+import { groupAbilities } from "../lib/group-abilities";
+import type { AbilitiesModel, AbilityBannerIcon, AbilityGroup, AbilityItem, AbilityScope } from "../types";
 import { useAbilityActions } from "./useAbilityActions";
 import { useAbilityData } from "./useAbilityData";
 
@@ -91,31 +84,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 	);
 	const items = catalogPage.items;
 
-	const groups = useMemo<AbilityGroup[]>(() => {
-		const byCategory = new Map<string, AbilityItem[]>();
-		// 译名按分类只需一份；同分类的条目带的是同一个块，取先到的即可。
-		const i18nByCategory = new Map<string, Record<string, string>>();
-		for (const item of items) {
-			const key = item.category || ABILITY_CATEGORY_UNCATEGORIZED;
-			const bucket = byCategory.get(key);
-			if (bucket) bucket.push(item);
-			else byCategory.set(key, [item]);
-			if (item.categoryI18n && !i18nByCategory.has(key)) i18nByCategory.set(key, item.categoryI18n);
-		}
-		// 两个合成分组固定首尾，其余按规范名排序：分组顺序不随界面语言跳动
-		const connectors = byCategory.get(ABILITY_CATEGORY_CONNECTORS);
-		byCategory.delete(ABILITY_CATEGORY_CONNECTORS);
-		const uncategorized = byCategory.get(ABILITY_CATEGORY_UNCATEGORIZED);
-		byCategory.delete(ABILITY_CATEGORY_UNCATEGORIZED);
-		const sorted = Array.from(byCategory.entries())
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([category, list]) => ({ category, categoryI18n: i18nByCategory.get(category), items: list }));
-		return [
-			...(connectors ? [{ category: ABILITY_CATEGORY_CONNECTORS, items: connectors }] : []),
-			...sorted,
-			...(uncategorized ? [{ category: ABILITY_CATEGORY_UNCATEGORIZED, items: uncategorized }] : []),
-		];
-	}, [items]);
+	const groups = useMemo<AbilityGroup[]>(() => groupAbilities(items), [items]);
 
 	const bannerIcons = useMemo<AbilityBannerIcon[]>(
 		() =>

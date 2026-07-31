@@ -21,6 +21,7 @@
 	},
 	"group": {
 		"connectors": "Connections",
+		"vettaBuiltin": "Built into Vetta",
 		"uncategorized": "Uncategorized"
 	},
 	"search": {

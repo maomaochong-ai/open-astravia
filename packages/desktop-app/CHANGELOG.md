@@ -84,6 +84,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **能力列表把随 App 分发的内置能力单独成组「Vetta 内置」**：内置 skill / 通用 Agent 与系统插件（`isBuiltin`）不再按各自分类混进市场能力与 `~/.agents/skills` 里，统一聚到一个分组，排在各分类之后、未分类（本地技能）之前。从内置预设添加的 MCP 连接器仍留在「连接」分组。分组逻辑从 `useAbilitiesModel` 抽到 `lib/group-abilities.ts`。
+
 - **macOS 发版改出 arm64 与 x64 两套产物**：此前 `desktop-release` 只在 arm64 runner 上按宿主架构构建一次，Intel Mac 既没有安装包，检查更新时也会因 `MacUpdater.filterFilesForArch` 过滤掉 arm64 文件而报 `ERR_UPDATER_ZIP_FILE_NOT_FOUND`。内置的 node/python 运行时按 `VETTA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套，因此拆成 `dist:mac:arm64` / `dist:mac:x64` 两个 matrix 任务；两次构建都会写同名 `latest-mac.yml`，各自重命名为 `latest-mac-<arch>.yml` 上传，再由发布任务的 `merge:updates:mac`（`scripts/merge-mac-update-metadata.mjs`）合并回单一元数据（ZIP 在前、x64 在 arm64 之前，与 electron-builder 单次多架构构建的产物顺序一致）。
 
 - **新会话页展开命令区时，能力条目不足 7 条就不再下沉输入栏**：条目少时面板长不到会盖住 hero 的高度，那趟 120px 位移纯属多余。判定用不带过滤词的完整列表条目数（与命令区共用模块级缓存），因此不会随用户打字过滤而抖；hero 淡出仍跟展开态本身走。
