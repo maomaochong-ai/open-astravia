@@ -59,6 +59,7 @@ import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/p
 import { discoverSystemPlugins } from "./plugins/plugin-store.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
+import { isQuitCleanupStarted, runQuitCleanup, setQuitCleanup } from "./quit-cleanup.js";
 import { disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
 import { initializeSandboxCapability } from "./sandbox/capability.js";
@@ -776,18 +777,10 @@ app.on("window-all-closed", () => {
 });
 
 // Critical: ensure IM sidecar is killed before the main process exits.
-// `before-quit` runs before window destruction, giving us a synchronous
-// hook to wait on graceful child shutdown.
-// 标记：避免 before-quit 在调用 app.exit() 后再次触发本 handler 时
-// 又陷进异步清理流程。
-let quitCleanupStarted = false;
-
-app.on("before-quit", async (event) => {
-	if (isCliMode) return;
-	if (quitCleanupStarted) return;
-	quitCleanupStarted = true;
-	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
-	event.preventDefault();
+// 清理实现注册到 quit-cleanup 模块，更新安装路径会在把控制权交给 Squirrel.Mac
+// 之前先调用它——原因见该模块的注释。
+setQuitCleanup(async () => {
+	mainLog.info("quit cleanup started");
 
 	// 退出前注销全部全局键盘监听消费者（快捷面板双击 + appshot 双键同按），避免 uiohook 线程残留。
 	stopAllUiohookConsumers();
@@ -825,5 +818,19 @@ app.on("before-quit", async (event) => {
 		mainLog.warn("app monitor shutdown failed", err);
 	}
 	await shutdownMainTelemetry();
+	mainLog.info("quit cleanup finished");
+});
+
+// `before-quit` runs before window destruction, giving us a hook to wait on
+// graceful child shutdown.
+//
+// 清理已由更新安装路径跑过时必须直通：那条路径需要标准的 Electron 退出流程，
+// 硬 exit 会抢在 Squirrel.Mac 拉起 ShipIt 之前打死进程（见 quit-cleanup.ts）。
+app.on("before-quit", async (event) => {
+	if (isCliMode) return;
+	if (isQuitCleanupStarted()) return;
+	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
+	event.preventDefault();
+	await runQuitCleanup();
 	app.exit(0);
 });

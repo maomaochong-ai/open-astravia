@@ -10,6 +10,8 @@ import {
 	isVersionedWindowsExecutable,
 	resolveInnoUpdateStoreRoot,
 } from "./inno-windows-update.js";
+import { handOffToInstaller, MACOS_SHIPIT_JOB_LABEL } from "./mac-installer-handoff.js";
+import { runQuitCleanup } from "./quit-cleanup.js";
 import { ElectronUpdaterEngine } from "./updater-engine.js";
 import { type UpdaterPhase, UpdaterService, type UpdaterState } from "./updater-service.js";
 
@@ -51,10 +53,25 @@ const nativeMacUpdateEvents =
 				},
 			}
 		: undefined;
-// 与托盘「退出」菜单用同一个标记：窗口的 close 守卫只有看到它才会真正销毁窗口，
-// 否则 macOS 上的关闭一律被改成隐藏，Squirrel.Mac 的终止流程会被整个取消。
-const markAppQuitting = () => {
+// 交棒前：标记 isQuitting（窗口 close 守卫只有看到它才真正销毁窗口），并跑完退出清理。
+const prepareQuit = async () => {
 	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
+	console.info("[updater] running quit cleanup before handing off to the installer");
+	await runQuitCleanup();
 };
-const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate, nativeMacUpdateEvents, markAppQuitting);
+// 交棒后：等 Squirrel 把 ShipIt 的 launchd 作业提交上去，再硬结束本进程——
+// 本进程挂着 sidecar 等句柄不会自行退出，而 launchd 要等目标退出才 spawn ShipIt。
+// 三种失败模式与取舍见 mac-installer-handoff.ts。
+const finalizeQuit =
+	process.platform === "darwin"
+		? async () => {
+				const result = await handOffToInstaller({ label: MACOS_SHIPIT_JOB_LABEL });
+				console.info(`[updater] installer handoff: ${result}; exiting so ShipIt can replace the app`);
+				app.exit(0);
+			}
+		: undefined;
+const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate, nativeMacUpdateEvents, {
+	prepare: prepareQuit,
+	finalize: finalizeQuit,
+});
 export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT);

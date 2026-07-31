@@ -34,6 +34,17 @@ export interface UpdateEngine {
 	quitAndInstall(): Promise<void>;
 }
 
+/**
+ * 把控制权交给安装器前后各需要一次介入，缺任何一个这条链路都会静默失败，
+ * 三种失败模式见 quitAndInstall 的注释与 mac-installer-handoff.ts。
+ */
+export interface UpdateEngineQuitHooks {
+	/** 交棒前：标记应用正在退出，并跑完退出清理。 */
+	prepare?: () => Promise<void> | void;
+	/** 交棒后：等安装器接手，再真正结束本进程。 */
+	finalize?: () => Promise<void>;
+}
+
 export interface NativeMacUpdateEvents {
 	onUpdateDownloaded(listener: () => void): () => void;
 	onError(listener: (error: Error) => void): () => void;
@@ -138,8 +149,7 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		private readonly updater: AppUpdater,
 		private readonly innoWindowsUpdate?: InnoWindowsUpdateController,
 		private readonly nativeMacUpdateEvents?: NativeMacUpdateEvents,
-		/** 安装前把应用标记为「正在退出」，见 quitAndInstall。 */
-		private readonly prepareQuit?: () => void,
+		private readonly quitHooks: UpdateEngineQuitHooks = {},
 	) {
 		this.updater.autoDownload = false;
 		this.updater.autoInstallOnAppQuit = !innoWindowsUpdate;
@@ -248,16 +258,19 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 	}
 
 	async quitAndInstall(): Promise<void> {
-		// 必须先标记「正在退出」，否则窗口的 close 守卫会把关闭改成隐藏：
-		// Squirrel.Mac 走 NSApp terminate 语义，逐个询问窗口能否关闭，任何一个
-		// preventDefault 都会取消整个终止流程，ShipIt 于是永远等不到进程退出，
-		// 表现为「点了立即重启但应用没退，手动重启还是旧版本」。
-		// 托盘的「退出」菜单同样先设这个标记再 app.quit()。
-		this.prepareQuit?.();
+		// 交棒前：标记「正在退出」并跑完退出清理。不标记的话窗口 close 守卫会把关闭
+		// 改成隐藏，而 Squirrel.Mac 走 NSApp terminate 语义，任一窗口 preventDefault
+		// 就取消整个终止流程——症状是「点了重启但应用没退」。
+		await this.quitHooks.prepare?.();
 		if (this.useInnoUpdate && this.innoWindowsUpdate) {
 			await this.innoWindowsUpdate.activate();
 			return;
 		}
 		this.updater.quitAndInstall(true, true);
+		// 交棒后：等安装器接手再结束进程。既不能立刻硬 exit（Squirrel 还没提交
+		// launchd 作业），也不能不 exit（本进程挂着 sidecar 等句柄不会自行退出，而
+		// launchd 要等目标进程退出才 spawn ShipIt）。两种都实测失败过，
+		// 详见 mac-installer-handoff.ts。
+		await this.quitHooks.finalize?.();
 	}
 }

@@ -30,7 +30,10 @@ describe("ElectronUpdaterEngine", () => {
 	// macOS 的窗口 close 守卫默认把关闭改成隐藏，而 Squirrel.Mac 走 NSApp terminate
 	// 语义：任何一个窗口 preventDefault 都会取消整个终止流程，ShipIt 于是永远等不到
 	// 进程退出，用户看到「点了立即重启但没退出，手动重启还是旧版本」。
-	it("marks the app as quitting before handing off to Squirrel.Mac", async () => {
+	// prepareQuit 是异步的（要跑完退出清理），必须 await 完再交给安装器：
+	// 没 await 的话 before-quit 仍会走 app.exit(0)，抢在 Squirrel.Mac 拉起
+	// ShipIt 之前打死进程，表现为「退出了但版本没变」。
+	it("awaits the quit preparation before handing off to Squirrel.Mac", async () => {
 		const order: string[] = [];
 		const updater = {
 			on: vi.fn(),
@@ -38,14 +41,40 @@ describe("ElectronUpdaterEngine", () => {
 				order.push("quitAndInstall");
 			}),
 		} as unknown as AppUpdater;
-		const prepareQuit = vi.fn(() => {
+		const prepareQuit = vi.fn(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 5));
 			order.push("prepareQuit");
 		});
-		const engine = new ElectronUpdaterEngine(updater, undefined, undefined, prepareQuit);
+		const engine = new ElectronUpdaterEngine(updater, undefined, undefined, { prepare: prepareQuit });
 
 		await engine.quitAndInstall();
 
 		expect(order).toEqual(["prepareQuit", "quitAndInstall"]);
+	});
+
+	// 交棒后必须再等安装器接手才结束进程：立刻硬 exit 会赶在 Squirrel 提交 launchd
+	// 作业之前（实测 41ms），而完全不 exit 则本进程挂着 sidecar 等句柄不会自行退出，
+	// launchd 又要等目标退出才 spawn ShipIt——两种都实测失败过。
+	it("finalizes the quit only after the installer has been handed control", async () => {
+		const order: string[] = [];
+		const updater = {
+			on: vi.fn(),
+			quitAndInstall: vi.fn(() => {
+				order.push("quitAndInstall");
+			}),
+		} as unknown as AppUpdater;
+		const engine = new ElectronUpdaterEngine(updater, undefined, undefined, {
+			prepare: () => {
+				order.push("prepare");
+			},
+			finalize: async () => {
+				order.push("finalize");
+			},
+		});
+
+		await engine.quitAndInstall();
+
+		expect(order).toEqual(["prepare", "quitAndInstall", "finalize"]);
 	});
 
 	it("marks the app as quitting before activating the Inno update", async () => {
@@ -74,7 +103,7 @@ describe("ElectronUpdaterEngine", () => {
 		const prepareQuit = vi.fn(() => {
 			order.push("prepareQuit");
 		});
-		const engine = new ElectronUpdaterEngine(updater, innoUpdate, undefined, prepareQuit);
+		const engine = new ElectronUpdaterEngine(updater, innoUpdate, undefined, { prepare: prepareQuit });
 
 		await engine.checkForUpdates();
 		await engine.quitAndInstall();
