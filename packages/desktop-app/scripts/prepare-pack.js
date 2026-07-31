@@ -140,15 +140,25 @@ function resolveMacSigning() {
 	const has = (key) => typeof process.env[key] === "string" && process.env[key].trim().length > 0;
 	if (!MAC_SIGN_ENV_KEYS.some(has)) return { enabled: false };
 
+	// VETTA_SKIP_NOTARIZE=1：保留签名、只跳过公证，供本地更新闭环快速迭代。
+	// Squirrel.Mac 只校验代码签名，不要求公证票据；本地构建的产物没有 quarantine
+	// 属性，Gatekeeper 也不会拦。因此这种产物能完整跑通更新链路，但**不可分发**——
+	// 用户下载到的包带 quarantine，没有票据会被判「已损坏」。
+	// 兜底：verify-mac-update.mjs 在 VETTA_REQUIRE_MAC_SIGNATURE=1 时会跑
+	// `xcrun stapler validate`，未公证的产物过不了 test/stable 的发布门禁。
+	const skipNotarize = process.env.VETTA_SKIP_NOTARIZE === "1";
+
 	// 半配置状态最危险：签了名却没公证的产物照样被 Gatekeeper 拦，
 	// 而 DMG 里的修复助手此时已被移除。宁可直接失败。
 	const missing = [];
 	if (!has("CSC_LINK") && !has("CSC_NAME")) missing.push("CSC_LINK 或 CSC_NAME");
 	if (!has("APPLE_TEAM_ID")) missing.push("APPLE_TEAM_ID");
-	const hasApiKey = has("APPLE_API_KEY") && has("APPLE_API_KEY_ID") && has("APPLE_API_ISSUER");
-	const hasAppleId = has("APPLE_ID") && has("APPLE_APP_SPECIFIC_PASSWORD");
-	if (!hasApiKey && !hasAppleId) {
-		missing.push("APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER，或 APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD");
+	if (!skipNotarize) {
+		const hasApiKey = has("APPLE_API_KEY") && has("APPLE_API_KEY_ID") && has("APPLE_API_ISSUER");
+		const hasAppleId = has("APPLE_ID") && has("APPLE_APP_SPECIFIC_PASSWORD");
+		if (!hasApiKey && !hasAppleId) {
+			missing.push("APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER，或 APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD");
+		}
 	}
 	if (missing.length > 0) {
 		throw new Error(
@@ -156,15 +166,20 @@ function resolveMacSigning() {
 				"申请与注入流程见 docs/deploy/apple-code-signing.md；要出未签名包请清空所有 CSC_* / APPLE_* 变量。",
 		);
 	}
-	return { enabled: true, teamId: process.env.APPLE_TEAM_ID.trim() };
+	return { enabled: true, notarize: !skipNotarize, teamId: process.env.APPLE_TEAM_ID.trim() };
 }
 
 const macSigning = resolveMacSigning();
-console.log(
-	macSigning.enabled
-		? `[prepare-pack] macOS 签名与公证已启用（team=${macSigning.teamId}）`
-		: "[prepare-pack] macOS 签名凭据未配置，产出未签名包",
-);
+if (!macSigning.enabled) {
+	console.log("[prepare-pack] macOS 签名凭据未配置，产出未签名包");
+} else if (macSigning.notarize) {
+	console.log(`[prepare-pack] macOS 签名与公证已启用（team=${macSigning.teamId}）`);
+} else {
+	console.warn(
+		`[prepare-pack] macOS 已签名但跳过公证（team=${macSigning.teamId}，VETTA_SKIP_NOTARIZE=1）——` +
+			"仅供本地更新闭环，产物不可分发",
+	);
+}
 
 function resolveSandboxResourceFilters() {
 	const filters = new Set();
@@ -738,7 +753,7 @@ const builderConfig = {
 					entitlementsInherit: "build/entitlements.mac.inherit.plist",
 					// electron-builder 26 起 notarize 只接受布尔值，团队与密钥
 					// 一律从 APPLE_TEAM_ID / APPLE_API_* 环境变量读取。
-					notarize: true,
+					notarize: macSigning.notarize,
 				}
 			: {
 					identity: null,

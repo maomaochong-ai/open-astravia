@@ -169,17 +169,56 @@ ZIP 必须有配套 `.blockmap`，否则差分下载退化为全量。`verify-ma
 日常发版用 `scripts/release-mac.sh`，它把 7.1～7.5 的所有步骤串起来，并在开跑前做完全部前置校验（避免构建到第 40 分钟才发现配置错）：
 
 ```bash
-scripts/release-mac.sh test --version 0.5.60      # QA 通道
+scripts/release-mac.sh local --version 0.5.62     # 本地闭环，跳公证、不碰 R2
+scripts/release-mac.sh test  --version 0.5.60     # QA 通道
 scripts/release-mac.sh stable                     # 正式通道，版本取 package.json
-scripts/release-mac.sh test --version 0.5.60 --arch both       # 双架构 + 自动合并
-scripts/release-mac.sh test --version 0.5.60 --skip-publish    # 只构建与校验
+scripts/release-mac.sh test  --version 0.5.60 --arch both       # 双架构 + 自动合并
+scripts/release-mac.sh test  --version 0.5.60 --check-only      # 只跑前置校验就退出
+scripts/release-mac.sh test  --version 0.5.60 --skip-publish    # 构建与校验，不上传
 ```
+
+`--check-only` 之外的任何调用都会先 `rm -rf release/` 再构建，别拿真实版本号试探参数。
 
 脚本会自动 `source` 两个凭据文件，并直接注入构建期的 `VETTA_UPDATE_PROVIDER` / `VETTA_UPDATE_URL`，**因此不依赖 `.env.development` 里有没有配这两项**。
 
 前置校验包括：凭据文件存在且字段完整、钥匙串里有可用签名身份、`VETTA_R2_PREFIX` 与 `VETTA_UPDATE_URL` 的末段都等于目标通道、版本号格式合法、**版本严格高于该通道线上已有版本**（同名版本化对象禁止覆盖）。`stable` 额外拒绝 `--version`（正式版本以 `package.json` 为唯一真源）并要求输入版本号二次确认。
 
 下面各节是这个脚本每一步在做什么，手动排查时按需单独执行。
+
+### 7.0.1 local 通道：不走 Apple、不碰 R2 的快速闭环
+
+验证更新链路本身（暂存、重启、差分）时，每轮等 10～30 分钟公证是纯浪费。`local` 通道**保留签名但跳过公证**：
+
+- Squirrel.Mac 只校验代码签名，不要求公证票据；
+- 本地构建的产物没有 quarantine 属性，Gatekeeper 不会拦；
+- 因此这条链路测出来的行为与正式包一致，唯独产物**不可分发**（用户下载到的包带 quarantine，没票据会被判「已损坏」）。
+
+安全网：`test` / `stable` 的发布门禁会跑 `xcrun stapler validate`，未公证的产物过不去，不会误发。
+
+```bash
+# 1. 基线版本
+scripts/release-mac.sh local --version 0.5.62
+# 装 release/ 里的 DMG 到 /Applications
+
+# 2. 起分发服务（另开终端，保持运行）
+bun run --cwd packages/desktop-app serve:updates:local
+
+# 3. 播种差分基线（第一次需要，之后 electron-updater 会自动维护）
+cp packages/desktop-app/release/Vetta-0.5.62-arm64-mac.zip ~/Library/Caches/vetta-updater/update.zip
+
+# 4. 改点东西，出下一版
+scripts/release-mac.sh local --version 0.5.63
+
+# 5. 从终端启动 0.5.62 验证
+/Applications/Vetta.app/Contents/MacOS/Vetta
+```
+
+两个细节决定这个通道能不能测差分：
+
+- **产物累积不清空**。`~/.vetta/local-updates` 只覆盖 `latest-mac.yml`，旧版本的 zip 与 blockmap 全部保留——差分要读旧版 blockmap（见 5.4）。
+- **分发服务必须支持 Range**。`scripts/serve-local-updates.mjs` 自己实现了 206；不要随手换成 `python3 -m http.server`，它会无视 Range 头返回 200 全量，差分要么退化要么失败，测出来的结论是假的。
+
+想临时压缩签名耗时，可以再叠 `VETTA_SKIP_VENDOR=1`——更新链路不依赖内置 node/python，而它们解压后是几千个待签名的 Mach-O。
 
 ### 7.1 前提：签名凭据
 
