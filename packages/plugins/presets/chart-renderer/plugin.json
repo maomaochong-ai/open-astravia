@@ -1,7 +1,7 @@
 {
 	"id": "chart-renderer",
 	"name": "%plugin.name%",
-	"icon": "solar:chart-square-bold",
+	"icon": "icon.png",
 	"version": "0.1.21",
 	"agent_mode": ["work"],
 	"defaultLocale": "zh",
