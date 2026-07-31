@@ -359,25 +359,42 @@ tag v<version>
 
 **修复**：`UpdateEngine.downloadUpdate` 新增 `onStaging` 回调标记进入安装准备阶段，该阶段改用 600 秒兜底超时。同时把网络阶段压缩到 0～90%，与 Windows 的进度语义对齐。
 
-### 10.2 提示重启后点了没反应 / 重启后还是旧版本
+### 10.2 点「立即重启」后应用不退出，手动重启还是旧版本
+
+**现象**：Dock 图标还在，窗口只是隐藏了；手动杀掉重开仍是旧版本。日志形如：
+
+```
+[updater] Squirrel.Mac update is ready to install
+[window] close
+[updater] Proxy server for native Squirrel.Mac is closed
+[window] hide          ← 关键：窗口被隐藏而不是销毁
+```
+
+**原因**：Squirrel.Mac 走 `NSApp terminate:` 语义——系统逐个询问窗口能否关闭，**任何一个 `preventDefault()` 都会取消整个终止流程**。而 `main.ts` 的窗口 `close` 守卫在 macOS 上默认把关闭改成隐藏（平台惯例），只有 `app.isQuitting` 为真才放行。更新器这条路当时没有设这个标记，于是终止被取消，ShipIt 永远等不到进程退出，也就永远不做替换。
+
+**修复**：`ElectronUpdaterEngine.quitAndInstall()` 在交给 Squirrel / Inno 之前先调用注入的 `prepareQuit()`，由 `updater.ts` 置 `app.isQuitting = true`——与托盘「退出」菜单用的是同一个标记。
+
+**排查提示**：日志里 `close` 之后如果跟着 `hide`，就是被守卫拦了；正常应该是 `closed` 并且进程随即结束。
+
+### 10.3 提示重启过早出现（暂存尚未完成）
 
 **原因**：早期实现在 `MacUpdater` resolve 时就置 ready，此时 Squirrel 还没暂存完，`quitAndInstall` 走的是 `squirrelDownloadedUpdate === false` 的分支——只注册监听器等待，不会立刻退出。
 
 **修复**：监听原生 `autoUpdater` 的 `update-downloaded` 事件，只有它触发后才置 ready，`quitAndInstall` 因此总是走确定的 `handleUpdateDownloaded()` 分支。
 
-### 10.3 Intel Mac 报 `ERR_UPDATER_ZIP_FILE_NOT_FOUND`
+### 10.4 Intel Mac 报 `ERR_UPDATER_ZIP_FILE_NOT_FOUND`
 
 **原因**：只构建了 arm64，`MacUpdater.filterFilesForArch` 在 x64 机器上排除所有含 `arm64` 的文件，清单里没有可用 ZIP。
 
 **修复**：拆成 `dist:mac:arm64` / `dist:mac:x64` 两个构建，元数据合并后同时包含两套。见第 4 节。
 
-### 10.4 用户报「已损坏」
+### 10.5 用户报「已损坏」
 
 - 先确认下载的是**新版本**——已发布的旧 DMG 不会追溯获得公证票据。
 - 让用户跑 `xattr -l /Applications/Vetta.app`，若只有 `com.apple.quarantine` 而 app 是公证过的，通常是下载过程被网络中间设备改写导致签名失效，换直链或换网络重下。
 - 其余排查见 `../deploy/apple-code-signing.md` 第 6 节。
 
-### 10.5 公证报 vendor 运行时未签名
+### 10.6 公证报 vendor 运行时未签名
 
 **现象**：`notarytool` 返回 `Invalid`，issues 里全是这种路径：
 
@@ -398,7 +415,7 @@ Vetta.app/Contents/Resources/vendor/python/cpython-...tar.gz/cpython-...tar/pyth
 
 **注意**：从解压目录 seed 时必须用 `cp(..., { verbatimSymlinks: true })`。Node 的 `fs.cp` 默认会把相对符号链接（`python3 -> python3.13`）重写成指向源目录的绝对路径，安装后就指回了 app bundle 内部，更新替换 `.app` 时整片悬空。
 
-### 10.6 公证返回 Invalid（其它嵌套二进制）
+### 10.7 公证返回 Invalid（其它嵌套二进制）
 
 产物里有没签到的嵌套 Mach-O 二进制。`Contents/Resources/` 下带了 `im-gateway`、`cli-app`、`vendor/node`、`vendor/python`、`appshot` 等一堆可执行文件，用 `xcrun notarytool log <submissionId>` 看具体路径。排查时可先 `VETTA_SKIP_VENDOR=1` 摘掉内置运行时缩小范围。
 

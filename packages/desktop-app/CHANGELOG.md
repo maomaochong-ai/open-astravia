@@ -56,6 +56,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **macOS 点「立即重启」后应用不退出，手动重启仍是旧版本**：Squirrel.Mac 走 `NSApp terminate:` 语义——系统逐个询问窗口能否关闭，**任何一个 `preventDefault()` 都会取消整个终止流程**。而窗口的 `close` 守卫在 macOS 上默认把关闭改成隐藏（平台惯例），只有 `app.isQuitting` 为真才放行；更新器这条主动退出路径恰恰没有设这个标记（托盘「退出」菜单两处都设了）。结果是终止被取消、ShipIt 永远等不到进程退出，也就永远不做替换，日志表现为 `close` 之后跟着 `hide` 而不是 `closed`。`ElectronUpdaterEngine.quitAndInstall()` 改为先调用注入的 `prepareQuit()`，由 `updater.ts` 置 `app.isQuitting = true`，与托盘退出用同一个标记；Windows 的 Inno 激活路径同样先标记后激活。
+
 - **macOS 公证因内置运行时是归档而失败**：`notarytool` 返回 `Invalid`，issues 指向 `Resources/vendor/python/cpython-….tar.gz/…/bin/python3.13` 之类的路径——Apple 的公证服务会**解开归档**递归校验里面的 Mach-O，而 electron-builder 只签得到文件系统上可见的二进制，签不进归档内部，于是 `python3.13`、`libpython3.13.dylib`、`libtcl9.0.dylib` 和一批 `.so` 全被判「未签名 / 无安全时间戳 / 未启用 hardened runtime」。`prepare-pack.js` 改为按目标平台分支：darwin 内置解压目录（osx-sign 会像处理 `im-gateway`、`cli-app` 那样逐个签名），Windows / Linux 保留原始归档、Inno 的小文件优化不受影响。`RuntimeManager.seedFromVendor` 相应地优先使用解压目录，找不到才回退归档解压；新增 `installRuntimeDirectory` 与 `installRuntimeArchive` 共用同一套 staging + 原子替换逻辑。从目录 seed 时必须传 `verbatimSymlinks`——Node 的 `fs.cp` 默认会把相对符号链接（`python3 -> python3.13`）重写成指向源目录的绝对路径，安装后指回 app bundle 内部，更新替换 `.app` 时整片悬空。
 
 - **活动面板里「Git 面板」「插件工作台」标签卡不再出现**：插件标签卡的显隐靠「上栏记录」（cwd → tab，ADR-0026），而唯一的写入方是插件自己调 `openActivityTab`——图像生成插件在生成后调所以正常，git 与工作台从没写过这个触发，6/24 删掉 "+" 下拉里的手动勾选 attach 后就再没有任何入口能让它们上栏。改为让插件显式声明自己的出现条件：新增 `ctx.ui.setActivityTabVisible(tabId, visible)`（只上栏/下栏，不激活、不抢焦点弹开面板）与 `registerActivityTab({ initiallyVisible })`（缺省 `true`，注册即上栏，老插件不用改）。git 插件按 `git rev-parse --is-inside-work-tree` 探测，只在仓库目录上栏；插件工作台跟随输入栏「插件工作台」toggle 上下栏。`ctx.conversation.on()` 订阅后会立刻回放一次 `conversation-changed`，插件不必等下次切会话才判定。

@@ -51,5 +51,10 @@ const nativeMacUpdateEvents =
 				},
 			}
 		: undefined;
-const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate, nativeMacUpdateEvents);
+// 与托盘「退出」菜单用同一个标记：窗口的 close 守卫只有看到它才会真正销毁窗口，
+// 否则 macOS 上的关闭一律被改成隐藏，Squirrel.Mac 的终止流程会被整个取消。
+const markAppQuitting = () => {
+	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
+};
+const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate, nativeMacUpdateEvents, markAppQuitting);
 export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT);

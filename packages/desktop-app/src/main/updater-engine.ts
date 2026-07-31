@@ -138,6 +138,8 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		private readonly updater: AppUpdater,
 		private readonly innoWindowsUpdate?: InnoWindowsUpdateController,
 		private readonly nativeMacUpdateEvents?: NativeMacUpdateEvents,
+		/** 安装前把应用标记为「正在退出」，见 quitAndInstall。 */
+		private readonly prepareQuit?: () => void,
 	) {
 		this.updater.autoDownload = false;
 		this.updater.autoInstallOnAppQuit = !innoWindowsUpdate;
@@ -246,6 +248,12 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 	}
 
 	async quitAndInstall(): Promise<void> {
+		// 必须先标记「正在退出」，否则窗口的 close 守卫会把关闭改成隐藏：
+		// Squirrel.Mac 走 NSApp terminate 语义，逐个询问窗口能否关闭，任何一个
+		// preventDefault 都会取消整个终止流程，ShipIt 于是永远等不到进程退出，
+		// 表现为「点了立即重启但应用没退，手动重启还是旧版本」。
+		// 托盘的「退出」菜单同样先设这个标记再 app.quit()。
+		this.prepareQuit?.();
 		if (this.useInnoUpdate && this.innoWindowsUpdate) {
 			await this.innoWindowsUpdate.activate();
 			return;

@@ -27,6 +27,61 @@ describe("ElectronUpdaterEngine", () => {
 		expect(quitAndInstall).toHaveBeenCalledWith(true, true);
 	});
 
+	// macOS 的窗口 close 守卫默认把关闭改成隐藏，而 Squirrel.Mac 走 NSApp terminate
+	// 语义：任何一个窗口 preventDefault 都会取消整个终止流程，ShipIt 于是永远等不到
+	// 进程退出，用户看到「点了立即重启但没退出，手动重启还是旧版本」。
+	it("marks the app as quitting before handing off to Squirrel.Mac", async () => {
+		const order: string[] = [];
+		const updater = {
+			on: vi.fn(),
+			quitAndInstall: vi.fn(() => {
+				order.push("quitAndInstall");
+			}),
+		} as unknown as AppUpdater;
+		const prepareQuit = vi.fn(() => {
+			order.push("prepareQuit");
+		});
+		const engine = new ElectronUpdaterEngine(updater, undefined, undefined, prepareQuit);
+
+		await engine.quitAndInstall();
+
+		expect(order).toEqual(["prepareQuit", "quitAndInstall"]);
+	});
+
+	it("marks the app as quitting before activating the Inno update", async () => {
+		const order: string[] = [];
+		const updateInfo: UpdateInfo = {
+			version: "1.2.3",
+			files: [{ url: "Vetta-1.2.3-win-x64.exe", sha512: "hash", size: 42 }],
+			path: "Vetta-1.2.3-win-x64.exe",
+			sha512: "installer",
+			releaseDate: new Date().toISOString(),
+		};
+		const updater = {
+			on: vi.fn(),
+			off: vi.fn(),
+			checkForUpdates: vi.fn().mockResolvedValue({ isUpdateAvailable: true, updateInfo }),
+			updateInfoAndProvider: { provider: { resolveFiles: vi.fn().mockReturnValue([]) } },
+			downloadedUpdateHelper: null,
+		} as unknown as AppUpdater;
+		const innoUpdate = {
+			select: vi.fn().mockReturnValue({ assetFileName: "Vetta-1.2.3-win-x64.exe", totalBytes: 42 }),
+			prepareDownloadedInstaller: vi.fn(),
+			activate: vi.fn(() => {
+				order.push("activate");
+			}),
+		} as unknown as InnoWindowsUpdateController;
+		const prepareQuit = vi.fn(() => {
+			order.push("prepareQuit");
+		});
+		const engine = new ElectronUpdaterEngine(updater, innoUpdate, undefined, prepareQuit);
+
+		await engine.checkForUpdates();
+		await engine.quitAndInstall();
+
+		expect(order).toEqual(["prepareQuit", "activate"]);
+	});
+
 	it("waits for Squirrel.Mac to stage the update before reporting download completion", async () => {
 		let updateDownloadedListener: (() => void) | undefined;
 		const nativeMacUpdateEvents: NativeMacUpdateEvents = {
