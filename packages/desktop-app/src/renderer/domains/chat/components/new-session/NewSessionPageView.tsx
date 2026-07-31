@@ -52,7 +52,7 @@ export function NewSessionPageView({
 	// hero 淡出、输入栏位移、命令区揭幕三条动画同时跑，共用同一条曲线：各跑各的弹簧时
 	// 长度不一致，掉帧时能明显看出它们互相在「追」。
 	const shiftTransition = reduceMotion ? { duration: 0 } : PANEL_REVEAL_TRANSITION;
-	// hero 仍比位移收得更快：吉祥物是 z-10，淡得慢会在面板前面停留一下。
+	// hero 仍比位移收得更快：吉祥物层级高于输入栏，淡得慢会在面板前面停留一下。
 	const heroTransition = reduceMotion
 		? { duration: 0 }
 		: { duration: PANEL_REVEAL_DURATION * 0.6, ease: PANEL_REVEAL_EASE };
@@ -78,7 +78,10 @@ export function NewSessionPageView({
 					// hero 是渐变标题 + 吉祥物的大块区域，不提层的话这段 opacity 动画每帧都要
 					// 重绘整块。will-change 必须在动画开始前就位才有用，因此常驻。
 					style={{ willChange: "opacity" }}
-					className={cn("flex w-full flex-col items-center", commandPanelExpanded && "pointer-events-none")}
+					className={cn(
+						"relative z-20 flex w-full flex-col items-center",
+						commandPanelExpanded && "pointer-events-none",
+					)}
 				>
 					<NewSessionHero
 						avatarAutoplay={avatarAutoplay}
