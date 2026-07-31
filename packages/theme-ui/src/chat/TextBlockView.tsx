@@ -4,6 +4,11 @@ import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlockCopyButtonView } from "../shared/CodeBlockCopyButton";
 import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
+import {
+	chatUrlTransform,
+	classifyMarkdownLink,
+	normalizeWindowsPathsInMarkdownLinks,
+} from "./markdown-link";
 
 /** Minimal hast-like nodes for the streaming chunk rehype plugin. */
 interface HastText {
@@ -26,22 +31,6 @@ const LINK_BADGE_CLASS =
 	"inline-flex max-w-full items-center gap-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-px align-middle text-[12px] font-medium text-primary no-underline transition-colors hover:bg-primary/20";
 
 const remarkPlugins = [remarkGfm];
-
-function resolveFileLinkPath(href: string | undefined): string | null {
-	if (!href) return null;
-	const decode = (raw: string): string => {
-		try {
-			return decodeURIComponent(raw);
-		} catch {
-			return raw;
-		}
-	};
-	if (href.startsWith("file://")) {
-		return decode(href.replace(/^file:\/\//, ""));
-	}
-	if (href.startsWith("/")) return decode(href);
-	return null;
-}
 
 /**
  * 用户消息里的行内 token（skill 引用 / 文件 / 图片）。
@@ -483,15 +472,15 @@ export const TextBlockView = memo(function TextBlockView({
 			td: ({ children }) => <td className="border-t border-border px-3 py-1.5 text-foreground">{children}</td>,
 			hr: () => <hr className="my-3 border-border" />,
 			a: ({ href, children }) => {
-				const filePath = resolveFileLinkPath(href);
-				if (filePath) {
-					const fileName = filePath.split("/").pop() || filePath;
+				const kind = classifyMarkdownLink(href);
+				if (kind.type === "file") {
+					const fileName = basename(kind.path);
 					return (
 						<button
 							type="button"
-							title={filePath}
+							title={kind.path}
 							className={cn(LINK_BADGE_CLASS, "cursor-pointer")}
-							onClick={() => onOpenFileRef.current(filePath)}
+							onClick={() => onOpenFileRef.current(kind.path)}
 						>
 							<span
 								className={cn(getFileIconClassRef.current(fileName), "h-3.5 w-3.5 shrink-0")}
@@ -500,15 +489,15 @@ export const TextBlockView = memo(function TextBlockView({
 						</button>
 					);
 				}
-				if (href && /^https?:\/\//i.test(href)) {
+				if (kind.type === "url") {
 					return (
 						<a
-							href={href}
-							title={href}
+							href={kind.url}
+							title={kind.url}
 							className={LINK_BADGE_CLASS}
 							onClick={(e) => {
 								e.preventDefault();
-								onOpenUrlRef.current(href);
+								onOpenUrlRef.current(kind.url);
 							}}
 						>
 							<span className="icon-[mdi--web] h-3.5 w-3.5 shrink-0" />
@@ -516,15 +505,15 @@ export const TextBlockView = memo(function TextBlockView({
 						</a>
 					);
 				}
+				// mailto / fragment / unknown: never target=_blank — that opens the OS browser
+				// for misclassified local paths. Keep visible but non-navigating.
 				return (
-					<a
-						href={href}
-						className="text-chart-2 underline decoration-chart-2/30 hover:decoration-chart-2"
-						target="_blank"
-						rel="noopener noreferrer"
+					<span
+						className="text-chart-2 underline decoration-chart-2/30"
+						title={kind.href || undefined}
 					>
 						{children}
-					</a>
+					</span>
 				);
 			},
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
@@ -599,10 +588,20 @@ export const TextBlockView = memo(function TextBlockView({
 		return plugins.length > 0 ? plugins : undefined;
 	}, [animateChunks, inlineTokens]);
 
+	const markdownSource = useMemo(
+		() => normalizeWindowsPathsInMarkdownLinks(displayText),
+		[displayText],
+	);
+
 	return (
 		<div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
-			<ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
-				{displayText}
+			<ReactMarkdown
+				remarkPlugins={remarkPlugins}
+				rehypePlugins={rehypePlugins}
+				components={components}
+				urlTransform={chatUrlTransform}
+			>
+				{markdownSource}
 			</ReactMarkdown>
 		</div>
 	);
