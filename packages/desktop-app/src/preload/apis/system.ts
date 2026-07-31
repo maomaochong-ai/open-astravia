@@ -112,6 +112,9 @@ export function createSystemApi(
 		fs: {
 			readDir: (dirPath) => ipc.invoke("vetta:fs:read-dir", dirPath),
 			readFile: (filePath) => ipc.invoke("vetta:fs:read-file", filePath),
+			readEditableTextFile: (filePath) => ipc.invoke("vetta:fs:read-editable-text", filePath),
+			saveEditableTextFile: (filePath, content, options) =>
+				ipc.invoke("vetta:fs:save-editable-text", filePath, content, options),
 			writeFile: (filePath, content, encoding) =>
 				ipc.invoke("vetta:fs:write-file", filePath, content, encoding ?? "utf8"),
 			stat: (filePath) => ipc.invoke("vetta:fs:stat", filePath),
@@ -126,6 +129,7 @@ export function createSystemApi(
 				ipc.invoke("vetta:file-transfer:commit-drop", planId, action, conflictPolicy),
 			cancelDrop: (planId) => ipc.invoke("vetta:file-transfer:cancel-drop", planId),
 			startDrag: (paths) => ipc.send("vetta:file-transfer:start-drag", [...paths]),
+			createEntry: (parentDirectory, name, kind) => ipc.invoke("vetta:fs:create-entry", parentDirectory, name, kind),
 			createDirectory: (dirPath) => ipc.invoke("vetta:fs:create-directory", dirPath),
 			listSubDirs: (dirPath) => ipc.invoke("vetta:fs:list-sub-dirs", dirPath),
 			listFilesRecursive: (rootPath) => ipc.invoke("vetta:fs:list-files-recursive", rootPath),

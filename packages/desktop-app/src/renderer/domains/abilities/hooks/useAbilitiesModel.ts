@@ -189,6 +189,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		reloadPlugin: actions.reloadPlugin,
 		uninstallBundleMembers: actions.uninstallMembers,
 		importSkillArchive: actions.importSkillArchive,
+		importPluginArchive: actions.importPluginArchive,
 		startAddManualMcp: () => mcp.onStartAddServer(),
 	};
 }

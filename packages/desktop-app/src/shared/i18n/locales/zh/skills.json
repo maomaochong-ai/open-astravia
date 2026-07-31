@@ -56,7 +56,7 @@
 			},
 			"searchAdd": {
 				"title": "搜索与添加",
-				"description": "用搜索快速定位能力；也可点「添加能力」从本地导入 Skill，或手动配置 MCP 连接器。"
+				"description": "用搜索快速定位能力；也可点「添加能力」从本地导入 Skill / 插件，或手动配置 MCP 连接器。"
 			},
 			"scope": {
 				"title": "发现 / 我的",

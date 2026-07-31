@@ -167,5 +167,6 @@ export interface AbilitiesModel {
 	/** 逐项勾选后卸载 bundle 成员。 */
 	uninstallBundleMembers: (members: AbilityItem[]) => void;
 	importSkillArchive: (file: File) => void;
+	importPluginArchive: (file: File) => void;
 	startAddManualMcp: () => void;
 }

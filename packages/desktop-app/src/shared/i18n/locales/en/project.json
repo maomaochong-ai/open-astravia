@@ -141,6 +141,7 @@
 	"tabPicker": {
 		"moreTabs": "More tabs",
 		"hiddenPanels": "Hidden panels",
+		"availablePlugins": "Add plugin panels",
 		"menu": "Tab menu"
 	},
 	"tour": {

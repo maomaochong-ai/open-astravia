@@ -59,6 +59,18 @@ export function useFileTree(cwdOverride?: string | null) {
 		[setExpandedDirs, cache, loadDir],
 	);
 
+	const expandDir = useCallback(
+		async (dirPath: string) => {
+			setExpandedDirs((prev) => new Set([...prev, dirPath]));
+			if (!cache.has(dirPath)) await loadDir(dirPath);
+		},
+		[cache, loadDir, setExpandedDirs],
+	);
+
+	const collapseAll = useCallback(() => {
+		setExpandedDirs(new Set());
+	}, [setExpandedDirs]);
+
 	const renameEntry = useCallback(
 		async (oldPath: string, newName: string) => {
 			const newPath = pathJoin(pathDirname(oldPath), newName);
@@ -246,6 +258,8 @@ export function useFileTree(cwdOverride?: string | null) {
 		loadingDirs,
 		rootDir: rootCwd,
 		toggleDir,
+		expandDir,
+		collapseAll,
 		renameEntry,
 		deleteEntry,
 		moveEntry,

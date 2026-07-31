@@ -80,6 +80,7 @@ export function FileTreeNodeView({
 
 	function handleClick() {
 		if (entry.isDirectory) {
+			onSelectFile(entry);
 			onToggleDir(entry.path);
 		} else {
 			onSelectFile(entry);
@@ -88,6 +89,7 @@ export function FileTreeNodeView({
 
 	function handleContextMenu(e: React.MouseEvent) {
 		e.preventDefault();
+		e.stopPropagation();
 		onContextMenu(entry, e.clientX, e.clientY);
 	}
 

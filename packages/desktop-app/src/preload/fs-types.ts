@@ -19,8 +19,42 @@ export interface FsStatResult {
 	createdAt: number;
 }
 
+export const FS_EDITABLE_TEXT_ERROR = {
+	TOO_LARGE: "FS_EDITABLE_TEXT_TOO_LARGE",
+	NOT_UTF8: "FS_EDITABLE_TEXT_NOT_UTF8",
+	NOT_FILE: "FS_EDITABLE_TEXT_NOT_FILE",
+} as const;
+
+export interface FsEditableTextSnapshot {
+	content: string;
+	revision: string;
+	hasBom: boolean;
+	lineEnding: "lf" | "crlf";
+	size: number;
+	modifiedAt: number;
+}
+
+export interface FsSaveEditableTextOptions {
+	expectedRevision: string;
+	force?: boolean;
+	hasBom?: boolean;
+}
+
+export type FsSaveEditableTextResult =
+	| {
+			status: "saved";
+			revision: string;
+			size: number;
+			modifiedAt: number;
+	  }
+	| {
+			status: "conflict";
+			revision: string;
+	  };
+
 export type FileTransferAction = "copy" | "move";
 export type FileTransferConflictPolicy = "keep-both" | "replace" | "skip";
+export type FileExplorerEntryKind = "file" | "directory";
 
 export interface FileTransferPlanItem {
 	name: string;
@@ -48,6 +82,12 @@ export interface FileTransferResult {
 export interface DesktopFsApi {
 	readDir(dirPath: string): Promise<FsEntry[]>;
 	readFile(filePath: string): Promise<{ content: string; encoding: "utf8" | "base64" }>;
+	readEditableTextFile(filePath: string): Promise<FsEditableTextSnapshot>;
+	saveEditableTextFile(
+		filePath: string,
+		content: string,
+		options: FsSaveEditableTextOptions,
+	): Promise<FsSaveEditableTextResult>;
 	/** `encoding: "base64"` writes decoded bytes (for binary assets). Default utf8. */
 	writeFile(filePath: string, content: string, encoding?: "utf8" | "base64"): Promise<void>;
 	stat(filePath: string): Promise<FsStatResult | null>;
@@ -63,6 +103,7 @@ export interface DesktopFsApi {
 	cancelDrop(planId: string): Promise<void>;
 	/** Starts an operating-system drag synchronously from a renderer dragstart event. */
 	startDrag(paths: readonly string[]): void;
+	createEntry(parentDirectory: string, name: string, kind: FileExplorerEntryKind): Promise<FsEntry>;
 	createDirectory(dirPath: string): Promise<void>;
 	listSubDirs(dirPath: string): Promise<FsEntry[]>;
 	/** 递归列出 rootPath 下所有文件（跳过隐藏/重型目录，有数量上限），用于 @ 引用的全局模糊匹配。 */

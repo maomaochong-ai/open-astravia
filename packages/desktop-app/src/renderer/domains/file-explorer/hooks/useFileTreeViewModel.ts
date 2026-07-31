@@ -1,5 +1,5 @@
 import { type FsEntry, pluginFileExplorerDecorationProvidersAtom, renamingPathAtom } from "@shared/store/atoms";
-import type { FileTreeViewProps } from "@vetta/theme-ui/file-explorer";
+import type { FileExplorerCreatingEntry, FileTreeViewProps } from "@vetta/theme-ui/file-explorer";
 import { useAtom, useAtomValue } from "jotai";
 import { createElement, useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -12,6 +12,7 @@ export function useFileTreeViewModel(input: {
 	expandedDirs: Set<string>;
 	loadingDirs: Set<string>;
 	selectedPath: string | null;
+	creatingEntry: FileExplorerCreatingEntry | null;
 	onToggleDir: (path: string) => void;
 	onSelectFile: (entry: FsEntry) => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
@@ -19,6 +20,9 @@ export function useFileTreeViewModel(input: {
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
 	onContextMenu: (entry: FsEntry, x: number, y: number) => void;
+	onRootContextMenu: (x: number, y: number) => void;
+	onCreateSubmit: (name: string) => void;
+	onCreateCancel: () => void;
 }): FileTreeViewProps {
 	const { t } = useTranslation("chat");
 	const [renamingPath, setRenamingPath] = useAtom(renamingPathAtom);
@@ -60,13 +64,21 @@ export function useFileTreeViewModel(input: {
 		loadingDirs: input.loadingDirs,
 		selectedPath: input.selectedPath,
 		renamingPath,
+		creatingEntry: input.creatingEntry,
 		emptyLabel: t("fileExplorer.emptyFolder"),
+		createInputLabel:
+			input.creatingEntry?.kind === "directory"
+				? t("fileExplorer.newFolderInputLabel")
+				: t("fileExplorer.newFileInputLabel"),
 		getDecoration,
 		onToggleDir: input.onToggleDir,
 		onSelectFile: input.onSelectFile,
 		onContextMenu: input.onContextMenu,
+		onRootContextMenu: input.onRootContextMenu,
 		onRenameSubmit,
 		onRenameCancel,
+		onCreateSubmit: input.onCreateSubmit,
+		onCreateCancel: input.onCreateCancel,
 		onFileMove: input.onFileMove,
 		onExternalDrop: input.onExternalDrop,
 		onNativeDragStart: input.onNativeDragStart,

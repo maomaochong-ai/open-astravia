@@ -29,6 +29,7 @@ export interface AbilityActions {
 	reloadPlugin: (item: PluginAbility) => void;
 	uninstallMembers: (members: AbilityItem[]) => void;
 	importSkillArchive: (file: File) => void;
+	importPluginArchive: (file: File) => void;
 	importing: boolean;
 }
 
@@ -291,6 +292,25 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		[refresh],
 	);
 
+	const importPluginArchive = useCallback(
+		(file: File) => {
+			setImporting(true);
+			setError(null);
+			void file
+				.arrayBuffer()
+				.then((buffer) => window.vetta.plugins.installFromArchive(buffer, { source: "archive" }))
+				.then(() => {
+					notifyPluginsChanged();
+				})
+				.catch((err: unknown) => setError(errorMessage(err)))
+				.finally(() => {
+					setImporting(false);
+					refresh();
+				});
+		},
+		[refresh],
+	);
+
 	return {
 		busyIds,
 		error,
@@ -303,6 +323,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		reloadPlugin,
 		uninstallMembers,
 		importSkillArchive,
+		importPluginArchive,
 		importing,
 	};
 }

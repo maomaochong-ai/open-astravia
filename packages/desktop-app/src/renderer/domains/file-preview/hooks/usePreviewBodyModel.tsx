@@ -1,16 +1,13 @@
-import { pluginFilePreviewsAtom, resolvedThemeAtom } from "@shared/store/atoms";
+import { pluginFilePreviewsAtom } from "@shared/store/atoms";
 import type { FilePreviewItem, PreviewBodyViewProps } from "@vetta/theme-ui/file-preview";
 import { getExtension } from "@vetta/theme-ui/file-preview";
 import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CodePreview } from "../../activity-panel/components/previews/CodePreview";
-import { HtmlPreview } from "../../activity-panel/components/previews/HtmlPreview";
-import { MarkdownPreview } from "../../activity-panel/components/previews/MarkdownPreview";
+import { useTranslation } from "react-i18next";
 import { PluginI18nBoundary } from "../../plugins/runtime/plugin-i18n";
 import { PluginFilePreview } from "../components/PluginFilePreview";
+import { TextPreviewRenderer } from "../components/TextPreviewRenderer";
 import { downloadItem, isPreviewSupported, isTextExtension } from "../preview-utils";
-
-const MARKDOWN_EXTENSIONS = new Set(["md", "mdx"]);
 
 type LoadState =
 	| { status: "loading" }
@@ -23,7 +20,7 @@ export function usePreviewBodyModel(
 ): PreviewBodyViewProps {
 	const ext = useMemo(() => getExtension(item.name), [item.name]);
 	const supported = isPreviewSupported(item.name);
-	const theme = useAtomValue(resolvedThemeAtom);
+	const { t } = useTranslation("chat");
 	const pluginPreviews = useAtomValue(pluginFilePreviewsAtom);
 	const pluginPreview = useMemo(
 		() => pluginPreviews.find((p) => p.extensions.includes(ext)),
@@ -49,8 +46,8 @@ export function usePreviewBodyModel(
 			.catch((err: Error) => {
 				if (!cancelled) {
 					const message = err.message?.includes("too large")
-						? "文件过大，无法预览"
-						: "无法读取此文件";
+						? t("fileEditor.errorPreviewTooLarge")
+						: t("fileEditor.errorRead");
 					setState({ status: "error", message });
 				}
 			});
@@ -58,7 +55,7 @@ export function usePreviewBodyModel(
 		return () => {
 			cancelled = true;
 		};
-	}, [item, ext, supported, pluginPreview, itemKey, watchTick, refreshNonce]);
+	}, [item, ext, supported, pluginPreview, itemKey, watchTick, refreshNonce, t]);
 
 	useEffect(() => {
 		const path = item.path;
@@ -76,8 +73,8 @@ export function usePreviewBodyModel(
 	}, [item.path, supported, pluginPreview]);
 
 	const labels = {
-		unsupported: "暂不支持预览此文件格式",
-		download: "下载文件",
+		unsupported: t("fileEditor.unsupported"),
+		download: t("fileEditor.download"),
 	};
 
 	if (pluginPreview) {
@@ -120,35 +117,7 @@ export function usePreviewBodyModel(
 		};
 	}
 
-	const scrollWrap = "text-preview-content min-h-0 flex-1 overflow-y-auto";
-	let content: React.ReactNode;
-	if ((ext === "html" || ext === "htm") && state.encoding === "utf8") {
-		content = <HtmlPreview content={state.content} extension={ext} theme={theme} />;
-	} else if (MARKDOWN_EXTENSIONS.has(ext)) {
-		content = (
-			<div className={scrollWrap}>
-				<MarkdownPreview content={state.content} />
-			</div>
-		);
-	} else if (ext === "json" && state.encoding === "utf8") {
-		let formatted = state.content;
-		try {
-			formatted = JSON.stringify(JSON.parse(state.content), null, 2);
-		} catch {
-			// keep original
-		}
-		content = (
-			<div className={scrollWrap}>
-				<CodePreview content={formatted} extension={ext} theme={theme} />
-			</div>
-		);
-	} else {
-		content = (
-			<div className={scrollWrap}>
-				<CodePreview content={state.content} extension={ext} theme={theme} />
-			</div>
-		);
-	}
+	const content = <TextPreviewRenderer content={state.content} extension={ext} />;
 
 	return {
 		state: { status: "content", content },
@@ -165,7 +134,7 @@ async function loadItem(
 		return await window.vetta.fs.readFile(item.path);
 	}
 	if (!item.url) {
-		throw new Error("无可用数据源");
+		throw new Error("FILE_PREVIEW_NO_SOURCE");
 	}
 	const res = await fetch(item.url);
 	if (!res.ok) throw new Error(`HTTP ${res.status}`);

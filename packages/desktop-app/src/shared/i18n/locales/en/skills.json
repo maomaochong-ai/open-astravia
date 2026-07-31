@@ -56,7 +56,7 @@
 			},
 			"searchAdd": {
 				"title": "Search and add",
-				"description": "Search to find a capability quickly, or use Add to import a local Skill or configure an MCP connector."
+				"description": "Search to find a capability quickly, or use Add to import a local Skill / plugin or configure an MCP connector."
 			},
 			"scope": {
 				"title": "Discover / Mine",

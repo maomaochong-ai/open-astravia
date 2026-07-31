@@ -1,6 +1,7 @@
-import { useState, type JSX } from "react";
+import { Fragment, useState, type JSX } from "react";
+import { FileTreeCreateRow } from "./FileTreeCreateRow";
 import { FileTreeNodeView } from "./FileTreeNodeView";
-import type { FileExplorerEntry, FileExplorerNodeDecoration } from "./types";
+import type { FileExplorerCreatingEntry, FileExplorerEntry, FileExplorerNodeDecoration } from "./types";
 
 export interface FileTreeViewProps {
 	rootDir: string;
@@ -10,13 +11,18 @@ export interface FileTreeViewProps {
 	loadingDirs: ReadonlySet<string>;
 	selectedPath: string | null;
 	renamingPath: string | null;
+	creatingEntry: FileExplorerCreatingEntry | null;
 	emptyLabel: string;
+	createInputLabel: string;
 	getDecoration?: (entry: FileExplorerEntry) => FileExplorerNodeDecoration | null;
 	onToggleDir: (path: string) => void;
 	onSelectFile: (entry: FileExplorerEntry) => void;
 	onContextMenu: (entry: FileExplorerEntry, x: number, y: number) => void;
+	onRootContextMenu: (x: number, y: number) => void;
 	onRenameSubmit: (oldPath: string, newName: string) => void;
 	onRenameCancel: () => void;
+	onCreateSubmit: (name: string) => void;
+	onCreateCancel: () => void;
 	onFileMove: (srcPath: string, destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
@@ -59,13 +65,18 @@ export function FileTreeView({
 	loadingDirs,
 	selectedPath,
 	renamingPath,
+	creatingEntry,
 	emptyLabel,
+	createInputLabel,
 	getDecoration,
 	onToggleDir,
 	onSelectFile,
 	onContextMenu,
+	onRootContextMenu,
 	onRenameSubmit,
 	onRenameCancel,
+	onCreateSubmit,
+	onCreateCancel,
 	onFileMove,
 	onExternalDrop,
 	onNativeDragStart,
@@ -94,9 +105,28 @@ export function FileTreeView({
 		if (files.length > 0) onExternalDrop(files, rootDir);
 	}
 
-	if (flatList.length === 0 && !loadingDirs.has(rootDir)) {
+	function handleRootContextMenu(event: React.MouseEvent): void {
+		event.preventDefault();
+		onRootContextMenu(event.clientX, event.clientY);
+	}
+
+	const rootCreateRow = creatingEntry?.parentPath === rootDir ? (
+		<FileTreeCreateRow
+			key={`${creatingEntry.parentPath}:${creatingEntry.kind}`}
+			kind={creatingEntry.kind}
+			depth={0}
+			inputLabel={createInputLabel}
+			error={creatingEntry.error}
+			busy={creatingEntry.busy}
+			onSubmit={onCreateSubmit}
+			onCancel={onCreateCancel}
+		/>
+	) : null;
+
+	if (flatList.length === 0 && !loadingDirs.has(rootDir) && !rootCreateRow) {
 		return (
 			<div
+				onContextMenu={handleRootContextMenu}
 				onDragOver={handleRootDragOver}
 				onDragLeave={() => setRootDragOver(false)}
 				onDrop={handleRootDrop}
@@ -110,30 +140,45 @@ export function FileTreeView({
 	return (
 		<div
 			role="tree"
+			onContextMenu={handleRootContextMenu}
 			onDragOver={handleRootDragOver}
 			onDragLeave={() => setRootDragOver(false)}
 			onDrop={handleRootDrop}
 			className={`min-h-full py-0.5 ${rootDragOver ? "bg-primary/10 ring-1 ring-inset ring-primary/40" : ""}`}
 		>
+			{rootCreateRow}
 			{flatList.map((node) => (
-				<FileTreeNodeView
-					key={node.entry.path}
-					entry={node.entry}
-					depth={node.depth}
-					isExpanded={expandedDirs.has(node.entry.path)}
-					isLoading={loadingDirs.has(node.entry.path)}
-					isSelected={selectedPath === node.entry.path}
-					isRenaming={renamingPath === node.entry.path}
-					decoration={getDecoration?.(node.entry)}
-					onToggleDir={onToggleDir}
-					onSelectFile={onSelectFile}
-					onContextMenu={onContextMenu}
-					onRenameSubmit={onRenameSubmit}
-					onRenameCancel={onRenameCancel}
-					onFileMove={onFileMove}
-					onExternalDrop={onExternalDrop}
-					onNativeDragStart={onNativeDragStart}
-				/>
+				<Fragment key={node.entry.path}>
+					<FileTreeNodeView
+						entry={node.entry}
+						depth={node.depth}
+						isExpanded={expandedDirs.has(node.entry.path)}
+						isLoading={loadingDirs.has(node.entry.path)}
+						isSelected={selectedPath === node.entry.path}
+						isRenaming={renamingPath === node.entry.path}
+						decoration={getDecoration?.(node.entry)}
+						onToggleDir={onToggleDir}
+						onSelectFile={onSelectFile}
+						onContextMenu={onContextMenu}
+						onRenameSubmit={onRenameSubmit}
+						onRenameCancel={onRenameCancel}
+						onFileMove={onFileMove}
+						onExternalDrop={onExternalDrop}
+						onNativeDragStart={onNativeDragStart}
+					/>
+					{creatingEntry?.parentPath === node.entry.path ? (
+						<FileTreeCreateRow
+							key={`${creatingEntry.parentPath}:${creatingEntry.kind}`}
+							kind={creatingEntry.kind}
+							depth={node.depth + 1}
+							inputLabel={createInputLabel}
+							error={creatingEntry.error}
+							busy={creatingEntry.busy}
+							onSubmit={onCreateSubmit}
+							onCancel={onCreateCancel}
+						/>
+					) : null}
+				</Fragment>
 			))}
 		</div>
 	);

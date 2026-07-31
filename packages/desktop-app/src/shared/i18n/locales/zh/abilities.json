@@ -61,6 +61,8 @@
 		"title": "选择添加方式",
 		"importSkill": "导入技能压缩包",
 		"importSkillHint": "从本地 zip、tar.gz 或 tgz 压缩包安装",
+		"importPlugin": "导入插件压缩包",
+		"importPluginHint": "从本地 zip 安装（需包含 plugin.json）",
 		"addMcp": "手动添加 MCP",
 		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务"
 	},

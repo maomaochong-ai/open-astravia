@@ -14,3 +14,12 @@ export interface FileExplorerNodeDecoration {
 	badge?: string;
 	tooltip?: string;
 }
+
+export type FileExplorerEntryKind = "file" | "directory";
+
+export interface FileExplorerCreatingEntry {
+	parentPath: string;
+	kind: FileExplorerEntryKind;
+	error: string | null;
+	busy: boolean;
+}

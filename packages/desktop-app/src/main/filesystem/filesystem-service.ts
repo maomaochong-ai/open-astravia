@@ -1,8 +1,22 @@
+import { createHash } from "node:crypto";
 import type { Dirent, Stats } from "node:fs";
-import { cp, mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
-import type { FsEntry, FsFileRef, FsStatResult } from "../../preload/fs-types.js";
+import {
+	FILE_EXPLORER_ENTRY_EXISTS_ERROR,
+	getFileExplorerEntryNameIssue,
+} from "../../preload/file-explorer-entry-name.js";
+import {
+	type FileExplorerEntryKind,
+	FS_EDITABLE_TEXT_ERROR,
+	type FsEditableTextSnapshot,
+	type FsEntry,
+	type FsFileRef,
+	type FsSaveEditableTextOptions,
+	type FsSaveEditableTextResult,
+	type FsStatResult,
+} from "../../preload/fs-types.js";
 
 const BINARY_EXTENSIONS = new Set([
 	"png",
@@ -24,6 +38,7 @@ const BINARY_EXTENSIONS = new Set([
 ]);
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_BINARY_FILE_SIZE = 32 * 1024 * 1024;
+const MAX_EDITABLE_TEXT_FILE_SIZE = 2 * 1024 * 1024;
 const HIDDEN_FILES = new Set([".DS_Store", "Thumbs.db", "desktop.ini"]);
 const RECURSIVE_IGNORED_DIRS = new Set([
 	"node_modules",
@@ -125,6 +140,70 @@ export async function readFilesystemFile(filePath: string): Promise<{ content: s
 	return { content: await readFile(resolved, "utf8"), encoding: "utf8" };
 }
 
+function getFileRevision(buffer: Buffer): string {
+	return createHash("sha256").update(buffer).digest("hex");
+}
+
+function decodeEditableText(buffer: Buffer): { content: string; hasBom: boolean; lineEnding: "lf" | "crlf" } {
+	const hasBom = buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf;
+	const body = hasBom ? buffer.subarray(3) : buffer;
+	let content: string;
+	try {
+		content = new TextDecoder("utf-8", { fatal: true }).decode(body);
+	} catch {
+		throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_UTF8);
+	}
+	return {
+		content,
+		hasBom,
+		lineEnding: content.includes("\r\n") ? "crlf" : "lf",
+	};
+}
+
+export async function readEditableTextFile(filePath: string): Promise<FsEditableTextSnapshot> {
+	assertFilesystemPathWithinProject(filePath);
+	const resolved = resolve(filePath);
+	const stats = await stat(resolved);
+	if (!stats.isFile()) throw new Error(FS_EDITABLE_TEXT_ERROR.NOT_FILE);
+	if (stats.size > MAX_EDITABLE_TEXT_FILE_SIZE) throw new Error(FS_EDITABLE_TEXT_ERROR.TOO_LARGE);
+	const buffer = await readFile(resolved);
+	const decoded = decodeEditableText(buffer);
+	return {
+		...decoded,
+		revision: getFileRevision(buffer),
+		size: buffer.byteLength,
+		modifiedAt: stats.mtimeMs,
+	};
+}
+
+export async function saveEditableTextFile(
+	filePath: string,
+	content: string,
+	options: FsSaveEditableTextOptions,
+): Promise<FsSaveEditableTextResult> {
+	assertFilesystemPathWithinProject(filePath);
+	const resolved = resolve(filePath);
+	const current = await readFile(resolved);
+	const currentRevision = getFileRevision(current);
+	if (!options.force && currentRevision !== options.expectedRevision) {
+		return { status: "conflict", revision: currentRevision };
+	}
+
+	const contentBuffer = Buffer.from(content, "utf8");
+	const nextBuffer = options.hasBom ? Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), contentBuffer]) : contentBuffer;
+	if (nextBuffer.byteLength > MAX_EDITABLE_TEXT_FILE_SIZE) {
+		throw new Error(FS_EDITABLE_TEXT_ERROR.TOO_LARGE);
+	}
+	await writeFile(resolved, nextBuffer);
+	const stats = await stat(resolved);
+	return {
+		status: "saved",
+		revision: getFileRevision(nextBuffer),
+		size: nextBuffer.byteLength,
+		modifiedAt: stats.mtimeMs,
+	};
+}
+
 function detectBinaryMimeType(buffer: Buffer): string {
 	if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
 		return "image/png";
@@ -206,6 +285,44 @@ export async function moveFilesystemPath(sourcePath: string, destinationDirector
 
 export async function createFilesystemDirectory(dirPath: string): Promise<void> {
 	await mkdir(resolve(expandTilde(dirPath)), { recursive: true });
+}
+
+export async function createFilesystemEntry(
+	parentDirectory: string,
+	name: string,
+	kind: FileExplorerEntryKind,
+): Promise<FsEntry> {
+	assertFilesystemPathWithinProject(parentDirectory);
+	const issue = getFileExplorerEntryNameIssue(name, { windows: process.platform === "win32" });
+	if (issue) throw new Error(`FILE_EXPLORER_INVALID_ENTRY_NAME:${issue}`);
+
+	const resolvedParent = resolve(parentDirectory);
+	const targetPath = join(resolvedParent, name);
+	if (dirname(targetPath) !== resolvedParent) throw new Error("FILE_EXPLORER_INVALID_ENTRY_NAME:path-separator");
+	assertFilesystemPathWithinProject(targetPath);
+
+	try {
+		if (kind === "directory") {
+			await mkdir(targetPath);
+		} else {
+			const handle = await open(targetPath, "wx");
+			await handle.close();
+		}
+	} catch (error: unknown) {
+		if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+			throw new Error(FILE_EXPLORER_ENTRY_EXISTS_ERROR);
+		}
+		throw error;
+	}
+
+	const stats = await stat(targetPath);
+	return {
+		name,
+		path: targetPath,
+		isDirectory: kind === "directory",
+		size: stats.size,
+		modifiedAt: stats.mtimeMs,
+	};
 }
 
 export async function listFilesystemFilesRecursive(rootPath: string): Promise<FsFileRef[]> {

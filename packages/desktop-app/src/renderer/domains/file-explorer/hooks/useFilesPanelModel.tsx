@@ -1,11 +1,18 @@
 import { Button } from "@shared/components/ui/button";
+import {
+	FILE_EXPLORER_ENTRY_EXISTS_ERROR,
+	getFileExplorerEntryNameIssue,
+	type FileExplorerEntryNameIssue,
+} from "@/preload/file-explorer-entry-name";
 import type {
+	FileExplorerEntryKind,
 	FileTransferAction,
 	FileTransferConflictPolicy,
 	FileTransferPlan,
 } from "@preload/fs-types";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
-import { isSubPath, pathDirname } from "@shared/lib/utils";
+import { isWindows } from "@shared/lib/platform";
+import { isSubPath, pathBasename, pathDirname } from "@shared/lib/utils";
 import {
 	activityPanelWidthAtom,
 	ACTIVITY_PANEL_PREVIEW_MIN_WIDTH,
@@ -22,8 +29,9 @@ import {
 	type FilePreviewItem,
 	type FsEntry,
 	pluginFileExplorerToolbarActionsAtom,
+	renamingPathAtom,
 } from "@shared/store/atoms";
-import type { FilesPanelViewProps } from "@vetta/theme-ui/file-explorer";
+import type { FileExplorerCreatingEntry, FilesPanelViewProps } from "@vetta/theme-ui/file-explorer";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
@@ -37,6 +45,7 @@ import { ConfirmDeleteDialog } from "../components/ConfirmDeleteDialog";
 import { FileContextMenu } from "../components/FileContextMenu";
 import { FileTransferDialog } from "../components/FileTransferDialog";
 import { FileTree } from "../components/FileTree";
+import { resolveCreateParentDirectory } from "../services/create-entry";
 import { isProjectInternalDrop } from "../services/file-drop";
 import { sortFileExplorerActions } from "../services/plugin-contributions";
 import { useFileTree } from "./useFileTree";
@@ -49,6 +58,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		loadingDirs,
 		rootDir,
 		toggleDir,
+		expandDir,
+		collapseAll,
 		renameEntry,
 		deleteEntry,
 		moveEntry,
@@ -75,6 +86,8 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 	const pluginToolbarActions = useAtomValue(pluginFileExplorerToolbarActionsAtom);
 	const resolvePluginText = usePluginTextResolver();
 	const [selectedEntry, setSelectedEntry] = useState<FsEntry | null>(null);
+	const [creatingEntry, setCreatingEntry] = useState<FileExplorerCreatingEntry | null>(null);
+	const setRenamingPath = useSetAtom(renamingPathAtom);
 
 	const clearArtifactsScope: "conversation" | "claw" | null =
 		rootDir && defaultCwd && rootDir === defaultCwd
@@ -107,6 +120,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		(entry: FsEntry) => {
 			setSelectedEntry(entry);
 			emitPluginFileExplorerSelectionChanged([entry]);
+			if (entry.isDirectory) return;
 			const dir = pathDirname(entry.path);
 			let siblings: FsEntry[] = (cache.get(dir) ?? []).filter((e) => !e.isDirectory);
 
@@ -143,8 +157,76 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 
 	useEffect(() => {
 		setSelectedEntry(null);
+		setCreatingEntry(null);
+		setContextMenu(null);
 		emitPluginFileExplorerSelectionChanged([]);
-	}, [rootDir]);
+	}, [rootDir, setContextMenu]);
+
+	const getCreateNameError = useCallback(
+		(issue: FileExplorerEntryNameIssue): string => {
+			switch (issue) {
+				case "empty":
+					return t("fileExplorer.invalidName.empty");
+				case "dot-path":
+					return t("fileExplorer.invalidName.dotPath");
+				case "path-separator":
+					return t("fileExplorer.invalidName.pathSeparator");
+				case "invalid-character":
+					return t("fileExplorer.invalidName.invalidCharacter");
+				case "reserved-name":
+					return t("fileExplorer.invalidName.reservedName");
+				case "trailing-character":
+					return t("fileExplorer.invalidName.trailingCharacter");
+			}
+		},
+		[t],
+	);
+
+	const beginCreate = useCallback(
+		(kind: FileExplorerEntryKind, parentDirectory?: string) => {
+			if (!rootDir) return;
+			const parent = parentDirectory ?? resolveCreateParentDirectory(rootDir, selectedEntry);
+			setContextMenu(null);
+			setRenamingPath(null);
+			if (parent !== rootDir) void expandDir(parent);
+			setCreatingEntry({ parentPath: parent, kind, error: null, busy: false });
+		},
+		[expandDir, rootDir, selectedEntry, setContextMenu, setRenamingPath],
+	);
+
+	const handleCreateSubmit = useCallback(
+		(name: string) => {
+			if (!creatingEntry) return;
+			const issue = getFileExplorerEntryNameIssue(name, { windows: isWindows });
+			if (issue) {
+				setCreatingEntry((current) => (current ? { ...current, error: getCreateNameError(issue) } : current));
+				return;
+			}
+
+			const pending = creatingEntry;
+			setCreatingEntry({ ...pending, error: null, busy: true });
+			void window.vetta.fs
+				.createEntry(pending.parentPath, name, pending.kind)
+				.then(async (entry) => {
+					await refreshDir(pending.parentPath);
+					emitPluginFileExplorerFilesChanged([{ type: "created", path: entry.path }]);
+					setSelectedEntry(entry);
+					emitPluginFileExplorerSelectionChanged([entry]);
+					setCreatingEntry(null);
+				})
+				.catch((error: unknown) => {
+					const message = String(error).includes(FILE_EXPLORER_ENTRY_EXISTS_ERROR)
+						? t("fileExplorer.createAlreadyExists")
+						: t("fileExplorer.createFailed");
+					setCreatingEntry((current) =>
+						current?.parentPath === pending.parentPath && current.kind === pending.kind
+							? { ...current, error: message, busy: false }
+							: current,
+					);
+				});
+		},
+		[creatingEntry, getCreateNameError, refreshDir, t],
+	);
 
 	useEffect(() => {
 		const handle = bindPluginFileExplorerHost({
@@ -297,9 +379,28 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		(entry: FsEntry, x: number, y: number) => {
 			setSelectedEntry(entry);
 			emitPluginFileExplorerSelectionChanged([entry]);
-			setContextMenu({ x, y, entry });
+			setContextMenu({ x, y, entry, isRoot: false });
 		},
 		[setContextMenu],
+	);
+
+	const onRootContextMenu = useCallback(
+		(x: number, y: number) => {
+			if (!rootDir) return;
+			setContextMenu({
+				x,
+				y,
+				isRoot: true,
+				entry: {
+					name: pathBasename(rootDir),
+					path: rootDir,
+					isDirectory: true,
+					size: 0,
+					modifiedAt: 0,
+				},
+			});
+		},
+		[rootDir, setContextMenu],
 	);
 
 	if (!rootDir) {
@@ -339,7 +440,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			title={t("fileExplorer.clearArtifacts")}
 			onClick={handleClearArtifacts}
 		>
-			<span className="icon-[mdi--broom] h-3.5 w-3.5" />
+			<span className="icon-[solar--broom-linear] h-3.5 w-3.5" />
 		</Button>
 	) : undefined;
 
@@ -350,12 +451,12 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			title={t("fileExplorer.refresh")}
 			onClick={() => void refreshDir(rootDir)}
 		>
-			<span className="icon-[mdi--refresh] h-3.5 w-3.5" />
+			<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
 		</Button>
 	);
 
 	const workspaceRoot = { name: projectName, path: rootDir };
-	const toolbarActions = sortFileExplorerActions(pluginToolbarActions).map((action) => (
+	const pluginToolbarActionNodes = sortFileExplorerActions(pluginToolbarActions).map((action) => (
 		<Button
 			key={action.actionId}
 			variant="ghost"
@@ -377,6 +478,38 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			</PluginInlineI18nBoundary>
 		</Button>
 	));
+	const toolbarActions = (
+		<>
+			<Button
+				variant="ghost"
+				size="icon-xs"
+				title={t("fileExplorer.newFile")}
+				onClick={() => beginCreate("file")}
+			>
+				<span className="icon-[solar--document-add-linear] h-3.5 w-3.5" />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon-xs"
+				title={t("fileExplorer.newFolder")}
+				onClick={() => beginCreate("directory")}
+			>
+				<span className="icon-[solar--add-folder-linear] h-3.5 w-3.5" />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon-xs"
+				title={t("fileExplorer.collapseAll")}
+				onClick={() => {
+					setCreatingEntry(null);
+					collapseAll();
+				}}
+			>
+				<span className="icon-[solar--minimize-square-linear] h-3.5 w-3.5" />
+			</Button>
+			{pluginToolbarActionNodes}
+		</>
+	);
 
 	const tree = (
 		<FileTree
@@ -385,6 +518,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			expandedDirs={expandedDirs}
 			loadingDirs={loadingDirs}
 			selectedPath={selectedPath}
+			creatingEntry={creatingEntry}
 			onToggleDir={toggleDir}
 			onSelectFile={handleSelectFile}
 			onRename={renameEntry}
@@ -392,6 +526,9 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			onExternalDrop={onExternalDrop}
 			onNativeDragStart={onNativeDragStart}
 			onContextMenu={onContextMenu}
+			onRootContextMenu={onRootContextMenu}
+			onCreateSubmit={handleCreateSubmit}
+			onCreateCancel={() => setCreatingEntry(null)}
 		/>
 	);
 
@@ -400,11 +537,13 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			x={contextMenu.x}
 			y={contextMenu.y}
 			entry={contextMenu.entry}
+			isRoot={contextMenu.isRoot}
 			onClose={() => setContextMenu(null)}
 			onDelete={(entry) => {
 				setContextMenu(null);
 				setDeleteTarget(entry);
 			}}
+			onCreate={beginCreate}
 		/>
 	) : null;
 

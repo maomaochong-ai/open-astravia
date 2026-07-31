@@ -112,6 +112,7 @@ src/
 
 - 新功能代码放入对应的 `domains/<领域>/` 目录
 - 跨领域共享的代码放入 `shared/`
+- 可主题化的纯 UI 展现组件放入 `@vetta/theme-ui`；desktop-app 领域层只保留数据加载、状态、i18n 与事件适配，通过 props/view model 驱动 UI。
 - **不要**在 `domains/` 外面创建新的顶层目录（如 `components/`, `hooks/`, `lib/`）
 - 每个领域内部结构：`components/`, `hooks/`, `services/`（按需）
 - 领域间通过 `@shared/store/atoms` 共享状态，不要跨领域直接 import 其他领域的内部模块

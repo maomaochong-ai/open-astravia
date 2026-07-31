@@ -1293,6 +1293,8 @@
   "shortcutOpenProjectDesc": "Select and open a project folder",
   "shortcutOpenSettingsLabel": "Open Settings",
   "shortcutOpenSettingsDesc": "Open the settings page",
+  "shortcutSaveFileLabel": "Save File",
+  "shortcutSaveFileDesc": "Save the current file in the right-side editor",
   "kbHiwTitle": "How the Knowledge Base Works",
   "kbHiwSubtitle": "Three simple steps to see how your materials become knowledge the AI can use, and where tokens are spent.",
   "kbHiwStep1Title": "Add Materials",

@@ -1,4 +1,4 @@
-import { explicitTabVisibility } from "@domains/plugins/runtime/attached-tabs";
+import { explicitTabVisibility, withPluginTabVisibility } from "@domains/plugins/runtime/attached-tabs";
 import { usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
 import type { TabBarItem } from "@shared/components/ui/tab-bar";
 import { useNarrowScreen, useWindowWidth } from "@shared/hooks/useNarrowScreen";
@@ -62,7 +62,7 @@ export function useActivityPanelModel({
 	const narrow = useNarrowScreen();
 	const activeSession = useAtomValue(activeSessionAtom);
 	const browserUrlMap = useAtomValue(browserUrlBySessionAtom);
-	const attachedPluginTabsMap = useAtomValue(attachedPluginTabsAtom);
+	const [attachedPluginTabsMap, setAttachedPluginTabsMap] = useAtom(attachedPluginTabsAtom);
 	const browserUrl = getBrowserUrlForSession(browserUrlMap, activeSession?.sessionPath ?? null);
 	const [width, setWidth] = useAtom(activityPanelWidthAtom);
 	const [isResizing, setIsResizing] = useState(false);
@@ -114,21 +114,39 @@ export function useActivityPanelModel({
 		}
 		return off;
 	}, [pluginInputActions, activeInputActionIds]);
-	// 插件 tab 的可见性：插件显式表过态（setActivityTabVisible / openActivityTab）
-	// 就听插件的，否则看它注册时的 initiallyVisible（缺省 true，注册即上栏）。
-	// 外加 scope_use（fail-closed）与硬隔离开关（ADR-0041）两道闸。
-	const pluginTabContribs = useMemo(
+	/** scope 命中且未因 hardIsolation 关闭的注册项（可添加池，尚未按可见性过滤）。 */
+	const scopedPluginTabs = useMemo(
 		() =>
 			enablePluginTabs && currentScenario !== null
 				? registeredPluginTabs.filter(
-						(tab) =>
-							tab.scope_use?.includes(currentScenario) &&
-							!hardIsolationOffPluginIds.has(tab.pluginId) &&
-							(explicitTabVisibility(tabVisibilityRecords, `${tab.pluginId}:${tab.tabId}`) ??
-								tab.initiallyVisible !== false),
+						(tab) => tab.scope_use?.includes(currentScenario) && !hardIsolationOffPluginIds.has(tab.pluginId),
 					)
 				: [],
-		[enablePluginTabs, registeredPluginTabs, currentScenario, hardIsolationOffPluginIds, tabVisibilityRecords],
+		[enablePluginTabs, registeredPluginTabs, currentScenario, hardIsolationOffPluginIds],
+	);
+	// 插件 tab 的可见性：插件显式表过态（setActivityTabVisible / openActivityTab）
+	// 就听插件的，否则看它注册时的 initiallyVisible（缺省 true，注册即上栏）。
+	const isPluginTabOnBar = useCallback(
+		(tab: { pluginId: string; tabId: string; initiallyVisible?: boolean }): boolean =>
+			explicitTabVisibility(tabVisibilityRecords, `${tab.pluginId}:${tab.tabId}`) ?? tab.initiallyVisible !== false,
+		[tabVisibilityRecords],
+	);
+	const pluginTabContribs = useMemo(
+		() => scopedPluginTabs.filter((tab) => isPluginTabOnBar(tab)),
+		[scopedPluginTabs, isPluginTabOnBar],
+	);
+	/** 已注册、当前场景可见、但未上栏 → 「+」菜单可添加池。 */
+	const availablePluginTabs = useMemo(
+		() =>
+			scopedPluginTabs
+				.filter((tab) => !isPluginTabOnBar(tab))
+				.map((tab) => ({
+					key: `plugin:${tab.pluginId}:${tab.tabId}` as ActivityTabKey,
+					label: trPlugin(tab.pluginId, tab.label),
+					icon: tab.icon ?? DEFAULT_PLUGIN_TAB_ICON,
+					subtitle: trPlugin(tab.pluginId, tab.pluginName),
+				})),
+		[scopedPluginTabs, isPluginTabOnBar, trPlugin],
 	);
 	const [hiddenTabsMap, setHiddenTabsMap] = useAtom(hiddenActivityTabsAtom);
 	const [tabOrderMap, setTabOrderMap] = useAtom(activityTabOrderAtom);
@@ -319,6 +337,16 @@ export function useActivityPanelModel({
 	const onRemoveTab = useCallback(
 		(key: ActivityTabKey) => {
 			if (!cwd || NON_HIDEABLE_TABS.has(key)) return;
+			// 插件 tab：写显式下栏，回到「+」可添加池（不进 hidden 列表）。
+			if (key.startsWith("plugin:")) {
+				const attachKey = key.slice("plugin:".length);
+				const nextAttached = withPluginTabVisibility(attachedPluginTabsMap, cwd, attachKey, false);
+				if (nextAttached) setAttachedPluginTabsMap(nextAttached);
+				if (activeTab === key) {
+					onTabChange(tabItems.find((item) => item.key !== key)?.key ?? "file");
+				}
+				return;
+			}
 			const next = new Map(hiddenTabsMap);
 			const current = next.get(cwd) ?? [];
 			if (!current.includes(key)) next.set(cwd, [...current, key]);
@@ -327,7 +355,16 @@ export function useActivityPanelModel({
 				onTabChange(tabItems.find((item) => item.key !== key)?.key ?? "file");
 			}
 		},
-		[cwd, hiddenTabsMap, setHiddenTabsMap, activeTab, tabItems, onTabChange],
+		[
+			cwd,
+			attachedPluginTabsMap,
+			setAttachedPluginTabsMap,
+			hiddenTabsMap,
+			setHiddenTabsMap,
+			activeTab,
+			tabItems,
+			onTabChange,
+		],
 	);
 	const onRestoreTab = useCallback(
 		(key: string) => {
@@ -341,6 +378,18 @@ export function useActivityPanelModel({
 			onTabChange(key as ActivityTabKey);
 		},
 		[cwd, hiddenTabsMap, setHiddenTabsMap, onTabChange],
+	);
+	/** 从可添加池显式上栏插件 tab 并切过去（与 openActivityTab 同语义，不强制改宽度）。 */
+	const onAttachPluginTab = useCallback(
+		(key: string) => {
+			if (!cwd || !key.startsWith("plugin:")) return;
+			const attachKey = key.slice("plugin:".length);
+			const nextAttached = withPluginTabVisibility(attachedPluginTabsMap, cwd, attachKey, true);
+			if (nextAttached) setAttachedPluginTabsMap(nextAttached);
+			onTabChange(key as ActivityTabKey);
+			setOpen(true);
+		},
+		[cwd, attachedPluginTabsMap, setAttachedPluginTabsMap, onTabChange, setOpen],
 	);
 	const onReorderTabs = useCallback(
 		(keys: ActivityTabKey[]) => {
@@ -358,10 +407,14 @@ export function useActivityPanelModel({
 				.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
 		[tabItems, overflowKeys],
 	);
-	const showTabPicker = cwd !== null && !knowledgeHistory && (restorableTabs.length > 0 || overflowTabs.length > 0);
+	const showTabPicker =
+		cwd !== null &&
+		!knowledgeHistory &&
+		(restorableTabs.length > 0 || overflowTabs.length > 0 || availablePluginTabs.length > 0);
 
 	return {
 		actions: {
+			onAttachPluginTab,
 			onClose,
 			onOverflowChange: setOverflowKeys,
 			onRemoveTab,
@@ -374,6 +427,7 @@ export function useActivityPanelModel({
 		model: {
 			activePluginTab,
 			activeTab,
+			availablePluginTabs,
 			bottomSheet: narrow && isOpen,
 			browserUrl,
 			cwd,
