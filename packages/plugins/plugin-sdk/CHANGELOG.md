@@ -4,6 +4,8 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-07-31
+
 ### Breaking Changes
 
 - Removed `pendingInstall` from `PluginOfficialUpdaterState`; the `ready` phase is now the single source of truth, and downloaded updates are installed by `electron-updater` when the app quits.
