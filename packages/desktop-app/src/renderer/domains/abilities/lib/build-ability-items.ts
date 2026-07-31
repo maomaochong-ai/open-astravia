@@ -37,6 +37,7 @@ import {
 	type PluginAbility,
 	type SkillAbility,
 } from "../types";
+import { builtinSkillIconUrl } from "./builtin-skill-icons";
 import { buildMarketAbilityId, getMarketCatalogSource, getOpenCatalogOrigin } from "./merge-ability-catalogs";
 
 /**
@@ -228,6 +229,8 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			catalogSource: source,
 			title: skill.alias || skill.name,
 			description: skill.description,
+			// 内置 Skill 的图标随 renderer 静态资源分发；用户/插件来源的 skill 无图标，落默认图。
+			icon: isBuiltin ? builtinSkillIconUrl(skill.name) : undefined,
 			category: "",
 			tags: [],
 			author: "",

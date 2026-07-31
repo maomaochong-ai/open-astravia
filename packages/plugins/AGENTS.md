@@ -19,8 +19,8 @@ preset 插件 id 完整列表：
 {
   "default": "common",
   "tenants": {
-    "common": ["guiding-words", "image-gen", "svg-viewer"],
-    "tenantb": ["guiding-words", "image-gen", "svg-viewer", "demo-map"]
+    "common": ["vetta-actions", "image-gen", "svg-viewer"],
+    "tenantb": ["vetta-actions", "image-gen", "svg-viewer", "demo-map"]
   }
 }
 ```

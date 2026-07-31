@@ -186,6 +186,22 @@ describe("buildSkillAbilities", () => {
 		]);
 	});
 
+	it("gives app-shipped skills their bundled icon, and only them", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{ name: "create-skill", description: "", source: "builtin", type: "skill" },
+					// 同名但用户来源：不能借用内置图标。
+					{ name: "publish-ability", description: "", source: "user", type: "skill" },
+					{ name: "pdf", description: "", source: "builtin", type: "skill" },
+				],
+			}),
+		);
+
+		expect(items.map((item) => item.icon)).toEqual(["./skills/create-skill.png", undefined, undefined]);
+	});
+
 	it("does not duplicate an installed skill that listSkills also reports", () => {
 		const market = { ...createBundle([]), type: "skill" as const, slug: "translator" };
 		const items = buildSkillAbilities(
