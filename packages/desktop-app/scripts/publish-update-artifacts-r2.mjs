@@ -6,11 +6,15 @@ import { pathToFileURL } from "node:url";
 import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { parse } from "yaml";
+import {
+	generateDownloadManifest,
+	referencedFileName,
+	updaterMetadataPattern,
+} from "./generate-download-manifest.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 const releaseDir = join(projectRoot, "release");
-const metadataPattern = /^latest(?:-(?:mac|linux)(?:-[a-z0-9_-]+)?)?\.ya?ml$/i;
-const artifactPattern = /\.(?:appimage|blockmap|dmg|exe|zip)$/i;
+const downloadManifestFile = "downloads.yml";
 const multipartPartSize = 16 * 1024 * 1024;
 
 function requireEnv(key) {
@@ -109,22 +113,10 @@ function contentTypeFor(fileName) {
 	return "application/octet-stream";
 }
 
-function referencedFileName(reference) {
-	if (typeof reference !== "string" || !reference.trim()) return undefined;
-	let pathname = reference.trim().split(/[?#]/, 1)[0];
-	try {
-		pathname = new URL(reference).pathname;
-	} catch {
-		// electron-builder 的更新清单通常使用相对路径。
-	}
-	const fileName = posix.basename(decodeURIComponent(pathname.replaceAll("\\", "/")));
-	return artifactPattern.test(fileName) ? fileName : undefined;
-}
-
 export async function collectArtifacts(directory = releaseDir) {
 	const entries = await readdir(directory, { withFileTypes: true });
 	const availableFiles = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
-	const metadataFiles = [...availableFiles].filter((fileName) => metadataPattern.test(fileName)).sort();
+	const metadataFiles = [...availableFiles].filter((fileName) => updaterMetadataPattern.test(fileName)).sort();
 
 	if (metadataFiles.length === 0) {
 		throw new Error(`[publish-updates-r2] no electron-updater metadata found in ${directory}`);
@@ -159,7 +151,7 @@ export async function collectArtifacts(directory = releaseDir) {
 
 export async function readReleaseVersion(directory = releaseDir) {
 	const metadataFiles = (await readdir(directory, { withFileTypes: true }))
-		.filter((entry) => entry.isFile() && metadataPattern.test(entry.name))
+		.filter((entry) => entry.isFile() && updaterMetadataPattern.test(entry.name))
 		.map((entry) => entry.name);
 	const versions = new Set();
 	for (const metadataFile of metadataFiles) {
@@ -274,9 +266,12 @@ export async function main() {
 		credentials: { accessKeyId, secretAccessKey },
 	});
 
+	await generateDownloadManifest();
 	const files = await collectArtifacts();
-	const artifactFiles = files.filter((fileName) => !metadataPattern.test(fileName));
-	const metadataFiles = files.filter((fileName) => metadataPattern.test(fileName));
+	const artifactFiles = files.filter((fileName) => !updaterMetadataPattern.test(fileName));
+	const metadataFiles = files
+		.filter((fileName) => updaterMetadataPattern.test(fileName))
+		.concat(downloadManifestFile);
 	await verifyRemoteMetadataVersions({ updateUrl, metadataFiles, releaseVersion });
 	for (const fileName of artifactFiles) {
 		await uploadFile({ client, bucket, prefix, fileName, isMetadata: false });

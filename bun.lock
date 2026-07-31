@@ -532,7 +532,7 @@
     },
     "packages/plugins/plugin-sdk": {
       "name": "@vetta-org/plugin-sdk",
-      "version": "0.0.4",
+      "version": "0.1.0",
       "devDependencies": {
         "@types/react": "^19.1.1",
         "typescript": "^5.9.2",
@@ -845,6 +845,7 @@
         "react-dom": "^19.2.3",
         "tailwind-merge": "^3.6.0",
         "tailwindcss": "^4.1.18",
+        "yaml": "^2.9.0",
       },
       "devDependencies": {
         "@lobehub/icons-static-avatar": "^1.13.0",

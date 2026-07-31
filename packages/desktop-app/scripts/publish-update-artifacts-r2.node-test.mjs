@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -10,6 +10,45 @@ import {
 	validatePublishTarget,
 	verifyRemoteMetadataVersions,
 } from "./publish-update-artifacts-r2.mjs";
+import { generateDownloadManifest } from "./generate-download-manifest.mjs";
+
+test("generateDownloadManifest combines platform metadata into one website manifest", async () => {
+	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-downloads-"));
+	try {
+		await Promise.all([
+			writeFile(
+				join(directory, "latest.yml"),
+				"version: 1.2.3\nreleaseDate: 2026-07-31T00:00:00.000Z\nfiles:\n  - url: Vetta-1.2.3-win-x64.exe\n    sha512: windows\n    size: 10\n",
+			),
+			writeFile(
+				join(directory, "latest-mac.yml"),
+				"version: 1.2.3\nfiles:\n  - url: Vetta-1.2.3-mac-arm64.zip\n  - url: Vetta-1.2.3-mac-arm64.dmg\n  - url: Vetta-1.2.3-mac-x64.dmg\n",
+			),
+			writeFile(
+				join(directory, "latest-linux-arm64.yml"),
+				"version: 1.2.3\nfiles:\n  - url: Vetta-1.2.3.AppImage\n",
+			),
+		]);
+
+		const manifest = await generateDownloadManifest(directory);
+		assert.deepEqual(manifest.files, [
+			{ platform: "mac", arch: "arm64", format: "dmg", url: "Vetta-1.2.3-mac-arm64.dmg" },
+			{ platform: "mac", arch: "x64", format: "dmg", url: "Vetta-1.2.3-mac-x64.dmg" },
+			{
+				platform: "windows",
+				arch: "x64",
+				format: "exe",
+				url: "Vetta-1.2.3-win-x64.exe",
+				sha512: "windows",
+				size: 10,
+			},
+			{ platform: "linux", arch: "arm64", format: "appimage", url: "Vetta-1.2.3.AppImage" },
+		]);
+		assert.match(await readFile(join(directory, "downloads.yml"), "utf8"), /version: 1\.2\.3/);
+	} finally {
+		await rm(directory, { recursive: true, force: true });
+	}
+});
 
 test("collectArtifacts uploads only files referenced by updater metadata and publishes metadata last", async () => {
 	const directory = await mkdtemp(join(tmpdir(), "vetta-r2-publish-"));
