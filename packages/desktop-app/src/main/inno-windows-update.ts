@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
-import { mkdir, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { rm as rmPhysicalFallback, statSync } from "node:fs";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { basename, dirname, join, win32 } from "node:path";
 import type { ProgressInfo, UpdateInfo } from "builder-util-runtime";
 import { CancellationError } from "builder-util-runtime";
@@ -9,6 +11,16 @@ const VERSION_PATTERN = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const WINDOWS_EXECUTABLE_NAME = "Vetta.exe";
 const INSTALL_COMPLETE_FILE_NAME = ".install-complete";
 const PROGRESS_POLL_INTERVAL_MS = 250;
+const INSTALL_VISIBILITY_TIMEOUT_MS = 30_000;
+const requireNative = createRequire(import.meta.url);
+
+interface PhysicalFileSystem {
+	rm: typeof rmPhysicalFallback;
+}
+
+const physicalFileSystem: PhysicalFileSystem = process.versions.electron
+	? requireNative("original-fs")
+	: { rm: rmPhysicalFallback };
 
 interface InnoUpdateSelection {
 	version: string;
@@ -206,13 +218,27 @@ async function installWithInno(
 }
 
 async function assertFile(path: string): Promise<void> {
+	const previousNoAsar = process.noAsar;
+	process.noAsar = true;
 	try {
-		const info = await stat(path);
+		// Electron otherwise exposes the app.asar archive itself as a virtual directory.
+		const info = statSync(path);
 		if (info.isFile()) return;
 	} catch {
 		// Report one stable validation error below.
+	} finally {
+		process.noAsar = previousNoAsar;
 	}
 	throw new Error(`Expected file: ${path}`);
+}
+
+async function removePhysicalDirectory(path: string): Promise<void> {
+	await new Promise<void>((resolvePromise, rejectPromise) => {
+		physicalFileSystem.rm(path, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }, (error) => {
+			if (error) rejectPromise(error);
+			else resolvePromise();
+		});
+	});
 }
 
 async function assertCompleteVersionDirectory(versionDir: string): Promise<void> {
@@ -221,6 +247,22 @@ async function assertCompleteVersionDirectory(versionDir: string): Promise<void>
 		assertFile(join(versionDir, WINDOWS_EXECUTABLE_NAME)),
 		assertFile(join(versionDir, "resources", "app.asar")),
 	]);
+}
+
+async function waitForCompleteVersionDirectory(versionDir: string, signal: AbortSignal): Promise<void> {
+	const deadline = Date.now() + INSTALL_VISIBILITY_TIMEOUT_MS;
+	let lastError: unknown;
+	do {
+		if (signal.aborted) throw new CancellationError();
+		try {
+			await assertCompleteVersionDirectory(versionDir);
+			return;
+		} catch (error) {
+			lastError = error;
+		}
+		await new Promise((resolvePromise) => setTimeout(resolvePromise, PROGRESS_POLL_INTERVAL_MS));
+	} while (Date.now() < deadline);
+	throw lastError;
 }
 
 export function isVersionedWindowsExecutable(executablePath: string, version: string): boolean {
@@ -285,12 +327,12 @@ export class InnoWindowsUpdateController {
 			// Continue with the downloaded installer.
 		}
 
-		await rm(destinationDir, { recursive: true, force: true });
+		await removePhysicalDirectory(destinationDir);
 		report(0);
 		console.info("[updater] preparing Windows version with Inno Setup", installerPath);
 		await this.installInstaller(installerPath, this.runtime.storeRoot, selection.version, report, signal);
 		if (signal.aborted) throw new CancellationError();
-		await assertCompleteVersionDirectory(destinationDir);
+		await waitForCompleteVersionDirectory(destinationDir, signal);
 		this.prepared = { version: selection.version, executablePath };
 		onProgress({
 			bytesPerSecond: 0,
@@ -317,8 +359,8 @@ export class InnoWindowsUpdateController {
 	async markCurrentVersionHealthy(): Promise<void> {
 		const pointerPath = join(this.runtime.storeRoot, "current.json");
 		const pointer = await readPointer(pointerPath);
-		if (!pointer || pointer.version !== this.runtime.currentVersion || !pointer.pending) return;
-		await writePointer(pointerPath, { ...pointer, pending: false });
+		if (!pointer || pointer.version !== this.runtime.currentVersion) return;
+		if (pointer.pending) await writePointer(pointerPath, { ...pointer, pending: false });
 		await this.cleanupVersions(pointer);
 	}
 
@@ -336,7 +378,13 @@ export class InnoWindowsUpdateController {
 		await Promise.all(
 			entries
 				.filter((entry) => isValidVersion(entry) && !keep.has(entry))
-				.map((entry) => rm(join(versionsRoot, entry), { recursive: true, force: true })),
+				.map(async (entry) => {
+					try {
+						await removePhysicalDirectory(join(versionsRoot, entry));
+					} catch (error) {
+						console.warn(`[updater] unable to remove old version ${entry}`, error);
+					}
+				}),
 		);
 	}
 }

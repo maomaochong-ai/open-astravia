@@ -41,8 +41,9 @@ export class FileTokenNode extends DecoratorNode<JSX.Element> {
 		return true;
 	}
 
-	isKeyboardSelectable(): true {
-		return true;
+	/** 见 SkillTokenNode：keyboard-selectable 会让方向键把光标吃掉。 */
+	isKeyboardSelectable(): false {
+		return false;
 	}
 
 	getTextContent(): string {

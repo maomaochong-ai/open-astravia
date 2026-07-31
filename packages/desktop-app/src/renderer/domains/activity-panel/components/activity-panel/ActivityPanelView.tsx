@@ -47,6 +47,8 @@ export function ActivityPanelView({
 			onRestore={actions.onRestoreTab}
 			overflowTabs={model.overflowTabs}
 			onSelectOverflow={(key) => actions.onTabChange(key as ActivityTabKey)}
+			availablePluginTabs={model.availablePluginTabs}
+			onAttachPlugin={actions.onAttachPluginTab}
 		/>
 	) : null;
 

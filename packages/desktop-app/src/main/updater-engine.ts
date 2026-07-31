@@ -26,8 +26,28 @@ export interface UpdateEngineDownload {
 export interface UpdateEngine {
 	onAppReady?(): Promise<void>;
 	checkForUpdates(): Promise<UpdateEngineCheckResult | null>;
-	downloadUpdate(onProgress: (progress: ProgressInfo) => void): UpdateEngineDownload;
+	/**
+	 * `onStaging` 表示传输已结束、进入不再产生 progress 的安装准备阶段
+	 * （macOS 下即 Squirrel.Mac 解包与签名校验），调用方据此改用更长的兜底超时。
+	 */
+	downloadUpdate(onProgress: (progress: ProgressInfo) => void, onStaging?: () => void): UpdateEngineDownload;
 	quitAndInstall(): Promise<void>;
+}
+
+/**
+ * 把控制权交给安装器前后各需要一次介入，缺任何一个这条链路都会静默失败，
+ * 三种失败模式见 quitAndInstall 的注释与 mac-installer-handoff.ts。
+ */
+export interface UpdateEngineQuitHooks {
+	/** 交棒前：标记应用正在退出，并跑完退出清理。 */
+	prepare?: () => Promise<void> | void;
+	/** 交棒后：等安装器接手，再真正结束本进程。 */
+	finalize?: () => Promise<void>;
+}
+
+export interface NativeMacUpdateEvents {
+	onUpdateDownloaded(listener: () => void): () => void;
+	onError(listener: (error: Error) => void): () => void;
 }
 
 interface UpdateProviderAccess {
@@ -97,12 +117,39 @@ function mapUpdateInfo(info: UpdateInfo): UpdateEngineInfo {
 	};
 }
 
+function waitForNativeMacUpdate(events: NativeMacUpdateEvents): { promise: Promise<void>; dispose: () => void } {
+	let disposed = false;
+	let removeUpdateDownloadedListener = () => {};
+	let removeErrorListener = () => {};
+
+	const dispose = () => {
+		if (disposed) return;
+		disposed = true;
+		removeUpdateDownloadedListener();
+		removeErrorListener();
+	};
+	const promise = new Promise<void>((resolve, reject) => {
+		removeUpdateDownloadedListener = events.onUpdateDownloaded(() => {
+			dispose();
+			resolve();
+		});
+		removeErrorListener = events.onError((error) => {
+			dispose();
+			reject(error);
+		});
+	});
+
+	return { promise, dispose };
+}
+
 export class ElectronUpdaterEngine implements UpdateEngine {
 	private useInnoUpdate = false;
 
 	constructor(
 		private readonly updater: AppUpdater,
 		private readonly innoWindowsUpdate?: InnoWindowsUpdateController,
+		private readonly nativeMacUpdateEvents?: NativeMacUpdateEvents,
+		private readonly quitHooks: UpdateEngineQuitHooks = {},
 	) {
 		this.updater.autoDownload = false;
 		this.updater.autoInstallOnAppQuit = !innoWindowsUpdate;
@@ -139,12 +186,16 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 		};
 	}
 
-	downloadUpdate(onProgress: (progress: ProgressInfo) => void): UpdateEngineDownload {
+	downloadUpdate(onProgress: (progress: ProgressInfo) => void, onStaging?: () => void): UpdateEngineDownload {
 		const cancellationToken = new CancellationToken();
 		const abortController = new AbortController();
+		// 两个平台的下载后都还有一段本地安装准备（Windows 的 Inno 展开版本目录、
+		// macOS 的 Squirrel.Mac 解包与验签），因此网络阶段统一压缩到 0～90%，
+		// 「90% 之后是本地准备而非网络问题」这条排障语义在两端一致。
 		const listener = (progress: ProgressInfo) => {
+			const hasLocalPreparation = this.useInnoUpdate || this.nativeMacUpdateEvents !== undefined;
 			onProgress(
-				this.useInnoUpdate
+				hasLocalPreparation
 					? {
 							...progress,
 							percent: Math.min(90, progress.percent * 0.9),
@@ -153,9 +204,29 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 			);
 		};
 		this.updater.on("download-progress", listener);
+		const nativeMacReadiness = this.nativeMacUpdateEvents
+			? waitForNativeMacUpdate(this.nativeMacUpdateEvents)
+			: undefined;
+		if (nativeMacReadiness) {
+			console.info("[updater] waiting for Squirrel.Mac to stage the update");
+		}
 
-		const promise = this.updater
-			.downloadUpdate(cancellationToken)
+		const updaterDownloadPromise = this.updater.downloadUpdate(cancellationToken);
+		// electron-updater 在把 ZIP 喂完给 Squirrel.Mac 的那一刻就 resolve，之后的解包与
+		// 签名校验不再产生 download-progress 事件，必须显式告知调用方进入了暂存阶段。
+		const stagedDownloadPromise = nativeMacReadiness
+			? Promise.all([
+					updaterDownloadPromise.then((downloadedPaths) => {
+						onStaging?.();
+						return downloadedPaths;
+					}),
+					nativeMacReadiness.promise,
+				]).then(([downloadedPaths]) => {
+					console.info("[updater] Squirrel.Mac update is ready to install");
+					return downloadedPaths;
+				})
+			: updaterDownloadPromise;
+		const promise = stagedDownloadPromise
 			.then(async (downloadedPaths) => {
 				if (!this.useInnoUpdate || !this.innoWindowsUpdate) return downloadedPaths;
 				const installerPath = downloadedPaths[0];
@@ -173,6 +244,7 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 				return preparedPaths;
 			})
 			.finally(() => {
+				nativeMacReadiness?.dispose();
 				this.updater.off("download-progress", listener);
 			});
 
@@ -186,10 +258,19 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 	}
 
 	async quitAndInstall(): Promise<void> {
+		// 交棒前：标记「正在退出」并跑完退出清理。不标记的话窗口 close 守卫会把关闭
+		// 改成隐藏，而 Squirrel.Mac 走 NSApp terminate 语义，任一窗口 preventDefault
+		// 就取消整个终止流程——症状是「点了重启但应用没退」。
+		await this.quitHooks.prepare?.();
 		if (this.useInnoUpdate && this.innoWindowsUpdate) {
 			await this.innoWindowsUpdate.activate();
-			return;
+		} else {
+			this.updater.quitAndInstall(true, true);
 		}
-		this.updater.quitAndInstall(true, true);
+		// 交棒后：等安装器接手再结束进程。既不能立刻硬 exit（Squirrel 还没提交
+		// launchd 作业），也不能不 exit（本进程挂着 sidecar 等句柄不会自行退出，而
+		// launchd 要等目标进程退出才 spawn ShipIt）。两种都实测失败过，
+		// 详见 mac-installer-handoff.ts。
+		await this.quitHooks.finalize?.();
 	}
 }

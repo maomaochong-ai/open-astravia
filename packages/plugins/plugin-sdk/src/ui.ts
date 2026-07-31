@@ -81,6 +81,13 @@ export interface PluginActivityTabContribution {
 	 * `["project", "conversation"]`）。会话页插槽据此随对话类型显隐。
 	 */
 	scope_use?: readonly ConversationScenario[];
+	/**
+	 * 注册后是否默认在标签栏里（缺省 `true`）。声明 `false` 表示「出现条件由我
+	 * 自己决定」——注册只是入池，之后由 {@link PluginUiApi.setActivityTabVisible}
+	 * 或 {@link PluginUiApi.openActivityTab} 决定何时上栏（如 git 只在仓库目录、
+	 * 工作台跟随输入栏 toggle）。无论哪种，用户仍可用减号手动隐藏。
+	 */
+	initiallyVisible?: boolean;
 }
 
 /** Options for {@link PluginUiApi.openActivityTab}. */
@@ -332,6 +339,17 @@ export interface PluginUiApi {
 	 * to leave the user's current width untouched.
 	 */
 	openActivityTab(tabId: string, options?: PluginOpenActivityTabOptions): void;
+	/**
+	 * 把本插件的某个活动面板标签卡在当前会话里上栏 / 下栏，**不激活也不展开
+	 * 面板**——`openActivityTab` 是「用户此刻要看它」，这个是「它现在该不该在
+	 * 栏里」。配合 `initiallyVisible: false` 使用，插件即可完全掌握自己标签卡的
+	 * 出现条件（如 git 只在仓库目录里上栏、工作台跟随输入栏 toggle）。
+	 *
+	 * 上栏记录按会话 cwd 持久化（ADR-0026），所以只需在条件变化时调用一次；
+	 * 用户随后用减号手动隐藏的结果不会被重复调用覆盖。当前没有活动会话时为
+	 * no-op（无处记录），插件应在会话就绪后重新判定。
+	 */
+	setActivityTabVisible(tabId: string, visible: boolean): void;
 	/**
 	 * Bind or clear plugin-owned one-shot context for the next outgoing prompt.
 	 * The host renders its label/icon, merges metadata and hidden instructions,

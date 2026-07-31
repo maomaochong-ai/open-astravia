@@ -1,5 +1,6 @@
 import type { AppMonitorPromptRefUsageMap, SkillInfo } from "@preload/api";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { filterSkills, sortSkillsForPanel } from "../lib/skill-ranking";
 
 export interface SkillListModel {
@@ -20,12 +21,18 @@ interface SkillListData {
  * 与用量统计，数据会在高度动画进行中才到位：`height: auto` 的目标被不断重测，
  * 同时主线程正在渲染几十行列表 —— 表现就是「第一次展开卡一下，第二次就顺了」。
  * 因此预取一次并缓存，展开时先用缓存立即出内容。
+ *
+ * 键带语言：内置 skill 的展示文案由主进程按当前语言给出，切语言后不能复用旧缓存。
  */
 const cache = new Map<string, SkillListData>();
 const inflight = new Map<string, Promise<SkillListData>>();
 
-async function load(cwd: string | undefined): Promise<SkillListData> {
-	const key = cwd ?? "";
+function cacheKey(cwd: string | undefined, language: string): string {
+	return `${language}|${cwd ?? ""}`;
+}
+
+async function load(cwd: string | undefined, language: string): Promise<SkillListData> {
+	const key = cacheKey(cwd, language);
 	const running = inflight.get(key);
 	if (running) return running;
 	const task = Promise.all([
@@ -71,7 +78,9 @@ export function useSkillList({
 	filter: string;
 	prefetch?: boolean;
 }): SkillListModel {
-	const cached = cache.get(cwd ?? "");
+	const { i18n } = useTranslation();
+	const language = i18n.language;
+	const cached = cache.get(cacheKey(cwd, language));
 	const [skills, setSkills] = useState<SkillInfo[]>(cached?.skills ?? []);
 	const [usage, setUsage] = useState<AppMonitorPromptRefUsageMap>(cached?.usage ?? {});
 	const [loading, setLoading] = useState(false);
@@ -80,9 +89,9 @@ export function useSkillList({
 	// 刻意不等 requestIdleCallback：冷启动那几秒主线程被插件与主题占满，idle 会一路拖到
 	// 超时才跑，预取赶不上第一次展开就等于没预取。IPC 本身是异步的，挂载即发起不阻塞渲染。
 	useEffect(() => {
-		if (!prefetch || open || cache.has(cwd ?? "")) return;
-		void load(cwd).catch(() => undefined);
-	}, [cwd, open, prefetch]);
+		if (!prefetch || open || cache.has(cacheKey(cwd, language))) return;
+		void load(cwd, language).catch(() => undefined);
+	}, [cwd, language, open, prefetch]);
 
 	useEffect(() => {
 		if (!open) return;
@@ -93,7 +102,7 @@ export function useSkillList({
 			setUsage(data.usage);
 		};
 		const refresh = (): void => {
-			void load(cwd)
+			void load(cwd, language)
 				.then(apply)
 				.catch((error) => {
 					console.error("[useSkillList] load failed:", error);
@@ -102,7 +111,7 @@ export function useSkillList({
 					if (!cancelled) setLoading(false);
 				});
 		};
-		const seeded = cache.get(cwd ?? "");
+		const seeded = cache.get(cacheKey(cwd, language));
 		if (!seeded) {
 			setLoading(true);
 			refresh();
@@ -119,7 +128,7 @@ export function useSkillList({
 			cancelled = true;
 			cancelIdle();
 		};
-	}, [cwd, open]);
+	}, [cwd, language, open]);
 
 	const ranked = useMemo(() => sortSkillsForPanel(skills, usage), [skills, usage]);
 	const items = useMemo(() => filterSkills(ranked, filter), [filter, ranked]);

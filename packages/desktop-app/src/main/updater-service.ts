@@ -7,6 +7,9 @@ const EVENT_CHANNEL = "vetta:updater:state";
 const DEFAULT_AUTO_DOWNLOAD_DELAY_MS = 20_000;
 const DEFAULT_AUTO_DOWNLOAD_RETRY_DELAYS_MS = [30_000, 120_000, 600_000];
 const DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS = 120_000;
+// 传输结束后的安装准备阶段没有任何进度事件（Squirrel.Mac 要解包近 1GB 的 bundle
+// 再逐个校验签名），停滞超时会误判为下载失败，这里换用一个只防死锁的长兜底。
+const DEFAULT_STAGING_TIMEOUT_MS = 600_000;
 
 export type UpdaterPhase = "idle" | "checking" | "available" | "downloading" | "ready" | "installing" | "error";
 
@@ -29,6 +32,7 @@ export interface UpdaterServiceOptions {
 	autoDownloadDelayMs?: number;
 	autoDownloadRetryDelaysMs?: readonly number[];
 	downloadStallTimeoutMs?: number;
+	stagingTimeoutMs?: number;
 }
 
 export class UpdaterService {
@@ -45,6 +49,7 @@ export class UpdaterService {
 	private readonly autoDownloadDelayMs: number;
 	private readonly autoDownloadRetryDelaysMs: readonly number[];
 	private readonly downloadStallTimeoutMs: number;
+	private readonly stagingTimeoutMs: number;
 
 	constructor(
 		private readonly engine: UpdateEngine,
@@ -60,6 +65,7 @@ export class UpdaterService {
 		this.autoDownloadDelayMs = options.autoDownloadDelayMs ?? DEFAULT_AUTO_DOWNLOAD_DELAY_MS;
 		this.autoDownloadRetryDelaysMs = options.autoDownloadRetryDelaysMs ?? DEFAULT_AUTO_DOWNLOAD_RETRY_DELAYS_MS;
 		this.downloadStallTimeoutMs = options.downloadStallTimeoutMs ?? DEFAULT_DOWNLOAD_STALL_TIMEOUT_MS;
+		this.stagingTimeoutMs = options.stagingTimeoutMs ?? DEFAULT_STAGING_TIMEOUT_MS;
 	}
 
 	setMainWindow(win: BrowserWindow): void {
@@ -173,7 +179,10 @@ export class UpdaterService {
 			error: undefined,
 		});
 
-		const download = this.engine.downloadUpdate((progress) => this.onProgress(progress));
+		const download = this.engine.downloadUpdate(
+			(progress) => this.onProgress(progress),
+			() => this.onStaging(),
+		);
 		this.activeDownload = download;
 		this.resetDownloadStallTimer(download);
 		try {
@@ -264,6 +273,14 @@ export class UpdaterService {
 		this.emit();
 	}
 
+	// 安装准备阶段没有进度事件，进度停在引擎给出的最后一个网络值（90%），
+	// 与 Windows 的 Inno 阶段语义一致；这里只把停滞超时换成更长的兜底。
+	private onStaging(): void {
+		const download = this.activeDownload;
+		if (!download || this.state.phase !== "downloading") return;
+		this.resetDownloadStallTimer(download, this.stagingTimeoutMs);
+	}
+
 	private scheduleAutoDownload(delayMs: number): void {
 		if (this.autoDownloadOptOut || this.autoDownloadTimer) return;
 		this.autoDownloadTimer = setTimeout(() => {
@@ -287,7 +304,7 @@ export class UpdaterService {
 		this.autoDownloadTimer = null;
 	}
 
-	private resetDownloadStallTimer(download: UpdateEngineDownload): void {
+	private resetDownloadStallTimer(download: UpdateEngineDownload, timeoutMs = this.downloadStallTimeoutMs): void {
 		this.clearDownloadStallTimer();
 		this.downloadStallTimer = setTimeout(() => {
 			if (this.activeDownload !== download) return;
@@ -300,7 +317,7 @@ export class UpdaterService {
 				downloadedBytes: undefined,
 				error: this.translate("updater.errors.downloadFailed"),
 			});
-		}, this.downloadStallTimeoutMs);
+		}, timeoutMs);
 	}
 
 	private clearDownloadStallTimer(): void {

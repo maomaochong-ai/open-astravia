@@ -484,27 +484,35 @@ function normalizeAbility(item: MarketAbility, icon: string | undefined): Market
 	};
 }
 
+/**
+ * 市场浏览与安装（market / info / download）服务端已开放匿名访问，
+ * token 因此可选：有就带上（便于服务端识别调用者），没有也照常返回。
+ */
+function optionalAuthHeaders(token: string | null | undefined): HeadersInit | undefined {
+	return token ? authHeaders(token) : undefined;
+}
+
 /** 一次返回五种 type 的已上架能力。 */
-export async function fetchMarketAbilities(token: string): Promise<MarketAbility[]> {
+export async function fetchMarketAbilities(token?: string | null): Promise<MarketAbility[]> {
 	const items = await request<MarketAbility[]>("/abilities/market", {
-		headers: authHeaders(token),
+		headers: optionalAuthHeaders(token),
 	});
 	return Promise.all((items ?? []).map(async (item) => normalizeAbility(item, await resolveMarketIconUrl(item.icon))));
 }
 
-export async function fetchAbilityInfo(token: string, type: AbilityType, slug: string): Promise<MarketAbility> {
+export async function fetchAbilityInfo(type: AbilityType, slug: string, token?: string | null): Promise<MarketAbility> {
 	const item = await request<MarketAbility>(
 		`/abilities/${encodeURIComponent(type)}/${encodeURIComponent(slug)}/info`,
-		{ headers: authHeaders(token) },
+		{ headers: optionalAuthHeaders(token) },
 	);
 	return normalizeAbility(item, await resolveMarketIconUrl(item.icon));
 }
 
 /** mcp / bundle 无产物，服务端直接 400——调用前请自行判断 type。 */
-export async function downloadAbility(token: string, type: AbilityType, slug: string): Promise<ArrayBuffer> {
+export async function downloadAbility(type: AbilityType, slug: string, token?: string | null): Promise<ArrayBuffer> {
 	const serverUrl = await window.vetta.settings.getServerUrl();
 	const resp = await fetch(`${serverUrl}/abilities/${encodeURIComponent(type)}/${encodeURIComponent(slug)}/download`, {
-		headers: authHeaders(token),
+		headers: optionalAuthHeaders(token),
 	});
 	if (!resp.ok) throw new Error(i18n.t("abilities:error.downloadFailed", { status: resp.status }));
 	return resp.arrayBuffer();

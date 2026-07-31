@@ -2,6 +2,7 @@ import type { DesktopUserQuestionRequest, DesktopUserQuestionResolvedEvent } fro
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FILE_EDITOR_SAVE_EVENT } from "@/shared/shortcuts";
 import { useAuth } from "../domains/auth/hooks/useAuth";
 import { loadNewSessionPage } from "../domains/chat/components/loadNewSessionPage";
 import { useAppInit } from "../domains/chat/hooks/useAppInit";
@@ -19,6 +20,7 @@ import {
 	activeSessionAtom,
 	appshotAttachmentAtom,
 	defaultConversationCwdAtom,
+	fileEditorHasUnsavedChangesAtom,
 	focusInputRequestAtom,
 	lastActiveSessionAtom,
 	pendingQuestionsAtom,
@@ -42,6 +44,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 	const matchesForGuard = useMatches();
 	const currentPath = matchesForGuard[matchesForGuard.length - 1]?.pathname ?? "/";
 	const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
+	const hasUnsavedFileChanges = useAtomValue(fileEditorHasUnsavedChangesAtom);
 	const [sessionRestoreState, setSessionRestoreState] = useState<SessionRestoreState>("pending");
 	const sessionRestoreAttemptedRef = useRef(false);
 	const toggleSidebar = useCallback(() => {
@@ -90,6 +93,16 @@ export function useRootLayoutModel(): RootLayoutModel {
 	// 全局消息队列调度：覆盖 active + 后台会话，自然结束时统一从队首出队并续发。
 	useMessageQueueDispatcher();
 	const { openSession, sendMessage } = useSessionManager();
+
+	useEffect(() => {
+		if (!hasUnsavedFileChanges) return;
+		const preventClose = (event: BeforeUnloadEvent) => {
+			event.preventDefault();
+			event.returnValue = "";
+		};
+		window.addEventListener("beforeunload", preventClose);
+		return () => window.removeEventListener("beforeunload", preventClose);
+	}, [hasUnsavedFileChanges]);
 
 	// 没有待恢复会话时提前加载 NewSession 路由代码；侧栏项目/会话列表可继续独立加载。
 	// 页面本身仍等路由守卫确认后再挂载，避免其初始化 effect 清除待恢复记录。
@@ -388,6 +401,10 @@ export function useRootLayoutModel(): RootLayoutModel {
 					}
 					case "open-settings": {
 						void navigate({ to: "/settings/$tab", params: { tab: "account" } });
+						break;
+					}
+					case "save-file": {
+						window.dispatchEvent(new Event(FILE_EDITOR_SAVE_EVENT));
 						break;
 					}
 				}

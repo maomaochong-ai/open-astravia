@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -57,6 +57,25 @@ export async function writeAppUpdateConfig(sourceDir, version, publishConfig) {
 	await rm(appUpdateConfigPath, { force: true });
 }
 
+async function collectVerificationFiles(root, relativeRoot = "") {
+	const files = [];
+	for (const entry of await readdir(join(root, relativeRoot), { withFileTypes: true })) {
+		const relativePath = join(relativeRoot, entry.name);
+		if (entry.isDirectory()) {
+			files.push(...(await collectVerificationFiles(root, relativePath)));
+		} else if (entry.isFile() && entry.name !== ".install-complete") {
+			files.push({ path: relativePath.replaceAll("\\", "/"), size: (await stat(join(root, relativePath))).size });
+		}
+	}
+	return files;
+}
+
+export async function writeInnoVerificationManifest(sourceVersionDir, manifestPath, version) {
+	const files = await collectVerificationFiles(sourceVersionDir);
+	files.sort((left, right) => left.path.localeCompare(right.path));
+	await writeFile(manifestPath, `${JSON.stringify({ version, files }, null, 2)}\n`, "utf8");
+}
+
 async function main() {
 	const arch = readOption("--arch");
 	const sourceDir = unpackedDirectory(arch);
@@ -75,6 +94,9 @@ async function main() {
 	if (publishConfig) {
 		console.log(`[build-inno] wrote app-update.yml for ${publishConfig.provider}`);
 	}
+	const fileName = `Vetta-${version}-win-${arch}.exe`;
+	const verificationManifestPath = join(releaseDir, `${fileName}.files.json`);
+	await writeInnoVerificationManifest(join(sourceDir, "versions", version), verificationManifestPath, version);
 
 	const compiler = resolveInnoCompiler();
 	const compilerWorkDir = await mkdtemp(join(tmpdir(), "vi-"));
@@ -97,7 +119,6 @@ async function main() {
 		await rm(compilerWorkDir, { recursive: true, force: true });
 	}
 
-	const fileName = `Vetta-${version}-win-${arch}.exe`;
 	const installerPath = join(releaseDir, fileName);
 	if (!existsSync(installerPath)) throw new Error(`[build-inno] installer not found: ${installerPath}`);
 	const blockmapPath = `${installerPath}.blockmap`;
@@ -129,7 +150,7 @@ async function main() {
 			: {}),
 	};
 	await writeFile(join(releaseDir, "latest.yml"), stringify(metadata), "utf8");
-	console.log(`[build-inno] created ${fileName}, ${fileName}.blockmap, latest.yml`);
+	console.log(`[build-inno] created ${fileName}, ${fileName}.blockmap, ${fileName}.files.json, latest.yml`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();

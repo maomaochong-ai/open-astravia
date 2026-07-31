@@ -9,6 +9,7 @@
 
 ### Fixed
 
+- **修复运行中新增的工具/系统提示词要等下一次 `prompt()` 才生效**：`agentLoop` 会复制传入的 `AgentContext`，因此整轮多次 LLM 请求一直复用 loop 启动时的 `tools` / `systemPrompt` 快照，运行中调用 `setTools()` / `setSystemPrompt()` 对本轮无效。典型症状：`tool_search` 报告"已激活"某个 MCP 工具，但模型本轮始终拿不到它的 schema，只能反复检索同一个工具直到耗尽。`AgentLoopConfig` 新增可选 `getTools` / `getSystemPrompt`，loop 每轮开始时重新读取（未传则维持旧的快照行为）；`Agent` 默认接到自身 state 上。
 - 修复 `tracing.detail="agent"` 且 `tracing.captureContent=true` 时 root `agent.run` 仍只上报摘要，导致 Langfuse trace input/output 看不到用户消息、最终 assistant 输出、system prompt 与工具定义正文。
 - 修复 `proxy.ts` 的 `streamProxy` 在 abort listener 上未传 `{ once: true }`：abort 触发后 listener 仍残留到 finally 才被移除，并发 finally 路径异常下可能漏清理。补齐 `{ once: true }` 作为防御。
 - 主进程长跑时主流 `AbortSignal` 因外部库累积 abort listener 触发 `MaxListenersExceededWarning`（10 默认上限被多 turn / 多重试场景秒爆）：在 `Agent._runLoop` 创建 per-prompt `AbortController` 时调用 `events.setMaxListeners(0, signal)` 关闭单 signal 的告警阈值。Node 环境通过条件动态加载 `node:events`，浏览器 (web-ui) 自动跳过。配合 `@vetta/ai` 中三处 sleep 的成对 listener 清理，彻底解决 listener 泄漏告警与潜在 GC 压力。

@@ -1,8 +1,10 @@
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { useEffect, useState } from "react";
 import { ConnectorGrid } from "./ConnectorGrid";
 import { FadingScrollArea } from "./FadingScrollArea";
 import { SkillList } from "./SkillList";
+import { PANEL_REVEAL_ROWS, PANEL_REVEAL_TRANSITION } from "./constants";
 import type { CommandPanelProps } from "./types";
 
 /**
@@ -12,9 +14,9 @@ import type { CommandPanelProps } from "./types";
  */
 const MAX_HEIGHT = "min(320px, 40vh)";
 
-/** 展开 / 收缩的高度过渡：带阻尼的弹簧，避免线性 easing 的生硬感。 */
-const GROW = { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.7 };
-const FADE = { duration: 0.12 };
+/** 揭幕：从上往下裁开。内容不动，因此描边、圆角与卡片接缝全程都在终态位置上。 */
+const REVEAL_CLIPPED = { clipPath: "inset(100% 0 0 0)" };
+const REVEAL_SHOWN = { clipPath: "inset(0% 0 0 0)" };
 
 /**
  * InputBar 的「展开」形态：命令区。
@@ -43,22 +45,36 @@ export function CommandPanelView({
 	onSelectConnector,
 }: CommandPanelProps): JSX.Element {
 	const filtering = filter.length > 0;
+	const reduceMotion = useReducedMotion();
+	const transition = reduceMotion ? { duration: 0 } : PANEL_REVEAL_TRANSITION;
+	// 揭幕完成前列表只出可视区那几行、渐隐 mask 也先不挂：动画期间少一份重绘。
+	const [revealed, setRevealed] = useState(false);
+	useEffect(() => {
+		if (!open) setRevealed(false);
+	}, [open]);
+
 	return (
 		<AnimatePresence initial={false}>
 			{open && (
 				<motion.div
 					key="command-region"
 					ref={panelRef}
-					initial={{ height: 0, opacity: 0 }}
-					animate={{ height: "auto", opacity: 1 }}
-					exit={{ height: 0, opacity: 0 }}
-					transition={{ height: GROW, opacity: FADE }}
+					initial={REVEAL_CLIPPED}
+					animate={REVEAL_SHOWN}
+					exit={REVEAL_CLIPPED}
+					transition={transition}
+					onAnimationComplete={() => setRevealed(true)}
+					// 只在面板存在期间挂着：动画开始前就得就位才有用，收起时整块一起卸载。
+					style={{ willChange: "clip-path" }}
 					className={[
 						// -inset-x-px：定位父级是卡片的内容盒（已被卡片 1px 描边内缩），
 						// 不外扩这 1px 的话本区描边会比卡片描边窄一圈，接缝处看着像台阶。
+						// bottom 压过 100% 那 1px：底下正对着卡片的上描边（展开态置成透明，见
+						// InputBarView），那 1px 不被盖住时会在接缝上留一条贯穿全宽的细线，
+						// 两块面看着是被切开的。命令区自己的底边无描边，压下去正好补平。
 						// 不写描边色：缺省吃 base 层的 `* { border-border }`，聚焦态由 className
 						// 传 `border-primary/20` 覆盖，和输入卡片一起亮，否则接缝上下两截颜色不一样。
-						"absolute -inset-x-px bottom-full z-10 overflow-hidden rounded-t-[20px] border border-b-0 bg-input-bar-bg transition-[border-color] duration-200",
+						"absolute -inset-x-px bottom-[calc(100%-1px)] z-10 overflow-hidden rounded-t-[20px] border border-b-0 bg-input-bar-bg transition-[border-color] duration-200",
 						className,
 					]
 						.filter(Boolean)
@@ -66,7 +82,7 @@ export function CommandPanelView({
 				>
 					<ThemeSurface slot="chat.slashPanel" />
 					<div className="relative z-10 flex flex-col" style={{ maxHeight: MAX_HEIGHT }}>
-						<FadingScrollArea className="pt-2">
+						<FadingScrollArea className="pt-2" suspended={!revealed}>
 							{/* 过滤态隐藏宫格：此时用户在找 skill，键盘导航也只走列表 */}
 							{!filtering && (
 								<ConnectorGrid
@@ -81,6 +97,7 @@ export function CommandPanelView({
 								activeIndex={activeIndex}
 								labels={labels}
 								filtering={filtering}
+								limit={revealed ? undefined : PANEL_REVEAL_ROWS}
 								resolveIcon={resolveIcon}
 								onHover={onHoverItem}
 								onSelect={onSelectItem}

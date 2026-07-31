@@ -14,6 +14,7 @@ import type {
 	SkillInfo,
 } from "@preload/api";
 import type { AbilityMember, MarketAbility } from "@shared/lib/api";
+import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
 import type { TFunction } from "i18next";
 import {
 	type BuiltinMcpPreset,
@@ -124,6 +125,8 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 	const { ledger, skillManifest, localSkills, busyIds } = state;
 	const items: SkillAbility[] = [];
 	const seen = new Set<string>();
+	/** 已由市场行 / 本地清单认领的 `type:name`：listSkills 会把它们再列一遍，不能重复建条目。 */
+	const claimedNames = new Set<string>();
 
 	for (const entry of market) {
 		if (entry.type !== "skill" && entry.type !== "scene") continue;
@@ -139,6 +142,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 				(!ledgerEntry && local?.source === "market" && catalogSource.kind === "server"));
 		const localVersion = installed ? (ledgerEntry?.version ?? local?.version) : undefined;
 		seen.add(id);
+		if (installed) claimedNames.add(`${entry.type}:${entry.slug}`);
 		items.push({
 			type: entry.type,
 			id,
@@ -179,6 +183,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 		if (claimed) continue;
 		const id = ledgerEntry?.catalogId ?? abilityId(type, name);
 		seen.add(id);
+		claimedNames.add(`${type}:${name}`);
 		const isCustom = local.source === "custom";
 		items.push({
 			type,
@@ -208,18 +213,24 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 		});
 	}
 
-	// 通用 Agent / 内置 skill：只读，不进台账。
+	// 运行时列出、但不进台账的只读 skill：随 App 分发的内置（source=builtin）走 builtin 来源，
+	// `~/.agents/skills` 里用户自己放的、插件贡献的都是本地来源，不能算 Vetta 内置。
 	for (const skill of localSkills) {
-		const id = abilityId(skill.type, skill.name, BUILTIN_SOURCE);
+		if (claimedNames.has(`${skill.type}:${skill.name}`)) continue;
+		const isBuiltin = skill.source === "builtin";
+		const source = isBuiltin ? BUILTIN_SOURCE : LOCAL_SOURCE;
+		const id = abilityId(skill.type, skill.name, source);
 		if (seen.has(id)) continue;
 		seen.add(id);
 		items.push({
 			type: skill.type,
 			id,
 			slug: skill.name,
-			catalogSource: BUILTIN_SOURCE,
+			catalogSource: source,
 			title: skill.alias || skill.name,
 			description: skill.description,
+			// 内置 Skill 的图标随 renderer 静态资源分发；用户/插件来源的 skill 无图标，落默认图。
+			icon: isBuiltin ? builtinSkillIconUrl(skill.name) : undefined,
 			category: "",
 			tags: [],
 			author: "",
@@ -233,7 +244,7 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			busy: false,
 			downloadCount: 0,
 			isCustom: false,
-			isBuiltin: true,
+			isBuiltin,
 			fromMarket: false,
 			skillSource: skill.source,
 			searchTerms: terms(skill.name, skill.alias, skill.description),

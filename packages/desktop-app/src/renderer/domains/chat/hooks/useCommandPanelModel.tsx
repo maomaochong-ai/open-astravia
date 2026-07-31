@@ -1,5 +1,5 @@
 import type { SkillInfo } from "@preload/api";
-import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { CommandPanelLabels, CommandPanelProps } from "../components/command-panel/types";
 import type { ConnectorGridItem } from "./useConnectorGrid";
@@ -47,14 +47,20 @@ export function useCommandPanelModel({
 	const actionBar = useInputActionBarModel();
 	const [activeIndex, setActiveIndex] = useState(0);
 	const panelRef = useRef<HTMLDivElement>(null);
+	// 仅键盘导航需要把高亮滚进视口；鼠标 hover 只改高亮，不抢滚动位置。
+	const shouldScrollActiveIntoViewRef = useRef(false);
 
-	// 过滤词一变就把高亮拉回首项，否则会指向一个已被过滤掉的位置。
-	// biome-ignore lint/correctness/useExhaustiveDependencies: 依赖是「重置时机」而非读取值
 	// 过滤词一变就把高亮拉回首项，否则会指向一个已被过滤掉的位置。
 	// biome-ignore lint/correctness/useExhaustiveDependencies: 依赖是「重置时机」而非读取值
 	useEffect(() => {
 		setActiveIndex(0);
 	}, [normalizedFilter]);
+
+	useLayoutEffect(() => {
+		if (!open || !shouldScrollActiveIntoViewRef.current) return;
+		shouldScrollActiveIntoViewRef.current = false;
+		panelRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
+	}, [activeIndex, open]);
 
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent) => {
@@ -62,10 +68,12 @@ export function useCommandPanelModel({
 			if (event.key === "ArrowDown") {
 				event.preventDefault();
 				event.stopPropagation();
+				shouldScrollActiveIntoViewRef.current = true;
 				setActiveIndex((index) => (index + 1) % items.length);
 			} else if (event.key === "ArrowUp") {
 				event.preventDefault();
 				event.stopPropagation();
+				shouldScrollActiveIntoViewRef.current = true;
 				setActiveIndex((index) => (index - 1 + items.length) % items.length);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
@@ -110,11 +118,6 @@ export function useCommandPanelModel({
 			document.removeEventListener("mousedown", handleClick);
 		};
 	}, [onClose, open]);
-
-	useEffect(() => {
-		if (!open) return;
-		panelRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
-	}, [activeIndex, open]);
 
 	const labels: CommandPanelLabels = useMemo(
 		() => ({

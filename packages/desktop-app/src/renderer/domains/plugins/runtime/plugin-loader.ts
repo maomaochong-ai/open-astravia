@@ -33,6 +33,9 @@ import type {
 	PluginContext,
 	PluginConversationApi,
 	PluginDefinition,
+	PluginFileExplorerContextMenuContribution,
+	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerToolbarContribution,
 	PluginFilePreviewContribution,
 	PluginFsApi,
 	PluginGlobalSlotContribution,
@@ -54,6 +57,15 @@ import { resolveCatalogKey } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
+import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
+import {
+	getPluginFileExplorerSelection,
+	getPluginFileExplorerWorkspaceRoots,
+	onPluginFileExplorerFilesChanged,
+	onPluginFileExplorerSelectionChanged,
+	refreshPluginFileExplorer,
+	revealPluginFileExplorerPath,
+} from "./plugin-file-explorer-host";
 import {
 	pluginHostBridge,
 	registerPluginAgentToolHandler,
@@ -75,6 +87,9 @@ export interface LoadedPlugin {
 	locales: PluginLocales;
 	slots: PluginGlobalSlotContribution[];
 	filePreviews: PluginFilePreviewContribution[];
+	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[];
+	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[];
+	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[];
 	activityTabs: PluginActivityTabContribution[];
 	inputActions: PluginInputActionContribution[];
 	cardRenderers: PluginCardRendererContribution[];
@@ -120,6 +135,20 @@ function clearAgentToolLabelsForPlugin(pluginId: string): void {
 }
 
 /**
+ * 记下插件对某个 tab 的显式显隐态（上栏/下栏），不激活、不展开面板。插件据此
+ * 实现自己的出现条件（git 只在仓库里上栏、工作台跟随输入栏 toggle）。返回写入
+ * 是否落地——无活动会话 cwd 时无处可记。
+ */
+function setPluginActivityTabVisible(pluginId: string, tabId: string, visible: boolean): boolean {
+	const store = getDefaultStore();
+	const cwd = store.get(activeSessionAtom)?.cwd ?? null;
+	if (!cwd) return false;
+	const next = withPluginTabVisibility(store.get(attachedPluginTabsAtom), cwd, `${pluginId}:${tabId}`, visible);
+	if (next) store.set(attachedPluginTabsAtom, next);
+	return true;
+}
+
+/**
  * Attach + activate a plugin's own activity tab and open the panel, driven
  * directly off the jotai store so it works regardless of whether the activity
  * panel component is currently mounted/expanded. Keyed by the active
@@ -133,14 +162,8 @@ function openPluginActivityTab(pluginId: string, tabId: string, width?: number |
 		return;
 	}
 	const key = `${pluginId}:${tabId}`;
-	const attached = store.get(attachedPluginTabsAtom);
-	const list = attached.get(cwd) ?? [];
-	const alreadyAttached = list.includes(key);
-	if (!alreadyAttached) {
-		const next = new Map(attached);
-		next.set(cwd, [...list, key]);
-		store.set(attachedPluginTabsAtom, next);
-	}
+	const alreadyAttached = explicitTabVisibility(store.get(attachedPluginTabsAtom).get(cwd) ?? [], key) === true;
+	setPluginActivityTabVisible(pluginId, tabId, true);
 	const active = new Map(store.get(activityPanelTabByProjectAtom));
 	active.set(cwd, `plugin:${key}` as ActivityTabKey);
 	store.set(activityPanelTabByProjectAtom, active);
@@ -519,6 +542,9 @@ function createContext(
 	plugin: InstalledPlugin,
 	slots: PluginGlobalSlotContribution[],
 	filePreviews: PluginFilePreviewContribution[],
+	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[],
+	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[],
+	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[],
 	activityTabs: PluginActivityTabContribution[],
 	inputActions: PluginInputActionContribution[],
 	cardRenderers: PluginCardRendererContribution[],
@@ -597,6 +623,82 @@ function createContext(
 			},
 		};
 	};
+	const registerFileExplorerContextMenuAction = (
+		contribution: PluginFileExplorerContextMenuContribution,
+	): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.context-menu");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer context-menu action id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("File explorer context-menu action label is required");
+		}
+		if (typeof contribution.run !== "function") {
+			throw new Error("File explorer context-menu action handler is required");
+		}
+		const normalized: PluginFileExplorerContextMenuContribution = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+			label: contribution.label.trim(),
+		};
+		fileExplorerContextMenuActions.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerContextMenuActions.indexOf(normalized);
+				if (index >= 0) fileExplorerContextMenuActions.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const registerFileExplorerToolbarAction = (contribution: PluginFileExplorerToolbarContribution): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.toolbar");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer toolbar action id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("File explorer toolbar action label is required");
+		}
+		if (typeof contribution.run !== "function") {
+			throw new Error("File explorer toolbar action handler is required");
+		}
+		const normalized: PluginFileExplorerToolbarContribution = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+			label: contribution.label.trim(),
+		};
+		fileExplorerToolbarActions.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerToolbarActions.indexOf(normalized);
+				if (index >= 0) fileExplorerToolbarActions.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const registerFileExplorerDecorationProvider = (contribution: PluginFileExplorerDecorationProvider): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.decorations");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer decoration provider id is required");
+		}
+		if (typeof contribution.provideDecoration !== "function") {
+			throw new Error("File explorer decoration provider is required");
+		}
+		const normalized: PluginFileExplorerDecorationProvider = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+		};
+		fileExplorerDecorationProviders.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerDecorationProviders.indexOf(normalized);
+				if (index >= 0) fileExplorerDecorationProviders.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
 	const registerActivityTab = (contribution: PluginActivityTabContribution): Disposable => {
 		if (!hasPermission(plugin, "ui.slot.activity-tab")) {
 			warnSkippedContribution(plugin, "ui.slot.activity-tab", "activity tab");
@@ -617,6 +719,7 @@ function createContext(
 			icon: contribution.icon,
 			component: contribution.component,
 			scope_use: contribution.scope_use,
+			initiallyVisible: contribution.initiallyVisible,
 		};
 		activityTabs.push(normalized);
 		onChanged();
@@ -769,6 +872,13 @@ function createContext(
 		}
 		openPluginActivityTab(plugin.id, tabId, options?.width);
 	};
+	const setActivityTabVisible = (tabId: string, visible: boolean): void => {
+		createPermissionApi(plugin).require("ui.slot.activity-tab");
+		if (typeof tabId !== "string" || tabId.trim().length === 0) {
+			throw new Error("Activity tab id is required");
+		}
+		setPluginActivityTabVisible(plugin.id, tabId, visible === true);
+	};
 	const setPromptAttachment = (attachment: PluginPromptAttachment | null): void => {
 		createPermissionApi(plugin).require("ui.slot.input-action");
 		const store = getDefaultStore();
@@ -886,11 +996,45 @@ function createContext(
 			registerToolCallSlot,
 			registerTurnCard,
 			openActivityTab,
+			setActivityTabVisible,
 			setPromptAttachment,
 			previewImage,
 			openPluginSettings,
 			captureRegion,
 			notify,
+		},
+		fileExplorer: {
+			getWorkspaceRoots: () => {
+				createPermissionApi(plugin).require("workspace.read");
+				return getPluginFileExplorerWorkspaceRoots();
+			},
+			getSelection: () => {
+				createPermissionApi(plugin).require("workspace.read");
+				return getPluginFileExplorerSelection();
+			},
+			reveal: (path, options) => {
+				createPermissionApi(plugin).require("workspace.read");
+				return revealPluginFileExplorerPath(path, options);
+			},
+			refresh: (path) => {
+				createPermissionApi(plugin).require("workspace.read");
+				return refreshPluginFileExplorer(path);
+			},
+			onDidChangeSelection: (listener) => {
+				createPermissionApi(plugin).require("workspace.read");
+				const handle = onPluginFileExplorerSelectionChanged(listener);
+				disposers.push(() => handle.dispose());
+				return handle;
+			},
+			onDidChangeFiles: (listener) => {
+				createPermissionApi(plugin).require("workspace.read");
+				const handle = onPluginFileExplorerFilesChanged(listener);
+				disposers.push(() => handle.dispose());
+				return handle;
+			},
+			registerContextMenuAction: registerFileExplorerContextMenuAction,
+			registerToolbarAction: registerFileExplorerToolbarAction,
+			registerDecorationProvider: registerFileExplorerDecorationProvider,
 		},
 		conversation,
 		fs,
@@ -1210,6 +1354,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 	});
 	const slots: PluginGlobalSlotContribution[] = [];
 	const filePreviews: PluginFilePreviewContribution[] = [];
+	const fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[] = [];
+	const fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[] = [];
+	const fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[] = [];
 	const activityTabs: PluginActivityTabContribution[] = [];
 	const inputActions: PluginInputActionContribution[] = [];
 	const cardRenderers: PluginCardRendererContribution[] = [];
@@ -1225,6 +1372,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		for (const dispose of disposers) dispose();
 		slots.splice(0, slots.length);
 		filePreviews.splice(0, filePreviews.length);
+		fileExplorerContextMenuActions.splice(0, fileExplorerContextMenuActions.length);
+		fileExplorerToolbarActions.splice(0, fileExplorerToolbarActions.length);
+		fileExplorerDecorationProviders.splice(0, fileExplorerDecorationProviders.length);
 		activityTabs.splice(0, activityTabs.length);
 		inputActions.splice(0, inputActions.length);
 		cardRenderers.splice(0, cardRenderers.length);
@@ -1260,6 +1410,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			plugin,
 			slots,
 			filePreviews,
+			fileExplorerContextMenuActions,
+			fileExplorerToolbarActions,
+			fileExplorerDecorationProviders,
 			activityTabs,
 			inputActions,
 			cardRenderers,
@@ -1298,6 +1451,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			locales: plugin.locales,
 			slots,
 			filePreviews,
+			fileExplorerContextMenuActions,
+			fileExplorerToolbarActions,
+			fileExplorerDecorationProviders,
 			activityTabs,
 			inputActions,
 			cardRenderers,

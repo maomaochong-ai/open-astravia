@@ -1,6 +1,6 @@
 import type { FsEntry, FsFileRef } from "@preload/fs-types";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type {
 	AtPanelEntryModel,
@@ -111,6 +111,8 @@ export function useAtPanelModel({
 	const [loading, setLoading] = useState(false);
 	const [activeIndex, setActiveIndex] = useState(0);
 	const panelRef = useRef<HTMLDivElement>(null);
+	// 仅键盘导航需要把高亮滚进视口；鼠标 hover 只改高亮，不抢滚动位置。
+	const shouldScrollActiveIntoViewRef = useRef(false);
 
 	useEffect(() => {
 		if (open) {
@@ -203,10 +205,12 @@ export function useAtPanelModel({
 			if (e.key === "ArrowDown") {
 				e.preventDefault();
 				e.stopPropagation();
+				shouldScrollActiveIntoViewRef.current = true;
 				setActiveIndex((i) => (i + 1) % totalCount);
 			} else if (e.key === "ArrowUp") {
 				e.preventDefault();
 				e.stopPropagation();
+				shouldScrollActiveIntoViewRef.current = true;
 				setActiveIndex((i) => (i - 1 + totalCount) % totalCount);
 			} else if (e.key === "Enter") {
 				e.preventDefault();
@@ -256,10 +260,10 @@ export function useAtPanelModel({
 		};
 	}, [open, onClose]);
 
-	useEffect(() => {
-		if (!open) return;
-		const el = panelRef.current?.querySelector(`[data-index="${activeIndex}"]`);
-		el?.scrollIntoView({ block: "nearest" });
+	useLayoutEffect(() => {
+		if (!open || !shouldScrollActiveIntoViewRef.current) return;
+		shouldScrollActiveIntoViewRef.current = false;
+		panelRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex, open]);
 
 	const relDir = currentDir.startsWith(cwd) ? currentDir.slice(cwd.length) || "/" : currentDir;

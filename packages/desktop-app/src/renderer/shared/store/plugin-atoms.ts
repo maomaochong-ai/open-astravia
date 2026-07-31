@@ -2,6 +2,9 @@ import type {
 	ConversationScenario,
 	PluginActivityTabContribution,
 	PluginCardRendererContribution,
+	PluginFileExplorerContextMenuContribution,
+	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerToolbarContribution,
 	PluginFilePreviewContribution,
 	PluginInputActionContribution,
 	PluginLocales,
@@ -40,6 +43,25 @@ export interface RegisteredFilePreview {
  */
 export const pluginFilePreviewsAtom = atom<RegisteredFilePreview[]>([]);
 
+export interface RegisteredFileExplorerContextMenuAction extends PluginFileExplorerContextMenuContribution {
+	pluginId: string;
+	actionId: string;
+}
+
+export interface RegisteredFileExplorerToolbarAction extends PluginFileExplorerToolbarContribution {
+	pluginId: string;
+	actionId: string;
+}
+
+export interface RegisteredFileExplorerDecorationProvider extends PluginFileExplorerDecorationProvider {
+	pluginId: string;
+	providerId: string;
+}
+
+export const pluginFileExplorerContextMenuActionsAtom = atom<RegisteredFileExplorerContextMenuAction[]>([]);
+export const pluginFileExplorerToolbarActionsAtom = atom<RegisteredFileExplorerToolbarAction[]>([]);
+export const pluginFileExplorerDecorationProvidersAtom = atom<RegisteredFileExplorerDecorationProvider[]>([]);
+
 /** An activity-tab contribution registered by a loaded plugin（可添加池条目）. */
 export interface RegisteredActivityTab {
 	pluginId: string;
@@ -51,6 +73,8 @@ export interface RegisteredActivityTab {
 	component: PluginActivityTabContribution["component"];
 	/** 允许出现的对话场景（fail-closed：缺省/空 = 任何会话都不显示）。见契约。 */
 	scope_use?: PluginActivityTabContribution["scope_use"];
+	/** 注册后是否默认上栏（缺省 true）；false = 出现条件由插件自己驱动。 */
+	initiallyVisible?: PluginActivityTabContribution["initiallyVisible"];
 }
 
 /**

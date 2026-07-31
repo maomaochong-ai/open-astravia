@@ -6,11 +6,10 @@ import { pathToFileURL } from "node:url";
 import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { parse } from "yaml";
+import { referencedFileName, updaterMetadataPattern } from "./updater-metadata.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 const releaseDir = join(projectRoot, "release");
-const metadataPattern = /^latest(?:-(?:mac|linux)(?:-[a-z0-9_-]+)?)?\.ya?ml$/i;
-const artifactPattern = /\.(?:appimage|blockmap|dmg|exe|zip)$/i;
 const multipartPartSize = 16 * 1024 * 1024;
 
 function requireEnv(key) {
@@ -56,6 +55,50 @@ export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packa
 	}
 }
 
+function parseVersion(version, source) {
+	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+	if (!match) throw new Error(`[publish-updates-r2] ${source} has an invalid version: ${version}`);
+	return match.slice(1).map(Number);
+}
+
+export function assertNotDowngrade({ releaseVersion, remoteVersion, metadataFile }) {
+	const release = parseVersion(releaseVersion, "local metadata");
+	const remote = parseVersion(remoteVersion, `remote ${metadataFile}`);
+	for (let index = 0; index < release.length; index += 1) {
+		if (release[index] > remote[index]) return;
+		if (release[index] < remote[index]) {
+			throw new Error(
+				`[publish-updates-r2] refusing to downgrade ${metadataFile} from ${remoteVersion} to ${releaseVersion}`,
+			);
+		}
+	}
+}
+
+export async function verifyRemoteMetadataVersions({
+	updateUrl,
+	metadataFiles,
+	releaseVersion,
+	fetchImpl = fetch,
+}) {
+	const normalizedBaseUrl = `${updateUrl.replace(/\/+$/, "")}/`;
+	for (const metadataFile of metadataFiles) {
+		const url = new URL(metadataFile, normalizedBaseUrl);
+		url.searchParams.set("publish-version-check", Date.now().toString());
+		const response = await fetchImpl(url, { cache: "no-store" });
+		if (response.status === 404) continue;
+		if (!response.ok) {
+			throw new Error(
+				`[publish-updates-r2] cannot read current ${metadataFile}: HTTP ${response.status}`,
+			);
+		}
+		const document = parse(await response.text());
+		if (typeof document?.version !== "string") {
+			throw new Error(`[publish-updates-r2] remote ${metadataFile} has no version`);
+		}
+		assertNotDowngrade({ releaseVersion, remoteVersion: document.version, metadataFile });
+	}
+}
+
 function contentTypeFor(fileName) {
 	const lower = fileName.toLowerCase();
 	if (lower.endsWith(".yml") || lower.endsWith(".yaml")) return "application/yaml";
@@ -65,22 +108,10 @@ function contentTypeFor(fileName) {
 	return "application/octet-stream";
 }
 
-function referencedFileName(reference) {
-	if (typeof reference !== "string" || !reference.trim()) return undefined;
-	let pathname = reference.trim().split(/[?#]/, 1)[0];
-	try {
-		pathname = new URL(reference).pathname;
-	} catch {
-		// electron-builder 的更新清单通常使用相对路径。
-	}
-	const fileName = posix.basename(decodeURIComponent(pathname.replaceAll("\\", "/")));
-	return artifactPattern.test(fileName) ? fileName : undefined;
-}
-
 export async function collectArtifacts(directory = releaseDir) {
 	const entries = await readdir(directory, { withFileTypes: true });
 	const availableFiles = new Set(entries.filter((entry) => entry.isFile()).map((entry) => entry.name));
-	const metadataFiles = [...availableFiles].filter((fileName) => metadataPattern.test(fileName)).sort();
+	const metadataFiles = [...availableFiles].filter((fileName) => updaterMetadataPattern.test(fileName)).sort();
 
 	if (metadataFiles.length === 0) {
 		throw new Error(`[publish-updates-r2] no electron-updater metadata found in ${directory}`);
@@ -115,7 +146,7 @@ export async function collectArtifacts(directory = releaseDir) {
 
 export async function readReleaseVersion(directory = releaseDir) {
 	const metadataFiles = (await readdir(directory, { withFileTypes: true }))
-		.filter((entry) => entry.isFile() && metadataPattern.test(entry.name))
+		.filter((entry) => entry.isFile() && updaterMetadataPattern.test(entry.name))
 		.map((entry) => entry.name);
 	const versions = new Set();
 	for (const metadataFile of metadataFiles) {
@@ -231,8 +262,9 @@ export async function main() {
 	});
 
 	const files = await collectArtifacts();
-	const artifactFiles = files.filter((fileName) => !metadataPattern.test(fileName));
-	const metadataFiles = files.filter((fileName) => metadataPattern.test(fileName));
+	const artifactFiles = files.filter((fileName) => !updaterMetadataPattern.test(fileName));
+	const metadataFiles = files.filter((fileName) => updaterMetadataPattern.test(fileName));
+	await verifyRemoteMetadataVersions({ updateUrl, metadataFiles, releaseVersion });
 	for (const fileName of artifactFiles) {
 		await uploadFile({ client, bucket, prefix, fileName, isMetadata: false });
 	}

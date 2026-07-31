@@ -396,8 +396,9 @@ export class InputPipeline {
 		// but without knowledgeMode this turn strips them so the model cannot call them
 		// unless the user activated 知识检索. Exception: kb-processing has no toggle and
 		// always needs these tools. Image tools remain soft-isolated (always available).
-		// Safe: agent throws if already streaming (no overlap); _runLoop snapshots
-		// context.tools at turn start; restore afterward.
+		// Safe: agent throws if already streaming (no overlap); 本轮 tools 由这里的
+		// setTools 定型，prompt() 返回后再还原。注意 agent 的 tools 是实时生效的
+		// （见 Agent._liveContext），本轮若有 buildRuntime 重建会覆盖这层过滤。
 		const knowledgeToolsEnabled =
 			options?.metadata?.knowledgeMode === true || this.runtime.scenario === "kb-processing";
 		const savedTools = this.ctx.agent.state.tools;

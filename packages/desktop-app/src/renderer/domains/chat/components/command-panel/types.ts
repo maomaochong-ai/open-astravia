@@ -17,6 +17,11 @@ export interface SkillListProps {
 	activeIndex: number;
 	labels: SkillListLabels;
 	filtering: boolean;
+	/**
+	 * 本次只渲染前 N 行。展开动画期间用它把「一次性布局上百行」推到动画之后，
+	 * 不传则全量渲染。
+	 */
+	limit?: number;
 	/** 市场目录里的图标（`solar:xxx` 或图片 URL）；返回 undefined 时落 type 默认图。 */
 	resolveIcon?: (skill: SkillInfo) => string | undefined;
 	onHover: (index: number) => void;

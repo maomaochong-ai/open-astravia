@@ -11,6 +11,8 @@ export interface ShortcutActionDef {
 	defaultShortcut: string;
 }
 
+export const FILE_EDITOR_SAVE_EVENT = "vetta:file-editor-save";
+
 /** 可配置的全局快捷键动作（白名单）。as const 保留字面量类型。 */
 export const SHORTCUT_ACTIONS = [
 	{
@@ -30,6 +32,12 @@ export const SHORTCUT_ACTIONS = [
 		labelKey: "shortcutOpenSettingsLabel",
 		descriptionKey: "shortcutOpenSettingsDesc",
 		defaultShortcut: "mod+,",
+	},
+	{
+		id: "save-file",
+		labelKey: "shortcutSaveFileLabel",
+		descriptionKey: "shortcutSaveFileDesc",
+		defaultShortcut: "mod+s",
 	},
 ] as const satisfies readonly ShortcutActionDef[];
 

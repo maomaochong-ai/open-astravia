@@ -48,8 +48,14 @@ export class SkillTokenNode extends DecoratorNode<JSX.Element> {
 		return true;
 	}
 
-	isKeyboardSelectable(): true {
-		return true;
+	/**
+	 * 必须为 false：DecoratorNode 默认 true，方向键移到 token 上时 Lexical 会把
+	 * RangeSelection 换成 NodeSelection（光标消失），而 PlainTextPlugin 不像
+	 * RichText 那样注册 NodeSelection 的方向键处理，选区就此卡死，只能靠鼠标点击
+	 * 恢复，期间打字还会被插到段首。token 当作一个普通字符跨过去即可。
+	 */
+	isKeyboardSelectable(): false {
+		return false;
 	}
 
 	getTextContent(): string {

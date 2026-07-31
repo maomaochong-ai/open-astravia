@@ -16,7 +16,13 @@ import type {
 	McpServerConfigData,
 	McpStdioServerConfigData,
 } from "../../preload/api-types/mcp.js";
-import type { FsEntry, FsFileRef } from "../../preload/fs-types.js";
+import type {
+	FsEditableTextSnapshot,
+	FsEntry,
+	FsFileRef,
+	FsSaveEditableTextOptions,
+	FsSaveEditableTextResult,
+} from "../../preload/fs-types.js";
 import {
 	type AppshotConfig,
 	type AppshotGesture,
@@ -48,12 +54,15 @@ import {
 import {
 	allowProjectRoot,
 	createFilesystemDirectory,
+	createFilesystemEntry,
 	deleteFilesystemPath,
 	listFilesystemFilesRecursive,
 	moveFilesystemPath,
+	readEditableTextFile,
 	readFilesystemDirectory,
 	readFilesystemFile,
 	renameFilesystemPath,
+	saveEditableTextFile,
 	statFilesystemPath,
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
@@ -118,11 +127,14 @@ export type McpConfig = McpConfigData;
 const CHANNELS = {
 	READ_DIR: "vetta:fs:read-dir",
 	READ_FILE: "vetta:fs:read-file",
+	READ_EDITABLE_TEXT: "vetta:fs:read-editable-text",
+	SAVE_EDITABLE_TEXT: "vetta:fs:save-editable-text",
 	WRITE_FILE: "vetta:fs:write-file",
 	STAT: "vetta:fs:stat",
 	RENAME: "vetta:fs:rename",
 	DELETE: "vetta:fs:delete",
 	MOVE: "vetta:fs:move",
+	CREATE_ENTRY: "vetta:fs:create-entry",
 	CREATE_DIRECTORY: "vetta:fs:create-directory",
 	LIST_SUB_DIRS: "vetta:fs:list-sub-dirs",
 	LIST_FILES_RECURSIVE: "vetta:fs:list-files-recursive",
@@ -168,6 +180,33 @@ export function registerFsIpc(): () => void {
 		},
 	);
 
+	ipcMain.handle(CHANNELS.READ_EDITABLE_TEXT, async (_event, filePath: unknown): Promise<FsEditableTextSnapshot> => {
+		assertNonEmptyString(filePath, "filePath");
+		return readEditableTextFile(filePath);
+	});
+
+	ipcMain.handle(
+		CHANNELS.SAVE_EDITABLE_TEXT,
+		async (_event, filePath: unknown, content: unknown, options: unknown): Promise<FsSaveEditableTextResult> => {
+			assertNonEmptyString(filePath, "filePath");
+			if (typeof content !== "string") throw new Error("Invalid content");
+			if (typeof options !== "object" || options === null) throw new Error("Invalid options");
+			const saveOptions = options as Partial<FsSaveEditableTextOptions>;
+			assertNonEmptyString(saveOptions.expectedRevision, "expectedRevision");
+			if (saveOptions.force !== undefined && typeof saveOptions.force !== "boolean") {
+				throw new Error("Invalid force");
+			}
+			if (saveOptions.hasBom !== undefined && typeof saveOptions.hasBom !== "boolean") {
+				throw new Error("Invalid hasBom");
+			}
+			return saveEditableTextFile(filePath, content, {
+				expectedRevision: saveOptions.expectedRevision,
+				force: saveOptions.force,
+				hasBom: saveOptions.hasBom,
+			});
+		},
+	);
+
 	ipcMain.handle(CHANNELS.WRITE_FILE, async (_event, filePath: unknown, content: unknown, encoding: unknown) => {
 		assertNonEmptyString(filePath, "filePath");
 		if (typeof content !== "string") throw new Error("Invalid content");
@@ -198,6 +237,16 @@ export function registerFsIpc(): () => void {
 		assertNonEmptyString(destDir, "destDir");
 		await moveFilesystemPath(sourcePath, destDir);
 	});
+
+	ipcMain.handle(
+		CHANNELS.CREATE_ENTRY,
+		async (_event, parentDirectory: unknown, name: unknown, kind: unknown): Promise<FsEntry> => {
+			assertNonEmptyString(parentDirectory, "parentDirectory");
+			assertNonEmptyString(name, "name");
+			if (kind !== "file" && kind !== "directory") throw new Error("Invalid kind");
+			return createFilesystemEntry(parentDirectory, name, kind);
+		},
+	);
 
 	ipcMain.handle(CHANNELS.CREATE_DIRECTORY, async (_event, dirPath: unknown) => {
 		assertNonEmptyString(dirPath, "dirPath");
@@ -480,11 +529,14 @@ export function registerFsIpc(): () => void {
 
 		ipcMain.removeHandler(CHANNELS.READ_DIR);
 		ipcMain.removeHandler(CHANNELS.READ_FILE);
+		ipcMain.removeHandler(CHANNELS.READ_EDITABLE_TEXT);
+		ipcMain.removeHandler(CHANNELS.SAVE_EDITABLE_TEXT);
 		ipcMain.removeHandler(CHANNELS.WRITE_FILE);
 		ipcMain.removeHandler(CHANNELS.STAT);
 		ipcMain.removeHandler(CHANNELS.RENAME);
 		ipcMain.removeHandler(CHANNELS.DELETE);
 		ipcMain.removeHandler(CHANNELS.MOVE);
+		ipcMain.removeHandler(CHANNELS.CREATE_ENTRY);
 		ipcMain.removeHandler(CHANNELS.READ_DIR);
 		ipcMain.removeHandler(CHANNELS.CREATE_DIRECTORY);
 		ipcMain.removeHandler(CHANNELS.LIST_SUB_DIRS);

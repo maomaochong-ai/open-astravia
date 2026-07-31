@@ -21,6 +21,7 @@
 	},
 	"group": {
 		"connectors": "Connections",
+		"vettaBuiltin": "Built into Vetta",
 		"uncategorized": "Uncategorized"
 	},
 	"search": {
@@ -29,9 +30,6 @@
 	"status": {
 		"setupRequired": "Setup required",
 		"updateAvailable": "Update available",
-		"custom": "Custom",
-		"builtin": "Built-in",
-		"readonly": "Read-only",
 		"openSource": "Open source",
 		"sameName": "{{count}} with same name"
 	},
@@ -61,6 +59,8 @@
 		"title": "Choose how to add",
 		"importSkill": "Import skill archive",
 		"importSkillHint": "Install from a local zip, tar.gz or tgz archive",
+		"importPlugin": "Import plugin archive",
+		"importPluginHint": "Install from a local zip that contains plugin.json",
 		"addMcp": "Add MCP manually",
 		"addMcpHint": "Configure a stdio or HTTP MCP server by hand"
 	},
@@ -74,7 +74,6 @@
 	"error": {
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
-		"notLoggedIn": "Sign in before installing abilities",
 		"installSourceConflict": "The same ability identifier is installed from another source and will not be overwritten. Check the source on the details page.",
 		"membersUnavailable": "These members are unavailable and were not installed: {{names}}",
 		"partial": "Some abilities could not be loaded: {{error}}",
@@ -184,6 +183,10 @@
 		"uiSlotMessage": "Below-message slot",
 		"uiSlotToolCall": "Tool call render slot",
 		"uiSlotTurnCard": "Turn card slot",
+		"uiFileExplorerDecorations": "Decorate the file explorer",
+		"uiFileExplorerContextMenu": "Extend file context menus",
+		"uiFileExplorerToolbar": "Extend the file explorer toolbar",
+		"workspaceRead": "Read workspace and file-list metadata",
 		"agentSessionRead": "Read agent session",
 		"agentSessionWrite": "Modify agent session",
 		"agentCommandRun": "Run agent commands",

@@ -24,6 +24,13 @@ export const ABILITY_CATEGORY_UNCATEGORIZED = "__uncategorized__";
  */
 export const ABILITY_CATEGORY_CONNECTORS = "__connectors__";
 
+/**
+ * 分组 key：随 App 分发的内置能力（`isBuiltin`：skill-presets、通用 Agent、系统插件）。
+ * 与用户自己安装的能力（市场 / `~/.agents/skills`）分开成组，展示名走
+ * `abilities:group.vettaBuiltin`。
+ */
+export const ABILITY_CATEGORY_VETTA_BUILTIN = "__vetta_builtin__";
+
 export interface AbilityBase {
 	/** 来源感知的目录唯一标识；同 type + slug 可以跨来源并存。 */
 	id: string;
@@ -167,5 +174,6 @@ export interface AbilitiesModel {
 	/** 逐项勾选后卸载 bundle 成员。 */
 	uninstallBundleMembers: (members: AbilityItem[]) => void;
 	importSkillArchive: (file: File) => void;
+	importPluginArchive: (file: File) => void;
 	startAddManualMcp: () => void;
 }

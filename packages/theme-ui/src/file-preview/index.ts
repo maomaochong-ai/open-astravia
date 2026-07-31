@@ -22,6 +22,15 @@ export type {
 export { PreviewBodyView } from "./PreviewBodyView";
 export type { PreviewErrorBoundaryProps } from "./PreviewErrorBoundary";
 export { PreviewErrorBoundary } from "./PreviewErrorBoundary";
+export type { TextCodeEditorViewProps } from "./TextCodeEditorView";
+export { TextCodeEditorView } from "./TextCodeEditorView";
+export type {
+	TextFileEditorMode,
+	TextFileEditorViewLabels,
+	TextFileEditorViewProps,
+	TextFileEditorViewState,
+} from "./TextFileEditorView";
+export { TextFileEditorView } from "./TextFileEditorView";
 export type { FilePreviewContext, FilePreviewItem, FilePreviewKind } from "./types";
 export {
 	AUDIO_EXTENSIONS,
