@@ -7,14 +7,45 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   RELEASE_TARGET: ${{ vars.VETTA_RELEASE_TARGET || 'github' }}
 
 jobs:
+  prepare:
+    name: resolve desktop release scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      should-build: ${{ steps.scope.outputs.should-build }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Match workflow event to desktop version
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "should-build=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          VERSION="$(node -p "require('./packages/desktop-app/package.json').version")"
+          if [[ "${REF_NAME}" == "v${VERSION}" ]]; then
+            echo "should-build=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "::notice::Ignoring ${REF_NAME}; desktop package version is ${VERSION}."
+            echo "should-build=false" >> "${GITHUB_OUTPUT}"
+          fi
+
   build:
     name: build ${{ matrix.platform }}
+    needs: prepare
+    if: needs.prepare.outputs.should-build == 'true'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     strategy:
@@ -42,7 +73,7 @@ jobs:
           - platform: linux
             runner: ubuntu-latest
             command: dist:linux
-            verify: ""
+            verify: verify:updates:linux
             macArch: ""
 
     steps:
@@ -55,13 +86,6 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
-
-      - name: Validate tag version
-        if: startsWith(github.ref, 'refs/tags/')
-        shell: bash
-        run: |
-          VERSION="$(node -p "require('./packages/desktop-app/package.json').version")"
-          test "${GITHUB_REF_NAME}" = "v${VERSION}"
 
       - name: Configure macOS signing and notarization
         if: matrix.macArch != ''
@@ -92,11 +116,7 @@ jobs:
             fi
           done
           if [[ "${PROVIDED}" -eq 0 ]]; then
-            if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-              echo "A tagged macOS release requires signing and notarization secrets." >&2
-              exit 1
-            fi
-            echo "No macOS signing secrets configured; workflow_dispatch will build an unsigned test package."
+            echo "No macOS signing secrets configured; building an unsigned macOS package."
             exit 0
           fi
           if [[ "${#MISSING[@]}" -ne 0 ]]; then
@@ -157,10 +177,14 @@ jobs:
 
   publish-r2:
     name: publish R2
-    if: vars.VETTA_RELEASE_TARGET == 'r2'
-    needs: build
+    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.VETTA_RELEASE_TARGET == 'r2'
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    environment: desktop-production
+    concurrency:
+      group: desktop-production-publish
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v4
@@ -197,10 +221,16 @@ jobs:
 
   publish-github:
     name: publish GitHub Release
-    if: vars.VETTA_RELEASE_TARGET != 'r2'
-    needs: build
+    if: needs.prepare.outputs.should-build == 'true' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && vars.VETTA_RELEASE_TARGET != 'r2'
+    needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: desktop-production
+    concurrency:
+      group: desktop-production-publish
+      cancel-in-progress: false
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
@@ -232,7 +262,12 @@ jobs:
           VERSION="$(node -p "require('./packages/desktop-app/package.json').version")"
           TAG="v${VERSION}"
           if gh release view "${TAG}" >/dev/null 2>&1; then
-            echo "Updating existing release ${TAG}"
+            IS_DRAFT="$(gh release view "${TAG}" --json isDraft --jq .isDraft)"
+            if [[ "${IS_DRAFT}" != "true" ]]; then
+              echo "Refusing to modify published release ${TAG}." >&2
+              exit 1
+            fi
+            echo "Resuming draft release ${TAG}"
           else
             gh release create "${TAG}" --draft --generate-notes --title "Vetta ${VERSION}"
           fi

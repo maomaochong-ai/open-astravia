@@ -340,6 +340,8 @@ VETTA_R2_PREFIX=desktop/stable
 
 必须先在 test 完成真实的“旧安装版 → CDN → 新版本 → 重启”闭环，再发布 stable。不要用 stable 通道迭代更新功能。
 
+test 与 stable 是两个独立版本序列：`VETTA_DESKTOP_BUILD_VERSION` 只用于 test 客户端之间的版本比较，不决定正式版从哪个数字开始。正式版只要求高于 stable 通道已经发布的版本，并始终与 `packages/desktop-app/package.json` 一致。
+
 ### 9.2 GitHub Releases
 
 开源包构建配置：
@@ -354,16 +356,18 @@ VETTA_UPDATE_GITHUB_REPO=<repository>
 
 `workflow_dispatch` 的工作流定义必须存在于 GitHub 默认分支，执行时可以选择其它分支。`push.tags: v*` 则由 tag 触发。
 
-### 9.3 当前 Action 已知问题
+### 9.3 Action 发布边界
 
-`.github/workflows/desktop-release.yml` 的 `publish-r2` job 当前运行在 `ubuntu-latest`，但 `bun run publish:updates:r2` 会先执行仅支持 Windows 的 `verify-inno-update.mjs`。当合并产物中存在 `latest.yml`/Windows EXE 时，该 job 会失败。
+- `workflow_dispatch` 只构建、校验并保留三平台 Artifact，不上传 R2，也不创建 GitHub Release；因此可以在启用 CI 后用它做正式发布前演练。
+- 只有 `v<packages/desktop-app/package.json version>` tag 才进入发布 Job。
+- 其它同样使用标准 `v*` 命名的仓库 tag 只运行一个轻量 scope Job；版本不等于 desktop package 时直接跳过三平台构建，不消耗打包 runner。
+- Windows Inno 完整安装校验在 Windows build Job 内完成；Linux 汇总发布 Job 不再尝试执行 Windows 安装器。
+- macOS 凭据完全未配置时允许生成未签名包；只配置一部分时失败；凭据齐全时强制校验签名、公证和 Gatekeeper。
+- R2/GitHub 发布共用 `desktop-production` environment 和串行并发组，避免两个任务同时覆盖发布状态。
+- R2 上传前读取线上 `latest*.yml`，拒绝把任一平台清单降到更低版本。
+- 已公开的 GitHub Release 不允许 CI 覆盖；失败任务只能继续上传仍处于 draft 的 Release。
 
-正式启用 R2 Action 前必须二选一修复：
-
-1. 在 Windows build job 内执行 Inno 验证，R2 publish job 只运行上传脚本；或
-2. 把 R2 publish job 改到 Windows runner。
-
-本地 Windows 发布链路不受这个问题影响。
+Actions 可以在不发版时保持仓库级关闭。准备启用时，应先在 GitHub 默认分支放入当前工作流，再配置 `desktop-production` environment 的审核/分支策略；启用后先手动运行一次只构建演练，最后才创建正式 tag。
 
 ## 10. 历史问题、原因与修复
 
@@ -611,7 +615,9 @@ install failed
 
 - [ ] test 已完成真实安装版闭环，不只做了构建产物预检。
 - [ ] Windows 签名状态符合发布要求。
-- [ ] R2 Action 的 Windows Inno 验证 runner 问题已修复。
+- [ ] workflow_dispatch 三平台只构建演练已通过，且没有改动 stable。
+- [ ] `desktop-production` environment 的审核与允许分支已配置。
+- [ ] macOS 当前是明确接受的未签名阶段，或签名/公证校验已经通过。
 - [ ] 失败回滚策略、上一版本清单和诊断负责人已明确。
 
 ## 14. 关键实现文件

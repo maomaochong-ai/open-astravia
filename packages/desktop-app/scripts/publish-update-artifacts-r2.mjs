@@ -56,6 +56,50 @@ export function validatePublishTarget({ prefix, updateUrl, releaseVersion, packa
 	}
 }
 
+function parseVersion(version, source) {
+	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+	if (!match) throw new Error(`[publish-updates-r2] ${source} has an invalid version: ${version}`);
+	return match.slice(1).map(Number);
+}
+
+export function assertNotDowngrade({ releaseVersion, remoteVersion, metadataFile }) {
+	const release = parseVersion(releaseVersion, "local metadata");
+	const remote = parseVersion(remoteVersion, `remote ${metadataFile}`);
+	for (let index = 0; index < release.length; index += 1) {
+		if (release[index] > remote[index]) return;
+		if (release[index] < remote[index]) {
+			throw new Error(
+				`[publish-updates-r2] refusing to downgrade ${metadataFile} from ${remoteVersion} to ${releaseVersion}`,
+			);
+		}
+	}
+}
+
+export async function verifyRemoteMetadataVersions({
+	updateUrl,
+	metadataFiles,
+	releaseVersion,
+	fetchImpl = fetch,
+}) {
+	const normalizedBaseUrl = `${updateUrl.replace(/\/+$/, "")}/`;
+	for (const metadataFile of metadataFiles) {
+		const url = new URL(metadataFile, normalizedBaseUrl);
+		url.searchParams.set("publish-version-check", Date.now().toString());
+		const response = await fetchImpl(url, { cache: "no-store" });
+		if (response.status === 404) continue;
+		if (!response.ok) {
+			throw new Error(
+				`[publish-updates-r2] cannot read current ${metadataFile}: HTTP ${response.status}`,
+			);
+		}
+		const document = parse(await response.text());
+		if (typeof document?.version !== "string") {
+			throw new Error(`[publish-updates-r2] remote ${metadataFile} has no version`);
+		}
+		assertNotDowngrade({ releaseVersion, remoteVersion: document.version, metadataFile });
+	}
+}
+
 function contentTypeFor(fileName) {
 	const lower = fileName.toLowerCase();
 	if (lower.endsWith(".yml") || lower.endsWith(".yaml")) return "application/yaml";
@@ -233,6 +277,7 @@ export async function main() {
 	const files = await collectArtifacts();
 	const artifactFiles = files.filter((fileName) => !metadataPattern.test(fileName));
 	const metadataFiles = files.filter((fileName) => metadataPattern.test(fileName));
+	await verifyRemoteMetadataVersions({ updateUrl, metadataFiles, releaseVersion });
 	for (const fileName of artifactFiles) {
 		await uploadFile({ client, bucket, prefix, fileName, isMetadata: false });
 	}

@@ -47,6 +47,7 @@
 		"verify:updates:windows": "node scripts/verify-inno-update.mjs",
 		"verify:updates:mac": "node scripts/verify-mac-update.mjs",
 		"merge:updates:mac": "node scripts/merge-mac-update-metadata.mjs",
+		"verify:updates:linux": "node scripts/verify-linux-update.mjs",
 		"publish:updates:r2": "node scripts/verify-update-artifacts.mjs && node scripts/publish-update-artifacts-r2.mjs",
 		"pack": "bun run dist:desktop -- --target dir",
 		"pack:linux": "cross-env VETTA_VENDOR_PLATFORM=linux-x64 VETTA_CLI_TARGET_PLATFORMS=linux-x64 bun run dist:desktop -- --platform linux --target dir",

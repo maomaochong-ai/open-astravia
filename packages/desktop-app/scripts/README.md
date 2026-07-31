@@ -174,11 +174,12 @@ electron-builder 会随各平台产物生成更新清单：
 bun run publish:updates:r2
 ```
 
-发布前会按当前目录中的平台清单执行门禁：Windows 在 Windows 上校验 Inno 版本，macOS 在任意系统校验 `latest-mac.yml`、ZIP、大小、SHA-512 和 blockmap。在 macOS 正式签名构建中还应设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，此时会解压 ZIP 并执行 `codesign`、`spctl` 与 `stapler` 校验。也可以单独执行：
+发布前会按当前目录中的平台清单执行门禁：Windows 在 Windows 上校验 Inno 版本；macOS 校验 `latest-mac.yml`、ZIP、大小、SHA-512 和 blockmap；Linux 校验 `latest-linux*.yml`、AppImage、大小、SHA-512 和内嵌 blockmap 信息。在 macOS 正式签名构建中还应设置 `VETTA_REQUIRE_MAC_SIGNATURE=1`，此时会解压 ZIP 并执行 `codesign`、`spctl` 与 `stapler` 校验。也可以单独执行：
 
 ```bash
 bun run verify:updates:windows
 bun run verify:updates:mac
+bun run verify:updates:linux
 ```
 
 Windows 的运行时安装校验只能在 Windows 执行；R2 汇总发布任务运行在 Linux 时会跳过这项系统相关检查，依赖各平台构建 Job 已通过自己的门禁。
@@ -194,7 +195,7 @@ VETTA_R2_PREFIX=desktop/stable
 VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/stable
 ```
 
-脚本解析 `latest*.yml`，只发布清单引用的版本化安装包和对应 blockmap；大文件使用 16 MiB S3 multipart 分片。安装包经公开域名验证可读后才覆盖 `latest*.yml`，避免客户端读到尚未完整发布的版本。R2 自定义域名应对安装包启用长期缓存；`latest*.yml` 保持短缓存，不要被 Cache Everything 规则强制长缓存。
+脚本解析 `latest*.yml`，只发布清单引用的版本化安装包和对应 blockmap；大文件使用 16 MiB S3 multipart 分片。上传前会读取公开通道的现有清单，拒绝用更低版本覆盖；安装包经公开域名验证可读后才覆盖 `latest*.yml`，避免客户端读到尚未完整发布的版本。R2 自定义域名应对安装包启用长期缓存；`latest*.yml` 保持短缓存，不要被 Cache Everything 规则强制长缓存。
 
 ### 发布到 GitHub Releases
 
@@ -205,5 +206,7 @@ bun run dist:win
 ```
 
 Windows 的 Inno Setup 安装包是自定义产物，应由仓库的 release workflow（或 `gh release upload`）连同 `latest.yml` 和 blockmap 上传。各操作系统仍应在对应系统的 CI runner 上构建；它们可以共同上传到同一个 GitHub Release。
+
+工作流的 `workflow_dispatch` 只执行三平台构建、校验并保留临时 Artifact，不发布 stable。只有 `v<package-version>` tag 触发的任务才进入 R2/GitHub 发布 Job；其它 `v*` tag 经轻量 scope Job 判定后跳过打包。发布 Job 使用 `desktop-production` environment 且全局串行。GitHub Release 已经公开后不允许 CI 用 `--clobber` 修改，只能恢复尚未公开的 draft。
 
 打包时会从本包 `CHANGELOG.md` 提取与当前版本完全匹配的 `## [version]` 区段作为更新说明。正式发布必须先完成 Changelog 定版；找不到版本区段的本地 QA 构建只告警并省略更新说明。
