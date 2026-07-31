@@ -10,7 +10,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
-- **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、vetta-actions 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
+- **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、vetta-actions、git 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
+- **Git 插件不再限定 coding 工作模式**：manifest 去掉 `agent_mode: ["coding"]`（agent_mode 轴改为通用）。面板与 turn 卡的显隐仍只看当前 cwd 是不是 git 工作区（`git rev-parse --is-inside-work-tree`），非仓库目录照旧不占标签位。
 - **「插件工作台」更名为「制作插件」**：插件名、活动面板标题、Activity Tab、输入栏 mode 开关及配套 skill / prompt 文案统一改名（英文 `Create Plugin`）。
 
 ### Removed
