@@ -79,6 +79,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **活动面板图片预览操作别扭**：内置 `media-viewer` 原先空格+拖才平移、Ctrl/Cmd+滚轮才缩放、适配只按宽度算导致竖图被裁切，按钮缩放也不绕中心。改为常见看图交互：滚轮对准光标缩放、左键直接拖移、双击在「适应窗口」与 1:1（已是 1:1 则 2×）间切换、+/- / 0 快捷键、宽高同时适配并限制平移不把图拖丢、工具栏改图标。
 - **消息列表里本地文件链接误当网页打开 / 无法点击**：Markdown `href` 原先只认 `file://` 与以 `/` 开头的路径；更关键的是 `react-markdown` 的 `defaultUrlTransform` 把 Windows 盘符 `C:` / `file:` 当成非法协议直接清空 `href`，链接变成不可点的下划线文案。现用 `chatUrlTransform` 放行本地路径，并在解析前把 `](C:\…)` 里的反斜杠改成 `/`（避免 CommonMark 把 `\.` `\f` 等当转义破坏路径，如 `.vetta`）。分类为 file / http(s) / 其它：本地路径文件 badge → 活动面板内嵌预览（项目内）或灯箱；http(s) → 内置浏览器 tab；未知协议不再 `target=_blank`。宿主侧相对路径按会话 cwd 解析，并修正 `file:///C:/…` 残留的 `/C:/` 形态。
 - **拖放高亮过重且闪烁**：文件树根区 / 目录行与输入框 drop 区弱化提示（更浅底色、1px 虚线、圆角，去掉厚 ring/blur）；`dragleave` 用 `relatedTarget` 判断是否真的离开容器，经过子节点/文件行时不再误关高亮导致方框闪烁。
 - **输入框 drop 区与卡片对齐**：拖放层从外层 padding/`max-w-2xl` 容器挪到真正的 input card 上，高亮圆角与卡片一致；移出后正确关闭（去掉与 counter 冲突的 leave 逻辑）。
