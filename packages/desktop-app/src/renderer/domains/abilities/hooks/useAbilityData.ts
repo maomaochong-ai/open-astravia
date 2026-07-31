@@ -9,6 +9,7 @@ import { fetchMarketAbilities } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { areAllAttemptedMarketSourcesUnavailable, getOpenMarketplaceLoadState } from "../lib/ability-load-policy";
 import { mergeAbilityCatalogs } from "../lib/merge-ability-catalogs";
 
@@ -120,9 +121,13 @@ export function useAbilityData(): AbilityData {
 		[],
 	);
 
+	// 内置 skill 的展示文案由主进程按当前语言给出（`skills:builtin.*`），切语言要重新取数。
+	const { i18n: i18nInstance } = useTranslation();
+	const language = i18nInstance.language;
 	useEffect(() => {
+		void language;
 		load(false);
-	}, [load]);
+	}, [load, language]);
 
 	const market = useMemo(
 		() => mergeAbilityCatalogs(serverMarket, openMarketplace.snapshots),

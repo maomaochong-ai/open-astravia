@@ -11,6 +11,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 ### Changed
 
 - **能力广场不再要求登录**：市场列表与安装（skill / scene / plugin 的下载安装）在未登录状态下照常可用，服务端对应接口已开放匿名访问。`fetchMarketAbilities` / `fetchAbilityInfo` / `downloadAbility` 的 token 参数改为可选并移到末位，有 token 时仍带 `Authorization`。移除安装前的「请先登录」拦截与 `abilities:error.notLoggedIn` 文案。
+- **内置 Skill 展示文案接入 i18n**：「创建技能」「发布能力」的名称与描述改由宿主 catalog（`skills:builtin.<name>.*`）按当前语言给出，`skills-manifest.json` 里的中文降级为缺译回退。切语言时能力广场与输入栏命令面板都会重新取数（命令面板的模块级缓存改为按语言分键）。
 - **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、vetta-actions、git 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
 - **Git 插件不再限定 coding 工作模式**：manifest 去掉 `agent_mode: ["coding"]`（agent_mode 轴改为通用）。面板与 turn 卡的显隐仍只看当前 cwd 是不是 git 工作区（`git rev-parse --is-inside-work-tree`），非仓库目录照旧不占标签位。
 - **「插件工作台」更名为「制作插件」**：插件名、活动面板标题、Activity Tab、输入栏 mode 开关及配套 skill / prompt 文案统一改名（英文 `Create Plugin`）。
