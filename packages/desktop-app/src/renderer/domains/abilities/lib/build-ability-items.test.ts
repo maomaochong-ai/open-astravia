@@ -166,6 +166,48 @@ describe("buildSkillAbilities", () => {
 
 		expect(items[0]?.origin).toEqual(ability.origin);
 	});
+
+	it("only marks app-shipped skills as builtin", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{ name: "pdf", description: "", source: "builtin", type: "skill" },
+					{ name: "my-skill", description: "", source: "user", type: "skill" },
+					{ name: "from-plugin", description: "", source: "plugin", type: "skill" },
+				],
+			}),
+		);
+
+		expect(items.map((item) => [item.slug, item.isBuiltin, item.catalogSource.kind])).toEqual([
+			["pdf", true, "builtin"],
+			["my-skill", false, "local"],
+			["from-plugin", false, "local"],
+		]);
+	});
+
+	it("does not duplicate an installed skill that listSkills also reports", () => {
+		const market = { ...createBundle([]), type: "skill" as const, slug: "translator" };
+		const items = buildSkillAbilities(
+			[market],
+			createState({
+				skillManifest: {
+					translator: {
+						name: "translator",
+						source: "market",
+						enabled: true,
+						version: "1.0.0",
+						type: "skill",
+						installedAt: "2026-07-31T00:00:00.000Z",
+					},
+				},
+				localSkills: [{ name: "translator", description: "", source: "market", type: "skill" }],
+			}),
+		);
+
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({ slug: "translator", installed: true, isBuiltin: false });
+	});
 });
 
 describe("buildMcpAbilities", () => {
