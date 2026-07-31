@@ -9,14 +9,16 @@ class FakeUpdateEngine implements UpdateEngine {
 	installCalls = 0;
 	cancelCalls = 0;
 	private progressHandler: ((progress: ProgressInfo) => void) | null = null;
+	private stagingHandler: (() => void) | null = null;
 	private resolveDownload: ((paths: string[]) => void) | null = null;
 
 	async checkForUpdates(): Promise<UpdateEngineCheckResult | null> {
 		return this.checkResult;
 	}
 
-	downloadUpdate(onProgress: (progress: ProgressInfo) => void): UpdateEngineDownload {
+	downloadUpdate(onProgress: (progress: ProgressInfo) => void, onStaging?: () => void): UpdateEngineDownload {
 		this.progressHandler = onProgress;
+		this.stagingHandler = onStaging ?? null;
 		return {
 			promise: new Promise<string[]>((resolve) => {
 				this.resolveDownload = resolve;
@@ -29,6 +31,10 @@ class FakeUpdateEngine implements UpdateEngine {
 
 	emitProgress(progress: ProgressInfo): void {
 		this.progressHandler?.(progress);
+	}
+
+	emitStaging(): void {
+		this.stagingHandler?.();
 	}
 
 	completeDownload(paths: string[]): void {
@@ -151,6 +157,59 @@ describe("UpdaterService", () => {
 		expect(service.getState()).toMatchObject({
 			phase: "error",
 			progress: undefined,
+			error: "updater.errors.downloadFailed",
+		});
+	});
+
+	it("does not treat Squirrel.Mac staging as a stalled download", async () => {
+		const engine = createAvailableEngine();
+		const service = new UpdaterService(engine, "0.5.21", true, translate, {
+			downloadStallTimeoutMs: 1_000,
+			stagingTimeoutMs: 10_000,
+		});
+		await service.check();
+		const downloadPromise = service.startDownload();
+
+		// 引擎把网络阶段压缩到 0～90%，暂存期间进度停在这里不再变化。
+		engine.emitProgress({
+			bytesPerSecond: 100,
+			delta: 1_000,
+			percent: 90,
+			total: 1_000,
+			transferred: 1_000,
+		});
+		engine.emitStaging();
+		expect(service.getState()).toMatchObject({
+			phase: "downloading",
+			progress: 0.9,
+			downloadedBytes: 1_000,
+		});
+
+		// 暂存期间没有任何进度事件，短停滞超时不得触发。
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(engine.cancelCalls).toBe(0);
+		expect(service.getState().phase).toBe("downloading");
+
+		engine.completeDownload(["/Applications/Vetta.app"]);
+		await downloadPromise;
+		expect(service.getState().phase).toBe("ready");
+	});
+
+	it("gives up when Squirrel.Mac never finishes staging", async () => {
+		const engine = createAvailableEngine();
+		const service = new UpdaterService(engine, "0.5.21", true, translate, {
+			downloadStallTimeoutMs: 1_000,
+			stagingTimeoutMs: 10_000,
+		});
+		await service.check();
+		void service.startDownload();
+
+		engine.emitStaging();
+		await vi.advanceTimersByTimeAsync(10_000);
+
+		expect(engine.cancelCalls).toBe(1);
+		expect(service.getState()).toMatchObject({
+			phase: "error",
 			error: "updater.errors.downloadFailed",
 		});
 	});

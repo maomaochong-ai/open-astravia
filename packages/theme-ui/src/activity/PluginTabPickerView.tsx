@@ -24,16 +24,19 @@ export interface HiddenTabEntryView {
 	readonly key: string;
 	readonly label: string;
 	readonly icon?: ReactNode;
+	/** 可选副标题（如插件显示名）。 */
+	readonly subtitle?: string;
 }
 
 export interface PluginTabPickerViewLabels {
 	readonly menu: string;
 	readonly moreTabs: string;
 	readonly hiddenPanels: string;
+	readonly availablePlugins: string;
 }
 
 export interface PluginTabPickerViewProps {
-	/** 当前被隐藏、可点击恢复的 tab（内置/动态/插件统一） */
+	/** 当前被隐藏、可点击恢复的 tab（内置/动态） */
 	readonly hiddenTabs: readonly HiddenTabEntryView[];
 	/** 恢复（取消隐藏）某个 tab */
 	readonly onRestore: (key: string) => void;
@@ -41,22 +44,29 @@ export interface PluginTabPickerViewProps {
 	readonly overflowTabs: readonly HiddenTabEntryView[];
 	/** 激活某个被收纳的页签 */
 	readonly onSelectOverflow: (key: string) => void;
+	/** 已注册但未 attach 的插件 tab（可添加池） */
+	readonly availablePluginTabs?: readonly HiddenTabEntryView[];
+	/** 从可添加池 attach 并激活 */
+	readonly onAttachPlugin?: (key: string) => void;
 	readonly labels: PluginTabPickerViewLabels;
 }
 
 /**
- * 活动面板 tab 栏右侧的下拉按钮：列出因宽度收纳的页签（点击激活）与被手动隐藏的页签
- * （点击恢复）。有收纳项时常显，否则 hover tab 栏才浮现。
+ * 活动面板 tab 栏右侧的下拉按钮：可添加池插件 tab、宽度收纳页签、被手动隐藏的页签。
+ * 有收纳项或可添加项时常显，否则 hover tab 栏才浮现。
  */
 export function PluginTabPickerView({
 	hiddenTabs,
 	onRestore,
 	overflowTabs,
 	onSelectOverflow,
+	availablePluginTabs = [],
+	onAttachPlugin,
 	labels,
 }: PluginTabPickerViewProps): JSX.Element {
 	const [open, setOpen] = useState(false);
 	const hasOverflow = overflowTabs.length > 0;
+	const hasAvailable = availablePluginTabs.length > 0;
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -66,8 +76,10 @@ export function PluginTabPickerView({
 					title={labels.menu}
 					className={cn(
 						"mb-1 mr-3 flex h-5 shrink-0 items-center justify-center gap-0.5 rounded-md px-1 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100",
-						// 有收纳项时常显（用户需要入口取回）；否则跟随 tab 栏 hover 浮现
-						open || hasOverflow ? "opacity-100" : "opacity-0 group-hover/activity-tabs:opacity-100",
+						// 有收纳/可添加项时常显；否则跟随 tab 栏 hover 浮现
+						open || hasOverflow || hasAvailable
+							? "opacity-100"
+							: "opacity-0 group-hover/activity-tabs:opacity-100",
 					)}
 				>
 					{hasOverflow && (
@@ -75,10 +87,44 @@ export function PluginTabPickerView({
 							{overflowTabs.length}
 						</span>
 					)}
-					<span className="icon-[mdi--chevron-down] h-4 w-4" />
+					<span className={hasAvailable ? "icon-[mdi--plus] h-4 w-4" : "icon-[mdi--chevron-down] h-4 w-4"} />
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="end" sideOffset={6} className="w-60 gap-0 p-1.5">
+				{availablePluginTabs.length > 0 && onAttachPlugin && (
+					<>
+						<div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted-foreground">
+							{labels.availablePlugins}
+						</div>
+						{availablePluginTabs.map((tab) => (
+							<button
+								key={tab.key}
+								type="button"
+								onClick={() => {
+									onAttachPlugin(tab.key);
+									setOpen(false);
+								}}
+								className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-muted"
+							>
+								<TabIcon
+									icon={tab.icon ?? DEFAULT_PLUGIN_TAB_ICON}
+									className="text-muted-foreground"
+								/>
+								<span className="min-w-0 flex-1">
+									<span className="block truncate text-[13px] leading-tight text-foreground">
+										{tab.label}
+									</span>
+									{tab.subtitle && tab.subtitle !== tab.label ? (
+										<span className="mt-0.5 block truncate text-[11px] leading-tight text-muted-foreground/70">
+											{tab.subtitle}
+										</span>
+									) : null}
+								</span>
+								<span className="icon-[mdi--plus] h-4 w-4 shrink-0 text-muted-foreground" />
+							</button>
+						))}
+					</>
+				)}
 				{overflowTabs.length > 0 && (
 					<>
 						<div className="px-2 pb-1.5 pt-1 text-[11px] font-medium text-muted-foreground">

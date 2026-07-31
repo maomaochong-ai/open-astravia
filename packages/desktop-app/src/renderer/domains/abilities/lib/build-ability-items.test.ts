@@ -166,6 +166,64 @@ describe("buildSkillAbilities", () => {
 
 		expect(items[0]?.origin).toEqual(ability.origin);
 	});
+
+	it("only marks app-shipped skills as builtin", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{ name: "pdf", description: "", source: "builtin", type: "skill" },
+					{ name: "my-skill", description: "", source: "user", type: "skill" },
+					{ name: "from-plugin", description: "", source: "plugin", type: "skill" },
+				],
+			}),
+		);
+
+		expect(items.map((item) => [item.slug, item.isBuiltin, item.catalogSource.kind])).toEqual([
+			["pdf", true, "builtin"],
+			["my-skill", false, "local"],
+			["from-plugin", false, "local"],
+		]);
+	});
+
+	it("gives app-shipped skills their bundled icon, and only them", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{ name: "create-skill", description: "", source: "builtin", type: "skill" },
+					// 同名但用户来源：不能借用内置图标。
+					{ name: "publish-ability", description: "", source: "user", type: "skill" },
+					{ name: "pdf", description: "", source: "builtin", type: "skill" },
+				],
+			}),
+		);
+
+		expect(items.map((item) => item.icon)).toEqual(["./skills/create-skill.png", undefined, undefined]);
+	});
+
+	it("does not duplicate an installed skill that listSkills also reports", () => {
+		const market = { ...createBundle([]), type: "skill" as const, slug: "translator" };
+		const items = buildSkillAbilities(
+			[market],
+			createState({
+				skillManifest: {
+					translator: {
+						name: "translator",
+						source: "market",
+						enabled: true,
+						version: "1.0.0",
+						type: "skill",
+						installedAt: "2026-07-31T00:00:00.000Z",
+					},
+				},
+				localSkills: [{ name: "translator", description: "", source: "market", type: "skill" }],
+			}),
+		);
+
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({ slug: "translator", installed: true, isBuiltin: false });
+	});
 });
 
 describe("buildMcpAbilities", () => {

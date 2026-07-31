@@ -4,9 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+	assertNotDowngrade,
 	collectArtifacts,
 	readReleaseVersion,
 	validatePublishTarget,
+	verifyRemoteMetadataVersions,
 } from "./publish-update-artifacts-r2.mjs";
 
 test("collectArtifacts uploads only files referenced by updater metadata and publishes metadata last", async () => {
@@ -86,5 +88,50 @@ test("validatePublishTarget rejects QA versions on stable and allows test", () =
 			releaseVersion: "1.2.4",
 			packageVersion: "1.2.3",
 		}),
+	);
+});
+
+test("assertNotDowngrade allows equal/newer releases and rejects older releases", () => {
+	assert.doesNotThrow(() =>
+		assertNotDowngrade({
+			releaseVersion: "1.2.3",
+			remoteVersion: "1.2.3",
+			metadataFile: "latest.yml",
+		}),
+	);
+	assert.doesNotThrow(() =>
+		assertNotDowngrade({
+			releaseVersion: "1.3.0",
+			remoteVersion: "1.2.99",
+			metadataFile: "latest.yml",
+		}),
+	);
+	assert.throws(
+		() =>
+			assertNotDowngrade({
+				releaseVersion: "1.2.3",
+				remoteVersion: "1.2.4",
+				metadataFile: "latest.yml",
+			}),
+		/refusing to downgrade/,
+	);
+});
+
+test("verifyRemoteMetadataVersions accepts missing metadata and rejects a newer remote channel", async () => {
+	const responses = new Map([
+		["latest.yml", new Response("not found", { status: 404 })],
+		["latest-mac.yml", new Response("version: 2.0.0\n", { status: 200 })],
+	]);
+	const fetchImpl = async (url) => responses.get(new URL(url).pathname.split("/").at(-1));
+
+	await assert.rejects(
+		() =>
+			verifyRemoteMetadataVersions({
+				updateUrl: "https://releases.example.com/desktop/stable",
+				metadataFiles: ["latest.yml", "latest-mac.yml"],
+				releaseVersion: "1.9.9",
+				fetchImpl,
+			}),
+		/refusing to downgrade latest-mac.yml from 2.0.0 to 1.9.9/,
 	);
 });

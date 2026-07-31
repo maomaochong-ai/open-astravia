@@ -3,6 +3,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rm
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
@@ -139,15 +140,25 @@ function resolveMacSigning() {
 	const has = (key) => typeof process.env[key] === "string" && process.env[key].trim().length > 0;
 	if (!MAC_SIGN_ENV_KEYS.some(has)) return { enabled: false };
 
+	// VETTA_SKIP_NOTARIZE=1：保留签名、只跳过公证，供本地更新闭环快速迭代。
+	// Squirrel.Mac 只校验代码签名，不要求公证票据；本地构建的产物没有 quarantine
+	// 属性，Gatekeeper 也不会拦。因此这种产物能完整跑通更新链路，但**不可分发**——
+	// 用户下载到的包带 quarantine，没有票据会被判「已损坏」。
+	// 兜底：verify-mac-update.mjs 在 VETTA_REQUIRE_MAC_SIGNATURE=1 时会跑
+	// `xcrun stapler validate`，未公证的产物过不了 test/stable 的发布门禁。
+	const skipNotarize = process.env.VETTA_SKIP_NOTARIZE === "1";
+
 	// 半配置状态最危险：签了名却没公证的产物照样被 Gatekeeper 拦，
 	// 而 DMG 里的修复助手此时已被移除。宁可直接失败。
 	const missing = [];
 	if (!has("CSC_LINK") && !has("CSC_NAME")) missing.push("CSC_LINK 或 CSC_NAME");
 	if (!has("APPLE_TEAM_ID")) missing.push("APPLE_TEAM_ID");
-	const hasApiKey = has("APPLE_API_KEY") && has("APPLE_API_KEY_ID") && has("APPLE_API_ISSUER");
-	const hasAppleId = has("APPLE_ID") && has("APPLE_APP_SPECIFIC_PASSWORD");
-	if (!hasApiKey && !hasAppleId) {
-		missing.push("APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER，或 APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD");
+	if (!skipNotarize) {
+		const hasApiKey = has("APPLE_API_KEY") && has("APPLE_API_KEY_ID") && has("APPLE_API_ISSUER");
+		const hasAppleId = has("APPLE_ID") && has("APPLE_APP_SPECIFIC_PASSWORD");
+		if (!hasApiKey && !hasAppleId) {
+			missing.push("APPLE_API_KEY + APPLE_API_KEY_ID + APPLE_API_ISSUER，或 APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD");
+		}
 	}
 	if (missing.length > 0) {
 		throw new Error(
@@ -155,31 +166,19 @@ function resolveMacSigning() {
 				"申请与注入流程见 docs/deploy/apple-code-signing.md；要出未签名包请清空所有 CSC_* / APPLE_* 变量。",
 		);
 	}
-	return { enabled: true, teamId: process.env.APPLE_TEAM_ID.trim() };
+	return { enabled: true, notarize: !skipNotarize, teamId: process.env.APPLE_TEAM_ID.trim() };
 }
 
 const macSigning = resolveMacSigning();
-console.log(
-	macSigning.enabled
-		? `[prepare-pack] macOS 签名与公证已启用（team=${macSigning.teamId}）`
-		: "[prepare-pack] macOS 签名凭据未配置，产出未签名包",
-);
-
-function resolveBuildResourceFilters() {
-	const filters = new Set(["pet/**/*"]);
-	const families = resolvePlatformFamilies();
-	if (families.has("darwin")) {
-		filters.add("icon.icns");
-		filters.add("icon.png");
-		filters.add("icon-dock.png");
-	}
-	if (families.has("linux")) {
-		filters.add("icon.png");
-	}
-	if (families.has("win32")) {
-		filters.add("icon.ico");
-	}
-	return [...filters];
+if (!macSigning.enabled) {
+	console.log("[prepare-pack] macOS 签名凭据未配置，产出未签名包");
+} else if (macSigning.notarize) {
+	console.log(`[prepare-pack] macOS 签名与公证已启用（team=${macSigning.teamId}）`);
+} else {
+	console.warn(
+		`[prepare-pack] macOS 已签名但跳过公证（team=${macSigning.teamId}，VETTA_SKIP_NOTARIZE=1）——` +
+			"仅供本地更新闭环，产物不可分发",
+	);
 }
 
 function resolveSandboxResourceFilters() {
@@ -551,8 +550,8 @@ if (existsSync(runtimeCoreSandboxDir)) {
 // 托管运行时 vendor 二进制 (extraResources) —— ADR-0011
 // =============================================================================
 //
-// 把当前构建目标平台的 Node + Python(python-build-standalone)二进制内置进
-// Resources/vendor/{node,python}/,首启时由 main 进程拷贝到 ~/.vetta/runtimes/。
+// 把当前构建目标平台的 Node + Python(python-build-standalone)原始归档内置进
+// Resources/vendor/{node,python}/,首启时由 main 进程解压到 ~/.vetta/runtimes/。
 // 这是普通用户「下载下来就有环境」的本体。Node 走 npmmirror、Python 走 GitHub
 // (国内无稳定公共镜像,故必须内置)。构建机有网即可;无法联网的构建可设
 // VETTA_SKIP_VENDOR=1 跳过(产物退化为「面板手动下载」,不推荐发版用)。
@@ -579,13 +578,6 @@ async function stageVendorRuntimes() {
 			);
 		}
 		const destTypeDir = join(stagedVendorDir, type);
-		const extractedDir = join(destTypeDir, entry.dir);
-		const versionMarker = join(extractedDir, ".vendor-version");
-		// 已就绪且版本一致 → 跳过(加速迭代构建)
-		if (existsSync(versionMarker) && readFileSync(versionMarker, "utf8").trim() === def.version) {
-			console.log(`[prepare-pack] vendor ${type} ${def.version} 已就绪,跳过`);
-			continue;
-		}
 		rmSync(destTypeDir, { recursive: true, force: true });
 		mkdirSync(destTypeDir, { recursive: true });
 
@@ -620,13 +612,26 @@ async function stageVendorRuntimes() {
 			throw new Error(`[prepare-pack] 无法下载 vendor ${type}(${platformTag});检查构建机网络或设 VETTA_SKIP_VENDOR=1`);
 		}
 
-		// 解压:系统 tar 同时处理 tar.gz 与 zip(Win10+/bsdtar)。
-		execFileSync("tar", ["-xf", archivePath, "-C", destTypeDir], { stdio: "inherit" });
-		if (!existsSync(extractedDir)) {
-			throw new Error(`[prepare-pack] vendor ${type} 解压后未找到预期目录: ${extractedDir}`);
+		// macOS 必须内置解压目录：electron-builder 只签得到文件系统上可见的 Mach-O，
+		// 而 Apple 公证服务会解开归档递归校验，归档内的 python/node 二进制一律被判
+		// 「未签名 / 无安全时间戳 / 未启用 hardened runtime」。解压后 osx-sign 会像
+		// 处理 im-gateway、cli-app 那样逐个签名。详见 docs/desktop/macos-auto-update.md。
+		//
+		// 其余平台保留上游原始归档，避免每个桌面版本都让 Inno 重建数千个不变小文件；
+		// RuntimeManager 仅在托管运行时缺失或升级时解压一次。
+		if (platformTag.startsWith("darwin-")) {
+			execFileSync("tar", ["-xf", archivePath, "-C", destTypeDir], { stdio: "inherit" });
+			const extractedDir = join(destTypeDir, entry.dir);
+			if (!existsSync(extractedDir)) {
+				throw new Error(`[prepare-pack] vendor ${type} 解压后未找到预期目录: ${extractedDir}`);
+			}
+			console.log(`[prepare-pack] vendor ${type} ${def.version} extracted -> ${extractedDir}`);
+			continue;
 		}
-		writeFileSync(versionMarker, def.version);
-		console.log(`[prepare-pack] vendor ${type} ${def.version} staged -> ${extractedDir}`);
+
+		const stagedArchivePath = join(destTypeDir, entry.filename);
+		cpSync(archivePath, stagedArchivePath);
+		console.log(`[prepare-pack] vendor ${type} ${def.version} archive staged -> ${stagedArchivePath}`);
 	}
 }
 
@@ -691,7 +696,7 @@ function resolveExtraResources() {
 		{
 			from: "build",
 			to: "build",
-			filter: resolveBuildResourceFilters(),
+			filter: resolveBuildResourceFilters(resolvePlatformFamilies()),
 		},
 	];
 	const sandboxFilters = resolveSandboxResourceFilters();
@@ -713,6 +718,8 @@ function resolveExtraResources() {
 	return extraResources;
 }
 
+const extraResources = resolveExtraResources();
+
 // Write electron-builder config
 const builderConfig = {
 	appId: "com.vetta.desktop",
@@ -724,6 +731,7 @@ const builderConfig = {
 	npmRebuild: false,
 	...(updatePublishConfig ? { publish: [updatePublishConfig] } : {}),
 	...(releaseInfo ? { releaseInfo } : {}),
+	files: ["**/*", ...extraResources.map(({ from }) => `!${from}/**/*`)],
 	protocols: {
 		name: "Vetta",
 		schemes: ["vetta"],
@@ -745,7 +753,7 @@ const builderConfig = {
 					entitlementsInherit: "build/entitlements.mac.inherit.plist",
 					// electron-builder 26 起 notarize 只接受布尔值，团队与密钥
 					// 一律从 APPLE_TEAM_ID / APPLE_API_* 环境变量读取。
-					notarize: true,
+					notarize: macSigning.notarize,
 				}
 			: {
 					identity: null,
@@ -805,7 +813,7 @@ const builderConfig = {
 	},
 	// Sidecar binaries are picked up from the staged ./im-gateway dir
 	// (populated above by the cross-build step).
-	extraResources: resolveExtraResources(),
+	extraResources,
 	directories: {
 		output: join(projectRoot, "release"),
 	},

@@ -106,6 +106,12 @@ export interface InputBarModel {
 	placeholderRotating: boolean;
 	isFocused: boolean;
 	slashOpen: boolean;
+	/**
+	 * 命令区是否还在屏上（含退场动画期间）。
+	 * 输入卡片的圆角与上边框跟它走而不是 `slashOpen`：两块面是一整块，`slashOpen`
+	 * 一变卡片就立刻恢复圆角，命令区还没退完，接缝处会露出两个缺口。
+	 */
+	slashVisible: boolean;
 	slashFilter: string;
 	atOpen: boolean;
 	/** `@` 触发词原文（含 `@`），AtPanel 用它过滤。 */

@@ -1,6 +1,6 @@
-# 插件工作台模式（已开启）
+# 制作插件模式（已开启）
 
-用户已打开「插件工作台」硬隔离模式。在此模式下你必须：
+用户已打开「制作插件」硬隔离模式。在此模式下你必须：
 
 1. **遵循 skill `plugin-workbench`** 的完整流水线（澄清 → 读文档 → 实现 → 标准脚本构建 → 引导用户在面板「应用到 Vetta」→ 验证）。
 2. **先读内嵌插件开发手册再写代码**。手册路径（生产环境无 monorepo `docs/plugin`）：
@@ -10,7 +10,7 @@
 3. 信息不足时 **AskUserQuestion**，禁止臆测：插件 id、展示名、权限、功能范围、是否立即安装、扩展点类型、**工作模式定位**。
    - **新建插件必须先问工作模式定位**：用 AskUserQuestion 问清该插件是「**通用** / **Work 专属** / **Coding 专属**」，据此设 `plugin.json` 顶层 `agent_mode`——通用 = **不写**该字段；Work 专属 = `["work"]`；Coding 专属 = `["coding"]`。白名单外的工作模式下整个插件不可见。详见 `manifest.md` 的 `agent_mode`。若个别 tool / MCP server / skill 需要与插件不同的模式，再在各自处单独声明（取交集）。
 4. 构建/打包只走工作台 `scripts/build-and-pack.mjs`（及 scaffold / check-manifest）；不要另起一套不一致的 pack。
-5. **安装/再应用不要调用 `plugins.manage` 的 `install-from-path`**（会弹确认 sheet）。一律引导用户到活动面板「插件工作台」点对应工程卡片的「应用到 Vetta」（一次完成授权+启用）；应用后面板会默认开启「热更新」。
+5. **安装/再应用不要调用 `plugins.manage` 的 `install-from-path`**（会弹确认 sheet）。一律引导用户到活动面板「制作插件」点对应工程卡片的「应用到 Vetta」（一次完成授权+启用）；应用后面板会默认开启「热更新」。
 6. 改 name / guidingWords 只改 cwd 工程 `plugin.json`，再 build→pack→install/reload；不要改已安装目录当源码。
 7. **改已安装插件前先查热更新状态**（`plugins.query` get 返回项的 `devWatch` 字段）：已开启热更新的插件改完源码或 `plugin.json`（含 permissions/commands）即自动生效——**不要**再 build/pack/install-from-path/reload。热更新会话内声明权限会自动放行（仅内存）。**仅当**需要把授权**持久写入**注册表、或关热更新/重启后仍要保留新权限时，才调 `workbench_offer_reinstall` 让用户点「重新安装」（会整 App 刷新）；也可让用户到面板点「重新安装」。**禁止**自己 `install-from-path`。未开启热更新则走常规 build→pack→引导用户在面板点「应用到 Vetta」。
 8. **样式只使用 Tailwind className**；禁止手写业务 CSS 文件或全局选择器（会注入宿主页面、污染 UI）。`style.css` 仅允许 Tailwind theme+utilities 入口，见 `styling-and-pitfalls.md`。

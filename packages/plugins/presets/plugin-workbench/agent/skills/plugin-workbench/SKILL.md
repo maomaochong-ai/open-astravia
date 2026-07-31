@@ -8,7 +8,7 @@ description: >
   is bundled under the workbench root agent/docs/plugin/ (same content as docs/plugin).
 ---
 
-# 插件工作台（完整流水线）
+# 制作插件（完整流水线）
 
 面向**不懂开发的用户**：你读规范、写代码、跑标准脚本、装进本机；用户只回答问题与点确认。
 
@@ -22,7 +22,7 @@ description: >
 workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 ```
 
-若拿不到：用宿主 `plugins.query` list，或面板/会话上下文；失败则 AskUserQuestion 请用户确认 App 已启用系统插件「插件工作台」。
+若拿不到：用宿主 `plugins.query` list，或面板/会话上下文；失败则 AskUserQuestion 请用户确认 App 已启用系统插件「制作插件」。
 
 | 资源 | 绝对路径 |
 | --- | --- |
@@ -71,9 +71,9 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 
 ## 2. 前置条件
 
-1. 用户已打开输入栏 **「插件工作台」** toggle（硬隔离；关着则 skill/agent 贡献不可见）。  
+1. 用户已打开输入栏 **「制作插件」** toggle（硬隔离；关着则 skill/agent 贡献不可见）。  
 2. 工程在**当前会话 cwd**（或一层子目录），无特殊工场目录。  
-3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（scaffold 默认 sdk `^0.0.4` / vite `^0.0.3`，两者版本独立；若 install 失败问用户 registry/版本）。  
+3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（scaffold 默认 sdk `^0.1.0` / vite `^0.0.3`，两者版本独立；若 install 失败问用户 registry/版本）。  
 4. 构建用 **托管 Node + npm**；标准脚本封装，禁止随意手搓另一套 pack（除非用户明确要求且你已读 getting-started 的打包约定）。
 
 ---
@@ -152,7 +152,7 @@ node "{workbenchRoot}/scripts/build-and-pack.mjs" "{pluginRoot}"
 
 打包完成后**不要调用** `plugins.manage` 的 `install-from-path`（会弹确认 sheet，工作台流程已废弃此路径）。改为告知用户：
 
-> 打开右侧活动面板「插件工作台」→ 对应工程卡片 → 点 **「应用到 Vetta」**（面板安装一次完成授权 + 启用，无确认弹窗）。
+> 打开右侧活动面板「制作插件」→ 对应工程卡片 → 点 **「应用到 Vetta」**（面板安装一次完成授权 + 启用，无确认弹窗）。
 
 - 应用成功后面板会**默认开启「热更新」**：之后你改源码即自动构建+重载（§4.3.5），无需再次应用。用户可手动关掉。  
 - 再次应用（热更新被关掉时）：build-and-pack 后再请用户点「应用到 Vetta」（应用后会重新默认开启热更新）。  
@@ -171,7 +171,7 @@ node "{workbenchRoot}/scripts/build-and-pack.mjs" "{pluginRoot}"
 
 ## 5. 运维面板
 
-Activity Tab「插件工作台」（同样受 toggle 硬隔离）：扫描 cwd、构建、应用、卸载、重载、改 name/引导词。与对话同一规则与同一脚本。
+Activity Tab「制作插件」（同样受 toggle 硬隔离）：扫描 cwd、构建、应用、卸载、重载、改 name/引导词。与对话同一规则与同一脚本。
 
 每张工程卡片有 **「热更新」开关（已安装后默认开）**：宿主把插件 dev 链接到工程目录并常驻 `vite build --watch`，保存源码即自动构建 + 自动重载（无需 bump/重打 zip/手动 reload）。适合迭代调试。
 

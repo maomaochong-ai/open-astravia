@@ -72,6 +72,7 @@ export function SkillList({
 	activeIndex,
 	labels,
 	filtering,
+	limit,
 	resolveIcon,
 	onHover,
 	onSelect,
@@ -79,9 +80,10 @@ export function SkillList({
 	if (items.length === 0) {
 		return <SkillListEmpty filtering={filtering} labels={labels} />;
 	}
+	const visible = limit === undefined ? items : items.slice(0, limit);
 	return (
 		<div className="py-1">
-			{items.map((skill, index) => (
+			{visible.map((skill, index) => (
 				<SkillListItem
 					key={`${skill.type}-${skill.source}-${skill.name}`}
 					skill={skill}

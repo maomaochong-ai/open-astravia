@@ -505,7 +505,25 @@ const conversation: PluginConversationApi = {
 	},
 	on: (listener: Listener): Disposable => {
 		listeners.add(listener);
-		return { dispose: () => listeners.delete(listener) };
+		// 订阅即回放一次当前会话状态：插件在 activate 里订阅时，本轮的
+		// conversation-changed 早已广播完（会话先于插件就绪，热更新更是如此），
+		// 没有回放的话「按当前 cwd 决定标签卡显隐」这类逻辑要等到下次切会话才跑。
+		// 走微任务，让 activate 先执行完再回调。
+		let disposed = false;
+		void Promise.resolve().then(() => {
+			if (disposed) return;
+			try {
+				listener({ type: "conversation-changed", conversation: snapshot() });
+			} catch (error) {
+				console.error("Plugin conversation listener threw", error);
+			}
+		});
+		return {
+			dispose: () => {
+				disposed = true;
+				listeners.delete(listener);
+			},
+		};
 	},
 };
 

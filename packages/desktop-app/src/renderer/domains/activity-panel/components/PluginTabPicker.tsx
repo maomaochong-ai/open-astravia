@@ -11,7 +11,7 @@ export { DEFAULT_PLUGIN_TAB_ICON };
 export type HiddenTabEntry = HiddenTabEntryView;
 
 interface PluginTabPickerProps {
-	/** 当前被隐藏、可点击恢复的 tab（内置/动态/插件统一） */
+	/** 当前被隐藏、可点击恢复的 tab（内置/动态） */
 	hiddenTabs: HiddenTabEntry[];
 	/** 恢复（取消隐藏）某个 tab */
 	onRestore: (key: string) => void;
@@ -19,17 +19,22 @@ interface PluginTabPickerProps {
 	overflowTabs: HiddenTabEntry[];
 	/** 激活某个被收纳的页签 */
 	onSelectOverflow: (key: string) => void;
+	/** 已注册但未 attach 的插件 tab */
+	availablePluginTabs?: HiddenTabEntry[];
+	/** 从可添加池 attach 并激活 */
+	onAttachPlugin?: (key: string) => void;
 }
 
 /**
- * 活动面板 tab 栏右侧的下拉按钮：列出因宽度收纳的页签（点击激活）与被手动隐藏的页签
- * （点击恢复）。有收纳项时常显，否则 hover tab 栏才浮现。
+ * 活动面板 tab 栏右侧的下拉：可添加池插件 tab、宽度收纳页签、被手动隐藏的页签。
  */
 export function PluginTabPicker({
 	hiddenTabs,
 	onRestore,
 	overflowTabs,
 	onSelectOverflow,
+	availablePluginTabs,
+	onAttachPlugin,
 }: PluginTabPickerProps): JSX.Element {
 	const { t } = useTranslation("project");
 
@@ -39,10 +44,13 @@ export function PluginTabPicker({
 			onRestore={onRestore}
 			overflowTabs={overflowTabs}
 			onSelectOverflow={onSelectOverflow}
+			availablePluginTabs={availablePluginTabs}
+			onAttachPlugin={onAttachPlugin}
 			labels={{
 				menu: t("tabPicker.menu"),
 				moreTabs: t("tabPicker.moreTabs"),
 				hiddenPanels: t("tabPicker.hiddenPanels"),
+				availablePlugins: t("tabPicker.availablePlugins"),
 			}}
 		/>
 	);

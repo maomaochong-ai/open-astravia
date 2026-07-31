@@ -1,7 +1,7 @@
 {
 	"id": "image-gen",
 	"name": "%plugin.name%",
-	"icon": "solar:magic-stick-3-bold",
+	"icon": "icon.png",
 	"version": "0.1.15",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",

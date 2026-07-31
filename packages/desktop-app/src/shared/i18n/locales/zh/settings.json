@@ -1293,6 +1293,8 @@
   "shortcutOpenProjectDesc": "选择并打开一个项目文件夹",
   "shortcutOpenSettingsLabel": "打开设置",
   "shortcutOpenSettingsDesc": "打开设置页面",
+  "shortcutSaveFileLabel": "保存文件",
+  "shortcutSaveFileDesc": "保存右侧文件编辑器中的当前文件",
   "kbHiwTitle": "知识库是怎么工作的",
   "kbHiwSubtitle": "简单三步，了解资料如何变成 AI 能用的知识，以及 Token 花在哪里。",
   "kbHiwStep1Title": "放入资料",

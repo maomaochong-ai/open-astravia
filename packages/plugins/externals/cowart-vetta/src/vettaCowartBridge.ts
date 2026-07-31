@@ -187,7 +187,9 @@ export function installCowartVettaBridge(options: CowartBridgeOptions): () => vo
 
 	const callServerTool = async (request: { name: string; arguments?: Record<string, unknown> }) => {
 		const name = request.name;
-		const args = { projectDir, canvasDir, ...(request.arguments ?? {}) };
+		// 显式标注：展开 Record<string, unknown> 不会带出索引签名，缺了它
+		// args.snapshot / args.dataUrl 等调用方参数会被判成不存在。
+		const args: Record<string, unknown> = { projectDir, canvasDir, ...(request.arguments ?? {}) };
 
 		try {
 			if (name === "get_cowart_canvas_state") {

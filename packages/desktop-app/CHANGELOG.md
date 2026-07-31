@@ -4,6 +4,22 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ## [Unreleased] — 内测版（未公证）
 
+### Added
+
+- **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。
+
+### Changed
+
+- **能力广场不再要求登录**：市场列表与安装（skill / scene / plugin 的下载安装）在未登录状态下照常可用，服务端对应接口已开放匿名访问。`fetchMarketAbilities` / `fetchAbilityInfo` / `downloadAbility` 的 token 参数改为可选并移到末位，有 token 时仍带 `Authorization`。移除安装前的「请先登录」拦截与 `abilities:error.notLoggedIn` 文案。
+- **内置 Skill 展示文案接入 i18n**：「创建技能」「发布能力」的名称与描述改由宿主 catalog（`skills:builtin.<name>.*`）按当前语言给出，`skills-manifest.json` 里的中文降级为缺译回退。切语言时能力广场与输入栏命令面板都会重新取数（命令面板的模块级缓存改为按语言分键）。
+- **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、vetta-actions、git 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
+- **Git 插件不再限定 coding 工作模式**：manifest 去掉 `agent_mode: ["coding"]`（agent_mode 轴改为通用）。面板与 turn 卡的显隐仍只看当前 cwd 是不是 git 工作区（`git rev-parse --is-inside-work-tree`），非仓库目录照旧不占标签位。
+- **「插件工作台」更名为「制作插件」**：插件名、活动面板标题、Activity Tab、输入栏 mode 开关及配套 skill / prompt 文案统一改名（英文 `Create Plugin`）。
+
+### Removed
+
+- **系统插件「我能帮你」(guiding-words) 移除**：不再随 App 构建/打包，preset 源码目录一并删除。
+
 ### Breaking Changes
 
 - **客户端只保留授权登录，账号密码登录移除**：登录入口与引导页登录步不再有账号/密码输入框，点「登录」直接唤起系统浏览器走站点授权，回跳 `vetta://oauth/callback` 完成登录。渲染层 `loginByAccount` / `LoginResponse` 删除（服务端 `/auth/login` 不受影响）。非 GitHub/Google 账号经站点 `/login` 的邮箱验证码或邮箱密码登录，客户端不再提供第二条入口。
@@ -21,6 +37,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **工具栏按形态切换**：收缩形态下是「+」+ 执行模式（左）与模型 / 用量环 / 发送（右）；展开形态下执行模式、模型与发送一并收起，执行模式的位置让给「插图 / 附件」——命令区已占满上方，此时工具栏只服务于「往输入框里添东西」。命令区底部只保留可开关的知识检索 / 插件 action。
 ### Added
 
+- **能力页「添加能力」支持导入本地插件 zip**：原先菜单只有「导入技能压缩包」与「手动添加 MCP」，插件本地安装被注释成开发者路径。现增加「导入插件压缩包」，走既有 `plugins.installFromArchive`（`source: "archive"`），装完刷新能力列表。
 - **外观设置新增「侧边栏样式」**：「经典」（默认）让侧边栏贴紧窗口左侧，去掉圆角与四周边框、只保留右侧一条分隔线；「悬浮」是原来的留白 + 圆角 + 边框形态。偏好存 localStorage `vetta-sidebar-style`，首帧前写到 `<html data-sidebar-style>`，避免启动时闪一下悬浮态。窄屏 overlay 侧边栏不受影响，仍是圆角浮层。macOS 下经典侧边栏透出系统原生毛玻璃（窗口本就带 `vibrancy: "sidebar"`，此前被整帧底色盖住）：整帧不上底色、侧边栏改铺一层 60% 的半透明 `--background`（压住壁纸杂色又保留通透感），主内容区用 `::before` 溢出 8px 补回不透明底色，因此布局与其它平台完全一致，只有侧边栏那一条是毛玻璃。`<html data-platform>` 由 `applyPlatformAttribute()` 写入，供仅某平台生效的样式选择。
 - **侧边栏「更多」菜单新增设置直达项**：模型设置 / Agent 设置 / 外观，分别跳 `/settings/models`、`/settings/context`、`/settings/appearance`。`SidebarNavItem` 新增可选 `settingsTab`（与 `path` 互斥）。
 - **订阅卡「升级套餐」外链按钮（ADR-0051）**：设置页 Vetta Go 订阅卡右上角新增按钮，`shell.openExternal` 跳官网 `/pricing` 完成购买。desktop 刻意不做站内支付——3DS 验证、银行跳转、PayPal 弹窗在 `BrowserWindow` 里均不可靠，支付闭环收敛在官网。theme-ui 的 `SubscriptionCardsViewModel` 新增可选 `actions.upgrade` / `labels.upgrade`（缺省不渲染，旧主题不受影响）。
@@ -56,6 +73,18 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **macOS 点「立即重启」后装不上新版本**：这条链路上串着五个必须全对的环节，缺任何一个都表现为「点了重启但版本没变」，而且症状彼此相似、极易误判。逐个实测确认如下。**① 标记 `app.isQuitting`**：窗口 `close` 守卫在 macOS 上默认把关闭改成隐藏，而 Squirrel.Mac 走 `NSApp terminate:` 语义——任一窗口 `preventDefault()` 就取消整个终止流程，症状是应用压根不退出（托盘「退出」菜单两处早就设了这个标记，只有更新器这条路漏了）。**② 交棒前跑完退出清理**：清理逻辑从 `before-quit` 抽到 `quit-cleanup.ts`，供 `main.ts` 与 `updater.ts` 共用。**③ 等 launchd 作业出现再退出**：交棒后立刻 `app.exit(0)` 实测 41ms 就打死进程，Squirrel 连作业都还没提交。**④ 主动 `launchctl kickstart` 该作业**：作业注册的是按需启动的 mach service 端点（`launchctl print` 里 `port = 0x0`、`active = 0`、`runs = 0`），Squirrel 本该提交后连上去触发 spawn，实测它从不连、给几分钟也不动且无任何错误日志；手动 kickstart 则能完整装好。**⑤ 最后仍要硬 `exit`**：本进程挂着 IM sidecar、uiohook、RPC server 等句柄，Electron 的正常退出流程结束不了它，而 launchd 要等目标进程退出才 spawn ShipIt——不 exit 就死锁，用户以为关了，其实是单实例锁把老进程窗口又调了出来。另加**⑥ 重启后主动抢焦点**：ShipIt 以 launchd 守护进程身份拉起应用，应用不会成为活动应用，窗口 `show()` 调了也不露面（日志里没有 `[window] show`），用户以为没重启。退出前打一次性标记、启动时消费（`update-relaunch-marker.ts`），只有这一种情况抢焦点，避免开机自启打断用户。**Windows 同样受①⑤影响**：Inno 的 `activate()` 只是 `app.relaunch()` + `app.quit()`，而 `before-quit` 在清理跑过后是直通的，没人再兜底 `app.exit(0)`——进程不退出，`app.relaunch()` 也就永远不生效，症状是「版本指针切了但新版本起不来」。因此收尾的硬 `exit` 对两个平台都执行，macOS 额外多一步等安装器接手。
+
+- **macOS 公证因内置运行时是归档而失败**：`notarytool` 返回 `Invalid`，issues 指向 `Resources/vendor/python/cpython-….tar.gz/…/bin/python3.13` 之类的路径——Apple 的公证服务会**解开归档**递归校验里面的 Mach-O，而 electron-builder 只签得到文件系统上可见的二进制，签不进归档内部，于是 `python3.13`、`libpython3.13.dylib`、`libtcl9.0.dylib` 和一批 `.so` 全被判「未签名 / 无安全时间戳 / 未启用 hardened runtime」。`prepare-pack.js` 改为按目标平台分支：darwin 内置解压目录（osx-sign 会像处理 `im-gateway`、`cli-app` 那样逐个签名），Windows / Linux 保留原始归档、Inno 的小文件优化不受影响。`RuntimeManager.seedFromVendor` 相应地优先使用解压目录，找不到才回退归档解压；新增 `installRuntimeDirectory` 与 `installRuntimeArchive` 共用同一套 staging + 原子替换逻辑。从目录 seed 时必须传 `verbatimSymlinks`——Node 的 `fs.cp` 默认会把相对符号链接（`python3 -> python3.13`）重写成指向源目录的绝对路径，安装后指回 app bundle 内部，更新替换 `.app` 时整片悬空。
+
+- **活动面板里「Git 面板」「插件工作台」标签卡不再出现**：插件标签卡的显隐靠「上栏记录」（cwd → tab，ADR-0026），而唯一的写入方是插件自己调 `openActivityTab`——图像生成插件在生成后调所以正常，git 与工作台从没写过这个触发，6/24 删掉 "+" 下拉里的手动勾选 attach 后就再没有任何入口能让它们上栏。改为让插件显式声明自己的出现条件：新增 `ctx.ui.setActivityTabVisible(tabId, visible)`（只上栏/下栏，不激活、不抢焦点弹开面板）与 `registerActivityTab({ initiallyVisible })`（缺省 `true`，注册即上栏，老插件不用改）。git 插件按 `git rev-parse --is-inside-work-tree` 探测，只在仓库目录上栏；插件工作台跟随输入栏「插件工作台」toggle 上下栏。`ctx.conversation.on()` 订阅后会立刻回放一次 `conversation-changed`，插件不必等下次切会话才判定。
+- **活动面板「+」菜单不再列出当前未上栏的插件 tab**：在 `setActivityTabVisible` / `initiallyVisible` 之上，把 scope 命中但当前不可见的池项列在「可添加插件面板」（例如 `initiallyVisible: false` 或用户关掉的 tab）；从菜单添加会写显式上栏记录，关闭插件 tab 写显式下栏并回到池，与 ADR-0026 三态记录一致。
+- **macOS 更新在 Squirrel 暂存阶段被误判为「下载失败」**：传输结束到 Squirrel.Mac 收下 ZIP 之间不产生任何 `download-progress` 事件，而 120 秒的停滞超时只由进度事件重置，这段时长又不受控（取决于磁盘与包体积）。一旦超时，`UpdaterService` 取消下载并置为 error，之后 Squirrel 其实暂存成功、promise 回来时又因 `activeDownload` 不匹配被丢弃，界面永久停在「下载失败」。（实测 M4 上这个窗口只有 3.4 秒——Squirrel 的 `update-downloaded` 只表示 ZIP 已收进 ShipIt 暂存区，真正的解包与验签在应用退出后进行。）`UpdateEngine.downloadUpdate` 新增可选的 `onStaging` 回调标记进入安装准备阶段，该阶段改用 10 分钟的兜底超时（只防死锁）。同时把 macOS 的网络阶段压缩到 0～90%（此前只有 Windows 这么做），暂存期间停在 90%、ready 才跳 100%，让「90% 之后是本地准备而非网络问题」这条排障语义在两端一致。Windows 的 Inno 准备阶段本就持续上报进度，行为不变。
+- **命令区 / skill 选择器 / @ 文件面板：鼠标滑过列表会带动滚动**：高亮项 `scrollIntoView` 原先挂在 `activeIndex` 上，键盘与鼠标 hover 共用同一路径，移到底部附近时滚动位置会被不断拽动。现仅在方向键改高亮时滚进视口，hover 只改高亮。
+- **方向键移到输入框里的 token 上会把光标吞掉**：技能 / 连接器 / 文件 / 图片四种行内 token 都声明了 `isKeyboardSelectable() = true`，光标左右移到 token 上时 Lexical 会把 RangeSelection 换成 NodeSelection，caret 随之消失；而输入框用的是 `PlainTextPlugin`，它不像 RichText 那样注册 NodeSelection 下的方向键处理，选区就此卡死——再按方向键没有任何反应，此时继续打字还会插到整段开头，只能用鼠标点一下才能恢复。四种 token 改为不可键盘选中，光标像跨过一个普通字符那样跨过 token，Backspace 删除 token 的行为不变。
+- **通用 Agent 目录里的同名 skill 会挡住能力广场安装**：`~/.agents/skills` 下有同名 skill（如 `xlsx` / `docx`）时，安装市场同名能力被判为「同一能力标识已由其它来源安装」而拒绝。通用目录不受 Vetta 托管、也无法预测别的 agent 往里放什么，按 ADR-0020 它本就该让位于 Vetta 原生 skill，因此不再让 `agents-user` / `agents-project` 来源的只读条目占据物理安装位。装好之后该同名条目按既有加载优先级被 Vetta 的版本盖掉（输入框命令区与 agent 感知都只看得到一份），与 Vetta 受控能力不重名的通用 skill 不受影响。
+- **输入框「默认态 → 展开态」在低配设备上卡顿**：上一轮只清掉了首次展开时撞进动画的异步数据，结构性开销还在。命令区的高度生长是 `height: 0 → auto` 的弹簧，而 height 不可合成，每帧都要 style → layout → paint → raster 整块面板（几十行列表 + 每行一个内联 SVG 图标）——偏偏命令区是 `absolute bottom-full`，压根不参与布局流，这段高度动画对其它元素毫无影响，纯粹为了「生长感」却付了整条不可合成路径的代价；`height: "auto"` 还会在过滤词每变一次时重新测量并重定向弹簧，打字期间是持续的 layout 抖动。现在改成 `clip-path: inset()` 从上往下揭幕：布局与绘制内容全程停在终态，每帧只重新裁剪一次，layout 一次都不跑。刻意不用更便宜的 transform 位移——内容一动，描边、圆角与「和输入卡片接成一整块」的接缝在动画中途就都不在终态位置上，半像素接缝会显出一条线，与卡片相接的两角会短暂露出背后的消息列表。同时：揭幕期间列表只渲染可视区的 12 行（剩下的动画结束再补，不再在首帧一次性布局上百行）、渐隐 mask 暂不挂载；工具栏切形态不再卸载 / 挂载 `ExecutionModeSelector`、`ModelSelector`、`ContextRing`（那次同步 render 正好落在动画第一帧），改为只切 display；新会话页的 hero 淡出、输入栏位移与命令区揭幕改为共用一条固定时长的曲线（各跑各的弹簧时掉帧时能看出它们互相在追），并接上 `prefers-reduced-motion`。输入卡片的圆角与透明上边框改为跟随新的 `slashVisible`（命令区是否还在屏上，含退场动画）而不是 `slashOpen`——两块面本该是一整块，`slashOpen` 一变卡片就立刻恢复圆角，命令区还没退完，那 190ms 里接缝处会露出两个缺口。`InputBarModel` 因此新增 `slashVisible`，覆盖 `chat.inputBarView` 槽位的主题可以按需使用。
+- **展开态命令区与输入区之间有一条贯穿全宽的细线**：那 1px 正对着输入卡片的上描边——展开态它被置成透明（不用 `border-t-0`，否则整条 bar 会抖 1px），但没有任何东西盖住它，边框区显示什么取决于 `background-clip`，透出来就是一条把两块面切开的线。命令区的 bottom 从 `100%` 压到 `calc(100% - 1px)`，用它自己无描边的底边补平。
 - **进入应用后第一次展开命令面板会顿一下再继续展开**：`height: 0 → auto` 的弹簧全程跑在主线程，首次展开时有三处异步在动画中间才到位——skill 列表的预取挂在 `requestIdleCallback`（冷启动主线程被占满，一路拖到 2s 超时才发起，赶不上第一次展开）、缓存命中时展开那一刻仍无条件重拉一次、图标目录（要打网络）只在 `open` 时才开始加载。数据一到就是几十行重渲染加整列远程 `<img>` 换图，动画因此顿住。现在 skill 列表预取挂载即发起、图标目录同样提前预热，缓存命中时的「反映磁盘增删」重拉推到空闲再做。
 - **Windows 安装版启动后只有托盘、主窗口不显示**：版本启动器曾用 `HideWindow: true` 拉起 Electron，会写入 `STARTF_USESHOWWINDOW` + `SW_HIDE`，导致进程第一次 `ShowWindow` 被系统强制隐藏（日志里已有 `show`，但 HWND 无 `WS_VISIBLE`）。去掉启动器 `HideWindow`；主进程 `revealMainWindow` 在 Windows 上再 show 一次，兼容尚未替换的旧启动器。
 - **输入栏「图像生成」等 badge 时有时无**：`activeToolNamesAtom` 只在 `openSession` 时用 `getState` 取一次快照，而 `generate_image` 是 image-gen 插件 activate 后才动态注册的。冷启动恢复会话时会话创建早于插件就绪，那个会话的 `requiresActiveTool` 闸门就一直把 badge 挡住。现在订阅 runtime 新增的 `active_tools_update` 事件刷新该 atom，并在 `session.subscribe` 时回放一次当前工具集，堵住 getState 与 subscribe 之间的丢事件窗口。
@@ -71,6 +100,16 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **更新提示从侧边栏顶部图标改为底部提示条**：顶栏那个带进度环的小图标去掉（`SidebarUpdateButton` / `SidebarUpdateIcon` / `useSidebarUpdateButtonModel` 删除），改为在侧边栏底部设置项上方插一条与侧栏等宽的提示条，只在后台下载完成（`phase === "ready"`）后出现。条上是版本文案 +「重启更新」按钮（`updater.install()` 立即重启安装）；鼠标悬浮时左侧图标变为关闭图标，点击忽略本条（调 `updater.dismiss()`，安装交给退出时的自动流程），忽略状态按版本记忆，下一个版本就绪时重新出现。
+- **能力列表把随 App 分发的内置能力单独成组「Vetta 内置」**：内置 skill / 通用 Agent 与系统插件（`isBuiltin`）不再按各自分类混进市场能力与 `~/.agents/skills` 里，统一聚到一个分组，排在各分类之后、未分类（本地技能）之前。从内置预设添加的 MCP 连接器仍留在「连接」分组。分组逻辑从 `useAbilitiesModel` 抽到 `lib/group-abilities.ts`。
+
+- **能力卡片去掉来源类 badge 与只读锁图标**：标题右侧不再有「内置」「自定义」「只读」标签（来源已由分组和详情页的来源信息表达），只保留需要用户处理的「需要配置」「可更新」「N 个同名」；只读条目右侧不再用锁图标占位，直接留空。详情页头部同步。
+
+- **修正 `listSkills` 列出的 skill 一律被当成内置**：`~/.agents/skills` 里用户自己放的、以及插件贡献的 skill 之前被硬标成 `isBuiltin` + builtin 来源（跟着进了「Vetta 内置」分组），现在只有 `source=builtin`（随 App 分发）才算内置，其余归本地来源。同时按 `type:name` 去重：市场装的 skill 也会被 `listSkills` 列出，此前会额外多出一条只读条目。
+
+- **macOS 发版改出 arm64 与 x64 两套产物**：此前 `desktop-release` 只在 arm64 runner 上按宿主架构构建一次，Intel Mac 既没有安装包，检查更新时也会因 `MacUpdater.filterFilesForArch` 过滤掉 arm64 文件而报 `ERR_UPDATER_ZIP_FILE_NOT_FOUND`。内置的 node/python 运行时按 `VETTA_VENDOR_PLATFORM` 单架构落盘，一次构建出不了两套，因此拆成 `dist:mac:arm64` / `dist:mac:x64` 两个 matrix 任务；两次构建都会写同名 `latest-mac.yml`，各自重命名为 `latest-mac-<arch>.yml` 上传，再由发布任务的 `merge:updates:mac`（`scripts/merge-mac-update-metadata.mjs`）合并回单一元数据（ZIP 在前、x64 在 arm64 之前，与 electron-builder 单次多架构构建的产物顺序一致）。
+
+- **新会话页展开命令区时，能力条目不足 7 条就不再下沉输入栏**：条目少时面板长不到会盖住 hero 的高度，那趟 120px 位移纯属多余。判定用不带过滤词的完整列表条目数（与命令区共用模块级缓存），因此不会随用户打字过滤而抖；hero 淡出仍跟展开态本身走。
 - **外观设置里「侧边栏样式」下移到「主题」之后**：原先夹在「外观模式」与「界面主题」之间，现在排到主题色区段下方（页面末尾），`SETTINGS_SECTIONS` 的顺序同步调整以对齐设置搜索结果。
 - **工具栏里已激活 action 胶囊常驻底色**：紧跟权限/沙箱右侧的激活胶囊由「透明、hover 才上底色」改为常驻 `bg-accent/60`（hover 加深到 `bg-accent`）。它表示的是持续生效的状态，全透明时和旁边的普通工具栏按钮分不出来。多个 action 折叠后堆叠的图标容器由圆形改为圆角矩形（20px、`rounded-[7px]`、3px 内边距），`+n` 角标同步跟上。折叠态 popover 宽度跟随触发胶囊（`--radix-popover-trigger-width`），条目改用与未折叠胶囊完全一致的外观与关闭手势（h-7 / `rounded-lg` / `bg-accent/60`，图标 hover 变关闭键、整行可点），看起来就是把几枚胶囊竖着收纳了。
 - **命令区 skill 列表空态改为卡片**：「未找到匹配项」/「暂无可用的技能或场景」由一行灰字换成占满命令区宽度的虚线卡片（左侧圆形图标 + 右侧标题与提示，横排以免撑高命令区），新增 `SkillListEmpty` 组件与 `chat.slashPanel.emptyNoMatchHint` / `emptyNoSkillsHint` 两条文案（zh/en），`SkillListLabels` 随之新增两个必填字段。聊天侧命令面板与 dialog 侧 skill 选择器共用。

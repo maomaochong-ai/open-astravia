@@ -3,6 +3,7 @@ import { cn } from "@shared/lib/utils";
 import { ChatExportHost } from "../ChatExportHost";
 import { InputBar } from "../InputBar";
 import { MessageList } from "../MessageList";
+import { SessionDropZone } from "../SessionDropZone";
 import type { ChatViewActions, ChatViewModel, ChatViewProps } from "./types";
 
 interface DefaultChatViewProps extends ChatViewProps {
@@ -31,7 +32,9 @@ export function DefaultChatView({
 						onSend={onSend}
 						onAbort={onAbort}
 					/>
-					<InputBar onSend={onSend} onAbort={onAbort} onSendQueued={onSendQueued} />
+					<SessionDropZone className="relative shrink-0">
+						<InputBar onSend={onSend} onAbort={onAbort} onSendQueued={onSendQueued} />
+					</SessionDropZone>
 				</div>
 				<ActivityPanel />
 			</div>

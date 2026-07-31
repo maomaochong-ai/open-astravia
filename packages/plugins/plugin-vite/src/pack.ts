@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
@@ -23,6 +24,8 @@ interface PluginManifest {
 	version: string;
 	entry: string;
 	styles?: string[];
+	/** 三态：Iconify 名 / `http(s)://` 外链 / 包内相对路径（只有后者需要打包）。 */
+	icon?: string;
 	agent?: {
 		systemPrompt?: {
 			promptPaths?: string[];
@@ -100,9 +103,26 @@ function parsePluginManifest(value: unknown): PluginManifest {
 		id,
 		version,
 		entry,
+		icon: readString(value, "icon"),
 		agent: readAgentManifest(value),
 		styles: readStringArray(value, "styles"),
 	};
+}
+
+/** Iconify 图标名：`solar:magic-stick-3-bold` 这种 `<集合>:<图标>` 形态。 */
+const ICONIFY_ICON_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
+ * 与宿主 `isPassthroughIconRef`、服务端 `isPackagedIconPath` 保持同一判定：
+ * Iconify 名与 http(s) 外链不落包，其余按包内相对路径打进 zip。
+ */
+function isPackagedIconPath(icon: string): boolean {
+	return (
+		icon !== "" &&
+		!icon.startsWith("http://") &&
+		!icon.startsWith("https://") &&
+		!ICONIFY_ICON_PATTERN.test(icon)
+	);
 }
 
 function parseJsonObject(buffer: Buffer, fileName: string): Record<string, unknown> {
@@ -292,6 +312,16 @@ async function collectRuntimeFiles(
 
 	for (const style of pluginManifest.styles ?? []) {
 		addFile(resolve(rootDir, style));
+	}
+
+	// 包内相对路径图标：不打进 zip 的话，宿主 vetta-plugin:// 会 404、市场上传会被服务端拒绝。
+	const icon = pluginManifest.icon?.trim();
+	if (icon && isPackagedIconPath(icon)) {
+		const iconPath = resolve(rootDir, icon);
+		if (!existsSync(iconPath)) {
+			throw new Error(`plugin.json icon file not found: ${icon}`);
+		}
+		addFile(iconPath);
 	}
 
 	for (const promptPath of pluginManifest.agent?.systemPrompt?.promptPaths ?? []) {

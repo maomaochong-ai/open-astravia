@@ -1,7 +1,7 @@
 {
 	"id": "office-viewer",
 	"name": "%plugin.name%",
-	"icon": "solar:document-text-bold",
+	"icon": "icon.png",
 	"version": "0.1.4",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",

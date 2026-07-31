@@ -8,14 +8,16 @@ import {
 } from "@vetta/ui";
 import { useTranslation } from "react-i18next";
 
-/** 本地导入通道：skill 压缩包与手动 MCP。插件的从路径安装属开发者功能，留在设置页。 */
+/** 本地导入通道：skill 压缩包、插件 zip、手动 MCP。 */
 export function AddAbilityMenu({
 	importing,
 	onImportSkill,
+	onImportPlugin,
 	onAddMcp,
 }: {
 	importing: boolean;
 	onImportSkill: () => void;
+	onImportPlugin: () => void;
 	onAddMcp: () => void;
 }): JSX.Element {
 	const { t } = useTranslation("abilities");
@@ -41,6 +43,19 @@ export function AddAbilityMenu({
 						<span className="block text-[13px] font-medium">{t("add.importSkill")}</span>
 						<span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground/70">
 							{t("add.importSkillHint")}
+						</span>
+					</span>
+				</DropdownMenuItem>
+				<DropdownMenuItem disabled={importing} onSelect={onImportPlugin} className="items-start gap-2.5 py-2.5">
+					<span
+						className={`mt-0.5 h-4 w-4 shrink-0 ${
+							importing ? "icon-[solar--refresh-linear] animate-spin" : "icon-[solar--widget-2-linear]"
+						}`}
+					/>
+					<span className="min-w-0">
+						<span className="block text-[13px] font-medium">{t("add.importPlugin")}</span>
+						<span className="mt-0.5 block text-[11px] leading-relaxed text-muted-foreground/70">
+							{t("add.importPluginHint")}
 						</span>
 					</span>
 				</DropdownMenuItem>

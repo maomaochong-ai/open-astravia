@@ -10,6 +10,7 @@ import type {
 import { GuideBadgeSwiper } from "../GuideBadgeSwiper";
 import { AgentModeIconToggle } from "./AgentModeIconToggle";
 import { easeOut } from "./constants";
+import { NewSessionMascot } from "./NewSessionMascot";
 
 interface NewSessionHeroHostProps {
 	avatarAutoplay: boolean;
@@ -51,7 +52,7 @@ export function NewSessionHero({
 }
 
 export function DefaultNewSessionHero({
-	avatarAutoplay: _avatarAutoplay,
+	avatarAutoplay,
 	className,
 	greetingTitle,
 	mounted,
@@ -100,16 +101,7 @@ export function DefaultNewSessionHero({
 			</motion.div>
 
 			{/* 吉祥物脱离文档流下移，视觉上趴在输入栏顶边上 */}
-			<motion.img
-				alt=""
-				aria-hidden="true"
-				initial={{ opacity: 0 }}
-				animate={{ opacity: mounted ? 1 : 0 }}
-				transition={{ duration: 0.5, delay: 0.2 }}
-				className="pointer-events-none absolute right-0 -bottom-5 z-10 h-20 w-36 select-none object-contain object-bottom"
-				draggable={false}
-				src="./new-session/ferret.webp"
-			/>
+			<NewSessionMascot autoplay={avatarAutoplay} mounted={mounted} />
 		</div>
 	);
 }

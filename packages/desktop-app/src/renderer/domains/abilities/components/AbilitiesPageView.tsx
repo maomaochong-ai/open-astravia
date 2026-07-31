@@ -9,6 +9,7 @@ import { resolveCategoryLabel } from "../lib/ability-presentation";
 import {
 	ABILITY_CATEGORY_CONNECTORS,
 	ABILITY_CATEGORY_UNCATEGORIZED,
+	ABILITY_CATEGORY_VETTA_BUILTIN,
 	type AbilitiesModel,
 	type AbilityScope,
 } from "../types";
@@ -21,12 +22,13 @@ const easeOut = [0.22, 1, 0.36, 1] as const;
 
 export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Element {
 	const { t, i18n } = useTranslation("abilities");
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const skillFileInputRef = useRef<HTMLInputElement>(null);
+	const pluginFileInputRef = useRef<HTMLInputElement>(null);
 
 	return (
 		<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
 			<input
-				ref={fileInputRef}
+				ref={skillFileInputRef}
 				type="file"
 				accept=".zip,.tar.gz,.tgz,application/zip,application/gzip,application/x-gzip"
 				className="hidden"
@@ -34,6 +36,17 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 					const file = event.target.files?.[0];
 					event.target.value = "";
 					if (file) model.importSkillArchive(file);
+				}}
+			/>
+			<input
+				ref={pluginFileInputRef}
+				type="file"
+				accept=".zip,application/zip"
+				className="hidden"
+				onChange={(event) => {
+					const file = event.target.files?.[0];
+					event.target.value = "";
+					if (file) model.importPluginArchive(file);
 				}}
 			/>
 
@@ -76,7 +89,11 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 								importing={model.importing}
 								onImportSkill={() => {
 									model.setScope("mine");
-									fileInputRef.current?.click();
+									skillFileInputRef.current?.click();
+								}}
+								onImportPlugin={() => {
+									model.setScope("mine");
+									pluginFileInputRef.current?.click();
 								}}
 								onAddMcp={() => {
 									model.setScope("mine");
@@ -142,7 +159,9 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 													? t("group.uncategorized")
 													: group.category === ABILITY_CATEGORY_CONNECTORS
 														? t("group.connectors")
-														: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
+														: group.category === ABILITY_CATEGORY_VETTA_BUILTIN
+															? t("group.vettaBuiltin")
+															: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
 											</h2>
 											<span className="text-[11px] tabular-nums text-muted-foreground/50">
 												{group.items.length}

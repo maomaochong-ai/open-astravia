@@ -12,6 +12,8 @@ export interface ActivityPanelProps {
 export interface ActivityPanelModel {
 	activePluginTab: RegisteredActivityTab | null;
 	activeTab: ActivityTabKey;
+	/** 已注册且未 attach 的插件 tab，供「+」菜单从可添加池挂入。 */
+	availablePluginTabs: HiddenTabEntry[];
 	bottomSheet: boolean;
 	browserUrl: string | null;
 	cwd: string | null;
@@ -27,6 +29,7 @@ export interface ActivityPanelModel {
 }
 
 export interface ActivityPanelActions {
+	onAttachPluginTab: (key: string) => void;
 	onClose: () => void;
 	onOverflowChange: (keys: ActivityTabKey[]) => void;
 	onRemoveTab: (key: ActivityTabKey) => void;
