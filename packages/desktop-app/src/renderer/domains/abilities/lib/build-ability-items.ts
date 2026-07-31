@@ -14,6 +14,7 @@ import type {
 	SkillInfo,
 } from "@preload/api";
 import type { AbilityMember, MarketAbility } from "@shared/lib/api";
+import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
 import type { TFunction } from "i18next";
 import {
 	type BuiltinMcpPreset,
@@ -37,7 +38,6 @@ import {
 	type PluginAbility,
 	type SkillAbility,
 } from "../types";
-import { builtinSkillIconUrl } from "./builtin-skill-icons";
 import { buildMarketAbilityId, getMarketCatalogSource, getOpenCatalogOrigin } from "./merge-ability-catalogs";
 
 /**

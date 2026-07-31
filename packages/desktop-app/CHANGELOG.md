@@ -6,7 +6,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
-- **能力广场展示内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。
+- **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。
 
 ### Changed
 
