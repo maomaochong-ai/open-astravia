@@ -141,6 +141,23 @@ ZIP 必须有配套 `.blockmap`，否则差分下载退化为全量。`verify-ma
 
 ## 7. 本地 R2 更新闭环测试
 
+### 7.0 一键脚本
+
+日常发版用 `scripts/release-mac.sh`，它把 7.1～7.5 的所有步骤串起来，并在开跑前做完全部前置校验（避免构建到第 40 分钟才发现配置错）：
+
+```bash
+scripts/release-mac.sh test --version 0.5.60      # QA 通道
+scripts/release-mac.sh stable                     # 正式通道，版本取 package.json
+scripts/release-mac.sh test --version 0.5.60 --arch both       # 双架构 + 自动合并
+scripts/release-mac.sh test --version 0.5.60 --skip-publish    # 只构建与校验
+```
+
+脚本会自动 `source` 两个凭据文件，并直接注入构建期的 `VETTA_UPDATE_PROVIDER` / `VETTA_UPDATE_URL`，**因此不依赖 `.env.development` 里有没有配这两项**。
+
+前置校验包括：凭据文件存在且字段完整、钥匙串里有可用签名身份、`VETTA_R2_PREFIX` 与 `VETTA_UPDATE_URL` 的末段都等于目标通道、版本号格式合法、**版本严格高于该通道线上已有版本**（同名版本化对象禁止覆盖）。`stable` 额外拒绝 `--version`（正式版本以 `package.json` 为唯一真源）并要求输入版本号二次确认。
+
+下面各节是这个脚本每一步在做什么，手动排查时按需单独执行。
+
 ### 7.1 前提：签名凭据
 
 macOS 的本地闭环**必须有 Developer ID 证书**，未签名包走不到暂存阶段（原生 `autoUpdater` 报 `Could not get code signature for running application`）。
@@ -413,6 +430,7 @@ install failed
 | `packages/desktop-app/scripts/prepare-pack.js` | `resolveMacSigning()` 决定签名开关；生成 electron-builder 配置 |
 | `packages/desktop-app/scripts/verify-mac-update.mjs` | 发布前清单、哈希、签名、公证票据校验 |
 | `packages/desktop-app/scripts/merge-mac-update-metadata.mjs` | 合并双架构 `latest-mac-<arch>.yml` |
+| `scripts/release-mac.sh` | 构建 + 校验 + 合并 + 发布的一键入口，含全部前置校验 |
 | `packages/desktop-app/scripts/publish-update-artifacts-r2.mjs` | R2 原子发布、缓存头、幂等校验（跨平台共用） |
 | `packages/desktop-app/build/entitlements.mac.plist` | hardened runtime entitlements |
 | `docs/deploy/apple-code-signing.md` | 证书申请、公证凭据、注入与故障排查 |
