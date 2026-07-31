@@ -551,8 +551,8 @@ if (existsSync(runtimeCoreSandboxDir)) {
 // 托管运行时 vendor 二进制 (extraResources) —— ADR-0011
 // =============================================================================
 //
-// 把当前构建目标平台的 Node + Python(python-build-standalone)二进制内置进
-// Resources/vendor/{node,python}/,首启时由 main 进程拷贝到 ~/.vetta/runtimes/。
+// 把当前构建目标平台的 Node + Python(python-build-standalone)原始归档内置进
+// Resources/vendor/{node,python}/,首启时由 main 进程解压到 ~/.vetta/runtimes/。
 // 这是普通用户「下载下来就有环境」的本体。Node 走 npmmirror、Python 走 GitHub
 // (国内无稳定公共镜像,故必须内置)。构建机有网即可;无法联网的构建可设
 // VETTA_SKIP_VENDOR=1 跳过(产物退化为「面板手动下载」,不推荐发版用)。
@@ -579,13 +579,6 @@ async function stageVendorRuntimes() {
 			);
 		}
 		const destTypeDir = join(stagedVendorDir, type);
-		const extractedDir = join(destTypeDir, entry.dir);
-		const versionMarker = join(extractedDir, ".vendor-version");
-		// 已就绪且版本一致 → 跳过(加速迭代构建)
-		if (existsSync(versionMarker) && readFileSync(versionMarker, "utf8").trim() === def.version) {
-			console.log(`[prepare-pack] vendor ${type} ${def.version} 已就绪,跳过`);
-			continue;
-		}
 		rmSync(destTypeDir, { recursive: true, force: true });
 		mkdirSync(destTypeDir, { recursive: true });
 
@@ -620,13 +613,11 @@ async function stageVendorRuntimes() {
 			throw new Error(`[prepare-pack] 无法下载 vendor ${type}(${platformTag});检查构建机网络或设 VETTA_SKIP_VENDOR=1`);
 		}
 
-		// 解压:系统 tar 同时处理 tar.gz 与 zip(Win10+/bsdtar)。
-		execFileSync("tar", ["-xf", archivePath, "-C", destTypeDir], { stdio: "inherit" });
-		if (!existsSync(extractedDir)) {
-			throw new Error(`[prepare-pack] vendor ${type} 解压后未找到预期目录: ${extractedDir}`);
-		}
-		writeFileSync(versionMarker, def.version);
-		console.log(`[prepare-pack] vendor ${type} ${def.version} staged -> ${extractedDir}`);
+		// 保留上游原始归档，避免每个桌面版本都让 Inno 重建数千个不变小文件。
+		// RuntimeManager 仅在托管运行时缺失或升级时解压一次。
+		const stagedArchivePath = join(destTypeDir, entry.filename);
+		cpSync(archivePath, stagedArchivePath);
+		console.log(`[prepare-pack] vendor ${type} ${def.version} archive staged -> ${stagedArchivePath}`);
 	}
 }
 

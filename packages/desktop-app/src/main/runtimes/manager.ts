@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { chmod, cp } from "node:fs/promises";
+import { chmod } from "node:fs/promises";
 import { delimiter, join } from "node:path";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { getAppLogger } from "../logger.js";
@@ -11,6 +11,7 @@ import {
 	npmCacheDir,
 	npmGlobalBinDir,
 	npmGlobalPrefixDir,
+	type PlatformEntry,
 	pipCacheDir,
 	platformEntry,
 	RUNTIME_MANIFEST,
@@ -18,8 +19,9 @@ import {
 	registryPath,
 	runtimesDir,
 	runtimeVersion,
-	vendorRuntimeDir,
+	vendorRuntimeArchivePath,
 } from "./paths.js";
+import { installRuntimeArchive } from "./runtime-archive-installer.js";
 import type { RuntimeRegistryData, RuntimeStatus, RuntimesStatus } from "./types.js";
 
 const log = getAppLogger("runtimes");
@@ -96,27 +98,39 @@ export class RuntimeManager {
 		delete this.data.systemDetection[type];
 	}
 
-	/** 内置 vendor → ~/.vetta/runtimes 首启拷贝。返回是否完成 seed。 */
+	/** 内置 vendor 归档 → ~/.vetta/runtimes 首启解压。返回是否完成 seed。 */
 	private async seedFromVendor(type: RuntimeType): Promise<boolean> {
 		const entry = platformEntry(type);
 		if (!entry) return false;
 		const version = runtimeVersion(type);
-		const source = vendorRuntimeDir(type);
-		if (!existsSync(source)) return false;
-
 		const target = installDir(type, version);
 		const marker = join(target, ".vendor-version");
 		if (existsSync(executablePathFor(type, version)) && this.readMarker(marker) === version) {
-			return true; // 已 seed 且版本一致,跳过拷贝
+			return true; // 已 seed 且版本一致,跳过解压
 		}
+		const source = vendorRuntimeArchivePath(type);
+		if (!existsSync(source)) return false;
 
 		log.info(`seeding ${type} ${version} from vendor`, { source, target });
-		rmSync(target, { recursive: true, force: true });
-		mkdirSync(target, { recursive: true });
-		await cp(source, target, { recursive: true });
-		await this.makeExecutable(type, version);
-		writeFileSync(marker, version);
+		await this.installArchive(type, source, entry, version);
 		return true;
+	}
+
+	private async installArchive(
+		type: RuntimeType,
+		archivePath: string,
+		entry: PlatformEntry,
+		version: string,
+	): Promise<void> {
+		const target = installDir(type, version);
+		await installRuntimeArchive({
+			archivePath,
+			archiveType: entry.archive,
+			innerDirectory: entry.dir,
+			targetDirectory: target,
+		});
+		await this.makeExecutable(type, version);
+		writeFileSync(join(target, ".vendor-version"), version);
 	}
 
 	private readMarker(path: string): string | undefined {
@@ -157,19 +171,8 @@ export class RuntimeManager {
 			try {
 				log.info(`downloading ${type} from ${url}`);
 				await this.fetchToFile(url, tmpFile);
-				const extractRoot = join(runtimesDir(), ".cache", `${type}-extract`);
-				rmSync(extractRoot, { recursive: true, force: true });
-				mkdirSync(extractRoot, { recursive: true });
-				this.extractArchive(tmpFile, extractRoot, entry.archive);
-				const inner = join(extractRoot, entry.dir);
-				const target = installDir(type, version);
-				rmSync(target, { recursive: true, force: true });
-				mkdirSync(join(runtimesDir(), type), { recursive: true });
-				await cp(inner, target, { recursive: true });
-				await this.makeExecutable(type, version);
-				writeFileSync(join(target, ".vendor-version"), version);
+				await this.installArchive(type, tmpFile, entry, version);
 				rmSync(tmpFile, { force: true });
-				rmSync(extractRoot, { recursive: true, force: true });
 				return true;
 			} catch (err) {
 				log.warn(`download from ${url} failed`, err);
@@ -187,14 +190,6 @@ export class RuntimeManager {
 			writeFileSync(dest, Buffer.from(await res.arrayBuffer()));
 		} finally {
 			clearTimeout(timer);
-		}
-	}
-
-	private extractArchive(file: string, destDir: string, _archive: "tar.gz" | "zip"): void {
-		// 统一用系统 tar:Win10+ 的 bsdtar 能解 zip,unix tar 解 tar.gz。
-		const res = spawnSync("tar", ["-xf", file, "-C", destDir], { encoding: "utf-8", timeout: 180_000 });
-		if (res.status !== 0) {
-			throw new Error(`tar extract failed: ${res.stderr || res.stdout || res.error?.message}`);
 		}
 	}
 
@@ -519,7 +514,7 @@ export class RuntimeManager {
 				log.warn(`detect system ${type} failed`, err);
 			}
 			try {
-				// 启动只走零网络的 vendor 拷贝;下载是面板触发的次要路径(见 reinstall),
+				// 启动只走零网络的 vendor 归档解压;下载是面板触发的次要路径(见 reinstall),
 				// 不在启动阻塞,避免无内置 vendor 的开发态/异常环境卡在 180s 超时。
 				if (!this.isReady(type)) {
 					await this.seedFromVendor(type);
