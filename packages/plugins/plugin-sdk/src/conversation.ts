@@ -32,6 +32,12 @@ export interface PluginConversationApi {
 	insertText(text: string): void;
 	/** Abort the active conversation's current turn. */
 	abort(): Promise<void>;
-	/** Subscribe to real-time conversation events. */
+	/**
+	 * Subscribe to real-time conversation events. The listener is replayed one
+	 * `conversation-changed` with the current state right after subscribing (in a
+	 * microtask), so logic keyed off the active conversation — e.g. deciding
+	 * whether an activity tab belongs in the tab bar for this cwd — runs without
+	 * waiting for the next session switch.
+	 */
 	on(listener: (event: ConversationEvent) => void): Disposable;
 }

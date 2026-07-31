@@ -185,9 +185,10 @@ pdfjs.getDocument({ url: file.getUrl() });
 
 向活动面板注册一个 tab。
 
-- 权限：`ui.slot.activity-tab`（注册 **warn+noop**；`openActivityTab` **抛错**）
+- 权限：`ui.slot.activity-tab`（注册 **warn+noop**；`openActivityTab` / `setActivityTabVisible` **抛错**）
 - **`scope_use` fail-closed**（必写，否则任何场景不显示）
-- 宿主用响应式 TabBar 管理展示；可用 `openActivityTab` 主动打开。attach/可见性与 **会话 cwd** 相关（ADR-0026）
+- **默认注册即上栏**（`initiallyVisible` 缺省 `true`）。声明 `initiallyVisible: false` 表示「出现条件我自己管」：注册只入池，之后用 `setActivityTabVisible` 静默上栏/下栏（如 git 只在仓库目录上栏、工作台跟随输入栏 toggle），或用 `openActivityTab` 上栏并抢焦点打开（如图像生成完成后跳到历史）
+- 显隐记录按 **会话 cwd** 持久化（ADR-0026）：插件表过态就听插件的，没表过态才看 `initiallyVisible`。用户随时可用减号手动隐藏
 - 插件禁用时 tab 隐藏，重新启用可回来
 - **布局边界（面板内）**：与 file-preview 相同——UI 留在 Tab 面板矩形内，禁止 viewport 级 `fixed` / 超高 z-index / portal 到 `document.body`。全局浮层用 `registerGlobalSlot`，Toast 用 `notify`。见 [styling-and-pitfalls.md → 面板类 slot 布局边界](./styling-and-pitfalls.md#面板类-slot-布局边界禁止-viewport-级浮层)。
 
@@ -198,6 +199,7 @@ interface PluginActivityTabContribution {
   icon?: ReactNode;
   component: ComponentType;   // 零 props
   scope_use?: readonly ConversationScenario[]; // fail-closed
+  initiallyVisible?: boolean;  // 缺省 true：注册即上栏；false = 出现条件由插件自己驱动
 }
 ```
 
@@ -233,6 +235,37 @@ ctx.ui.openActivityTab(tabId, options?: { width?: number | "max" });
 `width` **只在该 tab 首次 attach 时生效**：tab 已 attach 的重复调用（含 reload/热更新导致的 `activate()` 重放）只做激活，不会覆盖用户手动拖出的面板宽度。
 
 示例：`packages/plugins/presets/git`、`externals/mobile-ui-preview`。
+
+### setActivityTabVisible
+
+```ts
+ctx.ui.setActivityTabVisible(tabId, visible: boolean);
+```
+
+只把 tab 放进/移出当前会话的标签栏，**不激活、不展开面板**——「它现在该不该在栏里」，而不是「用户此刻要看它」。这是插件表达自己出现条件的地方：
+
+```ts
+// git：只在 git 工作区里上栏。conversation.on 订阅后会立刻回放一次
+// conversation-changed，所以不用等下次切会话。
+ctx.conversation.on((event) => {
+  if (event.type !== "conversation-changed") return;
+  const { cwd } = event.conversation;
+  if (!cwd) return;
+  void isInsideGitWorkTree(ctx.command, cwd).then((inRepo) =>
+    ctx.ui.setActivityTabVisible("changes", inRepo),
+  );
+});
+
+// 插件工作台：跟随输入栏 toggle（硬隔离只负责关掉时藏起来，不会帮你上栏）。
+ctx.ui.registerInputAction({
+  id: "mode",
+  hardIsolation: true,
+  onToggle: (active) => ctx.ui.setActivityTabVisible("workbench", active),
+  // ...
+});
+```
+
+上栏记录按 cwd 持久化，所以**只需在条件变化时调用**；用户之后用减号手动隐藏的结果不会被重复调用覆盖。当前没有活动会话时是 no-op（无处记录），插件应在会话就绪后重新判定。异步判定要注意丢弃过期结果：写入落在**调用时**的活动会话上，探测期间切走了就别再写。
 
 ## 输入栏动作 registerInputAction
 

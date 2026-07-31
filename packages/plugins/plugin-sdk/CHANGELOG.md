@@ -13,6 +13,9 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 ### Added
 
 - Added `PluginContext.fileExplorer` with context-menu, toolbar and decoration contributions; workspace/selection snapshots; reveal/refresh commands; selection and file-change events; and four independently grantable file-explorer permissions.
+- Added `PluginActivityTabContribution.initiallyVisible` (default `true`): a registered tab is in the tab bar by default; declare `false` to own its appearance condition and drive it with `setActivityTabVisible` / `openActivityTab`.
+- Added `PluginUiApi.setActivityTabVisible(tabId, visible)`: puts one of the plugin's own activity tabs into (or out of) the current conversation's tab bar without activating it or expanding the panel — the counterpart to `openActivityTab`, which is "the user wants to look at it now". Plugins own their tab's appearance condition with it (git only inside a work tree, the workbench following its input-action toggle).
+- `PluginConversationApi.on()` now replays one `conversation-changed` with the current state right after subscribing (in a microtask), so cwd-keyed logic runs without waiting for the next session switch.
 - Documented `PluginAgentToolRegistration.label` as host-only UI display name supporting `%catalogKey%` plugin i18n (not sent to the model).
 - Added hidden per-turn prompt instructions through `PluginPromptDecoration.instructions` and generic `PluginPromptAttachment.instructions`, allowing plugins to own intent guidance without coding-agent domain metadata.
 - Added `PluginFsApi.readBinaryFile()` for bounded, host-validated binary reads with MIME detection.

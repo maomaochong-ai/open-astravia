@@ -56,6 +56,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **活动面板里「Git 面板」「插件工作台」标签卡不再出现**：插件标签卡的显隐靠「上栏记录」（cwd → tab，ADR-0026），而唯一的写入方是插件自己调 `openActivityTab`——图像生成插件在生成后调所以正常，git 与工作台从没写过这个触发，6/24 删掉 "+" 下拉里的手动勾选 attach 后就再没有任何入口能让它们上栏。改为让插件显式声明自己的出现条件：新增 `ctx.ui.setActivityTabVisible(tabId, visible)`（只上栏/下栏，不激活、不抢焦点弹开面板）与 `registerActivityTab({ initiallyVisible })`（缺省 `true`，注册即上栏，老插件不用改）。git 插件按 `git rev-parse --is-inside-work-tree` 探测，只在仓库目录上栏；插件工作台跟随输入栏「插件工作台」toggle 上下栏。`ctx.conversation.on()` 订阅后会立刻回放一次 `conversation-changed`，插件不必等下次切会话才判定。
 - **macOS 更新在 Squirrel 暂存阶段被误判为「下载失败」**：传输结束后 Squirrel.Mac 还要解包近 1GB 的 bundle 并逐个校验签名，这一段不产生任何 `download-progress` 事件，而 120 秒的停滞超时只由进度事件重置，慢机器上必然超时：`UpdaterService` 取消下载并置为 error，之后 Squirrel 其实暂存成功、promise 回来时又因 `activeDownload` 不匹配被丢弃，界面永久停在「下载失败」。`UpdateEngine.downloadUpdate` 新增可选的 `onStaging` 回调标记进入安装准备阶段，该阶段改用 10 分钟的兜底超时（只防死锁），进度显示为 100%。Windows 的 Inno 准备阶段本就持续上报进度，不受影响。
 - **命令区 / skill 选择器 / @ 文件面板：鼠标滑过列表会带动滚动**：高亮项 `scrollIntoView` 原先挂在 `activeIndex` 上，键盘与鼠标 hover 共用同一路径，移到底部附近时滚动位置会被不断拽动。现仅在方向键改高亮时滚进视口，hover 只改高亮。
 - **方向键移到输入框里的 token 上会把光标吞掉**：技能 / 连接器 / 文件 / 图片四种行内 token 都声明了 `isKeyboardSelectable() = true`，光标左右移到 token 上时 Lexical 会把 RangeSelection 换成 NodeSelection，caret 随之消失；而输入框用的是 `PlainTextPlugin`，它不像 RichText 那样注册 NodeSelection 下的方向键处理，选区就此卡死——再按方向键没有任何反应，此时继续打字还会插到整段开头，只能用鼠标点一下才能恢复。四种 token 改为不可键盘选中，光标像跨过一个普通字符那样跨过 token，Backspace 删除 token 的行为不变。

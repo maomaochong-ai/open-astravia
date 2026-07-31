@@ -1,3 +1,4 @@
+import { explicitTabVisibility } from "@domains/plugins/runtime/attached-tabs";
 import { usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
 import type { TabBarItem } from "@shared/components/ui/tab-bar";
 import { useNarrowScreen, useWindowWidth } from "@shared/hooks/useNarrowScreen";
@@ -99,8 +100,8 @@ export function useActivityPanelModel({
 	const activeInputActionIds = useAtomValue(activeInputActionIdsAtom);
 	const trPlugin = usePluginTextResolver();
 	const currentScenario = useAtomValue(currentScenarioAtom);
-	const attachedPluginTabKeys = useMemo(
-		() => new Set(cwd ? (attachedPluginTabsMap.get(cwd) ?? []) : []),
+	const tabVisibilityRecords = useMemo(
+		() => (cwd ? (attachedPluginTabsMap.get(cwd) ?? []) : []),
 		[attachedPluginTabsMap, cwd],
 	);
 	/** Plugin ids whose hard-isolation toggle is currently off (ADR-0041). */
@@ -113,6 +114,9 @@ export function useActivityPanelModel({
 		}
 		return off;
 	}, [pluginInputActions, activeInputActionIds]);
+	// 插件 tab 的可见性：插件显式表过态（setActivityTabVisible / openActivityTab）
+	// 就听插件的，否则看它注册时的 initiallyVisible（缺省 true，注册即上栏）。
+	// 外加 scope_use（fail-closed）与硬隔离开关（ADR-0041）两道闸。
 	const pluginTabContribs = useMemo(
 		() =>
 			enablePluginTabs && currentScenario !== null
@@ -120,10 +124,11 @@ export function useActivityPanelModel({
 						(tab) =>
 							tab.scope_use?.includes(currentScenario) &&
 							!hardIsolationOffPluginIds.has(tab.pluginId) &&
-							attachedPluginTabKeys.has(`${tab.pluginId}:${tab.tabId}`),
+							(explicitTabVisibility(tabVisibilityRecords, `${tab.pluginId}:${tab.tabId}`) ??
+								tab.initiallyVisible !== false),
 					)
 				: [],
-		[enablePluginTabs, registeredPluginTabs, currentScenario, hardIsolationOffPluginIds, attachedPluginTabKeys],
+		[enablePluginTabs, registeredPluginTabs, currentScenario, hardIsolationOffPluginIds, tabVisibilityRecords],
 	);
 	const [hiddenTabsMap, setHiddenTabsMap] = useAtom(hiddenActivityTabsAtom);
 	const [tabOrderMap, setTabOrderMap] = useAtom(activityTabOrderAtom);

@@ -57,6 +57,7 @@ import { resolveCatalogKey } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
+import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
 import {
 	getPluginFileExplorerSelection,
 	getPluginFileExplorerWorkspaceRoots,
@@ -134,6 +135,20 @@ function clearAgentToolLabelsForPlugin(pluginId: string): void {
 }
 
 /**
+ * 记下插件对某个 tab 的显式显隐态（上栏/下栏），不激活、不展开面板。插件据此
+ * 实现自己的出现条件（git 只在仓库里上栏、工作台跟随输入栏 toggle）。返回写入
+ * 是否落地——无活动会话 cwd 时无处可记。
+ */
+function setPluginActivityTabVisible(pluginId: string, tabId: string, visible: boolean): boolean {
+	const store = getDefaultStore();
+	const cwd = store.get(activeSessionAtom)?.cwd ?? null;
+	if (!cwd) return false;
+	const next = withPluginTabVisibility(store.get(attachedPluginTabsAtom), cwd, `${pluginId}:${tabId}`, visible);
+	if (next) store.set(attachedPluginTabsAtom, next);
+	return true;
+}
+
+/**
  * Attach + activate a plugin's own activity tab and open the panel, driven
  * directly off the jotai store so it works regardless of whether the activity
  * panel component is currently mounted/expanded. Keyed by the active
@@ -147,14 +162,8 @@ function openPluginActivityTab(pluginId: string, tabId: string, width?: number |
 		return;
 	}
 	const key = `${pluginId}:${tabId}`;
-	const attached = store.get(attachedPluginTabsAtom);
-	const list = attached.get(cwd) ?? [];
-	const alreadyAttached = list.includes(key);
-	if (!alreadyAttached) {
-		const next = new Map(attached);
-		next.set(cwd, [...list, key]);
-		store.set(attachedPluginTabsAtom, next);
-	}
+	const alreadyAttached = explicitTabVisibility(store.get(attachedPluginTabsAtom).get(cwd) ?? [], key) === true;
+	setPluginActivityTabVisible(pluginId, tabId, true);
 	const active = new Map(store.get(activityPanelTabByProjectAtom));
 	active.set(cwd, `plugin:${key}` as ActivityTabKey);
 	store.set(activityPanelTabByProjectAtom, active);
@@ -710,6 +719,7 @@ function createContext(
 			icon: contribution.icon,
 			component: contribution.component,
 			scope_use: contribution.scope_use,
+			initiallyVisible: contribution.initiallyVisible,
 		};
 		activityTabs.push(normalized);
 		onChanged();
@@ -862,6 +872,13 @@ function createContext(
 		}
 		openPluginActivityTab(plugin.id, tabId, options?.width);
 	};
+	const setActivityTabVisible = (tabId: string, visible: boolean): void => {
+		createPermissionApi(plugin).require("ui.slot.activity-tab");
+		if (typeof tabId !== "string" || tabId.trim().length === 0) {
+			throw new Error("Activity tab id is required");
+		}
+		setPluginActivityTabVisible(plugin.id, tabId, visible === true);
+	};
 	const setPromptAttachment = (attachment: PluginPromptAttachment | null): void => {
 		createPermissionApi(plugin).require("ui.slot.input-action");
 		const store = getDefaultStore();
@@ -979,6 +996,7 @@ function createContext(
 			registerToolCallSlot,
 			registerTurnCard,
 			openActivityTab,
+			setActivityTabVisible,
 			setPromptAttachment,
 			previewImage,
 			openPluginSettings,
