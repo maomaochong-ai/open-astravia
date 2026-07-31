@@ -12,6 +12,7 @@ import {
 	activityPanelTabByProjectAtom,
 	activityPanelWidthAtom,
 	activityTabOrderAtom,
+	attachedPluginTabsAtom,
 	backgroundTasksBySessionAtom,
 	browserUrlBySessionAtom,
 	currentScenarioAtom,
@@ -35,7 +36,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ActivityPanelActions, ActivityPanelModel, ActivityPanelProps } from "../components/activity-panel/types";
 import { DEFAULT_PLUGIN_TAB_ICON } from "../components/PluginTabPicker";
-import { hardIsolationOffPluginIds, selectVisiblePluginTabs } from "../lib/visible-plugin-tabs";
 
 const NON_HIDEABLE_TABS = new Set<ActivityTabKey>(["file", "knowledge-history"]);
 
@@ -61,6 +61,7 @@ export function useActivityPanelModel({
 	const narrow = useNarrowScreen();
 	const activeSession = useAtomValue(activeSessionAtom);
 	const browserUrlMap = useAtomValue(browserUrlBySessionAtom);
+	const attachedPluginTabsMap = useAtomValue(attachedPluginTabsAtom);
 	const browserUrl = getBrowserUrlForSession(browserUrlMap, activeSession?.sessionPath ?? null);
 	const [width, setWidth] = useAtom(activityPanelWidthAtom);
 	const [isResizing, setIsResizing] = useState(false);
@@ -98,20 +99,31 @@ export function useActivityPanelModel({
 	const activeInputActionIds = useAtomValue(activeInputActionIdsAtom);
 	const trPlugin = usePluginTextResolver();
 	const currentScenario = useAtomValue(currentScenarioAtom);
-	/** Plugin ids whose hard-isolation toggle is currently off (ADR-0041). */
-	const isolationOffPluginIds = useMemo(
-		() => hardIsolationOffPluginIds(pluginInputActions, activeInputActionIds),
-		[pluginInputActions, activeInputActionIds],
+	const attachedPluginTabKeys = useMemo(
+		() => new Set(cwd ? (attachedPluginTabsMap.get(cwd) ?? []) : []),
+		[attachedPluginTabsMap, cwd],
 	);
+	/** Plugin ids whose hard-isolation toggle is currently off (ADR-0041). */
+	const hardIsolationOffPluginIds = useMemo(() => {
+		const off = new Set<string>();
+		for (const action of pluginInputActions) {
+			if (action.hardIsolation && !activeInputActionIds.has(action.actionId)) {
+				off.add(action.pluginId);
+			}
+		}
+		return off;
+	}, [pluginInputActions, activeInputActionIds]);
 	const pluginTabContribs = useMemo(
 		() =>
-			selectVisiblePluginTabs({
-				enabled: enablePluginTabs,
-				tabs: registeredPluginTabs,
-				scenario: currentScenario,
-				isolationOffPluginIds,
-			}),
-		[enablePluginTabs, registeredPluginTabs, currentScenario, isolationOffPluginIds],
+			enablePluginTabs && currentScenario !== null
+				? registeredPluginTabs.filter(
+						(tab) =>
+							tab.scope_use?.includes(currentScenario) &&
+							!hardIsolationOffPluginIds.has(tab.pluginId) &&
+							attachedPluginTabKeys.has(`${tab.pluginId}:${tab.tabId}`),
+					)
+				: [],
+		[enablePluginTabs, registeredPluginTabs, currentScenario, hardIsolationOffPluginIds, attachedPluginTabKeys],
 	);
 	const [hiddenTabsMap, setHiddenTabsMap] = useAtom(hiddenActivityTabsAtom);
 	const [tabOrderMap, setTabOrderMap] = useAtom(activityTabOrderAtom);
