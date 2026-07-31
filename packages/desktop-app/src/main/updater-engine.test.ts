@@ -5,7 +5,7 @@ import { CURRENT_APP_INSTALLER_FILE_NAME, type UpdateInfo } from "builder-util-r
 import type { AppUpdater, ResolvedUpdateFileInfo } from "electron-updater";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { InnoWindowsUpdateController } from "./inno-windows-update";
-import { ElectronUpdaterEngine } from "./updater-engine";
+import { ElectronUpdaterEngine, type NativeMacUpdateEvents } from "./updater-engine";
 
 const temporaryRoots: string[] = [];
 
@@ -25,6 +25,61 @@ describe("ElectronUpdaterEngine", () => {
 		await engine.quitAndInstall();
 
 		expect(quitAndInstall).toHaveBeenCalledWith(true, true);
+	});
+
+	it("waits for Squirrel.Mac to stage the update before reporting download completion", async () => {
+		let updateDownloadedListener: (() => void) | undefined;
+		const nativeMacUpdateEvents: NativeMacUpdateEvents = {
+			onUpdateDownloaded: (listener) => {
+				updateDownloadedListener = listener;
+				return () => {
+					if (updateDownloadedListener === listener) updateDownloadedListener = undefined;
+				};
+			},
+			onError: () => () => {},
+		};
+		const updater = {
+			on: vi.fn(),
+			off: vi.fn(),
+			downloadUpdate: vi.fn().mockResolvedValue(["/tmp/Vetta.zip"]),
+		} as unknown as AppUpdater;
+		const engine = new ElectronUpdaterEngine(updater, undefined, nativeMacUpdateEvents);
+		const download = engine.downloadUpdate(vi.fn());
+		let completed = false;
+		void download.promise.then(() => {
+			completed = true;
+		});
+
+		await Promise.resolve();
+		expect(completed).toBe(false);
+		updateDownloadedListener?.();
+
+		await expect(download.promise).resolves.toEqual(["/tmp/Vetta.zip"]);
+		expect(completed).toBe(true);
+	});
+
+	it("reports native Squirrel.Mac staging failures", async () => {
+		let errorListener: ((error: Error) => void) | undefined;
+		const nativeMacUpdateEvents: NativeMacUpdateEvents = {
+			onUpdateDownloaded: () => () => {},
+			onError: (listener) => {
+				errorListener = listener;
+				return () => {
+					if (errorListener === listener) errorListener = undefined;
+				};
+			},
+		};
+		const updater = {
+			on: vi.fn(),
+			off: vi.fn(),
+			downloadUpdate: vi.fn().mockResolvedValue(["/tmp/Vetta.zip"]),
+		} as unknown as AppUpdater;
+		const engine = new ElectronUpdaterEngine(updater, undefined, nativeMacUpdateEvents);
+		const download = engine.downloadUpdate(vi.fn());
+
+		errorListener?.(new Error("native staging failed"));
+
+		await expect(download.promise).rejects.toThrow("native staging failed");
 	});
 
 	it("passes provider-resolved asset URLs to the Inno updater", async () => {

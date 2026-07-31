@@ -3,6 +3,7 @@ import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rm
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { resolveBuildResourceFilters } from "./build-resource-filters.mjs";
 import { loadBuildEnv } from "./load-build-env.mjs";
 import { resolveReleaseInfo } from "./resolve-release-info.mjs";
 import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
@@ -164,23 +165,6 @@ console.log(
 		? `[prepare-pack] macOS 签名与公证已启用（team=${macSigning.teamId}）`
 		: "[prepare-pack] macOS 签名凭据未配置，产出未签名包",
 );
-
-function resolveBuildResourceFilters() {
-	const filters = new Set(["pet/**/*"]);
-	const families = resolvePlatformFamilies();
-	if (families.has("darwin")) {
-		filters.add("icon.icns");
-		filters.add("icon.png");
-		filters.add("icon-dock.png");
-	}
-	if (families.has("linux")) {
-		filters.add("icon.png");
-	}
-	if (families.has("win32")) {
-		filters.add("icon.ico");
-	}
-	return [...filters];
-}
 
 function resolveSandboxResourceFilters() {
 	const filters = new Set();
@@ -682,7 +666,7 @@ function resolveExtraResources() {
 		{
 			from: "build",
 			to: "build",
-			filter: resolveBuildResourceFilters(),
+			filter: resolveBuildResourceFilters(resolvePlatformFamilies()),
 		},
 	];
 	const sandboxFilters = resolveSandboxResourceFilters();

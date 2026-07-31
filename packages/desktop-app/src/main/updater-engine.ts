@@ -30,6 +30,11 @@ export interface UpdateEngine {
 	quitAndInstall(): Promise<void>;
 }
 
+export interface NativeMacUpdateEvents {
+	onUpdateDownloaded(listener: () => void): () => void;
+	onError(listener: (error: Error) => void): () => void;
+}
+
 interface UpdateProviderAccess {
 	updateInfoAndProvider: {
 		provider: {
@@ -97,12 +102,38 @@ function mapUpdateInfo(info: UpdateInfo): UpdateEngineInfo {
 	};
 }
 
+function waitForNativeMacUpdate(events: NativeMacUpdateEvents): { promise: Promise<void>; dispose: () => void } {
+	let disposed = false;
+	let removeUpdateDownloadedListener = () => {};
+	let removeErrorListener = () => {};
+
+	const dispose = () => {
+		if (disposed) return;
+		disposed = true;
+		removeUpdateDownloadedListener();
+		removeErrorListener();
+	};
+	const promise = new Promise<void>((resolve, reject) => {
+		removeUpdateDownloadedListener = events.onUpdateDownloaded(() => {
+			dispose();
+			resolve();
+		});
+		removeErrorListener = events.onError((error) => {
+			dispose();
+			reject(error);
+		});
+	});
+
+	return { promise, dispose };
+}
+
 export class ElectronUpdaterEngine implements UpdateEngine {
 	private useInnoUpdate = false;
 
 	constructor(
 		private readonly updater: AppUpdater,
 		private readonly innoWindowsUpdate?: InnoWindowsUpdateController,
+		private readonly nativeMacUpdateEvents?: NativeMacUpdateEvents,
 	) {
 		this.updater.autoDownload = false;
 		this.updater.autoInstallOnAppQuit = !innoWindowsUpdate;
@@ -153,9 +184,21 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 			);
 		};
 		this.updater.on("download-progress", listener);
+		const nativeMacReadiness = this.nativeMacUpdateEvents
+			? waitForNativeMacUpdate(this.nativeMacUpdateEvents)
+			: undefined;
+		if (nativeMacReadiness) {
+			console.info("[updater] waiting for Squirrel.Mac to stage the update");
+		}
 
-		const promise = this.updater
-			.downloadUpdate(cancellationToken)
+		const updaterDownloadPromise = this.updater.downloadUpdate(cancellationToken);
+		const stagedDownloadPromise = nativeMacReadiness
+			? Promise.all([updaterDownloadPromise, nativeMacReadiness.promise]).then(([downloadedPaths]) => {
+					console.info("[updater] Squirrel.Mac update is ready to install");
+					return downloadedPaths;
+				})
+			: updaterDownloadPromise;
+		const promise = stagedDownloadPromise
 			.then(async (downloadedPaths) => {
 				if (!this.useInnoUpdate || !this.innoWindowsUpdate) return downloadedPaths;
 				const installerPath = downloadedPaths[0];
@@ -173,6 +216,7 @@ export class ElectronUpdaterEngine implements UpdateEngine {
 				return preparedPaths;
 			})
 			.finally(() => {
+				nativeMacReadiness?.dispose();
 				this.updater.off("download-progress", listener);
 			});
 

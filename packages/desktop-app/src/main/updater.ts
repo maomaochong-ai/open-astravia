@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { app } from "electron";
+import { app, autoUpdater as nativeAutoUpdater } from "electron";
 import electronUpdater from "electron-updater";
 
 import { mainT } from "./i18n/index.js";
@@ -38,5 +38,18 @@ const innoWindowsUpdate =
 				quit: () => app.quit(),
 			})
 		: undefined;
-const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate);
+const nativeMacUpdateEvents =
+	process.platform === "darwin"
+		? {
+				onUpdateDownloaded: (listener: () => void) => {
+					nativeAutoUpdater.on("update-downloaded", listener);
+					return () => nativeAutoUpdater.off("update-downloaded", listener);
+				},
+				onError: (listener: (error: Error) => void) => {
+					nativeAutoUpdater.on("error", listener);
+					return () => nativeAutoUpdater.off("error", listener);
+				},
+			}
+		: undefined;
+const updaterEngine = new ElectronUpdaterEngine(autoUpdater, innoWindowsUpdate, nativeMacUpdateEvents);
 export const updaterService = new UpdaterService(updaterEngine, currentVersion, app.isPackaged, mainT);
