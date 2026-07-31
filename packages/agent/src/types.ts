@@ -99,6 +99,17 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 * are managed separately by Agent.followUp().
 	 */
 	getContinuationMessages?: () => Promise<AgentMessage[]>;
+
+	/**
+	 * Returns the tool set / system prompt to use for the next turn.
+	 *
+	 * The loop copies the context it is given, so a host that changes tools or the
+	 * system prompt mid-run (e.g. a tool that activates more tools) must expose the
+	 * change through these hooks — otherwise it only takes effect on the next run.
+	 * Omitted → the context values captured at loop start are kept.
+	 */
+	getTools?: () => AgentTool<any>[] | undefined;
+	getSystemPrompt?: () => string;
 }
 
 export interface AgentTracingOptions {

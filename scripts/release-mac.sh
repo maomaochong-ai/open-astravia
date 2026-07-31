@@ -224,10 +224,10 @@ for arch in "${ARCH_LIST[@]}"; do
 	else
 		step "构建 ${arch}（签名 + 公证，通常 40~70 分钟）"
 	fi
-	bun run "dist:mac:${arch}"
+	bun run --cwd "${DESKTOP_DIR}" "dist:mac:${arch}"
 
 	step "校验 ${arch} 产物"
-	bun run verify:updates:mac
+	bun run --cwd "${DESKTOP_DIR}" verify:updates:mac
 
 	if [[ "${ARCH}" == "both" ]]; then
 		# 两次构建都写同名 latest-mac.yml，后一次会覆盖前一次，先按架构改名
@@ -237,7 +237,7 @@ done
 
 if [[ "${ARCH}" == "both" ]]; then
 	step "合并双架构元数据"
-	bun run merge:updates:mac
+	bun run --cwd "${DESKTOP_DIR}" merge:updates:mac
 fi
 
 if [[ "${SKIP_PUBLISH}" -eq 1 ]]; then
@@ -270,7 +270,7 @@ if [[ "${CHANNEL}" == "local" ]]; then
 fi
 
 step "发布到 ${VETTA_UPDATE_URL}"
-bun run publish:updates:r2
+bun run --cwd "${DESKTOP_DIR}" publish:updates:r2
 
 step "完成：${VERSION} 已发布到 ${CHANNEL}"
 echo

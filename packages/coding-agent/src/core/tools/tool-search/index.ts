@@ -88,13 +88,13 @@ export function createToolSearchTool(
 			const result = options.search(input.query, maxResults);
 			const lines: string[] = [];
 			if (result.activated.length > 0) {
-				lines.push(`Activated ${result.activated.length} MCP tool(s) — callable from now on:`);
+				lines.push(`Activated ${result.activated.length} MCP tool(s) — call them directly from now on:`);
 				for (const t of result.activated) {
 					lines.push(`- ${t.name}: ${t.description}`);
 				}
 			}
 			if (result.alreadyActive.length > 0) {
-				lines.push(`Already active: ${result.alreadyActive.join(", ")}`);
+				lines.push(`Already active (call directly, do not search again): ${result.alreadyActive.join(", ")}`);
 			}
 			if (result.activated.length === 0 && result.alreadyActive.length === 0) {
 				lines.push(

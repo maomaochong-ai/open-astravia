@@ -333,6 +333,9 @@ export class RuntimeManager {
 		}
 		this.ctx.agent.setTools(tools);
 		this._configuredActiveToolNames = validToolNames;
+		// 运行中改工具集（如 tool_search 激活 MCP 工具）也要同步本轮快照，
+		// 否则随后的插件 runtime effect 会用旧快照重建 tools，把刚激活的工具又摘掉。
+		this._currentRunActiveToolNames = [...validToolNames];
 
 		// Rebuild base system prompt with new tool set
 		this._baseSystemPrompt = this.rebuildSystemPrompt(validToolNames);

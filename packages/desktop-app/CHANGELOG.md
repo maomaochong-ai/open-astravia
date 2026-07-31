@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **模型表单的上下文长度快捷预设**：设置 → 模型里新增/编辑模型时，「上下文窗口」与「最大输出」输入框下各多一排快捷标签（32K/64K/128K/256K/1M 与 16K/32K/64K/128K/384K），点一下即填入，当前值命中时高亮。与 Admin 的 `NumberQuickPicks` 取值一致。
+
 - **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。
 
 ### Changed
@@ -22,6 +24,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 ### Removed
 
 - **系统插件「我能帮你」(guiding-words) 移除**：不再随 App 构建/打包，preset 源码目录一并删除。
+- **官网下载清单 `downloads.yml` 不再生成**：下载页已改为读 Admin 后台配置的直链，这份清单没有消费方了。删除 `scripts/generate-download-manifest.mjs` 与 `generate:downloads` script，R2 发布不再生成和上传它，GitHub Release 也不再把它作为附件。`updaterMetadataPattern` / `referencedFileName` 移到 `scripts/updater-metadata.mjs` 继续供发布脚本使用。electron-updater 的 `latest*.yml` 不受影响，自动更新照旧。
 
 ### Breaking Changes
 

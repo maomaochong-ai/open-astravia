@@ -6,15 +6,10 @@ import { pathToFileURL } from "node:url";
 import { HeadObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { parse } from "yaml";
-import {
-	generateDownloadManifest,
-	referencedFileName,
-	updaterMetadataPattern,
-} from "./generate-download-manifest.mjs";
+import { referencedFileName, updaterMetadataPattern } from "./updater-metadata.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 const releaseDir = join(projectRoot, "release");
-const downloadManifestFile = "downloads.yml";
 const multipartPartSize = 16 * 1024 * 1024;
 
 function requireEnv(key) {
@@ -266,12 +261,9 @@ export async function main() {
 		credentials: { accessKeyId, secretAccessKey },
 	});
 
-	await generateDownloadManifest();
 	const files = await collectArtifacts();
 	const artifactFiles = files.filter((fileName) => !updaterMetadataPattern.test(fileName));
-	const metadataFiles = files
-		.filter((fileName) => updaterMetadataPattern.test(fileName))
-		.concat(downloadManifestFile);
+	const metadataFiles = files.filter((fileName) => updaterMetadataPattern.test(fileName));
 	await verifyRemoteMetadataVersions({ updateUrl, metadataFiles, releaseVersion });
 	for (const fileName of artifactFiles) {
 		await uploadFile({ client, bucket, prefix, fileName, isMetadata: false });
