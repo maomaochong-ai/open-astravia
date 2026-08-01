@@ -8,12 +8,9 @@ interface ControlBarProps {
 	zoom: number;
 	/** Number of frames the export action would act on; 0 hides the button. */
 	exportableCount: number;
-	/** 位图化进度：活体 iframe 越少越省。展示出来才看得见优化有没有生效。 */
-	raster: { rasterized: number; failed: number; total: number };
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
-	onRetryRaster(): void;
 	onExport(): void;
 }
 
@@ -77,11 +74,9 @@ export function ControlBar({
 	tool,
 	zoom,
 	exportableCount,
-	raster,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
-	onRetryRaster,
 	onExport,
 }: ControlBarProps) {
 	const { t } = useTranslation();
@@ -104,19 +99,6 @@ export function ControlBar({
 			<ToolButton active={tool === "frame"} title={t("controlbar.frame")} onClick={() => onToolChange("frame")}>
 				{icons.frame}
 			</ToolButton>
-			{/* 位图 N/M：活体 iframe 是画布上最贵的东西，这个数字直接说明优化生效没有。
-			    有截图失败时标红——失败的 frame 会一直留在活体，等于没优化。 */}
-			<button
-				type="button"
-				title={raster.failed > 0 ? t("controlbar.raster.retry") : t("controlbar.raster.hint")}
-				disabled={raster.failed === 0}
-				onClick={onRetryRaster}
-				className={`rounded-md px-1 text-[10px] tabular-nums ${
-					raster.failed > 0 ? "text-red-500 hover:bg-accent" : "text-muted-foreground"
-				}`}
-			>
-				{raster.rasterized}/{raster.total}
-			</button>
 			<div className="mx-1 h-5 w-px bg-border" />
 			<button
 				type="button"

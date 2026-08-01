@@ -44,6 +44,11 @@ interface DesignCanvasProps {
 	 * 位图态（display:none）的 frame 截不出任何东西，只会卡到超时。
 	 */
 	captureRef: RefObject<FrameCapture | null>;
+	/**
+	 * 出口：顶部的刷新按钮用它强制所有 frame 重新加载并重截位图。
+	 * 热更新链路（文件监听 / HMR）万一没生效时的手动兜底。
+	 */
+	refreshRef: RefObject<(() => void) | null>;
 }
 
 interface Viewport {
@@ -84,7 +89,7 @@ function byCanvasOrder(a: VetdFrameEntry, b: VetdFrameEntry): number {
 	return a.x === b.x ? a.y - b.y : a.x - b.x;
 }
 
-export function DesignCanvas({ session, port, bridge, captureRef }: DesignCanvasProps) {
+export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
@@ -162,9 +167,10 @@ export function DesignCanvas({ session, port, bridge, captureRef }: DesignCanvas
 		isLive,
 		invalidate: invalidateRaster,
 		runLive,
-		stats: rasterStats,
-		retryFailed: retryRaster,
+		refreshAll,
 	} = useFrameRasters({ bridge, frameIds: orderedFrameIds, enteredFrameId });
+
+	refreshRef.current = refreshAll;
 
 	/**
 	 * 位图化后 iframe 会被卸掉，也就收不到 HMR 了；agent 改完代码画布必须自己发现。
@@ -652,8 +658,6 @@ export function DesignCanvas({ session, port, bridge, captureRef }: DesignCanvas
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
-				raster={{ ...rasterStats, total: manifest.frames.length }}
-				onRetryRaster={retryRaster}
 				onToolChange={setTool}
 				onZoomDelta={zoomBy}
 				onZoomReset={() => {

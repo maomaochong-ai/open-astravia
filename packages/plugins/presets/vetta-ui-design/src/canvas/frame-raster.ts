@@ -54,10 +54,11 @@ export interface FrameRasterState {
 	 * 的 iframe 没有布局，截出来是空的）。结束后恢复原状态。
 	 */
 	runLive<T>(frameId: string, run: () => Promise<T>): Promise<T>;
-	/** 已成功位图化的 frame 数与截图失败数，给控制栏显示，便于判断优化是否生效。 */
-	stats: { rasterized: number; failed: number };
-	/** 重新排队所有截图失败的 frame。 */
-	retryFailed(): void;
+	/**
+	 * 把所有 frame 重新排队：全部重新挂载、加载最新代码、渲染、重截。
+	 * 供顶部的刷新按钮兜底——热更新链路万一没生效，用户有手动出路。
+	 */
+	refreshAll(): void;
 }
 
 /** 等 React 提交 + 浏览器完成一次布局与绘制。 */
@@ -87,14 +88,11 @@ export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRaste
 		});
 	}, []);
 
-	/** 失败的 frame 不自动重试（免得死循环烧 CPU），由用户点控制栏上的计数重来。 */
-	const retryFailed = useCallback((): void => {
-		setFailures((current) => {
-			if (current.size === 0) return current;
-			setDirty((pending) => new Set([...pending, ...current.keys()]));
-			return new Map();
-		});
-	}, []);
+	/** 截图失败的 frame 不自动重试（免得死循环烧 CPU），靠这里手动重来。 */
+	const refreshAll = useCallback((): void => {
+		setFailures(new Map());
+		setDirty(new Set(frameIds));
+	}, [frameIds]);
 
 	/**
 	 * 只有「还需要活体」的 frame 才挂 iframe：检查态、截图期间被强制拉活的、
@@ -210,7 +208,6 @@ export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRaste
 		isLive,
 		invalidate,
 		runLive,
-		retryFailed,
-		stats: { rasterized: rasters.size, failed: failures.size },
+		refreshAll,
 	};
 }
