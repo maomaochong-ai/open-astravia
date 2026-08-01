@@ -5,6 +5,9 @@ export interface FileContextMenuViewLabels {
 	newFile: string;
 	newFolder: string;
 	openInFolder: string;
+	copy: string;
+	paste: string;
+	copyPath: string;
 	copyName: string;
 	rename: string;
 	delete: string;
@@ -18,10 +21,16 @@ export interface FileContextMenuViewProps {
 	onCreateFile: () => void;
 	onCreateFolder: () => void;
 	onOpenInFolder: () => void;
+	onCopy: () => void;
+	onPaste: () => void;
+	onCopyPath: () => void;
 	onCopyName: () => void;
 	onRename: () => void;
 	onDelete: () => void;
+	/** Entry row menu (copy/rename/delete…). False for blank/root background. */
 	showEntryActions: boolean;
+	canPaste: boolean;
+	canRename: boolean;
 	pluginActions?: readonly FileContextMenuPluginAction[];
 }
 
@@ -34,6 +43,9 @@ export interface FileContextMenuPluginAction {
 
 /**
  * File tree context menu shell. Host wires IPC / rename atom / i18n.
+ *
+ * Background (root) menu: new file/folder, open root, paste.
+ * Entry menu: + copy / path / name / rename / delete / plugins.
  */
 export function FileContextMenuView({
 	x,
@@ -43,10 +55,15 @@ export function FileContextMenuView({
 	onCreateFile,
 	onCreateFolder,
 	onOpenInFolder,
+	onCopy,
+	onPaste,
+	onCopyPath,
 	onCopyName,
 	onRename,
 	onDelete,
 	showEntryActions,
+	canPaste,
+	canRename,
 	pluginActions = [],
 }: FileContextMenuViewProps): JSX.Element {
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -108,14 +125,45 @@ export function FileContextMenuView({
 					<span className="icon-[solar--folder-open-linear] h-3.5 w-3.5" />
 					{labels.openInFolder}
 				</button>
+				{showEntryActions ? (
+					<button
+						type="button"
+						onClick={onCopy}
+						className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+					>
+						<span className="icon-[solar--copy-linear] h-3.5 w-3.5" />
+						{labels.copy}
+					</button>
+				) : null}
 				<button
 					type="button"
-					onClick={onCopyName}
-					className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+					disabled={!canPaste}
+					onClick={onPaste}
+					className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
 				>
-					<span className="icon-[solar--copy-linear] h-3.5 w-3.5" />
-					{labels.copyName}
+					<span className="icon-[solar--clipboard-linear] h-3.5 w-3.5" />
+					{labels.paste}
 				</button>
+				{showEntryActions ? (
+					<>
+						<button
+							type="button"
+							onClick={onCopyPath}
+							className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+						>
+							<span className="icon-[solar--link-linear] h-3.5 w-3.5" />
+							{labels.copyPath}
+						</button>
+						<button
+							type="button"
+							onClick={onCopyName}
+							className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+						>
+							<span className="icon-[solar--text-linear] h-3.5 w-3.5" />
+							{labels.copyName}
+						</button>
+					</>
+				) : null}
 				{pluginActions.length > 0 || showEntryActions ? <div className="mx-1.5 my-1 h-px bg-border" /> : null}
 				{pluginActions.map((action) => (
 					<button
@@ -135,14 +183,16 @@ export function FileContextMenuView({
 				) : null}
 				{showEntryActions ? (
 					<>
-						<button
-							type="button"
-							onClick={onRename}
-							className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
-						>
-							<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
-							{labels.rename}
-						</button>
+						{canRename ? (
+							<button
+								type="button"
+								onClick={onRename}
+								className="flex w-full items-center gap-2 rounded-md px-2 py-[5px] text-[12px] font-medium text-foreground transition-colors hover:bg-accent"
+							>
+								<span className="icon-[solar--pen-2-linear] h-3.5 w-3.5" />
+								{labels.rename}
+							</button>
+						) : null}
 						<button
 							type="button"
 							onClick={onDelete}

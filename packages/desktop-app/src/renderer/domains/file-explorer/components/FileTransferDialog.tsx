@@ -16,6 +16,8 @@ interface FileTransferDialogProps {
 	plan: FileTransferPlan;
 	conflictPolicy: FileTransferConflictPolicy;
 	busy: boolean;
+	/** When set, only that action is offered (copy/cut paste). */
+	forcedAction?: FileTransferAction | null;
 	onConflictPolicyChange: (policy: FileTransferConflictPolicy) => void;
 	onConfirm: (action: FileTransferAction) => void;
 	onCancel: () => void;
@@ -29,6 +31,7 @@ export function FileTransferDialog({
 	plan,
 	conflictPolicy,
 	busy,
+	forcedAction = null,
 	onConflictPolicyChange,
 	onConfirm,
 	onCancel,
@@ -36,12 +39,20 @@ export function FileTransferDialog({
 	const { t } = useTranslation("chat");
 	const conflictCount = plan.items.filter((item) => item.hasConflict).length;
 	const destinationName = pathBasename(plan.destinationDirectory);
+	const showMove = forcedAction == null || forcedAction === "move";
+	const showCopy = forcedAction == null || forcedAction === "copy";
 
 	return (
 		<Dialog open onOpenChange={(open) => !open && !busy && onCancel()}>
 			<DialogContent className="max-w-[420px]">
 				<DialogHeader>
-					<DialogTitle>{t("fileExplorer.transfer.title")}</DialogTitle>
+					<DialogTitle>
+						{forcedAction === "copy"
+							? t("fileExplorer.transfer.pasteCopyTitle")
+							: forcedAction === "move"
+								? t("fileExplorer.transfer.pasteMoveTitle")
+								: t("fileExplorer.transfer.title")}
+					</DialogTitle>
 					<DialogDescription>
 						{t("fileExplorer.transfer.description", { count: plan.items.length, destination: destinationName })}
 					</DialogDescription>
@@ -53,7 +64,9 @@ export function FileTransferDialog({
 						<span className="min-w-0 truncate">{plan.items.map((item) => item.name).join(", ")}</span>
 					</div>
 				</div>
-				<p className="text-[11px] text-muted-foreground">{t("fileExplorer.transfer.moveWarning")}</p>
+				{showMove ? (
+					<p className="text-[11px] text-muted-foreground">{t("fileExplorer.transfer.moveWarning")}</p>
+				) : null}
 
 				{conflictCount > 0 && (
 					<div className="space-y-1.5">
@@ -80,12 +93,28 @@ export function FileTransferDialog({
 					<Button variant="outline" disabled={busy} onClick={onCancel}>
 						{t("fileExplorer.transfer.cancel")}
 					</Button>
-					<Button variant="secondary" disabled={busy} onClick={() => onConfirm("move")}>
-						{t("fileExplorer.transfer.move")}
-					</Button>
-					<Button disabled={busy} onClick={() => onConfirm("copy")}>
-						{busy ? t("fileExplorer.transfer.processing") : t("fileExplorer.transfer.copy")}
-					</Button>
+					{showMove ? (
+						<Button
+							variant={forcedAction === "move" ? "default" : "secondary"}
+							disabled={busy}
+							onClick={() => onConfirm("move")}
+						>
+							{busy && forcedAction === "move"
+								? t("fileExplorer.transfer.processing")
+								: forcedAction === "move"
+									? t("fileExplorer.paste")
+									: t("fileExplorer.transfer.move")}
+						</Button>
+					) : null}
+					{showCopy ? (
+						<Button disabled={busy} onClick={() => onConfirm("copy")}>
+							{busy
+								? t("fileExplorer.transfer.processing")
+								: forcedAction === "copy"
+									? t("fileExplorer.paste")
+									: t("fileExplorer.transfer.copy")}
+						</Button>
+					) : null}
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

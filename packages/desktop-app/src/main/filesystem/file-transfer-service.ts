@@ -145,8 +145,17 @@ async function transferOne(
 	if (isDirectory && isPathWithin(resolvedSource, destinationDirectory)) {
 		throw new Error("A directory cannot be transferred into itself");
 	}
-	if (normalizePathForComparison(dirname(resolvedSource)) === normalizePathForComparison(destinationDirectory)) {
+	const sameParent =
+		normalizePathForComparison(dirname(resolvedSource)) === normalizePathForComparison(destinationDirectory);
+	// Move into the same folder is a no-op. Same-folder copy must create a new name
+	// (otherwise the source would collide with itself).
+	if (sameParent && action === "move") {
 		return { name, status: "skipped" };
+	}
+	if (sameParent && action === "copy") {
+		const destinationPath = resolveAvailableDestination(destinationDirectory, name, isDirectory, reserved);
+		await copyThroughStaging(resolvedSource, destinationPath, isDirectory, false);
+		return { name, status: "copied", destinationPath };
 	}
 
 	const defaultDestination = join(destinationDirectory, name);

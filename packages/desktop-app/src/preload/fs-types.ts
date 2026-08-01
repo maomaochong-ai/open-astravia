@@ -95,6 +95,8 @@ export interface DesktopFsApi {
 	delete(targetPath: string): Promise<void>;
 	move(sourcePath: string, destDir: string): Promise<void>;
 	prepareDrop(files: readonly File[], destinationDirectory: string): Promise<FileTransferPlan>;
+	/** Prepare a transfer from absolute source paths (copy/cut/paste and internal multi-move). */
+	prepareTransfer(sourcePaths: readonly string[], destinationDirectory: string): Promise<FileTransferPlan>;
 	commitDrop(
 		planId: string,
 		action: FileTransferAction,

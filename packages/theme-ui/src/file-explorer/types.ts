@@ -23,3 +23,11 @@ export interface FileExplorerCreatingEntry {
 	error: string | null;
 	busy: boolean;
 }
+
+/** Mouse / keyboard selection gesture for multi-select file trees. */
+export interface FileExplorerSelectOptions {
+	toggle: boolean;
+	range: boolean;
+	/** Plain activation (replace selection; open preview / toggle folder). */
+	activate: boolean;
+}

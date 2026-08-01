@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **项目文件列表多选与复制粘贴**：支持 Ctrl/Cmd 点选、Shift 范围选、Ctrl/Cmd+A 全选；右键/快捷键复制与粘贴、复制路径；批量删除与多选拖拽；方向键导航、F2 重命名、Delete 删除；空白处单击清空选区，空白处右键为根目录菜单（新建/粘贴/在资源管理器打开）。不做剪切。同目录粘贴会自动生成 `name (1)` 副本。选区状态与预览解耦，避免幽灵高亮。
+
 - **模型表单的上下文长度快捷预设**：设置 → 模型里新增/编辑模型时，「上下文窗口」与「最大输出」输入框下各多一排快捷标签（32K/64K/128K/256K/1M 与 16K/32K/64K/128K/384K），点一下即填入，当前值命中时高亮。与 Admin 的 `NumberQuickPicks` 取值一致。
 
 - **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。

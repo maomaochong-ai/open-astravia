@@ -113,4 +113,37 @@ describe("file transfer service", () => {
 			"outside any known project directory",
 		);
 	});
+
+	it("duplicates a file when copying into the same parent directory", async () => {
+		const source = join(projectDirectory, "note.txt");
+		await writeFile(source, "body", "utf8");
+
+		const result = await transferFilesystemEntries({
+			sourcePaths: [source],
+			destinationDirectory: projectDirectory,
+			action: "copy",
+			conflictPolicy: "keep-both",
+		});
+
+		expect(result.items[0]).toEqual(
+			expect.objectContaining({ status: "copied", destinationPath: join(projectDirectory, "note (1).txt") }),
+		);
+		expect(await readFile(source, "utf8")).toBe("body");
+		expect(await readFile(join(projectDirectory, "note (1).txt"), "utf8")).toBe("body");
+	});
+
+	it("skips move when the source already lives in the destination directory", async () => {
+		const source = join(projectDirectory, "stay.txt");
+		await writeFile(source, "stay", "utf8");
+
+		const result = await transferFilesystemEntries({
+			sourcePaths: [source],
+			destinationDirectory: projectDirectory,
+			action: "move",
+			conflictPolicy: "keep-both",
+		});
+
+		expect(result.items[0]?.status).toBe("skipped");
+		expect(existsSync(source)).toBe(true);
+	});
 });
