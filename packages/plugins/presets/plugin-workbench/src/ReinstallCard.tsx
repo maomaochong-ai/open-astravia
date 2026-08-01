@@ -1,4 +1,5 @@
 import { type PluginCardProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useState, type ReactNode } from "react";
 import { findProjectById, type ProjectInfo } from "./project";
 import { reinstallPluginToVetta } from "./reinstall";
@@ -95,15 +96,10 @@ export function ReinstallCard({ descriptor, pending }: PluginCardProps): ReactNo
 				</pre>
 			)}
 			<div className="flex flex-wrap items-center gap-1.5">
-				<button
-					type="button"
-					disabled={busy}
-					onClick={() => void onReinstall()}
-					className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
-				>
+				<Button type="button" variant="primary" size="sm" disabled={busy} onClick={() => void onReinstall()}>
 					{busy ? <RefreshIcon className="h-3 w-3 animate-spin" /> : null}
 					{busy ? t("card.reinstall.busy") : t("card.reinstall.action")}
-				</button>
+				</Button>
 			</div>
 		</div>
 	);

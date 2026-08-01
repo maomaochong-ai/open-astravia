@@ -26,6 +26,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **插件可选用宿主 `@vetta/ui` 单例**：Module Federation share 与 `vetta-host://ui` 提供 Button / Dialog / Switch / Slider 等 primitives，构建侧由 `@vetta-org/plugin-vite` external，避免插件自带一份 UI。可选、半稳定，不承诺跨大版本 semver；`@vetta/theme-ui` 仍不共享。见 `docs/plugin/styling-and-pitfalls.md`。
 - **活动面板 tab 统一贡献注册表**：内置与插件 tab 同构为 `ActivityTabDefinition`（`useMeta` + `component`）。Host 只跑 meta 收集 → 可见性（hidden / 插件 attach 三态）→ 排序管道；`useActivityPanelModel` / `ActivityPanelView` 不再枚举 todo/workflow/browser 等业务。新增内置 tab 只需在 `domains/activity-panel/builtins` 注册。浏览器 tab 仍通过 `keepAliveWhenAvailable` 跨 tab 保活 webview。
 - **更新就绪不再自动弹全局对话框**：后台下载完成（`phase === "ready"`）时只保留侧边栏底部的更新提示项，不再打断当前操作。设置 → 更新里点「立即重启」仍会打开重启确认对话框。
 

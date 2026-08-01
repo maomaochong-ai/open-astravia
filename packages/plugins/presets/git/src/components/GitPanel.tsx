@@ -1,7 +1,8 @@
 import { useActivityTab, useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { initRepo, resolveRepoRoot, statusPorcelain } from "../git/run";
 import { parseStatus } from "../git/parseStatus";
+import { initRepo, resolveRepoRoot, statusPorcelain } from "../git/run";
 import { onRefreshSignal } from "../git/runtime";
 import type { ChangeEntry } from "../git/types";
 import { GitChanges } from "./GitChanges";
@@ -104,14 +105,9 @@ export function GitPanel(): JSX.Element {
 						{t("panel.title")}
 					</div>
 				)}
-				<button
-					type="button"
-					onClick={handleRefresh}
-					className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-					title={t("action.refresh")}
-				>
+				<Button type="button" variant="ghost" size="icon-xs" onClick={handleRefresh} title={t("action.refresh")}>
 					<RefreshIcon className="h-3.5 w-3.5" />
-				</button>
+				</Button>
 			</div>
 
 			{state.kind === "loading" && <div className="px-3 py-4 text-[12px] text-muted-foreground">{t("state.loading")}</div>}

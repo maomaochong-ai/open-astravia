@@ -137,6 +137,29 @@ function Icon() {
 - `package.json` 里的 `react` 只用于类型与本地构建，别试图 bundle 一份自己的 React。
 - `@vetta-org/plugin-sdk` 同样 external，运行时由宿主提供。
 
+## 可选：`@vetta/ui` 宿主 primitives
+
+插件**可以**直接使用宿主的设计系统 primitives，与 App chrome 对齐：
+
+```tsx
+import { Button, Switch, Slider, Dialog, DialogContent, cn } from "@vetta/ui";
+```
+
+约定：
+
+| 项 | 说明 |
+| --- | --- |
+| 运行时 | 由宿主单例提供（MF share + `vetta-host://ui`），**不要**打进插件 bundle |
+| 构建 | `vettaPluginFederation` 已把 `@vetta/ui` 设为 `shared.singleton + import:false`，并 rollup external |
+| `package.json` | 仅作类型 / 本地 tsc：`devDependencies` 里 `@vetta/ui`（仓库内 `workspace:*`，仓库外按发布版本） |
+| 样式 | 组件 class 走宿主全局 token / Tailwind；插件 scoped CSS **管不到** Dialog 等 portal 到 `document.body` 的浮层（浮层依赖宿主已加载的全局样式，这是预期行为） |
+| 稳定性 | **半稳定、可选**。宿主会尽量不无故破坏，但不对跨 App 大版本做 semver 承诺；props / 导出变更时官方插件随 monorepo 同改 |
+| 不在此列 | `@vetta/theme-ui`（业务 View）**尚未**作为插件共享依赖；需要时再另开通道 |
+
+默认路径仍是：自写 JSX + 语义 class（`bg-background` / `text-foreground`…）。`@vetta/ui` 适合按钮、开关、对话框等控件统一，不是强制。
+
+顶层不要对 `@vetta/ui` 做立即求值（与 React 相同，见上文「MF 顶层 JSX 陷阱」）——在组件函数内使用即可。
+
 ## 缓存刷新
 
 插件 bundle 经 `vetta-plugin://` 协议加载，**Chromium 会缓存 `remoteEntry.js`**——你改了代码重装，**重启 App 也未必清掉旧缓存**，表现为「改动不生效」。

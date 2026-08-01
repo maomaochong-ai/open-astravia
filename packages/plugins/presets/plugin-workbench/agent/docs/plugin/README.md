@@ -57,7 +57,7 @@
 ## 信任模型
 
 - 插件是**一方 / 策展**的（官方或合作方编写、经审核上架），**不是**任意第三方不可信代码。
-- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**。
+- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**；可选再共享 **`@vetta/ui`** 设计系统 primitives（见 [styling-and-pitfalls](./styling-and-pitfalls.md#可选vettaui-宿主-primitives)）。
 - 因此 SDK 是「**策展过的能力出口 + 权限门控**」——可同步、可直接传 React 组件实例、可读宿主状态，**刻意不做** iframe/worker 沙箱与异步消息桥。
 - 每项能力由 `plugin.json` 声明权限、宿主单独授权、运行时校验；缺权限会抛 `Plugin permission denied: <permission>` 或 warn+noop（见 [permissions.md](./permissions.md)）。
 

@@ -1,8 +1,11 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
 import type { BranchRef, GraphScope, GraphSelection } from "../../git/types";
 import { BranchIcon } from "../icons";
 
 const SCOPES: GraphScope[] = ["local", "remote"];
+/** Radix Select disallows empty item values; maps to `branch: null` (all branches). */
+const ALL_BRANCHES = "__all__";
 
 /** Top switcher: local/remote scope segmented toggle + a branch dropdown (all = whole scope). */
 export function BranchSelector({
@@ -15,9 +18,10 @@ export function BranchSelector({
 	onChange: (next: GraphSelection) => void;
 }): JSX.Element {
 	const { t } = useTranslation();
+	const selectValue = selection.branch ?? ALL_BRANCHES;
 
 	return (
-		<div className="flex h-8 shrink-0 items-center gap-2 border-b border-border px-2">
+		<div className="flex h-9 shrink-0 items-center gap-2 border-b border-border px-2">
 			<div className="flex shrink-0 items-center rounded-md bg-muted/60 p-0.5 text-[11px]">
 				{SCOPES.map((scope) => (
 					<button
@@ -35,19 +39,31 @@ export function BranchSelector({
 
 			<div className="flex min-w-0 flex-1 items-center gap-1.5">
 				<BranchIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-				<select
-					value={selection.branch ?? ""}
-					onChange={(e) => onChange({ ...selection, branch: e.target.value || null })}
-					title={t("branch.placeholder")}
-					className="min-w-0 flex-1 truncate rounded-md bg-transparent py-0.5 text-[12px] text-foreground outline-none hover:bg-accent/40"
+				<Select
+					value={selectValue}
+					onValueChange={(value) =>
+						onChange({
+							...selection,
+							branch: value === ALL_BRANCHES ? null : value,
+						})
+					}
 				>
-					<option value="">{t("branch.all")}</option>
-					{branches.map((b) => (
-						<option key={b.name} value={b.name}>
-							{b.name}
-						</option>
-					))}
-				</select>
+					<SelectTrigger
+						size="sm"
+						title={t("branch.placeholder")}
+						className="h-7 min-w-0 w-full max-w-full flex-1 border-border/60 bg-transparent font-normal shadow-none"
+					>
+						<SelectValue placeholder={t("branch.placeholder")} />
+					</SelectTrigger>
+					<SelectContent className="max-h-64">
+						<SelectItem value={ALL_BRANCHES}>{t("branch.all")}</SelectItem>
+						{branches.map((b) => (
+							<SelectItem key={b.name} value={b.name}>
+								{b.name}
+							</SelectItem>
+						))}
+					</SelectContent>
+				</Select>
 			</div>
 		</div>
 	);

@@ -9,6 +9,7 @@ import {
 	usePromptAttachment,
 	useTranslation,
 } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import "./style.css";
 import { createImageRepository, type ImageRepository } from "./image-repository";
@@ -734,15 +735,9 @@ function GenHistoryPanel() {
 					{t("history.title")}
 					{lineages.length > 0 ? t("history.groupCount", { count: lineages.length }) : ""}
 				</span>
-				<button
-					type="button"
-					onClick={() => refetch()}
-					title={t("ui.action.refresh")}
-					className="flex h-6 w-6 items-center justify-center rounded-md text-foreground/55 transition-colors hover:text-foreground"
-					style={{ background: "color-mix(in srgb, var(--foreground) 6%, transparent)" }}
-				>
+				<Button type="button" variant="ghost" size="icon-xs" onClick={() => refetch()} title={t("ui.action.refresh")}>
 					<IconRefresh className="h-3.5 w-3.5" />
-				</button>
+				</Button>
 			</div>
 			{lineages.length === 0 ? (
 				<div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
@@ -828,25 +823,20 @@ function SettingsGuardDialog(): ReactNode {
 					{t("guard.body")}
 				</p>
 				<div className="flex justify-end gap-2">
-					<button
-						type="button"
-						onClick={close}
-						className="rounded-lg px-3 py-1.5 text-[12px] font-medium transition-opacity hover:opacity-80"
-						style={{ color: "var(--muted-foreground)", background: "color-mix(in srgb, var(--foreground) 8%, transparent)" }}
-					>
+					<Button type="button" variant="ghost" size="sm" onClick={close}>
 						{t("guard.cancel")}
-					</button>
-					<button
+					</Button>
+					<Button
 						type="button"
+						variant="primary"
+						size="sm"
 						onClick={() => {
 							close();
 							pluginCtx?.ui.openPluginSettings();
 						}}
-						className="rounded-lg px-3 py-1.5 text-[12px] font-medium transition-opacity hover:opacity-90"
-						style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
 					>
 						{t("guard.goSettings")}
-					</button>
+					</Button>
 				</div>
 			</div>
 		</div>

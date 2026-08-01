@@ -1,5 +1,5 @@
+import { Button, cn } from "@vetta/ui";
 import type { JSX } from "react";
-import { cn } from "./utils";
 
 interface ToolbarButtonProps {
 	/** Text label (used when `icon` is not set). */
@@ -13,17 +13,16 @@ interface ToolbarButtonProps {
 
 export function ToolbarButton({ label, icon, onClick, disabled, title }: ToolbarButtonProps): JSX.Element {
 	return (
-		<button
+		<Button
 			type="button"
+			variant="ghost"
+			size={icon && !label ? "icon-sm" : "sm"}
 			onClick={onClick}
 			disabled={disabled}
 			title={title}
-			className={cn(
-				"flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-[12px] text-[var(--foreground)] transition-colors",
-				"hover:bg-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-40",
-			)}
+			className="rounded-full"
 		>
 			{icon ? <span className={cn(icon, "h-4 w-4")} aria-hidden /> : label}
-		</button>
+		</Button>
 	);
 }

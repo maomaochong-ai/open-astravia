@@ -1,5 +1,6 @@
 import { preloadHighlighter } from "@pierre/diffs";
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { findEntry } from "../git/gitStatus";
 import { resizePanel } from "../git/runtime";
@@ -108,14 +109,15 @@ export function GitChanges({ root, entries }: { root: string; entries: ChangeEnt
 			<div className="flex h-9 shrink-0 items-center justify-between border-b border-border px-2">
 				<GitActions root={root} />
 				{entries.length > 0 && (
-					<button
+					<Button
 						type="button"
+						variant="ghost"
+						size="icon-xs"
 						onClick={toggleView}
 						title={viewMode === "tree" ? t("view.switchToFlat") : t("view.switchToTree")}
-						className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
 						{viewMode === "tree" ? <ListViewIcon className="h-3.5 w-3.5" /> : <TreeViewIcon className="h-3.5 w-3.5" />}
-					</button>
+					</Button>
 				)}
 			</div>
 
