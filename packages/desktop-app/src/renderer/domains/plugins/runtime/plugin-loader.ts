@@ -55,7 +55,7 @@ import type {
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 } from "@vetta-org/plugin-sdk";
-import { resolveCatalogKey } from "@vetta-org/plugin-sdk";
+import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
@@ -354,6 +354,10 @@ function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string): Plug
 			permissions.require("fs.read");
 			return filesystem.listFilesRecursive(capabilitySessionId, rootPath);
 		},
+		saveAs: (defaultFileName, content, encoding, options) => {
+			permissions.require("fs.write");
+			return window.vetta.dialog.saveData(defaultFileName, content, encoding, options);
+		},
 		watchDirectory: (dirPath, listener) => {
 			permissions.require("fs.read");
 			const unsubscribe = window.vetta.fs.onDirChanged(listener);
@@ -463,9 +467,23 @@ function createI18nApi(plugin: InstalledPlugin): PluginI18nApi {
 	};
 }
 
+/**
+ * Resolve a host-rendered plugin string against that plugin's own catalogs.
+ * Manifest fields such as `name` carry `%key%` placeholders; literals pass
+ * through untouched.
+ */
+function resolvePluginDisplayText(plugin: InstalledPlugin, raw: string): string {
+	return resolvePluginText(
+		raw,
+		plugin.locales ?? {},
+		getDefaultStore().get(languageAtom),
+		plugin.defaultLocale ?? "zh",
+	);
+}
+
 /** Format a plugin error for clipboard + console (plugin id/version + stack). */
 function formatPluginErrorDetail(plugin: InstalledPlugin, error: unknown): string {
-	const header = `Plugin: ${plugin.id}@${plugin.activeVersion} (${plugin.name})`;
+	const header = `Plugin: ${plugin.id}@${plugin.activeVersion} (${resolvePluginDisplayText(plugin, plugin.name)})`;
 	if (error instanceof Error) {
 		const stack = error.stack?.trim() || `${error.name}: ${error.message}`;
 		return `${header}\n${stack}`;
@@ -540,7 +558,7 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 			showToast({
 				variant: "warning",
 				title: "命令已禁用",
-				message: `「${plugin.name}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
+				message: `「${resolvePluginDisplayText(plugin, plugin.name)}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
 				action: {
 					label: "前往设置",
 					onClick: () => {
@@ -1009,6 +1027,12 @@ function createContext(
 		}
 		return window.vetta.window.captureRegion(rect, defaultFileName);
 	};
+	const copyImage: PluginContext["ui"]["copyImage"] = (dataUrl) => {
+		if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
+			throw new Error("copyImage() requires a data:image/... URL");
+		}
+		return window.vetta.clipboard.writeImage(dataUrl);
+	};
 	const notify = (options: PluginNotifyOptions): void => {
 		if (options == null || typeof options !== "object" || typeof options.message !== "string") {
 			throw new Error("notify() requires { message: string }");
@@ -1019,7 +1043,8 @@ function createContext(
 		}
 		const hasError = options.error !== undefined;
 		const variant = options.variant ?? (hasError ? "error" : "info");
-		const title = options.title?.trim() || plugin.name;
+		// 清单里的 name 通常是 `%plugin.name%` 这种 catalog 键，直接塞进 toast 会原样显示。
+		const title = resolvePluginDisplayText(plugin, options.title?.trim() || plugin.name);
 		const detail = hasError ? formatPluginErrorDetail(plugin, options.error) : null;
 		const durationMs = options.durationMs ?? (hasError ? 0 : undefined);
 		showToast({
@@ -1067,6 +1092,7 @@ function createContext(
 			previewImage,
 			openPluginSettings,
 			captureRegion,
+			copyImage,
 			notify,
 		},
 		fileExplorer: {

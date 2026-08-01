@@ -19,6 +19,12 @@ export interface DialogSaveCopyOptions {
 	filters?: Array<{ name: string; extensions: string[] }>;
 }
 
+export interface DialogSaveDataOptions {
+	title?: string;
+	/** Defaults to a single filter derived from the default file name's extension. */
+	filters?: Array<{ name: string; extensions: string[] }>;
+}
+
 export interface DesktopDialogApi {
 	selectFolder(): Promise<string | null>;
 	selectFolders(): Promise<string[]>;
@@ -26,6 +32,16 @@ export interface DesktopDialogApi {
 	selectFiles(defaultPath?: string): Promise<string[]>;
 	/** 使用原生保存对话框写出单文件 HTML；取消时返回 null。 */
 	saveHtml(defaultFileName: string, content: string): Promise<string | null>;
+	/**
+	 * 经原生保存对话框把内存中的字节写到用户选择的路径。
+	 * 与 saveCopy 互补——后者要求内容已经在磁盘上。取消时返回 null。
+	 */
+	saveData(
+		defaultFileName: string,
+		content: string,
+		encoding?: "utf8" | "base64",
+		options?: DialogSaveDataOptions,
+	): Promise<string | null>;
 	/**
 	 * 经原生保存对话框把已有文件复制到用户选择的路径。
 	 * 源路径需可读（项目根或用户主目录）；取消时返回 null。

@@ -2,19 +2,22 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { useEffect, useRef, useState } from "react";
 
 interface AskVettaPopoverProps {
-	/** Screen-space anchor (canvas-container coordinates). */
-	x: number;
-	y: number;
 	busy: boolean;
 	onSend(suggestion: string): void;
 	onClose(): void;
 }
 
-/** In-canvas input for "让 Vetta 调整": type the adjustment, send straight to Vetta. */
-export function AskVettaPopover({ x, y, busy, onSend, onClose }: AskVettaPopoverProps) {
+/**
+ * In-canvas input for "让 Vetta 调整": type the adjustment, send straight to
+ * Vetta. Anchored above the ask button rather than to a frame — the ask can
+ * target several frames (or the whole design), so there is no single anchor.
+ */
+export function AskVettaPopover({ busy, onSend, onClose }: AskVettaPopoverProps) {
 	const { t } = useTranslation();
 	const [text, setText] = useState("");
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	/** True while an IME is composing — Enter then belongs to the candidate list. */
+	const composingRef = useRef(false);
 
 	useEffect(() => {
 		textareaRef.current?.focus();
@@ -30,8 +33,7 @@ export function AskVettaPopover({ x, y, busy, onSend, onClose }: AskVettaPopover
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the popover
 		<div
 			// 画布根节点是 select-none，浮层里要能正常选中/编辑文本，这里放开。
-			className="absolute z-30 w-72 select-text rounded-xl border border-border bg-card/95 p-2 shadow-xl"
-			style={{ left: Math.max(8, x), top: Math.max(8, y) }}
+			className="absolute bottom-28 left-1/2 z-30 w-80 -translate-x-1/2 select-text rounded-xl border border-border bg-card p-2 shadow-xl"
 			onPointerDown={(event) => event.stopPropagation()}
 			onPointerMove={(event) => event.stopPropagation()}
 			onPointerUp={(event) => event.stopPropagation()}
@@ -48,13 +50,27 @@ export function AskVettaPopover({ x, y, busy, onSend, onClose }: AskVettaPopover
 				disabled={busy}
 				placeholder={t("canvas.ask.placeholder")}
 				onChange={(event) => setText(event.target.value)}
-				onKeyDown={(event) => {
-					if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-						event.preventDefault();
-						send();
-					}
+				onCompositionStart={() => {
+					composingRef.current = true;
 				}}
-				className="h-20 w-full resize-none rounded-lg border border-border bg-transparent p-2 text-xs outline-none focus:border-primary"
+				onCompositionEnd={() => {
+					composingRef.current = false;
+				}}
+				onKeyDown={(event) => {
+					if (event.key !== "Enter") return;
+					// 输入法组字中的回车属于候选上屏，不是发送。isComposing 覆盖现代浏览器，
+					// keyCode 229 兜住 composition 事件顺序不标准的输入法。
+					if (event.nativeEvent.isComposing || event.keyCode === 229 || composingRef.current) return;
+					// Shift+Enter 换行；Enter（及 ⌘/Ctrl+Enter）发送。stopPropagation
+					// 是为了让换行不被画布的键盘处理吃掉。
+					if (event.shiftKey) {
+						event.stopPropagation();
+						return;
+					}
+					event.preventDefault();
+					send();
+				}}
+				className="h-20 w-full resize-none border-0 bg-transparent p-2 text-xs outline-none focus:outline-none"
 			/>
 			<div className="mt-1.5 flex items-center justify-end gap-1.5">
 				<button

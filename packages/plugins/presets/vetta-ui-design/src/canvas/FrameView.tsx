@@ -15,11 +15,18 @@ interface FrameViewProps {
 	/** Inspect mode: pointer events pass through to the iframe. */
 	entered: boolean;
 	interactive: boolean;
+	/** Resize handles show only for a lone selection — a group resize has no obvious meaning. */
+	resizable: boolean;
+	/** Live offset of the in-flight group move this frame takes part in. */
+	moveDelta: { dx: number; dy: number } | null;
 	activity: FrameActivity | undefined;
-	onSelect(): void;
+	onSelect(additive: boolean): void;
 	onEnter(): void;
-	onAskVetta(): void;
-	onPlacementCommit(patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void;
+	/** Moves are owned by the canvas so every selected frame travels together. */
+	onMoveStart(additive: boolean): void;
+	onMoveDelta(dx: number, dy: number): void;
+	onMoveEnd(): void;
+	onResizeCommit(patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void;
 }
 
 interface DragState {
@@ -41,11 +48,15 @@ export function FrameView({
 	selected,
 	entered,
 	interactive,
+	resizable,
+	moveDelta,
 	activity,
 	onSelect,
 	onEnter,
-	onAskVetta,
-	onPlacementCommit,
+	onMoveStart,
+	onMoveDelta,
+	onMoveEnd,
+	onResizeCommit,
 }: FrameViewProps) {
 	const { t } = useTranslation();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -57,13 +68,19 @@ export function FrameView({
 		return () => bridge.register(frame.id, null);
 	}, [bridge, frame.id]);
 
-	const rect = live ?? { x: frame.x, y: frame.y, width: frame.width, height: frame.height };
+	const rect = live ?? {
+		x: frame.x + (moveDelta?.dx ?? 0),
+		y: frame.y + (moveDelta?.dy ?? 0),
+		width: frame.width,
+		height: frame.height,
+	};
 
 	const beginDrag = (event: ReactPointerEvent, edge: DragState["edge"]): void => {
 		if (!interactive || entered) return;
 		event.preventDefault();
 		event.stopPropagation();
-		onSelect();
+		if (edge === "move") onMoveStart(event.shiftKey);
+		else onSelect(false);
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		dragRef.current = {
 			pointerId: event.pointerId,
@@ -81,7 +98,7 @@ export function FrameView({
 		const dy = (event.clientY - drag.startY) / zoom;
 		const { origin } = drag;
 		if (drag.edge === "move") {
-			setLive({ ...origin, x: Math.round(origin.x + dx), y: Math.round(origin.y + dy) });
+			onMoveDelta(Math.round(dx), Math.round(dy));
 			return;
 		}
 		let { x, y, width, height } = origin;
@@ -115,8 +132,12 @@ export function FrameView({
 		const drag = dragRef.current;
 		if (!drag || event.pointerId !== drag.pointerId) return;
 		dragRef.current = null;
+		if (drag.edge === "move") {
+			onMoveEnd();
+			return;
+		}
 		if (live) {
-			onPlacementCommit(live);
+			onResizeCommit(live);
 			setLive(null);
 		}
 	};
@@ -149,30 +170,20 @@ export function FrameView({
 			>
 				<button
 					type="button"
-					className={`cursor-pointer truncate font-medium ${selected ? "text-primary" : "text-muted-foreground"}`}
+					className={`cursor-pointer truncate font-medium ${
+						selected ? "text-[var(--vetd-selected)]" : "text-muted-foreground"
+					}`}
 					onPointerDown={(event) => beginDrag(event, "move")}
 					onPointerMove={moveDrag}
 					onPointerUp={endDrag}
 					onDoubleClick={onEnter}
+					title={frame.title || frame.id}
 				>
 					{frame.title || frame.id}
 				</button>
 				<span className="text-muted-foreground">
 					{rect.width}×{rect.height}
 				</span>
-				{selected ? (
-					<button
-						type="button"
-						className="rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground shadow-sm hover:opacity-90"
-						onPointerDown={(event) => event.stopPropagation()}
-						onClick={(event) => {
-							event.stopPropagation();
-							onAskVetta();
-						}}
-					>
-						{t("canvas.ask.button")}
-					</button>
-				) : null}
 				{activity === "modifying" ? (
 					<span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
 						<span className="size-1.5 animate-pulse rounded-full bg-primary" />
@@ -188,7 +199,7 @@ export function FrameView({
 
 			<div
 				className={`relative h-full w-full overflow-hidden rounded-sm bg-white shadow-md ring-offset-0 ${
-					selected ? "ring-2 ring-primary" : "ring-1 ring-border"
+					selected ? "ring-2 ring-[var(--vetd-selected)]" : "ring-1 ring-border"
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
 				<iframe
@@ -215,12 +226,12 @@ export function FrameView({
 				) : null}
 			</div>
 
-			{selected && !entered
+			{selected && resizable && !entered
 				? handles.map(({ edge, className }) => (
 						// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
 						<div
 							key={edge}
-							className={`absolute z-10 size-2 rounded-full border border-primary bg-white ${className}`}
+							className={`absolute z-10 size-2 rounded-full border border-[var(--vetd-selected)] bg-white ${className}`}
 							style={{ transform: `scale(${labelScale})` }}
 							onPointerDown={(event) => beginDrag(event, edge)}
 							onPointerMove={moveDrag}

@@ -230,11 +230,15 @@ export function installBridge(host: BridgeHost): void {
 				// keepHighlight: bake the selected-element outline into the shot (used by
 				// "让 Vetta 调整" so the model SEES which element the user means).
 				const keepHighlight = data.keepHighlight === true && selected !== null;
+				// Mockup export asks for a higher ratio so the composed image stays
+				// crisp when scaled up; 2 keeps the historical behaviour.
+				const pixelRatio =
+					typeof data.pixelRatio === "number" && data.pixelRatio > 0 ? Math.min(data.pixelRatio, 4) : 2;
 				moveOverlay(hoverOverlay, null);
 				if (!keepHighlight) moveOverlay(selectedOverlay, null);
 				// Capture documentElement: the overlay divs live on it, so a kept
 				// highlight is included; body alone would drop them.
-				toPng(document.documentElement, { pixelRatio: 2, cacheBust: true })
+				toPng(document.documentElement, { pixelRatio, cacheBust: true })
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) =>
 						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),

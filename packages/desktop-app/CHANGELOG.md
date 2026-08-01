@@ -8,6 +8,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **系统插件「Vetta UI Design」**：无限画布 UI 设计工作台（活动面板 Tab）。设计文档为 `.vetd` 清单 + `x.vetd.d/` 旁挂源码（frame = TSX + Tailwind v4 + Iconify），由插件托管的共享设计引擎（vite dev server + HMR）渲染；支持画布平移/无级缩放/空格拖手、frame 拖拽与改尺寸、Figma 式逐层选中 DOM 并 attach 给 Vetta、agent 修改中呼吸态、只读色板、`.vetd` 文件预览（工作态/打包态）、导出自包含分享包与导入。agent 工具：`vetd_create` / `vetd_screenshot` / `vetd_status`。见 ADR-0053。
 
+- **Vetta UI Design 导出渲染图**：画布支持 frame 多选（shift 点选 / 空白处框选 / 多选群组拖动），选中后底部控制栏出现「导出渲染图」。导出走全局插槽的全窗口模态：等高归一化横排合成（每张图最多 4 个 frame，超出自动分页），可调圆角、外边框粗细与颜色、背景色或透明、投影、Vetta 标识与 1x/2x 倍率，预览内可拖拽交换位置，参数按设计文档记在本地。产物可另存为或直接复制到剪贴板。同时把「让 Vetta 调整」从 frame 标题栏移到控制栏上方常驻，支持一次对多个 frame（或整份设计稿）发起调整。
+
+- **插件 API `ctx.fs.saveAs()` 与 `ctx.ui.copyImage()`**：前者经原生保存对话框把内存字节写到用户选定路径（复用 `fs.write` 权限，路径由用户当场确认，不受工程根限制），补上 `dialog.saveCopy` 只能复制已有文件的缺口；后者经 Electron 原生剪贴板写入图片，不依赖渲染进程的 `ClipboardItem` 支持。
+
 - **插件 API `ctx.ui.setActivityPanelWidth(width)`**：插件可随时把活动面板宽度设为像素值或 `"max"`（宿主仍 clamp 到 min/max 并按需收侧边栏）。设计画布据此在每次激活标签卡时占满宽度。
 
 - **插件长驻进程能力 `ctx.command.spawn`**（ADR-0054）：与 `command.run` 同一治理模式（清单 `commands` 声明 + 新权限 `agent.command.spawn` + 用户可关），主进程管理进程组生命周期（stop/退出事件/`{{PORT}}` 端口分配），插件禁用/卸载/重载与 App 退出时统一清扫。

@@ -6,9 +6,12 @@ export type CanvasTool = "select" | "hand" | "frame";
 interface ControlBarProps {
 	tool: CanvasTool;
 	zoom: number;
+	/** Number of frames the export action would act on; 0 hides the button. */
+	exportableCount: number;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
+	onExport(): void;
 }
 
 function ToolButton({
@@ -58,10 +61,24 @@ const icons = {
 			<path d="M6 2v20M18 2v20M2 6h20M2 18h20" strokeLinecap="round" />
 		</svg>
 	),
+	mockup: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<rect x="4" y="2" width="7" height="20" rx="2" />
+			<rect x="14" y="6" width="7" height="16" rx="2" />
+		</svg>
+	),
 };
 
 /** Fixed control bar at the bottom of the canvas panel (select / hand / frame / zoom). */
-export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset }: ControlBarProps) {
+export function ControlBar({
+	tool,
+	zoom,
+	exportableCount,
+	onToolChange,
+	onZoomDelta,
+	onZoomReset,
+	onExport,
+}: ControlBarProps) {
 	const { t } = useTranslation();
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar
@@ -113,6 +130,20 @@ export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset 
 					<path d="M12 5v14M5 12h14" strokeLinecap="round" />
 				</svg>
 			</button>
+			{exportableCount > 0 ? (
+				<>
+					<div className="mx-1 h-5 w-px bg-border" />
+					<button
+						type="button"
+						title={t("controlbar.exportMockup", { count: exportableCount })}
+						aria-label={t("controlbar.exportMockup", { count: exportableCount })}
+						onClick={onExport}
+						className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
+					>
+						{icons.mockup}
+					</button>
+				</>
+			) : null}
 		</div>
 	);
 }

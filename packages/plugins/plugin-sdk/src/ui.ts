@@ -386,6 +386,13 @@ export interface PluginUiApi {
 	 */
 	captureRegion(rect: PluginCaptureRegion, defaultFileName: string): Promise<string | null>;
 	/**
+	 * Copy an image to the system clipboard. Takes a `data:image/...;base64,`
+	 * URL and goes through the native clipboard, so it does not depend on the
+	 * renderer's `ClipboardItem` support. No permission required — the plugin
+	 * can only write what it already rendered.
+	 */
+	copyImage(dataUrl: string): Promise<void>;
+	/**
 	 * Show a global toast in the host UI (bottom-right). No permission required.
 	 * Prefer this over swallowing errors into opaque UI copy: pass `error` so
 	 * the host attaches a one-click "copy stack" action for the user.

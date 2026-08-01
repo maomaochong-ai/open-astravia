@@ -100,7 +100,10 @@ export class BridgeHub {
 		this.post(frameId, { type: "clear-selection" });
 	}
 
-	capture(frameId: string, options?: { keepHighlight?: boolean; timeoutMs?: number }): Promise<string> {
+	capture(
+		frameId: string,
+		options?: { keepHighlight?: boolean; timeoutMs?: number; pixelRatio?: number },
+	): Promise<string> {
 		const iframe = this.frames.get(frameId);
 		if (!iframe) return Promise.reject(new Error(`frame not mounted: ${frameId}`));
 		this.captureCounter += 1;
@@ -111,7 +114,12 @@ export class BridgeHub {
 				reject(new Error("capture timed out"));
 			}, options?.timeoutMs ?? 15_000);
 			this.captures.set(requestId, { resolve, reject, timer });
-			this.post(frameId, { type: "capture", requestId, keepHighlight: options?.keepHighlight === true });
+			this.post(frameId, {
+				type: "capture",
+				requestId,
+				keepHighlight: options?.keepHighlight === true,
+				pixelRatio: options?.pixelRatio,
+			});
 		});
 	}
 }

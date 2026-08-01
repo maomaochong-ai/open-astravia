@@ -1,24 +1,23 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import {
-	type PointerEvent as ReactPointerEvent,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
-import type { VetdManifest } from "../vetd/manifest-types";
-import { buildAskPrompt } from "./ask-vetta";
+import type { VetdFrameEntry, VetdManifest } from "../vetd/manifest-types";
+import { type AskShot, buildAskPrompt } from "./ask-vetta";
+import { AskVettaButton } from "./AskVettaButton";
 import { AskVettaPopover } from "./AskVettaPopover";
 import { BridgeHub, type SelectedElementPayload } from "./bridge-client";
 import { ControlBar, type CanvasTool } from "./ControlBar";
-import { type FrameActivity, notifyFrameSettled, onFrameActivity } from "./design-runtime";
+import {
+	type FrameActivity,
+	notifyFrameSettled,
+	onFrameActivity,
+	requestMockupExport,
+} from "./design-runtime";
 import { FrameView } from "./FrameView";
 
 export type CanvasSelection =
-	| { kind: "frame"; id: string }
+	| { kind: "frames"; ids: string[] }
 	| { kind: "dom"; frameId: string; payload: SelectedElementPayload }
 	| null;
 
@@ -34,12 +33,36 @@ interface Viewport {
 	zoom: number;
 }
 
+interface Rect {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+}
+
 const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 1.2;
+/** Below this the marquee counts as a click, not a drag. */
+const MARQUEE_MIN = 4;
 
 function clampZoom(zoom: number): number {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+}
+
+/** Frames the current selection covers — a DOM selection counts as its frame. */
+function selectedFrameIds(selection: CanvasSelection): string[] {
+	if (!selection) return [];
+	return selection.kind === "frames" ? selection.ids : [selection.frameId];
+}
+
+function intersects(a: Rect, b: Rect): boolean {
+	return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+/** Canvas reading order: left to right, top to bottom for equal x. */
+function byCanvasOrder(a: VetdFrameEntry, b: VetdFrameEntry): number {
+	return a.x === b.x ? a.y - b.y : a.x - b.x;
 }
 
 export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
@@ -52,13 +75,19 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	const [tool, setTool] = useState<CanvasTool>("select");
 	const [spaceHeld, setSpaceHeld] = useState(false);
 	const [selection, setSelection] = useState<CanvasSelection>(null);
+	const selectionRef = useRef(selection);
+	selectionRef.current = selection;
 	const [enteredFrameId, setEnteredFrameId] = useState<string | null>(null);
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
-	const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-	const [askFrameId, setAskFrameId] = useState<string | null>(null);
+	const [marquee, setMarquee] = useState<Rect | null>(null);
+	const [askOpen, setAskOpen] = useState(false);
 	const [askBusy, setAskBusy] = useState(false);
+	const [moveDelta, setMoveDelta] = useState<{ dx: number; dy: number } | null>(null);
 	const panRef = useRef<{ pointerId: number; startX: number; startY: number; origin: Viewport } | null>(null);
-	const marqueeRef = useRef<{ pointerId: number; startX: number; startY: number } | null>(null);
+	const marqueeRef = useRef<{ pointerId: number; startX: number; startY: number; mode: "create" | "select" } | null>(
+		null,
+	);
+	const moveRef = useRef<{ origins: Map<string, { x: number; y: number }> } | null>(null);
 
 	useEffect(() => {
 		const handle = session.on((change) => {
@@ -69,13 +98,6 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	}, [session]);
 
 	useEffect(() => onFrameActivity((next) => setActivity(new Map(next))), []);
-
-	// Ask popover follows the selection: deselect / switch frame → close.
-	useEffect(() => {
-		if (!askFrameId) return;
-		const selectedFrameId = selection ? (selection.kind === "frame" ? selection.id : selection.frameId) : null;
-		if (selectedFrameId !== askFrameId) setAskFrameId(null);
-	}, [selection, askFrameId]);
 
 	const exitInspect = useCallback(
 		(frameId: string | null) => {
@@ -93,22 +115,32 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			return null;
 		});
 		setSelection(null);
-		setAskFrameId(null);
 	}, [tool, bridge]);
 
 	useEffect(() => {
 		bridge.start({
 			onSelected: (frameId, payload) => {
-				setSelection(payload ? { kind: "dom", frameId, payload } : { kind: "frame", id: frameId });
+				setSelection(payload ? { kind: "dom", frameId, payload } : { kind: "frames", ids: [frameId] });
 			},
 			onExitInspect: (frameId) => {
 				exitInspect(frameId);
-				setSelection({ kind: "frame", id: frameId });
+				setSelection({ kind: "frames", ids: [frameId] });
 			},
 			onHmrUpdated: (frameId) => notifyFrameSettled(frameId),
 		});
 		return () => bridge.stop();
 	}, [bridge, exitInspect]);
+
+	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
+	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
+		setSelection((current) => {
+			if (!additive) return { kind: "frames", ids: [frameId] };
+			const base = current ? (current.kind === "frames" ? current.ids : [current.frameId]) : [];
+			if (!base.includes(frameId)) return { kind: "frames", ids: [...base, frameId] };
+			const next = base.filter((id) => id !== frameId);
+			return next.length > 0 ? { kind: "frames", ids: next } : null;
+		});
+	}, []);
 
 	// Space → temporary hand tool; Esc at canvas level clears selection.
 	useEffect(() => {
@@ -121,7 +153,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			} else if (event.key === "Escape") {
 				if (enteredFrameId) {
 					exitInspect(enteredFrameId);
-					setSelection({ kind: "frame", id: enteredFrameId });
+					setSelection({ kind: "frames", ids: [enteredFrameId] });
 				} else {
 					setSelection(null);
 				}
@@ -190,16 +222,20 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			};
 			return;
 		}
-		if (tool === "frame") {
-			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-			marqueeRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY };
-			const world = toWorld(event.clientX, event.clientY);
-			setMarquee({ x: world.x, y: world.y, width: 0, height: 0 });
-			return;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		marqueeRef.current = {
+			pointerId: event.pointerId,
+			startX: event.clientX,
+			startY: event.clientY,
+			mode: tool === "frame" ? "create" : "select",
+		};
+		const world = toWorld(event.clientX, event.clientY);
+		setMarquee({ x: world.x, y: world.y, width: 0, height: 0 });
+		// Select tool on empty canvas: drop the current selection unless extending it.
+		if (tool !== "frame" && !event.shiftKey) {
+			if (enteredFrameId) exitInspect(enteredFrameId);
+			setSelection(null);
 		}
-		// Select tool on empty canvas: clear selection / leave inspect.
-		if (enteredFrameId) exitInspect(enteredFrameId);
-		setSelection(null);
 	};
 
 	const onBackgroundPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -232,12 +268,16 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			session.saveViewport(viewportRef.current);
 			return;
 		}
-		if (marqueeRef.current && event.pointerId === marqueeRef.current.pointerId) {
-			marqueeRef.current = null;
-			const rect = marquee;
-			setMarquee(null);
+		const mq = marqueeRef.current;
+		if (!mq || event.pointerId !== mq.pointerId) return;
+		marqueeRef.current = null;
+		const rect = marquee;
+		setMarquee(null);
+		if (!rect) return;
+
+		if (mq.mode === "create") {
 			setTool("select");
-			if (rect && rect.width >= 40 && rect.height >= 40) {
+			if (rect.width >= 40 && rect.height >= 40) {
 				void session
 					.createFrame(
 						t("canvas.newFrame.defaultTitle"),
@@ -246,9 +286,19 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 						Math.round(rect.x),
 						Math.round(rect.y),
 					)
-					.then((id) => setSelection({ kind: "frame", id }));
+					.then((id) => setSelection({ kind: "frames", ids: [id] }));
 			}
+			return;
 		}
+
+		if (rect.width < MARQUEE_MIN && rect.height < MARQUEE_MIN) return;
+		const hits = manifest.frames.filter((frame) => intersects(rect, frame)).map((frame) => frame.id);
+		if (hits.length === 0) return;
+		setSelection((current) => {
+			const base = event.shiftKey && current ? selectedFrameIds(current) : [];
+			const ids = [...new Set([...base, ...hits])];
+			return { kind: "frames", ids };
+		});
 	};
 
 	const zoomBy = (direction: 1 | -1): void => {
@@ -268,37 +318,84 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		session.saveViewport(next);
 	};
 
-	/** "让 Vetta 调整"：截图（DOM 选中时保留高亮）+ 元信息 + 用户建议 → sendPrompt。 */
-	const sendAskToVetta = async (suggestion: string): Promise<void> => {
-		if (!selection || askBusy) return;
-		const frameId = selection.kind === "frame" ? selection.id : selection.frameId;
-		setAskBusy(true);
-		try {
-			const ctx = getPluginCtx();
-			const dataUrl = await bridge.capture(frameId, { keepHighlight: selection.kind === "dom" });
-			const base64 = dataUrl.split(",")[1] ?? "";
-			const screenshotPath = `${session.dirPath}/.snapshots/ask-${frameId}-${Date.now()}.png`;
-			await ctx.fs.writeFile(screenshotPath, base64, "base64");
-			await ctx.conversation.sendPrompt(buildAskPrompt(session, selection, screenshotPath, suggestion));
-			notify({ message: t("canvas.ask.sent"), variant: "success", durationMs: 3000 });
-			setAskFrameId(null);
-		} catch (error) {
-			notify({ message: t("canvas.ask.failed"), error });
-		} finally {
-			setAskBusy(false);
+	/** Grab the placement of every frame that will travel with this drag. */
+	const beginMove = (frameId: string, additive: boolean): void => {
+		const already = selectedFrameIds(selectionRef.current);
+		let ids: string[];
+		if (additive) {
+			selectFrame(frameId, true);
+			ids = already.includes(frameId) ? already.filter((id) => id !== frameId) : [...already, frameId];
+		} else if (already.includes(frameId)) {
+			// Dragging a member of the current selection moves the whole group.
+			ids = already;
+		} else {
+			setSelection({ kind: "frames", ids: [frameId] });
+			ids = [frameId];
+		}
+		const origins = new Map<string, { x: number; y: number }>();
+		for (const id of ids) {
+			const frame = manifest.frames.find((entry) => entry.id === id);
+			if (frame) origins.set(id, { x: frame.x, y: frame.y });
+		}
+		moveRef.current = { origins };
+	};
+
+	const commitMove = (): void => {
+		const state = moveRef.current;
+		const delta = moveDelta;
+		moveRef.current = null;
+		setMoveDelta(null);
+		if (!state || !delta || (delta.dx === 0 && delta.dy === 0)) return;
+		for (const [id, origin] of state.origins) {
+			void session.updateFramePlacement(id, { x: origin.x + delta.dx, y: origin.y + delta.dy });
 		}
 	};
 
-	/** Popover anchor: the frame's top-left corner in screen (container) space. */
-	const askAnchor = useMemo(() => {
-		if (!askFrameId) return null;
-		const frame = manifest.frames.find((entry) => entry.id === askFrameId);
-		if (!frame) return null;
-		return {
-			x: viewport.x + frame.x * viewport.zoom,
-			y: viewport.y + frame.y * viewport.zoom + 8,
-		};
-	}, [askFrameId, manifest.frames, viewport]);
+	const selectedIds = selectedFrameIds(selection);
+	/** Export / ask act on canvas order, not on click order. */
+	const orderedSelection = manifest.frames.filter((frame) => selectedIds.includes(frame.id)).sort(byCanvasOrder);
+
+	/** "让 Vetta 调整"：N 张截图（DOM 选中时保留高亮）+ 元信息 + 用户建议 → sendPrompt。 */
+	const sendAskToVetta = (suggestion: string): void => {
+		if (askBusy) return;
+		// 关掉浮层是「已交出去」的反馈，不等截图落盘、更不等 Vetta 跑完：
+		// sendPrompt 复用会话的完整发送链路，要整轮结束才 resolve。
+		setAskOpen(false);
+		setAskBusy(true);
+		void (async () => {
+			try {
+				const ctx = getPluginCtx();
+				const domFrameId = selection?.kind === "dom" ? selection.frameId : null;
+				const shots: AskShot[] = [];
+				for (const frame of orderedSelection) {
+					const dataUrl = await bridge.capture(frame.id, { keepHighlight: frame.id === domFrameId });
+					const base64 = dataUrl.split(",")[1] ?? "";
+					const screenshotPath = `${session.dirPath}/.snapshots/ask-${frame.id}-${Date.now()}.png`;
+					await ctx.fs.writeFile(screenshotPath, base64, "base64");
+					shots.push({ frameId: frame.id, screenshotPath });
+				}
+				const dom = selection?.kind === "dom" ? { frameId: selection.frameId, payload: selection.payload } : null;
+				const prompt = buildAskPrompt(session, { shots, dom }, suggestion);
+				void ctx.conversation.sendPrompt(prompt).catch((error: unknown) => {
+					notify({ message: t("canvas.ask.failed"), error });
+				});
+				notify({ message: t("canvas.ask.sent"), variant: "success", durationMs: 3000 });
+			} catch (error) {
+				notify({ message: t("canvas.ask.failed"), error });
+			} finally {
+				setAskBusy(false);
+			}
+		})();
+	};
+
+	const openExport = (): void => {
+		if (orderedSelection.length === 0) return;
+		requestMockupExport({
+			session,
+			frameIds: orderedSelection.map((frame) => frame.id),
+			capture: (frameId, pixelRatio) => bridge.capture(frameId, { pixelRatio, timeoutMs: 30_000 }),
+		});
+	};
 
 	const cursor = panActive ? "grab" : tool === "frame" ? "crosshair" : "default";
 
@@ -329,29 +426,34 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 						port={port}
 						zoom={viewport.zoom}
 						bridge={bridge}
-						selected={
-							(selection?.kind === "frame" && selection.id === frame.id) ||
-							(selection?.kind === "dom" && selection.frameId === frame.id)
-						}
+						selected={selectedIds.includes(frame.id)}
 						entered={enteredFrameId === frame.id}
 						interactive={tool === "select" && !panActive}
+						resizable={selectedIds.length === 1}
+						moveDelta={moveRef.current?.origins.has(frame.id) ? moveDelta : null}
 						activity={activity.get(frame.id)}
-						onSelect={() => {
+						onSelect={(additive) => {
 							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
-							setSelection({ kind: "frame", id: frame.id });
+							selectFrame(frame.id, additive);
 						}}
 						onEnter={() => {
 							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
+							setSelection({ kind: "frames", ids: [frame.id] });
 							setEnteredFrameId(frame.id);
 							bridge.setMode(frame.id, "inspect");
 						}}
-						onAskVetta={() => setAskFrameId(frame.id)}
-						onPlacementCommit={(patch) => session.updateFramePlacement(frame.id, patch)}
+						onMoveStart={(additive) => {
+							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
+							beginMove(frame.id, additive);
+						}}
+						onMoveDelta={(dx, dy) => setMoveDelta({ dx, dy })}
+						onMoveEnd={commitMove}
+						onResizeCommit={(patch) => session.updateFramePlacement(frame.id, patch)}
 					/>
 				))}
 				{marquee ? (
 					<div
-						className="absolute border border-primary bg-primary/10"
+						className="absolute border border-[var(--vetd-selected)] vetd-marquee-fill"
 						style={{ left: marquee.x, top: marquee.y, width: marquee.width, height: marquee.height }}
 					/>
 				) : null}
@@ -361,19 +463,27 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			    frame 内起手也只平移、不选中。 */}
 			{panActive ? <div className="absolute inset-0 z-10" style={{ cursor: "grab" }} /> : null}
 
-			{askAnchor && selection ? (
+			{askOpen ? (
 				<AskVettaPopover
-					x={askAnchor.x}
-					y={askAnchor.y}
 					busy={askBusy}
-					onSend={(suggestion) => void sendAskToVetta(suggestion)}
-					onClose={() => setAskFrameId(null)}
+					onSend={sendAskToVetta}
+					onClose={() => setAskOpen(false)}
+				/>
+			) : null}
+
+			{!panActive ? (
+				<AskVettaButton
+					selectedCount={orderedSelection.length}
+					elementMode={selection?.kind === "dom"}
+					active={askOpen}
+					onClick={() => setAskOpen((open) => !open)}
 				/>
 			) : null}
 
 			<ControlBar
 				tool={tool}
 				zoom={viewport.zoom}
+				exportableCount={orderedSelection.length}
 				onToolChange={setTool}
 				onZoomDelta={zoomBy}
 				onZoomReset={() => {
@@ -381,6 +491,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 					setViewport(next);
 					session.saveViewport(next);
 				}}
+				onExport={openExport}
 			/>
 		</div>
 	);

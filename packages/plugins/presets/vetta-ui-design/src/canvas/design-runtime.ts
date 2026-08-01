@@ -42,6 +42,34 @@ export function takePendingDesignPath(): string | null {
 	return value;
 }
 
+/**
+ * Bridge from the canvas (activity tab) to the export dialog (global slot).
+ * Both live in the same Module Federation instance, so a module-level channel
+ * is all it takes — the canvas keeps owning the frames and their capture path.
+ */
+export interface MockupExportRequest {
+	session: DesignSession;
+	/** Frames to render, already ordered left-to-right by canvas position. */
+	frameIds: string[];
+	capture(frameId: string, pixelRatio: number): Promise<string>;
+}
+
+type MockupListener = (request: MockupExportRequest | null) => void;
+
+let mockupRequest: MockupExportRequest | null = null;
+const mockupListeners = new Set<MockupListener>();
+
+export function requestMockupExport(request: MockupExportRequest | null): void {
+	mockupRequest = request;
+	for (const listener of mockupListeners) listener(mockupRequest);
+}
+
+export function onMockupExport(listener: MockupListener): () => void {
+	mockupListeners.add(listener);
+	listener(mockupRequest);
+	return () => mockupListeners.delete(listener);
+}
+
 export function onFrameActivity(listener: ActivityListener): () => void {
 	activityListeners.add(listener);
 	listener(activity);
