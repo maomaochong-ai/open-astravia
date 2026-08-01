@@ -1,5 +1,12 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+	type PointerEvent as ReactPointerEvent,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
 import type { VetdFrameEntry, VetdManifest } from "../vetd/manifest-types";
@@ -88,6 +95,38 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		null,
 	);
 	const moveRef = useRef<{ origins: Map<string, { x: number; y: number }> } | null>(null);
+	/** 平移进行中的实时视口。非 null 时 DOM 上的 transform 由它驱动，state 落后一步。 */
+	const panLiveRef = useRef<Viewport | null>(null);
+	const rafRef = useRef<number | null>(null);
+	const wheelSettleRef = useRef<number | null>(null);
+	const worldRef = useRef<HTMLDivElement | null>(null);
+
+	const paintViewport = useCallback((next: Viewport): void => {
+		const world = worldRef.current;
+		if (world) world.style.transform = `translate(${next.x}px, ${next.y}px) scale(${next.zoom})`;
+	}, []);
+
+	/** 把高频 pointermove 折叠到每帧一次实际绘制。 */
+	const schedulePaint = useCallback((): void => {
+		if (rafRef.current !== null) return;
+		rafRef.current = window.requestAnimationFrame(() => {
+			rafRef.current = null;
+			if (panLiveRef.current) paintViewport(panLiveRef.current);
+		});
+	}, [paintViewport]);
+
+	// 平移途中若因别的原因（manifest 变化、活动态更新）触发了渲染，React 会用落后
+	// 的 state 覆盖 transform 把画布弹回去；这里在提交后、绘制前再抹一次实时值。
+	useLayoutEffect(() => {
+		if (panLiveRef.current) paintViewport(panLiveRef.current);
+	});
+
+	useEffect(
+		() => () => {
+			if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
+		},
+		[],
+	);
 
 	useEffect(() => {
 		const handle = session.on((change) => {
@@ -188,17 +227,39 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 					x: cursorX - (cursorX - current.x) * scale,
 					y: cursorY - (cursorY - current.y) * scale,
 				};
+				// 缩放要重渲染（frame 标题与手柄按 zoom 反向缩放），走 state。
+				// 先撤掉可能还挂着的滚轮平移实时值，否则 layout effect 会拿旧位置盖回去。
+				panLiveRef.current = null;
+				if (wheelSettleRef.current !== null) {
+					window.clearTimeout(wheelSettleRef.current);
+					wheelSettleRef.current = null;
+				}
 				setViewport(next);
 				session.saveViewport(next);
 			} else {
+				// 滚轮平移与托手拖拽同理：走 DOM，不逐事件进 state（触控板两指平移
+				// 同样高频）。停下来一小会儿再落 state 与磁盘。
 				const next = { ...current, x: current.x - event.deltaX, y: current.y - event.deltaY };
-				setViewport(next);
-				session.saveViewport(next);
+				viewportRef.current = next;
+				panLiveRef.current = next;
+				schedulePaint();
+				if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
+				wheelSettleRef.current = window.setTimeout(() => {
+					wheelSettleRef.current = null;
+					const settled = panLiveRef.current;
+					if (!settled || panRef.current) return;
+					panLiveRef.current = null;
+					setViewport(settled);
+					session.saveViewport(settled);
+				}, 140);
 			}
 		};
 		container.addEventListener("wheel", onWheel, { passive: false });
-		return () => container.removeEventListener("wheel", onWheel);
-	}, [session]);
+		return () => {
+			container.removeEventListener("wheel", onWheel);
+			if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
+		};
+	}, [session, schedulePaint]);
 
 	const toWorld = useCallback((clientX: number, clientY: number) => {
 		const bounds = containerRef.current?.getBoundingClientRect();
@@ -246,7 +307,12 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				x: pan.origin.x + (event.clientX - pan.startX),
 				y: pan.origin.y + (event.clientY - pan.startY),
 			};
-			setViewport(next);
+			// 平移只改外层那一个 transform，不进 state：过 React 的话每个 pointermove
+			// 都要重渲染整棵 frame 子树（每个 frame 一个跨源 iframe），指针事件又是
+			// 高频且会合并投递，于是渲染把合成器饿死，整窗口高频闪烁。
+			viewportRef.current = next;
+			panLiveRef.current = next;
+			schedulePaint();
 			return;
 		}
 		const mq = marqueeRef.current;
@@ -265,7 +331,15 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	const onBackgroundPointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
 		if (panRef.current && event.pointerId === panRef.current.pointerId) {
 			panRef.current = null;
-			session.saveViewport(viewportRef.current);
+			if (rafRef.current !== null) {
+				window.cancelAnimationFrame(rafRef.current);
+				rafRef.current = null;
+			}
+			// 松手才把这一趟平移交回 state：期间 DOM 已经是最终位置，这次渲染不会跳。
+			const settled = panLiveRef.current ?? viewportRef.current;
+			panLiveRef.current = null;
+			setViewport(settled);
+			session.saveViewport(settled);
 			return;
 		}
 		const mq = marqueeRef.current;
@@ -413,10 +487,14 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			onPointerUp={onBackgroundPointerUp}
 		>
 			<div
+				ref={worldRef}
 				className="absolute left-0 top-0"
 				style={{
 					transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
 					transformOrigin: "0 0",
+					// 托手/空格态下先把这层提升成独立合成层：平移时只做图层位移，
+					// 不牵动整窗口重绘。
+					willChange: panActive ? "transform" : undefined,
 				}}
 			>
 				{manifest.frames.map((frame) => (
