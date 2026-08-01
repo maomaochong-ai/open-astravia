@@ -1,8 +1,9 @@
+import { useShortcutScope } from "@shared/shortcuts";
 import type { ScheduledTask } from "@shared/store/atoms";
 import { defaultConversationCwdAtom, getProjectDisplayName } from "@shared/store/atoms";
 import type { TFunction } from "i18next";
 import { useAtomValue } from "jotai";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { describeSchedule, parseCronExpression } from "../components/schedule-picker/cron-utils";
 import { useScheduledTasks } from "./useScheduledTasks";
@@ -25,14 +26,13 @@ export function useHistoryDrawerModel({ task, onClose }: UseHistoryDrawerModelOp
 	const defaultCwd = useAtomValue(defaultConversationCwdAtom);
 	const { runNow, toggleTask } = useScheduledTasks();
 
-	useEffect(() => {
-		if (!task) return;
-		const onKey = (event: KeyboardEvent): void => {
-			if (event.key === "Escape") onClose();
-		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, [task, onClose]);
+	useShortcutScope({
+		id: "overlay:scheduler-history-drawer",
+		kind: "overlay",
+		active: task != null,
+		exclusive: false,
+		bindings: [{ key: "escape", run: () => onClose() }],
+	});
 
 	return useMemo(
 		() => ({

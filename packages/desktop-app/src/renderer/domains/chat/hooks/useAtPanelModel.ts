@@ -1,4 +1,5 @@
 import type { FsEntry, FsFileRef } from "@preload/fs-types";
+import { type ShortcutBinding, useShortcutScope } from "@shared/shortcuts";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -199,50 +200,57 @@ export function useAtPanelModel({
 		setCurrentDir((prev) => parentOf(prev));
 	}, []);
 
-	const handleKeyDown = useCallback(
-		(e: KeyboardEvent) => {
-			if (!open || totalCount === 0) return;
-			if (e.key === "ArrowDown") {
-				e.preventDefault();
-				e.stopPropagation();
-				shouldScrollActiveIntoViewRef.current = true;
-				setActiveIndex((i) => (i + 1) % totalCount);
-			} else if (e.key === "ArrowUp") {
-				e.preventDefault();
-				e.stopPropagation();
-				shouldScrollActiveIntoViewRef.current = true;
-				setActiveIndex((i) => (i - 1 + totalCount) % totalCount);
-			} else if (e.key === "Enter") {
-				e.preventDefault();
-				e.stopPropagation();
-				if (canGoUp && activeIndex === 0) {
-					handleGoUp();
-				} else {
+	const keyBindings = useMemo((): ShortcutBinding[] => {
+		return [
+			{
+				key: "arrowdown",
+				run: () => {
+					if (totalCount === 0) return;
+					shouldScrollActiveIntoViewRef.current = true;
+					setActiveIndex((i) => (i + 1) % totalCount);
+				},
+			},
+			{
+				key: "arrowup",
+				run: () => {
+					if (totalCount === 0) return;
+					shouldScrollActiveIntoViewRef.current = true;
+					setActiveIndex((i) => (i - 1 + totalCount) % totalCount);
+				},
+			},
+			{
+				key: "enter",
+				run: () => {
+					if (totalCount === 0) return;
+					if (canGoUp && activeIndex === 0) {
+						handleGoUp();
+					} else {
+						const item = allItems[canGoUp ? activeIndex - 1 : activeIndex];
+						if (item) handleEntrySelect(item);
+					}
+				},
+			},
+			{
+				key: "escape",
+				run: () => onClose(),
+			},
+			{
+				key: "tab",
+				run: () => {
 					const item = allItems[canGoUp ? activeIndex - 1 : activeIndex];
-					if (item) handleEntrySelect(item);
-				}
-			} else if (e.key === "Escape") {
-				e.preventDefault();
-				e.stopPropagation();
-				onClose();
-			} else if (e.key === "Tab" && !e.shiftKey) {
-				e.preventDefault();
-				e.stopPropagation();
-				const item = allItems[canGoUp ? activeIndex - 1 : activeIndex];
-				if (item?.isDirectory) {
-					setCurrentDir(item.path);
-				}
-			}
-		},
-		[open, totalCount, canGoUp, activeIndex, allItems, handleEntrySelect, handleGoUp, onClose],
-	);
+					if (item?.isDirectory) setCurrentDir(item.path);
+				},
+			},
+		];
+	}, [totalCount, canGoUp, activeIndex, allItems, handleEntrySelect, handleGoUp, onClose]);
 
-	useEffect(() => {
-		if (open) {
-			document.addEventListener("keydown", handleKeyDown, true);
-			return () => document.removeEventListener("keydown", handleKeyDown, true);
-		}
-	}, [open, handleKeyDown]);
+	useShortcutScope({
+		id: "overlay:at-panel",
+		kind: "overlay",
+		active: open,
+		exclusive: false,
+		bindings: keyBindings,
+	});
 
 	useEffect(() => {
 		if (!open) return;

@@ -2,63 +2,137 @@ import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
+import { syntaxVar } from "./syntax-tokens";
 
+/**
+ * CodeMirror highlight mapping → `--syntax-*` CSS variables.
+ * Covers common programming + markup + markdown tokens (VS Code–like roles).
+ * Colors themselves are not hard-coded here; themes own the palette.
+ */
 const textEditorHighlightStyle = HighlightStyle.define([
+	// ── Comments ──────────────────────────────────────────────
 	{
 		tag: [tags.comment, tags.lineComment, tags.blockComment, tags.docComment],
-		color: "color-mix(in srgb, var(--muted-foreground) 78%, transparent)",
+		color: syntaxVar("comment"),
 		fontStyle: "italic",
 	},
+
+	// ── Keywords ──────────────────────────────────────────────
 	{
-		tag: [
-			tags.keyword,
-			tags.modifier,
-			tags.operatorKeyword,
-			tags.controlKeyword,
-			tags.definitionKeyword,
-			tags.moduleKeyword,
-			tags.self,
-		],
-		color: "var(--primary)",
-	},
-	{
-		tag: [tags.string, tags.docString, tags.character, tags.attributeValue, tags.regexp],
-		color: "color-mix(in srgb, var(--primary) 58%, var(--foreground))",
-	},
-	{
-		tag: [tags.number, tags.integer, tags.float, tags.bool, tags.null, tags.atom, tags.unit],
-		color: "color-mix(in srgb, var(--primary) 78%, var(--foreground))",
-	},
-	{
-		tag: [tags.typeName, tags.className, tags.namespace, tags.tagName],
-		color: "color-mix(in srgb, var(--primary) 68%, var(--foreground))",
+		tag: [tags.controlKeyword, tags.controlOperator],
+		color: syntaxVar("keywordControl"),
 		fontWeight: "500",
+	},
+	{
+		tag: [tags.definitionKeyword, tags.moduleKeyword, tags.modifier],
+		color: syntaxVar("storage"),
+		fontWeight: "500",
+	},
+	{
+		tag: [tags.keyword, tags.operatorKeyword, tags.self],
+		color: syntaxVar("keyword"),
+		fontWeight: "500",
+	},
+
+	// ── Literals ──────────────────────────────────────────────
+	{
+		tag: [tags.string, tags.docString, tags.character, tags.special(tags.string)],
+		color: syntaxVar("string"),
+	},
+	{
+		tag: [tags.attributeValue],
+		color: syntaxVar("attributeValue"),
+	},
+	{
+		tag: [tags.number, tags.integer, tags.float, tags.unit],
+		color: syntaxVar("number"),
+	},
+	{
+		tag: [tags.bool, tags.null, tags.atom],
+		color: syntaxVar("bool"),
+	},
+	{
+		tag: [tags.regexp],
+		color: syntaxVar("regexp"),
+	},
+	{
+		tag: [tags.escape],
+		color: syntaxVar("escape"),
+	},
+
+	// ── Names ─────────────────────────────────────────────────
+	{
+		tag: [tags.tagName, tags.documentMeta],
+		color: syntaxVar("tag"),
+	},
+	{
+		tag: [tags.typeName, tags.standard(tags.typeName)],
+		color: syntaxVar("type"),
+	},
+	{
+		tag: [tags.className, tags.namespace],
+		color: syntaxVar("className"),
 	},
 	{
 		tag: [
 			tags.function(tags.variableName),
 			tags.function(tags.propertyName),
 			tags.definition(tags.function(tags.variableName)),
+			tags.definition(tags.function(tags.propertyName)),
 		],
-		color: "color-mix(in srgb, var(--primary) 48%, var(--foreground))",
-		fontWeight: "500",
+		color: syntaxVar("function"),
 	},
 	{
-		tag: [tags.propertyName, tags.attributeName, tags.labelName, tags.macroName],
-		color: "color-mix(in srgb, var(--foreground) 82%, var(--primary))",
+		tag: [tags.attributeName],
+		color: syntaxVar("attribute"),
 	},
 	{
-		tag: [tags.operator, tags.punctuation, tags.bracket, tags.separator],
-		color: "color-mix(in srgb, var(--muted-foreground) 82%, var(--foreground))",
+		tag: [tags.constant(tags.variableName), tags.standard(tags.variableName), tags.literal],
+		color: syntaxVar("constant"),
 	},
 	{
-		tag: [tags.heading, tags.heading1, tags.heading2, tags.heading3],
-		color: "var(--primary)",
+		tag: [tags.definition(tags.propertyName), tags.propertyName, tags.labelName, tags.macroName],
+		color: syntaxVar("property"),
+	},
+	{
+		tag: [tags.special(tags.variableName), tags.local(tags.variableName)],
+		color: syntaxVar("parameter"),
+	},
+	{
+		tag: [tags.variableName, tags.definition(tags.variableName)],
+		color: syntaxVar("variable"),
+	},
+
+	// ── Markup / structure ────────────────────────────────────
+	{
+		tag: [tags.angleBracket],
+		color: syntaxVar("angle"),
+	},
+	{
+		tag: [
+			tags.operator,
+			tags.derefOperator,
+			tags.compareOperator,
+			tags.arithmeticOperator,
+			tags.logicOperator,
+			tags.bitwiseOperator,
+			tags.definitionOperator,
+			tags.updateOperator,
+		],
+		color: syntaxVar("operator"),
+	},
+	{
+		tag: [tags.punctuation, tags.bracket, tags.separator, tags.squareBracket, tags.paren, tags.brace],
+		color: syntaxVar("punctuation"),
+	},
+	{
+		tag: [tags.heading, tags.heading1, tags.heading2, tags.heading3, tags.heading4, tags.heading5, tags.heading6],
+		color: syntaxVar("heading"),
 		fontWeight: "600",
 	},
 	{
-		tag: tags.link,
-		color: "var(--primary)",
+		tag: [tags.link, tags.url],
+		color: syntaxVar("link"),
 		textDecoration: "underline",
 		textUnderlineOffset: "2px",
 	},
@@ -75,14 +149,24 @@ const textEditorHighlightStyle = HighlightStyle.define([
 		textDecoration: "line-through",
 	},
 	{
-		tag: [tags.meta, tags.annotation, tags.processingInstruction],
-		color: "var(--muted-foreground)",
+		tag: [tags.meta, tags.annotation, tags.processingInstruction, tags.contentSeparator],
+		color: syntaxVar("meta"),
+	},
+
+	// ── Diagnostics / diff ────────────────────────────────────
+	{
+		tag: [tags.invalid],
+		color: syntaxVar("invalid"),
+		textDecoration: "underline",
 	},
 	{
-		tag: [tags.invalid, tags.deleted],
-		color: "var(--destructive)",
-		textDecoration: "underline",
-		textDecorationColor: "color-mix(in srgb, var(--destructive) 70%, transparent)",
+		tag: [tags.inserted],
+		color: syntaxVar("inserted"),
+	},
+	{
+		tag: [tags.deleted],
+		color: syntaxVar("deleted"),
+		textDecoration: "line-through",
 	},
 ]);
 

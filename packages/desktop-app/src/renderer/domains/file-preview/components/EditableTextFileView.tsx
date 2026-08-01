@@ -12,6 +12,10 @@ import { useTranslation } from "react-i18next";
 import { useTextFileEditor } from "../hooks/useTextFileEditor";
 import { TextPreviewRenderer } from "./TextPreviewRenderer";
 
+function resolvePreviewExtension(item: FilePreviewItem): string {
+	return getExtension(item.name) || (item.path ? getExtension(item.path) : "");
+}
+
 export function EditableTextFileView({
 	item,
 	refreshNonce,
@@ -22,7 +26,7 @@ export function EditableTextFileView({
 	const { t } = useTranslation("chat");
 	const [mode, setMode] = useState<TextFileEditorMode>("edit");
 	const model = useTextFileEditor(item.path, refreshNonce);
-	const extension = getExtension(item.name);
+	const extension = resolvePreviewExtension(item);
 	const { document } = model;
 
 	useEffect(() => {

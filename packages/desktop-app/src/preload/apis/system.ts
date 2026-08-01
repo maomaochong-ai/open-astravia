@@ -125,6 +125,8 @@ export function createSystemApi(
 				const sourcePaths = files.map((file) => webUtils.getPathForFile(file)).filter(Boolean);
 				return ipc.invoke("vetta:file-transfer:prepare-drop", sourcePaths, destinationDirectory);
 			},
+			prepareTransfer: (sourcePaths, destinationDirectory) =>
+				ipc.invoke("vetta:file-transfer:prepare-drop", [...sourcePaths], destinationDirectory),
 			commitDrop: (planId, action, conflictPolicy) =>
 				ipc.invoke("vetta:file-transfer:commit-drop", planId, action, conflictPolicy),
 			cancelDrop: (planId) => ipc.invoke("vetta:file-transfer:cancel-drop", planId),

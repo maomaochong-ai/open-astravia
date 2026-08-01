@@ -1,5 +1,6 @@
 import { isMac } from "@shared/lib/platform";
 import { pathBasename } from "@shared/lib/utils";
+import { useShortcutScope } from "@shared/shortcuts";
 import {
 	activityPanelOpenAtom,
 	batchProjectsAtom,
@@ -162,16 +163,20 @@ export function useProjectDetailPageModel(): ProjectDetailPageModel {
 		});
 	}, [decodedCwd, displayName, setConfirm, t]);
 
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-				e.preventDefault();
-				if (isDirty) void save();
-			}
-		}
-		window.addEventListener("keydown", handleKeyDown);
-		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [isDirty, save]);
+	useShortcutScope({
+		id: "surface:project-detail-editor",
+		kind: "surface",
+		active: true,
+		exclusive: false,
+		bindings: [
+			{
+				key: "mod+s",
+				run: () => {
+					if (isDirty) void save();
+				},
+			},
+		],
+	});
 
 	return {
 		activityOpen,

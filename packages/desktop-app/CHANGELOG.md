@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **项目文件列表多选与复制粘贴**：支持 Ctrl/Cmd 点选、Shift 范围选、Ctrl/Cmd+A 全选；右键/快捷键复制与粘贴、复制路径；批量删除与多选拖拽；方向键导航、F2 重命名、Delete 删除；空白处单击清空选区，空白处右键为根目录菜单（新建/粘贴/在资源管理器打开）。不做剪切。同目录粘贴会自动生成 `name (1)` 副本。选区状态与预览解耦，避免幽灵高亮。
+
 - **模型表单的上下文长度快捷预设**：设置 → 模型里新增/编辑模型时，「上下文窗口」与「最大输出」输入框下各多一排快捷标签（32K/64K/128K/256K/1M 与 16K/32K/64K/128K/384K），点一下即填入，当前值命中时高亮。与 Admin 的 `NumberQuickPicks` 取值一致。
 
 - **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。
@@ -16,6 +18,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **内置 Skill「发布能力」提交前会读安装包核对 payload（2.1.0）**：新增 `scripts/package-inspect.mjs`（零依赖手写 zip / tar.gz 解析），`--dry-run` 与正式提交都会打开 `.zip` / `.tar.gz`，用 `plugin.json`、`locales/*.json`、`SKILL.md` frontmatter 反查 payload。拦下的是一类服务端不会报错、装完切语言才看得见的问题：① 译文块的 locale 键带地区后缀（`en-US`）——客户端界面语言只有基语言，包内若也有 `locales/en.json`，两块并存且只命中包内那份，作者写的正文/头图整块不显示；② 键与包内 locale 文件名不一致；③ 给包的 `defaultLocale` 又写一份译文块；④ `detail` 与译文块里的未知字段（`title` / `long_description` 之类），服务端 `json.Unmarshal` 会静默丢弃；⑤ plugin 传了不会生效的 `version`。`slug` 被忽略、包内 `vetta.json` 被 `detail` 整体顶替、手写译文与包内不一致等改为 warning 随结果返回。同时 `publish.mjs` 不再重复发送平铺的 `tags` 表单字段（skill/scene 的上传路径根本不读它，其余形态也会被 `detail.tags` 覆盖），`payload.md` / `SKILL.md` 补齐 locale 键约定、`i18n` 对已存行是整体替换、以及各字段的优先级链。
 
+- **文件编辑器语法高亮与扩展名映射完善**：CodeMirror 高亮主题提高 HTML/XML 等标记语言对比度（标签名 / 属性 / 属性值 / 尖括号独立着色）；扩展名→语言映射与只读 CodePreview（Shiki）共用，覆盖 vue/svelte/xhtml/xml 等，并新增 `@codemirror/lang-xml`。
+- **文件编辑器语法配色可扩展（VS Code 风格）**：语法色全部走 `--syntax-*` CSS 变量，默认对齐 VS Code Dark+ / Light+；主题只需覆盖对应变量即可换色，无需改编辑器代码。
+- **文件列表面板顶部标题固定为「项目文件」**：不再显示动态项目/文件夹名，统一用 i18n 文案（`fileExplorer.fileList`）。
 - **能力广场不再要求登录**：市场列表与安装（skill / scene / plugin 的下载安装）在未登录状态下照常可用，服务端对应接口已开放匿名访问。`fetchMarketAbilities` / `fetchAbilityInfo` / `downloadAbility` 的 token 参数改为可选并移到末位，有 token 时仍带 `Authorization`。移除安装前的「请先登录」拦截与 `abilities:error.notLoggedIn` 文案。
 - **内置 Skill 展示文案接入 i18n**：「创建技能」「发布能力」的名称与描述改由宿主 catalog（`skills:builtin.<name>.*`）按当前语言给出，`skills-manifest.json` 里的中文降级为缺译回退。切语言时能力广场与输入栏命令面板都会重新取数（命令面板的模块级缓存改为按语言分键）。
 - **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、vetta-actions、git 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
@@ -88,6 +93,12 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **能力广场的双语文案只显示默认语言**：两处独立缺陷叠加。① **locale 键口径不一**：admin 与分类译名写的是 `zh-CN` / `en-US`（服务端 `SupportedLocales`），插件包 `locales/*.json` 解析出的是 `zh` / `en`，而界面语言只有 `zh` / `en`，客户端此前精确匹配 `i18n[locale]`，admin 录入的译文永远命中不到。归一改在读侧（`pickLocaleValue`：精确 → 基语言 → 同基语言任一地区键），存量数据无需迁移，两条写入路径都生效。② **列表链路根本不解析译文**：`build-ability-items` 只读服务端投影到顶层的默认语言 `name`/`description`/`tags`，卡片标题、简介、标签、搜索词与详情页头部因此不跟随语言（只有正文/头图/元信息跟随）。改为在 `useAbilitiesModel` 组装入口先按当前语言归一市场行（`localizeMarketAbility`），四种 type 的组装函数保持纯函数、签名不变。另：能力标签现在支持按语言覆盖（`detail.i18n[locale].tags`，整体替换）。
 
+- **活动面板图片预览操作别扭**：内置 `media-viewer` 原先空格+拖才平移、Ctrl/Cmd+滚轮才缩放、适配只按宽度算导致竖图被裁切，按钮缩放也不绕中心。改为常见看图交互：滚轮对准光标缩放、左键直接拖移、双击在「适应窗口」与 1:1（已是 1:1 则 2×）间切换、+/- / 0 快捷键、宽高同时适配并限制平移不把图拖丢、工具栏改图标。
+- **活动面板图片左键拖不动**：两处叠加——① 平移开关挂在 React `isPanning` 上，`pointermove` 在重渲染前全部被丢掉；② `clampOffset` 在图未超出视口时强制居中，拖一点就弹回。现改为 document 级 pointer 监听 + ref，并放宽边界为「保留一截在视野内」而非强制居中。
+- **消息列表里本地文件链接误当网页打开 / 无法点击**：Markdown `href` 原先只认 `file://` 与以 `/` 开头的路径；更关键的是 `react-markdown` 的 `defaultUrlTransform` 把 Windows 盘符 `C:` / `file:` 当成非法协议直接清空 `href`，链接变成不可点的下划线文案。现用 `chatUrlTransform` 放行本地路径，并在解析前把 `](C:\…)` 里的反斜杠改成 `/`（避免 CommonMark 把 `\.` `\f` 等当转义破坏路径，如 `.vetta`）。分类为 file / http(s) / 其它：本地路径文件 badge → 活动面板内嵌预览（项目内）或灯箱；http(s) → 内置浏览器 tab；未知协议不再 `target=_blank`。宿主侧相对路径按会话 cwd 解析，并修正 `file:///C:/…` 残留的 `/C:/` 形态。
+- **拖放高亮过重且闪烁**：文件树根区 / 目录行与输入框 drop 区弱化提示（更浅底色、1px 虚线、圆角，去掉厚 ring/blur）；`dragleave` 用 `relatedTarget` 判断是否真的离开容器，经过子节点/文件行时不再误关高亮导致方框闪烁。
+- **输入框 drop 区与卡片对齐**：拖放层从外层 padding/`max-w-2xl` 容器挪到真正的 input card 上，高亮圆角与卡片一致；移出后正确关闭（去掉与 counter 冲突的 leave 逻辑）。
+- **文件预览左右键不再抢走编辑器光标**：活动栏文件预览在 `window` 上监听了 `ArrowLeft` / `ArrowRight` 切换同目录相邻文件，但只排除了 `input`/`textarea`；CodeMirror 是 contenteditable，方向键被当成「上一张/下一张」，文本编辑中会跳到图片等兄弟文件。现对 contenteditable / `.cm-editor` 等可编辑目标一律不拦截。
 - **macOS 点「立即重启」后装不上新版本**：这条链路上串着五个必须全对的环节，缺任何一个都表现为「点了重启但版本没变」，而且症状彼此相似、极易误判。逐个实测确认如下。**① 标记 `app.isQuitting`**：窗口 `close` 守卫在 macOS 上默认把关闭改成隐藏，而 Squirrel.Mac 走 `NSApp terminate:` 语义——任一窗口 `preventDefault()` 就取消整个终止流程，症状是应用压根不退出（托盘「退出」菜单两处早就设了这个标记，只有更新器这条路漏了）。**② 交棒前跑完退出清理**：清理逻辑从 `before-quit` 抽到 `quit-cleanup.ts`，供 `main.ts` 与 `updater.ts` 共用。**③ 等 launchd 作业出现再退出**：交棒后立刻 `app.exit(0)` 实测 41ms 就打死进程，Squirrel 连作业都还没提交。**④ 主动 `launchctl kickstart` 该作业**：作业注册的是按需启动的 mach service 端点（`launchctl print` 里 `port = 0x0`、`active = 0`、`runs = 0`），Squirrel 本该提交后连上去触发 spawn，实测它从不连、给几分钟也不动且无任何错误日志；手动 kickstart 则能完整装好。**⑤ 最后仍要硬 `exit`**：本进程挂着 IM sidecar、uiohook、RPC server 等句柄，Electron 的正常退出流程结束不了它，而 launchd 要等目标进程退出才 spawn ShipIt——不 exit 就死锁，用户以为关了，其实是单实例锁把老进程窗口又调了出来。另加**⑥ 重启后主动抢焦点**：ShipIt 以 launchd 守护进程身份拉起应用，应用不会成为活动应用，窗口 `show()` 调了也不露面（日志里没有 `[window] show`），用户以为没重启。退出前打一次性标记、启动时消费（`update-relaunch-marker.ts`），只有这一种情况抢焦点，避免开机自启打断用户。**Windows 同样受①⑤影响**：Inno 的 `activate()` 只是 `app.relaunch()` + `app.quit()`，而 `before-quit` 在清理跑过后是直通的，没人再兜底 `app.exit(0)`——进程不退出，`app.relaunch()` 也就永远不生效，症状是「版本指针切了但新版本起不来」。因此收尾的硬 `exit` 对两个平台都执行，macOS 额外多一步等安装器接手。
 
 - **macOS 公证因内置运行时是归档而失败**：`notarytool` 返回 `Invalid`，issues 指向 `Resources/vendor/python/cpython-….tar.gz/…/bin/python3.13` 之类的路径——Apple 的公证服务会**解开归档**递归校验里面的 Mach-O，而 electron-builder 只签得到文件系统上可见的二进制，签不进归档内部，于是 `python3.13`、`libpython3.13.dylib`、`libtcl9.0.dylib` 和一批 `.so` 全被判「未签名 / 无安全时间戳 / 未启用 hardened runtime」。`prepare-pack.js` 改为按目标平台分支：darwin 内置解压目录（osx-sign 会像处理 `im-gateway`、`cli-app` 那样逐个签名），Windows / Linux 保留原始归档、Inno 的小文件优化不受影响。`RuntimeManager.seedFromVendor` 相应地优先使用解压目录，找不到才回退归档解压；新增 `installRuntimeDirectory` 与 `installRuntimeArchive` 共用同一套 staging + 原子替换逻辑。从目录 seed 时必须传 `verbatimSymlinks`——Node 的 `fs.cp` 默认会把相对符号链接（`python3 -> python3.13`）重写成指向源目录的绝对路径，安装后指回 app bundle 内部，更新替换 `.app` 时整片悬空。
