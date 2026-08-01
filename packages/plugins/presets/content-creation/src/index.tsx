@@ -15,6 +15,8 @@ export default definePlugin({
 			icon: <ContentCreationIcon className="h-4 w-4" />,
 			component: ContentCreationPanel,
 			scope_use: ["conversation", "project"],
+			// 默认不上栏；agent open_content_creation / 用户从「+」添加后再挂上。
+			initiallyVisible: false,
 		});
 		registerContentCreationTools(ctx, workspace);
 	},
