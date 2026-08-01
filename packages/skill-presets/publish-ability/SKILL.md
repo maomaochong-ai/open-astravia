@@ -2,7 +2,7 @@
 name: publish-ability
 description: Publish a skill, scene, MCP server, plugin, or bundle to the Vetta ability marketplace. Use when the user asks to upload/publish/submit an ability, put a plugin on the marketplace, share a skill with other users, or migrate an existing package into Vetta.
 metadata:
-  version: 2.0.0
+  version: 2.1.0
   author: Vetta
   category: 开发
 ---
@@ -36,6 +36,10 @@ the built-in `vetta` MCP server. It is always available and needs no setup.
    (`name`/`description`/`author`), `SKILL.md` frontmatter, `README.md`, `LICENSE`. Ask the user
    for anything you cannot source.
 
+   For plugins, also list `locales/*.json`: those filenames are the exact locale keys your
+   `detail.i18n` must use, and whatever they already translate is text you should not restate.
+   See [Multi-language](references/payload.md#multi-language).
+
    `content` is the detail-page body in markdown — it is what a user reads to decide whether to
    install. Write what the ability does, when to use it, and any setup it needs. A one-line
    `content` is not acceptable.
@@ -62,12 +66,19 @@ the built-in `vetta` MCP server. It is always available and needs no setup.
    and the meaning of each `showcase.canvas` value are listed; both are closed sets, and a wrong
    value either fails validation or renders as a fallback.
 
-5. **Dry-run first** when the payload is non-trivial. This runs the same validation without
+5. **Dry-run first** when the payload is non-trivial. It runs the full validation without
    submitting, so you spend no network round-trip on a payload that was never going to pass:
 
    ```bash
    node "$SKILL_DIR/scripts/publish.mjs" --input payload.json --dry-run
    ```
+
+   For `skill`/`scene`/`plugin` this also **opens the archive** and cross-checks the payload
+   against `plugin.json`, `locales/*.json`, and `SKILL.md` frontmatter. That is the only place
+   the "same data, two sources" mistakes surface: a translation key that does not match the
+   package's own locale files, a `slug` or `version` that the server will ignore, a `vetta.json`
+   that your `detail` silently supersedes. None of these fail the upload — they just make part
+   of what you wrote unreachable. Do not skip the dry-run on packaged types.
 
 6. **Submit.** On failure the script returns *all* problems at once — fix the whole list before
    retrying rather than resubmitting after each single fix.
@@ -78,7 +89,10 @@ the built-in `vetta` MCP server. It is always available and needs no setup.
 - Failure shape: `{"ok": false, "message": "...", "errors": [...]}` — `errors` is present for
   validation failures.
 - Success shape: `{"ok": true, "message": "...", "slug": "...", "version": "...",
-  "review_status": "...", "has_pending": bool}`.
+  "review_status": "...", "has_pending": bool, "warnings": [...]}`.
+- `warnings` are things that did not block the submission but changed what gets published —
+  a hand-written translation overriding the package's own, a `slug` that was ignored, a
+  `vetta.json` that was skipped. Relay them to the user; do not treat the run as clean.
 - Input may also arrive on stdin (`cat payload.json | node .../publish.mjs`) if that is more
   convenient than a temp file.
 - The script reads the login token from `~/.vetta/auth.json` itself. If it reports "未登录", tell
@@ -93,6 +107,10 @@ ability is live.
 Re-submitting an ability that is already published does not disturb it: the new version waits in
 a pending slot while the marketplace keeps serving the current version, so installed users are
 unaffected until the update is approved. `has_pending: true` in the result means exactly this.
+
+**A re-submission replaces `detail.i18n` wholesale.** Sending only the locale you changed drops
+every other translation on that entry, including any an administrator added later. Fetch the
+current state first (`list_my_abilities`) or resend the complete set of locales.
 
 You may only submit updates to abilities you own. Submitting to a slug owned by someone else is
 rejected.

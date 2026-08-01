@@ -23,7 +23,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { apiUrl, loadCredentials } from "./auth.mjs";
-import { ARTIFACT_TYPES, validateUploadInput } from "./validate.mjs";
+import { inspectPackage } from "./package-inspect.mjs";
+import { ARTIFACT_TYPES, crossCheckPackage, validateUploadInput } from "./validate.mjs";
 
 function parseArgs(argv) {
 	const args = { input: undefined, dryRun: false };
@@ -88,6 +89,16 @@ async function main() {
 
 	// 一次列全所有问题，agent 一轮就能补齐重试
 	const errors = validateUploadInput(input, { packageExists: existsSync });
+
+	// 再拿安装包核对一遍：payload 与包内 manifest 的口径分歧（尤其是 i18n 的 locale 键）
+	// 服务端不会报错，只会按优先级让一边沉底，装完切语言才看得见。见 validate.mjs 的说明。
+	let warnings = [];
+	if (errors.length === 0 && ARTIFACT_TYPES.includes(input.type) && existsSync(input.package_path)) {
+		const crossCheck = crossCheckPackage(input, inspectPackage(input.package_path));
+		errors.push(...crossCheck.errors);
+		warnings = crossCheck.warnings;
+	}
+
 	if (errors.length > 0) {
 		fail(`提交被拒绝，请修正以下 ${errors.length} 处后重试：\n${errors.map((e) => `- ${e}`).join("\n")}`, {
 			errors,
@@ -95,7 +106,7 @@ async function main() {
 	}
 
 	if (args.dryRun) {
-		succeed({ message: "本地校验通过（--dry-run，未提交）。", dry_run: true });
+		succeed({ message: "本地校验通过（--dry-run，未提交）。", dry_run: true, warnings });
 	}
 
 	const credentials = loadCredentials();
@@ -109,7 +120,9 @@ async function main() {
 	if (input.slug?.trim()) form.set("slug", input.slug.trim());
 	if (input.version?.trim()) form.set("version", input.version.trim());
 	if (input.category?.trim()) form.set("category", input.category.trim());
-	if (input.detail.tags?.length) form.set("tags", JSON.stringify(input.detail.tags));
+	// tags 只走 detail：平铺的 tags 表单字段是 admin 通道的入参，skill/scene 的上传路径
+	// 压根不读它，plugin 与 mcp/bundle 读了也会被 detail.tags 再覆盖一遍。
+	// 同一份数据发两遍、三种优先级，只会制造「改了没生效」的假象。
 
 	if (input.type === "mcp") {
 		form.set("config", JSON.stringify(input.mcp_config ?? {}));
@@ -151,6 +164,8 @@ async function main() {
 	const hasPending = Boolean(data.pending);
 	succeed({
 		message: buildSuccessMessage(data.review_status, hasPending),
+		// 提交成功但仍有值得复述给用户的口径分歧（如包内译文被 payload 覆盖）
+		warnings,
 		slug: data.slug,
 		type: data.type,
 		version: data.version,
