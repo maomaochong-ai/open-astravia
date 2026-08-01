@@ -12,6 +12,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。
 
+- **插件重载入口补齐**：能力广场的插件卡片三点菜单、以及插件详情页顶部操作区都新增「重载」按钮，不再只有检测到 `pendingVersion` 时才给入口。
+
+- **插件装完直接弹权限配置**：首次安装的插件权限默认全未授予，安装成功（市场安装 / 开源市场 / 本地 zip 导入）后自动弹出该插件的权限弹窗，省掉用户自己找「权限配置」的一步。插件数据落地后才弹，系统插件与无权限声明的插件不打扰。
+
 ### Fixed
 
 - **文件编辑器保存后无法撤销**：CodeMirror 的 `documentKey` 误绑定磁盘 `revision`，保存成功 revision 变化会整实例重挂载并清空撤销栈。改为按 `editorGeneration` 标识编辑会话（仅磁盘重载/外部干净替换时递增），保存与草稿编辑保持同一编辑器实例。

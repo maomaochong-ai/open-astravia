@@ -90,6 +90,12 @@ function InstalledMoreMenu({
 					</DropdownMenuItem>
 				)}
 				{item.type === "mcp" && <McpMenuItems item={item} model={model} />}
+				{item.type === "plugin" && (
+					<DropdownMenuItem onSelect={() => model.reloadPlugin(item)}>
+						<span className="icon-[solar--restart-linear] h-3.5 w-3.5" />
+						{t("actions.reload")}
+					</DropdownMenuItem>
+				)}
 				<DropdownMenuItem onSelect={() => model.toggle(item)}>
 					<span
 						className={cn(
