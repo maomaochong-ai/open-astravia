@@ -1,6 +1,6 @@
 {
 	"name": "@vetta/plugin-mobile-ui-preview",
-	"version": "0.3.0",
+	"version": "0.3.2",
 	"private": true,
 	"type": "module",
 	"scripts": {
