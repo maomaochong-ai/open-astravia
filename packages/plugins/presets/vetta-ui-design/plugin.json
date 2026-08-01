@@ -2,6 +2,7 @@
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
 	"version": "0.1.0",
+	"agent_mode": ["work"],
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",

@@ -6,7 +6,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
-- **系统插件「Vetta UI Design」**：无限画布 UI 设计工作台（活动面板 Tab）。设计文档为 `.vetd` 清单 + `x.vetd.d/` 旁挂源码（frame = TSX + Tailwind v4 + Iconify），由插件托管的共享设计引擎（vite dev server + HMR）渲染；支持画布平移/无级缩放/空格拖手、frame 拖拽与改尺寸、Figma 式逐层选中 DOM 并 attach 给 Vetta、agent 修改中呼吸态、只读色板、`.vetd` 文件预览（工作态/打包态）、导出自包含分享包与导入。agent 工具：`vetd_create` / `vetd_screenshot` / `vetd_status`。见 ADR-0053。
+- **系统插件「Vetta UI Design」**：无限画布 UI 设计工作台（活动面板 Tab）。设计文档为 `.vetd` 清单 + `x.vetd.d/` 旁挂源码（frame = TSX + Tailwind v4 + Iconify），由插件托管的共享设计引擎（vite dev server + HMR）渲染；支持画布平移/无级缩放/空格拖手、frame 拖拽与改尺寸、Figma 式逐层选中 DOM 并 attach 给 Vetta、agent 修改中呼吸态、只读色板、`.vetd` 文件预览（工作态/打包态）、导出自包含分享包与导入。agent 工具：`vetd_create` / `vetd_screenshot` / `vetd_status`。整个插件（含其贡献的 skill，即命令面板里的条目）走 `agent_mode: ["work"]` 白名单，只在「工作」模式下出现。见 ADR-0053、ADR-0046。
 
 - **Vetta UI Design 导出渲染图**：画布支持 frame 多选（shift 点选 / 空白处框选 / 多选群组拖动），选中后底部控制栏出现「导出渲染图」。导出走全局插槽的全窗口模态：等高归一化横排合成（每张图最多 4 个 frame，超出自动分页），可调圆角、外边框粗细与颜色、背景色或透明、投影、Vetta 标识与 1x/2x 倍率，预览内可拖拽交换位置，参数按设计文档记在本地。产物可另存为或直接复制到剪贴板。同时把「让 Vetta 调整」从 frame 标题栏移到控制栏上方常驻，支持一次对多个 frame（或整份设计稿）发起调整。
 
