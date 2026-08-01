@@ -3,7 +3,12 @@ import { useEffect, useRef, useState, type JSX } from "react";
 import { FILE_TREE_NODE_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { getFileIcon } from "./fileIcons";
 import { beginNativeFileDrag } from "./nativeFileDrag";
-import type { FileExplorerEntry, FileExplorerNodeDecoration, FileExplorerSelectOptions } from "./types";
+import type {
+	FileExplorerDragEntry,
+	FileExplorerEntry,
+	FileExplorerNodeDecoration,
+	FileExplorerSelectOptions,
+} from "./types";
 
 const DRAG_MIME = "application/vetta-path";
 
@@ -16,8 +21,8 @@ export interface FileTreeNodeViewProps {
 	isFocused?: boolean;
 	isRenaming: boolean;
 	decoration?: FileExplorerNodeDecoration | null;
-	/** Paths included in the active multi-select when dragging this row. */
-	dragPaths?: readonly string[];
+	/** Entries included in the active multi-select when dragging this row. */
+	dragEntries?: readonly FileExplorerDragEntry[];
 	onToggleDir: (path: string) => void;
 	onSelectEntry: (entry: FileExplorerEntry, options: FileExplorerSelectOptions) => void;
 	onContextMenu: (entry: FileExplorerEntry, x: number, y: number) => void;
@@ -27,6 +32,8 @@ export interface FileTreeNodeViewProps {
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
+	/** Warm app file-type drag icons before dragstart (pointerdown). */
+	onPrefetchNativeDragIcons?: (entries: readonly FileExplorerDragEntry[]) => void;
 }
 
 function pathDirname(path: string): string {
@@ -72,7 +79,7 @@ export function FileTreeNodeView({
 	isFocused = false,
 	isRenaming,
 	decoration,
-	dragPaths,
+	dragEntries,
 	onToggleDir,
 	onSelectEntry,
 	onContextMenu,
@@ -81,6 +88,7 @@ export function FileTreeNodeView({
 	onFileMove,
 	onExternalDrop,
 	onNativeDragStart,
+	onPrefetchNativeDragIcons,
 }: FileTreeNodeViewProps): JSX.Element {
 	const [dragOver, setDragOver] = useState(false);
 	const [renameValue, setRenameValue] = useState(entry.name);
@@ -131,8 +139,17 @@ export function FileTreeNodeView({
 		}
 	}
 
+	function resolveDragEntries(): FileExplorerDragEntry[] {
+		if (dragEntries && dragEntries.length > 0) return [...dragEntries];
+		return [{ path: entry.path, name: entry.name, isDirectory: entry.isDirectory }];
+	}
+
+	function handlePointerDown(): void {
+		onPrefetchNativeDragIcons?.(resolveDragEntries());
+	}
+
 	function handleDragStart(e: React.DragEvent) {
-		const paths = dragPaths && dragPaths.length > 0 ? [...dragPaths] : [entry.path];
+		const paths = resolveDragEntries().map((item) => item.path);
 		// Electron native drag cancels the HTML drag; in-window drops arrive as Files.
 		beginNativeFileDrag(e, paths, onNativeDragStart);
 	}
@@ -183,6 +200,7 @@ export function FileTreeNodeView({
 			draggable={!isRenaming}
 			onClick={handleClick}
 			onContextMenu={handleContextMenu}
+			onPointerDown={handlePointerDown}
 			onDragStart={handleDragStart}
 			onDragOver={handleDragOver}
 			onDragLeave={handleDragLeave}

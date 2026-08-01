@@ -1,5 +1,9 @@
 import { type FsEntry, fileContextMenuAtom, renamingPathAtom } from "@shared/store/atoms";
-import type { FileExplorerSelectOptions, FileTreeNodeViewProps } from "@vetta/theme-ui/file-explorer";
+import type {
+	FileExplorerDragEntry,
+	FileExplorerSelectOptions,
+	FileTreeNodeViewProps,
+} from "@vetta/theme-ui/file-explorer";
 import { useAtom } from "jotai";
 import { useCallback } from "react";
 
@@ -10,13 +14,14 @@ export function useFileTreeNodeModel(input: {
 	isLoading: boolean;
 	isSelected: boolean;
 	isFocused?: boolean;
-	dragPaths?: readonly string[];
+	dragEntries?: readonly FileExplorerDragEntry[];
 	onToggleDir: (path: string) => void;
 	onSelectEntry: (entry: FsEntry, options: FileExplorerSelectOptions) => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
+	onPrefetchNativeDragIcons?: (entries: readonly FileExplorerDragEntry[]) => void;
 }): FileTreeNodeViewProps {
 	const [, setContextMenu] = useAtom(fileContextMenuAtom);
 	const [renamingPath, setRenamingPath] = useAtom(renamingPathAtom);
@@ -48,7 +53,7 @@ export function useFileTreeNodeModel(input: {
 		isSelected: input.isSelected,
 		isFocused: input.isFocused,
 		isRenaming: renamingPath === input.entry.path,
-		dragPaths: input.dragPaths,
+		dragEntries: input.dragEntries,
 		onToggleDir: input.onToggleDir,
 		onSelectEntry: input.onSelectEntry,
 		onContextMenu,
@@ -57,5 +62,6 @@ export function useFileTreeNodeModel(input: {
 		onFileMove: input.onFileMove,
 		onExternalDrop: input.onExternalDrop,
 		onNativeDragStart: input.onNativeDragStart,
+		onPrefetchNativeDragIcons: input.onPrefetchNativeDragIcons,
 	};
 }

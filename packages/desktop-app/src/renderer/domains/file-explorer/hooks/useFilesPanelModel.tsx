@@ -33,6 +33,7 @@ import {
 } from "@shared/store/atoms";
 import type {
 	FileExplorerCreatingEntry,
+	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
 	FilesPanelViewProps,
 } from "@vetta/theme-ui/file-explorer";
@@ -52,6 +53,7 @@ import { type FileExplorerClipboard, resolvePasteDirectory } from "../services/c
 import { resolveCreateParentDirectory } from "../services/create-entry";
 import { isProjectInternalDrop } from "../services/file-drop";
 import { sortFileExplorerActions } from "../services/plugin-contributions";
+import { cacheAppFileDragIcons } from "../services/rasterize-app-file-icon";
 import { useFileExplorerSelection } from "./useFileExplorerSelection";
 import { useFileTree } from "./useFileTree";
 
@@ -392,6 +394,22 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 		window.vetta.fs.startDrag(paths);
 	}, []);
 
+	const onPrefetchNativeDragIcons = useCallback((entries: readonly FileExplorerDragEntry[]) => {
+		if (entries.length === 0) return;
+		void cacheAppFileDragIcons(entries);
+	}, []);
+
+	// Multi-select / keyboard selection: warm app type icons before the user starts dragging.
+	useEffect(() => {
+		const entries = selection.selectedEntries.map((entry) => ({
+			path: entry.path,
+			name: entry.name,
+			isDirectory: entry.isDirectory,
+		}));
+		if (entries.length === 0) return;
+		void cacheAppFileDragIcons(entries);
+	}, [selection.selectedEntries]);
+
 	const cancelTransfer = useCallback(() => {
 		if (!transferPlan || transferBusyRef.current) return;
 		void window.vetta.fs.cancelDrop(transferPlan.id);
@@ -692,6 +710,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			onFileMove={onFileMove}
 			onExternalDrop={onExternalDrop}
 			onNativeDragStart={onNativeDragStart}
+			onPrefetchNativeDragIcons={onPrefetchNativeDragIcons}
 			onContextMenu={onContextMenu}
 			onRootContextMenu={onRootContextMenu}
 			onCreateSubmit={handleCreateSubmit}

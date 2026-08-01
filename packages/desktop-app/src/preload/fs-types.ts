@@ -105,6 +105,11 @@ export interface DesktopFsApi {
 	cancelDrop(planId: string): Promise<void>;
 	/** Starts an operating-system drag synchronously from a renderer dragstart event. */
 	startDrag(paths: readonly string[]): void;
+	/**
+	 * Cache a renderer-rasterized app file-type icon (PNG data URL) for native drag ghosts.
+	 * Call after rasterizing the same icons used in the file tree (before/during pointerdown).
+	 */
+	cacheDragIcon(path: string, pngDataUrl: string): void;
 	createEntry(parentDirectory: string, name: string, kind: FileExplorerEntryKind): Promise<FsEntry>;
 	createDirectory(dirPath: string): Promise<void>;
 	listSubDirs(dirPath: string): Promise<FsEntry[]>;

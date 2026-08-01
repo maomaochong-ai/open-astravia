@@ -131,6 +131,7 @@ export function createSystemApi(
 				ipc.invoke("vetta:file-transfer:commit-drop", planId, action, conflictPolicy),
 			cancelDrop: (planId) => ipc.invoke("vetta:file-transfer:cancel-drop", planId),
 			startDrag: (paths) => ipc.send("vetta:file-transfer:start-drag", [...paths]),
+			cacheDragIcon: (path, pngDataUrl) => ipc.send("vetta:file-transfer:cache-drag-icon", path, pngDataUrl),
 			createEntry: (parentDirectory, name, kind) => ipc.invoke("vetta:fs:create-entry", parentDirectory, name, kind),
 			createDirectory: (dirPath) => ipc.invoke("vetta:fs:create-directory", dirPath),
 			listSubDirs: (dirPath) => ipc.invoke("vetta:fs:list-sub-dirs", dirPath),

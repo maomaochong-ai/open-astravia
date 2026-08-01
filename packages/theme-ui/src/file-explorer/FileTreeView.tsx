@@ -4,6 +4,7 @@ import { FileTreeCreateRow } from "./FileTreeCreateRow";
 import { FileTreeNodeView } from "./FileTreeNodeView";
 import type {
 	FileExplorerCreatingEntry,
+	FileExplorerDragEntry,
 	FileExplorerEntry,
 	FileExplorerNodeDecoration,
 	FileExplorerSelectOptions,
@@ -36,6 +37,8 @@ export interface FileTreeViewProps {
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
+	/** Warm app file-type icons before dragstart (e.g. pointerdown / selection). */
+	onPrefetchNativeDragIcons?: (entries: readonly FileExplorerDragEntry[]) => void;
 	onTreeKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }
 
@@ -114,11 +117,15 @@ export function FileTreeView({
 	onFileMove,
 	onExternalDrop,
 	onNativeDragStart,
+	onPrefetchNativeDragIcons,
 	onTreeKeyDown,
 }: FileTreeViewProps): JSX.Element {
 	const [rootDragOver, setRootDragOver] = useState(false);
 	const flatList = buildFlatList(rootDir, cache, expandedDirs);
-	const selectedDragPaths = flatList.map((node) => node.entry.path).filter((path) => selectedPaths.has(path));
+	const selectedDragEntries: FileExplorerDragEntry[] = flatList
+		.map((node) => node.entry)
+		.filter((entry) => selectedPaths.has(entry.path))
+		.map((entry) => ({ path: entry.path, name: entry.name, isDirectory: entry.isDirectory }));
 
 	function handleRootDragOver(event: React.DragEvent): void {
 		const types = Array.from(event.dataTransfer.types);
@@ -206,8 +213,16 @@ export function FileTreeView({
 			{rootCreateRow}
 			{flatList.map((node) => {
 				const isSelected = selectedPaths.has(node.entry.path);
-				const dragPaths =
-					isSelected && selectedDragPaths.length > 0 ? selectedDragPaths : [node.entry.path];
+				const dragEntries: FileExplorerDragEntry[] =
+					isSelected && selectedDragEntries.length > 0
+						? selectedDragEntries
+						: [
+								{
+									path: node.entry.path,
+									name: node.entry.name,
+									isDirectory: node.entry.isDirectory,
+								},
+							];
 				return (
 					<Fragment key={node.entry.path}>
 						<FileTreeNodeView
@@ -219,7 +234,7 @@ export function FileTreeView({
 							isFocused={focusedPath === node.entry.path}
 							isRenaming={renamingPath === node.entry.path}
 							decoration={getDecoration?.(node.entry)}
-							dragPaths={dragPaths}
+							dragEntries={dragEntries}
 							onToggleDir={onToggleDir}
 							onSelectEntry={onSelectEntry}
 							onContextMenu={onContextMenu}
@@ -228,6 +243,7 @@ export function FileTreeView({
 							onFileMove={onFileMove}
 							onExternalDrop={onExternalDrop}
 							onNativeDragStart={onNativeDragStart}
+							onPrefetchNativeDragIcons={onPrefetchNativeDragIcons}
 						/>
 						{creatingEntry?.parentPath === node.entry.path ? (
 							<FileTreeCreateRow
