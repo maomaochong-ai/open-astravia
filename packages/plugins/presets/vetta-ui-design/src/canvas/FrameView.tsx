@@ -71,6 +71,13 @@ export function FrameView({
 	const dragRef = useRef<DragState | null>(null);
 	/** 改尺寸拖拽期间的实时矩形（提交前不落 manifest）。 */
 	const [resizeRect, setResizeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+	/** 当前这个 iframe 是否加载完毕——位图要盖到这一刻才撤。 */
+	const [loaded, setLoaded] = useState(false);
+
+	// 卸载后再挂上是一个全新的 iframe，加载态要跟着重置，否则位图会提前撤掉。
+	useEffect(() => {
+		if (!mounted) setLoaded(false);
+	}, [mounted]);
 
 	// mounted 必须在依赖里：iframe 是按挂载节流条件渲染的，false→true 时这个
 	// effect 要重跑才能把真正的 iframe 注册进 bridge。漏了它的话，后挂上的 frame
@@ -214,8 +221,8 @@ export function FrameView({
 					selected ? "ring-2 ring-[var(--vetd-selected)]" : "ring-1 ring-border"
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
-				{/* 挂上之后就不再卸载：卸载会丢掉 HMR 连接，frame 会永远停在旧位图上。
-				    位图态只是 display:none——渲染与合成停掉，文档与脚本照常活着。 */}
+				{/* 位图态下 iframe 根本不挂：留着 display:none 的 iframe 等于把整个
+				    React 应用连同大图留在内存里，合成器照样吃不消。 */}
 				{mounted ? (
 					<iframe
 						ref={iframeRef}
@@ -223,12 +230,22 @@ export function FrameView({
 						src={`http://127.0.0.1:${port}/#/frame/${encodeURIComponent(frame.id)}`}
 						className="h-full w-full border-0"
 						style={{ pointerEvents: entered ? "auto" : "none", display: live ? "block" : "none" }}
+						onLoad={() => setLoaded(true)}
 					/>
 				) : null}
-				{!live && raster ? (
-					<img src={raster} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+				{/* 位图盖在 iframe 上，等它真的加载完再撤：刚挂载的 iframe 有一段空白期，
+				    直接切过去就是肉眼可见的一闪。淡出让交接看不出来。 */}
+				{raster && (!live || !loaded) ? (
+					<img
+						src={raster}
+						alt=""
+						aria-hidden
+						className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${
+							live && loaded ? "opacity-0" : "opacity-100"
+						}`}
+					/>
 				) : null}
-				{!live && !raster ? (
+				{!raster && !loaded ? (
 					<div className="absolute inset-0 flex items-center justify-center bg-muted">
 						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
 					</div>

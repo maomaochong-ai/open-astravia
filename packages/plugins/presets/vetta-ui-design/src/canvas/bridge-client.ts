@@ -32,11 +32,19 @@ export class BridgeHub {
 	private readonly captures = new Map<string, PendingCapture>();
 	private events: BridgeHubEvents | null = null;
 	private captureCounter = 0;
+	/** frameId → 期望的检查模式，供 iframe 重新挂载后补发。 */
+	private readonly modes = new Map<string, "inspect">();
 	private readonly onMessage = (event: MessageEvent): void => {
 		const data = event.data as Record<string, unknown> | null;
 		if (!data || data.vetd !== true) return;
 		const frameId = this.frameIdForWindow(event.source);
 		switch (data.type) {
+			case "ready": {
+				// 按需挂载的 frame：装好 bridge 后把它错过的模式补上。
+				const wanted = frameId ? this.modes.get(frameId) : undefined;
+				if (frameId && wanted) this.post(frameId, { type: "set-mode", mode: wanted });
+				return;
+			}
 			case "rendered":
 				if (frameId) this.events?.onRendered(frameId);
 				return;
@@ -97,7 +105,14 @@ export class BridgeHub {
 		iframe?.contentWindow?.postMessage({ vetd: true, ...message }, "*");
 	}
 
+	/**
+	 * 记住目标模式再发：位图化之后 frame 的 iframe 是按需挂载的，双击进入的那一刻
+	 * 它往往还不存在，这条消息会直接丢掉，进去就成了「hover 有高亮、点击选不中」。
+	 * 真正的 iframe 装好 bridge 后会报 ready，那时再补发一次。
+	 */
 	setMode(frameId: string, mode: "off" | "inspect"): void {
+		if (mode === "off") this.modes.delete(frameId);
+		else this.modes.set(frameId, mode);
 		this.post(frameId, { type: "set-mode", mode });
 	}
 
