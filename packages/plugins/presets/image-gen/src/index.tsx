@@ -890,6 +890,8 @@ export default definePlugin({
 			icon: <IconImage className="h-4 w-4" />,
 			component: GenHistoryPanel,
 			scope_use: ["conversation", "project", "im-claw", "cli"],
+			// 无历史时不上栏；generate_image / edit_image 成功后 openActivityTab 再挂上。
+			initiallyVisible: false,
 		});
 	},
 });

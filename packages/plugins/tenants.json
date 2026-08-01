@@ -9,7 +9,8 @@
       "svg-viewer",
       "chart-renderer",
       "git",
-      "plugin-workbench"
+      "plugin-workbench",
+      "content-creation"
     ]
   }
 }

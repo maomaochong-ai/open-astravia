@@ -1,0 +1,25 @@
+{
+	"id": "content-creation",
+	"name": "%plugin.name%",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "content_creation",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.activity-tab",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"fs.read",
+		"fs.write",
+		"storage.read",
+		"storage.write"
+	],
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

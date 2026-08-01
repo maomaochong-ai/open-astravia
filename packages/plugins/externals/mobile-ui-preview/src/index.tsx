@@ -1,7 +1,7 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { definePlugin, type PluginFileExplorerEntry } from "@vetta-org/plugin-sdk";
 import { MobilePreviewPanel } from "./MobilePreviewPanel";
 import { setPluginCtx } from "./plugin-context";
-import { hasHtmlFile, TAB_ID } from "./tab-visibility";
+import { selectionHasHtmlFile, TAB_ID } from "./tab-visibility";
 import "./style.css";
 
 export default definePlugin({
@@ -21,36 +21,68 @@ export default definePlugin({
 			component: MobilePreviewPanel,
 			// 仅交互式对话场景出现。
 			scope_use: ["conversation", "project", "cli"],
-			// 出现条件由插件自己驱动：cwd 里扫到 html/htm 才上栏。
+			// 缺省不上栏；仅文件树选中 html 时 setActivityTabVisible(true)。
+			// 旧版未声明该字段时默认 true，会永久占栏——必须显式 false。
 			initiallyVisible: false,
 		});
 
-		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的扫描结果。 */
+		/** 最近一次 conversation-changed 的 cwd。 */
 		let latestCwd: string | null = null;
-		/** 每个 cwd 上一次写入的显隐，条件没变就不再调用，免得盖掉用户手动隐藏。 */
+		/**
+		 * 每个 cwd 上一次写入的显隐。条件没变就不再调用：
+		 * 避免反复 set 盖掉用户手动点减号的隐藏（同条件再写 true 会重新上栏）。
+		 */
 		const lastVisible = new Map<string, boolean>();
 
-		const syncTabVisibility = (cwd: string) => {
-			void hasHtmlFile(ctx.fs, cwd).then((visible) => {
-				// 扫描是异步的，期间可能已切走——切走后再写就会写到别人的 cwd 上。
-				if (latestCwd !== cwd) return;
-				if (lastVisible.get(cwd) === visible) return;
-				lastVisible.set(cwd, visible);
-				ctx.ui.setActivityTabVisible(TAB_ID, visible);
-			});
+		const readSelection = (): readonly PluginFileExplorerEntry[] => {
+			try {
+				return ctx.fileExplorer.getSelection();
+			} catch (error) {
+				// 缺 workspace.read 授权 / 文件树未就绪：按「未选中」处理，不上栏。
+				console.warn("[mobile-ui-preview] getSelection failed, keep tab hidden:", error);
+				return [];
+			}
 		};
 
-		// 会话切换（含订阅时的首次回放）判定一次；每轮结束再判定一次，
-		// agent 本轮新写出的 html 不必等切会话才能让 tab 出现。
-		ctx.conversation.on((event) => {
-			if (event.type === "conversation-changed") {
-				const { cwd } = event.conversation;
-				if (!cwd) return;
-				latestCwd = cwd;
-				syncTabVisibility(cwd);
-			} else if (event.type === "turn-end" && latestCwd) {
-				syncTabVisibility(latestCwd);
+		const applyVisibility = (cwd: string, selection: readonly PluginFileExplorerEntry[]) => {
+			const visible = selectionHasHtmlFile(selection);
+			if (lastVisible.get(cwd) === visible) return;
+			lastVisible.set(cwd, visible);
+			try {
+				ctx.ui.setActivityTabVisible(TAB_ID, visible);
+			} catch (error) {
+				console.warn("[mobile-ui-preview] setActivityTabVisible failed:", error);
 			}
+		};
+
+		const syncFromSelection = () => {
+			const cwd = latestCwd;
+			if (!cwd) return;
+			applyVisibility(cwd, readSelection());
+		};
+
+		// 会话切换（含订阅时的首次回放）：按当前选区写显隐。
+		// 会把历史 localStorage 里「曾因整树扫到 html 而上栏」的脏记录洗成 false，
+		// 除非此刻选区里真有 html。
+		ctx.conversation.on((event) => {
+			if (event.type !== "conversation-changed") return;
+			const { cwd } = event.conversation;
+			if (!cwd) {
+				latestCwd = null;
+				return;
+			}
+			latestCwd = cwd;
+			syncFromSelection();
 		});
+
+		try {
+			ctx.fileExplorer.onDidChangeSelection((selection) => {
+				const cwd = latestCwd;
+				if (!cwd) return;
+				applyVisibility(cwd, selection);
+			});
+		} catch (error) {
+			console.warn("[mobile-ui-preview] onDidChangeSelection failed:", error);
+		}
 	},
 });

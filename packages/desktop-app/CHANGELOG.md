@@ -21,6 +21,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **活动面板「生图历史 / 移动预览」默认不再占栏**：生图历史 `initiallyVisible: false`，仅在 `generate_image` / `edit_image` 成功后 `openActivityTab` 上栏；移动预览改为跟文件树选中（含 html/htm）显隐，不再因项目里任意存在 html 就自动上栏。可从「+」手动添加。
+- **移动预览旧安装包一直占栏**：已装的 `mobile-ui-preview@0.2.x` 未声明 `initiallyVisible: false`（缺省即上栏），与源码改动无关也会常驻。0.3.3 显式 `initiallyVisible: false`，会话回放时按选区写回显隐以清掉历史 attach 脏记录。
 - **用户消息里图片胶囊不再退化成文件名**：输入框是「图 N」+ 上方缩略图，发出后 Windows 路径里的 `\.` 会被消息气泡的 CommonMark 当转义吃掉，编号表对不上就回退成 basename。路径 token 统一写成 `/`，编号查找也按同一键，气泡与输入框一致。
 - **文件编辑器保存后无法撤销**：CodeMirror 的 `documentKey` 误绑定磁盘 `revision`，保存成功 revision 变化会整实例重挂载并清空撤销栈。改为按 `editorGeneration` 标识编辑会话（仅磁盘重载/外部干净替换时递增），保存与草稿编辑保持同一编辑器实例。
 - **编辑/预览切换保留撤销栈**：有渲染预览的文件（HTML/Markdown 等）在切到预览时不再卸载 CodeMirror，仅隐藏编辑器并叠放预览层；回到编辑时 `requestMeasure` + 恢复焦点，正文与 Ctrl+Z 历史都不丢。

@@ -1,7 +1,7 @@
 {
 	"id": "mobile-ui-preview",
 	"name": "%plugin.name%",
-	"version": "0.3.2",
+	"version": "0.3.3",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
@@ -15,7 +15,8 @@
 		"agent.session.read",
 		"agent.session.write",
 		"agent.skills.control",
-		"fs.read"
+		"fs.read",
+		"workspace.read"
 	],
 	"agent": {
 		"skillPaths": ["agent/skills/mobile-ui-design"]
