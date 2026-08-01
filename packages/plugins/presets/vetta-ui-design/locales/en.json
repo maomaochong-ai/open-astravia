@@ -18,9 +18,6 @@
 	"canvas.theme.title": "Color system",
 	"canvas.theme.empty": "No color tokens in theme.css yet",
 	"canvas.theme.attach": "Attach token {{token}} to Vetta",
-	"canvas.attach": "Attach to Vetta",
-	"canvas.attach.frame": "frame: {{name}}",
-	"canvas.attach.dom": "<{{tag}}> in {{frame}}",
 	"canvas.frame.modifying": "Editing",
 	"canvas.frame.updated": "Updated",
 	"canvas.newFrame.defaultTitle": "New frame",
@@ -49,5 +46,12 @@
 	"card.screenshot.title": "Design screenshot",
 	"card.screenshot.open": "View full size",
 	"create.done": "Design created: {{path}}",
-	"create.failed": "Failed to create design"
+	"create.failed": "Failed to create design",
+	"canvas.ask.button": "Ask Vetta",
+	"canvas.ask.placeholder": "Tell Vetta how to adjust this… (⌘/Ctrl+Enter to send)",
+	"canvas.ask.send": "Send",
+	"canvas.ask.sending": "Sending…",
+	"canvas.ask.cancel": "Cancel",
+	"canvas.ask.sent": "Sent to Vetta",
+	"canvas.ask.failed": "Failed to send"
 }

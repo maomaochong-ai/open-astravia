@@ -18,9 +18,6 @@
 	"canvas.theme.title": "色彩系统",
 	"canvas.theme.empty": "theme.css 里还没有颜色令牌",
 	"canvas.theme.attach": "把令牌 {{token}} 附给 Vetta",
-	"canvas.attach": "附给 Vetta",
-	"canvas.attach.frame": "frame：{{name}}",
-	"canvas.attach.dom": "{{frame}} 中的 <{{tag}}>",
 	"canvas.frame.modifying": "修改中",
 	"canvas.frame.updated": "已更新",
 	"canvas.newFrame.defaultTitle": "新画框",
@@ -49,5 +46,12 @@
 	"card.screenshot.title": "设计截图",
 	"card.screenshot.open": "查看大图",
 	"create.done": "已创建设计：{{path}}",
-	"create.failed": "创建设计失败"
+	"create.failed": "创建设计失败",
+	"canvas.ask.button": "让 Vetta 调整",
+	"canvas.ask.placeholder": "告诉 Vetta 你想怎么调整…（⌘/Ctrl+Enter 发送）",
+	"canvas.ask.send": "发送",
+	"canvas.ask.sending": "发送中…",
+	"canvas.ask.cancel": "取消",
+	"canvas.ask.sent": "已发送给 Vetta",
+	"canvas.ask.failed": "发送失败"
 }

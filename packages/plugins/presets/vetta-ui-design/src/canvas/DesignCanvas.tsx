@@ -7,10 +7,11 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { getPluginCtx } from "../plugin-context";
+import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
 import type { VetdManifest } from "../vetd/manifest-types";
-import { domAttachment, frameAttachment } from "./attach";
+import { buildAskPrompt } from "./ask-vetta";
+import { AskVettaPopover } from "./AskVettaPopover";
 import { BridgeHub, type SelectedElementPayload } from "./bridge-client";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import { type FrameActivity, notifyFrameSettled, onFrameActivity } from "./design-runtime";
@@ -54,6 +55,8 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	const [enteredFrameId, setEnteredFrameId] = useState<string | null>(null);
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
 	const [marquee, setMarquee] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+	const [askFrameId, setAskFrameId] = useState<string | null>(null);
+	const [askBusy, setAskBusy] = useState(false);
 	const panRef = useRef<{ pointerId: number; startX: number; startY: number; origin: Viewport } | null>(null);
 	const marqueeRef = useRef<{ pointerId: number; startX: number; startY: number } | null>(null);
 
@@ -66,6 +69,13 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	}, [session]);
 
 	useEffect(() => onFrameActivity((next) => setActivity(new Map(next))), []);
+
+	// Ask popover follows the selection: deselect / switch frame → close.
+	useEffect(() => {
+		if (!askFrameId) return;
+		const selectedFrameId = selection ? (selection.kind === "frame" ? selection.id : selection.frameId) : null;
+		if (selectedFrameId !== askFrameId) setAskFrameId(null);
+	}, [selection, askFrameId]);
 
 	const exitInspect = useCallback(
 		(frameId: string | null) => {
@@ -247,34 +257,37 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		session.saveViewport(next);
 	};
 
-	const attachSelection = (): void => {
-		const ctx = getPluginCtx();
-		if (!selection) return;
-		if (selection.kind === "frame") {
-			const frame = manifest.frames.find((entry) => entry.id === selection.id);
-			ctx.ui.setPromptAttachment(
-				frameAttachment(session, selection.id, t("canvas.attach.frame", { name: frame?.title || selection.id })),
-			);
-		} else {
-			ctx.ui.setPromptAttachment(
-				domAttachment(
-					session,
-					selection.frameId,
-					selection.payload,
-					t("canvas.attach.dom", { frame: selection.frameId, tag: selection.payload.tag }),
-				),
-			);
+	/** "让 Vetta 调整"：截图（DOM 选中时保留高亮）+ 元信息 + 用户建议 → sendPrompt。 */
+	const sendAskToVetta = async (suggestion: string): Promise<void> => {
+		if (!selection || askBusy) return;
+		const frameId = selection.kind === "frame" ? selection.id : selection.frameId;
+		setAskBusy(true);
+		try {
+			const ctx = getPluginCtx();
+			const dataUrl = await bridge.capture(frameId, { keepHighlight: selection.kind === "dom" });
+			const base64 = dataUrl.split(",")[1] ?? "";
+			const screenshotPath = `${session.dirPath}/.snapshots/ask-${frameId}-${Date.now()}.png`;
+			await ctx.fs.writeFile(screenshotPath, base64, "base64");
+			await ctx.conversation.sendPrompt(buildAskPrompt(session, selection, screenshotPath, suggestion));
+			notify({ message: t("canvas.ask.sent"), variant: "success", durationMs: 3000 });
+			setAskFrameId(null);
+		} catch (error) {
+			notify({ message: t("canvas.ask.failed"), error });
+		} finally {
+			setAskBusy(false);
 		}
 	};
 
-	const selectionLabel = useMemo(() => {
-		if (!selection) return null;
-		if (selection.kind === "frame") {
-			const frame = manifest.frames.find((entry) => entry.id === selection.id);
-			return t("canvas.attach.frame", { name: frame?.title || selection.id });
-		}
-		return t("canvas.attach.dom", { frame: selection.frameId, tag: selection.payload.tag });
-	}, [selection, manifest.frames, t]);
+	/** Popover anchor: the frame's top-left corner in screen (container) space. */
+	const askAnchor = useMemo(() => {
+		if (!askFrameId) return null;
+		const frame = manifest.frames.find((entry) => entry.id === askFrameId);
+		if (!frame) return null;
+		return {
+			x: viewport.x + frame.x * viewport.zoom,
+			y: viewport.y + frame.y * viewport.zoom + 8,
+		};
+	}, [askFrameId, manifest.frames, viewport]);
 
 	const cursor = panActive ? "grab" : tool === "frame" ? "crosshair" : "default";
 
@@ -319,6 +332,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 							setEnteredFrameId(frame.id);
 							bridge.setMode(frame.id, "inspect");
 						}}
+						onAskVetta={() => setAskFrameId(frame.id)}
 						onPlacementCommit={(patch) => session.updateFramePlacement(frame.id, patch)}
 					/>
 				))}
@@ -333,17 +347,14 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			{/* Pan shield: while space is held, capture drags above every frame (Figma behavior). */}
 			{spaceHeld && tool !== "hand" ? <div className="absolute inset-0 z-10" style={{ cursor: "grab" }} /> : null}
 
-			{selection && selectionLabel ? (
-				<div className="absolute bottom-16 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-black/10 bg-white/95 py-1.5 pl-3 pr-1.5 text-xs shadow-lg dark:border-white/10 dark:bg-neutral-900/95">
-					<span className="max-w-72 truncate text-neutral-600 dark:text-neutral-300">{selectionLabel}</span>
-					<button
-						type="button"
-						onClick={attachSelection}
-						className="rounded-lg bg-indigo-500 px-2.5 py-1 font-medium text-white hover:bg-indigo-600"
-					>
-						{t("canvas.attach")}
-					</button>
-				</div>
+			{askAnchor && selection ? (
+				<AskVettaPopover
+					x={askAnchor.x}
+					y={askAnchor.y}
+					busy={askBusy}
+					onSend={(suggestion) => void sendAskToVetta(suggestion)}
+					onClose={() => setAskFrameId(null)}
+				/>
 			) : null}
 
 			<ControlBar

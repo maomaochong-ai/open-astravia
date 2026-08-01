@@ -16,6 +16,7 @@
 		"ui.slot.file-preview",
 		"ui.slot.tool-call",
 		"agent.session.read",
+		"agent.session.write",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
 		"agent.skills.control",

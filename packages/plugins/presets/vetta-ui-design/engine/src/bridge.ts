@@ -75,17 +75,35 @@ function payloadFor(element: Element): SelectedElementPayload {
 	};
 }
 
-function makeOverlay(color: string, background: string): HTMLDivElement {
+function makeOverlay(color: string, background: string, withLabel: boolean): HTMLDivElement {
 	const el = document.createElement("div");
 	el.setAttribute("data-vetd-overlay", "true");
 	Object.assign(el.style, {
 		position: "fixed",
 		zIndex: "2147483646",
 		pointerEvents: "none",
-		border: `1.5px solid ${color}`,
+		border: `2px solid ${color}`,
 		background,
 		display: "none",
+		boxSizing: "border-box",
 	} satisfies Partial<CSSStyleDeclaration>);
+	if (withLabel) {
+		const label = document.createElement("div");
+		label.setAttribute("data-vetd-overlay-label", "true");
+		Object.assign(label.style, {
+			position: "absolute",
+			left: "-2px",
+			bottom: "100%",
+			marginBottom: "2px",
+			padding: "1px 6px",
+			borderRadius: "4px",
+			background: color,
+			color: "#ffffff",
+			font: "600 10px/1.6 system-ui, sans-serif",
+			whiteSpace: "nowrap",
+		} satisfies Partial<CSSStyleDeclaration>);
+		el.appendChild(label);
+	}
 	document.documentElement.appendChild(el);
 	return el;
 }
@@ -103,6 +121,16 @@ function moveOverlay(overlay: HTMLDivElement, target: Element | null): void {
 		width: `${rect.width}px`,
 		height: `${rect.height}px`,
 	});
+	const label = overlay.querySelector<HTMLDivElement>("[data-vetd-overlay-label]");
+	if (label) {
+		label.textContent = target.tagName.toLowerCase();
+		// Flip the label below the box when the element touches the top edge.
+		const flip = rect.top < 20;
+		label.style.bottom = flip ? "auto" : "100%";
+		label.style.top = flip ? "100%" : "auto";
+		label.style.marginBottom = flip ? "0" : "2px";
+		label.style.marginTop = flip ? "2px" : "0";
+	}
 }
 
 export function notifyFrameRendered(frameId: string | null, allFrames: string[]): void {
@@ -111,24 +139,18 @@ export function notifyFrameRendered(frameId: string | null, allFrames: string[])
 
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
-	/** Figma-style drill container: click selects among its direct children. */
-	let drillRoot: Element = document.body;
 	let selected: Element | null = null;
 
-	const hoverOverlay = makeOverlay("#3b82f6", "rgba(59,130,246,0.08)");
-	const selectedOverlay = makeOverlay("#6366f1", "transparent");
+	const hoverOverlay = makeOverlay("#3b82f6", "rgba(59,130,246,0.08)", false);
+	const selectedOverlay = makeOverlay("#6366f1", "rgba(99,102,241,0.06)", true);
 
 	const isOwnNode = (element: Element | null): boolean =>
 		!!element?.closest?.("[data-vetd-overlay]");
 
-	/** The ancestor of `hit` that is a direct child of drillRoot (Figma level rule). */
-	const levelTarget = (hit: Element): Element => {
-		let node: Element = hit;
-		while (node.parentElement && node.parentElement !== drillRoot && node !== drillRoot) {
-			if (node.parentElement === document.body && drillRoot === document.body) break;
-			node = node.parentElement;
-		}
-		return node === drillRoot ? hit : node;
+	const hitAt = (x: number, y: number): Element | null => {
+		const hit = document.elementFromPoint(x, y);
+		if (!hit || isOwnNode(hit) || hit === document.body || hit === document.documentElement) return null;
+		return hit;
 	};
 
 	const select = (element: Element | null): void => {
@@ -138,7 +160,6 @@ export function installBridge(host: BridgeHost): void {
 	};
 
 	const reset = (): void => {
-		drillRoot = document.body;
 		select(null);
 		moveOverlay(hoverOverlay, null);
 	};
@@ -152,43 +173,24 @@ export function installBridge(host: BridgeHost): void {
 		"mousemove",
 		(event) => {
 			if (mode !== "inspect") return;
-			const hit = document.elementFromPoint(event.clientX, event.clientY);
-			if (!hit || isOwnNode(hit) || hit === document.body || hit === document.documentElement) {
-				moveOverlay(hoverOverlay, null);
-				return;
-			}
-			moveOverlay(hoverOverlay, levelTarget(hit));
+			const hit = hitAt(event.clientX, event.clientY);
+			moveOverlay(hoverOverlay, hit && hit !== selected ? hit : null);
 		},
 		true,
 	);
 
+	// Click selects the deepest element under the cursor — direct and predictable;
+	// Esc walks UP the ancestor chain when a broader container is wanted.
 	document.addEventListener(
 		"click",
 		(event) => {
 			if (mode !== "inspect") return;
 			event.preventDefault();
 			event.stopPropagation();
-			const hit = document.elementFromPoint(event.clientX, event.clientY);
-			if (!hit || isOwnNode(hit) || hit === document.documentElement) return;
-			select(levelTarget(hit));
-		},
-		true,
-	);
-
-	document.addEventListener(
-		"dblclick",
-		(event) => {
-			if (mode !== "inspect") return;
-			event.preventDefault();
-			event.stopPropagation();
-			const hit = document.elementFromPoint(event.clientX, event.clientY);
-			if (!hit || isOwnNode(hit)) return;
-			// Drill: current selection becomes the container, then pick the child under
-			// the cursor at the new level.
-			if (selected?.contains(hit) && selected !== hit) {
-				drillRoot = selected;
-				select(levelTarget(hit));
-			}
+			const hit = hitAt(event.clientX, event.clientY);
+			if (!hit) return;
+			moveOverlay(hoverOverlay, null);
+			select(hit);
 		},
 		true,
 	);
@@ -198,11 +200,10 @@ export function installBridge(host: BridgeHost): void {
 		(event) => {
 			if (mode !== "inspect" || event.key !== "Escape") return;
 			event.preventDefault();
-			// Pop one drill level; at the top, hand control back to frame selection.
-			if (drillRoot !== document.body) {
-				const popped = drillRoot;
-				drillRoot = popped.parentElement ?? document.body;
-				select(popped);
+			// Step up one ancestor; past the top, hand control back to frame selection.
+			const parent = selected?.parentElement;
+			if (parent && parent !== document.body && parent !== document.documentElement) {
+				select(parent);
 				return;
 			}
 			reset();
@@ -226,9 +227,14 @@ export function installBridge(host: BridgeHost): void {
 				return;
 			case "capture": {
 				const requestId = typeof data.requestId === "string" ? data.requestId : "";
+				// keepHighlight: bake the selected-element outline into the shot (used by
+				// "让 Vetta 调整" so the model SEES which element the user means).
+				const keepHighlight = data.keepHighlight === true && selected !== null;
 				moveOverlay(hoverOverlay, null);
-				moveOverlay(selectedOverlay, null);
-				toPng(document.body, { pixelRatio: 2, cacheBust: true })
+				if (!keepHighlight) moveOverlay(selectedOverlay, null);
+				// Capture documentElement: the overlay divs live on it, so a kept
+				// highlight is included; body alone would drop them.
+				toPng(document.documentElement, { pixelRatio: 2, cacheBust: true })
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) =>
 						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),

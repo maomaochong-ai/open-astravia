@@ -18,6 +18,7 @@ interface FrameViewProps {
 	activity: FrameActivity | undefined;
 	onSelect(): void;
 	onEnter(): void;
+	onAskVetta(): void;
 	onPlacementCommit(patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void;
 }
 
@@ -43,6 +44,7 @@ export function FrameView({
 	activity,
 	onSelect,
 	onEnter,
+	onAskVetta,
 	onPlacementCommit,
 }: FrameViewProps) {
 	const { t } = useTranslation();
@@ -158,6 +160,19 @@ export function FrameView({
 				<span className="text-neutral-400">
 					{rect.width}×{rect.height}
 				</span>
+				{selected ? (
+					<button
+						type="button"
+						className="rounded-full bg-indigo-500 px-2 py-0.5 font-medium text-white shadow-sm hover:bg-indigo-600"
+						onPointerDown={(event) => event.stopPropagation()}
+						onClick={(event) => {
+							event.stopPropagation();
+							onAskVetta();
+						}}
+					>
+						{t("canvas.ask.button")}
+					</button>
+				) : null}
 				{activity === "modifying" ? (
 					<span className="flex items-center gap-1 rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-indigo-500">
 						<span className="size-1.5 animate-pulse rounded-full bg-indigo-500" />
