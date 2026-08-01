@@ -29,7 +29,7 @@ export function AskVettaPopover({ x, y, busy, onSend, onClose }: AskVettaPopover
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the popover
 		<div
-			className="absolute z-30 w-72 rounded-xl border border-black/10 bg-white/95 p-2 shadow-xl dark:border-white/10 dark:bg-neutral-900/95"
+			className="absolute z-30 w-72 rounded-xl border border-border bg-card/95 p-2 shadow-xl"
 			style={{ left: Math.max(8, x), top: Math.max(8, y) }}
 			onPointerDown={(event) => event.stopPropagation()}
 			onPointerMove={(event) => event.stopPropagation()}
@@ -53,14 +53,14 @@ export function AskVettaPopover({ x, y, busy, onSend, onClose }: AskVettaPopover
 						send();
 					}
 				}}
-				className="h-20 w-full resize-none rounded-lg border border-black/10 bg-transparent p-2 text-xs outline-none focus:border-indigo-500 dark:border-white/10"
+				className="h-20 w-full resize-none rounded-lg border border-border bg-transparent p-2 text-xs outline-none focus:border-primary"
 			/>
 			<div className="mt-1.5 flex items-center justify-end gap-1.5">
 				<button
 					type="button"
 					onClick={onClose}
 					disabled={busy}
-					className="rounded-lg px-2.5 py-1 text-xs text-neutral-500 hover:bg-black/5 disabled:opacity-50 dark:hover:bg-white/10"
+					className="rounded-lg px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent disabled:opacity-50"
 				>
 					{t("canvas.ask.cancel")}
 				</button>
@@ -68,7 +68,7 @@ export function AskVettaPopover({ x, y, busy, onSend, onClose }: AskVettaPopover
 					type="button"
 					onClick={send}
 					disabled={busy || text.trim().length === 0}
-					className="rounded-lg bg-indigo-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+					className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
 				>
 					{busy ? t("canvas.ask.sending") : t("canvas.ask.send")}
 				</button>

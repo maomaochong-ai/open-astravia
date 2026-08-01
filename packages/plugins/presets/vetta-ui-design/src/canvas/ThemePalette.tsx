@@ -32,12 +32,12 @@ export function ThemePalette({ session }: { session: DesignSession }) {
 	}, [session]);
 
 	return (
-		<div className="absolute right-3 top-3 z-20 w-44 rounded-xl border border-black/10 bg-white/95 p-2.5 shadow-lg dark:border-white/10 dark:bg-neutral-900/95">
-			<div className="mb-2 text-xs font-medium text-neutral-500 dark:text-neutral-400">
+		<div className="absolute right-3 top-14 z-20 w-44 rounded-xl border border-border bg-card/95 p-2.5 shadow-lg">
+			<div className="mb-2 text-xs font-medium text-muted-foreground">
 				{t("canvas.theme.title")}
 			</div>
 			{tokens.length === 0 ? (
-				<div className="text-xs text-neutral-400">{t("canvas.theme.empty")}</div>
+				<div className="text-xs text-muted-foreground">{t("canvas.theme.empty")}</div>
 			) : (
 				<div className="flex flex-col gap-1">
 					{tokens.map((token) => (
@@ -50,16 +50,16 @@ export function ThemePalette({ session }: { session: DesignSession }) {
 									themeTokenAttachment(session, token.name, `--color-${token.name}`),
 								)
 							}
-							className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-black/5 dark:hover:bg-white/10"
+							className="flex items-center gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-accent"
 						>
 							<span
-								className="size-4 shrink-0 rounded-full border border-black/10"
+								className="size-4 shrink-0 rounded-full border border-border"
 								style={{ background: token.value }}
 							/>
-							<span className="min-w-0 flex-1 truncate text-xs text-neutral-600 dark:text-neutral-300">
+							<span className="min-w-0 flex-1 truncate text-xs text-foreground">
 								{token.name}
 							</span>
-							<span className="truncate text-[10px] text-neutral-400">{token.value}</span>
+							<span className="truncate text-[10px] text-muted-foreground">{token.value}</span>
 						</button>
 					))}
 				</div>

@@ -4,16 +4,32 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
-/* 无限画布的点阵背景（浅/深色两套）。 */
-.vetd-canvas-bg {
-	background-color: #f4f4f5;
-	background-image: radial-gradient(circle, rgba(0, 0, 0, 0.12) 1px, transparent 1px);
-	background-size: 20px 20px;
+/* 插件 CSS 被构建包进以插件根为界的 @scope，宿主 <html data-mode="dark"> 在作用域之外，
+   任何祖先选择器（含 Tailwind dark: 变体）都匹配不到。明暗只能靠继承下来的宿主 CSS 变量，
+   这里把它们映射成语义色工具类：bg-primary / text-foreground / border-border … */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-border: var(--border);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
 }
-:root.dark .vetd-canvas-bg,
-[data-theme="dark"] .vetd-canvas-bg {
-	background-color: #18181b;
-	background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+
+/* 无限画布的点阵背景：底色与点阵都取宿主主题变量，自动跟随明暗。 */
+.vetd-canvas-bg {
+	background-color: var(--background, #f4f4f5);
+	background-image: radial-gradient(
+		circle,
+		color-mix(in oklab, var(--foreground, #000) 14%, transparent) 1px,
+		transparent 1px
+	);
+	background-size: 14px 14px;
 }
 
 /* frame「修改中」呼吸光效 */
@@ -23,9 +39,9 @@
 @keyframes vetd-breathe {
 	0%,
 	100% {
-		box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+		box-shadow: 0 0 0 2px color-mix(in oklab, var(--primary, #6366f1) 55%, transparent);
 	}
 	50% {
-		box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.12);
+		box-shadow: 0 0 0 5px color-mix(in oklab, var(--primary, #6366f1) 18%, transparent);
 	}
 }

@@ -338,7 +338,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				))}
 				{marquee ? (
 					<div
-						className="absolute border border-indigo-500 bg-indigo-500/10"
+						className="absolute border border-primary bg-primary/10"
 						style={{ left: marquee.x, top: marquee.y, width: marquee.width, height: marquee.height }}
 					/>
 				) : null}

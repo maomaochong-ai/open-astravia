@@ -32,7 +32,7 @@ export function CanvasTab() {
 	const [selectedPath, setSelectedPath] = useState<string | null>(null);
 	const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 	const [session, setSession] = useState<DesignSession | null>(null);
-	const [showPalette, setShowPalette] = useState(true);
+	const [showPalette, setShowPalette] = useState(false);
 	const [exporting, setExporting] = useState(false);
 	const [reloadNonce, setReloadNonce] = useState(0);
 	const bridgeRef = useRef(new BridgeHub());
@@ -161,14 +161,14 @@ export function CanvasTab() {
 	if (files.length === 0) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-				<span className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
+				<span className="text-sm font-medium text-foreground">
 					{t("canvas.empty.title")}
 				</span>
-				<p className="max-w-64 text-xs text-neutral-400">{t("canvas.empty.desc")}</p>
+				<p className="max-w-64 text-xs text-muted-foreground">{t("canvas.empty.desc")}</p>
 				<button
 					type="button"
 					onClick={() => void createDesign()}
-					className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-600"
+					className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
 				>
 					{t("canvas.empty.create")}
 				</button>
@@ -177,14 +177,15 @@ export function CanvasTab() {
 	}
 
 	return (
-		<div className="flex h-full flex-col">
-			<div className="flex items-center gap-2 border-b border-black/10 px-3 py-2 dark:border-white/10">
-				<label className="flex min-w-0 flex-1 items-center gap-2 text-xs text-neutral-500">
+		<div className="relative flex h-full flex-col">
+			{/* 沉浸式标题栏：浮在画布之上，底色由主题变量渐隐到透明。 */}
+			<div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 bg-gradient-to-b from-background via-background/80 to-transparent px-3 pb-6 pt-2">
+				<label className="pointer-events-auto ml-auto flex min-w-0 max-w-64 items-center gap-2 text-xs text-muted-foreground">
 					<span className="shrink-0">{t("canvas.picker.label")}</span>
 					<select
 						value={selectedPath ?? ""}
 						onChange={(event) => setSelectedPath(event.target.value)}
-						className="min-w-0 flex-1 truncate rounded-md border border-black/10 bg-transparent px-1.5 py-1 text-xs dark:border-white/10"
+						className="min-w-0 max-w-44 truncate rounded-md border-none bg-card px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
 					>
 						{files.map((file) => (
 							<option key={file} value={file}>
@@ -197,7 +198,7 @@ export function CanvasTab() {
 					type="button"
 					onClick={() => void createDesign()}
 					title={t("canvas.empty.create")}
-					className="rounded-md px-2 py-1 text-xs text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+					className="pointer-events-auto rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
 				>
 					＋
 				</button>
@@ -206,7 +207,7 @@ export function CanvasTab() {
 					onClick={() => setShowPalette((value) => !value)}
 					title={t("canvas.theme.title")}
 					aria-pressed={showPalette}
-					className={`rounded-md px-2 py-1 text-xs ${showPalette ? "text-indigo-500" : "text-neutral-500"} hover:bg-black/5 dark:hover:bg-white/10`}
+					className={`pointer-events-auto rounded-md px-2 py-1 text-xs ${showPalette ? "text-primary" : "text-muted-foreground"} hover:bg-accent`}
 				>
 					◐
 				</button>
@@ -214,7 +215,7 @@ export function CanvasTab() {
 					type="button"
 					disabled={exporting || phase.kind !== "ready"}
 					onClick={() => void runExport()}
-					className="rounded-md bg-indigo-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+					className="pointer-events-auto rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
 				>
 					{exporting ? t("canvas.export.running") : t("canvas.export")}
 				</button>
@@ -223,10 +224,10 @@ export function CanvasTab() {
 			<div className="relative min-h-0 flex-1">
 				{phase.kind === "preparing" ? (
 					<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-						<span className="size-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
-						<p className="max-w-72 whitespace-pre-wrap text-xs text-neutral-500">{progressText}</p>
+						<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+						<p className="max-w-72 whitespace-pre-wrap text-xs text-muted-foreground">{progressText}</p>
 						{phase.progress.phase === "installing" && phase.progress.outputTail ? (
-							<pre className="max-h-24 max-w-full overflow-hidden text-ellipsis rounded-md bg-black/5 p-2 text-left text-[10px] text-neutral-400 dark:bg-white/5">
+							<pre className="max-h-24 max-w-full overflow-hidden text-ellipsis rounded-md bg-accent p-2 text-left text-[10px] text-muted-foreground">
 								{phase.progress.outputTail}
 							</pre>
 						) : null}
@@ -235,13 +236,13 @@ export function CanvasTab() {
 				{phase.kind === "error" ? (
 					<div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
 						<span className="text-sm font-medium text-red-500">{t("engine.status.error")}</span>
-						<pre className="max-h-40 max-w-full overflow-auto whitespace-pre-wrap rounded-md bg-black/5 p-2 text-left text-[10px] text-neutral-500 dark:bg-white/5">
+						<pre className="max-h-40 max-w-full overflow-auto whitespace-pre-wrap rounded-md bg-accent p-2 text-left text-[10px] text-muted-foreground">
 							{phase.message}
 						</pre>
 						<button
 							type="button"
 							onClick={() => setReloadNonce((value) => value + 1)}
-							className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-600"
+							className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
 						>
 							{t("engine.status.retry")}
 						</button>

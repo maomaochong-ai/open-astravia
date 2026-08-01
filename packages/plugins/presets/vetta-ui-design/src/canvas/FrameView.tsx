@@ -149,7 +149,7 @@ export function FrameView({
 			>
 				<button
 					type="button"
-					className={`cursor-pointer truncate font-medium ${selected ? "text-indigo-500" : "text-neutral-500"}`}
+					className={`cursor-pointer truncate font-medium ${selected ? "text-primary" : "text-muted-foreground"}`}
 					onPointerDown={(event) => beginDrag(event, "move")}
 					onPointerMove={moveDrag}
 					onPointerUp={endDrag}
@@ -157,13 +157,13 @@ export function FrameView({
 				>
 					{frame.title || frame.id}
 				</button>
-				<span className="text-neutral-400">
+				<span className="text-muted-foreground">
 					{rect.width}×{rect.height}
 				</span>
 				{selected ? (
 					<button
 						type="button"
-						className="rounded-full bg-indigo-500 px-2 py-0.5 font-medium text-white shadow-sm hover:bg-indigo-600"
+						className="rounded-full bg-primary px-2 py-0.5 font-medium text-primary-foreground shadow-sm hover:opacity-90"
 						onPointerDown={(event) => event.stopPropagation()}
 						onClick={(event) => {
 							event.stopPropagation();
@@ -174,8 +174,8 @@ export function FrameView({
 					</button>
 				) : null}
 				{activity === "modifying" ? (
-					<span className="flex items-center gap-1 rounded-full bg-indigo-500/15 px-1.5 py-0.5 text-indigo-500">
-						<span className="size-1.5 animate-pulse rounded-full bg-indigo-500" />
+					<span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
+						<span className="size-1.5 animate-pulse rounded-full bg-primary" />
 						{t("canvas.frame.modifying")}
 					</span>
 				) : null}
@@ -188,7 +188,7 @@ export function FrameView({
 
 			<div
 				className={`relative h-full w-full overflow-hidden rounded-sm bg-white shadow-md ring-offset-0 ${
-					selected ? "ring-2 ring-indigo-500" : "ring-1 ring-black/10"
+					selected ? "ring-2 ring-primary" : "ring-1 ring-border"
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
 				<iframe
@@ -220,7 +220,7 @@ export function FrameView({
 						// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
 						<div
 							key={edge}
-							className={`absolute z-10 size-2 rounded-full border border-indigo-500 bg-white ${className}`}
+							className={`absolute z-10 size-2 rounded-full border border-primary bg-white ${className}`}
 							style={{ transform: `scale(${labelScale})` }}
 							onPointerDown={(event) => beginDrag(event, edge)}
 							onPointerMove={moveDrag}

@@ -57,7 +57,7 @@ function MiniCanvas({
 				{manifest.frames.map((frame) => (
 					<div
 						key={frame.id}
-						className="absolute overflow-hidden rounded-sm bg-white shadow ring-1 ring-black/10"
+						className="absolute overflow-hidden rounded-sm bg-white shadow ring-1 ring-border"
 						style={{
 							left: (frame.x - bounds.x) * scale,
 							top: (frame.y - bounds.y) * scale,
@@ -150,13 +150,13 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 	if (state.kind === "loading") {
 		return (
 			<div className="flex h-full items-center justify-center">
-				<span className="size-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+				<span className="size-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
 			</div>
 		);
 	}
 	if (state.kind === "invalid") {
 		return (
-			<div className="flex h-full items-center justify-center text-xs text-neutral-400">
+			<div className="flex h-full items-center justify-center text-xs text-muted-foreground">
 				{t("preview.invalid")}
 			</div>
 		);
@@ -166,10 +166,10 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 	return (
 		<div className="relative flex h-full flex-col gap-2 overflow-auto p-3">
 			<div className="flex items-center gap-2">
-				<span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-500">
+				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
 					{badge}
 				</span>
-				<span className="text-xs text-neutral-500">
+				<span className="text-xs text-muted-foreground">
 					{t("preview.frames.count", { count: state.manifest.frames.length })}
 				</span>
 				<span className="flex-1" />
@@ -177,7 +177,7 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 					<button
 						type="button"
 						onClick={openCanvas}
-						className="rounded-md bg-indigo-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-600"
+						className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
 					>
 						{t("preview.open")}
 					</button>
@@ -185,14 +185,14 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 					<button
 						type="button"
 						onClick={() => void runImport(state.packaged)}
-						className="rounded-md bg-indigo-500 px-2.5 py-1 text-xs font-medium text-white hover:bg-indigo-600"
+						className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
 					>
 						{t("preview.import")}
 					</button>
 				)}
 			</div>
 			{state.kind === "packaged" && !state.packaged.snapshotHtml ? (
-				<p className="text-xs text-neutral-400">{t("preview.snapshot.missing")}</p>
+				<p className="text-xs text-muted-foreground">{t("preview.snapshot.missing")}</p>
 			) : null}
 			<MiniCanvas
 				manifest={state.manifest}
@@ -201,7 +201,7 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 						return <SnapshotFrame html={state.packaged.snapshotHtml} frameId={frameId} scale={scale} />;
 					}
 					return (
-						<div className="flex h-full items-center justify-center text-[9px] text-neutral-400">
+						<div className="flex h-full items-center justify-center text-[9px] text-muted-foreground">
 							{frameId}
 						</div>
 					);

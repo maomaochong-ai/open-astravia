@@ -35,7 +35,7 @@ export function ScreenshotToolCard({ toolCall }: { toolCall: ToolCallView }) {
 	const path = resultPath(toolCall.result);
 	if (!path || toolCall.isError) {
 		return (
-			<div className="rounded-md border border-black/10 px-2 py-1 text-xs text-neutral-500 dark:border-white/10">
+			<div className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground">
 				{t("card.screenshot.title")}
 				{toolCall.isError ? " ✕" : "…"}
 			</div>
@@ -47,7 +47,7 @@ export function ScreenshotToolCard({ toolCall }: { toolCall: ToolCallView }) {
 			type="button"
 			title={t("card.screenshot.open")}
 			onClick={() => getPluginCtx().ui.previewImage({ id: path, url })}
-			className="group relative block overflow-hidden rounded-lg border border-black/10 dark:border-white/10"
+			className="group relative block overflow-hidden rounded-lg border border-border"
 		>
 			<img src={url} alt={t("card.screenshot.title")} className="max-h-48 max-w-72 object-contain" />
 			<span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent px-2 py-1 text-left text-[10px] text-white opacity-0 transition-opacity group-hover:opacity-100">

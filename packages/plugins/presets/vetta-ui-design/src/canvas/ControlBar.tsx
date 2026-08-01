@@ -30,7 +30,7 @@ function ToolButton({
 			aria-pressed={active}
 			onClick={onClick}
 			className={`flex size-8 items-center justify-center rounded-lg transition-colors ${
-				active ? "bg-indigo-500 text-white" : "text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+				active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
 			}`}
 		>
 			{children}
@@ -64,7 +64,7 @@ const icons = {
 export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset }: ControlBarProps) {
 	const { t } = useTranslation();
 	return (
-		<div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-black/10 bg-white/95 px-1.5 py-1 shadow-lg dark:border-white/10 dark:bg-neutral-900/95">
+		<div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg">
 			<ToolButton active={tool === "select"} title={t("controlbar.select")} onClick={() => onToolChange("select")}>
 				{icons.select}
 			</ToolButton>
@@ -74,13 +74,13 @@ export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset 
 			<ToolButton active={tool === "frame"} title={t("controlbar.frame")} onClick={() => onToolChange("frame")}>
 				{icons.frame}
 			</ToolButton>
-			<div className="mx-1 h-5 w-px bg-black/10 dark:bg-white/10" />
+			<div className="mx-1 h-5 w-px bg-border" />
 			<button
 				type="button"
 				title={t("controlbar.zoomOut")}
 				aria-label={t("controlbar.zoomOut")}
 				onClick={() => onZoomDelta(-1)}
-				className="flex size-8 items-center justify-center rounded-lg text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+				className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
 			>
 				<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 					<path d="M5 12h14" strokeLinecap="round" />
@@ -90,7 +90,7 @@ export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset 
 				type="button"
 				title={t("controlbar.zoomReset")}
 				onClick={onZoomReset}
-				className="min-w-12 rounded-lg px-1 py-1.5 text-center text-xs tabular-nums text-neutral-600 hover:bg-black/5 dark:text-neutral-300 dark:hover:bg-white/10"
+				className="min-w-12 rounded-lg px-1 py-1.5 text-center text-xs tabular-nums text-foreground hover:bg-accent"
 			>
 				{Math.round(zoom * 100)}%
 			</button>
@@ -99,7 +99,7 @@ export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset 
 				title={t("controlbar.zoomIn")}
 				aria-label={t("controlbar.zoomIn")}
 				onClick={() => onZoomDelta(1)}
-				className="flex size-8 items-center justify-center rounded-lg text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+				className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
 			>
 				<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 					<path d="M12 5v14M5 12h14" strokeLinecap="round" />
