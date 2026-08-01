@@ -10,13 +10,10 @@ import type { BridgeHub } from "./bridge-client";
  * 画不出来的部分被直接丢弃——这就是那种整窗口的撕裂闪烁。
  *
  * 两件事一起做：
- * 1. frame 渲染完成后截一张图，之后 iframe 收成 display:none、改用位图显示。
- *    双击进入检查、或代码热更新时再换回活体。
+ * 1. frame 渲染完成后截一张图，之后卸掉 iframe、改用位图显示。选中它、进入
+ *    检查态、或它的代码变了时再换回活体。
  * 2. 启动时不一次性把所有 iframe 挂上去：同时活着的最多 MOUNT_WINDOW 个，
  *    截完一个放行下一个。否则「全部活着」的那几秒照样撑爆 tile 显存。
- *
- * iframe 一旦挂上就不再卸载：卸载会丢掉 HMR 连接，frame 会永远停在旧位图上。
- * display:none 只停掉渲染与合成，文档与脚本照常活着。
  */
 
 /** 渲染信号到实际截图之间的静置时间：等字体、图片、布局都落定。 */
@@ -34,8 +31,11 @@ interface FrameRasterOptions {
 	bridge: BridgeHub;
 	/** 画布上的 frame id，按画布顺序——决定谁先挂载、先截图。 */
 	frameIds: readonly string[];
-	/** 当前处于检查态的 frame，必须保持活体。 */
-	enteredFrameId: string | null;
+	/**
+	 * 当前「在操作」的那个 frame，必须保持活体：检查态的，或单独选中的一个。
+	 * 多选时不算——那是在排版而不是在看内容，全转活体会把合成压力又拉回来。
+	 */
+	activeFrameId: string | null;
 }
 
 export interface FrameRasterState {
@@ -68,7 +68,7 @@ function nextPaint(): Promise<void> {
 	});
 }
 
-export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRasterOptions): FrameRasterState {
+export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRasterOptions): FrameRasterState {
 	const [rasters, setRasters] = useState<ReadonlyMap<string, string>>(new Map());
 	/** 等待截图的 frame：它们必须先保持活体，截完才收起。 */
 	const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
@@ -95,17 +95,17 @@ export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRaste
 	}, [frameIds]);
 
 	/**
-	 * 只有「还需要活体」的 frame 才挂 iframe：检查态、截图期间被强制拉活的、
-	 * 以及还没截到图的（含截图失败的，留活体是安全兜底）。截到图之后 iframe 直接
-	 * 卸掉——留着 display:none 的 iframe 等于把 N 个完整 React 应用连同它们的大图
-	 * 一直留在内存里，tile 显存照样不够用。
+	 * 只有「还需要活体」的 frame 才挂 iframe：当前在操作的那个（选中/检查态）、
+	 * 截图期间被强制拉活的、以及还没截到图的（含截图失败的，留活体是安全兜底）。
+	 * 其余的 iframe 直接卸掉——留着 display:none 的 iframe 等于把 N 个完整 React
+	 * 应用连同它们的大图一直留在内存里，tile 显存照样不够用。
 	 *
 	 * 卸载会丢掉 HMR 连接，所以源码变更改由画布侧的文件监听感知（见 DesignCanvas），
 	 * 变更的 frame 会重新变脏 → 重新挂载 → 重新截图。
 	 */
 	const mounted = useMemo(() => {
 		const allowed = new Set<string>();
-		if (enteredFrameId) allowed.add(enteredFrameId);
+		if (activeFrameId) allowed.add(activeFrameId);
 		for (const frameId of forced) allowed.add(frameId);
 		let budget = MOUNT_WINDOW;
 		for (const frameId of frameIds) {
@@ -116,12 +116,12 @@ export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRaste
 			budget -= 1;
 		}
 		return allowed;
-	}, [frameIds, rasters, dirty, enteredFrameId, forced]);
+	}, [frameIds, rasters, dirty, activeFrameId, forced]);
 
 	// 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
 	useEffect(() => {
 		if (capturingRef.current !== null) return;
-		const next = [...dirty].find((frameId) => frameId !== enteredFrameId && mounted.has(frameId));
+		const next = [...dirty].find((frameId) => frameId !== activeFrameId && mounted.has(frameId));
 		if (next === undefined) return;
 
 		capturingRef.current = next;
@@ -158,7 +158,7 @@ export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRaste
 				capturingRef.current = null;
 			}
 		};
-	}, [bridge, dirty, enteredFrameId, mounted]);
+	}, [bridge, dirty, activeFrameId, mounted]);
 
 	const rasterOf = useCallback((frameId: string): string | null => rasters.get(frameId) ?? null, [rasters]);
 
@@ -167,12 +167,12 @@ export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRaste
 	const liveSet = useMemo(() => {
 		const live = new Set<string>();
 		for (const frameId of mounted) {
-			if (frameId === enteredFrameId || forced.has(frameId) || dirty.has(frameId) || !rasters.has(frameId)) {
+			if (frameId === activeFrameId || forced.has(frameId) || dirty.has(frameId) || !rasters.has(frameId)) {
 				live.add(frameId);
 			}
 		}
 		return live;
-	}, [mounted, enteredFrameId, forced, dirty, rasters]);
+	}, [mounted, activeFrameId, forced, dirty, rasters]);
 
 	const liveRef = useRef(liveSet);
 	liveRef.current = liveSet;

@@ -69,6 +69,8 @@ const MAX_ZOOM = 4;
 const ZOOM_STEP = 1.2;
 /** Below this the marquee counts as a click, not a drag. */
 const MARQUEE_MIN = 4;
+/** sidecar 里的生成物，不参与「源码变了要重截」的判断。 */
+const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/"];
 
 function clampZoom(zoom: number): number {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
@@ -156,6 +158,17 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	useEffect(() => onFrameActivity((next) => setActivity(new Map(next))), []);
 
 
+	/**
+	 * 「在操作」的那个 frame 保持活体：单独选中一个就够，不必双击进检查态——
+	 * 选中通常就是要看它的真实渲染。多选不算，那是在排版，全转活体会把合成压力
+	 * 又拉回来。
+	 */
+	const activeFrameId = useMemo(() => {
+		if (enteredFrameId) return enteredFrameId;
+		const ids = selectedFrameIds(selection);
+		return ids.length === 1 ? ids[0] : null;
+	}, [enteredFrameId, selection]);
+
 	// 空闲 frame 用位图代替活体 iframe，画布上就不再有 N 套渲染树同时合成。
 	const orderedFrameIds = useMemo(
 		() => [...manifest.frames].sort(byCanvasOrder).map((frame) => frame.id),
@@ -168,7 +181,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		invalidate: invalidateRaster,
 		runLive,
 		refreshAll,
-	} = useFrameRasters({ bridge, frameIds: orderedFrameIds, enteredFrameId });
+	} = useFrameRasters({ bridge, frameIds: orderedFrameIds, activeFrameId });
 
 	refreshRef.current = refreshAll;
 
@@ -180,33 +193,67 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	 * 这里改成收到通知后比对各 frame 源码的 mtime，变了的才作废位图：它会重新
 	 * 挂载、加载新代码、渲染、重新截图。外部编辑器改的也一样能感知。
 	 */
-	const frameMtimesRef = useRef<Map<string, number>>(new Map());
+	const sourceMtimesRef = useRef<Map<string, number>>(new Map());
 	useEffect(() => {
 		const ctx = getPluginCtx();
-		const framesDir = `${session.dirPath}/frames`;
+		const root = session.dirPath;
 		let disposed = false;
+		const handles: { dispose(): void }[] = [];
 
 		const rescan = async (seedOnly: boolean): Promise<void> => {
-			for (const frame of session.manifest.frames) {
+			const files = await ctx.fs.listFilesRecursive(root).catch(() => []);
+			const changedFrames = new Set<string>();
+			let sharedChanged = false;
+
+			for (const file of files) {
 				if (disposed) return;
-				const stat = await ctx.fs.stat(`${session.dirPath}/${frame.file}`).catch(() => null);
+				const rel = file.relPath.replaceAll("\\", "/");
+				if (GENERATED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
+				const stat = await ctx.fs.stat(file.path).catch(() => null);
 				if (!stat) continue;
-				const previous = frameMtimesRef.current.get(frame.id);
-				frameMtimesRef.current.set(frame.id, stat.modifiedAt);
-				if (!seedOnly && previous !== undefined && previous !== stat.modifiedAt) invalidateRaster(frame.id);
+				const previous = sourceMtimesRef.current.get(rel);
+				sourceMtimesRef.current.set(rel, stat.modifiedAt);
+				if (seedOnly || previous === undefined || previous === stat.modifiedAt) continue;
+				const frameMatch = /^frames\/(.+)\.tsx$/.exec(rel);
+				// frame 自己的源码只影响它自己；theme.css、components/*、assets/* 这类
+				// 共享资源改一下可能影响任意 frame，无从判断依赖关系，只能全部重截。
+				if (frameMatch) changedFrames.add(frameMatch[1]);
+				else sharedChanged = true;
 			}
+
+			if (disposed) return;
+			if (sharedChanged) refreshAll();
+			else for (const frameId of changedFrames) invalidateRaster(frameId);
 		};
 
-		// 先建立基线，否则第一次通知会把所有 frame 都判成「变了」。
-		void rescan(true);
-		const handle = ctx.fs.watchDirectory(framesDir, (changedDir) => {
-			if (changedDir === framesDir) void rescan(false);
-		});
+		void (async () => {
+			// 先建立基线，否则第一次通知会把所有文件都判成「变了」。
+			await rescan(true);
+			if (disposed) return;
+			// fs.watch 没开 recursive，只能收到目录直属文件的变动：根目录管
+			// theme.css，子目录各自管自己的（frames/、components/、assets/…）。
+			const entries = await ctx.fs.readDir(root).catch(() => []);
+			const dirs = [
+				root,
+				...entries
+					.filter((entry) => entry.isDirectory && !GENERATED_PREFIXES.some((p) => `${entry.name}/` === p))
+					.map((entry) => entry.path),
+			];
+			if (disposed) return;
+			for (const dir of dirs) {
+				// onDirChanged 是全局事件、所有监听共用，且宿主回传的是被监听目录
+				// 本身的绝对路径（不是变更文件），所以只能靠它筛掉别处的通知。
+				handles.push(ctx.fs.watchDirectory(dir, (changedDir) => {
+					if (dirs.some((watched) => watched === changedDir)) void rescan(false);
+				}));
+			}
+		})();
+
 		return () => {
 			disposed = true;
-			handle.dispose();
+			for (const handle of handles) handle.dispose();
 		};
-	}, [session, invalidateRaster]);
+	}, [session, invalidateRaster, refreshAll]);
 
 	const exitInspect = useCallback(
 		(frameId: string | null) => {
