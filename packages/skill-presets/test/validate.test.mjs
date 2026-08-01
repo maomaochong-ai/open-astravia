@@ -270,3 +270,90 @@ describe("bundle members", () => {
 		).toEqual([]);
 	});
 });
+
+describe("detail 字段白名单", () => {
+	it("顶层写错键名报错——服务端只会静默丢弃它", () => {
+		const errors = validateUploadInput(baseMcpInput({ detail: { ...baseMcpInput().detail, long_description: "x" } }));
+
+		expect(errors.some((e) => e.includes("detail.long_description 不是合法字段"))).toBe(true);
+	});
+
+	it("译文块写错键名同样报错", () => {
+		const errors = validateUploadInput(
+			baseMcpInput({ detail: { ...baseMcpInput().detail, i18n: { en: { title: "x" } } } }),
+		);
+
+		expect(errors.some((e) => e.includes("detail.i18n.en.title 不是合法字段"))).toBe(true);
+	});
+
+	it("译文块不接受 author/license/icon（这些不按语言区分）", () => {
+		const errors = validateUploadInput(
+			baseMcpInput({ detail: { ...baseMcpInput().detail, i18n: { en: { author: "Me" } } } }),
+		);
+
+		expect(errors.some((e) => e.includes("detail.i18n.en.author"))).toBe(true);
+	});
+
+	it("合法字段全集不报错", () => {
+		const errors = validateUploadInput(
+			baseMcpInput({
+				detail: {
+					...baseMcpInput().detail,
+					license: "MIT",
+					icon: "",
+					tags: ["a"],
+					i18n: { en: { name: "N", description: "D", tags: ["a"], content: "C" } },
+				},
+			}),
+		);
+
+		expect(errors).toEqual([]);
+	});
+});
+
+describe("i18n 的 locale 键", () => {
+	function withLocale(locale) {
+		return validateUploadInput(
+			baseMcpInput({ detail: { ...baseMcpInput().detail, i18n: { [locale]: { name: "N" } } } }),
+		);
+	}
+
+	it("带地区后缀的键报错并给出改法", () => {
+		// 客户端界面语言只有基语言；en-US 在包内也有 en 译文时会被整块忽略
+		const errors = withLocale("en-US");
+
+		expect(errors.some((e) => e.includes('改成 "en"'))).toBe(true);
+	});
+
+	it("下划线形式同样拦下", () => {
+		expect(withLocale("zh_CN").some((e) => e.includes("地区后缀"))).toBe(true);
+	});
+
+	it("大写键报错", () => {
+		expect(withLocale("EN").some((e) => e.includes("必须小写"))).toBe(true);
+	});
+
+	it("基语言键通过", () => {
+		expect(withLocale("ja")).toEqual([]);
+	});
+});
+
+describe("plugin 的 version", () => {
+	it("传了就报错——服务端恒取 plugin.json 的版本", () => {
+		const errors = validateUploadInput(
+			{ type: "plugin", package_path: "/tmp/a.zip", version: "2.0.0", detail: baseMcpInput().detail },
+			alwaysExists,
+		);
+
+		expect(errors.some((e) => e.includes("plugin 的版本以包内 plugin.json"))).toBe(true);
+	});
+
+	it("skill 传 version 正常", () => {
+		const errors = validateUploadInput(
+			{ type: "skill", package_path: "/tmp/a.zip", version: "2.0.0", detail: baseMcpInput().detail },
+			alwaysExists,
+		);
+
+		expect(errors).toEqual([]);
+	});
+});

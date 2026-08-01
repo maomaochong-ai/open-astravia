@@ -10,7 +10,7 @@
   },
   "publish-ability": {
     "name": "publish-ability",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "source": "builtin",
     "enabled": true,
     "type": "skill",

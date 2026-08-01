@@ -20,6 +20,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **更新就绪不再自动弹全局对话框**：后台下载完成（`phase === "ready"`）时只保留侧边栏底部的更新提示项，不再打断当前操作。设置 → 更新里点「立即重启」仍会打开重启确认对话框。
+
+- **内置 Skill「发布能力」提交前会读安装包核对 payload（2.1.0）**：新增 `scripts/package-inspect.mjs`（零依赖手写 zip / tar.gz 解析），`--dry-run` 与正式提交都会打开 `.zip` / `.tar.gz`，用 `plugin.json`、`locales/*.json`、`SKILL.md` frontmatter 反查 payload。拦下的是一类服务端不会报错、装完切语言才看得见的问题：① 译文块的 locale 键带地区后缀（`en-US`）——客户端界面语言只有基语言，包内若也有 `locales/en.json`，两块并存且只命中包内那份，作者写的正文/头图整块不显示；② 键与包内 locale 文件名不一致；③ 给包的 `defaultLocale` 又写一份译文块；④ `detail` 与译文块里的未知字段（`title` / `long_description` 之类），服务端 `json.Unmarshal` 会静默丢弃；⑤ plugin 传了不会生效的 `version`。`slug` 被忽略、包内 `vetta.json` 被 `detail` 整体顶替、手写译文与包内不一致等改为 warning 随结果返回。同时 `publish.mjs` 不再重复发送平铺的 `tags` 表单字段（skill/scene 的上传路径根本不读它，其余形态也会被 `detail.tags` 覆盖），`payload.md` / `SKILL.md` 补齐 locale 键约定、`i18n` 对已存行是整体替换、以及各字段的优先级链。
+
 - **HTML 预览去嵌套工具条**：内置 HTML 预览改为纯 iframe 渲染表面，去掉内部「预览 | 代码」分段。源码统一走文件编辑器的「编辑」模式；HTML/Markdown 打开默认进入预览，纯文本仍默认编辑且不再显示无效的编辑/预览切换。
 - **文件编辑器语法高亮与扩展名映射完善**：CodeMirror 高亮主题提高 HTML/XML 等标记语言对比度（标签名 / 属性 / 属性值 / 尖括号独立着色）；扩展名→语言映射与只读 CodePreview（Shiki）共用，覆盖 vue/svelte/xhtml/xml 等，并新增 `@codemirror/lang-xml`。
 - **文件编辑器语法配色可扩展（VS Code 风格）**：语法色全部走 `--syntax-*` CSS 变量，默认对齐 VS Code Dark+ / Light+；主题只需覆盖对应变量即可换色，无需改编辑器代码。
@@ -29,6 +33,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **系统插件图标改用包内 PNG**：office-viewer、image-gen、svg-viewer、media-viewer、chart-renderer、plugin-workbench、vetta-actions、git 的 manifest 图标由 Iconify 名换成包内 `icon.png`。
 - **Git 插件不再限定 coding 工作模式**：manifest 去掉 `agent_mode: ["coding"]`（agent_mode 轴改为通用）。面板与 turn 卡的显隐仍只看当前 cwd 是不是 git 工作区（`git rev-parse --is-inside-work-tree`），非仓库目录照旧不占标签位。
 - **「插件工作台」更名为「制作插件」**：插件名、活动面板标题、Activity Tab、输入栏 mode 开关及配套 skill / prompt 文案统一改名（英文 `Create Plugin`）。
+
+### Fixed
+
+- **macOS 经典侧边栏深色下的选中背景会被背后桌面「吃掉」半边**：侧边栏底是半透明 `--background` 叠原生 vibrancy，底色跟着背后桌面的明暗走，而主题的 `--accent`（深色 `rgb(41, 41, 43)`）是不透明实色纹丝不动；背后亮的那一段底色被抬得比选中块还亮，高亮与底色的明暗关系当场反转，看着就像那半边的选中背景没了。把浅色早先单独做的半透明 `--accent` 覆盖提升为不分明暗，选中始终是「在当前合成底色上再压 10% 前景色」。导航指示条、项目行/会话行选中与 `hover:bg-accent/50` 一起生效；深色下叠出来的颜色与原先的 `rgb(41, 41, 43)` 基本一致，纯色背景下观感不变。
 
 ### Removed
 
@@ -87,6 +95,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **下载管理页面**：`/downloads` 路由、`DownloadsPage` / `DownloadsPageView`、`downloads-atoms`、设置 popover 的「下载管理」入口与角标，以及 `appShell.routeTitles.downloads` / 插件导航目标 `downloads` 一并删除；`ThemeRouteArea` 与 `ThemeNavigationTarget` 不再有 `downloads`。下载能力底座保留：主进程 `DesktopDownloadService`、`vetta:downloads:*` IPC、`window.vetta.downloads`、`vetta.domain.download` 能力、插件 `internalCapabilities.downloads` 与取消下载审批 UI 均不受影响，用户侧只是没有查看界面。已有 `userData/downloads/downloads.json` 不做清理。
 
 ### Fixed
+
+- **消息气泡里的 skill 胶囊退化成 slug**：输入栏刚插入时是「图标 + 别名」（如「发布能力」），消息发出后气泡里却变成 `publish-ability` + 通用魔法棒图标。根因是文本流里只留 `@skill:<slug>`（软引用的权威形态，模型要按真实 name 查 skill），别名与图标只挂在输入框的 `SkillTokenNode` 上，气泡端无从得知。新增 `lib/skill-token-meta` 承载解析口径（`skills.list()` 给别名，市场目录 / 内置静态资源给图标，与命令区同源），气泡通过 `TextBlockView` 的 `inlineTokens.getSkill` 回查。同一根因导致的**重编辑回填后输入框胶囊也退化**一并修复：`SkillTokenNode` 的胶囊改为在节点缺少别名/图标时回查。查不到（未安装 / 已卸载）时回退 slug + 默认图。
+
+- **能力广场的双语文案只显示默认语言**：两处独立缺陷叠加。① **locale 键口径不一**：admin 与分类译名写的是 `zh-CN` / `en-US`（服务端 `SupportedLocales`），插件包 `locales/*.json` 解析出的是 `zh` / `en`，而界面语言只有 `zh` / `en`，客户端此前精确匹配 `i18n[locale]`，admin 录入的译文永远命中不到。归一改在读侧（`pickLocaleValue`：精确 → 基语言 → 同基语言任一地区键），存量数据无需迁移，两条写入路径都生效。② **列表链路根本不解析译文**：`build-ability-items` 只读服务端投影到顶层的默认语言 `name`/`description`/`tags`，卡片标题、简介、标签、搜索词与详情页头部因此不跟随语言（只有正文/头图/元信息跟随）。改为在 `useAbilitiesModel` 组装入口先按当前语言归一市场行（`localizeMarketAbility`），四种 type 的组装函数保持纯函数、签名不变。另：能力标签现在支持按语言覆盖（`detail.i18n[locale].tags`，整体替换）。
 
 - **活动面板图片预览操作别扭**：内置 `media-viewer` 原先空格+拖才平移、Ctrl/Cmd+滚轮才缩放、适配只按宽度算导致竖图被裁切，按钮缩放也不绕中心。改为常见看图交互：滚轮对准光标缩放、左键直接拖移、双击在「适应窗口」与 1:1（已是 1:1 则 2×）间切换、+/- / 0 快捷键、宽高同时适配并限制平移不把图拖丢、工具栏改图标。
 - **活动面板图片左键拖不动**：两处叠加——① 平移开关挂在 React `isPanning` 上，`pointermove` 在重渲染前全部被丢掉；② `clampOffset` 在图未超出视口时强制居中，拖一点就弹回。现改为 document 级 pointer 监听 + ref，并放宽边界为「保留一截在视野内」而非强制居中。
