@@ -22,6 +22,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **Git 插件不再限定 coding 工作模式**：manifest 去掉 `agent_mode: ["coding"]`（agent_mode 轴改为通用）。面板与 turn 卡的显隐仍只看当前 cwd 是不是 git 工作区（`git rev-parse --is-inside-work-tree`），非仓库目录照旧不占标签位。
 - **「插件工作台」更名为「制作插件」**：插件名、活动面板标题、Activity Tab、输入栏 mode 开关及配套 skill / prompt 文案统一改名（英文 `Create Plugin`）。
 
+### Fixed
+
+- **macOS 经典侧边栏深色下的选中背景会被背后桌面「吃掉」半边**：侧边栏底是半透明 `--background` 叠原生 vibrancy，底色跟着背后桌面的明暗走，而主题的 `--accent`（深色 `rgb(41, 41, 43)`）是不透明实色纹丝不动；背后亮的那一段底色被抬得比选中块还亮，高亮与底色的明暗关系当场反转，看着就像那半边的选中背景没了。把浅色早先单独做的半透明 `--accent` 覆盖提升为不分明暗，选中始终是「在当前合成底色上再压 10% 前景色」。导航指示条、项目行/会话行选中与 `hover:bg-accent/50` 一起生效；深色下叠出来的颜色与原先的 `rgb(41, 41, 43)` 基本一致，纯色背景下观感不变。
+
 ### Removed
 
 - **系统插件「我能帮你」(guiding-words) 移除**：不再随 App 构建/打包，preset 源码目录一并删除。
