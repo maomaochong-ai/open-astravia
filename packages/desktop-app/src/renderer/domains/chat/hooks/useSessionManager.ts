@@ -13,6 +13,7 @@ import {
 	activeSessionAtom,
 	activeSessionStreamingAtom,
 	activeToolNamesAtom,
+	adoptExistingSessionInputDraft,
 	appshotAttachmentAtom,
 	attachedImagesAtom,
 	type BackgroundTask,
@@ -20,6 +21,7 @@ import {
 	batchProjectsAtom,
 	type ChatMessage,
 	chatMessagesAtom,
+	claimNewSessionInputDraft,
 	contextUsageAtom,
 	conversationBucketCwd,
 	currentScenarioAtom,
@@ -34,6 +36,7 @@ import {
 	lastTurnUsageAtom,
 	mentionedFilesAtom,
 	modelSupportsImagesAtom,
+	newSessionInputDraftKey,
 	openSessionFnRef,
 	pendingMessageEditAtom,
 	pluginInputActionsAtom,
@@ -41,6 +44,7 @@ import {
 	promptPredictingAtom,
 	promptSuggestionsAtom,
 	reasoningByModelAtom,
+	recordSentInputAndClearDraft,
 	type SessionExecutionMode,
 	type SubagentTask,
 	selectedModelAtom,
@@ -129,11 +133,10 @@ export function useSessionManager(): SessionManagerResult {
 	const [activeSession, setActiveSession] = useAtom(activeSessionAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
 	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
-	const setInputValue = useSetAtom(inputValueAtom);
 	const [attachedImages, setAttachedImages] = useAtom(attachedImagesAtom);
-	const [selectedSkill, setSelectedSkill] = useAtom(selectedSkillAtom);
+	const selectedSkill = useAtomValue(selectedSkillAtom);
 	const [mentionedFiles, setMentionedFiles] = useAtom(mentionedFilesAtom);
-	const [appshotAttachment, setAppshotAttachment] = useAtom(appshotAttachmentAtom);
+	const appshotAttachment = useAtomValue(appshotAttachmentAtom);
 	// 发送时直接读取输入 atom 快照，避免 useSessionManager 订阅每次按键。
 	// 这个 hook 同时挂在根布局和页面中；订阅会让这些宿主随输入重渲染整棵子树。
 	const attachedImagesRef = useRef(attachedImages);
@@ -474,6 +477,14 @@ export function useSessionManager(): SessionManagerResult {
 				};
 				setActiveSession(sessionInfo);
 				activeSessionRef.current = sessionInfo;
+			}
+
+			// 输入草稿按 sessionPath 隔离：打开已有会话装入该会话草稿；
+			// 新建会话保留工作集（随即 sendMessage），只把归属从 new:cwd 迁到真实 path。
+			if (sessionPath === undefined) {
+				claimNewSessionInputDraft(cachedKey, newSessionInputDraftKey(cwd));
+			} else {
+				adoptExistingSessionInputDraft(cachedKey);
 			}
 
 			// ─── Subscribe to live session events ───
@@ -1019,11 +1030,10 @@ export function useSessionManager(): SessionManagerResult {
 				}
 			}
 			if (!hasOverride) {
-				setInputValue("");
+				// 记入本作用域历史并清草稿（含 input / skill / appshot 工作集与 map 条目）。
+				recordSentInputAndClearDraft(rawText);
 				setAttachedImages([]);
-				setSelectedSkill(null);
 				setMentionedFiles([]);
-				setAppshotAttachment(null);
 			}
 			// 最后一条用户消息重编辑：提交时先中止当前生成，再删除旧消息及其回复子树；
 			// 随后的正常 prompt 从原 parent 继续，因此不会创建会话内分支。
@@ -1273,11 +1283,8 @@ export function useSessionManager(): SessionManagerResult {
 			// sendMessage 身份在打字时稳定，避免下游
 			// Virtuoso footer 重挂载（footer 内的插件 turn 卡会因此闪烁/重查）。
 			activeSession,
-			setInputValue,
 			setAttachedImages,
-			setSelectedSkill,
 			setMentionedFiles,
-			setAppshotAttachment,
 			setChatMessages,
 			loadSessions,
 			ensureLocalSession,

@@ -376,11 +376,9 @@ export function useUserMessageModel({
 			// Drop any in-progress re-edit before switching sessions — pending entryIds
 			// belong to the source session and cannot be replaced after opening the fork.
 			const store = getDefaultStore();
+			// 不在此处清输入：openSession 会落盘当前会话草稿再装入 fork 会话草稿，
+			// 避免误把父会话未发送内容写成空并丢掉。
 			store.set(pendingMessageEditAtom, null);
-			store.set(inputValueAtom, "");
-			store.set(selectedSkillAtom, null);
-			store.set(mentionedFilesAtom, []);
-			store.set(appshotAttachmentAtom, null);
 
 			const runtimeId = activeSession.runtimeId;
 			const cwd = activeSession.cwd;

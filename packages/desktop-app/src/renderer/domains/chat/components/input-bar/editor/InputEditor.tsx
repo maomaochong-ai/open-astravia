@@ -6,6 +6,7 @@ import { PlainTextPlugin } from "@lexical/react/LexicalPlainTextPlugin";
 import { memo, type MouseEvent } from "react";
 import { INPUT_EDITOR_NODES } from "./nodes";
 import { EditorHandlePlugin } from "./plugins/EditorHandlePlugin";
+import { HistoryNavPlugin } from "./plugins/HistoryNavPlugin";
 import { PasteImagePlugin } from "./plugins/PasteImagePlugin";
 import { SubmitPlugin } from "./plugins/SubmitPlugin";
 import { TriggerPlugin } from "./plugins/TriggerPlugin";
@@ -70,6 +71,7 @@ export const InputEditor = memo(function InputEditor({
 			<HistoryPlugin />
 			<EditorHandlePlugin editable={editable} />
 			<ValueBridgePlugin />
+			<HistoryNavPlugin />
 			<TriggerPlugin onTriggerChange={onTriggerChange} />
 			<SubmitPlugin onEnter={onEnter} />
 			<PasteImagePlugin />
