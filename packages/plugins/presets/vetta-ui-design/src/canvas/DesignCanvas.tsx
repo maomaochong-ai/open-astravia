@@ -85,6 +85,17 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		[bridge],
 	);
 
+	// 切到托手工具：清空选中（含 DOM 选中态），托手期间不产生任何选中。
+	useEffect(() => {
+		if (tool !== "hand") return;
+		setEnteredFrameId((entered) => {
+			if (entered) bridge.setMode(entered, "off");
+			return null;
+		});
+		setSelection(null);
+		setAskFrameId(null);
+	}, [tool, bridge]);
+
 	useEffect(() => {
 		bridge.start({
 			onSelected: (frameId, payload) => {
@@ -294,7 +305,9 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	return (
 		<div
 			ref={containerRef}
-			className="relative h-full w-full overflow-hidden outline-none vetd-canvas-bg"
+			// select-none：画布外壳（frame 标题、尺寸标注等）不参与文本选择，
+			// 否则拖动平移会把它们刷成蓝色高亮，看着像选中了 frame。
+			className="relative h-full w-full select-none overflow-hidden outline-none vetd-canvas-bg"
 			style={{ cursor }}
 			tabIndex={-1}
 			role="application"
@@ -344,8 +357,9 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				) : null}
 			</div>
 
-			{/* Pan shield: while space is held, capture drags above every frame (Figma behavior). */}
-			{spaceHeld && tool !== "hand" ? <div className="absolute inset-0 z-10" style={{ cursor: "grab" }} /> : null}
+			{/* Pan shield: 托手工具或按住空格时，盖住所有 frame 接管拖动（Figma 行为），
+			    frame 内起手也只平移、不选中。 */}
+			{panActive ? <div className="absolute inset-0 z-10" style={{ cursor: "grab" }} /> : null}
 
 			{askAnchor && selection ? (
 				<AskVettaPopover

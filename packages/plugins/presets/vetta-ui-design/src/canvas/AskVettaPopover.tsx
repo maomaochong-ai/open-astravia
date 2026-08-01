@@ -29,7 +29,8 @@ export function AskVettaPopover({ x, y, busy, onSend, onClose }: AskVettaPopover
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the popover
 		<div
-			className="absolute z-30 w-72 rounded-xl border border-border bg-card/95 p-2 shadow-xl"
+			// 画布根节点是 select-none，浮层里要能正常选中/编辑文本，这里放开。
+			className="absolute z-30 w-72 select-text rounded-xl border border-border bg-card/95 p-2 shadow-xl"
 			style={{ left: Math.max(8, x), top: Math.max(8, y) }}
 			onPointerDown={(event) => event.stopPropagation()}
 			onPointerMove={(event) => event.stopPropagation()}

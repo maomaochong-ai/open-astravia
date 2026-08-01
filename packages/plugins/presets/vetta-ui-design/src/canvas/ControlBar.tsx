@@ -64,7 +64,15 @@ const icons = {
 export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset }: ControlBarProps) {
 	const { t } = useTranslation();
 	return (
-		<div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg">
+		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar
+		<div
+			className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
+			// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
+			// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
+			onPointerDown={(event) => event.stopPropagation()}
+			onPointerMove={(event) => event.stopPropagation()}
+			onPointerUp={(event) => event.stopPropagation()}
+		>
 			<ToolButton active={tool === "select"} title={t("controlbar.select")} onClick={() => onToolChange("select")}>
 				{icons.select}
 			</ToolButton>
