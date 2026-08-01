@@ -27,6 +27,8 @@ interface FrameViewProps {
 	activity: FrameActivity | undefined;
 	onSelect(additive: boolean): void;
 	onEnter(): void;
+	/** 右键：坐标是视口坐标（clientX/Y），由画布换算成容器内坐标定位菜单。 */
+	onContextMenu(clientX: number, clientY: number): void;
 	/** Moves are owned by the canvas so every selected frame travels together. */
 	onMoveStart(additive: boolean): void;
 	onMoveDelta(dx: number, dy: number): void;
@@ -61,6 +63,7 @@ export function FrameView({
 	activity,
 	onSelect,
 	onEnter,
+	onContextMenu,
 	onMoveStart,
 	onMoveDelta,
 	onMoveEnd,
@@ -95,6 +98,8 @@ export function FrameView({
 	};
 
 	const beginDrag = (event: ReactPointerEvent, edge: DragState["edge"]): void => {
+		// 只认左键：右键要留给上下文菜单，捕获指针会把后续事件都劫走。
+		if (event.button !== 0) return;
 		if (!interactive || entered) return;
 		event.preventDefault();
 		event.stopPropagation();
@@ -172,10 +177,19 @@ export function FrameView({
 	];
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: canvas manipulation surface
 		<div
 			className="absolute"
 			style={{ left: rect.x, top: rect.y, width: rect.width, height: rect.height }}
 			data-vetd-frame={frame.id}
+			// 标题栏、遮罩、手柄都在这层里，右键落在 frame 任意处都算命中。检查态下
+			// 事件被跨源 iframe 吃掉，那时本来就该用 iframe 自己的菜单。
+			onContextMenu={(event) => {
+				if (!interactive) return;
+				event.preventDefault();
+				event.stopPropagation();
+				onContextMenu(event.clientX, event.clientY);
+			}}
 		>
 			{/* Title bar (inverse-scaled so it stays readable at any zoom). */}
 			<div

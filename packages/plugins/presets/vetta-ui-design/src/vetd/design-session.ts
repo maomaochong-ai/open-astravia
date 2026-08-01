@@ -204,6 +204,17 @@ export class DesignSession {
 		return id;
 	}
 
+	/**
+	 * 画布右键「删除 Frame」：sidecar 里的 tsx 才是真相，删掉源码后 reconcile
+	 * 自然会把它从 manifest 里摘掉，不必单独改 manifest。
+	 */
+	async deleteFrame(id: string): Promise<void> {
+		const frame = this.manifest.frames.find((entry) => entry.id === id);
+		if (!frame) return;
+		await this.ctx.fs.delete(`${this.dirPath}/${frame.file}`);
+		await this.reconcile();
+	}
+
 	async readThemeCss(): Promise<string> {
 		try {
 			return (await this.ctx.fs.readFile(`${this.dirPath}/theme.css`)).content;

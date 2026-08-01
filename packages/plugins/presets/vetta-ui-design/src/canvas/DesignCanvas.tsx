@@ -16,6 +16,7 @@ import { type AskShot, buildAskPrompt } from "./ask-vetta";
 import { AskVettaButton } from "./AskVettaButton";
 import { AskVettaPopover } from "./AskVettaPopover";
 import { BridgeHub, type SelectedElementPayload } from "./bridge-client";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import {
 	type FrameActivity,
@@ -23,6 +24,7 @@ import {
 	onFrameActivity,
 	requestMockupExport,
 } from "./design-runtime";
+import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { useFrameRasters } from "./frame-raster";
 import { FrameView } from "./FrameView";
 
@@ -71,6 +73,8 @@ const ZOOM_STEP = 1.2;
 const MARQUEE_MIN = 4;
 /** sidecar 里的生成物，不参与「源码变了要重截」的判断。 */
 const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/"];
+/** 右键「复制为图片」的截图倍率：粘到聊天/文档里要经得起看，1 倍太糊。 */
+const COPY_PIXEL_RATIO = 2;
 
 function clampZoom(zoom: number): number {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
@@ -108,6 +112,9 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const [marquee, setMarquee] = useState<Rect | null>(null);
 	const [askOpen, setAskOpen] = useState(false);
 	const [askBusy, setAskBusy] = useState(false);
+	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
+	/** 待确认删除的 frame id，非 null 时显示二次确认。 */
+	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [moveDelta, setMoveDelta] = useState<{ dx: number; dy: number } | null>(null);
 	const panRef = useRef<{ pointerId: number; startX: number; startY: number; origin: Viewport } | null>(null);
 	const marqueeRef = useRef<{ pointerId: number; startX: number; startY: number; mode: "create" | "select" } | null>(
@@ -302,6 +309,25 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		});
 	}, []);
 
+	/**
+	 * 右击 frame 弹菜单。菜单里的动作（让 Vetta 调整 / 导出渲染图）按当前选中执行，
+	 * 所以右击一个没选中的 frame 要先把它选上——否则动作会落在别处，或者无从执行。
+	 * 已在选中集合里的则保持原选中（含 DOM 选中态），多选右击不打散分组。
+	 */
+	const openFrameMenu = useCallback(
+		(frameId: string, clientX: number, clientY: number): void => {
+			containerRef.current?.focus();
+			if (enteredFrameId && enteredFrameId !== frameId) exitInspect(enteredFrameId);
+			setSelection((current) =>
+				selectedFrameIds(current).includes(frameId) ? current : { kind: "frames", ids: [frameId] },
+			);
+			setAskOpen(false);
+			const bounds = containerRef.current?.getBoundingClientRect();
+			setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
+		},
+		[enteredFrameId, exitInspect],
+	);
+
 	// Space → temporary hand tool; Esc at canvas level clears selection.
 	useEffect(() => {
 		const container = containerRef.current;
@@ -392,8 +418,15 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 
 	const panActive = tool === "hand" || spaceHeld;
 
+	// 托手/空格态下右键菜单不该继续挂着：那时 frame 上的右键本来就不响应。
+	useEffect(() => {
+		if (panActive) setMenuAnchor(null);
+	}, [panActive]);
+
 	const onBackgroundPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
 		containerRef.current?.focus();
+		// 右键交给上下文菜单（空白处则什么都不做），别捕获指针起手平移/框选。
+		if (event.button !== 0) return;
 		if (panActive) {
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 			panRef.current = {
@@ -611,6 +644,34 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		});
 	};
 
+	/** 菜单「复制为图片」：按 2 倍截一张，走宿主原生剪贴板。 */
+	const copyFrameImage = (frameId: string): void => {
+		setMenuAnchor(null);
+		void (async () => {
+			try {
+				const dataUrl = await captureFaithfully(frameId, { pixelRatio: COPY_PIXEL_RATIO });
+				await getPluginCtx().ui.copyImage(dataUrl);
+				notify({ message: t("canvas.frame.copyImage.done"), variant: "success", durationMs: 3000 });
+			} catch (error) {
+				notify({ message: t("canvas.frame.copyImage.failed"), error });
+			}
+		})();
+	};
+
+	const deleteFrame = (frameId: string): void => {
+		setDeletingId(null);
+		if (enteredFrameId === frameId) exitInspect(frameId);
+		setSelection((current) => {
+			const ids = selectedFrameIds(current).filter((id) => id !== frameId);
+			return ids.length > 0 ? { kind: "frames", ids } : null;
+		});
+		void session.deleteFrame(frameId).catch((error: unknown) => {
+			notify({ message: t("canvas.frame.delete.failed"), error });
+		});
+	};
+
+	const deletingFrame = deletingId ? manifest.frames.find((frame) => frame.id === deletingId) : undefined;
+
 	const cursor = panActive ? "grab" : tool === "frame" ? "crosshair" : "default";
 
 	return (
@@ -622,6 +683,12 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 			style={{ cursor }}
 			tabIndex={-1}
 			role="application"
+			// 画布是自己的操作面，任何位置都不弹浏览器原生菜单；frame 上的右键由
+			// FrameView 拦截并上报（它会 stopPropagation，到不了这里）。
+			onContextMenu={(event) => {
+				event.preventDefault();
+				setMenuAnchor(null);
+			}}
 			onPointerDown={onBackgroundPointerDown}
 			onPointerMove={onBackgroundPointerMove}
 			onPointerUp={onBackgroundPointerUp}
@@ -663,6 +730,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 							setEnteredFrameId(frame.id);
 							bridge.setMode(frame.id, "inspect");
 						}}
+						onContextMenu={(clientX, clientY) => openFrameMenu(frame.id, clientX, clientY)}
 						onMoveStart={(additive) => {
 							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
 							beginMove(frame.id, additive);
@@ -683,6 +751,41 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 			{/* Pan shield: 托手工具或按住空格时，盖住所有 frame 接管拖动（Figma 行为），
 			    frame 内起手也只平移、不选中。 */}
 			{panActive ? <div className="absolute inset-0 z-10" style={{ cursor: "grab" }} /> : null}
+
+			{menuAnchor ? (
+				<FrameContextMenu
+					anchor={menuAnchor}
+					onAsk={() => {
+						setMenuAnchor(null);
+						setAskOpen(true);
+					}}
+					onCopyImage={() => copyFrameImage(menuAnchor.frameId)}
+					onExportMockup={() => {
+						setMenuAnchor(null);
+						openExport();
+					}}
+					onDelete={() => {
+						setDeletingId(menuAnchor.frameId);
+						setMenuAnchor(null);
+					}}
+					onClose={() => setMenuAnchor(null)}
+				/>
+			) : null}
+
+			{deletingFrame ? (
+				<ConfirmDialog
+					title={t("canvas.frame.delete.title")}
+					description={t("canvas.frame.delete.desc", {
+						name: deletingFrame.title || deletingFrame.id,
+						file: deletingFrame.file,
+					})}
+					confirmLabel={t("canvas.frame.delete.confirm")}
+					cancelLabel={t("canvas.frame.delete.cancel")}
+					danger
+					onConfirm={() => deleteFrame(deletingFrame.id)}
+					onCancel={() => setDeletingId(null)}
+				/>
+			) : null}
 
 			{askOpen ? (
 				<AskVettaPopover
