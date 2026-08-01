@@ -169,6 +169,8 @@ export interface AbilitiesModel {
 	edit: (item: McpAbility) => void;
 	revokeAuthorization: (item: McpAbility) => void;
 	setPluginPermission: (item: PluginAbility, permission: PluginPermission, granted: boolean) => void;
+	/** 装完那次的启用 + 权限一起落盘：草稿在弹窗里攒着，点确认才走到这里。 */
+	applyPluginSetup: (item: PluginAbility, next: { enabled: boolean; grantedPermissions: PluginPermission[] }) => void;
 	setPluginCommand: (item: PluginAbility, command: string, granted: boolean) => void;
 	reloadPlugin: (item: PluginAbility) => void;
 	/** 逐项勾选后卸载 bundle 成员。 */

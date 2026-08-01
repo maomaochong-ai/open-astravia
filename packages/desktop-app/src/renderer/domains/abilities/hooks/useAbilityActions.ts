@@ -25,6 +25,8 @@ export interface AbilityActions {
 	uninstall: (item: AbilityItem) => void;
 	toggle: (item: AbilityItem) => void;
 	setPluginPermission: (item: PluginAbility, permission: PluginPermission, granted: boolean) => void;
+	/** 装完那次的启用 + 权限一起落盘：草稿在弹窗里攒着，点确认才走到这里。 */
+	applyPluginSetup: (item: PluginAbility, next: { enabled: boolean; grantedPermissions: PluginPermission[] }) => void;
 	setPluginCommand: (item: PluginAbility, command: string, granted: boolean) => void;
 	reloadPlugin: (item: PluginAbility) => void;
 	uninstallMembers: (members: AbilityItem[]) => void;
@@ -259,6 +261,23 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		[run],
 	);
 
+	const applyPluginSetup = useCallback(
+		(item: PluginAbility, next: { enabled: boolean; grantedPermissions: PluginPermission[] }) => {
+			run(`${item.id}:setup`, async () => {
+				const grant = next.grantedPermissions.filter((permission) => !item.grantedPermissions.includes(permission));
+				const revoke = item.grantedPermissions.filter(
+					(permission) => !next.grantedPermissions.includes(permission),
+				);
+				if (grant.length > 0) await window.vetta.plugins.grantPermissions(item.slug, grant);
+				if (revoke.length > 0) await window.vetta.plugins.revokePermissions(item.slug, revoke);
+				// 授权先于启用：反过来的话插件会以缺权限的状态先 activate 一次并抛错。
+				if (next.enabled !== item.enabled) await window.vetta.plugins.setEnabled(item.slug, next.enabled);
+				notifyPluginsChanged();
+			});
+		},
+		[run],
+	);
+
 	const setPluginCommand = useCallback(
 		(item: PluginAbility, command: string, granted: boolean) => {
 			run(`${item.id}:command:${command}`, async () => {
@@ -326,6 +345,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		uninstall,
 		toggle,
 		setPluginPermission,
+		applyPluginSetup,
 		setPluginCommand,
 		reloadPlugin,
 		uninstallMembers,

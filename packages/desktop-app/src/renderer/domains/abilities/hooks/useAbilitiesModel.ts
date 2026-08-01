@@ -162,6 +162,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 			void mcp.onRevokeOAuth(item.serverName);
 		},
 		setPluginPermission: actions.setPluginPermission,
+		applyPluginSetup: actions.applyPluginSetup,
 		setPluginCommand: actions.setPluginCommand,
 		reloadPlugin: actions.reloadPlugin,
 		uninstallBundleMembers: actions.uninstallMembers,

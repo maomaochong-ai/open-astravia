@@ -1,9 +1,9 @@
 import { useMemo } from "react";
 import type { AbilitiesModel, PluginAbility } from "../types";
-import { PluginPermissionsDialog } from "./detail/PluginPermissionsDialog";
+import { PluginInstallSetupDialog } from "./PluginInstallSetupDialog";
 
 /**
- * 插件装完立刻弹权限配置：首装时所有权限默认未授予，不必让用户再自己找入口。
+ * 插件装完立刻弹启用 + 权限配置：安装既不启用插件、也不授予权限，不必让用户再自己找入口。
  * 插件数据要等一次刷新才落地，因此在条目真正 installed 之前不渲染。
  */
 export function PluginPermissionPrompt({ model }: { model: AbilitiesModel }): JSX.Element | null {
@@ -16,17 +16,8 @@ export function PluginPermissionPrompt({ model }: { model: AbilitiesModel }): JS
 		return found ?? null;
 	}, [model.allItems, slug]);
 
-	// 系统插件权限自动授予，没有声明权限的也没什么可配。
-	if (!item || item.permissions.length === 0 || item.plugin?.source === "system") return null;
+	// 系统插件随包启用、权限自动授予，没什么可配。
+	if (!item || item.plugin?.source === "system") return null;
 
-	return (
-		<PluginPermissionsDialog
-			item={item}
-			model={model}
-			open
-			onOpenChange={(open) => {
-				if (!open) model.dismissPermissionPrompt();
-			}}
-		/>
-	);
+	return <PluginInstallSetupDialog item={item} model={model} onClose={model.dismissPermissionPrompt} />;
 }
