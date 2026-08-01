@@ -72,10 +72,13 @@ export function FrameView({
 	/** 改尺寸拖拽期间的实时矩形（提交前不落 manifest）。 */
 	const [resizeRect, setResizeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
+	// mounted 必须在依赖里：iframe 是按挂载节流条件渲染的，false→true 时这个
+	// effect 要重跑才能把真正的 iframe 注册进 bridge。漏了它的话，后挂上的 frame
+	// 发出的 rendered / captured 消息认不出 frameId，截图队列会永远卡在原地。
 	useEffect(() => {
 		bridge.register(frame.id, iframeRef.current);
 		return () => bridge.register(frame.id, null);
-	}, [bridge, frame.id]);
+	}, [bridge, frame.id, mounted]);
 
 	const rect = resizeRect ?? {
 		x: frame.x + (moveDelta?.dx ?? 0),
