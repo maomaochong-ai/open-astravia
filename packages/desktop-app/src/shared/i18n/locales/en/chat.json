@@ -77,10 +77,9 @@
 			"noRecords": "No execution records"
 		},
 		"htmlPreview": {
-			"preview": "Preview",
-			"code": "Code",
 			"title": "HTML preview"
 		},
+
 		"workflow": {
 			"empty": "No workflows",
 			"noTranscript": "No messages from this workflow yet",

@@ -12,8 +12,26 @@ import { useTranslation } from "react-i18next";
 import { useTextFileEditor } from "../hooks/useTextFileEditor";
 import { TextPreviewRenderer } from "./TextPreviewRenderer";
 
+/** Formats with a real rendered surface (not just re-showing source). */
+const RENDERED_PREVIEW_EXTENSIONS = new Set([
+	"html",
+	"htm",
+	"xhtml",
+	"md",
+	"mdx",
+	"markdown",
+]);
+
 function resolvePreviewExtension(item: FilePreviewItem): string {
 	return getExtension(item.name) || (item.path ? getExtension(item.path) : "");
+}
+
+function hasRenderedPreview(extension: string): boolean {
+	return RENDERED_PREVIEW_EXTENSIONS.has(extension);
+}
+
+function defaultEditorMode(extension: string): TextFileEditorMode {
+	return hasRenderedPreview(extension) ? "preview" : "edit";
 }
 
 export function EditableTextFileView({
@@ -24,14 +42,14 @@ export function EditableTextFileView({
 	refreshNonce: number;
 }): JSX.Element {
 	const { t } = useTranslation("chat");
-	const [mode, setMode] = useState<TextFileEditorMode>("edit");
-	const model = useTextFileEditor(item.path, refreshNonce);
 	const extension = resolvePreviewExtension(item);
+	const [mode, setMode] = useState<TextFileEditorMode>(() => defaultEditorMode(extension));
+	const model = useTextFileEditor(item.path, refreshNonce);
 	const { document } = model;
 
 	useEffect(() => {
-		setMode("edit");
-	}, [item.path]);
+		setMode(defaultEditorMode(resolvePreviewExtension(item)));
+	}, [item.path, item.name]);
 
 	useEffect(() => {
 		const handleSave = () => void model.save();
@@ -53,9 +71,11 @@ export function EditableTextFileView({
 				? { status: "error", message: getErrorText(model.loadError) }
 				: { status: "loading" };
 	} else {
+		const rendered = hasRenderedPreview(extension);
 		state = {
 			status: "ready",
-			mode,
+			// Source-only formats always stay in edit even if mode state is stale.
+			mode: rendered ? mode : "edit",
 			statusLabel: model.saving
 				? t("fileEditor.saving")
 				: model.dirty
@@ -74,7 +94,9 @@ export function EditableTextFileView({
 			content: document.draftContent,
 			extension,
 			lineEnding: document.lineEnding,
-			previewContent: <TextPreviewRenderer content={document.draftContent} extension={extension} />,
+			previewContent: rendered ? (
+				<TextPreviewRenderer content={document.draftContent} extension={extension} />
+			) : undefined,
 		};
 	}
 

@@ -1,60 +1,10 @@
-import type { ComponentType, JSX } from "react";
-import { useMemo, useState } from "react";
-import type { CodePreviewProps } from "./CodePreview";
-import { CodePreview } from "./CodePreview";
-
-type Mode = "preview" | "code";
-
-export interface HtmlPreviewSegmentItem {
-	readonly key: Mode;
-	readonly label: string;
-}
-
-export interface HtmlPreviewViewLabels {
-	readonly preview: string;
-	readonly code: string;
-	readonly title: string;
-}
-
-export interface HtmlPreviewSegmentedControlProps {
-	readonly items: readonly HtmlPreviewSegmentItem[];
-	readonly value: Mode;
-	readonly onChange: (value: Mode) => void;
-}
+import { useMemo, useState, type JSX } from "react";
 
 export interface HtmlPreviewViewProps {
 	readonly content: string;
-	readonly extension: string;
 	readonly theme: "light" | "dark";
-	readonly labels: HtmlPreviewViewLabels;
-	/** Host segmented control (desktop @shared). Defaults to simple button group. */
-	readonly SegmentedControl?: ComponentType<HtmlPreviewSegmentedControlProps>;
-	readonly CodePreviewComponent?: ComponentType<CodePreviewProps>;
-}
-
-function DefaultSegmentedControl({
-	items,
-	value,
-	onChange,
-}: HtmlPreviewSegmentedControlProps): JSX.Element {
-	return (
-		<div className="inline-flex rounded-lg border border-border/50 bg-muted/40 p-0.5">
-			{items.map((item) => (
-				<button
-					key={item.key}
-					type="button"
-					onClick={() => onChange(item.key)}
-					className={`rounded-md px-3 py-1 text-[12px] font-medium transition-colors ${
-						value === item.key
-							? "bg-background text-foreground shadow-sm"
-							: "text-muted-foreground hover:text-foreground"
-					}`}
-				>
-					{item.label}
-				</button>
-			))}
-		</div>
-	);
+	/** Accessible name for the iframe. */
+	readonly title: string;
 }
 
 /**
@@ -171,37 +121,17 @@ function HtmlPreviewFrame({
 	);
 }
 
-export function HtmlPreviewView({
-	content,
-	extension,
-	theme,
-	labels,
-	SegmentedControl = DefaultSegmentedControl,
-	CodePreviewComponent = CodePreview,
-}: HtmlPreviewViewProps): JSX.Element {
-	const [mode, setMode] = useState<Mode>("preview");
+/**
+ * Pure HTML render surface (iframe + srcDoc). Source editing lives in the host
+ * text editor layer (edit mode) — this view has no nested preview/code chrome.
+ */
+export function HtmlPreviewView({ content, theme, title }: HtmlPreviewViewProps): JSX.Element {
 	const srcDoc = useMemo(() => injectPreviewChrome(content, theme), [content, theme]);
-	const toggleItems = useMemo<HtmlPreviewSegmentItem[]>(
-		() => [
-			{ key: "preview", label: labels.preview },
-			{ key: "code", label: labels.code },
-		],
-		[labels.code, labels.preview],
-	);
 
 	return (
 		<div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
-			<div className="flex shrink-0 items-center justify-center border-b border-border/40 px-4 py-2">
-				<SegmentedControl items={toggleItems} value={mode} onChange={setMode} />
-			</div>
-			{mode === "preview" ? (
-				// iframe ignores flex-grow in many engines — absolute fill matches parent height.
-				<HtmlPreviewFrame srcDoc={srcDoc} theme={theme} title={labels.title} />
-			) : (
-				<div className="min-h-0 w-full flex-1 overflow-y-auto">
-					<CodePreviewComponent content={content} extension={extension} theme={theme} />
-				</div>
-			)}
+			{/* iframe ignores flex-grow in many engines — absolute fill matches parent height. */}
+			<HtmlPreviewFrame srcDoc={srcDoc} theme={theme} title={title} />
 		</div>
 	);
 }

@@ -14,6 +14,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **HTML 预览去嵌套工具条**：内置 HTML 预览改为纯 iframe 渲染表面，去掉内部「预览 | 代码」分段。源码统一走文件编辑器的「编辑」模式；HTML/Markdown 打开默认进入预览，纯文本仍默认编辑且不再显示无效的编辑/预览切换。
 - **文件编辑器语法高亮与扩展名映射完善**：CodeMirror 高亮主题提高 HTML/XML 等标记语言对比度（标签名 / 属性 / 属性值 / 尖括号独立着色）；扩展名→语言映射与只读 CodePreview（Shiki）共用，覆盖 vue/svelte/xhtml/xml 等，并新增 `@codemirror/lang-xml`。
 - **文件编辑器语法配色可扩展（VS Code 风格）**：语法色全部走 `--syntax-*` CSS 变量，默认对齐 VS Code Dark+ / Light+；主题只需覆盖对应变量即可换色，无需改编辑器代码。
 - **文件列表面板顶部标题固定为「项目文件」**：不再显示动态项目/文件夹名，统一用 i18n 文案（`fileExplorer.fileList`）。
