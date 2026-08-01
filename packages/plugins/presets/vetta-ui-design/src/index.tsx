@@ -1,9 +1,11 @@
-import { definePlugin } from "@vetta-org/plugin-sdk";
+import { type CardDescriptor, definePlugin, type PluginPendingToolCall } from "@vetta-org/plugin-sdk";
 import "./style.css";
-import { ScreenshotToolCard } from "./cards/ScreenshotToolCard";
+import { ScreenshotCard } from "./cards/ScreenshotCard";
+import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } from "./cards/screenshot-card";
 import { CanvasTab } from "./canvas/CanvasTab";
-import { notifyAgentToolStart, notifyFrameSettled } from "./canvas/design-runtime";
+import { getCanvasController, notifyAgentToolStart, notifyFrameSettled } from "./canvas/design-runtime";
 import { stopAllDesignServers } from "./engine/engine-manager";
+import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
 import { setPluginCtx } from "./plugin-context";
 import { VetdPreview } from "./preview/VetdPreview";
 import { CANVAS_TAB_ID } from "./tab-ids";
@@ -18,6 +20,30 @@ function DesignIcon() {
 			<path d="M7 19h10" strokeLinecap="round" />
 		</svg>
 	);
+}
+
+function ScreenshotIcon() {
+	return (
+		<svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+			<rect x="3" y="6" width="18" height="14" rx="2" />
+			<circle cx="12" cy="13" r="3.2" />
+			<path d="M8.5 6l1.3-2h4.4l1.3 2" strokeLinejoin="round" />
+		</svg>
+	);
+}
+
+/**
+ * 截图进行中就先出卡（骨架占位）。key 与 handler 同源（同一个画布控制器），
+ * 所以 pending 卡和落定卡是同一张逻辑卡；画布没开时 handler 直接报错、块随即落定，
+ * 骨架自然消失。
+ */
+function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor | null {
+	if (toolCall.toolName !== SCREENSHOT_TOOL_NAME) return null;
+	const raw = toolCall.args.frame;
+	const frameId = typeof raw === "string" ? raw.replace(/\.tsx$/, "") : "";
+	const session = getCanvasController()?.session;
+	if (!frameId || !session) return null;
+	return screenshotCardDescriptor(session.vetdPath, session.dirPath, frameId);
 }
 
 export default definePlugin({
@@ -57,12 +83,18 @@ export default definePlugin({
 			initiallyVisible: false,
 		});
 
+		// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
+		// 判断圆角/边框需要整窗口的预览面积。
+		ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog });
+
 		ctx.ui.registerFilePreview({ extensions: ["vetd"], component: VetdPreview });
 
-		ctx.ui.registerToolCallSlot({
-			id: "screenshot-card",
-			toolName: "vetd_screenshot",
-			component: ScreenshotToolCard,
+		ctx.ui.registerCardRenderer({
+			type: SCREENSHOT_CARD_TYPE,
+			component: ScreenshotCard,
+			title: "%card.screenshot.title%",
+			icon: <ScreenshotIcon />,
+			pendingFor: pendingScreenshotCard,
 		});
 
 		registerDesignTools(ctx);

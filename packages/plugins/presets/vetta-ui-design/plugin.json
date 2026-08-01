@@ -12,9 +12,10 @@
 	},
 	"styles": ["dist/style.css"],
 	"permissions": [
+		"ui.slot.global",
 		"ui.slot.activity-tab",
 		"ui.slot.file-preview",
-		"ui.slot.tool-call",
+		"ui.slot.message",
 		"agent.session.read",
 		"agent.session.write",
 		"agent.tools.register",

@@ -23,6 +23,9 @@
 
 /* 无限画布的点阵背景：底色与点阵都取宿主主题变量，自动跟随明暗。 */
 .vetd-canvas-bg {
+	/* 选中态固定用 Figma 蓝，刻意不跟随宿主主题色：主题色可能与设计稿本身的配色
+	   撞车，而「哪个 frame 被选中」必须在任何主题、任何设计稿上都一眼可辨。 */
+	--vetd-selected: #0d99ff;
 	background-color: var(--background, #f4f4f5);
 	background-image: radial-gradient(
 		circle,
@@ -30,6 +33,110 @@
 		transparent 1px
 	);
 	background-size: 14px 14px;
+}
+
+/* 框选选框的填充（描边直接用工具类取 --vetd-selected） */
+.vetd-marquee-fill {
+	background: color-mix(in oklab, var(--vetd-selected) 12%, transparent);
+}
+
+/* 「让 Vetta 调整」主按钮：核心入口，静止时也要有存在感。
+   两层动效——::before 是扫过表面的光波，::after 是向外扩散的光晕环。
+   光波靠 ::before 自身的 border-radius 裁切，所以父元素不必 overflow:hidden，
+   否则会把外扩的光晕环一起裁掉。 */
+.vetd-ask-glow::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	background: linear-gradient(
+		100deg,
+		transparent 35%,
+		rgb(255 255 255 / 0.5) 50%,
+		transparent 65%
+	);
+	background-size: 250% 100%;
+	background-repeat: no-repeat;
+	animation: vetd-sweep 2.6s ease-in-out infinite;
+}
+@keyframes vetd-sweep {
+	0% {
+		background-position: 150% 0;
+	}
+	/* 扫过后留一段静默，避免变成不停闪的跑马灯 */
+	60%,
+	100% {
+		background-position: -50% 0;
+	}
+}
+
+.vetd-ask-glow::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	border-radius: inherit;
+	pointer-events: none;
+	animation: vetd-halo 2.6s ease-out infinite;
+}
+@keyframes vetd-halo {
+	0% {
+		box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary, #6366f1) 50%, transparent);
+	}
+	70%,
+	100% {
+		box-shadow: 0 0 0 10px color-mix(in oklab, var(--primary, #6366f1) 0%, transparent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-ask-glow::before,
+	.vetd-ask-glow::after {
+		animation: none;
+	}
+}
+
+/* 导出预览的透明背景棋盘格 */
+.vetd-checkerboard {
+	background-image:
+		linear-gradient(45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
+		linear-gradient(-45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%),
+		linear-gradient(-45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%);
+	background-size: 16px 16px;
+	background-position:
+		0 0,
+		0 8px,
+		8px -8px,
+		-8px 0;
+}
+
+/* 截图卡的横排滚动条隐藏（翻页靠左右箭头） */
+.vetd-shot-swiper {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-shot-swiper::-webkit-scrollbar {
+	display: none;
+}
+
+/* 截图进行中的骨架呼吸 */
+.vetd-shot-pulse {
+	animation: vetd-shot-pulse 1.4s ease-in-out infinite;
+}
+@keyframes vetd-shot-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.45;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.vetd-shot-pulse {
+		animation: none;
+	}
 }
 
 /* frame「修改中」呼吸光效 */

@@ -1,5 +1,7 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { getCanvasController, setPendingDesignPath } from "./canvas/design-runtime";
+import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
+import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
 import { engineDiagnostics } from "./engine/engine-manager";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import { findVetdFiles } from "./vetd/discover";
@@ -50,7 +52,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 
 	ctx.agent.registerTool<ScreenshotInput>({
 		id: "vetd-screenshot",
-		name: "vetd_screenshot",
+		name: SCREENSHOT_TOOL_NAME,
 		label: "%tool.vetd_screenshot%",
 		description:
 			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually.",
@@ -89,12 +91,17 @@ export function registerDesignTools(ctx: PluginContext): void {
 			}
 			const dataUrl = await controller.captureFrame(frameId);
 			const base64 = dataUrl.split(",")[1] ?? "";
-			const path = `${controller.session.dirPath}/.snapshots/${frameId}-${Date.now()}.png`;
+			const { dirPath, vetdPath } = controller.session;
+			const path = snapshotPath(dirPath, frameId, Date.now());
 			await host.fs.writeFile(path, base64, "base64");
+			await ensureSnapshotsIgnored(host.fs, dirPath);
+			await pruneSnapshots(host.fs, dirPath, frameId);
 			return {
 				ok: true,
 				path,
 				note: "Screenshot saved. Use the Read tool on this path to view the rendering.",
+				// 模型不可见：宿主把顶层 cards 提到 details.cards，在消息下方渲染截图卡。
+				cards: [screenshotCardDescriptor(vetdPath, dirPath, frameId)],
 			};
 		},
 	});
