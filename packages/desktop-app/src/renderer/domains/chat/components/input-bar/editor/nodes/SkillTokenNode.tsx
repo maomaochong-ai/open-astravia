@@ -1,7 +1,6 @@
 import { skillTokenText } from "@shared/lib/input-tokens";
-import { SkillTypeIcon } from "@vetta/theme-ui/skills";
 import { DecoratorNode, type LexicalNode, type NodeKey, type SerializedLexicalNode, type Spread } from "lexical";
-import { TokenChip } from "./TokenChip";
+import { SkillTokenChip } from "./SkillTokenChip";
 
 export type SerializedSkillTokenNode = Spread<
 	{ name: string; alias?: string; icon?: string },
@@ -80,13 +79,7 @@ export class SkillTokenNode extends DecoratorNode<JSX.Element> {
 	}
 
 	decorate(): JSX.Element {
-		return (
-			<TokenChip
-				iconNode={<SkillTypeIcon type="skill" icon={this.__icon} className="h-3 w-3" />}
-				label={this.__alias || this.__name}
-				title={this.__name}
-			/>
-		);
+		return <SkillTokenChip name={this.__name} alias={this.__alias} icon={this.__icon} />;
 	}
 }
 

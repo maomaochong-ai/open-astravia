@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlockCopyButtonView } from "../shared/CodeBlockCopyButton";
+import { SkillTypeIcon } from "../skills/skill-icon";
 import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
 
 /** Minimal hast-like nodes for the streaming chunk rehype plugin. */
@@ -63,6 +64,11 @@ export interface InlineTokenSupport {
 	getImageLabel: (path: string) => string;
 	/** 连接器的展示名与 logo；查不到时回退成真实名 + 通用图标。 */
 	getConnector?: (name: string) => { label: string; iconUrl?: string } | undefined;
+	/**
+	 * skill 的展示名与图标。文本流里只有 slug，别名/图标要宿主回查，
+	 * 否则气泡里的胶囊与输入框里刚插入的那枚对不上。查不到时回退成 slug + 默认图。
+	 */
+	getSkill?: (name: string) => { label: string; icon?: string } | undefined;
 }
 
 const INLINE_TOKEN_TAG = "vetta-inline-token";
@@ -74,6 +80,9 @@ const INLINE_TOKEN_TAG = "vetta-inline-token";
 const INLINE_TOKEN_CLASS =
 	"mx-px inline-block max-w-full whitespace-pre rounded-md border border-primary/25 bg-primary/10 px-1.5 align-baseline text-[12px] font-medium leading-[1.6] text-primary";
 const INLINE_TOKEN_ICON_CLASS = "mr-1 inline-block h-3 w-3 align-[-0.15em]";
+/** 自带渲染逻辑的图标（skill）需要一个定尺寸容器：图片图标按 h-full/w-full 铺满它。 */
+const INLINE_TOKEN_ICON_BOX_CLASS =
+	"mr-1 inline-flex h-3 w-3 items-center justify-center overflow-hidden align-[-0.15em]";
 
 /** 把文本节点里的 token 换成自定义元素；代码块与链接文本内不处理。 */
 function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
@@ -544,10 +553,14 @@ export const TextBlockView = memo(function TextBlockView({
 					);
 				}
 				if (kind === "skill") {
+					const skill = inlineTokensRef.current?.getSkill?.(value);
 					return (
 						<span className={INLINE_TOKEN_CLASS} title={value}>
-							<span className={cn("icon-[solar--magic-stick-linear]", INLINE_TOKEN_ICON_CLASS)} />
-							{value}
+							{/* 图标走能力广场那套「图片 / Solar / 默认图」三态，与输入框胶囊同源。 */}
+							<span className={INLINE_TOKEN_ICON_BOX_CLASS}>
+								<SkillTypeIcon type="skill" icon={skill?.icon} className="h-3 w-3" />
+							</span>
+							{skill?.label ?? value}
 						</span>
 					);
 				}
