@@ -41,6 +41,7 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 	const offsetRef = useRef(offset);
 	const fitScaleRef = useRef(fitScale);
 	const autoFitRef = useRef(true);
+	const isPanningRef = useRef(false);
 	const sizeRef = useRef<Size | null>(null);
 	const natRef = useRef<Size | null>(null);
 	const panStartRef = useRef({ x: 0, y: 0, ox: 0, oy: 0 });
@@ -102,7 +103,6 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 			if (autoFitRef.current) {
 				applyFit();
 			} else {
-				// Keep current scale; re-clamp pan so edges stay usable after resize.
 				commit(scaleRef.current, offsetRef.current, { keepAutoFit: true });
 			}
 		});
@@ -110,7 +110,7 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 		return () => ro.disconnect();
 	}, [applyFit, commit]);
 
-	// Wheel → zoom toward cursor (pinch/trackpad Ctrl+wheel treated the same).
+	// Wheel → zoom toward cursor.
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -121,7 +121,6 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 			const anchorX = e.clientX - rect.left;
 			const anchorY = e.clientY - rect.top;
 			const prev = scaleRef.current;
-			// Smooth multiplicative zoom; deltaMode lines/pages scale up a bit.
 			const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1;
 			const delta = -e.deltaY * unit * WHEEL_ZOOM_SENSITIVITY;
 			const next = clampScale(prev * Math.exp(delta));
@@ -133,7 +132,7 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 		return () => container.removeEventListener("wheel", onWheel);
 	}, [commit]);
 
-	// Keyboard: + / - / 0 when focused (and Escape exits pseudo-fullscreen).
+	// Keyboard: + / - / 0 when focused.
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
@@ -182,12 +181,20 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 		return () => document.removeEventListener("keydown", onKeyDown, true);
 	}, [isFullscreen]);
 
+	/**
+	 * Pan via document listeners + refs (not React isPanning state on move).
+	 * React state lags one frame after pointerdown, so onPointerMove that
+	 * gates on `isPanning` drops the whole drag — felt like "left drag dead".
+	 */
 	const onPointerDown = useCallback(
 		(e: ReactPointerEvent) => {
 			if (e.button !== 0) return;
-			// Ignore toolbar / controls.
 			if ((e.target as HTMLElement).closest("button")) return;
+
 			e.preventDefault();
+			e.stopPropagation();
+
+			isPanningRef.current = true;
 			setIsPanning(true);
 			panStartRef.current = {
 				x: e.clientX,
@@ -195,27 +202,31 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 				ox: offsetRef.current.x,
 				oy: offsetRef.current.y,
 			};
-			(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-		},
-		[],
-	);
 
-	const onPointerMove = useCallback(
-		(e: ReactPointerEvent) => {
-			if (!isPanning) return;
-			const dx = e.clientX - panStartRef.current.x;
-			const dy = e.clientY - panStartRef.current.y;
-			commit(scaleRef.current, {
-				x: panStartRef.current.ox + dx,
-				y: panStartRef.current.oy + dy,
-			});
-		},
-		[isPanning, commit],
-	);
+			const onMove = (ev: PointerEvent) => {
+				if (!isPanningRef.current) return;
+				ev.preventDefault();
+				const dx = ev.clientX - panStartRef.current.x;
+				const dy = ev.clientY - panStartRef.current.y;
+				commit(scaleRef.current, {
+					x: panStartRef.current.ox + dx,
+					y: panStartRef.current.oy + dy,
+				});
+			};
+			const onUp = () => {
+				isPanningRef.current = false;
+				setIsPanning(false);
+				document.removeEventListener("pointermove", onMove);
+				document.removeEventListener("pointerup", onUp);
+				document.removeEventListener("pointercancel", onUp);
+			};
 
-	const onPointerUp = useCallback(() => {
-		setIsPanning(false);
-	}, []);
+			document.addEventListener("pointermove", onMove);
+			document.addEventListener("pointerup", onUp);
+			document.addEventListener("pointercancel", onUp);
+		},
+		[commit],
+	);
 
 	const onDoubleClick = useCallback(
 		(e: React.MouseEvent) => {
@@ -229,7 +240,6 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 			const prev = scaleRef.current;
 			const fit = fitScaleRef.current;
 
-			// At fit → actual size (or 2× if already 1×); otherwise back to fit.
 			if (Math.abs(prev - fit) <= FIT_EPS * Math.max(fit, 0.01)) {
 				const target = fit >= 1 - FIT_EPS ? 2 : 1;
 				const zoomed = zoomAround(prev, target, offsetRef.current, ax, ay);
@@ -259,34 +269,26 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 
 	const toggleFullscreen = useCallback(() => setIsFullscreen((value) => !value), []);
 
-	// Relative to fit: 100% means "fits the panel".
 	const pct = Math.max(1, Math.round((scale / (fitScale || 1)) * 100));
-	const size = sizeRef.current;
-	const canPan =
-		!!naturalSize &&
-		!!size &&
-		(naturalSize.width * scale > size.width + 1 || naturalSize.height * scale > size.height + 1);
 
 	return (
 		<div
 			ref={containerRef}
 			tabIndex={0}
 			className={cn(
-				"outline-none",
+				"outline-none select-none",
 				isFullscreen
 					? "fixed inset-0 z-50 flex flex-col overflow-hidden bg-[var(--background)]"
 					: "relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[var(--background)]",
 			)}
+			style={{ touchAction: "none" }}
 			onPointerDown={onPointerDown}
-			onPointerMove={onPointerMove}
-			onPointerUp={onPointerUp}
-			onPointerCancel={onPointerUp}
 			onDoubleClick={onDoubleClick}
 		>
 			<div
 				ref={viewportRef}
 				className="relative min-h-0 flex-1 overflow-hidden"
-				style={{ cursor: isPanning ? "grabbing" : canPan ? "grab" : "default" }}
+				style={{ cursor: isPanning ? "grabbing" : "grab" }}
 			>
 				<div
 					style={{
@@ -298,8 +300,7 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 						transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
 						transformOrigin: "0 0",
 						willChange: "transform",
-						// No CSS transition while panning — keeps 1:1 with pointer.
-						transition: isPanning ? "none" : undefined,
+						pointerEvents: "none",
 					}}
 				>
 					{children}

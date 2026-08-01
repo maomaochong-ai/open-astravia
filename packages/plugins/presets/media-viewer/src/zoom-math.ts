@@ -45,32 +45,29 @@ export function computeFit(
 }
 
 /**
- * Keep the image from sliding completely out of view.
- * When content is smaller than the viewport on an axis, force center on that axis.
+ * Soft pan bounds: keep at least `PAN_EDGE` px of the image inside the viewport.
+ * Does NOT force-center when content is smaller than the viewport — that was
+ * killing left-drag at fit scale (every move snapped back to center).
  */
 export function clampOffset(offset: Point, scale: number, vw: number, vh: number, iw: number, ih: number): Point {
 	const sw = iw * scale;
 	const sh = ih * scale;
-	let x = offset.x;
-	let y = offset.y;
+	return {
+		x: clampAxis(offset.x, sw, vw),
+		y: clampAxis(offset.y, sh, vh),
+	};
+}
 
-	if (sw <= vw) {
-		x = (vw - sw) / 2;
-	} else {
-		const minX = vw - sw + PAN_EDGE;
-		const maxX = -PAN_EDGE;
-		x = Math.min(maxX, Math.max(minX, x));
+function clampAxis(value: number, size: number, viewport: number): number {
+	// Keep ≥ PAN_EDGE of the image inside the viewport on this axis:
+	// value ∈ [edge - size, viewport - edge]
+	const lo = PAN_EDGE - size;
+	const hi = viewport - PAN_EDGE;
+	if (lo > hi) {
+		// Degenerate (edge*2 > viewport): pin to center.
+		return (viewport - size) / 2;
 	}
-
-	if (sh <= vh) {
-		y = (vh - sh) / 2;
-	} else {
-		const minY = vh - sh + PAN_EDGE;
-		const maxY = -PAN_EDGE;
-		y = Math.min(maxY, Math.max(minY, y));
-	}
-
-	return { x, y };
+	return Math.min(hi, Math.max(lo, value));
 }
 
 /** Zoom so the point under (anchorX, anchorY) in viewport coords stays put. */
