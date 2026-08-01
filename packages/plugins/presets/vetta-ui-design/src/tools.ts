@@ -8,6 +8,12 @@ import { findVetdFiles } from "./vetd/discover";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
+/**
+ * 设计画布只在「工作」模式下成立（ADR-0046）：编程模式里这些工具连同画布、
+ * 全局插槽、skill 一起隔离，只留 .vetd 的文件预览。插件级 agent_mode 是硬闸、
+ * 会把预览一起藏掉，所以按子资源逐个收窄。
+ */
+const AGENT_MODE = ["work"] as const;
 
 interface CreateInput {
 	name?: string;
@@ -35,6 +41,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
+		agent_mode: AGENT_MODE,
 		handler: async ({ host, session, trigger }) => {
 			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design");
 			setPendingDesignPath(result.vetdPath);
@@ -68,6 +75,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
+		agent_mode: AGENT_MODE,
 		timeoutMs: 30_000,
 		handler: async ({ host, trigger }) => {
 			const controller = getCanvasController();
@@ -114,6 +122,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 			"Inspect the Vetta UI Design state: design documents in the workspace, the design open on the canvas, its frames (id/size/title) and design-engine diagnostics (dev-server liveness + recent build output). Use to find frame ids, or to diagnose why the canvas shows a build error.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
+		agent_mode: AGENT_MODE,
 		handler: async ({ host, session }) => {
 			const designs = await findVetdFiles(host.fs, session.cwd);
 			const controller = getCanvasController();

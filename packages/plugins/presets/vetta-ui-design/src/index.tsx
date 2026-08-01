@@ -1,9 +1,20 @@
-import { type CardDescriptor, definePlugin, type PluginPendingToolCall } from "@vetta-org/plugin-sdk";
+import {
+	type AgentMode,
+	type CardDescriptor,
+	definePlugin,
+	type Disposable,
+	type PluginPendingToolCall,
+} from "@vetta-org/plugin-sdk";
 import "./style.css";
 import { ScreenshotCard } from "./cards/ScreenshotCard";
 import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } from "./cards/screenshot-card";
 import { CanvasTab } from "./canvas/CanvasTab";
-import { getCanvasController, notifyAgentToolStart, notifyFrameSettled } from "./canvas/design-runtime";
+import {
+	getCanvasController,
+	notifyAgentToolStart,
+	notifyFrameSettled,
+	requestMockupExport,
+} from "./canvas/design-runtime";
 import { stopAllDesignServers } from "./engine/engine-manager";
 import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
 import { setPluginCtx } from "./plugin-context";
@@ -50,18 +61,68 @@ export default definePlugin({
 	activate(ctx) {
 		setPluginCtx(ctx);
 
+		/**
+		 * 设计画布是「工作」模式的能力（ADR-0046）。编程模式下把画布 Tab、导出用的
+		 * 全局插槽一起摘掉；tools 与 skill 各自声明 agent_mode 由宿主过滤。
+		 * 唯一跨模式保留的是 .vetd 文件预览——编程模式里仍可能点开一份设计稿看看。
+		 *
+		 * 不用清单里的插件级 agent_mode：那是硬闸，会连预览带 bundle 一起藏掉。
+		 */
+		let workModeSlots: Disposable[] = [];
+		const isWorkMode = (): boolean => ctx.getAgentMode() === "work";
+
 		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的探测结果。 */
 		let latestCwd: string | null = null;
+
+		/** cwd 里有 .vetd 才把画布 Tab 上栏。切回工作模式时也要重跑一次。 */
+		const revealTabForCwd = (cwd: string | null): void => {
+			if (!cwd || !isWorkMode()) return;
+			void findVetdFiles(ctx.fs, cwd).then((found) => {
+				if (latestCwd !== cwd || !isWorkMode()) return;
+				ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found.length > 0);
+			});
+		};
+
+		const syncWorkModeSlots = (mode: AgentMode): void => {
+			const wanted = mode === "work";
+			if (wanted === workModeSlots.length > 0) return;
+			if (wanted) {
+				workModeSlots = [
+					ctx.ui.registerActivityTab({
+						id: CANVAS_TAB_ID,
+						label: "%tab.label%",
+						icon: <DesignIcon />,
+						component: CanvasTab,
+						scope_use: ["project", "conversation"],
+						// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。
+						initiallyVisible: false,
+					}),
+					// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
+					// 判断圆角/边框需要整窗口的预览面积。
+					ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog }),
+				];
+				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。
+				revealTabForCwd(latestCwd);
+				return;
+			}
+			for (const slot of workModeSlots) slot.dispose();
+			workModeSlots = [];
+			// Tab 卸载时 CanvasTab 自己会停引擎，但模式切走属于「这个插件不该再有存在感」，
+			// 兜底收干净：别在编程模式里留一个 vite dev server 跑着。
+			requestMockupExport(null);
+			void stopAllDesignServers();
+		};
+
+		syncWorkModeSlots(ctx.getAgentMode());
+		ctx.onAgentModeChanged(syncWorkModeSlots);
 
 		ctx.conversation.on((event) => {
 			if (event.type === "conversation-changed") {
 				const { cwd } = event.conversation;
 				if (!cwd) return;
+				// 编程模式下也记住 cwd：切回工作模式时要靠它补跑探测。
 				latestCwd = cwd;
-				void findVetdFiles(ctx.fs, cwd).then((found) => {
-					if (latestCwd !== cwd) return;
-					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found.length > 0);
-				});
+				revealTabForCwd(cwd);
 				return;
 			}
 			if (event.type === "tool-call-start") {
@@ -72,20 +133,6 @@ export default definePlugin({
 				notifyFrameSettled(null);
 			}
 		});
-
-		ctx.ui.registerActivityTab({
-			id: CANVAS_TAB_ID,
-			label: "%tab.label%",
-			icon: <DesignIcon />,
-			component: CanvasTab,
-			scope_use: ["project", "conversation"],
-			// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。
-			initiallyVisible: false,
-		});
-
-		// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
-		// 判断圆角/边框需要整窗口的预览面积。
-		ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog });
 
 		ctx.ui.registerFilePreview({ extensions: ["vetd"], component: VetdPreview });
 

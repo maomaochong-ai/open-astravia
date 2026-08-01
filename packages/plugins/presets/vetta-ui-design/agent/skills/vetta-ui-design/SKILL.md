@@ -1,6 +1,7 @@
 ---
 name: vetta-ui-design
 description: Build and edit UI design documents (.vetd) on the Vetta UI Design canvas. Use when the user asks for a UI design, mockup, screen, landing page, app interface, or attaches a design frame/element from the canvas. Frames are real React (TSX) files with Tailwind v4 + Iconify — edit them directly and the canvas hot-reloads.
+agent_mode: work
 ---
 
 # Vetta UI Design
