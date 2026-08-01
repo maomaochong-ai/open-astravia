@@ -37,16 +37,18 @@ export function PluginPermissionsDialog({
 					</DialogDescription>
 				</DialogHeader>
 				{/* 与详情页的贡献列表同款：一张卡片，条目之间只用分隔线 */}
-				<div className="max-h-[60vh] overflow-y-auto rounded-lg border border-border bg-background/50">
+				{/* overflow-y-auto 会把 overflow-x 也算成 auto，显式关掉横向滚动，长文案改为换行 */}
+				<div className="max-h-[60vh] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-background/50">
 					{item.permissions.map((permission) => (
 						<label
 							key={permission}
 							className="flex items-center justify-between gap-3 border-b border-border/60 px-2.5 py-2 last:border-b-0"
 						>
-							<span className="min-w-0 flex-1 text-[12px] text-foreground">
+							<span className="min-w-0 flex-1 break-words text-[12px] text-foreground">
 								{t(PLUGIN_PERMISSION_LABEL_KEYS[permission])}
 							</span>
 							<Switch
+								className="shrink-0"
 								checked={editable ? item.grantedPermissions.includes(permission) : true}
 								disabled={!editable || item.busy}
 								onCheckedChange={(checked) => model.setPluginPermission(item, permission, checked)}

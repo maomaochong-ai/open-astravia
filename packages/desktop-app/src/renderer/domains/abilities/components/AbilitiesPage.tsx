@@ -4,6 +4,7 @@ import { useSetAtom } from "jotai";
 import { useCallback, useEffect } from "react";
 import { useAbilitiesModel } from "../hooks/useAbilitiesModel";
 import { AbilitiesPageView } from "./AbilitiesPageView";
+import { PluginPermissionPrompt } from "./PluginPermissionPrompt";
 import { AbilityDetailSheet } from "./detail/AbilityDetailSheet";
 
 export function AbilitiesPage(): JSX.Element {
@@ -27,6 +28,7 @@ export function AbilitiesPage(): JSX.Element {
 		<>
 			<AbilitiesPageView model={model} />
 			<AbilityDetailSheet detailId={detail ?? null} model={model} onClose={closeDetail} />
+			<PluginPermissionPrompt model={model} />
 		</>
 	);
 }
