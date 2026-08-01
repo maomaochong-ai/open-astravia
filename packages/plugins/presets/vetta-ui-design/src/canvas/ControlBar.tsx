@@ -10,6 +10,8 @@ interface ControlBarProps {
 	exportableCount: number;
 	/** frame 内的 backdrop-filter / filter 是否生效（关掉可救合成器，见 style 注释）。 */
 	effectsEnabled: boolean;
+	/** 位图化进度：活体 iframe 越少越省。展示出来才看得见优化有没有生效。 */
+	raster: { rasterized: number; failed: number; total: number };
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
@@ -83,6 +85,7 @@ export function ControlBar({
 	zoom,
 	exportableCount,
 	effectsEnabled,
+	raster,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
@@ -109,6 +112,14 @@ export function ControlBar({
 			<ToolButton active={tool === "frame"} title={t("controlbar.frame")} onClick={() => onToolChange("frame")}>
 				{icons.frame}
 			</ToolButton>
+			{/* 位图 N/M：活体 iframe 是画布上最贵的东西，这个数字直接说明优化生效没有。
+			    有截图失败时标红——失败的 frame 会一直留在活体，等于没优化。 */}
+			<span
+				title={t("controlbar.raster.hint")}
+				className={`px-1 text-[10px] tabular-nums ${raster.failed > 0 ? "text-red-500" : "text-muted-foreground"}`}
+			>
+				{raster.rasterized}/{raster.total}
+			</span>
 			<button
 				type="button"
 				title={effectsEnabled ? t("controlbar.effects.on") : t("controlbar.effects.off")}

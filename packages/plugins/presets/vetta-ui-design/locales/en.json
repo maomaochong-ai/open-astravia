@@ -38,6 +38,7 @@
 	"controlbar.zoomReset": "Reset zoom",
 	"controlbar.exportMockup": "Export mockup ({{count}} frames selected)",
 	"controlbar.exportMockup.label": "Export mockup",
+	"controlbar.raster.hint": "Rasterized frames / total. Rasterized frames no longer take part in compositing; red means some captures failed and those frames are still rendering live (see the console).",
 	"controlbar.effects.on": "Frosted glass: full radius (switch to reduced if the canvas stutters or flickers)",
 	"controlbar.effects.off": "Frosted glass: reduced on canvas (screenshots and exports still use the full radius)",
 	"preview.packaged.badge": "Share package (read-only)",

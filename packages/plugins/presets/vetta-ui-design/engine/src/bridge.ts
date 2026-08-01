@@ -163,7 +163,7 @@ function clampBlurRadii(value: string): string {
 
 function makeEffectsSwitch(): { set(enabled: boolean): void; refresh(): void } {
 	/** 被改过的元素 → 它原本的内联值（多为空串，还原即恢复样式表里的声明）。 */
-	const touched = new Map<HTMLElement, string>();
+	const touched = new Map<HTMLElement, { backdrop: string; filter: string }>();
 	let enabled = true;
 
 	const reduce = (): void => {
@@ -171,19 +171,26 @@ function makeEffectsSwitch(): { set(enabled: boolean): void; refresh(): void } {
 			if (touched.has(element)) continue;
 			const computed = window.getComputedStyle(element);
 			const backdrop = computed.backdropFilter || computed.webkitBackdropFilter || "none";
-			if (backdrop === "none" || !backdrop.includes("blur(")) continue;
-			const reduced = clampBlurRadii(backdrop);
-			if (reduced === backdrop) continue;
-			touched.set(element, element.style.backdropFilter);
-			element.style.backdropFilter = reduced;
-			element.style.setProperty("-webkit-backdrop-filter", reduced);
+			// filter 也要钳：blur-3xl 这类装饰光晕是 filter: blur(64px)，大半径同样
+			// 会建大块合成层。早先「整个关掉」能止住闪烁，关的正是这两者。
+			const filter = computed.filter || "none";
+			const nextBackdrop = backdrop.includes("blur(") ? clampBlurRadii(backdrop) : backdrop;
+			const nextFilter = filter.includes("blur(") ? clampBlurRadii(filter) : filter;
+			if (nextBackdrop === backdrop && nextFilter === filter) continue;
+			touched.set(element, { backdrop: element.style.backdropFilter, filter: element.style.filter });
+			if (nextBackdrop !== backdrop) {
+				element.style.backdropFilter = nextBackdrop;
+				element.style.setProperty("-webkit-backdrop-filter", nextBackdrop);
+			}
+			if (nextFilter !== filter) element.style.filter = nextFilter;
 		}
 	};
 
 	const restore = (): void => {
 		for (const [element, original] of touched) {
-			element.style.backdropFilter = original;
-			element.style.setProperty("-webkit-backdrop-filter", original);
+			element.style.backdropFilter = original.backdrop;
+			element.style.setProperty("-webkit-backdrop-filter", original.backdrop);
+			element.style.filter = original.filter;
 		}
 		touched.clear();
 	};

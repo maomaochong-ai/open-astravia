@@ -149,6 +149,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		isLive,
 		invalidate: invalidateRaster,
 		runLive,
+		stats: rasterStats,
 	} = useFrameRasters({ bridge, enteredFrameId, enabled: true });
 
 	const exitInspect = useCallback(
@@ -600,6 +601,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
 				effectsEnabled={effectsEnabled}
+				raster={{ ...rasterStats, total: manifest.frames.length }}
 				onToggleEffects={() => {
 					const next = !effectsEnabled;
 					setEffectsEnabled(next);

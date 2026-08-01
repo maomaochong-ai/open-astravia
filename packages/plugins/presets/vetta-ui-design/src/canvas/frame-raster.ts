@@ -42,6 +42,8 @@ export interface FrameRasterState {
 	 * 的 iframe 没有布局，截出来是空的）。结束后恢复原状态。
 	 */
 	runLive<T>(frameId: string, run: () => Promise<T>): Promise<T>;
+	/** 已成功位图化的 frame 数与截图失败数，给控制栏显示，便于判断优化是否真的生效。 */
+	stats: { rasterized: number; failed: number };
 }
 
 /** 等 React 提交 + 浏览器完成一次布局与绘制。 */
@@ -57,6 +59,8 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 	const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
 	/** 被外部强制拉回活体的 frame（截图期间）。 */
 	const [forced, setForced] = useState<ReadonlySet<string>>(new Set());
+	/** frameId → 截图失败原因。用于把「优化没生效」这件事摆到台面上。 */
+	const [failures, setFailures] = useState<ReadonlyMap<string, string>>(new Map());
 	const capturingRef = useRef<string | null>(null);
 	const timerRef = useRef<number | null>(null);
 
@@ -83,8 +87,11 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 				.then((dataUrl) => {
 					setRasters((current) => new Map(current).set(next, dataUrl));
 				})
-				.catch(() => {
-					// 截不到就让它继续活着——比显示一张坏图安全。
+				.catch((error: unknown) => {
+					// 截不到就让它继续活着——比显示一张坏图安全。但不能静默：一张都截
+					// 不成时整块优化等于没生效，而表面上看不出任何区别。
+					setFailures((current) => new Map(current).set(next, error instanceof Error ? error.message : String(error)));
+					console.error(`[vetd] 位图化失败，frame 保持活体渲染: ${next}`, error);
 				})
 				.finally(() => {
 					capturingRef.current = null;
@@ -137,5 +144,5 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 		}
 	}, []);
 
-	return { rasterOf, isLive, invalidate, runLive };
+	return { rasterOf, isLive, invalidate, runLive, stats: { rasterized: rasters.size, failed: failures.size } };
 }
