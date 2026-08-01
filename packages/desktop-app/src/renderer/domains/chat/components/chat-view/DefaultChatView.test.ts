@@ -1,4 +1,4 @@
-import { createElement, type ReactNode } from "react";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { DefaultChatView } from "./DefaultChatView";
@@ -19,19 +19,8 @@ vi.mock("../MessageList", () => ({
 	MessageList: () => createElement("div", { "data-testid": "message-list" }),
 }));
 
-vi.mock("../SessionDropZone", () => ({
-	SessionDropZone: ({ children }: { children: ReactNode }) =>
-		createElement(
-			"section",
-			{ "data-testid": "session-drop-zone" },
-			createElement("span", { "data-testid": "drop-zone-start" }),
-			children,
-			createElement("span", { "data-testid": "drop-zone-end" }),
-		),
-}));
-
-describe("DefaultChatView drop scope", () => {
-	it("limits the session drop zone to the input bar and leaves the activity panel outside", () => {
+describe("DefaultChatView layout", () => {
+	it("keeps the activity panel outside the input column (drop is owned by InputBar card)", () => {
 		const html = renderToStaticMarkup(
 			createElement(DefaultChatView, {
 				actions: {
@@ -63,14 +52,10 @@ describe("DefaultChatView drop scope", () => {
 		);
 
 		const messageList = html.indexOf('data-testid="message-list"');
-		const dropStart = html.indexOf('data-testid="drop-zone-start"');
 		const inputBar = html.indexOf('data-testid="input-bar"');
-		const dropEnd = html.indexOf('data-testid="drop-zone-end"');
 		const activityPanel = html.indexOf('data-testid="activity-panel"');
 
-		expect(messageList).toBeLessThan(dropStart);
-		expect(dropStart).toBeLessThan(inputBar);
-		expect(inputBar).toBeLessThan(dropEnd);
-		expect(dropEnd).toBeLessThan(activityPanel);
+		expect(messageList).toBeLessThan(inputBar);
+		expect(inputBar).toBeLessThan(activityPanel);
 	});
 });

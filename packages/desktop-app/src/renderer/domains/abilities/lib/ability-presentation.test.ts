@@ -1,6 +1,11 @@
-import type { AbilityDetail } from "@shared/lib/api";
+import type { AbilityDetail, MarketAbility } from "@shared/lib/api";
 import { describe, expect, it } from "vitest";
-import { isRenderableImageIcon, resolveAbilityDetailContent } from "./ability-presentation";
+import {
+	isRenderableImageIcon,
+	localizeMarketAbility,
+	resolveAbilityDetailContent,
+	resolveCategoryLabel,
+} from "./ability-presentation";
 
 describe("isRenderableImageIcon", () => {
 	it("接受内置 MCP 预设的相对路径图标", () => {
@@ -52,6 +57,19 @@ describe("resolveAbilityDetailContent", () => {
 		expect(got.blocks).toEqual([{ type: "callout", tone: "info", content: "默认提示" }]);
 	});
 
+	// admin 手填的译文键是 en-US（服务端 SupportedLocales），界面语言只有 en：
+	// 精确匹配会全量回落默认语言，即「设了双语只显示第一种」。
+	it("界面语言 en 命中 admin 写入的 en-US 覆盖块", () => {
+		const withRegion: AbilityDetail = {
+			name: "演示插件",
+			description: "中文简介",
+			i18n: { "en-US": { name: "Demo Plugin", description: "English intro" } },
+		};
+		const got = resolveAbilityDetailContent(withRegion, "en");
+		expect(got.name).toBe("Demo Plugin");
+		expect(got.description).toBe("English intro");
+	});
+
 	it("detail 为空时不抛错且给出空值", () => {
 		const got = resolveAbilityDetailContent(undefined, "zh");
 		expect(got.name).toBeUndefined();
@@ -60,5 +78,60 @@ describe("resolveAbilityDetailContent", () => {
 		expect(got.showcases).toEqual([]);
 		expect(got.blocks).toEqual([]);
 		expect(got.meta).toEqual([]);
+	});
+});
+
+describe("resolveCategoryLabel", () => {
+	it("界面语言 en 命中服务端写入的 en-US 译名", () => {
+		expect(resolveCategoryLabel("设计", { "en-US": "Design" }, "en")).toBe("Design");
+	});
+
+	it("无译名时回落规范名", () => {
+		expect(resolveCategoryLabel("设计", { "ja-JP": "デザイン" }, "en")).toBe("设计");
+		expect(resolveCategoryLabel("设计", undefined, "en")).toBe("设计");
+	});
+});
+
+describe("localizeMarketAbility", () => {
+	const entry: MarketAbility = {
+		slug: "demo",
+		type: "skill",
+		name: "演示技能",
+		description: "中文简介",
+		license: "",
+		version: "1.0.0",
+		author: "",
+		icon: "",
+		category: "设计",
+		tags: ["设计"],
+		sha256: "",
+		download_count: 0,
+		config: {},
+		detail: {
+			name: "演示技能",
+			description: "中文简介",
+			tags: ["设计"],
+			i18n: { "en-US": { name: "Demo Skill", description: "English intro", tags: ["design"] } },
+		},
+		updated_at: "",
+	};
+
+	it("把译文块的 name / description / tags 提到顶层（卡片与搜索读的就是顶层）", () => {
+		const got = localizeMarketAbility(entry, "en");
+		expect(got.name).toBe("Demo Skill");
+		expect(got.description).toBe("English intro");
+		expect(got.tags).toEqual(["design"]);
+	});
+
+	it("译文块缺某字段时该字段回落默认语言", () => {
+		const partial: MarketAbility = { ...entry, detail: { ...entry.detail, i18n: { en: { name: "Demo Skill" } } } };
+		const got = localizeMarketAbility(partial, "en");
+		expect(got.name).toBe("Demo Skill");
+		expect(got.description).toBe("中文简介");
+		expect(got.tags).toEqual(["设计"]);
+	});
+
+	it("未命中语言时原样返回", () => {
+		expect(localizeMarketAbility(entry, "ja")).toBe(entry);
 	});
 });

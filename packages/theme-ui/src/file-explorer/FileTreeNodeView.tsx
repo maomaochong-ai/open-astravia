@@ -1,8 +1,9 @@
 import { cn } from "@vetta/ui";
 import { useEffect, useRef, useState, type JSX } from "react";
+import { FILE_TREE_NODE_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { getFileIcon } from "./fileIcons";
 import { beginNativeFileDrag } from "./nativeFileDrag";
-import type { FileExplorerEntry, FileExplorerNodeDecoration } from "./types";
+import type { FileExplorerEntry, FileExplorerNodeDecoration, FileExplorerSelectOptions } from "./types";
 
 const DRAG_MIME = "application/vetta-path";
 
@@ -12,15 +13,18 @@ export interface FileTreeNodeViewProps {
 	isExpanded: boolean;
 	isLoading: boolean;
 	isSelected: boolean;
+	isFocused?: boolean;
 	isRenaming: boolean;
 	decoration?: FileExplorerNodeDecoration | null;
+	/** Paths included in the active multi-select when dragging this row. */
+	dragPaths?: readonly string[];
 	onToggleDir: (path: string) => void;
-	onSelectFile: (entry: FileExplorerEntry) => void;
+	onSelectEntry: (entry: FileExplorerEntry, options: FileExplorerSelectOptions) => void;
 	onContextMenu: (entry: FileExplorerEntry, x: number, y: number) => void;
 	onRenameSubmit: (oldPath: string, newName: string) => void;
 	onRenameCancel: () => void;
-	/** Called when a path is dropped onto this directory node. */
-	onFileMove: (srcPath: string, destDir: string) => void;
+	/** Called when path(s) are dropped onto this directory node. */
+	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
 }
@@ -43,6 +47,19 @@ function isSubPath(path: string, parent: string): boolean {
 	return p === base || p.startsWith(`${base}/`);
 }
 
+function parseInternalDragPaths(raw: string): string[] {
+	if (!raw) return [];
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (Array.isArray(parsed)) {
+			return parsed.filter((item): item is string => typeof item === "string" && item.length > 0);
+		}
+	} catch {
+		// legacy single-path payload
+	}
+	return raw ? [raw] : [];
+}
+
 /**
  * Single file-tree row: chevron, icon, name / rename input, drag-drop.
  */
@@ -52,10 +69,12 @@ export function FileTreeNodeView({
 	isExpanded,
 	isLoading,
 	isSelected,
+	isFocused = false,
 	isRenaming,
 	decoration,
+	dragPaths,
 	onToggleDir,
-	onSelectFile,
+	onSelectEntry,
 	onContextMenu,
 	onRenameSubmit,
 	onRenameCancel,
@@ -78,12 +97,13 @@ export function FileTreeNodeView({
 		}
 	}, [isRenaming, entry.name, entry.isDirectory]);
 
-	function handleClick() {
-		if (entry.isDirectory) {
-			onSelectFile(entry);
+	function handleClick(e: React.MouseEvent) {
+		const toggle = e.ctrlKey || e.metaKey;
+		const range = e.shiftKey && !toggle;
+		const activate = !toggle && !range;
+		onSelectEntry(entry, { toggle, range, activate });
+		if (activate && entry.isDirectory) {
 			onToggleDir(entry.path);
-		} else {
-			onSelectFile(entry);
 		}
 	}
 
@@ -112,7 +132,9 @@ export function FileTreeNodeView({
 	}
 
 	function handleDragStart(e: React.DragEvent) {
-		beginNativeFileDrag(e, entry.path, onNativeDragStart);
+		const paths = dragPaths && dragPaths.length > 0 ? [...dragPaths] : [entry.path];
+		// Electron native drag cancels the HTML drag; in-window drops arrive as Files.
+		beginNativeFileDrag(e, paths, onNativeDragStart);
 	}
 
 	function handleDragOver(e: React.DragEvent) {
@@ -126,21 +148,26 @@ export function FileTreeNodeView({
 		setDragOver(true);
 	}
 
-	function handleDragLeave() {
+	function handleDragLeave(e: React.DragEvent) {
+		// Icon / label children fire leave when the pointer crosses them.
+		if (!isDragLeavingElement(e)) return;
 		setDragOver(false);
 	}
 
 	function handleDrop(e: React.DragEvent) {
 		setDragOver(false);
 		if (!entry.isDirectory) return;
-		const srcPath = e.dataTransfer.getData(DRAG_MIME);
+		const raw = e.dataTransfer.getData(DRAG_MIME);
 		e.preventDefault();
 		e.stopPropagation();
-		if (srcPath) {
-			if (isSubPath(entry.path, srcPath)) return;
-			const srcParent = pathDirname(srcPath);
-			if (srcParent === entry.path) return;
-			onFileMove(srcPath, entry.path);
+		if (raw) {
+			const srcPaths = parseInternalDragPaths(raw);
+			const valid = srcPaths.filter((srcPath) => {
+				if (isSubPath(entry.path, srcPath)) return false;
+				const srcParent = pathDirname(srcPath);
+				return srcParent !== entry.path;
+			});
+			if (valid.length > 0) onFileMove(valid, entry.path);
 			return;
 		}
 		const files = Array.from(e.dataTransfer.files);
@@ -150,8 +177,9 @@ export function FileTreeNodeView({
 	return (
 		<div
 			role="treeitem"
+			aria-selected={isSelected}
 			data-file-path={entry.path}
-			tabIndex={0}
+			tabIndex={isFocused || isSelected ? 0 : -1}
 			draggable={!isRenaming}
 			onClick={handleClick}
 			onContextMenu={handleContextMenu}
@@ -160,12 +188,17 @@ export function FileTreeNodeView({
 			onDragLeave={handleDragLeave}
 			onDrop={handleDrop}
 			onKeyDown={(e) => {
-				if (e.key === "Enter") handleClick();
+				if (e.key === "Enter") {
+					e.preventDefault();
+					onSelectEntry(entry, { toggle: false, range: false, activate: true });
+					if (entry.isDirectory) onToggleDir(entry.path);
+				}
 			}}
 			className={cn(
 				"flex items-center gap-1.5 rounded-md px-1.5 py-[3px] text-[12px] cursor-default select-none transition-colors",
 				isSelected && !isRenaming ? "bg-accent text-foreground" : "text-foreground hover:bg-accent/50",
-				dragOver && "bg-primary/10 ring-1 ring-inset ring-primary/40",
+				isFocused && !isRenaming ? "ring-1 ring-inset ring-primary/40" : null,
+				dragOver && FILE_TREE_NODE_DROP_CLASS,
 			)}
 			style={{ paddingLeft: `${depth * 16 + 6}px` }}
 			title={decoration?.tooltip}

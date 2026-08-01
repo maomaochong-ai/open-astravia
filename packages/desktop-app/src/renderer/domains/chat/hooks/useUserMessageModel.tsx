@@ -34,6 +34,7 @@ import {
 import { AppshotCard, type AppshotCardData } from "../components/AppshotCard";
 import { TextBlockView } from "../components/blocks/TextBlock";
 import { CopyButton } from "../components/message-list/MessageActions";
+import { useSkillTokenMeta } from "./useSkillTokenMeta";
 
 const DELETE_CONFIRMATION_SUPPRESSION_MS = 60_000;
 const CONTEXT_MENU_WIDTH = 170;
@@ -193,6 +194,8 @@ export function useUserMessageModel({
 	onEntryComplete,
 }: UserMessageModelInput): UserMessageModel {
 	const { t } = useTranslation("chat");
+	// 正文里的 `@skill:slug` 要还原成命令区插入时的样子（图标 + 别名）。
+	const resolveSkillMeta = useSkillTokenMeta();
 	const parsedUser = parseUserPrefixes(message.text);
 	const { segments, legacyRef } = parseInputSegments(message.text);
 	const promptRef = message.promptRef ?? legacyRef ?? undefined;
@@ -595,7 +598,10 @@ export function useUserMessageModel({
 		textBody: (
 			<TextBlockView
 				text={displayText}
-				inlineTokens={{ getImageLabel: (path) => imageLabelByPath.get(path) ?? pathBasename(path) }}
+				inlineTokens={{
+					getImageLabel: (path) => imageLabelByPath.get(path) ?? pathBasename(path),
+					getSkill: resolveSkillMeta,
+				}}
 				className="max-w-full overflow-x-auto [overflow-wrap:anywhere] [&_code]:break-all"
 			/>
 		),

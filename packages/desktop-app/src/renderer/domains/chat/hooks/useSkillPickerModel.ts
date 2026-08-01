@@ -1,5 +1,6 @@
 import type { SkillInfo } from "@preload/api";
-import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type ShortcutBinding, useShortcutScope } from "@shared/shortcuts";
+import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { SkillPickerPanelViewProps } from "../components/command-panel/SkillPickerPanel";
 import { skillSourceLabelKey } from "../lib/skill-source-label";
@@ -49,38 +50,45 @@ export function useSkillPickerModel({
 		panelRef.current?.querySelector(`[data-index="${activeIndex}"]`)?.scrollIntoView({ block: "nearest" });
 	}, [activeIndex, open]);
 
-	const handleKeyDown = useCallback(
-		(event: KeyboardEvent) => {
-			if (!open || items.length === 0) return;
-			if (event.key === "ArrowDown") {
-				event.preventDefault();
-				event.stopPropagation();
-				shouldScrollActiveIntoViewRef.current = true;
-				setActiveIndex((index) => (index + 1) % items.length);
-			} else if (event.key === "ArrowUp") {
-				event.preventDefault();
-				event.stopPropagation();
-				shouldScrollActiveIntoViewRef.current = true;
-				setActiveIndex((index) => (index - 1 + items.length) % items.length);
-			} else if (event.key === "Enter") {
-				event.preventDefault();
-				event.stopPropagation();
-				const target = items[activeIndex];
-				if (target) onSelect(target);
-			} else if (event.key === "Escape") {
-				event.preventDefault();
-				event.stopPropagation();
-				onClose();
-			}
-		},
-		[activeIndex, items, onClose, onSelect, open],
-	);
+	const keyBindings = useMemo((): ShortcutBinding[] => {
+		return [
+			{
+				key: "arrowdown",
+				run: () => {
+					if (items.length === 0) return;
+					shouldScrollActiveIntoViewRef.current = true;
+					setActiveIndex((index) => (index + 1) % items.length);
+				},
+			},
+			{
+				key: "arrowup",
+				run: () => {
+					if (items.length === 0) return;
+					shouldScrollActiveIntoViewRef.current = true;
+					setActiveIndex((index) => (index - 1 + items.length) % items.length);
+				},
+			},
+			{
+				key: "enter",
+				run: () => {
+					const target = items[activeIndex];
+					if (target) onSelect(target);
+				},
+			},
+			{
+				key: "escape",
+				run: () => onClose(),
+			},
+		];
+	}, [activeIndex, items, onClose, onSelect]);
 
-	useEffect(() => {
-		if (!open) return;
-		document.addEventListener("keydown", handleKeyDown, true);
-		return () => document.removeEventListener("keydown", handleKeyDown, true);
-	}, [handleKeyDown, open]);
+	useShortcutScope({
+		id: "overlay:skill-picker",
+		kind: "overlay",
+		active: open,
+		exclusive: false,
+		bindings: keyBindings,
+	});
 
 	useEffect(() => {
 		if (!open) return;

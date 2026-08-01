@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useMcpSettingsModel } from "../../settings/components/useMcpSettingsModel";
 import { queryAbilityCatalog } from "../lib/ability-catalog-query";
+import { localizeMarketAbility } from "../lib/ability-presentation";
 import {
 	buildBundleAbilities,
 	buildMcpAbilities,
@@ -23,7 +24,7 @@ import { useAbilityData } from "./useAbilityData";
 const ABILITY_PAGE_SIZE = 60;
 
 export function useAbilitiesModel(): AbilitiesModel {
-	const { t } = useTranslation("settings");
+	const { t, i18n } = useTranslation("settings");
 	const [scope, setScope] = useState<AbilityScope>("discover");
 	const [searchQuery, setSearchQuery] = useState("");
 	const [visiblePages, setVisiblePages] = useState(1);
@@ -54,14 +55,21 @@ export function useAbilitiesModel(): AbilitiesModel {
 		],
 	);
 
+	// 市场行先按界面语言归一（name / description / tags 取 detail.i18n[locale] 覆盖），
+	// 再喂给组装函数：卡片、搜索词、分组、详情页头部由此一并跟随语言。
+	const market = useMemo(
+		() => data.market.map((entry) => localizeMarketAbility(entry, i18n.language)),
+		[data.market, i18n.language],
+	);
+
 	const allItems = useMemo<AbilityItem[]>(() => {
 		const singles: AbilityItem[] = [
-			...buildSkillAbilities(data.market, localState),
-			...buildMcpAbilities(data.market, localState, t),
-			...buildPluginAbilities(data.market, localState, trPlugin),
+			...buildSkillAbilities(market, localState),
+			...buildMcpAbilities(market, localState, t),
+			...buildPluginAbilities(market, localState, trPlugin),
 		];
-		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(data.market, singles, localState, t)]);
-	}, [data.market, localState, t, trPlugin]);
+		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(market, singles, localState, t)]);
+	}, [market, localState, t, trPlugin]);
 
 	const changeScope = useCallback((nextScope: AbilityScope) => {
 		setScope(nextScope);

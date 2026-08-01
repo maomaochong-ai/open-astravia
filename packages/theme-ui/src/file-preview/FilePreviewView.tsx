@@ -1,5 +1,5 @@
 import { cn } from "@vetta/ui";
-import { useCallback, useEffect, useState, type JSX, type ReactNode } from "react";
+import { useCallback, useState, type JSX, type ReactNode } from "react";
 import type { FilePreviewContext, FilePreviewItem } from "./types";
 
 export interface FilePreviewViewLabels {
@@ -20,7 +20,6 @@ export interface FilePreviewViewProps {
 	onClose: () => void;
 	canPrev: boolean;
 	canNext: boolean;
-	enableKeyboard?: boolean;
 	onToggleSidebar?: () => void;
 	sidebarCollapsed?: boolean;
 	onDownload?: (item: FilePreviewItem) => void;
@@ -30,6 +29,7 @@ export interface FilePreviewViewProps {
 
 /**
  * Inline file preview chrome: header toolbar + body via renderBody.
+ * Keyboard shortcuts are owned by the host (ShortcutScopeStack), not this view.
  */
 export function FilePreviewView({
 	ctx,
@@ -39,7 +39,6 @@ export function FilePreviewView({
 	onClose,
 	canPrev,
 	canNext,
-	enableKeyboard = false,
 	onToggleSidebar,
 	sidebarCollapsed,
 	onDownload,
@@ -50,27 +49,6 @@ export function FilePreviewView({
 	const item = ctx.items[index] ?? null;
 	const [refreshNonce, setRefreshNonce] = useState(0);
 	const refresh = useCallback(() => setRefreshNonce((n) => n + 1), []);
-
-	useEffect(() => {
-		if (!enableKeyboard) return;
-		const onKey = (e: KeyboardEvent) => {
-			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-				return;
-			}
-			if (e.key === "ArrowLeft") {
-				e.preventDefault();
-				onPrev?.();
-			} else if (e.key === "ArrowRight") {
-				e.preventDefault();
-				onNext?.();
-			} else if (e.key === "Escape") {
-				e.preventDefault();
-				onClose();
-			}
-		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, [enableKeyboard, onPrev, onNext, onClose]);
 
 	if (!item) return null;
 	const canNavigate = total > 1;

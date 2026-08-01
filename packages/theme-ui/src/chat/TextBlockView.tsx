@@ -3,7 +3,13 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CodeBlockCopyButtonView } from "../shared/CodeBlockCopyButton";
+import { SkillTypeIcon } from "../skills/skill-icon";
 import { SyntaxHighlightedCode } from "../shared/SyntaxHighlightedCode";
+import {
+	chatUrlTransform,
+	classifyMarkdownLink,
+	normalizeWindowsPathsInMarkdownLinks,
+} from "./markdown-link";
 
 /** Minimal hast-like nodes for the streaming chunk rehype plugin. */
 interface HastText {
@@ -27,22 +33,6 @@ const LINK_BADGE_CLASS =
 
 const remarkPlugins = [remarkGfm];
 
-function resolveFileLinkPath(href: string | undefined): string | null {
-	if (!href) return null;
-	const decode = (raw: string): string => {
-		try {
-			return decodeURIComponent(raw);
-		} catch {
-			return raw;
-		}
-	};
-	if (href.startsWith("file://")) {
-		return decode(href.replace(/^file:\/\//, ""));
-	}
-	if (href.startsWith("/")) return decode(href);
-	return null;
-}
-
 /**
  * 用户消息里的行内 token（skill 引用 / 文件 / 图片）。
  * 语法归宿主所有——theme-ui 只负责渲染，解析函数由 inlineTokens.parse 注入。
@@ -63,6 +53,11 @@ export interface InlineTokenSupport {
 	getImageLabel: (path: string) => string;
 	/** 连接器的展示名与 logo；查不到时回退成真实名 + 通用图标。 */
 	getConnector?: (name: string) => { label: string; iconUrl?: string } | undefined;
+	/**
+	 * skill 的展示名与图标。文本流里只有 slug，别名/图标要宿主回查，
+	 * 否则气泡里的胶囊与输入框里刚插入的那枚对不上。查不到时回退成 slug + 默认图。
+	 */
+	getSkill?: (name: string) => { label: string; icon?: string } | undefined;
 }
 
 const INLINE_TOKEN_TAG = "vetta-inline-token";
@@ -74,6 +69,9 @@ const INLINE_TOKEN_TAG = "vetta-inline-token";
 const INLINE_TOKEN_CLASS =
 	"mx-px inline-block max-w-full whitespace-pre rounded-md border border-primary/25 bg-primary/10 px-1.5 align-baseline text-[12px] font-medium leading-[1.6] text-primary";
 const INLINE_TOKEN_ICON_CLASS = "mr-1 inline-block h-3 w-3 align-[-0.15em]";
+/** 自带渲染逻辑的图标（skill）需要一个定尺寸容器：图片图标按 h-full/w-full 铺满它。 */
+const INLINE_TOKEN_ICON_BOX_CLASS =
+	"mr-1 inline-flex h-3 w-3 items-center justify-center overflow-hidden align-[-0.15em]";
 
 /** 把文本节点里的 token 换成自定义元素；代码块与链接文本内不处理。 */
 function rehypeInlineTokens(parse: (text: string) => InlineTokenPiece[]) {
@@ -483,15 +481,15 @@ export const TextBlockView = memo(function TextBlockView({
 			td: ({ children }) => <td className="border-t border-border px-3 py-1.5 text-foreground">{children}</td>,
 			hr: () => <hr className="my-3 border-border" />,
 			a: ({ href, children }) => {
-				const filePath = resolveFileLinkPath(href);
-				if (filePath) {
-					const fileName = filePath.split("/").pop() || filePath;
+				const kind = classifyMarkdownLink(href);
+				if (kind.type === "file") {
+					const fileName = basename(kind.path);
 					return (
 						<button
 							type="button"
-							title={filePath}
+							title={kind.path}
 							className={cn(LINK_BADGE_CLASS, "cursor-pointer")}
-							onClick={() => onOpenFileRef.current(filePath)}
+							onClick={() => onOpenFileRef.current(kind.path)}
 						>
 							<span
 								className={cn(getFileIconClassRef.current(fileName), "h-3.5 w-3.5 shrink-0")}
@@ -500,15 +498,15 @@ export const TextBlockView = memo(function TextBlockView({
 						</button>
 					);
 				}
-				if (href && /^https?:\/\//i.test(href)) {
+				if (kind.type === "url") {
 					return (
 						<a
-							href={href}
-							title={href}
+							href={kind.url}
+							title={kind.url}
 							className={LINK_BADGE_CLASS}
 							onClick={(e) => {
 								e.preventDefault();
-								onOpenUrlRef.current(href);
+								onOpenUrlRef.current(kind.url);
 							}}
 						>
 							<span className="icon-[mdi--web] h-3.5 w-3.5 shrink-0" />
@@ -516,15 +514,15 @@ export const TextBlockView = memo(function TextBlockView({
 						</a>
 					);
 				}
+				// mailto / fragment / unknown: never target=_blank — that opens the OS browser
+				// for misclassified local paths. Keep visible but non-navigating.
 				return (
-					<a
-						href={href}
-						className="text-chart-2 underline decoration-chart-2/30 hover:decoration-chart-2"
-						target="_blank"
-						rel="noopener noreferrer"
+					<span
+						className="text-chart-2 underline decoration-chart-2/30"
+						title={kind.href || undefined}
 					>
 						{children}
-					</a>
+					</span>
 				);
 			},
 			strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
@@ -544,10 +542,14 @@ export const TextBlockView = memo(function TextBlockView({
 					);
 				}
 				if (kind === "skill") {
+					const skill = inlineTokensRef.current?.getSkill?.(value);
 					return (
 						<span className={INLINE_TOKEN_CLASS} title={value}>
-							<span className={cn("icon-[solar--magic-stick-linear]", INLINE_TOKEN_ICON_CLASS)} />
-							{value}
+							{/* 图标走能力广场那套「图片 / Solar / 默认图」三态，与输入框胶囊同源。 */}
+							<span className={INLINE_TOKEN_ICON_BOX_CLASS}>
+								<SkillTypeIcon type="skill" icon={skill?.icon} className="h-3 w-3" />
+							</span>
+							{skill?.label ?? value}
 						</span>
 					);
 				}
@@ -599,10 +601,20 @@ export const TextBlockView = memo(function TextBlockView({
 		return plugins.length > 0 ? plugins : undefined;
 	}, [animateChunks, inlineTokens]);
 
+	const markdownSource = useMemo(
+		() => normalizeWindowsPathsInMarkdownLinks(displayText),
+		[displayText],
+	);
+
 	return (
 		<div className={cn("markdown-body break-words", animateChunks && "markdown-streaming-tail", className)}>
-			<ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
-				{displayText}
+			<ReactMarkdown
+				remarkPlugins={remarkPlugins}
+				rehypePlugins={rehypePlugins}
+				components={components}
+				urlTransform={chatUrlTransform}
+			>
+				{markdownSource}
 			</ReactMarkdown>
 		</div>
 	);

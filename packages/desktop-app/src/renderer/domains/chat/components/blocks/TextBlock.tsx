@@ -19,9 +19,13 @@ interface MarkdownContentProps {
 	className?: string;
 	/**
 	 * 用户消息传入：把 `@skill:名字` / `@绝对路径` 渲染成行内胶囊。
-	 * 图片编号由调用方给（同一条消息里缩略图与胶囊必须同号）。
+	 * 图片编号由调用方给（同一条消息里缩略图与胶囊必须同号）；
+	 * skill 的别名与图标同理，只有宿主查得到。
 	 */
-	inlineTokens?: { getImageLabel: (path: string) => string };
+	inlineTokens?: {
+		getImageLabel: (path: string) => string;
+		getSkill?: (name: string) => { label: string; icon?: string } | undefined;
+	};
 }
 
 /** 语法住在 shared/lib/input-tokens，theme-ui 只认结构，因此解析器由宿主注入。 */
@@ -55,6 +59,7 @@ export const MarkdownContent = memo(function MarkdownContent({
 						parse: parseTokens,
 						getImageLabel: inlineTokens.getImageLabel,
 						getConnector: lookupConnector,
+						...(inlineTokens.getSkill ? { getSkill: inlineTokens.getSkill } : {}),
 					}
 				: undefined,
 		[inlineTokens],

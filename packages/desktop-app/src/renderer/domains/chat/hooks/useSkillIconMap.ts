@@ -1,28 +1,19 @@
 /**
- * skill / scene 的图标解析，口径与能力广场一致：图标只存在于市场目录（`MarketAbility.icon`），
- * 本地条目按 slug + type 认领。`skills.list()` 返回的 SkillInfo 不带 icon，所以命令区要拿到
+ * skill / scene 的图标目录加载。`skills.list()` 返回的 SkillInfo 不带 icon，所以命令区要拿到
  * 真实图标只能回市场目录查；查不到再看是不是随 App 分发的内置 Skill（图标走 renderer
  * 静态资源）。未登录 / 离线 / 两处都没有时返回 undefined，由 SkillTypeIcon 落默认图。
+ *
+ * 解析口径本身是纯逻辑，住在 lib/skill-token-meta。
  */
-import type { SkillInfo } from "@preload/api";
 import { fetchMarketAbilities } from "@shared/lib/api";
-import { builtinSkillIconUrl } from "@shared/lib/builtin-skill-icons";
 import { authTokenAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
+import type { SkillIconMap } from "../lib/skill-token-meta";
 
-/** 键为 `${type}:${slug}`：本地清单里 skill 与 scene 同命名空间，同名不同类型不能互相认领。 */
-export type SkillIconMap = ReadonlyMap<string, string>;
+export { type SkillIconMap, skillIconOf } from "../lib/skill-token-meta";
 
 const EMPTY_ICON_MAP: SkillIconMap = new Map();
-
-export function skillIconOf(map: SkillIconMap, skill: SkillInfo): string | undefined {
-	// 随 App 分发的内置 Skill 不在市场目录里，图标来自 renderer 静态资源（口径同能力广场）。
-	return (
-		map.get(`${skill.type}:${skill.name}`) ??
-		(skill.source === "builtin" ? builtinSkillIconUrl(skill.name) : undefined)
-	);
-}
 
 /** 按 token 缓存整份目录解析结果：命令区反复开合不该反复打网络。 */
 const iconMapCache = new Map<string, Promise<SkillIconMap>>();

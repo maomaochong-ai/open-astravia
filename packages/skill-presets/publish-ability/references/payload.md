@@ -13,7 +13,7 @@ The JSON passed to `publish.mjs --input`.
 | `mcp_config` | `mcp` | The config block written verbatim into the user's `mcp.json`, e.g. `{command, args}` or `{type: "http", url}`. |
 | `members` | `bundle` | Member list, always one level — a bundle cannot nest a bundle. Members must already be published. |
 | `category` | no | Managed category **name**, not an id. Read the live list with `scripts/categories.mjs` — an unmatched name is not an error, it silently lands in uncategorised. Matching is case-insensitive and also accepts a category's translated name. |
-| `version` | no | Letters, digits, `.` `_` `-` only. Honoured for `skill`/`scene`/`mcp`/`bundle`; **`plugin` always takes the version from `plugin.json`** and ignores this. Omitted → `1.0.0` for a new entry, patch+1 on re-submission. |
+| `version` | no | Letters, digits, `.` `_` `-` only. Honoured for `skill`/`scene`/`mcp`/`bundle`. **For `plugin` it is rejected** — the version always comes from `plugin.json`, so a value here would be silently ignored. Omitted → `1.0.0` for a new entry, patch+1 on re-submission. |
 
 Where a package carries the same information, the payload wins and the package is the fallback:
 `skill`/`scene` fall back to `SKILL.md` frontmatter (`metadata.category`, `metadata.version`,
@@ -34,9 +34,14 @@ columns for display fields.
 | `license` | no | e.g. `MIT` |
 | `icon` | no | Empty, one of the built-in Solar names below, or an `http(s)://` URL. See [Icons](#icons). |
 | `tags` | no | Free-form; orthogonal to `category`. For `skill`/`scene` the package's own `SKILL.md` frontmatter tags apply unless you set this. |
-| `showcases` | no | Structured hero panels, see below |
-| `meta` | no | Ordered list of `{key?, label?, value}`; `key` must be `homepage`/`repository`/`docs`/`license`, otherwise use `label` |
-| `i18n` | no | `{ "<locale>": { …same fields… } }` |
+| `showcases` | no | Structured hero panels, see below. **Replaced wholesale** — an empty array clears them. |
+| `meta` | no | Ordered list of `{key?, label?, value}`; `key` must be `homepage`/`repository`/`docs`/`license`, otherwise use `label`. **Replaced wholesale.** |
+| `i18n` | no | Translations, see [Multi-language](#multi-language) |
+
+**Unknown keys are rejected.** The server deserialises `detail` into a fixed struct: a misspelled
+key (`title`, `body`, `long_description`, …) is neither an error nor stored — the submission
+returns success with that content silently missing. The validator therefore rejects anything
+outside the table above.
 
 ## Icons
 
@@ -101,10 +106,45 @@ rather than being skipped.
 Put the default language at the top level of `detail` and other languages under `detail.i18n`.
 A locale that omits a field falls back to the top level, so translate only what differs.
 
-**For plugins, do not hand-write `i18n` for text that already lives in the package.** If
-`plugin.json` uses `%key%` placeholders for `name`/`description` and ships `locales/*.json`, the
-server expands every locale automatically at upload time. Only add `detail.i18n` for marketplace
-copy that is not in the package — typically `content`, `showcases`, and `meta`.
+A locale block accepts a **subset** of `detail`: `name`, `description`, `tags`, `content`,
+`showcases`, `meta`. `author`, `license`, and `icon` are not per-language and are rejected there.
+Inside a block, `tags`/`showcases`/`meta` replace the default-language value wholesale — they are
+never merged element-by-element.
+
+### Locale keys must be base languages
+
+Write `en`, `ja`, `de` — **never** `en-US`, `zh_CN`, or `EN`. The client's UI language is a base
+language, and lookup tries the exact key first. A region-suffixed key only works when nothing
+else claims that language; the moment the package also ships a translation for it (see below),
+both blocks are stored side by side, the client hits the package's one, and everything you wrote
+lands in the block that is never read. The result is a detail page with an English title and a
+Chinese body. The validator rejects region suffixes for this reason.
+
+### Plugins: align with the package's own translations
+
+If `plugin.json` uses `%key%` placeholders for `name`/`description` and ships `locales/*.json`,
+the server expands **every non-default locale** into `detail.i18n` at upload time, then merges
+your blocks on top **per locale, field by field**. So:
+
+- **Do not hand-write `name`/`description`** for a locale the package already covers — you would
+  be maintaining the same sentence in two places, and if they drift, the marketplace card and the
+  plugin's own UI show different text. Add only what is not in the package: `content`,
+  `showcases`, `meta`, `tags`.
+- **Your key must equal the package's locale filename.** `locales/en.json` → use `en`. Merging is
+  keyed on that string; `en-US` against `locales/en.json` produces two unrelated blocks.
+- **Do not add a block for the package's `defaultLocale`.** That language is the top level of
+  `detail`; a block for it is a second source of truth for the same text.
+
+`publish.mjs` reads the archive and checks all three before submitting.
+
+### Re-submitting: `detail.i18n` is replaced wholesale
+
+Against the **already-stored row**, `i18n` is not merged: submitting `{"en": …}` drops every
+other locale previously on that entry, including translations an administrator added in the admin
+console. Always resubmit the complete set of locales.
+
+(The per-field merge described above is a different step — it happens between your payload and the
+*package's* translations within a single upload.)
 
 ## Example
 

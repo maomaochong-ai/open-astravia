@@ -8,6 +8,8 @@
  * 因此本模块的产出是**错误清单**而非首个错误。
  */
 
+import { nlsKeyOf } from "./package-inspect.mjs";
+
 /** 能力形态。与服务端 model.AbilityType* 一一对应。 */
 export const ABILITY_TYPES = ["skill", "scene", "mcp", "plugin", "bundle"];
 
@@ -63,6 +65,65 @@ const SOLAR_ICONS = new Set([
 const META_KEYS = new Set(["homepage", "repository", "docs", "license"]);
 /** slug / version 会拼进对象存储 key，白名单防路径注入。 */
 const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
+
+/**
+ * `detail` 与 `detail.i18n[locale]` 的合法字段。
+ *
+ * 服务端是 `json.Unmarshal` 进结构体：**拼错的键既不报错也不入库**，提交返回成功而内容
+ * 悄悄少了一块。写错键名是这条链路上最常见也最难自查的失误（`title` / `body` /
+ * `markdown` / `long_description` 都出现过），故白名单之外一律拦下。
+ */
+const DETAIL_FIELDS = new Set([
+	"name",
+	"description",
+	"author",
+	"license",
+	"icon",
+	"tags",
+	"content",
+	"showcases",
+	"meta",
+	"i18n",
+]);
+/** 译文覆盖块的合法字段，是 DETAIL_FIELDS 的子集：author/license/icon 不按语言区分。 */
+const LOCALE_FIELDS = new Set(["name", "description", "tags", "content", "showcases", "meta"]);
+
+function validateUnknownFields(object, allowed, path, errors) {
+	for (const key of Object.keys(object ?? {})) {
+		if (allowed.has(key)) continue;
+		errors.push(
+			`${path}.${key} 不是合法字段，服务端会静默丢弃它。可用字段：${[...allowed].join(" / ")}`,
+		);
+	}
+}
+
+/**
+ * 译文块的 locale 键：必须是基语言（`zh` / `en`），不能带地区后缀。
+ *
+ * 客户端的界面语言只有基语言两种，取值先精确匹配 `i18n[locale]`。写成 `en-US` 时：
+ * 若包内 `locales/en.json` 也展开出一个 `en` 块，两个键并存且**不合并**，精确匹配命中
+ * 包内那份（通常只有 name/description），作者写的 content/showcases/tags 整块沉底——
+ * 表现为「英文详情页标题是英文、正文是中文」。没有包内块时才会回退到 `en-US`，
+ * 所以这个错误是否致命取决于包的内容，不能靠运气。
+ */
+function validateLocaleKey(locale, errors) {
+	const trimmed = locale.trim();
+	if (!trimmed) {
+		errors.push("detail.i18n 的 locale 键不能为空");
+		return;
+	}
+	const region = /^([A-Za-z]{2,3})[-_]/.exec(trimmed);
+	if (region) {
+		errors.push(
+			`detail.i18n.${trimmed} 的 locale 键不能带地区后缀，改成 "${region[1].toLowerCase()}"。` +
+				`客户端界面语言只有基语言，带地区的键在包内也有同语言译文时会被整块忽略`,
+		);
+		return;
+	}
+	if (trimmed !== trimmed.toLowerCase()) {
+		errors.push(`detail.i18n.${trimmed} 的 locale 键必须小写`);
+	}
+}
 
 function isBlank(value) {
 	return typeof value !== "string" || value.trim() === "";
@@ -145,12 +206,12 @@ function validateDetail(detail, errors) {
 	validateIcon(detail.icon, errors);
 	validateShowcases(detail.showcases, "detail.showcases", errors);
 	validateMeta(detail.meta, "detail.meta", errors);
+	validateUnknownFields(detail, DETAIL_FIELDS, "detail", errors);
 
 	for (const [locale, override] of Object.entries(detail.i18n ?? {})) {
-		if (!locale.trim()) {
-			errors.push("detail.i18n 的 locale 键不能为空");
-			continue;
-		}
+		validateLocaleKey(locale, errors);
+		if (!locale.trim()) continue;
+		validateUnknownFields(override, LOCALE_FIELDS, `detail.i18n.${locale}`, errors);
 		validateShowcases(override?.showcases, `detail.i18n.${locale}.showcases`, errors);
 		validateMeta(override?.meta, `detail.i18n.${locale}.meta`, errors);
 	}
@@ -196,8 +257,14 @@ export function validateUploadInput(input, options = {}) {
 
 	validateDetail(input.detail, errors);
 
-	if (input.version !== undefined && String(input.version).trim() !== "" && !SAFE_SEGMENT.test(String(input.version).trim())) {
+	const version = String(input.version ?? "").trim();
+	if (version !== "" && !SAFE_SEGMENT.test(version)) {
 		errors.push(`version 含非法字符：${input.version}（仅允许字母数字 . _ -）`);
+	}
+	// 服务端对 plugin 恒取 manifest.Version，payload 里这个字段既不生效也不报错——
+	// 留着它只会让人以为版本已经改过了
+	if (version !== "" && input.type === "plugin") {
+		errors.push("plugin 的版本以包内 plugin.json 的 version 为准，payload 的 version 不会生效，请删除该字段");
 	}
 
 	if (ARTIFACT_TYPES.includes(input.type)) {
@@ -234,4 +301,124 @@ export function validateUploadInput(input, options = {}) {
 	}
 
 	return errors;
+}
+
+// --- 与安装包的交叉校验 ---
+//
+// 静态校验管得了 payload 自身的形状，管不了「payload 与包内 manifest 是不是同一套口径」。
+// 后者恰恰是提交后最难发现的一类问题：服务端把两份数据都收下、不报错，只是按固定优先级
+// 决定谁生效，结果要装完切语言才看得见。故凡是能靠读包判定的，都在提交前判掉。
+
+function baseLanguage(locale) {
+	return String(locale).trim().toLowerCase().split(/[-_]/)[0];
+}
+
+/**
+ * 插件包的交叉校验。`pkg` 来自 package-inspect.mjs。
+ *
+ * 服务端会把包内 `locales/<locale>.json`（默认语言除外）展开成 `detail.i18n[<locale>]`，
+ * 再与作者提交的 i18n **按 locale 键逐字段合并**。键对不上就不是合并而是并存。
+ */
+function crossCheckPlugin(input, pkg, errors, warnings) {
+	const manifest = pkg.pluginManifest;
+	if (!manifest) {
+		errors.push("包内找不到 plugin.json（根目录或唯一的顶层子目录下），服务端会拒绝这个包");
+		return;
+	}
+	if (!manifest.id || !SAFE_SEGMENT.test(String(manifest.id))) {
+		errors.push(`plugin.json 的 id 非法：${JSON.stringify(manifest.id)}（仅允许字母数字 . _ -）`);
+	}
+	if (!manifest.version) {
+		errors.push("plugin.json 缺少 version，服务端会拒绝这个包");
+	}
+	if (input.slug?.trim() && input.slug.trim() !== manifest.id) {
+		warnings.push(`payload 的 slug（${input.slug.trim()}）会被忽略，实际用的是 plugin.json 的 id：${manifest.id}`);
+	}
+
+	const defaultLocale = String(manifest.defaultLocale ?? "").trim() || "zh";
+	// 默认语言那份不会被展开成覆盖块——它已经是 detail 顶层的内容
+	const packaged = Object.keys(pkg.locales).filter((locale) => locale !== defaultLocale);
+	const authored = Object.keys(input.detail?.i18n ?? {});
+
+	for (const locale of authored) {
+		if (locale === defaultLocale) {
+			errors.push(
+				`detail.i18n.${locale} 是这个插件的默认语言（plugin.json 的 defaultLocale），` +
+					"默认语言的文案写在 detail 顶层，不要再放进 i18n",
+			);
+			continue;
+		}
+		if (packaged.includes(locale)) continue;
+		const collision = packaged.find((name) => baseLanguage(name) === baseLanguage(locale));
+		if (collision) {
+			errors.push(
+				`detail.i18n.${locale} 与包内 locales/${collision}.json 是同一种语言但键不同，两者不会合并：` +
+					`服务端会同时存下 "${collision}" 和 "${locale}" 两块，客户端只命中前者，你写的这块不会显示。` +
+					`把键改成 "${collision}"`,
+			);
+		}
+	}
+
+	// 包内已有译名时再手写一份，等于把同一句话维护在两处；写岔了市场卡片与插件内的 UI 就对不上
+	for (const [field, raw] of [
+		["name", manifest.name],
+		["description", manifest.description],
+	]) {
+		const key = nlsKeyOf(raw);
+		if (!key) continue;
+		for (const locale of authored) {
+			const packagedText = pkg.locales[locale]?.[key];
+			const authoredText = input.detail.i18n[locale]?.[field];
+			if (!packagedText || !authoredText || packagedText === authoredText) continue;
+			warnings.push(
+				`detail.i18n.${locale}.${field} 与包内 locales/${locale}.json 的 ${key} 不一致，` +
+					`提交后市场显示的是 payload 这份（"${authoredText}"），插件内 UI 仍显示包内那份（"${packagedText}"）`,
+			);
+		}
+	}
+}
+
+/** skill / scene 的交叉校验：slug 与 tags 都来自 SKILL.md，payload 只能覆盖不能改名。 */
+function crossCheckSkill(input, pkg, errors, warnings) {
+	const fm = pkg.skillFrontmatter;
+	if (!fm) {
+		if (!pkg.root && !pkg.pluginManifest) {
+			errors.push("包内找不到 SKILL.md（根目录或唯一的顶层子目录下），服务端会拒绝这个包");
+		}
+		return;
+	}
+	if (input.slug?.trim() && fm.name && input.slug.trim() !== fm.name) {
+		warnings.push(`payload 的 slug（${input.slug.trim()}）会被忽略，实际用的是 SKILL.md 的 name：${fm.name}`);
+	}
+	if (fm.metadata?.tags?.length && !input.detail?.tags) {
+		warnings.push(
+			`detail.tags 未提供，将使用 SKILL.md frontmatter 的 tags：${fm.metadata.tags.join(", ")}`,
+		);
+	}
+}
+
+/**
+ * 提交前拿安装包核对 payload。返回 `{errors, warnings}`。
+ *
+ * `pkg` 为 null（包读不动）时返回空结果：交叉校验是增补的一层，不该因为本模块读不懂
+ * 某种压缩变体就挡住一次本该成功的提交——包的形状终究由服务端把关。
+ */
+export function crossCheckPackage(input, pkg) {
+	const errors = [];
+	const warnings = [];
+	if (!pkg) return { errors, warnings };
+
+	if (input.type === "plugin") {
+		crossCheckPlugin(input, pkg, errors, warnings);
+	} else {
+		crossCheckSkill(input, pkg, errors, warnings);
+	}
+
+	// vetta.json 与 payload.detail 是同一份数据的两条投递路径，且是**整体二选一**：
+	// 传了 detail，包内那份连一个字段都不会被读到
+	if (pkg.vettaJson && input.detail) {
+		warnings.push("包内的 vetta.json 被整体忽略：payload 提供了 detail，两者不做逐字段合并");
+	}
+
+	return { errors, warnings };
 }
