@@ -40,8 +40,6 @@
 	"controlbar.exportMockup.label": "导出渲染图",
 	"controlbar.raster.hint": "已位图化的 frame 数 / 总数。位图化的 frame 不再参与渲染合成；数字标红表示有 frame 截图失败、仍在活体渲染（详情见控制台）。",
 	"controlbar.raster.retry": "有 frame 截图失败、仍在活体渲染，点击重试（详情见控制台）",
-	"controlbar.effects.on": "毛玻璃：原始半径（画布卡顿或闪烁时点此降级）",
-	"controlbar.effects.off": "毛玻璃：已降级（画布上按小半径渲染，截图与导出仍用原始半径）",
 	"preview.packaged.badge": "分享包（只读）",
 	"preview.working.badge": "设计文档",
 	"preview.frames.count": "{{count}} 个 frame",

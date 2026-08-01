@@ -32,16 +32,11 @@ export class BridgeHub {
 	private readonly captures = new Map<string, PendingCapture>();
 	private events: BridgeHubEvents | null = null;
 	private captureCounter = 0;
-	private effectsEnabled = true;
 	private readonly onMessage = (event: MessageEvent): void => {
 		const data = event.data as Record<string, unknown> | null;
 		if (!data || data.vetd !== true) return;
 		const frameId = this.frameIdForWindow(event.source);
 		switch (data.type) {
-			case "ready":
-				// 刚装好 bridge 的 frame（首次挂载 / 整页重载）对不上当前开关，补发一次。
-				if (frameId && !this.effectsEnabled) this.post(frameId, { type: "set-effects", enabled: false });
-				return;
 			case "rendered":
 				if (frameId) this.events?.onRendered(frameId);
 				return;
@@ -106,15 +101,6 @@ export class BridgeHub {
 		this.post(frameId, { type: "set-mode", mode });
 	}
 
-	/**
-	 * Toggle backdrop-filter / filter inside every frame. Kept on the hub rather
-	 * than in React state because late arrivals (a frame that mounts or hot-reloads
-	 * after the switch was flipped) must be brought in line on their `ready`.
-	 */
-	setEffectsEnabled(enabled: boolean): void {
-		this.effectsEnabled = enabled;
-		for (const frameId of this.frames.keys()) this.post(frameId, { type: "set-effects", enabled });
-	}
 
 	clearSelection(frameId: string): void {
 		this.post(frameId, { type: "clear-selection" });

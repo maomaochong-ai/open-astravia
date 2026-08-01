@@ -137,82 +137,9 @@ export function notifyFrameRendered(frameId: string | null, allFrames: string[])
 	post({ type: "rendered", frameId, allFrames });
 }
 
-/**
- * 画布性能降级：把 frame 内 backdrop-filter 的模糊半径钳到很小，而不是整个去掉。
- *
- * backdrop-filter 每个都要单独建合成层、回读背景、跑模糊核再合成，代价随
- * **半径 × 面积** 增长、层数之间还是乘法关系。一份稿子里十几个这种元素、分散
- * 在多个跨源 iframe、又都套在画布的 scale 变换下时，Chromium 合成器会被压垮，
- * 表现为整窗口撕裂闪烁（Chromium 41471914 / 339841685 也有同类重绘缺陷）。
- *
- * 直接去掉毛玻璃观感损失太大，而半径是主导项：40px 压到 6px 观感还在、代价掉
- * 一大截。CSS 选择器读不到「谁身上有 backdrop-filter」，只能遍历算样式后改内联，
- * 所以要记住原值以便还原；HMR 换过 DOM 后需要重跑。
- *
- * 只碰 backdrop-filter，不碰普通 filter：后者只模糊元素自身像素、不回读背景，
- * 便宜得多，而装饰性光晕块正是靠大半径 filter 出效果的。
- */
-const BLUR_CLAMP_PX = 6;
-
-function clampBlurRadii(value: string): string {
-	return value.replace(/blur\(\s*([\d.]+)px\s*\)/g, (whole, radius: string) => {
-		const px = Number.parseFloat(radius);
-		return Number.isFinite(px) && px > BLUR_CLAMP_PX ? `blur(${BLUR_CLAMP_PX}px)` : whole;
-	});
-}
-
-function makeEffectsSwitch(): { set(enabled: boolean): void; refresh(): void } {
-	/** 被改过的元素 → 它原本的内联值（多为空串，还原即恢复样式表里的声明）。 */
-	const touched = new Map<HTMLElement, { backdrop: string; filter: string }>();
-	let enabled = true;
-
-	const reduce = (): void => {
-		for (const element of document.querySelectorAll<HTMLElement>("*")) {
-			if (touched.has(element)) continue;
-			const computed = window.getComputedStyle(element);
-			const backdrop = computed.backdropFilter || computed.webkitBackdropFilter || "none";
-			// filter 也要钳：blur-3xl 这类装饰光晕是 filter: blur(64px)，大半径同样
-			// 会建大块合成层。早先「整个关掉」能止住闪烁，关的正是这两者。
-			const filter = computed.filter || "none";
-			const nextBackdrop = backdrop.includes("blur(") ? clampBlurRadii(backdrop) : backdrop;
-			const nextFilter = filter.includes("blur(") ? clampBlurRadii(filter) : filter;
-			if (nextBackdrop === backdrop && nextFilter === filter) continue;
-			touched.set(element, { backdrop: element.style.backdropFilter, filter: element.style.filter });
-			if (nextBackdrop !== backdrop) {
-				element.style.backdropFilter = nextBackdrop;
-				element.style.setProperty("-webkit-backdrop-filter", nextBackdrop);
-			}
-			if (nextFilter !== filter) element.style.filter = nextFilter;
-		}
-	};
-
-	const restore = (): void => {
-		for (const [element, original] of touched) {
-			element.style.backdropFilter = original.backdrop;
-			element.style.setProperty("-webkit-backdrop-filter", original.backdrop);
-			element.style.filter = original.filter;
-		}
-		touched.clear();
-	};
-
-	return {
-		set(next: boolean): void {
-			if (next === enabled) return;
-			enabled = next;
-			if (enabled) restore();
-			else reduce();
-		},
-		/** HMR 换过 DOM：新节点身上的 backdrop-filter 还是原半径，补一遍。 */
-		refresh(): void {
-			if (!enabled) reduce();
-		},
-	};
-}
-
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
-	const effects = makeEffectsSwitch();
 
 	const hoverOverlay = makeOverlay("#3b82f6", "rgba(59,130,246,0.08)", false);
 	const selectedOverlay = makeOverlay("#6366f1", "rgba(99,102,241,0.06)", true);
@@ -298,9 +225,6 @@ export function installBridge(host: BridgeHost): void {
 			case "clear-selection":
 				reset();
 				return;
-			case "set-effects":
-				effects.set(data.enabled !== false);
-				return;
 			case "capture": {
 				const requestId = typeof data.requestId === "string" ? data.requestId : "";
 				// keepHighlight: bake the selected-element outline into the shot (used by
@@ -337,8 +261,6 @@ export function installBridge(host: BridgeHost): void {
 			// Overlays may point at stale rects after an HMR swap.
 			moveOverlay(hoverOverlay, null);
 			moveOverlay(selectedOverlay, selected?.isConnected ? selected : null);
-			// 新换上来的节点还是原始模糊半径，降级态下要补钳一遍。
-			effects.refresh();
 			post({ type: "hmr-updated", frameId: host.getFrameId() });
 		});
 	}

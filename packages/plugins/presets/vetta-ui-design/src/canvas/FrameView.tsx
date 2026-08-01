@@ -17,7 +17,9 @@ interface FrameViewProps {
 	interactive: boolean;
 	/** Resize handles show only for a lone selection — a group resize has no obvious meaning. */
 	resizable: boolean;
-	/** false 时 iframe 收成 display:none，改用 `raster` 位图显示（见 frame-raster.ts）。 */
+	/** false 时连 iframe 都还没挂（启动期的挂载节流），见 frame-raster.ts。 */
+	mounted: boolean;
+	/** false 时 iframe 收成 display:none，改用 `raster` 位图显示。 */
 	live: boolean;
 	raster: string | null;
 	/** Live offset of the in-flight group move this frame takes part in. */
@@ -52,6 +54,7 @@ export function FrameView({
 	entered,
 	interactive,
 	resizable,
+	mounted,
 	live,
 	raster,
 	moveDelta,
@@ -208,17 +211,24 @@ export function FrameView({
 					selected ? "ring-2 ring-[var(--vetd-selected)]" : "ring-1 ring-border"
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
-				{/* 位图态下 iframe 仍留在 DOM 里，只是不渲染：卸载就收不到 HMR，
-				    frame 会永远停在旧位图上。display:none 只停掉渲染与合成。 */}
-				<iframe
-					ref={iframeRef}
-					title={frame.title || frame.id}
-					src={`http://127.0.0.1:${port}/#/frame/${encodeURIComponent(frame.id)}`}
-					className="h-full w-full border-0"
-					style={{ pointerEvents: entered ? "auto" : "none", display: live ? "block" : "none" }}
-				/>
+				{/* 挂上之后就不再卸载：卸载会丢掉 HMR 连接，frame 会永远停在旧位图上。
+				    位图态只是 display:none——渲染与合成停掉，文档与脚本照常活着。 */}
+				{mounted ? (
+					<iframe
+						ref={iframeRef}
+						title={frame.title || frame.id}
+						src={`http://127.0.0.1:${port}/#/frame/${encodeURIComponent(frame.id)}`}
+						className="h-full w-full border-0"
+						style={{ pointerEvents: entered ? "auto" : "none", display: live ? "block" : "none" }}
+					/>
+				) : null}
 				{!live && raster ? (
 					<img src={raster} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+				) : null}
+				{!live && !raster ? (
+					<div className="absolute inset-0 flex items-center justify-center bg-muted">
+						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
+					</div>
 				) : null}
 				{/* Interaction shield: select/move at frame level until the user drills in. */}
 				{!entered ? (

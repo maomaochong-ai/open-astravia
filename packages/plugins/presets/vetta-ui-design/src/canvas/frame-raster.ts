@@ -1,36 +1,44 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeHub } from "./bridge-client";
 
 /**
- * 空闲帧位图化。
+ * 空闲帧位图化 + 挂载节流。
  *
- * 画布上每个 frame 都是一个活的跨源 iframe，等于 N 套完整渲染树同时活着、
- * 还都套在画布的 scale 变换下。frame 一多，合成器就被压垮——毛玻璃只是第一个
- * 把它压垮的东西，大阴影、大图、CSS 动画同理。Miro / FigJam / Milanote 这类
- * 无限画布工具都不保留活体网页，一律存静态截图。
+ * 画布上每个 frame 都是一个活的跨源 iframe，等于 N 套完整渲染树同时参与合成、
+ * 还都套在画布的 scale 变换下。frame 一多，Chromium 的 tile 显存就不够用
+ * （主进程日志里的 `tile memory limits exceeded, some content may not draw`），
+ * 画不出来的部分被直接丢弃——这就是那种整窗口的撕裂闪烁。
  *
- * 这里的做法：frame 渲染完成后截一张图，把 iframe 收成 display:none、改用位图
- * 显示；双击进入检查、或代码热更新时再换回活体。iframe 始终留在 DOM 里而不是
- * 卸载——卸载就收不到 HMR，frame 会永远停在旧位图上。display:none 只停掉渲染
- * 与合成，文档与脚本照常活着。
+ * 两件事一起做：
+ * 1. frame 渲染完成后截一张图，之后 iframe 收成 display:none、改用位图显示。
+ *    双击进入检查、或代码热更新时再换回活体。
+ * 2. 启动时不一次性把所有 iframe 挂上去：同时活着的最多 MOUNT_WINDOW 个，
+ *    截完一个放行下一个。否则「全部活着」的那几秒照样撑爆 tile 显存。
+ *
+ * iframe 一旦挂上就不再卸载：卸载会丢掉 HMR 连接，frame 会永远停在旧位图上。
+ * display:none 只停掉渲染与合成，文档与脚本照常活着。
  */
 
 /** 渲染信号到实际截图之间的静置时间：等字体、图片、布局都落定。 */
 const SETTLE_MS = 450;
 /** 位图按此倍率截，放大到约 150% 之前都不虚。 */
 const RASTER_PIXEL_RATIO = 2;
+/** 同时允许活体渲染的 frame 数上限。 */
+const MOUNT_WINDOW = 2;
 
 interface FrameRasterOptions {
 	bridge: BridgeHub;
+	/** 画布上的 frame id，按画布顺序——决定谁先挂载、先截图。 */
+	frameIds: readonly string[];
 	/** 当前处于检查态的 frame，必须保持活体。 */
 	enteredFrameId: string | null;
-	/** 拿到位图后是否真的收起 iframe；false 时行为与改造前一致。 */
-	enabled: boolean;
 }
 
 export interface FrameRasterState {
 	rasterOf(frameId: string): string | null;
-	/** 该 frame 此刻是否需要活体渲染。截图失败的 frame 会一直留在活体，是安全兜底。 */
+	/** 该 frame 此刻是否需要挂上真正的 iframe。 */
+	isMounted(frameId: string): boolean;
+	/** 挂载之后是否显示活体（而不是位图）。截图失败的 frame 会留在活体，是安全兜底。 */
 	isLive(frameId: string): boolean;
 	/**
 	 * 内容变了就作废旧位图，重新排队截图。调用方（DesignCanvas）在 frame 首次
@@ -42,7 +50,7 @@ export interface FrameRasterState {
 	 * 的 iframe 没有布局，截出来是空的）。结束后恢复原状态。
 	 */
 	runLive<T>(frameId: string, run: () => Promise<T>): Promise<T>;
-	/** 已成功位图化的 frame 数与截图失败数，给控制栏显示，便于判断优化是否真的生效。 */
+	/** 已成功位图化的 frame 数与截图失败数，给控制栏显示，便于判断优化是否生效。 */
 	stats: { rasterized: number; failed: number };
 	/** 重新排队所有截图失败的 frame。 */
 	retryFailed(): void;
@@ -55,7 +63,7 @@ function nextPaint(): Promise<void> {
 	});
 }
 
-export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRasterOptions): FrameRasterState {
+export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRasterOptions): FrameRasterState {
 	const [rasters, setRasters] = useState<ReadonlyMap<string, string>>(new Map());
 	/** 等待截图的 frame：它们必须先保持活体，截完才收起。 */
 	const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
@@ -63,15 +71,6 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 	const [forced, setForced] = useState<ReadonlySet<string>>(new Set());
 	/** frameId → 截图失败原因。用于把「优化没生效」这件事摆到台面上。 */
 	const [failures, setFailures] = useState<ReadonlyMap<string, string>>(new Map());
-
-	/** 失败的 frame 不会自动重试（免得死循环烧 CPU），由用户点控制栏上的计数重来。 */
-	const retryFailed = useCallback((): void => {
-		setFailures((current) => {
-			if (current.size === 0) return current;
-			setDirty((pending) => new Set([...pending, ...current.keys()]));
-			return new Map();
-		});
-	}, []);
 	const capturingRef = useRef<string | null>(null);
 	const timerRef = useRef<number | null>(null);
 
@@ -84,10 +83,40 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 		});
 	}, []);
 
+	/** 失败的 frame 不自动重试（免得死循环烧 CPU），由用户点控制栏上的计数重来。 */
+	const retryFailed = useCallback((): void => {
+		setFailures((current) => {
+			if (current.size === 0) return current;
+			setDirty((pending) => new Set([...pending, ...current.keys()]));
+			return new Map();
+		});
+	}, []);
+
+	/**
+	 * 挂载窗口：已经收工（截到图或截失败）的 frame 不再占额度，于是窗口顺着
+	 * 队列往后滑。检查态与截图期间强制活体的 frame 无条件在内。
+	 */
+	const mounted = useMemo(() => {
+		const allowed = new Set<string>();
+		let budget = MOUNT_WINDOW;
+		for (const frameId of frameIds) {
+			if (rasters.has(frameId) || failures.has(frameId)) {
+				allowed.add(frameId);
+				continue;
+			}
+			if (budget <= 0) continue;
+			allowed.add(frameId);
+			budget -= 1;
+		}
+		if (enteredFrameId) allowed.add(enteredFrameId);
+		for (const frameId of forced) allowed.add(frameId);
+		return allowed;
+	}, [frameIds, rasters, failures, enteredFrameId, forced]);
+
 	// 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
 	useEffect(() => {
-		if (!enabled || capturingRef.current !== null) return;
-		const next = [...dirty].find((frameId) => frameId !== enteredFrameId);
+		if (capturingRef.current !== null) return;
+		const next = [...dirty].find((frameId) => frameId !== enteredFrameId && mounted.has(frameId));
 		if (next === undefined) return;
 
 		capturingRef.current = next;
@@ -101,7 +130,9 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 				.catch((error: unknown) => {
 					// 截不到就让它继续活着——比显示一张坏图安全。但不能静默：一张都截
 					// 不成时整块优化等于没生效，而表面上看不出任何区别。
-					setFailures((current) => new Map(current).set(next, error instanceof Error ? error.message : String(error)));
+					setFailures((current) =>
+						new Map(current).set(next, error instanceof Error ? error.message : String(error)),
+					);
 					console.error(`[vetd] 位图化失败，frame 保持活体渲染: ${next}`, error);
 				})
 				.finally(() => {
@@ -122,21 +153,31 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 				capturingRef.current = null;
 			}
 		};
-	}, [bridge, dirty, enteredFrameId, enabled]);
+	}, [bridge, dirty, enteredFrameId, mounted]);
 
 	const rasterOf = useCallback((frameId: string): string | null => rasters.get(frameId) ?? null, [rasters]);
 
-	const isLive = useCallback(
-		(frameId: string): boolean =>
-			!enabled ||
-			frameId === enteredFrameId ||
-			forced.has(frameId) ||
-			dirty.has(frameId) ||
-			!rasters.has(frameId),
-		[enabled, enteredFrameId, forced, dirty, rasters],
-	);
+	const isMounted = useCallback((frameId: string): boolean => mounted.has(frameId), [mounted]);
+
+	const liveSet = useMemo(() => {
+		const live = new Set<string>();
+		for (const frameId of mounted) {
+			if (frameId === enteredFrameId || forced.has(frameId) || dirty.has(frameId) || !rasters.has(frameId)) {
+				live.add(frameId);
+			}
+		}
+		return live;
+	}, [mounted, enteredFrameId, forced, dirty, rasters]);
+
+	const liveRef = useRef(liveSet);
+	liveRef.current = liveSet;
+
+	const isLive = useCallback((frameId: string): boolean => liveSet.has(frameId), [liveSet]);
 
 	const runLive = useCallback(async <T,>(frameId: string, run: () => Promise<T>): Promise<T> => {
+		// 本来就活着的话切过去只要一帧；如果它还没进过挂载窗口，iframe 是刚挂上的，
+		// 得等它把页面加载渲染出来，否则截到的是白板。
+		const wasLive = liveRef.current.has(frameId);
 		setForced((current) => {
 			const next = new Set(current);
 			next.add(frameId);
@@ -144,6 +185,7 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 		});
 		try {
 			await nextPaint();
+			if (!wasLive) await new Promise((resolve) => setTimeout(resolve, SETTLE_MS * 2));
 			return await run();
 		} finally {
 			setForced((current) => {
@@ -157,6 +199,7 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 
 	return {
 		rasterOf,
+		isMounted,
 		isLive,
 		invalidate,
 		runLive,

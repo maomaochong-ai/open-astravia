@@ -4,6 +4,7 @@ import {
 	useCallback,
 	useEffect,
 	useLayoutEffect,
+	useMemo,
 	useRef,
 	useState,
 } from "react";
@@ -88,10 +89,6 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	const [enteredFrameId, setEnteredFrameId] = useState<string | null>(null);
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
 	const [marquee, setMarquee] = useState<Rect | null>(null);
-	/** 默认开：这是排查用的降级开关，不改既有观感。 */
-	const [effectsEnabled, setEffectsEnabled] = useState(true);
-	const effectsRef = useRef(effectsEnabled);
-	effectsRef.current = effectsEnabled;
 	const [askOpen, setAskOpen] = useState(false);
 	const [askBusy, setAskBusy] = useState(false);
 	const [moveDelta, setMoveDelta] = useState<{ dx: number; dy: number } | null>(null);
@@ -144,14 +141,19 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	useEffect(() => onFrameActivity((next) => setActivity(new Map(next))), []);
 
 	// 空闲 frame 用位图代替活体 iframe，画布上就不再有 N 套渲染树同时合成。
+	const orderedFrameIds = useMemo(
+		() => [...manifest.frames].sort(byCanvasOrder).map((frame) => frame.id),
+		[manifest.frames],
+	);
 	const {
 		rasterOf,
+		isMounted,
 		isLive,
 		invalidate: invalidateRaster,
 		runLive,
 		stats: rasterStats,
 		retryFailed: retryRaster,
-	} = useFrameRasters({ bridge, enteredFrameId, enabled: true });
+	} = useFrameRasters({ bridge, frameIds: orderedFrameIds, enteredFrameId });
 
 	const exitInspect = useCallback(
 		(frameId: string | null) => {
@@ -445,23 +447,12 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	};
 
 	/**
-	 * 降级开关关着时截图会丢掉毛玻璃，无论是发给 agent 还是导出成品都不该失真。
-	 * 截这一张之前临时恢复，截完再关回去。
+	 * 位图态的 frame 是 display:none，没有布局也就截不出东西，先经 runLive 拉回活体。
+	 * 交付物保留 cacheBust：慢，但能兜住素材缓存缺 CORS 头的边角情况。
 	 */
 	const captureFaithfully = useCallback(
-		async (frameId: string, options?: { keepHighlight?: boolean; pixelRatio?: number }): Promise<string> => {
-			const degraded = !effectsRef.current;
-			if (degraded) bridge.setEffectsEnabled(true);
-			try {
-				// 位图态的 frame 是 display:none，没有布局也就截不出东西，先拉回活体。
-				// 交付物保留 cacheBust：慢，但能兜住素材缓存缺 CORS 头的边角情况。
-				return await runLive(frameId, () =>
-					bridge.capture(frameId, { ...options, cacheBust: true, timeoutMs: 30_000 }),
-				);
-			} finally {
-				if (degraded) bridge.setEffectsEnabled(false);
-			}
-		},
+		(frameId: string, options?: { keepHighlight?: boolean; pixelRatio?: number }): Promise<string> =>
+			runLive(frameId, () => bridge.capture(frameId, { ...options, cacheBust: true, timeoutMs: 30_000 })),
 		[bridge, runLive],
 	);
 
@@ -548,6 +539,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 						entered={enteredFrameId === frame.id}
 						interactive={tool === "select" && !panActive}
 						resizable={selectedIds.length === 1}
+						mounted={isMounted(frame.id)}
 						live={isLive(frame.id)}
 						raster={rasterOf(frame.id)}
 						moveDelta={moveRef.current?.origins.has(frame.id) ? moveDelta : null}
@@ -604,14 +596,8 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
-				effectsEnabled={effectsEnabled}
 				raster={{ ...rasterStats, total: manifest.frames.length }}
 				onRetryRaster={retryRaster}
-				onToggleEffects={() => {
-					const next = !effectsEnabled;
-					setEffectsEnabled(next);
-					bridge.setEffectsEnabled(next);
-				}}
 				onToolChange={setTool}
 				onZoomDelta={zoomBy}
 				onZoomReset={() => {
