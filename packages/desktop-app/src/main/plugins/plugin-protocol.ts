@@ -117,6 +117,7 @@ export const interpolatePluginText = sdk.interpolatePluginText;
 export const resolveCatalogKey = sdk.resolveCatalogKey;
 export const resolvePluginText = sdk.resolvePluginText;
 export const PluginAppActionError = sdk.PluginAppActionError;
+export const usePluginShortcutScope = sdk.usePluginShortcutScope;
 `);
 	}
 	return new Response("Not found", { status: 404 });

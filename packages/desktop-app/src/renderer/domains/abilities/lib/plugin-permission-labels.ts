@@ -12,6 +12,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.message": "permission.uiSlotMessage",
 	"ui.slot.tool-call": "permission.uiSlotToolCall",
 	"ui.slot.turn-card": "permission.uiSlotTurnCard",
+	"ui.shortcuts.register": "permission.uiShortcutsRegister",
 	"ui.file-explorer.decorations": "permission.uiFileExplorerDecorations",
 	"ui.file-explorer.context-menu": "permission.uiFileExplorerContextMenu",
 	"ui.file-explorer.toolbar": "permission.uiFileExplorerToolbar",

@@ -362,3 +362,59 @@ ctx.ui.registerTurnCard({
 ```
 
 示例：`packages/plugins/presets/git`。
+
+## 键盘快捷键 registerShortcutScope
+
+把绑定挂到宿主统一的 **ShortcutScopeStack**（与宿主 UI 同一条链路：`modal` > `overlay` > `surface` > `app`）。**不要**在插件里 `document.addEventListener("keydown")`。
+
+- 权限：`ui.shortcuts.register`（缺权限**抛错**）
+- 可用 kind：`surface` | `overlay` | `modal`（**不能**用 `app`——留给宿主可配置的全局动作）
+- 键格式与宿主 `eventToShortcut` 一致，如 `"mod+s"`、`"escape"`、`"arrowleft"`、`"="`、`"-"`
+- `when`：`always`（默认）| `editable` | `not-editable`
+- 组件内优先用 `usePluginShortcutScope`（在 `activate` 里把 `ctx.ui.registerShortcutScope` 存到模块变量，再传给 hook）
+
+```ts
+// activate
+let registerShortcutScope = ctx.ui.registerShortcutScope.bind(ctx.ui);
+// 或：setRegisterShortcutScope((c) => ctx.ui.registerShortcutScope(c));
+
+// React 组件
+import { usePluginShortcutScope, type PluginShortcutBinding } from "@vetta-org/plugin-sdk";
+
+const bindings: PluginShortcutBinding[] = [
+  { key: "=", when: "not-editable", run: () => zoomIn() },
+  { key: "-", when: "not-editable", run: () => zoomOut() },
+  { key: "0", when: "not-editable", run: () => resetZoom() },
+];
+
+usePluginShortcutScope(registerShortcutScope, {
+  id: "zoom",
+  kind: "surface",
+  bindings,
+});
+
+// 全屏时用更高 kind，避免被宿主 surface（如文件预览 Esc）抢走
+usePluginShortcutScope(registerShortcutScope, {
+  id: "fullscreen-esc",
+  kind: "overlay",
+  active: isFullscreen,
+  bindings: [{ key: "escape", run: () => exitFullscreen() }],
+});
+```
+
+命令式（`activate` 或副作用里）：
+
+```ts
+const handle = ctx.ui.registerShortcutScope({
+  id: "panel-keys",
+  kind: "surface",
+  exclusive: false,
+  enabled: () => panelOpen,
+  bindings: () => [
+    { key: "escape", run: () => closePanel() },
+  ],
+});
+// 卸载时宿主会统一 dispose；也可手动 handle.dispose()
+```
+
+示例：`packages/plugins/presets/media-viewer`（缩放 / 全屏 Esc）。

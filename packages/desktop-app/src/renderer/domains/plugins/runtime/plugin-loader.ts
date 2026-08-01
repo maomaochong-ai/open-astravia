@@ -49,6 +49,7 @@ import type {
 	PluginPermission,
 	PluginPromptAttachment,
 	PluginSettingsApi,
+	PluginShortcutScopeContribution,
 	PluginStorageApi,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
@@ -76,6 +77,11 @@ import {
 import { createPluginOfficialApi } from "./plugin-official-api";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 import { createPluginRuntimeShared } from "./plugin-shared-modules";
+import {
+	assertPluginShortcutScopeKind,
+	normalizePluginShortcutBindings,
+	registerPluginShortcutScopeOnHost,
+} from "./plugin-shortcut-scope";
 
 export interface LoadedPlugin {
 	id: string;
@@ -865,6 +871,27 @@ function createContext(
 			},
 		};
 	};
+	const registerShortcutScope = (contribution: PluginShortcutScopeContribution): Disposable => {
+		createPermissionApi(plugin).require("ui.shortcuts.register");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("Shortcut scope id is required");
+		}
+		const kind = assertPluginShortcutScopeKind(contribution.kind);
+		const bindingsSource = contribution.bindings;
+		const resolveBindings = () => {
+			const raw = typeof bindingsSource === "function" ? bindingsSource() : bindingsSource;
+			return normalizePluginShortcutBindings(raw);
+		};
+		const dispose = registerPluginShortcutScopeOnHost({
+			scopeId: `${plugin.id}:${contribution.id.trim()}`,
+			kind,
+			exclusive: contribution.exclusive === true,
+			enabled: typeof contribution.enabled === "function" ? contribution.enabled : undefined,
+			getBindings: resolveBindings,
+		}).dispose;
+		disposers.push(dispose);
+		return { dispose };
+	};
 	const openActivityTab = (tabId: string, options?: PluginOpenActivityTabOptions): void => {
 		createPermissionApi(plugin).require("ui.slot.activity-tab");
 		if (typeof tabId !== "string" || tabId.trim().length === 0) {
@@ -995,6 +1022,7 @@ function createContext(
 			registerCardRenderer,
 			registerToolCallSlot,
 			registerTurnCard,
+			registerShortcutScope,
 			openActivityTab,
 			setActivityTabVisible,
 			setPromptAttachment,

@@ -190,6 +190,7 @@
 		"uiSlotMessage": "Below-message slot",
 		"uiSlotToolCall": "Tool call render slot",
 		"uiSlotTurnCard": "Turn card slot",
+		"uiShortcutsRegister": "Register keyboard shortcuts",
 		"uiFileExplorerDecorations": "Decorate the file explorer",
 		"uiFileExplorerContextMenu": "Extend file context menus",
 		"uiFileExplorerToolbar": "Extend the file explorer toolbar",

@@ -65,6 +65,7 @@ export type PluginPermission =
 	| "ui.slot.message"
 	| "ui.slot.tool-call"
 	| "ui.slot.turn-card"
+	| "ui.shortcuts.register"
 	| "ui.file-explorer.decorations"
 	| "ui.file-explorer.context-menu"
 	| "ui.file-explorer.toolbar"

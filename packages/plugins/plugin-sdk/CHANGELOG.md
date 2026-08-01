@@ -4,6 +4,10 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added plugin keyboard shortcuts on the host `ShortcutScopeStack`: permission `ui.shortcuts.register`, `ctx.ui.registerShortcutScope()`, types (`PluginShortcutScopeContribution` / `PluginShortcutBinding`), and React helper `usePluginShortcutScope()`. Kind is limited to `surface` | `overlay` | `modal` (`app` stays host-only for configurable global actions).
+
 ## [0.1.0] — 2026-07-31
 
 ### Breaking Changes

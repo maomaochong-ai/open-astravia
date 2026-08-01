@@ -190,6 +190,7 @@
 		"uiSlotMessage": "消息下方 Slot",
 		"uiSlotToolCall": "工具调用渲染 Slot",
 		"uiSlotTurnCard": "回合卡片 Slot",
+		"uiShortcutsRegister": "注册键盘快捷键",
 		"uiFileExplorerDecorations": "装饰文件列表",
 		"uiFileExplorerContextMenu": "扩展文件右键菜单",
 		"uiFileExplorerToolbar": "扩展文件列表工具栏",

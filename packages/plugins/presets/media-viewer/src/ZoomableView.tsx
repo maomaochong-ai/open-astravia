@@ -1,6 +1,11 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import {
+	type PluginShortcutBinding,
+	usePluginShortcutScope,
+	useTranslation,
+} from "@vetta-org/plugin-sdk";
 import type { JSX, PointerEvent as ReactPointerEvent, ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getRegisterShortcutScope } from "./plugin-ui";
 import { PreviewToolbar } from "./PreviewToolbar";
 import { ToolbarButton } from "./ToolbarButton";
 import { cn } from "./utils";
@@ -132,54 +137,54 @@ export function ZoomableView({ naturalSize, children }: ZoomableViewProps): JSX.
 		return () => container.removeEventListener("wheel", onWheel);
 	}, [commit]);
 
-	// Keyboard: + / - / 0 when focused.
-	useEffect(() => {
-		const container = containerRef.current;
-		if (!container) return;
-
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape" && isFullscreen) {
-				e.preventDefault();
-				e.stopPropagation();
-				setIsFullscreen(false);
-				return;
-			}
+	// Keyboard via host ShortcutScopeStack (plugin SDK) — no ad-hoc document keydown.
+	const zoomBindings = useMemo((): readonly PluginShortcutBinding[] => {
+		const zoomInAtCenter = () => {
 			const size = sizeRef.current;
 			if (!size) return;
-			const cx = size.width / 2;
-			const cy = size.height / 2;
-			if (e.key === "+" || e.key === "=") {
-				e.preventDefault();
-				const prev = scaleRef.current;
-				const zoomed = zoomAround(prev, prev * ZOOM_FACTOR, offsetRef.current, cx, cy);
-				commit(zoomed.scale, zoomed.offset);
-			} else if (e.key === "-" || e.key === "_") {
-				e.preventDefault();
-				const prev = scaleRef.current;
-				const zoomed = zoomAround(prev, prev / ZOOM_FACTOR, offsetRef.current, cx, cy);
-				commit(zoomed.scale, zoomed.offset);
-			} else if (e.key === "0") {
-				e.preventDefault();
-				applyFit();
-			}
+			const prev = scaleRef.current;
+			const zoomed = zoomAround(prev, prev * ZOOM_FACTOR, offsetRef.current, size.width / 2, size.height / 2);
+			commit(zoomed.scale, zoomed.offset);
 		};
-
-		container.addEventListener("keydown", onKeyDown);
-		return () => container.removeEventListener("keydown", onKeyDown);
-	}, [applyFit, commit, isFullscreen]);
-
-	useEffect(() => {
-		if (!isFullscreen) return;
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				e.preventDefault();
-				e.stopPropagation();
-				setIsFullscreen(false);
-			}
+		const zoomOutAtCenter = () => {
+			const size = sizeRef.current;
+			if (!size) return;
+			const prev = scaleRef.current;
+			const zoomed = zoomAround(prev, prev / ZOOM_FACTOR, offsetRef.current, size.width / 2, size.height / 2);
+			commit(zoomed.scale, zoomed.offset);
 		};
-		document.addEventListener("keydown", onKeyDown, true);
-		return () => document.removeEventListener("keydown", onKeyDown, true);
-	}, [isFullscreen]);
+		return [
+			{ key: "=", when: "not-editable", run: zoomInAtCenter },
+			{ key: "+", when: "not-editable", run: zoomInAtCenter },
+			{ key: "-", when: "not-editable", run: zoomOutAtCenter },
+			{ key: "_", when: "not-editable", run: zoomOutAtCenter },
+			{ key: "0", when: "not-editable", run: () => applyFit() },
+		];
+	}, [applyFit, commit]);
+
+	usePluginShortcutScope(getRegisterShortcutScope(), {
+		id: "zoomable-zoom",
+		kind: "surface",
+		bindings: zoomBindings,
+	});
+
+	const fullscreenBindings = useMemo(
+		(): readonly PluginShortcutBinding[] => [
+			{
+				key: "escape",
+				run: () => setIsFullscreen(false),
+			},
+		],
+		[],
+	);
+
+	// overlay beats surface (e.g. host file-preview Esc) while fullscreen.
+	usePluginShortcutScope(getRegisterShortcutScope(), {
+		id: "zoomable-fullscreen",
+		kind: "overlay",
+		active: isFullscreen,
+		bindings: fullscreenBindings,
+	});
 
 	/**
 	 * Pan via document listeners + refs (not React isPanning state on move).

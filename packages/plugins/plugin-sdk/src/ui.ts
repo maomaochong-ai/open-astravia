@@ -4,6 +4,7 @@ import type { Disposable } from "./disposable.js";
 import type { PluginImageRef } from "./images.js";
 import type { PluginPromptAttachment } from "./prompt-attachment.js";
 import type { ConversationScenario } from "./scenario.js";
+import type { PluginShortcutScopeContribution } from "./shortcuts.js";
 
 export interface PluginGlobalSlotContribution {
 	id: string;
@@ -327,6 +328,14 @@ export interface PluginUiApi {
 	 * (fail-closed). Needs the `ui.slot.turn-card` permission.
 	 */
 	registerTurnCard(contribution: PluginTurnCardContribution): Disposable;
+	/**
+	 * Register a keyboard shortcut scope on the host's shared ShortcutScopeStack
+	 * (same path as host UI: modal > overlay > surface > app). Needs
+	 * `ui.shortcuts.register`. Plugins cannot use kind `"app"` (reserved for
+	 * host-configurable global actions). Prefer {@link usePluginShortcutScope}
+	 * from React components with a module-captured `registerShortcutScope`.
+	 */
+	registerShortcutScope(contribution: PluginShortcutScopeContribution): Disposable;
 	/**
 	 * Programmatically attach (if needed) and activate one of this plugin's
 	 * own activity tabs in the current conversation's activity panel. `tabId`
