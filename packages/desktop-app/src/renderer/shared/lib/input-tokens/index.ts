@@ -8,5 +8,6 @@ export {
 	pathTokenText,
 	segmentsToText,
 	skillTokenText,
+	toTokenPath,
 } from "./serialize";
 export type { InputSegment, LegacyPromptRef, ParsedInput } from "./types";

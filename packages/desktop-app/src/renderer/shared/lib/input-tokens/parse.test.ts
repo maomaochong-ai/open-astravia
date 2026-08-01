@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseInputSegments } from "./parse";
-import { deriveAttachments, deriveSkillNames, segmentsToText } from "./serialize";
+import { deriveAttachments, deriveSkillNames, pathTokenText, segmentsToText } from "./serialize";
 import type { InputSegment } from "./types";
 
 describe("parseInputSegments", () => {
@@ -109,6 +109,16 @@ describe("segmentsToText", () => {
 			segments[1],
 			{ kind: "text", text: " " },
 			segments[2],
+		]);
+	});
+
+	it("Windows 反斜杠路径写成正斜杠，避免 markdown 吃掉 \\.", () => {
+		const path = "C:\\Users\\foo\\.vetta\\image-cache\\s\\a.png";
+		expect(pathTokenText(path)).toBe("@C:/Users/foo/.vetta/image-cache/s/a.png");
+		const text = segmentsToText([{ kind: "image", path }]);
+		expect(text).toBe("@C:/Users/foo/.vetta/image-cache/s/a.png");
+		expect(parseInputSegments(text).segments).toEqual([
+			{ kind: "image", path: "C:/Users/foo/.vetta/image-cache/s/a.png" },
 		]);
 	});
 });
