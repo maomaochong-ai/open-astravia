@@ -12,6 +12,12 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **内置 Skill 图标**：随 App 分发的内置 Skill（`create-skill` / `publish-ability`）不再落默认图，图标随 renderer 静态资源分发（`public/skills/`，约定同内置 MCP 的 `public/mcp/`）。能力广场与输入栏命令面板（含选中后插入的 token chip）共用同一解析：市场目录的图 → 内置图 → type 默认图。只对 `source=builtin` 的 skill 生效，用户自放或插件贡献的同名 skill 不会借用。`SkillTypeIcon` 的图片态判定补上 `./` 前缀。
 
+### Fixed
+
+- **文件编辑器保存后无法撤销**：CodeMirror 的 `documentKey` 误绑定磁盘 `revision`，保存成功 revision 变化会整实例重挂载并清空撤销栈。改为按 `editorGeneration` 标识编辑会话（仅磁盘重载/外部干净替换时递增），保存与草稿编辑保持同一编辑器实例。
+- **编辑/预览切换保留撤销栈**：有渲染预览的文件（HTML/Markdown 等）在切到预览时不再卸载 CodeMirror，仅隐藏编辑器并叠放预览层；回到编辑时 `requestMeasure` + 恢复焦点，正文与 Ctrl+Z 历史都不丢。
+- **HTML 预览不再跟随应用主题**：取消按 App 深浅切换 iframe 底色与文档 `color-scheme`（避免未写背景的页面被强制成深色画布）；预览外观由 HTML 自身 CSS 决定，壳层固定浅色兜底。
+
 ### Changed
 
 - **HTML 预览去嵌套工具条**：内置 HTML 预览改为纯 iframe 渲染表面，去掉内部「预览 | 代码」分段。源码统一走文件编辑器的「编辑」模式；HTML/Markdown 打开默认进入预览，纯文本仍默认编辑且不再显示无效的编辑/预览切换。

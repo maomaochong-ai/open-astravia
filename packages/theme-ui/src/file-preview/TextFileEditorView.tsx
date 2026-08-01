@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button, cn } from "@vetta/ui";
 import type { JSX, ReactNode } from "react";
 import { TextCodeEditorView } from "./TextCodeEditorView";
 
@@ -81,6 +81,17 @@ export function TextFileEditorView({
 
 	const hasPreview = state.previewContent != null;
 	const showPreview = hasPreview && state.mode === "preview";
+
+	const editor = (
+		<TextCodeEditorView
+			documentKey={state.documentKey}
+			initialValue={state.content}
+			extension={state.extension}
+			lineEnding={state.lineEnding}
+			onChange={onChange}
+			active={!showPreview}
+		/>
+	);
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
@@ -175,16 +186,27 @@ export function TextFileEditorView({
 				</div>
 			) : null}
 
-			{showPreview ? (
-				state.previewContent
+			{/*
+			 * Keep CodeMirror mounted under preview so undo/redo survives mode switches.
+			 * Stack with absolute + invisible (not display:none) so the editor keeps a real size.
+			 */}
+			{hasPreview ? (
+				<div className="relative min-h-0 flex-1">
+					<div
+						className={cn(
+							"absolute inset-0 flex min-h-0 flex-col",
+							showPreview && "invisible pointer-events-none",
+						)}
+						aria-hidden={showPreview}
+					>
+						{editor}
+					</div>
+					{showPreview ? (
+						<div className="absolute inset-0 flex min-h-0 flex-col">{state.previewContent}</div>
+					) : null}
+				</div>
 			) : (
-				<TextCodeEditorView
-					documentKey={state.documentKey}
-					initialValue={state.content}
-					extension={state.extension}
-					lineEnding={state.lineEnding}
-					onChange={onChange}
-				/>
+				editor
 			)}
 		</div>
 	);

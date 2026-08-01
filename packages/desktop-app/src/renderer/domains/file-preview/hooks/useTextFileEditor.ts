@@ -48,7 +48,9 @@ export function useTextFileEditor(path: string, refreshNonce: number): TextFileE
 					const existing = current.get(path);
 					next.set(
 						path,
-						discardDraft ? createEditorDocument(path, snapshot) : mergeEditorSnapshot(existing, path, snapshot),
+						discardDraft
+							? createEditorDocument(path, snapshot, existing?.editorGeneration)
+							: mergeEditorSnapshot(existing, path, snapshot),
 					);
 					return next;
 				});

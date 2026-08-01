@@ -90,7 +90,8 @@ export function EditableTextFileView({
 				: model.loadStatus === "error"
 					? getErrorText(model.loadError)
 					: undefined,
-			documentKey: `${item.path}:${document.revision}`,
+			// Stable across save (revision changes); remount only when buffer is replaced from disk.
+			documentKey: `${item.path}:${document.editorGeneration}`,
 			content: document.draftContent,
 			extension,
 			lineEnding: document.lineEnding,

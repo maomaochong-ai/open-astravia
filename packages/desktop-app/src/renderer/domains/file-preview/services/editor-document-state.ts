@@ -1,7 +1,12 @@
 import type { FsEditableTextSnapshot, FsSaveEditableTextResult } from "@preload/fs-types";
 import type { FileEditorDocumentState } from "@shared/store/atoms";
 
-export function createEditorDocument(path: string, snapshot: FsEditableTextSnapshot): FileEditorDocumentState {
+export function createEditorDocument(
+	path: string,
+	snapshot: FsEditableTextSnapshot,
+	/** Previous generation when replacing an existing buffer; omit for a fresh open. */
+	previousGeneration?: number,
+): FileEditorDocumentState {
 	return {
 		path,
 		savedContent: snapshot.content,
@@ -11,6 +16,8 @@ export function createEditorDocument(path: string, snapshot: FsEditableTextSnaps
 		lineEnding: snapshot.lineEnding,
 		size: snapshot.size,
 		modifiedAt: snapshot.modifiedAt,
+		// Bump when replacing so CodeMirror remounts; first open starts at 0.
+		editorGeneration: previousGeneration === undefined ? 0 : previousGeneration + 1,
 	};
 }
 
@@ -28,7 +35,8 @@ export function mergeEditorSnapshot(
 	if (isEditorDocumentDirty(document)) {
 		return { ...document, conflictRevision: snapshot.revision };
 	}
-	return createEditorDocument(path, snapshot);
+	// Clean external replace: new buffer, remount editor.
+	return createEditorDocument(path, snapshot, document.editorGeneration);
 }
 
 export function updateEditorDraft(document: FileEditorDocumentState, draftContent: string): FileEditorDocumentState {
@@ -44,6 +52,7 @@ export function applyEditorSaveResult(
 	if (result.status === "conflict") {
 		return { ...document, conflictRevision: result.revision };
 	}
+	// Keep editorGeneration — save must not wipe CodeMirror undo history.
 	return {
 		...document,
 		savedContent,

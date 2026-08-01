@@ -2,7 +2,11 @@ import { useMemo, useState, type JSX } from "react";
 
 export interface HtmlPreviewViewProps {
 	readonly content: string;
-	readonly theme: "light" | "dark";
+	/**
+	 * Kept for call-site compatibility. Preview canvas does not follow app theme —
+	 * page CSS owns appearance; chrome uses a fixed light document color-scheme.
+	 */
+	readonly theme?: "light" | "dark";
 	/** Accessible name for the iframe. */
 	readonly title: string;
 }
@@ -16,15 +20,14 @@ export interface HtmlPreviewViewProps {
  * documentElement/viewport scroller inside iframes, so the OS classic bar
  * shows. Pin html height + scroll body so webkit pseudo-elements apply.
  *
- * Colors mirror site tokens (muted-foreground / primary @ 28% / 48%).
+ * Fixed light chrome (not app theme): injecting color-scheme:dark forces UA
+ * defaults (canvas/text) onto pages that omit their own background.
  */
-function previewChromeStyle(theme: "light" | "dark"): string {
-	const thumb =
-		theme === "dark" ? "rgba(163, 163, 163, 0.28)" : "rgba(82, 82, 82, 0.28)";
-	const thumbHover =
-		theme === "dark" ? "rgba(255, 255, 255, 0.48)" : "rgba(24, 24, 27, 0.48)";
+function previewChromeStyle(): string {
+	const thumb = "rgba(82, 82, 82, 0.28)";
+	const thumbHover = "rgba(24, 24, 27, 0.48)";
 	return `
-:root { color-scheme: ${theme}; }
+:root { color-scheme: light; }
 html {
   height: 100%;
   overflow: hidden;
@@ -74,8 +77,8 @@ html body *::-webkit-scrollbar-corner {
  * Inject chrome CSS into a full HTML document's <head> (last wins over page CSS).
  * Prepending before <!DOCTYPE> is dropped by browsers and never applies.
  */
-function injectPreviewChrome(content: string, theme: "light" | "dark"): string {
-	const styleTag = `<style data-preview-chrome>${previewChromeStyle(theme)}</style>`;
+function injectPreviewChrome(content: string): string {
+	const styleTag = `<style data-preview-chrome>${previewChromeStyle()}</style>`;
 	if (/<\/head>/i.test(content)) {
 		return content.replace(/<\/head>/i, `${styleTag}</head>`);
 	}
@@ -91,31 +94,25 @@ function injectPreviewChrome(content: string, theme: "light" | "dark"): string {
 
 function HtmlPreviewFrame({
 	srcDoc,
-	theme,
 	title,
 }: {
 	readonly srcDoc: string;
-	readonly theme: "light" | "dark";
 	readonly title: string;
 }): JSX.Element {
 	const [loadedSrcDoc, setLoadedSrcDoc] = useState<string | null>(null);
 	const loaded = loadedSrcDoc === srcDoc;
-	const backgroundClass = theme === "dark" ? "bg-neutral-950" : "bg-white";
 
 	return (
-		<div
-			aria-busy={!loaded}
-			className={`relative min-h-0 w-full flex-1 ${backgroundClass}`}
-		>
+		<div aria-busy={!loaded} className="relative min-h-0 w-full flex-1 bg-white">
 			<iframe
 				title={title}
 				srcDoc={srcDoc}
 				sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
 				onLoad={() => setLoadedSrcDoc(srcDoc)}
-				className={`absolute inset-0 h-full w-full border-0 ${backgroundClass} ${
+				className={`absolute inset-0 h-full w-full border-0 bg-white ${
 					loaded ? "opacity-100" : "opacity-0"
 				}`}
-				style={{ colorScheme: theme }}
+				style={{ colorScheme: "light" }}
 			/>
 		</div>
 	);
@@ -124,14 +121,15 @@ function HtmlPreviewFrame({
 /**
  * Pure HTML render surface (iframe + srcDoc). Source editing lives in the host
  * text editor layer (edit mode) — this view has no nested preview/code chrome.
+ * Does not follow app light/dark theme; the HTML document owns its look.
  */
-export function HtmlPreviewView({ content, theme, title }: HtmlPreviewViewProps): JSX.Element {
-	const srcDoc = useMemo(() => injectPreviewChrome(content, theme), [content, theme]);
+export function HtmlPreviewView({ content, title }: HtmlPreviewViewProps): JSX.Element {
+	const srcDoc = useMemo(() => injectPreviewChrome(content), [content]);
 
 	return (
 		<div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
 			{/* iframe ignores flex-grow in many engines — absolute fill matches parent height. */}
-			<HtmlPreviewFrame srcDoc={srcDoc} theme={theme} title={title} />
+			<HtmlPreviewFrame srcDoc={srcDoc} title={title} />
 		</div>
 	);
 }

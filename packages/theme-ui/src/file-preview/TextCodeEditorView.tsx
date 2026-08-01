@@ -14,6 +14,11 @@ export interface TextCodeEditorViewProps {
 	extension: string;
 	lineEnding: "lf" | "crlf";
 	onChange: (content: string) => void;
+	/**
+	 * When false, the host keeps this editor mounted but hidden (e.g. preview mode).
+	 * Becoming true again remeasures layout and restores focus without wiping undo history.
+	 */
+	active?: boolean;
 }
 
 export function TextCodeEditorView({
@@ -22,8 +27,10 @@ export function TextCodeEditorView({
 	extension,
 	lineEnding,
 	onChange,
+	active = true,
 }: TextCodeEditorViewProps): JSX.Element {
 	const hostRef = useRef<HTMLDivElement>(null);
+	const viewRef = useRef<EditorView | null>(null);
 	const initialValueRef = useRef(initialValue);
 	const onChangeRef = useRef(onChange);
 	initialValueRef.current = initialValue;
@@ -46,9 +53,20 @@ export function TextCodeEditorView({
 			],
 		});
 		const view = new EditorView({ state, parent: host });
-		view.focus();
-		return () => view.destroy();
+		viewRef.current = view;
+		return () => {
+			view.destroy();
+			viewRef.current = null;
+		};
 	}, [documentKey, languageKey, lineEnding]);
 
-	return <div ref={hostRef} className="min-h-0 flex-1 overflow-hidden bg-background" />;
+	useEffect(() => {
+		const view = viewRef.current;
+		if (!view || !active) return;
+		// Hidden→visible: geometry was 0 or stale; remeasure so scrollbars/cursor align.
+		view.requestMeasure();
+		view.focus();
+	}, [active, documentKey, languageKey, lineEnding]);
+
+	return <div ref={hostRef} className="min-h-0 h-full w-full flex-1 overflow-hidden bg-background" />;
 }
