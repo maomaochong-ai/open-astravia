@@ -265,7 +265,7 @@
     },
     "packages/desktop-app": {
       "name": "@vetta/desktop-app",
-      "version": "0.5.28",
+      "version": "0.5.30",
       "dependencies": {
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
@@ -452,7 +452,7 @@
     },
     "packages/plugins/externals/mobile-ui-preview": {
       "name": "@vetta/plugin-mobile-ui-preview",
-      "version": "0.3.0",
+      "version": "0.3.2",
       "dependencies": {
         "react-device-mockup": "^1.0.0",
         "tslib": "^2.8.1",
@@ -515,11 +515,34 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ui": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
         "typescript": "^5.9.2",
         "vite": "^7.1.7",
+      },
+    },
+    "packages/plugins/presets/content-creation": {
+      "name": "@vetta/plugin-content-creation",
+      "version": "0.1.0",
+      "dependencies": {
+        "@xyflow/react": "^12.10.2",
+      },
+      "devDependencies": {
+        "@tailwindcss/vite": "^4.1.12",
+        "@types/node": "^22.10.5",
+        "@types/react": "^19.1.1",
+        "@types/react-dom": "^19.1.1",
+        "@vetta-org/plugin-sdk": "workspace:*",
+        "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ui": "workspace:*",
+        "react": "19.1.1",
+        "react-dom": "19.1.1",
+        "tailwindcss": "^4.1.12",
+        "typescript": "^5.9.2",
+        "vite": "^7.1.7",
+        "vitest": "^3.2.4",
       },
     },
     "packages/plugins/presets/git": {
@@ -538,6 +561,7 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ui": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
@@ -557,6 +581,7 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ui": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
@@ -624,6 +649,7 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ui": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
@@ -641,6 +667,7 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ui": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
@@ -658,6 +685,7 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ui": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
         "tailwindcss": "^4.1.12",
@@ -676,6 +704,26 @@
         "@vetta-org/plugin-vite": "workspace:*",
         "react": "19.1.1",
         "react-dom": "19.1.1",
+        "typescript": "^5.9.2",
+        "vite": "^7.1.7",
+      },
+    },
+    "packages/plugins/presets/vetta-ui-design": {
+      "name": "@vetta/plugin-vetta-ui-design",
+      "version": "0.1.0",
+      "dependencies": {
+        "fflate": "^0.8.2",
+      },
+      "devDependencies": {
+        "@tailwindcss/vite": "^4.1.12",
+        "@types/node": "^22.10.5",
+        "@types/react": "^19.1.1",
+        "@types/react-dom": "^19.1.1",
+        "@vetta-org/plugin-sdk": "workspace:*",
+        "@vetta-org/plugin-vite": "workspace:*",
+        "react": "19.1.1",
+        "react-dom": "19.1.1",
+        "tailwindcss": "^4.1.12",
         "typescript": "^5.9.2",
         "vite": "^7.1.7",
       },
@@ -2484,6 +2532,8 @@
 
     "@vetta/plugin-chart-renderer": ["@vetta/plugin-chart-renderer@workspace:packages/plugins/presets/chart-renderer"],
 
+    "@vetta/plugin-content-creation": ["@vetta/plugin-content-creation@workspace:packages/plugins/presets/content-creation"],
+
     "@vetta/plugin-cowart-vetta": ["@vetta/plugin-cowart-vetta@workspace:packages/plugins/externals/cowart-vetta"],
 
     "@vetta/plugin-git": ["@vetta/plugin-git@workspace:packages/plugins/presets/git"],
@@ -2505,6 +2555,8 @@
     "@vetta/plugin-svg-viewer": ["@vetta/plugin-svg-viewer@workspace:packages/plugins/presets/svg-viewer"],
 
     "@vetta/plugin-vetta-actions": ["@vetta/plugin-vetta-actions@workspace:packages/plugins/presets/vetta-actions"],
+
+    "@vetta/plugin-vetta-ui-design": ["@vetta/plugin-vetta-ui-design@workspace:packages/plugins/presets/vetta-ui-design"],
 
     "@vetta/runtime-core": ["@vetta/runtime-core@workspace:packages/runtime-core"],
 
@@ -5432,6 +5484,10 @@
 
     "@vetta/plugin-chart-renderer/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
 
+    "@vetta/plugin-content-creation/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
+
+    "@vetta/plugin-content-creation/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
+
     "@vetta/plugin-cowart-vetta/lucide-react": ["lucide-react@0.511.0", "https://registry.npmmirror.com/lucide-react/-/lucide-react-0.511.0.tgz", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-VK5a2ydJ7xm8GvBeKLS9mu1pVK6ucef9780JVUjw6bAjJL/QXnd4Y0p7SPeOUMC27YhzNCZvm5d/QX0Tp3rc0w=="],
 
     "@vetta/plugin-cowart-vetta/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
@@ -5485,6 +5541,10 @@
     "@vetta/plugin-vetta-actions/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
 
     "@vetta/plugin-vetta-actions/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
+
+    "@vetta/plugin-vetta-ui-design/react": ["react@19.1.1", "https://registry.npmmirror.com/react/-/react-19.1.1.tgz", {}, "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="],
+
+    "@vetta/plugin-vetta-ui-design/react-dom": ["react-dom@19.1.1", "https://registry.npmmirror.com/react-dom/-/react-dom-19.1.1.tgz", { "dependencies": { "scheduler": "^0.26.0" }, "peerDependencies": { "react": "^19.1.1" } }, "sha512-Dlq/5LAZgF0Gaz6yiqZCf6VCcZs1ghAJyrsu84Q/GT0gV+mCxbfmKNoGRKBYMJ8IEdGPqu49YWXD02GCknEDkw=="],
 
     "@vetta/site/@types/node": ["@types/node@25.9.4", "https://registry.npmmirror.com/@types/node/-/node-25.9.4.tgz", { "dependencies": { "undici-types": ">=7.24.0 <7.24.7" } }, "sha512-dszCsrKb5U7ZsVZBWiHFklTloVl0mSEnWH/iZXfZUlI4rzCUnsvGmgqfuVRHL54ugE7/wRuxEIXRa2iMZ+BG6g=="],
 
@@ -6144,6 +6204,8 @@
 
     "@vetta/plugin-chart-renderer/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
 
+    "@vetta/plugin-content-creation/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
+
     "@vetta/plugin-cowart-vetta/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
 
     "@vetta/plugin-git/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
@@ -6165,6 +6227,8 @@
     "@vetta/plugin-svg-viewer/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
 
     "@vetta/plugin-vetta-actions/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
+
+    "@vetta/plugin-vetta-ui-design/react-dom/scheduler": ["scheduler@0.26.0", "https://registry.npmmirror.com/scheduler/-/scheduler-0.26.0.tgz", {}, "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="],
 
     "@vetta/site/@types/node/undici-types": ["undici-types@7.24.6", "https://registry.npmmirror.com/undici-types/-/undici-types-7.24.6.tgz", {}, "sha512-WRNW+sJgj5OBN4/0JpHFqtqzhpbnV0GuB+OozA9gCL7a993SmU+1JBZCzLNxYsbMfIeDL+lTsphD5jN5N+n0zg=="],
 

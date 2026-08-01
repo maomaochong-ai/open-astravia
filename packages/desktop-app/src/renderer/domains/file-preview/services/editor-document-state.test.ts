@@ -29,6 +29,7 @@ describe("editor document state", () => {
 			savedContent: "two",
 			draftContent: "two",
 			revision: "rev-2",
+			editorGeneration: current.editorGeneration + 1,
 		});
 	});
 
@@ -42,6 +43,7 @@ describe("editor document state", () => {
 			draftContent: "local edit",
 			revision: "rev-1",
 			conflictRevision: "rev-2",
+			editorGeneration: current.editorGeneration,
 		});
 	});
 
@@ -62,6 +64,7 @@ describe("editor document state", () => {
 		expect(next.savedContent).toBe("first edit");
 		expect(next.draftContent).toBe("second edit");
 		expect(next.revision).toBe("rev-2");
+		expect(next.editorGeneration).toBe(current.editorGeneration);
 		expect(isEditorDocumentDirty(next)).toBe(true);
 	});
 
@@ -75,6 +78,30 @@ describe("editor document state", () => {
 
 		expect(next.draftContent).toBe("local edit");
 		expect(next.conflictRevision).toBe("rev-2");
+		expect(next.editorGeneration).toBe(current.editorGeneration);
 		expect(isEditorDocumentDirty(next)).toBe(true);
+	});
+
+	it("preserves editorGeneration across a successful save so undo history can survive", () => {
+		const current = updateEditorDraft(createEditorDocument("notes.txt", snapshot("one", "rev-1")), "local edit");
+
+		const next = applyEditorSaveResult(current, current.draftContent, {
+			status: "saved",
+			revision: "rev-2",
+			size: 10,
+			modifiedAt: 2,
+		});
+
+		expect(next.revision).toBe("rev-2");
+		expect(next.savedContent).toBe("local edit");
+		expect(next.editorGeneration).toBe(0);
+		expect(isEditorDocumentDirty(next)).toBe(false);
+	});
+
+	it("bumps editorGeneration when discarding draft from disk", () => {
+		const current = updateEditorDraft(createEditorDocument("notes.txt", snapshot("one", "rev-1")), "local edit");
+		const reloaded = createEditorDocument("notes.txt", snapshot("one", "rev-1"), current.editorGeneration);
+		expect(reloaded.editorGeneration).toBe(current.editorGeneration + 1);
+		expect(reloaded.draftContent).toBe("one");
 	});
 });

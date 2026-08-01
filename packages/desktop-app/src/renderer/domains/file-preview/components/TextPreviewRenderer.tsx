@@ -15,8 +15,8 @@ export function TextPreviewRenderer({
 	extension: string;
 }): JSX.Element {
 	const theme = useAtomValue(resolvedThemeAtom);
-	if (extension === "html" || extension === "htm") {
-		return <HtmlPreview content={content} extension={extension} theme={theme} />;
+	if (extension === "html" || extension === "htm" || extension === "xhtml") {
+		return <HtmlPreview content={content} theme={theme} />;
 	}
 	if (MARKDOWN_EXTENSIONS.has(extension)) {
 		return (

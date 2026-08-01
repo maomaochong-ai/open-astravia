@@ -1,0 +1,22 @@
+{
+	"name": "vetta-design-engine",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"dependencies": {
+		"react": "19.1.1",
+		"react-dom": "19.1.1"
+	},
+	"devDependencies": {
+		"@iconify-json/lucide": "^1.2.0",
+		"@iconify-json/mdi": "^1.2.0",
+		"@iconify-json/simple-icons": "^1.2.0",
+		"@iconify-json/tabler": "^1.2.0",
+		"@iconify/tailwind4": "^1.0.0",
+		"@tailwindcss/vite": "^4.1.12",
+		"@vitejs/plugin-react": "^5.0.0",
+		"html-to-image": "^1.11.11",
+		"tailwindcss": "^4.1.12",
+		"vite": "^7.1.7"
+	}
+}

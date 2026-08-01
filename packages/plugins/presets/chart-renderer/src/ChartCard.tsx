@@ -1,4 +1,5 @@
 import { type PluginCardProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import {
 	ArcElement,
 	BarElement,
@@ -76,11 +77,13 @@ function ChartPanel({ item }: { item: ChartItem }) {
 					</h3>
 					{item.description && <p className="mt-1 text-xs text-[var(--muted-foreground)]">{item.description}</p>}
 				</div>
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="icon-xs"
 					aria-label={t("action.downloadPng")}
 					title={t("action.downloadPng")}
-					className="shrink-0 rounded-md border border-transparent p-1.5 text-[var(--muted-foreground)] opacity-0 transition-opacity hover:bg-[var(--muted)]/20 hover:text-[var(--foreground)] focus-visible:opacity-100 focus-visible:outline-none focus-visible:border-[var(--ring)] group-hover:opacity-100"
+					className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
 					onClick={download}
 				>
 					<svg
@@ -97,7 +100,7 @@ function ChartPanel({ item }: { item: ChartItem }) {
 						<path d="m7 10 5 5 5-5" />
 						<path d="M5 21h14" />
 					</svg>
-				</button>
+				</Button>
 			</header>
 			<div style={{ height: item.height }}>
 				<Chart ref={ref as never} data={item.data as never} options={options as never} />

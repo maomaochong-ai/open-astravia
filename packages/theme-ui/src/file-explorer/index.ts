@@ -20,6 +20,7 @@ export { FileTreeView } from "./FileTreeView";
 export { getFileIcon } from "./fileIcons";
 export type {
 	FileExplorerCreatingEntry,
+	FileExplorerDragEntry,
 	FileExplorerEntry,
 	FileExplorerEntryKind,
 	FileExplorerNodeDecoration,

@@ -77,10 +77,9 @@
 			"noRecords": "暂无执行记录"
 		},
 		"htmlPreview": {
-			"preview": "预览",
-			"code": "代码",
 			"title": "HTML 预览"
 		},
+
 		"workflow": {
 			"empty": "暂无工作流",
 			"noTranscript": "工作流尚未产生消息",

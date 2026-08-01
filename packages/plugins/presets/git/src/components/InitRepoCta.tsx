@@ -1,4 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useState } from "react";
 import { GitIcon } from "./icons";
 
@@ -25,15 +26,10 @@ export function InitRepoCta({ onInit }: { onInit: () => Promise<void> }): JSX.El
 				<p className="text-[14px] font-semibold text-foreground">{t("init.title")}</p>
 				<p className="text-[12px] text-muted-foreground">{t("init.subtitle")}</p>
 			</div>
-			<button
-				type="button"
-				disabled={busy}
-				onClick={handleInit}
-				className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-			>
+			<Button type="button" variant="primary" disabled={busy} onClick={handleInit}>
 				<GitIcon className="h-4 w-4" />
 				{busy ? t("init.busy") : t("init.cta")}
-			</button>
+			</Button>
 			{error && <p className="text-[12px] text-rose-500">{error}</p>}
 		</div>
 	);

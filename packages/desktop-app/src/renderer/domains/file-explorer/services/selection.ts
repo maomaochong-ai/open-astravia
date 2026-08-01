@@ -132,3 +132,24 @@ export function pruneSelectionToExisting(
 		state.focusedPath && existingPaths.has(state.focusedPath) ? state.focusedPath : (paths[paths.length - 1] ?? null);
 	return { paths, anchorPath, focusedPath };
 }
+
+/**
+ * Apply a marquee frame's full path set (hits, or base∪hits for additive).
+ * Paths are re-ordered by the current flat tree order.
+ */
+export function applyMarqueeSelection(
+	flatPaths: readonly string[],
+	selectedPaths: readonly string[],
+	previous: FileExplorerSelectionState | null = null,
+): FileExplorerSelectionState {
+	const selected = new Set(selectedPaths);
+	const ordered = flatPaths.filter((path) => selected.has(path));
+	if (ordered.length === 0) return EMPTY_FILE_EXPLORER_SELECTION;
+	return {
+		paths: ordered,
+		// Keep prior anchor when extending an existing multi-select via additive marquee.
+		anchorPath:
+			previous?.anchorPath && selected.has(previous.anchorPath) ? previous.anchorPath : (ordered[0] ?? null),
+		focusedPath: ordered[ordered.length - 1] ?? null,
+	};
+}

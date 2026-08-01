@@ -2,6 +2,7 @@ import { definePlugin, type PluginFilePreviewProps, useTranslation } from "@vett
 import { AudioPreview } from "./AudioPreview";
 import { MEDIA_EXTENSIONS, isAudioExtension, isImageExtension, isVideoExtension } from "./formats";
 import { ImagePreview } from "./ImagePreview";
+import { setRegisterShortcutScope } from "./plugin-ui";
 import "./style.css";
 import { VideoPreview } from "./VideoPreview";
 
@@ -23,9 +24,13 @@ function MediaPreview({ file }: PluginFilePreviewProps) {
 
 export default definePlugin({
 	activate(ctx) {
+		setRegisterShortcutScope((contribution) => ctx.ui.registerShortcutScope(contribution));
 		ctx.ui.registerFilePreview({
 			extensions: MEDIA_EXTENSIONS,
 			component: MediaPreview,
 		});
+	},
+	deactivate() {
+		setRegisterShortcutScope(null);
 	},
 });

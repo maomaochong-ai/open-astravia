@@ -6,6 +6,19 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **项目文件列表支持鼠标框选**：在空白区域按下并拖出矩形，可多选可见文件/文件夹；Ctrl/Cmd/Shift 按住时为追加选区。与现有点选、Shift 范围选、多选拖拽共用同一套选区状态。
+- **插件快捷键 SDK（接入宿主 ShortcutScopeStack）**：新增权限 `ui.shortcuts.register`、`ctx.ui.registerShortcutScope` 与 SDK hook `usePluginShortcutScope`。插件按 `surface` / `overlay` / `modal` 注册绑定（禁止 `app` 层，留给宿主可配置全局快捷键），与宿主同一套优先级与 `when`（always/editable/not-editable），卸载时自动 dispose。`media-viewer` 缩放 / 全屏 Esc 已从 ad-hoc `keydown` 迁到该 API。
+- **输入框按会话草稿与发送历史**：未发送内容按作用域隔离（已有会话用 `sessionPath`，新会话页用 `new:${cwd}`），切换会话 / 临时去看别的任务再回来会恢复草稿，不再串台或被新会话页清空。发送成功后记入该作用域历史；输入为空或光标在文档起点时 ↑ / ↓ 浏览过往输入（首次 ↑ 暂存当前草稿，↓ 回到最新后还原）。仅进程内内存，刷新不保留。
+- **系统插件「Vetta UI Design」**：无限画布 UI 设计工作台（活动面板 Tab）。设计文档为 `.vetd` 清单 + `x.vetd.d/` 旁挂源码（frame = TSX + Tailwind v4 + Iconify），由插件托管的共享设计引擎（vite dev server + HMR）渲染；支持画布平移/无级缩放/空格拖手、frame 拖拽与改尺寸、Figma 式逐层选中 DOM 并 attach 给 Vetta、agent 修改中呼吸态、只读色板、`.vetd` 文件预览（工作态/打包态）、导出自包含分享包与导入。agent 工具：`vetd_create` / `vetd_screenshot` / `vetd_status`。整个插件（含其贡献的 skill，即命令面板里的条目）走 `agent_mode: ["work"]` 白名单，只在「工作」模式下出现。见 ADR-0053、ADR-0046。
+
+- **Vetta UI Design 导出渲染图**：画布支持 frame 多选（shift 点选 / 空白处框选 / 多选群组拖动），选中后底部控制栏出现「导出渲染图」。导出走全局插槽的全窗口模态：等高归一化横排合成（每张图最多 4 个 frame，超出自动分页），可调圆角、外边框粗细与颜色、背景色或透明、投影、Vetta 标识与 1x/2x 倍率，预览内可拖拽交换位置，参数按设计文档记在本地。产物可另存为或直接复制到剪贴板。同时把「让 Vetta 调整」从 frame 标题栏移到控制栏上方常驻，支持一次对多个 frame（或整份设计稿）发起调整。
+
+- **插件 API `ctx.fs.saveAs()` 与 `ctx.ui.copyImage()`**：前者经原生保存对话框把内存字节写到用户选定路径（复用 `fs.write` 权限，路径由用户当场确认，不受工程根限制），补上 `dialog.saveCopy` 只能复制已有文件的缺口；后者经 Electron 原生剪贴板写入图片，不依赖渲染进程的 `ClipboardItem` 支持。
+
+- **插件 API `ctx.ui.setActivityPanelWidth(width)`**：插件可随时把活动面板宽度设为像素值或 `"max"`（宿主仍 clamp 到 min/max 并按需收侧边栏）。设计画布据此在每次激活标签卡时占满宽度。
+
+- **插件长驻进程能力 `ctx.command.spawn`**（ADR-0054）：与 `command.run` 同一治理模式（清单 `commands` 声明 + 新权限 `agent.command.spawn` + 用户可关），主进程管理进程组生命周期（stop/退出事件/`{{PORT}}` 端口分配），插件禁用/卸载/重载与 App 退出时统一清扫。
+
 - **项目文件列表多选与复制粘贴**：支持 Ctrl/Cmd 点选、Shift 范围选、Ctrl/Cmd+A 全选；右键/快捷键复制与粘贴、复制路径；批量删除与多选拖拽；方向键导航、F2 重命名、Delete 删除；空白处单击清空选区，空白处右键为根目录菜单（新建/粘贴/在资源管理器打开）。不做剪切。同目录粘贴会自动生成 `name (1)` 副本。选区状态与预览解耦，避免幽灵高亮。
 
 - **模型表单的上下文长度快捷预设**：设置 → 模型里新增/编辑模型时，「上下文窗口」与「最大输出」输入框下各多一排快捷标签（32K/64K/128K/256K/1M 与 16K/32K/64K/128K/384K），点一下即填入，当前值命中时高亮。与 Admin 的 `NumberQuickPicks` 取值一致。
@@ -16,12 +29,25 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **插件装完直接弹权限配置**：首次安装的插件权限默认全未授予，安装成功（市场安装 / 开源市场 / 本地 zip 导入）后自动弹出该插件的权限弹窗，省掉用户自己找「权限配置」的一步。插件数据落地后才弹，系统插件与无权限声明的插件不打扰。
 
+### Fixed
+
+- **活动面板「生图历史 / 移动预览 / 内容创作」默认不再占栏**：生图历史 `initiallyVisible: false`，仅在 `generate_image` / `edit_image` 成功后 `openActivityTab` 上栏；移动预览改为跟文件树选中（含 html/htm）显隐，不再因项目里任意存在 html 就自动上栏；内容创作（content-creation）同理默认隐藏，由 `open_content_creation` 或用户从「+」添加后再显示。
+- **移动预览旧安装包一直占栏**：已装的 `mobile-ui-preview@0.2.x` 未声明 `initiallyVisible: false`（缺省即上栏），与源码改动无关也会常驻。0.3.3 显式 `initiallyVisible: false`，会话回放时按选区写回显隐以清掉历史 attach 脏记录。
+- **用户消息里图片胶囊不再退化成文件名**：输入框是「图 N」+ 上方缩略图，发出后 Windows 路径里的 `\.` 会被消息气泡的 CommonMark 当转义吃掉，编号表对不上就回退成 basename。路径 token 统一写成 `/`，编号查找也按同一键，气泡与输入框一致。
+- **文件编辑器保存后无法撤销**：CodeMirror 的 `documentKey` 误绑定磁盘 `revision`，保存成功 revision 变化会整实例重挂载并清空撤销栈。改为按 `editorGeneration` 标识编辑会话（仅磁盘重载/外部干净替换时递增），保存与草稿编辑保持同一编辑器实例。
+- **编辑/预览切换保留撤销栈**：有渲染预览的文件（HTML/Markdown 等）在切到预览时不再卸载 CodeMirror，仅隐藏编辑器并叠放预览层；回到编辑时 `requestMeasure` + 恢复焦点，正文与 Ctrl+Z 历史都不丢。
+- **HTML 预览不再跟随应用主题**：取消按 App 深浅切换 iframe 底色与文档 `color-scheme`（避免未写背景的页面被强制成深色画布）；预览外观由 HTML 自身 CSS 决定，壳层固定浅色兜底。
+
 ### Changed
 
+- **项目文件拖出系统时使用应用内文件类型图标**：原生 `startDrag` 幽灵图与文件树一致（`getFileIcon` / vscode-icons），由渲染进程栅格化为 PNG 后缓存到主进程；pointerdown / 选区变更时预取。缓存未命中时回退应用 logo，不再使用系统 `app.getFileIcon`。
+- **插件可选用宿主 `@vetta/ui` 单例**：Module Federation share 与 `vetta-host://ui` 提供 Button / Dialog / Switch / Slider 等 primitives，构建侧由 `@vetta-org/plugin-vite` external，避免插件自带一份 UI。可选、半稳定，不承诺跨大版本 semver；`@vetta/theme-ui` 仍不共享。见 `docs/plugin/styling-and-pitfalls.md`。
+- **活动面板 tab 统一贡献注册表**：内置与插件 tab 同构为 `ActivityTabDefinition`（`useMeta` + `component`）。Host 只跑 meta 收集 → 可见性（hidden / 插件 attach 三态）→ 排序管道；`useActivityPanelModel` / `ActivityPanelView` 不再枚举 todo/workflow/browser 等业务。新增内置 tab 只需在 `domains/activity-panel/builtins` 注册。浏览器 tab 仍通过 `keepAliveWhenAvailable` 跨 tab 保活 webview。
 - **更新就绪不再自动弹全局对话框**：后台下载完成（`phase === "ready"`）时只保留侧边栏底部的更新提示项，不再打断当前操作。设置 → 更新里点「立即重启」仍会打开重启确认对话框。
 
 - **内置 Skill「发布能力」提交前会读安装包核对 payload（2.1.0）**：新增 `scripts/package-inspect.mjs`（零依赖手写 zip / tar.gz 解析），`--dry-run` 与正式提交都会打开 `.zip` / `.tar.gz`，用 `plugin.json`、`locales/*.json`、`SKILL.md` frontmatter 反查 payload。拦下的是一类服务端不会报错、装完切语言才看得见的问题：① 译文块的 locale 键带地区后缀（`en-US`）——客户端界面语言只有基语言，包内若也有 `locales/en.json`，两块并存且只命中包内那份，作者写的正文/头图整块不显示；② 键与包内 locale 文件名不一致；③ 给包的 `defaultLocale` 又写一份译文块；④ `detail` 与译文块里的未知字段（`title` / `long_description` 之类），服务端 `json.Unmarshal` 会静默丢弃；⑤ plugin 传了不会生效的 `version`。`slug` 被忽略、包内 `vetta.json` 被 `detail` 整体顶替、手写译文与包内不一致等改为 warning 随结果返回。同时 `publish.mjs` 不再重复发送平铺的 `tags` 表单字段（skill/scene 的上传路径根本不读它，其余形态也会被 `detail.tags` 覆盖），`payload.md` / `SKILL.md` 补齐 locale 键约定、`i18n` 对已存行是整体替换、以及各字段的优先级链。
 
+- **HTML 预览去嵌套工具条**：内置 HTML 预览改为纯 iframe 渲染表面，去掉内部「预览 | 代码」分段。源码统一走文件编辑器的「编辑」模式；HTML/Markdown 打开默认进入预览，纯文本仍默认编辑且不再显示无效的编辑/预览切换。
 - **文件编辑器语法高亮与扩展名映射完善**：CodeMirror 高亮主题提高 HTML/XML 等标记语言对比度（标签名 / 属性 / 属性值 / 尖括号独立着色）；扩展名→语言映射与只读 CodePreview（Shiki）共用，覆盖 vue/svelte/xhtml/xml 等，并新增 `@codemirror/lang-xml`。
 - **文件编辑器语法配色可扩展（VS Code 风格）**：语法色全部走 `--syntax-*` CSS 变量，默认对齐 VS Code Dark+ / Light+；主题只需覆盖对应变量即可换色，无需改编辑器代码。
 - **文件列表面板顶部标题固定为「项目文件」**：不再显示动态项目/文件夹名，统一用 i18n 文案（`fileExplorer.fileList`）。

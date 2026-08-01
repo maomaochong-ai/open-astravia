@@ -1,13 +1,11 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useCallback, useEffect, useState } from "react";
 import { aheadBehind, diffStat, gitFetch, gitPull, gitPush, gitSync } from "../git/run";
 import { emitRefreshSignal, onRefreshSignal } from "../git/runtime";
 import { FetchIcon, PullIcon, PushIcon, SyncIcon } from "./icons";
 
 type ActionKind = "fetch" | "pull" | "push" | "sync";
-
-// Uniform action button: content-sized with consistent padding for an even rhythm.
-const actionBtn = "flex h-6 items-center gap-1 rounded-md px-1.5 transition-colors hover:bg-accent disabled:opacity-40";
 
 /**
  * Left-side action row in the changes toolbar: fetch / pull / push (with
@@ -56,32 +54,50 @@ export function GitActions({ root }: { root: string }): JSX.Element {
 	return (
 		<div className="flex items-center gap-1.5">
 			<div className="flex items-center gap-0.5">
-				<button type="button" className={actionBtn} title={t("action.fetch")} disabled={busy !== null} onClick={() => runAction("fetch", gitFetch)}>
-					<FetchIcon className={`h-4 w-4 text-sky-500 ${spin("fetch")}`} />
-				</button>
-				<button
+				<Button
 					type="button"
-					className={actionBtn}
+					variant="ghost"
+					size="icon-xs"
+					title={t("action.fetch")}
+					disabled={busy !== null}
+					onClick={() => runAction("fetch", gitFetch)}
+				>
+					<FetchIcon className={`h-4 w-4 text-sky-500 ${spin("fetch")}`} />
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="xs"
+					className="px-1.5"
 					title={ab && ab.behind > 0 ? `${t("action.pull")} (${ab.behind})` : t("action.pull")}
 					disabled={busy !== null}
 					onClick={() => runAction("pull", gitPull)}
 				>
 					<PullIcon className={`h-4 w-4 text-sky-500 ${spin("pull")}`} />
 					{ab && ab.behind > 0 && <span className="text-[11px] font-semibold tabular-nums leading-none text-sky-500">{ab.behind}</span>}
-				</button>
-				<button
+				</Button>
+				<Button
 					type="button"
-					className={actionBtn}
+					variant="ghost"
+					size="xs"
+					className="px-1.5"
 					title={ab && ab.ahead > 0 ? `${t("action.push")} (${ab.ahead})` : t("action.push")}
 					disabled={busy !== null}
 					onClick={() => runAction("push", gitPush)}
 				>
 					<PushIcon className={`h-4 w-4 text-emerald-500 ${spin("push")}`} />
 					{ab && ab.ahead > 0 && <span className="text-[11px] font-semibold tabular-nums leading-none text-emerald-500">{ab.ahead}</span>}
-				</button>
-				<button type="button" className={actionBtn} title={t("action.sync")} disabled={busy !== null} onClick={() => runAction("sync", gitSync)}>
+				</Button>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					title={t("action.sync")}
+					disabled={busy !== null}
+					onClick={() => runAction("sync", gitSync)}
+				>
 					<SyncIcon className={`h-4 w-4 text-muted-foreground ${spin("sync")}`} />
-				</button>
+				</Button>
 			</div>
 
 			{stat.additions > 0 && (

@@ -9,6 +9,13 @@ export interface FileExplorerEntry {
 	modifiedAt: number;
 }
 
+/** Minimal entry shape for native drag (paths + type for app file icons). */
+export interface FileExplorerDragEntry {
+	name: string;
+	path: string;
+	isDirectory: boolean;
+}
+
 export interface FileExplorerNodeDecoration {
 	icon?: ReactNode;
 	badge?: string;

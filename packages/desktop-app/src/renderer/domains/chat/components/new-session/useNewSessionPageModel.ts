@@ -9,16 +9,15 @@ import {
 	currentScenarioAtom,
 	defaultConversationCwdAtom,
 	emptySessionInputActionState,
-	inputValueAtom,
 	lastActiveSessionAtom,
-	mentionedFilesAtom,
+	newSessionInputDraftKey,
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
 	projectsAtom,
 	promptAttachmentAtom,
-	selectedSkillAtom,
 	sessionExecutionModeAtom,
+	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
 import { useParams } from "@tanstack/react-router";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -65,10 +64,7 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const [mounted, setMounted] = useState(false);
 	const [avatarAutoplay, setAvatarAutoplay] = useState(false);
 	const [commandPanelExpanded, setCommandPanelExpanded] = useState(false);
-	const setSelectedSkill = useSetAtom(selectedSkillAtom);
-	const setInputValue = useSetAtom(inputValueAtom);
 	const setAttachedImages = useSetAtom(attachedImagesAtom);
-	const setMentionedFiles = useSetAtom(mentionedFilesAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
 	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
@@ -91,13 +87,11 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		prefetch: true,
 	});
 
-	// 进入页面时清空上下文输入态，避免从别处带过来未发的内容。
+	// 进入页面：草稿按 `new:${cwd}` 隔离恢复；其它上下文仍重置，避免串会话。
 	useEffect(() => {
-		// decodedCwd 是路由切换的 reset key；effect body 不需要读取其值。
-		void decodedCwd;
-		setInputValue("");
-		setSelectedSkill(null);
-		setMentionedFiles([]);
+		// 先切换草稿作用域（落盘上一会话 → 装入本 cwd 新会话草稿）。
+		switchSessionInputDraftScope(newSessionInputDraftKey(decodedCwd));
+		// 旧 attachedImages 链路兜底清空（正文 token 已由草稿文本恢复）。
 		setAttachedImages([]);
 		// 释放一次性的插件 prompt attachment，避免带进新会话。
 		setPromptAttachment(null);
@@ -119,9 +113,6 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		setLastActiveSession(null);
 	}, [
 		decodedCwd,
-		setInputValue,
-		setSelectedSkill,
-		setMentionedFiles,
 		setAttachedImages,
 		setPromptAttachment,
 		setCurrentScenario,

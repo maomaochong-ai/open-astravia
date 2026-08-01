@@ -4,6 +4,15 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added plugin keyboard shortcuts on the host `ShortcutScopeStack`: permission `ui.shortcuts.register`, `ctx.ui.registerShortcutScope()`, types (`PluginShortcutScopeContribution` / `PluginShortcutBinding`), and React helper `usePluginShortcutScope()`. Kind is limited to `surface` | `overlay` | `modal` (`app` stays host-only for configurable global actions).
+- `ctx.command.spawn(file, args?, options?)`：长驻进程能力（ADR-0054）。返回 `PluginCommandSpawnHandle`（`stop()` / `status()` / `onExit()`），`allocatePort: true` 时宿主分配空闲端口并替换 args/env 中的 `{{PORT}}`。需清单 `commands` 声明 + 新权限 `agent.command.spawn`；进程随插件卸载/禁用/重载与 App 退出统一回收。
+- `PluginFsApi.saveAs(defaultFileName, content, encoding?, options?)`：经宿主原生保存对话框把内存字节写到用户选定的路径，返回保存路径（用户取消返回 `null`）。与 `writeFile` 不同，目标不受工程根限制——路径由用户当场在原生框里确认，插件无法静默写盘。需 `fs.write` 权限。
+- `PluginUiApi.copyImage(dataUrl)`：把 `data:image/...` 写入系统剪贴板，走 Electron 原生剪贴板，不依赖渲染进程的 `ClipboardItem` 支持。无需权限。
+- `PluginUiApi.setActivityPanelWidth(width)`：命令式设置活动面板宽度（像素或 `"max"`，宿主 clamp）。与 `openActivityTab(id, { width })` 只在首次 attach 生效不同，这个每次调用都生效，供插件在自己的标签卡被激活时按需占宽。需 `ui.slot.activity-tab` 权限。
+- `ConversationEvent` 的 `tool-call-start` 新增可选 `args` 透传（工具入参，如 Edit/Write 的目标路径），供插件做定向 UI（如设计画布的「修改中」态）。
+
 ## [0.1.0] — 2026-07-31
 
 ### Breaking Changes

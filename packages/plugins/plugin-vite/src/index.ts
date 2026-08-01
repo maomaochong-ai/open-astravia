@@ -47,6 +47,12 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 				import: false,
 				requiredVersion: "*",
 			},
+			// Host design-system primitives; runtime provided by desktop-app share scope.
+			"@vetta/ui": {
+				singleton: true,
+				import: false,
+				requiredVersion: "*",
+			},
 			...options.shared,
 		},
 	};
@@ -61,7 +67,8 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 				build: {
 					rollupOptions: {
 						input: entry,
-						external: ["@vetta-org/plugin-sdk"],
+						// Host-provided singletons (see desktop-app plugin-shared-modules + vetta-host protocol).
+						external: ["@vetta-org/plugin-sdk", "@vetta/ui"],
 						output: {
 							assetFileNames(assetInfo) {
 								return assetInfo.names.some((name) => name.endsWith(".css"))
@@ -70,6 +77,7 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 							},
 							paths: {
 								"@vetta-org/plugin-sdk": "vetta-host://plugin-sdk",
+								"@vetta/ui": "vetta-host://ui",
 							},
 						},
 					},

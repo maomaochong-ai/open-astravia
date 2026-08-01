@@ -6,6 +6,7 @@ import { registerAbilitiesIpc } from "./abilities.js";
 import { registerActionApprovalIpc } from "./action-approval.js";
 import { registerAppMonitorIpc } from "./app-monitor.js";
 import { registerAppshotIpc } from "./appshot.js";
+import { registerClipboardIpc } from "./clipboard.js";
 import { registerDebugIpc } from "./debug.js";
 import { registerDiagnosticsIpc } from "./diagnostics.js";
 import { registerDialogIpc } from "./dialog.js";
@@ -39,6 +40,7 @@ interface IpcTeardown {
 	teardownSkills: () => void;
 	teardownThemes: () => void;
 	teardownDialog: () => void;
+	teardownClipboard: () => void;
 	teardownFs: () => void;
 	teardownFileTransfer: () => void;
 	teardownBatchTasks: () => void;
@@ -74,6 +76,7 @@ export function registerAllIpc(
 		teardownSkills: registerSkillsIpc(),
 		teardownThemes: registerThemesIpc(),
 		teardownDialog: registerDialogIpc(),
+		teardownClipboard: registerClipboardIpc(),
 		teardownFs: registerFsIpc(),
 		teardownFileTransfer: registerFileTransferIpc(),
 		teardownBatchTasks: () => {},
@@ -106,6 +109,7 @@ export function teardownAllIpc(teardown: IpcTeardown): void {
 	teardown.teardownSkills();
 	teardown.teardownThemes();
 	teardown.teardownDialog();
+	teardown.teardownClipboard();
 	teardown.teardownFs();
 	teardown.teardownFileTransfer();
 	teardown.teardownBatchTasks();

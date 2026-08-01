@@ -1,6 +1,7 @@
 import { type FsEntry, pluginFileExplorerDecorationProvidersAtom, renamingPathAtom } from "@shared/store/atoms";
 import type {
 	FileExplorerCreatingEntry,
+	FileExplorerDragEntry,
 	FileExplorerSelectOptions,
 	FileTreeViewProps,
 } from "@vetta/theme-ui/file-explorer";
@@ -20,11 +21,13 @@ export function useFileTreeViewModel(input: {
 	creatingEntry: FileExplorerCreatingEntry | null;
 	onToggleDir: (path: string) => void;
 	onSelectEntry: (entry: FsEntry, options: FileExplorerSelectOptions) => void;
+	onSelectPaths: (paths: readonly string[]) => void;
 	onBackgroundClick: () => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
 	onExternalDrop: (files: readonly File[], destDir: string) => void;
 	onNativeDragStart: (paths: readonly string[]) => void;
+	onPrefetchNativeDragIcons?: (entries: readonly FileExplorerDragEntry[]) => void;
 	onContextMenu: (entry: FsEntry, x: number, y: number) => void;
 	onRootContextMenu: (x: number, y: number) => void;
 	onCreateSubmit: (name: string) => void;
@@ -81,6 +84,7 @@ export function useFileTreeViewModel(input: {
 		getDecoration,
 		onToggleDir: input.onToggleDir,
 		onSelectEntry: input.onSelectEntry,
+		onSelectPaths: input.onSelectPaths,
 		onBackgroundClick: input.onBackgroundClick,
 		onContextMenu: input.onContextMenu,
 		onRootContextMenu: input.onRootContextMenu,
@@ -91,6 +95,7 @@ export function useFileTreeViewModel(input: {
 		onFileMove: input.onFileMove,
 		onExternalDrop: input.onExternalDrop,
 		onNativeDragStart: input.onNativeDragStart,
+		onPrefetchNativeDragIcons: input.onPrefetchNativeDragIcons,
 		onTreeKeyDown: input.onTreeKeyDown,
 	};
 }

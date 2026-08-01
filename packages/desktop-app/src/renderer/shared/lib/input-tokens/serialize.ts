@@ -17,9 +17,21 @@ export function connectorTokenText(name: string): string {
 	return `@mcp:${quoteIfNeeded(name)}`;
 }
 
+/**
+ * 路径统一成 `/` 再写入 token。
+ *
+ * CommonMark 会把正文里的 `\.` / `\U` 等反斜杠当转义吃掉，Windows 路径
+ * （尤其含 `.vetta` 的 image-cache）经消息气泡的 markdown 渲染后会断掉，
+ * 图片胶囊对不上编号表就会退化成文件名。正斜杠在 Windows 上同样可被
+ * 文件系统与 vetta-file 协议识别，模型侧也更稳。
+ */
+export function toTokenPath(path: string): string {
+	return path.replace(/\\/g, "/");
+}
+
 /** 单个文件/图片 token 的文本形式。 */
 export function pathTokenText(path: string): string {
-	return `@${quoteIfNeeded(path)}`;
+	return `@${quoteIfNeeded(toTokenPath(path))}`;
 }
 
 function segmentToText(segment: InputSegment): string {

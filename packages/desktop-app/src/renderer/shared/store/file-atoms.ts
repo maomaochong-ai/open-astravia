@@ -18,6 +18,11 @@ export interface FileEditorDocumentState {
 	size: number;
 	modifiedAt: number;
 	conflictRevision?: string;
+	/**
+	 * CodeMirror remount identity. Stable across save/draft edits; only bumps when
+	 * the buffer is replaced from disk (open/reload/external clean replace).
+	 */
+	editorGeneration: number;
 }
 
 export const fileTreeCacheAtom = atom<Map<string, FsEntry[]>>(new Map());

@@ -35,11 +35,13 @@
 | 消息卡片渲染器 | `ctx.ui.registerCardRenderer` | `ui.slot.message` | [message-cards](./message-cards.md) |
 | 工具行内渲染替换 | `ctx.ui.registerToolCallSlot` | `ui.slot.tool-call` | [ui-slots](./ui-slots.md#工具行内渲染-registertoolcallslot) |
 | 本轮 Turn 卡 | `ctx.ui.registerTurnCard` | `ui.slot.turn-card` | [ui-slots](./ui-slots.md#本轮-turn-卡-registerturncard) |
+| **键盘快捷键（宿主 scope 栈）** | `ctx.ui.registerShortcutScope` / `usePluginShortcutScope` | `ui.shortcuts.register` | [ui-slots](./ui-slots.md#键盘快捷键-registershortcutscope) |
 | 读对话 / 事件 | hooks + `ctx.conversation.on` | `agent.session.read` | [conversation-and-agent](./conversation-and-agent.md#对话读状态) |
 | 驾驶对话 | `ctx.conversation.sendPrompt/insertText/abort` | `agent.session.write` | [conversation-and-agent](./conversation-and-agent.md#对话驾驶) |
 | 注册 Agent 工具 | `ctx.agent.registerTool` | `agent.tools.register` + `execute` | [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具) |
 | 注册 App Action | `ctx.appActions.register` | `app.actions.register` + `app.actionHandler.execute` | [app-actions](./app-actions.md) |
 | 跑宿主命令 | `ctx.command.run` + 清单 `commands` | `agent.command.run` | [conversation-and-agent](./conversation-and-agent.md#命令执行-command) |
+| 长驻进程（dev server 等） | `ctx.command.spawn` + 清单 `commands` | `agent.command.spawn` | [conversation-and-agent](./conversation-and-agent.md#长驻进程-commandspawn) |
 | 读写文件 | `ctx.fs.*` | `fs.read` / `fs.write` | [conversation-and-agent](./conversation-and-agent.md#文件-api) |
 | 宿主代理网络请求 | `ctx.network.request` | `network.fetch` | [conversation-and-agent](./conversation-and-agent.md#网络-api) |
 | 插件私有持久化 | `ctx.storage.*` | `storage.read` / `storage.write` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
@@ -56,7 +58,7 @@
 ## 信任模型
 
 - 插件是**一方 / 策展**的（官方或合作方编写、经审核上架），**不是**任意第三方不可信代码。
-- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**。
+- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**；可选再共享 **`@vetta/ui`** 设计系统 primitives（见 [styling-and-pitfalls](./styling-and-pitfalls.md#可选vettaui-宿主-primitives)）。
 - 因此 SDK 是「**策展过的能力出口 + 权限门控**」——可同步、可直接传 React 组件实例、可读宿主状态，**刻意不做** iframe/worker 沙箱与异步消息桥。
 - 每项能力由 `plugin.json` 声明权限、宿主单独授权、运行时校验；缺权限会抛 `Plugin permission denied: <permission>` 或 warn+noop（见 [permissions.md](./permissions.md)）。
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	applyFileExplorerSelection,
+	applyMarqueeSelection,
 	buildFileTreeFlatPaths,
 	EMPTY_FILE_EXPLORER_SELECTION,
 	moveFileExplorerFocus,
@@ -95,5 +96,29 @@ describe("selectAllVisible", () => {
 			anchorPath: "/a",
 			focusedPath: "/b",
 		});
+	});
+});
+
+describe("applyMarqueeSelection", () => {
+	const flat = ["/a", "/b", "/c", "/d"];
+
+	it("orders the provided path set by the flat tree", () => {
+		const next = applyMarqueeSelection(flat, ["/d", "/b"]);
+		expect(next).toEqual({ paths: ["/b", "/d"], anchorPath: "/b", focusedPath: "/d" });
+	});
+
+	it("preserves a previous anchor when it remains selected", () => {
+		const next = applyMarqueeSelection(flat, ["/a", "/c"], {
+			paths: ["/a"],
+			anchorPath: "/a",
+			focusedPath: "/a",
+		});
+		expect(next.paths).toEqual(["/a", "/c"]);
+		expect(next.anchorPath).toBe("/a");
+		expect(next.focusedPath).toBe("/c");
+	});
+
+	it("clears when the path set is empty", () => {
+		expect(applyMarqueeSelection(flat, [])).toEqual(EMPTY_FILE_EXPLORER_SELECTION);
 	});
 });

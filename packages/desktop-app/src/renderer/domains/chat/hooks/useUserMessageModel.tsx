@@ -13,7 +13,12 @@ import {
 	type ChatMessage,
 	type FilePreviewItem,
 } from "@shared/store/atoms";
-import { parseInputSegments, segmentsToText, type InputSegment } from "@shared/lib/input-tokens";
+import {
+	parseInputSegments,
+	segmentsToText,
+	toTokenPath,
+	type InputSegment,
+} from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import {
 	SettingsAssistBadgeView,
@@ -213,10 +218,12 @@ export function useUserMessageModel({
 		bodySegments.unshift({ kind: "skill", name: promptRef.name });
 	}
 	// 归一成行内标记形式：旧会话的行首前缀因此也能被 rehype 插件识别成 token。
+	// pathTokenText 会把 `\` 写成 `/`，避免气泡 markdown 把 `\.` 当转义吃掉后
+	// 图片胶囊对不上编号表、退化成文件名。
 	const displayText = segmentsToText(bodySegments);
 	const inlinePaths = new Set(
 		bodySegments.flatMap((segment) =>
-			segment.kind === "file" || segment.kind === "image" ? [segment.path] : [],
+			segment.kind === "file" || segment.kind === "image" ? [toTokenPath(segment.path)] : [],
 		),
 	);
 	const attachmentPaths = message.attachments?.map((attachment) => attachment.path) ?? parsedUser.files;
@@ -229,15 +236,22 @@ export function useUserMessageModel({
 	const inlineImagePaths = bodySegments.flatMap((segment) =>
 		segment.kind === "image" ? [segment.path] : [],
 	);
+	const inlineImageKeys = new Set(inlineImagePaths.map(toTokenPath));
 	const imageFiles = [
 		...inlineImagePaths,
-		...displayFiles.filter((file) => isUserImageFile(file) && !inlineImagePaths.includes(file)),
+		...displayFiles.filter((file) => isUserImageFile(file) && !inlineImageKeys.has(toTokenPath(file))),
 	];
+	// 键统一 `/`：气泡 markdown 里的 path 与附件/节点上的 OS 路径分隔符可能不一致。
 	const imageLabelByPath = new Map(
-		imageFiles.map((path, index) => [path, t("inputBar.capsule.imageBadge", { index: index + 1 })]),
+		imageFiles.map((path, index) => [
+			toTokenPath(path),
+			t("inputBar.capsule.imageBadge", { index: index + 1 }),
+		]),
 	);
 	// 文件徽标只保留未在正文行内呈现的（正常情况下为空，属兜底）。
-	const fileBadges = displayFiles.filter((file) => !isUserImageFile(file) && !inlinePaths.has(file));
+	const fileBadges = displayFiles.filter(
+		(file) => !isUserImageFile(file) && !inlinePaths.has(toTokenPath(file)),
+	);
 	const appshotData: AppshotCardData | null =
 		message.appshot ?? (appshotImage ? { imagePath: appshotImage } : null);
 	// Path-based thumbs are the canonical source (history reload + optimistic after
@@ -376,11 +390,9 @@ export function useUserMessageModel({
 			// Drop any in-progress re-edit before switching sessions — pending entryIds
 			// belong to the source session and cannot be replaced after opening the fork.
 			const store = getDefaultStore();
+			// 不在此处清输入：openSession 会落盘当前会话草稿再装入 fork 会话草稿，
+			// 避免误把父会话未发送内容写成空并丢掉。
 			store.set(pendingMessageEditAtom, null);
-			store.set(inputValueAtom, "");
-			store.set(selectedSkillAtom, null);
-			store.set(mentionedFilesAtom, []);
-			store.set(appshotAttachmentAtom, null);
 
 			const runtimeId = activeSession.runtimeId;
 			const cwd = activeSession.cwd;
@@ -526,7 +538,7 @@ export function useUserMessageModel({
 						<span className="pointer-events-none absolute inset-0 bg-foreground/0 transition-colors group-hover:bg-foreground/10" />
 						{/* 与正文里「图 N」胶囊对应的角标 */}
 						<span className="pointer-events-none absolute bottom-1 right-1 rounded bg-foreground/45 px-1 text-[9px] font-medium leading-[1.4] text-background/90">
-							{(item.path ? imageLabelByPath.get(item.path) : undefined) ??
+							{(item.path ? imageLabelByPath.get(toTokenPath(item.path)) : undefined) ??
 								t("inputBar.capsule.imageBadge", { index: index + 1 })}
 						</span>
 					</button>
@@ -599,7 +611,8 @@ export function useUserMessageModel({
 			<TextBlockView
 				text={displayText}
 				inlineTokens={{
-					getImageLabel: (path) => imageLabelByPath.get(path) ?? pathBasename(path),
+					getImageLabel: (path) =>
+						imageLabelByPath.get(toTokenPath(path)) ?? pathBasename(path),
 					getSkill: resolveSkillMeta,
 				}}
 				className="max-w-full overflow-x-auto [overflow-wrap:anywhere] [&_code]:break-all"

@@ -21,6 +21,7 @@ export function createSystemApi(
 	| "settings"
 	| "subscription"
 	| "shell"
+	| "clipboard"
 	| "window"
 	| "auth"
 	| "updater"
@@ -37,6 +38,8 @@ export function createSystemApi(
 			selectImages: () => ipc.invoke("vetta:dialog:select-images"),
 			selectFiles: (defaultPath) => ipc.invoke("vetta:dialog:select-files", defaultPath),
 			saveHtml: (defaultFileName, content) => ipc.invoke("vetta:dialog:save-html", defaultFileName, content),
+			saveData: (defaultFileName, content, encoding, options) =>
+				ipc.invoke("vetta:dialog:save-data", defaultFileName, content, encoding, options),
 			saveCopy: (sourcePath, options) => ipc.invoke("vetta:dialog:save-copy", sourcePath, options),
 			persistImages: (sessionId, images) => ipc.invoke("vetta:dialog:persist-images", sessionId, images),
 		},
@@ -131,6 +134,7 @@ export function createSystemApi(
 				ipc.invoke("vetta:file-transfer:commit-drop", planId, action, conflictPolicy),
 			cancelDrop: (planId) => ipc.invoke("vetta:file-transfer:cancel-drop", planId),
 			startDrag: (paths) => ipc.send("vetta:file-transfer:start-drag", [...paths]),
+			cacheDragIcon: (path, pngDataUrl) => ipc.send("vetta:file-transfer:cache-drag-icon", path, pngDataUrl),
 			createEntry: (parentDirectory, name, kind) => ipc.invoke("vetta:fs:create-entry", parentDirectory, name, kind),
 			createDirectory: (dirPath) => ipc.invoke("vetta:fs:create-directory", dirPath),
 			listSubDirs: (dirPath) => ipc.invoke("vetta:fs:list-sub-dirs", dirPath),
@@ -178,6 +182,7 @@ export function createSystemApi(
 		models: {
 			get: () => ipc.invoke("vetta:models:get"),
 			set: (config) => ipc.invoke("vetta:models:set", config),
+			copyApiKey: (providerId) => ipc.invoke("vetta:models:copy-api-key", providerId),
 			fetchRemote: () => ipc.invoke("vetta:models:fetch-remote"),
 			listPresets: () => ipc.invoke("vetta:models:list-presets"),
 			refreshPresetModels: (providerId, apiKey) =>
@@ -218,6 +223,9 @@ export function createSystemApi(
 			showInFolder: (fullPath) => ipc.invoke("vetta:shell:show-in-folder", fullPath),
 			showItemInFolder: (fullPath) => ipc.invoke("vetta:shell:show-item-in-folder", fullPath),
 			openExternal: (url) => ipc.invoke("vetta:shell:open-external", url),
+		},
+		clipboard: {
+			writeImage: (dataUrl) => ipc.invoke("vetta:clipboard:write-image", dataUrl),
 		},
 		window: {
 			minimize: () => ipc.invoke("vetta:window:minimize"),

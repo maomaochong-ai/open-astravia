@@ -14,6 +14,7 @@ declare global {
 				jsxRuntime: typeof pluginHostShimModules.jsxRuntime;
 				jsxDevRuntime: typeof pluginHostShimModules.jsxDevRuntime;
 				pluginSdk: typeof pluginHostShimModules.pluginSdk;
+				vettaUi: typeof pluginHostShimModules.vettaUi;
 		  }
 		| undefined;
 	var __mf_module_cache__: ModuleFederationModuleCache | undefined;
@@ -27,6 +28,7 @@ export function installPluginHostShim(): void {
 		jsxRuntime: pluginHostShimModules.jsxRuntime,
 		jsxDevRuntime: pluginHostShimModules.jsxDevRuntime,
 		pluginSdk: pluginHostShimModules.pluginSdk,
+		vettaUi: pluginHostShimModules.vettaUi,
 	};
 
 	if (!globalThis.__mf_module_cache__) {

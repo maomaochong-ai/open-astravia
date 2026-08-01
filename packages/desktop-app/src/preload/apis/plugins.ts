@@ -254,6 +254,12 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			revokeCommands: (id, names) => ipc.invoke("vetta:plugins:revoke-commands", id, names),
 			runCommand: (pluginId, file, args, options) =>
 				ipc.invoke("vetta:plugins:command-run", pluginId, file, args, options),
+			spawnCommand: (pluginId, file, args, options) =>
+				ipc.invoke("vetta:plugins:command-spawn", pluginId, file, args, options),
+			stopCommandSpawn: (pluginId, spawnId) => ipc.invoke("vetta:plugins:command-spawn-stop", pluginId, spawnId),
+			getCommandSpawnStatus: (pluginId, spawnId) =>
+				ipc.invoke("vetta:plugins:command-spawn-status", pluginId, spawnId),
+			onCommandSpawnExit: (handler) => onIpcEvent(ipc, "vetta:plugins:command-spawn-exit", handler),
 			reload: (id) => ipc.invoke("vetta:plugins:reload", id),
 			startDevWatch: (id, projectDir) => ipc.invoke("vetta:plugins:dev-watch-start", id, projectDir),
 			stopDevWatch: (id) => ipc.invoke("vetta:plugins:dev-watch-stop", id),

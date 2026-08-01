@@ -1,4 +1,4 @@
-import { Button } from "@vetta/ui";
+import { Button, cn } from "@vetta/ui";
 import type { JSX, ReactNode } from "react";
 import { TextCodeEditorView } from "./TextCodeEditorView";
 
@@ -29,7 +29,11 @@ export type TextFileEditorViewState =
 			content: string;
 			extension: string;
 			lineEnding: "lf" | "crlf";
-			previewContent: ReactNode;
+			/**
+			 * When set, host can switch to a rendered preview surface.
+			 * When omitted, the toolbar has no edit/preview toggle (source-only).
+			 */
+			previewContent?: ReactNode;
 	  };
 
 export interface TextFileEditorViewProps {
@@ -75,39 +79,55 @@ export function TextFileEditorView({
 		);
 	}
 
+	const hasPreview = state.previewContent != null;
+	const showPreview = hasPreview && state.mode === "preview";
+
+	const editor = (
+		<TextCodeEditorView
+			documentKey={state.documentKey}
+			initialValue={state.content}
+			extension={state.extension}
+			lineEnding={state.lineEnding}
+			onChange={onChange}
+			active={!showPreview}
+		/>
+	);
+
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-background">
 			<div className="flex min-h-9 shrink-0 items-center gap-1.5 border-b border-border/40 bg-card/30 px-2">
-				<div className="flex items-center rounded-lg border border-border/40 bg-muted/40 p-0.5">
-					<Button
-						variant="ghost"
-						size="xs"
-						aria-pressed={state.mode === "edit"}
-						className={
-							state.mode === "edit"
-								? "bg-background text-foreground shadow-xs hover:bg-background"
-								: "text-muted-foreground"
-						}
-						onClick={() => onModeChange("edit")}
-					>
-						<span className="icon-[solar--pen-2-linear] h-3 w-3" />
-						{labels.edit}
-					</Button>
-					<Button
-						variant="ghost"
-						size="xs"
-						aria-pressed={state.mode === "preview"}
-						className={
-							state.mode === "preview"
-								? "bg-background text-foreground shadow-xs hover:bg-background"
-								: "text-muted-foreground"
-						}
-						onClick={() => onModeChange("preview")}
-					>
-						<span className="icon-[solar--eye-linear] h-3 w-3" />
-						{labels.preview}
-					</Button>
-				</div>
+				{hasPreview ? (
+					<div className="flex items-center rounded-lg border border-border/40 bg-muted/40 p-0.5">
+						<Button
+							variant="ghost"
+							size="xs"
+							aria-pressed={state.mode === "edit"}
+							className={
+								state.mode === "edit"
+									? "bg-background text-foreground shadow-xs hover:bg-background"
+									: "text-muted-foreground"
+							}
+							onClick={() => onModeChange("edit")}
+						>
+							<span className="icon-[solar--pen-2-linear] h-3 w-3" />
+							{labels.edit}
+						</Button>
+						<Button
+							variant="ghost"
+							size="xs"
+							aria-pressed={state.mode === "preview"}
+							className={
+								state.mode === "preview"
+									? "bg-background text-foreground shadow-xs hover:bg-background"
+									: "text-muted-foreground"
+							}
+							onClick={() => onModeChange("preview")}
+						>
+							<span className="icon-[solar--eye-linear] h-3 w-3" />
+							{labels.preview}
+						</Button>
+					</div>
+				) : null}
 				<div
 					className={`flex min-w-0 flex-1 items-center gap-1.5 ${state.dirty || state.saving ? "text-primary" : "text-muted-foreground"}`}
 					aria-live="polite"
@@ -166,16 +186,27 @@ export function TextFileEditorView({
 				</div>
 			) : null}
 
-			{state.mode === "edit" ? (
-				<TextCodeEditorView
-					documentKey={state.documentKey}
-					initialValue={state.content}
-					extension={state.extension}
-					lineEnding={state.lineEnding}
-					onChange={onChange}
-				/>
+			{/*
+			 * Keep CodeMirror mounted under preview so undo/redo survives mode switches.
+			 * Stack with absolute + invisible (not display:none) so the editor keeps a real size.
+			 */}
+			{hasPreview ? (
+				<div className="relative min-h-0 flex-1">
+					<div
+						className={cn(
+							"absolute inset-0 flex min-h-0 flex-col",
+							showPreview && "invisible pointer-events-none",
+						)}
+						aria-hidden={showPreview}
+					>
+						{editor}
+					</div>
+					{showPreview ? (
+						<div className="absolute inset-0 flex min-h-0 flex-col">{state.previewContent}</div>
+					) : null}
+				</div>
 			) : (
-				state.previewContent
+				editor
 			)}
 		</div>
 	);

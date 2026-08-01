@@ -12,7 +12,7 @@
 		"expose": "./plugin"
 	},
 	"styles": ["dist/style.css"],
-	"permissions": ["ui.slot.file-preview"],
+	"permissions": ["ui.slot.file-preview", "ui.shortcuts.register"],
 	"description": "%plugin.description%",
 	"author": "Vetta"
 }

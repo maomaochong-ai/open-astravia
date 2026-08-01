@@ -117,6 +117,67 @@ export const interpolatePluginText = sdk.interpolatePluginText;
 export const resolveCatalogKey = sdk.resolveCatalogKey;
 export const resolvePluginText = sdk.resolvePluginText;
 export const PluginAppActionError = sdk.PluginAppActionError;
+export const usePluginShortcutScope = sdk.usePluginShortcutScope;
+`);
+	}
+	if (moduleName === "ui" || moduleName === "vetta-ui") {
+		// Legacy ESM / explicit vetta-host:// imports. MF plugins normally resolve
+		// @vetta/ui via share scope; keep export list in sync with packages/ui/src/index.ts.
+		return moduleResponse(`
+const ui = globalThis.__VETTA_PLUGIN_HOST__.vettaUi;
+export const Button = ui.Button;
+export const buttonVariants = ui.buttonVariants;
+export const Dialog = ui.Dialog;
+export const DialogClose = ui.DialogClose;
+export const DialogContent = ui.DialogContent;
+export const DialogDescription = ui.DialogDescription;
+export const DialogFooter = ui.DialogFooter;
+export const DialogHeader = ui.DialogHeader;
+export const DialogOverlay = ui.DialogOverlay;
+export const DialogPortal = ui.DialogPortal;
+export const DialogTitle = ui.DialogTitle;
+export const DialogTrigger = ui.DialogTrigger;
+export const Drawer = ui.Drawer;
+export const DrawerClose = ui.DrawerClose;
+export const DrawerContent = ui.DrawerContent;
+export const DrawerDescription = ui.DrawerDescription;
+export const DrawerFooter = ui.DrawerFooter;
+export const DrawerHeader = ui.DrawerHeader;
+export const DrawerOverlay = ui.DrawerOverlay;
+export const DrawerPortal = ui.DrawerPortal;
+export const DrawerTitle = ui.DrawerTitle;
+export const DrawerTrigger = ui.DrawerTrigger;
+export const DropdownMenu = ui.DropdownMenu;
+export const DropdownMenuContent = ui.DropdownMenuContent;
+export const DropdownMenuItem = ui.DropdownMenuItem;
+export const DropdownMenuLabel = ui.DropdownMenuLabel;
+export const DropdownMenuSeparator = ui.DropdownMenuSeparator;
+export const DropdownMenuSub = ui.DropdownMenuSub;
+export const DropdownMenuSubContent = ui.DropdownMenuSubContent;
+export const DropdownMenuSubTrigger = ui.DropdownMenuSubTrigger;
+export const DropdownMenuTrigger = ui.DropdownMenuTrigger;
+export const Popover = ui.Popover;
+export const PopoverAnchor = ui.PopoverAnchor;
+export const PopoverArrow = ui.PopoverArrow;
+export const PopoverContent = ui.PopoverContent;
+export const PopoverDescription = ui.PopoverDescription;
+export const PopoverHeader = ui.PopoverHeader;
+export const PopoverTitle = ui.PopoverTitle;
+export const PopoverTrigger = ui.PopoverTrigger;
+export const Select = ui.Select;
+export const SelectContent = ui.SelectContent;
+export const SelectGroup = ui.SelectGroup;
+export const SelectItem = ui.SelectItem;
+export const SelectLabel = ui.SelectLabel;
+export const SelectScrollDownButton = ui.SelectScrollDownButton;
+export const SelectScrollUpButton = ui.SelectScrollUpButton;
+export const SelectSeparator = ui.SelectSeparator;
+export const SelectTrigger = ui.SelectTrigger;
+export const SelectValue = ui.SelectValue;
+export const Slider = ui.Slider;
+export const Spin = ui.Spin;
+export const Switch = ui.Switch;
+export const cn = ui.cn;
 `);
 	}
 	return new Response("Not found", { status: 404 });

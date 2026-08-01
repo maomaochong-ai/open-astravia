@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { isAbsolute, resolve } from "node:path";
-import { type IpcMainEvent, ipcMain, nativeImage } from "electron";
+import { type IpcMainEvent, ipcMain } from "electron";
 import type {
 	FileTransferAction,
 	FileTransferConflictPolicy,
@@ -10,9 +10,9 @@ import type {
 } from "../../preload/fs-types.js";
 import { inspectFilesystemTransfer, transferFilesystemEntries } from "../filesystem/file-transfer-service.js";
 import { assertFilesystemPathWithinProject } from "../filesystem/filesystem-service.js";
+import { cacheNativeDragIconFromDataUrl, resolveNativeDragIcon } from "../filesystem/native-drag-icon.js";
 import { createNativeDragFilePayload } from "../filesystem/native-file-drag.js";
 import { getAppLogger } from "../logger.js";
-import { iconPath } from "../window-manager.js";
 
 const log = getAppLogger("file-transfer-ipc");
 const PLAN_TTL_MS = 2 * 60 * 1000;
@@ -23,6 +23,7 @@ const CHANNELS = {
 	COMMIT_DROP: "vetta:file-transfer:commit-drop",
 	CANCEL_DROP: "vetta:file-transfer:cancel-drop",
 	START_DRAG: "vetta:file-transfer:start-drag",
+	CACHE_DRAG_ICON: "vetta:file-transfer:cache-drag-icon",
 } as const;
 
 interface StoredTransferPlan {
@@ -118,7 +119,8 @@ export function registerFileTransferIpc(): () => void {
 				assertFilesystemPathWithinProject(path);
 				if (!existsSync(path)) throw new Error("Drag source does not exist");
 			}
-			const icon = nativeImage.createFromPath(iconPath.linux ?? "").resize({ width: 32, height: 32 });
+			// startDrag must not await — use renderer-cached app type icon when warm, else app logo.
+			const icon = resolveNativeDragIcon(paths);
 			if (icon.isEmpty()) throw new Error("Native drag icon could not be loaded");
 			const payload = createNativeDragFilePayload(paths);
 			log.info("starting native drag", { itemCount: paths.length, platform: process.platform });
@@ -129,11 +131,25 @@ export function registerFileTransferIpc(): () => void {
 	};
 	ipcMain.on(CHANNELS.START_DRAG, handleStartDrag);
 
+	const handleCacheDragIcon = (_event: IpcMainEvent, rawPath: unknown, rawDataUrl: unknown): void => {
+		try {
+			if (typeof rawPath !== "string" || !rawPath.trim() || !isAbsolute(rawPath)) return;
+			if (typeof rawDataUrl !== "string" || !rawDataUrl.startsWith("data:image/png")) return;
+			const filePath = resolve(rawPath);
+			assertFilesystemPathWithinProject(filePath);
+			cacheNativeDragIconFromDataUrl(filePath, rawDataUrl);
+		} catch (error) {
+			log.warn("cache drag icon failed", error);
+		}
+	};
+	ipcMain.on(CHANNELS.CACHE_DRAG_ICON, handleCacheDragIcon);
+
 	return () => {
 		plans.clear();
 		ipcMain.removeHandler(CHANNELS.PREPARE_DROP);
 		ipcMain.removeHandler(CHANNELS.COMMIT_DROP);
 		ipcMain.removeHandler(CHANNELS.CANCEL_DROP);
 		ipcMain.removeListener(CHANNELS.START_DRAG, handleStartDrag);
+		ipcMain.removeListener(CHANNELS.CACHE_DRAG_ICON, handleCacheDragIcon);
 	};
 }

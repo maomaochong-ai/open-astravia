@@ -61,6 +61,17 @@ export type {
 	PluginUiApi,
 } from "./ui.js";
 
+// Keyboard shortcuts (host ShortcutScopeStack)
+export type {
+	PluginShortcutScopeKind,
+	PluginShortcutWhen,
+	PluginShortcutBinding,
+	PluginShortcutScopeContribution,
+	PluginRegisterShortcutScope,
+	UsePluginShortcutScopeOptions,
+} from "./shortcuts.js";
+export { usePluginShortcutScope } from "./shortcuts.js";
+
 // Agent runtime
 export type {
 	PluginJsonSchema,
@@ -148,6 +159,10 @@ export type {
 export type {
 	PluginCommandRunOptions,
 	PluginCommandRunResult,
+	PluginCommandSpawnOptions,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnStatus,
+	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
 export type { PluginImageRef } from "./images.js";

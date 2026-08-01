@@ -4,6 +4,7 @@ import type { Disposable } from "./disposable.js";
 import type { PluginImageRef } from "./images.js";
 import type { PluginPromptAttachment } from "./prompt-attachment.js";
 import type { ConversationScenario } from "./scenario.js";
+import type { PluginShortcutScopeContribution } from "./shortcuts.js";
 
 export interface PluginGlobalSlotContribution {
 	id: string;
@@ -328,6 +329,14 @@ export interface PluginUiApi {
 	 */
 	registerTurnCard(contribution: PluginTurnCardContribution): Disposable;
 	/**
+	 * Register a keyboard shortcut scope on the host's shared ShortcutScopeStack
+	 * (same path as host UI: modal > overlay > surface > app). Needs
+	 * `ui.shortcuts.register`. Plugins cannot use kind `"app"` (reserved for
+	 * host-configurable global actions). Prefer {@link usePluginShortcutScope}
+	 * from React components with a module-captured `registerShortcutScope`.
+	 */
+	registerShortcutScope(contribution: PluginShortcutScopeContribution): Disposable;
+	/**
 	 * Programmatically attach (if needed) and activate one of this plugin's
 	 * own activity tabs in the current conversation's activity panel. `tabId`
 	 * is the contribution id passed to registerActivityTab. Any payload (e.g.
@@ -350,6 +359,15 @@ export interface PluginUiApi {
 	 * no-op（无处记录），插件应在会话就绪后重新判定。
 	 */
 	setActivityTabVisible(tabId: string, visible: boolean): void;
+	/**
+	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示当前窗口下的最大宽度（宿主仍
+	 * 会夹到自己的 min/max 内，必要时自动收起侧边栏）。
+	 *
+	 * 与 `openActivityTab(id, { width })` 的区别：那里的宽度只在标签卡首次 attach
+	 * 时生效（避免 activate 重放覆盖用户手拖的宽度）；这个是命令式的，每次调用都
+	 * 生效，供插件在自己的标签卡被激活、进入某种视图时按需调整。用户随后仍可拖动。
+	 */
+	setActivityPanelWidth(width: number | "max"): void;
 	/**
 	 * Bind or clear plugin-owned one-shot context for the next outgoing prompt.
 	 * The host renders its label/icon, merges metadata and hidden instructions,
@@ -376,6 +394,13 @@ export interface PluginUiApi {
 	 * Requires `ui.slot.activity-tab`.
 	 */
 	captureRegion(rect: PluginCaptureRegion, defaultFileName: string): Promise<string | null>;
+	/**
+	 * Copy an image to the system clipboard. Takes a `data:image/...;base64,`
+	 * URL and goes through the native clipboard, so it does not depend on the
+	 * renderer's `ClipboardItem` support. No permission required — the plugin
+	 * can only write what it already rendered.
+	 */
+	copyImage(dataUrl: string): Promise<void>;
 	/**
 	 * Show a global toast in the host UI (bottom-right). No permission required.
 	 * Prefer this over swallowing errors into opaque UI copy: pass `error` so

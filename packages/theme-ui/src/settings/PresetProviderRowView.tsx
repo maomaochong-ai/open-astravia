@@ -11,6 +11,7 @@ export interface PresetProviderRowModelView {
 	readonly offline: boolean;
 	readonly models: readonly unknown[];
 	readonly refreshing: boolean;
+	readonly hasApiKey: boolean;
 	readonly statusLabel: string | null;
 	readonly modelsError: string | null;
 }
@@ -27,9 +28,11 @@ export interface PresetProviderRowViewLabels {
 	readonly enable: string;
 	readonly apiKeyDirect: (name: string) => string;
 	readonly apiKeyPlaceholder: string;
+	readonly encryptedApiKeyPlaceholder: string;
 	readonly save: string;
 	readonly refreshModels: string;
 	readonly refreshingModels: string;
+	readonly copyApiKey: string;
 }
 
 export interface PresetProviderRowViewProps {
@@ -43,6 +46,7 @@ export interface PresetProviderRowViewProps {
 	readonly onAdopt: () => void;
 	readonly onRemove: () => void;
 	readonly onRefreshModels: () => void;
+	readonly onCopyApiKey: () => void;
 	readonly icon: ReactNode;
 	readonly modelsList?: ReactNode;
 }
@@ -58,6 +62,7 @@ export function PresetProviderRowView({
 	onAdopt,
 	onRemove,
 	onRefreshModels,
+	onCopyApiKey,
 	icon,
 	modelsList,
 }: PresetProviderRowViewProps): JSX.Element {
@@ -171,7 +176,7 @@ export function PresetProviderRowView({
 							<InputField
 								value={draftKey}
 								onChange={onDraftKeyChange}
-								placeholder={labels.apiKeyPlaceholder}
+								placeholder={row.hasApiKey ? labels.encryptedApiKeyPlaceholder : labels.apiKeyPlaceholder}
 								type="password"
 								disabled={saving}
 								onKeyDown={(event) => {
@@ -182,13 +187,24 @@ export function PresetProviderRowView({
 								}}
 							/>
 						</div>
+						{row.hasApiKey && (
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								onClick={onCopyApiKey}
+								title={labels.copyApiKey}
+								aria-label={labels.copyApiKey}
+							>
+								<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
+							</Button>
+						)}
 						<Button
 							variant="primary"
 							size="sm"
 							onClick={tryAdopt}
 							disabled={!draftKey.trim() || saving}
 						>
-							{row.adopted ? labels.save : labels.enable}
+							{row.adopted ? labels.changeKey : labels.enable}
 						</Button>
 					</div>
 				</div>

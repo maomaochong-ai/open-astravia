@@ -8,7 +8,8 @@ import {
 	loginHttpMcpServer,
 	loginMcpDeviceFlow,
 } from "@vetta/coding-agent/core/mcp/index.js";
-import { BrowserWindow, ipcMain } from "electron";
+import { resolveConfigValue } from "@vetta/coding-agent/core/resolve-config-value.js";
+import { BrowserWindow, clipboard, ipcMain } from "electron";
 import type {
 	McpConfigData,
 	McpHttpServerConfigData,
@@ -145,6 +146,7 @@ const CHANNELS = {
 	CONFIG_SET: "vetta:config:set",
 	MODELS_GET: "vetta:models:get",
 	MODELS_SET: "vetta:models:set",
+	MODELS_COPY_API_KEY: "vetta:models:copy-api-key",
 	MODELS_PROBE: "vetta:models:probe",
 	MODELS_FETCH_PROVIDER_MODELS: "vetta:models:fetch-provider-models",
 	MCP_GET: "vetta:mcp:get",
@@ -167,6 +169,13 @@ export function registerFsIpc(): () => void {
 	const mcp = getDesktopMcpSettingsService();
 	const models = getDesktopModelSettingsService();
 	const shortcuts = getDesktopShortcutService();
+	let apiKeyClipboardClearTimer: ReturnType<typeof setTimeout> | undefined;
+	let copiedApiKey: string | undefined;
+	const clearCopiedApiKey = (): void => {
+		if (copiedApiKey && clipboard.readText() === copiedApiKey) clipboard.clear();
+		copiedApiKey = undefined;
+		apiKeyClipboardClearTimer = undefined;
+	};
 	ipcMain.handle(CHANNELS.READ_DIR, async (_event, dirPath: unknown): Promise<FsEntry[]> => {
 		assertNonEmptyString(dirPath, "dirPath");
 		return readFilesystemDirectory(dirPath);
@@ -419,12 +428,25 @@ export function registerFsIpc(): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_GET, async (): Promise<ModelsConfig> => {
-		return models.getConfig();
+		return models.getRendererConfig();
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_SET, async (_event, config: unknown) => {
 		if (typeof config !== "object" || config === null) throw new Error("Invalid models config");
 		await models.replaceConfig(config as ModelsConfig);
+	});
+
+	ipcMain.handle(CHANNELS.MODELS_COPY_API_KEY, async (_event, providerId: unknown): Promise<boolean> => {
+		assertNonEmptyString(providerId, "providerId");
+		const keyConfig = await models.getProviderApiKey(providerId.trim());
+		const apiKey = keyConfig ? resolveConfigValue(keyConfig) : undefined;
+		if (!apiKey) return false;
+
+		clipboard.writeText(apiKey);
+		if (apiKeyClipboardClearTimer) clearTimeout(apiKeyClipboardClearTimer);
+		copiedApiKey = apiKey;
+		apiKeyClipboardClearTimer = setTimeout(clearCopiedApiKey, 30_000);
+		return true;
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_PROBE, async (_event, ref: { provider: string; model: string }) => {
@@ -526,6 +548,8 @@ export function registerFsIpc(): () => void {
 		watchers.clear();
 		for (const timer of debounceTimers.values()) clearTimeout(timer);
 		debounceTimers.clear();
+		if (apiKeyClipboardClearTimer) clearTimeout(apiKeyClipboardClearTimer);
+		clearCopiedApiKey();
 
 		ipcMain.removeHandler(CHANNELS.READ_DIR);
 		ipcMain.removeHandler(CHANNELS.READ_FILE);
@@ -547,6 +571,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.CONFIG_SET);
 		ipcMain.removeHandler(CHANNELS.MODELS_GET);
 		ipcMain.removeHandler(CHANNELS.MODELS_SET);
+		ipcMain.removeHandler(CHANNELS.MODELS_COPY_API_KEY);
 		ipcMain.removeHandler(CHANNELS.MODELS_PROBE);
 		ipcMain.removeHandler(CHANNELS.MODELS_FETCH_PROVIDER_MODELS);
 		ipcMain.removeHandler(CHANNELS.MCP_GET);
