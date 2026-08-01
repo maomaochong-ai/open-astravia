@@ -26,6 +26,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **活动面板 tab 统一贡献注册表**：内置与插件 tab 同构为 `ActivityTabDefinition`（`useMeta` + `component`）。Host 只跑 meta 收集 → 可见性（hidden / 插件 attach 三态）→ 排序管道；`useActivityPanelModel` / `ActivityPanelView` 不再枚举 todo/workflow/browser 等业务。新增内置 tab 只需在 `domains/activity-panel/builtins` 注册。浏览器 tab 仍通过 `keepAliveWhenAvailable` 跨 tab 保活 webview。
 - **更新就绪不再自动弹全局对话框**：后台下载完成（`phase === "ready"`）时只保留侧边栏底部的更新提示项，不再打断当前操作。设置 → 更新里点「立即重启」仍会打开重启确认对话框。
 
 - **内置 Skill「发布能力」提交前会读安装包核对 payload（2.1.0）**：新增 `scripts/package-inspect.mjs`（零依赖手写 zip / tar.gz 解析），`--dry-run` 与正式提交都会打开 `.zip` / `.tar.gz`，用 `plugin.json`、`locales/*.json`、`SKILL.md` frontmatter 反查 payload。拦下的是一类服务端不会报错、装完切语言才看得见的问题：① 译文块的 locale 键带地区后缀（`en-US`）——客户端界面语言只有基语言，包内若也有 `locales/en.json`，两块并存且只命中包内那份，作者写的正文/头图整块不显示；② 键与包内 locale 文件名不一致；③ 给包的 `defaultLocale` 又写一份译文块；④ `detail` 与译文块里的未知字段（`title` / `long_description` 之类），服务端 `json.Unmarshal` 会静默丢弃；⑤ plugin 传了不会生效的 `version`。`slug` 被忽略、包内 `vetta.json` 被 `detail` 整体顶替、手写译文与包内不一致等改为 warning 随结果返回。同时 `publish.mjs` 不再重复发送平铺的 `tags` 表单字段（skill/scene 的上传路径根本不读它，其余形态也会被 `detail.tags` 覆盖），`payload.md` / `SKILL.md` 补齐 locale 键约定、`i18n` 对已存行是整体替换、以及各字段的优先级链。
