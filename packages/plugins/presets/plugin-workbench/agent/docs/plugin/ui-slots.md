@@ -185,7 +185,7 @@ pdfjs.getDocument({ url: file.getUrl() });
 
 向活动面板注册一个 tab。
 
-- 权限：`ui.slot.activity-tab`（注册 **warn+noop**；`openActivityTab` / `setActivityTabVisible` **抛错**）
+- 权限：`ui.slot.activity-tab`（注册 **warn+noop**；`openActivityTab` / `setActivityTabVisible` / `setActivityPanelWidth` **抛错**）
 - **`scope_use` fail-closed**（必写，否则任何场景不显示）
 - **默认注册即上栏**（`initiallyVisible` 缺省 `true`）。声明 `initiallyVisible: false` 表示「出现条件我自己管」：注册只入池，之后用 `setActivityTabVisible` 静默上栏/下栏（如 git 只在仓库目录上栏、工作台跟随输入栏 toggle），或用 `openActivityTab` 上栏并抢焦点打开（如图像生成完成后跳到历史）
 - 显隐记录按 **会话 cwd** 持久化（ADR-0026）：插件表过态就听插件的，没表过态才看 `initiallyVisible`。用户随时可用减号手动隐藏
@@ -235,6 +235,23 @@ ctx.ui.openActivityTab(tabId, options?: { width?: number | "max" });
 `width` **只在该 tab 首次 attach 时生效**：tab 已 attach 的重复调用（含 reload/热更新导致的 `activate()` 重放）只做激活，不会覆盖用户手动拖出的面板宽度。
 
 示例：`packages/plugins/presets/git`、`externals/mobile-ui-preview`。
+
+### setActivityPanelWidth
+
+```ts
+ctx.ui.setActivityPanelWidth(width: number | "max");
+```
+
+命令式地设置活动面板宽度（宿主 clamp 到自己的 min/max，必要时自动收起侧边栏）。与
+`openActivityTab` 的 `width` 不同，**每次调用都生效**——适合「本标签卡被激活时占满宽度」
+这类诉求：标签卡切走会卸载，在内容组件挂载时调一次即可，用户之后仍可拖窄。
+
+```ts
+// 设计画布：每次激活都拉满
+useEffect(() => {
+  ctx.ui.setActivityPanelWidth("max");
+}, []);
+```
 
 ### setActivityTabVisible
 

@@ -937,6 +937,13 @@ function createContext(
 		}
 		setPluginActivityTabVisible(plugin.id, tabId, visible === true);
 	};
+	const setActivityPanelWidth = (width: number | "max"): void => {
+		createPermissionApi(plugin).require("ui.slot.activity-tab");
+		if (width !== "max" && !Number.isFinite(width)) {
+			throw new Error('Activity panel width must be a finite number or "max"');
+		}
+		getDefaultStore().set(setActivityPanelWidthAtom, width);
+	};
 	const setPromptAttachment = (attachment: PluginPromptAttachment | null): void => {
 		createPermissionApi(plugin).require("ui.slot.input-action");
 		const store = getDefaultStore();
@@ -1055,6 +1062,7 @@ function createContext(
 			registerTurnCard,
 			openActivityTab,
 			setActivityTabVisible,
+			setActivityPanelWidth,
 			setPromptAttachment,
 			previewImage,
 			openPluginSettings,

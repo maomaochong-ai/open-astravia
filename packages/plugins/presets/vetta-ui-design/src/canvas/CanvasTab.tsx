@@ -37,6 +37,12 @@ export function CanvasTab() {
 	const [reloadNonce, setReloadNonce] = useState(0);
 	const bridgeRef = useRef(new BridgeHub());
 
+	// 画布很吃宽度：每次激活本标签卡（切走会卸载，故每次都触发）把活动面板拉满，
+	// 用户之后仍可自行拖窄。
+	useEffect(() => {
+		getPluginCtx().ui.setActivityPanelWidth("max");
+	}, []);
+
 	const refreshFiles = useCallback(async (): Promise<string[]> => {
 		if (!cwd) {
 			setFiles([]);

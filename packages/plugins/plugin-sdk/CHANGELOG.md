@@ -7,6 +7,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 ### Added
 
 - `ctx.command.spawn(file, args?, options?)`：长驻进程能力（ADR-0054）。返回 `PluginCommandSpawnHandle`（`stop()` / `status()` / `onExit()`），`allocatePort: true` 时宿主分配空闲端口并替换 args/env 中的 `{{PORT}}`。需清单 `commands` 声明 + 新权限 `agent.command.spawn`；进程随插件卸载/禁用/重载与 App 退出统一回收。
+- `PluginUiApi.setActivityPanelWidth(width)`：命令式设置活动面板宽度（像素或 `"max"`，宿主 clamp）。与 `openActivityTab(id, { width })` 只在首次 attach 生效不同，这个每次调用都生效，供插件在自己的标签卡被激活时按需占宽。需 `ui.slot.activity-tab` 权限。
 - `ConversationEvent` 的 `tool-call-start` 新增可选 `args` 透传（工具入参，如 Edit/Write 的目标路径），供插件做定向 UI（如设计画布的「修改中」态）。
 
 ## [0.1.0] — 2026-07-31

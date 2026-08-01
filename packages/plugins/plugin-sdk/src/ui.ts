@@ -351,6 +351,15 @@ export interface PluginUiApi {
 	 */
 	setActivityTabVisible(tabId: string, visible: boolean): void;
 	/**
+	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示当前窗口下的最大宽度（宿主仍
+	 * 会夹到自己的 min/max 内，必要时自动收起侧边栏）。
+	 *
+	 * 与 `openActivityTab(id, { width })` 的区别：那里的宽度只在标签卡首次 attach
+	 * 时生效（避免 activate 重放覆盖用户手拖的宽度）；这个是命令式的，每次调用都
+	 * 生效，供插件在自己的标签卡被激活、进入某种视图时按需调整。用户随后仍可拖动。
+	 */
+	setActivityPanelWidth(width: number | "max"): void;
+	/**
 	 * Bind or clear plugin-owned one-shot context for the next outgoing prompt.
 	 * The host renders its label/icon, merges metadata and hidden instructions,
 	 * then clears it after send or when the user closes the capsule.
