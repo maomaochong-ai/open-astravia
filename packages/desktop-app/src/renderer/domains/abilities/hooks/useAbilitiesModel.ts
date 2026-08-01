@@ -168,5 +168,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		importSkillArchive: actions.importSkillArchive,
 		importPluginArchive: actions.importPluginArchive,
 		startAddManualMcp: () => mcp.onStartAddServer(),
+		permissionPromptSlug: actions.permissionPromptSlug,
+		dismissPermissionPrompt: actions.dismissPermissionPrompt,
 	};
 }

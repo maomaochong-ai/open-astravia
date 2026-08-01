@@ -176,4 +176,7 @@ export interface AbilitiesModel {
 	importSkillArchive: (file: File) => void;
 	importPluginArchive: (file: File) => void;
 	startAddManualMcp: () => void;
+	/** 刚装好、待提示配置权限的插件 slug；为空表示不提示。 */
+	permissionPromptSlug: string | null;
+	dismissPermissionPrompt: () => void;
 }

@@ -31,6 +31,9 @@ export interface AbilityActions {
 	importSkillArchive: (file: File) => void;
 	importPluginArchive: (file: File) => void;
 	importing: boolean;
+	/** 刚装好、待提示配置权限的插件 slug；用完由 dismissPermissionPrompt 清空。 */
+	permissionPromptSlug: string | null;
+	dismissPermissionPrompt: () => void;
 }
 
 export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; refresh: () => void }): AbilityActions {
@@ -38,6 +41,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 	const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(() => new Set<string>());
 	const [error, setError] = useState<string | null>(null);
 	const [importing, setImporting] = useState(false);
+	const [permissionPromptSlug, setPermissionPromptSlug] = useState<string | null>(null);
 
 	const run = useCallback(
 		(id: string, operation: () => Promise<void>) => {
@@ -81,6 +85,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			if (item.origin?.kind === "github-marketplace") {
 				await window.vetta.abilities.installOpenAbility("plugin", item.slug, item.origin.sourceId);
 				notifyPluginsChanged();
+				setPermissionPromptSlug(item.slug);
 				return "installed";
 			}
 			const buffer = await downloadAbility("plugin", item.slug, token);
@@ -89,6 +94,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 				expectedSha256: item.sha256,
 			});
 			notifyPluginsChanged();
+			setPermissionPromptSlug(item.slug);
 			return "installed";
 		},
 		[token],
@@ -297,8 +303,9 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 			void file
 				.arrayBuffer()
 				.then((buffer) => window.vetta.plugins.installFromArchive(buffer, { source: "archive" }))
-				.then(() => {
+				.then((plugin) => {
 					notifyPluginsChanged();
+					setPermissionPromptSlug(plugin.id);
 				})
 				.catch((err: unknown) => setError(errorMessage(err)))
 				.finally(() => {
@@ -308,6 +315,8 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		},
 		[refresh],
 	);
+
+	const dismissPermissionPrompt = useCallback(() => setPermissionPromptSlug(null), []);
 
 	return {
 		busyIds,
@@ -323,5 +332,7 @@ export function useAbilityActions({ mcp, refresh }: { mcp: McpSettingsModel; ref
 		importSkillArchive,
 		importPluginArchive,
 		importing,
+		permissionPromptSlug,
+		dismissPermissionPrompt,
 	};
 }
