@@ -137,9 +137,35 @@ export function notifyFrameRendered(frameId: string | null, allFrames: string[])
 	post({ type: "rendered", frameId, allFrames });
 }
 
+/**
+ * 画布性能开关：把 frame 内的 backdrop-filter / filter 整体停掉。
+ *
+ * backdrop-filter 每个都要单独建合成层、回读背景、做模糊再合成；一份稿子里
+ * 十几个这种元素、分散在多个跨源 iframe、又都套在画布的 scale 变换下时，
+ * Chromium 的合成器会被压垮，表现为整窗口撕裂闪烁。关掉只影响画布上的观感，
+ * 导出渲染图前会先恢复。
+ */
+function makeEffectsSwitch(): (enabled: boolean) => void {
+	let styleEl: HTMLStyleElement | null = null;
+	return (enabled: boolean): void => {
+		if (enabled) {
+			styleEl?.remove();
+			styleEl = null;
+			return;
+		}
+		if (styleEl) return;
+		styleEl = document.createElement("style");
+		styleEl.setAttribute("data-vetd-effects-off", "true");
+		styleEl.textContent =
+			"*,*::before,*::after{backdrop-filter:none !important;-webkit-backdrop-filter:none !important;filter:none !important;}";
+		document.head.appendChild(styleEl);
+	};
+}
+
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
+	const setEffects = makeEffectsSwitch();
 
 	const hoverOverlay = makeOverlay("#3b82f6", "rgba(59,130,246,0.08)", false);
 	const selectedOverlay = makeOverlay("#6366f1", "rgba(99,102,241,0.06)", true);
@@ -224,6 +250,9 @@ export function installBridge(host: BridgeHost): void {
 				return;
 			case "clear-selection":
 				reset();
+				return;
+			case "set-effects":
+				setEffects(data.enabled !== false);
 				return;
 			case "capture": {
 				const requestId = typeof data.requestId === "string" ? data.requestId : "";

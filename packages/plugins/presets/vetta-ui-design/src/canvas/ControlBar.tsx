@@ -8,9 +8,12 @@ interface ControlBarProps {
 	zoom: number;
 	/** Number of frames the export action would act on; 0 hides the button. */
 	exportableCount: number;
+	/** frame 内的 backdrop-filter / filter 是否生效（关掉可救合成器，见 style 注释）。 */
+	effectsEnabled: boolean;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
+	onToggleEffects(): void;
 	onExport(): void;
 }
 
@@ -61,6 +64,11 @@ const icons = {
 			<path d="M6 2v20M18 2v20M2 6h20M2 18h20" strokeLinecap="round" />
 		</svg>
 	),
+	effects: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M12 3c3.5 4 5.5 6.5 5.5 9a5.5 5.5 0 01-11 0c0-2.5 2-5 5.5-9z" strokeLinejoin="round" />
+		</svg>
+	),
 	mockup: (
 		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 			<rect x="4" y="2" width="7" height="20" rx="2" />
@@ -74,9 +82,11 @@ export function ControlBar({
 	tool,
 	zoom,
 	exportableCount,
+	effectsEnabled,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
+	onToggleEffects,
 	onExport,
 }: ControlBarProps) {
 	const { t } = useTranslation();
@@ -99,6 +109,18 @@ export function ControlBar({
 			<ToolButton active={tool === "frame"} title={t("controlbar.frame")} onClick={() => onToolChange("frame")}>
 				{icons.frame}
 			</ToolButton>
+			<button
+				type="button"
+				title={effectsEnabled ? t("controlbar.effects.on") : t("controlbar.effects.off")}
+				aria-label={effectsEnabled ? t("controlbar.effects.on") : t("controlbar.effects.off")}
+				aria-pressed={!effectsEnabled}
+				onClick={onToggleEffects}
+				className={`flex size-8 items-center justify-center rounded-lg transition-colors ${
+					effectsEnabled ? "text-muted-foreground hover:bg-accent" : "bg-amber-500/15 text-amber-600"
+				}`}
+			>
+				{icons.effects}
+			</button>
 			<div className="mx-1 h-5 w-px bg-border" />
 			<button
 				type="button"

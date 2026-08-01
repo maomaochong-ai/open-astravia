@@ -87,6 +87,10 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 	const [enteredFrameId, setEnteredFrameId] = useState<string | null>(null);
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
 	const [marquee, setMarquee] = useState<Rect | null>(null);
+	/** 默认开：这是排查用的降级开关，不改既有观感。 */
+	const [effectsEnabled, setEffectsEnabled] = useState(true);
+	const effectsRef = useRef(effectsEnabled);
+	effectsRef.current = effectsEnabled;
 	const [askOpen, setAskOpen] = useState(false);
 	const [askBusy, setAskBusy] = useState(false);
 	const [moveDelta, setMoveDelta] = useState<{ dx: number; dy: number } | null>(null);
@@ -425,6 +429,23 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		}
 	};
 
+	/**
+	 * 降级开关关着时截图会丢掉毛玻璃，无论是发给 agent 还是导出成品都不该失真。
+	 * 截这一张之前临时恢复，截完再关回去。
+	 */
+	const captureFaithfully = useCallback(
+		async (frameId: string, options?: { keepHighlight?: boolean; pixelRatio?: number }): Promise<string> => {
+			const degraded = !effectsRef.current;
+			if (degraded) bridge.setEffectsEnabled(true);
+			try {
+				return await bridge.capture(frameId, { ...options, timeoutMs: 30_000 });
+			} finally {
+				if (degraded) bridge.setEffectsEnabled(false);
+			}
+		},
+		[bridge],
+	);
+
 	const selectedIds = selectedFrameIds(selection);
 	/** Export / ask act on canvas order, not on click order. */
 	const orderedSelection = manifest.frames.filter((frame) => selectedIds.includes(frame.id)).sort(byCanvasOrder);
@@ -442,7 +463,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				const domFrameId = selection?.kind === "dom" ? selection.frameId : null;
 				const shots: AskShot[] = [];
 				for (const frame of orderedSelection) {
-					const dataUrl = await bridge.capture(frame.id, { keepHighlight: frame.id === domFrameId });
+					const dataUrl = await captureFaithfully(frame.id, { keepHighlight: frame.id === domFrameId });
 					const base64 = dataUrl.split(",")[1] ?? "";
 					const screenshotPath = `${session.dirPath}/.snapshots/ask-${frame.id}-${Date.now()}.png`;
 					await ctx.fs.writeFile(screenshotPath, base64, "base64");
@@ -467,7 +488,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		requestMockupExport({
 			session,
 			frameIds: orderedSelection.map((frame) => frame.id),
-			capture: (frameId, pixelRatio) => bridge.capture(frameId, { pixelRatio, timeoutMs: 30_000 }),
+			capture: (frameId, pixelRatio) => captureFaithfully(frameId, { pixelRatio }),
 		});
 	};
 
@@ -562,6 +583,12 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
+				effectsEnabled={effectsEnabled}
+				onToggleEffects={() => {
+					const next = !effectsEnabled;
+					setEffectsEnabled(next);
+					bridge.setEffectsEnabled(next);
+				}}
 				onToolChange={setTool}
 				onZoomDelta={zoomBy}
 				onZoomReset={() => {
