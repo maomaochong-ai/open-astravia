@@ -21,6 +21,9 @@ type Phase =
 	| { kind: "ready"; port: number }
 	| { kind: "error"; message: string };
 
+/** 暂时隐藏顶栏「导出分享」入口（导入/导出链路本身保留）。 */
+const SHOW_EXPORT_SHARE = false;
+
 function storageKey(cwd: string): string {
 	return `vetta-ui-design:file:${cwd}`;
 }
@@ -240,14 +243,16 @@ export function CanvasTab() {
 						<path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" strokeLinecap="round" strokeLinejoin="round" />
 					</svg>
 				</button>
-				<button
-					type="button"
-					disabled={exporting || phase.kind !== "ready"}
-					onClick={() => void runExport()}
-					className="pointer-events-auto rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-				>
-					{exporting ? t("canvas.export.running") : t("canvas.export")}
-				</button>
+				{SHOW_EXPORT_SHARE ? (
+					<button
+						type="button"
+						disabled={exporting || phase.kind !== "ready"}
+						onClick={() => void runExport()}
+						className="pointer-events-auto rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+					>
+						{exporting ? t("canvas.export.running") : t("canvas.export")}
+					</button>
+				) : null}
 			</div>
 
 			<div className="relative min-h-0 flex-1">
