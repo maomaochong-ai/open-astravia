@@ -1,6 +1,7 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import {
 	type PointerEvent as ReactPointerEvent,
+	type RefObject,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -30,10 +31,19 @@ export type CanvasSelection =
 	| { kind: "dom"; frameId: string; payload: SelectedElementPayload }
 	| null;
 
+/** agent 侧截图入口，见 {@link DesignCanvasProps.captureRef}。 */
+export type FrameCapture = (frameId: string) => Promise<string>;
+
 interface DesignCanvasProps {
 	session: DesignSession;
 	port: number;
 	bridge: BridgeHub;
+	/**
+	 * 出口：把「先拉回活体再截」的截图函数交给 CanvasTab，vetd_screenshot 用它。
+	 * runLive 来自 useFrameRasters，只存在于本组件里；外层若直接调 bridge.capture，
+	 * 位图态（display:none）的 frame 截不出任何东西，只会卡到超时。
+	 */
+	captureRef: RefObject<FrameCapture | null>;
 }
 
 interface Viewport {
@@ -74,7 +84,7 @@ function byCanvasOrder(a: VetdFrameEntry, b: VetdFrameEntry): number {
 	return a.x === b.x ? a.y - b.y : a.x - b.x;
 }
 
-export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
+export function DesignCanvas({ session, port, bridge, captureRef }: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
@@ -156,14 +166,40 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		retryFailed: retryRaster,
 	} = useFrameRasters({ bridge, frameIds: orderedFrameIds, enteredFrameId });
 
-	// 位图化后 iframe 会被卸掉，也就收不到 HMR 了。源码变更改由这里的文件监听
-	// 感知：哪个 frames/<id>.tsx 变了就作废它的位图，它会重新挂载、渲染、截图。
+	/**
+	 * 位图化后 iframe 会被卸掉，也就收不到 HMR 了；agent 改完代码画布必须自己发现。
+	 *
+	 * 宿主的目录监听回调拿不到具体文件——它广播的是**被监听目录**的路径，而且所有
+	 * 监听共用同一个事件，所以既要按路径过滤，也没法直接知道是哪个 frame 变了。
+	 * 这里改成收到通知后比对各 frame 源码的 mtime，变了的才作废位图：它会重新
+	 * 挂载、加载新代码、渲染、重新截图。外部编辑器改的也一样能感知。
+	 */
+	const frameMtimesRef = useRef<Map<string, number>>(new Map());
 	useEffect(() => {
-		const handle = getPluginCtx().fs.watchDirectory(`${session.dirPath}/frames`, (changedPath) => {
-			const match = /\/frames\/([^/]+)\.tsx$/.exec(changedPath.replaceAll("\\", "/"));
-			if (match) invalidateRaster(match[1]);
+		const ctx = getPluginCtx();
+		const framesDir = `${session.dirPath}/frames`;
+		let disposed = false;
+
+		const rescan = async (seedOnly: boolean): Promise<void> => {
+			for (const frame of session.manifest.frames) {
+				if (disposed) return;
+				const stat = await ctx.fs.stat(`${session.dirPath}/${frame.file}`).catch(() => null);
+				if (!stat) continue;
+				const previous = frameMtimesRef.current.get(frame.id);
+				frameMtimesRef.current.set(frame.id, stat.modifiedAt);
+				if (!seedOnly && previous !== undefined && previous !== stat.modifiedAt) invalidateRaster(frame.id);
+			}
+		};
+
+		// 先建立基线，否则第一次通知会把所有 frame 都判成「变了」。
+		void rescan(true);
+		const handle = ctx.fs.watchDirectory(framesDir, (changedDir) => {
+			if (changedDir === framesDir) void rescan(false);
 		});
-		return () => handle.dispose();
+		return () => {
+			disposed = true;
+			handle.dispose();
+		};
 	}, [session, invalidateRaster]);
 
 	const exitInspect = useCallback(
@@ -466,6 +502,15 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			runLive(frameId, () => bridge.capture(frameId, { ...options, cacheBust: true, timeoutMs: 30_000 })),
 		[bridge, runLive],
 	);
+
+	// vetd_screenshot 走的是 CanvasTab 注册的 controller，够不到这里的 runLive，
+	// 于是把入口挂出去。卸载时清空：画布不在了，工具应立刻报错而不是截空图。
+	useEffect(() => {
+		captureRef.current = (frameId) => captureFaithfully(frameId);
+		return () => {
+			captureRef.current = null;
+		};
+	}, [captureRef, captureFaithfully]);
 
 	const selectedIds = selectedFrameIds(selection);
 	/** Export / ask act on canvas order, not on click order. */
