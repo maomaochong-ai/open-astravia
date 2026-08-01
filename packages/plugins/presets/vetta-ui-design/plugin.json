@@ -1,0 +1,33 @@
+{
+	"id": "vetta-ui-design",
+	"name": "%plugin.name%",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "vetta_ui_design",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.activity-tab",
+		"ui.slot.file-preview",
+		"ui.slot.tool-call",
+		"agent.session.read",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.skills.control",
+		"agent.command.run",
+		"agent.command.spawn",
+		"fs.read",
+		"fs.write"
+	],
+	"commands": ["node", "npm"],
+	"agent": {
+		"skillPaths": ["agent/skills/vetta-ui-design"]
+	},
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

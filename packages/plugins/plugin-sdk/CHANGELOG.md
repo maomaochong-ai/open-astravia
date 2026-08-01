@@ -4,6 +4,11 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `ctx.command.spawn(file, args?, options?)`：长驻进程能力（ADR-0054）。返回 `PluginCommandSpawnHandle`（`stop()` / `status()` / `onExit()`），`allocatePort: true` 时宿主分配空闲端口并替换 args/env 中的 `{{PORT}}`。需清单 `commands` 声明 + 新权限 `agent.command.spawn`；进程随插件卸载/禁用/重载与 App 退出统一回收。
+- `ConversationEvent` 的 `tool-call-start` 新增可选 `args` 透传（工具入参，如 Edit/Write 的目标路径），供插件做定向 UI（如设计画布的「修改中」态）。
+
 ## [0.1.0] — 2026-07-31
 
 ### Breaking Changes

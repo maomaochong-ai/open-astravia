@@ -1,0 +1,110 @@
+import { useTranslation } from "@vetta-org/plugin-sdk";
+import type { JSX } from "react";
+
+export type CanvasTool = "select" | "hand" | "frame";
+
+interface ControlBarProps {
+	tool: CanvasTool;
+	zoom: number;
+	onToolChange(tool: CanvasTool): void;
+	onZoomDelta(direction: 1 | -1): void;
+	onZoomReset(): void;
+}
+
+function ToolButton({
+	active,
+	title,
+	onClick,
+	children,
+}: {
+	active: boolean;
+	title: string;
+	onClick(): void;
+	children: JSX.Element;
+}) {
+	return (
+		<button
+			type="button"
+			title={title}
+			aria-label={title}
+			aria-pressed={active}
+			onClick={onClick}
+			className={`flex size-8 items-center justify-center rounded-lg transition-colors ${
+				active ? "bg-indigo-500 text-white" : "text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+			}`}
+		>
+			{children}
+		</button>
+	);
+}
+
+const icons = {
+	select: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M4 3l7 17 2.5-7.5L21 10 4 3z" strokeLinejoin="round" />
+		</svg>
+	),
+	hand: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path
+				d="M8 12V6.5a1.5 1.5 0 013 0V11m0-5.5v-1a1.5 1.5 0 013 0V11m0-4.5a1.5 1.5 0 013 0V13m-9-1.5v-1a1.5 1.5 0 00-3 0V15a6 6 0 006 6h1a6 6 0 006-6v-2"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
+		</svg>
+	),
+	frame: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M6 2v20M18 2v20M2 6h20M2 18h20" strokeLinecap="round" />
+		</svg>
+	),
+};
+
+/** Fixed control bar at the bottom of the canvas panel (select / hand / frame / zoom). */
+export function ControlBar({ tool, zoom, onToolChange, onZoomDelta, onZoomReset }: ControlBarProps) {
+	const { t } = useTranslation();
+	return (
+		<div className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-black/10 bg-white/95 px-1.5 py-1 shadow-lg dark:border-white/10 dark:bg-neutral-900/95">
+			<ToolButton active={tool === "select"} title={t("controlbar.select")} onClick={() => onToolChange("select")}>
+				{icons.select}
+			</ToolButton>
+			<ToolButton active={tool === "hand"} title={t("controlbar.hand")} onClick={() => onToolChange("hand")}>
+				{icons.hand}
+			</ToolButton>
+			<ToolButton active={tool === "frame"} title={t("controlbar.frame")} onClick={() => onToolChange("frame")}>
+				{icons.frame}
+			</ToolButton>
+			<div className="mx-1 h-5 w-px bg-black/10 dark:bg-white/10" />
+			<button
+				type="button"
+				title={t("controlbar.zoomOut")}
+				aria-label={t("controlbar.zoomOut")}
+				onClick={() => onZoomDelta(-1)}
+				className="flex size-8 items-center justify-center rounded-lg text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+			>
+				<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+					<path d="M5 12h14" strokeLinecap="round" />
+				</svg>
+			</button>
+			<button
+				type="button"
+				title={t("controlbar.zoomReset")}
+				onClick={onZoomReset}
+				className="min-w-12 rounded-lg px-1 py-1.5 text-center text-xs tabular-nums text-neutral-600 hover:bg-black/5 dark:text-neutral-300 dark:hover:bg-white/10"
+			>
+				{Math.round(zoom * 100)}%
+			</button>
+			<button
+				type="button"
+				title={t("controlbar.zoomIn")}
+				aria-label={t("controlbar.zoomIn")}
+				onClick={() => onZoomDelta(1)}
+				className="flex size-8 items-center justify-center rounded-lg text-neutral-500 hover:bg-black/5 dark:hover:bg-white/10"
+			>
+				<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+					<path d="M12 5v14M5 12h14" strokeLinecap="round" />
+				</svg>
+			</button>
+		</div>
+	);
+}

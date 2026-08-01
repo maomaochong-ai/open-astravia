@@ -1,0 +1,15 @@
+@import "tailwindcss";
+/*__VETD_SOURCE__*/
+@plugin "@iconify/tailwind4";
+/* 设计文档的统一色彩系统（Tailwind v4 @theme 令牌），全部 frame 共享。 */
+@import "@design/theme.css";
+
+html,
+body,
+#root {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+}

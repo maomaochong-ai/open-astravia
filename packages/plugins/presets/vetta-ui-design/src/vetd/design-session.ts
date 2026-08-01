@@ -1,0 +1,225 @@
+import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
+import { parseFrameMeta, sameMeta } from "./frame-meta";
+import {
+	designNameOf,
+	emptyManifest,
+	sidecarDirOf,
+	type VetdCanvasViewport,
+	type VetdFrameEntry,
+	type VetdManifest,
+} from "./manifest-types";
+import { blankFrameSource } from "./scaffold";
+
+const FRAME_GAP = 80;
+const RECONCILE_DEBOUNCE_MS = 150;
+const VIEWPORT_SAVE_DEBOUNCE_MS = 800;
+
+export type DesignChange = "frames" | "theme";
+
+/**
+ * One open working-form design. Owns the manifest (single writer): the agent
+ * and the user only touch sidecar sources; every manifest mutation flows
+ * through this class. Reconcile rules (ADR-0053): tsx meta is the DECLARATION
+ * (initial size / follow on change), the manifest is the CURRENT state (user
+ * drags win until the meta changes again).
+ */
+export class DesignSession {
+	readonly vetdPath: string;
+	readonly dirPath: string;
+	readonly name: string;
+	manifest: VetdManifest = emptyManifest();
+
+	private readonly ctx: PluginContext;
+	private readonly listeners = new Set<(change: DesignChange) => void>();
+	private readonly watchHandles: Disposable[] = [];
+	private readonly pendingPlacements = new Map<string, { x: number; y: number }>();
+	private reconcileTimer: number | null = null;
+	private viewportTimer: number | null = null;
+	private disposed = false;
+	private writing = Promise.resolve();
+
+	constructor(ctx: PluginContext, vetdPath: string) {
+		this.ctx = ctx;
+		this.vetdPath = vetdPath;
+		this.dirPath = sidecarDirOf(vetdPath);
+		this.name = designNameOf(vetdPath);
+	}
+
+	on(listener: (change: DesignChange) => void): Disposable {
+		this.listeners.add(listener);
+		return { dispose: () => this.listeners.delete(listener) };
+	}
+
+	private emit(change: DesignChange): void {
+		for (const listener of this.listeners) listener(change);
+	}
+
+	async open(): Promise<void> {
+		try {
+			const raw = await this.ctx.fs.readFile(this.vetdPath);
+			const parsed = JSON.parse(raw.content) as VetdManifest;
+			if (parsed && parsed.type === "vetta-design" && Array.isArray(parsed.frames)) {
+				this.manifest = {
+					...emptyManifest(),
+					...parsed,
+					canvas: { ...emptyManifest().canvas, ...parsed.canvas },
+				};
+			}
+		} catch {
+			// Corrupt/missing manifest: rebuild from the sidecar (frames re-place).
+			this.manifest = emptyManifest();
+		}
+		await this.reconcile();
+		const schedule = () => this.scheduleReconcile();
+		this.watchHandles.push(this.ctx.fs.watchDirectory(this.dirPath, schedule));
+		this.watchHandles.push(this.ctx.fs.watchDirectory(`${this.dirPath}/frames`, schedule));
+	}
+
+	dispose(): void {
+		this.disposed = true;
+		for (const handle of this.watchHandles) handle.dispose();
+		this.watchHandles.length = 0;
+		if (this.reconcileTimer !== null) window.clearTimeout(this.reconcileTimer);
+		if (this.viewportTimer !== null) window.clearTimeout(this.viewportTimer);
+		this.listeners.clear();
+	}
+
+	private scheduleReconcile(): void {
+		if (this.disposed) return;
+		if (this.reconcileTimer !== null) window.clearTimeout(this.reconcileTimer);
+		this.reconcileTimer = window.setTimeout(() => {
+			this.reconcileTimer = null;
+			void this.reconcile().then(() => {
+				// theme.css edits arrive through the same watch; re-reading the palette
+				// is cheap, so always signal it.
+				this.emit("theme");
+			});
+		}, RECONCILE_DEBOUNCE_MS);
+	}
+
+	/** Scan `frames/*.tsx`, apply the meta/manifest ownership rules, persist if changed. */
+	async reconcile(): Promise<void> {
+		if (this.disposed) return;
+		let files: { name: string; path: string }[] = [];
+		try {
+			const entries = await this.ctx.fs.readDir(`${this.dirPath}/frames`);
+			files = entries
+				.filter((entry) => !entry.isDirectory && entry.name.endsWith(".tsx"))
+				.map((entry) => ({ name: entry.name, path: entry.path }));
+		} catch {
+			files = [];
+		}
+
+		const nextFrames: VetdFrameEntry[] = [];
+		const known = new Map(this.manifest.frames.map((frame) => [frame.id, frame]));
+		let dirty = false;
+
+		for (const file of files.sort((a, b) => a.name.localeCompare(b.name))) {
+			const id = file.name.replace(/\.tsx$/, "");
+			let source = "";
+			try {
+				source = (await this.ctx.fs.readFile(file.path)).content;
+			} catch {
+				// unreadable frame: keep going with defaults
+			}
+			const meta = parseFrameMeta(source, id);
+			const existing = known.get(id);
+			if (!existing) {
+				const placement = this.pendingPlacements.get(id) ?? this.autoPlacement(nextFrames);
+				this.pendingPlacements.delete(id);
+				nextFrames.push({
+					id,
+					file: `frames/${file.name}`,
+					x: placement.x,
+					y: placement.y,
+					width: meta.width,
+					height: meta.height,
+					title: meta.title,
+					meta,
+				});
+				dirty = true;
+				continue;
+			}
+			known.delete(id);
+			if (!sameMeta(meta, existing.meta)) {
+				// Agent changed the declaration → manifest follows (last writer wins).
+				nextFrames.push({ ...existing, width: meta.width, height: meta.height, title: meta.title, meta });
+				dirty = true;
+			} else {
+				nextFrames.push(existing);
+			}
+		}
+		if (known.size > 0) dirty = true; // deleted frames
+
+		this.manifest = { ...this.manifest, frames: nextFrames };
+		if (dirty) await this.persist();
+		this.emit("frames");
+	}
+
+	private autoPlacement(placed: VetdFrameEntry[]): { x: number; y: number } {
+		const all = [...this.manifest.frames, ...placed];
+		if (all.length === 0) return { x: 0, y: 0 };
+		const right = Math.max(...all.map((frame) => frame.x + frame.width));
+		const top = Math.min(...all.map((frame) => frame.y));
+		return { x: right + FRAME_GAP, y: top };
+	}
+
+	/** User drag/resize on the canvas — manifest-only, never written back to tsx. */
+	updateFramePlacement(id: string, patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void {
+		let changed = false;
+		this.manifest = {
+			...this.manifest,
+			frames: this.manifest.frames.map((frame) => {
+				if (frame.id !== id) return frame;
+				changed = true;
+				return { ...frame, ...patch };
+			}),
+		};
+		if (!changed) return;
+		this.emit("frames");
+		void this.persist();
+	}
+
+	saveViewport(viewport: VetdCanvasViewport): void {
+		this.manifest = { ...this.manifest, canvas: viewport };
+		if (this.viewportTimer !== null) window.clearTimeout(this.viewportTimer);
+		this.viewportTimer = window.setTimeout(() => {
+			this.viewportTimer = null;
+			void this.persist();
+		}, VIEWPORT_SAVE_DEBOUNCE_MS);
+	}
+
+	/** Canvas "Frame" tool: scaffold a blank frame tsx at an explicit canvas spot. */
+	async createFrame(title: string, width: number, height: number, x: number, y: number): Promise<string> {
+		const existing = new Set(this.manifest.frames.map((frame) => frame.id));
+		let index = this.manifest.frames.length + 1;
+		let id = `frame-${index}`;
+		while (existing.has(id)) {
+			index += 1;
+			id = `frame-${index}`;
+		}
+		this.pendingPlacements.set(id, { x, y });
+		await this.ctx.fs.writeFile(`${this.dirPath}/frames/${id}.tsx`, blankFrameSource(title, width, height));
+		await this.reconcile();
+		return id;
+	}
+
+	async readThemeCss(): Promise<string> {
+		try {
+			return (await this.ctx.fs.readFile(`${this.dirPath}/theme.css`)).content;
+		} catch {
+			return "";
+		}
+	}
+
+	private persist(): Promise<void> {
+		// Serialize writes so rapid drag updates cannot interleave.
+		const snapshot = `${JSON.stringify(this.manifest, null, "\t")}\n`;
+		this.writing = this.writing
+			.then(() => this.ctx.fs.writeFile(this.vetdPath, snapshot))
+			.catch((error: unknown) => {
+				console.error("vetd manifest write failed", error);
+			});
+		return this.writing;
+	}
+}

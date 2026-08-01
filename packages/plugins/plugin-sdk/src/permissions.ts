@@ -13,6 +13,7 @@ export type PluginPermission =
 	| "agent.session.read"
 	| "agent.session.write"
 	| "agent.command.run"
+	| "agent.command.spawn"
 	| "agent.systemPrompt.read"
 	| "agent.systemPrompt.write"
 	| "agent.systemPrompt.fullControl"

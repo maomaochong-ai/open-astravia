@@ -13,6 +13,14 @@ import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { getDesktopCapabilityHost } from "../capabilities/capability-host.js";
 import { getAppLogger } from "../logger.js";
 import { runPluginCommand } from "../plugins/command-runner.js";
+import {
+	getPluginCommandSpawnStatus,
+	type SpawnPluginCommandOptions,
+	spawnPluginCommand,
+	stopAllPluginSpawns,
+	stopAllSpawnsForPlugin,
+	stopPluginCommandSpawn,
+} from "../plugins/command-spawner.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { startPluginDevWatch, stopPluginDevWatch } from "../plugins/plugin-dev-watch.js";
 import {
@@ -400,8 +408,9 @@ async function installFromPath(path: unknown, options: unknown): Promise<Install
 function uninstallInstalledPlugin(pluginActionService: PluginActionService, id: unknown): void {
 	const pluginId = asPluginId(id);
 	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
-	// 卸载前停掉 dev 热更新（vite watch 子进程 + dist 监听）。
+	// 卸载前停掉 dev 热更新（vite watch 子进程 + dist 监听）与长驻 spawn 进程。
 	stopPluginDevWatch(pluginId);
+	stopAllSpawnsForPlugin(pluginId);
 	uninstallPlugin(pluginId);
 	pluginActionService.clear(pluginId);
 	refreshAgentPlugins();
@@ -415,7 +424,11 @@ function setInstalledPluginEnabled(
 ): InstalledPlugin {
 	const pluginId = asPluginId(id);
 	// 禁用即停 dev 热更新：否则被禁用的插件仍常驻 vite watch，且每次保存都触发全表重载。
-	if (enabled !== true) stopPluginDevWatch(pluginId);
+	// 长驻 spawn 同理：禁用的插件不得留后台进程。
+	if (enabled !== true) {
+		stopPluginDevWatch(pluginId);
+		stopAllSpawnsForPlugin(pluginId);
+	}
 	const plugin = setPluginEnabled(pluginId, enabled === true);
 	if (!plugin.enabled) pluginActionService.clear(pluginId);
 	refreshAgentPlugins();
@@ -437,6 +450,8 @@ function grantInstalledPluginPermissions(id: unknown, permissions: unknown): Ins
 }
 
 function reloadInstalledPlugin(id: unknown): InstalledPlugin {
+	// reload 后 renderer 会重新 activate；旧激活的长驻进程一并回收，避免孤儿 server。
+	stopAllSpawnsForPlugin(asPluginId(id));
 	const plugin = reloadPlugin(asPluginId(id));
 	refreshAgentPlugins();
 	recordPluginResourceEvent({ plugin, operation: "reloaded" });
@@ -549,6 +564,22 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 				args,
 				(options ?? undefined) as PluginCommandRunOptions | undefined,
 			),
+	);
+	ipcMain.handle(
+		"vetta:plugins:command-spawn",
+		(_event, pluginId: unknown, file: unknown, args: unknown, options: unknown) =>
+			spawnPluginCommand(
+				asPluginId(pluginId),
+				typeof file === "string" ? file : "",
+				args,
+				(options ?? undefined) as SpawnPluginCommandOptions | undefined,
+			),
+	);
+	ipcMain.handle("vetta:plugins:command-spawn-stop", (_event, pluginId: unknown, spawnId: unknown) =>
+		stopPluginCommandSpawn(asPluginId(pluginId), asPluginId(spawnId)),
+	);
+	ipcMain.handle("vetta:plugins:command-spawn-status", (_event, pluginId: unknown, spawnId: unknown) =>
+		getPluginCommandSpawnStatus(asPluginId(pluginId), asPluginId(spawnId)),
 	);
 	ipcMain.handle("vetta:plugins:reload", (_event, id: unknown) => reloadInstalledPlugin(id));
 	ipcMain.handle(PLUGIN_SYSTEM_CHANNELS.LIST, (_event, sessionId: unknown) => {
@@ -755,6 +786,10 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:grant-commands");
 		ipcMain.removeHandler("vetta:plugins:revoke-commands");
 		ipcMain.removeHandler("vetta:plugins:command-run");
+		ipcMain.removeHandler("vetta:plugins:command-spawn");
+		ipcMain.removeHandler("vetta:plugins:command-spawn-stop");
+		ipcMain.removeHandler("vetta:plugins:command-spawn-status");
+		stopAllPluginSpawns();
 		ipcMain.removeHandler("vetta:plugins:reload");
 		ipcMain.removeHandler("vetta:plugins:dev-watch-start");
 		ipcMain.removeHandler("vetta:plugins:dev-watch-stop");

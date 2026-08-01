@@ -53,6 +53,7 @@ import { MEDIA_PROTOCOL_PRIVILEGE, registerMediaProtocolHandler } from "./media-
 import { openExternalUrl } from "./open-external.js";
 import { startPetIdleGuard } from "./pet/pet-idle-guard.js";
 import { initializePetWindow } from "./pet-window.js";
+import { stopAllPluginSpawns } from "./plugins/command-spawner.js";
 import { PluginActionService } from "./plugins/plugin-action-service.js";
 import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
@@ -793,6 +794,9 @@ setQuitCleanup(async () => {
 
 	// 停掉插件工作台 dev 热更新的 vite watch 子进程，避免孤儿进程。
 	stopAllPluginDevWatches();
+
+	// 停掉插件经 ctx.command.spawn 拉起的所有长驻进程（如设计引擎 vite dev server）。
+	stopAllPluginSpawns();
 
 	const host = getImHost();
 	if (host.getStatus().sidecarPid) {

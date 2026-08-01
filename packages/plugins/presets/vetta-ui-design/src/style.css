@@ -1,0 +1,31 @@
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。
+   只 @import utilities 会漏掉依赖 theme 变量的工具类，故 theme 层必须一并导入。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 无限画布的点阵背景（浅/深色两套）。 */
+.vetd-canvas-bg {
+	background-color: #f4f4f5;
+	background-image: radial-gradient(circle, rgba(0, 0, 0, 0.12) 1px, transparent 1px);
+	background-size: 20px 20px;
+}
+:root.dark .vetd-canvas-bg,
+[data-theme="dark"] .vetd-canvas-bg {
+	background-color: #18181b;
+	background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}
+
+/* frame「修改中」呼吸光效 */
+.vetd-modifying {
+	animation: vetd-breathe 1.6s ease-in-out infinite;
+}
+@keyframes vetd-breathe {
+	0%,
+	100% {
+		box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+	}
+	50% {
+		box-shadow: 0 0 0 5px rgba(99, 102, 241, 0.12);
+	}
+}

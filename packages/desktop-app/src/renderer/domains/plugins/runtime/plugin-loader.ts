@@ -30,6 +30,8 @@ import type {
 	PluginAppActionReadyHandler,
 	PluginCardRendererContribution,
 	PluginCommandApi,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnHandle,
 	PluginContext,
 	PluginConversationApi,
 	PluginDefinition,
@@ -503,37 +505,93 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 	}
 }
 
-function createCommandApi(plugin: InstalledPlugin): PluginCommandApi {
+/** Per-spawn exit listeners, fed by a single lazy IPC subscription. */
+const spawnExitListeners = new Map<string, Set<(exit: PluginCommandSpawnExit) => void>>();
+let spawnExitSubscribed = false;
+
+function ensureSpawnExitSubscription(): void {
+	if (spawnExitSubscribed) return;
+	spawnExitSubscribed = true;
+	window.vetta.plugins.onCommandSpawnExit((event) => {
+		const listeners = spawnExitListeners.get(event.spawnId);
+		if (!listeners) return;
+		spawnExitListeners.delete(event.spawnId);
+		for (const listener of listeners) {
+			try {
+				listener({ exitCode: event.exitCode, signal: event.signal });
+			} catch (error) {
+				console.error("plugin spawn exit listener failed", error);
+			}
+		}
+	});
+}
+
+function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCommandApi {
 	const permissions = createPermissionApi(plugin);
+	const assertCommandAllowed = (file: unknown): string => {
+		if (typeof file !== "string" || file.trim().length === 0) {
+			throw new Error("Command file is required");
+		}
+		if (!plugin.declaredCommands.includes(file)) {
+			throw new Error(`Plugin ${plugin.id} command not declared: ${file}`);
+		}
+		if (!plugin.grantedCommandNames.includes(file)) {
+			// User disabled this command — intercept and notify (with a jump to settings).
+			showToast({
+				variant: "warning",
+				title: "命令已禁用",
+				message: `「${plugin.name}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
+				action: {
+					label: "前往设置",
+					onClick: () => {
+						void router.navigate({
+							to: "/settings/$tab",
+							params: { tab: "plugins" },
+							search: { section: `plugin-${plugin.id}` },
+						});
+					},
+				},
+			});
+			throw new Error(`Plugin ${plugin.id} command disabled by user: ${file}`);
+		}
+		return file;
+	};
 	return {
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
-			if (typeof file !== "string" || file.trim().length === 0) {
-				throw new Error("Command file is required");
-			}
-			if (!plugin.declaredCommands.includes(file)) {
-				throw new Error(`Plugin ${plugin.id} command not declared: ${file}`);
-			}
-			if (!plugin.grantedCommandNames.includes(file)) {
-				// User disabled this command — intercept and notify (with a jump to settings).
-				showToast({
-					variant: "warning",
-					title: "命令已禁用",
-					message: `「${plugin.name}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
-					action: {
-						label: "前往设置",
-						onClick: () => {
-							void router.navigate({
-								to: "/settings/$tab",
-								params: { tab: "plugins" },
-								search: { section: `plugin-${plugin.id}` },
-							});
+			const allowed = assertCommandAllowed(file);
+			return window.vetta.plugins.runCommand(plugin.id, allowed, args ?? [], options);
+		},
+		spawn: async (file, args, options): Promise<PluginCommandSpawnHandle> => {
+			permissions.require("agent.command.spawn");
+			const allowed = assertCommandAllowed(file);
+			ensureSpawnExitSubscription();
+			const result = await window.vetta.plugins.spawnCommand(plugin.id, allowed, args ?? [], options);
+			let stopped = false;
+			const stop = async (): Promise<void> => {
+				if (stopped) return;
+				stopped = true;
+				await window.vetta.plugins.stopCommandSpawn(plugin.id, result.spawnId);
+			};
+			// 插件卸载/重载时统一回收（主进程在 reload/disable/uninstall 也会兜底清扫）。
+			disposers.push(() => void stop());
+			return {
+				spawnId: result.spawnId,
+				pid: result.pid,
+				port: result.port,
+				stop,
+				status: () => window.vetta.plugins.getCommandSpawnStatus(plugin.id, result.spawnId),
+				onExit: (listener) => {
+					const listeners = spawnExitListeners.get(result.spawnId) ?? new Set();
+					listeners.add(listener);
+					spawnExitListeners.set(result.spawnId, listeners);
+					return {
+						dispose: () => {
+							spawnExitListeners.get(result.spawnId)?.delete(listener);
 						},
-					},
-				});
-				throw new Error(`Plugin ${plugin.id} command disabled by user: ${file}`);
-			}
-			return window.vetta.plugins.runCommand(plugin.id, file, args ?? [], options);
+					};
+				},
+			};
 		},
 	};
 }
@@ -1038,7 +1096,7 @@ function createContext(
 		},
 		conversation,
 		fs,
-		command: createCommandApi(plugin),
+		command: createCommandApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {
 				debugPluginAgent("renderer registerTool requested", {
