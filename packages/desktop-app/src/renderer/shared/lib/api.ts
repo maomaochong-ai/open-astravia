@@ -421,6 +421,8 @@ export interface AbilityMetaEntry {
 export interface AbilityDetailLocale {
 	name?: string;
 	description?: string;
+	/** 整体替换默认语言的 tags，不与之合并。 */
+	tags?: string[];
 	content?: string;
 	showcases?: AbilityShowcase[];
 	meta?: AbilityMetaEntry[];
