@@ -1,4 +1,4 @@
-import { Fragment, useState, type JSX, type KeyboardEvent, type MouseEvent } from "react";
+import { Fragment, useCallback, useState, type JSX, type KeyboardEvent, type MouseEvent } from "react";
 import { FILE_TREE_ROOT_DROP_CLASS, isDragLeavingElement } from "./drag-target";
 import { FileTreeCreateRow } from "./FileTreeCreateRow";
 import { FileTreeNodeView } from "./FileTreeNodeView";
@@ -9,6 +9,7 @@ import type {
 	FileExplorerNodeDecoration,
 	FileExplorerSelectOptions,
 } from "./types";
+import { useFileTreeMarqueeSelection } from "./useFileTreeMarqueeSelection";
 
 export interface FileTreeViewProps {
 	rootDir: string;
@@ -25,6 +26,8 @@ export interface FileTreeViewProps {
 	getDecoration?: (entry: FileExplorerEntry) => FileExplorerNodeDecoration | null;
 	onToggleDir: (path: string) => void;
 	onSelectEntry: (entry: FileExplorerEntry, options: FileExplorerSelectOptions) => void;
+	/** Replace selection with the given paths (marquee). Paths may be empty to clear. */
+	onSelectPaths: (paths: readonly string[]) => void;
 	/** Left-click empty area (not a row) — host should clear selection. */
 	onBackgroundClick: () => void;
 	onContextMenu: (entry: FileExplorerEntry, x: number, y: number) => void;
@@ -107,6 +110,7 @@ export function FileTreeView({
 	getDecoration,
 	onToggleDir,
 	onSelectEntry,
+	onSelectPaths,
 	onBackgroundClick,
 	onContextMenu,
 	onRootContextMenu,
@@ -126,6 +130,17 @@ export function FileTreeView({
 		.map((node) => node.entry)
 		.filter((entry) => selectedPaths.has(entry.path))
 		.map((entry) => ({ path: entry.path, name: entry.name, isDirectory: entry.isDirectory }));
+
+	const handleMarqueeSelect = useCallback(
+		(paths: readonly string[]) => {
+			onSelectPaths(paths);
+		},
+		[onSelectPaths],
+	);
+	const { scrollRef, marquee, onMouseDown: onMarqueeMouseDown } = useFileTreeMarqueeSelection({
+		selectedPaths,
+		onMarqueeSelect: handleMarqueeSelect,
+	});
 
 	function handleRootDragOver(event: React.DragEvent): void {
 		const types = Array.from(event.dataTransfer.types);
@@ -178,10 +193,36 @@ export function FileTreeView({
 		/>
 	) : null;
 
-	const treeClass = `min-h-full py-0.5 transition-colors outline-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`;
+	const treeClass = `relative min-h-full py-0.5 transition-colors outline-none select-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`;
 
 	if (flatList.length === 0 && !loadingDirs.has(rootDir) && !rootCreateRow) {
 		return (
+			// biome-ignore lint/a11y/noStaticElementInteractions: marquee selection on empty chrome
+			<div
+				ref={scrollRef}
+				role="tree"
+				tabIndex={0}
+				onClick={handleBackgroundClick}
+				onContextMenu={handleRootContextMenu}
+				onMouseDown={onMarqueeMouseDown}
+				onDragOver={handleRootDragOver}
+				onDragLeave={handleRootDragLeave}
+				onDrop={handleRootDrop}
+				onKeyDown={onTreeKeyDown}
+				className={`flex h-full min-h-0 items-center justify-center overflow-y-auto px-4 py-6 text-center text-[11px] text-muted-foreground outline-none select-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`}
+			>
+				{emptyLabel}
+			</div>
+		);
+	}
+
+	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: marquee selection on empty chrome
+		<div
+			ref={scrollRef}
+			className="relative h-full min-h-0 overflow-y-auto"
+			onMouseDown={onMarqueeMouseDown}
+		>
 			<div
 				role="tree"
 				tabIndex={0}
@@ -191,75 +232,70 @@ export function FileTreeView({
 				onDragLeave={handleRootDragLeave}
 				onDrop={handleRootDrop}
 				onKeyDown={onTreeKeyDown}
-				className={`flex min-h-full items-center justify-center px-4 py-6 text-center text-[11px] text-muted-foreground transition-colors outline-none ${rootDragOver ? FILE_TREE_ROOT_DROP_CLASS : ""}`}
+				className={treeClass}
 			>
-				{emptyLabel}
-			</div>
-		);
-	}
-
-	return (
-		<div
-			role="tree"
-			tabIndex={0}
-			onClick={handleBackgroundClick}
-			onContextMenu={handleRootContextMenu}
-			onDragOver={handleRootDragOver}
-			onDragLeave={handleRootDragLeave}
-			onDrop={handleRootDrop}
-			onKeyDown={onTreeKeyDown}
-			className={treeClass}
-		>
-			{rootCreateRow}
-			{flatList.map((node) => {
-				const isSelected = selectedPaths.has(node.entry.path);
-				const dragEntries: FileExplorerDragEntry[] =
-					isSelected && selectedDragEntries.length > 0
-						? selectedDragEntries
-						: [
-								{
-									path: node.entry.path,
-									name: node.entry.name,
-									isDirectory: node.entry.isDirectory,
-								},
-							];
-				return (
-					<Fragment key={node.entry.path}>
-						<FileTreeNodeView
-							entry={node.entry}
-							depth={node.depth}
-							isExpanded={expandedDirs.has(node.entry.path)}
-							isLoading={loadingDirs.has(node.entry.path)}
-							isSelected={isSelected}
-							isFocused={focusedPath === node.entry.path}
-							isRenaming={renamingPath === node.entry.path}
-							decoration={getDecoration?.(node.entry)}
-							dragEntries={dragEntries}
-							onToggleDir={onToggleDir}
-							onSelectEntry={onSelectEntry}
-							onContextMenu={onContextMenu}
-							onRenameSubmit={onRenameSubmit}
-							onRenameCancel={onRenameCancel}
-							onFileMove={onFileMove}
-							onExternalDrop={onExternalDrop}
-							onNativeDragStart={onNativeDragStart}
-							onPrefetchNativeDragIcons={onPrefetchNativeDragIcons}
-						/>
-						{creatingEntry?.parentPath === node.entry.path ? (
-							<FileTreeCreateRow
-								key={`${creatingEntry.parentPath}:${creatingEntry.kind}`}
-								kind={creatingEntry.kind}
-								depth={node.depth + 1}
-								inputLabel={createInputLabel}
-								error={creatingEntry.error}
-								busy={creatingEntry.busy}
-								onSubmit={onCreateSubmit}
-								onCancel={onCreateCancel}
+				{rootCreateRow}
+				{flatList.map((node) => {
+					const isSelected = selectedPaths.has(node.entry.path);
+					const dragEntries: FileExplorerDragEntry[] =
+						isSelected && selectedDragEntries.length > 0
+							? selectedDragEntries
+							: [
+									{
+										path: node.entry.path,
+										name: node.entry.name,
+										isDirectory: node.entry.isDirectory,
+									},
+								];
+					return (
+						<Fragment key={node.entry.path}>
+							<FileTreeNodeView
+								entry={node.entry}
+								depth={node.depth}
+								isExpanded={expandedDirs.has(node.entry.path)}
+								isLoading={loadingDirs.has(node.entry.path)}
+								isSelected={isSelected}
+								isFocused={focusedPath === node.entry.path}
+								isRenaming={renamingPath === node.entry.path}
+								decoration={getDecoration?.(node.entry)}
+								dragEntries={dragEntries}
+								onToggleDir={onToggleDir}
+								onSelectEntry={onSelectEntry}
+								onContextMenu={onContextMenu}
+								onRenameSubmit={onRenameSubmit}
+								onRenameCancel={onRenameCancel}
+								onFileMove={onFileMove}
+								onExternalDrop={onExternalDrop}
+								onNativeDragStart={onNativeDragStart}
+								onPrefetchNativeDragIcons={onPrefetchNativeDragIcons}
 							/>
-						) : null}
-					</Fragment>
-				);
-			})}
+							{creatingEntry?.parentPath === node.entry.path ? (
+								<FileTreeCreateRow
+									key={`${creatingEntry.parentPath}:${creatingEntry.kind}`}
+									kind={creatingEntry.kind}
+									depth={node.depth + 1}
+									inputLabel={createInputLabel}
+									error={creatingEntry.error}
+									busy={creatingEntry.busy}
+									onSubmit={onCreateSubmit}
+									onCancel={onCreateCancel}
+								/>
+							) : null}
+						</Fragment>
+					);
+				})}
+				{marquee ? (
+					<div
+						className="pointer-events-none absolute z-10 rounded-sm border border-primary/50 bg-primary/10"
+						style={{
+							left: marquee.left,
+							top: marquee.top,
+							width: marquee.width,
+							height: marquee.height,
+						}}
+					/>
+				) : null}
+			</div>
 		</div>
 	);
 }

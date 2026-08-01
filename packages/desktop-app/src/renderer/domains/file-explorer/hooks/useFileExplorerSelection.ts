@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { emitPluginFileExplorerSelectionChanged } from "../../plugins/runtime/plugin-file-explorer-host";
 import {
 	applyFileExplorerSelection,
+	applyMarqueeSelection,
 	buildFileTreeFlatPaths,
 	EMPTY_FILE_EXPLORER_SELECTION,
 	type FileExplorerSelectionState,
@@ -117,6 +118,30 @@ export function useFileExplorerSelection(input: {
 		[commit],
 	);
 
+	/** Marquee / bulk path set (already the full desired selection). */
+	const selectPaths = useCallback(
+		(paths: readonly string[]) => {
+			setState((prev) => {
+				const next = applyMarqueeSelection(flatPaths, paths, prev);
+				if (
+					next.paths.length === prev.paths.length &&
+					next.paths.every((path, index) => path === prev.paths[index]) &&
+					next.anchorPath === prev.anchorPath &&
+					next.focusedPath === prev.focusedPath
+				) {
+					return prev;
+				}
+				queueMicrotask(() =>
+					emitPluginFileExplorerSelectionChanged(
+						collectEntriesByPaths(getDefaultStore().get(fileTreeCacheAtom), next.paths),
+					),
+				);
+				return next;
+			});
+		},
+		[flatPaths],
+	);
+
 	const entryByPath = useCallback(
 		(path: string | null) => (path ? (collectEntriesByPaths(input.cache, [path])[0] ?? null) : null),
 		[input.cache],
@@ -158,6 +183,7 @@ export function useFileExplorerSelection(input: {
 			focusedPath: state.focusedPath,
 			clear,
 			selectEntry,
+			selectPaths,
 			prepareContextTarget,
 			selectAll,
 			moveFocus,
@@ -172,6 +198,7 @@ export function useFileExplorerSelection(input: {
 			focusedEntry,
 			clear,
 			selectEntry,
+			selectPaths,
 			prepareContextTarget,
 			selectAll,
 			moveFocus,

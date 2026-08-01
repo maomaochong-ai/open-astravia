@@ -18,6 +18,7 @@ interface FileTreeProps {
 	creatingEntry: FileExplorerCreatingEntry | null;
 	onToggleDir: (path: string) => void;
 	onSelectEntry: (entry: FsEntry, options: FileExplorerSelectOptions) => void;
+	onSelectPaths: (paths: readonly string[]) => void;
 	onBackgroundClick: () => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;

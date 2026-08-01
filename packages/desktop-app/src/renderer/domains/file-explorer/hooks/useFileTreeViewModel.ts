@@ -21,6 +21,7 @@ export function useFileTreeViewModel(input: {
 	creatingEntry: FileExplorerCreatingEntry | null;
 	onToggleDir: (path: string) => void;
 	onSelectEntry: (entry: FsEntry, options: FileExplorerSelectOptions) => void;
+	onSelectPaths: (paths: readonly string[]) => void;
 	onBackgroundClick: () => void;
 	onRename: (oldPath: string, newName: string) => Promise<void>;
 	onFileMove: (srcPaths: readonly string[], destDir: string) => void;
@@ -83,6 +84,7 @@ export function useFileTreeViewModel(input: {
 		getDecoration,
 		onToggleDir: input.onToggleDir,
 		onSelectEntry: input.onSelectEntry,
+		onSelectPaths: input.onSelectPaths,
 		onBackgroundClick: input.onBackgroundClick,
 		onContextMenu: input.onContextMenu,
 		onRootContextMenu: input.onRootContextMenu,

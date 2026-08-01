@@ -705,6 +705,7 @@ export function useFilesPanelModel(cwd?: string | null): FilesPanelViewProps {
 			creatingEntry={creatingEntry}
 			onToggleDir={toggleDir}
 			onSelectEntry={handleSelectEntry}
+			onSelectPaths={selection.selectPaths}
 			onBackgroundClick={handleBackgroundClick}
 			onRename={renameEntry}
 			onFileMove={onFileMove}

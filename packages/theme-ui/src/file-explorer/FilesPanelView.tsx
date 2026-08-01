@@ -66,9 +66,10 @@ export function FilesPanelView({
 				</div>
 			</div>
 
-			<div className="min-h-0 flex-1 overflow-y-auto">
+			{/* Tree owns its own scroll + marquee; keep this a height-constrained flex child. */}
+			<div className="min-h-0 flex-1 overflow-hidden">
 				{loadingRoot ? (
-					<div className="flex min-h-full items-center justify-center py-8">
+					<div className="flex h-full items-center justify-center py-8">
 						<span className="icon-[solar--refresh-linear] h-5 w-5 animate-spin text-muted-foreground" />
 					</div>
 				) : (
