@@ -32,25 +32,30 @@ export function AskVettaButton({ selectedCount, elementMode, active, onClick }: 
 			onPointerMove={(event) => event.stopPropagation()}
 			onPointerUp={(event) => event.stopPropagation()}
 		>
-			<button
-				type="button"
-				onClick={onClick}
-				aria-pressed={active}
-				className={`vetd-ask-glow relative flex items-center rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 ${
-					active ? "scale-105" : ""
-				}`}
-			>
-				{/* 抬到光波层之上，否则扫光会从文字上糊过去 */}
-				<span className="relative z-10 flex items-center gap-1.5">
-					<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-						<path
-							d="M12 3l1.9 4.9L19 9.8l-4.1 2.3L14 17l-2-3.6L8 17l1.1-4.9L5 9.8l5.1-1.9L12 3z"
-							strokeLinejoin="round"
-						/>
-					</svg>
-					{label}
-				</span>
-			</button>
+			<div className="relative">
+				{/* 光晕环画在按钮之外、之下：扫光要靠按钮的 overflow:hidden 裁切，
+				    放在按钮里会被一起裁掉。 */}
+				<span className="vetd-ask-halo pointer-events-none absolute inset-0 rounded-full" aria-hidden />
+				<button
+					type="button"
+					onClick={onClick}
+					aria-pressed={active}
+					className={`vetd-ask-sweep relative flex items-center overflow-hidden rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 ${
+						active ? "scale-105" : ""
+					}`}
+				>
+					{/* 抬到光波层之上，否则扫光会从文字上糊过去 */}
+					<span className="relative z-10 flex items-center gap-1.5">
+						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path
+								d="M12 3l1.9 4.9L19 9.8l-4.1 2.3L14 17l-2-3.6L8 17l1.1-4.9L5 9.8l5.1-1.9L12 3z"
+								strokeLinejoin="round"
+							/>
+						</svg>
+						{label}
+					</span>
+				</button>
+			</div>
 		</div>
 	);
 }

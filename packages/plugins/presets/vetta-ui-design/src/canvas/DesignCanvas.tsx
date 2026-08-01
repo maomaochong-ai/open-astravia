@@ -492,9 +492,9 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				style={{
 					transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
 					transformOrigin: "0 0",
-					// 托手/空格态下先把这层提升成独立合成层：平移时只做图层位移，
-					// 不牵动整窗口重绘。
-					willChange: panActive ? "transform" : undefined,
+					// 刻意不加 will-change / translateZ：这一层的包围盒覆盖所有 frame，
+					// 动辄上万像素，强行提升成合成层会超出 GPU 纹理上限，合成器降级后
+					// 整窗口撕裂闪烁。让浏览器自己决定要不要提升。
 				}}
 			>
 				{manifest.frames.map((frame) => (
