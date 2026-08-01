@@ -19,7 +19,57 @@ describe("applyContentProjectCommands", () => {
 		expect(next.updatedAt).toBe("2026-01-02T00:00:00.000Z");
 		expect(next.graph.nodes).toHaveLength(2);
 		expect(next.graph.edges).toHaveLength(1);
+		expect(next.graph.edges[0]).toMatchObject({ sourceHandle: "text", targetHandle: "prompt" });
+		expect(next.graph.nodes[1]?.data).toMatchObject({ aspectRatio: "16:9", duration: 5, resolution: "720p" });
 		expect(project.graph.nodes).toHaveLength(0);
+	});
+
+	it("rejects incompatible, occupied, and cyclic connections", () => {
+		const incompatible = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "first", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "second", kind: "prompt", position: { x: 200, y: 0 } } },
+		]);
+		expect(() =>
+			applyContentProjectCommands(incompatible, [{ type: "edge.connect", source: "first", target: "second" }]),
+		).toThrow(ContentProjectCommandError);
+
+		const occupied = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "first", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "second", kind: "prompt", position: { x: 0, y: 100 } } },
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 200, y: 0 } } },
+			{ type: "edge.connect", source: "first", target: "image", targetHandle: "prompt" },
+		]);
+		expect(() =>
+			applyContentProjectCommands(occupied, [
+				{ type: "edge.connect", source: "second", target: "image", targetHandle: "prompt" },
+			]),
+		).toThrow(ContentProjectCommandError);
+
+		const chained = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "a", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "b", kind: "image-generator", position: { x: 200, y: 0 } } },
+			{ type: "edge.connect", source: "a", target: "b", sourceHandle: "image", targetHandle: "reference" },
+		]);
+		expect(() =>
+			applyContentProjectCommands(chained, [
+				{ type: "edge.connect", source: "b", target: "a", sourceHandle: "image", targetHandle: "reference" },
+			]),
+		).toThrow(ContentProjectCommandError);
+	});
+
+	it("duplicates a node with independent data and an offset position", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: { id: "source", kind: "image-generator", position: { x: 20, y: 30 }, data: { prompt: "A scene" } },
+			},
+		]);
+		const next = applyContentProjectCommands(project, [{ type: "node.duplicate", nodeId: "source" }]);
+
+		expect(next.graph.nodes).toHaveLength(2);
+		expect(next.graph.nodes[1]).toMatchObject({ kind: "image-generator", position: { x: 60, y: 70 }, status: "idle" });
+		expect(next.graph.nodes[1]?.data).toEqual(project.graph.nodes[0]?.data);
+		expect(next.graph.nodes[1]?.data).not.toBe(project.graph.nodes[0]?.data);
 	});
 
 	it("removes dependent edges and timeline clips with a node", () => {
@@ -71,4 +121,3 @@ describe("applyContentProjectCommands", () => {
 		expect(project.timeline.tracks[0]?.clips).toHaveLength(0);
 	});
 });
-

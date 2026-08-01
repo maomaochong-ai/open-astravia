@@ -1,11 +1,12 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import type { ContentProjectCommand } from "../domain/commands";
+import { CONTENT_NODE_DEFINITIONS } from "../domain/node-definitions";
 import type { ContentNode, ContentNodeKind } from "../domain/model";
 import type { ContentCreationWorkspace } from "../runtime/workspace";
 
 const TAB_ID = "workspace";
 const SCOPE_USE = ["conversation", "project"] as const;
-const NODE_KINDS: readonly ContentNodeKind[] = ["prompt", "image-generator", "video-generator", "asset", "output"];
+const NODE_KINDS: readonly ContentNodeKind[] = CONTENT_NODE_DEFINITIONS.map((definition) => definition.kind);
 
 interface ProjectInput {
 	projectDir?: string;
@@ -38,7 +39,7 @@ const applyOperationsSchema = {
 				properties: {
 					type: {
 						type: "string",
-						enum: ["add_node", "update_node", "delete_node", "connect_nodes", "add_timeline_clip"],
+						enum: ["add_node", "update_node", "duplicate_node", "delete_node", "connect_nodes", "delete_edge", "add_timeline_clip"],
 					},
 					id: { type: "string" },
 					kind: { type: "string", enum: NODE_KINDS },
@@ -46,9 +47,15 @@ const applyOperationsSchema = {
 					y: { type: "number" },
 					label: { type: "string" },
 					prompt: { type: "string" },
+					aspectRatio: { type: "string" },
+					quality: { type: "string" },
+					resolution: { type: "string" },
 					nodeId: { type: "string" },
 					source: { type: "string" },
 					target: { type: "string" },
+					sourceHandle: { type: "string" },
+					targetHandle: { type: "string" },
+					edgeId: { type: "string" },
 					trackId: { type: "string" },
 					start: { type: "number" },
 					duration: { type: "number" },
@@ -90,8 +97,15 @@ function parseNodeData(record: Record<string, unknown>): ContentNode["data"] {
 	const data: ContentNode["data"] = {};
 	const label = optionalString(record, "label");
 	const prompt = optionalString(record, "prompt");
+	const aspectRatio = optionalString(record, "aspectRatio");
+	const quality = optionalString(record, "quality");
+	const resolution = optionalString(record, "resolution");
 	if (label !== undefined) data.label = label;
 	if (prompt !== undefined) data.prompt = prompt;
+	if (aspectRatio !== undefined) data.aspectRatio = aspectRatio;
+	if (quality !== undefined) data.quality = quality;
+	if (resolution !== undefined) data.resolution = resolution;
+	if (typeof record.duration === "number" && Number.isFinite(record.duration)) data.duration = record.duration;
 	return data;
 }
 
@@ -120,12 +134,18 @@ function parseOperation(value: unknown): ContentProjectCommand {
 			};
 		case "delete_node":
 			return { type: "node.delete", nodeId: requiredString(operation, "nodeId") };
+		case "duplicate_node":
+			return { type: "node.duplicate", nodeId: requiredString(operation, "nodeId") };
 		case "connect_nodes":
 			return {
 				type: "edge.connect",
 				source: requiredString(operation, "source"),
 				target: requiredString(operation, "target"),
+				sourceHandle: optionalString(operation, "sourceHandle"),
+				targetHandle: optionalString(operation, "targetHandle"),
 			};
+		case "delete_edge":
+			return { type: "edge.delete", edgeId: requiredString(operation, "edgeId") };
 		case "add_timeline_clip":
 			return {
 				type: "timeline.clip.add",

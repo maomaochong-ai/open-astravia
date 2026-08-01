@@ -11,22 +11,32 @@ export interface CanvasPosition {
 	y: number;
 }
 
+export interface ContentNodeData {
+	label?: string;
+	prompt?: string;
+	assetId?: string;
+	aspectRatio?: string;
+	quality?: string;
+	duration?: number;
+	resolution?: string;
+	providerId?: string;
+	modelId?: string;
+}
+
 export interface ContentNode {
 	id: string;
 	kind: ContentNodeKind;
 	position: CanvasPosition;
 	status: ContentNodeStatus;
-	data: {
-		label?: string;
-		prompt?: string;
-		assetId?: string;
-	};
+	data: ContentNodeData;
 }
 
 export interface ContentEdge {
 	id: string;
 	source: string;
 	target: string;
+	sourceHandle?: string;
+	targetHandle?: string;
 }
 
 export interface ContentAsset {
@@ -45,6 +55,7 @@ export interface GenerationJob {
 	id: string;
 	nodeId: string;
 	provider: string;
+	model: string;
 	status: GenerationJobStatus;
 	progress: number;
 	assetId?: string;
@@ -107,4 +118,3 @@ export function createContentProject(cwd: string | null, now = new Date().toISOS
 		},
 	};
 }
-

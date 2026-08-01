@@ -3,7 +3,11 @@ import { Button } from "@vetta/ui";
 import { useCallback, useEffect, useState } from "react";
 import type { ContentProjectCommand } from "../domain/commands";
 import type { ContentProjectDocument } from "../domain/model";
-import { getContentCreationWorkspace, notifyContentCreationError } from "../runtime/plugin-runtime";
+import {
+	getContentCreationWorkspace,
+	getContentGenerationService,
+	notifyContentCreationError,
+} from "../runtime/plugin-runtime";
 import { GraphWorkspace } from "./GraphWorkspace";
 import { NodeInspector } from "./NodeInspector";
 import { TimelineWorkspace } from "./TimelineWorkspace";
@@ -19,6 +23,7 @@ export function ContentCreationPanel() {
 	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const workspace = getContentCreationWorkspace();
+	const generation = getContentGenerationService();
 
 	useEffect(() => {
 		let active = true;
@@ -51,6 +56,18 @@ export function ContentCreationPanel() {
 		},
 		[cwd, t, workspace],
 	);
+	const runNode = useCallback(
+		async (nodeId: string) => {
+			try {
+				setError(null);
+				await generation.runNode(cwd, nodeId);
+			} catch (generationError) {
+				setError(t("error.generate"));
+				notifyContentCreationError(t("error.generate"), generationError);
+			}
+		},
+		[cwd, generation, t],
+	);
 
 	if (!project) {
 		return <div className="content-creation-state">{error ?? t("state.loading")}</div>;
@@ -82,7 +99,13 @@ export function ContentCreationPanel() {
 				{mode === "graph" ? (
 					<>
 						<GraphWorkspace project={project} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} onDispatch={dispatch} />
-						<NodeInspector project={project} node={selectedNode} onDispatch={dispatch} />
+						<NodeInspector
+							project={project}
+							node={selectedNode}
+							models={generation.listModels()}
+							onDispatch={dispatch}
+							onRunNode={runNode}
+						/>
 					</>
 				) : (
 					<TimelineWorkspace project={project} />
@@ -91,4 +114,3 @@ export function ContentCreationPanel() {
 		</div>
 	);
 }
-

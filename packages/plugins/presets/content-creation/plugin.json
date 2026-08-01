@@ -15,11 +15,47 @@
 		"ui.slot.activity-tab",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
+		"network.fetch",
 		"fs.read",
 		"fs.write",
 		"storage.read",
 		"storage.write"
 	],
+	"contributes": {
+		"settings": [
+			{
+				"key": "openaiApiKey",
+				"type": "secret",
+				"title": "%settings.openaiApiKey.title%",
+				"description": "%settings.openaiApiKey.description%"
+			},
+			{
+				"key": "openaiModel",
+				"type": "string",
+				"title": "%settings.openaiModel.title%",
+				"description": "%settings.openaiModel.description%",
+				"default": "gpt-image-2"
+			},
+			{
+				"key": "customBaseUrl",
+				"type": "string",
+				"title": "%settings.customBaseUrl.title%",
+				"description": "%settings.customBaseUrl.description%"
+			},
+			{
+				"key": "customApiKey",
+				"type": "secret",
+				"title": "%settings.customApiKey.title%",
+				"description": "%settings.customApiKey.description%"
+			},
+			{
+				"key": "customModel",
+				"type": "string",
+				"title": "%settings.customModel.title%",
+				"description": "%settings.customModel.description%"
+			}
+		]
+	},
 	"description": "%plugin.description%",
 	"author": "Vetta"
 }

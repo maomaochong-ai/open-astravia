@@ -27,8 +27,10 @@ import type {
 	PluginSettingSchema,
 } from "../../preload/api-types/plugins.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
+import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
+import { PluginSettingsStore } from "./plugin-settings-store.js";
 
 export const PLUGIN_API_VERSION = "1.1.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
@@ -1496,33 +1498,16 @@ export function getPluginsBaseDir(): string {
 // =============================================================================
 
 const pluginSettingsPath = join(getVettaHomePath(), "plugin-settings.json");
-type PluginSettingsStore = Record<string, Record<string, unknown>>;
+const pluginSettingsStore = new PluginSettingsStore(pluginSettingsPath, getDesktopCredentialVault());
 
-function readPluginSettingsStore(): PluginSettingsStore {
-	if (!existsSync(pluginSettingsPath)) return {};
-	try {
-		const parsed = JSON.parse(readFileSync(pluginSettingsPath, "utf-8")) as PluginSettingsStore;
-		return parsed && typeof parsed === "object" ? parsed : {};
-	} catch {
-		return {};
-	}
-}
-
-function writePluginSettingsStore(store: PluginSettingsStore): void {
-	ensureDir(dirname(pluginSettingsPath));
-	writeFileSync(pluginSettingsPath, JSON.stringify(store, null, 2), "utf-8");
+function getPluginSettingsSchema(pluginId: string): readonly PluginSettingSchema[] {
+	return listPlugins().find((plugin) => plugin.id === pluginId)?.settingsSchema ?? [];
 }
 
 /** Effective values: schema defaults merged with stored values (stored wins). */
 export function getPluginSettings(pluginId: string): Record<string, unknown> {
 	validatePluginId(pluginId);
-	const stored = readPluginSettingsStore()[pluginId] ?? {};
-	const schema = listPlugins().find((plugin) => plugin.id === pluginId)?.settingsSchema ?? [];
-	const defaults: Record<string, unknown> = {};
-	for (const setting of schema) {
-		if (setting.default !== undefined) defaults[setting.key] = setting.default;
-	}
-	return { ...defaults, ...stored };
+	return pluginSettingsStore.get(pluginId, getPluginSettingsSchema(pluginId));
 }
 
 /** Merge values over the stored namespace; returns the new effective values. */
@@ -1531,10 +1516,7 @@ export function setPluginSettings(pluginId: string, values: Record<string, unkno
 	if (values == null || typeof values !== "object" || Array.isArray(values)) {
 		throw new Error("Invalid plugin settings values");
 	}
-	const store = readPluginSettingsStore();
-	store[pluginId] = { ...(store[pluginId] ?? {}), ...values };
-	writePluginSettingsStore(store);
-	return getPluginSettings(pluginId);
+	return pluginSettingsStore.set(pluginId, values, getPluginSettingsSchema(pluginId));
 }
 
 export function listPlugins(): InstalledPlugin[] {

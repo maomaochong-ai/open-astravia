@@ -1,11 +1,15 @@
 import type {
 	CanvasPosition,
-	TimelineClip,
+	ContentAsset,
 	ContentEdge,
+	GenerationJob,
 	ContentNode,
 	ContentNodeKind,
 	ContentProjectDocument,
+	TimelineClip,
 } from "./model";
+import { resolveContentConnection } from "./connections";
+import { createDefaultContentNodeData } from "./node-definitions";
 
 export type ContentProjectCommand =
 	| {
@@ -19,8 +23,13 @@ export type ContentProjectCommand =
 	  }
 	| { type: "node.update"; nodeId: string; data: ContentNode["data"] }
 	| { type: "node.move"; nodeId: string; position: CanvasPosition }
+	| { type: "node.duplicate"; nodeId: string; position?: CanvasPosition }
 	| { type: "node.delete"; nodeId: string }
-	| { type: "edge.connect"; source: string; target: string }
+	| { type: "edge.connect"; source: string; target: string; sourceHandle?: string; targetHandle?: string }
+	| { type: "edge.delete"; edgeId: string }
+	| { type: "job.start"; job: { id: string; nodeId: string; providerId: string; modelId: string } }
+	| { type: "job.succeed"; jobId: string; asset: ContentAsset }
+	| { type: "job.fail"; jobId: string; error: string }
 	| {
 			type: "timeline.clip.add";
 			clip: Omit<TimelineClip, "id"> & { id?: string };
@@ -61,7 +70,13 @@ function findClip(project: ContentProjectDocument, clipId: string) {
 	throw new ContentProjectCommandError(`clip not found: ${clipId}`);
 }
 
-function applyCommand(project: ContentProjectDocument, command: ContentProjectCommand): void {
+function findJob(project: ContentProjectDocument, jobId: string): GenerationJob {
+	const job = project.jobs.find((candidate) => candidate.id === jobId);
+	if (!job) throw new ContentProjectCommandError(`job not found: ${jobId}`);
+	return job;
+}
+
+function applyCommand(project: ContentProjectDocument, command: ContentProjectCommand, now: string): void {
 	switch (command.type) {
 		case "node.add": {
 			assertPosition(command.node.position);
@@ -74,7 +89,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				kind: command.node.kind,
 				position: command.node.position,
 				status: "idle",
-				data: command.node.data ?? {},
+				data: createDefaultContentNodeData(command.node.kind, command.node.data),
 			});
 			return;
 		}
@@ -88,6 +103,18 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			findNode(project, command.nodeId).position = command.position;
 			return;
 		}
+		case "node.duplicate": {
+			const source = findNode(project, command.nodeId);
+			const position = command.position ?? { x: source.position.x + 40, y: source.position.y + 40 };
+			assertPosition(position);
+			project.graph.nodes.push({
+				...structuredClone(source),
+				id: crypto.randomUUID(),
+				position,
+				status: "idle",
+			});
+			return;
+		}
 		case "node.delete": {
 			findNode(project, command.nodeId);
 			project.graph.nodes = project.graph.nodes.filter((node) => node.id !== command.nodeId);
@@ -97,19 +124,92 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			for (const track of project.timeline.tracks) {
 				track.clips = track.clips.filter((clip) => clip.sourceNodeId !== command.nodeId);
 			}
+			project.jobs = project.jobs.filter((job) => job.nodeId !== command.nodeId);
 			return;
 		}
 		case "edge.connect": {
 			if (command.source === command.target) throw new ContentProjectCommandError("a node cannot connect to itself");
-			findNode(project, command.source);
-			findNode(project, command.target);
-			if (project.graph.edges.some((edge) => edge.source === command.source && edge.target === command.target)) return;
+			const sourceNode = findNode(project, command.source);
+			const targetNode = findNode(project, command.target);
+			const connection = resolveContentConnection(
+				project,
+				sourceNode,
+				targetNode,
+				command.sourceHandle,
+				command.targetHandle,
+			);
+			if (!connection) throw new ContentProjectCommandError("node ports are incompatible or would create a cycle");
+			if (
+				project.graph.edges.some(
+					(edge) =>
+						edge.source === command.source &&
+						edge.target === command.target &&
+						(edge.sourceHandle ?? connection.sourceHandle) === connection.sourceHandle &&
+						(edge.targetHandle ?? connection.targetHandle) === connection.targetHandle,
+				)
+			)
+				return;
 			const edge: ContentEdge = {
 				id: crypto.randomUUID(),
 				source: command.source,
 				target: command.target,
+				sourceHandle: connection.sourceHandle,
+				targetHandle: connection.targetHandle,
 			};
 			project.graph.edges.push(edge);
+			return;
+		}
+		case "edge.delete": {
+			if (!project.graph.edges.some((edge) => edge.id === command.edgeId)) {
+				throw new ContentProjectCommandError(`edge not found: ${command.edgeId}`);
+			}
+			project.graph.edges = project.graph.edges.filter((edge) => edge.id !== command.edgeId);
+			return;
+		}
+		case "job.start": {
+			const node = findNode(project, command.job.nodeId);
+			if (project.jobs.some((job) => job.id === command.job.id)) {
+				throw new ContentProjectCommandError(`job already exists: ${command.job.id}`);
+			}
+			if (project.jobs.some((job) => job.nodeId === node.id && (job.status === "queued" || job.status === "running"))) {
+				throw new ContentProjectCommandError(`node already has an active job: ${node.id}`);
+			}
+			project.jobs.push({
+				id: command.job.id,
+				nodeId: node.id,
+				provider: command.job.providerId,
+				model: command.job.modelId,
+				status: "running",
+				progress: 0,
+				createdAt: now,
+				updatedAt: now,
+			});
+			node.status = "running";
+			return;
+		}
+		case "job.succeed": {
+			const job = findJob(project, command.jobId);
+			if (project.assets.some((asset) => asset.id === command.asset.id)) {
+				throw new ContentProjectCommandError(`asset already exists: ${command.asset.id}`);
+			}
+			project.assets.push(structuredClone(command.asset));
+			job.status = "succeeded";
+			job.progress = 1;
+			job.assetId = command.asset.id;
+			job.error = undefined;
+			job.updatedAt = now;
+			const node = findNode(project, job.nodeId);
+			node.status = "succeeded";
+			node.data.assetId = command.asset.id;
+			return;
+		}
+		case "job.fail": {
+			const job = findJob(project, command.jobId);
+			job.status = "failed";
+			job.progress = 1;
+			job.error = command.error;
+			job.updatedAt = now;
+			findNode(project, job.nodeId).status = "failed";
 			return;
 		}
 		case "timeline.clip.add": {
@@ -173,9 +273,8 @@ export function applyContentProjectCommands(
 ): ContentProjectDocument {
 	if (commands.length === 0) return project;
 	const next = structuredClone(project);
-	for (const command of commands) applyCommand(next, command);
+	for (const command of commands) applyCommand(next, command, now);
 	next.revision = project.revision + 1;
 	next.updatedAt = now;
 	return next;
 }
-

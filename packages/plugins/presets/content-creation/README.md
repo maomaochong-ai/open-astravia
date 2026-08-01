@@ -21,3 +21,7 @@ Agent ────┘
 
 UI 与 Agent 都只能通过 `ContentCreationWorkspace.dispatch()` 修改项目。领域命令保持纯函数，
 供应商适配、内容处理和导出渲染将在后续阶段作为独立模块接入，不进入组件。
+
+## 设计分析
+
+下一阶段的画布、节点、操作面板、模型注册和生成任务设计，以 [docs/README.md](./docs/README.md) 为分析入口。该目录分别记录 Open-AI Canvas、TwitCanva、Nodetool 和 Loomic 的参考结论；时间线暂不在本轮分析范围内。
