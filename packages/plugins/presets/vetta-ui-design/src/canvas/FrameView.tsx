@@ -3,6 +3,7 @@ import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } f
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { BridgeHub } from "./bridge-client";
 import type { FrameActivity } from "./design-runtime";
+import { FrameTitleInput } from "./FrameTitleInput";
 
 type ResizeEdge = "nw" | "ne" | "sw" | "se" | "e" | "s";
 
@@ -25,10 +26,16 @@ interface FrameViewProps {
 	/** Live offset of the in-flight group move this frame takes part in. */
 	moveDelta: { dx: number; dy: number } | null;
 	activity: FrameActivity | undefined;
+	/** true 时标题变成就地编辑的输入框（双击标题，或右键菜单里的重命名）。 */
+	renaming: boolean;
 	onSelect(additive: boolean): void;
 	onEnter(): void;
 	/** 右键：坐标是视口坐标（clientX/Y），由画布换算成容器内坐标定位菜单。 */
 	onContextMenu(clientX: number, clientY: number): void;
+	onRenameStart(): void;
+	/** 提交由画布落盘；标题没变或为空时画布自行忽略。 */
+	onRenameCommit(title: string): void;
+	onRenameCancel(): void;
 	/** Moves are owned by the canvas so every selected frame travels together. */
 	onMoveStart(additive: boolean): void;
 	onMoveDelta(dx: number, dy: number): void;
@@ -61,9 +68,13 @@ export function FrameView({
 	raster,
 	moveDelta,
 	activity,
+	renaming,
 	onSelect,
 	onEnter,
 	onContextMenu,
+	onRenameStart,
+	onRenameCommit,
+	onRenameCancel,
 	onMoveStart,
 	onMoveDelta,
 	onMoveEnd,
@@ -201,19 +212,30 @@ export function FrameView({
 					marginBottom: 4 * labelScale,
 				}}
 			>
-				<button
-					type="button"
-					className={`cursor-pointer truncate font-medium ${
-						selected ? "text-[var(--vetd-selected)]" : "text-muted-foreground"
-					}`}
-					onPointerDown={(event) => beginDrag(event, "move")}
-					onPointerMove={moveDrag}
-					onPointerUp={endDrag}
-					onDoubleClick={onEnter}
-					title={frame.title || frame.id}
-				>
-					{frame.title || frame.id}
-				</button>
+				{renaming ? (
+					<FrameTitleInput
+						initial={frame.title || frame.id}
+						onCommit={onRenameCommit}
+						onCancel={onRenameCancel}
+					/>
+				) : (
+					<button
+						type="button"
+						className={`cursor-pointer truncate font-medium ${
+							selected ? "text-[var(--vetd-selected)]" : "text-muted-foreground"
+						}`}
+						onPointerDown={(event) => beginDrag(event, "move")}
+						onPointerMove={moveDrag}
+						onPointerUp={endDrag}
+						// 双击标题是重命名（Figma 行为）；要进 frame 检查态请双击画面本身。
+						onDoubleClick={() => {
+							if (interactive) onRenameStart();
+						}}
+						title={frame.title || frame.id}
+					>
+						{frame.title || frame.id}
+					</button>
+				)}
 				<span className="text-muted-foreground">
 					{rect.width}×{rect.height}
 				</span>

@@ -1,5 +1,5 @@
 import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
-import { parseFrameMeta, sameMeta } from "./frame-meta";
+import { parseFrameMeta, sameMeta, sanitizeFrameTitle, withFrameTitle } from "./frame-meta";
 import {
 	designNameOf,
 	emptyManifest,
@@ -202,6 +202,30 @@ export class DesignSession {
 		await this.ctx.fs.writeFile(`${this.dirPath}/frames/${id}.tsx`, blankFrameSource(title, width, height));
 		await this.reconcile();
 		return id;
+	}
+
+	/**
+	 * 画布上重命名 frame：写回 tsx 的 meta 声明（标题的真相在那里），manifest 先
+	 * 乐观更新——文件监听到 reconcile 有防抖，等它回来标题会先跳回旧值再变。
+	 */
+	async renameFrame(id: string, rawTitle: string): Promise<void> {
+		const frame = this.manifest.frames.find((entry) => entry.id === id);
+		if (!frame) return;
+		const title = sanitizeFrameTitle(rawTitle);
+		if (!title || title === frame.title) return;
+		const path = `${this.dirPath}/${frame.file}`;
+		const source = (await this.ctx.fs.readFile(path)).content;
+		const next = withFrameTitle(source, title);
+		if (next === null) throw new Error(`frame meta declaration not found in ${frame.file}`);
+		this.manifest = {
+			...this.manifest,
+			frames: this.manifest.frames.map((entry) =>
+				entry.id === id ? { ...entry, title, meta: { ...entry.meta, title } } : entry,
+			),
+		};
+		this.emit("frames");
+		await this.ctx.fs.writeFile(path, next);
+		await this.persist();
 	}
 
 	/**

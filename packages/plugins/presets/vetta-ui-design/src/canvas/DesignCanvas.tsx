@@ -113,6 +113,8 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const [askOpen, setAskOpen] = useState(false);
 	const [askBusy, setAskBusy] = useState(false);
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
+	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
+	const [renamingId, setRenamingId] = useState<string | null>(null);
 	/** 待确认删除的 frame id，非 null 时显示二次确认。 */
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [moveDelta, setMoveDelta] = useState<{ dx: number; dy: number } | null>(null);
@@ -333,6 +335,12 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		const container = containerRef.current;
 		if (!container) return;
 		const onKeyDown = (event: KeyboardEvent): void => {
+			// 画布里的输入框（重命名、让 Vetta 调整）也在这个容器内，事件会冒泡上来。
+			// 不放行的话空格会被 preventDefault 掉（打不出空格），Esc 也会顺带清空选中。
+			const target = event.target as HTMLElement | null;
+			if (target && (target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
+				return;
+			}
 			if (event.code === "Space" && !event.repeat) {
 				event.preventDefault();
 				setSpaceHeld(true);
@@ -418,9 +426,11 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 
 	const panActive = tool === "hand" || spaceHeld;
 
-	// 托手/空格态下右键菜单不该继续挂着：那时 frame 上的右键本来就不响应。
+	// 切到托手（或按住空格）就是要平移画布，右键菜单与重命名编辑态都该让位。
 	useEffect(() => {
-		if (panActive) setMenuAnchor(null);
+		if (!panActive) return;
+		setMenuAnchor(null);
+		setRenamingId(null);
 	}, [panActive]);
 
 	const onBackgroundPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -658,8 +668,24 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		})();
 	};
 
+	/** 提交重命名。空标题/没改动由 session 自行忽略，这里只管收编辑态。 */
+	const commitRename = (frameId: string, title: string): void => {
+		setRenamingId(null);
+		void session.renameFrame(frameId, title).catch((error: unknown) => {
+			notify({ message: t("canvas.frame.rename.failed"), error });
+		});
+	};
+
+	const startRename = (frameId: string): void => {
+		setMenuAnchor(null);
+		if (enteredFrameId === frameId) exitInspect(frameId);
+		setSelection({ kind: "frames", ids: [frameId] });
+		setRenamingId(frameId);
+	};
+
 	const deleteFrame = (frameId: string): void => {
 		setDeletingId(null);
+		if (renamingId === frameId) setRenamingId(null);
 		if (enteredFrameId === frameId) exitInspect(frameId);
 		setSelection((current) => {
 			const ids = selectedFrameIds(current).filter((id) => id !== frameId);
@@ -720,6 +746,10 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						raster={rasterOf(frame.id)}
 						moveDelta={moveRef.current?.origins.has(frame.id) ? moveDelta : null}
 						activity={activity.get(frame.id)}
+						renaming={renamingId === frame.id}
+						onRenameStart={() => startRename(frame.id)}
+						onRenameCommit={(title) => commitRename(frame.id, title)}
+						onRenameCancel={() => setRenamingId(null)}
 						onSelect={(additive) => {
 							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
 							selectFrame(frame.id, additive);
@@ -759,6 +789,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						setMenuAnchor(null);
 						setAskOpen(true);
 					}}
+					onRename={() => startRename(menuAnchor.frameId)}
 					onCopyImage={() => copyFrameImage(menuAnchor.frameId)}
 					onExportMockup={() => {
 						setMenuAnchor(null);
