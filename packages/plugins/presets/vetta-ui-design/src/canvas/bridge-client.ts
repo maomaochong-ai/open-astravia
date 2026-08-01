@@ -17,6 +17,8 @@ export interface BridgeHubEvents {
 	onSelected(frameId: string, payload: SelectedElementPayload | null): void;
 	onExitInspect(frameId: string): void;
 	onHmrUpdated(frameId: string | null): void;
+	/** The frame's app just rendered — the earliest point worth rasterizing it. */
+	onRendered(frameId: string): void;
 }
 
 interface PendingCapture {
@@ -39,6 +41,9 @@ export class BridgeHub {
 			case "ready":
 				// 刚装好 bridge 的 frame（首次挂载 / 整页重载）对不上当前开关，补发一次。
 				if (frameId && !this.effectsEnabled) this.post(frameId, { type: "set-effects", enabled: false });
+				return;
+			case "rendered":
+				if (frameId) this.events?.onRendered(frameId);
 				return;
 			case "selected":
 				if (frameId) this.events?.onSelected(frameId, (data.payload as SelectedElementPayload | null) ?? null);

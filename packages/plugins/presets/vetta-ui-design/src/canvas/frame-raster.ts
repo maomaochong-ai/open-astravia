@@ -1,0 +1,141 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { BridgeHub } from "./bridge-client";
+
+/**
+ * 空闲帧位图化。
+ *
+ * 画布上每个 frame 都是一个活的跨源 iframe，等于 N 套完整渲染树同时活着、
+ * 还都套在画布的 scale 变换下。frame 一多，合成器就被压垮——毛玻璃只是第一个
+ * 把它压垮的东西，大阴影、大图、CSS 动画同理。Miro / FigJam / Milanote 这类
+ * 无限画布工具都不保留活体网页，一律存静态截图。
+ *
+ * 这里的做法：frame 渲染完成后截一张图，把 iframe 收成 display:none、改用位图
+ * 显示；双击进入检查、或代码热更新时再换回活体。iframe 始终留在 DOM 里而不是
+ * 卸载——卸载就收不到 HMR，frame 会永远停在旧位图上。display:none 只停掉渲染
+ * 与合成，文档与脚本照常活着。
+ */
+
+/** 渲染信号到实际截图之间的静置时间：等字体、图片、布局都落定。 */
+const SETTLE_MS = 450;
+/** 位图按此倍率截，放大到约 150% 之前都不虚。 */
+const RASTER_PIXEL_RATIO = 2;
+
+interface FrameRasterOptions {
+	bridge: BridgeHub;
+	/** 当前处于检查态的 frame，必须保持活体。 */
+	enteredFrameId: string | null;
+	/** 拿到位图后是否真的收起 iframe；false 时行为与改造前一致。 */
+	enabled: boolean;
+}
+
+export interface FrameRasterState {
+	rasterOf(frameId: string): string | null;
+	/** 该 frame 此刻是否需要活体渲染。截图失败的 frame 会一直留在活体，是安全兜底。 */
+	isLive(frameId: string): boolean;
+	/**
+	 * 内容变了就作废旧位图，重新排队截图。调用方（DesignCanvas）在 frame 首次
+	 * 渲染完成与热更新到达时各调一次——bridge 只有一套事件出口，统一在那里分发。
+	 */
+	invalidate(frameId: string): void;
+	/**
+	 * 在 frame 保证处于活体的前提下跑一段异步逻辑（截图必须这样做：display:none
+	 * 的 iframe 没有布局，截出来是空的）。结束后恢复原状态。
+	 */
+	runLive<T>(frameId: string, run: () => Promise<T>): Promise<T>;
+}
+
+/** 等 React 提交 + 浏览器完成一次布局与绘制。 */
+function nextPaint(): Promise<void> {
+	return new Promise((resolve) => {
+		requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+	});
+}
+
+export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRasterOptions): FrameRasterState {
+	const [rasters, setRasters] = useState<ReadonlyMap<string, string>>(new Map());
+	/** 等待截图的 frame：它们必须先保持活体，截完才收起。 */
+	const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
+	/** 被外部强制拉回活体的 frame（截图期间）。 */
+	const [forced, setForced] = useState<ReadonlySet<string>>(new Set());
+	const capturingRef = useRef<string | null>(null);
+	const timerRef = useRef<number | null>(null);
+
+	const invalidate = useCallback((frameId: string): void => {
+		setDirty((current) => {
+			if (current.has(frameId)) return current;
+			const next = new Set(current);
+			next.add(frameId);
+			return next;
+		});
+	}, []);
+
+	// 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
+	useEffect(() => {
+		if (!enabled || capturingRef.current !== null) return;
+		const next = [...dirty].find((frameId) => frameId !== enteredFrameId);
+		if (next === undefined) return;
+
+		capturingRef.current = next;
+		timerRef.current = window.setTimeout(() => {
+			timerRef.current = null;
+			void bridge
+				.capture(next, { pixelRatio: RASTER_PIXEL_RATIO, timeoutMs: 20_000 })
+				.then((dataUrl) => {
+					setRasters((current) => new Map(current).set(next, dataUrl));
+				})
+				.catch(() => {
+					// 截不到就让它继续活着——比显示一张坏图安全。
+				})
+				.finally(() => {
+					capturingRef.current = null;
+					setDirty((current) => {
+						if (!current.has(next)) return current;
+						const remaining = new Set(current);
+						remaining.delete(next);
+						return remaining;
+					});
+				});
+		}, SETTLE_MS);
+
+		return () => {
+			if (timerRef.current !== null) {
+				window.clearTimeout(timerRef.current);
+				timerRef.current = null;
+				capturingRef.current = null;
+			}
+		};
+	}, [bridge, dirty, enteredFrameId, enabled]);
+
+	const rasterOf = useCallback((frameId: string): string | null => rasters.get(frameId) ?? null, [rasters]);
+
+	const isLive = useCallback(
+		(frameId: string): boolean =>
+			!enabled ||
+			frameId === enteredFrameId ||
+			forced.has(frameId) ||
+			dirty.has(frameId) ||
+			!rasters.has(frameId),
+		[enabled, enteredFrameId, forced, dirty, rasters],
+	);
+
+	const runLive = useCallback(async <T,>(frameId: string, run: () => Promise<T>): Promise<T> => {
+		setForced((current) => {
+			const next = new Set(current);
+			next.add(frameId);
+			return next;
+		});
+		try {
+			await nextPaint();
+			return await run();
+		} finally {
+			setForced((current) => {
+				if (!current.has(frameId)) return current;
+				const next = new Set(current);
+				next.delete(frameId);
+				return next;
+			});
+		}
+	}, []);
+
+	return { rasterOf, isLive, invalidate, runLive };
+}

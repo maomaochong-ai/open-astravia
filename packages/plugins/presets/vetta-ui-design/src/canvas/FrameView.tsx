@@ -17,6 +17,9 @@ interface FrameViewProps {
 	interactive: boolean;
 	/** Resize handles show only for a lone selection — a group resize has no obvious meaning. */
 	resizable: boolean;
+	/** false 时 iframe 收成 display:none，改用 `raster` 位图显示（见 frame-raster.ts）。 */
+	live: boolean;
+	raster: string | null;
 	/** Live offset of the in-flight group move this frame takes part in. */
 	moveDelta: { dx: number; dy: number } | null;
 	activity: FrameActivity | undefined;
@@ -49,6 +52,8 @@ export function FrameView({
 	entered,
 	interactive,
 	resizable,
+	live,
+	raster,
 	moveDelta,
 	activity,
 	onSelect,
@@ -61,14 +66,15 @@ export function FrameView({
 	const { t } = useTranslation();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const dragRef = useRef<DragState | null>(null);
-	const [live, setLive] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+	/** 改尺寸拖拽期间的实时矩形（提交前不落 manifest）。 */
+	const [resizeRect, setResizeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
 	useEffect(() => {
 		bridge.register(frame.id, iframeRef.current);
 		return () => bridge.register(frame.id, null);
 	}, [bridge, frame.id]);
 
-	const rect = live ?? {
+	const rect = resizeRect ?? {
 		x: frame.x + (moveDelta?.dx ?? 0),
 		y: frame.y + (moveDelta?.dy ?? 0),
 		width: frame.width,
@@ -120,7 +126,7 @@ export function FrameView({
 			if (drag.edge === "nw" || drag.edge === "ne") y -= MIN_HEIGHT - height;
 			height = MIN_HEIGHT;
 		}
-		setLive({
+		setResizeRect({
 			x: Math.round(x),
 			y: Math.round(y),
 			width: Math.round(width),
@@ -136,9 +142,9 @@ export function FrameView({
 			onMoveEnd();
 			return;
 		}
-		if (live) {
-			onResizeCommit(live);
-			setLive(null);
+		if (resizeRect) {
+			onResizeCommit(resizeRect);
+			setResizeRect(null);
 		}
 	};
 
@@ -202,13 +208,18 @@ export function FrameView({
 					selected ? "ring-2 ring-[var(--vetd-selected)]" : "ring-1 ring-border"
 				} ${activity === "modifying" ? "vetd-modifying" : ""}`}
 			>
+				{/* 位图态下 iframe 仍留在 DOM 里，只是不渲染：卸载就收不到 HMR，
+				    frame 会永远停在旧位图上。display:none 只停掉渲染与合成。 */}
 				<iframe
 					ref={iframeRef}
 					title={frame.title || frame.id}
 					src={`http://127.0.0.1:${port}/#/frame/${encodeURIComponent(frame.id)}`}
 					className="h-full w-full border-0"
-					style={{ pointerEvents: entered ? "auto" : "none" }}
+					style={{ pointerEvents: entered ? "auto" : "none", display: live ? "block" : "none" }}
 				/>
+				{!live && raster ? (
+					<img src={raster} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+				) : null}
 				{/* Interaction shield: select/move at frame level until the user drills in. */}
 				{!entered ? (
 					// biome-ignore lint/a11y/noStaticElementInteractions: canvas manipulation surface

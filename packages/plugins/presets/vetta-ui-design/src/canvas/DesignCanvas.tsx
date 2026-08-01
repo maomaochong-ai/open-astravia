@@ -21,6 +21,7 @@ import {
 	onFrameActivity,
 	requestMockupExport,
 } from "./design-runtime";
+import { useFrameRasters } from "./frame-raster";
 import { FrameView } from "./FrameView";
 
 export type CanvasSelection =
@@ -142,6 +143,14 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 
 	useEffect(() => onFrameActivity((next) => setActivity(new Map(next))), []);
 
+	// 空闲 frame 用位图代替活体 iframe，画布上就不再有 N 套渲染树同时合成。
+	const {
+		rasterOf,
+		isLive,
+		invalidate: invalidateRaster,
+		runLive,
+	} = useFrameRasters({ bridge, enteredFrameId, enabled: true });
+
 	const exitInspect = useCallback(
 		(frameId: string | null) => {
 			if (frameId) bridge.setMode(frameId, "off");
@@ -169,10 +178,14 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				exitInspect(frameId);
 				setSelection({ kind: "frames", ids: [frameId] });
 			},
-			onHmrUpdated: (frameId) => notifyFrameSettled(frameId),
+			onHmrUpdated: (frameId) => {
+				notifyFrameSettled(frameId);
+				if (frameId) invalidateRaster(frameId);
+			},
+			onRendered: invalidateRaster,
 		});
 		return () => bridge.stop();
-	}, [bridge, exitInspect]);
+	}, [bridge, exitInspect, invalidateRaster]);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
@@ -438,12 +451,13 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			const degraded = !effectsRef.current;
 			if (degraded) bridge.setEffectsEnabled(true);
 			try {
-				return await bridge.capture(frameId, { ...options, timeoutMs: 30_000 });
+				// 位图态的 frame 是 display:none，没有布局也就截不出东西，先拉回活体。
+				return await runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 }));
 			} finally {
 				if (degraded) bridge.setEffectsEnabled(false);
 			}
 		},
-		[bridge],
+		[bridge, runLive],
 	);
 
 	const selectedIds = selectedFrameIds(selection);
@@ -529,6 +543,8 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 						entered={enteredFrameId === frame.id}
 						interactive={tool === "select" && !panActive}
 						resizable={selectedIds.length === 1}
+						live={isLive(frame.id)}
+						raster={rasterOf(frame.id)}
 						moveDelta={moveRef.current?.origins.has(frame.id) ? moveDelta : null}
 						activity={activity.get(frame.id)}
 						onSelect={(additive) => {
