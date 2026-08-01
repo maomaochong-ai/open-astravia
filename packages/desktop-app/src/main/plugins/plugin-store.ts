@@ -32,7 +32,7 @@ import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 
-export const PLUGIN_API_VERSION = "1.1.0";
+export const PLUGIN_API_VERSION = "1.2.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
 const pluginsBaseDir = join(getVettaHomePath(), "plugins");

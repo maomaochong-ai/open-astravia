@@ -30,6 +30,8 @@ import type {
 	PluginAppActionReadyHandler,
 	PluginCardRendererContribution,
 	PluginCommandApi,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnHandle,
 	PluginContext,
 	PluginConversationApi,
 	PluginDefinition,
@@ -54,7 +56,7 @@ import type {
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 } from "@vetta-org/plugin-sdk";
-import { resolveCatalogKey } from "@vetta-org/plugin-sdk";
+import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
@@ -358,6 +360,10 @@ function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string): Plug
 			permissions.require("fs.read");
 			return filesystem.listFilesRecursive(capabilitySessionId, rootPath);
 		},
+		saveAs: (defaultFileName, content, encoding, options) => {
+			permissions.require("fs.write");
+			return window.vetta.dialog.saveData(defaultFileName, content, encoding, options);
+		},
 		watchDirectory: (dirPath, listener) => {
 			permissions.require("fs.read");
 			const unsubscribe = window.vetta.fs.onDirChanged(listener);
@@ -467,9 +473,23 @@ function createI18nApi(plugin: InstalledPlugin): PluginI18nApi {
 	};
 }
 
+/**
+ * Resolve a host-rendered plugin string against that plugin's own catalogs.
+ * Manifest fields such as `name` carry `%key%` placeholders; literals pass
+ * through untouched.
+ */
+function resolvePluginDisplayText(plugin: InstalledPlugin, raw: string): string {
+	return resolvePluginText(
+		raw,
+		plugin.locales ?? {},
+		getDefaultStore().get(languageAtom),
+		plugin.defaultLocale ?? "zh",
+	);
+}
+
 /** Format a plugin error for clipboard + console (plugin id/version + stack). */
 function formatPluginErrorDetail(plugin: InstalledPlugin, error: unknown): string {
-	const header = `Plugin: ${plugin.id}@${plugin.activeVersion} (${plugin.name})`;
+	const header = `Plugin: ${plugin.id}@${plugin.activeVersion} (${resolvePluginDisplayText(plugin, plugin.name)})`;
 	if (error instanceof Error) {
 		const stack = error.stack?.trim() || `${error.name}: ${error.message}`;
 		return `${header}\n${stack}`;
@@ -509,37 +529,93 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 	}
 }
 
-function createCommandApi(plugin: InstalledPlugin): PluginCommandApi {
+/** Per-spawn exit listeners, fed by a single lazy IPC subscription. */
+const spawnExitListeners = new Map<string, Set<(exit: PluginCommandSpawnExit) => void>>();
+let spawnExitSubscribed = false;
+
+function ensureSpawnExitSubscription(): void {
+	if (spawnExitSubscribed) return;
+	spawnExitSubscribed = true;
+	window.vetta.plugins.onCommandSpawnExit((event) => {
+		const listeners = spawnExitListeners.get(event.spawnId);
+		if (!listeners) return;
+		spawnExitListeners.delete(event.spawnId);
+		for (const listener of listeners) {
+			try {
+				listener({ exitCode: event.exitCode, signal: event.signal });
+			} catch (error) {
+				console.error("plugin spawn exit listener failed", error);
+			}
+		}
+	});
+}
+
+function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCommandApi {
 	const permissions = createPermissionApi(plugin);
+	const assertCommandAllowed = (file: unknown): string => {
+		if (typeof file !== "string" || file.trim().length === 0) {
+			throw new Error("Command file is required");
+		}
+		if (!plugin.declaredCommands.includes(file)) {
+			throw new Error(`Plugin ${plugin.id} command not declared: ${file}`);
+		}
+		if (!plugin.grantedCommandNames.includes(file)) {
+			// User disabled this command — intercept and notify (with a jump to settings).
+			showToast({
+				variant: "warning",
+				title: "命令已禁用",
+				message: `「${resolvePluginDisplayText(plugin, plugin.name)}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
+				action: {
+					label: "前往设置",
+					onClick: () => {
+						void router.navigate({
+							to: "/settings/$tab",
+							params: { tab: "plugins" },
+							search: { section: `plugin-${plugin.id}` },
+						});
+					},
+				},
+			});
+			throw new Error(`Plugin ${plugin.id} command disabled by user: ${file}`);
+		}
+		return file;
+	};
 	return {
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
-			if (typeof file !== "string" || file.trim().length === 0) {
-				throw new Error("Command file is required");
-			}
-			if (!plugin.declaredCommands.includes(file)) {
-				throw new Error(`Plugin ${plugin.id} command not declared: ${file}`);
-			}
-			if (!plugin.grantedCommandNames.includes(file)) {
-				// User disabled this command — intercept and notify (with a jump to settings).
-				showToast({
-					variant: "warning",
-					title: "命令已禁用",
-					message: `「${plugin.name}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
-					action: {
-						label: "前往设置",
-						onClick: () => {
-							void router.navigate({
-								to: "/settings/$tab",
-								params: { tab: "plugins" },
-								search: { section: `plugin-${plugin.id}` },
-							});
+			const allowed = assertCommandAllowed(file);
+			return window.vetta.plugins.runCommand(plugin.id, allowed, args ?? [], options);
+		},
+		spawn: async (file, args, options): Promise<PluginCommandSpawnHandle> => {
+			permissions.require("agent.command.spawn");
+			const allowed = assertCommandAllowed(file);
+			ensureSpawnExitSubscription();
+			const result = await window.vetta.plugins.spawnCommand(plugin.id, allowed, args ?? [], options);
+			let stopped = false;
+			const stop = async (): Promise<void> => {
+				if (stopped) return;
+				stopped = true;
+				await window.vetta.plugins.stopCommandSpawn(plugin.id, result.spawnId);
+			};
+			// 插件卸载/重载时统一回收（主进程在 reload/disable/uninstall 也会兜底清扫）。
+			disposers.push(() => void stop());
+			return {
+				spawnId: result.spawnId,
+				pid: result.pid,
+				port: result.port,
+				stop,
+				status: () => window.vetta.plugins.getCommandSpawnStatus(plugin.id, result.spawnId),
+				onExit: (listener) => {
+					const listeners = spawnExitListeners.get(result.spawnId) ?? new Set();
+					listeners.add(listener);
+					spawnExitListeners.set(result.spawnId, listeners);
+					return {
+						dispose: () => {
+							spawnExitListeners.get(result.spawnId)?.delete(listener);
 						},
-					},
-				});
-				throw new Error(`Plugin ${plugin.id} command disabled by user: ${file}`);
-			}
-			return window.vetta.plugins.runCommand(plugin.id, file, args ?? [], options);
+					};
+				},
+			};
 		},
 	};
 }
@@ -906,6 +982,13 @@ function createContext(
 		}
 		setPluginActivityTabVisible(plugin.id, tabId, visible === true);
 	};
+	const setActivityPanelWidth = (width: number | "max"): void => {
+		createPermissionApi(plugin).require("ui.slot.activity-tab");
+		if (width !== "max" && !Number.isFinite(width)) {
+			throw new Error('Activity panel width must be a finite number or "max"');
+		}
+		getDefaultStore().set(setActivityPanelWidthAtom, width);
+	};
 	const setPromptAttachment = (attachment: PluginPromptAttachment | null): void => {
 		createPermissionApi(plugin).require("ui.slot.input-action");
 		const store = getDefaultStore();
@@ -971,6 +1054,12 @@ function createContext(
 		}
 		return window.vetta.window.captureRegion(rect, defaultFileName);
 	};
+	const copyImage: PluginContext["ui"]["copyImage"] = (dataUrl) => {
+		if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
+			throw new Error("copyImage() requires a data:image/... URL");
+		}
+		return window.vetta.clipboard.writeImage(dataUrl);
+	};
 	const notify = (options: PluginNotifyOptions): void => {
 		if (options == null || typeof options !== "object" || typeof options.message !== "string") {
 			throw new Error("notify() requires { message: string }");
@@ -981,7 +1070,8 @@ function createContext(
 		}
 		const hasError = options.error !== undefined;
 		const variant = options.variant ?? (hasError ? "error" : "info");
-		const title = options.title?.trim() || plugin.name;
+		// 清单里的 name 通常是 `%plugin.name%` 这种 catalog 键，直接塞进 toast 会原样显示。
+		const title = resolvePluginDisplayText(plugin, options.title?.trim() || plugin.name);
 		const detail = hasError ? formatPluginErrorDetail(plugin, options.error) : null;
 		const durationMs = options.durationMs ?? (hasError ? 0 : undefined);
 		showToast({
@@ -1025,10 +1115,12 @@ function createContext(
 			registerShortcutScope,
 			openActivityTab,
 			setActivityTabVisible,
+			setActivityPanelWidth,
 			setPromptAttachment,
 			previewImage,
 			openPluginSettings,
 			captureRegion,
+			copyImage,
 			notify,
 		},
 		fileExplorer: {
@@ -1066,7 +1158,7 @@ function createContext(
 		},
 		conversation,
 		fs,
-		command: createCommandApi(plugin),
+		command: createCommandApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {
 				debugPluginAgent("renderer registerTool requested", {

@@ -1,0 +1,165 @@
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。
+   只 @import utilities 会漏掉依赖 theme 变量的工具类，故 theme 层必须一并导入。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 插件 CSS 被构建包进以插件根为界的 @scope，宿主 <html data-mode="dark"> 在作用域之外，
+   任何祖先选择器（含 Tailwind dark: 变体）都匹配不到。明暗只能靠继承下来的宿主 CSS 变量，
+   这里把它们映射成语义色工具类：bg-primary / text-foreground / border-border … */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-border: var(--border);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+}
+
+/* 无限画布的点阵背景：底色与点阵都取宿主主题变量，自动跟随明暗。 */
+.vetd-canvas-bg {
+	/* 选中态固定用 Figma 蓝，刻意不跟随宿主主题色：主题色可能与设计稿本身的配色
+	   撞车，而「哪个 frame 被选中」必须在任何主题、任何设计稿上都一眼可辨。 */
+	--vetd-selected: #0d99ff;
+	background-color: var(--background, #f4f4f5);
+	background-image: radial-gradient(
+		circle,
+		color-mix(in oklab, var(--foreground, #000) 14%, transparent) 1px,
+		transparent 1px
+	);
+	background-size: 14px 14px;
+}
+
+/* 框选选框的填充（描边直接用工具类取 --vetd-selected） */
+.vetd-marquee-fill {
+	background: color-mix(in oklab, var(--vetd-selected) 12%, transparent);
+}
+
+/* 「让 Vetta 调整」主按钮：核心入口，静止时也要有存在感。
+   这是常驻无限循环的动效，所以**只允许动 transform / opacity**——它们由合成器
+   独立完成、不触发重绘。早先动的是 background-position 与 box-shadow 扩散，
+   两者每帧都要重新光栅化，叠在一堆跨源 iframe 上会把合成器压垮、整窗口撕裂。 */
+.vetd-ask-sweep::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 45%;
+	pointer-events: none;
+	background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
+	animation: vetd-sweep 2.8s ease-in-out infinite;
+}
+@keyframes vetd-sweep {
+	0% {
+		transform: translateX(-120%);
+	}
+	/* 扫过后留一段静默，避免变成不停闪的跑马灯 */
+	55%,
+	100% {
+		transform: translateX(340%);
+	}
+}
+
+/* 光晕环：静态描边 + 缩放淡出，同样只动 transform / opacity。 */
+.vetd-ask-halo {
+	border: 2px solid var(--primary, #6366f1);
+	animation: vetd-halo 2.8s ease-out infinite;
+}
+@keyframes vetd-halo {
+	0% {
+		transform: scale(1);
+		opacity: 0.55;
+	}
+	70%,
+	100% {
+		transform: scale(1.28);
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-ask-sweep::before,
+	.vetd-ask-halo {
+		animation: none;
+	}
+	.vetd-ask-halo {
+		opacity: 0;
+	}
+}
+
+/* 导出预览的透明背景棋盘格 */
+.vetd-checkerboard {
+	background-image:
+		linear-gradient(45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
+		linear-gradient(-45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%),
+		linear-gradient(-45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%);
+	background-size: 16px 16px;
+	background-position:
+		0 0,
+		0 8px,
+		8px -8px,
+		-8px 0;
+}
+
+/* 截图卡的横排滚动条隐藏（翻页靠左右箭头） */
+.vetd-shot-swiper {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-shot-swiper::-webkit-scrollbar {
+	display: none;
+}
+
+/* 截图进行中的骨架呼吸 */
+.vetd-shot-pulse {
+	animation: vetd-shot-pulse 1.4s ease-in-out infinite;
+}
+@keyframes vetd-shot-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.45;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.vetd-shot-pulse {
+		animation: none;
+	}
+}
+
+/* frame「修改中」呼吸光效：描边静态、只动 opacity。这一层紧贴 iframe，
+   动 box-shadow 会让含跨源 iframe 的区域每帧重新光栅化。
+   用 inset 描边是因为宿主那层是 overflow:hidden，外扩的环会被裁掉。 */
+.vetd-modifying::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	border-radius: inherit;
+	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary, #6366f1) 65%, transparent);
+	animation: vetd-breathe 1.6s ease-in-out infinite;
+}
+@keyframes vetd-breathe {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-modifying::after {
+		animation: none;
+	}
+}

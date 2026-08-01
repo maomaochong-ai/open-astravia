@@ -21,7 +21,7 @@ export type ConversationEvent =
 	| { type: "turn-end"; stopReason: string }
 	| { type: "message-added"; message: ConversationMessage }
 	| { type: "message-updated"; delta: string }
-	| { type: "tool-call-start"; toolCallId: string; toolName: string }
+	| { type: "tool-call-start"; toolCallId: string; toolName: string; args?: Record<string, unknown> }
 	| { type: "tool-call-end"; toolCallId: string; toolName: string; isError: boolean }
 	| { type: "conversation-changed"; conversation: ConversationState };
 
