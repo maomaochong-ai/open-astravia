@@ -314,7 +314,12 @@ export function installBridge(host: BridgeHost): void {
 				if (!keepHighlight) moveOverlay(selectedOverlay, null);
 				// Capture documentElement: the overlay divs live on it, so a kept
 				// highlight is included; body alone would drop them.
-				toPng(document.documentElement, { pixelRatio, cacheBust: true })
+				// cacheBust 会给每张图片/字体的 URL 加随机查询串，强制重新下载整份
+				// 素材——图多的 frame 单次截图能拖到几十秒。它本是为绕过跨域缓存的
+				// CORS 问题，而素材由同源的引擎 dev server 提供，用不上。
+				// 只有交付物（导出渲染图 / 发给 agent）保留它兜底，画布位图化不用。
+				const cacheBust = data.cacheBust === true;
+				toPng(document.documentElement, { pixelRatio, cacheBust })
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) =>
 						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),

@@ -122,7 +122,7 @@ export class BridgeHub {
 
 	capture(
 		frameId: string,
-		options?: { keepHighlight?: boolean; timeoutMs?: number; pixelRatio?: number },
+		options?: { keepHighlight?: boolean; timeoutMs?: number; pixelRatio?: number; cacheBust?: boolean },
 	): Promise<string> {
 		const iframe = this.frames.get(frameId);
 		if (!iframe) return Promise.reject(new Error(`frame not mounted: ${frameId}`));
@@ -139,6 +139,7 @@ export class BridgeHub {
 				requestId,
 				keepHighlight: options?.keepHighlight === true,
 				pixelRatio: options?.pixelRatio,
+				cacheBust: options?.cacheBust === true,
 			});
 		});
 	}

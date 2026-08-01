@@ -16,6 +16,7 @@ interface ControlBarProps {
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
 	onToggleEffects(): void;
+	onRetryRaster(): void;
 	onExport(): void;
 }
 
@@ -90,6 +91,7 @@ export function ControlBar({
 	onZoomDelta,
 	onZoomReset,
 	onToggleEffects,
+	onRetryRaster,
 	onExport,
 }: ControlBarProps) {
 	const { t } = useTranslation();
@@ -114,12 +116,17 @@ export function ControlBar({
 			</ToolButton>
 			{/* 位图 N/M：活体 iframe 是画布上最贵的东西，这个数字直接说明优化生效没有。
 			    有截图失败时标红——失败的 frame 会一直留在活体，等于没优化。 */}
-			<span
-				title={t("controlbar.raster.hint")}
-				className={`px-1 text-[10px] tabular-nums ${raster.failed > 0 ? "text-red-500" : "text-muted-foreground"}`}
+			<button
+				type="button"
+				title={raster.failed > 0 ? t("controlbar.raster.retry") : t("controlbar.raster.hint")}
+				disabled={raster.failed === 0}
+				onClick={onRetryRaster}
+				className={`rounded-md px-1 text-[10px] tabular-nums ${
+					raster.failed > 0 ? "text-red-500 hover:bg-accent" : "text-muted-foreground"
+				}`}
 			>
 				{raster.rasterized}/{raster.total}
-			</span>
+			</button>
 			<button
 				type="button"
 				title={effectsEnabled ? t("controlbar.effects.on") : t("controlbar.effects.off")}

@@ -44,6 +44,8 @@ export interface FrameRasterState {
 	runLive<T>(frameId: string, run: () => Promise<T>): Promise<T>;
 	/** 已成功位图化的 frame 数与截图失败数，给控制栏显示，便于判断优化是否真的生效。 */
 	stats: { rasterized: number; failed: number };
+	/** 重新排队所有截图失败的 frame。 */
+	retryFailed(): void;
 }
 
 /** 等 React 提交 + 浏览器完成一次布局与绘制。 */
@@ -61,6 +63,15 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 	const [forced, setForced] = useState<ReadonlySet<string>>(new Set());
 	/** frameId → 截图失败原因。用于把「优化没生效」这件事摆到台面上。 */
 	const [failures, setFailures] = useState<ReadonlyMap<string, string>>(new Map());
+
+	/** 失败的 frame 不会自动重试（免得死循环烧 CPU），由用户点控制栏上的计数重来。 */
+	const retryFailed = useCallback((): void => {
+		setFailures((current) => {
+			if (current.size === 0) return current;
+			setDirty((pending) => new Set([...pending, ...current.keys()]));
+			return new Map();
+		});
+	}, []);
 	const capturingRef = useRef<string | null>(null);
 	const timerRef = useRef<number | null>(null);
 
@@ -144,5 +155,12 @@ export function useFrameRasters({ bridge, enteredFrameId, enabled }: FrameRaster
 		}
 	}, []);
 
-	return { rasterOf, isLive, invalidate, runLive, stats: { rasterized: rasters.size, failed: failures.size } };
+	return {
+		rasterOf,
+		isLive,
+		invalidate,
+		runLive,
+		retryFailed,
+		stats: { rasterized: rasters.size, failed: failures.size },
+	};
 }

@@ -150,6 +150,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		invalidate: invalidateRaster,
 		runLive,
 		stats: rasterStats,
+		retryFailed: retryRaster,
 	} = useFrameRasters({ bridge, enteredFrameId, enabled: true });
 
 	const exitInspect = useCallback(
@@ -453,7 +454,10 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 			if (degraded) bridge.setEffectsEnabled(true);
 			try {
 				// 位图态的 frame 是 display:none，没有布局也就截不出东西，先拉回活体。
-				return await runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 }));
+				// 交付物保留 cacheBust：慢，但能兜住素材缓存缺 CORS 头的边角情况。
+				return await runLive(frameId, () =>
+					bridge.capture(frameId, { ...options, cacheBust: true, timeoutMs: 30_000 }),
+				);
 			} finally {
 				if (degraded) bridge.setEffectsEnabled(false);
 			}
@@ -602,6 +606,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 				exportableCount={orderedSelection.length}
 				effectsEnabled={effectsEnabled}
 				raster={{ ...rasterStats, total: manifest.frames.length }}
+				onRetryRaster={retryRaster}
 				onToggleEffects={() => {
 					const next = !effectsEnabled;
 					setEffectsEnabled(next);
