@@ -233,6 +233,11 @@ export class ModelSettingsService {
 		return rendererConfig(await this.options.readConfig());
 	}
 
+	/** Main-process only. IPC callers must not return this value to the renderer. */
+	async getProviderApiKey(providerId: string): Promise<string | undefined> {
+		return (await this.getConfig()).providers[providerId]?.apiKey;
+	}
+
 	async replaceConfig(config: ModelsConfig): Promise<void> {
 		await this.runMutation(async () => {
 			await this.ensureLegacyCredentialsMigrated();

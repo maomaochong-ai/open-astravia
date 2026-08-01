@@ -58,6 +58,8 @@ describe("ModelSettingsService", () => {
 				},
 			},
 		});
+		await expect(service.getProviderApiKey("openai")).resolves.toBe("secret");
+		await expect(service.getProviderApiKey("missing")).resolves.toBeUndefined();
 	});
 
 	it("keeps an encrypted key when renderer sends the mask", async () => {

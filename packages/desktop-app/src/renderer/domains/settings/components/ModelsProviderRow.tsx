@@ -48,6 +48,21 @@ export function ModelsProviderRow({
 					</div>
 				</button>
 				<div className="flex items-center gap-1">
+					{provider.apiKey && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={(event) => {
+								event.stopPropagation();
+								model.onStartEditProvider(name);
+								if (!isExpanded) model.onToggleProvider(name);
+							}}
+							title={t("changeKey")}
+							aria-label={t("changeKey")}
+						>
+							<span className="icon-[mdi--key-change] h-3.5 w-3.5" />
+						</Button>
+					)}
 					<Button
 						variant="ghost"
 						size="icon-sm"
@@ -84,6 +99,8 @@ export function ModelsProviderRow({
 						onCancel={model.onCancelEditProvider}
 						saving={model.saving}
 						saveLabel={t("save")}
+						replacingApiKey={Boolean(provider.apiKey)}
+						onCopyApiKey={provider.apiKey ? () => void model.onCopyProviderApiKey(name) : undefined}
 					/>
 				</div>
 			)}

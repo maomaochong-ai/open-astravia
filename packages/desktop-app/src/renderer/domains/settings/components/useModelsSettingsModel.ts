@@ -1,5 +1,7 @@
 import type { ModelsConfigData } from "@preload/api.js";
+import { showToast } from "@shared/store/toast-atoms";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
 export type ProviderEntry = ModelsConfigData["providers"][string];
@@ -62,6 +64,7 @@ export interface ModelsSettingsModel {
 	onCancelEditProvider: () => void;
 	onUpdateProvider: (oldName: string) => Promise<void>;
 	onDeleteProvider: (name: string) => Promise<void>;
+	onCopyProviderApiKey: (name: string) => Promise<void>;
 	onToggleProvider: (name: string) => void;
 	onStartAddModel: (providerName: string) => void;
 	onCancelAddModel: () => void;
@@ -122,6 +125,7 @@ export const emptyModel: ModelFormState = {
 };
 
 export function useModelsSettingsModel(): ModelsSettingsModel {
+	const { t } = useTranslation("settings");
 	const [config, setConfig] = useState<ModelsConfigData | null>(null);
 	const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 	const [addingProvider, setAddingProvider] = useState(false);
@@ -192,9 +196,11 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 				delete newProviders[oldName];
 			}
 
+			const providerData = providerFormToData();
+			if (!providerData.apiKey && existing.apiKey) providerData.apiKey = existing.apiKey;
 			newProviders[nextName] = {
 				...existing,
-				...providerFormToData(),
+				...providerData,
 			};
 
 			await saveConfig({ ...config, providers: newProviders });
@@ -229,7 +235,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 			setProviderForm({
 				name,
 				baseUrl: provider.baseUrl || "",
-				apiKey: provider.apiKey || "",
+				apiKey: "",
 				api: provider.api || "openai-completions",
 				headers: headersToString(provider.headers),
 				authHeader: provider.authHeader ?? false,
@@ -238,6 +244,21 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 			setAddingProvider(false);
 		},
 		[config],
+	);
+
+	const handleCopyProviderApiKey = useCallback(
+		async (name: string): Promise<void> => {
+			try {
+				const copied = await window.vetta.models.copyApiKey(name);
+				showToast({
+					variant: copied ? "success" : "error",
+					message: t(copied ? "apiKeyCopied" : "apiKeyCopyFailed"),
+				});
+			} catch {
+				showToast({ variant: "error", message: t("apiKeyCopyFailed") });
+			}
+		},
+		[t],
 	);
 
 	const handleAddModel = useCallback(
@@ -430,6 +451,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		},
 		onUpdateProvider: handleUpdateProvider,
 		onDeleteProvider: handleDeleteProvider,
+		onCopyProviderApiKey: handleCopyProviderApiKey,
 		onToggleProvider: (name: string) => setExpandedProvider(expandedProvider === name ? null : name),
 		onStartAddModel: (providerName: string) => {
 			setAddingModelFor(providerName);

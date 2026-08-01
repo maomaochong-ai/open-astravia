@@ -95,6 +95,8 @@ export interface PresetModelsResult {
 export interface DesktopModelsApi {
 	get(): Promise<ModelsConfigData>;
 	set(config: ModelsConfigData): Promise<void>;
+	/** 主进程直接写入剪贴板；密钥明文不会作为 IPC 结果返回 renderer。 */
+	copyApiKey(providerId: string): Promise<boolean>;
 	fetchRemote(): Promise<RemoteProvidersResult>;
 	/** 读取客户端内置的[[预设服务商]]目录(无网络请求)。 */
 	listPresets(): Promise<PresetProvidersResult>;

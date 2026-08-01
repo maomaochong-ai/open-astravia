@@ -31,6 +31,7 @@ export interface PresetProviderRow {
 	isOpen: boolean;
 	isExpanded: boolean;
 	refreshing: boolean;
+	hasApiKey: boolean;
 	/** 模型数右侧的次要文案:已启用显示同步时间,未启用提示填 key。 */
 	statusLabel: string | null;
 	/** 该行最近一次拉取模型失败的原因。 */
@@ -52,6 +53,7 @@ export interface PresetProvidersSectionLabels {
 	enable: string;
 	apiKeyDirect: (provider: string) => string;
 	apiKeyPlaceholder: string;
+	encryptedApiKeyPlaceholder: string;
 	save: string;
 	noModels: string;
 	thinking: string;
@@ -59,6 +61,7 @@ export interface PresetProvidersSectionLabels {
 	refreshModels: string;
 	refreshingModels: string;
 	refreshCatalog: string;
+	copyApiKey: string;
 }
 
 export interface PresetProvidersSectionModel {
@@ -75,6 +78,7 @@ export interface PresetProvidersSectionModel {
 	onAdopt: (row: PresetProviderRow) => Promise<void>;
 	onRemove: (row: PresetProviderRow) => Promise<void>;
 	onRefreshModels: (row: PresetProviderRow) => Promise<void>;
+	onCopyApiKey: (row: PresetProviderRow) => Promise<void>;
 	/** 手动重拉公共目录(models.dev)。 */
 	refreshingCatalog: boolean;
 	onRefreshCatalog: () => Promise<void>;
@@ -172,6 +176,7 @@ export function usePresetProvidersSectionModel({
 				isOpen: openId === row.id,
 				isExpanded: expandedId === row.id,
 				refreshing: refreshingId === row.id,
+				hasApiKey: Boolean(config.providers[row.id]?.apiKey),
 				statusLabel: adopted
 					? syncedAt
 						? t("syncedAt", { time: formatSyncedAt(syncedAt, i18n.language) })
@@ -201,6 +206,21 @@ export function usePresetProvidersSectionModel({
 	const handleDraftKeyChange = useCallback((rowId: string, key: string): void => {
 		setDraftKeys((prev) => ({ ...prev, [rowId]: key }));
 	}, []);
+
+	const copyApiKey = useCallback(
+		async (row: PresetProviderRow): Promise<void> => {
+			try {
+				const copied = await window.vetta.models.copyApiKey(row.id);
+				showToast({
+					variant: copied ? "success" : "error",
+					message: t(copied ? "apiKeyCopied" : "apiKeyCopyFailed"),
+				});
+			} catch {
+				showToast({ variant: "error", message: t("apiKeyCopyFailed") });
+			}
+		},
+		[t],
+	);
 
 	const adopt = useCallback(
 		async (row: PresetProviderRow): Promise<void> => {
@@ -351,6 +371,7 @@ export function usePresetProvidersSectionModel({
 			enable: t("enable"),
 			apiKeyDirect: (provider: string) => t("apiKeyDirect", { provider }),
 			apiKeyPlaceholder: t("presetApiKeyPlaceholder"),
+			encryptedApiKeyPlaceholder: t("replaceApiKeyPlaceholder"),
 			save: t("save"),
 			noModels: t("noModels"),
 			thinking: t("thinking"),
@@ -358,6 +379,7 @@ export function usePresetProvidersSectionModel({
 			refreshModels: t("refreshModels"),
 			refreshingModels: t("refreshingModels"),
 			refreshCatalog: t("refreshCatalog"),
+			copyApiKey: t("copyApiKey"),
 		},
 		onToggleExpanded: handleToggleExpanded,
 		onToggleEditor: handleToggleEditor,
@@ -365,6 +387,7 @@ export function usePresetProvidersSectionModel({
 		onAdopt: adopt,
 		onRemove: remove,
 		onRefreshModels: refresh,
+		onCopyApiKey: copyApiKey,
 		refreshingCatalog,
 		onRefreshCatalog: refreshCatalog,
 	};
