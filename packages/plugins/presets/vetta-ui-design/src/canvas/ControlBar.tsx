@@ -133,14 +133,16 @@ export function ControlBar({
 			{exportableCount > 0 ? (
 				<>
 					<div className="mx-1 h-5 w-px bg-border" />
+					{/* 带文字：纯 icon 在这排工具里认不出来，而它是选中后才出现的动作，
+					    用主题色淡底与前面的工具按钮拉开层次。 */}
 					<button
 						type="button"
 						title={t("controlbar.exportMockup", { count: exportableCount })}
-						aria-label={t("controlbar.exportMockup", { count: exportableCount })}
 						onClick={onExport}
-						className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
+						className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
 					>
 						{icons.mockup}
+						{t("controlbar.exportMockup.label")}
 					</button>
 				</>
 			) : null}
