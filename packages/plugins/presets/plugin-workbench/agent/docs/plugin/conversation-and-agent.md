@@ -321,27 +321,11 @@ interface PluginFsApi {
   move(sourcePath, destDir): Promise<void>;                  // fs.write
   createDirectory(dirPath): Promise<void>;                   // fs.write
   listFilesRecursive(rootPath): Promise<{ name; path; relPath }[]>; // fs.read
-  saveAs(defaultFileName, content, encoding?, options?): Promise<string | null>; // fs.write
 }
 // PluginFsEntry: { name, path, isDirectory, size, modifiedAt }
 ```
 
 同一份 `fs` API 也通过工具 handler 的 `host.fs` 暴露给 agent 工具 handler。
-
-### saveAs：另存为到用户选定的路径
-
-`writeFile` 写的是工程内的确定路径；要把产物交给用户（导出图片、报告、压缩包）用 `saveAs`——它弹宿主的**原生保存对话框**，把内存里的字节写到用户当场选定的位置，因此**不受工程根限制**。用户取消返回 `null`。
-
-```ts
-const png = canvas.toDataURL("image/png").split(",")[1];
-const saved = await ctx.fs.saveAs("mockup.png", png, "base64", {
-  title: "保存渲染图",
-  filters: [{ name: "PNG", extensions: ["png"] }],  // 缺省按文件名后缀推断
-});
-if (saved) ctx.ui.notify({ message: `已保存：${saved}`, variant: "success" });
-```
-
-沿用 `fs.write` 权限而非新增权限：路径由用户在原生框里当场确认，插件无法静默写盘，安全面比 `writeFile` 更小。
 
 ## 网络 API
 
