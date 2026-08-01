@@ -140,6 +140,7 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 
 	useEffect(() => onFrameActivity((next) => setActivity(new Map(next))), []);
 
+
 	// 空闲 frame 用位图代替活体 iframe，画布上就不再有 N 套渲染树同时合成。
 	const orderedFrameIds = useMemo(
 		() => [...manifest.frames].sort(byCanvasOrder).map((frame) => frame.id),
@@ -154,6 +155,16 @@ export function DesignCanvas({ session, port, bridge }: DesignCanvasProps) {
 		stats: rasterStats,
 		retryFailed: retryRaster,
 	} = useFrameRasters({ bridge, frameIds: orderedFrameIds, enteredFrameId });
+
+	// 位图化后 iframe 会被卸掉，也就收不到 HMR 了。源码变更改由这里的文件监听
+	// 感知：哪个 frames/<id>.tsx 变了就作废它的位图，它会重新挂载、渲染、截图。
+	useEffect(() => {
+		const handle = getPluginCtx().fs.watchDirectory(`${session.dirPath}/frames`, (changedPath) => {
+			const match = /\/frames\/([^/]+)\.tsx$/.exec(changedPath.replaceAll("\\", "/"));
+			if (match) invalidateRaster(match[1]);
+		});
+		return () => handle.dispose();
+	}, [session, invalidateRaster]);
 
 	const exitInspect = useCallback(
 		(frameId: string | null) => {

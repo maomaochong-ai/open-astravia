@@ -21,8 +21,12 @@ import type { BridgeHub } from "./bridge-client";
 
 /** 渲染信号到实际截图之间的静置时间：等字体、图片、布局都落定。 */
 const SETTLE_MS = 450;
-/** 位图按此倍率截，放大到约 150% 之前都不虚。 */
-const RASTER_PIXEL_RATIO = 2;
+/**
+ * 位图按 1 倍截：frame 原尺寸的位图在 100% 缩放下就是 1:1，已经够清楚，而 2 倍
+ * 会让每张图的解码内存翻四倍——七张 390×844 的图在 2 倍下就是三十多 MB，正是
+ * tile 显存不够的一大来源。要看细节可以双击进入 frame，那时是真正的活体渲染。
+ */
+const RASTER_PIXEL_RATIO = 1;
 /** 同时允许活体渲染的 frame 数上限。 */
 const MOUNT_WINDOW = 2;
 
@@ -93,25 +97,28 @@ export function useFrameRasters({ bridge, frameIds, enteredFrameId }: FrameRaste
 	}, []);
 
 	/**
-	 * 挂载窗口：已经收工（截到图或截失败）的 frame 不再占额度，于是窗口顺着
-	 * 队列往后滑。检查态与截图期间强制活体的 frame 无条件在内。
+	 * 只有「还需要活体」的 frame 才挂 iframe：检查态、截图期间被强制拉活的、
+	 * 以及还没截到图的（含截图失败的，留活体是安全兜底）。截到图之后 iframe 直接
+	 * 卸掉——留着 display:none 的 iframe 等于把 N 个完整 React 应用连同它们的大图
+	 * 一直留在内存里，tile 显存照样不够用。
+	 *
+	 * 卸载会丢掉 HMR 连接，所以源码变更改由画布侧的文件监听感知（见 DesignCanvas），
+	 * 变更的 frame 会重新变脏 → 重新挂载 → 重新截图。
 	 */
 	const mounted = useMemo(() => {
 		const allowed = new Set<string>();
+		if (enteredFrameId) allowed.add(enteredFrameId);
+		for (const frameId of forced) allowed.add(frameId);
 		let budget = MOUNT_WINDOW;
 		for (const frameId of frameIds) {
-			if (rasters.has(frameId) || failures.has(frameId)) {
-				allowed.add(frameId);
-				continue;
-			}
+			if (allowed.has(frameId)) continue;
+			if (!dirty.has(frameId) && rasters.has(frameId)) continue;
 			if (budget <= 0) continue;
 			allowed.add(frameId);
 			budget -= 1;
 		}
-		if (enteredFrameId) allowed.add(enteredFrameId);
-		for (const frameId of forced) allowed.add(frameId);
 		return allowed;
-	}, [frameIds, rasters, failures, enteredFrameId, forced]);
+	}, [frameIds, rasters, dirty, enteredFrameId, forced]);
 
 	// 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
 	useEffect(() => {
