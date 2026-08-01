@@ -76,7 +76,9 @@ export function registerDesignTools(ctx: PluginContext): void {
 		},
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
-		timeoutMs: 30_000,
+		// 必须宽于画布侧那条链路（拉回活体的静置 + 30s 截图 + 落盘），否则工具会
+		// 抢在内层超时前失败，报出来的原因也就没了参考价值。
+		timeoutMs: 60_000,
 		handler: async ({ host, trigger }) => {
 			const controller = getCanvasController();
 			if (!controller) {

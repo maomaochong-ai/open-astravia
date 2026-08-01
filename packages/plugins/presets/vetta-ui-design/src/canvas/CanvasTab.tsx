@@ -12,7 +12,7 @@ import { findVetdFiles, sniffVetdKind } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
 import { BridgeHub } from "./bridge-client";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
-import { DesignCanvas } from "./DesignCanvas";
+import { DesignCanvas, type FrameCapture } from "./DesignCanvas";
 import { ThemePalette } from "./ThemePalette";
 
 type Phase =
@@ -36,6 +36,8 @@ export function CanvasTab() {
 	const [exporting, setExporting] = useState(false);
 	const [reloadNonce, setReloadNonce] = useState(0);
 	const bridgeRef = useRef(new BridgeHub());
+	/** 画布挂载后填入，见 DesignCanvas 的 captureRef。 */
+	const captureRef = useRef<FrameCapture | null>(null);
 
 	// 画布很吃宽度：每次激活本标签卡（切走会卸载，故每次都触发）把活动面板拉满，
 	// 用户之后仍可自行拖窄。
@@ -103,7 +105,12 @@ export function CanvasTab() {
 			setCanvasController({
 				session: nextSession,
 				port: server.port,
-				captureFrame: (frameId) => bridgeRef.current.capture(frameId),
+				captureFrame: (frameId) => {
+					const capture = captureRef.current;
+					// 画布还没挂上（引擎刚就绪那一瞬），直接说清楚，别让工具卡到超时。
+					if (!capture) return Promise.reject(new Error("design canvas is not rendered yet"));
+					return capture(frameId);
+				},
 				openDesign: (vetdPath) => {
 					setPendingDesignPath(vetdPath);
 					void refreshFiles().then(() => setSelectedPath(vetdPath));
@@ -256,7 +263,7 @@ export function CanvasTab() {
 				) : null}
 				{phase.kind === "ready" && session ? (
 					<>
-						<DesignCanvas session={session} port={phase.port} bridge={bridgeRef.current} />
+						<DesignCanvas session={session} port={phase.port} bridge={bridgeRef.current} captureRef={captureRef} />
 						{showPalette ? <ThemePalette session={session} /> : null}
 					</>
 				) : null}
