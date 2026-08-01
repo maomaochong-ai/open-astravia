@@ -5,7 +5,10 @@ export interface ModelsConfigData {
 		string,
 		{
 			baseUrl?: string;
+			/** `get` 仅返回 `***` 或外部引用；实际密钥只允许在 `set` 时短暂传入。 */
 			apiKey?: string;
+			/** 主进程凭据库中的不透明引用；renderer 只需原样保留。 */
+			credentialRef?: string;
 			api?: string;
 			headers?: Record<string, string>;
 			authHeader?: boolean;

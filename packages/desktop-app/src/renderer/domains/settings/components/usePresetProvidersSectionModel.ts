@@ -182,20 +182,17 @@ export function usePresetProvidersSectionModel({
 		});
 	}, [config.providers, expandedId, i18n.language, modelsErrors, openId, presets, refreshingId, t]);
 
-	const handleToggleEditor = useCallback(
-		(row: PresetProviderRow): void => {
-			if (row.isOpen) {
-				setOpenId(null);
-				return;
-			}
-			setOpenId(row.id);
-			setDraftKeys((prev) => ({
-				...prev,
-				[row.id]: prev[row.id] ?? config.providers[row.id]?.apiKey ?? "",
-			}));
-		},
-		[config.providers],
-	);
+	const handleToggleEditor = useCallback((row: PresetProviderRow): void => {
+		if (row.isOpen) {
+			setOpenId(null);
+			return;
+		}
+		setOpenId(row.id);
+		setDraftKeys((prev) => ({
+			...prev,
+			[row.id]: prev[row.id] ?? "",
+		}));
+	}, []);
 
 	const handleToggleExpanded = useCallback((row: PresetProviderRow): void => {
 		setExpandedId(row.isExpanded ? null : row.id);

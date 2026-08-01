@@ -6,6 +6,9 @@ import { getBuiltinSkillPaths } from "./builtin-skills.js";
 import { readDesktopConfig } from "./config/desktop-config-store.js";
 import { DEFAULT_SERVER_URL } from "./constants.js";
 import { getDesktopUserQuestionBroker } from "./conversations/user-question-broker.js";
+import { getAppLogger } from "./logger.js";
+import { getDesktopModelCredentialStore } from "./models/model-credential-store.js";
+import { readModelsConfigSync } from "./models/model-settings-service.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "./sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "./sandbox/windows-binary-resolver.js";
 
@@ -15,6 +18,7 @@ import { resolveWindowsSandboxHostBinary } from "./sandbox/windows-binary-resolv
 // 导致点击跳转走向 Welcome 页（见定时任务历史跳转 bug）。
 let sharedRuntime: RuntimeHost | null = null;
 let sharedModelRegistry: ModelRegistry | null = null;
+const runtimeLog = getAppLogger("runtime");
 
 /**
  * 直接从 settings.json 读 serverToken。
@@ -51,6 +55,11 @@ export function getOrCreateSharedModelRegistry(): ModelRegistry {
 	const agentDir = getAgentDir();
 	const authStorage = AuthStorage.create(join(agentDir, "auth.json"));
 	const modelsPath = join(agentDir, "models.json");
+	try {
+		getDesktopModelCredentialStore().syncToAuthStorage(authStorage, readModelsConfigSync().providers);
+	} catch (error) {
+		runtimeLog.warn("加载模型加密凭据失败:", error);
+	}
 	const registry = new ModelRegistry(authStorage, modelsPath);
 	registry.setServerUrl(DEFAULT_SERVER_URL);
 	registry.setServerToken(readServerTokenFromDisk());

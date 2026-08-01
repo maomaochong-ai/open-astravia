@@ -144,7 +144,7 @@ export function useModelsSettingsModel(): ModelsSettingsModel {
 		setSaving(true);
 		try {
 			await window.vetta.models.set(newConfig);
-			setConfig(newConfig);
+			setConfig(await window.vetta.models.get());
 		} finally {
 			setSaving(false);
 		}

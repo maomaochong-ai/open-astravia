@@ -419,7 +419,7 @@ export function registerFsIpc(): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_GET, async (): Promise<ModelsConfig> => {
-		return models.getConfig();
+		return models.getRendererConfig();
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_SET, async (_event, config: unknown) => {
