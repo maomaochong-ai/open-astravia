@@ -63,7 +63,7 @@ export default definePlugin({
 
 		/**
 		 * 设计画布是「工作」模式的能力（ADR-0046）。编程模式下把画布 Tab、导出用的
-		 * 全局插槽一起摘掉；tools 与 skill 各自声明 agent_mode 由宿主过滤。
+		 * 全局插槽、截图消息卡一起摘掉；tools 与 skill 各自声明 agent_mode 由宿主过滤。
 		 * 唯一跨模式保留的是 .vetd 文件预览——编程模式里仍可能点开一份设计稿看看。
 		 *
 		 * 不用清单里的插件级 agent_mode：那是硬闸，会连预览带 bundle 一起藏掉。
@@ -100,6 +100,13 @@ export default definePlugin({
 					// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
 					// 判断圆角/边框需要整窗口的预览面积。
 					ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog }),
+					ctx.ui.registerCardRenderer({
+						type: SCREENSHOT_CARD_TYPE,
+						component: ScreenshotCard,
+						title: "%card.screenshot.title%",
+						icon: <ScreenshotIcon />,
+						pendingFor: pendingScreenshotCard,
+					}),
 				];
 				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。
 				revealTabForCwd(latestCwd);
@@ -134,15 +141,8 @@ export default definePlugin({
 			}
 		});
 
+		// 跨模式唯一保留的能力：编程模式里也可能点开一份 .vetd 看看。
 		ctx.ui.registerFilePreview({ extensions: ["vetd"], component: VetdPreview });
-
-		ctx.ui.registerCardRenderer({
-			type: SCREENSHOT_CARD_TYPE,
-			component: ScreenshotCard,
-			title: "%card.screenshot.title%",
-			icon: <ScreenshotIcon />,
-			pendingFor: pendingScreenshotCard,
-		});
 
 		registerDesignTools(ctx);
 	},
