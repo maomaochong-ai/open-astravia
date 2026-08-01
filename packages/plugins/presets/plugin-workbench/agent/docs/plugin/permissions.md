@@ -53,7 +53,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `app.actions.register` | `ctx.appActions.register()`（注册声明） | [app-actions](./app-actions.md) |
 | `app.actionHandler.execute` | Action handler 被本地 Action RPC 调用时执行 | 同上 |
 | `fs.read` | `readDir` / `readFile` / `stat` / `listFilesRecursive` | [conversation-and-agent](./conversation-and-agent.md#文件-api) |
-| `fs.write` | `writeFile` / `rename` / `delete` / `move` / `createDirectory` | 同上 |
+| `fs.write` | `writeFile` / `rename` / `delete` / `move` / `createDirectory` / `saveAs` | 同上 |
 | `network.fetch` | `ctx.network.request` | [conversation-and-agent](./conversation-and-agent.md#网络-api) |
 | `storage.read` | `ctx.storage.readJson/list/readFile/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
 | `storage.write` | `ctx.storage.writeJson/writeFile/putBlob` | 同上 |

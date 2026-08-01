@@ -77,6 +77,19 @@ export default definePlugin({
 
 禁止：只 `catch (() => setError("失败"))` 且不传 `error`——用户与 agent 都无法拿到堆栈。
 
+## 复制图片到剪贴板 copyImage
+
+`ctx.ui.copyImage(dataUrl)` 把一张图写入系统剪贴板，**无需权限**（插件只能写自己已经渲染出来的东西）。
+
+```ts
+await ctx.ui.copyImage(canvas.toDataURL("image/png"));
+ctx.ui.notify({ message: "已复制到剪贴板", variant: "success" });
+```
+
+只接受 `data:image/...` 形式的 URL，其它值抛错。走宿主的**原生剪贴板**而不是渲染进程的 `navigator.clipboard.write`——后者对 `ClipboardItem` 的支持随平台而异。文本仍然直接用 `navigator.clipboard.writeText`。
+
+想让用户把图存成文件而不是贴走，用 [`ctx.fs.saveAs`](./conversation-and-agent.md#saveas另存为到用户选定的路径)。
+
 ## 全局浮层 registerGlobalSlot
 
 在 App 根部渲染一个组件（全局浮层 / 对话框 / 常驻 UI）。
