@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getContentNodeSize, parseContentAspectRatio } from "../src/domain/node-geometry";
+import { getContentNodeSize, parseContentAspectRatio } from "../src/node/geometry";
 
 describe("content node geometry", () => {
 	it("parses supported aspect ratio notation", () => {

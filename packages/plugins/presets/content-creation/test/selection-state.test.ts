@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reconcileSelectedNodeIds } from "../src/components/selection-state";
+import { reconcileSelectedNodeIds } from "../src/canvas/selection-state";
 
 describe("content canvas selection state", () => {
 	it("preserves the current reference for an equivalent React Flow selection", () => {

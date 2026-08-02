@@ -1,7 +1,7 @@
 import type { PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
 import { describe, expect, it } from "vitest";
-import { createContentProject } from "../src/domain/model";
-import { PluginContentProjectRepository } from "../src/runtime/project-repository";
+import { createContentProject } from "../src/project/types";
+import { PluginContentProjectRepository } from "../src/project/repository";
 
 function createFsHarness() {
 	const files = new Map<string, string>();

@@ -1,0 +1,103 @@
+/* React Flow chrome for the graph workspace.
+ * Component layout stays in Tailwind; this file only covers RF internals. */
+
+.content-creation-flow .react-flow__edge-path {
+	stroke: color-mix(in srgb, var(--primary) 55%, var(--muted-foreground));
+	stroke-width: 1.5;
+}
+
+.content-creation-flow .react-flow__edge.is-related .react-flow__edge-path {
+	stroke: var(--primary);
+	stroke-width: 2;
+}
+
+.content-creation-flow .react-flow__edge-interaction {
+	stroke-width: 28;
+}
+
+.content-creation-flow .react-flow__resize-control.handle {
+	width: 8px;
+	height: 8px;
+	border: 1.5px solid var(--background);
+	border-radius: 2px;
+	background: var(--primary);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+/* Zoom / fit controls (bottom-left): match vetta popover + button chrome */
+.content-creation-flow .react-flow__controls {
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+	border-radius: var(--radius-lg, 12px);
+	background: color-mix(in srgb, var(--popover) 94%, transparent);
+	box-shadow: 0 8px 24px color-mix(in srgb, black 12%, transparent);
+	backdrop-filter: blur(12px);
+}
+
+.content-creation-flow .react-flow__controls-button {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+	background: transparent;
+	color: var(--muted-foreground);
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__controls-button svg {
+	max-width: 14px;
+	max-height: 14px;
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__controls-button:hover {
+	background: var(--accent);
+	color: var(--foreground);
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__controls-button:last-child {
+	border-bottom: 0;
+}
+
+.content-creation-flow .react-flow__controls-button path {
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__attribution {
+	display: none;
+}
+
+/* Fallback circular handles (non-bookmark). Bookmark ports use ContentNodePort.css. */
+.content-creation-flow .react-flow__handle:not(.content-creation-port-handle) {
+	width: 24px;
+	height: 24px;
+	border: 0;
+	background: transparent;
+	box-shadow: none;
+}
+
+.content-creation-flow .react-flow__handle:not(.content-creation-port-handle)::after {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 10px;
+	height: 10px;
+	content: "";
+	border: 1.5px solid var(--background);
+	border-radius: 50%;
+	background: var(--primary);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent);
+	transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.content-creation-flow *,
+	.content-creation-flow *::before,
+	.content-creation-flow *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+	}
+}

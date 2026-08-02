@@ -1,0 +1,9 @@
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@source "../**/*.{ts,tsx}";
+
+/* Component / feature styles (React Flow internals + local animations). */
+@import "../canvas/GraphWorkspace.css";
+@import "../node/ContentNodePort.css";
+@import "../node/ContentNodeSurface.css";

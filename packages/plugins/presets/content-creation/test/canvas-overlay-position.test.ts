@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampCanvasOverlayPosition } from "../src/components/canvas-overlay-position";
+import { clampCanvasOverlayPosition } from "../src/canvas/overlay-position";
 
 describe("canvas overlay position", () => {
 	it("keeps a floating menu inside all canvas edges", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createContentProjectSyncKey } from "../src/components/flow-sync-key";
+import { createContentProjectSyncKey } from "../src/canvas/flow-sync-key";
 import type { ContentModelDescriptor } from "../src/generation/types";
 
 const project = {

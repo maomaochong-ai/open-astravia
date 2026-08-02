@@ -1,5 +1,5 @@
-import type { ContentNode, ContentProjectDocument } from "../domain/model";
-import type { ContentCreationWorkspace } from "../runtime/workspace";
+import type { ContentNode, ContentProjectDocument } from "../project/types";
+import type { ContentCreationWorkspace } from "../project/workspace";
 import type { ContentProviderRegistry } from "./provider-registry";
 import type { ContentArtifactStore, ContentModelDescriptor } from "./types";
 

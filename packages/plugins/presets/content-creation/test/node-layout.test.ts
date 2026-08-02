@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { ContentNode } from "../src/domain/model";
-import { alignContentNodes, layoutContentNodes } from "../src/domain/node-layout";
+import type { ContentNode } from "../src/project/types";
+import { alignContentNodes, layoutContentNodes } from "../src/node/layout";
 
 function node(id: string, x: number, y: number, width: number, height: number): ContentNode {
 	return { id, kind: "prompt", position: { x, y }, width, height, status: "idle", data: {} };

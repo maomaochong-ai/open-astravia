@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { CONTENT_NODE_DEFINITIONS } from "../src/domain/node-definitions";
-import { EmptyCanvasStarter, NodeDefinitionGrid } from "../src/components/NodeLibrary";
+import { CONTENT_NODE_DEFINITIONS } from "../src/node/definitions";
+import { EmptyCanvasStarter, NodeDefinitionGrid } from "../src/canvas/NodeLibrary";
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
 	useTranslation: () => ({ locale: "en", t: (key: string) => key }),

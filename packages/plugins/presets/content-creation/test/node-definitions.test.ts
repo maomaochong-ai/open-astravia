@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { listCompatibleNodeKinds, resolveContentConnection } from "../src/domain/connections";
+import { listCompatibleNodeKinds, resolveContentConnection } from "../src/node/connections";
 import {
 	CONTENT_NODE_DEFINITIONS,
 	createDefaultContentNodeData,
 	getContentNodeDefinition,
-} from "../src/domain/node-definitions";
-import { createContentProject, type ContentNode } from "../src/domain/model";
+} from "../src/node/definitions";
+import { createContentProject, type ContentNode } from "../src/project/types";
 
 function node(id: string, kind: ContentNode["kind"]): ContentNode {
 	return { id, kind, position: { x: 0, y: 0 }, status: "idle", data: createDefaultContentNodeData(kind) };

@@ -1,10 +1,10 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "@xyflow/react/dist/style.css";
-import "./style.css";
-import { registerContentCreationTools } from "./agent/register-tools";
-import { ContentCreationIcon } from "./components/icons";
-import { ContentCreationPanel } from "./components/ContentCreationPanel";
-import { initializePluginRuntime } from "./runtime/plugin-runtime";
+import "./styles/index.css";
+import { registerContentCreationTools } from "./plugin/register-tools";
+import { ContentCreationIcon } from "./shared/icons";
+import { ContentCreationPanel } from "./panel/ContentCreationPanel";
+import { initializePluginRuntime } from "./plugin/runtime";
 
 export default definePlugin({
 	activate(ctx) {

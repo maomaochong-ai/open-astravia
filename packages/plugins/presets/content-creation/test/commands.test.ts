@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyContentProjectCommands, ContentProjectCommandError } from "../src/domain/commands";
-import { createContentProject } from "../src/domain/model";
+import { applyContentProjectCommands, ContentProjectCommandError } from "../src/project/commands";
+import { createContentProject } from "../src/project/types";
 
 describe("applyContentProjectCommands", () => {
 	it("applies a command batch atomically and increments one revision", () => {

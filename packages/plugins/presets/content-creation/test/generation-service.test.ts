@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { createContentProject, type ContentProjectDocument } from "../src/domain/model";
+import { createContentProject, type ContentProjectDocument } from "../src/project/types";
 import { ContentGenerationService } from "../src/generation/generation-service";
 import { ContentProviderRegistry } from "../src/generation/provider-registry";
 import type { ContentArtifactStore, ContentProviderAdapter } from "../src/generation/types";
-import type { ContentProjectRepository } from "../src/runtime/project-repository";
-import { ContentCreationWorkspace } from "../src/runtime/workspace";
+import type { ContentProjectRepository } from "../src/project/repository";
+import { ContentCreationWorkspace } from "../src/project/workspace";
 
 describe("ContentGenerationService", () => {
 	it("runs a mocked provider and returns the stored artifact to the node", async () => {
