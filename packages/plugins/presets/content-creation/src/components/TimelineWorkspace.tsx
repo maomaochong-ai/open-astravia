@@ -41,20 +41,20 @@ export function TimelineWorkspace({ project }: { project: ContentProjectDocument
 	}, [duration, playing]);
 
 	return (
-		<div className="content-creation-timeline-workspace">
-			<section className="content-creation-preview">
-				<div className="content-creation-preview__screen">
+		<div className="flex h-full min-h-0 flex-col gap-3 bg-background p-3">
+			<section className="min-h-0 flex-1 overflow-hidden rounded-lg border border-border/70 bg-card">
+				<div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
 					<PlayIcon className="h-10 w-10" />
 					<p>{t("preview.placeholder")}</p>
 				</div>
 			</section>
-			<section className="content-creation-timeline">
-				<div className="content-creation-transport">
+			<section className="shrink-0 overflow-hidden rounded-lg border border-border/70 bg-card">
+				<div className="flex items-center gap-3 border-b border-border/60 px-3 py-2 text-xs text-muted-foreground">
 					<Button type="button" size="icon-sm" variant="ghost" title={t(playing ? "action.pause" : "action.play")} onClick={() => setPlaying((value) => !value)}>
 						{playing ? <PauseIcon /> : <PlayIcon />}
 					</Button>
 					<span>{playhead.toFixed(1)}s / {duration.toFixed(1)}s</span>
-					<input
+					<input className="min-w-0 flex-1 accent-primary"
 						type="range"
 						min={0}
 						max={duration}
@@ -64,29 +64,29 @@ export function TimelineWorkspace({ project }: { project: ContentProjectDocument
 						onChange={(event) => setPlayhead(Number(event.target.value))}
 					/>
 				</div>
-				<div className="content-creation-ruler">
+				<div className="grid grid-cols-[96px_1fr] border-b border-border/60 px-3 py-1 text-[10px] text-muted-foreground">
 					<span />
-					<div>{Array.from({ length: duration / 5 + 1 }, (_, index) => <span key={index}>{index * 5}s</span>)}</div>
+					<div className="flex justify-between">{Array.from({ length: duration / 5 + 1 }, (_, index) => <span key={index}>{index * 5}s</span>)}</div>
 				</div>
-				<div className="content-creation-tracks">
+				<div className="max-h-52 overflow-y-auto">
 					{project.timeline.tracks.map((track, index) => (
-						<div className="content-creation-track" key={track.id}>
-							<div className="content-creation-track__label">
+						<div className="grid grid-cols-[96px_1fr] border-b border-border/50" key={track.id}>
+							<div className="flex items-center justify-between gap-2 border-r border-border/50 px-3 py-3 text-xs">
 								<strong>{t(`track.kind.${track.kind}`)} {index + 1}</strong>
 								<span>{track.clips.length}</span>
 							</div>
-							<div className="content-creation-track__lane">
+							<div className="relative min-h-14 bg-muted/20">
 								{track.clips.map((clip) => (
 									<div
 										key={clip.id}
-										className="content-creation-clip"
+											className="absolute top-2 bottom-2 truncate rounded bg-primary/20 px-2 py-1 text-[10px] text-primary"
 										style={{ left: `${(clip.start / duration) * 100}%`, width: `${(clip.duration / duration) * 100}%` }}
 										title={`${clip.start.toFixed(1)}s – ${(clip.start + clip.duration).toFixed(1)}s`}
 									>
 										{clipTitle(project, clip, t("timeline.clip.untitled"))}
 									</div>
 								))}
-								<div className="content-creation-playhead" style={{ left: `${(playhead / duration) * 100}%` }} />
+								<div className="absolute inset-y-0 w-px bg-destructive" style={{ left: `${(playhead / duration) * 100}%` }} />
 							</div>
 						</div>
 					))}
@@ -95,4 +95,3 @@ export function TimelineWorkspace({ project }: { project: ContentProjectDocument
 		</div>
 	);
 }
-

@@ -27,6 +27,9 @@ export interface ContentNode {
 	id: string;
 	kind: ContentNodeKind;
 	position: CanvasPosition;
+	width?: number;
+	height?: number;
+	locked?: boolean;
 	status: ContentNodeStatus;
 	data: ContentNodeData;
 }

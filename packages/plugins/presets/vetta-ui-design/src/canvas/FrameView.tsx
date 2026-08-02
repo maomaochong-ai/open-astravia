@@ -23,6 +23,8 @@ interface FrameViewProps {
 	/** false 时 iframe 收成 display:none，改用 `raster` 位图显示。 */
 	live: boolean;
 	raster: string | null;
+	/** 变化时 iframe 的 URL 跟着变，强制它重新导航（刷新按钮走这条路）。 */
+	reloadNonce: number;
 	/** Live offset of the in-flight group move this frame takes part in. */
 	moveDelta: { dx: number; dy: number } | null;
 	activity: FrameActivity | undefined;
@@ -66,6 +68,7 @@ export function FrameView({
 	mounted,
 	live,
 	raster,
+	reloadNonce,
 	moveDelta,
 	activity,
 	renaming,
@@ -89,9 +92,10 @@ export function FrameView({
 	const [loaded, setLoaded] = useState(false);
 
 	// 卸载后再挂上是一个全新的 iframe，加载态要跟着重置，否则位图会提前撤掉。
+	// 刷新（reloadNonce 变化）同理：正在重新导航的这段时间该由位图盖住。
 	useEffect(() => {
-		if (!mounted) setLoaded(false);
-	}, [mounted]);
+		setLoaded(false);
+	}, [mounted, reloadNonce]);
 
 	// mounted 必须在依赖里：iframe 是按挂载节流条件渲染的，false→true 时这个
 	// effect 要重跑才能把真正的 iframe 注册进 bridge。漏了它的话，后挂上的 frame
@@ -263,7 +267,8 @@ export function FrameView({
 					<iframe
 						ref={iframeRef}
 						title={frame.title || frame.id}
-						src={`http://127.0.0.1:${port}/#/frame/${encodeURIComponent(frame.id)}`}
+						// nonce 放在查询串而不是 hash：改 hash 只会触发 hashchange，文档不会重新加载。
+						src={`http://127.0.0.1:${port}/?r=${reloadNonce}#/frame/${encodeURIComponent(frame.id)}`}
 						className="h-full w-full border-0"
 						style={{ pointerEvents: entered ? "auto" : "none", display: live ? "block" : "none" }}
 						onLoad={() => setLoaded(true)}

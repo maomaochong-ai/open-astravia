@@ -5,7 +5,7 @@
 - 内容生成通过可注册的 Provider Adapter 执行，React 组件不直接发送供应商请求。
 - 插件设置中声明为 `type: "secret"` 的值由宿主拆分到统一 `CredentialVault`，不再写入明文 `plugin-settings.json`。
 - 生产运行时使用真实 OpenAI 兼容图片接口；测试使用 Vitest 模拟 Provider、网络和 Artifact Store，不依赖真实密钥或计费服务。
-- 生成入口、模型选择、错误提示和结果预览位于右侧节点检查器；不增加节点属性浮窗。
+- 生成入口、模型选择、错误提示和结果预览绑定到选中的画布节点；不使用常驻右侧属性面板。
 - 时间线不参与当前生成流程。
 
 ## 凭据流
@@ -22,7 +22,7 @@
 ## 生成执行流
 
 ```text
-NodeInspector
+ContentNodeCard / NodeGenerationComposer
   -> ContentGenerationService
   -> ContentProviderRegistry
   -> ContentProviderAdapter

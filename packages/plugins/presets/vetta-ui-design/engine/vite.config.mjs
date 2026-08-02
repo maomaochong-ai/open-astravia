@@ -53,58 +53,92 @@ function vetdThemeSource() {
 }
 
 /**
- * Reload when a frame file is ADDED or REMOVED.
+ * Reload when a design source file is ADDED or REMOVED (anywhere under the
+ * design dir — frames/, components/, assets/, the root files).
  *
- * src/main.tsx collects frames with `import.meta.glob`, which vite only
- * re-evaluates when a create/delete event reaches its watcher. Design sources
- * live outside the vite root, and vite watches out-of-root files one at a time
- * as they are served (`ensureWatchedFile`) — a brand-new frame file is watched
- * by nobody, so the glob importer is never invalidated and every freshly loaded
- * iframe keeps getting the stale frame table ("Frame not found") until the
- * server restarts. Handing the directory to vite's own watcher does not help:
- * an `add()` during `configureServer` is dropped (it only takes effect once
- * `listen()` has resolved, which no plugin hook lines up with).
+ * Design sources live OUTSIDE the vite root, and vite watches out-of-root files
+ * one at a time as they are served (`ensureWatchedFile`). A brand-new file is
+ * therefore watched by nobody, and two things go stale at once:
  *
- * So watch the directory directly and invalidate by hand. Only the frame SET
- * matters here: edits keep flowing through vite's normal HMR untouched.
+ * - src/main.tsx collects frames with `import.meta.glob`, which vite only
+ *   re-evaluates when a create/delete event reaches its watcher. Without one,
+ *   every freshly loaded iframe keeps getting the stale frame table
+ *   ("Frame not found") until the server restarts.
+ * - src/styles.css rescans the whole `@source` dir on every re-transform, but
+ *   nothing asks it to re-transform: no HMR update ever names the stylesheet.
+ *   The new file then renders against a stylesheet that predates it — every
+ *   utility class only that file introduces is missing, which reads as a
+ *   scrambled layout until the server restarts.
+ *
+ * Handing the directory to vite's own watcher does not help: an `add()` during
+ * `configureServer` is dropped (it only takes effect once `listen()` has
+ * resolved, which no plugin hook lines up with). So watch the directory
+ * directly and invalidate by hand.
+ *
+ * Only the file SET matters here: edits keep flowing through vite's normal HMR
+ * untouched, and that path already rebuilds the stylesheet.
  */
-function vetdWatchFrames() {
-	const framesDir = `${designRootPosix}/frames`;
+function vetdWatchDesign() {
 	const mainId = `${engineRoot.replaceAll("\\", "/")}/src/main.tsx`;
-	const listFrames = () => {
+	const stylesId = `${engineRoot.replaceAll("\\", "/")}/src/styles.css`;
+	/**
+	 * Dot-prefixed entries are skipped on purpose: `.snapshots/` is written on
+	 * every canvas capture, and reloading on it would loop capture ↔ reload.
+	 */
+	const listSources = (dir, prefix, out) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			if (entry.name.startsWith(".")) continue;
+			const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+			if (entry.isDirectory()) listSources(`${dir}/${entry.name}`, rel, out);
+			else out.push(rel);
+		}
+		return out;
+	};
+	const snapshot = () => {
 		try {
-			return readdirSync(framesDir)
-				.filter((name) => name.endsWith(".tsx"))
-				.sort()
-				.join("\n");
+			return listSources(designRoot, "", []).sort().join("\n");
 		} catch {
 			return "";
 		}
 	};
+	const framesOf = (list) =>
+		list
+			.split("\n")
+			.filter((rel) => rel.startsWith("frames/") && rel.endsWith(".tsx"))
+			.join("\n");
 	return {
-		name: "vetd-watch-frames",
+		name: "vetd-watch-design",
 		apply: "serve",
 		configureServer(server) {
-			let known = listFrames();
+			let known = snapshot();
 			let timer = null;
 			let watcher;
 			try {
-				watcher = watch(framesDir, () => {
+				watcher = watch(designRoot, { recursive: true }, (_event, filename) => {
+					// Skip the noisy dirs before touching the disk (see listSources).
+					if (filename && filename.replaceAll("\\", "/").split("/").some((seg) => seg.startsWith("."))) return;
 					// fs.watch fires several times per write; settle first, then diff.
 					if (timer) clearTimeout(timer);
 					timer = setTimeout(() => {
 						timer = null;
-						const next = listFrames();
+						const next = snapshot();
 						if (next === known) return;
+						const framesChanged = framesOf(next) !== framesOf(known);
 						known = next;
 						const environment = server.environments.client;
-						const mod = environment.moduleGraph.getModuleById(mainId);
-						if (mod) environment.moduleGraph.invalidateModule(mod);
+						if (framesChanged) {
+							const mod = environment.moduleGraph.getModuleById(mainId);
+							if (mod) environment.moduleGraph.invalidateModule(mod);
+						}
+						// ?direct / ?inline variants each get their own module node.
+						for (const cssMod of environment.moduleGraph.getModulesByFile(stylesId) ?? []) {
+							environment.moduleGraph.invalidateModule(cssMod);
+						}
 						environment.hot.send({ type: "full-reload", path: "*" });
 					}, 60);
 				});
 			} catch {
-				return; // no frames dir yet: the design was just scaffolded, server restarts with it
+				return; // no design dir yet: it was just scaffolded, the server restarts with it
 			}
 			server.httpServer?.once("close", () => {
 				if (timer) clearTimeout(timer);
@@ -118,7 +152,7 @@ export default defineConfig(({ command }) => ({
 	plugins: [
 		react(command === "serve" ? { babel: { plugins: [vetdSourceAttr] } } : {}),
 		vetdThemeSource(),
-		vetdWatchFrames(),
+		vetdWatchDesign(),
 		tailwindcss(),
 	],
 	resolve: {

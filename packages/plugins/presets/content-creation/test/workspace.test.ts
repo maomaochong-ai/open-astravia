@@ -59,4 +59,17 @@ describe("ContentCreationWorkspace", () => {
 		expect(workspace.getSnapshot("C:/alpha")?.graph.nodes).toHaveLength(1);
 		expect(workspace.getSnapshot("C:/beta")?.graph.nodes).toHaveLength(0);
 	});
+
+	it("persists default and manually resized canvas dimensions", async () => {
+		const workspace = new ContentCreationWorkspace(createMemoryRepository());
+		await workspace.dispatch("C:/project", [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 20, y: 30 } } },
+		]);
+		await workspace.dispatch("C:/project", [
+			{ type: "node.resize", nodeId: "image", position: { x: 10, y: 15 }, width: 640, height: 640 },
+		]);
+
+		const node = workspace.getSnapshot("C:/project")?.graph.nodes[0];
+		expect(node).toMatchObject({ position: { x: 10, y: 15 }, width: 640, height: 640 });
+	});
 });

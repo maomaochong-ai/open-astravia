@@ -15,9 +15,9 @@ export function ConnectionCreateMenu({ left, top, kinds, onSelect }: ConnectionC
 	const definitions = CONTENT_NODE_DEFINITIONS.filter((definition) => kinds.includes(definition.kind));
 
 	return (
-		<div className="content-creation-connection-menu" style={{ left, top }}>
-			<strong>{t("connectionMenu.title")}</strong>
-			<p>{t("connectionMenu.description")}</p>
+		<div className="absolute z-50 w-[320px] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl" style={{ left, top }}>
+			<div className="border-b border-border/60 px-3 py-2 text-sm font-semibold">{t("connectionMenu.title")}</div>
+			<p className="px-3 pt-2 text-xs text-muted-foreground">{t("connectionMenu.description")}</p>
 			<NodeDefinitionGrid definitions={definitions} onSelect={onSelect} />
 		</div>
 	);

@@ -55,10 +55,20 @@ export interface FrameRasterState {
 	 */
 	runLive<T>(frameId: string, run: () => Promise<T>): Promise<T>;
 	/**
-	 * 把所有 frame 重新排队：全部重新挂载、加载最新代码、渲染、重截。
-	 * 供顶部的刷新按钮兜底——热更新链路万一没生效，用户有手动出路。
+	 * 把所有 frame 重新排队重截。共享资源（theme.css、components/*）改动时用它：
+	 * 位图化的 frame 会重新挂载并加载新代码，还挂着的 frame 走 HMR，不打断检查态。
 	 */
 	refreshAll(): void;
+	/**
+	 * 顶部刷新按钮：在 refreshAll 之上，额外强制每个 iframe 重新导航。
+	 *
+	 * 只标脏是不够的——标脏只影响挂载窗口，此刻已经挂着的 iframe（选中的那个、还在
+	 * 截图队列里的那些）DOM 节点不变、src 不变，浏览器不会重新加载，文档还是旧的。
+	 * 这正是「刷新按钮点了没反应」。按钮是热更新失效时的兜底出路，必须真的重载。
+	 */
+	reloadAll(): void;
+	/** reloadAll 自增，由 FrameView 拼进 iframe 的 URL 以触发重新导航。 */
+	reloadNonce: number;
 }
 
 /** 等 React 提交 + 浏览器完成一次布局与绘制。 */
@@ -78,6 +88,7 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 	const [failures, setFailures] = useState<ReadonlyMap<string, string>>(new Map());
 	const capturingRef = useRef<string | null>(null);
 	const timerRef = useRef<number | null>(null);
+	const [reloadNonce, setReloadNonce] = useState(0);
 
 	const invalidate = useCallback((frameId: string): void => {
 		setDirty((current) => {
@@ -93,6 +104,11 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 		setFailures(new Map());
 		setDirty(new Set(frameIds));
 	}, [frameIds]);
+
+	const reloadAll = useCallback((): void => {
+		refreshAll();
+		setReloadNonce((current) => current + 1);
+	}, [refreshAll]);
 
 	/**
 	 * 只有「还需要活体」的 frame 才挂 iframe：当前在操作的那个（选中/检查态）、
@@ -209,5 +225,7 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 		invalidate,
 		runLive,
 		refreshAll,
+		reloadAll,
+		reloadNonce,
 	};
 }

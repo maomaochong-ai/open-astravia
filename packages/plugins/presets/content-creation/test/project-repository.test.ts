@@ -21,6 +21,7 @@ function createFsHarness() {
 			directories.push(path);
 		},
 		listFilesRecursive: async () => [],
+		saveAs: async () => null,
 		watchDirectory: () => ({ dispose: () => undefined }),
 	};
 	return { fs, files, directories };
