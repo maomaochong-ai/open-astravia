@@ -177,7 +177,7 @@
 
 .content-creation-node-library__popover.is-contextual {
 	bottom: auto;
-	transform: translate(10px, 10px);
+	transform: none;
 }
 
 .content-creation-node-library__header {
@@ -328,7 +328,7 @@
 }
 
 .content-creation-connection-menu {
-	transform: translate(8px, 8px);
+	transform: none;
 }
 
 .content-creation-flow {
@@ -356,6 +356,10 @@
 	box-shadow: 0 16px 38px color-mix(in srgb, black 13%, transparent);
 }
 
+.content-creation-node.is-locked {
+	background-image: linear-gradient(135deg, transparent 0 92%, color-mix(in srgb, var(--muted-foreground) 20%, transparent) 92% 100%);
+}
+
 .content-creation-node.is-generation {
 	border-top-color: color-mix(in srgb, var(--primary) 65%, var(--border));
 }
@@ -378,10 +382,14 @@
 	padding: 3px;
 }
 
-.content-creation-node-toolbar > span {
+.content-creation-node-toolbar > input {
 	max-width: 180px;
 	overflow: hidden;
+	border: 0;
+	outline: none;
+	background: transparent;
 	padding: 0 6px;
+	color: var(--foreground);
 	font-size: 10px;
 	font-weight: 600;
 	text-overflow: ellipsis;
@@ -402,6 +410,85 @@
 
 .content-creation-node-toolbar button:hover {
 	background: var(--accent);
+}
+
+.content-creation-selection-toolbar {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--popover) 94%, transparent);
+	box-shadow: 0 12px 32px color-mix(in srgb, black 16%, transparent);
+	padding: 4px;
+	backdrop-filter: blur(16px);
+}
+
+.content-creation-selection-toolbar > span {
+	padding: 0 6px;
+	color: var(--muted-foreground);
+	font-size: 10px;
+	white-space: nowrap;
+}
+
+.content-creation-selection-toolbar button,
+.content-creation-selection-toolbar select {
+	height: 28px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	padding: 0 7px;
+	color: var(--foreground);
+	font-size: 10px;
+	cursor: pointer;
+}
+
+.content-creation-selection-toolbar button:hover,
+.content-creation-selection-toolbar select:hover {
+	background: var(--accent);
+}
+
+.content-creation-selection-toolbar button svg {
+	width: 15px;
+	height: 15px;
+}
+
+.content-creation-context-menu {
+	position: absolute;
+	z-index: 30;
+	display: flex;
+	width: 190px;
+	flex-direction: column;
+	gap: 2px;
+	border: 1px solid var(--border);
+	border-radius: 12px;
+	background: var(--popover);
+	box-shadow: 0 12px 32px color-mix(in srgb, black 18%, transparent);
+	padding: 5px;
+}
+
+.content-creation-context-menu button {
+	display: flex;
+	width: 100%;
+	align-items: center;
+	gap: 8px;
+	border: 0;
+	border-radius: 8px;
+	background: transparent;
+	padding: 7px 8px;
+	color: var(--popover-foreground);
+	font-size: 11px;
+	text-align: left;
+	cursor: pointer;
+}
+
+.content-creation-context-menu button:hover {
+	background: var(--accent);
+}
+
+.content-creation-context-menu svg {
+	width: 15px;
+	height: 15px;
 }
 
 .content-creation-port {
@@ -532,6 +619,33 @@
 	background-size: 220% 100%;
 	animation: content-creation-shimmer 1.5s linear infinite;
 	pointer-events: none;
+}
+
+.content-creation-node-surface__progress > span {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	border-radius: 7px;
+	background: color-mix(in srgb, black 58%, transparent);
+	padding: 4px 7px;
+	color: white;
+	font-size: 10px;
+	backdrop-filter: blur(8px);
+}
+
+.content-creation-node-surface__failure {
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	max-width: calc(100% - 16px);
+	overflow: hidden;
+	border-radius: 7px;
+	background: color-mix(in srgb, var(--destructive) 88%, transparent);
+	padding: 4px 7px;
+	color: var(--destructive-foreground);
+	font-size: 10px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 @keyframes content-creation-shimmer {
@@ -688,10 +802,23 @@
 }
 
 .content-creation-flow .react-flow__handle {
+	width: 24px;
+	height: 24px;
+	border: 0;
+	background: transparent;
+}
+
+.content-creation-flow .react-flow__handle::after {
+	position: absolute;
+	top: 50%;
+	left: 50%;
 	width: 9px;
 	height: 9px;
+	transform: translate(-50%, -50%);
 	border: 1px solid var(--background);
+	border-radius: 50%;
 	background: var(--primary);
+	content: "";
 }
 
 .content-creation-flow .react-flow__edge-path {
@@ -702,6 +829,25 @@
 .content-creation-flow .react-flow__edge.is-related .react-flow__edge-path {
 	stroke: var(--primary);
 	stroke-width: 1.8;
+}
+
+.content-creation-flow .react-flow__edge-interaction {
+	stroke-width: 28px;
+}
+
+.content-creation-alignment-guide {
+	pointer-events: none;
+	position: absolute;
+	z-index: 50;
+	background: color-mix(in srgb, var(--primary) 88%, transparent);
+}
+
+.content-creation-alignment-guide.is-vertical {
+	width: 1px;
+}
+
+.content-creation-alignment-guide.is-horizontal {
+	height: 1px;
 }
 
 .content-creation-flow .react-flow__controls,

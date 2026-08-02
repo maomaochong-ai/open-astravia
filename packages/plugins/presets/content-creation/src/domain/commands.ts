@@ -25,6 +25,7 @@ export type ContentProjectCommand =
 	| { type: "node.update"; nodeId: string; data: ContentNode["data"] }
 	| { type: "node.move"; nodeId: string; position: CanvasPosition }
 	| { type: "node.resize"; nodeId: string; width: number; height: number; position?: CanvasPosition }
+	| { type: "node.lock"; nodeId: string; locked: boolean }
 	| { type: "node.duplicate"; nodeId: string; position?: CanvasPosition }
 	| { type: "node.delete"; nodeId: string }
 	| { type: "edge.connect"; source: string; target: string; sourceHandle?: string; targetHandle?: string }
@@ -111,18 +112,25 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 		}
 		case "node.move": {
 			assertPosition(command.position);
-			findNode(project, command.nodeId).position = command.position;
+			const node = findNode(project, command.nodeId);
+			if (node.locked) throw new ContentProjectCommandError(`node is locked: ${command.nodeId}`);
+			node.position = command.position;
 			return;
 		}
 		case "node.resize": {
 			assertNodeSize(command.width, command.height);
 			const node = findNode(project, command.nodeId);
+			if (node.locked) throw new ContentProjectCommandError(`node is locked: ${command.nodeId}`);
 			node.width = command.width;
 			node.height = command.height;
 			if (command.position) {
 				assertPosition(command.position);
 				node.position = command.position;
 			}
+			return;
+		}
+		case "node.lock": {
+			findNode(project, command.nodeId).locked = command.locked;
 			return;
 		}
 		case "node.duplicate": {
@@ -133,6 +141,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				...structuredClone(source),
 				id: crypto.randomUUID(),
 				position,
+				locked: false,
 				status: "idle",
 			});
 			return;

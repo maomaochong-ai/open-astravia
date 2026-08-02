@@ -22,7 +22,7 @@
 ## 生成执行流
 
 ```text
-ContentNodeCard / NodeInlineEditor
+ContentNodeCard / NodeGenerationComposer
   -> ContentGenerationService
   -> ContentProviderRegistry
   -> ContentProviderAdapter

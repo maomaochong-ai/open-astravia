@@ -29,6 +29,7 @@ export interface ContentNode {
 	position: CanvasPosition;
 	width?: number;
 	height?: number;
+	locked?: boolean;
 	status: ContentNodeStatus;
 	data: ContentNodeData;
 }

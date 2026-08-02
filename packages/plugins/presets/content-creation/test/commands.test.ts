@@ -72,6 +72,22 @@ describe("applyContentProjectCommands", () => {
 		expect(next.graph.nodes[1]?.data).not.toBe(project.graph.nodes[0]?.data);
 	});
 
+	it("locks node geometry until the node is unlocked", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "node", kind: "prompt", position: { x: 10, y: 20 } } },
+			{ type: "node.lock", nodeId: "node", locked: true },
+		]);
+
+		expect(() =>
+			applyContentProjectCommands(project, [{ type: "node.move", nodeId: "node", position: { x: 40, y: 50 } }]),
+		).toThrow(ContentProjectCommandError);
+		const unlocked = applyContentProjectCommands(project, [{ type: "node.lock", nodeId: "node", locked: false }]);
+		const moved = applyContentProjectCommands(unlocked, [
+			{ type: "node.move", nodeId: "node", position: { x: 40, y: 50 } },
+		]);
+		expect(moved.graph.nodes[0]).toMatchObject({ locked: false, position: { x: 40, y: 50 } });
+	});
+
 	it("removes dependent edges and timeline clips with a node", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "source", kind: "video-generator", position: { x: 0, y: 0 } } },

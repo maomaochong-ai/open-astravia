@@ -1,6 +1,6 @@
 import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ContentProjectCommand } from "../domain/commands";
 import type { ContentProjectDocument } from "../domain/model";
 import {
@@ -19,15 +19,14 @@ export function ContentCreationPanel() {
 	const { t } = useTranslation();
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
 	const [mode, setMode] = useState<WorkspaceMode>("graph");
-	const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const workspace = getContentCreationWorkspace();
 	const generation = getContentGenerationService();
+	const models = useMemo(() => generation.listModels(), [generation]);
 
 	useEffect(() => {
 		let active = true;
 		setProject(workspace.getSnapshot(cwd));
-		setSelectedNodeId(null);
 		setError(null);
 		const unsubscribe = workspace.subscribe(cwd, () => {
 			if (active) setProject(workspace.getSnapshot(cwd));
@@ -97,9 +96,7 @@ export function ContentCreationPanel() {
 				{mode === "graph" ? (
 					<GraphWorkspace
 						project={project}
-						selectedNodeId={selectedNodeId}
-						models={generation.listModels()}
-						onSelectNode={setSelectedNodeId}
+						models={models}
 						onDispatch={dispatch}
 						onRunNode={runNode}
 					/>

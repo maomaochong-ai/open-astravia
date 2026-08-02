@@ -149,7 +149,7 @@ export function NodeGenerationComposer({
 			<div className="content-creation-node-composer__actions" onMouseDown={(event) => event.preventDefault()}>
 				{isGenerator ? (
 					<Button type="button" size="sm" variant="primary" disabled={!canGenerate} onClick={submit}>
-						{isRunning ? t("action.generating") : t("action.generate")}
+						{isRunning ? t("action.generating") : hasGenerationError ? t("action.retry") : t("action.generate")}
 					</Button>
 				) : null}
 				{onAddToTimeline && data.assetId ? (
