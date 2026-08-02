@@ -198,6 +198,7 @@
 		"agentSessionRead": "读取 Agent 会话",
 		"agentSessionWrite": "修改 Agent 会话",
 		"agentCommandRun": "执行 Agent 命令",
+		"agentCommandSpawn": "运行长驻后台进程",
 		"agentSystemPromptRead": "读取 Agent 系统提示词",
 		"agentSystemPromptWrite": "修改 Agent 系统提示词",
 		"agentSystemPromptFullControl": "完全控制 Agent 系统提示词",

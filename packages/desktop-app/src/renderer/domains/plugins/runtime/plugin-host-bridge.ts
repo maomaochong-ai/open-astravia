@@ -147,7 +147,14 @@ function translate(event: SessionEvent): void {
 			});
 			return;
 		case "tool.start":
-			emit({ type: "tool-call-start", toolCallId: event.toolCallId, toolName: event.toolName });
+			emit({
+				type: "tool-call-start",
+				toolCallId: event.toolCallId,
+				toolName: event.toolName,
+				// 透传工具入参（如 Edit/Write 的目标路径），供插件做「修改中」等
+				// 定向 UI；与消息文本同属 agent.session.read 的可见面。
+				args: (event.args as Record<string, unknown>) ?? undefined,
+			});
 			return;
 		case "tool.end":
 			emit({

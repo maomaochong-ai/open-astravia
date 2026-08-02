@@ -159,6 +159,10 @@ export type {
 export type {
 	PluginCommandRunOptions,
 	PluginCommandRunResult,
+	PluginCommandSpawnOptions,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnStatus,
+	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
 export type { PluginImageRef } from "./images.js";

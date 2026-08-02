@@ -3,6 +3,7 @@
   "tenants": {
     "common": [
 		"vetta-actions",
+      "vetta-ui-design",
       "image-gen",
       "media-viewer",
       "office-viewer",

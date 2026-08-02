@@ -73,6 +73,7 @@ export type PluginPermission =
 	| "agent.session.read"
 	| "agent.session.write"
 	| "agent.command.run"
+	| "agent.command.spawn"
 	| "agent.systemPrompt.read"
 	| "agent.systemPrompt.write"
 	| "agent.systemPrompt.fullControl"
@@ -706,6 +707,19 @@ export interface DesktopPluginsApi {
 		args?: string[],
 		options?: PluginCommandRunOptions,
 	): Promise<PluginCommandRunResult>;
+	/** Start an allowed long-lived command (ADR-0054). No shell; own process group. */
+	spawnCommand(
+		pluginId: string,
+		file: string,
+		args?: string[],
+		options?: PluginCommandSpawnOptions,
+	): Promise<PluginCommandSpawnResult>;
+	/** SIGTERM the spawned process tree (SIGKILL after a grace period). */
+	stopCommandSpawn(pluginId: string, spawnId: string): Promise<void>;
+	/** Liveness, port and recent output for a spawn started by this plugin. */
+	getCommandSpawnStatus(pluginId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
+	/** Subscribe to spawn exit events (all plugins; filter by pluginId/spawnId). */
+	onCommandSpawnExit(handler: (event: PluginCommandSpawnExitEvent) => void): () => void;
 	reload(id: string): Promise<InstalledPlugin>;
 	/**
 	 * 开启 dev 热更新：把插件 dev 链接到 projectDir（资源改从工程 dist 加载），
@@ -828,6 +842,39 @@ export interface PluginCommandRunResult {
 	stdout: string;
 	stderr: string;
 	exitCode: number | null;
+}
+
+export interface PluginCommandSpawnOptions {
+	cwd?: string;
+	env?: Record<string, string>;
+	/** Host allocates a free port and substitutes `{{PORT}}` in args/env values. */
+	allocatePort?: boolean;
+}
+
+export interface PluginCommandSpawnResult {
+	spawnId: string;
+	pid: number;
+	/** Present when `allocatePort` was requested. */
+	port?: number;
+}
+
+export interface PluginCommandSpawnExit {
+	exitCode: number | null;
+	signal: string | null;
+}
+
+export interface PluginCommandSpawnStatus {
+	running: boolean;
+	pid: number;
+	port?: number;
+	exit?: PluginCommandSpawnExit;
+	/** Ring-buffered combined stdout+stderr tail (~64KB). */
+	recentOutput: string;
+}
+
+export interface PluginCommandSpawnExitEvent extends PluginCommandSpawnExit {
+	pluginId: string;
+	spawnId: string;
 }
 
 import type { FsEntry, FsFileRef, FsStatResult } from "../fs-types.js";
