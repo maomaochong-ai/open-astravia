@@ -190,9 +190,11 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		invalidate: invalidateRaster,
 		runLive,
 		refreshAll,
+		reloadAll,
+		reloadNonce,
 	} = useFrameRasters({ bridge, frameIds: orderedFrameIds, activeFrameId });
 
-	refreshRef.current = refreshAll;
+	refreshRef.current = reloadAll;
 
 	/**
 	 * 位图化后 iframe 会被卸掉，也就收不到 HMR 了；agent 改完代码画布必须自己发现。
@@ -744,6 +746,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						mounted={isMounted(frame.id)}
 						live={isLive(frame.id)}
 						raster={rasterOf(frame.id)}
+						reloadNonce={reloadNonce}
 						moveDelta={moveRef.current?.origins.has(frame.id) ? moveDelta : null}
 						activity={activity.get(frame.id)}
 						renaming={renamingId === frame.id}
