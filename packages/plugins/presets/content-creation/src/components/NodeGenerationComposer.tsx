@@ -32,10 +32,10 @@ function PropertyEditor({ property, value, providerId, models, onChange, onModel
 	};
 
 	return (
-		<label className={`content-creation-node-composer__field is-${property.editor}`}>
-			<span>{t(property.labelKey)}</span>
+		<label className="flex min-w-0 flex-1 flex-col gap-1 text-[10px] text-muted-foreground">
+			<span className="font-medium">{t(property.labelKey)}</span>
 			{property.editor === "model" ? (
-				<select
+					<select className="h-7 rounded border border-border bg-background px-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-ring"
 					value={providerId && value ? `${providerId}\u0000${value}` : ""}
 					onChange={(event) => {
 						const model = models.find(
@@ -53,20 +53,20 @@ function PropertyEditor({ property, value, providerId, models, onChange, onModel
 					))}
 				</select>
 			) : property.editor === "textarea" ? (
-				<textarea
+					<textarea className="min-h-[72px] resize-y rounded border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none focus:ring-1 focus:ring-ring"
 					{...common}
 					rows={3}
 					placeholder={property.placeholderKey ? t(property.placeholderKey) : undefined}
 					onKeyDown={handlePromptKeyDown}
 				/>
 			) : property.editor === "select" ? (
-				<select {...common}>
+				<select className="h-7 rounded border border-border bg-background px-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-ring" {...common}>
 					{property.options?.map((option) => (
 						<option key={option.value} value={option.value}>{t(option.labelKey)}</option>
 					))}
 				</select>
 			) : (
-				<input
+				<input className="h-7 rounded border border-border bg-background px-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-ring"
 					{...common}
 					type={property.editor === "number" ? "number" : "text"}
 					min={property.min}
@@ -118,11 +118,11 @@ export function NodeGenerationComposer({
 
 	return (
 		<div
-			className={`content-creation-node-composer nodrag nowheel is-${kind}`}
+			className="w-[min(520px,calc(100vw-32px))] rounded-lg border border-border bg-popover p-2 text-popover-foreground shadow-xl nodrag nowheel"
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
 		>
-			<div className="content-creation-node-composer__fields">
+			<div className="flex flex-wrap gap-2">
 				{properties.map((property) => (
 					<PropertyEditor
 						key={property.key}
@@ -145,8 +145,8 @@ export function NodeGenerationComposer({
 					/>
 				))}
 			</div>
-			{hasGenerationError ? <p className="content-creation-node-composer__error">{t("error.generate")}</p> : null}
-			<div className="content-creation-node-composer__actions" onMouseDown={(event) => event.preventDefault()}>
+			{hasGenerationError ? <p className="px-1 py-1 text-xs text-destructive">{t("error.generate")}</p> : null}
+			<div className="flex items-center justify-end gap-2 pt-1" onMouseDown={(event) => event.preventDefault()}>
 				{isGenerator ? (
 					<Button type="button" size="sm" variant="primary" disabled={!canGenerate} onClick={submit}>
 						{isRunning ? t("action.generating") : hasGenerationError ? t("action.retry") : t("action.generate")}

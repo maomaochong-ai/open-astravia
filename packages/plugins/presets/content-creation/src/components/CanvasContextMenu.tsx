@@ -13,8 +13,8 @@ interface NodeCanvasContextMenuProps {
 
 function ContextAction({ label, icon, onSelect }: { label: string; icon: ReactNode; onSelect: () => void }) {
 	return (
-		<button type="button" onClick={onSelect}>
-			{icon}
+		<button type="button" className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-accent" onClick={onSelect}>
+			<span className="h-4 w-4">{icon}</span>
 			<span>{label}</span>
 		</button>
 	);
@@ -31,7 +31,7 @@ export function NodeCanvasContextMenu({
 	const { t } = useTranslation();
 	return (
 		<div
-			className="content-creation-context-menu nodrag nowheel"
+			className="absolute z-50 min-w-[190px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-xl nodrag nowheel"
 			style={{ left, top }}
 			onPointerDown={(event) => event.stopPropagation()}
 		>
@@ -56,7 +56,7 @@ export function EdgeCanvasContextMenu({ left, top, onDelete }: EdgeCanvasContext
 	const { t } = useTranslation();
 	return (
 		<div
-			className="content-creation-context-menu nodrag nowheel"
+			className="absolute z-50 min-w-[190px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-xl nodrag nowheel"
 			style={{ left, top }}
 			onPointerDown={(event) => event.stopPropagation()}
 		>

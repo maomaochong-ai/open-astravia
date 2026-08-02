@@ -1,10 +1,8 @@
 import {
-	Background,
 	type Connection,
 	Controls,
 	type Edge,
 	type FinalConnectionState,
-	MiniMap,
 	type NodeTypes,
 	ReactFlow,
 	type ReactFlowInstance,
@@ -298,8 +296,8 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 	);
 
 	return (
-		<div className="content-creation-graph">
-			<div ref={flowContainerRef} className="content-creation-flow">
+		<div className="flex h-full min-h-0 min-w-0 flex-col">
+			<div ref={flowContainerRef} className="relative min-h-0 flex-1 overflow-hidden bg-background">
 				<ContentCanvasSelectionProvider count={activeSelectedNodeIds.length}>
 					<ReactFlow<ContentFlowNode, Edge>
 						defaultNodes={synchronizedNodes}
@@ -307,6 +305,8 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 						nodeTypes={nodeTypes}
 						defaultEdgeOptions={{ interactionWidth: 28 }}
 						deleteKeyCode={null}
+						onlyRenderVisibleElements
+						proOptions={{ hideAttribution: true }}
 						onInit={(instance) => {
 							flowInstanceRef.current = instance;
 						}}
@@ -384,8 +384,6 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 						}}
 						fitView
 					>
-						<Background gap={24} size={1} />
-						<MiniMap pannable zoomable />
 						<Controls />
 						<SelectionToolbar
 							nodeIds={activeSelectedNodeIds}

@@ -13,12 +13,11 @@ describe("ContentNodeSurface", () => {
 				kind="image-generator"
 				status="idle"
 				data={{ aspectRatio: "1:1" }}
-				title="Image"
 				descriptionKey="node.description.image-generator"
 			/>,
 		);
 
-		expect(markup).toContain("content-creation-node-surface__placeholder");
+		expect(markup).toContain("min-h-[112px]");
 		expect(markup).toContain("node.description.image-generator");
 	});
 
@@ -28,7 +27,6 @@ describe("ContentNodeSurface", () => {
 				kind="image-generator"
 				status="succeeded"
 				data={{ assetId: "asset" }}
-				title="Result"
 				descriptionKey="node.description.image-generator"
 				assetUrl="data:image/png;base64,AA=="
 				assetKind="image"

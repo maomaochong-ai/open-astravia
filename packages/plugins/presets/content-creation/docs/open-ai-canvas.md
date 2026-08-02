@@ -11,7 +11,7 @@ Open-AI Canvas 是四个参考项目中最接近“内容创作工作台”的�
 - 本地仓库：`C:\develop\github\open-ai-canvas`
 - 分析提交：`14cfdbe`
 - 许可证：AGPL-3.0，因此只参考产品与架构，不复用实现代码或资产。
-- 已核对界面：`assets/huabu-info.png`
+- 本轮仅核对画布节点、连接、覆盖层与渲染模型源码，不使用项目图像作为分析依据。
 - 排除：时间线与最终剪辑编排。
 
 ## 1. 画布定位与页面结构
@@ -70,6 +70,22 @@ Open-AI Canvas 是四个参考项目中最接近“内容创作工作台”的�
 这说明端口不能只有 `source/target` 两个视觉方向，还应有稳定端口 ID、内容类型和业务角色。
 
 ## 4. 节点 UI 与操作面板
+
+### 节点渲染结构
+
+Open-AI Canvas 没有把节点当成一个带边框的单层卡片。普通节点的渲染被拆成几个彼此独立的空间层：
+
+1. `CanvasProjectWorldLayers` 先按可见节点列表渲染，Frame 走独立组件，普通内容节点进入 `CanvasNode`；连线位于单独的 SVG/Leafer 图层，不与节点内容共同布局。
+2. `CanvasNode` 的最外层只负责世界坐标、宽高、层级、悬停和拖拽，不负责裁剪。这样标题、缩放柄和连接轨可以安全地伸到节点边界之外。
+3. `NodeExternalHeader` 位于内容壳层上方，标题与类型图标不挤占媒体面积；标题按视口反向缩放保持屏幕可读尺寸，并在远景隐藏，避免遮挡画布。
+4. `CometCard`/`canvas-node-shell` 才是节点视觉壳层，负责圆角、边框、阴影、选中/关联状态和媒体裁剪。图片与视频尽量铺满主体，状态与资源信息以角标覆盖，不再嵌套一层通用表单卡片。
+5. `NodeContent` 先处理 loading/error，再按节点类型选择内容渲染器；角色、分镜、配置等特殊内容通过显式的自定义渲染入口接入。外壳不需要理解每种业务字段。
+6. 左右 `ConnectionSideRail` 位于视觉壳层之外。连接轨在悬停时出现，使用较大的透明交互区域、较小的圆形 `+` 视觉点，并根据指针在节点侧边的位置记录锚点比例；输入、输出能力仍由节点类型限制。
+7. `CanvasNodeHoverToolbar` 不是节点内部子面板，而是画布覆盖层。它根据节点和容器的真实边界定位，拖拽时隐藏，因此不会改变节点尺寸，也不会参与连接锚点测量。
+
+它还专门控制渲染成本：`CanvasNode` 使用 memo；渲染模型先做视口裁剪；拖拽、低缩放或大量媒体时关闭较重空间效果；图片接近视口后才解析资源。这些优化共同保证“媒体是节点主体”不会直接演变成整张画布持续重渲染。
+
+对当前 preset 的直接落点是采用“外层交互容器 + 内层裁剪壳”的结构。端口、标题工具条和参数工具条属于外层；媒体和文档表面属于内层。端口 DOM 必须保持稳定，空闲时保留可发现的连接点，悬停或选中时再展示端口名称。
 
 ### 底部 Dock
 
@@ -197,6 +213,9 @@ Open-AI Canvas 是四个参考项目中最接近“内容创作工作台”的�
 - `web/src/components/canvas/canvas-toolbar.tsx`
 - `web/src/components/canvas/canvas-context-menu.tsx`
 - `web/src/components/canvas/canvas-node-hover-toolbar.tsx`
+- `web/src/components/canvas/canvas-node.tsx`
+- `web/src/pages/canvas/canvas-project-world-layers.tsx`
+- `web/src/pages/canvas/use-canvas-render-model.ts`
 - `web/src/components/canvas/canvas-node-prompt-panel.tsx`
 - `web/src/pages/canvas/use-canvas-connection-controller.ts`
 - `web/src/components/canvas/canvas-node-generation.ts`

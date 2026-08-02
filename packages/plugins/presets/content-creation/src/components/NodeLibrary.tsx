@@ -22,12 +22,12 @@ export function NodeDefinitionGrid({ definitions, onSelect, showCategories = tru
 	const { t } = useTranslation();
 
 	if (definitions.length === 0) {
-		return <p className="content-creation-muted">{t("nodeLibrary.empty")}</p>;
+		return <p className="text-xs text-muted-foreground">{t("nodeLibrary.empty")}</p>;
 	}
 
 	if (!showCategories) {
 		return (
-			<div className="content-creation-node-library__grid is-starter">
+			<div className="grid grid-cols-3 gap-2">
 				{definitions.map((definition) => (
 					<NodeDefinitionButton key={definition.kind} definition={definition} onSelect={onSelect} />
 				))}
@@ -36,14 +36,14 @@ export function NodeDefinitionGrid({ definitions, onSelect, showCategories = tru
 	}
 
 	return (
-		<div className="content-creation-node-library__groups">
+		<div className="max-h-[360px] space-y-3 overflow-y-auto p-3">
 			{CATEGORY_ORDER.map((category) => {
 				const categoryDefinitions = definitions.filter((definition) => definition.category === category);
 				if (categoryDefinitions.length === 0) return null;
 				return (
-					<section key={category} className="content-creation-node-library__group">
-						<h4>{t(`node.category.${category}`)}</h4>
-						<div className="content-creation-node-library__grid">
+					<section key={category} className="space-y-1.5">
+						<h4 className="px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{t(`node.category.${category}`)}</h4>
+						<div className="grid grid-cols-2 gap-1.5">
 							{categoryDefinitions.map((definition) => (
 								<NodeDefinitionButton key={definition.kind} definition={definition} onSelect={onSelect} />
 							))}
@@ -64,13 +64,13 @@ function NodeDefinitionButton({
 }) {
 	const { t } = useTranslation();
 	return (
-		<button type="button" className="content-creation-node-option" onClick={() => onSelect(definition.kind)}>
-			<span className={`content-creation-node-option__icon is-${definition.accent}`}>
+		<button type="button" className="flex min-w-0 items-start gap-2 rounded-md border border-transparent p-2 text-left transition-colors hover:border-border hover:bg-accent/60" onClick={() => onSelect(definition.kind)}>
+			<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
 				<NodeKindIcon kind={definition.kind} />
 			</span>
-			<span className="content-creation-node-option__copy">
-				<strong>{t(`node.kind.${definition.kind}`)}</strong>
-				<span>{t(definition.descriptionKey)}</span>
+			<span className="min-w-0">
+				<strong className="block truncate text-xs font-medium">{t(`node.kind.${definition.kind}`)}</strong>
+				<span className="mt-0.5 block line-clamp-2 text-[10px] text-muted-foreground">{t(definition.descriptionKey)}</span>
 			</span>
 		</button>
 	);
@@ -84,9 +84,9 @@ export function EmptyCanvasStarter({ onAdd }: EmptyCanvasStarterProps) {
 	const { t } = useTranslation();
 	const quickDefinitions = CONTENT_NODE_DEFINITIONS.filter((definition) => QUICK_CREATE_KINDS.includes(definition.kind));
 	return (
-		<section className="content-creation-empty">
-			<h2>{t("graph.empty.title")}</h2>
-			<p>{t("graph.empty.description")}</p>
+		<section className="mx-auto flex max-w-xl flex-col items-center gap-2 rounded-xl border border-dashed border-border/70 bg-card/60 p-8 text-center">
+			<h2 className="text-base font-semibold">{t("graph.empty.title")}</h2>
+			<p className="text-sm text-muted-foreground">{t("graph.empty.description")}</p>
 			<NodeDefinitionGrid definitions={quickDefinitions} onSelect={onAdd} showCategories={false} />
 		</section>
 	);
@@ -102,11 +102,11 @@ export function CanvasCreateMenu({ left, top, onSelect }: CanvasCreateMenuProps)
 	const { t } = useTranslation();
 	return (
 		<div
-			className="content-creation-node-library__popover is-contextual nodrag nowheel"
+			className="absolute z-50 w-[320px] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl nodrag nowheel"
 			style={{ left, top }}
 			onPointerDown={(event) => event.stopPropagation()}
 		>
-			<div className="content-creation-node-library__header">
+			<div className="border-b border-border/60 px-3 py-2 text-sm font-semibold">
 				<strong>{t("nodeLibrary.createTitle")}</strong>
 			</div>
 			<NodeDefinitionGrid definitions={CONTENT_NODE_DEFINITIONS} onSelect={onSelect} />
@@ -135,10 +135,10 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 	}, [open]);
 
 	return (
-		<div ref={rootRef} className="content-creation-node-library">
+		<div ref={rootRef} className="absolute bottom-4 left-4 z-40">
 			{open ? (
-				<div className="content-creation-node-library__popover">
-					<div className="content-creation-node-library__header">
+				<div className="absolute bottom-12 left-0 z-50 w-[320px] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl">
+					<div className="border-b border-border/60 px-3 py-2 text-sm font-semibold">
 						<strong>{t("nodeLibrary.createTitle")}</strong>
 					</div>
 					<NodeDefinitionGrid
@@ -150,12 +150,12 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 					/>
 				</div>
 			) : null}
-			<div className="content-creation-canvas-dock">
+			<div className="flex items-center gap-1 rounded-lg border border-border/70 bg-card/95 p-1 shadow-lg backdrop-blur">
 				{quickDefinitions.map((definition) => (
 					<button
 						key={definition.kind}
 						type="button"
-						className="content-creation-canvas-dock__tool"
+						className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 						title={t(`node.kind.${definition.kind}`)}
 						aria-label={t(`node.kind.${definition.kind}`)}
 						onClick={() => onAdd(definition.kind)}
@@ -163,10 +163,10 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 						<NodeKindIcon kind={definition.kind} />
 					</button>
 				))}
-				<span className="content-creation-canvas-dock__divider" />
+				<span className="mx-0.5 h-5 w-px bg-border" />
 				<button
 					type="button"
-					className={`content-creation-canvas-dock__add ${open ? "is-active" : ""}`}
+					className={`flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors hover:bg-accent ${open ? "bg-accent text-foreground" : "text-muted-foreground"}`}
 					aria-expanded={open}
 					onClick={() => setOpen((value) => !value)}
 				>

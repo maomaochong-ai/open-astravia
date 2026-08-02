@@ -30,9 +30,9 @@ export function SelectionToolbar({
 
 	return (
 		<NodeToolbar nodeId={[...nodeIds]} isVisible={nodeIds.length > 1} position={Position.Top} offset={12}>
-			<div className="content-creation-selection-toolbar nodrag nowheel" onPointerDown={(event) => event.stopPropagation()}>
-				<span>{t("selection.count", { count: nodeIds.length })}</span>
-				<select value="" aria-label={t("selection.align")} onChange={handleAlignment}>
+			<div className="flex items-center gap-1 rounded-lg border border-border bg-popover p-1 text-xs text-popover-foreground shadow-lg nodrag nowheel" onPointerDown={(event) => event.stopPropagation()}>
+				<span className="px-2 text-muted-foreground">{t("selection.count", { count: nodeIds.length })}</span>
+				<select className="h-7 rounded border border-border bg-background px-1 text-xs" value="" aria-label={t("selection.align")} onChange={handleAlignment}>
 					<option value="" disabled>{t("selection.align")}</option>
 					<option value="left">{t("selection.align.left")}</option>
 					<option value="center-x">{t("selection.align.centerX")}</option>
@@ -41,14 +41,14 @@ export function SelectionToolbar({
 					<option value="center-y">{t("selection.align.centerY")}</option>
 					<option value="bottom">{t("selection.align.bottom")}</option>
 				</select>
-				<button type="button" onClick={() => onLayout("row")}>{t("selection.layout.row")}</button>
-				<button type="button" onClick={() => onLayout("column")}>{t("selection.layout.column")}</button>
-				<button type="button" onClick={() => onLayout("grid")}>{t("selection.layout.grid")}</button>
-				<button type="button" onClick={onToggleLock} title={t(allLocked ? "action.unlockNodes" : "action.lockNodes")}>
+				<button className="rounded px-2 py-1 hover:bg-accent" type="button" onClick={() => onLayout("row")}>{t("selection.layout.row")}</button>
+				<button className="rounded px-2 py-1 hover:bg-accent" type="button" onClick={() => onLayout("column")}>{t("selection.layout.column")}</button>
+				<button className="rounded px-2 py-1 hover:bg-accent" type="button" onClick={() => onLayout("grid")}>{t("selection.layout.grid")}</button>
+				<button className="rounded p-1 hover:bg-accent" type="button" onClick={onToggleLock} title={t(allLocked ? "action.unlockNodes" : "action.lockNodes")}>
 					{allLocked ? <UnlockIcon /> : <LockIcon />}
 				</button>
-				<button type="button" onClick={onDuplicate} title={t("action.duplicateNodes")}><DuplicateIcon /></button>
-				<button type="button" onClick={onDelete} title={t("action.deleteNodes")}><TrashIcon /></button>
+				<button className="rounded p-1 hover:bg-accent" type="button" onClick={onDuplicate} title={t("action.duplicateNodes")}><DuplicateIcon /></button>
+				<button className="rounded p-1 text-destructive hover:bg-destructive/10" type="button" onClick={onDelete} title={t("action.deleteNodes")}><TrashIcon /></button>
 			</div>
 		</NodeToolbar>
 	);

@@ -10,7 +10,7 @@ export function AlignmentGuidesLayer({ guides }: AlignmentGuidesLayerProps) {
 		<ViewportPortal>
 			{guides.vertical ? (
 				<div
-					className="content-creation-alignment-guide is-vertical"
+					className="pointer-events-none absolute z-[50] w-px bg-primary/90"
 					style={{
 						left: guides.vertical.x,
 						top: guides.vertical.top,
@@ -20,7 +20,7 @@ export function AlignmentGuidesLayer({ guides }: AlignmentGuidesLayerProps) {
 			) : null}
 			{guides.horizontal ? (
 				<div
-					className="content-creation-alignment-guide is-horizontal"
+					className="pointer-events-none absolute z-[50] h-px bg-primary/90"
 					style={{
 						left: guides.horizontal.left,
 						top: guides.horizontal.y,
