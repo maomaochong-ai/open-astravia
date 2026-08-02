@@ -80,7 +80,7 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		labelKey: "node.kind.image-generator",
 		descriptionKey: "node.description.image-generator",
 		accent: "violet",
-		defaultData: { aspectRatio: "1:1", quality: "standard", providerId: "openai", modelId: "gpt-image-2" },
+		defaultData: { aspectRatio: "1:1", quality: "standard" },
 		inputs: [
 			{ id: "prompt", labelKey: "port.prompt", dataType: "text" },
 			{ id: "reference", labelKey: "port.imageReference", dataType: "image", multiple: true },

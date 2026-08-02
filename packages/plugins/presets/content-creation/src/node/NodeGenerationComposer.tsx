@@ -73,7 +73,7 @@ function PropertyEditor({
 									key={`${model.providerId}:${model.modelId}`}
 									value={`${model.providerId}\u0000${model.modelId}`}
 								>
-									{t(`provider.${model.providerId}`)} · {model.modelId}
+									{t(`provider.${model.providerId}`)} · {model.displayName}
 								</SelectItem>
 							))
 						)}
@@ -152,9 +152,10 @@ export function NodeGenerationComposer({
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<ContentNodeData>(data);
 	const isGenerator = kind === "image-generator" || kind === "video-generator";
-	const availableModels = kind === "image-generator" ? models : [];
+	const capability = kind === "image-generator" ? "text-to-image" : kind === "video-generator" ? "text-to-video" : undefined;
+	const availableModels = capability ? models.filter((model) => model.capabilities.includes(capability)) : [];
 	const isRunning = status === "running" || status === "queued";
-	const canGenerate = kind === "image-generator" && availableModels.length > 0 && !isRunning;
+	const canGenerate = isGenerator && availableModels.length > 0 && !isRunning;
 
 	useEffect(() => setDraft(data), [data]);
 

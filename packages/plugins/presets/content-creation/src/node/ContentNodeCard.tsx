@@ -47,6 +47,9 @@ const CATEGORY_ACCENT: Record<string, string> = {
 	output: "before:bg-emerald-500",
 };
 
+/** Match bottom composer gap (`mt-2` = 8px) so top actions sit equally close to the card. */
+const QUICK_TOOLBAR_OFFSET = 8;
+
 export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }: NodeProps<ContentFlowNode>) {
 	const { t } = useTranslation();
 	const selectionCount = useContentCanvasSelectionCount();
@@ -54,13 +57,11 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const [hovered, setHovered] = useState(false);
 	const definition = getContentNodeDefinition(data.kind);
 	const title = data.nodeData.label?.trim() || t(`node.kind.${data.kind}`);
-	const [titleDraft, setTitleDraft] = useState(data.nodeData.label ?? "");
 	const singleSelection = selected && selectionCount === 1;
 	const showQuickToolbar = singleSelection || (hovered && selectionCount === 0);
 	const isResizable = !data.locked && (definition.category === "generation" || definition.category === "resource");
 	const showComposer = singleSelection && definition.properties.length > 0;
 
-	useEffect(() => setTitleDraft(data.nodeData.label ?? ""), [data.nodeData.label]);
 	useEffect(
 		() => () => {
 			if (hoverLeaveTimerRef.current !== null) window.clearTimeout(hoverLeaveTimerRef.current);
@@ -84,13 +85,16 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 			onMouseEnter={keepQuickToolbar}
 			onMouseLeave={scheduleQuickToolbarClose}
 		>
-			<ContentNodeHeader
-				kind={data.kind}
-				title={title}
-				status={data.status}
-				locked={data.locked}
-				active={hovered || selected}
-			/>
+			{/* Hide identity header while the action bar is open so they don't stack with a large gap. */}
+			{showQuickToolbar ? null : (
+				<ContentNodeHeader
+					kind={data.kind}
+					title={title}
+					status={data.status}
+					locked={data.locked}
+					active={hovered || selected}
+				/>
+			)}
 			<NodeResizer
 				isVisible={singleSelection && isResizable}
 				minWidth={220}
@@ -98,21 +102,12 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				keepAspectRatio={false}
 				onResizeEnd={(_, size) => data.onResize({ x: size.x, y: size.y }, size.width, size.height)}
 			/>
-			<NodeToolbar isVisible={showQuickToolbar} position={Position.Top} offset={34}>
+			<NodeToolbar isVisible={showQuickToolbar} position={Position.Top} offset={QUICK_TOOLBAR_OFFSET}>
 				<div
-					className="flex items-center gap-0.5 rounded-xl border border-border/80 bg-popover/95 p-1 text-popover-foreground shadow-md backdrop-blur-md"
+					className="flex items-center gap-0.5 rounded-lg border border-border/80 bg-popover/95 p-0.5 text-popover-foreground shadow-sm backdrop-blur-md"
 					onMouseEnter={keepQuickToolbar}
 					onMouseLeave={scheduleQuickToolbarClose}
 				>
-					<input
-						className="nodrag nowheel max-w-[168px] truncate border-0 bg-transparent px-2 text-[11px] font-medium text-foreground outline-none placeholder:text-muted-foreground"
-						value={titleDraft}
-						placeholder={title}
-						aria-label={t("action.renameNode")}
-						onChange={(event) => setTitleDraft(event.target.value)}
-						onBlur={() => void data.onUpdate({ ...data.nodeData, label: titleDraft.trim() || undefined })}
-					/>
-					<span className="mx-0.5 h-4 w-px bg-border" />
 					<Button
 						type="button"
 						size="icon-xs"

@@ -38,6 +38,18 @@
 				"default": "gpt-image-2"
 			},
 			{
+				"key": "replicateApiToken",
+				"type": "secret",
+				"title": "%settings.replicateApiToken.title%",
+				"description": "%settings.replicateApiToken.description%"
+			},
+			{
+				"key": "googleApiKey",
+				"type": "secret",
+				"title": "%settings.googleApiKey.title%",
+				"description": "%settings.googleApiKey.description%"
+			},
+			{
 				"key": "customBaseUrl",
 				"type": "string",
 				"title": "%settings.customBaseUrl.title%",
@@ -54,6 +66,12 @@
 				"type": "string",
 				"title": "%settings.customModel.title%",
 				"description": "%settings.customModel.description%"
+			},
+			{
+				"key": "customVideoModel",
+				"type": "string",
+				"title": "%settings.customVideoModel.title%",
+				"description": "%settings.customVideoModel.description%"
 			}
 		]
 	},

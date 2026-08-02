@@ -1,8 +1,7 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { PluginContentArtifactStore } from "../generation/artifact-store";
+import { createContentProviderRegistry } from "../generation/create-provider-registry";
 import { ContentGenerationService } from "../generation/generation-service";
-import { OpenAiImageProvider } from "../generation/openai-image-provider";
-import { ContentProviderRegistry } from "../generation/provider-registry";
 import { PluginContentProjectRepository } from "../project/repository";
 import { ContentCreationWorkspace } from "../project/workspace";
 
@@ -12,24 +11,7 @@ let notify: PluginContext["ui"]["notify"] | null = null;
 
 export function initializePluginRuntime(ctx: PluginContext): ContentCreationWorkspace {
 	workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
-	const providers = new ContentProviderRegistry();
-	providers.register(
-		new OpenAiImageProvider(ctx.network, ctx.settings, {
-			id: "openai",
-			baseUrl: "https://api.openai.com/v1",
-			apiKeySetting: "openaiApiKey",
-			modelSetting: "openaiModel",
-			defaultModel: "gpt-image-2",
-		}),
-	);
-	providers.register(
-		new OpenAiImageProvider(ctx.network, ctx.settings, {
-			id: "custom",
-			baseUrlSetting: "customBaseUrl",
-			apiKeySetting: "customApiKey",
-			modelSetting: "customModel",
-		}),
-	);
+	const providers = createContentProviderRegistry(ctx.network, ctx.settings);
 	generationService = new ContentGenerationService(workspace, providers, new PluginContentArtifactStore(ctx.storage));
 	notify = ctx.ui.notify;
 	return workspace;

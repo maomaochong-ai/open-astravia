@@ -15,35 +15,23 @@
 	stroke-width: 28;
 }
 
-/* Resize affordance: wide edge hit strips + larger corner handles.
- * Default RF lines are 1px and handles ~5px — nearly unusable on a media card. */
+/* Resize: selection outline stays on the card itself.
+ * RF line controls are hit-only (no second frame — a painted border on a
+ * translate(-50%) strip sat outside the card and read as a gap). */
 .content-creation-flow .react-flow__resize-control {
 	z-index: 5;
 }
 
-.content-creation-flow .react-flow__resize-control.handle {
-	z-index: 6;
-	width: 12px;
-	height: 12px;
-	border: 1.5px solid var(--background);
-	border-radius: 3px;
-	background: var(--primary);
-	box-shadow:
-		0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent),
-		0 1px 3px color-mix(in srgb, black 18%, transparent);
-}
-
-/* Edge lines: ~14–16px transparent hit area, thin visual stroke on the node edge */
+/* Invisible edge hit strips — wide enough to grab, zero visual weight */
 .content-creation-flow .react-flow__resize-control.line {
-	border-color: color-mix(in srgb, var(--primary) 50%, transparent);
-	border-style: solid;
-	border-width: 0;
+	border: 0 !important;
 	background: transparent;
+	opacity: 0;
 }
 
 .content-creation-flow .react-flow__resize-control.line.left,
 .content-creation-flow .react-flow__resize-control.line.right {
-	width: 16px;
+	width: 14px;
 	top: 0;
 	height: 100%;
 	transform: translate(-50%, 0);
@@ -51,17 +39,15 @@
 
 .content-creation-flow .react-flow__resize-control.line.left {
 	left: 0;
-	border-left-width: 2px;
 }
 
 .content-creation-flow .react-flow__resize-control.line.right {
 	left: 100%;
-	border-right-width: 2px;
 }
 
 .content-creation-flow .react-flow__resize-control.line.top,
 .content-creation-flow .react-flow__resize-control.line.bottom {
-	height: 16px;
+	height: 14px;
 	left: 0;
 	width: 100%;
 	transform: translate(0, -50%);
@@ -69,24 +55,26 @@
 
 .content-creation-flow .react-flow__resize-control.line.top {
 	top: 0;
-	border-top-width: 2px;
 }
 
 .content-creation-flow .react-flow__resize-control.line.bottom {
 	top: 100%;
-	border-bottom-width: 2px;
 }
 
-/* Hover feedback so the resize state is discoverable before dragging */
-.content-creation-flow .react-flow__resize-control.line:hover {
-	border-color: var(--primary);
+/* Small corner grips only — sit on the card corner, quiet chrome */
+.content-creation-flow .react-flow__resize-control.handle {
+	z-index: 6;
+	width: 8px;
+	height: 8px;
+	border: 1.5px solid color-mix(in srgb, var(--card) 88%, var(--background));
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--primary) 72%, var(--card));
+	box-shadow: none;
 }
 
 .content-creation-flow .react-flow__resize-control.handle:hover {
-	background: color-mix(in srgb, var(--primary) 88%, white);
-	box-shadow:
-		0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent),
-		0 1px 4px color-mix(in srgb, black 20%, transparent);
+	background: var(--primary);
+	border-color: var(--background);
 }
 
 /* Zoom / fit controls (bottom-left): match vetta popover + button chrome */

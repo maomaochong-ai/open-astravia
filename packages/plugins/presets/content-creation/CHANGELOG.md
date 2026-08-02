@@ -5,10 +5,11 @@
 ### Fixed
 
 - Restored the “drop connection on empty canvas → create compatible node” menu: the pane click that follows `onConnectEnd` no longer immediately dismisses it.
-- Node resize: disabled forced aspect ratio so corners and edges can free-resize width/height independently; enlarged edge hit strips (~16px) and corner handles so width/height drag targets are easier to find.
+- Node resize: disabled forced aspect ratio so corners and edges can free-resize width/height independently; edge controls are invisible hit strips (no outer frame gap) with quiet corner grips instead of a second primary border.
 
 ### Changed
 
+- Node quick toolbar is icon-only (no inline rename) and sits 8px above the card to match the generation composer gap; identity header hides while the toolbar is open.
 - Canvas Delete / Backspace now use the host plugin shortcut stack (`usePluginShortcutScope`) instead of React Flow `deleteKeyCode`, so they participate in scope priority, skip locked nodes, and stay inactive while the activity tab is hidden or focus is in an editable field.
 
 - Node surface copy and placeholders scale with the card size (container query units) so image/video empty states stay proportional when resized.
@@ -30,6 +31,7 @@
 - Added the initial content-creation canvas and multitrack composition preset foundation.
 - Added reference-project design notes, a schema-driven node registry, typed ports, connection validation, compatible-node creation, and node workflow tests.
 - Added secure plugin credentials, provider/model registration, a real OpenAI-compatible image adapter, generation jobs, artifact return, and fully mocked tests.
+- Added capability-based OpenAI Images, Replicate, Gemini/Veo, and configurable NewAPI video adapters with the Loomic media model catalog.
 
 ### Fixed
 
