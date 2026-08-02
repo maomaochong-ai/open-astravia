@@ -14,7 +14,7 @@ import type { ContentModelDescriptor } from "../generation/types";
 import { AddIcon } from "../shared/icons";
 
 const FIELD_CLASS =
-	"min-w-0 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/50";
+	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/50";
 
 interface PropertyEditorProps {
 	property: ContentNodePropertyDefinition;
@@ -170,7 +170,7 @@ export function NodeGenerationComposer({
 
 	return (
 		<div
-			className="w-full min-w-0 rounded-xl border border-border/80 bg-popover/95 p-2.5 text-popover-foreground shadow-lg backdrop-blur-md nodrag nowheel"
+			className="w-full min-w-0 rounded-xl border border-border/70 bg-card p-2.5 text-card-foreground shadow-sm nodrag nowheel"
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
 		>
@@ -199,7 +199,7 @@ export function NodeGenerationComposer({
 				))}
 			</div>
 			{hasGenerationError ? (
-				<p className="mt-2 mb-0 rounded-lg bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
+				<p className="mt-2 mb-0 rounded-md bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
 					{t("error.generate")}
 				</p>
 			) : null}

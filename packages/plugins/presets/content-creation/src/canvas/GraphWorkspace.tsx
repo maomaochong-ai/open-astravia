@@ -7,6 +7,10 @@ import {
 	ReactFlow,
 	type ReactFlowInstance,
 } from "@xyflow/react";
+import {
+	type PluginShortcutBinding,
+	usePluginShortcutScope,
+} from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findContentAlignmentGuides, type ContentAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";
@@ -21,6 +25,7 @@ import {
 } from "../node/layout";
 import type { ContentNode, ContentNodeKind, ContentProjectDocument } from "../project/types";
 import type { ContentModelDescriptor } from "../generation/types";
+import { getRegisterShortcutScope } from "../plugin/plugin-ui";
 import { AlignmentGuidesLayer } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
 import { shouldOpenConnectionCreateMenu } from "./connection-drop-menu";
@@ -326,6 +331,74 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 		[applyPlacements, movableSelectedNodes],
 	);
 
+	/** Host ShortcutScopeStack (not RF deleteKeyCode) so Delete participates in app/plugin scopes. */
+	const deleteSelection = useCallback(() => {
+		const lockedIds = new Set(project.graph.nodes.filter((node) => node.locked).map((node) => node.id));
+		const nodeIdsToDelete = activeSelectedNodeIds.filter((nodeId) => !lockedIds.has(nodeId));
+		const edgeIdsToDelete = (flowInstanceRef.current?.getEdges() ?? [])
+			.filter((edge) => edge.selected)
+			.map((edge) => edge.id);
+		const commands: ContentProjectCommand[] = [
+			...nodeIdsToDelete.map((nodeId) => ({ type: "node.delete" as const, nodeId })),
+			...edgeIdsToDelete.map((edgeId) => ({ type: "edge.delete" as const, edgeId })),
+		];
+		if (commands.length === 0) return false;
+		void onDispatch(commands);
+		if (nodeIdsToDelete.length > 0) {
+			const removed = new Set(nodeIdsToDelete);
+			setSelectedNodeIds((current) => current.filter((nodeId) => !removed.has(nodeId)));
+		}
+		return true;
+	}, [activeSelectedNodeIds, onDispatch, project.graph.nodes]);
+
+	const isGraphSurfaceActive = useCallback(() => {
+		const el = flowContainerRef.current;
+		// Activity tabs stay mounted but use Tailwind `hidden` when inactive.
+		return Boolean(el && el.getClientRects().length > 0);
+	}, []);
+
+	const canDeleteViaShortcut = useCallback(() => {
+		if (!isGraphSurfaceActive()) return false;
+		const lockedIds = new Set(project.graph.nodes.filter((node) => node.locked).map((node) => node.id));
+		if (activeSelectedNodeIds.some((nodeId) => !lockedIds.has(nodeId))) return true;
+		return (flowInstanceRef.current?.getEdges() ?? []).some((edge) => edge.selected);
+	}, [activeSelectedNodeIds, isGraphSurfaceActive, project.graph.nodes]);
+
+	const deleteShortcutBindings = useMemo(
+		(): readonly PluginShortcutBinding[] => [
+			{
+				key: "delete",
+				when: "not-editable",
+				preventDefault: false,
+				stopPropagation: false,
+				run: (event) => {
+					if (!deleteSelection()) return;
+					event.preventDefault();
+					event.stopPropagation();
+				},
+			},
+			{
+				key: "backspace",
+				when: "not-editable",
+				preventDefault: false,
+				stopPropagation: false,
+				run: (event) => {
+					if (!deleteSelection()) return;
+					event.preventDefault();
+					event.stopPropagation();
+				},
+			},
+		],
+		[deleteSelection],
+	);
+
+	usePluginShortcutScope(getRegisterShortcutScope(), {
+		id: "graph-delete",
+		kind: "surface",
+		enabled: canDeleteViaShortcut,
+		bindings: deleteShortcutBindings,
+	});
+
 	return (
 		<div className="flex h-full min-w-0 flex-1 flex-col">
 			<div
@@ -338,6 +411,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 						defaultEdges={synchronizedEdges}
 						nodeTypes={nodeTypes}
 						defaultEdgeOptions={{ interactionWidth: 28 }}
+						// Keyboard delete is handled by host ShortcutScopeStack (usePluginShortcutScope).
 						deleteKeyCode={null}
 						onlyRenderVisibleElements
 						proOptions={{ hideAttribution: true }}
@@ -363,12 +437,6 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 						onConnectEnd={handleConnectEnd}
 						isValidConnection={isValidConnection}
 						zoomOnDoubleClick={false}
-						onNodesDelete={(deletedNodes) => {
-							void onDispatch(deletedNodes.map((node) => ({ type: "node.delete", nodeId: node.id })));
-						}}
-						onEdgesDelete={(deletedEdges) => {
-							void onDispatch(deletedEdges.map((edge) => ({ type: "edge.delete", edgeId: edge.id })));
-						}}
 						onNodeClick={() => {
 							// Do not kill a just-opened drop menu if the connect ended over the source node.
 							if (suppressNextPaneClickRef.current) {

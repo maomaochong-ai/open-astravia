@@ -160,10 +160,10 @@ interface NodeLibraryProps {
 	onAdd: (kind: ContentNodeKind) => void;
 }
 
-/** Mac Dock–style magnification: base size, peak scale, influence radius (px). */
+/** Mac Dock–style magnification: subtle peak so hover stays readable without dizziness. */
 const DOCK_ICON = 34;
-const DOCK_MAX_SCALE = 1.62;
-const DOCK_INFLUENCE = 88;
+const DOCK_MAX_SCALE = 1.18;
+const DOCK_INFLUENCE = 56;
 const DOCK_GAP = 6;
 
 type DockItem =
@@ -287,8 +287,11 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 					/>
 				</div>
 			) : null}
-			{/* Top padding so magnified icons grow upward without clipping. */}
-			<div className="relative inline-flex flex-col items-center pt-7">
+			{/*
+			 * Magnify via transform only: slot size stays DOCK_ICON so the bar chrome
+			 * does not grow; icons overflow upward past the dock (origin bottom).
+			 */}
+			<div className="relative inline-flex flex-col items-center overflow-visible pt-10">
 				{peakLabel && peakIndex >= 0 ? (
 					<div
 						className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-border/70 bg-popover/95 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-sm"
@@ -299,8 +302,8 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 				) : null}
 				<div
 					ref={dockRef}
-					className="inline-flex items-end rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
-					style={{ gap: DOCK_GAP, minHeight: DOCK_ICON + 12 }}
+					className="inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
+					style={{ gap: DOCK_GAP, height: DOCK_ICON + 12 }}
 					onPointerMove={(event) => {
 						if (reducedMotion) return;
 						const bounds = dockRef.current?.getBoundingClientRect();
@@ -322,8 +325,6 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 						}
 
 						const scale = scales[index] ?? 1;
-						const size = DOCK_ICON * scale;
-						const iconSize = Math.max(14, Math.round(15 * scale));
 						const label = item.type === "node" ? t(`node.kind.${item.kind}`) : t("nodeLibrary.title");
 						const activeMore = item.type === "more" && open;
 
@@ -335,28 +336,26 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 								aria-label={label}
 								aria-expanded={item.type === "more" ? open : undefined}
 								className={cn(
-									"relative flex shrink-0 items-center justify-center rounded-[22%] border border-transparent text-foreground outline-none",
-									"origin-bottom",
+									"relative z-[1] flex shrink-0 items-center justify-center rounded-[22%] border border-transparent text-foreground outline-none",
+									"origin-bottom will-change-transform",
 									"focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40",
 									activeMore ? "bg-accent text-accent-foreground" : "bg-muted/55 text-foreground hover:bg-muted",
-									reducedMotion && "transition-transform duration-150 hover:scale-110",
+									scale > 1.02 && "z-[2]",
 								)}
 								style={{
-									width: size,
-									height: size,
+									width: DOCK_ICON,
+									height: DOCK_ICON,
+									transform: `scale(${scale})`,
 									transition: reducedMotion
-										? undefined
-										: "width 80ms cubic-bezier(0.22, 1, 0.36, 1), height 80ms cubic-bezier(0.22, 1, 0.36, 1), background-color 120ms ease",
+										? "transform 120ms ease"
+										: "transform 140ms cubic-bezier(0.25, 0.8, 0.25, 1), background-color 120ms ease",
 								}}
 								onClick={() => {
 									if (item.type === "node") onAdd(item.kind);
 									else setOpen((value) => !value);
 								}}
 							>
-								<span
-									className="grid place-items-center [&_svg]:h-full [&_svg]:w-full"
-									style={{ width: iconSize, height: iconSize }}
-								>
+								<span className="grid size-4 place-items-center [&_svg]:h-full [&_svg]:w-full">
 									{item.type === "node" ? (
 										<NodeKindIcon kind={item.kind} className="h-full w-full" />
 									) : (

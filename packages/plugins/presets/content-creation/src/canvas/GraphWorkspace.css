@@ -15,13 +15,78 @@
 	stroke-width: 28;
 }
 
+/* Resize affordance: wide edge hit strips + larger corner handles.
+ * Default RF lines are 1px and handles ~5px — nearly unusable on a media card. */
+.content-creation-flow .react-flow__resize-control {
+	z-index: 5;
+}
+
 .content-creation-flow .react-flow__resize-control.handle {
-	width: 8px;
-	height: 8px;
+	z-index: 6;
+	width: 12px;
+	height: 12px;
 	border: 1.5px solid var(--background);
-	border-radius: 2px;
+	border-radius: 3px;
 	background: var(--primary);
-	box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+	box-shadow:
+		0 0 0 1px color-mix(in srgb, var(--primary) 35%, transparent),
+		0 1px 3px color-mix(in srgb, black 18%, transparent);
+}
+
+/* Edge lines: ~14–16px transparent hit area, thin visual stroke on the node edge */
+.content-creation-flow .react-flow__resize-control.line {
+	border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+	border-style: solid;
+	border-width: 0;
+	background: transparent;
+}
+
+.content-creation-flow .react-flow__resize-control.line.left,
+.content-creation-flow .react-flow__resize-control.line.right {
+	width: 16px;
+	top: 0;
+	height: 100%;
+	transform: translate(-50%, 0);
+}
+
+.content-creation-flow .react-flow__resize-control.line.left {
+	left: 0;
+	border-left-width: 2px;
+}
+
+.content-creation-flow .react-flow__resize-control.line.right {
+	left: 100%;
+	border-right-width: 2px;
+}
+
+.content-creation-flow .react-flow__resize-control.line.top,
+.content-creation-flow .react-flow__resize-control.line.bottom {
+	height: 16px;
+	left: 0;
+	width: 100%;
+	transform: translate(0, -50%);
+}
+
+.content-creation-flow .react-flow__resize-control.line.top {
+	top: 0;
+	border-top-width: 2px;
+}
+
+.content-creation-flow .react-flow__resize-control.line.bottom {
+	top: 100%;
+	border-bottom-width: 2px;
+}
+
+/* Hover feedback so the resize state is discoverable before dragging */
+.content-creation-flow .react-flow__resize-control.line:hover {
+	border-color: var(--primary);
+}
+
+.content-creation-flow .react-flow__resize-control.handle:hover {
+	background: color-mix(in srgb, var(--primary) 88%, white);
+	box-shadow:
+		0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent),
+		0 1px 4px color-mix(in srgb, black 20%, transparent);
 }
 
 /* Zoom / fit controls (bottom-left): match vetta popover + button chrome */

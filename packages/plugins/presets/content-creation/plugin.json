@@ -13,6 +13,7 @@
 	"styles": ["dist/style.css"],
 	"permissions": [
 		"ui.slot.activity-tab",
+		"ui.shortcuts.register",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
 		"network.fetch",

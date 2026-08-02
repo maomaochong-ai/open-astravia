@@ -5,12 +5,17 @@
 ### Fixed
 
 - Restored the “drop connection on empty canvas → create compatible node” menu: the pane click that follows `onConnectEnd` no longer immediately dismisses it.
+- Node resize: disabled forced aspect ratio so corners and edges can free-resize width/height independently; enlarged edge hit strips (~16px) and corner handles so width/height drag targets are easier to find.
 
 ### Changed
 
+- Canvas Delete / Backspace now use the host plugin shortcut stack (`usePluginShortcutScope`) instead of React Flow `deleteKeyCode`, so they participate in scope priority, skip locked nodes, and stay inactive while the activity tab is hidden or focus is in an editable field.
+
+- Node surface copy and placeholders scale with the card size (container query units) so image/video empty states stay proportional when resized.
+- Softened bottom dock hover magnification (lower peak scale, narrower influence, smoother easing) to reduce visual dizziness.
 - Reorganized the package by feature folders (`panel` / `canvas` / `node` / `timeline` / `project` / `generation` / `plugin` / `shared`) instead of a catch-all `domain` + flat `components` layout; split React Flow and node styles into per-area CSS files under `styles/` + feature modules.
 - Removed the content-creation panel header (title, path, revision, graph/timeline switch) so the canvas uses the full tab area; timeline workspace remains in the package for later re-entry.
-- Restyled node connection ports as side bookmark tabs (typed accents, larger hit targets) instead of circular handles.
+- Refined node connection ports into edge-welded capsules that share card surface tokens (type only as a small dot), replacing the earlier ribbon/bookmark look.
 - Added a Mac Dock–style magnification hover effect on the bottom node-creation dock (with reduced-motion fallback).
 - Mounted the per-node generation panel inside the node shell (not `NodeToolbar`) so its width tracks node resize and scales with canvas zoom.
 - Polished content-creation canvas UX: node chrome, themed React Flow controls, and broader `@vetta/ui` usage (Button / Select / DropdownMenu / Slider / Spin).

@@ -95,7 +95,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				isVisible={singleSelection && isResizable}
 				minWidth={220}
 				minHeight={150}
-				keepAspectRatio
+				keepAspectRatio={false}
 				onResizeEnd={(_, size) => data.onResize({ x: size.x, y: size.y }, size.width, size.height)}
 			/>
 			<NodeToolbar isVisible={showQuickToolbar} position={Position.Top} offset={34}>
@@ -145,19 +145,8 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					</Button>
 				</div>
 			</NodeToolbar>
-			{definition.inputs.map((port, index) => (
-				<ContentNodePort
-					key={port.id}
-					id={port.id}
-					label={t(port.labelKey)}
-					dataType={port.dataType}
-					side="left"
-					topPercent={((index + 1) / (definition.inputs.length + 1)) * 100}
-					active={hovered || selected}
-				/>
-			))}
 			<div
-				className={`relative h-full w-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-[border-color,box-shadow] duration-150 before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:content-[''] ${
+				className={`relative z-0 h-full w-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-[border-color,box-shadow] duration-150 before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:content-[''] ${
 					CATEGORY_ACCENT[definition.category] ?? ""
 				} ${
 					selected
@@ -175,14 +164,30 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					job={data.job}
 				/>
 			</div>
-			{/*
-			 * Keep the generation panel inside the node (not NodeToolbar): toolbars are
-			 * portaled in screen space and intentionally do not scale with the viewport,
-			 * so they stay fixed while the node resizes/zooms. Absolute under the shell
-			 * inherits the node transform and width:100% tracks resize live.
-			 */}
+			{definition.inputs.map((port, index) => (
+				<ContentNodePort
+					key={port.id}
+					id={port.id}
+					label={t(port.labelKey)}
+					dataType={port.dataType}
+					side="left"
+					index={index}
+					active={hovered || selected}
+				/>
+			))}
+			{definition.outputs.map((port, index) => (
+				<ContentNodePort
+					key={port.id}
+					id={port.id}
+					label={t(port.labelKey)}
+					dataType={port.dataType}
+					side="right"
+					index={index}
+					active={hovered || selected}
+				/>
+			))}
 			{showComposer ? (
-				<div className="absolute inset-x-0 top-full z-20 mt-3">
+				<div className="absolute inset-x-0 top-full z-20 mt-2">
 					<NodeGenerationComposer
 						kind={data.kind}
 						status={data.status}
@@ -196,17 +201,6 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					/>
 				</div>
 			) : null}
-			{definition.outputs.map((port, index) => (
-				<ContentNodePort
-					key={port.id}
-					id={port.id}
-					label={t(port.labelKey)}
-					dataType={port.dataType}
-					side="right"
-					topPercent={((index + 1) / (definition.outputs.length + 1)) * 100}
-					active={hovered || selected}
-				/>
-			))}
 		</div>
 	);
 });
