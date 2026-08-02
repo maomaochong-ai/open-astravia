@@ -9,7 +9,6 @@ import {
 	notifyContentCreationError,
 } from "../runtime/plugin-runtime";
 import { GraphWorkspace } from "./GraphWorkspace";
-import { NodeInspector } from "./NodeInspector";
 import { TimelineWorkspace } from "./TimelineWorkspace";
 import { ContentCreationIcon } from "./icons";
 
@@ -73,7 +72,6 @@ export function ContentCreationPanel() {
 		return <div className="content-creation-state">{error ?? t("state.loading")}</div>;
 	}
 
-	const selectedNode = project.graph.nodes.find((node) => node.id === selectedNodeId) ?? null;
 	return (
 		<div className="content-creation-shell">
 			<header className="content-creation-header">
@@ -97,16 +95,14 @@ export function ContentCreationPanel() {
 			{error && <div className="content-creation-error">{error}</div>}
 			<main className="content-creation-main">
 				{mode === "graph" ? (
-					<>
-						<GraphWorkspace project={project} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} onDispatch={dispatch} />
-						<NodeInspector
-							project={project}
-							node={selectedNode}
-							models={generation.listModels()}
-							onDispatch={dispatch}
-							onRunNode={runNode}
-						/>
-					</>
+					<GraphWorkspace
+						project={project}
+						selectedNodeId={selectedNodeId}
+						models={generation.listModels()}
+						onSelectNode={setSelectedNodeId}
+						onDispatch={dispatch}
+						onRunNode={runNode}
+					/>
 				) : (
 					<TimelineWorkspace project={project} />
 				)}

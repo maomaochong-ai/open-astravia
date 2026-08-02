@@ -5,7 +5,7 @@
 ### Changed
 
 - Activity tab「内容创作」默认不上栏（`initiallyVisible: false`）；由 `open_content_creation` 或用户从「+」添加后再显示。
-- Image generation controls and result previews live in the right-side inspector without adding node property popovers.
+- Replaced the permanent node inspector with content-first media nodes, persistent canvas sizing, node-bound generation composers, contextual creation menus, and a compact bottom dock inspired by Open-AI Canvas and Loomic.
 
 ### Added
 

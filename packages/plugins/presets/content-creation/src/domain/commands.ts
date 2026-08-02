@@ -10,6 +10,7 @@ import type {
 } from "./model";
 import { resolveContentConnection } from "./connections";
 import { createDefaultContentNodeData } from "./node-definitions";
+import { getContentNodeSize } from "./node-geometry";
 
 export type ContentProjectCommand =
 	| {
@@ -23,6 +24,7 @@ export type ContentProjectCommand =
 	  }
 	| { type: "node.update"; nodeId: string; data: ContentNode["data"] }
 	| { type: "node.move"; nodeId: string; position: CanvasPosition }
+	| { type: "node.resize"; nodeId: string; width: number; height: number; position?: CanvasPosition }
 	| { type: "node.duplicate"; nodeId: string; position?: CanvasPosition }
 	| { type: "node.delete"; nodeId: string }
 	| { type: "edge.connect"; source: string; target: string; sourceHandle?: string; targetHandle?: string }
@@ -47,6 +49,12 @@ function assertFiniteNonNegative(value: number, field: string): void {
 function assertPosition(position: CanvasPosition): void {
 	if (!Number.isFinite(position.x) || !Number.isFinite(position.y)) {
 		throw new ContentProjectCommandError("node position must contain finite coordinates");
+	}
+}
+
+function assertNodeSize(width: number, height: number): void {
+	if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+		throw new ContentProjectCommandError("node size must contain positive finite dimensions");
 	}
 }
 
@@ -84,12 +92,15 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			if (project.graph.nodes.some((node) => node.id === id)) {
 				throw new ContentProjectCommandError(`node already exists: ${id}`);
 			}
+			const data = createDefaultContentNodeData(command.node.kind, command.node.data);
+			const size = getContentNodeSize(command.node.kind, data.aspectRatio);
 			project.graph.nodes.push({
 				id,
 				kind: command.node.kind,
 				position: command.node.position,
+				...size,
 				status: "idle",
-				data: createDefaultContentNodeData(command.node.kind, command.node.data),
+				data,
 			});
 			return;
 		}
@@ -101,6 +112,17 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 		case "node.move": {
 			assertPosition(command.position);
 			findNode(project, command.nodeId).position = command.position;
+			return;
+		}
+		case "node.resize": {
+			assertNodeSize(command.width, command.height);
+			const node = findNode(project, command.nodeId);
+			node.width = command.width;
+			node.height = command.height;
+			if (command.position) {
+				assertPosition(command.position);
+				node.position = command.position;
+			}
 			return;
 		}
 		case "node.duplicate": {

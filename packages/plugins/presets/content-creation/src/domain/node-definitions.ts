@@ -41,20 +41,20 @@ export interface ContentNodeDefinition {
 
 const LABEL_PROPERTY: ContentNodePropertyDefinition = {
 	key: "label",
-	labelKey: "inspector.label",
+	labelKey: "nodeEditor.label",
 	editor: "text",
 };
 
 const PROMPT_PROPERTY: ContentNodePropertyDefinition = {
 	key: "prompt",
-	labelKey: "inspector.prompt",
+	labelKey: "nodeEditor.prompt",
 	editor: "textarea",
-	placeholderKey: "inspector.prompt.placeholder",
+	placeholderKey: "nodeEditor.prompt.placeholder",
 };
 
 const ASPECT_RATIO_PROPERTY: ContentNodePropertyDefinition = {
 	key: "aspectRatio",
-	labelKey: "inspector.aspectRatio",
+	labelKey: "nodeEditor.aspectRatio",
 	editor: "select",
 	options: ["1:1", "16:9", "9:16", "4:3", "3:4"].map((value) => ({
 		value,
@@ -87,13 +87,12 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		],
 		outputs: [{ id: "image", labelKey: "port.image", dataType: "image", multiple: true }],
 		properties: [
-			LABEL_PROPERTY,
 			PROMPT_PROPERTY,
-			{ key: "modelId", labelKey: "inspector.model", editor: "model" },
+			{ key: "modelId", labelKey: "nodeEditor.model", editor: "model" },
 			ASPECT_RATIO_PROPERTY,
 			{
 				key: "quality",
-				labelKey: "inspector.quality",
+				labelKey: "nodeEditor.quality",
 				editor: "select",
 				options: ["standard", "hd", "ultra"].map((value) => ({ value, labelKey: `option.quality.${value}` })),
 			},
@@ -113,13 +112,13 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		],
 		outputs: [{ id: "video", labelKey: "port.video", dataType: "video", multiple: true }],
 		properties: [
-			LABEL_PROPERTY,
 			PROMPT_PROPERTY,
+			{ key: "modelId", labelKey: "nodeEditor.model", editor: "model" },
 			ASPECT_RATIO_PROPERTY,
-			{ key: "duration", labelKey: "inspector.duration", editor: "number", min: 1, max: 60, step: 1 },
+			{ key: "duration", labelKey: "nodeEditor.duration", editor: "number", min: 1, max: 60, step: 1 },
 			{
 				key: "resolution",
-				labelKey: "inspector.resolution",
+				labelKey: "nodeEditor.resolution",
 				editor: "select",
 				options: ["480p", "720p", "1080p", "4k"].map((value) => ({
 					value,
