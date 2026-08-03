@@ -532,14 +532,11 @@ export class OpenMarketplaceService {
 			const temporaryStatePath = join(temporaryRoot, "state.json");
 			await writeFile(temporaryStatePath, JSON.stringify(state, null, 2), "utf-8");
 			await rename(temporaryStatePath, this.statePath);
-			return {
-				sourceId: this.sourceId,
-				abilities: manifest.abilities.map((ability) => toOpenMarketplaceAbility(this.sourceId, manifest, ability)),
-				marketplaceVersion: manifest.marketplaceVersion,
-				repository: manifest.repository,
-				syncedAt: state.syncedAt,
-				stale: false,
-			};
+			// presentation 中的本地图标 URL 包含绝对路径；激活后必须从正式快照目录重新解析，
+			// 不能继续返回即将被 finally 删除的 temporaryRoot 路径。
+			const activeSnapshot = await this.readCachedSnapshot();
+			if (!activeSnapshot) throw new Error("Activated marketplace snapshot could not be read");
+			return { ...activeSnapshot, stale: false };
 		} finally {
 			await rm(temporaryRoot, { recursive: true, force: true });
 		}
