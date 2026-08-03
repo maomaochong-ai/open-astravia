@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **预设服务商新增 Grok 与千问**：设置 → 模型 → 预设服务商多出 Grok（`https://api.x.ai/v1`，走 `openai-completions`）与 Qwen 千问（DashScope 国际站 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`，走 `qwen-openai-completions`）。两家的模型清单与价格照旧走 models.dev 目录（`xai` / `alibaba`），随包快照已重新生成；Grok 滤掉 `grok-imagine-*` 图像视频模型，千问只保留 qwen/qwq/qvq 系列的对话模型（ocr / asr / mt 等专用接口模型不列）。
+
 - **项目文件列表支持鼠标框选**：在空白区域按下并拖出矩形，可多选可见文件/文件夹；Ctrl/Cmd/Shift 按住时为追加选区。与现有点选、Shift 范围选、多选拖拽共用同一套选区状态。
 - **插件快捷键 SDK（接入宿主 ShortcutScopeStack）**：新增权限 `ui.shortcuts.register`、`ctx.ui.registerShortcutScope` 与 SDK hook `usePluginShortcutScope`。插件按 `surface` / `overlay` / `modal` 注册绑定（禁止 `app` 层，留给宿主可配置全局快捷键），与宿主同一套优先级与 `when`（always/editable/not-editable），卸载时自动 dispose。`media-viewer` 缩放 / 全屏 Esc 已从 ad-hoc `keydown` 迁到该 API。
 - **输入框按会话草稿与发送历史**：未发送内容按作用域隔离（已有会话用 `sessionPath`，新会话页用 `new:${cwd}`），切换会话 / 临时去看别的任务再回来会恢复草稿，不再串台或被新会话页清空。发送成功后记入该作用域历史；输入为空或光标在文档起点时 ↑ / ↓ 浏览过往输入（首次 ↑ 暂存当前草稿，↓ 回到最新后还原）。仅进程内内存，刷新不保留。

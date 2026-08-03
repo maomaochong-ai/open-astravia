@@ -4,7 +4,7 @@ import type { FetchImpl } from "./fetch.js";
 /**
  * models.dev 目录:补齐各家 `/models` 不返回的元数据(价格、上下文长度、视觉/思考能力)。
  *
- * 六家的 `/models` 一律不给价格,OpenAI / DeepSeek / GLM 连上下文长度都不给。曾用手写
+ * 各家的 `/models` 一律不给价格,OpenAI / DeepSeek / GLM 连上下文长度都不给。曾用手写
  * 静态表补,但各家发版一快就全错(见 ADR-0050),改为拉这份社区维护、跟各家发版更新的目录。
  * 拉不到就用磁盘缓存,再没有就只展示接口给的字段——绝不显示猜的价格。
  */
@@ -28,6 +28,9 @@ const PROVIDER_KEYS: Record<string, string> = {
 	zai: "zai",
 	kimi: "moonshotai",
 	gemini: "google",
+	grok: "xai",
+	// 千问走国际站 endpoint,目录也取国际站那份(国内站是 alibaba-cn,模型清单不同)。
+	qwen: "alibaba",
 };
 
 interface RawModel {
@@ -50,7 +53,7 @@ export interface CatalogEntry {
 	releaseDate?: string;
 }
 
-/** 只保留六家、只保留用得上的字段——原始 api.json 有 170+ 家、3MB 出头。 */
+/** 只保留预设那几家、只保留用得上的字段——原始 api.json 有 170+ 家、3MB 出头。 */
 export interface ModelsDevCatalog {
 	version: number;
 	fetchedAt: string;
