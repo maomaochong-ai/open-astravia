@@ -3,8 +3,8 @@
 import type { ModelsDevCatalog } from "./models-dev.js";
 
 export const MODELS_DEV_SNAPSHOT: ModelsDevCatalog = {
-	version: 2,
-	fetchedAt: "2026-08-03T02:19:15.424Z",
+	version: 3,
+	fetchedAt: "2026-08-03T02:28:05.263Z",
 	providers: {
 		claude: {
 			"claude-sonnet-4-6": {

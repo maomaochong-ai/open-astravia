@@ -13,12 +13,16 @@ const CATALOG_URL = "https://models.dev/api.json";
 /** 目录变动按天计,12 小时一拉,与预设模型列表同步节奏一致。 */
 export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
 /**
- * 缓存结构版本。**改动 CatalogEntry / providers 的形状必须 +1**——
+ * 缓存结构版本。**改动 CatalogEntry / providers 的形状、或往 PROVIDER_KEYS 里加家,都必须 +1**——
  * 磁盘缓存写在用户机器上,老版本客户端写的文件会被新代码原样读进来;
  * 没有这个版本号时,一次结构调整就让旧缓存在 TTL 内被当成有效数据,
  * 读到的条目缺字段,目录列表与后台同步一起静默失败。
+ *
+ * 加家同理:老缓存里没有新家的 key,而它在 TTL 内算「新鲜」,连后台刷新都不会触发,
+ * 新加的预设服务商就会一直显示 0 个模型(最长 12 小时)。+1 让老缓存整份作废,
+ * 先退到随包快照(已含新家)再后台重拉。
  */
-const CATALOG_VERSION = 2;
+const CATALOG_VERSION = 3;
 
 /** 预设标识 → models.dev 的 provider key。 */
 const PROVIDER_KEYS: Record<string, string> = {
