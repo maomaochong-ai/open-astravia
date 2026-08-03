@@ -500,7 +500,8 @@
 		"mascot": {
 			"menuTrigger": "Mascot settings",
 			"hideMascot": "Hide mascot",
-			"showMascot": "Show mascot"
+			"showMascot": "Show mascot",
+			"playOnce": "Play the current mascot animation once"
 		}
 	},
 	"questionPanel": {

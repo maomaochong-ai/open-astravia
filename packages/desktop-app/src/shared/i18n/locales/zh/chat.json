@@ -500,7 +500,8 @@
 		"mascot": {
 			"menuTrigger": "吉祥物设置",
 			"hideMascot": "关闭吉祥物",
-			"showMascot": "显示吉祥物"
+			"showMascot": "显示吉祥物",
+			"playOnce": "播放一次当前吉祥物动画"
 		}
 	},
 	"questionPanel": {
