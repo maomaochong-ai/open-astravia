@@ -1,6 +1,5 @@
-import type { ChatMessage } from "@shared/store/atoms";
-import { pendingScrollToEntryAtom } from "@shared/store/atoms";
-import { getDefaultStore } from "jotai";
+import { activityPanelResizingAtom, type ChatMessage, pendingScrollToEntryAtom } from "@shared/store/atoms";
+import { getDefaultStore, useAtomValue } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { VirtuosoHandle } from "react-virtuoso";
 
@@ -38,6 +37,10 @@ export function useMessageListScrollModel({
 }: MessageListScrollModelInput): MessageListScrollModel {
 	const virtuosoRef = useRef<VirtuosoHandle>(null);
 	const scrollerElementRef = useRef<HTMLElement | null>(null);
+	const activityPanelResizing = useAtomValue(activityPanelResizingAtom);
+	const activityPanelResizingRef = useRef(activityPanelResizing);
+	const previousActivityPanelResizingRef = useRef(activityPanelResizing);
+	activityPanelResizingRef.current = activityPanelResizing;
 	const atBottomRef = useRef(true);
 	const shouldFollowBottomRef = useRef(true);
 	const previousRenderMessageCountRef = useRef(messages.length);
@@ -220,6 +223,20 @@ export function useMessageListScrollModel({
 			scrollerElementRef.current.style.overflowAnchor = "none";
 		}
 	}, []);
+	const snapToBottom = useCallback(() => {
+		const element = scrollerElementRef.current;
+		if (!element || !shouldFollowBottomRef.current) return;
+		const target = Math.max(0, element.scrollHeight - element.clientHeight);
+		if (Math.abs(target - element.scrollTop) > 0.5) element.scrollTop = target;
+	}, []);
+
+	useEffect(() => {
+		const wasResizing = previousActivityPanelResizingRef.current;
+		previousActivityPanelResizingRef.current = activityPanelResizing;
+		if (!wasResizing || activityPanelResizing) return;
+		const animationFrame = requestAnimationFrame(snapToBottom);
+		return () => cancelAnimationFrame(animationFrame);
+	}, [activityPanelResizing, snapToBottom]);
 
 	useEffect(() => {
 		const element = scrollerElementRef.current;
@@ -232,11 +249,8 @@ export function useMessageListScrollModel({
 		// ResizeObserver only fires on border-box size, not content scrollHeight —
 		// streaming growth still uses the messages/isStreaming lerp path.
 		const onViewportResize = (): void => {
-			if (!shouldFollowBottomRef.current) return;
-			const target = Math.max(0, element.scrollHeight - element.clientHeight);
-			if (Math.abs(target - element.scrollTop) > 0.5) {
-				element.scrollTop = target;
-			}
+			if (activityPanelResizingRef.current) return;
+			snapToBottom();
 		};
 		const resizeObserver = new ResizeObserver(onViewportResize);
 		resizeObserver.observe(element);
@@ -246,7 +260,7 @@ export function useMessageListScrollModel({
 			element.removeEventListener("touchmove", onTouchMove);
 			resizeObserver.disconnect();
 		};
-	}, [onWheel, onTouchMove, onTouchStart]);
+	}, [onWheel, onTouchMove, onTouchStart, snapToBottom]);
 
 	useEffect(
 		() => () => {

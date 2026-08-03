@@ -2,6 +2,7 @@ import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { atom } from "jotai";
 
 export const activityPanelOpenAtom = atom<boolean>(false);
+export const activityPanelResizingAtom = atom<boolean>(false);
 
 /** 活动面板默认宽度，也是关闭内嵌预览时回拉的兜底值。 */
 export const ACTIVITY_PANEL_DEFAULT_WIDTH = 360;
@@ -42,19 +43,37 @@ function persistPanelWidth(width: number): void {
 /** Internal primitive store; public API is {@link activityPanelWidthAtom}. */
 const activityPanelWidthBaseAtom = atom(readPersistedPanelWidth());
 
+type ActivityPanelWidthUpdate = number | ((prev: number) => number);
+
+function resolvePanelWidthUpdate(prev: number, update: ActivityPanelWidthUpdate): number {
+	return typeof update === "function" ? update(prev) : update;
+}
+
 /**
  * 活动面板宽度。读写均经此 atom；写入时同步 localStorage，避免 reload/热更新后回到默认值。
  */
 export const activityPanelWidthAtom = atom(
 	(get) => get(activityPanelWidthBaseAtom),
-	(get, set, update: number | ((prev: number) => number)) => {
+	(get, set, update: ActivityPanelWidthUpdate) => {
 		const prev = get(activityPanelWidthBaseAtom);
-		const next = typeof update === "function" ? update(prev) : update;
+		const next = resolvePanelWidthUpdate(prev, update);
 		if (next === prev) return;
 		set(activityPanelWidthBaseAtom, next);
 		persistPanelWidth(next);
 	},
 );
+
+/** 拖拽中的瞬时宽度：实时更新布局，但不在每一帧同步写 localStorage。 */
+export const setTransientActivityPanelWidthAtom = atom(null, (get, set, update: ActivityPanelWidthUpdate) => {
+	const prev = get(activityPanelWidthBaseAtom);
+	const next = resolvePanelWidthUpdate(prev, update);
+	if (next !== prev) set(activityPanelWidthBaseAtom, next);
+});
+
+/** 拖拽结束时把最终宽度持久化一次。 */
+export const persistActivityPanelWidthAtom = atom(null, (get) => {
+	persistPanelWidth(get(activityPanelWidthBaseAtom));
+});
 
 /** 当前窗口宽度下，活动面板的最大宽度。 */
 export function activityPanelMaxWidth(windowWidth: number): number {
