@@ -18,7 +18,7 @@ const FERRET_VIDEO_SOURCES = {
 } as const;
 const MASCOT_ACTIONS = ["blink", "wave", "crawl"] as const;
 const CRAWL_DURATION_SECONDS = 10.066;
-const CRAWL_START_PAUSE_SECONDS = 1;
+const CRAWL_START_PAUSE_SECONDS = 3;
 const CENTER_POSITION = "calc(50% - 4.5rem)";
 const RIGHT_POSITION = "calc(100% - 9rem)";
 const MASCOT_VISIBLE_STORAGE_KEY = "vetta-new-session-mascot-visible";
