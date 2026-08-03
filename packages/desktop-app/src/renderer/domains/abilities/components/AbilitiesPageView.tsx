@@ -1,7 +1,7 @@
 import { SegmentedControl } from "@vetta/theme-ui/shared";
 import { Button } from "@vetta/ui";
 import { motion } from "motion/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CapabilitiesTour } from "@shared/tour";
 import { SettingsAiAssist } from "../../settings/ai-assist";
@@ -17,6 +17,7 @@ import { AbilitiesBanner } from "./AbilitiesBanner";
 import { AbilityCard } from "./AbilityCard";
 import { AbilityMcpDialogs } from "./AbilityMcpDialogs";
 import { AddAbilityMenu } from "./AddAbilityMenu";
+import { ExternalRepositoryDialog } from "./ExternalRepositoryDialog";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
@@ -24,6 +25,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 	const { t, i18n } = useTranslation("abilities");
 	const skillFileInputRef = useRef<HTMLInputElement>(null);
 	const pluginFileInputRef = useRef<HTMLInputElement>(null);
+	const [repositoryDialogOpen, setRepositoryDialogOpen] = useState(false);
 
 	return (
 		<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
@@ -95,6 +97,7 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 									model.setScope("mine");
 									pluginFileInputRef.current?.click();
 								}}
+								onAddRepository={() => setRepositoryDialogOpen(true)}
 								onAddMcp={() => {
 									model.setScope("mine");
 									model.startAddManualMcp();
@@ -188,6 +191,15 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 			</div>
 
 			<AbilityMcpDialogs mcp={model.mcp} />
+			{repositoryDialogOpen && (
+				<ExternalRepositoryDialog
+					onClose={() => setRepositoryDialogOpen(false)}
+					onAdd={async (input) => {
+						await model.addMarketplaceSource(input);
+						model.setScope("discover");
+					}}
+				/>
+			)}
 			<CapabilitiesTour />
 		</div>
 	);

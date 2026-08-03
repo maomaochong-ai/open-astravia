@@ -2,7 +2,12 @@
  * 能力（Ability）统一模型（ADR-0049）。
  * 五种 type 共用一套卡片与详情呈现；物理安装仍分三轨，差异收敛在 actions 层。
  */
-import type { GitHubMarketplaceOrigin, InstalledPlugin, PluginPermission } from "@preload/api";
+import type {
+	AddMarketplaceSourceInput,
+	GitHubMarketplaceOrigin,
+	InstalledPlugin,
+	PluginPermission,
+} from "@preload/api";
 import type { AbilityMember, AbilityType, MarketAbility } from "@shared/lib/api";
 import type { McpSettingsModel } from "../settings/components/useMcpSettingsModel";
 import type { BuiltinMcpPreset } from "../settings/mcp/builtin-mcp-presets";
@@ -182,6 +187,7 @@ export interface AbilitiesModel {
 	uninstallBundleMembers: (members: AbilityItem[]) => void;
 	importSkillArchive: (file: File) => void;
 	importPluginArchive: (file: File) => void;
+	addMarketplaceSource: (input: AddMarketplaceSourceInput) => Promise<void>;
 	startAddManualMcp: () => void;
 	/** 刚装好、待提示配置权限的插件 slug；为空表示不提示。 */
 	permissionPromptSlug: string | null;

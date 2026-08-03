@@ -61,8 +61,21 @@
 		"importSkillHint": "从本地 zip、tar.gz 或 tgz 压缩包安装",
 		"importPlugin": "导入插件压缩包",
 		"importPluginHint": "从本地 zip 安装（需包含 plugin.json）",
+		"externalRepository": "添加外置仓库",
+		"externalRepositoryHint": "从 GitHub 仓库同步开源能力目录",
 		"addMcp": "手动添加 MCP",
-		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务"
+		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务",
+		"repositoryDialog": {
+			"title": "添加外置仓库",
+			"description": "仓库需要包含 .vetta/marketplace.json，添加后会立即同步其中的能力。",
+			"repositoryLabel": "GitHub 仓库",
+			"repositoryPlaceholder": "owner/repo 或 https://github.com/owner/repo",
+			"refLabel": "分支",
+			"refPlaceholder": "main",
+			"submit": "添加并同步",
+			"syncing": "正在同步…",
+			"error": "仓库同步失败：{{error}}"
+		}
 	},
 	"empty": {
 		"noMatch": "没有匹配的能力",
