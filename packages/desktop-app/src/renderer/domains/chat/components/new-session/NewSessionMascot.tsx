@@ -1,10 +1,4 @@
 import { Button } from "@shared/components/ui/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@shared/components/ui/dropdown-menu";
 import { cn } from "@shared/lib/utils";
 import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import type { SyntheticEvent } from "react";
@@ -77,27 +71,26 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 			transition={{ duration: 0.5, delay: 0.2 }}
 			className="pointer-events-none absolute inset-x-0 -bottom-6 z-30 h-20 select-none"
 		>
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<Button
-						aria-label={t("newSession.mascot.menuTrigger")}
-						className="no-drag pointer-events-auto absolute right-16 -top-5 rounded-full border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm"
-						size="icon-xs"
-						variant="ghost"
-					>
-						<span aria-hidden className="icon-[solar--alt-arrow-down-linear] h-3 w-3" />
-					</Button>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="center" className="min-w-28" side="top">
-					<DropdownMenuItem onSelect={handleVisibilityToggle}>
-						{t(
-							mascotVisible
-								? "newSession.mascot.hideMascot"
-								: "newSession.mascot.showMascot",
-						)}
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+			<Button
+				aria-label={t(
+					mascotVisible ? "newSession.mascot.hideMascot" : "newSession.mascot.showMascot",
+				)}
+				className={cn(
+					"no-drag pointer-events-auto absolute right-2 z-20 rounded-md border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm transition-[top] duration-200",
+					mascotVisible ? "-top-5" : "top-11",
+				)}
+				onClick={handleVisibilityToggle}
+				size="icon-xs"
+				variant="ghost"
+			>
+				<span
+					aria-hidden
+					className={cn(
+						"icon-[solar--alt-arrow-down-linear] h-3 w-3 transition-transform duration-200",
+						mascotVisible && "rotate-180",
+					)}
+				/>
+			</Button>
 
 			{!mascotVisible ? null : actionPlaying ? (
 				action === "crawl" ? (
