@@ -9,6 +9,11 @@ const appRoot = app.isPackaged ? app.getAppPath() : process.cwd();
 const resDir = app.isPackaged ? appRoot : join(appRoot, "dist");
 const buildDir = app.isPackaged ? join(process.resourcesPath, "build") : join(appRoot, "build");
 const devServerUrl = process.env.VETTA_DESKTOP_DEV_URL;
+const RESIZE_OBSERVER_DELIVERY_WARNING = "ResizeObserver loop completed with undelivered notifications.";
+
+function isChromiumResizeObserverDiagnostic(message: string, line: number, sourceId: string): boolean {
+	return line === 0 && sourceId === "" && message === RESIZE_OBSERVER_DELIVERY_WARNING;
+}
 
 export const iconPath: Record<string, string> = {
 	darwin: join(buildDir, "icon.icns"),
@@ -113,6 +118,9 @@ export function createWindow(): BrowserWindow {
 		windowLog.error("preload-error", { preloadPath: preloadPathForError, error });
 	});
 	mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
+		// Chromium defers remaining ResizeObserver callbacks to the next frame while a split pane is
+		// continuously resized. It reports that normal delivery behavior as an internal console error.
+		if (isChromiumResizeObserverDiagnostic(message, line, sourceId)) return;
 		const levelLabel = (["log", "info", "warn", "error"] as const)[level] ?? "log";
 		rendererLog[levelLabel](`[${sourceId}:${line}] ${message}`);
 	});
