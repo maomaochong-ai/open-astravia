@@ -13,12 +13,13 @@ describe("GeminiProvider", () => {
 		});
 
 		const result = await provider.generate({
-			capability: "text-to-image",
+			modeId: "text-to-image",
 			providerId: "google",
 			modelId: "google-official/gemini-2.5-flash-image",
 			prompt: "A quiet studio",
 			aspectRatio: "1:1",
 			quality: "hd",
+			references: [],
 		});
 
 		expect(network.requests[0]?.url).toBe(
@@ -42,13 +43,14 @@ describe("GeminiProvider", () => {
 		});
 
 		const result = await provider.generate({
-			capability: "text-to-video",
+			modeId: "text-to-video",
 			providerId: "google",
 			modelId: "google-official/veo-3.1-generate-preview",
 			prompt: "A paper bird takes flight",
 			aspectRatio: "16:9",
 			duration: 7,
 			resolution: "1080p",
+			references: [],
 		});
 
 		expect(network.requests[0]?.body).toMatchObject({

@@ -9,7 +9,8 @@ Vetta 的系统 preset 插件，用节点画布组织提示词、素材生成与
 - 编排工作区：首批提供视频轨、音频轨、片段添加、移动和裁剪的领域协议。
 - 项目存储：写入 `<cwd>/.vetta/content-creation/project.json`，带 schemaVersion 与 revision；无工作目录时回退到插件私有存储。
 - Agent：打开画布、读取状态、批量应用结构化操作。
-- 内容生产与导出：本阶段仅预留 Asset、GenerationJob 和 Provider/Renderer 边界，不调用真实服务。
+- 内容生产：支持 OpenAI Images、Replicate、Gemini/Veo 与 NewAPI 视频适配器；图片/视频参考素材按模型输入模式校验并保存在插件私有素材存储中。
+- 导出：本阶段仅预留 Renderer 边界。
 
 ## 架构边界
 
@@ -20,7 +21,7 @@ Agent ────┘
 ```
 
 UI 与 Agent 都只能通过 `ContentCreationWorkspace.dispatch()` 修改项目。领域命令保持纯函数，
-供应商适配、内容处理和导出渲染将在后续阶段作为独立模块接入，不进入组件。
+供应商适配与素材存储位于独立 generation 模块，不进入组件；导出渲染将在后续阶段接入。
 
 ## 设计分析
 

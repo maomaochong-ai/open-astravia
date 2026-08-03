@@ -168,6 +168,7 @@ export function useAbilitiesModel(): AbilitiesModel {
 		uninstallBundleMembers: actions.uninstallMembers,
 		importSkillArchive: actions.importSkillArchive,
 		importPluginArchive: actions.importPluginArchive,
+		addMarketplaceSource: data.addMarketplaceSource,
 		startAddManualMcp: () => mcp.onStartAddServer(),
 		permissionPromptSlug: actions.permissionPromptSlug,
 		dismissPermissionPrompt: actions.dismissPermissionPrompt,

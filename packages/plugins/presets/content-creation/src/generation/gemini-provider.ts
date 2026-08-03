@@ -1,6 +1,7 @@
 import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
 import { delay, dimensionsFor, downloadGeneratedContent, nearestValue, requireStringSetting } from "./adapter-utils";
 import { GEMINI_IMAGE_MODELS, GEMINI_VIDEO_MODELS } from "./model-catalog";
+import { isImageGenerationMode } from "./model-inputs";
 import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
@@ -45,7 +46,7 @@ export class GeminiProvider implements ContentProviderAdapter {
 
 	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
 		const apiKey = requireStringSetting(this.settings, this.options.apiKeySetting, this.id);
-		return request.capability === "text-to-image"
+		return isImageGenerationMode(request.modeId)
 			? this.generateImage(request, apiKey)
 			: this.generateVideo(request, apiKey);
 	}
@@ -59,7 +60,17 @@ export class GeminiProvider implements ContentProviderAdapter {
 			body: {
 				type: "json",
 				value: {
-					contents: [{ role: "user", parts: [{ text: request.prompt }] }],
+					contents: [
+						{
+							role: "user",
+							parts: [
+								...request.references.map((reference) => ({
+									inlineData: { data: reference.data, mimeType: reference.mimeType },
+								})),
+								{ text: request.prompt },
+							],
+						},
+					],
 					generationConfig: {
 						responseModalities: ["IMAGE"],
 						imageConfig: {

@@ -17,7 +17,12 @@ export function createContentProjectSyncKey(
 			[
 				model.providerId,
 				model.modelId,
-				model.capabilities.join(","),
+				model.outputKind,
+				model.modes
+					.map((mode) =>
+						`${mode.id}:${mode.inputs.map((input) => `${input.id}:${input.accepts.join("+")}:${input.minItems}-${input.maxItems}`).join(";")}`,
+					)
+					.join(","),
 				model.aspectRatios.join(","),
 			].join("\u0002"),
 		)

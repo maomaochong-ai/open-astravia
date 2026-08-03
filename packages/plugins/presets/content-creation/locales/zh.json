@@ -87,6 +87,7 @@
 	"node.status.succeeded": "已完成",
 	"node.status.failed": "失败",
 	"node.prompt.empty": "尚未填写提示词",
+	"node.prompt.doubleClickToEdit": "双击编辑",
 	"node.generatedPreview": "节点生成结果",
 	"job.progress": "{{progress}}%",
 	"job.failed": "生成失败，打开节点可重试",
@@ -99,6 +100,11 @@
 	"nodeEditor.resolution": "分辨率",
 	"nodeEditor.model": "模型",
 	"nodeEditor.modelUnavailable": "尚未配置可用模型",
+	"nodeEditor.reference.add": "添加图片或视频参考",
+	"nodeEditor.reference.remove": "移除参考素材",
+	"nodeEditor.reference.unsupported": "当前模型不支持参考素材",
+	"nodeEditor.reference.required": "当前模型还需要必填的参考素材",
+	"nodeEditor.reference.incompatible": "现有参考素材与当前模型不兼容，请移除素材或切换模型",
 	"port.text": "文本",
 	"port.prompt": "提示词",
 	"port.imageReference": "图片参考",
@@ -119,6 +125,7 @@
 	"option.resolution.720p": "720p",
 	"option.resolution.1080p": "1080p",
 	"option.resolution.4k": "4K",
+	"option.duration.seconds": "{{duration}} 秒",
 	"provider.openai": "OpenAI",
 	"provider.replicate": "Replicate",
 	"provider.google": "Google AI",
@@ -132,5 +139,6 @@
 	"state.loading": "正在加载内容创作项目…",
 	"error.load": "无法加载内容创作项目",
 	"error.save": "无法保存内容创作项目",
-	"error.generate": "内容生成失败，请检查模型设置或稍后重试"
+	"error.generate": "内容生成失败，请检查模型设置或稍后重试",
+	"error.importReference": "无法导入参考素材，请检查素材类型与模型能力"
 }

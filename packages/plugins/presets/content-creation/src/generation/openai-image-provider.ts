@@ -65,7 +65,8 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 					providerId: this.id,
 					modelId: configuredModel,
 					displayName: configuredModel,
-					capabilities: ["text-to-image"] as const,
+					outputKind: "image" as const,
+					modes: [{ id: "text-to-image" as const, inputs: [] }],
 					aspectRatios: DEFAULT_ASPECT_RATIOS,
 				}
 			: undefined;
@@ -77,8 +78,8 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 	}
 
 	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
-		if (request.capability !== "text-to-image") {
-			throw new Error(`unsupported OpenAI-compatible capability: ${request.capability}`);
+		if (request.modeId !== "text-to-image") {
+			throw new Error(`unsupported OpenAI-compatible generation mode: ${request.modeId}`);
 		}
 		const apiKey = readSetting(this.settings, this.options.apiKeySetting);
 		const configuredBaseUrl = this.options.baseUrlSetting

@@ -1,8 +1,10 @@
-import type { Edge } from "@xyflow/react";
+import type { Connection, Edge } from "@xyflow/react";
+import { CONTENT_FLOW_SOURCE_HANDLE_ID, CONTENT_FLOW_TARGET_HANDLE_ID } from "./flow-handles";
 import { getContentNodeSize } from "../node/geometry";
 import type { ContentNodeData, ContentProjectDocument } from "../project/types";
-import type { ContentModelDescriptor } from "../generation/types";
+import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
 import type { ContentFlowNode } from "../node/ContentNodeCard";
+import { resolveContentConnection, type ResolvedContentConnection } from "../node/connections";
 
 export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
@@ -11,6 +13,7 @@ export interface ContentNodeActions {
 	onUpdate: (nodeId: string, data: ContentNodeData) => Promise<void>;
 	onResize: (nodeId: string, position: { x: number; y: number }, width: number, height: number) => void;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline: (nodeId: string) => Promise<void>;
 }
 
@@ -28,6 +31,10 @@ export function toContentFlowNodes(
 	return project.graph.nodes.map((node) => {
 		const fallbackSize = getContentNodeSize(node.kind, node.data.aspectRatio);
 		const job = project.jobs.filter((candidate) => candidate.nodeId === node.id).at(-1);
+		const referenceAssets = (node.data.inputs ?? []).flatMap((binding) => {
+			const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
+			return asset ? [{ binding, asset }] : [];
+		});
 		return {
 			...fallbackSize,
 			width: node.width ?? fallbackSize.width,
@@ -46,6 +53,7 @@ export function toContentFlowNodes(
 				job,
 				locked: Boolean(node.locked),
 				models,
+				referenceAssets,
 				hasGenerationError: job?.status === "failed",
 				onDelete: () => actions.onDelete(node.id),
 				onDuplicate: () => actions.onDuplicate(node.id),
@@ -53,6 +61,7 @@ export function toContentFlowNodes(
 				onUpdate: (data) => actions.onUpdate(node.id, data),
 				onResize: (position, width, height) => actions.onResize(node.id, position, width, height),
 				onRunNode: () => actions.onRunNode(node.id),
+				onImportReferences: (files) => actions.onImportReferences(node.id, files),
 				onAddToTimeline:
 					node.kind === "image-generator" || node.kind === "video-generator" || node.kind === "asset"
 						? () => actions.onAddToTimeline(node.id)
@@ -66,9 +75,20 @@ export function toContentFlowEdges(project: ContentProjectDocument, selectedNode
 	return project.graph.edges.map((edge) => ({
 		...edge,
 		className: selectedNodeIds.has(edge.source) || selectedNodeIds.has(edge.target) ? "is-related" : undefined,
-		sourceHandle: edge.sourceHandle,
-		targetHandle: edge.targetHandle,
+		sourceHandle: CONTENT_FLOW_SOURCE_HANDLE_ID,
+		targetHandle: CONTENT_FLOW_TARGET_HANDLE_ID,
 	}));
+}
+
+export function resolveContentFlowConnection(
+	project: ContentProjectDocument,
+	connection: Pick<Connection, "source" | "target">,
+): ResolvedContentConnection | null {
+	if (!connection.source || !connection.target) return null;
+	const sourceNode = project.graph.nodes.find((node) => node.id === connection.source);
+	const targetNode = project.graph.nodes.find((node) => node.id === connection.target);
+	if (!sourceNode || !targetNode) return null;
+	return resolveContentConnection(project, sourceNode, targetNode);
 }
 
 export function getConnectionPointerPosition(event: MouseEvent | TouchEvent): { x: number; y: number } | null {

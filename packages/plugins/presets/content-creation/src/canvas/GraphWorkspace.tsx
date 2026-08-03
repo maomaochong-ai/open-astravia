@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findContentAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";
 import type { ContentProjectCommand } from "../project/commands";
-import { createDefaultContentNodeData, getContentNodeDefinition } from "../node/definitions";
+import { createDefaultContentNodeData } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
 import {
 	alignContentNodes,
@@ -25,7 +25,7 @@ import {
 	layoutContentNodes,
 } from "../node/layout";
 import type { ContentNode, ContentNodeKind, ContentProjectDocument } from "../project/types";
-import type { ContentModelDescriptor } from "../generation/types";
+import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
 import { getRegisterShortcutScope } from "../plugin/plugin-ui";
 import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
@@ -43,9 +43,11 @@ import {
 	type ContentNodeActions,
 	getConnectionPointerPosition,
 	getNextClipStart,
+	resolveContentFlowConnection,
 	toContentFlowEdges,
 	toContentFlowNodes,
 } from "./graph-flow-adapters";
+import { CONTENT_FLOW_SOURCE_HANDLE_ID } from "./flow-handles";
 import { reconcileSelectedNodeIds } from "./selection-state";
 import { SelectionToolbar } from "./SelectionToolbar";
 
@@ -61,9 +63,10 @@ interface GraphWorkspaceProps {
 	models: readonly ContentModelDescriptor[];
 	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
 }
 
-export function GraphWorkspace({ project, models, onDispatch, onRunNode }: GraphWorkspaceProps) {
+export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImportReferences }: GraphWorkspaceProps) {
 	const flowContainerRef = useRef<HTMLDivElement>(null);
 	const flowInstanceRef = useRef<ReactFlowInstance<ContentFlowNode, Edge> | null>(null);
 	const alignmentGuidesLayerRef = useRef<AlignmentGuidesLayerHandle>(null);
@@ -138,6 +141,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 				void onDispatch([{ type: "node.resize", nodeId, position, width, height }]);
 			},
 			onRunNode,
+			onImportReferences,
 			onAddToTimeline: (nodeId) =>
 				onDispatch([
 					{
@@ -153,7 +157,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 					},
 				]),
 		}),
-		[onDispatch, onRunNode, project],
+		[onDispatch, onImportReferences, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
 		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions),
@@ -214,21 +218,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 	);
 
 	const isValidConnection = useCallback(
-		(connection: Connection | Edge) => {
-			if (!connection.source || !connection.target) return false;
-			const sourceNode = project.graph.nodes.find((node) => node.id === connection.source);
-			const targetNode = project.graph.nodes.find((node) => node.id === connection.target);
-			if (!sourceNode || !targetNode) return false;
-			return Boolean(
-				resolveContentConnection(
-					project,
-					sourceNode,
-					targetNode,
-					connection.sourceHandle ?? undefined,
-					connection.targetHandle ?? undefined,
-				),
-			);
-		},
+		(connection: Connection | Edge) => Boolean(resolveContentFlowConnection(project, connection)),
 		[project],
 	);
 
@@ -256,14 +246,12 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 			const node = project.graph.nodes.find((item) => item.id === state.fromNode?.id);
 			if (!node) return;
 
-			const handleId = state.fromHandle.id ?? undefined;
 			let direction = state.fromHandle.type as "source" | "target";
 			if (direction !== "source" && direction !== "target") {
-				const definition = getContentNodeDefinition(node.kind);
-				direction = definition.outputs.some((port) => port.id === handleId) ? "source" : "target";
+				direction = state.fromHandle.id === CONTENT_FLOW_SOURCE_HANDLE_ID ? "source" : "target";
 			}
 
-			const kinds = listCompatibleNodeKinds(project, node, direction, handleId);
+			const kinds = listCompatibleNodeKinds(project, node, direction);
 			if (kinds.length === 0) return;
 
 			// Swallow the pane click that React Flow synthesizes on the same mouseup.
@@ -275,7 +263,6 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 				position: flowInstanceRef.current.screenToFlowPosition(pointer),
 				nodeId: state.fromNode.id,
 				direction,
-				handleId,
 				kinds,
 			});
 		},
@@ -301,9 +288,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 			if (!existingNode) return;
 			const sourceNode = pendingMenu.direction === "source" ? existingNode : candidateNode;
 			const targetNode = pendingMenu.direction === "source" ? candidateNode : existingNode;
-			const sourceHandle = pendingMenu.direction === "source" ? pendingMenu.handleId : undefined;
-			const targetHandle = pendingMenu.direction === "target" ? pendingMenu.handleId : undefined;
-			const connection = resolveContentConnection(candidateProject, sourceNode, targetNode, sourceHandle, targetHandle);
+			const connection = resolveContentConnection(candidateProject, sourceNode, targetNode);
 			if (!connection) return;
 			void onDispatch([
 				{ type: "node.add", node: { id: nodeId, kind, position } },
@@ -350,18 +335,18 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 	}, []);
 	const onConnect = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onConnect"]>>(
 		(connection) => {
-			if (!connection.source || !connection.target) return;
+			const resolved = resolveContentFlowConnection(project, connection);
+			if (!connection.source || !connection.target || !resolved) return;
 			void onDispatch([
 				{
 					type: "edge.connect",
 					source: connection.source,
 					target: connection.target,
-					sourceHandle: connection.sourceHandle ?? undefined,
-					targetHandle: connection.targetHandle ?? undefined,
+					...resolved,
 				},
 			]);
 		},
-		[onDispatch],
+		[onDispatch, project],
 	);
 	const onNodeClick = useCallback(() => {
 		// Do not kill a just-opened drop menu if the connect ended over the source node.

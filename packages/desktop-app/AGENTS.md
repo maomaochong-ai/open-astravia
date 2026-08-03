@@ -304,6 +304,10 @@ imLog.debug("sidecar debug message");
 
 ## 开发注意事项
 
+### UI 验证入口（暂行）
+
+`bun run verify:ui:*` 目前仅用于检查 desktop-app 的启动与连接问题，不用于 UI 功能测试；相关验证能力尚未完善。
+
 ### bun dev 前置依赖构建
 
 `desktop-app` 的主进程（`src/main/`）依赖 workspace 中的其他包（`@vetta/ai`、`@vetta/agent-core`、`@vetta/coding-agent` 等）。这些包的 `dist/` 目录必须先构建，否则 `build:main` 会报 "Failed to resolve entry for package" 错误。

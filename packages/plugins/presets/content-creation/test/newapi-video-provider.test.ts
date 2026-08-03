@@ -14,14 +14,15 @@ describe("NewApiVideoProvider", () => {
 			{ id: "custom-video", baseUrlSetting: "base", apiKeySetting: "key", modelSetting: "model" },
 		);
 
-		expect(provider.listModels()).toMatchObject([{ modelId: "video-model", capabilities: ["text-to-video"] }]);
+		expect(provider.listModels()).toMatchObject([{ modelId: "video-model", modes: [{ id: "text-to-video" }] }]);
 		const result = await provider.generate({
-			capability: "text-to-video",
+			modeId: "text-to-video",
 			providerId: "custom-video",
 			modelId: "video-model",
 			prompt: "A train through snow",
 			duration: 10,
 			resolution: "1080p",
+			references: [],
 		});
 
 		expect(network.requests[0]).toMatchObject({

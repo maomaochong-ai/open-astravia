@@ -22,7 +22,9 @@
 ## 生成执行流
 
 ```text
-ContentNodeCard / NodeGenerationComposer
+ContentNodeCard / ContentGeneratorComposer
+  -> model input compatibility resolver
+  -> imported reference assets
   -> ContentGenerationService
   -> ContentProviderRegistry
   -> ContentProviderAdapter
@@ -32,7 +34,17 @@ ContentNodeCard / NodeGenerationComposer
   -> job.succeed + asset + node.assetId
 ```
 
-`ContentGenerationService` 负责领域编排：解析节点或上游提示词、创建任务、调用 Provider、保存产物并把结果写回项目。Provider 只负责模型描述和请求/响应转换，Artifact Store 只负责保存内容字节。
+`ContentGenerationService` 负责领域编排：解析节点或上游提示词、读取图片/视频参考素材、创建任务、调用 Provider、保存产物并把结果写回项目。Provider 只负责模型描述和请求/响应转换，Artifact Store 只负责保存内容字节。
+
+模型能力不再用单层布尔标记表示，而是拆成三个层次：
+
+1. `outputKind` 表示模型产出图片还是视频。
+2. `modes` 表示文生图、图生图、文生视频、图生视频或视频编辑等生成模式。
+3. 每个 mode 的 `inputs` 声明稳定的槽位 ID、接受的素材类型以及最少/最多数量。
+
+UI、生成服务和 Provider Registry 共用同一个纯兼容性解析器。切换到不兼容模型时保留素材绑定并禁用生成；新增模型只需要注册描述符，再在对应 Provider Adapter 中映射槽位，不需要修改节点组件。
+
+导入素材先写入 `PluginStorageApi`，项目文档只保存 `assetId` 与槽位绑定。生成前由服务读取 base64 内容；Provider Adapter 再按供应商协议转换为 inline data、data URL 或专用字段。供应商字段不会进入项目 schema。
 
 当前真实适配器覆盖 OpenAI Images、Replicate Predictions、Gemini Image、Gemini Veo 长任务和 NewAPI Video Generations。Loomic 模型快照由独立目录描述，Open-AI Canvas 风格的动态渠道模型来自插件设置；项目中只保存 `providerId`、`modelId` 和领域参数，不保存密钥。完整边界见 [模型目录和适配器](./model-adapters.md)。
 
@@ -46,6 +58,6 @@ ContentNodeCard / NodeGenerationComposer
 ## 后续扩展
 
 - 将任务执行迁移到可恢复的后台队列，支持重启恢复、取消和重试。
-- 增加参考图输入、图片编辑与多个候选结果。
+- 增加首尾帧等具名输入角色与多个候选结果。
 - 将 Provider 错误归一化为稳定错误码，由 UI通过 i18n 显示。
 - Agent 通过独立执行工具调用同一个 `ContentGenerationService`，不直接拼接供应商请求。

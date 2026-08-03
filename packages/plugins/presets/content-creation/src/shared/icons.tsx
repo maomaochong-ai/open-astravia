@@ -78,3 +78,29 @@ export function PauseIcon({ className }: IconProps) {
 		</svg>
 	);
 }
+
+export function ArrowUpIcon({ className }: IconProps) {
+	return (
+		<svg className={className} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+			<path d="m6 10 6-6 6 6M12 4v16" />
+		</svg>
+	);
+}
+
+export function ImageIcon({ className }: IconProps) {
+	return (
+		<svg className={className} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+			<rect x="3" y="4" width="18" height="16" rx="2" />
+			<circle cx="9" cy="10" r="1.5" />
+			<path d="m5 18 5-5 3 3 2-2 4 4" />
+		</svg>
+	);
+}
+
+export function CloseIcon({ className }: IconProps) {
+	return (
+		<svg className={className} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+			<path d="m6 6 12 12M18 6 6 18" />
+		</svg>
+	);
+}

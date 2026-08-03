@@ -61,8 +61,21 @@
 		"importSkillHint": "Install from a local zip, tar.gz or tgz archive",
 		"importPlugin": "Import plugin archive",
 		"importPluginHint": "Install from a local zip that contains plugin.json",
+		"externalRepository": "Add external repository",
+		"externalRepositoryHint": "Sync an open ability catalog from a GitHub repository",
 		"addMcp": "Add MCP manually",
-		"addMcpHint": "Configure a stdio or HTTP MCP server by hand"
+		"addMcpHint": "Configure a stdio or HTTP MCP server by hand",
+		"repositoryDialog": {
+			"title": "Add external repository",
+			"description": "The repository must contain .vetta/marketplace.json. Its abilities will be synced immediately.",
+			"repositoryLabel": "GitHub repository",
+			"repositoryPlaceholder": "owner/repo or https://github.com/owner/repo",
+			"refLabel": "Branch",
+			"refPlaceholder": "main",
+			"submit": "Add and sync",
+			"syncing": "Syncing…",
+			"error": "Repository sync failed: {{error}}"
+		}
 	},
 	"empty": {
 		"noMatch": "No matching abilities",

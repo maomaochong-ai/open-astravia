@@ -14,7 +14,8 @@ const models: readonly ContentModelDescriptor[] = [
 		providerId: "openai",
 		modelId: "gpt-image-2",
 		displayName: "GPT Image 2",
-		capabilities: ["text-to-image"],
+		outputKind: "image",
+		modes: [{ id: "text-to-image", inputs: [] }],
 		aspectRatios: ["1:1"],
 	},
 ];

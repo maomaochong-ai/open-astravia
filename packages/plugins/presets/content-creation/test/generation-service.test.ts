@@ -14,7 +14,7 @@ describe("ContentGenerationService", () => {
 
 		expect(fixture.generate).toHaveBeenCalledWith(
 			expect.objectContaining({
-				capability: "text-to-image",
+				modeId: "text-to-image",
 				providerId: "mock",
 				modelId: "mock-image",
 				prompt: "A small lighthouse",
@@ -40,14 +40,14 @@ describe("ContentGenerationService", () => {
 		expect(project?.assets).toHaveLength(0);
 	});
 
-	it("runs video nodes through the same capability-based orchestration", async () => {
+	it("runs video nodes through the same mode-based orchestration", async () => {
 		const fixture = await createFixture("video-generator");
 
 		const result = await fixture.service.runNode("C:/project", "image");
 
 		expect(fixture.generate).toHaveBeenCalledWith(
 			expect.objectContaining({
-				capability: "text-to-video",
+				modeId: "text-to-video",
 				modelId: "mock-video",
 				duration: 8,
 				resolution: "1080p",
@@ -64,7 +64,7 @@ describe("ContentGenerationService", () => {
 });
 
 async function createFixture(kind: "image-generator" | "video-generator" = "image-generator") {
-	const capability = kind === "video-generator" ? "text-to-video" : "text-to-image";
+	const modeId = kind === "video-generator" ? "text-to-video" : "text-to-image";
 	const modelId = kind === "video-generator" ? "mock-video" : "mock-image";
 	const repository = new MemoryRepository();
 	const workspace = new ContentCreationWorkspace(repository);
@@ -101,7 +101,8 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 				providerId: "mock",
 				modelId,
 				displayName: kind === "video-generator" ? "Mock Video" : "Mock Image",
-				capabilities: [capability],
+				outputKind: kind === "video-generator" ? "video" : "image",
+				modes: [{ id: modeId, inputs: [] }],
 				aspectRatios: kind === "video-generator" ? ["16:9"] : ["1:1"],
 			},
 		],
@@ -113,7 +114,8 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 		url: "vetta-media://mock",
 		mimeType: kind === "video-generator" ? "video/mp4" : "image/png",
 	});
-	const service = new ContentGenerationService(workspace, providers, { put });
+	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue(null);
+	const service = new ContentGenerationService(workspace, providers, { put, read });
 	return { service, workspace, generate, put };
 }
 

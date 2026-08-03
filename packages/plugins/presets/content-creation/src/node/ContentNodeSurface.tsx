@@ -28,7 +28,11 @@ const captionTextStyle = {
 	lineHeight: 1.4,
 } as const;
 
-function MediaPlaceholder({ kind, descriptionKey }: Pick<ContentNodeSurfaceProps, "kind" | "descriptionKey">) {
+function MediaPlaceholder({
+	kind,
+	descriptionKey,
+	prompt,
+}: Pick<ContentNodeSurfaceProps, "kind" | "descriptionKey"> & { prompt?: string }) {
 	const { t } = useTranslation();
 	return (
 		<div
@@ -55,7 +59,7 @@ function MediaPlaceholder({ kind, descriptionKey }: Pick<ContentNodeSurfaceProps
 				/>
 			</span>
 			<span className="max-w-[min(280px,85%)]" style={surfaceTextStyle}>
-				{t(descriptionKey)}
+				{prompt?.trim() || t(descriptionKey)}
 			</span>
 		</div>
 	);
@@ -73,6 +77,7 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	const { t } = useTranslation();
 	const isMedia = kind === "image-generator" || kind === "video-generator" || kind === "asset";
 	const isBusy = status === "running" || status === "queued";
+	const emptyText = kind === "prompt" ? t("node.prompt.doubleClickToEdit") : t(descriptionKey);
 
 	if (isMedia) {
 		return (
@@ -94,8 +99,15 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 						draggable={false}
 					/>
 				) : (
-					<MediaPlaceholder kind={kind} descriptionKey={descriptionKey} />
+					<MediaPlaceholder kind={kind} descriptionKey={descriptionKey} prompt={data.prompt} />
 				)}
+				{assetUrl && data.prompt?.trim() ? (
+					<div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/80 via-black/55 to-transparent px-[clamp(10px,4cqw,18px)] pt-[clamp(8px,3cqmin,14px)] pb-[clamp(22px,8cqmin,44px)] text-white">
+						<p className="m-0 line-clamp-3 whitespace-pre-wrap" style={captionTextStyle}>
+							{data.prompt.trim()}
+						</p>
+					</div>
+				) : null}
 				{isBusy ? (
 					<div
 						className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-background/45 backdrop-blur-[2px]"
@@ -137,7 +149,7 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 				className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85"
 				style={surfaceTextStyle}
 			>
-				{data.prompt?.trim() || t(descriptionKey)}
+				{data.prompt?.trim() || emptyText}
 			</p>
 		</div>
 	);

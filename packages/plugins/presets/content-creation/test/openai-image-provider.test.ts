@@ -27,11 +27,12 @@ describe("OpenAiImageProvider", () => {
 		});
 
 		const result = await provider.generate({
-			capability: "text-to-image",
+			modeId: "text-to-image",
 			providerId: "openai",
 			modelId: "image-model",
 			prompt: "A paper city",
 			aspectRatio: "16:9",
+			references: [],
 		});
 
 		expect(result).toEqual({ kind: "image", data: "iVBORw0KGgoAAA", mimeType: "image/png" });
@@ -57,10 +58,11 @@ describe("OpenAiImageProvider", () => {
 
 		await expect(
 			provider.generate({
-				capability: "text-to-image",
+				modeId: "text-to-image",
 				providerId: "openai",
 				modelId: "image-model",
 				prompt: "A paper city",
+				references: [],
 			}),
 		).rejects.toThrow("API key is not configured");
 		expect(network.requests).toHaveLength(0);

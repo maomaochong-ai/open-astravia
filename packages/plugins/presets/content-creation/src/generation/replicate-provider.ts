@@ -1,6 +1,7 @@
 import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
 import { delay, dimensionsFor, downloadGeneratedContent, requireStringSetting } from "./adapter-utils";
 import { REPLICATE_IMAGE_MODELS, REPLICATE_VIDEO_MODELS } from "./model-catalog";
+import { isImageGenerationMode } from "./model-inputs";
 import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
@@ -46,15 +47,15 @@ export class ReplicateProvider implements ContentProviderAdapter {
 	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
 		const token = requireStringSetting(this.settings, this.options.apiTokenSetting, this.id);
 		const baseUrl = (this.options.baseUrl ?? "https://api.replicate.com/v1").replace(/\/$/, "");
-		const { endpoint, input } =
-			request.capability === "text-to-image" ? buildImageInput(request) : buildVideoInput(request);
+		const imageGeneration = isImageGenerationMode(request.modeId);
+		const { endpoint, input } = imageGeneration ? buildImageInput(request) : buildVideoInput(request);
 		const response = await this.network.request<ReplicatePrediction>({
 			url: `${baseUrl}/models/${endpoint}/predictions`,
 			method: "POST",
-			headers: { Authorization: `Bearer ${token}`, Prefer: request.capability === "text-to-video" ? "wait=300" : "wait" },
+			headers: { Authorization: `Bearer ${token}`, Prefer: imageGeneration ? "wait" : "wait=300" },
 			body: { type: "json", value: { input } },
 			responseType: "json",
-			timeoutMs: request.capability === "text-to-video" ? 330_000 : 120_000,
+			timeoutMs: imageGeneration ? 120_000 : 330_000,
 		});
 		if (!response.ok) throw new Error(`Replicate returned HTTP ${response.status}`);
 		const prediction = await this.resolvePrediction(response.body, token);
@@ -62,10 +63,10 @@ export class ReplicateProvider implements ContentProviderAdapter {
 		if (!outputUrl) throw new Error(prediction.error || "Replicate response is missing output");
 		const dimensions = dimensionsFor(request.aspectRatio, request.resolution);
 		return downloadGeneratedContent(this.network, outputUrl, {
-			kind: request.capability === "text-to-video" ? "video" : "image",
-			mimeType: request.capability === "text-to-video" ? "video/mp4" : "image/png",
+			kind: imageGeneration ? "image" : "video",
+			mimeType: imageGeneration ? "image/png" : "video/mp4",
 			...dimensions,
-			duration: request.capability === "text-to-video" ? request.duration ?? 5 : undefined,
+			duration: imageGeneration ? undefined : request.duration ?? 5,
 		});
 	}
 
@@ -104,6 +105,11 @@ function buildImageInput(request: ContentGenerationRequest): { endpoint: string;
 		input.aspect_ratio = normalizeReplicateImageRatio(request.modelId, aspectRatio);
 	}
 	applyImageQuality(input, request.modelId, request.quality);
+	const imageField = imageInputFieldForReplicateModel(request.modelId);
+	const images = request.references.filter((reference) => reference.kind === "image").map(toDataUrl);
+	if (images.length > 0 && !imageField) throw new Error(`Replicate image model does not accept references: ${request.modelId}`);
+	if (imageField === "input_image") input[imageField] = images[0];
+	if (imageField === "input_images" || imageField === "image_input") input[imageField] = images;
 	return { endpoint: request.modelId, input };
 }
 
@@ -132,6 +138,8 @@ function buildVideoInput(request: ContentGenerationRequest): { endpoint: string;
 	let endpoint = request.modelId;
 	const duration = request.duration ?? 5;
 	const aspectRatio = request.aspectRatio ?? "16:9";
+	const images = request.references.filter((reference) => reference.kind === "image").map(toDataUrl);
+	const video = request.references.find((reference) => reference.kind === "video");
 
 	if (request.modelId === "wan-video/wan-2.6") endpoint = "wan-video/wan-2.6-t2v";
 	if (request.modelId.startsWith("kwaivgi/kling-")) {
@@ -159,7 +167,28 @@ function buildVideoInput(request: ContentGenerationRequest): { endpoint: string;
 		input.duration = duration;
 		input.aspect_ratio = aspectRatio;
 	}
+
+	if (request.modelId === "kwaivgi/kling-v3-video" && images[0]) input.start_image = images[0];
+	if (request.modelId === "kwaivgi/kling-v3-omni-video") {
+		if (request.modeId === "image-to-video" && images[0]) input.start_image = images[0];
+		if (request.modeId === "video-to-video") {
+			if (images.length > 0) input.reference_images = images;
+			if (video) input.reference_video = toDataUrl(video);
+		}
+	}
+	if (request.modelId === "kwaivgi/kling-o1") {
+		if (images.length > 0) input.reference_images = images;
+		if (video) input.reference_video = toDataUrl(video);
+	}
+	if (request.modelId === "google/veo-3.1" || request.modelId === "google/veo-3.1-fast") {
+		if (request.modeId === "image-to-video" && images[0]) input.image = images[0];
+		if (request.modeId === "reference-to-video" && images.length > 0) input.reference_images = images;
+	}
 	return { endpoint, input };
+}
+
+function toDataUrl(reference: { data: string; mimeType: string }): string {
+	return `data:${reference.mimeType};base64,${reference.data}`;
 }
 
 export function imageInputFieldForReplicateModel(modelId: string): "input_image" | "input_images" | "image_input" | null {

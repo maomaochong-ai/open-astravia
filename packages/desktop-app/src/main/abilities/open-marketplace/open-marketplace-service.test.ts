@@ -28,6 +28,7 @@ function archive(options?: {
 	packageVersion?: string;
 	description?: string;
 	minAppVersion?: string;
+	withPresentation?: boolean;
 }): Buffer {
 	const marketplaceVersion = options?.marketplaceVersion ?? "2026.07.1";
 	const packageVersion = options?.packageVersion ?? "1.0.0";
@@ -57,6 +58,24 @@ function archive(options?: {
 		"vetta-abilities-main/abilities/skills/demo-skill/SKILL.md",
 		Buffer.from(`---\nname: demo-skill\ndescription: Demo ability\nversion: ${packageVersion}\n---\n\n# Demo\n`),
 	);
+	if (options?.withPresentation) {
+		zip.addFile(
+			"vetta-abilities-main/abilities/skills/demo-skill/ability.json",
+			Buffer.from(
+				JSON.stringify({
+					schemaVersion: 1,
+					type: "skill",
+					slug: "demo-skill",
+					version: packageVersion,
+					icon: "icon.svg",
+				}),
+			),
+		);
+		zip.addFile(
+			"vetta-abilities-main/abilities/skills/demo-skill/icon.svg",
+			Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+		);
+	}
 	return zip.toBuffer();
 }
 
@@ -192,6 +211,21 @@ describe("OpenMarketplaceService", () => {
 			ref: "main",
 			marketplaceVersion: "2026.07.1",
 		});
+	});
+
+	it("returns local presentation icons from the active snapshot directory", async () => {
+		const rootDir = await temporaryRoot();
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive({ withPresentation: true })),
+		});
+
+		const snapshot = await service.refresh();
+		const icon = snapshot.abilities[0]?.icon;
+
+		expect(icon).toContain("/snapshots/2026.07.1/abilities/skills/demo-skill/icon.svg?v=2026.07.1");
+		expect(icon).not.toContain("/sync-");
 	});
 
 	it("does not reuse state after the configured source identity changes", async () => {
