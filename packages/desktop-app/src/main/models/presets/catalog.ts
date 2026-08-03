@@ -77,7 +77,7 @@ export const PRESET_PROVIDERS: readonly PresetProviderDef[] = [
 	},
 	{
 		id: "qwen",
-		displayName: "Qwen (千问)",
+		displayName: "Qwen",
 		icon: "qwen",
 		api: "qwen-openai-completions",
 		baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
