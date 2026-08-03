@@ -1,6 +1,14 @@
+import { Button } from "@shared/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui/dropdown-menu";
 import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import type { SyntheticEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const FERRET_VIDEO_SOURCES = {
 	blink: "./new-session/ferret-blink.webm",
@@ -13,6 +21,10 @@ const CRAWL_EDGE_PAUSE_SECONDS = 1;
 const CRAWL_MOVE_DURATION_SECONDS = CRAWL_DURATION_SECONDS - CRAWL_EDGE_PAUSE_SECONDS * 2;
 const CENTER_POSITION = "calc(50% - 4.5rem)";
 const RIGHT_POSITION = "calc(100% - 9rem)";
+const MASCOT_VISIBLE_STORAGE_KEY = "vetta-new-session-mascot-visible";
+const HOUR_IN_MILLISECONDS = 60 * 60 * 1_000;
+const MINIMUM_ACTION_INTERVAL = HOUR_IN_MILLISECONDS;
+const MAXIMUM_ACTION_INTERVAL = HOUR_IN_MILLISECONDS * 3;
 
 type MascotAction = (typeof MASCOT_ACTIONS)[number];
 
@@ -22,28 +34,75 @@ interface NewSessionMascotProps {
 }
 
 export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): JSX.Element {
+	const { t } = useTranslation("chat");
 	const reduceMotion = useReducedMotion();
 	const [action, setAction] = useState<MascotAction>(() => pickRandomAction());
+	const [mascotVisible, setMascotVisible] = useState(readMascotVisible);
+	const [playing, setPlaying] = useState(false);
 
 	const handleComplete = useCallback(() => {
-		setAction((current) => pickRandomAction(current));
+		setPlaying(false);
 	}, []);
+
+	useEffect(() => {
+		if (!mascotVisible || !autoplay || reduceMotion || playing) return;
+
+		const timer = window.setTimeout(() => {
+			setAction((current) => pickRandomAction(current));
+			setPlaying(true);
+		}, randomActionInterval());
+
+		return () => window.clearTimeout(timer);
+	}, [autoplay, mascotVisible, playing, reduceMotion]);
+
+	const handleVisibilityToggle = useCallback(() => {
+		setMascotVisible((current) => {
+			const next = !current;
+			window.localStorage.setItem(MASCOT_VISIBLE_STORAGE_KEY, String(next));
+			return next;
+		});
+		setPlaying(false);
+	}, []);
+
+	const actionPlaying = mascotVisible && autoplay && !reduceMotion && playing;
 
 	return (
 		<motion.div
-			aria-hidden="true"
 			initial={{ opacity: 0 }}
 			animate={{ opacity: mounted ? 1 : 0 }}
 			transition={{ duration: 0.5, delay: 0.2 }}
 			className="pointer-events-none absolute inset-x-0 -bottom-6 z-30 h-20 select-none"
 		>
-			{autoplay && !reduceMotion ? (
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						aria-label={t("newSession.mascot.menuTrigger")}
+						className="no-drag pointer-events-auto absolute right-16 -top-5 rounded-full border border-border/40 bg-background/80 text-muted-foreground backdrop-blur-sm"
+						size="icon-xs"
+						variant="ghost"
+					>
+						<span aria-hidden className="icon-[solar--alt-arrow-down-linear] h-3 w-3" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="center" className="min-w-28" side="top">
+					<DropdownMenuItem onSelect={handleVisibilityToggle}>
+						{t(
+							mascotVisible
+								? "newSession.mascot.hideMascot"
+								: "newSession.mascot.showMascot",
+						)}
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			{!mascotVisible ? null : actionPlaying ? (
 				action === "crawl" ? (
 					<CrawlPass onComplete={handleComplete} />
 				) : (
 					<video
+						aria-hidden="true"
 						autoPlay
-						className="absolute right-0 bottom-0 h-20 w-36 object-cover object-center"
+						className="pointer-events-none absolute right-0 bottom-0 h-20 w-36 object-cover object-center"
 						draggable={false}
 						muted
 						onEnded={handleComplete}
@@ -52,7 +111,17 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 						src={FERRET_VIDEO_SOURCES[action]}
 					/>
 				)
-			) : null}
+			) : (
+				<video
+					aria-hidden="true"
+					className="pointer-events-none absolute right-0 bottom-0 h-20 w-36 object-cover object-center"
+					draggable={false}
+					muted
+					playsInline
+					preload="auto"
+					src={FERRET_VIDEO_SOURCES.blink}
+				/>
+			)}
 		</motion.div>
 	);
 }
@@ -117,8 +186,9 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 
 	return (
 		<motion.video
+			aria-hidden="true"
 			autoPlay
-			className="absolute bottom-0 h-20 w-36 object-cover object-center"
+			className="pointer-events-none absolute bottom-0 h-20 w-36 object-cover object-center"
 			draggable={false}
 			muted
 			onEnded={handleEnded}
@@ -137,6 +207,14 @@ function pickRandomAction(current?: MascotAction): MascotAction {
 		? MASCOT_ACTIONS.filter((candidate) => candidate !== current)
 		: MASCOT_ACTIONS;
 	return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function randomActionInterval(): number {
+	return MINIMUM_ACTION_INTERVAL + Math.random() * (MAXIMUM_ACTION_INTERVAL - MINIMUM_ACTION_INTERVAL);
+}
+
+function readMascotVisible(): boolean {
+	return window.localStorage.getItem(MASCOT_VISIBLE_STORAGE_KEY) !== "false";
 }
 
 function positionForRightness(rightness: number): string {
