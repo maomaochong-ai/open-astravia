@@ -119,7 +119,8 @@ function getProcessStartMs(pid: number): number | undefined {
 			return getDarwinProcessStartMs(pid);
 		}
 		if (process.platform === "win32") {
-			return getWindowsProcessStartMs(pid);
+			const probe = probeWindowsProcess(pid);
+			return probe.kind === "alive" ? probe.startMs : undefined;
 		}
 	} catch {
 		return undefined;
@@ -155,32 +156,52 @@ function getDarwinProcessStartMs(pid: number): number | undefined {
 	return Math.floor(Date.now() - elapsedSec * 1000);
 }
 
-function getWindowsProcessStartMs(pid: number): number | undefined {
-	// PowerShell is available on all supported desktop targets; only runs on lock conflict.
-	const out = execFileSync(
-		"powershell.exe",
-		[
-			"-NoProfile",
-			"-NonInteractive",
-			"-Command",
-			`([DateTimeOffset](Get-Process -Id ${pid}).StartTime).ToUnixTimeMilliseconds()`,
-		],
-		{
-			encoding: "utf8",
-			timeout: 5000,
-			windowsHide: true,
-		},
-	).trim();
-	const ms = Number(out);
-	if (!Number.isFinite(ms) || ms <= 0) return undefined;
-	return Math.floor(ms);
+/**
+ * Windows process liveness via Get-Process (more reliable than process.kill).
+ *
+ * Node's process.kill(pid, 0) on Windows can throw EPERM for PIDs that no longer
+ * exist (not only for "exists but no permission"). Treating EPERM as alive then
+ * leaves session .lock files permanently stuck after a crash.
+ *
+ * - alive: process exists; startMs is wall-clock process start
+ * - dead: Get-Process reports no such process
+ * - unknown: probe failed (PowerShell error / timeout) — fall back carefully
+ */
+type WindowsProcessProbe = { kind: "alive"; startMs: number } | { kind: "dead" } | { kind: "unknown" };
+
+function probeWindowsProcess(pid: number): WindowsProcessProbe {
+	try {
+		// SilentlyContinue + null StartTime guard: avoid stderr and cast exceptions when missing.
+		const out = execFileSync(
+			"powershell.exe",
+			[
+				"-NoProfile",
+				"-NonInteractive",
+				"-Command",
+				`$p = Get-Process -Id ${pid} -ErrorAction SilentlyContinue; if ($null -eq $p -or $null -eq $p.StartTime) { 'DEAD' } else { [int64]([DateTimeOffset]$p.StartTime).ToUnixTimeMilliseconds() }`,
+			],
+			{
+				encoding: "utf8",
+				timeout: 5000,
+				windowsHide: true,
+			},
+		).trim();
+		if (out === "DEAD" || out === "") return { kind: "dead" };
+		const ms = Number(out);
+		if (!Number.isFinite(ms) || ms <= 0) return { kind: "unknown" };
+		return { kind: "alive", startMs: Math.floor(ms) };
+	} catch {
+		return { kind: "unknown" };
+	}
 }
 
 /**
- * Whether `pid` exists on this host.
+ * Whether `pid` exists on this host (POSIX path).
  * EPERM means the process exists but we cannot signal it — treat as alive.
+ *
+ * On Windows this helper is not used for lock decisions; see probeWindowsProcess.
  */
-function isPidReachable(pid: number): boolean {
+function isPidReachablePosix(pid: number): boolean {
 	if (!Number.isInteger(pid) || pid <= 0) return false;
 	try {
 		process.kill(pid, 0);
@@ -201,11 +222,42 @@ function isLockHolderAlive(holder: SessionLockInfo): boolean {
 	if (!hostnamesEqual(holder.hostname, hostname())) {
 		return true;
 	}
-	if (!isPidReachable(holder.pid)) {
+
+	if (process.platform === "win32") {
+		return isWindowsLockHolderAlive(holder);
+	}
+
+	if (!isPidReachablePosix(holder.pid)) {
 		return false;
 	}
 
 	const liveStart = getProcessStartMs(holder.pid);
+	return matchLiveProcessToLock(holder, liveStart);
+}
+
+function isWindowsLockHolderAlive(holder: SessionLockInfo): boolean {
+	const probe = probeWindowsProcess(holder.pid);
+	if (probe.kind === "dead") {
+		return false;
+	}
+	if (probe.kind === "unknown") {
+		// Probe failed: only trust a clean kill(0) success. Do NOT treat EPERM as
+		// alive — on Windows that is a known false positive for dead PIDs.
+		try {
+			process.kill(holder.pid, 0);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+	return matchLiveProcessToLock(holder, probe.startMs);
+}
+
+/**
+ * Given a live process start time (or undefined if unavailable), decide whether
+ * it is still the same instance that wrote the lock.
+ */
+function matchLiveProcessToLock(holder: SessionLockInfo, liveStart: number | undefined): boolean {
 	const recordedStart = holder.processStartedAt ? Date.parse(holder.processStartedAt) : Number.NaN;
 	const openedAt = Date.parse(holder.openedAt);
 
@@ -223,6 +275,7 @@ function isLockHolderAlive(holder: SessionLockInfo): boolean {
 	}
 
 	// Pid is reachable and we cannot prove reuse → assume still held.
+	// If liveStart is missing on POSIX after isPidReachable, keep the conservative bias.
 	return true;
 }
 

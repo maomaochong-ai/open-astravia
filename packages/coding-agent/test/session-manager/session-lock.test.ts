@@ -173,6 +173,74 @@ describe("acquireSessionLock", () => {
 			handle.release();
 		}
 	});
+
+	it("reclaims a lock for a dead pid even when processStartedAt is present", () => {
+		const sessionFile = join(tempDir, "k.jsonl");
+		const lockPath = `${sessionFile}.lock`;
+		// High unused pid: not this process; on Windows may surface as EPERM from
+		// process.kill(pid,0) while Get-Process reports missing — must still reclaim.
+		const stalePid = 2 ** 22 + 7;
+		writeFileSync(
+			lockPath,
+			JSON.stringify({
+				pid: stalePid,
+				hostname: require("os").hostname(),
+				openedAt: new Date(Date.now() - 60_000).toISOString(),
+				processStartedAt: new Date(Date.now() - 120_000).toISOString(),
+			}),
+		);
+
+		const handle = acquireSessionLock(sessionFile);
+		try {
+			const info = JSON.parse(readFileSync(handle.lockPath, "utf8"));
+			expect(info.pid).toBe(process.pid);
+		} finally {
+			handle.release();
+		}
+	});
+
+	it("reclaims when Windows kill(0) returns EPERM for a non-existent process", function () {
+		if (process.platform !== "win32") {
+			this.skip();
+		}
+		// Scan for a pid where Node reports EPERM but the process is gone.
+		// That is the false-positive that previously permanently stuck .jsonl.lock.
+		let epermDeadPid: number | undefined;
+		for (let pid = 4; pid < 80_000; pid += 4) {
+			if (pid === process.pid) continue;
+			try {
+				process.kill(pid, 0);
+			} catch (err: unknown) {
+				if ((err as NodeJS.ErrnoException).code === "EPERM") {
+					epermDeadPid = pid;
+					break;
+				}
+			}
+		}
+		if (epermDeadPid == null) {
+			this.skip();
+		}
+
+		const sessionFile = join(tempDir, "l.jsonl");
+		const lockPath = `${sessionFile}.lock`;
+		writeFileSync(
+			lockPath,
+			JSON.stringify({
+				pid: epermDeadPid,
+				hostname: require("os").hostname(),
+				openedAt: new Date(Date.now() - 86_400_000).toISOString(),
+				processStartedAt: new Date(Date.now() - 86_400_000).toISOString(),
+			}),
+		);
+
+		const handle = acquireSessionLock(sessionFile);
+		try {
+			const info = JSON.parse(readFileSync(handle.lockPath, "utf8"));
+			expect(info.pid).toBe(process.pid);
+		} finally {
+			handle.release();
+		}
+	});
 });
 
 describe("SessionManager file lock integration", () => {

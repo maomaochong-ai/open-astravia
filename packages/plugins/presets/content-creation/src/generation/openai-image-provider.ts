@@ -11,8 +11,9 @@ interface OpenAiImageProviderOptions {
 	baseUrl?: string;
 	baseUrlSetting?: string;
 	apiKeySetting: string;
-	modelSetting: string;
+	modelSetting?: string;
 	defaultModel?: string;
+	models?: readonly ContentModelDescriptor[];
 }
 
 interface ImageResponseItem {
@@ -56,16 +57,23 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 	}
 
 	listModels(): readonly ContentModelDescriptor[] {
-		const modelId = readSetting(this.settings, this.options.modelSetting) || this.options.defaultModel;
-		if (!modelId) return [];
-		return [
-			{
-				providerId: this.id,
-				modelId,
-				capabilities: ["text-to-image"],
-				aspectRatios: DEFAULT_ASPECT_RATIOS,
-			},
-		];
+		const configuredModel = this.options.modelSetting
+			? readSetting(this.settings, this.options.modelSetting) || this.options.defaultModel
+			: this.options.defaultModel;
+		const configuredDescriptor = configuredModel
+			? {
+					providerId: this.id,
+					modelId: configuredModel,
+					displayName: configuredModel,
+					capabilities: ["text-to-image"] as const,
+					aspectRatios: DEFAULT_ASPECT_RATIOS,
+				}
+			: undefined;
+		const models = [...(this.options.models ?? [])];
+		if (configuredDescriptor && !models.some((model) => model.modelId === configuredDescriptor.modelId)) {
+			models.unshift(configuredDescriptor);
+		}
+		return models;
 	}
 
 	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {

@@ -53,7 +53,7 @@ const RAW_API_JSON = {
 			},
 		},
 	},
-	// 不在预设六家里,应当被裁掉。
+	// 不在预设目录里,应当被裁掉。
 	somebody: { models: { "x-1": { name: "X" } } },
 };
 
@@ -66,7 +66,7 @@ async function fetchCatalog(): Promise<ModelsDevCatalog> {
 }
 
 describe("models.dev 目录", () => {
-	it("只保留预设六家并折算成 ModelDefinition", async () => {
+	it("只保留预设服务商并折算成 ModelDefinition", async () => {
 		const catalog = await fetchCatalog();
 
 		expect(Object.keys(catalog.providers).sort()).toEqual(["claude", "deepseek", "gemini"]);
@@ -147,13 +147,15 @@ describe("随包内置快照", () => {
 		expect(isCatalogUsable(MODELS_DEV_SNAPSHOT)).toBe(true);
 	});
 
-	it("六家都有模型,且条目字段齐全", () => {
+	it("每家都有模型,且条目字段齐全", () => {
 		expect(Object.keys(MODELS_DEV_SNAPSHOT.providers).sort()).toEqual([
 			"claude",
 			"deepseek",
 			"gemini",
+			"grok",
 			"kimi",
 			"openai",
+			"qwen",
 			"zai",
 		]);
 		for (const [presetId, entries] of Object.entries(MODELS_DEV_SNAPSHOT.providers)) {

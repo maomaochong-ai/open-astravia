@@ -96,7 +96,7 @@ export async function refreshPresetCatalog(): Promise<{
 }> {
 	catalogRetryAfter = 0;
 	const started = Date.now();
-	const catalog = await ensureCatalog();
+	const catalog = await ensureCatalog(true);
 	const elapsed = Date.now() - started;
 	const modelCount = catalog
 		? Object.values(catalog.providers).reduce((sum, models) => sum + Object.keys(models).length, 0)
@@ -158,12 +158,15 @@ async function getCachedCatalog(): Promise<ModelsDevCatalog | null> {
 /**
  * 取 models.dev 目录,必要时走网络。缓存还新鲜就直接用;过期或没有才拉,
  * 拉失败退回旧缓存并进入冷却——目录不可达时不能让每次调用都干等一次超时。
+ *
+ * `force` 供用户手动刷新用:此时缓存新鲜也要重拉,否则「刷新目录」按钮在 TTL 内是空操作,
+ * 目录内容变了(比如新增了预设服务商)只能干等 12 小时。
  */
-async function ensureCatalog(): Promise<ModelsDevCatalog | null> {
+async function ensureCatalog(force = false): Promise<ModelsDevCatalog | null> {
 	const now = Date.now();
 	const cached = await getCachedCatalog();
-	if (isCatalogFresh(cached, now)) return cached;
-	if (now < catalogRetryAfter) return cached;
+	if (!force && isCatalogFresh(cached, now)) return cached;
+	if (!force && now < catalogRetryAfter) return cached;
 	if (catalogInFlight) return catalogInFlight;
 
 	catalogInFlight = (async () => {

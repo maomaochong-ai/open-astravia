@@ -54,7 +54,8 @@ export function useAbilityData(): AbilityData {
 				window.vetta.abilities.getLedger(),
 				window.vetta.skills.getMarketManifest(),
 				window.vetta.skills.list(),
-				window.vetta.plugins.list(),
+				// 能力市场不按工作模式过滤：另一模式下已装的插件仍要出现在「我的」。
+				window.vetta.plugins.listAll(),
 			]);
 
 			// 市场浏览无需登录；有 token 时仍带上。

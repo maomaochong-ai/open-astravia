@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { findContentAlignmentGuides } from "../src/domain/alignment-guides";
-import type { ContentNode } from "../src/domain/model";
+import { findContentAlignmentGuides } from "../src/canvas/alignment-guides";
+import type { ContentNode } from "../src/project/types";
 
 function node(id: string, x: number, y: number): ContentNode {
 	return { id, kind: "prompt", position: { x, y }, width: 100, height: 80, status: "idle", data: {} };

@@ -2,7 +2,7 @@
 
 本目录记录 `content-creation` preset 在进入下一轮实现前，对四个本地参考项目所做的设计分析。分析目标是建立共同的产品与架构语境，后续提出“像某项目的节点、面板或操作”时，可以落到明确的设计对象，而不是仅凭界面印象调整。
 
-当前实施架构见 [画布交互架构](./canvas-interaction-architecture.md) 与 [内容生成与插件凭据架构](./generation-architecture.md)。
+当前实施架构见 [画布交互架构](./canvas-interaction-architecture.md)、[内容生成与插件凭据架构](./generation-architecture.md) 与 [模型目录和适配器](./model-adapters.md)。
 
 ## 分析边界
 

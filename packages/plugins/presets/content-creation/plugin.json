@@ -2,6 +2,7 @@
 	"id": "content-creation",
 	"name": "%plugin.name%",
 	"version": "0.1.1",
+	"icon": "icon.png",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
@@ -13,6 +14,7 @@
 	"styles": ["dist/style.css"],
 	"permissions": [
 		"ui.slot.activity-tab",
+		"ui.shortcuts.register",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
 		"network.fetch",
@@ -37,6 +39,18 @@
 				"default": "gpt-image-2"
 			},
 			{
+				"key": "replicateApiToken",
+				"type": "secret",
+				"title": "%settings.replicateApiToken.title%",
+				"description": "%settings.replicateApiToken.description%"
+			},
+			{
+				"key": "googleApiKey",
+				"type": "secret",
+				"title": "%settings.googleApiKey.title%",
+				"description": "%settings.googleApiKey.description%"
+			},
+			{
 				"key": "customBaseUrl",
 				"type": "string",
 				"title": "%settings.customBaseUrl.title%",
@@ -53,6 +67,12 @@
 				"type": "string",
 				"title": "%settings.customModel.title%",
 				"description": "%settings.customModel.description%"
+			},
+			{
+				"key": "customVideoModel",
+				"type": "string",
+				"title": "%settings.customVideoModel.title%",
+				"description": "%settings.customVideoModel.description%"
 			}
 		]
 	},

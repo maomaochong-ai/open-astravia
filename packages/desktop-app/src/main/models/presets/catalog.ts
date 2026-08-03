@@ -66,6 +66,27 @@ export const PRESET_PROVIDERS: readonly PresetProviderDef[] = [
 		isChatModel: (id) => !NON_CHAT.test(id),
 	},
 	{
+		id: "grok",
+		displayName: "Grok",
+		icon: "grok",
+		api: "openai-completions",
+		baseUrl: "https://api.x.ai/v1",
+		fetcher: "openai-compatible",
+		// 非对话的都叫 grok-imagine-*(图像 / 视频生成),NON_CHAT 只挡得住图像那半边。
+		isChatModel: (id) => id.startsWith("grok-") && !id.includes("imagine") && !NON_CHAT.test(id),
+	},
+	{
+		id: "qwen",
+		displayName: "Qwen",
+		icon: "qwen",
+		api: "qwen-openai-completions",
+		baseUrl: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+		fetcher: "openai-compatible",
+		// DashScope 一个接口里混着通义万相、语音、第三方模型,只留通义千问自家的对话模型;
+		// ocr / asr / mt 是专用接口的模型,当普通对话用会直接报参数错。
+		isChatModel: (id) => /^(qwen|qwq|qvq)/.test(id) && !/-ocr|-asr|-mt-/.test(id) && !NON_CHAT.test(id),
+	},
+	{
 		id: "gemini",
 		displayName: "Gemini",
 		icon: "gemini",

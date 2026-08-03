@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { createContentProject, type ContentProjectDocument } from "../src/domain/model";
+import { createContentProject, type ContentProjectDocument } from "../src/project/types";
 import { ContentGenerationService } from "../src/generation/generation-service";
 import { ContentProviderRegistry } from "../src/generation/provider-registry";
 import type { ContentArtifactStore, ContentProviderAdapter } from "../src/generation/types";
-import type { ContentProjectRepository } from "../src/runtime/project-repository";
-import { ContentCreationWorkspace } from "../src/runtime/workspace";
+import type { ContentProjectRepository } from "../src/project/repository";
+import { ContentCreationWorkspace } from "../src/project/workspace";
 
 describe("ContentGenerationService", () => {
 	it("runs a mocked provider and returns the stored artifact to the node", async () => {
@@ -39,9 +39,33 @@ describe("ContentGenerationService", () => {
 		expect(project?.jobs[0]).toMatchObject({ status: "failed", error: "provider unavailable" });
 		expect(project?.assets).toHaveLength(0);
 	});
+
+	it("runs video nodes through the same capability-based orchestration", async () => {
+		const fixture = await createFixture("video-generator");
+
+		const result = await fixture.service.runNode("C:/project", "image");
+
+		expect(fixture.generate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				capability: "text-to-video",
+				modelId: "mock-video",
+				duration: 8,
+				resolution: "1080p",
+			}),
+		);
+		expect(result.assets[0]).toMatchObject({
+			kind: "video",
+			mimeType: "video/mp4",
+			duration: 8,
+			width: 1920,
+			height: 1080,
+		});
+	});
 });
 
-async function createFixture() {
+async function createFixture(kind: "image-generator" | "video-generator" = "image-generator") {
+	const capability = kind === "video-generator" ? "text-to-video" : "text-to-image";
+	const modelId = kind === "video-generator" ? "mock-video" : "mock-image";
 	const repository = new MemoryRepository();
 	const workspace = new ContentCreationWorkspace(repository);
 	await workspace.load("C:/project");
@@ -50,25 +74,35 @@ async function createFixture() {
 			type: "node.add",
 			node: {
 				id: "image",
-				kind: "image-generator",
+				kind,
 				position: { x: 0, y: 0 },
-				data: { prompt: "A small lighthouse", providerId: "mock", modelId: "mock-image" },
+				data: {
+					prompt: "A small lighthouse",
+					providerId: "mock",
+					modelId,
+					duration: kind === "video-generator" ? 8 : undefined,
+					resolution: kind === "video-generator" ? "1080p" : undefined,
+				},
 			},
 		},
 	]);
 	const generate = vi.fn<ContentProviderAdapter["generate"]>().mockResolvedValue({
-		kind: "image",
-		data: "iVBORw0KGgoAAA",
-		mimeType: "image/png",
+		kind: kind === "video-generator" ? "video" : "image",
+		data: kind === "video-generator" ? "AAAAIGZ0eXA" : "iVBORw0KGgoAAA",
+		mimeType: kind === "video-generator" ? "video/mp4" : "image/png",
+		duration: kind === "video-generator" ? 8 : undefined,
+		width: kind === "video-generator" ? 1920 : undefined,
+		height: kind === "video-generator" ? 1080 : undefined,
 	});
 	const provider: ContentProviderAdapter = {
 		id: "mock",
 		listModels: () => [
 			{
 				providerId: "mock",
-				modelId: "mock-image",
-				capabilities: ["text-to-image"],
-				aspectRatios: ["1:1"],
+				modelId,
+				displayName: kind === "video-generator" ? "Mock Video" : "Mock Image",
+				capabilities: [capability],
+				aspectRatios: kind === "video-generator" ? ["16:9"] : ["1:1"],
 			},
 		],
 		generate,
@@ -77,7 +111,7 @@ async function createFixture() {
 	providers.register(provider);
 	const put = vi.fn<ContentArtifactStore["put"]>().mockResolvedValue({
 		url: "vetta-media://mock",
-		mimeType: "image/png",
+		mimeType: kind === "video-generator" ? "video/mp4" : "image/png",
 	});
 	const service = new ContentGenerationService(workspace, providers, { put });
 	return { service, workspace, generate, put };

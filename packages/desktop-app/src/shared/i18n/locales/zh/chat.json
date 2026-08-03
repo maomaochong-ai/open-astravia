@@ -496,7 +496,12 @@
 		"greetingTitle": "你好，{{nickname}}",
 		"subtitle": "我可以帮助你处理工作，有什么我可以帮你的吗？",
 		"defaultContext": "普通会话",
-		"projectContext": "项目 · {{name}}"
+		"projectContext": "项目 · {{name}}",
+		"mascot": {
+			"menuTrigger": "吉祥物设置",
+			"hideMascot": "关闭吉祥物",
+			"showMascot": "显示吉祥物"
+		}
 	},
 	"questionPanel": {
 		"keyboardHint": "↑↓ 选择 · 空格选中 · ←→ 切换 · Enter 下一题",

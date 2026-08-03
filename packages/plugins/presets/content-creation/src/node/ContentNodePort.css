@@ -1,0 +1,31 @@
+/* Port bookmark chips — match node card face exactly, no RF chrome. */
+
+.content-creation-flow .react-flow__node {
+	overflow: visible !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-port-handle,
+.content-creation-flow .react-flow__handle.content-creation-port-handle::after {
+	border: 0 !important;
+	box-shadow: none !important;
+	/* Same token as the node shell — do not use muted / translucent mixes. */
+	background-color: var(--card) !important;
+	opacity: 1 !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-port-handle::after {
+	display: none !important;
+	content: none !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-port-handle:hover,
+.content-creation-flow .react-flow__handle.content-creation-port-handle.connecting,
+.content-creation-flow .react-flow__handle.content-creation-port-handle.valid {
+	background-color: var(--card) !important;
+	opacity: 1 !important;
+	color: var(--foreground);
+}
+
+.content-creation-flow .react-flow__handle.content-creation-port-handle.valid {
+	color: var(--primary);
+}

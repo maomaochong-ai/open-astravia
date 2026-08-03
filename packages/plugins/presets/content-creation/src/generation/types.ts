@@ -1,10 +1,13 @@
-export type ContentGenerationCapability = "text-to-image";
+export type ContentGenerationCapability = "text-to-image" | "text-to-video" | "video-to-video";
 
 export interface ContentModelDescriptor {
 	providerId: string;
 	modelId: string;
+	displayName: string;
 	capabilities: readonly ContentGenerationCapability[];
 	aspectRatios: readonly string[];
+	durations?: readonly number[];
+	resolutions?: readonly string[];
 }
 
 export interface ContentGenerationRequest {
@@ -14,12 +17,17 @@ export interface ContentGenerationRequest {
 	prompt: string;
 	aspectRatio?: string;
 	quality?: string;
+	duration?: number;
+	resolution?: string;
 }
 
 export interface GeneratedContent {
-	kind: "image";
+	kind: "image" | "video";
 	data: string;
 	mimeType: string;
+	width?: number;
+	height?: number;
+	duration?: number;
 }
 
 export interface ContentProviderAdapter {

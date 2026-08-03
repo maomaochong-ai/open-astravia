@@ -34,13 +34,13 @@ ContentNodeCard / NodeGenerationComposer
 
 `ContentGenerationService` 负责领域编排：解析节点或上游提示词、创建任务、调用 Provider、保存产物并把结果写回项目。Provider 只负责模型描述和请求/响应转换，Artifact Store 只负责保存内容字节。
 
-当前真实适配器覆盖 OpenAI 与 OpenAI 兼容图片生成端点。模型 ID、兼容服务地址和密钥来自插件设置；项目中只保存 `providerId`、`modelId` 和领域参数，不保存密钥。
+当前真实适配器覆盖 OpenAI Images、Replicate Predictions、Gemini Image、Gemini Veo 长任务和 NewAPI Video Generations。Loomic 模型快照由独立目录描述，Open-AI Canvas 风格的动态渠道模型来自插件设置；项目中只保存 `providerId`、`modelId` 和领域参数，不保存密钥。完整边界见 [模型目录和适配器](./model-adapters.md)。
 
 ## 测试边界
 
 - `PluginSettingsStore`：加密落盘、明文迁移、安全存储不可用。
-- `OpenAiImageProvider`：请求路径、鉴权头、请求体和响应解析，网络完全模拟。
-- `ContentGenerationService`：模拟 Provider 与 Artifact Store，验证任务、节点状态和素材回流。
+- Provider adapters：请求路径、鉴权头、模型参数映射、长任务轮询和响应解析，网络完全模拟。
+- `ContentGenerationService`：模拟 Provider 与 Artifact Store，验证图片/视频任务、节点状态和素材回流。
 - 测试不得请求真实模型，也不得依赖用户机器上的密钥。
 
 ## 后续扩展

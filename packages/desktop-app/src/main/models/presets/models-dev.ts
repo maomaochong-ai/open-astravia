@@ -4,7 +4,7 @@ import type { FetchImpl } from "./fetch.js";
 /**
  * models.dev 目录:补齐各家 `/models` 不返回的元数据(价格、上下文长度、视觉/思考能力)。
  *
- * 六家的 `/models` 一律不给价格,OpenAI / DeepSeek / GLM 连上下文长度都不给。曾用手写
+ * 各家的 `/models` 一律不给价格,OpenAI / DeepSeek / GLM 连上下文长度都不给。曾用手写
  * 静态表补,但各家发版一快就全错(见 ADR-0050),改为拉这份社区维护、跟各家发版更新的目录。
  * 拉不到就用磁盘缓存,再没有就只展示接口给的字段——绝不显示猜的价格。
  */
@@ -13,12 +13,16 @@ const CATALOG_URL = "https://models.dev/api.json";
 /** 目录变动按天计,12 小时一拉,与预设模型列表同步节奏一致。 */
 export const CATALOG_TTL_MS = 12 * 60 * 60 * 1000;
 /**
- * 缓存结构版本。**改动 CatalogEntry / providers 的形状必须 +1**——
+ * 缓存结构版本。**改动 CatalogEntry / providers 的形状、或往 PROVIDER_KEYS 里加家,都必须 +1**——
  * 磁盘缓存写在用户机器上,老版本客户端写的文件会被新代码原样读进来;
  * 没有这个版本号时,一次结构调整就让旧缓存在 TTL 内被当成有效数据,
  * 读到的条目缺字段,目录列表与后台同步一起静默失败。
+ *
+ * 加家同理:老缓存里没有新家的 key,而它在 TTL 内算「新鲜」,连后台刷新都不会触发,
+ * 新加的预设服务商就会一直显示 0 个模型(最长 12 小时)。+1 让老缓存整份作废,
+ * 先退到随包快照(已含新家)再后台重拉。
  */
-const CATALOG_VERSION = 2;
+const CATALOG_VERSION = 3;
 
 /** 预设标识 → models.dev 的 provider key。 */
 const PROVIDER_KEYS: Record<string, string> = {
@@ -28,6 +32,9 @@ const PROVIDER_KEYS: Record<string, string> = {
 	zai: "zai",
 	kimi: "moonshotai",
 	gemini: "google",
+	grok: "xai",
+	// 千问走国际站 endpoint,目录也取国际站那份(国内站是 alibaba-cn,模型清单不同)。
+	qwen: "alibaba",
 };
 
 interface RawModel {
@@ -50,7 +57,7 @@ export interface CatalogEntry {
 	releaseDate?: string;
 }
 
-/** 只保留六家、只保留用得上的字段——原始 api.json 有 170+ 家、3MB 出头。 */
+/** 只保留预设那几家、只保留用得上的字段——原始 api.json 有 170+ 家、3MB 出头。 */
 export interface ModelsDevCatalog {
 	version: number;
 	fetchedAt: string;

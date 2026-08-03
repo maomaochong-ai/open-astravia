@@ -134,6 +134,14 @@
 			"local": "Local zip"
 		},
 		"reloadable": "Reloadable to {{version}}",
+		"agentMode": {
+			"title": "Available in modes",
+			"all": "All modes",
+			"work": "Work",
+			"coding": "Coding",
+			"hint": "In other work modes this plugin's entry points do not appear.",
+			"hintAll": "Available in every work mode."
+		},
 		"permissions": "Permissions",
 		"permissionsDialog": "Permission settings",
 		"permissionsDialogHint": "Turning one off blocks the plugin from using that capability.",

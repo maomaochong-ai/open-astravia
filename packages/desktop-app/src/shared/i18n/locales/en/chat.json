@@ -496,7 +496,12 @@
 		"greetingTitle": "Hi, {{nickname}}",
 		"subtitle": "I can help you get work done. What can I do for you?",
 		"defaultContext": "General conversation",
-		"projectContext": "Project · {{name}}"
+		"projectContext": "Project · {{name}}",
+		"mascot": {
+			"menuTrigger": "Mascot settings",
+			"hideMascot": "Hide mascot",
+			"showMascot": "Show mascot"
+		}
 	},
 	"questionPanel": {
 		"keyboardHint": "↑↓ Navigate · Space select · ←→ Switch · Enter next",

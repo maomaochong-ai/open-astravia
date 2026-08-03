@@ -484,6 +484,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	// 插件级 agent_mode 硬闸的 renderer 侧：白名单外的插件对渲染层完全不可见
 	// （工作台列表 + UI 贡献 + bundle 均不出现）。见 ADR-0046。
 	ipcMain.handle("vetta:plugins:list", () => listVisiblePlugins());
+	// 能力市场（我的）需要完整清单：按工作模式过滤会让另一模式下已装的插件凭空消失，
+	// 用户会误以为能力已丢失。此处不过滤，模式差异由详情页的工作场景标注说明。
+	ipcMain.handle("vetta:plugins:list-all", () => listPlugins());
 	ipcMain.handle("vetta:plugins:install-from-archive", async (_event, archiveBuffer: unknown, options: unknown) => {
 		const plugin = await installPluginFromArchive(asArchiveBuffer(archiveBuffer), asOptions(options));
 		recordPluginResourceEvent({
@@ -774,6 +777,7 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 
 	return () => {
 		ipcMain.removeHandler("vetta:plugins:list");
+		ipcMain.removeHandler("vetta:plugins:list-all");
 		ipcMain.removeHandler("vetta:plugins:install-from-archive");
 		ipcMain.removeHandler("vetta:plugins:install-from-url");
 		ipcMain.removeHandler("vetta:plugins:install-from-path");

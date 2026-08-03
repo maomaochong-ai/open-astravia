@@ -100,6 +100,11 @@ export interface McpAbility extends AbilityBase {
 export interface PluginAbility extends AbilityBase {
 	type: "plugin";
 	plugin: InstalledPlugin | null;
+	/**
+	 * 插件声明的工作模式白名单（agent_mode 轴，ADR-0046），已归一化为数组；
+	 * 空数组 = 通用（全部模式可用）。未安装的市场条目无此信息，恒为空数组。
+	 */
+	agentModes: string[];
 	/** manifest 声明的权限（未装时取市场快照）。 */
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];

@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **预设服务商新增 Grok 与 Qwen**（同时修掉两个会让新预设显示 0 个模型的问题：models.dev 目录缓存版本 +1，老缓存里没有新家的 key 却在 TTL 内算「新鲜」，会让新增的预设服务商最长 12 小时一直是空列表；「刷新目录」在缓存新鲜时原本直接返回旧缓存、等于空操作，现在手动刷新一律强制重拉）：设置 → 模型 → 预设服务商多出 Grok（`https://api.x.ai/v1`，走 `openai-completions`）与 Qwen（DashScope 国际站 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`，走 `qwen-openai-completions`）。两家的模型清单与价格照旧走 models.dev 目录（`xai` / `alibaba`），随包快照已重新生成；Grok 滤掉 `grok-imagine-*` 图像视频模型，Qwen 只保留 qwen/qwq/qvq 系列的对话模型（ocr / asr / mt 等专用接口模型不列）。
+
 - **项目文件列表支持鼠标框选**：在空白区域按下并拖出矩形，可多选可见文件/文件夹；Ctrl/Cmd/Shift 按住时为追加选区。与现有点选、Shift 范围选、多选拖拽共用同一套选区状态。
 - **插件快捷键 SDK（接入宿主 ShortcutScopeStack）**：新增权限 `ui.shortcuts.register`、`ctx.ui.registerShortcutScope` 与 SDK hook `usePluginShortcutScope`。插件按 `surface` / `overlay` / `modal` 注册绑定（禁止 `app` 层，留给宿主可配置全局快捷键），与宿主同一套优先级与 `when`（always/editable/not-editable），卸载时自动 dispose。`media-viewer` 缩放 / 全屏 Esc 已从 ad-hoc `keydown` 迁到该 API。
 - **输入框按会话草稿与发送历史**：未发送内容按作用域隔离（已有会话用 `sessionPath`，新会话页用 `new:${cwd}`），切换会话 / 临时去看别的任务再回来会恢复草稿，不再串台或被新会话页清空。发送成功后记入该作用域历史；输入为空或光标在文档起点时 ↑ / ↓ 浏览过往输入（首次 ↑ 暂存当前草稿，↓ 回到最新后还原）。仅进程内内存，刷新不保留。
@@ -30,6 +32,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件装完直接弹权限配置**：首次安装的插件权限默认全未授予，安装成功（市场安装 / 开源市场 / 本地 zip 导入）后自动弹出该插件的权限弹窗，省掉用户自己找「权限配置」的一步。插件数据落地后才弹，系统插件与无权限声明的插件不打扰。
 
 ### Fixed
+
+- **能力市场「我的」不再按工作模式过滤插件**：声明了 `agent_mode` 白名单的插件（如 `agent_mode: ["work"]`）在「编程」模式下会从「我的」里整条消失，看起来像能力丢了。能力页改用不过滤的 `plugins.listAll()` 取已装插件；插件详情页新增「适用工作场景」一栏，列出该插件声明的模式（未声明则为「全部场景」），当前模式不在白名单时给出提示。工作台列表与 UI 贡献的模式硬闸不变（ADR-0046）。
 
 - **活动面板「生图历史 / 移动预览 / 内容创作」默认不再占栏**：生图历史 `initiallyVisible: false`，仅在 `generate_image` / `edit_image` 成功后 `openActivityTab` 上栏；移动预览改为跟文件树选中（含 html/htm）显隐，不再因项目里任意存在 html 就自动上栏；内容创作（content-creation）同理默认隐藏，由 `open_content_creation` 或用户从「+」添加后再显示。
 - **移动预览旧安装包一直占栏**：已装的 `mobile-ui-preview@0.2.x` 未声明 `initiallyVisible: false`（缺省即上栏），与源码改动无关也会常驻。0.3.3 显式 `initiallyVisible: false`，会话回放时按选区写回显隐以清掉历史 attach 脏记录。

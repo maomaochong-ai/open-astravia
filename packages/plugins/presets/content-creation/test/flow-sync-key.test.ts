@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createContentProjectSyncKey } from "../src/components/flow-sync-key";
+import { createContentProjectSyncKey } from "../src/canvas/flow-sync-key";
 import type { ContentModelDescriptor } from "../src/generation/types";
 
 const project = {
@@ -13,6 +13,7 @@ const models: readonly ContentModelDescriptor[] = [
 	{
 		providerId: "openai",
 		modelId: "gpt-image-2",
+		displayName: "GPT Image 2",
 		capabilities: ["text-to-image"],
 		aspectRatios: ["1:1"],
 	},

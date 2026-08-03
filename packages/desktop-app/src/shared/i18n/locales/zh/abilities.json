@@ -134,6 +134,14 @@
 			"local": "本地 zip"
 		},
 		"reloadable": "可重载到 {{version}}",
+		"agentMode": {
+			"title": "适用工作场景",
+			"all": "全部场景",
+			"work": "工作",
+			"coding": "编程",
+			"hint": "切换到其它工作场景时，该插件的功能入口不会出现。",
+			"hintAll": "在所有工作场景下都可用。"
+		},
 		"permissions": "权限",
 		"permissionsDialog": "权限配置",
 		"permissionsDialogHint": "关闭某项后，插件调用对应能力时会被拦截。",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { ContentProjectDocument } from "../src/domain/model";
-import type { ContentProjectRepository } from "../src/runtime/project-repository";
-import { ContentCreationWorkspace, ContentProjectRevisionError } from "../src/runtime/workspace";
+import type { ContentProjectDocument } from "../src/project/types";
+import type { ContentProjectRepository } from "../src/project/repository";
+import { ContentCreationWorkspace, ContentProjectRevisionError } from "../src/project/workspace";
 
 function createMemoryRepository(writeDelay = 0): ContentProjectRepository {
 	const projects = new Map<string, unknown>();
