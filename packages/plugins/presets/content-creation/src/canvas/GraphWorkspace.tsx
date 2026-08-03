@@ -4,6 +4,7 @@ import {
 	type Edge,
 	type FinalConnectionState,
 	type NodeTypes,
+	type ReactFlowProps,
 	ReactFlow,
 	type ReactFlowInstance,
 } from "@xyflow/react";
@@ -12,7 +13,7 @@ import {
 	usePluginShortcutScope,
 } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { findContentAlignmentGuides, type ContentAlignmentGuides } from "./alignment-guides";
+import { findContentAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";
 import type { ContentProjectCommand } from "../project/commands";
 import { createDefaultContentNodeData, getContentNodeDefinition } from "../node/definitions";
@@ -26,7 +27,7 @@ import {
 import type { ContentNode, ContentNodeKind, ContentProjectDocument } from "../project/types";
 import type { ContentModelDescriptor } from "../generation/types";
 import { getRegisterShortcutScope } from "../plugin/plugin-ui";
-import { AlignmentGuidesLayer } from "./AlignmentGuidesLayer";
+import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
 import { shouldOpenConnectionCreateMenu } from "./connection-drop-menu";
 import { ContentCanvasSelectionProvider } from "./ContentCanvasSelectionContext";
@@ -52,6 +53,8 @@ const nodeTypes: NodeTypes = { contentNode: ContentNodeCard };
 const CREATE_MENU_SIZE = { width: 320, height: 420 };
 const CONNECTION_MENU_SIZE = { width: 320, height: 340 };
 const CONTEXT_MENU_SIZE = { width: 190, height: 132 };
+const DEFAULT_EDGE_OPTIONS = { interactionWidth: 28 };
+const PRO_OPTIONS = { hideAttribution: true };
 
 interface GraphWorkspaceProps {
 	project: ContentProjectDocument;
@@ -63,6 +66,7 @@ interface GraphWorkspaceProps {
 export function GraphWorkspace({ project, models, onDispatch, onRunNode }: GraphWorkspaceProps) {
 	const flowContainerRef = useRef<HTMLDivElement>(null);
 	const flowInstanceRef = useRef<ReactFlowInstance<ContentFlowNode, Edge> | null>(null);
+	const alignmentGuidesLayerRef = useRef<AlignmentGuidesLayerHandle>(null);
 	/**
 	 * React Flow fires `onPaneClick` on the same mouseup that ends a connection drag.
 	 * Without this guard, `closeMenus()` immediately wipes the create-connected-node menu
@@ -73,7 +77,6 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 	const [pendingMenu, setPendingMenu] = useState<PendingConnectionMenu | null>(null);
 	const [canvasMenu, setCanvasMenu] = useState<CanvasCreateMenuState | null>(null);
 	const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(null);
-	const [alignmentGuides, setAlignmentGuides] = useState<ContentAlignmentGuides>({});
 	const activeSelectedNodeIds = useMemo(
 		() => selectedNodeIds.filter((nodeId) => project.graph.nodes.some((node) => node.id === nodeId)),
 		[project.graph.nodes, selectedNodeIds],
@@ -152,8 +155,14 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 		}),
 		[onDispatch, onRunNode, project],
 	);
-	const synchronizedNodes = toContentFlowNodes(project, selectedNodeIdSet, models, actions);
-	const synchronizedEdges = toContentFlowEdges(project, selectedNodeIdSet);
+	const synchronizedNodes = useMemo(
+		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions),
+		[actions, models, project, selectedNodeIdSet],
+	);
+	const synchronizedEdges = useMemo(
+		() => toContentFlowEdges(project, selectedNodeIdSet),
+		[project, selectedNodeIdSet],
+	);
 	const appliedProjectSyncKeyRef = useRef(projectSyncKey);
 
 	useEffect(() => {
@@ -330,6 +339,114 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 		(layout: ContentNodeLayout) => applyPlacements(layoutContentNodes(movableSelectedNodes, layout)),
 		[applyPlacements, movableSelectedNodes],
 	);
+	const onInit = useCallback((instance: ReactFlowInstance<ContentFlowNode, Edge>) => {
+		flowInstanceRef.current = instance;
+	}, []);
+	const onSelectionChange = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionChange"]>
+	>(({ nodes: selectedNodes }) => {
+		const nextNodeIds = selectedNodes.map((node) => node.id);
+		setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
+	}, []);
+	const onConnect = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onConnect"]>>(
+		(connection) => {
+			if (!connection.source || !connection.target) return;
+			void onDispatch([
+				{
+					type: "edge.connect",
+					source: connection.source,
+					target: connection.target,
+					sourceHandle: connection.sourceHandle ?? undefined,
+					targetHandle: connection.targetHandle ?? undefined,
+				},
+			]);
+		},
+		[onDispatch],
+	);
+	const onNodeClick = useCallback(() => {
+		// Do not kill a just-opened drop menu if the connect ended over the source node.
+		if (suppressNextPaneClickRef.current) {
+			suppressNextPaneClickRef.current = false;
+			return;
+		}
+		closeMenus();
+	}, [closeMenus]);
+	const onNodeContextMenu = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onNodeContextMenu"]>
+	>(
+		(event, node) => {
+			event.preventDefault();
+			const position = clampOverlay(event.clientX, event.clientY, CONTEXT_MENU_SIZE);
+			if (!position) return;
+			setSelectedNodeIds([node.id]);
+			setCanvasMenu(null);
+			setPendingMenu(null);
+			setContextMenu({ type: "node", nodeId: node.id, ...position });
+		},
+		[clampOverlay],
+	);
+	const onEdgeContextMenu = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onEdgeContextMenu"]>
+	>(
+		(event, edge) => {
+			event.preventDefault();
+			const position = clampOverlay(event.clientX, event.clientY, CONTEXT_MENU_SIZE);
+			if (!position) return;
+			setCanvasMenu(null);
+			setPendingMenu(null);
+			setContextMenu({ type: "edge", edgeId: edge.id, ...position });
+		},
+		[clampOverlay],
+	);
+	const onPaneClick = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onPaneClick"]>>(
+		(event) => {
+			if (suppressNextPaneClickRef.current) {
+				suppressNextPaneClickRef.current = false;
+				// Keep the connection-create menu opened by onConnectEnd.
+				return;
+			}
+			setSelectedNodeIds([]);
+			closeMenus();
+			if (event.detail === 2) openCanvasMenu(event.clientX, event.clientY);
+		},
+		[closeMenus, openCanvasMenu],
+	);
+	const onPaneContextMenu = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onPaneContextMenu"]>
+	>(
+		(event) => {
+			event.preventDefault();
+			openCanvasMenu(event.clientX, event.clientY);
+		},
+		[openCanvasMenu],
+	);
+	const onNodeDrag = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onNodeDrag"]>>(
+		(_, node) => {
+			const flowNodes = flowInstanceRef.current?.getNodes() ?? [];
+			const flowNodeById = new Map(flowNodes.map((flowNode) => [flowNode.id, flowNode]));
+			const currentNodes = project.graph.nodes.map((projectNode) => {
+				const flowNode = flowNodeById.get(projectNode.id);
+				return flowNode ? { ...projectNode, position: flowNode.position } : projectNode;
+			});
+			const threshold = 6 / (flowInstanceRef.current?.getZoom() ?? 1);
+			alignmentGuidesLayerRef.current?.update(findContentAlignmentGuides(currentNodes, node.id, threshold));
+		},
+		[project.graph.nodes],
+	);
+	const onNodeDragStop = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onNodeDragStop"]>
+	>(
+		(_, __, draggedNodes) => {
+			alignmentGuidesLayerRef.current?.clear();
+			const movableNodeIds = new Set(project.graph.nodes.filter((node) => !node.locked).map((node) => node.id));
+			void onDispatch(
+				draggedNodes
+					.filter((node) => movableNodeIds.has(node.id))
+					.map((node) => ({ type: "node.move", nodeId: node.id, position: node.position })),
+			);
+		},
+		[onDispatch, project.graph.nodes],
+	);
 
 	/** Host ShortcutScopeStack (not RF deleteKeyCode) so Delete participates in app/plugin scopes. */
 	const deleteSelection = useCallback(() => {
@@ -410,92 +527,24 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 						defaultNodes={synchronizedNodes}
 						defaultEdges={synchronizedEdges}
 						nodeTypes={nodeTypes}
-						defaultEdgeOptions={{ interactionWidth: 28 }}
+						defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
 						// Keyboard delete is handled by host ShortcutScopeStack (usePluginShortcutScope).
 						deleteKeyCode={null}
 						onlyRenderVisibleElements
-						proOptions={{ hideAttribution: true }}
-						onInit={(instance) => {
-							flowInstanceRef.current = instance;
-						}}
-						onSelectionChange={({ nodes: selectedNodes }) => {
-							const nextNodeIds = selectedNodes.map((node) => node.id);
-							setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
-						}}
-						onConnect={(connection) => {
-							if (!connection.source || !connection.target) return;
-							void onDispatch([
-								{
-									type: "edge.connect",
-									source: connection.source,
-									target: connection.target,
-									sourceHandle: connection.sourceHandle ?? undefined,
-									targetHandle: connection.targetHandle ?? undefined,
-								},
-							]);
-						}}
+						proOptions={PRO_OPTIONS}
+						onInit={onInit}
+						onSelectionChange={onSelectionChange}
+						onConnect={onConnect}
 						onConnectEnd={handleConnectEnd}
 						isValidConnection={isValidConnection}
 						zoomOnDoubleClick={false}
-						onNodeClick={() => {
-							// Do not kill a just-opened drop menu if the connect ended over the source node.
-							if (suppressNextPaneClickRef.current) {
-								suppressNextPaneClickRef.current = false;
-								return;
-							}
-							closeMenus();
-						}}
-						onNodeContextMenu={(event, node) => {
-							event.preventDefault();
-							const position = clampOverlay(event.clientX, event.clientY, CONTEXT_MENU_SIZE);
-							if (!position) return;
-							setSelectedNodeIds([node.id]);
-							setCanvasMenu(null);
-							setPendingMenu(null);
-							setContextMenu({ type: "node", nodeId: node.id, ...position });
-						}}
-						onEdgeContextMenu={(event, edge) => {
-							event.preventDefault();
-							const position = clampOverlay(event.clientX, event.clientY, CONTEXT_MENU_SIZE);
-							if (!position) return;
-							setCanvasMenu(null);
-							setPendingMenu(null);
-							setContextMenu({ type: "edge", edgeId: edge.id, ...position });
-						}}
-						onPaneClick={(event) => {
-							if (suppressNextPaneClickRef.current) {
-								suppressNextPaneClickRef.current = false;
-								// Keep the connection-create menu opened by onConnectEnd.
-								return;
-							}
-							setSelectedNodeIds([]);
-							closeMenus();
-							if (event.detail === 2) openCanvasMenu(event.clientX, event.clientY);
-						}}
-						onPaneContextMenu={(event) => {
-							event.preventDefault();
-							openCanvasMenu(event.clientX, event.clientY);
-						}}
-						onNodeDrag={(_, node) => {
-							const flowNodes = flowInstanceRef.current?.getNodes() ?? [];
-							const currentNodes = project.graph.nodes.map((projectNode) => {
-								const flowNode = flowNodes.find((candidate) => candidate.id === projectNode.id);
-								return flowNode ? { ...projectNode, position: flowNode.position } : projectNode;
-							});
-							const threshold = 6 / (flowInstanceRef.current?.getZoom() ?? 1);
-							setAlignmentGuides(findContentAlignmentGuides(currentNodes, node.id, threshold));
-						}}
-						onNodeDragStop={(_, __, draggedNodes) => {
-							setAlignmentGuides({});
-							const movableNodeIds = new Set(
-								project.graph.nodes.filter((node) => !node.locked).map((node) => node.id),
-							);
-							void onDispatch(
-								draggedNodes
-									.filter((node) => movableNodeIds.has(node.id))
-									.map((node) => ({ type: "node.move", nodeId: node.id, position: node.position })),
-							);
-						}}
+						onNodeClick={onNodeClick}
+						onNodeContextMenu={onNodeContextMenu}
+						onEdgeContextMenu={onEdgeContextMenu}
+						onPaneClick={onPaneClick}
+						onPaneContextMenu={onPaneContextMenu}
+						onNodeDrag={onNodeDrag}
+						onNodeDragStop={onNodeDragStop}
 						fitView
 					>
 						<Controls showInteractive={false} position="bottom-left" />
@@ -516,7 +565,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode }: Graph
 								void onDispatch(activeSelectedNodeIds.map((nodeId) => ({ type: "node.lock", nodeId, locked })));
 							}}
 						/>
-						<AlignmentGuidesLayer guides={alignmentGuides} />
+						<AlignmentGuidesLayer ref={alignmentGuidesLayerRef} />
 					</ReactFlow>
 				</ContentCanvasSelectionProvider>
 				<GraphOverlayLayer

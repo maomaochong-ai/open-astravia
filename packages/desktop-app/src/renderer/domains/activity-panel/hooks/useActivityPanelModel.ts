@@ -7,15 +7,18 @@ import {
 	ACTIVITY_PANEL_MIN_WIDTH,
 	activityPanelMaxWidth,
 	activityPanelOpenAtom,
+	activityPanelResizingAtom,
 	activityPanelTabByProjectAtom,
 	activityPanelWidthAtom,
 	activityTabOrderAtom,
 	attachedPluginTabsAtom,
 	hiddenActivityTabsAtom,
+	persistActivityPanelWidthAtom,
+	setTransientActivityPanelWidthAtom,
 	sidebarCollapsedAtom,
 	sidebarWidthAtom,
 } from "@shared/store/atoms";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityPanelActions, ActivityPanelModel, ActivityPanelProps } from "../components/activity-panel/types";
 import { resolveActivityTabs } from "../registry/resolve-activity-tabs";
@@ -50,7 +53,9 @@ export function useActivityPanelModel({
 	const narrow = useNarrowScreen();
 	const [attachedPluginTabsMap, setAttachedPluginTabsMap] = useAtom(attachedPluginTabsAtom);
 	const [width, setWidth] = useAtom(activityPanelWidthAtom);
-	const [isResizing, setIsResizing] = useState(false);
+	const [isResizing, setIsResizing] = useAtom(activityPanelResizingAtom);
+	const setTransientWidth = useSetAtom(setTransientActivityPanelWidthAtom);
+	const persistWidth = useSetAtom(persistActivityPanelWidthAtom);
 	const [overflowKeys, setOverflowKeys] = useState<ActivityTabKey[]>([]);
 	const [tabByProject, setTabByProject] = useAtom(activityPanelTabByProjectAtom);
 	const windowWidth = useWindowWidth();
@@ -112,12 +117,18 @@ export function useActivityPanelModel({
 	const onResize = useCallback(
 		(delta: number) => {
 			setIsResizing(true);
-			setWidth((currentWidth) => Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth + delta)));
+			setTransientWidth((currentWidth) =>
+				Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth + delta)),
+			);
 		},
-		[maxWidth, setWidth],
+		[maxWidth, setIsResizing, setTransientWidth],
 	);
-	const onResizeEnd = useCallback(() => setIsResizing(false), []);
+	const onResizeEnd = useCallback(() => {
+		setIsResizing(false);
+		persistWidth();
+	}, [persistWidth, setIsResizing]);
 	const onClose = useCallback(() => setOpen(false), [setOpen]);
+	useEffect(() => () => setIsResizing(false), [setIsResizing]);
 
 	useEffect(() => {
 		setWidth((currentWidth) => Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth)));

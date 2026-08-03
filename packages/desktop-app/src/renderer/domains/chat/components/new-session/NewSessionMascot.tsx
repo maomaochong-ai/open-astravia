@@ -5,6 +5,7 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@shared/components/ui/dropdown-menu";
+import { cn } from "@shared/lib/utils";
 import { motion, useMotionValue, useReducedMotion } from "motion/react";
 import type { SyntheticEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,8 +18,8 @@ const FERRET_VIDEO_SOURCES = {
 } as const;
 const MASCOT_ACTIONS = ["blink", "wave", "crawl"] as const;
 const CRAWL_DURATION_SECONDS = 10.066;
-const CRAWL_EDGE_PAUSE_SECONDS = 1;
-const CRAWL_MOVE_DURATION_SECONDS = CRAWL_DURATION_SECONDS - CRAWL_EDGE_PAUSE_SECONDS * 2;
+const CRAWL_START_PAUSE_SECONDS = 3.5;
+const CRAWL_VERTICAL_COMPENSATION_PIXELS = 10;
 const CENTER_POSITION = "calc(50% - 4.5rem)";
 const RIGHT_POSITION = "calc(100% - 9rem)";
 const MASCOT_VISIBLE_STORAGE_KEY = "vetta-new-session-mascot-visible";
@@ -41,14 +42,17 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 	const [playing, setPlaying] = useState(false);
 
 	const handleComplete = useCallback(() => {
+		setAction((current) => pickRandomAction(current));
 		setPlaying(false);
+	}, []);
+	const handlePlayOnce = useCallback(() => {
+		setPlaying(true);
 	}, []);
 
 	useEffect(() => {
 		if (!mascotVisible || !autoplay || reduceMotion || playing) return;
 
 		const timer = window.setTimeout(() => {
-			setAction((current) => pickRandomAction(current));
 			setPlaying(true);
 		}, randomActionInterval());
 
@@ -64,7 +68,8 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 		setPlaying(false);
 	}, []);
 
-	const actionPlaying = mascotVisible && autoplay && !reduceMotion && playing;
+	const canPlay = mascotVisible && autoplay && !reduceMotion;
+	const actionPlaying = canPlay && playing;
 
 	return (
 		<motion.div
@@ -102,7 +107,7 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 					<video
 						aria-hidden="true"
 						autoPlay
-						className="pointer-events-none absolute right-0 bottom-0 h-20 w-36 object-cover object-center"
+						className="pointer-events-none absolute right-0 -bottom-10 h-36 w-36 object-contain object-center"
 						draggable={false}
 						muted
 						onEnded={handleComplete}
@@ -112,15 +117,30 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 					/>
 				)
 			) : (
-				<video
-					aria-hidden="true"
-					className="pointer-events-none absolute right-0 bottom-0 h-20 w-36 object-cover object-center"
-					draggable={false}
-					muted
-					playsInline
-					preload="auto"
-					src={FERRET_VIDEO_SOURCES.blink}
-				/>
+				<>
+					<video
+						aria-hidden="true"
+						className="pointer-events-none absolute right-0 -bottom-10 h-36 w-36 object-contain object-center"
+						draggable={false}
+						muted
+						playsInline
+						preload="auto"
+						src={FERRET_VIDEO_SOURCES[action]}
+					/>
+					{canPlay ? (
+						<Button
+							aria-label={t("newSession.mascot.playOnce")}
+							className={cn(
+								"no-drag pointer-events-auto absolute right-0 z-10 h-20 w-36 bg-transparent p-0 hover:bg-transparent",
+								action === "crawl" ? "-bottom-[10px]" : "-bottom-5",
+							)}
+							onClick={handlePlayOnce}
+							variant="ghost"
+						>
+							<span className="sr-only">{t("newSession.mascot.playOnce")}</span>
+						</Button>
+					) : null}
+				</>
 			)}
 		</motion.div>
 	);
@@ -136,22 +156,25 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const animationFrameRef = useRef<number | null>(null);
 	const left = useMotionValue(RIGHT_POSITION);
+	const y = useMotionValue(CRAWL_VERTICAL_COMPENSATION_PIXELS);
 
 	const updatePosition = useCallback(() => {
 		const video = videoRef.current;
 		if (!video) return;
 
+		const duration = Number.isFinite(video.duration) ? video.duration : CRAWL_DURATION_SECONDS;
 		const moveProgress = Math.min(
 			1,
-			Math.max(0, (video.currentTime - CRAWL_EDGE_PAUSE_SECONDS) / CRAWL_MOVE_DURATION_SECONDS),
+			Math.max(0, (video.currentTime - CRAWL_START_PAUSE_SECONDS) / (duration - CRAWL_START_PAUSE_SECONDS)),
 		);
 		const rightness = returningRef.current ? moveProgress : 1 - moveProgress;
 		left.set(positionForRightness(rightness));
+		y.set(CRAWL_VERTICAL_COMPENSATION_PIXELS * (1 - moveProgress));
 
 		if (!video.paused && !video.ended) {
 			animationFrameRef.current = window.requestAnimationFrame(updatePosition);
 		}
-	}, [left]);
+	}, [left, y]);
 
 	const startTracking = useCallback(() => {
 		if (animationFrameRef.current !== null) {
@@ -172,23 +195,25 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 	const handleEnded = useCallback(
 		(event: SyntheticEvent<HTMLVideoElement>) => {
 			left.set(returningRef.current ? RIGHT_POSITION : CENTER_POSITION);
+			y.set(0);
 			if (returningRef.current) {
 				onComplete();
 				return;
 			}
-			returningRef.current = !returningRef.current;
-			setReturning(returningRef.current);
+			returningRef.current = true;
+			setReturning(true);
+			y.set(CRAWL_VERTICAL_COMPENSATION_PIXELS);
 			event.currentTarget.currentTime = 0;
 			void event.currentTarget.play();
 		},
-		[left, onComplete],
+		[left, onComplete, y],
 	);
 
 	return (
 		<motion.video
 			aria-hidden="true"
 			autoPlay
-			className="pointer-events-none absolute bottom-0 h-20 w-36 object-cover object-center"
+			className="pointer-events-none absolute -bottom-[30px] h-36 w-36 object-contain object-center"
 			draggable={false}
 			muted
 			onEnded={handleEnded}
@@ -197,7 +222,7 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 			preload="auto"
 			ref={videoRef}
 			src={FERRET_VIDEO_SOURCES.crawl}
-			style={{ left, scaleX: returning ? -1 : 1 }}
+			style={{ left, scaleX: returning ? -1 : 1, y }}
 		/>
 	);
 }
