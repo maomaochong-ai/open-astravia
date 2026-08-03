@@ -61,10 +61,7 @@ export function ContentGeneratorComposer({
 	const acceptedKinds = selectedModel ? listAcceptedReferenceKinds(selectedModel, referenceShapes) : [];
 	const isRunning = status === "running" || status === "queued";
 	const canGenerate = Boolean(selectedModel && resolution.mode && !isRunning);
-	const preferredWidth = Math.min(
-		600,
-		Math.max(kind === "image-generator" ? 440 : 500, (referenceAssets.length + 1) * 72 + 24),
-	);
+	const minimumWidth = kind === "image-generator" ? 360 : 400;
 	const promptRows = estimatePromptRows(draft.prompt);
 
 	useEffect(() => setDraft(data), [data]);
@@ -100,7 +97,11 @@ export function ContentGeneratorComposer({
 	return (
 		<div
 			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-3 text-card-foreground shadow-xl backdrop-blur-md"
-			style={{ width: `min(${preferredWidth}px, calc(100vw - 32px))` }}
+			style={{
+				width: "fit-content",
+				minWidth: `min(${minimumWidth}px, calc(100vw - 32px))`,
+				maxWidth: "min(600px, calc(100vw - 32px))",
+			}}
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
 		>

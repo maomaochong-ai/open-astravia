@@ -4,6 +4,9 @@ import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData, ContentNodeKind } from "../project/types";
 import { ArrowUpIcon, ImageIcon } from "../shared/icons";
 
+const AUTO_TRIGGER_CLASS = "w-fit max-w-none flex-none border-0 bg-transparent shadow-none";
+const AUTO_VALUE_CLASS = "line-clamp-none! overflow-visible! whitespace-nowrap";
+
 interface ContentGenerationControlsProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
 	draft: ContentNodeData;
@@ -44,8 +47,8 @@ export function ContentGenerationControls({
 					if (model) onModelChange(model);
 				}}
 			>
-				<SelectTrigger size="sm" className="min-w-[170px] flex-1 border-0 bg-transparent shadow-none">
-					<SelectValue placeholder={t("nodeEditor.modelUnavailable")} />
+				<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
+					<SelectValue className={AUTO_VALUE_CLASS} placeholder={t("nodeEditor.modelUnavailable")} />
 				</SelectTrigger>
 				<SelectContent className="z-[100]">
 					{models.map((model) => (
@@ -57,8 +60,8 @@ export function ContentGenerationControls({
 			</Select>
 			{aspectRatios.length > 0 ? (
 				<Select value={draft.aspectRatio ?? aspectRatios[0]} onValueChange={(aspectRatio) => onChange({ ...draft, aspectRatio })}>
-					<SelectTrigger size="sm" className="w-[104px] border-0 bg-transparent shadow-none">
-						<SelectValue />
+					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
+						<SelectValue className={AUTO_VALUE_CLASS} />
 					</SelectTrigger>
 					<SelectContent className="z-[100]">
 						{aspectRatios.map((aspectRatio) => (
@@ -71,8 +74,8 @@ export function ContentGenerationControls({
 			) : null}
 			{kind === "image-generator" ? (
 				<Select value={draft.quality ?? "standard"} onValueChange={(quality) => onChange({ ...draft, quality })}>
-					<SelectTrigger size="sm" className="w-[82px] border-0 bg-transparent shadow-none">
-						<SelectValue />
+					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
+						<SelectValue className={AUTO_VALUE_CLASS} />
 					</SelectTrigger>
 					<SelectContent className="z-[100]">
 						{["standard", "hd", "ultra"].map((quality) => (
@@ -120,8 +123,8 @@ function VideoControls({
 					value={String(draft.duration ?? durations[0])}
 					onValueChange={(duration) => onChange({ ...draft, duration: Number(duration) })}
 				>
-					<SelectTrigger size="sm" className="w-[72px] border-0 bg-transparent shadow-none">
-						<SelectValue />
+					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
+						<SelectValue className={AUTO_VALUE_CLASS} />
 					</SelectTrigger>
 					<SelectContent className="z-[100]">
 						{durations.map((duration) => (
@@ -137,8 +140,8 @@ function VideoControls({
 					value={draft.resolution ?? resolutions[0]}
 					onValueChange={(resolution) => onChange({ ...draft, resolution })}
 				>
-					<SelectTrigger size="sm" className="w-[88px] border-0 bg-transparent shadow-none">
-						<SelectValue />
+					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
+						<SelectValue className={AUTO_VALUE_CLASS} />
 					</SelectTrigger>
 					<SelectContent className="z-[100]">
 						{resolutions.map((resolution) => (
