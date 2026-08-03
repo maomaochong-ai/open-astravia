@@ -9,6 +9,7 @@
 
 ### Changed
 
+- Restricted the plugin to Work mode via manifest `agent_mode: ["work"]` (hidden in Coding; ADR-0046).
 - Node quick toolbar is icon-only (no inline rename) and sits 8px above the card to match the generation composer gap; identity header hides while the toolbar is open.
 - Canvas Delete / Backspace now use the host plugin shortcut stack (`usePluginShortcutScope`) instead of React Flow `deleteKeyCode`, so they participate in scope priority, skip locked nodes, and stay inactive while the activity tab is hidden or focus is in an editable field.
 
