@@ -33,6 +33,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **能力市场「我的」不再按工作模式过滤插件**：声明了 `agent_mode` 白名单的插件（如 `agent_mode: ["work"]`）在「编程」模式下会从「我的」里整条消失，看起来像能力丢了。能力页改用不过滤的 `plugins.listAll()` 取已装插件；插件详情页新增「适用工作场景」一栏，列出该插件声明的模式（未声明则为「全部场景」），当前模式不在白名单时给出提示。工作台列表与 UI 贡献的模式硬闸不变（ADR-0046）。
+
 - **活动面板「生图历史 / 移动预览 / 内容创作」默认不再占栏**：生图历史 `initiallyVisible: false`，仅在 `generate_image` / `edit_image` 成功后 `openActivityTab` 上栏；移动预览改为跟文件树选中（含 html/htm）显隐，不再因项目里任意存在 html 就自动上栏；内容创作（content-creation）同理默认隐藏，由 `open_content_creation` 或用户从「+」添加后再显示。
 - **移动预览旧安装包一直占栏**：已装的 `mobile-ui-preview@0.2.x` 未声明 `initiallyVisible: false`（缺省即上栏），与源码改动无关也会常驻。0.3.3 显式 `initiallyVisible: false`，会话回放时按选区写回显隐以清掉历史 attach 脏记录。
 - **用户消息里图片胶囊不再退化成文件名**：输入框是「图 N」+ 上方缩略图，发出后 Windows 路径里的 `\.` 会被消息气泡的 CommonMark 当转义吃掉，编号表对不上就回退成 basename。路径 token 统一写成 `/`，编号查找也按同一键，气泡与输入框一致。

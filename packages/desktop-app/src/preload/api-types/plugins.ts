@@ -687,7 +687,10 @@ export interface DesktopPluginInternalCapabilitiesApi {
 
 export interface DesktopPluginsApi {
 	readonly internalCapabilities: DesktopPluginInternalCapabilitiesApi;
+	/** 当前工作模式（agent_mode 轴）下可见的插件；工作台与 UI 贡献用它。见 ADR-0046。 */
 	list(): Promise<InstalledPlugin[]>;
+	/** 全部已装插件，不按工作模式过滤；能力市场「我的」用它，避免另一模式的插件看起来像丢了。 */
+	listAll(): Promise<InstalledPlugin[]>;
 	installFromArchive(archiveBuffer: ArrayBuffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	/** Install from a local zip absolute path (ADR-0042). */

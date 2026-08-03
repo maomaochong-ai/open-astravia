@@ -499,6 +499,12 @@ function toPluginPermissions(values: string[] | undefined): PluginPermission[] {
 	return (values ?? []) as PluginPermission[];
 }
 
+/** manifest 的 agent_mode（string | string[]）→ 归一化数组；空 = 通用。见 ADR-0046。 */
+function toAgentModes(raw: string | string[] | undefined): string[] {
+	if (raw === undefined) return [];
+	return (Array.isArray(raw) ? raw : [raw]).map((mode) => mode.trim()).filter((mode) => mode.length > 0);
+}
+
 export function buildPluginAbilities(
 	market: MarketAbility[],
 	state: LocalAbilityState,
@@ -561,6 +567,7 @@ export function buildPluginAbilities(
 				(ledgerEntry?.origin?.kind === "github-marketplace" ? ledgerEntry.origin : undefined),
 			market: entry,
 			plugin: installedPlugin,
+			agentModes: toAgentModes(installedPlugin?.agent_mode),
 			permissions: installedPlugin ? installedPlugin.permissions : toPluginPermissions(entry?.config.permissions),
 			grantedPermissions: installedPlugin?.grantedPermissions ?? [],
 			commands: installedPlugin ? installedPlugin.declaredCommands : (entry?.config.commands ?? []),

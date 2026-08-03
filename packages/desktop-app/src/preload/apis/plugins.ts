@@ -242,6 +242,7 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 				},
 			},
 			list: () => ipc.invoke("vetta:plugins:list"),
+			listAll: () => ipc.invoke("vetta:plugins:list-all"),
 			installFromArchive: (archiveBuffer, options) =>
 				ipc.invoke("vetta:plugins:install-from-archive", archiveBuffer, options),
 			installFromUrl: (url, options) => ipc.invoke("vetta:plugins:install-from-url", url, options),
