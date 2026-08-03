@@ -30,18 +30,18 @@ export function ContentReferenceInput({
 	};
 
 	return (
-		<div className="flex min-h-[68px] flex-wrap items-start gap-2">
+		<div className="flex min-h-14 flex-wrap items-start gap-1.5">
 			{references.map(({ binding, asset }, index) => (
 				<div
 					key={binding.id}
-					className="group/reference relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-border/75 bg-muted/45"
+					className="group/reference relative size-14 shrink-0 overflow-hidden rounded-lg border border-border/75 bg-muted/45"
 				>
 					{asset.kind === "video" ? (
 						<video className="h-full w-full object-cover" src={asset.url} muted preload="metadata" />
 					) : (
 						<img className="h-full w-full object-cover" src={asset.url} alt={asset.name} />
 					)}
-					<span className="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-black/75 text-[9px] font-semibold text-white">
+					<span className="absolute top-1 right-1 flex size-3.5 items-center justify-center rounded-full bg-black/75 text-[8px] font-semibold text-white">
 						{index + 1}
 					</span>
 					<button
@@ -51,13 +51,13 @@ export function ContentReferenceInput({
 						aria-label={t("nodeEditor.reference.remove")}
 						onClick={() => onRemove(binding.id)}
 					>
-						<CloseIcon className="size-5" />
+						<CloseIcon className="size-4" />
 					</button>
 				</div>
 			))}
 			<button
 				type="button"
-				className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-border bg-background/35 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+				className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/35 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
 				disabled={disabled || acceptedKinds.length === 0}
 				title={
 					acceptedKinds.length === 0
@@ -67,7 +67,7 @@ export function ContentReferenceInput({
 				aria-label={t("nodeEditor.reference.add")}
 				onClick={() => inputRef.current?.click()}
 			>
-				<ImageIcon className="size-5" />
+				<ImageIcon className="size-4.5" />
 			</button>
 			<input
 				ref={inputRef}

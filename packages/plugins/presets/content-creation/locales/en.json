@@ -87,6 +87,7 @@
 	"node.status.succeeded": "Completed",
 	"node.status.failed": "Failed",
 	"node.prompt.empty": "No prompt yet",
+	"node.prompt.doubleClickToEdit": "Double-click to edit",
 	"node.generatedPreview": "Generated node result",
 	"job.progress": "{{progress}}%",
 	"job.failed": "Generation failed. Open the node to retry.",

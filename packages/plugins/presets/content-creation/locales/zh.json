@@ -87,6 +87,7 @@
 	"node.status.succeeded": "已完成",
 	"node.status.failed": "失败",
 	"node.prompt.empty": "尚未填写提示词",
+	"node.prompt.doubleClickToEdit": "双击编辑",
 	"node.generatedPreview": "节点生成结果",
 	"job.progress": "{{progress}}%",
 	"job.failed": "生成失败，打开节点可重试",

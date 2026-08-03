@@ -46,12 +46,12 @@ export function ContentNodeHandle({ label, side, type, active, selected }: Conte
 			>
 				<span
 					className={cn(
-						"pointer-events-none grid size-6 place-items-center rounded-full border bg-card text-muted-foreground shadow-sm transition-[opacity,transform,color,border-color] duration-150",
+						"pointer-events-none grid size-6 place-items-center rounded-full border bg-popover text-muted-foreground shadow-md ring-1 ring-background transition-[opacity,transform,color,border-color] duration-150",
 						selected
 							? "scale-100 border-primary/55 text-primary opacity-100"
 							: active
-								? "scale-90 border-border text-muted-foreground opacity-70"
-								: "scale-75 border-border opacity-0 group-hover:scale-90 group-hover:opacity-70",
+								? "scale-90 border-border text-muted-foreground opacity-100"
+								: "scale-75 border-border opacity-0 group-hover:scale-90 group-hover:opacity-100",
 					)}
 					aria-hidden
 				>

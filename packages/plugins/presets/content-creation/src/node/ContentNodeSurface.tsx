@@ -77,6 +77,7 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	const { t } = useTranslation();
 	const isMedia = kind === "image-generator" || kind === "video-generator" || kind === "asset";
 	const isBusy = status === "running" || status === "queued";
+	const emptyText = kind === "prompt" ? t("node.prompt.doubleClickToEdit") : t(descriptionKey);
 
 	if (isMedia) {
 		return (
@@ -148,7 +149,7 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 				className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85"
 				style={surfaceTextStyle}
 			>
-				{data.prompt?.trim() || t(descriptionKey)}
+				{data.prompt?.trim() || emptyText}
 			</p>
 		</div>
 	);

@@ -96,7 +96,7 @@ export function ContentGeneratorComposer({
 
 	return (
 		<div
-			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-3 text-card-foreground shadow-xl backdrop-blur-md"
+			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-xl backdrop-blur-md"
 			style={{
 				width: "fit-content",
 				minWidth: `min(${minimumWidth}px, calc(100vw - 32px))`,
@@ -121,7 +121,7 @@ export function ContentGeneratorComposer({
 				}}
 			/>
 			<textarea
-				className="my-2 min-h-[56px] max-h-[132px] w-full resize-none overflow-y-auto bg-transparent px-0.5 py-2 text-[17px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
+				className="my-1.5 min-h-[48px] max-h-[112px] w-full resize-none overflow-y-auto bg-transparent px-0.5 py-1.5 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
 				value={draft.prompt ?? ""}
 				rows={promptRows}
 				placeholder={t("nodeEditor.prompt.placeholder")}
