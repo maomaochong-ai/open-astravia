@@ -121,24 +121,54 @@
 	display: none;
 }
 
-/* One centered connection target per side. Logical typed ports stay in the domain graph. */
-.content-creation-flow .react-flow__handle.content-creation-node-handle,
-.content-creation-flow .react-flow__handle.content-creation-node-handle::after {
+/* Persisted edges attach to invisible card-edge anchors. The visible plus
+ * handles sit outside the card and are only for starting a connection. */
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle,
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor::after,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle::after {
 	border: 0 !important;
 	background: transparent !important;
 	box-shadow: none !important;
 }
 
-.content-creation-flow .react-flow__handle.content-creation-node-handle::after {
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor::after,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle::after {
 	display: none !important;
 	content: none !important;
 }
 
-.content-creation-flow .react-flow__handle.content-creation-node-handle:hover > span,
-.content-creation-flow .react-flow__handle.content-creation-node-handle.connecting > span,
-.content-creation-flow .react-flow__handle.content-creation-node-handle.valid > span {
-	background: var(--primary);
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor-left {
+	left: 0 !important;
+	right: auto !important;
+	transform: translate(-50%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor-right {
+	left: auto !important;
+	right: 0 !important;
+	transform: translate(50%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle-left {
+	left: 0 !important;
+	right: auto !important;
+	transform: translate(-100%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle-right {
+	left: auto !important;
+	right: 0 !important;
+	transform: translate(100%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle:hover > span,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle.connecting > span,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle.valid > span {
+	border-color: var(--primary);
+	color: var(--primary);
 	opacity: 1;
+	transform: scale(1);
 }
 
 @media (prefers-reduced-motion: reduce) {

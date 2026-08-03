@@ -72,7 +72,7 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		defaultData: {},
 		inputs: [],
 		outputs: [{ id: "text", labelKey: "port.text", dataType: "text", multiple: true }],
-		properties: [LABEL_PROPERTY, PROMPT_PROPERTY],
+		properties: [PROMPT_PROPERTY],
 	},
 	{
 		kind: "image-generator",

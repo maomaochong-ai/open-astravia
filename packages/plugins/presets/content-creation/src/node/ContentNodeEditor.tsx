@@ -1,6 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
-import { type ChangeEvent, type KeyboardEvent, useEffect, useState } from "react";
+import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
 import type {
 	ContentAsset,
@@ -24,6 +24,7 @@ interface ContentNodeEditorProps {
 	models: readonly ContentModelDescriptor[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
+	focusPromptRequest: number;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onRunNode: () => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
@@ -38,15 +39,28 @@ export function ContentNodeEditor(props: ContentNodeEditorProps) {
 }
 
 function SimpleContentNodeEditor({
+	kind,
 	data,
 	properties,
+	focusPromptRequest,
 	onUpdate,
 	onAddToTimeline,
 }: ContentNodeEditorProps) {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState(data);
+	const promptInputRef = useRef<HTMLTextAreaElement>(null);
 	const preferredWidth = properties.some((property) => property.editor === "textarea") ? 360 : 260;
 	useEffect(() => setDraft(data), [data]);
+	useEffect(() => {
+		if (kind !== "prompt" || focusPromptRequest === 0) return;
+		const frame = window.requestAnimationFrame(() => {
+			const input = promptInputRef.current;
+			if (!input) return;
+			input.focus();
+			input.setSelectionRange(input.value.length, input.value.length);
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, [focusPromptRequest, kind]);
 	const handlePromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
 		if (event.key !== "Enter" || event.shiftKey) return;
 		event.preventDefault();
@@ -66,6 +80,7 @@ function SimpleContentNodeEditor({
 						<span>{t(property.labelKey)}</span>
 						{property.editor === "textarea" ? (
 							<textarea
+								ref={promptInputRef}
 								className={`${FIELD_CLASS} min-h-[72px] resize-none leading-relaxed`}
 								value={String(draft[property.key] ?? "")}
 								placeholder={property.placeholderKey ? t(property.placeholderKey) : undefined}

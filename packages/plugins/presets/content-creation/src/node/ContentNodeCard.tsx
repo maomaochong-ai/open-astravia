@@ -59,12 +59,15 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const selectionCount = useContentCanvasSelectionCount();
 	const hoverLeaveTimerRef = useRef<number | null>(null);
 	const [hovered, setHovered] = useState(false);
+	const [focusPromptRequest, setFocusPromptRequest] = useState(0);
 	const definition = getContentNodeDefinition(data.kind);
 	const title = data.nodeData.label?.trim() || t(`node.kind.${data.kind}`);
 	const singleSelection = selected && selectionCount === 1;
 	const showQuickToolbar = singleSelection || (hovered && selectionCount === 0);
 	const isResizable = !data.locked && (definition.category === "generation" || definition.category === "resource");
 	const showEditor = singleSelection && definition.properties.length > 0;
+	const inputLabel = definition.inputs.map((port) => t(port.labelKey)).join(", ");
+	const outputLabel = definition.outputs.map((port) => t(port.labelKey)).join(", ");
 
 	useEffect(
 		() => () => {
@@ -152,6 +155,11 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						? "border-primary/45 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_28%,transparent),0_12px_28px_color-mix(in_srgb,black_12%,transparent)]"
 						: "border-border/70 hover:border-border"
 				} ${data.locked ? "opacity-90" : ""}`}
+				onDoubleClick={(event) => {
+					if (data.kind !== "prompt") return;
+					event.stopPropagation();
+					setFocusPromptRequest((current) => current + 1);
+				}}
 			>
 				<ContentNodeSurface
 					kind={data.kind}
@@ -163,20 +171,20 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					job={data.job}
 				/>
 			</div>
-			{definition.inputs.length > 0 ? (
-				<ContentNodeHandle
-					label={definition.inputs.map((port) => t(port.labelKey)).join(", ")}
-					side="left"
-					active={hovered || selected}
-				/>
-			) : null}
-			{definition.outputs.length > 0 ? (
-				<ContentNodeHandle
-					label={definition.outputs.map((port) => t(port.labelKey)).join(", ")}
-					side="right"
-					active={hovered || selected}
-				/>
-			) : null}
+			<ContentNodeHandle
+				label={inputLabel || outputLabel}
+				side="left"
+				type={definition.inputs.length > 0 ? "target" : "source"}
+				active={hovered || selected}
+				selected={selected}
+			/>
+			<ContentNodeHandle
+				label={outputLabel || inputLabel}
+				side="right"
+				type={definition.outputs.length > 0 ? "source" : "target"}
+				active={hovered || selected}
+				selected={selected}
+			/>
 			<NodeToolbar isVisible={showEditor} position={Position.Bottom} offset={QUICK_TOOLBAR_OFFSET}>
 				<div className="max-w-[calc(100vw-32px)]">
 					<ContentNodeEditor
@@ -187,6 +195,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						models={data.models}
 						referenceAssets={data.referenceAssets}
 						hasGenerationError={data.hasGenerationError}
+						focusPromptRequest={focusPromptRequest}
 						onUpdate={data.onUpdate}
 						onRunNode={data.onRunNode}
 						onImportReferences={data.onImportReferences}
