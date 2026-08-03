@@ -2,6 +2,7 @@ import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
+import type { ImportedContentReference } from "../generation/types";
 import {
 	getContentCreationWorkspace,
 	getContentGenerationService,
@@ -60,6 +61,18 @@ export function ContentCreationPanel() {
 		},
 		[cwd, generation, t],
 	);
+	const importReferences = useCallback(
+		async (nodeId: string, files: readonly ImportedContentReference[]) => {
+			try {
+				setError(null);
+				await generation.importReferences(cwd, nodeId, files);
+			} catch (importError) {
+				setError(t("error.importReference"));
+				notifyContentCreationError(t("error.importReference"), importError);
+			}
+		},
+		[cwd, generation, t],
+	);
 
 	if (!project) {
 		return (
@@ -77,7 +90,13 @@ export function ContentCreationPanel() {
 				</div>
 			) : null}
 			<main className="flex min-h-0 flex-1">
-				<GraphWorkspace project={project} models={models} onDispatch={dispatch} onRunNode={runNode} />
+				<GraphWorkspace
+					project={project}
+					models={models}
+					onDispatch={dispatch}
+					onRunNode={runNode}
+					onImportReferences={importReferences}
+				/>
 			</main>
 		</div>
 	);

@@ -18,8 +18,7 @@ const FERRET_VIDEO_SOURCES = {
 } as const;
 const MASCOT_ACTIONS = ["blink", "wave", "crawl"] as const;
 const CRAWL_DURATION_SECONDS = 10.066;
-const CRAWL_START_PAUSE_SECONDS = 3.5;
-const CRAWL_VERTICAL_COMPENSATION_PIXELS = 10;
+const CRAWL_START_PAUSE_SECONDS = 1;
 const CENTER_POSITION = "calc(50% - 4.5rem)";
 const RIGHT_POSITION = "calc(100% - 9rem)";
 const MASCOT_VISIBLE_STORAGE_KEY = "vetta-new-session-mascot-visible";
@@ -120,7 +119,10 @@ export function NewSessionMascot({ autoplay, mounted }: NewSessionMascotProps): 
 				<>
 					<video
 						aria-hidden="true"
-						className="pointer-events-none absolute right-0 -bottom-10 h-36 w-36 object-contain object-center"
+						className={cn(
+							"pointer-events-none absolute right-0 h-36 w-36 object-contain object-center",
+							action === "crawl" ? "-bottom-[30px]" : "-bottom-10",
+						)}
 						draggable={false}
 						muted
 						playsInline
@@ -156,7 +158,6 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 	const videoRef = useRef<HTMLVideoElement>(null);
 	const animationFrameRef = useRef<number | null>(null);
 	const left = useMotionValue(RIGHT_POSITION);
-	const y = useMotionValue(CRAWL_VERTICAL_COMPENSATION_PIXELS);
 
 	const updatePosition = useCallback(() => {
 		const video = videoRef.current;
@@ -169,12 +170,11 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 		);
 		const rightness = returningRef.current ? moveProgress : 1 - moveProgress;
 		left.set(positionForRightness(rightness));
-		y.set(CRAWL_VERTICAL_COMPENSATION_PIXELS * (1 - moveProgress));
 
 		if (!video.paused && !video.ended) {
 			animationFrameRef.current = window.requestAnimationFrame(updatePosition);
 		}
-	}, [left, y]);
+	}, [left]);
 
 	const startTracking = useCallback(() => {
 		if (animationFrameRef.current !== null) {
@@ -195,18 +195,16 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 	const handleEnded = useCallback(
 		(event: SyntheticEvent<HTMLVideoElement>) => {
 			left.set(returningRef.current ? RIGHT_POSITION : CENTER_POSITION);
-			y.set(0);
 			if (returningRef.current) {
 				onComplete();
 				return;
 			}
 			returningRef.current = true;
 			setReturning(true);
-			y.set(CRAWL_VERTICAL_COMPENSATION_PIXELS);
 			event.currentTarget.currentTime = 0;
 			void event.currentTarget.play();
 		},
-		[left, onComplete, y],
+		[left, onComplete],
 	);
 
 	return (
@@ -222,7 +220,7 @@ function CrawlPass({ onComplete }: CrawlPassProps): JSX.Element {
 			preload="auto"
 			ref={videoRef}
 			src={FERRET_VIDEO_SOURCES.crawl}
-			style={{ left, scaleX: returning ? -1 : 1, y }}
+			style={{ left, scaleX: returning ? -1 : 1 }}
 		/>
 	);
 }

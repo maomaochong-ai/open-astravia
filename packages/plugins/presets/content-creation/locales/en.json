@@ -99,6 +99,11 @@
 	"nodeEditor.resolution": "Resolution",
 	"nodeEditor.model": "Model",
 	"nodeEditor.modelUnavailable": "No available model is configured",
+	"nodeEditor.reference.add": "Add image or video references",
+	"nodeEditor.reference.remove": "Remove reference",
+	"nodeEditor.reference.unsupported": "The current model does not support reference media",
+	"nodeEditor.reference.required": "The current model still requires reference media",
+	"nodeEditor.reference.incompatible": "The current references are incompatible with this model. Remove them or choose another model.",
 	"port.text": "Text",
 	"port.prompt": "Prompt",
 	"port.imageReference": "Image reference",
@@ -119,6 +124,7 @@
 	"option.resolution.720p": "720p",
 	"option.resolution.1080p": "1080p",
 	"option.resolution.4k": "4K",
+	"option.duration.seconds": "{{duration}} sec",
 	"provider.openai": "OpenAI",
 	"provider.replicate": "Replicate",
 	"provider.google": "Google AI",
@@ -132,5 +138,6 @@
 	"state.loading": "Loading content project…",
 	"error.load": "Unable to load the content project",
 	"error.save": "Unable to save the content project",
-	"error.generate": "Content generation failed. Check model settings or try again later."
+	"error.generate": "Content generation failed. Check model settings or try again later.",
+	"error.importReference": "Unable to import the reference. Check its media type and the selected model."
 }

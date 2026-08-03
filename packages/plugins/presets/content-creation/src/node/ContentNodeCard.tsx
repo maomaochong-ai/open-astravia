@@ -6,18 +6,20 @@ import { getContentNodeDefinition } from "./definitions";
 import type {
 	AssetKind,
 	CanvasPosition,
+	ContentAsset,
 	ContentNodeData,
+	ContentNodeInputBinding,
 	ContentNodeKind,
 	ContentNodeStatus,
 	GenerationJob,
 } from "../project/types";
-import type { ContentModelDescriptor } from "../generation/types";
+import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
 import { useContentCanvasSelectionCount } from "../canvas/ContentCanvasSelectionContext";
 import { ContentNodeHeader } from "./ContentNodeHeader";
-import { ContentNodePort } from "./ContentNodePort";
+import { ContentNodeHandle } from "./ContentNodeHandle";
 import { ContentNodeSurface } from "./ContentNodeSurface";
 import { DuplicateIcon, LockIcon, TrashIcon, UnlockIcon } from "../shared/icons";
-import { NodeGenerationComposer } from "./NodeGenerationComposer";
+import { ContentNodeEditor } from "./ContentNodeEditor";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
 	kind: ContentNodeKind;
@@ -28,6 +30,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	job?: GenerationJob;
 	locked: boolean;
 	models: readonly ContentModelDescriptor[];
+	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
 	onDelete: () => void;
 	onDuplicate: () => void;
@@ -35,6 +38,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onResize: (position: CanvasPosition, width: number, height: number) => void;
 	onRunNode: () => Promise<void>;
+	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
 
@@ -60,7 +64,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const singleSelection = selected && selectionCount === 1;
 	const showQuickToolbar = singleSelection || (hovered && selectionCount === 0);
 	const isResizable = !data.locked && (definition.category === "generation" || definition.category === "resource");
-	const showComposer = singleSelection && definition.properties.length > 0;
+	const showEditor = singleSelection && definition.properties.length > 0;
 
 	useEffect(
 		() => () => {
@@ -159,43 +163,37 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					job={data.job}
 				/>
 			</div>
-			{definition.inputs.map((port, index) => (
-				<ContentNodePort
-					key={port.id}
-					id={port.id}
-					label={t(port.labelKey)}
-					dataType={port.dataType}
+			{definition.inputs.length > 0 ? (
+				<ContentNodeHandle
+					label={definition.inputs.map((port) => t(port.labelKey)).join(", ")}
 					side="left"
-					index={index}
 					active={hovered || selected}
 				/>
-			))}
-			{definition.outputs.map((port, index) => (
-				<ContentNodePort
-					key={port.id}
-					id={port.id}
-					label={t(port.labelKey)}
-					dataType={port.dataType}
+			) : null}
+			{definition.outputs.length > 0 ? (
+				<ContentNodeHandle
+					label={definition.outputs.map((port) => t(port.labelKey)).join(", ")}
 					side="right"
-					index={index}
 					active={hovered || selected}
 				/>
-			))}
-			{showComposer ? (
-				<div className="absolute inset-x-0 top-full z-20 mt-2">
-					<NodeGenerationComposer
+			) : null}
+			<NodeToolbar isVisible={showEditor} position={Position.Bottom} offset={QUICK_TOOLBAR_OFFSET}>
+				<div className="max-w-[calc(100vw-32px)]">
+					<ContentNodeEditor
 						kind={data.kind}
 						status={data.status}
 						data={data.nodeData}
 						properties={definition.properties}
 						models={data.models}
+						referenceAssets={data.referenceAssets}
 						hasGenerationError={data.hasGenerationError}
 						onUpdate={data.onUpdate}
 						onRunNode={data.onRunNode}
+						onImportReferences={data.onImportReferences}
 						onAddToTimeline={data.onAddToTimeline}
 					/>
 				</div>
-			) : null}
+			</NodeToolbar>
 		</div>
 	);
 });

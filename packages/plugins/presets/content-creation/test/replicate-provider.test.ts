@@ -14,12 +14,13 @@ describe("ReplicateProvider", () => {
 		});
 
 		const result = await provider.generate({
-			capability: "text-to-image",
+			modeId: "text-to-image",
 			providerId: "replicate",
 			modelId: "bytedance/seedream-4.5",
 			prompt: "A paper city",
 			aspectRatio: "16:9",
 			quality: "ultra",
+			references: [],
 		});
 
 		expect(network.requests[0]).toMatchObject({
@@ -44,13 +45,14 @@ describe("ReplicateProvider", () => {
 		});
 
 		const result = await provider.generate({
-			capability: "text-to-video",
+			modeId: "text-to-video",
 			providerId: "replicate",
 			modelId: "google/veo-3.1",
 			prompt: "Clouds crossing a valley",
 			aspectRatio: "9:16",
 			duration: 8,
 			resolution: "1080p",
+			references: [],
 		});
 
 		expect(network.requests[0]?.body).toEqual({
@@ -65,5 +67,37 @@ describe("ReplicateProvider", () => {
 			},
 		});
 		expect(result).toMatchObject({ kind: "video", data: "video-data", duration: 8, width: 1080, height: 1920 });
+	});
+
+	it("maps mixed image and video references into Kling O1 fields", async () => {
+		const network = new QueueNetwork([
+			jsonResponse({ status: "succeeded", output: "https://cdn.example/video.mp4" }),
+			base64Response("video-data", "video/mp4"),
+		]);
+		const provider = new ReplicateProvider(network, createSettings({ token: "r8-test" }), {
+			apiTokenSetting: "token",
+			baseUrl: "https://replicate.test/v1",
+		});
+
+		await provider.generate({
+			modeId: "video-to-video",
+			providerId: "replicate",
+			modelId: "kwaivgi/kling-o1",
+			prompt: "Restyle the movement",
+			references: [
+				{ id: "image", slotId: "referenceImages", kind: "image", data: "image-data", mimeType: "image/png" },
+				{ id: "video", slotId: "referenceVideo", kind: "video", data: "video-data", mimeType: "video/mp4" },
+			],
+		});
+
+		expect(network.requests[0]?.body).toMatchObject({
+			type: "json",
+			value: {
+				input: {
+					reference_images: ["data:image/png;base64,image-data"],
+					reference_video: "data:video/mp4;base64,video-data",
+				},
+			},
+		});
 	});
 });

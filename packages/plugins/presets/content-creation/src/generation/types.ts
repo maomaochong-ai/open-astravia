@@ -1,17 +1,38 @@
-export type ContentGenerationCapability = "text-to-image" | "text-to-video" | "video-to-video";
+export type ContentGenerationModeId =
+	| "text-to-image"
+	| "image-to-image"
+	| "text-to-video"
+	| "image-to-video"
+	| "video-to-video"
+	| "reference-to-video";
+export type ContentGenerationOutputKind = "image" | "video";
+export type ContentReferenceKind = "image" | "video";
+
+export interface ContentModelInputSlot {
+	id: string;
+	accepts: readonly ContentReferenceKind[];
+	minItems: number;
+	maxItems: number;
+}
+
+export interface ContentGenerationMode {
+	id: ContentGenerationModeId;
+	inputs: readonly ContentModelInputSlot[];
+}
 
 export interface ContentModelDescriptor {
 	providerId: string;
 	modelId: string;
 	displayName: string;
-	capabilities: readonly ContentGenerationCapability[];
+	outputKind: ContentGenerationOutputKind;
+	modes: readonly ContentGenerationMode[];
 	aspectRatios: readonly string[];
 	durations?: readonly number[];
 	resolutions?: readonly string[];
 }
 
 export interface ContentGenerationRequest {
-	capability: ContentGenerationCapability;
+	modeId: ContentGenerationModeId;
 	providerId: string;
 	modelId: string;
 	prompt: string;
@@ -19,6 +40,15 @@ export interface ContentGenerationRequest {
 	quality?: string;
 	duration?: number;
 	resolution?: string;
+	references: readonly ContentGenerationReference[];
+}
+
+export interface ContentGenerationReference {
+	id: string;
+	slotId: string;
+	kind: ContentReferenceKind;
+	data: string;
+	mimeType: string;
 }
 
 export interface GeneratedContent {
@@ -41,6 +71,18 @@ export interface StoredGeneratedContent {
 	mimeType: string;
 }
 
+export interface StoredContentData {
+	data: string;
+	mimeType: string;
+}
+
+export interface ImportedContentReference {
+	name: string;
+	data: string;
+	mimeType: string;
+}
+
 export interface ContentArtifactStore {
-	put(id: string, content: GeneratedContent): Promise<StoredGeneratedContent>;
+	put(id: string, content: StoredContentData): Promise<StoredGeneratedContent>;
+	read(id: string): Promise<StoredContentData | null>;
 }

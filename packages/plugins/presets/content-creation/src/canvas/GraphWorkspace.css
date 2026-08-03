@@ -121,27 +121,24 @@
 	display: none;
 }
 
-/* Fallback circular handles (non-bookmark). Bookmark ports use ContentNodePort.css. */
-.content-creation-flow .react-flow__handle:not(.content-creation-port-handle) {
-	width: 24px;
-	height: 24px;
-	border: 0;
-	background: transparent;
-	box-shadow: none;
+/* One centered connection target per side. Logical typed ports stay in the domain graph. */
+.content-creation-flow .react-flow__handle.content-creation-node-handle,
+.content-creation-flow .react-flow__handle.content-creation-node-handle::after {
+	border: 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
 }
 
-.content-creation-flow .react-flow__handle:not(.content-creation-port-handle)::after {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 10px;
-	height: 10px;
-	content: "";
-	border: 1.5px solid var(--background);
-	border-radius: 50%;
+.content-creation-flow .react-flow__handle.content-creation-node-handle::after {
+	display: none !important;
+	content: none !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-node-handle:hover > span,
+.content-creation-flow .react-flow__handle.content-creation-node-handle.connecting > span,
+.content-creation-flow .react-flow__handle.content-creation-node-handle.valid > span {
 	background: var(--primary);
-	box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent);
-	transform: translate(-50%, -50%);
+	opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {

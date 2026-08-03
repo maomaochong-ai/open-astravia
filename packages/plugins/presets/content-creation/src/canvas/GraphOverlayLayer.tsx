@@ -9,7 +9,6 @@ export interface PendingConnectionMenu {
 	position: { x: number; y: number };
 	nodeId: string;
 	direction: "source" | "target";
-	handleId?: string;
 	kinds: readonly ContentNodeKind[];
 }
 

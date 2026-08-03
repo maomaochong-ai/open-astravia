@@ -21,6 +21,14 @@ export interface ContentNodeData {
 	resolution?: string;
 	providerId?: string;
 	modelId?: string;
+	modeId?: string;
+	inputs?: ContentNodeInputBinding[];
+}
+
+export interface ContentNodeInputBinding {
+	id: string;
+	assetId: string;
+	slotId: string;
 }
 
 export interface ContentNode {

@@ -30,6 +30,7 @@ export type ContentProjectCommand =
 	| { type: "node.delete"; nodeId: string }
 	| { type: "edge.connect"; source: string; target: string; sourceHandle?: string; targetHandle?: string }
 	| { type: "edge.delete"; edgeId: string }
+	| { type: "asset.add"; asset: ContentAsset }
 	| { type: "job.start"; job: { id: string; nodeId: string; providerId: string; modelId: string } }
 	| { type: "job.succeed"; jobId: string; asset: ContentAsset }
 	| { type: "job.fail"; jobId: string; error: string }
@@ -195,6 +196,13 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				throw new ContentProjectCommandError(`edge not found: ${command.edgeId}`);
 			}
 			project.graph.edges = project.graph.edges.filter((edge) => edge.id !== command.edgeId);
+			return;
+		}
+		case "asset.add": {
+			if (project.assets.some((asset) => asset.id === command.asset.id)) {
+				throw new ContentProjectCommandError(`asset already exists: ${command.asset.id}`);
+			}
+			project.assets.push(structuredClone(command.asset));
 			return;
 		}
 		case "job.start": {

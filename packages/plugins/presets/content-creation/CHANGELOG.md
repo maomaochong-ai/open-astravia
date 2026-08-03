@@ -17,9 +17,9 @@
 - Softened bottom dock hover magnification (lower peak scale, narrower influence, smoother easing) to reduce visual dizziness.
 - Reorganized the package by feature folders (`panel` / `canvas` / `node` / `timeline` / `project` / `generation` / `plugin` / `shared`) instead of a catch-all `domain` + flat `components` layout; split React Flow and node styles into per-area CSS files under `styles/` + feature modules.
 - Removed the content-creation panel header (title, path, revision, graph/timeline switch) so the canvas uses the full tab area; timeline workspace remains in the package for later re-entry.
-- Refined node connection ports into edge-welded capsules that share card surface tokens (type only as a small dot), replacing the earlier ribbon/bookmark look.
+- Collapsed typed port capsules into one centered connection handle per card side; the UI now infers compatible logical ports while persisted edges keep their typed semantics.
 - Added a Mac Dock–style magnification hover effect on the bottom node-creation dock (with reduced-motion fallback).
-- Mounted the per-node generation panel inside the node shell (not `NodeToolbar`) so its width tracks node resize and scales with canvas zoom.
+- Kept node bodies as zoomable content previews and mounted per-node editors in a non-scaling `NodeToolbar`, so controls remain usable at low canvas zoom.
 - Polished content-creation canvas UX: node chrome, themed React Flow controls, and broader `@vetta/ui` usage (Button / Select / DropdownMenu / Slider / Spin).
 - Activity tab「内容创作」默认不上栏（`initiallyVisible: false`）；由 `open_content_creation` 或用户从「+」添加后再显示。
 - Replaced the permanent node inspector with content-first media nodes, persistent canvas sizing, node-bound generation composers, contextual creation menus, and a compact bottom dock inspired by Open-AI Canvas and Loomic.
@@ -33,6 +33,7 @@
 - Added reference-project design notes, a schema-driven node registry, typed ports, connection validation, compatible-node creation, and node workflow tests.
 - Added secure plugin credentials, provider/model registration, a real OpenAI-compatible image adapter, generation jobs, artifact return, and fully mocked tests.
 - Added capability-based OpenAI Images, Replicate, Gemini/Veo, and configurable NewAPI video adapters with the Loomic media model catalog.
+- Added model-declared image/video reference slots, persistent reference imports, shared compatibility resolution, and multimodal Provider request mapping.
 
 ### Fixed
 

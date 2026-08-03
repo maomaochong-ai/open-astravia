@@ -1,10 +1,11 @@
 import type {
-	ContentGenerationCapability,
+	ContentGenerationOutputKind,
 	ContentGenerationRequest,
 	ContentModelDescriptor,
 	ContentProviderAdapter,
 	GeneratedContent,
 } from "./types";
+import { resolveContentGenerationMode } from "./model-inputs";
 
 export class ContentProviderRegistry {
 	private readonly providers = new Map<string, ContentProviderAdapter>();
@@ -14,11 +15,11 @@ export class ContentProviderRegistry {
 		this.providers.set(provider.id, provider);
 	}
 
-	listModels(capability?: ContentGenerationCapability): ContentModelDescriptor[] {
+	listModels(outputKind?: ContentGenerationOutputKind): ContentModelDescriptor[] {
 		return Array.from(this.providers.values()).flatMap((provider) =>
 			provider
 				.listModels()
-				.filter((model) => capability === undefined || model.capabilities.includes(capability)),
+				.filter((model) => outputKind === undefined || model.outputKind === outputKind),
 		);
 	}
 
@@ -26,8 +27,11 @@ export class ContentProviderRegistry {
 		const provider = this.providers.get(request.providerId);
 		if (!provider) throw new Error(`content provider not found: ${request.providerId}`);
 		const model = provider.listModels().find((candidate) => candidate.modelId === request.modelId);
-		if (!model || !model.capabilities.includes(request.capability)) {
-			throw new Error(`content model does not support ${request.capability}: ${request.providerId}/${request.modelId}`);
+		const resolution = model
+			? resolveContentGenerationMode(model, request.references, request.modeId)
+			: null;
+		if (!model || resolution?.mode?.id !== request.modeId) {
+			throw new Error(`content model does not support ${request.modeId}: ${request.providerId}/${request.modelId}`);
 		}
 		return provider.generate(request);
 	}
