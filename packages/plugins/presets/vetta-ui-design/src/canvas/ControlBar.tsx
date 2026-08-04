@@ -83,9 +83,11 @@ export function ControlBar({
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar
 		<div
-			// top-6 而不是更贴边：宿主面板顶部有一道投影，压在 top-3 上会把工具栏罩住。
-			// 那层阴影在插件容器之外，z-index 够不着，只能让开。
-			className="pointer-events-auto absolute top-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
+			// 挡住工具栏的不是宿主的阴影，是画布自己的沉浸式标题栏（CanvasTab）：一条
+			// inset-x-0 top-0 的渐变遮罩，pt-2 + 控件行 + pb-6 合起来约 58px 高，z-30。
+			// top-16 让它整个落在渐变带之外；z-30 是双保险——同层时 DOM 靠后者在上，
+			// 而这块比标题栏后渲染。
+			className="pointer-events-auto absolute top-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
 			// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 			// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
 			onPointerDown={(event) => event.stopPropagation()}
