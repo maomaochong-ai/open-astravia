@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm } from "node:fs/promises";
-import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type {
 	AgentPluginContinuationContribution,
@@ -12,11 +12,22 @@ import type {
 	SystemPromptBlock,
 	SystemPromptOperation,
 } from "@vetta/runtime-core";
+import {
+	isPluginPassthroughIconRef as isPassthroughIconRef,
+	isPluginApiCompatible,
+	listPluginManifestResources,
+	normalizePluginAgentModes as normalizeAgentModeList,
+	parsePluginCommandNames as parseCommands,
+	parsePluginManifest as parseManifest,
+	parsePluginMcpServerConfig,
+	validatePluginId,
+	validatePluginVersion,
+	validatePluginRelativePath as validateRelativePath,
+} from "@vetta-org/plugin-sdk/manifest";
 import AdmZip from "adm-zip";
 import { app, webContents } from "electron";
 import type {
 	InstalledPlugin,
-	PluginAgentManifest,
 	PluginDevWatchState,
 	PluginInstallOptions,
 	PluginLocaleCatalog,
@@ -34,6 +45,11 @@ import { PluginSettingsStore } from "./plugin-settings-store.js";
 
 export const PLUGIN_API_VERSION = "1.2.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
+
+function supportsPluginApi(range: string): boolean {
+	return isPluginApiCompatible(PLUGIN_API_VERSION, range);
+}
+
 const REQUIRED_SYSTEM_PLUGIN_IDS = new Set<string>([CORE_ACTION_PLUGIN_ID]);
 const pluginsBaseDir = join(getVettaHomePath(), "plugins");
 const manifestPath = join(getVettaHomePath(), "plugins-manifest.json");
@@ -150,111 +166,6 @@ function resolvePluginMcpServerConfig(pluginRoot: string, config: PluginMcpServe
 	};
 }
 
-function parsePluginMcpServerConfig(name: string, raw: unknown): PluginMcpServerConfig {
-	if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-		throw new Error(`Invalid plugin MCP server config for '${name}'`);
-	}
-	const input = raw as Record<string, unknown>;
-	const type = input.type === undefined || input.type === "stdio" || input.type === "http" ? input.type : undefined;
-	if (input.type !== undefined && type === undefined) {
-		throw new Error(`Invalid plugin MCP server type for '${name}'`);
-	}
-	if (type === "http") {
-		const url = assertString(input.url, `mcpServers.${name}.url`);
-		const headers =
-			input.headers === undefined
-				? undefined
-				: (() => {
-						if (input.headers == null || typeof input.headers !== "object" || Array.isArray(input.headers)) {
-							throw new Error(`Invalid plugin MCP headers for '${name}'`);
-						}
-						const result: Record<string, string> = {};
-						for (const [key, value] of Object.entries(input.headers as Record<string, unknown>)) {
-							if (typeof value !== "string") {
-								throw new Error(`Invalid plugin MCP header value for '${name}.${key}'`);
-							}
-							result[key] = value;
-						}
-						return result;
-					})();
-		return {
-			type: "http",
-			url,
-			headers,
-			oauthClientId: typeof input.oauthClientId === "string" ? input.oauthClientId : undefined,
-			oauthDeviceFlow: typeof input.oauthDeviceFlow === "boolean" ? input.oauthDeviceFlow : undefined,
-			oauthScopes: typeof input.oauthScopes === "string" ? input.oauthScopes : undefined,
-			disabled: typeof input.disabled === "boolean" ? input.disabled : undefined,
-			autoApprove:
-				input.autoApprove === undefined
-					? undefined
-					: assertStringArray(input.autoApprove, `mcpServers.${name}.autoApprove`),
-			startupTimeout: typeof input.startupTimeout === "number" ? input.startupTimeout : undefined,
-			debug: typeof input.debug === "boolean" ? input.debug : undefined,
-			displayName: typeof input.displayName === "string" ? input.displayName : undefined,
-			description: typeof input.description === "string" ? input.description : undefined,
-		};
-	}
-	const command = assertString(input.command, `mcpServers.${name}.command`);
-	const args =
-		input.args === undefined
-			? undefined
-			: (() => {
-					if (!Array.isArray(input.args) || input.args.some((item) => typeof item !== "string")) {
-						throw new Error(`Invalid plugin MCP args for '${name}'`);
-					}
-					return input.args as string[];
-				})();
-	const env =
-		input.env === undefined
-			? undefined
-			: (() => {
-					if (input.env == null || typeof input.env !== "object" || Array.isArray(input.env)) {
-						throw new Error(`Invalid plugin MCP env for '${name}'`);
-					}
-					const result: Record<string, string> = {};
-					for (const [key, value] of Object.entries(input.env as Record<string, unknown>)) {
-						if (typeof value !== "string") {
-							throw new Error(`Invalid plugin MCP env value for '${name}.${key}'`);
-						}
-						result[key] = value;
-					}
-					return result;
-				})();
-	return {
-		type: type === "stdio" ? "stdio" : undefined,
-		command,
-		args,
-		env,
-		cwd: typeof input.cwd === "string" ? input.cwd : undefined,
-		disabled: typeof input.disabled === "boolean" ? input.disabled : undefined,
-		autoApprove:
-			input.autoApprove === undefined
-				? undefined
-				: assertStringArray(input.autoApprove, `mcpServers.${name}.autoApprove`),
-		startupTimeout: typeof input.startupTimeout === "number" ? input.startupTimeout : undefined,
-		debug: typeof input.debug === "boolean" ? input.debug : undefined,
-		displayName: typeof input.displayName === "string" ? input.displayName : undefined,
-		description: typeof input.description === "string" ? input.description : undefined,
-	};
-}
-
-function parseMcpServersField(raw: unknown): PluginAgentManifest["mcpServers"] {
-	if (raw === undefined) return undefined;
-	if (typeof raw === "string") {
-		return validateRelativePath(raw.trim(), "agent.mcpServers");
-	}
-	if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-		throw new Error("Invalid plugin agent.mcpServers");
-	}
-	const result: Record<string, PluginMcpServerConfig> = {};
-	for (const [name, value] of Object.entries(raw as Record<string, unknown>)) {
-		if (!name.trim()) throw new Error("Invalid plugin MCP server name");
-		result[name.trim()] = parsePluginMcpServerConfig(name, value);
-	}
-	return result;
-}
-
 /**
  * Materialize plugin MCP contributions for an installed plugin.
  * Skips on missing files / parse errors (warn) so one bad plugin does not block others.
@@ -364,135 +275,6 @@ function writeRegistry(registry: PluginManifestFile): void {
 	writeFileSync(manifestPath, JSON.stringify(registry, null, 2), "utf-8");
 }
 
-function assertString(value: unknown, fieldName: string): string {
-	if (typeof value !== "string" || value.trim().length === 0) {
-		throw new Error(`Invalid plugin ${fieldName}`);
-	}
-	return value.trim();
-}
-
-function assertStringArray(value: unknown, fieldName: string): string[] {
-	if (value === undefined) return [];
-	if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim().length === 0)) {
-		throw new Error(`Invalid plugin ${fieldName}`);
-	}
-	return value.map((item) => item.trim());
-}
-
-function assertPermissionArray(value: unknown): PluginPermission[] {
-	if (value === undefined) return [];
-	if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim().length === 0)) {
-		throw new Error("Invalid plugin permissions");
-	}
-	return Array.from(new Set(value.map((item) => item.trim() as PluginPermission)));
-}
-
-const SETTING_TYPES = new Set(["string", "number", "boolean", "enum", "secret", "desc"]);
-
-function parseVisibleWhen(raw: unknown, key: string): PluginSettingSchema["visibleWhen"] {
-	if (raw === undefined) return undefined;
-	if (raw == null || typeof raw !== "object") {
-		throw new Error(`Invalid plugin setting visibleWhen for ${key}`);
-	}
-	const condition = raw as Record<string, unknown>;
-	return {
-		key: assertString(condition.key, "setting.visibleWhen.key"),
-		in: assertStringArray(condition.in, "setting.visibleWhen.in"),
-	};
-}
-
-function parseSettingsSchema(raw: unknown): PluginSettingSchema[] | undefined {
-	if (raw == null || typeof raw !== "object") return undefined;
-	const settings = (raw as Record<string, unknown>).settings;
-	if (settings === undefined) return undefined;
-	if (!Array.isArray(settings)) {
-		throw new Error("Invalid plugin contributes.settings");
-	}
-	const parsed = settings.map((item): PluginSettingSchema => {
-		if (item == null || typeof item !== "object") {
-			throw new Error("Invalid plugin setting entry");
-		}
-		const setting = item as Record<string, unknown>;
-		const key = assertString(setting.key, "setting.key");
-		if (typeof setting.type !== "string" || !SETTING_TYPES.has(setting.type)) {
-			throw new Error(`Invalid plugin setting type for ${key}`);
-		}
-		const def = setting.default;
-		if (def !== undefined && typeof def !== "string" && typeof def !== "number" && typeof def !== "boolean") {
-			throw new Error(`Invalid plugin setting default for ${key}`);
-		}
-		// `desc` is text-only: title is optional (the note lives in description).
-		const title =
-			setting.type === "desc"
-				? typeof setting.title === "string"
-					? setting.title
-					: undefined
-				: assertString(setting.title, "setting.title");
-		return {
-			key,
-			type: setting.type as PluginSettingSchema["type"],
-			title,
-			description: typeof setting.description === "string" ? setting.description : undefined,
-			default: def,
-			enum: setting.enum === undefined ? undefined : assertStringArray(setting.enum, "setting.enum"),
-			visibleWhen: parseVisibleWhen(setting.visibleWhen, key),
-		};
-	});
-	return parsed.length > 0 ? parsed : undefined;
-}
-
-function validatePluginId(id: string): void {
-	if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(id)) {
-		throw new Error("Plugin id must be 1-64 chars: lowercase letters, numbers, dot, underscore, or dash");
-	}
-}
-
-/** Command declarations are bare executable names — no path separators, no shell metacharacters. */
-function parseCommands(value: unknown): string[] {
-	if (value === undefined) return [];
-	if (!Array.isArray(value)) {
-		throw new Error("Invalid plugin commands");
-	}
-	const names = value.map((item) => {
-		if (typeof item !== "string" || !/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,63}$/.test(item)) {
-			throw new Error("Invalid plugin command name (must be a bare executable name)");
-		}
-		return item;
-	});
-	return Array.from(new Set(names));
-}
-
-function validatePluginVersion(version: string): void {
-	if (!/^[a-zA-Z0-9][a-zA-Z0-9._+-]{0,63}$/.test(version)) {
-		throw new Error("Plugin version must be 1-64 chars and cannot contain path separators");
-	}
-}
-
-function validateRelativePath(value: string, fieldName: string): string {
-	const normalized = normalize(value).replace(/\\/g, "/");
-	if (normalized.startsWith("../") || normalized === ".." || normalized.startsWith("/") || /^[a-zA-Z]:/.test(value)) {
-		throw new Error(`Invalid plugin ${fieldName}`);
-	}
-	return normalized;
-}
-
-/** Iconify 图标名：`solar:magic-stick-3-bold` 这种 `<集合>:<图标>` 形态。 */
-const ICONIFY_ICON_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-/**
- * 图标三态判定：Iconify 名与 `http(s)://` 外链原样透传给渲染层；
- * 其余一律当包内相对路径交给 validateRelativePath（含盘符的绝对路径会被它拒绝）。
- */
-function isPassthroughIconRef(icon: string): boolean {
-	return icon.startsWith("http://") || icon.startsWith("https://") || ICONIFY_ICON_PATTERN.test(icon);
-}
-
-function parseIconRef(value: unknown): string | undefined {
-	if (value === undefined) return undefined;
-	const icon = assertString(value, "icon");
-	return isPassthroughIconRef(icon) ? icon : validateRelativePath(icon, "icon");
-}
-
 /**
  * manifest.icon → InstalledPlugin.iconUrl。相对路径才经 URL 构造器（自带 ?v= cache key，
  * 规避 Chromium 对 vetta-plugin:// 资源的缓存），Iconify/外链原样返回。
@@ -500,75 +282,6 @@ function parseIconRef(value: unknown): string | undefined {
 function resolveIconUrl(icon: string | undefined, toUrl: (relativePath: string) => string): string | undefined {
 	if (!icon) return undefined;
 	return isPassthroughIconRef(icon) ? icon : toUrl(icon);
-}
-
-function parseManifest(raw: unknown): PluginManifest {
-	if (raw == null || typeof raw !== "object") {
-		throw new Error("Missing plugin.json");
-	}
-	const input = raw as Record<string, unknown>;
-	const id = assertString(input.id, "id");
-	const version = assertString(input.version, "version");
-	validatePluginId(id);
-	validatePluginVersion(version);
-	const entry = validateRelativePath(assertString(input.entry, "entry"), "entry");
-	const runtime =
-		input.runtime === undefined || input.runtime === "esm" || input.runtime === "module-federation"
-			? input.runtime
-			: undefined;
-	if (input.runtime !== undefined && runtime === undefined) {
-		throw new Error("Invalid plugin runtime");
-	}
-	const moduleFederation =
-		runtime === "module-federation" ? parseModuleFederationManifest(input.moduleFederation) : undefined;
-	const agent = parseAgentManifest(input.agent);
-	const styles = assertStringArray(input.styles, "styles").map((style) => validateRelativePath(style, "styles"));
-	const permissions = assertPermissionArray(input.permissions);
-	const commands = parseCommands(input.commands);
-	const settings = parseSettingsSchema(input.contributes);
-	return {
-		id,
-		name: assertString(input.name, "name"),
-		version,
-		pluginApiVersion: assertString(input.pluginApiVersion, "pluginApiVersion"),
-		entry,
-		runtime: runtime ?? "esm",
-		moduleFederation,
-		agent,
-		styles,
-		permissions,
-		commands: commands.length > 0 ? commands : undefined,
-		contributes: settings ? { settings } : undefined,
-		description: typeof input.description === "string" ? input.description : undefined,
-		author: typeof input.author === "string" ? input.author : undefined,
-		icon: parseIconRef(input.icon),
-		guidingWords:
-			input.guidingWords === undefined ? undefined : assertStringArray(input.guidingWords, "guidingWords"),
-		defaultLocale: parseDefaultLocale(input.defaultLocale),
-		contributionMode: parseContributionMode(input.contributionMode),
-		// 插件级工作模式白名单（agent_mode 轴，缺省/空 = 通用/全局）。见 ADR-0046。
-		agent_mode: normalizeAgentModeList(input.agent_mode),
-	};
-}
-
-function parseContributionMode(raw: unknown): PluginManifest["contributionMode"] {
-	if (raw === undefined) return undefined;
-	if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-		throw new Error("Invalid plugin contributionMode");
-	}
-	const input = raw as Record<string, unknown>;
-	return {
-		hardIsolation: input.hardIsolation === true,
-	};
-}
-
-/** Locale code: 2-16 chars, letters/digits/dash (e.g. "zh", "en", "zh-Hans"). Defaults to "zh". */
-function parseDefaultLocale(value: unknown): string {
-	if (value === undefined) return "zh";
-	if (typeof value !== "string" || !/^[a-zA-Z][a-zA-Z0-9-]{1,15}$/.test(value)) {
-		throw new Error("Invalid plugin defaultLocale");
-	}
-	return value;
 }
 
 /**
@@ -597,96 +310,6 @@ function loadPluginLocales(dir: string): PluginLocales {
 		}
 	}
 	return result;
-}
-
-function parseModuleFederationManifest(raw: unknown): PluginManifest["moduleFederation"] {
-	if (raw == null || typeof raw !== "object") {
-		throw new Error("Missing plugin moduleFederation");
-	}
-	const input = raw as Record<string, unknown>;
-	const remoteName = assertString(input.remoteName, "moduleFederation.remoteName");
-	if (!/^[A-Za-z_$][A-Za-z0-9_$-]{0,63}$/.test(remoteName)) {
-		throw new Error("Invalid plugin moduleFederation.remoteName");
-	}
-	const expose = assertString(input.expose, "moduleFederation.expose");
-	if (!expose.startsWith("./") || expose.includes("..") || expose.includes("\\")) {
-		throw new Error("Invalid plugin moduleFederation.expose");
-	}
-	return {
-		remoteName,
-		expose,
-	};
-}
-
-function parseToolPolicy(raw: unknown): PluginAgentManifest["toolPolicy"] {
-	if (raw === undefined) return undefined;
-	if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-		throw new Error("Invalid plugin agent.toolPolicy");
-	}
-	const input = raw as Record<string, unknown>;
-	return {
-		allow: assertStringArray(input.allow, "agent.toolPolicy.allow"),
-		deny: assertStringArray(input.deny, "agent.toolPolicy.deny"),
-	};
-}
-
-function parseAgentManifest(raw: unknown): PluginAgentManifest | undefined {
-	if (raw === undefined) return undefined;
-	if (raw == null || typeof raw !== "object" || Array.isArray(raw)) {
-		throw new Error("Invalid plugin agent");
-	}
-	const input = raw as Record<string, unknown>;
-	const systemPrompt =
-		input.systemPrompt === undefined
-			? undefined
-			: (() => {
-					if (
-						input.systemPrompt == null ||
-						typeof input.systemPrompt !== "object" ||
-						Array.isArray(input.systemPrompt)
-					) {
-						throw new Error("Invalid plugin agent.systemPrompt");
-					}
-					const promptInput = input.systemPrompt as Record<string, unknown>;
-					return {
-						promptPaths: assertStringArray(promptInput.promptPaths, "agent.systemPrompt.promptPaths").map(
-							(path) => validateRelativePath(path, "agent.systemPrompt.promptPaths"),
-						),
-					};
-				})();
-	return {
-		systemPrompt,
-		skillPaths: assertStringArray(input.skillPaths, "agent.skillPaths").map((path) =>
-			validateRelativePath(path, "agent.skillPaths"),
-		),
-		mcpServers: parseMcpServersField(input.mcpServers),
-		toolPolicy: parseToolPolicy(input.toolPolicy),
-	};
-}
-
-function parseApiVersion(value: string): readonly [number, number, number] | undefined {
-	const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value);
-	if (!match) return undefined;
-	return [Number(match[1]), Number(match[2]), Number(match[3])];
-}
-
-function compareApiVersions(left: readonly [number, number, number], right: readonly [number, number, number]): number {
-	for (let index = 0; index < left.length; index += 1) {
-		if (left[index] !== right[index]) return left[index] - right[index];
-	}
-	return 0;
-}
-
-function supportsPluginApi(range: string): boolean {
-	const host = parseApiVersion(PLUGIN_API_VERSION)!;
-	const normalized = range.trim();
-	const exact = parseApiVersion(normalized);
-	if (exact) return exact[0] === host[0] && compareApiVersions(host, exact) >= 0;
-	const caret = normalized.startsWith("^") ? parseApiVersion(normalized.slice(1)) : undefined;
-	if (caret) return caret[0] === host[0] && compareApiVersions(host, caret) >= 0;
-	if (normalized === `^${host[0]}` || normalized === `${host[0]}.x`) return true;
-	const minimum = normalized.startsWith(">=") ? parseApiVersion(normalized.slice(2)) : undefined;
-	return minimum !== undefined && compareApiVersions(host, minimum) >= 0;
 }
 
 function versionedPath(version: string, relativePath: string): string {
@@ -795,6 +418,26 @@ async function getManifestFromDir(extractDir: string): Promise<{ manifest: Plugi
 		}
 	}
 	throw new Error("plugin.json not found at archive root");
+}
+
+function validatePluginPackageResources(sourceDir: string, manifest: PluginManifest): void {
+	for (const resource of listPluginManifestResources(manifest)) {
+		const resourcePath = resolve(sourceDir, resource.path);
+		const relativePath = relative(sourceDir, resourcePath);
+		if (relativePath.startsWith("..") || isAbsolute(relativePath)) {
+			throw new Error(`Plugin resource is outside package root: ${resource.field}`);
+		}
+		if (!existsSync(resourcePath)) {
+			throw new Error(`Plugin resource is missing: ${resource.field} (${resource.path})`);
+		}
+		const info = statSync(resourcePath);
+		if (resource.kind === "file" && !info.isFile()) {
+			throw new Error(`Plugin resource must be a file: ${resource.field} (${resource.path})`);
+		}
+		if (resource.kind === "file-or-directory" && !info.isFile() && !info.isDirectory()) {
+			throw new Error(`Plugin resource is invalid: ${resource.field} (${resource.path})`);
+		}
+	}
 }
 
 async function copyExtractedPlugin(sourceDir: string, pluginId: string, version: string): Promise<void> {
@@ -1040,13 +683,6 @@ let currentAgentMode: string | undefined;
 /** 主进程记录当前全局工作模式，供 buildAgentPluginRuntimeConfig 的插件级硬闸使用。 */
 export function setPluginRuntimeAgentMode(mode: string | undefined): void {
 	currentAgentMode = mode;
-}
-
-/** manifest agent_mode（string | string[]）→ 归一化 string[]；空 → undefined（通用）。见 ADR-0046。 */
-function normalizeAgentModeList(raw: unknown): string[] | undefined {
-	if (raw === undefined || raw === null) return undefined;
-	const arr = (Array.isArray(raw) ? raw : [raw]).map((m) => String(m).trim()).filter((m) => m.length > 0);
-	return arr.length > 0 ? arr : undefined;
 }
 
 /**
@@ -1540,6 +1176,7 @@ export async function installPluginFromArchive(
 	await extractArchive(buffer, extractDir);
 	try {
 		const { manifest, sourceDir } = await getManifestFromDir(extractDir);
+		validatePluginPackageResources(sourceDir, manifest);
 		if (isSystemPluginId(manifest.id)) {
 			throw new Error(`Cannot install over a system plugin: ${manifest.id}`);
 		}

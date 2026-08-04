@@ -2,7 +2,6 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button, Slider } from "@vetta/ui";
 import { useEffect, useMemo, useState } from "react";
 import type { TimelineClip, ContentProjectDocument } from "../project/types";
-import { PauseIcon, PlayIcon } from "../shared/icons";
 
 const MIN_TIMELINE_DURATION = 30;
 
@@ -44,7 +43,7 @@ export function TimelineWorkspace({ project }: { project: ContentProjectDocument
 		<div className="grid h-full min-h-0 min-w-0 flex-1 grid-rows-[minmax(180px,1fr)_minmax(220px,42%)]">
 			<section className="flex min-h-0 items-center justify-center p-5">
 				<div className="flex aspect-video max-h-full max-w-[780px] flex-col items-center justify-center gap-2.5 rounded-xl border border-border/60 bg-muted/35 text-muted-foreground">
-					<PlayIcon className="size-10 opacity-70" />
+					<span className="icon-[lucide--play] block size-10 shrink-0 opacity-70" aria-hidden="true" />
 					<p className="m-0 text-sm">{t("preview.placeholder")}</p>
 				</div>
 			</section>
@@ -57,7 +56,11 @@ export function TimelineWorkspace({ project }: { project: ContentProjectDocument
 						title={t(playing ? "action.pause" : "action.play")}
 						onClick={() => setPlaying((value) => !value)}
 					>
-						{playing ? <PauseIcon /> : <PlayIcon />}
+						{playing ? (
+							<span className="icon-[lucide--pause] block size-4 shrink-0" aria-hidden="true" />
+						) : (
+							<span className="icon-[lucide--play] block size-4 shrink-0" aria-hidden="true" />
+						)}
 					</Button>
 					<span className="tabular-nums">
 						{playhead.toFixed(1)}s / {duration.toFixed(1)}s

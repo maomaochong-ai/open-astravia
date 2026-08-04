@@ -8,7 +8,6 @@ import {
 	DropdownMenuTrigger,
 } from "@vetta/ui";
 import type { ContentNodeAlignment, ContentNodeLayout } from "../node/layout";
-import { DuplicateIcon, LockIcon, TrashIcon, UnlockIcon } from "../shared/icons";
 
 interface SelectionToolbarProps {
 	nodeIds: readonly string[];
@@ -90,13 +89,17 @@ export function SelectionToolbar({
 					onClick={onToggleLock}
 					title={t(allLocked ? "action.unlockNodes" : "action.lockNodes")}
 				>
-					{allLocked ? <UnlockIcon /> : <LockIcon />}
+					{allLocked ? (
+						<span className="icon-[lucide--lock-open] block size-4 shrink-0" aria-hidden="true" />
+					) : (
+						<span className="icon-[lucide--lock] block size-4 shrink-0" aria-hidden="true" />
+					)}
 				</Button>
 				<Button type="button" size="icon-xs" variant="ghost" onClick={onDuplicate} title={t("action.duplicateNodes")}>
-					<DuplicateIcon />
+					<span className="icon-[lucide--copy] block size-4 shrink-0" aria-hidden="true" />
 				</Button>
 				<Button type="button" size="icon-xs" variant="ghost" onClick={onDelete} title={t("action.deleteNodes")}>
-					<TrashIcon />
+					<span className="icon-[lucide--trash-2] block size-4 shrink-0" aria-hidden="true" />
 				</Button>
 			</div>
 		</NodeToolbar>

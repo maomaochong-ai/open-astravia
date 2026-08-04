@@ -1,7 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
 import type { ReactNode } from "react";
-import { DuplicateIcon, LockIcon, TrashIcon, UnlockIcon } from "../shared/icons";
 
 interface NodeCanvasContextMenuProps {
 	left: number;
@@ -21,7 +20,7 @@ function ContextAction({ label, icon, onSelect }: { label: string; icon: ReactNo
 			className="w-full justify-start gap-2 px-2 font-normal"
 			onClick={onSelect}
 		>
-			<span className="[&_svg]:size-3.5">{icon}</span>
+			<span className="grid size-3.5 shrink-0 place-items-center [&>*]:size-3.5">{icon}</span>
 			<span>{label}</span>
 		</Button>
 	);
@@ -42,13 +41,27 @@ export function NodeCanvasContextMenu({
 			style={{ left, top }}
 			onPointerDown={(event) => event.stopPropagation()}
 		>
-			<ContextAction label={t("action.duplicateNode")} icon={<DuplicateIcon />} onSelect={onDuplicate} />
+			<ContextAction
+				label={t("action.duplicateNode")}
+				icon={<span className="icon-[lucide--copy] block size-4 shrink-0" aria-hidden="true" />}
+				onSelect={onDuplicate}
+			/>
 			<ContextAction
 				label={t(locked ? "action.unlockNode" : "action.lockNode")}
-				icon={locked ? <UnlockIcon /> : <LockIcon />}
+				icon={
+					locked ? (
+						<span className="icon-[lucide--lock-open] block size-4 shrink-0" aria-hidden="true" />
+					) : (
+						<span className="icon-[lucide--lock] block size-4 shrink-0" aria-hidden="true" />
+					)
+				}
 				onSelect={onToggleLock}
 			/>
-			<ContextAction label={t("action.deleteNode")} icon={<TrashIcon />} onSelect={onDelete} />
+			<ContextAction
+				label={t("action.deleteNode")}
+				icon={<span className="icon-[lucide--trash-2] block size-4 shrink-0" aria-hidden="true" />}
+				onSelect={onDelete}
+			/>
 		</div>
 	);
 }
@@ -67,7 +80,11 @@ export function EdgeCanvasContextMenu({ left, top, onDelete }: EdgeCanvasContext
 			style={{ left, top }}
 			onPointerDown={(event) => event.stopPropagation()}
 		>
-			<ContextAction label={t("action.deleteConnection")} icon={<TrashIcon />} onSelect={onDelete} />
+			<ContextAction
+				label={t("action.deleteConnection")}
+				icon={<span className="icon-[lucide--trash-2] block size-4 shrink-0" aria-hidden="true" />}
+				onSelect={onDelete}
+			/>
 		</div>
 	);
 }

@@ -1,60 +1,104 @@
 #!/usr/bin/env node
 /**
- * Validate plugin.json basics for a user plugin project.
+ * Validate plugin.json through @vetta-org/plugin-sdk, then report optional
+ * authoring recommendations used by the plugin workbench.
  * Usage: node check-manifest.mjs <pluginRoot>
  */
-import { readFile, access } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { access, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 const root = resolve(process.argv[2] ?? ".");
 const manifestPath = join(root, "plugin.json");
 
+function run(cmd, args, cwd) {
+	return new Promise((resolvePromise, rejectPromise) => {
+		const child = spawn(cmd, args, { cwd, stdio: ["ignore", "pipe", "pipe"], shell: false });
+		let stdout = "";
+		let stderr = "";
+		child.stdout.on("data", (data) => {
+			stdout += data.toString();
+		});
+		child.stderr.on("data", (data) => {
+			stderr += data.toString();
+		});
+		child.on("error", rejectPromise);
+		child.on("close", (code) => {
+			if (code === 0) resolvePromise({ stdout, stderr });
+			else rejectPromise(new Error(stderr || stdout || `Command failed with exit ${code}`));
+		});
+	});
+}
+
 async function main() {
-	const errors = [];
-	const warnings = [];
 	let raw;
 	try {
 		raw = JSON.parse(await readFile(manifestPath, "utf8"));
-	} catch (err) {
-		console.error(JSON.stringify({ ok: false, errors: [`Cannot read plugin.json: ${err}`] }, null, 2));
+	} catch (error) {
+		console.error(JSON.stringify({ ok: false, errors: [`Cannot read plugin.json: ${error}`] }, null, 2));
 		process.exit(1);
 	}
 
-	if (typeof raw.id !== "string" || !/^[a-z][a-z0-9-]{0,62}$/.test(raw.id)) {
-		errors.push("id must be lowercase kebab-case");
+	let validated;
+	try {
+		const pluginCliPath = join(root, "node_modules", "@vetta-org", "plugin-vite", "dist", "cli.js");
+		const result = await run(
+			process.execPath,
+			[pluginCliPath, "validate", "--root", root],
+			root,
+		);
+		validated = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
+	} catch (error) {
+		console.error(
+			JSON.stringify(
+				{
+					ok: false,
+					errors: [error instanceof Error ? error.message : String(error)],
+					hint: "Run npm install in the plugin project before validation.",
+				},
+				null,
+				2,
+			),
+		);
+		process.exit(1);
 	}
-	if (typeof raw.name !== "string" || !raw.name.trim()) errors.push("name is required");
-	if (typeof raw.version !== "string" || !/^\d+\.\d+\.\d+/.test(raw.version)) {
-		errors.push("version must be semver-like x.y.z");
+
+	const warnings = [];
+	if (!/^[a-z][a-z0-9-]{0,62}$/.test(validated.id)) {
+		warnings.push("id is valid for the host, but lowercase kebab-case is recommended for publishing");
 	}
-	if (raw.runtime !== "module-federation") {
+	if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(validated.version)) {
+		warnings.push("version is valid for the host, but semantic versioning is recommended for publishing");
+	}
+	if (validated.runtime !== "module-federation") {
 		warnings.push("runtime should be module-federation for new plugins");
 	}
-	if (raw.runtime === "module-federation") {
-		if (!raw.moduleFederation?.remoteName) errors.push("moduleFederation.remoteName required");
-		if (!raw.moduleFederation?.expose) errors.push("moduleFederation.expose required");
-		if (raw.entry !== "dist/mf-manifest.json") {
-			warnings.push('entry is usually "dist/mf-manifest.json"');
-		}
+	if (validated.runtime === "module-federation" && raw.entry !== "dist/mf-manifest.json") {
+		warnings.push('entry is usually "dist/mf-manifest.json"');
 	}
 	if (!Array.isArray(raw.permissions)) warnings.push("permissions should be an array");
 
 	if (raw.agent_mode !== undefined) {
 		const modes = Array.isArray(raw.agent_mode) ? raw.agent_mode : [raw.agent_mode];
-		const invalid = modes.filter((m) => m !== "work" && m !== "coding");
-		if (invalid.length > 0) warnings.push(`agent_mode has unknown values: ${invalid.join(", ")} (allowed: work, coding)`);
+		const invalid = modes.filter((mode) => mode !== "work" && mode !== "coding");
+		if (invalid.length > 0) {
+			warnings.push(`agent_mode has unknown values: ${invalid.join(", ")} (known: work, coding)`);
+		}
 	}
 
-	const distEntry = join(root, raw.entry ?? "dist/mf-manifest.json");
 	try {
-		await access(distEntry);
+		await access(join(root, raw.entry));
 	} catch {
 		warnings.push(`build entry missing (run build): ${raw.entry}`);
 	}
 
-	const ok = errors.length === 0;
-	console.log(JSON.stringify({ ok, id: raw.id, version: raw.version, errors, warnings }, null, 2));
-	process.exit(ok ? 0 : 1);
+	console.log(
+		JSON.stringify(
+			{ ok: true, id: validated.id, version: validated.version, errors: [], warnings },
+			null,
+			2,
+		),
+	);
 }
 
-main();
+void main();

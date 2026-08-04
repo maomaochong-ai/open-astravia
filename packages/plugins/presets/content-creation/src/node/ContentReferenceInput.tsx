@@ -2,7 +2,6 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type ChangeEvent, useRef } from "react";
 import type { ContentReferenceKind, ImportedContentReference } from "../generation/types";
 import type { ContentAsset, ContentNodeInputBinding } from "../project/types";
-import { CloseIcon, ImageIcon } from "../shared/icons";
 
 interface ContentReferenceInputProps {
 	references: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
@@ -51,7 +50,7 @@ export function ContentReferenceInput({
 						aria-label={t("nodeEditor.reference.remove")}
 						onClick={() => onRemove(binding.id)}
 					>
-						<CloseIcon className="size-4" />
+						<span className="icon-[lucide--x] block size-4 shrink-0" aria-hidden="true" />
 					</button>
 				</div>
 			))}
@@ -67,7 +66,7 @@ export function ContentReferenceInput({
 				aria-label={t("nodeEditor.reference.add")}
 				onClick={() => inputRef.current?.click()}
 			>
-				<ImageIcon className="size-4.5" />
+				<span className="icon-[lucide--image] block size-4.5 shrink-0" aria-hidden="true" />
 			</button>
 			<input
 				ref={inputRef}

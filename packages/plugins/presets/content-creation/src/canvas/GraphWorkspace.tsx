@@ -50,6 +50,7 @@ import {
 import { CONTENT_FLOW_SOURCE_HANDLE_ID } from "./flow-handles";
 import { reconcileSelectedNodeIds } from "./selection-state";
 import { SelectionToolbar } from "./SelectionToolbar";
+import { DEFAULT_CANVAS_TOOL, getCanvasInteraction } from "./canvas-tools";
 
 const nodeTypes: NodeTypes = { contentNode: ContentNodeCard };
 const CREATE_MENU_SIZE = { width: 320, height: 420 };
@@ -76,6 +77,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 	 * opened by `onConnectEnd`.
 	 */
 	const suppressNextPaneClickRef = useRef(false);
+	const [canvasTool, setCanvasTool] = useState(DEFAULT_CANVAS_TOOL);
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 	const [pendingMenu, setPendingMenu] = useState<PendingConnectionMenu | null>(null);
 	const [canvasMenu, setCanvasMenu] = useState<CanvasCreateMenuState | null>(null);
@@ -85,6 +87,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 		[project.graph.nodes, selectedNodeIds],
 	);
 	const selectedNodeIdSet = useMemo(() => new Set(activeSelectedNodeIds), [activeSelectedNodeIds]);
+	const canvasInteraction = getCanvasInteraction(canvasTool);
 	const projectSyncKey = createContentProjectSyncKey(
 		{
 			projectId: project.projectId,
@@ -522,9 +525,9 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 						onConnect={onConnect}
 						onConnectEnd={handleConnectEnd}
 						isValidConnection={isValidConnection}
-						selectionOnDrag={false}
+						selectionOnDrag={canvasInteraction.selectionOnDrag}
 						selectionKeyCode="Control"
-						panOnDrag
+						panOnDrag={canvasInteraction.panOnDrag}
 						zoomOnDoubleClick={false}
 						onNodeClick={onNodeClick}
 						onNodeContextMenu={onNodeContextMenu}
@@ -557,6 +560,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 					</ReactFlow>
 				</ContentCanvasSelectionProvider>
 				<GraphOverlayLayer
+					activeTool={canvasTool}
 					nodeCount={project.graph.nodes.length}
 					canvasMenu={canvasMenu}
 					pendingMenu={pendingMenu}
@@ -565,6 +569,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 						contextMenu?.type === "node" && project.graph.nodes.find((node) => node.id === contextMenu.nodeId)?.locked,
 					)}
 					onAddNode={addNode}
+					onToolChange={setCanvasTool}
 					onCreateConnectedNode={createConnectedNode}
 					onCloseCanvasMenu={() => setCanvasMenu(null)}
 					onClosePendingMenu={() => setPendingMenu(null)}

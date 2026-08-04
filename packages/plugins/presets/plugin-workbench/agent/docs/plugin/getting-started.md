@@ -200,7 +200,7 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 
 ### 依赖注意（用户机）
 
-仓库内 preset 可用 `workspace:*` 链本地 SDK。**用户自建工程**应使用已发布的 `@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` **semver**（如 `^0.0.1`），并保证 registry 可达。
+仓库内 preset 可用 `workspace:*` 链本地 SDK。**用户自建工程**应使用已发布的 `@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` **semver**（当前 sdk `^0.1.1` / vite `^0.0.5`，两者版本独立），并保证 registry 可达。
 
 ## 8. 调试闭环（dev loop）
 

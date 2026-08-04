@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * Scaffold a minimal Vetta MF plugin project under a target directory.
- * Usage: node scaffold.mjs <targetDir> --id <id> --name <displayName> [--semver-sdk ^0.1.0] [--semver-vite ^0.0.3]
+ * Usage: node scaffold.mjs <targetDir> --id <id> --name <displayName> [--semver-sdk ^0.1.1] [--semver-vite ^0.0.5]
  */
 import { mkdir, writeFile, access } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 function parseArgs(argv) {
 	// sdk / vite 版本各自独立发布，不要合成一个参数。
-	const out = { target: null, id: null, name: null, sdk: "^0.1.0", vite: "^0.0.3" };
+	const out = { target: null, id: null, name: null, sdk: "^0.1.1", vite: "^0.0.5" };
 	const rest = [...argv];
 	out.target = rest.shift() ?? null;
 	while (rest.length) {
@@ -38,7 +38,7 @@ async function exists(path) {
 const args = parseArgs(process.argv.slice(2));
 if (!args.target || !args.id || !args.name) {
 	console.error(
-		"Usage: node scaffold.mjs <targetDir> --id <id> --name <displayName> [--semver-sdk ^0.1.0] [--semver-vite ^0.0.3]",
+		"Usage: node scaffold.mjs <targetDir> --id <id> --name <displayName> [--semver-sdk ^0.1.1] [--semver-vite ^0.0.5]",
 	);
 	process.exit(2);
 }
@@ -83,6 +83,8 @@ const files = {
 			scripts: {
 				build: "vite build",
 				check: "tsc --noEmit",
+				pack: "vetta-plugin pack",
+				validate: "vetta-plugin validate",
 			},
 			devDependencies: {
 				"@tailwindcss/vite": "^4.1.12",

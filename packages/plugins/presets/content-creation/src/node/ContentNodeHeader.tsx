@@ -1,7 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { memo } from "react";
 import type { ContentNodeKind, ContentNodeStatus } from "../project/types";
-import { LockIcon } from "../shared/icons";
 import { NodeKindIcon } from "./NodeKindIcon";
 
 interface ContentNodeHeaderProps {
@@ -45,7 +44,9 @@ export const ContentNodeHeader = memo(function ContentNodeHeader({
 					{t(`node.status.${status}`)}
 				</span>
 			) : null}
-			{locked ? <LockIcon className="size-3.5 shrink-0 opacity-70" /> : null}
+			{locked ? (
+				<span className="icon-[lucide--lock] block size-3.5 shrink-0 opacity-70" aria-hidden="true" />
+			) : null}
 		</div>
 	);
 });

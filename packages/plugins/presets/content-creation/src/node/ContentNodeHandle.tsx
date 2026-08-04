@@ -6,7 +6,6 @@ import {
 	CONTENT_FLOW_SOURCE_HANDLE_ID,
 	CONTENT_FLOW_TARGET_HANDLE_ID,
 } from "../canvas/flow-handles";
-import { AddIcon } from "../shared/icons";
 
 interface ContentNodeHandleProps {
 	label: string;
@@ -55,7 +54,7 @@ export function ContentNodeHandle({ label, side, type, active, selected }: Conte
 					)}
 					aria-hidden
 				>
-					<AddIcon className="size-3.5" />
+					<span className="icon-[lucide--plus] block size-3.5 shrink-0" aria-hidden="true" />
 				</span>
 			</Handle>
 		</>

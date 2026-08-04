@@ -26,6 +26,8 @@
 	"workspace.revision": "Revision {{revision}}",
 	"mode.graph": "Creation canvas",
 	"mode.timeline": "Timeline",
+	"canvas.tool.select": "Select",
+	"canvas.tool.pan": "Hand tool",
 	"action.addPrompt": "Prompt",
 	"action.addImageGenerator": "Image generator",
 	"action.addVideoGenerator": "Video generator",

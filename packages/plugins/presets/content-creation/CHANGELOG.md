@@ -10,6 +10,7 @@
 
 ### Changed
 
+- Replaced hand-authored plugin and node SVG icons with a consistent Lucide Iconify set, inlined static icon classes at their use sites, and corrected dock hover centers to match the rendered item widths.
 - Restricted the plugin to Work mode via manifest `agent_mode: ["work"]` (hidden in Coding; ADR-0046).
 - Node quick toolbar is icon-only (no inline rename) and sits 8px above the card to match the generation composer gap; identity header hides while the toolbar is open.
 - Canvas Delete / Backspace now use the host plugin shortcut stack (`usePluginShortcutScope`) instead of React Flow `deleteKeyCode`, so they participate in scope priority, skip locked nodes, and stay inactive while the activity tab is hidden or focus is in an editable field.
@@ -30,6 +31,7 @@
 
 ### Added
 
+- Added explicit select and hand tools to the canvas dock with visible active state.
 - Added the initial content-creation canvas and multitrack composition preset foundation.
 - Added reference-project design notes, a schema-driven node registry, typed ports, connection validation, compatible-node creation, and node workflow tests.
 - Added secure plugin credentials, provider/model registration, a real OpenAI-compatible image adapter, generation jobs, artifact return, and fully mocked tests.

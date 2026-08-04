@@ -73,7 +73,7 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 
 1. 用户已打开输入栏 **「制作插件」** toggle（硬隔离；关着则 skill/agent 贡献不可见）。  
 2. 工程在**当前会话 cwd**（或一层子目录），无特殊工场目录。  
-3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（scaffold 默认 sdk `^0.1.0` / vite `^0.0.3`，两者版本独立；若 install 失败问用户 registry/版本）。  
+3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（scaffold 默认 sdk `^0.1.1` / vite `^0.0.5`，两者版本独立；若 install 失败问用户 registry/版本）。  
 4. 构建用 **托管 Node + npm**；标准脚本封装，禁止随意手搓另一套 pack（除非用户明确要求且你已读 getting-started 的打包约定）。
 
 ---
