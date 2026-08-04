@@ -4,12 +4,14 @@
 
 ### Fixed
 
+- Box selection now includes nodes that partially intersect the selection rectangle instead of requiring full containment.
 - Restored primary-button canvas panning while keeping box selection available through Control-drag.
 - Restored the “drop connection on empty canvas → create compatible node” menu: the pane click that follows `onConnectEnd` no longer immediately dismisses it.
 - Node resize: disabled forced aspect ratio so corners and edges can free-resize width/height independently; edge controls are invisible hit strips (no outer frame gap) with quiet corner grips instead of a second primary border.
 
 ### Changed
 
+- Restyled the multi-node selection outline with subdued theme colors, a thin solid border, and matching corner radii instead of React Flow's prominent default blue dotted frame.
 - Replaced hand-authored plugin and node SVG icons with a consistent Lucide Iconify set, inlined static icon classes at their use sites, and corrected dock hover centers to match the rendered item widths.
 - Restricted the plugin to Work mode via manifest `agent_mode: ["work"]` (hidden in Coding; ADR-0046).
 - Node quick toolbar is icon-only (no inline rename) and sits 8px above the card to match the generation composer gap; identity header hides while the toolbar is open.

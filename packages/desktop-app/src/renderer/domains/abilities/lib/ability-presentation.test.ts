@@ -14,6 +14,10 @@ describe("isRenderableImageIcon", () => {
 		expect(isRenderableImageIcon("solar:plug-circle-linear")).toBe(false);
 		expect(isRenderableImageIcon("")).toBe(false);
 	});
+
+	it("接受开源市场的 vetta-file 本地图标 URL", () => {
+		expect(isRenderableImageIcon("vetta-file://local/C:/Users/x/.vetta/icon.svg?v=1")).toBe(true);
+	});
 });
 
 describe("resolveAbilityDetailContent", () => {
