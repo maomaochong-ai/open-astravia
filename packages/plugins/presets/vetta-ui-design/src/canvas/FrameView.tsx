@@ -13,7 +13,10 @@ interface FrameViewProps {
 	zoom: number;
 	bridge: BridgeHub;
 	selected: boolean;
-	/** Inspect mode: pointer events pass through to the iframe. */
+	/**
+	 * 元素选择开着：画面区的指针事件直接交给 iframe。单独选中这个 frame 时就是 true，
+	 * 所以 frame 自身的移动改走标题栏、缩放走四角手柄（手柄不随它隐藏）。
+	 */
 	entered: boolean;
 	interactive: boolean;
 	/** Resize handles show only for a lone selection — a group resize has no obvious meaning. */
@@ -39,7 +42,6 @@ interface FrameViewProps {
 	/** true 时标题变成就地编辑的输入框（双击标题，或右键菜单里的重命名）。 */
 	renaming: boolean;
 	onSelect(additive: boolean): void;
-	onEnter(): void;
 	/** 右键：坐标是视口坐标（clientX/Y），由画布换算成容器内坐标定位菜单。 */
 	onContextMenu(clientX: number, clientY: number): void;
 	onRenameStart(): void;
@@ -88,7 +90,6 @@ export function FrameView({
 	buildError,
 	renaming,
 	onSelect,
-	onEnter,
 	onContextMenu,
 	onRenameStart,
 	onRenameCommit,
@@ -164,7 +165,9 @@ export function FrameView({
 	const beginDrag = (event: ReactPointerEvent, edge: DragState["edge"]): void => {
 		// 只认左键：右键要留给上下文菜单，捕获指针会把后续事件都劫走。
 		if (event.button !== 0) return;
-		if (!interactive || entered) return;
+		// 这里不能再拦 entered：元素选择开着时画面区已经归 iframe，标题栏和四角手柄
+		// 就是移动/缩放仅剩的入口，拦掉等于选中之后 frame 再也动不了。
+		if (!interactive) return;
 		event.preventDefault();
 		event.stopPropagation();
 		if (edge === "move") onMoveStart(event.shiftKey);
@@ -361,7 +364,8 @@ export function FrameView({
 						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
 					</div>
 				) : null}
-				{/* Interaction shield: select/move at frame level until the user drills in. */}
+				{/* 遮罩：还没单独选中它时，画面区的点击只作用在 frame 这一层（选中/拖动）。
+				    单独选中之后遮罩撤掉，指针交给 iframe，里面的元素直接可选。 */}
 				{!entered ? (
 					// biome-ignore lint/a11y/noStaticElementInteractions: canvas manipulation surface
 					<div
@@ -370,15 +374,17 @@ export function FrameView({
 						onPointerDown={(event) => beginDrag(event, "move")}
 						onPointerMove={moveDrag}
 						onPointerUp={endDrag}
+						// 多选态下双击某一个 frame：收敛成只选它，也就直接开了元素选择。
 						onDoubleClick={(event) => {
 							event.stopPropagation();
-							if (interactive) onEnter();
+							if (interactive) onSelect(false);
 						}}
 					/>
 				) : null}
 			</div>
 
-			{selected && resizable && !entered
+			{/* 手柄在元素选择开着时也要留：画面区已经归 iframe 了，缩放只剩这一条路。 */}
+			{selected && resizable
 				? handles.map(({ edge, className }) => (
 						// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
 						<div

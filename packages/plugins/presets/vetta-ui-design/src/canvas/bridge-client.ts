@@ -27,6 +27,11 @@ export interface BridgeHubEvents {
 	onRendered(frameId: string): void;
 	/** 该 frame 编译/渲染失败（message）或恢复正常（null）。 */
 	onFrameError(frameId: string, message: string | null): void;
+	/**
+	 * 元素选择期间在 frame 内右键。坐标已经换算成视口坐标（clientX/Y），跟画布自己
+	 * 那层 contextmenu 拿到的是同一套。
+	 */
+	onFrameContextMenu(frameId: string, clientX: number, clientY: number): void;
 }
 
 interface PendingCapture {
@@ -75,6 +80,20 @@ export class BridgeHub {
 			case "exit-inspect":
 				if (frameId) this.events?.onExitInspect(frameId);
 				return;
+			case "context-menu": {
+				if (!frameId) return;
+				const iframe = this.frames.get(frameId);
+				if (!iframe) return;
+				// iframe 内坐标 → 视口坐标。iframe 整个挂在画布的 scale 变换下，所以
+				// 除了平移还得按缩放比换算；比例直接从渲染后的矩形与布局宽度取，不用
+				// 把画布的 zoom 传进来。
+				const rect = iframe.getBoundingClientRect();
+				const scale = iframe.offsetWidth > 0 ? rect.width / iframe.offsetWidth : 1;
+				const x = typeof data.x === "number" ? data.x : 0;
+				const y = typeof data.y === "number" ? data.y : 0;
+				this.events?.onFrameContextMenu(frameId, rect.left + x * scale, rect.top + y * scale);
+				return;
+			}
 			case "hmr-updated":
 				this.events?.onHmrUpdated(frameId);
 				return;

@@ -111,7 +111,6 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const [selection, setSelection] = useState<CanvasSelection>(null);
 	const selectionRef = useRef(selection);
 	selectionRef.current = selection;
-	const [enteredFrameId, setEnteredFrameId] = useState<string | null>(null);
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
 	/** 错误态存在 design-runtime（agent 工具也要读），这里只订阅它来渲染。 */
 	const [frameErrors, setFrameErrors] = useState<ReadonlyMap<string, string>>(new Map());
@@ -183,17 +182,29 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	/** frameId → 该 frame 上报「已经画到屏幕上」的次数，见 FrameView 的 paintTick。 */
 	const [paintTicks, setPaintTicks] = useState<ReadonlyMap<string, number>>(new Map());
 
+	const panActive = tool === "hand" || spaceHeld;
+
 
 	/**
-	 * 「在操作」的那个 frame 保持活体：单独选中一个就够，不必双击进检查态——
-	 * 选中通常就是要看它的真实渲染。多选不算，那是在排版，全转活体会把合成压力
-	 * 又拉回来。
+	 * 「在操作」的那个 frame 保持活体：单独选中一个就够。多选不算，那是在排版，
+	 * 全转活体会把合成压力又拉回来。
 	 */
 	const activeFrameId = useMemo(() => {
-		if (enteredFrameId) return enteredFrameId;
 		const ids = selectedFrameIds(selection);
 		return ids.length === 1 ? ids[0] : null;
-	}, [enteredFrameId, selection]);
+	}, [selection]);
+
+	/**
+	 * 元素选择开在哪个 frame 上。
+	 *
+	 * 曾经要双击才「进入」frame 才能点元素，多一步且没人猜得到。现在单独选中一个
+	 * frame 就直接开——选中它本来就是为了看/改它的内容。代价是画面区的指针事件全
+	 * 归 iframe，frame 自身的移动改走标题栏、缩放改走四角手柄（手柄因此不再随
+	 * 「进入」隐藏，见 FrameView）。
+	 *
+	 * 托手工具/按住空格时不开：那时整块画布都在平移，指针不该被 iframe 吃掉。
+	 */
+	const inspectFrameId = tool === "select" && !panActive ? activeFrameId : null;
 
 	// 空闲 frame 用位图代替活体 iframe，画布上就不再有 N 套渲染树同时合成。
 	const orderedFrameIds = useMemo(
@@ -283,31 +294,51 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		};
 	}, [session, invalidateRaster, refreshAll]);
 
-	const exitInspect = useCallback(
-		(frameId: string | null) => {
-			if (frameId) bridge.setMode(frameId, "off");
-			setEnteredFrameId(null);
-		},
-		[bridge],
-	);
+	/**
+	 * 元素选择跟着 inspectFrameId 走：开在新的那个上，同时关掉上一个。
+	 *
+	 * 以前每个会改变选中的地方都得手动记着调 exitInspect（选别的 frame、右键菜单、
+	 * 框选、删除、切工具…），漏一处就会出现两个 frame 同时高亮。收敛成一条派生
+	 * 关系之后，选中变了模式自然跟着变，调用点一个都不用管。
+	 */
+	useEffect(() => {
+		if (!inspectFrameId) return;
+		bridge.setMode(inspectFrameId, "inspect");
+		return () => bridge.setMode(inspectFrameId, "off");
+	}, [bridge, inspectFrameId]);
 
 	// 切到托手工具：清空选中（含 DOM 选中态），托手期间不产生任何选中。
 	useEffect(() => {
 		if (tool !== "hand") return;
-		setEnteredFrameId((entered) => {
-			if (entered) bridge.setMode(entered, "off");
-			return null;
-		});
 		setSelection(null);
-	}, [tool, bridge]);
+	}, [tool]);
+
+	/**
+	 * 右击 frame 弹菜单。菜单里的动作（让 Vetta 调整 / 导出渲染图）按当前选中执行，
+	 * 所以右击一个没选中的 frame 要先把它选上——否则动作会落在别处，或者无从执行。
+	 * 已在选中集合里的则保持原选中（含 DOM 选中态），多选右击不打散分组。
+	 *
+	 * 两个来源：画布层的 contextmenu（frame 没开元素选择时），以及元素选择期间由
+	 * 引擎从 iframe 里转发出来的（那时右键落在跨源文档上，画布层根本收不到）。
+	 */
+	const openFrameMenu = useCallback((frameId: string, clientX: number, clientY: number): void => {
+		containerRef.current?.focus();
+		setSelection((current) =>
+			selectedFrameIds(current).includes(frameId) ? current : { kind: "frames", ids: [frameId] },
+		);
+		setAskOpen(false);
+		const bounds = containerRef.current?.getBoundingClientRect();
+		setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
+	}, []);
 
 	useEffect(() => {
 		bridge.start({
 			onSelected: (frameId, payload) => {
 				setSelection(payload ? { kind: "dom", frameId, payload } : { kind: "frames", ids: [frameId] });
 			},
+			// 引擎侧 Esc 一路走到顶：清掉元素选中，但 frame 仍然选中——元素选择还开着，
+			// 可以接着点下一个。想彻底退出再按一次 Esc（画布层处理，见下面的 keydown）。
 			onExitInspect: (frameId) => {
-				exitInspect(frameId);
 				setSelection({ kind: "frames", ids: [frameId] });
 			},
 			onHmrUpdated: (frameId) => {
@@ -321,9 +352,10 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				setPaintTicks((current) => new Map(current).set(frameId, (current.get(frameId) ?? 0) + 1));
 			},
 			onFrameError: setFrameError,
+			onFrameContextMenu: openFrameMenu,
 		});
 		return () => bridge.stop();
-	}, [bridge, exitInspect, invalidateRaster]);
+	}, [bridge, invalidateRaster, openFrameMenu]);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
@@ -336,24 +368,6 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		});
 	}, []);
 
-	/**
-	 * 右击 frame 弹菜单。菜单里的动作（让 Vetta 调整 / 导出渲染图）按当前选中执行，
-	 * 所以右击一个没选中的 frame 要先把它选上——否则动作会落在别处，或者无从执行。
-	 * 已在选中集合里的则保持原选中（含 DOM 选中态），多选右击不打散分组。
-	 */
-	const openFrameMenu = useCallback(
-		(frameId: string, clientX: number, clientY: number): void => {
-			containerRef.current?.focus();
-			if (enteredFrameId && enteredFrameId !== frameId) exitInspect(enteredFrameId);
-			setSelection((current) =>
-				selectedFrameIds(current).includes(frameId) ? current : { kind: "frames", ids: [frameId] },
-			);
-			setAskOpen(false);
-			const bounds = containerRef.current?.getBoundingClientRect();
-			setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
-		},
-		[enteredFrameId, exitInspect],
-	);
 
 	// Space → temporary hand tool; Esc at canvas level clears selection.
 	useEffect(() => {
@@ -370,12 +384,10 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				event.preventDefault();
 				setSpaceHeld(true);
 			} else if (event.key === "Escape") {
-				if (enteredFrameId) {
-					exitInspect(enteredFrameId);
-					setSelection({ kind: "frames", ids: [enteredFrameId] });
-				} else {
-					setSelection(null);
-				}
+				// 焦点在画布上时的 Esc（元素选中期间焦点在 iframe 里，那时 Esc 由引擎侧
+				// 处理：逐级选父元素，到顶再发 exit-inspect 把元素选中清掉）。
+				// 到这里就是最后一级：取消 frame 选中。
+				setSelection(null);
 			}
 		};
 		const onKeyUp = (event: KeyboardEvent): void => {
@@ -387,7 +399,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 			container.removeEventListener("keydown", onKeyDown);
 			container.removeEventListener("keyup", onKeyUp);
 		};
-	}, [enteredFrameId, exitInspect]);
+	}, []);
 
 	// Ctrl/⌘ + wheel → stepless zoom around the cursor; plain wheel → pan.
 	useEffect(() => {
@@ -449,8 +461,6 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		return { x: (localX - current.x) / current.zoom, y: (localY - current.y) / current.zoom };
 	}, []);
 
-	const panActive = tool === "hand" || spaceHeld;
-
 	// 切到托手（或按住空格）就是要平移画布，右键菜单与重命名编辑态都该让位。
 	useEffect(() => {
 		if (!panActive) return;
@@ -483,7 +493,6 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		setMarquee({ x: world.x, y: world.y, width: 0, height: 0 });
 		// Select tool on empty canvas: drop the current selection unless extending it.
 		if (tool !== "frame" && !event.shiftKey) {
-			if (enteredFrameId) exitInspect(enteredFrameId);
 			setSelection(null);
 		}
 	};
@@ -703,7 +712,6 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 
 	const startRename = (frameId: string): void => {
 		setMenuAnchor(null);
-		if (enteredFrameId === frameId) exitInspect(frameId);
 		setSelection({ kind: "frames", ids: [frameId] });
 		setRenamingId(frameId);
 	};
@@ -711,7 +719,6 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const deleteFrame = (frameId: string): void => {
 		setDeletingId(null);
 		if (renamingId === frameId) setRenamingId(null);
-		if (enteredFrameId === frameId) exitInspect(frameId);
 		setSelection((current) => {
 			const ids = selectedFrameIds(current).filter((id) => id !== frameId);
 			return ids.length > 0 ? { kind: "frames", ids } : null;
@@ -763,7 +770,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						zoom={viewport.zoom}
 						bridge={bridge}
 						selected={selectedIds.includes(frame.id)}
-						entered={enteredFrameId === frame.id}
+						entered={inspectFrameId === frame.id}
 						interactive={tool === "select" && !panActive}
 						resizable={selectedIds.length === 1}
 						mounted={isMounted(frame.id)}
@@ -778,21 +785,9 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						onRenameStart={() => startRename(frame.id)}
 						onRenameCommit={(title) => commitRename(frame.id, title)}
 						onRenameCancel={() => setRenamingId(null)}
-						onSelect={(additive) => {
-							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
-							selectFrame(frame.id, additive);
-						}}
-						onEnter={() => {
-							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
-							setSelection({ kind: "frames", ids: [frame.id] });
-							setEnteredFrameId(frame.id);
-							bridge.setMode(frame.id, "inspect");
-						}}
+						onSelect={(additive) => selectFrame(frame.id, additive)}
 						onContextMenu={(clientX, clientY) => openFrameMenu(frame.id, clientX, clientY)}
-						onMoveStart={(additive) => {
-							if (enteredFrameId && enteredFrameId !== frame.id) exitInspect(enteredFrameId);
-							beginMove(frame.id, additive);
-						}}
+						onMoveStart={(additive) => beginMove(frame.id, additive)}
 						onMoveDelta={(dx, dy) => setMoveDelta({ dx, dy })}
 						onMoveEnd={commitMove}
 						onResizeCommit={(patch) => {

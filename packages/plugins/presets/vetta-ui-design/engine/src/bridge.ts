@@ -8,7 +8,7 @@
  * Message contract (both directions carry `{ vetd: true }`):
  *   parent → iframe: set-mode | show-frame | clear-selection | capture
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
- *                    | frame-error
+ *                    | frame-error | context-menu
  */
 import { toJpeg, toPng } from "html-to-image";
 
@@ -187,6 +187,28 @@ if (import.meta.hot) {
 	});
 }
 
+/**
+ * 元素选择期间把光标钉成箭头。
+ *
+ * 这时候点击的语义是「选中这个元素」，不是「操作这个 UI」——让按钮继续显示手型、
+ * 输入框继续显示 I 形光标会让人以为真能点进去。!important 是必须的：要盖过页面
+ * 自己的 cursor 声明。
+ */
+const CURSOR_STYLE_ID = "vetd-inspect-cursor";
+
+function setInspectCursor(on: boolean): void {
+	const existing = document.getElementById(CURSOR_STYLE_ID);
+	if (!on) {
+		existing?.remove();
+		return;
+	}
+	if (existing) return;
+	const style = document.createElement("style");
+	style.id = CURSOR_STYLE_ID;
+	style.textContent = "*, *::before, *::after { cursor: default !important; }";
+	document.head.appendChild(style);
+}
+
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
@@ -216,8 +238,22 @@ export function installBridge(host: BridgeHost): void {
 
 	const setMode = (next: InspectMode): void => {
 		mode = next;
+		setInspectCursor(mode === "inspect");
 		if (mode === "off") reset();
 	};
+
+	// 元素选择开着时右键落在 iframe 里，画布那层的 contextmenu 再也收不到——而
+	// 右键菜单是「让 Vetta 调整 / 导出渲染图 / 重命名 / 删除」的唯一入口。这里把
+	// 它转发出去，坐标由画布换算回视口坐标（见 bridge-client）。
+	document.addEventListener(
+		"contextmenu",
+		(event) => {
+			if (mode !== "inspect") return;
+			event.preventDefault();
+			post({ type: "context-menu", x: event.clientX, y: event.clientY });
+		},
+		true,
+	);
 
 	document.addEventListener(
 		"mousemove",
