@@ -166,6 +166,78 @@
 	}
 }
 
+/* 「让 Vetta 调整」输入浮层。跟按钮同一套语言：同源渐变、深投影、胶囊主按钮，
+   让它看起来是从按钮里长出来的，而不是一个通用弹窗。 */
+.vetd-ask-popover {
+	border-radius: 16px;
+	border: 1px solid var(--border, #e4e4e7);
+	background: var(--card, #fff);
+	/* 一道近、一道远：近的勾出边缘，远的把浮层从画布上托起来 */
+	box-shadow:
+		0 2px 8px rgb(0 0 0 / 0.12),
+		0 18px 40px -12px rgb(0 0 0 / 0.35);
+}
+
+/* 顶沿的渐变发丝，取按钮的三色 */
+.vetd-ask-popover::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 0;
+	height: 2px;
+	border-radius: 16px 16px 0 0;
+	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
+}
+
+/* 指向下方按钮的小尖角。浮层不能设 overflow:hidden（会把它剪掉），所以顶沿发丝
+   用自己的圆角收边，而不是靠父级裁切。 */
+.vetd-ask-popover::after {
+	content: "";
+	position: absolute;
+	bottom: -6px;
+	left: 50%;
+	width: 12px;
+	height: 12px;
+	transform: translateX(-50%) rotate(45deg);
+	border-right: 1px solid var(--border, #e4e4e7);
+	border-bottom: 1px solid var(--border, #e4e4e7);
+	border-bottom-right-radius: 3px;
+	background: var(--card, #fff);
+}
+
+/* 发送键：主按钮的缩小版，同一条渐变 + 同样的内阴影压暗 */
+.vetd-ask-send {
+	border-radius: 999px;
+	color: #fff;
+	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
+	box-shadow:
+		inset 0 0 4px #ffffff80,
+		inset 0 14px 14px rgb(0 0 0 / 0.55),
+		0 2px 6px rgb(0 0 0 / 0.35);
+	text-shadow: 1px 1px 1px rgb(0 0 0 / 0.35);
+	transition: all 0.2s ease;
+}
+
+.vetd-ask-send:not(:disabled):hover {
+	filter: brightness(1.08);
+}
+
+.vetd-ask-send:not(:disabled):active {
+	transform: translateY(1px);
+	box-shadow:
+		inset 0 0 4px #ffffff80,
+		inset 0 14px 14px rgb(0 0 0 / 0.55);
+}
+
+/* 没输入内容时褪成灰：渐变还在但不再抢眼，免得像随时能点 */
+.vetd-ask-send:disabled {
+	filter: grayscale(0.85);
+	opacity: 0.55;
+	box-shadow: none;
+	text-shadow: none;
+}
+
 /* 导出预览的透明背景棋盘格 */
 .vetd-checkerboard {
 	background-image:
