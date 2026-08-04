@@ -124,6 +124,16 @@ export function registerDesignTools(ctx: PluginContext): void {
 						: `Screenshot failed: ${reason}. Call vetd_status for design-engine diagnostics and recent build output.`,
 				};
 			}
+			// 位图态的 frame 没挂 iframe，也就没有 HMR 连接，它坏没坏是截图这一步把它
+			// 挂上来才知道的。这时截到的是引擎的兜底文案，交给模型只会让它以为渲染正常。
+			const lateError = getFrameError(frameId);
+			if (lateError) {
+				return {
+					ok: false,
+					retryable: true,
+					error: `Frame "${frameId}" failed to build, so the capture only shows the engine's fallback placeholder:\n\n${lateError}\n\nFix the source, then take the screenshot again.`,
+				};
+			}
 			const base64 = dataUrl.split(",")[1] ?? "";
 			const { dirPath, vetdPath } = controller.session;
 			const path = snapshotPath(dirPath, frameId, Date.now());

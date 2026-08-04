@@ -122,23 +122,24 @@ export class BridgeHub {
 	}
 
 	/**
-	 * 等这一帧的 bridge 装好。iframe 是按需挂载的，截图往往紧跟着挂载发出，
-	 * 消息发给一个还没装 bridge 的文档就石沉大海——表现是截图一路干等到超时。
-	 * 等不到也照发：让后面统一的超时给出报错，别在这里多编一个原因。
+	 * 等这一帧的 bridge 装好，返回是否等到。iframe 是按需挂载的，截图往往紧跟着
+	 * 挂载发出，消息发给一个还没装 bridge 的文档就石沉大海——表现是截图一路干等
+	 * 到超时。等不到就别发了：那多半是引擎入口整个没起来（theme.css/styles.css
+	 * 编译失败会连 bridge 一起带走），再等一轮截图超时只是把 8s 拖成 38s。
 	 */
-	private waitReady(frameId: string, timeoutMs: number): Promise<void> {
-		if (this.ready.has(frameId)) return Promise.resolve();
-		return new Promise<void>((resolve) => {
+	private waitReady(frameId: string, timeoutMs: number): Promise<boolean> {
+		if (this.ready.has(frameId)) return Promise.resolve(true);
+		return new Promise<boolean>((resolve) => {
 			const waiters = this.readyWaiters.get(frameId) ?? new Set<() => void>();
 			this.readyWaiters.set(frameId, waiters);
 			let timer = 0;
 			const done = (): void => {
 				window.clearTimeout(timer);
-				resolve();
+				resolve(true);
 			};
 			timer = window.setTimeout(() => {
 				waiters.delete(done);
-				resolve();
+				resolve(false);
 			}, timeoutMs);
 			waiters.add(done);
 		});
@@ -177,7 +178,11 @@ export class BridgeHub {
 		options?: { keepHighlight?: boolean; timeoutMs?: number; pixelRatio?: number; cacheBust?: boolean },
 	): Promise<string> {
 		if (!this.frames.has(frameId)) throw new Error(`frame not mounted: ${frameId}`);
-		await this.waitReady(frameId, READY_TIMEOUT_MS);
+		if (!(await this.waitReady(frameId, READY_TIMEOUT_MS))) {
+			throw new Error(
+				`frame "${frameId}" never loaded (no bridge after ${READY_TIMEOUT_MS / 1000}s) — the design engine likely failed to build`,
+			);
+		}
 		if (!this.frames.has(frameId)) throw new Error(`frame not mounted: ${frameId}`);
 		this.captureCounter += 1;
 		const requestId = `cap-${this.captureCounter}`;
