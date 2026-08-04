@@ -68,8 +68,6 @@ const MIN_HEIGHT = 80;
  * （bridge 没装上、frame 抛错在边界里）时不能让位图永远盖着。
  */
 const PAINT_FALLBACK_MS = 2_500;
-/** 位图淡出时长，需与下面 img 上的 duration 一致——过渡结束才把它从 DOM 摘掉。 */
-const RASTER_FADE_MS = 200;
 
 export function FrameView({
 	frame,
@@ -107,8 +105,6 @@ export function FrameView({
 	const [resizeRect, setResizeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 	/** 当前这个 iframe 是否已经把内容画出来了——位图要盖到这一刻才撤。 */
 	const [loaded, setLoaded] = useState(false);
-	/** 位图淡出还没结束时它仍留在 DOM 里，交接才有得可看。 */
-	const [rasterMounted, setRasterMounted] = useState(true);
 	/** 交接只认「这一次挂载之后」的上报，所以要记下挂载时刻的计数基线。 */
 	const paintTickRef = useRef(paintTick);
 	paintTickRef.current = paintTick;
@@ -138,19 +134,17 @@ export function FrameView({
 		};
 	}, []);
 
-	const shouldShowRaster = !live || !loaded || buildError !== null;
+	/**
+	 * 已经画得出来的那张位图。img 在解码完成前是完全透明的，这时候把 iframe 收掉
+	 * 就会露出容器白底——切回位图时的白闪正是这么来的（位图越大越明显）。
+	 * frame-raster 侧已经预解码过一轮，这里是第二道保险：真画出来了才撤活体。
+	 */
+	const [paintedRaster, setPaintedRaster] = useState<string | null>(null);
+	const rasterPainted = raster !== null && paintedRaster === raster;
 
-	// 需要位图时先确保它在 DOM 里；不需要了也要等淡出跑完再摘。
-	// 这里用定时器而不是 onTransitionEnd：标签页在后台等情况下过渡事件可能根本不来，
-	// 那样位图会永远挡着活体。
-	useEffect(() => {
-		if (shouldShowRaster) {
-			setRasterMounted(true);
-			return;
-		}
-		const timer = window.setTimeout(() => setRasterMounted(false), RASTER_FADE_MS);
-		return () => window.clearTimeout(timer);
-	}, [shouldShowRaster]);
+	const shouldShowRaster = !live || !loaded || buildError !== null;
+	/** 活体要多留一会儿：位图还没画出来时它是唯一有内容的那一层。 */
+	const keepLiveVisible = live || (raster !== null && !rasterPainted);
 
 	// mounted 必须在依赖里：iframe 是按挂载节流条件渲染的，false→true 时这个
 	// effect 要重跑才能把真正的 iframe 注册进 bridge。漏了它的话，后挂上的 frame
@@ -334,7 +328,10 @@ export function FrameView({
 						// nonce 放在查询串而不是 hash：改 hash 只会触发 hashchange，文档不会重新加载。
 						src={`http://127.0.0.1:${port}/?r=${reloadNonce}#/frame/${encodeURIComponent(frame.id)}`}
 						className="h-full w-full border-0"
-						style={{ pointerEvents: entered ? "auto" : "none", display: live ? "block" : "none" }}
+						style={{
+							pointerEvents: entered ? "auto" : "none",
+							display: keepLiveVisible ? "block" : "none",
+						}}
 						// 文档 load 只用来起兜底计时：真正的交接信号是 paintTick。
 						onLoad={() => {
 							if (fallbackRef.current !== null) window.clearTimeout(fallbackRef.current);
@@ -343,11 +340,12 @@ export function FrameView({
 					/>
 				) : null}
 				{/* 位图盖在 iframe 上，等它真的把内容画出来再淡出：刚挂载的 iframe 有一段
-				    空白期，直接切过去就是肉眼可见的白闪。注意这里必须让 img 留在 DOM 里跑完
-				    过渡（rasterMounted），按「该不该显示」直接卸载的话 opacity 过渡根本没有
-				    机会执行，交接就还是硬切。
+				    空白期，直接切过去就是肉眼可见的白闪。
+				    只要有位图就一直挂着、单纯用 opacity 收放，两个理由：按「该不该显示」卸载
+				    的话 opacity 过渡根本没机会执行，交接又变回硬切；而且活体期间摘掉 img，
+				    新位图到达时收不到 onLoad，也就无从知道它已经画得出来了。
 				    构建失败时也留着：iframe 里此刻只有兜底文案，上一张好图才是用户要看的。 */}
-				{raster && rasterMounted ? (
+				{raster ? (
 					<img
 						src={raster}
 						alt=""
@@ -355,6 +353,7 @@ export function FrameView({
 						className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
 							shouldShowRaster ? "opacity-100" : "opacity-0"
 						}`}
+						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
 				{!raster && !loaded && !buildError ? (

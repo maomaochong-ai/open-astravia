@@ -112,6 +112,20 @@ function withBudget(
 	return next;
 }
 
+/**
+ * 先把位图解码好再交给 React。
+ *
+ * 截图完成的那一刻 live 会翻成 false、iframe 收起、img 挂上——但一张还没解码的
+ * img 是完全透明的，露出的是容器白底，也就是「切回位图时闪一下白」。这里提前把
+ * 解码做掉（浏览器按 src 缓存解码结果），img 挂上就能直接画出来。
+ * 解码失败不算错：交给 img 自己再试一次，大不了退回原来的行为。
+ */
+function decodeRaster(dataUrl: string): Promise<void> {
+	const image = new Image();
+	image.src = dataUrl;
+	return image.decode().catch(() => undefined);
+}
+
 /** 等 React 提交 + 浏览器完成一次布局与绘制。 */
 function nextPaint(): Promise<void> {
 	return new Promise((resolve) => {
@@ -195,7 +209,10 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 					format: "jpeg",
 					quality: RASTER_JPEG_QUALITY,
 				})
-				.then((dataUrl) => {
+				.then(async (dataUrl) => {
+					// 解码在前、写状态在后：dirty 的清除在 finally，会等这个 await，
+					// 所以位图进入 rasters 时一定是「挂上就能画」的。
+					await decodeRaster(dataUrl);
 					setRasters((current) => withBudget(current, next, dataUrl, mounted));
 				})
 				.catch((error: unknown) => {
