@@ -20,7 +20,8 @@ export interface SubscriptionWindowViewModel {
 	kind: string;
 	label: string;
 	limit: number;
-	resetAt: string;
+	/** 已本地化的重置倒计时文案，空串则不展示。格式化在调用方完成（文案要走 i18n）。 */
+	resetLabel: string;
 }
 
 export interface SubscriptionCardsViewModel {
@@ -43,7 +44,6 @@ export interface SubscriptionCardsViewModel {
 		upgrade?: string;
 		vision: string;
 	};
-	now: number;
 	refreshing: boolean;
 	showGoCard: boolean;
 	windows: SubscriptionWindowViewModel[];
@@ -51,15 +51,6 @@ export interface SubscriptionCardsViewModel {
 
 function formatMultiplier(n: number): string {
 	return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2)));
-}
-
-function formatWindowReset(resetAt: string, now: number): string {
-	const ms = new Date(resetAt).getTime() - now;
-	if (!Number.isFinite(ms) || ms <= 0) return "";
-	const h = Math.floor(ms / 3_600_000);
-	const m = Math.floor((ms % 3_600_000) / 60_000);
-	if (h > 0) return h + "h " + m + "m";
-	return m + "m";
 }
 
 function QuotaWindows({
@@ -86,7 +77,6 @@ function QuotaWindows({
 					windowInfo.limit > 0
 						? Math.min(100, Math.round((windowInfo.consumed / windowInfo.limit) * 100))
 						: 0;
-				const resetLabel = formatWindowReset(windowInfo.resetAt, model.now);
 				return (
 					<div key={windowInfo.kind} className="min-w-0">
 						<div className="flex items-center justify-between gap-2 text-[12px]">
@@ -99,8 +89,10 @@ function QuotaWindows({
 								style={{ width: `${pct}%` }}
 							/>
 						</div>
-						{resetLabel && (
-							<div className="mt-1 text-[10px] text-muted-foreground">{resetLabel}</div>
+						{windowInfo.resetLabel && (
+							<div className="mt-1 text-[10px] text-muted-foreground">
+								{windowInfo.resetLabel}
+							</div>
 						)}
 					</div>
 				);

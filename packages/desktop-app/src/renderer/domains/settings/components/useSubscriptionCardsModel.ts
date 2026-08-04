@@ -28,7 +28,8 @@ export interface SubscriptionWindowViewModel {
 	kind: string;
 	label: string;
 	limit: number;
-	resetAt: string;
+	/** 已本地化的重置倒计时文案（超过一天按「天+小时」计，不再堆几百小时），空串则不展示 */
+	resetLabel: string;
 }
 
 export interface SubscriptionCardsModel {
@@ -51,7 +52,6 @@ export interface SubscriptionCardsModel {
 		upgrade?: string;
 		vision: string;
 	};
-	now: number;
 	refreshing: boolean;
 	showGoCard: boolean;
 	windows: SubscriptionWindowViewModel[];
@@ -125,14 +125,17 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 
 	const windows = useMemo<SubscriptionWindowViewModel[]>(
 		() =>
-			(subscriptionStatus.windows ?? []).map((windowInfo) => ({
-				consumed: windowInfo.consumed,
-				kind: windowInfo.kind,
-				label: t(WINDOW_LABEL_KEYS[windowInfo.kind]),
-				limit: windowInfo.limit,
-				resetAt: windowInfo.reset_at,
-			})),
-		[subscriptionStatus.windows, t],
+			(subscriptionStatus.windows ?? []).map((windowInfo) => {
+				const countdown = getResetCountdown(windowInfo.reset_at, now);
+				return {
+					consumed: windowInfo.consumed,
+					kind: windowInfo.kind,
+					label: t(WINDOW_LABEL_KEYS[windowInfo.kind]),
+					limit: windowInfo.limit,
+					resetLabel: countdown ? t(countdown.key, countdown.params ?? {}) : "",
+				};
+			}),
+		[subscriptionStatus.windows, now, t],
 	);
 
 	const handleUpgrade = useCallback(() => {
@@ -149,7 +152,6 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 		expiry: formatExpiry(subscriptionStatus.expires_at),
 		goProvider,
 		labels,
-		now,
 		refreshing,
 		showGoCard,
 		windows,
