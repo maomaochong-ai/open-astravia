@@ -166,8 +166,8 @@
 	}
 }
 
-/* 「让 Vetta 调整」输入浮层。跟按钮同一套语言：同源渐变、深投影、胶囊主按钮，
-   让它看起来是从按钮里长出来的，而不是一个通用弹窗。 */
+/* 「让 Vetta 调整」输入浮层。跟按钮同一套语言：深投影、胶囊主按钮、指向按钮的
+   尖角，让它看起来是从按钮里长出来的，而不是一个通用弹窗。 */
 .vetd-ask-popover {
 	border-radius: 16px;
 	border: 1px solid var(--border, #e4e4e7);
@@ -178,20 +178,7 @@
 		0 18px 40px -12px rgb(0 0 0 / 0.35);
 }
 
-/* 顶沿的渐变发丝，取按钮的三色 */
-.vetd-ask-popover::before {
-	content: "";
-	position: absolute;
-	top: 0;
-	right: 0;
-	left: 0;
-	height: 2px;
-	border-radius: 16px 16px 0 0;
-	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
-}
-
-/* 指向下方按钮的小尖角。浮层不能设 overflow:hidden（会把它剪掉），所以顶沿发丝
-   用自己的圆角收边，而不是靠父级裁切。 */
+/* 指向下方按钮的小尖角。浮层没有 overflow:hidden，它才能探出边界。 */
 .vetd-ask-popover::after {
 	content: "";
 	position: absolute;
