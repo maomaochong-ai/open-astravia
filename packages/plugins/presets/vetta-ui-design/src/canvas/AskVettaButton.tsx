@@ -10,9 +10,8 @@ interface AskVettaButtonProps {
 }
 
 /**
- * The canvas's primary action, floating just above the control bar. It is the
- * plugin's core entry point, so it stays visible even with nothing selected
- * (then it targets the whole design) and carries a soft pulsing halo.
+ * 画布的主动作，浮在底部中间。它是插件的核心入口，所以什么都没选时也留着——
+ * 那时作用于整份设计。观感（渐变、光晕、按下手感）全在 `.vetd-ask-button` 里。
  */
 export function AskVettaButton({ selectedCount, elementMode, active, onClick }: AskVettaButtonProps) {
 	const { t } = useTranslation();
@@ -27,35 +26,23 @@ export function AskVettaButton({ selectedCount, elementMode, active, onClick }: 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the button
 		<div
-			className="pointer-events-auto absolute bottom-16 left-1/2 z-20 -translate-x-1/2"
+			className="pointer-events-auto absolute bottom-6 left-1/2 z-20 -translate-x-1/2"
 			onPointerDown={(event) => event.stopPropagation()}
 			onPointerMove={(event) => event.stopPropagation()}
 			onPointerUp={(event) => event.stopPropagation()}
 		>
-			<div className="relative">
-				{/* 光晕环画在按钮之外、之下：扫光要靠按钮的 overflow:hidden 裁切，
-				    放在按钮里会被一起裁掉。 */}
-				<span className="vetd-ask-halo pointer-events-none absolute inset-0 rounded-full" aria-hidden />
-				<button
-					type="button"
-					onClick={onClick}
-					aria-pressed={active}
-					className={`vetd-ask-sweep relative flex items-center overflow-hidden rounded-full bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 ${
-						active ? "scale-105" : ""
-					}`}
-				>
-					{/* 抬到光波层之上，否则扫光会从文字上糊过去 */}
-					<span className="relative z-10 flex items-center gap-1.5">
-						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-							<path
-								d="M12 3l1.9 4.9L19 9.8l-4.1 2.3L14 17l-2-3.6L8 17l1.1-4.9L5 9.8l5.1-1.9L12 3z"
-								strokeLinejoin="round"
-							/>
-						</svg>
-						{label}
-					</span>
-				</button>
-			</div>
+			<button type="button" onClick={onClick} aria-pressed={active} data-active={active} className="vetd-ask-button">
+				<svg viewBox="0 0 24 24" height={24} width={24} xmlns="http://www.w3.org/2000/svg" aria-hidden>
+					<g fill="none">
+						<path d="m12.594 23.258l-.012.002l-.071.035l-.02.004l-.014-.004l-.071-.036q-.016-.004-.024.006l-.004.01l-.017.428l.005.02l.01.013l.104.074l.015.004l.012-.004l.104-.074l.012-.016l.004-.017l-.017-.427q-.004-.016-.016-.018m.264-.113l-.014.002l-.184.093l-.01.01l-.003.011l.018.43l.005.012l.008.008l.201.092q.019.005.029-.008l.004-.014l-.034-.614q-.005-.019-.02-.022m-.715.002a.02.02 0 0 0-.027.006l-.006.014l-.034.614q.001.018.017.024l.015-.002l.201-.093l.01-.008l.003-.011l.018-.43l-.003-.012l-.01-.01z" />
+						<path
+							d="M9.107 5.448c.598-1.75 3.016-1.803 3.725-.159l.06.16l.807 2.36a4 4 0 0 0 2.276 2.411l.217.081l2.36.806c1.75.598 1.803 3.016.16 3.725l-.16.06l-2.36.807a4 4 0 0 0-2.412 2.276l-.081.216l-.806 2.361c-.598 1.75-3.016 1.803-3.724.16l-.062-.16l-.806-2.36a4 4 0 0 0-2.276-2.412l-.216-.081l-2.36-.806c-1.751-.598-1.804-3.016-.16-3.724l.16-.062l2.36-.806A4 4 0 0 0 8.22 8.025l.081-.216zM11 6.094l-.806 2.36a6 6 0 0 1-3.49 3.649l-.25.091l-2.36.806l2.36.806a6 6 0 0 1 3.649 3.49l.091.25l.806 2.36l.806-2.36a6 6 0 0 1 3.49-3.649l.25-.09l2.36-.807l-2.36-.806a6 6 0 0 1-3.649-3.49l-.09-.25zM19 2a1 1 0 0 1 .898.56l.048.117l.35 1.026l1.027.35a1 1 0 0 1 .118 1.845l-.118.048l-1.026.35l-.35 1.027a1 1 0 0 1-1.845.117l-.048-.117l-.35-1.026l-1.027-.35a1 1 0 0 1-.118-1.845l.118-.048l1.026-.35l.35-1.027A1 1 0 0 1 19 2"
+							fill="currentColor"
+						/>
+					</g>
+				</svg>
+				{label}
+			</button>
 		</div>
 	);
 }

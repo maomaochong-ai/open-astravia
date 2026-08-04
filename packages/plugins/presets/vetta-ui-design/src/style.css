@@ -41,56 +41,77 @@
 }
 
 /* 「让 Vetta 调整」主按钮：核心入口，静止时也要有存在感。
-   这是常驻无限循环的动效，所以**只允许动 transform / opacity**——它们由合成器
-   独立完成、不触发重绘。早先动的是 background-position 与 box-shadow 扩散，
-   两者每帧都要重新光栅化，叠在一堆跨源 iframe 上会把合成器压垮、整窗口撕裂。 */
-.vetd-ask-sweep::before {
+   配色刻意不跟随宿主主题：它是画布上唯一的主动作，明暗两个主题下都该是同一颗。
+
+   全部效果都是静态的，没有常驻循环动画——这是有意的。按钮浮在一堆跨源 iframe
+   之上，每帧都要重新光栅化的动效（背景位置、box-shadow 扩散、blur 变化）会把
+   合成器压垮，表现为整窗口撕裂。这里只有 hover/active 时各触发一次 0.3s 过渡，
+   落定之后就是一张静态位图。 */
+.vetd-ask-button {
+	position: relative;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	padding: 12px 20px;
+	border: none;
+	border-radius: 12px;
+	/* 不继承宿主字号：按钮尺寸是这套观感的一部分 */
+	font-family: inherit;
+	font-size: 1rem;
+	line-height: 1;
+	color: #fff;
+	cursor: pointer;
+	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
+	/* 两道内阴影把上半部压暗，渐变才有金属质感；外阴影负责浮起来 */
+	box-shadow:
+		inset 0 0 5px #ffffffa9,
+		inset 0 35px 30px #000,
+		0 5px 10px #000000cc;
+	text-shadow: 1px 1px 1px #000;
+	transition: all 0.3s ease;
+}
+
+/* 背后的锥形渐变，模糊之后从边缘透出来当光晕。z-index 为负让它落在按钮背景之下、
+   容器背景之上，所以只有溢出按钮轮廓的那一圈可见。 */
+.vetd-ask-button::before {
 	content: "";
 	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	width: 45%;
-	pointer-events: none;
-	background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.45), transparent);
-	animation: vetd-sweep 2.8s ease-in-out infinite;
-}
-@keyframes vetd-sweep {
-	0% {
-		transform: translateX(-120%);
-	}
-	/* 扫过后留一段静默，避免变成不停闪的跑马灯 */
-	55%,
-	100% {
-		transform: translateX(340%);
-	}
+	inset: 0;
+	margin: auto;
+	z-index: -1;
+	border-radius: 12px;
+	filter: blur(0);
+	background: conic-gradient(#00000000 80deg, #40baf7, #f34ad7, #5bfcc4, #00000000 280deg);
+	transition: all 0.3s ease;
 }
 
-/* 光晕环：静态描边 + 缩放淡出，同样只动 transform / opacity。 */
-.vetd-ask-halo {
-	border: 2px solid var(--primary, #6366f1);
-	animation: vetd-halo 2.8s ease-out infinite;
-}
-@keyframes vetd-halo {
-	0% {
-		transform: scale(1);
-		opacity: 0.55;
-	}
-	70%,
-	100% {
-		transform: scale(1.28);
-		opacity: 0;
-	}
+.vetd-ask-button:hover::before {
+	filter: blur(15px);
 }
 
-@media (prefers-reduced-motion: reduce) {
-	.vetd-ask-sweep::before,
-	.vetd-ask-halo {
-		animation: none;
-	}
-	.vetd-ask-halo {
-		opacity: 0;
-	}
+/* 按下：外阴影撤掉 + 整体下沉 3px，等于把按钮按进画布 */
+.vetd-ask-button:active {
+	margin-top: 3px;
+	box-shadow:
+		inset 0 0 5px #ffffffa9,
+		inset 0 35px 30px #000;
+}
+
+.vetd-ask-button:active::before {
+	filter: blur(5px);
+	transform: translateY(1px);
+}
+
+/* 输入框展开期间保持按下态，让按钮和它下面的浮层看起来是一体的 */
+.vetd-ask-button[data-active="true"] {
+	margin-top: 3px;
+	box-shadow:
+		inset 0 0 5px #ffffffa9,
+		inset 0 35px 30px #000;
+}
+
+.vetd-ask-button[data-active="true"]::before {
+	filter: blur(15px);
 }
 
 /* 导出预览的透明背景棋盘格 */

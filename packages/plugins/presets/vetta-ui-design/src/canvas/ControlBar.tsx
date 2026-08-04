@@ -69,7 +69,7 @@ const icons = {
 	),
 };
 
-/** Fixed control bar at the bottom of the canvas panel (select / hand / frame / zoom). */
+/** 画布顶部固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部留给「让 Vetta 调整」。 */
 export function ControlBar({
 	tool,
 	zoom,
@@ -83,7 +83,7 @@ export function ControlBar({
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar
 		<div
-			className="pointer-events-auto absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
+			className="pointer-events-auto absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
 			// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 			// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
 			onPointerDown={(event) => event.stopPropagation()}
