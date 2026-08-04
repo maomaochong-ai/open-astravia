@@ -336,10 +336,11 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 			onSelected: (frameId, payload) => {
 				setSelection(payload ? { kind: "dom", frameId, payload } : { kind: "frames", ids: [frameId] });
 			},
-			// 引擎侧 Esc 一路走到顶：清掉元素选中，但 frame 仍然选中——元素选择还开着，
-			// 可以接着点下一个。想彻底退出再按一次 Esc（画布层处理，见下面的 keydown）。
-			onExitInspect: (frameId) => {
-				setSelection({ kind: "frames", ids: [frameId] });
+			// 引擎侧 Esc 走到顶：还选着元素就只清元素（frame 仍选中，可以接着点下一个），
+			// 已经什么都没选了才真的退出这个 frame。焦点在 iframe 里时画布层收不到
+			// keydown，这两级都只能从引擎过来。
+			onExitInspect: (frameId, hadSelection) => {
+				setSelection(hadSelection ? { kind: "frames", ids: [frameId] } : null);
 			},
 			onHmrUpdated: (frameId) => {
 				notifyFrameSettled(frameId);
