@@ -1,5 +1,5 @@
 import "./styles.css";
-import { Component, type ComponentType, lazy, type ReactNode, StrictMode, Suspense } from "react";
+import { Component, type ComponentType, lazy, type ReactNode, StrictMode, Suspense, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import {
 	armReloadOnNextUpdate,
@@ -76,6 +76,29 @@ function frameComponent(id: string): ComponentType | null {
 	return Frame;
 }
 
+/**
+ * 「这一帧真的画到屏幕上了」的信号源。
+ *
+ * 以前 rendered 是在 root.render() 之后立刻发的，但那时 lazy 的 frame chunk 往往
+ * 还没到（Suspense fallback 是 null），画面其实是空白——画布拿它换位图就会露出白底。
+ * 放进 Suspense 内部、Frame 之后：chunk 到齐才会提交，layout effect 在 Frame 的 DOM
+ * 落定后运行，再等两帧确保浏览器已经绘制过一次。
+ */
+function FramePainted({ frameId }: { frameId: string | null }) {
+	// 不给依赖数组：每次提交都重新确认一次，HMR 换内容后画布也能拿到新的交接点。
+	useLayoutEffect(() => {
+		let inner = 0;
+		const outer = requestAnimationFrame(() => {
+			inner = requestAnimationFrame(() => notifyFrameRendered(frameId, [...frames.keys()]));
+		});
+		return () => {
+			cancelAnimationFrame(outer);
+			cancelAnimationFrame(inner);
+		};
+	});
+	return null;
+}
+
 interface BoundaryProps {
 	frameId: string;
 	children: ReactNode;
@@ -135,14 +158,17 @@ function render(): void {
 				<FrameBoundary key={id} frameId={id}>
 					<Suspense fallback={null}>
 						<Frame />
+						<FramePainted frameId={id} />
 					</Suspense>
 				</FrameBoundary>
 			) : (
-				<FrameMissing id={id} />
+				<>
+					<FrameMissing id={id} />
+					<FramePainted frameId={id} />
+				</>
 			)}
 		</StrictMode>,
 	);
-	notifyFrameRendered(id, [...frames.keys()]);
 	// 先清空：这次渲染若再次失败，边界会在稍后补发真正的错误。
 	notifyFrameError(id, null);
 }

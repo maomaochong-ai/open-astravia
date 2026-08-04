@@ -20,7 +20,10 @@ export interface BridgeHubEvents {
 	onSelected(frameId: string, payload: SelectedElementPayload | null): void;
 	onExitInspect(frameId: string): void;
 	onHmrUpdated(frameId: string | null): void;
-	/** The frame's app just rendered — the earliest point worth rasterizing it. */
+	/**
+	 * 该 frame 的内容已经画到屏幕上（引擎侧在 Suspense 内提交后再等两帧才发）。
+	 * 既是排队截图的时机，也是位图向活体交接的时机——早于它切过去会露出白底。
+	 */
 	onRendered(frameId: string): void;
 	/** 该 frame 编译/渲染失败（message）或恢复正常（null）。 */
 	onFrameError(frameId: string, message: string | null): void;
@@ -175,7 +178,15 @@ export class BridgeHub {
 
 	async capture(
 		frameId: string,
-		options?: { keepHighlight?: boolean; timeoutMs?: number; pixelRatio?: number; cacheBust?: boolean },
+		options?: {
+			keepHighlight?: boolean;
+			timeoutMs?: number;
+			pixelRatio?: number;
+			cacheBust?: boolean;
+			/** 默认 png。画布位图化用 jpeg：同像素数下 dataUrl 小一个量级。 */
+			format?: "png" | "jpeg";
+			quality?: number;
+		},
 	): Promise<string> {
 		if (!this.frames.has(frameId)) throw new Error(`frame not mounted: ${frameId}`);
 		if (!(await this.waitReady(frameId, READY_TIMEOUT_MS))) {
@@ -198,6 +209,8 @@ export class BridgeHub {
 				keepHighlight: options?.keepHighlight === true,
 				pixelRatio: options?.pixelRatio,
 				cacheBust: options?.cacheBust === true,
+				format: options?.format ?? "png",
+				quality: options?.quality,
 			});
 		});
 	}

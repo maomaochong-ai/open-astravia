@@ -20,11 +20,24 @@ import { getFrameError } from "./design-runtime";
 /** 渲染信号到实际截图之间的静置时间：等字体、图片、布局都落定。 */
 const SETTLE_MS = 450;
 /**
- * 位图按 1 倍截：frame 原尺寸的位图在 100% 缩放下就是 1:1，已经够清楚，而 2 倍
- * 会让每张图的解码内存翻四倍——七张 390×844 的图在 2 倍下就是三十多 MB，正是
- * tile 显存不够的一大来源。要看细节可以双击进入 frame，那时是真正的活体渲染。
+ * 位图按设备像素比截。
+ *
+ * 曾经写死 1 倍，理由是「原尺寸位图在 100% 缩放下就是 1:1」——这漏掉了
+ * devicePixelRatio：Retina 上 100% 缩放已经是 2 倍放大，画布再放大更糊，而旁边
+ * 活体 iframe 是矢量渲染怎么放大都锐利，两态一对比就非常刺眼。
+ *
+ * 当初降到 1 倍是为了压内存（png dataUrl 一张好几 MB）。现在位图改用 jpeg 编码，
+ * 同样像素数下字符串小一个量级，再配合下面的字节预算，2 倍的成本已经付得起。
  */
-const RASTER_PIXEL_RATIO = 1;
+const RASTER_PIXEL_RATIO = Math.min(window.devicePixelRatio || 1, 2);
+/** 画布位图的编码质量：肉眼看不出与 png 的差别，体积却只有零头。 */
+const RASTER_JPEG_QUALITY = 0.92;
+/**
+ * 所有位图 dataUrl 的字符串总量上限。jpeg 下一张 390×844@2x 大约几百 KB，正常
+ * 规模的设计稿远远够用；这只是防「几十上百帧」把内存吃穿的安全阀。触发淘汰后，
+ * 被淘汰的 frame 会重新进入挂载窗口重截——真到那一步，反复重截就是它的代价。
+ */
+const RASTER_BUDGET_BYTES = 64 * 1024 * 1024;
 /** 同时允许活体渲染的 frame 数上限。 */
 const MOUNT_WINDOW = 2;
 
@@ -70,6 +83,33 @@ export interface FrameRasterState {
 	reloadAll(): void;
 	/** reloadAll 自增，由 FrameView 拼进 iframe 的 URL 以触发重新导航。 */
 	reloadNonce: number;
+}
+
+/**
+ * 记下新位图，必要时按「最久没重截过」淘汰到预算内。Map 的迭代顺序就是写入顺序，
+ * 拿它当近似 LRU 用；`keep` 里的（此刻挂着的、正在操作的）一律不动，淘汰它们只会
+ * 立刻被重截。
+ */
+function withBudget(
+	current: ReadonlyMap<string, string>,
+	frameId: string,
+	dataUrl: string,
+	keep: ReadonlySet<string>,
+): Map<string, string> {
+	const next = new Map(current);
+	// 先删再写：让这一帧回到队尾，否则老条目的位置会让它显得一直很「旧」。
+	next.delete(frameId);
+	next.set(frameId, dataUrl);
+	let total = 0;
+	for (const value of next.values()) total += value.length;
+	if (total <= RASTER_BUDGET_BYTES) return next;
+	for (const [id, value] of next) {
+		if (total <= RASTER_BUDGET_BYTES) break;
+		if (id === frameId || keep.has(id)) continue;
+		next.delete(id);
+		total -= value.length;
+	}
+	return next;
 }
 
 /** 等 React 提交 + 浏览器完成一次布局与绘制。 */
@@ -149,9 +189,14 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 		timerRef.current = window.setTimeout(() => {
 			timerRef.current = null;
 			void bridge
-				.capture(next, { pixelRatio: RASTER_PIXEL_RATIO, timeoutMs: 20_000 })
+				.capture(next, {
+					pixelRatio: RASTER_PIXEL_RATIO,
+					timeoutMs: 20_000,
+					format: "jpeg",
+					quality: RASTER_JPEG_QUALITY,
+				})
 				.then((dataUrl) => {
-					setRasters((current) => new Map(current).set(next, dataUrl));
+					setRasters((current) => withBudget(current, next, dataUrl, mounted));
 				})
 				.catch((error: unknown) => {
 					// 截不到就让它继续活着——比显示一张坏图安全。但不能静默：一张都截

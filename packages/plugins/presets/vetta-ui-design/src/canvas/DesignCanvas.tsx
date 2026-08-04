@@ -180,6 +180,9 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 
 	useEffect(() => onFrameErrors((next) => setFrameErrors(new Map(next))), []);
 
+	/** frameId → 该 frame 上报「已经画到屏幕上」的次数，见 FrameView 的 paintTick。 */
+	const [paintTicks, setPaintTicks] = useState<ReadonlyMap<string, number>>(new Map());
+
 
 	/**
 	 * 「在操作」的那个 frame 保持活体：单独选中一个就够，不必双击进检查态——
@@ -311,7 +314,12 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				notifyFrameSettled(frameId);
 				if (frameId) invalidateRaster(frameId);
 			},
-			onRendered: invalidateRaster,
+			onRendered: (frameId) => {
+				invalidateRaster(frameId);
+				// 同一条信号还负责位图→活体的交接：计数自增，FrameView 拿它判断
+				// 「这一次挂载之后画面已经出来了」。
+				setPaintTicks((current) => new Map(current).set(frameId, (current.get(frameId) ?? 0) + 1));
+			},
 			onFrameError: setFrameError,
 		});
 		return () => bridge.stop();
@@ -762,6 +770,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						live={isLive(frame.id)}
 						raster={rasterOf(frame.id)}
 						reloadNonce={reloadNonce}
+						paintTick={paintTicks.get(frame.id) ?? 0}
 						moveDelta={moveRef.current?.origins.has(frame.id) ? moveDelta : null}
 						activity={activity.get(frame.id)}
 						buildError={frameErrors.get(frame.id) ?? null}
@@ -786,7 +795,12 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						}}
 						onMoveDelta={(dx, dy) => setMoveDelta({ dx, dy })}
 						onMoveEnd={commitMove}
-						onResizeCommit={(patch) => session.updateFramePlacement(frame.id, patch)}
+						onResizeCommit={(patch) => {
+							session.updateFramePlacement(frame.id, patch);
+							// 位图是按旧尺寸截的，改完尺寸再显示就是被 object-cover 拉伸裁剪
+							// 的糊图——重新排队截一张。
+							invalidateRaster(frame.id);
+						}}
 					/>
 				))}
 				{marquee ? (

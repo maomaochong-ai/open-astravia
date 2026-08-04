@@ -10,7 +10,7 @@
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
  *                    | frame-error
  */
-import { toPng } from "html-to-image";
+import { toJpeg, toPng } from "html-to-image";
 
 type InspectMode = "off" | "inspect";
 
@@ -293,7 +293,20 @@ export function installBridge(host: BridgeHost): void {
 				// CORS 问题，而素材由同源的引擎 dev server 提供，用不上。
 				// 只有交付物（导出渲染图 / 发给 agent）保留它兜底，画布位图化不用。
 				const cacheBust = data.cacheBust === true;
-				toPng(document.documentElement, { pixelRatio, cacheBust })
+				// 画布位图化要 jpeg：同样的像素数，dataUrl 字符串小一个量级，
+				// postMessage 传输与常驻内存跟着降下来——这正是能把 pixelRatio 提到
+				// 设备像素比、让位图不再糊的前提。jpeg 没有透明通道，必须显式铺白底，
+				// 否则透明处会变黑。交付物（导出渲染图 / 发给 agent）继续走 png。
+				const encode = (): Promise<string> =>
+					data.format === "jpeg"
+						? toJpeg(document.documentElement, {
+								pixelRatio,
+								cacheBust,
+								quality: typeof data.quality === "number" ? data.quality : 0.92,
+								backgroundColor: "#ffffff",
+							})
+						: toPng(document.documentElement, { pixelRatio, cacheBust });
+				encode()
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) =>
 						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),
