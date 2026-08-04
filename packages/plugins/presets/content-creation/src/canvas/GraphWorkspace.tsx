@@ -522,6 +522,9 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 						onConnect={onConnect}
 						onConnectEnd={handleConnectEnd}
 						isValidConnection={isValidConnection}
+						selectionOnDrag={false}
+						selectionKeyCode="Control"
+						panOnDrag
 						zoomOnDoubleClick={false}
 						onNodeClick={onNodeClick}
 						onNodeContextMenu={onNodeContextMenu}
