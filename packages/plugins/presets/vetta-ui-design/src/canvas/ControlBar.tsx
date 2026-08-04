@@ -83,7 +83,9 @@ export function ControlBar({
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar
 		<div
-			className="pointer-events-auto absolute top-3 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
+			// top-6 而不是更贴边：宿主面板顶部有一道投影，压在 top-3 上会把工具栏罩住。
+			// 那层阴影在插件容器之外，z-index 够不着，只能让开。
+			className="pointer-events-auto absolute top-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
 			// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 			// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
 			onPointerDown={(event) => event.stopPropagation()}
