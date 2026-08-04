@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeHub } from "./bridge-client";
+import { getFrameError } from "./design-runtime";
 
 /**
  * 空闲帧位图化 + 挂载节流。
@@ -137,7 +138,11 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 	// 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
 	useEffect(() => {
 		if (capturingRef.current !== null) return;
-		const next = [...dirty].find((frameId) => frameId !== activeFrameId && mounted.has(frameId));
+		// 构建失败的 frame 此刻只剩兜底文案，截了会把「上一张好图」覆盖掉——正是出错时
+		// 唯一还能看的东西。跳过它，保持活体，等它恢复渲染后重新排队。
+		const next = [...dirty].find(
+			(frameId) => frameId !== activeFrameId && mounted.has(frameId) && !getFrameError(frameId),
+		);
 		if (next === undefined) return;
 
 		capturingRef.current = next;

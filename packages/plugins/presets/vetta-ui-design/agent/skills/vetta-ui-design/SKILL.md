@@ -71,6 +71,12 @@ the returned PNG path to SEE the result before declaring it done. Use
 `vetd_status` to list frame ids, check the design engine, and read recent
 build output when something fails to render.
 
+If a frame fails to compile, the canvas keeps showing its last good rendering
+with a "build failed" badge, and `vetd_screenshot` returns the compile error
+instead of an image (`vetd_status` reports it as `buildError` on the frame).
+Fix the source and screenshot again — never declare a frame done while it
+still reports a build error.
+
 ## Frame skeleton
 
 ```tsx

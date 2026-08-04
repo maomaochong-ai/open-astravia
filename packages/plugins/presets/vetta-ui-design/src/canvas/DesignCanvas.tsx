@@ -19,10 +19,14 @@ import { BridgeHub, type SelectedElementPayload } from "./bridge-client";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import {
+	clearFrameErrors,
 	type FrameActivity,
+	getFrameError,
 	notifyFrameSettled,
 	onFrameActivity,
+	onFrameErrors,
 	requestMockupExport,
+	setFrameError,
 } from "./design-runtime";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { useFrameRasters } from "./frame-raster";
@@ -109,7 +113,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	selectionRef.current = selection;
 	const [enteredFrameId, setEnteredFrameId] = useState<string | null>(null);
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
-	/** frameId → 编译/渲染错误信息。位图化后 iframe 不在了，错误态要一直留到它自己报好。 */
+	/** 错误态存在 design-runtime（agent 工具也要读），这里只订阅它来渲染。 */
 	const [frameErrors, setFrameErrors] = useState<ReadonlyMap<string, string>>(new Map());
 	const [marquee, setMarquee] = useState<Rect | null>(null);
 	const [askOpen, setAskOpen] = useState(false);
@@ -167,6 +171,14 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	}, [session]);
 
 	useEffect(() => onFrameActivity((next) => setActivity(new Map(next))), []);
+
+	// 错误态属于「当前打开的这份设计」，换设计/关画布时清掉，免得留给下一份。
+	useEffect(() => {
+		clearFrameErrors();
+		return clearFrameErrors;
+	}, [session]);
+
+	useEffect(() => onFrameErrors((next) => setFrameErrors(new Map(next))), []);
 
 
 	/**
@@ -300,15 +312,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				if (frameId) invalidateRaster(frameId);
 			},
 			onRendered: invalidateRaster,
-			onFrameError: (frameId, message) => {
-				setFrameErrors((current) => {
-					if ((current.get(frameId) ?? null) === message) return current;
-					const next = new Map(current);
-					if (message) next.set(frameId, message);
-					else next.delete(frameId);
-					return next;
-				});
-			},
+			onFrameError: setFrameError,
 		});
 		return () => bridge.stop();
 	}, [bridge, exitInspect, invalidateRaster]);
