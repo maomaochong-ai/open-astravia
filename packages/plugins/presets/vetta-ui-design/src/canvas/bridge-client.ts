@@ -18,7 +18,12 @@ const READY_TIMEOUT_MS = 8_000;
 
 export interface BridgeHubEvents {
 	onSelected(frameId: string, payload: SelectedElementPayload | null): void;
-	onExitInspect(frameId: string): void;
+	/**
+	 * frame 内按了 Esc 且没有更上一层的元素可选。`hadSelection` 为 true 表示刚刚还
+	 * 选着元素，这一下只是把元素选中清掉；为 false 表示已经什么都没选，该退出这个
+	 * frame 了。焦点在 iframe 里时画布层收不到 keydown，Esc 只能从这里过来。
+	 */
+	onExitInspect(frameId: string, hadSelection: boolean): void;
 	onHmrUpdated(frameId: string | null): void;
 	/**
 	 * 该 frame 的内容已经画到屏幕上（引擎侧在 Suspense 内提交后再等两帧才发）。
@@ -78,7 +83,7 @@ export class BridgeHub {
 				if (frameId) this.events?.onSelected(frameId, (data.payload as SelectedElementPayload | null) ?? null);
 				return;
 			case "exit-inspect":
-				if (frameId) this.events?.onExitInspect(frameId);
+				if (frameId) this.events?.onExitInspect(frameId, data.hadSelection === true);
 				return;
 			case "context-menu": {
 				if (!frameId) return;

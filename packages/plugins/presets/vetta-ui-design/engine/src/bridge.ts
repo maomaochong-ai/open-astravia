@@ -231,8 +231,18 @@ export function installBridge(host: BridgeHost): void {
 		post({ type: "selected", payload: element ? payloadFor(element) : null });
 	};
 
+	/**
+	 * 清掉高亮，但不往外报「选中变成了 null」。
+	 *
+	 * 报了会绕回来：画布收到空的 selected 会把这一帧退回 frame 级选中，而单独选中
+	 * 一个 frame 又等于开着元素选择——于是刚关掉的模式立刻被自己打开。取消选中、
+	 * 点别的 frame、Esc 三条路都是这么失效的。
+	 * 两个调用方各自有更准确的消息：关模式的那次由画布发起，本来就知道结果；
+	 * Esc 走 exit-inspect，带着自己的语义。
+	 */
 	const reset = (): void => {
-		select(null);
+		selected = null;
+		moveOverlay(selectedOverlay, null);
 		moveOverlay(hoverOverlay, null);
 	};
 
@@ -292,8 +302,12 @@ export function installBridge(host: BridgeHost): void {
 				select(parent);
 				return;
 			}
+			// 焦点在 iframe 里的时候画布层收不到 keydown，Esc 的每一级都得从这里发出去。
+			// hadSelection 就是那个级差：还选着元素就只清元素（frame 仍选中，可以接着
+			// 点下一个），已经什么都没选了才是真的要退出这个 frame。
+			const hadSelection = selected !== null;
 			reset();
-			post({ type: "exit-inspect" });
+			post({ type: "exit-inspect", hadSelection });
 		},
 		true,
 	);
