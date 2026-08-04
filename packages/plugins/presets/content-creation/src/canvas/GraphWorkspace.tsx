@@ -7,6 +7,7 @@ import {
 	type ReactFlowProps,
 	ReactFlow,
 	type ReactFlowInstance,
+	SelectionMode,
 } from "@xyflow/react";
 import {
 	type PluginShortcutBinding,
@@ -527,6 +528,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 						isValidConnection={isValidConnection}
 						selectionOnDrag={canvasInteraction.selectionOnDrag}
 						selectionKeyCode="Control"
+						selectionMode={SelectionMode.Partial}
 						panOnDrag={canvasInteraction.panOnDrag}
 						zoomOnDoubleClick={false}
 						onNodeClick={onNodeClick}

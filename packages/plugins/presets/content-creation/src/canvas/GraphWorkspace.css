@@ -15,6 +15,20 @@
 	stroke-width: 28;
 }
 
+/* Selection chrome: keep the active drag discoverable, then settle into a
+ * quiet theme-neutral group outline after multiple nodes are selected. */
+.content-creation-flow .react-flow__selection {
+	border: 1px solid color-mix(in srgb, var(--primary) 38%, transparent);
+	border-radius: var(--radius-md, 8px);
+	background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.content-creation-flow .react-flow__nodesselection-rect {
+	border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+	border-radius: var(--radius-lg, 12px);
+	background: color-mix(in srgb, var(--muted) 12%, transparent);
+}
+
 /* Resize: selection outline stays on the card itself.
  * RF line controls are hit-only (no second frame — a painted border on a
  * translate(-50%) strip sat outside the card and read as a gap). */

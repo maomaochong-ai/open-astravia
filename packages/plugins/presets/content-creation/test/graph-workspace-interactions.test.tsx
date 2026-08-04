@@ -9,6 +9,7 @@ const reactFlowCapture = vi.hoisted(() => ({
 
 vi.mock("@xyflow/react", () => ({
 	Controls: () => null,
+	SelectionMode: { Partial: "partial" },
 	ReactFlow: (props: Record<string, unknown>) => {
 		reactFlowCapture.props = props;
 		return <div />;
@@ -53,6 +54,7 @@ describe("GraphWorkspace mouse interactions", () => {
 
 		expect(reactFlowCapture.props?.selectionOnDrag).toBe(false);
 		expect(reactFlowCapture.props?.selectionKeyCode).toBe("Control");
+		expect(reactFlowCapture.props?.selectionMode).toBe("partial");
 		expect(reactFlowCapture.props?.panOnDrag).toBe(true);
 	});
 });
