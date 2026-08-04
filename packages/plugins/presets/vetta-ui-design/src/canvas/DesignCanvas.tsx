@@ -109,6 +109,8 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	selectionRef.current = selection;
 	const [enteredFrameId, setEnteredFrameId] = useState<string | null>(null);
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
+	/** frameId → 编译/渲染错误信息。位图化后 iframe 不在了，错误态要一直留到它自己报好。 */
+	const [frameErrors, setFrameErrors] = useState<ReadonlyMap<string, string>>(new Map());
 	const [marquee, setMarquee] = useState<Rect | null>(null);
 	const [askOpen, setAskOpen] = useState(false);
 	const [askBusy, setAskBusy] = useState(false);
@@ -298,6 +300,15 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				if (frameId) invalidateRaster(frameId);
 			},
 			onRendered: invalidateRaster,
+			onFrameError: (frameId, message) => {
+				setFrameErrors((current) => {
+					if ((current.get(frameId) ?? null) === message) return current;
+					const next = new Map(current);
+					if (message) next.set(frameId, message);
+					else next.delete(frameId);
+					return next;
+				});
+			},
 		});
 		return () => bridge.stop();
 	}, [bridge, exitInspect, invalidateRaster]);
@@ -749,6 +760,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						reloadNonce={reloadNonce}
 						moveDelta={moveRef.current?.origins.has(frame.id) ? moveDelta : null}
 						activity={activity.get(frame.id)}
+						buildError={frameErrors.get(frame.id) ?? null}
 						renaming={renamingId === frame.id}
 						onRenameStart={() => startRename(frame.id)}
 						onRenameCommit={(title) => commitRename(frame.id, title)}

@@ -21,6 +21,7 @@
 	"canvas.theme.attach": "把令牌 {{token}} 附给 Vetta",
 	"canvas.frame.modifying": "修改中",
 	"canvas.frame.updated": "已更新",
+	"canvas.frame.buildError": "构建失败",
 	"canvas.newFrame.defaultTitle": "新画框",
 	"canvas.frame.menu.ask": "让 Vetta 调整",
 	"canvas.frame.menu.rename": "重命名",

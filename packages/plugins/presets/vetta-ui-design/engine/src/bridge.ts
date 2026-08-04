@@ -8,6 +8,7 @@
  * Message contract (both directions carry `{ vetd: true }`):
  *   parent → iframe: set-mode | show-frame | clear-selection | capture
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
+ *                    | frame-error
  */
 import { toPng } from "html-to-image";
 
@@ -135,6 +136,55 @@ function moveOverlay(overlay: HTMLDivElement, target: Element | null): void {
 
 export function notifyFrameRendered(frameId: string | null, allFrames: string[]): void {
 	post({ type: "rendered", frameId, allFrames });
+}
+
+/**
+ * 编译失败上报（vite 自带的红屏 overlay 已在 vite.config.mjs 里关掉）。
+ * `message` 为 null 表示这一帧当前没有错误——每次渲染都会先发一次清空。
+ */
+export function notifyFrameError(frameId: string | null, message: string | null): void {
+	post({ type: "frame-error", frameId, message });
+}
+
+interface ViteErrorPayload {
+	err?: { message?: string; id?: string; loc?: { file?: string; line?: number } };
+}
+
+let lastBuildError: string | null = null;
+const buildErrorListeners = new Set<(message: string) => void>();
+let reloadArmed = false;
+
+/** 最近一次 vite 编译错误。import 失败时拿它换掉「加载模块失败」这种无用信息。 */
+export function latestBuildError(): string | null {
+	return lastBuildError;
+}
+
+export function onBuildError(listener: (message: string) => void): () => void {
+	buildErrorListeners.add(listener);
+	return () => buildErrorListeners.delete(listener);
+}
+
+/**
+ * 编译失败的 frame 模块从没成功执行过，也就不在 HMR 图里：改好之后 vite 推来的
+ * 更新落不到它身上，页面会一直停在错误态。既然当前渲染已经废了，收到任何一次
+ * 更新就整页重载，代价为零。
+ */
+export function armReloadOnNextUpdate(): void {
+	if (reloadArmed || !import.meta.hot) return;
+	reloadArmed = true;
+	import.meta.hot.on("vite:beforeUpdate", () => window.location.reload());
+}
+
+if (import.meta.hot) {
+	import.meta.hot.on("vite:error", (payload: ViteErrorPayload) => {
+		const err = payload?.err;
+		if (!err) return;
+		const where = err.loc?.file ?? err.id;
+		const line = err.loc?.line;
+		const head = where ? `${where}${line ? `:${line}` : ""}\n` : "";
+		lastBuildError = `${head}${err.message ?? "build failed"}`;
+		for (const listener of buildErrorListeners) listener(lastBuildError);
+	});
 }
 
 export function installBridge(host: BridgeHost): void {

@@ -28,6 +28,8 @@ interface FrameViewProps {
 	/** Live offset of the in-flight group move this frame takes part in. */
 	moveDelta: { dx: number; dy: number } | null;
 	activity: FrameActivity | undefined;
+	/** 非 null 时这一帧编译/渲染失败：盖住上一张位图，标题栏挂徽标（详情走 title）。 */
+	buildError: string | null;
 	/** true 时标题变成就地编辑的输入框（双击标题，或右键菜单里的重命名）。 */
 	renaming: boolean;
 	onSelect(additive: boolean): void;
@@ -71,6 +73,7 @@ export function FrameView({
 	reloadNonce,
 	moveDelta,
 	activity,
+	buildError,
 	renaming,
 	onSelect,
 	onEnter,
@@ -243,6 +246,15 @@ export function FrameView({
 				<span className="text-muted-foreground">
 					{rect.width}×{rect.height}
 				</span>
+				{buildError ? (
+					<span
+						className="flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
+						title={buildError}
+					>
+						<span className="size-1.5 rounded-full bg-red-500" />
+						{t("canvas.frame.buildError")}
+					</span>
+				) : null}
 				{activity === "modifying" ? (
 					<span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
 						<span className="size-1.5 animate-pulse rounded-full bg-primary" />
@@ -275,18 +287,19 @@ export function FrameView({
 					/>
 				) : null}
 				{/* 位图盖在 iframe 上，等它真的加载完再撤：刚挂载的 iframe 有一段空白期，
-				    直接切过去就是肉眼可见的一闪。淡出让交接看不出来。 */}
-				{raster && (!live || !loaded) ? (
+				    直接切过去就是肉眼可见的一闪。淡出让交接看不出来。
+				    构建失败时也留着：iframe 里此刻只有兜底文案，上一张好图才是用户要看的。 */}
+				{raster && (!live || !loaded || buildError) ? (
 					<img
 						src={raster}
 						alt=""
 						aria-hidden
 						className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${
-							live && loaded ? "opacity-0" : "opacity-100"
+							live && loaded && !buildError ? "opacity-0" : "opacity-100"
 						}`}
 					/>
 				) : null}
-				{!raster && !loaded ? (
+				{!raster && !loaded && !buildError ? (
 					<div className="absolute inset-0 flex items-center justify-center bg-muted">
 						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
 					</div>

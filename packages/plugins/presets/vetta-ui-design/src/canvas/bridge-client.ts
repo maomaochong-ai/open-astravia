@@ -19,6 +19,8 @@ export interface BridgeHubEvents {
 	onHmrUpdated(frameId: string | null): void;
 	/** The frame's app just rendered — the earliest point worth rasterizing it. */
 	onRendered(frameId: string): void;
+	/** 该 frame 编译/渲染失败（message）或恢复正常（null）。 */
+	onFrameError(frameId: string, message: string | null): void;
 }
 
 interface PendingCapture {
@@ -47,6 +49,9 @@ export class BridgeHub {
 			}
 			case "rendered":
 				if (frameId) this.events?.onRendered(frameId);
+				return;
+			case "frame-error":
+				if (frameId) this.events?.onFrameError(frameId, typeof data.message === "string" ? data.message : null);
 				return;
 			case "selected":
 				if (frameId) this.events?.onSelected(frameId, (data.payload as SelectedElementPayload | null) ?? null);

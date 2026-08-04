@@ -169,6 +169,10 @@ export default defineConfig(({ command }) => ({
 		host: "127.0.0.1",
 		strictPort: true,
 		cors: true,
+		// vite 自带的错误 overlay 会把整个 frame 糊成一张红色报错页——每个 frame 都是
+		// 一个 iframe，画布上看到的就是设计稿整片消失。错误改由 src/bridge.ts 上报给
+		// 画布：那边继续显示上一张位图，只在标题栏挂一个「构建失败」徽标。
+		hmr: { overlay: false },
 		fs: { allow: [process.cwd(), designRoot] },
 	},
 	build: {
