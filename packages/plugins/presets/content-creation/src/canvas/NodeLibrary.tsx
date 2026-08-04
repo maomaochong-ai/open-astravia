@@ -7,8 +7,9 @@ import {
 	type ContentNodeDefinition,
 } from "../node/definitions";
 import type { ContentNodeKind } from "../project/types";
-import { AddIcon } from "../shared/icons";
+import { AddIcon, PanToolIcon, SelectToolIcon } from "../shared/icons";
 import { NodeKindIcon } from "../node/NodeKindIcon";
+import type { CanvasTool } from "./canvas-tools";
 
 const CATEGORY_ORDER: ContentNodeCategory[] = ["input", "generation", "resource", "output"];
 const QUICK_CREATE_KINDS: readonly ContentNodeKind[] = ["prompt", "image-generator", "video-generator"];
@@ -157,7 +158,9 @@ export function CanvasCreateMenu({ left, top, onSelect }: CanvasCreateMenuProps)
 }
 
 interface NodeLibraryProps {
+	activeTool: CanvasTool;
 	onAdd: (kind: ContentNodeKind) => void;
+	onToolChange: (tool: CanvasTool) => void;
 }
 
 /** Mac Dock–style magnification: subtle peak so hover stays readable without dizziness. */
@@ -167,6 +170,7 @@ const DOCK_INFLUENCE = 56;
 const DOCK_GAP = 6;
 
 type DockItem =
+	| { type: "tool"; tool: CanvasTool; key: string }
 	| { type: "node"; kind: ContentNodeKind; key: string }
 	| { type: "divider"; key: string }
 	| { type: "more"; key: string };
@@ -190,7 +194,7 @@ function usePrefersReducedMotion(): boolean {
 	return reduced;
 }
 
-export function NodeLibrary({ onAdd }: NodeLibraryProps) {
+export function NodeLibrary({ activeTool, onAdd, onToolChange }: NodeLibraryProps) {
 	const { t } = useTranslation();
 	const rootRef = useRef<HTMLDivElement>(null);
 	const dockRef = useRef<HTMLDivElement>(null);
@@ -202,12 +206,17 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 	);
 
 	const dockItems = useMemo<DockItem[]>(() => {
-		const items: DockItem[] = quickDefinitions.map((definition) => ({
+		const items: DockItem[] = [
+			{ type: "tool", tool: "select", key: "tool-select" },
+			{ type: "tool", tool: "pan", key: "tool-pan" },
+			{ type: "divider", key: "divider-tools" },
+		];
+		items.push(...quickDefinitions.map((definition) => ({
 			type: "node",
 			kind: definition.kind,
 			key: definition.kind,
-		}));
-		items.push({ type: "divider", key: "divider" });
+		}) satisfies DockItem));
+		items.push({ type: "divider", key: "divider-nodes" });
 		items.push({ type: "more", key: "more" });
 		return items;
 	}, [quickDefinitions]);
@@ -264,6 +273,7 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 			? (() => {
 					const item = dockItems[peakIndex];
 					if (!item) return null;
+					if (item.type === "tool") return t(`canvas.tool.${item.tool}`);
 					if (item.type === "node") return t(`node.kind.${item.kind}`);
 					if (item.type === "more") return t("nodeLibrary.title");
 					return null;
@@ -325,7 +335,13 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 						}
 
 						const scale = scales[index] ?? 1;
-						const label = item.type === "node" ? t(`node.kind.${item.kind}`) : t("nodeLibrary.title");
+						const label =
+							item.type === "tool"
+								? t(`canvas.tool.${item.tool}`)
+								: item.type === "node"
+									? t(`node.kind.${item.kind}`)
+									: t("nodeLibrary.title");
+						const activeToolButton = item.type === "tool" && item.tool === activeTool;
 						const activeMore = item.type === "more" && open;
 
 						return (
@@ -334,12 +350,15 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 								type="button"
 								title={label}
 								aria-label={label}
+								aria-pressed={item.type === "tool" ? activeToolButton : undefined}
 								aria-expanded={item.type === "more" ? open : undefined}
 								className={cn(
 									"relative z-[1] flex shrink-0 items-center justify-center rounded-[22%] border border-transparent text-foreground outline-none",
 									"origin-bottom will-change-transform",
 									"focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40",
-									activeMore ? "bg-accent text-accent-foreground" : "bg-muted/55 text-foreground hover:bg-muted",
+									activeToolButton || activeMore
+										? "bg-primary/12 text-primary"
+										: "bg-muted/55 text-foreground hover:bg-muted",
 									scale > 1.02 && "z-[2]",
 								)}
 								style={{
@@ -351,12 +370,21 @@ export function NodeLibrary({ onAdd }: NodeLibraryProps) {
 										: "transform 140ms cubic-bezier(0.25, 0.8, 0.25, 1), background-color 120ms ease",
 								}}
 								onClick={() => {
-									if (item.type === "node") onAdd(item.kind);
+									if (item.type === "tool") {
+										onToolChange(item.tool);
+										setOpen(false);
+									} else if (item.type === "node") onAdd(item.kind);
 									else setOpen((value) => !value);
 								}}
 							>
 								<span className="grid size-4 place-items-center [&_svg]:h-full [&_svg]:w-full">
-									{item.type === "node" ? (
+									{item.type === "tool" ? (
+										item.tool === "select" ? (
+											<SelectToolIcon className="h-full w-full" />
+										) : (
+											<PanToolIcon className="h-full w-full" />
+										)
+									) : item.type === "node" ? (
 										<NodeKindIcon kind={item.kind} className="h-full w-full" />
 									) : (
 										<AddIcon className="h-full w-full" />

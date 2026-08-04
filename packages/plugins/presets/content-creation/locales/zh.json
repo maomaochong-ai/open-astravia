@@ -26,6 +26,8 @@
 	"workspace.revision": "修订 {{revision}}",
 	"mode.graph": "创作画布",
 	"mode.timeline": "时间线",
+	"canvas.tool.select": "框选",
+	"canvas.tool.pan": "拖手",
 	"action.addPrompt": "提示词",
 	"action.addImageGenerator": "图片生成",
 	"action.addVideoGenerator": "视频生成",

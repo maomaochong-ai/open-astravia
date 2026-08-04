@@ -28,6 +28,23 @@ export function AddIcon({ className }: IconProps) {
 	);
 }
 
+export function SelectToolIcon({ className }: IconProps) {
+	return (
+		<svg className={className} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+			<path d="m6 3 11 9-6 1.5L8.5 19 6 3Z" />
+			<path d="M14.5 14.5 19 19" />
+		</svg>
+	);
+}
+
+export function PanToolIcon({ className }: IconProps) {
+	return (
+		<svg className={className} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+			<path d="M7.5 11V7.5a1.5 1.5 0 0 1 3 0V10 5.5a1.5 1.5 0 0 1 3 0V10 6.5a1.5 1.5 0 0 1 3 0V11 8.5a1.5 1.5 0 0 1 3 0v5.75A6.75 6.75 0 0 1 12.75 21H12a6 6 0 0 1-5.2-3L4.7 14.4a1.6 1.6 0 0 1 2.7-1.7l1.1 1.3" />
+		</svg>
+	);
+}
+
 export function TrashIcon({ className }: IconProps) {
 	return (
 		<svg className={className} viewBox="0 0 24 24" aria-hidden="true" {...stroke}>

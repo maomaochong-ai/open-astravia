@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CONTENT_NODE_DEFINITIONS } from "../src/node/definitions";
-import { EmptyCanvasStarter, NodeDefinitionGrid } from "../src/canvas/NodeLibrary";
+import { EmptyCanvasStarter, NodeDefinitionGrid, NodeLibrary } from "../src/canvas/NodeLibrary";
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
 	useTranslation: () => ({ locale: "en", t: (key: string) => key }),
@@ -27,5 +27,16 @@ describe("node creation surfaces", () => {
 		expect(markup).toContain("node.kind.image-generator");
 		expect(markup).toContain("node.kind.video-generator");
 		expect(markup.match(/<button/g)).toHaveLength(3);
+	});
+
+	it("renders mutually exclusive select and pan tools in the canvas dock", () => {
+		const markup = renderToStaticMarkup(
+			<NodeLibrary activeTool="pan" onAdd={() => undefined} onToolChange={() => undefined} />,
+		);
+
+		expect(markup).toContain("canvas.tool.select");
+		expect(markup).toContain("canvas.tool.pan");
+		expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1);
+		expect(markup.match(/aria-pressed="false"/g)).toHaveLength(1);
 	});
 });
