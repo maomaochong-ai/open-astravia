@@ -153,6 +153,7 @@ import { Button, Switch, Slider, Dialog, DialogContent, cn } from "@vetta/ui";
 | 构建 | `vettaPluginFederation` 已把 `@vetta/ui` 设为 `shared.singleton + import:false`，并 rollup external |
 | `package.json` | 仅作类型 / 本地 tsc：`devDependencies` 里 `@vetta/ui`（仓库内 `workspace:*`，仓库外按发布版本） |
 | 样式 | 组件 class 走宿主全局 token / Tailwind；插件 scoped CSS **管不到** Dialog 等 portal 到 `document.body` 的浮层（浮层依赖宿主已加载的全局样式，这是预期行为） |
+| 宿主版本 | 需要宿主提供 `vetta-host://ui` shim：desktop-app **>= 0.5.31**，且 `@vetta-org/plugin-vite` **>= 0.0.5**。旧宿主上 import `@vetta/ui` 会在加载插件时解析失败（模块找不到，整个插件不激活）——若你的插件要兼容更早的 App，就别用这条通道，自写 JSX + 语义 class |
 | 稳定性 | **半稳定、可选**。宿主会尽量不无故破坏，但不对跨 App 大版本做 semver 承诺；props / 导出变更时官方插件随 monorepo 同改 |
 | 不在此列 | `@vetta/theme-ui`（业务 View）**尚未**作为插件共享依赖；需要时再另开通道 |
 
