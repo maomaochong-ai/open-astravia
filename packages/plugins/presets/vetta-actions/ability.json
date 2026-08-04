@@ -1,0 +1,64 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "vetta-actions",
+	"version": "0.1.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-thread",
+					"user_prompt": "把默认模型切换到我已经配置好的模型。",
+					"assistant_reply": "我会调用对应的官方 App Action，并在实际修改设置前展示确认界面。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "让 Agent 安全操作 Vetta",
+				"items": [
+					{
+						"title": "统一应用操作",
+						"description": "为模型、项目、知识库、自动化等领域提供稳定的官方 Action。",
+						"icon": "solar:widget-add-linear"
+					},
+					{
+						"title": "写操作有确认",
+						"description": "修改和执行类操作继续使用宿主审批界面，不绕过用户授权。",
+						"icon": "solar:shield-check-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-thread",
+							"user_prompt": "Switch the default model to one I already configured.",
+							"assistant_reply": "I’ll use the matching official App Action and show a confirmation surface before changing your settings."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Let the Agent operate Vetta safely",
+						"items": [
+							{
+								"title": "Stable app operations",
+								"description": "Official actions for models, projects, knowledge, automation, and other domains.",
+								"icon": "solar:widget-add-linear"
+							},
+							{
+								"title": "Confirmation for writes",
+								"description": "Mutating operations keep the host approval flow and user control.",
+								"icon": "solar:shield-check-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

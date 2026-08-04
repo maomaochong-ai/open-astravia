@@ -109,6 +109,18 @@ function parsePluginManifest(value: unknown): PluginManifest {
 	};
 }
 
+function validateAbilityDescriptor(value: unknown, pluginManifest: PluginManifest): void {
+	if (!isRecord(value)) throw new Error("ability.json must contain an object.");
+	if (
+		value.schemaVersion !== 1 ||
+		value.type !== "plugin" ||
+		value.slug !== pluginManifest.id ||
+		value.version !== pluginManifest.version
+	) {
+		throw new Error("ability.json identity must match plugin.json id and version.");
+	}
+}
+
 /** Iconify 图标名：`solar:magic-stick-3-bold` 这种 `<集合>:<图标>` 形态。 */
 const ICONIFY_ICON_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -282,6 +294,24 @@ async function collectRuntimeFiles(
 	};
 
 	addFile(manifestPath);
+
+	// 插件详情跟随插件包发布；ability.json 缺省兼容，存在时必须与 plugin.json 身份一致。
+	const abilityDescriptorPath = resolve(rootDir, "ability.json");
+	if (existsSync(abilityDescriptorPath)) {
+		validateAbilityDescriptor(
+			parseJsonObject(await readFile(abilityDescriptorPath), basename(abilityDescriptorPath)),
+			pluginManifest,
+		);
+		addFile(abilityDescriptorPath);
+		// 约定的展示资源目录；内联 blocks 可引用其中的图片，随包整体带上。
+		try {
+			for (const file of await collectFiles(resolve(rootDir, "presentation"))) {
+				addFile(file.fullPath);
+			}
+		} catch {
+			// optional presentation/ directory
+		}
+	}
 
 	const federationManifestPath = resolve(rootDir, pluginManifest.entry);
 	addFile(federationManifestPath);

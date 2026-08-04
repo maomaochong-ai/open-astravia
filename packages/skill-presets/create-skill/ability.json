@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "skill",
+	"slug": "create-skill",
+	"version": "1.0.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "code",
+					"user_prompt": "帮我创建一个用于审查 API 兼容性的 Skill。",
+					"assistant_reply": "我会先确定触发条件和工作流，再生成符合 Vetta 规范的 SKILL.md 与所需资源。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "把经验沉淀成可复用能力",
+				"items": [
+					{
+						"title": "从目标开始",
+						"description": "梳理 Skill 的适用范围、触发条件和完成标准。",
+						"icon": "solar:target-linear"
+					},
+					{
+						"title": "生成规范结构",
+						"description": "创建 SKILL.md，并按需要组织 scripts、references 与 assets。",
+						"icon": "solar:folder-with-files-linear"
+					},
+					{
+						"title": "更新已有 Skill",
+						"description": "在保留既有约束的前提下补充流程、资料或自动化脚本。",
+						"icon": "solar:refresh-square-linear"
+					},
+					{
+						"title": "放到正确位置",
+						"description": "区分个人、项目与应用内置 Skill，并完成对应注册。",
+						"icon": "solar:map-point-wave-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "code",
+							"user_prompt": "Create a Skill that reviews API compatibility.",
+							"assistant_reply": "I’ll define its triggers and workflow, then create a compliant SKILL.md and the resources it needs."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Turn expertise into a reusable capability",
+						"items": [
+							{
+								"title": "Start from the goal",
+								"description": "Clarify scope, triggers, and completion criteria.",
+								"icon": "solar:target-linear"
+							},
+							{
+								"title": "Create the right structure",
+								"description": "Build SKILL.md and organize scripts, references, and assets as needed.",
+								"icon": "solar:folder-with-files-linear"
+							},
+							{
+								"title": "Update existing Skills",
+								"description": "Extend workflows and resources without losing established constraints.",
+								"icon": "solar:refresh-square-linear"
+							},
+							{
+								"title": "Install in the right scope",
+								"description": "Distinguish personal, project, and app-bundled Skills.",
+								"icon": "solar:map-point-wave-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

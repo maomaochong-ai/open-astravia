@@ -1,4 +1,8 @@
 import type { McpServerConfigData, McpStdioServerConfigData } from "@preload/api.js";
+import type { AbilityDetail } from "@shared/lib/api";
+import figmaAbility from "./presets/figma/ability.json";
+import githubAbility from "./presets/github/ability.json";
+import notionAbility from "./presets/notion/ability.json";
 
 /** settings 命名空间下、内置 MCP 可用的 i18n key（须与 locales 同步扩展） */
 export type BuiltinMcpLabelKey =
@@ -90,6 +94,16 @@ export interface BuiltinMcpPreset {
 	 * 目前只放行已接好的预设（如 Notion）。
 	 */
 	listedInDiscover?: boolean;
+	/** 与该预设同目录维护的能力详情介绍。 */
+	detail?: AbilityDetail;
+}
+
+interface BuiltinMcpAbilityDescriptor {
+	detail: AbilityDetail;
+}
+
+function descriptorDetail(descriptor: unknown): AbilityDetail {
+	return (descriptor as BuiltinMcpAbilityDescriptor).detail;
 }
 
 const MCP_ICON_BASE = "./mcp";
@@ -121,6 +135,7 @@ export const BUILTIN_MCP_PRESETS: readonly BuiltinMcpPreset[] = [
 		setupGuideKey: "mcpPresets.guides.notion",
 		setupHelpUrl: "https://developers.notion.com/guides/mcp/get-started-with-mcp",
 		listedInDiscover: true,
+		detail: descriptorDetail(notionAbility),
 		config: {
 			type: "http",
 			url: "https://mcp.notion.com/mcp",
@@ -137,6 +152,7 @@ export const BUILTIN_MCP_PRESETS: readonly BuiltinMcpPreset[] = [
 		setupGuideKey: "mcpPresets.guides.figma",
 		setupHelpUrl: "https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens",
 		listedInDiscover: true,
+		detail: descriptorDetail(figmaAbility),
 		config: {
 			command: "npx",
 			args: ["-y", "figma-developer-mcp", "--stdio"],
@@ -162,6 +178,7 @@ export const BUILTIN_MCP_PRESETS: readonly BuiltinMcpPreset[] = [
 		setupGuideKey: "mcpPresets.guides.github",
 		setupHelpUrl: "https://github.com/settings/personal-access-tokens",
 		listedInDiscover: true,
+		detail: descriptorDetail(githubAbility),
 		config: {
 			type: "http",
 			url: "https://api.githubcopilot.com/mcp/",

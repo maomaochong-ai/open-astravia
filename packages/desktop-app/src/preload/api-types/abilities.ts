@@ -101,6 +101,9 @@ export interface OpenMarketplaceDetail extends OpenMarketplaceDetailLocale {
 	i18n?: Record<string, OpenMarketplaceDetailLocale>;
 }
 
+/** 运行时聚合索引；内容来源仍是每个随应用分发能力自己的 ability.json。 */
+export type BuiltinAbilityPresentations = Record<string, OpenMarketplaceDetail>;
+
 export interface OpenMarketplaceBundleMember {
 	type: "skill" | "scene" | "mcp" | "plugin";
 	slug: string;
@@ -198,6 +201,8 @@ export interface OpenMarketplaceCatalog {
 export interface DesktopAbilitiesApi {
 	/** 一次性读取全量台账；读取时会剔除实际已不存在的漂移条目。 */
 	getLedger(): Promise<AbilityLedger>;
+	/** 读取内置 Skill 与系统插件包自带的详情介绍，键为 `<type>:<slug>`。 */
+	listBuiltinPresentations(): Promise<BuiltinAbilityPresentations>;
 	/**
 	 * 记录一次市场 MCP 能力的安装/升级。
 	 * skill / scene / plugin 的写入由各自主进程安装流程完成，mcp 的写入路径在渲染层

@@ -360,6 +360,7 @@ function createMcpAbility(input: McpBuildInput, state: LocalAbilityState, t: TFu
 			(entry ? getOpenCatalogOrigin(entry) : undefined) ??
 			(ledgerEntry?.origin?.kind === "github-marketplace" ? ledgerEntry.origin : undefined),
 		market: entry,
+		detail: entry ? undefined : preset?.detail,
 		preset,
 		usesOAuth,
 		authorized,

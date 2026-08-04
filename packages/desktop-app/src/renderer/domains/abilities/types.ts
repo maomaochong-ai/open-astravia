@@ -8,7 +8,7 @@ import type {
 	InstalledPlugin,
 	PluginPermission,
 } from "@preload/api";
-import type { AbilityMember, AbilityType, MarketAbility } from "@shared/lib/api";
+import type { AbilityDetail, AbilityMember, AbilityType, MarketAbility } from "@shared/lib/api";
 import type { McpSettingsModel } from "../settings/components/useMcpSettingsModel";
 import type { BuiltinMcpPreset } from "../settings/mcp/builtin-mcp-presets";
 
@@ -76,6 +76,8 @@ export interface AbilityBase {
 	/** 仅 GitHub 开源市场能力携带；服务端市场与本地能力为空。 */
 	origin?: GitHubMarketplaceOrigin;
 	market?: MarketAbility;
+	/** 随应用分发的详情介绍；市场条目仍以 market.detail 为准。 */
+	detail?: AbilityDetail;
 	/** 同类型、同展示名或同 slug 的其它目录条目。 */
 	sameNameIds?: string[];
 	/** 已占用同一物理安装位置的其它来源条目；显式替换流程完成前禁止覆盖。 */

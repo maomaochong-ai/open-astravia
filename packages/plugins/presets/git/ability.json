@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "git",
+	"version": "0.2.8",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "code",
+					"user_prompt": "刚才改了哪些文件？让我看看具体差异。",
+					"assistant_reply": "Git 面板会展示暂存、未暂存和未跟踪文件；选中文件即可展开对应 diff。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "项目内的 Git 工作台",
+				"items": [
+					{
+						"title": "变更状态树",
+						"description": "按目录查看已修改、新增、删除、重命名和未跟踪文件。",
+						"icon": "solar:folder-path-connect-linear"
+					},
+					{
+						"title": "内联 Diff",
+						"description": "点击文件直接查看工作区相对 HEAD 的差异。",
+						"icon": "solar:code-scan-linear"
+					},
+					{
+						"title": "提交图",
+						"description": "浏览提交历史，并按本地或远程分支筛选。",
+						"icon": "solar:branching-paths-down-linear"
+					},
+					{
+						"title": "同步仓库",
+						"description": "在面板中执行获取、拉取、推送和同步。",
+						"icon": "solar:refresh-circle-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "code",
+							"user_prompt": "Which files changed? Show me the actual differences.",
+							"assistant_reply": "The Git panel shows staged, unstaged, and untracked files. Select one to expand its diff."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "A Git workspace inside your project",
+						"items": [
+							{
+								"title": "Change tree",
+								"description": "Browse modified, added, deleted, renamed, and untracked files by folder.",
+								"icon": "solar:folder-path-connect-linear"
+							},
+							{
+								"title": "Inline diffs",
+								"description": "Inspect workspace changes against HEAD without leaving the panel.",
+								"icon": "solar:code-scan-linear"
+							},
+							{
+								"title": "Commit graph",
+								"description": "Browse history and filter by local or remote branches.",
+								"icon": "solar:branching-paths-down-linear"
+							},
+							{
+								"title": "Repository sync",
+								"description": "Fetch, pull, push, and sync from the panel.",
+								"icon": "solar:refresh-circle-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

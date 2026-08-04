@@ -34,8 +34,8 @@ export function AbilityDetailView({
 	const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
 
 	const detail = useMemo(
-		() => resolveAbilityDetailContent(item.market?.detail, language),
-		[item.market?.detail, language],
+		() => resolveAbilityDetailContent(item.detail ?? item.market?.detail, language),
+		[item.detail, item.market?.detail, language],
 	);
 
 	const handlePrimary = (): void => {

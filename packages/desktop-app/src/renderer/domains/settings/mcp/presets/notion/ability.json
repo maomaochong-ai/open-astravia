@@ -1,0 +1,68 @@
+{
+	"schemaVersion": 1,
+	"type": "mcp",
+	"slug": "notion",
+	"version": "1.0.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "docs",
+					"brand_name": "Notion",
+					"user_prompt": "整理 Notion 中的项目资料，并总结本周进展。",
+					"assistant_reply": "连接并授权后，我可以检索工作区内容、读取页面，再按你的要求整理信息。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "连接知识与协作内容",
+				"items": [
+					{
+						"title": "检索工作区",
+						"description": "按主题查找相关页面和数据库内容。",
+						"icon": "solar:magnifer-linear"
+					},
+					{
+						"title": "读取上下文",
+						"description": "把授权范围内的页面内容带入当前任务。",
+						"icon": "solar:notebook-bookmark-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "docs",
+							"brand_name": "Notion",
+							"user_prompt": "Collect the project notes in Notion and summarize this week’s progress.",
+							"assistant_reply": "After authorization, I can search your workspace, read pages, and organize the relevant information."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Connect knowledge and collaboration content",
+						"items": [
+							{
+								"title": "Search the workspace",
+								"description": "Find related pages and database content by topic.",
+								"icon": "solar:magnifer-linear"
+							},
+							{
+								"title": "Bring in context",
+								"description": "Use content from pages covered by your authorization.",
+								"icon": "solar:notebook-bookmark-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

@@ -1,0 +1,68 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "media-viewer",
+	"version": "0.1.4",
+	"detail": {
+		"blocks": [
+			{
+				"type": "feature-grid",
+				"title": "常见媒体文件直接预览",
+				"items": [
+					{
+						"title": "图片",
+						"description": "查看常见图片格式，并使用缩放、适应窗口和全屏操作。",
+						"icon": "solar:gallery-linear"
+					},
+					{
+						"title": "视频",
+						"description": "在文件预览区域直接播放视频内容。",
+						"icon": "solar:video-frame-play-horizontal-linear"
+					},
+					{
+						"title": "音频",
+						"description": "播放音频并控制进度、倍速、循环和静音。",
+						"icon": "solar:music-note-slider-2-linear"
+					},
+					{
+						"title": "无需离开项目",
+						"description": "选中文件即可在 Vetta 活动面板中查看。",
+						"icon": "solar:sidebar-code-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "feature-grid",
+						"title": "Preview common media files",
+						"items": [
+							{
+								"title": "Images",
+								"description": "View common image formats with zoom, fit, and fullscreen controls.",
+								"icon": "solar:gallery-linear"
+							},
+							{
+								"title": "Video",
+								"description": "Play video directly in the file preview surface.",
+								"icon": "solar:video-frame-play-horizontal-linear"
+							},
+							{
+								"title": "Audio",
+								"description": "Control progress, speed, looping, and mute while listening.",
+								"icon": "solar:music-note-slider-2-linear"
+							},
+							{
+								"title": "Stay in the project",
+								"description": "Select a file and preview it in Vetta’s activity panel.",
+								"icon": "solar:sidebar-code-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

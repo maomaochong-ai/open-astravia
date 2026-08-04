@@ -1,0 +1,68 @@
+{
+	"schemaVersion": 1,
+	"type": "mcp",
+	"slug": "github",
+	"version": "1.0.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "code",
+					"brand_name": "GitHub",
+					"user_prompt": "查看这个仓库最近的 Issue，并找出需要优先处理的问题。",
+					"assistant_reply": "配置访问令牌后，我可以查询仓库、Issue 和 Pull Request，帮助你把远端协作信息带入任务。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "面向仓库协作",
+				"items": [
+					{
+						"title": "查询仓库",
+						"description": "读取仓库结构与可访问的项目数据。",
+						"icon": "solar:code-square-linear"
+					},
+					{
+						"title": "跟进协作",
+						"description": "检索 Issue 与 Pull Request，辅助分析和处理。",
+						"icon": "solar:git-pull-request-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "code",
+							"brand_name": "GitHub",
+							"user_prompt": "Review the repository’s recent issues and identify what should be handled first.",
+							"assistant_reply": "After token setup, I can query repositories, issues, and pull requests to bring remote collaboration context into the task."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Repository collaboration",
+						"items": [
+							{
+								"title": "Query repositories",
+								"description": "Read repository structure and accessible project data.",
+								"icon": "solar:code-square-linear"
+							},
+							{
+								"title": "Follow collaboration",
+								"description": "Search issues and pull requests for analysis and follow-up.",
+								"icon": "solar:git-pull-request-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}
