@@ -381,20 +381,22 @@ export function FrameView({
 				    只要有位图就一直挂着、单纯用 opacity 收放，两个理由：按「该不该显示」卸载
 				    的话 opacity 过渡根本没机会执行，交接又变回硬切；而且活体期间摘掉 img，
 				    新位图到达时收不到 onLoad，也就无从知道它已经画得出来了。
-				    构建失败时也留着：iframe 里此刻只有兜底文案，上一张好图才是用户要看的。 */}
+				    构建失败时也留着：iframe 里此刻只有兜底文案，上一张好图才是用户要看的。
+				    pointer-events-none 是必须的：opacity 归零的元素照样是命中目标，这张图
+				    盖在 iframe 上就会把点击全吃掉，元素选择直接失效。它只是一层画面。 */}
 				{raster ? (
 					<img
 						src={raster}
 						alt=""
 						aria-hidden
-						className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
+						className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
 							shouldShowRaster ? "opacity-100" : "opacity-0"
 						}`}
 						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
 				{!raster && !loaded && !buildError ? (
-					<div className="absolute inset-0 flex items-center justify-center bg-muted">
+					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted">
 						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
 					</div>
 				) : null}
