@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Restored primary-button canvas panning while keeping box selection available through Control-drag.
 - Restored the “drop connection on empty canvas → create compatible node” menu: the pane click that follows `onConnectEnd` no longer immediately dismisses it.
 - Node resize: disabled forced aspect ratio so corners and edges can free-resize width/height independently; edge controls are invisible hit strips (no outer frame gap) with quiet corner grips instead of a second primary border.
 
