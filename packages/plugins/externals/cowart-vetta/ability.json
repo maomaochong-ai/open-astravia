@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "cowart-vetta",
+	"version": "0.1.8",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"user_prompt": "打开 Cowart 画布，把生成的图片放到画布上继续标注修改。",
+					"assistant_reply": "我会打开项目本地的无限画布，并让插件的 Skill 与 MCP 工具读写同一套画布文件。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "对话与无限画布协同",
+				"items": [
+					{
+						"title": "项目本地画布",
+						"description": "在活动面板中打开完整的 tldraw 工作区，画布数据保存在当前项目。",
+						"icon": "solar:layers-minimalistic-linear"
+					},
+					{
+						"title": "插件内聚 MCP",
+						"description": "Agent 工具和画布界面读写同一套 canvas 文件，保持内容一致。",
+						"icon": "solar:server-square-linear"
+					},
+					{
+						"title": "图像生成与编辑",
+						"description": "通过随包 Skill 从提示词生成图片，或根据画布标注继续修订。",
+						"icon": "solar:gallery-edit-linear"
+					},
+					{
+						"title": "回到对话继续",
+						"description": "画布中的 AI 操作可向当前会话发送后续请求，延续工作流。",
+						"icon": "solar:chat-round-dots-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"user_prompt": "Open Cowart, place the generated image on the canvas, and continue with annotated edits.",
+							"assistant_reply": "I’ll open the project-local infinite canvas and let the bundled Skills and MCP tools work on the same canvas files."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Conversation and infinite canvas together",
+						"items": [
+							{
+								"title": "Project-local canvas",
+								"description": "Opens a full tldraw workspace in the activity tab and stores canvas data in the project.",
+								"icon": "solar:layers-minimalistic-linear"
+							},
+							{
+								"title": "Plugin-scoped MCP",
+								"description": "Agent tools and the canvas UI read and write the same canvas files.",
+								"icon": "solar:server-square-linear"
+							},
+							{
+								"title": "Image generation and editing",
+								"description": "Bundled Skills create images from prompts or revise them from canvas annotations.",
+								"icon": "solar:gallery-edit-linear"
+							},
+							{
+								"title": "Continue in chat",
+								"description": "Canvas AI actions can send a follow-up into the current conversation.",
+								"icon": "solar:chat-round-dots-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

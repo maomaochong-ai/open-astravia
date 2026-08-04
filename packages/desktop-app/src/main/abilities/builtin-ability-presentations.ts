@@ -1,21 +1,27 @@
 import { join, relative } from "node:path";
 import type { OpenMarketplaceDetail } from "../../preload/api-types/abilities.js";
+import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { getBuiltinSkillsDir, readBuiltinSkillsManifest } from "../builtin-skills.js";
 import { getAppLogger } from "../logger.js";
-import { discoverSystemPlugins } from "../plugins/plugin-store.js";
+import { listPlugins } from "../plugins/plugin-store.js";
 import { loadAbilityPackagePresentation } from "./open-marketplace/open-marketplace-presentation.js";
 
 export type BuiltinAbilityPresentations = Record<string, OpenMarketplaceDetail>;
 
 const log = getAppLogger("builtin-ability-presentations");
 
-function pluginAssetUrl(pluginId: string, version: string, rootPath: string, absolutePath: string): string {
-	const resourcePath = relative(rootPath, absolutePath).replace(/\\/g, "/");
-	return `vetta-plugin://${pluginId}/${resourcePath}?v=${encodeURIComponent(version)}`;
+function pluginAssetUrl(plugin: InstalledPlugin, absolutePath: string): string {
+	const relativePath = relative(plugin.rootPath, absolutePath).replace(/\\/g, "/");
+	const resourcePath =
+		plugin.source === "system" || plugin.devWatch
+			? relativePath
+			: `versions/${encodeURIComponent(plugin.activeVersion)}/${relativePath}`;
+	const cacheVersion = plugin.devWatch ? "dev" : encodeURIComponent(plugin.activeVersion);
+	return `vetta-plugin://${plugin.id}/${resourcePath}?v=${cacheVersion}`;
 }
 
 /**
- * 运行时只聚合索引；详情真相源始终是各 Skill / 系统插件包根目录里的 ability.json。
+ * 运行时只聚合索引；详情真相源始终是各 Skill / 已安装插件包根目录里的 ability.json。
  * 单个包介绍损坏不应阻断能力页或应用启动，构建检查负责在发布前拦截。
  */
 export function listBuiltinAbilityPresentations(): BuiltinAbilityPresentations {
@@ -37,13 +43,13 @@ export function listBuiltinAbilityPresentations(): BuiltinAbilityPresentations {
 		}
 	}
 
-	for (const plugin of discoverSystemPlugins()) {
+	for (const plugin of listPlugins()) {
 		try {
 			const presentation = loadAbilityPackagePresentation(
 				plugin.rootPath,
 				{ type: "plugin", slug: plugin.id, version: plugin.activeVersion },
 				plugin.activeVersion,
-				(absolutePath) => pluginAssetUrl(plugin.id, plugin.activeVersion, plugin.rootPath, absolutePath),
+				(absolutePath) => pluginAssetUrl(plugin, absolutePath),
 			);
 			if (presentation) presentations[`plugin:${plugin.id}`] = presentation.detail;
 		} catch (error) {
