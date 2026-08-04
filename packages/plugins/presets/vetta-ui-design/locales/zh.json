@@ -22,6 +22,7 @@
 	"canvas.frame.modifying": "修改中",
 	"canvas.frame.updated": "已更新",
 	"canvas.frame.buildError": "构建失败",
+	"canvas.buildError.giveUp": "构建仍未修复，已停止自动回报，请手动处理",
 	"canvas.newFrame.defaultTitle": "新画框",
 	"canvas.frame.menu.ask": "让 Vetta 调整",
 	"canvas.frame.menu.rename": "重命名",

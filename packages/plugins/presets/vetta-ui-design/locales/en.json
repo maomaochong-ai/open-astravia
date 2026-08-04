@@ -22,6 +22,7 @@
 	"canvas.frame.modifying": "Editing",
 	"canvas.frame.updated": "Updated",
 	"canvas.frame.buildError": "Build failed",
+	"canvas.buildError.giveUp": "Build still failing; stopped reporting back to the agent",
 	"canvas.newFrame.defaultTitle": "New frame",
 	"canvas.frame.menu.ask": "Ask Vetta",
 	"canvas.frame.menu.rename": "Rename",
