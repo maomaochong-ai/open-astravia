@@ -15,6 +15,7 @@ import { configureRendererCdp } from "./app-debug/ui/renderer-cdp.js";
 import { registerAppLifecycleIpc } from "./app-lifecycle.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
 import { consumeOAuthCallback, reopenOAuthLogin, startOAuthLogin } from "./auth/oauth-login.js";
+import { setLoopbackCallbackHandler } from "./auth/oauth-loopback.js";
 import { initializeDesktopBatchTaskService } from "./batch-tasks/batch-task-service.js";
 import { parseActionCliCommand, runActionCliCommand } from "./cli/action-command.js";
 import { parseAgentRpcCommand, runAgentRpcCommand } from "./cli/agent-rpc-command.js";
@@ -310,15 +311,24 @@ function handleProtocolUrl(rawUrl: string): void {
 	}
 }
 
-// macOS: app may already be running when protocol URL is opened
-app.on("open-url", (event, url) => {
-	event.preventDefault();
-	handleProtocolUrl(url);
+function receiveProtocolUrl(rawUrl: string): void {
+	handleProtocolUrl(rawUrl);
 	const mainWindow = getMainWindow();
 	if (mainWindow) {
 		if (mainWindow.isMinimized()) mainWindow.restore();
+		// loopback 回调时前台是浏览器，只 focus 窗口不足以把应用抢回来。
+		if (isMac) app.focus({ steal: true });
 		mainWindow.focus();
 	}
+}
+
+// 开发模式没有可用的自定义 scheme，回调从本机 loopback HTTP 服务进来。
+setLoopbackCallbackHandler(receiveProtocolUrl);
+
+// macOS: app may already be running when protocol URL is opened
+app.on("open-url", (event, url) => {
+	event.preventDefault();
+	receiveProtocolUrl(url);
 });
 
 // Windows/Linux: second instance passes URL via argv

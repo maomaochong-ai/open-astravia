@@ -33,6 +33,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **开发模式登录回调不再拉起已安装的正式版**：dev 跑的是 `node_modules` 里的 Electron.app（bundle id `com.github.Electron`，Info.plist 没有 `CFBundleURLTypes`），macOS/Linux 的 LaunchServices 只会把 `vetta://` 派发给声明过该 scheme 的 bundle，也就是 `/Applications/Vetta.app`，开发中的实例永远收不到 token；`setAsDefaultProtocolClient` 在 macOS 上也救不了（系统拉起 bundle 时不带 `dist/main/index.js` 这个 argv）。非打包时改走 OAuth 标准的 loopback 回调：主进程在 `127.0.0.1` 临时端口监听 `/oauth/callback`，`client_redirect` 指向该地址，收到后归一化成 `vetta://oauth/callback?…` 复用既有的 state 校验链路，并把窗口抢回前台。打包版行为不变。
+
 - **能力市场「我的」不再按工作模式过滤插件**：声明了 `agent_mode` 白名单的插件（如 `agent_mode: ["work"]`）在「编程」模式下会从「我的」里整条消失，看起来像能力丢了。能力页改用不过滤的 `plugins.listAll()` 取已装插件；插件详情页新增「适用工作场景」一栏，列出该插件声明的模式（未声明则为「全部场景」），当前模式不在白名单时给出提示。工作台列表与 UI 贡献的模式硬闸不变（ADR-0046）。
 
 - **活动面板「生图历史 / 移动预览 / 内容创作」默认不再占栏**：生图历史 `initiallyVisible: false`，仅在 `generate_image` / `edit_image` 成功后 `openActivityTab` 上栏；移动预览改为跟文件树选中（含 html/htm）显隐，不再因项目里任意存在 html 就自动上栏；内容创作（content-creation）同理默认隐藏，由 `open_content_creation` 或用户从「+」添加后再显示。
