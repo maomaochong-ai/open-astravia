@@ -4,9 +4,12 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ## [Unreleased]
 
+## [0.0.5] — 2026-08-04
+
 ### Added
 
 - **宿主共享 `@vetta/ui`**：`vettaPluginFederation` 默认将 `@vetta/ui` 设为 MF `singleton + import:false`，并 rollup external 到 `vetta-host://ui`，与 desktop-app 的 share scope / host shim 对齐；插件可选用宿主 primitives 而不打进 bundle。
+- **打包纳入能力详情**：根目录存在 `ability.json` 时随 zip 分发，并连带约定的 `presentation/` 展示资源目录；打包期校验 `schemaVersion` / `type` / `slug` / `version` 与 `plugin.json` 身份一致，不一致直接报错。`ability.json` 缺省时行为不变。
 
 ## [0.0.4] — 2026-07-31
 
