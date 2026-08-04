@@ -229,8 +229,8 @@ export function buildSkillAbilities(market: MarketAbility[], state: LocalAbility
 			catalogSource: source,
 			title: skill.alias || skill.name,
 			description: skill.description,
-			// 内置 Skill 的图标随 renderer 静态资源分发；用户/插件来源的 skill 无图标，落默认图。
-			icon: isBuiltin ? builtinSkillIconUrl(skill.name) : undefined,
+			// 内置走 renderer 静态资源；插件贡献 skill 带宿主插件 iconUrl；其余落默认图。
+			icon: isBuiltin ? builtinSkillIconUrl(skill.name) : skill.icon,
 			category: "",
 			tags: [],
 			author: "",
