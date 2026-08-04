@@ -8,8 +8,9 @@
  * Message contract (both directions carry `{ vetd: true }`):
  *   parent → iframe: set-mode | show-frame | clear-selection | capture
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
+ *                    | frame-error | context-menu
  */
-import { toPng } from "html-to-image";
+import { toJpeg, toPng } from "html-to-image";
 
 type InspectMode = "off" | "inspect";
 
@@ -137,6 +138,77 @@ export function notifyFrameRendered(frameId: string | null, allFrames: string[])
 	post({ type: "rendered", frameId, allFrames });
 }
 
+/**
+ * 编译失败上报（vite 自带的红屏 overlay 已在 vite.config.mjs 里关掉）。
+ * `message` 为 null 表示这一帧当前没有错误——每次渲染都会先发一次清空。
+ */
+export function notifyFrameError(frameId: string | null, message: string | null): void {
+	post({ type: "frame-error", frameId, message });
+}
+
+interface ViteErrorPayload {
+	err?: { message?: string; id?: string; loc?: { file?: string; line?: number } };
+}
+
+let lastBuildError: string | null = null;
+const buildErrorListeners = new Set<(message: string) => void>();
+let reloadArmed = false;
+
+/** 最近一次 vite 编译错误。import 失败时拿它换掉「加载模块失败」这种无用信息。 */
+export function latestBuildError(): string | null {
+	return lastBuildError;
+}
+
+export function onBuildError(listener: (message: string) => void): () => void {
+	buildErrorListeners.add(listener);
+	return () => buildErrorListeners.delete(listener);
+}
+
+/**
+ * 编译失败的 frame 模块从没成功执行过，也就不在 HMR 图里：改好之后 vite 推来的
+ * 更新落不到它身上，页面会一直停在错误态。既然当前渲染已经废了，收到任何一次
+ * 更新就整页重载，代价为零。
+ */
+export function armReloadOnNextUpdate(): void {
+	if (reloadArmed || !import.meta.hot) return;
+	reloadArmed = true;
+	import.meta.hot.on("vite:beforeUpdate", () => window.location.reload());
+}
+
+if (import.meta.hot) {
+	import.meta.hot.on("vite:error", (payload: ViteErrorPayload) => {
+		const err = payload?.err;
+		if (!err) return;
+		const where = err.loc?.file ?? err.id;
+		const line = err.loc?.line;
+		const head = where ? `${where}${line ? `:${line}` : ""}\n` : "";
+		lastBuildError = `${head}${err.message ?? "build failed"}`;
+		for (const listener of buildErrorListeners) listener(lastBuildError);
+	});
+}
+
+/**
+ * 元素选择期间把光标钉成箭头。
+ *
+ * 这时候点击的语义是「选中这个元素」，不是「操作这个 UI」——让按钮继续显示手型、
+ * 输入框继续显示 I 形光标会让人以为真能点进去。!important 是必须的：要盖过页面
+ * 自己的 cursor 声明。
+ */
+const CURSOR_STYLE_ID = "vetd-inspect-cursor";
+
+function setInspectCursor(on: boolean): void {
+	const existing = document.getElementById(CURSOR_STYLE_ID);
+	if (!on) {
+		existing?.remove();
+		return;
+	}
+	if (existing) return;
+	const style = document.createElement("style");
+	style.id = CURSOR_STYLE_ID;
+	style.textContent = "*, *::before, *::after { cursor: default !important; }";
+	document.head.appendChild(style);
+}
+
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
@@ -159,15 +231,39 @@ export function installBridge(host: BridgeHost): void {
 		post({ type: "selected", payload: element ? payloadFor(element) : null });
 	};
 
+	/**
+	 * 清掉高亮，但不往外报「选中变成了 null」。
+	 *
+	 * 报了会绕回来：画布收到空的 selected 会把这一帧退回 frame 级选中，而单独选中
+	 * 一个 frame 又等于开着元素选择——于是刚关掉的模式立刻被自己打开。取消选中、
+	 * 点别的 frame、Esc 三条路都是这么失效的。
+	 * 两个调用方各自有更准确的消息：关模式的那次由画布发起，本来就知道结果；
+	 * Esc 走 exit-inspect，带着自己的语义。
+	 */
 	const reset = (): void => {
-		select(null);
+		selected = null;
+		moveOverlay(selectedOverlay, null);
 		moveOverlay(hoverOverlay, null);
 	};
 
 	const setMode = (next: InspectMode): void => {
 		mode = next;
+		setInspectCursor(mode === "inspect");
 		if (mode === "off") reset();
 	};
+
+	// 元素选择开着时右键落在 iframe 里，画布那层的 contextmenu 再也收不到——而
+	// 右键菜单是「让 Vetta 调整 / 导出渲染图 / 重命名 / 删除」的唯一入口。这里把
+	// 它转发出去，坐标由画布换算回视口坐标（见 bridge-client）。
+	document.addEventListener(
+		"contextmenu",
+		(event) => {
+			if (mode !== "inspect") return;
+			event.preventDefault();
+			post({ type: "context-menu", x: event.clientX, y: event.clientY });
+		},
+		true,
+	);
 
 	document.addEventListener(
 		"mousemove",
@@ -206,8 +302,12 @@ export function installBridge(host: BridgeHost): void {
 				select(parent);
 				return;
 			}
+			// 焦点在 iframe 里的时候画布层收不到 keydown，Esc 的每一级都得从这里发出去。
+			// hadSelection 就是那个级差：还选着元素就只清元素（frame 仍选中，可以接着
+			// 点下一个），已经什么都没选了才是真的要退出这个 frame。
+			const hadSelection = selected !== null;
 			reset();
-			post({ type: "exit-inspect" });
+			post({ type: "exit-inspect", hadSelection });
 		},
 		true,
 	);
@@ -243,7 +343,20 @@ export function installBridge(host: BridgeHost): void {
 				// CORS 问题，而素材由同源的引擎 dev server 提供，用不上。
 				// 只有交付物（导出渲染图 / 发给 agent）保留它兜底，画布位图化不用。
 				const cacheBust = data.cacheBust === true;
-				toPng(document.documentElement, { pixelRatio, cacheBust })
+				// 画布位图化要 jpeg：同样的像素数，dataUrl 字符串小一个量级，
+				// postMessage 传输与常驻内存跟着降下来——这正是能把 pixelRatio 提到
+				// 设备像素比、让位图不再糊的前提。jpeg 没有透明通道，必须显式铺白底，
+				// 否则透明处会变黑。交付物（导出渲染图 / 发给 agent）继续走 png。
+				const encode = (): Promise<string> =>
+					data.format === "jpeg"
+						? toJpeg(document.documentElement, {
+								pixelRatio,
+								cacheBust,
+								quality: typeof data.quality === "number" ? data.quality : 0.92,
+								backgroundColor: "#ffffff",
+							})
+						: toPng(document.documentElement, { pixelRatio, cacheBust });
+				encode()
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) =>
 						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),

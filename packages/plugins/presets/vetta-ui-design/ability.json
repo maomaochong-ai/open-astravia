@@ -1,0 +1,88 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "vetta-ui-design",
+	"version": "0.1.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"brand_name": "Vetta UI Design",
+					"user_prompt": "做一个桌面端数据看板，并把统计卡片调整得更紧凑。",
+					"assistant_reply": "我会创建真实 React 画框；你选中画框或元素后，还可以继续用自然语言定向修改。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "代码就是设计稿",
+				"items": [
+					{
+						"title": "无限画布",
+						"description": "在同一设计文档中并排组织多个真实界面画框。",
+						"icon": "solar:layers-minimalistic-linear"
+					},
+					{
+						"title": "选中后修改",
+						"description": "把画框或具体元素交给 Vetta，缩小修改范围。",
+						"icon": "solar:cursor-square-linear"
+					},
+					{
+						"title": "保存即更新",
+						"description": "画框由 React 源码驱动，保存后画布自动加载最新结果。",
+						"icon": "solar:refresh-circle-linear"
+					},
+					{
+						"title": "导出与分享",
+						"description": "可导出设计分享包或把选中画框组合成渲染图。",
+						"icon": "solar:export-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"brand_name": "Vetta UI Design",
+							"user_prompt": "Design a desktop analytics dashboard and make the metric cards more compact.",
+							"assistant_reply": "I’ll create real React frames. Select a frame or element later to request a focused change in natural language."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "The code is the design",
+						"items": [
+							{
+								"title": "Infinite canvas",
+								"description": "Arrange multiple live interface frames in one design document.",
+								"icon": "solar:layers-minimalistic-linear"
+							},
+							{
+								"title": "Targeted edits",
+								"description": "Select a frame or element to narrow the Agent’s edit scope.",
+								"icon": "solar:cursor-square-linear"
+							},
+							{
+								"title": "Live updates",
+								"description": "React source drives every frame and refreshes when saved.",
+								"icon": "solar:refresh-circle-linear"
+							},
+							{
+								"title": "Export and share",
+								"description": "Export a design package or compose selected frames into mockups.",
+								"icon": "solar:export-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

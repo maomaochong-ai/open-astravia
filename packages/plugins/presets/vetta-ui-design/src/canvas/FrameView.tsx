@@ -13,7 +13,10 @@ interface FrameViewProps {
 	zoom: number;
 	bridge: BridgeHub;
 	selected: boolean;
-	/** Inspect mode: pointer events pass through to the iframe. */
+	/**
+	 * 元素选择开着：画面区的指针事件直接交给 iframe。单独选中这个 frame 时就是 true，
+	 * 所以 frame 自身的移动改走标题栏、缩放走四角手柄（手柄不随它隐藏）。
+	 */
 	entered: boolean;
 	interactive: boolean;
 	/** Resize handles show only for a lone selection — a group resize has no obvious meaning. */
@@ -25,13 +28,20 @@ interface FrameViewProps {
 	raster: string | null;
 	/** 变化时 iframe 的 URL 跟着变，强制它重新导航（刷新按钮走这条路）。 */
 	reloadNonce: number;
+	/**
+	 * 该 frame 累计上报「已经画到屏幕上」的次数。位图向活体的交接必须等它自增，
+	 * 不能用 iframe 的 onLoad——文档 load 远早于 React 应用渲染完（dev 下还要拉
+	 * module graph、再 lazy 载入 frame chunk），那时切过去看到的是白板。
+	 */
+	paintTick: number;
 	/** Live offset of the in-flight group move this frame takes part in. */
 	moveDelta: { dx: number; dy: number } | null;
 	activity: FrameActivity | undefined;
+	/** 非 null 时这一帧编译/渲染失败：盖住上一张位图，标题栏挂徽标（详情走 title）。 */
+	buildError: string | null;
 	/** true 时标题变成就地编辑的输入框（双击标题，或右键菜单里的重命名）。 */
 	renaming: boolean;
 	onSelect(additive: boolean): void;
-	onEnter(): void;
 	/** 右键：坐标是视口坐标（clientX/Y），由画布换算成容器内坐标定位菜单。 */
 	onContextMenu(clientX: number, clientY: number): void;
 	onRenameStart(): void;
@@ -55,6 +65,11 @@ interface DragState {
 
 const MIN_WIDTH = 100;
 const MIN_HEIGHT = 80;
+/**
+ * 收不到「画好了」信号时的兜底：iframe 加载完这么久之后照样交接。引擎渲染不出内容
+ * （bridge 没装上、frame 抛错在边界里）时不能让位图永远盖着。
+ */
+const PAINT_FALLBACK_MS = 2_500;
 
 export function FrameView({
 	frame,
@@ -69,11 +84,12 @@ export function FrameView({
 	live,
 	raster,
 	reloadNonce,
+	paintTick,
 	moveDelta,
 	activity,
+	buildError,
 	renaming,
 	onSelect,
-	onEnter,
 	onContextMenu,
 	onRenameStart,
 	onRenameCommit,
@@ -88,14 +104,54 @@ export function FrameView({
 	const dragRef = useRef<DragState | null>(null);
 	/** 改尺寸拖拽期间的实时矩形（提交前不落 manifest）。 */
 	const [resizeRect, setResizeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-	/** 当前这个 iframe 是否加载完毕——位图要盖到这一刻才撤。 */
+	/**
+	 * 正在拖拽。用来让遮罩在这段时间里保持可交互：从未选中态起手拖动会顺带选中这个
+	 * frame，遮罩本该立刻让位给 iframe，但那样松手事件就落空了，这一次拖拽再也结束
+	 * 不了。拖到松手为止都留着。
+	 */
+	const [dragging, setDragging] = useState(false);
+	/** 当前这个 iframe 是否已经把内容画出来了——位图要盖到这一刻才撤。 */
 	const [loaded, setLoaded] = useState(false);
+	/** 交接只认「这一次挂载之后」的上报，所以要记下挂载时刻的计数基线。 */
+	const paintTickRef = useRef(paintTick);
+	paintTickRef.current = paintTick;
+	const paintBaselineRef = useRef(paintTick);
+	const fallbackRef = useRef<number | null>(null);
 
 	// 卸载后再挂上是一个全新的 iframe，加载态要跟着重置，否则位图会提前撤掉。
 	// 刷新（reloadNonce 变化）同理：正在重新导航的这段时间该由位图盖住。
 	useEffect(() => {
+		paintBaselineRef.current = paintTickRef.current;
+		// 上一个 iframe 留下的兜底计时器要一起作废，否则它会在新 iframe 还空白时
+		// 把 loaded 拉回 true，白闪原样回来。
+		if (fallbackRef.current !== null) {
+			window.clearTimeout(fallbackRef.current);
+			fallbackRef.current = null;
+		}
 		setLoaded(false);
 	}, [mounted, reloadNonce]);
+
+	useEffect(() => {
+		if (paintTick > paintBaselineRef.current) setLoaded(true);
+	}, [paintTick]);
+
+	useEffect(() => {
+		return () => {
+			if (fallbackRef.current !== null) window.clearTimeout(fallbackRef.current);
+		};
+	}, []);
+
+	/**
+	 * 已经画得出来的那张位图。img 在解码完成前是完全透明的，这时候把 iframe 收掉
+	 * 就会露出容器白底——切回位图时的白闪正是这么来的（位图越大越明显）。
+	 * frame-raster 侧已经预解码过一轮，这里是第二道保险：真画出来了才撤活体。
+	 */
+	const [paintedRaster, setPaintedRaster] = useState<string | null>(null);
+	const rasterPainted = raster !== null && paintedRaster === raster;
+
+	const shouldShowRaster = !live || !loaded || buildError !== null;
+	/** 活体要多留一会儿：位图还没画出来时它是唯一有内容的那一层。 */
+	const keepLiveVisible = live || (raster !== null && !rasterPainted);
 
 	// mounted 必须在依赖里：iframe 是按挂载节流条件渲染的，false→true 时这个
 	// effect 要重跑才能把真正的 iframe 注册进 bridge。漏了它的话，后挂上的 frame
@@ -115,12 +171,15 @@ export function FrameView({
 	const beginDrag = (event: ReactPointerEvent, edge: DragState["edge"]): void => {
 		// 只认左键：右键要留给上下文菜单，捕获指针会把后续事件都劫走。
 		if (event.button !== 0) return;
-		if (!interactive || entered) return;
+		// 这里不能再拦 entered：元素选择开着时画面区已经归 iframe，标题栏和四角手柄
+		// 就是移动/缩放仅剩的入口，拦掉等于选中之后 frame 再也动不了。
+		if (!interactive) return;
 		event.preventDefault();
 		event.stopPropagation();
 		if (edge === "move") onMoveStart(event.shiftKey);
 		else onSelect(false);
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		setDragging(true);
 		dragRef.current = {
 			pointerId: event.pointerId,
 			startX: event.clientX,
@@ -133,6 +192,12 @@ export function FrameView({
 	const moveDrag = (event: ReactPointerEvent): void => {
 		const drag = dragRef.current;
 		if (!drag || event.pointerId !== drag.pointerId) return;
+		// 按键早就松开了却还在收到移动，说明那次 pointerup 落到了别处（跨源 iframe 里
+		// 松手、起手的元素中途没了…）。就地收尾，别让 frame 继续跟着指针跑。
+		if (event.buttons === 0) {
+			finishDrag(event.pointerId);
+			return;
+		}
 		const dx = (event.clientX - drag.startX) / zoom;
 		const dy = (event.clientY - drag.startY) / zoom;
 		const { origin } = drag;
@@ -167,10 +232,11 @@ export function FrameView({
 		});
 	};
 
-	const endDrag = (event: ReactPointerEvent): void => {
+	const finishDrag = (pointerId: number): void => {
 		const drag = dragRef.current;
-		if (!drag || event.pointerId !== drag.pointerId) return;
+		if (!drag || pointerId !== drag.pointerId) return;
 		dragRef.current = null;
+		setDragging(false);
 		if (drag.edge === "move") {
 			onMoveEnd();
 			return;
@@ -180,6 +246,26 @@ export function FrameView({
 			setResizeRect(null);
 		}
 	};
+
+	const endDrag = (event: ReactPointerEvent): void => finishDrag(event.pointerId);
+
+	/**
+	 * 兜底收尾：拖拽起手的那个元素有可能在松手之前就消失（例如按下遮罩会让 frame
+	 * 变成选中态，遮罩本身随之让位给 iframe），它的 pointerup 就永远不会来。
+	 * dragRef 于是一直留着上一次的按下点，而它是遮罩和标题栏共用的——鼠标之后只要
+	 * 飘过标题栏就会被当成还在拖，frame 跟着指针跑。这里在 window 上补一次收尾。
+	 */
+	const finishRef = useRef(finishDrag);
+	finishRef.current = finishDrag;
+	useEffect(() => {
+		const onWindowUp = (event: PointerEvent): void => finishRef.current(event.pointerId);
+		window.addEventListener("pointerup", onWindowUp);
+		window.addEventListener("pointercancel", onWindowUp);
+		return () => {
+			window.removeEventListener("pointerup", onWindowUp);
+			window.removeEventListener("pointercancel", onWindowUp);
+		};
+	}, []);
 
 	const labelScale = Math.min(1 / zoom, 8);
 	const handles: { edge: ResizeEdge; className: string }[] = [
@@ -243,6 +329,15 @@ export function FrameView({
 				<span className="text-muted-foreground">
 					{rect.width}×{rect.height}
 				</span>
+				{buildError ? (
+					<span
+						className="flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
+						title={buildError}
+					>
+						<span className="size-1.5 rounded-full bg-red-500" />
+						{t("canvas.frame.buildError")}
+					</span>
+				) : null}
 				{activity === "modifying" ? (
 					<span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
 						<span className="size-1.5 animate-pulse rounded-full bg-primary" />
@@ -270,45 +365,68 @@ export function FrameView({
 						// nonce 放在查询串而不是 hash：改 hash 只会触发 hashchange，文档不会重新加载。
 						src={`http://127.0.0.1:${port}/?r=${reloadNonce}#/frame/${encodeURIComponent(frame.id)}`}
 						className="h-full w-full border-0"
-						style={{ pointerEvents: entered ? "auto" : "none", display: live ? "block" : "none" }}
-						onLoad={() => setLoaded(true)}
+						style={{
+							pointerEvents: entered ? "auto" : "none",
+							display: keepLiveVisible ? "block" : "none",
+						}}
+						// 文档 load 只用来起兜底计时：真正的交接信号是 paintTick。
+						onLoad={() => {
+							if (fallbackRef.current !== null) window.clearTimeout(fallbackRef.current);
+							fallbackRef.current = window.setTimeout(() => setLoaded(true), PAINT_FALLBACK_MS);
+						}}
 					/>
 				) : null}
-				{/* 位图盖在 iframe 上，等它真的加载完再撤：刚挂载的 iframe 有一段空白期，
-				    直接切过去就是肉眼可见的一闪。淡出让交接看不出来。 */}
-				{raster && (!live || !loaded) ? (
+				{/* 位图盖在 iframe 上，等它真的把内容画出来再淡出：刚挂载的 iframe 有一段
+				    空白期，直接切过去就是肉眼可见的白闪。
+				    只要有位图就一直挂着、单纯用 opacity 收放，两个理由：按「该不该显示」卸载
+				    的话 opacity 过渡根本没机会执行，交接又变回硬切；而且活体期间摘掉 img，
+				    新位图到达时收不到 onLoad，也就无从知道它已经画得出来了。
+				    构建失败时也留着：iframe 里此刻只有兜底文案，上一张好图才是用户要看的。
+				    pointer-events-none 是必须的：opacity 归零的元素照样是命中目标，这张图
+				    盖在 iframe 上就会把点击全吃掉，元素选择直接失效。它只是一层画面。 */}
+				{raster ? (
 					<img
 						src={raster}
 						alt=""
 						aria-hidden
-						className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-150 ${
-							live && loaded ? "opacity-0" : "opacity-100"
+						className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
+							shouldShowRaster ? "opacity-100" : "opacity-0"
 						}`}
+						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
-				{!raster && !loaded ? (
-					<div className="absolute inset-0 flex items-center justify-center bg-muted">
+				{!raster && !loaded && !buildError ? (
+					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-muted">
 						<span className="size-4 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-transparent" />
 					</div>
 				) : null}
-				{/* Interaction shield: select/move at frame level until the user drills in. */}
-				{!entered ? (
+				{/* 遮罩：还没单独选中它时，画面区的点击只作用在 frame 这一层（选中/拖动）。
+				    单独选中之后遮罩让位给 iframe，里面的元素直接可选。
+				    注意是把指针事件关掉而不是把元素卸掉：起手拖动会顺带选中这个 frame，
+				    卸掉的话这一次拖拽的 pointerup 就丢了，dragRef 泄漏，之后鼠标飘过标题栏
+				    frame 就跟着指针跑。拖拽期间（dragging）无论如何都保持可交互。 */}
+				{
 					// biome-ignore lint/a11y/noStaticElementInteractions: canvas manipulation surface
 					<div
 						className="absolute inset-0"
-						style={{ cursor: interactive ? "default" : "inherit" }}
+						style={{
+							cursor: interactive ? "default" : "inherit",
+							pointerEvents: entered && !dragging ? "none" : "auto",
+						}}
 						onPointerDown={(event) => beginDrag(event, "move")}
 						onPointerMove={moveDrag}
 						onPointerUp={endDrag}
+						// 多选态下双击某一个 frame：收敛成只选它，也就直接开了元素选择。
 						onDoubleClick={(event) => {
 							event.stopPropagation();
-							if (interactive) onEnter();
+							if (interactive) onSelect(false);
 						}}
 					/>
-				) : null}
+				}
 			</div>
 
-			{selected && resizable && !entered
+			{/* 手柄在元素选择开着时也要留：画面区已经归 iframe 了，缩放只剩这一条路。 */}
+			{selected && resizable
 				? handles.map(({ edge, className }) => (
 						// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
 						<div

@@ -128,6 +128,53 @@ export function notifyFrameSettled(frameId: string | null): void {
 	if (changed) emitActivity();
 }
 
+/**
+ * frameId → 编译/渲染错误。放在模块级而不是画布 state 里：agent 工具（vetd_screenshot）
+ * 要在截图前就知道这一帧是坏的，否则只能发出一条没人应答的截图请求、干等到超时。
+ */
+const frameErrors = new Map<string, string>();
+type FrameErrorListener = (errors: ReadonlyMap<string, string>) => void;
+const frameErrorListeners = new Set<FrameErrorListener>();
+
+export function onFrameErrors(listener: FrameErrorListener): () => void {
+	frameErrorListeners.add(listener);
+	listener(frameErrors);
+	return () => frameErrorListeners.delete(listener);
+}
+
+export function getFrameError(frameId: string): string | null {
+	return frameErrors.get(frameId) ?? null;
+}
+
+export function listFrameErrors(): ReadonlyMap<string, string> {
+	return frameErrors;
+}
+
+/** `message` 为 null 表示这一帧恢复正常。 */
+export function setFrameError(frameId: string, message: string | null): void {
+	if ((frameErrors.get(frameId) ?? null) === message) return;
+	if (message) frameErrors.set(frameId, message);
+	else frameErrors.delete(frameId);
+	// 构建失败的 frame 等不到 HMR，「修改中」会一直挂着；错误徽标接管，直接收掉。
+	// 也不翻成「已更新」——这一轮改动根本没生效。
+	if (message && activity.has(frameId)) {
+		const timer = updatedTimers.get(frameId);
+		if (timer !== undefined) {
+			window.clearTimeout(timer);
+			updatedTimers.delete(frameId);
+		}
+		activity.delete(frameId);
+		emitActivity();
+	}
+	for (const listener of frameErrorListeners) listener(frameErrors);
+}
+
+export function clearFrameErrors(): void {
+	if (frameErrors.size === 0) return;
+	frameErrors.clear();
+	for (const listener of frameErrorListeners) listener(frameErrors);
+}
+
 export function clearFrameActivity(): void {
 	activity.clear();
 	for (const timer of updatedTimers.values()) window.clearTimeout(timer);

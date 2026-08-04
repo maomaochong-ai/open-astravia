@@ -14,9 +14,11 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { app } from "electron";
 import { DEFAULT_SITE_URL } from "../constants.js";
 import { getAppLogger } from "../logger.js";
 import { openExternalUrl } from "../open-external.js";
+import { ensureLoopbackCallbackUrl } from "./oauth-loopback.js";
 
 const log = getAppLogger("auth");
 
@@ -30,8 +32,17 @@ export interface OAuthCallbackTokens {
 	refreshToken?: string;
 }
 
-function buildAuthorizeUrl(state: string): string {
-	const clientRedirect = `${CALLBACK_URL}?state=${encodeURIComponent(state)}`;
+/**
+ * 开发模式用 loopback HTTP 回调，打包后用自定义 scheme。
+ * 原因见 oauth-loopback.ts 顶部注释。
+ */
+async function resolveCallbackUrl(): Promise<string> {
+	if (app.isPackaged) return CALLBACK_URL;
+	return await ensureLoopbackCallbackUrl();
+}
+
+async function buildAuthorizeUrl(state: string): Promise<string> {
+	const clientRedirect = `${await resolveCallbackUrl()}?state=${encodeURIComponent(state)}`;
 	return `${DEFAULT_SITE_URL}/auth/deep-link?client_redirect=${encodeURIComponent(clientRedirect)}`;
 }
 
@@ -41,7 +52,7 @@ function buildAuthorizeUrl(state: string): string {
  */
 export async function startOAuthLogin(): Promise<void> {
 	pendingState = randomUUID();
-	await openExternalUrl(buildAuthorizeUrl(pendingState));
+	await openExternalUrl(await buildAuthorizeUrl(pendingState));
 }
 
 /**
@@ -53,7 +64,7 @@ export async function reopenOAuthLogin(): Promise<void> {
 		await startOAuthLogin();
 		return;
 	}
-	await openExternalUrl(buildAuthorizeUrl(pendingState));
+	await openExternalUrl(await buildAuthorizeUrl(pendingState));
 }
 
 /**

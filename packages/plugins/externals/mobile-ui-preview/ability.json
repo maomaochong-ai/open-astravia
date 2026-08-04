@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "mobile-ui-preview",
+	"version": "0.3.3",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "code",
+					"user_prompt": "检查这个 HTML 页面在 iPhone 和 Android 横屏下的效果。",
+					"assistant_reply": "我会在移动设备边框中打开当前作用域的页面，切换设备和方向进行预览。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "在桌面端检查移动页面",
+				"items": [
+					{
+						"title": "多种设备边框",
+						"description": "使用带状态栏的 iPhone、Android 与 iPad 尺寸预览 HTML 页面。",
+						"icon": "solar:smartphone-2-linear"
+					},
+					{
+						"title": "横竖屏切换",
+						"description": "快速切换设备方向，检查响应式布局和可用空间。",
+						"icon": "solar:screen-share-linear"
+					},
+					{
+						"title": "作用域文件选择",
+						"description": "自动发现当前项目或会话作用域中的 HTML 与 HTM 文件。",
+						"icon": "solar:file-code-linear"
+					},
+					{
+						"title": "导出检查结果",
+						"description": "导出 PNG 渲染图，或生成可继续交给 Agent 的工程化 Prompt。",
+						"icon": "solar:export-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "code",
+							"user_prompt": "Check this HTML page on iPhone and Android in landscape.",
+							"assistant_reply": "I’ll open the scoped page in mobile device frames and switch devices and orientation for review."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Review mobile pages from the desktop",
+						"items": [
+							{
+								"title": "Multiple device frames",
+								"description": "Preview HTML pages in iPhone, Android, and iPad sizes with simulated status bars.",
+								"icon": "solar:smartphone-2-linear"
+							},
+							{
+								"title": "Portrait and landscape",
+								"description": "Switch orientation quickly to inspect responsive layouts and available space.",
+								"icon": "solar:screen-share-linear"
+							},
+							{
+								"title": "Scoped file picker",
+								"description": "Discovers HTML and HTM files in the current project or conversation scope.",
+								"icon": "solar:file-code-linear"
+							},
+							{
+								"title": "Export review results",
+								"description": "Export a PNG render or an engineering prompt for the Agent to continue from.",
+								"icon": "solar:export-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

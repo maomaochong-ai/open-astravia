@@ -5,6 +5,7 @@
 import type {
 	AbilityLedger,
 	AddMarketplaceSourceInput,
+	BuiltinAbilityPresentations,
 	InstalledPlugin,
 	InstalledSkill,
 	OpenMarketplaceCatalog,
@@ -27,6 +28,7 @@ export interface AbilityData {
 	/** 通用 Agent / 内置 skill 与 scene（只读展示）。 */
 	localSkills: SkillInfo[];
 	plugins: InstalledPlugin[];
+	builtinPresentations: BuiltinAbilityPresentations;
 	loading: boolean;
 	refreshing: boolean;
 	error: string | null;
@@ -51,6 +53,7 @@ export function useAbilityData(): AbilityData {
 	const [skillManifest, setSkillManifest] = useState<Record<string, InstalledSkill>>({});
 	const [localSkills, setLocalSkills] = useState<SkillInfo[]>([]);
 	const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
+	const [builtinPresentations, setBuiltinPresentations] = useState<BuiltinAbilityPresentations>({});
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -60,6 +63,7 @@ export function useAbilityData(): AbilityData {
 			setRefreshing(true);
 			const local = Promise.all([
 				window.vetta.abilities.getLedger(),
+				window.vetta.abilities.listBuiltinPresentations(),
 				window.vetta.skills.getMarketManifest(),
 				window.vetta.skills.list(),
 				// 能力市场不按工作模式过滤：另一模式下已装的插件仍要出现在「我的」。
@@ -76,8 +80,9 @@ export function useAbilityData(): AbilityData {
 				.then(([localResult, remoteResult, openResult]) => {
 					const errors: string[] = [];
 					if (localResult.status === "fulfilled") {
-						const [nextLedger, manifest, skills, installedPlugins] = localResult.value;
+						const [nextLedger, presentations, manifest, skills, installedPlugins] = localResult.value;
 						setLedger(nextLedger);
+						setBuiltinPresentations(presentations);
 						setSkillManifest(manifest);
 						setLocalSkills(skills.filter((skill) => isReadonlySkillSource(skill.source)));
 						setPlugins(installedPlugins);
@@ -174,6 +179,7 @@ export function useAbilityData(): AbilityData {
 		skillManifest,
 		localSkills,
 		plugins,
+		builtinPresentations,
 		loading,
 		refreshing,
 		error,

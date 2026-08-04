@@ -1,0 +1,98 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "content-creation",
+	"version": "0.1.1",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"brand_name": "内容创作",
+					"user_prompt": "做一套产品发布素材：先生成主视觉，再根据它生成一段横屏视频。",
+					"assistant_reply": "我会把提示词、参考素材、图片生成、视频生成和输出组织成可继续编辑的节点流程。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "可编排的内容生产工作区",
+				"items": [
+					{
+						"title": "节点画布",
+						"description": "用提示词、素材、生成器和输出节点组织创作流程。",
+						"icon": "solar:graph-up-linear"
+					},
+					{
+						"title": "图片与视频生成",
+						"description": "连接支持的模型服务，并把参考素材传给后续节点。",
+						"icon": "solar:clapperboard-edit-linear"
+					},
+					{
+						"title": "多轨编排",
+						"description": "把内容片段加入时间线，组织视频轨和音频轨。",
+						"icon": "solar:slider-vertical-minimalistic-linear"
+					},
+					{
+						"title": "Agent 协作",
+						"description": "让 Agent 打开工作区、读取项目并批量应用结构化编辑。",
+						"icon": "solar:magic-stick-3-linear"
+					}
+				]
+			},
+			{
+				"type": "callout",
+				"tone": "warning",
+				"content": "生成图片或视频前，需要在插件设置中配置对应服务的 API Key 和模型。"
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"brand_name": "Content Creation",
+							"user_prompt": "Create launch assets: generate the key visual first, then a landscape video based on it.",
+							"assistant_reply": "I’ll organize prompts, references, image generation, video generation, and output as an editable node workflow."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "An orchestrated content workspace",
+						"items": [
+							{
+								"title": "Node canvas",
+								"description": "Connect prompts, assets, generators, and output nodes into a workflow.",
+								"icon": "solar:graph-up-linear"
+							},
+							{
+								"title": "Image and video generation",
+								"description": "Connect supported providers and pass references between nodes.",
+								"icon": "solar:clapperboard-edit-linear"
+							},
+							{
+								"title": "Multitrack arrangement",
+								"description": "Place content clips on video and audio tracks.",
+								"icon": "solar:slider-vertical-minimalistic-linear"
+							},
+							{
+								"title": "Agent collaboration",
+								"description": "Let the Agent open, inspect, and apply structured edits to the project.",
+								"icon": "solar:magic-stick-3-linear"
+							}
+						]
+					},
+					{
+						"type": "callout",
+						"tone": "warning",
+						"content": "Configure the relevant provider API key and model in plugin settings before generating images or video."
+					}
+				]
+			}
+		}
+	}
+}

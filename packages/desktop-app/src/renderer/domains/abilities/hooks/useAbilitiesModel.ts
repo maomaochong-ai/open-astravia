@@ -15,6 +15,7 @@ import {
 	buildSkillAbilities,
 	type LocalAbilityState,
 } from "../lib/build-ability-items";
+import { withBuiltinAbilityDetail } from "../lib/builtin-ability-details";
 import { decorateAbilityConflicts } from "../lib/decorate-ability-conflicts";
 import { groupAbilities } from "../lib/group-abilities";
 import type { AbilitiesModel, AbilityBannerIcon, AbilityGroup, AbilityItem, AbilityScope } from "../types";
@@ -63,13 +64,13 @@ export function useAbilitiesModel(): AbilitiesModel {
 	);
 
 	const allItems = useMemo<AbilityItem[]>(() => {
-		const singles: AbilityItem[] = [
+		const singles = [
 			...buildSkillAbilities(market, localState),
 			...buildMcpAbilities(market, localState, t),
 			...buildPluginAbilities(market, localState, trPlugin),
-		];
+		].map((item) => withBuiltinAbilityDetail(item, data.builtinPresentations));
 		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(market, singles, localState, t)]);
-	}, [market, localState, t, trPlugin]);
+	}, [market, localState, t, trPlugin, data.builtinPresentations]);
 
 	const changeScope = useCallback((nextScope: AbilityScope) => {
 		setScope(nextScope);

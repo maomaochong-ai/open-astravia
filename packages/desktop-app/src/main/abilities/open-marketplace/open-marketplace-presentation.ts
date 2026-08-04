@@ -9,6 +9,7 @@ import type {
 import {
 	type MarketplaceAbilityManifest,
 	marketplaceDetailBlockSchema,
+	marketplaceDetailSchema,
 	marketplaceMetaEntrySchema,
 } from "./marketplace-schema.js";
 
@@ -31,6 +32,10 @@ const localizedDetailSourceSchema = detailSourceSchema.partial({ format: true })
 	path: z.string().min(1),
 });
 
+const referencedDetailSchema = detailSourceSchema.extend({
+	i18n: z.record(z.string(), localizedDetailSourceSchema).optional(),
+});
+
 const abilityPresentationSchema = z
 	.object({
 		schemaVersion: z.literal(1),
@@ -38,9 +43,7 @@ const abilityPresentationSchema = z
 		slug: z.string().min(1),
 		version: z.string().min(1),
 		icon: z.string().min(1).optional(),
-		detail: detailSourceSchema
-			.extend({ i18n: z.record(z.string(), localizedDetailSourceSchema).optional() })
-			.optional(),
+		detail: z.union([referencedDetailSchema, marketplaceDetailSchema]).optional(),
 	})
 	.passthrough();
 
@@ -52,6 +55,13 @@ const blocksDocumentSchema = z
 	.passthrough();
 
 type DetailSource = z.infer<typeof detailSourceSchema>;
+type PresentationAssetUrlResolver = (absolutePath: string, relativePath: string) => string;
+
+export interface AbilityPresentationIdentity {
+	type: MarketplaceAbilityManifest["type"];
+	slug: string;
+	version: string;
+}
 
 export interface OpenMarketplacePresentation {
 	icon?: string;
@@ -96,7 +106,7 @@ function createLocalAssetUrl(absolutePath: string, marketplaceVersion: string): 
 function resolveImageReference(
 	sourceDir: string,
 	value: string,
-	marketplaceVersion: string,
+	resolveAssetUrl: PresentationAssetUrlResolver,
 	allowIconify: boolean,
 ): string {
 	const trimmed = value.trim();
@@ -111,13 +121,13 @@ function resolveImageReference(
 	const stats = statSync(target);
 	if (!stats.isFile()) throw new Error(`Presentation asset is not a file: ${trimmed}`);
 	if (stats.size > MAX_ASSET_BYTES) throw new Error(`Presentation asset is too large: ${trimmed}`);
-	return createLocalAssetUrl(target, marketplaceVersion);
+	return resolveAssetUrl(target, trimmed);
 }
 
 function resolveBlockAssets(
 	blocks: OpenMarketplaceDetailBlock[],
 	sourceDir: string,
-	marketplaceVersion: string,
+	resolveAssetUrl: PresentationAssetUrlResolver,
 ): OpenMarketplaceDetailBlock[] {
 	return blocks.map((block) => {
 		if (block.type === "feature-grid") {
@@ -125,7 +135,7 @@ function resolveBlockAssets(
 				...block,
 				items: block.items.map((item) => ({
 					...item,
-					icon: item.icon ? resolveImageReference(sourceDir, item.icon, marketplaceVersion, true) : undefined,
+					icon: item.icon ? resolveImageReference(sourceDir, item.icon, resolveAssetUrl, true) : undefined,
 				})),
 			};
 		}
@@ -134,19 +144,14 @@ function resolveBlockAssets(
 				...block,
 				showcase: {
 					...block.showcase,
-					brand_icon_url: resolveImageReference(
-						sourceDir,
-						block.showcase.brand_icon_url,
-						marketplaceVersion,
-						false,
-					),
+					brand_icon_url: resolveImageReference(sourceDir, block.showcase.brand_icon_url, resolveAssetUrl, false),
 				},
 			};
 		}
 		if (block.type === "image") {
 			return {
 				...block,
-				src: resolveImageReference(sourceDir, block.src, marketplaceVersion, false),
+				src: resolveImageReference(sourceDir, block.src, resolveAssetUrl, false),
 			};
 		}
 		if (block.type === "links") {
@@ -161,10 +166,35 @@ function resolveBlockAssets(
 	});
 }
 
+function resolveShowcaseAssets(
+	showcases: OpenMarketplaceDetailLocale["showcases"],
+	sourceDir: string,
+	resolveAssetUrl: PresentationAssetUrlResolver,
+): OpenMarketplaceDetailLocale["showcases"] {
+	return showcases?.map((showcase) => ({
+		...showcase,
+		brand_icon_url: showcase.brand_icon_url
+			? resolveImageReference(sourceDir, showcase.brand_icon_url, resolveAssetUrl, false)
+			: undefined,
+	}));
+}
+
+function resolveInlineDetailLocale(
+	detail: OpenMarketplaceDetailLocale,
+	sourceDir: string,
+	resolveAssetUrl: PresentationAssetUrlResolver,
+): OpenMarketplaceDetailLocale {
+	return {
+		...detail,
+		blocks: detail.blocks ? resolveBlockAssets(detail.blocks, sourceDir, resolveAssetUrl) : undefined,
+		showcases: resolveShowcaseAssets(detail.showcases, sourceDir, resolveAssetUrl),
+	};
+}
+
 function loadDetailSource(
 	sourceDir: string,
 	source: DetailSource,
-	marketplaceVersion: string,
+	resolveAssetUrl: PresentationAssetUrlResolver,
 ): OpenMarketplaceDetailLocale {
 	try {
 		if (source.format === "markdown") {
@@ -174,7 +204,7 @@ function loadDetailSource(
 			JSON.parse(readTextFile(sourceDir, source.path, MAX_DETAIL_BYTES)) as unknown,
 		);
 		return {
-			blocks: resolveBlockAssets(document.blocks, sourceDir, marketplaceVersion),
+			blocks: resolveBlockAssets(document.blocks, sourceDir, resolveAssetUrl),
 			meta: source.meta,
 		};
 	} catch (error) {
@@ -183,43 +213,83 @@ function loadDetailSource(
 	}
 }
 
-export function loadOpenMarketplacePresentation(
+function isReferencedDetail(
+	detail: z.infer<typeof referencedDetailSchema> | z.infer<typeof marketplaceDetailSchema>,
+): detail is z.infer<typeof referencedDetailSchema> {
+	return "format" in detail && "path" in detail;
+}
+
+/** 读取任意受信任能力包自己的 ability.json；调用方决定本地资源应映射到哪种协议。 */
+export function loadAbilityPackagePresentation(
 	sourceDir: string,
-	ability: MarketplaceAbilityManifest,
-	marketplaceVersion: string,
+	identity: AbilityPresentationIdentity,
+	assetVersion: string,
+	assetUrlResolver?: PresentationAssetUrlResolver,
 ): OpenMarketplacePresentation | null {
 	const descriptorPath = resolve(sourceDir, ABILITY_PRESENTATION_FILE);
 	if (!existsSync(descriptorPath)) return null;
 	const descriptor = abilityPresentationSchema.parse(
 		JSON.parse(readTextFile(sourceDir, ABILITY_PRESENTATION_FILE, MAX_DESCRIPTOR_BYTES)) as unknown,
 	);
-	if (descriptor.type !== ability.type || descriptor.slug !== ability.slug || descriptor.version !== ability.version) {
+	if (
+		descriptor.type !== identity.type ||
+		descriptor.slug !== identity.slug ||
+		descriptor.version !== identity.version
+	) {
 		throw new Error(
-			`Presentation identity does not match ability: ${ability.type}:${ability.slug}@${ability.version}`,
+			`Presentation identity does not match ability: ${identity.type}:${identity.slug}@${identity.version}`,
 		);
 	}
+	const resolveAssetUrl =
+		assetUrlResolver ?? ((absolutePath: string) => createLocalAssetUrl(absolutePath, assetVersion));
 
-	const detail: OpenMarketplaceDetail = descriptor.detail
-		? loadDetailSource(sourceDir, descriptor.detail, marketplaceVersion)
-		: {};
-	if (descriptor.detail?.i18n) {
-		detail.i18n = Object.fromEntries(
-			Object.entries(descriptor.detail.i18n).map(([locale, localized]) => [
-				locale,
-				loadDetailSource(
-					sourceDir,
-					{
-						...localized,
-						format: localized.format ?? descriptor.detail?.format ?? "markdown",
-					},
-					marketplaceVersion,
-				),
-			]),
-		);
+	let detail: OpenMarketplaceDetail = {};
+	if (descriptor.detail) {
+		if (isReferencedDetail(descriptor.detail)) {
+			const referencedDetail = descriptor.detail;
+			detail = loadDetailSource(sourceDir, referencedDetail, resolveAssetUrl);
+			if (referencedDetail.i18n) {
+				detail.i18n = Object.fromEntries(
+					Object.entries(referencedDetail.i18n).map(([locale, localized]) => [
+						locale,
+						loadDetailSource(
+							sourceDir,
+							{
+								...localized,
+								format: localized.format ?? referencedDetail.format,
+							},
+							resolveAssetUrl,
+						),
+					]),
+				);
+			}
+		} else {
+			const { i18n, ...base } = descriptor.detail;
+			detail = {
+				...base,
+				...resolveInlineDetailLocale(base, sourceDir, resolveAssetUrl),
+				i18n: i18n
+					? Object.fromEntries(
+							Object.entries(i18n).map(([locale, localized]) => [
+								locale,
+								resolveInlineDetailLocale(localized, sourceDir, resolveAssetUrl),
+							]),
+						)
+					: undefined,
+			};
+		}
 	}
 
 	return {
-		icon: descriptor.icon ? resolveImageReference(sourceDir, descriptor.icon, marketplaceVersion, true) : undefined,
+		icon: descriptor.icon ? resolveImageReference(sourceDir, descriptor.icon, resolveAssetUrl, true) : undefined,
 		detail,
 	};
+}
+
+export function loadOpenMarketplacePresentation(
+	sourceDir: string,
+	ability: MarketplaceAbilityManifest,
+	marketplaceVersion: string,
+): OpenMarketplacePresentation | null {
+	return loadAbilityPackagePresentation(sourceDir, ability, marketplaceVersion);
 }

@@ -1,0 +1,70 @@
+{
+	"schemaVersion": 1,
+	"type": "skill",
+	"slug": "publish-ability",
+	"version": "2.1.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "docs",
+					"user_prompt": "把当前插件整理成一份可以发布的能力。",
+					"assistant_reply": "我会检查安装包、详情字段、双语内容和展示模板，再生成并校验发布 payload。"
+				}
+			},
+			{
+				"type": "steps",
+				"title": "发布流程",
+				"items": [
+					{
+						"title": "识别能力形态",
+						"description": "确认是 Skill、场景、MCP、插件还是能力套装。"
+					},
+					{
+						"title": "整理展示内容",
+						"description": "补齐名称、简介、标签、正文、模板与多语言覆盖。"
+					},
+					{
+						"title": "检查并提交",
+						"description": "核对安装包和 payload，先 dry-run，再执行正式发布。"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "docs",
+							"user_prompt": "Prepare this plugin as a publishable ability.",
+							"assistant_reply": "I’ll inspect the package, detail fields, localized content, and showcases before validating the publish payload."
+						}
+					},
+					{
+						"type": "steps",
+						"title": "Publishing workflow",
+						"items": [
+							{
+								"title": "Identify the ability type",
+								"description": "Choose Skill, scene, MCP, plugin, or bundle."
+							},
+							{
+								"title": "Prepare the presentation",
+								"description": "Add metadata, detail content, templates, and locale overrides."
+							},
+							{
+								"title": "Validate and submit",
+								"description": "Inspect the package and payload, run a dry run, then publish."
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

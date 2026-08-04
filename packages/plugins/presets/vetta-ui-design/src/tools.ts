@@ -1,5 +1,5 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
-import { getCanvasController, setPendingDesignPath } from "./canvas/design-runtime";
+import { getCanvasController, getFrameError, setPendingDesignPath } from "./canvas/design-runtime";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
 import { engineDiagnostics } from "./engine/engine-manager";
@@ -99,7 +99,41 @@ export function registerDesignTools(ctx: PluginContext): void {
 					error: `Unknown frame "${frameId}". Available frames: ${known.join(", ") || "(none)"}`,
 				};
 			}
-			const dataUrl = await controller.captureFrame(frameId);
+			// 坏掉的 frame 渲染不出任何东西，截图只会一路等到超时（30s+），而模型
+			// 拿到的还是一句「超时」。直接把编译报错回给它，这一轮就能去修。
+			const buildError = getFrameError(frameId);
+			if (buildError) {
+				return {
+					ok: false,
+					retryable: true,
+					error: `Frame "${frameId}" is currently broken — the canvas shows a build error, so there is nothing to capture:\n\n${buildError}\n\nFix the source, then take the screenshot again.`,
+				};
+			}
+			let dataUrl: string;
+			try {
+				dataUrl = await controller.captureFrame(frameId);
+			} catch (error) {
+				const reason = error instanceof Error ? error.message : String(error);
+				// 等待期间才坏掉的话，报错要带上真正的原因而不只是「超时」。
+				const late = getFrameError(frameId);
+				return {
+					ok: false,
+					retryable: true,
+					error: late
+						? `Screenshot failed (${reason}). Frame "${frameId}" has a build error:\n\n${late}\n\nFix the source, then take the screenshot again.`
+						: `Screenshot failed: ${reason}. Call vetd_status for design-engine diagnostics and recent build output.`,
+				};
+			}
+			// 位图态的 frame 没挂 iframe，也就没有 HMR 连接，它坏没坏是截图这一步把它
+			// 挂上来才知道的。这时截到的是引擎的兜底文案，交给模型只会让它以为渲染正常。
+			const lateError = getFrameError(frameId);
+			if (lateError) {
+				return {
+					ok: false,
+					retryable: true,
+					error: `Frame "${frameId}" failed to build, so the capture only shows the engine's fallback placeholder:\n\n${lateError}\n\nFix the source, then take the screenshot again.`,
+				};
+			}
 			const base64 = dataUrl.split(",")[1] ?? "";
 			const { dirPath, vetdPath } = controller.session;
 			const path = snapshotPath(dirPath, frameId, Date.now());
@@ -121,7 +155,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_status",
 		label: "%tool.vetd_status%",
 		description:
-			"Inspect the Vetta UI Design state: design documents in the workspace, the design open on the canvas, its frames (id/size/title) and design-engine diagnostics (dev-server liveness + recent build output). Use to find frame ids, or to diagnose why the canvas shows a build error.",
+			"Inspect the Vetta UI Design state: design documents in the workspace, the design open on the canvas, its frames (id/size/title, plus `buildError` when a frame currently fails to compile) and design-engine diagnostics (dev-server liveness + recent build output). Use to find frame ids, or to diagnose why the canvas shows a build error.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
@@ -135,13 +169,17 @@ export function registerDesignTools(ctx: PluginContext): void {
 					? {
 							vetdPath: controller.session.vetdPath,
 							sourcesDir: controller.session.dirPath,
-							frames: controller.session.manifest.frames.map((frame) => ({
-								id: frame.id,
-								file: frame.file,
-								title: frame.title,
-								width: frame.width,
-								height: frame.height,
-							})),
+							frames: controller.session.manifest.frames.map((frame) => {
+								const buildError = getFrameError(frame.id);
+								return {
+									id: frame.id,
+									file: frame.file,
+									title: frame.title,
+									width: frame.width,
+									height: frame.height,
+									...(buildError ? { buildError } : {}),
+								};
+							}),
 						}
 					: null,
 				engine,
