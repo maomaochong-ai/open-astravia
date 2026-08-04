@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { listPluginManifestResources, parsePluginManifest, type PluginManifest } from "@vetta-org/plugin-sdk/manifest";
 
 export interface VettaPluginPackageFile {
 	fullPath: string;
@@ -17,23 +18,6 @@ export interface CreateVettaPluginPackageOptions {
 	manifestPath?: string;
 	releaseDir?: string;
 	distDir?: string;
-}
-
-interface PluginManifest {
-	id: string;
-	version: string;
-	entry: string;
-	styles?: string[];
-	/** 三态：Iconify 名 / `http(s)://` 外链 / 包内相对路径（只有后者需要打包）。 */
-	icon?: string;
-	agent?: {
-		systemPrompt?: {
-			promptPaths?: string[];
-		};
-		skillPaths?: string[];
-		/** Relative path to `.mcp.json` or present as object (inline). */
-		mcpServers?: string | Record<string, unknown>;
-	};
 }
 
 const crcTable = new Uint32Array(256);
@@ -54,61 +38,6 @@ function readString(record: Record<string, unknown>, key: string): string | unde
 	return typeof value === "string" ? value : undefined;
 }
 
-function readStringArray(record: Record<string, unknown>, key: string): string[] | undefined {
-	const value = record[key];
-	if (!Array.isArray(value)) {
-		return undefined;
-	}
-	const strings = value.filter((entry): entry is string => typeof entry === "string");
-	return strings.length === value.length ? strings : undefined;
-}
-
-function readAgentManifest(record: Record<string, unknown>): PluginManifest["agent"] {
-	const agent = record.agent;
-	if (!isRecord(agent)) {
-		return undefined;
-	}
-	const systemPrompt = isRecord(agent.systemPrompt)
-		? {
-				promptPaths: readStringArray(agent.systemPrompt, "promptPaths"),
-			}
-		: undefined;
-	const mcpServersRaw = agent.mcpServers;
-	const mcpServers =
-		typeof mcpServersRaw === "string"
-			? mcpServersRaw
-			: isRecord(mcpServersRaw)
-				? mcpServersRaw
-				: undefined;
-	return {
-		systemPrompt,
-		skillPaths: readStringArray(agent, "skillPaths"),
-		mcpServers,
-	};
-}
-
-function parsePluginManifest(value: unknown): PluginManifest {
-	if (!isRecord(value)) {
-		throw new Error("plugin.json must contain an object.");
-	}
-
-	const id = readString(value, "id");
-	const version = readString(value, "version");
-	const entry = readString(value, "entry");
-	if (!id || !version || !entry) {
-		throw new Error("plugin.json must define string id, version, and entry fields.");
-	}
-
-	return {
-		id,
-		version,
-		entry,
-		icon: readString(value, "icon"),
-		agent: readAgentManifest(value),
-		styles: readStringArray(value, "styles"),
-	};
-}
-
 function validateAbilityDescriptor(value: unknown, pluginManifest: PluginManifest): void {
 	if (!isRecord(value)) throw new Error("ability.json must contain an object.");
 	if (
@@ -119,22 +48,6 @@ function validateAbilityDescriptor(value: unknown, pluginManifest: PluginManifes
 	) {
 		throw new Error("ability.json identity must match plugin.json id and version.");
 	}
-}
-
-/** Iconify 图标名：`solar:magic-stick-3-bold` 这种 `<集合>:<图标>` 形态。 */
-const ICONIFY_ICON_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-/**
- * 与宿主 `isPassthroughIconRef`、服务端 `isPackagedIconPath` 保持同一判定：
- * Iconify 名与 http(s) 外链不落包，其余按包内相对路径打进 zip。
- */
-function isPackagedIconPath(icon: string): boolean {
-	return (
-		icon !== "" &&
-		!icon.startsWith("http://") &&
-		!icon.startsWith("https://") &&
-		!ICONIFY_ICON_PATTERN.test(icon)
-	);
 }
 
 function parseJsonObject(buffer: Buffer, fileName: string): Record<string, unknown> {
@@ -340,28 +253,17 @@ async function collectRuntimeFiles(
 		// dist missing
 	}
 
-	for (const style of pluginManifest.styles ?? []) {
-		addFile(resolve(rootDir, style));
-	}
-
-	// 包内相对路径图标：不打进 zip 的话，宿主 vetta-plugin:// 会 404、市场上传会被服务端拒绝。
-	const icon = pluginManifest.icon?.trim();
-	if (icon && isPackagedIconPath(icon)) {
-		const iconPath = resolve(rootDir, icon);
-		if (!existsSync(iconPath)) {
-			throw new Error(`plugin.json icon file not found: ${icon}`);
+	for (const resource of listPluginManifestResources(pluginManifest)) {
+		if (resource.field === "entry") continue;
+		const resourcePath = resolve(rootDir, resource.path);
+		if (resource.kind === "file") {
+			if (!existsSync(resourcePath)) {
+				throw new Error(`plugin.json resource not found: ${resource.field} (${resource.path})`);
+			}
+			addFile(resourcePath);
+			continue;
 		}
-		addFile(iconPath);
-	}
-
-	for (const promptPath of pluginManifest.agent?.systemPrompt?.promptPaths ?? []) {
-		for (const file of await collectPath(resolve(rootDir, promptPath))) {
-			addFile(file.fullPath);
-		}
-	}
-
-	for (const skillPath of pluginManifest.agent?.skillPaths ?? []) {
-		for (const file of await collectPath(resolve(rootDir, skillPath))) {
+		for (const file of await collectPath(resourcePath)) {
 			addFile(file.fullPath);
 		}
 	}
@@ -369,9 +271,6 @@ async function collectRuntimeFiles(
 	// Plugin-scoped MCP: include config file and conventional companion dirs when declared.
 	const mcpServers = pluginManifest.agent?.mcpServers;
 	if (mcpServers !== undefined) {
-		if (typeof mcpServers === "string") {
-			addFile(resolve(rootDir, mcpServers));
-		}
 		try {
 			for (const file of await collectFiles(resolve(rootDir, "mcp"))) {
 				addFile(file.fullPath);
@@ -423,8 +322,8 @@ export async function createVettaPluginPackage(
 	const outputPath = join(releaseDir, `${pluginManifest.id}-${pluginManifest.version}.zip`);
 	const files = await collectRuntimeFiles(rootDir, manifestPath, distDir);
 
-	await rm(releaseDir, { recursive: true, force: true });
 	await mkdir(releaseDir, { recursive: true });
+	await rm(outputPath, { force: true });
 	await writeFile(outputPath, await createZip(files));
 
 	return { outputPath, files };

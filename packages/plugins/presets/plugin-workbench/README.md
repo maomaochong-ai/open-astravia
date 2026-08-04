@@ -20,8 +20,8 @@ agent/docs/plugin/     ← 与仓库 docs/plugin 同源
 | 脚本 | 作用 |
 | --- | --- |
 | `scripts/scaffold.mjs` | 脚手架 |
-| `scripts/build-and-pack.mjs` | bump + npm install + build + zip |
-| `scripts/check-manifest.mjs` | 清单校验 |
+| `scripts/build-and-pack.mjs` | bump + npm install + build + `vetta-plugin pack` |
+| `scripts/check-manifest.mjs` | 委托 `vetta-plugin validate` 校验清单 |
 | `scripts/sync-plugin-docs.mjs` | 同步 docs/plugin |
 
 ## 硬隔离

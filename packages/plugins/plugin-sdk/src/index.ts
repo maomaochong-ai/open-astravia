@@ -10,7 +10,14 @@
 export type { ConversationScenario } from "./scenario.js";
 export type { PluginPermission } from "./permissions.js";
 export type { Disposable } from "./disposable.js";
-export type { PluginMcpServerConfig, PluginAgentManifest } from "./manifest.js";
+export type {
+	PluginAgentManifest,
+	PluginManifest,
+	PluginManifestInput,
+	PluginManifestResourceReference,
+	PluginMcpServerConfig,
+	PluginSettingSchema,
+} from "./manifest.js";
 
 // File explorer
 export type {

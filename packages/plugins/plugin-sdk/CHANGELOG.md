@@ -8,6 +8,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- Added the public `@vetta-org/plugin-sdk/manifest` contract, including a TypeBox `PluginManifestSchema`, Schema-derived types, runtime parsing, permission constants, resource discovery, and Plugin API compatibility checks shared by tooling and the Desktop host.
 - Added plugin keyboard shortcuts on the host `ShortcutScopeStack`: permission `ui.shortcuts.register`, `ctx.ui.registerShortcutScope()`, types (`PluginShortcutScopeContribution` / `PluginShortcutBinding`), and React helper `usePluginShortcutScope()`. Kind is limited to `surface` | `overlay` | `modal` (`app` stays host-only for configurable global actions).
 - `ctx.command.spawn(file, args?, options?)`：长驻进程能力（ADR-0054）。返回 `PluginCommandSpawnHandle`（`stop()` / `status()` / `onExit()`），`allocatePort: true` 时宿主分配空闲端口并替换 args/env 中的 `{{PORT}}`。需清单 `commands` 声明 + 新权限 `agent.command.spawn`；进程随插件卸载/禁用/重载与 App 退出统一回收。
 - `PluginFsApi.saveAs(defaultFileName, content, encoding?, options?)`：经宿主原生保存对话框把内存字节写到用户选定的路径，返回保存路径（用户取消返回 `null`）。与 `writeFile` 不同，目标不受工程根限制——路径由用户当场在原生框里确认，插件无法静默写盘。需 `fs.write` 权限。

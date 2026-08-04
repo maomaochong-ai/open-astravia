@@ -9,7 +9,6 @@ import type {
 	ContentNodeKind,
 	ContentNodeStatus,
 } from "../project/types";
-import { AddIcon } from "../shared/icons";
 import type { ContentNodePropertyDefinition } from "./definitions";
 import { ContentGeneratorComposer } from "./ContentGeneratorComposer";
 
@@ -104,7 +103,8 @@ function SimpleContentNodeEditor({
 			{onAddToTimeline && data.assetId ? (
 				<div className="mt-2 flex justify-end">
 					<Button type="button" size="sm" variant="outline" onClick={() => void onAddToTimeline()}>
-						<AddIcon /> {t("action.addToTimeline")}
+						<span className="icon-[lucide--plus] block size-4 shrink-0" aria-hidden="true" />
+						{t("action.addToTimeline")}
 					</Button>
 				</div>
 			) : null}

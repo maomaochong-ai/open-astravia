@@ -4,12 +4,25 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./manifest": {
+			"types": "./dist/manifest.d.ts",
+			"import": "./dist/manifest.js"
+		}
+	},
 	"files": [
 		"dist"
 	],
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json"
+	},
+	"dependencies": {
+		"@sinclair/typebox": "^0.34.41"
 	},
 	"peerDependencies": {
 		"react": "^19.0.0"

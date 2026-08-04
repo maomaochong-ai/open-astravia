@@ -18,7 +18,6 @@ import { useContentCanvasSelectionCount } from "../canvas/ContentCanvasSelection
 import { ContentNodeHeader } from "./ContentNodeHeader";
 import { ContentNodeHandle } from "./ContentNodeHandle";
 import { ContentNodeSurface } from "./ContentNodeSurface";
-import { DuplicateIcon, LockIcon, TrashIcon, UnlockIcon } from "../shared/icons";
 import { ContentNodeEditor } from "./ContentNodeEditor";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
@@ -123,7 +122,11 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						onClick={data.onToggleLock}
 						title={t(data.locked ? "action.unlockNode" : "action.lockNode")}
 					>
-						{data.locked ? <UnlockIcon /> : <LockIcon />}
+						{data.locked ? (
+							<span className="icon-[lucide--lock-open] block size-4 shrink-0" aria-hidden="true" />
+						) : (
+							<span className="icon-[lucide--lock] block size-4 shrink-0" aria-hidden="true" />
+						)}
 					</Button>
 					<Button
 						type="button"
@@ -133,7 +136,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						onClick={data.onDuplicate}
 						title={t("action.duplicateNode")}
 					>
-						<DuplicateIcon />
+						<span className="icon-[lucide--copy] block size-4 shrink-0" aria-hidden="true" />
 					</Button>
 					<Button
 						type="button"
@@ -143,7 +146,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						onClick={data.onDelete}
 						title={t("action.deleteNode")}
 					>
-						<TrashIcon />
+						<span className="icon-[lucide--trash-2] block size-4 shrink-0" aria-hidden="true" />
 					</Button>
 				</div>
 			</NodeToolbar>

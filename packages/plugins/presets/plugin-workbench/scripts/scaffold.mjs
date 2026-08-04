@@ -83,6 +83,8 @@ const files = {
 			scripts: {
 				build: "vite build",
 				check: "tsc --noEmit",
+				pack: "vetta-plugin pack",
+				validate: "vetta-plugin validate",
 			},
 			devDependencies: {
 				"@tailwindcss/vite": "^4.1.12",

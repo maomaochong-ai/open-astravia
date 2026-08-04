@@ -36,6 +36,8 @@ describe("node creation surfaces", () => {
 
 		expect(markup).toContain("canvas.tool.select");
 		expect(markup).toContain("canvas.tool.pan");
+		expect(markup).toContain("icon-[lucide--mouse-pointer-2]");
+		expect(markup).toContain("icon-[lucide--hand]");
 		expect(markup.match(/aria-pressed="true"/g)).toHaveLength(1);
 		expect(markup.match(/aria-pressed="false"/g)).toHaveLength(1);
 	});

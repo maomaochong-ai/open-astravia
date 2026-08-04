@@ -7,7 +7,6 @@ import {
 	type ContentNodeDefinition,
 } from "../node/definitions";
 import type { ContentNodeKind } from "../project/types";
-import { AddIcon, PanToolIcon, SelectToolIcon } from "../shared/icons";
 import { NodeKindIcon } from "../node/NodeKindIcon";
 import type { CanvasTool } from "./canvas-tools";
 
@@ -168,6 +167,7 @@ const DOCK_ICON = 34;
 const DOCK_MAX_SCALE = 1.18;
 const DOCK_INFLUENCE = 56;
 const DOCK_GAP = 6;
+const DOCK_DIVIDER_WIDTH = 1;
 
 type DockItem =
 	| { type: "tool"; tool: CanvasTool; key: string }
@@ -225,14 +225,11 @@ export function NodeLibrary({ activeTool, onAdd, onToolChange }: NodeLibraryProp
 	const slotCenters = useMemo(() => {
 		const centers: number[] = [];
 		let x = 8; // horizontal padding of the dock chrome
-		for (const item of dockItems) {
-			if (item.type === "divider") {
-				x += 9;
-				centers.push(x - 4.5);
-				continue;
-			}
-			centers.push(x + DOCK_ICON / 2);
-			x += DOCK_ICON + DOCK_GAP;
+		for (const [index, item] of dockItems.entries()) {
+			const width = item.type === "divider" ? DOCK_DIVIDER_WIDTH : DOCK_ICON;
+			centers.push(x + width / 2);
+			x += width;
+			if (index < dockItems.length - 1) x += DOCK_GAP;
 		}
 		return centers;
 	}, [dockItems]);
@@ -327,7 +324,7 @@ export function NodeLibrary({ activeTool, onAdd, onToolChange }: NodeLibraryProp
 							return (
 								<span
 									key={item.key}
-									className="mb-1.5 w-px shrink-0 self-center bg-border max-[900px]:hidden"
+									className="w-px shrink-0 self-center bg-border"
 									style={{ height: DOCK_ICON * 0.55 }}
 									aria-hidden
 								/>
@@ -377,17 +374,20 @@ export function NodeLibrary({ activeTool, onAdd, onToolChange }: NodeLibraryProp
 									else setOpen((value) => !value);
 								}}
 							>
-								<span className="grid size-4 place-items-center [&_svg]:h-full [&_svg]:w-full">
+								<span className="grid size-4 place-items-center leading-none [&>*]:h-full [&>*]:w-full">
 									{item.type === "tool" ? (
 										item.tool === "select" ? (
-											<SelectToolIcon className="h-full w-full" />
+											<span
+												className="icon-[lucide--mouse-pointer-2] block h-full w-full"
+												aria-hidden="true"
+											/>
 										) : (
-											<PanToolIcon className="h-full w-full" />
+											<span className="icon-[lucide--hand] block h-full w-full" aria-hidden="true" />
 										)
 									) : item.type === "node" ? (
 										<NodeKindIcon kind={item.kind} className="h-full w-full" />
 									) : (
-										<AddIcon className="h-full w-full" />
+										<span className="icon-[lucide--plus] block h-full w-full" aria-hidden="true" />
 									)}
 								</span>
 							</button>

@@ -8,8 +8,13 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Added
 
+- Added the `vetta-plugin validate` and `vetta-plugin pack` CLI so external projects and the plugin workbench use the same manifest parser and archive implementation as Vite builds.
 - **宿主共享 `@vetta/ui`**：`vettaPluginFederation` 默认将 `@vetta/ui` 设为 MF `singleton + import:false`，并 rollup external 到 `vetta-host://ui`，与 desktop-app 的 share scope / host shim 对齐；插件可选用宿主 primitives 而不打进 bundle。
 - **打包纳入能力详情**：根目录存在 `ability.json` 时随 zip 分发，并连带约定的 `presentation/` 展示资源目录；打包期校验 `schemaVersion` / `type` / `slug` / `version` 与 `plugin.json` 身份一致，不一致直接报错。`ability.json` 缺省时行为不变。
+
+### Changed
+
+- Plugin packaging now validates `plugin.json` through `@vetta-org/plugin-sdk/manifest` and only replaces the target archive instead of deleting the entire `release/` directory.
 
 ## [0.0.4] — 2026-07-31
 

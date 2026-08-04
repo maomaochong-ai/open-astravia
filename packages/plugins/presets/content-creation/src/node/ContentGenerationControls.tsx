@@ -2,7 +2,6 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData, ContentNodeKind } from "../project/types";
-import { ArrowUpIcon, ImageIcon } from "../shared/icons";
 
 const AUTO_TRIGGER_CLASS = "w-fit max-w-none flex-none border-0 bg-transparent shadow-none";
 const AUTO_VALUE_CLASS = "line-clamp-none! overflow-visible! whitespace-nowrap";
@@ -37,7 +36,7 @@ export function ContentGenerationControls({
 	return (
 		<div className="flex min-w-0 flex-wrap items-center gap-1.5 border-t border-border/45 pt-2.5">
 			<div className="flex h-8 items-center gap-1.5 px-1.5 text-xs font-medium text-muted-foreground">
-				<ImageIcon className="size-3.5" />
+				<span className="icon-[lucide--image] block size-3.5 shrink-0" aria-hidden="true" />
 				<span>{t(`node.kind.${kind}`)}</span>
 			</div>
 			<Select
@@ -98,7 +97,7 @@ export function ContentGenerationControls({
 				aria-label={isRunning ? t("action.generating") : t("action.generate")}
 				onClick={onSubmit}
 			>
-				<ArrowUpIcon className="size-5" />
+				<span className="icon-[lucide--arrow-up] block size-5 shrink-0" aria-hidden="true" />
 			</Button>
 		</div>
 	);
