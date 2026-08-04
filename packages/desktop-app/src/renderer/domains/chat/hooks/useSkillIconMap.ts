@@ -1,7 +1,7 @@
 /**
- * skill / scene 的图标目录加载。`skills.list()` 返回的 SkillInfo 不带 icon，所以命令区要拿到
- * 真实图标只能回市场目录查；查不到再看是不是随 App 分发的内置 Skill（图标走 renderer
- * 静态资源）。未登录 / 离线 / 两处都没有时返回 undefined，由 SkillTypeIcon 落默认图。
+ * skill / scene 的市场图标目录加载。命令区解析顺序见 `skillIconOf`：
+ * 市场目录 → SkillInfo.icon（插件宿主图）→ 内置静态资源 → 默认图。
+ * 这里只负责市场半边；插件 / 内置不进这份 map。
  *
  * 解析口径本身是纯逻辑，住在 lib/skill-token-meta。
  */

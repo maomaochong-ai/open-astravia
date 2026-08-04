@@ -202,6 +202,26 @@ describe("buildSkillAbilities", () => {
 		expect(items.map((item) => item.icon)).toEqual(["./skills/create-skill.png", undefined, undefined]);
 	});
 
+	it("uses host plugin icon for plugin-contributed skills", () => {
+		const pluginIcon = "vetta-plugin://vetta-ui-design/versions/0.1.0/icon.png?v=0.1.0";
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{
+						name: "vetta-ui-design",
+						description: "",
+						source: "plugin",
+						type: "skill",
+						icon: pluginIcon,
+					},
+				],
+			}),
+		);
+
+		expect(items[0]?.icon).toBe(pluginIcon);
+	});
+
 	it("does not duplicate an installed skill that listSkills also reports", () => {
 		const market = { ...createBundle([]), type: "skill" as const, slug: "translator" };
 		const items = buildSkillAbilities(

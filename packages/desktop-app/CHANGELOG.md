@@ -35,6 +35,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **输入栏命令面板不再丢掉开源市场能力的图标**：开源市场 skill/scene 的图标解析后是 `vetta-file://local/...`，而命令面板与 skill 胶囊共用的 `SkillTypeIcon` 原先只认 http(s)/相对路径/data，导致列表与 token 一律退回默认立方体。图片态判定补上任意 `scheme://`（含 `vetta-file`），与能力广场一致。
 
+- **插件贡献的 skill 显示宿主插件图标**：如 `vetta-ui-design` 这类随插件内嵌的 skill 不在市场目录里，命令面板此前只能落默认立方体。`skills.list()` 现在把宿主插件的 `iconUrl` 挂到 `SkillInfo.icon`，命令区 / 胶囊 / 能力页统一认领。
+
 - **订阅卡片的窗口重置倒计时超过一天按「天」显示**：周窗口显示成 `136h 39m`、月窗口 `606h 13m`，几百小时读不出还剩几天。`SubscriptionCardsView` 里有一份自己的格式化函数，只会 `h`/`m` 不进位到天，而且硬编码英文单位、绕开了已经写好的 `subResetInDays` 等 i18n 文案。改为倒计时文案由 `useSubscriptionCardsModel` 用 `getResetCountdown` + `t()` 算好，视图只渲染 `resetLabel`（视图层不再持有 `now` 与本地格式化函数）。现在显示「5天16小时后重置」/「Resets in 5d 16h」。
 
 - **开发模式登录回调不再拉起已安装的正式版**：dev 跑的是 `node_modules` 里的 Electron.app（bundle id `com.github.Electron`，Info.plist 没有 `CFBundleURLTypes`），macOS/Linux 的 LaunchServices 只会把 `vetta://` 派发给声明过该 scheme 的 bundle，也就是 `/Applications/Vetta.app`，开发中的实例永远收不到 token；`setAsDefaultProtocolClient` 在 macOS 上也救不了（系统拉起 bundle 时不带 `dist/main/index.js` 这个 argv）。非打包时改走 OAuth 标准的 loopback 回调：主进程在 `127.0.0.1` 临时端口监听 `/oauth/callback`，`client_redirect` 指向该地址，收到后归一化成 `vetta://oauth/callback?…` 复用既有的 state 校验链路，并把窗口抢回前台。打包版行为不变。

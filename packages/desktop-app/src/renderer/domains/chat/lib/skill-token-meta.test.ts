@@ -26,6 +26,31 @@ describe("buildSkillTokenMetaMap", () => {
 		expect(map.get("publish-ability")?.icon).toBe("./skills/publish-ability.png");
 	});
 
+	it("插件 skill 用列表自带的宿主插件 icon", () => {
+		const icon = "vetta-plugin://vetta-ui-design/versions/0.1.0/icon.png?v=0.1.0";
+		const map = buildSkillTokenMetaMap(
+			[{ name: "vetta-ui-design", description: "", source: "plugin", type: "skill", icon }],
+			new Map(),
+		);
+		expect(map.get("vetta-ui-design")).toEqual({ label: "vetta-ui-design", icon });
+	});
+
+	it("市场目录优先于 skill.icon", () => {
+		const map = buildSkillTokenMetaMap(
+			[
+				{
+					name: "vetta-ui-design",
+					description: "",
+					source: "plugin",
+					type: "skill",
+					icon: "vetta-plugin://vetta-ui-design/icon.png",
+				},
+			],
+			new Map([["skill:vetta-ui-design", "solar:layers-bold"]]),
+		);
+		expect(map.get("vetta-ui-design")?.icon).toBe("solar:layers-bold");
+	});
+
 	it("scene 不进文本流 token 表：它走 promptRef 硬展开", () => {
 		const map = buildSkillTokenMetaMap([{ ...publishAbility, type: "scene" }], new Map());
 		expect(map.has("publish-ability")).toBe(false);
