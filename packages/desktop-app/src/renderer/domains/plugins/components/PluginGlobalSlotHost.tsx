@@ -22,7 +22,7 @@ import {
 	type RegisteredTurnCard,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
-import type { InstalledPlugin, PluginsChangedEvent } from "@preload/api";
+import type { PluginsChangedEvent } from "@preload/api";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { Component, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
@@ -32,32 +32,10 @@ import { installPluginHostBridge } from "../runtime/plugin-host-bridge";
 import { installPluginHostShim } from "../runtime/plugin-host-shim";
 import { PluginI18nBoundary } from "../runtime/plugin-i18n";
 import { loadPlugin, type LoadedPlugin } from "../runtime/plugin-loader";
+import { loadPluginSnapshot } from "./plugin-snapshot";
 
 // 串行加载插件快照，避免并发 reload 交叉提交 activation。
 let pluginHostLifecycle = Promise.resolve();
-
-async function loadPluginSnapshot(
-	installedPlugins: InstalledPlugin[],
-	previousPlugins: LoadedPlugin[],
-	targetPluginIds: ReadonlySet<string> | undefined,
-	onChanged: () => void,
-): Promise<LoadedPlugin[]> {
-	const previousById = new Map(previousPlugins.map((plugin) => [plugin.id, plugin]));
-	const enabledPlugins = installedPlugins.filter((plugin) => plugin.enabled);
-	const loadResults = await Promise.all(
-		enabledPlugins.map(async (plugin) => {
-			const previous = previousById.get(plugin.id);
-			if (targetPluginIds && !targetPluginIds.has(plugin.id) && previous) return previous;
-			try {
-				return await loadPlugin(plugin, onChanged);
-			} catch (error) {
-				console.error(`Failed to load plugin: ${plugin.id}`, error);
-				return previous;
-			}
-		}),
-	);
-	return loadResults.filter((plugin): plugin is LoadedPlugin => plugin !== undefined);
-}
 
 class PluginSlotErrorBoundary extends Component<
 	{ pluginSlotId: string; children: ReactNode },
@@ -152,7 +130,8 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 						installedPlugins,
 						previousPlugins,
 						pendingPluginIds instanceof Set ? pendingPluginIds : undefined,
-						forceUpdate,
+						(plugin) => loadPlugin(plugin, forceUpdate),
+						(plugin, error) => console.error(`Failed to load plugin: ${plugin.id}`, error),
 					),
 				)
 				.catch((error: Error) => {

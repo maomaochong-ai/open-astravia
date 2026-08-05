@@ -22,11 +22,13 @@
 	],
 	"scripts": {
 		"clean": "rm -rf dist",
-		"build": "tsgo -p tsconfig.build.json"
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "vitest --run"
 	},
 	"dependencies": {
 		"@module-federation/vite": "^1.16.6",
 		"@vitejs/plugin-react": "^5.0.4",
+		"chokidar": "^4.0.3",
 		"postcss": "^8.5.15",
 		"postcss-selector-parser": "^7.1.4"
 	},
@@ -37,7 +39,8 @@
 	"devDependencies": {
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.7"
+		"vite": "^7.1.7",
+		"vitest": "^3.2.4"
 	},
 	"publishConfig": {
 		"access": "public",

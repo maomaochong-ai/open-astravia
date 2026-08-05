@@ -82,7 +82,7 @@ function scopeRulesInContainer(container: Container, pluginId: string): void {
 	}
 }
 
-function scopePluginCss(css: string, pluginId: string): string {
+export function scopePluginCss(css: string, pluginId: string): string {
 	const root = postcss.parse(css);
 	root.walkRules((rule) => {
 		if (isInsideKeyframes(rule)) return;

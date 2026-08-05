@@ -42,6 +42,7 @@ import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/abi
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
+import { normalizePluginDevServerUrls } from "./plugin-dev-protocol.js";
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 
 export const PLUGIN_API_VERSION = "1.2.0";
@@ -543,7 +544,6 @@ interface PluginDevLink {
 }
 
 const devLinks = new Map<string, PluginDevLink>();
-const LOCAL_PLUGIN_DEV_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 /** dev 资源 URL：直接以工程根为根（无 versions/ 段），token 变化驱动 MF 强制重注册。 */
 function toDevPluginUrl(pluginId: string, relativePath: string, token: string): string {
@@ -663,18 +663,9 @@ export function refreshPluginDevLink(id: string): InstalledPlugin {
 export function setPluginDevLinkServer(id: string, entryUrl: string, origin: string): InstalledPlugin {
 	const link = devLinks.get(id);
 	if (!link) throw new Error(`Plugin is not dev-linked: ${id}`);
-	const parsedEntry = new URL(entryUrl);
-	const parsedOrigin = new URL(origin);
-	if (
-		parsedEntry.protocol !== "http:" ||
-		parsedOrigin.protocol !== "http:" ||
-		parsedEntry.origin !== parsedOrigin.origin ||
-		!LOCAL_PLUGIN_DEV_HOSTNAMES.has(parsedOrigin.hostname)
-	) {
-		throw new Error("Plugin dev server must use a local HTTP origin");
-	}
-	link.entryUrl = parsedEntry.href;
-	link.origin = parsedOrigin.origin;
+	const serverUrls = normalizePluginDevServerUrls(entryUrl, origin);
+	link.entryUrl = serverUrls.entryUrl;
+	link.origin = serverUrls.origin;
 	link.status = "running";
 	link.error = undefined;
 	link.manifest = readDevProjectManifest(link.projectDir, id);

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
+import { type PluginDevServerEvent, parsePluginDevServerOutput } from "./plugin-dev-protocol.js";
 import {
 	buildAgentPluginRuntimeConfig,
 	clearPluginDevLink,
@@ -16,11 +17,6 @@ import {
 const log = getAppLogger("plugin");
 const DEBOUNCE_MS = 80;
 const KILL_GRACE_MS = 3000;
-
-type PluginDevServerEvent =
-	| { type: "ready"; pluginId: string; entryUrl: string; origin: string }
-	| { type: "update"; pluginId: string }
-	| { type: "error"; pluginId?: string; message: string };
 
 interface DevWatchEntry {
 	projectDir: string;
@@ -37,38 +33,6 @@ function refreshAgentPlugins(): void {
 	} catch (error) {
 		log.warn("dev-watch: refresh agent plugins failed", error);
 	}
-}
-
-function parseDevServerEvent(line: string): PluginDevServerEvent | undefined {
-	let value: unknown;
-	try {
-		value = JSON.parse(line);
-	} catch {
-		return undefined;
-	}
-	if (value === null || typeof value !== "object" || !("type" in value)) return undefined;
-	if (
-		value.type === "ready" &&
-		"pluginId" in value &&
-		typeof value.pluginId === "string" &&
-		"entryUrl" in value &&
-		typeof value.entryUrl === "string" &&
-		"origin" in value &&
-		typeof value.origin === "string"
-	) {
-		return { type: "ready", pluginId: value.pluginId, entryUrl: value.entryUrl, origin: value.origin };
-	}
-	if (value.type === "update" && "pluginId" in value && typeof value.pluginId === "string") {
-		return { type: "update", pluginId: value.pluginId };
-	}
-	if (value.type === "error" && "message" in value && typeof value.message === "string") {
-		return {
-			type: "error",
-			pluginId: "pluginId" in value && typeof value.pluginId === "string" ? value.pluginId : undefined,
-			message: value.message,
-		};
-	}
-	return undefined;
 }
 
 function scheduleRefresh(id: string, entry: DevWatchEntry): void {
@@ -131,13 +95,9 @@ function spawnPluginDevServer(id: string, entry: DevWatchEntry): void {
 	let stdoutBuffer = "";
 	let stderrTail = "";
 	child.stdout?.on("data", (chunk: Buffer) => {
-		stdoutBuffer += chunk.toString();
-		const lines = stdoutBuffer.split(/\r?\n/);
-		stdoutBuffer = lines.pop() ?? "";
-		for (const line of lines) {
-			const event = parseDevServerEvent(line.trim());
-			if (event) handleDevServerEvent(id, entry, event);
-		}
+		const parsed = parsePluginDevServerOutput(stdoutBuffer, chunk.toString());
+		stdoutBuffer = parsed.remainder;
+		for (const event of parsed.events) handleDevServerEvent(id, entry, event);
 	});
 	child.stderr?.on("data", (chunk: Buffer) => {
 		stderrTail = `${stderrTail}${chunk.toString()}`.slice(-4000);

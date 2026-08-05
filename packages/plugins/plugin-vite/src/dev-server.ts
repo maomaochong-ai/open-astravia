@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { createServer as createNetServer } from "node:net";
 import { dirname, isAbsolute, relative, resolve } from "node:path";
@@ -6,6 +7,7 @@ import {
 	parsePluginManifest,
 	type PluginManifest,
 } from "@vetta-org/plugin-sdk/manifest";
+import { type FSWatcher, watch } from "chokidar";
 import { createServer, type ViteDevServer } from "vite";
 import { emitVettaPluginDevEvent, setVettaPluginDevEventListener, type VettaPluginDevEvent } from "./dev-events.js";
 
@@ -73,6 +75,43 @@ function resolveServerOrigin(server: ViteDevServer): string {
 	return localUrl.endsWith("/") ? localUrl.slice(0, -1) : localUrl;
 }
 
+function resolveViteConfigFile(rootDir: string): string | undefined {
+	for (const fileName of ["vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"]) {
+		const configPath = resolve(rootDir, fileName);
+		if (existsSync(configPath)) return configPath;
+	}
+	return undefined;
+}
+
+function assertDevPluginsConfigured(server: ViteDevServer): void {
+	if (!server.config.plugins.some((plugin) => plugin.name === "vetta-plugin-dev-runtime")) {
+		throw new Error("Vite config must include vettaPluginFederation() to enable the plugin development runtime");
+	}
+}
+
+async function assertDevEntryAvailable(entryUrl: string): Promise<void> {
+	const response = await fetch(entryUrl);
+	if (!response.ok) {
+		throw new Error(`Plugin dev entry is unavailable: ${entryUrl} returned HTTP ${response.status}`);
+	}
+	await response.body?.cancel();
+}
+
+async function waitForWatcherReady(watcher: FSWatcher): Promise<void> {
+	await new Promise<void>((resolvePromise, reject) => {
+		const handleReady = () => {
+			watcher.off("error", handleError);
+			resolvePromise();
+		};
+		const handleError = (error: unknown) => {
+			watcher.off("ready", handleReady);
+			reject(error);
+		};
+		watcher.once("ready", handleReady);
+		watcher.once("error", handleError);
+	});
+}
+
 export async function startVettaPluginDevServer(
 	rootDir: string,
 	onEvent: (event: VettaPluginDevEvent) => void,
@@ -85,6 +124,7 @@ export async function startVettaPluginDevServer(
 	const port = await findAvailablePort();
 	const server = await createServer({
 		root: rootDir,
+		configFile: resolveViteConfigFile(rootDir),
 		logLevel: "silent",
 		server: {
 			host: "127.0.0.1",
@@ -94,11 +134,16 @@ export async function startVettaPluginDevServer(
 			hmr: { overlay: false },
 		},
 	});
-	await server.listen();
-
-	server.watcher.add(watchedResourceRoots);
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
-	server.watcher.on("all", (_event, changedPath) => {
+	const resourceWatcher = watch(watchedResourceRoots, { ignoreInitial: true });
+	resourceWatcher.on("error", (error) => {
+		emitVettaPluginDevEvent({
+			type: "error",
+			pluginId: manifest.id,
+			message: error instanceof Error ? error.message : String(error),
+		});
+	});
+	resourceWatcher.on("all", (_event, changedPath) => {
 		const absolutePath = resolve(changedPath);
 		if (!watchedResourceRoots.some((watchedPath) => isInsidePath(absolutePath, watchedPath))) return;
 		if (refreshTimer) clearTimeout(refreshTimer);
@@ -107,8 +152,11 @@ export async function startVettaPluginDevServer(
 				try {
 					if (absolutePath === resolve(rootDir, "plugin.json")) {
 						manifest = await readManifest(rootDir);
-						watchedResourceRoots = await collectWatchedResourceRoots(rootDir, manifest);
-						server.watcher.add(watchedResourceRoots);
+						const nextWatchedResourceRoots = await collectWatchedResourceRoots(rootDir, manifest);
+						const removedRoots = watchedResourceRoots.filter((path) => !nextWatchedResourceRoots.includes(path));
+						if (removedRoots.length > 0) await resourceWatcher.unwatch(removedRoots);
+						resourceWatcher.add(nextWatchedResourceRoots);
+						watchedResourceRoots = nextWatchedResourceRoots;
 					}
 					emitVettaPluginDevEvent({
 						type: "update",
@@ -127,8 +175,20 @@ export async function startVettaPluginDevServer(
 		}, 80);
 	});
 
-	const origin = resolveServerOrigin(server);
-	const entryUrl = `${origin}/mf-manifest.json`;
+	let origin: string;
+	let entryUrl: string;
+	try {
+		assertDevPluginsConfigured(server);
+		await Promise.all([server.listen(), waitForWatcherReady(resourceWatcher)]);
+		origin = resolveServerOrigin(server);
+		entryUrl = `${origin}/mf-manifest.json`;
+		await assertDevEntryAvailable(entryUrl);
+	} catch (error) {
+		if (refreshTimer) clearTimeout(refreshTimer);
+		setVettaPluginDevEventListener(undefined);
+		await Promise.all([resourceWatcher.close(), server.close()]);
+		throw error;
+	}
 	const readyEvent: VettaPluginDevEvent = { type: "ready", pluginId: manifest.id, entryUrl, origin };
 	onEvent(readyEvent);
 
@@ -139,7 +199,7 @@ export async function startVettaPluginDevServer(
 		async close() {
 			if (refreshTimer) clearTimeout(refreshTimer);
 			setVettaPluginDevEventListener(undefined);
-			await server.close();
+			await Promise.all([resourceWatcher.close(), server.close()]);
 		},
 	};
 }
