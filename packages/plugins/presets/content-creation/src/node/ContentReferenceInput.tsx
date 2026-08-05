@@ -73,7 +73,7 @@ export function ContentReferenceInput({
 				aria-label={t("nodeEditor.reference.add")}
 				onClick={() => inputRef.current?.click()}
 			>
-				<span className="icon-[lucide--image] block size-4.5 shrink-0" aria-hidden="true" />
+				<span className="icon-[lucide--paperclip] block size-4.5 shrink-0" aria-hidden="true" />
 			</button>
 			<input
 				ref={inputRef}

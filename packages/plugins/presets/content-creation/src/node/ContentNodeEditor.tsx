@@ -16,7 +16,9 @@ import type {
 import type { ContentNodePropertyDefinition } from "./definitions";
 import { ContentAssetNodeEditor } from "./ContentAssetNodeEditor";
 import { ContentGeneratorComposer } from "./ContentGeneratorComposer";
+import { ContentPromptEditor } from "./ContentPromptEditor";
 import type { ConnectedContentAsset } from "./material-assets";
+import type { ConnectedPromptSource } from "./prompt-sources";
 
 const FIELD_CLASS =
 	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/50";
@@ -29,6 +31,7 @@ interface ContentNodeEditorProps {
 	models: readonly ContentModelDescriptor[];
 	assets: readonly ContentAsset[];
 	connectedAssets: readonly ConnectedContentAsset[];
+	connectedPrompts: readonly ConnectedPromptSource[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
 	focusPromptRequest: number;
@@ -50,6 +53,18 @@ export function ContentNodeEditor(props: ContentNodeEditorProps) {
 				assets={props.assets}
 				onUpdate={props.onUpdate}
 				onImport={props.onImportAssets}
+			/>
+		);
+	}
+	if (props.kind === "prompt") {
+		return (
+			<ContentPromptEditor
+				data={props.data}
+				connectedAssets={props.connectedAssets}
+				referenceAssets={props.referenceAssets}
+				focusPromptRequest={props.focusPromptRequest}
+				onUpdate={props.onUpdate}
+				onImportReferences={props.onImportReferences}
 			/>
 		);
 	}

@@ -1,7 +1,7 @@
 import type { ContentNodeData, ContentNodeKind } from "../project/types";
 
 export type ContentNodeCategory = "input" | "generation" | "resource" | "output";
-export type ContentPortDataType = "text" | "image" | "video" | "audio" | "media" | "content";
+export type ContentPortDataType = "text" | "prompt" | "image" | "video" | "audio" | "media" | "content";
 export type ContentNodePropertyEditor = "text" | "textarea" | "select" | "number" | "model";
 
 export interface ContentPortDefinition {
@@ -70,8 +70,8 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		descriptionKey: "node.description.prompt",
 		accent: "neutral",
 		defaultData: {},
-		inputs: [],
-		outputs: [{ id: "text", labelKey: "port.text", dataType: "text", multiple: true }],
+		inputs: [{ id: "media", labelKey: "port.mediaReference", dataType: "media", multiple: true }],
+		outputs: [{ id: "text", labelKey: "port.prompt", dataType: "prompt", multiple: true }],
 		properties: [PROMPT_PROPERTY],
 	},
 	{
@@ -82,7 +82,7 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		accent: "violet",
 		defaultData: { aspectRatio: "1:1", quality: "standard" },
 		inputs: [
-			{ id: "prompt", labelKey: "port.prompt", dataType: "text" },
+			{ id: "prompt", labelKey: "port.prompt", dataType: "prompt", multiple: true },
 			{ id: "reference", labelKey: "port.imageReference", dataType: "image", multiple: true },
 		],
 		outputs: [{ id: "image", labelKey: "port.image", dataType: "image", multiple: true }],
@@ -106,7 +106,7 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		accent: "blue",
 		defaultData: { aspectRatio: "16:9", duration: 5, resolution: "720p" },
 		inputs: [
-			{ id: "prompt", labelKey: "port.prompt", dataType: "text" },
+			{ id: "prompt", labelKey: "port.prompt", dataType: "prompt", multiple: true },
 			{ id: "image", labelKey: "port.imageReference", dataType: "image", multiple: true },
 			{ id: "video", labelKey: "port.videoReference", dataType: "video", multiple: true },
 		],

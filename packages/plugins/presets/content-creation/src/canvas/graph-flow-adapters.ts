@@ -14,6 +14,7 @@ import {
 	listConnectedContentAssets,
 	listContentNodeAssets,
 } from "../node/material-assets";
+import { listConnectedPromptSources } from "../node/prompt-sources";
 
 export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
@@ -48,6 +49,7 @@ export function toContentFlowNodes(
 			return asset ? [{ binding, asset }] : [];
 		});
 		const connectedAssets = listConnectedContentAssets(project, node.id);
+		const connectedPrompts = listConnectedPromptSources(project, node.id);
 		return {
 			...fallbackSize,
 			width: node.width ?? fallbackSize.width,
@@ -62,6 +64,7 @@ export function toContentFlowNodes(
 				nodeData: node.data,
 				assets,
 				connectedAssets,
+				connectedPrompts,
 				assetUrl: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.url : undefined,
 				assetKind: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.kind : undefined,
 				status: node.status,

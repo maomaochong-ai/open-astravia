@@ -9,6 +9,7 @@ import type {
 	GenerationJob,
 } from "../project/types";
 import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
+import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import { NodeKindIcon } from "./NodeKindIcon";
 
 interface ContentNodeSurfaceProps {
@@ -19,6 +20,7 @@ interface ContentNodeSurfaceProps {
 	assetUrl?: string;
 	assetKind?: "image" | "video" | "audio";
 	assets?: readonly ContentAsset[];
+	referenceAssets?: readonly ContentAsset[];
 	job?: GenerationJob;
 }
 
@@ -81,6 +83,7 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	assetUrl,
 	assetKind,
 	assets = [],
+	referenceAssets = [],
 	job,
 }: ContentNodeSurfaceProps) {
 	const { t } = useTranslation();
@@ -89,6 +92,32 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	const emptyText = kind === "prompt" ? t("node.prompt.doubleClickToEdit") : t(descriptionKey);
 
 	if (kind === "asset") return <ContentAssetNodeSurface assets={assets} />;
+	if (kind === "prompt") {
+		return (
+			<div
+				className="flex h-full w-full flex-col justify-between [container-type:size]"
+				style={{ gap: "clamp(8px, 2.5cqw, 14px)", padding: "clamp(12px, 4cqw, 20px)" }}
+			>
+				<p className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85" style={surfaceTextStyle}>
+					{data.prompt?.trim() || emptyText}
+				</p>
+				{referenceAssets.length > 0 ? (
+					<div className="flex min-w-0 items-center gap-1.5 border-t border-border/55 pt-2">
+						{referenceAssets.slice(0, 3).map((asset) => (
+							<ContentAssetThumbnail
+								key={asset.id}
+								asset={asset}
+								className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted object-cover text-muted-foreground"
+							/>
+						))}
+						<span className="truncate text-[10px] text-muted-foreground">
+							{t("node.prompt.references", { count: referenceAssets.length })}
+						</span>
+					</div>
+				) : null}
+			</div>
+		);
+	}
 
 	if (isMedia) {
 		return (

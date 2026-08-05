@@ -24,7 +24,7 @@ describe("applyContentProjectCommands", () => {
 		expect(project.graph.nodes).toHaveLength(0);
 	});
 
-	it("rejects incompatible, occupied, and cyclic connections", () => {
+	it("rejects incompatible and cyclic connections while allowing multiple prompt sources", () => {
 		const incompatible = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "first", kind: "prompt", position: { x: 0, y: 0 } } },
 			{ type: "node.add", node: { id: "second", kind: "prompt", position: { x: 200, y: 0 } } },
@@ -39,11 +39,10 @@ describe("applyContentProjectCommands", () => {
 			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 200, y: 0 } } },
 			{ type: "edge.connect", source: "first", target: "image", targetHandle: "prompt" },
 		]);
-		expect(() =>
-			applyContentProjectCommands(occupied, [
+		const multiplePrompts = applyContentProjectCommands(occupied, [
 				{ type: "edge.connect", source: "second", target: "image", targetHandle: "prompt" },
-			]),
-		).toThrow(ContentProjectCommandError);
+			]);
+		expect(multiplePrompts.graph.edges).toHaveLength(2);
 
 		const chained = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "a", kind: "image-generator", position: { x: 0, y: 0 } } },

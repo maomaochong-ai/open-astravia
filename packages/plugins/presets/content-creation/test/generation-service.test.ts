@@ -83,6 +83,46 @@ describe("ContentGenerationService", () => {
 		expect(result.assets.map((asset) => asset.kind)).toEqual(["image", "video", "audio"]);
 		expect(fixture.put).toHaveBeenCalledTimes(3);
 	});
+
+	it("imports media into a prompt and inherits it through the selected connected prompt", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [
+			{
+				type: "node.add",
+				node: {
+					id: "prompt",
+					kind: "prompt",
+					position: { x: -300, y: 0 },
+					data: { prompt: "A lighthouse at blue hour" },
+				},
+			},
+			{
+				type: "edge.connect",
+				source: "prompt",
+				target: "image",
+				sourceHandle: "text",
+				targetHandle: "prompt",
+			},
+			{ type: "node.update", nodeId: "image", data: { promptSourceNodeId: "prompt" } },
+		]);
+		const imported = await fixture.service.importReferences("C:/project", "prompt", [
+			{ name: "mood.png", mimeType: "image/png", data: "reference-data" },
+		]);
+
+		expect(imported.graph.nodes.find((node) => node.id === "prompt")?.data.inputs).toMatchObject([
+			{ slotId: "promptReferences" },
+		]);
+		await fixture.service.runNode("C:/project", "image");
+		expect(fixture.generate).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				modeId: "image-to-image",
+				prompt: "A lighthouse at blue hour",
+				references: [
+					expect.objectContaining({ kind: "image", slotId: "referenceImages", data: "reference-data" }),
+				],
+			}),
+		);
+	});
 });
 
 async function createFixture(kind: "image-generator" | "video-generator" = "image-generator") {
@@ -124,7 +164,16 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 				modelId,
 				displayName: kind === "video-generator" ? "Mock Video" : "Mock Image",
 				outputKind: kind === "video-generator" ? "video" : "image",
-				modes: [{ id: modeId, inputs: [] }],
+				modes:
+					kind === "image-generator"
+						? [
+								{ id: "text-to-image", inputs: [] },
+								{
+									id: "image-to-image",
+									inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 4 }],
+								},
+							]
+						: [{ id: modeId, inputs: [] }],
 				aspectRatios: kind === "video-generator" ? ["16:9"] : ["1:1"],
 			},
 		],
@@ -136,7 +185,10 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 		url: `vetta-media://${id}`,
 		mimeType: content.mimeType,
 	}));
-	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue(null);
+	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue({
+		data: "reference-data",
+		mimeType: "image/png",
+	});
 	const service = new ContentGenerationService(workspace, providers, { put, read });
 	return { service, workspace, generate, put };
 }

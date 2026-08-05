@@ -6,11 +6,18 @@ import type {
 	ContentProjectDocument,
 } from "../project/types";
 import { isContentInputBindingAvailable, listContentNodeAssetIds } from "../node/material-assets";
+import {
+	listConnectedPromptSources,
+	PROMPT_REFERENCE_SLOT_ID,
+	resolveConnectedPromptSource,
+	resolveContentPrompt,
+	type ConnectedPromptSource,
+} from "../node/prompt-sources";
 import type { ContentCreationWorkspace } from "../project/workspace";
 import {
+	assignContentReferenceSlots,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
-	resolveContentGenerationMode,
 	slotIdForReferenceKind,
 	type ContentReferenceShape,
 } from "./model-inputs";
@@ -30,14 +37,10 @@ function requireNode(project: ContentProjectDocument, nodeId: string): ContentNo
 	return node;
 }
 
-function resolvePrompt(project: ContentProjectDocument, node: ContentNode): string {
-	const direct = node.data.prompt?.trim();
-	if (direct) return direct;
-	const promptEdge = project.graph.edges.find((edge) => edge.target === node.id && edge.targetHandle === "prompt");
-	const source = promptEdge ? project.graph.nodes.find((candidate) => candidate.id === promptEdge.source) : undefined;
-	const connected = source?.data.prompt?.trim();
-	if (!connected) throw new Error("content generation requires a prompt");
-	return connected;
+interface ReferenceCandidate {
+	id: string;
+	asset: ContentAsset;
+	slotId?: string;
 }
 
 export class ContentGenerationService {
@@ -99,13 +102,21 @@ export class ContentGenerationService {
 		if (files.length === 0) return await this.workspace.load(cwd);
 		const project = await this.workspace.load(cwd);
 		const node = requireNode(project, nodeId);
+		if (node.kind === "prompt") {
+			return await this.importPromptReferences(cwd, node, files);
+		}
 		const outputKind = requireOutputKind(node);
 		const existingBindings = node.data.inputs ?? [];
-		const existingShapes = resolveBindingShapes(project, existingBindings);
-		const model = findSelectedModel(this.listModels(outputKind), node, existingShapes);
+		const promptSources = listConnectedPromptSources(project, node.id);
+		const selectedPrompt = resolveConnectedPromptSource(promptSources, node.data);
+		const existingCandidates = listGenerationReferenceCandidates(project, node, selectedPrompt);
+		const fixedShapes = referenceShapes(existingCandidates.filter((candidate) => candidate.slotId));
+		const promptKinds = existingCandidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
+		const model = findSelectedModel(this.listModels(outputKind), node, fixedShapes, promptKinds);
 		if (!model) throw new Error("no compatible content model is configured");
 
-		const nextShapes = [...existingShapes];
+		const currentAssignment = assignContentReferenceSlots(model, fixedShapes, promptKinds, node.data.modeId);
+		const nextShapes = [...currentAssignment.references];
 		const pending: Array<{
 			asset: ContentAsset;
 			binding: ContentNodeInputBinding;
@@ -154,18 +165,66 @@ export class ContentGenerationService {
 		]);
 	}
 
+	private async importPromptReferences(
+		cwd: string | null,
+		node: ContentNode,
+		files: readonly ImportedContentReference[],
+	): Promise<ContentProjectDocument> {
+		const pending: Array<{
+			asset: ContentAsset;
+			binding: ContentNodeInputBinding;
+			file: ImportedContentReference;
+		}> = [];
+		for (const file of files) {
+			const kind = assetKindForMimeType(file.mimeType);
+			if (!kind) throw new Error(`unsupported content asset type: ${file.mimeType}`);
+			const assetId = crypto.randomUUID();
+			pending.push({
+				file,
+				binding: { id: crypto.randomUUID(), assetId, slotId: PROMPT_REFERENCE_SLOT_ID },
+				asset: {
+					id: assetId,
+					kind,
+					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
+					mimeType: file.mimeType,
+					url: "",
+					createdAt: new Date().toISOString(),
+				},
+			});
+		}
+		for (const item of pending) {
+			const stored = await this.artifacts.put(item.asset.id, item.file);
+			item.asset.url = stored.url;
+			item.asset.mimeType = stored.mimeType;
+		}
+		return await this.workspace.dispatch(cwd, [
+			...pending.map(({ asset }) => ({ type: "asset.add" as const, asset })),
+			{
+				type: "node.update",
+				nodeId: node.id,
+				data: { inputs: [...(node.data.inputs ?? []), ...pending.map(({ binding }) => binding)] },
+			},
+		]);
+	}
+
 	async runNode(cwd: string | null, nodeId: string): Promise<ContentProjectDocument> {
 		const project = await this.workspace.load(cwd);
 		const node = requireNode(project, nodeId);
 		const outputKind = requireOutputKind(node);
 		if (node.status === "running" || node.status === "queued") throw new Error(`node is already running: ${nodeId}`);
-		const references = await this.resolveReferences(project, node);
-		const referenceShapes = references.map(({ slotId, kind }) => ({ slotId, kind }));
-		const model = findSelectedModel(this.listModels(outputKind), node, referenceShapes);
+		const promptSources = listConnectedPromptSources(project, node.id);
+		const selectedPrompt = resolveConnectedPromptSource(promptSources, node.data);
+		const prompt = resolveContentPrompt(promptSources, node.data);
+		if (!prompt) throw new Error("content generation requires a prompt");
+		const candidates = listGenerationReferenceCandidates(project, node, selectedPrompt);
+		const fixedShapes = referenceShapes(candidates.filter((candidate) => candidate.slotId));
+		const unassignedKinds = candidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
+		const model = findSelectedModel(this.listModels(outputKind), node, fixedShapes, unassignedKinds);
 		if (!model) throw new Error("no compatible content model is configured");
-		const mode = resolveContentGenerationMode(model, referenceShapes, node.data.modeId).mode;
+		const assignment = assignContentReferenceSlots(model, fixedShapes, unassignedKinds, node.data.modeId);
+		const mode = assignment.mode;
 		if (!mode) throw new Error(`content model inputs are incompatible: ${model.providerId}/${model.modelId}`);
-		const prompt = resolvePrompt(project, node);
+		const references = await this.resolveReferences(candidates, assignment.assignedSlotIds);
 		const jobId = crypto.randomUUID();
 		const assetId = crypto.randomUUID();
 
@@ -215,38 +274,18 @@ export class ContentGenerationService {
 	}
 
 	private async resolveReferences(
-		project: ContentProjectDocument,
-		node: ContentNode,
+		candidates: readonly ReferenceCandidate[],
+		assignedSlotIds: readonly string[],
 	): Promise<ContentGenerationReference[]> {
-		const bindings: ContentNodeInputBinding[] = (node.data.inputs ?? []).filter((binding) =>
-			isContentInputBindingAvailable(project, node.id, binding),
-		);
-		for (const edge of project.graph.edges.filter((candidate) => candidate.target === node.id)) {
-			if (edge.targetHandle === "prompt") continue;
-			const source = project.graph.nodes.find((candidate) => candidate.id === edge.source);
-			const asset = source?.data.assetId
-				? project.assets.find((candidate) => candidate.id === source.data.assetId)
-				: undefined;
-			if (!asset || (asset.kind !== "image" && asset.kind !== "video")) continue;
-			bindings.push({
-				id: `edge:${edge.id}`,
-				assetId: asset.id,
-				slotId: asset.kind === "image" ? "referenceImages" : "referenceVideo",
-			});
-		}
-
-		const uniqueBindings = bindings.filter(
-			(binding, index) => bindings.findIndex((candidate) => candidate.assetId === binding.assetId) === index,
-		);
+		let unassignedIndex = 0;
 		return await Promise.all(
-			uniqueBindings.map(async (binding) => {
-				const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-				if (!asset) {
-					throw new Error(`content reference asset not found: ${binding.assetId}`);
-				}
+			candidates.map(async (candidate) => {
+				const slotId = candidate.slotId ?? assignedSlotIds[unassignedIndex++];
+				if (!slotId) throw new Error(`content reference slot not resolved: ${candidate.asset.id}`);
+				const asset = candidate.asset;
 				const stored = await this.artifacts.read(asset.id);
 				if (!stored) throw new Error(`content reference data not found: ${asset.id}`);
-				return { id: binding.id, slotId: binding.slotId, kind: asset.kind, ...stored };
+				return { id: candidate.id, slotId, kind: asset.kind, ...stored };
 			}),
 		);
 	}
@@ -261,23 +300,54 @@ function requireOutputKind(node: ContentNode): ContentGenerationOutputKind {
 function findSelectedModel(
 	models: readonly ContentModelDescriptor[],
 	node: ContentNode,
-	references: readonly ContentReferenceShape[],
+	fixedReferences: readonly ContentReferenceShape[],
+	unassignedKinds: readonly AssetKind[],
 ): ContentModelDescriptor | undefined {
 	const selected = models.find(
 		(model) => model.providerId === node.data.providerId && model.modelId === node.data.modelId,
 	);
 	if (selected) return selected;
-	return models.find((model) => resolveContentGenerationMode(model, references).mode !== null);
+	return models.find(
+		(model) =>
+			assignContentReferenceSlots(model, fixedReferences, unassignedKinds, node.data.modeId).mode !== null,
+	);
 }
 
-function resolveBindingShapes(
+function listGenerationReferenceCandidates(
 	project: ContentProjectDocument,
-	bindings: readonly ContentNodeInputBinding[],
-): ContentReferenceShape[] {
-	return bindings.flatMap((binding) => {
+	node: ContentNode,
+	promptSource: ConnectedPromptSource | null,
+): ReferenceCandidate[] {
+	const candidates: ReferenceCandidate[] = (node.data.inputs ?? []).flatMap((binding) => {
+		if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
 		const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-		return asset ? [{ slotId: binding.slotId, kind: asset.kind }] : [];
+		return asset ? [{ id: binding.id, asset, slotId: binding.slotId }] : [];
 	});
+	for (const edge of project.graph.edges.filter((candidate) => candidate.target === node.id)) {
+		if (edge.targetHandle === "prompt") continue;
+		const source = project.graph.nodes.find((candidate) => candidate.id === edge.source);
+		const asset = source?.data.assetId
+			? project.assets.find((candidate) => candidate.id === source.data.assetId)
+			: undefined;
+		if (!asset || (asset.kind !== "image" && asset.kind !== "video")) continue;
+		candidates.push({
+			id: `edge:${edge.id}`,
+			asset,
+			slotId: asset.kind === "image" ? "referenceImages" : "referenceVideo",
+		});
+	}
+	for (const { binding, asset } of promptSource?.references ?? []) {
+		candidates.push({ id: `prompt:${promptSource?.nodeId}:${binding.id}`, asset });
+	}
+	return candidates.filter(
+		(candidate, index) => candidates.findIndex((current) => current.asset.id === candidate.asset.id) === index,
+	);
+}
+
+function referenceShapes(candidates: readonly ReferenceCandidate[]): ContentReferenceShape[] {
+	return candidates.flatMap((candidate) =>
+		candidate.slotId ? [{ slotId: candidate.slotId, kind: candidate.asset.kind }] : [],
+	);
 }
 
 function assetKindForMimeType(mimeType: string): AssetKind | null {

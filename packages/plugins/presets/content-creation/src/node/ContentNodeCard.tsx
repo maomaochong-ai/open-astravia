@@ -24,12 +24,14 @@ import { ContentNodeHandle } from "./ContentNodeHandle";
 import { ContentNodeSurface } from "./ContentNodeSurface";
 import { ContentNodeEditor } from "./ContentNodeEditor";
 import type { ConnectedContentAsset } from "./material-assets";
+import { resolveContentPrompt, type ConnectedPromptSource } from "./prompt-sources";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
 	kind: ContentNodeKind;
 	nodeData: ContentNodeData;
 	assets: readonly ContentAsset[];
 	connectedAssets: readonly ConnectedContentAsset[];
+	connectedPrompts: readonly ConnectedPromptSource[];
 	assetUrl?: string;
 	assetKind?: AssetKind;
 	status: ContentNodeStatus;
@@ -75,6 +77,10 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const showEditor = singleSelection && definition.properties.length > 0;
 	const inputLabel = definition.inputs.map((port) => t(port.labelKey)).join(", ");
 	const outputLabel = definition.outputs.map((port) => t(port.labelKey)).join(", ");
+	const surfaceData =
+		data.kind === "image-generator" || data.kind === "video-generator"
+			? { ...data.nodeData, prompt: resolveContentPrompt(data.connectedPrompts, data.nodeData) }
+			: data.nodeData;
 
 	useEffect(
 		() => () => {
@@ -175,9 +181,10 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				<ContentNodeSurface
 					kind={data.kind}
 					status={data.status}
-					data={data.nodeData}
+					data={surfaceData}
 					descriptionKey={definition.descriptionKey}
 					assets={data.assets}
+					referenceAssets={data.referenceAssets.map(({ asset }) => asset)}
 					assetUrl={data.assetUrl}
 					assetKind={data.assetKind}
 					job={data.job}
@@ -207,6 +214,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						models={data.models}
 						assets={data.assets}
 						connectedAssets={data.connectedAssets}
+						connectedPrompts={data.connectedPrompts}
 						referenceAssets={data.referenceAssets}
 						hasGenerationError={data.hasGenerationError}
 						focusPromptRequest={focusPromptRequest}

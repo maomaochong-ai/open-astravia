@@ -23,6 +23,7 @@ export interface ContentNodeData {
 	providerId?: string;
 	modelId?: string;
 	modeId?: string;
+	promptSourceNodeId?: string | null;
 	inputs?: ContentNodeInputBinding[];
 }
 

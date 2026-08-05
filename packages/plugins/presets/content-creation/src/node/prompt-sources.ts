@@ -1,0 +1,74 @@
+import type {
+	ContentAsset,
+	ContentNode,
+	ContentNodeData,
+	ContentNodeInputBinding,
+	ContentProjectDocument,
+} from "../project/types";
+import { isContentInputBindingAvailable } from "./material-assets";
+
+export const PROMPT_REFERENCE_SLOT_ID = "promptReferences";
+
+export interface ContentPromptReference {
+	binding: ContentNodeInputBinding;
+	asset: ContentAsset;
+}
+
+export interface ConnectedPromptSource {
+	nodeId: string;
+	label?: string;
+	prompt: string;
+	references: readonly ContentPromptReference[];
+}
+
+export function listContentPromptReferences(
+	project: ContentProjectDocument,
+	node: Pick<ContentNode, "id" | "data">,
+): ContentPromptReference[] {
+	return (node.data.inputs ?? []).flatMap((binding) => {
+		if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
+		const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
+		return asset ? [{ binding, asset }] : [];
+	});
+}
+
+export function listConnectedPromptSources(
+	project: ContentProjectDocument,
+	targetNodeId: string,
+): ConnectedPromptSource[] {
+	return project.graph.edges
+		.filter((edge) => edge.target === targetNodeId && edge.targetHandle === "prompt")
+		.flatMap((edge) => {
+			const source = project.graph.nodes.find(
+				(node) => node.id === edge.source && node.kind === "prompt",
+			);
+			if (!source) return [];
+			return [
+				{
+					nodeId: source.id,
+					label: source.data.label,
+					prompt: source.data.prompt ?? "",
+					references: listContentPromptReferences(project, source),
+				},
+			];
+		});
+}
+
+export function resolveConnectedPromptSource(
+	sources: readonly ConnectedPromptSource[],
+	data: ContentNodeData,
+): ConnectedPromptSource | null {
+	if (data.promptSourceNodeId === null) return null;
+	if (data.promptSourceNodeId) {
+		return sources.find((source) => source.nodeId === data.promptSourceNodeId) ?? null;
+	}
+	if (data.prompt?.trim()) return null;
+	return sources[0] ?? null;
+}
+
+export function resolveContentPrompt(
+	sources: readonly ConnectedPromptSource[],
+	data: ContentNodeData,
+): string {
+	return resolveConnectedPromptSource(sources, data)?.prompt.trim() ?? data.prompt?.trim() ?? "";
+}

@@ -1,9 +1,9 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import {
+	assignContentReferenceSlots,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
-	resolveContentGenerationMode,
 	slotIdForReferenceKind,
 } from "../generation/model-inputs";
 import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
@@ -17,6 +17,12 @@ import type {
 import { ContentGenerationControls } from "./ContentGenerationControls";
 import { ContentReferenceInput } from "./ContentReferenceInput";
 import type { ConnectedContentAsset } from "./material-assets";
+import {
+	resolveConnectedPromptSource,
+	resolveContentPrompt,
+	type ConnectedPromptSource,
+} from "./prompt-sources";
+import { PromptSourceSelector } from "./PromptSourceSelector";
 
 interface ContentGeneratorComposerProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
@@ -24,6 +30,7 @@ interface ContentGeneratorComposerProps {
 	data: ContentNodeData;
 	models: readonly ContentModelDescriptor[];
 	connectedAssets: readonly ConnectedContentAsset[];
+	connectedPrompts: readonly ConnectedPromptSource[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
@@ -37,6 +44,7 @@ export function ContentGeneratorComposer({
 	data,
 	models,
 	connectedAssets,
+	connectedPrompts,
 	referenceAssets,
 	hasGenerationError,
 	onUpdate,
@@ -64,19 +72,35 @@ export function ContentGeneratorComposer({
 		const asset = assetById.get(binding.assetId);
 		return asset ? [{ binding, asset }] : [];
 	});
-	const referenceShapes = draftReferenceAssets.map(({ binding, asset }) => ({
+	const fixedReferenceShapes = draftReferenceAssets.map(({ binding, asset }) => ({
 		slotId: binding.slotId,
 		kind: asset.kind,
 	}));
+	const selectedPromptSource = resolveConnectedPromptSource(connectedPrompts, draft);
+	const localAssetIds = new Set(draftReferenceAssets.map(({ asset }) => asset.id));
+	const promptReferenceAssets = (selectedPromptSource?.references ?? []).filter(
+		({ asset }, index, references) =>
+			!localAssetIds.has(asset.id) && references.findIndex((candidate) => candidate.asset.id === asset.id) === index,
+	);
+	const promptReferenceKinds = promptReferenceAssets.map(({ asset }) => asset.kind);
 	const selectedModel =
 		availableModels.find(
 			(model) => model.providerId === draft.providerId && model.modelId === draft.modelId,
-		) ?? availableModels.find((model) => resolveContentGenerationMode(model, referenceShapes).mode !== null) ?? availableModels[0];
+		) ??
+		availableModels.find(
+			(model) =>
+				assignContentReferenceSlots(model, fixedReferenceShapes, promptReferenceKinds, draft.modeId).mode !== null,
+		) ??
+		availableModels[0];
 	const resolution = selectedModel
-		? resolveContentGenerationMode(selectedModel, referenceShapes, draft.modeId)
-		: { mode: null, reason: null };
+		? assignContentReferenceSlots(selectedModel, fixedReferenceShapes, promptReferenceKinds, draft.modeId)
+		: { mode: null, reason: null, references: fixedReferenceShapes, assignedSlotIds: [] };
+	const referenceShapes = resolution.references;
 	const acceptedKinds = selectedModel ? listAcceptedReferenceKinds(selectedModel, referenceShapes) : [];
-	const selectedAssetIds = new Set(draftReferenceAssets.map(({ asset }) => asset.id));
+	const selectedAssetIds = new Set([
+		...draftReferenceAssets.map(({ asset }) => asset.id),
+		...promptReferenceAssets.map(({ asset }) => asset.id),
+	]);
 	const connectedReferenceOptions = connectedAssets
 		.filter(({ asset }) => !selectedAssetIds.has(asset.id))
 		.map((candidate) => ({
@@ -86,9 +110,10 @@ export function ContentGeneratorComposer({
 				: null,
 		}));
 	const isRunning = status === "running" || status === "queued";
-	const canGenerate = Boolean(selectedModel && resolution.mode && !isRunning);
+	const resolvedPrompt = resolveContentPrompt(connectedPrompts, draft);
+	const canGenerate = Boolean(selectedModel && resolution.mode && resolvedPrompt && !isRunning);
 	const minimumWidth = kind === "image-generator" ? 360 : 400;
-	const promptRows = estimatePromptRows(draft.prompt);
+	const promptRows = estimatePromptRows(resolvedPrompt);
 
 	useEffect(() => setDraft(data), [data]);
 
@@ -131,6 +156,12 @@ export function ContentGeneratorComposer({
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
 		>
+			<PromptSourceSelector
+				sources={connectedPrompts}
+				selectedSource={selectedPromptSource}
+				disabled={isRunning}
+				onChange={(nodeId) => commit({ ...draft, promptSourceNodeId: nodeId })}
+			/>
 			<ContentReferenceInput
 				references={draftReferenceAssets}
 				connectedReferences={connectedReferenceOptions}
@@ -158,12 +189,15 @@ export function ContentGeneratorComposer({
 				}}
 			/>
 			<textarea
-				className="my-1.5 min-h-[48px] max-h-[112px] w-full resize-none overflow-y-auto bg-transparent px-0.5 py-1.5 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
-				value={draft.prompt ?? ""}
+				className="my-1.5 min-h-[48px] max-h-[112px] w-full resize-none overflow-y-auto bg-transparent px-0.5 py-1.5 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground read-only:text-muted-foreground"
+				value={selectedPromptSource?.prompt ?? draft.prompt ?? ""}
 				rows={promptRows}
 				placeholder={t("nodeEditor.prompt.placeholder")}
+				readOnly={Boolean(selectedPromptSource)}
 				onChange={(event) => setDraft({ ...draft, prompt: event.target.value })}
-				onBlur={() => void onUpdate(draft)}
+				onBlur={() => {
+					if (!selectedPromptSource) void onUpdate(draft);
+				}}
 				onKeyDown={handlePromptKeyDown}
 			/>
 			{compatibilityMessage || hasGenerationError ? (
@@ -180,7 +214,11 @@ export function ContentGeneratorComposer({
 				canGenerate={canGenerate}
 				onChange={commit}
 				onModelChange={(model) => {
-					const nextMode = resolveContentGenerationMode(model, referenceShapes).mode;
+					const nextMode = assignContentReferenceSlots(
+						model,
+						fixedReferenceShapes,
+						promptReferenceKinds,
+					).mode;
 					commit({
 						...draft,
 						providerId: model.providerId,
