@@ -50,6 +50,31 @@ it("catches minified sources that destroy element→source mapping", () => {
 	expect(rulesFor('<div className="p-4">hi</div>')).not.toContain("minified-source");
 });
 
+it("catches a frame that declares no size, and quotes the sizes already in use", () => {
+	const issues = checkSources([
+		{ path: "frames/home.tsx", content: 'export const frame = { width: 390, height: 844, title: "首页" };' },
+		{ path: "frames/login.tsx", content: 'export const frame = { title: "登录" };' },
+	]);
+	expect(issues).toHaveLength(1);
+	expect(issues[0]).toMatchObject({ file: "frames/login.tsx", line: null, rule: "frame-size-missing" });
+	expect(issues[0].message).toContain("width and height");
+	expect(issues[0].message).toContain("home 390x844");
+});
+
+it("catches a half-declared size and names only the missing side", () => {
+	const [issue] = checkSources([{ path: "frames/login.tsx", content: "export const frame = { width: 390 };" }]);
+	expect(issue.rule).toBe("frame-size-missing");
+	expect(issue.message).toContain("missing height.");
+});
+
+it("does not ask for a size from files that are not frames", () => {
+	const rules = checkSources([
+		{ path: "components/AppShell.tsx", content: "export function AppShell() { return null; }" },
+		{ path: "frames/_layout.tsx", content: "export default function Layout() { return null; }" },
+	]).map((issue) => issue.rule);
+	expect(rules).not.toContain("frame-size-missing");
+});
+
 it("reports each rule at most once per file", () => {
 	const content = [
 		'<a href="/a">a</a>',

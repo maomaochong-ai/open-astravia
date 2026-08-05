@@ -11,6 +11,9 @@
  * references/self-check.md 让 agent 自己看。
  */
 
+import { isFrameFile } from "../../engine/src/routes";
+import { parseFrameMeta } from "./frame-meta";
+
 export interface SourceIssue {
 	/** 相对 sidecar 目录的路径，如 `frames/login.tsx`。 */
 	file: string;
@@ -77,6 +80,46 @@ const RULES: Rule[] = [
 	},
 ];
 
+/** `frames/login.tsx` → `login`；不是画框文件（`_layout.tsx`、components/）返回 null。 */
+function frameIdOf(path: string): string | null {
+	const name = path.startsWith("frames/") ? path.slice("frames/".length) : null;
+	if (!name || name.includes("/") || !name.endsWith(".tsx") || !isFrameFile(name)) return null;
+	return name.replace(/\.tsx$/, "");
+}
+
+/**
+ * 画框尺寸必须自己声明——没有默认值可回落，声明不全的画框根本上不了画布。
+ *
+ * 报错里带上同一份设计里其他画框的尺寸：agent 补声明时多半是想跟已有屏保持一致，
+ * 让它自己再去把文件读一遍是白跑一趟。
+ */
+function checkFrameSize(file: SourceFile, others: readonly SourceFile[]): SourceIssue | null {
+	const id = frameIdOf(file.path);
+	if (!id) return null;
+	const meta = parseFrameMeta(file.content, id);
+	if (meta.width !== null && meta.height !== null) return null;
+
+	const known: string[] = [];
+	for (const other of others) {
+		const otherId = other === file ? null : frameIdOf(other.path);
+		if (!otherId) continue;
+		const otherMeta = parseFrameMeta(other.content, otherId);
+		if (otherMeta.width === null || otherMeta.height === null) continue;
+		known.push(`${otherId} ${otherMeta.width}x${otherMeta.height}`);
+	}
+	const missing = [meta.width === null && "width", meta.height === null && "height"].filter(Boolean).join(" and ");
+	const reference =
+		known.length > 0
+			? ` Existing frames in this design: ${known.join(", ")} — match one of them unless this screen is a different product type.`
+			: " Pick the size from the product type (see the vetta-ui-design skill).";
+	return {
+		file: file.path,
+		line: null,
+		rule: "frame-size-missing",
+		message: `Frame meta is missing ${missing}. Declare it as the first statement: \`export const frame = { width: 390, height: 844, title: "登录" };\`. There is no default size — the frame stays off the canvas until both are declared.${reference}`,
+	};
+}
+
 /**
  * 每条规则每个文件只报一次：同一个毛病在一个文件里往往命中几十行，全报出来会把
  * vetd_status 的返回撑爆，而 agent 需要的信息第一条就给全了。
@@ -84,6 +127,8 @@ const RULES: Rule[] = [
 export function checkSources(files: readonly SourceFile[]): SourceIssue[] {
 	const issues: SourceIssue[] = [];
 	for (const file of files) {
+		const sizeIssue = checkFrameSize(file, files);
+		if (sizeIssue) issues.push(sizeIssue);
 		const lines = file.content.split("\n");
 		const reported = new Set<string>();
 		for (const [index, line] of lines.entries()) {

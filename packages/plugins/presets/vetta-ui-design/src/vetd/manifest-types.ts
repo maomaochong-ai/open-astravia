@@ -36,8 +36,6 @@ export interface VetdManifest {
 	frames: VetdFrameEntry[];
 }
 
-export const DEFAULT_FRAME_META: FrameMeta = { width: 800, height: 600, title: "" };
-
 export function emptyManifest(): VetdManifest {
 	return {
 		version: 1,

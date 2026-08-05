@@ -125,8 +125,17 @@ export class DesignSession {
 			} catch {
 				// unreadable frame: keep going with defaults
 			}
-			const meta = parseFrameMeta(source, id);
+			const parsed = parseFrameMeta(source, id);
 			const existing = known.get(id);
+			// 尺寸没声明时的参考系：这一帧上次同步到的声明，否则按文件名排序的前一帧。
+			// 都没有就说明整份设计的第一帧就漏写了——画不出来，跳过，交给 vetd_status
+			// 的 issues 让 agent 补 `export const frame = { width, height }`。
+			const reference = existing?.meta ?? nextFrames.at(-1)?.meta ?? null;
+			const width = parsed.width ?? reference?.width ?? null;
+			const height = parsed.height ?? reference?.height ?? null;
+			// existing 一定带着一份完整的 meta，所以这里必然是一帧全新的、且前面没有任何帧。
+			if (width === null || height === null) continue;
+			const meta = { width, height, title: parsed.title };
 			if (!existing) {
 				const placement = this.pendingPlacements.get(id) ?? this.autoPlacement(nextFrames);
 				this.pendingPlacements.delete(id);

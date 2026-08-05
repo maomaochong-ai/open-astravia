@@ -9,6 +9,7 @@ import { engineDiagnostics } from "./engine/engine-manager";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import { checkSources, type SourceFile } from "./vetd/check-sources";
 import { findVetdFiles } from "./vetd/discover";
+import { parseFrameMeta } from "./vetd/frame-meta";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
@@ -166,6 +167,20 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const frameId = trigger.input.frame.replace(/\.tsx$/, "");
 			const known = controller.session.manifest.frames.map((frame) => frame.id);
 			if (!known.includes(frameId)) {
+				// 源码在、画布上却没有，只有一种可能：meta 没把尺寸声明全，reconcile 放弃了它。
+				// 报「Unknown frame」会让模型以为自己写错了文件名，转头再写一遍同样没尺寸的文件。
+				const source = await host.fs
+					.readFile(`${controller.session.dirPath}/frames/${frameId}.tsx`)
+					.then((file) => file.content)
+					.catch(() => null);
+				const meta = source === null ? null : parseFrameMeta(source, frameId);
+				if (meta && (meta.width === null || meta.height === null)) {
+					return {
+						ok: false,
+						retryable: true,
+						error: `Frame "${frameId}" is not on the canvas: frames/${frameId}.tsx does not declare ${meta.width === null ? "width" : ""}${meta.width === null && meta.height === null ? " and " : ""}${meta.height === null ? "height" : ""}. There is no default size — add \`export const frame = { width, height, title }\` as the first statement, then take the screenshot again.${known.length > 0 ? ` Sizes already used here: ${controller.session.manifest.frames.map((frame) => `${frame.id} ${frame.width}x${frame.height}`).join(", ")}.` : ""}`,
+					};
+				}
 				return {
 					ok: false,
 					retryable: true,
