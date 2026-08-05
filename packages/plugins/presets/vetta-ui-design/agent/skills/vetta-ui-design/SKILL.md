@@ -1,309 +1,124 @@
 ---
 name: vetta-ui-design
-description: "Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, poster, or attaches a design frame/element from the canvas. A design document is a real front-end project, not a picture, so build it like one — frames are React (TSX) files with Tailwind v4 + Iconify, each frame is a route (frames/login.tsx = /login), screens navigate via react-router <Link>, shared chrome goes in components/ or a frames/_layout.tsx rendering <Outlet/>, and the canvas hot-reloads on save. Invoke this skill BEFORE writing any frame — it carries the routing, layout, interaction and quality rules you cannot infer from the file tree."
+description: "Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, or poster, or attaches a design frame/element from the canvas. Frames are real React (TSX) routes, not pictures."
 agent_mode: work
 ---
 
 # Vetta UI Design
 
-A design document is a `.vetd` manifest plus a sidecar source dir `<name>.vetd.d/`:
-
 ```text
-login-app.vetd          ← canvas manifest (frame positions/sizes). NEVER edit this.
+login-app.vetd          ← canvas manifest (positions/sizes). NEVER edit.
 login-app.vetd.d/
-  frames/               ← one TSX file = one canvas frame
-    login.tsx
-    dashboard.tsx
-    _layout.tsx         ← optional shared shell (nav bar…); `_` files are NOT frames
-  components/           ← shared React components (imported by frames)
-  assets/               ← static assets (import with a relative path)
-  theme.css             ← shared color system (Tailwind v4 @theme tokens)
-  DESIGN.md             ← optional. If present, it OVERRIDES the presets below.
+  frames/               ← one TSX file = one canvas frame = one route
+    index.tsx           ← the site root "/"
+    login.tsx           ← "/login"
+    _layout.tsx         ← optional shared shell; `_` files are NOT frames
+  components/           ← shared React components
+  assets/               ← images, imported relatively
+  theme.css             ← color/radius/shadow tokens (Tailwind v4 @theme)
+  DESIGN.md             ← optional spec; OVERRIDES defaults in this skill
 ```
 
-The canvas watches the sidecar dir: every file save hot-reloads instantly. The
-plugin is the only writer of the `.vetd` manifest — you create/edit/delete
-files under `<name>.vetd.d/` and the canvas reconciles automatically.
+You write the sidecar sources; the plugin owns the manifest and reconciles
+automatically. Every save hot-reloads the canvas.
 
-A frame is just a fixed-size canvas rendering a React component. UI screens are
-the common case, not the only one — see "Pick the product type" below.
+## It is a project, not a picture
 
-## Build it like a project, not a picture
+The output is a running front-end app the user can click through in 预览, built
+from sources meant to ship. Decide structure BEFORE writing screens:
 
-This is the single most important framing, and the one most easily lost: the
-output is a running front-end app that happens to be viewed on a canvas. The
-user can hit "预览" and click through it, and the same sources are meant to ship.
-So apply normal engineering judgement, in this order, BEFORE writing screens:
+1. **Routes** — `frames/login.tsx` is `/login`, `index.tsx` is `/`.
+2. **Navigation** — `import { Link, useNavigate } from "react-router"`. Never
+   hand-roll a `Link`, and never use a bare `<a href>` for an internal screen.
+3. **Shared chrome written once** — nav bar / sidebar / tab bar goes in
+   `components/`, or in `frames/_layout.tsx` rendering `<Outlet />` when it must
+   survive navigation. Never paste it into each frame.
+4. **Shared vocabulary** — colors/radii/shadows from `theme.css` tokens
+   (`bg-primary`, not `#0d99ff`); repeated blocks become components.
 
-1. **Routing** — every `frames/<id>.tsx` is a route (`/login`); `index.tsx` is
-   `/`. Screens reach each other with react-router, not by existing side by side.
-2. **Shared structure** — chrome that appears on every screen (nav bar, sidebar,
-   tab bar) is written ONCE: `components/`, or `frames/_layout.tsx` rendering
-   `<Outlet />` when it must survive navigation.
-3. **Shared vocabulary** — colors/radii/shadows come from `theme.css` tokens;
-   repeated blocks (stat card, table row, list item, empty state) become
-   components.
-4. **Then** the screens, as composition over 1-3.
+If changing the nav bar means editing more than one file, the structure is
+wrong. Posters, slides and infographics are standalone artwork — steps 1-3 do
+not apply to them.
 
-Three dashboard screens each containing their own copy-pasted sidebar is a
-failed design document, no matter how good the pixels are. The tell is simple:
-if changing the nav bar means editing more than one file, the structure is wrong.
+## Hard rules
 
-Posters, slides and infographics are the exception — they are standalone
-artwork, so steps 1 and 2 do not apply to them (step 3 still does).
-
-## Hard rules (mechanics — never negotiable)
-
-1. **Never edit the `.vetd` manifest.** Frame positions belong to the user's
-   canvas. Your channel is the sidecar sources only.
-2. **Every frame file declares its meta** as the FIRST statement:
-   ```tsx
-   export const frame = { width: 390, height: 844, title: "登录" };
-   ```
-   It is read with a regex, so keep it on ONE line, flat (numbers + a plain
-   string), with no comments and no nested objects — a parse miss silently
-   falls back to 800x600. This is the frame's declared size: the canvas uses it
-   for initial placement and follows it when you change it. Current
-   user-adjusted size arrives in attachments — trust that over the meta.
-3. **Default-export exactly one component** per frame file. It renders
-   edge-to-edge inside the frame; use `h-full` layouts, no page margins.
-4. **Use the shared theme tokens** from `theme.css` (`bg-primary`,
-   `text-surface-foreground`, …) for anything brand/surface colored, so the
-   whole document reskin-s from one place. Add new tokens to the `@theme`
-   block instead of hardcoding hex values across frames.
-5. **Icons come from Iconify Tailwind classes**:
-   `<span className="icon-[lucide--search] size-4" />`. Bundled offline sets:
-   `lucide`, `tabler`, `mdi`, `simple-icons` (brand logos). Prefer these.
-6. **Never write the same UI twice.** Shared pieces live in `components/`,
-   imported with relative paths (`../components/Button`). Frames may import each
-   other's components but not other frames.
-   This bites hardest with **page chrome** — nav bar, sidebar, bottom tab bar,
-   page header. Pasting one of those into three dashboard screens is the single
-   most common failure in multi-screen designs: the user then asks for one nav
-   change and it has to be made in every frame, and they drift apart. Write the
-   chrome ONCE (`components/`, or `frames/_layout.tsx` — see "Interaction &
-   navigation") **before** the screens that use it.
-7. **Never point an `<img>` (or `background-image`) at a remote URL.** Images go
-   in `assets/` and are imported relatively
-   (`import hero from "../assets/hero.png"`); otherwise use a CSS gradient, a
-   solid token color, or an Iconify glyph as the placeholder.
-   This is not a style preference. Screenshots (canvas thumbnails, "让 Vetta
-   调整", 导出渲染图) must re-`fetch` every image and inline it as a data URL —
-   the browser cannot export a canvas tainted by a cross-origin image. So a
-   remote URL that renders perfectly on screen will still:
-   - **fail** the shot whenever `fetch` can't get it (CDN without CORS headers,
-     404, offline) — that image comes out blank, and the failure is cached for
-     the rest of the frame's life;
-   - **slow it down** by a full network round trip per image; a frame with
-     dozens of remote images turns a ~100ms shot into seconds.
-
-   Local assets are served same-origin by the engine dev server and have
-   neither problem.
-8. TypeScript + Tailwind v4 utilities only; no extra npm dependencies (the
-   shared engine has react/react-dom + react-router + Tailwind + Iconify —
-   nothing else).
-   Animations: Tailwind transitions/keyframes or hand-rolled CSS.
-   **No web fonts** — only the system font stack is available. Build type
-   contrast with size/weight/tracking, not typeface choice.
-9. **Frame id = file basename = its route.** Create a frame by writing
-   `frames/<kebab-id>.tsx`; delete one by deleting that file (the canvas
-   reconciles). Rename the title via the meta, not the manifest.
-   `frames/login.tsx` is the route `/login`, and `frames/index.tsx` is the site
-   root `/` — see "Interaction & navigation".
-
-## Before you write
-
-- New document: call `vetd_create` (it scaffolds and opens the canvas). Never
-  scaffold the manifest by hand. It creates NO frames — the canvas deliberately
-  starts empty rather than guessing a size, so decide the product type first
-  (below) and write the frames yourself.
-- **More than one screen? Plan the shared parts before writing any frame.**
-  List the screens, then name what they have in common — chrome (nav bar,
-  sidebar, tab bar, page header), and repeated blocks (stat card, table row,
-  empty state). Write those into `components/` (or `frames/_layout.tsx`) FIRST,
-  then write each screen as composition on top. Writing screen 1 in full and
-  extracting later never happens — you stop seeing the repetition by screen 3.
-- Existing document: call `vetd_status` first — it reports the frame ids/sizes
-  AND `sharedShell` (the existing layout + `components/`). Read `theme.css`.
-  Reuse what is there — do not invent a second button, a second nav bar, or a
-  second shade of the brand color.
-- Read `DESIGN.md` if it exists. It is the design's own spec and outranks every
-  default in this file. If its frontmatter has `system: <id>`, a built-in
-  design system is applied: `theme.css` is that system's hand-tuned palette —
-  do not casually rewrite token values; ADD tokens when you need new ones, and
-  never rename or remove the base seven (`primary`, `primary-foreground`,
-  `surface`, `surface-foreground`, `muted`, `accent`, `danger`).
-
-## Design systems (built-in templates)
-
-The plugin bundles curated design systems (Linear, Stripe, Notion, Apple,
-Spotify, …), each a hand-tuned `theme.css` + `DESIGN.md`. The catalog may
-grow — never hardcode the list; call `vetd_design_systems` to see it.
-
-- **Starting a new design and the user named no style**: call
-  `vetd_design_systems` (no args) for the catalog, shortlist 2-4 that fit the
-  request, then call it again with `present: [ids]` — the user picks from
-  preview cards (or skips templates). Wait for their choice; don't pick for
-  them.
-- **The user described a vibe but named no system** ("make it feel premium",
-  "像个开发者工具"): shortlist by the blurbs and `present` your best matches.
-- **The user named a system** ("Linear 风"): call
-  `vetd_design_systems({ apply: "<id>" })` directly.
-- Apply on an empty design writes `theme.css` + `DESIGN.md` for you — do NOT
-  rewrite them afterwards; just build frames that follow `DESIGN.md`. Apply on
-  a design with frames backs everything up, writes `DESIGN.md`, and returns
-  restyle instructions — execute them.
-- Multi-screen requests are one flow (e.g. login → home → detail): plan the
-  frame set first, put shared UI in `components/`, keep one visual language
-  across all of them.
+1. **Never edit the `.vetd` manifest.** Your channel is the sidecar sources.
+2. **Frame meta is the FIRST statement**, one flat line (regex-parsed; a miss
+   silently falls back to 800x600):
+   `export const frame = { width: 390, height: 844, title: "登录" };`
+3. **One default-exported component per frame**, rendering edge-to-edge —
+   `h-full` layouts, no page margins, no `min-h-screen`.
+4. **Frame id = file basename = route.** Create/delete a frame by writing or
+   deleting `frames/<kebab-id>.tsx`.
+5. **Icons are Iconify classes**: `<span className="icon-[lucide--search] size-4" />`.
+   Never write your own icon component or inline SVG paths. Offline sets:
+   `lucide`, `tabler`, `mdi`, `simple-icons`.
+6. **Theme tokens for anything brand/surface colored.** Add tokens to `@theme`
+   rather than hardcoding hex across frames.
+7. **No remote image URLs** (`<img>`, `background-image`). Import from
+   `assets/`, or use a gradient/token color/Iconify glyph. Remote URLs break
+   screenshots — see `references/quality.md`.
+8. **No extra npm dependencies.** Available: react, react-router, Tailwind v4,
+   Iconify. No web fonts — build contrast with size/weight/tracking.
+9. **Write readable code**: normal formatting, one element per line for
+   anything nested. Everything-on-one-line breaks element→source mapping, and
+   the user's "让 Vetta 调整" then points every element at the same line.
 
 ## Pick the product type
 
-Judge from the request, then apply that preset. These are DEFAULTS — an
-explicit user instruction always wins.
+DEFAULTS — an explicit user instruction always wins. Do not default to a phone
+frame; a dashboard at 390 wide is the most common failure.
 
 | Product | Default size | What matters |
 | --- | --- | --- |
-| Mobile screen | 390x844 | One primary action per screen; thumb-reachable controls; full state coverage |
-| Desktop app / dashboard | 1440x900 | Real information density; aligned grid; no giant empty middle |
-| Landing page | 1440x{2000+} | Clear hero → proof → CTA rhythm; section-level pacing |
-| Slide | 1920x1080 | One idea per slide; large type; generous margins |
-| Poster / social image | 1080x1440 (or 1080x1080) | A single visual focal point; strong size contrast; few words |
+| Mobile screen | 390x844 | One primary action; thumb reach; full state coverage |
+| Desktop app / dashboard | 1440x900 | Real density; aligned grid; no empty middle |
+| Landing page | 1440x{2000+} | hero → proof → CTA rhythm |
+| Slide | 1920x1080 | One idea; large type; generous margins |
+| Poster / social | 1080x1440 or 1080x1080 | One focal point; strong size contrast |
 | Infographic / chart | free | Honest data, labeled axes, legible legend |
 
-Do not default to a phone frame. A dashboard rendered at 390 wide is the most
-common failure here.
+## Workflow
 
-## Interaction & navigation
+**New document**: `vetd_create` → pick the product type → if the user named no
+style, see `references/design-systems.md` → write shared parts → write frames.
 
-A design document is also a runnable app: each frame is a real route, and the
-user can hit "预览" on the canvas to click through it (or open the same URL in
-their system browser). Design for that — a screen where nothing responds to a
-click is an unfinished screen.
+**Existing document**: `vetd_status` FIRST. It returns the frame ids/sizes,
+`sharedShell` (existing `_layout.tsx` + `components/` — reuse them), `issues`
+(mechanical rule violations found in your sources) and `buildError`s. Read
+`theme.css` and reuse what is there.
 
-**Routes.** One frame = one route, derived from the file name:
-`frames/login.tsx` → `/login`. `frames/index.tsx` is special — it is the site
-root `/`. For any multi-screen product, make the entry screen `index.tsx` so
-`/` lands somewhere sensible.
+**`issues` are not advisory.** They are things a checker proved wrong about the
+code you wrote — fix them before reporting back. Each one names the rule and,
+when relevant, the reference to read.
 
-**Navigating between frames** uses react-router, imported from `react-router`:
+**Check the structure**: when the design is a UI product with more than one
+screen, or has chrome that repeats across screens (nav bar / sidebar / tab bar),
+read `references/self-check.md` before reporting back and run its checklist
+against your own files. It carries the reference architecture to compare with —
+half the list is mechanical and comes back via `issues`, the other half only you
+can see. Skip it for posters, slides and single-screen designs.
 
-```tsx
-import { Link, useNavigate } from "react-router";
+**Verify visually**: call `vetd_screenshot` for EVERY frame you created or
+changed, then Read the returned PNG to actually see it. Check for clipping,
+misalignment, truncation, contrast, and whether the frame fills its height. A
+frame with a `buildError` returns the compile error instead of an image — never
+declare it done in that state.
 
-<Link to="/dashboard" className="...">登录</Link>;
-// or, when the click does something first:
-const navigate = useNavigate();
-<button type="button" onClick={() => navigate("/dashboard")}>登录</button>;
-```
+**Editing from an attachment**: the payload carries the exact
+`frames/xxx.tsx:LINE` plus DOM path/classes/text. Edit that location. If it
+points into `components/`, the change hits every frame using it — say so.
 
-**Shared chrome (nav bar, sidebar, bottom tabs)** has two levels — pick by what
-the thing actually is:
+## References (read on demand)
 
-- **A shared component** (`components/NavBar.tsx`, imported by each frame) is
-  the default. Always right, costs nothing.
-- **A layout route** (`frames/_layout.tsx`) is for chrome that must *survive
-  navigation*. Create it only when the design is a real multi-screen app/site
-  with persistent chrome. It becomes the parent route of every frame, so the
-  nav bar mounts once: expanded menus, active state and scroll position stay
-  put when the user clicks through in preview. Files starting with `_` are not
-  frames — no canvas artboard is created for them.
+Resolve against `$SKILL_DIR`. Do not read them all up front.
 
-```tsx
-// frames/_layout.tsx — must render <Outlet /> itself
-import { Outlet, useLocation } from "react-router";
-import { NavBar } from "../components/NavBar";
-
-export default function Layout() {
-	const { pathname } = useLocation();
-	// Screens outside the app shell (login, onboarding, a full-bleed landing
-	// page) simply opt out here — no separate mechanism.
-	if (pathname === "/login") return <Outlet />;
-	return (
-		<div className="flex h-full flex-col bg-surface">
-			<NavBar />
-			<div className="min-h-0 flex-1">
-				<Outlet />
-			</div>
-		</div>
-	);
-}
-```
-
-Do NOT create a layout for posters, slides, infographics, or a single-screen
-design — there is nothing to persist, and a shell that wraps a poster is just
-wrong. No `_layout.tsx` means the engine behaves exactly as if the concept did
-not exist. Chrome differs per form factor (a 390-wide tab bar and a 1440-wide
-top nav are not the same shell), so one layout file serves one form factor; put
-mixed-form-factor work in separate design documents.
-
-**How much interaction to write** — by product type:
-
-- **Mobile screen / desktop app / dashboard / landing page**: wire it up.
-  `useState` for tabs, accordions, dropdowns, modals, form fields, toggles,
-  filters; `<Link>`/`navigate()` for anything that moves between screens. When
-  the user asked for a flow (login → home → detail), the flow must actually be
-  clickable end to end.
-- **Slide / poster / social image / infographic / chart**: do NOT add
-  interaction. They are static artwork; state hooks there are pure noise.
-
-Keep it honest and local: real component state, no fake backends, no timers
-pretending to load forever. A submit button navigates to the next screen; it
-does not need an API.
-
-Note the canvas itself stays in design mode — clicking a frame there selects
-elements for editing, which is why interaction is verified in preview (or by
-reading the code), not by clicking the canvas.
-
-## Quality bar
-
-Applies to everything; the preset above adds emphasis, it does not replace this.
-
-- **Spacing** on one consistent scale (Tailwind's default 4px steps). No
-  arbitrary `mt-[13px]`.
-- **Type**: at most 4 sizes per frame, with a visible weight/size gap between
-  levels. If two levels look similar, merge them.
-- **Color**: theme tokens only. One accent, used sparingly. Check text/background
-  contrast — light gray on white is the second most common failure.
-- **Corners, borders, shadows** consistent across the whole document.
-- **Real content**: plausible names, prices, dates, copy — never Lorem ipsum or
-  `Item 1 / Item 2`. Write copy in the language the user is using.
-- **States**: for interactive UI, cover hover/disabled, and design the empty and
-  loading cases when the screen can have them. (Skip for posters/slides.)
-  Where a state is reachable by clicking, make it real rather than drawing a
-  second frame for it — see "Interaction & navigation".
-- **Icons must match meaning** — do not reach for a random glyph to fill space.
-
-## Editing from a canvas attachment
-
-When the user attaches a frame or DOM element, the attachment contains the
-sources dir, the frame file, and — for elements — the exact
-`frames/xxx.tsx:LINE` source location plus DOM path/classes/text. Edit that
-location directly. If the location points into `components/`, the change
-affects every frame using that component — mention this when it matters.
-
-## Verify visually
-
-Screenshotting is not optional. Call `vetd_screenshot` with the frame id, then
-Read the returned PNG path to SEE the result:
-
-- always after creating a frame,
-- after any change that moves layout,
-- for every frame you touched, before you report back.
-
-Looking at the capture, check: content overflowing or clipped at the frame
-edge, misaligned columns, text truncation, unreadable contrast, and whether the
-frame actually fills its height. Fix and re-shoot rather than describing what
-you intended.
-
-Use `vetd_status` to list frame ids, check the design engine, and read recent
-build output when something fails to render.
-
-If a frame fails to compile, the canvas keeps showing its last good rendering
-with a "build failed" badge, and `vetd_screenshot` returns the compile error
-instead of an image (`vetd_status` reports it as `buildError` on the frame).
-Fix the source and screenshot again — never declare a frame done while it
-still reports a build error.
+| File | Read it when |
+| --- | --- |
+| `references/interaction.md` | Wiring clicks, `_layout.tsx`, cross-screen flows |
+| `references/self-check.md` | Checking a multi-screen UI before reporting back |
+| `references/quality.md` | Before declaring any frame done |
+| `references/design-systems.md` | Starting a new design, or restyling one |
 
 ## Frame skeleton
 

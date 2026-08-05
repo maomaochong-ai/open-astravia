@@ -7,6 +7,7 @@ import { applyDesignSystem, buildRestylePrompt } from "./design-systems/apply";
 import { DESIGN_SYSTEMS, designSystemById } from "./design-systems/index";
 import { engineDiagnostics } from "./engine/engine-manager";
 import { CANVAS_TAB_ID } from "./tab-ids";
+import { checkSources, type SourceFile } from "./vetd/check-sources";
 import { findVetdFiles } from "./vetd/discover";
 import { scaffoldDesign } from "./vetd/scaffold";
 
@@ -50,16 +51,59 @@ async function inspectSharedShell(
 	return { layout, components };
 }
 
+/**
+ * vetd_status 的一句话提示。按「此刻最该做的一件事」给，不叠加——三条并列的建议
+ * 等于没有重点。
+ */
+function statusNote(
+	shell: { layout: string | null; components: string[] } | null,
+	issueCount: number,
+	frameCount: number,
+): string {
+	if (issueCount > 0) {
+		return `${issueCount} issue(s) found in your sources — these are proven rule violations, not suggestions. Fix them before reporting back; each message names the rule and the reference to read.`;
+	}
+	if (frameCount > 1 && shell && !shell.layout && shell.components.length === 0) {
+		return "Multiple screens but NO shared UI yet. If they share a nav bar / sidebar / tab bar, extract it into components/ (or frames/_layout.tsx when it must survive navigation) rather than repeating it per frame. Structure checklist: references/self-check.md in the vetta-ui-design skill.";
+	}
+	if (shell && (shell.layout || shell.components.length > 0)) {
+		return "This design already has shared UI (see `sharedShell`) — reuse it instead of writing a second copy.";
+	}
+	return "Design open on the canvas.";
+}
+
+/** 送进机检的全部设计源码：画框与共享组件。 */
+async function collectSources(fs: PluginContext["fs"], dirPath: string): Promise<SourceFile[]> {
+	const files: SourceFile[] = [];
+	for (const dir of ["frames", "components"]) {
+		let entries: Awaited<ReturnType<PluginContext["fs"]["readDir"]>>;
+		try {
+			entries = await fs.readDir(`${dirPath}/${dir}`);
+		} catch {
+			continue; // components/ 可以不存在
+		}
+		for (const entry of entries) {
+			if (entry.isDirectory || !entry.name.endsWith(".tsx")) continue;
+			try {
+				const { content } = await fs.readFile(entry.path);
+				files.push({ path: `${dir}/${entry.name}`, content });
+			} catch {
+				// 读不到就跳过：这条链路只做检查，不该因为一个文件失败而整体报错
+			}
+		}
+	}
+	return files;
+}
+
 export function registerDesignTools(ctx: PluginContext): void {
 	ctx.agent.registerTool<CreateInput>({
 		id: "vetd-create",
 		name: "vetd_create",
 		label: "%tool.vetd_create%",
-		// 工具描述每轮都在系统提示里，而 skill 正文要 invoke_skill 才读得到 —— 所以
-		// 「设计稿是个工程」这件事必须写在这里，否则 agent 只会看到一堆 tsx 文件，
-		// 把每屏当成一张互不相干的图去画。
+		// 工具描述每轮都在系统提示里，所以只留「做什么 + 去哪拿规则」。规则本身归
+		// skill 正文（已验证 invoke_skill 能送达），在这里复述一遍是双份 token。
 		description:
-			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. A design document is a real front-end project: each frames/<id>.tsx is a route (frames/login.tsx = /login, frames/index.tsx = /), screens link to each other with react-router, shared chrome lives in components/ or a frames/_layout.tsx that renders <Outlet/>, and shared color tokens live in theme.css. Build it like an engineer would — never edit the .vetd manifest itself. Invoke the vetta-ui-design skill first for the full rules.",
+			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -81,7 +125,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				ok: true,
 				vetdPath: result.vetdPath,
 				sourcesDir: result.dirPath,
-				note: "Design created and opened on the canvas. It has NO frames yet — pick the frame sizes from the product type (screen / slide / poster / …) and write them as frames/<id>.tsx with `export const frame = { width, height, title }`; shared color tokens live in theme.css. Do NOT edit the .vetd manifest — the canvas owns it. If this design will have MORE THAN ONE screen, write the shared chrome FIRST (nav bar / sidebar / tab bar → components/, or frames/_layout.tsx when it must survive navigation) and have every frame use it — never paste the same nav bar into each frame file.",
+				note: "Design created and opened on the canvas, with NO frames yet — pick sizes from the product type and write frames/<id>.tsx, each starting with `export const frame = { width, height, title }`. Never edit the .vetd manifest. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx) — see the vetta-ui-design skill.",
 			};
 		},
 	});
@@ -184,7 +228,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_status",
 		label: "%tool.vetd_status%",
 		description:
-			"Inspect the Vetta UI Design state: design documents in the workspace, the design open on the canvas, its frames (id/size/title, plus `buildError` when a frame currently fails to compile), its `sharedShell` (the existing frames/_layout.tsx and components/ — reuse these instead of rewriting the nav bar in every frame) and design-engine diagnostics (dev-server liveness + recent build output). Call it BEFORE editing an existing design: frame ids double as routes, and you cannot tell what is already shared by guessing.",
+			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (rule violations found in your sources) and engine diagnostics. Call it before editing an existing design, and again after writing frames to pick up `issues`.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
@@ -193,6 +237,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const controller = getCanvasController();
 			const engine = await engineDiagnostics(controller?.session.dirPath ?? null);
 			const shell = controller ? await inspectSharedShell(host.fs, controller.session.dirPath) : null;
+			const issues = controller ? checkSources(await collectSources(host.fs, controller.session.dirPath)) : [];
 			return {
 				designs,
 				open: controller
@@ -202,6 +247,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 							// 复用面先于画框列出：agent 是一屏一屏往下写的，看不见既有的
 							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
 							sharedShell: shell,
+							issues,
 							frames: controller.session.manifest.frames.map((frame) => {
 								const buildError = getFrameError(frame.id);
 								return {
@@ -216,14 +262,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 						}
 					: null,
 				engine,
-				...(shell && controller && controller.session.manifest.frames.length > 1
-					? {
-							note:
-								shell.layout || shell.components.length > 0
-									? "This design already has shared UI (see `sharedShell`) — reuse it in every frame you touch instead of writing a second copy."
-									: "This design has multiple screens but NO shared UI yet. If they share a nav bar / sidebar / tab bar, extract it into components/ (or frames/_layout.tsx when it must survive navigation) and have every frame use it — do not repeat the same chrome in each frame file.",
-						}
-					: {}),
+				...(controller ? { note: statusNote(shell, issues.length, controller.session.manifest.frames.length) } : {}),
 			};
 		},
 	});
