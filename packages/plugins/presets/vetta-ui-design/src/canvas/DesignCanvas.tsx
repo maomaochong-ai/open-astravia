@@ -255,9 +255,14 @@ export function DesignCanvas({
 	// 闭包捕获随渲染变化的 state。
 	const manifestRef = useRef(manifest);
 	manifestRef.current = manifest;
+	/** 平移进行中的实时视口。非 null 时 DOM 上的 transform 由它驱动，state 落后一步。 */
+	const panLiveRef = useRef<Viewport | null>(null);
 	const [viewport, setViewport] = useState<Viewport>(() => ({ ...session.manifest.canvas }));
 	const viewportRef = useRef(viewport);
-	viewportRef.current = viewport;
+	// 平移途中 viewportRef 才是权威值（滚轮/拖拽逐帧写它、不进 state）。这里无条件回写
+	// 会把它打回上一次提交的 state：滚动途中只要有一次重渲染（裁剪范围重算、frame 上报
+	// 渲染完成…），下一个滚轮 tick 就从旧位置重算，画布随机弹回起点。
+	if (!panLiveRef.current) viewportRef.current = viewport;
 	const [tool, setTool] = useState<CanvasTool>("select");
 	const [spaceHeld, setSpaceHeld] = useState(false);
 	const [selection, setSelection] = useState<CanvasSelection>(null);
@@ -326,8 +331,6 @@ export function DesignCanvas({
 		primaryId: string;
 		targets: SnapRect[];
 	} | null>(null);
-	/** 平移进行中的实时视口。非 null 时 DOM 上的 transform 由它驱动，state 落后一步。 */
-	const panLiveRef = useRef<Viewport | null>(null);
 	const rafRef = useRef<number | null>(null);
 	const wheelSettleRef = useRef<number | null>(null);
 	const worldRef = useRef<HTMLDivElement | null>(null);
