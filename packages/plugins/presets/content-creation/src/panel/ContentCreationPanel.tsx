@@ -48,7 +48,9 @@ export function ContentCreationPanel() {
 			};
 		}
 		void assetPreviewResolver.resolveAll(project.assets).then((urls) => {
-			if (active) setAssetPreviewUrls(urls);
+			if (active) {
+				setAssetPreviewUrls((current) => (previewUrlMapsEqual(current, urls) ? current : urls));
+			}
 		});
 		return () => {
 			active = false;
@@ -132,4 +134,16 @@ export function ContentCreationPanel() {
 			</main>
 		</div>
 	);
+}
+
+function previewUrlMapsEqual(
+	left: ReadonlyMap<string, string>,
+	right: ReadonlyMap<string, string>,
+): boolean {
+	if (left === right) return true;
+	if (left.size !== right.size) return false;
+	for (const [assetId, url] of left) {
+		if (right.get(assetId) !== url) return false;
+	}
+	return true;
 }

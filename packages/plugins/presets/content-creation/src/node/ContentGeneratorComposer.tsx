@@ -14,6 +14,7 @@ import type {
 	ContentNodeKind,
 	ContentNodeStatus,
 } from "../project/types";
+import { contentNodeDataEqual } from "./content-node-data-equal";
 import { ContentGenerationControls } from "./ContentGenerationControls";
 import {
 	ContentGeneratorPromptEditor,
@@ -134,8 +135,8 @@ export function ContentGeneratorComposer({
 	useEffect(() => setDraft(data), [data]);
 
 	const commit = (next: ContentNodeData) => {
-		setDraft(next);
-		void onUpdate(next);
+		setDraft((current) => (contentNodeDataEqual(current, next) ? current : next));
+		if (!contentNodeDataEqual(data, next)) void onUpdate(next);
 	};
 	const submit = () => {
 		if (!canGenerate || !selectedModel || !resolution.mode) return;

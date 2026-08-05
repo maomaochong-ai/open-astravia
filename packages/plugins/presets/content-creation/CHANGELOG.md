@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Preserved active prompt drafts across stale parent refreshes, removed colored node-card top accents, and raised placeholder contrast to a readable subdued level.
 - Unified generator `@` suggestions across connected prompts and compatible media, including inline media previews and bindings.
 - Centralized node editor interaction boundaries so future panels keep inputs editable while non-interactive panel areas remain draggable and text stays non-selectable.
 - Reduced node editor placeholder contrast so empty prompts no longer compete with entered content.

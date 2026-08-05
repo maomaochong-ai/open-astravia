@@ -8,6 +8,7 @@ import type {
 	ContentProjectDocument,
 	TimelineClip,
 } from "./types";
+import { contentNodeDataEqual } from "../node/content-node-data-equal";
 import { resolveContentConnection } from "../node/connections";
 import { createDefaultContentNodeData } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
@@ -311,6 +312,13 @@ export function applyContentProjectCommands(
 	now = new Date().toISOString(),
 ): ContentProjectDocument {
 	if (commands.length === 0) return project;
+	if (commands.length === 1) {
+		const command = commands[0];
+		if (command?.type === "node.update") {
+			const node = findNode(project, command.nodeId);
+			if (contentNodeDataEqual(node.data, { ...node.data, ...command.data })) return project;
+		}
+	}
 	const next = structuredClone(project);
 	for (const command of commands) applyCommand(next, command, now);
 	next.revision = project.revision + 1;

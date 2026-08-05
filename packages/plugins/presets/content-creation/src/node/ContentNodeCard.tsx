@@ -55,13 +55,6 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 
 export type ContentFlowNode = Node<ContentFlowNodeData, "contentNode">;
 
-const CATEGORY_ACCENT: Record<string, string> = {
-	input: "before:bg-muted-foreground/40",
-	generation: "before:bg-primary",
-	resource: "before:bg-amber-500",
-	output: "before:bg-emerald-500",
-};
-
 /** Match bottom composer gap (`mt-2` = 8px) so top actions sit equally close to the card. */
 const QUICK_TOOLBAR_OFFSET = 8;
 
@@ -167,9 +160,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				</div>
 			</NodeToolbar>
 			<div
-				className={`relative z-0 h-full w-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-[border-color,box-shadow] duration-150 before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:content-[''] ${
-					CATEGORY_ACCENT[definition.category] ?? ""
-				} ${
+				className={`relative z-0 h-full w-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-[border-color,box-shadow] duration-150 ${
 					selected
 						? "border-primary/45 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_28%,transparent),0_12px_28px_color-mix(in_srgb,black_12%,transparent)]"
 						: "border-border/70 hover:border-border"

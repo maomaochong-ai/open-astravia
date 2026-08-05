@@ -113,6 +113,42 @@ describe("node editor interaction boundary", () => {
 		expect(editor.querySelector("img")?.getAttribute("src")).toBe("vetta-media://mood");
 	});
 
+	it("preserves an active prompt draft across stale parent refreshes", () => {
+		const onUpdate = vi.fn().mockResolvedValue(undefined);
+		const onImportReferences = vi.fn();
+		const view = render(
+			<ContentPromptEditor
+				data={{ prompt: "" }}
+				focusPromptRequest={0}
+				mentionAssets={[]}
+				onImportReferences={onImportReferences}
+				onUpdate={onUpdate}
+				referenceAssets={[]}
+			/>,
+		);
+
+		const editor = screen.getByRole("textbox");
+		editor.focus();
+		expect(document.activeElement).toBe(editor);
+		editor.textContent = "Local prompt draft";
+		fireEvent.input(editor);
+
+		view.rerender(
+			<ContentPromptEditor
+				data={{ prompt: "" }}
+				focusPromptRequest={0}
+				mentionAssets={[]}
+				onImportReferences={onImportReferences}
+				onUpdate={onUpdate}
+				referenceAssets={[]}
+			/>,
+		);
+
+		expect(editor.textContent).toBe("Local prompt draft");
+		fireEvent.blur(editor);
+		expect(onUpdate).toHaveBeenCalledWith(expect.objectContaining({ prompt: "Local prompt draft" }));
+	});
+
 	it("keeps generator prompt pointer events away from the React Flow pane", () => {
 		const onPanePointerDown = vi.fn();
 		render(

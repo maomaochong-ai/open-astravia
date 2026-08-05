@@ -65,6 +65,8 @@ export function PromptRichTextInput({
 	const { t } = useTranslation();
 	const editorRef = useRef<HTMLDivElement>(null);
 	const draftDocumentRef = useRef(document);
+	const committedDocumentRef = useRef(document);
+	const dirtyRef = useRef(false);
 	const selectionRangeRef = useRef<Range | null>(null);
 	const mentionRangeRef = useRef<Range | null>(null);
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -89,15 +91,23 @@ export function PromptRichTextInput({
 		const editor = editorRef.current;
 		if (!editor) {
 			draftDocumentRef.current = document;
+			committedDocumentRef.current = document;
+			dirtyRef.current = false;
 			return;
 		}
 		const isEditing = editor === editor.ownerDocument.activeElement;
+		if (isEditing && dirtyRef.current) {
+			refreshPromptEditorAssetPreviews(editor, assetByBindingId);
+			return;
+		}
 		const currentDocument = draftDocumentRef.current;
 		draftDocumentRef.current = document;
 		if (isEditing && contentPromptDocumentsEqual(document, currentDocument)) {
 			refreshPromptEditorAssetPreviews(editor, assetByBindingId);
 			return;
 		}
+		committedDocumentRef.current = document;
+		dirtyRef.current = false;
 		renderPromptEditor(editor, document, assetByBindingId, promptLabelByNodeId, removeLabel);
 	}, [assetByBindingId, document, promptLabelByNodeId, removeLabel]);
 	useEffect(() => {
@@ -118,10 +128,18 @@ export function PromptRichTextInput({
 	const emitDocument = (commit: boolean) => {
 		const editor = editorRef.current;
 		if (!editor) return;
+		if (commit && !dirtyRef.current) return;
 		const nextDocument = readPromptEditor(editor);
 		draftDocumentRef.current = nextDocument;
-		if (commit) onCommit(nextDocument);
-		else onChange(nextDocument);
+		if (!commit) {
+			onChange(nextDocument);
+			return;
+		}
+		const changed = !contentPromptDocumentsEqual(nextDocument, committedDocumentRef.current);
+		dirtyRef.current = false;
+		if (!changed) return;
+		committedDocumentRef.current = nextDocument;
+		onCommit(nextDocument);
 	};
 	const updateMentionState = () => {
 		const editor = editorRef.current;
@@ -161,6 +179,7 @@ export function PromptRichTextInput({
 			);
 		}
 		closeMenu();
+		dirtyRef.current = true;
 		emitDocument(true);
 	};
 	const openManualPicker = () => {
@@ -175,6 +194,7 @@ export function PromptRichTextInput({
 		const token = editorRef.current?.querySelector<HTMLElement>(selector);
 		if (!token) return;
 		token.remove();
+		dirtyRef.current = true;
 		emitDocument(true);
 	};
 	const removeAssetToken = (bindingId: string) => {
@@ -232,7 +252,7 @@ export function PromptRichTextInput({
 				<PopoverAnchor asChild>
 					<div
 						ref={editorRef}
-						className={`${size === "regular" ? "min-h-28" : "min-h-[76px]"} whitespace-pre-wrap break-words px-3 py-3 text-[13px] leading-6 text-foreground outline-none empty:before:pointer-events-none empty:before:text-[12px] empty:before:font-normal empty:before:text-muted-foreground/25 empty:before:content-[attr(data-placeholder)]`}
+						className={`${size === "regular" ? "min-h-28" : "min-h-[76px]"} whitespace-pre-wrap break-words px-3 py-3 text-[13px] leading-6 text-foreground outline-none empty:before:pointer-events-none empty:before:text-[12px] empty:before:font-normal empty:before:text-muted-foreground/40 empty:before:content-[attr(data-placeholder)]`}
 						contentEditable={!disabled}
 						suppressContentEditableWarning
 						role="textbox"
@@ -240,6 +260,7 @@ export function PromptRichTextInput({
 						aria-label={t("nodeEditor.prompt")}
 						data-placeholder={placeholder}
 						onInput={() => {
+							dirtyRef.current = true;
 							emitDocument(false);
 							updateMentionState();
 						}}
