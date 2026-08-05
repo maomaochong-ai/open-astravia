@@ -206,7 +206,6 @@ export class BridgeHub {
 			keepHighlight?: boolean;
 			timeoutMs?: number;
 			pixelRatio?: number;
-			cacheBust?: boolean;
 			/** 默认 png。画布位图化用 jpeg：同像素数下 dataUrl 小一个量级。 */
 			format?: "png" | "jpeg";
 			quality?: number;
@@ -232,7 +231,6 @@ export class BridgeHub {
 				requestId,
 				keepHighlight: options?.keepHighlight === true,
 				pixelRatio: options?.pixelRatio,
-				cacheBust: options?.cacheBust === true,
 				format: options?.format ?? "png",
 				quality: options?.quality,
 			});

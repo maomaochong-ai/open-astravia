@@ -357,11 +357,10 @@ export function installBridge(host: BridgeHost): void {
 				if (!keepHighlight) moveOverlay(selectedOverlay, null);
 				// Capture documentElement: the overlay divs live on it, so a kept
 				// highlight is included; body alone would drop them.
-				// cacheBust 会给每张图片/字体的 URL 加随机查询串，强制重新下载整份
-				// 素材——图多的 frame 单次截图能拖到几十秒。它本是为绕过跨域缓存的
-				// CORS 问题，而素材由同源的引擎 dev server 提供，用不上。
-				// 只有交付物（导出渲染图 / 发给 agent）保留它兜底，画布位图化不用。
-				const cacheBust = data.cacheBust === true;
+				// 这里没有 cacheBust：它给每张素材 URL 加随机查询串强制重下，图多的 frame
+				// 能从百来毫秒拖到两秒以上，却兜不住任何东西——html-to-image 按去掉 query 的
+				// URL 缓存内联结果，随机串进不了 key，缓存在它生效前就短路了。详见
+				// DesignCanvas 里 captureFaithfully 的注释。
 				// html-to-image 会把每张 <img> 重新 fetch 成 dataURL 再塞回去；fetch 不到
 				// （跨域缺 CORS 头、404、离线）时它把 src 换成空串，于是图片报 error，整次
 				// 截图连同这个 error Event 一起 reject。而图在页面上显示正常——渲染只要
@@ -376,12 +375,11 @@ export function installBridge(host: BridgeHost): void {
 					data.format === "jpeg"
 						? toJpeg(document.documentElement, {
 								pixelRatio,
-								cacheBust,
 								onImageErrorHandler,
 								quality: typeof data.quality === "number" ? data.quality : 0.92,
 								backgroundColor: "#ffffff",
 							})
-						: toPng(document.documentElement, { pixelRatio, cacheBust, onImageErrorHandler });
+						: toPng(document.documentElement, { pixelRatio, onImageErrorHandler });
 				encode()
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) => post({ type: "captured", requestId, error: describeCaptureError(error) }))

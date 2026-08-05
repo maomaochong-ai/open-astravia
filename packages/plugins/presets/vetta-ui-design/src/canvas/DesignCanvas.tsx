@@ -977,11 +977,17 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 
 	/**
 	 * 位图态的 frame 是 display:none，没有布局也就截不出东西，先经 runLive 拉回活体。
-	 * 交付物保留 cacheBust：慢，但能兜住素材缓存缺 CORS 头的边角情况。
+	 *
+	 * 交付物这条路曾经开着 cacheBust 兜「素材缓存缺 CORS 头」，实测三条都不成立：
+	 * 缺 CORS 头的图开着它照样内联不进来；html-to-image 把内联结果按*去掉 query 的*
+	 * URL 缓存，cacheBust 加的随机串进不了 key，缓存在它生效前就短路了——连失败结果
+	 * 都会被这么缓存住，所以拿它做重试兜底也没用。代价倒是实打实：30 张图 81ms→824ms，
+	 * 80 张图 126ms→2272ms（本地服务器、单张 150ms 延迟；线上 CDN 只会更糟）。
+	 * 一个从没兑现过的兜底不值这个价，关掉。
 	 */
 	const captureFaithfully = useCallback(
 		(frameId: string, options?: { keepHighlight?: boolean; pixelRatio?: number }): Promise<string> =>
-			runLive(frameId, () => bridge.capture(frameId, { ...options, cacheBust: true, timeoutMs: 30_000 })),
+			runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 })),
 		[bridge, runLive],
 	);
 
