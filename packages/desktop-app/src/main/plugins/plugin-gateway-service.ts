@@ -43,8 +43,13 @@ function resolvePath(path: string): string {
 	return trimmed.replace(/^\/+/, "");
 }
 
+/**
+ * `VETTA_SERVER_URL` 本身就带 `/api/v1`（见 .env.*），这里**不能**再补一次前缀，
+ * 否则会拼出 `/api/v1/api/v1/...` 全部 404。仓库里其它调用方（settings.ts 的
+ * authedGet）同样是直接拼 path。
+ */
 function baseUrl(): string {
-	return `${DEFAULT_SERVER_URL.replace(/\/+$/, "")}/api/v1`;
+	return DEFAULT_SERVER_URL.replace(/\/+$/, "");
 }
 
 function currentToken(): string | undefined {
