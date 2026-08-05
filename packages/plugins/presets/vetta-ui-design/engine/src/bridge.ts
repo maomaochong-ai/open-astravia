@@ -209,6 +209,25 @@ function setInspectCursor(on: boolean): void {
 	document.head.appendChild(style);
 }
 
+/**
+ * html-to-image 的失败有一半不是 Error，而是 `<img>` 的 error **Event**——直接
+ * String() 会得到「[object Event]」，一点线索都没有。把它换成能指认现场的描述：
+ * 事件源是哪个元素、它当时想加载什么。
+ */
+function describeCaptureError(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	if (typeof Event !== "undefined" && error instanceof Event) {
+		const target = error.target;
+		if (target instanceof HTMLImageElement) {
+			const src = target.currentSrc || target.src;
+			return `failed to load image while capturing: ${src ? src.slice(0, 200) : "<empty src>"}`;
+		}
+		const tag = target instanceof Element ? target.tagName.toLowerCase() : "unknown";
+		return `capture failed on <${tag}> (${error.type} event)`;
+	}
+	return String(error);
+}
+
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
@@ -343,6 +362,12 @@ export function installBridge(host: BridgeHost): void {
 				// CORS 问题，而素材由同源的引擎 dev server 提供，用不上。
 				// 只有交付物（导出渲染图 / 发给 agent）保留它兜底，画布位图化不用。
 				const cacheBust = data.cacheBust === true;
+				// html-to-image 会把每张 <img> 重新 fetch 成 dataURL 再塞回去；fetch 不到
+				// （跨域缺 CORS 头、404、离线）时它把 src 换成空串，于是图片报 error，整次
+				// 截图连同这个 error Event 一起 reject。而图在页面上显示正常——渲染只要
+				// <img> 加载得到，不需要 fetch 得到——所以这个失败看着毫无规律。
+				// 一张图挂掉不该毁掉整张截图：跳过它，其余照截。
+				const onImageErrorHandler = (): void => {};
 				// 画布位图化要 jpeg：同样的像素数，dataUrl 字符串小一个量级，
 				// postMessage 传输与常驻内存跟着降下来——这正是能把 pixelRatio 提到
 				// 设备像素比、让位图不再糊的前提。jpeg 没有透明通道，必须显式铺白底，
@@ -352,15 +377,14 @@ export function installBridge(host: BridgeHost): void {
 						? toJpeg(document.documentElement, {
 								pixelRatio,
 								cacheBust,
+								onImageErrorHandler,
 								quality: typeof data.quality === "number" ? data.quality : 0.92,
 								backgroundColor: "#ffffff",
 							})
-						: toPng(document.documentElement, { pixelRatio, cacheBust });
+						: toPng(document.documentElement, { pixelRatio, cacheBust, onImageErrorHandler });
 				encode()
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
-					.catch((error: unknown) =>
-						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),
-					)
+					.catch((error: unknown) => post({ type: "captured", requestId, error: describeCaptureError(error) }))
 					.finally(() => moveOverlay(selectedOverlay, selected));
 				return;
 			}
