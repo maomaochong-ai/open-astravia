@@ -453,8 +453,25 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
  */
 function createGatewayApi(capabilitySessionId: string): PluginGatewayApi {
 	return {
-		request: (request) => window.vetta.plugins.gatewayRequest(capabilitySessionId, request),
+		// 同样按 JSON 归一化：请求体也要过 capability 的 CapabilityJsonValue 校验，
+		// body 里带一个 undefined 字段就会让整次调用被拒（见 toJsonValue）。
+		request: (request) =>
+			window.vetta.plugins.gatewayRequest(capabilitySessionId, toJsonValue(request) as typeof request),
 	};
+}
+
+/**
+ * 按 JSON 语义归一化再过 IPC。
+ *
+ * capability 的 CapabilityJsonValue 不接受 undefined，而 Electron 的 structured
+ * clone 会原样保留值为 undefined 的键——插件写一个带可选字段的普通对象
+ * （`{ parent: undefined }`）就会被 capability 层判为非法输入而整体拒绝。
+ * writeJson 的契约本就是「写 JSON」，这里按 JSON.stringify 的语义丢弃 undefined，
+ * 与插件作者的预期一致。
+ */
+function toJsonValue(value: unknown): unknown {
+	if (value === undefined) return null;
+	return JSON.parse(JSON.stringify(value));
 }
 
 function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginStorageApi {
@@ -467,7 +484,7 @@ function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string):
 		},
 		writeJson: (key, value) => {
 			requireWrite();
-			return window.vetta.plugins.storageWriteJson(capabilitySessionId, key, value);
+			return window.vetta.plugins.storageWriteJson(capabilitySessionId, key, toJsonValue(value));
 		},
 		list: (prefix) => {
 			requireRead();
