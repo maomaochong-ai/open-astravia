@@ -252,7 +252,7 @@ export function PromptRichTextInput({
 				<PopoverAnchor asChild>
 					<div
 						ref={editorRef}
-						className={`${size === "regular" ? "min-h-28" : "min-h-[76px]"} whitespace-pre-wrap break-words px-3 py-3 text-[13px] leading-6 text-foreground outline-none empty:before:pointer-events-none empty:before:text-[12px] empty:before:font-normal empty:before:text-muted-foreground/40 empty:before:content-[attr(data-placeholder)]`}
+						className={`${size === "regular" ? "min-h-28 max-h-72" : "min-h-[76px] max-h-52"} overflow-y-auto overscroll-contain whitespace-pre-wrap break-words px-3 py-3 text-[13px] leading-6 text-foreground outline-none empty:before:pointer-events-none empty:before:text-[12px] empty:before:font-normal empty:before:text-muted-foreground/40 empty:before:content-[attr(data-placeholder)]`}
 						contentEditable={!disabled}
 						suppressContentEditableWarning
 						role="textbox"

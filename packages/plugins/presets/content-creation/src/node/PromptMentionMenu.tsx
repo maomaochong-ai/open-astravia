@@ -1,6 +1,7 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
+import { NodeKindIcon } from "./NodeKindIcon";
 import type { ConnectedPromptSource } from "./prompt-sources";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 
@@ -59,10 +60,9 @@ export function PromptMentionMenu({
 							</>
 						) : (
 							<>
-								<span
-									className="icon-[lucide--message-square-text] block size-3.5 shrink-0 text-muted-foreground"
-									aria-hidden="true"
-								/>
+								<span className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted/70 text-muted-foreground">
+									<NodeKindIcon kind="prompt" className="size-4" />
+								</span>
 								<span className="min-w-0 flex-1">
 									<span className="block truncate text-[11px] font-medium">{option.label}</span>
 									<span className="block truncate text-[10px] text-muted-foreground">

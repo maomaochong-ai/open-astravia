@@ -534,7 +534,6 @@ export function GraphWorkspace({
 						defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
 						// Keyboard delete is handled by host ShortcutScopeStack (usePluginShortcutScope).
 						deleteKeyCode={null}
-						onlyRenderVisibleElements
 						proOptions={PRO_OPTIONS}
 						onInit={onInit}
 						onSelectionChange={onSelectionChange}

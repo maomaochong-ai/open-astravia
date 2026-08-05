@@ -63,6 +63,8 @@ describe("node editor interaction boundary", () => {
 		expect(panel?.classList.contains("nopan")).toBe(false);
 		expect(editor.classList.contains("select-text")).toBe(true);
 		expect(editor.classList.contains("nopan")).toBe(true);
+		expect(editor.classList.contains("max-h-72")).toBe(true);
+		expect(editor.classList.contains("overflow-y-auto")).toBe(true);
 
 		fireEvent.pointerDown(editor);
 		expect(onPanePointerDown).not.toHaveBeenCalled();
@@ -172,6 +174,8 @@ describe("node editor interaction boundary", () => {
 
 		const editor = screen.getByRole("textbox");
 		expect(editor.classList.contains("nopan")).toBe(true);
+		expect(editor.classList.contains("max-h-52")).toBe(true);
+		expect(editor.classList.contains("overflow-y-auto")).toBe(true);
 
 		fireEvent.pointerDown(editor);
 		expect(onPanePointerDown).not.toHaveBeenCalled();
