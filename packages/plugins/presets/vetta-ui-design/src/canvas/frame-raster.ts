@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeHub } from "./bridge-client";
 import { getFrameError } from "./design-runtime";
+import { loadRasters, pruneRasters, saveRaster } from "./raster-cache";
 
 /**
  * 空闲帧位图化 + 挂载节流。
@@ -43,6 +44,8 @@ const MOUNT_WINDOW = 2;
 
 interface FrameRasterOptions {
 	bridge: BridgeHub;
+	/** 位图缓存的归属键（设计文档路径），见 raster-cache.ts。 */
+	cacheKey: string;
 	/** 画布上的 frame id，按画布顺序——决定谁先挂载、先截图。 */
 	frameIds: readonly string[];
 	/**
@@ -133,7 +136,7 @@ function nextPaint(): Promise<void> {
 	});
 }
 
-export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRasterOptions): FrameRasterState {
+export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: FrameRasterOptions): FrameRasterState {
 	const [rasters, setRasters] = useState<ReadonlyMap<string, string>>(new Map());
 	/** 等待截图的 frame：它们必须先保持活体，截完才收起。 */
 	const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
@@ -144,6 +147,39 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 	const capturingRef = useRef<string | null>(null);
 	const timerRef = useRef<number | null>(null);
 	const [reloadNonce, setReloadNonce] = useState(0);
+	const frameIdsRef = useRef(frameIds);
+	frameIdsRef.current = frameIds;
+
+	/**
+	 * 冷启动：先把上一次的位图顶上，再把全部 frame 标脏让队列在后台逐个刷新。
+	 *
+	 * 恢复出来的位图可能是过期的——画布关着的时候 agent 照样能改代码——所以这里不是
+	 * 「有缓存就不截了」，而是「先有画面，该截的一张不少」。正确性一分不让，省掉的是
+	 * 那段所有 frame 一起转圈的干等。
+	 *
+	 * 依赖只有 cacheKey：frameIds 随视口重排，进了依赖会让缓存反复重读。切设计文档时
+	 * 画布本来就整个卸载重建（CanvasTab 会先退回 preparing），所以 restoredKeyRef 主要
+	 * 是防御——真出现同一实例换 key 的情况，也能把上一份的位图整个换掉而不是串图。
+	 *
+	 * 恢复不走 withBudget：帧数多到超预算时，第一张新位图落地就会把它收敛回去。
+	 */
+	const restoredKeyRef = useRef<string | null>(null);
+	useEffect(() => {
+		if (restoredKeyRef.current === cacheKey) return;
+		restoredKeyRef.current = cacheKey;
+		const ids = frameIdsRef.current;
+		let cancelled = false;
+		void loadRasters(cacheKey, ids).then((cached) => {
+			if (cancelled) return;
+			// 整个替换而不是合并：上一份设计的位图必须在这一步消失。
+			setRasters(new Map(cached));
+			setDirty(new Set(ids));
+		});
+		void pruneRasters(cacheKey, ids);
+		return () => {
+			cancelled = true;
+		};
+	}, [cacheKey]);
 
 	const invalidate = useCallback((frameId: string): void => {
 		setDirty((current) => {
@@ -177,6 +213,10 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 	const mounted = useMemo(() => {
 		const allowed = new Set<string>();
 		if (activeFrameId) allowed.add(activeFrameId);
+		// 正在截图的那个必须留住。frameIds 的顺序跟着视口走（见 DesignCanvas），平移
+		// 一下队列就重排，把它挤出挂载窗口会当场卸掉 iframe——这一张连同它已经等过的
+		// SETTLE 一起白费，还要从头再来一遍。
+		if (capturingRef.current) allowed.add(capturingRef.current);
 		for (const frameId of forced) allowed.add(frameId);
 		let budget = MOUNT_WINDOW;
 		for (const frameId of frameIds) {
@@ -189,13 +229,25 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 		return allowed;
 	}, [frameIds, rasters, dirty, activeFrameId, forced]);
 
-	// 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
+	/**
+	 * 一次只截一张：html-to-image 本身不便宜，并发截会把主线程占满。
+	 *
+	 * frameIds 会随视口重排（见 DesignCanvas），所以平移到新区域时这个 effect 会重跑、
+	 * cleanup 把还在 SETTLE 等待中的那张作废重来。这是有意接受的：cullRect 带一屏预留
+	 * 且余量不足半屏才重算，平移一屏才可能触发一次；而重排的意义正是「用户看向哪里就
+	 * 先截哪里」，为省下一次 450ms 的等待去守住旧队列并不划算。已经进入 capture 阶段的
+	 * 不受影响——那时 timerRef 已置空，cleanup 不动它，capturingRef 也拦着 effect 重排。
+	 */
 	useEffect(() => {
 		if (capturingRef.current !== null) return;
+		// 按 frameIds 而不是 dirty 的插入顺序取：dirty 是「谁先渲染完谁先进」，与视口
+		// 优先级无关，眼前那几帧照样可能排在屏幕外的后面。
+		//
 		// 构建失败的 frame 此刻只剩兜底文案，截了会把「上一张好图」覆盖掉——正是出错时
 		// 唯一还能看的东西。跳过它，保持活体，等它恢复渲染后重新排队。
-		const next = [...dirty].find(
-			(frameId) => frameId !== activeFrameId && mounted.has(frameId) && !getFrameError(frameId),
+		const next = frameIds.find(
+			(frameId) =>
+				dirty.has(frameId) && frameId !== activeFrameId && mounted.has(frameId) && !getFrameError(frameId),
 		);
 		if (next === undefined) return;
 
@@ -214,6 +266,8 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 					// 所以位图进入 rasters 时一定是「挂上就能画」的。
 					await decodeRaster(dataUrl);
 					setRasters((current) => withBudget(current, next, dataUrl, mounted));
+					// 落盘失败不影响这一轮（内存里已经有图），代价只是下次进画布得重截。
+					void saveRaster(cacheKey, next, dataUrl);
 				})
 				.catch((error: unknown) => {
 					// 截不到就让它继续活着——比显示一张坏图安全。但不能静默：一张都截
@@ -241,7 +295,7 @@ export function useFrameRasters({ bridge, frameIds, activeFrameId }: FrameRaster
 				capturingRef.current = null;
 			}
 		};
-	}, [bridge, dirty, activeFrameId, mounted]);
+	}, [bridge, cacheKey, dirty, activeFrameId, mounted, frameIds]);
 
 	const rasterOf = useCallback((frameId: string): string | null => rasters.get(frameId) ?? null, [rasters]);
 

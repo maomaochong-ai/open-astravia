@@ -6,6 +6,8 @@ import type { FrameActivity } from "./design-runtime";
 import { FrameTitleInput } from "./FrameTitleInput";
 
 type ResizeEdge = "nw" | "ne" | "sw" | "se" | "e" | "s";
+/** 一次拖拽在改什么：整体位置，还是某条边/某个角。 */
+export type FrameDragEdge = ResizeEdge | "move";
 
 /**
  * 回调一律 frameId 优先、且由画布侧用 useCallback 固定住引用。
@@ -47,6 +49,10 @@ interface FrameViewProps {
 	paintTick: number;
 	/** Live offset of the in-flight group move this frame takes part in. */
 	moveDelta: { dx: number; dy: number } | null;
+	/** 正在改尺寸时的实时矩形（由画布算出，含吸附与最小尺寸钳制）。 */
+	resizeRect: { x: number; y: number; width: number; height: number } | null;
+	/** 排列预览（拖 gap 期间）覆盖的位置，非 null 时压过 manifest 里的 x/y。 */
+	placement: { x: number; y: number } | null;
 	activity: FrameActivity | undefined;
 	/** 非 null 时这一帧编译/渲染失败：盖住上一张位图，标题栏挂徽标（详情走 title）。 */
 	buildError: string | null;
@@ -59,23 +65,23 @@ interface FrameViewProps {
 	/** 提交由画布落盘；标题没变或为空时画布自行忽略。 */
 	onRenameCommit(frameId: string, title: string): void;
 	onRenameCancel(): void;
-	/** Moves are owned by the canvas so every selected frame travels together. */
-	onMoveStart(frameId: string, additive: boolean): void;
-	onMoveDelta(dx: number, dy: number): void;
-	onMoveEnd(): void;
-	onResizeCommit(frameId: string, patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void;
+	/**
+	 * 拖拽的几何全归画布：移动要让整个选中集一起走，改尺寸要拿到旁边 frame 才能吸附，
+	 * 两件事这一层都做不了。这里只管指针，位移原样上报（世界单位、不取整，取整与吸附
+	 * 由画布决定），结果经 moveDelta / resizeRect 回来。
+	 */
+	onDragStart(frameId: string, edge: FrameDragEdge, additive: boolean): void;
+	onDragDelta(dx: number, dy: number, bypassSnap: boolean): void;
+	onDragEnd(): void;
 }
 
 interface DragState {
 	pointerId: number;
 	startX: number;
 	startY: number;
-	origin: { x: number; y: number; width: number; height: number };
-	edge: ResizeEdge | "move";
+	edge: FrameDragEdge;
 }
 
-const MIN_WIDTH = 100;
-const MIN_HEIGHT = 80;
 /**
  * 收不到「画好了」信号时的兜底：iframe 加载完这么久之后照样交接。引擎渲染不出内容
  * （bridge 没装上、frame 抛错在边界里）时不能让位图永远盖着。
@@ -102,6 +108,8 @@ export const FrameView = memo(function FrameView({
 	reloadNonce,
 	paintTick,
 	moveDelta,
+	resizeRect,
+	placement,
 	activity,
 	buildError,
 	renaming,
@@ -110,16 +118,13 @@ export const FrameView = memo(function FrameView({
 	onRenameStart,
 	onRenameCommit,
 	onRenameCancel,
-	onMoveStart,
-	onMoveDelta,
-	onMoveEnd,
-	onResizeCommit,
+	onDragStart,
+	onDragDelta,
+	onDragEnd,
 }: FrameViewProps) {
 	const { t } = useTranslation();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const dragRef = useRef<DragState | null>(null);
-	/** 改尺寸拖拽期间的实时矩形（提交前不落 manifest）。 */
-	const [resizeRect, setResizeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 	/**
 	 * 正在拖拽。用来让遮罩在这段时间里保持可交互：从未选中态起手拖动会顺带选中这个
 	 * frame，遮罩本该立刻让位给 iframe，但那样松手事件就落空了，这一次拖拽再也结束
@@ -178,8 +183,8 @@ export const FrameView = memo(function FrameView({
 	}, [bridge, frame.id, mounted]);
 
 	const rect = resizeRect ?? {
-		x: frame.x + (moveDelta?.dx ?? 0),
-		y: frame.y + (moveDelta?.dy ?? 0),
+		x: (placement?.x ?? frame.x) + (moveDelta?.dx ?? 0),
+		y: (placement?.y ?? frame.y) + (moveDelta?.dy ?? 0),
 		width: frame.width,
 		height: frame.height,
 	};
@@ -192,15 +197,13 @@ export const FrameView = memo(function FrameView({
 		if (!interactive) return;
 		event.preventDefault();
 		event.stopPropagation();
-		if (edge === "move") onMoveStart(frame.id, event.shiftKey);
-		else onSelect(frame.id, false);
+		onDragStart(frame.id, edge, event.shiftKey);
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		setDragging(true);
 		dragRef.current = {
 			pointerId: event.pointerId,
 			startX: event.clientX,
 			startY: event.clientY,
-			origin: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
 			edge,
 		};
 	};
@@ -215,38 +218,12 @@ export const FrameView = memo(function FrameView({
 			return;
 		}
 		const zoom = getZoom();
-		const dx = (event.clientX - drag.startX) / zoom;
-		const dy = (event.clientY - drag.startY) / zoom;
-		const { origin } = drag;
-		if (drag.edge === "move") {
-			onMoveDelta(Math.round(dx), Math.round(dy));
-			return;
-		}
-		let { x, y, width, height } = origin;
-		if (drag.edge.includes("e")) width = origin.width + dx;
-		if (drag.edge.includes("s")) height = origin.height + dy;
-		if (drag.edge.includes("w")) {
-			width = origin.width - dx;
-			x = origin.x + dx;
-		}
-		if (drag.edge === "nw" || drag.edge === "ne") {
-			height = origin.height - dy;
-			y = origin.y + dy;
-		}
-		if (width < MIN_WIDTH) {
-			if (drag.edge.includes("w")) x -= MIN_WIDTH - width;
-			width = MIN_WIDTH;
-		}
-		if (height < MIN_HEIGHT) {
-			if (drag.edge === "nw" || drag.edge === "ne") y -= MIN_HEIGHT - height;
-			height = MIN_HEIGHT;
-		}
-		setResizeRect({
-			x: Math.round(x),
-			y: Math.round(y),
-			width: Math.round(width),
-			height: Math.round(height),
-		});
+		// 不取整：整数化与吸附都在画布侧，命中吸附时结果可能带小数（中线对齐）。
+		onDragDelta(
+			(event.clientX - drag.startX) / zoom,
+			(event.clientY - drag.startY) / zoom,
+			event.metaKey || event.ctrlKey,
+		);
 	};
 
 	const finishDrag = (pointerId: number): void => {
@@ -254,14 +231,7 @@ export const FrameView = memo(function FrameView({
 		if (!drag || pointerId !== drag.pointerId) return;
 		dragRef.current = null;
 		setDragging(false);
-		if (drag.edge === "move") {
-			onMoveEnd();
-			return;
-		}
-		if (resizeRect) {
-			onResizeCommit(frame.id, resizeRect);
-			setResizeRect(null);
-		}
+		onDragEnd();
 	};
 
 	const endDrag = (event: ReactPointerEvent): void => finishDrag(event.pointerId);
@@ -348,7 +318,7 @@ export const FrameView = memo(function FrameView({
 					</button>
 				)}
 				<span className="text-muted-foreground">
-					{rect.width}×{rect.height}
+					{Math.round(rect.width)}×{Math.round(rect.height)}
 				</span>
 				{buildError ? (
 					<span

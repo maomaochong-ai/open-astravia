@@ -180,6 +180,31 @@ export class DesignSession {
 		void this.persist();
 	}
 
+	/**
+	 * 一次落多个 frame 的位置（自动排列、拖 gap、多选拖动）。
+	 *
+	 * 逐个调 {@link updateFramePlacement} 也能达到同样结果，但那是 N 次 emit + N 次
+	 * 写盘：二十帧的整理会让画布连着重渲染二十遍，写队列也排二十个。
+	 */
+	updateFramePlacements(
+		patches: ReadonlyMap<string, Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>>,
+	): void {
+		if (patches.size === 0) return;
+		let changed = false;
+		this.manifest = {
+			...this.manifest,
+			frames: this.manifest.frames.map((frame) => {
+				const patch = patches.get(frame.id);
+				if (!patch) return frame;
+				changed = true;
+				return { ...frame, ...patch };
+			}),
+		};
+		if (!changed) return;
+		this.emit("frames");
+		void this.persist();
+	}
+
 	saveViewport(viewport: VetdCanvasViewport): void {
 		this.manifest = { ...this.manifest, canvas: viewport };
 		if (this.viewportTimer !== null) window.clearTimeout(this.viewportTimer);
