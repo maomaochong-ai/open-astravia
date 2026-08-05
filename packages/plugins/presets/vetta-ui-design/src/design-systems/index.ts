@@ -61,7 +61,7 @@ export const DESIGN_SYSTEMS: readonly DesignSystem[] = [
 		name: "Doodle Pop",
 		category: "playful",
 		blurb:
-			"Lime × black sticker energy; thick ink borders, hard offset shadows, pastel doodles, game-drop vibes.",
+			"Lime × black sticker energy; thick ink borders, hard offset shadows, polka-dot textures, coral & pastel pops.",
 		vibe: "light",
 		themeCss: doodlePopCss,
 		designMd: doodlePopMd,

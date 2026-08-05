@@ -1,56 +1,77 @@
 # Doodle Pop — Vetta Edition
 
 ## Atmosphere
-A sticker sheet come to life. Vivid lime stage, white cards outlined in thick
-black ink, hard paper-cut shadows, pastel doodle art everywhere. Playful
-game-shop energy — NFT drops, collectibles, kids-of-all-ages products.
+A sticker sheet come to life. Vivid lime stage, cream screens, cards outlined
+in thick black ink, hard paper-cut shadows, polka-dot textures and pastel
+pops. Playful game-shop energy — drops, collectibles, dashboards that grin.
 
 ## Color roles
 All colors come from `theme.css` tokens — never hardcode hex in frames.
-- `surface` is the loud lime page itself — own it, don't hide it.
-- `surface-raised` (white) for every card, phone-screen panel, and sheet.
-- `primary` (lime, one step brighter) fills CTAs — always with BLACK text.
-- Ink is `surface-foreground` (#111): text, borders, shadows, doodles.
-- `accent` (pastel lavender) for illustration fills and secondary chips;
-  sibling pastels are welcome as `accent/40`-style washes inside artwork.
-- `danger` (bubblegum red) for hearts/likes/urgent timers.
+- `surface` is the loud lime stage — own it, don't hide it. Screen interiors
+  (phone/panel content areas) sit on `cream`.
+- `surface-raised` (white) for cards; `ink` (#111) for text, borders, shadows
+  and the occasional BLACK hero card (white text + one lime element on it).
+- `primary` (bright lime) fills CTAs — always with black text.
+- `accent` (coral) is the second loud voice: hero banners, filter buttons,
+  toggles, one coral moment per screen.
+- `lavender` and `sky` are quieter pastels for icon tiles, illustration
+  fills and rotating card art; `danger` (bubblegum red) for hearts/urgency.
+- Icon tiles rotate through lime / coral / lavender / sky — never two
+  neighbors in the same color.
+
+## Signature texture: polka dots
+The anti-monotony ingredient — use it, but as seasoning:
+- Dot pattern via CSS, inline-style the two background props:
+  `backgroundImage: radial-gradient(<dot> 1.5px, transparent 1.5px)`,
+  `backgroundSize: 10px 10px` (dot = `ink` at 25–40% via color-mix, or lime
+  on dark).
+- Where: a dotted circle peeking from a hero card's corner (clipped by
+  `overflow-hidden`), a dotted wash filling a colored banner, one big dotted
+  pastel circle bleeding off the screen edge on sparse layouts.
+- One or two dotted areas per screen — texture, not wallpaper.
 
 ## Typography
 System font stack only. Comic confidence:
-- Headings `font-extrabold` 22–36px; punch single words with an `accent` or
-  `primary` highlighter wash behind them (rounded `px-1` marks).
+- Headings `font-extrabold` 22–36px, often ending with a coral period
+  ("Images**.**"); tiny eyebrow labels 11px `font-bold uppercase
+  tracking-[0.2em] text-muted`.
 - Body 14–15px `font-medium`; labels 12px `font-bold`.
-- Numbers (prices, counters, countdowns) `font-extrabold tabular-nums` in
-  small bordered chips.
+- Numbers (prices, counters, stats) `font-extrabold tabular-nums`; `font-mono`
+  for tags/versions (`:latest`, subnets).
 
 ## Shape & depth
 - THE signature: every card/button/chip gets `border-2 border-border`
   (thick black) + a HARD offset shadow (`shadow-sm`/`shadow-md`, zero blur).
-- Generous radii (`rounded-xl`/`rounded-2xl`); stickers and avatars can be
-  `rounded-full`.
+- Generous radii (`rounded-xl`/`rounded-2xl`); icon tiles `rounded-xl`,
+  stickers and dotted circles `rounded-full`.
 - Press interaction: on hover/active, translate 1–2px toward the shadow and
   shrink the shadow one step — the paper-cut "press".
 
 ## Components
-- Buttons: h-11 `rounded-xl border-2` black-outlined; primary is lime fill +
-  black bold label; secondary is white fill. Both carry `shadow-sm`.
-- Cards: white, `border-2`, `shadow-md`, 12–16px padding; artwork area is a
-  pastel block (`accent` washes) with doodle content, itself black-outlined.
-- Stat chips: small white bordered boxes in rows (value bold, label 11px
-  `muted`).
+- Buttons: h-11 `rounded-xl border-2` black-outlined + `shadow-sm`; primary
+  lime fill/black bold label; secondary white; coral variant for filters.
+- Cards: white, `border-2`, `shadow-md`, 12–16px padding; list cards carry a
+  colored icon tile (black-outlined) + name + `font-mono` meta + hairline-free
+  black divider rows.
+- Hero/stat banners: black or coral `rounded-2xl` cards with white/black bold
+  numbers and a dotted circle detail.
+- Toggles: black-outlined pills, ON = lime fill with black knob.
 - Price/timer tags: black-bordered lime or white pills, `font-extrabold`.
-- Sprinkle tiny ink doodles (stars ✦, hearts, squiggles) as absolutely
-  positioned decorations on the lime background — never inside cards.
+- Sprinkle tiny ink doodles (stars ✦, hearts, squiggles) on the lime stage —
+  never inside cards.
 
 ## Layout
 Card-stack playfulness: slight rotations (`rotate-1`/`-rotate-2`) on stacked
-cards, straight alignment for content grids. Spacing 12/16/24; let the lime
-background show between cards. Mobile-first compositions welcome.
+promo cards, straight alignment for content grids and lists. Spacing
+12/16/24; let lime or cream breathe between cards. Mobile-first compositions
+welcome.
 
 ## Don'ts
 - No thin/gray borders and no soft blurred shadows — ink lines and hard
   offsets only.
-- Never put lime text on lime, or body text on the raw lime page — long copy
-  lives on white cards.
-- No corporate minimalism: if a screen has no doodle, no highlight mark and
-  no rotation anywhere, it's off-brand.
+- Never put lime text on lime; long copy lives on white/cream, never on the
+  raw lime stage.
+- Dots are decoration: never behind body text, never more than two dotted
+  areas per screen.
+- No corporate minimalism: a screen with no dots, no doodle and no highlight
+  anywhere is off-brand.

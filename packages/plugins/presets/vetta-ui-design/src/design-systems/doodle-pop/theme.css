@@ -1,4 +1,5 @@
-/* Doodle Pop — lime × black sticker energy: thick ink borders, hard offset shadows, pastel doodles. Original Vetta preset. */
+/* Doodle Pop — lime × black sticker energy: thick ink borders, hard offset shadows,
+ * polka-dot textures, coral/lavender/sky pastel pops. Original Vetta preset. */
 @theme {
 	--color-primary: #d6f437;
 	--color-primary-foreground: #111111;
@@ -6,9 +7,13 @@
 	--color-surface-foreground: #111111;
 	--color-surface-raised: #ffffff;
 	--color-muted: #55584a;
-	--color-accent: #b39df3;
+	--color-accent: #f4794f;
 	--color-danger: #ef3b5d;
 	--color-border: #111111;
+	--color-cream: #f2f0e6;
+	--color-lavender: #b39df3;
+	--color-sky: #8ed8e8;
+	--color-ink: #111111;
 
 	--radius-sm: 8px;
 	--radius-md: 12px;
