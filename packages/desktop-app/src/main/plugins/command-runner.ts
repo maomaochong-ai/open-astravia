@@ -1,10 +1,11 @@
-import { execFile } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import type {
 	InstalledPlugin,
 	PluginCommandRunOptions,
 	PluginCommandRunResult,
 } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
+import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { listPlugins } from "./plugin-store.js";
 
 const commandLog = getAppLogger("plugin");
@@ -44,7 +45,7 @@ function sanitizeEnv(env: unknown): Record<string, string> | undefined {
 }
 
 /**
- * Run a plugin-declared command in the main process via execFile (no shell).
+ * Run a plugin-declared command through the shared cross-platform launcher.
  * Authoritative gate (defense in depth behind the renderer's own check):
  * the plugin must hold `agent.command.run`, have declared `file`, and have it
  * currently enabled. Returns buffered stdout/stderr + exit code; a non-zero
@@ -81,37 +82,63 @@ export async function runPluginCommand(
 	const cwd = typeof options?.cwd === "string" && options.cwd.trim().length > 0 ? options.cwd : undefined;
 	const timeout = clampTimeout(options?.timeoutMs);
 
+	let child: ChildProcess;
+	try {
+		child = spawnCrossPlatformCommand(file, normalizedArgs, {
+			cwd,
+			env: env ? { ...process.env, ...env } : process.env,
+			windowsHide: true,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+	} catch (error) {
+		const code = (error as NodeJS.ErrnoException).code;
+		commandLog.warn("plugin command spawn failed", { pluginId, file, code });
+		throw new Error(`Command failed to start: ${file} (${code ?? String(error)})`);
+	}
+
 	return new Promise<PluginCommandRunResult>((resolvePromise, rejectPromise) => {
-		execFile(
-			file,
-			normalizedArgs,
-			{
-				cwd,
-				env: env ? { ...process.env, ...env } : process.env,
-				timeout,
-				maxBuffer: MAX_BUFFER_BYTES,
-				windowsHide: true,
-				// execFile never uses a shell — args are passed literally.
-			},
-			(error, stdout, stderr) => {
-				if (error) {
-					const code = (error as NodeJS.ErrnoException).code;
-					// A string code (ENOENT/EACCES/…) means the process never started.
-					if (typeof code === "string") {
-						commandLog.warn("plugin command spawn failed", { pluginId, file, code });
-						rejectPromise(new Error(`Command failed to start: ${file} (${code})`));
-						return;
-					}
-					// Non-zero exit or timeout: resolve with what we captured.
-					resolvePromise({
-						stdout: stdout.toString(),
-						stderr: stderr.toString(),
-						exitCode: typeof code === "number" ? code : null,
-					});
-					return;
-				}
-				resolvePromise({ stdout: stdout.toString(), stderr: stderr.toString(), exitCode: 0 });
-			},
-		);
+		const stdout: Buffer[] = [];
+		const stderr: Buffer[] = [];
+		let stdoutBytes = 0;
+		let stderrBytes = 0;
+		let outputLimitExceeded = false;
+		let settled = false;
+
+		const finish = (result: PluginCommandRunResult | Error): void => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeoutHandle);
+			if (result instanceof Error) rejectPromise(result);
+			else resolvePromise(result);
+		};
+		const append = (chunks: Buffer[], chunk: Buffer, stream: "stdout" | "stderr"): void => {
+			chunks.push(chunk);
+			if (stream === "stdout") stdoutBytes += chunk.length;
+			else stderrBytes += chunk.length;
+			if (stdoutBytes > MAX_BUFFER_BYTES || stderrBytes > MAX_BUFFER_BYTES) {
+				outputLimitExceeded = true;
+				child.kill();
+			}
+		};
+		const timeoutHandle = setTimeout(() => child.kill(), timeout);
+		timeoutHandle.unref();
+
+		child.stdout?.on("data", (chunk: Buffer) => append(stdout, chunk, "stdout"));
+		child.stderr?.on("data", (chunk: Buffer) => append(stderr, chunk, "stderr"));
+		child.once("error", (error: NodeJS.ErrnoException) => {
+			commandLog.warn("plugin command spawn failed", { pluginId, file, code: error.code });
+			finish(new Error(`Command failed to start: ${file} (${error.code ?? error.message})`));
+		});
+		child.once("close", (exitCode) => {
+			if (outputLimitExceeded) {
+				finish(new Error(`Command output exceeded ${MAX_BUFFER_BYTES} bytes: ${file}`));
+				return;
+			}
+			finish({
+				stdout: Buffer.concat(stdout).toString(),
+				stderr: Buffer.concat(stderr).toString(),
+				exitCode,
+			});
+		});
 	});
 }

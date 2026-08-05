@@ -43,6 +43,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
   - 授权回调未携带 refresh token 时清空本地旧值，而不是继续留着上一次登录的（多半已失效，用它刷新会被服务端按重放处理，直接撤掉整条会话链）。
   - 刷新失败落日志并记录业务错误码（40105 无效 / 40106 过期 / 40107 已撤销）与登出触发点。此前只看 HTTP 401、丢弃响应体，掉登录后无从判断成因。
   - 启动时以主进程 `settings.json` 为准补齐渲染层 token：两处存储不同步时（localStorage 被清等），磁盘上仍有效的凭据不会再表现为「掉登录」。只在挂载时对齐一次，避免登出瞬间把旧 token 读回来。
+- **Windows 插件命令可启动 npm 等脚本入口**：`command.run` / `command.spawn` 共用跨平台启动器；内置 `node` / `npm` / `npx` 优先解析到托管 Node 的绝对路径，其他 `.cmd` / `.bat` 与 shebang 命令由统一兼容层解析，不再因裸 `spawn("npm")` 报 `ENOENT`。
 
 - **输入栏命令面板不再丢掉开源市场能力的图标**：开源市场 skill/scene 的图标解析后是 `vetta-file://local/...`，而命令面板与 skill 胶囊共用的 `SkillTypeIcon` 原先只认 http(s)/相对路径/data，导致列表与 token 一律退回默认立方体。图片态判定补上任意 `scheme://`（含 `vetta-file`），与能力广场一致。
 

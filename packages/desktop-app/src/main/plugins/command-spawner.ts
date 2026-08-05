@@ -1,8 +1,9 @@
-import { type ChildProcess, execFile, spawn } from "node:child_process";
+import { type ChildProcess, execFile } from "node:child_process";
 import { createServer } from "node:net";
 import { webContents } from "electron";
 import type { InstalledPlugin, PluginCommandSpawnStatus } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
+import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { listPlugins } from "./plugin-store.js";
 
 const spawnLog = getAppLogger("plugin");
@@ -141,8 +142,9 @@ export interface SpawnPluginCommandResult {
 /**
  * Start a long-lived plugin-declared command in the main process (ADR-0054).
  * Same authoritative gates as `runPluginCommand`, but behind the separate
- * `agent.command.spawn` permission. No shell; args are passed literally. The
- * child runs in its own process group so stop() can kill the whole tree.
+ * `agent.command.spawn` permission. The shared launcher selects the managed
+ * Node toolchain and safely bridges platform script shims. The child runs in
+ * its own process group so stop() can kill the whole tree.
  */
 export async function spawnPluginCommand(
 	pluginId: string,
@@ -189,7 +191,7 @@ export async function spawnPluginCommand(
 		}
 	}
 
-	const child = spawn(file, normalizedArgs, {
+	const child = spawnCrossPlatformCommand(file, normalizedArgs, {
 		cwd,
 		env: env ? { ...process.env, ...env } : process.env,
 		windowsHide: true,
