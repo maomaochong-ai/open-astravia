@@ -18,11 +18,12 @@ import { ContentAssetNodeEditor } from "./ContentAssetNodeEditor";
 import { ContentGeneratorComposer } from "./ContentGeneratorComposer";
 import { ContentPromptEditor } from "./ContentPromptEditor";
 import type { ConnectedContentAsset } from "./material-assets";
+import { NodeEditorPanel } from "./NodeEditorPanel";
 import type { ConnectedPromptSource } from "./prompt-sources";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 
 const FIELD_CLASS =
-	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/50";
+	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus-visible:border-primary/50";
 
 interface ContentNodeEditorProps {
 	kind: ContentNodeKind;
@@ -103,11 +104,9 @@ function SimpleContentNodeEditor({
 	};
 
 	return (
-		<div
-			className="nodrag nopan nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-xl border border-border/70 bg-card p-2.5 text-card-foreground shadow-sm"
+		<NodeEditorPanel
+			className="min-w-0 max-w-[calc(100vw-32px)] rounded-xl border border-border/70 bg-card p-2.5 text-card-foreground shadow-sm"
 			style={{ width: `min(${preferredWidth}px, calc(100vw - 32px))` }}
-			onPointerDown={(event) => event.stopPropagation()}
-			onKeyDown={(event) => event.stopPropagation()}
 		>
 			<div className="flex flex-col gap-2">
 				{properties.map((property) => (
@@ -144,6 +143,6 @@ function SimpleContentNodeEditor({
 					</Button>
 				</div>
 			) : null}
-		</div>
+		</NodeEditorPanel>
 	);
 }

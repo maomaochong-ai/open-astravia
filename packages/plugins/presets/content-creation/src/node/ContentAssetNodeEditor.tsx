@@ -4,6 +4,7 @@ import type { ImportedContentAsset } from "../generation/types";
 import type { ContentAsset, ContentNodeData } from "../project/types";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import { listContentNodeAssetIds } from "./material-assets";
+import { NodeEditorPanel } from "./NodeEditorPanel";
 import { readImportedMediaFile } from "./readImportedMediaFile";
 
 const PAGE_SIZE = 24;
@@ -50,11 +51,7 @@ export function ContentAssetNodeEditor({ data, assets, onUpdate, onImport }: Con
 	};
 
 	return (
-		<div
-			className="nodrag nopan nowheel w-[min(440px,calc(100vw-32px))] rounded-2xl border border-border/70 bg-card/95 p-3 text-card-foreground shadow-xl backdrop-blur-md"
-			onPointerDown={(event) => event.stopPropagation()}
-			onKeyDown={(event) => event.stopPropagation()}
-		>
+		<NodeEditorPanel className="w-[min(440px,calc(100vw-32px))] rounded-2xl border border-border/70 bg-card/95 p-3 text-card-foreground shadow-xl backdrop-blur-md">
 			<div className="flex items-center gap-2">
 				<input
 					className="min-w-0 flex-1 rounded-lg border border-border/70 bg-background/60 px-2.5 py-1.5 text-xs font-medium outline-none focus-visible:border-primary/50"
@@ -128,6 +125,6 @@ export function ContentAssetNodeEditor({ data, assets, onUpdate, onImport }: Con
 					{t("assetNode.empty.description")}
 				</p>
 			)}
-		</div>
+		</NodeEditorPanel>
 	);
 }

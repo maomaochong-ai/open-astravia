@@ -15,14 +15,19 @@ import type {
 	ContentNodeStatus,
 } from "../project/types";
 import { ContentGenerationControls } from "./ContentGenerationControls";
-import { ContentGeneratorPromptEditor } from "./ContentGeneratorPromptEditor";
+import {
+	ContentGeneratorPromptEditor,
+	type ContentGeneratorAssetMention,
+} from "./ContentGeneratorPromptEditor";
 import { ContentReferenceInput } from "./ContentReferenceInput";
 import type { ConnectedContentAsset } from "./material-assets";
+import { NodeEditorPanel } from "./NodeEditorPanel";
 import {
 	resolveConnectedPromptSources,
 	resolveContentPrompt,
 	type ConnectedPromptSource,
 } from "./prompt-sources";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 
 interface ContentGeneratorComposerProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
@@ -31,6 +36,7 @@ interface ContentGeneratorComposerProps {
 	models: readonly ContentModelDescriptor[];
 	connectedAssets: readonly ConnectedContentAsset[];
 	connectedPrompts: readonly ConnectedPromptSource[];
+	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
@@ -45,6 +51,7 @@ export function ContentGeneratorComposer({
 	models,
 	connectedAssets,
 	connectedPrompts,
+	mentionAssets,
 	referenceAssets,
 	hasGenerationError,
 	onUpdate,
@@ -64,9 +71,10 @@ export function ContentGeneratorComposer({
 				[
 					...referenceAssets.map(({ asset }) => asset),
 					...connectedAssets.map(({ asset }) => asset),
+					...mentionAssets.map(({ asset }) => asset),
 				].map((asset) => [asset.id, asset]),
 			),
-		[connectedAssets, referenceAssets],
+		[connectedAssets, mentionAssets, referenceAssets],
 	);
 	const draftReferenceAssets = (draft.inputs ?? []).flatMap((binding) => {
 		const asset = assetById.get(binding.assetId);
@@ -109,6 +117,15 @@ export function ContentGeneratorComposer({
 				? slotIdForReferenceKind(selectedModel, referenceShapes, candidate.asset.kind)
 				: null,
 		}));
+	const promptReferenceAssetIds = new Set(promptReferenceAssets.map(({ asset }) => asset.id));
+	const generatorAssetMentions: ContentGeneratorAssetMention[] = mentionAssets.flatMap((candidate) => {
+		const binding = (draft.inputs ?? []).find(({ assetId }) => assetId === candidate.asset.id);
+		if (!binding && promptReferenceAssetIds.has(candidate.asset.id)) return [];
+		const slotId =
+			binding?.slotId ??
+			(selectedModel ? slotIdForReferenceKind(selectedModel, referenceShapes, candidate.asset.kind) : null);
+		return slotId ? [{ candidate, slotId, binding }] : [];
+	});
 	const isRunning = status === "running" || status === "queued";
 	const resolvedPrompt = resolveContentPrompt(connectedPrompts, draft);
 	const canGenerate = Boolean(selectedModel && resolution.mode && resolvedPrompt && !isRunning);
@@ -140,19 +157,18 @@ export function ContentGeneratorComposer({
 		: null;
 
 	return (
-		<div
-			className="nodrag nopan nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-xl backdrop-blur-md"
+		<NodeEditorPanel
+			className="min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-xl backdrop-blur-md"
 			style={{
 				width: "fit-content",
 				minWidth: `min(${minimumWidth}px, calc(100vw - 32px))`,
 				maxWidth: "min(600px, calc(100vw - 32px))",
 			}}
-			onPointerDown={(event) => event.stopPropagation()}
-			onKeyDown={(event) => event.stopPropagation()}
 		>
 			<ContentGeneratorPromptEditor
 				data={draft}
 				sources={connectedPrompts}
+				assetMentions={generatorAssetMentions}
 				disabled={isRunning}
 				onDraftChange={setDraft}
 				onCommit={commit}
@@ -219,6 +235,6 @@ export function ContentGeneratorComposer({
 				}}
 				onSubmit={submit}
 			/>
-		</div>
+		</NodeEditorPanel>
 	);
 }

@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Unified generator `@` suggestions across connected prompts and compatible media, including inline media previews and bindings.
+- Centralized node editor interaction boundaries so future panels keep inputs editable while non-interactive panel areas remain draggable and text stays non-selectable.
+- Reduced node editor placeholder contrast so empty prompts no longer compete with entered content.
 - Restored `@` media suggestions for valid element-boundary carets, expanded candidates beyond connected nodes, and rendered image thumbnails in the picker and inline tokens.
 - Restored focus and caret placement in node editors by excluding their interactive panels from React Flow canvas panning.
 - Box selection now includes nodes that partially intersect the selection rectangle instead of requiring full containment.

@@ -6,13 +6,16 @@ import type {
 
 interface CreateContentPromptDocumentOptions {
 	includeInputBindings?: boolean;
+	bindingIds?: readonly string[];
 }
 
 export function createContentPromptDocument(
 	data: ContentNodeData,
 	options: CreateContentPromptDocumentOptions = {},
 ): ContentPromptDocument {
-	const bindingIds = options.includeInputBindings === false ? [] : (data.inputs ?? []).map(({ id }) => id);
+	const bindingIds =
+		options.bindingIds ??
+		(options.includeInputBindings === false ? [] : (data.inputs ?? []).map(({ id }) => id));
 	if (!data.promptDocument) {
 		const legacyPromptSource = data.promptSourceNodeId || null;
 		return normalizeContentPromptDocument(

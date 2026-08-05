@@ -58,10 +58,18 @@ describe("node editor interaction boundary", () => {
 		);
 
 		const editor = screen.getByRole("textbox");
-		expect(editor.closest(".nopan")).not.toBeNull();
+		const panel = editor.closest<HTMLElement>("[data-node-editor-panel]");
+		expect(panel?.classList.contains("select-none")).toBe(true);
+		expect(panel?.classList.contains("nopan")).toBe(false);
+		expect(editor.classList.contains("select-text")).toBe(true);
+		expect(editor.classList.contains("nopan")).toBe(true);
 
 		fireEvent.pointerDown(editor);
 		expect(onPanePointerDown).not.toHaveBeenCalled();
+
+		const panelHint = screen.getByText("nodeEditor.prompt.mention.inlineHint");
+		fireEvent.pointerDown(panelHint);
+		expect(onPanePointerDown).toHaveBeenCalledOnce();
 	});
 
 	it("opens media suggestions after typing @ and renders image previews", () => {
@@ -115,6 +123,7 @@ describe("node editor interaction boundary", () => {
 					data={{ prompt: "" }}
 					hasGenerationError={false}
 					kind="image-generator"
+					mentionAssets={[]}
 					models={[]}
 					onImportReferences={vi.fn()}
 					onRunNode={vi.fn().mockResolvedValue(undefined)}
@@ -126,9 +135,89 @@ describe("node editor interaction boundary", () => {
 		);
 
 		const editor = screen.getByRole("textbox");
-		expect(editor.closest(".nopan")).not.toBeNull();
+		expect(editor.classList.contains("nopan")).toBe(true);
 
 		fireEvent.pointerDown(editor);
 		expect(onPanePointerDown).not.toHaveBeenCalled();
+	});
+
+	it("offers prompts and compatible media from the same generator @ menu", () => {
+		const onUpdate = vi.fn().mockResolvedValue(undefined);
+		render(
+			<ContentGeneratorComposer
+				connectedAssets={[]}
+				connectedPrompts={[
+					{
+						nodeId: "prompt-node",
+						label: "Storyboard prompt",
+						prompt: "A cinematic scene",
+						references: [],
+					},
+				]}
+				data={{ prompt: "Draft" }}
+				hasGenerationError={false}
+				kind="image-generator"
+				mentionAssets={[
+					{
+						origin: "project",
+						asset: {
+							id: "mood",
+							blobId: "mood",
+							kind: "image",
+							name: "Mood board",
+							mimeType: "image/png",
+							previewUrl: "vetta-media://mood",
+							createdAt: "2026-01-01T00:00:00.000Z",
+						},
+					},
+				]}
+				models={[
+					{
+						providerId: "test",
+						modelId: "image-model",
+						displayName: "Image model",
+						outputKind: "image",
+						aspectRatios: ["1:1"],
+						modes: [
+							{
+								id: "text-to-image",
+								inputs: [{ id: "images", accepts: ["image"], minItems: 0, maxItems: 1 }],
+							},
+						],
+					},
+				]}
+				onImportReferences={vi.fn()}
+				onRunNode={vi.fn().mockResolvedValue(undefined)}
+				onUpdate={onUpdate}
+				referenceAssets={[]}
+				status="idle"
+			/>,
+		);
+
+		const editor = screen.getByRole("textbox");
+		editor.textContent = "@";
+		const range = document.createRange();
+		range.selectNodeContents(editor);
+		range.collapse(false);
+		window.getSelection()?.removeAllRanges();
+		window.getSelection()?.addRange(range);
+		fireEvent.input(editor);
+
+		expect(screen.getByText("Storyboard prompt")).toBeTruthy();
+		expect(screen.getByText("Mood board")).toBeTruthy();
+		fireEvent.click(screen.getByText("Mood board"));
+		expect(editor.querySelector("img")?.getAttribute("src")).toBe("vetta-media://mood");
+		expect(onUpdate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputs: expect.arrayContaining([
+					expect.objectContaining({ assetId: "mood", slotId: "images" }),
+				]),
+				promptDocument: expect.objectContaining({
+					segments: expect.arrayContaining([
+						expect.objectContaining({ type: "asset-reference" }),
+					]),
+				}),
+			}),
+		);
 	});
 });
