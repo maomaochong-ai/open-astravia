@@ -6,6 +6,13 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **设计画布新增预览模式**：设计稿现在是可点的真实站点。顶栏「预览」打开一个浏览器窗口——按钮、tab、表单都是真交互，跨屏跳转走真实路由（`frames/login.tsx` 就是 `/login`，`frames/index.tsx` 就是首页 `/`），带前进/后退/刷新/地址显示/画框切换/视口预设，窗口可自由拉伸，也可以一键交给系统默认浏览器打开（该地址随设计画布关闭而失效）。预览期间画布整体降为位图，不再同时养 N 份活体渲染树。引擎因此升级到 0.2.0（引入 react-router），首次打开设计稿会重跑一次依赖安装。见 ADR-0055。
+- 插件 SDK 新增 `ui.openExternal(url)`（权限 `shell.openExternal`）：把 http/https 链接交给系统默认浏览器。
+- 图像生成插件不再有任何设置项：出图一律走 Vetta 网关，模型与计费由 admin 配置，用户无需也无法填写 API key（ADR-0056）。此前保留的「自定义 API」逃生舱一并撤掉——改图形态各家不同（官方 multipart / 聚合站 `images[].image_url`），逃生舱要能用就得在客户端重养一套 provider 适配，而同一套适配已经在服务端存在。插件因此不再直接发 HTTP，`network.fetch` 与 `ui.slot.global` 两项权限一并撤回。存量用户填过的 key 留在 CredentialVault 里不再被读取。
+- 内置插件可通过 `ctx.gateway.request()` 带登录身份调用 Vetta 服务端（ADR-0056）。新增 foundation 能力 `cap.foundation.vetta.gateway.request` 与主进程 `plugin-gateway-service`：插件只交出相对 `/api/v1` 的路径，服务端地址与 JWT 由主进程注入、401 由主进程单飞刷新后重试一次，token 不出主进程。请求默认与最大超时都是 5 分钟，与服务端 `ImageService` 的 http client 对齐——网关背后是图像生成这类长任务，客户端先超时只会让一次已经在上游跑着的生成白白丢掉。该能力**不挂可声明权限**，只按来源收口给 `trustLevel === "official"` 的插件——第三方插件在 renderer 侧读到 `ctx.gateway === undefined`，即使伪造 sessionId，主进程 capability 适配层也会再校验一次 official 属性。
+
+- **外部插件混合热更新**：插件工作台改为启动 `vetta-plugin dev` 开发服务器；React 组件与 CSS 走 Fast Refresh/HMR，入口、清单、locale 与 agent 资源变化只替换当前插件 activation，其他插件不再被整表重载。生产构建与 zip 格式不变。
+
 - **预设服务商新增 Grok 与 Qwen**（同时修掉两个会让新预设显示 0 个模型的问题：models.dev 目录缓存版本 +1，老缓存里没有新家的 key 却在 TTL 内算「新鲜」，会让新增的预设服务商最长 12 小时一直是空列表；「刷新目录」在缓存新鲜时原本直接返回旧缓存、等于空操作，现在手动刷新一律强制重拉）：设置 → 模型 → 预设服务商多出 Grok（`https://api.x.ai/v1`，走 `openai-completions`）与 Qwen（DashScope 国际站 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`，走 `qwen-openai-completions`）。两家的模型清单与价格照旧走 models.dev 目录（`xai` / `alibaba`），随包快照已重新生成；Grok 滤掉 `grok-imagine-*` 图像视频模型，Qwen 只保留 qwen/qwq/qvq 系列的对话模型（ocr / asr / mt 等专用接口模型不列）。
 
 - **项目文件列表支持鼠标框选**：在空白区域按下并拖出矩形，可多选可见文件/文件夹；Ctrl/Cmd/Shift 按住时为追加选区。与现有点选、Shift 范围选、多选拖拽共用同一套选区状态。
@@ -32,6 +39,13 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **插件装完直接弹权限配置**：首次安装的插件权限默认全未授予，安装成功（市场安装 / 开源市场 / 本地 zip 导入）后自动弹出该插件的权限弹窗，省掉用户自己找「权限配置」的一步。插件数据落地后才弹，系统插件与无权限声明的插件不打扰。
 
 ### Fixed
+
+- **修复隔夜/睡眠后第一次使用掉登录**。成因是 refresh token 被多方共用后互相作废（详见 `@vetta/api` 的 CHANGELOG），客户端侧配套修三处：
+  - `settings.json` 的读-改-写改为跨进程加锁（`updateSettings`，与 coding-agent 的 `FileSettingsStorage` 用同一把 `proper-lockfile` 锁）。此前主进程无锁整份写回，与 coding-agent 或同机另一个客户端实例交错时会把已轮换掉的 `serverRefreshToken` 覆盖回旧值，下次刷新出示的即是已撤销令牌。
+  - 授权回调未携带 refresh token 时清空本地旧值，而不是继续留着上一次登录的（多半已失效，用它刷新会被服务端按重放处理，直接撤掉整条会话链）。
+  - 刷新失败落日志并记录业务错误码（40105 无效 / 40106 过期 / 40107 已撤销）与登出触发点。此前只看 HTTP 401、丢弃响应体，掉登录后无从判断成因。
+  - 启动时以主进程 `settings.json` 为准补齐渲染层 token：两处存储不同步时（localStorage 被清等），磁盘上仍有效的凭据不会再表现为「掉登录」。只在挂载时对齐一次，避免登出瞬间把旧 token 读回来。
+- **Windows 插件命令可启动 npm 等脚本入口**：`command.run` / `command.spawn` 共用跨平台启动器；内置 `node` / `npm` / `npx` 优先解析到托管 Node 的绝对路径，其他 `.cmd` / `.bat` 与 shebang 命令由统一兼容层解析，不再因裸 `spawn("npm")` 报 `ENOENT`。
 
 - **输入栏命令面板不再丢掉开源市场能力的图标**：开源市场 skill/scene 的图标解析后是 `vetta-file://local/...`，而命令面板与 skill 胶囊共用的 `SkillTypeIcon` 原先只认 http(s)/相对路径/data，导致列表与 token 一律退回默认立方体。图片态判定补上任意 `scheme://`（含 `vetta-file`），与能力广场一致。
 

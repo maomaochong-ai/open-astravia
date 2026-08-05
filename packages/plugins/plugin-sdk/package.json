@@ -12,10 +12,12 @@
 		"./manifest": {
 			"types": "./dist/manifest.d.ts",
 			"import": "./dist/manifest.js"
-		}
+		},
+		"./tailwind-theme.css": "./src/tailwind-theme.css"
 	},
 	"files": [
-		"dist"
+		"dist",
+		"src/tailwind-theme.css"
 	],
 	"scripts": {
 		"clean": "rm -rf dist",

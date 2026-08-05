@@ -30,8 +30,15 @@
 ```
 
 - Vite 配 `@tailwindcss/vite`；入口 `import "./style.css"` 一次即可。
+- `vettaPluginFederation` 会在 Tailwind 编译前自动注入
+  `@vetta-org/plugin-sdk/tailwind-theme.css` 的纯 Token 契约；插件不需要导入
+  Desktop CSS、SDK 主题 CSS，也不需要重复声明 `@theme`。
 - `plugin.json`：`"styles": ["dist/style.css"]`。
 - 如不需要 preflight，也可以继续只导入 `theme.css` + `utilities.css` 以减小产物。
+
+`text-foreground`、`text-card-foreground`、`text-muted-foreground/60`、
+`bg-card`、`border-border` 等语义工具类会引用宿主运行时 CSS 变量并随主题切换；
+插件制品不包含 Desktop 的实际颜色值或组件样式。
 
 ### JSX 示例
 

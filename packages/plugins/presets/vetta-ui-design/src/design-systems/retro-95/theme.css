@@ -1,0 +1,22 @@
+/* Retro 95 — beveled gray chrome, navy title bars, zero curvature. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #000080;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #008080;
+	--color-surface-foreground: #000000;
+	--color-surface-raised: #c3c3c3;
+	--color-muted: #5a5a5a;
+	--color-accent: #008080;
+	--color-danger: #aa0000;
+	--color-border: #868a8e;
+
+	--radius-sm: 0px;
+	--radius-md: 0px;
+	--radius-lg: 0px;
+	--radius-xl: 0px;
+	--radius-2xl: 0px;
+
+	--shadow-sm: 1px 1px 0 rgb(0 0 0 / 0.5);
+	--shadow-md: 2px 2px 0 rgb(0 0 0 / 0.5);
+	--shadow-lg: 4px 4px 0 rgb(0 0 0 / 0.5);
+}

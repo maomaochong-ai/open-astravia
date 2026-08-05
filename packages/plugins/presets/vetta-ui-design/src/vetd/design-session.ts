@@ -1,4 +1,5 @@
 import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
+import { isFrameFile } from "../../engine/src/routes";
 import { parseFrameMeta, sameMeta, sanitizeFrameTitle, withFrameTitle } from "./frame-meta";
 import {
 	designNameOf,
@@ -104,7 +105,9 @@ export class DesignSession {
 		try {
 			const entries = await this.ctx.fs.readDir(`${this.dirPath}/frames`);
 			files = entries
-				.filter((entry) => !entry.isDirectory && entry.name.endsWith(".tsx"))
+				// isFrameFile 排掉 `_` 开头的路由结构件（`_layout.tsx`）：它是公共外壳，
+				// 不是一屏内容，画布上不该为它多出一个空画板。
+				.filter((entry) => !entry.isDirectory && entry.name.endsWith(".tsx") && isFrameFile(entry.name))
 				.map((entry) => ({ name: entry.name, path: entry.path }));
 		} catch {
 			files = [];
@@ -122,8 +125,17 @@ export class DesignSession {
 			} catch {
 				// unreadable frame: keep going with defaults
 			}
-			const meta = parseFrameMeta(source, id);
+			const parsed = parseFrameMeta(source, id);
 			const existing = known.get(id);
+			// 尺寸没声明时的参考系：这一帧上次同步到的声明，否则按文件名排序的前一帧。
+			// 都没有就说明整份设计的第一帧就漏写了——画不出来，跳过，交给 vetd_status
+			// 的 issues 让 agent 补 `export const frame = { width, height }`。
+			const reference = existing?.meta ?? nextFrames.at(-1)?.meta ?? null;
+			const width = parsed.width ?? reference?.width ?? null;
+			const height = parsed.height ?? reference?.height ?? null;
+			// existing 一定带着一份完整的 meta，所以这里必然是一帧全新的、且前面没有任何帧。
+			if (width === null || height === null) continue;
+			const meta = { width, height, title: parsed.title };
 			if (!existing) {
 				const placement = this.pendingPlacements.get(id) ?? this.autoPlacement(nextFrames);
 				this.pendingPlacements.delete(id);
@@ -171,6 +183,31 @@ export class DesignSession {
 			...this.manifest,
 			frames: this.manifest.frames.map((frame) => {
 				if (frame.id !== id) return frame;
+				changed = true;
+				return { ...frame, ...patch };
+			}),
+		};
+		if (!changed) return;
+		this.emit("frames");
+		void this.persist();
+	}
+
+	/**
+	 * 一次落多个 frame 的位置（自动排列、拖 gap、多选拖动）。
+	 *
+	 * 逐个调 {@link updateFramePlacement} 也能达到同样结果，但那是 N 次 emit + N 次
+	 * 写盘：二十帧的整理会让画布连着重渲染二十遍，写队列也排二十个。
+	 */
+	updateFramePlacements(
+		patches: ReadonlyMap<string, Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>>,
+	): void {
+		if (patches.size === 0) return;
+		let changed = false;
+		this.manifest = {
+			...this.manifest,
+			frames: this.manifest.frames.map((frame) => {
+				const patch = patches.get(frame.id);
+				if (!patch) return frame;
 				changed = true;
 				return { ...frame, ...patch };
 			}),

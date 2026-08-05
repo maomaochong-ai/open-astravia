@@ -45,9 +45,11 @@ describe("GraphWorkspace mouse interactions", () => {
 		renderToStaticMarkup(
 			<GraphWorkspace
 				project={createContentProject("C:\\project")}
+				assetPreviewUrls={new Map()}
 				models={[]}
 				onDispatch={async () => undefined}
 				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
 				onImportReferences={async () => undefined}
 			/>,
 		);

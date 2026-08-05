@@ -4,6 +4,8 @@
 @plugin "@iconify/tailwind4";
 @source "../**/*.{ts,tsx}";
 
+/* Host semantic Tailwind colors are injected automatically by @vetta-org/plugin-vite. */
+
 /* Component / feature styles (React Flow internals + local animations). */
 @import "../canvas/GraphWorkspace.css";
 @import "../node/ContentNodeSurface.css";

@@ -37,9 +37,26 @@ export interface BridgeHubEvents {
 	 * 那层 contextmenu 拿到的是同一套。
 	 */
 	onFrameContextMenu(frameId: string, clientX: number, clientY: number): void;
+	/**
+	 * 元素选择期间在 frame 内滚轮。跨源 iframe 会把 wheel 整个吃掉，画布容器上的监听
+	 * 收不到，缩放/平移必须靠这条转发。坐标同样已换算成视口坐标。
+	 */
+	onFrameWheel(event: FrameWheel): void;
+	/** frame 内按下/松开空格（临时托手工具）。焦点在 iframe 里时只能从这里过来。 */
+	onFrameSpace(down: boolean): void;
+}
+
+export interface FrameWheel {
+	clientX: number;
+	clientY: number;
+	deltaX: number;
+	deltaY: number;
+	ctrlKey: boolean;
+	metaKey: boolean;
 }
 
 interface PendingCapture {
+	frameId: string;
 	resolve(dataUrl: string): void;
 	reject(error: Error): void;
 	timer: number;
@@ -62,6 +79,9 @@ export class BridgeHub {
 		switch (data.type) {
 			case "ready": {
 				if (!frameId) return;
+				// 这一帧重新装了一次 bridge——它是个全新的文档，不认识之前发出去的
+				// requestId。挂起的截图等到天荒地老也等不来回音，直接判死。
+				this.abortCaptures(frameId, "the frame reloaded while capturing (a build error recovery or HMR reload)");
 				this.ready.add(frameId);
 				const waiters = this.readyWaiters.get(frameId);
 				if (waiters) {
@@ -87,18 +107,28 @@ export class BridgeHub {
 				return;
 			case "context-menu": {
 				if (!frameId) return;
-				const iframe = this.frames.get(frameId);
-				if (!iframe) return;
-				// iframe 内坐标 → 视口坐标。iframe 整个挂在画布的 scale 变换下，所以
-				// 除了平移还得按缩放比换算；比例直接从渲染后的矩形与布局宽度取，不用
-				// 把画布的 zoom 传进来。
-				const rect = iframe.getBoundingClientRect();
-				const scale = iframe.offsetWidth > 0 ? rect.width / iframe.offsetWidth : 1;
-				const x = typeof data.x === "number" ? data.x : 0;
-				const y = typeof data.y === "number" ? data.y : 0;
-				this.events?.onFrameContextMenu(frameId, rect.left + x * scale, rect.top + y * scale);
+				const point = this.toViewportPoint(frameId, data.x, data.y);
+				if (!point) return;
+				this.events?.onFrameContextMenu(frameId, point.x, point.y);
 				return;
 			}
+			case "wheel": {
+				if (!frameId) return;
+				const point = this.toViewportPoint(frameId, data.x, data.y);
+				if (!point) return;
+				this.events?.onFrameWheel({
+					clientX: point.x,
+					clientY: point.y,
+					deltaX: typeof data.deltaX === "number" ? data.deltaX : 0,
+					deltaY: typeof data.deltaY === "number" ? data.deltaY : 0,
+					ctrlKey: data.ctrlKey === true,
+					metaKey: data.metaKey === true,
+				});
+				return;
+			}
+			case "space":
+				this.events?.onFrameSpace(data.down === true);
+				return;
 			case "hmr-updated":
 				this.events?.onHmrUpdated(frameId);
 				return;
@@ -146,6 +176,23 @@ export class BridgeHub {
 		this.frames.delete(frameId);
 		// iframe 卸了，下次挂上是全新的文档，得重新等它报 ready。
 		this.ready.delete(frameId);
+		this.abortCaptures(frameId, "the frame's iframe was unmounted while capturing");
+	}
+
+	/**
+	 * 判掉这一帧所有挂起的截图。
+	 *
+	 * 没有这一步，「iframe 在截图途中重载/卸载」的表现就是干等满整个超时（工具侧
+	 * 30s），报出来还是一句「capture timed out」——真正的原因（页面换了一个文档）
+	 * 一点痕迹都不留。而这种重载恰恰是常态：编译失败恢复时 bridge 会整页 reload。
+	 */
+	private abortCaptures(frameId: string, reason: string): void {
+		for (const [requestId, pending] of this.captures) {
+			if (pending.frameId !== frameId) continue;
+			this.captures.delete(requestId);
+			window.clearTimeout(pending.timer);
+			pending.reject(new Error(`capture aborted for frame "${frameId}": ${reason} — retry.`));
+		}
 	}
 
 	/**
@@ -170,6 +217,20 @@ export class BridgeHub {
 			}, timeoutMs);
 			waiters.add(done);
 		});
+	}
+
+	/**
+	 * iframe 内坐标 → 视口坐标。iframe 整个挂在画布的 scale 变换下，所以除了平移还得
+	 * 按缩放比换算；比例直接从渲染后的矩形与布局宽度取，不用把画布的 zoom 传进来。
+	 */
+	private toViewportPoint(frameId: string, rawX: unknown, rawY: unknown): { x: number; y: number } | null {
+		const iframe = this.frames.get(frameId);
+		if (!iframe) return null;
+		const rect = iframe.getBoundingClientRect();
+		const scale = iframe.offsetWidth > 0 ? rect.width / iframe.offsetWidth : 1;
+		const x = typeof rawX === "number" ? rawX : 0;
+		const y = typeof rawY === "number" ? rawY : 0;
+		return { x: rect.left + x * scale, y: rect.top + y * scale };
 	}
 
 	private frameIdForWindow(source: MessageEventSource | null): string | null {
@@ -206,7 +267,6 @@ export class BridgeHub {
 			keepHighlight?: boolean;
 			timeoutMs?: number;
 			pixelRatio?: number;
-			cacheBust?: boolean;
 			/** 默认 png。画布位图化用 jpeg：同像素数下 dataUrl 小一个量级。 */
 			format?: "png" | "jpeg";
 			quality?: number;
@@ -221,18 +281,28 @@ export class BridgeHub {
 		if (!this.frames.has(frameId)) throw new Error(`frame not mounted: ${frameId}`);
 		this.captureCounter += 1;
 		const requestId = `cap-${this.captureCounter}`;
+		const timeoutMs = options?.timeoutMs ?? 15_000;
+		const iframe = this.frames.get(frameId);
+		// 超时那一刻这些都取不到了（iframe 可能已经没了），先记下来。
+		const size = iframe ? `${iframe.offsetWidth}x${iframe.offsetHeight}` : "unknown size";
+		const ratio = options?.pixelRatio ?? 2;
 		return new Promise<string>((resolve, reject) => {
 			const timer = window.setTimeout(() => {
 				this.captures.delete(requestId);
-				reject(new Error(`capture timed out for frame "${frameId}"`));
-			}, options?.timeoutMs ?? 15_000);
-			this.captures.set(requestId, { resolve, reject, timer });
+				reject(
+					new Error(
+						`capture timed out for frame "${frameId}" after ${timeoutMs / 1000}s ` +
+							`(${size} at ${ratio}x, ${this.captures.size} other capture(s) in flight). ` +
+							`The frame is most likely too large or too heavy to rasterize — check for oversized images or a very tall page.`,
+					),
+				);
+			}, timeoutMs);
+			this.captures.set(requestId, { frameId, resolve, reject, timer });
 			this.post(frameId, {
 				type: "capture",
 				requestId,
 				keepHighlight: options?.keepHighlight === true,
 				pixelRatio: options?.pixelRatio,
-				cacheBust: options?.cacheBust === true,
 				format: options?.format ?? "png",
 				quality: options?.quality,
 			});

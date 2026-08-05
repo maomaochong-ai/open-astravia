@@ -1,11 +1,12 @@
 {
 	"name": "@vetta/plugin-vetta-ui-design",
-	"version": "0.1.0",
+	"version": "0.1.7",
 	"private": true,
 	"type": "module",
 	"scripts": {
 		"build": "bunx vite build",
-		"check": "bunx tsc --noEmit"
+		"check": "bunx tsc --noEmit",
+		"test": "bunx vitest --run"
 	},
 	"dependencies": {
 		"fflate": "^0.8.2"
@@ -17,10 +18,12 @@
 		"@types/react-dom": "^19.1.1",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
+		"happy-dom": "^20.11.1",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"tailwindcss": "^4.1.12",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.7"
+		"vite": "^7.1.7",
+		"vitest": "^3.2.4"
 	}
 }

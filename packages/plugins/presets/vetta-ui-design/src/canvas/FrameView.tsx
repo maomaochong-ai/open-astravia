@@ -1,16 +1,30 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import { memo, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import { frameUrl } from "../vetd/frame-url";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { BridgeHub } from "./bridge-client";
 import type { FrameActivity } from "./design-runtime";
 import { FrameTitleInput } from "./FrameTitleInput";
 
 type ResizeEdge = "nw" | "ne" | "sw" | "se" | "e" | "s";
+/** 一次拖拽在改什么：整体位置，还是某条边/某个角。 */
+export type FrameDragEdge = ResizeEdge | "move";
 
+/**
+ * 回调一律 frameId 优先、且由画布侧用 useCallback 固定住引用。
+ *
+ * 这不是风格问题：FrameView 走 memo，任何一个内联箭头函数（`() => selectFrame(frame.id)`）
+ * 都会让每次画布重渲染都变成「全部 N 个 frame 重渲染」，memo 直接失效。
+ */
 interface FrameViewProps {
 	frame: VetdFrameEntry;
 	port: number;
-	zoom: number;
+	/**
+	 * 读当前缩放。改尺寸/移动要把指针位移换算成世界位移，需要 zoom；但不能作为 prop
+	 * 下发——那样每个 wheel tick 都会重渲染所有 frame。视觉上的反向缩放走 CSS 变量
+	 * `--vetd-lscale`（由画布在 world 层上设置）。
+	 */
+	getZoom(): number;
 	bridge: BridgeHub;
 	selected: boolean;
 	/**
@@ -36,45 +50,54 @@ interface FrameViewProps {
 	paintTick: number;
 	/** Live offset of the in-flight group move this frame takes part in. */
 	moveDelta: { dx: number; dy: number } | null;
+	/** 正在改尺寸时的实时矩形（由画布算出，含吸附与最小尺寸钳制）。 */
+	resizeRect: { x: number; y: number; width: number; height: number } | null;
+	/** 排列预览（拖 gap 期间）覆盖的位置，非 null 时压过 manifest 里的 x/y。 */
+	placement: { x: number; y: number } | null;
 	activity: FrameActivity | undefined;
 	/** 非 null 时这一帧编译/渲染失败：盖住上一张位图，标题栏挂徽标（详情走 title）。 */
 	buildError: string | null;
 	/** true 时标题变成就地编辑的输入框（双击标题，或右键菜单里的重命名）。 */
 	renaming: boolean;
-	onSelect(additive: boolean): void;
+	onSelect(frameId: string, additive: boolean): void;
 	/** 右键：坐标是视口坐标（clientX/Y），由画布换算成容器内坐标定位菜单。 */
-	onContextMenu(clientX: number, clientY: number): void;
-	onRenameStart(): void;
+	onContextMenu(frameId: string, clientX: number, clientY: number): void;
+	onRenameStart(frameId: string): void;
 	/** 提交由画布落盘；标题没变或为空时画布自行忽略。 */
-	onRenameCommit(title: string): void;
+	onRenameCommit(frameId: string, title: string): void;
 	onRenameCancel(): void;
-	/** Moves are owned by the canvas so every selected frame travels together. */
-	onMoveStart(additive: boolean): void;
-	onMoveDelta(dx: number, dy: number): void;
-	onMoveEnd(): void;
-	onResizeCommit(patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void;
+	/**
+	 * 拖拽的几何全归画布：移动要让整个选中集一起走，改尺寸要拿到旁边 frame 才能吸附，
+	 * 两件事这一层都做不了。这里只管指针，位移原样上报（世界单位、不取整，取整与吸附
+	 * 由画布决定），结果经 moveDelta / resizeRect 回来。
+	 */
+	onDragStart(frameId: string, edge: FrameDragEdge, additive: boolean): void;
+	onDragDelta(dx: number, dy: number, bypassSnap: boolean): void;
+	onDragEnd(): void;
 }
 
 interface DragState {
 	pointerId: number;
 	startX: number;
 	startY: number;
-	origin: { x: number; y: number; width: number; height: number };
-	edge: ResizeEdge | "move";
+	edge: FrameDragEdge;
 }
 
-const MIN_WIDTH = 100;
-const MIN_HEIGHT = 80;
 /**
  * 收不到「画好了」信号时的兜底：iframe 加载完这么久之后照样交接。引擎渲染不出内容
  * （bridge 没装上、frame 抛错在边界里）时不能让位图永远盖着。
  */
 const PAINT_FALLBACK_MS = 2_500;
 
-export function FrameView({
+/**
+ * memo 是这层的性能前提：画布上任何一次状态变化（框选矩形、活动态、截图上报、
+ * 缩放…）都会重渲染 DesignCanvas，N 个 frame 只应该做 N 次浅比较而不是 N 次
+ * 重渲染。前提是 props 全都稳定——见 {@link FrameViewProps}。
+ */
+export const FrameView = memo(function FrameView({
 	frame,
 	port,
-	zoom,
+	getZoom,
 	bridge,
 	selected,
 	entered,
@@ -86,6 +109,8 @@ export function FrameView({
 	reloadNonce,
 	paintTick,
 	moveDelta,
+	resizeRect,
+	placement,
 	activity,
 	buildError,
 	renaming,
@@ -94,16 +119,13 @@ export function FrameView({
 	onRenameStart,
 	onRenameCommit,
 	onRenameCancel,
-	onMoveStart,
-	onMoveDelta,
-	onMoveEnd,
-	onResizeCommit,
+	onDragStart,
+	onDragDelta,
+	onDragEnd,
 }: FrameViewProps) {
 	const { t } = useTranslation();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const dragRef = useRef<DragState | null>(null);
-	/** 改尺寸拖拽期间的实时矩形（提交前不落 manifest）。 */
-	const [resizeRect, setResizeRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 	/**
 	 * 正在拖拽。用来让遮罩在这段时间里保持可交互：从未选中态起手拖动会顺带选中这个
 	 * frame，遮罩本该立刻让位给 iframe，但那样松手事件就落空了，这一次拖拽再也结束
@@ -162,8 +184,8 @@ export function FrameView({
 	}, [bridge, frame.id, mounted]);
 
 	const rect = resizeRect ?? {
-		x: frame.x + (moveDelta?.dx ?? 0),
-		y: frame.y + (moveDelta?.dy ?? 0),
+		x: (placement?.x ?? frame.x) + (moveDelta?.dx ?? 0),
+		y: (placement?.y ?? frame.y) + (moveDelta?.dy ?? 0),
 		width: frame.width,
 		height: frame.height,
 	};
@@ -176,15 +198,13 @@ export function FrameView({
 		if (!interactive) return;
 		event.preventDefault();
 		event.stopPropagation();
-		if (edge === "move") onMoveStart(event.shiftKey);
-		else onSelect(false);
+		onDragStart(frame.id, edge, event.shiftKey);
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		setDragging(true);
 		dragRef.current = {
 			pointerId: event.pointerId,
 			startX: event.clientX,
 			startY: event.clientY,
-			origin: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
 			edge,
 		};
 	};
@@ -198,38 +218,13 @@ export function FrameView({
 			finishDrag(event.pointerId);
 			return;
 		}
-		const dx = (event.clientX - drag.startX) / zoom;
-		const dy = (event.clientY - drag.startY) / zoom;
-		const { origin } = drag;
-		if (drag.edge === "move") {
-			onMoveDelta(Math.round(dx), Math.round(dy));
-			return;
-		}
-		let { x, y, width, height } = origin;
-		if (drag.edge.includes("e")) width = origin.width + dx;
-		if (drag.edge.includes("s")) height = origin.height + dy;
-		if (drag.edge.includes("w")) {
-			width = origin.width - dx;
-			x = origin.x + dx;
-		}
-		if (drag.edge === "nw" || drag.edge === "ne") {
-			height = origin.height - dy;
-			y = origin.y + dy;
-		}
-		if (width < MIN_WIDTH) {
-			if (drag.edge.includes("w")) x -= MIN_WIDTH - width;
-			width = MIN_WIDTH;
-		}
-		if (height < MIN_HEIGHT) {
-			if (drag.edge === "nw" || drag.edge === "ne") y -= MIN_HEIGHT - height;
-			height = MIN_HEIGHT;
-		}
-		setResizeRect({
-			x: Math.round(x),
-			y: Math.round(y),
-			width: Math.round(width),
-			height: Math.round(height),
-		});
+		const zoom = getZoom();
+		// 不取整：整数化与吸附都在画布侧，命中吸附时结果可能带小数（中线对齐）。
+		onDragDelta(
+			(event.clientX - drag.startX) / zoom,
+			(event.clientY - drag.startY) / zoom,
+			event.metaKey || event.ctrlKey,
+		);
 	};
 
 	const finishDrag = (pointerId: number): void => {
@@ -237,14 +232,7 @@ export function FrameView({
 		if (!drag || pointerId !== drag.pointerId) return;
 		dragRef.current = null;
 		setDragging(false);
-		if (drag.edge === "move") {
-			onMoveEnd();
-			return;
-		}
-		if (resizeRect) {
-			onResizeCommit(resizeRect);
-			setResizeRect(null);
-		}
+		onDragEnd();
 	};
 
 	const endDrag = (event: ReactPointerEvent): void => finishDrag(event.pointerId);
@@ -267,7 +255,11 @@ export function FrameView({
 		};
 	}, []);
 
-	const labelScale = Math.min(1 / zoom, 8);
+	/**
+	 * 标题栏与手柄的反向缩放。取值由画布在 world 层上写成 CSS 变量，这里只是引用
+	 * 它——所以缩放画布不会让这个组件重渲染，浏览器自己重算 transform。
+	 */
+	const labelScale = "var(--vetd-lscale, 1)";
 	const handles: { edge: ResizeEdge; className: string }[] = [
 		{ edge: "nw", className: "-left-1 -top-1 cursor-nwse-resize" },
 		{ edge: "ne", className: "-right-1 -top-1 cursor-nesw-resize" },
@@ -289,7 +281,7 @@ export function FrameView({
 				if (!interactive) return;
 				event.preventDefault();
 				event.stopPropagation();
-				onContextMenu(event.clientX, event.clientY);
+				onContextMenu(frame.id, event.clientX, event.clientY);
 			}}
 		>
 			{/* Title bar (inverse-scaled so it stays readable at any zoom). */}
@@ -299,13 +291,13 @@ export function FrameView({
 					transform: `scale(${labelScale})`,
 					transformOrigin: "left bottom",
 					bottom: "100%",
-					marginBottom: 4 * labelScale,
+					marginBottom: `calc(4px * ${labelScale})`,
 				}}
 			>
 				{renaming ? (
 					<FrameTitleInput
 						initial={frame.title || frame.id}
-						onCommit={onRenameCommit}
+						onCommit={(title) => onRenameCommit(frame.id, title)}
 						onCancel={onRenameCancel}
 					/>
 				) : (
@@ -319,7 +311,7 @@ export function FrameView({
 						onPointerUp={endDrag}
 						// 双击标题是重命名（Figma 行为）；要进 frame 检查态请双击画面本身。
 						onDoubleClick={() => {
-							if (interactive) onRenameStart();
+							if (interactive) onRenameStart(frame.id);
 						}}
 						title={frame.title || frame.id}
 					>
@@ -327,7 +319,7 @@ export function FrameView({
 					</button>
 				)}
 				<span className="text-muted-foreground">
-					{rect.width}×{rect.height}
+					{Math.round(rect.width)}×{Math.round(rect.height)}
 				</span>
 				{buildError ? (
 					<span
@@ -362,8 +354,7 @@ export function FrameView({
 					<iframe
 						ref={iframeRef}
 						title={frame.title || frame.id}
-						// nonce 放在查询串而不是 hash：改 hash 只会触发 hashchange，文档不会重新加载。
-						src={`http://127.0.0.1:${port}/?r=${reloadNonce}#/frame/${encodeURIComponent(frame.id)}`}
+						src={frameUrl(port, frame.id, reloadNonce)}
 						className="h-full w-full border-0"
 						style={{
 							pointerEvents: entered ? "auto" : "none",
@@ -389,9 +380,16 @@ export function FrameView({
 						src={raster}
 						alt=""
 						aria-hidden
-						className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
-							shouldShowRaster ? "opacity-100" : "opacity-0"
-						}`}
+						className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity"
+						// 两个方向必须不对称。
+						// 位图→活体：位图淡出，底下一直垫着已经画好的 iframe，200ms 过渡看不出交接。
+						// 活体→位图：iframe 在同一次提交里就被卸掉了（见 frame-raster 的 mounted），
+						// 淡入的这 200ms 底下什么都没有，露出的是容器白底——那一下闪白就是这么来的。
+						// 位图此刻已解码、内容与活体一致，硬切反而完全看不出来。
+						style={{
+							opacity: shouldShowRaster ? 1 : 0,
+							transitionDuration: shouldShowRaster ? "0ms" : "200ms",
+						}}
 						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
@@ -419,7 +417,7 @@ export function FrameView({
 						// 多选态下双击某一个 frame：收敛成只选它，也就直接开了元素选择。
 						onDoubleClick={(event) => {
 							event.stopPropagation();
-							if (interactive) onSelect(false);
+							if (interactive) onSelect(frame.id, false);
 						}}
 					/>
 				}
@@ -441,4 +439,4 @@ export function FrameView({
 				: null}
 		</div>
 	);
-}
+});

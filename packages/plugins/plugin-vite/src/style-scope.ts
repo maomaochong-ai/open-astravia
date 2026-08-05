@@ -82,7 +82,7 @@ function scopeRulesInContainer(container: Container, pluginId: string): void {
 	}
 }
 
-function scopePluginCss(css: string, pluginId: string): string {
+export function scopePluginCss(css: string, pluginId: string): string {
 	const root = postcss.parse(css);
 	root.walkRules((rule) => {
 		if (isInsideKeyframes(rule)) return;
@@ -103,12 +103,20 @@ function readPluginId(rootDir: string): string {
 
 export function createPluginStyleScopePlugin(): Plugin {
 	let pluginId = "";
+	let command: "build" | "serve" = "build";
 	return {
 		name: "vetta-plugin-style-scope",
-		apply: "build",
-		enforce: "post",
+		enforce: "pre",
 		configResolved(config) {
 			pluginId = readPluginId(config.root);
+			command = config.command;
+		},
+		transform(code, id) {
+			if (command !== "serve" || !id.split("?", 1)[0].endsWith(".css")) return;
+			return {
+				code: scopePluginCss(code, pluginId),
+				map: null,
+			};
 		},
 		generateBundle(_options, bundle) {
 			for (const output of Object.values(bundle)) {

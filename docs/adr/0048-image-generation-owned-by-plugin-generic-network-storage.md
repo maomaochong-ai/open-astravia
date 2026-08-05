@@ -2,7 +2,7 @@
 
 ## 状态
 
-已采纳。
+已采纳，第 1、3 条被 ADR-0056 部分取代：供应商适配与 API key 从插件迁到 Vetta 网关，SDK 增加 `ctx.gateway.request`。其余条款继续有效。
 
 ## 背景
 

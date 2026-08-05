@@ -1,0 +1,22 @@
+/* Headspace — warm sunrise calm, rounded everything, friendly ink. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #f47d31;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #fefaf3;
+	--color-surface-foreground: #2d2c41;
+	--color-surface-raised: #ffffff;
+	--color-muted: #7a7889;
+	--color-accent: #5a77d6;
+	--color-danger: #e5484d;
+	--color-border: #efe4d5;
+
+	--radius-sm: 10px;
+	--radius-md: 14px;
+	--radius-lg: 18px;
+	--radius-xl: 24px;
+	--radius-2xl: 32px;
+
+	--shadow-sm: 0 2px 6px rgb(45 44 65 / 0.06);
+	--shadow-md: 0 8px 20px rgb(45 44 65 / 0.08);
+	--shadow-lg: 0 20px 48px rgb(45 44 65 / 0.12);
+}

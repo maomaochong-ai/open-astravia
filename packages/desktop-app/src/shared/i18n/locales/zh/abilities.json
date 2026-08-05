@@ -240,7 +240,8 @@
 		"storageRead": "读取插件私有数据",
 		"storageWrite": "写入插件私有数据",
 		"settingsRead": "读取设置",
-		"settingsWrite": "修改设置"
+		"settingsWrite": "修改设置",
+		"shellOpenExternal": "用系统浏览器打开链接"
 	},
 	"meta": {
 		"title": "其他",

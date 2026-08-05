@@ -55,7 +55,7 @@ import {
 	readDesktopConfig,
 	writeDesktopConfig,
 } from "./fs.js";
-import { readSettings, writeSettings } from "./settings.js";
+import { readSettings, updateSettings } from "./settings.js";
 
 export { ensureConversationSubCwd, resolveSessionDirForCwd } from "../conversations/session-paths.js";
 
@@ -697,9 +697,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// Broadcast to all open sessions
 		runtime.updateGlobalThinkingLevel(level as any);
 		// Persist to settings.json
-		const settings = readSettings();
-		settings.defaultThinkingLevel = level;
-		writeSettings(settings);
+		updateSettings((settings) => {
+			settings.defaultThinkingLevel = level;
+		});
 	});
 
 	ipcMain.handle(CHANNELS.GET_GLOBAL_THINKING, () => {
@@ -715,11 +715,11 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
 			throw new Error("Invalid maxRecentImages value");
 		}
-		const settings = readSettings();
-		const images = (settings.images as Record<string, unknown> | undefined) ?? {};
-		images.maxRecentImages = count;
-		settings.images = images;
-		writeSettings(settings);
+		updateSettings((settings) => {
+			const images = (settings.images as Record<string, unknown> | undefined) ?? {};
+			images.maxRecentImages = count;
+			settings.images = images;
+		});
 	});
 
 	ipcMain.handle(CHANNELS.GET_MAX_RECENT_IMAGES, () => {
@@ -755,9 +755,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (typeof customPrompt !== "string") {
 			throw new Error("Invalid customPrompt");
 		}
-		const settings = readSettings();
-		settings.personalization = { personaId, customPrompt };
-		writeSettings(settings);
+		updateSettings((settings) => {
+			settings.personalization = { personaId, customPrompt };
+		});
 	});
 
 	ipcMain.handle(CHANNELS.GET_STATE, async (_event, sessionId: unknown) => {

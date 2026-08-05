@@ -1,7 +1,11 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
 import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import type {
 	ContentAsset,
 	ContentNodeData,
@@ -10,10 +14,16 @@ import type {
 	ContentNodeStatus,
 } from "../project/types";
 import type { ContentNodePropertyDefinition } from "./definitions";
+import { ContentAssetNodeEditor } from "./ContentAssetNodeEditor";
 import { ContentGeneratorComposer } from "./ContentGeneratorComposer";
+import { ContentPromptEditor } from "./ContentPromptEditor";
+import type { ConnectedContentAsset } from "./material-assets";
+import { NodeEditorPanel } from "./NodeEditorPanel";
+import type { ConnectedPromptSource } from "./prompt-sources";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 
 const FIELD_CLASS =
-	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/50";
+	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus-visible:border-primary/50";
 
 interface ContentNodeEditorProps {
 	kind: ContentNodeKind;
@@ -21,11 +31,15 @@ interface ContentNodeEditorProps {
 	data: ContentNodeData;
 	properties: readonly ContentNodePropertyDefinition[];
 	models: readonly ContentModelDescriptor[];
+	assets: readonly ContentAsset[];
+	connectedAssets: readonly ConnectedContentAsset[];
+	connectedPrompts: readonly ConnectedPromptSource[];
+	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
-	hasGenerationError: boolean;
 	focusPromptRequest: number;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onRunNode: () => Promise<void>;
+	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
@@ -33,6 +47,28 @@ interface ContentNodeEditorProps {
 export function ContentNodeEditor(props: ContentNodeEditorProps) {
 	if (props.kind === "image-generator" || props.kind === "video-generator") {
 		return <ContentGeneratorComposer {...props} kind={props.kind} />;
+	}
+	if (props.kind === "asset") {
+		return (
+			<ContentAssetNodeEditor
+				data={props.data}
+				assets={props.assets}
+				onUpdate={props.onUpdate}
+				onImport={props.onImportAssets}
+			/>
+		);
+	}
+	if (props.kind === "prompt") {
+		return (
+			<ContentPromptEditor
+				data={props.data}
+				mentionAssets={props.mentionAssets}
+				referenceAssets={props.referenceAssets}
+				focusPromptRequest={props.focusPromptRequest}
+				onUpdate={props.onUpdate}
+				onImportReferences={props.onImportReferences}
+			/>
+		);
 	}
 	return <SimpleContentNodeEditor {...props} />;
 }
@@ -67,11 +103,9 @@ function SimpleContentNodeEditor({
 	};
 
 	return (
-		<div
-			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-xl border border-border/70 bg-card p-2.5 text-card-foreground shadow-sm"
+		<NodeEditorPanel
+			className="min-w-0 max-w-[calc(100vw-32px)] rounded-xl border border-border/70 bg-card p-2.5 text-card-foreground shadow-sm"
 			style={{ width: `min(${preferredWidth}px, calc(100vw - 32px))` }}
-			onPointerDown={(event) => event.stopPropagation()}
-			onKeyDown={(event) => event.stopPropagation()}
 		>
 			<div className="flex flex-col gap-2">
 				{properties.map((property) => (
@@ -108,6 +142,6 @@ function SimpleContentNodeEditor({
 					</Button>
 				</div>
 			) : null}
-		</div>
+		</NodeEditorPanel>
 	);
 }

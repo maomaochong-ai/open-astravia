@@ -2,9 +2,20 @@ import type { Connection, Edge } from "@xyflow/react";
 import { CONTENT_FLOW_SOURCE_HANDLE_ID, CONTENT_FLOW_TARGET_HANDLE_ID } from "./flow-handles";
 import { getContentNodeSize } from "../node/geometry";
 import type { ContentNodeData, ContentProjectDocument } from "../project/types";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import type { ContentFlowNode } from "../node/ContentNodeCard";
 import { resolveContentConnection, type ResolvedContentConnection } from "../node/connections";
+import {
+	isContentInputBindingAvailable,
+	listConnectedContentAssets,
+	listContentNodeAssets,
+} from "../node/material-assets";
+import { listConnectedPromptSources, listContentPromptReferences } from "../node/prompt-sources";
+import { listContentAssetReferenceCandidates } from "../node/reference-candidates";
 
 export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
@@ -13,6 +24,7 @@ export interface ContentNodeActions {
 	onUpdate: (nodeId: string, data: ContentNodeData) => Promise<void>;
 	onResize: (nodeId: string, position: { x: number; y: number }, width: number, height: number) => void;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline: (nodeId: string) => Promise<void>;
 }
@@ -27,14 +39,39 @@ export function toContentFlowNodes(
 	selectedNodeIds: ReadonlySet<string>,
 	models: readonly ContentModelDescriptor[],
 	actions: ContentNodeActions,
+	assetPreviewUrls: ReadonlyMap<string, string>,
 ): ContentFlowNode[] {
 	return project.graph.nodes.map((node) => {
 		const fallbackSize = getContentNodeSize(node.kind, node.data.aspectRatio);
 		const job = project.jobs.filter((candidate) => candidate.nodeId === node.id).at(-1);
-		const referenceAssets = (node.data.inputs ?? []).flatMap((binding) => {
-			const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-			return asset ? [{ binding, asset }] : [];
-		});
+		const withPreview = (asset: ContentProjectDocument["assets"][number]) => {
+			const previewUrl = assetPreviewUrls.get(asset.id);
+			return previewUrl ? { ...asset, previewUrl } : asset;
+		};
+		const assets = listContentNodeAssets(project, node).map(withPreview);
+		const referenceAssets =
+			node.kind === "prompt"
+				? listContentPromptReferences(project, node).map(({ binding, asset }) => ({
+						binding,
+						asset: withPreview(asset),
+					}))
+				: (node.data.inputs ?? []).flatMap((binding) => {
+						if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
+						const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
+						return asset ? [{ binding, asset: withPreview(asset) }] : [];
+					});
+		const connectedAssets = listConnectedContentAssets(project, node.id).map(({ sourceNodeId, asset }) => ({
+			sourceNodeId,
+			asset: withPreview(asset),
+		}));
+		const connectedPrompts = listConnectedPromptSources(project, node.id).map((source) => ({
+			...source,
+			references: source.references.map(({ binding, asset }) => ({ binding, asset: withPreview(asset) })),
+		}));
+		const mentionAssets = listContentAssetReferenceCandidates(project, node.id).map((candidate) => ({
+			...candidate,
+			asset: withPreview(candidate.asset),
+		}));
 		return {
 			...fallbackSize,
 			width: node.width ?? fallbackSize.width,
@@ -47,20 +84,24 @@ export function toContentFlowNodes(
 			data: {
 				kind: node.kind,
 				nodeData: node.data,
-				assetUrl: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.url : undefined,
+				assets,
+				connectedAssets,
+				connectedPrompts,
+				mentionAssets,
+				assetUrl: node.data.assetId ? assetPreviewUrls.get(node.data.assetId) : undefined,
 				assetKind: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.kind : undefined,
 				status: node.status,
 				job,
 				locked: Boolean(node.locked),
 				models,
 				referenceAssets,
-				hasGenerationError: job?.status === "failed",
 				onDelete: () => actions.onDelete(node.id),
 				onDuplicate: () => actions.onDuplicate(node.id),
 				onToggleLock: () => actions.onToggleLock(node.id),
 				onUpdate: (data) => actions.onUpdate(node.id, data),
 				onResize: (position, width, height) => actions.onResize(node.id, position, width, height),
 				onRunNode: () => actions.onRunNode(node.id),
+				onImportAssets: (files) => actions.onImportAssets(node.id, files),
 				onImportReferences: (files) => actions.onImportReferences(node.id, files),
 				onAddToTimeline:
 					node.kind === "image-generator" || node.kind === "video-generator" || node.kind === "asset"

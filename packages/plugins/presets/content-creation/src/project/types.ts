@@ -1,4 +1,4 @@
-export const CONTENT_CREATION_SCHEMA_VERSION = 1 as const;
+export const CONTENT_CREATION_SCHEMA_VERSION = 2 as const;
 
 export type ContentNodeKind = "prompt" | "image-generator" | "video-generator" | "asset" | "output";
 export type ContentNodeStatus = "idle" | "queued" | "running" | "succeeded" | "failed";
@@ -14,7 +14,9 @@ export interface CanvasPosition {
 export interface ContentNodeData {
 	label?: string;
 	prompt?: string;
+	promptDocument?: ContentPromptDocument;
 	assetId?: string;
+	assetIds?: string[];
 	aspectRatio?: string;
 	quality?: string;
 	duration?: number;
@@ -22,13 +24,25 @@ export interface ContentNodeData {
 	providerId?: string;
 	modelId?: string;
 	modeId?: string;
+	promptSourceNodeId?: string | null;
 	inputs?: ContentNodeInputBinding[];
 }
+
+export interface ContentPromptDocument {
+	version: 1;
+	segments: ContentPromptSegment[];
+}
+
+export type ContentPromptSegment =
+	| { type: "text"; text: string }
+	| { type: "asset-reference"; bindingId: string }
+	| { type: "prompt-reference"; sourceNodeId: string };
 
 export interface ContentNodeInputBinding {
 	id: string;
 	assetId: string;
 	slotId: string;
+	sourceNodeId?: string;
 }
 
 export interface ContentNode {
@@ -52,10 +66,12 @@ export interface ContentEdge {
 
 export interface ContentAsset {
 	id: string;
+	blobId: string;
 	kind: AssetKind;
 	name: string;
 	mimeType: string;
-	url: string;
+	/** Runtime-only media URL. Project persistence stores blobId instead. */
+	previewUrl?: string;
 	duration?: number;
 	width?: number;
 	height?: number;

@@ -26,7 +26,11 @@ import {
 	layoutContentNodes,
 } from "../node/layout";
 import type { ContentNode, ContentNodeKind, ContentProjectDocument } from "../project/types";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import { getRegisterShortcutScope } from "../plugin/plugin-ui";
 import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
@@ -62,13 +66,23 @@ const PRO_OPTIONS = { hideAttribution: true };
 
 interface GraphWorkspaceProps {
 	project: ContentProjectDocument;
+	assetPreviewUrls: ReadonlyMap<string, string>;
 	models: readonly ContentModelDescriptor[];
 	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
 }
 
-export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImportReferences }: GraphWorkspaceProps) {
+export function GraphWorkspace({
+	project,
+	assetPreviewUrls,
+	models,
+	onDispatch,
+	onRunNode,
+	onImportAssets,
+	onImportReferences,
+}: GraphWorkspaceProps) {
 	const flowContainerRef = useRef<HTMLDivElement>(null);
 	const flowInstanceRef = useRef<ReactFlowInstance<ContentFlowNode, Edge> | null>(null);
 	const alignmentGuidesLayerRef = useRef<AlignmentGuidesLayerHandle>(null);
@@ -89,7 +103,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 	);
 	const selectedNodeIdSet = useMemo(() => new Set(activeSelectedNodeIds), [activeSelectedNodeIds]);
 	const canvasInteraction = getCanvasInteraction(canvasTool);
-	const projectSyncKey = createContentProjectSyncKey(
+	const projectSyncKey = `${createContentProjectSyncKey(
 		{
 			projectId: project.projectId,
 			revision: project.revision,
@@ -98,7 +112,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 			edgeCount: project.graph.edges.length,
 		},
 		models,
-	);
+	)}\u0000${[...assetPreviewUrls].map(([assetId, url]) => `${assetId}:${url}`).join("\u0001")}`;
 
 	const closeMenus = useCallback(() => {
 		setPendingMenu(null);
@@ -145,6 +159,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 				void onDispatch([{ type: "node.resize", nodeId, position, width, height }]);
 			},
 			onRunNode,
+			onImportAssets,
 			onImportReferences,
 			onAddToTimeline: (nodeId) =>
 				onDispatch([
@@ -161,11 +176,11 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 					},
 				]),
 		}),
-		[onDispatch, onImportReferences, onRunNode, project],
+		[onDispatch, onImportAssets, onImportReferences, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
-		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions),
-		[actions, models, project, selectedNodeIdSet],
+		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions, assetPreviewUrls),
+		[actions, assetPreviewUrls, models, project, selectedNodeIdSet],
 	);
 	const synchronizedEdges = useMemo(
 		() => toContentFlowEdges(project, selectedNodeIdSet),
@@ -519,7 +534,6 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 						defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
 						// Keyboard delete is handled by host ShortcutScopeStack (usePluginShortcutScope).
 						deleteKeyCode={null}
-						onlyRenderVisibleElements
 						proOptions={PRO_OPTIONS}
 						onInit={onInit}
 						onSelectionChange={onSelectionChange}

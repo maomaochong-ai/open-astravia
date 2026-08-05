@@ -2,21 +2,30 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type ChangeEvent, useRef } from "react";
 import type { ContentReferenceKind, ImportedContentReference } from "../generation/types";
 import type { ContentAsset, ContentNodeInputBinding } from "../project/types";
+import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
+import { ConnectedAssetPicker, type ConnectedReferenceOption } from "./ConnectedAssetPicker";
+import { readImportedMediaFile } from "./readImportedMediaFile";
 
 interface ContentReferenceInputProps {
 	references: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
+	connectedReferences: readonly ConnectedReferenceOption[];
 	acceptedKinds: readonly ContentReferenceKind[];
 	disabled: boolean;
+	compact?: boolean;
 	onImport: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onRemove: (bindingId: string) => void;
+	onSelectConnected: (option: ConnectedReferenceOption) => void;
 }
 
 export function ContentReferenceInput({
 	references,
+	connectedReferences,
 	acceptedKinds,
 	disabled,
+	compact = false,
 	onImport,
 	onRemove,
+	onSelectConnected,
 }: ContentReferenceInputProps) {
 	const { t } = useTranslation();
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -25,27 +34,27 @@ export function ContentReferenceInput({
 		const files = Array.from(event.target.files ?? []);
 		event.target.value = "";
 		if (files.length === 0) return;
-		await onImport(await Promise.all(files.map(readReferenceFile)));
+		await onImport(await Promise.all(files.map(readImportedMediaFile)));
 	};
 
 	return (
-		<div className="flex min-h-14 flex-wrap items-start gap-1.5">
+		<div className={`flex flex-wrap items-start gap-1.5 ${compact ? "min-h-10" : "min-h-14"}`}>
 			{references.map(({ binding, asset }, index) => (
 				<div
 					key={binding.id}
-					className="group/reference relative size-14 shrink-0 overflow-hidden rounded-lg border border-border/75 bg-muted/45"
+					className={`group/reference relative shrink-0 overflow-hidden rounded-lg border border-border/75 bg-muted/45 ${compact ? "size-10" : "size-14"}`}
 				>
-					{asset.kind === "video" ? (
-						<video className="h-full w-full object-cover" src={asset.url} muted preload="metadata" />
-					) : (
-						<img className="h-full w-full object-cover" src={asset.url} alt={asset.name} />
-					)}
+					<ContentAssetThumbnail
+						asset={asset}
+						className="flex h-full w-full items-center justify-center object-cover text-muted-foreground"
+					/>
 					<span className="absolute top-1 right-1 flex size-3.5 items-center justify-center rounded-full bg-black/75 text-[8px] font-semibold text-white">
 						{index + 1}
 					</span>
 					<button
 						type="button"
 						className="absolute inset-0 flex items-center justify-center bg-black/45 text-white opacity-0 transition-opacity group-hover/reference:opacity-100 focus-visible:opacity-100"
+						disabled={disabled}
 						title={t("nodeEditor.reference.remove")}
 						aria-label={t("nodeEditor.reference.remove")}
 						onClick={() => onRemove(binding.id)}
@@ -56,7 +65,7 @@ export function ContentReferenceInput({
 			))}
 			<button
 				type="button"
-				className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/35 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+				className={`flex shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/35 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${compact ? "size-10" : "size-14"}`}
 				disabled={disabled || acceptedKinds.length === 0}
 				title={
 					acceptedKinds.length === 0
@@ -66,7 +75,7 @@ export function ContentReferenceInput({
 				aria-label={t("nodeEditor.reference.add")}
 				onClick={() => inputRef.current?.click()}
 			>
-				<span className="icon-[lucide--image] block size-4.5 shrink-0" aria-hidden="true" />
+				<span className="icon-[lucide--paperclip] block size-4.5 shrink-0" aria-hidden="true" />
 			</button>
 			<input
 				ref={inputRef}
@@ -77,29 +86,12 @@ export function ContentReferenceInput({
 				disabled={disabled || acceptedKinds.length === 0}
 				onChange={(event) => void handleFiles(event)}
 			/>
+			<ConnectedAssetPicker
+				options={connectedReferences}
+				disabled={disabled}
+				compact={compact}
+				onSelect={onSelectConnected}
+			/>
 		</div>
 	);
-}
-
-async function readReferenceFile(file: File): Promise<ImportedContentReference> {
-	const dataUrl = await new Promise<string>((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => resolve(String(reader.result ?? ""));
-		reader.onerror = () => reject(reader.error ?? new Error("failed to read content reference"));
-		reader.readAsDataURL(file);
-	});
-	const separator = dataUrl.indexOf(",");
-	if (separator < 0) throw new Error("content reference is not a valid data URL");
-	return { name: file.name, mimeType: file.type || inferMimeType(file.name), data: dataUrl.slice(separator + 1) };
-}
-
-function inferMimeType(fileName: string): string {
-	const extension = fileName.split(".").at(-1)?.toLowerCase();
-	if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
-	if (extension === "png") return "image/png";
-	if (extension === "webp") return "image/webp";
-	if (extension === "mov") return "video/quicktime";
-	if (extension === "webm") return "video/webm";
-	if (extension === "mp4") return "video/mp4";
-	return "application/octet-stream";
 }

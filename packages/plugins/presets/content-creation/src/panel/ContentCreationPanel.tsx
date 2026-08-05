@@ -2,10 +2,11 @@ import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
-import type { ImportedContentReference } from "../generation/types";
+import type { ImportedContentAsset, ImportedContentReference } from "../generation/types";
 import {
 	getContentCreationWorkspace,
 	getContentGenerationService,
+	getContentAssetPreviewResolver,
 	notifyContentCreationError,
 } from "../plugin/runtime";
 import { GraphWorkspace } from "../canvas/GraphWorkspace";
@@ -15,8 +16,10 @@ export function ContentCreationPanel() {
 	const { t } = useTranslation();
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [assetPreviewUrls, setAssetPreviewUrls] = useState<ReadonlyMap<string, string>>(new Map());
 	const workspace = getContentCreationWorkspace();
 	const generation = getContentGenerationService();
+	const assetPreviewResolver = getContentAssetPreviewResolver();
 	const models = useMemo(() => generation.listModels(), [generation]);
 
 	useEffect(() => {
@@ -36,6 +39,23 @@ export function ContentCreationPanel() {
 			unsubscribe();
 		};
 	}, [cwd, t, workspace]);
+	useEffect(() => {
+		let active = true;
+		if (!project) {
+			setAssetPreviewUrls(new Map());
+			return () => {
+				active = false;
+			};
+		}
+		void assetPreviewResolver.resolveAll(project.assets).then((urls) => {
+			if (active) {
+				setAssetPreviewUrls((current) => (previewUrlMapsEqual(current, urls) ? current : urls));
+			}
+		});
+		return () => {
+			active = false;
+		};
+	}, [assetPreviewResolver, project]);
 
 	const dispatch = useCallback(
 		async (commands: readonly ContentProjectCommand[]) => {
@@ -54,12 +74,11 @@ export function ContentCreationPanel() {
 			try {
 				setError(null);
 				await generation.runNode(cwd, nodeId);
-			} catch (generationError) {
-				setError(t("error.generate"));
-				notifyContentCreationError(t("error.generate"), generationError);
+			} catch {
+				// Generation failures are persisted on the node job and rendered there.
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation],
 	);
 	const importReferences = useCallback(
 		async (nodeId: string, files: readonly ImportedContentReference[]) => {
@@ -69,6 +88,18 @@ export function ContentCreationPanel() {
 			} catch (importError) {
 				setError(t("error.importReference"));
 				notifyContentCreationError(t("error.importReference"), importError);
+			}
+		},
+		[cwd, generation, t],
+	);
+	const importAssets = useCallback(
+		async (nodeId: string, files: readonly ImportedContentAsset[]) => {
+			try {
+				setError(null);
+				await generation.importAssets(cwd, nodeId, files);
+			} catch (importError) {
+				setError(t("error.importAsset"));
+				notifyContentCreationError(t("error.importAsset"), importError);
 			}
 		},
 		[cwd, generation, t],
@@ -92,12 +123,26 @@ export function ContentCreationPanel() {
 			<main className="flex min-h-0 flex-1">
 				<GraphWorkspace
 					project={project}
+					assetPreviewUrls={assetPreviewUrls}
 					models={models}
 					onDispatch={dispatch}
 					onRunNode={runNode}
+					onImportAssets={importAssets}
 					onImportReferences={importReferences}
 				/>
 			</main>
 		</div>
 	);
+}
+
+function previewUrlMapsEqual(
+	left: ReadonlyMap<string, string>,
+	right: ReadonlyMap<string, string>,
+): boolean {
+	if (left === right) return true;
+	if (left.size !== right.size) return false;
+	for (const [assetId, url] of left) {
+		if (right.get(assetId) !== url) return false;
+	}
+	return true;
 }

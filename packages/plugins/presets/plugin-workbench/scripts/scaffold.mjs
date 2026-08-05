@@ -81,6 +81,7 @@ const files = {
 			private: true,
 			type: "module",
 			scripts: {
+				dev: "vetta-plugin dev",
 				build: "vite build",
 				check: "tsc --noEmit",
 				pack: "vetta-plugin pack",
@@ -166,7 +167,7 @@ console.log(
 			root,
 			id: args.id,
 			name: args.name,
-			hint: "Run: npm install && npm run build  (or workbench build-and-pack.mjs)",
+			hint: "Run: bun install && bun run build  (or use the Vetta plugin workbench)",
 		},
 		null,
 		2,

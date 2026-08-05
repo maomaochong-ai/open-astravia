@@ -11,7 +11,7 @@ interface MockupPreviewProps {
 	/** Per-shot capture error, keyed by frame id. */
 	errors: ReadonlyMap<string, string>;
 	onRetry(frameId: string): void;
-	/** Figma-style: dropping A onto B swaps the two. */
+	/** Figma-style: dropping A onto B swaps the two. Indices are page-local. */
 	onSwap(fromIndex: number, toIndex: number): void;
 }
 
@@ -24,7 +24,7 @@ export function MockupPreview({ shots, options, brandLogo, errors, onRetry, onSw
 	const { t } = useTranslation();
 	const boxRef = useRef<HTMLDivElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
-	const [box, setBox] = useState({ width: 0, height: 0 });
+	const [box, setBox] = useState({ width: 0 });
 	const [dragIndex, setDragIndex] = useState<number | null>(null);
 	const [overIndex, setOverIndex] = useState<number | null>(null);
 
@@ -32,15 +32,15 @@ export function MockupPreview({ shots, options, brandLogo, errors, onRetry, onSw
 		const element = boxRef.current;
 		if (!element) return;
 		const observer = new ResizeObserver(([entry]) => {
-			setBox({ width: entry.contentRect.width, height: entry.contentRect.height });
+			setBox({ width: entry.contentRect.width });
 		});
 		observer.observe(element);
 		return () => observer.disconnect();
 	}, []);
 
 	const layout = useMemo(() => layoutMockup(shots, options), [shots, options]);
-	const k =
-		layout.width > 0 && box.width > 0 ? Math.min(box.width / layout.width, box.height / layout.height, 1) : 0;
+	// Fit on width only: pages stack in a scroller, so height is free.
+	const k = layout.width > 0 && box.width > 0 ? Math.min(box.width / layout.width, 1) : 0;
 
 	useEffect(() => {
 		const canvas = canvasRef.current;
@@ -54,7 +54,7 @@ export function MockupPreview({ shots, options, brandLogo, errors, onRetry, onSw
 	}, [shots, options, layout, k, brandLogo]);
 
 	return (
-		<div ref={boxRef} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-4">
+		<div ref={boxRef} className="flex w-full justify-center">
 			{k > 0 ? (
 				<div
 					className={`relative ${options.transparent ? "vetd-checkerboard" : ""}`}

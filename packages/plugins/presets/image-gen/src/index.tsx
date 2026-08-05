@@ -10,7 +10,7 @@ import {
 	useTranslation,
 } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./style.css";
 import { createImageRepository, type ImageRepository } from "./image-repository";
 import { registerImageTools } from "./image-tools";
@@ -764,85 +764,6 @@ function GenHistoryPanel() {
 	);
 }
 
-// ─── Settings guard: 「图像生成」开关在缺配置时弹窗引导去设置 ───
-// 配置检测、弹窗 UI 全在插件内；主系统只提供 ui.openPluginSettings 跳转能力。
-
-let guardOpen = false;
-const guardListeners = new Set<() => void>();
-function setGuardOpen(open: boolean): void {
-	if (guardOpen === open) return;
-	guardOpen = open;
-	for (const listener of guardListeners) listener();
-}
-function useGuardOpen(): boolean {
-	return useSyncExternalStore(
-		(cb) => {
-			guardListeners.add(cb);
-			return () => guardListeners.delete(cb);
-		},
-		() => guardOpen,
-	);
-}
-
-/** True when the active provider is missing its required API key (+ custom 的 baseUrl/model)。 */
-function imageGenUnconfigured(): boolean {
-	const s = pluginCtx?.settings;
-	if (!s) return true;
-	const has = (key: string): boolean => {
-		const v = s.get<string>(key);
-		return typeof v === "string" && v.trim().length > 0;
-	};
-	const provider = s.get<string>("provider") ?? "openai";
-	if (provider === "agnes-ai") return !has("agnesApiKey");
-	if (provider === "custom") return !has("customApiKey") || !has("baseUrl") || !has("model");
-	return !has("openaiApiKey"); // openai（默认）；模型 enum 自带默认值，无需校验
-}
-
-/** App-level dialog (mounted via a global slot) shown when 图像生成 缺配置。 */
-function SettingsGuardDialog(): ReactNode {
-	const { t } = useTranslation();
-	const open = useGuardOpen();
-	if (!open) return null;
-	const close = (): void => setGuardOpen(false);
-	return (
-		<div
-			className="imagegen-fade-in fixed inset-0 z-[9999] flex items-center justify-center p-6"
-			style={{ background: "color-mix(in srgb, black 50%, transparent)" }}
-			onClick={close}
-		>
-			<div
-				className="w-[340px] rounded-2xl border p-5 shadow-2xl"
-				style={{ borderColor: subtleBorder, background: "var(--background)" }}
-				onClick={(e) => e.stopPropagation()}
-			>
-				<div className="mb-2.5 flex items-center gap-2">
-					<span className="icon-[solar--settings-bold] h-5 w-5" style={{ color: "var(--primary)" }} />
-					<span className="text-[14px] font-semibold text-foreground">{t("guard.title")}</span>
-				</div>
-				<p className="mb-4 text-[13px] leading-relaxed" style={{ color: "var(--muted-foreground)" }}>
-					{t("guard.body")}
-				</p>
-				<div className="flex justify-end gap-2">
-					<Button type="button" variant="ghost" size="sm" onClick={close}>
-						{t("guard.cancel")}
-					</Button>
-					<Button
-						type="button"
-						variant="primary"
-						size="sm"
-						onClick={() => {
-							close();
-							pluginCtx?.ui.openPluginSettings();
-						}}
-					>
-						{t("guard.goSettings")}
-					</Button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
 export default definePlugin({
 	activate(ctx) {
 		// NOTE: pluginCtx is intentionally never nulled in deactivate(). Under React
@@ -861,14 +782,6 @@ export default definePlugin({
 			scope_use: ["conversation", "project", "im-claw", "cli"],
 			// 跟随 generate_image 工具的 scope：批量任务等屏蔽生图的场景里不显示这个 badge。
 			requiresActiveTool: "generate_image",
-			// 手动开启图像生成时若缺配置：弹窗引导去设置，并返回 false 否决本次激活
-			// （toggle 不会被点亮，避免「未配置却显示已开启」）。
-			onToggle: (active) => {
-				if (active && imageGenUnconfigured()) {
-					setGuardOpen(true);
-					return false;
-				}
-			},
 			decoratePrompt: () => ({
 				instructions: [
 					"The user enabled image creation for this turn. Produce an actual image instead of only describing one. " +
@@ -876,7 +789,6 @@ export default definePlugin({
 				],
 			}),
 		});
-		ctx.ui.registerGlobalSlot({ id: "settings-guard", component: SettingsGuardDialog });
 		ctx.ui.registerCardRenderer({
 			type: PREVIEW_CARD_TYPE,
 			component: ImagePreviewCard,

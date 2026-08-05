@@ -26,7 +26,11 @@ describe("ContentGenerationService", () => {
 			data: { assetId: expect.any(String) },
 		});
 		expect(result.jobs[0]).toMatchObject({ status: "succeeded", provider: "mock", model: "mock-image" });
-		expect(result.assets[0]).toMatchObject({ kind: "image", mimeType: "image/png", url: "vetta-media://mock" });
+		expect(result.assets[0]).toMatchObject({
+			kind: "image",
+			mimeType: "image/png",
+			blobId: expect.any(String),
+		});
 	});
 
 	it("marks the job and node as failed when the provider rejects", async () => {
@@ -38,6 +42,22 @@ describe("ContentGenerationService", () => {
 		expect(project?.graph.nodes.find((node) => node.id === "image")?.status).toBe("failed");
 		expect(project?.jobs[0]).toMatchObject({ status: "failed", error: "provider unavailable" });
 		expect(project?.assets).toHaveLength(0);
+	});
+
+	it("assigns reference-resolution failures to the corresponding node job", async () => {
+		const fixture = await createFixture();
+		await fixture.service.importReferences("C:/project", "image", [
+			{ name: "missing.png", mimeType: "image/png", data: "reference-data" },
+		]);
+		fixture.read.mockRejectedValueOnce(new Error("reference unavailable"));
+
+		await expect(fixture.service.runNode("C:/project", "image")).rejects.toThrow(
+			"reference unavailable",
+		);
+		const project = fixture.workspace.getSnapshot("C:/project");
+		expect(project?.graph.nodes.find((node) => node.id === "image")?.status).toBe("failed");
+		expect(project?.jobs[0]).toMatchObject({ status: "failed", error: "reference unavailable" });
+		expect(fixture.generate).not.toHaveBeenCalled();
 	});
 
 	it("runs video nodes through the same mode-based orchestration", async () => {
@@ -60,6 +80,81 @@ describe("ContentGenerationService", () => {
 			width: 1920,
 			height: 1080,
 		});
+	});
+
+	it("imports mixed media into one asset node without creating one node per file", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [
+			{ type: "node.add", node: { id: "assets", kind: "asset", position: { x: 500, y: 0 } } },
+		]);
+
+		const result = await fixture.service.importAssets("C:/project", "assets", [
+			{ name: "reference.png", mimeType: "image/png", data: "image" },
+			{ name: "clip.mp4", mimeType: "video/mp4", data: "video" },
+			{ name: "voice.mp3", mimeType: "audio/mpeg", data: "audio" },
+		]);
+
+		expect(result.graph.nodes.find((node) => node.id === "assets")?.data.assetIds).toHaveLength(3);
+		expect(result.graph.nodes.filter((node) => node.kind === "asset")).toHaveLength(1);
+		expect(result.assets.map((asset) => asset.kind)).toEqual(["image", "video", "audio"]);
+		expect(fixture.put).toHaveBeenCalledTimes(3);
+	});
+
+	it("imports media into a prompt and inherits it through the selected connected prompt", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [
+			{
+				type: "node.add",
+				node: {
+					id: "prompt",
+					kind: "prompt",
+					position: { x: -300, y: 0 },
+					data: { prompt: "A lighthouse at blue hour" },
+				},
+			},
+			{
+				type: "edge.connect",
+				source: "prompt",
+				target: "image",
+				sourceHandle: "text",
+				targetHandle: "prompt",
+			},
+			{
+				type: "node.update",
+				nodeId: "image",
+				data: {
+					promptDocument: {
+						version: 1,
+						segments: [{ type: "prompt-reference", sourceNodeId: "prompt" }],
+					},
+				},
+			},
+		]);
+		const imported = await fixture.service.importReferences("C:/project", "prompt", [
+			{ name: "mood.png", mimeType: "image/png", data: "reference-data" },
+		]);
+
+		expect(imported.graph.nodes.find((node) => node.id === "prompt")?.data.inputs).toMatchObject([
+			{ slotId: "promptReferences" },
+		]);
+		expect(imported.graph.nodes.find((node) => node.id === "prompt")?.data.promptDocument).toMatchObject({
+			version: 1,
+			segments: [
+				{ type: "text", text: "A lighthouse at blue hour" },
+				{ type: "asset-reference", bindingId: expect.any(String) },
+			],
+		});
+		await fixture.service.runNode("C:/project", "image");
+		expect(fixture.read).toHaveBeenCalledWith(imported.assets[0]?.blobId);
+		expect(fixture.generate).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				modeId: "image-to-image",
+				prompt: "A lighthouse at blue hour",
+				references: [
+					expect.objectContaining({ kind: "image", slotId: "referenceImages", data: "reference-data" }),
+				],
+			}),
+		);
 	});
 });
 
@@ -102,7 +197,16 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 				modelId,
 				displayName: kind === "video-generator" ? "Mock Video" : "Mock Image",
 				outputKind: kind === "video-generator" ? "video" : "image",
-				modes: [{ id: modeId, inputs: [] }],
+				modes:
+					kind === "image-generator"
+						? [
+								{ id: "text-to-image", inputs: [] },
+								{
+									id: "image-to-image",
+									inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 4 }],
+								},
+							]
+						: [{ id: modeId, inputs: [] }],
 				aspectRatios: kind === "video-generator" ? ["16:9"] : ["1:1"],
 			},
 		],
@@ -110,13 +214,17 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 	};
 	const providers = new ContentProviderRegistry();
 	providers.register(provider);
-	const put = vi.fn<ContentArtifactStore["put"]>().mockResolvedValue({
-		url: "vetta-media://mock",
-		mimeType: kind === "video-generator" ? "video/mp4" : "image/png",
+	const put = vi.fn<ContentArtifactStore["put"]>().mockImplementation(async (id, content) => ({
+		id: `stored-${id}`,
+		url: `vetta-media://${id}`,
+		mimeType: content.mimeType,
+	}));
+	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue({
+		data: "reference-data",
+		mimeType: "image/png",
 	});
-	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue(null);
 	const service = new ContentGenerationService(workspace, providers, { put, read });
-	return { service, workspace, generate, put };
+	return { service, workspace, generate, put, read };
 }
 
 class MemoryRepository implements ContentProjectRepository {

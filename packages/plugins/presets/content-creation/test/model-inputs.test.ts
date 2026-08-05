@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveContentGenerationMode } from "../src/generation/model-inputs";
+import {
+	assignContentReferenceSlots,
+	listAcceptedReferenceKinds,
+	resolveContentGenerationMode,
+} from "../src/generation/model-inputs";
 import { REPLICATE_IMAGE_MODELS, REPLICATE_VIDEO_MODELS } from "../src/generation/model-catalog";
 
 describe("content model input compatibility", () => {
@@ -26,5 +30,27 @@ describe("content model input compatibility", () => {
 				{ slotId: "referenceVideo", kind: "video" },
 			]).mode?.id,
 		).toBe("video-to-video");
+	});
+
+	it("keeps unsupported audio visible to the asset system but unavailable to current media models", () => {
+		const model = REPLICATE_IMAGE_MODELS.find((candidate) => candidate.modelId === "bytedance/seedream-4.5");
+		expect(model).toBeDefined();
+		if (!model) return;
+
+		expect(listAcceptedReferenceKinds(model, [])).not.toContain("audio");
+		expect(resolveContentGenerationMode(model, [{ slotId: "referenceImages", kind: "audio" }]).reason).toBe(
+			"unsupported-kind",
+		);
+	});
+
+	it("assigns model-agnostic prompt references to the selected model input slots", () => {
+		const model = REPLICATE_IMAGE_MODELS.find((candidate) => candidate.modelId === "bytedance/seedream-4.5");
+		expect(model).toBeDefined();
+		if (!model) return;
+
+		const assignment = assignContentReferenceSlots(model, [], ["image"]);
+		expect(assignment.mode?.id).toBe("image-to-image");
+		expect(assignment.assignedSlotIds).toEqual(["referenceImages"]);
+		expect(assignment.references).toEqual([{ slotId: "referenceImages", kind: "image" }]);
 	});
 });

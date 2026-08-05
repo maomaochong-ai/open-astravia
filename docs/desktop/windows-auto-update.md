@@ -204,7 +204,7 @@ VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 
 构建脚本默认 `VETTA_BUILD_ENV=development`，`prepare-pack.js` 显式调用 `loadBuildEnv()` 读取 `.env.development`；Shell 中显式设置的变量优先级更高。**没有设 `VETTA_UPDATE_PROVIDER` 就不会生成 `latest*.yml`**，后续验证与发布全部无从谈起。
 
-发布期变量必须写在 Shell 里，**放进 `.env.development` 无效**：
+直接调用底层发布命令时，发布期变量必须写在 Shell 里：
 
 ```bash
 export VETTA_R2_ACCOUNT_ID=<account-id>
@@ -217,9 +217,58 @@ export VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
 
 原因：`publish-update-artifacts-r2.mjs` 直接读 `process.env`，不调用 `loadBuildEnv()`；而 `publish:updates:r2` 是 `bun run` 拉起 `node` 子进程，Bun 的 dotenv 自动加载只作用于 Bun 运行时自身的进程，不会传给它 spawn 的 node。凭据缺失时报 `[publish-updates-r2] missing VETTA_R2_ACCOUNT_ID`。
 
+推荐使用仓库的一键脚本，它会读取频道配置并把变量显式传给构建和发布子进程：
+
+- `test` 基础配置读取已忽略的 `packages/desktop-app/.env.development`，兼容现有本地配置。
+- `stable` 基础配置读取已提交的 `packages/desktop-app/.env.production`。
+- 两个频道都可从 `~/.config/vetta/r2.env` 补充共用 R2 凭据，再由 `~/.config/vetta/r2-test.env` 或 `r2-stable.env` 覆盖频道配置。
+- 当前 Shell 中显式设置的变量通常优先级最高；但 stable 的服务器、站点、更新 provider/URL、R2 bucket/prefix 始终以 `.env.production` 为准，不能被 `--env-file=.env.development` 覆盖。
+
+频道私有文件示例：
+
+```dotenv
+VETTA_R2_ACCOUNT_ID=<account-id>
+VETTA_R2_ACCESS_KEY_ID=<access-key-id>
+VETTA_R2_SECRET_ACCESS_KEY=<secret-access-key>
+VETTA_R2_BUCKET=vetta-releases
+VETTA_R2_PREFIX=desktop/test
+VETTA_UPDATE_URL=https://releases.openvetta.com/desktop/test
+```
+
 R2 Token 只授予目标 Bucket 的对象读写权限。凭据只供发布脚本访问 R2 S3 API，不会写入桌面安装包；安装包只包含公开更新 URL。
 
-### 7.2 构建一个更高的测试版本
+### 7.2 Windows test/stable 一键脚本
+
+测试频道必须显式指定版本号：
+
+```powershell
+bun scripts/release-windows.mjs test --version 0.5.61
+```
+
+稳定频道拒绝 `--version`，始终读取 `packages/desktop-app/package.json`：
+
+```powershell
+bun scripts/release-windows.mjs stable
+```
+
+脚本依次执行：加载频道配置、校验 URL 与 R2 prefix、检查线上版本必须更低、检查 Inno Setup、清理本地 `release/`、构建 Inno EXE、临时安装并核对全部文件、上传版本化产物、最后覆盖 `latest.yml`。`stable` 真正上传前还必须输入目标版本号确认。
+
+调试参数：
+
+```powershell
+# 只检查配置、Inno 和线上版本，不清理、不构建
+bun scripts/release-windows.mjs test --version 0.5.61 --check-only
+
+# 构建并完整校验，但不上传 R2
+bun scripts/release-windows.mjs stable --skip-publish
+
+# 自动化环境跳过 stable 交互确认
+bun scripts/release-windows.mjs stable --yes
+```
+
+`test` 会设置 `VETTA_BUILD_ENV=development` 并通过 `VETTA_DESKTOP_BUILD_VERSION` 覆盖版本；`stable` 会设置 `VETTA_BUILD_ENV=production`，同时清除外部遗留的版本覆盖值，并用 `.env.production` 强制覆盖服务器、站点和发布目标。Inno 构建完成后还会扫描最终 `app.asar`：必须包含生产服务器/站点地址，且不得包含 `.env.development` 中不同的地址，否则在 R2 上传前终止。
+
+### 7.3 手动构建一个更高的测试版本
 
 测试版本可以通过环境变量覆盖，不修改 `package.json`，也不创建 Git tag：
 
@@ -246,7 +295,7 @@ packages/desktop-app/release/
 
 `.files.json` 是本地安装完整性验证清单，不上传 R2。R2 客户端只需要 EXE、blockmap 和 `latest.yml`。
 
-### 7.3 发布到 test
+### 7.4 手动发布到 test
 
 ```powershell
 bun run --cwd packages/desktop-app publish:updates:r2
@@ -271,7 +320,7 @@ bun run --cwd packages/desktop-app publish:updates:r2
 
 如果 `release/` 内残留多个平台、不同版本的 `latest*.yml`，发布脚本会因清单版本不唯一而停止。发布前应确认所有清单属于同一版本。
 
-### 7.4 客户端验证
+### 7.5 客户端验证
 
 1. 安装并启动一个更低版本的 test 构建。
 2. 确认进程实际路径是该版本的 `Vetta.exe`。
@@ -644,6 +693,7 @@ install failed
 | `packages/desktop-app/scripts/verify-inno-update.mjs` | 发布前临时安装与全文件预检 |
 | `packages/desktop-app/scripts/publish-update-artifacts-r2.mjs` | R2 原子发布、缓存头、幂等校验和公开可读验证 |
 | `packages/desktop-app/scripts/resolve-update-publish-config.mjs` | generic/GitHub/none 构建期 provider 配置 |
+| `scripts/release-windows.mjs` | Windows test/stable 频道校验、构建、Inno 预检与 R2 发布编排 |
 | `.github/workflows/desktop-release.yml` | 三平台构建及 R2/GitHub Release 发布编排 |
 
 修改更新链路时，必须同步检查状态机、安装器、稳定启动器、构建产物、R2 发布和真实旧版升级六个层面；仅让其中一个层面的测试通过不足以证明更新可用。

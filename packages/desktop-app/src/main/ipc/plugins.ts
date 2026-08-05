@@ -749,6 +749,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	ipcMain.handle("vetta:plugins:network:request", (_event, sessionId: unknown, request: unknown) => {
 		return capabilityAdapter.requestNetwork(asPluginId(sessionId), request);
 	});
+	ipcMain.handle("vetta:plugins:gateway:request", (_event, sessionId: unknown, request: unknown) => {
+		return capabilityAdapter.requestGateway(asPluginId(sessionId), request);
+	});
 	ipcMain.handle("vetta:plugins:storage:read-json", (_event, sessionId: unknown, key: unknown) =>
 		capabilityAdapter.readStorageJson(asPluginId(sessionId), asPluginId(key)),
 	);
@@ -813,6 +816,7 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:get-settings");
 		ipcMain.removeHandler("vetta:plugins:set-settings");
 		ipcMain.removeHandler("vetta:plugins:network:request");
+		ipcMain.removeHandler("vetta:plugins:gateway:request");
 		ipcMain.removeHandler("vetta:plugins:storage:read-json");
 		ipcMain.removeHandler("vetta:plugins:storage:write-json");
 		ipcMain.removeHandler("vetta:plugins:storage:list");

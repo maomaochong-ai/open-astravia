@@ -40,6 +40,7 @@ dist/
   "private": true,
   "type": "module",
   "scripts": {
+	"dev": "vetta-plugin dev",
     "build": "bunx vite build",
     "check": "bunx tsc --noEmit"
   },
@@ -83,7 +84,11 @@ export default defineConfig({
 });
 ```
 
-`vettaPluginFederation` 自动：把 `react` / `react-dom` / `@vetta/ui` 设为 `singleton`、`import:false`（用宿主的），把 `@vetta-org/plugin-sdk` 与 `@vetta/ui` 设为 external，产出 `mf-manifest.json` + `remoteEntry.js`，CSS 落 `dist/style.css`。
+`vettaPluginFederation` 自动：把 `react` / `react-dom` / `@vetta-org/plugin-sdk` / `@vetta/ui` 设为 `singleton`、`import:false`（用宿主的），生产构建时把 SDK 与 UI external 化，产出 `mf-manifest.json` + `remoteEntry.js`，CSS 落 `dist/style.css`。
+
+它还会在插件 Tailwind 编译前自动接入 plugin-sdk 的宿主主题 Token 契约，因此
+`text-foreground`、`text-muted-foreground/50`、`bg-card` 等语义类可以直接使用；
+无需在插件中导入 Desktop CSS 或手写 `@theme` 映射。
 
 ## 4. 样式入口 src/style.css
 
@@ -204,12 +209,13 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 
 ## 8. 调试闭环（dev loop）
 
-1. 改代码 → `bunx vite build`（或工作台 `build-and-pack.mjs`）。
-2. 重装 zip / `install-from-path`（presets 走 `build:presets` staging）。
-3. **强制刷新缓存**：bump `plugin.json` 的 `version`，再 `reload(id)`（或重开 App）。
-4. 设置页或 `window.vetta.plugins.reload(id)`。
+1. 首次先构建、安装并启用一次插件；dev 链接沿用这份安装记录的权限与启用状态。
+2. 在插件工作台开启「热更新」。Desktop 会启动工程内的 `vetta-plugin dev`，不需要另开 `vite build --watch`。
+3. 修改 React 组件或 CSS 后由 Vite HMR 直接更新，组件状态在 Fast Refresh 可保留时不会丢失。
+4. 修改插件入口、`plugin.json`、locale 或 agent 资源时，宿主只替换当前插件的 activation，其他插件不重载。
+5. permissions、commands 等安装态能力需要正式同步时，再重新构建并安装 zip。
 
-> 安装更新版本常记为 **pending**；持续加载 `activeVersion`，直到 `reload` 才切 UI。
+`bun run dev` 可单独启动同一个开发服务器并输出 NDJSON 状态，主要用于宿主或工具集成；使用插件工作台时不要重复启动。安装更新版本仍会记为 **pending**，直到 `reload` 才切换正式安装态的 `activeVersion`。
 
 ## 下一步
 

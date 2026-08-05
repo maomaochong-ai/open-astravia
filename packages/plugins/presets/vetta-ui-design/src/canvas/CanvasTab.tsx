@@ -7,12 +7,13 @@ import {
 } from "../engine/engine-manager";
 import { exportDesign } from "../export/export-design";
 import { getPluginCtx, notify } from "../plugin-context";
+import { PreviewDialog } from "../preview-mode/PreviewDialog";
 import { DesignSession } from "../vetd/design-session";
 import { findVetdFiles, sniffVetdKind } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
 import { BridgeHub } from "./bridge-client";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
-import { DesignCanvas, type FrameCapture } from "./DesignCanvas";
+import { byCanvasOrder, DesignCanvas, type FrameCapture } from "./DesignCanvas";
 import { ThemePalette } from "./ThemePalette";
 
 type Phase =
@@ -43,6 +44,10 @@ export function CanvasTab() {
 	const captureRef = useRef<FrameCapture | null>(null);
 	/** 同上，供顶部刷新按钮强制所有 frame 重载并重截位图。 */
 	const refreshRef = useRef<(() => void) | null>(null);
+	/** 同上，问画布「此刻单独选中的是哪一帧」，预览按钮据此定位起始帧。 */
+	const previewTargetRef = useRef<(() => string | null) | null>(null);
+	/** 预览窗口打开在哪一帧上；null 表示没开。 */
+	const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
 
 	// 画布很吃宽度：每次激活本标签卡（切走会卸载，故每次都触发）把活动面板拉满，
 	// 用户之后仍可自行拖窄。
@@ -149,6 +154,15 @@ export function CanvasTab() {
 		}
 	};
 
+	/** 选中哪帧就从哪帧开始预览；没选中则从画布顺序里的第一帧开始。 */
+	const openPreview = (): void => {
+		if (!session) return;
+		const selected = previewTargetRef.current?.() ?? null;
+		const first = [...session.manifest.frames].sort(byCanvasOrder)[0]?.id ?? null;
+		const target = selected ?? first;
+		if (target) setPreviewFrameId(target);
+	};
+
 	const runExport = async (): Promise<void> => {
 		if (!session || exporting) return;
 		setExporting(true);
@@ -243,6 +257,20 @@ export function CanvasTab() {
 						<path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" strokeLinecap="round" strokeLinejoin="round" />
 					</svg>
 				</button>
+				{/* 预览：把设计稿当成真实站点来点。带文字，它是这排里唯一一个「进入
+				    另一种模式」的动作，纯 icon 认不出来。 */}
+				<button
+					type="button"
+					disabled={phase.kind !== "ready" || (session?.manifest.frames.length ?? 0) === 0}
+					onClick={openPreview}
+					title={t("previewMode.open")}
+					className="pointer-events-auto flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-50"
+				>
+					<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+						<path d="M6 4l12 8-12 8V4z" strokeLinejoin="round" />
+					</svg>
+					{t("previewMode.open")}
+				</button>
 				{SHOW_EXPORT_SHARE ? (
 					<button
 						type="button"
@@ -290,8 +318,18 @@ export function CanvasTab() {
 							bridge={bridgeRef.current}
 							captureRef={captureRef}
 							refreshRef={refreshRef}
+							previewTargetRef={previewTargetRef}
+							previewing={previewFrameId !== null}
 						/>
 						{showPalette ? <ThemePalette session={session} /> : null}
+						{previewFrameId !== null ? (
+							<PreviewDialog
+								port={phase.port}
+								frames={session.manifest.frames}
+								initialFrameId={previewFrameId}
+								onClose={() => setPreviewFrameId(null)}
+							/>
+						) : null}
 					</>
 				) : null}
 			</div>

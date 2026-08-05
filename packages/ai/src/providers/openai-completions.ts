@@ -31,6 +31,7 @@ import { parseStreamingJson } from "../utils/json-parse.js";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.js";
 import { buildBaseOptions } from "./simple-options.js";
+import { type ThinkingTagSegment, ThinkingTagSplitter } from "./thinking-tag-splitter.js";
 import { transformMessages } from "./transform-messages.js";
 
 /**
@@ -150,6 +151,40 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 				}
 			};
 
+			const contentSplitter = new ThinkingTagSplitter();
+			const emitContentSegment = (segment: ThinkingTagSegment) => {
+				if (segment.kind === "thinking") {
+					if (!currentBlock || currentBlock.type !== "thinking") {
+						finishCurrentBlock(currentBlock);
+						currentBlock = { type: "thinking", thinking: "" };
+						blocks.push(currentBlock);
+						stream.push({ type: "thinking_start", contentIndex: blockIndex(), partial: output });
+					}
+					currentBlock.thinking += segment.text;
+					stream.push({
+						type: "thinking_delta",
+						contentIndex: blockIndex(),
+						delta: segment.text,
+						partial: output,
+					});
+					return;
+				}
+
+				if (!currentBlock || currentBlock.type !== "text") {
+					finishCurrentBlock(currentBlock);
+					currentBlock = { type: "text", text: "" };
+					blocks.push(currentBlock);
+					stream.push({ type: "text_start", contentIndex: blockIndex(), partial: output });
+				}
+				currentBlock.text += segment.text;
+				stream.push({
+					type: "text_delta",
+					contentIndex: blockIndex(),
+					delta: segment.text,
+					partial: output,
+				});
+			};
+
 			for await (const chunk of openaiStream) {
 				if (chunk.usage) {
 					const cachedTokens = chunk.usage.prompt_tokens_details?.cached_tokens || 0;
@@ -189,22 +224,7 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 						choice.delta.content !== undefined &&
 						choice.delta.content.length > 0
 					) {
-						if (!currentBlock || currentBlock.type !== "text") {
-							finishCurrentBlock(currentBlock);
-							currentBlock = { type: "text", text: "" };
-							output.content.push(currentBlock);
-							stream.push({ type: "text_start", contentIndex: blockIndex(), partial: output });
-						}
-
-						if (currentBlock.type === "text") {
-							currentBlock.text += choice.delta.content;
-							stream.push({
-								type: "text_delta",
-								contentIndex: blockIndex(),
-								delta: choice.delta.content,
-								partial: output,
-							});
-						}
+						for (const segment of contentSplitter.push(choice.delta.content)) emitContentSegment(segment);
 					}
 
 					// Some endpoints return reasoning in reasoning_content (llama.cpp),
@@ -325,6 +345,7 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 				}
 			}
 
+			for (const segment of contentSplitter.flush()) emitContentSegment(segment);
 			finishCurrentBlock(currentBlock);
 
 			if (options?.signal?.aborted) {

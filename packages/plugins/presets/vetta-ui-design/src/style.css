@@ -12,6 +12,8 @@
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
 	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
 	--color-border: var(--border);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
@@ -240,12 +242,12 @@
 		-8px 0;
 }
 
-/* 截图卡的横排滚动条隐藏（翻页靠左右箭头） */
-.vetd-shot-swiper {
+/* 会话卡片横排滚动条隐藏（翻页靠左右箭头） */
+.vetd-swiper {
 	scrollbar-width: none;
 	-ms-overflow-style: none;
 }
-.vetd-shot-swiper::-webkit-scrollbar {
+.vetd-swiper::-webkit-scrollbar {
 	display: none;
 }
 

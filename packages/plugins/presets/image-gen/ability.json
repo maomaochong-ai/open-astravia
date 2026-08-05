@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "image-gen",
-	"version": "0.1.16",
+	"version": "0.3.0",
 	"detail": {
 		"blocks": [
 			{
@@ -11,7 +11,7 @@
 					"template": "chat-over-canvas",
 					"canvas": "design",
 					"user_prompt": "生成一张透明背景的产品插画，并保留可继续编辑的版本。",
-					"assistant_reply": "我会根据当前配置的图像服务生成结果，并把预览直接放到消息和图片工作区中。"
+					"assistant_reply": "我会直接生成图像，并把预览放到消息和图片工作区中。"
 				}
 			},
 			{
@@ -34,8 +34,8 @@
 						"icon": "solar:gallery-wide-linear"
 					},
 					{
-						"title": "多服务配置",
-						"description": "可按插件设置选择支持的图像服务和模型。",
+						"title": "开箱即用",
+						"description": "默认使用 Vetta 内置图像生成，无需申请任何 API Key。",
 						"icon": "solar:tuning-square-2-linear"
 					}
 				]
@@ -50,7 +50,7 @@
 							"template": "chat-over-canvas",
 							"canvas": "design",
 							"user_prompt": "Generate a product illustration with a transparent background and keep an editable result.",
-							"assistant_reply": "I’ll use the configured image provider and place previews directly in the message and image workspace."
+							"assistant_reply": "I’ll generate the image and place previews directly in the message and image workspace."
 						}
 					},
 					{
@@ -73,8 +73,8 @@
 								"icon": "solar:gallery-wide-linear"
 							},
 							{
-								"title": "Provider settings",
-								"description": "Choose from the supported image providers and models.",
+								"title": "Works out of the box",
+								"description": "Uses Vetta's built-in image generation by default — no API key needed.",
 								"icon": "solar:tuning-square-2-linear"
 							}
 						]

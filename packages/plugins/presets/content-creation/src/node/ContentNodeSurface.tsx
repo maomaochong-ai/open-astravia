@@ -1,7 +1,15 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Spin } from "@vetta/ui";
 import { memo } from "react";
-import type { ContentNodeData, ContentNodeKind, ContentNodeStatus, GenerationJob } from "../project/types";
+import type {
+	ContentAsset,
+	ContentNodeData,
+	ContentNodeKind,
+	ContentNodeStatus,
+	GenerationJob,
+} from "../project/types";
+import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
+import { ContentAssetKindIcon } from "./ContentAssetKindIcon";
 import { NodeKindIcon } from "./NodeKindIcon";
 
 interface ContentNodeSurfaceProps {
@@ -11,6 +19,8 @@ interface ContentNodeSurfaceProps {
 	descriptionKey: string;
 	assetUrl?: string;
 	assetKind?: "image" | "video" | "audio";
+	assets?: readonly ContentAsset[];
+	referenceAssets?: readonly ContentAsset[];
 	job?: GenerationJob;
 }
 
@@ -72,12 +82,44 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	descriptionKey,
 	assetUrl,
 	assetKind,
+	assets = [],
+	referenceAssets = [],
 	job,
 }: ContentNodeSurfaceProps) {
 	const { t } = useTranslation();
-	const isMedia = kind === "image-generator" || kind === "video-generator" || kind === "asset";
+	const isMedia = kind === "image-generator" || kind === "video-generator";
 	const isBusy = status === "running" || status === "queued";
 	const emptyText = kind === "prompt" ? t("node.prompt.doubleClickToEdit") : t(descriptionKey);
+
+	if (kind === "asset") return <ContentAssetNodeSurface assets={assets} />;
+	if (kind === "prompt") {
+		return (
+			<div
+				className="flex h-full w-full flex-col justify-between [container-type:size]"
+				style={{ gap: "clamp(8px, 2.5cqw, 14px)", padding: "clamp(12px, 4cqw, 20px)" }}
+			>
+				<p className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85" style={surfaceTextStyle}>
+					{data.prompt?.trim() || emptyText}
+				</p>
+				{referenceAssets.length > 0 ? (
+					<div className="flex min-w-0 items-center gap-1.5 border-t border-border/55 pt-2">
+						{referenceAssets.slice(0, 2).map((asset) => (
+							<span
+								key={asset.id}
+								className="inline-flex min-w-0 max-w-[42%] items-center gap-1 rounded-md bg-muted/70 px-1.5 py-1 text-[10px] text-foreground"
+							>
+								<ContentAssetKindIcon kind={asset.kind} className="size-3 shrink-0 text-muted-foreground" />
+								<span className="truncate">{asset.name}</span>
+							</span>
+						))}
+						<span className="truncate text-[10px] text-muted-foreground">
+							{t("node.prompt.references", { count: referenceAssets.length })}
+						</span>
+					</div>
+				) : null}
+			</div>
+		);
+	}
 
 	if (isMedia) {
 		return (

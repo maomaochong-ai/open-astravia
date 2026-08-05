@@ -4,6 +4,13 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `ctx.gateway`（`PluginGatewayApi`）：带当前登录身份调用 Vetta 服务端（ADR-0056）。插件只给出**相对 `/api/v1` 的路径**与 JSON body，服务端地址、`Authorization` 与 401 刷新重试全在宿主主进程完成——插件拿不到 token，也拼不出指向其它接口的绝对 URL；把 JWT 交给插件进程等于开放整个 `/api/v1` 的越权面，因此 SDK 不提供「取 token 自己拼」的口子。业务信封由宿主拆开，返回 `{ ok, status, code, message, data }`，配额用尽/档位无权限这类**不抛异常**（它们是常规业务分支，插件应据此渲染引导）。**该字段可选**：只对随包分发的 official 插件挂载，第三方插件读到 `undefined`，使用前必须判空。这样收口的理由不是防越权（服务端档位授权已限定可用模型、消耗的是用户自己的额度），而是防插件偷跑烧光用户配额——在缺少插件签名与审核机制前，「安装时用户确认」形同虚设。
+
+- `PluginUiApi.openExternal(url)`：把链接交给系统默认浏览器（Electron `shell.openExternal`），不是 App 内置的浏览器面板。只接受 `http:`/`https:`，其余协议宿主直接拒绝。需新权限 `shell.openExternal`。
+- Added the public `@vetta-org/plugin-sdk/tailwind-theme.css` host-theme contract for semantic Tailwind colors without importing Desktop component styles.
+
 ## [0.1.1] — 2026-08-04
 
 ### Added

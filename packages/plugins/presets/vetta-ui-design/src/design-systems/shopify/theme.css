@@ -1,0 +1,22 @@
+/* Shopify — merchant-grade light admin, commerce green. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #008060;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #f6f6f7;
+	--color-surface-foreground: #202223;
+	--color-surface-raised: #ffffff;
+	--color-muted: #6d7175;
+	--color-accent: #5c6ac4;
+	--color-danger: #d72c0d;
+	--color-border: #e1e3e5;
+
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 8px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+
+	--shadow-sm: 0 1px 0 rgb(22 29 37 / 0.05);
+	--shadow-md: 0 2px 8px rgb(22 29 37 / 0.1);
+	--shadow-lg: 0 8px 24px rgb(22 29 37 / 0.15);
+}

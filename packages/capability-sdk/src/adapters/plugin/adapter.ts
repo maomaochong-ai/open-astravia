@@ -17,6 +17,7 @@ import { type PluginSkillMethods, pluginSkillMethods } from "./domain/skill.js";
 import { type PluginUpdaterMethods, pluginUpdaterMethods } from "./domain/updater.js";
 import { type PluginWebhookMethods, pluginWebhookMethods } from "./domain/webhook.js";
 import { type PluginFilesystemMethods, pluginFilesystemMethods } from "./foundation/filesystem.js";
+import { type PluginGatewayMethods, pluginGatewayMethods } from "./foundation/gateway.js";
 import { type PluginNetworkMethods, pluginNetworkMethods } from "./foundation/network.js";
 import { type PluginStorageMethods, pluginStorageMethods } from "./foundation/storage.js";
 import { buildPluginCapabilityGrants } from "./grants.js";
@@ -31,6 +32,7 @@ import {
 export interface PluginCapabilityAdapter
 	extends PluginFilesystemMethods,
 		PluginNetworkMethods,
+		PluginGatewayMethods,
 		PluginStorageMethods,
 		PluginAgentSettingsMethods,
 		PluginGeneralSettingsMethods,
@@ -126,6 +128,7 @@ Object.assign(
 	PluginCapabilityAdapter.prototype,
 	pluginFilesystemMethods,
 	pluginNetworkMethods,
+	pluginGatewayMethods,
 	pluginStorageMethods,
 	pluginAgentSettingsMethods,
 	pluginGeneralSettingsMethods,

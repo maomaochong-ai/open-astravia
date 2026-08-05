@@ -6,7 +6,7 @@ export type ContentGenerationModeId =
 	| "video-to-video"
 	| "reference-to-video";
 export type ContentGenerationOutputKind = "image" | "video";
-export type ContentReferenceKind = "image" | "video";
+export type ContentReferenceKind = "image" | "video" | "audio";
 
 export interface ContentModelInputSlot {
 	id: string;
@@ -67,6 +67,7 @@ export interface ContentProviderAdapter {
 }
 
 export interface StoredGeneratedContent {
+	id: string;
 	url: string;
 	mimeType: string;
 }
@@ -76,11 +77,13 @@ export interface StoredContentData {
 	mimeType: string;
 }
 
-export interface ImportedContentReference {
+export interface ImportedContentAsset {
 	name: string;
 	data: string;
 	mimeType: string;
 }
+
+export type ImportedContentReference = ImportedContentAsset;
 
 export interface ContentArtifactStore {
 	put(id: string, content: StoredContentData): Promise<StoredGeneratedContent>;

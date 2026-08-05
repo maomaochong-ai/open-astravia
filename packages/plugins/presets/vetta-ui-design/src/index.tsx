@@ -6,6 +6,8 @@ import {
 	type PluginPendingToolCall,
 } from "@vetta-org/plugin-sdk";
 import "./style.css";
+import { DESIGN_SYSTEM_CARD_TYPE } from "./cards/design-system-card";
+import { DesignSystemPickerCard } from "./cards/DesignSystemPickerCard";
 import { ScreenshotCard } from "./cards/ScreenshotCard";
 import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } from "./cards/screenshot-card";
 import { CanvasTab } from "./canvas/CanvasTab";
@@ -107,6 +109,13 @@ export default definePlugin({
 						title: "%card.screenshot.title%",
 						icon: <ScreenshotIcon />,
 						pendingFor: pendingScreenshotCard,
+					}),
+					// 设计体系选择卡（vetd_design_systems 的 present 用法）：候选预览 + 点选回灌。
+					ctx.ui.registerCardRenderer({
+						type: DESIGN_SYSTEM_CARD_TYPE,
+						component: DesignSystemPickerCard,
+						title: "%card.designSystems.title%",
+						icon: <DesignIcon />,
 					}),
 				];
 				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。

@@ -66,4 +66,28 @@ describe("ContentNodeSurface", () => {
 		expect(markup).toContain("action.generating");
 		expect(markup).toContain("job.progress");
 	});
+
+	it("keeps large asset collections compact on the canvas", () => {
+		const assets = Array.from({ length: 8 }, (_, index) => ({
+			id: `asset-${index}`,
+			blobId: `asset-${index}`,
+			kind: "image" as const,
+			name: `Asset ${index}`,
+			mimeType: "image/png",
+			previewUrl: `data:image/png;base64,${index}`,
+			createdAt: "2026-01-01T00:00:00.000Z",
+		}));
+		const markup = renderToStaticMarkup(
+			<ContentNodeSurface
+				kind="asset"
+				status="idle"
+				data={{ assetIds: assets.map((asset) => asset.id) }}
+				descriptionKey="node.description.asset"
+				assets={assets}
+			/>,
+		);
+
+		expect(markup.match(/<img/g)).toHaveLength(3);
+		expect(markup).toContain("assetNode.more");
+	});
 });

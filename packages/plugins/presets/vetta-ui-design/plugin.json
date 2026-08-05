@@ -1,7 +1,7 @@
 {
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.1.0",
+	"version": "0.1.7",
 	"icon": "icon.png",
 	"agent_mode": ["work"],
 	"defaultLocale": "zh",
@@ -26,7 +26,8 @@
 		"agent.command.run",
 		"agent.command.spawn",
 		"fs.read",
-		"fs.write"
+		"fs.write",
+		"shell.openExternal"
 	],
 	"commands": ["node", "npm"],
 	"agent": {

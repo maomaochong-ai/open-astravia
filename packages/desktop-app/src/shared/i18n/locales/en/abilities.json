@@ -240,7 +240,8 @@
 		"storageRead": "Read private plugin data",
 		"storageWrite": "Write private plugin data",
 		"settingsRead": "Read settings",
-		"settingsWrite": "Modify settings"
+		"settingsWrite": "Modify settings",
+		"shellOpenExternal": "Open links in the system browser"
 	},
 	"meta": {
 		"title": "Other",

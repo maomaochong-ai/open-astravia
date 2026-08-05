@@ -158,6 +158,14 @@ export function WorkbenchPanel() {
 		void refresh();
 	}, [refresh]);
 
+	useEffect(
+		() =>
+			window.vetta.plugins.onPluginsChanged((event) => {
+				if (event?.reason === "dev-ready" || event?.reason === "dev-status") void refresh();
+			}),
+		[refresh],
+	);
+
 	// Default-on: once an item is installed, start hot reload unless the user turned it off this session.
 	useEffect(() => {
 		for (const project of projects) {

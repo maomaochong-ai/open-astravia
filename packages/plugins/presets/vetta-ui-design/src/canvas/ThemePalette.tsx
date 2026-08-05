@@ -7,8 +7,10 @@ import { parseThemeTokens, type ThemeToken } from "./theme-tokens";
 
 /**
  * Read-only palette of the design's shared @theme color tokens. Clicking a
- * swatch attaches the token to the conversation (agent edits theme.css; the
- * plugin never writes it — single-writer discipline, see CONTEXT.md).
+ * swatch attaches the token to the conversation. Ownership of theme.css:
+ * incremental edits belong to the agent; the plugin only performs templated
+ * writes (scaffold, and applying a built-in design system to a zero-frame
+ * design — see design-systems/apply.ts). This panel itself never writes.
  */
 export function ThemePalette({ session }: { session: DesignSession }) {
 	const { t } = useTranslation();

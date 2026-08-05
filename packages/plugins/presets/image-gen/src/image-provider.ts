@@ -1,77 +1,54 @@
-import type {
-	PluginNetworkApi,
-	PluginSettingsApi,
-	PluginStoredBlob,
-} from "@vetta-org/plugin-sdk";
+import type { PluginContext, PluginGatewayApi, PluginStoredBlob } from "@vetta-org/plugin-sdk";
 
-type ImageProvider = "openai" | "agnes-ai" | "custom";
+/**
+ * 出图一律走 Vetta 网关（ADR-0056）。
+ *
+ * 插件不感知模型、不持有任何 key，只把 prompt/size 发给服务端的
+ * `images/generate|edit`；模型选择、provider 形态适配（含改图协议差异）、
+ * 尺寸白名单与按次计费都在服务端，管理员在 admin 配置。
+ *
+ * 这里没有「自定义 API」逃生舱：一旦允许用户自带 key，插件就得重新养一套
+ * provider 适配——而改图形态各家不同（官方 multipart / 聚合站 images[].image_url），
+ * 那套适配已经在服务端存在，客户端再养一份就是长期双维护。
+ */
 
-interface ImageConfig {
-	provider: ImageProvider;
-	baseUrl: string;
-	apiKey: string;
-	model: string;
-}
-
-interface ImageResponseItem {
-	b64_json?: string;
-	url?: string;
-}
-
-interface ImageResponse {
-	data?: ImageResponseItem[];
+interface GatewayImageResult {
+	data: string;
+	mime_type: string;
+	size: string;
 }
 
 const DEFAULT_SIZE = "1024x1024";
-const PROVIDER_PRESETS = {
-	openai: {
-		baseUrl: "https://api.openai.com/v1",
-		modelKey: "openaiModel",
-		apiKeyKey: "openaiApiKey",
-	},
-	"agnes-ai": {
-		baseUrl: "https://apihub.agnes-ai.com/v1",
-		modelKey: "agnesModel",
-		apiKeyKey: "agnesApiKey",
-	},
+
+const GATEWAY_PATHS = {
+	generate: "images/generate",
+	edit: "images/edit",
 } as const;
 
-function readSetting(settings: PluginSettingsApi, key: string): string {
-	const value = settings.get<unknown>(key);
-	return typeof value === "string" ? value.trim() : "";
-}
+/**
+ * 网关调用失败。带上业务错误码，让调用方能把「配额用尽 / 档位不含图像生成」
+ * 渲染成订阅引导，而不是一句红色报错。
+ */
+export class ImageGatewayError extends Error {
+	readonly code: number;
+	readonly status: number;
 
-function resolveConfig(settings: PluginSettingsApi): ImageConfig {
-	const configuredProvider = readSetting(settings, "provider");
-	const provider: ImageProvider =
-		configuredProvider === "agnes-ai"
-			? "agnes-ai"
-			: configuredProvider === "custom"
-				? "custom"
-				: "openai";
-	if (provider === "custom") {
-		const apiKey = readSetting(settings, "customApiKey");
-		const baseUrl = readSetting(settings, "baseUrl").replace(/\/+$/, "");
-		const model = readSetting(settings, "model");
-		if (!apiKey) throw new Error("Custom image provider requires an API key");
-		if (!baseUrl) throw new Error("Custom image provider requires a base URL");
-		if (!model) throw new Error("Custom image provider requires a model");
-		return { provider, baseUrl, apiKey, model };
+	constructor(message: string, code: number, status: number) {
+		super(message);
+		this.name = "ImageGatewayError";
+		this.code = code;
+		this.status = status;
 	}
-	const preset = PROVIDER_PRESETS[provider];
-	const apiKey = readSetting(settings, preset.apiKeyKey);
-	const model = readSetting(settings, preset.modelKey);
-	if (!apiKey) throw new Error("Image provider API key is not configured");
-	if (!model) throw new Error("Image model is not configured");
-	return { provider, baseUrl: preset.baseUrl, apiKey, model };
 }
 
-function extensionForMime(mimeType: string): string {
-	if (mimeType.includes("jpeg")) return "jpg";
-	if (mimeType.includes("webp")) return "webp";
-	if (mimeType.includes("gif")) return "gif";
-	return "png";
-}
+/** 与服务端 errcode 对应；调用方据此切换引导文案。 */
+export const IMAGE_ERROR_CODES = {
+	SUBSCRIPTION_INACTIVE: 40302,
+	MODEL_NOT_IN_PLAN: 40303,
+	QUOTA_EXHAUSTED: 42902,
+	SERVICE_DISABLED: 40301,
+	NOT_CONFIGURED: 50302,
+} as const;
 
 function sniffMime(base64: string): string {
 	const prefix = base64.slice(0, 24);
@@ -82,116 +59,60 @@ function sniffMime(base64: string): string {
 	return "image/png";
 }
 
-async function requestImage(
-	network: PluginNetworkApi,
-	config: ImageConfig,
-	path: string,
-	body:
-		| { type: "json"; value: Record<string, unknown> }
-		| {
-				type: "multipart";
-				fields: Record<string, string>;
-				files: Array<{
-					fieldName: string;
-					fileName: string;
-					mimeType: string;
-					data: string;
-				}>;
-		  },
-): Promise<ImageResponseItem> {
-	const response = await network.request<ImageResponse>({
-		url: `${config.baseUrl}/${path}`,
-		method: "POST",
-		headers: { Authorization: `Bearer ${config.apiKey}` },
-		body,
-		responseType: "json",
-		timeoutMs: 300_000,
-	});
-	if (response.status < 200 || response.status >= 300) {
-		throw new Error(`Image provider returned HTTP ${response.status}`);
+/**
+ * 网关不可用（第三方插件加载或宿主未挂载 ctx.gateway）时没有兜底路径，
+ * 直接报错而不是静默降级——静默降级会让用户以为功能坏了却看不到原因。
+ */
+function requireGateway(ctx: PluginContext): PluginGatewayApi {
+	if (!ctx.gateway) {
+		throw new Error("Vetta image gateway is unavailable in this host");
 	}
-	const item = response.body.data?.[0];
-	if (!item) throw new Error("Image provider response is missing data[0]");
-	return item;
+	return ctx.gateway;
 }
 
-async function extractBytes(
-	network: PluginNetworkApi,
-	item: ImageResponseItem,
-	config: ImageConfig,
+async function requestGateway(
+	gateway: PluginGatewayApi,
+	path: string,
+	body: Record<string, unknown>,
 ): Promise<PluginStoredBlob> {
-	if (item.b64_json) {
-		return { data: item.b64_json, mimeType: sniffMime(item.b64_json) };
-	}
-	if (!item.url) throw new Error("Image response is missing b64_json and url");
-	const absolute = /^https?:\/\//i.test(item.url);
-	const url = absolute ? item.url : new URL(item.url, `${config.baseUrl}/`).toString();
-	const response = await network.request<string>({
-		url,
-		headers: absolute ? undefined : { Authorization: `Bearer ${config.apiKey}` },
-		responseType: "base64",
-		timeoutMs: 120_000,
+	const response = await gateway.request<GatewayImageResult>({
+		path,
+		method: "POST",
+		body,
+		timeoutMs: 300_000,
 	});
-	if (response.status < 200 || response.status >= 300) {
-		throw new Error(`Image download returned HTTP ${response.status}`);
+	if (!response.ok || !response.data?.data) {
+		throw new ImageGatewayError(
+			response.message || `Image gateway returned HTTP ${response.status}`,
+			response.code,
+			response.status,
+		);
 	}
-	const header = response.headers["content-type"];
-	const mimeType = header?.startsWith("image/") ? header.split(";")[0]! : sniffMime(response.body);
-	return { data: response.body, mimeType };
+	return {
+		data: response.data.data,
+		mimeType: response.data.mime_type || sniffMime(response.data.data),
+	};
 }
 
 export async function generateImage(
-	network: PluginNetworkApi,
-	settings: PluginSettingsApi,
+	ctx: PluginContext,
 	input: { prompt: string; size?: string },
 ): Promise<PluginStoredBlob> {
-	const config = resolveConfig(settings);
-	const size = input.size?.trim() || DEFAULT_SIZE;
-	const value =
-		config.provider === "agnes-ai"
-			? { model: config.model, prompt: input.prompt, size, return_base64: true }
-			: { model: config.model, prompt: input.prompt, n: 1, size };
-	const item = await requestImage(network, config, "images/generations", {
-		type: "json",
-		value,
+	return requestGateway(requireGateway(ctx), GATEWAY_PATHS.generate, {
+		prompt: input.prompt,
+		size: input.size?.trim() || DEFAULT_SIZE,
 	});
-	return extractBytes(network, item, config);
 }
 
 export async function editImage(
-	network: PluginNetworkApi,
-	settings: PluginSettingsApi,
+	ctx: PluginContext,
 	input: { prompt: string; source: PluginStoredBlob; size?: string },
 ): Promise<PluginStoredBlob> {
-	const config = resolveConfig(settings);
-	const size = input.size?.trim() || DEFAULT_SIZE;
-	const body =
-		config.provider === "agnes-ai"
-			? {
-					type: "json" as const,
-					value: {
-						model: config.model,
-						prompt: input.prompt,
-						size,
-						extra_body: {
-							image: [`data:${input.source.mimeType};base64,${input.source.data}`],
-							response_format: "b64_json",
-						},
-					},
-				}
-			: {
-					type: "multipart" as const,
-					fields: { model: config.model, prompt: input.prompt, n: "1", size },
-					files: [
-						{
-							fieldName: "image",
-							fileName: `source.${extensionForMime(input.source.mimeType)}`,
-							mimeType: input.source.mimeType,
-							data: input.source.data,
-						},
-					],
-				};
-	const path = config.provider === "agnes-ai" ? "images/generations" : "images/edits";
-	const item = await requestImage(network, config, path, body);
-	return extractBytes(network, item, config);
+	// 源图走 JSON base64 上行：远程服务摸不到用户磁盘，本地文件只能由插件读完再传
+	return requestGateway(requireGateway(ctx), GATEWAY_PATHS.edit, {
+		prompt: input.prompt,
+		size: input.size?.trim() || DEFAULT_SIZE,
+		image: input.source.data,
+		mime_type: input.source.mimeType,
+	});
 }

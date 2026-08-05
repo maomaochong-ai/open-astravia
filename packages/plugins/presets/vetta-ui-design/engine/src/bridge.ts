@@ -6,17 +6,17 @@
  * data-vetd-source extraction and full-frame screenshots.
  *
  * Message contract (both directions carry `{ vetd: true }`):
- *   parent → iframe: set-mode | show-frame | clear-selection | capture
+ *   parent → iframe: set-mode | show-frame | navigate | reload | clear-selection | capture
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
- *                    | frame-error | context-menu
+ *                    | frame-error | context-menu | navigated | wheel | space
  */
 import { toJpeg, toPng } from "html-to-image";
+import { pathOfFrame } from "./routes";
 
 type InspectMode = "off" | "inspect";
 
 interface BridgeHost {
 	getFrameId(): string | null;
-	showFrame(id: string): void;
 }
 
 export interface SelectedElementPayload {
@@ -146,6 +146,66 @@ export function notifyFrameError(frameId: string | null, message: string | null)
 	post({ type: "frame-error", frameId, message });
 }
 
+type Navigator = (to: string | number) => void;
+
+let navigator: Navigator | null = null;
+/** 路由还没挂上时收到的导航（srcdoc 预览的 show-frame 就赶在这一刻），挂上后补发。 */
+let pendingNavigation: string | null = null;
+/**
+ * 自己维护的历史栈。
+ *
+ * History API 只让你 go(-1)，从不告诉你还能不能后退——而预览工具条要据此决定
+ * 前进/后退按钮的禁用态。所有导航都经过这里，所以这份栈是完整的。
+ */
+const visited: string[] = [];
+let visitedIndex = -1;
+/** 刚发出去的是一次 go(delta)：下一条 navigated 该移动指针而不是压栈。 */
+let pendingDelta: number | null = null;
+
+/** 路由就绪后由 main.tsx 注入。 */
+export function installNavigator(next: Navigator): void {
+	navigator = next;
+	if (pendingNavigation !== null) {
+		const to = pendingNavigation;
+		pendingNavigation = null;
+		next(to);
+	}
+}
+
+function go(to: string | number): void {
+	if (!navigator) {
+		if (typeof to === "string") pendingNavigation = to;
+		return;
+	}
+	if (typeof to === "number") pendingDelta = to;
+	navigator(to);
+}
+
+function pushVisited(path: string): void {
+	visited.splice(visitedIndex + 1);
+	visited.push(path);
+	visitedIndex = visited.length - 1;
+}
+
+/** 每次地址变化后调用（含首次加载）。 */
+export function notifyNavigated(path: string, frameId: string | null): void {
+	if (pendingDelta !== null) {
+		const target = visitedIndex + pendingDelta;
+		pendingDelta = null;
+		if (visited[target] === path) visitedIndex = target;
+		else pushVisited(path);
+	} else if (visited[visitedIndex] !== path) {
+		pushVisited(path);
+	}
+	post({
+		type: "navigated",
+		path,
+		frameId,
+		canBack: visitedIndex > 0,
+		canForward: visitedIndex < visited.length - 1,
+	});
+}
+
 interface ViteErrorPayload {
 	err?: { message?: string; id?: string; loc?: { file?: string; line?: number } };
 }
@@ -209,6 +269,42 @@ function setInspectCursor(on: boolean): void {
 	document.head.appendChild(style);
 }
 
+/**
+ * html-to-image 的失败有一半不是 Error，而是 `<img>` 的 error **Event**——直接
+ * String() 会得到「[object Event]」，一点线索都没有。把它换成能指认现场的描述：
+ * 事件源是哪个元素、它当时想加载什么。
+ */
+function describeCaptureError(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	if (typeof Event !== "undefined" && error instanceof Event) {
+		const target = error.target;
+		if (target instanceof HTMLImageElement) {
+			const src = target.currentSrc || target.src;
+			return `failed to load image while capturing: ${src ? src.slice(0, 200) : "<empty src>"}`;
+		}
+		const tag = target instanceof Element ? target.tagName.toLowerCase() : "unknown";
+		return `capture failed on <${tag}> (${error.type} event)`;
+	}
+	return String(error);
+}
+
+/**
+ * 一张截图的像素上限。超过就压 pixelRatio。
+ *
+ * html-to-image 的成本随「面积 × pixelRatio²」走：整棵 DOM 序列化进 foreignObject、
+ * 内联全部样式与素材、再解码编码一次。落地页按默认尺寸就是 1440x2000+，2 倍下已经
+ * 上千万像素，单独跑都能逼近截图超时。而 agent 要看的是版式不是像素，
+ * 12M（约 3464²）之上再涨清晰度没有意义。
+ */
+const MAX_CAPTURE_PIXELS = 12_000_000;
+
+/** 按文档实际大小把请求的 pixelRatio 压到出得来的范围内，不低于 1 倍。 */
+function safePixelRatio(requested: number): number {
+	const el = document.documentElement;
+	const area = Math.max(el.scrollWidth * el.scrollHeight, 1);
+	return Math.max(1, Math.min(requested, Math.sqrt(MAX_CAPTURE_PIXELS / area)));
+}
+
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
@@ -261,6 +357,55 @@ export function installBridge(host: BridgeHost): void {
 			if (mode !== "inspect") return;
 			event.preventDefault();
 			post({ type: "context-menu", x: event.clientX, y: event.clientY });
+		},
+		true,
+	);
+
+	// 画布导航（ctrl/⌘+滚轮缩放、滚轮平移）必须在 frame 内部也生效。元素选择开着时
+	// iframe 吃掉了指针事件，画布容器上的 wheel 监听再也收不到东西——表现就是鼠标一进
+	// frame 缩放/平移全失灵。frame 是定尺寸的设计稿、内部不需要滚动，所以这里一律拦下
+	// 转发给画布，由它按同一套逻辑处理。
+	document.addEventListener(
+		"wheel",
+		(event) => {
+			if (mode !== "inspect") return;
+			event.preventDefault();
+			post({
+				type: "wheel",
+				x: event.clientX,
+				y: event.clientY,
+				deltaX: event.deltaX,
+				deltaY: event.deltaY,
+				ctrlKey: event.ctrlKey,
+				metaKey: event.metaKey,
+			});
+		},
+		{ capture: true, passive: false },
+	);
+
+	// 空格 = 临时托手工具。点进 frame 之后焦点归 iframe，画布容器上的 keydown 收不到，
+	// spaceHeld 永远起不来，拖拽平移在 frame 内就失效了。
+	//
+	// keyup 不能同样只在 inspect 下转发：spaceHeld 一置起来画布就会把这一帧的模式关掉
+	// （平移期间不该开元素选择），松手时 mode 已经是 off，keyup 丢掉等于空格卡死。
+	// 所以只要按下那次发出去了，抬起就一定补一条。
+	let spaceForwarded = false;
+	document.addEventListener(
+		"keydown",
+		(event) => {
+			if (mode !== "inspect" || event.code !== "Space" || event.repeat) return;
+			event.preventDefault();
+			spaceForwarded = true;
+			post({ type: "space", down: true });
+		},
+		true,
+	);
+	document.addEventListener(
+		"keyup",
+		(event) => {
+			if (!spaceForwarded || event.code !== "Space") return;
+			spaceForwarded = false;
+			post({ type: "space", down: false });
 		},
 		true,
 	);
@@ -319,8 +464,17 @@ export function installBridge(host: BridgeHost): void {
 			case "set-mode":
 				setMode(data.mode === "inspect" ? "inspect" : "off");
 				return;
+			// 导出快照走 srcdoc（没有 URL 可以拼），选帧只能靠这条消息。
 			case "show-frame":
-				if (typeof data.id === "string") host.showFrame(data.id);
+				if (typeof data.id === "string") go(pathOfFrame(data.id));
+				return;
+			case "navigate":
+				if (typeof data.to === "string") go(data.to);
+				else if (typeof data.delta === "number") go(data.delta);
+				return;
+			// 真·整页重载：预览里的「刷新」要连帧内 state 一起清掉，客户端路由做不到。
+			case "reload":
+				window.location.reload();
 				return;
 			case "clear-selection":
 				reset();
@@ -332,17 +486,23 @@ export function installBridge(host: BridgeHost): void {
 				const keepHighlight = data.keepHighlight === true && selected !== null;
 				// Mockup export asks for a higher ratio so the composed image stays
 				// crisp when scaled up; 2 keeps the historical behaviour.
-				const pixelRatio =
-					typeof data.pixelRatio === "number" && data.pixelRatio > 0 ? Math.min(data.pixelRatio, 4) : 2;
+				const pixelRatio = safePixelRatio(
+					typeof data.pixelRatio === "number" && data.pixelRatio > 0 ? Math.min(data.pixelRatio, 4) : 2,
+				);
 				moveOverlay(hoverOverlay, null);
 				if (!keepHighlight) moveOverlay(selectedOverlay, null);
 				// Capture documentElement: the overlay divs live on it, so a kept
 				// highlight is included; body alone would drop them.
-				// cacheBust 会给每张图片/字体的 URL 加随机查询串，强制重新下载整份
-				// 素材——图多的 frame 单次截图能拖到几十秒。它本是为绕过跨域缓存的
-				// CORS 问题，而素材由同源的引擎 dev server 提供，用不上。
-				// 只有交付物（导出渲染图 / 发给 agent）保留它兜底，画布位图化不用。
-				const cacheBust = data.cacheBust === true;
+				// 这里没有 cacheBust：它给每张素材 URL 加随机查询串强制重下，图多的 frame
+				// 能从百来毫秒拖到两秒以上，却兜不住任何东西——html-to-image 按去掉 query 的
+				// URL 缓存内联结果，随机串进不了 key，缓存在它生效前就短路了。详见
+				// DesignCanvas 里 captureFaithfully 的注释。
+				// html-to-image 会把每张 <img> 重新 fetch 成 dataURL 再塞回去；fetch 不到
+				// （跨域缺 CORS 头、404、离线）时它把 src 换成空串，于是图片报 error，整次
+				// 截图连同这个 error Event 一起 reject。而图在页面上显示正常——渲染只要
+				// <img> 加载得到，不需要 fetch 得到——所以这个失败看着毫无规律。
+				// 一张图挂掉不该毁掉整张截图：跳过它，其余照截。
+				const onImageErrorHandler = (): void => {};
 				// 画布位图化要 jpeg：同样的像素数，dataUrl 字符串小一个量级，
 				// postMessage 传输与常驻内存跟着降下来——这正是能把 pixelRatio 提到
 				// 设备像素比、让位图不再糊的前提。jpeg 没有透明通道，必须显式铺白底，
@@ -351,16 +511,14 @@ export function installBridge(host: BridgeHost): void {
 					data.format === "jpeg"
 						? toJpeg(document.documentElement, {
 								pixelRatio,
-								cacheBust,
+								onImageErrorHandler,
 								quality: typeof data.quality === "number" ? data.quality : 0.92,
 								backgroundColor: "#ffffff",
 							})
-						: toPng(document.documentElement, { pixelRatio, cacheBust });
+						: toPng(document.documentElement, { pixelRatio, onImageErrorHandler });
 				encode()
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
-					.catch((error: unknown) =>
-						post({ type: "captured", requestId, error: error instanceof Error ? error.message : String(error) }),
-					)
+					.catch((error: unknown) => post({ type: "captured", requestId, error: describeCaptureError(error) }))
 					.finally(() => moveOverlay(selectedOverlay, selected));
 				return;
 			}

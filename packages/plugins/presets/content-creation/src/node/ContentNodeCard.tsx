@@ -13,16 +13,27 @@ import type {
 	ContentNodeStatus,
 	GenerationJob,
 } from "../project/types";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import { useContentCanvasSelectionCount } from "../canvas/ContentCanvasSelectionContext";
 import { ContentNodeHeader } from "./ContentNodeHeader";
 import { ContentNodeHandle } from "./ContentNodeHandle";
 import { ContentNodeSurface } from "./ContentNodeSurface";
 import { ContentNodeEditor } from "./ContentNodeEditor";
+import type { ConnectedContentAsset } from "./material-assets";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
+import { resolveContentPrompt, type ConnectedPromptSource } from "./prompt-sources";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
 	kind: ContentNodeKind;
 	nodeData: ContentNodeData;
+	assets: readonly ContentAsset[];
+	connectedAssets: readonly ConnectedContentAsset[];
+	connectedPrompts: readonly ConnectedPromptSource[];
+	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	assetUrl?: string;
 	assetKind?: AssetKind;
 	status: ContentNodeStatus;
@@ -30,25 +41,18 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	locked: boolean;
 	models: readonly ContentModelDescriptor[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
-	hasGenerationError: boolean;
 	onDelete: () => void;
 	onDuplicate: () => void;
 	onToggleLock: () => void;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onResize: (position: CanvasPosition, width: number, height: number) => void;
 	onRunNode: () => Promise<void>;
+	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
 
 export type ContentFlowNode = Node<ContentFlowNodeData, "contentNode">;
-
-const CATEGORY_ACCENT: Record<string, string> = {
-	input: "before:bg-muted-foreground/40",
-	generation: "before:bg-primary",
-	resource: "before:bg-amber-500",
-	output: "before:bg-emerald-500",
-};
 
 /** Match bottom composer gap (`mt-2` = 8px) so top actions sit equally close to the card. */
 const QUICK_TOOLBAR_OFFSET = 8;
@@ -67,6 +71,10 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const showEditor = singleSelection && definition.properties.length > 0;
 	const inputLabel = definition.inputs.map((port) => t(port.labelKey)).join(", ");
 	const outputLabel = definition.outputs.map((port) => t(port.labelKey)).join(", ");
+	const surfaceData =
+		data.kind === "image-generator" || data.kind === "video-generator"
+			? { ...data.nodeData, prompt: resolveContentPrompt(data.connectedPrompts, data.nodeData) }
+			: data.nodeData;
 
 	useEffect(
 		() => () => {
@@ -151,9 +159,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				</div>
 			</NodeToolbar>
 			<div
-				className={`relative z-0 h-full w-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-[border-color,box-shadow] duration-150 before:absolute before:inset-x-0 before:top-0 before:z-10 before:h-0.5 before:content-[''] ${
-					CATEGORY_ACCENT[definition.category] ?? ""
-				} ${
+				className={`relative z-0 h-full w-full overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-[border-color,box-shadow] duration-150 ${
 					selected
 						? "border-primary/45 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_28%,transparent),0_12px_28px_color-mix(in_srgb,black_12%,transparent)]"
 						: "border-border/70 hover:border-border"
@@ -167,8 +173,10 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				<ContentNodeSurface
 					kind={data.kind}
 					status={data.status}
-					data={data.nodeData}
+					data={surfaceData}
 					descriptionKey={definition.descriptionKey}
+					assets={data.assets}
+					referenceAssets={data.referenceAssets.map(({ asset }) => asset)}
 					assetUrl={data.assetUrl}
 					assetKind={data.assetKind}
 					job={data.job}
@@ -196,11 +204,15 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						data={data.nodeData}
 						properties={definition.properties}
 						models={data.models}
+						assets={data.assets}
+						connectedAssets={data.connectedAssets}
+						connectedPrompts={data.connectedPrompts}
+						mentionAssets={data.mentionAssets}
 						referenceAssets={data.referenceAssets}
-						hasGenerationError={data.hasGenerationError}
 						focusPromptRequest={focusPromptRequest}
 						onUpdate={data.onUpdate}
 						onRunNode={data.onRunNode}
+						onImportAssets={data.onImportAssets}
 						onImportReferences={data.onImportReferences}
 						onAddToTimeline={data.onAddToTimeline}
 					/>

@@ -9,6 +9,7 @@ const steps = [
 	["scripts/quality/check-private-keys.mjs"],
 	["scripts/quality/check-conflict-markers.mjs"],
 	["scripts/quality/check-package-boundaries.mjs"],
+	["scripts/quality/check-skill-frontmatter.mjs"],
 ];
 
 let failed = 0;

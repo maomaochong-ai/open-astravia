@@ -40,6 +40,7 @@ import type {
 	PluginFileExplorerToolbarContribution,
 	PluginFilePreviewContribution,
 	PluginFsApi,
+	PluginGatewayApi,
 	PluginGlobalSlotContribution,
 	PluginI18nApi,
 	PluginImageRef,
@@ -191,6 +192,31 @@ let moduleFederationHost: ModuleFederation | undefined;
 const registeredRemotes = new Map<string, { alias: string; entry: string }>();
 /** remoteName → 当前 reload token（取自 manifest entryUrl 的 query，重载即变）。 */
 const remoteReloadTokens = new Map<string, string>();
+const pluginDevRuntimePromises = new Map<string, Promise<void>>();
+
+interface PluginDevModuleGlobal {
+	__VETTA_PLUGIN_DEV_MODULES__?: Map<string, unknown>;
+}
+
+async function ensurePluginDevRuntime(plugin: InstalledPlugin): Promise<void> {
+	const origin = plugin.devWatch?.origin;
+	if (!origin) return;
+	let pending = pluginDevRuntimePromises.get(origin);
+	if (!pending) {
+		pending = import(/* @vite-ignore */ `${origin}/@vetta-plugin-dev-preamble`)
+			.then(() => undefined)
+			.catch((error: unknown) => {
+				pluginDevRuntimePromises.delete(origin);
+				throw error;
+			});
+		pluginDevRuntimePromises.set(origin, pending);
+	}
+	await pending;
+}
+
+function getLatestPluginDevModule(pluginId: string): unknown {
+	return (globalThis as typeof globalThis & PluginDevModuleGlobal).__VETTA_PLUGIN_DEV_MODULES__?.get(pluginId);
+}
 
 function extractReloadToken(entryUrl: string): string | null {
 	try {
@@ -420,6 +446,34 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 	};
 }
 
+/**
+ * 网关调用不挂可声明权限，只按来源收口：`ctx.gateway` 仅对随包分发的 official
+ * 插件挂载，第三方插件读到 undefined（ADR-0056）。主进程的 capability 适配层
+ * 会再校验一次 session 的 official 属性，这里只是不把入口暴露出去。
+ */
+function createGatewayApi(capabilitySessionId: string): PluginGatewayApi {
+	return {
+		// 同样按 JSON 归一化：请求体也要过 capability 的 CapabilityJsonValue 校验，
+		// body 里带一个 undefined 字段就会让整次调用被拒（见 toJsonValue）。
+		request: (request) =>
+			window.vetta.plugins.gatewayRequest(capabilitySessionId, toJsonValue(request) as typeof request),
+	};
+}
+
+/**
+ * 按 JSON 语义归一化再过 IPC。
+ *
+ * capability 的 CapabilityJsonValue 不接受 undefined，而 Electron 的 structured
+ * clone 会原样保留值为 undefined 的键——插件写一个带可选字段的普通对象
+ * （`{ parent: undefined }`）就会被 capability 层判为非法输入而整体拒绝。
+ * writeJson 的契约本就是「写 JSON」，这里按 JSON.stringify 的语义丢弃 undefined，
+ * 与插件作者的预期一致。
+ */
+function toJsonValue(value: unknown): unknown {
+	if (value === undefined) return null;
+	return JSON.parse(JSON.stringify(value));
+}
+
 function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginStorageApi {
 	const requireRead = (): void => createPermissionApi(plugin).require("storage.read");
 	const requireWrite = (): void => createPermissionApi(plugin).require("storage.write");
@@ -430,7 +484,7 @@ function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string):
 		},
 		writeJson: (key, value) => {
 			requireWrite();
-			return window.vetta.plugins.storageWriteJson(capabilitySessionId, key, value);
+			return window.vetta.plugins.storageWriteJson(capabilitySessionId, key, toJsonValue(value));
 		},
 		list: (prefix) => {
 			requireRead();
@@ -1060,6 +1114,21 @@ function createContext(
 		}
 		return window.vetta.clipboard.writeImage(dataUrl);
 	};
+	const openExternal: PluginContext["ui"]["openExternal"] = async (url) => {
+		createPermissionApi(plugin).require("shell.openExternal");
+		// 主进程还会再挡一次协议，这里先挡是为了给插件一条能读懂的错误——而不是
+		// 让它拿到一个来自 IPC 深处的 "Unsupported external URL protocol"。
+		let parsed: URL;
+		try {
+			parsed = new URL(url);
+		} catch {
+			throw new Error(`openExternal() requires an absolute URL, got: ${String(url)}`);
+		}
+		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+			throw new Error(`openExternal() only accepts http/https URLs, got: ${parsed.protocol}`);
+		}
+		await window.vetta.shell.openExternal(parsed.toString());
+	};
 	const notify = (options: PluginNotifyOptions): void => {
 		if (options == null || typeof options !== "object" || typeof options.message !== "string") {
 			throw new Error("notify() requires { message: string }");
@@ -1121,6 +1190,7 @@ function createContext(
 			openPluginSettings,
 			captureRegion,
 			copyImage,
+			openExternal,
 			notify,
 		},
 		fileExplorer: {
@@ -1400,6 +1470,7 @@ function createContext(
 		},
 		official: createPluginOfficialApi(capabilitySessionId),
 		network: createNetworkApi(plugin, capabilitySessionId),
+		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,
 		storage: createStorageApi(plugin, capabilitySessionId),
 		settings: settingsApi,
 		i18n: createI18nApi(plugin),
@@ -1437,6 +1508,7 @@ async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> 
 	if (!moduleFederation) {
 		throw new Error("Module Federation plugin is missing moduleFederation metadata");
 	}
+	await ensurePluginDevRuntime(plugin);
 	const host = getModuleFederationHost();
 	const remote = {
 		name: moduleFederation.remoteName,
@@ -1460,7 +1532,7 @@ async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> 
 	if (loaded == null) {
 		throw new Error(`Module Federation remote returned null: ${moduleFederation.remoteName}/${expose}`);
 	}
-	return assertPluginModule(loaded);
+	return assertPluginModule(getLatestPluginDevModule(plugin.id) ?? loaded);
 }
 
 export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void): Promise<LoadedPlugin> {

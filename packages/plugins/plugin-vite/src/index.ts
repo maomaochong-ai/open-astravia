@@ -1,7 +1,17 @@
 import { federation, type ModuleFederationOptions } from "@module-federation/vite";
 import type { Plugin, PluginOption } from "vite";
+import {
+	createVettaPluginDevPlugins,
+	isVettaPluginDevServer,
+	VETTA_PLUGIN_DEV_ENTRY_ID,
+} from "./dev-vite-plugins.js";
+import { createHostThemeBridgePlugin } from "./host-theme.js";
 import { type CreateVettaPluginPackageOptions, createVettaPluginPackage } from "./pack.js";
 import { createPluginStyleScopePlugin } from "./style-scope.js";
+
+const SHARED_REACT_COMMONJS_BRIDGE_ID = "virtual:vetta-plugin-shared-react-commonjs";
+const RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID = `\0${SHARED_REACT_COMMONJS_BRIDGE_ID}`;
+const STATIC_REACT_REQUIRE_PATTERN = /\brequire\s*\(\s*(["'])react\1\s*\)/gu;
 
 export interface VettaPluginPackageOptions extends Omit<CreateVettaPluginPackageOptions, "rootDir" | "distDir"> {
 	enabled?: boolean;
@@ -31,6 +41,11 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 		},
 		dts: false,
 		shared: {
+			"@vetta-org/plugin-sdk": {
+				singleton: true,
+				import: false,
+				requiredVersion: "*",
+			},
 			react: {
 				singleton: true,
 				import: false,
@@ -87,6 +102,36 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 	};
 }
 
+// Module Federation exposes shared React through a virtual ESM module. Routing
+// static CommonJS requires through this namespace keeps Rollup's generated
+// bindings stable when dependencies such as use-sync-external-store are bundled.
+function createSharedReactCommonJsBridgePlugin(): Plugin {
+	return {
+		name: "vetta-plugin-shared-react-commonjs-bridge",
+		apply: "build",
+		enforce: "pre",
+		transform(code) {
+			if (!code.includes("require") || !code.includes("react")) return;
+			const transformed = code.replace(
+				STATIC_REACT_REQUIRE_PATTERN,
+				`require(${JSON.stringify(SHARED_REACT_COMMONJS_BRIDGE_ID)})`,
+			);
+			if (transformed === code) return;
+			return { code: transformed, map: null };
+		},
+		resolveId(id) {
+			if (id === SHARED_REACT_COMMONJS_BRIDGE_ID) return RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID;
+		},
+		load(id) {
+			if (id !== RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID) return;
+			return `import * as React from "react";
+export * from "react";
+export default React;
+`;
+		},
+	};
+}
+
 function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
 	let rootDir = "";
 	let distDir = "";
@@ -122,13 +167,21 @@ function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
 export function vettaPluginFederation(options: VettaPluginFederationOptions): PluginOption[] {
 	const packageOptions = typeof options.package === "object" ? options.package : {};
 	const entry = options.entry ?? "./src/index.tsx";
+	const devServer = isVettaPluginDevServer();
 	const plugins: PluginOption[] = [
+		createHostThemeBridgePlugin(),
+		...(devServer ? createVettaPluginDevPlugins(entry) : []),
 		createBuildDefaultsPlugin(entry),
-		...federation(createVettaPluginFederationConfig(options)),
+		createSharedReactCommonJsBridgePlugin(),
+		...federation({
+			...createVettaPluginFederationConfig(options),
+			exposes: {
+				[options.expose ?? "./plugin"]: devServer ? VETTA_PLUGIN_DEV_ENTRY_ID : entry,
+			},
+		}),
 		createPluginStyleScopePlugin(),
 	];
-	// VETTA_PLUGIN_DEV_WATCH=1：宿主 dev 热更新的 `vite build --watch` 只需要 dist，
-	// 跳过每次增量重建都重打 zip（closeBundle 在 watch 模式每轮都会触发）。
+	// 兼容旧宿主的 build-watch 流程：增量构建时不重复打 zip。
 	if (options.package !== false && process.env.VETTA_PLUGIN_DEV_WATCH !== "1") {
 		plugins.push(createPackagePlugin(packageOptions));
 	}

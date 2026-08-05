@@ -1,20 +1,29 @@
-import { DEFAULT_FRAME_META, type FrameMeta } from "./manifest-types";
+import type { FrameMeta } from "./manifest-types";
+
+/** 解析结果：尺寸没声明就是 null。没有默认尺寸——补声明是 agent 的事。 */
+export interface ParsedFrameMeta {
+	width: number | null;
+	height: number | null;
+	title: string;
+}
 
 /**
  * Parse `export const frame = { width: 390, height: 844, title: "登录" }` from
  * tsx source text. Regex-based on purpose: the meta object is a flat literal by
- * convention (enforced by the skill), and a parse miss just falls back to
- * defaults — never breaks the canvas.
+ * convention (enforced by the skill).
+ *
+ * 尺寸缺失不回落到任何默认值：一个静默的 800x600 会让 agent 以为自己写对了，
+ * 画布上多出一块谁都没要的画板。缺就是缺，由调用方决定是报错还是参考邻帧。
  */
-export function parseFrameMeta(source: string, fallbackTitle: string): FrameMeta {
+export function parseFrameMeta(source: string, fallbackTitle: string): ParsedFrameMeta {
 	const match = source.match(/export\s+const\s+frame\s*=\s*\{([^}]*)\}/);
 	const body = match?.[1] ?? "";
 	const width = body.match(/width\s*:\s*(\d+)/);
 	const height = body.match(/height\s*:\s*(\d+)/);
 	const title = body.match(/title\s*:\s*["'`]([^"'`]*)["'`]/);
 	return {
-		width: width ? Number(width[1]) : DEFAULT_FRAME_META.width,
-		height: height ? Number(height[1]) : DEFAULT_FRAME_META.height,
+		width: width ? Number(width[1]) : null,
+		height: height ? Number(height[1]) : null,
 		title: title?.[1] ?? fallbackTitle,
 	};
 }

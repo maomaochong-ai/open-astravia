@@ -1,8 +1,16 @@
 /** Minimal host bridge types for trusted plugins (ADR-0023). */
 interface VettaPluginDevWatchState {
 	projectDir: string;
+	entryUrl?: string;
+	origin?: string;
 	status: "starting" | "running" | "error";
 	error?: string;
+}
+
+interface VettaPluginsChangedEvent {
+	pluginIds?: string[];
+	reload?: boolean;
+	reason?: "dev-ready" | "dev-update" | "dev-status";
 }
 
 interface VettaPluginsApi {
@@ -33,6 +41,7 @@ interface VettaPluginsApi {
 	stopDevWatch(id: string): Promise<void>;
 	setEnabled(id: string, enabled: boolean): Promise<unknown>;
 	grantPermissions(id: string, permissions: string[]): Promise<unknown>;
+	onPluginsChanged(listener: (event?: VettaPluginsChangedEvent) => void): () => void;
 	registerModeGate(pluginId: string): Promise<void>;
 	setContributionMode(pluginId: string, active: boolean): Promise<void>;
 }

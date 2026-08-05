@@ -402,6 +402,13 @@ export interface PluginUiApi {
 	 */
 	copyImage(dataUrl: string): Promise<void>;
 	/**
+	 * Hand a URL to the OS default browser (Electron `shell.openExternal`) —
+	 * NOT the in-app browser panel. Only `http:`/`https:` are accepted; the host
+	 * rejects every other protocol, so this cannot be used to launch arbitrary
+	 * schemes. Needs `shell.openExternal`.
+	 */
+	openExternal(url: string): Promise<void>;
+	/**
 	 * Show a global toast in the host UI (bottom-right). No permission required.
 	 * Prefer this over swallowing errors into opaque UI copy: pass `error` so
 	 * the host attaches a one-click "copy stack" action for the user.

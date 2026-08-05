@@ -34,6 +34,17 @@ describe("content node definitions", () => {
 		expect(first).toEqual({ aspectRatio: "16:9", duration: 5, resolution: "720p" });
 		expect(first).not.toBe(second);
 		expect(getContentNodeDefinition("video-generator").inputs.map((port) => port.id)).toEqual(["prompt", "image", "video"]);
+		expect(getContentNodeDefinition("prompt").inputs).toMatchObject([
+			{ id: "media", dataType: "media", multiple: true },
+		]);
+		expect(getContentNodeDefinition("prompt").outputs[0]).toMatchObject({
+			id: "text",
+			dataType: "prompt",
+		});
+		expect(getContentNodeDefinition("video-generator").inputs[0]).toMatchObject({
+			id: "prompt",
+			multiple: true,
+		});
 	});
 
 	it("resolves typed ports and lists only compatible creation choices", () => {
