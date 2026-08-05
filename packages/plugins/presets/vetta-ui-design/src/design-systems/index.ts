@@ -8,6 +8,8 @@ import coinbaseMd from "./coinbase/DESIGN.md?raw";
 import coinbaseCss from "./coinbase/theme.css?raw";
 import discordMd from "./discord/DESIGN.md?raw";
 import discordCss from "./discord/theme.css?raw";
+import doodlePopMd from "./doodle-pop/DESIGN.md?raw";
+import doodlePopCss from "./doodle-pop/theme.css?raw";
 import duolingoMd from "./duolingo/DESIGN.md?raw";
 import duolingoCss from "./duolingo/theme.css?raw";
 import figmaMd from "./figma/DESIGN.md?raw";
@@ -44,7 +46,7 @@ import vercelCss from "./vercel/theme.css?raw";
 export const DESIGN_SYSTEMS_SOURCE = "https://github.com/VoltAgent/awesome-design-md";
 
 /**
- * 内置的 20 套设计体系。顺序即 drawer 里的展示顺序：按风格差异交错排（亮暗、
+ * 内置的设计体系。顺序即 drawer 里的展示顺序：按风格差异交错排（亮暗、
  * 冷暖、克制/张扬），让用户横滑前几张就能碰到完全不同的方向。
  *
  * token 契约：每套 theme.css 必含 DEFAULT_THEME_CSS 的 7 个基础 color token
@@ -54,6 +56,16 @@ export const DESIGN_SYSTEMS: readonly DesignSystem[] = [
 	{ id: "linear", name: "Linear", category: "dev", blurb:
 			"Dark, dense, engineered dev-tool calm; indigo primary, hairline borders, keyboard-first density.",
 		vibe: "dark", themeCss: linearCss, designMd: linearMd },
+	{
+		id: "doodle-pop",
+		name: "Doodle Pop",
+		category: "playful",
+		blurb:
+			"Lime × black sticker energy; thick ink borders, hard offset shadows, pastel doodles, game-drop vibes.",
+		vibe: "light",
+		themeCss: doodlePopCss,
+		designMd: doodlePopMd,
+	},
 	{ id: "stripe", name: "Stripe", category: "fintech", blurb:
 			"Polished light fintech; blurple CTAs, white cards on airy blue-gray, refined layered shadows.",
 		vibe: "light", themeCss: stripeCss, designMd: stripeMd },
