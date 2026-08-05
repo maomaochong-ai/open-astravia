@@ -552,7 +552,7 @@ function toDevPluginUrl(pluginId: string, relativePath: string, token: string): 
 }
 
 /**
- * 把 dev 链接叠加到注册表对象上（entry/style/agent/locales/rootPath 改指工程）。
+ * 把 dev 链接叠加到已安装插件快照上（entry/style/agent/locales/rootPath 改指工程）。
  *
  * Dev 期额外同步安装态字段（仅内存，不写注册表）：
  * - permissions / declaredCommands / settingsSchema 跟工程 plugin.json
@@ -616,12 +616,14 @@ function readDevProjectManifest(projectDir: string, expectedId: string): PluginM
 	return manifest;
 }
 
-/** 建立 dev 链接。要求插件已安装过一次（授权/启用沿用安装态）。 */
+function getInstalledPluginForDevLink(id: string): InstalledPlugin | undefined {
+	return discoverSystemPlugins().find((plugin) => plugin.id === id) ?? readRegistry()[id];
+}
+
+/** 建立 dev 链接。系统插件沿用随包状态，用户插件要求已安装过一次。 */
 export function setPluginDevLink(id: string, projectDir: string): InstalledPlugin {
 	validatePluginId(id);
-	if (isSystemPluginId(id)) throw new Error(`Cannot dev-link a system plugin: ${id}`);
-	const registry = readRegistry();
-	const plugin = registry[id];
+	const plugin = getInstalledPluginForDevLink(id);
 	if (!plugin) throw new Error(`Plugin not installed (apply it once before enabling hot reload): ${id}`);
 	const resolvedDir = resolve(projectDir);
 	const manifest = readDevProjectManifest(resolvedDir, id);
@@ -653,7 +655,7 @@ export function refreshPluginDevLink(id: string): InstalledPlugin {
 	link.reloadToken = Date.now().toString();
 	link.status = "running";
 	link.error = undefined;
-	const plugin = readRegistry()[id];
+	const plugin = getInstalledPluginForDevLink(id);
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
 	broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
 	return applyDevOverlay(plugin);
@@ -670,7 +672,7 @@ export function setPluginDevLinkServer(id: string, entryUrl: string, origin: str
 	link.error = undefined;
 	link.manifest = readDevProjectManifest(link.projectDir, id);
 	link.locales = loadPluginLocales(link.projectDir);
-	const plugin = readRegistry()[id];
+	const plugin = getInstalledPluginForDevLink(id);
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
 	broadcastPluginsChanged({ pluginIds: [id], reason: "dev-ready" });
 	return applyDevOverlay(plugin);
@@ -1191,7 +1193,7 @@ export function listPlugins(): InstalledPlugin[] {
 	const userPlugins = Object.values(readRegistry())
 		.filter((plugin) => !reserved.has(plugin.id))
 		.map(applyDevOverlay);
-	return [...system, ...userPlugins].sort((a, b) => a.name.localeCompare(b.name));
+	return [...system.map(applyDevOverlay), ...userPlugins].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function installPluginFromArchive(
@@ -1402,6 +1404,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	if (isSystemPluginId(id)) {
 		const refreshed = discoverSystemPlugins(true).find((plugin) => plugin.id === id);
 		if (!refreshed) throw new Error(`Plugin not found: ${id}`);
+		if (devLinks.has(id)) return refreshPluginDevLink(id);
 		broadcastPluginsChanged();
 		return refreshed;
 	}
