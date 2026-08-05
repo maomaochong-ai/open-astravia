@@ -19,6 +19,7 @@ import {
 	DOMAIN_UPDATER_CAPABILITIES,
 	DOMAIN_WEBHOOK_CAPABILITIES,
 } from "../../src/domain.js";
+import { FOUNDATION_GATEWAY_CAPABILITIES } from "../../src/foundation.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";
 
 describe("PluginCapabilityAdapter official domain capabilities", () => {
@@ -33,6 +34,8 @@ describe("PluginCapabilityAdapter official domain capabilities", () => {
 
 		expect(() => adapter.assertOfficialSession(sessionId)).not.toThrow();
 		expect(access.sessions[0]?.grants.map((grant) => grant.capabilityId)).toEqual([
+			// 网关调用不挂可声明权限，只按来源收口给 official 插件（ADR-0056）
+			...Object.values(FOUNDATION_GATEWAY_CAPABILITIES).map((capability) => capability.id),
 			...Object.values(DOMAIN_AGENT_SETTINGS_CAPABILITIES).map((capability) => capability.id),
 			...Object.values(DOMAIN_GENERAL_SETTINGS_CAPABILITIES).map((capability) => capability.id),
 			...Object.values(DOMAIN_IM_CAPABILITIES).map((capability) => capability.id),
