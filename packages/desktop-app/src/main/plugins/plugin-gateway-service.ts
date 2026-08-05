@@ -16,8 +16,10 @@ import { getAppLogger } from "../logger.js";
 
 const log = getAppLogger("plugin-gateway");
 
-const DEFAULT_TIMEOUT_MS = 120_000;
-// 生图 30-60s 常见，改图更慢；与服务端图像端点的超时同量级。
+// 网关背后是图像生成这类长任务：生图 30-60s 常见，改图连上传带生成常过 2 分钟。
+// 默认与上限都取 5 分钟，与服务端 ImageService 的 http client 超时对齐——
+// 客户端先超时只会让一次已经在上游跑着的生成白白丢掉，用户还照扣积分。
+const DEFAULT_TIMEOUT_MS = 300_000;
 const MAX_TIMEOUT_MS = 300_000;
 // 改图的源图走 JSON base64 上行，比普通接口请求大一个数量级。
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
