@@ -22,6 +22,7 @@ import {
 	type RegisteredTurnCard,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
+import type { InstalledPlugin, PluginsChangedEvent } from "@preload/api";
 import { getDefaultStore, useSetAtom } from "jotai";
 import { Component, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { ErrorInfo, ReactNode } from "react";
@@ -34,6 +35,29 @@ import { loadPlugin, type LoadedPlugin } from "../runtime/plugin-loader";
 
 // 串行加载插件快照，避免并发 reload 交叉提交 activation。
 let pluginHostLifecycle = Promise.resolve();
+
+async function loadPluginSnapshot(
+	installedPlugins: InstalledPlugin[],
+	previousPlugins: LoadedPlugin[],
+	targetPluginIds: ReadonlySet<string> | undefined,
+	onChanged: () => void,
+): Promise<LoadedPlugin[]> {
+	const previousById = new Map(previousPlugins.map((plugin) => [plugin.id, plugin]));
+	const enabledPlugins = installedPlugins.filter((plugin) => plugin.enabled);
+	const loadResults = await Promise.all(
+		enabledPlugins.map(async (plugin) => {
+			const previous = previousById.get(plugin.id);
+			if (targetPluginIds && !targetPluginIds.has(plugin.id) && previous) return previous;
+			try {
+				return await loadPlugin(plugin, onChanged);
+			} catch (error) {
+				console.error(`Failed to load plugin: ${plugin.id}`, error);
+				return previous;
+			}
+		}),
+	);
+	return loadResults.filter((plugin): plugin is LoadedPlugin => plugin !== undefined);
+}
 
 class PluginSlotErrorBoundary extends Component<
 	{ pluginSlotId: string; children: ReactNode },
@@ -73,14 +97,34 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setPluginI18n = useSetAtom(pluginI18nByIdAtom);
 	const loadedPluginsRef = useRef<LoadedPlugin[]>([]);
 	const scheduledRevisionRef = useRef<number | undefined>(undefined);
+	/** undefined = idle, null = pending full reload, Set = pending targeted reload. */
+	const pendingPluginIdsRef = useRef<Set<string> | null | undefined>(null);
 	const unmountedRef = useRef(false);
 
 	useEffect(() => {
-		window.addEventListener(PLUGINS_CHANGED_EVENT, reloadPlugins);
+		const requestFullReload = () => {
+			pendingPluginIdsRef.current = null;
+			reloadPlugins();
+		};
+		const requestMainReload = (event?: PluginsChangedEvent) => {
+			if (event?.reload === false) return;
+			if (!event?.pluginIds || event.pluginIds.length === 0) {
+				requestFullReload();
+				return;
+			}
+			if (pendingPluginIdsRef.current === null) {
+				reloadPlugins();
+				return;
+			}
+			pendingPluginIdsRef.current ??= new Set<string>();
+			for (const pluginId of event.pluginIds) pendingPluginIdsRef.current.add(pluginId);
+			reloadPlugins();
+		};
+		window.addEventListener(PLUGINS_CHANGED_EVENT, requestFullReload);
 		// Main process install/enable/reload (Action / workbench) → re-load remotes.
-		const unsubMain = window.vetta.plugins.onPluginsChanged(reloadPlugins);
+		const unsubMain = window.vetta.plugins.onPluginsChanged(requestMainReload);
 		return () => {
-			window.removeEventListener(PLUGINS_CHANGED_EVENT, reloadPlugins);
+			window.removeEventListener(PLUGINS_CHANGED_EVENT, requestFullReload);
 			unsubMain();
 		};
 	}, [reloadPlugins]);
@@ -89,6 +133,8 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		// React StrictMode 会用相同 revision 重放 effect；只排入一次生命周期。
 		if (scheduledRevisionRef.current === reloadRevision) return;
 		scheduledRevisionRef.current = reloadRevision;
+		const pendingPluginIds = pendingPluginIdsRef.current;
+		pendingPluginIdsRef.current = undefined;
 		setHostLoading(true);
 
 		const lifecycle = pluginHostLifecycle.then(async () => {
@@ -101,25 +147,14 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			const previousPlugins = loadedPluginsRef.current;
 			const loadedPlugins = await window.vetta.plugins
 				.list()
-				.then(async (installedPlugins) => {
-					const loadResults = await Promise.all(
-						installedPlugins
-							.filter((plugin) => plugin.enabled)
-							.map(async (plugin) => {
-								try {
-									return { pluginId: plugin.id, loaded: await loadPlugin(plugin, forceUpdate) };
-								} catch (error) {
-									console.error(`Failed to load plugin: ${plugin.id}`, error);
-									return { pluginId: plugin.id, loaded: undefined };
-								}
-							}),
-					);
-					return loadResults.flatMap(({ pluginId, loaded }) => {
-						if (loaded) return [loaded];
-						const lastKnownGood = previousPlugins.find((plugin) => plugin.id === pluginId);
-						return lastKnownGood ? [lastKnownGood] : [];
-					});
-				})
+				.then((installedPlugins) =>
+					loadPluginSnapshot(
+						installedPlugins,
+						previousPlugins,
+						pendingPluginIds instanceof Set ? pendingPluginIds : undefined,
+						forceUpdate,
+					),
+				)
 				.catch((error: Error) => {
 					console.error("Failed to initialize plugins", error);
 					return previousPlugins;

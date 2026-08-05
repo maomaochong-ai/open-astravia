@@ -1,5 +1,10 @@
 import { federation, type ModuleFederationOptions } from "@module-federation/vite";
 import type { Plugin, PluginOption } from "vite";
+import {
+	createVettaPluginDevPlugins,
+	isVettaPluginDevServer,
+	VETTA_PLUGIN_DEV_ENTRY_ID,
+} from "./dev-vite-plugins.js";
 import { type CreateVettaPluginPackageOptions, createVettaPluginPackage } from "./pack.js";
 import { createPluginStyleScopePlugin } from "./style-scope.js";
 
@@ -31,6 +36,11 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 		},
 		dts: false,
 		shared: {
+			"@vetta-org/plugin-sdk": {
+				singleton: true,
+				import: false,
+				requiredVersion: "*",
+			},
 			react: {
 				singleton: true,
 				import: false,
@@ -122,13 +132,19 @@ function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
 export function vettaPluginFederation(options: VettaPluginFederationOptions): PluginOption[] {
 	const packageOptions = typeof options.package === "object" ? options.package : {};
 	const entry = options.entry ?? "./src/index.tsx";
+	const devServer = isVettaPluginDevServer();
 	const plugins: PluginOption[] = [
+		...(devServer ? createVettaPluginDevPlugins(entry) : []),
 		createBuildDefaultsPlugin(entry),
-		...federation(createVettaPluginFederationConfig(options)),
+		...federation({
+			...createVettaPluginFederationConfig(options),
+			exposes: {
+				[options.expose ?? "./plugin"]: devServer ? VETTA_PLUGIN_DEV_ENTRY_ID : entry,
+			},
+		}),
 		createPluginStyleScopePlugin(),
 	];
-	// VETTA_PLUGIN_DEV_WATCH=1：宿主 dev 热更新的 `vite build --watch` 只需要 dist，
-	// 跳过每次增量重建都重打 zip（closeBundle 在 watch 模式每轮都会触发）。
+	// 兼容旧宿主的 build-watch 流程：增量构建时不重复打 zip。
 	if (options.package !== false && process.env.VETTA_PLUGIN_DEV_WATCH !== "1") {
 		plugins.push(createPackagePlugin(packageOptions));
 	}

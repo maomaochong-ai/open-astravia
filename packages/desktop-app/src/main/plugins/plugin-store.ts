@@ -36,6 +36,7 @@ import type {
 	PluginMcpServerConfig,
 	PluginPermission,
 	PluginSettingSchema,
+	PluginsChangedEvent,
 } from "../../preload/api-types/plugins.js";
 import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
@@ -80,11 +81,11 @@ const activeContributionModeIds = new Set<string>();
  * Tell every renderer to re-list and re-load plugins (MF remotes + activity tabs).
  * Without this, install/enable via Action or workbench leaves the UI on the pre-install set.
  */
-export function broadcastPluginsChanged(): void {
+export function broadcastPluginsChanged(event?: PluginsChangedEvent): void {
 	for (const contents of webContents.getAllWebContents()) {
 		if (contents.isDestroyed()) continue;
 		try {
-			contents.send("vetta:plugins:changed");
+			contents.send("vetta:plugins:changed", event);
 		} catch {
 			// ignore gone frames
 		}
@@ -535,11 +536,14 @@ interface PluginDevLink {
 	manifest: PluginManifest;
 	locales: PluginLocales;
 	reloadToken: string;
+	entryUrl?: string;
+	origin?: string;
 	status: PluginDevWatchState["status"];
 	error?: string;
 }
 
 const devLinks = new Map<string, PluginDevLink>();
+const LOCAL_PLUGIN_DEV_HOSTNAMES = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
 /** dev 资源 URL：直接以工程根为根（无 versions/ 段），token 变化驱动 MF 强制重注册。 */
 function toDevPluginUrl(pluginId: string, relativePath: string, token: string): string {
@@ -573,11 +577,13 @@ function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 		description: manifest.description,
 		author: manifest.author,
 		runtime: manifest.runtime ?? "esm",
-		entryUrl: toDevPluginUrl(plugin.id, manifest.entry, link.reloadToken),
+		entryUrl: link.entryUrl ?? toDevPluginUrl(plugin.id, manifest.entry, link.reloadToken),
 		moduleFederation: manifest.moduleFederation,
 		agent: manifest.agent,
 		agent_mode: manifest.agent_mode,
-		styleUrls: (manifest.styles ?? []).map((style) => toDevPluginUrl(plugin.id, style, link.reloadToken)),
+		styleUrls: link.entryUrl
+			? []
+			: (manifest.styles ?? []).map((style) => toDevPluginUrl(plugin.id, style, link.reloadToken)),
 		iconUrl: resolveIconUrl(manifest.icon, (path) => toDevPluginUrl(plugin.id, path, link.reloadToken)),
 		guidingWords: manifest.guidingWords,
 		defaultLocale: manifest.defaultLocale ?? "zh",
@@ -588,7 +594,13 @@ function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
 		rootPath: link.projectDir,
-		devWatch: { projectDir: link.projectDir, status: link.status, error: link.error },
+		devWatch: {
+			projectDir: link.projectDir,
+			entryUrl: link.entryUrl,
+			origin: link.origin,
+			status: link.status,
+			error: link.error,
+		},
 	};
 }
 
@@ -620,19 +632,19 @@ export function setPluginDevLink(id: string, projectDir: string): InstalledPlugi
 		reloadToken: Date.now().toString(),
 		status: "starting",
 	});
-	broadcastPluginsChanged();
+	broadcastPluginsChanged({ pluginIds: [id], reload: false, reason: "dev-status" });
 	return applyDevOverlay(plugin);
 }
 
 export function clearPluginDevLink(id: string): void {
-	if (devLinks.delete(id)) broadcastPluginsChanged();
+	if (devLinks.delete(id)) broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
 }
 
 export function hasPluginDevLink(id: string): boolean {
 	return devLinks.has(id);
 }
 
-/** dist 产物变化后：重读工程 manifest/locales，bump token，广播驱动渲染进程重载。 */
+/** 开发服务器报告生命周期变化后，重读 manifest/locales 并定向重载当前插件。 */
 export function refreshPluginDevLink(id: string): InstalledPlugin {
 	const link = devLinks.get(id);
 	if (!link) throw new Error(`Plugin is not dev-linked: ${id}`);
@@ -643,7 +655,33 @@ export function refreshPluginDevLink(id: string): InstalledPlugin {
 	link.error = undefined;
 	const plugin = readRegistry()[id];
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
-	broadcastPluginsChanged();
+	broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
+	return applyDevOverlay(plugin);
+}
+
+/** Vite 开发服务器就绪后切换 MF 入口；仅允许本机 HTTP origin。 */
+export function setPluginDevLinkServer(id: string, entryUrl: string, origin: string): InstalledPlugin {
+	const link = devLinks.get(id);
+	if (!link) throw new Error(`Plugin is not dev-linked: ${id}`);
+	const parsedEntry = new URL(entryUrl);
+	const parsedOrigin = new URL(origin);
+	if (
+		parsedEntry.protocol !== "http:" ||
+		parsedOrigin.protocol !== "http:" ||
+		parsedEntry.origin !== parsedOrigin.origin ||
+		!LOCAL_PLUGIN_DEV_HOSTNAMES.has(parsedOrigin.hostname)
+	) {
+		throw new Error("Plugin dev server must use a local HTTP origin");
+	}
+	link.entryUrl = parsedEntry.href;
+	link.origin = parsedOrigin.origin;
+	link.status = "running";
+	link.error = undefined;
+	link.manifest = readDevProjectManifest(link.projectDir, id);
+	link.locales = loadPluginLocales(link.projectDir);
+	const plugin = readRegistry()[id];
+	if (!plugin) throw new Error(`Plugin not found: ${id}`);
+	broadcastPluginsChanged({ pluginIds: [id], reason: "dev-ready" });
 	return applyDevOverlay(plugin);
 }
 
@@ -653,7 +691,7 @@ export function setPluginDevLinkStatus(id: string, status: PluginDevWatchState["
 	if (!link) return;
 	link.status = status;
 	link.error = error;
-	broadcastPluginsChanged();
+	broadcastPluginsChanged({ pluginIds: [id], reload: false, reason: "dev-status" });
 }
 
 function resolveInstalledPluginResource(plugin: InstalledPlugin, relativePath: string): string {

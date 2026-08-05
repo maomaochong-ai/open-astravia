@@ -323,7 +323,7 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 				return () => ipc.removeListener("vetta:plugins:settings-changed", handler);
 			},
 			onPluginsChanged: (listener) => {
-				const handler = () => listener();
+				const handler = (_event: IpcRendererEvent, payload?: Parameters<typeof listener>[0]) => listener(payload);
 				ipc.on("vetta:plugins:changed", handler);
 				return () => ipc.removeListener("vetta:plugins:changed", handler);
 			},

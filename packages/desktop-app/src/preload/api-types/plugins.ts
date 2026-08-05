@@ -76,11 +76,23 @@ export type PluginLocales = Record<string, PluginLocaleCatalog>;
  * 存在即表示该插件资源正从开发工程目录（而非安装目录）加载。
  */
 export interface PluginDevWatchState {
-	/** 开发工程根目录（含 plugin.json 与 dist/）。 */
+	/** 开发工程根目录（含 plugin.json 与 src/）。 */
 	projectDir: string;
-	/** starting = vite watch 已拉起但未产出首个构建；error 详见 error 字段。 */
+	/** Vite 开发服务器入口；starting 阶段尚不可用。 */
+	entryUrl?: string;
+	/** Vite 开发服务器 origin，供诊断与 React Fast Refresh 初始化。 */
+	origin?: string;
+	/** starting = 开发服务器正在启动；error 详见 error 字段。 */
 	status: "starting" | "running" | "error";
 	error?: string;
+}
+
+export interface PluginsChangedEvent {
+	/** 缺省表示完整重载；存在时仅替换列出的插件生命周期。 */
+	pluginIds?: string[];
+	/** false 表示仅状态更新，渲染进程无需重载插件。 */
+	reload?: boolean;
+	reason?: "dev-ready" | "dev-update" | "dev-status";
 }
 
 export type PluginTrustLevel = "official" | "community" | "local";
@@ -606,7 +618,7 @@ export interface DesktopPluginsApi {
 	/** Subscribe to setting changes for any plugin. Returns an unsubscribe fn. */
 	onSettingsChanged(listener: (payload: { pluginId: string; values: Record<string, unknown> }) => void): () => void;
 	/** Fired when plugins are installed/uninstalled/enabled/reloaded (host should re-load remotes). */
-	onPluginsChanged(listener: () => void): () => void;
+	onPluginsChanged(listener: (event?: PluginsChangedEvent) => void): () => void;
 	networkRequest<T = unknown>(sessionId: string, request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;
 	storageReadJson<T>(sessionId: string, key: string): Promise<T | null>;
 	storageWriteJson(sessionId: string, key: string, value: unknown): Promise<void>;

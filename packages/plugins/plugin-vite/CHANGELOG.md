@@ -4,6 +4,10 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and structured lifecycle events for Desktop plugin hot reload without changing production package output.
+
 ## [0.0.5] — 2026-08-04
 
 ### Added

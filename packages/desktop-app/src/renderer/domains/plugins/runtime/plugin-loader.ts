@@ -191,6 +191,31 @@ let moduleFederationHost: ModuleFederation | undefined;
 const registeredRemotes = new Map<string, { alias: string; entry: string }>();
 /** remoteName → 当前 reload token（取自 manifest entryUrl 的 query，重载即变）。 */
 const remoteReloadTokens = new Map<string, string>();
+const pluginDevRuntimePromises = new Map<string, Promise<void>>();
+
+interface PluginDevModuleGlobal {
+	__VETTA_PLUGIN_DEV_MODULES__?: Map<string, unknown>;
+}
+
+async function ensurePluginDevRuntime(plugin: InstalledPlugin): Promise<void> {
+	const origin = plugin.devWatch?.origin;
+	if (!origin) return;
+	let pending = pluginDevRuntimePromises.get(origin);
+	if (!pending) {
+		pending = import(/* @vite-ignore */ `${origin}/@vetta-plugin-dev-preamble`)
+			.then(() => undefined)
+			.catch((error: unknown) => {
+				pluginDevRuntimePromises.delete(origin);
+				throw error;
+			});
+		pluginDevRuntimePromises.set(origin, pending);
+	}
+	await pending;
+}
+
+function getLatestPluginDevModule(pluginId: string): unknown {
+	return (globalThis as typeof globalThis & PluginDevModuleGlobal).__VETTA_PLUGIN_DEV_MODULES__?.get(pluginId);
+}
 
 function extractReloadToken(entryUrl: string): string | null {
 	try {
@@ -1437,6 +1462,7 @@ async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> 
 	if (!moduleFederation) {
 		throw new Error("Module Federation plugin is missing moduleFederation metadata");
 	}
+	await ensurePluginDevRuntime(plugin);
 	const host = getModuleFederationHost();
 	const remote = {
 		name: moduleFederation.remoteName,
@@ -1460,7 +1486,7 @@ async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> 
 	if (loaded == null) {
 		throw new Error(`Module Federation remote returned null: ${moduleFederation.remoteName}/${expose}`);
 	}
-	return assertPluginModule(loaded);
+	return assertPluginModule(getLatestPluginDevModule(plugin.id) ?? loaded);
 }
 
 export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void): Promise<LoadedPlugin> {
