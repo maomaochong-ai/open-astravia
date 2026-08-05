@@ -159,7 +159,6 @@ describe("node editor interaction boundary", () => {
 					connectedAssets={[]}
 					connectedPrompts={[]}
 					data={{ prompt: "" }}
-					hasGenerationError={false}
 					kind="image-generator"
 					mentionAssets={[]}
 					models={[]}
@@ -195,7 +194,6 @@ describe("node editor interaction boundary", () => {
 					},
 				]}
 				data={{ prompt: "Draft" }}
-				hasGenerationError={false}
 				kind="image-generator"
 				mentionAssets={[
 					{

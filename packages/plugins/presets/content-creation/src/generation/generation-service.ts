@@ -234,7 +234,6 @@ export class ContentGenerationService {
 		const assignment = assignContentReferenceSlots(model, fixedShapes, unassignedKinds, node.data.modeId);
 		const mode = assignment.mode;
 		if (!mode) throw new Error(`content model inputs are incompatible: ${model.providerId}/${model.modelId}`);
-		const references = await this.resolveReferences(candidates, assignment.assignedSlotIds);
 		const jobId = crypto.randomUUID();
 		const assetId = crypto.randomUUID();
 
@@ -247,6 +246,7 @@ export class ContentGenerationService {
 			{ type: "job.start", job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId } },
 		]);
 		try {
+			const references = await this.resolveReferences(candidates, assignment.assignedSlotIds);
 			const generated = await this.providers.generate({
 				modeId: mode.id,
 				providerId: model.providerId,

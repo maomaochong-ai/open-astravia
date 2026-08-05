@@ -39,7 +39,6 @@ interface ContentGeneratorComposerProps {
 	connectedPrompts: readonly ConnectedPromptSource[];
 	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
-	hasGenerationError: boolean;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onRunNode: () => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
@@ -54,7 +53,6 @@ export function ContentGeneratorComposer({
 	connectedPrompts,
 	mentionAssets,
 	referenceAssets,
-	hasGenerationError,
 	onUpdate,
 	onRunNode,
 	onImportReferences,
@@ -173,7 +171,6 @@ export function ContentGeneratorComposer({
 				disabled={isRunning}
 				onDraftChange={setDraft}
 				onCommit={commit}
-				onSubmit={submit}
 			/>
 			<div className="my-2 rounded-xl border border-border/50 bg-muted/15 px-2 py-1.5">
 				<div className="mb-1 flex items-center gap-1.5 px-0.5 text-[10px] text-muted-foreground">
@@ -208,9 +205,9 @@ export function ContentGeneratorComposer({
 					}}
 				/>
 			</div>
-			{compatibilityMessage || hasGenerationError ? (
+			{compatibilityMessage ? (
 				<p className="mb-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
-					{hasGenerationError ? t("error.generate") : compatibilityMessage}
+					{compatibilityMessage}
 				</p>
 			) : null}
 			<ContentGenerationControls

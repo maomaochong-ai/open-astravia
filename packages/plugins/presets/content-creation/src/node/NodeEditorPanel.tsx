@@ -48,7 +48,7 @@ export function NodeEditorPanel({
 		<div
 			{...props}
 			ref={panelRef}
-			className={`select-none ${className ?? ""}`}
+			className={`nowheel select-none ${className ?? ""}`}
 			data-node-editor-panel=""
 			onPointerDown={(event) => {
 				onPointerDown?.(event);

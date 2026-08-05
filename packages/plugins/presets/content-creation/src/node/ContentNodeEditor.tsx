@@ -36,7 +36,6 @@ interface ContentNodeEditorProps {
 	connectedPrompts: readonly ConnectedPromptSource[];
 	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
-	hasGenerationError: boolean;
 	focusPromptRequest: number;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onRunNode: () => Promise<void>;

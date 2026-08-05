@@ -29,7 +29,6 @@ interface ContentGeneratorPromptEditorProps {
 	disabled: boolean;
 	onDraftChange: (data: ContentNodeData) => void;
 	onCommit: (data: ContentNodeData) => void;
-	onSubmit: () => void;
 }
 
 export function ContentGeneratorPromptEditor({
@@ -39,7 +38,6 @@ export function ContentGeneratorPromptEditor({
 	disabled,
 	onDraftChange,
 	onCommit,
-	onSubmit,
 }: ContentGeneratorPromptEditorProps) {
 	const { t } = useTranslation();
 	const draftRef = useRef(data);
@@ -141,7 +139,6 @@ export function ContentGeneratorPromptEditor({
 			onResolveMention={resolveMention}
 			onChange={(document) => onDraftChange(updateDraft(document))}
 			onCommit={(document) => onCommit(updateDraft(document))}
-			onSubmit={onSubmit}
 		/>
 	);
 }

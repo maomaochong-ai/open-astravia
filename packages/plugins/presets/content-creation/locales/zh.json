@@ -181,7 +181,6 @@
 	"state.loading": "正在加载内容创作项目…",
 	"error.load": "无法加载内容创作项目",
 	"error.save": "无法保存内容创作项目",
-	"error.generate": "内容生成失败，请检查模型设置或稍后重试",
 	"error.importReference": "无法导入参考素材，请检查素材类型与模型能力",
 	"error.importAsset": "无法导入素材，请检查文件类型后重试"
 }

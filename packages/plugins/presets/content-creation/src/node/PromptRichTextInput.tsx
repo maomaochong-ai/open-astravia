@@ -36,7 +36,6 @@ interface PromptRichTextInputProps {
 	onResolveMention: (option: PromptMentionOption) => PromptMentionInsertion | null;
 	onChange: (document: ContentPromptDocument) => void;
 	onCommit: (document: ContentPromptDocument) => void;
-	onSubmit?: () => void;
 	onUpload?: () => void;
 	uploadTitle?: string;
 }
@@ -58,7 +57,6 @@ export function PromptRichTextInput({
 	onResolveMention,
 	onChange,
 	onCommit,
-	onSubmit,
 	onUpload,
 	uploadTitle,
 }: PromptRichTextInputProps) {
@@ -239,10 +237,6 @@ export function PromptRichTextInput({
 				if (option) selectMention(option);
 				return;
 			}
-		}
-		if (onSubmit && event.key === "Enter" && !event.shiftKey) {
-			event.preventDefault();
-			onSubmit();
 		}
 	};
 

@@ -41,7 +41,6 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	locked: boolean;
 	models: readonly ContentModelDescriptor[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
-	hasGenerationError: boolean;
 	onDelete: () => void;
 	onDuplicate: () => void;
 	onToggleLock: () => void;
@@ -210,7 +209,6 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						connectedPrompts={data.connectedPrompts}
 						mentionAssets={data.mentionAssets}
 						referenceAssets={data.referenceAssets}
-						hasGenerationError={data.hasGenerationError}
 						focusPromptRequest={focusPromptRequest}
 						onUpdate={data.onUpdate}
 						onRunNode={data.onRunNode}

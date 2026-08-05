@@ -44,6 +44,22 @@ describe("ContentGenerationService", () => {
 		expect(project?.assets).toHaveLength(0);
 	});
 
+	it("assigns reference-resolution failures to the corresponding node job", async () => {
+		const fixture = await createFixture();
+		await fixture.service.importReferences("C:/project", "image", [
+			{ name: "missing.png", mimeType: "image/png", data: "reference-data" },
+		]);
+		fixture.read.mockRejectedValueOnce(new Error("reference unavailable"));
+
+		await expect(fixture.service.runNode("C:/project", "image")).rejects.toThrow(
+			"reference unavailable",
+		);
+		const project = fixture.workspace.getSnapshot("C:/project");
+		expect(project?.graph.nodes.find((node) => node.id === "image")?.status).toBe("failed");
+		expect(project?.jobs[0]).toMatchObject({ status: "failed", error: "reference unavailable" });
+		expect(fixture.generate).not.toHaveBeenCalled();
+	});
+
 	it("runs video nodes through the same mode-based orchestration", async () => {
 		const fixture = await createFixture("video-generator");
 

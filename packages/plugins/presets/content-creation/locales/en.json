@@ -181,7 +181,6 @@
 	"state.loading": "Loading content project…",
 	"error.load": "Unable to load the content project",
 	"error.save": "Unable to save the content project",
-	"error.generate": "Content generation failed. Check model settings or try again later.",
 	"error.importReference": "Unable to import the reference. Check its media type and the selected model.",
 	"error.importAsset": "Unable to import the asset. Check the file type and try again."
 }

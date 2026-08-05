@@ -74,12 +74,11 @@ export function ContentCreationPanel() {
 			try {
 				setError(null);
 				await generation.runNode(cwd, nodeId);
-			} catch (generationError) {
-				setError(t("error.generate"));
-				notifyContentCreationError(t("error.generate"), generationError);
+			} catch {
+				// Generation failures are persisted on the node job and rendered there.
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation],
 	);
 	const importReferences = useCallback(
 		async (nodeId: string, files: readonly ImportedContentReference[]) => {

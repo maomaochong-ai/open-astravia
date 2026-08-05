@@ -95,7 +95,6 @@ export function toContentFlowNodes(
 				locked: Boolean(node.locked),
 				models,
 				referenceAssets,
-				hasGenerationError: job?.status === "failed",
 				onDelete: () => actions.onDelete(node.id),
 				onDuplicate: () => actions.onDuplicate(node.id),
 				onToggleLock: () => actions.onToggleLock(node.id),
