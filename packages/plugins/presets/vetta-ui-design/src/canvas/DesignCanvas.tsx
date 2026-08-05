@@ -931,6 +931,27 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				) : null}
 			</div>
 
+			{/* 零 frame 引导：新建的设计稿不预置任何画框（不替用户押尺寸和品类），
+			    所以画布第一眼是空的——把两条出路指出来。pointer-events-none：
+			    别挡住用 Frame 工具在这片区域拖框。 */}
+			{manifest.frames.length === 0 ? (
+				<div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 text-center">
+					<svg
+						viewBox="0 0 24 24"
+						className="size-8 text-muted-foreground opacity-50"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeDasharray="3 3"
+						aria-hidden
+					>
+						<rect x="3" y="3" width="18" height="18" rx="2" />
+					</svg>
+					<span className="text-sm font-medium text-foreground">{t("canvas.frames.empty.title")}</span>
+					<p className="max-w-64 text-xs text-muted-foreground">{t("canvas.frames.empty.desc")}</p>
+				</div>
+			) : null}
+
 			{/* Pan shield: 托手工具或按住空格时，盖住所有 frame 接管拖动（Figma 行为），
 			    frame 内起手也只平移、不选中。 */}
 			{panActive ? <div className="absolute inset-0 z-10" style={{ cursor: "grab" }} /> : null}

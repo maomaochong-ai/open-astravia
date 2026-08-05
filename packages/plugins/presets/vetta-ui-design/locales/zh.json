@@ -8,6 +8,8 @@
 	"canvas.empty.title": "还没有设计文档",
 	"canvas.empty.desc": "新建一个 .vetd 设计文档，或在对话里让 Vetta 帮你创建。",
 	"canvas.empty.create": "新建设计",
+	"canvas.frames.empty.title": "还没有画框",
+	"canvas.frames.empty.desc": "用工具栏的「新建 Frame」拖出一个画框，或直接告诉 Vetta 你想设计什么。",
 	"canvas.picker.label": "设计文档",
 	"canvas.refresh": "刷新画布（重新加载所有画框的最新代码）",
 	"canvas.export": "导出分享",

@@ -66,7 +66,9 @@ the common case, not the only one — see "Pick the product type" below.
 ## Before you write
 
 - New document: call `vetd_create` (it scaffolds and opens the canvas). Never
-  scaffold the manifest by hand.
+  scaffold the manifest by hand. It creates NO frames — the canvas deliberately
+  starts empty rather than guessing a size, so decide the product type first
+  (below) and write the frames yourself.
 - Existing document: call `vetd_status` first for the frame ids and sizes, read
   `theme.css`, and list `components/`. Reuse what is there — do not invent a
   second button or a second shade of the brand color.

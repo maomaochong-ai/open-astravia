@@ -51,8 +51,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				ok: true,
 				vetdPath: result.vetdPath,
 				sourcesDir: result.dirPath,
-				firstFrame: `${result.dirPath}/${result.firstFrameFile}`,
-				note: "Design created and opened on the canvas. Add frames as frames/<id>.tsx with `export const frame = { width, height, title }`; shared color tokens live in theme.css. Do NOT edit the .vetd manifest — the canvas owns it.",
+				note: "Design created and opened on the canvas. It has NO frames yet — pick the frame sizes from the product type (screen / slide / poster / …) and write them as frames/<id>.tsx with `export const frame = { width, height, title }`; shared color tokens live in theme.css. Do NOT edit the .vetd manifest — the canvas owns it.",
 			};
 		},
 	});

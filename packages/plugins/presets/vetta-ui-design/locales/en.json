@@ -8,6 +8,8 @@
 	"canvas.empty.title": "No design documents yet",
 	"canvas.empty.desc": "Create a .vetd design document, or ask Vetta to create one in the conversation.",
 	"canvas.empty.create": "New design",
+	"canvas.frames.empty.title": "No frames yet",
+	"canvas.frames.empty.desc": "Drag one out with the frame tool in the toolbar, or just tell Vetta what you want to design.",
 	"canvas.picker.label": "Design document",
 	"canvas.refresh": "Refresh canvas (reload every frame with the latest code)",
 	"canvas.export": "Export & share",
