@@ -168,20 +168,16 @@ export function ControlBar({
 		];
 		if (exportableCount > 0) {
 			items.push({ type: "divider", key: "divider-export" });
+			// 纯图标方块：带文字会把 dock 撑长约 90px，窄屏直接撞上底部居中的「让 Vetta 调整」。
+			// 说明文字交给 dock 的峰值浮标签，主题色底把它和前面的工具按钮区分开。
 			items.push({
 				type: "item",
 				key: "export",
 				label: t("controlbar.exportMockup", { count: exportableCount }),
 				active: false,
 				accent: true,
-				wide: true,
 				onClick: onExport,
-				content: (
-					<span className="flex items-center gap-1.5 text-xs font-medium">
-						{icons.mockup}
-						{t("controlbar.exportMockup.label")}
-					</span>
-				),
+				content: icons.mockup,
 			});
 		}
 		return items;
