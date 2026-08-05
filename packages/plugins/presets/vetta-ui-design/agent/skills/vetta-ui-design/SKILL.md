@@ -51,15 +51,29 @@ the common case, not the only one — see "Pick the product type" below.
    `lucide`, `tabler`, `mdi`, `simple-icons` (brand logos). Prefer these.
 6. Extract repeated UI into `components/` and import with relative paths
    (`../components/Button`). Frames may import each other's components but not
-   other frames. Local images go in `assets/` and are imported relatively
-   (`import hero from "../assets/hero.png"`). Remote URLs work but break
-   offline — prefer local assets or CSS gradients.
-7. TypeScript + Tailwind v4 utilities only; no extra npm dependencies (the
+   other frames.
+7. **Never point an `<img>` (or `background-image`) at a remote URL.** Images go
+   in `assets/` and are imported relatively
+   (`import hero from "../assets/hero.png"`); otherwise use a CSS gradient, a
+   solid token color, or an Iconify glyph as the placeholder.
+   This is not a style preference. Screenshots (canvas thumbnails, "让 Vetta
+   调整", 导出渲染图) must re-`fetch` every image and inline it as a data URL —
+   the browser cannot export a canvas tainted by a cross-origin image. So a
+   remote URL that renders perfectly on screen will still:
+   - **fail** the shot whenever `fetch` can't get it (CDN without CORS headers,
+     404, offline) — that image comes out blank, and the failure is cached for
+     the rest of the frame's life;
+   - **slow it down** by a full network round trip per image; a frame with
+     dozens of remote images turns a ~100ms shot into seconds.
+
+   Local assets are served same-origin by the engine dev server and have
+   neither problem.
+8. TypeScript + Tailwind v4 utilities only; no extra npm dependencies (the
    shared engine has react/react-dom + Tailwind + Iconify — nothing else).
    Animations: Tailwind transitions/keyframes or hand-rolled CSS.
    **No web fonts** — only the system font stack is available. Build type
    contrast with size/weight/tracking, not typeface choice.
-8. **Frame id = file basename.** Create a frame by writing
+9. **Frame id = file basename.** Create a frame by writing
    `frames/<kebab-id>.tsx`; delete one by deleting that file (the canvas
    reconciles). Rename the title via the meta, not the manifest.
 
