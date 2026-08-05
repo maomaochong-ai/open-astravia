@@ -4,6 +4,7 @@ import { DesignSystemPreview } from "../canvas/DesignSystemPreview";
 import { designSystemById } from "../design-systems/index";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSystemCardPayload } from "./design-system-card";
+import { SwiperShell } from "./SwiperShell";
 
 /**
  * 会话里的设计体系选择卡（vetd_design_systems 的 present 用法渲染）：候选体系
@@ -52,9 +53,13 @@ export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 
 	return (
 		<div className="flex flex-col gap-2 py-1">
-			<div className="overflow-x-auto">
-				<div className="flex items-stretch gap-2.5">
-					{systems.map((system) => {
+			<SwiperShell
+				className="items-stretch gap-2.5"
+				prevLabel={t("ds.card.prev")}
+				nextLabel={t("ds.card.next")}
+				resetKey={systems.length}
+			>
+				{systems.map((system) => {
 						const picked = chosen === system.id;
 						const locked = chosen !== null && !picked;
 						return (
@@ -89,9 +94,8 @@ export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 								</div>
 							</button>
 						);
-					})}
-				</div>
-			</div>
+				})}
+			</SwiperShell>
 			{payload.allowSkip !== false ? (
 				<div>
 					<button

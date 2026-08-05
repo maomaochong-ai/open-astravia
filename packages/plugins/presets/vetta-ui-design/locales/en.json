@@ -33,6 +33,8 @@
 	"ds.vibe.light": "Light system",
 	"ds.vibe.dark": "Dark system",
 	"ds.card.picked": "Picked",
+	"ds.card.prev": "Previous",
+	"ds.card.next": "Next",
 	"ds.card.skip": "No template",
 	"ds.card.sendFailed": "Failed to send your choice",
 	"ds.category.dev": "Dev tools",

@@ -33,6 +33,8 @@
 	"ds.vibe.light": "亮色体系",
 	"ds.vibe.dark": "暗色体系",
 	"ds.card.picked": "已选择",
+	"ds.card.prev": "上一屏",
+	"ds.card.next": "下一屏",
 	"ds.card.skip": "不使用模板",
 	"ds.card.sendFailed": "发送选择失败",
 	"ds.category.dev": "开发者工具",
