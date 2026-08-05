@@ -2,7 +2,7 @@ import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
-import type { ImportedContentReference } from "../generation/types";
+import type { ImportedContentAsset, ImportedContentReference } from "../generation/types";
 import {
 	getContentCreationWorkspace,
 	getContentGenerationService,
@@ -73,6 +73,18 @@ export function ContentCreationPanel() {
 		},
 		[cwd, generation, t],
 	);
+	const importAssets = useCallback(
+		async (nodeId: string, files: readonly ImportedContentAsset[]) => {
+			try {
+				setError(null);
+				await generation.importAssets(cwd, nodeId, files);
+			} catch (importError) {
+				setError(t("error.importAsset"));
+				notifyContentCreationError(t("error.importAsset"), importError);
+			}
+		},
+		[cwd, generation, t],
+	);
 
 	if (!project) {
 		return (
@@ -95,6 +107,7 @@ export function ContentCreationPanel() {
 					models={models}
 					onDispatch={dispatch}
 					onRunNode={runNode}
+					onImportAssets={importAssets}
 					onImportReferences={importReferences}
 				/>
 			</main>

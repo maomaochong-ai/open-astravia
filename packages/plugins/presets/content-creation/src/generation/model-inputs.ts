@@ -52,7 +52,7 @@ export function listAcceptedReferenceKinds(
 	model: ContentModelDescriptor,
 	references: readonly ContentReferenceShape[],
 ): ContentReferenceKind[] {
-	const kinds: ContentReferenceKind[] = ["image", "video"];
+	const kinds: ContentReferenceKind[] = ["image", "video", "audio"];
 	return kinds.filter((kind) =>
 		model.modes.some((mode) =>
 			mode.inputs.some((slot) =>

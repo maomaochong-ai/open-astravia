@@ -2,9 +2,18 @@ import type { Connection, Edge } from "@xyflow/react";
 import { CONTENT_FLOW_SOURCE_HANDLE_ID, CONTENT_FLOW_TARGET_HANDLE_ID } from "./flow-handles";
 import { getContentNodeSize } from "../node/geometry";
 import type { ContentNodeData, ContentProjectDocument } from "../project/types";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import type { ContentFlowNode } from "../node/ContentNodeCard";
 import { resolveContentConnection, type ResolvedContentConnection } from "../node/connections";
+import {
+	isContentInputBindingAvailable,
+	listConnectedContentAssets,
+	listContentNodeAssets,
+} from "../node/material-assets";
 
 export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
@@ -13,6 +22,7 @@ export interface ContentNodeActions {
 	onUpdate: (nodeId: string, data: ContentNodeData) => Promise<void>;
 	onResize: (nodeId: string, position: { x: number; y: number }, width: number, height: number) => void;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline: (nodeId: string) => Promise<void>;
 }
@@ -31,10 +41,13 @@ export function toContentFlowNodes(
 	return project.graph.nodes.map((node) => {
 		const fallbackSize = getContentNodeSize(node.kind, node.data.aspectRatio);
 		const job = project.jobs.filter((candidate) => candidate.nodeId === node.id).at(-1);
+		const assets = listContentNodeAssets(project, node);
 		const referenceAssets = (node.data.inputs ?? []).flatMap((binding) => {
+			if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
 			const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
 			return asset ? [{ binding, asset }] : [];
 		});
+		const connectedAssets = listConnectedContentAssets(project, node.id);
 		return {
 			...fallbackSize,
 			width: node.width ?? fallbackSize.width,
@@ -47,6 +60,8 @@ export function toContentFlowNodes(
 			data: {
 				kind: node.kind,
 				nodeData: node.data,
+				assets,
+				connectedAssets,
 				assetUrl: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.url : undefined,
 				assetKind: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.kind : undefined,
 				status: node.status,
@@ -61,6 +76,7 @@ export function toContentFlowNodes(
 				onUpdate: (data) => actions.onUpdate(node.id, data),
 				onResize: (position, width, height) => actions.onResize(node.id, position, width, height),
 				onRunNode: () => actions.onRunNode(node.id),
+				onImportAssets: (files) => actions.onImportAssets(node.id, files),
 				onImportReferences: (files) => actions.onImportReferences(node.id, files),
 				onAddToTimeline:
 					node.kind === "image-generator" || node.kind === "video-generator" || node.kind === "asset"

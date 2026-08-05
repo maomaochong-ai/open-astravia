@@ -33,6 +33,7 @@
 
 ### Added
 
+- Upgraded asset nodes into scalable image, video, and audio collections with compact canvas summaries, incremental management, and model-compatible selection from connected generation nodes.
 - Added explicit select and hand tools to the canvas dock with visible active state.
 - Added the initial content-creation canvas and multitrack composition preset foundation.
 - Added reference-project design notes, a schema-driven node registry, typed ports, connection validation, compatible-node creation, and node workflow tests.

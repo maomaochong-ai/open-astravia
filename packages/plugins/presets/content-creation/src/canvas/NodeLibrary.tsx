@@ -11,7 +11,7 @@ import { NodeKindIcon } from "../node/NodeKindIcon";
 import type { CanvasTool } from "./canvas-tools";
 
 const CATEGORY_ORDER: ContentNodeCategory[] = ["input", "generation", "resource", "output"];
-const QUICK_CREATE_KINDS: readonly ContentNodeKind[] = ["prompt", "image-generator", "video-generator"];
+const QUICK_CREATE_KINDS: readonly ContentNodeKind[] = ["prompt", "asset", "image-generator", "video-generator"];
 
 const ACCENT_CLASS: Record<ContentNodeDefinition["accent"], string> = {
 	neutral: "bg-muted text-muted-foreground",
@@ -42,7 +42,7 @@ export function NodeDefinitionGrid({
 
 	if (!showCategories) {
 		return (
-			<div className="mt-4 grid grid-cols-3 gap-1.5 max-[900px]:grid-cols-2">
+			<div className="mt-4 grid grid-cols-4 gap-1.5 max-[900px]:grid-cols-2">
 				{definitions.map((definition) => (
 					<NodeDefinitionButton key={definition.kind} definition={definition} onSelect={onSelect} compact={compact} />
 				))}

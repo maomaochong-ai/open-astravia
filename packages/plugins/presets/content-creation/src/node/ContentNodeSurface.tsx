@@ -1,7 +1,14 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Spin } from "@vetta/ui";
 import { memo } from "react";
-import type { ContentNodeData, ContentNodeKind, ContentNodeStatus, GenerationJob } from "../project/types";
+import type {
+	ContentAsset,
+	ContentNodeData,
+	ContentNodeKind,
+	ContentNodeStatus,
+	GenerationJob,
+} from "../project/types";
+import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
 import { NodeKindIcon } from "./NodeKindIcon";
 
 interface ContentNodeSurfaceProps {
@@ -11,6 +18,7 @@ interface ContentNodeSurfaceProps {
 	descriptionKey: string;
 	assetUrl?: string;
 	assetKind?: "image" | "video" | "audio";
+	assets?: readonly ContentAsset[];
 	job?: GenerationJob;
 }
 
@@ -72,12 +80,15 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	descriptionKey,
 	assetUrl,
 	assetKind,
+	assets = [],
 	job,
 }: ContentNodeSurfaceProps) {
 	const { t } = useTranslation();
-	const isMedia = kind === "image-generator" || kind === "video-generator" || kind === "asset";
+	const isMedia = kind === "image-generator" || kind === "video-generator";
 	const isBusy = status === "running" || status === "queued";
 	const emptyText = kind === "prompt" ? t("node.prompt.doubleClickToEdit") : t(descriptionKey);
+
+	if (kind === "asset") return <ContentAssetNodeSurface assets={assets} />;
 
 	if (isMedia) {
 		return (

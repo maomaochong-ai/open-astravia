@@ -19,14 +19,15 @@ describe("node creation surfaces", () => {
 		}
 	});
 
-	it("offers the three primary creation choices on an empty canvas", () => {
+	it("offers prompt, asset, image, and video nodes on an empty canvas", () => {
 		const markup = renderToStaticMarkup(<EmptyCanvasStarter onAdd={() => undefined} />);
 
 		expect(markup).toContain("graph.empty.title");
 		expect(markup).toContain("node.kind.prompt");
+		expect(markup).toContain("node.kind.asset");
 		expect(markup).toContain("node.kind.image-generator");
 		expect(markup).toContain("node.kind.video-generator");
-		expect(markup.match(/<button/g)).toHaveLength(3);
+		expect(markup.match(/<button/g)).toHaveLength(4);
 	});
 
 	it("renders mutually exclusive select and pan tools in the canvas dock", () => {

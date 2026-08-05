@@ -13,16 +13,23 @@ import type {
 	ContentNodeStatus,
 	GenerationJob,
 } from "../project/types";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import { useContentCanvasSelectionCount } from "../canvas/ContentCanvasSelectionContext";
 import { ContentNodeHeader } from "./ContentNodeHeader";
 import { ContentNodeHandle } from "./ContentNodeHandle";
 import { ContentNodeSurface } from "./ContentNodeSurface";
 import { ContentNodeEditor } from "./ContentNodeEditor";
+import type { ConnectedContentAsset } from "./material-assets";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
 	kind: ContentNodeKind;
 	nodeData: ContentNodeData;
+	assets: readonly ContentAsset[];
+	connectedAssets: readonly ConnectedContentAsset[];
 	assetUrl?: string;
 	assetKind?: AssetKind;
 	status: ContentNodeStatus;
@@ -37,6 +44,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onResize: (position: CanvasPosition, width: number, height: number) => void;
 	onRunNode: () => Promise<void>;
+	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
@@ -169,6 +177,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					status={data.status}
 					data={data.nodeData}
 					descriptionKey={definition.descriptionKey}
+					assets={data.assets}
 					assetUrl={data.assetUrl}
 					assetKind={data.assetKind}
 					job={data.job}
@@ -196,11 +205,14 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						data={data.nodeData}
 						properties={definition.properties}
 						models={data.models}
+						assets={data.assets}
+						connectedAssets={data.connectedAssets}
 						referenceAssets={data.referenceAssets}
 						hasGenerationError={data.hasGenerationError}
 						focusPromptRequest={focusPromptRequest}
 						onUpdate={data.onUpdate}
 						onRunNode={data.onRunNode}
+						onImportAssets={data.onImportAssets}
 						onImportReferences={data.onImportReferences}
 						onAddToTimeline={data.onAddToTimeline}
 					/>

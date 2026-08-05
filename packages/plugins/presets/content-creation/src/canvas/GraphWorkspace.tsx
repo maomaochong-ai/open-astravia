@@ -26,7 +26,11 @@ import {
 	layoutContentNodes,
 } from "../node/layout";
 import type { ContentNode, ContentNodeKind, ContentProjectDocument } from "../project/types";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import { getRegisterShortcutScope } from "../plugin/plugin-ui";
 import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
@@ -65,10 +69,18 @@ interface GraphWorkspaceProps {
 	models: readonly ContentModelDescriptor[];
 	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
 }
 
-export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImportReferences }: GraphWorkspaceProps) {
+export function GraphWorkspace({
+	project,
+	models,
+	onDispatch,
+	onRunNode,
+	onImportAssets,
+	onImportReferences,
+}: GraphWorkspaceProps) {
 	const flowContainerRef = useRef<HTMLDivElement>(null);
 	const flowInstanceRef = useRef<ReactFlowInstance<ContentFlowNode, Edge> | null>(null);
 	const alignmentGuidesLayerRef = useRef<AlignmentGuidesLayerHandle>(null);
@@ -145,6 +157,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 				void onDispatch([{ type: "node.resize", nodeId, position, width, height }]);
 			},
 			onRunNode,
+			onImportAssets,
 			onImportReferences,
 			onAddToTimeline: (nodeId) =>
 				onDispatch([
@@ -161,7 +174,7 @@ export function GraphWorkspace({ project, models, onDispatch, onRunNode, onImpor
 					},
 				]),
 		}),
-		[onDispatch, onImportReferences, onRunNode, project],
+		[onDispatch, onImportAssets, onImportReferences, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
 		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions),

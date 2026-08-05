@@ -15,6 +15,7 @@ export interface ContentNodeData {
 	label?: string;
 	prompt?: string;
 	assetId?: string;
+	assetIds?: string[];
 	aspectRatio?: string;
 	quality?: string;
 	duration?: number;
@@ -29,6 +30,7 @@ export interface ContentNodeInputBinding {
 	id: string;
 	assetId: string;
 	slotId: string;
+	sourceNodeId?: string;
 }
 
 export interface ContentNode {

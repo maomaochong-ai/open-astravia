@@ -48,6 +48,7 @@ describe("GraphWorkspace mouse interactions", () => {
 				models={[]}
 				onDispatch={async () => undefined}
 				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
 				onImportReferences={async () => undefined}
 			/>,
 		);

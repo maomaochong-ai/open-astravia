@@ -1,7 +1,11 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
 import { type ChangeEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ImportedContentAsset,
+	ImportedContentReference,
+} from "../generation/types";
 import type {
 	ContentAsset,
 	ContentNodeData,
@@ -10,7 +14,9 @@ import type {
 	ContentNodeStatus,
 } from "../project/types";
 import type { ContentNodePropertyDefinition } from "./definitions";
+import { ContentAssetNodeEditor } from "./ContentAssetNodeEditor";
 import { ContentGeneratorComposer } from "./ContentGeneratorComposer";
+import type { ConnectedContentAsset } from "./material-assets";
 
 const FIELD_CLASS =
 	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/50";
@@ -21,11 +27,14 @@ interface ContentNodeEditorProps {
 	data: ContentNodeData;
 	properties: readonly ContentNodePropertyDefinition[];
 	models: readonly ContentModelDescriptor[];
+	assets: readonly ContentAsset[];
+	connectedAssets: readonly ConnectedContentAsset[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
 	focusPromptRequest: number;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onRunNode: () => Promise<void>;
+	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
@@ -33,6 +42,16 @@ interface ContentNodeEditorProps {
 export function ContentNodeEditor(props: ContentNodeEditorProps) {
 	if (props.kind === "image-generator" || props.kind === "video-generator") {
 		return <ContentGeneratorComposer {...props} kind={props.kind} />;
+	}
+	if (props.kind === "asset") {
+		return (
+			<ContentAssetNodeEditor
+				data={props.data}
+				assets={props.assets}
+				onUpdate={props.onUpdate}
+				onImport={props.onImportAssets}
+			/>
+		);
 	}
 	return <SimpleContentNodeEditor {...props} />;
 }

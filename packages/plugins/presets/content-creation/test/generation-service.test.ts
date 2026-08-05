@@ -26,7 +26,11 @@ describe("ContentGenerationService", () => {
 			data: { assetId: expect.any(String) },
 		});
 		expect(result.jobs[0]).toMatchObject({ status: "succeeded", provider: "mock", model: "mock-image" });
-		expect(result.assets[0]).toMatchObject({ kind: "image", mimeType: "image/png", url: "vetta-media://mock" });
+		expect(result.assets[0]).toMatchObject({
+			kind: "image",
+			mimeType: "image/png",
+			url: expect.stringMatching(/^vetta-media:\/\//),
+		});
 	});
 
 	it("marks the job and node as failed when the provider rejects", async () => {
@@ -60,6 +64,24 @@ describe("ContentGenerationService", () => {
 			width: 1920,
 			height: 1080,
 		});
+	});
+
+	it("imports mixed media into one asset node without creating one node per file", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [
+			{ type: "node.add", node: { id: "assets", kind: "asset", position: { x: 500, y: 0 } } },
+		]);
+
+		const result = await fixture.service.importAssets("C:/project", "assets", [
+			{ name: "reference.png", mimeType: "image/png", data: "image" },
+			{ name: "clip.mp4", mimeType: "video/mp4", data: "video" },
+			{ name: "voice.mp3", mimeType: "audio/mpeg", data: "audio" },
+		]);
+
+		expect(result.graph.nodes.find((node) => node.id === "assets")?.data.assetIds).toHaveLength(3);
+		expect(result.graph.nodes.filter((node) => node.kind === "asset")).toHaveLength(1);
+		expect(result.assets.map((asset) => asset.kind)).toEqual(["image", "video", "audio"]);
+		expect(fixture.put).toHaveBeenCalledTimes(3);
 	});
 });
 
@@ -110,10 +132,10 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 	};
 	const providers = new ContentProviderRegistry();
 	providers.register(provider);
-	const put = vi.fn<ContentArtifactStore["put"]>().mockResolvedValue({
-		url: "vetta-media://mock",
-		mimeType: kind === "video-generator" ? "video/mp4" : "image/png",
-	});
+	const put = vi.fn<ContentArtifactStore["put"]>().mockImplementation(async (id, content) => ({
+		url: `vetta-media://${id}`,
+		mimeType: content.mimeType,
+	}));
 	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue(null);
 	const service = new ContentGenerationService(workspace, providers, { put, read });
 	return { service, workspace, generate, put };

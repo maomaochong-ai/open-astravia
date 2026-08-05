@@ -4,6 +4,7 @@ import {
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
 	resolveContentGenerationMode,
+	slotIdForReferenceKind,
 } from "../generation/model-inputs";
 import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
 import type {
@@ -15,12 +16,14 @@ import type {
 } from "../project/types";
 import { ContentGenerationControls } from "./ContentGenerationControls";
 import { ContentReferenceInput } from "./ContentReferenceInput";
+import type { ConnectedContentAsset } from "./material-assets";
 
 interface ContentGeneratorComposerProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
 	status: ContentNodeStatus;
 	data: ContentNodeData;
 	models: readonly ContentModelDescriptor[];
+	connectedAssets: readonly ConnectedContentAsset[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
@@ -33,6 +36,7 @@ export function ContentGeneratorComposer({
 	status,
 	data,
 	models,
+	connectedAssets,
 	referenceAssets,
 	hasGenerationError,
 	onUpdate,
@@ -46,11 +50,24 @@ export function ContentGeneratorComposer({
 		() => models.filter((model) => model.outputKind === outputKind),
 		[models, outputKind],
 	);
-	const referenceShapes = referenceAssets.flatMap(({ binding, asset }) =>
-		asset.kind === "image" || asset.kind === "video"
-			? [{ slotId: binding.slotId, kind: asset.kind }]
-			: [],
+	const assetById = useMemo(
+		() =>
+			new Map(
+				[
+					...referenceAssets.map(({ asset }) => asset),
+					...connectedAssets.map(({ asset }) => asset),
+				].map((asset) => [asset.id, asset]),
+			),
+		[connectedAssets, referenceAssets],
 	);
+	const draftReferenceAssets = (draft.inputs ?? []).flatMap((binding) => {
+		const asset = assetById.get(binding.assetId);
+		return asset ? [{ binding, asset }] : [];
+	});
+	const referenceShapes = draftReferenceAssets.map(({ binding, asset }) => ({
+		slotId: binding.slotId,
+		kind: asset.kind,
+	}));
 	const selectedModel =
 		availableModels.find(
 			(model) => model.providerId === draft.providerId && model.modelId === draft.modelId,
@@ -59,6 +76,15 @@ export function ContentGeneratorComposer({
 		? resolveContentGenerationMode(selectedModel, referenceShapes, draft.modeId)
 		: { mode: null, reason: null };
 	const acceptedKinds = selectedModel ? listAcceptedReferenceKinds(selectedModel, referenceShapes) : [];
+	const selectedAssetIds = new Set(draftReferenceAssets.map(({ asset }) => asset.id));
+	const connectedReferenceOptions = connectedAssets
+		.filter(({ asset }) => !selectedAssetIds.has(asset.id))
+		.map((candidate) => ({
+			...candidate,
+			slotId: selectedModel
+				? slotIdForReferenceKind(selectedModel, referenceShapes, candidate.asset.kind)
+				: null,
+		}));
 	const isRunning = status === "running" || status === "queued";
 	const canGenerate = Boolean(selectedModel && resolution.mode && !isRunning);
 	const minimumWidth = kind === "image-generator" ? 360 : 400;
@@ -106,7 +132,8 @@ export function ContentGeneratorComposer({
 			onKeyDown={(event) => event.stopPropagation()}
 		>
 			<ContentReferenceInput
-				references={referenceAssets}
+				references={draftReferenceAssets}
+				connectedReferences={connectedReferenceOptions}
 				acceptedKinds={acceptedKinds}
 				disabled={isRunning}
 				onImport={async (files) => {
@@ -118,6 +145,16 @@ export function ContentGeneratorComposer({
 				}}
 				onRemove={(bindingId) => {
 					commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
+				}}
+				onSelectConnected={({ sourceNodeId, asset, slotId }) => {
+					if (!slotId) return;
+					commit({
+						...draft,
+						inputs: [
+							...(draft.inputs ?? []),
+							{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
+						],
+					});
 				}}
 			/>
 			<textarea

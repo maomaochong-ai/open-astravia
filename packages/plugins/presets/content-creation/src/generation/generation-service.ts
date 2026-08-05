@@ -1,9 +1,11 @@
 import type {
+	AssetKind,
 	ContentAsset,
 	ContentNode,
 	ContentNodeInputBinding,
 	ContentProjectDocument,
 } from "../project/types";
+import { isContentInputBindingAvailable, listContentNodeAssetIds } from "../node/material-assets";
 import type { ContentCreationWorkspace } from "../project/workspace";
 import {
 	listAcceptedReferenceKinds,
@@ -18,7 +20,7 @@ import type {
 	ContentGenerationOutputKind,
 	ContentGenerationReference,
 	ContentModelDescriptor,
-	ContentReferenceKind,
+	ImportedContentAsset,
 	ImportedContentReference,
 } from "./types";
 
@@ -49,6 +51,46 @@ export class ContentGenerationService {
 		return this.providers.listModels(outputKind);
 	}
 
+	async importAssets(
+		cwd: string | null,
+		nodeId: string,
+		files: readonly ImportedContentAsset[],
+	): Promise<ContentProjectDocument> {
+		if (files.length === 0) return await this.workspace.load(cwd);
+		const project = await this.workspace.load(cwd);
+		const node = requireNode(project, nodeId);
+		if (node.kind !== "asset") throw new Error(`node does not accept content assets: ${node.kind}`);
+
+		const pending: Array<{ asset: ContentAsset; file: ImportedContentAsset }> = [];
+		for (const file of files) {
+			const kind = assetKindForMimeType(file.mimeType);
+			if (!kind) throw new Error(`unsupported content asset type: ${file.mimeType}`);
+			const assetId = crypto.randomUUID();
+			pending.push({
+				file,
+				asset: {
+					id: assetId,
+					kind,
+					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
+					mimeType: file.mimeType,
+					url: "",
+					createdAt: new Date().toISOString(),
+				},
+			});
+		}
+
+		for (const item of pending) {
+			const stored = await this.artifacts.put(item.asset.id, item.file);
+			item.asset.url = stored.url;
+			item.asset.mimeType = stored.mimeType;
+		}
+		const assetIds = [...listContentNodeAssetIds(node.data), ...pending.map(({ asset }) => asset.id)];
+		return await this.workspace.dispatch(cwd, [
+			...pending.map(({ asset }) => ({ type: "asset.add" as const, asset })),
+			{ type: "node.update", nodeId, data: { assetId: undefined, assetIds } },
+		]);
+	}
+
 	async importReferences(
 		cwd: string | null,
 		nodeId: string,
@@ -70,7 +112,7 @@ export class ContentGenerationService {
 			file: ImportedContentReference;
 		}> = [];
 		for (const file of files) {
-			const kind = referenceKindForMimeType(file.mimeType);
+			const kind = assetKindForMimeType(file.mimeType);
 			if (!kind || !listAcceptedReferenceKinds(model, nextShapes).includes(kind)) {
 				throw new Error(`content model does not accept ${file.mimeType}: ${model.providerId}/${model.modelId}`);
 			}
@@ -176,7 +218,9 @@ export class ContentGenerationService {
 		project: ContentProjectDocument,
 		node: ContentNode,
 	): Promise<ContentGenerationReference[]> {
-		const bindings: ContentNodeInputBinding[] = [...(node.data.inputs ?? [])];
+		const bindings: ContentNodeInputBinding[] = (node.data.inputs ?? []).filter((binding) =>
+			isContentInputBindingAvailable(project, node.id, binding),
+		);
 		for (const edge of project.graph.edges.filter((candidate) => candidate.target === node.id)) {
 			if (edge.targetHandle === "prompt") continue;
 			const source = project.graph.nodes.find((candidate) => candidate.id === edge.source);
@@ -197,7 +241,7 @@ export class ContentGenerationService {
 		return await Promise.all(
 			uniqueBindings.map(async (binding) => {
 				const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-				if (!asset || (asset.kind !== "image" && asset.kind !== "video")) {
+				if (!asset) {
 					throw new Error(`content reference asset not found: ${binding.assetId}`);
 				}
 				const stored = await this.artifacts.read(asset.id);
@@ -232,13 +276,14 @@ function resolveBindingShapes(
 ): ContentReferenceShape[] {
 	return bindings.flatMap((binding) => {
 		const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-		return asset?.kind === "image" || asset?.kind === "video" ? [{ slotId: binding.slotId, kind: asset.kind }] : [];
+		return asset ? [{ slotId: binding.slotId, kind: asset.kind }] : [];
 	});
 }
 
-function referenceKindForMimeType(mimeType: string): ContentReferenceKind | null {
+function assetKindForMimeType(mimeType: string): AssetKind | null {
 	if (mimeType.startsWith("image/")) return "image";
 	if (mimeType.startsWith("video/")) return "video";
+	if (mimeType.startsWith("audio/")) return "audio";
 	return null;
 }
 
@@ -247,5 +292,8 @@ function extensionForMimeType(mimeType: string): string {
 	if (mimeType === "image/webp") return "webp";
 	if (mimeType === "video/webm") return "webm";
 	if (mimeType.startsWith("video/")) return "mp4";
+	if (mimeType === "audio/wav") return "wav";
+	if (mimeType === "audio/ogg") return "ogg";
+	if (mimeType.startsWith("audio/")) return "mp3";
 	return "png";
 }
