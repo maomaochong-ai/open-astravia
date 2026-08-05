@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	listConnectedPromptSources,
 	resolveConnectedPromptSource,
+	resolveConnectedPromptSources,
 	resolveContentPrompt,
 } from "../src/node/prompt-sources";
 import { createContentProject } from "../src/project/types";
@@ -134,5 +135,31 @@ describe("connected prompt sources", () => {
 		const source = listConnectedPromptSources(project, "generator")[0];
 		expect(source?.references.map(({ asset }) => asset.id)).toEqual(["second"]);
 		expect(source?.prompt).toBe("Mention @not-a-reference as ordinary text");
+	});
+
+	it("mixes local text with multiple connected prompt tokens in document order", () => {
+		const sources = [
+			{ nodeId: "first", prompt: "a quiet forest", references: [] },
+			{ nodeId: "second", prompt: "soft morning light", references: [] },
+		];
+		const data = {
+			promptDocument: {
+				version: 1 as const,
+				segments: [
+					{ type: "text" as const, text: "Create " },
+					{ type: "prompt-reference" as const, sourceNodeId: "first" },
+					{ type: "text" as const, text: " with " },
+					{ type: "prompt-reference" as const, sourceNodeId: "second" },
+				],
+			},
+		};
+
+		expect(resolveConnectedPromptSources(sources, data).map(({ nodeId }) => nodeId)).toEqual([
+			"first",
+			"second",
+		]);
+		expect(resolveContentPrompt(sources, data)).toBe(
+			"Create a quiet forest with soft morning light",
+		);
 	});
 });

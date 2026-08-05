@@ -11,6 +11,7 @@ interface ContentReferenceInputProps {
 	connectedReferences: readonly ConnectedReferenceOption[];
 	acceptedKinds: readonly ContentReferenceKind[];
 	disabled: boolean;
+	compact?: boolean;
 	onImport: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onRemove: (bindingId: string) => void;
 	onSelectConnected: (option: ConnectedReferenceOption) => void;
@@ -21,6 +22,7 @@ export function ContentReferenceInput({
 	connectedReferences,
 	acceptedKinds,
 	disabled,
+	compact = false,
 	onImport,
 	onRemove,
 	onSelectConnected,
@@ -36,11 +38,11 @@ export function ContentReferenceInput({
 	};
 
 	return (
-		<div className="flex min-h-14 flex-wrap items-start gap-1.5">
+		<div className={`flex flex-wrap items-start gap-1.5 ${compact ? "min-h-10" : "min-h-14"}`}>
 			{references.map(({ binding, asset }, index) => (
 				<div
 					key={binding.id}
-					className="group/reference relative size-14 shrink-0 overflow-hidden rounded-lg border border-border/75 bg-muted/45"
+					className={`group/reference relative shrink-0 overflow-hidden rounded-lg border border-border/75 bg-muted/45 ${compact ? "size-10" : "size-14"}`}
 				>
 					<ContentAssetThumbnail
 						asset={asset}
@@ -63,7 +65,7 @@ export function ContentReferenceInput({
 			))}
 			<button
 				type="button"
-				className="flex size-14 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/35 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+				className={`flex shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/35 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${compact ? "size-10" : "size-14"}`}
 				disabled={disabled || acceptedKinds.length === 0}
 				title={
 					acceptedKinds.length === 0
@@ -87,6 +89,7 @@ export function ContentReferenceInput({
 			<ConnectedAssetPicker
 				options={connectedReferences}
 				disabled={disabled}
+				compact={compact}
 				onSelect={onSelectConnected}
 			/>
 		</div>

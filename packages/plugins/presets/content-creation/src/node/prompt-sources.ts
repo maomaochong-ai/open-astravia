@@ -9,6 +9,7 @@ import { isContentInputBindingAvailable } from "./material-assets";
 import {
 	contentPromptTextFromData,
 	listContentPromptBindingIds,
+	listContentPromptSourceNodeIds,
 } from "./prompt-document";
 
 export const PROMPT_REFERENCE_SLOT_ID = "promptReferences";
@@ -68,17 +69,41 @@ export function resolveConnectedPromptSource(
 	sources: readonly ConnectedPromptSource[],
 	data: ContentNodeData,
 ): ConnectedPromptSource | null {
-	if (data.promptSourceNodeId === null) return null;
-	if (data.promptSourceNodeId) {
-		return sources.find((source) => source.nodeId === data.promptSourceNodeId) ?? null;
+	return resolveConnectedPromptSources(sources, data)[0] ?? null;
+}
+
+export function resolveConnectedPromptSources(
+	sources: readonly ConnectedPromptSource[],
+	data: ContentNodeData,
+): ConnectedPromptSource[] {
+	if (data.promptDocument) {
+		return listContentPromptSourceNodeIds(data.promptDocument).flatMap((sourceNodeId) => {
+			const source = sources.find((candidate) => candidate.nodeId === sourceNodeId);
+			return source ? [source] : [];
+		});
 	}
-	if (contentPromptTextFromData(data)) return null;
-	return sources[0] ?? null;
+	if (data.promptSourceNodeId === null) return [];
+	if (data.promptSourceNodeId) {
+		const source = sources.find((candidate) => candidate.nodeId === data.promptSourceNodeId);
+		return source ? [source] : [];
+	}
+	if (contentPromptTextFromData(data)) return [];
+	return sources[0] ? [sources[0]] : [];
 }
 
 export function resolveContentPrompt(
 	sources: readonly ConnectedPromptSource[],
 	data: ContentNodeData,
 ): string {
+	if (data.promptDocument) {
+		return data.promptDocument.segments
+			.flatMap((segment) => {
+				if (segment.type === "text") return [segment.text];
+				if (segment.type === "asset-reference") return [];
+				return [sources.find((source) => source.nodeId === segment.sourceNodeId)?.prompt ?? ""];
+			})
+			.join("")
+			.trim();
+	}
 	return resolveConnectedPromptSource(sources, data)?.prompt.trim() ?? contentPromptTextFromData(data);
 }

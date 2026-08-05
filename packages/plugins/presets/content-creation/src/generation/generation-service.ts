@@ -9,7 +9,7 @@ import { isContentInputBindingAvailable, listContentNodeAssetIds } from "../node
 import {
 	listConnectedPromptSources,
 	PROMPT_REFERENCE_SLOT_ID,
-	resolveConnectedPromptSource,
+	resolveConnectedPromptSources,
 	resolveContentPrompt,
 	type ConnectedPromptSource,
 } from "../node/prompt-sources";
@@ -112,8 +112,8 @@ export class ContentGenerationService {
 		const outputKind = requireOutputKind(node);
 		const existingBindings = node.data.inputs ?? [];
 		const promptSources = listConnectedPromptSources(project, node.id);
-		const selectedPrompt = resolveConnectedPromptSource(promptSources, node.data);
-		const existingCandidates = listGenerationReferenceCandidates(project, node, selectedPrompt);
+		const selectedPrompts = resolveConnectedPromptSources(promptSources, node.data);
+		const existingCandidates = listGenerationReferenceCandidates(project, node, selectedPrompts);
 		const fixedShapes = referenceShapes(existingCandidates.filter((candidate) => candidate.slotId));
 		const promptKinds = existingCandidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
 		const model = findSelectedModel(this.listModels(outputKind), node, fixedShapes, promptKinds);
@@ -223,10 +223,10 @@ export class ContentGenerationService {
 		const outputKind = requireOutputKind(node);
 		if (node.status === "running" || node.status === "queued") throw new Error(`node is already running: ${nodeId}`);
 		const promptSources = listConnectedPromptSources(project, node.id);
-		const selectedPrompt = resolveConnectedPromptSource(promptSources, node.data);
+		const selectedPrompts = resolveConnectedPromptSources(promptSources, node.data);
 		const prompt = resolveContentPrompt(promptSources, node.data);
 		if (!prompt) throw new Error("content generation requires a prompt");
-		const candidates = listGenerationReferenceCandidates(project, node, selectedPrompt);
+		const candidates = listGenerationReferenceCandidates(project, node, selectedPrompts);
 		const fixedShapes = referenceShapes(candidates.filter((candidate) => candidate.slotId));
 		const unassignedKinds = candidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
 		const model = findSelectedModel(this.listModels(outputKind), node, fixedShapes, unassignedKinds);
@@ -326,7 +326,7 @@ function findSelectedModel(
 function listGenerationReferenceCandidates(
 	project: ContentProjectDocument,
 	node: ContentNode,
-	promptSource: ConnectedPromptSource | null,
+	promptSources: readonly ConnectedPromptSource[],
 ): ReferenceCandidate[] {
 	const candidates: ReferenceCandidate[] = (node.data.inputs ?? []).flatMap((binding) => {
 		if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
@@ -346,8 +346,10 @@ function listGenerationReferenceCandidates(
 			slotId: asset.kind === "image" ? "referenceImages" : "referenceVideo",
 		});
 	}
-	for (const { binding, asset } of promptSource?.references ?? []) {
-		candidates.push({ id: `prompt:${promptSource?.nodeId}:${binding.id}`, asset });
+	for (const promptSource of promptSources) {
+		for (const { binding, asset } of promptSource.references) {
+			candidates.push({ id: `prompt:${promptSource.nodeId}:${binding.id}`, asset });
+		}
 	}
 	return candidates.filter(
 		(candidate, index) => candidates.findIndex((current) => current.asset.id === candidate.asset.id) === index,

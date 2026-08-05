@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	assignContentReferenceSlots,
 	listAcceptedReferenceKinds,
@@ -15,14 +15,14 @@ import type {
 	ContentNodeStatus,
 } from "../project/types";
 import { ContentGenerationControls } from "./ContentGenerationControls";
+import { ContentGeneratorPromptEditor } from "./ContentGeneratorPromptEditor";
 import { ContentReferenceInput } from "./ContentReferenceInput";
 import type { ConnectedContentAsset } from "./material-assets";
 import {
-	resolveConnectedPromptSource,
+	resolveConnectedPromptSources,
 	resolveContentPrompt,
 	type ConnectedPromptSource,
 } from "./prompt-sources";
-import { PromptSourceSelector } from "./PromptSourceSelector";
 
 interface ContentGeneratorComposerProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
@@ -76,9 +76,9 @@ export function ContentGeneratorComposer({
 		slotId: binding.slotId,
 		kind: asset.kind,
 	}));
-	const selectedPromptSource = resolveConnectedPromptSource(connectedPrompts, draft);
+	const selectedPromptSources = resolveConnectedPromptSources(connectedPrompts, draft);
 	const localAssetIds = new Set(draftReferenceAssets.map(({ asset }) => asset.id));
-	const promptReferenceAssets = (selectedPromptSource?.references ?? []).filter(
+	const promptReferenceAssets = selectedPromptSources.flatMap((source) => source.references).filter(
 		({ asset }, index, references) =>
 			!localAssetIds.has(asset.id) && references.findIndex((candidate) => candidate.asset.id === asset.id) === index,
 	);
@@ -113,7 +113,6 @@ export function ContentGeneratorComposer({
 	const resolvedPrompt = resolveContentPrompt(connectedPrompts, draft);
 	const canGenerate = Boolean(selectedModel && resolution.mode && resolvedPrompt && !isRunning);
 	const minimumWidth = kind === "image-generator" ? 360 : 400;
-	const promptRows = estimatePromptRows(resolvedPrompt);
 
 	useEffect(() => setDraft(data), [data]);
 
@@ -131,11 +130,6 @@ export function ContentGeneratorComposer({
 		};
 		setDraft(next);
 		void onUpdate(next).then(onRunNode);
-	};
-	const handlePromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-		if (event.key !== "Enter" || event.shiftKey) return;
-		event.preventDefault();
-		submit();
 	};
 	const compatibilityMessage = resolution.reason
 		? t(
@@ -156,50 +150,47 @@ export function ContentGeneratorComposer({
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
 		>
-			<PromptSourceSelector
+			<ContentGeneratorPromptEditor
+				data={draft}
 				sources={connectedPrompts}
-				selectedSource={selectedPromptSource}
 				disabled={isRunning}
-				onChange={(nodeId) => commit({ ...draft, promptSourceNodeId: nodeId })}
+				onDraftChange={setDraft}
+				onCommit={commit}
+				onSubmit={submit}
 			/>
-			<ContentReferenceInput
-				references={draftReferenceAssets}
-				connectedReferences={connectedReferenceOptions}
-				acceptedKinds={acceptedKinds}
-				disabled={isRunning}
-				onImport={async (files) => {
-					if (!selectedModel) return;
-					const next = { ...draft, providerId: selectedModel.providerId, modelId: selectedModel.modelId };
-					setDraft(next);
-					await onUpdate(next);
-					await onImportReferences(files);
-				}}
-				onRemove={(bindingId) => {
-					commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
-				}}
-				onSelectConnected={({ sourceNodeId, asset, slotId }) => {
-					if (!slotId) return;
-					commit({
-						...draft,
-						inputs: [
-							...(draft.inputs ?? []),
-							{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
-						],
-					});
-				}}
-			/>
-			<textarea
-				className="my-1.5 min-h-[48px] max-h-[112px] w-full resize-none overflow-y-auto bg-transparent px-0.5 py-1.5 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground read-only:text-muted-foreground"
-				value={selectedPromptSource?.prompt ?? draft.prompt ?? ""}
-				rows={promptRows}
-				placeholder={t("nodeEditor.prompt.placeholder")}
-				readOnly={Boolean(selectedPromptSource)}
-				onChange={(event) => setDraft({ ...draft, prompt: event.target.value })}
-				onBlur={() => {
-					if (!selectedPromptSource) void onUpdate(draft);
-				}}
-				onKeyDown={handlePromptKeyDown}
-			/>
+			<div className="my-2 rounded-xl border border-border/50 bg-muted/15 px-2 py-1.5">
+				<div className="mb-1 flex items-center gap-1.5 px-0.5 text-[10px] text-muted-foreground">
+					<span className="icon-[lucide--library] block size-3" aria-hidden="true" />
+					<span>{t("nodeEditor.reference.section")}</span>
+				</div>
+				<ContentReferenceInput
+					compact
+					references={draftReferenceAssets}
+					connectedReferences={connectedReferenceOptions}
+					acceptedKinds={acceptedKinds}
+					disabled={isRunning}
+					onImport={async (files) => {
+						if (!selectedModel) return;
+						const next = { ...draft, providerId: selectedModel.providerId, modelId: selectedModel.modelId };
+						setDraft(next);
+						await onUpdate(next);
+						await onImportReferences(files);
+					}}
+					onRemove={(bindingId) => {
+						commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
+					}}
+					onSelectConnected={({ sourceNodeId, asset, slotId }) => {
+						if (!slotId) return;
+						commit({
+							...draft,
+							inputs: [
+								...(draft.inputs ?? []),
+								{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
+							],
+						});
+					}}
+				/>
+			</div>
 			{compatibilityMessage || hasGenerationError ? (
 				<p className="mb-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
 					{hasGenerationError ? t("error.generate") : compatibilityMessage}
@@ -230,9 +221,4 @@ export function ContentGeneratorComposer({
 			/>
 		</div>
 	);
-}
-
-function estimatePromptRows(prompt: string | undefined): number {
-	const visualRows = (prompt || "").split("\n").reduce((rows, line) => rows + Math.max(1, Math.ceil(line.length / 44)), 0);
-	return Math.min(5, Math.max(2, visualRows));
 }

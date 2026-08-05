@@ -12,10 +12,16 @@ export interface ConnectedReferenceOption extends ConnectedContentAsset {
 interface ConnectedAssetPickerProps {
 	options: readonly ConnectedReferenceOption[];
 	disabled: boolean;
+	compact?: boolean;
 	onSelect: (option: ConnectedReferenceOption) => void;
 }
 
-export function ConnectedAssetPicker({ options, disabled, onSelect }: ConnectedAssetPickerProps) {
+export function ConnectedAssetPicker({
+	options,
+	disabled,
+	compact = false,
+	onSelect,
+}: ConnectedAssetPickerProps) {
 	const { t } = useTranslation();
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
@@ -31,22 +37,42 @@ export function ConnectedAssetPicker({ options, disabled, onSelect }: ConnectedA
 	if (options.length === 0) return null;
 
 	return (
-		<div className="w-full pt-0.5">
+		<div className={compact ? "contents" : "w-full pt-0.5"}>
 			<button
 				type="button"
-				className="flex h-8 w-full items-center justify-between rounded-lg border border-border/70 bg-background/45 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted/55"
+				className={
+					compact
+						? "relative flex size-10 shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/35 text-muted-foreground hover:border-primary/45 hover:text-foreground"
+						: "flex h-8 w-full items-center justify-between rounded-lg border border-border/70 bg-background/45 px-2.5 text-[11px] font-medium text-foreground hover:bg-muted/55"
+				}
 				disabled={disabled}
 				aria-expanded={open}
+				aria-label={t("nodeEditor.reference.fromAssets")}
+				title={t("nodeEditor.reference.fromAssets")}
 				onClick={() => setOpen((current) => !current)}
 			>
-				<span className="flex items-center gap-1.5">
-					<span className="icon-[lucide--library] block size-3.5 text-muted-foreground" aria-hidden="true" />
-					{t("nodeEditor.reference.fromAssets")}
-				</span>
-				<span className="text-[10px] text-muted-foreground">{options.length}</span>
+				{compact ? (
+					<>
+						<span className="icon-[lucide--library] block size-4" aria-hidden="true" />
+						<span className="absolute top-0.5 right-0.5 text-[8px] leading-none">{options.length}</span>
+					</>
+				) : (
+					<>
+						<span className="flex items-center gap-1.5">
+							<span
+								className="icon-[lucide--library] block size-3.5 text-muted-foreground"
+								aria-hidden="true"
+							/>
+							{t("nodeEditor.reference.fromAssets")}
+						</span>
+						<span className="text-[10px] text-muted-foreground">{options.length}</span>
+					</>
+				)}
 			</button>
 			{open ? (
-				<div className="mt-1.5 rounded-xl border border-border/70 bg-popover p-1.5 shadow-sm">
+				<div
+					className={`mt-1.5 rounded-xl border border-border/70 bg-popover p-1.5 shadow-sm ${compact ? "w-full basis-full" : ""}`}
+				>
 					<input
 						className="mb-1.5 h-8 w-full rounded-lg border border-border/70 bg-background px-2.5 text-[11px] outline-none placeholder:text-muted-foreground focus-visible:border-primary/50"
 						value={query}

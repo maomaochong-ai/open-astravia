@@ -5,6 +5,7 @@ import type { ImportedContentReference } from "../generation/types";
 import type { ContentAsset, ContentNodeData, ContentNodeInputBinding } from "../project/types";
 import type { ConnectedContentAsset } from "./material-assets";
 import {
+	contentPromptDocumentsEqual,
 	contentPromptText,
 	createContentPromptDocument,
 	listContentPromptBindingIds,
@@ -29,6 +30,8 @@ interface ContentPromptEditorProps {
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
 }
+
+const EMPTY_PROMPT_LABELS = new Map<string, string>();
 
 export function ContentPromptEditor({
 	data,
@@ -83,13 +86,21 @@ export function ContentPromptEditor({
 	);
 
 	useEffect(() => {
-		draftRef.current = data;
 		const editor = editorRef.current;
-		if (!editor) return;
+		if (!editor) {
+			draftRef.current = data;
+			return;
+		}
+		const incomingDocument = createContentPromptDocument(data);
+		const currentDocument = createContentPromptDocument(draftRef.current);
+		const isEditing = editor === editor.ownerDocument.activeElement;
+		draftRef.current = data;
+		if (isEditing && contentPromptDocumentsEqual(incomingDocument, currentDocument)) return;
 		renderPromptEditor(
 			editor,
-			createContentPromptDocument(data),
+			incomingDocument,
 			assetByBindingId,
+			EMPTY_PROMPT_LABELS,
 			removeReferenceLabel,
 		);
 	}, [assetByBindingId, data, removeReferenceLabel]);
@@ -229,7 +240,7 @@ export function ContentPromptEditor({
 					<PopoverAnchor asChild>
 						<div
 							ref={editorRef}
-							className="min-h-28 whitespace-pre-wrap break-words px-3 py-2.5 text-[13px] leading-7 text-foreground outline-none empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]"
+							className="min-h-28 whitespace-pre-wrap break-words px-3 py-3 text-[13px] leading-6 text-foreground outline-none empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]"
 							contentEditable
 							suppressContentEditableWarning
 							role="textbox"

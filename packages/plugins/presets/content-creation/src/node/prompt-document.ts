@@ -4,14 +4,26 @@ import type {
 	ContentPromptSegment,
 } from "../project/types";
 
-export function createContentPromptDocument(data: ContentNodeData): ContentPromptDocument {
-	const bindingIds = (data.inputs ?? []).map(({ id }) => id);
+interface CreateContentPromptDocumentOptions {
+	includeInputBindings?: boolean;
+}
+
+export function createContentPromptDocument(
+	data: ContentNodeData,
+	options: CreateContentPromptDocumentOptions = {},
+): ContentPromptDocument {
+	const bindingIds = options.includeInputBindings === false ? [] : (data.inputs ?? []).map(({ id }) => id);
 	if (!data.promptDocument) {
+		const legacyPromptSource = data.promptSourceNodeId || null;
 		return normalizeContentPromptDocument(
 			{
 				version: 1,
 				segments: [
-					...(data.prompt ? [{ type: "text" as const, text: data.prompt }] : []),
+					...(legacyPromptSource
+						? [{ type: "prompt-reference" as const, sourceNodeId: legacyPromptSource }]
+						: data.prompt
+							? [{ type: "text" as const, text: data.prompt }]
+							: []),
 					...bindingIds.map((bindingId) => ({ type: "asset-reference" as const, bindingId })),
 				],
 			},
@@ -33,7 +45,8 @@ export function normalizeContentPromptDocument(
 			represented.add(segment.bindingId);
 			return [segment];
 		}
-		return segment.text ? [segment] : [];
+		if (segment.type === "text") return segment.text ? [segment] : [];
+		return segment.sourceNodeId ? [segment] : [];
 	});
 	for (const bindingId of availableBindingIds) {
 		if (represented.has(bindingId)) continue;
@@ -73,6 +86,33 @@ export function listContentPromptBindingIds(document: ContentPromptDocument): st
 		segment.type === "asset-reference" ? [segment.bindingId] : [],
 	);
 	return ids.filter((bindingId, index) => ids.indexOf(bindingId) === index);
+}
+
+export function listContentPromptSourceNodeIds(document: ContentPromptDocument): string[] {
+	const ids = document.segments.flatMap((segment) =>
+		segment.type === "prompt-reference" ? [segment.sourceNodeId] : [],
+	);
+	return ids.filter((sourceNodeId, index) => ids.indexOf(sourceNodeId) === index);
+}
+
+export function contentPromptDocumentsEqual(
+	left: ContentPromptDocument,
+	right: ContentPromptDocument,
+): boolean {
+	if (left.segments.length !== right.segments.length) return false;
+	return left.segments.every((segment, index) => {
+		const candidate = right.segments[index];
+		if (!candidate || segment.type !== candidate.type) return false;
+		if (segment.type === "text" && candidate.type === "text") return segment.text === candidate.text;
+		if (segment.type === "asset-reference" && candidate.type === "asset-reference") {
+			return segment.bindingId === candidate.bindingId;
+		}
+		return (
+			segment.type === "prompt-reference" &&
+			candidate.type === "prompt-reference" &&
+			segment.sourceNodeId === candidate.sourceNodeId
+		);
+	});
 }
 
 export function contentPromptTextFromData(data: ContentNodeData): string {

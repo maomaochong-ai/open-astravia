@@ -15,6 +15,7 @@ export function renderPromptEditor(
 	editor: HTMLElement,
 	document: ContentPromptDocument,
 	assetByBindingId: ReadonlyMap<string, ContentAsset>,
+	promptLabelByNodeId: ReadonlyMap<string, string>,
 	removeLabel: string,
 ): void {
 	editor.replaceChildren();
@@ -23,8 +24,13 @@ export function renderPromptEditor(
 			editor.append(documentNode(editor, segment.text));
 			continue;
 		}
-		const asset = assetByBindingId.get(segment.bindingId);
-		if (asset) editor.append(createAssetToken(editor, segment.bindingId, asset, removeLabel));
+		if (segment.type === "asset-reference") {
+			const asset = assetByBindingId.get(segment.bindingId);
+			if (asset) editor.append(createAssetToken(editor, segment.bindingId, asset, removeLabel));
+			continue;
+		}
+		const label = promptLabelByNodeId.get(segment.sourceNodeId);
+		if (label) editor.append(createPromptToken(editor, segment.sourceNodeId, label, removeLabel));
 	}
 }
 
@@ -73,6 +79,16 @@ export function insertPromptAssetToken(
 	editor.focus();
 }
 
+export function insertPromptSourceToken(
+	editor: HTMLElement,
+	range: Range | null,
+	sourceNodeId: string,
+	label: string,
+	removeLabel: string,
+): void {
+	insertPromptToken(editor, range, createPromptToken(editor, sourceNodeId, label, removeLabel));
+}
+
 export function placePromptCaretAtEnd(editor: HTMLElement): void {
 	const selection = window.getSelection();
 	if (!selection) return;
@@ -99,16 +115,47 @@ function createAssetToken(
 	token.contentEditable = "false";
 	token.dataset.promptBindingId = bindingId;
 	token.className =
-		"mx-0.5 inline-flex max-w-[220px] translate-y-[1px] items-center gap-1 rounded-md border border-primary/20 bg-primary/8 px-1.5 py-0.5 align-baseline text-[12px] font-medium text-foreground";
+		"mx-1 inline-flex h-[22px] max-w-[180px] items-center gap-1 rounded-md border border-primary/20 bg-primary/8 px-1.5 align-middle text-[11px] leading-none font-medium text-foreground";
 
 	const icon = editor.ownerDocument.createElement("span");
 	icon.className = `${TOKEN_ICON_CLASS[asset.kind]} block size-3 shrink-0 text-primary/75`;
 	icon.ariaHidden = "true";
 	const name = editor.ownerDocument.createElement("span");
-	name.className = "max-w-36 truncate";
+	name.className = "max-w-32 truncate";
 	name.textContent = asset.name;
+	name.title = asset.name;
 	const remove = editor.ownerDocument.createElement("span");
 	remove.dataset.removePromptBindingId = bindingId;
+	remove.className =
+		"icon-[lucide--x] block size-3 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground";
+	remove.role = "button";
+	remove.tabIndex = 0;
+	remove.ariaLabel = removeLabel;
+	token.append(icon, name, remove);
+	return token;
+}
+
+function createPromptToken(
+	editor: HTMLElement,
+	sourceNodeId: string,
+	label: string,
+	removeLabel: string,
+): HTMLElement {
+	const token = editor.ownerDocument.createElement("span");
+	token.contentEditable = "false";
+	token.dataset.promptSourceNodeId = sourceNodeId;
+	token.className =
+		"mx-1 inline-flex h-[22px] max-w-[180px] items-center gap-1 rounded-md border border-border/80 bg-muted/65 px-1.5 align-middle text-[11px] leading-none font-medium text-foreground";
+
+	const icon = editor.ownerDocument.createElement("span");
+	icon.className = "icon-[lucide--message-square-text] block size-3 shrink-0 text-muted-foreground";
+	icon.ariaHidden = "true";
+	const name = editor.ownerDocument.createElement("span");
+	name.className = "max-w-32 truncate";
+	name.textContent = `@${label}`;
+	name.title = label;
+	const remove = editor.ownerDocument.createElement("span");
+	remove.dataset.removePromptSourceNodeId = sourceNodeId;
 	remove.className =
 		"icon-[lucide--x] block size-3 shrink-0 cursor-pointer text-muted-foreground hover:text-foreground";
 	remove.role = "button";
@@ -130,6 +177,11 @@ function readChildNodes(parent: Node, segments: ContentPromptSegment[]): void {
 			segments.push({ type: "asset-reference", bindingId });
 			continue;
 		}
+		const sourceNodeId = node.dataset.promptSourceNodeId;
+		if (sourceNodeId) {
+			segments.push({ type: "prompt-reference", sourceNodeId });
+			continue;
+		}
 		if (node.tagName === "BR") {
 			segments.push({ type: "text", text: "\n" });
 			continue;
@@ -138,6 +190,22 @@ function readChildNodes(parent: Node, segments: ContentPromptSegment[]): void {
 		if (isBlock && segments.length > 0) segments.push({ type: "text", text: "\n" });
 		readChildNodes(node, segments);
 	}
+}
+
+function insertPromptToken(editor: HTMLElement, range: Range | null, token: HTMLElement): void {
+	const insertionRange = range && editor.contains(range.commonAncestorContainer) ? range : rangeAtEditorEnd(editor);
+	insertionRange.deleteContents();
+	const trailingSpace = editor.ownerDocument.createTextNode(" ");
+	insertionRange.insertNode(trailingSpace);
+	insertionRange.insertNode(token);
+	const selection = editor.ownerDocument.defaultView?.getSelection();
+	if (!selection) return;
+	const nextRange = editor.ownerDocument.createRange();
+	nextRange.setStartAfter(trailingSpace);
+	nextRange.collapse(true);
+	selection.removeAllRanges();
+	selection.addRange(nextRange);
+	editor.focus();
 }
 
 function mergeTextSegments(segments: readonly ContentPromptSegment[]): ContentPromptSegment[] {

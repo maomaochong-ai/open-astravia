@@ -33,7 +33,7 @@
 
 ### Added
 
-- Added structured multimodal prompt documents with inline named media tokens, @-mention/manual selection, and selectable connected prompt sources that carry references into generation model compatibility checks.
+- Added structured multimodal prompt documents with compact inline media tokens and mixed `@` prompt references, preserving editable local text while carrying referenced media into generation model compatibility checks.
 - Upgraded asset nodes into scalable image, video, and audio collections with compact canvas summaries, incremental management, and model-compatible selection from connected generation nodes.
 - Added explicit select and hand tools to the canvas dock with visible active state.
 - Added the initial content-creation canvas and multitrack composition preset foundation.

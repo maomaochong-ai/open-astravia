@@ -103,7 +103,16 @@ describe("ContentGenerationService", () => {
 				sourceHandle: "text",
 				targetHandle: "prompt",
 			},
-			{ type: "node.update", nodeId: "image", data: { promptSourceNodeId: "prompt" } },
+			{
+				type: "node.update",
+				nodeId: "image",
+				data: {
+					promptDocument: {
+						version: 1,
+						segments: [{ type: "prompt-reference", sourceNodeId: "prompt" }],
+					},
+				},
+			},
 		]);
 		const imported = await fixture.service.importReferences("C:/project", "prompt", [
 			{ name: "mood.png", mimeType: "image/png", data: "reference-data" },

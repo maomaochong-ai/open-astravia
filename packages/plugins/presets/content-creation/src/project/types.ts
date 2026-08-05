@@ -35,7 +35,8 @@ export interface ContentPromptDocument {
 
 export type ContentPromptSegment =
 	| { type: "text"; text: string }
-	| { type: "asset-reference"; bindingId: string };
+	| { type: "asset-reference"; bindingId: string }
+	| { type: "prompt-reference"; sourceNodeId: string };
 
 export interface ContentNodeInputBinding {
 	id: string;
