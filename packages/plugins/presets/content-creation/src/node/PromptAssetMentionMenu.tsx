@@ -1,13 +1,13 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
-import { ContentAssetKindIcon } from "./ContentAssetKindIcon";
-import type { ConnectedContentAsset } from "./material-assets";
+import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 
 interface PromptAssetMentionMenuProps {
-	options: readonly ConnectedContentAsset[];
+	options: readonly ContentAssetReferenceCandidate[];
 	query: string;
 	highlightedIndex: number;
-	onSelect: (option: ConnectedContentAsset) => void;
+	onSelect: (option: ContentAssetReferenceCandidate) => void;
 }
 
 export function PromptAssetMentionMenu({
@@ -35,13 +35,13 @@ export function PromptAssetMentionMenu({
 						onMouseDown={(event) => event.preventDefault()}
 						onClick={() => onSelect(option)}
 					>
-						<ContentAssetKindIcon
-							kind={option.asset.kind}
-							className="size-3.5 shrink-0 text-muted-foreground"
+						<ContentAssetThumbnail
+							asset={option.asset}
+							className="flex size-7 shrink-0 items-center justify-center rounded-md bg-muted object-cover text-muted-foreground"
 						/>
 						<span className="min-w-0 flex-1 truncate">{option.asset.name}</span>
 						<span className="shrink-0 text-[10px] text-muted-foreground">
-							{t(`asset.kind.${option.asset.kind}`)}
+							{t(`nodeEditor.prompt.mention.origin.${option.origin}`)}
 						</span>
 					</Button>
 				))}

@@ -66,6 +66,7 @@ const PRO_OPTIONS = { hideAttribution: true };
 
 interface GraphWorkspaceProps {
 	project: ContentProjectDocument;
+	assetPreviewUrls: ReadonlyMap<string, string>;
 	models: readonly ContentModelDescriptor[];
 	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
@@ -75,6 +76,7 @@ interface GraphWorkspaceProps {
 
 export function GraphWorkspace({
 	project,
+	assetPreviewUrls,
 	models,
 	onDispatch,
 	onRunNode,
@@ -101,7 +103,7 @@ export function GraphWorkspace({
 	);
 	const selectedNodeIdSet = useMemo(() => new Set(activeSelectedNodeIds), [activeSelectedNodeIds]);
 	const canvasInteraction = getCanvasInteraction(canvasTool);
-	const projectSyncKey = createContentProjectSyncKey(
+	const projectSyncKey = `${createContentProjectSyncKey(
 		{
 			projectId: project.projectId,
 			revision: project.revision,
@@ -110,7 +112,7 @@ export function GraphWorkspace({
 			edgeCount: project.graph.edges.length,
 		},
 		models,
-	);
+	)}\u0000${[...assetPreviewUrls].map(([assetId, url]) => `${assetId}:${url}`).join("\u0001")}`;
 
 	const closeMenus = useCallback(() => {
 		setPendingMenu(null);
@@ -177,8 +179,8 @@ export function GraphWorkspace({
 		[onDispatch, onImportAssets, onImportReferences, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
-		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions),
-		[actions, models, project, selectedNodeIdSet],
+		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions, assetPreviewUrls),
+		[actions, assetPreviewUrls, models, project, selectedNodeIdSet],
 	);
 	const synchronizedEdges = useMemo(
 		() => toContentFlowEdges(project, selectedNodeIdSet),

@@ -6,7 +6,7 @@ export class PluginContentArtifactStore implements ContentArtifactStore {
 
 	async put(id: string, content: StoredContentData): Promise<StoredGeneratedContent> {
 		const stored = await this.storage.putBlob({ id, data: content.data, mimeType: content.mimeType });
-		return { url: stored.url, mimeType: stored.mimeType };
+		return { id: stored.id, url: stored.url, mimeType: stored.mimeType };
 	}
 
 	read(id: string): Promise<StoredContentData | null> {

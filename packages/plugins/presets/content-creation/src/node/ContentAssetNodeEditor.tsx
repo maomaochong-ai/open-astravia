@@ -51,7 +51,7 @@ export function ContentAssetNodeEditor({ data, assets, onUpdate, onImport }: Con
 
 	return (
 		<div
-			className="nodrag nowheel w-[min(440px,calc(100vw-32px))] rounded-2xl border border-border/70 bg-card/95 p-3 text-card-foreground shadow-xl backdrop-blur-md"
+			className="nodrag nopan nowheel w-[min(440px,calc(100vw-32px))] rounded-2xl border border-border/70 bg-card/95 p-3 text-card-foreground shadow-xl backdrop-blur-md"
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
 		>

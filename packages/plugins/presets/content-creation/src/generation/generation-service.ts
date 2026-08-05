@@ -77,10 +77,10 @@ export class ContentGenerationService {
 				file,
 				asset: {
 					id: assetId,
+					blobId: assetId,
 					kind,
 					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
 					mimeType: file.mimeType,
-					url: "",
 					createdAt: new Date().toISOString(),
 				},
 			});
@@ -88,7 +88,7 @@ export class ContentGenerationService {
 
 		for (const item of pending) {
 			const stored = await this.artifacts.put(item.asset.id, item.file);
-			item.asset.url = stored.url;
+			item.asset.blobId = stored.id;
 			item.asset.mimeType = stored.mimeType;
 		}
 		const assetIds = [...listContentNodeAssetIds(node.data), ...pending.map(({ asset }) => asset.id)];
@@ -140,10 +140,10 @@ export class ContentGenerationService {
 				binding,
 				asset: {
 					id: assetId,
+					blobId: assetId,
 					kind,
 					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
 					mimeType: file.mimeType,
-					url: "",
 					createdAt: new Date().toISOString(),
 				},
 			});
@@ -152,7 +152,7 @@ export class ContentGenerationService {
 
 		for (const item of pending) {
 			const stored = await this.artifacts.put(item.asset.id, item.file);
-			item.asset.url = stored.url;
+			item.asset.blobId = stored.id;
 			item.asset.mimeType = stored.mimeType;
 		}
 		return await this.workspace.dispatch(cwd, [
@@ -188,17 +188,17 @@ export class ContentGenerationService {
 				binding: { id: crypto.randomUUID(), assetId, slotId: PROMPT_REFERENCE_SLOT_ID },
 				asset: {
 					id: assetId,
+					blobId: assetId,
 					kind,
 					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
 					mimeType: file.mimeType,
-					url: "",
 					createdAt: new Date().toISOString(),
 				},
 			});
 		}
 		for (const item of pending) {
 			const stored = await this.artifacts.put(item.asset.id, item.file);
-			item.asset.url = stored.url;
+			item.asset.blobId = stored.id;
 			item.asset.mimeType = stored.mimeType;
 		}
 		return await this.workspace.dispatch(cwd, [
@@ -265,10 +265,10 @@ export class ContentGenerationService {
 					jobId,
 					asset: {
 						id: assetId,
+						blobId: stored.id,
 						kind: generated.kind,
 						name: `${node.data.label?.trim() || `${generated.kind}-${assetId.slice(0, 8)}`}.${extensionForMimeType(generated.mimeType)}`,
 						mimeType: stored.mimeType,
-						url: stored.url,
 						duration: generated.duration,
 						width: generated.width,
 						height: generated.height,
@@ -293,7 +293,7 @@ export class ContentGenerationService {
 				const slotId = candidate.slotId ?? assignedSlotIds[unassignedIndex++];
 				if (!slotId) throw new Error(`content reference slot not resolved: ${candidate.asset.id}`);
 				const asset = candidate.asset;
-				const stored = await this.artifacts.read(asset.id);
+				const stored = await this.artifacts.read(asset.blobId);
 				if (!stored) throw new Error(`content reference data not found: ${asset.id}`);
 				return { id: candidate.id, slotId, kind: asset.kind, ...stored };
 			}),

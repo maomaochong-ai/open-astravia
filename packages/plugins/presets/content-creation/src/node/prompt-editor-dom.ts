@@ -34,6 +34,18 @@ export function renderPromptEditor(
 	}
 }
 
+export function refreshPromptEditorAssetPreviews(
+	editor: HTMLElement,
+	assetByBindingId: ReadonlyMap<string, ContentAsset>,
+): void {
+	for (const token of editor.querySelectorAll<HTMLElement>("[data-prompt-binding-id]")) {
+		const bindingId = token.dataset.promptBindingId;
+		const asset = bindingId ? assetByBindingId.get(bindingId) : undefined;
+		const preview = token.querySelector<HTMLElement>("[data-prompt-asset-preview]");
+		if (asset && preview) preview.replaceWith(createAssetTokenPreview(editor, asset));
+	}
+}
+
 export function readPromptEditor(editor: HTMLElement): ContentPromptDocument {
 	const segments: ContentPromptSegment[] = [];
 	readChildNodes(editor, segments);
@@ -44,16 +56,26 @@ export function getPromptMentionContext(editor: HTMLElement): PromptMentionConte
 	const selection = window.getSelection();
 	if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return null;
 	const caret = selection.getRangeAt(0);
-	if (!editor.contains(caret.startContainer) || caret.startContainer.nodeType !== Node.TEXT_NODE) return null;
-	const text = caret.startContainer.textContent ?? "";
-	const preceding = text.slice(0, caret.startOffset);
+	const textPosition = getCaretTextPosition(editor, caret);
+	if (!textPosition) return null;
+	const preceding = textPosition.node.data.slice(0, textPosition.offset);
 	const match = preceding.match(/(?:^|\s)@([^@\s]*)$/u);
 	if (!match) return null;
 	const query = match[1] ?? "";
 	const range = editor.ownerDocument.createRange();
-	range.setStart(caret.startContainer, caret.startOffset - query.length - 1);
-	range.setEnd(caret.startContainer, caret.startOffset);
+	range.setStart(textPosition.node, textPosition.offset - query.length - 1);
+	range.setEnd(textPosition.node, textPosition.offset);
 	return { query, range };
+}
+
+function getCaretTextPosition(editor: HTMLElement, caret: Range): { node: Text; offset: number } | null {
+	if (!editor.contains(caret.startContainer)) return null;
+	if (caret.startContainer instanceof Text) return { node: caret.startContainer, offset: caret.startOffset };
+	const previous = caret.startContainer.childNodes.item(caret.startOffset - 1);
+	if (!previous) return null;
+	let candidate = previous;
+	while (candidate.lastChild) candidate = candidate.lastChild;
+	return candidate instanceof Text ? { node: candidate, offset: candidate.data.length } : null;
 }
 
 export function insertPromptAssetToken(
@@ -117,9 +139,7 @@ function createAssetToken(
 	token.className =
 		"mx-1 inline-flex h-[22px] max-w-[180px] items-center gap-1 rounded-md border border-primary/20 bg-primary/8 px-1.5 align-middle text-[11px] leading-none font-medium text-foreground";
 
-	const icon = editor.ownerDocument.createElement("span");
-	icon.className = `${TOKEN_ICON_CLASS[asset.kind]} block size-3 shrink-0 text-primary/75`;
-	icon.ariaHidden = "true";
+	const preview = createAssetTokenPreview(editor, asset);
 	const name = editor.ownerDocument.createElement("span");
 	name.className = "max-w-32 truncate";
 	name.textContent = asset.name;
@@ -131,8 +151,28 @@ function createAssetToken(
 	remove.role = "button";
 	remove.tabIndex = 0;
 	remove.ariaLabel = removeLabel;
-	token.append(icon, name, remove);
+	token.append(preview, name, remove);
 	return token;
+}
+
+function createAssetTokenPreview(editor: HTMLElement, asset: ContentAsset): HTMLElement {
+	const preview = editor.ownerDocument.createElement("span");
+	preview.dataset.promptAssetPreview = "";
+	preview.className = "relative flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-sm bg-muted";
+	const icon = editor.ownerDocument.createElement("span");
+	icon.className = `${TOKEN_ICON_CLASS[asset.kind]} block size-3 text-primary/75`;
+	icon.ariaHidden = "true";
+	preview.append(icon);
+	if (asset.kind !== "image" || !asset.previewUrl) return preview;
+
+	const image = editor.ownerDocument.createElement("img");
+	image.src = asset.previewUrl;
+	image.alt = "";
+	image.className = "absolute inset-0 size-full object-cover";
+	image.draggable = false;
+	image.addEventListener("error", () => image.remove(), { once: true });
+	preview.append(image);
+	return preview;
 }
 
 function createPromptToken(

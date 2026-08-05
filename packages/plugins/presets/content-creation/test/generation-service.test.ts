@@ -29,7 +29,7 @@ describe("ContentGenerationService", () => {
 		expect(result.assets[0]).toMatchObject({
 			kind: "image",
 			mimeType: "image/png",
-			url: expect.stringMatching(/^vetta-media:\/\//),
+			blobId: expect.any(String),
 		});
 	});
 
@@ -129,6 +129,7 @@ describe("ContentGenerationService", () => {
 			],
 		});
 		await fixture.service.runNode("C:/project", "image");
+		expect(fixture.read).toHaveBeenCalledWith(imported.assets[0]?.blobId);
 		expect(fixture.generate).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				modeId: "image-to-image",
@@ -198,6 +199,7 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 	const providers = new ContentProviderRegistry();
 	providers.register(provider);
 	const put = vi.fn<ContentArtifactStore["put"]>().mockImplementation(async (id, content) => ({
+		id: `stored-${id}`,
 		url: `vetta-media://${id}`,
 		mimeType: content.mimeType,
 	}));
@@ -206,7 +208,7 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 		mimeType: "image/png",
 	});
 	const service = new ContentGenerationService(workspace, providers, { put, read });
-	return { service, workspace, generate, put };
+	return { service, workspace, generate, put, read };
 }
 
 class MemoryRepository implements ContentProjectRepository {

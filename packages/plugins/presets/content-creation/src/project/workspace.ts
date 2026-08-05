@@ -1,5 +1,6 @@
 import { applyContentProjectCommands, type ContentProjectCommand } from "./commands";
-import { createContentProject, CONTENT_CREATION_SCHEMA_VERSION, type ContentProjectDocument } from "./types";
+import { migrateContentProjectDocument } from "./migrations";
+import { createContentProject, type ContentProjectDocument } from "./types";
 import type { ContentProjectRepository } from "./repository";
 
 interface ProjectRecord {
@@ -18,19 +19,6 @@ export class ContentProjectRevisionError extends Error {
 
 function projectKey(cwd: string | null): string {
 	return cwd ?? "__global__";
-}
-
-function isProjectDocument(value: unknown, cwd: string | null): value is ContentProjectDocument {
-	if (!value || typeof value !== "object") return false;
-	const candidate = value as Partial<ContentProjectDocument>;
-	return (
-		candidate.schemaVersion === CONTENT_CREATION_SCHEMA_VERSION &&
-		candidate.cwd === cwd &&
-		typeof candidate.revision === "number" &&
-		Array.isArray(candidate.graph?.nodes) &&
-		Array.isArray(candidate.graph?.edges) &&
-		Array.isArray(candidate.timeline?.tracks)
-	);
 }
 
 export class ContentCreationWorkspace {
@@ -61,7 +49,7 @@ export class ContentCreationWorkspace {
 		const load = this.repository
 			.read(cwd)
 			.then((stored) => {
-				const project = isProjectDocument(stored, cwd) ? stored : (current?.project ?? createContentProject(cwd));
+				const project = migrateContentProjectDocument(stored, cwd) ?? current?.project ?? createContentProject(cwd);
 				const listeners = current?.listeners ?? new Set<() => void>();
 				this.records.set(key, { project, listeners });
 				for (const listener of listeners) listener();

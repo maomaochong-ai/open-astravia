@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Restored `@` media suggestions for valid element-boundary carets, expanded candidates beyond connected nodes, and rendered image thumbnails in the picker and inline tokens.
+- Restored focus and caret placement in node editors by excluding their interactive panels from React Flow canvas panning.
 - Box selection now includes nodes that partially intersect the selection rectangle instead of requiring full containment.
 - Restored primary-button canvas panning while keeping box selection available through Control-drag.
 - Restored the “drop connection on empty canvas → create compatible node” menu: the pane click that follows `onConnectEnd` no longer immediately dismisses it.
@@ -11,6 +13,7 @@
 
 ### Changed
 
+- Content assets now persist stable blob IDs and resolve host media URLs at runtime; schema v1 projects migrate automatically to schema v2.
 - Restyled the multi-node selection outline with subdued theme colors, a thin solid border, and matching corner radii instead of React Flow's prominent default blue dotted frame.
 - Replaced hand-authored plugin and node SVG icons with a consistent Lucide Iconify set, inlined static icon classes at their use sites, and corrected dock hover centers to match the rendered item widths.
 - Restricted the plugin to Work mode via manifest `agent_mode: ["work"]` (hidden in Coding; ADR-0046).

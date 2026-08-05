@@ -44,7 +44,7 @@ ContentNodeCard / ContentGeneratorComposer
 
 UI、生成服务和 Provider Registry 共用同一个纯兼容性解析器。切换到不兼容模型时保留素材绑定并禁用生成；新增模型只需要注册描述符，再在对应 Provider Adapter 中映射槽位，不需要修改节点组件。
 
-导入素材先写入 `PluginStorageApi`，项目文档只保存 `assetId` 与槽位绑定。生成前由服务读取 base64 内容；Provider Adapter 再按供应商协议转换为 inline data、data URL 或专用字段。供应商字段不会进入项目 schema。
+导入素材先写入 `PluginStorageApi`，项目文档只保存稳定的 `assetId` / `blobId`、素材元数据与槽位绑定，不保存宿主生成的媒体 URL。界面加载项目后通过 `getBlobRef(blobId)` 解析临时预览 URL；生成前由服务读取 base64 内容。Provider Adapter 再按供应商协议转换为 inline data、data URL 或专用字段，供应商字段不会进入项目 schema。
 
 当前真实适配器覆盖 OpenAI Images、Replicate Predictions、Gemini Image、Gemini Veo 长任务和 NewAPI Video Generations。Loomic 模型快照由独立目录描述，Open-AI Canvas 风格的动态渠道模型来自插件设置；项目中只保存 `providerId`、`modelId` 和领域参数，不保存密钥。完整边界见 [模型目录和适配器](./model-adapters.md)。
 

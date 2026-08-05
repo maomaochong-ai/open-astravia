@@ -1,4 +1,4 @@
-export const CONTENT_CREATION_SCHEMA_VERSION = 1 as const;
+export const CONTENT_CREATION_SCHEMA_VERSION = 2 as const;
 
 export type ContentNodeKind = "prompt" | "image-generator" | "video-generator" | "asset" | "output";
 export type ContentNodeStatus = "idle" | "queued" | "running" | "succeeded" | "failed";
@@ -66,10 +66,12 @@ export interface ContentEdge {
 
 export interface ContentAsset {
 	id: string;
+	blobId: string;
 	kind: AssetKind;
 	name: string;
 	mimeType: string;
-	url: string;
+	/** Runtime-only media URL. Project persistence stores blobId instead. */
+	previewUrl?: string;
 	duration?: number;
 	width?: number;
 	height?: number;

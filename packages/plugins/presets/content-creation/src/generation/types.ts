@@ -67,6 +67,7 @@ export interface ContentProviderAdapter {
 }
 
 export interface StoredGeneratedContent {
+	id: string;
 	url: string;
 	mimeType: string;
 }

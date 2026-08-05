@@ -12,10 +12,10 @@ describe("connected prompt sources", () => {
 		const project = createContentProject("C:/project");
 		project.assets.push({
 			id: "image",
+			blobId: "image",
 			kind: "image",
 			name: "Mood",
 			mimeType: "image/png",
-			url: "vetta-media://image",
 			createdAt: "2026-01-01T00:00:00.000Z",
 		});
 		project.graph.nodes.push(
@@ -81,18 +81,18 @@ describe("connected prompt sources", () => {
 		project.assets.push(
 			{
 				id: "first",
+				blobId: "first",
 				kind: "image",
 				name: "@not-a-reference",
 				mimeType: "image/png",
-				url: "vetta-media://first",
 				createdAt: "2026-01-01T00:00:00.000Z",
 			},
 			{
 				id: "second",
+				blobId: "second",
 				kind: "image",
 				name: "Second",
 				mimeType: "image/png",
-				url: "vetta-media://second",
 				createdAt: "2026-01-01T00:00:00.000Z",
 			},
 		);

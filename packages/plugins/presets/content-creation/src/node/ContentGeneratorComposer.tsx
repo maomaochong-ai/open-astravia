@@ -141,7 +141,7 @@ export function ContentGeneratorComposer({
 
 	return (
 		<div
-			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-xl backdrop-blur-md"
+			className="nodrag nopan nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-xl backdrop-blur-md"
 			style={{
 				width: "fit-content",
 				minWidth: `min(${minimumWidth}px, calc(100vw - 32px))`,

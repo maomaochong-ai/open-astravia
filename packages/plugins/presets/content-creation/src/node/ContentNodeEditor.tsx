@@ -19,6 +19,7 @@ import { ContentGeneratorComposer } from "./ContentGeneratorComposer";
 import { ContentPromptEditor } from "./ContentPromptEditor";
 import type { ConnectedContentAsset } from "./material-assets";
 import type { ConnectedPromptSource } from "./prompt-sources";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 
 const FIELD_CLASS =
 	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-primary/50";
@@ -32,6 +33,7 @@ interface ContentNodeEditorProps {
 	assets: readonly ContentAsset[];
 	connectedAssets: readonly ConnectedContentAsset[];
 	connectedPrompts: readonly ConnectedPromptSource[];
+	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	hasGenerationError: boolean;
 	focusPromptRequest: number;
@@ -60,7 +62,7 @@ export function ContentNodeEditor(props: ContentNodeEditorProps) {
 		return (
 			<ContentPromptEditor
 				data={props.data}
-				connectedAssets={props.connectedAssets}
+				mentionAssets={props.mentionAssets}
 				referenceAssets={props.referenceAssets}
 				focusPromptRequest={props.focusPromptRequest}
 				onUpdate={props.onUpdate}
@@ -102,7 +104,7 @@ function SimpleContentNodeEditor({
 
 	return (
 		<div
-			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-xl border border-border/70 bg-card p-2.5 text-card-foreground shadow-sm"
+			className="nodrag nopan nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-xl border border-border/70 bg-card p-2.5 text-card-foreground shadow-sm"
 			style={{ width: `min(${preferredWidth}px, calc(100vw - 32px))` }}
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}

@@ -19,10 +19,10 @@ describe("material asset collections", () => {
 		const project = createContentProject("C:/project");
 		project.assets.push({
 			id: "image",
+			blobId: "image",
 			kind: "image",
 			name: "Image",
 			mimeType: "image/png",
-			url: "vetta-media://image",
 			createdAt: "2026-01-01T00:00:00.000Z",
 		});
 		project.graph.nodes.push(

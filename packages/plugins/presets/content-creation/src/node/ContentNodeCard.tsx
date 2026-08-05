@@ -24,6 +24,7 @@ import { ContentNodeHandle } from "./ContentNodeHandle";
 import { ContentNodeSurface } from "./ContentNodeSurface";
 import { ContentNodeEditor } from "./ContentNodeEditor";
 import type { ConnectedContentAsset } from "./material-assets";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 import { resolveContentPrompt, type ConnectedPromptSource } from "./prompt-sources";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
@@ -32,6 +33,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	assets: readonly ContentAsset[];
 	connectedAssets: readonly ConnectedContentAsset[];
 	connectedPrompts: readonly ConnectedPromptSource[];
+	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	assetUrl?: string;
 	assetKind?: AssetKind;
 	status: ContentNodeStatus;
@@ -215,6 +217,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						assets={data.assets}
 						connectedAssets={data.connectedAssets}
 						connectedPrompts={data.connectedPrompts}
+						mentionAssets={data.mentionAssets}
 						referenceAssets={data.referenceAssets}
 						hasGenerationError={data.hasGenerationError}
 						focusPromptRequest={focusPromptRequest}

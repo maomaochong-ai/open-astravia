@@ -3,7 +3,6 @@ import { Button, Popover, PopoverAnchor, PopoverContent } from "@vetta/ui";
 import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ImportedContentReference } from "../generation/types";
 import type { ContentAsset, ContentNodeData, ContentNodeInputBinding } from "../project/types";
-import type { ConnectedContentAsset } from "./material-assets";
 import {
 	contentPromptDocumentsEqual,
 	contentPromptText,
@@ -16,15 +15,17 @@ import {
 	insertPromptAssetToken,
 	placePromptCaretAtEnd,
 	readPromptEditor,
+	refreshPromptEditorAssetPreviews,
 	renderPromptEditor,
 } from "./prompt-editor-dom";
 import { PromptAssetMentionMenu } from "./PromptAssetMentionMenu";
 import { PROMPT_REFERENCE_SLOT_ID } from "./prompt-sources";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 import { readImportedMediaFile } from "./readImportedMediaFile";
 
 interface ContentPromptEditorProps {
 	data: ContentNodeData;
-	connectedAssets: readonly ConnectedContentAsset[];
+	mentionAssets: readonly ContentAssetReferenceCandidate[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	focusPromptRequest: number;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
@@ -35,7 +36,7 @@ const EMPTY_PROMPT_LABELS = new Map<string, string>();
 
 export function ContentPromptEditor({
 	data,
-	connectedAssets,
+	mentionAssets,
 	referenceAssets,
 	focusPromptRequest,
 	onUpdate,
@@ -56,10 +57,10 @@ export function ContentPromptEditor({
 			new Map(
 				[
 					...referenceAssets.map(({ asset }) => asset),
-					...connectedAssets.map(({ asset }) => asset),
+					...mentionAssets.map(({ asset }) => asset),
 				].map((asset) => [asset.id, asset]),
 			),
-		[connectedAssets, referenceAssets],
+		[mentionAssets, referenceAssets],
 	);
 	const assetByBindingId = useMemo(
 		() =>
@@ -71,14 +72,8 @@ export function ContentPromptEditor({
 			),
 		[data.inputs, assetById],
 	);
-	const selectedAssetIds = new Set(referenceAssets.map(({ asset }) => asset.id));
-	const availableMentionAssets = connectedAssets.filter(
-		(option, index) =>
-			!selectedAssetIds.has(option.asset.id) &&
-			connectedAssets.findIndex((candidate) => candidate.asset.id === option.asset.id) === index,
-	);
 	const normalizedQuery = mentionQuery.trim().toLocaleLowerCase();
-	const mentionOptions = availableMentionAssets.filter(
+	const mentionOptions = mentionAssets.filter(
 		({ asset }) =>
 			!normalizedQuery ||
 			asset.name.toLocaleLowerCase().includes(normalizedQuery) ||
@@ -95,7 +90,10 @@ export function ContentPromptEditor({
 		const currentDocument = createContentPromptDocument(draftRef.current);
 		const isEditing = editor === editor.ownerDocument.activeElement;
 		draftRef.current = data;
-		if (isEditing && contentPromptDocumentsEqual(incomingDocument, currentDocument)) return;
+		if (isEditing && contentPromptDocumentsEqual(incomingDocument, currentDocument)) {
+			refreshPromptEditorAssetPreviews(editor, assetByBindingId);
+			return;
+		}
 		renderPromptEditor(
 			editor,
 			incomingDocument,
@@ -147,7 +145,7 @@ export function ContentPromptEditor({
 		setHighlightedIndex(0);
 		setMenuOpen(true);
 	};
-	const selectAsset = (option: ConnectedContentAsset) => {
+	const selectAsset = (option: ContentAssetReferenceCandidate) => {
 		const editor = editorRef.current;
 		if (!editor) return;
 		const existingBinding = (draftRef.current.inputs ?? []).find(
@@ -230,7 +228,7 @@ export function ContentPromptEditor({
 
 	return (
 		<div
-			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-lg backdrop-blur-md"
+			className="nodrag nopan nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-lg backdrop-blur-md"
 			style={{ width: "min(420px, calc(100vw - 32px))" }}
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
@@ -277,7 +275,7 @@ export function ContentPromptEditor({
 								type="button"
 								size="icon-xs"
 								variant="ghost"
-								disabled={availableMentionAssets.length === 0}
+								disabled={mentionAssets.length === 0}
 								title={t("nodeEditor.prompt.mention.manual")}
 								onMouseDown={(event) => event.preventDefault()}
 								onClick={openManualPicker}

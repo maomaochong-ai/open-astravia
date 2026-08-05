@@ -15,6 +15,7 @@ import {
 	listContentNodeAssets,
 } from "../node/material-assets";
 import { listConnectedPromptSources, listContentPromptReferences } from "../node/prompt-sources";
+import { listContentAssetReferenceCandidates } from "../node/reference-candidates";
 
 export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
@@ -38,21 +39,39 @@ export function toContentFlowNodes(
 	selectedNodeIds: ReadonlySet<string>,
 	models: readonly ContentModelDescriptor[],
 	actions: ContentNodeActions,
+	assetPreviewUrls: ReadonlyMap<string, string>,
 ): ContentFlowNode[] {
 	return project.graph.nodes.map((node) => {
 		const fallbackSize = getContentNodeSize(node.kind, node.data.aspectRatio);
 		const job = project.jobs.filter((candidate) => candidate.nodeId === node.id).at(-1);
-		const assets = listContentNodeAssets(project, node);
+		const withPreview = (asset: ContentProjectDocument["assets"][number]) => {
+			const previewUrl = assetPreviewUrls.get(asset.id);
+			return previewUrl ? { ...asset, previewUrl } : asset;
+		};
+		const assets = listContentNodeAssets(project, node).map(withPreview);
 		const referenceAssets =
 			node.kind === "prompt"
-				? listContentPromptReferences(project, node)
+				? listContentPromptReferences(project, node).map(({ binding, asset }) => ({
+						binding,
+						asset: withPreview(asset),
+					}))
 				: (node.data.inputs ?? []).flatMap((binding) => {
 						if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
 						const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-						return asset ? [{ binding, asset }] : [];
+						return asset ? [{ binding, asset: withPreview(asset) }] : [];
 					});
-		const connectedAssets = listConnectedContentAssets(project, node.id);
-		const connectedPrompts = listConnectedPromptSources(project, node.id);
+		const connectedAssets = listConnectedContentAssets(project, node.id).map(({ sourceNodeId, asset }) => ({
+			sourceNodeId,
+			asset: withPreview(asset),
+		}));
+		const connectedPrompts = listConnectedPromptSources(project, node.id).map((source) => ({
+			...source,
+			references: source.references.map(({ binding, asset }) => ({ binding, asset: withPreview(asset) })),
+		}));
+		const mentionAssets = listContentAssetReferenceCandidates(project, node.id).map((candidate) => ({
+			...candidate,
+			asset: withPreview(candidate.asset),
+		}));
 		return {
 			...fallbackSize,
 			width: node.width ?? fallbackSize.width,
@@ -68,7 +87,8 @@ export function toContentFlowNodes(
 				assets,
 				connectedAssets,
 				connectedPrompts,
-				assetUrl: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.url : undefined,
+				mentionAssets,
+				assetUrl: node.data.assetId ? assetPreviewUrls.get(node.data.assetId) : undefined,
 				assetKind: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.kind : undefined,
 				status: node.status,
 				job,

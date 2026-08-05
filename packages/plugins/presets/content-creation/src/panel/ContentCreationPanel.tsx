@@ -6,6 +6,7 @@ import type { ImportedContentAsset, ImportedContentReference } from "../generati
 import {
 	getContentCreationWorkspace,
 	getContentGenerationService,
+	getContentAssetPreviewResolver,
 	notifyContentCreationError,
 } from "../plugin/runtime";
 import { GraphWorkspace } from "../canvas/GraphWorkspace";
@@ -15,8 +16,10 @@ export function ContentCreationPanel() {
 	const { t } = useTranslation();
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [assetPreviewUrls, setAssetPreviewUrls] = useState<ReadonlyMap<string, string>>(new Map());
 	const workspace = getContentCreationWorkspace();
 	const generation = getContentGenerationService();
+	const assetPreviewResolver = getContentAssetPreviewResolver();
 	const models = useMemo(() => generation.listModels(), [generation]);
 
 	useEffect(() => {
@@ -36,6 +39,21 @@ export function ContentCreationPanel() {
 			unsubscribe();
 		};
 	}, [cwd, t, workspace]);
+	useEffect(() => {
+		let active = true;
+		if (!project) {
+			setAssetPreviewUrls(new Map());
+			return () => {
+				active = false;
+			};
+		}
+		void assetPreviewResolver.resolveAll(project.assets).then((urls) => {
+			if (active) setAssetPreviewUrls(urls);
+		});
+		return () => {
+			active = false;
+		};
+	}, [assetPreviewResolver, project]);
 
 	const dispatch = useCallback(
 		async (commands: readonly ContentProjectCommand[]) => {
@@ -104,6 +122,7 @@ export function ContentCreationPanel() {
 			<main className="flex min-h-0 flex-1">
 				<GraphWorkspace
 					project={project}
+					assetPreviewUrls={assetPreviewUrls}
 					models={models}
 					onDispatch={dispatch}
 					onRunNode={runNode}
