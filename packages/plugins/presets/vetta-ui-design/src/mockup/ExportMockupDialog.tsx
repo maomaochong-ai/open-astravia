@@ -1,16 +1,21 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { zipSync } from "fflate";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type MockupExportRequest, onMockupExport, requestMockupExport } from "../canvas/design-runtime";
 import { parseThemeTokens } from "../canvas/theme-tokens";
 import { getPluginCtx, notify } from "../plugin-context";
+import { bytesToBase64, dataUrlToBytes } from "./binary";
 import { VETTA_LOGO_DATA_URL } from "./brand-logo";
 import { layoutMockup } from "./layout";
 import { loadImage } from "./load-image";
 import { MockupOptionsPanel } from "./MockupOptionsPanel";
 import { MockupPreview } from "./MockupPreview";
 import { defaultOptions, loadOptions, saveOptions } from "./options";
-import { renderMockupToDataUrl } from "./render";
+import { buildImagePdf, type PdfPageImage } from "./pdf";
+import { canvasToJpegDataUrl, renderMockupToCanvas } from "./render";
 import type { MockupOptions, MockupShot } from "./types";
+
+type ExportFormat = "png" | "pdf";
 
 /** Frames per exported image; the rest spill onto further pages. */
 const PAGE_SIZE = 4;
@@ -35,7 +40,7 @@ export function ExportMockupDialog() {
 	const [request, setRequest] = useState<MockupExportRequest | null>(null);
 	const [shots, setShots] = useState<ShotEntry[]>([]);
 	const [options, setOptions] = useState<MockupOptions | null>(null);
-	const [page, setPage] = useState(0);
+	const [format, setFormat] = useState<ExportFormat>("png");
 	const [busy, setBusy] = useState<"save" | "copy" | null>(null);
 	const [palette, setPalette] = useState<string[]>([]);
 	const [logo, setLogo] = useState<HTMLImageElement | null>(null);
@@ -80,7 +85,6 @@ export function ExportMockupDialog() {
 		if (!request) {
 			setShots([]);
 			setOptions(null);
-			setPage(0);
 			return;
 		}
 		const frames = request.frameIds
@@ -96,7 +100,6 @@ export function ExportMockupDialog() {
 				error: null,
 			})),
 		);
-		setPage(0);
 		const normalizedHeight = Math.max(1, ...frames.map((frame) => frame.height));
 		setOptions(loadOptions(request.session.vetdPath, normalizedHeight));
 		void request.session
@@ -130,51 +133,84 @@ export function ExportMockupDialog() {
 		return chunks;
 	}, [shots]);
 
-	const pageShots = pages[Math.min(page, Math.max(0, pages.length - 1))] ?? [];
 	const errors = useMemo(() => {
 		const map = new Map<string, string>();
-		for (const shot of pageShots) if (shot.error) map.set(shot.frameId, shot.error);
+		for (const shot of shots) if (shot.error) map.set(shot.frameId, shot.error);
 		return map;
-	}, [pageShots]);
-	const pending = pageShots.some((shot) => !shot.image && !shot.error);
-	const ready = pageShots.length > 0 && !pending && errors.size === 0;
+	}, [shots]);
+	const pending = shots.some((shot) => !shot.image && !shot.error);
+	const ready = shots.length > 0 && !pending && errors.size === 0;
 
-	const normalizedHeight = pageShots.length > 0 ? Math.max(...pageShots.map((shot) => shot.cssHeight)) : 0;
+	const normalizedHeight = shots.length > 0 ? Math.max(...shots.map((shot) => shot.cssHeight)) : 0;
 
 	/**
-	 * Re-capture the page at the ratio the final image actually needs, so text
+	 * Re-capture one page at the ratio the final image actually needs, so text
 	 * stays crisp instead of being upscaled from the 2x preview bitmap.
 	 */
-	const composePage = async (current: MockupOptions): Promise<string> => {
+	const composePage = async (pageShots: ShotEntry[], current: MockupOptions): Promise<HTMLCanvasElement> => {
 		const active = requestRef.current;
 		if (!active) throw new Error("export request went away");
 		const layout = layoutMockup(pageShots, current);
+		const pageHeight = Math.max(...pageShots.map((shot) => shot.cssHeight));
 		const fresh: MockupShot[] = [];
 		for (const shot of pageShots) {
-			const needed = (normalizedHeight / shot.cssHeight) * current.scale * layout.fit;
+			const needed = (pageHeight / shot.cssHeight) * current.scale * layout.fit;
 			const ratio = Math.min(MAX_PIXEL_RATIO, Math.max(1, needed));
 			const dataUrl = await active.capture(shot.frameId, ratio);
 			fresh.push({ ...shot, image: await loadImage(dataUrl) });
 		}
-		return renderMockupToDataUrl(fresh, current, logo);
+		return renderMockupToCanvas(fresh, current, logo);
 	};
 
-	const pageFileName = (): string => {
-		const base = requestRef.current?.session.name ?? "design";
-		const suffix = pages.length > 1 ? `-${page + 1}` : "";
-		return `${base}-mockup${suffix}.png`;
+	const baseName = (): string => `${requestRef.current?.session.name ?? "design"}-mockup`;
+
+	/** One image per page; multi-page PNG ships as a zip so the user picks a path once. */
+	const savePng = async (current: MockupOptions): Promise<string | null> => {
+		const fs = getPluginCtx().fs;
+		if (pages.length === 1) {
+			const dataUrl = (await composePage(pages[0], current)).toDataURL("image/png");
+			return fs.saveAs(`${baseName()}.png`, dataUrl.split(",")[1] ?? "", "base64", {
+				title: t("mockup.save.title"),
+				filters: [{ name: "PNG", extensions: ["png"] }],
+			});
+		}
+		const files: Record<string, Uint8Array> = {};
+		for (const [index, pageShots] of pages.entries()) {
+			const dataUrl = (await composePage(pageShots, current)).toDataURL("image/png");
+			files[`${baseName()}-${index + 1}.png`] = dataUrlToBytes(dataUrl);
+		}
+		// level 0: PNG is already deflated, re-compressing only costs time.
+		const zipped = zipSync(files, { level: 0 });
+		return fs.saveAs(`${baseName()}.zip`, bytesToBase64(zipped), "base64", {
+			title: t("mockup.save.title"),
+			filters: [{ name: "ZIP", extensions: ["zip"] }],
+		});
+	};
+
+	/** Uniform page width (the widest page); the badge rides the cover only. */
+	const savePdf = async (current: MockupOptions): Promise<string | null> => {
+		const rendered: PdfPageImage[] = [];
+		for (const [index, pageShots] of pages.entries()) {
+			const canvas = await composePage(pageShots, index === 0 ? current : { ...current, brand: false });
+			rendered.push({
+				jpeg: dataUrlToBytes(canvasToJpegDataUrl(canvas)),
+				width: canvas.width,
+				height: canvas.height,
+			});
+		}
+		const pageWidth = Math.max(...rendered.map((page) => page.width)) / current.scale;
+		const pdf = buildImagePdf(rendered, pageWidth);
+		return getPluginCtx().fs.saveAs(`${baseName()}.pdf`, bytesToBase64(pdf), "base64", {
+			title: t("mockup.save.title"),
+			filters: [{ name: "PDF", extensions: ["pdf"] }],
+		});
 	};
 
 	const runSave = async (): Promise<void> => {
 		if (!options || busy || !ready) return;
 		setBusy("save");
 		try {
-			const dataUrl = await composePage(options);
-			const base64 = dataUrl.split(",")[1] ?? "";
-			const saved = await getPluginCtx().fs.saveAs(pageFileName(), base64, "base64", {
-				title: t("mockup.save.title"),
-				filters: [{ name: "PNG", extensions: ["png"] }],
-			});
+			const saved = format === "pdf" ? await savePdf(options) : await savePng(options);
 			if (saved) notify({ message: t("mockup.save.done", { path: saved }), variant: "success", durationMs: 5000 });
 		} catch (error) {
 			notify({ message: t("mockup.save.failed"), error });
@@ -184,11 +220,11 @@ export function ExportMockupDialog() {
 	};
 
 	const runCopy = async (): Promise<void> => {
-		if (!options || busy || !ready) return;
+		if (!options || busy || !ready || pages.length !== 1) return;
 		setBusy("copy");
 		try {
-			const dataUrl = await composePage(options);
-			await getPluginCtx().ui.copyImage(dataUrl);
+			const canvas = await composePage(pages[0], options);
+			await getPluginCtx().ui.copyImage(canvas.toDataURL("image/png"));
 			notify({ message: t("mockup.copy.done"), variant: "success", durationMs: 3000 });
 		} catch (error) {
 			notify({ message: t("mockup.copy.failed"), error });
@@ -198,8 +234,8 @@ export function ExportMockupDialog() {
 	};
 
 	/** Reordering works on the whole sequence; pages are just a view of it. */
-	const swap = (fromIndexOnPage: number, toIndexOnPage: number): void => {
-		const offset = page * PAGE_SIZE;
+	const swap = (pageIndex: number, fromIndexOnPage: number, toIndexOnPage: number): void => {
+		const offset = pageIndex * PAGE_SIZE;
 		setShots((current) => {
 			const next = [...current];
 			const from = offset + fromIndexOnPage;
@@ -217,7 +253,7 @@ export function ExportMockupDialog() {
 		<div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 px-6 pb-6 pt-11">
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: click-outside backdrop */}
 			<div className="absolute inset-x-0 bottom-0 top-9" onClick={close} />
-			<div className="relative flex h-full max-h-[780px] w-full max-w-[1280px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+			<div className="relative flex h-[85vh] w-[90vw] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
 				<div className="flex items-center gap-2 border-b border-border px-4 py-3">
 					<span className="text-sm font-medium text-foreground">{t("mockup.title")}</span>
 					<span className="text-xs text-muted-foreground">
@@ -235,33 +271,24 @@ export function ExportMockupDialog() {
 				</div>
 
 				<div className="flex min-h-0 flex-1">
-					<div className="flex min-w-0 flex-1 flex-col">
-						<MockupPreview
-							shots={pageShots}
-							options={options}
-							brandLogo={logo}
-							errors={errors}
-							onRetry={(frameId) => void captureInto(frameId)}
-							onSwap={swap}
-						/>
-						{pages.length > 1 ? (
-							<div className="flex items-center justify-center gap-1 border-t border-border py-2">
-								{pages.map((_, index) => (
-									<button
-										key={`page-${index + 1}`}
-										type="button"
-										onClick={() => setPage(index)}
-										className={`min-w-8 rounded-lg px-2 py-1 text-xs font-medium transition-colors ${
-											index === page
-												? "bg-primary text-primary-foreground"
-												: "text-muted-foreground hover:bg-accent"
-										}`}
-									>
-										{index + 1}
-									</button>
-								))}
+					<div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-4">
+						{pages.map((pageShots, index) => (
+							<div key={pageShots[0]?.frameId ?? index} className="flex flex-col gap-1.5">
+								{pages.length > 1 ? (
+									<span className="text-[11px] tabular-nums text-muted-foreground">
+										{t("mockup.page.index", { index: index + 1, total: pages.length })}
+									</span>
+								) : null}
+								<MockupPreview
+									shots={pageShots}
+									options={options}
+									brandLogo={logo}
+									errors={errors}
+									onRetry={(frameId) => void captureInto(frameId)}
+									onSwap={(from, to) => swap(index, from, to)}
+								/>
 							</div>
-						) : null}
+						))}
 					</div>
 
 					<MockupOptionsPanel
@@ -279,12 +306,29 @@ export function ExportMockupDialog() {
 							? t("mockup.status.capturing")
 							: errors.size > 0
 								? t("mockup.status.failed", { count: errors.size })
-								: t("mockup.status.page", { count: pageShots.length })}
+								: t("mockup.status.pages", { count: pages.length })}
 					</span>
 					<div className="flex-1" />
+					<div className="flex items-center gap-0.5 rounded-lg border border-border p-0.5">
+						{(["png", "pdf"] as const).map((value) => (
+							<button
+								key={value}
+								type="button"
+								onClick={() => setFormat(value)}
+								className={`rounded-md px-2.5 py-1 text-xs font-medium uppercase transition-colors ${
+									format === value
+										? "bg-primary text-primary-foreground"
+										: "text-muted-foreground hover:bg-accent"
+								}`}
+							>
+								{value}
+							</button>
+						))}
+					</div>
 					<button
 						type="button"
-						disabled={!ready || busy !== null}
+						disabled={!ready || busy !== null || pages.length !== 1}
+						title={pages.length !== 1 ? t("mockup.copy.singleOnly") : undefined}
 						onClick={() => void runCopy()}
 						className="rounded-lg px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent disabled:opacity-40"
 					>

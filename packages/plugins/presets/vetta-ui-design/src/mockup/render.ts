@@ -136,12 +136,12 @@ function drawBrand(
 	g.restore();
 }
 
-/** Compose to an offscreen canvas and hand back a PNG data URL. */
-export function renderMockupToDataUrl(
+/** Compose to an offscreen canvas — the shared root of every export format. */
+export function renderMockupToCanvas(
 	shots: MockupShot[],
 	options: MockupOptions,
 	brandLogo: CanvasImageSource | null,
-): string {
+): HTMLCanvasElement {
 	const layout = layoutMockup(shots, options);
 	const scale = options.scale * layout.fit;
 	const canvas = document.createElement("canvas");
@@ -150,5 +150,30 @@ export function renderMockupToDataUrl(
 	const g = canvas.getContext("2d");
 	if (!g) throw new Error("2D canvas context unavailable");
 	renderMockup(g, shots, options, layout, scale, brandLogo);
-	return canvas.toDataURL("image/png");
+	return canvas;
+}
+
+/** Compose to an offscreen canvas and hand back a PNG data URL. */
+export function renderMockupToDataUrl(
+	shots: MockupShot[],
+	options: MockupOptions,
+	brandLogo: CanvasImageSource | null,
+): string {
+	return renderMockupToCanvas(shots, options, brandLogo).toDataURL("image/png");
+}
+
+/**
+ * JPEG has no alpha, and Chromium encodes transparent pixels as black — flatten
+ * onto white first, matching where a transparent export usually ends up.
+ */
+export function canvasToJpegDataUrl(canvas: HTMLCanvasElement): string {
+	const flat = document.createElement("canvas");
+	flat.width = canvas.width;
+	flat.height = canvas.height;
+	const g = flat.getContext("2d");
+	if (!g) throw new Error("2D canvas context unavailable");
+	g.fillStyle = "#ffffff";
+	g.fillRect(0, 0, flat.width, flat.height);
+	g.drawImage(canvas, 0, 0);
+	return flat.toDataURL("image/jpeg", 0.94);
 }
