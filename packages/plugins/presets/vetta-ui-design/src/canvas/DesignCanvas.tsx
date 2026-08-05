@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import {
+	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
 	type RefObject,
 	useCallback,
@@ -79,9 +80,31 @@ const MARQUEE_MIN = 4;
 const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/"];
 /** 右键「复制为图片」的截图倍率：粘到聊天/文档里要经得起看，1 倍太糊。 */
 const COPY_PIXEL_RATIO = 2;
+/**
+ * 视口裁剪的预留量，单位是「屏」：可见区域外这么多才停止渲染 frame。
+ *
+ * 留一整屏是为了平移能先滑一段再需要重算列表；SLACK 是重算的触发线——可见区域
+ * 逼近已裁剪范围边缘、余量不足半屏时才重新算一次，平移途中不必每帧都过一遍。
+ */
+const CULL_MARGIN_SCREENS = 1;
+const CULL_SLACK_SCREENS = 0.5;
 
 function clampZoom(zoom: number): number {
 	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
+}
+
+/** 四周同时外扩（负值即内缩）。 */
+function inflate(rect: Rect, dx: number, dy: number): Rect {
+	return { x: rect.x - dx, y: rect.y - dy, width: rect.width + dx * 2, height: rect.height + dy * 2 };
+}
+
+function contains(outer: Rect, inner: Rect): boolean {
+	return (
+		inner.x >= outer.x &&
+		inner.y >= outer.y &&
+		inner.x + inner.width <= outer.x + outer.width &&
+		inner.y + inner.height <= outer.y + outer.height
+	);
 }
 
 /** Frames the current selection covers — a DOM selection counts as its frame. */
@@ -103,6 +126,10 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
+	// 下面那些交给 FrameView 的回调必须引用稳定（memo 的前提），所以它们读 ref 而不是
+	// 闭包捕获随渲染变化的 state。
+	const manifestRef = useRef(manifest);
+	manifestRef.current = manifest;
 	const [viewport, setViewport] = useState<Viewport>(() => ({ ...session.manifest.canvas }));
 	const viewportRef = useRef(viewport);
 	viewportRef.current = viewport;
@@ -123,6 +150,8 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	/** 待确认删除的 frame id，非 null 时显示二次确认。 */
 	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [moveDelta, setMoveDelta] = useState<{ dx: number; dy: number } | null>(null);
+	const moveDeltaRef = useRef(moveDelta);
+	moveDeltaRef.current = moveDelta;
 	const panRef = useRef<{ pointerId: number; startX: number; startY: number; origin: Viewport } | null>(null);
 	const marqueeRef = useRef<{ pointerId: number; startX: number; startY: number; mode: "create" | "select" } | null>(
 		null,
@@ -134,9 +163,44 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const wheelSettleRef = useRef<number | null>(null);
 	const worldRef = useRef<HTMLDivElement | null>(null);
 
+	/** 容器像素尺寸，视口裁剪要用。 */
+	const sizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
+	/**
+	 * 当前允许渲染的世界矩形（可见区域 + CULL_MARGIN_SCREENS 屏预留）。null 表示还
+	 * 没量到容器尺寸，那时不裁剪。
+	 */
+	const [cullRect, setCullRect] = useState<Rect | null>(null);
+	const cullRectRef = useRef<Rect | null>(null);
+	cullRectRef.current = cullRect;
+
 	const paintViewport = useCallback((next: Viewport): void => {
 		const world = worldRef.current;
 		if (world) world.style.transform = `translate(${next.x}px, ${next.y}px) scale(${next.zoom})`;
+	}, []);
+
+	/**
+	 * 按当前视口更新裁剪矩形。够用就原地不动——这个函数在平移的每一帧、缩放的每个
+	 * wheel tick 都会被调用，每次都 setState 等于把「绕开 React」的努力还回去。
+	 *
+	 * 两种情况才重算：
+	 * - 余量不足半屏：接着平移/缩小就要露出没渲染的区域了。
+	 * - 范围比需要的大一倍以上：放大之后旧矩形还按老比例留着，会一直多渲染一堆 frame。
+	 */
+	const syncCullRect = useCallback((vp: Viewport): void => {
+		const { width, height } = sizeRef.current;
+		if (width === 0 || height === 0) return;
+		const worldWidth = width / vp.zoom;
+		const worldHeight = height / vp.zoom;
+		const visible: Rect = { x: -vp.x / vp.zoom, y: -vp.y / vp.zoom, width: worldWidth, height: worldHeight };
+		const next = inflate(visible, worldWidth * CULL_MARGIN_SCREENS, worldHeight * CULL_MARGIN_SCREENS);
+		const current = cullRectRef.current;
+		if (current) {
+			const slack = inflate(current, -worldWidth * CULL_SLACK_SCREENS, -worldHeight * CULL_SLACK_SCREENS);
+			const oversized = current.width > next.width * 2 || current.height > next.height * 2;
+			if (contains(slack, visible) && !oversized) return;
+		}
+		cullRectRef.current = next;
+		setCullRect(next);
 	}, []);
 
 	/** 把高频 pointermove 折叠到每帧一次实际绘制。 */
@@ -144,9 +208,27 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		if (rafRef.current !== null) return;
 		rafRef.current = window.requestAnimationFrame(() => {
 			rafRef.current = null;
-			if (panLiveRef.current) paintViewport(panLiveRef.current);
+			if (!panLiveRef.current) return;
+			paintViewport(panLiveRef.current);
+			syncCullRect(panLiveRef.current);
 		});
-	}, [paintViewport]);
+	}, [paintViewport, syncCullRect]);
+
+	// 缩放、平移落定、容器尺寸变化：都要按新的可见范围核对一次裁剪范围。
+	useEffect(() => {
+		syncCullRect(viewport);
+	}, [viewport, syncCullRect]);
+
+	useEffect(() => {
+		const container = containerRef.current;
+		if (!container) return;
+		const observer = new ResizeObserver(() => {
+			sizeRef.current = { width: container.clientWidth, height: container.clientHeight };
+			syncCullRect(panLiveRef.current ?? viewportRef.current);
+		});
+		observer.observe(container);
+		return () => observer.disconnect();
+	}, [syncCullRect]);
 
 	// 平移途中若因别的原因（manifest 变化、活动态更新）触发了渲染，React 会用落后
 	// 的 state 覆盖 transform 把画布弹回去；这里在提交后、绘制前再抹一次实时值。
@@ -592,37 +674,55 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	};
 
 	/** Grab the placement of every frame that will travel with this drag. */
-	const beginMove = (frameId: string, additive: boolean): void => {
-		const already = selectedFrameIds(selectionRef.current);
-		let ids: string[];
-		if (additive) {
-			selectFrame(frameId, true);
-			ids = already.includes(frameId) ? already.filter((id) => id !== frameId) : [...already, frameId];
-		} else if (already.includes(frameId)) {
-			// Dragging a member of the current selection moves the whole group.
-			ids = already;
-		} else {
-			setSelection({ kind: "frames", ids: [frameId] });
-			ids = [frameId];
-		}
-		const origins = new Map<string, { x: number; y: number }>();
-		for (const id of ids) {
-			const frame = manifest.frames.find((entry) => entry.id === id);
-			if (frame) origins.set(id, { x: frame.x, y: frame.y });
-		}
-		moveRef.current = { origins };
-	};
+	const beginMove = useCallback(
+		(frameId: string, additive: boolean): void => {
+			const already = selectedFrameIds(selectionRef.current);
+			let ids: string[];
+			if (additive) {
+				selectFrame(frameId, true);
+				ids = already.includes(frameId) ? already.filter((id) => id !== frameId) : [...already, frameId];
+			} else if (already.includes(frameId)) {
+				// Dragging a member of the current selection moves the whole group.
+				ids = already;
+			} else {
+				setSelection({ kind: "frames", ids: [frameId] });
+				ids = [frameId];
+			}
+			const origins = new Map<string, { x: number; y: number }>();
+			for (const id of ids) {
+				const frame = manifestRef.current.frames.find((entry) => entry.id === id);
+				if (frame) origins.set(id, { x: frame.x, y: frame.y });
+			}
+			moveRef.current = { origins };
+		},
+		[selectFrame],
+	);
 
-	const commitMove = (): void => {
+	const commitMove = useCallback((): void => {
 		const state = moveRef.current;
-		const delta = moveDelta;
+		const delta = moveDeltaRef.current;
 		moveRef.current = null;
 		setMoveDelta(null);
 		if (!state || !delta || (delta.dx === 0 && delta.dy === 0)) return;
 		for (const [id, origin] of state.origins) {
 			void session.updateFramePlacement(id, { x: origin.x + delta.dx, y: origin.y + delta.dy });
 		}
-	};
+	}, [session]);
+
+	const handleMoveDelta = useCallback((dx: number, dy: number): void => setMoveDelta({ dx, dy }), []);
+
+	const handleResizeCommit = useCallback(
+		(frameId: string, patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void => {
+			void session.updateFramePlacement(frameId, patch);
+			// 位图是按旧尺寸截的，改完尺寸再显示就是被 object-cover 拉伸裁剪
+			// 的糊图——重新排队截一张。
+			invalidateRaster(frameId);
+		},
+		[session, invalidateRaster],
+	);
+
+	/** FrameView 拖动/缩放要把指针位移换算成世界位移，但 zoom 不作为 prop 下发。 */
+	const getZoom = useCallback((): number => viewportRef.current.zoom, []);
 
 	/**
 	 * 位图态的 frame 是 display:none，没有布局也就截不出东西，先经 runLive 拉回活体。
@@ -643,7 +743,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		};
 	}, [captureRef, captureFaithfully]);
 
-	const selectedIds = selectedFrameIds(selection);
+	const selectedIds = useMemo(() => selectedFrameIds(selection), [selection]);
 	/** Export / ask act on canvas order, not on click order. */
 	const orderedSelection = manifest.frames.filter((frame) => selectedIds.includes(frame.id)).sort(byCanvasOrder);
 
@@ -667,7 +767,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 					shots.push({ frameId: frame.id, screenshotPath });
 				}
 				const dom = selection?.kind === "dom" ? { frameId: selection.frameId, payload: selection.payload } : null;
-				const prompt = buildAskPrompt(session, { shots, dom }, suggestion);
+				const prompt = buildAskPrompt(session, { shots, dom }, suggestion, ctx.i18n.locale);
 				void ctx.conversation.sendPrompt(prompt).catch((error: unknown) => {
 					notify({ message: t("canvas.ask.failed"), error });
 				});
@@ -704,18 +804,23 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	};
 
 	/** 提交重命名。空标题/没改动由 session 自行忽略，这里只管收编辑态。 */
-	const commitRename = (frameId: string, title: string): void => {
-		setRenamingId(null);
-		void session.renameFrame(frameId, title).catch((error: unknown) => {
-			notify({ message: t("canvas.frame.rename.failed"), error });
-		});
-	};
+	const commitRename = useCallback(
+		(frameId: string, title: string): void => {
+			setRenamingId(null);
+			void session.renameFrame(frameId, title).catch((error: unknown) => {
+				notify({ message: t("canvas.frame.rename.failed"), error });
+			});
+		},
+		[session, t],
+	);
 
-	const startRename = (frameId: string): void => {
+	const startRename = useCallback((frameId: string): void => {
 		setMenuAnchor(null);
 		setSelection({ kind: "frames", ids: [frameId] });
 		setRenamingId(frameId);
-	};
+	}, []);
+
+	const cancelRename = useCallback((): void => setRenamingId(null), []);
 
 	const deleteFrame = (frameId: string): void => {
 		setDeletingId(null);
@@ -732,6 +837,40 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const deletingFrame = deletingId ? manifest.frames.find((frame) => frame.id === deletingId) : undefined;
 
 	const cursor = panActive ? "grab" : tool === "frame" ? "crosshair" : "default";
+
+	/**
+	 * 视口裁剪：看不见的 frame 连 DOM 都不建。
+	 *
+	 * 位图化已经把「N 个活体 iframe」降成了「N 张 img」，但 img 一样有代价：每张
+	 * 2x jpeg 解码后是 width*height*4 字节的位图，几十帧就是几百 MB，低配机上不断
+	 * 被丢弃再重解码，一动就卡。屏幕外的那些根本不需要存在。
+	 *
+	 * 两类例外必须留着：
+	 * - mounted 的（挂载窗口内、检查态、截图强制拉活的）：卸掉会连 iframe 一起卸，
+	 *   bridge 注册断开，位图流水线就停在那儿了。
+	 * - 选中的：选框/手柄是它「被选中」的唯一反馈，多选拖动时也要跟着动。
+	 */
+	const renderedFrames = useMemo(() => {
+		if (!cullRect) return manifest.frames;
+		return manifest.frames.filter(
+			(frame) => intersects(cullRect, frame) || isMounted(frame.id) || selectedIds.includes(frame.id),
+		);
+	}, [manifest.frames, cullRect, isMounted, selectedIds]);
+
+	const worldStyle = useMemo(
+		() =>
+			({
+				transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+				transformOrigin: "0 0",
+				// frame 标题与手柄按它反向缩放。走 CSS 变量而不是 prop：否则每个 wheel
+				// tick 都要重渲染全部 FrameView，而这里只是改一个元素的 style。
+				"--vetd-lscale": Math.min(1 / viewport.zoom, 8),
+				// 刻意不加 will-change / translateZ：这一层的包围盒覆盖所有 frame，
+				// 动辄上万像素，强行提升成合成层会超出 GPU 纹理上限，合成器降级后
+				// 整窗口撕裂闪烁。让浏览器自己决定要不要提升。
+			}) as CSSProperties,
+		[viewport],
+	);
 
 	return (
 		<div
@@ -752,23 +891,13 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 			onPointerMove={onBackgroundPointerMove}
 			onPointerUp={onBackgroundPointerUp}
 		>
-			<div
-				ref={worldRef}
-				className="absolute left-0 top-0"
-				style={{
-					transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
-					transformOrigin: "0 0",
-					// 刻意不加 will-change / translateZ：这一层的包围盒覆盖所有 frame，
-					// 动辄上万像素，强行提升成合成层会超出 GPU 纹理上限，合成器降级后
-					// 整窗口撕裂闪烁。让浏览器自己决定要不要提升。
-				}}
-			>
-				{manifest.frames.map((frame) => (
+			<div ref={worldRef} className="absolute left-0 top-0" style={worldStyle}>
+				{renderedFrames.map((frame) => (
 					<FrameView
 						key={frame.id}
 						frame={frame}
 						port={port}
-						zoom={viewport.zoom}
+						getZoom={getZoom}
 						bridge={bridge}
 						selected={selectedIds.includes(frame.id)}
 						entered={inspectFrameId === frame.id}
@@ -783,20 +912,15 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 						activity={activity.get(frame.id)}
 						buildError={frameErrors.get(frame.id) ?? null}
 						renaming={renamingId === frame.id}
-						onRenameStart={() => startRename(frame.id)}
-						onRenameCommit={(title) => commitRename(frame.id, title)}
-						onRenameCancel={() => setRenamingId(null)}
-						onSelect={(additive) => selectFrame(frame.id, additive)}
-						onContextMenu={(clientX, clientY) => openFrameMenu(frame.id, clientX, clientY)}
-						onMoveStart={(additive) => beginMove(frame.id, additive)}
-						onMoveDelta={(dx, dy) => setMoveDelta({ dx, dy })}
+						onRenameStart={startRename}
+						onRenameCommit={commitRename}
+						onRenameCancel={cancelRename}
+						onSelect={selectFrame}
+						onContextMenu={openFrameMenu}
+						onMoveStart={beginMove}
+						onMoveDelta={handleMoveDelta}
 						onMoveEnd={commitMove}
-						onResizeCommit={(patch) => {
-							session.updateFramePlacement(frame.id, patch);
-							// 位图是按旧尺寸截的，改完尺寸再显示就是被 object-cover 拉伸裁剪
-							// 的糊图——重新排队截一张。
-							invalidateRaster(frame.id);
-						}}
+						onResizeCommit={handleResizeCommit}
 					/>
 				))}
 				{marquee ? (

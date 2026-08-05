@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import { memo, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { BridgeHub } from "./bridge-client";
 import type { FrameActivity } from "./design-runtime";
@@ -7,10 +7,21 @@ import { FrameTitleInput } from "./FrameTitleInput";
 
 type ResizeEdge = "nw" | "ne" | "sw" | "se" | "e" | "s";
 
+/**
+ * 回调一律 frameId 优先、且由画布侧用 useCallback 固定住引用。
+ *
+ * 这不是风格问题：FrameView 走 memo，任何一个内联箭头函数（`() => selectFrame(frame.id)`）
+ * 都会让每次画布重渲染都变成「全部 N 个 frame 重渲染」，memo 直接失效。
+ */
 interface FrameViewProps {
 	frame: VetdFrameEntry;
 	port: number;
-	zoom: number;
+	/**
+	 * 读当前缩放。改尺寸/移动要把指针位移换算成世界位移，需要 zoom；但不能作为 prop
+	 * 下发——那样每个 wheel tick 都会重渲染所有 frame。视觉上的反向缩放走 CSS 变量
+	 * `--vetd-lscale`（由画布在 world 层上设置）。
+	 */
+	getZoom(): number;
 	bridge: BridgeHub;
 	selected: boolean;
 	/**
@@ -41,18 +52,18 @@ interface FrameViewProps {
 	buildError: string | null;
 	/** true 时标题变成就地编辑的输入框（双击标题，或右键菜单里的重命名）。 */
 	renaming: boolean;
-	onSelect(additive: boolean): void;
+	onSelect(frameId: string, additive: boolean): void;
 	/** 右键：坐标是视口坐标（clientX/Y），由画布换算成容器内坐标定位菜单。 */
-	onContextMenu(clientX: number, clientY: number): void;
-	onRenameStart(): void;
+	onContextMenu(frameId: string, clientX: number, clientY: number): void;
+	onRenameStart(frameId: string): void;
 	/** 提交由画布落盘；标题没变或为空时画布自行忽略。 */
-	onRenameCommit(title: string): void;
+	onRenameCommit(frameId: string, title: string): void;
 	onRenameCancel(): void;
 	/** Moves are owned by the canvas so every selected frame travels together. */
-	onMoveStart(additive: boolean): void;
+	onMoveStart(frameId: string, additive: boolean): void;
 	onMoveDelta(dx: number, dy: number): void;
 	onMoveEnd(): void;
-	onResizeCommit(patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void;
+	onResizeCommit(frameId: string, patch: Partial<Pick<VetdFrameEntry, "x" | "y" | "width" | "height">>): void;
 }
 
 interface DragState {
@@ -71,10 +82,15 @@ const MIN_HEIGHT = 80;
  */
 const PAINT_FALLBACK_MS = 2_500;
 
-export function FrameView({
+/**
+ * memo 是这层的性能前提：画布上任何一次状态变化（框选矩形、活动态、截图上报、
+ * 缩放…）都会重渲染 DesignCanvas，N 个 frame 只应该做 N 次浅比较而不是 N 次
+ * 重渲染。前提是 props 全都稳定——见 {@link FrameViewProps}。
+ */
+export const FrameView = memo(function FrameView({
 	frame,
 	port,
-	zoom,
+	getZoom,
 	bridge,
 	selected,
 	entered,
@@ -176,8 +192,8 @@ export function FrameView({
 		if (!interactive) return;
 		event.preventDefault();
 		event.stopPropagation();
-		if (edge === "move") onMoveStart(event.shiftKey);
-		else onSelect(false);
+		if (edge === "move") onMoveStart(frame.id, event.shiftKey);
+		else onSelect(frame.id, false);
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		setDragging(true);
 		dragRef.current = {
@@ -198,6 +214,7 @@ export function FrameView({
 			finishDrag(event.pointerId);
 			return;
 		}
+		const zoom = getZoom();
 		const dx = (event.clientX - drag.startX) / zoom;
 		const dy = (event.clientY - drag.startY) / zoom;
 		const { origin } = drag;
@@ -242,7 +259,7 @@ export function FrameView({
 			return;
 		}
 		if (resizeRect) {
-			onResizeCommit(resizeRect);
+			onResizeCommit(frame.id, resizeRect);
 			setResizeRect(null);
 		}
 	};
@@ -267,7 +284,11 @@ export function FrameView({
 		};
 	}, []);
 
-	const labelScale = Math.min(1 / zoom, 8);
+	/**
+	 * 标题栏与手柄的反向缩放。取值由画布在 world 层上写成 CSS 变量，这里只是引用
+	 * 它——所以缩放画布不会让这个组件重渲染，浏览器自己重算 transform。
+	 */
+	const labelScale = "var(--vetd-lscale, 1)";
 	const handles: { edge: ResizeEdge; className: string }[] = [
 		{ edge: "nw", className: "-left-1 -top-1 cursor-nwse-resize" },
 		{ edge: "ne", className: "-right-1 -top-1 cursor-nesw-resize" },
@@ -289,7 +310,7 @@ export function FrameView({
 				if (!interactive) return;
 				event.preventDefault();
 				event.stopPropagation();
-				onContextMenu(event.clientX, event.clientY);
+				onContextMenu(frame.id, event.clientX, event.clientY);
 			}}
 		>
 			{/* Title bar (inverse-scaled so it stays readable at any zoom). */}
@@ -299,13 +320,13 @@ export function FrameView({
 					transform: `scale(${labelScale})`,
 					transformOrigin: "left bottom",
 					bottom: "100%",
-					marginBottom: 4 * labelScale,
+					marginBottom: `calc(4px * ${labelScale})`,
 				}}
 			>
 				{renaming ? (
 					<FrameTitleInput
 						initial={frame.title || frame.id}
-						onCommit={onRenameCommit}
+						onCommit={(title) => onRenameCommit(frame.id, title)}
 						onCancel={onRenameCancel}
 					/>
 				) : (
@@ -319,7 +340,7 @@ export function FrameView({
 						onPointerUp={endDrag}
 						// 双击标题是重命名（Figma 行为）；要进 frame 检查态请双击画面本身。
 						onDoubleClick={() => {
-							if (interactive) onRenameStart();
+							if (interactive) onRenameStart(frame.id);
 						}}
 						title={frame.title || frame.id}
 					>
@@ -419,7 +440,7 @@ export function FrameView({
 						// 多选态下双击某一个 frame：收敛成只选它，也就直接开了元素选择。
 						onDoubleClick={(event) => {
 							event.stopPropagation();
-							if (interactive) onSelect(false);
+							if (interactive) onSelect(frame.id, false);
 						}}
 					/>
 				}
@@ -441,4 +462,4 @@ export function FrameView({
 				: null}
 		</div>
 	);
-}
+});
