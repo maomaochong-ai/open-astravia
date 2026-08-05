@@ -14,6 +14,7 @@ login-app.vetd.d/
   frames/               ← one TSX file = one canvas frame
     login.tsx
     dashboard.tsx
+    _layout.tsx         ← optional shared shell (nav bar…); `_` files are NOT frames
   components/           ← shared React components (imported by frames)
   assets/               ← static assets (import with a relative path)
   theme.css             ← shared color system (Tailwind v4 @theme tokens)
@@ -158,6 +159,46 @@ import { Link, useNavigate } from "react-router";
 const navigate = useNavigate();
 <button type="button" onClick={() => navigate("/dashboard")}>登录</button>;
 ```
+
+**Shared chrome (nav bar, sidebar, bottom tabs)** has two levels — pick by what
+the thing actually is:
+
+- **A shared component** (`components/NavBar.tsx`, imported by each frame) is
+  the default. Always right, costs nothing.
+- **A layout route** (`frames/_layout.tsx`) is for chrome that must *survive
+  navigation*. Create it only when the design is a real multi-screen app/site
+  with persistent chrome. It becomes the parent route of every frame, so the
+  nav bar mounts once: expanded menus, active state and scroll position stay
+  put when the user clicks through in preview. Files starting with `_` are not
+  frames — no canvas artboard is created for them.
+
+```tsx
+// frames/_layout.tsx — must render <Outlet /> itself
+import { Outlet, useLocation } from "react-router";
+import { NavBar } from "../components/NavBar";
+
+export default function Layout() {
+	const { pathname } = useLocation();
+	// Screens outside the app shell (login, onboarding, a full-bleed landing
+	// page) simply opt out here — no separate mechanism.
+	if (pathname === "/login") return <Outlet />;
+	return (
+		<div className="flex h-full flex-col bg-surface">
+			<NavBar />
+			<div className="min-h-0 flex-1">
+				<Outlet />
+			</div>
+		</div>
+	);
+}
+```
+
+Do NOT create a layout for posters, slides, infographics, or a single-screen
+design — there is nothing to persist, and a shell that wraps a poster is just
+wrong. No `_layout.tsx` means the engine behaves exactly as if the concept did
+not exist. Chrome differs per form factor (a 390-wide tab bar and a 1440-wide
+top nav are not the same shell), so one layout file serves one form factor; put
+mixed-form-factor work in separate design documents.
 
 **How much interaction to write** — by product type:
 

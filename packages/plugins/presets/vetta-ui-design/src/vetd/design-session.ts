@@ -1,4 +1,5 @@
 import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
+import { isFrameFile } from "../../engine/src/routes";
 import { parseFrameMeta, sameMeta, sanitizeFrameTitle, withFrameTitle } from "./frame-meta";
 import {
 	designNameOf,
@@ -104,7 +105,9 @@ export class DesignSession {
 		try {
 			const entries = await this.ctx.fs.readDir(`${this.dirPath}/frames`);
 			files = entries
-				.filter((entry) => !entry.isDirectory && entry.name.endsWith(".tsx"))
+				// isFrameFile 排掉 `_` 开头的路由结构件（`_layout.tsx`）：它是公共外壳，
+				// 不是一屏内容，画布上不该为它多出一个空画板。
+				.filter((entry) => !entry.isDirectory && entry.name.endsWith(".tsx") && isFrameFile(entry.name))
 				.map((entry) => ({ name: entry.name, path: entry.path }));
 		} catch {
 			files = [];

@@ -10,7 +10,7 @@ import {
 	useLayoutEffect,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
+import { BrowserRouter, MemoryRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
 import {
 	armReloadOnNextUpdate,
 	installBridge,
@@ -21,7 +21,7 @@ import {
 	notifyNavigated,
 	onBuildError,
 } from "./bridge";
-import { HOME_FRAME_ID, frameOfPath, homeFrameId, pathOfFrame } from "./routes";
+import { HOME_FRAME_ID, frameOfPath, homeFrameId, isFrameFile, pathOfFrame } from "./routes";
 
 interface FrameModule {
 	default?: ComponentType;
@@ -37,9 +37,27 @@ const loaders = import.meta.glob<FrameModule>("@design/frames/*.tsx");
 
 const frames = new Map<string, () => Promise<FrameModule>>();
 for (const [path, load] of Object.entries(loaders)) {
-	const id = path.split("/").pop()?.replace(/\.tsx$/, "");
-	if (id) frames.set(id, load);
+	const name = path.split("/").pop();
+	if (!name || !isFrameFile(name)) continue;
+	frames.set(name.replace(/\.tsx$/, ""), load);
 }
+
+/**
+ * 可选的公共外壳：导航栏/侧边栏/底部 tab 这类每屏都在的结构。
+ *
+ * 它是路由意义上的父级，不是「每个 frame 各自 import 一份组件」——跨帧跳转时
+ * 外壳不重新挂载，展开的菜单、选中态、滚动位置都留着，这才是真实产品的手感。
+ * 设计稿不需要外壳时（海报、幻灯片、单屏）不建这个文件即可，链路对它们无感。
+ */
+const layoutLoad = Object.values(import.meta.glob<FrameModule>("@design/frames/_layout.tsx"))[0] ?? null;
+const Layout = layoutLoad
+	? lazy(async () => {
+			const mod = await layoutLoad();
+			// 外壳必须自己渲染 <Outlet />（react-router 的标准写法）；忘了写的话
+			// 内容区整片消失，退回裸 Outlet 至少还看得见页面。
+			return { default: mod.default ?? Outlet };
+		})
+	: null;
 
 const frameIds = [...frames.keys()].sort();
 
@@ -180,6 +198,25 @@ function FrameRoute({ id }: { id: string }) {
 	);
 }
 
+/**
+ * 外壳所在的父路由。没有外壳文件时它就是一个透明的 `<Outlet />`。
+ *
+ * 边界不能省：外壳编译失败会让每一帧同时白屏，而 frame 级的边界在它**里面**，
+ * 捕不到。这里按当前地址对应的那一帧上报，画布上每个 iframe 各自亮自己的
+ * 「构建失败」徽标，跟单帧写坏时的表现一致。
+ */
+function LayoutRoute() {
+	const location = useLocation();
+	if (!Layout) return <Outlet />;
+	return (
+		<FrameBoundary frameId={frameOfPath(location.pathname, frameIds) ?? ""}>
+			<Suspense fallback={null}>
+				<Layout />
+			</Suspense>
+		</FrameBoundary>
+	);
+}
+
 function NotFound() {
 	return (
 		<>
@@ -215,25 +252,28 @@ function App() {
 		<>
 			<NavigationBridge />
 			<Routes>
-				<Route
-					path="/"
-					element={
-						home === null ? (
-							<NotFound />
-						) : home === HOME_FRAME_ID ? (
-							<FrameRoute id={HOME_FRAME_ID} />
-						) : (
-							// 没有 index.tsx 时首页借给第一帧，部署出去的根地址才不是空白。
-							<Navigate to={pathOfFrame(home)} replace />
-						)
-					}
-				/>
-				{frameIds
-					.filter((id) => id !== HOME_FRAME_ID)
-					.map((id) => (
-						<Route key={id} path={pathOfFrame(id)} element={<FrameRoute id={id} />} />
-					))}
-				<Route path="*" element={<NotFound />} />
+				{/* 无路径的父路由：所有 frame 都是它的子路由，外壳因此只挂载一次。 */}
+				<Route element={<LayoutRoute />}>
+					<Route
+						path="/"
+						element={
+							home === null ? (
+								<NotFound />
+							) : home === HOME_FRAME_ID ? (
+								<FrameRoute id={HOME_FRAME_ID} />
+							) : (
+								// 没有 index.tsx 时首页借给第一帧，部署出去的根地址才不是空白。
+								<Navigate to={pathOfFrame(home)} replace />
+							)
+						}
+					/>
+					{frameIds
+						.filter((id) => id !== HOME_FRAME_ID)
+						.map((id) => (
+							<Route key={id} path={pathOfFrame(id)} element={<FrameRoute id={id} />} />
+						))}
+					<Route path="*" element={<NotFound />} />
+				</Route>
 			</Routes>
 		</>
 	);

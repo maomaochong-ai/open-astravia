@@ -9,6 +9,18 @@
 /** 约定：这个 id 的 frame 就是首页。 */
 export const HOME_FRAME_ID = "index";
 
+/** 约定：这个文件（可选）是所有 frame 的公共外壳，见 {@link isFrameFile}。 */
+export const LAYOUT_FILE = "_layout.tsx";
+
+/**
+ * `frames/` 下 `_` 开头的文件不是画框，而是路由层的结构件（目前只有
+ * `_layout.tsx`）。引擎不给它派路由，画布也不给它建画板——否则设计稿上会平白
+ * 多出一个空画框，而它根本不是一屏内容。
+ */
+export function isFrameFile(basename: string): boolean {
+	return !basename.startsWith("_");
+}
+
 /** 路由路径。Route 的 path 与导航目标共用它，所以这里不做 URL 编码。 */
 export function pathOfFrame(frameId: string): string {
 	return frameId === HOME_FRAME_ID ? "/" : `/${frameId}`;
