@@ -12,6 +12,7 @@ import {
 import { Button } from "@vetta/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import "./style.css";
+import { customApiIncomplete } from "./image-provider";
 import { createImageRepository, type ImageRepository } from "./image-repository";
 import { registerImageTools } from "./image-tools";
 
@@ -784,18 +785,17 @@ function useGuardOpen(): boolean {
 	);
 }
 
-/** True when the active provider is missing its required API key (+ custom 的 baseUrl/model)。 */
+/**
+ * True 表示本地配置不完整、开不了图像生成。
+ *
+ * 网关模式恒为 false——不需要任何本地配置，能不能出图由服务端的订阅与档位授权
+ * 决定，那属于运行时业务结果（会带着错误码回来），不该在这里当成「未配置」拦掉。
+ * 只有用户主动切到自定义 API 却没填全时才拦。
+ */
 function imageGenUnconfigured(): boolean {
 	const s = pluginCtx?.settings;
 	if (!s) return true;
-	const has = (key: string): boolean => {
-		const v = s.get<string>(key);
-		return typeof v === "string" && v.trim().length > 0;
-	};
-	const provider = s.get<string>("provider") ?? "openai";
-	if (provider === "agnes-ai") return !has("agnesApiKey");
-	if (provider === "custom") return !has("customApiKey") || !has("baseUrl") || !has("model");
-	return !has("openaiApiKey"); // openai（默认）；模型 enum 自带默认值，无需校验
+	return customApiIncomplete(s);
 }
 
 /** App-level dialog (mounted via a global slot) shown when 图像生成 缺配置。 */

@@ -1,5 +1,5 @@
 import type { PluginContext, PluginImageRef } from "@vetta-org/plugin-sdk";
-import { editImage, generateImage } from "./image-provider";
+import { editImage, generateImage, IMAGE_ERROR_CODES, ImageGatewayError } from "./image-provider";
 import type { ImageRepository } from "./image-repository";
 
 interface GenerateImageInput {
@@ -91,6 +91,31 @@ function result(kind: "generated" | "edited", images: PluginImageRef[]): Record<
 	};
 }
 
+/**
+ * 把网关的业务失败翻译成给模型看的结论。
+ *
+ * 这些不是异常而是常规业务分支：额度用尽、档位不含图像生成、服务端未配置模型，
+ * 抛错只会让模型反复重试。`retryable: false` 明确告诉它换一条路（改成文字描述、
+ * 或提示用户去升级订阅），而不是再打一次必然失败的请求。
+ */
+function gatewayFailure(error: ImageGatewayError): Record<string, unknown> {
+	const message = ((): string => {
+		switch (error.code) {
+			case IMAGE_ERROR_CODES.QUOTA_EXHAUSTED:
+				return "The user's Vetta subscription quota is used up, so no image can be produced right now. Tell the user their image quota is exhausted and when it resets, and do not retry.";
+			case IMAGE_ERROR_CODES.MODEL_NOT_IN_PLAN:
+			case IMAGE_ERROR_CODES.SUBSCRIPTION_INACTIVE:
+				return "The user's current Vetta plan does not include image generation. Tell the user to upgrade their subscription, and do not retry.";
+			case IMAGE_ERROR_CODES.NOT_CONFIGURED:
+			case IMAGE_ERROR_CODES.SERVICE_DISABLED:
+				return "Image generation is not available on this Vetta server. Tell the user to contact their administrator, and do not retry.";
+			default:
+				return `Image generation failed: ${error.message}`;
+		}
+	})();
+	return { ok: false, retryable: false, error: message };
+}
+
 export function registerImageTools(ctx: PluginContext, repository: ImageRepository): void {
 	ctx.agent.registerTool<GenerateImageInput>({
 		id: "generate-image",
@@ -102,7 +127,13 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,
 		handler: async ({ session, trigger }) => {
-			const bytes = await generateImage(ctx.network, ctx.settings, trigger.input);
+			let bytes: Awaited<ReturnType<typeof generateImage>>;
+			try {
+				bytes = await generateImage(ctx, trigger.input);
+			} catch (error) {
+				if (error instanceof ImageGatewayError) return gatewayFailure(error);
+				throw error;
+			}
 			const image = await repository.persist(bytes, { sessionId: session.id });
 			ctx.ui.openActivityTab(HISTORY_TAB_ID);
 			return result("generated", [image]);
@@ -148,11 +179,17 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 						}
 					: null);
 			if (!source) throw new Error("Image source was not found");
-			const bytes = await editImage(ctx.network, ctx.settings, {
-				prompt: input.prompt,
-				source,
-				size: input.size,
-			});
+			let bytes: Awaited<ReturnType<typeof editImage>>;
+			try {
+				bytes = await editImage(ctx, {
+					prompt: input.prompt,
+					source,
+					size: input.size,
+				});
+			} catch (error) {
+				if (error instanceof ImageGatewayError) return gatewayFailure(error);
+				throw error;
+			}
 			const sourceLineage = input.sourceImageId
 				? await repository.lineage(input.sourceImageId)
 				: [];
