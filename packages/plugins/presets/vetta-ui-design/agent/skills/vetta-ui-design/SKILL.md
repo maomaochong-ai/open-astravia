@@ -50,9 +50,15 @@ the common case, not the only one — see "Pick the product type" below.
 5. **Icons come from Iconify Tailwind classes**:
    `<span className="icon-[lucide--search] size-4" />`. Bundled offline sets:
    `lucide`, `tabler`, `mdi`, `simple-icons` (brand logos). Prefer these.
-6. Extract repeated UI into `components/` and import with relative paths
-   (`../components/Button`). Frames may import each other's components but not
-   other frames.
+6. **Never write the same UI twice.** Shared pieces live in `components/`,
+   imported with relative paths (`../components/Button`). Frames may import each
+   other's components but not other frames.
+   This bites hardest with **page chrome** — nav bar, sidebar, bottom tab bar,
+   page header. Pasting one of those into three dashboard screens is the single
+   most common failure in multi-screen designs: the user then asks for one nav
+   change and it has to be made in every frame, and they drift apart. Write the
+   chrome ONCE (`components/`, or `frames/_layout.tsx` — see "Interaction &
+   navigation") **before** the screens that use it.
 7. **Never point an `<img>` (or `background-image`) at a remote URL.** Images go
    in `assets/` and are imported relatively
    (`import hero from "../assets/hero.png"`); otherwise use a CSS gradient, a
@@ -87,9 +93,16 @@ the common case, not the only one — see "Pick the product type" below.
   scaffold the manifest by hand. It creates NO frames — the canvas deliberately
   starts empty rather than guessing a size, so decide the product type first
   (below) and write the frames yourself.
-- Existing document: call `vetd_status` first for the frame ids and sizes, read
-  `theme.css`, and list `components/`. Reuse what is there — do not invent a
-  second button or a second shade of the brand color.
+- **More than one screen? Plan the shared parts before writing any frame.**
+  List the screens, then name what they have in common — chrome (nav bar,
+  sidebar, tab bar, page header), and repeated blocks (stat card, table row,
+  empty state). Write those into `components/` (or `frames/_layout.tsx`) FIRST,
+  then write each screen as composition on top. Writing screen 1 in full and
+  extracting later never happens — you stop seeing the repetition by screen 3.
+- Existing document: call `vetd_status` first — it reports the frame ids/sizes
+  AND `sharedShell` (the existing layout + `components/`). Read `theme.css`.
+  Reuse what is there — do not invent a second button, a second nav bar, or a
+  second shade of the brand color.
 - Read `DESIGN.md` if it exists. It is the design's own spec and outranks every
   default in this file. If its frontmatter has `system: <id>`, a built-in
   design system is applied: `theme.css` is that system's hand-tuned palette —

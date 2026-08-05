@@ -26,6 +26,30 @@ interface ScreenshotInput {
 	frame: string;
 }
 
+/**
+ * 这份设计当前的复用面：公共外壳与已有组件。
+ *
+ * 存在的理由很具体：agent 是一屏一屏往下写的，写第三屏时早已看不见第一屏写过
+ * 什么，于是每个 frame 里各抄一份导航栏。把它随 vetd_status 一起端到眼前，比在
+ * skill 文档里多写一段更管用——工具返回是每次都会读的。
+ */
+async function inspectSharedShell(
+	fs: PluginContext["fs"],
+	dirPath: string,
+): Promise<{ layout: string | null; components: string[] }> {
+	const layout = await fs
+		.readFile(`${dirPath}/frames/_layout.tsx`)
+		.then(() => "frames/_layout.tsx")
+		.catch(() => null);
+	const components = await fs
+		.readDir(`${dirPath}/components`)
+		.then((entries) =>
+			entries.filter((entry) => !entry.isDirectory && entry.name.endsWith(".tsx")).map((entry) => entry.name),
+		)
+		.catch(() => []);
+	return { layout, components };
+}
+
 export function registerDesignTools(ctx: PluginContext): void {
 	ctx.agent.registerTool<CreateInput>({
 		id: "vetd-create",
@@ -54,7 +78,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				ok: true,
 				vetdPath: result.vetdPath,
 				sourcesDir: result.dirPath,
-				note: "Design created and opened on the canvas. It has NO frames yet — pick the frame sizes from the product type (screen / slide / poster / …) and write them as frames/<id>.tsx with `export const frame = { width, height, title }`; shared color tokens live in theme.css. Do NOT edit the .vetd manifest — the canvas owns it.",
+				note: "Design created and opened on the canvas. It has NO frames yet — pick the frame sizes from the product type (screen / slide / poster / …) and write them as frames/<id>.tsx with `export const frame = { width, height, title }`; shared color tokens live in theme.css. Do NOT edit the .vetd manifest — the canvas owns it. If this design will have MORE THAN ONE screen, write the shared chrome FIRST (nav bar / sidebar / tab bar → components/, or frames/_layout.tsx when it must survive navigation) and have every frame use it — never paste the same nav bar into each frame file.",
 			};
 		},
 	});
@@ -165,12 +189,16 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const designs = await findVetdFiles(host.fs, session.cwd);
 			const controller = getCanvasController();
 			const engine = await engineDiagnostics(controller?.session.dirPath ?? null);
+			const shell = controller ? await inspectSharedShell(host.fs, controller.session.dirPath) : null;
 			return {
 				designs,
 				open: controller
 					? {
 							vetdPath: controller.session.vetdPath,
 							sourcesDir: controller.session.dirPath,
+							// 复用面先于画框列出：agent 是一屏一屏往下写的，看不见既有的
+							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
+							sharedShell: shell,
 							frames: controller.session.manifest.frames.map((frame) => {
 								const buildError = getFrameError(frame.id);
 								return {
@@ -185,6 +213,14 @@ export function registerDesignTools(ctx: PluginContext): void {
 						}
 					: null,
 				engine,
+				...(shell && controller && controller.session.manifest.frames.length > 1
+					? {
+							note:
+								shell.layout || shell.components.length > 0
+									? "This design already has shared UI (see `sharedShell`) — reuse it in every frame you touch instead of writing a second copy."
+									: "This design has multiple screens but NO shared UI yet. If they share a nav bar / sidebar / tab bar, extract it into components/ (or frames/_layout.tsx when it must survive navigation) and have every frame use it — do not repeat the same chrome in each frame file.",
+						}
+					: {}),
 			};
 		},
 	});
