@@ -131,6 +131,32 @@ it("截图期间被 invalidate 的 frame 会重新截图，而不是停在旧位
 	expect(captures.length).toBe(2);
 });
 
+/**
+ * 复现的 bug：vetd_screenshot / 导出走的是另一个截图入口，不经过队列的串行控制，
+ * 于是「agent 写完源码（这一帧变脏进队列）→ 立刻截图」会让两次 html-to-image 同时
+ * 打同一个 iframe，互相拖慢到双双超时。
+ */
+it("交付物截图持锁期间，位图队列不会并发截同一帧", async () => {
+	await mount(["a"]);
+
+	// vetd_screenshot 先拿到锁。
+	const tool = latest.withCaptureLock(() => bridge.capture("a"));
+	await flushMicrotasks();
+	expect(captures.length).toBe(1);
+
+	// 同一时刻这一帧渲染完成，队列也想截它——必须卡在锁上。
+	act(() => latest.notifyRendered("a"));
+	await advance(SETTLE * 2);
+	expect(captures.length).toBe(1);
+
+	captures[0].resolve("data:tool");
+	await act(async () => {
+		await tool;
+	});
+	await flushMicrotasks();
+	expect(captures.length).toBe(2);
+});
+
 it("没有 invalidate 时只截一次，位图落地后 frame 退出活体", async () => {
 	await mount(["a"]);
 

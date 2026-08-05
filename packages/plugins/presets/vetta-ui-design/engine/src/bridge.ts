@@ -288,6 +288,23 @@ function describeCaptureError(error: unknown): string {
 	return String(error);
 }
 
+/**
+ * 一张截图的像素上限。超过就压 pixelRatio。
+ *
+ * html-to-image 的成本随「面积 × pixelRatio²」走：整棵 DOM 序列化进 foreignObject、
+ * 内联全部样式与素材、再解码编码一次。落地页按默认尺寸就是 1440x2000+，2 倍下已经
+ * 上千万像素，单独跑都能逼近截图超时。而 agent 要看的是版式不是像素，
+ * 12M（约 3464²）之上再涨清晰度没有意义。
+ */
+const MAX_CAPTURE_PIXELS = 12_000_000;
+
+/** 按文档实际大小把请求的 pixelRatio 压到出得来的范围内，不低于 1 倍。 */
+function safePixelRatio(requested: number): number {
+	const el = document.documentElement;
+	const area = Math.max(el.scrollWidth * el.scrollHeight, 1);
+	return Math.max(1, Math.min(requested, Math.sqrt(MAX_CAPTURE_PIXELS / area)));
+}
+
 export function installBridge(host: BridgeHost): void {
 	let mode: InspectMode = "off";
 	let selected: Element | null = null;
@@ -469,8 +486,9 @@ export function installBridge(host: BridgeHost): void {
 				const keepHighlight = data.keepHighlight === true && selected !== null;
 				// Mockup export asks for a higher ratio so the composed image stays
 				// crisp when scaled up; 2 keeps the historical behaviour.
-				const pixelRatio =
-					typeof data.pixelRatio === "number" && data.pixelRatio > 0 ? Math.min(data.pixelRatio, 4) : 2;
+				const pixelRatio = safePixelRatio(
+					typeof data.pixelRatio === "number" && data.pixelRatio > 0 ? Math.min(data.pixelRatio, 4) : 2,
+				);
 				moveOverlay(hoverOverlay, null);
 				if (!keepHighlight) moveOverlay(selectedOverlay, null);
 				// Capture documentElement: the overlay divs live on it, so a kept

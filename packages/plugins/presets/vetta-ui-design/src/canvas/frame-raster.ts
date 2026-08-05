@@ -78,6 +78,16 @@ export interface FrameRasterState {
 	 */
 	runLive<T>(frameId: string, run: () => Promise<T>): Promise<T>;
 	/**
+	 * 画布上任何一次 html-to-image 都要经过这里排队。
+	 *
+	 * 后台位图队列本来就是串行的（一次只截一张），但交付物那条路（vetd_screenshot、
+	 * 导出、复制）走的是另一个入口，两边谁也不知道谁。而 agent 的固定节奏正好让它们
+	 * 撞上：写完源码 → 文件监听让这一帧变脏、进队列等重截 → 紧接着就来截图。同一个
+	 * iframe 上并行跑两遍 documentElement 的克隆与编码，互相拖慢远不止一倍，30s 也
+	 * 打不住——超时报的还是「capture timed out」，看不出跟并发有关。
+	 */
+	withCaptureLock<T>(run: () => Promise<T>): Promise<T>;
+	/**
 	 * 把所有 frame 重新排队重截。共享资源（theme.css、components/*）改动时用它：
 	 * 位图化的 frame 会重新挂载并加载新代码，还挂着的 frame 走 HMR，不打断检查态。
 	 */
@@ -195,6 +205,17 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 		};
 	}, [cacheKey]);
 
+	/**
+	 * 截图串行锁。链在一条 promise 上：拿到锁的那次跑完（无论成败）下一次才开始。
+	 * 锁只保护「发 capture 到拿到结果」这一段——排队等待期间 frame 该挂着照样挂着。
+	 */
+	const captureLockRef = useRef<Promise<unknown>>(Promise.resolve());
+	const withCaptureLock = useCallback(<T,>(run: () => Promise<T>): Promise<T> => {
+		const next = captureLockRef.current.then(run, run);
+		captureLockRef.current = next.catch(() => undefined);
+		return next;
+	}, []);
+
 	const bumpSeq = useCallback((frameId: string): void => {
 		invalidationSeqRef.current.set(frameId, (invalidationSeqRef.current.get(frameId) ?? 0) + 1);
 	}, []);
@@ -309,13 +330,14 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 		const seqAtStart = invalidationSeqRef.current.get(next) ?? 0;
 		timerRef.current = window.setTimeout(() => {
 			timerRef.current = null;
-			void bridge
-				.capture(next, {
+			void withCaptureLock(() =>
+				bridge.capture(next, {
 					pixelRatio: RASTER_PIXEL_RATIO,
 					timeoutMs: 20_000,
 					format: "jpeg",
 					quality: RASTER_JPEG_QUALITY,
-				})
+				}),
+			)
 				.then(async (dataUrl) => {
 					// 解码在前、写状态在后：dirty 的清除在 finally，会等这个 await，
 					// 所以位图进入 rasters 时一定是「挂上就能画」的。
@@ -355,7 +377,7 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 				capturingRef.current = null;
 			}
 		};
-	}, [bridge, cacheKey, dirty, activeFrameId, mounted, frameIds]);
+	}, [bridge, cacheKey, dirty, activeFrameId, mounted, frameIds, withCaptureLock]);
 
 	const rasterOf = useCallback((frameId: string): string | null => rasters.get(frameId) ?? null, [rasters]);
 
@@ -406,6 +428,7 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 		invalidate,
 		notifyRendered,
 		runLive,
+		withCaptureLock,
 		refreshAll,
 		reloadAll,
 		reloadNonce,

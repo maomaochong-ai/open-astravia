@@ -493,6 +493,7 @@ export function DesignCanvas({
 		invalidate: invalidateRaster,
 		notifyRendered,
 		runLive,
+		withCaptureLock,
 		refreshAll,
 		reloadAll,
 		reloadNonce,
@@ -1035,8 +1036,10 @@ export function DesignCanvas({
 	 */
 	const captureFaithfully = useCallback(
 		(frameId: string, options?: { keepHighlight?: boolean; pixelRatio?: number }): Promise<string> =>
-			runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 })),
-		[bridge, runLive],
+			// 锁在最外层：runLive 的拉活体 + 静置也算这次截图的一部分，放进去等于让后台
+			// 队列在这段时间里插一张进来，撞的还是同一个 iframe。
+			withCaptureLock(() => runLive(frameId, () => bridge.capture(frameId, { ...options, timeoutMs: 30_000 }))),
+		[bridge, runLive, withCaptureLock],
 	);
 
 	// vetd_screenshot 走的是 CanvasTab 注册的 controller，够不到这里的 runLive，
