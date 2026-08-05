@@ -36,6 +36,7 @@ export const PLUGIN_PERMISSIONS = [
 	"storage.write",
 	"settings.read",
 	"settings.write",
+	"shell.openExternal",
 ] as const;
 
 export type PluginPermission = (typeof PLUGIN_PERMISSIONS)[number];

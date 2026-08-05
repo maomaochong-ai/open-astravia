@@ -1085,6 +1085,21 @@ function createContext(
 		}
 		return window.vetta.clipboard.writeImage(dataUrl);
 	};
+	const openExternal: PluginContext["ui"]["openExternal"] = async (url) => {
+		createPermissionApi(plugin).require("shell.openExternal");
+		// 主进程还会再挡一次协议，这里先挡是为了给插件一条能读懂的错误——而不是
+		// 让它拿到一个来自 IPC 深处的 "Unsupported external URL protocol"。
+		let parsed: URL;
+		try {
+			parsed = new URL(url);
+		} catch {
+			throw new Error(`openExternal() requires an absolute URL, got: ${String(url)}`);
+		}
+		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+			throw new Error(`openExternal() only accepts http/https URLs, got: ${parsed.protocol}`);
+		}
+		await window.vetta.shell.openExternal(parsed.toString());
+	};
 	const notify = (options: PluginNotifyOptions): void => {
 		if (options == null || typeof options !== "object" || typeof options.message !== "string") {
 			throw new Error("notify() requires { message: string }");
@@ -1146,6 +1161,7 @@ function createContext(
 			openPluginSettings,
 			captureRegion,
 			copyImage,
+			openExternal,
 			notify,
 		},
 		fileExplorer: {

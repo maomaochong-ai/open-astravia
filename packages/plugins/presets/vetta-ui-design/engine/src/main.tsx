@@ -1,14 +1,27 @@
 import "./styles.css";
-import { Component, type ComponentType, lazy, type ReactNode, StrictMode, Suspense, useLayoutEffect } from "react";
+import {
+	Component,
+	type ComponentType,
+	lazy,
+	type ReactNode,
+	StrictMode,
+	Suspense,
+	useEffect,
+	useLayoutEffect,
+} from "react";
 import { createRoot } from "react-dom/client";
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router";
 import {
 	armReloadOnNextUpdate,
 	installBridge,
+	installNavigator,
 	latestBuildError,
 	notifyFrameError,
 	notifyFrameRendered,
+	notifyNavigated,
 	onBuildError,
 } from "./bridge";
+import { HOME_FRAME_ID, frameOfPath, homeFrameId, pathOfFrame } from "./routes";
 
 interface FrameModule {
 	default?: ComponentType;
@@ -28,15 +41,13 @@ for (const [path, load] of Object.entries(loaders)) {
 	if (id) frames.set(id, load);
 }
 
-function currentFrameId(): string | null {
-	const match = window.location.hash.match(/#\/frame\/([^/?]+)/);
-	if (match) return decodeURIComponent(match[1]);
-	return null;
-}
+const frameIds = [...frames.keys()].sort();
 
-// Packaged-snapshot previews load via srcdoc (no URL), so the frame id can also
-// arrive by postMessage ("vetd:show-frame") instead of the hash.
-let requestedId: string | null = currentFrameId();
+/**
+ * 当前地址对应的 frame id。bridge 的每条消息都要带它，而它现在由路由决定，
+ * 所以由 {@link NavigationBridge} 在每次地址变化时写进来。
+ */
+let currentFrameId: string | null = frameOfPath(window.location.pathname, frameIds);
 
 function Placeholder({ text }: { text: string }) {
 	return (
@@ -145,45 +156,106 @@ class FrameBoundary extends Component<BoundaryProps, { failed: boolean }> {
 	}
 }
 
+function FrameRoute({ id }: { id: string }) {
+	const Frame = frameComponent(id);
+	// 渲染期就把错误清掉，而不是放进 effect：边界的 componentDidUpdate 在 commit
+	// 阶段补发真正的错误，而 commit 晚于 render——顺序反过来的话，这条清空会把
+	// 边界刚报上去的错误抹掉，画布上的「构建失败」徽标就再也亮不起来。
+	notifyFrameError(id, null);
+	if (!Frame) {
+		return (
+			<>
+				<FrameMissing id={id} />
+				<FramePainted frameId={id} />
+			</>
+		);
+	}
+	return (
+		<FrameBoundary key={id} frameId={id}>
+			<Suspense fallback={null}>
+				<Frame />
+				<FramePainted frameId={id} />
+			</Suspense>
+		</FrameBoundary>
+	);
+}
+
+function NotFound() {
+	return (
+		<>
+			<FrameMissing id={null} />
+			<FramePainted frameId={null} />
+		</>
+	);
+}
+
+/**
+ * 路由与 bridge 的接线：把 navigate 交给 bridge（预览工具条的前进/后退/换帧都
+ * 从那边过来），并在每次地址变化时把当前地址报回去。
+ */
+function NavigationBridge() {
+	const navigate = useNavigate();
+	const location = useLocation();
+	useEffect(() => {
+		installNavigator((to) => {
+			if (typeof to === "number") navigate(to);
+			else navigate(to);
+		});
+	}, [navigate]);
+	useEffect(() => {
+		currentFrameId = frameOfPath(location.pathname, frameIds);
+		notifyNavigated(location.pathname, currentFrameId);
+	}, [location.pathname]);
+	return null;
+}
+
+function App() {
+	const home = homeFrameId(frameIds);
+	return (
+		<>
+			<NavigationBridge />
+			<Routes>
+				<Route
+					path="/"
+					element={
+						home === null ? (
+							<NotFound />
+						) : home === HOME_FRAME_ID ? (
+							<FrameRoute id={HOME_FRAME_ID} />
+						) : (
+							// 没有 index.tsx 时首页借给第一帧，部署出去的根地址才不是空白。
+							<Navigate to={pathOfFrame(home)} replace />
+						)
+					}
+				/>
+				{frameIds
+					.filter((id) => id !== HOME_FRAME_ID)
+					.map((id) => (
+						<Route key={id} path={pathOfFrame(id)} element={<FrameRoute id={id} />} />
+					))}
+				<Route path="*" element={<NotFound />} />
+			</Routes>
+		</>
+	);
+}
+
 const container = document.getElementById("root");
 if (!container) throw new Error("engine root missing");
 const root = createRoot(container);
 
-function render(): void {
-	const id = requestedId;
-	const Frame = id ? frameComponent(id) : null;
-	root.render(
-		<StrictMode>
-			{Frame && id ? (
-				<FrameBoundary key={id} frameId={id}>
-					<Suspense fallback={null}>
-						<Frame />
-						<FramePainted frameId={id} />
-					</Suspense>
-				</FrameBoundary>
-			) : (
-				<>
-					<FrameMissing id={id} />
-					<FramePainted frameId={id} />
-				</>
-			)}
-		</StrictMode>,
-	);
-	// 先清空：这次渲染若再次失败，边界会在稍后补发真正的错误。
-	notifyFrameError(id, null);
-}
+/**
+ * 导出快照经 srcdoc 加载，没有可写的 URL——history 在 `about:srcdoc` 下用不了，
+ * BrowserRouter 一导航就抛。那条链路改用内存路由，其余（画布 iframe / 系统
+ * 浏览器 / 部署后的站点）一律走真实地址。
+ */
+const Router = window.location.protocol === "about:" || window.location.protocol === "blob:" ? MemoryRouter : BrowserRouter;
 
-window.addEventListener("hashchange", () => {
-	requestedId = currentFrameId();
-	render();
-});
+root.render(
+	<StrictMode>
+		<Router>
+			<App />
+		</Router>
+	</StrictMode>,
+);
 
-installBridge({
-	getFrameId: () => requestedId,
-	showFrame: (id) => {
-		requestedId = id;
-		render();
-	},
-});
-
-render();
+installBridge({ getFrameId: () => currentFrameId });

@@ -42,6 +42,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"storage.write": "permission.storageWrite",
 	"settings.read": "permission.settingsRead",
 	"settings.write": "permission.settingsWrite",
+	"shell.openExternal": "permission.shellOpenExternal",
 } as const satisfies Record<PluginPermission, string>;
 
 /** InstalledPlugin.source → i18n key。 */

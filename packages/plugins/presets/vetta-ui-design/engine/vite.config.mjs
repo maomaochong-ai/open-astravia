@@ -162,8 +162,11 @@ export default defineConfig(({ command }) => ({
 			"@design": designRoot,
 			react: resolve(engineRoot, "node_modules/react"),
 			"react-dom": resolve(engineRoot, "node_modules/react-dom"),
+			// frame 源码里的 <Link to="..."> 会 import "react-router"，同样解析不到
+			// 引擎的 node_modules；不钉住的话每个 frame 一加链接就编译失败。
+			"react-router": resolve(engineRoot, "node_modules/react-router"),
 		},
-		dedupe: ["react", "react-dom"],
+		dedupe: ["react", "react-dom", "react-router"],
 	},
 	server: {
 		host: "127.0.0.1",

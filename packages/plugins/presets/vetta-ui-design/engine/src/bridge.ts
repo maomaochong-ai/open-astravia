@@ -6,17 +6,17 @@
  * data-vetd-source extraction and full-frame screenshots.
  *
  * Message contract (both directions carry `{ vetd: true }`):
- *   parent → iframe: set-mode | show-frame | clear-selection | capture
+ *   parent → iframe: set-mode | show-frame | navigate | reload | clear-selection | capture
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
- *                    | frame-error | context-menu
+ *                    | frame-error | context-menu | navigated
  */
 import { toJpeg, toPng } from "html-to-image";
+import { pathOfFrame } from "./routes";
 
 type InspectMode = "off" | "inspect";
 
 interface BridgeHost {
 	getFrameId(): string | null;
-	showFrame(id: string): void;
 }
 
 export interface SelectedElementPayload {
@@ -144,6 +144,66 @@ export function notifyFrameRendered(frameId: string | null, allFrames: string[])
  */
 export function notifyFrameError(frameId: string | null, message: string | null): void {
 	post({ type: "frame-error", frameId, message });
+}
+
+type Navigator = (to: string | number) => void;
+
+let navigator: Navigator | null = null;
+/** 路由还没挂上时收到的导航（srcdoc 预览的 show-frame 就赶在这一刻），挂上后补发。 */
+let pendingNavigation: string | null = null;
+/**
+ * 自己维护的历史栈。
+ *
+ * History API 只让你 go(-1)，从不告诉你还能不能后退——而预览工具条要据此决定
+ * 前进/后退按钮的禁用态。所有导航都经过这里，所以这份栈是完整的。
+ */
+const visited: string[] = [];
+let visitedIndex = -1;
+/** 刚发出去的是一次 go(delta)：下一条 navigated 该移动指针而不是压栈。 */
+let pendingDelta: number | null = null;
+
+/** 路由就绪后由 main.tsx 注入。 */
+export function installNavigator(next: Navigator): void {
+	navigator = next;
+	if (pendingNavigation !== null) {
+		const to = pendingNavigation;
+		pendingNavigation = null;
+		next(to);
+	}
+}
+
+function go(to: string | number): void {
+	if (!navigator) {
+		if (typeof to === "string") pendingNavigation = to;
+		return;
+	}
+	if (typeof to === "number") pendingDelta = to;
+	navigator(to);
+}
+
+function pushVisited(path: string): void {
+	visited.splice(visitedIndex + 1);
+	visited.push(path);
+	visitedIndex = visited.length - 1;
+}
+
+/** 每次地址变化后调用（含首次加载）。 */
+export function notifyNavigated(path: string, frameId: string | null): void {
+	if (pendingDelta !== null) {
+		const target = visitedIndex + pendingDelta;
+		pendingDelta = null;
+		if (visited[target] === path) visitedIndex = target;
+		else pushVisited(path);
+	} else if (visited[visitedIndex] !== path) {
+		pushVisited(path);
+	}
+	post({
+		type: "navigated",
+		path,
+		frameId,
+		canBack: visitedIndex > 0,
+		canForward: visitedIndex < visited.length - 1,
+	});
 }
 
 interface ViteErrorPayload {
@@ -338,8 +398,17 @@ export function installBridge(host: BridgeHost): void {
 			case "set-mode":
 				setMode(data.mode === "inspect" ? "inspect" : "off");
 				return;
+			// 导出快照走 srcdoc（没有 URL 可以拼），选帧只能靠这条消息。
 			case "show-frame":
-				if (typeof data.id === "string") host.showFrame(data.id);
+				if (typeof data.id === "string") go(pathOfFrame(data.id));
+				return;
+			case "navigate":
+				if (typeof data.to === "string") go(data.to);
+				else if (typeof data.delta === "number") go(data.delta);
+				return;
+			// 真·整页重载：预览里的「刷新」要连帧内 state 一起清掉，客户端路由做不到。
+			case "reload":
+				window.location.reload();
 				return;
 			case "clear-selection":
 				reset();

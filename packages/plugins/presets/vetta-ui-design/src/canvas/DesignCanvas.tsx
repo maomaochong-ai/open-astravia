@@ -79,6 +79,16 @@ interface DesignCanvasProps {
 	 * 热更新链路（文件监听 / HMR）万一没生效时的手动兜底。
 	 */
 	refreshRef: RefObject<(() => void) | null>;
+	/**
+	 * 出口：预览按钮问「该预览哪一帧」。单独选中一个就是它，否则交给调用方回落
+	 * （画布顺序里的第一帧）。
+	 */
+	previewTargetRef: RefObject<(() => string | null) | null>;
+	/**
+	 * 预览窗口开着。背后的画布整体降为位图——反正被盖住了，没必要继续养 N 份
+	 * 活体 React 应用与 HMR 连接。
+	 */
+	previewing: boolean;
 }
 
 interface Viewport {
@@ -149,7 +159,7 @@ function intersects(a: Rect, b: Rect): boolean {
 }
 
 /** Canvas reading order: left to right, top to bottom for equal x. */
-function byCanvasOrder(a: VetdFrameEntry, b: VetdFrameEntry): number {
+export function byCanvasOrder(a: VetdFrameEntry, b: VetdFrameEntry): number {
 	return a.x === b.x ? a.y - b.y : a.x - b.x;
 }
 
@@ -229,7 +239,15 @@ function applyResizeSnap(
 	return { rect: next, snap: applied };
 }
 
-export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: DesignCanvasProps) {
+export function DesignCanvas({
+	session,
+	port,
+	bridge,
+	captureRef,
+	refreshRef,
+	previewTargetRef,
+	previewing,
+}: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
@@ -437,7 +455,15 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	 *
 	 * 托手工具/按住空格时不开：那时整块画布都在平移，指针不该被 iframe 吃掉。
 	 */
-	const inspectFrameId = tool === "select" && !panActive ? activeFrameId : null;
+	const inspectFrameId = tool === "select" && !panActive && !previewing ? activeFrameId : null;
+
+	previewTargetRef.current = () => activeFrameId;
+
+	/**
+	 * 位图化时「必须保持活体」的那一帧。预览开着时一帧都不留：画布整个被盖住，
+	 * 唯一在看的渲染树是预览窗口里那一份。
+	 */
+	const liveFrameId = previewing ? null : activeFrameId;
 
 	/**
 	 * 空闲 frame 用位图代替活体 iframe，画布上就不再有 N 套渲染树同时合成。
@@ -467,7 +493,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		refreshAll,
 		reloadAll,
 		reloadNonce,
-	} = useFrameRasters({ bridge, cacheKey: session.vetdPath, frameIds: orderedFrameIds, activeFrameId });
+	} = useFrameRasters({ bridge, cacheKey: session.vetdPath, frameIds: orderedFrameIds, activeFrameId: liveFrameId });
 
 	refreshRef.current = reloadAll;
 

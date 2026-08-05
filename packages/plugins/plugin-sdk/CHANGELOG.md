@@ -4,6 +4,10 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- `PluginUiApi.openExternal(url)`：把链接交给系统默认浏览器（Electron `shell.openExternal`），不是 App 内置的浏览器面板。只接受 `http:`/`https:`，其余协议宿主直接拒绝。需新权限 `shell.openExternal`。
+
 ## [0.1.1] — 2026-08-04
 
 ### Added

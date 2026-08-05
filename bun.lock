@@ -725,7 +725,7 @@
     },
     "packages/plugins/presets/vetta-ui-design": {
       "name": "@vetta/plugin-vetta-ui-design",
-      "version": "0.1.0",
+      "version": "0.1.2",
       "dependencies": {
         "fflate": "^0.8.2",
       },

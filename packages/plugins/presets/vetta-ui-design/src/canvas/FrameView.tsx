@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { memo, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
+import { frameUrl } from "../vetd/frame-url";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { BridgeHub } from "./bridge-client";
 import type { FrameActivity } from "./design-runtime";
@@ -353,8 +354,7 @@ export const FrameView = memo(function FrameView({
 					<iframe
 						ref={iframeRef}
 						title={frame.title || frame.id}
-						// nonce 放在查询串而不是 hash：改 hash 只会触发 hashchange，文档不会重新加载。
-						src={`http://127.0.0.1:${port}/?r=${reloadNonce}#/frame/${encodeURIComponent(frame.id)}`}
+						src={frameUrl(port, frame.id, reloadNonce)}
 						className="h-full w-full border-0"
 						style={{
 							pointerEvents: entered ? "auto" : "none",

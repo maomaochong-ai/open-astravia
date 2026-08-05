@@ -69,13 +69,16 @@ the common case, not the only one — see "Pick the product type" below.
    Local assets are served same-origin by the engine dev server and have
    neither problem.
 8. TypeScript + Tailwind v4 utilities only; no extra npm dependencies (the
-   shared engine has react/react-dom + Tailwind + Iconify — nothing else).
+   shared engine has react/react-dom + react-router + Tailwind + Iconify —
+   nothing else).
    Animations: Tailwind transitions/keyframes or hand-rolled CSS.
    **No web fonts** — only the system font stack is available. Build type
    contrast with size/weight/tracking, not typeface choice.
-9. **Frame id = file basename.** Create a frame by writing
+9. **Frame id = file basename = its route.** Create a frame by writing
    `frames/<kebab-id>.tsx`; delete one by deleting that file (the canvas
    reconciles). Rename the title via the meta, not the manifest.
+   `frames/login.tsx` is the route `/login`, and `frames/index.tsx` is the site
+   root `/` — see "Interaction & navigation".
 
 ## Before you write
 
@@ -133,6 +136,47 @@ explicit user instruction always wins.
 Do not default to a phone frame. A dashboard rendered at 390 wide is the most
 common failure here.
 
+## Interaction & navigation
+
+A design document is also a runnable app: each frame is a real route, and the
+user can hit "预览" on the canvas to click through it (or open the same URL in
+their system browser). Design for that — a screen where nothing responds to a
+click is an unfinished screen.
+
+**Routes.** One frame = one route, derived from the file name:
+`frames/login.tsx` → `/login`. `frames/index.tsx` is special — it is the site
+root `/`. For any multi-screen product, make the entry screen `index.tsx` so
+`/` lands somewhere sensible.
+
+**Navigating between frames** uses react-router, imported from `react-router`:
+
+```tsx
+import { Link, useNavigate } from "react-router";
+
+<Link to="/dashboard" className="...">登录</Link>;
+// or, when the click does something first:
+const navigate = useNavigate();
+<button type="button" onClick={() => navigate("/dashboard")}>登录</button>;
+```
+
+**How much interaction to write** — by product type:
+
+- **Mobile screen / desktop app / dashboard / landing page**: wire it up.
+  `useState` for tabs, accordions, dropdowns, modals, form fields, toggles,
+  filters; `<Link>`/`navigate()` for anything that moves between screens. When
+  the user asked for a flow (login → home → detail), the flow must actually be
+  clickable end to end.
+- **Slide / poster / social image / infographic / chart**: do NOT add
+  interaction. They are static artwork; state hooks there are pure noise.
+
+Keep it honest and local: real component state, no fake backends, no timers
+pretending to load forever. A submit button navigates to the next screen; it
+does not need an API.
+
+Note the canvas itself stays in design mode — clicking a frame there selects
+elements for editing, which is why interaction is verified in preview (or by
+reading the code), not by clicking the canvas.
+
 ## Quality bar
 
 Applies to everything; the preset above adds emphasis, it does not replace this.
@@ -148,6 +192,8 @@ Applies to everything; the preset above adds emphasis, it does not replace this.
   `Item 1 / Item 2`. Write copy in the language the user is using.
 - **States**: for interactive UI, cover hover/disabled, and design the empty and
   loading cases when the screen can have them. (Skip for posters/slides.)
+  Where a state is reachable by clicking, make it real rather than drawing a
+  second frame for it — see "Interaction & navigation".
 - **Icons must match meaning** — do not reach for a random glyph to fill space.
 
 ## Editing from a canvas attachment
