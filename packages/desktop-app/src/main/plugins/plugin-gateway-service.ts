@@ -79,13 +79,17 @@ function unwrap<T>(status: number, text: string): PluginGatewayResponse<T> {
 	}
 	const code = envelope?.code ?? -1;
 	const ok = status >= 200 && status < 300 && code === 0;
-	return {
+	const result: PluginGatewayResponse<T> = {
 		ok,
 		status,
 		code,
 		message: envelope?.message ?? (ok ? "" : `HTTP ${status}`),
-		data: envelope?.data,
 	};
+	// 只在真有值时才带 data 键：返回值同样要过 capability 的 CapabilityJsonValue
+	// 校验，`data: undefined` 会让整个响应被判非法，把真正的失败原因（业务错误码
+	// 与 message）一起挡在插件之外。
+	if (envelope?.data !== undefined) result.data = envelope.data;
+	return result;
 }
 
 /**
