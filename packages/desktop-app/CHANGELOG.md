@@ -35,6 +35,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **修复隔夜/睡眠后第一次使用掉登录**。成因是 refresh token 被多方共用后互相作废（详见 `@vetta/api` 的 CHANGELOG），客户端侧配套修三处：
+  - `settings.json` 的读-改-写改为跨进程加锁（`updateSettings`，与 coding-agent 的 `FileSettingsStorage` 用同一把 `proper-lockfile` 锁）。此前主进程无锁整份写回，与 coding-agent 或同机另一个客户端实例交错时会把已轮换掉的 `serverRefreshToken` 覆盖回旧值，下次刷新出示的即是已撤销令牌。
+  - 授权回调未携带 refresh token 时清空本地旧值，而不是继续留着上一次登录的（多半已失效，用它刷新会被服务端按重放处理，直接撤掉整条会话链）。
+  - 刷新失败落日志并记录业务错误码（40105 无效 / 40106 过期 / 40107 已撤销）与登出触发点。此前只看 HTTP 401、丢弃响应体，掉登录后无从判断成因。
+
 - **输入栏命令面板不再丢掉开源市场能力的图标**：开源市场 skill/scene 的图标解析后是 `vetta-file://local/...`，而命令面板与 skill 胶囊共用的 `SkillTypeIcon` 原先只认 http(s)/相对路径/data，导致列表与 token 一律退回默认立方体。图片态判定补上任意 `scheme://`（含 `vetta-file`），与能力广场一致。
 
 - **插件贡献的 skill 显示宿主插件图标**：如 `vetta-ui-design` 这类随插件内嵌的 skill 不在市场目录里，命令面板此前只能落默认立方体。`skills.list()` 现在把宿主插件的 `iconUrl` 挂到 `SkillInfo.icon`，命令区 / 胶囊 / 能力页统一认领。

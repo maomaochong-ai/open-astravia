@@ -98,6 +98,12 @@ export function useAuth() {
 			if (data.refreshToken) {
 				localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
 				void window.vetta.settings.setServerRefreshToken(data.refreshToken);
+			} else {
+				// 本次登录没带 refresh 时，绝不能留着上一次登录的旧值：它多半已被轮换
+				// 作废，下次刷新出示它会被服务端按重放处理，直接撤掉整条链。
+				// 宁可没有 refresh（access 到期后重新登录一次），也不要一个会踢人的旧值。
+				localStorage.removeItem(REFRESH_TOKEN_KEY);
+				void window.vetta.settings.setServerRefreshToken(undefined);
 			}
 			setLoginOpen(false);
 			void window.vetta.settings.setServerToken(data.token);
