@@ -40,6 +40,7 @@ import type {
 	PluginFileExplorerToolbarContribution,
 	PluginFilePreviewContribution,
 	PluginFsApi,
+	PluginGatewayApi,
 	PluginGlobalSlotContribution,
 	PluginI18nApi,
 	PluginImageRef,
@@ -442,6 +443,17 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 			createPermissionApi(plugin).require("network.fetch");
 			return window.vetta.plugins.networkRequest(capabilitySessionId, request);
 		},
+	};
+}
+
+/**
+ * 网关调用不挂可声明权限，只按来源收口：`ctx.gateway` 仅对随包分发的 official
+ * 插件挂载，第三方插件读到 undefined（ADR-0056）。主进程的 capability 适配层
+ * 会再校验一次 session 的 official 属性，这里只是不把入口暴露出去。
+ */
+function createGatewayApi(capabilitySessionId: string): PluginGatewayApi {
+	return {
+		request: (request) => window.vetta.plugins.gatewayRequest(capabilitySessionId, request),
 	};
 }
 
@@ -1441,6 +1453,7 @@ function createContext(
 		},
 		official: createPluginOfficialApi(capabilitySessionId),
 		network: createNetworkApi(plugin, capabilitySessionId),
+		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,
 		storage: createStorageApi(plugin, capabilitySessionId),
 		settings: settingsApi,
 		i18n: createI18nApi(plugin),

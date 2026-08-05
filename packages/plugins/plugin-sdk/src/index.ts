@@ -180,6 +180,7 @@ export type {
 	PluginNetworkRequest,
 	PluginNetworkResponse,
 } from "./network.js";
+export type { PluginGatewayApi, PluginGatewayRequest, PluginGatewayResponse } from "./gateway.js";
 export type {
 	PluginPutBlobInput,
 	PluginStorageApi,

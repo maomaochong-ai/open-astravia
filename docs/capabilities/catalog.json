@@ -1019,6 +1019,82 @@
         ]
       },
       "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.gateway.request",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "request"
+        ],
+        "properties": {
+          "request": {
+            "$id": "CapabilityJsonValue",
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "CapabilityJsonValue"
+                }
+              },
+              {
+                "type": "object",
+                "patternProperties": {
+                  "^(.*)$": {
+                    "$ref": "CapabilityJsonValue"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "$id": "CapabilityJsonValue",
+        "anyOf": [
+          {
+            "type": "null"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "string"
+          },
+          {
+            "type": "array",
+            "items": {
+              "$ref": "CapabilityJsonValue"
+            }
+          },
+          {
+            "type": "object",
+            "patternProperties": {
+              "^(.*)$": {
+                "$ref": "CapabilityJsonValue"
+              }
+            }
+          }
+        ]
+      },
+      "version": 1
     }
   ],
   "domain": [

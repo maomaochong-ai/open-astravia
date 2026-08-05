@@ -28,6 +28,7 @@
 | `cap.foundation.vetta.storage.read-blob` | foundation | query | 1 |
 | `cap.foundation.vetta.storage.get-blob-ref` | foundation | query | 1 |
 | `cap.foundation.vetta.network.request` | foundation | command | 1 |
+| `cap.foundation.vetta.gateway.request` | foundation | command | 1 |
 | `cap.domain.vetta.agent-settings.experimental.get` | domain | query | 1 |
 | `cap.domain.vetta.agent-settings.experimental.set` | domain | command | 1 |
 | `cap.domain.vetta.batch-task.project.list` | domain | query | 1 |

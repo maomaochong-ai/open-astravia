@@ -8,6 +8,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **设计画布新增预览模式**：设计稿现在是可点的真实站点。顶栏「预览」打开一个浏览器窗口——按钮、tab、表单都是真交互，跨屏跳转走真实路由（`frames/login.tsx` 就是 `/login`，`frames/index.tsx` 就是首页 `/`），带前进/后退/刷新/地址显示/画框切换/视口预设，窗口可自由拉伸，也可以一键交给系统默认浏览器打开（该地址随设计画布关闭而失效）。预览期间画布整体降为位图，不再同时养 N 份活体渲染树。引擎因此升级到 0.2.0（引入 react-router），首次打开设计稿会重跑一次依赖安装。见 ADR-0055。
 - 插件 SDK 新增 `ui.openExternal(url)`（权限 `shell.openExternal`）：把 http/https 链接交给系统默认浏览器。
+- 内置插件可通过 `ctx.gateway.request()` 带登录身份调用 Vetta 服务端（ADR-0056）。新增 foundation 能力 `cap.foundation.vetta.gateway.request` 与主进程 `plugin-gateway-service`：插件只交出相对 `/api/v1` 的路径，服务端地址与 JWT 由主进程注入、401 由主进程单飞刷新后重试一次，token 不出主进程。该能力**不挂可声明权限**，只按来源收口给 `trustLevel === "official"` 的插件——第三方插件在 renderer 侧读到 `ctx.gateway === undefined`，即使伪造 sessionId，主进程 capability 适配层也会再校验一次 official 属性。
 
 - **外部插件混合热更新**：插件工作台改为启动 `vetta-plugin dev` 开发服务器；React 组件与 CSS 走 Fast Refresh/HMR，入口、清单、locale 与 agent 资源变化只替换当前插件 activation，其他插件不再被整表重载。生产构建与 zip 格式不变。
 

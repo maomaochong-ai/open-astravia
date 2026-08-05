@@ -304,6 +304,7 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			getSettings: (id) => ipc.invoke("vetta:plugins:get-settings", id),
 			setSettings: (id, values) => ipc.invoke("vetta:plugins:set-settings", id, values),
 			networkRequest: (sessionId, request) => ipc.invoke("vetta:plugins:network:request", sessionId, request),
+			gatewayRequest: (sessionId, request) => ipc.invoke("vetta:plugins:gateway:request", sessionId, request),
 			storageReadJson: (sessionId, key) => ipc.invoke("vetta:plugins:storage:read-json", sessionId, key),
 			storageWriteJson: (sessionId, key, value) =>
 				ipc.invoke("vetta:plugins:storage:write-json", sessionId, key, value),

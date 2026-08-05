@@ -5,6 +5,7 @@ import type { PluginConversationApi } from "./conversation.js";
 import type { Disposable } from "./disposable.js";
 import type { PluginFileExplorerApi } from "./file-explorer.js";
 import type { PluginFsApi } from "./fs.js";
+import type { PluginGatewayApi } from "./gateway.js";
 import type { PluginI18nApi } from "./i18n.js";
 import type { PluginNetworkApi } from "./network.js";
 import type { PluginOfficialApi } from "./official.js";
@@ -36,6 +37,11 @@ export interface PluginContext {
 	fs: PluginFsApi;
 	command: PluginCommandApi;
 	network: PluginNetworkApi;
+	/**
+	 * Vetta 服务端网关调用（ADR-0056）。**仅内置 official 插件可用**，
+	 * 第三方插件读到 `undefined`，故使用前必须判空。
+	 */
+	gateway?: PluginGatewayApi;
 	storage: PluginStorageApi;
 	settings: PluginSettingsApi;
 	i18n: PluginI18nApi;

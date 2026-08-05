@@ -620,6 +620,8 @@ export interface DesktopPluginsApi {
 	/** Fired when plugins are installed/uninstalled/enabled/reloaded (host should re-load remotes). */
 	onPluginsChanged(listener: (event?: PluginsChangedEvent) => void): () => void;
 	networkRequest<T = unknown>(sessionId: string, request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;
+	/** 带登录身份打 Vetta 服务端；仅 official 插件的 session 会被主进程放行（ADR-0056）。 */
+	gatewayRequest<T = unknown>(sessionId: string, request: PluginGatewayRequest): Promise<PluginGatewayResponse<T>>;
 	storageReadJson<T>(sessionId: string, key: string): Promise<T | null>;
 	storageWriteJson(sessionId: string, key: string, value: unknown): Promise<void>;
 	storageList(sessionId: string, prefix?: string): Promise<string[]>;
@@ -658,6 +660,23 @@ export interface PluginNetworkResponse<T = unknown> {
 	statusText: string;
 	headers: Record<string, string>;
 	body: T;
+}
+
+/** 相对 `/api/v1` 的路径；服务端地址与 JWT 由主进程注入（ADR-0056）。 */
+export interface PluginGatewayRequest {
+	path: string;
+	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+	body?: unknown;
+	timeoutMs?: number;
+}
+
+/** 业务信封已由主进程拆开；配额用尽等业务失败也走这里而非抛异常。 */
+export interface PluginGatewayResponse<T = unknown> {
+	ok: boolean;
+	status: number;
+	code: number;
+	message: string;
+	data?: T;
 }
 
 export interface PluginPutBlobInput {
