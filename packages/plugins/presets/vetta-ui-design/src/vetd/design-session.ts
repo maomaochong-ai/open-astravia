@@ -4,6 +4,7 @@ import { parseFrameMeta, sameMeta, sanitizeFrameTitle, withFrameTitle } from "./
 import {
 	designNameOf,
 	emptyManifest,
+	normalizeManifest,
 	sidecarDirOf,
 	type VetdCanvasViewport,
 	type VetdFrameEntry,
@@ -34,6 +35,8 @@ export class DesignSession {
 	private readonly listeners = new Set<(change: DesignChange) => void>();
 	private readonly watchHandles: Disposable[] = [];
 	private readonly pendingPlacements = new Map<string, { x: number; y: number }>();
+	/** open() 净化 manifest 时改动过内容，下一次 reconcile 负责把修好的版本写回盘。 */
+	private manifestRepaired = false;
 	private reconcileTimer: number | null = null;
 	private viewportTimer: number | null = null;
 	private disposed = false;
@@ -58,22 +61,23 @@ export class DesignSession {
 	async open(): Promise<void> {
 		try {
 			const raw = await this.ctx.fs.readFile(this.vetdPath);
-			const parsed = JSON.parse(raw.content) as VetdManifest;
-			if (parsed && parsed.type === "vetta-design" && Array.isArray(parsed.frames)) {
-				this.manifest = {
-					...emptyManifest(),
-					...parsed,
-					canvas: { ...emptyManifest().canvas, ...parsed.canvas },
-				};
+			// 文件内容一律当不可信处理：agent 会无视「never edit the manifest」直接写它。
+			const normalized = normalizeManifest(JSON.parse(raw.content) as unknown);
+			if (normalized) {
+				this.manifest = normalized.manifest;
+				this.manifestRepaired = normalized.changed;
 			}
 		} catch {
 			// Corrupt/missing manifest: rebuild from the sidecar (frames re-place).
 			this.manifest = emptyManifest();
 		}
-		await this.reconcile();
+		// 监听先挂、再 reconcile：反过来的话，首次 reconcile 一旦抛出，这两行就永远
+		// 执行不到——画布不只是这一次打不开，而是此后 sidecar 怎么变都收不到通知，
+		// 表现为「agent 明明写了一堆 frame，画布始终空白，刷新也没用」。
 		const schedule = () => this.scheduleReconcile();
 		this.watchHandles.push(this.ctx.fs.watchDirectory(this.dirPath, schedule));
 		this.watchHandles.push(this.ctx.fs.watchDirectory(`${this.dirPath}/frames`, schedule));
+		await this.reconcile();
 	}
 
 	dispose(): void {
@@ -115,7 +119,8 @@ export class DesignSession {
 
 		const nextFrames: VetdFrameEntry[] = [];
 		const known = new Map(this.manifest.frames.map((frame) => [frame.id, frame]));
-		let dirty = false;
+		let dirty = this.manifestRepaired;
+		this.manifestRepaired = false;
 
 		for (const file of files.sort((a, b) => a.name.localeCompare(b.name))) {
 			const id = file.name.replace(/\.tsx$/, "");
