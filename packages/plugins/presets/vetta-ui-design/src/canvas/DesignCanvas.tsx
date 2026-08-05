@@ -462,6 +462,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 		isMounted,
 		isLive,
 		invalidate: invalidateRaster,
+		notifyRendered,
 		runLive,
 		refreshAll,
 		reloadAll,
@@ -593,7 +594,9 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				if (frameId) invalidateRaster(frameId);
 			},
 			onRendered: (frameId) => {
-				invalidateRaster(frameId);
+				// rendered 既是「可以截图了」的放行信号，也是「已截的图可能是渲染前
+				// 截的」的作废信号，两件事都在 notifyRendered 里。
+				notifyRendered(frameId);
 				// 同一条信号还负责位图→活体的交接：计数自增，FrameView 拿它判断
 				// 「这一次挂载之后画面已经出来了」。
 				setPaintTicks((current) => new Map(current).set(frameId, (current.get(frameId) ?? 0) + 1));
@@ -602,7 +605,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 			onFrameContextMenu: openFrameMenu,
 		});
 		return () => bridge.stop();
-	}, [bridge, invalidateRaster, openFrameMenu]);
+	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu]);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
