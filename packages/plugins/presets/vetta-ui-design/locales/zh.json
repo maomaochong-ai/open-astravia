@@ -101,6 +101,8 @@
 	"mockup.option.shadow": "投影",
 	"mockup.option.brand": "显示 Vetta 标识",
 	"mockup.option.scale": "输出倍率",
+	"mockup.color.hex": "十六进制色值",
+	"mockup.color.theme": "设计稿主题色",
 	"mockup.option.reset": "恢复默认",
 	"mockup.save": "另存为",
 	"mockup.save.running": "正在渲染…",

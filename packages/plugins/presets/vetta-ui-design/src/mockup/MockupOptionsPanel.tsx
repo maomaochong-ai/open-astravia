@@ -1,5 +1,7 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import type { ReactNode } from "react";
+import { ColorPicker } from "./ColorPicker";
+import { OptionSlider } from "./OptionSlider";
 import type { MockupOptions } from "./types";
 
 interface MockupOptionsPanelProps {
@@ -12,58 +14,12 @@ interface MockupOptionsPanelProps {
 	onReset(): void;
 }
 
-function Field({ label, value, children }: { label: string; value?: string; children: ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<label className="flex flex-col gap-1.5">
-			<span className="flex items-center justify-between text-xs text-muted-foreground">
-				{label}
-				{value ? <span className="tabular-nums">{value}</span> : null}
-			</span>
+			<span className="text-xs text-muted-foreground">{label}</span>
 			{children}
 		</label>
-	);
-}
-
-function ColorField({
-	label,
-	color,
-	palette,
-	disabled,
-	onPick,
-}: {
-	label: string;
-	color: string;
-	palette: string[];
-	disabled?: boolean;
-	onPick(next: string): void;
-}) {
-	return (
-		<Field label={label}>
-			<div className={`flex items-center gap-1.5 ${disabled ? "opacity-40" : ""}`}>
-				<input
-					type="color"
-					value={color}
-					disabled={disabled}
-					onChange={(event) => onPick(event.target.value)}
-					className="size-7 shrink-0 cursor-pointer rounded-md border border-border bg-transparent"
-				/>
-				<div className="flex min-w-0 flex-1 flex-wrap gap-1">
-					{palette.map((swatch) => (
-						<button
-							key={swatch}
-							type="button"
-							disabled={disabled}
-							title={swatch}
-							onClick={() => onPick(swatch)}
-							style={{ background: swatch }}
-							className={`size-5 rounded-md border ${
-								swatch.toLowerCase() === color.toLowerCase() ? "border-primary ring-1 ring-primary" : "border-border"
-							}`}
-						/>
-					))}
-				</div>
-			</div>
-		</Field>
 	);
 }
 
@@ -94,29 +50,25 @@ export function MockupOptionsPanel({ options, maxRadius, palette, onChange, onRe
 	const { t } = useTranslation();
 	return (
 		<div className="flex w-64 shrink-0 flex-col gap-4 overflow-y-auto border-l border-border p-4">
-			<Field label={t("mockup.option.radius")} value={`${Math.round(options.radius)}`}>
-				<input
-					type="range"
-					min={0}
-					max={Math.max(8, Math.round(maxRadius))}
-					value={Math.round(options.radius)}
-					onChange={(event) => onChange({ radius: Number(event.target.value) })}
-					className="w-full accent-[var(--primary)]"
-				/>
-			</Field>
+			<OptionSlider
+				label={t("mockup.option.radius")}
+				display={`${Math.round(options.radius)}`}
+				value={Math.round(options.radius)}
+				min={0}
+				max={Math.max(8, Math.round(maxRadius))}
+				onChange={(radius) => onChange({ radius })}
+			/>
 
-			<Field label={t("mockup.option.border")} value={`${options.borderWidth}`}>
-				<input
-					type="range"
-					min={0}
-					max={48}
-					value={options.borderWidth}
-					onChange={(event) => onChange({ borderWidth: Number(event.target.value) })}
-					className="w-full accent-[var(--primary)]"
-				/>
-			</Field>
+			<OptionSlider
+				label={t("mockup.option.border")}
+				display={`${options.borderWidth}`}
+				value={options.borderWidth}
+				min={0}
+				max={48}
+				onChange={(borderWidth) => onChange({ borderWidth })}
+			/>
 
-			<ColorField
+			<ColorPicker
 				label={t("mockup.option.borderColor")}
 				color={options.borderColor}
 				palette={palette}
@@ -124,7 +76,7 @@ export function MockupOptionsPanel({ options, maxRadius, palette, onChange, onRe
 				onPick={(borderColor) => onChange({ borderColor })}
 			/>
 
-			<ColorField
+			<ColorPicker
 				label={t("mockup.option.background")}
 				color={options.background}
 				palette={palette}

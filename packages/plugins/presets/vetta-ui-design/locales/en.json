@@ -101,6 +101,8 @@
 	"mockup.option.shadow": "Drop shadow",
 	"mockup.option.brand": "Show Vetta badge",
 	"mockup.option.scale": "Resolution",
+	"mockup.color.hex": "Hex value",
+	"mockup.color.theme": "Design theme colors",
 	"mockup.option.reset": "Reset to defaults",
 	"mockup.save": "Save as",
 	"mockup.save.running": "Rendering…",
