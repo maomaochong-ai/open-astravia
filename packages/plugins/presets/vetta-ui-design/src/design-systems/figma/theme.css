@@ -1,0 +1,22 @@
+/* Figma — crisp canvas white, blue tool, purple spark. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #0d99ff;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #ffffff;
+	--color-surface-foreground: #1e1e1e;
+	--color-surface-raised: #f5f5f5;
+	--color-muted: #757575;
+	--color-accent: #a259ff;
+	--color-danger: #f24822;
+	--color-border: #e6e6e6;
+
+	--radius-sm: 4px;
+	--radius-md: 6px;
+	--radius-lg: 8px;
+	--radius-xl: 13px;
+	--radius-2xl: 16px;
+
+	--shadow-sm: 0 1px 3px rgb(0 0 0 / 0.1);
+	--shadow-md: 0 4px 14px rgb(0 0 0 / 0.15);
+	--shadow-lg: 0 10px 32px rgb(0 0 0 / 0.2);
+}

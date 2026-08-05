@@ -1,0 +1,22 @@
+/* Apple — airy premium neutrals, generous curves, one blue. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #0071e3;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #f5f5f7;
+	--color-surface-foreground: #1d1d1f;
+	--color-surface-raised: #ffffff;
+	--color-muted: #6e6e73;
+	--color-accent: #34c759;
+	--color-danger: #ff3b30;
+	--color-border: #d2d2d7;
+
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 18px;
+	--radius-xl: 24px;
+	--radius-2xl: 32px;
+
+	--shadow-sm: 0 2px 8px rgb(0 0 0 / 0.04);
+	--shadow-md: 0 8px 24px rgb(0 0 0 / 0.08);
+	--shadow-lg: 0 24px 64px rgb(0 0 0 / 0.12);
+}

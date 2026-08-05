@@ -8,10 +8,15 @@ interface ControlBarProps {
 	zoom: number;
 	/** Number of frames the export action would act on; 0 hides the button. */
 	exportableCount: number;
+	/** 设计体系抽屉开着时高亮按钮，同时整条工具栏淡出让位（见 faded）。 */
+	designSystemsActive: boolean;
+	/** 抽屉升起时工具栏淡出（不上推，避免布局跳动），关闭后恢复。 */
+	faded: boolean;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
 	onExport(): void;
+	onDesignSystems(): void;
 }
 
 function ToolButton({
@@ -67,6 +72,14 @@ const icons = {
 			<rect x="14" y="6" width="7" height="16" rx="2" />
 		</svg>
 	),
+	swatches: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M7 3h4v14a2 2 0 11-4 0V3z" strokeLinejoin="round" />
+			<path d="M11 8l3.5-3.5a1 1 0 011.4 0l2.1 2.1a1 1 0 010 1.4L11 15" strokeLinejoin="round" />
+			<path d="M13 21h7a1 1 0 001-1v-3a1 1 0 00-1-1h-3" strokeLinejoin="round" />
+			<circle cx="9" cy="17" r="0.5" fill="currentColor" />
+		</svg>
+	),
 };
 
 /** 画布左下角固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部中间留给「让 Vetta 调整」。 */
@@ -74,10 +87,13 @@ export function ControlBar({
 	tool,
 	zoom,
 	exportableCount,
+	designSystemsActive,
+	faded,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
 	onExport,
+	onDesignSystems,
 }: ControlBarProps) {
 	const { t } = useTranslation();
 	return (
@@ -85,7 +101,9 @@ export function ControlBar({
 		<div
 			// 左下角：底部中间留给「让 Vetta 调整」，顶部整条是画布自己的沉浸式标题栏
 			// （CanvasTab 里那层约 58px 高的渐变遮罩，z-30），工具栏放上去会被罩住。
-			className="pointer-events-auto absolute bottom-6 left-6 z-30 flex items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg"
+			className={`pointer-events-auto absolute bottom-6 left-6 z-30 flex items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg transition-opacity duration-200 ${
+				faded ? "pointer-events-none opacity-0" : ""
+			}`}
 			// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 			// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
 			onPointerDown={(event) => event.stopPropagation()}
@@ -100,6 +118,13 @@ export function ControlBar({
 			</ToolButton>
 			<ToolButton active={tool === "frame"} title={t("controlbar.frame")} onClick={() => onToolChange("frame")}>
 				{icons.frame}
+			</ToolButton>
+			<ToolButton
+				active={designSystemsActive}
+				title={t("controlbar.designSystems")}
+				onClick={onDesignSystems}
+			>
+				{icons.swatches}
 			</ToolButton>
 			<div className="mx-1 h-5 w-px bg-border" />
 			<button

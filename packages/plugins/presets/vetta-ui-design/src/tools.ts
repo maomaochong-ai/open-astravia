@@ -1,7 +1,10 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { getCanvasController, getFrameError, setPendingDesignPath } from "./canvas/design-runtime";
+import { designSystemCardDescriptor } from "./cards/design-system-card";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
+import { applyDesignSystem, buildRestylePrompt } from "./design-systems/apply";
+import { DESIGN_SYSTEMS, designSystemById } from "./design-systems/index";
 import { engineDiagnostics } from "./engine/engine-manager";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import { findVetdFiles } from "./vetd/discover";
@@ -182,6 +185,119 @@ export function registerDesignTools(ctx: PluginContext): void {
 						}
 					: null,
 				engine,
+			};
+		},
+	});
+
+	interface DesignSystemsInput {
+		present?: string[];
+		apply?: string;
+		design?: string;
+	}
+
+	/** apply/无画布场景下解析目标 .vetd：显式参数 > 打开的画布 > cwd 里唯一那份。 */
+	const resolveVetdPath = async (host: { fs: PluginContext["fs"] }, cwd: string, explicit?: string) => {
+		if (explicit) return explicit;
+		const controller = getCanvasController();
+		if (controller) return controller.session.vetdPath;
+		const designs = await findVetdFiles(host.fs, cwd);
+		if (designs.length === 1) return designs[0];
+		throw new Error(
+			designs.length === 0
+				? "No .vetd design document in the workspace. Create one with vetd_create first."
+				: `Multiple design documents found — pass \`design\` to pick one: ${designs.join(", ")}`,
+		);
+	};
+
+	ctx.agent.registerTool<DesignSystemsInput>({
+		id: "vetd-design-systems",
+		name: "vetd_design_systems",
+		label: "%tool.vetd_design_systems%",
+		description:
+			"Built-in design systems (curated theme.css + DESIGN.md presets: Linear, Stripe, Notion, Apple, Spotify, …). Three usages: (1) no arguments — list all systems with style blurbs, so you can shortlist by the user's description; (2) `present: [ids]` — render clickable preview cards in the conversation for the user to pick from (their choice arrives as a new user message; ALWAYS prefer this over choosing silently when the user hasn't named a style); (3) `apply: id` — apply a system to the design document. Apply on an EMPTY design writes theme.css + DESIGN.md directly; on a design with frames it writes DESIGN.md + a full backup, then returns restyle instructions for you to execute.",
+		parameters: {
+			type: "object",
+			properties: {
+				present: {
+					type: "array",
+					items: { type: "string" },
+					description:
+						"System ids (2-4 recommended) to render as clickable preview cards for the user to choose from.",
+				},
+				apply: {
+					type: "string",
+					description: "System id to apply to the design document.",
+				},
+				design: {
+					type: "string",
+					description:
+						"Absolute path of the target .vetd (optional; defaults to the design open on the canvas, or the workspace's only .vetd).",
+				},
+			},
+			additionalProperties: false,
+		},
+		scope_use: SCOPE_USE,
+		agent_mode: AGENT_MODE,
+		handler: async ({ host, session, trigger }) => {
+			const { present, apply, design } = trigger.input;
+
+			if (apply) {
+				const system = designSystemById(apply);
+				if (!system) {
+					return {
+						ok: false,
+						error: `Unknown design system "${apply}". Valid ids: ${DESIGN_SYSTEMS.map((s) => s.id).join(", ")}`,
+					};
+				}
+				let vetdPath: string;
+				try {
+					vetdPath = await resolveVetdPath(host, session.cwd, design);
+				} catch (error) {
+					return { ok: false, error: error instanceof Error ? error.message : String(error) };
+				}
+				const result = await applyDesignSystem(host.fs, vetdPath, apply);
+				if (result.mode === "direct") {
+					return {
+						ok: true,
+						mode: "direct",
+						vetdPath: result.vetdPath,
+						note: `Applied "${system.name}": theme.css and DESIGN.md written to ${result.dirPath} (the design had no frames, so nothing else changes). The canvas hot-reloads. Every frame you create from now on MUST follow ${result.dirPath}/DESIGN.md.`,
+					};
+				}
+				return {
+					ok: true,
+					mode: "restyle",
+					vetdPath: result.vetdPath,
+					frames: result.frames,
+					note: `DESIGN.md written and a full backup of the previous sources saved. Now execute the restyle yourself:\n\n${buildRestylePrompt(system, result, "en")}`,
+				};
+			}
+
+			if (present && present.length > 0) {
+				const unknown = present.filter((id) => !designSystemById(id));
+				if (unknown.length > 0) {
+					return {
+						ok: false,
+						error: `Unknown design system ids: ${unknown.join(", ")}. Valid ids: ${DESIGN_SYSTEMS.map((s) => s.id).join(", ")}`,
+					};
+				}
+				return {
+					ok: true,
+					presented: present,
+					note: "Preview cards rendered in the conversation. STOP and wait — the user's pick (or their choice to skip templates) arrives as a new user message; do not choose for them.",
+					cards: [designSystemCardDescriptor(present, true)],
+				};
+			}
+
+			return {
+				systems: DESIGN_SYSTEMS.map((system) => ({
+					id: system.id,
+					name: system.name,
+					category: system.category,
+					vibe: system.vibe,
+					blurb: system.blurb,
+				})),
+				note: "Shortlist 2-4 systems that fit the user's description and render them with `present` for the user to pick. Only call `apply` directly when the user has explicitly named a system.",
 			};
 		},
 	});

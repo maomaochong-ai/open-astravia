@@ -39,6 +39,7 @@ import {
 	requestMockupExport,
 	setFrameError,
 } from "./design-runtime";
+import { DesignSystemDrawer } from "./DesignSystemDrawer";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
@@ -250,6 +251,8 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 	const [marquee, setMarquee] = useState<Rect | null>(null);
 	const [askOpen, setAskOpen] = useState(false);
 	const [askBusy, setAskBusy] = useState(false);
+	/** 底部设计体系抽屉。升起时 ControlBar 与「让 Vetta 调整」淡出让位。 */
+	const [designDrawerOpen, setDesignDrawerOpen] = useState(false);
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
 	const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -1372,7 +1375,7 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				/>
 			) : null}
 
-			{!panActive ? (
+			{!panActive && !designDrawerOpen ? (
 				<AskVettaButton
 					selectedCount={orderedSelection.length}
 					elementMode={selection?.kind === "dom"}
@@ -1385,6 +1388,8 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
+				designSystemsActive={designDrawerOpen}
+				faded={designDrawerOpen}
 				onToolChange={setTool}
 				onZoomDelta={zoomBy}
 				onZoomReset={() => {
@@ -1393,6 +1398,17 @@ export function DesignCanvas({ session, port, bridge, captureRef, refreshRef }: 
 					session.saveViewport(next);
 				}}
 				onExport={openExport}
+				onDesignSystems={() => {
+					setAskOpen(false);
+					setMenuAnchor(null);
+					setDesignDrawerOpen((open) => !open);
+				}}
+			/>
+
+			<DesignSystemDrawer
+				session={session}
+				open={designDrawerOpen}
+				onClose={() => setDesignDrawerOpen(false)}
 			/>
 		</div>
 	);
