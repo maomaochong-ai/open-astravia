@@ -4,9 +4,14 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.
+
 ### Added
 
 - Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and structured lifecycle events for Desktop plugin hot reload without changing production package output.
+- Added automatic injection of the public plugin-sdk Tailwind theme contract so plugins can use host semantic color utilities without importing Desktop CSS or repeating `@theme` mappings.
 
 ## [0.0.5] — 2026-08-04
 

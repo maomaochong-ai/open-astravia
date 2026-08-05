@@ -5,8 +5,13 @@ import {
 	isVettaPluginDevServer,
 	VETTA_PLUGIN_DEV_ENTRY_ID,
 } from "./dev-vite-plugins.js";
+import { createHostThemeBridgePlugin } from "./host-theme.js";
 import { type CreateVettaPluginPackageOptions, createVettaPluginPackage } from "./pack.js";
 import { createPluginStyleScopePlugin } from "./style-scope.js";
+
+const SHARED_REACT_COMMONJS_BRIDGE_ID = "virtual:vetta-plugin-shared-react-commonjs";
+const RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID = `\0${SHARED_REACT_COMMONJS_BRIDGE_ID}`;
+const STATIC_REACT_REQUIRE_PATTERN = /\brequire\s*\(\s*(["'])react\1\s*\)/gu;
 
 export interface VettaPluginPackageOptions extends Omit<CreateVettaPluginPackageOptions, "rootDir" | "distDir"> {
 	enabled?: boolean;
@@ -97,6 +102,36 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 	};
 }
 
+// Module Federation exposes shared React through a virtual ESM module. Routing
+// static CommonJS requires through this namespace keeps Rollup's generated
+// bindings stable when dependencies such as use-sync-external-store are bundled.
+function createSharedReactCommonJsBridgePlugin(): Plugin {
+	return {
+		name: "vetta-plugin-shared-react-commonjs-bridge",
+		apply: "build",
+		enforce: "pre",
+		transform(code) {
+			if (!code.includes("require") || !code.includes("react")) return;
+			const transformed = code.replace(
+				STATIC_REACT_REQUIRE_PATTERN,
+				`require(${JSON.stringify(SHARED_REACT_COMMONJS_BRIDGE_ID)})`,
+			);
+			if (transformed === code) return;
+			return { code: transformed, map: null };
+		},
+		resolveId(id) {
+			if (id === SHARED_REACT_COMMONJS_BRIDGE_ID) return RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID;
+		},
+		load(id) {
+			if (id !== RESOLVED_SHARED_REACT_COMMONJS_BRIDGE_ID) return;
+			return `import * as React from "react";
+export * from "react";
+export default React;
+`;
+		},
+	};
+}
+
 function createPackagePlugin(options: VettaPluginPackageOptions): Plugin {
 	let rootDir = "";
 	let distDir = "";
@@ -134,8 +169,10 @@ export function vettaPluginFederation(options: VettaPluginFederationOptions): Pl
 	const entry = options.entry ?? "./src/index.tsx";
 	const devServer = isVettaPluginDevServer();
 	const plugins: PluginOption[] = [
+		createHostThemeBridgePlugin(),
 		...(devServer ? createVettaPluginDevPlugins(entry) : []),
 		createBuildDefaultsPlugin(entry),
+		createSharedReactCommonJsBridgePlugin(),
 		...federation({
 			...createVettaPluginFederationConfig(options),
 			exposes: {
