@@ -26,6 +26,9 @@ console.log(`[precommit] ${before.length} staged file(s)`);
 
 runGuard("scripts/quality/check-private-keys.mjs", ["--staged"]);
 runGuard("scripts/quality/check-conflict-markers.mjs", ["--staged"]);
+// Cheap (staged SKILL.md only) and worth catching here: a broken frontmatter
+// makes the skill silently disappear at runtime, with nothing reported.
+runGuard("scripts/quality/check-skill-frontmatter.mjs", ["--staged"]);
 
 console.log("[precommit] biome --staged --write ...");
 const biomeCode = runBun([

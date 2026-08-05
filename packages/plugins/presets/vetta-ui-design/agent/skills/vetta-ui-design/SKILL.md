@@ -1,6 +1,6 @@
 ---
 name: vetta-ui-design
-description: Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, poster, or attaches a design frame/element from the canvas. A design document is a real front-end project, not a picture, so build it like one - frames are React (TSX) files with Tailwind v4 + Iconify, each frame is a route (frames/login.tsx = /login), screens navigate via react-router <Link>, shared chrome goes in components/ or a frames/_layout.tsx rendering <Outlet/>, and the canvas hot-reloads on save. Invoke this skill BEFORE writing any frame: it carries the routing, layout, interaction and quality rules you cannot infer from the file tree.
+description: "Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, poster, or attaches a design frame/element from the canvas. A design document is a real front-end project, not a picture, so build it like one — frames are React (TSX) files with Tailwind v4 + Iconify, each frame is a route (frames/login.tsx = /login), screens navigate via react-router <Link>, shared chrome goes in components/ or a frames/_layout.tsx rendering <Outlet/>, and the canvas hot-reloads on save. Invoke this skill BEFORE writing any frame — it carries the routing, layout, interaction and quality rules you cannot infer from the file tree."
 agent_mode: work
 ---
 
