@@ -231,7 +231,10 @@ export function registerDesignTools(ctx: PluginContext): void {
 			return {
 				ok: true,
 				path,
-				note: "Screenshot saved. Use the Read tool on this path to view the rendering.",
+				// 光说「截好了」模型会只瞟一眼就宣布完成。把该找什么写在这里：工具返回是
+				// 每次都读的，而 references/quality.md 未必被翻开。三项是实测最高频的
+				// 渲染缺陷，共同点是源码怎么读都读不出来，只有看图才能发现。
+				note: "Screenshot saved. Read this path to actually look at the rendering, and inspect it for defects the source cannot reveal: (1) misalignment — edges/baselines that should line up but do not, cards of unequal height, inconsistent gutters; (2) unintended text wrapping — buttons, tabs, table headers, nav items or labels spilling onto a second line (CJK copy is wider than the English the container was sized for), and text clipped or overflowing; (3) blank icons — an icon slot rendering as empty space (a name or set that does not exist matches no CSS, so the span collapses) or a glyph invisible against its own background. Also check clipping, contrast, and whether the frame fills its declared height. Fix what you find and screenshot again — see references/quality.md for the full checklist.",
 				// 模型不可见：宿主把顶层 cards 提到 details.cards，在消息下方渲染截图卡。
 				cards: [screenshotCardDescriptor(vetdPath, dirPath, frameId)],
 			};

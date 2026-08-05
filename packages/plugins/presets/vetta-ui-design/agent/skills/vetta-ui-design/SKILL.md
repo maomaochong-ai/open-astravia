@@ -104,8 +104,10 @@ half the list is mechanical and comes back via `issues`, the other half only you
 can see. Skip it for posters, slides and single-screen designs.
 
 **Verify visually**: call `vetd_screenshot` for EVERY frame you created or
-changed, then Read the returned PNG to actually see it. Check for clipping,
-misalignment, truncation, contrast, and whether the frame fills its height. A
+changed, then Read the returned PNG to actually see it. You are looking for
+rendering defects the code cannot show you — run the screenshot checklist in
+`references/quality.md`, which starts with the three that account for most of
+them: **misalignment**, **unintended text wrapping**, and **blank icons**. A
 frame with a `buildError` returns the compile error instead of an image — never
 declare it done in that state.
 
@@ -121,7 +123,7 @@ Resolve against `$SKILL_DIR`. Do not read them all up front.
 | --- | --- |
 | `references/interaction.md` | Wiring clicks, `_layout.tsx`, cross-screen flows |
 | `references/self-check.md` | Checking a multi-screen UI before reporting back |
-| `references/quality.md` | Before declaring any frame done |
+| `references/quality.md` | Reviewing a screenshot; before declaring any frame done |
 | `references/design-systems.md` | Starting a new design, or restyling one |
 
 ## Frame skeleton
