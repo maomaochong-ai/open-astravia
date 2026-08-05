@@ -380,9 +380,16 @@ export const FrameView = memo(function FrameView({
 						src={raster}
 						alt=""
 						aria-hidden
-						className={`pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${
-							shouldShowRaster ? "opacity-100" : "opacity-0"
-						}`}
+						className="pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity"
+						// 两个方向必须不对称。
+						// 位图→活体：位图淡出，底下一直垫着已经画好的 iframe，200ms 过渡看不出交接。
+						// 活体→位图：iframe 在同一次提交里就被卸掉了（见 frame-raster 的 mounted），
+						// 淡入的这 200ms 底下什么都没有，露出的是容器白底——那一下闪白就是这么来的。
+						// 位图此刻已解码、内容与活体一致，硬切反而完全看不出来。
+						style={{
+							opacity: shouldShowRaster ? 1 : 0,
+							transitionDuration: shouldShowRaster ? "0ms" : "200ms",
+						}}
 						onLoad={() => setPaintedRaster(raster)}
 					/>
 				) : null}
