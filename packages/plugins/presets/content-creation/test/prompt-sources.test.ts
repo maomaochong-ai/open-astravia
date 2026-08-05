@@ -74,4 +74,65 @@ describe("connected prompt sources", () => {
 		expect(resolveContentPrompt(sources, { prompt: "Local", promptSourceNodeId: "prompt" })).toBe("Connected");
 		expect(resolveContentPrompt(sources, { prompt: "Local", promptSourceNodeId: null })).toBe("Local");
 	});
+
+	it("uses structured token order instead of parsing asset names from prompt text", () => {
+		const project = createContentProject("C:/project");
+		project.assets.push(
+			{
+				id: "first",
+				kind: "image",
+				name: "@not-a-reference",
+				mimeType: "image/png",
+				url: "vetta-media://first",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			},
+			{
+				id: "second",
+				kind: "image",
+				name: "Second",
+				mimeType: "image/png",
+				url: "vetta-media://second",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			},
+		);
+		project.graph.nodes.push(
+			{
+				id: "prompt",
+				kind: "prompt",
+				position: { x: 0, y: 0 },
+				status: "idle",
+				data: {
+					prompt: "Mention @not-a-reference as ordinary text",
+					promptDocument: {
+						version: 1,
+						segments: [
+							{ type: "asset-reference", bindingId: "second-binding" },
+							{ type: "text", text: "Mention @not-a-reference as ordinary text" },
+						],
+					},
+					inputs: [
+						{ id: "first-binding", assetId: "first", slotId: "promptReferences" },
+						{ id: "second-binding", assetId: "second", slotId: "promptReferences" },
+					],
+				},
+			},
+			{
+				id: "generator",
+				kind: "image-generator",
+				position: { x: 300, y: 0 },
+				status: "idle",
+				data: {},
+			},
+		);
+		project.graph.edges.push({
+			id: "prompt-edge",
+			source: "prompt",
+			target: "generator",
+			targetHandle: "prompt",
+		});
+
+		const source = listConnectedPromptSources(project, "generator")[0];
+		expect(source?.references.map(({ asset }) => asset.id)).toEqual(["second"]);
+		expect(source?.prompt).toBe("Mention @not-a-reference as ordinary text");
+	});
 });

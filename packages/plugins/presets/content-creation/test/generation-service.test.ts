@@ -112,6 +112,13 @@ describe("ContentGenerationService", () => {
 		expect(imported.graph.nodes.find((node) => node.id === "prompt")?.data.inputs).toMatchObject([
 			{ slotId: "promptReferences" },
 		]);
+		expect(imported.graph.nodes.find((node) => node.id === "prompt")?.data.promptDocument).toMatchObject({
+			version: 1,
+			segments: [
+				{ type: "text", text: "A lighthouse at blue hour" },
+				{ type: "asset-reference", bindingId: expect.any(String) },
+			],
+		});
 		await fixture.service.runNode("C:/project", "image");
 		expect(fixture.generate).toHaveBeenLastCalledWith(
 			expect.objectContaining({

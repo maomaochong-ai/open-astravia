@@ -14,7 +14,7 @@ import {
 	listConnectedContentAssets,
 	listContentNodeAssets,
 } from "../node/material-assets";
-import { listConnectedPromptSources } from "../node/prompt-sources";
+import { listConnectedPromptSources, listContentPromptReferences } from "../node/prompt-sources";
 
 export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
@@ -43,11 +43,14 @@ export function toContentFlowNodes(
 		const fallbackSize = getContentNodeSize(node.kind, node.data.aspectRatio);
 		const job = project.jobs.filter((candidate) => candidate.nodeId === node.id).at(-1);
 		const assets = listContentNodeAssets(project, node);
-		const referenceAssets = (node.data.inputs ?? []).flatMap((binding) => {
-			if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
-			const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-			return asset ? [{ binding, asset }] : [];
-		});
+		const referenceAssets =
+			node.kind === "prompt"
+				? listContentPromptReferences(project, node)
+				: (node.data.inputs ?? []).flatMap((binding) => {
+						if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
+						const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
+						return asset ? [{ binding, asset }] : [];
+					});
 		const connectedAssets = listConnectedContentAssets(project, node.id);
 		const connectedPrompts = listConnectedPromptSources(project, node.id);
 		return {

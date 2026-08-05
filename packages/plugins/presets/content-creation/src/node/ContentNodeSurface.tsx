@@ -9,7 +9,7 @@ import type {
 	GenerationJob,
 } from "../project/types";
 import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
-import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
+import { ContentAssetKindIcon } from "./ContentAssetKindIcon";
 import { NodeKindIcon } from "./NodeKindIcon";
 
 interface ContentNodeSurfaceProps {
@@ -103,12 +103,14 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 				</p>
 				{referenceAssets.length > 0 ? (
 					<div className="flex min-w-0 items-center gap-1.5 border-t border-border/55 pt-2">
-						{referenceAssets.slice(0, 3).map((asset) => (
-							<ContentAssetThumbnail
+						{referenceAssets.slice(0, 2).map((asset) => (
+							<span
 								key={asset.id}
-								asset={asset}
-								className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted object-cover text-muted-foreground"
-							/>
+								className="inline-flex min-w-0 max-w-[42%] items-center gap-1 rounded-md bg-muted/70 px-1.5 py-1 text-[10px] text-foreground"
+							>
+								<ContentAssetKindIcon kind={asset.kind} className="size-3 shrink-0 text-muted-foreground" />
+								<span className="truncate">{asset.name}</span>
+							</span>
 						))}
 						<span className="truncate text-[10px] text-muted-foreground">
 							{t("node.prompt.references", { count: referenceAssets.length })}

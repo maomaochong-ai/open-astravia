@@ -14,6 +14,7 @@ export interface CanvasPosition {
 export interface ContentNodeData {
 	label?: string;
 	prompt?: string;
+	promptDocument?: ContentPromptDocument;
 	assetId?: string;
 	assetIds?: string[];
 	aspectRatio?: string;
@@ -26,6 +27,15 @@ export interface ContentNodeData {
 	promptSourceNodeId?: string | null;
 	inputs?: ContentNodeInputBinding[];
 }
+
+export interface ContentPromptDocument {
+	version: 1;
+	segments: ContentPromptSegment[];
+}
+
+export type ContentPromptSegment =
+	| { type: "text"; text: string }
+	| { type: "asset-reference"; bindingId: string };
 
 export interface ContentNodeInputBinding {
 	id: string;

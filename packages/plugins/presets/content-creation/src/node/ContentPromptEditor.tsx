@@ -1,10 +1,25 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Button, Popover, PopoverAnchor, PopoverContent } from "@vetta/ui";
+import { type ChangeEvent, type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ImportedContentReference } from "../generation/types";
 import type { ContentAsset, ContentNodeData, ContentNodeInputBinding } from "../project/types";
-import { ContentReferenceInput } from "./ContentReferenceInput";
 import type { ConnectedContentAsset } from "./material-assets";
+import {
+	contentPromptText,
+	createContentPromptDocument,
+	listContentPromptBindingIds,
+} from "./prompt-document";
+import {
+	getPromptMentionContext,
+	getPromptSelectionRange,
+	insertPromptAssetToken,
+	placePromptCaretAtEnd,
+	readPromptEditor,
+	renderPromptEditor,
+} from "./prompt-editor-dom";
+import { PromptAssetMentionMenu } from "./PromptAssetMentionMenu";
 import { PROMPT_REFERENCE_SLOT_ID } from "./prompt-sources";
+import { readImportedMediaFile } from "./readImportedMediaFile";
 
 interface ContentPromptEditorProps {
 	data: ContentNodeData;
@@ -24,8 +39,15 @@ export function ContentPromptEditor({
 	onImportReferences,
 }: ContentPromptEditorProps) {
 	const { t } = useTranslation();
-	const [draft, setDraft] = useState(data);
-	const promptInputRef = useRef<HTMLTextAreaElement>(null);
+	const editorRef = useRef<HTMLDivElement>(null);
+	const fileInputRef = useRef<HTMLInputElement>(null);
+	const draftRef = useRef(data);
+	const selectionRangeRef = useRef<Range | null>(null);
+	const mentionRangeRef = useRef<Range | null>(null);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const [mentionQuery, setMentionQuery] = useState("");
+	const [highlightedIndex, setHighlightedIndex] = useState(0);
+	const removeReferenceLabel = t("nodeEditor.reference.remove");
 	const assetById = useMemo(
 		() =>
 			new Map(
@@ -36,86 +58,258 @@ export function ContentPromptEditor({
 			),
 		[connectedAssets, referenceAssets],
 	);
-	const references = (draft.inputs ?? []).flatMap((binding) => {
-		const asset = assetById.get(binding.assetId);
-		return asset ? [{ binding, asset }] : [];
-	});
-	const selectedAssetIds = new Set(references.map(({ asset }) => asset.id));
-	const connectedReferences = connectedAssets
-		.filter(({ asset }) => !selectedAssetIds.has(asset.id))
-		.map((candidate) => ({ ...candidate, slotId: PROMPT_REFERENCE_SLOT_ID }));
+	const assetByBindingId = useMemo(
+		() =>
+			new Map(
+				(data.inputs ?? []).flatMap((binding) => {
+					const asset = assetById.get(binding.assetId);
+					return asset ? [[binding.id, asset] as const] : [];
+				}),
+			),
+		[data.inputs, assetById],
+	);
+	const selectedAssetIds = new Set(referenceAssets.map(({ asset }) => asset.id));
+	const availableMentionAssets = connectedAssets.filter(
+		(option, index) =>
+			!selectedAssetIds.has(option.asset.id) &&
+			connectedAssets.findIndex((candidate) => candidate.asset.id === option.asset.id) === index,
+	);
+	const normalizedQuery = mentionQuery.trim().toLocaleLowerCase();
+	const mentionOptions = availableMentionAssets.filter(
+		({ asset }) =>
+			!normalizedQuery ||
+			asset.name.toLocaleLowerCase().includes(normalizedQuery) ||
+			t(`asset.kind.${asset.kind}`).toLocaleLowerCase().includes(normalizedQuery),
+	);
 
-	useEffect(() => setDraft(data), [data]);
+	useEffect(() => {
+		draftRef.current = data;
+		const editor = editorRef.current;
+		if (!editor) return;
+		renderPromptEditor(
+			editor,
+			createContentPromptDocument(data),
+			assetByBindingId,
+			removeReferenceLabel,
+		);
+	}, [assetByBindingId, data, removeReferenceLabel]);
 	useEffect(() => {
 		if (focusPromptRequest === 0) return;
 		const frame = window.requestAnimationFrame(() => {
-			const input = promptInputRef.current;
-			if (!input) return;
-			input.focus();
-			input.setSelectionRange(input.value.length, input.value.length);
+			const editor = editorRef.current;
+			if (editor) placePromptCaretAtEnd(editor);
 		});
 		return () => window.cancelAnimationFrame(frame);
 	}, [focusPromptRequest]);
 
-	const commit = (next: ContentNodeData) => {
-		setDraft(next);
+	const syncDraftFromEditor = () => {
+		const editor = editorRef.current;
+		if (!editor) return draftRef.current;
+		const promptDocument = readPromptEditor(editor);
+		const referencedBindingIds = new Set(listContentPromptBindingIds(promptDocument));
+		const next = {
+			...draftRef.current,
+			prompt: contentPromptText(promptDocument),
+			promptDocument,
+			inputs: (draftRef.current.inputs ?? []).filter((binding) => referencedBindingIds.has(binding.id)),
+		};
+		draftRef.current = next;
+		return next;
+	};
+	const closeMenu = () => {
+		setMenuOpen(false);
+		setMentionQuery("");
+		setHighlightedIndex(0);
+		mentionRangeRef.current = null;
+	};
+	const updateMentionState = () => {
+		const editor = editorRef.current;
+		if (!editor) return;
+		selectionRangeRef.current = getPromptSelectionRange(editor);
+		const mention = getPromptMentionContext(editor);
+		mentionRangeRef.current = mention?.range ?? null;
+		if (!mention) {
+			closeMenu();
+			return;
+		}
+		setMentionQuery(mention.query);
+		setHighlightedIndex(0);
+		setMenuOpen(true);
+	};
+	const selectAsset = (option: ConnectedContentAsset) => {
+		const editor = editorRef.current;
+		if (!editor) return;
+		const existingBinding = (draftRef.current.inputs ?? []).find(
+			(binding) => binding.assetId === option.asset.id,
+		);
+		const binding =
+			existingBinding ??
+			({
+				id: crypto.randomUUID(),
+				assetId: option.asset.id,
+				slotId: PROMPT_REFERENCE_SLOT_ID,
+				sourceNodeId: option.sourceNodeId,
+			} satisfies ContentNodeInputBinding);
+		if (!existingBinding) {
+			draftRef.current = {
+				...draftRef.current,
+				inputs: [...(draftRef.current.inputs ?? []), binding],
+			};
+		}
+		insertPromptAssetToken(
+			editor,
+			mentionRangeRef.current ?? selectionRangeRef.current,
+			binding.id,
+			option.asset,
+			removeReferenceLabel,
+		);
+		const next = syncDraftFromEditor();
+		closeMenu();
 		void onUpdate(next);
 	};
-	const handlePromptKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-		if (event.key !== "Enter" || event.shiftKey) return;
-		event.preventDefault();
-		void onUpdate(draft);
+	const openManualPicker = () => {
+		const editor = editorRef.current;
+		if (editor) selectionRangeRef.current = getPromptSelectionRange(editor);
+		mentionRangeRef.current = null;
+		setMentionQuery("");
+		setHighlightedIndex(0);
+		setMenuOpen(true);
+	};
+	const removeReferenceToken = (bindingId: string) => {
+		const editor = editorRef.current;
+		const token = editor?.querySelector<HTMLElement>(`[data-prompt-binding-id="${CSS.escape(bindingId)}"]`);
+		if (!token) return;
+		token.remove();
+		const next = syncDraftFromEditor();
+		void onUpdate(next);
+	};
+	const handleEditorKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+		const removeTarget = (event.target as HTMLElement).dataset.removePromptBindingId;
+		if (removeTarget && (event.key === "Enter" || event.key === " ")) {
+			event.preventDefault();
+			removeReferenceToken(removeTarget);
+			return;
+		}
+		if (!menuOpen) return;
+		if (event.key === "Escape") {
+			event.preventDefault();
+			closeMenu();
+			return;
+		}
+		if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+			event.preventDefault();
+			const direction = event.key === "ArrowDown" ? 1 : -1;
+			setHighlightedIndex((current) =>
+				mentionOptions.length === 0 ? 0 : (current + direction + mentionOptions.length) % mentionOptions.length,
+			);
+			return;
+		}
+		if (event.key === "Enter" && mentionOptions[highlightedIndex]) {
+			event.preventDefault();
+			selectAsset(mentionOptions[highlightedIndex]);
+		}
+	};
+	const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
+		const files = Array.from(event.target.files ?? []);
+		event.target.value = "";
+		if (files.length === 0) return;
+		await onUpdate(syncDraftFromEditor());
+		await onImportReferences(await Promise.all(files.map(readImportedMediaFile)));
 	};
 
 	return (
 		<div
 			className="nodrag nowheel min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-lg backdrop-blur-md"
-			style={{ width: "min(380px, calc(100vw - 32px))" }}
+			style={{ width: "min(420px, calc(100vw - 32px))" }}
 			onPointerDown={(event) => event.stopPropagation()}
 			onKeyDown={(event) => event.stopPropagation()}
 		>
-			<div className="overflow-hidden rounded-xl border border-border/65 bg-background/40 focus-within:border-primary/45">
-				<textarea
-					ref={promptInputRef}
-					className="min-h-24 w-full resize-none bg-transparent px-3 py-2.5 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
-					value={draft.prompt ?? ""}
-					placeholder={t("nodeEditor.prompt.placeholder")}
-					onChange={(event) => setDraft({ ...draft, prompt: event.target.value })}
-					onBlur={() => void onUpdate(draft)}
-					onKeyDown={handlePromptKeyDown}
-				/>
-				<div className="border-t border-border/55 px-2 py-1.5">
-					<ContentReferenceInput
-						references={references}
-						connectedReferences={connectedReferences}
-						acceptedKinds={["image", "video", "audio"]}
-						disabled={false}
-						onImport={async (files) => {
-							await onUpdate(draft);
-							await onImportReferences(files);
-						}}
-						onRemove={(bindingId) => {
-							commit({
-								...draft,
-								inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId),
-							});
-						}}
-						onSelectConnected={({ sourceNodeId, asset, slotId }) => {
-							if (!slotId) return;
-							commit({
-								...draft,
-								inputs: [
-									...(draft.inputs ?? []),
-									{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
-								],
-							});
-						}}
-					/>
+			<Popover open={menuOpen} onOpenChange={(open) => (open ? setMenuOpen(true) : closeMenu())}>
+				<div className="overflow-hidden rounded-xl border border-border/65 bg-background/40 focus-within:border-primary/45">
+					<PopoverAnchor asChild>
+						<div
+							ref={editorRef}
+							className="min-h-28 whitespace-pre-wrap break-words px-3 py-2.5 text-[13px] leading-7 text-foreground outline-none empty:before:pointer-events-none empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]"
+							contentEditable
+							suppressContentEditableWarning
+							role="textbox"
+							aria-multiline="true"
+							aria-label={t("nodeEditor.prompt")}
+							data-placeholder={t("nodeEditor.prompt.placeholder")}
+							onInput={() => {
+								syncDraftFromEditor();
+								updateMentionState();
+							}}
+							onKeyUp={() => {
+								const editor = editorRef.current;
+								if (editor) selectionRangeRef.current = getPromptSelectionRange(editor);
+							}}
+							onKeyDown={handleEditorKeyDown}
+							onBlur={() => void onUpdate(syncDraftFromEditor())}
+							onClick={(event) => {
+								const target = (event.target as HTMLElement).closest<HTMLElement>(
+									"[data-remove-prompt-binding-id]",
+								);
+								if (target?.dataset.removePromptBindingId) {
+									event.preventDefault();
+									removeReferenceToken(target.dataset.removePromptBindingId);
+								}
+							}}
+						/>
+					</PopoverAnchor>
+					<div className="flex items-center justify-between gap-2 border-t border-border/55 px-2 py-1.5">
+						<span className="px-1 text-[10px] text-muted-foreground">
+							{t("nodeEditor.prompt.mention.inlineHint")}
+						</span>
+						<div className="flex items-center gap-0.5">
+							<Button
+								type="button"
+								size="icon-xs"
+								variant="ghost"
+								disabled={availableMentionAssets.length === 0}
+								title={t("nodeEditor.prompt.mention.manual")}
+								onMouseDown={(event) => event.preventDefault()}
+								onClick={openManualPicker}
+							>
+								<span className="text-[13px] font-semibold" aria-hidden="true">
+									@
+								</span>
+							</Button>
+							<Button
+								type="button"
+								size="icon-xs"
+								variant="ghost"
+								title={t("nodeEditor.prompt.mention.upload")}
+								onMouseDown={(event) => event.preventDefault()}
+								onClick={() => fileInputRef.current?.click()}
+							>
+								<span className="icon-[lucide--paperclip] block size-3.5" aria-hidden="true" />
+							</Button>
+							<input
+								ref={fileInputRef}
+								className="hidden"
+								type="file"
+								multiple
+								accept="image/*,video/*,audio/*"
+								onChange={(event) => void handleFiles(event)}
+							/>
+						</div>
+					</div>
 				</div>
-			</div>
-			<p className="m-0 mt-1.5 px-1 text-[10px] text-muted-foreground">
-				{t("nodeEditor.prompt.materialHint")}
-			</p>
+				<PopoverContent
+					align="end"
+					side="bottom"
+					className="w-80 gap-1.5 p-1.5"
+					onOpenAutoFocus={(event) => event.preventDefault()}
+				>
+					<PromptAssetMentionMenu
+						options={mentionOptions}
+						query={mentionQuery}
+						highlightedIndex={highlightedIndex}
+						onSelect={selectAsset}
+					/>
+				</PopoverContent>
+			</Popover>
 		</div>
 	);
 }

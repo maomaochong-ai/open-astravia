@@ -6,6 +6,10 @@ import type {
 	ContentProjectDocument,
 } from "../project/types";
 import { isContentInputBindingAvailable } from "./material-assets";
+import {
+	contentPromptTextFromData,
+	listContentPromptBindingIds,
+} from "./prompt-document";
 
 export const PROMPT_REFERENCE_SLOT_ID = "promptReferences";
 
@@ -25,7 +29,13 @@ export function listContentPromptReferences(
 	project: ContentProjectDocument,
 	node: Pick<ContentNode, "id" | "data">,
 ): ContentPromptReference[] {
-	return (node.data.inputs ?? []).flatMap((binding) => {
+	const bindings = node.data.promptDocument
+		? listContentPromptBindingIds(node.data.promptDocument).flatMap((bindingId) => {
+				const binding = node.data.inputs?.find((candidate) => candidate.id === bindingId);
+				return binding ? [binding] : [];
+			})
+		: (node.data.inputs ?? []);
+	return bindings.flatMap((binding) => {
 		if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
 		const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
 		return asset ? [{ binding, asset }] : [];
@@ -47,7 +57,7 @@ export function listConnectedPromptSources(
 				{
 					nodeId: source.id,
 					label: source.data.label,
-					prompt: source.data.prompt ?? "",
+					prompt: contentPromptTextFromData(source.data),
 					references: listContentPromptReferences(project, source),
 				},
 			];
@@ -62,7 +72,7 @@ export function resolveConnectedPromptSource(
 	if (data.promptSourceNodeId) {
 		return sources.find((source) => source.nodeId === data.promptSourceNodeId) ?? null;
 	}
-	if (data.prompt?.trim()) return null;
+	if (contentPromptTextFromData(data)) return null;
 	return sources[0] ?? null;
 }
 
@@ -70,5 +80,5 @@ export function resolveContentPrompt(
 	sources: readonly ConnectedPromptSource[],
 	data: ContentNodeData,
 ): string {
-	return resolveConnectedPromptSource(sources, data)?.prompt.trim() ?? data.prompt?.trim() ?? "";
+	return resolveConnectedPromptSource(sources, data)?.prompt.trim() ?? contentPromptTextFromData(data);
 }

@@ -13,6 +13,10 @@ import {
 	resolveContentPrompt,
 	type ConnectedPromptSource,
 } from "../node/prompt-sources";
+import {
+	appendContentPromptReferences,
+	createContentPromptDocument,
+} from "../node/prompt-document";
 import type { ContentCreationWorkspace } from "../project/workspace";
 import {
 	assignContentReferenceSlots,
@@ -202,7 +206,13 @@ export class ContentGenerationService {
 			{
 				type: "node.update",
 				nodeId: node.id,
-				data: { inputs: [...(node.data.inputs ?? []), ...pending.map(({ binding }) => binding)] },
+				data: {
+					inputs: [...(node.data.inputs ?? []), ...pending.map(({ binding }) => binding)],
+					promptDocument: appendContentPromptReferences(
+						createContentPromptDocument(node.data),
+						pending.map(({ binding }) => binding.id),
+					),
+				},
 			},
 		]);
 	}
