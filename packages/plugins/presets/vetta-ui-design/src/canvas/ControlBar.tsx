@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import type { JSX } from "react";
+import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { DOCK_GAP, DOCK_ICON, dockMagnifyScale, dockTransition, usePrefersReducedMotion } from "./dock-magnify";
 
 export type CanvasTool = "select" | "hand" | "frame";
 
@@ -19,32 +20,20 @@ interface ControlBarProps {
 	onDesignSystems(): void;
 }
 
-function ToolButton({
-	active,
-	title,
-	onClick,
-	children,
-}: {
-	active: boolean;
-	title: string;
-	onClick(): void;
-	children: JSX.Element;
-}) {
-	return (
-		<button
-			type="button"
-			title={title}
-			aria-label={title}
-			aria-pressed={active}
-			onClick={onClick}
-			className={`flex size-8 items-center justify-center rounded-lg transition-colors ${
-				active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"
-			}`}
-		>
-			{children}
-		</button>
-	);
-}
+type DockSlot =
+	| { type: "divider"; key: string }
+	| {
+			type: "item";
+			key: string;
+			label: string;
+			active: boolean;
+			/** 主题色底的动作项（导出），与前面的工具按钮拉开层次。 */
+			accent?: boolean;
+			/** 非等宽项（缩放百分比、导出）：撑开宽度而不是锁死成方块。 */
+			wide?: boolean;
+			onClick(): void;
+			content: ReactNode;
+	  };
 
 const icons = {
 	select: (
@@ -80,9 +69,22 @@ const icons = {
 			<circle cx="9" cy="17" r="0.5" fill="currentColor" />
 		</svg>
 	),
+	minus: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M5 12h14" strokeLinecap="round" />
+		</svg>
+	),
+	plus: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path d="M12 5v14M5 12h14" strokeLinecap="round" />
+		</svg>
+	),
 };
 
-/** 画布左下角固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部中间留给「让 Vetta 调整」。 */
+/**
+ * 画布左下角固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部中间留给「让 Vetta 调整」。
+ * 视觉与动效对齐 content-creation 画布的 dock：图标方块 + 光标处放大 + 峰值项浮标签。
+ */
 export function ControlBar({
 	tool,
 	zoom,
@@ -96,83 +98,227 @@ export function ControlBar({
 	onDesignSystems,
 }: ControlBarProps) {
 	const { t } = useTranslation();
-	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar
-		<div
-			// 左下角：底部中间留给「让 Vetta 调整」，顶部整条是画布自己的沉浸式标题栏
-			// （CanvasTab 里那层约 58px 高的渐变遮罩，z-30），工具栏放上去会被罩住。
-			className={`pointer-events-auto absolute bottom-6 left-6 z-30 flex items-center gap-1 rounded-xl border border-border bg-card/95 px-1.5 py-1 shadow-lg transition-opacity duration-200 ${
-				faded ? "pointer-events-none opacity-0" : ""
-			}`}
-			// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
-			// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
-			onPointerDown={(event) => event.stopPropagation()}
-			onPointerMove={(event) => event.stopPropagation()}
-			onPointerUp={(event) => event.stopPropagation()}
-		>
-			<ToolButton active={tool === "select"} title={t("controlbar.select")} onClick={() => onToolChange("select")}>
-				{icons.select}
-			</ToolButton>
-			<ToolButton active={tool === "hand"} title={t("controlbar.hand")} onClick={() => onToolChange("hand")}>
-				{icons.hand}
-			</ToolButton>
-			<ToolButton active={tool === "frame"} title={t("controlbar.frame")} onClick={() => onToolChange("frame")}>
-				{icons.frame}
-			</ToolButton>
-			<ToolButton
-				active={designSystemsActive}
-				title={t("controlbar.designSystems")}
-				onClick={onDesignSystems}
-			>
-				{icons.swatches}
-			</ToolButton>
-			<div className="mx-1 h-5 w-px bg-border" />
-			<button
-				type="button"
-				title={t("controlbar.zoomOut")}
-				aria-label={t("controlbar.zoomOut")}
-				onClick={() => onZoomDelta(-1)}
-				className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
-			>
-				<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-					<path d="M5 12h14" strokeLinecap="round" />
-				</svg>
-			</button>
-			<button
-				type="button"
-				title={t("controlbar.zoomReset")}
-				onClick={onZoomReset}
-				className="min-w-12 rounded-lg px-1 py-1.5 text-center text-xs tabular-nums text-foreground hover:bg-accent"
-			>
-				{Math.round(zoom * 100)}%
-			</button>
-			<button
-				type="button"
-				title={t("controlbar.zoomIn")}
-				aria-label={t("controlbar.zoomIn")}
-				onClick={() => onZoomDelta(1)}
-				className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent"
-			>
-				<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-					<path d="M12 5v14M5 12h14" strokeLinecap="round" />
-				</svg>
-			</button>
-			{exportableCount > 0 ? (
-				<>
-					<div className="mx-1 h-5 w-px bg-border" />
-					{/* 带文字：纯 icon 在这排工具里认不出来，而它是选中后才出现的动作，
-					    用主题色淡底与前面的工具按钮拉开层次。 */}
-					<button
-						type="button"
-						title={t("controlbar.exportMockup", { count: exportableCount })}
-						onClick={onExport}
-						className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-					>
+	const dockRef = useRef<HTMLDivElement>(null);
+	const slotRefs = useRef<(HTMLElement | null)[]>([]);
+	/** 放大只走 transform，布局宽度不变，所以中心点测一次即可缓存。 */
+	const centersRef = useRef<number[] | null>(null);
+	const [scales, setScales] = useState<number[]>([]);
+	const reducedMotion = usePrefersReducedMotion();
+
+	const slots = useMemo<DockSlot[]>(() => {
+		const items: DockSlot[] = [
+			{
+				type: "item",
+				key: "select",
+				label: t("controlbar.select"),
+				active: tool === "select",
+				onClick: () => onToolChange("select"),
+				content: icons.select,
+			},
+			{
+				type: "item",
+				key: "hand",
+				label: t("controlbar.hand"),
+				active: tool === "hand",
+				onClick: () => onToolChange("hand"),
+				content: icons.hand,
+			},
+			{
+				type: "item",
+				key: "frame",
+				label: t("controlbar.frame"),
+				active: tool === "frame",
+				onClick: () => onToolChange("frame"),
+				content: icons.frame,
+			},
+			{
+				type: "item",
+				key: "design-systems",
+				label: t("controlbar.designSystems"),
+				active: designSystemsActive,
+				onClick: onDesignSystems,
+				content: icons.swatches,
+			},
+			{ type: "divider", key: "divider-zoom" },
+			{
+				type: "item",
+				key: "zoom-out",
+				label: t("controlbar.zoomOut"),
+				active: false,
+				onClick: () => onZoomDelta(-1),
+				content: icons.minus,
+			},
+			{
+				type: "item",
+				key: "zoom-value",
+				label: t("controlbar.zoomReset"),
+				active: false,
+				wide: true,
+				onClick: onZoomReset,
+				content: <span className="text-xs tabular-nums">{Math.round(zoom * 100)}%</span>,
+			},
+			{
+				type: "item",
+				key: "zoom-in",
+				label: t("controlbar.zoomIn"),
+				active: false,
+				onClick: () => onZoomDelta(1),
+				content: icons.plus,
+			},
+		];
+		if (exportableCount > 0) {
+			items.push({ type: "divider", key: "divider-export" });
+			items.push({
+				type: "item",
+				key: "export",
+				label: t("controlbar.exportMockup", { count: exportableCount }),
+				active: false,
+				accent: true,
+				wide: true,
+				onClick: onExport,
+				content: (
+					<span className="flex items-center gap-1.5 text-xs font-medium">
 						{icons.mockup}
 						{t("controlbar.exportMockup.label")}
-					</button>
-				</>
-			) : null}
+					</span>
+				),
+			});
+		}
+		return items;
+	}, [
+		designSystemsActive,
+		exportableCount,
+		onDesignSystems,
+		onExport,
+		onToolChange,
+		onZoomDelta,
+		onZoomReset,
+		t,
+		tool,
+		zoom,
+	]);
+
+	/** 条目增删或百分比换位数都会挪动中心点，缓存作废。 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 只在布局宽度可能变化时作废缓存
+	useEffect(() => {
+		centersRef.current = null;
+	}, [slots.length, zoom]);
+
+	const resetMagnify = () => {
+		setScales([]);
+	};
+
+	const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+		if (reducedMotion) return;
+		const dock = dockRef.current;
+		if (!dock) return;
+		const centers = (centersRef.current ??= slotRefs.current.map((element) =>
+			element ? element.offsetLeft + element.offsetWidth / 2 : Number.POSITIVE_INFINITY,
+		));
+		const x = event.clientX - dock.getBoundingClientRect().left;
+		setScales(
+			centers.map((center, index) => (slots[index]?.type === "divider" ? 1 : dockMagnifyScale(Math.abs(x - center)))),
+		);
+	};
+
+	const peakIndex = useMemo(() => {
+		let best = -1;
+		let bestScale = 1.04;
+		scales.forEach((scale, index) => {
+			if (slots[index]?.type === "divider") return;
+			if (scale > bestScale) {
+				bestScale = scale;
+				best = index;
+			}
+		});
+		return best;
+	}, [scales, slots]);
+
+	const peakSlot = peakIndex >= 0 ? slots[peakIndex] : undefined;
+	const peakLabel = peakSlot?.type === "item" ? peakSlot.label : null;
+
+	return (
+		// 左下角：底部中间留给「让 Vetta 调整」，顶部整条是画布自己的沉浸式标题栏
+		// （CanvasTab 里那层约 58px 高的渐变遮罩，z-30），工具栏放上去会被罩住。
+		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
+		<div
+			className={`pointer-events-none absolute bottom-6 left-6 z-30 transition-opacity duration-200 ${
+				faded ? "opacity-0" : ""
+			}`}
+		>
+			{/* 放大只用 transform（origin-bottom），图标向上溢出 dock，chrome 本身不变高 */}
+			<div className="relative inline-flex flex-col items-start overflow-visible pt-9">
+				{peakLabel ? (
+					<div
+						className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-border/70 bg-popover/95 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-sm"
+						style={{ left: centersRef.current?.[peakIndex] }}
+					>
+						{peakLabel}
+					</div>
+				) : null}
+				{/* biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar */}
+				<div
+					ref={dockRef}
+					className={`relative inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md ${
+						faded ? "pointer-events-none" : "pointer-events-auto"
+					}`}
+					style={{ gap: DOCK_GAP }}
+					// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
+					// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
+					onPointerDown={(event) => event.stopPropagation()}
+					onPointerMove={(event) => {
+						event.stopPropagation();
+						handlePointerMove(event);
+					}}
+					onPointerUp={(event) => event.stopPropagation()}
+					onPointerLeave={resetMagnify}
+				>
+					{slots.map((slot, index) => {
+						if (slot.type === "divider") {
+							return (
+								<span
+									key={slot.key}
+									ref={(element) => {
+										slotRefs.current[index] = element;
+									}}
+									className="w-px shrink-0 self-center bg-border"
+									style={{ height: DOCK_ICON * 0.55 }}
+									aria-hidden
+								/>
+							);
+						}
+
+						const scale = scales[index] ?? 1;
+						return (
+							<button
+								key={slot.key}
+								ref={(element) => {
+									slotRefs.current[index] = element;
+								}}
+								type="button"
+								title={slot.label}
+								aria-label={slot.label}
+								aria-pressed={slot.active}
+								onClick={slot.onClick}
+								className={`relative z-[1] flex shrink-0 origin-bottom items-center justify-center rounded-[22%] border border-transparent outline-none will-change-transform focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 ${
+									slot.active || slot.accent
+										? "bg-primary/12 text-primary"
+										: "bg-muted/55 text-foreground hover:bg-muted"
+								} ${slot.wide ? "px-2.5" : ""} ${scale > 1.02 ? "z-[2]" : ""}`}
+								style={{
+									width: slot.wide ? undefined : DOCK_ICON,
+									minWidth: slot.wide ? DOCK_ICON + 12 : undefined,
+									height: DOCK_ICON,
+									transform: `scale(${scale})`,
+									transition: dockTransition(reducedMotion),
+								}}
+							>
+								{slot.content}
+							</button>
+						);
+					})}
+				</div>
+			</div>
 		</div>
 	);
 }
