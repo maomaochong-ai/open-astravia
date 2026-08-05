@@ -1,15 +1,6 @@
 {
 	"plugin.name": "图像生成",
 	"plugin.description": "图像生成插件",
-	"settings.modeNote.description": "默认使用 Vetta 内置图像生成，无需填写任何 API Key，按订阅额度计费。仅在需要自带 API Key 或服务端不可达时才切换到「自定义 API」。",
-	"settings.mode.title": "图像服务",
-	"settings.mode.description": "vetta = 使用 Vetta 内置图像生成（默认）；custom = 使用下面填写的自定义 API",
-	"settings.customApiKey.title": "自定义 API Key",
-	"settings.customApiKey.description": "仅「自定义 API」模式生效",
-	"settings.baseUrl.title": "自定义 API Base URL",
-	"settings.baseUrl.description": "标准 OpenAI v1 图像接口地址，仅「自定义 API」模式生效",
-	"settings.model.title": "自定义图像模型",
-	"settings.model.description": "自定义 API 使用的模型名称，仅「自定义 API」模式生效",
 	"action.imageMode.label": "图像生成",
 	"tool.generate_image": "生成图片",
 	"tool.edit_image": "编辑图片",
@@ -30,9 +21,5 @@
 	"history.groupCount": " · {{count}} 组",
 	"history.groupLabel": "图片组 {{index}}",
 	"history.empty.hasSession": "本会话还没有生成图像。开启输入栏「图像生成」后发一条提示词试试。",
-	"history.empty.noSession": "未检测到当前会话，先打开一个对话。",
-	"guard.title": "自定义 API 未填完整",
-	"guard.body": "当前选择了「自定义 API」，但 Base URL / API Key / 模型还没填全。请前往设置补齐，或把图像服务切回 vetta 使用内置图像生成。",
-	"guard.cancel": "取消",
-	"guard.goSettings": "前往设置"
+	"history.empty.noSession": "未检测到当前会话，先打开一个对话。"
 }

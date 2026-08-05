@@ -2,7 +2,7 @@
 	"id": "image-gen",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
@@ -17,54 +17,14 @@
 		"ui.slot.input-action",
 		"ui.slot.message",
 		"ui.slot.activity-tab",
-		"ui.slot.global",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
-		"network.fetch",
 		"storage.read",
 		"storage.write",
 		"fs.read"
 	],
-	"contributes": {
-		"settings": [
-			{
-				"key": "modeNote",
-				"type": "desc",
-				"description": "%settings.modeNote.description%"
-			},
-			{
-				"key": "mode",
-				"type": "enum",
-				"title": "%settings.mode.title%",
-				"description": "%settings.mode.description%",
-				"enum": [
-					"vetta",
-					"custom"
-				]
-			},
-			{
-				"key": "baseUrl",
-				"type": "string",
-				"title": "%settings.baseUrl.title%",
-				"description": "%settings.baseUrl.description%"
-			},
-			{
-				"key": "customApiKey",
-				"type": "secret",
-				"title": "%settings.customApiKey.title%",
-				"description": "%settings.customApiKey.description%"
-			},
-			{
-				"key": "model",
-				"type": "string",
-				"title": "%settings.model.title%",
-				"description": "%settings.model.description%"
-			}
-		]
-	},
 	"description": "%plugin.description%",
 	"author": "Vetta",
 	"defaultLocale": "zh",
-	"guidingWords": [
-	]
+	"guidingWords": []
 }

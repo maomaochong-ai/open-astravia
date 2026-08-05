@@ -10,33 +10,27 @@
 
 ## 出图链路
 
-默认走 **Vetta 网关**：插件不感知模型、不持有任何 key，只把 prompt/size 发给服务端的
-`POST /api/v1/images/{generate,edit}`。模型选择、provider 形态适配、尺寸白名单与按次计费
-都在服务端；能不能出图由用户的订阅档位决定（ADR-0056）。
+一律走 **Vetta 网关**：插件不感知模型、不持有任何 key，只把 prompt/size 发给服务端的
+`POST /api/v1/images/{generate,edit}`。模型选择、provider 形态适配（含改图协议差异）、
+尺寸白名单与按次计费都在服务端，管理员在 admin 配置；能不能出图由用户的订阅档位决定
+（ADR-0056）。
 
-另一条是 **自定义 API**（高级选项），直连 OpenAI 兼容渠道、用户自带 key、不消耗订阅额度。
-保留它是为了私有部署与内网场景——Vetta API 不可达时图像功能不该整个消失。它只支持
-OpenAI 兼容形态，`agnes-ai` 专用分支已删除（服务端 adapter 已覆盖那类聚合站，插件再养
-第二套完整 adapter 就是长期双维护）。
+**插件没有任何设置项**，`contributes.settings` 已整块移除。曾经的「自定义 API」逃生舱
+也一并撤掉——一旦允许自带 key，插件就得重新养一套 provider 适配，而改图形态各家不同
+（官方 multipart / 聚合站 `images[].image_url`），那套适配已经在服务端存在，客户端再养
+一份就是长期双维护。存量用户填过的 key 留在 CredentialVault 里不再被读取。
 
-## 配置（插件设置）
+因为不再直接发 HTTP，插件也不再声明 `network.fetch` 权限；「未配置」引导弹窗随之删除，
+`ui.slot.global` 权限一并撤回。
 
-- `mode`：`vetta`（默认，走网关）/ `custom`（自定义 API）
-- `baseUrl`、`customApiKey`、`model`：仅 `custom` 模式生效，三项都要填
-
-`mode` 没有默认值，未显式选过时按存量配置推断：旧的 `provider=custom` 用户三个字段键名未变，
-自动继续走直连；旧的 `openai` / `agnes-ai` 用户迁到网关——他们当初填 key 就是为了绕过
-「没有官方图像服务」，现在有了就不该再让他们自付。插件只能读设置不能写，所以这层兼容
-只能做在读取侧，不会去改用户已存的值。
-
-输出尺寸不在设置中选择：由 agent 通过 `generate_image` 工具的 `size` 参数传入。网关模式下
-服务端还会按白名单强制归一（`1024x1024` / `1024x1536` / `1536x1024`）——上游按尺寸不同价，
-而按次计费每模型只有一个固定单价，放开尺寸等于用固定单价买贵的图。
+输出尺寸不在插件侧决定：由 agent 通过 `generate_image` 的 `size` 参数传入，服务端再按
+白名单强制归一（`1024x1024` / `1024x1536` / `1536x1024`）——上游按尺寸不同价，而按次
+计费每模型只有一个固定单价，放开尺寸等于用固定单价买贵的图。
 
 ## 架构
 
 插件拥有 `generate_image` / `edit_image` 工具、隐藏提示、卡片渲染、持久化记录和编辑谱系；
-desktop 提供受 capability session 约束的 `ctx.network`、`ctx.gateway`、`ctx.storage`、
+desktop 提供受 capability session 约束的 `ctx.gateway`、`ctx.storage`、
 `ctx.fs.readBinaryFile` 与通用 prompt attachment。`ctx.gateway` 只对内置 official 插件挂载，
 凭据不出主进程。图像字节仍只落插件本地 `~/.vetta/plugin-data/image-gen/`，不进服务端存储、
 也不进 LLM 上下文（工具结果只回 image id）。
