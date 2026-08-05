@@ -10,7 +10,7 @@ import {
 } from "@shared/store/atoms";
 import { subscriptionStatusAtom } from "@shared/store/auth-atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { setProductAnalyticsUser } from "../../../telemetry/product-analytics";
 
 const ACCESS_TOKEN_KEY = "vetta-auth-token";
@@ -44,6 +44,25 @@ export function useAuth() {
 		setRemoteProviders({});
 		sseClient.disconnect();
 	}, [setToken, setUser, setRemoteProviders, sseClient]);
+
+	// 启动对齐：渲染层的 token 在 localStorage，主进程的在 settings.json。
+	// 二者可能不同步（localStorage 被清、上一次写入没落盘），此时磁盘上的凭据仍然
+	// 有效，却因为 atom 是空的而表现为「掉登录」。以主进程为准补一次。
+	//
+	// 只在挂载时跑一次：若跟着 token 变化跑，logout 把 token 置空会立刻触发它，
+	// 而 setServerToken(undefined) 是另一条 IPC 通道、不保证已经落盘，
+	// 于是刚登出就可能把旧 token 读回来。
+	const bootstrappedRef = useRef(false);
+	useEffect(() => {
+		if (bootstrappedRef.current) return;
+		bootstrappedRef.current = true;
+		if (token) return;
+		void window.vetta.settings.getServerToken().then((stored) => {
+			if (!stored) return;
+			setToken(stored);
+			localStorage.setItem(ACCESS_TOKEN_KEY, stored);
+		});
+	}, [token, setToken]);
 
 	// On mount: if we have a token, fetch user info
 	useEffect(() => {
