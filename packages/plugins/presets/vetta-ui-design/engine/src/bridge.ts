@@ -8,7 +8,7 @@
  * Message contract (both directions carry `{ vetd: true }`):
  *   parent → iframe: set-mode | show-frame | navigate | reload | clear-selection | capture
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
- *                    | frame-error | context-menu | navigated
+ *                    | frame-error | context-menu | navigated | wheel | space
  */
 import { toJpeg, toPng } from "html-to-image";
 import { pathOfFrame } from "./routes";
@@ -340,6 +340,55 @@ export function installBridge(host: BridgeHost): void {
 			if (mode !== "inspect") return;
 			event.preventDefault();
 			post({ type: "context-menu", x: event.clientX, y: event.clientY });
+		},
+		true,
+	);
+
+	// 画布导航（ctrl/⌘+滚轮缩放、滚轮平移）必须在 frame 内部也生效。元素选择开着时
+	// iframe 吃掉了指针事件，画布容器上的 wheel 监听再也收不到东西——表现就是鼠标一进
+	// frame 缩放/平移全失灵。frame 是定尺寸的设计稿、内部不需要滚动，所以这里一律拦下
+	// 转发给画布，由它按同一套逻辑处理。
+	document.addEventListener(
+		"wheel",
+		(event) => {
+			if (mode !== "inspect") return;
+			event.preventDefault();
+			post({
+				type: "wheel",
+				x: event.clientX,
+				y: event.clientY,
+				deltaX: event.deltaX,
+				deltaY: event.deltaY,
+				ctrlKey: event.ctrlKey,
+				metaKey: event.metaKey,
+			});
+		},
+		{ capture: true, passive: false },
+	);
+
+	// 空格 = 临时托手工具。点进 frame 之后焦点归 iframe，画布容器上的 keydown 收不到，
+	// spaceHeld 永远起不来，拖拽平移在 frame 内就失效了。
+	//
+	// keyup 不能同样只在 inspect 下转发：spaceHeld 一置起来画布就会把这一帧的模式关掉
+	// （平移期间不该开元素选择），松手时 mode 已经是 off，keyup 丢掉等于空格卡死。
+	// 所以只要按下那次发出去了，抬起就一定补一条。
+	let spaceForwarded = false;
+	document.addEventListener(
+		"keydown",
+		(event) => {
+			if (mode !== "inspect" || event.code !== "Space" || event.repeat) return;
+			event.preventDefault();
+			spaceForwarded = true;
+			post({ type: "space", down: true });
+		},
+		true,
+	);
+	document.addEventListener(
+		"keyup",
+		(event) => {
+			if (!spaceForwarded || event.code !== "Space") return;
+			spaceForwarded = false;
+			post({ type: "space", down: false });
 		},
 		true,
 	);

@@ -37,6 +37,22 @@ export interface BridgeHubEvents {
 	 * 那层 contextmenu 拿到的是同一套。
 	 */
 	onFrameContextMenu(frameId: string, clientX: number, clientY: number): void;
+	/**
+	 * 元素选择期间在 frame 内滚轮。跨源 iframe 会把 wheel 整个吃掉，画布容器上的监听
+	 * 收不到，缩放/平移必须靠这条转发。坐标同样已换算成视口坐标。
+	 */
+	onFrameWheel(event: FrameWheel): void;
+	/** frame 内按下/松开空格（临时托手工具）。焦点在 iframe 里时只能从这里过来。 */
+	onFrameSpace(down: boolean): void;
+}
+
+export interface FrameWheel {
+	clientX: number;
+	clientY: number;
+	deltaX: number;
+	deltaY: number;
+	ctrlKey: boolean;
+	metaKey: boolean;
 }
 
 interface PendingCapture {
@@ -87,18 +103,28 @@ export class BridgeHub {
 				return;
 			case "context-menu": {
 				if (!frameId) return;
-				const iframe = this.frames.get(frameId);
-				if (!iframe) return;
-				// iframe 内坐标 → 视口坐标。iframe 整个挂在画布的 scale 变换下，所以
-				// 除了平移还得按缩放比换算；比例直接从渲染后的矩形与布局宽度取，不用
-				// 把画布的 zoom 传进来。
-				const rect = iframe.getBoundingClientRect();
-				const scale = iframe.offsetWidth > 0 ? rect.width / iframe.offsetWidth : 1;
-				const x = typeof data.x === "number" ? data.x : 0;
-				const y = typeof data.y === "number" ? data.y : 0;
-				this.events?.onFrameContextMenu(frameId, rect.left + x * scale, rect.top + y * scale);
+				const point = this.toViewportPoint(frameId, data.x, data.y);
+				if (!point) return;
+				this.events?.onFrameContextMenu(frameId, point.x, point.y);
 				return;
 			}
+			case "wheel": {
+				if (!frameId) return;
+				const point = this.toViewportPoint(frameId, data.x, data.y);
+				if (!point) return;
+				this.events?.onFrameWheel({
+					clientX: point.x,
+					clientY: point.y,
+					deltaX: typeof data.deltaX === "number" ? data.deltaX : 0,
+					deltaY: typeof data.deltaY === "number" ? data.deltaY : 0,
+					ctrlKey: data.ctrlKey === true,
+					metaKey: data.metaKey === true,
+				});
+				return;
+			}
+			case "space":
+				this.events?.onFrameSpace(data.down === true);
+				return;
 			case "hmr-updated":
 				this.events?.onHmrUpdated(frameId);
 				return;
@@ -170,6 +196,20 @@ export class BridgeHub {
 			}, timeoutMs);
 			waiters.add(done);
 		});
+	}
+
+	/**
+	 * iframe 内坐标 → 视口坐标。iframe 整个挂在画布的 scale 变换下，所以除了平移还得
+	 * 按缩放比换算；比例直接从渲染后的矩形与布局宽度取，不用把画布的 zoom 传进来。
+	 */
+	private toViewportPoint(frameId: string, rawX: unknown, rawY: unknown): { x: number; y: number } | null {
+		const iframe = this.frames.get(frameId);
+		if (!iframe) return null;
+		const rect = iframe.getBoundingClientRect();
+		const scale = iframe.offsetWidth > 0 ? rect.width / iframe.offsetWidth : 1;
+		const x = typeof rawX === "number" ? rawX : 0;
+		const y = typeof rawY === "number" ? rawY : 0;
+		return { x: rect.left + x * scale, y: rect.top + y * scale };
 	}
 
 	private frameIdForWindow(source: MessageEventSource | null): string | null {

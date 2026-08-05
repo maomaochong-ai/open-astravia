@@ -26,7 +26,7 @@ import { ArrangeToolbar } from "./ArrangeToolbar";
 import { type AskShot, buildAskPrompt } from "./ask-vetta";
 import { AskVettaButton } from "./AskVettaButton";
 import { AskVettaPopover } from "./AskVettaPopover";
-import { BridgeHub, type SelectedElementPayload } from "./bridge-client";
+import { BridgeHub, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import {
@@ -604,6 +604,59 @@ export function DesignCanvas({
 		setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
 	}, []);
 
+	/**
+	 * Ctrl/⌘ + wheel → stepless zoom around the cursor; plain wheel → pan.
+	 *
+	 * 两个来源：画布容器上的 wheel，以及元素选择期间由引擎从 iframe 里转发出来的
+	 * （那时 wheel 落在跨源文档上，画布层根本收不到，见 bridge.ts）。所以这里只认
+	 * 视口坐标与滚动量，不碰事件对象本身。
+	 */
+	const applyWheel = useCallback(
+		(wheel: FrameWheel): void => {
+			const container = containerRef.current;
+			if (!container) return;
+			const bounds = container.getBoundingClientRect();
+			const current = viewportRef.current;
+			if (wheel.ctrlKey || wheel.metaKey) {
+				const cursorX = wheel.clientX - bounds.left;
+				const cursorY = wheel.clientY - bounds.top;
+				const nextZoom = clampZoom(current.zoom * Math.exp(-wheel.deltaY * 0.01));
+				const scale = nextZoom / current.zoom;
+				const next = {
+					zoom: nextZoom,
+					x: cursorX - (cursorX - current.x) * scale,
+					y: cursorY - (cursorY - current.y) * scale,
+				};
+				// 缩放要重渲染（frame 标题与手柄按 zoom 反向缩放），走 state。
+				// 先撤掉可能还挂着的滚轮平移实时值，否则 layout effect 会拿旧位置盖回去。
+				panLiveRef.current = null;
+				if (wheelSettleRef.current !== null) {
+					window.clearTimeout(wheelSettleRef.current);
+					wheelSettleRef.current = null;
+				}
+				setViewport(next);
+				session.saveViewport(next);
+			} else {
+				// 滚轮平移与托手拖拽同理：走 DOM，不逐事件进 state（触控板两指平移
+				// 同样高频）。停下来一小会儿再落 state 与磁盘。
+				const next = { ...current, x: current.x - wheel.deltaX, y: current.y - wheel.deltaY };
+				viewportRef.current = next;
+				panLiveRef.current = next;
+				schedulePaint();
+				if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
+				wheelSettleRef.current = window.setTimeout(() => {
+					wheelSettleRef.current = null;
+					const settled = panLiveRef.current;
+					if (!settled || panRef.current) return;
+					panLiveRef.current = null;
+					setViewport(settled);
+					session.saveViewport(settled);
+				}, 140);
+			}
+		},
+		[session, schedulePaint],
+	);
+
 	useEffect(() => {
 		bridge.start({
 			onSelected: (frameId, payload) => {
@@ -629,9 +682,13 @@ export function DesignCanvas({
 			},
 			onFrameError: setFrameError,
 			onFrameContextMenu: openFrameMenu,
+			// frame 内的滚轮与空格：跨源 iframe 把事件全吃了，画布容器上的监听收不到，
+			// 缩放/平移只能从这条路进来。
+			onFrameWheel: applyWheel,
+			onFrameSpace: setSpaceHeld,
 		});
 		return () => bridge.stop();
-	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu]);
+	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, applyWheel]);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
@@ -677,57 +734,19 @@ export function DesignCanvas({
 		};
 	}, []);
 
-	// Ctrl/⌘ + wheel → stepless zoom around the cursor; plain wheel → pan.
 	useEffect(() => {
 		const container = containerRef.current;
 		if (!container) return;
 		const onWheel = (event: WheelEvent): void => {
 			event.preventDefault();
-			const bounds = container.getBoundingClientRect();
-			const current = viewportRef.current;
-			if (event.ctrlKey || event.metaKey) {
-				const cursorX = event.clientX - bounds.left;
-				const cursorY = event.clientY - bounds.top;
-				const nextZoom = clampZoom(current.zoom * Math.exp(-event.deltaY * 0.01));
-				const scale = nextZoom / current.zoom;
-				const next = {
-					zoom: nextZoom,
-					x: cursorX - (cursorX - current.x) * scale,
-					y: cursorY - (cursorY - current.y) * scale,
-				};
-				// 缩放要重渲染（frame 标题与手柄按 zoom 反向缩放），走 state。
-				// 先撤掉可能还挂着的滚轮平移实时值，否则 layout effect 会拿旧位置盖回去。
-				panLiveRef.current = null;
-				if (wheelSettleRef.current !== null) {
-					window.clearTimeout(wheelSettleRef.current);
-					wheelSettleRef.current = null;
-				}
-				setViewport(next);
-				session.saveViewport(next);
-			} else {
-				// 滚轮平移与托手拖拽同理：走 DOM，不逐事件进 state（触控板两指平移
-				// 同样高频）。停下来一小会儿再落 state 与磁盘。
-				const next = { ...current, x: current.x - event.deltaX, y: current.y - event.deltaY };
-				viewportRef.current = next;
-				panLiveRef.current = next;
-				schedulePaint();
-				if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
-				wheelSettleRef.current = window.setTimeout(() => {
-					wheelSettleRef.current = null;
-					const settled = panLiveRef.current;
-					if (!settled || panRef.current) return;
-					panLiveRef.current = null;
-					setViewport(settled);
-					session.saveViewport(settled);
-				}, 140);
-			}
+			applyWheel(event);
 		};
 		container.addEventListener("wheel", onWheel, { passive: false });
 		return () => {
 			container.removeEventListener("wheel", onWheel);
 			if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
 		};
-	}, [session, schedulePaint]);
+	}, [applyWheel]);
 
 	const toWorld = useCallback((clientX: number, clientY: number) => {
 		const bounds = containerRef.current?.getBoundingClientRect();
