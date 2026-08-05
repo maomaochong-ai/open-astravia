@@ -55,8 +55,11 @@ export function registerDesignTools(ctx: PluginContext): void {
 		id: "vetd-create",
 		name: "vetd_create",
 		label: "%tool.vetd_create%",
+		// 工具描述每轮都在系统提示里，而 skill 正文要 invoke_skill 才读得到 —— 所以
+		// 「设计稿是个工程」这件事必须写在这里，否则 agent 只会看到一堆 tsx 文件，
+		// 把每屏当成一张互不相干的图去画。
 		description:
-			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. After creating, add frames by writing frames/<id>.tsx files — never edit the .vetd manifest itself.",
+			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. A design document is a real front-end project: each frames/<id>.tsx is a route (frames/login.tsx = /login, frames/index.tsx = /), screens link to each other with react-router, shared chrome lives in components/ or a frames/_layout.tsx that renders <Outlet/>, and shared color tokens live in theme.css. Build it like an engineer would — never edit the .vetd manifest itself. Invoke the vetta-ui-design skill first for the full rules.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -181,7 +184,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_status",
 		label: "%tool.vetd_status%",
 		description:
-			"Inspect the Vetta UI Design state: design documents in the workspace, the design open on the canvas, its frames (id/size/title, plus `buildError` when a frame currently fails to compile) and design-engine diagnostics (dev-server liveness + recent build output). Use to find frame ids, or to diagnose why the canvas shows a build error.",
+			"Inspect the Vetta UI Design state: design documents in the workspace, the design open on the canvas, its frames (id/size/title, plus `buildError` when a frame currently fails to compile), its `sharedShell` (the existing frames/_layout.tsx and components/ — reuse these instead of rewriting the nav bar in every frame) and design-engine diagnostics (dev-server liveness + recent build output). Call it BEFORE editing an existing design: frame ids double as routes, and you cannot tell what is already shared by guessing.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,

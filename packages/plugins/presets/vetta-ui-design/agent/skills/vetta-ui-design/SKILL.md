@@ -1,6 +1,6 @@
 ---
 name: vetta-ui-design
-description: Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, poster, or attaches a design frame/element from the canvas. Frames are real React (TSX) files with Tailwind v4 + Iconify — edit them directly and the canvas hot-reloads.
+description: Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, poster, or attaches a design frame/element from the canvas. A design document is a real front-end project, not a picture, so build it like one - frames are React (TSX) files with Tailwind v4 + Iconify, each frame is a route (frames/login.tsx = /login), screens navigate via react-router <Link>, shared chrome goes in components/ or a frames/_layout.tsx rendering <Outlet/>, and the canvas hot-reloads on save. Invoke this skill BEFORE writing any frame: it carries the routing, layout, interaction and quality rules you cannot infer from the file tree.
 agent_mode: work
 ---
 
@@ -27,6 +27,30 @@ files under `<name>.vetd.d/` and the canvas reconciles automatically.
 
 A frame is just a fixed-size canvas rendering a React component. UI screens are
 the common case, not the only one — see "Pick the product type" below.
+
+## Build it like a project, not a picture
+
+This is the single most important framing, and the one most easily lost: the
+output is a running front-end app that happens to be viewed on a canvas. The
+user can hit "预览" and click through it, and the same sources are meant to ship.
+So apply normal engineering judgement, in this order, BEFORE writing screens:
+
+1. **Routing** — every `frames/<id>.tsx` is a route (`/login`); `index.tsx` is
+   `/`. Screens reach each other with react-router, not by existing side by side.
+2. **Shared structure** — chrome that appears on every screen (nav bar, sidebar,
+   tab bar) is written ONCE: `components/`, or `frames/_layout.tsx` rendering
+   `<Outlet />` when it must survive navigation.
+3. **Shared vocabulary** — colors/radii/shadows come from `theme.css` tokens;
+   repeated blocks (stat card, table row, list item, empty state) become
+   components.
+4. **Then** the screens, as composition over 1-3.
+
+Three dashboard screens each containing their own copy-pasted sidebar is a
+failed design document, no matter how good the pixels are. The tell is simple:
+if changing the nav bar means editing more than one file, the structure is wrong.
+
+Posters, slides and infographics are the exception — they are standalone
+artwork, so steps 1 and 2 do not apply to them (step 3 still does).
 
 ## Hard rules (mechanics — never negotiable)
 
