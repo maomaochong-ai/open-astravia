@@ -15,14 +15,14 @@ let notify: PluginContext["ui"]["notify"] | null = null;
 
 export async function initializePluginRuntime(ctx: PluginContext): Promise<ContentCreationWorkspace> {
 	workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
-	assetPreviewResolver = new ContentAssetPreviewResolver(ctx.storage);
+	assetPreviewResolver = new ContentAssetPreviewResolver(ctx.fs, ctx.storage);
 	promptOptimizationService = new ContentPromptOptimizationService(ctx.ai);
 	const mediaProviders = await ctx.media.listProviders().catch((error: unknown) => {
 		ctx.ui.notify({ message: ctx.i18n.t("error.mediaProviderDiscovery"), error });
 		return [];
 	});
 	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, mediaProviders);
-	generationService = new ContentGenerationService(workspace, providers, new PluginContentArtifactStore(ctx.storage));
+	generationService = new ContentGenerationService(workspace, providers, new PluginContentArtifactStore(ctx.fs, ctx.storage));
 	notify = ctx.ui.notify;
 	return workspace;
 }

@@ -102,6 +102,7 @@
 	"assetNode.empty.description": "Import images, videos, or audio. The canvas shows a compact summary even when the collection grows.",
 	"assetNode.import": "Import assets",
 	"assetNode.importing": "Importing…",
+	"assetNode.drop": "Drop to import",
 	"assetNode.total": "{{count}} assets",
 	"assetNode.performanceHint": "Shown on demand",
 	"assetNode.more": "+{{count}}",
@@ -123,6 +124,7 @@
 	"nodeEditor.prompt": "Prompt",
 	"nodeEditor.prompt.original": "Original prompt",
 	"nodeEditor.prompt.placeholder": "Describe the content, style, and constraints; type @ to reference media",
+	"nodeEditor.promptOptimization.title": "Optimize prompt",
 	"nodeEditor.promptOptimization.model": "Prompt optimization model",
 	"nodeEditor.promptOptimization.loadingModels": "Loading models…",
 	"nodeEditor.prompt.mention.inlineHint": "Type @ to reference project media",
@@ -203,6 +205,7 @@
 	"error.mediaProviderDiscovery": "Unable to discover host image generation. Existing generation services remain available.",
 	"error.promptOptimizationModels": "Unable to load prompt optimization models",
 	"error.promptOptimization": "Prompt optimization failed. Existing content was not changed.",
+	"error.outputWorkspaceRequired": "Open a workspace before saving generated assets to its output folder",
 	"error.importReference": "Unable to import the reference. Check its media type and the selected model.",
 	"error.importAsset": "Unable to import the asset. Check the file type and try again."
 }

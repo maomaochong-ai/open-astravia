@@ -102,6 +102,7 @@
 	"assetNode.empty.description": "导入图片、视频或音频；画布只显示摘要，避免素材过多时变得杂乱。",
 	"assetNode.import": "导入素材",
 	"assetNode.importing": "导入中…",
+	"assetNode.drop": "拖放到此处即可导入",
 	"assetNode.total": "共 {{count}} 项素材",
 	"assetNode.performanceHint": "按需显示",
 	"assetNode.more": "+{{count}}",
@@ -123,6 +124,7 @@
 	"nodeEditor.prompt": "提示词",
 	"nodeEditor.prompt.original": "原始提示词",
 	"nodeEditor.prompt.placeholder": "描述内容、风格和约束；输入 @ 可引用素材",
+	"nodeEditor.promptOptimization.title": "优化提示词",
 	"nodeEditor.promptOptimization.model": "提示词优化模型",
 	"nodeEditor.promptOptimization.loadingModels": "正在读取模型…",
 	"nodeEditor.prompt.mention.inlineHint": "输入 @ 引用项目素材",
@@ -203,6 +205,7 @@
 	"error.mediaProviderDiscovery": "无法读取宿主图片生成能力，现有生成服务仍可继续使用",
 	"error.promptOptimizationModels": "无法读取可用的提示词优化模型",
 	"error.promptOptimization": "提示词优化失败，原有内容未发生变化",
+	"error.outputWorkspaceRequired": "请先打开工作区，再将生成素材保存到 output 文件夹",
 	"error.importReference": "无法导入参考素材，请检查素材类型与模型能力",
 	"error.importAsset": "无法导入素材，请检查文件类型后重试"
 }

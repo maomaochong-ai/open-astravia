@@ -2,22 +2,28 @@ import type {
 	PluginAiApi,
 	PluginAiModelListResult,
 } from "@vetta-org/plugin-sdk";
-import type {
-	ContentAsset,
-	ContentNodeData,
-	ContentPromptOptimization,
-} from "../project/types";
-import { createContentPromptDocument } from "../node/prompt-document";
+import type { ContentPromptOptimization } from "../project/types";
 
-const OPTIMIZATION_SYSTEM_PROMPT = `You improve prompts for image, video, and audio creation.
+const BASE_OPTIMIZATION_SYSTEM_PROMPT = `You improve prompts for AI-assisted content creation.
 Return only the improved prompt, without commentary, headings, or Markdown fences.
 Preserve the user's language, intent, factual constraints, and every inline @material reference exactly.
-Make the prompt clearer, more specific, and easier for a generation model to follow without inventing requirements.`;
+Do not invent requirements that are absent from the source prompt.`;
+
+export interface ContentPromptOptimizationProfile {
+	instruction: string;
+	temperature?: number;
+}
+
+export const CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE = {
+	instruction:
+		"Rewrite this as a clear, reusable upstream prompt for downstream image, video, or audio generation nodes. Keep it provider-neutral and retain all useful constraints.",
+	temperature: 0.3,
+} satisfies ContentPromptOptimizationProfile;
 
 interface OptimizeContentPromptOptions {
-	data: ContentNodeData;
-	assetByBindingId: ReadonlyMap<string, ContentAsset>;
+	source: string;
 	modelKey: string;
+	profile: ContentPromptOptimizationProfile;
 }
 
 export class ContentPromptOptimizationService {
@@ -36,18 +42,18 @@ export class ContentPromptOptimizationService {
 	}
 
 	async optimize({
-		data,
-		assetByBindingId,
+		source,
 		modelKey,
+		profile,
 	}: OptimizeContentPromptOptions): Promise<ContentPromptOptimization> {
-		const prompt = formatPromptForOptimization(data, assetByBindingId);
-		if (!prompt.trim()) throw new Error("prompt content is empty");
+		const prompt = source.trim();
+		if (!prompt) throw new Error("prompt content is empty");
 
 		const result = await this.ai.complete({
 			modelKey,
-			systemPrompt: OPTIMIZATION_SYSTEM_PROMPT,
+			systemPrompt: `${BASE_OPTIMIZATION_SYSTEM_PROMPT}\n${profile.instruction}`,
 			prompt,
-			temperature: 0.3,
+			temperature: profile.temperature ?? 0.3,
 		});
 		const text = result.text.trim();
 		if (!text) throw new Error("prompt optimization returned empty content");
@@ -58,21 +64,4 @@ export class ContentPromptOptimizationService {
 			createdAt: new Date().toISOString(),
 		};
 	}
-}
-
-function formatPromptForOptimization(
-	data: ContentNodeData,
-	assetByBindingId: ReadonlyMap<string, ContentAsset>,
-): string {
-	return createContentPromptDocument(data)
-		.segments.map((segment) => {
-			if (segment.type === "text") return segment.text;
-			if (segment.type === "asset-reference") {
-				const asset = assetByBindingId.get(segment.bindingId);
-				return asset ? `@${asset.name}` : `@${segment.bindingId}`;
-			}
-			return `@prompt:${segment.sourceNodeId}`;
-		})
-		.join("")
-		.trim();
 }

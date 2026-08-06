@@ -187,6 +187,16 @@ export function GraphWorkspace({
 		[project, selectedNodeIdSet],
 	);
 	const appliedProjectSyncKeyRef = useRef(projectSyncKey);
+	const latestFlowSyncRef = useRef({
+		projectSyncKey,
+		nodes: synchronizedNodes,
+		edges: synchronizedEdges,
+	});
+	latestFlowSyncRef.current = {
+		projectSyncKey,
+		nodes: synchronizedNodes,
+		edges: synchronizedEdges,
+	};
 
 	useEffect(() => {
 		const instance = flowInstanceRef.current;
@@ -345,6 +355,10 @@ export function GraphWorkspace({
 	);
 	const onInit = useCallback((instance: ReactFlowInstance<ContentFlowNode, Edge>) => {
 		flowInstanceRef.current = instance;
+		const latest = latestFlowSyncRef.current;
+		appliedProjectSyncKeyRef.current = latest.projectSyncKey;
+		instance.setNodes(latest.nodes);
+		instance.setEdges(latest.edges);
 	}, []);
 	const onSelectionChange = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionChange"]>

@@ -1,11 +1,13 @@
-import { type PluginAiModel, useTranslation } from "@vetta-org/plugin-sdk";
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
+import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ImportedContentReference } from "../generation/types";
 import {
 	getContentPromptOptimizationService,
 	notifyContentCreationError,
 } from "../plugin/runtime";
+import { CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE } from "../prompt-optimization/prompt-optimization-service";
+import { serializeContentPromptForOptimization } from "../prompt-optimization/serialize-content-prompt";
+import { usePromptOptimizationModels } from "../prompt-optimization/usePromptOptimizationModels";
 import type {
 	ContentAsset,
 	ContentNodeData,
@@ -47,15 +49,11 @@ export function ContentPromptEditor({
 	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const draftRef = useRef(data);
-	const [models, setModels] = useState<PluginAiModel[]>([]);
-	const [selectedModelKey, setSelectedModelKey] = useState<string | undefined>(
-		data.promptOptimization?.modelKey,
-	);
-	const [isLoadingModels, setIsLoadingModels] = useState(true);
 	const [isOptimizing, setIsOptimizing] = useState(false);
 	const [hasPromptContent, setHasPromptContent] = useState(() => hasOptimizableContent(data));
+	const { models, selectedModelKey, setSelectedModelKey, isLoadingModels } =
+		usePromptOptimizationModels(data.promptOptimization?.modelKey);
 	const removeReferenceLabel = t("nodeEditor.reference.remove");
-	const modelLoadErrorMessage = t("error.promptOptimizationModels");
 	const assetById = useMemo(
 		() =>
 			new Map(
@@ -85,34 +83,6 @@ export function ContentPromptEditor({
 		draftRef.current = data;
 		setHasPromptContent(hasOptimizableContent(data));
 	}, [data]);
-
-	useEffect(() => {
-		let active = true;
-		setIsLoadingModels(true);
-		void getContentPromptOptimizationService()
-			.listModels()
-			.then((result) => {
-				if (!active) return;
-				const textModels = result.models.filter((model) => model.input.includes("text"));
-				setModels(textModels);
-				setSelectedModelKey((current) => {
-					if (current && textModels.some((model) => model.modelKey === current)) return current;
-					if (result.defaultModel && textModels.some((model) => model.modelKey === result.defaultModel)) {
-						return result.defaultModel;
-					}
-					return textModels[0]?.modelKey;
-				});
-			})
-			.catch((error: unknown) => {
-				if (active) notifyContentCreationError(modelLoadErrorMessage, error);
-			})
-			.finally(() => {
-				if (active) setIsLoadingModels(false);
-			});
-		return () => {
-			active = false;
-		};
-	}, [modelLoadErrorMessage]);
 
 	const updateDraft = (promptDocument: ContentPromptDocument) => {
 		const referencedBindingIds = new Set(listContentPromptBindingIds(promptDocument));
@@ -172,9 +142,9 @@ export function ContentPromptEditor({
 		try {
 			await onUpdate(requestData);
 			const optimization = await getContentPromptOptimizationService().optimize({
-				data: requestData,
-				assetByBindingId: assetMap,
+				source: serializeContentPromptForOptimization(requestData, assetMap),
 				modelKey: selectedModelKey,
+				profile: CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE,
 			});
 			if (contentPromptSourceSignature(draftRef.current) !== sourceSignature) return;
 			const next = { ...draftRef.current, promptOptimization: optimization };
@@ -190,58 +160,15 @@ export function ContentPromptEditor({
 	return (
 		<NodeEditorPanel
 			className="min-w-0 max-w-[calc(100vw-32px)] rounded-2xl border border-border/70 bg-card/95 p-2.5 text-card-foreground shadow-lg backdrop-blur-md"
-			style={{ width: "min(460px, calc(100vw - 32px))" }}
+			style={{ width: "min(420px, calc(100vw - 32px))" }}
 		>
-			<div className="mb-2 flex min-w-0 flex-wrap items-center gap-1.5 px-1">
-				<div className="flex h-8 shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
-					<span className="icon-[lucide--text] block size-3.5" aria-hidden="true" />
-					<span>{t("nodeEditor.prompt.original")}</span>
-				</div>
-				<div className="ml-auto flex min-w-0 items-center gap-1.5">
-					<Select value={selectedModelKey} onValueChange={setSelectedModelKey} disabled={isLoadingModels}>
-						<SelectTrigger
-							size="sm"
-							className="h-8 w-[min(200px,46vw)] min-w-0"
-							aria-label={t("nodeEditor.promptOptimization.model")}
-						>
-							<SelectValue
-								placeholder={
-									isLoadingModels
-										? t("nodeEditor.promptOptimization.loadingModels")
-										: t("nodeEditor.modelUnavailable")
-								}
-							/>
-						</SelectTrigger>
-						<SelectContent className="z-[100]">
-							{models.map((model) => (
-								<SelectItem key={model.modelKey} value={model.modelKey}>
-									{model.provider} · {model.name}
-								</SelectItem>
-							))}
-						</SelectContent>
-					</Select>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						className="h-8 shrink-0"
-						disabled={!selectedModelKey || !hasPromptContent || isOptimizing}
-						onClick={() => void handleOptimize()}
-					>
-						<span
-							className={`icon-[lucide--wand-sparkles] block size-3.5 ${isOptimizing ? "animate-pulse" : ""}`}
-							aria-hidden="true"
-						/>
-						<span>{isOptimizing ? t("action.optimizingPrompt") : t("action.optimizePrompt")}</span>
-					</Button>
-				</div>
-			</div>
 			<PromptRichTextInput
 				document={createContentPromptDocument(data)}
 				assetByBindingId={assetByBindingId}
 				promptLabelByNodeId={EMPTY_PROMPT_LABELS}
 				mentionOptions={mentionOptions}
 				size="regular"
+				label={t("nodeEditor.prompt.original")}
 				placeholder={t("nodeEditor.prompt.placeholder")}
 				inlineHint={t("nodeEditor.prompt.mention.inlineHint")}
 				menuTitle={t("nodeEditor.prompt.mention.title")}
@@ -256,6 +183,15 @@ export function ContentPromptEditor({
 				onCommit={(document) => void onUpdate(updateDraft(document))}
 				onUpload={() => fileInputRef.current?.click()}
 				uploadTitle={t("nodeEditor.prompt.mention.upload")}
+				optimization={{
+					models,
+					selectedModelKey,
+					isLoadingModels,
+					isOptimizing,
+					canOptimize: hasPromptContent,
+					onModelChange: setSelectedModelKey,
+					onOptimize: handleOptimize,
+				}}
 			/>
 			<input
 				ref={fileInputRef}

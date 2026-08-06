@@ -1,24 +1,28 @@
-import type { PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
 import type { ContentAsset } from "../project/types";
+import { joinContentPath } from "../shared/path";
 
 const MAX_CONCURRENT_PREVIEW_RESOLUTIONS = 8;
 
 export class ContentAssetPreviewResolver {
 	private activeLookups = 0;
-	private currentBlobIds = new Set<string>();
+	private currentSourceKeys = new Set<string>();
 	private readonly lookupWaiters: Array<() => void> = [];
-	private readonly urlByBlobId = new Map<
+	private readonly urlBySourceKey = new Map<
 		string,
 		{ readonly promise: Promise<string | null>; readonly requestId: symbol }
 	>();
 
-	constructor(private readonly storage: PluginStorageApi) {}
+	constructor(
+		private readonly fs: PluginFsApi,
+		private readonly storage: PluginStorageApi,
+	) {}
 
-	async resolveAll(assets: readonly ContentAsset[]): Promise<ReadonlyMap<string, string>> {
-		const currentBlobIds = new Set(assets.map((asset) => asset.blobId));
-		this.currentBlobIds = currentBlobIds;
-		for (const blobId of this.urlByBlobId.keys()) {
-			if (!currentBlobIds.has(blobId)) this.urlByBlobId.delete(blobId);
+	async resolveAll(cwd: string | null, assets: readonly ContentAsset[]): Promise<ReadonlyMap<string, string>> {
+		const currentSourceKeys = new Set(assets.map((asset) => sourceKey(cwd, asset)));
+		this.currentSourceKeys = currentSourceKeys;
+		for (const key of this.urlBySourceKey.keys()) {
+			if (!currentSourceKeys.has(key)) this.urlBySourceKey.delete(key);
 		}
 
 		const entries: Array<readonly [string, string] | null> = Array.from({ length: assets.length }, () => null);
@@ -29,7 +33,7 @@ export class ContentAssetPreviewResolver {
 				nextIndex += 1;
 				const asset = assets[index];
 				if (asset === undefined) continue;
-				const url = await this.resolveBlobUrl(asset.blobId);
+				const url = await this.resolvePreviewUrl(cwd, asset);
 				entries[index] = url ? [asset.id, url] : null;
 			}
 		};
@@ -39,26 +43,35 @@ export class ContentAssetPreviewResolver {
 		return new Map(entries.filter((entry): entry is readonly [string, string] => entry !== null));
 	}
 
-	private resolveBlobUrl(blobId: string): Promise<string | null> {
-		const cached = this.urlByBlobId.get(blobId);
+	private resolvePreviewUrl(cwd: string | null, asset: ContentAsset): Promise<string | null> {
+		const key = sourceKey(cwd, asset);
+		const cached = this.urlBySourceKey.get(key);
 		if (cached) return cached.promise;
-		const requestId = Symbol(blobId);
-		const pending = this.loadBlobUrl(blobId).catch(() => {
-			if (this.urlByBlobId.get(blobId)?.requestId === requestId) {
-				this.urlByBlobId.delete(blobId);
+		const requestId = Symbol(key);
+		const pending = this.loadPreviewUrl(cwd, asset).catch(() => {
+			if (this.urlBySourceKey.get(key)?.requestId === requestId) {
+				this.urlBySourceKey.delete(key);
 			}
 			return null;
 		});
-		if (this.currentBlobIds.has(blobId)) {
-			this.urlByBlobId.set(blobId, { promise: pending, requestId });
+		if (this.currentSourceKeys.has(key)) {
+			this.urlBySourceKey.set(key, { promise: pending, requestId });
 		}
 		return pending;
 	}
 
-	private async loadBlobUrl(blobId: string): Promise<string | null> {
+	private async loadPreviewUrl(cwd: string | null, asset: ContentAsset): Promise<string | null> {
 		await this.acquireLookupSlot();
 		try {
-			const reference = await this.storage.getBlobRef(blobId);
+			if (asset.filePath) {
+				if (!cwd) return null;
+				const path = joinContentPath(cwd, asset.filePath);
+				if (!(await this.fs.stat(path))) return null;
+				const file = await this.fs.readBinaryFile(path);
+				return `data:${file.mimeType};base64,${file.data}`;
+			}
+			if (!asset.blobId) return null;
+			const reference = await this.storage.getBlobRef(asset.blobId);
 			return reference?.url ?? null;
 		} finally {
 			this.releaseLookupSlot();
@@ -83,4 +96,8 @@ export class ContentAssetPreviewResolver {
 		}
 		this.activeLookups -= 1;
 	}
+}
+
+function sourceKey(cwd: string | null, asset: ContentAsset): string {
+	return asset.filePath ? `file:${cwd ?? ""}:${asset.filePath}` : `blob:${asset.blobId ?? asset.id}`;
 }

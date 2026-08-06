@@ -66,9 +66,13 @@ export interface ContentProviderAdapter {
 	generate(request: ContentGenerationRequest): Promise<GeneratedContent>;
 }
 
+export interface StoredImportedContent {
+	blobId: string;
+	mimeType: string;
+}
+
 export interface StoredGeneratedContent {
-	id: string;
-	url: string;
+	filePath: string;
 	mimeType: string;
 }
 
@@ -86,6 +90,7 @@ export interface ImportedContentAsset {
 export type ImportedContentReference = ImportedContentAsset;
 
 export interface ContentArtifactStore {
-	put(id: string, content: StoredContentData): Promise<StoredGeneratedContent>;
-	read(id: string): Promise<StoredContentData | null>;
+	putImported(id: string, content: StoredContentData): Promise<StoredImportedContent>;
+	putGenerated(cwd: string, fileName: string, content: StoredContentData): Promise<StoredGeneratedContent>;
+	read(cwd: string | null, location: { blobId?: string; filePath?: string }): Promise<StoredContentData | null>;
 }

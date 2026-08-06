@@ -9,7 +9,16 @@ export async function readImportedMediaFile(file: File): Promise<ImportedContent
 	});
 	const separator = dataUrl.indexOf(",");
 	if (separator < 0) throw new Error("imported content asset is not a valid data URL");
-	return { name: file.name, mimeType: file.type || inferMimeType(file.name), data: dataUrl.slice(separator + 1) };
+	return { name: file.name, mimeType: importedMediaMimeType(file), data: dataUrl.slice(separator + 1) };
+}
+
+export function isImportedMediaFile(file: File): boolean {
+	const mimeType = importedMediaMimeType(file);
+	return mimeType.startsWith("image/") || mimeType.startsWith("video/") || mimeType.startsWith("audio/");
+}
+
+function importedMediaMimeType(file: File): string {
+	return file.type || inferMimeType(file.name);
 }
 
 function inferMimeType(fileName: string): string {
