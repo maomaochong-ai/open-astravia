@@ -40,11 +40,11 @@ let flushToken = 0;
 
 /**
  * `build` —— 文件解析不过 / 运行时抛错，画布停在上一张好图，标题栏挂着失败徽标。
- * `offCanvas` —— 源码在磁盘上，画布上却根本没有这一帧（尺寸没声明全）。这一类
- * 是**完全静默**的：没有徽标，没有占位，用户看到的就是一片空白，而 agent 在实测
- * 里会开始盲猜——去 edit 一个不存在的 manifest.json，再直接改 .vetd（明令禁止）。
+ * `inferredSize` —— 尺寸没声明全，画框按多数派尺寸渲染出来了（frame-size.ts），
+ * 但那是猜的。不再是致命错误，仍然值得在轮次结束提一句：一份设计里混着猜出来的
+ * 尺寸迟早会咬人，而 agent 自己不会回头查。
  */
-type ErrorKind = "build" | "offCanvas";
+type ErrorKind = "build" | "inferredSize";
 
 interface PendingError {
 	key: string;
@@ -85,7 +85,7 @@ async function collectErrors(ctx: PluginContext, dirPath: string): Promise<Pendi
 		.filter((issue) => issue.rule === SYNTAX_RULE || issue.rule === FRAME_SIZE_RULE)
 		.map((issue) => ({
 			key: `${issue.file}::${issue.line}::${issue.rule}`,
-			kind: issue.rule === SYNTAX_RULE ? ("build" as const) : ("offCanvas" as const),
+			kind: issue.rule === SYNTAX_RULE ? ("build" as const) : ("inferredSize" as const),
 			file: issue.file,
 			message: issue.line === null ? issue.message : `${issue.message} (line ${issue.line})`,
 		}));
@@ -102,16 +102,16 @@ async function collectErrors(ctx: PluginContext, dirPath: string): Promise<Pendi
 /** 两类失败的原因不同，退回的话术也不能混：一类是「构建挂了」，一类是「压根没上画布」。 */
 function buildPrompt(dirPath: string, errors: readonly PendingError[]): string {
 	const sections: string[] = [];
-	const offCanvas = errors.filter((error) => error.kind === "offCanvas");
+	const inferred = errors.filter((error) => error.kind === "inferredSize");
 	const broken = errors.filter((error) => error.kind === "build");
-	if (offCanvas.length > 0) {
+	if (inferred.length > 0) {
 		sections.push(
 			[
-				`${offCanvas.length} frame source(s) are on disk but NOT on the canvas — the canvas is showing nothing for them, silently:`,
+				`${inferred.length} frame(s) are on the canvas at a GUESSED size — their source declares no size, so one was inferred from the rest of the design:`,
 				"",
-				offCanvas.map((error) => `## ${dirPath}/${error.file}\n\n${error.message}`).join("\n\n"),
+				inferred.map((error) => `## ${dirPath}/${error.file}\n\n${error.message}`).join("\n\n"),
 				"",
-				"Add the missing `export const frame = { width, height, title }` as the first statement of each file. Do NOT touch the .vetd manifest — it is generated from these declarations.",
+				"Add `export const frame = { width, height, title }` as the first statement of each file, with the size you actually want. Do NOT touch the .vetd manifest — it is generated from these declarations.",
 			].join("\n"),
 		);
 	}

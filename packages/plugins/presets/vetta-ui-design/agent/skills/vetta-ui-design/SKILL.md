@@ -44,11 +44,11 @@ not apply to them.
 1. **Never edit the `.vetd` manifest.** Your channel is the sidecar sources.
 2. **Frame meta is the FIRST statement**, one flat line (regex-parsed):
    `export const frame = { width: 390, height: 844, title: "登录" };`
-   `width` and `height` are REQUIRED — there is no default size. A frame missing
-   either one never reaches the canvas: `vetd_status` reports it and
-   `vetd_screenshot` refuses. Sizes come from the product type below; when the
-   design already has frames, `vetd_status` lists their sizes — match them
-   unless the new screen is a different product type.
+   Omit `width`/`height` and the frame still reaches the canvas — it is rendered
+   at a size inferred from the rest of the design — but that is a guess, and
+   `issues` will keep asking you to declare the real one. Sizes come from the
+   product type below; when the design already has frames, `vetd_status` lists
+   their sizes — match them unless the new screen is a different product type.
 3. **One default-exported component per frame**, rendering edge-to-edge — no
    page margins.
 4. **Frame id = file basename = route.** Create/delete a frame by writing or

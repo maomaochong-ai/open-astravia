@@ -95,7 +95,11 @@ function frameIdOf(path: string): string | null {
 }
 
 /**
- * 画框尺寸必须自己声明——没有默认值可回落，声明不全的画框根本上不了画布。
+ * 画框应该自己声明尺寸。
+ *
+ * 漏了不再是致命的——reconcile 会拿同一份设计的多数派尺寸把它渲染出来（见
+ * frame-size.ts），所以这条从「画不出来」降级成了「尺寸是猜的」。但仍然要报：
+ * 猜的尺寸对不对只有 agent 知道，而一份设计里混着推断尺寸迟早会咬人。
  *
  * 报错里带上同一份设计里其他画框的尺寸：agent 补声明时多半是想跟已有屏保持一致，
  * 让它自己再去把文件读一遍是白跑一趟。
@@ -123,7 +127,7 @@ function checkFrameSize(file: SourceFile, others: readonly SourceFile[]): Source
 		file: file.path,
 		line: null,
 		rule: FRAME_SIZE_RULE,
-		message: `Frame meta is missing ${missing}. Declare it as the first statement: \`export const frame = { width: 390, height: 844, title: "登录" };\`. There is no default size — the frame stays off the canvas until both are declared.${reference}`,
+		message: `Frame meta is missing ${missing}. Declare it as the first statement: \`export const frame = { width: 390, height: 844, title: "登录" };\`. The frame IS on the canvas — it was rendered at a size inferred from the rest of the design — but the inferred size is a guess, so declare the one you actually want.${reference}`,
 	};
 }
 

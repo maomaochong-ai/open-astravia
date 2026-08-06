@@ -11,7 +11,6 @@ import type { SourceIssue } from "./vetd/check-sources";
 import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
-import { parseFrameMeta } from "./vetd/frame-meta";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
@@ -165,24 +164,18 @@ export function registerDesignTools(ctx: PluginContext): void {
 			}
 			const known = controller.session.manifest.frames.map((frame) => frame.id);
 			if (!known.includes(frameId)) {
-				// 源码在、画布上却没有，只有一种可能：meta 没把尺寸声明全，reconcile 放弃了它。
-				// 报「Unknown frame」会让模型以为自己写错了文件名，转头再写一遍同样没尺寸的文件。
-				const source = await host.fs
+				// 漏声明尺寸不再让画框掉出画布（vetd/frame-size.ts），所以源码在、画布上
+				// 没有，剩下的只有一种情况：文件刚落盘，reconcile 的防抖还没跑完。
+				const exists = await host.fs
 					.readFile(`${controller.session.dirPath}/frames/${frameId}.tsx`)
-					.then((file) => file.content)
-					.catch(() => null);
-				const meta = source === null ? null : parseFrameMeta(source, frameId);
-				if (meta && (meta.width === null || meta.height === null)) {
-					return {
-						ok: false,
-						retryable: true,
-						error: `Frame "${frameId}" is not on the canvas: frames/${frameId}.tsx does not declare ${meta.width === null ? "width" : ""}${meta.width === null && meta.height === null ? " and " : ""}${meta.height === null ? "height" : ""}. There is no default size — add \`export const frame = { width, height, title }\` as the first statement, then take the screenshot again.${known.length > 0 ? ` Sizes already used here: ${controller.session.manifest.frames.map((frame) => `${frame.id} ${frame.width}x${frame.height}`).join(", ")}.` : ""}`,
-					};
-				}
+					.then(() => true)
+					.catch(() => false);
 				return {
 					ok: false,
 					retryable: true,
-					error: `Unknown frame "${frameId}". Available frames: ${known.join(", ") || "(none)"}`,
+					error: exists
+						? `Frame "${frameId}" is not on the canvas yet — frames/${frameId}.tsx exists, so the canvas is still picking it up. Wait a moment and take the screenshot again.`
+						: `Unknown frame "${frameId}". Available frames: ${known.join(", ") || "(none)"}`,
 				};
 			}
 			// 坏掉的 frame 渲染不出任何东西，截图只会一路等到超时（30s+），而模型
