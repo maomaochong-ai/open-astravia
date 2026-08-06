@@ -298,6 +298,36 @@ function describeCaptureError(error: unknown): string {
  */
 const MAX_CAPTURE_PIXELS = 12_000_000;
 
+/**
+ * 交给克隆体复制的 CSS 属性名单。
+ *
+ * 内容就是 html-to-image 自己的默认名单（`getComputedStyle(documentElement)` 的枚举
+ * 结果），末尾多加一个 `Font-Size`。
+ *
+ * 它复制 font-size 时会把值改成 `Math.floor(size) - 0.1`——上游拿这个对冲
+ * getComputedStyle 宽度值的小数截断。14px 变 13.9px 还看不太出来，`text-[13.6px]`
+ * 这种直接变 12.9px，小了 5%：位图每一行都比活动态多塞得下一个字，两态的断行位置
+ * 从此对不上。
+ *
+ * 那段改写只认字面量 `'font-size'`，而 CSSOM 的属性名是大小写不敏感的——同一个属性
+ * 用 `Font-Size` 再写一遍，读到的是真实计算值、绕过改写、落到克隆体上依然是
+ * font-size，把前面那次改小的值覆盖掉。
+ *
+ * 不用 `font` 简写走这一步：它在元素带了 `tabular-nums` / `condensed` 之类的值时会
+ * 序列化成空串，而 setProperty 收到空串是**删除**——字号连同字体族一起没了。
+ */
+let styleProperties: string[] | null = null;
+
+function captureStyleProperties(): string[] {
+	if (styleProperties) return styleProperties;
+	const computed = window.getComputedStyle(document.documentElement);
+	const names: string[] = [];
+	for (let i = 0; i < computed.length; i++) names.push(computed[i]);
+	names.push("Font-Size");
+	styleProperties = names;
+	return names;
+}
+
 /** 按文档实际大小把请求的 pixelRatio 压到出得来的范围内，不低于 1 倍。 */
 function safePixelRatio(requested: number): number {
 	const el = document.documentElement;
@@ -507,16 +537,23 @@ export function installBridge(host: BridgeHost): void {
 				// postMessage 传输与常驻内存跟着降下来——这正是能把 pixelRatio 提到
 				// 设备像素比、让位图不再糊的前提。jpeg 没有透明通道，必须显式铺白底，
 				// 否则透明处会变黑。交付物（导出渲染图 / 发给 agent）继续走 png。
+				const includeStyleProperties = captureStyleProperties();
 				const encode = (): Promise<string> =>
 					data.format === "jpeg"
 						? toJpeg(document.documentElement, {
 								pixelRatio,
 								onImageErrorHandler,
+								includeStyleProperties,
 								quality: typeof data.quality === "number" ? data.quality : 0.92,
 								backgroundColor: "#ffffff",
 							})
-						: toPng(document.documentElement, { pixelRatio, onImageErrorHandler });
-				encode()
+						: toPng(document.documentElement, { pixelRatio, onImageErrorHandler, includeStyleProperties });
+				// 字体没就绪就截，量到的是后备字体的断行；页面随后换上真字体重排，位图
+				// 与活动态就对不上了——每行最后一个字被挤到下一行正是这么来的。rendered
+				// 信号那边已经等过一次（见 main.tsx 的 FramePainted），这里再挡一道：
+				// 交付物那条路（vetd_screenshot / 导出 / 复制）不经过那个信号。
+				document.fonts.ready
+					.then(encode)
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) => post({ type: "captured", requestId, error: describeCaptureError(error) }))
 					.finally(() => moveOverlay(selectedOverlay, selected));
