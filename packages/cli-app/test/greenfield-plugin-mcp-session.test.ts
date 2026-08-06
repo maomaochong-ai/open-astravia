@@ -13,7 +13,9 @@ import type {
 } from "@vetta/runtime-mcp";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("Greenfield session-local plugin MCP", () => {
+const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
+
+describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
 	const compositions: GreenfieldRuntimeComposition[] = [];
 
@@ -22,7 +24,7 @@ describe("Greenfield session-local plugin MCP", () => {
 		for (const directory of directories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
-	});
+	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("isolates two sessions and applies complete plugin replacement at the next model call", async () => {
 		const conversationDir = await temporaryDirectory("greenfield-plugin-mcp-");

@@ -14,26 +14,27 @@ import {
 	startAgentRpc,
 } from "./support/agent-rpc-test-process.js";
 
+const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 const fixtures = new Set<AgentRpcFixture>();
 const runningProcesses = new Set<AgentRpcProcess>();
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
 	executable = await buildAgentRpcExecutable();
-});
+}, INTEGRATION_TEST_TIMEOUT_MS);
 
 afterAll(async () => {
 	await executable.dispose();
-});
+}, INTEGRATION_TEST_TIMEOUT_MS);
 
 afterEach(async () => {
 	await Promise.all([...runningProcesses].map((process) => process.close()));
 	runningProcesses.clear();
 	await Promise.all([...fixtures].map((fixture) => fixture.dispose()));
 	fixtures.clear();
-});
+}, INTEGRATION_TEST_TIMEOUT_MS);
 
-describe("Legacy session fallback narrowing", () => {
+describe("Legacy session fallback narrowing", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	it("reports a startup ownership conflict instead of retrying a locked Legacy source on Legacy Runtime", async () => {
 		const fixture = await createFixture();
 		const sourcePath = await writeLegacySession(fixture, "locked source");

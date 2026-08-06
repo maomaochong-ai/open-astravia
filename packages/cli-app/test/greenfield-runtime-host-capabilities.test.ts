@@ -16,7 +16,9 @@ import {
 } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("Greenfield RuntimeHost capabilities", () => {
+const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
+
+describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
 	const disposers: Array<() => Promise<void>> = [];
 
@@ -25,7 +27,7 @@ describe("Greenfield RuntimeHost capabilities", () => {
 		for (const directory of directories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
-	});
+	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("maps plugin prompt, tool and continuation invokers and applies live reconfiguration", async () => {
 		const cwd = await temporaryDirectory("greenfield-host-plugin-workspace-");

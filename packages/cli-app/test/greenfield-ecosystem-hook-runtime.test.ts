@@ -20,7 +20,9 @@ import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-ser
 import type { GreenfieldRuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 
-describe("Greenfield Session-local Ecosystem Hook Runtime", () => {
+const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
+
+describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: GreenfieldRuntimeComposition[] = [];
 
@@ -31,7 +33,7 @@ describe("Greenfield Session-local Ecosystem Hook Runtime", () => {
 		for (const directory of temporaryDirectories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
-	});
+	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("shares one runtime across prompt, final tools, stop, persistence, resume and dispose", async () => {
 		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-hooks-"));

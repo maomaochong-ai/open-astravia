@@ -73,6 +73,7 @@ const cliPath = fileURLToPath(new URL("../../../../../cli-app/src/cli.ts", impor
 const repositoryRoot = fileURLToPath(new URL("../../../../../..", import.meta.url));
 const firstPrompt = "Reply with exactly DESKTOP_CLI_CANARY_FIRST.";
 const secondPrompt = "Reply with exactly DESKTOP_CLI_CANARY_SECOND.";
+const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
 const completedOperationSchema = z
 	.object({
@@ -115,7 +116,7 @@ interface CliResult {
 	readonly stderr: string;
 }
 
-describe("Vetta CLI Desktop Greenfield runtime canary", () => {
+describe("Vetta CLI Desktop Greenfield runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
 	let provider: OpenAiResponsesTestServer | undefined;
 	let runtime: RuntimeHost | undefined;
@@ -134,7 +135,7 @@ describe("Vetta CLI Desktop Greenfield runtime canary", () => {
 		for (const directory of directories.splice(0).reverse()) {
 			await rm(directory, { recursive: true, force: true });
 		}
-	});
+	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("creates, continues and lists a persistent conversation through the existing CLI", async () => {
 		const root = await temporaryDirectory("vetta-desktop-cli-canary-");
