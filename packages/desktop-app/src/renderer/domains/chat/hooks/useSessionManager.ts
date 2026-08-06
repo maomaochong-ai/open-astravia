@@ -45,6 +45,7 @@ import {
 	promptSuggestionsAtom,
 	reasoningByModelAtom,
 	recordSentInputAndClearDraft,
+	retryProgressAtom,
 	type SessionExecutionMode,
 	type SubagentTask,
 	selectedModelAtom,
@@ -167,6 +168,7 @@ export function useSessionManager(): SessionManagerResult {
 	const todoItemsMapRef = useRef(todoItemsMap);
 	todoItemsMapRef.current = todoItemsMap;
 	const setIsCompacting = useSetAtom(isCompactingAtom);
+	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const setIsReloadingMcp = useSetAtom(isReloadingMcpAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
 	// 用于判断当前 session 是否归属一个 paused 的 batch-task 子任务。命中时
@@ -311,6 +313,7 @@ export function useSessionManager(): SessionManagerResult {
 			// 分支 + runningSessionPathsAtom 派生兜底会把 TypingIndicator 重新拉回来。
 			setActiveSessionStreaming(false);
 			setIsCompacting(false);
+			setRetryProgress(null);
 			// Clear messages immediately so the user sees the switch take effect
 			// instead of staring at the old session while history loads.
 			setChatMessages([]);
@@ -525,6 +528,9 @@ export function useSessionManager(): SessionManagerResult {
 						resetStreamState();
 						setActiveSessionStreaming(false);
 						setTurnStartTime(0);
+						// 重试期也会走到这里（agent_end 先于 retry.start），随后的
+						// retry.start 会把进度重新点亮；真正结束时则不会，避免残留。
+						setRetryProgress(null);
 						// Write total duration onto the last assistant message
 						setChatMessages((prev) => {
 							if (elapsed > 0) {
@@ -752,10 +758,21 @@ export function useSessionManager(): SessionManagerResult {
 					return;
 				}
 
+				// ── Auto-retry（退避等待中；错误本身要等重试彻底失败才会来）──
+				if (event.type === "retry.start") {
+					setRetryProgress({ attempt: event.attempt, maxAttempts: event.maxAttempts });
+					return;
+				}
+				if (event.type === "retry.end") {
+					setRetryProgress(null);
+					return;
+				}
+
 				// ── Error (provider / runtime error) ──
 				if (event.type === "error") {
 					flushDeltas();
-					setChatMessages((prev) => appendError(prev, event.error.message));
+					setRetryProgress(null);
+					setChatMessages((prev) => appendError(prev, event.error.message, event.retryAttempts));
 					return;
 				}
 
@@ -903,6 +920,7 @@ export function useSessionManager(): SessionManagerResult {
 			setActiveSession,
 			setActiveSessionStreaming,
 			setIsCompacting,
+			setRetryProgress,
 			setIsReloadingMcp,
 			navigate,
 			loadSessions,

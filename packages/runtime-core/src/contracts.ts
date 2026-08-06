@@ -373,6 +373,28 @@ export interface SessionError {
 export interface ErrorEvent extends SessionEventBase {
 	type: "error";
 	error: SessionError;
+	/**
+	 * 这条错误最终发出前，自动重试实际尝试过的次数（0 = 没重试过）。
+	 * 由 session-events 的挂起状态机累计，供 UI 说「已自动重试 N 次仍失败」。
+	 */
+	retryAttempts?: number;
+}
+
+/** 自动重试开始：一次可重试错误后进入退避等待。 */
+export interface RetryStartEvent extends SessionEventBase {
+	type: "retry.start";
+	attempt: number;
+	maxAttempts: number;
+	delayMs: number;
+	errorMessage: string;
+}
+
+/** 自动重试结束：success=false 表示重试次数耗尽，随后会有一条 error 事件。 */
+export interface RetryEndEvent extends SessionEventBase {
+	type: "retry.end";
+	success: boolean;
+	attempt: number;
+	finalError?: string;
 }
 
 export interface TodoItem {
@@ -538,7 +560,9 @@ export type SessionEvent =
 	| SubagentsUpdateEvent
 	| ActiveToolsUpdateEvent
 	| CompactionStartEvent
-	| CompactionEndEvent;
+	| CompactionEndEvent
+	| RetryStartEvent
+	| RetryEndEvent;
 
 export interface SessionStateSnapshot {
 	sessionId: string;

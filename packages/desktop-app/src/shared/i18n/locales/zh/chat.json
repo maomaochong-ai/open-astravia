@@ -423,6 +423,7 @@
 		"compactionBoundary": "上下文已压缩",
 		"modelSwitched": "切换了模型 {{name}}",
 		"compactionIndicator": "正在压缩上下文...",
+		"retryIndicator": "连接不太稳定，正在自动重试（第 {{attempt}}/{{maxAttempts}} 次）",
 		"streamingPhrases": [
 			"Vetta 正在回复…",
 			"请耐心等待…",
@@ -431,6 +432,40 @@
 		"copyButton": {
 			"copied": "已复制",
 			"copy": "复制"
+		},
+		"errorBlock": {
+			"showDetail": "查看详情",
+			"hideDetail": "收起详情",
+			"retriedNote": "已自动重试 {{count}} 次",
+			"repeatedNote": "重复出现 {{count}} 次",
+			"kinds": {
+				"rate_limit": {
+					"title": "请求太频繁了",
+					"hint": "稍等片刻再发一次就好。"
+				},
+				"quota": {
+					"title": "当前额度已用完",
+					"hint": "等额度重置，或查看你的套餐与用量。",
+					"action": "查看额度"
+				},
+				"network": {
+					"title": "网络没连上",
+					"hint": "检查一下网络或代理，然后重新发送。"
+				},
+				"auth": {
+					"title": "模型密钥无效或已过期",
+					"hint": "到模型设置里更新密钥后再试。",
+					"action": "去设置"
+				},
+				"server": {
+					"title": "服务方暂时出了点问题",
+					"hint": "通常几分钟内会自行恢复，稍后再发一次。"
+				},
+				"unknown": {
+					"title": "本次回复中断了",
+					"hint": "可以重新发送试试；反复出现的话把详情复制给我们。"
+				}
+			}
 		},
 		"contextMenu": {
 			"edit": "编辑",

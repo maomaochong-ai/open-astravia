@@ -1,6 +1,7 @@
-import { ErrorBlockView, SegmentShell, ToolCallGroupView } from "@vetta/theme-ui/chat";
+import { SegmentShell, ToolCallGroupView } from "@vetta/theme-ui/chat";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorBlockView } from "../blocks/ErrorBlock";
 import { TextBlockView } from "../blocks/TextBlock";
 import { ThinkingBlockView } from "../blocks/ThinkingBlock";
 import { ToolCallBlockView } from "../blocks/ToolCallBlock";
@@ -150,7 +151,7 @@ export const SegmentRenderer = memo(function SegmentRenderer({
 				content = <ToolCallBlockView block={segment.block} exportMode={exportMode} />;
 				break;
 			case "error":
-				content = <ErrorBlockView text={segment.block.text} />;
+				content = <ErrorBlockView block={segment.block} exportMode={exportMode} />;
 				break;
 			default:
 				content = null;
