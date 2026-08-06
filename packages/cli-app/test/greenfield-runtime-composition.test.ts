@@ -2,7 +2,10 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
-import { createGreenfieldRuntimeComposition, type GreenfieldRuntimeComposition } from "@vetta/coding-agent/composition";
+import {
+	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+} from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
 import {

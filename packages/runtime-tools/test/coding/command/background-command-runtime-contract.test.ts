@@ -1,7 +1,3 @@
-import {
-	createCodingAgentBackgroundCommandHost,
-	createCodingAgentForegroundCommandHost,
-} from "@vetta/coding-agent/host";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	type BackgroundCommandService,
@@ -15,6 +11,7 @@ import {
 	createTaskOutputToolRegistration,
 	createTaskStopToolRegistration,
 } from "../../../src/coding/index.js";
+import { createTestBackgroundCommandHost, createTestForegroundCommandHost } from "../../support/local-command-host.js";
 
 type CommandName = "bash" | "shell";
 
@@ -27,7 +24,7 @@ afterEach(async () => {
 });
 
 function createRuntimeBackgroundService(): BackgroundCommandService {
-	const service = createBackgroundCommandService(createCodingAgentBackgroundCommandHost());
+	const service = createBackgroundCommandService(createTestBackgroundCommandHost());
 	services.push(service);
 	return service;
 }
@@ -37,7 +34,7 @@ function createRuntimeCommandTool(
 	blockUntilSec: number,
 	onNotification?: (task: BackgroundCommandSnapshot) => void,
 ) {
-	const host = createCodingAgentForegroundCommandHost(process.cwd());
+	const host = createTestForegroundCommandHost(process.cwd());
 	const backgroundService = createRuntimeBackgroundService();
 	if (onNotification) backgroundService.subscribeNotifications(onNotification);
 	const foregroundExecutor = createForegroundCommandToolExecutor({ ...host, blockUntilSec });
@@ -68,7 +65,7 @@ function runtimeRequest(input: { command: string; timeout?: number; run_in_backg
 
 function localNodeCommand(script: string): string {
 	const executable = `"${process.execPath}"`;
-	return `${process.platform === "win32" ? "& " : ""}${executable} -e "${script}"`;
+	return `${executable} -e "${script}"`;
 }
 
 async function waitForCompletion(service: BackgroundCommandService, taskId: string): Promise<void> {

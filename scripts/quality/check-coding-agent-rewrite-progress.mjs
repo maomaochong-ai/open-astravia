@@ -78,50 +78,35 @@ const CLI_SESSION_ASSEMBLY_PROTOCOL_MARKERS = Object.freeze([
 const CODING_AGENT_COMPOSITION_PUBLIC_ENTRY = "packages/coding-agent/src/composition/index.ts";
 const CODING_AGENT_COMPOSITION_PUBLIC_EXPORTS = new Set([
 	"CodingAgentExtensionSessionHost",
-	"CodingAgentGreenfieldActiveSessionHost",
-	"CodingAgentGreenfieldActiveSessionHostOptions",
-	"CodingAgentGreenfieldNewSessionOptions",
-	"CodingAgentGreenfieldPreparedSessionBinding",
-	"CodingAgentGreenfieldSessionSeedInitializer",
-	"CodingAgentGreenfieldSessionSeedTarget",
-	"CodingAgentGreenfieldSessionTransition",
-	"CodingAgentGreenfieldSessionTransitionKind",
-	"CodingAgentGreenfieldSessionTransitionLifecycle",
-	"CodingAgentGreenfieldSessionTransitionRuntimePort",
+	"CodingAgentActiveSessionHost",
 	"CodingAgentProcessSessionHost",
-	"CodingAgentProcessSessionHostOptions",
+	"CodingAgentRuntimeComposition",
+	"CodingAgentRuntimeCompositionOptions",
+	"CodingAgentRuntimeHostSessionBackend",
+	"CodingAgentRuntimeSessionOptions",
+	"CodingAgentSessionTransition",
+	"CodingAgentSessionTransitionLifecycle",
 	"CodingAgentSessionSetup",
-	"GreenfieldInitialTodoLockSource",
-	"GreenfieldKnowledgeProcessingSessionFactoryOptions",
-	"GreenfieldRuntimeComposition",
-	"GreenfieldRuntimeCompositionOptions",
-	"GreenfieldRuntimeExtensionControls",
-	"GreenfieldRuntimeHostSessionBackend",
-	"GreenfieldRuntimeHostSessionBackendOptions",
-	"GreenfieldRuntimeSessionControls",
-	"GreenfieldRuntimeSessionHookLifecycle",
-	"GreenfieldRuntimeSessionOptions",
-	"GreenfieldRuntimeToolAccess",
 	"KnowledgeProcessingPageWriter",
 	"KnowledgeProcessingSession",
 	"KnowledgeProcessingSessionFactory",
 	"KnowledgeProcessingSessionRequest",
 	"KnowledgeProcessingUsage",
 	"createCodingAgentSessionSetupSeedInitializer",
-	"createGreenfieldKnowledgeProcessingSessionFactory",
-	"createGreenfieldRuntimeComposition",
-	"resolveGreenfieldSessionIdFromPath",
+	"createCodingAgentRuntimeComposition",
+	"createKnowledgeProcessingSessionFactory",
+	"resolveSessionIdFromPath",
 ]);
 const CODING_AGENT_COMPOSITION_DEEP_IMPORT_MARKER = "@vetta/coding-agent/composition/";
 const CODING_AGENT_ROOT_ENTRY = "packages/coding-agent/src/index.ts";
 const CODING_AGENT_ROOT_EXTENSION_ENTRY = "./public-api/extensions.js";
 const CLI_COMPOSITION_TYPE_NAMES = new Set([
-	"CodingAgentGreenfieldActiveSessionHost",
+	"CodingAgentActiveSessionHost",
 	"CodingToolsRuntimeComposition",
-	"GreenfieldRuntimeComposition",
-	"GreenfieldRuntimeCompositionOptions",
-	"GreenfieldRuntimeHostSessionBackend",
-	"resolveGreenfieldSessionIdFromPath",
+	"CodingAgentRuntimeComposition",
+	"CodingAgentRuntimeCompositionOptions",
+	"CodingAgentRuntimeHostSessionBackend",
+	"resolveSessionIdFromPath",
 ]);
 const STABLE_EXTENSION_CONTRACT_PREFIX = "packages/coding-agent/src/extensions/";
 const STABLE_RESOURCE_DOMAIN_PREFIX = "packages/coding-agent/src/resources/";
@@ -625,7 +610,7 @@ function collectImportNames(clause) {
 
 function collectExportNames(clause) {
 	if (!clause || !ts.isNamedExports(clause)) return ["*"];
-	return clause.elements.map((element) => element.propertyName?.text ?? element.name.text).sort();
+	return clause.elements.map((element) => element.name.text).sort();
 }
 
 function resolveSourceTarget(sourcePath, specifier) {

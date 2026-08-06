@@ -1,6 +1,6 @@
 # Team: Runtime
 
-> 本包属于 **Runtime Team**，同组包：`runtime-mcp`、`runtime-storage`、`runtime-telemetry`、`runtime-tools`、`cli-app`
+> 本包属于 Runtime 能力域，定义 Agent Kernel、Turn、事件和宿主 Port。
 
 ## 职责范围
 
@@ -15,5 +15,7 @@
 ## 注意事项
 
 - 本包是 `desktop-app` 和 `cli-app` 的直接依赖，接口变更影响所有应用层
-- `contracts.ts` 中的事件类型是应用层和 coding-agent 之间的通信协议，变更需两端同步
-- 本包及同组 runtime-* 包都是薄适配层，代码量很少，通常随 coding-agent 的变更而联动更新
+- 公开事件和 Port 是 `coding-agent` 与应用宿主消费的下层合同，变更需同步检查消费者
+- Kernel 与 Runtime 合同必须保持产品无关，不得导入 `@vetta/coding-agent`
+- 生产代码、测试、配置和包清单均不得反向依赖 `@vetta/coding-agent`
+- Runtime 包拥有实际能力，不是 `coding-agent` 的兼容转发层

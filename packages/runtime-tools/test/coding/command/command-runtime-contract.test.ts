@@ -1,7 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createCodingAgentForegroundCommandHost } from "@vetta/coding-agent/host";
 import { describe, expect, it } from "vitest";
 import {
 	type CommandSpawnHook,
@@ -14,6 +13,7 @@ import {
 	getBashToolScopes,
 	getShellToolScopes,
 } from "../../../src/coding/index.js";
+import { createTestForegroundCommandHost } from "../../support/local-command-host.js";
 
 type CommandName = "bash" | "shell";
 
@@ -34,7 +34,7 @@ function createOperations(output: string, exitCode = 0): ForegroundCommandOperat
 }
 
 function createRuntimeRegistration(name: CommandName, cwd: string, toolOptions: CommandFixtureOptions) {
-	const host = createCodingAgentForegroundCommandHost(cwd);
+	const host = createTestForegroundCommandHost(cwd);
 	const executor = createForegroundCommandToolExecutor({
 		...host,
 		operations: toolOptions.operations ?? host.operations,
@@ -264,7 +264,7 @@ describe("runtime command registration", () => {
 		const toolName: CommandName = process.platform === "win32" ? "shell" : "bash";
 		const registration = createRuntimeRegistration(toolName, process.cwd(), {});
 		const executable = `"${process.execPath}"`;
-		const command = `${process.platform === "win32" ? "& " : ""}${executable} -e "process.stdout.write('runtime-command-ok')"`;
+		const command = `${executable} -e "process.stdout.write('runtime-command-ok')"`;
 		const result = await registration.tool.execute({
 			sessionId: "session-1",
 			turnId: "turn-1",

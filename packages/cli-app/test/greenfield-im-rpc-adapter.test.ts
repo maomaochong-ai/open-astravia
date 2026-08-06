@@ -1,5 +1,8 @@
 import { join } from "node:path";
-import { type GreenfieldRuntimeComposition, resolveGreenfieldSessionIdFromPath } from "@vetta/coding-agent/composition";
+import {
+	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath,
+} from "@vetta/coding-agent/composition";
 import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
 import type { GreenfieldRuntimeSession, GreenfieldRuntimeSessionCoreAssembly, SessionEvent } from "@vetta/runtime-core";
 import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";

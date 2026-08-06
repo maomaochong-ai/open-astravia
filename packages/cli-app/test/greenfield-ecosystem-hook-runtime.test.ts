@@ -10,10 +10,10 @@ import {
 	type Model,
 } from "@vetta/ai";
 import {
-	CodingAgentGreenfieldActiveSessionHost,
-	type CodingAgentGreenfieldSessionTransitionLifecycle,
-	createGreenfieldRuntimeComposition,
-	type GreenfieldRuntimeComposition,
+	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
+	type CodingAgentSessionTransitionLifecycle as CodingAgentGreenfieldSessionTransitionLifecycle,
+	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome, type HookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";

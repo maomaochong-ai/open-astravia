@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createGreenfieldRuntimeComposition, type GreenfieldRuntimeComposition } from "../../src/composition/index.js";
+import {
+	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+} from "../../src/composition/index.js";
 import { type CodingAgentMemoryFlushInput, CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
 

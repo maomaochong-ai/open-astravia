@@ -1,10 +1,10 @@
 import { dirname, join, resolve } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import {
-	createGreenfieldRuntimeComposition,
-	type GreenfieldRuntimeComposition,
-	type GreenfieldRuntimeCompositionOptions,
-	GreenfieldRuntimeHostSessionBackend,
+	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
+	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type {
 	ConversationScenario,

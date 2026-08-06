@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import type {
-	GreenfieldRuntimeCompositionOptions,
-	GreenfieldRuntimeSessionOptions,
+	CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
+	CodingAgentRuntimeSessionOptions as GreenfieldRuntimeSessionOptions,
 } from "@vetta/coding-agent/composition";
 import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/conversation";
 import {

@@ -1,9 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createCodingAgentEditPathPolicy } from "@vetta/coding-agent/host";
 import { afterEach, describe, expect, it } from "vitest";
-import { getKnowledgeDir } from "../../../../coding-agent/src/config.js";
 import {
 	createEditTool,
 	createEditToolRegistration,
@@ -17,6 +15,7 @@ import {
 	selectCodingToolsForScope,
 } from "../../../src/coding/index.js";
 import { anchorLineHash } from "../../../src/coding/shared/anchors.js";
+import { createTestEditPathPolicy } from "../../support/path-policy.js";
 
 const temporaryDirectories: string[] = [];
 const permissivePathPolicy: EditPathPolicy = {
@@ -281,7 +280,9 @@ describe("runtime edit tool", () => {
 			const cwd = createTemporaryDirectory("protected");
 			const input = { path, oldText: "a", newText: "b" };
 			const runtimeError = await errorMessage(
-				createEditTool(cwd, { pathPolicy: createCodingAgentEditPathPolicy(cwd) }).execute(runtimeRequest(input)),
+				createEditTool(cwd, {
+					pathPolicy: createTestEditPathPolicy({ cwd, knowledgeRoot: join(cwd, "knowledges") }),
+				}).execute(runtimeRequest(input)),
 			);
 			expect(runtimeError).toContain("inside a skill/scene directory");
 		},
@@ -289,9 +290,12 @@ describe("runtime edit tool", () => {
 
 	it("preserves knowledge wiki rejection", async () => {
 		const cwd = createTemporaryDirectory("wiki");
-		const input = { path: join(getKnowledgeDir(), "wiki", "page.md"), oldText: "a", newText: "b" };
+		const knowledgeRoot = join(cwd, "knowledges");
+		const input = { path: join(knowledgeRoot, "wiki", "page.md"), oldText: "a", newText: "b" };
 		const runtimeError = await errorMessage(
-			createEditTool(cwd, { pathPolicy: createCodingAgentEditPathPolicy(cwd) }).execute(runtimeRequest(input)),
+			createEditTool(cwd, { pathPolicy: createTestEditPathPolicy({ cwd, knowledgeRoot }) }).execute(
+				runtimeRequest(input),
+			),
 		);
 		expect(runtimeError).toContain("managed exclusively by kb_write_page");
 	});

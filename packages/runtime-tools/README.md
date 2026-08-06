@@ -1,65 +1,40 @@
 # @vetta/runtime-tools
 
-Runtime-owned Agent tools and Coding Tools Feature.
+Runtime 拥有的通用 Agent 工具实现与 Coding Tools Feature。
 
-The package root and `@vetta/runtime-tools/coding` expose the same independent
-Runtime tool surface.
+包根和 `@vetta/runtime-tools/coding` 暴露同一套独立 Runtime 工具接口。
 
-## What It Owns
+## 本包拥有
 
-- TypeBox-backed Runtime Tool definitions
-- coding tool registration metadata and scenario selection
-- the greenfield Coding Tools Feature
-- host executable resolution Port for `rg` and `fd`
+- 基于 TypeBox 的 Runtime Tool 定义
+- `read`、`write`、`edit`、`bash`、`grep`、`find` 等通用工具实现
+- 工具注册元数据、目录和场景选择
+- 动态 `CodingToolsFeature`
+- 工具执行依赖的 Port，例如可执行文件解析、路径策略和命令执行
 
-## What It Does Not Own
+## 本包不拥有
 
-- tool execution policy
-- agent state
-- app-specific permission UX
-- model or provider selection
-- downloading or updating host executables
+- Agent 会话与产品状态
+- 应用权限 UI
+- 模型与 Provider 选择
+- 宿主可执行文件的下载和更新
+- 产品级路径、凭证或用户交互策略
 
-## Who Depends On It
+Runtime Tools 的生产代码、测试、配置和包清单均不得依赖 `@vetta/coding-agent`。
+产品宿主在自己的组合根中实现并注入所需 Port。
 
-- runtime hosts that want the default tool set without reaching into `coding-agent` internals
+## 主要入口
 
-## Main Exports
+- 独立工具工厂，例如 `createReadTool`、`createBashTool` 和 `createTreeTool`
+- `createCodingToolsFeature`
+- 工具注册工厂，例如 `createReadToolRegistration` 和 `createLsToolRegistration`
+- `InMemoryCodingToolRegistry`
+- `selectCodingTools` 与 `selectCodingToolsForScope`
 
-- individual tool factories such as `createReadTool`, `createBashTool`, and `createTreeTool`
-- `createCodingToolsFeature` from the package root or `@vetta/runtime-tools/coding`
-- `createCurrentTimeToolRegistration`, `createReadToolRegistration`,
-  `createLsToolRegistration`, `InMemoryCodingToolRegistry`,
-  `selectCodingTools`, and `selectCodingToolsForScope` for
-  composing scenario-specific Coding Tool snapshots
+每个工具位于独立的 `src/coding/tools/<tool-name>/` 目录。模型可见描述放在工具目录的
+`description.ts`，工具 Schema 使用 TypeBox，Coding 场景元数据放在注册对象而不是工具定义中。
 
-Greenfield tools are only published after their model-visible schema,
-description, results, errors, side effects, and path behavior pass differential
-tests against the legacy implementation.
-
-The greenfield `read` implementation and the legacy implementation run the same
-18-case behavior contract covering text, GB18030, path fallbacks, anchors,
-truncation, images, binary hints, injected operations, and cancellation. Their
-definitions, registrations, text results, and binary hints are also compared
-directly. The greenfield Coding Tools Feature now contributes both
-`current_time` and `read`.
-
-The package root `createReadTool` is the independent Runtime implementation.
-Legacy implementations remain test-only differential Oracles until their
-behavior contracts are fully retired.
-
-The greenfield and legacy `ls` implementations run the same 15-case behavior
-contract. It covers definition metadata, dotfiles, directory suffixes,
-case-insensitive sorting, path fallbacks, default/custom entry limits, byte
-truncation, injected operations, errors, and cancellation.
-
-Legacy `ls` has an empty `scope_use`, meaning it is available for explicit
-selection but inactive by default. Its greenfield registration preserves that
-empty scope. Register it in a `CodingToolRegistry`, then use scope activation or
-an explicit tool-name set when creating the Coding Tools Feature.
-
-Tool-specific options belong to the registration composition root, not
-`CodingToolsFeatureOptions`:
+## 组合示例
 
 ```ts
 const registry = new InMemoryCodingToolRegistry([
@@ -74,43 +49,19 @@ createCodingToolsFeature({
 });
 ```
 
-Host executable discovery follows the same boundary. A host may inject a
-`CodingToolExecutableResolver` into grep/find; the Runtime receives only the
-resolved path and never downloads or updates binaries:
+工具专有依赖属于注册组合根，不属于 `CodingToolsFeatureOptions`。例如宿主把自己的
+`CodingToolExecutableResolver` 注入 grep/find；Runtime 只消费解析结果，不下载或更新二进制文件。
 
-```ts
-const executableResolver = createLocalCodingToolExecutableResolver({
-	binDirectory: managedBinDirectory,
-});
+## 动态注册语义
 
-createGrepToolRegistration(cwd, { executableResolver });
-createFindToolRegistration(cwd, { executableResolver });
-```
+Registry 支持 `register()` 和 `unregister()`。Feature 保持长期存在的模型调用贡献 Provider，
+并在每次模型调用前读取最新的版本化工具成员关系，因此工具变化不会重建 Runtime Snapshot，
+也不会重新初始化无关 Feature。
 
-Hosts that manage downloads can implement the same Port by delegating to their
-own downloader. The resolver is called at tool execution time, so a host can
-replace or remove a binary without rebuilding the Runtime Snapshot.
+模型看到的工具会在执行前再次按当前 Catalog 解析。工具被移除时返回可恢复的工具错误；
+同名工具替换不会把旧 Schema 的调用路由到新实现。下一次模型调用会收到更新后的工具列表。
 
-The legacy coding-agent downloader is exposed on the stable host surface at
-`@vetta/coding-agent/host` (migration re-export also remains at
-`@vetta/coding-agent/core/host/executable-resolver.js`). Importing this adapter
-does not make Runtime Tools depend on coding-agent.
+## 行为兼容
 
-The registry supports dynamic `register()` and `unregister()`. The Feature keeps
-a long-lived Model Call Contribution Provider. Before every LLM call it reads
-the latest versioned membership snapshot, so a registry change does not
-recompile the Runtime Snapshot or reinitialize unrelated Features.
-
-An advertised Coding Tool is resolved against the live Catalog immediately
-before execution. Removal produces a recoverable tool error. Replacing a tool
-under the same name cannot route an old-schema call into the new implementation.
-The next LLM call receives the refreshed tool list.
-
-Each tool has its own `src/coding/tools/<tool-name>/` directory. Model-visible
-descriptions are exported from `description.ts` files so bundlers receive plain
-TypeScript modules without a text-file generation step.
-
-Runtime Tool definitions stay scenario-agnostic. Coding-only metadata such as
-legacy `scope_use` and `category` lives in registrations. The composition root
-owns the registry, tool-specific dependencies, and activation mode. Agent
-Profile IDs are not treated as conversation scopes.
+架构迁移不得改变工具功能。Schema、描述、结果、错误、副作用、路径语义、取消和截断行为
+由 Runtime 合同测试保护；`coding-agent` 只测试其真实 Host Port 适配，不作为 Runtime 测试依赖。

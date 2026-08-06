@@ -184,7 +184,7 @@ describe("Coding Agent rewrite progress gate", () => {
 			},
 			{
 				path: "packages/desktop-app/src/main/runtime.ts",
-				text: 'import type { GreenfieldRuntimeCompositionOptions } from "@vetta/cli-app";',
+				text: 'import type { CodingAgentRuntimeCompositionOptions } from "@vetta/cli-app";',
 			},
 		]);
 
@@ -295,6 +295,18 @@ describe("Coding Agent rewrite progress gate", () => {
 			compositionPublicExports: 1,
 			externalCompositionDeepImports: 1,
 		});
+	});
+
+	it("governs the consumer-visible name of aliased Composition exports", () => {
+		const actual = stateFrom([
+			{
+				path: "packages/coding-agent/src/composition/index.ts",
+				text: 'export { GreenfieldRuntimeComposition as CodingAgentRuntimeComposition } from "./runtime.js";',
+			},
+		]);
+
+		expect(actual.compositionPublicExports).toEqual(["CodingAgentRuntimeComposition"]);
+		expect(findCodingAgentRewriteProgressViolations(actual, actual)).toEqual([]);
 	});
 
 	it("keeps the package root limited to the stable Extension facade", () => {

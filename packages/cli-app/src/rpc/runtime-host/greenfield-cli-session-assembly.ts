@@ -1,14 +1,14 @@
 import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
 	CodingAgentExtensionSessionHost,
-	CodingAgentGreenfieldActiveSessionHost,
+	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
 	CodingAgentProcessSessionHost,
 	createCodingAgentSessionSetupSeedInitializer,
-	createGreenfieldRuntimeComposition,
-	type GreenfieldRuntimeComposition,
-	type GreenfieldRuntimeCompositionOptions,
-	type GreenfieldRuntimeSessionOptions,
-	resolveGreenfieldSessionIdFromPath,
+	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
+	type CodingAgentRuntimeSessionOptions as GreenfieldRuntimeSessionOptions,
+	resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath,
 } from "@vetta/coding-agent/composition";
 import { getVettaHomePath } from "@vetta/coding-agent/config";
 import {

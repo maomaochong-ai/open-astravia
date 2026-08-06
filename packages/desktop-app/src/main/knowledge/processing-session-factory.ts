@@ -1,5 +1,5 @@
 import {
-	createGreenfieldKnowledgeProcessingSessionFactory,
+	createKnowledgeProcessingSessionFactory as createGreenfieldKnowledgeProcessingSessionFactory,
 	type KnowledgeProcessingSessionFactory,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";

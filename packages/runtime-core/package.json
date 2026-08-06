@@ -34,7 +34,6 @@
 		"@vetta/ai": "workspace:*"
 	},
 	"devDependencies": {
-		"@vetta/coding-agent": "workspace:*",
 		"typescript": "^5.9.2",
 		"@types/node": "^22.10.5"
 	}

@@ -1,7 +1,7 @@
 import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
 import type {
-	CodingAgentGreenfieldActiveSessionHost,
-	GreenfieldRuntimeComposition,
+	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
+	CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {

@@ -7,7 +7,7 @@ const factoryMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@vetta/coding-agent/composition", () => ({
-	createGreenfieldKnowledgeProcessingSessionFactory: factoryMocks.greenfield,
+	createKnowledgeProcessingSessionFactory: factoryMocks.greenfield,
 }));
 
 describe("createDesktopKnowledgeProcessingSessionFactory", () => {

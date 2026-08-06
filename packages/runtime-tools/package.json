@@ -32,7 +32,6 @@
 	},
 	"devDependencies": {
 		"@vetta/ai": "workspace:*",
-		"@vetta/coding-agent": "workspace:*",
 		"@vetta/runtime-knowledge": "workspace:*",
 		"@types/diff": "^7.0.2",
 		"typescript": "^5.9.2",

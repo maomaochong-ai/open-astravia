@@ -8,7 +8,7 @@ import {
 	resolveCodingAgentInitialModel,
 	runPrintMode,
 } from "@vetta/coding-agent/bootstrap";
-import { resolveGreenfieldSessionIdFromPath } from "@vetta/coding-agent/composition";
+import { resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath } from "@vetta/coding-agent/composition";
 import { type RpcRuntimeDecision, runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope } from "@vetta/runtime-core";
 import { GreenfieldPrintSessionAdapter } from "../../greenfield-print-session-adapter.js";

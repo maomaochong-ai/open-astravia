@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
-	createGreenfieldRuntimeComposition,
-	GreenfieldRuntimeHostSessionBackend,
+	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";

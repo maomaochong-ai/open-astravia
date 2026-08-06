@@ -776,7 +776,6 @@
       },
       "devDependencies": {
         "@types/node": "^22.10.5",
-        "@vetta/coding-agent": "workspace:*",
         "typescript": "^5.9.2",
       },
     },
@@ -813,7 +812,6 @@
       },
       "devDependencies": {
         "@types/node": "^22.10.5",
-        "@vetta/coding-agent": "workspace:*",
         "typescript": "^5.9.2",
       },
     },
@@ -855,7 +853,6 @@
         "@types/diff": "^7.0.2",
         "@types/node": "^22.10.5",
         "@vetta/ai": "workspace:*",
-        "@vetta/coding-agent": "workspace:*",
         "@vetta/runtime-knowledge": "workspace:*",
         "typescript": "^5.9.2",
       },

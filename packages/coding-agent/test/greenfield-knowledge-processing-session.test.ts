@@ -4,14 +4,12 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
+import type { GreenfieldKnowledgeProcessingSessionFactoryOptions } from "../src/composition/greenfield-knowledge-processing-session.js";
 import {
 	createGreenfieldRuntimeComposition,
 	type GreenfieldRuntimeCompositionOptions,
 } from "../src/composition/greenfield-runtime-composition.js";
-import {
-	createGreenfieldKnowledgeProcessingSessionFactory,
-	type GreenfieldKnowledgeProcessingSessionFactoryOptions,
-} from "../src/composition/index.js";
+import { createKnowledgeProcessingSessionFactory as createGreenfieldKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
 
 describe("Greenfield knowledge processing session adapter", () => {
 	const directories: string[] = [];

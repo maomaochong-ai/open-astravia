@@ -11,7 +11,10 @@ import {
 } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
-import { createGreenfieldRuntimeComposition, type GreenfieldRuntimeComposition } from "../../src/composition/index.js";
+import {
+	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+} from "../../src/composition/index.js";
 import {
 	type EcosystemHookEvent,
 	emptyHookDispatchOutcome,

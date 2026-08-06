@@ -1,9 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createCodingAgentWritePathPolicy } from "@vetta/coding-agent/host";
 import { afterEach, describe, expect, it } from "vitest";
-import { getKnowledgeDir } from "../../../../coding-agent/src/config.js";
 import {
 	createWriteTool,
 	createWriteToolRegistration,
@@ -15,6 +13,7 @@ import {
 	type WritePathPolicy,
 	WriteToolInputSchema,
 } from "../../../src/coding/index.js";
+import { createTestWritePathPolicy } from "../../support/path-policy.js";
 
 const temporaryDirectories: string[] = [];
 const permissivePathPolicy: WritePathPolicy = {
@@ -114,7 +113,9 @@ describe("runtime write tool", () => {
 		"preserves protected skill path rejection for %s",
 		async (path) => {
 			const cwd = createTemporaryDirectory("protected");
-			const runtime = createWriteTool(cwd, { pathPolicy: createCodingAgentWritePathPolicy(cwd) });
+			const runtime = createWriteTool(cwd, {
+				pathPolicy: createTestWritePathPolicy({ cwd, knowledgeRoot: join(cwd, "knowledges") }),
+			});
 			const input = { path, content: "blocked" };
 			const runtimeResult = await runtime.execute(runtimeRequest(input));
 			expect(runtimeResult.content[0]).toMatchObject({
@@ -125,8 +126,11 @@ describe("runtime write tool", () => {
 
 	it("preserves knowledge wiki rejection", async () => {
 		const cwd = createTemporaryDirectory("wiki-policy");
-		const path = join(getKnowledgeDir(), "wiki", "page.md");
-		const runtime = createWriteTool(cwd, { pathPolicy: createCodingAgentWritePathPolicy(cwd) });
+		const knowledgeRoot = join(cwd, "knowledges");
+		const path = join(knowledgeRoot, "wiki", "page.md");
+		const runtime = createWriteTool(cwd, {
+			pathPolicy: createTestWritePathPolicy({ cwd, knowledgeRoot }),
+		});
 		const input = { path, content: "blocked" };
 		const runtimeResult = await runtime.execute(runtimeRequest(input));
 		expect(runtimeResult.content[0]).toMatchObject({ text: expect.stringContaining("kb_write_page tool") });

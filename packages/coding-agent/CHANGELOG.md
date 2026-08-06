@@ -8,6 +8,7 @@
 - **退役 Coding Agent Knowledge 公共面**：移除 `@vetta/coding-agent/knowledge` 子路径与包根 `knowledge` 命名空间；知识领域实现改由 `@vetta/runtime-knowledge` 独立提供。
 - **退役包根具体 Tool API**：`@vetta/coding-agent` 包根与 RPC 子路径不再转发内置 Tool 工厂、单例和实现类型；具体 Coding Tool 由 `@vetta/runtime-tools/coding` 持有，稳定 SDK 和产品组合根继续提供原有工具能力。
 - **退役 Runtime 包兼容子路径**：移除 `@vetta/coding-agent/compat/runtime-storage` 与 `@vetta/coding-agent/compat/runtime-tools`；两个 Runtime 包根现直接暴露各自独立实现，生产依赖图不再形成反向循环。
+- **Composition 公共面去迁移命名并收口**：`@vetta/coding-agent/composition` 的公开导出由 34 项收敛为 19 项，删除无外部消费者的辅助类型，并将 `Greenfield*` 公共名称替换为稳定的 `CodingAgent*` / 中性名称；工作区调用方已迁移且不保留旧名称别名，Session、CLI、Desktop 与 IM 的运行时行为不变。
 
 ### Added
 

@@ -4,8 +4,8 @@ import type {
 	CodingAgentHostBootstrapOptions,
 } from "@vetta/coding-agent/bootstrap";
 import type {
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeCompositionOptions,
+	CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import type { RpcRuntimeDecision, RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
