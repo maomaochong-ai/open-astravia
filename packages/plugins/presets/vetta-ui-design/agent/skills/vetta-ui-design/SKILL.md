@@ -108,9 +108,9 @@ reads perfectly, and nothing renders. Add the token first, then use it.
 
 This is the first decision, not an afterthought: `vetd_create` requires it
 (`product`, or `frameSize` in pixels for anything the enum cannot express), and
-it becomes the design's default size. Read it off the user's own words — "移动
-App" is `mobile`, "后台"/"dashboard" is `desktop`. An explicit user instruction
-always wins. Do not default to a phone frame; a dashboard at 390 wide is the
+it becomes the design's default size. Read it off the user's own words, in
+whatever language they wrote them — a phone app is `mobile`, an admin console or
+dashboard is `desktop`. An explicit user instruction always wins. Do not default to a phone frame; a dashboard at 390 wide is the
 most common failure.
 
 | Product | `product` | Default size | What matters |

@@ -1175,7 +1175,7 @@ export function DesignCanvas({
 					shots.push({ frameId: frame.id, screenshotPath });
 				}
 				const dom = selection?.kind === "dom" ? { frameId: selection.frameId, payload: selection.payload } : null;
-				const prompt = buildAskPrompt(session, { shots, dom }, suggestion, ctx.i18n.locale);
+				const prompt = buildAskPrompt(session, { shots, dom }, suggestion);
 				void ctx.conversation.sendPrompt(prompt).catch((error: unknown) => {
 					notify({ message: t("canvas.ask.failed"), error });
 				});

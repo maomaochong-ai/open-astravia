@@ -101,7 +101,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				product: {
 					type: "string",
 					enum: PRODUCT_TYPES,
-					description: `What is being designed — sets this design's default frame size (${PRODUCT_SIZE_SUMMARY}). Take it from the user's request: "手机 App"/"mobile" is \`mobile\`, "后台"/"dashboard" is \`desktop\`. Anything else (infographic, A4 print, a square social post) goes through \`frameSize\` instead.`,
+					description: `What is being designed — sets this design's default frame size (${PRODUCT_SIZE_SUMMARY}). Take it from the user's request in whatever language they wrote it: a phone app is \`mobile\`, an admin console or dashboard is \`desktop\`. Anything else (infographic, A4 print, a square social post) goes through \`frameSize\` instead.`,
 				},
 				frameSize: {
 					type: "object",
