@@ -7,6 +7,7 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 ### Fixed
 
 - Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.
+- Kept validated Iconify mask rules available outside plugin CSS scopes so icons render inside portalled UI components.
 
 ### Added
 
