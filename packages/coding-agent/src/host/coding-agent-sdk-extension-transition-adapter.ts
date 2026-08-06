@@ -3,16 +3,16 @@ import type {
 	CodingAgentGreenfieldExtensionEventHost,
 	CodingAgentGreenfieldExtensionInitialization,
 } from "../adapters/runtime-core/greenfield.js";
-import type {
-	CodingAgentGreenfieldPreparedSessionBinding,
-	CodingAgentGreenfieldSessionTransition,
-	CodingAgentGreenfieldSessionTransitionLifecycle,
-} from "../composition/greenfield-active-session-transition-host.js";
 import type { GreenfieldRuntimeComposition } from "../composition/greenfield-runtime-composition-contract.js";
 import type {
 	GreenfieldSdkOwnedResource,
 	GreenfieldSdkSessionInitializationContext,
 } from "../composition/greenfield-sdk-session-factory.js";
+import type {
+	CodingAgentPreparedSessionBinding,
+	CodingAgentSessionTransition,
+	CodingAgentSessionTransitionLifecycle,
+} from "../composition/session-host/active-session-transition-contracts.js";
 
 type ExtensionEventHostFactory = (
 	session: GreenfieldRuntimeSession,
@@ -22,7 +22,7 @@ type ExtensionEventHostFactory = (
 
 /** 把 Session 级 Extension Event Host 纳入 SDK 活动会话的 prepare/commit/rollback 事务。 */
 export class CodingAgentSdkExtensionTransitionAdapter {
-	readonly lifecycle: CodingAgentGreenfieldSessionTransitionLifecycle;
+	readonly lifecycle: CodingAgentSessionTransitionLifecycle;
 	private current: CodingAgentGreenfieldExtensionEventHost | undefined;
 	private readonly hosts = new Map<string, CodingAgentGreenfieldExtensionEventHost>();
 
@@ -124,7 +124,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 		await previous.dispose({ emitSessionShutdown: false });
 	}
 
-	private async before(transition: CodingAgentGreenfieldSessionTransition) {
+	private async before(transition: CodingAgentSessionTransition) {
 		const runner = this.readRunner();
 		if (transition.kind === "fork") {
 			if (!transition.entryId || !runner.hasHandlers("session_before_fork")) return undefined;
@@ -144,8 +144,8 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	}
 
 	private async prepare(
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	): Promise<CodingAgentGreenfieldPreparedSessionBinding> {
+		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+	): Promise<CodingAgentPreparedSessionBinding> {
 		const previous = this.current;
 		const next = this.hosts.get(transition.next.sessionId);
 		if (!previous || !next) throw new Error("Greenfield SDK Extension transition binding is unavailable");
@@ -162,7 +162,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	}
 
 	private async after(
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
 	): Promise<void> {
 		if (transition.kind === "fork") {
 			await this.readRunner().emit({

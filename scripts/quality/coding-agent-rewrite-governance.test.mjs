@@ -386,6 +386,22 @@ describe("Coding Agent rewrite progress gate", () => {
 		expect(state.runtimeHostExports).toEqual(["./runtime-host"]);
 		expect(state.legacyExampleImports).toHaveLength(1);
 	});
+
+	it("keeps the retired root-level active Session Host deleted", () => {
+		const actual = stateFrom([
+			{
+				path: "packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts",
+				text: "export class CodingAgentGreenfieldActiveSessionHost {}",
+			},
+		]);
+
+		expect(actual.oldImplementationFiles).toEqual([
+			"packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts",
+		]);
+		expect(findCodingAgentRewriteProgressViolations(actual, emptyState())).toContain(
+			"packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts: new old implementation file",
+		);
+	});
 });
 
 describe("Coding Agent implementation record gate", () => {

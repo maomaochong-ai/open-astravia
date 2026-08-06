@@ -48,6 +48,7 @@
 
 ### Changed
 
+- **活动 Session 事务宿主职责拆分**：将原 511 行根级活动 Session Host 拆为中性的事务编排、共享合同、稳定事件转发和可重试资源清理模块；Coding Agent 自有类型不再通过 `Greenfield` 内部名称再导出，旧根级文件加入退役守卫。new/switch/fork、事件顺序、取消、回滚、Extension 生命周期、资源释放及 CLI/Desktop/IM 行为保持不变。
 - **CLI / Desktop / IM Greenfield 跨宿主验收门禁**：新增统一 `verify:agent-hosts`，运行 Coding Agent、CLI 与 Desktop 全量功能测试，并以规范独立 Vetta CLI 产物驱动 IM Gateway 的真实 HostClient；验收 Greenfield IM Runtime 决策、真实 `read` Tool Loop、Session 持久化、跨进程恢复和 ownership lock 释放。生产 Runtime、协议和用户可观察功能不变。
 - **Runtime Port 单一事实源闭环**：Model、Prompt、Plugin、Extension、Compaction、Tool/Todo 等 Composition 稳定 Port 现在只在 `src/runtime-contracts` 定义；Adapter 改为消费或实现这些合同，Composition 与公共 API 不再从 Adapter 获取稳定类型。原 Adapter 类型导入路径通过重导出保持兼容，所有工厂、参数、动态刷新和用户可观察行为不变，并新增常驻所有权守卫防止重复声明、跨层类型导入或实现脱离 Port。
 - **Composition 输入合同按职责拆分**：`GreenfieldRuntimeCompositionOptions` 现在由 Environment、Conversation、Model、Tool、Subagent、Prompt、Plugin、Extension、Context 和 Observability 十个职责分面组成；模型、Prompt、Plugin MCP、Todo、Extension 与 Compaction 依赖改为稳定结构 Port，公开合同不再导入具体 Runtime Adapter。现有参数名、CLI/Desktop 装配、动态 Source/Factory、Session 生命周期和用户可观察行为保持不变，并新增常驻架构守卫防止合同重新耦合 Adapter 或膨胀为单文件。

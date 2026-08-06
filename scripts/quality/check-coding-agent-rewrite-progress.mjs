@@ -143,6 +143,7 @@ const RUNTIME_PACKAGE_PREFIXES = Object.freeze([
 const OLD_IMPLEMENTATION_EXACT_FILES = Object.freeze([
 	"packages/coding-agent/src/adapters/runtime-core/greenfield-model-registry-adapter.ts",
 	"packages/coding-agent/src/adapters/runtime-core/model-registry-shared-model-controller.ts",
+	"packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts",
 	"packages/coding-agent/src/modes/rpc/legacy-rpc-session-adapter.ts",
 	"packages/coding-agent/src/public-api/compat-runtime-storage.ts",
 	"packages/coding-agent/src/public-api/compat-runtime-tools.ts",

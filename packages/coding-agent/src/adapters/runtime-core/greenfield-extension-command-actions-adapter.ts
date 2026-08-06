@@ -1,7 +1,7 @@
 import type {
-	CodingAgentGreenfieldNewSessionOptions,
-	CodingAgentGreenfieldSessionSeedInitializer,
-} from "../../composition/greenfield-active-session-transition-host.js";
+	CodingAgentNewSessionOptions,
+	CodingAgentSessionSeedInitializer,
+} from "../../composition/session-host/active-session-transition-contracts.js";
 import type { ExtensionCommandContextActions } from "../../extensions/index.js";
 import type { CodingAgentGreenfieldBranchNavigationOptions } from "./greenfield-branch-navigation-host.js";
 
@@ -10,8 +10,8 @@ type ExtensionSessionSetup = NonNullable<ExtensionNewSessionOptions["setup"]>;
 
 export interface CodingAgentGreenfieldExtensionCommandActionPorts {
 	waitForIdle(): Promise<void>;
-	newSession(options?: CodingAgentGreenfieldNewSessionOptions): Promise<{ cancelled: boolean }>;
-	createSessionSetupInitializer(setup: ExtensionSessionSetup): CodingAgentGreenfieldSessionSeedInitializer;
+	newSession(options?: CodingAgentNewSessionOptions): Promise<{ cancelled: boolean }>;
+	createSessionSetupInitializer(setup: ExtensionSessionSetup): CodingAgentSessionSeedInitializer;
 	fork(entryId: string): Promise<{ readonly cancelled: boolean }>;
 	navigateTree(
 		targetId: string,
@@ -41,7 +41,7 @@ export function createCodingAgentGreenfieldExtensionCommandActions(
 function adaptNewSessionOptions(
 	options: ExtensionNewSessionOptions | undefined,
 	ports: Pick<CodingAgentGreenfieldExtensionCommandActionPorts, "createSessionSetupInitializer">,
-): CodingAgentGreenfieldNewSessionOptions | undefined {
+): CodingAgentNewSessionOptions | undefined {
 	if (!options) return undefined;
 	return {
 		...(options.parentSession !== undefined ? { parentSession: options.parentSession } : {}),

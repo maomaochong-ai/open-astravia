@@ -8,11 +8,11 @@ import type {
 	SessionEvent,
 } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	CodingAgentGreenfieldActiveSessionHost,
-	type CodingAgentGreenfieldPreparedSessionBinding,
-} from "../../src/composition/greenfield-active-session-transition-host.js";
 import type { GreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition.js";
+import {
+	CodingAgentActiveSessionHost,
+	type CodingAgentPreparedSessionBinding,
+} from "../../src/composition/session-host/active-session-transition-host.js";
 import { createCodingAgentSessionSetupSeedInitializer } from "../../src/sessions/setup/session-setup-seed-initializer.js";
 
 const temporaryDirectories: string[] = [];
@@ -23,7 +23,7 @@ afterEach(async () => {
 	}
 });
 
-describe("CodingAgentGreenfieldActiveSessionHost", () => {
+describe("CodingAgentActiveSessionHost", () => {
 	it("switches the active session atomically and keeps external event subscriptions stable", async () => {
 		const fixture = await createFixture();
 		const next = createSession("next", fixture.sessionPath("next"));
@@ -66,6 +66,31 @@ describe("CodingAgentGreenfieldActiveSessionHost", () => {
 		await next.emitObservation(executionObservation("next-turn"));
 
 		expect(observations).toEqual(["old-turn", "next-turn"]);
+	});
+
+	it("isolates throwing execution observers before and after a switch", async () => {
+		const fixture = await createFixture();
+		const next = createSession("next", fixture.sessionPath("next"));
+		fixture.resume.mockResolvedValueOnce(next.session);
+		const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+		const observations: string[] = [];
+		fixture.host.subscribeExecutionObservations(() => {
+			throw new Error("observation failed");
+		});
+		fixture.host.subscribeExecutionObservations((observation) => {
+			observations.push(observation.turnId);
+		});
+
+		try {
+			await fixture.initial.emitObservation(executionObservation("old-turn"));
+			await fixture.host.switchSession(fixture.sessionPath("next"));
+			await next.emitObservation(executionObservation("next-turn"));
+
+			expect(observations).toEqual(["old-turn", "next-turn"]);
+			expect(warning).toHaveBeenCalledTimes(2);
+		} finally {
+			warning.mockRestore();
+		}
 	});
 
 	it("isolates throwing external observers before and after a switch", async () => {
@@ -198,6 +223,24 @@ describe("CodingAgentGreenfieldActiveSessionHost", () => {
 		expect(fixture.initial.dispose).toHaveBeenCalledTimes(2);
 		expect(next.dispose).toHaveBeenCalledOnce();
 		expect(fixture.lifecycleOrder.filter((entry) => entry === "finalize:next")).toHaveLength(2);
+	});
+
+	it("stops forwarding events and observations before disposing the active session", async () => {
+		const fixture = await createFixture();
+		const events: string[] = [];
+		const observations: string[] = [];
+		fixture.host.subscribe((event) => events.push(event.eventId));
+		fixture.host.subscribeExecutionObservations((observation) => {
+			observations.push(observation.turnId);
+		});
+
+		await fixture.host.dispose();
+		fixture.initial.emit(sessionEvent("after-dispose", "initial"));
+		await fixture.initial.emitObservation(executionObservation("after-dispose"));
+
+		expect(events).toEqual([]);
+		expect(observations).toEqual([]);
+		expect(fixture.initial.dispose).toHaveBeenCalledOnce();
 	});
 
 	it("publishes Extension setup as a native V2 seed before activation", async () => {
@@ -397,7 +440,7 @@ async function createFixture(
 		deleteSessionArtifacts: async (path) => rm(path, { force: true }),
 	};
 	const lifecycleOrder: string[] = [];
-	const host = new CodingAgentGreenfieldActiveSessionHost({
+	const host = new CodingAgentActiveSessionHost({
 		runtime,
 		initialSession: initial.session,
 		sessionOptions: { cwd: conversationDir },
@@ -420,7 +463,7 @@ async function createFixture(
 					...(kind === "fork" && options.skipConversationRestore ? { skipConversationRestore: true } : {}),
 				};
 			},
-			prepare: async ({ next }): Promise<CodingAgentGreenfieldPreparedSessionBinding> => {
+			prepare: async ({ next }): Promise<CodingAgentPreparedSessionBinding> => {
 				lifecycleOrder.push(`prepare:${next.sessionId}`);
 				if (options.failPrepare) throw new Error("prepare failed");
 				return {

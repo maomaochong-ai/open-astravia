@@ -3,12 +3,12 @@ import {
 	type CodingAgentGreenfieldExtensionCommandActionPorts,
 	createCodingAgentGreenfieldExtensionCommandActions,
 } from "../../src/adapters/runtime-core/greenfield-extension-command-actions-adapter.js";
-import type { CodingAgentGreenfieldSessionSeedInitializer } from "../../src/composition/greenfield-active-session-transition-host.js";
+import type { CodingAgentSessionSeedInitializer } from "../../src/composition/session-host/active-session-transition-contracts.js";
 import type { ExtensionSessionWriter } from "../../src/extensions/index.js";
 
 describe("createCodingAgentGreenfieldExtensionCommandActions", () => {
 	it("maps the complete Extension command action contract to neutral Greenfield ports", async () => {
-		const initializer: CodingAgentGreenfieldSessionSeedInitializer = {
+		const initializer: CodingAgentSessionSeedInitializer = {
 			initializeSeed: vi.fn(async () => {}),
 		};
 		const ports = createPorts(initializer);
@@ -52,7 +52,7 @@ describe("createCodingAgentGreenfieldExtensionCommandActions", () => {
 });
 
 function createPorts(
-	initializer: CodingAgentGreenfieldSessionSeedInitializer,
+	initializer: CodingAgentSessionSeedInitializer,
 ): CodingAgentGreenfieldExtensionCommandActionPorts & {
 	readonly waitForIdle: ReturnType<typeof vi.fn>;
 	readonly newSession: ReturnType<typeof vi.fn>;

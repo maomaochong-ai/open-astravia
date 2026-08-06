@@ -5,11 +5,6 @@ import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/co
 import { GreenfieldSdkActiveSessionAdapter } from "../adapters/runtime-core/greenfield-sdk-active-session-adapter.js";
 import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "../adapters/runtime-core/greenfield-sdk-active-session-capability-host.js";
 import { CodingAgentGreenfieldSessionCapabilityHost } from "../adapters/runtime-core/greenfield-session-capability-host.js";
-import {
-	CodingAgentGreenfieldActiveSessionHost,
-	type CodingAgentGreenfieldPreparedSessionBinding,
-	type CodingAgentGreenfieldSessionTransitionLifecycle,
-} from "./greenfield-active-session-transition-host.js";
 import { resolveGreenfieldSessionIdFromPath } from "./greenfield-conversation-path.js";
 import { createGreenfieldRuntimeComposition } from "./greenfield-runtime-composition.js";
 import type {
@@ -28,6 +23,11 @@ import {
 	type ResolvedGreenfieldSdkSessionStorage,
 	resolveGreenfieldSdkSessionStorage,
 } from "./greenfield-sdk-session-storage.js";
+import {
+	CodingAgentActiveSessionHost,
+	type CodingAgentPreparedSessionBinding,
+	type CodingAgentSessionTransitionLifecycle,
+} from "./session-host/active-session-transition-host.js";
 
 type GreenfieldSdkCompositionOptions = Omit<
 	GreenfieldRuntimeCompositionOptions,
@@ -47,7 +47,7 @@ export interface GreenfieldSdkSessionFactoryOptions {
 	/** 将产品设置、模型范围和重试控制接入可切换的 Session 能力宿主。 */
 	readonly createCapabilityHost?: GreenfieldSdkSessionCapabilityHostFactory;
 	/** Extension 等产品绑定参与活动 Session 切换事务的生命周期。 */
-	readonly transitionLifecycle?: CodingAgentGreenfieldSessionTransitionLifecycle;
+	readonly transitionLifecycle?: CodingAgentSessionTransitionLifecycle;
 	/** 为 SDK 补充树导航、Bash 和 Legacy setup 等活动会话能力。 */
 	readonly createActiveCapabilityHost?: GreenfieldSdkActiveSessionCapabilityHostFactory;
 	/** 完整清理成功后通知外层 Host 释放 Session 所有权。 */
@@ -74,7 +74,7 @@ export type GreenfieldSdkSessionCapabilityHostFactory = (
 ) => GreenfieldSdkSessionCapabilityPort;
 
 export interface GreenfieldSdkActiveSessionCapabilityHostContext {
-	readonly sessionHost: CodingAgentGreenfieldActiveSessionHost;
+	readonly sessionHost: CodingAgentActiveSessionHost;
 	readonly composition: GreenfieldRuntimeComposition;
 }
 
@@ -134,7 +134,7 @@ export async function createGreenfieldSdkSession(
 		}
 		const conversationDir = storage.conversationDir ?? "memory://conversation";
 		let activeCapabilities: GreenfieldSdkActiveSessionCapabilityPort | undefined;
-		const sessionHost = new CodingAgentGreenfieldActiveSessionHost({
+		const sessionHost = new CodingAgentActiveSessionHost({
 			runtime: {
 				...composition,
 				quiesceSessionBackgroundCommands: async (sessionId) => {
@@ -189,7 +189,7 @@ export async function createGreenfieldSdkSession(
 }
 
 function createActiveSessionCleanup(
-	sessionHost: CodingAgentGreenfieldActiveSessionHost,
+	sessionHost: CodingAgentActiveSessionHost,
 	composition: GreenfieldRuntimeComposition,
 	activeCapabilities: GreenfieldSdkActiveSessionCapabilityPort,
 	capabilityHost: GreenfieldSdkSessionCapabilityPort,
@@ -227,14 +227,14 @@ function createResourceAwareTransitionLifecycle(
 	options: GreenfieldSdkSessionFactoryOptions,
 	readActiveResource: () => GreenfieldSdkOwnedResource | undefined,
 	setActiveResource: (resource: GreenfieldSdkOwnedResource | undefined) => void,
-): CodingAgentGreenfieldSessionTransitionLifecycle | undefined {
+): CodingAgentSessionTransitionLifecycle | undefined {
 	if (!options.initializeSession && !options.transitionLifecycle) return undefined;
 	return {
 		before: (transition) => options.transitionLifecycle?.before?.(transition) ?? Promise.resolve(undefined),
 		prepare: async (transition) => {
 			const previousResource = readActiveResource();
 			let nextResource: GreenfieldSdkOwnedResource | undefined;
-			let externalPrepared: CodingAgentGreenfieldPreparedSessionBinding | undefined;
+			let externalPrepared: CodingAgentPreparedSessionBinding | undefined;
 			try {
 				nextResource = await options.initializeSession?.({
 					session: transition.next,

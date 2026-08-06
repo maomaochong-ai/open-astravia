@@ -7,9 +7,9 @@ import type {
 } from "../../public-api/runtime/extensions.js";
 import { createCodingAgentRuntimeExtensionCommandHost } from "../../public-api/runtime/extensions.js";
 import type {
-	CodingAgentGreenfieldPreparedSessionBinding,
-	CodingAgentGreenfieldSessionTransition,
-} from "../greenfield-active-session-transition-host.js";
+	CodingAgentPreparedSessionBinding,
+	CodingAgentSessionTransition,
+} from "./active-session-transition-contracts.js";
 
 type CodingAgentExtensionEventHostFactory = (
 	session: GreenfieldRuntimeSession,
@@ -67,7 +67,7 @@ export class CodingAgentExtensionSessionHost {
 	}
 
 	async before(
-		transition: CodingAgentGreenfieldSessionTransition,
+		transition: CodingAgentSessionTransition,
 	): Promise<{ readonly cancelled: boolean; readonly skipConversationRestore?: boolean } | undefined> {
 		const runner = this.current.events.runner;
 		if (transition.kind === "fork") {
@@ -88,8 +88,8 @@ export class CodingAgentExtensionSessionHost {
 	}
 
 	async prepare(
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	): Promise<CodingAgentGreenfieldPreparedSessionBinding> {
+		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+	): Promise<CodingAgentPreparedSessionBinding> {
 		const previous = this.current;
 		const events = this.createHost(transition.next);
 		const next: CodingAgentExtensionSessionBinding = {
@@ -108,7 +108,7 @@ export class CodingAgentExtensionSessionHost {
 			if (this.initialization) {
 				await events.initialize(this.initialization, { emitSessionStart: false });
 			}
-			const prepared: CodingAgentGreenfieldPreparedSessionBinding = {
+			const prepared: CodingAgentPreparedSessionBinding = {
 				commit: async () => {
 					this.current = next;
 				},
@@ -126,9 +126,7 @@ export class CodingAgentExtensionSessionHost {
 		}
 	}
 
-	async after(
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	): Promise<void> {
+	async after(transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession }): Promise<void> {
 		if (transition.kind === "fork") {
 			await this.current.events.runner.emit({
 				type: "session_fork",

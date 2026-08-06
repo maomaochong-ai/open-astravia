@@ -1,21 +1,21 @@
 import { createConversationSeedDraft } from "@vetta/runtime-storage/conversation";
 import type {
-	CodingAgentGreenfieldSessionSeedInitializer,
-	CodingAgentGreenfieldSessionSeedTarget,
-} from "../../composition/greenfield-active-session-transition-host.js";
+	CodingAgentSessionSeedInitializer,
+	CodingAgentSessionSeedTarget,
+} from "../../composition/session-host/active-session-transition-contracts.js";
 import type { ExtensionSessionSetup } from "../../extensions/index.js";
 import { projectCodingAgentSessionDocumentEntry } from "../projection/session-document-entry.js";
 import { CodingAgentSessionSetupWriter } from "./session-setup-writer.js";
 
 export type CodingAgentSessionSetup = ExtensionSessionSetup;
 
-export interface CodingAgentSessionSetupSeedInput extends CodingAgentGreenfieldSessionSeedTarget {
+export interface CodingAgentSessionSetupSeedInput extends CodingAgentSessionSeedTarget {
 	readonly setup: CodingAgentSessionSetup;
 }
 
 export function createCodingAgentSessionSetupSeedInitializer(
 	setup: CodingAgentSessionSetup,
-): CodingAgentGreenfieldSessionSeedInitializer {
+): CodingAgentSessionSeedInitializer {
 	return { initializeSeed: (target) => initializeCodingAgentSessionSetupSeed({ ...target, setup }) };
 }
 

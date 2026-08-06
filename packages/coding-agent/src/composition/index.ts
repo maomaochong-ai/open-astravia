@@ -2,11 +2,6 @@ export {
 	type CodingAgentSessionSetup,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "../sessions/setup/session-setup-seed-initializer.js";
-export {
-	CodingAgentGreenfieldActiveSessionHost as CodingAgentActiveSessionHost,
-	type CodingAgentGreenfieldSessionTransition as CodingAgentSessionTransition,
-	type CodingAgentGreenfieldSessionTransitionLifecycle as CodingAgentSessionTransitionLifecycle,
-} from "./greenfield-active-session-transition-host.js";
 export { resolveGreenfieldSessionIdFromPath as resolveSessionIdFromPath } from "./greenfield-conversation-path.js";
 export { createGreenfieldKnowledgeProcessingSessionFactory as createKnowledgeProcessingSessionFactory } from "./greenfield-knowledge-processing-session.js";
 export {
@@ -23,6 +18,11 @@ export type {
 	KnowledgeProcessingSessionRequest,
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
+export {
+	CodingAgentActiveSessionHost,
+	type CodingAgentSessionTransition,
+	type CodingAgentSessionTransitionLifecycle,
+} from "./session-host/active-session-transition-host.js";
 export {
 	CodingAgentExtensionSessionHost,
 	CodingAgentProcessSessionHost,

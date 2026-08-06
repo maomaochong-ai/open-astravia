@@ -1,6 +1,6 @@
 import type { GreenfieldRuntimeSession, SessionEvent } from "@vetta/runtime-core";
 import type { CodingAgentGreenfieldSdkBashPort } from "../adapters/runtime-core/greenfield-sdk-active-session-capability-host.js";
-import type { CodingAgentGreenfieldActiveSessionHost } from "../composition/greenfield-active-session-transition-host.js";
+import type { CodingAgentActiveSessionHost } from "../composition/session-host/active-session-transition-host.js";
 import { type BashExecutionMessage, bashExecutionToText } from "../model-context/index.js";
 import { CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE } from "../sessions/index.js";
 import type { HostBashExecutor, HostBashResult } from "./command-execution/index.js";
@@ -24,7 +24,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentGreenfieldSdkBashPo
 
 	constructor(private readonly options: CodingAgentSdkBashAdapterOptions) {}
 
-	bindEvents(host: Pick<CodingAgentGreenfieldActiveSessionHost, "readSession" | "subscribe">): void {
+	bindEvents(host: Pick<CodingAgentActiveSessionHost, "readSession" | "subscribe">): void {
 		if (this.unsubscribeEvents) throw new Error("Greenfield SDK Bash events are already bound");
 		this.unsubscribeEvents = host.subscribe((event) => {
 			void this.observe(event, () => host.readSession()).catch((error: unknown) => {

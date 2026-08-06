@@ -1,116 +1,45 @@
 import { join } from "node:path";
 import type { SessionEndCause } from "@vetta/ecosystem-adapter";
-import {
-	type GreenfieldRuntimeSession,
-	type GreenfieldRuntimeSessionBackend,
-	RetryableCleanup,
-	type RuntimeSessionCatalog,
-	type RuntimeSessionExecutionObservation,
-	type SessionEvent,
-} from "@vetta/runtime-core";
+import type { GreenfieldRuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import { CodingAgentActiveSessionEventRelay } from "./active-session-event-relay.js";
 import type {
-	GreenfieldRuntimeSessionHookLifecycle,
-	GreenfieldRuntimeSessionOptions,
-} from "./greenfield-runtime-composition.js";
+	CodingAgentActiveSessionHostOptions,
+	CodingAgentNewSessionOptions,
+	CodingAgentPreparedSessionBinding,
+	CodingAgentSessionSeedInitializer,
+	CodingAgentSessionTransition,
+	CodingAgentSessionTransitionDecision,
+	CodingAgentSessionTransitionKind,
+} from "./active-session-transition-contracts.js";
+import { CodingAgentSessionTransitionCleanup } from "./session-transition-cleanup.js";
 
-export type CodingAgentGreenfieldSessionTransitionKind = "new" | "resume" | "fork";
-
-export interface CodingAgentGreenfieldSessionSeedTarget {
-	readonly cwd: string;
-	readonly parentSession?: string;
-	readonly targetRootDir: string;
-	readonly targetSessionId: string;
-}
-
-export interface CodingAgentGreenfieldSessionSeedInitializer {
-	initializeSeed(target: CodingAgentGreenfieldSessionSeedTarget): Promise<void>;
-}
-
-export interface CodingAgentGreenfieldNewSessionOptions {
-	readonly parentSession?: string;
-	readonly seedInitializer?: CodingAgentGreenfieldSessionSeedInitializer;
-}
-
-export interface CodingAgentGreenfieldSessionTransition {
-	readonly kind: CodingAgentGreenfieldSessionTransitionKind;
-	readonly previous: GreenfieldRuntimeSession;
-	readonly next?: GreenfieldRuntimeSession;
-	readonly previousSessionPath: string | undefined;
-	readonly targetSessionPath?: string;
-	readonly entryId?: string;
-}
-
-export interface CodingAgentGreenfieldPreparedSessionBinding {
-	commit(): Promise<void>;
-	rollback(): Promise<void>;
-	finalize(): Promise<void>;
-}
-
-export interface CodingAgentGreenfieldSessionTransitionDecision {
-	readonly cancelled: boolean;
-	readonly skipConversationRestore?: boolean;
-}
-
-export interface CodingAgentGreenfieldSessionTransitionLifecycle {
-	before?(
-		transition: CodingAgentGreenfieldSessionTransition,
-	): Promise<CodingAgentGreenfieldSessionTransitionDecision | undefined>;
-	prepare?(
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	): Promise<CodingAgentGreenfieldPreparedSessionBinding | undefined>;
-	after?(
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	): Promise<void>;
-}
-
-export interface CodingAgentGreenfieldSessionTransitionRuntimePort {
-	readonly backend: GreenfieldRuntimeSessionBackend<GreenfieldRuntimeSessionOptions>;
-	readonly sessionHooks: GreenfieldRuntimeSessionHookLifecycle;
-	quiesceSessionBackgroundCommands(sessionId: string): Promise<void>;
-	preserveSessionExecutionContext(sourceSessionId: string, targetSessionId: string): Promise<void>;
-}
-
-export interface CodingAgentGreenfieldActiveSessionHostOptions {
-	readonly runtime: CodingAgentGreenfieldSessionTransitionRuntimePort;
-	readonly initialSession: GreenfieldRuntimeSession;
-	readonly sessionOptions: Omit<GreenfieldRuntimeSessionOptions, "sessionId" | "parentSessionPath" | "parentEntryId">;
-	readonly conversationDir: string;
-	readonly sessionCatalog: RuntimeSessionCatalog;
-	readonly createSessionId: () => string;
-	readonly resolveSessionId: (sessionPath: string) => string | undefined;
-	readonly lifecycle?: CodingAgentGreenfieldSessionTransitionLifecycle;
-	readonly onTransitionCleanupError?: (
-		error: AggregateError,
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	) => void;
-}
+export type {
+	CodingAgentActiveSessionHostOptions,
+	CodingAgentNewSessionOptions,
+	CodingAgentPreparedSessionBinding,
+	CodingAgentSessionSeedInitializer,
+	CodingAgentSessionSeedTarget,
+	CodingAgentSessionTransition,
+	CodingAgentSessionTransitionDecision,
+	CodingAgentSessionTransitionKind,
+	CodingAgentSessionTransitionLifecycle,
+	CodingAgentSessionTransitionRuntimePort,
+} from "./active-session-transition-contracts.js";
 
 /**
- * Coding Agent Greenfield 的活动 Session 事务宿主。
- *
- * Backend 继续拥有具体 Session；本类只拥有“当前活动者”、稳定事件订阅和切换事务。
- * 目标 Session、宿主 Binding 与 after 事件全部成功后才释放旧 Session；失败时恢复旧
- * Session，并删除由本次 new/fork 创建的会话产物。
+ * Owns the active Session identity and serializes new, resume and fork transactions.
+ * Event rebinding and committed-resource cleanup are delegated to dedicated collaborators.
  */
-export class CodingAgentGreenfieldActiveSessionHost {
+export class CodingAgentActiveSessionHost {
 	private activeSession: GreenfieldRuntimeSession;
-	private activeEventUnsubscribe: (() => void) | undefined;
-	private activeExecutionObservationUnsubscribe: (() => void) | undefined;
-	private readonly listeners = new Set<(event: SessionEvent) => void>();
-	private readonly executionObservationListeners = new Set<
-		(observation: RuntimeSessionExecutionObservation) => Promise<void> | void
-	>();
+	private readonly events: CodingAgentActiveSessionEventRelay;
+	private readonly cleanup = new CodingAgentSessionTransitionCleanup();
 	private transitionTail: Promise<void> = Promise.resolve();
-	private suppressActiveEvents = false;
 	private disposed = false;
-	private readonly retiredCleanups = new Map<number, RetryableCleanup>();
-	private readonly finalCleanup = new RetryableCleanup();
-	private cleanupSequence = 0;
-	private disposePreparation: Promise<void> | undefined;
 
-	constructor(private readonly options: CodingAgentGreenfieldActiveSessionHostOptions) {
+	constructor(private readonly options: CodingAgentActiveSessionHostOptions) {
 		this.activeSession = options.initialSession;
-		this.bindActiveEvents();
+		this.events = new CodingAgentActiveSessionEventRelay(options.initialSession);
 	}
 
 	readSession(): GreenfieldRuntimeSession {
@@ -120,16 +49,14 @@ export class CodingAgentGreenfieldActiveSessionHost {
 
 	subscribe(listener: (event: SessionEvent) => void): () => void {
 		this.assertOpen();
-		this.listeners.add(listener);
-		return () => this.listeners.delete(listener);
+		return this.events.subscribe(listener);
 	}
 
 	subscribeExecutionObservations(
 		listener: (observation: RuntimeSessionExecutionObservation) => Promise<void> | void,
 	): () => void {
 		this.assertOpen();
-		this.executionObservationListeners.add(listener);
-		return () => this.executionObservationListeners.delete(listener);
+		return this.events.subscribeExecutionObservations(listener);
 	}
 
 	waitForIdle(): Promise<void> {
@@ -153,7 +80,7 @@ export class CodingAgentGreenfieldActiveSessionHost {
 		});
 	}
 
-	newSession(options?: CodingAgentGreenfieldNewSessionOptions): Promise<{ cancelled: boolean }> {
+	newSession(options?: CodingAgentNewSessionOptions): Promise<{ cancelled: boolean }> {
 		return this.runExclusive(async () => {
 			const previous = this.activeSession;
 			const transition = this.describe("new", previous);
@@ -248,19 +175,19 @@ export class CodingAgentGreenfieldActiveSessionHost {
 	}
 
 	async dispose(): Promise<void> {
-		if (!this.disposePreparation) {
-			this.disposed = true;
-			this.disposePreparation = this.prepareDisposal();
-		}
-		await this.disposePreparation;
-		await this.finalCleanup.run("Failed to dispose Greenfield active session host");
+		this.disposed = true;
+		await this.cleanup.dispose({
+			waitForTransitions: () => this.transitionTail,
+			events: this.events,
+			readActiveSession: () => this.activeSession,
+		});
 	}
 
 	private describe(
-		kind: CodingAgentGreenfieldSessionTransitionKind,
+		kind: CodingAgentSessionTransitionKind,
 		previous: GreenfieldRuntimeSession,
-		extra: Partial<Pick<CodingAgentGreenfieldSessionTransition, "targetSessionPath" | "entryId">> = {},
-	): CodingAgentGreenfieldSessionTransition {
+		extra: Partial<Pick<CodingAgentSessionTransition, "targetSessionPath" | "entryId">> = {},
+	): CodingAgentSessionTransition {
 		return {
 			kind,
 			previous,
@@ -270,18 +197,18 @@ export class CodingAgentGreenfieldActiveSessionHost {
 	}
 
 	private async prepareTransition(
-		transition: CodingAgentGreenfieldSessionTransition,
-	): Promise<CodingAgentGreenfieldSessionTransitionDecision> {
+		transition: CodingAgentSessionTransition,
+	): Promise<CodingAgentSessionTransitionDecision> {
 		return (await this.options.lifecycle?.before?.(transition)) ?? { cancelled: false };
 	}
 
 	private async commitTransition(
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
 		options: { readonly deleteTargetOnRollback?: boolean } = {},
 	): Promise<void> {
 		const previous = transition.previous;
 		const next = transition.next;
-		let prepared: CodingAgentGreenfieldPreparedSessionBinding | undefined;
+		let prepared: CodingAgentPreparedSessionBinding | undefined;
 		let activeReplaced = false;
 		try {
 			prepared = await this.options.lifecycle?.prepare?.(transition);
@@ -300,71 +227,16 @@ export class CodingAgentGreenfieldActiveSessionHost {
 			throw error;
 		}
 
-		const cleanupId = this.cleanupSequence++;
-		const cleanup = new RetryableCleanup();
-		this.retiredCleanups.set(cleanupId, cleanup);
-		if (prepared) {
-			cleanup.add({ id: "finalize", cleanup: () => prepared.finalize() });
-		}
-		cleanup.add({ id: "previous-session", cleanup: () => previous.dispose() });
-		try {
-			await cleanup.run("Greenfield session transition committed, but cleanup failed");
-			this.retiredCleanups.delete(cleanupId);
-		} catch (error) {
-			this.reportTransitionCleanupError(
-				error instanceof AggregateError
-					? error
-					: new AggregateError([error], "Greenfield session transition committed, but cleanup failed"),
-				transition,
-			);
-		}
-	}
-
-	private async prepareDisposal(): Promise<void> {
-		await this.transitionTail;
-		for (const [cleanupId, retiredCleanup] of this.retiredCleanups) {
-			this.finalCleanup.add({
-				id: `retired-transition:${cleanupId}`,
-				phase: 0,
-				cleanup: async () => {
-					await retiredCleanup.run("Failed to dispose retired Greenfield session resources");
-					this.retiredCleanups.delete(cleanupId);
-				},
-			});
-		}
-		const unsubscribe = this.activeEventUnsubscribe;
-		if (unsubscribe) {
-			this.finalCleanup.add({
-				id: "active-event-subscription",
-				phase: 1,
-				cleanup: () => {
-					unsubscribe();
-					if (this.activeEventUnsubscribe === unsubscribe) this.activeEventUnsubscribe = undefined;
-				},
-			});
-		}
-		const unsubscribeObservations = this.activeExecutionObservationUnsubscribe;
-		if (unsubscribeObservations) {
-			this.finalCleanup.add({
-				id: "active-execution-observation-subscription",
-				phase: 1,
-				cleanup: () => {
-					unsubscribeObservations();
-					if (this.activeExecutionObservationUnsubscribe === unsubscribeObservations) {
-						this.activeExecutionObservationUnsubscribe = undefined;
-					}
-				},
-			});
-		}
-		this.listeners.clear();
-		this.executionObservationListeners.clear();
-		const activeSession = this.activeSession;
-		this.finalCleanup.add({ id: "active-session", phase: 2, cleanup: () => activeSession.dispose() });
+		await this.cleanup.retire({
+			previous,
+			prepared,
+			reportError: (error) => this.reportTransitionCleanupError(error, transition),
+		});
 	}
 
 	private reportTransitionCleanupError(
 		error: AggregateError,
-		transition: CodingAgentGreenfieldSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
 	): void {
 		try {
 			if (this.options.onTransitionCleanupError) {
@@ -397,51 +269,26 @@ export class CodingAgentGreenfieldActiveSessionHost {
 	}
 
 	private replaceActiveSession(session: GreenfieldRuntimeSession): void {
-		this.activeEventUnsubscribe?.();
-		this.activeExecutionObservationUnsubscribe?.();
-		this.activeSession = session;
-		this.bindActiveEvents();
-	}
-
-	private bindActiveEvents(): void {
-		this.activeEventUnsubscribe = this.activeSession.subscribe((event) => {
-			if (this.suppressActiveEvents) return;
-			for (const listener of this.listeners) {
-				try {
-					listener(event);
-				} catch (error) {
-					console.warn("[GreenfieldActiveSessionHost] Event listener failed", error);
-				}
-			}
+		this.events.replaceSession(session, () => {
+			this.activeSession = session;
 		});
-		this.activeExecutionObservationUnsubscribe = this.activeSession
-			.createCoreAssembly()
-			.executionObservationStream.subscribe(async (observation) => {
-				for (const listener of this.executionObservationListeners) {
-					try {
-						await listener(observation);
-					} catch (error) {
-						console.warn("[GreenfieldActiveSessionHost] Execution observation listener failed", error);
-					}
-				}
-			});
 	}
 
 	private async interruptActiveTurn(session: GreenfieldRuntimeSession, reason: string): Promise<void> {
 		if (!session.readState().isStreaming) return;
-		this.suppressActiveEvents = true;
+		this.events.setEventsSuppressed(true);
 		try {
 			await session.abort(reason);
 			await waitForIdle(session);
 		} finally {
-			this.suppressActiveEvents = false;
+			this.events.setEventsSuppressed(false);
 		}
 	}
 
 	private async createInitializedSession(
 		sessionId: string,
 		parentSession: string | undefined,
-		initializer: CodingAgentGreenfieldSessionSeedInitializer,
+		initializer: CodingAgentSessionSeedInitializer,
 	): Promise<GreenfieldRuntimeSession> {
 		try {
 			await initializer.initializeSeed({

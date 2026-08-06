@@ -13,13 +13,13 @@ import type {
 	CodingAgentTurnRetrySettings,
 } from "../../public-api/runtime.js";
 import { createCodingAgentTurnExecutor, createCodingAgentTurnRetryController } from "../../public-api/runtime.js";
-import type { CodingAgentGreenfieldActiveSessionHost } from "../greenfield-active-session-transition-host.js";
 import type { GreenfieldRuntimeComposition } from "../greenfield-runtime-composition-contract.js";
+import type { CodingAgentActiveSessionHost } from "./active-session-transition-host.js";
 import type { CodingAgentExtensionSessionHost } from "./extension-session-host.js";
 
 export interface CodingAgentProcessSessionHostOptions {
 	readonly runtime: GreenfieldRuntimeComposition;
-	readonly activeSessionHost: CodingAgentGreenfieldActiveSessionHost;
+	readonly activeSessionHost: CodingAgentActiveSessionHost;
 	readonly extensionSessionHost: CodingAgentExtensionSessionHost;
 	readonly mcpSource: ManagedMcpRuntimeToolSource;
 	readonly readRetrySettings: () => CodingAgentTurnRetrySettings;
@@ -98,15 +98,15 @@ export class CodingAgentProcessSessionHost {
 		return this.options.extensionSessionHost.shutdown();
 	}
 
-	newSession(...args: Parameters<CodingAgentGreenfieldActiveSessionHost["newSession"]>) {
+	newSession(...args: Parameters<CodingAgentActiveSessionHost["newSession"]>) {
 		return this.options.activeSessionHost.newSession(...args);
 	}
 
-	switchSession(...args: Parameters<CodingAgentGreenfieldActiveSessionHost["switchSession"]>) {
+	switchSession(...args: Parameters<CodingAgentActiveSessionHost["switchSession"]>) {
 		return this.options.activeSessionHost.switchSession(...args);
 	}
 
-	fork(...args: Parameters<CodingAgentGreenfieldActiveSessionHost["fork"]>) {
+	fork(...args: Parameters<CodingAgentActiveSessionHost["fork"]>) {
 		return this.options.activeSessionHost.fork(...args);
 	}
 

@@ -1,7 +1,6 @@
 import type { ImageContent, TextContent } from "@vetta/ai";
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { CodingAgentGreenfieldActiveSessionHost } from "../../composition/greenfield-active-session-transition-host.js";
 import type {
 	GreenfieldSdkActiveSessionCapabilityPort,
 	GreenfieldSdkBashOperations,
@@ -10,6 +9,7 @@ import type {
 	GreenfieldSdkTreeNavigationOptions,
 	GreenfieldSdkTreeNavigationResult,
 } from "../../composition/greenfield-sdk-runtime-contract.js";
+import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
 import { createGreenfieldReadonlySessionManager } from "./greenfield-readonly-session-manager.js";
 
 export interface CodingAgentGreenfieldSdkBashPort {
@@ -42,7 +42,7 @@ export interface CodingAgentGreenfieldSdkTreeNavigationPort {
 
 export interface CodingAgentGreenfieldSdkActiveSessionCapabilityHostOptions {
 	readonly sessionHost: Pick<
-		CodingAgentGreenfieldActiveSessionHost,
+		CodingAgentActiveSessionHost,
 		| "fork"
 		| "newSession"
 		| "readSession"
@@ -52,7 +52,7 @@ export interface CodingAgentGreenfieldSdkActiveSessionCapabilityHostOptions {
 	>;
 	readonly createSessionSetupInitializer?: (
 		setup: NonNullable<GreenfieldSdkNewSessionOptions["setup"]>,
-	) => NonNullable<Parameters<CodingAgentGreenfieldActiveSessionHost["newSession"]>[0]>["seedInitializer"];
+	) => NonNullable<Parameters<CodingAgentActiveSessionHost["newSession"]>[0]>["seedInitializer"];
 	readonly treeNavigation?: CodingAgentGreenfieldSdkTreeNavigationPort;
 	readonly bash?: CodingAgentGreenfieldSdkBashPort;
 }
