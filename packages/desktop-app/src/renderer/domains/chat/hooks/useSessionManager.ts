@@ -1409,7 +1409,9 @@ function buildRecentConversation(messages: ChatMessage[]): string {
 	for (const m of relevant.slice(startIdx)) {
 		const text = (m.text ?? "").trim();
 		if (!text) continue;
-		lines.push(`${m.role === "user" ? "用户" : "助手"}: ${text.slice(0, 600)}`);
+		// 标签必须用英文：中文标签会给预测模型「本会话说中文」的信号，
+		// 用户全程英文也会拿到中文建议（语言由用户消息决定，见 peripheral-tasks.ts）。
+		lines.push(`${m.role === "user" ? "User" : "Assistant"}: ${text.slice(0, 600)}`);
 	}
 	return lines.join("\n\n").slice(0, 4000);
 }
