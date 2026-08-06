@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { writeAppUpdateConfig, writeInnoVerificationManifest } from "./build-inno-installer.mjs";
+import { resolveUpdatePublishConfig } from "./resolve-update-publish-config.mjs";
 
 test("writes updater config into the version directory installed by Inno", async () => {
 	const sourceDir = await mkdtemp(join(tmpdir(), "vetta-inno-test-"));
@@ -12,14 +13,17 @@ test("writes updater config into the version directory installed by Inno", async
 	await mkdir(resourcesDir, { recursive: true });
 
 	try {
-		await writeAppUpdateConfig(sourceDir, version, {
-			provider: "generic",
-			url: "https://releases.openvetta.com/desktop/test",
+		const publishConfig = resolveUpdatePublishConfig({
+			VETTA_UPDATE_PROVIDER: "generic",
+			VETTA_UPDATE_URL: "https://releases.openvetta.com/desktop/test",
 		});
+		assert.ok(publishConfig);
+		await writeAppUpdateConfig(sourceDir, version, publishConfig);
 
 		const config = await readFile(join(resourcesDir, "app-update.yml"), "utf8");
 		assert.match(config, /provider: generic/);
 		assert.match(config, /url: https:\/\/releases\.openvetta\.com\/desktop\/test/);
+		assert.match(config, /useMultipleRangeRequest: true/);
 		assert.match(config, /updaterCacheDirName: vetta-updater/);
 	} finally {
 		await rm(sourceDir, { recursive: true, force: true });

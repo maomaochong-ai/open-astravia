@@ -29,7 +29,7 @@ export function resolveUpdatePublishConfig(env = process.env) {
 		return {
 			provider: "generic",
 			url: normalizeHttpUrl(requireValue(env, "VETTA_UPDATE_URL", provider)),
-			useMultipleRangeRequest: false,
+			useMultipleRangeRequest: true,
 		};
 	}
 
