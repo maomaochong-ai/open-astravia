@@ -49,6 +49,14 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 					removeProvider: (sessionId, provider) =>
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_PROVIDER_REMOVE, sessionId, provider),
 				},
+				media: {
+					listProviders: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_PROVIDER_LIST, sessionId),
+					createJob: (sessionId, input) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CREATE, sessionId, input),
+					getJob: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_GET, sessionId, input),
+					cancelJob: (sessionId, input) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, sessionId, input),
+				},
 				mcp: {
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, sessionId),
 					get: (sessionId, name) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_GET, sessionId, name),

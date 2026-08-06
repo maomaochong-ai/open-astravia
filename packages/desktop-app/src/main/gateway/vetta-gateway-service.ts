@@ -1,41 +1,35 @@
-/**
- * 插件访问 Vetta 服务端的受控通道（ADR-0056）。
- *
- * 插件只交出「相对 `/api/v1` 的路径 + JSON body」，服务端地址与 JWT 都在这里注入，
- * token 不出主进程。插件因此拿不到凭据、也拼不出指向其它接口的绝对 URL——把 JWT
- * 交给插件进程等于开放整个 `/api/v1` 的越权面。
- *
- * 401 由这里刷新后重试一次：让插件自己持有 token 的话，token 一轮换就得再开一个
- * 刷新口子，而插件侧无法单飞去重，并发请求会打出多次刷新。
- */
-
-import type { PluginGatewayRequest, PluginGatewayResponse } from "@vetta-org/plugin-sdk";
 import { DEFAULT_SERVER_URL } from "../constants.js";
 import { readSettings, tryRefreshAccessToken } from "../ipc/settings.js";
 import { getAppLogger } from "../logger.js";
 
-const log = getAppLogger("plugin-gateway");
+const log = getAppLogger("vetta-gateway");
 
-// 网关背后是图像生成这类长任务：生图 30-60s 常见，改图连上传带生成常过 2 分钟。
-// 默认与上限都取 5 分钟，与服务端 ImageService 的 http client 超时对齐——
-// 客户端先超时只会让一次已经在上游跑着的生成白白丢掉，用户还照扣积分。
 const DEFAULT_TIMEOUT_MS = 300_000;
 const MAX_TIMEOUT_MS = 300_000;
-// 改图的源图走 JSON base64 上行，比普通接口请求大一个数量级。
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
-/** 服务端业务信封。插件拿到的是拆开后的结果，不需要认识这层结构。 */
+export interface VettaGatewayRequest {
+	path: string;
+	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+	body?: unknown;
+	timeoutMs?: number;
+}
+
+export interface VettaGatewayResponse<T = unknown> {
+	ok: boolean;
+	status: number;
+	code: number;
+	message: string;
+	data?: T;
+}
+
 interface ApiEnvelope<T> {
 	code?: number;
 	message?: string;
 	data?: T;
 }
 
-/**
- * 路径只接受相对形式：带 scheme 或以 `//` 开头都会被拒，
- * 否则 `//evil.com/x` 会被 URL 解析成另一个 host。
- */
 function resolvePath(path: string): string {
 	const trimmed = path.trim();
 	if (trimmed === "") throw new Error("Gateway path is required");
@@ -45,11 +39,6 @@ function resolvePath(path: string): string {
 	return trimmed.replace(/^\/+/, "");
 }
 
-/**
- * `VETTA_SERVER_URL` 本身就带 `/api/v1`（见 .env.*），这里**不能**再补一次前缀，
- * 否则会拼出 `/api/v1/api/v1/...` 全部 404。仓库里其它调用方（settings.ts 的
- * authedGet）同样是直接拼 path。
- */
 function baseUrl(): string {
 	return DEFAULT_SERVER_URL.replace(/\/+$/, "");
 }
@@ -64,44 +53,37 @@ async function readBody(response: Response): Promise<string> {
 	if (Number.isFinite(contentLength) && contentLength > MAX_RESPONSE_BYTES) {
 		throw new Error(`Gateway response exceeds ${MAX_RESPONSE_BYTES} bytes`);
 	}
-	const text = await response.text();
-	if (Buffer.byteLength(text) > MAX_RESPONSE_BYTES) {
+	const body = await response.text();
+	if (Buffer.byteLength(body) > MAX_RESPONSE_BYTES) {
 		throw new Error(`Gateway response exceeds ${MAX_RESPONSE_BYTES} bytes`);
 	}
-	return text;
+	return body;
 }
 
-function unwrap<T>(status: number, text: string): PluginGatewayResponse<T> {
+function unwrap<T>(status: number, body: string): VettaGatewayResponse<T> {
 	let envelope: ApiEnvelope<T> | undefined;
 	try {
-		envelope = text.length > 0 ? (JSON.parse(text) as ApiEnvelope<T>) : undefined;
+		envelope = body.length > 0 ? (JSON.parse(body) as ApiEnvelope<T>) : undefined;
 	} catch {
-		// 非 JSON 响应（网关 502 的 HTML 错误页等）：状态码已足够表达失败
-		return { ok: false, status, code: -1, message: text.slice(0, 500) || `HTTP ${status}` };
+		return { ok: false, status, code: -1, message: body.slice(0, 500) || `HTTP ${status}` };
 	}
 	const code = envelope?.code ?? -1;
 	const ok = status >= 200 && status < 300 && code === 0;
-	const result: PluginGatewayResponse<T> = {
+	const result: VettaGatewayResponse<T> = {
 		ok,
 		status,
 		code,
 		message: envelope?.message ?? (ok ? "" : `HTTP ${status}`),
 	};
-	// 只在真有值时才带 data 键：返回值同样要过 capability 的 CapabilityJsonValue
-	// 校验，`data: undefined` 会让整个响应被判非法，把真正的失败原因（业务错误码
-	// 与 message）一起挡在插件之外。
 	if (envelope?.data !== undefined) result.data = envelope.data;
 	return result;
 }
 
-/**
- * 发一次网关请求。失败不抛异常而是回结构化结果：配额用尽、档位无权限这类
- * 是常规业务分支，插件要据此渲染引导而非当成异常。
- */
-export async function requestGatewayForPlugin<T = unknown>(
-	request: PluginGatewayRequest,
+/** Authenticated Vetta `/api/v1` transport. Callers never receive the token. */
+export async function requestVettaGateway<T = unknown>(
+	request: VettaGatewayRequest,
 	signal?: AbortSignal,
-): Promise<PluginGatewayResponse<T>> {
+): Promise<VettaGatewayResponse<T>> {
 	const url = `${baseUrl()}/${resolvePath(request.path)}`;
 	const method = request.method ?? (request.body === undefined ? "GET" : "POST");
 	const body = request.body === undefined ? undefined : JSON.stringify(request.body);
@@ -140,8 +122,6 @@ export async function requestGatewayForPlugin<T = unknown>(
 		let response = await send(token);
 		if (response.status === 401) {
 			const outcome = await tryRefreshAccessToken();
-			// transient（网络/超时/5xx）不登出也不重试：原样把 401 回给插件，
-			// 由它按「暂不可用」降级，而不是把一次网络抖动放大成掉登录。
 			if (outcome.status !== "ok") {
 				return { ok: false, status: 401, code: -1, message: "Unauthorized" };
 			}
@@ -150,7 +130,6 @@ export async function requestGatewayForPlugin<T = unknown>(
 		}
 		return unwrap<T>(response.status, await readBody(response));
 	} catch (error) {
-		// 调用方归属由 capability 审计层记录（subjectId/sessionId），这里只记路径
 		log.warn(`网关请求失败 (${request.path}):`, error);
 		return {
 			ok: false,

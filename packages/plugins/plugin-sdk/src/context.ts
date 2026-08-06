@@ -7,6 +7,7 @@ import type { PluginFileExplorerApi } from "./file-explorer.js";
 import type { PluginFsApi } from "./fs.js";
 import type { PluginGatewayApi } from "./gateway.js";
 import type { PluginI18nApi } from "./i18n.js";
+import type { PluginMediaApi } from "./media.js";
 import type { PluginNetworkApi } from "./network.js";
 import type { PluginOfficialApi } from "./official.js";
 import type { PluginPermission } from "./permissions.js";
@@ -36,6 +37,7 @@ export interface PluginContext {
 	official: PluginOfficialApi;
 	fs: PluginFsApi;
 	command: PluginCommandApi;
+	media: PluginMediaApi;
 	network: PluginNetworkApi;
 	/**
 	 * Vetta 服务端网关调用（ADR-0056）。**仅内置 official 插件可用**，

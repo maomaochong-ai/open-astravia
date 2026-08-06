@@ -6,6 +6,7 @@ import { DOMAIN_GENERAL_SETTINGS_CAPABILITIES } from "./domain/general-settings.
 import { DOMAIN_IM_CAPABILITIES } from "./domain/im.js";
 import { DOMAIN_KNOWLEDGE_CAPABILITIES } from "./domain/knowledge.js";
 import { DOMAIN_MCP_CAPABILITIES } from "./domain/mcp.js";
+import { DOMAIN_MEDIA_CAPABILITIES } from "./domain/media.js";
 import { DOMAIN_MODEL_CAPABILITIES } from "./domain/model.js";
 import { DOMAIN_PROJECT_CAPABILITIES } from "./domain/project.js";
 import { DOMAIN_SCHEDULER_CAPABILITIES } from "./domain/scheduler.js";
@@ -23,6 +24,7 @@ export const DOMAIN_CAPABILITY_CATALOG = createCapabilityCatalog([
 	...Object.values(DOMAIN_IM_CAPABILITIES),
 	...Object.values(DOMAIN_KNOWLEDGE_CAPABILITIES),
 	...Object.values(DOMAIN_MCP_CAPABILITIES),
+	...Object.values(DOMAIN_MEDIA_CAPABILITIES),
 	...Object.values(DOMAIN_MODEL_CAPABILITIES),
 	...Object.values(DOMAIN_PROJECT_CAPABILITIES),
 	...Object.values(DOMAIN_SCHEDULER_CAPABILITIES),

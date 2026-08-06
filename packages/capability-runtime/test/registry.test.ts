@@ -28,6 +28,41 @@ function context(): CapabilityExecutionContext {
 }
 
 describe("CapabilityRegistry", () => {
+	it("supports more than ten concurrent invocations without listener warnings", async () => {
+		const warnings: Error[] = [];
+		const onWarning = (warning: Error): void => {
+			if (warning.name === "MaxListenersExceededWarning" && warning.message.includes("abort listeners")) {
+				warnings.push(warning);
+			}
+		};
+		process.on("warning", onWarning);
+
+		const registry = new CapabilityRegistry(CAPABILITY_LAYERS.FOUNDATION);
+		const registration = registry.registerOwner("owner", [
+			bindCapability(TEST_CAPABILITY, {
+				execute: (_input, executionContext) =>
+					new Promise<FilesystemReadFileResult>((_resolve, reject) => {
+						executionContext.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+					}),
+			}),
+		]);
+		const invocations = Array.from({ length: 11 }, (_, index) =>
+			registry.invoke(TEST_CAPABILITY, { path: `value-${index}` }, context()),
+		);
+
+		try {
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			registration.dispose();
+			await Promise.allSettled(invocations);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+		} finally {
+			process.off("warning", onWarning);
+			registration.dispose();
+		}
+
+		expect(warnings).toEqual([]);
+	});
+
 	it("keeps the previous provider when replacement validation fails", async () => {
 		const registry = new CapabilityRegistry(CAPABILITY_LAYERS.FOUNDATION);
 		registry.registerOwner("owner", [

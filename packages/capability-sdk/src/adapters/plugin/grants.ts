@@ -7,6 +7,7 @@ import {
 	DOMAIN_IM_CAPABILITIES,
 	DOMAIN_KNOWLEDGE_CAPABILITIES,
 	DOMAIN_MCP_CAPABILITIES,
+	DOMAIN_MEDIA_CAPABILITIES,
 	DOMAIN_MODEL_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_QUICK_PANEL_CAPABILITIES,
@@ -89,6 +90,14 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB, {
 						constraints: storageConstraints,
 					}),
+				]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MEDIA_GENERATE)
+			? [
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.GET_JOB),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB),
 				]
 			: []),
 		...(official ? buildOfficialDomainGrants() : []),

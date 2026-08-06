@@ -8,6 +8,7 @@ export const PLUGIN_CAPABILITY_PERMISSIONS = {
 	NETWORK_FETCH: "network.fetch",
 	STORAGE_READ: "storage.read",
 	STORAGE_WRITE: "storage.write",
+	MEDIA_GENERATE: "media.generate",
 } as const;
 
 export interface PluginCapabilityAdapterOptions {

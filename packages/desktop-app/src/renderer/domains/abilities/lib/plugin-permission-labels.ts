@@ -40,6 +40,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"network.fetch": "permission.networkFetch",
 	"storage.read": "permission.storageRead",
 	"storage.write": "permission.storageWrite",
+	"media.generate": "permission.mediaGenerate",
 	"settings.read": "permission.settingsRead",
 	"settings.write": "permission.settingsWrite",
 	"shell.openExternal": "permission.shellOpenExternal",

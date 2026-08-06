@@ -1,3 +1,4 @@
+import { setMaxListeners } from "node:events";
 import {
 	CAPABILITY_ERROR_CODES,
 	CAPABILITY_PUBLISHERS,
@@ -152,6 +153,7 @@ export class CapabilityRegistry {
 		}
 
 		const controller = new AbortController();
+		setMaxListeners(0, controller.signal);
 		const generation = Symbol(ownerId);
 		for (const [capabilityId, entry] of this.providers) {
 			if (entry.ownerId === ownerId && !nextIds.has(capabilityId)) this.providers.delete(capabilityId);

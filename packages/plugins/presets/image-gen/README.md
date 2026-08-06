@@ -10,7 +10,8 @@
 
 ## 出图链路
 
-一律走 **Vetta 网关**：插件不感知模型、不持有任何 key，只把 prompt/size 发给服务端的
+一律走宿主 `ctx.media` 协议，默认选择 desktop-app 内置的 `desktop-app:vetta` 图片 Provider。
+插件不感知模型、不持有任何 key，也不能指定网关路径；内置 Provider 在主进程固定调用
 `POST /api/v1/images/{generate,edit}`。模型选择、provider 形态适配（含改图协议差异）、
 尺寸白名单与按次计费都在服务端，管理员在 admin 配置；能不能出图由用户的订阅档位决定
 （ADR-0056）。
@@ -30,10 +31,12 @@
 ## 架构
 
 插件拥有 `generate_image` / `edit_image` 工具、隐藏提示、卡片渲染、持久化记录和编辑谱系；
-desktop 提供受 capability session 约束的 `ctx.gateway`、`ctx.storage`、
-`ctx.fs.readBinaryFile` 与通用 prompt attachment。`ctx.gateway` 只对内置 official 插件挂载，
-凭据不出主进程。图像字节仍只落插件本地 `~/.vetta/plugin-data/image-gen/`，不进服务端存储、
+desktop 提供受 capability session 约束的 `ctx.media`、`ctx.storage`、
+`ctx.fs.readBinaryFile` 与通用 prompt attachment。Vetta Provider 内置于 desktop 主进程，凭据不出
+主进程；其它 Provider 由宿主模块按同一 SPI 扩展，协议也允许 Provider 列表为空。图像字节仍只落插件本地
+`~/.vetta/plugin-data/image-gen/`，不进服务端存储、
 也不进 LLM 上下文（工具结果只回 image id）。
 
-详见 `docs/adr/0056-image-generation-through-vetta-gateway-metered-by-credits.md`
+详见 `docs/adr/0057-host-media-protocol-and-desktop-vetta-provider.md`、
+`docs/adr/0056-image-generation-through-vetta-gateway-metered-by-credits.md`
 与被其部分取代的 `docs/adr/0048-image-generation-owned-by-plugin-generic-network-storage.md`。

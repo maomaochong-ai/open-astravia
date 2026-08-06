@@ -7,6 +7,7 @@ import {
 	DOMAIN_IM_CAPABILITIES,
 	DOMAIN_KNOWLEDGE_CAPABILITIES,
 	DOMAIN_MCP_CAPABILITIES,
+	DOMAIN_MEDIA_CAPABILITIES,
 	DOMAIN_MODEL_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_QUICK_PANEL_CAPABILITIES,
@@ -49,6 +50,28 @@ function foundationOutput(capabilityId: CapabilityId): unknown {
 }
 
 function domainOutput(capabilityId: CapabilityId): unknown {
+	if (capabilityId === DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.id) {
+		return [
+			{
+				id: "desktop-app:vetta",
+				ownerId: "desktop-app",
+				protocolVersion: 1,
+				capabilities: [{ kind: "image", modes: ["text-to-image", "image-to-image"] }],
+			},
+		];
+	}
+	if (
+		capabilityId === DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.id ||
+		capabilityId === DOMAIN_MEDIA_CAPABILITIES.GET_JOB.id ||
+		capabilityId === DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB.id
+	) {
+		return {
+			id: "job-1",
+			providerId: "desktop-app:vetta",
+			status: "succeeded",
+			artifacts: [{ kind: "image", mimeType: "image/png", data: "aW1hZ2U=" }],
+		};
+	}
 	if (
 		capabilityId === DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_EXPERIMENTAL.id ||
 		capabilityId === DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL.id

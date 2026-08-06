@@ -4581,6 +4581,785 @@
       "version": 1
     },
     {
+      "id": "cap.domain.vetta.media.provider.list",
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "kind": "query",
+      "layer": "domain",
+      "outputSchema": {
+        "type": "array",
+        "items": {
+          "additionalProperties": false,
+          "type": "object",
+          "required": [
+            "id",
+            "ownerId",
+            "protocolVersion",
+            "capabilities"
+          ],
+          "properties": {
+            "id": {
+              "minLength": 1,
+              "maxLength": 129,
+              "type": "string"
+            },
+            "ownerId": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
+            "protocolVersion": {
+              "const": 1,
+              "type": "number"
+            },
+            "capabilities": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "modes"
+                ],
+                "properties": {
+                  "kind": {
+                    "anyOf": [
+                      {
+                        "const": "image",
+                        "type": "string"
+                      },
+                      {
+                        "const": "video",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "modes": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "const": "text-to-image",
+                          "type": "string"
+                        },
+                        {
+                          "const": "image-to-image",
+                          "type": "string"
+                        },
+                        {
+                          "const": "text-to-video",
+                          "type": "string"
+                        },
+                        {
+                          "const": "image-to-video",
+                          "type": "string"
+                        },
+                        {
+                          "const": "video-to-video",
+                          "type": "string"
+                        },
+                        {
+                          "const": "reference-to-video",
+                          "type": "string"
+                        }
+                      ]
+                    }
+                  },
+                  "aspectRatios": {
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "resolutions": {
+                    "type": "array",
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    }
+                  },
+                  "durationsSeconds": {
+                    "type": "array",
+                    "items": {
+                      "exclusiveMinimum": 0,
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.media.job.create",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "providerId",
+          "kind",
+          "mode",
+          "prompt"
+        ],
+        "properties": {
+          "providerId": {
+            "minLength": 1,
+            "maxLength": 129,
+            "type": "string"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "const": "image",
+                "type": "string"
+              },
+              {
+                "const": "video",
+                "type": "string"
+              }
+            ]
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "const": "text-to-image",
+                "type": "string"
+              },
+              {
+                "const": "image-to-image",
+                "type": "string"
+              },
+              {
+                "const": "text-to-video",
+                "type": "string"
+              },
+              {
+                "const": "image-to-video",
+                "type": "string"
+              },
+              {
+                "const": "video-to-video",
+                "type": "string"
+              },
+              {
+                "const": "reference-to-video",
+                "type": "string"
+              }
+            ]
+          },
+          "prompt": {
+            "minLength": 1,
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "modelId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "dimensions": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "width",
+              "height"
+            ],
+            "properties": {
+              "width": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "height": {
+                "minimum": 1,
+                "type": "integer"
+              }
+            }
+          },
+          "aspectRatio": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "resolution": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "durationSeconds": {
+            "exclusiveMinimum": 0,
+            "type": "number"
+          },
+          "references": {
+            "maxItems": 8,
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "kind",
+                "mimeType",
+                "data"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "mimeType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "data": {
+                  "minLength": 1,
+                  "maxLength": 33554432,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "providerId",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "queued",
+                "type": "string"
+              },
+              {
+                "const": "running",
+                "type": "string"
+              },
+              {
+                "const": "succeeded",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "cancelled",
+                "type": "string"
+              }
+            ]
+          },
+          "progress": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "kind",
+                "mimeType",
+                "data"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "mimeType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "data": {
+                  "minLength": 1,
+                  "maxLength": 33554432,
+                  "type": "string"
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "durationSeconds": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "error": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "anyOf": [
+                  {
+                    "const": "provider-unavailable",
+                    "type": "string"
+                  },
+                  {
+                    "const": "operation-unsupported",
+                    "type": "string"
+                  },
+                  {
+                    "const": "invalid-request",
+                    "type": "string"
+                  },
+                  {
+                    "const": "not-entitled",
+                    "type": "string"
+                  },
+                  {
+                    "const": "quota-exhausted",
+                    "type": "string"
+                  },
+                  {
+                    "const": "content-rejected",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider-timeout",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider-failed",
+                    "type": "string"
+                  },
+                  {
+                    "const": "cancelled",
+                    "type": "string"
+                  }
+                ]
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.media.job.get",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "providerId",
+          "id"
+        ],
+        "properties": {
+          "providerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "query",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "providerId",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "queued",
+                "type": "string"
+              },
+              {
+                "const": "running",
+                "type": "string"
+              },
+              {
+                "const": "succeeded",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "cancelled",
+                "type": "string"
+              }
+            ]
+          },
+          "progress": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "kind",
+                "mimeType",
+                "data"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "mimeType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "data": {
+                  "minLength": 1,
+                  "maxLength": 33554432,
+                  "type": "string"
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "durationSeconds": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "error": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "anyOf": [
+                  {
+                    "const": "provider-unavailable",
+                    "type": "string"
+                  },
+                  {
+                    "const": "operation-unsupported",
+                    "type": "string"
+                  },
+                  {
+                    "const": "invalid-request",
+                    "type": "string"
+                  },
+                  {
+                    "const": "not-entitled",
+                    "type": "string"
+                  },
+                  {
+                    "const": "quota-exhausted",
+                    "type": "string"
+                  },
+                  {
+                    "const": "content-rejected",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider-timeout",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider-failed",
+                    "type": "string"
+                  },
+                  {
+                    "const": "cancelled",
+                    "type": "string"
+                  }
+                ]
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.media.job.cancel",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "providerId",
+          "id"
+        ],
+        "properties": {
+          "providerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "providerId",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "providerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "queued",
+                "type": "string"
+              },
+              {
+                "const": "running",
+                "type": "string"
+              },
+              {
+                "const": "succeeded",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "cancelled",
+                "type": "string"
+              }
+            ]
+          },
+          "progress": {
+            "minimum": 0,
+            "maximum": 1,
+            "type": "number"
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "kind",
+                "mimeType",
+                "data"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "mimeType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "data": {
+                  "minLength": 1,
+                  "maxLength": 33554432,
+                  "type": "string"
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "durationSeconds": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "error": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "anyOf": [
+                  {
+                    "const": "provider-unavailable",
+                    "type": "string"
+                  },
+                  {
+                    "const": "operation-unsupported",
+                    "type": "string"
+                  },
+                  {
+                    "const": "invalid-request",
+                    "type": "string"
+                  },
+                  {
+                    "const": "not-entitled",
+                    "type": "string"
+                  },
+                  {
+                    "const": "quota-exhausted",
+                    "type": "string"
+                  },
+                  {
+                    "const": "content-rejected",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider-timeout",
+                    "type": "string"
+                  },
+                  {
+                    "const": "provider-failed",
+                    "type": "string"
+                  },
+                  {
+                    "const": "cancelled",
+                    "type": "string"
+                  }
+                ]
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
       "id": "cap.domain.vetta.model.list",
       "inputSchema": {
         "type": "object",

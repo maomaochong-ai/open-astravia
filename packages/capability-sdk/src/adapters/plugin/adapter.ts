@@ -8,6 +8,7 @@ import { type PluginGeneralSettingsMethods, pluginGeneralSettingsMethods } from 
 import { type PluginImMethods, pluginImMethods } from "./domain/im.js";
 import { type PluginKnowledgeMethods, pluginKnowledgeMethods } from "./domain/knowledge.js";
 import { type PluginMcpMethods, pluginMcpMethods } from "./domain/mcp.js";
+import { type PluginMediaMethods, pluginMediaMethods } from "./domain/media.js";
 import { type PluginModelMethods, pluginModelMethods } from "./domain/model.js";
 import { type PluginProjectMethods, pluginProjectMethods } from "./domain/project.js";
 import { type PluginSchedulerMethods, pluginSchedulerMethods } from "./domain/scheduler.js";
@@ -37,6 +38,7 @@ export interface PluginCapabilityAdapter
 		PluginAgentSettingsMethods,
 		PluginGeneralSettingsMethods,
 		PluginImMethods,
+		PluginMediaMethods,
 		PluginModelMethods,
 		PluginMcpMethods,
 		PluginProjectMethods,
@@ -133,6 +135,7 @@ Object.assign(
 	pluginAgentSettingsMethods,
 	pluginGeneralSettingsMethods,
 	pluginImMethods,
+	pluginMediaMethods,
 	pluginModelMethods,
 	pluginMcpMethods,
 	pluginProjectMethods,

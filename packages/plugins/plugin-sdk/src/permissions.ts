@@ -34,6 +34,7 @@ export const PLUGIN_PERMISSIONS = [
 	"network.fetch",
 	"storage.read",
 	"storage.write",
+	"media.generate",
 	"settings.read",
 	"settings.write",
 	"shell.openExternal",

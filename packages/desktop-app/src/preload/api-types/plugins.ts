@@ -21,6 +21,10 @@ import type {
 	McpServerDetail,
 	McpServerSummary,
 	McpServerUpsertData,
+	MediaCreateJobInput,
+	MediaJob,
+	MediaJobRef,
+	MediaProviderDescriptor,
 	ModelConfigSnapshot,
 	ModelDefaultResult,
 	ModelListResult,
@@ -374,6 +378,13 @@ export interface DesktopPluginCapabilityModelsApi {
 	removeProvider(sessionId: string, provider: string): Promise<void>;
 }
 
+export interface DesktopPluginCapabilityMediaApi {
+	listProviders(sessionId: string): Promise<MediaProviderDescriptor[]>;
+	createJob(sessionId: string, input: MediaCreateJobInput): Promise<MediaJob>;
+	getJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
+	cancelJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
+}
+
 export interface DesktopPluginCapabilityMcpApi {
 	list(sessionId: string): Promise<McpServerSummary[]>;
 	get(sessionId: string, name: string): Promise<McpServerDetail>;
@@ -514,6 +525,7 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	generalSettings: DesktopPluginCapabilityGeneralSettingsApi;
 	im: DesktopPluginCapabilityImApi;
 	mcp: DesktopPluginCapabilityMcpApi;
+	media: DesktopPluginCapabilityMediaApi;
 	models: DesktopPluginCapabilityModelsApi;
 	downloads: DesktopPluginCapabilityDownloadsApi;
 	knowledge: DesktopPluginCapabilityKnowledgeApi;

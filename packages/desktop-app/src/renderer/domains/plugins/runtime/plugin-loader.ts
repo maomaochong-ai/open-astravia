@@ -46,6 +46,7 @@ import type {
 	PluginImageRef,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginMediaApi,
 	PluginNetworkApi,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
@@ -442,6 +443,29 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 		request: (request) => {
 			createPermissionApi(plugin).require("network.fetch");
 			return window.vetta.plugins.networkRequest(capabilitySessionId, request);
+		},
+	};
+}
+
+function createMediaApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginMediaApi {
+	const permissions = createPermissionApi(plugin);
+	const media = window.vetta.plugins.internalCapabilities.media;
+	return {
+		listProviders: () => {
+			permissions.require("media.generate");
+			return media.listProviders(capabilitySessionId);
+		},
+		createJob: (request) => {
+			permissions.require("media.generate");
+			return media.createJob(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.createJob>[1]);
+		},
+		getJob: (job) => {
+			permissions.require("media.generate");
+			return media.getJob(capabilitySessionId, job);
+		},
+		cancelJob: (job) => {
+			permissions.require("media.generate");
+			return media.cancelJob(capabilitySessionId, job);
 		},
 	};
 }
@@ -1229,6 +1253,7 @@ function createContext(
 		conversation,
 		fs,
 		command: createCommandApi(plugin, disposers),
+		media: createMediaApi(plugin, capabilitySessionId),
 		agent: {
 			registerTool: (registration) => {
 				debugPluginAgent("renderer registerTool requested", {
