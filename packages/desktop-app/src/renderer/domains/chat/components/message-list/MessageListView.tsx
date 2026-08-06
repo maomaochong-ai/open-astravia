@@ -22,6 +22,11 @@ const IDLE_OVERSCAN = 400;
 const STREAMING_INCREASE_VIEWPORT_BY = { top: 0, bottom: 80 };
 const IDLE_INCREASE_VIEWPORT_BY = { top: 200, bottom: 200 };
 const VIRTUOSO_STYLE = { overflowX: "hidden" as const };
+/**
+ * 未测量条目的高度估算。原值 80 远低于真实中位数（带工具调用的回复动辄几百 px），
+ * 往上滚时 Virtuoso 每渲染一批就要大幅修正总高度与 scrollTop，滚动条抖且反复重测量。
+ */
+const DEFAULT_ITEM_HEIGHT = 200;
 
 export function MessageListView({
 	model,
@@ -53,9 +58,21 @@ export function MessageListView({
 			),
 		[activeSession?.parentEntryId, activeSession?.parentSessionPath, messages],
 	);
-	const lastUserMessageId = useMemo(() => {
-		const lastUser = [...messages].reverse().find((m) => m.role === "user");
-		return lastUser?.id ?? null;
+	// 倒序单次扫描一次算出两个位置，避免在 itemContent 里对每个可见条目再做一次 O(n)
+	// 的 slice/some（整条列表退化成 O(n²)，且流式期间每帧重跑）。
+	const { lastUserMessageId, lastNonUserIndex } = useMemo(() => {
+		let userId: string | null = null;
+		let nonUserIndex = -1;
+		for (let index = messages.length - 1; index >= 0; index--) {
+			const message = messages[index];
+			if (message.role === "user") {
+				if (userId === null) userId = message.id;
+			} else if (nonUserIndex === -1) {
+				nonUserIndex = index;
+			}
+			if (userId !== null && nonUserIndex !== -1) break;
+		}
+		return { lastUserMessageId: userId, lastNonUserIndex: nonUserIndex };
 	}, [messages]);
 	const itemContent = useCallback(
 		(index: number, message: ChatMessage) => {
@@ -81,10 +98,7 @@ export function MessageListView({
 						isTailMessage={message.id === tailMessageId}
 						isStreaming={isStreaming}
 						isLastUserMessage={message.id === lastUserMessageId}
-						hasAssistantAfter={
-							index < messages.length - 1 &&
-							messages.slice(index + 1).some((m) => m.role !== "user")
-						}
+						hasAssistantAfter={index < lastNonUserIndex}
 						userMessageEntryState={
 							message.id === scroll.activeUserAnimationId
 								? "enter"
@@ -107,6 +121,7 @@ export function MessageListView({
 		[
 			forkOriginPlacement,
 			isStreaming,
+			lastNonUserIndex,
 			lastUserMessageId,
 			messages.length,
 			messages,
@@ -160,7 +175,7 @@ export function MessageListView({
 							increaseViewportBy={
 								isStreaming ? STREAMING_INCREASE_VIEWPORT_BY : IDLE_INCREASE_VIEWPORT_BY
 							}
-							defaultItemHeight={80}
+							defaultItemHeight={DEFAULT_ITEM_HEIGHT}
 							components={components}
 							itemContent={itemContent}
 							initialTopMostItemIndex={messages.length > 0 ? messages.length - 1 : 0}

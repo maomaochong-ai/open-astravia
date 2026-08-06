@@ -1,5 +1,5 @@
-import { AnimatePresence, motion } from "motion/react";
 import type { JSX, ReactNode } from "react";
+import { CollapsePanel } from "../shared/CollapsePanel";
 
 export interface ToolCallBlockViewProps {
 	canExpand: boolean;
@@ -91,22 +91,14 @@ export function ToolCallBlockView({
 				)}
 			</button>
 
-			<AnimatePresence initial={false}>
-				{(expanded || exportMode) && canExpand && (
-					<motion.div
-						id={panelId}
-						data-export-collapse-panel={exportMode ? "" : undefined}
-						hidden={exportMode && !expanded}
-						initial={{ height: 0, opacity: 0 }}
-						animate={{ height: "auto", opacity: 1 }}
-						exit={{ height: 0, opacity: 0 }}
-						transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-						className="min-w-0 overflow-hidden"
-					>
-						<div className="ml-2 min-w-0 border-l-2 border-muted-foreground/10 pl-4 pt-1 pb-2">{body}</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
+			<CollapsePanel
+				open={(expanded || exportMode) && canExpand}
+				id={panelId}
+				exportPanel={exportMode}
+				hidden={exportMode && !expanded}
+			>
+				<div className="ml-2 min-w-0 border-l-2 border-muted-foreground/10 pl-4 pt-1 pb-2">{body}</div>
+			</CollapsePanel>
 		</div>
 	);
 }

@@ -1,6 +1,7 @@
 import type { ChatMessage, TextBlock } from "@shared/store/atoms";
 import { activeSessionAtom, agentModeAtom, pluginToolCallSlotsAtom, promptPredictingAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
 import {
 	findLastProcessBlockIndex,
@@ -9,6 +10,13 @@ import {
 } from "../components/message-list/messageBlockModel";
 import { groupBlocksForWork } from "../components/message-list/progressGroupModel";
 import type { AssistantMessageModel } from "../components/message-list/types";
+
+/**
+ * 订阅必须切细：这个 hook 每条 assistant 消息都跑一份。直接订阅 activeSessionAtom
+ * 整个对象，会让 session 上任何一个字段变动（token 计数、运行状态）都把视窗内所有
+ * 消息重渲染一遍，连带重跑 groupBlocks / getAssistantFoldData。
+ */
+const activeRuntimeIdAtom = selectAtom(activeSessionAtom, (session) => session?.runtimeId ?? null);
 
 interface AssistantMessageModelInput {
 	expanded: boolean;
@@ -25,9 +33,15 @@ export function useAssistantMessageModel({
 	isTailMessage,
 	message,
 }: AssistantMessageModelInput): AssistantMessageModel {
-	const activeRuntimeId = useAtomValue(activeSessionAtom)?.runtimeId;
+	const activeRuntimeId = useAtomValue(activeRuntimeIdAtom);
 	const toolCallSlots = useAtomValue(pluginToolCallSlotsAtom);
-	const predictingMap = useAtomValue(promptPredictingAtom);
+	// 只订阅当前 runtime 的预测位，而不是整张 map——否则任一会话的预测状态变动都会
+	// 把这条消息重渲染一遍。
+	const isPredictingAtom = useMemo(
+		() => selectAtom(promptPredictingAtom, (map) => (activeRuntimeId ? Boolean(map[activeRuntimeId]) : false)),
+		[activeRuntimeId],
+	);
+	const isRuntimePredicting = useAtomValue(isPredictingAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
 	const isCurrentlyStreaming = isTailMessage && isStreaming;
 	const isWorkMode = useAtomValue(agentModeAtom) === "work";
@@ -69,10 +83,11 @@ export function useAssistantMessageModel({
 		}
 		return -1;
 	}, [segments, isCurrentlyStreaming]);
+	// foldData 上面已经算过一遍，这里复用；deps 也收窄到 blocks/text，
+	// 否则 message 引用一变（流式每帧都变）就整段重算。
 	const conclusionText = useMemo(() => {
 		const blocks = message.blocks ?? [];
 		if (blocks.length === 0) return (message.text ?? "").trim();
-		const foldData = getAssistantFoldData(blocks, customToolNames);
 		if (foldData) {
 			return foldData.outputBlocks
 				.map((block) => block.text.trim())
@@ -85,15 +100,14 @@ export function useAssistantMessageModel({
 			.map((block) => block.text.trim())
 			.filter(Boolean)
 			.join("\n\n");
-	}, [message, customToolNames]);
+	}, [message.blocks, message.text, foldData, customToolNames]);
 
 	return {
 		conclusionText,
 		exportProcessSegments,
 		foldData,
 		isCurrentlyStreaming,
-		isPredicting:
-			isTailMessage && !isCurrentlyStreaming && Boolean(activeRuntimeId && predictingMap[activeRuntimeId]),
+		isPredicting: isTailMessage && !isCurrentlyStreaming && isRuntimePredicting,
 		isWorkMode,
 		workFoldCount,
 		segments,
