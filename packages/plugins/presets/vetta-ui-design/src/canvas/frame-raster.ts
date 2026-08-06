@@ -69,15 +69,8 @@ interface FrameRasterOptions {
 	} | null;
 }
 
-/** 【临时调试】位图来源标记，见 FrameView 的调试徽章。 */
-export type RasterSource = "cache" | "offscreen" | "clone";
-
 export interface FrameRasterState {
 	rasterOf(frameId: string): string | null;
-	/** 【临时调试】当前位图出自哪条截图路径。 */
-	rasterSourceOf(frameId: string): RasterSource | null;
-	/** 【临时调试】最近一次截图失败原因。 */
-	captureFailureOf(frameId: string): string | null;
 	/** 该 frame 此刻是否需要挂上真正的 iframe。 */
 	isMounted(frameId: string): boolean;
 	/** 挂载之后是否显示活体（而不是位图）。截图失败的 frame 会留在活体，是安全兜底。 */
@@ -200,8 +193,6 @@ export function useFrameRasters({
 	const [forced, setForced] = useState<ReadonlySet<string>>(new Set());
 	/** frameId → 截图失败原因。用于把「优化没生效」这件事摆到台面上。 */
 	const [failures, setFailures] = useState<ReadonlyMap<string, string>>(new Map());
-	/** 【临时调试】frameId → 当前位图的来源。 */
-	const [sources, setSources] = useState<ReadonlyMap<string, RasterSource>>(new Map());
 	const capturingRef = useRef<string | null>(null);
 	const timerRef = useRef<number | null>(null);
 	/**
@@ -239,7 +230,6 @@ export function useFrameRasters({
 			if (cancelled) return;
 			// 整个替换而不是合并：上一份设计的位图必须在这一步消失。
 			setRasters(new Map(cached));
-			setSources(new Map([...cached.keys()].map((id) => [id, "cache" as const])));
 			setDirty(new Set(ids));
 		});
 		void pruneRasters(cacheKey, ids);
@@ -411,13 +401,6 @@ export function useFrameRasters({
 					// 所以位图进入 rasters 时一定是「挂上就能画」的。
 					await decodeRaster(dataUrl);
 					setRasters((current) => withBudget(current, next, dataUrl, mounted));
-					setSources((current) => new Map(current).set(next, offscreenActive ? "offscreen" : "clone"));
-					setFailures((current) => {
-						if (!current.has(next)) return current;
-						const cleared = new Map(current);
-						cleared.delete(next);
-						return cleared;
-					});
 					// 落盘失败不影响这一轮（内存里已经有图），代价只是下次进画布得重截。
 					void saveRaster(cacheKey, next, dataUrl);
 				})
@@ -455,10 +438,6 @@ export function useFrameRasters({
 	}, [bridge, cacheKey, dirty, activeFrameId, mounted, frameIds, withCaptureLock, offscreenActive]);
 
 	const rasterOf = useCallback((frameId: string): string | null => rasters.get(frameId) ?? null, [rasters]);
-
-	const rasterSourceOf = useCallback((frameId: string): RasterSource | null => sources.get(frameId) ?? null, [sources]);
-
-	const captureFailureOf = useCallback((frameId: string): string | null => failures.get(frameId) ?? null, [failures]);
 
 	const isMounted = useCallback((frameId: string): boolean => mounted.has(frameId), [mounted]);
 
@@ -502,8 +481,6 @@ export function useFrameRasters({
 
 	return {
 		rasterOf,
-		rasterSourceOf,
-		captureFailureOf,
 		isMounted,
 		isLive,
 		invalidate,

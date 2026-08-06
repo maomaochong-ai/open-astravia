@@ -488,8 +488,6 @@ export function DesignCanvas({
 	}, [manifest.frames, cullRect]);
 	const {
 		rasterOf,
-		rasterSourceOf,
-		captureFailureOf,
 		isMounted,
 		isLive,
 		invalidate: invalidateRaster,
@@ -1342,8 +1340,6 @@ export function DesignCanvas({
 						placement={layoutOverride?.get(frame.id) ?? null}
 						activity={activity.get(frame.id)}
 						buildError={frameErrors.get(frame.id) ?? null}
-						rasterSource={rasterSourceOf(frame.id)}
-						captureFailure={captureFailureOf(frame.id)}
 						renaming={renamingId === frame.id}
 						onRenameStart={startRename}
 						onRenameCommit={commitRename}
