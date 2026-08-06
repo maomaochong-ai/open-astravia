@@ -17,10 +17,7 @@ export const UPDATER_PHASES = {
 	ERROR: "error",
 } as const;
 
-const updaterEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const updaterEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const updaterPhaseType = Type.Union([
 	Type.Literal(UPDATER_PHASES.IDLE),

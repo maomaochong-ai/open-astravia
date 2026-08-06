@@ -27,10 +27,7 @@ export const BATCH_COMMAND_STATUSES = {
 	NOOP: "noop",
 } as const;
 
-const batchTaskEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const batchTaskEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const batchTaskStatusType = Type.Union([
 	Type.Literal(BATCH_TASK_STATUSES.PENDING),

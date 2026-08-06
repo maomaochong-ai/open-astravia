@@ -39,10 +39,7 @@ export const MEDIA_ERROR_CODES = {
 	CANCELLED: "cancelled",
 } as const;
 
-const mediaEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const mediaEmptyInputType = Type.Object({}, { additionalProperties: false });
 const mediaKindType = Type.Union([Type.Literal(MEDIA_KINDS.IMAGE), Type.Literal(MEDIA_KINDS.VIDEO)]);
 const mediaGenerationModeType = Type.Union(Object.values(MEDIA_GENERATION_MODES).map((mode) => Type.Literal(mode)));
 const mediaJobStatusType = Type.Union(Object.values(MEDIA_JOB_STATUSES).map((status) => Type.Literal(status)));

@@ -19,6 +19,10 @@ describe("media domain capabilities", () => {
 	});
 
 	it("validates media requests and strips unknown fields", () => {
+		expect(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.parseInput({})).toEqual({});
+		expect(() => DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.parseInput({ ignored: true })).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
+		);
 		expect(
 			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseInput({
 				providerId: "desktop-app:vetta",

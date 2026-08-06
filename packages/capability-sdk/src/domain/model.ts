@@ -7,10 +7,7 @@ import {
 	defineCapabilityOutputSchema,
 } from "../schema.js";
 
-const modelEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const modelEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const modelStringMapType = Type.Record(Type.String(), Type.String());
 

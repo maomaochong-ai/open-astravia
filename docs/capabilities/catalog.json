@@ -1101,8 +1101,9 @@
     {
       "id": "cap.domain.vetta.agent-settings.experimental.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -1173,8 +1174,9 @@
     {
       "id": "cap.domain.vetta.batch-task.project.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -2948,8 +2950,9 @@
     {
       "id": "cap.domain.vetta.download.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3053,8 +3056,9 @@
     {
       "id": "cap.domain.vetta.general-settings.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3315,8 +3319,9 @@
     {
       "id": "cap.domain.vetta.im.status.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3588,8 +3593,9 @@
     {
       "id": "cap.domain.vetta.im.restart",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -3754,8 +3760,9 @@
     {
       "id": "cap.domain.vetta.knowledge.base.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3843,8 +3850,9 @@
     {
       "id": "cap.domain.vetta.knowledge.file-status.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3890,8 +3898,9 @@
     {
       "id": "cap.domain.vetta.knowledge.processing.status.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -3903,8 +3912,9 @@
     {
       "id": "cap.domain.vetta.knowledge.processing.settings.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -4062,8 +4072,9 @@
     {
       "id": "cap.domain.vetta.knowledge.processing.scan",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -4088,8 +4099,9 @@
     {
       "id": "cap.domain.vetta.knowledge.processing.retry-failed",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -4218,8 +4230,9 @@
     {
       "id": "cap.domain.vetta.mcp.server.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -4583,8 +4596,9 @@
     {
       "id": "cap.domain.vetta.media.provider.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -5362,8 +5376,9 @@
     {
       "id": "cap.domain.vetta.model.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -5450,8 +5465,9 @@
     {
       "id": "cap.domain.vetta.model.config.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -6001,8 +6017,9 @@
     {
       "id": "cap.domain.vetta.project.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -6236,8 +6253,9 @@
     {
       "id": "cap.domain.vetta.scheduler.task.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -7410,8 +7428,9 @@
     {
       "id": "cap.domain.vetta.session.runtime-project.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -7440,8 +7459,9 @@
     {
       "id": "cap.domain.vetta.shortcut.settings.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -7647,8 +7667,9 @@
     {
       "id": "cap.domain.vetta.shortcut.binding.reset-all",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -7894,8 +7915,9 @@
     {
       "id": "cap.domain.vetta.skill.installed.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -8038,8 +8060,9 @@
     {
       "id": "cap.domain.vetta.updater.state.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -8118,8 +8141,9 @@
     {
       "id": "cap.domain.vetta.updater.current-version.get",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -8131,8 +8155,9 @@
     {
       "id": "cap.domain.vetta.updater.check",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -8211,8 +8236,9 @@
     {
       "id": "cap.domain.vetta.updater.download",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -8291,8 +8317,9 @@
     {
       "id": "cap.domain.vetta.updater.install",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -8302,8 +8329,9 @@
     {
       "id": "cap.domain.vetta.updater.dismiss",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -8313,8 +8341,9 @@
     {
       "id": "cap.domain.vetta.updater.cancel",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "command",
       "layer": "domain",
@@ -8324,8 +8353,9 @@
     {
       "id": "cap.domain.vetta.webhook.endpoint.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",
@@ -8411,8 +8441,9 @@
     {
       "id": "cap.domain.vetta.webhook.provider.list",
       "inputSchema": {
+        "additionalProperties": false,
         "type": "object",
-        "additionalProperties": false
+        "properties": {}
       },
       "kind": "query",
       "layer": "domain",

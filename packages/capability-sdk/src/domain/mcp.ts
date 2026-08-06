@@ -12,10 +12,7 @@ export const MCP_SERVER_TYPES = {
 	HTTP: "http",
 } as const;
 
-const mcpEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const mcpEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const mcpServerTypeType = Type.Union([Type.Literal(MCP_SERVER_TYPES.STDIO), Type.Literal(MCP_SERVER_TYPES.HTTP)]);
 
