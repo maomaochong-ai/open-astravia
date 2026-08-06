@@ -1,6 +1,6 @@
 import { waitForPluginHostReady } from "@domains/plugins/runtime/plugin-events";
 import { pluginSendMessageRef } from "@domains/plugins/runtime/plugin-host-bridge";
-import { useProjects } from "@domains/project/hooks/useProjects";
+import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
 import {
 	BUILTIN_KNOWLEDGE_RETRIEVAL_ACTION_ID,
@@ -38,8 +38,10 @@ import {
 	modelSupportsImagesAtom,
 	newSessionInputDraftKey,
 	openSessionFnRef,
+	type Project,
 	pendingMessageEditAtom,
 	pluginInputActionsAtom,
+	projectsAtom,
 	promptAttachmentAtom,
 	promptPredictingAtom,
 	promptSuggestionsAtom,
@@ -130,6 +132,14 @@ interface SessionManagerResult {
 	>;
 }
 
+/**
+ * projects 只在回调里按 cwd 反查类型。订阅 projectsAtom 会让项目列表每次刷新都把整个
+ * 会话管理器（以及它所在的 RootLayout 子树，含侧栏）重渲染，这里改成调用时现读。
+ */
+function getProjects(): Project[] {
+	return getDefaultStore().get(projectsAtom);
+}
+
 export function useSessionManager(): SessionManagerResult {
 	const [activeSession, setActiveSession] = useAtom(activeSessionAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
@@ -177,9 +187,7 @@ export function useSessionManager(): SessionManagerResult {
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const batchProjectsRef = useRef(batchProjects);
 	batchProjectsRef.current = batchProjects;
-	const { loadSessions, applyLocalRename, ensureLocalSession, projects } = useProjects();
-	const projectsRef = useRef(projects);
-	projectsRef.current = projects;
+	const { loadSessions, applyLocalRename, ensureLocalSession } = useProjectActions();
 	// ADR-0007：「对话」session 运行 cwd 是项目根下的 per-session 子目录，但其 jsonl 与
 	// 侧边栏 sessionsMap bucket 都挂在项目根 cwd 上。重命名/刷新必须落到「根」bucket，
 	// 否则侧边栏与顶部标题读不到更新。用此 ref 把子目录 cwd 归一回项目根。
@@ -327,7 +335,7 @@ export function useSessionManager(): SessionManagerResult {
 				sessionPath !== undefined &&
 				batchProjectsRef.current.some((project) => project.tasks.some((task) => task.sessionPath === sessionPath));
 			const isBatchProject = batchProjectsRef.current.some((project) => project.id === cwd);
-			const projectType = projectsRef.current.find((project) => project.cwd === cwd)?.type;
+			const projectType = getProjects().find((project) => project.cwd === cwd)?.type;
 			const sessionKind = isBatchSession || isBatchProject || projectType === "batch" ? "other" : "conversation";
 			// 对话场景显式下发（不依赖 sessionKind，避免改 kind 牵动 VETTA_CLI/子目录等行为）：
 			// - 批量 → "batch"（与 batch-task-executor 一致，重开不退化成 project，输入栏 badge 不复活）。
@@ -592,7 +600,7 @@ export function useSessionManager(): SessionManagerResult {
 							// Skip auto-title for batch-task projects entirely — those sessions
 							// are driven by the batch executor and should keep their batch-managed
 							// names (or default firstMessage label).
-							const projectType = cwd ? projectsRef.current.find((p) => p.cwd === cwd)?.type : undefined;
+							const projectType = cwd ? getProjects().find((p) => p.cwd === cwd)?.type : undefined;
 							if (sp && cwd && rid && projectType !== "batch" && !autoTitledSessionsRef.current.has(sp)) {
 								autoTitledSessionsRef.current.add(sp);
 								// Snapshot current chat messages via a no-op updater, then run
@@ -1179,7 +1187,7 @@ export function useSessionManager(): SessionManagerResult {
 			// 批量任务依赖严格 todo 机制，不在此清空；scene 等 lock 状态后端会自行拒绝。
 			// streaming 入队时不清：当前正在跑的回合仍拥有这些 todo。
 			if (!streaming) {
-				const projectType = projectsRef.current.find((p) => p.cwd === session.cwd)?.type;
+				const projectType = getProjects().find((p) => p.cwd === session.cwd)?.type;
 				if (projectType !== "batch") {
 					const items = todoItemsMapRef.current.get(session.runtimeId) ?? [];
 					if (items.length > 0 && items.every((i) => i.status === "done")) {

@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useSetAtom } from "jotai";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useProjects } from "../../../hooks/useProjects";
+import { useProjectActions } from "../../../hooks/useProjects";
 import type { AddProjectMenuItemModel } from "./types";
 
 export function useAddProjectMenuModel(): {
@@ -17,7 +17,7 @@ export function useAddProjectMenuModel(): {
 	toggleOpen: () => void;
 } {
 	const { t } = useTranslation("project");
-	const { createProject, openProject, refreshProjects } = useProjects();
+	const { createProject, openProject, refreshProjects } = useProjectActions();
 	const { refreshProjects: refreshBatchProjects } = useBatchTasks();
 	const setConfirm = useSetAtom(confirmDialogAtom);
 	const navigate = useNavigate();

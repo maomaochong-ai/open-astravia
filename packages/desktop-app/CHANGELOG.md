@@ -43,6 +43,11 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **侧栏切换会话卡顿**。最大头不是渲染慢，是点击后被排队等了几百毫秒：点会话行会先平滑滚动把行挪进安全区、并等分栏面板的 `max-height` 过渡结束，两个等待 `Promise.all` 完（fallback 分别 800ms 与 450ms）之后才真正发起会话切换——而 `openSession` 内部本来已经做了「拿到 sessionId 就写 activeSession + navigate」的优化，全被这段等待抵消，慢机上还容易吃满 fallback。现在滚动与切换并行，点下去立刻开始切。其余是渲染层：
+  - 会话行改成 memo 组件，per-row 回调（选中/重命名/右键菜单）与行视图对象的引用都稳定下来——切换会话原本只有两行的高亮变了，却会把整份列表重建一遍。
+  - `<Sidebar>` 加 memo。它挂在 RootLayout 下，而 RootLayout 同时订阅了附件、提及文件、选中 skill/模型、todo 等一堆与侧栏无关的状态，此前输入框贴张图都会把整条侧栏重渲染。
+  - `useProjects` 拆出不订阅任何状态的 `useProjectActions`，只用动作的调用方（应用初始化、会话管理器、批量任务、归档设置、添加项目菜单）不再被会话列表刷新唤醒；项目面板对 `activeSession` 也改成只订阅 path/cwd。
+  - 会话列表回填时内容没变就不换引用；`onSessionsChanged` 触发的全量重拉合并成一次（一轮对话原本要拉 2~3 趟，每趟都是一次 IPC + 全侧栏重渲染）。
 - **对话消息列表在低配机上的滚动与展开卡顿**。改动分三类：
   - **粗粒度订阅导致的全列表重渲染**。展开态存储 `expansionStore` 原本用 `useAtom` 订阅整张 map，视窗内每个折叠组件（每个工具行、每个阶段、每条消息的折叠条、每个错误块）共享同一个对象引用，点开任意一处就把它们全部重渲染一遍——现在按 key 用 `selectAtom` 切片订阅。`useMessageCardsHostModel` 里「card key 归属表」原本每条 assistant 消息各算一遍全量消息扫描（整条列表 O(N²)，流式期间每帧重跑），现在提成派生 atom 全局算一次，且只有真的产出了卡片的消息才订阅它。`useAssistantMessageModel` 与 `useToolCallBlockModel` 不再订阅 `activeSession` 整个对象和 `promptPredicting` 整张 map，只取 `runtimeId` 与本会话的预测位。
   - **展开动画与虚拟列表测量互相打架**。工具卡片、阶段组、思考块、错误详情的折叠动画原本用 framer-motion 的 `height: 0 → auto`，每帧回主线程写内联 height 并触发强制样式重算，外层 Virtuoso 的 ResizeObserver 又把每一帧都变成一次列表重测量。改为 CSS `grid-template-rows: 0fr → 1fr` 过渡（新增共享组件 `CollapsePanel`），不占主线程 JS，也不经过 React 协调；内容仍按需挂载。

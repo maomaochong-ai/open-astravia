@@ -1,4 +1,4 @@
-import { useProjects } from "@domains/project/hooks/useProjects";
+import { useProjectActions } from "@domains/project/hooks/useProjects";
 import type { ProjectEntry } from "@preload/api";
 import { pathBasename } from "@shared/lib/utils";
 import { confirmDialogAtom } from "@shared/store/atoms";
@@ -35,7 +35,7 @@ function projectName(entry: ProjectEntry): string {
 export function useArchivedProjectsSettingsModel(): ArchivedProjectsSettingsModel {
 	const { t } = useTranslation("settings");
 	const [archivedList, setArchivedList] = useState<ProjectEntry[]>([]);
-	const { unarchiveProject, deleteArchivedProject } = useProjects();
+	const { unarchiveProject, deleteArchivedProject } = useProjectActions();
 	const setConfirm = useSetAtom(confirmDialogAtom);
 
 	useEffect(() => {

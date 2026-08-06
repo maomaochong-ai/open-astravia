@@ -1,12 +1,8 @@
 import { cn } from "@vetta/ui";
-import type { JSX } from "react";
+import { memo, type JSX } from "react";
 import { SessionStatusIcon } from "../sidebar/SessionStatusIcon";
 import { SessionRenameInputView } from "./SessionRenameInputView";
-import {
-	prepareSidebarSelection,
-	runAfterSidebarSelection,
-	type SidebarSelectionWait,
-} from "./useActiveSessionAutoScroll";
+import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
 export interface SessionRowViewProps {
 	active: boolean;
@@ -17,7 +13,7 @@ export interface SessionRowViewProps {
 	titleExtra?: string;
 	/** Session was forked from another session. */
 	forked?: boolean;
-	onBeforeSelect?: () => SidebarSelectionWait;
+	onBeforeSelect?: () => void;
 	onOpenContextMenu: (event: React.MouseEvent) => void;
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
@@ -28,7 +24,11 @@ export interface SessionRowViewProps {
 	timeLabel: string;
 }
 
-export function SessionRowView({
+/**
+ * memo：切换会话时只有「上一条」「下一条」两行的 active 变了，其余行的 props 完全一致。
+ * 没有 memo 时整份会话列表会跟着重渲染一遍。前提是调用方传的回调引用稳定。
+ */
+export const SessionRowView = memo(function SessionRowView({
 	active,
 	label,
 	sessionPath,
@@ -52,9 +52,9 @@ export function SessionRowView({
 			data-session-path={sessionPath || undefined}
 			onClick={(event) => {
 				if (renaming) return;
-				const panelWait = onBeforeSelect?.() ?? false;
-				const rowWait = prepareSidebarSelection(event.currentTarget);
-				runAfterSidebarSelection(onSelect, [panelWait, rowWait]);
+				onBeforeSelect?.();
+				prepareSidebarSelection(event.currentTarget);
+				onSelect();
 			}}
 			onContextMenu={onOpenContextMenu}
 			className={cn(
@@ -96,4 +96,4 @@ export function SessionRowView({
 			<span className="shrink-0 text-[11px] text-muted-foreground">{timeLabel}</span>
 		</button>
 	);
-}
+});

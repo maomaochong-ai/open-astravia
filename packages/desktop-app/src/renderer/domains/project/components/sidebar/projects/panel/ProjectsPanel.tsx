@@ -17,26 +17,6 @@ import type { ProjectsPanelProps } from "./types";
 const SPLIT_HANDLE_HEIGHT = 10;
 const DEFAULT_CONVERSATION_MIN_RATIO = 0.3;
 const RESTORED_PROJECTS_RATIO = 0.4;
-const PANEL_TRANSITION_FALLBACK_MS = 450;
-
-function waitForPanelResize(element: HTMLElement): Promise<void> {
-	return new Promise((resolve) => {
-		let fallbackTimer = 0;
-		const finish = () => {
-			window.clearTimeout(fallbackTimer);
-			element.removeEventListener("transitioncancel", handleTransition);
-			element.removeEventListener("transitionend", handleTransition);
-			resolve();
-		};
-		const handleTransition = (event: TransitionEvent) => {
-			if (event.target === element && event.propertyName === "max-height") finish();
-		};
-
-		element.addEventListener("transitioncancel", handleTransition);
-		element.addEventListener("transitionend", handleTransition);
-		fallbackTimer = window.setTimeout(finish, PANEL_TRANSITION_FALLBACK_MS);
-	});
-}
 
 export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 	const { t } = useTranslation("project");
@@ -101,25 +81,16 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 		[setSplitRatio],
 	);
 	const handleSplitResizeEnd = useCallback(() => setSplitDragging(false), []);
+	// 这两个回调只负责调整分栏比例；面板过渡与导航并行，不再阻塞会话切换。
 	const handleProjectInteract = useCallback(() => {
-		const willExpandPanel =
-			showSplit && !autoFitExpandedProject && splitRatio < SIDEBAR_PROJECTS_SPLIT_MAX;
-		const panelResizeWait =
-			willExpandPanel &&
-			projectsScrollEl &&
-			!splitDragging &&
-			!window.matchMedia("(prefers-reduced-motion: reduce)").matches
-				? waitForPanelResize(projectsScrollEl)
-				: false;
 		setAutoFitExpandedProject(true);
-		return panelResizeWait;
-	}, [autoFitExpandedProject, projectsScrollEl, showSplit, splitDragging, splitRatio]);
+	}, []);
 	const handleDefaultSessionInteract = useCallback(() => {
 		const container = splitContainerRef.current;
 		const defaultConversationRegion = defaultConversationRegionRef.current;
-		if (!container || !defaultConversationRegion || !projectsScrollEl) return false;
+		if (!container || !defaultConversationRegion) return;
 		const contentHeight = container.clientHeight - SPLIT_HANDLE_HEIGHT;
-		if (contentHeight <= 0) return false;
+		if (contentHeight <= 0) return;
 
 		const renderedProjectsRatio = autoFitExpandedProject
 			? SIDEBAR_PROJECTS_SPLIT_MAX
@@ -134,17 +105,12 @@ export function ProjectsPanel(props: ProjectsPanelProps): JSX.Element {
 			requestedDefaultConversationRatio >= DEFAULT_CONVERSATION_MIN_RATIO ||
 			actualDefaultConversationRatio >= restoredDefaultConversationRatio
 		) {
-			return false;
+			return;
 		}
 
-		const panelResizeWait =
-			splitDragging || window.matchMedia("(prefers-reduced-motion: reduce)").matches
-				? false
-				: waitForPanelResize(projectsScrollEl);
 		setAutoFitExpandedProject(false);
 		setSplitRatio(RESTORED_PROJECTS_RATIO);
-		return panelResizeWait;
-	}, [autoFitExpandedProject, projectsScrollEl, setSplitRatio, splitDragging, splitRatio]);
+	}, [autoFitExpandedProject, setSplitRatio, splitRatio]);
 
 	const defaultSection =
 		showDefaultRegion && model.defaultProject ? (

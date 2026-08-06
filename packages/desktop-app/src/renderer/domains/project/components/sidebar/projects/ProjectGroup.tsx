@@ -1,7 +1,51 @@
 import type { Project, SessionInfo } from "@shared/store/atoms";
 import { ProjectGroupView, SessionRowView } from "@vetta/theme-ui/project";
-import { memo } from "react";
-import { useProjectGroupModel } from "../../../hooks/useProjectGroupModel";
+import { memo, useCallback } from "react";
+import {
+	type ProjectGroupSessionView,
+	useProjectGroupModel,
+} from "../../../hooks/useProjectGroupModel";
+
+/** 每行一个 memo 组件，per-row 回调在这里固定引用（理由同 DefaultSessionRow）。 */
+const ProjectSessionRow = memo(function ProjectSessionRow({
+	item,
+	onBeforeSelect,
+	onOpenContextMenu,
+	onRename,
+	onRenameDone,
+	onSelect,
+}: {
+	item: ProjectGroupSessionView;
+	onBeforeSelect: () => void;
+	onOpenContextMenu: (event: React.MouseEvent, session: SessionInfo) => void;
+	onRename: (sessionPath: string, name: string) => void;
+	onRenameDone: () => void;
+	onSelect: (sessionPath: string) => void;
+}): JSX.Element {
+	const { path, session } = item;
+	const handleContextMenu = useCallback(
+		(event: React.MouseEvent) => onOpenContextMenu(event, session),
+		[onOpenContextMenu, session],
+	);
+	const handleRename = useCallback((name: string) => onRename(path, name), [onRename, path]);
+	const handleSelect = useCallback(() => onSelect(path), [onSelect, path]);
+
+	return (
+		<SessionRowView
+			active={item.active}
+			label={item.label}
+			renaming={item.renaming}
+			running={item.running}
+			scheduled={item.scheduled}
+			timeLabel={item.timeLabel}
+			onBeforeSelect={onBeforeSelect}
+			onOpenContextMenu={handleContextMenu}
+			onRename={handleRename}
+			onRenameDone={onRenameDone}
+			onSelect={handleSelect}
+		/>
+	);
+});
 
 interface ProjectGroupProps {
 	project: Project;
@@ -15,7 +59,7 @@ interface ProjectGroupProps {
 	onCollapse: (cwd: string) => void;
 	onNavigateProject: (cwd: string) => void;
 	onNewSession: (cwd: string) => void;
-	onProjectInteract: () => boolean | Promise<void>;
+	onProjectInteract: () => void;
 	onSelectSession: (cwd: string, sessionPath: string) => void;
 	onRenameSession: (cwd: string, sessionPath: string, name: string) => void;
 }
@@ -56,21 +100,14 @@ export const ProjectGroup = memo(function ProjectGroup(props: ProjectGroupProps)
 				sessions: model.sessionViews,
 				showAll: model.showAllSessions,
 				renderSession: (session) => (
-					<SessionRowView
+					<ProjectSessionRow
 						key={session.key}
-						active={session.active}
-						label={session.label}
-						renaming={session.renaming}
-						running={session.running}
-						scheduled={session.scheduled}
-						timeLabel={session.timeLabel}
+						item={session}
 						onBeforeSelect={props.onProjectInteract}
-						onOpenContextMenu={(event) =>
-							model.actions.openSessionContextMenu(event, session.session)
-						}
-						onRename={(name) => model.actions.renameSession(session.path, name)}
+						onOpenContextMenu={model.actions.openSessionContextMenu}
+						onRename={model.actions.renameSession}
 						onRenameDone={model.actions.renameDone}
-						onSelect={() => model.actions.selectSession(session.path)}
+						onSelect={model.actions.selectSession}
 					/>
 				),
 			}}
