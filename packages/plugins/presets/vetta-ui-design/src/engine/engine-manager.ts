@@ -37,6 +37,27 @@ const BOOTSTRAP_SCRIPT = [
 	"console.log('ok');",
 ].join("");
 
+/**
+ * 删掉 ~/.vetta/design-engine 下除当前版本外的版本目录。
+ *
+ * 分版本目录是为了让引擎升级不去动可能正在跑的旧树（见 engine-version.ts），代价
+ * 是旧版本会一直堆着——一份 node_modules 就是 90M+，实测两个版本 175M。回收放在
+ * 新版本已经确认能跑之后，所以「装到一半失败」不会把人卡在没有引擎的状态。
+ *
+ * 只删目录名长得像版本号的，别的一律不碰：这个目录是用户的，万一有人往里放了东西
+ * 不该被顺手清掉。
+ */
+const PRUNE_SCRIPT = [
+	"const fs=require('fs'),p=require('path');",
+	"const base=process.env.VETD_ENGINE_BASE,keep=process.env.VETD_ENGINE_KEEP;",
+	"if(!base||!keep)throw new Error('prune env missing');",
+	"for(const name of fs.readdirSync(base)){",
+	"if(name===keep||!/^\\d+\\.\\d+\\.\\d+$/.test(name))continue;",
+	"fs.rmSync(p.join(base,name),{recursive:true,force:true});",
+	"}",
+	"console.log('ok');",
+].join("");
+
 let cachedHome: string | null = null;
 let ensurePromise: Promise<string> | null = null;
 const servers = new Map<string, EngineServer>();
@@ -120,6 +141,17 @@ async function installDependencies(
 	}
 }
 
+async function pruneOldEngines(ctx: PluginContext): Promise<void> {
+	const home = await resolveHome(ctx);
+	await ctx.command.run("node", ["-e", PRUNE_SCRIPT], {
+		env: {
+			VETD_ENGINE_BASE: `${home}/.vetta/design-engine`,
+			VETD_ENGINE_KEEP: ENGINE_VERSION,
+		},
+		timeoutMs: 30_000,
+	});
+}
+
 async function engineReady(ctx: PluginContext, engineRoot: string): Promise<boolean> {
 	const [hash, vitePkg] = await Promise.all([
 		readTextIfExists(ctx, `${engineRoot}/.files-hash`),
@@ -140,7 +172,12 @@ export function ensureEngine(
 	const run = async (): Promise<string> => {
 		onProgress({ phase: "checking" });
 		const engineRoot = await engineRootDir(ctx);
-		if (await engineReady(ctx, engineRoot)) return engineRoot;
+		if (await engineReady(ctx, engineRoot)) {
+			await pruneOldEngines(ctx).catch(() => {
+				// 清不掉只是占着磁盘，不该拦住画布。
+			});
+			return engineRoot;
+		}
 		onProgress({ phase: "materializing" });
 		await materializeEngine(ctx, engineRoot);
 		const viteInstalled = (await readTextIfExists(ctx, `${engineRoot}/node_modules/vite/package.json`)) !== null;
@@ -151,6 +188,9 @@ export function ensureEngine(
 		if (!(await engineReady(ctx, engineRoot))) {
 			throw new Error("engine install incomplete (vite missing after npm install)");
 		}
+		await pruneOldEngines(ctx).catch(() => {
+			// 同上：新版本已经能跑了，回收失败不值得让整条链路失败。
+		});
 		return engineRoot;
 	};
 	ensurePromise = run().catch((error: unknown) => {
