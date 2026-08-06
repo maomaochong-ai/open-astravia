@@ -11,6 +11,7 @@ import type { SourceIssue } from "./vetd/check-sources";
 import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
+import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
@@ -23,6 +24,8 @@ const AGENT_MODE = ["work"] as const;
 
 interface CreateInput {
 	name?: string;
+	product?: string;
+	frameSize?: { width: number; height: number };
 }
 
 interface ScreenshotInput {
@@ -87,7 +90,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		// 工具描述每轮都在系统提示里，所以只留「做什么 + 去哪拿规则」。规则本身归
 		// skill 正文（已验证 invoke_skill 能送达），在这里复述一遍是双份 token。
 		description:
-			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
+			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -95,13 +98,39 @@ export function registerDesignTools(ctx: PluginContext): void {
 					type: "string",
 					description: "Design document name (kebab-case preferred), e.g. `login-app`.",
 				},
+				product: {
+					type: "string",
+					enum: PRODUCT_TYPES,
+					description: `What is being designed — sets this design's default frame size (${PRODUCT_SIZE_SUMMARY}). Take it from the user's request: "手机 App"/"mobile" is \`mobile\`, "后台"/"dashboard" is \`desktop\`. Anything else (infographic, A4 print, a square social post) goes through \`frameSize\` instead.`,
+				},
+				frameSize: {
+					type: "object",
+					properties: {
+						width: { type: "number" },
+						height: { type: "number" },
+					},
+					required: ["width", "height"],
+					additionalProperties: false,
+					description:
+						"Explicit default size in PIXELS, for whatever `product` cannot express — the user named a size (`800x800`), or a physical format you convert yourself (A4 at 96dpi is 794x1123, at 300dpi 2480x3508). Wins over `product` when both are given.",
+				},
 			},
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
 		handler: async ({ host, session, trigger }) => {
-			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design");
+			// 硬闸而不是默认值：品类是这一步唯一需要判断的东西，而它在这一刻最清楚。
+			// 从前这里没有参数，兜底就写死成桌面 1440x900，于是「用户要移动 App」在整条
+			// 链路上无处可存——五个 frame 漏声明尺寸，整份设计静默落成桌面尺寸。
+			const defaultFrameSize = resolveDefaultFrameSize(trigger.input);
+			if (!defaultFrameSize) {
+				return {
+					ok: false,
+					error: `Pass \`product\` (${PRODUCT_TYPES.join(" | ")}) or an explicit \`frameSize\` in pixels. This is the size the design defaults to — decide it from what the user asked for, do not guess after the fact.`,
+				};
+			}
+			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design", defaultFrameSize);
 			setPendingDesignPath(result.vetdPath);
 			ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, true);
 			ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
@@ -109,7 +138,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 				ok: true,
 				vetdPath: result.vetdPath,
 				sourcesDir: result.dirPath,
-				note: "Design created and opened on the canvas, with NO frames yet — pick sizes from the product type and write frames/<id>.tsx, each starting with `export const frame = { width, height, title }`. Never edit the .vetd manifest. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx), then every frame as a short skeleton so the whole set reaches the canvas immediately, and only then fill them in one at a time — see the vetta-ui-design skill.",
+				defaultFrameSize,
+				note: `Design created and opened on the canvas, with NO frames yet. Its default size is ${defaultFrameSize.width}x${defaultFrameSize.height} — still declare it per frame: every frames/<id>.tsx starts with \`export const frame = { width: ${defaultFrameSize.width}, height: ${defaultFrameSize.height}, title }\`, and a screen of a different product type declares its own. Never edit the .vetd manifest. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx), then every frame as a short skeleton so the whole set reaches the canvas immediately, and only then fill them in one at a time — see the vetta-ui-design skill.`,
 			};
 		},
 	});
@@ -257,6 +287,11 @@ export function registerDesignTools(ctx: PluginContext): void {
 					? {
 							vetdPath: controller.session.vetdPath,
 							sourcesDir: controller.session.dirPath,
+							// 这份设计是什么品类的。新画框漏声明尺寸时兜底就是它，所以
+							// agent 补声明时该照着它写，而不是回去猜。
+							...(controller.session.manifest.defaultFrameSize
+								? { defaultFrameSize: controller.session.manifest.defaultFrameSize }
+								: {}),
 							// 复用面先于画框列出：agent 是一屏一屏往下写的，看不见既有的
 							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
 							sharedShell: shell,

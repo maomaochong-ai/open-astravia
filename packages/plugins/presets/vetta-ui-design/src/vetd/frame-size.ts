@@ -15,19 +15,21 @@
  * 上画布，`frame-size-missing` 照常从 checkSources 报出去、照常在轮次结束退回。
  * agent 该补的声明一条都没少，只是补之前画布不再是空的。
  */
-import type { FrameMeta } from "./manifest-types";
 import type { ParsedFrameMeta } from "./frame-meta";
+import type { FrameMeta, FrameSize } from "./manifest-types";
 
-export interface FrameSize {
-	width: number;
-	height: number;
-}
+export type { FrameSize };
 
 /**
- * 整份设计一个尺寸都没声明时的最后兜底。
+ * 连设计级默认都没有时的最后兜底。
  *
  * 取桌面尺寸而不是手机：SKILL.md 里写着「a dashboard at 390 wide is the most
  * common failure」——猜宽了顶多留白，猜窄了整个布局是塌的。
+ *
+ * 但它只该在**真的没有任何信息**时出现。老文档、以及画布上手动新建的设计没有
+ * `defaultFrameSize`，走的就是这一条；经 vetd_create 建的设计都带着品类，轮不到
+ * 这里。之前它是唯一的兜底，于是「用户要移动 App」这件事在链路上无处可存，整份
+ * 设计静默落成桌面尺寸。
  */
 export const FALLBACK_FRAME_SIZE: FrameSize = { width: 1440, height: 900 };
 
@@ -76,12 +78,19 @@ function dominantSize(entries: readonly FrameSizeInput[]): FrameSize | null {
 /**
  * 解析每一帧最终的尺寸。返回的 Map 一定覆盖全部输入——没有画框会因为漏声明而
  * 掉出画布。
+ *
+ * 优先级从具体到笼统：这一帧自己说的 > 整份设计的多数派 > 创建时声明的品类
+ * (`designDefault`) > 全局兜底。多数派排在品类前面是有意的——一份设计中途改了
+ * 品类（海报改成手机屏）时，已经在画布上的那些帧才是真相。
  */
-export function resolveFrameSizes(entries: readonly FrameSizeInput[]): Map<string, FrameSize> {
+export function resolveFrameSizes(
+	entries: readonly FrameSizeInput[],
+	designDefault?: FrameSize | null,
+): Map<string, FrameSize> {
 	const dominant = dominantSize(entries);
 	const resolved = new Map<string, FrameSize>();
 	for (const entry of entries) {
-		resolved.set(entry.id, declaredSize(entry) ?? dominant ?? FALLBACK_FRAME_SIZE);
+		resolved.set(entry.id, declaredSize(entry) ?? dominant ?? designDefault ?? FALLBACK_FRAME_SIZE);
 	}
 	return resolved;
 }

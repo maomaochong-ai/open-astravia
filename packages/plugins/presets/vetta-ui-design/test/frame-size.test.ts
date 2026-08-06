@@ -8,7 +8,7 @@
 import { expect, it } from "vitest";
 import type { ParsedFrameMeta } from "../src/vetd/frame-meta";
 import { FALLBACK_FRAME_SIZE, type FrameSizeInput, resolveFrameSizes } from "../src/vetd/frame-size";
-import type { FrameMeta } from "../src/vetd/manifest-types";
+import type { FrameMeta, FrameSize } from "../src/vetd/manifest-types";
 
 const parsed = (width: number | null, height: number | null, title = "t"): ParsedFrameMeta => ({
 	width,
@@ -22,8 +22,10 @@ const entry = (id: string, meta: ParsedFrameMeta, existing: FrameMeta | null = n
 	existing,
 });
 
-const sizesOf = (entries: FrameSizeInput[]): Record<string, string> =>
-	Object.fromEntries([...resolveFrameSizes(entries)].map(([id, size]) => [id, `${size.width}x${size.height}`]));
+const sizesOf = (entries: FrameSizeInput[], designDefault?: FrameSize | null): Record<string, string> =>
+	Object.fromEntries(
+		[...resolveFrameSizes(entries, designDefault)].map(([id, size]) => [id, `${size.width}x${size.height}`]),
+	);
 
 it("keeps every frame on the canvas even when none declares a size", () => {
 	// 实测翻车现场的形状：5 个 frame 一个尺寸都没声明。
@@ -31,6 +33,29 @@ it("keeps every frame on the canvas even when none declares a size", () => {
 	const resolved = resolveFrameSizes(ids.map((id) => entry(id, parsed(null, null))));
 	expect([...resolved.keys()].sort()).toEqual(ids);
 	for (const size of resolved.values()) expect(size).toEqual(FALLBACK_FRAME_SIZE);
+});
+
+it("falls back to the design's declared product size, not the desktop constant", () => {
+	// 实测翻车现场（2026-08-06T04-29 / social-circle）：用户第一句就是「Mobile APP」，
+	// agent 写的 4 个 frame 一个都没声明尺寸，整份设计静默落成桌面 1440x900。
+	// vetd_create 现在把品类记在 manifest 里，同样的疏忽落到手机尺寸。
+	const ids = ["chat", "circle", "explore", "home"];
+	expect(sizesOf(ids.map((id) => entry(id, parsed(null, null))), { width: 390, height: 844 })).toEqual({
+		chat: "390x844",
+		circle: "390x844",
+		explore: "390x844",
+		home: "390x844",
+	});
+});
+
+it("lets the design's existing frames outrank the declared product size", () => {
+	// 中途改了品类：已经在画布上的那些帧才是现在的真相，manifest 里的品类是旧的。
+	expect(
+		sizesOf(
+			[entry("a", parsed(1080, 1080)), entry("b", parsed(1080, 1080)), entry("c", parsed(null, null))],
+			{ width: 390, height: 844 },
+		).c,
+	).toBe("1080x1080");
 });
 
 it("borrows the design's dominant size rather than the alphabetically previous frame", () => {

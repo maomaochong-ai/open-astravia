@@ -132,8 +132,10 @@ export class DesignSession {
 		}
 		// 尺寸解析先于建条目：漏声明的画框拿多数派尺寸上画布，而不是掉出去。缺声明
 		// 本身照常由 checkSources 报成 `frame-size-missing`——渲染和报错是两件事。
+		// 整份设计都没有多数派时退到创建时声明的品类，而不是写死的桌面尺寸。
 		const sizes = resolveFrameSizes(
 			parsedFiles.map(({ id, parsed }) => ({ id, parsed, existing: known.get(id)?.meta ?? null })),
+			this.manifest.defaultFrameSize ?? null,
 		);
 
 		for (const { file, id, parsed } of parsedFiles) {

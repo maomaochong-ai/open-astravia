@@ -56,11 +56,12 @@ not apply to them.
 export const frame = { width: 390, height: 844, title: "Login" };
 ```
 
-Omit `width`/`height` and the frame still reaches the canvas — rendered at a
-size inferred from the rest of the design — but that is a guess, and `issues`
-will keep asking. Sizes come from the product type below; when the design
-already has frames, `vetd_status` lists their sizes — match them unless the new
-screen is a different product type.
+Every frame declares its own. Omit it and the frame is rendered at a size
+inferred from the rest of the design — it still reaches the canvas, but nothing
+about that size is yours, and `issues` will keep asking until you declare one.
+Sizes come from the product type below; when the design already has frames,
+`vetd_status` lists their sizes and the design's `defaultFrameSize` — match them
+unless the new screen is a different product type.
 
 It gets its own section because it is the only convention here that needs
 judgment from you. Everything else is either caught automatically or visible in
@@ -99,17 +100,27 @@ reads perfectly, and nothing renders. Add the token first, then use it.
 
 ## Pick the product type
 
-DEFAULTS — an explicit user instruction always wins. Do not default to a phone
-frame; a dashboard at 390 wide is the most common failure.
+This is the first decision, not an afterthought: `vetd_create` requires it
+(`product`, or `frameSize` in pixels for anything the enum cannot express), and
+it becomes the design's default size. Read it off the user's own words — "移动
+App" is `mobile`, "后台"/"dashboard" is `desktop`. An explicit user instruction
+always wins. Do not default to a phone frame; a dashboard at 390 wide is the
+most common failure.
 
-| Product | Default size | What matters |
-| --- | --- | --- |
-| Mobile screen | 390x844 | One primary action; thumb reach; full state coverage |
-| Desktop app / dashboard | 1440x900 | Real density; aligned grid; no empty middle |
-| Landing page | 1440x{2000+} | hero → proof → CTA rhythm |
-| Slide | 1920x1080 | One idea; large type; generous margins |
-| Poster / social | 1080x1440 or 1080x1080 | One focal point; strong size contrast |
-| Infographic / chart | free | Honest data, labeled axes, legible legend |
+| Product | `product` | Default size | What matters |
+| --- | --- | --- | --- |
+| Mobile screen | `mobile` | 390x844 | One primary action; thumb reach; full state coverage |
+| Desktop app / dashboard | `desktop` | 1440x900 | Real density; aligned grid; no empty middle |
+| Landing page | `landing` | 1440x2400 | hero → proof → CTA rhythm |
+| Slide | `slide` | 1920x1080 | One idea; large type; generous margins |
+| Poster / social | `poster` | 1080x1440 | One focal point; strong size contrast |
+| Square social post | — | `frameSize` 1080x1080 | One focal point; strong size contrast |
+| Infographic / chart | — | `frameSize`, free | Honest data, labeled axes, legible legend |
+| Print (A4 portrait) | — | `frameSize` 794x1123 @96dpi, 2480x3508 @300dpi | Convert mm→px yourself; 300dpi only when the user asks for print |
+
+The design default only covers frames that forgot to declare a size. A document
+can mix product types — a poster next to three phone screens — as long as each
+frame declares its own.
 
 ## Templates
 
@@ -191,7 +202,8 @@ export function NavBar() {
 
 ## Workflow
 
-**New document**: `vetd_create` → pick the product type → settle the style.
+**New document**: pick the product type → `vetd_create` with it → settle the
+style.
 The plugin ships curated design systems (Linear, Stripe, Notion, Apple, …), each
 a hand-tuned `theme.css` + `DESIGN.md`; `vetd_design_systems` lists them and its
 own description explains the three usages. Two judgment calls it cannot make for
