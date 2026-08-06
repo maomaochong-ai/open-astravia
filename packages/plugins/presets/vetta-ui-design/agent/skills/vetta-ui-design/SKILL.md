@@ -76,9 +76,12 @@ same way. The templates below are already correct on all of it:
 
 - `h-full`, never `h-screen`/`min-h-screen` — a frame is a fixed-size canvas,
   not a viewport.
-- Icons are Iconify classes: `<span className="icon-[lucide--search] size-4" />`.
-  Never your own icon component, never inline SVG paths. Offline sets: `lucide`,
-  `tabler`, `mdi`, `simple-icons`.
+- Icons are Iconify classes — a `<span>` with a class, NOT a component:
+  `<span className="icon-[lucide--search] size-4" />`. There is no icon package
+  to import: `import { Search } from "lucide-react"` fails to build, and so does
+  every other icon library. Never your own icon component, never inline SVG
+  paths. Offline sets, and only these: `lucide`, `tabler`, `mdi`,
+  `simple-icons` — naming any other set fails to build too.
 - `<Link to>` from react-router for internal screens, never `<a href="/…">`, and
   never a locally redefined `Link`/`useNavigate`/`useLocation`.
 - No remote image URLs (`<img>`, `background-image`) — they break screenshots.
@@ -87,8 +90,11 @@ same way. The templates below are already correct on all of it:
   line destroys element→source mapping, and the user's "Ask Vetta" edits then
   point every element at the same line.
 - One default export per frame, rendering edge-to-edge — no page margins.
-- Only react, react-router, Tailwind v4 and Iconify are installed. No web fonts
-  — build contrast with size/weight/tracking.
+- Only react, react-router, Tailwind v4 and Iconify are installed, and you
+  cannot add a dependency — the engine is a fixed template, there is no install
+  step anywhere. A chart, a date picker, an animation library: build it from
+  Tailwind utilities, an Iconify glyph and plain React state, or leave it out.
+  No web fonts — build contrast with size/weight/tracking.
 
 ### The one thing nothing catches: a token that does not exist
 
