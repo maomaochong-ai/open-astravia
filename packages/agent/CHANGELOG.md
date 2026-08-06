@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- **修复模型把工具调用参数写成正文时该调用彻底丢失**：`AgentLoopConfig` / `AgentOptions` 新增可选 `salvageTextToolCalls`（工具名白名单）。gpt-5.x 一类模型在同一轮里既要叙述又要干活时，会把叙述型工具的参数当成 tool call 前的 preamble 正文吐出来，真正的调用只留给另一个工具——抓包确认参数是逐 token 从 `delta.content` 出来的，流里根本没有对应 `tool_calls`，不是协议解析问题。命中白名单、且参数键唯一匹配某个工具 schema 时，loop 在 `message_end` 前把这段正文还原成 toolCall（`stopReason` 为 `stop` 时一并提为 `toolUse`）。未配置时行为不变。
+
 - **修复运行中新增的工具/系统提示词要等下一次 `prompt()` 才生效**：`agentLoop` 会复制传入的 `AgentContext`，因此整轮多次 LLM 请求一直复用 loop 启动时的 `tools` / `systemPrompt` 快照，运行中调用 `setTools()` / `setSystemPrompt()` 对本轮无效。典型症状：`tool_search` 报告"已激活"某个 MCP 工具，但模型本轮始终拿不到它的 schema，只能反复检索同一个工具直到耗尽。`AgentLoopConfig` 新增可选 `getTools` / `getSystemPrompt`，loop 每轮开始时重新读取（未传则维持旧的快照行为）；`Agent` 默认接到自身 state 上。
 - 修复 `tracing.detail="agent"` 且 `tracing.captureContent=true` 时 root `agent.run` 仍只上报摘要，导致 Langfuse trace input/output 看不到用户消息、最终 assistant 输出、system prompt 与工具定义正文。
 - 修复 `proxy.ts` 的 `streamProxy` 在 abort listener 上未传 `{ once: true }`：abort 触发后 listener 仍残留到 finally 才被移除，并发 finally 路径异常下可能漏清理。补齐 `{ once: true }` 作为防御。

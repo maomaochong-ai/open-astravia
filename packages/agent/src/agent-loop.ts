@@ -13,6 +13,7 @@ import {
 	validateToolArguments,
 } from "@vetta/ai";
 import type { RuntimeObservation, RuntimeObservationUpdate } from "@vetta/runtime-telemetry";
+import { salvageTextToolCalls } from "./salvage-text-tool-calls.js";
 import type {
 	AgentContext,
 	AgentEvent,
@@ -363,6 +364,9 @@ async function streamAssistantResponse(
 				case "done":
 				case "error": {
 					const finalMessage = await response.result();
+					if (event.type === "done" && config.salvageTextToolCalls?.length) {
+						salvageTextToolCalls(finalMessage, llmContext.tools, config.salvageTextToolCalls);
+					}
 					if (addedPartial) {
 						context.messages[context.messages.length - 1] = finalMessage;
 					} else {

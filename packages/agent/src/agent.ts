@@ -115,6 +115,11 @@ export interface AgentOptions {
 	 * Tracing behavior. Content capture is disabled by default in hosts.
 	 */
 	tracing?: AgentTracingOptions;
+
+	/**
+	 * 允许从助手正文中还原调用的工具名白名单，详见 AgentLoopConfig.salvageTextToolCalls。
+	 */
+	salvageTextToolCalls?: string[];
 }
 
 export class Agent {
@@ -150,6 +155,7 @@ export class Agent {
 	private _maxRetryDelayMs?: number;
 	private tracer?: RuntimeTracer;
 	private tracing?: AgentTracingOptions;
+	private salvageTextToolCalls?: string[];
 
 	constructor(opts: AgentOptions = {}) {
 		this._state = { ...this._state, ...opts.initialState };
@@ -165,6 +171,7 @@ export class Agent {
 		this._maxRetryDelayMs = opts.maxRetryDelayMs;
 		this.tracer = opts.tracer;
 		this.tracing = opts.tracing;
+		this.salvageTextToolCalls = opts.salvageTextToolCalls;
 	}
 
 	/**
@@ -499,6 +506,7 @@ export class Agent {
 			// 模型只会反复检索同一个工具。
 			getTools: () => this._state.tools,
 			getSystemPrompt: () => this._state.systemPrompt,
+			salvageTextToolCalls: this.salvageTextToolCalls,
 		};
 
 		let partial: AgentMessage | null = null;

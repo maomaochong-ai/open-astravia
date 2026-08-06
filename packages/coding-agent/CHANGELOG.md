@@ -30,6 +30,7 @@
 
 ### Fixed
 
+- **GPT 模型把 `progress` / `todo` 的参数当正文明文吐出来、阶段标题与 todo 状态一起丢失**：`ominiroute-hellox/gpt-5.6-luna` 在同一轮里既要叙述又要干活时，会把 `progress` 的参数写成 tool call 前的 preamble 正文（用真实会话上下文重放，8/8 复现；旧会话里同一机制让 8 次 `todo` 状态更新静默丢失）。抓包确认参数逐 token 从 `delta.content` 出来、流里没有对应 `tool_calls`，本地解析链路无关。现向 `@vetta/agent` 传 `salvageTextToolCalls: ["progress", "todo"]`，把这类正文还原成真实调用；白名单只含无副作用工具，且参数键需唯一匹配工具 schema，不会误执行 `write` / `bash`。
 - **Windows 上进程已死但 `.jsonl.lock` 永久占死、会话无法打开**：`process.kill(pid, 0)` 在 Windows 上对**已不存在**的 PID 也会抛 `EPERM`（POSIX 语义下 EPERM 才表示进程仍在），旧逻辑把 EPERM 当存活，再叠加 `Get-Process` 失败时「无法证明复用 → 假定仍占用」，崩溃/强杀后留下的锁永远回收不了。现 Windows 以 `Get-Process` 为存活源：明确不存在则回收；探测失败时也不再把 EPERM 当存活。顺带 `Get-Process -ErrorAction SilentlyContinue`，避免抢锁时刷 PowerShell 红字。
 - **`tool_search` 激活 MCP 工具后模型仍拿不到、反复检索同一个工具**：根因在 `@vetta/agent`（loop 复制 context，本轮不再重读 tools，已随该包修复）。这里配套两处：`setActiveToolsByName` 同步更新本轮激活名单快照 `_currentRunActiveToolNames`，避免随后的插件 runtime effect 用旧快照重建 tools 把刚激活的工具又摘掉；`tool_search` 的描述与返回文案改为明确「已激活/已在激活集 → 直接调用，不要再检索」。
 - **会话文件锁在 PID 复用后永久占死**：`.jsonl.lock` 原先只靠 `pid + process.kill(pid,0)` 判断持有者是否仍存活。Windows 上 PID 会很快被无关进程（如 VS Code 子进程）复用，导致「没有 Vetta 在用、会话却永远 SESSION_LOCKED」。现写入 `processStartedAt`，抢锁时校验是否仍是**同一进程实例**；无该字段的旧锁若「存活进程启动时间晚于锁写入时间」则按复用回收。顺带：`EPERM` 视为进程仍在；hostname 大小写不敏感；进程 exit/信号时 best-effort 清理本进程持有的 sentinel。
