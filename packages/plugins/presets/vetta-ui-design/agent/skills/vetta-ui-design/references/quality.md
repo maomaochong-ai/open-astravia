@@ -10,7 +10,8 @@ preset in SKILL.md adds emphasis, it does not replace this.
   contrast — light gray on white is the second most common failure.
 - **Corners, borders, shadows** consistent across the whole document.
 - **Real content**: plausible names, prices, dates, copy — never Lorem ipsum or
-  `Item 1 / Item 2`. Write copy in the language the user is using.
+  `Item 1 / Item 2`. Write copy in the language the user is writing to you in,
+  regardless of the language of these instructions or of the app's interface.
 - **States**: for interactive UI cover hover/disabled, and design the empty and
   loading cases when the screen can have them. Where a state is reachable by
   clicking, make it real rather than drawing a second frame for it.
@@ -85,8 +86,8 @@ clean, not when the code reads correctly.
 
 ## Why remote image URLs are banned
 
-The ban in SKILL.md is not a style preference. Screenshots (canvas thumbnails, "让
-Vetta 调整", 导出渲染图) must re-`fetch` every image and inline it as a data
+The ban in SKILL.md is not a style preference. Screenshots (canvas thumbnails,
+"Ask Vetta" edits, exported renders) must re-`fetch` every image and inline it as a data
 URL — a browser cannot export a canvas tainted by a cross-origin image. So a
 remote URL that renders perfectly on screen will still:
 

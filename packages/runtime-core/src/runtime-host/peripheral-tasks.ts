@@ -110,17 +110,26 @@ export async function runWithPeripheralFailover<T>(
 	return null;
 }
 
-/** 输入预测的结构化输出工具：JSON schema 强约束 suggestions 为字符串数组。 */
+/**
+ * 输入预测的结构化输出工具：JSON schema 强约束 suggestions 为字符串数组。
+ *
+ * 描述用英文写：它和下面两个周边任务的提示词一样会进模型上下文，写成中文等于
+ * 给模型一个「本次会话说中文」的信号，用户用英文提问也会拿到中文建议。语言由
+ * 会话内容决定，不由提示词的语言决定。
+ */
 const SUGGESTIONS_TOOL: Tool = {
 	name: "provide_prompt_suggestions",
-	description: "提交预测出的、用户接下来最可能亲自发送给助手的下一句话（0-3 条，用户第一人称口吻）。",
+	description:
+		"Submit the predicted next messages the user is most likely to type and send to the assistant (0-3 items, written in the user's own first-person voice).",
 	parameters: Type.Object({
 		suggestions: Type.Array(
 			Type.String({
-				description: "用户会直接打字发送的一句话：第一人称、具体、口语化，不超过 30 字。",
+				description:
+					"One sentence the user would literally type: first person, concrete, conversational, at most ~30 characters of CJK or ~15 words. Written in the same language the user is using.",
 			}),
 			{
-				description: "0 到 3 条建议，按可能性从高到低排序；没有合理的后续追问时给空数组。",
+				description:
+					"0 to 3 suggestions ordered from most to least likely; return an empty array when there is no sensible follow-up.",
 				maxItems: 3,
 			},
 		),
@@ -167,23 +176,38 @@ export function sanitizeSuggestions(raw: string): string[] {
 	return chosen ? cleanSuggestionList(chosen) : [];
 }
 
+/** 含 CJK 的标题按字数截断，纯拉丁文按更宽的字符数截断（14 个拉丁字符不足两个词）。 */
+const TITLE_MAX_CHARS_CJK = 14;
+const TITLE_MAX_CHARS_LATIN = 40;
+
+/** 截断到上限，拉丁文在词边界收尾，避免把单词切一半。 */
+function capTitle(stripped: string): string {
+	const hasCjk = /[㐀-鿿豈-﫿぀-ヿ가-힯]/u.test(stripped);
+	const limit = hasCjk ? TITLE_MAX_CHARS_CJK : TITLE_MAX_CHARS_LATIN;
+	const chars = Array.from(stripped);
+	if (chars.length <= limit) return stripped;
+	const cut = chars.slice(0, limit).join("");
+	if (hasCjk) return cut;
+	const lastSpace = cut.lastIndexOf(" ");
+	return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd();
+}
+
 export function sanitizeAutoTitle(raw: string): string {
 	if (!raw) return "";
 	// Reasoning models often emit a long internal monologue ending with the
 	// final short answer. Heuristic: prefer the LAST non-empty line if it is
-	// reasonably short (≤ 30 chars), else fall back to the first non-empty line.
+	// reasonably short (≤ 60 chars — an English title runs far longer than a
+	// CJK one), else fall back to the first non-empty line.
 	const lines = raw.split(/\r?\n/).filter((line) => line.trim().length > 0);
 	if (lines.length === 0) return "";
 	const lastLine = lines[lines.length - 1];
 	const firstLine = lines[0];
-	const candidate = Array.from(lastLine.trim()).length <= 30 ? lastLine : firstLine;
+	const candidate = Array.from(lastLine.trim()).length <= 60 ? lastLine : firstLine;
 	// Strip leading/trailing whitespace and any special characters so both ends
 	// are alphanumeric (letters, including CJK, or digits).
 	const stripped = candidate.replace(/^[^\p{L}\p{N}]+/u, "").replace(/[^\p{L}\p{N}]+$/u, "");
 	if (!stripped) return "";
-	// Hard cap at 14 chars (Array.from to count code points correctly).
-	const chars = Array.from(stripped);
-	return chars.length > 14 ? chars.slice(0, 14).join("") : stripped;
+	return capTitle(stripped);
 }
 
 /**
@@ -200,10 +224,13 @@ export async function generateAutoTitle(
 	const trimmedUser = userText.trim().slice(0, 800);
 	const trimmedAssistant = assistantText.trim().slice(0, 1500);
 	const promptText =
-		`请为下面这段对话生成一个 10 到 20 个字符之间的中文短标题，用来在侧边栏标识这个会话。\n` +
-		`要求：只输出标题本身；不要引号、书名号、句号、感叹号或其他标点；不要任何解释或前后缀。\n\n` +
-		`<用户消息>\n${trimmedUser}\n</用户消息>\n\n` +
-		`<助手回复>\n${trimmedAssistant}\n</助手回复>`;
+		`Write a short title for the conversation below. It labels this session in the sidebar.\n` +
+		`Rules:\n` +
+		`- Write it in the SAME LANGUAGE as the user message. If the user wrote in English, the title is in English.\n` +
+		`- Keep it short: 10-20 characters for CJK, or 3-6 words for languages written with spaces.\n` +
+		`- Output the title itself only. No quotes, no trailing punctuation, no explanation, no prefix or suffix.\n\n` +
+		`<user_message>\n${trimmedUser}\n</user_message>\n\n` +
+		`<assistant_reply>\n${trimmedAssistant}\n</assistant_reply>`;
 
 	return runWithPeripheralFailover(source, `autoTitleSession session=${sessionId}`, async (candidate) => {
 		const { model, apiKey, reasoning, key } = candidate;
@@ -214,7 +241,8 @@ export async function generateAutoTitle(
 		const response = await completeSimple(
 			model,
 			{
-				systemPrompt: "你是会话标题生成器。严格按用户要求只输出一个简短中文标题。",
+				systemPrompt:
+					"You are a session title generator. Output exactly one short title and nothing else, in the same language as the user's message.",
 				messages: [
 					{
 						role: "user" as const,
@@ -271,13 +299,14 @@ export async function generateNextPromptSuggestions(
 	if (!trimmed) return [];
 
 	const promptText =
-		`下面是用户与 AI 助手最近的对话。请站在【用户】的角度，预测用户接下来最可能【亲自打字发给助手】的下一句话。\n\n` +
-		`要求：\n` +
-		`- 每条必须是用户会直接发送的一句话：第一人称、口语化、具体。例如「再写一个悲伤点的结局」「把这个故事翻译成英文」「帮我把刚才的代码加上注释」。\n` +
-		`- 禁止输出对用户意图的分析、第三人称描述、任何思考过程或解释。只给用户会说的话本身。\n` +
-		`- 0 到 3 条，按可能性从高到低；对话已自然收尾、没有合理后续时给空数组。每条不超过 30 字。\n` +
-		`- 必须通过调用 provide_prompt_suggestions 工具提交结果（suggestions 字段），不要用普通文本回答。\n\n` +
-		`<对话>\n${trimmed}\n</对话>`;
+		`Below is the recent conversation between a user and an AI assistant. Take the USER's point of view and predict the next message the user is most likely to type and send.\n\n` +
+		`Rules:\n` +
+		`- Write every suggestion in the SAME LANGUAGE the user is using in the conversation. If the user writes in English, the suggestions are in English.\n` +
+		`- Each one must be a sentence the user would literally send: first person, conversational, concrete. For example "write me a sadder ending", "translate this story into Chinese", "add comments to the code you just wrote".\n` +
+		`- Never output analysis of the user's intent, third-person descriptions, reasoning or explanation. Only what the user would say.\n` +
+		`- 0 to 3 items, most likely first; return an empty array when the conversation has wrapped up and no follow-up makes sense. Keep each under ~30 characters of CJK or ~15 words.\n` +
+		`- You MUST submit the result by calling the provide_prompt_suggestions tool (suggestions field). Do not answer with plain text.\n\n` +
+		`<conversation>\n${trimmed}\n</conversation>`;
 
 	// null = 调用失败需轮转；[] = 成功但无建议（合法，不轮转）。
 	const result = await runWithPeripheralFailover(
@@ -289,7 +318,7 @@ export async function generateNextPromptSuggestions(
 				model,
 				{
 					systemPrompt:
-						"你是输入预测器，模拟用户口吻预测其下一句输入。必须调用 provide_prompt_suggestions 工具，把 0-3 条用户第一人称的具体提问/指令放入 suggestions 字段提交，不含任何分析或思考过程。",
+						"You are an input predictor. Imitate the user's voice to predict their next message, in the language the user is writing in. You MUST call the provide_prompt_suggestions tool and submit 0-3 concrete first-person questions or instructions in the suggestions field, with no analysis or reasoning.",
 					messages: [
 						{
 							role: "user" as const,

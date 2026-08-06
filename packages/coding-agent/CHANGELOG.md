@@ -77,6 +77,8 @@
 
 ### Fixed
 
+- **系统提示缺少回复语言规则，英文提问却得到中文回复/progress/todo**：此前全仓只有 `work.md` 的 progress 标题与 `md_intro` 提到 "in the user's language"，正文、todo、`ask_user_question` 全无约束，模型实际跟的是系统提示与 skill 正文的语言——上下文里只要混进中文（skill 示例、工具描述里的「推荐」「分步」「盖章」等），英文会话就整体倒向中文。新增 `RESPONSE_LANGUAGE_GUIDANCE`：以「用户最新消息的语言」为唯一口径，明确声明系统提示/skill/工具描述/宿主界面的语言都不是语言信号，并列出适用面（正文、progress、todo、提问选项、`md_intro`、产物内的面向用户文案）。`buildGuidelines` 与 customPrompt 分支（`core.response-language`）两条组装路径都注入。
+
 - **前台 bash/shell 把守护进程当短命令导致永久卡住**：模型对 `make dev` / `docker compose up` / dev server 等未设 `run_in_background` 时，前台会一直等到进程退出。无显式 hard `timeout` 时改为 soft wait（默认 45s），仍在跑则 auto-promote 到 `BackgroundTaskManager` 并返回 task id；无 background 能力时同一默认值改为硬杀。同时收紧 tool description / schema / system guidelines，要求非退出进程必须 `run_in_background`。
 - **知识库加工失败的文件被无限重加工（止损：失败计数 + 隔离）**：差异计算是纯 hash、无状态的——「wiki 页存在且 source_hash 匹配」是某原始文件「加工成功」的唯一凭证。任何永远写不出 wiki 页的文件（OCR 失败/超大/agent 中途崩/被中止/上下文溢出），其 `source_hash` 永远匹配不到 wiki 页，于是每一轮 `diffRaws` 都把它重新判为 `added` 重加工，无失败计数、无退避、无上限 → 同样几个文件每 N 分钟反复空转。新增 `core/knowledge/failures.ts`（按 `source_hash` 记录连续失败次数，达阈值 `KB_MAX_PROCESSING_ATTEMPTS=3` 即隔离）+ `failures.json` 持久化（`readFailures`/`writeFailures`）：`prepareRound` 用 `applyQuarantine` 从 diff 剔除已隔离项不再自动重加工；新增 `reconcileRoundFailures` 在轮末（仅非中止时）据「wiki 是否真出现该 hash」对账成败——成功清除记录、失败计数 +1。文件内容变化（hash 变）视为全新文件自动重试，旧记录自动剪枝。
 - **本地工具子进程（OCR/PDF 渲染/HTML 转换）被中止时不回收，长期累积拖垮应用**：`extract_text_from_pdf`/`extract_text_from_img`（Vetta OCR，超时 30/5 分钟）、`render_pdf_page`（pdftoppm）、`html_to_pdf` 过去用 `promisify(execFile)` 派生子进程，abort 时拿不到子进程句柄、只能空等超时——被中止的 OCR/渲染进程（OCR 实为 Electron，带一串 helper 孙进程）残留到超时为止，反复加工同样几个文件时累积成百上千个进程。新增 `core/tools/exec-subprocess.ts`：`detached` spawn + `killProcessTree(-pid)`，abort/超时立即收掉整棵进程树（含 helper 孙进程）；四个工具改用它。

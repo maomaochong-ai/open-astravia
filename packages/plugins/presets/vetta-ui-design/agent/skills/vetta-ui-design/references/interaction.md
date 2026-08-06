@@ -14,11 +14,11 @@ Navigate with react-router — it is installed in the engine:
 ```tsx
 import { Link, useNavigate } from "react-router";
 
-<Link to="/dashboard">登录</Link>;
+<Link to="/dashboard">Sign in</Link>;
 
 // when the click does something first:
 const navigate = useNavigate();
-<button type="button" onClick={() => { save(); navigate("/dashboard"); }}>登录</button>;
+<button type="button" onClick={() => { save(); navigate("/dashboard"); }}>Sign in</button>;
 ```
 
 Do NOT redefine `Link`/`useLocation`/`useNavigate` locally, and do NOT use
@@ -67,5 +67,5 @@ pretending to load forever. A submit button navigates to the next screen; it
 does not need an API.
 
 The canvas itself stays in design mode — clicking a frame there selects elements
-for editing. Interaction is verified in 预览 (or by reading the code), not by
+for editing. Interaction is verified in preview (or by reading the code), not by
 clicking the canvas.

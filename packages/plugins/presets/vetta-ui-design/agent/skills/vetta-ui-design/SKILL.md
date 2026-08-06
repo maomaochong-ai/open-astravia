@@ -33,7 +33,7 @@ internalising before you start:
 
 ## It is a project, not a picture
 
-The output is a running front-end app the user can click through in 预览, built
+The output is a running front-end app the user can click through in preview, built
 from sources meant to ship. Decide structure BEFORE writing screens:
 
 1. **Routes** — `frames/login.tsx` is `/login`, `index.tsx` is `/`.
@@ -53,7 +53,7 @@ not apply to them.
 **Frame meta is the FIRST statement**, one flat line (regex-parsed):
 
 ```tsx
-export const frame = { width: 390, height: 844, title: "登录" };
+export const frame = { width: 390, height: 844, title: "Login" };
 ```
 
 Omit `width`/`height` and the frame still reaches the canvas — rendered at a
@@ -83,8 +83,8 @@ same way. The templates below are already correct on all of it:
 - No remote image URLs (`<img>`, `background-image`) — they break screenshots.
   Import from `assets/`, or use a gradient/token color/Iconify glyph.
 - Normal formatting, one element per line for nested markup. Everything on one
-  line destroys element→source mapping, and the user's "让 Vetta 调整" then
-  points every element at the same line.
+  line destroys element→source mapping, and the user's "Ask Vetta" edits then
+  point every element at the same line.
 - One default export per frame, rendering edge-to-edge — no page margins.
 - Only react, react-router, Tailwind v4 and Iconify are installed. No web fonts
   — build contrast with size/weight/tracking.
@@ -116,18 +116,22 @@ frame; a dashboard at 390 wide is the most common failure.
 Start from these three. They are the shape the checker expects; deviating from
 them is how the mechanical `issues` above get triggered.
 
+Their copy is English only because this file is; it says nothing about which
+language to design in. Frame titles and every label inside a frame go in the
+language the USER is writing to you in — same rule as your own replies.
+
 ```tsx
 // frames/products.tsx — a screen is composition, nothing structural
-export const frame = { width: 1440, height: 900, title: "商品" };
+export const frame = { width: 1440, height: 900, title: "Products" };
 
 import { StatCard } from "../components/StatCard";
 
 export default function Products() {
 	return (
 		<div className="flex h-full flex-col gap-6 bg-surface p-8 text-surface-foreground">
-			<h1 className="text-xl font-semibold">商品</h1>
+			<h1 className="text-xl font-semibold">Products</h1>
 			<div className="grid grid-cols-4 gap-4">
-				<StatCard label="在售" value="1,284" />
+				<StatCard label="In stock" value="1,284" />
 			</div>
 		</div>
 	);
@@ -160,8 +164,8 @@ export default function Layout() {
 import { Link, useLocation } from "react-router";
 
 const items = [
-	{ to: "/", label: "概览", icon: "icon-[lucide--layout-dashboard]" },
-	{ to: "/products", label: "商品", icon: "icon-[lucide--package]" },
+	{ to: "/", label: "Overview", icon: "icon-[lucide--layout-dashboard]" },
+	{ to: "/products", label: "Products", icon: "icon-[lucide--package]" },
 ];
 
 export function NavBar() {
@@ -192,7 +196,7 @@ The plugin ships curated design systems (Linear, Stripe, Notion, Apple, …), ea
 a hand-tuned `theme.css` + `DESIGN.md`; `vetd_design_systems` lists them and its
 own description explains the three usages. Two judgment calls it cannot make for
 you: when the user named a system outright, apply it directly; when they only
-described a vibe ("像个开发者工具", "make it feel premium"), shortlist 2-4 by
+described a vibe ("like a developer tool", "make it feel premium"), shortlist 2-4 by
 the blurbs and `present` them rather than picking silently. Applying on an empty
 design writes `theme.css` + `DESIGN.md` for you — do NOT rewrite them
 afterwards, just build frames that follow `DESIGN.md`.
