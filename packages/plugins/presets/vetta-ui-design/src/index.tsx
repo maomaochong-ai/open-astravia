@@ -13,6 +13,7 @@ import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } 
 import { CanvasTab } from "./canvas/CanvasTab";
 import {
 	getCanvasController,
+	notifyAgentToolEnd,
 	notifyAgentToolStart,
 	notifyFrameSettled,
 	requestMockupExport,
@@ -146,13 +147,18 @@ export default definePlugin({
 				return;
 			}
 			if (event.type === "tool-call-start") {
-				notifyAgentToolStart(event.args);
+				notifyAgentToolStart(event.toolCallId, event.toolName, event.args);
+				return;
+			}
+			if (event.type === "tool-call-end") {
+				notifyAgentToolEnd(event.toolCallId);
 				return;
 			}
 			if (event.type === "turn-end") {
 				notifyFrameSettled(null);
 				// 模型不主动截图就发现不了自己写坏了；轮次结束把还挂着的构建错误退回去。
-				if (isWorkMode()) scheduleBuildErrorReport(ctx);
+				// 用户中止的那一轮不退（stopReason 交给 build-error-report 判）。
+				if (isWorkMode()) scheduleBuildErrorReport(ctx, event.stopReason);
 			}
 		});
 
