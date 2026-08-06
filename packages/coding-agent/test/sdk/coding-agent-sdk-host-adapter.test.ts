@@ -6,12 +6,16 @@ import type { Api, Model, UserMessage } from "@vetta/ai";
 import type { RuntimeTracer } from "@vetta/runtime-telemetry";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthStorage } from "../../src/auth/index.js";
-import { createCodingAgentSessionFromPublicOptions } from "../../src/host/coding-agent-sdk-host-adapter.js";
+import { createCodingAgentSessionFromPublicOptions } from "../../src/host/sdk-session/index.js";
 import { type CodingAgentModelRuntime, createCodingAgentModelRuntime } from "../../src/models/index.js";
 import type {
 	CodingAgentSession,
 	CodingAgentSessionToolDefinition,
 	CreateCodingAgentSessionOptions,
+} from "../../src/public-api/sdk/index.js";
+import {
+	CODING_AGENT_SESSION_CREATE_ERROR_CODES,
+	CodingAgentSessionCreateError,
 } from "../../src/public-api/sdk/index.js";
 import { SettingsRuntime } from "../../src/settings/index.js";
 
@@ -128,6 +132,22 @@ describe("Coding Agent SDK Host Adapter", () => {
 		expect(result.session.getActiveToolNames()).not.toContain("spawn_agent");
 		expect(result.session.listSubagents()).toEqual([]);
 		expect(result.session.clearFinishedSubagents()).toBe(0);
+	});
+
+	it("maps an unavailable initial model to the stable public SDK error", async () => {
+		const resources = await createResources("sdk-host-no-model-");
+		vi.spyOn(resources.modelRegistry, "getAvailable").mockReturnValue([]);
+		let creationError: unknown;
+
+		try {
+			await createSession(resources, {});
+		} catch (error) {
+			creationError = error;
+		}
+
+		expect(creationError).toBeInstanceOf(CodingAgentSessionCreateError);
+		if (!(creationError instanceof CodingAgentSessionCreateError)) return;
+		expect(creationError.code).toBe(CODING_AGENT_SESSION_CREATE_ERROR_CODES.NO_MODEL);
 	});
 
 	it("serves product behavior through narrow SDK capabilities", async () => {

@@ -145,6 +145,37 @@ describe("Coding Agent rewrite progress gate", () => {
 		]);
 	});
 
+	it("keeps SDK Session Host modules bounded and its retired aggregate deleted", () => {
+		const aggregate = stateFrom([
+			{
+				path: "packages/coding-agent/src/host/sdk-session/index.ts",
+				text: Array.from({ length: 51 }, () => "export {};").join("\n"),
+			},
+		]);
+		const module = stateFrom([
+			{
+				path: "packages/coding-agent/src/host/sdk-session/session-host.ts",
+				text: Array.from({ length: 401 }, () => "export {};").join("\n"),
+			},
+		]);
+		const retired = stateFrom([
+			{
+				path: "packages/coding-agent/src/host/coding-agent-sdk-host-adapter.ts",
+				text: "export function createCodingAgentSessionFromPublicOptions() {}",
+			},
+		]);
+
+		expect(findCodingAgentRewriteProgressViolations(aggregate, aggregate)).toEqual([
+			"packages/coding-agent/src/host/sdk-session/index.ts: SDK Session Host module has 51 lines (limit 50)",
+		]);
+		expect(findCodingAgentRewriteProgressViolations(module, module)).toEqual([
+			"packages/coding-agent/src/host/sdk-session/session-host.ts: SDK Session Host module has 401 lines (limit 400)",
+		]);
+		expect(retired.oldImplementationFiles).toEqual([
+			"packages/coding-agent/src/host/coding-agent-sdk-host-adapter.ts",
+		]);
+	});
+
 	it("rejects removed Legacy HTML export paths and implicit asset installation", () => {
 		const actual = stateFrom([
 			{

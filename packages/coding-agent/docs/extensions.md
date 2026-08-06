@@ -20,13 +20,12 @@ Extensions are TypeScript modules that extend pi's behavior. They can subscribe 
 - Git checkpointing (stash at each turn, restore on branch)
 - Path protection (block writes to `.env`, `node_modules/`)
 - Custom compaction (summarize conversation your way)
-- Conversation summaries (see `summarize.ts` example)
 - Interactive tools (questions, wizards, custom dialogs)
 - Stateful tools (todo lists, connection pools)
 - External integrations (file watchers, webhooks, CI triggers)
-- Games while you wait (see `snake.ts` example)
 
 See [examples/extensions/](../examples/extensions/) for working implementations.
+Interactive TUI product surface was removed; `ctx.ui` is host-mediated (RPC / Desktop) and is a no-op in headless hosts.
 
 ## Table of Contents
 
@@ -361,7 +360,7 @@ pi.on("session_compact", async (event, ctx) => {
 
 #### session_before_tree / session_tree
 
-Fired on `/tree` navigation. See [tree.md](tree.md) for tree navigation concepts.
+Fired when session tree navigation changes the active leaf (branch navigation).
 
 ```typescript
 pi.on("session_before_tree", async (event, ctx) => {
@@ -1077,7 +1076,7 @@ Register a custom TUI renderer for messages with your `customType`. See [Custom 
 
 ### pi.registerShortcut(shortcut, options)
 
-Register a keyboard shortcut. See [keybindings.md](keybindings.md) for the shortcut format and built-in keybindings.
+Register a keyboard shortcut. Shortcut format is `modifier+key` (e.g. `ctrl+shift+p`); interactive TUI keybinding product docs were removed with the TUI product line.
 
 ```typescript
 pi.registerShortcut("ctrl+shift+p", {
@@ -1409,7 +1408,7 @@ export default function (pi: ExtensionAPI) {
 
 ### Custom Rendering
 
-Tools can provide `renderCall` and `renderResult` for custom TUI display. See [tui.md](tui.md) for the full component API and [tool-execution.ts](https://github.com/badlogic/pi-mono/blob/main/packages/coding-agent/src/modes/interactive/components/tool-execution.ts) for how built-in tools render.
+Tools can provide `renderCall` and `renderResult` for custom display. Interactive TUI was removed; these renderers are used where a host still consumes extension render contracts (for example HTML export).
 
 Tool output is wrapped in a `Box` that handles padding and background. Your render methods return `Component` instances (typically `Text`).
 
@@ -1497,14 +1496,7 @@ If `renderCall`/`renderResult` is not defined or throws:
 
 Extensions can interact with users via `ctx.ui` methods and customize how messages/tools render.
 
-**For custom components, see [tui.md](tui.md)** which has copy-paste patterns for:
-- Selection dialogs (SelectList)
-- Async operations with cancel (BorderedLoader)
-- Settings toggles (SettingsList)
-- Status indicators (setStatus)
-- Working message during streaming (setWorkingMessage)
-- Widgets above/below editor (setWidget)
-- Custom footers (setFooter)
+Prefer host-agnostic UI primitives (`confirm`, `select`, `input`, `notify`, `setStatus`, `setWidget`, `setHeader`, `setFooter`). Full interactive TUI component docs were removed with the TUI product line; RPC hosts forward a subset of these methods to Desktop.
 
 ### Dialogs
 
@@ -1620,7 +1612,7 @@ ctx.ui.setToolsExpanded(wasExpanded);
 ctx.ui.setEditorComponent((tui, theme, keybindings) => new VimEditor(tui, theme, keybindings));
 ctx.ui.setEditorComponent(undefined);  // Restore default editor
 
-// Theme management (see themes.md for creating themes)
+// Theme management (product TUI theme docs removed; theme data still used by export-html / hosts)
 const themes = ctx.ui.getAllThemes();  // [{ name: "dark", path: "/..." | undefined }, ...]
 const lightTheme = ctx.ui.getTheme("light");  // Load without switching
 const result = ctx.ui.setTheme("light");  // Switch by name
@@ -1661,7 +1653,7 @@ The callback receives:
 - `keybindings` - App keybinding manager (for checking shortcuts)
 - `done(value)` - Call to close component and return value
 
-See [tui.md](tui.md) for the full component API.
+Interactive TUI component APIs are legacy host surface; prefer simple dialogs and status widgets.
 
 #### Overlay Mode (Experimental)
 
@@ -1687,7 +1679,7 @@ const result = await ctx.ui.custom<string | null>(
 );
 ```
 
-See [tui.md](tui.md) for the full `OverlayOptions` API and [overlay-qa-tests.ts](../examples/extensions/overlay-qa-tests.ts) for examples.
+Overlay options are host-dependent; interactive TUI overlay examples were removed with the TUI product line.
 
 ### Custom Editor
 
@@ -1728,7 +1720,7 @@ export default function (pi: ExtensionAPI) {
 - Factory receives `theme` and `keybindings` from the app
 - Pass `undefined` to restore default: `ctx.ui.setEditorComponent(undefined)`
 
-See [tui.md](tui.md) Pattern 7 for a complete example with mode indicator.
+Custom editors depend on the host; the interactive TUI product line that originally exercised this path was removed.
 
 ### Message Rendering
 
@@ -1763,7 +1755,7 @@ pi.sendMessage({
 
 ### Theme Colors
 
-All render functions receive a `theme` object. See [themes.md](themes.md) for creating custom themes and the full color palette.
+All render functions receive a `theme` object (color tokens used by export-html and host rendering).
 
 ```typescript
 // Foreground colors
@@ -1804,7 +1796,7 @@ const highlighted = highlightCode(code, lang, theme);
 
 | Mode | UI Methods | Notes |
 |------|-----------|-------|
-| Interactive | Full TUI | Normal operation |
+| Interactive (removed) | N/A | TUI product line removed; use RPC/Desktop hosts |
 | RPC (`--mode rpc`) | JSON protocol | Host handles UI, see [rpc.md](rpc.md) |
 | JSON (`--mode json`) | No-op | Event stream to stdout, see [json.md](json.md) |
 | Print (`-p`) | No-op | Extensions run but can't prompt |
@@ -1813,72 +1805,39 @@ In non-interactive modes, check `ctx.hasUI` before using UI methods.
 
 ## Examples Reference
 
-All examples in [examples/extensions/](../examples/extensions/).
+Working examples live in [examples/extensions/](../examples/extensions/). The table lists only files that currently exist in this package.
 
 | Example | Description | Key APIs |
 |---------|-------------|----------|
-| **Tools** |||
 | `hello.ts` | Minimal tool registration | `registerTool` |
-| `question.ts` | Tool with user interaction | `registerTool`, `ui.select` |
-| `questionnaire.ts` | Multi-step wizard tool | `registerTool`, `ui.custom` |
-| `todo.ts` | Stateful tool with persistence | `registerTool`, `appendEntry`, `renderResult`, session events |
-| `truncated-tool.ts` | Output truncation example | `registerTool`, `truncateHead` |
 | `tool-override.ts` | Override built-in read tool | `registerTool` (same name as built-in) |
-| **Commands** |||
-| `pirate.ts` | Modify system prompt per-turn | `registerCommand`, `before_agent_start` |
-| `summarize.ts` | Conversation summary command | `registerCommand`, `ui.custom` |
-| `handoff.ts` | Cross-provider model handoff | `registerCommand`, `ui.editor`, `ui.custom` |
-| `qna.ts` | Q&A with custom UI | `registerCommand`, `ui.custom`, `setEditorText` |
-| `send-user-message.ts` | Inject user messages | `registerCommand`, `sendUserMessage` |
-| `reload-runtime.ts` | Reload command and LLM tool handoff | `registerCommand`, `ctx.reload()`, `sendUserMessage` |
-| `shutdown-command.ts` | Graceful shutdown command | `registerCommand`, `shutdown()` |
-| **Events & Gates** |||
+| `antigravity-image-gen.ts` | Image generation tool | `registerTool` |
+| `commands.ts` | Custom slash commands | `registerCommand` |
+| `pirate.ts` | Modify system prompt | `systemPromptAppend` / agent hooks |
+| `send-user-message.ts` | Inject user messages | `sendUserMessage` |
+| `reload-runtime.ts` | Reload runtime | `ctx.reload()`, `registerCommand` |
+| `shutdown-command.ts` | Graceful shutdown | `shutdown()` |
 | `permission-gate.ts` | Block dangerous commands | `on("tool_call")`, `ui.confirm` |
-| `protected-paths.ts` | Block writes to specific paths | `on("tool_call")` |
-| `confirm-destructive.ts` | Confirm session changes | `on("session_before_switch")`, `on("session_before_fork")` |
-| `dirty-repo-guard.ts` | Warn on dirty git repo | `on("session_before_*")`, `exec` |
+| `protected-paths.ts` | Block protected path writes | `on("tool_call")` |
+| `confirm-destructive.ts` | Confirm session changes | `session_before_*` |
+| `dirty-repo-guard.ts` | Dirty git repo guard | `session_before_*`, `exec` |
 | `input-transform.ts` | Transform user input | `on("input")` |
+| `inline-bash.ts` | Expand `!{command}` in prompts | `on("input")` |
 | `model-status.ts` | React to model changes | `on("model_select")`, `setStatus` |
-| `system-prompt-header.ts` | Display system prompt info | `on("agent_start")`, `getSystemPrompt` |
-| `claude-rules.ts` | Load rules from files | `on("session_start")`, `on("before_agent_start")` |
-| `file-trigger.ts` | File watcher triggers messages | `sendMessage` |
-| **Compaction & Sessions** |||
-| `custom-compaction.ts` | Custom compaction summary | `on("session_before_compact")` |
-| `trigger-compact.ts` | Trigger compaction manually | `compact()` |
-| `git-checkpoint.ts` | Git stash on turns | `on("turn_end")`, `on("session_fork")`, `exec` |
-| `auto-commit-on-exit.ts` | Commit on shutdown | `on("session_shutdown")`, `exec` |
-| **UI Components** |||
-| `status-line.ts` | Footer status indicator | `setStatus`, session events |
-| `custom-footer.ts` | Replace footer entirely | `registerCommand`, `setFooter` |
-| `custom-header.ts` | Replace startup header | `on("session_start")`, `setHeader` |
-| `modal-editor.ts` | Vim-style modal editor | `setEditorComponent`, `CustomEditor` |
-| `rainbow-editor.ts` | Custom editor styling | `setEditorComponent` |
-| `widget-placement.ts` | Widget above/below editor | `setWidget` |
-| `overlay-test.ts` | Overlay components | `ui.custom` with overlay options |
-| `overlay-qa-tests.ts` | Comprehensive overlay tests | `ui.custom`, all overlay options |
-| `notify.ts` | Simple notifications | `ui.notify` |
-| `timed-confirm.ts` | Dialogs with timeout | `ui.confirm` with timeout/signal |
-| `mac-system-theme.ts` | Auto-switch theme | `setTheme`, `exec` |
-| **Complex Extensions** |||
-| `plan-mode/` | Full plan mode implementation | All event types, `registerCommand`, `registerShortcut`, `registerFlag`, `setStatus`, `setWidget`, `sendMessage`, `setActiveTools` |
-| `preset.ts` | Saveable presets (model, tools, thinking) | `registerCommand`, `registerShortcut`, `registerFlag`, `setModel`, `setActiveTools`, `setThinkingLevel`, `appendEntry` |
-| `tools.ts` | Toggle tools on/off UI | `registerCommand`, `setActiveTools`, `SettingsList`, session events |
-| `interactive-shell.ts` | Persistent shell session | `on("user_bash")` |
-| `subagent/` | Spawn sub-agents | `registerTool`, `exec` |
-| **Games** |||
-| `snake.ts` | Snake game | `registerCommand`, `ui.custom`, keyboard handling |
-| `space-invaders.ts` | Space Invaders game | `registerCommand`, `ui.custom` |
-| `doom-overlay/` | Doom in overlay | `ui.custom` with overlay |
-| **Providers** |||
-| `custom-provider-anthropic/` | Custom Anthropic proxy | `registerProvider` |
-| `custom-provider-gitlab-duo/` | GitLab Duo integration | `registerProvider` with OAuth |
-| **Messages & Communication** |||
-| `message-renderer.ts` | Custom message rendering | `registerMessageRenderer`, `sendMessage` |
+| `status-line.ts` | Host status text | `setStatus` |
+| `timed-confirm.ts` | Dialogs with timeout | `ui.confirm` / `ui.select` |
+| `system-prompt-header.ts` | System prompt inspection | `getSystemPrompt` |
+| `claude-rules.ts` | Load rules from files | session / agent hooks |
+| `file-trigger.ts` | File watcher injects messages | `sendMessage` |
+| `custom-compaction.ts` | Custom compaction summary | `session_before_compact` |
+| `trigger-compact.ts` | Trigger compaction | `compact()` |
+| `git-checkpoint.ts` | Git stash checkpoints | turn / fork hooks |
+| `auto-commit-on-exit.ts` | Commit on shutdown | `session_shutdown` |
+| `dynamic-resources/` | Dynamic resource discovery | `resources_discover` |
 | `event-bus.ts` | Inter-extension events | `pi.events` |
-| **Session Metadata** |||
-| `session-name.ts` | Name sessions for selector | `setSessionName`, `getSessionName` |
-| `bookmark.ts` | Bookmark entries for /tree | `setLabel` |
-| **Misc** |||
-| `antigravity-image-gen.ts` | Image generation tool | `registerTool`, Google Antigravity |
-| `inline-bash.ts` | Inline bash in tool calls | `on("tool_call")` |
-| `with-deps/` | Extension with npm dependencies | Package structure with `package.json` |
+| `session-name.ts` | Name sessions | `setSessionName` |
+| `bookmark.ts` | Label entries | `setLabel` |
+| `custom-provider-anthropic/` | Custom Anthropic provider | `registerProvider` |
+| `custom-provider-gitlab-duo/` | GitLab Duo provider | `registerProvider` |
+| `custom-provider-qwen-cli/` | Qwen CLI OAuth provider | `registerProvider` |
+| `with-deps/` | Extension with npm dependencies | package-local deps |

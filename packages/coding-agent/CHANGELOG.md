@@ -48,6 +48,7 @@
 
 ### Changed
 
+- **SDK Session Host 组合边界拆分**：将原 603 行公共 SDK 产品宿主适配器拆为薄组合入口、公共 Tool 校验、初始模型选择、能力宿主和合同模块；旧单文件加入退役与模块行数守卫。TypeBox 继续只校验 SDK Tool 外部 schema/input，模型、资源、MCP、Extension、存储、错误码和 CLI/Desktop/IM 可观察行为保持不变。
 - **Context Runtime 适配边界拆分**：将原 725 行 Session Context Runtime 拆为中性编排器、模型调用投影、Conversation 压缩投影和 Prefire 生命周期模块；旧文件与迁移期类名退役，并新增模块行数和旧路径回流守卫。压缩阈值、摘要、溢出恢复、microcompact、Extension Hook、Memory Rollover、Prefire 和 CLI/Desktop/IM 行为保持不变。
 - **活动 Session 事务宿主职责拆分**：将原 511 行根级活动 Session Host 拆为中性的事务编排、共享合同、稳定事件转发和可重试资源清理模块；Coding Agent 自有类型不再通过 `Greenfield` 内部名称再导出，旧根级文件加入退役守卫。new/switch/fork、事件顺序、取消、回滚、Extension 生命周期、资源释放及 CLI/Desktop/IM 行为保持不变。
 - **CLI / Desktop / IM Greenfield 跨宿主验收门禁**：新增统一 `verify:agent-hosts`，运行 Coding Agent、CLI 与 Desktop 全量功能测试，并以规范独立 Vetta CLI 产物驱动 IM Gateway 的真实 HostClient；验收 Greenfield IM Runtime 决策、真实 `read` Tool Loop、Session 持久化、跨进程恢复和 ownership lock 释放。生产 Runtime、协议和用户可观察功能不变。
@@ -156,6 +157,7 @@
 
 ### Removed
 
+- **清理无用 docs/examples（TUI 产品线与重构后失效内容）**：删除 `docs/development.md`、`docs/keybindings.md`、`docs/terminal-setup.md`、`docs/termux.md`、`docs/tree.md`、`docs/themes.md` 及对应 TUI 截图；删除纯终端扩展示例 `notify.ts` / `titlebar-spinner.ts` / `mac-system-theme.ts` 与空 `examples/extensions/sandbox/`。保留并同步 `examples/sdk`、`docs/sdk.md` / `stable-sdk.md` 及仍可运行的 extension 示例清单；修正 `docs/extensions.md` / `docs/rpc.md` 对已删文件的引用。
 - **移除「全局/周边模型」运行时 API 与配置字段**：`ModelRegistry.getPeripheralModel()` / `getPeripheralReasoningLevel()` 下线；`models.json` schema 不再包含 `peripheralModel*`。加载时剥离旧文件中的残留键，周边任务改由 runtime-core 自动选模。
 - **移除旧 Tool 实现与描述生成链**：删除 `coding-agent/src/core/tools`、旧后台任务管理器、旧 Tool 兼容类型及 `generate:descriptions`；内置工具继续由 `@vetta/runtime-tools/coding` 提供，工具名称、TypeBox schema、scope、requires、输出、错误、取消和后台任务行为保持不变。
 

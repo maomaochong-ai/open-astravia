@@ -22,8 +22,8 @@ import {
 import { AuthStorage, type CodingAgentAuthRuntime, createCodingAgentAuthRuntime } from "../auth/index.js";
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "../export-html/index.js";
 import { createCodingAgentHostFromSessionFactory } from "../host/coding-agent-host.js";
-import { createCodingAgentSessionFromPublicOptions } from "../host/coding-agent-sdk-host-adapter.js";
 import { createHostBashExecutor } from "../host/command-execution/index.js";
+import { createCodingAgentSessionFromPublicOptions } from "../host/sdk-session/index.js";
 import { type CodingAgentModelRuntime, createCodingAgentModelRuntime } from "../models/index.js";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import { SettingsRuntime } from "../settings/index.js";

@@ -27,11 +27,11 @@ export {
 	prepareCodingAgentPipedStdin,
 	prepareCodingAgentPrintInvocation,
 } from "../host/coding-agent-print-invocation.js";
+export { resolveCodingAgentSessionDir } from "../host/coding-agent-session-storage.js";
 export {
 	CODING_AGENT_SDK_HOST_ERROR_CODES,
 	CodingAgentSdkHostError,
 	type CodingAgentSdkHostErrorCode,
-} from "../host/coding-agent-sdk-host-adapter.js";
-export { resolveCodingAgentSessionDir } from "../host/coding-agent-session-storage.js";
+} from "../host/sdk-session/index.js";
 export { type PrintModeOptions, runPrintMode } from "../modes/print-mode.js";
 export type { PrintExtensionError, PrintSessionCapabilities } from "../modes/print-session-capabilities.js";

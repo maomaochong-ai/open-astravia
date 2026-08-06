@@ -1,6 +1,6 @@
 import { createCodingAgentHostFromSessionFactory } from "../host/coding-agent-host.js";
-import { createCodingAgentSessionFromPublicOptions } from "../host/coding-agent-sdk-host-adapter.js";
 import { createCodingAgentSessionCatalogFromPublicOptions } from "../host/coding-agent-sdk-session-catalog.js";
+import { createCodingAgentSessionFromPublicOptions } from "../host/sdk-session/index.js";
 import type {
 	CodingAgentHost,
 	CodingAgentSessionCatalog,
