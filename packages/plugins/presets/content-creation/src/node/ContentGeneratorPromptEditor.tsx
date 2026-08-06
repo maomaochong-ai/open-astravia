@@ -89,11 +89,21 @@ export function ContentGeneratorPromptEditor({
 	}, [data]);
 
 	const updateDraft = (document: ContentPromptDocument) => {
+		const previousInlineBindingIds = new Set(
+			draftRef.current.promptDocument
+				? listContentPromptBindingIds(draftRef.current.promptDocument)
+				: [],
+		);
+		const nextInlineBindingIds = new Set(listContentPromptBindingIds(document));
 		const next = {
 			...draftRef.current,
 			prompt: contentPromptText(document),
 			promptDocument: document,
 			promptSourceNodeId: undefined,
+			inputs: (draftRef.current.inputs ?? []).filter(
+				(binding) =>
+					!previousInlineBindingIds.has(binding.id) || nextInlineBindingIds.has(binding.id),
+			),
 		};
 		draftRef.current = next;
 		return next;

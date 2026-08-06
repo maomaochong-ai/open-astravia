@@ -157,13 +157,6 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 				) : (
 					<MediaPlaceholder kind={kind} descriptionKey={descriptionKey} prompt={data.prompt} />
 				)}
-				{assetUrl && data.prompt?.trim() ? (
-					<div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/80 via-black/55 to-transparent px-[clamp(10px,4cqw,18px)] pt-[clamp(8px,3cqmin,14px)] pb-[clamp(22px,8cqmin,44px)] text-white">
-						<p className="m-0 line-clamp-3 whitespace-pre-wrap" style={captionTextStyle}>
-							{data.prompt.trim()}
-						</p>
-					</div>
-				) : null}
 				{isBusy ? (
 					<div
 						className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-background/45 backdrop-blur-[2px]"

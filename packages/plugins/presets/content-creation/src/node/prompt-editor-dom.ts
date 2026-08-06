@@ -59,7 +59,7 @@ export function getPromptMentionContext(editor: HTMLElement): PromptMentionConte
 	const textPosition = getCaretTextPosition(editor, caret);
 	if (!textPosition) return null;
 	const preceding = textPosition.node.data.slice(0, textPosition.offset);
-	const match = preceding.match(/(?:^|\s)@([^@\s]*)$/u);
+	const match = preceding.match(/@([^@\s]*)$/u);
 	if (!match) return null;
 	const query = match[1] ?? "";
 	const range = editor.ownerDocument.createRange();
