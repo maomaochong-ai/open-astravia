@@ -18,7 +18,8 @@ export function DesignSystemTileContent({
 	const { t } = useTranslation();
 	return (
 		<>
-			<DesignSystemPreview system={system} className="aspect-[16/10]" />
+			{/* 预览区弹性吃掉剩余高度：外层卡片是 1:1 正方形，文字两行定高在底部。 */}
+			<DesignSystemPreview system={system} className="min-h-0 flex-1" />
 			<div className="flex min-w-0 items-center gap-1.5 px-0.5">
 				<span
 					title={t(system.vibe === "dark" ? "ds.vibe.dark" : "ds.vibe.light")}
@@ -33,7 +34,7 @@ export function DesignSystemTileContent({
 					{t(`ds.category.${system.category}`)}
 				</span>
 			</div>
-			<div className="truncate px-0.5 text-[11px] leading-tight text-muted-foreground">
+			<div className="min-w-0 truncate px-0.5 text-[11px] leading-tight text-muted-foreground">
 				{t(`ds.tagline.${system.id}`)}
 			</div>
 		</>

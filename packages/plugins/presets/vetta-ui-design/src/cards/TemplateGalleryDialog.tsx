@@ -70,7 +70,7 @@ export function TemplateGalleryDialog({
 									key={system.id}
 									type="button"
 									onClick={() => setSelectedId(isSelected ? null : system.id)}
-									className={`flex flex-col gap-1.5 rounded-xl border p-2 text-left transition-all duration-200 ${
+									className={`flex aspect-square min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border p-2 text-left transition-all duration-200 ${
 										isSelected
 											? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary"
 											: "border-border hover:-translate-y-0.5 hover:border-muted-foreground/40 hover:bg-accent/40 hover:shadow-md"

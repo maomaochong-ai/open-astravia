@@ -94,7 +94,7 @@ export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 						type="button"
 						disabled={locked}
 						onClick={skip}
-						className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-3 text-center transition-all duration-200 ${plainTileClass(chosen === "__skip__")}`}
+						className={`flex aspect-square min-w-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-dashed p-3 text-center transition-all duration-200 ${plainTileClass(chosen === "__skip__")}`}
 					>
 						<span className="flex size-9 items-center justify-center rounded-full bg-accent text-muted-foreground">
 							<svg viewBox="0 0 24 24" className="size-4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -117,7 +117,7 @@ export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 							type="button"
 							disabled={locked}
 							onClick={() => choose(system.id, system.name)}
-							className={`flex flex-col gap-1.5 rounded-xl border p-2 text-left transition-all duration-200 ${
+							className={`flex aspect-square min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border p-2 text-left transition-all duration-200 ${
 								picked
 									? "border-primary bg-primary/5 shadow-sm ring-1 ring-primary"
 									: locked
@@ -136,7 +136,7 @@ export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 					type="button"
 					disabled={locked}
 					onClick={() => setGalleryOpen(true)}
-					className={`flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed p-3 text-center transition-all duration-200 ${plainTileClass(chosenViaGallery !== undefined)}`}
+					className={`flex aspect-square min-w-0 flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-dashed p-3 text-center transition-all duration-200 ${plainTileClass(chosenViaGallery !== undefined)}`}
 				>
 					<span className="grid grid-cols-3 gap-1">
 						{moreSwatches.map((swatch) => (
