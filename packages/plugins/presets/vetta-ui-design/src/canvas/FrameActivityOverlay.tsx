@@ -1,4 +1,4 @@
-import { type JSX, useEffect, useState } from "react";
+import { type CSSProperties, type JSX, useEffect, useState } from "react";
 import type { FrameActivity } from "./design-runtime";
 
 /**
@@ -28,30 +28,46 @@ function BotFace({ mood }: { mood: "think" | "write" | "bounce" }): JSX.Element 
 }
 
 /**
- * 混沌流体背景：实色 blob 经旋转层 + 重模糊融成流动渐变（对齐 image-gen 的
- * 生成骨架）。时长/相位各自错开，叠加后无规律流转。
+ * 五个 blob 的几何：位置/大小/旋转固定，颜色按活动态取（见 PALETTES）。
+ * 经旋转层 + 重模糊融成流动渐变（对齐 image-gen 的生成骨架）。
  */
-const FLUID_BLOBS: { left: string; top: string; w: string; h: string; rotate: number; color: string }[] = [
-	{ left: "-15%", top: "-20%", w: "75%", h: "75%", rotate: -8, color: "var(--primary, #6366f1)" },
-	{ left: "55%", top: "-15%", w: "70%", h: "70%", rotate: 12, color: "var(--accent, #a5b4fc)" },
-	{ left: "-10%", top: "55%", w: "70%", h: "75%", rotate: 18, color: "var(--ring, #818cf8)" },
-	{ left: "45%", top: "50%", w: "75%", h: "70%", rotate: -14, color: "var(--chart-2, #60a5fa)" },
-	{ left: "25%", top: "20%", w: "55%", h: "60%", rotate: 6, color: "var(--chart-4, #c084fc)" },
+const BLOB_SHAPES: { left: string; top: string; w: string; h: string; rotate: number }[] = [
+	{ left: "-15%", top: "-20%", w: "75%", h: "75%", rotate: -8 },
+	{ left: "55%", top: "-15%", w: "70%", h: "70%", rotate: 12 },
+	{ left: "-10%", top: "55%", w: "70%", h: "75%", rotate: 18 },
+	{ left: "45%", top: "50%", w: "75%", h: "70%", rotate: -14 },
+	{ left: "25%", top: "20%", w: "55%", h: "60%", rotate: 6 },
 ];
 
-function FluidBackdrop(): JSX.Element {
+/**
+ * 三态各一套固定色板，不读宿主主题变量——mono 主题下 primary/ring/accent 全是
+ * 黑白灰，五个 blob 一模糊就互相抵消成中性灰。色相同时承担语义，与标题栏徽标
+ * 的三色（sky / indigo / fuchsia）对齐：扫一眼就知道 agent 在干什么。
+ */
+const PALETTES: Record<ActiveKind, { accent: string; blobs: [string, string, string, string, string] }> = {
+	// 浏览：青蓝，冷静的「在看」。
+	reading: { accent: "#0ea5e9", blobs: ["#0ea5e9", "#22d3ee", "#38bdf8", "#6366f1", "#2dd4bf"] },
+	// 修改：靛紫，与「修改中」呼吸描边同调。
+	modifying: { accent: "#6366f1", blobs: ["#6366f1", "#8b5cf6", "#a78bfa", "#4f46e5", "#c4b5fd"] },
+	// 创作：品红橙，最暖最跳，对应从无到有。
+	creating: { accent: "#d946ef", blobs: ["#d946ef", "#f472b6", "#fb7185", "#f59e0b", "#c084fc"] },
+};
+
+function FluidBackdrop({ kind }: { kind: ActiveKind }): JSX.Element {
+	const { blobs } = PALETTES[kind];
 	return (
 		<div className="vetd-fluid">
 			<div className="vetd-fluid-spin">
-				{FLUID_BLOBS.map((b, i) => (
+				{BLOB_SHAPES.map((b, i) => (
 					<div
 						key={i}
 						className="absolute"
 						style={{ left: b.left, top: b.top, width: b.w, height: b.h, transform: `rotate(${b.rotate}deg)` }}
 					>
+						{/* 时长/相位各自错开，叠加后无规律流转。 */}
 						<div
 							className="vetd-fluid-blob"
-							style={{ background: b.color, animationDuration: `${5 + i * 1.3}s`, animationDelay: `${i * -1.7}s` }}
+							style={{ background: blobs[i], animationDuration: `${5 + i * 1.3}s`, animationDelay: `${i * -1.7}s` }}
 						/>
 					</div>
 				))}
@@ -106,9 +122,11 @@ export function FrameActivityOverlay({ activity }: { activity: FrameActivity | u
 		<div
 			aria-hidden
 			className="vetd-activity-overlay pointer-events-none absolute inset-0 overflow-hidden"
-			style={{ opacity: visible ? 1 : 0 }}
+			// --vetd-accent 驱动浮层里所有装饰元素（扫描线/放大镜/打字线/星光/头像）
+			// 的着色，只定义在这一层，不外泄到 frame 容器。
+			style={{ opacity: visible ? 1 : 0, "--vetd-accent": PALETTES[kind].accent } as CSSProperties}
 		>
-			<FluidBackdrop />
+			<FluidBackdrop kind={kind} />
 			{kind === "reading" ? (
 				<>
 					<div className="vetd-scan-beam" />
