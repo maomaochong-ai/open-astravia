@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { DESIGN_SYSTEMS, designSystemById } from "../design-systems/index";
 import { DesignSystemTileContent } from "./DesignSystemTileContent";
 
@@ -30,9 +31,13 @@ export function TemplateGalleryDialog({
 		return () => window.removeEventListener("keydown", onKeyDown, true);
 	}, [onClose]);
 
-	return (
+	// portal 到 body 逃出消息列表：卡片子树里 InputBar 是后绘制的兄弟层级，
+	// 任何 z-index 都压不过它。插件 CSS 以 [data-vetta-plugin-root] 为 @scope 根，
+	// 蒙层自带该属性重新进入作用域（@scope 根自身也在作用域内），Tailwind 类才生效。
+	return createPortal(
 		// biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop
 		<div
+			data-vetta-plugin-root="vetta-ui-design"
 			className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 px-6 py-8 backdrop-blur-[2px]"
 			onClick={onClose}
 		>
@@ -40,7 +45,7 @@ export function TemplateGalleryDialog({
 			<div
 				role="dialog"
 				aria-label={t("ds.title")}
-				className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+				className="flex max-h-[min(72vh,680px)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
 				onClick={(event) => event.stopPropagation()}
 			>
 				<div className="flex shrink-0 items-center gap-3 border-b border-border px-5 pb-3 pt-4">
@@ -104,6 +109,7 @@ export function TemplateGalleryDialog({
 					</button>
 				</div>
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }
