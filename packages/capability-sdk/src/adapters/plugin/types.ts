@@ -3,11 +3,14 @@ import type { CapabilityAccessHandle } from "../../access.js";
 export const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 
 export const PLUGIN_CAPABILITY_PERMISSIONS = {
+	AI_MODELS_LIST: "ai.models.list",
+	AI_COMPLETE: "ai.complete",
 	FILESYSTEM_READ: "fs.read",
 	FILESYSTEM_WRITE: "fs.write",
 	NETWORK_FETCH: "network.fetch",
 	STORAGE_READ: "storage.read",
 	STORAGE_WRITE: "storage.write",
+	MEDIA_GENERATE: "media.generate",
 } as const;
 
 export interface PluginCapabilityAdapterOptions {

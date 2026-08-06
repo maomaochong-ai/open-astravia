@@ -7,9 +7,11 @@ import { applyDesignSystem, buildRestylePrompt } from "./design-systems/apply";
 import { DESIGN_SYSTEMS, designSystemById } from "./design-systems/index";
 import { engineDiagnostics } from "./engine/engine-manager";
 import { CANVAS_TAB_ID } from "./tab-ids";
-import { checkSources, type SourceFile } from "./vetd/check-sources";
+import type { SourceIssue } from "./vetd/check-sources";
+import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
-import { parseFrameMeta } from "./vetd/frame-meta";
+import { inspectIssues } from "./vetd/inspect";
+import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
@@ -22,6 +24,8 @@ const AGENT_MODE = ["work"] as const;
 
 interface CreateInput {
 	name?: string;
+	product?: string;
+	frameSize?: { width: number; height: number };
 }
 
 interface ScreenshotInput {
@@ -58,42 +62,24 @@ async function inspectSharedShell(
  */
 function statusNote(
 	shell: { layout: string | null; components: string[] } | null,
-	issueCount: number,
+	issues: readonly SourceIssue[],
 	frameCount: number,
 ): string {
-	if (issueCount > 0) {
-		return `${issueCount} issue(s) found in your sources — these are proven rule violations, not suggestions. Fix them before reporting back; each message names the rule and the reference to read.`;
+	const syntaxCount = issues.filter((issue) => issue.rule === SYNTAX_RULE).length;
+	if (syntaxCount > 0) {
+		// 语法错是硬阻塞（那一帧根本没在渲染），不能和风格违规并列。
+		return `${syntaxCount} file(s) do not parse — the canvas cannot build them, so those frames are frozen on their last good rendering. Fix these first, with a targeted edit at the reported line rather than a full rewrite.`;
+	}
+	if (issues.length > 0) {
+		return `${issues.length} issue(s) found in your sources — these are proven rule violations, not suggestions. Fix them with a targeted edit before reporting back; each message names the rule and the reference to read.`;
 	}
 	if (frameCount > 1 && shell && !shell.layout && shell.components.length === 0) {
-		return "Multiple screens but NO shared UI yet. If they share a nav bar / sidebar / tab bar, extract it into components/ (or frames/_layout.tsx when it must survive navigation) rather than repeating it per frame. Structure checklist: references/self-check.md in the vetta-ui-design skill.";
+		return "Multiple screens but NO shared UI yet. If they share a nav bar / sidebar / tab bar, extract it into components/ (or frames/_layout.tsx when it must survive navigation) rather than repeating it per frame. The structure checklist is in the vetta-ui-design skill, under Workflow.";
 	}
 	if (shell && (shell.layout || shell.components.length > 0)) {
 		return "This design already has shared UI (see `sharedShell`) — reuse it instead of writing a second copy.";
 	}
 	return "Design open on the canvas.";
-}
-
-/** 送进机检的全部设计源码：画框与共享组件。 */
-async function collectSources(fs: PluginContext["fs"], dirPath: string): Promise<SourceFile[]> {
-	const files: SourceFile[] = [];
-	for (const dir of ["frames", "components"]) {
-		let entries: Awaited<ReturnType<PluginContext["fs"]["readDir"]>>;
-		try {
-			entries = await fs.readDir(`${dirPath}/${dir}`);
-		} catch {
-			continue; // components/ 可以不存在
-		}
-		for (const entry of entries) {
-			if (entry.isDirectory || !entry.name.endsWith(".tsx")) continue;
-			try {
-				const { content } = await fs.readFile(entry.path);
-				files.push({ path: `${dir}/${entry.name}`, content });
-			} catch {
-				// 读不到就跳过：这条链路只做检查，不该因为一个文件失败而整体报错
-			}
-		}
-	}
-	return files;
 }
 
 export function registerDesignTools(ctx: PluginContext): void {
@@ -104,7 +90,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		// 工具描述每轮都在系统提示里，所以只留「做什么 + 去哪拿规则」。规则本身归
 		// skill 正文（已验证 invoke_skill 能送达），在这里复述一遍是双份 token。
 		description:
-			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
+			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -112,13 +98,39 @@ export function registerDesignTools(ctx: PluginContext): void {
 					type: "string",
 					description: "Design document name (kebab-case preferred), e.g. `login-app`.",
 				},
+				product: {
+					type: "string",
+					enum: PRODUCT_TYPES,
+					description: `What is being designed — sets this design's default frame size (${PRODUCT_SIZE_SUMMARY}). Take it from the user's request in whatever language they wrote it: a phone app is \`mobile\`, an admin console or dashboard is \`desktop\`. Anything else (infographic, A4 print, a square social post) goes through \`frameSize\` instead.`,
+				},
+				frameSize: {
+					type: "object",
+					properties: {
+						width: { type: "number" },
+						height: { type: "number" },
+					},
+					required: ["width", "height"],
+					additionalProperties: false,
+					description:
+						"Explicit default size in PIXELS, for whatever `product` cannot express — the user named a size (`800x800`), or a physical format you convert yourself (A4 at 96dpi is 794x1123, at 300dpi 2480x3508). Wins over `product` when both are given.",
+				},
 			},
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
 		handler: async ({ host, session, trigger }) => {
-			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design");
+			// 硬闸而不是默认值：品类是这一步唯一需要判断的东西，而它在这一刻最清楚。
+			// 从前这里没有参数，兜底就写死成桌面 1440x900，于是「用户要移动 App」在整条
+			// 链路上无处可存——五个 frame 漏声明尺寸，整份设计静默落成桌面尺寸。
+			const defaultFrameSize = resolveDefaultFrameSize(trigger.input);
+			if (!defaultFrameSize) {
+				return {
+					ok: false,
+					error: `Pass \`product\` (${PRODUCT_TYPES.join(" | ")}) or an explicit \`frameSize\` in pixels. This is the size the design defaults to — decide it from what the user asked for, do not guess after the fact.`,
+				};
+			}
+			const result = await scaffoldDesign(host.fs, session.cwd, trigger.input.name ?? "design", defaultFrameSize);
 			setPendingDesignPath(result.vetdPath);
 			ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, true);
 			ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
@@ -126,7 +138,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 				ok: true,
 				vetdPath: result.vetdPath,
 				sourcesDir: result.dirPath,
-				note: "Design created and opened on the canvas, with NO frames yet — pick sizes from the product type and write frames/<id>.tsx, each starting with `export const frame = { width, height, title }`. Never edit the .vetd manifest. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx) — see the vetta-ui-design skill.",
+				defaultFrameSize,
+				note: `Design created and opened on the canvas, with NO frames yet. Its default size is ${defaultFrameSize.width}x${defaultFrameSize.height} — still declare it per frame: every frames/<id>.tsx starts with \`export const frame = { width: ${defaultFrameSize.width}, height: ${defaultFrameSize.height}, title }\`, and a screen of a different product type declares its own. Never edit the .vetd manifest. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx), then every frame as a short skeleton so the whole set reaches the canvas immediately, and only then fill them in one at a time — see the vetta-ui-design skill.`,
 			};
 		},
 	});
@@ -136,7 +149,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: SCREENSHOT_TOOL_NAME,
 		label: "%tool.vetd_screenshot%",
 		description:
-			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually.",
+			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually. Also machine-checks the sources first: a frame that does not parse returns the syntax error instead of an image, and `issues` carries any rule violations found in that frame. This is the checkpoint after writing a frame — screenshot before revising it, never revise blind.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -165,26 +178,34 @@ export function registerDesignTools(ctx: PluginContext): void {
 				};
 			}
 			const frameId = trigger.input.frame.replace(/\.tsx$/, "");
-			const known = controller.session.manifest.frames.map((frame) => frame.id);
-			if (!known.includes(frameId)) {
-				// 源码在、画布上却没有，只有一种可能：meta 没把尺寸声明全，reconcile 放弃了它。
-				// 报「Unknown frame」会让模型以为自己写错了文件名，转头再写一遍同样没尺寸的文件。
-				const source = await host.fs
-					.readFile(`${controller.session.dirPath}/frames/${frameId}.tsx`)
-					.then((file) => file.content)
-					.catch(() => null);
-				const meta = source === null ? null : parseFrameMeta(source, frameId);
-				if (meta && (meta.width === null || meta.height === null)) {
-					return {
-						ok: false,
-						retryable: true,
-						error: `Frame "${frameId}" is not on the canvas: frames/${frameId}.tsx does not declare ${meta.width === null ? "width" : ""}${meta.width === null && meta.height === null ? " and " : ""}${meta.height === null ? "height" : ""}. There is no default size — add \`export const frame = { width, height, title }\` as the first statement, then take the screenshot again.${known.length > 0 ? ` Sizes already used here: ${controller.session.manifest.frames.map((frame) => `${frame.id} ${frame.width}x${frame.height}`).join(", ")}.` : ""}`,
-					};
-				}
+			// 机检先于截图：语法错的 frame 从磁盘上就判定得了，不必等画布那条 30s 的
+			// 链路，也不受「位图态没挂 iframe 所以 HMR 报不出错」的限制。顺带把这一帧的
+			// 风格违规一起带回去——截图本来就是每帧必调的，agent 不用再单独跑 vetd_status。
+			const issues = await inspectIssues(ctx, host.fs, controller.session.dirPath);
+			const blocking = blockingSyntaxIssues(issues, frameId);
+			if (blocking.length > 0) {
 				return {
 					ok: false,
 					retryable: true,
-					error: `Unknown frame "${frameId}". Available frames: ${known.join(", ") || "(none)"}`,
+					error: `Frame "${frameId}" cannot build — these sources do not parse, so the canvas is still showing the previous rendering:\n\n${blocking
+						.map((issue) => `${issue.file}${issue.line === null ? "" : `:${issue.line}`} — ${issue.message}`)
+						.join("\n")}\n\nEdit the broken region (do not rewrite the whole file), then take the screenshot again.`,
+				};
+			}
+			const known = controller.session.manifest.frames.map((frame) => frame.id);
+			if (!known.includes(frameId)) {
+				// 漏声明尺寸不再让画框掉出画布（vetd/frame-size.ts），所以源码在、画布上
+				// 没有，剩下的只有一种情况：文件刚落盘，reconcile 的防抖还没跑完。
+				const exists = await host.fs
+					.readFile(`${controller.session.dirPath}/frames/${frameId}.tsx`)
+					.then(() => true)
+					.catch(() => false);
+				return {
+					ok: false,
+					retryable: true,
+					error: exists
+						? `Frame "${frameId}" is not on the canvas yet — frames/${frameId}.tsx exists, so the canvas is still picking it up. Wait a moment and take the screenshot again.`
+						: `Unknown frame "${frameId}". Available frames: ${known.join(", ") || "(none)"}`,
 				};
 			}
 			// 坏掉的 frame 渲染不出任何东西，截图只会一路等到超时（30s+），而模型
@@ -228,13 +249,17 @@ export function registerDesignTools(ctx: PluginContext): void {
 			await host.fs.writeFile(path, base64, "base64");
 			await ensureSnapshotsIgnored(host.fs, dirPath);
 			await pruneSnapshots(host.fs, dirPath, frameId);
+			// 只带这一帧自己的违规：截图是逐帧调的，把整份设计的 issues 全塞进来会让
+			// agent 拿着别的 frame 的报错去改当前这个。
+			const frameIssues = issues.filter((issue) => issue.file === `frames/${frameId}.tsx`);
 			return {
 				ok: true,
 				path,
+				...(frameIssues.length > 0 ? { issues: frameIssues } : {}),
 				// 光说「截好了」模型会只瞟一眼就宣布完成。把该找什么写在这里：工具返回是
 				// 每次都读的，而 references/quality.md 未必被翻开。三项是实测最高频的
 				// 渲染缺陷，共同点是源码怎么读都读不出来，只有看图才能发现。
-				note: "Screenshot saved. Read this path to actually look at the rendering, and inspect it for defects the source cannot reveal: (1) misalignment — edges/baselines that should line up but do not, cards of unequal height, inconsistent gutters; (2) unintended text wrapping — buttons, tabs, table headers, nav items or labels spilling onto a second line (CJK copy is wider than the English the container was sized for), and text clipped or overflowing; (3) blank icons — an icon slot rendering as empty space (a name or set that does not exist matches no CSS, so the span collapses) or a glyph invisible against its own background. Also check clipping, contrast, and whether the frame fills its declared height. Fix what you find and screenshot again — see references/quality.md for the full checklist.",
+				note: `Screenshot saved${frameIssues.length > 0 ? " — `issues` lists rule violations the checker proved in this frame's source; fix them with a targeted edit along with whatever you see in the image" : ""}. Read this path to actually look at the rendering, and inspect it for defects the source cannot reveal: (1) misalignment — edges/baselines that should line up but do not, cards of unequal height, inconsistent gutters; (2) unintended text wrapping — buttons, tabs, table headers, nav items or labels spilling onto a second line (CJK copy is wider than the English the container was sized for), and text clipped or overflowing; (3) classes that resolve to nothing — Tailwind emits no CSS for a class it cannot resolve, so the element silently keeps its default look while the source reads fine: an icon slot collapsing to empty space (a name or set that does not exist), or a surface with no background because its theme token was never defined in theme.css. Also check clipping, contrast, and whether the frame fills its declared height. Fix what you find and screenshot again — see references/quality.md for the full checklist.`,
 				// 模型不可见：宿主把顶层 cards 提到 details.cards，在消息下方渲染截图卡。
 				cards: [screenshotCardDescriptor(vetdPath, dirPath, frameId)],
 			};
@@ -246,7 +271,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_status",
 		label: "%tool.vetd_status%",
 		description:
-			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (rule violations found in your sources) and engine diagnostics. Call it before editing an existing design, and again after writing frames to pick up `issues`.",
+			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (files that do not parse, plus rule violations found in your sources) and engine diagnostics. Call it ONCE before editing an existing design, to learn what is already there. Afterwards you do not need it for `issues` — vetd_screenshot returns them per frame.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
@@ -255,13 +280,18 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const controller = getCanvasController();
 			const engine = await engineDiagnostics(controller?.session.dirPath ?? null);
 			const shell = controller ? await inspectSharedShell(host.fs, controller.session.dirPath) : null;
-			const issues = controller ? checkSources(await collectSources(host.fs, controller.session.dirPath)) : [];
+			const issues = controller ? await inspectIssues(ctx, host.fs, controller.session.dirPath) : [];
 			return {
 				designs,
 				open: controller
 					? {
 							vetdPath: controller.session.vetdPath,
 							sourcesDir: controller.session.dirPath,
+							// 这份设计是什么品类的。新画框漏声明尺寸时兜底就是它，所以
+							// agent 补声明时该照着它写，而不是回去猜。
+							...(controller.session.manifest.defaultFrameSize
+								? { defaultFrameSize: controller.session.manifest.defaultFrameSize }
+								: {}),
 							// 复用面先于画框列出：agent 是一屏一屏往下写的，看不见既有的
 							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
 							sharedShell: shell,
@@ -280,7 +310,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 						}
 					: null,
 				engine,
-				...(controller ? { note: statusNote(shell, issues.length, controller.session.manifest.frames.length) } : {}),
+				...(controller ? { note: statusNote(shell, issues, controller.session.manifest.frames.length) } : {}),
 			};
 		},
 	});

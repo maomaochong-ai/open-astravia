@@ -52,7 +52,13 @@ import { buildSandboxToolDefinitions } from "../execution-mode/sandbox-tools.js"
 import { branchFromFileEntries, entriesToHistory } from "./history.js";
 import { generateAutoTitle, generateNextPromptSuggestions } from "./peripheral-tasks.js";
 import { debugPluginAgent, summarizeAgentPlugins } from "./plugin-debug.js";
-import { baseSessionEvent, lifecycleSessionEvent, mapAgentSessionEvent } from "./session-events.js";
+import {
+	baseSessionEvent,
+	flushPendingError,
+	lifecycleSessionEvent,
+	type MapAgentEventState,
+	mapAgentSessionEvent,
+} from "./session-events.js";
 import type { InFlightBuffer, RunningChangedReason, RuntimeHostOptions, SessionHandle } from "./types.js";
 
 export type { RunningChangedReason, RuntimeHostOptions } from "./types.js";
@@ -70,6 +76,8 @@ const IDLE_AGENT_PLUGIN_APPLY_DELAY_MS = 300;
 export class RuntimeHost implements SessionFacade {
 	private sessions = new Map<string, SessionHandle>();
 	private currentTurnStartedAt = new Map<string, number>();
+	/** 见 session-events.ts「错误延迟发射」：prompt() 收尾时兑现。 */
+	private pendingError: MapAgentEventState["pendingError"] = new Map();
 	private inFlightBuffers = new Map<string, InFlightBuffer>();
 	private inFlightUnsubscribers = new Map<string, () => void>();
 	/**
@@ -680,14 +688,33 @@ export class RuntimeHost implements SessionFacade {
 				error: runtimeError("INTERNAL_ERROR", message, false, "runtime"),
 			});
 			throw err;
+		} finally {
+			// 延迟发射的错误在这里兑现：prompt() 等待的是含自动重试的整个 agent
+			// 循环，走到这一步重试已尘埃落定。abort / throw 也过 finally，所以
+			// 不存在错误被永久吞掉的路径。详见 session-events.ts 与 ADR-0038。
+			this.flushPendingSessionError(sessionId);
 		}
+	}
+
+	/** 把挂起的 assistant 错误兑现成一条 error 事件广播出去（没有则静默返回）。 */
+	private flushPendingSessionError(sessionId: string): void {
+		const event = flushPendingError(sessionId, {
+			currentTurnStartedAt: this.currentTurnStartedAt,
+			pendingError: this.pendingError,
+		});
+		if (event) this.broadcastSyntheticEvent(sessionId, event);
 	}
 
 	async continue(sessionId: string): Promise<void> {
 		const handle = this.requireSession(sessionId);
 		await this.applyPendingAgentPlugins(sessionId, handle);
 		this.applyPendingAgentMode(handle);
-		await handle.session.agent.continue();
+		try {
+			await handle.session.agent.continue();
+		} finally {
+			// continue() 同样跑完整个 agent 循环，与 prompt() 一样要兑现挂起错误。
+			this.flushPendingSessionError(sessionId);
+		}
 	}
 
 	async abort(sessionId: string): Promise<void> {
@@ -772,6 +799,7 @@ export class RuntimeHost implements SessionFacade {
 			const unsubscribeSession = handle.session.subscribe((event) => {
 				const mapped = mapAgentSessionEvent(sessionId, event, handle.session, {
 					currentTurnStartedAt: this.currentTurnStartedAt,
+					pendingError: this.pendingError,
 				});
 				const subs = this.externalSubscribers.get(sessionId);
 				if (!subs) return;
@@ -1119,6 +1147,7 @@ export class RuntimeHost implements SessionFacade {
 		handle.session.dispose();
 		this.sessions.delete(sessionId);
 		this.currentTurnStartedAt.delete(sessionId);
+		this.pendingError.delete(sessionId);
 		clearSessionGrants(sessionId);
 	}
 
@@ -1144,6 +1173,7 @@ export class RuntimeHost implements SessionFacade {
 		const wasRunning = Array.from(this.runningSessionPaths);
 		this.sessions.clear();
 		this.currentTurnStartedAt.clear();
+		this.pendingError.clear();
 		this.inFlightUnsubscribers.clear();
 		this.inFlightBuffers.clear();
 		this.externalSubscribers.clear();

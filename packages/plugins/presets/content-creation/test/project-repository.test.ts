@@ -44,16 +44,26 @@ function createStorage(): PluginStorageApi {
 }
 
 describe("PluginContentProjectRepository", () => {
-	it("stores project documents inside the active Windows project", async () => {
+	it("stores a visible project document at the active Windows project root", async () => {
 		const harness = createFsHarness();
 		const repository = new PluginContentProjectRepository(harness.fs, createStorage());
 		const project = createContentProject("C:\\project");
 
 		await repository.write("C:\\project", project);
 
-		expect(harness.directories).toEqual(["C:\\project\\.vetta\\content-creation"]);
-		expect(harness.files.has("C:\\project\\.vetta\\content-creation\\project.json")).toBe(true);
+		expect(harness.directories).toEqual([]);
+		expect(harness.files.has("C:\\project\\content-creation.json")).toBe(true);
 		expect(await repository.read("C:\\project")).toMatchObject({ projectId: project.projectId, cwd: "C:\\project" });
+	});
+
+	it("copies a legacy hidden project document to the visible project path", async () => {
+		const harness = createFsHarness();
+		const repository = new PluginContentProjectRepository(harness.fs, createStorage());
+		const project = createContentProject("C:\\project");
+		harness.files.set("C:\\project\\.vetta\\content-creation\\project.json", JSON.stringify(project));
+
+		expect(await repository.read("C:\\project")).toMatchObject({ projectId: project.projectId });
+		expect(harness.files.has("C:\\project\\content-creation.json")).toBe(true);
 	});
 
 	it("uses plugin storage when no project directory exists", async () => {

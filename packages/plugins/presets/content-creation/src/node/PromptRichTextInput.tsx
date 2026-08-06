@@ -1,6 +1,10 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button, Popover, PopoverAnchor, PopoverContent } from "@vetta/ui";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import {
+	PromptOptimizationControl,
+	type PromptOptimizationControlProps,
+} from "../prompt-optimization/PromptOptimizationControl";
 import type { ContentAsset, ContentPromptDocument } from "../project/types";
 import { contentPromptDocumentsEqual } from "./prompt-document";
 import {
@@ -26,6 +30,7 @@ interface PromptRichTextInputProps {
 	mentionOptions: readonly PromptMentionOption[];
 	disabled?: boolean;
 	size: "compact" | "regular";
+	label?: string;
 	placeholder: string;
 	inlineHint: string;
 	menuTitle: string;
@@ -38,6 +43,7 @@ interface PromptRichTextInputProps {
 	onCommit: (document: ContentPromptDocument) => void;
 	onUpload?: () => void;
 	uploadTitle?: string;
+	optimization?: PromptOptimizationControlProps;
 }
 
 export function PromptRichTextInput({
@@ -47,6 +53,7 @@ export function PromptRichTextInput({
 	mentionOptions: allMentionOptions,
 	disabled = false,
 	size,
+	label,
 	placeholder,
 	inlineHint,
 	menuTitle,
@@ -59,6 +66,7 @@ export function PromptRichTextInput({
 	onCommit,
 	onUpload,
 	uploadTitle,
+	optimization,
 }: PromptRichTextInputProps) {
 	const { t } = useTranslation();
 	const editorRef = useRef<HTMLDivElement>(null);
@@ -243,6 +251,12 @@ export function PromptRichTextInput({
 	return (
 		<Popover open={menuOpen} onOpenChange={(open) => (open ? setMenuOpen(true) : closeMenu())}>
 			<div className="overflow-hidden rounded-xl border border-border/65 bg-background/35 transition-colors focus-within:border-primary/45 focus-within:bg-background/55">
+				{label ? (
+					<div className="flex h-8 items-center gap-1.5 border-b border-border/50 px-3 text-[11px] font-medium text-muted-foreground">
+						<span className="icon-[lucide--text] block size-3.5" aria-hidden="true" />
+						<span>{label}</span>
+					</div>
+				) : null}
 				<PopoverAnchor asChild>
 					<div
 						ref={editorRef}
@@ -311,6 +325,12 @@ export function PromptRichTextInput({
 							>
 								<span className="icon-[lucide--paperclip] block size-3.5" aria-hidden="true" />
 							</Button>
+						) : null}
+						{optimization ? (
+							<>
+								<span className="mx-0.5 h-3.5 w-px bg-border/70" aria-hidden="true" />
+								<PromptOptimizationControl {...optimization} disabled={disabled || optimization.disabled} />
+							</>
 						) : null}
 					</div>
 				</div>

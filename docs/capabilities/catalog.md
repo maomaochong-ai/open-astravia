@@ -31,6 +31,8 @@
 | `cap.foundation.vetta.gateway.request` | foundation | command | 1 |
 | `cap.domain.vetta.agent-settings.experimental.get` | domain | query | 1 |
 | `cap.domain.vetta.agent-settings.experimental.set` | domain | command | 1 |
+| `cap.domain.vetta.ai.models.list` | domain | query | 1 |
+| `cap.domain.vetta.ai.complete` | domain | command | 1 |
 | `cap.domain.vetta.batch-task.project.list` | domain | query | 1 |
 | `cap.domain.vetta.batch-task.project.get` | domain | query | 1 |
 | `cap.domain.vetta.batch-task.project.create` | domain | command | 1 |
@@ -76,6 +78,10 @@
 | `cap.domain.vetta.mcp.server.upsert` | domain | command | 1 |
 | `cap.domain.vetta.mcp.server.set-enabled` | domain | command | 1 |
 | `cap.domain.vetta.mcp.server.remove` | domain | command | 1 |
+| `cap.domain.vetta.media.provider.list` | domain | query | 1 |
+| `cap.domain.vetta.media.job.create` | domain | command | 1 |
+| `cap.domain.vetta.media.job.get` | domain | query | 1 |
+| `cap.domain.vetta.media.job.cancel` | domain | command | 1 |
 | `cap.domain.vetta.model.list` | domain | query | 1 |
 | `cap.domain.vetta.model.config.get` | domain | query | 1 |
 | `cap.domain.vetta.model.provider.get` | domain | query | 1 |

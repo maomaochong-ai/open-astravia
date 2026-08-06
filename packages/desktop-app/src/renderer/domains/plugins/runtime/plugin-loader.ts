@@ -28,6 +28,7 @@ import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginCaptureApi,
 	PluginCardRendererContribution,
 	PluginCommandApi,
 	PluginCommandSpawnExit,
@@ -46,6 +47,7 @@ import type {
 	PluginImageRef,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginMediaApi,
 	PluginNetworkApi,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
@@ -62,6 +64,7 @@ import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
+import { createPluginAiApi } from "./plugin-ai";
 import {
 	getPluginFileExplorerSelection,
 	getPluginFileExplorerWorkspaceRoots,
@@ -446,6 +449,29 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 	};
 }
 
+function createMediaApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginMediaApi {
+	const permissions = createPermissionApi(plugin);
+	const media = window.vetta.plugins.internalCapabilities.media;
+	return {
+		listProviders: () => {
+			permissions.require("media.generate");
+			return media.listProviders(capabilitySessionId);
+		},
+		createJob: (request) => {
+			permissions.require("media.generate");
+			return media.createJob(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.createJob>[1]);
+		},
+		getJob: (job) => {
+			permissions.require("media.generate");
+			return media.getJob(capabilitySessionId, job);
+		},
+		cancelJob: (job) => {
+			permissions.require("media.generate");
+			return media.cancelJob(capabilitySessionId, job);
+		},
+	};
+}
+
 /**
  * 网关调用不挂可声明权限，只按来源收口：`ctx.gateway` 仅对随包分发的 official
  * 插件挂载，第三方插件读到 undefined（ADR-0056）。主进程的 capability 适配层
@@ -670,6 +696,31 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 					};
 				},
 			};
+		},
+	};
+}
+
+function createCaptureApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCaptureApi {
+	const permissions = createPermissionApi(plugin);
+	// 记住用过的会话键：插件卸载/重载时把还开着的离屏窗口一并释放
+	// （主进程在 reload/disable/uninstall 也会兜底清扫）。
+	const sessionKeys = new Set<string>();
+	disposers.push(() => {
+		for (const key of sessionKeys) void window.vetta.plugins.offscreenRelease(plugin.id, key);
+		sessionKeys.clear();
+	});
+	return {
+		offscreen: (options) => {
+			permissions.require("capture.offscreen");
+			if (typeof options?.sessionKey === "string" && options.sessionKey.length > 0) {
+				sessionKeys.add(options.sessionKey);
+			}
+			return window.vetta.plugins.offscreenCapture(plugin.id, options);
+		},
+		releaseOffscreen: (sessionKey) => {
+			permissions.require("capture.offscreen");
+			sessionKeys.delete(sessionKey);
+			return window.vetta.plugins.offscreenRelease(plugin.id, sessionKey);
 		},
 	};
 }
@@ -1167,12 +1218,13 @@ function createContext(
 			console.error(`[plugin:${plugin.id}] ${message}\n${detail}`);
 		}
 	};
+	const permissions = createPermissionApi(plugin);
 	return {
 		plugin: {
 			id: plugin.id,
 			version: plugin.activeVersion,
 		},
-		permissions: createPermissionApi(plugin),
+		permissions,
 		ui: {
 			registerGlobalSlot,
 			registerFilePreview,
@@ -1229,6 +1281,8 @@ function createContext(
 		conversation,
 		fs,
 		command: createCommandApi(plugin, disposers),
+		media: createMediaApi(plugin, capabilitySessionId),
+		capture: createCaptureApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {
 				debugPluginAgent("renderer registerTool requested", {
@@ -1468,6 +1522,7 @@ function createContext(
 				};
 			},
 		},
+		ai: createPluginAiApi(permissions, capabilitySessionId),
 		official: createPluginOfficialApi(capabilitySessionId),
 		network: createNetworkApi(plugin, capabilitySessionId),
 		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,

@@ -298,6 +298,77 @@ function describeCaptureError(error: unknown): string {
  */
 const MAX_CAPTURE_PIXELS = 12_000_000;
 
+/**
+ * 交给克隆体复制的 CSS 属性名单。
+ *
+ * 内容就是 html-to-image 自己的默认名单（`getComputedStyle(documentElement)` 的枚举
+ * 结果），末尾多加一个 `Font-Size`。
+ *
+ * 它复制 font-size 时会把值改成 `Math.floor(size) - 0.1`——上游拿这个对冲
+ * getComputedStyle 宽度值的小数截断。14px 变 13.9px 还看不太出来，`text-[13.6px]`
+ * 这种直接变 12.9px，小了 5%：位图每一行都比活动态多塞得下一个字，两态的断行位置
+ * 从此对不上。
+ *
+ * 那段改写只认字面量 `'font-size'`，而 CSSOM 的属性名是大小写不敏感的——同一个属性
+ * 用 `Font-Size` 再写一遍，读到的是真实计算值、绕过改写、落到克隆体上依然是
+ * font-size，把前面那次改小的值覆盖掉。
+ *
+ * 不用 `font` 简写走这一步：它在元素带了 `tabular-nums` / `condensed` 之类的值时会
+ * 序列化成空串，而 setProperty 收到空串是**删除**——字号连同字体族一起没了。
+ */
+let styleProperties: string[] | null = null;
+
+function captureStyleProperties(): string[] {
+	if (styleProperties) return styleProperties;
+	const computed = window.getComputedStyle(document.documentElement);
+	const names: string[] = [];
+	for (let i = 0; i < computed.length; i++) names.push(computed[i]);
+	names.push("Font-Size");
+	styleProperties = names;
+	return names;
+}
+
+/**
+ * 截图前把活体里恰好一行的文本块钉成 nowrap，结束后恢复。
+ *
+ * html-to-image 给克隆体的每个盒子内联 getComputedStyle 的宽度，序列化只有两位
+ * 小数；而「宽度由自身文字决定」的盒子（flex 收缩项、inline-block、圆角小标签）
+ * 盒宽与文字 max-content **完全相等、零富余**。克隆体重排时文字按真实精度重新
+ * 折行，盒宽却是四舍五入过的——舍入方向朝下的那些元素，最后一个词就被挤下去，
+ * 位图里「Good morning, Maya」断成两行而活动态正常正是这么来的。哪个元素中招取
+ * 决于它自身宽度的小数位，所以看起来「有概率」。
+ *
+ * 上游对此的对冲是把 font-size 改小（floor - 0.1），已被下面 Font-Size 名单项
+ * 有意关掉（那会让 13.6px 变 12.9px，两态断行同样对不上）。这里改为把「这段文字
+ * 在活体里就是一行」这个事实直接固化进克隆体：nowrap 之后亚像素误差再也触发不了
+ * 折行，而对单行文本 nowrap 本身不改变任何布局。多行段落不动——它们的盒宽不由
+ * 自身文字决定，误差最多挪动段内断点，不会溢出重叠。
+ */
+function pinSingleLineText(): () => void {
+	const touched: Array<[HTMLElement, string]> = [];
+	for (const el of document.body.querySelectorAll<HTMLElement>("*")) {
+		if (!el.textContent?.trim()) continue;
+		const style = window.getComputedStyle(el);
+		// 纯 inline 盒的折行归它所在的块管，跳过；inline-block/inline-flex 自己成块。
+		if (style.display.startsWith("inline") && style.display !== "inline-block" && style.display !== "inline-flex") {
+			continue;
+		}
+		const ws = style.whiteSpace;
+		if (ws.includes("nowrap") || ws.includes("pre") || ws.includes("break-spaces")) continue;
+		const range = document.createRange();
+		range.selectNodeContents(el);
+		const rects = [...range.getClientRects()].filter((rect) => rect.width > 0 && rect.height > 0);
+		if (rects.length === 0) continue;
+		const tops = new Set(rects.map((rect) => Math.round(rect.top)));
+		if (tops.size !== 1) continue;
+		touched.push([el, el.style.whiteSpace]);
+		el.style.whiteSpace = "nowrap";
+	}
+	return () => {
+		for (const [el, previous] of touched) el.style.whiteSpace = previous;
+	};
+}
+
 /** 按文档实际大小把请求的 pixelRatio 压到出得来的范围内，不低于 1 倍。 */
 function safePixelRatio(requested: number): number {
 	const el = document.documentElement;
@@ -507,16 +578,26 @@ export function installBridge(host: BridgeHost): void {
 				// postMessage 传输与常驻内存跟着降下来——这正是能把 pixelRatio 提到
 				// 设备像素比、让位图不再糊的前提。jpeg 没有透明通道，必须显式铺白底，
 				// 否则透明处会变黑。交付物（导出渲染图 / 发给 agent）继续走 png。
+				const includeStyleProperties = captureStyleProperties();
 				const encode = (): Promise<string> =>
 					data.format === "jpeg"
 						? toJpeg(document.documentElement, {
 								pixelRatio,
 								onImageErrorHandler,
+								includeStyleProperties,
 								quality: typeof data.quality === "number" ? data.quality : 0.92,
 								backgroundColor: "#ffffff",
 							})
-						: toPng(document.documentElement, { pixelRatio, onImageErrorHandler });
-				encode()
+						: toPng(document.documentElement, { pixelRatio, onImageErrorHandler, includeStyleProperties });
+				// 字体没就绪就截，量到的是后备字体的断行；页面随后换上真字体重排，位图
+				// 与活动态就对不上了——每行最后一个字被挤到下一行正是这么来的。rendered
+				// 信号那边已经等过一次（见 main.tsx 的 FramePainted），这里再挡一道：
+				// 交付物那条路（vetd_screenshot / 导出 / 复制）不经过那个信号。
+				document.fonts.ready
+					.then(() => {
+						const restore = pinSingleLineText();
+						return encode().finally(restore);
+					})
 					.then((dataUrl) => post({ type: "captured", requestId, dataUrl }))
 					.catch((error: unknown) => post({ type: "captured", requestId, error: describeCaptureError(error) }))
 					.finally(() => moveOverlay(selectedOverlay, selected));

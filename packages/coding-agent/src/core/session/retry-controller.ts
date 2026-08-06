@@ -75,7 +75,10 @@ export class RetryController {
 		}
 
 		// Match: overloaded_error, rate limit, 429, 500, 502, 503, 504, service unavailable, connection errors, fetch failed, terminated, retry delay exceeded
-		return /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i.test(
+		// Node 抛的连接错误原文是 `connect ECONNREFUSED 1.2.3.4:443` / `getaddrinfo
+		// EAI_AGAIN ...`，不含 "connection refused" 这类英文短语，所以 errno 必须
+		// 单独列——只匹配短语会让真正的断网/连不上一次都不重试。
+		return /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|EHOSTUNREACH|ENETUNREACH/i.test(
 			err,
 		);
 	}

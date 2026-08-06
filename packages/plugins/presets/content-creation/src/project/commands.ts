@@ -34,7 +34,7 @@ export type ContentProjectCommand =
 	| { type: "asset.add"; asset: ContentAsset }
 	| { type: "job.start"; job: { id: string; nodeId: string; providerId: string; modelId: string } }
 	| { type: "job.succeed"; jobId: string; asset: ContentAsset }
-	| { type: "job.fail"; jobId: string; error: string }
+	| { type: "job.fail"; jobId: string; error: string; errorCode?: GenerationJob["errorCode"] }
 	| {
 			type: "timeline.clip.add";
 			clip: Omit<TimelineClip, "id"> & { id?: string };
@@ -237,6 +237,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			job.progress = 1;
 			job.assetId = command.asset.id;
 			job.error = undefined;
+			job.errorCode = undefined;
 			job.updatedAt = now;
 			const node = findNode(project, job.nodeId);
 			node.status = "succeeded";
@@ -248,6 +249,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			job.status = "failed";
 			job.progress = 1;
 			job.error = command.error;
+			job.errorCode = command.errorCode;
 			job.updatedAt = now;
 			findNode(project, job.nodeId).status = "failed";
 			return;

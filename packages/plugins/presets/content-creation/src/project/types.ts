@@ -1,3 +1,5 @@
+import type { PluginMediaErrorCode } from "@vetta-org/plugin-sdk";
+
 export const CONTENT_CREATION_SCHEMA_VERSION = 2 as const;
 
 export type ContentNodeKind = "prompt" | "image-generator" | "video-generator" | "asset" | "output";
@@ -15,6 +17,7 @@ export interface ContentNodeData {
 	label?: string;
 	prompt?: string;
 	promptDocument?: ContentPromptDocument;
+	promptOptimization?: ContentPromptOptimization;
 	assetId?: string;
 	assetIds?: string[];
 	aspectRatio?: string;
@@ -26,6 +29,12 @@ export interface ContentNodeData {
 	modeId?: string;
 	promptSourceNodeId?: string | null;
 	inputs?: ContentNodeInputBinding[];
+}
+
+export interface ContentPromptOptimization {
+	text: string;
+	modelKey: string;
+	createdAt: string;
 }
 
 export interface ContentPromptDocument {
@@ -66,11 +75,14 @@ export interface ContentEdge {
 
 export interface ContentAsset {
 	id: string;
-	blobId: string;
+	/** Plugin-private storage ID for user-imported source material. */
+	blobId?: string;
+	/** Workspace-relative path for generated material, for example `output/image-ab12cd34.png`. */
+	filePath?: string;
 	kind: AssetKind;
 	name: string;
 	mimeType: string;
-	/** Runtime-only media URL. Project persistence stores blobId instead. */
+	/** Runtime-only media URL. Project persistence stores blobId or filePath instead. */
 	previewUrl?: string;
 	duration?: number;
 	width?: number;
@@ -87,6 +99,7 @@ export interface GenerationJob {
 	progress: number;
 	assetId?: string;
 	error?: string;
+	errorCode?: PluginMediaErrorCode;
 	createdAt: string;
 	updatedAt: string;
 }

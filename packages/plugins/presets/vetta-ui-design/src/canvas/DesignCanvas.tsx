@@ -497,7 +497,19 @@ export function DesignCanvas({
 		refreshAll,
 		reloadAll,
 		reloadNonce,
-	} = useFrameRasters({ bridge, cacheKey: session.vetdPath, frameIds: orderedFrameIds, activeFrameId: liveFrameId });
+	} = useFrameRasters({
+		bridge,
+		cacheKey: session.vetdPath,
+		frameIds: orderedFrameIds,
+		activeFrameId: liveFrameId,
+		offscreen: {
+			port,
+			sizeOf: (frameId) => {
+				const frame = manifest.frames.find((candidate) => candidate.id === frameId);
+				return frame ? { width: frame.width, height: frame.height } : null;
+			},
+		},
+	});
 
 	refreshRef.current = reloadAll;
 
@@ -1175,7 +1187,7 @@ export function DesignCanvas({
 					shots.push({ frameId: frame.id, screenshotPath });
 				}
 				const dom = selection?.kind === "dom" ? { frameId: selection.frameId, payload: selection.payload } : null;
-				const prompt = buildAskPrompt(session, { shots, dom }, suggestion, ctx.i18n.locale);
+				const prompt = buildAskPrompt(session, { shots, dom }, suggestion);
 				void ctx.conversation.sendPrompt(prompt).catch((error: unknown) => {
 					notify({ message: t("canvas.ask.failed"), error });
 				});

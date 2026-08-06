@@ -24,7 +24,7 @@ import {
 	statFilesystemPath,
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
-import { requestGatewayForPlugin as requestGateway } from "../plugins/plugin-gateway-service.js";
+import { requestVettaGateway as requestGateway } from "../gateway/vetta-gateway-service.js";
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
 import {
 	getPluginBlobRef as getNamespacedBlobRef,

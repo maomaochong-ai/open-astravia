@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BridgeHub } from "./bridge-client";
 import { getFrameError } from "./design-runtime";
+import {
+	captureFrameOffscreen,
+	offscreenRasterSupported,
+	releaseOffscreenRasterSession,
+} from "./offscreen-raster";
 import { loadRasters, pruneRasters, saveRaster } from "./raster-cache";
 
 /**
@@ -53,6 +58,15 @@ interface FrameRasterOptions {
 	 * 多选时不算——那是在排版而不是在看内容，全转活体会把合成压力又拉回来。
 	 */
 	activeFrameId: string | null;
+	/**
+	 * 宿主离屏截图所需的上下文（引擎端口 + frame 尺寸）。宿主支持时位图队列走
+	 * 离屏窗口：截图不再要求 frame 挂活体 iframe，也不占画布渲染进程的主线程；
+	 * 不支持（旧宿主）则整体回落 html-to-image 老路。
+	 */
+	offscreen: {
+		port: number;
+		sizeOf(frameId: string): { width: number; height: number } | null;
+	} | null;
 }
 
 export interface FrameRasterState {
@@ -152,7 +166,26 @@ function nextPaint(): Promise<void> {
 	});
 }
 
-export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: FrameRasterOptions): FrameRasterState {
+export function useFrameRasters({
+	bridge,
+	cacheKey,
+	frameIds,
+	activeFrameId,
+	offscreen,
+}: FrameRasterOptions): FrameRasterState {
+	/** 离屏路径是否可用。宿主能力不会中途消失，判一次即可。 */
+	const offscreenProvided = offscreen !== null;
+	const offscreenActive = useMemo(() => offscreenProvided && offscreenRasterSupported(), [offscreenProvided]);
+	/** 尺寸回调随 manifest 变，走 ref 免得截图 effect 反复重排队。 */
+	const offscreenRef = useRef(offscreen);
+	offscreenRef.current = offscreen;
+
+	// 切设计文档（端口变化）/ 画布卸载时释放离屏窗口。
+	const offscreenPort = offscreen?.port ?? null;
+	useEffect(() => {
+		if (!offscreenActive || offscreenPort === null) return;
+		return () => releaseOffscreenRasterSession(offscreenPort);
+	}, [offscreenActive, offscreenPort]);
 	const [rasters, setRasters] = useState<ReadonlyMap<string, string>>(new Map());
 	/** 等待截图的 frame：它们必须先保持活体，截完才收起。 */
 	const [dirty, setDirty] = useState<ReadonlySet<string>>(new Set());
@@ -256,8 +289,10 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 
 	const reloadAll = useCallback((): void => {
 		refreshAll();
+		// 硬刷新语义也要落到离屏窗口上：释放后下一张截图会重新加载引擎页面。
+		if (offscreenActive && offscreenPort !== null) releaseOffscreenRasterSession(offscreenPort);
 		setReloadNonce((current) => current + 1);
-	}, [refreshAll]);
+	}, [refreshAll, offscreenActive, offscreenPort]);
 
 	/**
 	 * 只有「还需要活体」的 frame 才挂 iframe：当前在操作的那个（选中/检查态）、
@@ -273,19 +308,21 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 		if (activeFrameId) allowed.add(activeFrameId);
 		// 正在截图的那个必须留住。frameIds 的顺序跟着视口走（见 DesignCanvas），平移
 		// 一下队列就重排，把它挤出挂载窗口会当场卸掉 iframe——这一张连同它已经等过的
-		// SETTLE 一起白费，还要从头再来一遍。
-		if (capturingRef.current) allowed.add(capturingRef.current);
+		// SETTLE 一起白费，还要从头再来一遍。（离屏模式截图不经过 iframe，不用留。）
+		if (!offscreenActive && capturingRef.current) allowed.add(capturingRef.current);
 		for (const frameId of forced) allowed.add(frameId);
 		let budget = MOUNT_WINDOW;
 		for (const frameId of frameIds) {
 			if (allowed.has(frameId)) continue;
-			if (!dirty.has(frameId) && rasters.has(frameId)) continue;
+			// 离屏模式下截图不需要活体，iframe 只为「一张位图都没有」的 frame 兜底显示；
+			// 有位图的脏 frame 继续显示旧图，新图在后台截好后直接换上，不闪活体。
+			if (offscreenActive ? rasters.has(frameId) : !dirty.has(frameId) && rasters.has(frameId)) continue;
 			if (budget <= 0) continue;
 			allowed.add(frameId);
 			budget -= 1;
 		}
 		return allowed;
-	}, [frameIds, rasters, dirty, activeFrameId, forced]);
+	}, [frameIds, rasters, dirty, activeFrameId, forced, offscreenActive]);
 
 	// iframe 卸掉后 rendered 门禁作废：下次挂载是一次全新加载，要等新的 rendered。
 	useEffect(() => {
@@ -314,12 +351,13 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 		// renderedRef 门禁：挂载到首帧画出来之间（dev server 编译、React 首渲染）截到的
 		// 是空白/加载态。rendered 信号到达时 notifyRendered 会换 dirty 的引用触发本 effect
 		// 重跑，所以这里跳过不会漏。
+		// 离屏模式：截图走宿主的隐藏窗口，frame 不需要挂活体、也没有 rendered 门禁
+		// （引擎自己的就绪信号由宿主轮询，见 offscreen-raster.ts）。
 		const next = frameIds.find(
 			(frameId) =>
 				dirty.has(frameId) &&
 				frameId !== activeFrameId &&
-				mounted.has(frameId) &&
-				renderedRef.current.has(frameId) &&
+				(offscreenActive || (mounted.has(frameId) && renderedRef.current.has(frameId))) &&
 				!getFrameError(frameId),
 		);
 		if (next === undefined) return;
@@ -328,16 +366,36 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 		// 此后到截图落地之间任何一次失效（invalidate / notifyRendered / refreshAll）都
 		// 意味着这张图可能按旧内容截的，落地后必须重截。
 		const seqAtStart = invalidationSeqRef.current.get(next) ?? 0;
-		timerRef.current = window.setTimeout(() => {
-			timerRef.current = null;
-			void withCaptureLock(() =>
+		const runCapture = (): Promise<string> => {
+			if (offscreenActive) {
+				const context = offscreenRef.current;
+				const size = context?.sizeOf(next) ?? null;
+				if (context === null || size === null) {
+					return Promise.reject(new Error(`frame size unknown: ${next}`));
+				}
+				// 不占 withCaptureLock：离屏窗口与 iframe 内的 html-to-image（交付物
+				// 截图）用的是两套互不竞争的资源，串行化只会平白拖慢两边。
+				return captureFrameOffscreen({
+					port: context.port,
+					frameId: next,
+					width: size.width,
+					height: size.height,
+					quality: RASTER_JPEG_QUALITY,
+				});
+			}
+			return withCaptureLock(() =>
 				bridge.capture(next, {
 					pixelRatio: RASTER_PIXEL_RATIO,
 					timeoutMs: 20_000,
 					format: "jpeg",
 					quality: RASTER_JPEG_QUALITY,
 				}),
-			)
+			);
+		};
+		// 离屏路径不等 SETTLE：静置在宿主侧做（就绪信号之后），这里再等一次纯属浪费。
+		timerRef.current = window.setTimeout(() => {
+			timerRef.current = null;
+			void runCapture()
 				.then(async (dataUrl) => {
 					// 解码在前、写状态在后：dirty 的清除在 finally，会等这个 await，
 					// 所以位图进入 rasters 时一定是「挂上就能画」的。
@@ -368,7 +426,7 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 						return remaining;
 					});
 				});
-		}, SETTLE_MS);
+		}, offscreenActive ? 0 : SETTLE_MS);
 
 		return () => {
 			if (timerRef.current !== null) {
@@ -377,7 +435,7 @@ export function useFrameRasters({ bridge, cacheKey, frameIds, activeFrameId }: F
 				capturingRef.current = null;
 			}
 		};
-	}, [bridge, cacheKey, dirty, activeFrameId, mounted, frameIds, withCaptureLock]);
+	}, [bridge, cacheKey, dirty, activeFrameId, mounted, frameIds, withCaptureLock, offscreenActive]);
 
 	const rasterOf = useCallback((frameId: string): string | null => rasters.get(frameId) ?? null, [rasters]);
 

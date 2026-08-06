@@ -6,9 +6,12 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `ctx.ai` 宿主管理的文本推理能力：插件通过 `ai.models.list` 获取可用文本模型，通过 `ai.complete` 调用用户已配置的模型。模型解析、凭据注入与请求执行均留在 Desktop 主进程，插件不会接触 API Key；首版契约提供单轮 `systemPrompt + prompt` 完成、推理级别、温度、最大输出和 token 用量。
+- `ctx.media` 宿主媒体消费协议：插件用 `media.generate` 列出 Provider、创建/查询/取消图片或视频任务。Provider SPI 属于 desktop 主进程，不向插件开放注册；协议允许 Provider 列表为空，结果只传内存字节，持久化位置由消费者决定。Desktop 内置的 Vetta 图片 Provider 固定在主进程调用网关，插件拿不到 JWT，也不能传任意网关路径（ADR-0057）。
 - `ctx.gateway`（`PluginGatewayApi`）：带当前登录身份调用 Vetta 服务端（ADR-0056）。插件只给出**相对 `/api/v1` 的路径**与 JSON body，服务端地址、`Authorization` 与 401 刷新重试全在宿主主进程完成——插件拿不到 token，也拼不出指向其它接口的绝对 URL；把 JWT 交给插件进程等于开放整个 `/api/v1` 的越权面，因此 SDK 不提供「取 token 自己拼」的口子。业务信封由宿主拆开，返回 `{ ok, status, code, message, data }`，配额用尽/档位无权限这类**不抛异常**（它们是常规业务分支，插件应据此渲染引导）。**该字段可选**：只对随包分发的 official 插件挂载，第三方插件读到 `undefined`，使用前必须判空。这样收口的理由不是防越权（服务端档位授权已限定可用模型、消耗的是用户自己的额度），而是防插件偷跑烧光用户配额——在缺少插件签名与审核机制前，「安装时用户确认」形同虚设。
 
 - `PluginUiApi.openExternal(url)`：把链接交给系统默认浏览器（Electron `shell.openExternal`），不是 App 内置的浏览器面板。只接受 `http:`/`https:`，其余协议宿主直接拒绝。需新权限 `shell.openExternal`。
+- `ctx.capture.offscreen(options)`（`PluginCaptureApi`，新权限 `capture.offscreen`）：宿主主进程用隐藏离屏窗口加载 http(s) 页面并 `capturePage` 出图。与 DOM 克隆类截图（html-to-image）不同，走真实渲染管线，位图与页面在屏显示逐像素一致；`sessionKey` 复用窗口（url 未变跳过重新加载，SPA 切路由零加载），`prepareScript` / `readyExpression` 对接页面自己的就绪信号，`releaseOffscreen(sessionKey)` 主动释放。窗口闲置自动回收，插件禁用/卸载/重载与 App 退出统一清扫。**该字段可选**：旧宿主上 `ctx.capture` 为 `undefined`，使用前判空。
 - Added the public `@vetta-org/plugin-sdk/tailwind-theme.css` host-theme contract for semantic Tailwind colors without importing Desktop component styles.
 
 ## [0.1.1] — 2026-08-04

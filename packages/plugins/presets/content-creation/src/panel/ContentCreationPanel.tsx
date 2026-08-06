@@ -47,7 +47,7 @@ export function ContentCreationPanel() {
 				active = false;
 			};
 		}
-		void assetPreviewResolver.resolveAll(project.assets).then((urls) => {
+		void assetPreviewResolver.resolveAll(project.cwd, project.assets).then((urls) => {
 			if (active) {
 				setAssetPreviewUrls((current) => (previewUrlMapsEqual(current, urls) ? current : urls));
 			}
@@ -71,14 +71,20 @@ export function ContentCreationPanel() {
 	);
 	const runNode = useCallback(
 		async (nodeId: string) => {
+			if (!cwd) {
+				setError(t("error.outputWorkspaceRequired"));
+				notifyContentCreationError(t("error.outputWorkspaceRequired"), new Error("workspace is required"));
+				return;
+			}
 			try {
 				setError(null);
 				await generation.runNode(cwd, nodeId);
-			} catch {
-				// Generation failures are persisted on the node job and rendered there.
+			} catch (generationError) {
+				// The job owns the user-facing error; renderer logging preserves diagnostic details.
+				console.error("[plugin:content-creation] generation failed", generationError);
 			}
 		},
-		[cwd, generation],
+		[cwd, generation, t],
 	);
 	const importReferences = useCallback(
 		async (nodeId: string, files: readonly ImportedContentReference[]) => {

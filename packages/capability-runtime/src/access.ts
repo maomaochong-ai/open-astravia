@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { setMaxListeners } from "node:events";
 import {
 	type AccessSubject,
 	type AuthorizedCapabilityClient,
@@ -132,6 +133,7 @@ export class CapabilityAccessController {
 		}
 
 		const sessionController = new AbortController();
+		setMaxListeners(0, sessionController.signal);
 		let revoked = false;
 		const client: AuthorizedCapabilityClient = {
 			invoke: <Input, Output>(

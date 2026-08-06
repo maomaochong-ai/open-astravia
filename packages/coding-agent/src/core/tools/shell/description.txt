@@ -70,5 +70,3 @@ When running git commands, follow these rules strictly:
 - Before any destructive operation, consider if there is a safer alternative
 
 On Windows, this tool uses PowerShell by default.
-
-注意：对用户可见的输出文案禁止硬编码中文，统一走 i18n。

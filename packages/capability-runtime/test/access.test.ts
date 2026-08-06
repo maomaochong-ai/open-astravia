@@ -24,6 +24,47 @@ function createAccess(audit?: (event: CapabilityAccessAuditEvent) => void): Capa
 }
 
 describe("CapabilityAccessController", () => {
+	it("supports more than ten concurrent session invocations without listener warnings", async () => {
+		const warnings: Error[] = [];
+		const onWarning = (warning: Error): void => {
+			if (warning.name === "MaxListenersExceededWarning" && warning.message.includes("abort listeners")) {
+				warnings.push(warning);
+			}
+		};
+		process.on("warning", onWarning);
+
+		const hub = new CapabilityHub();
+		const readFileCapability = FOUNDATION_FILESYSTEM_CAPABILITIES.READ_FILE;
+		hub.foundation.registerOwner("concurrency", [
+			bindCapability(readFileCapability, {
+				execute: (_input, executionContext) =>
+					new Promise<FilesystemReadFileResult>((_resolve, reject) => {
+						executionContext.signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+					}),
+			}),
+		]);
+		const access = new CapabilityAccessController(hub);
+		const handle = access.createSession({
+			subject: { id: "subject", sessionId: "concurrency" },
+			grants: [createCapabilityGrant(readFileCapability)],
+		});
+		const invocations = Array.from({ length: 11 }, (_, index) =>
+			handle.client.invoke(readFileCapability, { path: `value-${index}` }),
+		);
+
+		try {
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			handle.revoke();
+			await Promise.allSettled(invocations);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+		} finally {
+			process.off("warning", onWarning);
+			handle.revoke();
+		}
+
+		expect(warnings).toEqual([]);
+	});
+
 	it("requires an exact grant and enforces namespace constraints", async () => {
 		const audit: CapabilityAccessAuditEvent[] = [];
 		const access = createAccess((event) => audit.push(event));

@@ -1,6 +1,13 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { type ChangeEvent, useEffect, useMemo, useRef } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ImportedContentReference } from "../generation/types";
+import {
+	getContentPromptOptimizationService,
+	notifyContentCreationError,
+} from "../plugin/runtime";
+import { CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE } from "../prompt-optimization/prompt-optimization-service";
+import { serializeContentPromptForOptimization } from "../prompt-optimization/serialize-content-prompt";
+import { usePromptOptimizationModels } from "../prompt-optimization/usePromptOptimizationModels";
 import type {
 	ContentAsset,
 	ContentNodeData,
@@ -9,6 +16,7 @@ import type {
 } from "../project/types";
 import {
 	contentPromptText,
+	contentPromptSourceSignature,
 	createContentPromptDocument,
 	listContentPromptBindingIds,
 } from "./prompt-document";
@@ -41,6 +49,10 @@ export function ContentPromptEditor({
 	const { t } = useTranslation();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const draftRef = useRef(data);
+	const [isOptimizing, setIsOptimizing] = useState(false);
+	const [hasPromptContent, setHasPromptContent] = useState(() => hasOptimizableContent(data));
+	const { models, selectedModelKey, setSelectedModelKey, isLoadingModels } =
+		usePromptOptimizationModels(data.promptOptimization?.modelKey);
 	const removeReferenceLabel = t("nodeEditor.reference.remove");
 	const assetById = useMemo(
 		() =>
@@ -69,6 +81,7 @@ export function ContentPromptEditor({
 
 	useEffect(() => {
 		draftRef.current = data;
+		setHasPromptContent(hasOptimizableContent(data));
 	}, [data]);
 
 	const updateDraft = (promptDocument: ContentPromptDocument) => {
@@ -82,6 +95,7 @@ export function ContentPromptEditor({
 			),
 		};
 		draftRef.current = next;
+		setHasPromptContent(hasOptimizableContent(next));
 		return next;
 	};
 	const resolveMention = (option: PromptMentionOption): PromptMentionInsertion | null => {
@@ -103,6 +117,7 @@ export function ContentPromptEditor({
 				...draftRef.current,
 				inputs: [...(draftRef.current.inputs ?? []), binding],
 			};
+			setHasPromptContent(true);
 		}
 		return { type: "asset", bindingId: binding.id, asset: candidate.asset };
 	};
@@ -112,6 +127,34 @@ export function ContentPromptEditor({
 		if (files.length === 0) return;
 		await onUpdate(draftRef.current);
 		await onImportReferences(await Promise.all(files.map(readImportedMediaFile)));
+	};
+	const handleOptimize = async () => {
+		if (!selectedModelKey || isOptimizing) return;
+		const requestData = draftRef.current;
+		const sourceSignature = contentPromptSourceSignature(requestData);
+		const assetMap = new Map(
+			(requestData.inputs ?? []).flatMap((binding) => {
+				const asset = assetById.get(binding.assetId);
+				return asset ? [[binding.id, asset] as const] : [];
+			}),
+		);
+		setIsOptimizing(true);
+		try {
+			await onUpdate(requestData);
+			const optimization = await getContentPromptOptimizationService().optimize({
+				source: serializeContentPromptForOptimization(requestData, assetMap),
+				modelKey: selectedModelKey,
+				profile: CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE,
+			});
+			if (contentPromptSourceSignature(draftRef.current) !== sourceSignature) return;
+			const next = { ...draftRef.current, promptOptimization: optimization };
+			draftRef.current = next;
+			await onUpdate(next);
+		} catch (error) {
+			notifyContentCreationError(t("error.promptOptimization"), error);
+		} finally {
+			setIsOptimizing(false);
+		}
 	};
 
 	return (
@@ -125,6 +168,7 @@ export function ContentPromptEditor({
 				promptLabelByNodeId={EMPTY_PROMPT_LABELS}
 				mentionOptions={mentionOptions}
 				size="regular"
+				label={t("nodeEditor.prompt.original")}
 				placeholder={t("nodeEditor.prompt.placeholder")}
 				inlineHint={t("nodeEditor.prompt.mention.inlineHint")}
 				menuTitle={t("nodeEditor.prompt.mention.title")}
@@ -139,6 +183,15 @@ export function ContentPromptEditor({
 				onCommit={(document) => void onUpdate(updateDraft(document))}
 				onUpload={() => fileInputRef.current?.click()}
 				uploadTitle={t("nodeEditor.prompt.mention.upload")}
+				optimization={{
+					models,
+					selectedModelKey,
+					isLoadingModels,
+					isOptimizing,
+					canOptimize: hasPromptContent,
+					onModelChange: setSelectedModelKey,
+					onOptimize: handleOptimize,
+				}}
 			/>
 			<input
 				ref={fileInputRef}
@@ -149,5 +202,11 @@ export function ContentPromptEditor({
 				onChange={(event) => void handleFiles(event)}
 			/>
 		</NodeEditorPanel>
+	);
+}
+
+function hasOptimizableContent(data: ContentNodeData): boolean {
+	return createContentPromptDocument(data).segments.some(
+		(segment) => segment.type !== "text" || segment.text.trim().length > 0,
 	);
 }

@@ -1,3 +1,4 @@
+import { PluginMediaError } from "@vetta-org/plugin-sdk";
 import type {
 	AssetKind,
 	ContentAsset,
@@ -87,8 +88,8 @@ export class ContentGenerationService {
 		}
 
 		for (const item of pending) {
-			const stored = await this.artifacts.put(item.asset.id, item.file);
-			item.asset.blobId = stored.id;
+			const stored = await this.artifacts.putImported(item.asset.id, item.file);
+			item.asset.blobId = stored.blobId;
 			item.asset.mimeType = stored.mimeType;
 		}
 		const assetIds = [...listContentNodeAssetIds(node.data), ...pending.map(({ asset }) => asset.id)];
@@ -151,8 +152,8 @@ export class ContentGenerationService {
 		}
 
 		for (const item of pending) {
-			const stored = await this.artifacts.put(item.asset.id, item.file);
-			item.asset.blobId = stored.id;
+			const stored = await this.artifacts.putImported(item.asset.id, item.file);
+			item.asset.blobId = stored.blobId;
 			item.asset.mimeType = stored.mimeType;
 		}
 		return await this.workspace.dispatch(cwd, [
@@ -197,8 +198,8 @@ export class ContentGenerationService {
 			});
 		}
 		for (const item of pending) {
-			const stored = await this.artifacts.put(item.asset.id, item.file);
-			item.asset.blobId = stored.id;
+			const stored = await this.artifacts.putImported(item.asset.id, item.file);
+			item.asset.blobId = stored.blobId;
 			item.asset.mimeType = stored.mimeType;
 		}
 		return await this.workspace.dispatch(cwd, [
@@ -218,6 +219,7 @@ export class ContentGenerationService {
 	}
 
 	async runNode(cwd: string | null, nodeId: string): Promise<ContentProjectDocument> {
+		if (!cwd) throw new Error("content generation requires a workspace output directory");
 		const project = await this.workspace.load(cwd);
 		const node = requireNode(project, nodeId);
 		const outputKind = requireOutputKind(node);
@@ -246,7 +248,7 @@ export class ContentGenerationService {
 			{ type: "job.start", job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId } },
 		]);
 		try {
-			const references = await this.resolveReferences(candidates, assignment.assignedSlotIds);
+			const references = await this.resolveReferences(cwd, candidates, assignment.assignedSlotIds);
 			const generated = await this.providers.generate({
 				modeId: mode.id,
 				providerId: model.providerId,
@@ -258,16 +260,17 @@ export class ContentGenerationService {
 				resolution: node.data.resolution,
 				references,
 			});
-			const stored = await this.artifacts.put(assetId, generated);
+			const fileName = generatedFileName(node.data.label, generated.kind, assetId, generated.mimeType);
+			const stored = await this.artifacts.putGenerated(cwd, fileName, generated);
 			return await this.workspace.dispatch(cwd, [
 				{
 					type: "job.succeed",
 					jobId,
 					asset: {
 						id: assetId,
-						blobId: stored.id,
+						filePath: stored.filePath,
 						kind: generated.kind,
-						name: `${node.data.label?.trim() || `${generated.kind}-${assetId.slice(0, 8)}`}.${extensionForMimeType(generated.mimeType)}`,
+						name: fileName,
 						mimeType: stored.mimeType,
 						duration: generated.duration,
 						width: generated.width,
@@ -278,12 +281,16 @@ export class ContentGenerationService {
 			]);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			await this.workspace.dispatch(cwd, [{ type: "job.fail", jobId, error: message }]);
+			const errorCode = error instanceof PluginMediaError ? error.code : undefined;
+			await this.workspace.dispatch(cwd, [
+				{ type: "job.fail", jobId, error: message, ...(errorCode ? { errorCode } : {}) },
+			]);
 			throw error;
 		}
 	}
 
 	private async resolveReferences(
+		cwd: string | null,
 		candidates: readonly ReferenceCandidate[],
 		assignedSlotIds: readonly string[],
 	): Promise<ContentGenerationReference[]> {
@@ -293,7 +300,7 @@ export class ContentGenerationService {
 				const slotId = candidate.slotId ?? assignedSlotIds[unassignedIndex++];
 				if (!slotId) throw new Error(`content reference slot not resolved: ${candidate.asset.id}`);
 				const asset = candidate.asset;
-				const stored = await this.artifacts.read(asset.blobId);
+				const stored = await this.artifacts.read(cwd, asset);
 				if (!stored) throw new Error(`content reference data not found: ${asset.id}`);
 				return { id: candidate.id, slotId, kind: asset.kind, ...stored };
 			}),
@@ -378,4 +385,13 @@ function extensionForMimeType(mimeType: string): string {
 	if (mimeType === "audio/ogg") return "ogg";
 	if (mimeType.startsWith("audio/")) return "mp3";
 	return "png";
+}
+
+function generatedFileName(label: string | undefined, kind: "image" | "video", assetId: string, mimeType: string): string {
+	const requestedStem = label?.trim() || kind;
+	const stem = requestedStem
+		.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+		.replace(/[. ]+$/g, "")
+		.slice(0, 80) || kind;
+	return `${stem}-${assetId}.${extensionForMimeType(mimeType)}`;
 }

@@ -6,6 +6,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **底层媒体生成能力与内置 Vetta 图片实现**（ADR-0057）：通用图片/视频契约下沉到 Domain Capability，Provider Registry 与 SPI 由 desktop 主进程拥有；插件只通过受 `media.generate` 门控的 `ctx.media` 消费。协议允许没有任何实现；默认 `desktop-app:vetta` Provider 固定调用 `images/generate` / `images/edit`，renderer 插件无法读取 JWT 或指定任意网关路径。`image-gen` 只负责交互与持久化，生成字节仍写入 `~/.vetta/plugin-data/image-gen/`。
 - **设计画布新增预览模式**：设计稿现在是可点的真实站点。顶栏「预览」打开一个浏览器窗口——按钮、tab、表单都是真交互，跨屏跳转走真实路由（`frames/login.tsx` 就是 `/login`，`frames/index.tsx` 就是首页 `/`），带前进/后退/刷新/地址显示/画框切换/视口预设，窗口可自由拉伸，也可以一键交给系统默认浏览器打开（该地址随设计画布关闭而失效）。预览期间画布整体降为位图，不再同时养 N 份活体渲染树。引擎因此升级到 0.2.0（引入 react-router），首次打开设计稿会重跑一次依赖安装。见 ADR-0055。
 - 插件 SDK 新增 `ui.openExternal(url)`（权限 `shell.openExternal`）：把 http/https 链接交给系统默认浏览器。
 - 图像生成插件不再有任何设置项：出图一律走 Vetta 网关，模型与计费由 admin 配置，用户无需也无法填写 API key（ADR-0056）。此前保留的「自定义 API」逃生舱一并撤掉——改图形态各家不同（官方 multipart / 聚合站 `images[].image_url`），逃生舱要能用就得在客户端重养一套 provider 适配，而同一套适配已经在服务端存在。插件因此不再直接发 HTTP，`network.fetch` 与 `ui.slot.global` 两项权限一并撤回。存量用户填过的 key 留在 CredentialVault 里不再被读取。
@@ -26,6 +27,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **插件 API `ctx.ui.setActivityPanelWidth(width)`**：插件可随时把活动面板宽度设为像素值或 `"max"`（宿主仍 clamp 到 min/max 并按需收侧边栏）。设计画布据此在每次激活标签卡时占满宽度。
 
+- **插件离屏截图能力 `ctx.capture.offscreen`**（新权限 `capture.offscreen`）：主进程 `offscreen-capture-service` 用隐藏离屏窗口（sandbox + OSR）加载 http(s) 页面并 `capturePage` 出图，位图与在屏渲染逐像素一致。`sessionKey` 串行复用窗口（SPA 切路由零加载），`prepareScript`/`readyExpression` 对接页面就绪信号；窗口闲置 30s 回收，插件禁用/卸载/重载与 App 退出统一清扫，每插件并存会话上限 4。Vetta UI Design 的画布位图队列已切到这条路径：位图不再有 html-to-image 克隆重排带来的文字断行与 ±1 设备像素基线抖动，截图也不再要求 frame 挂活体 iframe、不占画布渲染进程主线程（旧宿主自动回落 html-to-image）。
+
 - **插件长驻进程能力 `ctx.command.spawn`**（ADR-0054）：与 `command.run` 同一治理模式（清单 `commands` 声明 + 新权限 `agent.command.spawn` + 用户可关），主进程管理进程组生命周期（stop/退出事件/`{{PORT}}` 端口分配），插件禁用/卸载/重载与 App 退出时统一清扫。
 
 - **项目文件列表多选与复制粘贴**：支持 Ctrl/Cmd 点选、Shift 范围选、Ctrl/Cmd+A 全选；右键/快捷键复制与粘贴、复制路径；批量删除与多选拖拽；方向键导航、F2 重命名、Delete 删除；空白处单击清空选区，空白处右键为根目录菜单（新建/粘贴/在资源管理器打开）。不做剪切。同目录粘贴会自动生成 `name (1)` 副本。选区状态与预览解耦，避免幽灵高亮。
@@ -40,6 +43,12 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **输入预测不再固定说中文**。喂给预测模型的上下文里每条消息前缀是写死的「用户:」「助手:」标签，等于反复给模型「本会话说中文」的信号，用户全程英文也会拿到中文建议。标签改为英文 `User:` / `Assistant:`，语言回归由用户消息本身决定。
+- **对话里的报错不再是一排看不懂的红块**（ADR-0057）。三处一起改：
+  - **不再堆叠**。一次限流原本会连着刷出 6~7 个内容一模一样的红块（自动重试 3 次，每次失败一条，`auto_retry_start` 又算一条）。现在重试期间不再往消息流里塞错误，只在最终失败时留下一条。历史回放走另一条路——会话文件里确实存着每一次失败——由 `historyToChat` / `fullHistoryToChat` 折叠连续同类错误并标「重复出现 N 次」，所以重开旧会话也不会再长回来。
+  - **看得懂**。错误按 限流 / 额度用尽 / 网络 / 密钥失效 / 服务端故障 / 未知 六类归档，卡片显示一句现象加一句建议（「请求太频繁了 / 稍等片刻再发一次就好」），provider 原文收进「查看详情」的折叠区，旁边有复制按钮。额度与密钥两类各带一个跳转按钮直达对应设置页——只有这两类真需要人离开对话去处理。展开态存在 `expansionStore` 里，滚出视窗再滚回来不会自己折回去；导出 HTML 时详情直接展开。
+  - **重试可见**。退避等待期间底部显示「连接不太稳定，正在自动重试（第 2/3 次）」，最终失败的卡片会说明「已自动重试 3 次」。此前这段时间界面完全静止，用户只知道卡住了。
+  - 视觉上撤掉了红底红框：这些绝大多数是暂时性抖动，红色把每次抖动都渲染成事故。改为中性卡片，紧迫性交给图标、文案和动作按钮。
 - **修复隔夜/睡眠后第一次使用掉登录**。成因是 refresh token 被多方共用后互相作废（详见 `@vetta/api` 的 CHANGELOG），客户端侧配套修三处：
   - `settings.json` 的读-改-写改为跨进程加锁（`updateSettings`，与 coding-agent 的 `FileSettingsStorage` 用同一把 `proper-lockfile` 锁）。此前主进程无锁整份写回，与 coding-agent 或同机另一个客户端实例交错时会把已轮换掉的 `serverRefreshToken` 覆盖回旧值，下次刷新出示的即是已撤销令牌。
   - 授权回调未携带 refresh token 时清空本地旧值，而不是继续留着上一次登录的（多半已失效，用它刷新会被服务端按重放处理，直接撤掉整条会话链）。
@@ -66,6 +75,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **活动面板拉到最大时给对话区留更多空间**：`ACTIVITY_PANEL_MIN_CHAT_AREA` 由 360 提到 454，消息列表最窄净宽从约 336 提到约 430。
 - **项目文件拖出系统时使用应用内文件类型图标**：原生 `startDrag` 幽灵图与文件树一致（`getFileIcon` / vscode-icons），由渲染进程栅格化为 PNG 后缓存到主进程；pointerdown / 选区变更时预取。缓存未命中时回退应用 logo，不再使用系统 `app.getFileIcon`。
 - **插件可选用宿主 `@vetta/ui` 单例**：Module Federation share 与 `vetta-host://ui` 提供 Button / Dialog / Switch / Slider 等 primitives，构建侧由 `@vetta-org/plugin-vite` external，避免插件自带一份 UI。可选、半稳定，不承诺跨大版本 semver；`@vetta/theme-ui` 仍不共享。见 `docs/plugin/styling-and-pitfalls.md`。
 - **活动面板 tab 统一贡献注册表**：内置与插件 tab 同构为 `ActivityTabDefinition`（`useMeta` + `component`）。Host 只跑 meta 收集 → 可见性（hidden / 插件 attach 三态）→ 排序管道；`useActivityPanelModel` / `ActivityPanelView` 不再枚举 todo/workflow/browser 等业务。新增内置 tab 只需在 `domains/activity-panel/builtins` 注册。浏览器 tab 仍通过 `keepAliveWhenAvailable` 跨 tab 保活 webview。

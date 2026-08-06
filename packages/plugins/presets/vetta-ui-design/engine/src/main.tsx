@@ -116,13 +116,33 @@ function frameComponent(id: string): ComponentType | null {
 function FramePainted({ frameId }: { frameId: string | null }) {
 	// 不给依赖数组：每次提交都重新确认一次，HMR 换内容后画布也能拿到新的交接点。
 	useLayoutEffect(() => {
-		let inner = 0;
-		const outer = requestAnimationFrame(() => {
-			inner = requestAnimationFrame(() => notifyFrameRendered(frameId, [...frames.keys()]));
+		let cancelled = false;
+		let first = 0;
+		let last = 0;
+		/**
+		 * 字体没落地就上报，画布会按**后备字体**的断行截一张图，而页面随后拿到真字体
+		 * 又会重排——位图与活动态从此对不上。典型表现是每一行最后一个字被挤到下一行：
+		 * 盒子是按真字体量出来的，后备字体更宽就撑不下了。
+		 *
+		 * 顺序是「先等一帧，再等字体」：字体是布局阶段才开始加载的，layout effect 这一刻
+		 * 请求可能还没发出去，document.fonts.ready 会立刻兑现一个空诺言。
+		 */
+		first = requestAnimationFrame(() => {
+			void document.fonts.ready.then(() => {
+				if (cancelled) return;
+				last = requestAnimationFrame(() => {
+					// 供宿主离屏截图轮询的就绪标记：与 rendered 信号同一时点。
+					// 离屏窗口是顶层文档（parent === window），postMessage 信号自己
+					// 也能收到，但轮询一个全局值更直接、也无需提前挂监听。
+					(window as { __vetdPainted?: string | null }).__vetdPainted = frameId;
+					notifyFrameRendered(frameId, [...frames.keys()]);
+				});
+			});
 		});
 		return () => {
-			cancelAnimationFrame(outer);
-			cancelAnimationFrame(inner);
+			cancelled = true;
+			cancelAnimationFrame(first);
+			cancelAnimationFrame(last);
 		};
 	});
 	return null;

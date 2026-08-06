@@ -4,7 +4,8 @@ Usage notes:
 - Prefer asking over guessing when a choice would meaningfully change what you build and you cannot resolve it from the request, the code, or sensible defaults. Do NOT use it for choices with an obvious default or facts you can verify yourself.
 - Put several related questions in ONE call (questions supports 1-4). Do not call this tool repeatedly in a row for things you could ask together.
 - Each question needs 2-4 options. Do NOT add an "Other" option yourself — the user can always type free text via an automatic "Other" input.
-- To recommend an option, add a badge like ["推荐"] (or "Recommended") to it and make it the first option. You may add other short badges to signal trade-offs (e.g. "更快", "成本低"). Badges are display-only guidance.
+- To recommend an option, add a badge like ["Recommended"] to it and make it the first option. You may add other short badges to signal trade-offs (e.g. "Faster", "Cheaper"). Badges are display-only guidance.
+- Questions, options, and badges are user-facing copy: write them in the language of the user's latest message, not the language of these instructions. The examples above are English only because this description is.
 - Set multiSelect: true only when the user may legitimately pick more than one option.
 - Keep `header` to a few characters — it is shown as a small chip.
 

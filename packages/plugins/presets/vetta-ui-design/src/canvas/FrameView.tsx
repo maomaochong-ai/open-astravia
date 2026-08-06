@@ -4,6 +4,7 @@ import { frameUrl } from "../vetd/frame-url";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { BridgeHub } from "./bridge-client";
 import type { FrameActivity } from "./design-runtime";
+import { FrameActivityOverlay } from "./FrameActivityOverlay";
 import { FrameTitleInput } from "./FrameTitleInput";
 
 type ResizeEdge = "nw" | "ne" | "sw" | "se" | "e" | "s";
@@ -330,10 +331,22 @@ export const FrameView = memo(function FrameView({
 						{t("canvas.frame.buildError")}
 					</span>
 				) : null}
+				{activity === "reading" ? (
+					<span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-sky-600">
+						<span className="size-1.5 animate-pulse rounded-full bg-sky-500" />
+						{t("canvas.frame.reading")}
+					</span>
+				) : null}
 				{activity === "modifying" ? (
 					<span className="flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">
 						<span className="size-1.5 animate-pulse rounded-full bg-primary" />
 						{t("canvas.frame.modifying")}
+					</span>
+				) : null}
+				{activity === "creating" ? (
+					<span className="flex items-center gap-1 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-fuchsia-600">
+						<span className="size-1.5 animate-pulse rounded-full bg-fuchsia-500" />
+						{t("canvas.frame.creating")}
 					</span>
 				) : null}
 				{activity === "updated" ? (
@@ -421,6 +434,10 @@ export const FrameView = memo(function FrameView({
 						}}
 					/>
 				}
+				{/* 活动态浮层放最后：DOM 顺序就是叠放顺序，放前面会被位图/遮罩盖住。
+				    自身 pointer-events-none，压在遮罩上也不影响选中/拖拽。
+				    无条件渲染：渐出发生在 activity 清空之后，组件得留着把过渡走完。 */}
+				<FrameActivityOverlay activity={activity} />
 			</div>
 
 			{/* 手柄在元素选择开着时也要留：画面区已经归 iframe 了，缩放只剩这一条路。 */}

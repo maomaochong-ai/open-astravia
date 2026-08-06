@@ -1,3 +1,9 @@
+/** A canvas frame's pixel size. */
+export interface FrameSize {
+	width: number;
+	height: number;
+}
+
 /** Frame meta declared in the tsx (`export const frame = {...}`). */
 export interface FrameMeta {
 	width: number;
@@ -34,6 +40,17 @@ export interface VetdManifest {
 	type: "vetta-design";
 	canvas: VetdCanvasViewport;
 	frames: VetdFrameEntry[];
+	/**
+	 * 这份设计是什么品类的，用创建时声明的一对 px 表示。只在**画框自己漏了声明、
+	 * 且整份设计还没有多数派尺寸**时兜底（见 frame-size.ts）。
+	 *
+	 * 为什么要存：漏声明的兜底原本是写死的桌面 1440x900，而「用户要的是什么品类」
+	 * 这个信息在 vetd_create 那一刻最清晰、之后再也没有地方记着（实测现场：用户第
+	 * 一句就是 "Mobile APP"，五个 frame 全漏声明，整份设计落成桌面尺寸）。
+	 *
+	 * 老文档没有这个字段，所以是可选的——读不到就继续用全局兜底。
+	 */
+	defaultFrameSize?: FrameSize;
 }
 
 function isFiniteNumber(value: unknown): value is number {

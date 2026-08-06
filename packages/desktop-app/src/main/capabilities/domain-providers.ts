@@ -33,7 +33,9 @@ import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
 import { getDesktopSkillService } from "../skills/skill-service.js";
 import { getAppVersion, updaterService } from "../updater.js";
 import { getWebhookManager } from "../webhook/index.js";
+import { registerDesktopAiProviders } from "./ai-providers.js";
 import { registerDesktopMcpProviders } from "./mcp-providers.js";
+import { registerDesktopMediaProviders } from "./media-providers.js";
 import { registerDesktopModelProviders } from "./model-providers.js";
 
 const DOMAIN_BATCH_TASK_PROVIDER_OWNER = "vetta.domain.batch-task";
@@ -68,7 +70,9 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 	const shortcuts = getDesktopShortcutService();
 	const skills = getDesktopSkillService();
 	const webhooks = getWebhookManager();
+	const aiRegistration = registerDesktopAiProviders(registry);
 	const mcpRegistration = registerDesktopMcpProviders(registry);
+	const mediaRegistration = registerDesktopMediaProviders(registry);
 	const modelRegistration = registerDesktopModelProviders(registry);
 	const projects = new ProjectService({
 		allowProjectRoot,
@@ -638,7 +642,9 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 	]);
 	return {
 		dispose: () => {
+			aiRegistration.dispose();
 			mcpRegistration.dispose();
+			mediaRegistration.dispose();
 			modelRegistration.dispose();
 			webhookRegistration.dispose();
 			schedulerRegistration.dispose();

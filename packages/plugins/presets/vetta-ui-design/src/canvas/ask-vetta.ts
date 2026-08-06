@@ -14,9 +14,9 @@ export interface AskTarget {
 }
 
 /**
- * 这条 prompt 里嵌着用户自己敲的诉求，周边文案跟宿主界面语言走才不违和：
- * 宿主是中文用中文，其余一律英文。刻意不进 locales/*.json —— 那是 UI 文案的
- * catalog，这里是发给模型的协议串，两者的取舍标准不同。
+ * 这条 prompt 里嵌着用户自己敲的诉求，周边文案跟它同语言才不违和。刻意不进
+ * locales/*.json —— 那是 UI 文案的 catalog，这里是发给模型的协议串，两者的取舍
+ * 标准不同。
  */
 interface AskCopy {
 	askDom: (title: string, tag: string, suggestion: string) => string;
@@ -100,24 +100,23 @@ const EN: AskCopy = {
 	highlightNote: "- The outlined region in the screenshot is the element the user selected",
 };
 
-/** 宿主 locale 已归一为 zh / en，仍按前缀判断以容忍将来的 zh-Hans 之类。 */
-function copyFor(locale: string): AskCopy {
-	return locale.toLowerCase().startsWith("zh") ? ZH : EN;
+/**
+ * 按用户这句诉求自己的语言选模板，而不是宿主 UI 语言。这条 prompt 会作为一条
+ * user 消息进对话，宿主界面是中文、用户却在用英文聊天时，中文外壳就是给模型的
+ * 语言信号，会把整个会话翻成中文（回复、autotitle、输入预测一起中招）。
+ */
+function copyFor(suggestion: string): AskCopy {
+	return /[㐀-䶿一-鿿豈-﫿]/u.test(suggestion) ? ZH : EN;
 }
 
 /**
  * "让 Vetta 调整" 发送给 agent 的 prompt：用户建议 + @截图引用（DOM 选中时截图内
  * 已高亮该元素）+ 定位元信息。支持三种目标：整个设计（无选中）、N 个 frame、
- * frame 内的某个元素。文案语言跟随宿主 i18n（`ctx.i18n.locale`）。
+ * frame 内的某个元素。
  */
-export function buildAskPrompt(
-	session: DesignSession,
-	target: AskTarget,
-	suggestion: string,
-	locale: string,
-): string {
+export function buildAskPrompt(session: DesignSession, target: AskTarget, suggestion: string): string {
 	const { shots, dom } = target;
-	const c = copyFor(locale);
+	const c = copyFor(suggestion);
 	const frameOf = (frameId: string) => session.manifest.frames.find((frame) => frame.id === frameId);
 	const titleOf = (frameId: string) => frameOf(frameId)?.title || frameId;
 	const fileOf = (frameId: string) => `${session.dirPath}/${frameOf(frameId)?.file ?? `frames/${frameId}.tsx`}`;

@@ -224,11 +224,15 @@ export function ContentGeneratorComposer({
 						fixedReferenceShapes,
 						promptReferenceKinds,
 					).mode;
+					const aspectRatio = model.aspectRatios.includes(draft.aspectRatio ?? "")
+						? draft.aspectRatio
+						: model.aspectRatios[0];
 					commit({
 						...draft,
 						providerId: model.providerId,
 						modelId: model.modelId,
 						modeId: nextMode?.id,
+						aspectRatio,
 					});
 				}}
 				onSubmit={submit}

@@ -490,6 +490,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			tools: [],
 		},
 		convertToLlm: convertToLlmWithBlockImages,
+		// gpt-5.x 会把这两个无副作用工具的参数写成正文而不发起真实调用（work 模式的
+		// progress 阶段标题、todo 的状态更新都会因此丢失），在 loop 里还原成调用。
+		salvageTextToolCalls: ["progress", "todo"],
 		sessionId: sessionManager.getSessionId(),
 		transformContext: async (messages, signal) => {
 			const runner = extensionRunnerRef.current;

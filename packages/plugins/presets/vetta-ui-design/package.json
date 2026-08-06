@@ -1,6 +1,6 @@
 {
 	"name": "@vetta/plugin-vetta-ui-design",
-	"version": "0.1.7",
+	"version": "0.1.13",
 	"private": true,
 	"type": "module",
 	"scripts": {

@@ -423,6 +423,7 @@
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model to {{name}}",
 		"compactionIndicator": "Compacting context...",
+		"retryIndicator": "Connection is flaky — retrying automatically ({{attempt}}/{{maxAttempts}})",
 		"streamingPhrases": [
 			"Vetta is replying…",
 			"Please hold on…",
@@ -431,6 +432,40 @@
 		"copyButton": {
 			"copied": "Copied",
 			"copy": "Copy"
+		},
+		"errorBlock": {
+			"showDetail": "Show details",
+			"hideDetail": "Hide details",
+			"retriedNote": "Retried {{count}} time(s) automatically",
+			"repeatedNote": "Happened {{count}} times",
+			"kinds": {
+				"rate_limit": {
+					"title": "Too many requests",
+					"hint": "Wait a moment, then send again."
+				},
+				"quota": {
+					"title": "You're out of quota",
+					"hint": "Wait for it to reset, or check your plan and usage.",
+					"action": "View quota"
+				},
+				"network": {
+					"title": "No network connection",
+					"hint": "Check your network or proxy, then send again."
+				},
+				"auth": {
+					"title": "Model key is invalid or expired",
+					"hint": "Update the key in model settings and try again.",
+					"action": "Open settings"
+				},
+				"server": {
+					"title": "The service is having trouble",
+					"hint": "It usually recovers within minutes — try again shortly."
+				},
+				"unknown": {
+					"title": "This reply was interrupted",
+					"hint": "Try sending again; if it keeps happening, copy the details to us."
+				}
+			}
 		},
 		"contextMenu": {
 			"edit": "Edit",

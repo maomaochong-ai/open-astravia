@@ -1,9 +1,10 @@
 import type { ThinkingBlock, ToolCallBlock } from "@shared/store/atoms";
 import { languageAtom, pluginAgentToolLabelsAtom, pluginI18nByIdAtom } from "@shared/store/atoms";
-import { ErrorBlockView, ProgressGroupRow, ProgressGroupView, SegmentShell } from "@vetta/theme-ui/chat";
+import { ProgressGroupRow, ProgressGroupView, SegmentShell } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
+import { ErrorBlockView } from "../blocks/ErrorBlock";
 import { TextBlockView } from "../blocks/TextBlock";
 import { ToolCallBlockView } from "../blocks/ToolCallBlock";
 import { toolLabel } from "../blocks/tool-views/shared/parse-tool";
@@ -163,7 +164,7 @@ export const WorkSegmentRenderer = memo(function WorkSegmentRenderer({
 				content = <ToolCallBlockView block={segment.block} exportMode={exportMode} aliased />;
 				break;
 			case "error":
-				content = <ErrorBlockView text={segment.block.text} />;
+				content = <ErrorBlockView block={segment.block} exportMode={exportMode} />;
 				break;
 			default:
 				content = null;

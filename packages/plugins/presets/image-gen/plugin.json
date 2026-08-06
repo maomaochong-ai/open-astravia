@@ -21,6 +21,7 @@
 		"agent.toolHandler.execute",
 		"storage.read",
 		"storage.write",
+		"media.generate",
 		"fs.read"
 	],
 	"description": "%plugin.description%",

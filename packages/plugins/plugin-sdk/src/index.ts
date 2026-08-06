@@ -114,6 +114,16 @@ export type {
 } from "./app-actions.js";
 export { PluginAppActionError } from "./app-actions.js";
 
+// Host-managed AI
+export type {
+	PluginAiApi,
+	PluginAiCompleteRequest,
+	PluginAiCompleteResult,
+	PluginAiModel,
+	PluginAiModelListResult,
+	PluginAiUsage,
+} from "./ai.js";
+
 // Official host capabilities
 export type {
 	PluginOfficialGeneralSettings,
@@ -172,7 +182,29 @@ export type {
 	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
+export type {
+	PluginCaptureApi,
+	PluginOffscreenCaptureOptions,
+	PluginOffscreenCaptureResult,
+} from "./capture.js";
 export type { PluginImageRef } from "./images.js";
+export type {
+	PluginMediaApi,
+	PluginMediaArtifact,
+	PluginMediaCapability,
+	PluginMediaCreateJobRequest,
+	PluginMediaDimensions,
+	PluginMediaErrorCode,
+	PluginMediaFailure,
+	PluginMediaGenerationMode,
+	PluginMediaJob,
+	PluginMediaJobRef,
+	PluginMediaJobStatus,
+	PluginMediaKind,
+	PluginMediaProviderDescriptor,
+	PluginMediaReference,
+} from "./media.js";
+export { PluginMediaError } from "./media.js";
 export type { PluginPromptAttachment } from "./prompt-attachment.js";
 export type {
 	PluginNetworkApi,

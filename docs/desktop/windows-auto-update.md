@@ -371,15 +371,24 @@ curl.exe -I "https://releases.openvetta.com/desktop/test/Vetta-<version>-win-x64
 curl.exe -r 0-1023 -o NUL -D - "https://releases.openvetta.com/desktop/test/Vetta-<version>-win-x64.exe"
 ```
 
-第二条响应应为 206。当前 `generic` provider 设置了 `useMultipleRangeRequest=false`，表示不用 multipart range，但仍会发普通单区间 Range 请求。
+第二条响应应为 206。当前 `generic` provider 设置了 `useMultipleRangeRequest=true`：electron-updater 先把相邻变化块合并为下载区间，再把最多 1000 个差分任务中的远程区间放进一个 multipart Range 请求，避免跨地域链路逐个串行请求。
+
+还必须验证多区间响应：
+
+```powershell
+curl.exe -H "Range: bytes=0-9,100-109" -o NUL -D - "https://releases.openvetta.com/desktop/test/Vetta-<version>-win-x64.exe"
+```
+
+响应必须是 `206 Partial Content`，且 `Content-Type` 包含 `multipart/byteranges; boundary=...`。只支持单区间 206 不足以启用 multipart Range。
 
 当前发布脚本只通过公开 URL 做 HEAD 存在性验证，不验证 206 行为。因此 Range 检查仍是首次配置域名和修改 Cloudflare 规则后的人工验收项。
 
 ### 8.3 Cloudflare 规则注意事项
 
 - `latest*.yml` 短缓存，版本化产物长期 immutable。
+- 确认 EXE 和 blockmap 的 `CF-Cache-Status` 能从 `MISS` 变为 `HIT`；只有 `Cache-Control`、但一直是 `DYNAMIC`，表示 Cloudflare 尚未把该路径纳入缓存。
 - 不要对 EXE/blockmap 做会改变字节内容的转换。
-- 不要启用会忽略 Range 或把 206 改成 200 的代理逻辑。
+- 不要启用会忽略 Range、把 206 改成 200，或丢弃 multipart boundary 的代理逻辑。
 - 修改缓存规则后，用带查询参数和不带查询参数的 URL 都验证一次。
 - R2 前缀与公开 URL path 必须完全相同，例如都为 `desktop/test`。
 
@@ -565,6 +574,16 @@ VETTA_R2_PREFIX=desktop/test
 
 当前发布脚本会校验 URL path 与 R2 prefix，并拒绝把版本覆盖值上传到最后一段为 `stable` 的前缀。旧对象无需为每次测试手动删除；版本化文件保留有助于追溯，清理应使用独立生命周期策略。
 
+### 10.13 差分量很小，但网络阶段仍耗时数分钟
+
+**实测现象**：0.5.33 → 0.5.34 的完整 EXE 约 290 MiB，实际差分只有 10,299,164 bytes（约 9.82 MiB，3%），但网络阶段耗时约 7 分钟。
+
+**原因**：484 个变化块合并后形成 78 个远程区间；`useMultipleRangeRequest=false` 时，electron-updater 必须等一个 Range 响应结束才发下一个。客户端经 Cloudflare LAX 节点访问时，小请求的往返延迟累计成为主要耗时，问题不在差分字节数。
+
+**修复**：generic provider 启用 multipart Range。使用同一组 78 个真实区间探测 Cloudflare/R2，单次请求头 1632 bytes，服务端返回合法 `multipart/byteranges`，约 10.31 MB 响应耗时约 3.2 秒。该优化只影响网络传输方式，不改变 blockmap、SHA-512、Inno 准备和版本回退流程。
+
+配置写在正在运行版本的 `app-update.yml` 中，因此包含修复的第一个版本只是新基线；必须再发布一个更高版本，才能验证优化后的真实升级。若 multipart 差分失败，electron-updater 会回退完整下载，日志会出现 `Cannot download differentially, fallback to full download`。
+
 ## 11. 实测案例：0.5.55 → 0.5.56
 
 本次用于确认差分缓存修复是否生效的结果：
@@ -654,6 +673,7 @@ install failed
 - [ ] test/stable 没有混用。
 - [ ] 安装包与 blockmap 可公开读取。
 - [ ] EXE Range 请求返回 206。
+- [ ] EXE 多区间 Range 返回 206 和 `multipart/byteranges`。
 - [ ] `latest.yml` 是短缓存，版本化产物是 immutable。
 - [ ] 清单最后发布。
 

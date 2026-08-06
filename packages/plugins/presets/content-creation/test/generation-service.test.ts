@@ -20,7 +20,7 @@ describe("ContentGenerationService", () => {
 				prompt: "A small lighthouse",
 			}),
 		);
-		expect(fixture.put).toHaveBeenCalledOnce();
+		expect(fixture.putGenerated).toHaveBeenCalledOnce();
 		expect(result.graph.nodes.find((node) => node.id === "image")).toMatchObject({
 			status: "succeeded",
 			data: { assetId: expect.any(String) },
@@ -29,7 +29,7 @@ describe("ContentGenerationService", () => {
 		expect(result.assets[0]).toMatchObject({
 			kind: "image",
 			mimeType: "image/png",
-			blobId: expect.any(String),
+			filePath: expect.stringMatching(/^output\//),
 		});
 	});
 
@@ -97,7 +97,7 @@ describe("ContentGenerationService", () => {
 		expect(result.graph.nodes.find((node) => node.id === "assets")?.data.assetIds).toHaveLength(3);
 		expect(result.graph.nodes.filter((node) => node.kind === "asset")).toHaveLength(1);
 		expect(result.assets.map((asset) => asset.kind)).toEqual(["image", "video", "audio"]);
-		expect(fixture.put).toHaveBeenCalledTimes(3);
+		expect(fixture.putImported).toHaveBeenCalledTimes(3);
 	});
 
 	it("imports media into a prompt and inherits it through the selected connected prompt", async () => {
@@ -145,7 +145,10 @@ describe("ContentGenerationService", () => {
 			],
 		});
 		await fixture.service.runNode("C:/project", "image");
-		expect(fixture.read).toHaveBeenCalledWith(imported.assets[0]?.blobId);
+		expect(fixture.read).toHaveBeenCalledWith(
+			"C:/project",
+			expect.objectContaining({ blobId: imported.assets[0]?.blobId }),
+		);
 		expect(fixture.generate).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				modeId: "image-to-image",
@@ -214,17 +217,22 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 	};
 	const providers = new ContentProviderRegistry();
 	providers.register(provider);
-	const put = vi.fn<ContentArtifactStore["put"]>().mockImplementation(async (id, content) => ({
-		id: `stored-${id}`,
-		url: `vetta-media://${id}`,
+	const putImported = vi.fn<ContentArtifactStore["putImported"]>().mockImplementation(async (id, content) => ({
+		blobId: `stored-${id}`,
 		mimeType: content.mimeType,
 	}));
+	const putGenerated = vi
+		.fn<ContentArtifactStore["putGenerated"]>()
+		.mockImplementation(async (_cwd, fileName, content) => ({
+			filePath: `output/${fileName}`,
+			mimeType: content.mimeType,
+		}));
 	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue({
 		data: "reference-data",
 		mimeType: "image/png",
 	});
-	const service = new ContentGenerationService(workspace, providers, { put, read });
-	return { service, workspace, generate, put, read };
+	const service = new ContentGenerationService(workspace, providers, { putImported, putGenerated, read });
+	return { service, workspace, generate, putImported, putGenerated, read };
 }
 
 class MemoryRepository implements ContentProjectRepository {

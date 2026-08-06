@@ -6,6 +6,7 @@ export function contentNodeDataEqual(left: ContentNodeData, right: ContentNodeDa
 		left.label === right.label &&
 		left.prompt === right.prompt &&
 		optionalPromptDocumentsEqual(left.promptDocument, right.promptDocument) &&
+		promptOptimizationsEqual(left.promptOptimization, right.promptOptimization) &&
 		left.assetId === right.assetId &&
 		stringArraysEqual(left.assetIds, right.assetIds) &&
 		left.aspectRatio === right.aspectRatio &&
@@ -17,6 +18,19 @@ export function contentNodeDataEqual(left: ContentNodeData, right: ContentNodeDa
 		left.modeId === right.modeId &&
 		(left.promptSourceNodeId ?? null) === (right.promptSourceNodeId ?? null) &&
 		inputBindingsEqual(left.inputs, right.inputs)
+	);
+}
+
+function promptOptimizationsEqual(
+	left: ContentNodeData["promptOptimization"],
+	right: ContentNodeData["promptOptimization"],
+): boolean {
+	if (left === right) return true;
+	if (!left || !right) return false;
+	return (
+		left.text === right.text &&
+		left.modelKey === right.modelKey &&
+		left.createdAt === right.createdAt
 	);
 }
 

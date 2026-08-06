@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import type { CapabilityAccessHandle, CapabilityAccessSessionFactory } from "../../access.js";
 import { CAPABILITY_ERROR_CODES, CapabilityError } from "../../contracts.js";
 import { type PluginAgentSettingsMethods, pluginAgentSettingsMethods } from "./domain/agent-settings.js";
+import { type PluginAiMethods, pluginAiMethods } from "./domain/ai.js";
 import { type PluginBatchTaskMethods, pluginBatchTaskMethods } from "./domain/batch-task.js";
 import { type PluginDownloadMethods, pluginDownloadMethods } from "./domain/download.js";
 import { type PluginGeneralSettingsMethods, pluginGeneralSettingsMethods } from "./domain/general-settings.js";
 import { type PluginImMethods, pluginImMethods } from "./domain/im.js";
 import { type PluginKnowledgeMethods, pluginKnowledgeMethods } from "./domain/knowledge.js";
 import { type PluginMcpMethods, pluginMcpMethods } from "./domain/mcp.js";
+import { type PluginMediaMethods, pluginMediaMethods } from "./domain/media.js";
 import { type PluginModelMethods, pluginModelMethods } from "./domain/model.js";
 import { type PluginProjectMethods, pluginProjectMethods } from "./domain/project.js";
 import { type PluginSchedulerMethods, pluginSchedulerMethods } from "./domain/scheduler.js";
@@ -34,9 +36,11 @@ export interface PluginCapabilityAdapter
 		PluginNetworkMethods,
 		PluginGatewayMethods,
 		PluginStorageMethods,
+		PluginAiMethods,
 		PluginAgentSettingsMethods,
 		PluginGeneralSettingsMethods,
 		PluginImMethods,
+		PluginMediaMethods,
 		PluginModelMethods,
 		PluginMcpMethods,
 		PluginProjectMethods,
@@ -130,9 +134,11 @@ Object.assign(
 	pluginNetworkMethods,
 	pluginGatewayMethods,
 	pluginStorageMethods,
+	pluginAiMethods,
 	pluginAgentSettingsMethods,
 	pluginGeneralSettingsMethods,
 	pluginImMethods,
+	pluginMediaMethods,
 	pluginModelMethods,
 	pluginMcpMethods,
 	pluginProjectMethods,

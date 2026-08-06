@@ -10,6 +10,15 @@ export {
 	DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG,
 } from "./domain/agent-settings.js";
 export {
+	type AiCompleteInput,
+	type AiCompleteResult,
+	type AiModel,
+	type AiModelListResult,
+	type AiUsage,
+	DOMAIN_AI_CAPABILITIES,
+	DOMAIN_AI_CAPABILITY_CATALOG,
+} from "./domain/ai.js";
+export {
 	BATCH_COMMAND_STATUSES,
 	BATCH_EXECUTION_MODES,
 	BATCH_SKILL_TYPES,
@@ -110,6 +119,30 @@ export {
 	type McpServerUpsertInput,
 	type McpStdioServerUpsertData,
 } from "./domain/mcp.js";
+export {
+	DOMAIN_MEDIA_CAPABILITIES,
+	DOMAIN_MEDIA_CAPABILITY_CATALOG,
+	MEDIA_ERROR_CODES,
+	MEDIA_GENERATION_MODES,
+	MEDIA_JOB_STATUSES,
+	MEDIA_KINDS,
+	MEDIA_PROTOCOL_VERSION,
+	type MediaArtifact,
+	type MediaCapability,
+	type MediaCreateJobInput,
+	type MediaDimensions,
+	type MediaErrorCode,
+	type MediaFailure,
+	type MediaGenerationMode,
+	type MediaJob,
+	type MediaJobRef,
+	type MediaJobStatus,
+	type MediaKind,
+	type MediaProviderCreateJobInput,
+	type MediaProviderDescriptor,
+	type MediaProviderJob,
+	type MediaReference,
+} from "./domain/media.js";
 export {
 	DOMAIN_MODEL_CAPABILITIES,
 	DOMAIN_MODEL_CAPABILITY_CATALOG,

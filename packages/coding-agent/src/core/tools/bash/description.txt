@@ -68,5 +68,3 @@ When running git commands, follow these rules strictly:
 - NEVER use `git add -A` or `git add .` - these can stage unrelated files. ALWAYS add specific files by path
 - NEVER amend commits unless user explicitly requests it - amending can destroy the previous commit
 - Before any destructive operation, consider if there is a safer alternative
-
-注意：对用户可见的输出文案禁止硬编码中文，统一走 i18n。

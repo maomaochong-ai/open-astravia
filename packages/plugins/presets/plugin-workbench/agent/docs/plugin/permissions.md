@@ -18,7 +18,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 
 不同注册点对「声明了但未授权」的处理不同：
 
-- **抛错（require）**：`registerInputAction`、`registerCardRenderer`、`registerToolCallSlot`、`registerTurnCard`、`registerShortcutScope`、`openActivityTab`、`setActivityTabVisible`、`setPromptAttachment`、`fileExplorer.*`、`agent.registerContinuationProvider`、`agent.registerSystemPromptProvider`、`conversation.*`、`fs.*`、`network.*`、`storage.*`、`command.run`。缺权限直接抛 `Plugin permission denied: <permission>`，中断该次调用。
+- **抛错（require）**：`registerInputAction`、`registerCardRenderer`、`registerToolCallSlot`、`registerTurnCard`、`registerShortcutScope`、`openActivityTab`、`setActivityTabVisible`、`setPromptAttachment`、`fileExplorer.*`、`agent.registerContinuationProvider`、`agent.registerSystemPromptProvider`、`conversation.*`、`fs.*`、`network.*`、`storage.*`、`media.*`、`ai.*`、`command.run`。缺权限直接抛 `Plugin permission denied: <permission>`，中断该次调用。
 - **跳过 + 警告（warn+noop）**：`registerGlobalSlot`、`registerFilePreview`、`registerActivityTab`、`agent.registerTool`、`appActions.register`。缺权限时静默跳过该贡献并打 `console.warn`，**不影响**插件其它已授权能力。
 
 > 设计上一个缺失权限不应拖垮插件的其它能力——`activate()` 里建议把可选能力的注册各自独立，避免一处 throw 掉整段。
@@ -43,6 +43,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `agent.session.write` | `sendPrompt` / `insertText` / `abort` | [conversation-and-agent](./conversation-and-agent.md#对话驾驶) |
 | `agent.command.run` | `ctx.command.run` + 清单 `commands` | [conversation-and-agent](./conversation-and-agent.md#命令执行-command) |
 | `agent.command.spawn` | `ctx.command.spawn`（长驻进程）+ 清单 `commands` | [conversation-and-agent](./conversation-and-agent.md#长驻进程-commandspawn) |
+| `capture.offscreen` | `ctx.capture.offscreen`（主进程离屏窗口截图） | [conversation-and-agent](./conversation-and-agent.md#离屏截图-captureoffscreen) |
 | `agent.skills.control` | 清单 `agent.skillPaths` | [manifest](./manifest.md#agent-agent-侧贡献) |
 | `agent.mcp.control` | 清单 `agent.mcpServers`（三源聚合之插件源） | [mcp](./mcp.md) |
 | `agent.tools.register` | `ctx.agent.registerTool()`（注册 shell） | [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具) |
@@ -58,6 +59,9 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `network.fetch` | `ctx.network.request` | [conversation-and-agent](./conversation-and-agent.md#网络-api) |
 | `storage.read` | `ctx.storage.readJson/list/readFile/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
 | `storage.write` | `ctx.storage.writeJson/writeFile/putBlob` | 同上 |
+| `media.generate` | `ctx.media.listProviders/createJob/getJob/cancelJob` | [media](./media.md) |
+| `ai.models.list` | `ctx.ai.listModels()` | [ai](./ai.md) |
+| `ai.complete` | `ctx.ai.complete()` | [ai](./ai.md) |
 
 > `ctx.settings` / `ctx.i18n` / **`ctx.ui.notify`** **不需要权限**——分别读本插件设置命名空间、本插件 catalog、以及向宿主右下角推送 Toast（含错误堆栈复制）。错误上报规范见 [ui-slots → notify](./ui-slots.md#全局通知-notify)。
 

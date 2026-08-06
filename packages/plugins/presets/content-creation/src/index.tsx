@@ -7,8 +7,8 @@ import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import { initializePluginRuntime } from "./plugin/runtime";
 
 export default definePlugin({
-	activate(ctx) {
-		const workspace = initializePluginRuntime(ctx);
+	async activate(ctx) {
+		const workspace = await initializePluginRuntime(ctx);
 		setRegisterShortcutScope((contribution) => ctx.ui.registerShortcutScope(contribution));
 		ctx.ui.registerActivityTab({
 			id: "workspace",

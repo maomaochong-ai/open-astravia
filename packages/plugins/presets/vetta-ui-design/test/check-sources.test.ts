@@ -25,6 +25,64 @@ it("catches internal navigation written as a bare anchor", () => {
 	expect(rulesFor('<Link to="/loans">查看全部</Link>')).not.toContain("anchor-navigation");
 });
 
+it("catches an import of a package the engine does not have", () => {
+	const issue = checkSources([
+		{ path: "frames/home.tsx", content: 'import { Search } from "react-icons/fi";' },
+	]).find((found) => found.rule === "uninstalled-import");
+	expect(issue).toMatchObject({ rule: "uninstalled-import", line: 1 });
+	expect(issue.message).toContain("react-icons");
+	// 图标包要顺带被告知这里的图标是 CSS 类，否则它会换一个包再试一次
+	expect(issue?.message).toContain("icon-[lucide--search]");
+});
+
+it("stays quiet on lucide-react, which the engine installs as a fallback", () => {
+	// 模型对「图标」的第一反应就是 import lucide-react，纠正不掉，所以引擎装了它
+	// （engine/package.json + vite.config 的 alias）。装了还报就是误报。
+	expect(rulesFor('import { Search, Home } from "lucide-react";')).not.toContain("uninstalled-import");
+});
+
+it("does not flag what the engine actually ships, or local files", () => {
+	const content = [
+		'import React from "react";',
+		'import { createRoot } from "react-dom/client";',
+		'import { Link, useLocation } from "react-router";',
+		'import { StatCard } from "../components/StatCard";',
+		'import logo from "./assets/logo.png";',
+	].join("\n");
+	expect(rulesFor(content)).not.toContain("uninstalled-import");
+});
+
+it("names every missing package, not just the first", () => {
+	// 一个文件里两个不同的缺失依赖是两件事：只报一个会逼 agent 修完再跑一轮。
+	const content = [
+		'import { Search } from "react-icons/fi";',
+		'import { Chart } from "recharts";',
+		'import { Home } from "react-icons/fi";',
+	].join("\n");
+	const issues = checkSources([{ path: "frames/home.tsx", content }]).filter(
+		(issue) => issue.rule === "uninstalled-import",
+	);
+	expect(issues).toHaveLength(2);
+	expect(issues[1].message).toContain("recharts");
+	// 图表库不是图标库，不该拿到 Iconify 那套话术
+	expect(issues[1].message).not.toContain("icon-[lucide--search]");
+});
+
+it("catches a re-export from a missing package too", () => {
+	expect(rulesFor('export { Icon } from "@heroicons/react";')).toContain("uninstalled-import");
+});
+
+it("catches an icon set the engine does not ship", () => {
+	// @iconify/tailwind4 找不到集合是直接 throw，整帧构建失败。
+	const issue = checkSources([
+		{ path: "frames/home.tsx", content: '<span className="icon-[solar--home-linear] size-4" />' },
+	]).find((found) => found.rule === "unknown-icon-set");
+	expect(issue?.message).toContain('"solar"');
+	expect(issue?.message).toContain("lucide, mdi, simple-icons, tabler");
+	expect(rulesFor('<span className="icon-[lucide--search] size-4" />')).not.toContain("unknown-icon-set");
+	expect(rulesFor('<span className="icon-[simple-icons--github] size-4" />')).not.toContain("unknown-icon-set");
+});
+
 it("catches a hand-written Icon component", () => {
 	expect(rulesFor('function Icon({ name }: { name: string }) { return <svg />; }')).toContain(
 		"custom-icon-component",

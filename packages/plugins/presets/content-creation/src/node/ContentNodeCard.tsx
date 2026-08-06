@@ -1,7 +1,7 @@
 import { NodeResizer, NodeToolbar, Position, type Node, type NodeProps } from "@xyflow/react";
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
-import { memo, useEffect, useRef, useState } from "react";
+import { type DragEvent, memo, useEffect, useRef, useState } from "react";
 import { getContentNodeDefinition } from "./definitions";
 import type {
 	AssetKind,
@@ -26,6 +26,7 @@ import { ContentNodeEditor } from "./ContentNodeEditor";
 import type { ConnectedContentAsset } from "./material-assets";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 import { resolveContentPrompt, type ConnectedPromptSource } from "./prompt-sources";
+import { isImportedMediaFile, readImportedMediaFile } from "./readImportedMediaFile";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
 	kind: ContentNodeKind;
@@ -56,12 +57,16 @@ export type ContentFlowNode = Node<ContentFlowNodeData, "contentNode">;
 
 /** Match bottom composer gap (`mt-2` = 8px) so top actions sit equally close to the card. */
 const QUICK_TOOLBAR_OFFSET = 8;
+const DROP_IMPORT_BATCH_SIZE = 4;
 
 export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }: NodeProps<ContentFlowNode>) {
 	const { t } = useTranslation();
 	const selectionCount = useContentCanvasSelectionCount();
 	const hoverLeaveTimerRef = useRef<number | null>(null);
+	const dragDepthRef = useRef(0);
 	const [hovered, setHovered] = useState(false);
+	const [dropActive, setDropActive] = useState(false);
+	const [importingDrop, setImportingDrop] = useState(false);
 	const [focusPromptRequest, setFocusPromptRequest] = useState(0);
 	const definition = getContentNodeDefinition(data.kind);
 	const title = data.nodeData.label?.trim() || t(`node.kind.${data.kind}`);
@@ -91,6 +96,46 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const scheduleQuickToolbarClose = () => {
 		if (hoverLeaveTimerRef.current !== null) window.clearTimeout(hoverLeaveTimerRef.current);
 		hoverLeaveTimerRef.current = window.setTimeout(() => setHovered(false), 120);
+	};
+	const acceptsFileDrop = (event: DragEvent<HTMLDivElement>) =>
+		data.kind === "asset" && event.dataTransfer.types.includes("Files");
+	const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+		if (!acceptsFileDrop(event)) return;
+		event.preventDefault();
+		event.stopPropagation();
+		dragDepthRef.current += 1;
+		setDropActive(true);
+	};
+	const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+		if (!acceptsFileDrop(event)) return;
+		event.preventDefault();
+		event.stopPropagation();
+		event.dataTransfer.dropEffect = "copy";
+	};
+	const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+		if (data.kind !== "asset") return;
+		event.preventDefault();
+		event.stopPropagation();
+		dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+		if (dragDepthRef.current === 0) setDropActive(false);
+	};
+	const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
+		if (data.kind !== "asset") return;
+		event.preventDefault();
+		event.stopPropagation();
+		dragDepthRef.current = 0;
+		setDropActive(false);
+		const files = Array.from(event.dataTransfer.files).filter(isImportedMediaFile);
+		if (files.length === 0) return;
+		setImportingDrop(true);
+		try {
+			for (let index = 0; index < files.length; index += DROP_IMPORT_BATCH_SIZE) {
+				const batch = files.slice(index, index + DROP_IMPORT_BATCH_SIZE);
+				await data.onImportAssets(await Promise.all(batch.map(readImportedMediaFile)));
+			}
+		} finally {
+			setImportingDrop(false);
+		}
 	};
 
 	return (
@@ -164,6 +209,10 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						? "border-primary/45 shadow-[0_0_0_1px_color-mix(in_srgb,var(--primary)_28%,transparent),0_12px_28px_color-mix(in_srgb,black_12%,transparent)]"
 						: "border-border/70 hover:border-border"
 				} ${data.locked ? "opacity-90" : ""}`}
+				onDragEnter={handleDragEnter}
+				onDragOver={handleDragOver}
+				onDragLeave={handleDragLeave}
+				onDrop={(event) => void handleDrop(event)}
 				onDoubleClick={(event) => {
 					if (data.kind !== "prompt") return;
 					event.stopPropagation();
@@ -181,6 +230,14 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					assetKind={data.assetKind}
 					job={data.job}
 				/>
+				{data.kind === "asset" && (dropActive || importingDrop) ? (
+					<div className="pointer-events-none absolute inset-1 z-30 grid place-items-center rounded-lg border border-dashed border-primary/55 bg-background/90 text-center backdrop-blur-sm">
+						<div className="flex flex-col items-center gap-2 px-4 text-xs font-medium text-foreground">
+							<span className="icon-[lucide--file-down] block size-6 text-primary" aria-hidden="true" />
+							<span>{t(importingDrop ? "assetNode.importing" : "assetNode.drop")}</span>
+						</div>
+					</div>
+				) : null}
 			</div>
 			<ContentNodeHandle
 				label={inputLabel || outputLabel}

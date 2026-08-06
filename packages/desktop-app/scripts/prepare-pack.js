@@ -828,7 +828,12 @@ const builderConfig = {
 	// uiohook-napi / electron-liquid-glass 通过 node-gyp-build 加载预编译 .node。
 	// dlopen 无法从 asar 虚拟文件系统加载原生模块，必须整包 unpack 到真实磁盘，
 	// 否则 packaged 环境 require 即失败（electron-liquid-glass 仅 mac 包内存在）。
+	//
+	// OCR runner 包含稳定且可高度压缩的 WASM / ONNX 资源。将其放入
+	// app.asar.unpacked 后 Electron 仍可透明读取，同时 Windows Inno 能按文件
+	// 使用 LZMA2 压缩，避免未压缩的 app.asar 直接抬高完整安装包体积。
 	asarUnpack: [
+		"ocr-runner/**/*",
 		"node_modules/@silvia-odwyer/photon-node/**/*",
 		"node_modules/uiohook-napi/**/*",
 		"node_modules/electron-liquid-glass/**/*",

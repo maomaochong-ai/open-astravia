@@ -165,9 +165,18 @@ export default defineConfig(({ command }) => ({
 			// frame 源码里的 <Link to="..."> 会 import "react-router"，同样解析不到
 			// 引擎的 node_modules；不钉住的话每个 frame 一加链接就编译失败。
 			"react-router": resolve(engineRoot, "node_modules/react-router"),
+			// 纯兜底，skill 里一个字都没提：这里的图标是 Iconify 的 CSS 类
+			// （`icon-[lucide--search]`），但模型对「图标」的默认反应是
+			// `import { Search } from "lucide-react"`，而且提示词纠正不掉。以前这一
+			// import 就是整帧构建失败——用户拿到的是一块红色报错，不是设计稿。装上以后
+			// 两条路都通，写哪种都能出图。
+			"lucide-react": resolve(engineRoot, "node_modules/lucide-react"),
 		},
 		dedupe: ["react", "react-dom", "react-router"],
 	},
+	// 设计源码在引擎 root 之外，vite 的依赖扫描够不到，得点名预构建：lucide-react
+	// 是一个图标一个模块，不预构建的话第一次 import 会几百个请求逐个打过来。
+	optimizeDeps: { include: ["lucide-react"] },
 	server: {
 		host: "127.0.0.1",
 		strictPort: true,

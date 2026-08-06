@@ -272,14 +272,16 @@
 
 /* frame「修改中」呼吸光效：描边静态、只动 opacity。这一层紧贴 iframe，
    动 box-shadow 会让含跨源 iframe 的区域每帧重新光栅化。
-   用 inset 描边是因为宿主那层是 overflow:hidden，外扩的环会被裁掉。 */
+   用 inset 描边是因为宿主那层是 overflow:hidden，外扩的环会被裁掉。
+   --vetd-accent 只定义在浮层内部（不会向上继承到这里），所以这里取的是
+   fallback——正好是「修改中」的语义色，与浮层同调。 */
 .vetd-modifying::after {
 	content: "";
 	position: absolute;
 	inset: 0;
 	pointer-events: none;
 	border-radius: inherit;
-	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary, #6366f1) 65%, transparent);
+	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--vetd-accent, #6366f1) 65%, transparent);
 	animation: vetd-breathe 1.6s ease-in-out infinite;
 }
 @keyframes vetd-breathe {
@@ -295,5 +297,363 @@
 @media (prefers-reduced-motion: reduce) {
 	.vetd-modifying::after {
 		animation: none;
+	}
+}
+
+/* ---------- frame 活动态浮层（FrameActivityOverlay） ----------
+   全部只动 transform / opacity：这一层压着跨源 iframe，动布局属性或
+   box-shadow 会让整个区域逐帧重新光栅化（同 vetd-modifying 的教训）。
+
+   配色一律走 --vetd-accent（由组件按活动态设在浮层根上）与固定色板，不读宿主
+   主题变量：mono 主题的 primary/ring/accent/chart-4 全是黑白灰，读它们的话
+   五个 blob 一模糊就互相抵消成中性灰，动画彻底糊掉。浮层是系统状态语言而非
+   内容，本就该有自己的一套语义色（同标题栏三色徽标）。 */
+
+/* 迷你 Bot 头像：theme-ui BotAvatar（sm）的纯 CSS 复刻。 */
+.vetd-bot {
+	position: relative;
+	display: inline-flex;
+	width: 20px;
+	height: 20px;
+}
+.vetd-bot-head {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	width: 20px;
+	height: 20px;
+	border-radius: 6px;
+	background: linear-gradient(
+		135deg,
+		var(--vetd-accent, #6366f1),
+		color-mix(in oklab, var(--vetd-accent, #6366f1) 85%, transparent)
+	);
+	box-shadow: 0 2px 6px -2px var(--vetd-accent, #6366f1);
+}
+.vetd-bot-eye {
+	width: 3px;
+	height: 3px;
+	border-radius: 9999px;
+	background: #fff;
+}
+/* think：歪头思考 + 泡泡飘起（浏览）。 */
+.vetd-bot-think .vetd-bot-head {
+	animation: vetd-bot-think 1.8s ease-in-out infinite;
+}
+.vetd-bot-bubble {
+	position: absolute;
+	right: -4px;
+	top: -4px;
+	width: 6px;
+	height: 6px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 70%, transparent);
+	animation: vetd-bot-bubble 1.8s ease-out infinite;
+}
+@keyframes vetd-bot-think {
+	0%,
+	100% {
+		transform: rotate(0deg) translateY(0);
+	}
+	30% {
+		transform: rotate(6deg) translateY(-1.5px);
+	}
+	60% {
+		transform: rotate(-5deg) translateY(0);
+	}
+}
+@keyframes vetd-bot-bubble {
+	0% {
+		opacity: 0;
+		transform: scale(0.4) translateY(0);
+	}
+	40% {
+		opacity: 1;
+		transform: scale(1) translateY(-5px);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(0.7) translateY(-9px);
+	}
+}
+/* write：快速点头疾书（修改）。 */
+.vetd-bot-write .vetd-bot-head {
+	animation: vetd-bot-write 0.55s ease-in-out infinite;
+	transform-origin: 50% 100%;
+}
+@keyframes vetd-bot-write {
+	0%,
+	100% {
+		transform: rotate(-4deg) translateY(0);
+	}
+	50% {
+		transform: rotate(5deg) translateY(1px);
+	}
+}
+/* bounce：蹦跳带挤压回弹（创作）。 */
+.vetd-bot-bounce .vetd-bot-head {
+	animation: vetd-bot-bounce 0.9s ease-out infinite;
+	transform-origin: 50% 100%;
+}
+@keyframes vetd-bot-bounce {
+	0%,
+	100% {
+		transform: translateY(0) scale(1, 1);
+	}
+	28% {
+		transform: translateY(-6px) scale(0.94, 1.12);
+	}
+	55% {
+		transform: translateY(0) scale(1.16, 0.82);
+	}
+	80% {
+		transform: translateY(-1.5px) scale(0.98, 1.04);
+	}
+}
+
+/* 浮层整体渐入渐出：opacity 由组件驱动（挂载下一帧置 1、卸载前归 0），
+   时长与 FrameActivityOverlay 的 FADE_MS 保持一致。 */
+.vetd-activity-overlay {
+	transition: opacity 300ms ease;
+}
+
+/* 混沌流体背景（对齐 image-gen 生成骨架）：实色 blob 漂移缩放 + 旋转层，
+   叠加重模糊融成流动渐变。60% 不透明度，底下的稿子仍隐约可见。
+
+   径向遮罩让它四周浓、中心淡：边缘紧贴 frame 边框，与画布背景对比最强、
+   存在感够；中心留出通透区，稿子主体始终读得到，动画不挡看稿。 */
+.vetd-fluid {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	opacity: 0.6;
+	--vetd-fluid-mask: radial-gradient(
+		ellipse 72% 62% at 50% 50%,
+		transparent 0%,
+		rgb(0 0 0 / 0.22) 42%,
+		rgb(0 0 0 / 0.72) 72%,
+		#000 100%
+	);
+	-webkit-mask-image: var(--vetd-fluid-mask);
+	mask-image: var(--vetd-fluid-mask);
+}
+/* 居中大正方形旋转层：180% 宽，任意旋转角内切圆都盖满 frame。 */
+.vetd-fluid-spin {
+	position: relative;
+	width: 180%;
+	aspect-ratio: 1;
+	filter: blur(26px) saturate(120%);
+	animation: vetd-fluid-spin 36s linear infinite;
+	will-change: transform;
+}
+@keyframes vetd-fluid-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.vetd-fluid-blob {
+	width: 100%;
+	height: 100%;
+	border-radius: 9999px;
+	animation-name: vetd-fluid-drift;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+	animation-direction: alternate;
+	will-change: transform;
+}
+@keyframes vetd-fluid-drift {
+	0% {
+		transform: translate(0%, 0%) scale(1);
+	}
+	25% {
+		transform: translate(22%, -16%) scale(1.22);
+	}
+	50% {
+		transform: translate(-14%, 20%) scale(0.82);
+	}
+	75% {
+		transform: translate(16%, 14%) scale(1.12);
+	}
+	100% {
+		transform: translate(-20%, -10%) scale(0.94);
+	}
+}
+
+/* 毛玻璃胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。
+   底色同上固定白色，不跟宿主主题。 */
+.vetd-activity-chip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	border-radius: 9999px;
+	background: rgb(255 255 255 / 0.88);
+	border: 1px solid color-mix(in oklab, var(--vetd-accent, #6366f1) 25%, transparent);
+	backdrop-filter: blur(6px);
+	box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.25);
+}
+
+/* 浏览：扫描光带（top/height 都是常量，动画只有 transform）。 */
+.vetd-scan-beam {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: -20%;
+	height: 20%;
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		color-mix(in oklab, var(--vetd-accent, #6366f1) 8%, transparent) 60%,
+		color-mix(in oklab, var(--vetd-accent, #6366f1) 22%, transparent)
+	);
+	border-bottom: 1px solid color-mix(in oklab, var(--vetd-accent, #6366f1) 45%, transparent);
+	animation: vetd-scan 2.4s linear infinite;
+}
+@keyframes vetd-scan {
+	to {
+		/* 自身高 20%：600% ≈ 从顶上扫出底边。 */
+		transform: translateY(600%);
+	}
+}
+
+/* 浏览：中央放大镜，缓慢游走像在找东西。 */
+.vetd-magnifier {
+	position: relative;
+	width: 34px;
+	height: 34px;
+	animation: vetd-magnifier-roam 3.2s ease-in-out infinite;
+}
+.vetd-magnifier-glass {
+	position: absolute;
+	inset: 0;
+	border-radius: 9999px;
+	border: 3px solid color-mix(in oklab, var(--vetd-accent, #6366f1) 75%, transparent);
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 10%, transparent);
+}
+.vetd-magnifier-handle {
+	position: absolute;
+	width: 14px;
+	height: 4px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 75%, transparent);
+	right: -10px;
+	bottom: 0;
+	transform: rotate(45deg);
+}
+@keyframes vetd-magnifier-roam {
+	0%,
+	100% {
+		transform: translate(-8px, -5px);
+	}
+	30% {
+		transform: translate(7px, -2px);
+	}
+	60% {
+		transform: translate(3px, 6px);
+	}
+	80% {
+		transform: translate(-4px, 3px);
+	}
+}
+
+/* 修改：打字骨架线，逐行「写出来」再擦掉重来。 */
+.vetd-typing-lines {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	width: 36px;
+}
+.vetd-typing-line {
+	height: 3px;
+	border-radius: 2px;
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 55%, transparent);
+	transform-origin: left;
+	transform: scaleX(0);
+	animation: vetd-typing 1.8s ease-in-out infinite;
+}
+.vetd-typing-line:nth-child(2) {
+	width: 78%;
+	animation-delay: 0.2s;
+}
+.vetd-typing-line:nth-child(3) {
+	width: 55%;
+	animation-delay: 0.4s;
+}
+@keyframes vetd-typing {
+	0% {
+		transform: scaleX(0);
+	}
+	45%,
+	75% {
+		transform: scaleX(1);
+	}
+	100% {
+		transform: scaleX(0);
+	}
+}
+
+/* 创作：十字星光，交错闪烁。 */
+.vetd-spark {
+	position: absolute;
+	width: 10px;
+	height: 10px;
+	opacity: 0;
+	animation: vetd-spark 1.9s ease-in-out infinite;
+}
+.vetd-spark::before,
+.vetd-spark::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	border-radius: 9999px;
+	/* 以白为主、只掺一点语义色：星光压在彩色流体上，越白越跳。 */
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 25%, white);
+}
+.vetd-spark::before {
+	width: 10px;
+	height: 2px;
+	transform: translate(-50%, -50%);
+}
+.vetd-spark::after {
+	width: 2px;
+	height: 10px;
+	transform: translate(-50%, -50%);
+}
+@keyframes vetd-spark {
+	0%,
+	100% {
+		opacity: 0;
+		transform: scale(0.3) rotate(0deg);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1) rotate(90deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-bot-think .vetd-bot-head,
+	.vetd-bot-bubble,
+	.vetd-bot-write .vetd-bot-head,
+	.vetd-bot-bounce .vetd-bot-head,
+	.vetd-scan-beam,
+	.vetd-magnifier,
+	.vetd-typing-line,
+	.vetd-fluid-spin,
+	.vetd-fluid-blob,
+	.vetd-spark {
+		animation: none;
+	}
+	/* 关掉动画后骨架线/星光停在不可见帧，钉到可见状态。 */
+	.vetd-typing-line {
+		transform: scaleX(1);
+	}
+	.vetd-spark {
+		opacity: 0.8;
 	}
 }

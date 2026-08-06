@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Restored asset and generated-image previews after switching away from and back to the content-creation activity tab.
 - Scoped generation failures to their originating node job instead of repeating them in the node editor, panel banner, and host notification.
 - Kept node-bound editors mounted outside the card viewport and constrained long prompt inputs to internal scrolling.
 - Preserved active prompt drafts across stale parent refreshes, removed colored node-card top accents, and raised placeholder contrast to a readable subdued level.
@@ -19,7 +20,9 @@
 
 ### Changed
 
+- Moved workspace project persistence to the visible root `content-creation.json`; legacy hidden projects are copied forward, and generated media now lives under the workspace `output/` folder with relative project references.
 - Content assets now persist stable blob IDs and resolve host media URLs at runtime; schema v1 projects migrate automatically to schema v2.
+- Limited asset preview URL resolution to eight concurrent host lookups and evicted cached references outside the current project.
 - Restyled the multi-node selection outline with subdued theme colors, a thin solid border, and matching corner radii instead of React Flow's prominent default blue dotted frame.
 - Replaced hand-authored plugin and node SVG icons with a consistent Lucide Iconify set, inlined static icon classes at their use sites, and corrected dock hover centers to match the rendered item widths.
 - Restricted the plugin to Work mode via manifest `agent_mode: ["work"]` (hidden in Coding; ADR-0046).
@@ -42,8 +45,10 @@
 
 ### Added
 
+- Added input-bound, opt-in prompt optimization through host-managed AI models with reusable node-specific profiles; successful results replace the effective prompt while preserving the structured original.
+- Added host media-provider discovery and image generation through the plugin media capability, with generated artifacts persisted as visible workspace output files.
 - Added structured multimodal prompt documents with compact inline media tokens and mixed `@` prompt references, preserving editable local text while carrying referenced media into generation model compatibility checks.
-- Upgraded asset nodes into scalable image, video, and audio collections with compact canvas summaries, incremental management, and model-compatible selection from connected generation nodes.
+- Upgraded asset nodes into scalable image, video, and audio collections with direct file drop, compact canvas summaries, incremental management, and model-compatible selection from connected generation nodes.
 - Added explicit select and hand tools to the canvas dock with visible active state.
 - Added the initial content-creation canvas and multitrack composition preset foundation.
 - Added reference-project design notes, a schema-driven node registry, typed ports, connection validation, compatible-node creation, and node workflow tests.

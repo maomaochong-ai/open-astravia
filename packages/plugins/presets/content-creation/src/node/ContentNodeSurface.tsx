@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginMediaErrorCode, useTranslation } from "@vetta-org/plugin-sdk";
 import { Spin } from "@vetta/ui";
 import { memo } from "react";
 import type {
@@ -11,6 +11,7 @@ import type {
 import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
 import { ContentAssetKindIcon } from "./ContentAssetKindIcon";
 import { NodeKindIcon } from "./NodeKindIcon";
+import { contentPromptTextFromData } from "./prompt-document";
 
 interface ContentNodeSurfaceProps {
 	kind: ContentNodeKind;
@@ -37,6 +38,19 @@ const captionTextStyle = {
 	fontSize: "clamp(11px, 3cqw, 14px)",
 	lineHeight: 1.4,
 } as const;
+
+const GENERATION_ERROR_KEYS: Record<PluginMediaErrorCode, string> = {
+	unauthenticated: "job.error.unauthenticated",
+	"provider-unavailable": "job.error.providerUnavailable",
+	"operation-unsupported": "job.error.operationUnsupported",
+	"invalid-request": "job.error.invalidRequest",
+	"not-entitled": "job.error.notEntitled",
+	"quota-exhausted": "job.error.quotaExhausted",
+	"content-rejected": "job.error.contentRejected",
+	"provider-timeout": "job.error.providerTimeout",
+	"provider-failed": "job.error.providerFailed",
+	cancelled: "job.error.cancelled",
+};
 
 function MediaPlaceholder({
 	kind,
@@ -90,17 +104,27 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	const isMedia = kind === "image-generator" || kind === "video-generator";
 	const isBusy = status === "running" || status === "queued";
 	const emptyText = kind === "prompt" ? t("node.prompt.doubleClickToEdit") : t(descriptionKey);
+	const jobError = job?.errorCode ? t(GENERATION_ERROR_KEYS[job.errorCode]) : job?.error;
 
 	if (kind === "asset") return <ContentAssetNodeSurface assets={assets} />;
 	if (kind === "prompt") {
+		const prompt = contentPromptTextFromData(data);
 		return (
 			<div
 				className="flex h-full w-full flex-col justify-between [container-type:size]"
 				style={{ gap: "clamp(8px, 2.5cqw, 14px)", padding: "clamp(12px, 4cqw, 20px)" }}
 			>
-				<p className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85" style={surfaceTextStyle}>
-					{data.prompt?.trim() || emptyText}
-				</p>
+				<div className="min-h-0 flex-1">
+					{data.promptOptimization ? (
+						<div className="mb-1.5 flex items-center gap-1 text-[10px] text-muted-foreground/75">
+							<span className="icon-[lucide--sparkles] block size-3" aria-hidden="true" />
+							<span>{t("node.prompt.optimized")}</span>
+						</div>
+					) : null}
+					<p className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85" style={surfaceTextStyle}>
+						{prompt || emptyText}
+					</p>
+				</div>
 				{referenceAssets.length > 0 ? (
 					<div className="flex min-w-0 items-center gap-1.5 border-t border-border/55 pt-2">
 						{referenceAssets.slice(0, 2).map((asset) => (
@@ -143,13 +167,6 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 				) : (
 					<MediaPlaceholder kind={kind} descriptionKey={descriptionKey} prompt={data.prompt} />
 				)}
-				{assetUrl && data.prompt?.trim() ? (
-					<div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/80 via-black/55 to-transparent px-[clamp(10px,4cqw,18px)] pt-[clamp(8px,3cqmin,14px)] pb-[clamp(22px,8cqmin,44px)] text-white">
-						<p className="m-0 line-clamp-3 whitespace-pre-wrap" style={captionTextStyle}>
-							{data.prompt.trim()}
-						</p>
-					</div>
-				) : null}
 				{isBusy ? (
 					<div
 						className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-background/45 backdrop-blur-[2px]"
@@ -166,13 +183,13 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 						</span>
 					</div>
 				) : null}
-				{job?.status === "failed" && job.error ? (
+				{job?.status === "failed" && jobError ? (
 					<div
 						className="absolute right-2 top-2 max-w-[calc(100%_-_16px)] truncate rounded-md border border-destructive/30 bg-destructive/90 px-2 py-1 font-medium text-destructive-foreground shadow-sm"
 						style={captionTextStyle}
 						title={job.error}
 					>
-						{t("job.failed")}
+						{jobError}
 					</div>
 				) : null}
 			</div>

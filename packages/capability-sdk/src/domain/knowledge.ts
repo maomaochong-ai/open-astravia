@@ -24,10 +24,7 @@ export const KNOWLEDGE_SCAN_REASONS = {
 	NO_MODEL: "no-model",
 } as const;
 
-const knowledgeEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const knowledgeEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const knowledgeNodeTypeType = Type.Union([
 	Type.Literal(KNOWLEDGE_NODE_TYPES.FILE),

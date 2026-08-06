@@ -54,7 +54,9 @@ function isProjectShell(value: unknown, cwd: string | null): value is ProjectShe
 }
 
 function isCurrentContentAsset(value: unknown): value is ContentAsset {
-	return isLegacyContentAsset(value) && typeof (value as { blobId?: unknown }).blobId === "string";
+	if (!isLegacyContentAsset(value)) return false;
+	const location = value as { blobId?: unknown; filePath?: unknown };
+	return typeof location.blobId === "string" || typeof location.filePath === "string";
 }
 
 function isLegacyContentAsset(value: unknown): value is LegacyContentAsset {

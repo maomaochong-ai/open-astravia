@@ -78,6 +78,15 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
 
 	/**
+	 * 允许从助手正文中还原调用的工具名白名单。
+	 *
+	 * 部分模型（实测 gpt-5.x）会把叙述型工具的参数当作 tool call 前的 preamble 正文
+	 * 吐出来而不发起真实调用。命中白名单且参数键唯一匹配某个工具时，把这段正文还原
+	 * 成 toolCall。只放无副作用的工具，避免误执行。
+	 */
+	salvageTextToolCalls?: string[];
+
+	/**
 	 * Returns steering messages to inject into the conversation mid-run.
 	 *
 	 * Called after each tool execution to check for user interruptions.
