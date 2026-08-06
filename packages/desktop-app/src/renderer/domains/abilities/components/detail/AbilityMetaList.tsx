@@ -1,5 +1,7 @@
 import type { AbilityMetaEntry, AbilityMetaKey } from "@shared/lib/api";
 import { useTranslation } from "react-i18next";
+import type { AbilitiesModel, AbilityItem } from "../../types";
+import { AbilitySourceMetaRow, AbilitySourceRelations } from "./AbilitySourceMeta";
 
 /** 预置键 → i18n label key。未知键当作自定义条目处理（服务端已白名单校验，这里只是渲染兜底）。 */
 const META_LABEL_KEYS = {
@@ -13,10 +15,17 @@ const META_LABEL_KEYS = {
  * 详情页元信息表：官网 / 仓库 / 文档 / 开源协议 + 运营自定义条目。
  * 顺序即 raw.detail.meta 的数组顺序（运营在 admin 里排定）。
  */
-export function AbilityMetaList({ meta }: { meta: AbilityMetaEntry[] | undefined }): JSX.Element | null {
+export function AbilityMetaList({
+	meta,
+	item,
+	model,
+}: {
+	meta: AbilityMetaEntry[] | undefined;
+	item: AbilityItem;
+	model: AbilitiesModel;
+}): JSX.Element {
 	const { t } = useTranslation("abilities");
 	const entries = (meta ?? []).filter((entry) => entry.value.trim().length > 0);
-	if (entries.length === 0) return null;
 
 	return (
 		<section>
@@ -40,7 +49,9 @@ export function AbilityMetaList({ meta }: { meta: AbilityMetaEntry[] | undefined
 						</dd>
 					</div>
 				))}
+				<AbilitySourceMetaRow item={item} />
 			</dl>
+			<AbilitySourceRelations item={item} model={model} />
 		</section>
 	);
 }

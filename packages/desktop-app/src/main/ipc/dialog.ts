@@ -148,6 +148,57 @@ export function registerDialogIpc(): () => void {
 	});
 
 	/**
+	 * Write in-memory bytes to a path chosen via the native save dialog. The
+	 * complement to save-copy, which needs the payload to already exist on disk.
+	 * Returns the saved path, or null if cancelled.
+	 */
+	ipcMain.handle(
+		"vetta:dialog:save-data",
+		async (
+			_event,
+			defaultFileName: unknown,
+			content: unknown,
+			encoding?: unknown,
+			options?: {
+				title?: string;
+				filters?: Array<{ name: string; extensions: string[] }>;
+			},
+		): Promise<string | null> => {
+			if (typeof defaultFileName !== "string" || !defaultFileName.trim()) {
+				throw new Error("Invalid save file name");
+			}
+			if (typeof content !== "string") {
+				throw new Error("Invalid save content");
+			}
+			if (encoding !== undefined && encoding !== "utf8" && encoding !== "base64") {
+				throw new Error(`Invalid save encoding: ${String(encoding)}`);
+			}
+			const name = basename(defaultFileName.trim());
+			const ext = extname(name).replace(/^\./, "").toLowerCase();
+			const filters =
+				Array.isArray(options?.filters) && options.filters.length > 0
+					? options.filters.filter(
+							(filter) =>
+								typeof filter?.name === "string" &&
+								Array.isArray(filter.extensions) &&
+								filter.extensions.every((entry) => typeof entry === "string"),
+						)
+					: ext
+						? [{ name: ext.toUpperCase(), extensions: [ext] }]
+						: undefined;
+
+			const result = await dialog.showSaveDialog({
+				title: typeof options?.title === "string" && options.title.trim() ? options.title.trim() : "Save File",
+				defaultPath: name,
+				filters,
+			});
+			if (result.canceled || !result.filePath) return null;
+			await writeFile(result.filePath, content, encoding === "base64" ? "base64" : "utf8");
+			return result.filePath;
+		},
+	);
+
+	/**
 	 * Copy an existing file to a path chosen via the native save dialog.
 	 * Source must be readable under host preview rules (project roots or home).
 	 * Destination is user-chosen (no project-root write restriction).
@@ -241,6 +292,7 @@ export function registerDialogIpc(): () => void {
 		ipcMain.removeHandler("vetta:dialog:select-folder");
 		ipcMain.removeHandler("vetta:dialog:select-files");
 		ipcMain.removeHandler("vetta:dialog:save-html");
+		ipcMain.removeHandler("vetta:dialog:save-data");
 		ipcMain.removeHandler("vetta:dialog:save-copy");
 		ipcMain.removeHandler("vetta:dialog:select-folders");
 	};

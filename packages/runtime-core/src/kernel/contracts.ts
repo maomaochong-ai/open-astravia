@@ -359,6 +359,8 @@ export interface ContinuationPolicy {
 
 export interface RuntimeSnapshot {
 	readonly id: string;
+	/** 允许 Agent Core 从模型正文恢复的无副作用工具调用白名单。 */
+	readonly salvageTextToolCalls?: readonly string[];
 	readonly instructions: readonly InstructionBlock[];
 	readonly tools: ReadonlyMap<string, RuntimeToolDefinition>;
 	readonly modelCallProviders?: readonly ModelCallContributionProvider[];
@@ -426,6 +428,8 @@ export interface AgentFeatureDefinition {
 
 export interface AgentProfile {
 	readonly id: string;
+	/** 产品层显式选择的正文工具调用恢复白名单；Runtime Core 不解释工具语义。 */
+	readonly salvageTextToolCalls?: readonly string[];
 	readonly instructions: readonly InstructionBlock[];
 	readonly features: readonly AgentFeatureDefinition[];
 	readonly observers?: readonly TurnObserver[];

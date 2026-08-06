@@ -1,48 +1,6 @@
 import { useEffect, useState, type JSX } from "react";
 import { codeToHtml } from "shiki";
-
-const EXT_TO_LANG: Record<string, string> = {
-	ts: "typescript",
-	tsx: "tsx",
-	js: "javascript",
-	jsx: "jsx",
-	mjs: "javascript",
-	cjs: "javascript",
-	json: "json",
-	yaml: "yaml",
-	yml: "yaml",
-	toml: "toml",
-	xml: "xml",
-	html: "html",
-	htm: "html",
-	css: "css",
-	scss: "scss",
-	less: "less",
-	py: "python",
-	go: "go",
-	rs: "rust",
-	java: "java",
-	kt: "kotlin",
-	swift: "swift",
-	rb: "ruby",
-	php: "php",
-	c: "c",
-	cpp: "cpp",
-	h: "c",
-	cs: "c#",
-	sh: "bash",
-	bash: "bash",
-	zsh: "bash",
-	sql: "sql",
-	graphql: "graphql",
-	gql: "graphql",
-	lua: "lua",
-	r: "r",
-	dart: "dart",
-	dockerfile: "dockerfile",
-	makefile: "makefile",
-	env: "dotenv",
-};
+import { getTextEditorLanguageId } from "../file-preview/text-editor-language";
 
 export interface CodePreviewProps {
 	content: string;
@@ -55,7 +13,7 @@ export function CodePreview({ content, extension, theme }: CodePreviewProps): JS
 
 	useEffect(() => {
 		let cancelled = false;
-		const lang = EXT_TO_LANG[extension] ?? "text";
+		const lang = getTextEditorLanguageId(extension);
 
 		codeToHtml(content, {
 			lang,

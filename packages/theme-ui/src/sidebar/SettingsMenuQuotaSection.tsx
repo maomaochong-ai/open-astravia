@@ -1,11 +1,8 @@
-import { motion, type Variants } from "motion/react";
 import type { JSX } from "react";
 import { cn } from "@vetta/ui";
 import { SettingsMenuDivider } from "./SettingsMenuDivider";
 
 export interface SettingsMenuQuotaSectionProps {
-	dividerVariants: Variants;
-	itemVariants: Variants;
 	fiveHourRemainingPercent: number;
 	/** Fully resolved countdown text from host. */
 	resetCountdown: string;
@@ -13,17 +10,13 @@ export interface SettingsMenuQuotaSectionProps {
 }
 
 export function SettingsMenuQuotaSection({
-	dividerVariants,
-	itemVariants,
 	fiveHourRemainingPercent,
 	resetCountdown,
 	quotaLabel,
 }: SettingsMenuQuotaSectionProps): JSX.Element {
 	return (
-		<motion.div key="quota" variants={itemVariants}>
-			<motion.div variants={dividerVariants}>
-				<SettingsMenuDivider />
-			</motion.div>
+		<div>
+			<SettingsMenuDivider />
 			<div className="mx-2 my-1.5 rounded-md bg-accent/50 px-2 py-1.5">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-1.5">
@@ -47,6 +40,6 @@ export function SettingsMenuQuotaSection({
 				</div>
 				<div className="mt-1 text-[10px] text-muted-foreground">{resetCountdown}</div>
 			</div>
-		</motion.div>
+		</div>
 	);
 }

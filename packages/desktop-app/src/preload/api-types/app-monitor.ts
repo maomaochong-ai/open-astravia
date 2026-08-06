@@ -143,7 +143,21 @@ export type AppMonitorEvent =
 			value?: string;
 	  };
 
+/** 单个 skill / 场景的历史使用情况。 */
+export interface AppMonitorPromptRefUsage {
+	used: number;
+	lastUsedAt: number;
+}
+
+/**
+ * 按 `kind:name` 归集的使用统计。key 里的 name 经过归一化（小写 + 截断），
+ * 调用方比对时必须同样小写化。
+ */
+export type AppMonitorPromptRefUsageMap = Record<string, AppMonitorPromptRefUsage>;
+
 export interface DesktopAppMonitorApi {
 	getAchievementUsage(): Promise<AchievementUsageStats>;
+	/** 命令面板按使用频次排序用；读的是已落盘的 inputPromptRefs.byRef。 */
+	getPromptRefUsage(): Promise<AppMonitorPromptRefUsageMap>;
 	recordEvent(event: AppMonitorEvent): void;
 }

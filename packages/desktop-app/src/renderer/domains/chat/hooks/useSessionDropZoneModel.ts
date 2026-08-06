@@ -1,44 +1,18 @@
-import { recordInputFilesAdded, recordInputImagesAdded } from "@shared/lib/app-monitor-events";
-import { pathBasename } from "@shared/lib/utils";
-import {
-	type AttachedImage,
-	activeSessionAtom,
-	attachedImagesAtom,
-	type MentionedFile,
-	mentionedFilesAtom,
-} from "@shared/store/atoms";
+import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
+import { isImagePath } from "@shared/lib/input-tokens";
+import { isSubPath, pathBasename } from "@shared/lib/utils";
+import { activeSessionAtom, type MentionedFile, mentionedFilesAtom } from "@shared/store/atoms";
 import type { SessionDropZoneViewProps } from "@vetta/theme-ui/chat";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { useCallback, useRef, useState } from "react";
+import { useAtomValue } from "jotai";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { insertFileToken, insertImageToken } from "../components/input-bar/editor/inputEditorHandle";
+import { persistImageFiles } from "../components/input-bar/editor/persistImages";
 
 const VETTA_PATH_MIME = "application/vetta-path";
 const VETTA_PATH_META_MIME = "application/vetta-path-meta";
 
 type DragKind = "files" | "internal";
-
-let imageIdCounter = 0;
-function nextImageId(): string {
-	return `img-${++imageIdCounter}-${Date.now()}`;
-}
-
-function readImageAsAttached(file: File): Promise<AttachedImage> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			const result = reader.result as string;
-			const commaIdx = result.indexOf(",");
-			resolve({
-				id: nextImageId(),
-				data: result.slice(commaIdx + 1),
-				mimeType: file.type || "image/png",
-				name: file.name || "Pasted image",
-			});
-		};
-		reader.onerror = () => reject(reader.error);
-		reader.readAsDataURL(file);
-	});
-}
 
 function detectKind(e: React.DragEvent): DragKind | null {
 	const types = Array.from(e.dataTransfer.types);
@@ -52,10 +26,10 @@ export interface SessionDropZoneModel extends Omit<SessionDropZoneViewProps, "ch
 export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneModel {
 	const { t } = useTranslation("chat");
 	const activeSession = useAtomValue(activeSessionAtom);
-	const setAttachedImages = useSetAtom(attachedImagesAtom);
-	const [mentionedFiles, setMentionedFiles] = useAtom(mentionedFilesAtom);
+	const rootDirectory = cwdOverride ?? activeSession?.cwd ?? null;
+	// 只读投影：用来跳过已经在输入框里的路径，避免重复插 token。
+	const mentionedFiles = useAtomValue(mentionedFilesAtom);
 	const [dragKind, setDragKind] = useState<DragKind | null>(null);
-	const dragCounter = useRef(0);
 
 	const enabled = Boolean(activeSession) || Boolean(cwdOverride);
 
@@ -65,7 +39,7 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 			if (!kind || !enabled) return;
 			e.preventDefault();
 			e.stopPropagation();
-			dragCounter.current += 1;
+			// Child enter events bubble; just keep/refresh highlight (no enter counter).
 			setDragKind(kind);
 		},
 		[enabled],
@@ -85,15 +59,22 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 	const handleDragLeave = useCallback((e: React.DragEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
-		dragCounter.current = Math.max(0, dragCounter.current - 1);
-		if (dragCounter.current === 0) setDragKind(null);
-	}, []);
-
-	const resetDrag = useCallback(() => {
-		dragCounter.current = 0;
+		// Only clear when the pointer actually leaves the drop zone (not when
+		// moving between children). Do not mix this with enter/leave counters —
+		// bubbled child enters would desync the counter and leave the overlay stuck on.
+		const related = e.relatedTarget;
+		if (related instanceof Node && e.currentTarget.contains(related)) return;
 		setDragKind(null);
 	}, []);
 
+	const resetDrag = useCallback(() => {
+		setDragKind(null);
+	}, []);
+
+	/**
+	 * 拖入的文件变成输入框里的行内 token。
+	 * mentionedFiles 现在是编辑器投影，不能直接往里塞——插 token 后它自会更新。
+	 */
 	const pushMentioned = useCallback(
 		(entries: MentionedFile[]) => {
 			if (entries.length === 0) return;
@@ -103,12 +84,13 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 				if (!ent.path || seen.has(ent.path)) continue;
 				seen.add(ent.path);
 				additions.push(ent);
+				if (isImagePath(ent.path)) insertImageToken(ent.path);
+				else insertFileToken(ent.path, ent.isDirectory);
 			}
 			if (additions.length === 0) return;
-			setMentionedFiles((prev) => [...prev, ...additions]);
 			recordInputFilesAdded("drop", additions);
 		},
-		[mentionedFiles, setMentionedFiles],
+		[mentionedFiles],
 	);
 
 	const handleDrop = useCallback(
@@ -148,10 +130,6 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 				const file = files[i];
 				if (!file) continue;
 				const item = items[i];
-				if (file.type.startsWith("image/")) {
-					imageFiles.push(file);
-					continue;
-				}
 				let isDirectory = false;
 				if (item && typeof item.webkitGetAsEntry === "function") {
 					const entry = item.webkitGetAsEntry();
@@ -160,25 +138,26 @@ export function useSessionDropZoneModel(cwdOverride?: string): SessionDropZoneMo
 				if (!isDirectory && file.type === "" && file.size === 0) isDirectory = true;
 
 				const path = window.vetta.fs.pathForFile(file);
+				if (path && rootDirectory && isSubPath(path, rootDirectory)) {
+					otherEntries.push({ path, name: file.name || pathBasename(path), isDirectory, sizeBytes: file.size });
+					continue;
+				}
+				if (file.type.startsWith("image/")) {
+					imageFiles.push(file);
+					continue;
+				}
 				if (!path) continue;
 				otherEntries.push({ path, name: file.name || pathBasename(path), isDirectory, sizeBytes: file.size });
 			}
 
 			if (imageFiles.length > 0) {
-				try {
-					const images = await Promise.all(imageFiles.map(readImageAsAttached));
-					setAttachedImages((prev) => [...prev, ...images]);
-					recordInputImagesAdded(
-						"drop",
-						imageFiles.map((file, index) => ({ file, ...images[index] })),
-					);
-				} catch {
-					// swallow — a single bad image shouldn't abort the rest
-				}
+				// 先落盘拿到路径，才能插入行内缩略图 token。
+				const paths = await persistImageFiles(imageFiles, activeSession?.runtimeId ?? null, "drop");
+				for (const path of paths) insertImageToken(path);
 			}
 			pushMentioned(otherEntries);
 		},
-		[enabled, pushMentioned, resetDrag, setAttachedImages],
+		[activeSession?.runtimeId, enabled, pushMentioned, resetDrag, rootDirectory],
 	);
 
 	return {

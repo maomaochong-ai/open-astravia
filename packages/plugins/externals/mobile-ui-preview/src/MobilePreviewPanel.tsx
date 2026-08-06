@@ -4,6 +4,7 @@ import { AndroidMockup, AndroidTabMockup, IPadMockup, IPhoneMockup } from "react
 import { DEFAULT_DEVICE_ID, DEVICE_PRESETS, findDevice, type DevicePreset } from "./devices";
 import { getPluginCtx } from "./plugin-context";
 import { StatusBar } from "./StatusBar";
+import { isHtmlFile } from "./tab-visibility";
 
 const STORAGE_DEVICE = "mobile-ui-preview:device";
 const STORAGE_LANDSCAPE = "mobile-ui-preview:landscape";
@@ -20,10 +21,6 @@ function toFileProtocolUrl(filePath: string): string {
 function dirOf(filePath: string): string {
 	const index = filePath.lastIndexOf("/");
 	return index > 0 ? filePath.slice(0, index) : filePath;
-}
-
-function isHtmlFile(name: string): boolean {
-	return /\.html?$/i.test(name);
 }
 
 const FRAME_COLOR = "#000000";

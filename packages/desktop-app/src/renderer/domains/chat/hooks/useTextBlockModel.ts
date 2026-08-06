@@ -1,4 +1,5 @@
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
+import { isSubPath, pathBasename } from "@shared/lib/utils";
 import {
 	activeSessionAtom,
 	activityPanelOpenAtom,
@@ -13,13 +14,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getFileIcon } from "../../file-explorer/components/fileIcons";
-
-/** 判断绝对路径 target 是否落在目录 dir 内（含 dir 本身）。 */
-function isPathWithinDir(dir: string, target: string): boolean {
-	const stripTrailing = (p: string): string => p.replace(/\/+$/, "");
-	const d = stripTrailing(dir);
-	return target === d || target.startsWith(`${d}/`);
-}
+import { resolveChatFilePath } from "../lib/resolve-chat-file-path";
 
 export type TextBlockModel = Omit<TextBlockViewProps, "text" | "isStreamingTail" | "className">;
 
@@ -37,14 +32,15 @@ export function useTextBlockModel(): TextBlockModel {
 
 	const onOpenFile = useCallback(
 		(path: string) => {
-			const name = path.split("/").pop() || path;
-			if (!narrow && cwd && isPathWithinDir(cwd, path)) {
+			const resolved = resolveChatFilePath(path, cwd);
+			const name = pathBasename(resolved);
+			if (!narrow && cwd && isSubPath(resolved, cwd)) {
 				setActivityPanelOpen(true);
 				setActivityTabByProject((prev) => new Map(prev).set(cwd, "file"));
-				openInlineFilePreview({ name, path });
+				openInlineFilePreview({ name, path: resolved });
 				return;
 			}
-			setFilePreview({ name, path });
+			setFilePreview({ name, path: resolved });
 		},
 		[narrow, cwd, setFilePreview, openInlineFilePreview, setActivityPanelOpen, setActivityTabByProject],
 	);

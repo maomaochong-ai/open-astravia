@@ -2,10 +2,13 @@ import type { InstalledPlugin } from "@preload/api";
 import type { AbilityMember, MarketAbility } from "@shared/lib/api";
 import type { TFunction } from "i18next";
 import { describe, expect, it } from "vitest";
+import { buildBuiltinMcpServerConfig } from "../../settings/mcp/builtin-mcp-presets";
 import type { AbilityItem, McpAbility } from "../types";
 import {
 	buildBundleAbilities,
+	buildMcpAbilities,
 	buildPluginAbilities,
+	buildSkillAbilities,
 	type LocalAbilityState,
 	type PluginTextResolver,
 } from "./build-ability-items";
@@ -49,11 +52,13 @@ function member(overrides: Partial<AbilityMember> & Pick<AbilityMember, "type" |
 	return { exists: true, name: "", icon: "", version: "", ...overrides };
 }
 
+/** id 必须与 buildMarketAbilityId 一致（`kind:sourceId:type:slug`），否则 bundle 成员认领不到。 */
 function installedSkill(slug: string): AbilityItem {
 	return {
 		type: "skill",
-		id: `skill:${slug}`,
+		id: `server:server:skill:${slug}`,
 		slug,
+		catalogSource: { kind: "server", id: "server" },
 		title: slug,
 		description: "",
 		category: "",
@@ -121,6 +126,244 @@ describe("buildPluginAbilities", () => {
 
 		expect(items[0]?.title).toBe("Cowart 画布");
 		expect(items[0]?.description).toBe("无限画布能力包");
+	});
+
+	it("preserves GitHub marketplace origin for open plugin installation", () => {
+		const ability = {
+			...createBundle([]),
+			type: "plugin" as const,
+			slug: "open-plugin",
+			origin: {
+				kind: "github-marketplace" as const,
+				sourceId: "test-source",
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.07.3",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		};
+
+		const items = buildPluginAbilities([ability], createState(), trPlugin);
+
+		expect(items[0]?.origin).toEqual(ability.origin);
+	});
+});
+
+describe("buildSkillAbilities", () => {
+	it("preserves GitHub marketplace origin for install routing", () => {
+		const ability = {
+			...createBundle([]),
+			type: "skill" as const,
+			slug: "open-skill",
+			origin: {
+				kind: "github-marketplace" as const,
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.07.1",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		};
+
+		const items = buildSkillAbilities([ability], createState());
+
+		expect(items[0]?.origin).toEqual(ability.origin);
+	});
+
+	it("only marks app-shipped skills as builtin", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{ name: "pdf", description: "", source: "builtin", type: "skill" },
+					{ name: "my-skill", description: "", source: "user", type: "skill" },
+					{ name: "from-plugin", description: "", source: "plugin", type: "skill" },
+				],
+			}),
+		);
+
+		expect(items.map((item) => [item.slug, item.isBuiltin, item.catalogSource.kind])).toEqual([
+			["pdf", true, "builtin"],
+			["my-skill", false, "local"],
+			["from-plugin", false, "local"],
+		]);
+	});
+
+	it("gives app-shipped skills their bundled icon, and only them", () => {
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{ name: "create-skill", description: "", source: "builtin", type: "skill" },
+					// 同名但用户来源：不能借用内置图标。
+					{ name: "publish-ability", description: "", source: "user", type: "skill" },
+					{ name: "pdf", description: "", source: "builtin", type: "skill" },
+				],
+			}),
+		);
+
+		expect(items.map((item) => item.icon)).toEqual(["./skills/create-skill.png", undefined, undefined]);
+	});
+
+	it("uses host plugin icon for plugin-contributed skills", () => {
+		const pluginIcon = "vetta-plugin://vetta-ui-design/versions/0.1.0/icon.png?v=0.1.0";
+		const items = buildSkillAbilities(
+			[],
+			createState({
+				localSkills: [
+					{
+						name: "vetta-ui-design",
+						description: "",
+						source: "plugin",
+						type: "skill",
+						icon: pluginIcon,
+					},
+				],
+			}),
+		);
+
+		expect(items[0]?.icon).toBe(pluginIcon);
+	});
+
+	it("does not duplicate an installed skill that listSkills also reports", () => {
+		const market = { ...createBundle([]), type: "skill" as const, slug: "translator" };
+		const items = buildSkillAbilities(
+			[market],
+			createState({
+				skillManifest: {
+					translator: {
+						name: "translator",
+						source: "market",
+						enabled: true,
+						version: "1.0.0",
+						type: "skill",
+						installedAt: "2026-07-31T00:00:00.000Z",
+					},
+				},
+				localSkills: [{ name: "translator", description: "", source: "market", type: "skill" }],
+			}),
+		);
+
+		expect(items).toHaveLength(1);
+		expect(items[0]).toMatchObject({ slug: "translator", installed: true, isBuiltin: false });
+	});
+});
+
+describe("buildMcpAbilities", () => {
+	it("preserves GitHub marketplace origin for ledger recording", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "context7",
+			name: "Context7",
+			config: {
+				mcp: { type: "http", url: "https://mcp.context7.com/mcp" },
+				mcp_parameters: [
+					{
+						key: "CONTEXT7_API_KEY",
+						label: "Context7 API Key",
+						required: false,
+						secret: true,
+					},
+				],
+			},
+			origin: {
+				kind: "github-marketplace" as const,
+				sourceId: "test-source",
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.07.3",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		};
+
+		const items = buildMcpAbilities([ability], createState(), t);
+
+		const item = items.find((candidate) => candidate.slug === "context7");
+		expect(item?.origin).toEqual(ability.origin);
+		expect(item?.preset).toMatchObject({
+			name: "context7",
+			displayName: "Context7",
+			secrets: [{ envKey: "CONTEXT7_API_KEY", label: "Context7 API Key", required: false, secret: true }],
+		});
+		if (!item?.preset) throw new Error("Marketplace MCP install preset is missing");
+		expect(
+			buildBuiltinMcpServerConfig(
+				item.preset,
+				{ displayName: item.title, description: item.description },
+				{
+					CONTEXT7_API_KEY: "demo-key",
+				},
+			),
+		).toMatchObject({
+			type: "http",
+			headers: { CONTEXT7_API_KEY: "demo-key" },
+		});
+	});
+
+	it("creates an OAuth preset for a parameterless marketplace MCP", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "notion",
+			name: "Notion",
+			config: {
+				mcp: { type: "http", url: "https://mcp.notion.com/mcp" },
+				mcp_browser_auth: true,
+				mcp_parameters: [],
+			},
+		};
+
+		// 同 slug 的内置预设也在列表里（且排在前面），必须按 catalogId 取市场那一条
+		const item = buildMcpAbilities([ability], createState(), t).find(
+			(candidate) => candidate.id === "server:server:mcp:notion",
+		);
+
+		// 与内置 notion 预设撞名，运行时 key 会被限定为 `notion--<hash>`
+		expect(item?.serverName).toMatch(/^notion--[a-f0-9]{8}$/);
+		expect(item?.preset).toMatchObject({
+			name: item?.serverName,
+			browserAuth: true,
+			secrets: [],
+		});
+		expect(item?.setupRequired).toBe(false);
+	});
+
+	it("keeps a built-in MCP and a same-slug GitHub MCP as separate catalog entries", () => {
+		const ability = {
+			...createBundle([]),
+			type: "mcp" as const,
+			slug: "github",
+			name: "GitHub",
+			config: {
+				mcp: { type: "http", url: "https://api.githubcopilot.com/mcp/" },
+			},
+			origin: {
+				kind: "github-marketplace" as const,
+				sourceId: "test-source",
+				marketplace: "vetta-open-abilities",
+				marketplaceVersion: "2026.07.3",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+			catalogSource: {
+				kind: "github" as const,
+				id: "test-source",
+				name: "Test source",
+				repository: "https://github.com/example/vetta-abilities",
+			},
+		};
+		const state = createState({
+			mcpConfig: {
+				mcpServers: {
+					github: { type: "http", url: "https://api.githubcopilot.com/mcp/" },
+				},
+			},
+		});
+
+		const items = buildMcpAbilities([ability], state, t);
+		const builtin = items.find((item) => item.id === "builtin:builtin:mcp:github");
+		const github = items.find((item) => item.id === "github:test-source:mcp:github");
+
+		expect(builtin).toMatchObject({ installed: true, serverName: "github" });
+		expect(github).toMatchObject({ installed: false });
+		expect(github?.serverName).toMatch(/^github--[a-f0-9]{8}$/);
+		expect(github?.serverName).not.toContain("_");
 	});
 });
 

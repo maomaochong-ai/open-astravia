@@ -1,10 +1,18 @@
 import { closeSync, openSync, readFileSync, unlinkSync, writeSync } from "node:fs";
 import { hostname } from "node:os";
+import {
+	currentProcessStartedAtMs,
+	isLocalProcessAlive,
+	readLocalProcessStartedAtMs,
+} from "@vetta/runtime-storage/conversation";
+
+const PROCESS_START_TOLERANCE_MS = 5_000;
 
 export interface LegacySessionFormatLeaseHolder {
 	readonly pid: number;
 	readonly hostname: string;
 	readonly openedAt: string;
+	readonly processStartedAt?: string;
 }
 
 export interface LegacySessionFormatLease {
@@ -63,6 +71,7 @@ function writeLease(lockPath: string): void {
 			pid: process.pid,
 			hostname: hostname(),
 			openedAt: new Date().toISOString(),
+			processStartedAt: new Date(currentProcessStartedAtMs()).toISOString(),
 		};
 		writeSync(descriptor, JSON.stringify(holder));
 	} finally {
@@ -80,7 +89,13 @@ function readLeaseHolder(lockPath: string): LegacySessionFormatLeaseHolder | und
 		if (typeof pid !== "number" || typeof lockHostname !== "string" || typeof openedAt !== "string") {
 			return undefined;
 		}
-		return { pid, hostname: lockHostname, openedAt };
+		const processStartedAt = Reflect.get(value, "processStartedAt");
+		return {
+			pid,
+			hostname: lockHostname,
+			openedAt,
+			...(typeof processStartedAt === "string" ? { processStartedAt } : {}),
+		};
 	} catch {
 		return undefined;
 	}
@@ -88,10 +103,13 @@ function readLeaseHolder(lockPath: string): LegacySessionFormatLeaseHolder | und
 
 function isProcessAlive(holder: LegacySessionFormatLeaseHolder): boolean {
 	if (holder.hostname !== hostname()) return true;
-	try {
-		process.kill(holder.pid, 0);
-		return true;
-	} catch {
-		return false;
+	if (!isLocalProcessAlive(holder.pid)) return false;
+	const liveStartedAt = readLocalProcessStartedAtMs(holder.pid);
+	if (liveStartedAt === undefined) return true;
+	const recordedStartedAt = holder.processStartedAt ? Date.parse(holder.processStartedAt) : Number.NaN;
+	if (Number.isFinite(recordedStartedAt)) {
+		return Math.abs(liveStartedAt - recordedStartedAt) <= PROCESS_START_TOLERANCE_MS;
 	}
+	const openedAt = Date.parse(holder.openedAt);
+	return !Number.isFinite(openedAt) || liveStartedAt <= openedAt + PROCESS_START_TOLERANCE_MS;
 }

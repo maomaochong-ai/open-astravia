@@ -1,0 +1,96 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "chart-renderer",
+	"version": "0.1.21",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"user_prompt": "把这组月度数据做成折线图，并突出异常波动。",
+					"assistant_reply": "我会选择合适的 Chart.js 图表类型，把可视化直接渲染在本次对话中。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "结构化数据即时成图",
+				"items": [
+					{
+						"title": "多种图表类型",
+						"description": "支持柱状图、折线图、饼图等常见 Chart.js 图表。",
+						"icon": "solar:chart-2-linear"
+					},
+					{
+						"title": "消息内渲染",
+						"description": "图表跟随工具调用显示，不需要打开额外窗口。",
+						"icon": "solar:chat-square-call-linear"
+					},
+					{
+						"title": "组合展示",
+						"description": "一次最多组织四张图，适合并列比较多组数据。",
+						"icon": "solar:widget-4-linear"
+					},
+					{
+						"title": "导出 PNG",
+						"description": "将已渲染的图表保存为图片。",
+						"icon": "solar:download-minimalistic-linear"
+					}
+				]
+			},
+			{
+				"type": "callout",
+				"tone": "info",
+				"content": "此能力仅在工作模式中提供。"
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"user_prompt": "Turn this monthly dataset into a line chart and highlight unusual changes.",
+							"assistant_reply": "I’ll choose an appropriate Chart.js chart and render the visualization directly in this conversation."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Render structured data instantly",
+						"items": [
+							{
+								"title": "Common chart types",
+								"description": "Create bar, line, pie, and other Chart.js charts.",
+								"icon": "solar:chart-2-linear"
+							},
+							{
+								"title": "Inline rendering",
+								"description": "Charts appear with their tool call instead of in another window.",
+								"icon": "solar:chat-square-call-linear"
+							},
+							{
+								"title": "Chart groups",
+								"description": "Arrange up to four charts for side-by-side comparisons.",
+								"icon": "solar:widget-4-linear"
+							},
+							{
+								"title": "PNG export",
+								"description": "Save a rendered chart as an image.",
+								"icon": "solar:download-minimalistic-linear"
+							}
+						]
+					},
+					{
+						"type": "callout",
+						"tone": "info",
+						"content": "This ability is available in Work mode only."
+					}
+				]
+			}
+		}
+	}
+}

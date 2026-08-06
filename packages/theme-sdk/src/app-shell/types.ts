@@ -10,7 +10,6 @@ export type PageHeaderTitleKey =
 	| "appShell.routeTitles.plugins"
 	| "appShell.routeTitles.settings"
 	| "appShell.routeTitles.project"
-	| "appShell.routeTitles.downloads"
 	| "appShell.routeTitles.chat";
 
 export interface PageHeaderProps {

@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from "react";
+import type { JSX } from "react";
 import { motion } from "motion/react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { cn } from "@vetta/ui";
 import type { NewSessionSkillBadgeRowProps } from "./NewSession";
 import { SkillCard } from "./SkillCard";
+import { useHorizontalDragScroll } from "./useHorizontalDragScroll";
 
 /** 技能徽章行高度占位（与加载中预留槽对齐）。 */
 export const NEW_SESSION_SKILL_BADGE_SLOT_MIN_H_CLASS = "min-h-9";
 
 /**
- * Skill pill row with horizontal scroll and edge arrows.
+ * Skill pill row with horizontal scroll, pointer drag, and edge arrows.
  * No enter animation (sits above input bar).
  */
 export function DefaultSkillBadgeRow({
@@ -21,38 +22,34 @@ export function DefaultSkillBadgeRow({
 	...props
 }: NewSessionSkillBadgeRowProps): JSX.Element {
 	const ThemedSkillCard = useThemeComponent("chat.newSessionSkillCard", SkillCard);
-	const scrollRef = useRef<HTMLDivElement>(null);
-	const [canPrev, setCanPrev] = useState(false);
-	const [canNext, setCanNext] = useState(false);
-
-	const updateEdges = useCallback(() => {
-		const el = scrollRef.current;
-		if (!el) return;
-		setCanPrev(el.scrollLeft > 1);
-		setCanNext(el.scrollLeft < el.scrollWidth - el.clientWidth - 1);
-	}, []);
-
-	useEffect(() => {
-		updateEdges();
-		const el = scrollRef.current;
-		if (!el) return;
-		const ro = new ResizeObserver(updateEdges);
-		ro.observe(el);
-		return () => ro.disconnect();
-	}, [updateEdges, skills.length]);
-
-	const scrollBy = useCallback((dir: -1 | 1) => {
-		const el = scrollRef.current;
-		if (!el) return;
-		el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: "smooth" });
-	}, []);
+	const {
+		canNext,
+		canPrev,
+		onLostPointerCapture,
+		onPointerCancel,
+		onPointerDown,
+		onPointerMove,
+		onPointerUp,
+		onScroll,
+		scrollByPage,
+		scrollRef,
+		shouldSuppressClick,
+	} = useHorizontalDragScroll({ itemCount: skills.length });
 
 	return (
 		<div className={cn("group relative mt-4 w-full", className)} {...props}>
 			<div
 				ref={scrollRef}
-				onScroll={updateEdges}
-				className={`no-scrollbar flex items-center gap-1.5 overflow-x-auto px-1 py-1 ${NEW_SESSION_SKILL_BADGE_SLOT_MIN_H_CLASS}`}
+				onScroll={onScroll}
+				onPointerDown={onPointerDown}
+				onPointerMove={onPointerMove}
+				onPointerUp={onPointerUp}
+				onPointerCancel={onPointerCancel}
+				onLostPointerCapture={onLostPointerCapture}
+				className={cn(
+					"no-scrollbar flex items-center gap-1.5 overflow-x-auto px-1 py-1 select-none touch-pan-y",
+					NEW_SESSION_SKILL_BADGE_SLOT_MIN_H_CLASS,
+				)}
 			>
 				{skills.map((s) => {
 					const active = selected?.name === s.name && selected?.type === "skill";
@@ -61,7 +58,10 @@ export function DefaultSkillBadgeRow({
 							key={s.name}
 							active={active}
 							item={s}
-							onClick={() => onSelect(s)}
+							onClick={() => {
+								if (shouldSuppressClick()) return;
+								onSelect(s);
+							}}
 							title={s.description || s.name}
 						/>
 					);
@@ -73,7 +73,7 @@ export function DefaultSkillBadgeRow({
 					<div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-background to-transparent" />
 					<motion.button
 						type="button"
-						onClick={() => scrollBy(-1)}
+						onClick={() => scrollByPage(-1)}
 						whileHover={{ scale: 1.08 }}
 						whileTap={{ scale: 0.92 }}
 						className="absolute -left-3 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 hover:border-primary/40 hover:text-primary"
@@ -88,7 +88,7 @@ export function DefaultSkillBadgeRow({
 					<div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-background to-transparent" />
 					<motion.button
 						type="button"
-						onClick={() => scrollBy(1)}
+						onClick={() => scrollByPage(1)}
 						whileHover={{ scale: 1.08 }}
 						whileTap={{ scale: 0.92 }}
 						className="absolute -right-3 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-card text-muted-foreground opacity-0 shadow-md transition-opacity group-hover:opacity-100 hover:border-primary/40 hover:text-primary"

@@ -1,0 +1,197 @@
+/* React Flow chrome for the graph workspace.
+ * Component layout stays in Tailwind; this file only covers RF internals. */
+
+.content-creation-flow .react-flow__edge-path {
+	stroke: color-mix(in srgb, var(--primary) 55%, var(--muted-foreground));
+	stroke-width: 1.5;
+}
+
+.content-creation-flow .react-flow__edge.is-related .react-flow__edge-path {
+	stroke: var(--primary);
+	stroke-width: 2;
+}
+
+.content-creation-flow .react-flow__edge-interaction {
+	stroke-width: 28;
+}
+
+/* Selection chrome: keep the active drag discoverable, then settle into a
+ * quiet theme-neutral group outline after multiple nodes are selected. */
+.content-creation-flow .react-flow__selection {
+	border: 1px solid color-mix(in srgb, var(--primary) 38%, transparent);
+	border-radius: var(--radius-md, 8px);
+	background: color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.content-creation-flow .react-flow__nodesselection-rect {
+	border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+	border-radius: var(--radius-lg, 12px);
+	background: color-mix(in srgb, var(--muted) 12%, transparent);
+}
+
+/* Resize: selection outline stays on the card itself.
+ * RF line controls are hit-only (no second frame — a painted border on a
+ * translate(-50%) strip sat outside the card and read as a gap). */
+.content-creation-flow .react-flow__resize-control {
+	z-index: 5;
+}
+
+/* Invisible edge hit strips — wide enough to grab, zero visual weight */
+.content-creation-flow .react-flow__resize-control.line {
+	border: 0 !important;
+	background: transparent;
+	opacity: 0;
+}
+
+.content-creation-flow .react-flow__resize-control.line.left,
+.content-creation-flow .react-flow__resize-control.line.right {
+	width: 14px;
+	top: 0;
+	height: 100%;
+	transform: translate(-50%, 0);
+}
+
+.content-creation-flow .react-flow__resize-control.line.left {
+	left: 0;
+}
+
+.content-creation-flow .react-flow__resize-control.line.right {
+	left: 100%;
+}
+
+.content-creation-flow .react-flow__resize-control.line.top,
+.content-creation-flow .react-flow__resize-control.line.bottom {
+	height: 14px;
+	left: 0;
+	width: 100%;
+	transform: translate(0, -50%);
+}
+
+.content-creation-flow .react-flow__resize-control.line.top {
+	top: 0;
+}
+
+.content-creation-flow .react-flow__resize-control.line.bottom {
+	top: 100%;
+}
+
+/* Small corner grips only — sit on the card corner, quiet chrome */
+.content-creation-flow .react-flow__resize-control.handle {
+	z-index: 6;
+	width: 8px;
+	height: 8px;
+	border: 1.5px solid color-mix(in srgb, var(--card) 88%, var(--background));
+	border-radius: 2px;
+	background: color-mix(in srgb, var(--primary) 72%, var(--card));
+	box-shadow: none;
+}
+
+.content-creation-flow .react-flow__resize-control.handle:hover {
+	background: var(--primary);
+	border-color: var(--background);
+}
+
+/* Zoom / fit controls (bottom-left): match vetta popover + button chrome */
+.content-creation-flow .react-flow__controls {
+	overflow: hidden;
+	border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+	border-radius: var(--radius-lg, 12px);
+	background: color-mix(in srgb, var(--popover) 94%, transparent);
+	box-shadow: 0 8px 24px color-mix(in srgb, black 12%, transparent);
+	backdrop-filter: blur(12px);
+}
+
+.content-creation-flow .react-flow__controls-button {
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+	background: transparent;
+	color: var(--muted-foreground);
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__controls-button svg {
+	max-width: 14px;
+	max-height: 14px;
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__controls-button:hover {
+	background: var(--accent);
+	color: var(--foreground);
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__controls-button:last-child {
+	border-bottom: 0;
+}
+
+.content-creation-flow .react-flow__controls-button path {
+	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__attribution {
+	display: none;
+}
+
+/* Persisted edges attach to invisible card-edge anchors. The visible plus
+ * handles sit outside the card and are only for starting a connection. */
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle,
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor::after,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle::after {
+	border: 0 !important;
+	background: transparent !important;
+	box-shadow: none !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor::after,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle::after {
+	display: none !important;
+	content: none !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor-left {
+	left: 0 !important;
+	right: auto !important;
+	transform: translate(-50%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-edge-anchor-right {
+	left: auto !important;
+	right: 0 !important;
+	transform: translate(50%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle-left {
+	left: 0 !important;
+	right: auto !important;
+	transform: translate(-100%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle-right {
+	left: auto !important;
+	right: 0 !important;
+	transform: translate(100%, -50%) !important;
+}
+
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle:hover > span,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle.connecting > span,
+.content-creation-flow .react-flow__handle.content-creation-node-action-handle.valid > span {
+	border-color: var(--primary);
+	color: var(--primary);
+	opacity: 1;
+	transform: scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.content-creation-flow *,
+	.content-creation-flow *::before,
+	.content-creation-flow *::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+		transition-duration: 0.01ms !important;
+	}
+}

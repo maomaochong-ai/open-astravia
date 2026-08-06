@@ -6,6 +6,8 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePluginTextResolver } from "../../plugins/runtime/plugin-i18n";
 import { useMcpSettingsModel } from "../../settings/components/useMcpSettingsModel";
+import { queryAbilityCatalog } from "../lib/ability-catalog-query";
+import { localizeMarketAbility } from "../lib/ability-presentation";
 import {
 	buildBundleAbilities,
 	buildMcpAbilities,
@@ -13,34 +15,20 @@ import {
 	buildSkillAbilities,
 	type LocalAbilityState,
 } from "../lib/build-ability-items";
-import {
-	ABILITY_CATEGORY_UNCATEGORIZED,
-	type AbilitiesModel,
-	type AbilityBannerIcon,
-	type AbilityGroup,
-	type AbilityItem,
-	type AbilityScope,
-} from "../types";
+import { withBuiltinAbilityDetail } from "../lib/builtin-ability-details";
+import { decorateAbilityConflicts } from "../lib/decorate-ability-conflicts";
+import { groupAbilities } from "../lib/group-abilities";
+import type { AbilitiesModel, AbilityBannerIcon, AbilityGroup, AbilityItem, AbilityScope } from "../types";
 import { useAbilityActions } from "./useAbilityActions";
 import { useAbilityData } from "./useAbilityData";
 
-/** 排序：待配置 > 可更新 > 已安装 > 热度 > 标题。 */
-function compareAbilities(a: AbilityItem, b: AbilityItem): number {
-	if (a.setupRequired !== b.setupRequired) return a.setupRequired ? -1 : 1;
-	if (a.needsUpdate !== b.needsUpdate) return a.needsUpdate ? -1 : 1;
-	if (a.installed !== b.installed) return a.installed ? -1 : 1;
-	if (a.downloadCount !== b.downloadCount) return b.downloadCount - a.downloadCount;
-	return a.title.localeCompare(b.title);
-}
-
-function matchesScope(item: AbilityItem, scope: AbilityScope): boolean {
-	return scope === "discover" ? item.fromMarket : item.installed;
-}
+const ABILITY_PAGE_SIZE = 60;
 
 export function useAbilitiesModel(): AbilitiesModel {
-	const { t } = useTranslation("settings");
+	const { t, i18n } = useTranslation("settings");
 	const [scope, setScope] = useState<AbilityScope>("discover");
 	const [searchQuery, setSearchQuery] = useState("");
+	const [visiblePages, setVisiblePages] = useState(1);
 
 	const data = useAbilityData();
 	const trPlugin = usePluginTextResolver();
@@ -68,42 +56,44 @@ export function useAbilitiesModel(): AbilitiesModel {
 		],
 	);
 
+	// 市场行先按界面语言归一（name / description / tags 取 detail.i18n[locale] 覆盖），
+	// 再喂给组装函数：卡片、搜索词、分组、详情页头部由此一并跟随语言。
+	const market = useMemo(
+		() => data.market.map((entry) => localizeMarketAbility(entry, i18n.language)),
+		[data.market, i18n.language],
+	);
+
 	const allItems = useMemo<AbilityItem[]>(() => {
-		const singles: AbilityItem[] = [
-			...buildSkillAbilities(data.market, localState),
-			...buildMcpAbilities(data.market, localState, t),
-			...buildPluginAbilities(data.market, localState, trPlugin),
-		];
-		return [...singles, ...buildBundleAbilities(data.market, singles, localState, t)];
-	}, [data.market, localState, t, trPlugin]);
+		const singles = [
+			...buildSkillAbilities(market, localState),
+			...buildMcpAbilities(market, localState, t),
+			...buildPluginAbilities(market, localState, trPlugin),
+		].map((item) => withBuiltinAbilityDetail(item, data.builtinPresentations));
+		return decorateAbilityConflicts([...singles, ...buildBundleAbilities(market, singles, localState, t)]);
+	}, [market, localState, t, trPlugin, data.builtinPresentations]);
 
-	const scoped = useMemo(() => allItems.filter((item) => matchesScope(item, scope)), [allItems, scope]);
+	const changeScope = useCallback((nextScope: AbilityScope) => {
+		setScope(nextScope);
+		setVisiblePages(1);
+	}, []);
+	const changeSearchQuery = useCallback((value: string) => {
+		setSearchQuery(value);
+		setVisiblePages(1);
+	}, []);
 
-	const items = useMemo(() => {
-		const normalized = searchQuery.trim().toLowerCase();
-		return scoped
-			.filter((item) => {
-				if (!normalized) return true;
-				return item.searchTerms.some((term) => term.toLowerCase().includes(normalized));
-			})
-			.sort(compareAbilities);
-	}, [scoped, searchQuery]);
+	const catalogPage = useMemo(
+		() =>
+			queryAbilityCatalog(allItems, {
+				scope,
+				keyword: searchQuery,
+				page: 1,
+				pageSize: visiblePages * ABILITY_PAGE_SIZE,
+			}),
+		[allItems, scope, searchQuery, visiblePages],
+	);
+	const items = catalogPage.items;
 
-	const groups = useMemo<AbilityGroup[]>(() => {
-		const byCategory = new Map<string, AbilityItem[]>();
-		for (const item of items) {
-			const key = item.category || ABILITY_CATEGORY_UNCATEGORIZED;
-			const bucket = byCategory.get(key);
-			if (bucket) bucket.push(item);
-			else byCategory.set(key, [item]);
-		}
-		const uncategorized = byCategory.get(ABILITY_CATEGORY_UNCATEGORIZED);
-		byCategory.delete(ABILITY_CATEGORY_UNCATEGORIZED);
-		const sorted = Array.from(byCategory.entries())
-			.sort(([a], [b]) => a.localeCompare(b))
-			.map(([category, list]) => ({ category, items: list }));
-		return uncategorized ? [...sorted, { category: ABILITY_CATEGORY_UNCATEGORIZED, items: uncategorized }] : sorted;
-	}, [items]);
+	const groups = useMemo<AbilityGroup[]>(() => groupAbilities(items), [items]);
 
 	const bannerIcons = useMemo<AbilityBannerIcon[]>(
 		() =>
@@ -111,50 +101,77 @@ export function useAbilitiesModel(): AbilitiesModel {
 		[allItems],
 	);
 
-	const findById = useCallback((id: string) => allItems.find((item) => item.id === id) ?? null, [allItems]);
+	const findById = useCallback(
+		(id: string) => {
+			const exact = allItems.find((item) => item.id === id);
+			if (exact) return exact;
+			const separator = id.indexOf(":");
+			if (separator < 1) return null;
+			const type = id.slice(0, separator);
+			const slug = id.slice(separator + 1);
+			const legacyMatches = allItems.filter((item) => item.type === type && item.slug === slug);
+			return (
+				legacyMatches.find((item) => item.installed) ??
+				legacyMatches.find((item) => item.catalogSource.kind === "server") ??
+				legacyMatches[0] ??
+				null
+			);
+		},
+		[allItems],
+	);
 
 	const errors = useMemo(
 		() => Array.from(new Set([data.error, actions.error].filter((value): value is string => Boolean(value)))),
 		[actions.error, data.error],
 	);
+	const detailErrors = useMemo(() => (actions.error ? [actions.error] : []), [actions.error]);
 
 	return {
 		scope,
-		setScope,
+		setScope: changeScope,
 		searchQuery,
-		setSearchQuery,
+		setSearchQuery: changeSearchQuery,
 		items,
+		totalItems: catalogPage.total,
+		hasMore: items.length < catalogPage.total,
+		loadMore: () => setVisiblePages((current) => current + 1),
 		groups,
 		allItems,
 		bannerIcons,
 		loading: data.loading || mcp.config === null,
 		refreshing: data.refreshing,
 		errors,
-		message: actions.message,
+		detailErrors,
 		importing: actions.importing,
 		mcp,
 		findById,
 		refresh: data.refresh,
 		install: actions.install,
+		installBundleMembers: actions.installBundleMembers,
 		uninstall: actions.uninstall,
 		toggle: actions.toggle,
 		setup: (item) => {
 			if (item.canConfigure && item.preset) {
-				mcp.onConfigureBuiltinSecrets(item.serverName);
+				mcp.onConfigureBuiltinSecrets(item.serverName, item.preset);
 				return;
 			}
 			if (item.usesOAuth && !item.authorized) void mcp.onAuthorizeOAuth(item.serverName);
 		},
-		configure: (item) => mcp.onConfigureBuiltinSecrets(item.serverName),
+		configure: (item) => mcp.onConfigureBuiltinSecrets(item.serverName, item.preset),
 		edit: (item) => mcp.onToggleEditServer(item.serverName),
 		revokeAuthorization: (item) => {
 			void mcp.onRevokeOAuth(item.serverName);
 		},
 		setPluginPermission: actions.setPluginPermission,
+		applyPluginSetup: actions.applyPluginSetup,
 		setPluginCommand: actions.setPluginCommand,
 		reloadPlugin: actions.reloadPlugin,
 		uninstallBundleMembers: actions.uninstallMembers,
 		importSkillArchive: actions.importSkillArchive,
+		importPluginArchive: actions.importPluginArchive,
+		addMarketplaceSource: data.addMarketplaceSource,
 		startAddManualMcp: () => mcp.onStartAddServer(),
+		permissionPromptSlug: actions.permissionPromptSlug,
+		dismissPermissionPrompt: actions.dismissPermissionPrompt,
 	};
 }

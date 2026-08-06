@@ -5,6 +5,15 @@ const desktopAppDir = join(import.meta.dirname, "..");
 export const skillPresetsDir = join(desktopAppDir, "..", "skill-presets");
 const manifestFileName = "skills-manifest.json";
 
+/**
+ * skill-presets 下不是 skill 的目录。
+ *
+ * 「未注册即报错」这条检查是为了防止新增 skill 时漏改 manifest，但仓库自身的工程
+ * 文件（测试、依赖）也住在这个目录下，不该被它误伤。列白名单而不是放宽检查：
+ * 漏注册仍然必须炸。
+ */
+const NON_SKILL_DIRS = new Set(["test", "node_modules"]);
+
 function readManifest() {
 	const manifestPath = join(skillPresetsDir, manifestFileName);
 	if (!existsSync(manifestPath)) {
@@ -28,6 +37,7 @@ export function stageSystemSkills(targetDir, logPrefix = "system-skills") {
 	const manifest = readManifest();
 	const registeredNames = new Set(Object.keys(manifest));
 	for (const name of readdirSync(skillPresetsDir)) {
+		if (NON_SKILL_DIRS.has(name)) continue;
 		const source = join(skillPresetsDir, name);
 		if (statSync(source).isDirectory() && !registeredNames.has(name)) {
 			throw new Error(`[${logPrefix}] 内置 Skill 未在 ${manifestFileName} 注册：${name}`);

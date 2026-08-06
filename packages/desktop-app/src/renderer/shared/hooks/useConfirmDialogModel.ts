@@ -1,5 +1,6 @@
+import { useShortcutScope } from "@shared/shortcuts";
 import { useAtom } from "jotai";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ConfirmDialogViewProps } from "../components/ui/ConfirmDialogView";
 import { confirmDialogAtom } from "../store/atoms";
@@ -28,17 +29,21 @@ export function useConfirmDialogModel(): ConfirmDialogViewProps {
 		[setState],
 	);
 
-	useEffect(() => {
-		if (!state) return;
-		function handleKey(e: KeyboardEvent) {
-			if (e.key === "Escape") {
-				state?.onCancel?.();
-				setState(null);
-			}
-		}
-		document.addEventListener("keydown", handleKey);
-		return () => document.removeEventListener("keydown", handleKey);
-	}, [state, setState]);
+	useShortcutScope({
+		id: "modal:confirm-dialog",
+		kind: "modal",
+		active: state != null,
+		exclusive: true,
+		bindings: [
+			{
+				key: "escape",
+				run: () => {
+					state?.onCancel?.();
+					setState(null);
+				},
+			},
+		],
+	});
 
 	return useMemo(
 		() => ({

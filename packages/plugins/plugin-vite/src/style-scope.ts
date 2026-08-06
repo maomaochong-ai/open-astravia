@@ -7,6 +7,20 @@ import type { Plugin } from "vite";
 const PLUGIN_ROOT_ATTRIBUTE = "data-vetta-plugin-root";
 const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const KEYFRAMES_PATTERN = /(?:^|-)keyframes$/i;
+const ICONIFY_CLASS_PATTERN = /^icon-\[[a-z0-9]+(?:-[a-z0-9]+)*--[a-z0-9]+(?:-[a-z0-9]+)*\]$/u;
+const ICONIFY_DECLARATION_VALUES: Readonly<Record<string, string>> = {
+	width: "1em",
+	height: "1em",
+	"-webkit-mask-image": "var(--svg)",
+	"mask-image": "var(--svg)",
+	"background-color": "currentColor",
+	display: "inline-block",
+	"-webkit-mask-size": "100% 100%",
+	"mask-size": "100% 100%",
+	"-webkit-mask-repeat": "no-repeat",
+	"mask-repeat": "no-repeat",
+};
+const ICONIFY_SVG_VALUE_PATTERN = /^url\((?:"|')?data:image\/svg\+xml,/u;
 
 function createPluginRootAttribute(pluginId: string) {
 	return selectorParser.attribute({
@@ -54,6 +68,46 @@ function isKeyframesAtRule(node: Node): boolean {
 	return node.type === "atrule" && KEYFRAMES_PATTERN.test((node as AtRule).name);
 }
 
+function hasOnlyIconifySelectors(rule: Rule): boolean {
+	let selectorCount = 0;
+	let valid = true;
+	selectorParser((selectors) => {
+		selectors.each((selector) => {
+			selectorCount += 1;
+			const nodes = selector.nodes.filter((node) => node.type !== "comment");
+			const candidate = nodes[0];
+			if (
+				nodes.length !== 1 ||
+				candidate?.type !== "class" ||
+				!ICONIFY_CLASS_PATTERN.test(candidate.value)
+			) {
+				valid = false;
+			}
+		});
+	}).processSync(rule.selector);
+	return valid && selectorCount > 0;
+}
+
+function hasOnlyIconifyDeclarations(rule: Rule): boolean {
+	let hasSvg = false;
+	let hasMask = false;
+	for (const node of rule.nodes) {
+		if (node.type !== "decl") return false;
+		if (node.prop === "--svg") {
+			if (!ICONIFY_SVG_VALUE_PATTERN.test(node.value)) return false;
+			hasSvg = true;
+			continue;
+		}
+		if (ICONIFY_DECLARATION_VALUES[node.prop] !== node.value) return false;
+		if (node.prop === "mask-image" || node.prop === "-webkit-mask-image") hasMask = true;
+	}
+	return hasSvg && hasMask;
+}
+
+function isSafeGlobalIconifyRule(rule: Rule): boolean {
+	return hasOnlyIconifySelectors(rule) && hasOnlyIconifyDeclarations(rule);
+}
+
 function createScopeRule(pluginId: string): AtRule {
 	return postcss.atRule({
 		name: "scope",
@@ -66,6 +120,10 @@ function scopeRulesInContainer(container: Container, pluginId: string): void {
 	let currentScope: AtRule | undefined;
 	for (const node of [...container.nodes]) {
 		if (node.type === "rule") {
+			if (isSafeGlobalIconifyRule(node)) {
+				currentScope = undefined;
+				continue;
+			}
 			if (!currentScope) {
 				currentScope = createScopeRule(pluginId);
 				node.before(currentScope);
@@ -82,7 +140,7 @@ function scopeRulesInContainer(container: Container, pluginId: string): void {
 	}
 }
 
-function scopePluginCss(css: string, pluginId: string): string {
+export function scopePluginCss(css: string, pluginId: string): string {
 	const root = postcss.parse(css);
 	root.walkRules((rule) => {
 		if (isInsideKeyframes(rule)) return;
@@ -103,12 +161,20 @@ function readPluginId(rootDir: string): string {
 
 export function createPluginStyleScopePlugin(): Plugin {
 	let pluginId = "";
+	let command: "build" | "serve" = "build";
 	return {
 		name: "vetta-plugin-style-scope",
-		apply: "build",
-		enforce: "post",
+		enforce: "pre",
 		configResolved(config) {
 			pluginId = readPluginId(config.root);
+			command = config.command;
+		},
+		transform(code, id) {
+			if (command !== "serve" || !id.split("?", 1)[0].endsWith(".css")) return;
+			return {
+				code: scopePluginCss(code, pluginId),
+				map: null,
+			};
 		},
 		generateBundle(_options, bundle) {
 			for (const output of Object.values(bundle)) {

@@ -7,5 +7,14 @@
     "type": "skill",
     "alias": "创建技能",
     "description": "创建或更新符合 Vetta 规范的 Agent Skill，并正确放置文件、注册 skills-manifest.json 或更新插件配置。"
+  },
+  "publish-ability": {
+    "name": "publish-ability",
+    "version": "2.1.0",
+    "source": "builtin",
+    "enabled": true,
+    "type": "skill",
+    "alias": "发布能力",
+    "description": "把 skill、scene、MCP、插件或能力套装提交到 Vetta 能力市场，讲清必填字段、多语言与审核流程。"
   }
 }

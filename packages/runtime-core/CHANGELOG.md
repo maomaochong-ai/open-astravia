@@ -48,6 +48,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 - **Agent Core Turn Engine Adapter**：新增 `AgentCoreTurnEngine`，将不可变 Runtime Snapshot、标准消息、模型流、Tool Loop、Tool Policy 和取消信号映射到 `@vetta/agent-core`；Runtime Tool 合同补充可取消执行、进度和阶段回报。
 - **引用计数 Runtime Snapshot Provider**：新增 `AtomicRuntimeSnapshotProvider` 和 acquire/release lease；Snapshot 热更新只影响后续 Turn，retired Feature 资源在所有活动 Turn 释放后再 dispose。
 - **隔离的 Greenfield Kernel 入口**：新增 `@vetta/runtime-core/kernel`，提供 Session 状态机、固定阶段 Typed Turn Pipeline、确定性 Feature Compiler、不可变 Runtime Snapshot 及存储、上下文和 Turn Engine Port；旧 `RuntimeHost` 生产入口保持不变。
+- **`SessionEvent` 新增 `retry.start` / `retry.end`，`ErrorEvent` 新增 `retryAttempts`**：自动重试从此对宿主可见。`auto_retry_start` 此前被翻译成 `error` 事件（导致每次重试都在 UI 里刷一条错误），`auto_retry_end` 则根本没有翻译分支，宿主无从得知重试何时结束。宿主现在可以在退避期显示「正在自动重试 2/3」，并在最终失败的错误上说明「已自动重试 N 次」。
+- **`flushPendingError(sessionId, state)`**：兑现挂起的 assistant 错误，见下方「错误延迟发射」。任何绕过 `RuntimeHost.prompt()` / `continue()` 自行驱动 agent 的路径都必须调用它，否则错误被永久吞掉。
+
 - **`SubagentInfo` 增加 `queued` 状态、`todoProgress` 与 `title`**：透传 coding-agent 工作流子代理（ADR-0044）的排队状态、todo 进度与人类可读标题给宿主 UI。
 - **顶层 `PromptRequest.promptRef` 与历史标记**：RuntimeHost 将结构化 Skill / Scene 引用透传给 coding-agent；历史转换从隐藏 expansion message 恢复 `prompt_ref_marker`，供宿主重载和编辑时重建选择状态，不把协议拼进用户正文。
 - **Subagent 协议与宿主开关**：`SessionEvent` 增加 `subagents_update` / `SubagentInfo`；`RuntimeHost` 在 `conversation`/`project`/`cli` 场景启用 `enableSubagents`；`listSubagents` / `interruptSubagent` 供 UI 重放与中断。
@@ -60,7 +63,11 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 ### Fixed
 
 - **Greenfield 初始化发布边界**：Runtime Factory 会在最终 Assembly 投影成功后才提交初始化事务；若返回对象构造阶段抛错，已创建的 Kernel Session 与 Composition 资源仍按逆序释放。
+- **会话标题与输入预测恒为中文，英文提问也拿到中文**：`generateAutoTitle` 的提示词写死「生成一个中文短标题」、system prompt 写死「只输出一个简短中文标题」，`generateNextPromptSuggestions` 与 `provide_prompt_suggestions` 的工具描述同样通篇中文——语言由提示词写死，与用户实际使用的语言无关。三处提示词改为英文撰写并显式要求「与用户消息同语言」输出（提示词自身的语言不再是语言信号）。同时放宽 `sanitizeAutoTitle` 的截断：原先一律砍到 14 个码点，对 CJK 合适，对英文不足两个词；改为含 CJK 走 14 字、纯拉丁走 40 字符且在词边界收尾，候选行长度阈值 30 → 60。
+
+- **插件在会话创建之后注册工具时，宿主拿不到新的激活工具集**：`reconfigureAgentPlugins` 原先一律挂起到下一次 prompt 才 apply，空闲会话的 `getState().activeToolNames` 会长期停在插件 activate 之前的旧集合。现在空闲会话经 300ms 防抖提前 apply（streaming / bash 运行中仍走 turn 边界），并新增 `SessionEvent` `active_tools_update` 广播新的激活工具集；prompt 侧会先等待进行中的 apply 落定。
 - **`RuntimeHost.prompt` 在开跑前确保 session cwd 存在**：desktop per-session 目录被删后 handle 仍存活时，mkdir 自愈，避免 bash/read 等工具报 Working directory does not exist。
+- **一次限流在宿主侧广播出 6~7 条重复 error 事件（错误延迟发射，ADR-0057）**：coding-agent 默认重试 3 次，每次失败都是一条 `stopReason === "error"` 的 assistant message，叠加被误译成 `error` 的 `auto_retry_start`，宿主收到一串内容相同的错误。翻译 `message_end` 时无法预知后续是否重试（重试判定发生在之后的 `agent_end`），故改为把失败挂进 `MapAgentEventState.pendingError`，由 `RuntimeHost.prompt()` / `continue()` 的 `finally` 兑现成唯一一条 error——`session.prompt()` 内部 await 了 `waitForRetry()`，走到 finally 时重试必然已结束；放 `finally` 而非成功分支，是为了让 abort 与 throw 路径同样兑现。挂起项会被重试成功、后续成功的 `message_end` 或用户中止清掉。
 
 ### Changed
 

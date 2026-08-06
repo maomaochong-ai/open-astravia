@@ -52,7 +52,7 @@ export function XianxiaBottomBar({
 				<XianxiaGrowthReportDialog cultivation={cultivation}>
 					<button
 						type="button"
-						className="relative flex h-14 flex-none items-center justify-center px-9 text-[18px] font-semibold text-white outline-none transition hover:brightness-110 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+						className="relative flex h-14 flex-none items-center justify-center px-9 text-[18px] font-semibold text-white outline-none transition hover:brightness-110 border border-transparent focus-visible:border-amber-200/80"
 					>
 						<HorizontalSliceImageDecoration
 							decoration={bottomBarButtonDecoration}

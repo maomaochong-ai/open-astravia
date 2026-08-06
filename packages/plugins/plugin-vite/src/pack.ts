@@ -1,5 +1,7 @@
+import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { listPluginManifestResources, parsePluginManifest, type PluginManifest } from "@vetta-org/plugin-sdk/manifest";
 
 export interface VettaPluginPackageFile {
 	fullPath: string;
@@ -16,21 +18,6 @@ export interface CreateVettaPluginPackageOptions {
 	manifestPath?: string;
 	releaseDir?: string;
 	distDir?: string;
-}
-
-interface PluginManifest {
-	id: string;
-	version: string;
-	entry: string;
-	styles?: string[];
-	agent?: {
-		systemPrompt?: {
-			promptPaths?: string[];
-		};
-		skillPaths?: string[];
-		/** Relative path to `.mcp.json` or present as object (inline). */
-		mcpServers?: string | Record<string, unknown>;
-	};
 }
 
 const crcTable = new Uint32Array(256);
@@ -51,58 +38,16 @@ function readString(record: Record<string, unknown>, key: string): string | unde
 	return typeof value === "string" ? value : undefined;
 }
 
-function readStringArray(record: Record<string, unknown>, key: string): string[] | undefined {
-	const value = record[key];
-	if (!Array.isArray(value)) {
-		return undefined;
+function validateAbilityDescriptor(value: unknown, pluginManifest: PluginManifest): void {
+	if (!isRecord(value)) throw new Error("ability.json must contain an object.");
+	if (
+		value.schemaVersion !== 1 ||
+		value.type !== "plugin" ||
+		value.slug !== pluginManifest.id ||
+		value.version !== pluginManifest.version
+	) {
+		throw new Error("ability.json identity must match plugin.json id and version.");
 	}
-	const strings = value.filter((entry): entry is string => typeof entry === "string");
-	return strings.length === value.length ? strings : undefined;
-}
-
-function readAgentManifest(record: Record<string, unknown>): PluginManifest["agent"] {
-	const agent = record.agent;
-	if (!isRecord(agent)) {
-		return undefined;
-	}
-	const systemPrompt = isRecord(agent.systemPrompt)
-		? {
-				promptPaths: readStringArray(agent.systemPrompt, "promptPaths"),
-			}
-		: undefined;
-	const mcpServersRaw = agent.mcpServers;
-	const mcpServers =
-		typeof mcpServersRaw === "string"
-			? mcpServersRaw
-			: isRecord(mcpServersRaw)
-				? mcpServersRaw
-				: undefined;
-	return {
-		systemPrompt,
-		skillPaths: readStringArray(agent, "skillPaths"),
-		mcpServers,
-	};
-}
-
-function parsePluginManifest(value: unknown): PluginManifest {
-	if (!isRecord(value)) {
-		throw new Error("plugin.json must contain an object.");
-	}
-
-	const id = readString(value, "id");
-	const version = readString(value, "version");
-	const entry = readString(value, "entry");
-	if (!id || !version || !entry) {
-		throw new Error("plugin.json must define string id, version, and entry fields.");
-	}
-
-	return {
-		id,
-		version,
-		entry,
-		agent: readAgentManifest(value),
-		styles: readStringArray(value, "styles"),
-	};
 }
 
 function parseJsonObject(buffer: Buffer, fileName: string): Record<string, unknown> {
@@ -263,6 +208,24 @@ async function collectRuntimeFiles(
 
 	addFile(manifestPath);
 
+	// 插件详情跟随插件包发布；ability.json 缺省兼容，存在时必须与 plugin.json 身份一致。
+	const abilityDescriptorPath = resolve(rootDir, "ability.json");
+	if (existsSync(abilityDescriptorPath)) {
+		validateAbilityDescriptor(
+			parseJsonObject(await readFile(abilityDescriptorPath), basename(abilityDescriptorPath)),
+			pluginManifest,
+		);
+		addFile(abilityDescriptorPath);
+		// 约定的展示资源目录；内联 blocks 可引用其中的图片，随包整体带上。
+		try {
+			for (const file of await collectFiles(resolve(rootDir, "presentation"))) {
+				addFile(file.fullPath);
+			}
+		} catch {
+			// optional presentation/ directory
+		}
+	}
+
 	const federationManifestPath = resolve(rootDir, pluginManifest.entry);
 	addFile(federationManifestPath);
 
@@ -290,18 +253,17 @@ async function collectRuntimeFiles(
 		// dist missing
 	}
 
-	for (const style of pluginManifest.styles ?? []) {
-		addFile(resolve(rootDir, style));
-	}
-
-	for (const promptPath of pluginManifest.agent?.systemPrompt?.promptPaths ?? []) {
-		for (const file of await collectPath(resolve(rootDir, promptPath))) {
-			addFile(file.fullPath);
+	for (const resource of listPluginManifestResources(pluginManifest)) {
+		if (resource.field === "entry") continue;
+		const resourcePath = resolve(rootDir, resource.path);
+		if (resource.kind === "file") {
+			if (!existsSync(resourcePath)) {
+				throw new Error(`plugin.json resource not found: ${resource.field} (${resource.path})`);
+			}
+			addFile(resourcePath);
+			continue;
 		}
-	}
-
-	for (const skillPath of pluginManifest.agent?.skillPaths ?? []) {
-		for (const file of await collectPath(resolve(rootDir, skillPath))) {
+		for (const file of await collectPath(resourcePath)) {
 			addFile(file.fullPath);
 		}
 	}
@@ -309,9 +271,6 @@ async function collectRuntimeFiles(
 	// Plugin-scoped MCP: include config file and conventional companion dirs when declared.
 	const mcpServers = pluginManifest.agent?.mcpServers;
 	if (mcpServers !== undefined) {
-		if (typeof mcpServers === "string") {
-			addFile(resolve(rootDir, mcpServers));
-		}
 		try {
 			for (const file of await collectFiles(resolve(rootDir, "mcp"))) {
 				addFile(file.fullPath);
@@ -363,8 +322,8 @@ export async function createVettaPluginPackage(
 	const outputPath = join(releaseDir, `${pluginManifest.id}-${pluginManifest.version}.zip`);
 	const files = await collectRuntimeFiles(rootDir, manifestPath, distDir);
 
-	await rm(releaseDir, { recursive: true, force: true });
 	await mkdir(releaseDir, { recursive: true });
+	await rm(outputPath, { force: true });
 	await writeFile(outputPath, await createZip(files));
 
 	return { outputPath, files };

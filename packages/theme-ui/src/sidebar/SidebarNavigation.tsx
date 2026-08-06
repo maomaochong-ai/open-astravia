@@ -55,7 +55,7 @@ export function SidebarNavigation({
 			{indicatorBounds && (
 				<motion.span
 					className={cn(
-						"pointer-events-none absolute z-10 overflow-visible rounded-md bg-primary/15",
+						"pointer-events-none absolute z-10 overflow-visible rounded-md bg-accent",
 						classNames?.indicator,
 					)}
 					initial={false}
@@ -146,7 +146,7 @@ export function SidebarNavigation({
 								className={cn(
 									"flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
 									item.active
-										? "bg-primary/10 font-semibold text-foreground"
+										? "bg-accent font-semibold text-foreground"
 										: "text-foreground hover:bg-accent/50",
 								)}
 							>

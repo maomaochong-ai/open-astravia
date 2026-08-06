@@ -3,11 +3,17 @@ import { join } from "node:path";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { app, BrowserWindow, ipcMain, powerMonitor } from "electron";
+import lockfile from "proper-lockfile";
 import type { RefreshOutcome } from "../../preload/api.js";
+import { syncCredentialFile } from "../auth/credential-store.js";
 import { DEFAULT_SERVER_URL, DEFAULT_SITE_URL } from "../constants.js";
 import { getAppLogger } from "../logger.js";
-import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
-import type { ModelsConfig, ProviderConfig } from "../models/model-settings-service.js";
+import {
+	listPresetProviders,
+	refreshPresetCatalog,
+	refreshPresetModels,
+	startPresetModelsAutoSync,
+} from "../models/presets/sync.js";
 import { peekSharedRuntime } from "../runtime.js";
 
 const settingsLog = getAppLogger("settings");
@@ -26,8 +32,37 @@ export function readSettings(): Record<string, unknown> {
 	}
 }
 
-export function writeSettings(settings: Record<string, unknown>): void {
+// 刻意不导出：整份写回必须经 updateSettings 在锁内完成，
+// 裸写会绕过跨进程互斥，重新打开被覆盖的窗口。
+function writeSettings(settings: Record<string, unknown>): void {
 	atomicWriteJSON(getSettingsPath(), settings);
+}
+
+/**
+ * 锁内读-改-写 settings.json。所有「读出整份 → 改几个键 → 整份写回」都必须走这里。
+ *
+ * settings.json 是**跨进程**共享的：coding-agent 的 FileSettingsStorage 用
+ * proper-lockfile 锁同一个文件，同机再跑一个客户端实例（dev + 打包版）也会写它。
+ * 无锁的读-改-写之间被别的进程插一次写，就会整份覆盖回旧内容——落到 token 上
+ * 就是把已经轮换掉的 serverRefreshToken 写回去，下次 refresh 出示的即是已撤销值，
+ * 服务端按重放处理，用户直接掉登录。
+ *
+ * 用与 coding-agent 相同的库和锁文件（`<path>.lock`）才能真正互斥。
+ * 文件尚不存在时不加锁（与 coding-agent 的处理一致）：此时没有别的内容可覆盖。
+ */
+export function updateSettings(mutate: (settings: Record<string, unknown>) => void): void {
+	const path = getSettingsPath();
+	let release: (() => void) | undefined;
+	try {
+		if (existsSync(path)) {
+			release = lockfile.lockSync(path, { realpath: false });
+		}
+		const settings = readSettings();
+		mutate(settings);
+		writeSettings(settings);
+	} finally {
+		release?.();
+	}
 }
 
 interface RemoteProvidersResult {
@@ -38,7 +73,8 @@ interface RemoteProvidersResult {
 // 主进程发起的请求遇到 401 时，广播给所有渲染窗口，
 // 让渲染层统一走 logout 流程（清 token / user / 远程 providers / SSE）。
 // 不要在这里做任何会影响本地会话的事——本地模型用户可完全离线运行。
-function broadcastUnauthorized(): void {
+function broadcastUnauthorized(reason: string): void {
+	settingsLog.warn(`广播 unauthorized，渲染层将登出：${reason}`);
 	for (const win of BrowserWindow.getAllWindows()) {
 		if (!win.isDestroyed()) {
 			win.webContents.send("vetta:auth:unauthorized");
@@ -70,10 +106,12 @@ let refreshInFlight: Promise<RefreshOutcome> | null = null;
 const REFRESH_TIMEOUT_MS = 30_000;
 
 function persistTokens(access: string, refresh: string): void {
-	const settings = readSettings();
-	settings.serverToken = access;
-	settings.serverRefreshToken = refresh;
-	writeSettings(settings);
+	updateSettings((settings) => {
+		settings.serverToken = access;
+		settings.serverRefreshToken = refresh;
+	});
+	// 同步下沉给独立进程（内置 MCP server 读它拿登录态）
+	syncCredentialFile(access);
 	// 同步给已运行的 coding-agent session，避免它继续用旧 access token
 	const runtime = peekSharedRuntime();
 	if (runtime) {
@@ -83,12 +121,30 @@ function persistTokens(access: string, refresh: string): void {
 	}
 }
 
+/**
+ * 读 401 响应体里的业务错误码。掉登录的排查全靠它区分三种成因：
+ * 40105 无效（本地存的值服务端根本不认识）/ 40106 过期（离线超过 refresh TTL）/
+ * 40107 已撤销（被轮换掉后重放，或整条链被判定盗用）。只看 HTTP 401 分不出来。
+ * 响应体已被读走，调用方不要再读第二次。
+ */
+async function describeRefreshRejection(response: Response): Promise<string> {
+	try {
+		const body = (await response.json()) as { code?: number; message?: string };
+		return `code=${body.code ?? "?"} message=${body.message ?? ""}`;
+	} catch {
+		return "code=? (响应体非 JSON)";
+	}
+}
+
 export async function tryRefreshAccessToken(): Promise<RefreshOutcome> {
 	if (refreshInFlight) return refreshInFlight;
 	refreshInFlight = (async (): Promise<RefreshOutcome> => {
 		const settings = readSettings();
 		const refreshToken = settings.serverRefreshToken as string | undefined;
-		if (!refreshToken) return { status: "unauthorized" };
+		if (!refreshToken) {
+			settingsLog.warn("refresh 放弃：settings.json 里没有 serverRefreshToken，按未登录处理");
+			return { status: "unauthorized" };
+		}
 		const url = `${DEFAULT_SERVER_URL.replace(/\/$/, "")}/auth/refresh`;
 		try {
 			const controller = new AbortController();
@@ -109,22 +165,30 @@ export async function tryRefreshAccessToken(): Promise<RefreshOutcome> {
 			}
 			// 服务端对 refresh token 失效/过期/撤销一律返回 HTTP 401（见 api errcode 40105/40106/40107）。
 			// 这是唯一应当登出的明确信号。
-			if (response.status === 401) return { status: "unauthorized" };
+			if (response.status === 401) {
+				settingsLog.warn(`refresh 被拒绝(401)，即将登出：${await describeRefreshRejection(response)}`);
+				return { status: "unauthorized" };
+			}
 			// 其它非 2xx（5xx 等）视为暂时性，保留会话。
-			if (!response.ok) return { status: "transient" };
+			if (!response.ok) {
+				settingsLog.warn(`refresh 暂时性失败：HTTP ${response.status}，保留会话`);
+				return { status: "transient" };
+			}
 			const body = (await response.json()) as {
 				code: number;
 				data?: { access_token?: string; refresh_token?: string };
 			};
 			// 200 但 body 异常：保守按暂时性处理，不登出。
 			if (body.code !== 0 || !body.data?.access_token || !body.data?.refresh_token) {
+				settingsLog.warn(`refresh 返回 200 但响应体异常(code=${body.code})，按暂时性处理，保留会话`);
 				return { status: "transient" };
 			}
 			persistTokens(body.data.access_token, body.data.refresh_token);
 			broadcastTokenRefreshed(body.data.access_token, body.data.refresh_token);
 			return { status: "ok", accessToken: body.data.access_token };
-		} catch {
+		} catch (error) {
 			// 网络失败 / abort / 超时 → 暂时性，绝不登出。
+			settingsLog.warn("refresh 请求失败(网络/超时)，保留会话:", error);
 			return { status: "transient" };
 		}
 	})();
@@ -164,7 +228,7 @@ async function authedGet(path: string, timeoutMs = 5000): Promise<Response | nul
 	if (res.status === 401) {
 		const outcome = await tryRefreshAccessToken();
 		if (outcome.status === "unauthorized") {
-			broadcastUnauthorized();
+			broadcastUnauthorized(`${path} 返回 401 且 refresh 失败`);
 			return res;
 		}
 		if (outcome.status === "transient") {
@@ -175,7 +239,7 @@ async function authedGet(path: string, timeoutMs = 5000): Promise<Response | nul
 		res = await doFetch(token);
 		if (res.status === 401) {
 			// 用刚换来的新 token 仍 401 → 确属鉴权失败，登出。
-			broadcastUnauthorized();
+			broadcastUnauthorized(`${path} 用刚刷新的 token 重试仍返回 401`);
 		}
 	}
 	return res;
@@ -196,148 +260,6 @@ export async function fetchRemoteProviders(): Promise<RemoteProvidersResult> {
 	} catch {
 		return { providers: {}, error: "服务器不可达" };
 	}
-}
-
-// ─── 预设模板（provider templates，BYOK 直连，见 ADR-0015 / CONTEXT.md「预设模板」）───
-
-interface ProviderTemplate {
-	id: string;
-	displayName: string;
-	api: string;
-	baseUrl?: string;
-	icon?: string;
-	models: Array<{
-		id: string;
-		name?: string;
-		api?: string;
-		reasoning?: boolean;
-		input?: string[];
-		contextWindow?: number;
-		maxTokens?: number;
-		cost?: { input: number; output: number; cacheRead: number; cacheWrite: number };
-	}>;
-}
-
-interface ProviderTemplatesResult {
-	templates: ProviderTemplate[];
-	error?: string;
-}
-
-/** 服务端 /providers/templates.json 的 provider 形状(公开,不含 key)。 */
-interface RemoteTemplateProvider {
-	display_name?: string;
-	displayName?: string;
-	api: string;
-	baseUrl?: string;
-	base_url?: string;
-	icon?: string;
-	models?: Array<{
-		id: string;
-		name?: string;
-		api?: string;
-		reasoning?: boolean;
-		input?: string[];
-		contextWindow?: number;
-		maxTokens?: number;
-		cost?: { input: number; output: number; cacheRead: number; cacheWrite: number };
-	}>;
-}
-
-/** 公开免登录 GET——预设模板目录无密钥,不需要也不应带 Authorization。 */
-async function publicGet(path: string, timeoutMs = 5000): Promise<Response | null> {
-	const url = `${DEFAULT_SERVER_URL.replace(/\/$/, "")}${path}`;
-	try {
-		const controller = new AbortController();
-		const timer = setTimeout(() => controller.abort(), timeoutMs);
-		try {
-			return await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-		} finally {
-			clearTimeout(timer);
-		}
-	} catch {
-		return null;
-	}
-}
-
-export async function fetchProviderTemplates(): Promise<ProviderTemplatesResult> {
-	const response = await publicGet("/providers/templates.json");
-	if (!response) return { templates: [], error: "服务器不可达" };
-	if (!response.ok) return { templates: [], error: `HTTP ${response.status}` };
-	try {
-		const body = (await response.json()) as {
-			code: number;
-			data?: { providers?: Record<string, RemoteTemplateProvider> };
-		};
-		if (body.code !== 0 || !body.data?.providers) return { templates: [] };
-		const templates: ProviderTemplate[] = [];
-		for (const [id, p] of Object.entries(body.data.providers)) {
-			templates.push({
-				id,
-				displayName: p.displayName ?? p.display_name ?? id,
-				api: p.api,
-				baseUrl: p.baseUrl ?? p.base_url,
-				icon: p.icon,
-				models: (p.models ?? []).map((m) => ({
-					id: m.id,
-					name: m.name,
-					api: m.api,
-					reasoning: m.reasoning,
-					input: m.input,
-					contextWindow: m.contextWindow,
-					maxTokens: m.maxTokens,
-					cost: m.cost,
-				})),
-			});
-		}
-		return { templates };
-	} catch {
-		return { templates: [] };
-	}
-}
-
-/**
- * 在线合并:用服务端模板的最新元数据覆写本地 models.json 中 source:"template" 的条目,
- * 只保留用户填的 apiKey;服务端已删除该模板(byId 无命中)则保留本地快照不动。
- * 手搓自定义服务商(无 source 标记)绝不触碰。返回 models.json 是否被改写。
- */
-function mergeAdoptedTemplates(config: ModelsConfig, templates: ProviderTemplate[]): boolean {
-	const byId = new Map(templates.map((t) => [t.id, t]));
-	let changed = false;
-	for (const [name, p] of Object.entries(config.providers)) {
-		if (p.source !== "template") continue;
-		const t = byId.get(p.templateId ?? name);
-		if (!t) continue; // 服务端删除 → 回退快照,保留本地条目
-		const merged: ProviderConfig = {
-			...p,
-			displayName: t.displayName,
-			api: t.api,
-			baseUrl: t.baseUrl,
-			icon: t.icon,
-			models: t.models,
-		};
-		if (JSON.stringify(merged) !== JSON.stringify(p)) {
-			config.providers[name] = merged;
-			changed = true;
-		}
-	}
-	return changed;
-}
-
-/** 拉取模板并就地在线合并已采纳条目。返回 live 模板列表供渲染层展示。 */
-export async function syncProviderTemplates(): Promise<ProviderTemplatesResult> {
-	const result = await fetchProviderTemplates();
-	if (result.templates.length > 0) {
-		try {
-			const models = getDesktopModelSettingsService();
-			const config = await models.getConfig();
-			if (mergeAdoptedTemplates(config, result.templates)) {
-				await models.replaceConfig(config);
-			}
-		} catch (err) {
-			settingsLog.warn("mergeAdoptedTemplates failed:", err);
-		}
-	}
-	return result;
 }
 
 interface SubscriptionWindow {
@@ -423,10 +345,10 @@ function registerWakeRefreshHooks(): () => void {
 
 export function registerSettingsIpc(): () => void {
 	// 清理 settings.json 中残留的 serverUrl，现在统一由环境变量管理
-	const settings = readSettings();
-	if ("serverUrl" in settings) {
-		delete settings.serverUrl;
-		writeSettings(settings);
+	if ("serverUrl" in readSettings()) {
+		updateSettings((settings) => {
+			delete settings.serverUrl;
+		});
 	}
 
 	ipcMain.handle("vetta:settings:get-server-url", () => {
@@ -443,14 +365,16 @@ export function registerSettingsIpc(): () => void {
 	});
 
 	ipcMain.handle("vetta:settings:set-server-token", async (_event, token: unknown) => {
-		const settings = readSettings();
 		const nextToken = typeof token === "string" ? token : undefined;
-		if (nextToken !== undefined) {
-			settings.serverToken = nextToken;
-		} else {
-			delete settings.serverToken;
-		}
-		writeSettings(settings);
+		updateSettings((settings) => {
+			if (nextToken !== undefined) {
+				settings.serverToken = nextToken;
+			} else {
+				delete settings.serverToken;
+			}
+		});
+		// 同步下沉给独立进程（内置 MCP server 读它拿登录态）；登出时会删掉该文件
+		syncCredentialFile(nextToken);
 		// Push fresh auth to any active sessions so they pick up the new token
 		// without requiring an app restart (fixes 401-after-login bug).
 		const runtime = peekSharedRuntime();
@@ -469,27 +393,41 @@ export function registerSettingsIpc(): () => void {
 	});
 
 	ipcMain.handle("vetta:settings:set-server-refresh-token", (_event, token: unknown) => {
-		const settings = readSettings();
 		const nextToken = typeof token === "string" ? token : undefined;
-		if (nextToken !== undefined) {
-			settings.serverRefreshToken = nextToken;
-		} else {
-			delete settings.serverRefreshToken;
-		}
-		writeSettings(settings);
+		updateSettings((settings) => {
+			if (nextToken !== undefined) {
+				settings.serverRefreshToken = nextToken;
+			} else {
+				delete settings.serverRefreshToken;
+			}
+		});
 	});
 
 	ipcMain.handle("vetta:models:fetch-remote", async () => {
 		return fetchRemoteProviders();
 	});
 
-	ipcMain.handle("vetta:models:fetch-templates", async () => {
-		return syncProviderTemplates();
+	// 预设服务商目录内置在客户端(见 ADR-0050);模型清单取自 models.dev 公共目录,免 key 可见。
+	ipcMain.handle("vetta:models:list-presets", async () => {
+		return listPresetProviders();
 	});
 
-	// 启动时静默同步一次:让已采纳的预设模板拿到服务端最新元数据(url/模型/图标),
-	// 即便用户从不打开设置页,ModelSelector 也能反映更新。失败静默(离线回退快照)。
-	void syncProviderTemplates().catch(() => {});
+	// 手动刷新某预设服务商的模型列表:只拉不写,由渲染层连同 key 一起落盘。
+	ipcMain.handle("vetta:models:refresh-preset-models", async (_event, providerId: unknown, apiKey: unknown) => {
+		if (typeof providerId !== "string" || !providerId.trim()) {
+			return { models: [], error: { code: "unknown-provider", params: { provider: String(providerId) } } };
+		}
+		return refreshPresetModels(providerId.trim(), typeof apiKey === "string" ? apiKey : undefined);
+	});
+
+	// 手动刷新公共目录:清掉失败冷却强制重拉,错误原样回给渲染层。
+	ipcMain.handle("vetta:models:refresh-preset-catalog", async () => {
+		return refreshPresetCatalog();
+	});
+
+	// 启动时同步一次已启用预设服务商的模型列表,之后每 12 小时一次。
+	// 即便用户从不打开设置页,ModelSelector 也能拿到上游最新模型。失败静默(保留本地快照)。
+	const stopPresetAutoSync = startPresetModelsAutoSync();
 
 	ipcMain.handle("vetta:subscription:status", async () => {
 		return fetchSubscriptionStatus();
@@ -505,13 +443,16 @@ export function registerSettingsIpc(): () => void {
 
 	return () => {
 		teardownWakeHooks();
+		stopPresetAutoSync();
 		ipcMain.removeHandler("vetta:settings:get-server-url");
 		ipcMain.removeHandler("vetta:settings:get-server-token");
 		ipcMain.removeHandler("vetta:settings:set-server-token");
 		ipcMain.removeHandler("vetta:settings:get-server-refresh-token");
 		ipcMain.removeHandler("vetta:settings:set-server-refresh-token");
 		ipcMain.removeHandler("vetta:models:fetch-remote");
-		ipcMain.removeHandler("vetta:models:fetch-templates");
+		ipcMain.removeHandler("vetta:models:list-presets");
+		ipcMain.removeHandler("vetta:models:refresh-preset-catalog");
+		ipcMain.removeHandler("vetta:models:refresh-preset-models");
 		ipcMain.removeHandler("vetta:subscription:status");
 		ipcMain.removeHandler("vetta:auth:refresh-token");
 	};

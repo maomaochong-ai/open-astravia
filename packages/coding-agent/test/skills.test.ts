@@ -476,6 +476,22 @@ describe("skills", () => {
 				),
 			).toBe(true);
 		});
+
+		it("lets an explicit skillPaths skill win over the generic Agent Skill (desktop/session path)", () => {
+			// desktop 与会话运行时都是 includeDefaults:false + 显式 skillPaths，
+			// 通用目录必须在这条路径下同样让位，否则同名 skill 会被重复感知。
+			const { skills } = loadSkills({
+				agentDir: emptyAgentDir,
+				cwd: agentsPriorityCwd,
+				sceneDir: emptySceneDir,
+				includeDefaults: false,
+				includeAgentSkills: true,
+				skillPaths: [join(agentsPriorityCwd, CONFIG_DIR_NAME, "skills")],
+			});
+			const shared = skills.filter((s) => s.name === "shared-skill");
+			expect(shared).toHaveLength(1);
+			expect(shared[0].source).toBe("project");
+		});
 	});
 
 	describe("collision handling", () => {

@@ -31,5 +31,14 @@
 		"openGitHub": "打开 GitHub 进行授权",
 		"closeAfterAuthorization": "在 Vetta 中完成授权后即可关闭此窗口。",
 		"deviceFlowDisabled": "设备码请求失败（422）。请在 OAuth 或 GitHub App 设置中启用 Device Flow：{{details}}"
+	},
+	"updater": {
+		"errors": {
+			"developmentUnsupported": "开发模式不支持自动更新",
+			"configurationUnavailable": "当前构建未配置更新源",
+			"checkFailed": "检查更新失败",
+			"downloadFailed": "下载更新失败",
+			"installFailed": "安装更新失败"
+		}
 	}
 }

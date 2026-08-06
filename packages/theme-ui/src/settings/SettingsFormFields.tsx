@@ -56,7 +56,7 @@ export function InputField({
 			onBlur={onBlur}
 			onKeyDown={onKeyDown}
 			placeholder={placeholder}
-			className="h-8 w-full rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
+			className="h-8 w-full rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50"
 		/>
 	);
 }
@@ -78,7 +78,7 @@ export function TextareaField({
 			onChange={(e) => onChange(e.target.value)}
 			placeholder={placeholder}
 			rows={rows}
-			className="w-full resize-none rounded-lg border border-border bg-card px-2.5 py-2 font-mono text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary/30"
+			className="w-full resize-none rounded-lg border border-border bg-card px-2.5 py-2 font-mono text-[12px] text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-primary/50"
 		/>
 	);
 }

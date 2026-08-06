@@ -12,10 +12,6 @@ import type { AbilityItem } from "../../types";
 import { AbilityIcon } from "../AbilityIcon";
 import { AbilityStatusBadges, AbilityTypeBadge } from "../AbilityBadges";
 
-/** 主 CTA 之外的动作统一走这套主题色描边样式（权限配置 / 配置凭证 / 停用…）。 */
-export const ABILITY_DETAIL_ASIDE_BUTTON_CLASS =
-	"border-primary/30 text-primary hover:bg-primary/10 hover:text-primary";
-
 const SECONDARY_ICONS: Record<AbilitySecondaryAction, string> = {
 	disable: "icon-[solar--pause-circle-linear]",
 	configure: "icon-[solar--key-minimalistic-square-linear]",
@@ -134,24 +130,36 @@ export function AbilityDetailHeader({
 							{t(`detail.primary.${primary}`)}
 						</Button>
 					) : null}
+					{secondaries
+						.filter((kind) => kind !== "remove")
+						.map((kind) => (
+							<Button
+								key={kind}
+								variant="secondary"
+								size="lg"
+								disabled={item.busy}
+								// 没有主 CTA（已启用）时，由停用/配置顶替它撑满这一行
+								className={cn(primary === "none" && "min-w-40 flex-1")}
+								onClick={() => onSecondary(kind)}
+							>
+								<span className={cn("h-4 w-4", SECONDARY_ICONS[kind])} />
+								{t(`detail.secondary.${kind}`)}
+							</Button>
+						))}
+					{/* 类型专属入口居中，移除永远在最右 */}
 					{primaryAside}
-					{secondaries.map((kind) => (
+					{secondaries.includes("remove") ? (
 						<Button
-							key={kind}
 							variant="outline"
 							size="lg"
 							disabled={item.busy}
-							className={cn(
-								kind === "remove"
-									? "border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
-									: ABILITY_DETAIL_ASIDE_BUTTON_CLASS,
-							)}
-							onClick={() => onSecondary(kind)}
+							className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+							onClick={() => onSecondary("remove")}
 						>
-							<span className={cn("h-4 w-4", SECONDARY_ICONS[kind])} />
-							{t(`detail.secondary.${kind}`)}
+							<span className={cn("h-4 w-4", SECONDARY_ICONS.remove)} />
+							{t("detail.secondary.remove")}
 						</Button>
-					))}
+					) : null}
 				</div>
 			) : null}
 		</div>

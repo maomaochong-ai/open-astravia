@@ -30,17 +30,14 @@
 		"download": "下载",
 		"close": "关闭 (Esc)"
 	},
-	"loginDialog": {
-		"title": "登录 Vetta",
-		"subtitle": "使用 Vetta 账号登录",
-		"accountPlaceholder": "账号",
-		"passwordPlaceholder": "密码",
-		"login": "登录",
-		"loggingIn": "登录中...",
-		"oauthDivider": "或",
+	"login": {
 		"oauthButton": "授权登录",
-		"footerHint": "登录即表示同意服务条款与隐私政策",
-		"error": "登录失败"
+		"waitingTitle": "正在等待浏览器授权",
+		"waitingHint": "完成后将自动登录",
+		"reopen": "重新打开链接",
+		"retry": "重新授权",
+		"openFailed": "浏览器打开失败，请重试",
+		"rejected": "授权链接已失效，请重新登录"
 	},
 	"actionApproval": {
 		"reject": "拒绝",
@@ -735,7 +732,6 @@
 			"skills": "能力",
 			"plugins": "插件",
 			"connectors": "连接器",
-			"downloads": "下载中心",
 			"settings": "设置"
 		}
 	},
@@ -912,7 +908,6 @@
 			"plugins": "插件",
 			"settings": "设置",
 			"project": "项目详情",
-			"downloads": "下载中心",
 			"chat": "对话"
 		},
 		"sidebarTrigger": {

@@ -119,7 +119,7 @@ export function BatchTasksTaskApprovalView({
 									id="batch-task-resume-text"
 									value={resumeText}
 									onChange={(event) => onResumeTextChange(event.target.value)}
-									className="flex field-sizing-content min-h-16 w-full min-h-28 resize-y rounded-lg border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+									className="flex field-sizing-content min-h-16 w-full min-h-28 resize-y rounded-lg border border-input bg-transparent px-2.5 py-2 text-base transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring md:text-sm dark:bg-input/30"
 								/>
 							</div>
 						))}

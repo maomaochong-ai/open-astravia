@@ -225,6 +225,7 @@ export async function createGreenfieldSessionPeripheralAssembly(
 	];
 	const baseProfile: AgentProfile = {
 		...options.codingTools.profile,
+		salvageTextToolCalls: ["progress", "todo"],
 		features,
 	};
 

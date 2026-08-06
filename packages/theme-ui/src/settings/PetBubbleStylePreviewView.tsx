@@ -24,7 +24,7 @@ export function PetBubbleStylePreviewView({
 			aria-pressed={selected}
 			className={cn(
 				"overflow-hidden rounded-lg border border-border bg-card text-left transition-colors",
-				"hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring",
+				"hover:border-primary/40 hover:bg-accent/40 focus-visible:outline-none focus-visible:border-ring",
 				"disabled:cursor-not-allowed disabled:opacity-60",
 				selected && "border-primary/40 bg-primary/10 ring-1 ring-inset ring-primary/30",
 			)}

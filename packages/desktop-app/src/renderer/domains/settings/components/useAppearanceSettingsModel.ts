@@ -1,10 +1,12 @@
 import { useCursorStyle } from "@shared/hooks/useCustomCursor";
 import { useLanguage } from "@shared/hooks/useLanguage";
 import { useNarrowScreen } from "@shared/hooks/useNarrowScreen";
+import { useSidebarStyle } from "@shared/hooks/useSidebarStyle";
 import { useTheme } from "@shared/hooks/useTheme";
 import type { ThemeMode } from "@shared/store/atoms";
 import { type CursorStyle, STOAT_CURSOR_PREVIEW_URL } from "@shared/theme/cursor";
 import { useThemeRuntime } from "@shared/theme/runtime";
+import type { SidebarStyle } from "@shared/theme/sidebar-style";
 import { THEMES } from "@shared/theme/themes";
 import type { ThemeDef } from "@shared/theme/tokens";
 import { useMemo } from "react";
@@ -54,6 +56,13 @@ export interface AppearanceCursorOption {
 	icon?: string;
 }
 
+export interface AppearanceSidebarStyleOption {
+	active: boolean;
+	hint: string;
+	id: SidebarStyle;
+	label: string;
+}
+
 export interface AppearanceSettingsModel {
 	actions: {
 		changeLanguage: (language: LanguagePreference) => void;
@@ -61,6 +70,7 @@ export interface AppearanceSettingsModel {
 		changeThemeName: (id: string, point: AppearancePoint) => void;
 		selectUiTheme: (id: string) => void;
 		setCursorStyle: (style: CursorStyle) => void;
+		setSidebarStyle: (style: SidebarStyle) => void;
 	};
 	activeUiThemeId: string;
 	cursorOptions: AppearanceCursorOption[];
@@ -71,6 +81,7 @@ export interface AppearanceSettingsModel {
 			cursor: string;
 			language: string;
 			mode: string;
+			sidebar: string;
 			theme: string;
 			uiTheme: string;
 		};
@@ -84,6 +95,8 @@ export interface AppearanceSettingsModel {
 	narrow: boolean;
 	/** 是否展示「界面主题」区段（`VETTA_SHOW_UI_THEME=true`） */
 	showUiTheme: boolean;
+	sidebarStyle: SidebarStyle;
+	sidebarStyleOptions: AppearanceSidebarStyleOption[];
 	themeName: string;
 	themes: ThemeDef[];
 	uiThemes: AppearanceUiThemeOption[];
@@ -155,13 +168,23 @@ const CURSOR_OPTIONS = [
 	},
 ] as const;
 
+const SIDEBAR_STYLE_OPTIONS = [
+	{
+		id: "classic" as const,
+		labelKey: "sidebarStyleClassicTitle",
+		hintKey: "sidebarStyleClassicHint",
+	},
+	{
+		id: "floating" as const,
+		labelKey: "sidebarStyleFloatingTitle",
+		hintKey: "sidebarStyleFloatingHint",
+	},
+] as const;
+
 const COLOR_THEME_LABEL_KEYS = {
 	mono: "colorThemes.mono",
 	default: "colorThemes.default",
-	emerald: "colorThemes.emerald",
 	sand: "colorThemes.sand",
-	slate: "colorThemes.slate",
-	voltage: "colorThemes.voltage",
 } as const;
 
 export function useAppearanceSettingsModel(): AppearanceSettingsModel {
@@ -169,6 +192,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 	const { activeThemeId, availableThemes, selectTheme, status: themeRuntimeStatus } = useThemeRuntime();
 	const { languagePreference, setLanguage } = useLanguage();
 	const { style: cursorStyle, setStyle: setCursorStyle } = useCursorStyle();
+	const { style: sidebarStyle, setStyle: setSidebarStyle } = useSidebarStyle();
 	const { t } = useTranslation("settings");
 	const narrow = useNarrowScreen();
 
@@ -228,6 +252,17 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		[cursorStyle, t],
 	);
 
+	const sidebarStyleOptions = useMemo<AppearanceSidebarStyleOption[]>(
+		() =>
+			SIDEBAR_STYLE_OPTIONS.map((option) => ({
+				id: option.id,
+				active: sidebarStyle === option.id,
+				label: t(option.labelKey),
+				hint: t(option.hintKey),
+			})),
+		[sidebarStyle, t],
+	);
+
 	const themes = useMemo(
 		() =>
 			THEMES.map((theme) => {
@@ -247,6 +282,7 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 				cursor: t(SETTINGS_SECTION["appearance-cursor"].titleKey),
 				language: t(SETTINGS_SECTION["appearance-language"].titleKey),
 				mode: t(SETTINGS_SECTION["appearance-mode"].titleKey),
+				sidebar: t(SETTINGS_SECTION["appearance-sidebar"].titleKey),
 				theme: t(SETTINGS_SECTION["appearance-theme"].titleKey),
 				uiTheme: t(SETTINGS_SECTION["appearance-ui-theme"].titleKey),
 			},
@@ -282,6 +318,15 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 					value: style,
 				});
 			},
+			setSidebarStyle: (style) => {
+				setSidebarStyle(style);
+				recordSettingsUsage({
+					tab: "appearance",
+					action: "changed",
+					target: "sidebar-style",
+					value: style,
+				});
+			},
 		},
 		activeUiThemeId: activeThemeId,
 		cursorOptions,
@@ -293,6 +338,8 @@ export function useAppearanceSettingsModel(): AppearanceSettingsModel {
 		modeOptions,
 		narrow,
 		showUiTheme: isAppearanceUiThemeEnabled(),
+		sidebarStyle,
+		sidebarStyleOptions,
 		themeName,
 		themes,
 		uiThemes,

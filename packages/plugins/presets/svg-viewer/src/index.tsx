@@ -1,4 +1,5 @@
 import { definePlugin, type PluginFilePreviewProps, useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useEffect, useMemo, useState } from "react";
 import "./style.css";
 
@@ -62,12 +63,11 @@ function SvgPreview({ file }: PluginFilePreviewProps) {
 		"cursor-pointer rounded-[7px] px-[10px] py-[4px] text-[12px] font-semibold transition-colors";
 	const tabActive = "bg-[var(--background)] text-[var(--foreground)] shadow-[var(--shadow-sm)]";
 	const tabIdle = "text-[var(--muted-foreground)] hover:text-[var(--foreground)]";
-	const iconBtn =
-		"flex h-[26px] w-[26px] items-center justify-center rounded-[7px] text-[13px] text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]";
 
 	return (
 		<div className="flex h-full min-h-0 flex-1 flex-col bg-[var(--background)] font-[var(--font-sans)]">
 			<div className="flex shrink-0 items-center gap-[8px] border-b border-[color-mix(in_srgb,var(--border)_50%,transparent)] px-[10px] py-[7px]">
+				{/* Segmented control: no host primitive — keep lightweight native tabs */}
 				<div className="flex items-center gap-[2px] rounded-[9px] bg-[var(--muted)] p-[2px]">
 					<button
 						type="button"
@@ -87,30 +87,34 @@ function SvgPreview({ file }: PluginFilePreviewProps) {
 
 				{mode === "preview" && (
 					<div className="flex items-center gap-[2px]">
-						<button
+						<Button
 							type="button"
-							className={iconBtn}
+							variant="ghost"
+							size="icon-xs"
 							title={t("action.zoomOut")}
 							onClick={() => setZoom((z) => Math.max(0.1, +(z - 0.25).toFixed(2)))}
 						>
 							−
-						</button>
-						<button
+						</Button>
+						<Button
 							type="button"
-							className="min-w-[44px] rounded-[7px] px-[4px] text-center text-[12px] tabular-nums text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+							variant="ghost"
+							size="xs"
+							className="min-w-[44px] tabular-nums"
 							title={t("action.resetZoom")}
 							onClick={() => setZoom(1)}
 						>
 							{Math.round(zoom * 100)}%
-						</button>
-						<button
+						</Button>
+						<Button
 							type="button"
-							className={iconBtn}
+							variant="ghost"
+							size="icon-xs"
 							title={t("action.zoomIn")}
 							onClick={() => setZoom((z) => Math.min(8, +(z + 0.25).toFixed(2)))}
 						>
 							+
-						</button>
+						</Button>
 					</div>
 				)}
 

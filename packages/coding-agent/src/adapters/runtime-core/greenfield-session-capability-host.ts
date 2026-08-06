@@ -20,6 +20,7 @@ import type {
 	GreenfieldSdkToolInfo,
 } from "../../composition/greenfield-sdk-runtime-contract.js";
 import { projectCodingAgentGreenfieldMessages } from "./greenfield-agent-message-context-projector.js";
+import { readGreenfieldFailedTurnMessage } from "./greenfield-turn-executor.js";
 import {
 	CodingAgentGreenfieldTurnRetryController,
 	type CodingAgentGreenfieldTurnRetryControllerPort,
@@ -89,9 +90,13 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		const executeInitial = () => this.options.readSession().prompt(request);
 		const retryController = this.retryController;
 		const result = retryController
-			? await retryController.run(executeInitial, () => this.options.readSession().retry(), readFailedTurnMessage)
+			? await retryController.run(
+					executeInitial,
+					() => this.options.readSession().retry(),
+					readGreenfieldFailedTurnMessage,
+				)
 			: await executeInitial();
-		const failure = readFailedTurnMessage(result);
+		const failure = readGreenfieldFailedTurnMessage(result);
 		if (failure) throw new Error(failure);
 		return result;
 	}
@@ -507,37 +512,4 @@ function computeSessionStats(
 		tokens: { input, output, cacheRead, cacheWrite, total: input + output + cacheRead + cacheWrite },
 		cost,
 	};
-}
-
-function readFailedTurnMessage(value: unknown): string | undefined {
-	if (typeof value !== "object" || value === null) return undefined;
-	const error = Reflect.get(value, "error");
-	if (
-		Reflect.get(value, "status") === "failed" &&
-		typeof error === "object" &&
-		error !== null &&
-		typeof Reflect.get(error, "message") === "string"
-	) {
-		return Reflect.get(error, "message");
-	}
-	if (Reflect.get(value, "status") !== "completed" || Reflect.get(value, "stopReason") !== "error") {
-		return undefined;
-	}
-	const messages = Reflect.get(value, "messages");
-	if (!Array.isArray(messages)) return "Request failed";
-	let assistant: unknown;
-	for (let index = messages.length - 1; index >= 0; index -= 1) {
-		const candidate: unknown = messages[index];
-		if (
-			typeof candidate === "object" &&
-			candidate !== null &&
-			Reflect.get(candidate, "role") === "assistant" &&
-			Reflect.get(candidate, "stopReason") === "error"
-		) {
-			assistant = candidate;
-			break;
-		}
-	}
-	const message = assistant ? Reflect.get(assistant, "errorMessage") : undefined;
-	return typeof message === "string" && message.length > 0 ? message : "Request failed";
 }

@@ -38,13 +38,6 @@ export interface DesktopConfig {
 	shortcuts?: ShortcutsConfig;
 	quickPanel?: QuickPanelConfig;
 	appshot?: AppshotConfig;
-	newSessionPage?: NewSessionPageConfig;
-}
-
-export interface NewSessionPageConfig {
-	showSceneCards?: boolean;
-	showSkillBadges?: boolean;
-	showGuidingWords?: boolean;
 }
 
 export type AppshotGesture = "both-shift" | "both-mod" | "both-alt";
@@ -90,7 +83,6 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	shortcuts: { bindings: {} },
 	quickPanel: { trigger: "none", postSendBehavior: "foreground" },
 	appshot: { enabled: false, gesture: "both-shift" },
-	newSessionPage: { showSceneCards: true, showSkillBadges: true, showGuidingWords: true },
 };
 
 function migrateProjectEntries(entries: unknown): ProjectEntry[] {
@@ -162,18 +154,6 @@ export function normalizeAppshot(value: unknown): AppshotConfig {
 	};
 }
 
-export function normalizeNewSessionPage(value: unknown): NewSessionPageConfig {
-	if (typeof value !== "object" || value === null) {
-		return { showSceneCards: true, showSkillBadges: true, showGuidingWords: true };
-	}
-	const input = value as Record<string, unknown>;
-	return {
-		showSceneCards: input.showSceneCards !== false,
-		showSkillBadges: input.showSkillBadges !== false,
-		showGuidingWords: input.showGuidingWords !== false,
-	};
-}
-
 export function normalizeExperimental(value: unknown): ExperimentalConfig {
 	if (typeof value !== "object" || value === null) {
 		return {
@@ -228,7 +208,6 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 		shortcuts: normalizeShortcuts(parsed.shortcuts),
 		quickPanel: normalizeQuickPanel(parsed.quickPanel),
 		appshot: normalizeAppshot(parsed.appshot),
-		newSessionPage: normalizeNewSessionPage(parsed.newSessionPage),
 	};
 }
 

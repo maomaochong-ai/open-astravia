@@ -20,6 +20,7 @@ export function DefaultSidebar({ classNames, model, onOpenSession }: DefaultSide
 			model={model}
 			topBar={
 				<SidebarTopBar
+					className="sidebar-top-bar"
 					classNames={{
 						actions: classNames?.topBarActions,
 						brand: classNames?.topBarBrand,

@@ -1,6 +1,9 @@
 import type {
 	AgentExperimentalSettings,
 	AgentExperimentalSettingsUpdate,
+	AiCompleteInput,
+	AiCompleteResult,
+	AiModelListResult,
 	BatchProject,
 	BatchProjectCreateData,
 	BatchProjectUpdateData,
@@ -21,6 +24,10 @@ import type {
 	McpServerDetail,
 	McpServerSummary,
 	McpServerUpsertData,
+	MediaCreateJobInput,
+	MediaJob,
+	MediaJobRef,
+	MediaProviderDescriptor,
 	ModelConfigSnapshot,
 	ModelDefaultResult,
 	ModelListResult,
@@ -56,179 +63,15 @@ import type {
 	WebhookUpdateData,
 	WorkspaceSettingInput,
 } from "@vetta/capability-sdk";
+import type { PluginAgentManifest, PluginPermission, PluginSettingSchema } from "@vetta-org/plugin-sdk";
 
-export type PluginPermission =
-	| "ui.slot.global"
-	| "ui.slot.file-preview"
-	| "ui.slot.activity-tab"
-	| "ui.slot.input-action"
-	| "ui.slot.message"
-	| "ui.slot.tool-call"
-	| "ui.slot.turn-card"
-	| "agent.session.read"
-	| "agent.session.write"
-	| "agent.command.run"
-	| "agent.systemPrompt.read"
-	| "agent.systemPrompt.write"
-	| "agent.systemPrompt.fullControl"
-	| "agent.skills.control"
-	| "agent.mcp.control"
-	| "agent.tools.control"
-	| "agent.tools.register"
-	| "agent.toolHandler.execute"
-	| "agent.state.read"
-	| "agent.state.write"
-	| "agent.continuation.register"
-	| "agent.runtime.configure"
-	| "app.actions.register"
-	| "app.actionHandler.execute"
-	| "fs.read"
-	| "fs.write"
-	| "network.fetch"
-	| "storage.read"
-	| "storage.write"
-	| "settings.read"
-	| "settings.write";
-
-/**
- * A single declarative setting a plugin contributes via plugin.json's
- * `contributes.settings`. The host renders a form field from it (VSCode-style)
- * and persists the value namespaced by plugin id. `secret` masks the input but
- * stores plaintext, consistent with how models config stores apiKey.
- */
-export interface PluginSettingSchema {
-	key: string;
-	/**
-	 * `desc` is a read-only informational item: it stores no value and renders
-	 * its `description` as a note (URLs become clickable external links). Useful
-	 * with `visibleWhen` to show provider-specific guidance.
-	 */
-	type: "string" | "number" | "boolean" | "enum" | "secret" | "desc";
-	/** Required for input types; optional for `desc` (which is text-only). */
-	title?: string;
-	description?: string;
-	default?: string | number | boolean;
-	/** Allowed values when type is "enum". */
-	enum?: string[];
-	/**
-	 * Conditional visibility: only render this field when the setting named
-	 * `key` currently holds one of the values in `in`. Lets a plugin show
-	 * different fields per selected provider/mode.
-	 */
-	visibleWhen?: { key: string; in: string[] };
-}
-
-export type PluginMcpServerConfig =
-	| {
-			type?: "stdio";
-			command: string;
-			args?: string[];
-			env?: Record<string, string>;
-			cwd?: string;
-			disabled?: boolean;
-			autoApprove?: string[];
-			startupTimeout?: number;
-			debug?: boolean;
-			displayName?: string;
-			description?: string;
-			/** 该 server 的工具允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
-			agent_mode?: string | string[];
-	  }
-	| {
-			type: "http";
-			url: string;
-			headers?: Record<string, string>;
-			oauthClientId?: string;
-			oauthDeviceFlow?: boolean;
-			oauthScopes?: string;
-			disabled?: boolean;
-			autoApprove?: string[];
-			startupTimeout?: number;
-			debug?: boolean;
-			displayName?: string;
-			description?: string;
-			/** 该 server 的工具允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
-			agent_mode?: string | string[];
-	  };
-
-export interface PluginAgentManifest {
-	systemPrompt?: {
-		/**
-		 * Plugin-packaged prompt contribution file paths. Main-process aggregation
-		 * resolves these relative to the installed plugin root.
-		 */
-		promptPaths?: string[];
-	};
-	/** Plugin-packaged skill files or directories to add to the agent resource graph. */
-	skillPaths?: string[];
-	/**
-	 * Plugin-scoped MCP: relative path to `.mcp.json` or inline server map.
-	 * Requires `agent.mcp.control`. Not written to user mcp.json.
-	 */
-	mcpServers?: string | Record<string, PluginMcpServerConfig>;
-	/** Declarative tool visibility policy. Names are tool ids after registration. */
-	toolPolicy?: {
-		allow?: string[];
-		deny?: string[];
-	};
-}
-
-export interface PluginManifest {
-	id: string;
-	name: string;
-	version: string;
-	pluginApiVersion: string;
-	entry: string;
-	runtime?: "esm" | "module-federation";
-	moduleFederation?: {
-		remoteName: string;
-		expose: string;
-	};
-	agent?: PluginAgentManifest;
-	styles?: string[];
-	permissions?: PluginPermission[];
-	/**
-	 * Executable names this plugin may run via `ctx.command.run` (granularity =
-	 * binary name, e.g. `["git"]`). Anything not declared is hard-rejected. The
-	 * user toggles each declared command on/off in plugin settings.
-	 */
-	commands?: string[];
-	contributes?: {
-		settings?: PluginSettingSchema[];
-	};
-	description?: string;
-	author?: string;
-	/**
-	 * 插件图标，三态口径（与能力市场统一）：
-	 * 省略 = 用默认图标；`solar:xxx-bold` 等 Iconify 名与 `http(s)://` 外链原样透传给渲染层；
-	 * 其余按包内相对路径处理，宿主转成带 cache key 的 `vetta-plugin://` URL。
-	 */
-	icon?: string;
-	/**
-	 * 声明式引导词：开新会话欢迎页主动建议的提示语。点击即以该文本立即发起一轮。
-	 * 与命令式 `ctx.ui.register*` 不同——纯静态清单数据、无权限位、无运行时注册（ADR-0003）。
-	 */
-	guidingWords?: string[];
-	/**
-	 * 缺译时的回退 locale（fallback 链：当前 locale → defaultLocale → 裸 key）。
-	 * 省略默认 "zh"（与宿主一致，见 ADR-0033）。译文文件本身在 `locales/<lang>.json`，
-	 * 由宿主加载、不在 manifest 内联。
-	 */
-	defaultLocale?: string;
-	/**
-	 * When hardIsolation is true, agent contributions stay stripped until the
-	 * matching input-action mode is toggled on (ADR-0041). Declared in manifest
-	 * so the gate applies before the plugin UI activates.
-	 */
-	contributionMode?: {
-		hardIsolation?: boolean;
-	};
-	/**
-	 * 插件级工作模式白名单（agent_mode 轴，见 ADR-0046）。声明后，白名单外的工作模式下整个插件
-	 * 不可见（agent 贡献 + UI/bundle 均不加载）。缺省/空 = 全局通用。plugin.json 里可写 string | string[]。
-	 */
-	agent_mode?: string | string[];
-}
+export type {
+	PluginAgentManifest,
+	PluginManifest,
+	PluginMcpServerConfig,
+	PluginPermission,
+	PluginSettingSchema,
+} from "@vetta-org/plugin-sdk";
 
 /** 一份扁平 catalog：翻译 key → 本地化字符串。 */
 export type PluginLocaleCatalog = Record<string, string>;
@@ -240,11 +83,23 @@ export type PluginLocales = Record<string, PluginLocaleCatalog>;
  * 存在即表示该插件资源正从开发工程目录（而非安装目录）加载。
  */
 export interface PluginDevWatchState {
-	/** 开发工程根目录（含 plugin.json 与 dist/）。 */
+	/** 开发工程根目录（含 plugin.json 与 src/）。 */
 	projectDir: string;
-	/** starting = vite watch 已拉起但未产出首个构建；error 详见 error 字段。 */
+	/** Vite 开发服务器入口；starting 阶段尚不可用。 */
+	entryUrl?: string;
+	/** Vite 开发服务器 origin，供诊断与 React Fast Refresh 初始化。 */
+	origin?: string;
+	/** starting = 开发服务器正在启动；error 详见 error 字段。 */
 	status: "starting" | "running" | "error";
 	error?: string;
+}
+
+export interface PluginsChangedEvent {
+	/** 缺省表示完整重载；存在时仅替换列出的插件生命周期。 */
+	pluginIds?: string[];
+	/** false 表示仅状态更新，渲染进程无需重载插件。 */
+	reload?: boolean;
+	reason?: "dev-ready" | "dev-update" | "dev-status";
 }
 
 export type PluginTrustLevel = "official" | "community" | "local";
@@ -511,6 +366,11 @@ export interface DesktopPluginCapabilityImApi {
 	setAgentModel(sessionId: string, modelKey: string | null, reasoningLevel?: string): Promise<ImRuntimeStatus>;
 }
 
+export interface DesktopPluginCapabilityAiApi {
+	listModels(sessionId: string): Promise<AiModelListResult>;
+	complete(sessionId: string, input: AiCompleteInput): Promise<AiCompleteResult>;
+}
+
 export interface DesktopPluginCapabilityModelsApi {
 	list(sessionId: string): Promise<ModelListResult>;
 	getConfig(sessionId: string): Promise<ModelConfigSnapshot>;
@@ -524,6 +384,13 @@ export interface DesktopPluginCapabilityModelsApi {
 		data: ModelProviderUpsertData,
 	): Promise<ModelProviderConfigSnapshot>;
 	removeProvider(sessionId: string, provider: string): Promise<void>;
+}
+
+export interface DesktopPluginCapabilityMediaApi {
+	listProviders(sessionId: string): Promise<MediaProviderDescriptor[]>;
+	createJob(sessionId: string, input: MediaCreateJobInput): Promise<MediaJob>;
+	getJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
+	cancelJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
 }
 
 export interface DesktopPluginCapabilityMcpApi {
@@ -661,11 +528,13 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	openSession(pluginId: string): Promise<string>;
 	closeSession(sessionId: string): Promise<void>;
 	agentSettings: DesktopPluginCapabilityAgentSettingsApi;
+	ai: DesktopPluginCapabilityAiApi;
 	batchTasks: DesktopPluginCapabilityBatchTasksApi;
 	filesystem: DesktopPluginCapabilityFilesystemApi;
 	generalSettings: DesktopPluginCapabilityGeneralSettingsApi;
 	im: DesktopPluginCapabilityImApi;
 	mcp: DesktopPluginCapabilityMcpApi;
+	media: DesktopPluginCapabilityMediaApi;
 	models: DesktopPluginCapabilityModelsApi;
 	downloads: DesktopPluginCapabilityDownloadsApi;
 	knowledge: DesktopPluginCapabilityKnowledgeApi;
@@ -681,7 +550,10 @@ export interface DesktopPluginInternalCapabilitiesApi {
 
 export interface DesktopPluginsApi {
 	readonly internalCapabilities: DesktopPluginInternalCapabilitiesApi;
+	/** 当前工作模式（agent_mode 轴）下可见的插件；工作台与 UI 贡献用它。见 ADR-0046。 */
 	list(): Promise<InstalledPlugin[]>;
+	/** 全部已装插件，不按工作模式过滤；能力市场「我的」用它，避免另一模式的插件看起来像丢了。 */
+	listAll(): Promise<InstalledPlugin[]>;
 	installFromArchive(archiveBuffer: ArrayBuffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	/** Install from a local zip absolute path (ADR-0042). */
@@ -701,6 +573,23 @@ export interface DesktopPluginsApi {
 		args?: string[],
 		options?: PluginCommandRunOptions,
 	): Promise<PluginCommandRunResult>;
+	/** Start an allowed long-lived command (ADR-0054). No shell; own process group. */
+	spawnCommand(
+		pluginId: string,
+		file: string,
+		args?: string[],
+		options?: PluginCommandSpawnOptions,
+	): Promise<PluginCommandSpawnResult>;
+	/** SIGTERM the spawned process tree (SIGKILL after a grace period). */
+	stopCommandSpawn(pluginId: string, spawnId: string): Promise<void>;
+	/** Liveness, port and recent output for a spawn started by this plugin. */
+	getCommandSpawnStatus(pluginId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
+	/** Subscribe to spawn exit events (all plugins; filter by pluginId/spawnId). */
+	onCommandSpawnExit(handler: (event: PluginCommandSpawnExitEvent) => void): () => void;
+	/** 主进程离屏窗口截图（真实渲染管线，`capture.offscreen` 权限）。 */
+	offscreenCapture(pluginId: string, options: PluginOffscreenCaptureOptions): Promise<PluginOffscreenCaptureResult>;
+	/** 释放 sessionKey 对应的离屏窗口。幂等。 */
+	offscreenRelease(pluginId: string, sessionKey: string): Promise<void>;
 	reload(id: string): Promise<InstalledPlugin>;
 	/**
 	 * 开启 dev 热更新：把插件 dev 链接到 projectDir（资源改从工程 dist 加载），
@@ -754,8 +643,10 @@ export interface DesktopPluginsApi {
 	/** Subscribe to setting changes for any plugin. Returns an unsubscribe fn. */
 	onSettingsChanged(listener: (payload: { pluginId: string; values: Record<string, unknown> }) => void): () => void;
 	/** Fired when plugins are installed/uninstalled/enabled/reloaded (host should re-load remotes). */
-	onPluginsChanged(listener: () => void): () => void;
+	onPluginsChanged(listener: (event?: PluginsChangedEvent) => void): () => void;
 	networkRequest<T = unknown>(sessionId: string, request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;
+	/** 带登录身份打 Vetta 服务端；仅 official 插件的 session 会被主进程放行（ADR-0056）。 */
+	gatewayRequest<T = unknown>(sessionId: string, request: PluginGatewayRequest): Promise<PluginGatewayResponse<T>>;
 	storageReadJson<T>(sessionId: string, key: string): Promise<T | null>;
 	storageWriteJson(sessionId: string, key: string, value: unknown): Promise<void>;
 	storageList(sessionId: string, prefix?: string): Promise<string[]>;
@@ -796,6 +687,23 @@ export interface PluginNetworkResponse<T = unknown> {
 	body: T;
 }
 
+/** 相对 `/api/v1` 的路径；服务端地址与 JWT 由主进程注入（ADR-0056）。 */
+export interface PluginGatewayRequest {
+	path: string;
+	method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+	body?: unknown;
+	timeoutMs?: number;
+}
+
+/** 业务信封已由主进程拆开；配额用尽等业务失败也走这里而非抛异常。 */
+export interface PluginGatewayResponse<T = unknown> {
+	ok: boolean;
+	status: number;
+	code: number;
+	message: string;
+	data?: T;
+}
+
 export interface PluginPutBlobInput {
 	id?: string;
 	data: string;
@@ -823,6 +731,61 @@ export interface PluginCommandRunResult {
 	stdout: string;
 	stderr: string;
 	exitCode: number | null;
+}
+
+export interface PluginCommandSpawnOptions {
+	cwd?: string;
+	env?: Record<string, string>;
+	/** Host allocates a free port and substitutes `{{PORT}}` in args/env values. */
+	allocatePort?: boolean;
+}
+
+export interface PluginCommandSpawnResult {
+	spawnId: string;
+	pid: number;
+	/** Present when `allocatePort` was requested. */
+	port?: number;
+}
+
+export interface PluginCommandSpawnExit {
+	exitCode: number | null;
+	signal: string | null;
+}
+
+export interface PluginCommandSpawnStatus {
+	running: boolean;
+	pid: number;
+	port?: number;
+	exit?: PluginCommandSpawnExit;
+	/** Ring-buffered combined stdout+stderr tail (~64KB). */
+	recentOutput: string;
+}
+
+export interface PluginCommandSpawnExitEvent extends PluginCommandSpawnExit {
+	pluginId: string;
+	spawnId: string;
+}
+
+export interface PluginOffscreenCaptureOptions {
+	url: string;
+	width: number;
+	height: number;
+	/** 同 key 串行复用同一个离屏窗口（url 未变时跳过重新加载）。 */
+	sessionKey?: string;
+	/** 页面加载/复用后注入执行的脚本（如 postMessage 切路由）。 */
+	prepareScript?: string;
+	/** 轮询到真值才截图。 */
+	readyExpression?: string;
+	settleMs?: number;
+	timeoutMs?: number;
+	format?: "jpeg" | "png";
+	quality?: number;
+}
+
+export interface PluginOffscreenCaptureResult {
+	dataUrl: string;
+	/** 实际设备像素比：位图物理像素 = CSS 尺寸 × 此值。 */
+	scaleFactor: number;
 }
 
 import type { FsEntry, FsFileRef, FsStatResult } from "../fs-types.js";

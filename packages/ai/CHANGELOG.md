@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- 修复部分 OpenAI 兼容网关把推理摘要泄漏到 `delta.content` 时，`<thinking>...</thinking>` 被当作正文渲染的问题。实测 vetta-go 的 GPT 系模型（hellox-gpt-5.6-luna）在有多段 reasoning summary 时，只把第一段放进 `reasoning_content`，其余段落带标签塞进 `content`。`openai-completions` 流式解析新增 `ThinkingTagSplitter`：在消息尚未产出任何实际正文前，把 content 中的 `<thinking>` 包裹段剥离并并入思考块（支持标签跨 delta 切分）；一旦出现真实正文，后续 `<thinking>` 一律按字面量保留，避免误吃模型正文里讨论该标签的场景。
 - 修复通过通用 `openai-completions` 通道接入的推理型 DeepSeek 模型（在 admin 里当普通 openai-completions 模型 + 勾选 reasoning 配置，而非内置 `openai-completions-deepseek`）思考档位选「关闭」仍然思考的回归。上一次改动把通用分支的「off」无条件归一为 `reasoning_effort: "none"` 下发给所有端点，但 `none` 是 OpenAI gpt-5 系专有的关思考值，DeepSeek / 聚合网关 / vLLM 等后端不认、直接忽略，导致思考关不掉。现仅在 `api.openai.com` 官方端点下发 `none`，其余端点的「off」恢复为省略 `reasoning_effort` 字段，让后端回落到非思考默认。
 - 修复自建 vLLM / SGLang 部署的 Qwen 模型思考档位选「关闭」仍然思考的回归。`qwen` thinkingFormat 分支此前只下发顶层 `enable_thinking`，而自建 vLLM/SGLang 只认 `chat_template_kwargs.enable_thinking`（顶层参数被静默丢弃），关闭指令对这类后端从未生效——之前是靠同时下发的 `reasoning_effort: "none"` 关掉的，`reasoning_effort: "none"` 被移除后彻底失效。改为同时下发顶层 `enable_thinking` 与 `chat_template_kwargs.enable_thinking`，兼顾 DashScope（读顶层）与自建 vLLM/SGLang（读 chat_template_kwargs）。
 - 修复通过通用 `openai-completions` 通道接入的自定义推理模型（如自建端点上的 qwen3.6）报 `400 Unexpected message role` 的问题。原 `detectCompat` 对所有非"已知非标准"端点默认 `supportsDeveloperRole: true`，导致带 `reasoning` 的模型把系统提示词以 OpenAI 专有的 `developer` 角色下发，而多数 OpenAI 兼容后端（vLLM、SGLang、Qwen、llama.cpp 等）的 chat template 只认 system/user/assistant/tool，直接 400。改为仅对真正支持 `developer` 的端点（`openai` provider、`github-copilot`、`api.openai.com`）默认开启，其余端点回落到通用的 `system` 角色。

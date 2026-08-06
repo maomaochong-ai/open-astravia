@@ -6,6 +6,7 @@ import {
 	type CapabilityJsonValue,
 	type Disposable,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
+	FOUNDATION_GATEWAY_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
 	parseCapabilityJsonValue,
@@ -23,6 +24,7 @@ import {
 	statFilesystemPath,
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
+import { requestVettaGateway as requestGateway } from "../gateway/vetta-gateway-service.js";
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
 import {
 	getPluginBlobRef as getNamespacedBlobRef,
@@ -168,6 +170,16 @@ export function registerDesktopFoundationProviders(registry: CapabilityRegistry)
 				assertNotAborted(context.signal);
 				const response = await requestNetwork(
 					request as unknown as Parameters<typeof requestNetwork>[0],
+					context.signal,
+				);
+				return parseCapabilityJsonValue(response);
+			},
+		}),
+		bindCapability(FOUNDATION_GATEWAY_CAPABILITIES.REQUEST, {
+			execute: async ({ request }, context) => {
+				assertNotAborted(context.signal);
+				const response = await requestGateway(
+					request as unknown as Parameters<typeof requestGateway>[0],
 					context.signal,
 				);
 				return parseCapabilityJsonValue(response);

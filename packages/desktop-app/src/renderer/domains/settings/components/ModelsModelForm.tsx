@@ -4,6 +4,7 @@ import { Button } from "@vetta/ui";
 import { cn } from "@shared/lib/utils";
 import { CheckboxField } from "./McpSettings";
 import { InputField } from "@vetta/theme-ui/settings";
+import { CONTEXT_WINDOW_PICKS, MAX_OUTPUT_PICKS, NumberQuickPicks } from "./NumberQuickPicks";
 import {
 	CANDIDATE_REASONING_LEVELS,
 	INPUT_OPTIONS,
@@ -92,6 +93,11 @@ export function ModelsModelForm({
 						onChange={(value) => setForm((current) => ({ ...current, contextWindow: value }))}
 						placeholder={t("contextWindowPlaceholder")}
 					/>
+					<NumberQuickPicks
+						picks={CONTEXT_WINDOW_PICKS}
+						current={form.contextWindow}
+						onPick={(value) => setForm((current) => ({ ...current, contextWindow: value }))}
+					/>
 				</div>
 				<div>
 					<label className="mb-1 block text-[11px] text-muted-foreground">{t("maxOutputTokens")}</label>
@@ -99,6 +105,11 @@ export function ModelsModelForm({
 						value={form.maxTokens}
 						onChange={(value) => setForm((current) => ({ ...current, maxTokens: value }))}
 						placeholder={t("maxOutputTokensPlaceholder")}
+					/>
+					<NumberQuickPicks
+						picks={MAX_OUTPUT_PICKS}
+						current={form.maxTokens}
+						onPick={(value) => setForm((current) => ({ ...current, maxTokens: value }))}
 					/>
 				</div>
 				<div className="col-span-2">

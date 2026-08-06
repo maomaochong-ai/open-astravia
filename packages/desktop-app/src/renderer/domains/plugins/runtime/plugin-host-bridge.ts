@@ -147,7 +147,14 @@ function translate(event: SessionEvent): void {
 			});
 			return;
 		case "tool.start":
-			emit({ type: "tool-call-start", toolCallId: event.toolCallId, toolName: event.toolName });
+			emit({
+				type: "tool-call-start",
+				toolCallId: event.toolCallId,
+				toolName: event.toolName,
+				// 透传工具入参（如 Edit/Write 的目标路径），供插件做「修改中」等
+				// 定向 UI；与消息文本同属 agent.session.read 的可见面。
+				args: (event.args as Record<string, unknown>) ?? undefined,
+			});
 			return;
 		case "tool.end":
 			emit({
@@ -505,7 +512,25 @@ const conversation: PluginConversationApi = {
 	},
 	on: (listener: Listener): Disposable => {
 		listeners.add(listener);
-		return { dispose: () => listeners.delete(listener) };
+		// 订阅即回放一次当前会话状态：插件在 activate 里订阅时，本轮的
+		// conversation-changed 早已广播完（会话先于插件就绪，热更新更是如此），
+		// 没有回放的话「按当前 cwd 决定标签卡显隐」这类逻辑要等到下次切会话才跑。
+		// 走微任务，让 activate 先执行完再回调。
+		let disposed = false;
+		void Promise.resolve().then(() => {
+			if (disposed) return;
+			try {
+				listener({ type: "conversation-changed", conversation: snapshot() });
+			} catch (error) {
+				console.error("Plugin conversation listener threw", error);
+			}
+		});
+		return {
+			dispose: () => {
+				disposed = true;
+				listeners.delete(listener);
+			},
+		};
 	},
 };
 

@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "image-gen",
+	"version": "0.3.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"user_prompt": "生成一张透明背景的产品插画，并保留可继续编辑的版本。",
+					"assistant_reply": "我会直接生成图像，并把预览放到消息和图片工作区中。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "从对话到图像工作区",
+				"items": [
+					{
+						"title": "生成图片",
+						"description": "根据描述生成新图，并在对话内直接查看结果。",
+						"icon": "solar:gallery-add-linear"
+					},
+					{
+						"title": "编辑现有图片",
+						"description": "结合参考图片进行局部修改、风格变化或透明背景处理。",
+						"icon": "solar:magic-stick-3-linear"
+					},
+					{
+						"title": "集中管理结果",
+						"description": "在图片活动面板中查看生成历史与当前产物。",
+						"icon": "solar:gallery-wide-linear"
+					},
+					{
+						"title": "开箱即用",
+						"description": "默认使用 Vetta 内置图像生成，无需申请任何 API Key。",
+						"icon": "solar:tuning-square-2-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"user_prompt": "Generate a product illustration with a transparent background and keep an editable result.",
+							"assistant_reply": "I’ll generate the image and place previews directly in the message and image workspace."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "From conversation to image workspace",
+						"items": [
+							{
+								"title": "Generate images",
+								"description": "Create new images from a description and preview them inline.",
+								"icon": "solar:gallery-add-linear"
+							},
+							{
+								"title": "Edit references",
+								"description": "Use existing images for focused edits, style changes, or background removal.",
+								"icon": "solar:magic-stick-3-linear"
+							},
+							{
+								"title": "Review results",
+								"description": "Browse current outputs and generation history in the image panel.",
+								"icon": "solar:gallery-wide-linear"
+							},
+							{
+								"title": "Works out of the box",
+								"description": "Uses Vetta's built-in image generation by default — no API key needed.",
+								"icon": "solar:tuning-square-2-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

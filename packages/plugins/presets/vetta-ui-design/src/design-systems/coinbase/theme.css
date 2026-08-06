@@ -1,0 +1,22 @@
+/* Coinbase — institutional crypto, one decisive blue, pill actions. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #0052ff;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #ffffff;
+	--color-surface-foreground: #0a0b0d;
+	--color-surface-raised: #f7f8fa;
+	--color-muted: #5b616e;
+	--color-accent: #00d395;
+	--color-danger: #cf202f;
+	--color-border: #dfe1e4;
+
+	--radius-sm: 6px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+	--radius-xl: 16px;
+	--radius-2xl: 24px;
+
+	--shadow-sm: 0 1px 2px rgb(10 11 13 / 0.06);
+	--shadow-md: 0 4px 12px rgb(10 11 13 / 0.08);
+	--shadow-lg: 0 12px 32px rgb(10 11 13 / 0.12);
+}

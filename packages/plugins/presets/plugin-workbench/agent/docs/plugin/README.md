@@ -12,6 +12,8 @@
 | [manifest.md](./manifest.md) | `plugin.json` 全字段、`commands`、`contributionMode`、**`agent_mode` 工作模式白名单**、`defaultLocale` / i18n、settings、guidingWords、agent 贡献 |
 | [mcp.md](./mcp.md) | **MCP 三源聚合**、插件内聚 MCP（`agent.mcpServers`）、命名、生命周期、打包 |
 | [permissions.md](./permissions.md) | 权限完整清单、门控点、声明/授权流程 |
+| [ai.md](./ai.md) | 调用用户已配置的文本模型，模型列表、完成请求与凭据边界 |
+| [file-explorer.md](./file-explorer.md) | 文件列表右键菜单、工具栏、装饰、定位、刷新与事件 |
 | [ui-slots.md](./ui-slots.md) | **notify 全局 Toast** / 文件预览（**含大文件 getUrl 规范**）/ 全局浮层 / 活动 Tab / 输入栏动作 / **Turn 卡** / **Tool-call 槽** |
 | [message-cards.md](./message-cards.md) | 消息卡片：`details.cards`、`registerCardRenderer`、`pendingFor`、跨轮去重 |
 | [conversation-and-agent.md](./conversation-and-agent.md) | 对话、registerTool、**command.run**、fs、network、storage、settings、**i18n**、**工作模式 getAgentMode** |
@@ -28,19 +30,24 @@
 | **全局 Toast / 错误通知** | `ctx.ui.notify` | 无 | [ui-slots](./ui-slots.md#全局通知-notify) |
 | 全局浮层 UI | `ctx.ui.registerGlobalSlot` | `ui.slot.global` | [ui-slots](./ui-slots.md#全局浮层-registerglobalslot) |
 | 文件预览 | `ctx.ui.registerFilePreview` | `ui.slot.file-preview` | [ui-slots](./ui-slots.md#文件预览-registerfilepreview) |
+| 文件列表扩展 | `ctx.fileExplorer.*` | `ui.file-explorer.*` / `workspace.read` | [file-explorer](./file-explorer.md) |
 | 活动面板 Tab | `ctx.ui.registerActivityTab` / `openActivityTab` | `ui.slot.activity-tab` | [ui-slots](./ui-slots.md#活动面板-tab-registeractivitytab) |
 | 输入栏动作（toggle） | `ctx.ui.registerInputAction` | `ui.slot.input-action` | [ui-slots](./ui-slots.md#输入栏动作-registerinputaction) |
 | 消息卡片渲染器 | `ctx.ui.registerCardRenderer` | `ui.slot.message` | [message-cards](./message-cards.md) |
 | 工具行内渲染替换 | `ctx.ui.registerToolCallSlot` | `ui.slot.tool-call` | [ui-slots](./ui-slots.md#工具行内渲染-registertoolcallslot) |
 | 本轮 Turn 卡 | `ctx.ui.registerTurnCard` | `ui.slot.turn-card` | [ui-slots](./ui-slots.md#本轮-turn-卡-registerturncard) |
+| **键盘快捷键（宿主 scope 栈）** | `ctx.ui.registerShortcutScope` / `usePluginShortcutScope` | `ui.shortcuts.register` | [ui-slots](./ui-slots.md#键盘快捷键-registershortcutscope) |
 | 读对话 / 事件 | hooks + `ctx.conversation.on` | `agent.session.read` | [conversation-and-agent](./conversation-and-agent.md#对话读状态) |
 | 驾驶对话 | `ctx.conversation.sendPrompt/insertText/abort` | `agent.session.write` | [conversation-and-agent](./conversation-and-agent.md#对话驾驶) |
 | 注册 Agent 工具 | `ctx.agent.registerTool` | `agent.tools.register` + `execute` | [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具) |
 | 注册 App Action | `ctx.appActions.register` | `app.actions.register` + `app.actionHandler.execute` | [app-actions](./app-actions.md) |
 | 跑宿主命令 | `ctx.command.run` + 清单 `commands` | `agent.command.run` | [conversation-and-agent](./conversation-and-agent.md#命令执行-command) |
+| 长驻进程（dev server 等） | `ctx.command.spawn` + 清单 `commands` | `agent.command.spawn` | [conversation-and-agent](./conversation-and-agent.md#长驻进程-commandspawn) |
+| 离屏窗口截图（真实渲染管线） | `ctx.capture.offscreen` | `capture.offscreen` | [conversation-and-agent](./conversation-and-agent.md#离屏截图-captureoffscreen) |
 | 读写文件 | `ctx.fs.*` | `fs.read` / `fs.write` | [conversation-and-agent](./conversation-and-agent.md#文件-api) |
 | 宿主代理网络请求 | `ctx.network.request` | `network.fetch` | [conversation-and-agent](./conversation-and-agent.md#网络-api) |
 | 插件私有持久化 | `ctx.storage.*` | `storage.read` / `storage.write` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
+| 调用用户 AI 模型 | `ctx.ai.listModels/complete` | `ai.models.list` / `ai.complete` | [ai](./ai.md) |
 | 读自身设置 | `ctx.settings.*` | 无 | [conversation-and-agent](./conversation-and-agent.md#设置-api) |
 | 插件 i18n | `ctx.i18n` / `useTranslation` + `locales/` | 无（catalog 随包） | [conversation-and-agent](./conversation-and-agent.md#插件-i18n) / [manifest](./manifest.md#i18n) |
 | 新会话引导词 | `plugin.json` `guidingWords` | 无 | [manifest](./manifest.md#guidingwords引导词) |
@@ -54,7 +61,7 @@
 ## 信任模型
 
 - 插件是**一方 / 策展**的（官方或合作方编写、经审核上架），**不是**任意第三方不可信代码。
-- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**。
+- 插件跑在 renderer 进程内，经 Module Federation 与宿主**共享同一份 React / React DOM / `@vetta-org/plugin-sdk` 单例**；可选再共享 **`@vetta/ui`** 设计系统 primitives（见 [styling-and-pitfalls](./styling-and-pitfalls.md#可选vettaui-宿主-primitives)）。
 - 因此 SDK 是「**策展过的能力出口 + 权限门控**」——可同步、可直接传 React 组件实例、可读宿主状态，**刻意不做** iframe/worker 沙箱与异步消息桥。
 - 每项能力由 `plugin.json` 声明权限、宿主单独授权、运行时校验；缺权限会抛 `Plugin permission denied: <permission>` 或 warn+noop（见 [permissions.md](./permissions.md)）。
 

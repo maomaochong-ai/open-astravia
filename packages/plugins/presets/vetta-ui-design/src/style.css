@@ -1,0 +1,659 @@
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。
+   只 @import utilities 会漏掉依赖 theme 变量的工具类，故 theme 层必须一并导入。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* 插件 CSS 被构建包进以插件根为界的 @scope，宿主 <html data-mode="dark"> 在作用域之外，
+   任何祖先选择器（含 Tailwind dark: 变体）都匹配不到。明暗只能靠继承下来的宿主 CSS 变量，
+   这里把它们映射成语义色工具类：bg-primary / text-foreground / border-border … */
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-border: var(--border);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+}
+
+/* 无限画布的点阵背景：底色与点阵都取宿主主题变量，自动跟随明暗。 */
+.vetd-canvas-bg {
+	/* 选中态固定用 Figma 蓝，刻意不跟随宿主主题色：主题色可能与设计稿本身的配色
+	   撞车，而「哪个 frame 被选中」必须在任何主题、任何设计稿上都一眼可辨。 */
+	--vetd-selected: #0d99ff;
+	background-color: var(--background, #f4f4f5);
+	background-image: radial-gradient(
+		circle,
+		color-mix(in oklab, var(--foreground, #000) 14%, transparent) 1px,
+		transparent 1px
+	);
+	background-size: 14px 14px;
+}
+
+/* 框选选框的填充（描边直接用工具类取 --vetd-selected） */
+.vetd-marquee-fill {
+	background: color-mix(in oklab, var(--vetd-selected) 12%, transparent);
+}
+
+/* 「让 Vetta 调整」主按钮：核心入口，静止时也要有存在感。
+   配色刻意不跟随宿主主题：它是画布上唯一的主动作，明暗两个主题下都该是同一颗。
+
+   胶囊外形，四层叠起来：
+     ::before        背后的锥形渐变，模糊后当光晕（z -1）
+     .vetd-ask-flow  流动的渐变底（z 0）
+     ::after         内阴影，压暗上半部做出质感（z 1）
+     .vetd-ask-label 图标与文字（z 2）
+   内阴影必须单独一层：CSS 先画背景和 inset 阴影、再画子元素，把它留在按钮上会被
+   流动层整个盖掉。 */
+.vetd-ask-button {
+	position: relative;
+	display: flex;
+	align-items: center;
+	padding: 12px 20px;
+	border: none;
+	border-radius: 999px;
+	/* 不继承宿主字号：按钮尺寸是这套观感的一部分 */
+	font-family: inherit;
+	font-size: 1rem;
+	line-height: 1;
+	color: #fff;
+	cursor: pointer;
+	/* 流动层没起来之前（动画未开始、reduced motion）的静态底 */
+	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
+	box-shadow: 0 5px 10px #000000cc;
+	text-shadow: 1px 1px 1px #000;
+	transition: all 0.3s ease;
+}
+
+.vetd-ask-button::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	margin: auto;
+	z-index: -1;
+	border-radius: inherit;
+	filter: blur(0);
+	background: conic-gradient(#00000000 80deg, #40baf7, #f34ad7, #5bfcc4, #00000000 280deg);
+	transition: all 0.3s ease;
+}
+
+.vetd-ask-button::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	border-radius: inherit;
+	pointer-events: none;
+	box-shadow:
+		inset 0 0 5px #ffffffa9,
+		inset 0 35px 30px #000;
+}
+
+.vetd-ask-label {
+	position: relative;
+	z-index: 2;
+	display: flex;
+	align-items: center;
+	gap: 5px;
+}
+
+/* 流动的渐变底。
+   动的只有 transform：一条三倍宽、每 1/3 重复一次的渐变横向平移，移过一个周期正好
+   与起点重合，看着就是无缝流动。刻意不动 background-position——按钮浮在一堆跨源
+   iframe 之上，每帧重新光栅化背景会把合成器压垮，表现为整窗口撕裂；transform 由
+   合成器独立完成，不触发重绘。
+   裁切放在这一层而不是按钮上：按钮设 overflow:hidden 会把 ::before 的光晕一起剪掉。 */
+.vetd-ask-flow {
+	position: absolute;
+	inset: 0;
+	z-index: 0;
+	overflow: hidden;
+	border-radius: inherit;
+	pointer-events: none;
+}
+
+.vetd-ask-flow::before {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 300%;
+	background-image: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0, #5bfcc4);
+	background-size: 33.3333% 100%;
+	animation: vetd-ask-flow 6s linear infinite;
+}
+
+@keyframes vetd-ask-flow {
+	to {
+		transform: translateX(-33.3333%);
+	}
+}
+
+.vetd-ask-button:hover::before {
+	filter: blur(15px);
+}
+
+/* 按下：外阴影撤掉 + 整体下沉 3px，等于把按钮按进画布 */
+.vetd-ask-button:active {
+	margin-top: 3px;
+	box-shadow: none;
+}
+
+.vetd-ask-button:active::before {
+	filter: blur(5px);
+	transform: translateY(1px);
+}
+
+/* 输入框展开期间保持按下态，让按钮和它下面的浮层看起来是一体的 */
+.vetd-ask-button[data-active="true"] {
+	margin-top: 3px;
+	box-shadow: none;
+}
+
+.vetd-ask-button[data-active="true"]::before {
+	filter: blur(15px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-ask-flow::before {
+		animation: none;
+	}
+}
+
+/* 「让 Vetta 调整」输入浮层。跟按钮同一套语言：深投影、胶囊主按钮、指向按钮的
+   尖角，让它看起来是从按钮里长出来的，而不是一个通用弹窗。 */
+.vetd-ask-popover {
+	border-radius: 16px;
+	border: 1px solid var(--border, #e4e4e7);
+	background: var(--card, #fff);
+	/* 一道近、一道远：近的勾出边缘，远的把浮层从画布上托起来 */
+	box-shadow:
+		0 2px 8px rgb(0 0 0 / 0.12),
+		0 18px 40px -12px rgb(0 0 0 / 0.35);
+}
+
+/* 指向下方按钮的小尖角。浮层没有 overflow:hidden，它才能探出边界。 */
+.vetd-ask-popover::after {
+	content: "";
+	position: absolute;
+	bottom: -6px;
+	left: 50%;
+	width: 12px;
+	height: 12px;
+	transform: translateX(-50%) rotate(45deg);
+	border-right: 1px solid var(--border, #e4e4e7);
+	border-bottom: 1px solid var(--border, #e4e4e7);
+	border-bottom-right-radius: 3px;
+	background: var(--card, #fff);
+}
+
+/* 发送键：主按钮的缩小版，同一条渐变 + 同样的内阴影压暗 */
+.vetd-ask-send {
+	border-radius: 999px;
+	color: #fff;
+	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
+	box-shadow:
+		inset 0 0 4px #ffffff80,
+		inset 0 14px 14px rgb(0 0 0 / 0.55),
+		0 2px 6px rgb(0 0 0 / 0.35);
+	text-shadow: 1px 1px 1px rgb(0 0 0 / 0.35);
+	transition: all 0.2s ease;
+}
+
+.vetd-ask-send:not(:disabled):hover {
+	filter: brightness(1.08);
+}
+
+.vetd-ask-send:not(:disabled):active {
+	transform: translateY(1px);
+	box-shadow:
+		inset 0 0 4px #ffffff80,
+		inset 0 14px 14px rgb(0 0 0 / 0.55);
+}
+
+/* 没输入内容时褪成灰：渐变还在但不再抢眼，免得像随时能点 */
+.vetd-ask-send:disabled {
+	filter: grayscale(0.85);
+	opacity: 0.55;
+	box-shadow: none;
+	text-shadow: none;
+}
+
+/* 导出预览的透明背景棋盘格 */
+.vetd-checkerboard {
+	background-image:
+		linear-gradient(45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
+		linear-gradient(-45deg, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 25%, transparent 25%),
+		linear-gradient(45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%),
+		linear-gradient(-45deg, transparent 75%, color-mix(in oklab, var(--foreground, #000) 12%, transparent) 75%);
+	background-size: 16px 16px;
+	background-position:
+		0 0,
+		0 8px,
+		8px -8px,
+		-8px 0;
+}
+
+/* 会话卡片横排滚动条隐藏（翻页靠左右箭头） */
+.vetd-swiper {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-swiper::-webkit-scrollbar {
+	display: none;
+}
+
+/* 截图进行中的骨架呼吸 */
+.vetd-shot-pulse {
+	animation: vetd-shot-pulse 1.4s ease-in-out infinite;
+}
+@keyframes vetd-shot-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.45;
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.vetd-shot-pulse {
+		animation: none;
+	}
+}
+
+/* frame「修改中」呼吸光效：描边静态、只动 opacity。这一层紧贴 iframe，
+   动 box-shadow 会让含跨源 iframe 的区域每帧重新光栅化。
+   用 inset 描边是因为宿主那层是 overflow:hidden，外扩的环会被裁掉。
+   --vetd-accent 只定义在浮层内部（不会向上继承到这里），所以这里取的是
+   fallback——正好是「修改中」的语义色，与浮层同调。 */
+.vetd-modifying::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	border-radius: inherit;
+	box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--vetd-accent, #6366f1) 65%, transparent);
+	animation: vetd-breathe 1.6s ease-in-out infinite;
+}
+@keyframes vetd-breathe {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-modifying::after {
+		animation: none;
+	}
+}
+
+/* ---------- frame 活动态浮层（FrameActivityOverlay） ----------
+   全部只动 transform / opacity：这一层压着跨源 iframe，动布局属性或
+   box-shadow 会让整个区域逐帧重新光栅化（同 vetd-modifying 的教训）。
+
+   配色一律走 --vetd-accent（由组件按活动态设在浮层根上）与固定色板，不读宿主
+   主题变量：mono 主题的 primary/ring/accent/chart-4 全是黑白灰，读它们的话
+   五个 blob 一模糊就互相抵消成中性灰，动画彻底糊掉。浮层是系统状态语言而非
+   内容，本就该有自己的一套语义色（同标题栏三色徽标）。 */
+
+/* 迷你 Bot 头像：theme-ui BotAvatar（sm）的纯 CSS 复刻。 */
+.vetd-bot {
+	position: relative;
+	display: inline-flex;
+	width: 20px;
+	height: 20px;
+}
+.vetd-bot-head {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+	width: 20px;
+	height: 20px;
+	border-radius: 6px;
+	background: linear-gradient(
+		135deg,
+		var(--vetd-accent, #6366f1),
+		color-mix(in oklab, var(--vetd-accent, #6366f1) 85%, transparent)
+	);
+	box-shadow: 0 2px 6px -2px var(--vetd-accent, #6366f1);
+}
+.vetd-bot-eye {
+	width: 3px;
+	height: 3px;
+	border-radius: 9999px;
+	background: #fff;
+}
+/* think：歪头思考 + 泡泡飘起（浏览）。 */
+.vetd-bot-think .vetd-bot-head {
+	animation: vetd-bot-think 1.8s ease-in-out infinite;
+}
+.vetd-bot-bubble {
+	position: absolute;
+	right: -4px;
+	top: -4px;
+	width: 6px;
+	height: 6px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 70%, transparent);
+	animation: vetd-bot-bubble 1.8s ease-out infinite;
+}
+@keyframes vetd-bot-think {
+	0%,
+	100% {
+		transform: rotate(0deg) translateY(0);
+	}
+	30% {
+		transform: rotate(6deg) translateY(-1.5px);
+	}
+	60% {
+		transform: rotate(-5deg) translateY(0);
+	}
+}
+@keyframes vetd-bot-bubble {
+	0% {
+		opacity: 0;
+		transform: scale(0.4) translateY(0);
+	}
+	40% {
+		opacity: 1;
+		transform: scale(1) translateY(-5px);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(0.7) translateY(-9px);
+	}
+}
+/* write：快速点头疾书（修改）。 */
+.vetd-bot-write .vetd-bot-head {
+	animation: vetd-bot-write 0.55s ease-in-out infinite;
+	transform-origin: 50% 100%;
+}
+@keyframes vetd-bot-write {
+	0%,
+	100% {
+		transform: rotate(-4deg) translateY(0);
+	}
+	50% {
+		transform: rotate(5deg) translateY(1px);
+	}
+}
+/* bounce：蹦跳带挤压回弹（创作）。 */
+.vetd-bot-bounce .vetd-bot-head {
+	animation: vetd-bot-bounce 0.9s ease-out infinite;
+	transform-origin: 50% 100%;
+}
+@keyframes vetd-bot-bounce {
+	0%,
+	100% {
+		transform: translateY(0) scale(1, 1);
+	}
+	28% {
+		transform: translateY(-6px) scale(0.94, 1.12);
+	}
+	55% {
+		transform: translateY(0) scale(1.16, 0.82);
+	}
+	80% {
+		transform: translateY(-1.5px) scale(0.98, 1.04);
+	}
+}
+
+/* 浮层整体渐入渐出：opacity 由组件驱动（挂载下一帧置 1、卸载前归 0），
+   时长与 FrameActivityOverlay 的 FADE_MS 保持一致。 */
+.vetd-activity-overlay {
+	transition: opacity 300ms ease;
+}
+
+/* 混沌流体背景（对齐 image-gen 生成骨架）：实色 blob 漂移缩放 + 旋转层，
+   叠加重模糊融成流动渐变。60% 不透明度，底下的稿子仍隐约可见。
+
+   径向遮罩让它四周浓、中心淡：边缘紧贴 frame 边框，与画布背景对比最强、
+   存在感够；中心留出通透区，稿子主体始终读得到，动画不挡看稿。 */
+.vetd-fluid {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	opacity: 0.6;
+	--vetd-fluid-mask: radial-gradient(
+		ellipse 72% 62% at 50% 50%,
+		transparent 0%,
+		rgb(0 0 0 / 0.22) 42%,
+		rgb(0 0 0 / 0.72) 72%,
+		#000 100%
+	);
+	-webkit-mask-image: var(--vetd-fluid-mask);
+	mask-image: var(--vetd-fluid-mask);
+}
+/* 居中大正方形旋转层：180% 宽，任意旋转角内切圆都盖满 frame。 */
+.vetd-fluid-spin {
+	position: relative;
+	width: 180%;
+	aspect-ratio: 1;
+	filter: blur(26px) saturate(120%);
+	animation: vetd-fluid-spin 36s linear infinite;
+	will-change: transform;
+}
+@keyframes vetd-fluid-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.vetd-fluid-blob {
+	width: 100%;
+	height: 100%;
+	border-radius: 9999px;
+	animation-name: vetd-fluid-drift;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+	animation-direction: alternate;
+	will-change: transform;
+}
+@keyframes vetd-fluid-drift {
+	0% {
+		transform: translate(0%, 0%) scale(1);
+	}
+	25% {
+		transform: translate(22%, -16%) scale(1.22);
+	}
+	50% {
+		transform: translate(-14%, 20%) scale(0.82);
+	}
+	75% {
+		transform: translate(16%, 14%) scale(1.12);
+	}
+	100% {
+		transform: translate(-20%, -10%) scale(0.94);
+	}
+}
+
+/* 毛玻璃胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。
+   底色同上固定白色，不跟宿主主题。 */
+.vetd-activity-chip {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 10px;
+	border-radius: 9999px;
+	background: rgb(255 255 255 / 0.88);
+	border: 1px solid color-mix(in oklab, var(--vetd-accent, #6366f1) 25%, transparent);
+	backdrop-filter: blur(6px);
+	box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.25);
+}
+
+/* 浏览：扫描光带（top/height 都是常量，动画只有 transform）。 */
+.vetd-scan-beam {
+	position: absolute;
+	left: 0;
+	right: 0;
+	top: -20%;
+	height: 20%;
+	background: linear-gradient(
+		to bottom,
+		transparent,
+		color-mix(in oklab, var(--vetd-accent, #6366f1) 8%, transparent) 60%,
+		color-mix(in oklab, var(--vetd-accent, #6366f1) 22%, transparent)
+	);
+	border-bottom: 1px solid color-mix(in oklab, var(--vetd-accent, #6366f1) 45%, transparent);
+	animation: vetd-scan 2.4s linear infinite;
+}
+@keyframes vetd-scan {
+	to {
+		/* 自身高 20%：600% ≈ 从顶上扫出底边。 */
+		transform: translateY(600%);
+	}
+}
+
+/* 浏览：中央放大镜，缓慢游走像在找东西。 */
+.vetd-magnifier {
+	position: relative;
+	width: 34px;
+	height: 34px;
+	animation: vetd-magnifier-roam 3.2s ease-in-out infinite;
+}
+.vetd-magnifier-glass {
+	position: absolute;
+	inset: 0;
+	border-radius: 9999px;
+	border: 3px solid color-mix(in oklab, var(--vetd-accent, #6366f1) 75%, transparent);
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 10%, transparent);
+}
+.vetd-magnifier-handle {
+	position: absolute;
+	width: 14px;
+	height: 4px;
+	border-radius: 9999px;
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 75%, transparent);
+	right: -10px;
+	bottom: 0;
+	transform: rotate(45deg);
+}
+@keyframes vetd-magnifier-roam {
+	0%,
+	100% {
+		transform: translate(-8px, -5px);
+	}
+	30% {
+		transform: translate(7px, -2px);
+	}
+	60% {
+		transform: translate(3px, 6px);
+	}
+	80% {
+		transform: translate(-4px, 3px);
+	}
+}
+
+/* 修改：打字骨架线，逐行「写出来」再擦掉重来。 */
+.vetd-typing-lines {
+	display: flex;
+	flex-direction: column;
+	gap: 3px;
+	width: 36px;
+}
+.vetd-typing-line {
+	height: 3px;
+	border-radius: 2px;
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 55%, transparent);
+	transform-origin: left;
+	transform: scaleX(0);
+	animation: vetd-typing 1.8s ease-in-out infinite;
+}
+.vetd-typing-line:nth-child(2) {
+	width: 78%;
+	animation-delay: 0.2s;
+}
+.vetd-typing-line:nth-child(3) {
+	width: 55%;
+	animation-delay: 0.4s;
+}
+@keyframes vetd-typing {
+	0% {
+		transform: scaleX(0);
+	}
+	45%,
+	75% {
+		transform: scaleX(1);
+	}
+	100% {
+		transform: scaleX(0);
+	}
+}
+
+/* 创作：十字星光，交错闪烁。 */
+.vetd-spark {
+	position: absolute;
+	width: 10px;
+	height: 10px;
+	opacity: 0;
+	animation: vetd-spark 1.9s ease-in-out infinite;
+}
+.vetd-spark::before,
+.vetd-spark::after {
+	content: "";
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	border-radius: 9999px;
+	/* 以白为主、只掺一点语义色：星光压在彩色流体上，越白越跳。 */
+	background: color-mix(in oklab, var(--vetd-accent, #6366f1) 25%, white);
+}
+.vetd-spark::before {
+	width: 10px;
+	height: 2px;
+	transform: translate(-50%, -50%);
+}
+.vetd-spark::after {
+	width: 2px;
+	height: 10px;
+	transform: translate(-50%, -50%);
+}
+@keyframes vetd-spark {
+	0%,
+	100% {
+		opacity: 0;
+		transform: scale(0.3) rotate(0deg);
+	}
+	50% {
+		opacity: 1;
+		transform: scale(1) rotate(90deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-bot-think .vetd-bot-head,
+	.vetd-bot-bubble,
+	.vetd-bot-write .vetd-bot-head,
+	.vetd-bot-bounce .vetd-bot-head,
+	.vetd-scan-beam,
+	.vetd-magnifier,
+	.vetd-typing-line,
+	.vetd-fluid-spin,
+	.vetd-fluid-blob,
+	.vetd-spark {
+		animation: none;
+	}
+	/* 关掉动画后骨架线/星光停在不可见帧，钉到可见状态。 */
+	.vetd-typing-line {
+		transform: scaleX(1);
+	}
+	.vetd-spark {
+		opacity: 0.8;
+	}
+}

@@ -37,7 +37,7 @@ export function MessageCenterDialogView({
 								animate={{ opacity: 1 }}
 								exit={{ opacity: 0 }}
 								transition={{ duration: 0.18 }}
-								className="fixed inset-0 z-50 bg-background/10 supports-backdrop-filter:backdrop-blur-[1px]"
+								className="no-drag fixed inset-0 z-50 bg-background/10 supports-backdrop-filter:backdrop-blur-[1px]"
 							/>
 						</DialogPrimitive.Overlay>
 
@@ -53,7 +53,7 @@ export function MessageCenterDialogView({
 								exit={{ opacity: 0, scale: 0.96, y: -8, transition: { duration: 0.14 } }}
 								transition={MESSAGE_CENTER_DIALOG_SPRING}
 								style={{ transformOrigin: "top right" }}
-								className="fixed right-3 top-12 z-50 flex max-h-[min(560px,calc(100vh-5rem))] w-[420px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl border border-border/70 bg-popover text-popover-foreground shadow-lg outline-none"
+								className="no-drag fixed right-3 top-12 z-50 flex max-h-[min(560px,calc(100vh-5rem))] w-[420px] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-xl border border-border/70 bg-popover text-popover-foreground shadow-lg outline-none"
 							>
 								<div className="relative flex items-center justify-between px-5 pt-4 pb-3">
 									<div className="flex items-center gap-2">

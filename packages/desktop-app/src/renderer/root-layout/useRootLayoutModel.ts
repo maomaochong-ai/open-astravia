@@ -2,10 +2,11 @@ import type { DesktopUserQuestionRequest, DesktopUserQuestionResolvedEvent } fro
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FILE_EDITOR_SAVE_EVENT } from "@/shared/shortcuts";
 import { useAuth } from "../domains/auth/hooks/useAuth";
+import { loadNewSessionPage } from "../domains/chat/components/loadNewSessionPage";
 import { useAppInit } from "../domains/chat/hooks/useAppInit";
 import { useSessionManager } from "../domains/chat/hooks/useSessionManager";
-import { useDownloadsInit } from "../domains/downloads/hooks/useDownloadsInit";
 import { useNotificationInit } from "../domains/message/hooks/useNotificationInit";
 import { useProjects } from "../domains/project/hooks/useProjects";
 import { useMessageQueueDispatcher } from "../shared/hooks/useMessageQueueDispatcher";
@@ -19,6 +20,7 @@ import {
 	activeSessionAtom,
 	appshotAttachmentAtom,
 	defaultConversationCwdAtom,
+	fileEditorHasUnsavedChangesAtom,
 	focusInputRequestAtom,
 	lastActiveSessionAtom,
 	pendingQuestionsAtom,
@@ -42,6 +44,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 	const matchesForGuard = useMatches();
 	const currentPath = matchesForGuard[matchesForGuard.length - 1]?.pathname ?? "/";
 	const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
+	const hasUnsavedFileChanges = useAtomValue(fileEditorHasUnsavedChangesAtom);
 	const [sessionRestoreState, setSessionRestoreState] = useState<SessionRestoreState>("pending");
 	const sessionRestoreAttemptedRef = useRef(false);
 	const toggleSidebar = useCallback(() => {
@@ -83,7 +86,6 @@ export function useRootLayoutModel(): RootLayoutModel {
 	useAuth();
 	useAppInit();
 	useNotificationInit();
-	useDownloadsInit();
 	useUpdaterInit();
 	// 全局 running-sessions 订阅必须挂在始终挂载的 App 上：它是 streaming 状态真值
 	// 来源之一，挂在会被卸载的 Sidebar 上会在卸载期间丢 RUNNING_CHANGED 事件。
@@ -92,10 +94,30 @@ export function useRootLayoutModel(): RootLayoutModel {
 	useMessageQueueDispatcher();
 	const { openSession, sendMessage } = useSessionManager();
 
+	useEffect(() => {
+		if (!hasUnsavedFileChanges) return;
+		const preventClose = (event: BeforeUnloadEvent) => {
+			event.preventDefault();
+			event.returnValue = "";
+		};
+		window.addEventListener("beforeunload", preventClose);
+		return () => window.removeEventListener("beforeunload", preventClose);
+	}, [hasUnsavedFileChanges]);
+
+	// 没有待恢复会话时提前加载 NewSession 路由代码；侧栏项目/会话列表可继续独立加载。
+	// 页面本身仍等路由守卫确认后再挂载，避免其初始化 effect 清除待恢复记录。
+	useEffect(() => {
+		if (currentPath !== "/" || activeSession || lastActiveSession) return;
+		void loadNewSessionPage().catch((error: unknown) => {
+			console.warn("[RootLayout] preload new session page failed", error);
+		});
+	}, [currentPath, activeSession, lastActiveSession]);
+
 	// 刷新根路由时先用持久化的 cwd + sessionPath 重建 runtime session。
+	// 持久化定位信息已足够恢复，无需等待默认 cwd 或侧栏历史列表完成加载。
 	// runtimeId 不能跨 renderer 生命周期复用，必须重新走 openSession/session.create。
 	useEffect(() => {
-		if (currentPath !== "/" || !defaultConversationCwd || sessionRestoreAttemptedRef.current) {
+		if (currentPath !== "/" || sessionRestoreAttemptedRef.current) {
 			return;
 		}
 		sessionRestoreAttemptedRef.current = true;
@@ -111,15 +133,7 @@ export function useRootLayoutModel(): RootLayoutModel {
 				setLastActiveSession(null);
 			})
 			.finally(() => setSessionRestoreState("complete"));
-	}, [
-		currentPath,
-		defaultConversationCwd,
-		activeSession,
-		lastActiveSession,
-		openSession,
-		setActiveSession,
-		setLastActiveSession,
-	]);
+	}, [currentPath, activeSession, lastActiveSession, openSession, setActiveSession, setLastActiveSession]);
 
 	// 路由守卫：仅在确认没有可恢复会话后，才跳到默认「对话」项目的 NewSession 页。
 	useEffect(() => {
@@ -387,6 +401,10 @@ export function useRootLayoutModel(): RootLayoutModel {
 					}
 					case "open-settings": {
 						void navigate({ to: "/settings/$tab", params: { tab: "account" } });
+						break;
+					}
+					case "save-file": {
+						window.dispatchEvent(new Event(FILE_EDITOR_SAVE_EVENT));
 						break;
 					}
 				}

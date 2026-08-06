@@ -40,6 +40,8 @@ export interface McpServerSupervisorOptions {
 	readonly debug?: boolean;
 	readonly onDiagnostic?: (message: string) => void;
 	readonly authRequiredErrorMatcher?: (error: unknown) => boolean;
+	/** Product-owned defaults. File config may override the same name. */
+	readonly builtinServers?: Readonly<Record<string, McpServerConfig>>;
 }
 
 /**
@@ -56,6 +58,7 @@ export class McpServerSupervisor {
 	private readonly onDiagnostic?: (message: string) => void;
 	private readonly authRequiredErrorMatcher: (error: unknown) => boolean;
 	private enabled: boolean;
+	private readonly builtinServers = new Map<string, McpServerConfig>();
 	private dynamicServers = new Map<string, McpServerConfig>();
 	private dynamicSignature = "none";
 	private lastSignature: string | undefined;
@@ -71,6 +74,9 @@ export class McpServerSupervisor {
 		this.debug = options.debug ?? false;
 		this.onDiagnostic = options.onDiagnostic;
 		this.authRequiredErrorMatcher = options.authRequiredErrorMatcher ?? isMcpAuthRequiredError;
+		for (const [name, config] of Object.entries(options.builtinServers ?? {})) {
+			if (name && !name.includes("_")) this.builtinServers.set(name, config);
+		}
 	}
 
 	async initialize(): Promise<void> {
@@ -263,7 +269,8 @@ export class McpServerSupervisor {
 
 	private loadEffectiveConfig(): McpConfig {
 		const merged = this.configSource.loadMerged();
-		const mcpServers: Record<string, McpServerConfig> = { ...merged.mcpServers };
+		const mcpServers: Record<string, McpServerConfig> = Object.fromEntries(this.builtinServers);
+		Object.assign(mcpServers, merged.mcpServers);
 		for (const [name, config] of this.dynamicServers) mcpServers[name] = config;
 		return { mcpServers };
 	}

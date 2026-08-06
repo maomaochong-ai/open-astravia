@@ -8,6 +8,9 @@
 			"skills": "能力",
 			"scenes": "场景",
 			"plugins": "插件",
+			"modelSettings": "模型设置",
+			"agentSettings": "Agent 设置",
+			"appearance": "外观",
 			"more": "更多",
 			"betaBadge": "BETA"
 		},
@@ -133,11 +136,15 @@
 		"downloading": "正在下载 {{version}}（{{pct}}%）",
 		"ready": "更新 {{version}} 已就绪，点击重启",
 		"checkFailed": "更新检查失败，点击重试",
-		"downloadProgress": "下载进度"
+		"downloadProgress": "下载进度",
+		"bannerReady": "新版本 {{version}} 已就绪",
+		"bannerRestart": "重启更新",
+		"bannerDismiss": "忽略"
 	},
 	"tabPicker": {
 		"moreTabs": "更多标签页",
 		"hiddenPanels": "已隐藏面板",
+		"availablePlugins": "可添加插件面板",
 		"menu": "标签页菜单"
 	},
 	"tour": {

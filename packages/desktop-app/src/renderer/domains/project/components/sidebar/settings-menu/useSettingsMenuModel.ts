@@ -1,7 +1,7 @@
 import { useAuth } from "@domains/auth/hooks/useAuth";
 import { useImOnline } from "@shared/hooks/useImOnline";
 import { useTheme } from "@shared/hooks/useTheme";
-import { downloadsActiveCountAtom, loginDialogOpenAtom, type ThemeMode, themeModeAtom } from "@shared/store/atoms";
+import { loginPopoverOpenAtom, type ThemeMode, themeModeAtom } from "@shared/store/atoms";
 import { subscriptionStatusAtom } from "@shared/store/auth-atoms";
 import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue, useSetAtom } from "jotai";
@@ -13,10 +13,9 @@ export function useSettingsMenuModel(open: boolean, setOpen: (open: boolean) => 
 	const { t } = useTranslation("settings");
 	const { t: tProject } = useTranslation("project");
 	const mode = useAtomValue(themeModeAtom);
-	const activeDownloads = useAtomValue(downloadsActiveCountAtom);
 	const { setMode } = useTheme();
 	const navigate = useNavigate();
-	const setLoginOpen = useSetAtom(loginDialogOpenAtom);
+	const setLoginOpen = useSetAtom(loginPopoverOpenAtom);
 	const { user, logout } = useAuth();
 	const subscription = useAtomValue(subscriptionStatusAtom);
 	const clawOnline = useImOnline();
@@ -34,7 +33,6 @@ export function useSettingsMenuModel(open: boolean, setOpen: (open: boolean) => 
 	];
 
 	return {
-		activeDownloads,
 		fiveHourRemainingPercent,
 		fiveHourResetAt: fiveHourWindow?.reset_at,
 		goBadgeColor: subscription.badge_color,
@@ -55,10 +53,6 @@ export function useSettingsMenuModel(open: boolean, setOpen: (open: boolean) => 
 			logout: () => {
 				setOpen(false);
 				logout();
-			},
-			openDownloads: () => {
-				setOpen(false);
-				void navigate({ to: "/downloads" });
 			},
 			openSettings: () => {
 				setOpen(false);

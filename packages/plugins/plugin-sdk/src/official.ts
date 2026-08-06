@@ -41,7 +41,6 @@ export interface PluginOfficialUpdaterState {
 	totalBytes?: number;
 	assetFileName?: string;
 	error?: string;
-	pendingInstall: boolean;
 }
 
 export type PluginOfficialWebhookKind = "feishu" | "dingtalk";

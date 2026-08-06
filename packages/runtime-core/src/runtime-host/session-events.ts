@@ -111,6 +111,25 @@ export function mapRuntimeSessionObservationEvent(
 			return { ...base, type: event.type, tasks: [...event.tasks] };
 		case "subagents_update":
 			return { ...base, type: event.type, agents: [...event.agents] };
+		case "retry.start":
+			return {
+				...base,
+				type: event.type,
+				attempt: event.attempt,
+				maxAttempts: event.maxAttempts,
+				delayMs: event.delayMs,
+				errorMessage: event.errorMessage,
+			};
+		case "retry.end":
+			return {
+				...base,
+				type: event.type,
+				success: event.success,
+				attempt: event.attempt,
+				finalError: event.finalError,
+			};
+		case "active_tools_update":
+			return { ...base, type: event.type, activeToolNames: [...event.activeToolNames] };
 		case "compaction.start":
 			return { ...base, type: event.type, reason: event.reason };
 		case "compaction.end":

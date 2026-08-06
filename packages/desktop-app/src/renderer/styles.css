@@ -1,6 +1,7 @@
 @layer vetta-plugins, theme, base, components, utilities;
 
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "@vetta/theme-ui/styles.css";
 @plugin "@iconify/tailwind4";
 
@@ -12,6 +13,9 @@
 @source "../../../ui/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:is([data-mode="dark"] *));
+/* Radix sets data-state="open"|"closed"; @vetta/ui uses data-open:/data-closed: utilities. */
+@custom-variant data-open (&:is([data-state="open"]));
+@custom-variant data-closed (&:is([data-state="closed"]));
 
 /* ─── Dark mode (default) ─── */
 :root,
@@ -19,23 +23,25 @@
 	color-scheme: dark;
 
 	--background: rgb(20, 22, 30);
-	--foreground: rgb(240, 242, 248);
+	--foreground: rgb(220, 224, 234);
 	--card: rgb(26, 28, 36);
-	--card-foreground: rgb(240, 242, 248);
+	--card-foreground: rgb(220, 224, 234);
 	--popover: rgb(50, 53, 67);
-	--popover-foreground: rgb(240, 242, 248);
+	--popover-foreground: rgb(220, 224, 234);
 	--primary: rgb(99, 102, 241);
 	--primary-foreground: rgb(255, 255, 255);
-	--secondary: rgb(36, 38, 48);
-	--secondary-foreground: rgb(240, 242, 248);
-	--muted: rgb(28, 30, 38);
-	--muted-foreground: rgb(155, 161, 178);
-	--accent: rgb(38, 41, 52);
-	--accent-foreground: rgb(240, 242, 248);
+	--secondary: rgb(38, 38, 40);
+	--secondary-foreground: rgb(220, 224, 234);
+	--muted: rgb(30, 30, 32);
+	--muted-foreground: rgb(138, 144, 160);
+	--accent: rgb(41, 41, 43);
+	--accent-foreground: rgb(220, 224, 234);
 	--destructive: rgb(255, 91, 91);
 	--destructive-foreground: rgb(0, 0, 0);
 	--border: rgb(42, 45, 56);
 	--input: rgb(48, 51, 64);
+	/* AI 输入栏底色：深色跟随 card，浅色为纯白 */
+	--input-bar-bg: rgb(26, 28, 36);
 	--ring: rgb(129, 132, 248);
 	--chart-1: rgb(255, 174, 4);
 	--chart-2: rgb(38, 113, 244);
@@ -89,7 +95,7 @@
 	--primary-foreground: rgb(255, 255, 255);
 	--secondary: rgb(235, 235, 235);
 	--secondary-foreground: rgb(0, 0, 0);
-	--muted: rgb(242, 242, 245);
+	--muted: rgb(242, 242, 242);
 	--muted-foreground: rgb(82, 82, 82);
 	--accent: rgb(235, 235, 235);
 	--accent-foreground: rgb(0, 0, 0);
@@ -97,6 +103,7 @@
 	--destructive-foreground: rgb(255, 255, 255);
 	--border: rgb(230, 230, 230);
 	--input: rgb(230, 230, 230);
+	--input-bar-bg: rgb(255, 255, 255);
 	--ring: rgb(79, 70, 229);
 	--chart-1: rgb(255, 174, 4);
 	--chart-2: rgb(45, 98, 239);
@@ -431,6 +438,95 @@ textarea:disabled,
 	z-index: 1;
 }
 
+/* 侧边栏样式「经典」：抵消 AppFrame 的 p-2，让常驻侧边栏贴住窗口左/上/下边，
+   并去掉圆角与四周边框，只保留右侧一条分隔线。窄屏 overlay 侧边栏不受影响。
+   取值见 shared/theme/sidebar-style.ts。 */
+:root[data-sidebar-style="classic"] .sidebar-dock {
+	margin: -0.5rem 0 -0.5rem -0.5rem;
+}
+
+:root[data-sidebar-style="classic"] .sidebar-dock .sidebar-surface {
+	border-radius: 0;
+	border-width: 0;
+	border-right-width: 1px;
+}
+
+/* 顶栏内容与 macOS 红绿灯对齐。h-11 自身居中：悬浮时顶栏占 8~52、中线 30 偏下；
+   经典下从 y=0 起算、中线 22 偏上。两边各补一侧内边距把中线挪到实测位置
+   （悬浮 28、经典 29）。padding 记在 h-11 元素自身（border-box，总高不变），
+   drag-region 仍覆盖整条顶栏。数值是照实机目测调的，要挪就改这两个。 */
+:root[data-platform="mac"] .sidebar-dock .sidebar-top-bar {
+	padding-bottom: 0.25rem;
+}
+
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-top-bar {
+	padding-top: 0.875rem;
+	padding-bottom: 0;
+}
+
+/* macOS 经典侧边栏用系统原生毛玻璃（窗口已带 vibrancy: "sidebar"，见 main/window-manager.ts）。
+   放行的做法是整帧 + 侧边栏都不上底色，再由主内容区自己补回不透明底色：
+   ::before 向上/右/下各溢出 8px 盖住 AppFrame 的 p-2 留白，所以布局与非 mac 完全一致，
+   只有侧边栏那一条透出桌面。 */
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-frame {
+	background-color: transparent;
+}
+
+/* 侧边栏不全透：在毛玻璃上再铺一层半透明 --background，压住桌面壁纸的杂色，
+   同时保留 vibrancy 的通透感。浓淡调 --sidebar-vibrancy-tint 即可。
+
+   主题里的 --accent 是不透明实色，铺在这层半透明底上会出问题：侧边栏底色跟着背后
+   桌面的明暗走，选中块却纹丝不动，背后亮的那一段底色会被抬得比选中块还亮，高亮与
+   底色的明暗关系当场反转，看着就像那半边的选中背景没了。所以在侧边栏子树内把
+   --accent 换成半透明叠加色——始终是「在当前合成底色上再压 10% 前景色」，背后黑白
+   都成立。导航指示条、项目行/会话行选中与 hover:bg-accent/50 一起生效。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: color-mix(
+		in srgb,
+		var(--background) var(--sidebar-vibrancy-tint, 60%),
+		transparent
+	);
+	--accent: color-mix(in srgb, var(--foreground) 10%, transparent);
+	transition: background-color 240ms ease;
+}
+
+/* 浅色的 --background 是纯白，同样的浓度压得比深色狠得多，透明感几乎没了，所以单独调淡。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-mode="light"]
+	.sidebar-dock
+	.sidebar-surface {
+	--sidebar-vibrancy-tint: 35%;
+}
+
+/* 明暗切换期间先遮住原生 vibrancy（它由主进程翻转，动不了也不进 View Transition 快照，
+   否则会比页面动画早一步瞬变）；属性移除后按上面的 240ms 淡回半透明。 */
+:root[data-platform="mac"][data-sidebar-style="classic"][data-theme-transition]
+	.sidebar-dock
+	.sidebar-surface {
+	background-color: var(--background);
+	transition: none;
+}
+
+:root[data-platform="mac"][data-sidebar-style="classic"] .app-main-frame::before {
+	content: "";
+	position: absolute;
+	inset: -0.5rem;
+	z-index: -1;
+	background-color: var(--background);
+}
+
+/* 侧边栏在位时，左边那 8px 已经被它自己盖住，::before 不能再往左伸——否则会压住毛玻璃右缘。
+   侧边栏收起（或窄屏浮层态）时 .sidebar-dock 整个不渲染，此规则不命中，
+   ::before 就按上面的 inset 一路铺到窗口左边，不会留下透出桌面的空白条。 */
+:root[data-platform="mac"][data-sidebar-style="classic"]
+	.sidebar-dock
+	~ .app-main-frame::before {
+	left: 0;
+}
+
 .project-list-containment {
 	contain: layout paint style;
 }
@@ -451,10 +547,9 @@ textarea:disabled,
 	color: var(--foreground);
 }
 
-/* Focus ring — only on interactive elements, not textareas */
+/* Focus: no global outline/ring; interactive controls use 1px border color change */
 :focus-visible {
-	outline: 2px solid color-mix(in srgb, var(--ring) 50%, transparent);
-	outline-offset: -2px;
+	outline: none;
 }
 textarea:focus-visible,
 textarea:focus {

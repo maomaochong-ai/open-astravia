@@ -7,11 +7,13 @@ import {
 	recordInputActionsUsed,
 	recordInputContextUsed,
 } from "@shared/lib/app-monitor-events";
+import { deriveSkillNames, parseInputSegments } from "@shared/lib/input-tokens";
 import {
 	activeInputActionIdsAtom,
 	activeSessionAtom,
 	activeSessionStreamingAtom,
 	activeToolNamesAtom,
+	adoptExistingSessionInputDraft,
 	appshotAttachmentAtom,
 	attachedImagesAtom,
 	type BackgroundTask,
@@ -19,6 +21,7 @@ import {
 	batchProjectsAtom,
 	type ChatMessage,
 	chatMessagesAtom,
+	claimNewSessionInputDraft,
 	contextUsageAtom,
 	conversationBucketCwd,
 	currentScenarioAtom,
@@ -33,6 +36,7 @@ import {
 	lastTurnUsageAtom,
 	mentionedFilesAtom,
 	modelSupportsImagesAtom,
+	newSessionInputDraftKey,
 	openSessionFnRef,
 	pendingMessageEditAtom,
 	pluginInputActionsAtom,
@@ -40,6 +44,8 @@ import {
 	promptPredictingAtom,
 	promptSuggestionsAtom,
 	reasoningByModelAtom,
+	recordSentInputAndClearDraft,
+	retryProgressAtom,
 	type SessionExecutionMode,
 	type SubagentTask,
 	selectedModelAtom,
@@ -95,7 +101,12 @@ function modelKeyToParts(key: string | null | undefined): { provider: string; id
 }
 
 interface SessionManagerResult {
-	openSession: (cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>;
+	openSession: (
+		cwd: string,
+		sessionPath?: string,
+		executionMode?: SessionExecutionMode,
+		options?: { navigate?: boolean },
+	) => Promise<void>;
 	/**
 	 * overrideText：以指定文本作为独立 prompt 直发（输入预测建议 / 设置 AI 协助等），省略则按输入框内容发送。
 	 * options.metadata：合并进本轮 PromptRequest.metadata（仅宿主/input-pipeline 消费，不进用户气泡正文）。
@@ -109,7 +120,13 @@ interface SessionManagerResult {
 	/** 立即发送某条排队消息：streaming 时先中止当前流、等 aborted 再发，空闲则直发。 */
 	sendQueuedNow: (runtimeId: string, id: string) => Promise<void>;
 	openSessionRef: React.MutableRefObject<
-		((cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>) | undefined
+		| ((
+				cwd: string,
+				sessionPath?: string,
+				executionMode?: SessionExecutionMode,
+				options?: { navigate?: boolean },
+		  ) => Promise<void>)
+		| undefined
 	>;
 }
 
@@ -117,17 +134,12 @@ export function useSessionManager(): SessionManagerResult {
 	const [activeSession, setActiveSession] = useAtom(activeSessionAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
 	const setActiveSessionStreaming = useSetAtom(activeSessionStreamingAtom);
-	const [inputValue, setInputValue] = useAtom(inputValueAtom);
 	const [attachedImages, setAttachedImages] = useAtom(attachedImagesAtom);
-	const [selectedSkill, setSelectedSkill] = useAtom(selectedSkillAtom);
+	const selectedSkill = useAtomValue(selectedSkillAtom);
 	const [mentionedFiles, setMentionedFiles] = useAtom(mentionedFilesAtom);
-	const [appshotAttachment, setAppshotAttachment] = useAtom(appshotAttachmentAtom);
-	// 镜像输入相关 atom 到 ref：sendMessage 调用时读 ref.current，避免把这些高频变化
-	// 的值放进它的 useCallback 依赖。否则每打一个字 inputValue 一变，sendMessage 就换
-	// 身份 → 作为 onSend 一路传到 MessageList 的 Virtuoso footer，触发整块重挂载，footer
-	// 内的插件 turn 卡随之闪烁/重查。
-	const inputValueRef = useRef(inputValue);
-	inputValueRef.current = inputValue;
+	const appshotAttachment = useAtomValue(appshotAttachmentAtom);
+	// 发送时直接读取输入 atom 快照，避免 useSessionManager 订阅每次按键。
+	// 这个 hook 同时挂在根布局和页面中；订阅会让这些宿主随输入重渲染整棵子树。
 	const attachedImagesRef = useRef(attachedImages);
 	attachedImagesRef.current = attachedImages;
 	const selectedSkillRef = useRef(selectedSkill);
@@ -156,6 +168,7 @@ export function useSessionManager(): SessionManagerResult {
 	const todoItemsMapRef = useRef(todoItemsMap);
 	todoItemsMapRef.current = todoItemsMap;
 	const setIsCompacting = useSetAtom(isCompactingAtom);
+	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const setIsReloadingMcp = useSetAtom(isReloadingMcpAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
 	// 用于判断当前 session 是否归属一个 paused 的 batch-task 子任务。命中时
@@ -175,7 +188,13 @@ export function useSessionManager(): SessionManagerResult {
 	defaultConversationCwdRef.current = defaultConversationCwd;
 	const activeSessionRef = useRef<{ cwd: string; sessionPath: string; runtimeId: string } | null>(null);
 	const openSessionRef = useRef<
-		((cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>) | undefined
+		| ((
+				cwd: string,
+				sessionPath?: string,
+				executionMode?: SessionExecutionMode,
+				options?: { navigate?: boolean },
+		  ) => Promise<void>)
+		| undefined
 	>(undefined);
 	// Sessions for which auto-title has already been attempted (or skipped because
 	// the session was opened with prior history / already had a name).
@@ -262,10 +281,16 @@ export function useSessionManager(): SessionManagerResult {
 	}, []);
 
 	const openSession = useCallback(
-		async (cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => {
+		async (
+			cwd: string,
+			sessionPath?: string,
+			executionMode?: SessionExecutionMode,
+			options?: { navigate?: boolean },
+		) => {
 			// 取自己的调用令牌；若中途被新的 openSession 抢跑，会在 subscribe()
 			// 返回后被发现并立即清理自己刚建好的 IPC 订阅，避免泄漏。
 			const myOpenToken = bumpOpenSessionToken();
+			const shouldNavigate = options?.navigate !== false;
 			// 切换 session 前清掉内嵌文件预览（指向旧 cwd 的某个具体文件），但
 			// **保留**活动面板的展开状态：用户在上一个 session 打开过 ActivityPanel
 			// 后，切到新 session 仍维持打开，避免每次切换都要重新点开。
@@ -288,6 +313,7 @@ export function useSessionManager(): SessionManagerResult {
 			// 分支 + runningSessionPathsAtom 派生兜底会把 TypingIndicator 重新拉回来。
 			setActiveSessionStreaming(false);
 			setIsCompacting(false);
+			setRetryProgress(null);
 			// Clear messages immediately so the user sees the switch take effect
 			// instead of staring at the old session while history loads.
 			setChatMessages([]);
@@ -325,14 +351,17 @@ export function useSessionManager(): SessionManagerResult {
 			// 这里以 main 返回的 effective cwd 为准，保证 FilesPanel/调试 cwd 都指向子目录。
 			const effectiveCwd = createResult.cwd ?? cwd;
 
-			// 拿到 sessionId 就立即写 activeSession 并 navigate，让用户尽快看到 ChatView。
+			// 拿到 sessionId 就立即写 activeSession；默认再 navigate 到 ChatView。
 			// 真实 sessionPath 解析（可能还要再走一次 IPC）放到后面，等好了再补一次写入。
 			// 这样 Welcome → Chat 的转场就不会被 getFullHistory / getState / getSessionPath
 			// 的串行 IPC 拖住，体感保持瞬时。
+			// navigate:false：设置页 AI 协助等场景只后台建会话，留在当前路由，由侧栏高亮 + 飞球引导。
 			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: sessionPath ?? "", runtimeId: sessionId };
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
-			void navigate({ to: "/" });
+			if (shouldNavigate) {
+				void navigate({ to: "/" });
+			}
 
 			// Fire history + state in parallel so renderer doesn't wait on two
 			// sequential IPC round-trips. History is rendered as soon as it lands;
@@ -453,6 +482,14 @@ export function useSessionManager(): SessionManagerResult {
 				activeSessionRef.current = sessionInfo;
 			}
 
+			// 输入草稿按 sessionPath 隔离：打开已有会话装入该会话草稿；
+			// 新建会话保留工作集（随即 sendMessage），只把归属从 new:cwd 迁到真实 path。
+			if (sessionPath === undefined) {
+				claimNewSessionInputDraft(cachedKey, newSessionInputDraftKey(cwd));
+			} else {
+				adoptExistingSessionInputDraft(cachedKey);
+			}
+
 			// ─── Subscribe to live session events ───
 			const unsubscribeFn = await window.vetta.session.subscribe(sessionId, (event) => {
 				// Defensive guard: if user has already switched away to another
@@ -491,6 +528,9 @@ export function useSessionManager(): SessionManagerResult {
 						resetStreamState();
 						setActiveSessionStreaming(false);
 						setTurnStartTime(0);
+						// 重试期也会走到这里（agent_end 先于 retry.start），随后的
+						// retry.start 会把进度重新点亮；真正结束时则不会，避免残留。
+						setRetryProgress(null);
 						// Write total duration onto the last assistant message
 						setChatMessages((prev) => {
 							if (elapsed > 0) {
@@ -718,10 +758,21 @@ export function useSessionManager(): SessionManagerResult {
 					return;
 				}
 
+				// ── Auto-retry（退避等待中；错误本身要等重试彻底失败才会来）──
+				if (event.type === "retry.start") {
+					setRetryProgress({ attempt: event.attempt, maxAttempts: event.maxAttempts });
+					return;
+				}
+				if (event.type === "retry.end") {
+					setRetryProgress(null);
+					return;
+				}
+
 				// ── Error (provider / runtime error) ──
 				if (event.type === "error") {
 					flushDeltas();
-					setChatMessages((prev) => appendError(prev, event.error.message));
+					setRetryProgress(null);
+					setChatMessages((prev) => appendError(prev, event.error.message, event.retryAttempts));
 					return;
 				}
 
@@ -799,6 +850,16 @@ export function useSessionManager(): SessionManagerResult {
 					return;
 				}
 
+				// ── 激活工具集变化（插件在会话创建之后才注册工具）──
+				// openSession 时拿到的 getState 快照可能早于插件 activate，不刷新的话
+				// 输入栏 badge 的 requiresActiveTool 闸门会一直按旧集合隐藏。
+				if (event.type === "active_tools_update") {
+					if (event.sessionId === activeSessionRef.current?.runtimeId) {
+						setActiveToolNames(new Set(event.activeToolNames));
+					}
+					return;
+				}
+
 				// ── Todo update ──
 				if (event.type === "todo_update") {
 					const sid = activeSessionRef.current?.runtimeId;
@@ -859,6 +920,7 @@ export function useSessionManager(): SessionManagerResult {
 			setActiveSession,
 			setActiveSessionStreaming,
 			setIsCompacting,
+			setRetryProgress,
 			setIsReloadingMcp,
 			navigate,
 			loadSessions,
@@ -895,8 +957,8 @@ export function useSessionManager(): SessionManagerResult {
 			// 读 ref 而非 state：允许在同一 tick 内先 openSession 再立即 sendMessage
 			// （例如 NewSessionPage 的"创建会话+发送"组合调用），避免 React 闭包拿到旧 null。
 			const session = activeSessionRef.current ?? activeSession;
-			// 读 ref 快照而非订阅值，使 sendMessage 身份在打字时保持稳定（见上方 ref 注释）。
-			const inputValue = inputValueRef.current;
+			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
+			const inputValue = getDefaultStore().get(inputValueAtom);
 			const attachedImages = attachedImagesRef.current;
 			const selectedSkill = selectedSkillRef.current;
 			const mentionedFiles = mentionedFilesRef.current;
@@ -978,12 +1040,18 @@ export function useSessionManager(): SessionManagerResult {
 							},
 						}),
 			});
+			// 行内 skill 是软引用，不进 promptRef，但调用次数仍要计入 app-monitor
+			// （命令面板按使用频次排序依赖这份统计）。每个被引用的 skill 记一次。
 			if (!hasOverride) {
-				setInputValue("");
+				for (const name of deriveSkillNames(parseInputSegments(rawText).segments)) {
+					recordInputContextUsed({ promptRef: { kind: "skill", name } });
+				}
+			}
+			if (!hasOverride) {
+				// 记入本作用域历史并清草稿（含 input / skill / appshot 工作集与 map 条目）。
+				recordSentInputAndClearDraft(rawText);
 				setAttachedImages([]);
-				setSelectedSkill(null);
 				setMentionedFiles([]);
-				setAppshotAttachment(null);
 			}
 			// 最后一条用户消息重编辑：提交时先中止当前生成，再删除旧消息及其回复子树；
 			// 随后的正常 prompt 从原 parent 继续，因此不会创建会话内分支。
@@ -1229,15 +1297,12 @@ export function useSessionManager(): SessionManagerResult {
 			await loadSessions(conversationBucketCwd(session.cwd, defaultConversationCwdRef.current));
 		},
 		[
-			// 输入相关值改为读 ref（inputValue/attachedImages/selectedSkill/mentionedFiles/
-			// selectedModel），不再入依赖，保证 sendMessage 身份在打字时稳定，避免下游
+			// 输入文本调用时读 store，其余输入相关值读 ref，不再入依赖，保证
+			// sendMessage 身份在打字时稳定，避免下游
 			// Virtuoso footer 重挂载（footer 内的插件 turn 卡会因此闪烁/重查）。
 			activeSession,
-			setInputValue,
 			setAttachedImages,
-			setSelectedSkill,
 			setMentionedFiles,
-			setAppshotAttachment,
 			setChatMessages,
 			loadSessions,
 			ensureLocalSession,
@@ -1344,7 +1409,9 @@ function buildRecentConversation(messages: ChatMessage[]): string {
 	for (const m of relevant.slice(startIdx)) {
 		const text = (m.text ?? "").trim();
 		if (!text) continue;
-		lines.push(`${m.role === "user" ? "用户" : "助手"}: ${text.slice(0, 600)}`);
+		// 标签必须用英文：中文标签会给预测模型「本会话说中文」的信号，
+		// 用户全程英文也会拿到中文建议（语言由用户消息决定，见 peripheral-tasks.ts）。
+		lines.push(`${m.role === "user" ? "User" : "Assistant"}: ${text.slice(0, 600)}`);
 	}
 	return lines.join("\n\n").slice(0, 4000);
 }

@@ -1,11 +1,13 @@
 import type { SkillInfo } from "@preload/api";
-import type { AppshotAttachment, AttachedImage, MentionedFile } from "@shared/store/atoms";
-import type { FilePreviewItem } from "@shared/store/file-preview-atoms";
+import type { AppshotAttachment } from "@shared/store/atoms";
 import type { TodoItem } from "@shared/store/todo-atoms";
 import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
-import type { ChangeEvent, ClipboardEvent, ComponentProps, KeyboardEvent, MouseEvent, RefObject } from "react";
+import type { ComponentProps, MouseEvent } from "react";
+import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
 import type { SelectedFile } from "../AtPanel";
 import type { QuestionPanel } from "../QuestionPanel";
+import type { ActiveActionCapsule } from "./ActiveActionCapsules";
+import type { TriggerMatch } from "./editor/tokens/trigger";
 
 export interface InputBarProps {
 	onSend: (overrideText?: string) => Promise<void>;
@@ -16,6 +18,11 @@ export interface InputBarProps {
 	 * 把该项目的 cwd 传进来：InputBar 把它视为「有会话」、@ 文件面板用它作为根目录。
 	 */
 	cwdOverride?: string;
+	/**
+	 * 命令区展开 / 收起时回调。命令区向上生长，宿主可以据此腾出空间
+	 * （新会话页把整条输入栏下移，避免下方留白过大）。
+	 */
+	onExpandedChange?: (expanded: boolean) => void;
 }
 
 export interface InputBarLabels {
@@ -23,10 +30,8 @@ export interface InputBarLabels {
 		removeDefault: string;
 		removeImage: string;
 		removeTooltip: (path: string) => string;
-	};
-	hint: {
-		send: string;
-		newline: string;
+		/** 多个 input action 折叠成一枚胶囊时的文案，如「3 个插件」。 */
+		activeGroup: (count: number) => string;
 	};
 	permission: {
 		deny: string;
@@ -78,17 +83,15 @@ export type InputBarDrawerItem =
 	  };
 
 export interface InputBarModel {
-	inputValue: string;
 	isStreaming: boolean;
 	pendingQuestion: ComponentProps<typeof QuestionPanel>["pending"] | undefined;
 	firstSuggestion?: string;
-	attachedImages: AttachedImage[];
+	/** 输入卡片上方的图片缩略图行；label 与文本流里的「图 N」胶囊同源。 */
+	imageAttachments: ReadonlyArray<{ path: string; name: string; url: string; label: string }>;
+	/** 已激活的 input action；全量开关在命令面板里，这里只留激活提示。 */
+	activeActions: readonly ActiveActionCapsule[];
+	/** 仅场景（scene）：它走 promptRef 硬展开，不进文本流，用顶部胶囊展示。 */
 	selectedSkill: { name: string; alias?: string; type: string } | null;
-	mentionedFiles: MentionedFile[];
-	imageFiles: MentionedFile[];
-	nonImageFiles: MentionedFile[];
-	imagePreviewItems: FilePreviewItem[];
-	hasImages: boolean;
 	appshotAttachment: AppshotAttachment | null;
 	hasSession: boolean;
 	canSend: boolean;
@@ -103,8 +106,16 @@ export interface InputBarModel {
 	placeholderRotating: boolean;
 	isFocused: boolean;
 	slashOpen: boolean;
+	/**
+	 * 命令区是否还在屏上（含退场动画期间）。
+	 * 输入卡片的圆角与上边框跟它走而不是 `slashOpen`：两块面是一整块，`slashOpen`
+	 * 一变卡片就立刻恢复圆角，命令区还没退完，接缝处会露出两个缺口。
+	 */
+	slashVisible: boolean;
 	slashFilter: string;
 	atOpen: boolean;
+	/** `@` 触发词原文（含 `@`），AtPanel 用它过滤。 */
+	atFilter: string;
 	drawerItems: InputBarDrawerItem[];
 	drawerActiveTab: string | null;
 	hasPromptAttachment: boolean;
@@ -114,28 +125,30 @@ export interface InputBarModel {
 	pendingMessageEdit: boolean;
 	pendingEditHint: string;
 	cancelPendingEditLabel: string;
-	textareaRef: RefObject<HTMLTextAreaElement | null>;
-	/** Textarea right-click cut/copy/paste menu; null when closed. */
+	/** 输入区右键剪切/复制/粘贴菜单；关闭时为 null。 */
 	contextMenu: InputBarContextMenuViewProps | null;
 	labels: InputBarLabels;
 	actions: {
 		setFocused: (focused: boolean) => void;
 		setDrawerActiveTab: (tabId: string | null) => void;
-		handleKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
-		handleChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
-		handlePaste: (e: ClipboardEvent) => Promise<void>;
-		handleContextMenu: (e: MouseEvent<HTMLTextAreaElement>) => void;
+		/** 回车键；返回 true 表示已当作发送处理，编辑器不再插换行。 */
+		handleEnter: () => boolean;
+		/** 编辑器上报光标前的 `/` / `@` 触发词。 */
+		handleTriggerChange: (trigger: TriggerMatch | null) => void;
+		handleContextMenu: (e: MouseEvent<HTMLDivElement>) => void;
 		handleSlashClose: () => void;
-		handleSlashSelect: (skill: SkillInfo) => void;
+		/** icon 由命令区从市场目录解析后带下来，行内胶囊沿用同一张图。 */
+		handleSlashSelect: (skill: SkillInfo, icon?: string) => void;
+		/** 面板里点连接器宫格：插入一个 `@mcp:名字` 行内 token。 */
+		handleConnectorSelect: (connector: ConnectorGridItem) => void;
 		handleAtClose: () => void;
 		handleAtSelect: (file: SelectedFile) => void;
-		getAtFilter: () => string;
-		removeImage: (id: string) => void;
 		removeSkill: () => void;
-		removeFile: (path: string) => void;
+		/** 从文本流里删掉该图片的 token（缩略图行的 × 按钮）。 */
+		removeImage: (path: string) => void;
+		openImagePreview: (index: number) => void;
 		removePromptAttachment: () => void;
 		removeAppshot: () => void;
-		openImagePreview: (index: number) => void;
 		handlePlusClick: () => void;
 		handleSelectImages: () => Promise<void>;
 		handleSelectFiles: () => Promise<void>;
@@ -151,7 +164,7 @@ export interface InputBarViewClassNames {
 	card?: string;
 	cardContent?: string;
 	capsules?: string;
-	textareaWrap?: string;
+	editorWrap?: string;
 	toolbar?: string;
 }
 

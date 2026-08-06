@@ -59,7 +59,7 @@ function SettingControl({
 			return (
 				<input
 					type="number"
-					className="h-8 w-[200px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60 focus-visible:ring-1 focus-visible:ring-ring/20"
+					className="h-8 w-[200px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
 					value={value === undefined || value === null ? "" : String(value)}
 					onChange={(event) => {
 						const raw = event.target.value;
@@ -72,7 +72,7 @@ function SettingControl({
 				<input
 					type="password"
 					autoComplete="off"
-					className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60 focus-visible:ring-1 focus-visible:ring-ring/20"
+					className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
 					value={typeof value === "string" ? value : ""}
 					onChange={(event) => onChange(event.target.value)}
 				/>
@@ -91,7 +91,7 @@ function SettingControl({
 			return (
 				<input
 					type="text"
-					className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60 focus-visible:ring-1 focus-visible:ring-ring/20"
+					className="h-8 w-[240px] min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 text-[12px] outline-none focus-visible:border-ring/60"
 					value={typeof value === "string" ? value : ""}
 					onChange={(event) => onChange(event.target.value)}
 				/>

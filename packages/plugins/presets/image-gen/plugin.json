@@ -1,8 +1,8 @@
 {
 	"id": "image-gen",
 	"name": "%plugin.name%",
-	"icon": "solar:magic-stick-3-bold",
-	"version": "0.1.15",
+	"icon": "icon.png",
+	"version": "0.3.0",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
@@ -17,136 +17,15 @@
 		"ui.slot.input-action",
 		"ui.slot.message",
 		"ui.slot.activity-tab",
-		"ui.slot.global",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
-		"network.fetch",
 		"storage.read",
 		"storage.write",
+		"media.generate",
 		"fs.read"
 	],
-	"contributes": {
-		"settings": [
-			{
-				"key": "provider",
-				"type": "enum",
-				"title": "%settings.provider.title%",
-				"description": "%settings.provider.description%",
-				"enum": [
-					"openai",
-					"agnes-ai",
-					"custom"
-				],
-				"default": "openai"
-			},
-			{
-				"key": "openaiApiKey",
-				"type": "secret",
-				"title": "%settings.openaiApiKey.title%",
-				"description": "%settings.openaiApiKey.description%",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"openai"
-					]
-				}
-			},
-			{
-				"key": "agnesApiKey",
-				"type": "secret",
-				"title": "%settings.agnesApiKey.title%",
-				"description": "%settings.agnesApiKey.description%",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"agnes-ai"
-					]
-				}
-			},
-			{
-				"key": "customApiKey",
-				"type": "secret",
-				"title": "%settings.customApiKey.title%",
-				"description": "%settings.customApiKey.description%",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"custom"
-					]
-				}
-			},
-			{
-				"key": "openaiModel",
-				"type": "enum",
-				"title": "%settings.openaiModel.title%",
-				"description": "%settings.openaiModel.description%",
-				"enum": [
-					"gpt-image-2"
-				],
-				"default": "gpt-image-2",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"openai"
-					]
-				}
-			},
-			{
-				"key": "agnesModel",
-				"type": "enum",
-				"title": "%settings.agnesModel.title%",
-				"description": "%settings.agnesModel.description%",
-				"enum": [
-					"agnes-image-2.1-flash"
-				],
-				"default": "agnes-image-2.1-flash",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"agnes-ai"
-					]
-				}
-			},
-			{
-				"key": "agnesNote",
-				"type": "desc",
-				"description": "%settings.agnesNote.description%",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"agnes-ai"
-					]
-				}
-			},
-			{
-				"key": "baseUrl",
-				"type": "string",
-				"title": "%settings.baseUrl.title%",
-				"description": "%settings.baseUrl.description%",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"custom"
-					]
-				}
-			},
-			{
-				"key": "model",
-				"type": "string",
-				"title": "%settings.model.title%",
-				"description": "%settings.model.description%",
-				"visibleWhen": {
-					"key": "provider",
-					"in": [
-						"custom"
-					]
-				}
-			}
-		]
-	},
 	"description": "%plugin.description%",
 	"author": "Vetta",
 	"defaultLocale": "zh",
-	"guidingWords": [
-	]
+	"guidingWords": []
 }

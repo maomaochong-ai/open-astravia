@@ -1,4 +1,5 @@
 import type {
+	AbilityInstallOrigin,
 	McpConfigData,
 	McpHttpServerConfigData,
 	McpServerConfigData,
@@ -13,9 +14,10 @@ import {
 	existingSecretValues,
 	isBuiltinMcpServer,
 	matchBuiltinMcpPreset,
-	presetRequiresSecrets,
 	presetUsesBrowserAuth,
 	presetUsesOAuth,
+	resolveMcpPresetDescription,
+	resolveMcpPresetDisplayName,
 	serverUsesOAuth,
 } from "../mcp/builtin-mcp-presets";
 import { recordSettingsUsage } from "./recordSettingsUsage";
@@ -25,6 +27,15 @@ export type McpBuiltinAddResult = "installed" | "needs-setup";
 
 export type McpEditMode = "visual" | "json";
 export type McpTransportType = "stdio" | "http";
+
+export interface McpAbilityInstallOptions {
+	abilityVersion?: string;
+	origin?: AbilityInstallOrigin;
+	configVersion?: number;
+	catalogId?: string;
+	slug?: string;
+	runtimeName?: string;
+}
 
 export interface McpServerFormState {
 	name: string;
@@ -74,11 +85,8 @@ export interface McpSettingsModel {
 	/** 连接引导 Dialog 内的错误（如 OAuth 失败） */
 	secretsDialogError: string | null;
 	/** `abilityVersion` 给出时（市场 MCP 能力）写入安装台账。 */
-	onAddBuiltinServer: (
-		preset: BuiltinMcpPreset,
-		options?: { abilityVersion?: string },
-	) => Promise<McpBuiltinAddResult>;
-	onConfigureBuiltinSecrets: (name: string) => void;
+	onAddBuiltinServer: (preset: BuiltinMcpPreset, options?: McpAbilityInstallOptions) => Promise<McpBuiltinAddResult>;
+	onConfigureBuiltinSecrets: (name: string, preset?: BuiltinMcpPreset) => void;
 	onCloseSecretsDialog: () => void;
 	onConfirmSecretsDialog: (values: Record<string, string>) => Promise<void>;
 	/** serverName → 是否已有 OAuth token */
@@ -92,7 +100,7 @@ export interface McpSettingsModel {
 	/** 清除 OAuth 凭证 */
 	onRevokeOAuth: (name: string) => Promise<void>;
 	/** `abilityVersion` 给出时（市场 MCP 能力）写入安装台账。 */
-	onAddRemoteServer: (server: MarketMcpServer, options?: { abilityVersion?: string }) => Promise<void>;
+	onAddRemoteServer: (server: MarketMcpServer, options?: McpAbilityInstallOptions) => Promise<void>;
 	onRemoveRemoteServer: (name: string) => Promise<void>;
 	onJsonSave: () => Promise<void>;
 }
@@ -140,8 +148,8 @@ export function useMcpSettingsModel(): McpSettingsModel {
 	 * 中途不会重渲染，闭包里的 `config` 是旧快照——按它算下一份配置会互相覆盖。
 	 */
 	const configRef = useRef<McpConfigData | null>(null);
-	/** 引导 Dialog 完成后补记台账用的市场版本。 */
-	const pendingAbilityVersionRef = useRef<string | undefined>(undefined);
+	/** 引导 Dialog 完成后补记台账用的市场信息。 */
+	const pendingAbilityInstallRef = useRef<McpAbilityInstallOptions | undefined>(undefined);
 
 	const refreshOAuthStatus = useCallback(async (cfg: McpConfigData | null) => {
 		if (!cfg) {
@@ -198,10 +206,11 @@ export function useMcpSettingsModel(): McpSettingsModel {
 		setSecretsDialogMode("add");
 		setSecretsDialogError(null);
 		setSecretsDialogAuthorizing(false);
+		pendingAbilityInstallRef.current = undefined;
 	}, [secretsDialogAuthorizing]);
 
 	const writeBuiltinPreset = useCallback(
-		async (preset: BuiltinMcpPreset, secretValues?: Record<string, string>, abilityVersion?: string) => {
+		async (preset: BuiltinMcpPreset, secretValues?: Record<string, string>, options?: McpAbilityInstallOptions) => {
 			const config = configRef.current;
 			if (!config) return;
 			const targetName =
@@ -209,8 +218,8 @@ export function useMcpSettingsModel(): McpSettingsModel {
 			const next = buildBuiltinMcpServerConfig(
 				preset,
 				{
-					displayName: t(preset.displayNameKey),
-					description: t(preset.descriptionKey),
+					displayName: resolveMcpPresetDisplayName(preset, (key) => t(key)),
+					description: resolveMcpPresetDescription(preset, (key) => t(key)),
 				},
 				secretValues,
 			);
@@ -247,7 +256,7 @@ export function useMcpSettingsModel(): McpSettingsModel {
 						oauthScopes: next.oauthScopes,
 					});
 					await saveConfig(nextConfig);
-					await recordMcpAbilityInstall(targetName, abilityVersion);
+					await recordMcpAbilityInstall(targetName, options);
 					recordSettingsUsage({
 						tab: "mcp",
 						action: "added",
@@ -282,7 +291,7 @@ export function useMcpSettingsModel(): McpSettingsModel {
 			setBusyPresetName(preset.name);
 			try {
 				await saveConfig(nextConfig);
-				await recordMcpAbilityInstall(targetName, abilityVersion);
+				await recordMcpAbilityInstall(targetName, options);
 				recordSettingsUsage({
 					tab: "mcp",
 					action: secretsDialogMode === "configure" ? "updated" : "added",
@@ -359,11 +368,11 @@ export function useMcpSettingsModel(): McpSettingsModel {
 	);
 
 	const addBuiltinServer = useCallback(
-		async (preset: BuiltinMcpPreset, options?: { abilityVersion?: string }): Promise<McpBuiltinAddResult> => {
+		async (preset: BuiltinMcpPreset, options?: McpAbilityInstallOptions): Promise<McpBuiltinAddResult> => {
 			if (!configRef.current) return "needs-setup";
 			// 必填密钥 / 浏览器授权说明：都先弹引导，避免用户不知道下一步
-			if (presetRequiresSecrets(preset) || presetUsesBrowserAuth(preset)) {
-				pendingAbilityVersionRef.current = options?.abilityVersion;
+			if (preset.secrets?.length || presetUsesBrowserAuth(preset)) {
+				pendingAbilityInstallRef.current = options;
 				setSecretsDialogMode("add");
 				setSecretsDialogTargetName(preset.name);
 				setSecretsDialogInitial(undefined);
@@ -372,18 +381,18 @@ export function useMcpSettingsModel(): McpSettingsModel {
 				setSecretsDialogPreset(preset);
 				return "needs-setup";
 			}
-			await writeBuiltinPreset(preset, undefined, options?.abilityVersion);
+			await writeBuiltinPreset(preset, undefined, options);
 			return "installed";
 		},
 		[writeBuiltinPreset],
 	);
 
 	const configureBuiltinSecrets = useCallback(
-		(name: string) => {
+		(name: string, providedPreset?: BuiltinMcpPreset) => {
 			if (!config) return;
 			const server = config.mcpServers[name];
 			if (!server) return;
-			const preset = matchBuiltinMcpPreset(name, server);
+			const preset = providedPreset ?? matchBuiltinMcpPreset(name, server);
 			if (!preset?.secrets?.length) return;
 			setSecretsDialogMode("configure");
 			setSecretsDialogTargetName(name);
@@ -396,21 +405,21 @@ export function useMcpSettingsModel(): McpSettingsModel {
 	const confirmSecretsDialog = useCallback(
 		async (values: Record<string, string>) => {
 			if (!secretsDialogPreset) return;
-			await writeBuiltinPreset(secretsDialogPreset, values, pendingAbilityVersionRef.current);
-			pendingAbilityVersionRef.current = undefined;
+			await writeBuiltinPreset(secretsDialogPreset, values, pendingAbilityInstallRef.current);
+			pendingAbilityInstallRef.current = undefined;
 		},
 		[secretsDialogPreset, writeBuiltinPreset],
 	);
 
 	const addRemoteServer = useCallback(
-		async (server: MarketMcpServer, options?: { abilityVersion?: string }) => {
+		async (server: MarketMcpServer, options?: McpAbilityInstallOptions) => {
 			const config = configRef.current;
 			if (!config) return;
 			// 升级/重加时按字段合并，保留用户本地填的密钥、headers、停用与自动批准状态
 			const merged = mergeMarketServer(config.mcpServers[server.name], marketToServer(server));
 			const newServers = { ...config.mcpServers, [server.name]: merged };
 			await saveConfig({ ...config, mcpServers: newServers });
-			await recordMcpAbilityInstall(server.name, options?.abilityVersion);
+			await recordMcpAbilityInstall(server.name, options);
 			recordSettingsUsage({ tab: "mcp", action: "added", target: "market-server" });
 		},
 		[saveConfig],
@@ -680,9 +689,15 @@ function formToServer(form: McpServerFormState): McpServerConfigData {
  * 市场 MCP 落盘后补记安装台账（ADR-0049）。mcp.json 由本模块整份覆写，
  * 主进程侧的 upsert 不在这条路径上，故显式补记，否则「可更新」永远不会出现。
  */
-async function recordMcpAbilityInstall(name: string, abilityVersion: string | undefined): Promise<void> {
-	if (!abilityVersion?.trim()) return;
-	await window.vetta.abilities.recordMcpInstall(name, abilityVersion);
+async function recordMcpAbilityInstall(name: string, options: McpAbilityInstallOptions | undefined): Promise<void> {
+	if (!options?.abilityVersion?.trim()) return;
+	await window.vetta.abilities.recordMcpInstall(name, options.abilityVersion, {
+		...(options.origin ? { origin: options.origin } : {}),
+		...(options.configVersion ? { configVersion: options.configVersion } : {}),
+		...(options.catalogId ? { catalogId: options.catalogId } : {}),
+		...(options.slug ? { slug: options.slug } : {}),
+		runtimeName: options.runtimeName ?? name,
+	});
 }
 
 /**

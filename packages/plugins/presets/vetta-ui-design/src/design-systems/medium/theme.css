@@ -1,0 +1,22 @@
+/* Medium — editorial white, serif voice, green ask + yellow highlight. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #1a8917;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #ffffff;
+	--color-surface-foreground: #242424;
+	--color-surface-raised: #fafafa;
+	--color-muted: #6b6b6b;
+	--color-accent: #ffc017;
+	--color-danger: #c94a4a;
+	--color-border: #e6e6e6;
+
+	--radius-sm: 2px;
+	--radius-md: 4px;
+	--radius-lg: 4px;
+	--radius-xl: 8px;
+	--radius-2xl: 12px;
+
+	--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+	--shadow-md: 0 2px 10px rgb(0 0 0 / 0.08);
+	--shadow-lg: 0 8px 32px rgb(0 0 0 / 0.12);
+}

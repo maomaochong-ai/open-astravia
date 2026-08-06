@@ -28,6 +28,20 @@
 - **Greenfield 模型与 Prompt 窄适配入口**：新增 `@vetta/coding-agent/runtime-host/greenfield`，将现有 ModelRegistry 适配为 Runtime Catalog/Credential Port；Prompt Adapter 保留文本、图片、streaming、结构化 Skill/Scene、附件、知识模式与设置协助的输入语义，通过可注入资源解析端口和通用持久化 context 与具体 Kernel 实现解耦。
 - **RuntimeHost Legacy Adapter 与显式组合入口**：新增 `@vetta/coding-agent/runtime-host`，集中承载旧 `AgentSession`、SessionManager、ModelRegistry、历史/事件和平台沙箱工具到 Runtime Core Port 的兼容适配；`createLegacyRuntimeHostOptions()` 为 Desktop 等宿主一次组装完整旧行为。
 - **Runtime 可执行文件解析适配器**：新增 `createToolExecutableResolver`，将旧 `ensureTool` 以静默解析方式适配为 Runtime `rg`/`fd` Resolver Port；下载、版本选择和失败策略仍由 coding-agent 宿主拥有。
+- **内建 vetta MCP 由本地 stdio 子进程改为远程 HTTP 服务**：`buildBuiltinMcpServers()` 现在返回 `McpHttpServerConfig`（指向服务端 `POST /api/v1/mcp`），签名由 `(entry?: string | null)` 改为 `(options?: BuildBuiltinMcpOptions)`，`resolveVettaMcpEntry` 与 `@vetta/vetta-mcp` 包一并删除。
+  - **动机**：工具清单原先写死在客户端，加一个工具就要发一次客户端版本。改远程后清单由服务端按调用者身份与客户端版本动态下发，客户端不需要知道有哪些工具。（顺带修掉了打包后内置工具整组静默消失的问题——打包产物里根本没有 `@vetta/vetta-mcp` 包，`require.resolve` 必然失败且不打日志。）
+  - **未登录时不再注册**：内置 MCP 是登录用户的增值服务，注册一个必然 401 的 server 只会让每次会话启动白连一次、等一次超时。登录后新开会话即可拿到。
+  - **`upload_ability` 从 MCP 移除**：它要读用户磁盘上的能力包，而远程服务摸不到本地文件系统。上传改由 `skill-presets/publish-ability/scripts/publish.mjs` 承担，由 agent 在本地执行。
+  - 启动超时从通用默认的 30s 收到 3s：内置服务不可用只该少一组工具，不该让每次新会话先干等半分钟。
+
+### Added
+
+- **`McpHttpServerConfig.resolveHeaders`：按请求解析 HTTP header**（运行时字段，`mcp.json` 里不存在，只有代码构造的 server 会设）。`mcp-http-client.ts` 据此包一层自定义 `fetch` 传给 SDK transport。
+  - 解决的是一类通病而非个案：`headers` 在建立连接时被烘进 transport，凭据一轮换就持续 401 直到整个客户端重启。内建 MCP 用它每次请求重读 `~/.vetta/auth.json`；同一条链路对用户自装的第三方 HTTP MCP 同样可用。
+  - 解析器抛错不拖垮请求：凭据文件的瞬时读失败应表现为服务端的 401（调用方已有处理），而不是不透明的传输层崩溃。
+- **`core/mcp/vetta-credentials.ts`**：读取客户端下沉在 `~/.vetta/auth.json` 的登录态（原 `@vetta/vetta-mcp/credentials` 的职责）。每次调用都重读、不缓存——token 会轮换，缓存住就等于把过期凭据钉死在连接上。
+- **内建 MCP 携带 `X-Vetta-Client-Version` 头**：服务端据此决定下发哪些工具。必须每一版都带——老客户端不会补发这个头，闸门一旦漏发就永久失效。
+
 - **外部生态 Hook `SessionEnd` / `PostToolUseFailure` 宿主接线**：`newSession` / `switchSession` / `fork` 在切换会话 id 前 `await runSessionEnd`（Vetta cause：`new_session` / `switch_session` / `fork_session`）；`dispose` best-effort `runSessionEnd("dispose")`（同步捕获 session 元数据）。Claude wire `reason` 仅在 ecosystem-adapter Claude profile 映射。工具 wrapper 在真实 `execute` 抛错后触发 `PostToolUseFailure`（`error` / `is_interrupt` / `duration_ms`），Pre/Post 阻断不计入失败；失败 hook 的 `additionalContext` / exit 2 反馈可进入模型上下文或错误消息。
 - **外部生态 Hook `PermissionRequest` / `SubagentStart` / `SubagentStop` 宿主接线**：沙箱权限 UI 弹出前经 `ExtensionContext.requestEcosystemPermission` 跑 `PermissionRequest`（allow/deny 短路、否则回落用户 UI；会话 grant 缓存命中时不触发）。`SubagentCoordinator` 在子会话创建后首轮 prompt 前 `runSubagentStart`（可阻断 spawn、additionalContext 注入任务消息），正常结束可 `SubagentStop` 续跑（≤8 次），interrupt/failed 终态 best-effort `SubagentStop`（不续跑）。
 
@@ -95,6 +109,12 @@
 - **Legacy Session 资源关闭事务**：新增幂等 `AgentSession.close()` 可等待入口，RPC、知识加工与默认 Subagent 子会话改为等待真实释放；关闭会先终止并等待 Agent、后台 Bash、Subagent、SessionEnd Hook，再等待 MCP 初始化/关闭，最后释放 Session 文件锁。同步阻止关闭后的后台任务创建和 MCP Runtime 重建，保留原同步 `dispose()` 作为兼容启动入口。
 - **RPC EOF 与 Extension shutdown 生命周期竞态**：JSONL 输入关闭后会先 drain 已接收的命令处理器，再释放 Session，避免在途 `new_session` 丢失响应或与 dispose 争用所有权；Extension 异步调用 `ctx.shutdown()` 现在无需等待下一条 RPC 命令即可触发关闭，并由共享 Promise 保证 `session_shutdown`、transport close 与资源释放各执行一次。Host/UI 响应仍保持并发，不进入全局串行队列。
 - **独立 CLI 产物可加载显式 TypeScript Extension**：Extension Loader 始终注入已打包的公共 virtual modules，仅在本地依赖可解析时附加 Jiti alias，避免无相邻 `node_modules` 的 standalone bundle 在解析 TypeBox 等公共模块时以 `ENOENT` 失败。
+- **常驻工具描述里的中文把英文会话翻成中文**：`ask_user_question` 的描述用中文举例徽章（`["推荐"]`、`"更快"`、`"成本低"`），而这正是「向用户列选项」这件事在上下文里唯一的输出范例——模型在英文会话里照着写出了整屏中文选项，随后 autotitle（输入含该条 assistant 文本）与输入预测一并被带偏。现改为英文示例，并明确「问题/选项/徽章跟用户最新消息的语言走，示例是英文只因为这份描述是英文」。同时删掉 `bash` / `shell` 描述末尾误从本仓库 AGENTS.md 漏进去的 `注意：对用户可见的输出文案禁止硬编码中文…`——它与工具本身无关，却每轮常驻。（OCR/`read` 里的「盖章/印章/公章」与 `todo` 的「分步/计划」是**用户输入侧**的识别词，保留。）
+- **真正的断网 / 连不上一次都不会自动重试**：`RetryController.isRetryableError` 的可重试正则只认 `connection refused` 这类英文短语，而 Node 抛的原文是 `connect ECONNREFUSED 1.2.3.4:443`、`getaddrinfo EAI_AGAIN …`，两者对不上——网络类错误因此直接落到「不可重试」，用户看到的是一次就放弃。现补上 `ECONNREFUSED` / `ECONNRESET` / `ETIMEDOUT` / `ENOTFOUND` / `EAI_AGAIN` / `EPIPE` / `EHOSTUNREACH` / `ENETUNREACH` 分支。（由 desktop-app `classifyChatError.test.ts` 的跨包一致性断言发现，见 ADR-0057。）
+- **GPT 模型把 `progress` / `todo` 的参数当正文明文吐出来、阶段标题与 todo 状态一起丢失**：`ominiroute-hellox/gpt-5.6-luna` 在同一轮里既要叙述又要干活时，会把 `progress` 的参数写成 tool call 前的 preamble 正文（用真实会话上下文重放，8/8 复现；旧会话里同一机制让 8 次 `todo` 状态更新静默丢失）。抓包确认参数逐 token 从 `delta.content` 出来、流里没有对应 `tool_calls`，本地解析链路无关。现向 `@vetta/agent` 传 `salvageTextToolCalls: ["progress", "todo"]`，把这类正文还原成真实调用；白名单只含无副作用工具，且参数键需唯一匹配工具 schema，不会误执行 `write` / `bash`。
+- **Windows 上进程已死但 `.jsonl.lock` 永久占死、会话无法打开**：`process.kill(pid, 0)` 在 Windows 上对**已不存在**的 PID 也会抛 `EPERM`（POSIX 语义下 EPERM 才表示进程仍在），旧逻辑把 EPERM 当存活，再叠加 `Get-Process` 失败时「无法证明复用 → 假定仍占用」，崩溃/强杀后留下的锁永远回收不了。现 Windows 以 `Get-Process` 为存活源：明确不存在则回收；探测失败时也不再把 EPERM 当存活。顺带 `Get-Process -ErrorAction SilentlyContinue`，避免抢锁时刷 PowerShell 红字。
+- **`tool_search` 激活 MCP 工具后模型仍拿不到、反复检索同一个工具**：根因在 `@vetta/agent`（loop 复制 context，本轮不再重读 tools，已随该包修复）。这里配套两处：`setActiveToolsByName` 同步更新本轮激活名单快照 `_currentRunActiveToolNames`，避免随后的插件 runtime effect 用旧快照重建 tools 把刚激活的工具又摘掉；`tool_search` 的描述与返回文案改为明确「已激活/已在激活集 → 直接调用，不要再检索」。
+- **会话文件锁在 PID 复用后永久占死**：`.jsonl.lock` 原先只靠 `pid + process.kill(pid,0)` 判断持有者是否仍存活。Windows 上 PID 会很快被无关进程（如 VS Code 子进程）复用，导致「没有 Vetta 在用、会话却永远 SESSION_LOCKED」。现写入 `processStartedAt`，抢锁时校验是否仍是**同一进程实例**；无该字段的旧锁若「存活进程启动时间晚于锁写入时间」则按复用回收。顺带：`EPERM` 视为进程仍在；hostname 大小写不敏感；进程 exit/信号时 best-effort 清理本进程持有的 sentinel。
 - **Subagent/workflow 子会话继承父 `ModelRegistry`**：`createDefaultSubagentSessionFactory` 原先只传 `model`，子 session 会新建 registry，读不到父进程内存里的 `serverToken` / remote models，导致父用云端 provider（如 `vetta-go`）时子 agent 报 `No API key found for vetta-go`、workflow「均未执行」。现 `SubagentParentContext` / coordinator 传入父 `modelRegistry`，create/reopen 子会话复用同一实例。
 
 
@@ -137,6 +157,8 @@
 - **移除旧 Tool 实现与描述生成链**：删除 `coding-agent/src/core/tools`、旧后台任务管理器、旧 Tool 兼容类型及 `generate:descriptions`；内置工具继续由 `@vetta/runtime-tools/coding` 提供，工具名称、TypeBox schema、scope、requires、输出、错误、取消和后台任务行为保持不变。
 
 ### Fixed
+
+- **系统提示缺少回复语言规则，英文提问却得到中文回复/progress/todo**：此前全仓只有 `work.md` 的 progress 标题与 `md_intro` 提到 "in the user's language"，正文、todo、`ask_user_question` 全无约束，模型实际跟的是系统提示与 skill 正文的语言——上下文里只要混进中文（skill 示例、工具描述里的「推荐」「分步」「盖章」等），英文会话就整体倒向中文。新增 `RESPONSE_LANGUAGE_GUIDANCE`：以「用户最新消息的语言」为唯一口径，明确声明系统提示/skill/工具描述/宿主界面的语言都不是语言信号，并列出适用面（正文、progress、todo、提问选项、`md_intro`、产物内的面向用户文案）。`buildGuidelines` 与 customPrompt 分支（`core.response-language`）两条组装路径都注入。
 
 - **前台 bash/shell 把守护进程当短命令导致永久卡住**：模型对 `make dev` / `docker compose up` / dev server 等未设 `run_in_background` 时，前台会一直等到进程退出。无显式 hard `timeout` 时改为 soft wait（默认 45s），仍在跑则 auto-promote 到 `BackgroundTaskManager` 并返回 task id；无 background 能力时同一默认值改为硬杀。同时收紧 tool description / schema / system guidelines，要求非退出进程必须 `run_in_background`。
 - **知识库加工失败的文件被无限重加工（止损：失败计数 + 隔离）**：差异计算是纯 hash、无状态的——「wiki 页存在且 source_hash 匹配」是某原始文件「加工成功」的唯一凭证。任何永远写不出 wiki 页的文件（OCR 失败/超大/agent 中途崩/被中止/上下文溢出），其 `source_hash` 永远匹配不到 wiki 页，于是每一轮 `diffRaws` 都把它重新判为 `added` 重加工，无失败计数、无退避、无上限 → 同样几个文件每 N 分钟反复空转。新增 `core/knowledge/failures.ts`（按 `source_hash` 记录连续失败次数，达阈值 `KB_MAX_PROCESSING_ATTEMPTS=3` 即隔离）+ `failures.json` 持久化（`readFailures`/`writeFailures`）：`prepareRound` 用 `applyQuarantine` 从 diff 剔除已隔离项不再自动重加工；新增 `reconcileRoundFailures` 在轮末（仅非中止时）据「wiki 是否真出现该 hash」对账成败——成功清除记录、失败计数 +1。文件内容变化（hash 变）视为全新文件自动重试，旧记录自动剪枝。

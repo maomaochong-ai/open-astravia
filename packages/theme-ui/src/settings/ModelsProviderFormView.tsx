@@ -20,6 +20,7 @@ export interface ModelsProviderFormViewLabels {
 	readonly cancel: string;
 	readonly namePlaceholder: string;
 	readonly baseUrlPlaceholder: string;
+	readonly copyApiKey: string;
 }
 
 export interface ModelsProviderFormViewProps {
@@ -31,6 +32,7 @@ export interface ModelsProviderFormViewProps {
 	readonly saveLabel: string;
 	readonly apiOptions: readonly { value: string; label: string }[];
 	readonly labels: ModelsProviderFormViewLabels;
+	readonly onCopyApiKey?: () => void;
 }
 
 export function ModelsProviderFormView({
@@ -42,6 +44,7 @@ export function ModelsProviderFormView({
 	saveLabel,
 	apiOptions,
 	labels,
+	onCopyApiKey,
 }: ModelsProviderFormViewProps): JSX.Element {
 	return (
 		<>
@@ -72,12 +75,27 @@ export function ModelsProviderFormView({
 				</div>
 				<div className="col-span-2">
 					<label className="mb-1 block text-[11px] text-muted-foreground">API Key</label>
-					<InputField
-						value={form.apiKey}
-						onChange={(value) => onChange({ apiKey: value })}
-						placeholder={labels.apiKeyPlaceholder}
-						type="password"
-					/>
+					<div className="flex items-center gap-2">
+						<div className="min-w-0 flex-1">
+							<InputField
+								value={form.apiKey}
+								onChange={(value) => onChange({ apiKey: value })}
+								placeholder={labels.apiKeyPlaceholder}
+								type="password"
+							/>
+						</div>
+						{onCopyApiKey && (
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								onClick={onCopyApiKey}
+								title={labels.copyApiKey}
+								aria-label={labels.copyApiKey}
+							>
+								<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
+							</Button>
+						)}
+					</div>
 				</div>
 				<div className="col-span-2">
 					<label className="mb-1 block text-[11px] text-muted-foreground">{labels.customHeaders}</label>

@@ -1,32 +1,46 @@
-export type PluginPermission =
-	| "ui.slot.global"
-	| "ui.slot.file-preview"
-	| "ui.slot.activity-tab"
-	| "ui.slot.input-action"
-	| "ui.slot.message"
-	| "ui.slot.tool-call"
-	| "ui.slot.turn-card"
-	| "agent.session.read"
-	| "agent.session.write"
-	| "agent.command.run"
-	| "agent.systemPrompt.read"
-	| "agent.systemPrompt.write"
-	| "agent.systemPrompt.fullControl"
-	| "agent.skills.control"
-	| "agent.mcp.control"
-	| "agent.tools.control"
-	| "agent.tools.register"
-	| "agent.toolHandler.execute"
-	| "agent.state.read"
-	| "agent.state.write"
-	| "agent.continuation.register"
-	| "agent.runtime.configure"
-	| "app.actions.register"
-	| "app.actionHandler.execute"
-	| "fs.read"
-	| "fs.write"
-	| "network.fetch"
-	| "storage.read"
-	| "storage.write"
-	| "settings.read"
-	| "settings.write";
+export const PLUGIN_PERMISSIONS = [
+	"ui.slot.global",
+	"ui.slot.file-preview",
+	"ui.slot.activity-tab",
+	"ui.slot.input-action",
+	"ui.slot.message",
+	"ui.slot.tool-call",
+	"ui.slot.turn-card",
+	"ui.shortcuts.register",
+	"ui.file-explorer.decorations",
+	"ui.file-explorer.context-menu",
+	"ui.file-explorer.toolbar",
+	"workspace.read",
+	"agent.session.read",
+	"agent.session.write",
+	"agent.command.run",
+	"agent.command.spawn",
+	"capture.offscreen",
+	"agent.systemPrompt.read",
+	"agent.systemPrompt.write",
+	"agent.systemPrompt.fullControl",
+	"agent.skills.control",
+	"agent.mcp.control",
+	"agent.tools.control",
+	"agent.tools.register",
+	"agent.toolHandler.execute",
+	"agent.state.read",
+	"agent.state.write",
+	"agent.continuation.register",
+	"agent.runtime.configure",
+	"app.actions.register",
+	"app.actionHandler.execute",
+	"ai.models.list",
+	"ai.complete",
+	"fs.read",
+	"fs.write",
+	"network.fetch",
+	"storage.read",
+	"storage.write",
+	"media.generate",
+	"settings.read",
+	"settings.write",
+	"shell.openExternal",
+] as const;
+
+export type PluginPermission = (typeof PLUGIN_PERMISSIONS)[number];

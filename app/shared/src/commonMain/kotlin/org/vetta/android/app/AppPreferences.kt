@@ -60,7 +60,7 @@ class AppPreferences(
 
     companion object {
         /** 与 desktop `.env.development` 同源默认，可在设置中覆盖。 */
-        const val DEFAULT_SERVER_URL = "http://120.26.174.239:8080/api/v1"
+        const val DEFAULT_SERVER_URL = "https://api.openvetta.com/api/v1"
 
         private const val KEY_SERVER_URL = "vetta.prefs.server_url"
         private const val KEY_THEME = "vetta.prefs.theme"

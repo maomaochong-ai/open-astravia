@@ -20,7 +20,6 @@ const ROUTE_TITLE_KEYS: Array<{ match: RegExp; titleKey: PageHeaderTitleKey }> =
 	{ match: /^\/scenes$/, titleKey: "appShell.routeTitles.scenes" },
 	{ match: /^\/settings\b/, titleKey: "appShell.routeTitles.settings" },
 	{ match: /^\/project\b/, titleKey: "appShell.routeTitles.project" },
-	{ match: /^\/downloads$/, titleKey: "appShell.routeTitles.downloads" },
 	{ match: /^\/$/, titleKey: "appShell.routeTitles.chat" },
 ];
 

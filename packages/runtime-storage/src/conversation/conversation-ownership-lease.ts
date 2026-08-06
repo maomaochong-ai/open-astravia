@@ -7,10 +7,12 @@ import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { ConversationOwnershipConflictError, type ConversationOwnershipHolder } from "./errors.js";
 import { nodeErrorCode } from "./node-error-code.js";
+import { currentProcessStartedAtMs, isLocalProcessAlive, readLocalProcessStartedAtMs } from "./process-identity.js";
 
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
 const DEFAULT_STALE_AFTER_MS = 2 * 60_000;
 const ACQUIRE_RACE_RETRY_COUNT = 3;
+const PROCESS_START_TOLERANCE_MS = 5_000;
 
 const ConversationOwnershipHolderSchema = Type.Object(
 	{
@@ -18,6 +20,7 @@ const ConversationOwnershipHolderSchema = Type.Object(
 		pid: Type.Integer({ minimum: 1 }),
 		hostname: Type.String({ minLength: 1 }),
 		acquiredAt: Type.String({ minLength: 1 }),
+		processStartedAt: Type.Optional(Type.String({ minLength: 1 })),
 	},
 	{ additionalProperties: false },
 );
@@ -41,6 +44,7 @@ export interface FileConversationOwnershipManagerOptions {
 	readonly pid?: number;
 	readonly hostname?: string;
 	readonly isProcessAlive?: (pid: number) => boolean;
+	readonly readProcessStartedAtMs?: (pid: number) => number | undefined;
 }
 
 /**
@@ -57,6 +61,7 @@ export class FileConversationOwnershipManager implements ConversationOwnershipMa
 	private readonly pid: number;
 	private readonly hostname: string;
 	private readonly isProcessAlive: (pid: number) => boolean;
+	private readonly readProcessStartedAtMs: (pid: number) => number | undefined;
 
 	constructor(options: FileConversationOwnershipManagerOptions = {}) {
 		this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? DEFAULT_HEARTBEAT_INTERVAL_MS;
@@ -65,7 +70,8 @@ export class FileConversationOwnershipManager implements ConversationOwnershipMa
 		this.now = options.now ?? Date.now;
 		this.pid = options.pid ?? process.pid;
 		this.hostname = options.hostname ?? hostname();
-		this.isProcessAlive = options.isProcessAlive ?? defaultIsProcessAlive;
+		this.isProcessAlive = options.isProcessAlive ?? isLocalProcessAlive;
+		this.readProcessStartedAtMs = options.readProcessStartedAtMs ?? readLocalProcessStartedAtMs;
 		if (this.heartbeatIntervalMs <= 0) throw new Error("heartbeatIntervalMs must be greater than zero");
 		if (this.staleAfterMs <= this.heartbeatIntervalMs) {
 			throw new Error("staleAfterMs must be greater than heartbeatIntervalMs");
@@ -79,6 +85,11 @@ export class FileConversationOwnershipManager implements ConversationOwnershipMa
 			pid: this.pid,
 			hostname: this.hostname,
 			acquiredAt: new Date(this.now()).toISOString(),
+			processStartedAt: new Date(
+				this.pid === process.pid
+					? currentProcessStartedAtMs()
+					: (this.readProcessStartedAtMs(this.pid) ?? this.now()),
+			).toISOString(),
 		};
 		await mkdir(dirname(lockPath), { recursive: true });
 
@@ -139,7 +150,17 @@ export class FileConversationOwnershipManager implements ConversationOwnershipMa
 	}
 
 	private async canReclaim(lockPath: string, holder: ConversationOwnershipHolder | undefined): Promise<boolean> {
-		if (holder?.hostname === this.hostname) return !this.isProcessAlive(holder.pid);
+		if (holder?.hostname === this.hostname) {
+			if (!this.isProcessAlive(holder.pid)) return true;
+			const liveStartedAt = this.readProcessStartedAtMs(holder.pid);
+			if (liveStartedAt === undefined) return false;
+			const recordedStartedAt = holder.processStartedAt ? Date.parse(holder.processStartedAt) : Number.NaN;
+			if (Number.isFinite(recordedStartedAt)) {
+				return Math.abs(liveStartedAt - recordedStartedAt) > PROCESS_START_TOLERANCE_MS;
+			}
+			const acquiredAt = Date.parse(holder.acquiredAt);
+			return Number.isFinite(acquiredAt) && liveStartedAt > acquiredAt + PROCESS_START_TOLERANCE_MS;
+		}
 		try {
 			return this.now() - (await stat(lockPath)).mtimeMs >= this.staleAfterMs;
 		} catch (error) {
@@ -172,13 +193,4 @@ async function touchOwnedLock(path: string, token: string, now: number): Promise
 	if ((await readHolder(path))?.token !== token) return;
 	const timestamp = new Date(now);
 	await utimes(path, timestamp, timestamp);
-}
-
-function defaultIsProcessAlive(pid: number): boolean {
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch (error) {
-		return nodeErrorCode(error) === "EPERM";
-	}
 }

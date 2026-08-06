@@ -2,23 +2,21 @@ import type { DesktopThemePackage } from "@preload/api";
 import { DEFAULT_THEME_MODULE, ThemeProvider, type ThemeModule } from "@vetta/theme-sdk";
 import { AppBootLoadingView } from "@vetta/theme-ui/app";
 import {
-	createContext,
 	type ErrorInfo,
 	type ReactNode,
 	useCallback,
-	useContext,
 	useEffect,
 	useMemo,
 	useRef,
 	useState,
 } from "react";
 import { ThemeErrorBoundary } from "./ThemeErrorBoundary";
+import { ThemeRuntimeContext } from "./ThemeRuntimeContext";
 import { loadThemePackage } from "./themeLoader";
 import type { ThemeRuntimeValue } from "./types";
 
 const UI_THEME_STORAGE_KEY = "vetta-ui-theme";
 const DEFAULT_UI_THEME_ID = "default";
-const ThemeRuntimeContext = createContext<ThemeRuntimeValue | null>(null);
 
 function getStoredUiThemeId(): string {
 	return localStorage.getItem(UI_THEME_STORAGE_KEY) ?? DEFAULT_UI_THEME_ID;
@@ -143,10 +141,4 @@ export function ThemeRuntimeProvider({ children }: { children: ReactNode }): JSX
 			</ThemeProvider>
 		</ThemeRuntimeContext.Provider>
 	);
-}
-
-export function useThemeRuntime(): ThemeRuntimeValue {
-	const value = useContext(ThemeRuntimeContext);
-	if (!value) throw new Error("useThemeRuntime must be used within ThemeRuntimeProvider");
-	return value;
 }

@@ -1,13 +1,11 @@
 import { UserAvatar } from "@shared/components/UserAvatar";
-import {
-	SettingsEnterItem,
-	SubscriptionCardsView,
-	TokenActivityChartView,
-} from "@vetta/theme-ui/settings";
+import { SubscriptionCardsView, TokenActivityChartView } from "@vetta/theme-ui/settings";
 import { Button, Dialog, DialogContent, DialogTitle } from "@vetta/ui";
 import { useEffect, useState } from "react";
+import { SubscriptionActions } from "./SubscriptionActions";
 import { SubscriptionCards } from "./SubscriptionCards";
 import { TokenActivityChart } from "./TokenActivityChart";
+import { UsageStats } from "./UsageStats";
 import type { AccountSettingsModel } from "./useAccountSettingsModel";
 
 /** Theme presentation linked for migration inventory (Views implemented in theme-ui). */
@@ -61,7 +59,7 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 
 	return (
 		<div className="mx-auto w-full max-w-[680px] px-8 pt-2 pb-6">
-			<SettingsEnterItem className="mb-8 flex items-center gap-5">
+			<div className="mb-5 flex items-center gap-5">
 				<div className="relative shrink-0">
 					<div className="rounded-2xl bg-gradient-to-br from-primary/40 to-primary/10 p-[2px]">
 						<UserAvatar
@@ -105,15 +103,15 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 						</div>
 					)}
 				</div>
-			</SettingsEnterItem>
 
-			<SettingsEnterItem>
-				<SubscriptionCards />
-			</SettingsEnterItem>
+				<div className="shrink-0 self-start">
+					<SubscriptionActions />
+				</div>
+			</div>
 
-			<SettingsEnterItem className="mb-6">
-				<TokenActivityChart />
-			</SettingsEnterItem>
+			<SubscriptionCards beforeWindows={<UsageStats />}>
+				<TokenActivityChart embedded />
+			</SubscriptionCards>
 
 			<Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
 				<DialogContent
@@ -140,7 +138,7 @@ export function AccountSettingsView({ model }: AccountSettingsViewProps): JSX.El
 							}}
 							placeholder={model.labels.enterNickname}
 							maxLength={50}
-							className="h-10 w-full rounded-lg border-none bg-muted px-3 text-[14px] text-foreground outline-none transition-colors focus:ring-1 focus:ring-primary/40"
+							className="h-10 w-full rounded-lg border-none bg-muted px-3 text-[14px] text-foreground outline-none transition-colors"
 						/>
 						{error && <p className="mt-2 text-[12px] text-destructive">{error}</p>}
 					</div>

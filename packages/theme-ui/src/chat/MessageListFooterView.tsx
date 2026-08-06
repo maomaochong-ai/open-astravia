@@ -13,6 +13,8 @@ export interface MessageListFooterViewProps {
 	readonly compactionLabel: string;
 	readonly isCompacting: boolean;
 	readonly pluginHost?: ReactNode;
+	/** 自动重试退避中的提示语；null / undefined 表示没在重试。 */
+	readonly retryLabel?: string | null;
 	readonly showWaiting: boolean;
 	readonly streamingIndicator: ReactNode;
 	/** Workflow summary items (ADR-0044); rendered above the plugin host. */
@@ -56,10 +58,27 @@ function CompactionIndicator({ label }: { label: string }): JSX.Element {
 	);
 }
 
+/** 重试退避期的低调提示：让「卡住不动」变成「系统正在替你重试」。 */
+function RetryIndicator({ label }: { label: string }): JSX.Element {
+	return (
+		<motion.div
+			initial={INDICATOR_INITIAL}
+			animate={INDICATOR_ANIMATE}
+			exit={INDICATOR_EXIT}
+			transition={INDICATOR_TRANSITION}
+			className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2"
+		>
+			<span className="icon-[mdi--refresh] h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground/60" />
+			<span className="text-[12px] text-muted-foreground/80">{label}</span>
+		</motion.div>
+	);
+}
+
 export function MessageListFooterView({
 	compactionLabel,
 	isCompacting,
 	pluginHost,
+	retryLabel,
 	showWaiting,
 	streamingIndicator,
 	workflowItems,
@@ -68,8 +87,11 @@ export function MessageListFooterView({
 		<div className="mx-auto flex max-w-3xl flex-col gap-2 px-5 pt-0">
 			<AnimatePresence initial={false}>
 				{isCompacting && <CompactionIndicator key="compacting" label={compactionLabel} />}
+				{!isCompacting && retryLabel ? <RetryIndicator key="retrying" label={retryLabel} /> : null}
 			</AnimatePresence>
-			{showWaiting && !isCompacting && <div className="flex items-center">{streamingIndicator}</div>}
+			{showWaiting && !isCompacting && !retryLabel && (
+				<div className="flex items-center">{streamingIndicator}</div>
+			)}
 			{workflowItems}
 			{pluginHost}
 		</div>

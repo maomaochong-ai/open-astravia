@@ -128,7 +128,7 @@ export function KnowledgeImportDialogView({
 							value={name}
 							onChange={(event) => setName(event.target.value)}
 							className={cn(
-								"mt-1.5 h-9 w-full min-w-0 rounded-lg border border-border/60 bg-background px-2.5 py-1 text-[12px] font-normal shadow-none outline-none focus-visible:border-ring/60 focus-visible:ring-1 focus-visible:ring-ring/20",
+								"mt-1.5 h-9 w-full min-w-0 rounded-lg border border-border/60 bg-background px-2.5 py-1 text-[12px] font-normal shadow-none outline-none focus-visible:border-ring/60",
 							)}
 							// biome-ignore lint/a11y/noAutofocus: preserve original dialog focus
 							autoFocus

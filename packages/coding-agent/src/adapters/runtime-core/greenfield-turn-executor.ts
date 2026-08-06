@@ -48,14 +48,14 @@ export class CodingAgentGreenfieldTurnExecutor {
 		const result = await this.options.retryController.run(
 			executeInitial,
 			() => this.options.sessionHost.startActiveSessionOperation((session) => session.retry()),
-			readFailedTurnMessage,
+			readGreenfieldFailedTurnMessage,
 		);
-		const failedMessage = readFailedTurnMessage(result);
+		const failedMessage = readGreenfieldFailedTurnMessage(result);
 		if (failedMessage && promptOptions.throwOnFailure !== false) throw new Error(failedMessage);
 	}
 }
 
-function readFailedTurnMessage(value: unknown): string | undefined {
+export function readGreenfieldFailedTurnMessage(value: unknown): string | undefined {
 	if (typeof value !== "object" || value === null) return undefined;
 	const error = Reflect.get(value, "error");
 	if (

@@ -156,6 +156,7 @@ function createSnapshot(
 
 	return Object.freeze({
 		id: snapshotId,
+		salvageTextToolCalls: profile.salvageTextToolCalls ? Object.freeze([...profile.salvageTextToolCalls]) : undefined,
 		instructions: Object.freeze(instructions),
 		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
 		modelCallProviders: Object.freeze(modelCallProviders),

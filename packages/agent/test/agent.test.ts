@@ -1,6 +1,10 @@
+import { Type } from "@sinclair/typebox";
 import { type AssistantMessage, type AssistantMessageEvent, EventStream, getModel, type Model } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { Agent } from "../src/index.js";
+import type { AgentTool } from "../src/types.js";
+
+const lateToolSchema = Type.Object({});
 
 // Mock stream that mimics AssistantMessageEventStream
 class MockAssistantStream extends EventStream<AssistantMessageEvent, AssistantMessage> {
@@ -33,6 +37,14 @@ function createAssistantMessage(text: string): AssistantMessage {
 		},
 		stopReason: "stop",
 		timestamp: Date.now(),
+	};
+}
+
+function createAssistantMessageWithToolCall(name: string): AssistantMessage {
+	return {
+		...createAssistantMessage(""),
+		content: [{ type: "toolCall", id: `call-${name}`, name, arguments: {} }],
+		stopReason: "toolUse",
 	};
 }
 
@@ -395,5 +407,54 @@ describe("Agent", () => {
 
 		await agent.prompt("hello again");
 		expect(receivedSessionId).toBe("session-def");
+	});
+
+	// Regression: tools/system prompt registered mid-run (tool_search activating MCP
+	// tools) must reach the very next LLM request, not the next prompt().
+	it("applies setTools/setSystemPrompt made during a run to the next request", async () => {
+		const lateTool: AgentTool<typeof lateToolSchema, undefined> = {
+			label: "Late",
+			name: "late_tool",
+			description: "Activated mid-run",
+			parameters: lateToolSchema,
+			execute: async () => ({ content: [{ type: "text", text: "late" }], details: undefined }),
+		};
+
+		let agent: Agent;
+		const activator: AgentTool<typeof lateToolSchema, undefined> = {
+			label: "Activator",
+			name: "activator",
+			description: "Activates late_tool",
+			parameters: lateToolSchema,
+			execute: async () => {
+				agent.setTools([...agent.state.tools, lateTool]);
+				agent.setSystemPrompt("updated");
+				return { content: [{ type: "text", text: "activated" }], details: undefined };
+			},
+		};
+
+		const seenToolNames: string[][] = [];
+		const seenSystemPrompts: (string | undefined)[] = [];
+		let responseCount = 0;
+		agent = new Agent({
+			initialState: { model: createMockModel(), systemPrompt: "base", tools: [activator] },
+			streamFn: (_model, context) => {
+				seenToolNames.push((context.tools ?? []).map((tool) => tool.name));
+				seenSystemPrompts.push(context.systemPrompt);
+				responseCount++;
+				const stream = new MockAssistantStream();
+				const message =
+					responseCount === 1 ? createAssistantMessageWithToolCall("activator") : createAssistantMessage("done");
+				queueMicrotask(() => stream.push({ type: "done", reason: "stop", message }));
+				return stream;
+			},
+		});
+
+		await agent.prompt("go");
+
+		expect(responseCount).toBe(2);
+		expect(seenToolNames[0]).toEqual(["activator"]);
+		expect(seenToolNames[1]).toEqual(["activator", "late_tool"]);
+		expect(seenSystemPrompts).toEqual(["base", "updated"]);
 	});
 });

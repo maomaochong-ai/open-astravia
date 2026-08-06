@@ -38,9 +38,9 @@ function SelectTrigger({
 			className={cn(
 				"flex w-fit items-center justify-between gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium whitespace-nowrap text-foreground transition-colors outline-none select-none",
 				"hover:bg-accent data-[state=open]:bg-accent",
-				"focus-visible:border-border focus-visible:ring-1 focus-visible:ring-primary/30",
+				"focus-visible:border-primary/50",
 				"disabled:cursor-not-allowed disabled:opacity-50",
-				"aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/30",
+				"aria-invalid:border-destructive",
 				"data-placeholder:text-muted-foreground",
 				"data-[size=default]:h-8 data-[size=sm]:h-7",
 				"*:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5",
@@ -72,7 +72,7 @@ function SelectContent({
 				data-align-trigger={position === "item-aligned"}
 				className={cn(
 					// 面板：1px border + card/popover 面，无重 shadow/ring 叠层
-					"relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md",
+					"no-drag relative z-50 max-h-(--radix-select-content-available-height) min-w-36 origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md",
 					"data-[align-trigger=true]:animate-none",
 					"data-[side=bottom]:slide-in-from-top-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1 data-[side=top]:slide-in-from-bottom-1",
 					"data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 duration-100",

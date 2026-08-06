@@ -157,6 +157,7 @@ export async function createCodingAgentPluginMcpRuntime(
 			...options,
 			configSource: EMPTY_MCP_CONFIG_SOURCE,
 			enabled: true,
+			includeBuiltinServers: false,
 		},
 		(message) => {
 			if (options.debug) console.error(`[MCPManager] ${message}`);

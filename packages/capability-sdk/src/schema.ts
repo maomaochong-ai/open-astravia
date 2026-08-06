@@ -142,6 +142,57 @@ function cleanCapabilityValue(schema: TSchema, value: unknown, preserveUndefined
 	return cleanCapabilityValueBySchema(schema, cloned, []);
 }
 
+/**
+ * 找出第一个不是合法 JSON 值的位置，返回其路径与实际类型。
+ *
+ * 绝大多数 capability 输入校验失败都是这一类：调用方塞了 `undefined`、函数、
+ * Symbol、`NaN` 或 class 实例。而 CapabilityJsonValue 是递归 union，typebox 对它
+ * 只会报一句 `/ Expected union value`——指不到具体字段，等于没说。
+ */
+function findNonJsonPath(value: unknown, path: string, seen: WeakSet<object>): string | undefined {
+	if (value === null || typeof value === "boolean" || typeof value === "string") return undefined;
+	if (typeof value === "number") return Number.isFinite(value) ? undefined : `${path || "/"} is ${value}`;
+	if (typeof value !== "object") return `${path || "/"} is ${typeof value}`;
+
+	const object = value as object;
+	// 循环引用同样过不了 JSON 校验，且不挡住就会无限递归
+	if (seen.has(object)) return `${path || "/"} is a circular reference`;
+	seen.add(object);
+
+	if (Array.isArray(value)) {
+		for (const [index, item] of value.entries()) {
+			const found = findNonJsonPath(item, `${path}[${index}]`, seen);
+			if (found) return found;
+		}
+		return undefined;
+	}
+	for (const [key, child] of Object.entries(object)) {
+		const found = findNonJsonPath(child, `${path}.${key}`, seen);
+		if (found) return found;
+	}
+	return undefined;
+}
+
+/**
+ * 拼一条能定位到字段的短摘要。先找非 JSON 值（最常见的成因），找不到再回退到
+ * typebox 的 Errors，取前 3 条——一个字段不合法往往在 union 的每个分支上都报一次。
+ * 只报路径与类型，不带值本身：输入里可能有图片 base64 或凭据。
+ */
+function describeSchemaError(schema: TSchema, value: unknown): string {
+	try {
+		const nonJson = findNonJsonPath(value, "", new WeakSet());
+		if (nonJson) return `${nonJson}, which is not a JSON value`;
+		const parts: string[] = [];
+		for (const error of Value.Errors(schema, value)) {
+			parts.push(`${error.path || "/"} ${error.message}`);
+			if (parts.length >= 3) break;
+		}
+		return parts.length > 0 ? parts.join("; ") : "no schema error reported";
+	} catch {
+		return "unable to describe schema error";
+	}
+}
+
 function defineTypeBoxCapabilitySchema<Schema extends TSchema>(
 	schema: Schema,
 	errorCode: typeof CAPABILITY_ERROR_CODES.INVALID_INPUT | typeof CAPABILITY_ERROR_CODES.INVALID_OUTPUT,
@@ -157,7 +208,11 @@ function defineTypeBoxCapabilitySchema<Schema extends TSchema>(
 					: value;
 				return Value.Decode(schema, candidate);
 			} catch (cause) {
-				throw new CapabilityError(errorCode, message, { cause });
+				// 把 typebox 指出的具体路径带进 message：CapabilityError 过 Electron IPC
+				// 时只有 message 能活下来，cause 会被结构化克隆丢掉。不带上的话，插件侧
+				// 拿到的永远是一句没有信息量的「Capability input validation failed」，
+				// 无从判断是哪个字段不合法。
+				throw new CapabilityError(errorCode, `${message}: ${describeSchemaError(schema, value)}`, { cause });
 			}
 		},
 	});

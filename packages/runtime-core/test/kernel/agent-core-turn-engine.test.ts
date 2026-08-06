@@ -119,6 +119,7 @@ function assistantMessage(
 
 function snapshot(options?: {
 	readonly tools?: readonly RuntimeToolDefinition[];
+	readonly salvageTextToolCalls?: readonly string[];
 	readonly authorize?: (request: ToolPolicyRequest, signal: AbortSignal) => Promise<boolean>;
 	readonly modelCallFrameComposer?: ModelCallFrameComposer;
 	readonly continuationPolicy?: ContinuationPolicy;
@@ -127,6 +128,7 @@ function snapshot(options?: {
 }): RuntimeSnapshot {
 	return {
 		id: "snapshot-1",
+		salvageTextToolCalls: options?.salvageTextToolCalls,
 		instructions: [
 			{ id: "base", content: "Base instruction", priority: 0 },
 			{ id: "feature", content: "Feature instruction", priority: 1 },
@@ -180,6 +182,40 @@ async function collect(
 }
 
 describe("AgentCoreTurnEngine", () => {
+	it("passes the product salvage whitelist to Agent Core", async () => {
+		const progressCalls: unknown[] = [];
+		const progress: RuntimeToolDefinition = {
+			name: "progress",
+			label: "Progress",
+			description: "Update progress",
+			inputSchema: {
+				type: "object",
+				properties: { label: { type: "string" } },
+			},
+			async execute(request) {
+				progressCalls.push(request.input);
+				return { content: [{ type: "text", text: "updated" }] };
+			},
+		};
+		const responses = [
+			assistantMessage([{ type: "text", text: '{"label":"working"}' }]),
+			assistantMessage([{ type: "text", text: "done" }]),
+		];
+		let responseIndex = 0;
+		const engine = new AgentCoreTurnEngine({
+			model: model(),
+			streamFn: () => {
+				const response = responses[responseIndex++];
+				if (!response) throw new Error("Missing recorded response");
+				return new RecordedAssistantStream(response);
+			},
+		});
+
+		await collect(engine, snapshot({ tools: [progress], salvageTextToolCalls: ["progress"] }));
+
+		expect(progressCalls).toEqual([{ label: "working" }]);
+	});
+
 	it("maps immutable runtime input to agent-core and emits canonical terminal events", async () => {
 		const contexts: Context[] = [];
 		const sessionIds: Array<string | undefined> = [];

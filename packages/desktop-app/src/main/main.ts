@@ -14,6 +14,8 @@ import { createDebugRpcRuntime } from "./app-debug/rpc.js";
 import { configureRendererCdp } from "./app-debug/ui/renderer-cdp.js";
 import { registerAppLifecycleIpc } from "./app-lifecycle.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
+import { consumeOAuthCallback, reopenOAuthLogin, startOAuthLogin } from "./auth/oauth-login.js";
+import { setLoopbackCallbackHandler } from "./auth/oauth-loopback.js";
 import { shutdownBatchTaskExecutor } from "./batch-tasks/batch-task-executor.js";
 import { initializeDesktopBatchTaskService } from "./batch-tasks/batch-task-service.js";
 import { parseActionCliCommand, runActionCliCommand } from "./cli/action-command.js";
@@ -53,12 +55,14 @@ import { MEDIA_PROTOCOL_PRIVILEGE, registerMediaProtocolHandler } from "./media-
 import { openExternalUrl } from "./open-external.js";
 import { startPetIdleGuard } from "./pet/pet-idle-guard.js";
 import { initializePetWindow } from "./pet-window.js";
+import { stopAllPluginSpawns } from "./plugins/command-spawner.js";
 import { PluginActionService } from "./plugins/plugin-action-service.js";
 import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
 import { discoverSystemPlugins } from "./plugins/plugin-store.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
+import { isQuitCleanupStarted, runQuitCleanup, setQuitCleanup } from "./quit-cleanup.js";
 import { beginSharedRuntimeShutdown, disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
 import { initializeSandboxCapability } from "./sandbox/capability.js";
@@ -73,8 +77,16 @@ import {
 	rebuildTrayContextMenu,
 	setHideToTrayOnClose,
 } from "./tray-manager.js";
+import { consumePendingUpdateRelaunch } from "./update-relaunch-marker.js";
 import { getAppVersion, updaterService } from "./updater.js";
-import { createWindow, getMainWindow, loadMainWindow, setMainWindow, showMainWindow } from "./window-manager.js";
+import {
+	createWindow,
+	getMainWindow,
+	loadMainWindow,
+	revealMainWindow,
+	setMainWindow,
+	showMainWindow,
+} from "./window-manager.js";
 
 // 启动早期修复 GUI 进程的 PATH(补回 homebrew 等登录 shell 路径),必须先于
 // RuntimeManager.applyEnv() 与 coding-agent 的 bash 执行。详见 fix-path.ts。
@@ -218,6 +230,12 @@ let ipcTeardown: IpcTeardown | undefined;
 let teardownSchedulerIpc: (() => void) | undefined;
 let teardownBatchTasksIpc: (() => void) | undefined;
 let localRpcServer: DesktopLocalRpcServerHandle | undefined;
+let appMonitorInitializationPromise: Promise<void> | undefined;
+
+function ensureAppMonitorInitialized(): Promise<void> {
+	appMonitorInitializationPromise ??= initializeAppMonitor();
+	return appMonitorInitializationPromise;
+}
 
 function attachMainWindowLifecycle(mainWindow: BrowserWindow): void {
 	const sendWindowMaximizedChanged = () => {
@@ -278,15 +296,15 @@ function handleProtocolUrl(rawUrl: string): void {
 	try {
 		const parsed = new URL(rawUrl);
 		if (parsed.hostname === "oauth" && parsed.pathname.startsWith("/callback")) {
-			// 兼容旧参数名 token（API 直接回调）和新参数名 access_token（Next.js oauth-redirect）
-			const token = parsed.searchParams.get("access_token") ?? parsed.searchParams.get("token");
-			const refreshToken = parsed.searchParams.get("refresh_token");
 			const mainWindow = getMainWindow();
-			if (token && mainWindow) {
-				mainWindow.webContents.send("vetta:auth:oauth-callback", {
-					token,
-					refreshToken: refreshToken ?? undefined,
-				});
+			if (!mainWindow) return;
+			// state 不匹配时 tokens 为 null——绝不把未校验的 token 转给渲染层，
+			// 只通知它把「等待授权」切回可重试状态，否则用户会一直干等。
+			const tokens = consumeOAuthCallback(parsed);
+			if (tokens) {
+				mainWindow.webContents.send("vetta:auth:oauth-callback", tokens);
+			} else {
+				mainWindow.webContents.send("vetta:auth:oauth-rejected");
 			}
 		}
 	} catch {
@@ -294,15 +312,24 @@ function handleProtocolUrl(rawUrl: string): void {
 	}
 }
 
-// macOS: app may already be running when protocol URL is opened
-app.on("open-url", (event, url) => {
-	event.preventDefault();
-	handleProtocolUrl(url);
+function receiveProtocolUrl(rawUrl: string): void {
+	handleProtocolUrl(rawUrl);
 	const mainWindow = getMainWindow();
 	if (mainWindow) {
 		if (mainWindow.isMinimized()) mainWindow.restore();
+		// loopback 回调时前台是浏览器，只 focus 窗口不足以把应用抢回来。
+		if (isMac) app.focus({ steal: true });
 		mainWindow.focus();
 	}
+}
+
+// 开发模式没有可用的自定义 scheme，回调从本机 loopback HTTP 服务进来。
+setLoopbackCallbackHandler(receiveProtocolUrl);
+
+// macOS: app may already be running when protocol URL is opened
+app.on("open-url", (event, url) => {
+	event.preventDefault();
+	receiveProtocolUrl(url);
 });
 
 // Windows/Linux: second instance passes URL via argv
@@ -403,9 +430,17 @@ if (!gotSingleLock) {
 		attachMainWindowLifecycle(mainWindow);
 		void loadMainWindow(mainWindow);
 		const rendererBootPaintPromise = appLifecycle.waitForRendererBootPaint();
+		const rendererContentPaintPromise = appLifecycle.waitForRendererContentPaint();
 		void rendererBootPaintPromise.then((result) => {
 			if (mainWindow.isDestroyed()) return;
-			mainWindow.show();
+			// 被安装器重启时应用不是活动应用（ShipIt 以守护进程身份拉起），
+			// 窗口 show() 出不来，用户以为没重启。仅这一种情况主动抢焦点。
+			if (consumePendingUpdateRelaunch(getVettaHomePath()) && isMac) {
+				app.focus({ steal: true });
+			}
+			// Windows: first ShowWindow may be swallowed by STARTUPINFO SW_HIDE
+			// from an older version launcher; revealMainWindow double-shows on win32.
+			revealMainWindow(mainWindow);
 			mainLog.info("renderer boot frame visible", {
 				durationMs: Date.now() - rendererBootStartedAt,
 				result,
@@ -427,11 +462,8 @@ if (!gotSingleLock) {
 			const capability = await initializeSandboxCapability();
 			mainLog.info("sandbox startup probe", capability, { durationMs: Date.now() - sandboxProbeStartedAt });
 		};
-		// Linux/macOS 的 RuntimeHost 需要探测结果提供 sandbox 可执行文件路径；Windows
-		// 可直接解析内置 host，因此主动能力探测可以移到窗口首帧之后。
-		if (process.platform === "linux" || process.platform === "darwin") {
-			await initializeSandbox();
-		}
+		// sandbox 会在首次请求 sandbox mode 时按需探测；主动预热放到真实内容绘制后，
+		// 避免与 renderer 首屏和会话恢复竞争。
 
 		// 开发模式下覆盖 About 面板信息，避免显示 Electron 框架版本
 		if (!app.isPackaged) {
@@ -561,6 +593,16 @@ if (!gotSingleLock) {
 			await openExternalUrl(url);
 		});
 
+		// 授权登录由主进程发起：state 的生成与校验都在这里，渲染层碰不到，
+		// 未通过校验的 token 也就永远进不了渲染层。
+		ipcMain.handle("vetta:auth:start-oauth", async () => {
+			await startOAuthLogin();
+		});
+
+		ipcMain.handle("vetta:auth:reopen-oauth", async () => {
+			await reopenOAuthLogin();
+		});
+
 		if (process.platform === "darwin") {
 			app.dock.setIcon(nativeImage.createFromPath(join(buildDir, "icon-dock.png")));
 		}
@@ -626,10 +668,11 @@ if (!gotSingleLock) {
 			}
 		};
 
-		await initializeAppMonitor();
 		if (mainWindow.isDestroyed()) return;
 		const actionApprovalBroker = new ActionApprovalBroker(mainWindow.webContents);
 		const batchTaskService = initializeDesktopBatchTaskService(getSharedRuntime);
+		// 批量项目元数据参与恢复会话的 scenario 判定，需要尽早加载；初始化 Promise
+		// 本身不作为 appLifecycle ready 的门闩。
 		const batchTaskReadyPromise = batchTaskService.initialize();
 		const schedulerService = initializeDesktopSchedulerService({
 			getRuntime: getSharedRuntime,
@@ -642,70 +685,44 @@ if (!gotSingleLock) {
 		// Register IPC handlers
 		ipcTeardown = registerAllIpc(mainWindow.webContents, { actionApprovalBroker, pluginActionService });
 		teardownBatchTasksIpc = registerBatchTasksIpc(mainWindow.webContents, batchTaskService, batchTaskReadyPromise);
+		// 知识库手动操作 IPC 只做桥接，先注册以保证 renderer 不会遇到缺失 handler；
+		// 后台 poller 等真实内容绘制后再启动。
+		registerKnowledgeIpc();
 		appLifecycle.markReady();
-		void rendererBootPaintPromise.then(() => {
-			const deferredStartupTimer = setTimeout(() => {
-				void (async () => {
-					await initializeManagedRuntimeAndCli();
-					if (process.platform === "win32") await initializeSandbox();
-				})().catch((error: unknown) => {
-					mainLog.error("deferred startup initialization failed", error);
+
+		app.on("activate", () => {
+			showMainWindow();
+		});
+
+		// 本地 RPC 与 scheduler 可能在窗口内容完成前收到外部请求，保持尽早启动；
+		// 它们位于 markReady 之后，不再构成 renderer 的全局门闩。
+		void startDesktopLocalRpcServer(
+			{
+				actions: createActionRpcRuntime(actionSystem.runtime),
+				debug: app.isPackaged
+					? undefined
+					: createDebugRpcRuntime(createAppDebugRuntime({ rendererCdp, requestQuit: () => app.quit() })),
+			},
+			{
+				endpointFilePath: getLocalRpcServerEndpointFilePath(),
+			},
+		)
+			.then((server) => {
+				localRpcServer = server;
+				mainLog.info("local RPC server ready", {
+					transport: server.endpoint.transport,
+					url: server.endpoint.url,
+					debugEnabled: !app.isPackaged,
 				});
-			}, 500);
-			deferredStartupTimer.unref?.();
-		});
-		initializePetWindow();
-		startPetIdleGuard();
-		// 快捷面板：预创建隐藏窗口（按需 show/hide，不每次重建），随后据配置启停双击功能键监听。
-		// registerAllIpc 已注册快捷面板 IPC（含 RELOAD_HOTKEY），这里仅补窗口与初次触发器同步。
-		createQuickPanelWindow();
-		void syncQuickPanelTrigger().catch((err) => {
-			mainLog.error("failed to sync quick panel trigger", err);
-		});
-		// Appshot：据配置启停「双键同按」手势监听（与快捷面板共享 uiohook 单例）。
-		void syncAppshotGesture().catch((err) => {
-			mainLog.error("failed to sync appshot gesture", err);
-		});
-
-		try {
-			localRpcServer = await startDesktopLocalRpcServer(
-				{
-					actions: createActionRpcRuntime(actionSystem.runtime),
-					debug: app.isPackaged
-						? undefined
-						: createDebugRpcRuntime(
-								createAppDebugRuntime({
-									rendererCdp,
-									requestQuit: () => app.quit(),
-								}),
-							),
-				},
-				{
-					endpointFilePath: getLocalRpcServerEndpointFilePath(),
-				},
-			);
-			mainLog.info("local RPC server ready", {
-				transport: localRpcServer.endpoint.transport,
-				url: localRpcServer.endpoint.url,
-				debugEnabled: !app.isPackaged,
+			})
+			.catch((err: unknown) => {
+				mainLog.error("failed to start local RPC server", err);
 			});
-		} catch (err) {
-			mainLog.error("failed to start local RPC server", err);
-		}
 
-		// 启动 Updater：恢复 pending-install + 后台检查一次
-		updaterService.setMainWindow(mainWindow);
-		void updaterService.onAppReady();
-
-		// 创建托盘/状态栏图标（三平台均启用；行为差异见 tray-manager.ts）
-		createTray();
-
-		// Initialize scheduler
 		if (teardownSchedulerIpc) {
 			teardownSchedulerIpc();
 			teardownSchedulerIpc = undefined;
 		}
-
 		void initScheduler().then(() => {
 			const win = getMainWindow();
 			if (win) {
@@ -713,24 +730,62 @@ if (!gotSingleLock) {
 			}
 		});
 
-		// 知识库后台加工：注册手动操作 IPC，并据设置调度惰性轮询器。
-		registerKnowledgeIpc();
-		void reloadKnowledgePoller().catch((err) => {
-			mainLog.error("failed to start knowledge poller:", err);
-		});
+		// 托盘属于桌面应用生命周期入口，需要及时可用，但创建不再位于 ready 之前。
+		createTray();
 
-		// Bootstrap IM bridge subsystem (im-gateway sidecar). Errors during
-		// bootstrap are non-fatal — IM is an opt-in feature and the rest of
-		// the desktop-app must keep working.
-		void getImHost()
-			.bootstrap()
-			.catch((err: unknown) => {
-				mainLog.error("im-host bootstrap failed", err);
+		void rendererContentPaintPromise
+			.then((contentPaintResult) => {
+				if (mainWindow.isDestroyed()) return;
+				mainLog.info("renderer content frame visible", {
+					durationMs: Date.now() - rendererBootStartedAt,
+					result: contentPaintResult,
+				});
+
+				// App Monitor 是纯旁路能力：迁移和历史统计读取不得阻塞 renderer 或业务 IPC。
+				void ensureAppMonitorInitialized().catch((error: unknown) => {
+					mainLog.warn("app monitor background initialization failed", error);
+				});
+
+				const deferredStartupTimer = setTimeout(() => {
+					void Promise.all([initializeManagedRuntimeAndCli(), initializeSandbox()]).catch((error: unknown) => {
+						mainLog.error("deferred startup initialization failed", error);
+					});
+				}, 500);
+				deferredStartupTimer.unref?.();
+
+				initializePetWindow();
+				startPetIdleGuard();
+				// 快捷面板：预创建隐藏窗口（按需 show/hide，不每次重建），随后据配置启停双击功能键监听。
+				// registerAllIpc 已注册快捷面板 IPC（含 RELOAD_HOTKEY），这里仅补窗口与初次触发器同步。
+				createQuickPanelWindow();
+				void syncQuickPanelTrigger().catch((err) => {
+					mainLog.error("failed to sync quick panel trigger", err);
+				});
+				// Appshot：据配置启停「双键同按」手势监听（与快捷面板共享 uiohook 单例）。
+				void syncAppshotGesture().catch((err) => {
+					mainLog.error("failed to sync appshot gesture", err);
+				});
+
+				// 启动 Updater：绑定主窗口并在打包环境后台检查一次
+				updaterService.setMainWindow(mainWindow);
+				void updaterService.onAppReady();
+
+				void reloadKnowledgePoller().catch((err) => {
+					mainLog.error("failed to start knowledge poller:", err);
+				});
+
+				// Bootstrap IM bridge subsystem (im-gateway sidecar). Errors during
+				// bootstrap are non-fatal — IM is an opt-in feature and the rest of
+				// the desktop-app must keep working.
+				void getImHost()
+					.bootstrap()
+					.catch((err: unknown) => {
+						mainLog.error("im-host bootstrap failed", err);
+					});
+			})
+			.catch((error: unknown) => {
+				mainLog.error("post-renderer startup failed", error);
 			});
-
-		app.on("activate", () => {
-			showMainWindow();
-		});
 	});
 }
 
@@ -742,24 +797,15 @@ app.on("window-all-closed", () => {
 });
 
 // Critical: ensure IM sidecar is killed before the main process exits.
-// `before-quit` runs before window destruction, giving us a synchronous
-// hook to wait on graceful child shutdown.
-// 标记：避免 before-quit 在调用 app.exit() 后再次触发本 handler 时
-// 又陷进异步清理流程。
-let quitCleanupStarted = false;
-
-app.on("before-quit", async (event) => {
-	if (isCliMode) return;
-	if (quitCleanupStarted) return;
-	quitCleanupStarted = true;
-	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
-	event.preventDefault();
+// 先发起 Knowledge 中止，再等待本地 RPC 关闭。进行中的 `knowledge.manage`
+// Action 会因 Session abort 自然结束，避免 server.close() 等待活动请求而与
+// Knowledge shutdown 形成环形等待。
+// 清理实现注册到 quit-cleanup 模块，更新安装路径会在把控制权交给 Squirrel.Mac
+// 之前先调用它——原因见该模块的注释。
+setQuitCleanup(async () => {
+	mainLog.info("quit cleanup started");
 	beginSharedRuntimeShutdown();
-	// 先发起 Knowledge 中止，再等待本地 RPC 关闭。进行中的 `knowledge.manage`
-	// Action 会因 Session abort 自然结束，避免 server.close() 等待活动请求而与
-	// Knowledge shutdown 形成环形等待。
 	const knowledgeShutdown = shutdownKnowledgePoller();
-
 	if (teardownSchedulerIpc) {
 		teardownSchedulerIpc();
 		teardownSchedulerIpc = undefined;
@@ -768,20 +814,13 @@ app.on("before-quit", async (event) => {
 		teardownBatchTasksIpc();
 		teardownBatchTasksIpc = undefined;
 	}
-	if (localRpcServer) {
-		try {
-			await localRpcServer.close();
-		} catch (err) {
-			mainLog.error("local RPC server shutdown failed", err);
-		}
-		localRpcServer = undefined;
-	}
 
 	// 退出前注销全部全局键盘监听消费者（快捷面板双击 + appshot 双键同按），避免 uiohook 线程残留。
 	stopAllUiohookConsumers();
 
-	// 停掉插件工作台 dev 热更新的 vite watch 子进程，避免孤儿进程。
+	// 停掉插件工作台 dev 热更新和插件命令拉起的长驻进程。
 	stopAllPluginDevWatches();
+	stopAllPluginSpawns();
 
 	const consumerShutdownResults = await Promise.allSettled([
 		shutdownScheduler(),
@@ -804,12 +843,39 @@ app.on("before-quit", async (event) => {
 	}
 	// 退出前统一释放共享 RuntimeHost 持有的所有 session 文件锁，
 	// 避免 .lock 残留，下次启动还要靠 stale-detection 才能回收。
+	if (localRpcServer) {
+		try {
+			await localRpcServer.close();
+		} catch (err) {
+			mainLog.error("local RPC server shutdown failed", err);
+		}
+		localRpcServer = undefined;
+	}
 	try {
 		await disposeSharedRuntime();
 	} catch (err) {
 		mainLog.error("disposeSharedRuntime failed", err);
 	}
-	await shutdownAppMonitor();
+	try {
+		await ensureAppMonitorInitialized();
+		await shutdownAppMonitor();
+	} catch (err) {
+		mainLog.warn("app monitor shutdown failed", err);
+	}
 	await shutdownMainTelemetry();
+	mainLog.info("quit cleanup finished");
+});
+
+// `before-quit` runs before window destruction, giving us a hook to wait on
+// graceful child shutdown.
+//
+// 清理已由更新安装路径跑过时必须直通：那条路径需要标准的 Electron 退出流程，
+// 硬 exit 会抢在 Squirrel.Mac 拉起 ShipIt 之前打死进程（见 quit-cleanup.ts）。
+app.on("before-quit", async (event) => {
+	if (isCliMode) return;
+	if (isQuitCleanupStarted()) return;
+	(app as typeof app & { isQuitting?: boolean }).isQuitting = true;
+	event.preventDefault();
+	await runQuitCleanup();
 	app.exit(0);
 });

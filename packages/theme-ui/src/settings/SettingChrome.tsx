@@ -1,6 +1,5 @@
 import type { JSX, ReactNode } from "react";
 import { cn } from "@vetta/ui";
-import { SettingsEnterItem } from "./settingsEnter";
 
 /** Minimal section meta used by settings chrome (desktop registry satisfies this). */
 export interface SettingSectionMeta {
@@ -56,7 +55,7 @@ export function SettingSection({
 		renderedTitle !== false &&
 		!(typeof renderedTitle === "string" && renderedTitle.trim() === "");
 	return (
-		<SettingsEnterItem className="mb-6 p-1.5" data-setting-section-highlight-target={section.id}>
+		<div className="mb-6 p-1.5" data-setting-section-highlight-target={section.id}>
 			{hasTitle &&
 				(typeof renderedTitle === "string" ? (
 					<h2
@@ -81,7 +80,7 @@ export function SettingSection({
 			>
 				{children}
 			</div>
-		</SettingsEnterItem>
+		</div>
 	);
 }
 

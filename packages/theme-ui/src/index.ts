@@ -7,7 +7,6 @@ export * from "./app-shell";
 export * from "./appearance";
 export * from "./batch-tasks";
 export * from "./chat";
-export * from "./downloads";
 export * from "./file-explorer";
 export * from "./file-preview";
 export * from "./flowing";

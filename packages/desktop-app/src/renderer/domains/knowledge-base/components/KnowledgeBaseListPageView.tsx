@@ -70,7 +70,7 @@ export function KnowledgeBaseListPageView({ model }: KnowledgeBaseListPageViewPr
 							value={model.search}
 							onChange={(event) => model.setSearch(event.target.value)}
 							placeholder={t("kbAllSearch")}
-							className="h-8 w-full min-w-0 rounded-lg border border-transparent bg-secondary pl-8 pr-3 text-[12px] shadow-none outline-none placeholder:text-muted-foreground/45 hover:bg-accent focus-visible:border-primary/25 focus-visible:bg-background/70 focus-visible:ring-1 focus-visible:ring-primary/15"
+							className="h-8 w-full min-w-0 rounded-lg border border-transparent bg-secondary pl-8 pr-3 text-[12px] shadow-none outline-none placeholder:text-muted-foreground/45 hover:bg-accent focus-visible:border-primary/25 focus-visible:bg-background/70"
 						/>
 					</div>
 					<SettingsAiAssist tabId="knowledgeBase" />

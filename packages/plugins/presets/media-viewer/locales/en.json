@@ -15,9 +15,9 @@
 	"audio.unmute": "Unmute",
 	"zoom.in": "Zoom in",
 	"zoom.out": "Zoom out",
-	"zoom.reset": "Reset zoom",
+	"zoom.reset": "Fit to window",
 	"fullscreen.enter": "Fullscreen",
 	"fullscreen.exit": "Exit fullscreen",
-	"view.reset": "Reset",
-	"view.resetTitle": "Reset view"
+	"view.reset": "Fit",
+	"view.resetTitle": "Fit to window"
 }

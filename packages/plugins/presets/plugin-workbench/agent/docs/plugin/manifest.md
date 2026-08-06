@@ -2,6 +2,25 @@
 
 `plugin.json` 是插件的唯一清单，位于 zip 归档根（或唯一顶层文件夹内）。
 
+## 契约与校验
+
+清单结构的唯一实现位于 `@vetta-org/plugin-sdk/manifest`：
+
+```ts
+import {
+  PluginManifestSchema,
+  parsePluginManifest,
+  type PluginManifestInput,
+} from "@vetta-org/plugin-sdk/manifest";
+```
+
+- `PluginManifestSchema` 是 TypeBox Schema，可直接序列化为 JSON Schema，供编辑器、CLI 或市场服务端使用。
+- `PluginManifestInput` 与兼容类型 `PluginManifest` 均由 Schema 推导，不单独手写字段联合。
+- `parsePluginManifest(value)` 先按 Schema 校验，再负责默认值、字符串归一化、去重、相对路径和跨字段约束。
+- Schema 为向前兼容允许未知字段；发布工具可以对未知字段给警告，但宿主安装器不应因此拒绝更高版本清单。
+
+Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、声明的文件是否存在等包级规则，仍由宿主和 `vetta-plugin pack` 校验。
+
 ## 完整示例
 
 ```json

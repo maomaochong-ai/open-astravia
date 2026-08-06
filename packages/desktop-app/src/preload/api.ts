@@ -25,6 +25,7 @@ import type { DesktopSchedulerApi } from "./api-types/scheduler.js";
 import type { DesktopSessionApi } from "./api-types/session.js";
 import type { DesktopSkillsApi } from "./api-types/skills.js";
 import type {
+	DesktopClipboardApi,
 	DesktopPermissionsApi,
 	DesktopRuntimesApi,
 	DesktopSettingsApi,
@@ -93,6 +94,7 @@ export interface DesktopApi {
 	settings: DesktopSettingsApi;
 	subscription: DesktopSubscriptionApi;
 	shell: DesktopShellApi;
+	clipboard: DesktopClipboardApi;
 	window: DesktopWindowApi;
 	auth: DesktopAuthApi;
 	updater: DesktopUpdaterApi;

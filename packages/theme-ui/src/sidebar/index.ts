@@ -76,8 +76,6 @@ export { SettingsMenuAccountSection } from "./SettingsMenuAccountSection";
 export type { SettingsMenuActionButtonProps } from "./SettingsMenuActionButton";
 export { SettingsMenuActionButton } from "./SettingsMenuActionButton";
 export { SettingsMenuDivider } from "./SettingsMenuDivider";
-export type { SettingsMenuDownloadsItemProps } from "./SettingsMenuDownloadsItem";
-export { SettingsMenuDownloadsItem } from "./SettingsMenuDownloadsItem";
 export type { SettingsMenuQuotaSectionProps } from "./SettingsMenuQuotaSection";
 export { SettingsMenuQuotaSection } from "./SettingsMenuQuotaSection";
 export type { SettingsMenuSettingsItemProps } from "./SettingsMenuSettingsItem";

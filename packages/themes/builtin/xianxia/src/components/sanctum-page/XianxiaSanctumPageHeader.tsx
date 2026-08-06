@@ -32,7 +32,7 @@ export function XianxiaSanctumPageHeader(): JSX.Element {
 					aria-label="Back"
 					title="Back"
 					onClick={() => window.history.back()}
-					className="group mt-0.5 h-10 w-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+					className="group mt-0.5 h-10 w-10 rounded-md border border-transparent outline-none focus-visible:border-white/80"
 				>
 					<img
 						alt=""

@@ -1,0 +1,66 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "svg-viewer",
+	"version": "0.1.1",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"user_prompt": "打开这个 SVG，我想同时检查渲染结果和源码。",
+					"assistant_reply": "SVG Viewer 会在文件预览中提供渲染与源码两种视图，并支持缩放检查细节。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "为 SVG 准备的专用预览",
+				"items": [
+					{
+						"title": "渲染与源码",
+						"description": "在最终图形和原始 SVG 标记之间快速切换。",
+						"icon": "solar:code-file-linear"
+					},
+					{
+						"title": "缩放检查",
+						"description": "在棋盘格背景上放大、缩小或重置视图。",
+						"icon": "solar:magnifer-zoom-in-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"user_prompt": "Open this SVG so I can inspect both the rendered result and its source.",
+							"assistant_reply": "SVG Viewer provides rendered and source modes in file preview, with zoom controls for detailed inspection."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "A dedicated SVG preview",
+						"items": [
+							{
+								"title": "Rendered and source modes",
+								"description": "Switch quickly between the final graphic and its SVG markup.",
+								"icon": "solar:code-file-linear"
+							},
+							{
+								"title": "Zoom inspection",
+								"description": "Zoom or reset the view over a checkerboard backdrop.",
+								"icon": "solar:magnifer-zoom-in-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

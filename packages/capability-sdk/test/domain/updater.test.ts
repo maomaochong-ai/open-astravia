@@ -24,7 +24,6 @@ describe("updater domain capabilities", () => {
 				progress: 0.5,
 				downloadedBytes: 5,
 				totalBytes: 10,
-				pendingInstall: false,
 				ignored: true,
 			}),
 		).toEqual({
@@ -34,14 +33,12 @@ describe("updater domain capabilities", () => {
 			progress: 0.5,
 			downloadedBytes: 5,
 			totalBytes: 10,
-			pendingInstall: false,
 		});
 		expect(() =>
 			DOMAIN_UPDATER_CAPABILITIES.GET_STATE.parseOutput({
 				phase: UPDATER_PHASES.DOWNLOADING,
 				currentVersion: "1.0.0",
 				progress: 2,
-				pendingInstall: false,
 			}),
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }));
 		expect(() =>
@@ -49,7 +46,6 @@ describe("updater domain capabilities", () => {
 				phase: UPDATER_PHASES.DOWNLOADING,
 				currentVersion: "1.0.0",
 				downloadedBytes: -1,
-				pendingInstall: false,
 			}),
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }));
 		expect(() => DOMAIN_UPDATER_CAPABILITIES.CHECK.parseInput({ force: true })).toThrowError(
@@ -65,7 +61,7 @@ describe("updater domain capabilities", () => {
 		expect(DOMAIN_UPDATER_CAPABILITY_CATALOG[0]?.outputSchema).toMatchObject({
 			type: "object",
 			additionalProperties: false,
-			required: ["phase", "currentVersion", "pendingInstall"],
+			required: ["phase", "currentVersion"],
 			properties: {
 				progress: { type: "number", minimum: 0, maximum: 1 },
 				downloadedBytes: { type: "number", minimum: 0 },

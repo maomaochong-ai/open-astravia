@@ -4,6 +4,7 @@ import type { Disposable } from "./disposable.js";
 import type { PluginImageRef } from "./images.js";
 import type { PluginPromptAttachment } from "./prompt-attachment.js";
 import type { ConversationScenario } from "./scenario.js";
+import type { PluginShortcutScopeContribution } from "./shortcuts.js";
 
 export interface PluginGlobalSlotContribution {
 	id: string;
@@ -81,6 +82,13 @@ export interface PluginActivityTabContribution {
 	 * `["project", "conversation"]`）。会话页插槽据此随对话类型显隐。
 	 */
 	scope_use?: readonly ConversationScenario[];
+	/**
+	 * 注册后是否默认在标签栏里（缺省 `true`）。声明 `false` 表示「出现条件由我
+	 * 自己决定」——注册只是入池，之后由 {@link PluginUiApi.setActivityTabVisible}
+	 * 或 {@link PluginUiApi.openActivityTab} 决定何时上栏（如 git 只在仓库目录、
+	 * 工作台跟随输入栏 toggle）。无论哪种，用户仍可用减号手动隐藏。
+	 */
+	initiallyVisible?: boolean;
 }
 
 /** Options for {@link PluginUiApi.openActivityTab}. */
@@ -321,6 +329,14 @@ export interface PluginUiApi {
 	 */
 	registerTurnCard(contribution: PluginTurnCardContribution): Disposable;
 	/**
+	 * Register a keyboard shortcut scope on the host's shared ShortcutScopeStack
+	 * (same path as host UI: modal > overlay > surface > app). Needs
+	 * `ui.shortcuts.register`. Plugins cannot use kind `"app"` (reserved for
+	 * host-configurable global actions). Prefer {@link usePluginShortcutScope}
+	 * from React components with a module-captured `registerShortcutScope`.
+	 */
+	registerShortcutScope(contribution: PluginShortcutScopeContribution): Disposable;
+	/**
 	 * Programmatically attach (if needed) and activate one of this plugin's
 	 * own activity tabs in the current conversation's activity panel. `tabId`
 	 * is the contribution id passed to registerActivityTab. Any payload (e.g.
@@ -332,6 +348,26 @@ export interface PluginUiApi {
 	 * to leave the user's current width untouched.
 	 */
 	openActivityTab(tabId: string, options?: PluginOpenActivityTabOptions): void;
+	/**
+	 * 把本插件的某个活动面板标签卡在当前会话里上栏 / 下栏，**不激活也不展开
+	 * 面板**——`openActivityTab` 是「用户此刻要看它」，这个是「它现在该不该在
+	 * 栏里」。配合 `initiallyVisible: false` 使用，插件即可完全掌握自己标签卡的
+	 * 出现条件（如 git 只在仓库目录里上栏、工作台跟随输入栏 toggle）。
+	 *
+	 * 上栏记录按会话 cwd 持久化（ADR-0026），所以只需在条件变化时调用一次；
+	 * 用户随后用减号手动隐藏的结果不会被重复调用覆盖。当前没有活动会话时为
+	 * no-op（无处记录），插件应在会话就绪后重新判定。
+	 */
+	setActivityTabVisible(tabId: string, visible: boolean): void;
+	/**
+	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示当前窗口下的最大宽度（宿主仍
+	 * 会夹到自己的 min/max 内，必要时自动收起侧边栏）。
+	 *
+	 * 与 `openActivityTab(id, { width })` 的区别：那里的宽度只在标签卡首次 attach
+	 * 时生效（避免 activate 重放覆盖用户手拖的宽度）；这个是命令式的，每次调用都
+	 * 生效，供插件在自己的标签卡被激活、进入某种视图时按需调整。用户随后仍可拖动。
+	 */
+	setActivityPanelWidth(width: number | "max"): void;
 	/**
 	 * Bind or clear plugin-owned one-shot context for the next outgoing prompt.
 	 * The host renders its label/icon, merges metadata and hidden instructions,
@@ -358,6 +394,20 @@ export interface PluginUiApi {
 	 * Requires `ui.slot.activity-tab`.
 	 */
 	captureRegion(rect: PluginCaptureRegion, defaultFileName: string): Promise<string | null>;
+	/**
+	 * Copy an image to the system clipboard. Takes a `data:image/...;base64,`
+	 * URL and goes through the native clipboard, so it does not depend on the
+	 * renderer's `ClipboardItem` support. No permission required — the plugin
+	 * can only write what it already rendered.
+	 */
+	copyImage(dataUrl: string): Promise<void>;
+	/**
+	 * Hand a URL to the OS default browser (Electron `shell.openExternal`) —
+	 * NOT the in-app browser panel. Only `http:`/`https:` are accepted; the host
+	 * rejects every other protocol, so this cannot be used to launch arbitrary
+	 * schemes. Needs `shell.openExternal`.
+	 */
+	openExternal(url: string): Promise<void>;
 	/**
 	 * Show a global toast in the host UI (bottom-right). No permission required.
 	 * Prefer this over swallowing errors into opaque UI copy: pass `error` so

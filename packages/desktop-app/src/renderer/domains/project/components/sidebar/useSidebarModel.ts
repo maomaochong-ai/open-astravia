@@ -44,7 +44,7 @@ const PRIMARY_NAV_ITEMS = [
 	},
 ] as const;
 
-// 「更多」收纳：批量任务 / 场景。插件已并入能力页（ADR-0049），不再有独立入口。
+// 「更多」收纳：批量任务 + 常用设置直达。插件已并入能力页（ADR-0049），不再有独立入口。
 const MORE_NAV_ITEMS = [
 	{
 		type: "route",
@@ -54,9 +54,21 @@ const MORE_NAV_ITEMS = [
 	},
 	{
 		type: "route",
-		path: "/scenes" as const,
-		labelKey: "sidebar.nav.scenes",
-		icon: "icon-[solar--clapperboard-open-linear]",
+		settingsTab: "models" as const,
+		labelKey: "sidebar.nav.modelSettings",
+		icon: "icon-[solar--cpu-bolt-linear]",
+	},
+	{
+		type: "route",
+		settingsTab: "context" as const,
+		labelKey: "sidebar.nav.agentSettings",
+		icon: "icon-[solar--user-speak-rounded-linear]",
+	},
+	{
+		type: "route",
+		settingsTab: "appearance" as const,
+		labelKey: "sidebar.nav.appearance",
+		icon: "icon-[solar--palette-linear]",
 	},
 ] as const;
 
@@ -83,6 +95,17 @@ function toNavItem(
 	currentPath: string,
 	badge?: string,
 ): SidebarNavItem {
+	if ("settingsTab" in item) {
+		return {
+			key: `/settings/${item.settingsTab}`,
+			type: item.type,
+			settingsTab: item.settingsTab,
+			label,
+			labelKey: item.labelKey,
+			icon: item.icon,
+			active: currentPath === `/settings/${item.settingsTab}`,
+		};
+	}
 	if (item.type === "new-session") {
 		return {
 			key: item.type,
@@ -255,6 +278,10 @@ export function useSidebarModel({
 		(item: SidebarNavItem) => {
 			if (item.type === "new-session") {
 				onNewChat();
+				return;
+			}
+			if (item.settingsTab) {
+				void navigate({ to: "/settings/$tab", params: { tab: item.settingsTab } });
 				return;
 			}
 			if (item.path) void navigate({ to: item.path });

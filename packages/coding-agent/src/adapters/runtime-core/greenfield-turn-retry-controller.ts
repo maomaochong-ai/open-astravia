@@ -2,6 +2,7 @@ export interface CodingAgentGreenfieldTurnRetrySettings {
 	readonly enabled: boolean;
 	readonly maxRetries: number;
 	readonly baseDelayMs: number;
+	readonly maxDelayMs?: number;
 }
 
 export type CodingAgentGreenfieldTurnRetryEvent =
@@ -71,7 +72,10 @@ export class CodingAgentGreenfieldTurnRetryController implements CodingAgentGree
 			const settings = this.options.readSettings();
 			if (!settings.enabled || this.attempt >= settings.maxRetries) break;
 			this.attempt += 1;
-			const delayMs = settings.baseDelayMs * 2 ** (this.attempt - 1);
+			const delayMs = Math.min(
+				settings.baseDelayMs * 2 ** (this.attempt - 1),
+				settings.maxDelayMs ?? Number.POSITIVE_INFINITY,
+			);
 			this.options.emit({
 				type: "auto_retry_start",
 				attempt: this.attempt,
@@ -129,7 +133,7 @@ function isRetryableError(message: string): boolean {
 	) {
 		return false;
 	}
-	return /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i.test(
+	return /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|EHOSTUNREACH|ENETUNREACH|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i.test(
 		message,
 	);
 }

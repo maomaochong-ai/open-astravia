@@ -3,12 +3,40 @@ import { PLUGIN_CAPABILITY_CHANNELS, PLUGIN_SYSTEM_CHANNELS } from "../../shared
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
 
+type SettingsChangedListener = Parameters<DesktopApi["plugins"]["onSettingsChanged"]>[0];
+type SettingsChangedPayload = Parameters<SettingsChangedListener>[0];
+
 export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> {
+	const settingsChangedSubscriptions = new Set<{ readonly listener: SettingsChangedListener }>();
+	const handleSettingsChanged = (_event: IpcRendererEvent, payload: SettingsChangedPayload): void => {
+		for (const subscription of [...settingsChangedSubscriptions]) subscription.listener(payload);
+	};
+	const onSettingsChanged = (listener: SettingsChangedListener): (() => void) => {
+		const subscription = { listener };
+		settingsChangedSubscriptions.add(subscription);
+		if (settingsChangedSubscriptions.size === 1) {
+			ipc.on("vetta:plugins:settings-changed", handleSettingsChanged);
+		}
+		let subscribed = true;
+		return () => {
+			if (!subscribed) return;
+			subscribed = false;
+			settingsChangedSubscriptions.delete(subscription);
+			if (settingsChangedSubscriptions.size === 0) {
+				ipc.removeListener("vetta:plugins:settings-changed", handleSettingsChanged);
+			}
+		};
+	};
+
 	return {
 		plugins: {
 			internalCapabilities: {
 				openSession: (pluginId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.OPEN_SESSION, pluginId),
 				closeSession: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.CLOSE_SESSION, sessionId),
+				ai: {
+					listModels: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_MODEL_LIST, sessionId),
+					complete: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, sessionId, input),
+				},
 				agentSettings: {
 					getExperimental: (sessionId) =>
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_EXPERIMENTAL_GET, sessionId),
@@ -48,6 +76,14 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_PROVIDER_UPSERT, sessionId, provider, data),
 					removeProvider: (sessionId, provider) =>
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MODEL_PROVIDER_REMOVE, sessionId, provider),
+				},
+				media: {
+					listProviders: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_PROVIDER_LIST, sessionId),
+					createJob: (sessionId, input) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CREATE, sessionId, input),
+					getJob: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_GET, sessionId, input),
+					cancelJob: (sessionId, input) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, sessionId, input),
 				},
 				mcp: {
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, sessionId),
@@ -242,6 +278,7 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 				},
 			},
 			list: () => ipc.invoke("vetta:plugins:list"),
+			listAll: () => ipc.invoke("vetta:plugins:list-all"),
 			installFromArchive: (archiveBuffer, options) =>
 				ipc.invoke("vetta:plugins:install-from-archive", archiveBuffer, options),
 			installFromUrl: (url, options) => ipc.invoke("vetta:plugins:install-from-url", url, options),
@@ -254,6 +291,15 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			revokeCommands: (id, names) => ipc.invoke("vetta:plugins:revoke-commands", id, names),
 			runCommand: (pluginId, file, args, options) =>
 				ipc.invoke("vetta:plugins:command-run", pluginId, file, args, options),
+			spawnCommand: (pluginId, file, args, options) =>
+				ipc.invoke("vetta:plugins:command-spawn", pluginId, file, args, options),
+			stopCommandSpawn: (pluginId, spawnId) => ipc.invoke("vetta:plugins:command-spawn-stop", pluginId, spawnId),
+			getCommandSpawnStatus: (pluginId, spawnId) =>
+				ipc.invoke("vetta:plugins:command-spawn-status", pluginId, spawnId),
+			onCommandSpawnExit: (handler) => onIpcEvent(ipc, "vetta:plugins:command-spawn-exit", handler),
+			offscreenCapture: (pluginId, options) => ipc.invoke("vetta:plugins:offscreen-capture", pluginId, options),
+			offscreenRelease: (pluginId, sessionKey) =>
+				ipc.invoke("vetta:plugins:offscreen-release", pluginId, sessionKey),
 			reload: (id) => ipc.invoke("vetta:plugins:reload", id),
 			startDevWatch: (id, projectDir) => ipc.invoke("vetta:plugins:dev-watch-start", id, projectDir),
 			stopDevWatch: (id) => ipc.invoke("vetta:plugins:dev-watch-stop", id),
@@ -297,6 +343,7 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			getSettings: (id) => ipc.invoke("vetta:plugins:get-settings", id),
 			setSettings: (id, values) => ipc.invoke("vetta:plugins:set-settings", id, values),
 			networkRequest: (sessionId, request) => ipc.invoke("vetta:plugins:network:request", sessionId, request),
+			gatewayRequest: (sessionId, request) => ipc.invoke("vetta:plugins:gateway:request", sessionId, request),
 			storageReadJson: (sessionId, key) => ipc.invoke("vetta:plugins:storage:read-json", sessionId, key),
 			storageWriteJson: (sessionId, key, value) =>
 				ipc.invoke("vetta:plugins:storage:write-json", sessionId, key, value),
@@ -307,16 +354,9 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			storagePutBlob: (sessionId, input) => ipc.invoke("vetta:plugins:storage:put-blob", sessionId, input),
 			storageReadBlob: (sessionId, id) => ipc.invoke("vetta:plugins:storage:read-blob", sessionId, id),
 			storageGetBlobRef: (sessionId, id) => ipc.invoke("vetta:plugins:storage:get-blob-ref", sessionId, id),
-			onSettingsChanged: (listener) => {
-				const handler = (
-					_event: IpcRendererEvent,
-					payload: { pluginId: string; values: Record<string, unknown> },
-				) => listener(payload);
-				ipc.on("vetta:plugins:settings-changed", handler);
-				return () => ipc.removeListener("vetta:plugins:settings-changed", handler);
-			},
+			onSettingsChanged,
 			onPluginsChanged: (listener) => {
-				const handler = () => listener();
+				const handler = (_event: IpcRendererEvent, payload?: Parameters<typeof listener>[0]) => listener(payload);
 				ipc.on("vetta:plugins:changed", handler);
 				return () => ipc.removeListener("vetta:plugins:changed", handler);
 			},

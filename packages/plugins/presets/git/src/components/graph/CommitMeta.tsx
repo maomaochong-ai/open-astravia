@@ -1,4 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import type { CommitNode } from "../../git/types";
 import { CopyIcon } from "../icons";
 import { CommitMessage } from "./CommitMessage";
@@ -18,15 +19,17 @@ export function CommitMeta({ node }: { node: CommitNode }): JSX.Element {
 				</div>
 			)}
 			<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="xs"
 					onClick={() => void navigator.clipboard?.writeText(node.hash)}
 					title={t("commit.copyHash")}
-					className="git-mono inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-accent hover:text-foreground"
+					className="git-mono h-auto px-1 py-0.5 font-normal"
 				>
 					<span>{shortHash}</span>
 					<CopyIcon className="h-3 w-3" />
-				</button>
+				</Button>
 				<span className="truncate" title={`${node.authorName} <${node.authorEmail}>`}>
 					{node.authorName}
 				</span>

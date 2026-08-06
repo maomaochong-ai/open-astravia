@@ -1,70 +1,61 @@
-import { usePluginTextResolver } from "@domains/plugins/runtime/plugin-i18n";
+import { withPluginTabVisibility } from "@domains/plugins/runtime/attached-tabs";
 import type { TabBarItem } from "@shared/components/ui/tab-bar";
 import { useNarrowScreen, useWindowWidth } from "@shared/hooks/useNarrowScreen";
 import { type ActivityTabKey, useProjectProfile } from "@shared/lib/project-profile";
 import {
 	ACTIVITY_PANEL_MIN_CHAT_AREA,
 	ACTIVITY_PANEL_MIN_WIDTH,
-	activeInputActionIdsAtom,
-	activeSessionAtom,
 	activityPanelMaxWidth,
 	activityPanelOpenAtom,
+	activityPanelResizingAtom,
 	activityPanelTabByProjectAtom,
 	activityPanelWidthAtom,
 	activityTabOrderAtom,
 	attachedPluginTabsAtom,
-	backgroundTasksBySessionAtom,
-	browserUrlBySessionAtom,
-	currentScenarioAtom,
-	debugModeAtom,
-	getBackgroundTasksForSession,
-	getBrowserUrlForSession,
-	getSubagentsForSession,
-	getTodoItemsForSession,
 	hiddenActivityTabsAtom,
-	isSubagentActive,
-	isWorkflowTask,
-	pluginActivityTabsAtom,
-	pluginInputActionsAtom,
+	persistActivityPanelWidthAtom,
+	setTransientActivityPanelWidthAtom,
 	sidebarCollapsedAtom,
 	sidebarWidthAtom,
-	subagentsBySessionAtom,
-	todoItemsBySessionAtom,
 } from "@shared/store/atoms";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import type { ActivityPanelActions, ActivityPanelModel, ActivityPanelProps } from "../components/activity-panel/types";
-import { DEFAULT_PLUGIN_TAB_ICON } from "../components/PluginTabPicker";
+import { resolveActivityTabs } from "../registry/resolve-activity-tabs";
+import type { ActivityTabDefinition, ActivityTabId, ActivityTabMeta, ResolvedActivityTab } from "../registry/types";
 
-const NON_HIDEABLE_TABS = new Set<ActivityTabKey>(["file", "knowledge-history"]);
+const NON_HIDEABLE_TABS = new Set<string>(["file", "knowledge-history"]);
 
-function applyTabOrder<T extends { key: ActivityTabKey }>(items: T[], order: string[]): T[] {
-	if (order.length === 0) return items;
-	const rank = (key: string): number => {
-		const index = order.indexOf(key);
-		return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+function toTabBarItem(tab: ResolvedActivityTab): TabBarItem<ActivityTabKey> {
+	return {
+		key: tab.id as ActivityTabKey,
+		label: tab.label,
+		icon: typeof tab.icon === "string" ? tab.icon : undefined,
+		badge: tab.badge,
+		removable: tab.removable,
 	};
-	return items
-		.map((item, index) => ({ item, index }))
-		.sort((a, b) => rank(a.item.key) - rank(b.item.key) || a.index - b.index)
-		.map(({ item }) => item);
+}
+
+export interface UseActivityPanelModelInput extends ActivityPanelProps {
+	definitions: readonly ActivityTabDefinition[];
+	metaById: ReadonlyMap<ActivityTabId, ActivityTabMeta | null>;
+	/** 已由外层解析的 cwd（与 Context 一致）。 */
+	cwd: string | null;
 }
 
 export function useActivityPanelModel({
-	cwd: cwdProp,
-	enablePluginTabs = true,
+	cwd,
+	definitions,
+	metaById,
 	knowledgeHistory = false,
-}: ActivityPanelProps = {}): { actions: ActivityPanelActions; model: ActivityPanelModel } {
-	const { t } = useTranslation("chat");
+}: UseActivityPanelModelInput): { actions: ActivityPanelActions; model: ActivityPanelModel } {
 	const [isOpen, setOpen] = useAtom(activityPanelOpenAtom);
 	const narrow = useNarrowScreen();
-	const activeSession = useAtomValue(activeSessionAtom);
-	const browserUrlMap = useAtomValue(browserUrlBySessionAtom);
-	const attachedPluginTabsMap = useAtomValue(attachedPluginTabsAtom);
-	const browserUrl = getBrowserUrlForSession(browserUrlMap, activeSession?.sessionPath ?? null);
+	const [attachedPluginTabsMap, setAttachedPluginTabsMap] = useAtom(attachedPluginTabsAtom);
 	const [width, setWidth] = useAtom(activityPanelWidthAtom);
-	const [isResizing, setIsResizing] = useState(false);
+	const [isResizing, setIsResizing] = useAtom(activityPanelResizingAtom);
+	const setTransientWidth = useSetAtom(setTransientActivityPanelWidthAtom);
+	const persistWidth = useSetAtom(persistActivityPanelWidthAtom);
 	const [overflowKeys, setOverflowKeys] = useState<ActivityTabKey[]>([]);
 	const [tabByProject, setTabByProject] = useAtom(activityPanelTabByProjectAtom);
 	const windowWidth = useWindowWidth();
@@ -73,72 +64,71 @@ export function useActivityPanelModel({
 	const [sidebarCollapsed, setSidebarCollapsed] = useAtom(sidebarCollapsedAtom);
 	const widthCollapsedSidebarRef = useRef<boolean | null>(null);
 	const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
-	const cwd = cwdProp ?? activeSession?.cwd ?? null;
 	const { profile } = useProjectProfile(cwd);
-	const todoMap = useAtomValue(todoItemsBySessionAtom);
-	const todoItems = useMemo(
-		() => getTodoItemsForSession(todoMap, activeSession?.runtimeId ?? null),
-		[todoMap, activeSession?.runtimeId],
-	);
-	const backgroundTasksMap = useAtomValue(backgroundTasksBySessionAtom);
-	const backgroundTasks = useMemo(
-		() => getBackgroundTasksForSession(backgroundTasksMap, activeSession?.runtimeId ?? null),
-		[backgroundTasksMap, activeSession?.runtimeId],
-	);
-	const subagentsMap = useAtomValue(subagentsBySessionAtom);
-	const allSubagents = useMemo(
-		() => getSubagentsForSession(subagentsMap, activeSession?.runtimeId ?? null),
-		[subagentsMap, activeSession?.runtimeId],
-	);
-	// Workflows live in their own tab; background-tasks keeps bash + non-workflow subagents.
-	const subagents = useMemo(() => allSubagents.filter((a) => !isWorkflowTask(a)), [allSubagents]);
-	const workflows = useMemo(() => allSubagents.filter(isWorkflowTask), [allSubagents]);
-	const debugMode = useAtomValue(debugModeAtom);
-	const registeredPluginTabs = useAtomValue(pluginActivityTabsAtom);
-	const pluginInputActions = useAtomValue(pluginInputActionsAtom);
-	const activeInputActionIds = useAtomValue(activeInputActionIdsAtom);
-	const trPlugin = usePluginTextResolver();
-	const currentScenario = useAtomValue(currentScenarioAtom);
-	const attachedPluginTabKeys = useMemo(
-		() => new Set(cwd ? (attachedPluginTabsMap.get(cwd) ?? []) : []),
+
+	const tabVisibilityRecords = useMemo(
+		() => (cwd ? (attachedPluginTabsMap.get(cwd) ?? []) : []),
 		[attachedPluginTabsMap, cwd],
-	);
-	/** Plugin ids whose hard-isolation toggle is currently off (ADR-0041). */
-	const hardIsolationOffPluginIds = useMemo(() => {
-		const off = new Set<string>();
-		for (const action of pluginInputActions) {
-			if (action.hardIsolation && !activeInputActionIds.has(action.actionId)) {
-				off.add(action.pluginId);
-			}
-		}
-		return off;
-	}, [pluginInputActions, activeInputActionIds]);
-	const pluginTabContribs = useMemo(
-		() =>
-			enablePluginTabs && currentScenario !== null
-				? registeredPluginTabs.filter(
-						(tab) =>
-							tab.scope_use?.includes(currentScenario) &&
-							!hardIsolationOffPluginIds.has(tab.pluginId) &&
-							attachedPluginTabKeys.has(`${tab.pluginId}:${tab.tabId}`),
-					)
-				: [],
-		[enablePluginTabs, registeredPluginTabs, currentScenario, hardIsolationOffPluginIds, attachedPluginTabKeys],
 	);
 	const [hiddenTabsMap, setHiddenTabsMap] = useAtom(hiddenActivityTabsAtom);
 	const [tabOrderMap, setTabOrderMap] = useAtom(activityTabOrderAtom);
 	const hiddenKeys = useMemo(() => (cwd ? (hiddenTabsMap.get(cwd) ?? []) : []), [cwd, hiddenTabsMap]);
 	const tabOrder = useMemo(() => (cwd ? (tabOrderMap.get(cwd) ?? []) : []), [cwd, tabOrderMap]);
 
+	const resolved = useMemo(
+		() =>
+			resolveActivityTabs({
+				definitions,
+				metaById,
+				tabVisibilityRecords,
+				hiddenKeys,
+				tabOrder,
+			}),
+		[definitions, metaById, tabVisibilityRecords, hiddenKeys, tabOrder],
+	);
+
+	const tabItems = useMemo(() => resolved.onBar.map(toTabBarItem), [resolved.onBar]);
+	const restorableTabs = useMemo(
+		() =>
+			resolved.restorable.map((item) => ({
+				key: item.id,
+				label: item.label,
+				icon: typeof item.icon === "string" ? item.icon : undefined,
+			})),
+		[resolved.restorable],
+	);
+	const availablePluginTabs = useMemo(
+		() =>
+			resolved.availablePlugins.map((item) => ({
+				key: item.id,
+				label: item.label,
+				icon: typeof item.icon === "string" ? item.icon : undefined,
+				subtitle: item.pluginName,
+			})),
+		[resolved.availablePlugins],
+	);
+
+	const definitionById = useMemo(() => {
+		const map = new Map<string, ActivityTabDefinition>();
+		for (const def of definitions) map.set(def.id, def);
+		return map;
+	}, [definitions]);
+
 	const onResize = useCallback(
 		(delta: number) => {
 			setIsResizing(true);
-			setWidth((currentWidth) => Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth + delta)));
+			setTransientWidth((currentWidth) =>
+				Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth + delta)),
+			);
 		},
-		[maxWidth, setWidth],
+		[maxWidth, setIsResizing, setTransientWidth],
 	);
-	const onResizeEnd = useCallback(() => setIsResizing(false), []);
+	const onResizeEnd = useCallback(() => {
+		setIsResizing(false);
+		persistWidth();
+	}, [persistWidth, setIsResizing]);
 	const onClose = useCallback(() => setOpen(false), [setOpen]);
+	useEffect(() => () => setIsResizing(false), [setIsResizing]);
 
 	useEffect(() => {
 		setWidth((currentWidth) => Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth)));
@@ -168,107 +158,6 @@ export function useActivityPanelModel({
 		}
 	}, [width, windowWidth, sidebarWidth, isOpen, sidebarCollapsed, setSidebarCollapsed, setWidth]);
 
-	const allTabItems = useMemo<TabBarItem<ActivityTabKey>[]>(() => {
-		if (knowledgeHistory) {
-			return [
-				{
-					key: "knowledge-history",
-					label: t("activityPanel.tabs.knowledgeHistory"),
-					icon: "icon-[mdi--history]",
-				},
-			];
-		}
-		const base: TabBarItem<ActivityTabKey>[] = (profile?.activityTabs ?? []).map((tab) => ({
-			key: tab.key,
-			label: t(tab.label),
-			icon: tab.icon,
-			removable: !NON_HIDEABLE_TABS.has(tab.key),
-		}));
-		if (browserUrl) {
-			base.push({
-				key: "browser",
-				label: t("browser.tab"),
-				icon: "icon-[mdi--web]",
-				removable: true,
-			});
-		}
-		if (todoItems.length > 0) {
-			const done = todoItems.filter((item) => item.status === "done").length;
-			base.push({
-				key: "todo",
-				label: t("activityPanel.tabs.todo"),
-				icon: "icon-[mdi--checkbox-marked-circle-outline]",
-				badge: todoItems.length - done || undefined,
-				removable: true,
-			});
-		}
-		if (backgroundTasks.length > 0 || subagents.length > 0) {
-			const runningBash = backgroundTasks.filter((task) => task.status === "running").length;
-			const runningSub = subagents.filter((a) => isSubagentActive(a.status)).length;
-			const running = runningBash + runningSub;
-			base.push({
-				key: "background-tasks",
-				label: t("activityPanel.tabs.backgroundTasks"),
-				icon: "icon-[mdi--console-line]",
-				badge: running || undefined,
-				removable: true,
-			});
-		}
-		if (workflows.length > 0) {
-			const runningWorkflows = workflows.filter((a) => isSubagentActive(a.status)).length;
-			base.push({
-				key: "workflow",
-				label: t("activityPanel.tabs.workflow"),
-				icon: "icon-[mdi--sitemap-outline]",
-				badge: runningWorkflows || undefined,
-				removable: true,
-			});
-		}
-		if (debugMode) {
-			base.push({
-				key: "debug",
-				label: t("activityPanel.tabs.debug"),
-				icon: "icon-[mdi--bug-outline]",
-				removable: true,
-			});
-		}
-		for (const tab of pluginTabContribs) {
-			base.push({
-				key: `plugin:${tab.pluginId}:${tab.tabId}` as ActivityTabKey,
-				label: trPlugin(tab.pluginId, tab.label),
-				icon: tab.icon ?? DEFAULT_PLUGIN_TAB_ICON,
-				removable: true,
-			});
-		}
-		return base;
-	}, [
-		knowledgeHistory,
-		profile,
-		todoItems,
-		backgroundTasks,
-		subagents,
-		workflows,
-		debugMode,
-		pluginTabContribs,
-		browserUrl,
-		trPlugin,
-		t,
-	]);
-	const tabItems = useMemo(
-		() =>
-			applyTabOrder(
-				allTabItems.filter((item) => !hiddenKeys.includes(item.key)),
-				tabOrder,
-			),
-		[allTabItems, hiddenKeys, tabOrder],
-	);
-	const restorableTabs = useMemo(
-		() =>
-			allTabItems
-				.filter((item) => hiddenKeys.includes(item.key))
-				.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
-		[allTabItems, hiddenKeys],
-	);
 	const activeTab = useMemo<ActivityTabKey>(() => {
 		if (knowledgeHistory) return "knowledge-history";
 		if (cwd) {
@@ -283,18 +172,19 @@ export function useActivityPanelModel({
 		return tabItems[0]?.key ?? fallback;
 	}, [knowledgeHistory, cwd, tabByProject, profile, tabItems]);
 
+	// 程序切到某 tab 时若它在 hidden 列表，自动恢复（与旧行为一致）。
 	useEffect(() => {
 		if (!cwd) return;
 		const remembered = tabByProject.get(cwd);
 		if (!remembered || !hiddenKeys.includes(remembered)) return;
-		if (!allTabItems.some((item) => item.key === remembered)) return;
+		if (!resolved.candidates.some((item) => item.id === remembered)) return;
 		const next = new Map(hiddenTabsMap);
 		next.set(
 			cwd,
 			(next.get(cwd) ?? []).filter((key) => key !== remembered),
 		);
 		setHiddenTabsMap(next);
-	}, [cwd, tabByProject, hiddenKeys, allTabItems, hiddenTabsMap, setHiddenTabsMap]);
+	}, [cwd, tabByProject, hiddenKeys, resolved.candidates, hiddenTabsMap, setHiddenTabsMap]);
 
 	const onTabChange = useCallback(
 		(next: ActivityTabKey) => {
@@ -307,13 +197,31 @@ export function useActivityPanelModel({
 		},
 		[cwd, setTabByProject],
 	);
-	const activePluginTab = useMemo(() => {
-		if (!activeTab.startsWith("plugin:")) return null;
-		return pluginTabContribs.find((tab) => `plugin:${tab.pluginId}:${tab.tabId}` === activeTab) ?? null;
-	}, [activeTab, pluginTabContribs]);
+
+	const activeDefinition = definitionById.get(activeTab) ?? null;
+
+	/** 需保活的候选（含当前激活项）：始终挂载，View 用 CSS 显隐，避免 webview remount。 */
+	const keepAliveTabs = useMemo(
+		() => resolved.candidates.filter((item) => item.definition.keepAliveWhenAvailable),
+		[resolved.candidates],
+	);
+
 	const onRemoveTab = useCallback(
 		(key: ActivityTabKey) => {
 			if (!cwd || NON_HIDEABLE_TABS.has(key)) return;
+			const def = definitionById.get(key);
+			if (def && def.removable === false) return;
+
+			// 插件 tab：写显式下栏，回到「+」可添加池（不进 hidden 列表）。
+			if (key.startsWith("plugin:")) {
+				const attachKey = key.slice("plugin:".length);
+				const nextAttached = withPluginTabVisibility(attachedPluginTabsMap, cwd, attachKey, false);
+				if (nextAttached) setAttachedPluginTabsMap(nextAttached);
+				if (activeTab === key) {
+					onTabChange(tabItems.find((item) => item.key !== key)?.key ?? "file");
+				}
+				return;
+			}
 			const next = new Map(hiddenTabsMap);
 			const current = next.get(cwd) ?? [];
 			if (!current.includes(key)) next.set(cwd, [...current, key]);
@@ -322,7 +230,17 @@ export function useActivityPanelModel({
 				onTabChange(tabItems.find((item) => item.key !== key)?.key ?? "file");
 			}
 		},
-		[cwd, hiddenTabsMap, setHiddenTabsMap, activeTab, tabItems, onTabChange],
+		[
+			cwd,
+			definitionById,
+			attachedPluginTabsMap,
+			setAttachedPluginTabsMap,
+			hiddenTabsMap,
+			setHiddenTabsMap,
+			activeTab,
+			tabItems,
+			onTabChange,
+		],
 	);
 	const onRestoreTab = useCallback(
 		(key: string) => {
@@ -336,6 +254,18 @@ export function useActivityPanelModel({
 			onTabChange(key as ActivityTabKey);
 		},
 		[cwd, hiddenTabsMap, setHiddenTabsMap, onTabChange],
+	);
+	/** 从可添加池显式上栏插件 tab 并切过去（与 openActivityTab 同语义，不强制改宽度）。 */
+	const onAttachPluginTab = useCallback(
+		(key: string) => {
+			if (!cwd || !key.startsWith("plugin:")) return;
+			const attachKey = key.slice("plugin:".length);
+			const nextAttached = withPluginTabVisibility(attachedPluginTabsMap, cwd, attachKey, true);
+			if (nextAttached) setAttachedPluginTabsMap(nextAttached);
+			onTabChange(key as ActivityTabKey);
+			setOpen(true);
+		},
+		[cwd, attachedPluginTabsMap, setAttachedPluginTabsMap, onTabChange, setOpen],
 	);
 	const onReorderTabs = useCallback(
 		(keys: ActivityTabKey[]) => {
@@ -353,10 +283,14 @@ export function useActivityPanelModel({
 				.map((item) => ({ key: item.key, label: item.label, icon: item.icon })),
 		[tabItems, overflowKeys],
 	);
-	const showTabPicker = cwd !== null && !knowledgeHistory && (restorableTabs.length > 0 || overflowTabs.length > 0);
+	const showTabPicker =
+		cwd !== null &&
+		!knowledgeHistory &&
+		(restorableTabs.length > 0 || overflowTabs.length > 0 || availablePluginTabs.length > 0);
 
 	return {
 		actions: {
+			onAttachPluginTab,
 			onClose,
 			onOverflowChange: setOverflowKeys,
 			onRemoveTab,
@@ -367,13 +301,14 @@ export function useActivityPanelModel({
 			onTabChange,
 		},
 		model: {
-			activePluginTab,
+			activeDefinition,
 			activeTab,
+			availablePluginTabs,
 			bottomSheet: narrow && isOpen,
-			browserUrl,
 			cwd,
 			isOpen,
 			isResizing,
+			keepAliveTabs,
 			knowledgeHistory,
 			narrowSheet: narrow,
 			overflowTabs,

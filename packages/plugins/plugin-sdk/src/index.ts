@@ -10,7 +10,30 @@
 export type { ConversationScenario } from "./scenario.js";
 export type { PluginPermission } from "./permissions.js";
 export type { Disposable } from "./disposable.js";
-export type { PluginMcpServerConfig, PluginAgentManifest } from "./manifest.js";
+export type {
+	PluginAgentManifest,
+	PluginManifest,
+	PluginManifestInput,
+	PluginManifestResourceReference,
+	PluginMcpServerConfig,
+	PluginSettingSchema,
+} from "./manifest.js";
+
+// File explorer
+export type {
+	PluginFileExplorerEntry,
+	PluginWorkspaceRoot,
+	PluginFileExplorerWhen,
+	PluginFileExplorerActionContext,
+	PluginFileExplorerContextMenuContribution,
+	PluginFileExplorerToolbarContext,
+	PluginFileExplorerToolbarContribution,
+	PluginFileExplorerDecoration,
+	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerChange,
+	PluginFileExplorerRevealOptions,
+	PluginFileExplorerApi,
+} from "./file-explorer.js";
 
 // Conversation
 export type {
@@ -44,6 +67,17 @@ export type {
 	PluginNotifyOptions,
 	PluginUiApi,
 } from "./ui.js";
+
+// Keyboard shortcuts (host ShortcutScopeStack)
+export type {
+	PluginShortcutScopeKind,
+	PluginShortcutWhen,
+	PluginShortcutBinding,
+	PluginShortcutScopeContribution,
+	PluginRegisterShortcutScope,
+	UsePluginShortcutScopeOptions,
+} from "./shortcuts.js";
+export { usePluginShortcutScope } from "./shortcuts.js";
 
 // Agent runtime
 export type {
@@ -79,6 +113,16 @@ export type {
 	PluginAppActionsApi,
 } from "./app-actions.js";
 export { PluginAppActionError } from "./app-actions.js";
+
+// Host-managed AI
+export type {
+	PluginAiApi,
+	PluginAiCompleteRequest,
+	PluginAiCompleteResult,
+	PluginAiModel,
+	PluginAiModelListResult,
+	PluginAiUsage,
+} from "./ai.js";
 
 // Official host capabilities
 export type {
@@ -132,9 +176,35 @@ export type {
 export type {
 	PluginCommandRunOptions,
 	PluginCommandRunResult,
+	PluginCommandSpawnOptions,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnStatus,
+	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
+export type {
+	PluginCaptureApi,
+	PluginOffscreenCaptureOptions,
+	PluginOffscreenCaptureResult,
+} from "./capture.js";
 export type { PluginImageRef } from "./images.js";
+export type {
+	PluginMediaApi,
+	PluginMediaArtifact,
+	PluginMediaCapability,
+	PluginMediaCreateJobRequest,
+	PluginMediaDimensions,
+	PluginMediaErrorCode,
+	PluginMediaFailure,
+	PluginMediaGenerationMode,
+	PluginMediaJob,
+	PluginMediaJobRef,
+	PluginMediaJobStatus,
+	PluginMediaKind,
+	PluginMediaProviderDescriptor,
+	PluginMediaReference,
+} from "./media.js";
+export { PluginMediaError } from "./media.js";
 export type { PluginPromptAttachment } from "./prompt-attachment.js";
 export type {
 	PluginNetworkApi,
@@ -142,6 +212,7 @@ export type {
 	PluginNetworkRequest,
 	PluginNetworkResponse,
 } from "./network.js";
+export type { PluginGatewayApi, PluginGatewayRequest, PluginGatewayResponse } from "./gateway.js";
 export type {
 	PluginPutBlobInput,
 	PluginStorageApi,

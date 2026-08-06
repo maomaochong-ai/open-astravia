@@ -25,7 +25,7 @@ export function XianxiaCultivationRulesContent({
 				<div className="flex min-w-0 items-center gap-2">
 					<button
 						aria-label="返回修为构成"
-						className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-slate-600 outline-none transition hover:bg-slate-900/6 hover:text-slate-800 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+						className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-slate-600 outline-none transition hover:bg-slate-900/6 hover:text-slate-800 border border-transparent focus-visible:border-amber-200/80"
 						onClick={onBack}
 						type="button"
 					>

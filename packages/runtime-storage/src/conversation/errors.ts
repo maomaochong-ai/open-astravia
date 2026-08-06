@@ -30,6 +30,7 @@ export interface ConversationOwnershipHolder {
 	readonly pid: number;
 	readonly hostname: string;
 	readonly acquiredAt: string;
+	readonly processStartedAt?: string;
 }
 
 export class ConversationOwnershipConflictError extends ConversationStorageError {

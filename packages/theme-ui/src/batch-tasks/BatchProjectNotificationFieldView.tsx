@@ -27,7 +27,7 @@ export function BatchProjectNotificationFieldView({
 				role="switch"
 				aria-checked={checked}
 				onClick={() => onChange(!checked)}
-				className={`peer relative inline-flex h-[18.4px] w-[32px] shrink-0 items-center rounded-full border border-transparent transition-all outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 ${
+				className={`peer relative inline-flex h-[18.4px] w-[32px] shrink-0 items-center rounded-full border border-transparent transition-all outline-none focus-visible:border-ring ${
 					checked ? "bg-primary" : "bg-input"
 				}`}
 			>

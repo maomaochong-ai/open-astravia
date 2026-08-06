@@ -1,6 +1,6 @@
 import type { TabBarItem } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
-import type { RegisteredActivityTab } from "@shared/store/atoms";
+import type { ActivityTabDefinition, ResolvedActivityTab } from "../../registry/types";
 import type { HiddenTabEntry } from "../PluginTabPicker";
 
 export interface ActivityPanelProps {
@@ -10,13 +10,17 @@ export interface ActivityPanelProps {
 }
 
 export interface ActivityPanelModel {
-	activePluginTab: RegisteredActivityTab | null;
+	/** 当前激活 tab 的 definition（内容区按 component 渲染）。 */
+	activeDefinition: ActivityTabDefinition | null;
 	activeTab: ActivityTabKey;
+	/** 已注册且未 attach 的插件 tab，供「+」菜单从可添加池挂入。 */
+	availablePluginTabs: HiddenTabEntry[];
 	bottomSheet: boolean;
-	browserUrl: string | null;
 	cwd: string | null;
 	isOpen: boolean;
 	isResizing: boolean;
+	/** 需保活但未激活的 tab（CSS 隐藏挂载）。 */
+	keepAliveTabs: ResolvedActivityTab[];
 	knowledgeHistory: boolean;
 	narrowSheet: boolean;
 	overflowTabs: HiddenTabEntry[];
@@ -27,6 +31,7 @@ export interface ActivityPanelModel {
 }
 
 export interface ActivityPanelActions {
+	onAttachPluginTab: (key: string) => void;
 	onClose: () => void;
 	onOverflowChange: (keys: ActivityTabKey[]) => void;
 	onRemoveTab: (key: ActivityTabKey) => void;

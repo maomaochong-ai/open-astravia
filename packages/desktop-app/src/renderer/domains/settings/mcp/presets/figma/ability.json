@@ -1,0 +1,48 @@
+{
+	"schemaVersion": 1,
+	"type": "mcp",
+	"slug": "figma",
+	"version": "1.0.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"brand_name": "Figma",
+					"user_prompt": "读取这个 Figma 页面，提取组件结构和设计令牌。",
+					"assistant_reply": "配置访问令牌后，我可以读取设计文件信息，辅助实现与设计稿保持一致的界面。"
+				}
+			},
+			{
+				"type": "callout",
+				"tone": "info",
+				"title": "使用前需要配置",
+				"content": "添加连接器时需要填写 Figma Personal Access Token；令牌只写入本机 MCP 配置。"
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"brand_name": "Figma",
+							"user_prompt": "Read this Figma page and extract its component structure and design tokens.",
+							"assistant_reply": "After you configure a token, I can read design-file information and help implement a matching interface."
+						}
+					},
+					{
+						"type": "callout",
+						"tone": "info",
+						"title": "Setup required",
+						"content": "A Figma Personal Access Token is required when adding this connector. It is stored only in your local MCP configuration."
+					}
+				]
+			}
+		}
+	}
+}

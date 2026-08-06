@@ -40,7 +40,8 @@ export function InputActionBarView({ className, model }: InputActionBarViewProps
 			animate={{ y: 0, opacity: 1 }}
 			transition={{ type: "spring", stiffness: 440, damping: 36, mass: 0.9 }}
 			className={cn(
-				"input-ledge relative z-0 mx-auto w-[93%] flex flex-wrap gap-0.5 rounded-b-[14px] bg-card/70 px-3 pt-1 pb-1",
+				// 单行：窄宽隐藏文案只留图标，避免阶梯区折行
+				"input-ledge relative z-0 mx-auto flex w-[93%] flex-nowrap gap-0.5 overflow-x-auto rounded-b-[14px] bg-input-bar-bg/70 px-3 pt-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
 				surface?.rootClassName,
 				className,
 			)}
@@ -60,7 +61,7 @@ export function InputActionBarView({ className, model }: InputActionBarViewProps
 						onClick={model.actions.toggleKnowledge}
 						title={model.knowledge.tooltip}
 						className={cn(
-							"flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[12px] font-medium transition-colors",
+							"flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-0.5 text-[12px] font-medium transition-colors",
 							model.knowledge.active
 								? "bg-primary/10 text-primary"
 								: "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
@@ -71,7 +72,7 @@ export function InputActionBarView({ className, model }: InputActionBarViewProps
 							animate={model.knowledge.active ? { rotate: [0, -8, 8, 0] } : { rotate: 0 }}
 							transition={{ duration: 0.4 }}
 						/>
-						<span>{model.knowledge.label}</span>
+						<span className="hidden @[22rem]:inline">{model.knowledge.label}</span>
 					</motion.button>
 				) : null}
 				{model.items.map((item, index) => (
@@ -85,8 +86,9 @@ export function InputActionBarView({ className, model }: InputActionBarViewProps
 						transition={{ type: "spring", stiffness: 520, damping: 30, delay: index * 0.03 }}
 						whileTap={{ scale: 0.95 }}
 						onClick={() => model.actions.toggleItem(item.id)}
+						title={item.label}
 						className={cn(
-							"flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[12px] font-medium transition-colors",
+							"flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-0.5 text-[12px] font-medium transition-colors",
 							item.active
 								? "bg-primary/10 text-primary"
 								: "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
@@ -101,7 +103,7 @@ export function InputActionBarView({ className, model }: InputActionBarViewProps
 								{item.icon}
 							</motion.span>
 						) : null}
-						<span>{item.label}</span>
+						<span className="hidden @[22rem]:inline">{item.label}</span>
 					</motion.button>
 				))}
 			</AnimatePresence>

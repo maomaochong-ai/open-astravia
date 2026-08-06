@@ -15,10 +15,7 @@ export const QUICK_PANEL_POST_SEND_BEHAVIORS = {
 	BACKGROUND: "background",
 } as const;
 
-const shortcutEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const shortcutEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const quickPanelTriggerType = Type.Union([
 	Type.Literal(QUICK_PANEL_TRIGGERS.NONE),

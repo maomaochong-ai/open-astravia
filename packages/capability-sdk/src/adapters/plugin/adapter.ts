@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import type { CapabilityAccessHandle, CapabilityAccessSessionFactory } from "../../access.js";
 import { CAPABILITY_ERROR_CODES, CapabilityError } from "../../contracts.js";
 import { type PluginAgentSettingsMethods, pluginAgentSettingsMethods } from "./domain/agent-settings.js";
+import { type PluginAiMethods, pluginAiMethods } from "./domain/ai.js";
 import { type PluginBatchTaskMethods, pluginBatchTaskMethods } from "./domain/batch-task.js";
 import { type PluginDownloadMethods, pluginDownloadMethods } from "./domain/download.js";
 import { type PluginGeneralSettingsMethods, pluginGeneralSettingsMethods } from "./domain/general-settings.js";
 import { type PluginImMethods, pluginImMethods } from "./domain/im.js";
 import { type PluginKnowledgeMethods, pluginKnowledgeMethods } from "./domain/knowledge.js";
 import { type PluginMcpMethods, pluginMcpMethods } from "./domain/mcp.js";
+import { type PluginMediaMethods, pluginMediaMethods } from "./domain/media.js";
 import { type PluginModelMethods, pluginModelMethods } from "./domain/model.js";
 import { type PluginProjectMethods, pluginProjectMethods } from "./domain/project.js";
 import { type PluginSchedulerMethods, pluginSchedulerMethods } from "./domain/scheduler.js";
@@ -17,6 +19,7 @@ import { type PluginSkillMethods, pluginSkillMethods } from "./domain/skill.js";
 import { type PluginUpdaterMethods, pluginUpdaterMethods } from "./domain/updater.js";
 import { type PluginWebhookMethods, pluginWebhookMethods } from "./domain/webhook.js";
 import { type PluginFilesystemMethods, pluginFilesystemMethods } from "./foundation/filesystem.js";
+import { type PluginGatewayMethods, pluginGatewayMethods } from "./foundation/gateway.js";
 import { type PluginNetworkMethods, pluginNetworkMethods } from "./foundation/network.js";
 import { type PluginStorageMethods, pluginStorageMethods } from "./foundation/storage.js";
 import { buildPluginCapabilityGrants } from "./grants.js";
@@ -31,10 +34,13 @@ import {
 export interface PluginCapabilityAdapter
 	extends PluginFilesystemMethods,
 		PluginNetworkMethods,
+		PluginGatewayMethods,
 		PluginStorageMethods,
+		PluginAiMethods,
 		PluginAgentSettingsMethods,
 		PluginGeneralSettingsMethods,
 		PluginImMethods,
+		PluginMediaMethods,
 		PluginModelMethods,
 		PluginMcpMethods,
 		PluginProjectMethods,
@@ -126,10 +132,13 @@ Object.assign(
 	PluginCapabilityAdapter.prototype,
 	pluginFilesystemMethods,
 	pluginNetworkMethods,
+	pluginGatewayMethods,
 	pluginStorageMethods,
+	pluginAiMethods,
 	pluginAgentSettingsMethods,
 	pluginGeneralSettingsMethods,
 	pluginImMethods,
+	pluginMediaMethods,
 	pluginModelMethods,
 	pluginMcpMethods,
 	pluginProjectMethods,

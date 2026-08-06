@@ -13,6 +13,12 @@ import {
 	type ChatMessage,
 	type FilePreviewItem,
 } from "@shared/store/atoms";
+import {
+	parseInputSegments,
+	segmentsToText,
+	toTokenPath,
+	type InputSegment,
+} from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
 import {
 	SettingsAssistBadgeView,
@@ -33,6 +39,7 @@ import {
 import { AppshotCard, type AppshotCardData } from "../components/AppshotCard";
 import { TextBlockView } from "../components/blocks/TextBlock";
 import { CopyButton } from "../components/message-list/MessageActions";
+import { useSkillTokenMeta } from "./useSkillTokenMeta";
 
 const DELETE_CONFIRMATION_SUPPRESSION_MS = 60_000;
 const CONTEXT_MENU_WIDTH = 170;
@@ -64,10 +71,13 @@ function isSettingsAssistTabId(value: string): value is SettingsAssistTabId {
 	return (SETTINGS_ASSIST_TAB_IDS as readonly string[]).includes(value);
 }
 
+function isAppshotPath(path: string): boolean {
+	return /[/\\]image-cache[/\\]appshot[/\\]/.test(path);
+}
+
 function splitAppshotFiles(files: string[]): { appshotImage: string | null; rest: string[] } {
-	const isAppshot = (path: string): boolean => /[/\\]image-cache[/\\]appshot[/\\]/.test(path);
-	const appshotImage = files.find((path) => isAppshot(path) && /\.png$/i.test(path)) ?? null;
-	return { appshotImage, rest: files.filter((path) => !isAppshot(path)) };
+	const appshotImage = files.find((path) => isAppshotPath(path) && /\.png$/i.test(path)) ?? null;
+	return { appshotImage, rest: files.filter((path) => !isAppshotPath(path)) };
 }
 
 function getPreviewImageSrc(item: FilePreviewItem): string {
@@ -109,40 +119,51 @@ async function reloadChatHistory(runtimeId: string): Promise<void> {
 	getDefaultStore().set(chatMessagesAtom, fullHistoryToChat(history));
 }
 
+/**
+ * 重编辑回填：把已发出的消息还原成输入框里的「文本 + 行内 token」。
+ *
+ * 与输入框反序列化、气泡渲染共用 parseInputSegments，所以新旧两种格式
+ * （行内 `@skill:` / `@路径`，与旧会话的行首前缀）都能还原到同一形态。
+ */
 function fillInputFromUserText(
 	rawText: string,
 	promptRef?: ChatMessage["promptRef"],
 	attachments?: ChatMessage["attachments"],
 ): void {
 	const store = getDefaultStore();
-	const { skillName, skillType, files, body } = parseUserPrefixes(rawText);
-	store.set(inputValueAtom, body);
-	store.set(
-		selectedSkillAtom,
-		promptRef
-			? { name: promptRef.name, type: promptRef.kind }
-			: skillName
-				? { name: skillName, type: skillType ?? "skill" }
-				: null,
+	const { segments, legacyRef } = parseInputSegments(rawText);
+	const ref = promptRef ?? legacyRef ?? null;
+	const restored: InputSegment[] = [...segments];
+
+	// 旧消息的 skill 引用存在 promptRef / 行首前缀里；软引用时代它应回到文本流。
+	if (ref && ref.kind === "skill") {
+		restored.unshift({ kind: "skill", name: ref.name });
+	}
+
+	// 结构化 attachments 是权威来源（带 directory / image 类型）；
+	// 文本里没被 token 覆盖到的补到末尾，避免重编辑丢附件。
+	const covered = new Set(
+		restored.flatMap((segment) =>
+			segment.kind === "file" || segment.kind === "image" ? [segment.path] : [],
+		),
 	);
-	// Appshot capsule needs full AppshotAttachment; on re-edit we re-attach the image path
-	// via mentionedFiles @prefix instead (sendMessage will include it).
+	for (const attachment of attachments ?? []) {
+		if (covered.has(attachment.path)) continue;
+		covered.add(attachment.path);
+		restored.push(
+			attachment.kind === "image" || isUserImageFile(attachment.path)
+				? { kind: "image", path: attachment.path }
+				: { kind: "file", path: attachment.path, isDirectory: attachment.kind === "directory" },
+		);
+	}
+
+	// 文本一写入，ValueBridgePlugin 会把编辑器内容整体重建成这些 token。
+	store.set(inputValueAtom, segmentsToText(restored));
+	// 场景仍是硬展开语义，继续走顶部胶囊。
+	store.set(selectedSkillAtom, ref && ref.kind === "scene" ? { name: ref.name, type: "scene" } : null);
+	// Appshot capsule needs full AppshotAttachment; on re-edit the image path rides
+	// along as an inline token instead (sendMessage will include it).
 	store.set(appshotAttachmentAtom, null);
-	// Restore structured attachments for re-send; legacy @prefixes remain compatible.
-	const restoredAttachments =
-		attachments ??
-		files.map((path) => ({
-			kind: isUserImageFile(path) ? ("image" as const) : ("file" as const),
-			path,
-		}));
-	store.set(
-		mentionedFilesAtom,
-		restoredAttachments.map((attachment) => ({
-			path: attachment.path,
-			name: pathBasename(attachment.path),
-			isDirectory: attachment.kind === "directory",
-		})),
-	);
 }
 
 function inputHasDraft(): boolean {
@@ -178,26 +199,59 @@ export function useUserMessageModel({
 	onEntryComplete,
 }: UserMessageModelInput): UserMessageModel {
 	const { t } = useTranslation("chat");
+	// 正文里的 `@skill:slug` 要还原成命令区插入时的样子（图标 + 别名）。
+	const resolveSkillMeta = useSkillTokenMeta();
 	const parsedUser = parseUserPrefixes(message.text);
-	const promptRef =
-		message.promptRef ??
-		(parsedUser.skillName && parsedUser.skillType
-			? { kind: parsedUser.skillType, name: parsedUser.skillName }
-			: undefined);
-	const skillName = promptRef?.name ?? null;
-	const skillType = promptRef?.kind ?? null;
-	const { files, body } = parsedUser;
-	const attachmentPaths = message.attachments?.map((attachment) => attachment.path) ?? files;
+	const { segments, legacyRef } = parseInputSegments(message.text);
+	const promptRef = message.promptRef ?? legacyRef ?? undefined;
+	// 场景仍是「整条消息生效」的硬展开，继续用顶部 badge 表示；
+	// skill 是软引用，改为在正文里行内呈现。
+	const skillName = promptRef?.kind === "scene" ? promptRef.name : null;
+	const skillType = promptRef?.kind === "scene" ? "scene" : null;
+	/** Appshot 的截图/文本走独立卡片，不能同时又当行内 token 渲染一遍。 */
+	const bodySegments = segments.filter(
+		(segment) =>
+			(segment.kind !== "image" && segment.kind !== "file") || !isAppshotPath(segment.path),
+	);
+	if (promptRef?.kind === "skill") {
+		// 旧消息把 skill 存在 promptRef / 行首前缀里，补回文本流开头。
+		bodySegments.unshift({ kind: "skill", name: promptRef.name });
+	}
+	// 归一成行内标记形式：旧会话的行首前缀因此也能被 rehype 插件识别成 token。
+	// pathTokenText 会把 `\` 写成 `/`，避免气泡 markdown 把 `\.` 当转义吃掉后
+	// 图片胶囊对不上编号表、退化成文件名。
+	const displayText = segmentsToText(bodySegments);
+	const inlinePaths = new Set(
+		bodySegments.flatMap((segment) =>
+			segment.kind === "file" || segment.kind === "image" ? [toTokenPath(segment.path)] : [],
+		),
+	);
+	const attachmentPaths = message.attachments?.map((attachment) => attachment.path) ?? parsedUser.files;
 	const { appshotImage, rest: displayFiles } = splitAppshotFiles(attachmentPaths);
-	// image-cache (persistImages) must still render as thumbnails; appshot is already split out.
-	const imageFiles = displayFiles.filter((file) => isUserImageFile(file));
-	const hasExplicitMentionedFiles = message.mentionedFiles !== undefined;
-	const fileBadges = message.attachments
-		? displayFiles.filter((file) => !isUserImageFile(file))
-		: hasExplicitMentionedFiles
-			? message.mentionedFiles?.map((file) => file.path).filter((path) => !isUserImageFile(path)) ?? []
-			: displayFiles.filter((file) => !isUserImageFile(file));
-	const displayText = body;
+	/**
+	 * 图片按「正文里出现的顺序」编号，缩略图集中在气泡上方，
+	 * 正文里只留「图 N」胶囊——与输入框的形态一致。
+	 * 未在正文出现的图片（旧消息、base64 兜底）排在后面继续编号。
+	 */
+	const inlineImagePaths = bodySegments.flatMap((segment) =>
+		segment.kind === "image" ? [segment.path] : [],
+	);
+	const inlineImageKeys = new Set(inlineImagePaths.map(toTokenPath));
+	const imageFiles = [
+		...inlineImagePaths,
+		...displayFiles.filter((file) => isUserImageFile(file) && !inlineImageKeys.has(toTokenPath(file))),
+	];
+	// 键统一 `/`：气泡 markdown 里的 path 与附件/节点上的 OS 路径分隔符可能不一致。
+	const imageLabelByPath = new Map(
+		imageFiles.map((path, index) => [
+			toTokenPath(path),
+			t("inputBar.capsule.imageBadge", { index: index + 1 }),
+		]),
+	);
+	// 文件徽标只保留未在正文行内呈现的（正常情况下为空，属兜底）。
+	const fileBadges = displayFiles.filter(
+		(file) => !isUserImageFile(file) && !inlinePaths.has(toTokenPath(file)),
+	);
 	const appshotData: AppshotCardData | null =
 		message.appshot ?? (appshotImage ? { imagePath: appshotImage } : null);
 	// Path-based thumbs are the canonical source (history reload + optimistic after
@@ -336,11 +390,9 @@ export function useUserMessageModel({
 			// Drop any in-progress re-edit before switching sessions — pending entryIds
 			// belong to the source session and cannot be replaced after opening the fork.
 			const store = getDefaultStore();
+			// 不在此处清输入：openSession 会落盘当前会话草稿再装入 fork 会话草稿，
+			// 避免误把父会话未发送内容写成空并丢掉。
 			store.set(pendingMessageEditAtom, null);
-			store.set(inputValueAtom, "");
-			store.set(selectedSkillAtom, null);
-			store.set(mentionedFilesAtom, []);
-			store.set(appshotAttachmentAtom, null);
 
 			const runtimeId = activeSession.runtimeId;
 			const cwd = activeSession.cwd;
@@ -484,6 +536,11 @@ export function useUserMessageModel({
 					>
 						<img src={src} alt={item.name} className="h-full w-full object-cover" />
 						<span className="pointer-events-none absolute inset-0 bg-foreground/0 transition-colors group-hover:bg-foreground/10" />
+						{/* 与正文里「图 N」胶囊对应的角标 */}
+						<span className="pointer-events-none absolute bottom-1 right-1 rounded bg-foreground/45 px-1 text-[9px] font-medium leading-[1.4] text-background/90">
+							{(item.path ? imageLabelByPath.get(toTokenPath(item.path)) : undefined) ??
+								t("inputBar.capsule.imageBadge", { index: index + 1 })}
+						</span>
 					</button>
 				);
 			})}
@@ -553,6 +610,11 @@ export function useUserMessageModel({
 		textBody: (
 			<TextBlockView
 				text={displayText}
+				inlineTokens={{
+					getImageLabel: (path) =>
+						imageLabelByPath.get(toTokenPath(path)) ?? pathBasename(path),
+					getSkill: resolveSkillMeta,
+				}}
 				className="max-w-full overflow-x-auto [overflow-wrap:anywhere] [&_code]:break-all"
 			/>
 		),

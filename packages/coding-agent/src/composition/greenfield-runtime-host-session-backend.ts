@@ -9,11 +9,16 @@ import {
 	type RuntimeHostSessionBackend,
 	type RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
+import { SettingsRuntime } from "../settings/index.js";
 import { resolveGreenfieldSessionIdFromPath } from "./greenfield-conversation-path.js";
 import type {
 	GreenfieldRuntimeComposition,
 	GreenfieldRuntimeSessionOptions,
 } from "./greenfield-runtime-composition.js";
+import {
+	type GreenfieldRuntimeHostRetrySettings,
+	withGreenfieldRuntimeHostRetry,
+} from "./greenfield-runtime-host-retry.js";
 
 export interface GreenfieldRuntimeHostSessionBackendOptions {
 	readonly composition: GreenfieldRuntimeComposition;
@@ -23,6 +28,7 @@ export interface GreenfieldRuntimeHostSessionBackendOptions {
 	readonly scenario: ConversationScenario;
 	readonly enableSubagents: boolean;
 	readonly serverUrl?: string;
+	readonly retrySettings?: GreenfieldRuntimeHostRetrySettings;
 }
 
 /**
@@ -33,8 +39,11 @@ export interface GreenfieldRuntimeHostSessionBackendOptions {
 export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBackend {
 	private readonly sessions = new Map<string, GreenfieldRuntimeSession>();
 	private readonly assessments = new Map<string, RuntimeHostSessionAssemblyAssessment>();
+	private readonly retrySettings: GreenfieldRuntimeHostRetrySettings;
 
-	constructor(private readonly options: GreenfieldRuntimeHostSessionBackendOptions) {}
+	constructor(private readonly options: GreenfieldRuntimeHostSessionBackendOptions) {
+		this.retrySettings = options.retrySettings ?? SettingsRuntime.create(options.cwd, options.agentDir);
+	}
 
 	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
 		this.assertSupportedRequest(request);
@@ -52,9 +61,10 @@ export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBa
 		const sessionId = session.sessionId;
 		this.sessions.set(sessionId, session);
 		this.assessments.set(sessionId, assessment);
-		const lifecycle = assessment.assembly.lifecycle;
+		const retryAssembly = withGreenfieldRuntimeHostRetry(session, assessment.assembly, this.retrySettings);
+		const lifecycle = retryAssembly.lifecycle;
 		return {
-			...assessment.assembly,
+			...retryAssembly,
 			lifecycle: {
 				...lifecycle,
 				dispose: async () => {

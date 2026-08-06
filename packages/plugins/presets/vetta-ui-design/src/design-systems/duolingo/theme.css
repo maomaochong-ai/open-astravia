@@ -1,0 +1,22 @@
+/* Duolingo — chunky playful, feather green, 3D-press buttons. Palette derived from awesome-design-md (MIT). */
+@theme {
+	--color-primary: #58cc02;
+	--color-primary-foreground: #ffffff;
+	--color-surface: #ffffff;
+	--color-surface-foreground: #4b4b4b;
+	--color-surface-raised: #f7f7f7;
+	--color-muted: #777777;
+	--color-accent: #1cb0f6;
+	--color-danger: #ff4b4b;
+	--color-border: #e5e5e5;
+
+	--radius-sm: 8px;
+	--radius-md: 12px;
+	--radius-lg: 16px;
+	--radius-xl: 20px;
+	--radius-2xl: 28px;
+
+	--shadow-sm: 0 2px 0 rgb(0 0 0 / 0.12);
+	--shadow-md: 0 4px 0 rgb(0 0 0 / 0.15);
+	--shadow-lg: 0 8px 24px rgb(0 0 0 / 0.15);
+}

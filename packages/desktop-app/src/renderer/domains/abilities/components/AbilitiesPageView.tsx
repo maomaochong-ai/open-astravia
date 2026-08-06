@@ -1,26 +1,36 @@
 import { SegmentedControl } from "@vetta/theme-ui/shared";
 import { Button } from "@vetta/ui";
 import { motion } from "motion/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CapabilitiesTour } from "@shared/tour";
 import { SettingsAiAssist } from "../../settings/ai-assist";
-import { ABILITY_CATEGORY_UNCATEGORIZED, type AbilitiesModel, type AbilityScope } from "../types";
+import { resolveCategoryLabel } from "../lib/ability-presentation";
+import {
+	ABILITY_CATEGORY_CONNECTORS,
+	ABILITY_CATEGORY_UNCATEGORIZED,
+	ABILITY_CATEGORY_VETTA_BUILTIN,
+	type AbilitiesModel,
+	type AbilityScope,
+} from "../types";
 import { AbilitiesBanner } from "./AbilitiesBanner";
 import { AbilityCard } from "./AbilityCard";
 import { AbilityMcpDialogs } from "./AbilityMcpDialogs";
 import { AddAbilityMenu } from "./AddAbilityMenu";
+import { ExternalRepositoryDialog } from "./ExternalRepositoryDialog";
 
 const easeOut = [0.22, 1, 0.36, 1] as const;
 
 export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Element {
-	const { t } = useTranslation("abilities");
-	const fileInputRef = useRef<HTMLInputElement>(null);
+	const { t, i18n } = useTranslation("abilities");
+	const skillFileInputRef = useRef<HTMLInputElement>(null);
+	const pluginFileInputRef = useRef<HTMLInputElement>(null);
+	const [repositoryDialogOpen, setRepositoryDialogOpen] = useState(false);
 
 	return (
 		<div className="relative flex h-full w-full flex-1 flex-col overflow-hidden">
 			<input
-				ref={fileInputRef}
+				ref={skillFileInputRef}
 				type="file"
 				accept=".zip,.tar.gz,.tgz,application/zip,application/gzip,application/x-gzip"
 				className="hidden"
@@ -28,6 +38,17 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 					const file = event.target.files?.[0];
 					event.target.value = "";
 					if (file) model.importSkillArchive(file);
+				}}
+			/>
+			<input
+				ref={pluginFileInputRef}
+				type="file"
+				accept=".zip,application/zip"
+				className="hidden"
+				onChange={(event) => {
+					const file = event.target.files?.[0];
+					event.target.value = "";
+					if (file) model.importPluginArchive(file);
 				}}
 			/>
 
@@ -63,15 +84,20 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 									placeholder={t("search.placeholder")}
 									value={model.searchQuery}
 									onChange={(event) => model.setSearchQuery(event.target.value)}
-									className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none focus:ring-1 focus:ring-primary/30"
+									className="h-8 w-full rounded-lg bg-secondary pl-8 pr-3 text-[12px] text-foreground placeholder:text-muted-foreground/40 transition-colors hover:bg-accent focus:bg-accent focus:outline-none"
 								/>
 							</div>
 							<AddAbilityMenu
 								importing={model.importing}
 								onImportSkill={() => {
 									model.setScope("mine");
-									fileInputRef.current?.click();
+									skillFileInputRef.current?.click();
 								}}
+								onImportPlugin={() => {
+									model.setScope("mine");
+									pluginFileInputRef.current?.click();
+								}}
+								onAddRepository={() => setRepositoryDialogOpen(true)}
 								onAddMcp={() => {
 									model.setScope("mine");
 									model.startAddManualMcp();
@@ -104,12 +130,6 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 							<span>{t("error.partial", { error: model.errors.join(" / ") })}</span>
 						</div>
 					)}
-					{model.message && (
-						<div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[12px] text-emerald-500">
-							{model.message}
-						</div>
-					)}
-
 					<div data-tour="capabilities-list">
 						{model.loading ? (
 							<div className="flex min-h-52 flex-col items-center justify-center gap-2 text-muted-foreground/60">
@@ -140,7 +160,11 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 											<h2 className="text-[13px] font-semibold text-foreground/90">
 												{group.category === ABILITY_CATEGORY_UNCATEGORIZED
 													? t("group.uncategorized")
-													: group.category}
+													: group.category === ABILITY_CATEGORY_CONNECTORS
+														? t("group.connectors")
+														: group.category === ABILITY_CATEGORY_VETTA_BUILTIN
+															? t("group.vettaBuiltin")
+															: resolveCategoryLabel(group.category, group.categoryI18n, i18n.language)}
 											</h2>
 											<span className="text-[11px] tabular-nums text-muted-foreground/50">
 												{group.items.length}
@@ -153,6 +177,13 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 										</div>
 									</section>
 								))}
+								{model.hasMore && (
+									<div className="flex justify-center pt-2">
+										<Button variant="secondary" size="sm" onClick={model.loadMore}>
+											{t("actions.loadMore", { remaining: model.totalItems - model.items.length })}
+										</Button>
+									</div>
+								)}
 							</div>
 						)}
 					</div>
@@ -160,6 +191,15 @@ export function AbilitiesPageView({ model }: { model: AbilitiesModel }): JSX.Ele
 			</div>
 
 			<AbilityMcpDialogs mcp={model.mcp} />
+			{repositoryDialogOpen && (
+				<ExternalRepositoryDialog
+					onClose={() => setRepositoryDialogOpen(false)}
+					onAdd={async (input) => {
+						await model.addMarketplaceSource(input);
+						model.setScope("discover");
+					}}
+				/>
+			)}
 			<CapabilitiesTour />
 		</div>
 	);

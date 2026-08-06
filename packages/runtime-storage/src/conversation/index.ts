@@ -58,6 +58,11 @@ export {
 	migrateLegacySessionToV2,
 } from "./legacy-session-migration.js";
 export {
+	currentProcessStartedAtMs,
+	isLocalProcessAlive,
+	readLocalProcessStartedAtMs,
+} from "./process-identity.js";
+export {
 	CONVERSATION_SCHEMA_VERSION,
 	LEGACY_CONVERSATION_SCHEMA_VERSION,
 } from "./record-schema.js";

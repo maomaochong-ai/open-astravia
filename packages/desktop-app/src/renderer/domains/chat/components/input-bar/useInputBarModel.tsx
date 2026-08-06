@@ -1,19 +1,18 @@
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ChangeEvent, ClipboardEvent, KeyboardEvent, MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import type { SkillInfo } from "@preload/api";
 import {
 	activeSessionAtom,
 	activityPanelOpenAtom,
 	activityPanelTabByProjectAtom,
-	attachedImagesAtom,
 	appshotAttachmentAtom,
+	attachedImagesAtom,
 	focusInputRequestAtom,
 	getTodoItemsForSession,
 	inputValueAtom,
 	isStreamingAtom,
-	mentionedFilesAtom,
 	pendingMessageEditAtom,
 	pendingQuestionsAtom,
 	promptSuggestionsAtom,
@@ -21,19 +20,39 @@ import {
 	sandboxPermissionDrawerAtom,
 	selectedSkillAtom,
 	todoItemsBySessionAtom,
-	type AttachedImage,
-	type MentionedFile,
+	mentionedFilesAtom,
 } from "@shared/store/atoms";
 import { getQueueForSession, messageQueueBySessionAtom } from "@shared/store/message-queue-atoms";
-import { filePreviewAtom, type FilePreviewItem } from "@shared/store/file-preview-atoms";
-import { recordInputFilesAdded, recordInputImagesAdded } from "@shared/lib/app-monitor-events";
+import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
+import { isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
+import { filePreviewAtom } from "@shared/store/file-preview-atoms";
 import type { InputBarContextMenuViewProps } from "@vetta/theme-ui/chat";
 import type { SelectedFile } from "../AtPanel";
+import type { ConnectorGridItem } from "../../hooks/useConnectorGrid";
+import { PANEL_REVEAL_MS } from "../command-panel/constants";
+import {
+	focusInputEditor,
+	insertConnectorToken,
+	insertFileToken,
+	insertImageToken,
+	insertPlainText,
+	insertSkillToken,
+	readSelectionText,
+	removeImageToken,
+	removeSelection,
+} from "./editor/inputEditorHandle";
+import { persistBase64Images } from "./editor/persistImages";
+import {
+	inputBlankAtom,
+	inputImagePathsAtom,
+	inputPlaceholderVisibleAtom,
+} from "./editor/tokens/projectionAtoms";
+import type { TriggerMatch } from "./editor/tokens/trigger";
+import { useInputActionBarModel } from "../useInputActionBarModel";
+import type { ActiveActionCapsule } from "./ActiveActionCapsules";
 import type { InputBarModel, InputBarProps, InputBarDrawerItem } from "./types";
 
-const MIN_HEIGHT = 24;
-const MAX_HEIGHT = 140;
 const CONTEXT_MENU_WIDTH = 160;
 const CONTEXT_MENU_HEIGHT = 112;
 const CONTEXT_MENU_VIEWPORT_GAP = 8;
@@ -42,9 +61,6 @@ interface InputBarContextMenuState {
 	canCopy: boolean;
 	canCut: boolean;
 	canPaste: boolean;
-	/** Snapshot selection at menu open — survives blur when clicking menu items. */
-	selectionEnd: number;
-	selectionStart: number;
 	x: number;
 	y: number;
 }
@@ -72,42 +88,7 @@ async function clipboardHasText(): Promise<boolean> {
 	}
 }
 
-let imageIdCounter = 0;
-
-function nextImageId(): string {
-	return `img-${++imageIdCounter}-${Date.now()}`;
-}
-
-function readFileAsImage(file: File): Promise<{ data: string; mimeType: string; name: string }> {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			const result = reader.result as string;
-			const commaIdx = result.indexOf(",");
-			resolve({
-				data: result.slice(commaIdx + 1),
-				mimeType: file.type || "image/png",
-				name: file.name || "Pasted image",
-			});
-		};
-		reader.onerror = () => reject(reader.error);
-		reader.readAsDataURL(file);
-	});
-}
-
-const INPUT_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"]);
-
-function getPathExtension(path: string): string {
-	const idx = path.lastIndexOf(".");
-	if (idx < 0) return "";
-	return path.slice(idx + 1).toLowerCase();
-}
-
-function isInputImageFile(file: MentionedFile): boolean {
-	return INPUT_IMAGE_EXTENSIONS.has(getPathExtension(file.path));
-}
-
-async function readMentionedFileSize(path: string, isDirectory: boolean): Promise<number | undefined> {
+async function readFileSize(path: string, isDirectory: boolean): Promise<number | undefined> {
 	if (isDirectory) return undefined;
 	const stat = await window.vetta.fs.stat(path).catch(() => null);
 	return stat && stat.size > 0 ? stat.size : undefined;
@@ -118,30 +99,35 @@ export function useInputBarModel({
 	onAbort,
 	onSendQueued,
 	cwdOverride,
+	onExpandedChange,
 }: InputBarProps): InputBarModel {
 	const { t } = useTranslation("chat");
-	const [inputValue, setInputValue] = useAtom(inputValueAtom);
+	/**
+	 * 刻意不订阅 inputValueAtom：它每敲一个字符就换一份新字符串，订阅它等于让
+	 * 整条 InputBar（含两个面板与编辑器）逐字符重渲染。这里只要两个布尔投影，
+	 * 它们在整段打字过程中最多翻转一次。
+	 */
+	const isBlank = useAtomValue(inputBlankAtom);
+	const placeholderVisible = useAtomValue(inputPlaceholderVisibleAtom);
 	const isStreaming = useAtomValue(isStreamingAtom);
 	const activeSession = useAtomValue(activeSessionAtom);
 	const pendingQuestions = useAtomValue(pendingQuestionsAtom);
 	const pendingQuestion = activeSession?.runtimeId ? pendingQuestions[activeSession.runtimeId] : undefined;
 	const promptSuggestions = useAtomValue(promptSuggestionsAtom);
 	const firstSuggestion = activeSession?.runtimeId ? promptSuggestions[activeSession.runtimeId]?.[0] : undefined;
-	const [attachedImages, setAttachedImages] = useAtom(attachedImagesAtom);
 	const [selectedSkill, setSelectedSkill] = useAtom(selectedSkillAtom);
-	const [mentionedFiles, setMentionedFiles] = useAtom(mentionedFilesAtom);
 	const [promptAttachment, setPromptAttachment] = useAtom(promptAttachmentAtom);
 	const [appshotAttachment, setAppshotAttachment] = useAtom(appshotAttachmentAtom);
 	const [pendingMessageEdit, setPendingMessageEdit] = useAtom(pendingMessageEditAtom);
+	const setInputValue = useSetAtom(inputValueAtom);
+	const setMentionedFiles = useSetAtom(mentionedFilesAtom);
+	const imagePaths = useAtomValue(inputImagePathsAtom);
+	const setFilePreview = useSetAtom(filePreviewAtom);
 	const focusInputRequest = useAtomValue(focusInputRequestAtom);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const [isFocused, setIsFocused] = useState(false);
 	const [contextMenuState, setContextMenuState] = useState<InputBarContextMenuState | null>(null);
-	const [slashOpen, setSlashOpen] = useState(false);
-	const [slashFilter, setSlashFilter] = useState("");
-	const [atOpen, setAtOpen] = useState(false);
-	const slashDismissedRef = useRef(false);
-	const atDismissedIndexRef = useRef<number | null>(null);
+	const [trigger, setTrigger] = useState<TriggerMatch | null>(null);
+	const dismissedTriggerRef = useRef<string | null>(null);
 	const todoMap = useAtomValue(todoItemsBySessionAtom);
 	const sandboxPermission = useAtomValue(sandboxPermissionDrawerAtom);
 	const todoItems = useMemo(
@@ -153,100 +139,100 @@ export function useInputBarModel({
 		() => getQueueForSession(queueMap, activeSession?.runtimeId ?? null),
 		[queueMap, activeSession?.runtimeId],
 	);
+	const actionBar = useInputActionBarModel();
 	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
 	const [drawerActiveTab, setDrawerActiveTab] = useState<string | null>(null);
 
 	const effectiveCwd = activeSession?.cwd ?? cwdOverride ?? "";
 	const hasSession = Boolean(activeSession) || Boolean(cwdOverride);
-	const canSend =
-		hasSession &&
-		!isStreaming &&
-		(inputValue.trim().length > 0 || attachedImages.length > 0 || Boolean(appshotAttachment));
-	const isEmpty = inputValue.trim().length === 0 && attachedImages.length === 0;
-	/** 与原生 placeholder 一致：任意字符（含空格）即隐藏覆盖层 */
-	const showPlaceholder = inputValue.length === 0;
+	// 文件与图片如今都是文本流里的 token，因此文本非空即代表有内容可发。
+	const canSend = hasSession && !isStreaming && (!isBlank || Boolean(appshotAttachment));
+	const isEmpty = isBlank;
+	const showPlaceholder = placeholderVisible;
+	/**
+	 * 输入卡片上方的图片缩略图行。文本流里只放「图 N」胶囊，
+	 * 缩略图集中在上方，编号与胶囊同源（inputImagePathsAtom）。
+	 */
+	const imageAttachments = useMemo(
+		() =>
+			imagePaths.map((path, index) => ({
+				path,
+				name: pathBasename(path),
+				url: toVettaFileUrl(path),
+				label: t("inputBar.capsule.imageBadge", { index: index + 1 }),
+			})),
+		[imagePaths, t],
+	);
+
+	/**
+	 * 已激活的 action 在工具栏里紧跟执行模式（权限/沙箱）右侧显示。
+	 * 全量开关列表已搬进命令面板，但激活态是跨消息持续的，面板一关就看不见会让
+	 * 用户忘记自己开着知识检索之类的开关。
+	 */
+	const activeActions = useMemo<ActiveActionCapsule[]>(
+		() => [
+			...(actionBar.knowledge?.active
+				? [
+						{
+							id: "__builtin_knowledge_retrieval__",
+							label: actionBar.knowledge.label,
+							icon: <span className="icon-[mdi--book-search-outline] h-3 w-3" />,
+							onToggle: actionBar.actions.toggleKnowledge,
+						},
+					]
+				: []),
+			...actionBar.items
+				.filter((item) => item.active)
+				.map((item) => ({
+					id: item.id,
+					label: item.label,
+					icon: item.icon,
+					onToggle: () => actionBar.actions.toggleItem(item.id),
+				})),
+		],
+		[actionBar],
+	);
+
+	/** 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、插件上下文、重编辑提示。 */
 	const hasCapsules =
+		imageAttachments.length > 0 ||
 		Boolean(selectedSkill) ||
-		mentionedFiles.length > 0 ||
 		Boolean(promptAttachment) ||
 		Boolean(appshotAttachment) ||
 		Boolean(pendingMessageEdit);
 
-	// 分离图片文件与非图片文件，图片在附件区独立作为缩略图行展示
-	const imageFiles = useMemo(
-		() => mentionedFiles.filter((f) => isInputImageFile(f)),
-		[mentionedFiles],
-	);
-	const nonImageFiles = useMemo(
-		() => mentionedFiles.filter((f) => !isInputImageFile(f)),
-		[mentionedFiles],
-	);
-	const hasImages = imageFiles.length > 0;
-	const imagePreviewItems: FilePreviewItem[] = useMemo(
-		() =>
-			imageFiles.map((f) => ({
-				url: toVettaFileUrl(f.path),
-				path: f.path,
-				name: pathBasename(f.path),
-			})),
-		[imageFiles],
-	);
-	const setFilePreview = useSetAtom(filePreviewAtom);
-	const openImagePreview = useCallback(
-		(index: number) => {
-			setFilePreview({ items: imagePreviewItems, index });
-		},
-		[imagePreviewItems, setFilePreview],
-	);
+	const slashOpen = trigger?.kind === "slash" && dismissedTriggerRef.current !== `/${trigger.query}`;
+	const atOpen = trigger?.kind === "at" && dismissedTriggerRef.current !== `@${trigger.query}`;
+	const slashFilter = trigger?.kind === "slash" ? `/${trigger.query}` : "";
+	const atFilter = trigger?.kind === "at" ? `@${trigger.query}` : "";
+
+	useEffect(() => {
+		onExpandedChange?.(slashOpen);
+	}, [onExpandedChange, slashOpen]);
+
+	// 展开态立即生效、收起态等命令区退场动画跑完再撤：卡片圆角与上边框比面板先恢复的话，
+	// 那 190ms 里接缝处会露出两个缺口（两块面本该是一整块）。
+	const [slashVisible, setSlashVisible] = useState(false);
+	useEffect(() => {
+		if (slashOpen) {
+			setSlashVisible(true);
+			return;
+		}
+		const timer = window.setTimeout(() => setSlashVisible(false), PANEL_REVEAL_MS);
+		return () => window.clearTimeout(timer);
+	}, [slashOpen]);
 
 	useEffect(() => {
 		if (sandboxPermission) setDrawerActiveTab("sandbox-permission");
 	}, [sandboxPermission]);
 
-	const prevValueLenRef = useRef(inputValue.length);
-	/**
-	 * Auto-resize the textarea to content height.
-	 *
-	 * Shrinking must reset height before reading scrollHeight, but a bare
-	 * `height: 0` reflows the flex column: MessageList expands, its scrollTop
-	 * is clamped, then the height is restored and stick-to-bottom lerps back —
-	 * visible list jitter on every Backspace while multi-line.
-	 * Lock the parent box height for the measure so MessageList never sees the
-	 * intermediate collapse.
-	 */
-	const resize = useCallback(() => {
-		const el = textareaRef.current;
-		if (!el) return;
-		const shrinking = el.value.length < prevValueLenRef.current;
-		prevValueLenRef.current = el.value.length;
-
-		if (shrinking) {
-			const host = el.parentElement;
-			const lockPx = host?.offsetHeight ?? el.offsetHeight;
-			if (host) host.style.minHeight = `${lockPx}px`;
-			el.style.height = "0px";
-			const next = Math.max(MIN_HEIGHT, Math.min(el.scrollHeight, MAX_HEIGHT));
-			el.style.height = `${next}px`;
-			if (host) host.style.minHeight = "";
-			return;
-		}
-
-		el.style.height = `${Math.max(MIN_HEIGHT, Math.min(el.scrollHeight, MAX_HEIGHT))}px`;
-	}, []);
-
 	useEffect(() => {
-		resize();
-	}, [inputValue, resize]);
-
-	useEffect(() => {
-		if (hasSession && !isStreaming) {
-			textareaRef.current?.focus();
-		}
+		if (hasSession && !isStreaming) focusInputEditor();
 	}, [hasSession, isStreaming]);
 
 	useEffect(() => {
-		if (focusInputRequest > 0) textareaRef.current?.focus();
+		if (focusInputRequest > 0) focusInputEditor();
 	}, [focusInputRequest]);
 
 	const handleSend = useCallback(() => {
@@ -257,185 +243,92 @@ export function useInputBarModel({
 		void onAbort();
 	}, [onAbort]);
 
-	const handleKeyDown = useCallback(
-		(e: KeyboardEvent<HTMLTextAreaElement>): void => {
-			if (
-				(slashOpen || atOpen) &&
-				(e.key === "ArrowDown" ||
-					e.key === "ArrowUp" ||
-					e.key === "Escape" ||
-					e.key === "Tab")
-			) {
-				e.preventDefault();
-				return;
-			}
-			if (slashOpen && e.key === "Enter") {
-				e.preventDefault();
-				return;
-			}
-			if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-				e.preventDefault();
-				if (canSend) void onSend();
-				else if (isStreaming && hasSession && !isEmpty) void onSend();
-				else if (hasSession && !isStreaming && isEmpty && firstSuggestion) void onSend(firstSuggestion);
-			}
-			if (e.key === "Backspace" && inputValue === "" && hasCapsules) {
-				e.preventDefault();
-				if (mentionedFiles.length > 0) {
-					const last = mentionedFiles[mentionedFiles.length - 1];
-					setMentionedFiles((prev) => prev.filter((f) => f.path !== last.path));
-				} else if (selectedSkill) {
-					setSelectedSkill(null);
-				}
-			}
-		},
-		[
-			slashOpen,
-			atOpen,
-			canSend,
-			isStreaming,
-			hasSession,
-			isEmpty,
-			firstSuggestion,
-			inputValue,
-			hasCapsules,
-			mentionedFiles,
-			selectedSkill,
-			onSend,
-			setMentionedFiles,
-			setSelectedSkill,
-		],
-	);
-
-	const handleChange = useCallback(
-		(e: ChangeEvent<HTMLTextAreaElement>): void => {
-			const val = e.target.value;
-			setInputValue(val);
-
-			const cursorPos = e.target.selectionStart ?? val.length;
-			const textBeforeCursor = val.slice(0, cursorPos);
-
-			const slashActive =
-				textBeforeCursor === "/" ||
-				(textBeforeCursor.startsWith("/") && !textBeforeCursor.includes(" "));
-			if (!slashActive) {
-				setSlashFilter("");
-				slashDismissedRef.current = false;
-				if (slashOpen) setSlashOpen(false);
-			} else if (!slashDismissedRef.current) {
-				setSlashFilter(textBeforeCursor);
-				if (!slashOpen) setSlashOpen(true);
-				if (atOpen) setAtOpen(false);
-			}
-
-			const atMatch = textBeforeCursor.match(/@([^\s]*)$/);
-			const atIndex = atMatch ? (atMatch.index ?? null) : null;
-			if (atIndex === null) {
-				atDismissedIndexRef.current = null;
-				if (atOpen) setAtOpen(false);
-			} else if (atDismissedIndexRef.current === atIndex) {
-				if (atOpen) setAtOpen(false);
-			} else if (!slashActive) {
-				if (!atOpen) setAtOpen(true);
-			}
-		},
-		[atOpen, setInputValue, slashOpen],
-	);
-
-	const handleSlashClose = useCallback(() => {
-		setSlashOpen(false);
-		setSlashFilter("");
-		const el = textareaRef.current;
-		const cursorPos = el?.selectionStart ?? inputValue.length;
-		const textBeforeCursor = inputValue.slice(0, cursorPos);
-		if (
-			textBeforeCursor === "/" ||
-			(textBeforeCursor.startsWith("/") && !textBeforeCursor.includes(" "))
-		) {
-			slashDismissedRef.current = true;
+	/** 回车：能发就发，生成中则入队，空输入时用输入预测直发。返回是否已处理。 */
+	const handleEnter = useCallback((): boolean => {
+		if (canSend) {
+			void onSend();
+			return true;
 		}
-	}, [inputValue]);
+		if (isStreaming && hasSession && !isEmpty) {
+			void onSend();
+			return true;
+		}
+		if (hasSession && !isStreaming && isEmpty && firstSuggestion) {
+			void onSend(firstSuggestion);
+			return true;
+		}
+		return false;
+	}, [canSend, firstSuggestion, hasSession, isEmpty, isStreaming, onSend]);
 
-	const handleAtClose = useCallback(() => {
-		setAtOpen(false);
-		const el = textareaRef.current;
-		const cursorPos = el?.selectionStart ?? inputValue.length;
-		const textBeforeCursor = inputValue.slice(0, cursorPos);
-		const atMatch = textBeforeCursor.match(/@([^\s]*)$/);
-		atDismissedIndexRef.current = atMatch?.index ?? null;
-	}, [inputValue]);
+	const handleTriggerChange = useCallback((next: TriggerMatch | null) => {
+		setTrigger(next);
+		// 触发词一变（继续打字或离开）就复位「已手动关闭」的记忆。
+		const key = next ? `${next.kind === "slash" ? "/" : "@"}${next.query}` : null;
+		if (dismissedTriggerRef.current !== null && dismissedTriggerRef.current !== key) {
+			dismissedTriggerRef.current = null;
+		}
+	}, []);
 
-	const getAtFilter = useCallback((): string => {
-		const val = inputValue;
-		const el = textareaRef.current;
-		const cursorPos = el?.selectionStart ?? val.length;
-		const textBeforeCursor = val.slice(0, cursorPos);
-		const atMatch = textBeforeCursor.match(/@([^\s]*)$/);
-		return atMatch ? atMatch[0] : "";
-	}, [inputValue]);
+	const dismissTrigger = useCallback(() => {
+		if (!trigger) return;
+		dismissedTriggerRef.current = `${trigger.kind === "slash" ? "/" : "@"}${trigger.query}`;
+		setTrigger(null);
+	}, [trigger]);
 
 	const handleSlashSelect = useCallback(
-		(skill: SkillInfo) => {
-			setSelectedSkill({ name: skill.name, alias: skill.alias, type: skill.type });
-			setSlashOpen(false);
-			if (inputValue.startsWith("/")) {
-				setInputValue("");
+		(skill: SkillInfo, icon?: string) => {
+			if (skill.type === "scene") {
+				// 场景仍走 PromptRequest.promptRef 硬展开（tasks.json 自动建 todo + 锁列表），
+				// 因此它不进文本流，只在输入卡片顶部保留一枚胶囊，且同时只能有一个。
+				setSelectedSkill({ name: skill.name, alias: skill.alias, type: skill.type });
+			} else {
+				insertSkillToken(skill.name, skill.alias, icon, { replaceTrigger: true });
 			}
-			textareaRef.current?.focus();
+			setTrigger(null);
+			focusInputEditor();
 		},
-		[inputValue, setInputValue, setSelectedSkill],
+		[setSelectedSkill],
 	);
+
+	const handleConnectorSelect = useCallback((connector: ConnectorGridItem) => {
+		// 与 skill 同为软引用：只把「用哪个连接器」写进文本，不做工具门控。
+		insertConnectorToken(connector.name, connector.label, connector.iconUrl, { replaceTrigger: true });
+		setTrigger(null);
+		focusInputEditor();
+	}, []);
 
 	const handleRemoveSkill = useCallback(() => {
 		setSelectedSkill(null);
-		textareaRef.current?.focus();
+		focusInputEditor();
 	}, [setSelectedSkill]);
 
 	const handleAtSelect = useCallback(
 		async (file: SelectedFile) => {
-			if (mentionedFiles.some((f) => f.path === file.path)) {
-				setAtOpen(false);
-				const atFilter = getAtFilter();
-				if (atFilter) {
-					const el = textareaRef.current;
-					const cursorPos = el?.selectionStart ?? inputValue.length;
-					setInputValue(inputValue.slice(0, cursorPos - atFilter.length) + inputValue.slice(cursorPos));
-				}
-				textareaRef.current?.focus();
-				return;
+			if (isImagePath(file.path)) {
+				insertImageToken(file.path, { replaceTrigger: true });
+			} else {
+				insertFileToken(file.path, file.isDirectory, { replaceTrigger: true });
 			}
-			const sizeBytes = await readMentionedFileSize(file.path, file.isDirectory);
-			const newFile: MentionedFile = {
-				path: file.path,
-				name: file.name,
-				isDirectory: file.isDirectory,
-				...(sizeBytes === undefined ? {} : { sizeBytes }),
-			};
-			setMentionedFiles((prev) => [...prev, newFile]);
-			recordInputFilesAdded("at-panel", [newFile]);
-			setAtOpen(false);
-			const atFilter = getAtFilter();
-			if (atFilter) {
-				const el = textareaRef.current;
-				const cursorPos = el?.selectionStart ?? inputValue.length;
-				setInputValue(inputValue.slice(0, cursorPos - atFilter.length) + inputValue.slice(cursorPos));
-			}
-			textareaRef.current?.focus();
+			setTrigger(null);
+			const sizeBytes = await readFileSize(file.path, file.isDirectory);
+			recordInputFilesAdded("at-panel", [
+				{
+					path: file.path,
+					name: file.name,
+					isDirectory: file.isDirectory,
+					...(sizeBytes === undefined ? {} : { sizeBytes }),
+				},
+			]);
+			focusInputEditor();
 		},
-		[getAtFilter, inputValue, mentionedFiles, setInputValue, setMentionedFiles],
-	);
-
-	const handleRemoveFile = useCallback(
-		(path: string) => {
-			setMentionedFiles((prev) => prev.filter((f) => f.path !== path));
-			textareaRef.current?.focus();
-		},
-		[setMentionedFiles],
+		[],
 	);
 
 	const handlePlusClick = useCallback(() => {
 		if (!hasSession) return;
-		setSlashOpen((prev) => !prev);
+		// 无触发词时点「+」直接开面板；已开则关掉。
+		setTrigger((prev) => (prev?.kind === "slash" ? null : { kind: "slash", query: "", length: 0 }));
+		dismissedTriggerRef.current = null;
 	}, [hasSession]);
 
 	const handleTodoViewMore = useCallback(() => {
@@ -494,89 +387,55 @@ export function useInputBarModel({
 		return items;
 	}, [activeSession, handleTodoViewMore, onSendQueued, queueItems.length, sandboxPermission, t, todoItems]);
 
-	const addImages = useCallback(
-		(newImages: Array<{ data: string; mimeType: string; name: string }>) => {
-			const items: AttachedImage[] = newImages.map((img) => ({
-				id: nextImageId(),
-				...img,
-			}));
-			setAttachedImages((prev) => [...prev, ...items]);
-		},
-		[setAttachedImages],
-	);
-
-	const removeImage = useCallback(
-		(id: string) => {
-			setAttachedImages((prev) => prev.filter((img) => img.id !== id));
-		},
-		[setAttachedImages],
-	);
-
 	const handleSelectImages = useCallback(async () => {
 		if (!hasSession) return;
 		const selected = await window.vetta.dialog.selectImages();
-		if (selected.length > 0) {
-			addImages(selected);
-			recordInputImagesAdded("image-dialog", selected);
-		}
-		textareaRef.current?.focus();
-	}, [addImages, hasSession]);
+		const paths = await persistBase64Images(selected, activeSession?.runtimeId ?? null, "image-dialog");
+		for (const path of paths) insertImageToken(path);
+		focusInputEditor();
+	}, [activeSession?.runtimeId, hasSession]);
 
 	const handleSelectFiles = useCallback(async () => {
 		if (!hasSession) return;
 		const paths = await window.vetta.dialog.selectFiles(effectiveCwd || undefined);
-		if (paths.length > 0) {
-			const seen = new Set(mentionedFiles.map((f) => f.path));
-			const additions: MentionedFile[] = [];
-			for (const path of paths) {
-				if (seen.has(path)) continue;
-				seen.add(path);
-				const sizeBytes = await readMentionedFileSize(path, false);
-				additions.push({
-					path,
-					name: pathBasename(path),
-					isDirectory: false,
-					...(sizeBytes === undefined ? {} : { sizeBytes }),
-				});
-			}
-			if (additions.length > 0) {
-				setMentionedFiles((prev) => [...prev, ...additions]);
-				recordInputFilesAdded("file-dialog", additions);
-			}
+		const additions = [];
+		for (const path of paths) {
+			if (isImagePath(path)) insertImageToken(path);
+			else insertFileToken(path, false);
+			const sizeBytes = await readFileSize(path, false);
+			additions.push({
+				path,
+				name: pathBasename(path),
+				isDirectory: false,
+				...(sizeBytes === undefined ? {} : { sizeBytes }),
+			});
 		}
-		textareaRef.current?.focus();
-	}, [effectiveCwd, hasSession, mentionedFiles, setMentionedFiles]);
+		if (additions.length > 0) recordInputFilesAdded("file-dialog", additions);
+		focusInputEditor();
+	}, [effectiveCwd, hasSession]);
 
-	const handlePaste = useCallback(
-		async (e: ClipboardEvent) => {
-			const items = Array.from(e.clipboardData.items);
-			const imageFiles = items
-				.filter((item) => item.kind === "file" && item.type.startsWith("image/"))
-				.map((item) => item.getAsFile())
-				.filter((f): f is File => f !== null);
-			if (imageFiles.length === 0) return;
-			e.preventDefault();
-			const images = await Promise.all(imageFiles.map(readFileAsImage));
-			addImages(images);
-			recordInputImagesAdded(
-				"paste",
-				imageFiles.map((file, index) => ({ file, ...images[index] })),
-			);
+	const openImagePreview = useCallback(
+		(index: number) => {
+			setFilePreview({
+				items: imageAttachments.map((item) => ({ name: item.name, path: item.path, url: item.url })),
+				index,
+			});
 		},
-		[addImages],
+		[imageAttachments, setFilePreview],
 	);
+
+	const removeImage = useCallback((path: string) => {
+		removeImageToken(path);
+		focusInputEditor();
+	}, []);
 
 	const closeContextMenu = useCallback(() => setContextMenuState(null), []);
 
 	const handleContextMenu = useCallback(
-		(e: MouseEvent<HTMLTextAreaElement>): void => {
+		(e: MouseEvent<HTMLDivElement>): void => {
 			e.preventDefault();
 			if (!hasSession) return;
-			const el = textareaRef.current;
-			if (!el) return;
-			const selectionStart = el.selectionStart ?? 0;
-			const selectionEnd = el.selectionEnd ?? 0;
-			const hasSelection = selectionStart !== selectionEnd;
+			const hasSelection = readSelectionText().length > 0;
 			const position = clampContextMenuPosition(e.clientX, e.clientY);
 			void clipboardHasText().then((hasClipboard) => {
 				setContextMenuState({
@@ -584,50 +443,35 @@ export function useInputBarModel({
 					canCopy: hasSelection,
 					canCut: hasSelection,
 					canPaste: hasClipboard,
-					selectionEnd,
-					selectionStart,
 				});
 			});
 		},
 		[hasSession],
 	);
 
-	const handleMenuCut = useCallback(() => {
-		const state = contextMenuState;
+	const handleMenuCopy = useCallback(() => {
 		closeContextMenu();
-		if (!state || state.selectionStart === state.selectionEnd) return;
-		const { selectionStart: start, selectionEnd: end } = state;
-		const selected = inputValue.slice(start, end);
+		const selected = readSelectionText();
+		if (!selected) return;
+		void navigator.clipboard.writeText(selected).catch((error) => {
+			console.warn("[useInputBarModel] copy clipboard write failed", error);
+		});
+	}, [closeContextMenu]);
+
+	const handleMenuCut = useCallback(() => {
+		closeContextMenu();
+		const selected = readSelectionText();
+		if (!selected) return;
 		void navigator.clipboard.writeText(selected).catch((error) => {
 			console.warn("[useInputBarModel] cut clipboard write failed", error);
 		});
-		const next = inputValue.slice(0, start) + inputValue.slice(end);
-		setInputValue(next);
-		const el = textareaRef.current;
-		requestAnimationFrame(() => {
-			el?.focus();
-			el?.setSelectionRange(start, start);
-		});
-	}, [closeContextMenu, contextMenuState, inputValue, setInputValue]);
-
-	const handleMenuCopy = useCallback(() => {
-		const state = contextMenuState;
-		closeContextMenu();
-		if (!state || state.selectionStart === state.selectionEnd) return;
-		void navigator.clipboard
-			.writeText(inputValue.slice(state.selectionStart, state.selectionEnd))
-			.catch((error) => {
-				console.warn("[useInputBarModel] copy clipboard write failed", error);
-			});
-	}, [closeContextMenu, contextMenuState, inputValue]);
+		removeSelection();
+		focusInputEditor();
+	}, [closeContextMenu]);
 
 	const handleMenuPaste = useCallback(() => {
-		const state = contextMenuState;
 		closeContextMenu();
-		const el = textareaRef.current;
-		if (!el || !hasSession) return;
-		const start = state?.selectionStart ?? el.selectionStart ?? inputValue.length;
-		const end = state?.selectionEnd ?? el.selectionEnd ?? start;
+		if (!hasSession) return;
 		void (async () => {
 			let clip = "";
 			try {
@@ -637,15 +481,27 @@ export function useInputBarModel({
 				return;
 			}
 			if (!clip) return;
-			const next = inputValue.slice(0, start) + clip + inputValue.slice(end);
-			setInputValue(next);
-			const cursor = start + clip.length;
-			requestAnimationFrame(() => {
-				el.focus();
-				el.setSelectionRange(cursor, cursor);
-			});
+			insertPlainText(clip);
+			focusInputEditor();
 		})();
-	}, [closeContextMenu, contextMenuState, hasSession, inputValue, setInputValue]);
+	}, [closeContextMenu, hasSession]);
+
+	const removePromptAttachment = useCallback(() => {
+		setPromptAttachment(null);
+	}, [setPromptAttachment]);
+
+	const removeAppshot = useCallback(() => {
+		setAppshotAttachment(null);
+	}, [setAppshotAttachment]);
+
+	const cancelPendingEdit = useCallback(() => {
+		setPendingMessageEdit(null);
+		// 清空文本 → ValueBridgePlugin 会把编辑器一并清干净（含所有行内 token）。
+		setInputValue("");
+		setSelectedSkill(null);
+		setMentionedFiles([]);
+		setAppshotAttachment(null);
+	}, [setAppshotAttachment, setInputValue, setMentionedFiles, setPendingMessageEdit, setSelectedSkill]);
 
 	const defaultPlaceholders = useMemo(() => {
 		const raw = t("inputBar.placeholder.defaults", { returnObjects: true });
@@ -680,6 +536,29 @@ export function useInputBarModel({
 		};
 	}, [hasSession, isStreaming, showPlaceholder, firstSuggestion, defaultPlaceholders, t]);
 
+	const labels = useMemo<InputBarModel["labels"]>(
+		() => ({
+			capsule: {
+				removeDefault: t("inputBar.capsule.removeDefault"),
+				removeImage: t("inputBar.capsule.removeImage"),
+				removeTooltip: (path) => t("inputBar.capsule.removeTooltip", { path }),
+				activeGroup: (count) => t("inputBar.capsule.activeGroup", { count }),
+			},
+			permission: {
+				deny: t("inputBar.permission.deny"),
+				allow: t("inputBar.permission.allow"),
+				allowSession: t("inputBar.permission.allowSession"),
+			},
+			toolbar: {
+				skills: t("inputBar.toolbar.skills"),
+				addImage: t("inputBar.toolbar.addImage"),
+				attachFile: t("inputBar.toolbar.attachFile"),
+				queue: t("inputBar.drawer.queueLabel"),
+			},
+		}),
+		[t],
+	);
+
 	const contextMenu: InputBarContextMenuViewProps | null = contextMenuState
 		? {
 				canCopy: contextMenuState.canCopy,
@@ -700,17 +579,12 @@ export function useInputBarModel({
 		: null;
 
 	return {
-		inputValue,
 		isStreaming,
 		pendingQuestion,
 		firstSuggestion,
-		attachedImages,
+		imageAttachments,
+		activeActions,
 		selectedSkill,
-		mentionedFiles,
-		imageFiles,
-		nonImageFiles,
-		imagePreviewItems,
-		hasImages,
 		appshotAttachment,
 		hasSession,
 		canSend,
@@ -722,8 +596,10 @@ export function useInputBarModel({
 		placeholderRotating,
 		isFocused,
 		slashOpen,
+		slashVisible,
 		slashFilter,
 		atOpen,
+		atFilter,
 		drawerItems,
 		drawerActiveTab,
 		hasPromptAttachment: Boolean(promptAttachment),
@@ -732,60 +608,30 @@ export function useInputBarModel({
 		pendingMessageEdit: Boolean(pendingMessageEdit),
 		pendingEditHint: t("messageList.edit.pendingHint"),
 		cancelPendingEditLabel: t("messageList.interrupt.cancel"),
-		textareaRef,
 		contextMenu,
-		labels: {
-			capsule: {
-				removeDefault: t("inputBar.capsule.removeDefault"),
-				removeImage: t("inputBar.capsule.removeImage"),
-				removeTooltip: (path) => t("inputBar.capsule.removeTooltip", { path }),
-			},
-			hint: {
-				send: t("inputBar.hint.send"),
-				newline: t("inputBar.hint.newline"),
-			},
-			permission: {
-				deny: t("inputBar.permission.deny"),
-				allow: t("inputBar.permission.allow"),
-				allowSession: t("inputBar.permission.allowSession"),
-			},
-			toolbar: {
-				skills: t("inputBar.toolbar.skills"),
-				addImage: t("inputBar.toolbar.addImage"),
-				attachFile: t("inputBar.toolbar.attachFile"),
-				queue: t("inputBar.drawer.queueLabel"),
-			},
-		},
+		labels,
 		actions: {
 			setFocused: setIsFocused,
 			setDrawerActiveTab,
-			handleKeyDown,
-			handleChange,
-			handlePaste,
+			handleEnter,
+			handleTriggerChange,
 			handleContextMenu,
-			handleSlashClose,
+			handleSlashClose: dismissTrigger,
 			handleSlashSelect,
-			handleAtClose,
+			handleConnectorSelect,
+			handleAtClose: dismissTrigger,
 			handleAtSelect,
-			getAtFilter,
-			removeImage,
 			removeSkill: handleRemoveSkill,
-			removeFile: handleRemoveFile,
-			removePromptAttachment: () => setPromptAttachment(null),
-			removeAppshot: () => setAppshotAttachment(null),
+			removeImage,
 			openImagePreview,
+			removePromptAttachment,
+			removeAppshot,
 			handlePlusClick,
 			handleSelectImages,
 			handleSelectFiles,
 			handleSend,
 			handleAbort,
-			cancelPendingEdit: () => {
-				setPendingMessageEdit(null);
-				setInputValue("");
-				setSelectedSkill(null);
-				setMentionedFiles([]);
-				setAppshotAttachment(null);
-			},
+			cancelPendingEdit,
 		},
 	};
 }

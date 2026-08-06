@@ -7,6 +7,8 @@ import {
 	matchBuiltinMcpPreset,
 	missingRequiredSecrets,
 	resolveMcpIcon,
+	resolveMcpPresetDescription,
+	resolveMcpPresetDisplayName,
 	serverUsesOAuth,
 } from "../mcp/builtin-mcp-presets";
 import type { McpSettingsModel } from "./useMcpSettingsModel";
@@ -42,8 +44,10 @@ export function McpServerRow({
 	const oauthAuthorized = Boolean(model.oauthAuthByName[name]);
 	const oauthBusy = model.oauthBusyName === name;
 
-	const displayTitle = preset ? t(preset.displayNameKey) : server.displayName || name;
-	const description = preset ? t(preset.descriptionKey) : server.description?.trim() || "";
+	const displayTitle = preset ? resolveMcpPresetDisplayName(preset, (key) => t(key)) : server.displayName || name;
+	const description = preset
+		? resolveMcpPresetDescription(preset, (key) => t(key))
+		: server.description?.trim() || "";
 
 	return (
 		<div

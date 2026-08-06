@@ -6,6 +6,14 @@ export interface DesktopShellApi {
 	openExternal(url: string): Promise<void>;
 }
 
+export interface DesktopClipboardApi {
+	/**
+	 * 把图片写入系统剪贴板。文本请直接用渲染进程的 navigator.clipboard.writeText；
+	 * 图片走原生剪贴板，因为 ClipboardItem 的平台支持并不一致。
+	 */
+	writeImage(dataUrl: string): Promise<void>;
+}
+
 export interface DesktopWindowApi {
 	minimize(): Promise<void>;
 	maximize(): Promise<void>;

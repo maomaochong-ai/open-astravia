@@ -60,13 +60,6 @@ const STATIC_TARGETS: readonly StaticNavigationTarget[] = [
 		aliases: ["MCP", "mcp", "MCP 管理", "连接器", "connectors"],
 	},
 	{
-		id: "downloads",
-		title: "下载中心",
-		description: "查看下载任务的页面。",
-		hashPath: "/downloads",
-		aliases: ["下载", "download"],
-	},
-	{
 		id: "settings",
 		title: "设置",
 		description: "设置首页，默认打开通用设置。",
@@ -81,6 +74,8 @@ function normalizeTarget(value: string): string {
 
 function isSettingsSectionVisible(section: SettingsSectionRegistration): boolean {
 	if (section.id === "appearance-ui-theme") return isAppearanceUiThemeEnabled();
+	// 桌宠装饰分区暂隐藏（与 PetSettingsView.showDecorationSection=false 对齐）
+	if (section.id === "pet-decoration") return false;
 	return true;
 }
 

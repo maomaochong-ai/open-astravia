@@ -2,7 +2,8 @@ import type { FSWatcher } from "node:fs";
 import { watch } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { BrowserWindow, ipcMain } from "electron";
+import { resolveConfigValue } from "@vetta/coding-agent/configuration";
+import { BrowserWindow, clipboard, ipcMain } from "electron";
 import type {
 	McpConfigData,
 	McpHttpServerConfigData,
@@ -10,7 +11,13 @@ import type {
 	McpServerConfigData,
 	McpStdioServerConfigData,
 } from "../../preload/api-types/mcp.js";
-import type { FsEntry, FsFileRef } from "../../preload/fs-types.js";
+import type {
+	FsEditableTextSnapshot,
+	FsEntry,
+	FsFileRef,
+	FsSaveEditableTextOptions,
+	FsSaveEditableTextResult,
+} from "../../preload/fs-types.js";
 import {
 	type AppshotConfig,
 	type AppshotGesture,
@@ -24,13 +31,11 @@ import {
 	KB_PROCESSING_CWD,
 	KB_PROCESSING_SESSION_DIR,
 	type KnowledgeBaseConfig,
-	type NewSessionPageConfig,
 	normalizeAgentMode,
 	normalizeAppshot,
 	normalizeExecutionMode,
 	normalizeExperimental,
 	normalizeKnowledgeBase,
-	normalizeNewSessionPage,
 	normalizeQuickPanel,
 	normalizeShortcuts,
 	type ProjectEntry,
@@ -44,12 +49,15 @@ import {
 import {
 	allowProjectRoot,
 	createFilesystemDirectory,
+	createFilesystemEntry,
 	deleteFilesystemPath,
 	listFilesystemFilesRecursive,
 	moveFilesystemPath,
+	readEditableTextFile,
 	readFilesystemDirectory,
 	readFilesystemFile,
 	renameFilesystemPath,
+	saveEditableTextFile,
 	statFilesystemPath,
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
@@ -93,7 +101,6 @@ export {
 	KB_PROCESSING_CWD,
 	KB_PROCESSING_SESSION_DIR,
 	type KnowledgeBaseConfig,
-	type NewSessionPageConfig,
 	persistVettaCliPaths,
 	type ProjectEntry,
 	type QuickPanelConfig,
@@ -115,11 +122,14 @@ export type McpConfig = McpConfigData;
 const CHANNELS = {
 	READ_DIR: "vetta:fs:read-dir",
 	READ_FILE: "vetta:fs:read-file",
+	READ_EDITABLE_TEXT: "vetta:fs:read-editable-text",
+	SAVE_EDITABLE_TEXT: "vetta:fs:save-editable-text",
 	WRITE_FILE: "vetta:fs:write-file",
 	STAT: "vetta:fs:stat",
 	RENAME: "vetta:fs:rename",
 	DELETE: "vetta:fs:delete",
 	MOVE: "vetta:fs:move",
+	CREATE_ENTRY: "vetta:fs:create-entry",
 	CREATE_DIRECTORY: "vetta:fs:create-directory",
 	LIST_SUB_DIRS: "vetta:fs:list-sub-dirs",
 	LIST_FILES_RECURSIVE: "vetta:fs:list-files-recursive",
@@ -130,6 +140,7 @@ const CHANNELS = {
 	CONFIG_SET: "vetta:config:set",
 	MODELS_GET: "vetta:models:get",
 	MODELS_SET: "vetta:models:set",
+	MODELS_COPY_API_KEY: "vetta:models:copy-api-key",
 	MODELS_PROBE: "vetta:models:probe",
 	MODELS_FETCH_PROVIDER_MODELS: "vetta:models:fetch-provider-models",
 	MCP_GET: "vetta:mcp:get",
@@ -153,6 +164,13 @@ export function registerFsIpc(): () => void {
 	const mcpOAuth = getDesktopMcpOAuthService();
 	const models = getDesktopModelSettingsService();
 	const shortcuts = getDesktopShortcutService();
+	let apiKeyClipboardClearTimer: ReturnType<typeof setTimeout> | undefined;
+	let copiedApiKey: string | undefined;
+	const clearCopiedApiKey = (): void => {
+		if (copiedApiKey && clipboard.readText() === copiedApiKey) clipboard.clear();
+		copiedApiKey = undefined;
+		apiKeyClipboardClearTimer = undefined;
+	};
 	ipcMain.handle(CHANNELS.READ_DIR, async (_event, dirPath: unknown): Promise<FsEntry[]> => {
 		assertNonEmptyString(dirPath, "dirPath");
 		return readFilesystemDirectory(dirPath);
@@ -163,6 +181,33 @@ export function registerFsIpc(): () => void {
 		async (_event, filePath: unknown): Promise<{ content: string; encoding: "utf8" | "base64" }> => {
 			assertNonEmptyString(filePath, "filePath");
 			return readFilesystemFile(filePath);
+		},
+	);
+
+	ipcMain.handle(CHANNELS.READ_EDITABLE_TEXT, async (_event, filePath: unknown): Promise<FsEditableTextSnapshot> => {
+		assertNonEmptyString(filePath, "filePath");
+		return readEditableTextFile(filePath);
+	});
+
+	ipcMain.handle(
+		CHANNELS.SAVE_EDITABLE_TEXT,
+		async (_event, filePath: unknown, content: unknown, options: unknown): Promise<FsSaveEditableTextResult> => {
+			assertNonEmptyString(filePath, "filePath");
+			if (typeof content !== "string") throw new Error("Invalid content");
+			if (typeof options !== "object" || options === null) throw new Error("Invalid options");
+			const saveOptions = options as Partial<FsSaveEditableTextOptions>;
+			assertNonEmptyString(saveOptions.expectedRevision, "expectedRevision");
+			if (saveOptions.force !== undefined && typeof saveOptions.force !== "boolean") {
+				throw new Error("Invalid force");
+			}
+			if (saveOptions.hasBom !== undefined && typeof saveOptions.hasBom !== "boolean") {
+				throw new Error("Invalid hasBom");
+			}
+			return saveEditableTextFile(filePath, content, {
+				expectedRevision: saveOptions.expectedRevision,
+				force: saveOptions.force,
+				hasBom: saveOptions.hasBom,
+			});
 		},
 	);
 
@@ -196,6 +241,16 @@ export function registerFsIpc(): () => void {
 		assertNonEmptyString(destDir, "destDir");
 		await moveFilesystemPath(sourcePath, destDir);
 	});
+
+	ipcMain.handle(
+		CHANNELS.CREATE_ENTRY,
+		async (_event, parentDirectory: unknown, name: unknown, kind: unknown): Promise<FsEntry> => {
+			assertNonEmptyString(parentDirectory, "parentDirectory");
+			assertNonEmptyString(name, "name");
+			if (kind !== "file" && kind !== "directory") throw new Error("Invalid kind");
+			return createFilesystemEntry(parentDirectory, name, kind);
+		},
+	);
 
 	ipcMain.handle(CHANNELS.CREATE_DIRECTORY, async (_event, dirPath: unknown) => {
 		assertNonEmptyString(dirPath, "dirPath");
@@ -355,10 +410,6 @@ export function registerFsIpc(): () => void {
 					: current.quickPanel,
 			appshot:
 				patch.appshot !== undefined ? normalizeAppshot({ ...current.appshot, ...patch.appshot }) : current.appshot,
-			newSessionPage:
-				patch.newSessionPage !== undefined
-					? normalizeNewSessionPage({ ...current.newSessionPage, ...patch.newSessionPage })
-					: current.newSessionPage,
 		};
 		// Allow all known roots for file operations
 		for (const p of next.projects) allowProjectRoot(p.path);
@@ -372,12 +423,25 @@ export function registerFsIpc(): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_GET, async (): Promise<ModelsConfig> => {
-		return models.getConfig();
+		return models.getRendererConfig();
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_SET, async (_event, config: unknown) => {
 		if (typeof config !== "object" || config === null) throw new Error("Invalid models config");
 		await models.replaceConfig(config as ModelsConfig);
+	});
+
+	ipcMain.handle(CHANNELS.MODELS_COPY_API_KEY, async (_event, providerId: unknown): Promise<boolean> => {
+		assertNonEmptyString(providerId, "providerId");
+		const keyConfig = await models.getProviderApiKey(providerId.trim());
+		const apiKey = keyConfig ? resolveConfigValue(keyConfig) : undefined;
+		if (!apiKey) return false;
+
+		clipboard.writeText(apiKey);
+		if (apiKeyClipboardClearTimer) clearTimeout(apiKeyClipboardClearTimer);
+		copiedApiKey = apiKey;
+		apiKeyClipboardClearTimer = setTimeout(clearCopiedApiKey, 30_000);
+		return true;
 	});
 
 	ipcMain.handle(CHANNELS.MODELS_PROBE, async (_event, ref: { provider: string; model: string }) => {
@@ -477,14 +541,19 @@ export function registerFsIpc(): () => void {
 		watchers.clear();
 		for (const timer of debounceTimers.values()) clearTimeout(timer);
 		debounceTimers.clear();
+		if (apiKeyClipboardClearTimer) clearTimeout(apiKeyClipboardClearTimer);
+		clearCopiedApiKey();
 
 		ipcMain.removeHandler(CHANNELS.READ_DIR);
 		ipcMain.removeHandler(CHANNELS.READ_FILE);
+		ipcMain.removeHandler(CHANNELS.READ_EDITABLE_TEXT);
+		ipcMain.removeHandler(CHANNELS.SAVE_EDITABLE_TEXT);
 		ipcMain.removeHandler(CHANNELS.WRITE_FILE);
 		ipcMain.removeHandler(CHANNELS.STAT);
 		ipcMain.removeHandler(CHANNELS.RENAME);
 		ipcMain.removeHandler(CHANNELS.DELETE);
 		ipcMain.removeHandler(CHANNELS.MOVE);
+		ipcMain.removeHandler(CHANNELS.CREATE_ENTRY);
 		ipcMain.removeHandler(CHANNELS.READ_DIR);
 		ipcMain.removeHandler(CHANNELS.CREATE_DIRECTORY);
 		ipcMain.removeHandler(CHANNELS.LIST_SUB_DIRS);
@@ -495,6 +564,7 @@ export function registerFsIpc(): () => void {
 		ipcMain.removeHandler(CHANNELS.CONFIG_SET);
 		ipcMain.removeHandler(CHANNELS.MODELS_GET);
 		ipcMain.removeHandler(CHANNELS.MODELS_SET);
+		ipcMain.removeHandler(CHANNELS.MODELS_COPY_API_KEY);
 		ipcMain.removeHandler(CHANNELS.MODELS_PROBE);
 		ipcMain.removeHandler(CHANNELS.MODELS_FETCH_PROVIDER_MODELS);
 		ipcMain.removeHandler(CHANNELS.MCP_GET);

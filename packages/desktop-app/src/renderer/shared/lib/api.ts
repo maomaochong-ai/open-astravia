@@ -247,22 +247,6 @@ export interface UserInfo {
 	created_at: string;
 }
 
-export interface LoginResponse {
-	/** deprecated alias，等同于 access_token；保留兼容字段 */
-	token: string;
-	access_token: string;
-	refresh_token: string;
-	user: UserInfo;
-}
-
-export async function loginByAccount(account: string, password: string): Promise<LoginResponse> {
-	return request<LoginResponse>("/auth/login", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ account, password }),
-	});
-}
-
 /** 主动注销 refresh token（登出时调用，失败不阻塞本地清理） */
 export async function logoutOnServer(refreshToken: string | undefined): Promise<void> {
 	if (!refreshToken) return;
@@ -391,6 +375,32 @@ export interface AbilityShowcase {
 	brand_name?: string;
 }
 
+export interface AbilityFeatureItem {
+	title: string;
+	description: string;
+	icon?: string;
+}
+
+export interface AbilityStepItem {
+	title: string;
+	description?: string;
+}
+
+export interface AbilityLinkItem {
+	label: string;
+	href: string;
+}
+
+/** 仓库只能声明宿主支持的区块，不能注入 HTML、脚本、样式或任意操作。 */
+export type AbilityDetailBlock =
+	| { type: "feature-grid"; title?: string; items: AbilityFeatureItem[] }
+	| { type: "steps"; title?: string; items: AbilityStepItem[] }
+	| { type: "showcase"; showcase: AbilityShowcase }
+	| { type: "image"; src: string; alt?: string; caption?: string }
+	| { type: "callout"; tone: "info" | "success" | "warning"; title?: string; content: string }
+	| { type: "markdown"; content: string }
+	| { type: "links"; title?: string; items: AbilityLinkItem[] };
+
 /** 预置元信息键，label 由客户端按 locale 解析。 */
 export type AbilityMetaKey = "homepage" | "repository" | "docs" | "license";
 
@@ -411,18 +421,34 @@ export interface AbilityMetaEntry {
 export interface AbilityDetailLocale {
 	name?: string;
 	description?: string;
+	/** 整体替换默认语言的 tags，不与之合并。 */
+	tags?: string[];
 	content?: string;
 	showcases?: AbilityShowcase[];
 	meta?: AbilityMetaEntry[];
+	blocks?: AbilityDetailBlock[];
 }
 
-/** raw.detail：详情页读，运营随时改。 */
+/**
+ * raw.detail：全部展示信息的唯一真相源。
+ * 顶层字段为默认语言，i18n[locale] 覆盖其它语言，两者同构。
+ * MarketAbility 顶层的 name/description 等由服务端从这里投影而来，读哪个都一致。
+ */
 export interface AbilityDetail {
+	name?: string;
+	description?: string;
+	license?: string;
+	author?: string;
+	/** 空 / solar:xxx-bold / http(s):// */
+	icon?: string;
+	tags?: string[];
 	showcases?: AbilityShowcase[];
 	/** 元信息条目（官网 / 开源协议 / 自定义…），按数组顺序展示。 */
 	meta?: AbilityMetaEntry[];
 	/** markdown 正文。 */
 	content?: string;
+	/** 宿主白名单渲染的结构化详情；存在时优先于旧的 showcases + content。 */
+	blocks?: AbilityDetailBlock[];
 	i18n?: Record<string, AbilityDetailLocale>;
 }
 
@@ -437,8 +463,10 @@ export interface MarketAbility {
 	author: string;
 	/** 四态：空=默认 / solar:xxx-bold / http(s) 外链 / 已解析的绝对图 URL */
 	icon: string;
-	/** 分类名（服务端已 resolve），未分类为空串。 */
+	/** 分类的规范名（服务端已 resolve），未分类为空串。分组与筛选都用它，不随界面语言变。 */
 	category: string;
+	/** 分类译名，取 `category_i18n[locale] ?? category` 得到展示名；无译名时字段缺省。 */
+	category_i18n?: Record<string, string>;
 	tags: string[];
 	/** 产物摘要，安装前校验；mcp / bundle 恒为空。 */
 	sha256: string;
@@ -458,27 +486,35 @@ function normalizeAbility(item: MarketAbility, icon: string | undefined): Market
 	};
 }
 
+/**
+ * 市场浏览与安装（market / info / download）服务端已开放匿名访问，
+ * token 因此可选：有就带上（便于服务端识别调用者），没有也照常返回。
+ */
+function optionalAuthHeaders(token: string | null | undefined): HeadersInit | undefined {
+	return token ? authHeaders(token) : undefined;
+}
+
 /** 一次返回五种 type 的已上架能力。 */
-export async function fetchMarketAbilities(token: string): Promise<MarketAbility[]> {
+export async function fetchMarketAbilities(token?: string | null): Promise<MarketAbility[]> {
 	const items = await request<MarketAbility[]>("/abilities/market", {
-		headers: authHeaders(token),
+		headers: optionalAuthHeaders(token),
 	});
 	return Promise.all((items ?? []).map(async (item) => normalizeAbility(item, await resolveMarketIconUrl(item.icon))));
 }
 
-export async function fetchAbilityInfo(token: string, type: AbilityType, slug: string): Promise<MarketAbility> {
+export async function fetchAbilityInfo(type: AbilityType, slug: string, token?: string | null): Promise<MarketAbility> {
 	const item = await request<MarketAbility>(
 		`/abilities/${encodeURIComponent(type)}/${encodeURIComponent(slug)}/info`,
-		{ headers: authHeaders(token) },
+		{ headers: optionalAuthHeaders(token) },
 	);
 	return normalizeAbility(item, await resolveMarketIconUrl(item.icon));
 }
 
 /** mcp / bundle 无产物，服务端直接 400——调用前请自行判断 type。 */
-export async function downloadAbility(token: string, type: AbilityType, slug: string): Promise<ArrayBuffer> {
+export async function downloadAbility(type: AbilityType, slug: string, token?: string | null): Promise<ArrayBuffer> {
 	const serverUrl = await window.vetta.settings.getServerUrl();
 	const resp = await fetch(`${serverUrl}/abilities/${encodeURIComponent(type)}/${encodeURIComponent(slug)}/download`, {
-		headers: authHeaders(token),
+		headers: optionalAuthHeaders(token),
 	});
 	if (!resp.ok) throw new Error(i18n.t("abilities:error.downloadFailed", { status: resp.status }));
 	return resp.arrayBuffer();

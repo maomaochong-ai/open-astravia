@@ -20,6 +20,8 @@
 		"mine": "Mine"
 	},
 	"group": {
+		"connectors": "Connections",
+		"vettaBuiltin": "Built into Vetta",
 		"uncategorized": "Uncategorized"
 	},
 	"search": {
@@ -28,9 +30,8 @@
 	"status": {
 		"setupRequired": "Setup required",
 		"updateAvailable": "Update available",
-		"custom": "Custom",
-		"builtin": "Built-in",
-		"readonly": "Read-only"
+		"openSource": "Open source",
+		"sameName": "{{count}} with same name"
 	},
 	"card": {
 		"noDescription": "No description"
@@ -49,6 +50,7 @@
 		"disable": "Disable",
 		"more": "More actions",
 		"refresh": "Refresh",
+		"loadMore": "Load more ({{remaining}} remaining)",
 		"reload": "Reload",
 		"cancel": "Cancel"
 	},
@@ -57,8 +59,23 @@
 		"title": "Choose how to add",
 		"importSkill": "Import skill archive",
 		"importSkillHint": "Install from a local zip, tar.gz or tgz archive",
+		"importPlugin": "Import plugin archive",
+		"importPluginHint": "Install from a local zip that contains plugin.json",
+		"externalRepository": "Add external repository",
+		"externalRepositoryHint": "Sync an open ability catalog from a GitHub repository",
 		"addMcp": "Add MCP manually",
-		"addMcpHint": "Configure a stdio or HTTP MCP server by hand"
+		"addMcpHint": "Configure a stdio or HTTP MCP server by hand",
+		"repositoryDialog": {
+			"title": "Add external repository",
+			"description": "The repository must contain .vetta/marketplace.json. Its abilities will be synced immediately.",
+			"repositoryLabel": "GitHub repository",
+			"repositoryPlaceholder": "owner/repo or https://github.com/owner/repo",
+			"refLabel": "Branch",
+			"refPlaceholder": "main",
+			"submit": "Add and sync",
+			"syncing": "Syncing…",
+			"error": "Repository sync failed: {{error}}"
+		}
 	},
 	"empty": {
 		"noMatch": "No matching abilities",
@@ -70,12 +87,14 @@
 	"error": {
 		"loadFailed": "Failed to load abilities",
 		"downloadFailed": "Download failed: {{status}}",
-		"notLoggedIn": "Sign in before installing abilities",
+		"installSourceConflict": "The same ability identifier is installed from another source and will not be overwritten. Check the source on the details page.",
 		"membersUnavailable": "These members are unavailable and were not installed: {{names}}",
-		"partial": "Some abilities could not be loaded: {{error}}"
+		"partial": "Some abilities could not be loaded: {{error}}",
+		"openMarketplaceSyncFailed": "Open abilities could not be synced; the last usable snapshot was kept"
 	},
 	"message": {
 		"installed": "Installed {{name}}",
+		"installedCount": "Installed {{count}} abilities",
 		"setupRequired": "{{name}} needs setup before it is added",
 		"uninstalled": "Removed {{name}}",
 		"uninstalledCount": "Removed {{count}} abilities",
@@ -85,6 +104,14 @@
 	"detail": {
 		"noContent": "No further description. Add it and use it straight from chat.",
 		"notFound": "Ability not found — it may have been delisted or removed.",
+		"source": {
+			"title": "Source",
+			"builtin": "Built into the app",
+			"local": "Added locally",
+			"server": "Vetta ability server",
+			"sameNameTitle": "{{count}} other abilities have the same name",
+			"installConflict": "Another source already occupies this install location. It will not be overwritten automatically; remove the installed item first or wait for an explicit replace flow."
+		},
 		"status": {
 			"available": "Not added",
 			"setup_required": "Setup required",
@@ -120,11 +147,26 @@
 			"local": "Local zip"
 		},
 		"reloadable": "Reloadable to {{version}}",
+		"agentMode": {
+			"title": "Available in modes",
+			"all": "All modes",
+			"work": "Work",
+			"coding": "Coding",
+			"hint": "In other work modes this plugin's entry points do not appear.",
+			"hintAll": "Available in every work mode."
+		},
 		"permissions": "Permissions",
 		"permissionsDialog": "Permission settings",
 		"permissionsDialogHint": "Turning one off blocks the plugin from using that capability.",
 		"permissionsNotInstalledHint": "Permissions declared by this plugin — adjustable once installed.",
 		"permissionsSystemHint": "Granted automatically for system plugins, not editable",
+		"setupDialog": "Enable and permissions",
+		"setupDialogHint": "The plugin is installed. Enable it and grant the permissions below, then confirm to apply.",
+		"setupEnable": "Enable plugin",
+		"setupEnableHint": "While off the plugin is never loaded — its tab and features will not appear.",
+		"setupDiscardTitle": "Discard this setup?",
+		"setupDiscardMessage": "Closing now leaves the plugin disabled or missing permissions, so its tab and some features will not appear. You can enable it and adjust permissions later on the plugin detail page.",
+		"setupDiscardConfirm": "Discard and close",
 		"noPermissions": "This plugin declares no permissions.",
 		"commands": "Executable commands",
 		"commandsHint": "Disabling blocks calls from the plugin",
@@ -143,6 +185,12 @@
 		"oauthNotAuthorized": "Not authorized"
 	},
 	"bundle": {
+		"install": {
+			"title": "Choose abilities to install",
+			"description": "Choose which members of \"{{name}}\" to install. Members already up to date will not be installed again.",
+			"nothing": "This bundle has no members to install or update.",
+			"confirm": "Install {{count}}"
+		},
 		"members": "Contains {{count}} abilities",
 		"inline": "Inline",
 		"missing": "Delisted",
@@ -163,9 +211,16 @@
 		"uiSlotMessage": "Below-message slot",
 		"uiSlotToolCall": "Tool call render slot",
 		"uiSlotTurnCard": "Turn card slot",
+		"uiShortcutsRegister": "Register keyboard shortcuts",
+		"uiFileExplorerDecorations": "Decorate the file explorer",
+		"uiFileExplorerContextMenu": "Extend file context menus",
+		"uiFileExplorerToolbar": "Extend the file explorer toolbar",
+		"workspaceRead": "Read workspace and file-list metadata",
 		"agentSessionRead": "Read agent session",
 		"agentSessionWrite": "Modify agent session",
 		"agentCommandRun": "Run agent commands",
+		"agentCommandSpawn": "Run long-lived background processes",
+		"captureOffscreen": "Capture pages in hidden offscreen windows",
 		"agentSystemPromptRead": "Read agent system prompt",
 		"agentSystemPromptWrite": "Modify agent system prompt",
 		"agentSystemPromptFullControl": "Full control of agent system prompt",
@@ -180,13 +235,17 @@
 		"agentRuntimeConfigure": "Configure agent runtime",
 		"appActionsRegister": "Register app actions",
 		"appActionHandlerExecute": "Execute plugin action handlers",
+		"aiModelsList": "List available AI models",
+		"aiComplete": "Complete text with AI models",
 		"fsRead": "Read files",
 		"fsWrite": "Write files",
 		"networkFetch": "Access network",
 		"storageRead": "Read private plugin data",
 		"storageWrite": "Write private plugin data",
+		"mediaGenerate": "Use media generation providers",
 		"settingsRead": "Read settings",
-		"settingsWrite": "Modify settings"
+		"settingsWrite": "Modify settings",
+		"shellOpenExternal": "Open links in the system browser"
 	},
 	"meta": {
 		"title": "Other",

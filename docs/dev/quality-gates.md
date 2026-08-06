@@ -8,7 +8,7 @@
 |------|------|--------|------|
 | 提交前（快） | `bun run check:precommit`（husky 自动） | 每次 commit | staged 私钥/冲突标记 + Biome `--staged --write`；格式化后重新暂存整文件 |
 | 开发中（快） | `bun run check:quick` | 一轮编辑后 | 准确合并分支已提交差异、暂存、未暂存和未跟踪文件；对变更文件运行 Biome，并运行架构守卫；不做类型检查 |
-| 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 并行执行只读 Biome 全量检查、根 `tsgo` + CLI 显式 `tsgo` + desktop/admin `tsc`、架构守卫 |
+| 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、CLI 显式 `tsgo`、增量 desktop `tsc`、admin `tsc` 与架构守卫 |
 | 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-app/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
 | 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality` | 变更选择、依赖传播与包边界规则 |
 | 单元测试 | `bun run test:unit` | 逻辑变更 | 当前有测试的核心包 |
@@ -23,7 +23,8 @@
 scripts/quality/
   lib.mjs                      共享工具
   precommit.mjs                快路径编排
-  check-guards.mjs             全量守卫入口
+  check-lint.mjs               显式源码根的全量 Biome 入口
+  check-guards.mjs             并行全量守卫入口
   check-quick.mjs              按完整 Git 工作区差异做快速检查
   check-private-keys.mjs       私钥形态检测
   check-conflict-markers.mjs   未解决冲突标记
@@ -39,10 +40,10 @@ knip.config.ts                 Knip（可选）
 
 | Script | 说明 |
 |--------|------|
-| `check:lint` / `check:lint:fix` | Biome 只读检查 / 写回 |
-| `check:types` | 根 `tsgo --noEmit` + CLI 显式 `tsgo --noEmit` + desktop/admin `tsc` |
+| `check:lint` / `check:lint:fix` | 对显式源码根执行 Biome 只读检查 / 写回，避免扫描无关目录 |
+| `check:types` | 并行执行根 `tsgo`、CLI 显式 `tsgo`、带持久增量缓存的 desktop `tsc`、admin `tsc -b` |
 | `check:types:build-surfaces` | 使用 CLI build config 验证上游 workspace `dist/*.d.ts` 的真实消费面；要求先生成当前声明 |
-| `check:guards` | 私钥 + 冲突标记 + workspace 构建顺序 + 包边界 |
+| `check:guards` | 并行执行私钥、冲突标记、包边界等全量守卫 |
 | `check:staged` | 仅 staged Biome |
 | `check:precommit` | husky 使用的快路径 |
 | `check:quick` | 变更文件 Biome + 全量 guards；Biome 配置变化时自动回退全量 Biome |

@@ -626,6 +626,16 @@ _Avoid_: 以为触发是 Electron globalShortcut 或可录制任意组合键—�
 
 **发送后行为可配置**（设置项，默认「打开主窗并定位」）：① 打开主窗并定位到新会话 / ② 后台运行、面板只关闭、靠[[agent 完成通知]]提醒。
 
+### 取消（cancel）与退款（refund）
+
+两个必须分开的动作，中文口语里常被混作「退订」：
+
+- **取消**：停止下一次扣款，已付的当前周期照常用到期末。**不涉及任何钱的流出**，是用户自助的，且必须与订阅同等便捷——找不到取消入口的用户会直接向银行发起拒付，那对 MoR 商户账号的伤害远大于一次自然流失。
+- **退款**：把已收到的钱退回去，真实减少收入。**只能由管理员发起**，用户经邮件申请。自助退款等于给任意用户一个单方面撤销交易的按钮。
+
+退款时是否同时收回权益是**独立选择**：全额退（不满意）该收回，部分退（安抚性补偿）不该收回——把退款做成无条件断服，等于惩罚刚被安抚过的用户。
+_Avoid_: 用「退订」同时指代这两件事。
+
 ### 工作流（workflow）
 
 主会话 Agent 为并行处理复杂任务而[[派遣]]出的一种 **subagent 类型**：一个独立子会话，出生时携带主会话的[[上下文快照 fork]]，以一份预填的 todo 列表起手执行。工作流之间互不共享上下文；**完全单层**——工作流内部不能再派遣任何代理。首版与主会话共享 cwd（不做 worktree 隔离），靠派遣时把任务拆分为互不重叠的范围来避免文件冲突。
@@ -687,3 +697,28 @@ _Avoid_: 把工作流称作「后台任务」（那是 background-tasks 标签�
 它**只是索引，不是安装位置**：skill / scene / plugin 的产物与 mcp 的配置仍分别落在各自既有位置，台账不复制内容。存在的理由是统一「已安装 / 版本 / 是否可更新」的判定——在它之前这三件事分别来自 skill 目录下的 manifest、`plugins-manifest.json`、以及「`mcp.json` 里有没有这个 key」，其中 mcp 连版本都没有，导致 admin 改了市场 MCP 的 config 后存量用户永远收不到更新。
 
 [[bundle（能力套装）]] **不进台账**：它的安装态、启用态、可更新态全部由成员派生，因此不存在台账与实际状态漂移的可能。
+
+### .vetd（Vetta Design 文件）
+
+「Vetta UI Design」系统插件的设计文档格式，同一扩展名下有**两种形态**，靠文件头嗅探区分：
+
+- **工作态**：`x.vetd` 是 JSON 清单（画布视口、frame 布局、theme 引用），frame 源码与 theme.css 是同级 [[旁挂目录（.vetd.d）]] 里的真实文件。本地编辑的唯一形态——agent 直接用文件工具改源码，热更新靠 [[共享引擎（design engine）]] 的 vite HMR。
+- **打包态**：zip 自包含单文件（清单 + 源码 + 构建产物 dist 快照），**只读快照**，仅用于导出分享与预览；要编辑必须先「导入」解包成工作态。
+
+_Avoid_: 把打包态当第二个工作格式（在 zip 上直接编辑）；把工作态清单里内嵌源码。
+
+### 旁挂目录（.vetd.d）
+
+工作态 [[.vetd（Vetta Design 文件）]] 旁与之命名约定绑定的目录（`x.vetd` ↔ `x.vetd.d/`），存放设计的**纯源码**：各 [[Frame（设计画框）]] 的 TSX 文件与共享 `theme.css`（Tailwind v4 `@theme` 令牌，即统一色彩系统）。**不含 node_modules、不含构建配置**——依赖与工具链属于 [[共享引擎（design engine）]]。它是 agent 编辑的落点；与清单脱钩（单独移动其一）是已知代价，靠命名约定与导出命令缓解。
+
+### Frame（设计画框）
+
+画布上一个可自由摆放、拖拽改尺寸的设计视口，源码形态是 [[旁挂目录（.vetd.d）]] 里的一个 TSX 文件（React 组件），由 [[共享引擎（design engine）]] 编译后以 iframe 呈现。选中 frame 或其内部 DOM 可 attach 给 agent 定向修改；agent 正在改某 frame 时该 frame 呈「修改中」态。
+
+**所有权分界（frame meta）**：tsx 具名导出 `export const frame = { width, height, title }` 由 agent/设计者拥有，**meta 是声明，清单是现状**——meta 宽高在 frame 首次被发现时作为初始值进清单；用户拖拽改尺寸只写清单、不回写 tsx；agent 后续改 meta 则清单跟随（最后写者胜）；attach 载荷始终给清单当前尺寸。画布位置只存清单，由插件独占写入（watch 到新 frame 文件即读 meta、自动摆位补清单）。agent 不写清单、不设专用写入 tool（frame 增删改全走原生文件工具），专用 tool 只有骨架创建（vetd_create）、视觉反馈（vetd_screenshot）与构建状态查询（vetd_status）。
+_Avoid_: 叫「页面」「artboard」；把 frame 理解为静态 HTML 文件（早期设想，已被工程路线取代）；让 agent 直改 x.vetd 清单。
+
+### 共享引擎（design engine）
+
+「Vetta UI Design」插件托管的**单一** vite + React + Tailwind v4 模板工程：锁死版本、预装 node_modules（随插件预置或首启一次性下载），内含 @iconify/tailwind4 与 JSX 源码插桩（dev 注入 `data-source` 文件:行号，生产构建不注入）。每个打开的 .vetd 由引擎挂载其 [[旁挂目录（.vetd.d)]] 源码起一个 vite dev server（依赖宿主长驻进程 SDK 与托管 Node 运行时），画布 iframe 指向 localhost 获得 HMR。设计文档自身永不携带依赖与工具链。
+_Avoid_: 每个 .vetd 各自一套 node_modules / 各自 npm install。

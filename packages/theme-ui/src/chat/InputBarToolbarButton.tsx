@@ -32,7 +32,7 @@ export const InputBarToolbarButton = memo(function InputBarToolbarButton({
 			className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-30 ${
 				active
 					? "bg-primary/10 text-primary"
-					: "text-muted-foreground/60 hover:bg-accent/60 hover:text-foreground"
+					: "text-foreground hover:bg-accent/60"
 			}`}
 		>
 			<span className={`${icon} h-[17px] w-[17px]`} />

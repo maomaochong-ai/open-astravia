@@ -31,10 +31,7 @@ export const SCHEDULER_COMMAND_STATUSES = {
 	NOOP: "noop",
 } as const;
 
-const schedulerEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const schedulerEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const schedulerExecutionModeType = Type.Union([
 	Type.Literal(SCHEDULER_EXECUTION_MODES.INHERIT),

@@ -61,19 +61,11 @@ function InstalledMoreMenu({
 	item: AbilityItem;
 	model: AbilitiesModel;
 	onOpenDetail: () => void;
-}): JSX.Element {
+}): JSX.Element | null {
 	const { t } = useTranslation("abilities");
 
-	if (item.readonly) {
-		return (
-			<span
-				className="flex h-8 w-8 items-center justify-center text-muted-foreground/60"
-				title={t("status.readonly")}
-			>
-				<span className="icon-[solar--lock-keyhole-minimalistic-linear] h-3.5 w-3.5" />
-			</span>
-		);
-	}
+	// 只读能力没有可执行的操作，右侧留空即可，不用「锁」占位。
+	if (item.readonly) return null;
 
 	return (
 		<DropdownMenu>
@@ -92,12 +84,18 @@ function InstalledMoreMenu({
 					{t("actions.viewDetails")}
 				</DropdownMenuItem>
 				{item.needsUpdate && (
-					<DropdownMenuItem onSelect={() => model.install(item)}>
+					<DropdownMenuItem onSelect={() => (item.type === "bundle" ? onOpenDetail() : model.install(item))}>
 						<span className="icon-[solar--refresh-linear] h-3.5 w-3.5" />
 						{t("actions.update")}
 					</DropdownMenuItem>
 				)}
 				{item.type === "mcp" && <McpMenuItems item={item} model={model} />}
+				{item.type === "plugin" && (
+					<DropdownMenuItem onSelect={() => model.reloadPlugin(item)}>
+						<span className="icon-[solar--restart-linear] h-3.5 w-3.5" />
+						{t("actions.reload")}
+					</DropdownMenuItem>
+				)}
 				<DropdownMenuItem onSelect={() => model.toggle(item)}>
 					<span
 						className={cn(
@@ -157,7 +155,7 @@ export function AbilityCard({ item, model }: { item: AbilityItem; model: Abiliti
 						size="sm"
 						disabled={item.busy}
 						className="border border-border bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-						onClick={() => model.install(item)}
+						onClick={() => (item.type === "bundle" ? openDetail() : model.install(item))}
 					>
 						{item.busy ? <span className="icon-[solar--refresh-linear] h-3.5 w-3.5 animate-spin" /> : null}
 						{t("actions.add")}

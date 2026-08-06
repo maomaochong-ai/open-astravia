@@ -9,7 +9,8 @@ export interface SettingsAiAssistProps {
 }
 
 /**
- * Settings-page entry: compact CTA + intent popover → new conversation with a structured starter prompt.
+ * Settings-page entry: compact CTA + intent popover → background conversation with a structured
+ * starter prompt. Does not auto-navigate to chat; a fly-orb cue points at the new sidebar session.
  * Write ops still go through vetta action approval after the agent runs.
  */
 export function SettingsAiAssist({ tabId, className }: SettingsAiAssistProps): JSX.Element | null {
@@ -31,7 +32,6 @@ export function SettingsAiAssist({ tabId, className }: SettingsAiAssistProps): J
 			examples={examples}
 			intent={model.intent}
 			placeholder={placeholder}
-			submitting={model.submitting}
 			submitError={model.submitError}
 			onApplyExample={model.applyExample}
 			onIntentChange={model.setIntent}
@@ -39,7 +39,7 @@ export function SettingsAiAssist({ tabId, className }: SettingsAiAssistProps): J
 				if (open) model.openDialog();
 				else model.closeDialog();
 			}}
-			onSubmit={() => void model.submit()}
+			onSubmit={(originRect) => void model.submit(originRect)}
 		/>
 	);
 }

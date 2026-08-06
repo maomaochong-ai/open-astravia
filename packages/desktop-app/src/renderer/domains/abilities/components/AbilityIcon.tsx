@@ -19,8 +19,8 @@ export function AbilityIcon({
 	className?: string;
 	iconClassName?: string;
 }): JSX.Element {
-	const [failed, setFailed] = useState(false);
-	const showImage = isRenderableImageIcon(icon) && !failed;
+	const [failedIcon, setFailedIcon] = useState<string | null>(null);
+	const showImage = isRenderableImageIcon(icon) && failedIcon !== icon;
 
 	return (
 		<div
@@ -30,7 +30,7 @@ export function AbilityIcon({
 			)}
 		>
 			{showImage && icon ? (
-				<img src={icon} alt="" className="h-full w-full object-contain" onError={() => setFailed(true)} />
+				<img src={icon} alt="" className="h-full w-full object-contain" onError={() => setFailedIcon(icon)} />
 			) : isIconifyIcon(icon) ? (
 				<SkillTypeIcon type={type === "scene" ? "scene" : "skill"} icon={icon} className={iconClassName} />
 			) : type === "skill" ? (

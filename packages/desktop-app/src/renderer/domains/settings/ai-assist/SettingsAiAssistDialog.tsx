@@ -7,14 +7,13 @@ export interface SettingsAiAssistDialogProps {
 	intent: string;
 	open: boolean;
 	placeholder: string;
-	submitting: boolean;
 	submitError: string | null;
 	triggerLabel: string;
 	className?: string;
 	onApplyExample: (text: string) => void;
 	onIntentChange: (value: string) => void;
 	onOpenChange: (open: boolean) => void;
-	onSubmit: () => void;
+	onSubmit: (originRect?: DOMRect | null) => void;
 }
 
 export function SettingsAiAssistDialog({
@@ -23,7 +22,6 @@ export function SettingsAiAssistDialog({
 	intent,
 	open,
 	placeholder,
-	submitting,
 	submitError,
 	triggerLabel,
 	className,
@@ -44,7 +42,6 @@ export function SettingsAiAssistDialog({
 			examples={examples}
 			intent={intent}
 			placeholder={placeholder}
-			submitting={submitting}
 			submitError={submitError}
 			onApplyExample={onApplyExample}
 			onIntentChange={onIntentChange}
@@ -55,7 +52,6 @@ export function SettingsAiAssistDialog({
 				approvalHint: t("aiAssist.dialog.approvalHint"),
 				cancel: tCommon("actions.cancel"),
 				start: t("aiAssist.dialog.start"),
-				starting: t("aiAssist.dialog.starting"),
 			}}
 		/>
 	);

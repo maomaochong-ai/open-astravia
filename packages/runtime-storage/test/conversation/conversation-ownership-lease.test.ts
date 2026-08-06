@@ -90,6 +90,33 @@ describe("FileConversationOwnershipManager", () => {
 		expect(lease.holder.token).not.toBe("dead");
 		await lease.release();
 	});
+
+	it("reclaims a reused pid when the process start time no longer matches", async () => {
+		const conversationPath = await temporaryConversationPath();
+		const lockPath = `${conversationPath}.owner.lock`;
+		const manager = new FileConversationOwnershipManager({
+			heartbeatIntervalMs: 10_000,
+			staleAfterMs: 20_000,
+			hostname: "test-host",
+			isProcessAlive: () => true,
+			readProcessStartedAtMs: () => Date.parse("2026-01-01T00:00:00.000Z"),
+		});
+		await writeFile(
+			lockPath,
+			JSON.stringify({
+				token: "reused",
+				pid: 1234,
+				hostname: "test-host",
+				acquiredAt: "2025-01-01T00:00:00.000Z",
+				processStartedAt: "2025-01-01T00:00:00.000Z",
+			}),
+			"utf8",
+		);
+
+		const lease = await manager.acquire(conversationPath);
+		expect(lease.holder.token).not.toBe("reused");
+		await lease.release();
+	});
 });
 
 async function temporaryConversationPath(): Promise<string> {

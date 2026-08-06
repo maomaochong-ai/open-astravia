@@ -41,7 +41,7 @@ export function XianxiaNewSessionHero({
 						initial={{ opacity: 0, y: 8 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.5, delay: 0.1, ease: easeOut }}
-						className="bg-gradient-to-br from-primary via-primary to-primary/30 bg-clip-text text-[24px] font-semibold tracking-[-0.02em] text-transparent"
+						className="bg-gradient-to-br from-foreground via-foreground to-foreground/70 bg-clip-text text-[24px] font-semibold tracking-[-0.02em] text-transparent"
 					>
 						{greetingTitle}
 					</motion.h1>

@@ -11,6 +11,8 @@ export function PresetProvidersSectionView({ model }: { model: PresetProvidersSe
 			error={model.error}
 			hasRows={model.rows.length > 0}
 			loading={model.loading}
+			refreshingCatalog={model.refreshingCatalog}
+			onRefreshCatalog={() => void model.onRefreshCatalog()}
 			rows={model.rows.map((row) => (
 				<PresetProviderRow
 					key={row.id}
@@ -23,6 +25,8 @@ export function PresetProvidersSectionView({ model }: { model: PresetProvidersSe
 					onDraftKeyChange={model.onDraftKeyChange}
 					onAdopt={model.onAdopt}
 					onRemove={model.onRemove}
+					onRefreshModels={model.onRefreshModels}
+					onCopyApiKey={model.onCopyApiKey}
 				/>
 			))}
 		/>

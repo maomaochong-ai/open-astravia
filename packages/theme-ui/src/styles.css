@@ -1,6 +1,8 @@
 /* Marketing hosts import this entry — include SendButton morph CSS so arrow/stop
    states work without relying only on component side-effect imports. */
 @import "./chat/send-button.css";
+/* VS Code–style syntax token defaults for CodeMirror file editor. */
+@import "./file-preview/syntax-tokens.css";
 
 @theme inline {
 	--color-accent: var(--accent);
@@ -18,6 +20,7 @@
 	--color-destructive-foreground: var(--destructive-foreground);
 	--color-foreground: var(--foreground);
 	--color-input: var(--input);
+	--color-input-bar-bg: var(--input-bar-bg);
 	--color-muted: var(--muted);
 	--color-muted-foreground: var(--muted-foreground);
 	--color-popover: var(--popover);

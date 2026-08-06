@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { app } from "electron";
+import { mainT } from "./i18n/index.js";
 
 const BUILTIN_SKILLS_RESOURCE_DIR = "system-skills";
 const BUILTIN_SKILLS_MANIFEST = "skills-manifest.json";
@@ -66,6 +67,16 @@ export function getBuiltinSkillPaths(): string[] {
 		.filter(([name, entry]) => entry.enabled !== false && entry.name === name)
 		.map(([name]) => join(skillsDir, name))
 		.filter((skillDir) => existsSync(join(skillDir, "SKILL.md")));
+}
+
+/**
+ * 内置 Skill 的展示名 / 描述走宿主 catalog（`skills:builtin.<name>.*`，见 ADR-0031），
+ * 清单里的中文只作缺译回退。i18next 缺 key 时原样吐回 key，故以此判定。
+ */
+export function builtinSkillText(name: string, field: "name" | "description", fallback?: string): string | undefined {
+	const key = `skills:builtin.${name}.${field}`;
+	const translated = mainT(key);
+	return translated === key ? fallback : translated;
 }
 
 export function isBuiltinSkillFile(filePath: string): boolean {

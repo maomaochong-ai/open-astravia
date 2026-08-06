@@ -34,6 +34,7 @@ export function useSessionRowModel({
 	return {
 		active,
 		label: sessionDisplayLabel(session),
+		sessionPath: session.path,
 		forked,
 		titleExtra: forked ? t("sidebar.session.forkedTooltip") : undefined,
 		renaming,

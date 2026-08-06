@@ -20,6 +20,10 @@ import type { ModelSelectorViewProps } from "./types";
 
 const MODEL_ITEM_SELECTOR = "[data-model-key]";
 
+/** 紧凑行：覆盖 @vetta/ui 默认的 px-3 py-2 text-[13px]，让模型多时列表不至于过长。 */
+const COMPACT_ITEM_CLASS = "gap-1.5 rounded-md px-2 py-1 text-xs";
+const COMPACT_LABEL_CLASS = "px-2 pb-0.5 pt-1 text-[10px]";
+
 function normalizeSearchValue(value: string): string {
 	return value.trim().toLocaleLowerCase();
 }
@@ -120,16 +124,29 @@ export function ModelSelectorView({
 			<DropdownMenuTrigger asChild>
 				<button
 					type="button"
+					title={selectedOption?.displayName ?? labels.placeholder}
 					className={cn(
-						"flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-transparent px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus-visible:outline-none data-[state=open]:bg-accent/60 data-[state=open]:text-foreground",
+						// 输入卡 @container：窄宽缩短模型名、藏推理档，避免工具栏换行
+						"flex min-w-0 max-w-[5.5rem] items-center gap-1 rounded-full border border-transparent px-1.5 py-0.5 text-[11px] text-foreground transition-colors focus:outline-none focus-visible:outline-none data-[state=open]:bg-accent/60 data-[state=open]:text-foreground @[22rem]:max-w-[9rem] @[28rem]:max-w-[13rem]",
 						className,
 						classNames?.trigger,
 					)}
 				>
-					{selectedOption && <ProviderIcon symbol={groups.find((g) => g.provider === selectedOption.provider)?.icon} className="h-3.5 w-3.5" />}
-					<span className="min-w-0 flex-1 truncate text-left">{selectedOption?.displayName ?? labels.placeholder}</span>
-					{currentLevel && <span className="shrink-0 text-muted-foreground">{labels.levelLabel(currentLevel)}</span>}
-					<span className="icon-[solar--alt-arrow-down-linear] h-3 w-3 shrink-0" />
+					{selectedOption && (
+						<ProviderIcon
+							symbol={groups.find((g) => g.provider === selectedOption.provider)?.icon}
+							className="h-3 w-3 shrink-0"
+						/>
+					)}
+					<span className="min-w-0 flex-1 truncate text-left">
+						{selectedOption?.displayName ?? labels.placeholder}
+					</span>
+					{currentLevel && (
+						<span className="hidden shrink-0 rounded bg-muted/70 px-1 text-[9px] leading-[14px] text-muted-foreground @[28rem]:inline">
+							{labels.levelLabel(currentLevel)}
+						</span>
+					)}
+					<span className="icon-[solar--alt-arrow-down-linear] h-2.5 w-2.5 shrink-0" />
 				</button>
 			</DropdownMenuTrigger>
 			<AnimatePresence>
@@ -139,7 +156,8 @@ export function ModelSelectorView({
 						asChild
 						align="start"
 						className={cn(
-							"w-[min(28rem,calc(100vw-2rem))] min-w-[260px] max-w-[28rem] overflow-visible p-0",
+							// 底色跟搜索框走同一个变量：搜索行去掉底色后要和面板融成一块
+						"w-[min(16rem,calc(100vw-2rem))] min-w-[180px] max-w-[16rem] overflow-visible bg-background p-0",
 							classNames?.content,
 						)}
 						style={{ animation: "none" }}
@@ -154,15 +172,15 @@ export function ModelSelectorView({
 								<ThemeSurface slot="chat.modelSelectorMenu" />
 								<div
 									className={cn(
-										"relative z-10 flex max-h-[min(420px,65vh)] flex-col overflow-hidden rounded-[inherit] p-1",
+										"relative z-10 flex max-h-[min(360px,60vh)] flex-col overflow-hidden rounded-[inherit] p-1",
 										classNames?.contentInner,
 									)}
 								>
-									<div className="shrink-0 p-1">
+									<div className="shrink-0 p-0.5">
 										<div className="relative" onKeyDown={handleSearchKeyDown}>
 											<span
 												aria-hidden="true"
-												className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+												className="icon-[solar--magnifer-linear] pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground"
 											/>
 											<input
 												ref={searchInputRef}
@@ -172,16 +190,16 @@ export function ModelSelectorView({
 												onClick={handleSearchClick}
 												placeholder={labels.searchPlaceholder}
 												aria-label={labels.searchPlaceholder}
-												className="h-8 w-full rounded-md border border-border/60 bg-background/70 pl-8 pr-8 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+												className="h-7 w-full rounded-md pl-7 pr-7 text-[11px] text-foreground outline-none placeholder:text-muted-foreground"
 											/>
 											{searchQuery && (
 												<button
 													type="button"
 													onClick={handleClearSearch}
 													aria-label={labels.clearSearch}
-													className="absolute right-1.5 top-1/2 inline-flex size-5 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+													className="absolute right-1 top-1/2 inline-flex size-4 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 												>
-													<span aria-hidden="true" className="icon-[solar--close-circle-linear] size-3.5" />
+													<span aria-hidden="true" className="icon-[solar--close-circle-linear] size-3" />
 												</button>
 											)}
 										</div>
@@ -189,10 +207,10 @@ export function ModelSelectorView({
 									{menuLevels.length > 0 && (
 										<>
 											<DropdownMenuSub open={reasoningOpen} onOpenChange={setReasoningOpen}>
-												<DropdownMenuSubTrigger>
+												<DropdownMenuSubTrigger className={COMPACT_ITEM_CLASS}>
 													<span className="min-w-0 flex-1 truncate">{labels.reasoningHeader}</span>
 													{currentLevel && (
-														<span className="shrink-0 text-muted-foreground">
+														<span className="shrink-0 text-[11px] text-muted-foreground">
 															{labels.levelLabel(currentLevel)}
 														</span>
 													)}
@@ -202,7 +220,7 @@ export function ModelSelectorView({
 														<DropdownMenuSubContent
 															forceMount
 															asChild
-															className="min-w-[160px] overflow-visible p-0"
+															className="min-w-[130px] overflow-visible bg-background p-0"
 															style={{ animation: "none" }}
 														>
 															<motion.div
@@ -214,14 +232,20 @@ export function ModelSelectorView({
 																<div className="relative overflow-visible rounded-[inherit]">
 																	<ThemeSurface slot="chat.modelSelectorReasoningMenu" />
 																	<div className="relative z-10 overflow-hidden rounded-[inherit] p-1">
-																		<DropdownMenuLabel>{labels.reasoningHeader}</DropdownMenuLabel>
+																		<DropdownMenuLabel className={COMPACT_LABEL_CLASS}>
+																			{labels.reasoningHeader}
+																		</DropdownMenuLabel>
 																		{menuLevels.map((level) => (
-																			<DropdownMenuItem key={level} onSelect={() => onReasoningSelect(level)}>
+																			<DropdownMenuItem
+																				key={level}
+																				className={COMPACT_ITEM_CLASS}
+																				onSelect={() => onReasoningSelect(level)}
+																			>
 																				<span className="min-w-0 flex-1 truncate">
 																					{labels.levelLabel(level)}
 																				</span>
 																				{level === currentLevel && (
-																					<span className="icon-[solar--check-circle-linear] h-3.5 w-3.5 shrink-0" />
+																					<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
 																				)}
 																			</DropdownMenuItem>
 																		))}
@@ -236,19 +260,19 @@ export function ModelSelectorView({
 										</>
 									)}
 									<div ref={modelListRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-										<DropdownMenuLabel>{labels.modelHeader}</DropdownMenuLabel>
+										<DropdownMenuLabel className={COMPACT_LABEL_CLASS}>{labels.modelHeader}</DropdownMenuLabel>
 										{filteredGroups.map((group) => (
 										<div key={group.provider}>
 											<div
 												className={cn(
-													"flex items-center gap-1.5 px-3 pb-0.5 pt-1.5 text-[10px] font-medium text-muted-foreground/50",
+													"flex items-center gap-1 px-2 pb-0.5 pt-1 text-[10px] font-medium text-muted-foreground/50",
 													classNames?.providerHeader,
 												)}
 											>
-												<ProviderIcon symbol={group.icon} className="h-3 w-3" />
-												{group.label}
+												<ProviderIcon symbol={group.icon} className="h-2.5 w-2.5" />
+												<span className="min-w-0 truncate">{group.label}</span>
 												{group.models[0]?.remote && (
-													<span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+													<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
 														{labels.cloudOnly}
 													</span>
 												)}
@@ -259,7 +283,7 @@ export function ModelSelectorView({
 													data-model-key={model.key}
 													aria-current={model.key === selectedModel ? "true" : undefined}
 													className={cn(
-														"rounded-md",
+														COMPACT_ITEM_CLASS,
 														model.key === selectedModel && "bg-accent text-accent-foreground",
 														classNames?.item,
 													)}
@@ -268,27 +292,29 @@ export function ModelSelectorView({
 													<span className="min-w-0 flex-1 truncate">{model.displayName}</span>
 													<MultiplierTag multiplier={model.multiplier} />
 													{model.supportsImage && (
-														<span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary">
-															{labels.visionBadge}
-														</span>
+														<span
+															aria-label={labels.visionBadge}
+															title={labels.visionBadge}
+															className="icon-[solar--gallery-linear] size-3 shrink-0 text-primary"
+														/>
 													)}
 													{model.key === defaultKey && (
-														<span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+														<span className="shrink-0 rounded-full bg-primary/15 px-1 text-[9px] font-medium text-primary">
 															{labels.defaultBadge}
 														</span>
 													)}
 													{model.key === selectedModel && (
-														<span className="icon-[solar--check-circle-linear] h-3.5 w-3.5 shrink-0" />
+														<span className="icon-[solar--check-circle-linear] h-3 w-3 shrink-0" />
 													)}
 												</DropdownMenuItem>
 											))}
 										</div>
 										))}
 										{filteredGroups.length === 0 && (
-											<div className="flex min-h-32 flex-col items-center justify-center px-6 py-8 text-center">
-												<span aria-hidden="true" className="icon-[solar--magnifer-linear] mb-2 size-5 text-muted-foreground" />
-												<p className="text-sm font-medium text-foreground">{labels.noResults}</p>
-												<p className="mt-1 text-xs text-muted-foreground">{labels.noResultsHint}</p>
+											<div className="flex min-h-24 flex-col items-center justify-center px-4 py-6 text-center">
+												<span aria-hidden="true" className="icon-[solar--magnifer-linear] mb-1.5 size-4 text-muted-foreground" />
+												<p className="text-xs font-medium text-foreground">{labels.noResults}</p>
+												<p className="mt-0.5 text-[11px] text-muted-foreground">{labels.noResultsHint}</p>
 											</div>
 										)}
 									</div>

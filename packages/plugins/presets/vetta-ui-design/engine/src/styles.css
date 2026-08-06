@@ -1,0 +1,31 @@
+@import "tailwindcss";
+/*__VETD_SOURCE__*/
+@plugin "@iconify/tailwind4";
+/* 设计文档的统一色彩系统（Tailwind v4 @theme 令牌），全部 frame 共享。 */
+@import "@design/theme.css";
+
+html,
+body,
+#root {
+	height: 100%;
+}
+
+body {
+	margin: 0;
+}
+
+/*
+ * frame 内一律不画滚动条：画布上每个 frame 都是一块设计稿，浏览器滚动条既不属于
+ * 设计本身，也会混进截图/导出。滚动行为（滚轮、触控板、拖拽）不受影响。
+ */
+*,
+*::before,
+*::after {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+	width: 0;
+	height: 0;
+	display: none;
+}

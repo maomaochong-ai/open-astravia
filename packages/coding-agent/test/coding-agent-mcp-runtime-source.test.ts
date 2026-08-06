@@ -29,6 +29,7 @@ describe("Coding Agent native MCP runtime source", () => {
 			configSource: source,
 			clientFactory,
 			agentDir: "C:/native-mcp-agent",
+			includeBuiltinServers: false,
 		});
 
 		const view = await managed.source.refresh();

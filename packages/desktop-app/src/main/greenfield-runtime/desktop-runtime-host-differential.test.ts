@@ -189,6 +189,7 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 		});
 		expect(observations.greenfield.initial.events.map(({ type }) => type)).toEqual([
 			"session.lifecycle",
+			"active_tools_update",
 			"mcp.reload.start",
 			"mcp.reload.end",
 			"session.lifecycle",

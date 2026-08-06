@@ -74,6 +74,12 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.CLOSE_SESSION, (_event, sessionId: unknown) =>
 		adapter.closeSession(requireString(sessionId, "sessionId")),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AI_MODEL_LIST, (_event, sessionId: unknown) =>
+		adapter.listAiModels(requireString(sessionId, "sessionId")),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, (_event, sessionId: unknown, input: unknown) =>
+		adapter.completeAi(requireString(sessionId, "sessionId"), input),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.AGENT_SETTINGS_EXPERIMENTAL_GET, (_event, sessionId: unknown) =>
 		adapter.getAgentExperimental(requireString(sessionId, "sessionId")),
 	);
@@ -158,6 +164,18 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MODEL_PROVIDER_REMOVE, (_event, sessionId: unknown, provider: unknown) =>
 		adapter.removeModelProvider(requireString(sessionId, "sessionId"), requireString(provider, "provider")),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_PROVIDER_LIST, (_event, sessionId: unknown) =>
+		adapter.listMediaProviders(requireString(sessionId, "sessionId")),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CREATE, (_event, sessionId: unknown, input: unknown) =>
+		adapter.createMediaJob(requireString(sessionId, "sessionId"), input),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_GET, (_event, sessionId: unknown, input: unknown) =>
+		adapter.getMediaJob(requireString(sessionId, "sessionId"), input),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, (_event, sessionId: unknown, input: unknown) =>
+		adapter.cancelMediaJob(requireString(sessionId, "sessionId"), input),
 	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, (_event, sessionId: unknown) =>
 		adapter.listMcpServers(requireString(sessionId, "sessionId")),

@@ -3,14 +3,15 @@
   "tenants": {
     "common": [
 		"vetta-actions",
-      "guiding-words",
+      "vetta-ui-design",
       "image-gen",
       "media-viewer",
       "office-viewer",
       "svg-viewer",
       "chart-renderer",
       "git",
-      "plugin-workbench"
+      "plugin-workbench",
+      "content-creation"
     ]
   }
 }

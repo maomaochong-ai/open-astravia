@@ -80,6 +80,20 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 		| { readonly type: "todo_update"; readonly items: readonly TodoItem[] }
 		| { readonly type: "background_tasks_update"; readonly tasks: readonly BackgroundTaskInfo[] }
 		| { readonly type: "subagents_update"; readonly agents: readonly SubagentInfo[] }
+		| {
+				readonly type: "retry.start";
+				readonly attempt: number;
+				readonly maxAttempts: number;
+				readonly delayMs: number;
+				readonly errorMessage: string;
+		  }
+		| {
+				readonly type: "retry.end";
+				readonly success: boolean;
+				readonly attempt: number;
+				readonly finalError?: string;
+		  }
+		| { readonly type: "active_tools_update"; readonly activeToolNames: readonly string[] }
 		| { readonly type: "compaction.start"; readonly reason: "threshold" | "overflow" }
 		| { readonly type: "compaction.end"; readonly success: boolean; readonly errorMessage?: string }
 	);

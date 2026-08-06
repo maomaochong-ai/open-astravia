@@ -1,7 +1,7 @@
 {
 	"id": "vetta-actions",
 	"name": "%plugin.name%",
-	"icon": "solar:bolt-circle-bold",
+	"icon": "icon.png",
 	"version": "0.1.0",
 	"pluginApiVersion": "^1.1.0",
 	"runtime": "module-federation",

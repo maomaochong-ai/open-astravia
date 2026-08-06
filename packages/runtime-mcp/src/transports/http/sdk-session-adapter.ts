@@ -7,6 +7,7 @@ import type { McpCapabilities, McpClientInfo, McpJsonObject } from "../../protoc
 export interface McpHttpSdkSessionOptions {
 	readonly url: URL;
 	readonly requestInit?: RequestInit;
+	readonly fetch?: (input: string | URL, init?: RequestInit) => Promise<Response>;
 	readonly authProvider?: OAuthClientProvider;
 	readonly clientInfo: McpClientInfo;
 	readonly capabilities?: { roots?: { listChanged?: boolean }; sampling?: object };
@@ -44,6 +45,7 @@ class DefaultMcpHttpSdkSession implements McpHttpSdkSession {
 		this.transport = new StreamableHTTPClientTransport(options.url, {
 			requestInit: options.requestInit,
 			authProvider: options.authProvider,
+			fetch: options.fetch,
 		});
 		this.client = new Client(options.clientInfo, { capabilities: options.capabilities ?? {} });
 	}

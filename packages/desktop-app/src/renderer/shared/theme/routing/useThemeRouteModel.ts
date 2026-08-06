@@ -9,7 +9,6 @@ function resolveRouteArea(pathname: string): ThemeRouteArea {
 	if (pathname === "/abilities" || pathname.startsWith("/abilities/")) return "skills";
 	if (pathname.startsWith("/settings")) return "settings";
 	if (pathname.startsWith("/project")) return "project";
-	if (pathname === "/downloads") return "downloads";
 	if (pathname.startsWith("/theme/")) return "themePage";
 	if (pathname === "/" || pathname.startsWith("/new-session") || pathname.startsWith("/viewer")) return "chat";
 	return "unknown";
@@ -31,9 +30,6 @@ export function useThemeRouteModel(): ThemeRouteModel {
 				return;
 			case "chat":
 				void navigate({ to: "/" });
-				return;
-			case "downloads":
-				void navigate({ to: "/downloads" });
 				return;
 			case "knowledgeBase":
 				void navigate({ to: "/knowledge" });

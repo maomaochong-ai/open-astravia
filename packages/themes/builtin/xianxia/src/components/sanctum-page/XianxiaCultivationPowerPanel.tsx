@@ -81,7 +81,7 @@ export function XianxiaCultivationPowerPanel({
 							<span className="text-[16px] text-slate-200/90 min-[1280px]:text-[18px]">Cultivation Power</span>
 							<button
 								aria-label="了解修为规则"
-								className="flex h-5 w-5 flex-none items-center justify-center text-slate-200/75 outline-none transition hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+								className="flex h-5 w-5 flex-none items-center justify-center text-slate-200/75 outline-none transition hover:text-amber-50 border border-transparent focus-visible:border-amber-200/80"
 								data-xianxia-cultivation-rules-trigger=""
 								onClick={() => openPanel("rules")}
 								type="button"
@@ -126,7 +126,7 @@ export function XianxiaCultivationPowerPanel({
 							<Popover open={compositionMounted} onOpenChange={handleCompositionOpenChange}>
 								<PopoverTrigger asChild>
 									<button
-										className="inline-flex items-center gap-1 text-[12px] font-semibold leading-4 text-[#edd2aa] outline-none transition hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+										className="inline-flex items-center gap-1 text-[12px] font-semibold leading-4 text-[#edd2aa] outline-none transition hover:text-amber-50 border border-transparent focus-visible:border-amber-200/80"
 										type="button"
 									>
 										<span>修为构成</span>

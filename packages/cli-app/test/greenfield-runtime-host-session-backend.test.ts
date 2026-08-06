@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Api, Model } from "@vetta/ai";
+import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
 	createGreenfieldRuntimeComposition,
 	GreenfieldRuntimeHostSessionBackend,
@@ -136,6 +136,50 @@ describe("GreenfieldRuntimeHostSessionBackend", () => {
 		).rejects.toThrow("serverUrl");
 	});
 
+	it("retries transient model failures and suppresses recovered error events", async () => {
+		const cwd = await temporaryDirectory("greenfield-host-retry-workspace-");
+		const conversationDir = await temporaryDirectory("greenfield-host-retry-conversations-");
+		const responses = [assistantMessage("error", "503 service unavailable"), assistantMessage("stop")];
+		let callCount = 0;
+		const composition = await createGreenfieldRuntimeComposition({
+			conversationDir,
+			cwd,
+			scenario: "batch",
+			enableSubagents: false,
+			modelRegistry: modelRegistry(),
+			initialModel: MODEL,
+			initialThinkingLevel: "off",
+			streamFn: () => new RecordedAssistantStream(responses[callCount++] ?? assistantMessage("stop")),
+		});
+		const backend = new GreenfieldRuntimeHostSessionBackend({
+			composition,
+			conversationDir,
+			cwd,
+			scenario: "batch",
+			enableSubagents: false,
+			retrySettings: {
+				getRetrySettings: () => ({ enabled: true, maxRetries: 1, baseDelayMs: 0, maxDelayMs: 0 }),
+				setRetryEnabled() {},
+			},
+		});
+		const runtime = new RuntimeHost({ sessionBackend: backend });
+		disposers.push(async () => {
+			await runtime.disposeAllSessions();
+			await composition.dispose();
+		});
+		const { sessionId } = await runtime.createSession({ cwd, sessionDir: conversationDir, scenario: "batch" });
+		const eventTypes: string[] = [];
+		const unsubscribe = runtime.subscribe(sessionId, (event) => eventTypes.push(event.type));
+
+		await runtime.prompt(sessionId, { text: "hello" });
+		unsubscribe();
+
+		expect(callCount).toBe(2);
+		expect(eventTypes).toContain("retry.start");
+		expect(eventTypes).toContain("retry.end");
+		expect(eventTypes).not.toContain("error");
+	});
+
 	async function temporaryDirectory(prefix: string): Promise<string> {
 		const directory = await mkdtemp(join(tmpdir(), prefix));
 		directories.push(directory);
@@ -173,3 +217,44 @@ const SECOND_MODEL: Model<Api> = {
 	id: "session-model",
 	name: "Session Model",
 };
+
+class RecordedAssistantStream extends EventStream<AssistantMessageEvent, AssistantMessage> {
+	constructor(message: AssistantMessage) {
+		super(
+			(event) => event.type === "done" || event.type === "error",
+			(event) => {
+				if (event.type === "done") return event.message;
+				if (event.type === "error") return event.error;
+				throw new Error("Unexpected assistant event");
+			},
+		);
+		queueMicrotask(() => {
+			if (message.stopReason === "error") {
+				this.push({ type: "error", reason: "error", error: message });
+				return;
+			}
+			this.push({ type: "done", reason: "stop", message });
+		});
+	}
+}
+
+function assistantMessage(stopReason: "stop" | "error", errorMessage?: string): AssistantMessage {
+	return {
+		role: "assistant",
+		content: [],
+		api: "openai-responses",
+		provider: "test",
+		model: MODEL.id,
+		usage: {
+			input: 1,
+			output: 1,
+			cacheRead: 0,
+			cacheWrite: 0,
+			totalTokens: 2,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		stopReason,
+		errorMessage,
+		timestamp: Date.now(),
+	};
+}

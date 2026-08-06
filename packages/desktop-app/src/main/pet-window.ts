@@ -305,6 +305,13 @@ function shouldShowPetDevToolsMenuItem(): boolean {
 	return !app.isPackaged || process.env.VETTA_PET_DEVTOOLS === "1";
 }
 
+async function disablePetFromContextMenu(win: BrowserWindow): Promise<void> {
+	const nextConfig = { ...petConfig, enabled: false };
+	await writePetConfig(nextConfig);
+	petConfig = nextConfig;
+	if (!win.isDestroyed()) win.hide();
+}
+
 function showContextMenu(win: BrowserWindow): void {
 	const alwaysOnTop = win.isAlwaysOnTop();
 	const template: MenuItemConstructorOptions[] = [
@@ -338,7 +345,12 @@ function showContextMenu(win: BrowserWindow): void {
 		{ type: "separator" },
 		{
 			label: "隐藏桌宠",
-			click: () => win.hide(),
+			click: () => {
+				void disablePetFromContextMenu(win).catch((error: unknown) => {
+					log.error("hide from context menu failed", error);
+					if (!win.isDestroyed()) win.hide();
+				});
+			},
 		},
 		{
 			label: alwaysOnTop ? "取消置顶" : "保持置顶",
@@ -360,7 +372,14 @@ function showContextMenu(win: BrowserWindow): void {
 		{ type: "separator" },
 		{
 			label: "关闭桌宠",
-			click: () => win.close(),
+			click: () => {
+				void disablePetFromContextMenu(win).catch((error: unknown) => {
+					log.error("close from context menu failed", error);
+					if (!win.isDestroyed()) {
+						win.hide();
+					}
+				});
+			},
 		},
 	];
 	Menu.buildFromTemplate(template).popup({ window: win });
@@ -418,6 +437,7 @@ export function createPetWindow(): BrowserWindow {
 		show: false,
 		skipTaskbar: true,
 		transparent: true,
+		enableLargerThanScreen: process.platform === "darwin",
 		hasShadow: false,
 		alwaysOnTop: petConfig.alwaysOnTop,
 		backgroundColor: "#00000000",

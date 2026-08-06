@@ -118,7 +118,7 @@ export function XianxiaGrowthReportDialog({
 								<DialogClose asChild>
 									<button
 										aria-label="关闭修行履历"
-										className="flex h-9 w-9 flex-none items-center justify-center text-slate-600 outline-none transition hover:text-[#8a6230] focus-visible:ring-2 focus-visible:ring-[#c7a66f]/75"
+										className="flex h-9 w-9 flex-none items-center justify-center text-slate-600 outline-none transition hover:text-[#8a6230] border border-transparent focus-visible:border-[#c7a66f]/75"
 										type="button"
 									>
 										<span aria-hidden="true" className="text-[28px] font-light leading-none">

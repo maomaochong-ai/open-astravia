@@ -19,6 +19,8 @@ function cn(...parts: Array<string | false | null | undefined>): string {
 export interface TokenActivityChartViewProps {
 	points: UsageSeriesPointLike[];
 	loading?: boolean;
+	/** When true, omit outer card chrome (for nesting inside another panel). */
+	embedded?: boolean;
 	labels: {
 		title: string;
 		daily: string;
@@ -31,6 +33,9 @@ export interface TokenActivityChartViewProps {
 }
 
 const MODES: TokenActivityMode[] = ["daily", "weekly", "cumulative"];
+
+/** 相邻月份刻度的最小水平间距（px），小于此值只保留前一个刻度。 */
+const MONTH_TICK_MIN_GAP_PX = 34;
 
 /** 1..4 light → dark; index 0 unused. Alpha values from DESIGN token whitelist. */
 const FILLED_CLASS: Record<number, string> = {
@@ -49,6 +54,7 @@ const FILLED_ACTIVE_CLASS: Record<number, string> = {
 export function TokenActivityChartView({
 	points,
 	loading,
+	embedded,
 	labels,
 }: TokenActivityChartViewProps): JSX.Element {
 	const [mode, setMode] = useState<TokenActivityMode>("cumulative");
@@ -77,6 +83,19 @@ export function TokenActivityChartView({
 		return Math.max(1, ...values, 0);
 	}, [columns]);
 	const hoverCol = hoverKey ? columns.find((c) => c.key === hoverKey && !c.isPad) : null;
+	/** 月份刻度按列下标定位，相邻月份起始列可能只差一两列 —— 太近就跳过，避免文字叠在一起。 */
+	const monthTicks = useMemo(() => {
+		const ticks: Array<{ key: string; leftPercent: number; monthKey: string }> = [];
+		let lastLeftPx = Number.NEGATIVE_INFINITY;
+		columns.forEach((col, i) => {
+			if (!col.monthKey) return;
+			const ratio = i / Math.max(columns.length, 1);
+			if (width > 0 && width * ratio - lastLeftPx < MONTH_TICK_MIN_GAP_PX) return;
+			lastLeftPx = width * ratio;
+			ticks.push({ key: col.key, leftPercent: ratio * 100, monthKey: col.monthKey });
+		});
+		return ticks;
+	}, [columns, width]);
 
 	const modeLabel = (m: TokenActivityMode): string => {
 		if (m === "daily") return labels.daily;
@@ -85,7 +104,13 @@ export function TokenActivityChartView({
 	};
 
 	return (
-		<div className="rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm">
+		<div
+			className={
+				embedded
+					? undefined
+					: "rounded-xl border border-border/50 bg-card/40 p-4 backdrop-blur-sm"
+			}
+		>
 			<div className="mb-3 flex flex-wrap items-center justify-between gap-2">
 				<h3 className="text-[13px] font-semibold text-foreground">{labels.title}</h3>
 				<div className="flex rounded-lg border border-border/50 bg-muted/30 p-0.5">
@@ -153,7 +178,7 @@ export function TokenActivityChartView({
 															key={row}
 															className={cn(
 																"aspect-square w-full rounded-[2px] transition-colors",
-																isFilled ? fillClass : "bg-muted/50",
+																isFilled ? fillClass : "bg-muted",
 															)}
 														/>
 													);
@@ -164,19 +189,15 @@ export function TokenActivityChartView({
 								</div>
 
 								<div className="relative mt-0.5 h-4">
-									{columns.map((col, i) =>
-										col.monthKey ? (
-											<span
-												key={col.key}
-												className="absolute text-[10px] text-muted-foreground"
-												style={{
-													left: `${(i / Math.max(columns.length, 1)) * 100}%`,
-												}}
-											>
-												{labels.month(col.monthKey)}
-											</span>
-										) : null,
-									)}
+									{monthTicks.map((tick) => (
+										<span
+											key={tick.key}
+											className="absolute whitespace-nowrap text-[10px] text-muted-foreground"
+											style={{ left: `${tick.leftPercent}%` }}
+										>
+											{labels.month(tick.monthKey)}
+										</span>
+									))}
 								</div>
 							</div>
 						)}

@@ -1,12 +1,14 @@
 import { CAPABILITY_CONSTRAINT_KINDS, type CapabilityGrant, createCapabilityGrant } from "../../access.js";
 import {
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
+	DOMAIN_AI_CAPABILITIES,
 	DOMAIN_BATCH_TASK_CAPABILITIES,
 	DOMAIN_DOWNLOAD_CAPABILITIES,
 	DOMAIN_GENERAL_SETTINGS_CAPABILITIES,
 	DOMAIN_IM_CAPABILITIES,
 	DOMAIN_KNOWLEDGE_CAPABILITIES,
 	DOMAIN_MCP_CAPABILITIES,
+	DOMAIN_MEDIA_CAPABILITIES,
 	DOMAIN_MODEL_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_QUICK_PANEL_CAPABILITIES,
@@ -19,6 +21,7 @@ import {
 } from "../../domain.js";
 import {
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
+	FOUNDATION_GATEWAY_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
 } from "../../foundation.js";
@@ -37,6 +40,12 @@ export function buildPluginCapabilityGrants(
 	] as const;
 
 	return [
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.AI_MODELS_LIST)
+			? [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.LIST_MODELS)]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE)
+			? [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.COMPLETE)]
+			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.FILESYSTEM_READ)
 			? [
 					createCapabilityGrant(FOUNDATION_FILESYSTEM_CAPABILITIES.READ_DIRECTORY),
@@ -90,12 +99,22 @@ export function buildPluginCapabilityGrants(
 					}),
 				]
 			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MEDIA_GENERATE)
+			? [
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.GET_JOB),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB),
+				]
+			: []),
 		...(official ? buildOfficialDomainGrants() : []),
 	];
 }
 
 function buildOfficialDomainGrants(): CapabilityGrant[] {
 	return [
+		// 网关调用不挂可声明权限，只按来源收口给 official 插件（ADR-0056）
+		createCapabilityGrant(FOUNDATION_GATEWAY_CAPABILITIES.REQUEST),
 		createCapabilityGrant(DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_EXPERIMENTAL),
 		createCapabilityGrant(DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL),
 		createCapabilityGrant(DOMAIN_GENERAL_SETTINGS_CAPABILITIES.GET),

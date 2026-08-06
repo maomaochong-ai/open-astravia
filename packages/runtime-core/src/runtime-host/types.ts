@@ -58,6 +58,18 @@ export interface SessionHandle {
 	/** 全局切换 mode 时挂起，于下一个 turn 边界 apply（避免 streaming 中途换工具集）。 */
 	pendingAgentMode: string | undefined;
 	hasPendingAgentMode: boolean;
+	/**
+	 * 空闲期提前 apply 挂起插件配置的合并定时器。插件 activate 会逐个工具打
+	 * reconfigure，这里做防抖，避免一次激活重建 N 次 runtime。
+	 */
+	idleAgentPluginTimer: ReturnType<typeof setTimeout> | undefined;
+	/**
+	 * 正在进行中的 apply。prompt 侧先 await 它，避免空闲期定时 apply 与一次新 prompt
+	 * 撞在一起、让本回合跑在重建到一半的工具集上。
+	 */
+	agentPluginApplyInFlight: Promise<void> | undefined;
+	/** 上次广播出去的激活工具集（join 后的字符串），用于去重 active_tools_update。 */
+	lastBroadcastActiveToolNames: string | undefined;
 }
 
 /**

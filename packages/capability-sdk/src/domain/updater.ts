@@ -17,10 +17,7 @@ export const UPDATER_PHASES = {
 	ERROR: "error",
 } as const;
 
-const updaterEmptyInputType = Type.Unsafe<Record<string, never>>({
-	type: "object",
-	additionalProperties: false,
-});
+const updaterEmptyInputType = Type.Object({}, { additionalProperties: false });
 
 const updaterPhaseType = Type.Union([
 	Type.Literal(UPDATER_PHASES.IDLE),
@@ -43,7 +40,6 @@ const updaterStateType = Type.Object(
 		totalBytes: Type.Optional(Type.Number({ minimum: 0 })),
 		assetFileName: Type.Optional(Type.String()),
 		error: Type.Optional(Type.String()),
-		pendingInstall: Type.Boolean(),
 	},
 	{ additionalProperties: false },
 );

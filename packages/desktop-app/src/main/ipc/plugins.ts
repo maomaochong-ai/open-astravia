@@ -6,6 +6,7 @@ import type {
 	PluginAppActionRegistration,
 	PluginCommandRunOptions,
 	PluginInstallOptions,
+	PluginOffscreenCaptureOptions,
 	PluginPermission,
 } from "../../preload/api-types/plugins.js";
 import { PLUGIN_SYSTEM_CHANNELS } from "../../shared/plugin-capability-ipc.js";
@@ -13,6 +14,20 @@ import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
 import { getDesktopCapabilityHost } from "../capabilities/capability-host.js";
 import { getAppLogger } from "../logger.js";
 import { runPluginCommand } from "../plugins/command-runner.js";
+import {
+	getPluginCommandSpawnStatus,
+	type SpawnPluginCommandOptions,
+	spawnPluginCommand,
+	stopAllPluginSpawns,
+	stopAllSpawnsForPlugin,
+	stopPluginCommandSpawn,
+} from "../plugins/command-spawner.js";
+import {
+	capturePluginOffscreen,
+	destroyAllOffscreenSessions,
+	destroyOffscreenSessionsForPlugin,
+	releasePluginOffscreenSession,
+} from "../plugins/offscreen-capture-service.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { startPluginDevWatch, stopPluginDevWatch } from "../plugins/plugin-dev-watch.js";
 import {
@@ -400,8 +415,10 @@ async function installFromPath(path: unknown, options: unknown): Promise<Install
 function uninstallInstalledPlugin(pluginActionService: PluginActionService, id: unknown): void {
 	const pluginId = asPluginId(id);
 	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
-	// 卸载前停掉 dev 热更新（vite watch 子进程 + dist 监听）。
+	// 卸载前停掉 dev 热更新（vite watch 子进程 + dist 监听）与长驻 spawn 进程。
 	stopPluginDevWatch(pluginId);
+	stopAllSpawnsForPlugin(pluginId);
+	destroyOffscreenSessionsForPlugin(pluginId);
 	uninstallPlugin(pluginId);
 	pluginActionService.clear(pluginId);
 	refreshAgentPlugins();
@@ -415,7 +432,12 @@ function setInstalledPluginEnabled(
 ): InstalledPlugin {
 	const pluginId = asPluginId(id);
 	// 禁用即停 dev 热更新：否则被禁用的插件仍常驻 vite watch，且每次保存都触发全表重载。
-	if (enabled !== true) stopPluginDevWatch(pluginId);
+	// 长驻 spawn 同理：禁用的插件不得留后台进程。
+	if (enabled !== true) {
+		stopPluginDevWatch(pluginId);
+		stopAllSpawnsForPlugin(pluginId);
+		destroyOffscreenSessionsForPlugin(pluginId);
+	}
 	const plugin = setPluginEnabled(pluginId, enabled === true);
 	if (!plugin.enabled) pluginActionService.clear(pluginId);
 	refreshAgentPlugins();
@@ -437,6 +459,9 @@ function grantInstalledPluginPermissions(id: unknown, permissions: unknown): Ins
 }
 
 function reloadInstalledPlugin(id: unknown): InstalledPlugin {
+	// reload 后 renderer 会重新 activate；旧激活的长驻进程一并回收，避免孤儿 server。
+	stopAllSpawnsForPlugin(asPluginId(id));
+	destroyOffscreenSessionsForPlugin(asPluginId(id));
 	const plugin = reloadPlugin(asPluginId(id));
 	refreshAgentPlugins();
 	recordPluginResourceEvent({ plugin, operation: "reloaded" });
@@ -469,6 +494,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	// 插件级 agent_mode 硬闸的 renderer 侧：白名单外的插件对渲染层完全不可见
 	// （工作台列表 + UI 贡献 + bundle 均不出现）。见 ADR-0046。
 	ipcMain.handle("vetta:plugins:list", () => listVisiblePlugins());
+	// 能力市场（我的）需要完整清单：按工作模式过滤会让另一模式下已装的插件凭空消失，
+	// 用户会误以为能力已丢失。此处不过滤，模式差异由详情页的工作场景标注说明。
+	ipcMain.handle("vetta:plugins:list-all", () => listPlugins());
 	ipcMain.handle("vetta:plugins:install-from-archive", async (_event, archiveBuffer: unknown, options: unknown) => {
 		const plugin = await installPluginFromArchive(asArchiveBuffer(archiveBuffer), asOptions(options));
 		recordPluginResourceEvent({
@@ -549,6 +577,28 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 				args,
 				(options ?? undefined) as PluginCommandRunOptions | undefined,
 			),
+	);
+	ipcMain.handle(
+		"vetta:plugins:command-spawn",
+		(_event, pluginId: unknown, file: unknown, args: unknown, options: unknown) =>
+			spawnPluginCommand(
+				asPluginId(pluginId),
+				typeof file === "string" ? file : "",
+				args,
+				(options ?? undefined) as SpawnPluginCommandOptions | undefined,
+			),
+	);
+	ipcMain.handle("vetta:plugins:command-spawn-stop", (_event, pluginId: unknown, spawnId: unknown) =>
+		stopPluginCommandSpawn(asPluginId(pluginId), asPluginId(spawnId)),
+	);
+	ipcMain.handle("vetta:plugins:command-spawn-status", (_event, pluginId: unknown, spawnId: unknown) =>
+		getPluginCommandSpawnStatus(asPluginId(pluginId), asPluginId(spawnId)),
+	);
+	ipcMain.handle("vetta:plugins:offscreen-capture", (_event, pluginId: unknown, options: unknown) =>
+		capturePluginOffscreen(asPluginId(pluginId), (options ?? undefined) as PluginOffscreenCaptureOptions | undefined),
+	);
+	ipcMain.handle("vetta:plugins:offscreen-release", (_event, pluginId: unknown, sessionKey: unknown) =>
+		releasePluginOffscreenSession(asPluginId(pluginId), typeof sessionKey === "string" ? sessionKey : ""),
 	);
 	ipcMain.handle("vetta:plugins:reload", (_event, id: unknown) => reloadInstalledPlugin(id));
 	ipcMain.handle(PLUGIN_SYSTEM_CHANNELS.LIST, (_event, sessionId: unknown) => {
@@ -715,6 +765,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	ipcMain.handle("vetta:plugins:network:request", (_event, sessionId: unknown, request: unknown) => {
 		return capabilityAdapter.requestNetwork(asPluginId(sessionId), request);
 	});
+	ipcMain.handle("vetta:plugins:gateway:request", (_event, sessionId: unknown, request: unknown) => {
+		return capabilityAdapter.requestGateway(asPluginId(sessionId), request);
+	});
 	ipcMain.handle("vetta:plugins:storage:read-json", (_event, sessionId: unknown, key: unknown) =>
 		capabilityAdapter.readStorageJson(asPluginId(sessionId), asPluginId(key)),
 	);
@@ -743,6 +796,7 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 
 	return () => {
 		ipcMain.removeHandler("vetta:plugins:list");
+		ipcMain.removeHandler("vetta:plugins:list-all");
 		ipcMain.removeHandler("vetta:plugins:install-from-archive");
 		ipcMain.removeHandler("vetta:plugins:install-from-url");
 		ipcMain.removeHandler("vetta:plugins:install-from-path");
@@ -755,6 +809,13 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:grant-commands");
 		ipcMain.removeHandler("vetta:plugins:revoke-commands");
 		ipcMain.removeHandler("vetta:plugins:command-run");
+		ipcMain.removeHandler("vetta:plugins:command-spawn");
+		ipcMain.removeHandler("vetta:plugins:command-spawn-stop");
+		ipcMain.removeHandler("vetta:plugins:command-spawn-status");
+		ipcMain.removeHandler("vetta:plugins:offscreen-capture");
+		ipcMain.removeHandler("vetta:plugins:offscreen-release");
+		stopAllPluginSpawns();
+		destroyAllOffscreenSessions();
 		ipcMain.removeHandler("vetta:plugins:reload");
 		ipcMain.removeHandler("vetta:plugins:dev-watch-start");
 		ipcMain.removeHandler("vetta:plugins:dev-watch-stop");
@@ -774,6 +835,7 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:get-settings");
 		ipcMain.removeHandler("vetta:plugins:set-settings");
 		ipcMain.removeHandler("vetta:plugins:network:request");
+		ipcMain.removeHandler("vetta:plugins:gateway:request");
 		ipcMain.removeHandler("vetta:plugins:storage:read-json");
 		ipcMain.removeHandler("vetta:plugins:storage:write-json");
 		ipcMain.removeHandler("vetta:plugins:storage:list");

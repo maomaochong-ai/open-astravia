@@ -77,10 +77,9 @@
 			"noRecords": "暂无执行记录"
 		},
 		"htmlPreview": {
-			"preview": "预览",
-			"code": "代码",
 			"title": "HTML 预览"
 		},
+
 		"workflow": {
 			"empty": "暂无工作流",
 			"noTranscript": "工作流尚未产生消息",
@@ -104,12 +103,30 @@
 		"moveFailed": "移动失败",
 		"deleteFailed": "删除失败",
 		"selectProject": "选择一个项目以浏览文件",
-		"fileList": "文件列表",
+		"fileList": "项目文件",
 		"clearArtifacts": "清空产物",
 		"refresh": "刷新",
+		"newFile": "新建文件",
+		"newFolder": "新建文件夹",
+		"collapseAll": "全部折叠",
+		"newFileInputLabel": "输入新文件名称",
+		"newFolderInputLabel": "输入新文件夹名称",
+		"createAlreadyExists": "同名文件或文件夹已存在",
+		"createFailed": "创建失败",
+		"invalidName": {
+			"empty": "名称不能为空",
+			"dotPath": "名称不能是 . 或 ..",
+			"pathSeparator": "名称不能包含路径分隔符",
+			"invalidCharacter": "名称包含 Windows 不允许的字符",
+			"reservedName": "该名称是 Windows 保留名称",
+			"trailingCharacter": "名称不能以空格或句点结尾"
+		},
 		"emptyFolder": "此文件夹为空",
 		"openInFinder": "在访达中打开",
 		"openInExplorer": "在资源管理器中打开",
+		"copy": "复制",
+		"paste": "粘贴",
+		"copyPath": "复制路径",
 		"copyName": "复制名称",
 		"rename": "重命名",
 		"delete": "删除",
@@ -119,7 +136,54 @@
 		"confirmDeletePrefix": "确定要删除{{type}}",
 		"confirmDeleteSuffix": "吗？{{folderNote}}此操作无法撤销。",
 		"confirmDeleteFolderNote": " 此操作将删除文件夹内的所有内容。",
+		"confirmDeleteMultiplePrefix": "确定要删除这 {{count}} 项",
+		"confirmDeleteMultipleMore": " 等 {{count}} 项",
+		"confirmDeleteMultipleSuffix": "吗？此操作无法撤销。",
 		"cancel": "取消"
+		,"transfer": {
+			"title": "将文件添加到项目",
+			"pasteCopyTitle": "粘贴文件",
+			"pasteMoveTitle": "移动文件",
+			"description": "将 {{count}} 项放入「{{destination}}」",
+			"moveWarning": "选择移动后，传输成功的项目会从原位置删除。",
+			"conflictLabel": "有 {{count}} 项名称冲突",
+			"keepBoth": "保留两者",
+			"replace": "替换现有项目",
+			"skip": "跳过冲突项目",
+			"copy": "复制",
+			"move": "移动",
+			"cancel": "取消",
+			"processing": "处理中…",
+			"prepareFailed": "无法读取拖入的文件",
+			"commitFailed": "文件传输失败",
+			"failedCount": "有 {{count}} 项传输失败"
+		}
+	},
+	"fileEditor": {
+		"loading": "正在打开文件…",
+		"edit": "编辑",
+		"preview": "预览",
+		"save": "保存",
+		"saving": "保存中…",
+		"saved": "已保存",
+		"unsaved": "有未保存的更改",
+		"conflict": "文件已被其他程序修改。请选择重新加载，或明确覆盖磁盘版本。",
+		"reload": "重新加载",
+		"overwrite": "覆盖保存",
+		"errorTooLarge": "文件超过 2 MB，暂不支持编辑",
+		"errorPreviewTooLarge": "文件过大，无法预览",
+		"errorNotUtf8": "此文件不是有效的 UTF-8 文本，暂不支持编辑",
+		"errorRead": "无法读取此文件",
+		"errorSave": "保存失败，请稍后重试",
+		"unsupported": "暂不支持预览此文件格式",
+		"download": "下载文件",
+		"showTree": "显示文件树",
+		"hideTree": "隐藏文件树",
+		"previous": "上一个 (←)",
+		"next": "下一个 (→)",
+		"downloadShort": "下载",
+		"refresh": "刷新",
+		"close": "关闭"
 	},
 	"appshot": {
 		"errorSelfCapture": "Appshot 已忽略：前台窗口是 Vetta 自身",
@@ -263,7 +327,9 @@
 			"appshotIconAlt": "应用图标",
 			"removeDefault": "点击移除",
 			"removeImage": "移除图片",
-			"removeTooltip": "{{path}}\n点击移除"
+			"removeTooltip": "{{path}}\n点击移除",
+			"activeGroup": "{{count}} 个插件",
+			"imageBadge": "图 {{index}}"
 		},
 		"drawer": {
 			"permissionDesc": "等待确认",
@@ -276,10 +342,6 @@
 			"queueEmpty": "暂无排队消息",
 			"queueLabel": "队列",
 			"queueSendNow": "立即发送"
-		},
-		"hint": {
-			"newline": "⇧⏎ 换行",
-			"send": "⏎ 发送"
 		},
 		"permission": {
 			"allow": "允许本次",
@@ -361,6 +423,7 @@
 		"compactionBoundary": "上下文已压缩",
 		"modelSwitched": "切换了模型 {{name}}",
 		"compactionIndicator": "正在压缩上下文...",
+		"retryIndicator": "连接不太稳定，正在自动重试（第 {{attempt}}/{{maxAttempts}} 次）",
 		"streamingPhrases": [
 			"Vetta 正在回复…",
 			"请耐心等待…",
@@ -369,6 +432,40 @@
 		"copyButton": {
 			"copied": "已复制",
 			"copy": "复制"
+		},
+		"errorBlock": {
+			"showDetail": "查看详情",
+			"hideDetail": "收起详情",
+			"retriedNote": "已自动重试 {{count}} 次",
+			"repeatedNote": "重复出现 {{count}} 次",
+			"kinds": {
+				"rate_limit": {
+					"title": "请求太频繁了",
+					"hint": "稍等片刻再发一次就好。"
+				},
+				"quota": {
+					"title": "当前额度已用完",
+					"hint": "等额度重置，或查看你的套餐与用量。",
+					"action": "查看额度"
+				},
+				"network": {
+					"title": "网络没连上",
+					"hint": "检查一下网络或代理，然后重新发送。"
+				},
+				"auth": {
+					"title": "模型密钥无效或已过期",
+					"hint": "到模型设置里更新密钥后再试。",
+					"action": "去设置"
+				},
+				"server": {
+					"title": "服务方暂时出了点问题",
+					"hint": "通常几分钟内会自行恢复，稍后再发一次。"
+				},
+				"unknown": {
+					"title": "本次回复中断了",
+					"hint": "可以重新发送试试；反复出现的话把详情复制给我们。"
+				}
+			}
 		},
 		"contextMenu": {
 			"edit": "编辑",
@@ -432,14 +529,15 @@
 	"newSession": {
 		"greetingDefault": "今天怎么样？",
 		"greetingTitle": "你好，{{nickname}}",
-		"sceneCarouselNext": "下一组",
-		"sceneCarouselPrev": "上一组",
-		"sceneInstallPrompt": "点击安装并使用",
-		"skillScrollLeft": "向左",
-		"skillScrollRight": "向右",
 		"subtitle": "我可以帮助你处理工作，有什么我可以帮你的吗？",
 		"defaultContext": "普通会话",
-		"projectContext": "项目 · {{name}}"
+		"projectContext": "项目 · {{name}}",
+		"mascot": {
+			"menuTrigger": "吉祥物设置",
+			"hideMascot": "关闭吉祥物",
+			"showMascot": "显示吉祥物",
+			"playOnce": "播放一次当前吉祥物动画"
+		}
 	},
 	"questionPanel": {
 		"keyboardHint": "↑↓ 选择 · 空格选中 · ←→ 切换 · Enter 下一题",
@@ -496,7 +594,9 @@
 	},
 	"slashPanel": {
 		"emptyNoMatch": "未找到匹配项",
+		"emptyNoMatchHint": "换个关键词试试，或直接输入你的需求。",
 		"emptyNoSkills": "暂无可用的技能或场景",
+		"emptyNoSkillsHint": "去能力广场安装技能或场景后，这里就能直接调用。",
 		"header": "选择场景或技能",
 		"resultCount": "{{count}} 个结果",
 		"scenesSection": "场景",
@@ -507,8 +607,12 @@
 			"path": "自定义",
 			"project": "项目",
 			"scene": "场景",
-			"user": "用户"
-		}
+			"user": "用户",
+			"builtin": "内置",
+			"plugin": "插件",
+			"market": "市场"
+		},
+		"connectorsSection": "已接入"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "点击发送此建议"

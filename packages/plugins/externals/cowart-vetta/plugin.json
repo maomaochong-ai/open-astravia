@@ -1,7 +1,7 @@
 {
 	"id": "cowart-vetta",
 	"name": "%plugin.name%",
-	"version": "0.1.7",
+	"version": "0.1.8",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",
@@ -10,6 +10,7 @@
 		"expose": "./plugin"
 	},
 	"styles": ["dist/style.css", "dist/style2.css"],
+	"icon": "assets/app-icon.png",
 	"permissions": [
 		"ui.slot.activity-tab",
 		"agent.session.read",

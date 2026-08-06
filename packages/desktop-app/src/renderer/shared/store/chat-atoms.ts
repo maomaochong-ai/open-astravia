@@ -1,3 +1,4 @@
+import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { atom } from "jotai";
 import type { PromptAttachmentRef, PromptResourceRef } from "../../../../../runtime-core/src/index.js";
@@ -137,7 +138,20 @@ export interface ErrorBlock {
 	type: "error";
 	/** Stable id for React keying. */
 	id: string;
+	/** Provider / 网关的原始错误串，只在错误卡的折叠区展示。 */
 	text: string;
+	/**
+	 * 归类结果，写入时由 classifyChatError 计算（live 与历史回放共用），决定
+	 * 卡片的图标、文案与是否给跳转按钮。
+	 */
+	kind: ChatErrorKind;
+	/** 发出这条错误前自动重试过的次数；0 或缺省表示没重试过。 */
+	attempts?: number;
+	/**
+	 * 历史回放时被折叠进来的同类错误条数（含自身）。>1 时卡片显示「重复 N 次」。
+	 * live 链路不会产生 >1 的值——那边靠 attempts 表达。
+	 */
+	repeated?: number;
 }
 
 export type ContentBlock = TextBlock | ThinkingBlock | ToolCallBlock | ToolResultBlock | ErrorBlock;
@@ -386,6 +400,13 @@ export const contextUsageAtom = atom<ContextUsageData | null>(null);
 /** Whether context compaction is currently in progress */
 export const isCompactingAtom = atom<boolean>(false);
 
+/** 自动重试退避中的进度；null = 没在重试。由 retry.start / retry.end 驱动。 */
+export interface RetryProgress {
+	attempt: number;
+	maxAttempts: number;
+}
+export const retryProgressAtom = atom<RetryProgress | null>(null);
+
 /** 当前 session 是否正在懒重载 MCP 配置（用户发 prompt 后 ~1-3s）。
  * 仅由 mcp.reload.start/end 驱动；UI 用一条非阻塞的小提示告知用户。 */
 export const isReloadingMcpAtom = atom<boolean>(false);
@@ -483,10 +504,26 @@ export const visibleActionButtonsAtom = atom((get) => {
 /** Registry mapping button id → click handler */
 export const actionButtonHandlersAtom = atom<Map<string, () => void>>(new Map());
 
+/** Options for {@link openSessionFnRef} / useSessionManager.openSession. */
+export interface OpenSessionOptions {
+	/**
+	 * When false, create/subscribe the session and set it active, but stay on the
+	 * current route (e.g. Settings AI assist fly-to-sidebar). Default true.
+	 */
+	navigate?: boolean;
+}
+
 /** Global callback to open a session (set by useSessionManager, consumed by other pages) */
 // Use a module-level ref instead of atom to avoid structured clone issues with functions
 export const openSessionFnRef: {
-	current: ((cwd: string, sessionPath?: string, executionMode?: SessionExecutionMode) => Promise<void>) | null;
+	current:
+		| ((
+				cwd: string,
+				sessionPath?: string,
+				executionMode?: SessionExecutionMode,
+				options?: OpenSessionOptions,
+		  ) => Promise<void>)
+		| null;
 } = {
 	current: null,
 };

@@ -2,7 +2,6 @@ export type ThemeRouteArea =
 	| "automation"
 	| "batchTasks"
 	| "chat"
-	| "downloads"
 	| "knowledgeBase"
 	| "plugins"
 	| "project"
@@ -20,7 +19,6 @@ export type ThemeNavigationTarget =
 	| { readonly kind: "automation" }
 	| { readonly kind: "batchTasks" }
 	| { readonly kind: "chat" }
-	| { readonly kind: "downloads" }
 	| { readonly kind: "knowledgeBase" }
 	| { readonly kind: "knowledgeBaseList" }
 	| { readonly kind: "plugins" }

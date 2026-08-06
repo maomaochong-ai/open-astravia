@@ -20,6 +20,8 @@
 		"mine": "我的"
 	},
 	"group": {
+		"connectors": "连接",
+		"vettaBuiltin": "Vetta 内置",
 		"uncategorized": "未分类"
 	},
 	"search": {
@@ -28,9 +30,8 @@
 	"status": {
 		"setupRequired": "需要配置",
 		"updateAvailable": "可更新",
-		"custom": "自定义",
-		"builtin": "内置",
-		"readonly": "只读"
+		"openSource": "开源",
+		"sameName": "{{count}} 个同名"
 	},
 	"card": {
 		"noDescription": "暂无能力说明"
@@ -49,6 +50,7 @@
 		"disable": "停用能力",
 		"more": "更多操作",
 		"refresh": "刷新",
+		"loadMore": "加载更多（剩余 {{remaining}} 项）",
 		"reload": "重载",
 		"cancel": "取消"
 	},
@@ -57,8 +59,23 @@
 		"title": "选择添加方式",
 		"importSkill": "导入技能压缩包",
 		"importSkillHint": "从本地 zip、tar.gz 或 tgz 压缩包安装",
+		"importPlugin": "导入插件压缩包",
+		"importPluginHint": "从本地 zip 安装（需包含 plugin.json）",
+		"externalRepository": "添加外置仓库",
+		"externalRepositoryHint": "从 GitHub 仓库同步开源能力目录",
 		"addMcp": "手动添加 MCP",
-		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务"
+		"addMcpHint": "手动配置 stdio 或 HTTP MCP 服务",
+		"repositoryDialog": {
+			"title": "添加外置仓库",
+			"description": "仓库需要包含 .vetta/marketplace.json，添加后会立即同步其中的能力。",
+			"repositoryLabel": "GitHub 仓库",
+			"repositoryPlaceholder": "owner/repo 或 https://github.com/owner/repo",
+			"refLabel": "分支",
+			"refPlaceholder": "main",
+			"submit": "添加并同步",
+			"syncing": "正在同步…",
+			"error": "仓库同步失败：{{error}}"
+		}
 	},
 	"empty": {
 		"noMatch": "没有匹配的能力",
@@ -70,12 +87,14 @@
 	"error": {
 		"loadFailed": "能力列表加载失败",
 		"downloadFailed": "下载失败：{{status}}",
-		"notLoggedIn": "请先登录后再安装能力",
+		"installSourceConflict": "同一能力标识已由其它来源安装，不会自动覆盖。请在详情页确认来源。",
 		"membersUnavailable": "以下成员暂不可用，未能安装：{{names}}",
-		"partial": "部分能力暂时无法加载：{{error}}"
+		"partial": "部分能力暂时无法加载：{{error}}",
+		"openMarketplaceSyncFailed": "开源能力同步失败，已保留上次可用内容"
 	},
 	"message": {
 		"installed": "已安装 {{name}}",
+		"installedCount": "已安装 {{count}} 项能力",
 		"setupRequired": "{{name}} 还需完成配置后才会添加",
 		"uninstalled": "已移除 {{name}}",
 		"uninstalledCount": "已移除 {{count}} 项能力",
@@ -85,6 +104,14 @@
 	"detail": {
 		"noContent": "暂无更多介绍。添加后即可在对话中使用该能力。",
 		"notFound": "没有找到这个能力，它可能已下架或被移除。",
+		"source": {
+			"title": "来源",
+			"builtin": "应用内置",
+			"local": "本地添加",
+			"server": "Vetta 能力服务器",
+			"sameNameTitle": "另有 {{count}} 个同名能力",
+			"installConflict": "同一安装位置已被其它来源占用。当前不会自动覆盖，请先移除已安装项或等待显式替换功能。"
+		},
 		"status": {
 			"available": "未添加",
 			"setup_required": "需配置",
@@ -120,11 +147,26 @@
 			"local": "本地 zip"
 		},
 		"reloadable": "可重载到 {{version}}",
+		"agentMode": {
+			"title": "适用工作场景",
+			"all": "全部场景",
+			"work": "工作",
+			"coding": "编程",
+			"hint": "切换到其它工作场景时，该插件的功能入口不会出现。",
+			"hintAll": "在所有工作场景下都可用。"
+		},
 		"permissions": "权限",
 		"permissionsDialog": "权限配置",
 		"permissionsDialogHint": "关闭某项后，插件调用对应能力时会被拦截。",
 		"permissionsNotInstalledHint": "以下为插件声明的权限，安装后可逐项调整。",
 		"permissionsSystemHint": "系统插件自动授予，不可更改",
+		"setupDialog": "启用与权限",
+		"setupDialogHint": "插件已安装。启用并授予下列权限后点确认才会生效。",
+		"setupEnable": "启用插件",
+		"setupEnableHint": "关闭后插件不会被加载，它的标签页和功能都不会出现。",
+		"setupDiscardTitle": "放弃本次设置？",
+		"setupDiscardMessage": "现在关闭，插件将保持未启用/未授权状态，标签页和部分功能不会出现。之后可以在插件详情页重新启用并配置权限。",
+		"setupDiscardConfirm": "放弃并关闭",
 		"noPermissions": "该插件没有声明权限。",
 		"commands": "可执行命令",
 		"commandsHint": "关闭后插件调用将被拦截",
@@ -143,6 +185,12 @@
 		"oauthNotAuthorized": "尚未授权"
 	},
 	"bundle": {
+		"install": {
+			"title": "选择要安装的能力",
+			"description": "选择要从「{{name}}」批量安装的成员。已安装且无需更新的成员不会重复安装。",
+			"nothing": "该套装当前没有可安装或更新的成员。",
+			"confirm": "安装 {{count}} 项"
+		},
 		"members": "包含 {{count}} 项能力",
 		"inline": "内联",
 		"missing": "已下架",
@@ -163,9 +211,16 @@
 		"uiSlotMessage": "消息下方 Slot",
 		"uiSlotToolCall": "工具调用渲染 Slot",
 		"uiSlotTurnCard": "回合卡片 Slot",
+		"uiShortcutsRegister": "注册键盘快捷键",
+		"uiFileExplorerDecorations": "装饰文件列表",
+		"uiFileExplorerContextMenu": "扩展文件右键菜单",
+		"uiFileExplorerToolbar": "扩展文件列表工具栏",
+		"workspaceRead": "读取工作区与文件列表元数据",
 		"agentSessionRead": "读取 Agent 会话",
 		"agentSessionWrite": "修改 Agent 会话",
 		"agentCommandRun": "执行 Agent 命令",
+		"agentCommandSpawn": "运行长驻后台进程",
+		"captureOffscreen": "离屏页面截图",
 		"agentSystemPromptRead": "读取 Agent 系统提示词",
 		"agentSystemPromptWrite": "修改 Agent 系统提示词",
 		"agentSystemPromptFullControl": "完全控制 Agent 系统提示词",
@@ -180,13 +235,17 @@
 		"agentRuntimeConfigure": "配置 Agent 运行时",
 		"appActionsRegister": "注册应用 Action",
 		"appActionHandlerExecute": "执行插件 Action 处理器",
+		"aiModelsList": "查看可用 AI 模型",
+		"aiComplete": "调用 AI 模型完成文本",
 		"fsRead": "读取文件",
 		"fsWrite": "写入文件",
 		"networkFetch": "访问网络",
 		"storageRead": "读取插件私有数据",
 		"storageWrite": "写入插件私有数据",
+		"mediaGenerate": "调用媒体生成 Provider",
 		"settingsRead": "读取设置",
-		"settingsWrite": "修改设置"
+		"settingsWrite": "修改设置",
+		"shellOpenExternal": "用系统浏览器打开链接"
 	},
 	"meta": {
 		"title": "其他",

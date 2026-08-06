@@ -31,7 +31,10 @@ export function DefaultChatView({
 						onSend={onSend}
 						onAbort={onAbort}
 					/>
-					<InputBar onSend={onSend} onAbort={onAbort} onSendQueued={onSendQueued} />
+					{/* Drop target lives on the input card inside InputBar (not outer padding). */}
+					<div className="relative shrink-0">
+						<InputBar onSend={onSend} onAbort={onAbort} onSendQueued={onSendQueued} />
+					</div>
 				</div>
 				<ActivityPanel />
 			</div>

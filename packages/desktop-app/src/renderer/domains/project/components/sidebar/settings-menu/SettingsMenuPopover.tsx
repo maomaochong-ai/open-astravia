@@ -6,23 +6,12 @@ import type { SettingsMenuModel } from "./types";
 import { SettingsMenuAccountSection } from "./SettingsMenuAccountSection";
 import { SettingsMenuAgentModeSection } from "./SettingsMenuAgentModeSection";
 import { SettingsMenuDivider } from "./SettingsMenuDivider";
-import { SettingsMenuDownloadsItem } from "./SettingsMenuDownloadsItem";
 import { SettingsMenuQuotaSection } from "./SettingsMenuQuotaSection";
 import { SettingsMenuThemeSection } from "./SettingsMenuThemeSection";
 
 interface SettingsMenuPopoverProps {
 	model: SettingsMenuModel;
 }
-
-const itemVariants = {
-	hidden: { opacity: 0, x: -12 },
-	show: { opacity: 1, x: 0 },
-};
-
-const dividerVariants = {
-	hidden: { opacity: 0, scaleX: 0.9 },
-	show: { opacity: 1, scaleX: 1 },
-};
 
 export function SettingsMenuPopover({ model }: SettingsMenuPopoverProps): JSX.Element {
 	return (
@@ -36,49 +25,19 @@ export function SettingsMenuPopover({ model }: SettingsMenuPopoverProps): JSX.El
 			style={{ animation: "none" }}
 		>
 			<motion.div
-				initial={{ opacity: 0, scale: 0.96, y: 8 }}
-				animate={{ opacity: 1, scale: 1, y: 0 }}
-				exit={{ opacity: 0, scale: 0.96, y: 8 }}
-				transition={{ duration: 0.1, ease: [0.16, 1, 0.3, 1] }}
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				exit={{ opacity: 0 }}
+				transition={{ duration: 0.12, ease: "easeOut" }}
 			>
-				<motion.div
-					variants={{
-						hidden: {},
-						show: { transition: { staggerChildren: 0.025, delayChildren: 0.02 } },
-					}}
-					initial="hidden"
-					animate="show"
-				>
-					<motion.div variants={itemVariants}>
-						<SettingsMenuAgentModeSection />
-					</motion.div>
-					<motion.div variants={dividerVariants}>
-						<SettingsMenuDivider />
-					</motion.div>
-					<motion.div variants={itemVariants}>
-						<SettingsMenuThemeSection model={model} />
-					</motion.div>
-					<SettingsMenuQuotaSection
-						dividerVariants={dividerVariants}
-						itemVariants={itemVariants}
-						model={model}
-					/>
-					<motion.div variants={dividerVariants}>
-						<SettingsMenuDivider />
-					</motion.div>
-					<motion.div variants={itemVariants}>
-						<SettingsMenuAccountSection model={model} />
-					</motion.div>
-					<motion.div variants={dividerVariants}>
-						<SettingsMenuDivider />
-					</motion.div>
-					<motion.div variants={itemVariants}>
-						<SettingsMenuDownloadsItem model={model} />
-					</motion.div>
-					<motion.div variants={itemVariants}>
-						<SettingsMenuSettingsItemHost model={model} />
-					</motion.div>
-				</motion.div>
+				<SettingsMenuAgentModeSection />
+				<SettingsMenuDivider />
+				<SettingsMenuThemeSection model={model} />
+				<SettingsMenuQuotaSection model={model} />
+				<SettingsMenuDivider />
+				<SettingsMenuAccountSection model={model} />
+				<SettingsMenuDivider />
+				<SettingsMenuSettingsItemHost model={model} />
 			</motion.div>
 		</PopoverContent>
 	);

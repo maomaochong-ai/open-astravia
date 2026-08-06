@@ -1,0 +1,84 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "global-slot-demo",
+	"version": "0.1.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-thread",
+					"user_prompt": "帮我规划一部长篇小说，并把第一章写入项目文件。",
+					"assistant_reply": "我会结合插件提供的写作 Skill、动态提示词和文件工具完成规划与写作。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "完整演示外置插件扩展能力",
+				"items": [
+					{
+						"title": "全局界面插槽",
+						"description": "在应用全局区域渲染可信的插件界面，并跟随宿主主题。",
+						"icon": "solar:widget-linear"
+					},
+					{
+						"title": "动态 Agent 提示词",
+						"description": "根据插件设置增加、替换、更新、停用或移除写作提示块。",
+						"icon": "solar:document-add-linear"
+					},
+					{
+						"title": "Skill 与工具控制",
+						"description": "贡献小说大纲 Skill、工具策略以及可写入章节文件的自定义工具。",
+						"icon": "solar:magic-stick-3-linear"
+					},
+					{
+						"title": "自动续接演示",
+						"description": "按需启用一次性的后续写作请求，演示会话续接能力。",
+						"icon": "solar:forward-2-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-thread",
+							"user_prompt": "Outline a novel and write its first chapter into the project.",
+							"assistant_reply": "I’ll combine the plugin’s writing Skill, dynamic prompt, and file tool to plan and draft it."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "A complete external plugin extension demo",
+						"items": [
+							{
+								"title": "Global UI slot",
+								"description": "Renders trusted plugin UI in a global app surface and follows the host theme.",
+								"icon": "solar:widget-linear"
+							},
+							{
+								"title": "Dynamic Agent prompt",
+								"description": "Adds, replaces, updates, disables, or removes writing prompt blocks from settings.",
+								"icon": "solar:document-add-linear"
+							},
+							{
+								"title": "Skill and tool controls",
+								"description": "Contributes a fiction-outline Skill, tool policy, and a custom chapter-writing tool.",
+								"icon": "solar:magic-stick-3-linear"
+							},
+							{
+								"title": "Continuation demo",
+								"description": "Optionally injects one follow-up writing request to demonstrate conversation continuation.",
+								"icon": "solar:forward-2-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

@@ -142,6 +142,9 @@ export class AgentCoreTurnEngine implements TurnEnginePort {
 			: this.options.getApiKey;
 		return {
 			...this.options.streamOptions,
+			salvageTextToolCalls: request.snapshot.salvageTextToolCalls
+				? [...request.snapshot.salvageTextToolCalls]
+				: undefined,
 			...(request.modelBinding ? { reasoning: request.modelBinding.reasoning } : {}),
 			model,
 			tracer: this.options.tracer,

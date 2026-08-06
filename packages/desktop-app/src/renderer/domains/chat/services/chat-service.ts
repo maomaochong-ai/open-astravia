@@ -1,3 +1,4 @@
+import { isAttachmentPath, isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename } from "@shared/lib/utils";
 import type {
 	AskUserQuestionResolution,
@@ -10,6 +11,7 @@ import type {
 } from "@shared/store/atoms";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "../../../../../../runtime-core/src/index.js";
+import { classifyChatError } from "./classifyChatError";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Message conversion helpers
@@ -44,28 +46,14 @@ export function extractResultText(result: unknown): string {
  * - persistImages / appshot → absolute path under image-cache
  * Hand-typed "@foo" or "@src/bar.ts" (relative / non-path) must stay in the body.
  */
-export function isUserMessageAttachmentPath(path: string): boolean {
-	if (!path) return false;
-	if (path.startsWith("/")) return true;
-	if (/^[A-Za-z]:[\\/]/.test(path)) return true;
-	// UNC paths (Windows network shares)
-	if (path.startsWith("\\\\") || path.startsWith("//")) return true;
-	return false;
-}
+export const isUserMessageAttachmentPath = isAttachmentPath;
 
 /** System-injected attachment paths (images / appshot), not panel file badges. */
 export function isSystemAttachmentPath(path: string): boolean {
 	return /[/\\]image-cache[/\\]/.test(path);
 }
 
-const USER_IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico"]);
-
-export function isUserImageFile(path: string): boolean {
-	const basename = pathBasename(path);
-	const dotIndex = basename.lastIndexOf(".");
-	const extension = dotIndex === -1 ? "" : basename.slice(dotIndex + 1).toLowerCase();
-	return USER_IMAGE_EXTENSIONS.has(extension);
-}
+export const isUserImageFile = isImagePath;
 
 /**
  * Parse prefixes from user message text: /skill:<name>, /scene:<name>, and @<path> lines.
@@ -287,6 +275,26 @@ export function messageToBlocks(content: unknown): ContentBlock[] {
 }
 
 /**
+ * 往历史回放的块列表里追加一条错误，连续同类的合并成一条并累加 repeated。
+ *
+ * 会话文件保留了自动重试期间每一次失败的 assistant message（见 coding-agent
+ * retry-controller「keep in session for history」），直译就是重开会话后一次限流
+ * 变成四五个一模一样的错误卡。live 链路那边由 runtime-core 的延迟发射解决，
+ * 历史这条路只能在这里折叠。
+ */
+function pushHistoryError(blocks: ContentBlock[], errorMessage: string): void {
+	const kind = classifyChatError(errorMessage);
+	const last = blocks.at(-1);
+	if (last?.type === "error" && last.kind === kind) {
+		last.repeated = (last.repeated ?? 1) + 1;
+		// 末次错误往往信息最全（例如带上了配额重置时间），以它为准。
+		last.text = errorMessage;
+		return;
+	}
+	blocks.push({ type: "error", id: nextId("blk"), text: errorMessage, kind });
+}
+
+/**
  * Convert history messages (user, assistant, toolResult) into ChatMessages.
  * Tool results are merged into their corresponding tool_call blocks.
  */
@@ -350,7 +358,7 @@ export function historyToChat(
 			if (text) target.text = target.text ? `${target.text}\n${text}` : text;
 			// Handle error messages (e.g. provider 404)
 			if (m.stopReason === "error" && m.errorMessage) {
-				target.blocks!.push({ type: "error", id: nextId("blk"), text: m.errorMessage });
+				pushHistoryError(target.blocks!, m.errorMessage);
 				if (!target.text) target.text = m.errorMessage;
 			}
 		} else if (m.role === "toolResult" && m.toolCallId) {
@@ -524,7 +532,7 @@ export function fullHistoryToChat(entries: HistoryEntry[]): ChatMessage[] {
 			const text = extractText(m.content);
 			if (text) target.text = target.text ? `${target.text}\n${text}` : text;
 			if (m.stopReason === "error" && m.errorMessage) {
-				target.blocks!.push({ type: "error", id: nextId("blk"), text: m.errorMessage });
+				pushHistoryError(target.blocks!, m.errorMessage);
 				if (!target.text) target.text = m.errorMessage;
 			}
 			// 回填本轮 user 消息实际使用的模型：从末尾向前找到第一条尚未标注 model 的 user 消息。
@@ -932,12 +940,20 @@ export function handleToolPhase(prev: ChatMessage[], toolCallId: string, label: 
 
 /**
  * Append an error block to the current draft assistant message.
+ *
+ * @param attempts 这条错误发出前自动重试过的次数（runtime-core 随 error 事件带出）。
  */
-export function appendError(prev: ChatMessage[], errorMessage: string): ChatMessage[] {
+export function appendError(prev: ChatMessage[], errorMessage: string, attempts?: number): ChatMessage[] {
 	const [msgs, idx] = ensureDraft(prev);
 	const msg = msgs[idx];
 	const blocks = [...(msg.blocks ?? [])];
-	blocks.push({ type: "error", id: nextId("blk"), text: errorMessage });
+	blocks.push({
+		type: "error",
+		id: nextId("blk"),
+		text: errorMessage,
+		kind: classifyChatError(errorMessage),
+		...(attempts ? { attempts } : {}),
+	});
 	msgs[idx] = { ...msg, text: msg.text || errorMessage, blocks };
 	return msgs;
 }

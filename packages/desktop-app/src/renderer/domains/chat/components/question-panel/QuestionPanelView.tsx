@@ -409,7 +409,7 @@ function QuestionBody({
 							value={state.otherText}
 							onChange={(e) => onOtherText(e.target.value)}
 							placeholder={otherPlaceholder}
-							className="h-8 w-full min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring/60 focus-visible:ring-1 focus-visible:ring-ring/20"
+							className="h-8 w-full min-w-0 rounded-lg border border-border/60 bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring/60"
 						/>
 					)}
 				</div>

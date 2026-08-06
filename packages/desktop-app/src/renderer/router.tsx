@@ -2,15 +2,14 @@ import { createRootRoute, createRoute, createRouter, createHashHistory, redirect
 import { lazy } from "react";
 import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { RootLayout } from "./App";
+import { loadNewSessionPage } from "./domains/chat/components/loadNewSessionPage";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
 import { THEME_PAGE_ROUTE_PATH } from "./shared/theme/pages/themePageRegistry";
 
 const ChatPage = lazy(async () => ({
 	default: (await import("./domains/chat/components/ChatPage")).ChatPage,
 }));
-const NewSessionPage = lazy(async () => ({
-	default: (await import("./domains/chat/components/NewSessionPage")).NewSessionPage,
-}));
+const NewSessionPage = lazy(loadNewSessionPage);
 const SessionViewerPage = lazy(async () => ({
 	default: (await import("./domains/chat/components/SessionViewerPage")).SessionViewerPage,
 }));
@@ -32,9 +31,6 @@ const SettingsPage = lazy(async () => ({
 const ProjectDetailPage = lazy(async () => ({
 	default: (await import("./domains/project/components/ProjectDetailPage")).ProjectDetailPage,
 }));
-const DownloadsPage = lazy(async () => ({
-	default: (await import("./domains/downloads/components/DownloadsPage")).DownloadsPage,
-}));
 const KnowledgeBasePage = lazy(async () => ({
 	default: (await import("./domains/knowledge-base/components/KnowledgeBasePage")).KnowledgeBasePage,
 }));
@@ -55,19 +51,24 @@ const indexRoute = createRoute({
 	component: ChatPage,
 });
 
+/** 设置 / 自动化 / 批量任务不显示切页骨架：pending 期间留空白，内容就绪后直出。 */
+const NoPendingComponent = (): null => null;
+
 const automationRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/automation",
 	component: AutomationPage,
+	pendingComponent: NoPendingComponent,
 });
 
 const batchTasksRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/batch-tasks",
 	component: BatchTasksPage,
+	pendingComponent: NoPendingComponent,
 });
 
-/** 能力详情是页内右侧抽屉，由 `?detail=<type>:<slug>` 驱动（返回键即关闭）。 */
+/** 能力详情是页内右侧抽屉，由来源感知的 `?detail=<catalog-id>` 驱动（返回键即关闭）。 */
 const abilitiesRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/abilities",
@@ -132,6 +133,7 @@ const settingsTabRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/settings/$tab",
 	component: SettingsPage,
+	pendingComponent: NoPendingComponent,
 	validateSearch: (search: Record<string, unknown>) => {
 		const section = typeof search.section === "string" ? search.section : undefined;
 		const h2 = typeof search.h2 === "string" ? search.h2 : undefined;
@@ -148,12 +150,6 @@ const projectDetailRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/project/$cwd",
 	component: ProjectDetailPage,
-});
-
-const downloadsRoute = createRoute({
-	getParentRoute: () => rootRoute,
-	path: "/downloads",
-	component: DownloadsPage,
 });
 
 const newSessionRoute = createRoute({
@@ -187,7 +183,6 @@ const routeTree = rootRoute.addChildren([
 	pluginsRedirectRoute,
 	settingsTabRoute,
 	projectDetailRoute,
-	downloadsRoute,
 	newSessionRoute,
 	sessionViewerRoute,
 	themePageRoute,

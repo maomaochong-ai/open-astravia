@@ -73,7 +73,9 @@ export function createToolSearchTool(options: ToolSearchToolOptions): RuntimeToo
 				lines.push(`Activated ${result.activated.length} MCP tool(s) — callable from now on:`);
 				for (const tool of result.activated) lines.push(`- ${tool.name}: ${tool.description}`);
 			}
-			if (result.alreadyActive.length > 0) lines.push(`Already active: ${result.alreadyActive.join(", ")}`);
+			if (result.alreadyActive.length > 0) {
+				lines.push(`Already active (call directly, do not search again): ${result.alreadyActive.join(", ")}`);
+			}
 			if (result.activated.length === 0 && result.alreadyActive.length === 0) {
 				lines.push(
 					`No MCP tools matched "${input.query}" (${result.totalDeferred} deferred tool(s) indexed). ` +

@@ -1,4 +1,5 @@
 import { useActiveConversation, useActivityTab, useTranslation } from "@vetta-org/plugin-sdk";
+import { Button, Switch } from "@vetta/ui";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { discoverProjects, joinPath, readJson, type ProjectInfo } from "./project";
 import { applyPluginToVetta, reinstallPluginToVetta } from "./reinstall";
@@ -79,19 +80,10 @@ function PackageIcon({ className }: { className?: string }): ReactNode {
 	);
 }
 
-// ─── Shared button styles (token-aligned; plugins cannot import host Button) ───
-
-const btnBase =
-	"inline-flex h-7 items-center justify-center gap-1 rounded-md px-2.5 text-[12px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40";
-const btnGhost = `${btnBase} text-muted-foreground hover:bg-accent hover:text-foreground`;
-const btnSecondary = `${btnBase} border border-border/60 bg-secondary/50 text-foreground hover:bg-secondary`;
-const btnPrimary = `${btnBase} bg-primary text-primary-foreground hover:bg-primary/90`;
-const btnDestructive = `${btnBase} text-destructive hover:bg-destructive/10`;
-const btnIcon =
-	"flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40";
+// ─── Form field (no host Input primitive yet) ───
 
 const fieldClass =
-	"w-full rounded-md border border-border/60 bg-input/30 px-2.5 py-1.5 text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-inset focus:ring-primary/30";
+	"w-full rounded-md border border-border/60 bg-input/30 px-2.5 py-1.5 text-[12px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/50";
 
 function shortPath(path: string): string {
 	const parts = path.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -165,6 +157,14 @@ export function WorkbenchPanel() {
 	useEffect(() => {
 		void refresh();
 	}, [refresh]);
+
+	useEffect(
+		() =>
+			window.vetta.plugins.onPluginsChanged((event) => {
+				if (event?.reason === "dev-ready" || event?.reason === "dev-status") void refresh();
+			}),
+		[refresh],
+	);
 
 	// Default-on: once an item is installed, start hot reload unless the user turned it off this session.
 	useEffect(() => {
@@ -358,15 +358,16 @@ export function WorkbenchPanel() {
 						</span>
 					)}
 				</div>
-				<button
+				<Button
 					type="button"
+					variant="ghost"
+					size="icon-xs"
 					onClick={() => void refresh()}
 					disabled={isBusy}
-					className={btnIcon}
 					title={t("panel.scan")}
 				>
 					<RefreshIcon className={`h-3.5 w-3.5 ${isBusy ? "animate-spin" : ""}`} />
-				</button>
+				</Button>
 			</div>
 
 			<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3">
@@ -385,9 +386,9 @@ export function WorkbenchPanel() {
 								{error}
 							</pre>
 						</div>
-						<button type="button" className={btnGhost} onClick={() => setError(null)}>
+						<Button type="button" variant="ghost" size="xs" onClick={() => setError(null)}>
 							{t("panel.dismiss")}
-						</button>
+						</Button>
 					</div>
 				)}
 
@@ -426,10 +427,10 @@ export function WorkbenchPanel() {
 								{t("panel.empty")}
 							</p>
 						</div>
-						<button type="button" className={btnSecondary} onClick={() => void refresh()} disabled={isBusy}>
+						<Button type="button" variant="secondary" size="sm" onClick={() => void refresh()} disabled={isBusy}>
 							<RefreshIcon className="h-3.5 w-3.5" />
 							{t("panel.scan")}
-						</button>
+						</Button>
 					</div>
 				)}
 
@@ -555,23 +556,15 @@ export function WorkbenchPanel() {
 										{inst ? t("panel.hotReloadHint") : t("panel.hotReloadNeedsInstall")}
 									</p>
 								</div>
-								<button
-									type="button"
-									role="switch"
-									aria-checked={Boolean(inst?.devWatch)}
-									aria-label={t("panel.hotReload")}
+								<Switch
+									size="sm"
+									checked={Boolean(inst?.devWatch)}
 									disabled={!inst || isBusy}
-									onClick={() => inst && void toggleHotReload(project, inst)}
-									className={`relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:pointer-events-none disabled:opacity-40 ${
-										inst?.devWatch ? "bg-primary" : "bg-muted-foreground/30"
-									}`}
-								>
-									<span
-										className={`absolute top-0.5 h-4 w-4 rounded-full bg-background transition-[left] duration-150 ${
-											inst?.devWatch ? "left-[18px]" : "left-0.5"
-										}`}
-									/>
-								</button>
+									aria-label={t("panel.hotReload")}
+									onCheckedChange={() => {
+										if (inst) void toggleHotReload(project, inst);
+									}}
+								/>
 							</div>
 							{inst?.devWatch?.status === "error" && inst.devWatch.error && (
 								<pre className="whitespace-pre-wrap break-words rounded-lg bg-destructive/10 px-2.5 py-2 font-sans text-[10px] leading-relaxed text-destructive/90">
@@ -581,25 +574,28 @@ export function WorkbenchPanel() {
 
 							{/* Actions */}
 							<div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 pt-2.5">
-								<button
+								<Button
 									type="button"
-									className={btnSecondary}
+									variant="secondary"
+									size="sm"
 									onClick={() => void saveManifest(project)}
 									disabled={isBusy}
 								>
 									{t("panel.saveManifest")}
-								</button>
-								<button
+								</Button>
+								<Button
 									type="button"
-									className={btnSecondary}
+									variant="secondary"
+									size="sm"
 									onClick={() => void runBuild(project)}
 									disabled={isBusy}
 								>
 									{t("panel.build")}
-								</button>
-								<button
+								</Button>
+								<Button
 									type="button"
-									className={btnSecondary}
+									variant="secondary"
+									size="sm"
 									onClick={() => void runExport(project)}
 									disabled={isBusy || !project.zipPath}
 									title={!project.zipPath ? t("panel.exportNeedsZip") : t("panel.export")}
@@ -608,10 +604,11 @@ export function WorkbenchPanel() {
 										<RefreshIcon className="h-3 w-3 animate-spin" />
 									) : null}
 									{t("panel.export")}
-								</button>
-								<button
+								</Button>
+								<Button
 									type="button"
-									className={btnPrimary}
+									variant="primary"
+									size="sm"
 									onClick={() => void runApply(project)}
 									disabled={isBusy}
 								>
@@ -619,13 +616,14 @@ export function WorkbenchPanel() {
 										<RefreshIcon className="h-3 w-3 animate-spin" />
 									) : null}
 									{t("panel.apply")}
-								</button>
+								</Button>
 								{inst && (
 									<>
 										<div className="mx-0.5 h-4 w-px bg-border/60" />
-										<button
+										<Button
 											type="button"
-											className={btnSecondary}
+											variant="secondary"
+											size="sm"
 											onClick={() => void runReinstall(project)}
 											disabled={isBusy}
 											title={t("panel.reinstallHint")}
@@ -634,23 +632,25 @@ export function WorkbenchPanel() {
 												<RefreshIcon className="h-3 w-3 animate-spin" />
 											) : null}
 											{t("panel.reinstall")}
-										</button>
-										<button
+										</Button>
+										<Button
 											type="button"
-											className={btnGhost}
+											variant="ghost"
+											size="sm"
 											onClick={() => void runReload(project.id)}
 											disabled={isBusy}
 										>
 											{t("panel.reload")}
-										</button>
-										<button
+										</Button>
+										<Button
 											type="button"
-											className={btnDestructive}
+											variant="destructive"
+											size="sm"
 											onClick={() => void runUninstall(project.id)}
 											disabled={isBusy}
 										>
 											{t("panel.uninstall")}
-										</button>
+										</Button>
 									</>
 								)}
 							</div>

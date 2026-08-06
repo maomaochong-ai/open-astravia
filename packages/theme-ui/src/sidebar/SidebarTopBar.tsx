@@ -17,7 +17,7 @@ export interface SidebarTopBarLabels {
 export interface SidebarTopBarProps {
 	/** 顶栏 actions 区插槽（如工作模式徽章 popover）。渲染在折叠按钮之前。 */
 	agentModeSlot?: ReactNode;
-	/** Host-provided brand icon. */
+	/** Optional host-provided brand icon; omit for text-only brand. */
 	brandIcon?: ReactNode;
 	/** Host-provided brand trailing content (e.g. connected SidebarUpdateButton). */
 	brandTrailing?: ReactNode;
@@ -49,7 +49,7 @@ export function SidebarTopBar({
 				!floating && "drag-region",
 				className,
 			)}
-			style={{ paddingLeft: isMac ? 78 : 12, paddingRight: 6 }}
+			style={{ paddingLeft: isMac ? 78 : 16, paddingRight: 6 }}
 		>
 			{/* brand 只占内容宽；Mac 常为空，避免 flex-1 吃掉 actions 的测量空间 */}
 			{isMac ? (
@@ -58,9 +58,7 @@ export function SidebarTopBar({
 				</div>
 			) : (
 				<div className={cn("flex min-w-0 shrink items-center gap-2 overflow-hidden", classNames?.brand)}>
-					{brandIcon ?? (
-						<img src="./icon.png" alt="Vetta" className="h-5 w-5 shrink-0 rounded-[5px]" />
-					)}
+					{brandIcon}
 					<span className="truncate text-[13px] font-semibold text-foreground">Vetta</span>
 					{brandTrailing}
 				</div>

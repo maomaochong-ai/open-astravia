@@ -114,7 +114,7 @@ describe("groupBlocksForWork", () => {
 
 	it("error 块冒泡到组外", () => {
 		counter += 1;
-		const errorBlock: ContentBlock = { type: "error", id: "e1", text: "boom" };
+		const errorBlock: ContentBlock = { type: "error", id: "e1", text: "boom", kind: "unknown" };
 		const segments = groupBlocksForWork([progress({ label: "整理数据" }), tool("read"), errorBlock], new Set());
 		expect(segments.map((segment) => segment.type)).toEqual(["progress_group", "single"]);
 	});

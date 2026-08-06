@@ -15,9 +15,9 @@
 	"audio.unmute": "取消静音",
 	"zoom.in": "放大",
 	"zoom.out": "缩小",
-	"zoom.reset": "重置缩放",
+	"zoom.reset": "适应窗口",
 	"fullscreen.enter": "全屏",
 	"fullscreen.exit": "退出全屏",
-	"view.reset": "重置",
-	"view.resetTitle": "重置视图"
+	"view.reset": "适应",
+	"view.resetTitle": "适应窗口"
 }

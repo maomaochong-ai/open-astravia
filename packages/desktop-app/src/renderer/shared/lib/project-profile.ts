@@ -69,8 +69,9 @@ function deriveType(meta: Record<string, unknown> | null): { type: ProjectType }
 }
 
 /**
- * 根据项目类型计算活动面板 tab 配置。
- * 这是项目类型差异化配置的"中央调度点"，未来要按项目类型加 tab 在这里加。
+ * 项目 profile 上的 activityTabs / defaultActivityTab。
+ * 默认激活 tab 仍用 defaultActivityTab；栏上候选由 activity-panel builtins 注册表
+ * （+ 插件 pool）贡献，不再依赖本列表组装。tabs 字段保留兼容读方。
  */
 function buildActivityTabs(type: ProjectType): {
 	tabs: ActivityTabConfig[];
@@ -83,7 +84,6 @@ function buildActivityTabs(type: ProjectType): {
 		};
 	}
 
-	// 普通项目只展示文件 tab
 	return {
 		tabs: [TAB_FILE],
 		defaultTab: "file",

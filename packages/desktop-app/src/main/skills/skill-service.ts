@@ -6,10 +6,15 @@ import { createCodingAgentSessionResourceRuntime } from "@vetta/coding-agent/res
 import type { AppMonitorResourceOperation } from "../../preload/api-types/app-monitor.js";
 import { removeAbilityLedgerEntry } from "../abilities/ability-ledger.js";
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
-import { getBuiltinSkillPaths, isBuiltinSkillFile, readBuiltinSkillsManifest } from "../builtin-skills.js";
+import {
+	builtinSkillText,
+	getBuiltinSkillPaths,
+	isBuiltinSkillFile,
+	readBuiltinSkillsManifest,
+} from "../builtin-skills.js";
 import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
-import { buildAgentPluginRuntimeConfig } from "../plugins/plugin-store.js";
+import { buildAgentPluginRuntimeConfig, listPlugins } from "../plugins/plugin-store.js";
 
 const skillsLog = getAppLogger("skills");
 const skillsBaseDir = join(getVettaHomePath(), "skills");
@@ -48,6 +53,8 @@ export interface ListedSkill {
 	description: string;
 	source: string;
 	type: InstalledSkillType;
+	/** 插件贡献 skill 时带宿主插件 iconUrl，供命令区 / 能力页展示。 */
+	icon?: string;
 }
 
 export function getSkillBaseDir(type: InstalledSkillType): string {
@@ -106,8 +113,9 @@ export class SkillService {
 	async list(cwd?: string): Promise<ListedSkill[]> {
 		const desktopConfig = await readDesktopConfig();
 		const includeAgentSkills = desktopConfig.experimental?.agentSkills !== false;
-		const pluginSkillPaths =
-			buildAgentPluginRuntimeConfig()?.skillPathContributions?.flatMap((contribution) => contribution.paths) ?? [];
+		const pluginRuntime = buildAgentPluginRuntimeConfig();
+		const skillPathContributions = pluginRuntime?.skillPathContributions ?? [];
+		const pluginSkillPaths = skillPathContributions.flatMap((contribution) => contribution.paths);
 		const builtinSkillPaths = getBuiltinSkillPaths();
 		const loader = createCodingAgentSessionResourceRuntime({
 			includeAgentSkills,
@@ -118,13 +126,17 @@ export class SkillService {
 		const { skills } = loader.getSkills();
 		const manifest = readSkillsManifest();
 		const builtinManifest = readBuiltinSkillsManifest();
-		const pluginRoots = pluginSkillPaths.map((path) => path.replace(/[/\\]+$/, ""));
-		const isUnderPluginRoot = (filePath: string): boolean => {
+		// 插件 skill 不在市场目录里：展示图标跟宿主插件走（icon.png → vetta-plugin://…）。
+		const pluginIconById = new Map(listPlugins().map((plugin) => [plugin.id, plugin.iconUrl]));
+		const pluginRoots = skillPathContributions.flatMap((contribution) =>
+			contribution.paths.map((path) => ({
+				root: path.replace(/[/\\]+$/, "").replace(/\\/g, "/"),
+				icon: pluginIconById.get(contribution.pluginId),
+			})),
+		);
+		const pluginRootFor = (filePath: string): { root: string; icon: string | undefined } | undefined => {
 			const normalized = filePath.replace(/\\/g, "/");
-			return pluginRoots.some((root) => {
-				const normalizedRoot = root.replace(/\\/g, "/");
-				return normalized === normalizedRoot || normalized.startsWith(`${normalizedRoot}/`);
-			});
+			return pluginRoots.find((entry) => normalized === entry.root || normalized.startsWith(`${entry.root}/`));
 		};
 		const listed = skills
 			.filter((skill) => {
@@ -137,15 +149,20 @@ export class SkillService {
 				const isBuiltin = isBuiltinSkillFile(skill.filePath);
 				const builtinEntry = isBuiltin ? builtinManifest[skill.name] : undefined;
 				const entry = isBuiltin ? undefined : manifest[skill.name];
+				const pluginRoot = isBuiltin ? undefined : pluginRootFor(skill.filePath);
+				const icon = pluginRoot?.icon;
 				return {
 					name: skill.name,
-					alias: skill.alias || builtinEntry?.alias || entry?.alias,
-					description:
-						builtinEntry?.description ||
-						(entry?.source === "market" ? entry.marketDescription : entry?.description) ||
-						skill.description,
-					source: isBuiltin ? "builtin" : isUnderPluginRoot(skill.filePath) ? "plugin" : skill.source,
+					// 内置 Skill 的展示文案跟随宿主语言（catalog 缺译才回落清单里的中文）。
+					alias: isBuiltin
+						? builtinSkillText(skill.name, "name", builtinEntry?.alias || skill.alias)
+						: skill.alias || entry?.alias,
+					description: isBuiltin
+						? (builtinSkillText(skill.name, "description", builtinEntry?.description) ?? skill.description)
+						: (entry?.source === "market" ? entry.marketDescription : entry?.description) || skill.description,
+					source: isBuiltin ? "builtin" : pluginRoot ? "plugin" : skill.source,
 					type: skill.type,
+					...(icon ? { icon } : {}),
 				};
 			});
 

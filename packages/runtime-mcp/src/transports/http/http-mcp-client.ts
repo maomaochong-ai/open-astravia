@@ -68,6 +68,7 @@ export class HttpMcpClient implements McpClientHandle {
 		this.session = this.sdkSessionFactory({
 			url: new URL(this.config.url),
 			requestInit: this.config.headers ? { headers: this.config.headers } : undefined,
+			fetch: buildHeaderResolvingFetch(this.config.resolveHeaders),
 			authProvider: this.authProvider,
 			clientInfo: params.clientInfo,
 			capabilities: params.capabilities,
@@ -163,6 +164,21 @@ export class HttpMcpClient implements McpClientHandle {
 	private log(message: string): void {
 		if (this.debug) console.error(`[MCPClient:${this.name}] ${message}`);
 	}
+}
+
+function buildHeaderResolvingFetch(
+	resolveHeaders: McpHttpServerConfig["resolveHeaders"],
+): ((input: string | URL, init?: RequestInit) => Promise<Response>) | undefined {
+	if (!resolveHeaders) return undefined;
+	return async (input, init) => {
+		const headers = new Headers(init?.headers);
+		try {
+			for (const [key, value] of Object.entries(await resolveHeaders())) headers.set(key, value);
+		} catch {
+			// Let the server return its normal authentication response when credentials cannot be refreshed.
+		}
+		return fetch(input, { ...init, headers });
+	};
 }
 
 function getErrorMessage(error: unknown): string {

@@ -28,32 +28,51 @@ import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginCaptureApi,
 	PluginCardRendererContribution,
 	PluginCommandApi,
+	PluginCommandSpawnExit,
+	PluginCommandSpawnHandle,
 	PluginContext,
 	PluginConversationApi,
 	PluginDefinition,
+	PluginFileExplorerContextMenuContribution,
+	PluginFileExplorerDecorationProvider,
+	PluginFileExplorerToolbarContribution,
 	PluginFilePreviewContribution,
 	PluginFsApi,
+	PluginGatewayApi,
 	PluginGlobalSlotContribution,
 	PluginI18nApi,
 	PluginImageRef,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginMediaApi,
 	PluginNetworkApi,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
 	PluginPermission,
 	PluginPromptAttachment,
 	PluginSettingsApi,
+	PluginShortcutScopeContribution,
 	PluginStorageApi,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 } from "@vetta-org/plugin-sdk";
-import { resolveCatalogKey } from "@vetta-org/plugin-sdk";
+import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
+import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
+import { createPluginAiApi } from "./plugin-ai";
+import {
+	getPluginFileExplorerSelection,
+	getPluginFileExplorerWorkspaceRoots,
+	onPluginFileExplorerFilesChanged,
+	onPluginFileExplorerSelectionChanged,
+	refreshPluginFileExplorer,
+	revealPluginFileExplorerPath,
+} from "./plugin-file-explorer-host";
 import {
 	pluginHostBridge,
 	registerPluginAgentToolHandler,
@@ -64,6 +83,11 @@ import {
 import { createPluginOfficialApi } from "./plugin-official-api";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 import { createPluginRuntimeShared } from "./plugin-shared-modules";
+import {
+	assertPluginShortcutScopeKind,
+	normalizePluginShortcutBindings,
+	registerPluginShortcutScopeOnHost,
+} from "./plugin-shortcut-scope";
 
 export interface LoadedPlugin {
 	id: string;
@@ -75,6 +99,9 @@ export interface LoadedPlugin {
 	locales: PluginLocales;
 	slots: PluginGlobalSlotContribution[];
 	filePreviews: PluginFilePreviewContribution[];
+	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[];
+	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[];
+	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[];
 	activityTabs: PluginActivityTabContribution[];
 	inputActions: PluginInputActionContribution[];
 	cardRenderers: PluginCardRendererContribution[];
@@ -120,6 +147,20 @@ function clearAgentToolLabelsForPlugin(pluginId: string): void {
 }
 
 /**
+ * 记下插件对某个 tab 的显式显隐态（上栏/下栏），不激活、不展开面板。插件据此
+ * 实现自己的出现条件（git 只在仓库里上栏、工作台跟随输入栏 toggle）。返回写入
+ * 是否落地——无活动会话 cwd 时无处可记。
+ */
+function setPluginActivityTabVisible(pluginId: string, tabId: string, visible: boolean): boolean {
+	const store = getDefaultStore();
+	const cwd = store.get(activeSessionAtom)?.cwd ?? null;
+	if (!cwd) return false;
+	const next = withPluginTabVisibility(store.get(attachedPluginTabsAtom), cwd, `${pluginId}:${tabId}`, visible);
+	if (next) store.set(attachedPluginTabsAtom, next);
+	return true;
+}
+
+/**
  * Attach + activate a plugin's own activity tab and open the panel, driven
  * directly off the jotai store so it works regardless of whether the activity
  * panel component is currently mounted/expanded. Keyed by the active
@@ -133,14 +174,8 @@ function openPluginActivityTab(pluginId: string, tabId: string, width?: number |
 		return;
 	}
 	const key = `${pluginId}:${tabId}`;
-	const attached = store.get(attachedPluginTabsAtom);
-	const list = attached.get(cwd) ?? [];
-	const alreadyAttached = list.includes(key);
-	if (!alreadyAttached) {
-		const next = new Map(attached);
-		next.set(cwd, [...list, key]);
-		store.set(attachedPluginTabsAtom, next);
-	}
+	const alreadyAttached = explicitTabVisibility(store.get(attachedPluginTabsAtom).get(cwd) ?? [], key) === true;
+	setPluginActivityTabVisible(pluginId, tabId, true);
 	const active = new Map(store.get(activityPanelTabByProjectAtom));
 	active.set(cwd, `plugin:${key}` as ActivityTabKey);
 	store.set(activityPanelTabByProjectAtom, active);
@@ -160,6 +195,31 @@ let moduleFederationHost: ModuleFederation | undefined;
 const registeredRemotes = new Map<string, { alias: string; entry: string }>();
 /** remoteName → 当前 reload token（取自 manifest entryUrl 的 query，重载即变）。 */
 const remoteReloadTokens = new Map<string, string>();
+const pluginDevRuntimePromises = new Map<string, Promise<void>>();
+
+interface PluginDevModuleGlobal {
+	__VETTA_PLUGIN_DEV_MODULES__?: Map<string, unknown>;
+}
+
+async function ensurePluginDevRuntime(plugin: InstalledPlugin): Promise<void> {
+	const origin = plugin.devWatch?.origin;
+	if (!origin) return;
+	let pending = pluginDevRuntimePromises.get(origin);
+	if (!pending) {
+		pending = import(/* @vite-ignore */ `${origin}/@vetta-plugin-dev-preamble`)
+			.then(() => undefined)
+			.catch((error: unknown) => {
+				pluginDevRuntimePromises.delete(origin);
+				throw error;
+			});
+		pluginDevRuntimePromises.set(origin, pending);
+	}
+	await pending;
+}
+
+function getLatestPluginDevModule(pluginId: string): unknown {
+	return (globalThis as typeof globalThis & PluginDevModuleGlobal).__VETTA_PLUGIN_DEV_MODULES__?.get(pluginId);
+}
 
 function extractReloadToken(entryUrl: string): string | null {
 	try {
@@ -329,6 +389,10 @@ function createFsApi(plugin: InstalledPlugin, capabilitySessionId: string): Plug
 			permissions.require("fs.read");
 			return filesystem.listFilesRecursive(capabilitySessionId, rootPath);
 		},
+		saveAs: (defaultFileName, content, encoding, options) => {
+			permissions.require("fs.write");
+			return window.vetta.dialog.saveData(defaultFileName, content, encoding, options);
+		},
 		watchDirectory: (dirPath, listener) => {
 			permissions.require("fs.read");
 			const unsubscribe = window.vetta.fs.onDirChanged(listener);
@@ -385,6 +449,57 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 	};
 }
 
+function createMediaApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginMediaApi {
+	const permissions = createPermissionApi(plugin);
+	const media = window.vetta.plugins.internalCapabilities.media;
+	return {
+		listProviders: () => {
+			permissions.require("media.generate");
+			return media.listProviders(capabilitySessionId);
+		},
+		createJob: (request) => {
+			permissions.require("media.generate");
+			return media.createJob(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.createJob>[1]);
+		},
+		getJob: (job) => {
+			permissions.require("media.generate");
+			return media.getJob(capabilitySessionId, job);
+		},
+		cancelJob: (job) => {
+			permissions.require("media.generate");
+			return media.cancelJob(capabilitySessionId, job);
+		},
+	};
+}
+
+/**
+ * 网关调用不挂可声明权限，只按来源收口：`ctx.gateway` 仅对随包分发的 official
+ * 插件挂载，第三方插件读到 undefined（ADR-0056）。主进程的 capability 适配层
+ * 会再校验一次 session 的 official 属性，这里只是不把入口暴露出去。
+ */
+function createGatewayApi(capabilitySessionId: string): PluginGatewayApi {
+	return {
+		// 同样按 JSON 归一化：请求体也要过 capability 的 CapabilityJsonValue 校验，
+		// body 里带一个 undefined 字段就会让整次调用被拒（见 toJsonValue）。
+		request: (request) =>
+			window.vetta.plugins.gatewayRequest(capabilitySessionId, toJsonValue(request) as typeof request),
+	};
+}
+
+/**
+ * 按 JSON 语义归一化再过 IPC。
+ *
+ * capability 的 CapabilityJsonValue 不接受 undefined，而 Electron 的 structured
+ * clone 会原样保留值为 undefined 的键——插件写一个带可选字段的普通对象
+ * （`{ parent: undefined }`）就会被 capability 层判为非法输入而整体拒绝。
+ * writeJson 的契约本就是「写 JSON」，这里按 JSON.stringify 的语义丢弃 undefined，
+ * 与插件作者的预期一致。
+ */
+function toJsonValue(value: unknown): unknown {
+	if (value === undefined) return null;
+	return JSON.parse(JSON.stringify(value));
+}
+
 function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginStorageApi {
 	const requireRead = (): void => createPermissionApi(plugin).require("storage.read");
 	const requireWrite = (): void => createPermissionApi(plugin).require("storage.write");
@@ -395,7 +510,7 @@ function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string):
 		},
 		writeJson: (key, value) => {
 			requireWrite();
-			return window.vetta.plugins.storageWriteJson(capabilitySessionId, key, value);
+			return window.vetta.plugins.storageWriteJson(capabilitySessionId, key, toJsonValue(value));
 		},
 		list: (prefix) => {
 			requireRead();
@@ -438,9 +553,23 @@ function createI18nApi(plugin: InstalledPlugin): PluginI18nApi {
 	};
 }
 
+/**
+ * Resolve a host-rendered plugin string against that plugin's own catalogs.
+ * Manifest fields such as `name` carry `%key%` placeholders; literals pass
+ * through untouched.
+ */
+function resolvePluginDisplayText(plugin: InstalledPlugin, raw: string): string {
+	return resolvePluginText(
+		raw,
+		plugin.locales ?? {},
+		getDefaultStore().get(languageAtom),
+		plugin.defaultLocale ?? "zh",
+	);
+}
+
 /** Format a plugin error for clipboard + console (plugin id/version + stack). */
 function formatPluginErrorDetail(plugin: InstalledPlugin, error: unknown): string {
-	const header = `Plugin: ${plugin.id}@${plugin.activeVersion} (${plugin.name})`;
+	const header = `Plugin: ${plugin.id}@${plugin.activeVersion} (${resolvePluginDisplayText(plugin, plugin.name)})`;
 	if (error instanceof Error) {
 		const stack = error.stack?.trim() || `${error.name}: ${error.message}`;
 		return `${header}\n${stack}`;
@@ -480,37 +609,118 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
 	}
 }
 
-function createCommandApi(plugin: InstalledPlugin): PluginCommandApi {
+/** Per-spawn exit listeners, fed by a single lazy IPC subscription. */
+const spawnExitListeners = new Map<string, Set<(exit: PluginCommandSpawnExit) => void>>();
+let spawnExitSubscribed = false;
+
+function ensureSpawnExitSubscription(): void {
+	if (spawnExitSubscribed) return;
+	spawnExitSubscribed = true;
+	window.vetta.plugins.onCommandSpawnExit((event) => {
+		const listeners = spawnExitListeners.get(event.spawnId);
+		if (!listeners) return;
+		spawnExitListeners.delete(event.spawnId);
+		for (const listener of listeners) {
+			try {
+				listener({ exitCode: event.exitCode, signal: event.signal });
+			} catch (error) {
+				console.error("plugin spawn exit listener failed", error);
+			}
+		}
+	});
+}
+
+function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCommandApi {
 	const permissions = createPermissionApi(plugin);
+	const assertCommandAllowed = (file: unknown): string => {
+		if (typeof file !== "string" || file.trim().length === 0) {
+			throw new Error("Command file is required");
+		}
+		if (!plugin.declaredCommands.includes(file)) {
+			throw new Error(`Plugin ${plugin.id} command not declared: ${file}`);
+		}
+		if (!plugin.grantedCommandNames.includes(file)) {
+			// User disabled this command — intercept and notify (with a jump to settings).
+			showToast({
+				variant: "warning",
+				title: "命令已禁用",
+				message: `「${resolvePluginDisplayText(plugin, plugin.name)}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
+				action: {
+					label: "前往设置",
+					onClick: () => {
+						void router.navigate({
+							to: "/settings/$tab",
+							params: { tab: "plugins" },
+							search: { section: `plugin-${plugin.id}` },
+						});
+					},
+				},
+			});
+			throw new Error(`Plugin ${plugin.id} command disabled by user: ${file}`);
+		}
+		return file;
+	};
 	return {
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
-			if (typeof file !== "string" || file.trim().length === 0) {
-				throw new Error("Command file is required");
-			}
-			if (!plugin.declaredCommands.includes(file)) {
-				throw new Error(`Plugin ${plugin.id} command not declared: ${file}`);
-			}
-			if (!plugin.grantedCommandNames.includes(file)) {
-				// User disabled this command — intercept and notify (with a jump to settings).
-				showToast({
-					variant: "warning",
-					title: "命令已禁用",
-					message: `「${plugin.name}」尝试执行 ${file}，但你已在插件设置里关闭它。`,
-					action: {
-						label: "前往设置",
-						onClick: () => {
-							void router.navigate({
-								to: "/settings/$tab",
-								params: { tab: "plugins" },
-								search: { section: `plugin-${plugin.id}` },
-							});
+			const allowed = assertCommandAllowed(file);
+			return window.vetta.plugins.runCommand(plugin.id, allowed, args ?? [], options);
+		},
+		spawn: async (file, args, options): Promise<PluginCommandSpawnHandle> => {
+			permissions.require("agent.command.spawn");
+			const allowed = assertCommandAllowed(file);
+			ensureSpawnExitSubscription();
+			const result = await window.vetta.plugins.spawnCommand(plugin.id, allowed, args ?? [], options);
+			let stopped = false;
+			const stop = async (): Promise<void> => {
+				if (stopped) return;
+				stopped = true;
+				await window.vetta.plugins.stopCommandSpawn(plugin.id, result.spawnId);
+			};
+			// 插件卸载/重载时统一回收（主进程在 reload/disable/uninstall 也会兜底清扫）。
+			disposers.push(() => void stop());
+			return {
+				spawnId: result.spawnId,
+				pid: result.pid,
+				port: result.port,
+				stop,
+				status: () => window.vetta.plugins.getCommandSpawnStatus(plugin.id, result.spawnId),
+				onExit: (listener) => {
+					const listeners = spawnExitListeners.get(result.spawnId) ?? new Set();
+					listeners.add(listener);
+					spawnExitListeners.set(result.spawnId, listeners);
+					return {
+						dispose: () => {
+							spawnExitListeners.get(result.spawnId)?.delete(listener);
 						},
-					},
-				});
-				throw new Error(`Plugin ${plugin.id} command disabled by user: ${file}`);
+					};
+				},
+			};
+		},
+	};
+}
+
+function createCaptureApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCaptureApi {
+	const permissions = createPermissionApi(plugin);
+	// 记住用过的会话键：插件卸载/重载时把还开着的离屏窗口一并释放
+	// （主进程在 reload/disable/uninstall 也会兜底清扫）。
+	const sessionKeys = new Set<string>();
+	disposers.push(() => {
+		for (const key of sessionKeys) void window.vetta.plugins.offscreenRelease(plugin.id, key);
+		sessionKeys.clear();
+	});
+	return {
+		offscreen: (options) => {
+			permissions.require("capture.offscreen");
+			if (typeof options?.sessionKey === "string" && options.sessionKey.length > 0) {
+				sessionKeys.add(options.sessionKey);
 			}
-			return window.vetta.plugins.runCommand(plugin.id, file, args ?? [], options);
+			return window.vetta.plugins.offscreenCapture(plugin.id, options);
+		},
+		releaseOffscreen: (sessionKey) => {
+			permissions.require("capture.offscreen");
+			sessionKeys.delete(sessionKey);
+			return window.vetta.plugins.offscreenRelease(plugin.id, sessionKey);
 		},
 	};
 }
@@ -519,6 +729,9 @@ function createContext(
 	plugin: InstalledPlugin,
 	slots: PluginGlobalSlotContribution[],
 	filePreviews: PluginFilePreviewContribution[],
+	fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[],
+	fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[],
+	fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[],
 	activityTabs: PluginActivityTabContribution[],
 	inputActions: PluginInputActionContribution[],
 	cardRenderers: PluginCardRendererContribution[],
@@ -597,6 +810,82 @@ function createContext(
 			},
 		};
 	};
+	const registerFileExplorerContextMenuAction = (
+		contribution: PluginFileExplorerContextMenuContribution,
+	): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.context-menu");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer context-menu action id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("File explorer context-menu action label is required");
+		}
+		if (typeof contribution.run !== "function") {
+			throw new Error("File explorer context-menu action handler is required");
+		}
+		const normalized: PluginFileExplorerContextMenuContribution = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+			label: contribution.label.trim(),
+		};
+		fileExplorerContextMenuActions.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerContextMenuActions.indexOf(normalized);
+				if (index >= 0) fileExplorerContextMenuActions.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const registerFileExplorerToolbarAction = (contribution: PluginFileExplorerToolbarContribution): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.toolbar");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer toolbar action id is required");
+		}
+		if (typeof contribution.label !== "string" || contribution.label.trim().length === 0) {
+			throw new Error("File explorer toolbar action label is required");
+		}
+		if (typeof contribution.run !== "function") {
+			throw new Error("File explorer toolbar action handler is required");
+		}
+		const normalized: PluginFileExplorerToolbarContribution = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+			label: contribution.label.trim(),
+		};
+		fileExplorerToolbarActions.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerToolbarActions.indexOf(normalized);
+				if (index >= 0) fileExplorerToolbarActions.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const registerFileExplorerDecorationProvider = (contribution: PluginFileExplorerDecorationProvider): Disposable => {
+		createPermissionApi(plugin).require("ui.file-explorer.decorations");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("File explorer decoration provider id is required");
+		}
+		if (typeof contribution.provideDecoration !== "function") {
+			throw new Error("File explorer decoration provider is required");
+		}
+		const normalized: PluginFileExplorerDecorationProvider = {
+			...contribution,
+			id: `${plugin.id}:${contribution.id.trim()}`,
+		};
+		fileExplorerDecorationProviders.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = fileExplorerDecorationProviders.indexOf(normalized);
+				if (index >= 0) fileExplorerDecorationProviders.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
 	const registerActivityTab = (contribution: PluginActivityTabContribution): Disposable => {
 		if (!hasPermission(plugin, "ui.slot.activity-tab")) {
 			warnSkippedContribution(plugin, "ui.slot.activity-tab", "activity tab");
@@ -617,6 +906,7 @@ function createContext(
 			icon: contribution.icon,
 			component: contribution.component,
 			scope_use: contribution.scope_use,
+			initiallyVisible: contribution.initiallyVisible,
 		};
 		activityTabs.push(normalized);
 		onChanged();
@@ -762,12 +1052,47 @@ function createContext(
 			},
 		};
 	};
+	const registerShortcutScope = (contribution: PluginShortcutScopeContribution): Disposable => {
+		createPermissionApi(plugin).require("ui.shortcuts.register");
+		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
+			throw new Error("Shortcut scope id is required");
+		}
+		const kind = assertPluginShortcutScopeKind(contribution.kind);
+		const bindingsSource = contribution.bindings;
+		const resolveBindings = () => {
+			const raw = typeof bindingsSource === "function" ? bindingsSource() : bindingsSource;
+			return normalizePluginShortcutBindings(raw);
+		};
+		const dispose = registerPluginShortcutScopeOnHost({
+			scopeId: `${plugin.id}:${contribution.id.trim()}`,
+			kind,
+			exclusive: contribution.exclusive === true,
+			enabled: typeof contribution.enabled === "function" ? contribution.enabled : undefined,
+			getBindings: resolveBindings,
+		}).dispose;
+		disposers.push(dispose);
+		return { dispose };
+	};
 	const openActivityTab = (tabId: string, options?: PluginOpenActivityTabOptions): void => {
 		createPermissionApi(plugin).require("ui.slot.activity-tab");
 		if (typeof tabId !== "string" || tabId.trim().length === 0) {
 			throw new Error("Activity tab id is required");
 		}
 		openPluginActivityTab(plugin.id, tabId, options?.width);
+	};
+	const setActivityTabVisible = (tabId: string, visible: boolean): void => {
+		createPermissionApi(plugin).require("ui.slot.activity-tab");
+		if (typeof tabId !== "string" || tabId.trim().length === 0) {
+			throw new Error("Activity tab id is required");
+		}
+		setPluginActivityTabVisible(plugin.id, tabId, visible === true);
+	};
+	const setActivityPanelWidth = (width: number | "max"): void => {
+		createPermissionApi(plugin).require("ui.slot.activity-tab");
+		if (width !== "max" && !Number.isFinite(width)) {
+			throw new Error('Activity panel width must be a finite number or "max"');
+		}
+		getDefaultStore().set(setActivityPanelWidthAtom, width);
 	};
 	const setPromptAttachment = (attachment: PluginPromptAttachment | null): void => {
 		createPermissionApi(plugin).require("ui.slot.input-action");
@@ -834,6 +1159,27 @@ function createContext(
 		}
 		return window.vetta.window.captureRegion(rect, defaultFileName);
 	};
+	const copyImage: PluginContext["ui"]["copyImage"] = (dataUrl) => {
+		if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:image/")) {
+			throw new Error("copyImage() requires a data:image/... URL");
+		}
+		return window.vetta.clipboard.writeImage(dataUrl);
+	};
+	const openExternal: PluginContext["ui"]["openExternal"] = async (url) => {
+		createPermissionApi(plugin).require("shell.openExternal");
+		// 主进程还会再挡一次协议，这里先挡是为了给插件一条能读懂的错误——而不是
+		// 让它拿到一个来自 IPC 深处的 "Unsupported external URL protocol"。
+		let parsed: URL;
+		try {
+			parsed = new URL(url);
+		} catch {
+			throw new Error(`openExternal() requires an absolute URL, got: ${String(url)}`);
+		}
+		if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+			throw new Error(`openExternal() only accepts http/https URLs, got: ${parsed.protocol}`);
+		}
+		await window.vetta.shell.openExternal(parsed.toString());
+	};
 	const notify = (options: PluginNotifyOptions): void => {
 		if (options == null || typeof options !== "object" || typeof options.message !== "string") {
 			throw new Error("notify() requires { message: string }");
@@ -844,7 +1190,8 @@ function createContext(
 		}
 		const hasError = options.error !== undefined;
 		const variant = options.variant ?? (hasError ? "error" : "info");
-		const title = options.title?.trim() || plugin.name;
+		// 清单里的 name 通常是 `%plugin.name%` 这种 catalog 键，直接塞进 toast 会原样显示。
+		const title = resolvePluginDisplayText(plugin, options.title?.trim() || plugin.name);
 		const detail = hasError ? formatPluginErrorDetail(plugin, options.error) : null;
 		const durationMs = options.durationMs ?? (hasError ? 0 : undefined);
 		showToast({
@@ -871,12 +1218,13 @@ function createContext(
 			console.error(`[plugin:${plugin.id}] ${message}\n${detail}`);
 		}
 	};
+	const permissions = createPermissionApi(plugin);
 	return {
 		plugin: {
 			id: plugin.id,
 			version: plugin.activeVersion,
 		},
-		permissions: createPermissionApi(plugin),
+		permissions,
 		ui: {
 			registerGlobalSlot,
 			registerFilePreview,
@@ -885,16 +1233,56 @@ function createContext(
 			registerCardRenderer,
 			registerToolCallSlot,
 			registerTurnCard,
+			registerShortcutScope,
 			openActivityTab,
+			setActivityTabVisible,
+			setActivityPanelWidth,
 			setPromptAttachment,
 			previewImage,
 			openPluginSettings,
 			captureRegion,
+			copyImage,
+			openExternal,
 			notify,
+		},
+		fileExplorer: {
+			getWorkspaceRoots: () => {
+				createPermissionApi(plugin).require("workspace.read");
+				return getPluginFileExplorerWorkspaceRoots();
+			},
+			getSelection: () => {
+				createPermissionApi(plugin).require("workspace.read");
+				return getPluginFileExplorerSelection();
+			},
+			reveal: (path, options) => {
+				createPermissionApi(plugin).require("workspace.read");
+				return revealPluginFileExplorerPath(path, options);
+			},
+			refresh: (path) => {
+				createPermissionApi(plugin).require("workspace.read");
+				return refreshPluginFileExplorer(path);
+			},
+			onDidChangeSelection: (listener) => {
+				createPermissionApi(plugin).require("workspace.read");
+				const handle = onPluginFileExplorerSelectionChanged(listener);
+				disposers.push(() => handle.dispose());
+				return handle;
+			},
+			onDidChangeFiles: (listener) => {
+				createPermissionApi(plugin).require("workspace.read");
+				const handle = onPluginFileExplorerFilesChanged(listener);
+				disposers.push(() => handle.dispose());
+				return handle;
+			},
+			registerContextMenuAction: registerFileExplorerContextMenuAction,
+			registerToolbarAction: registerFileExplorerToolbarAction,
+			registerDecorationProvider: registerFileExplorerDecorationProvider,
 		},
 		conversation,
 		fs,
-		command: createCommandApi(plugin),
+		command: createCommandApi(plugin, disposers),
+		media: createMediaApi(plugin, capabilitySessionId),
+		capture: createCaptureApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {
 				debugPluginAgent("renderer registerTool requested", {
@@ -1134,8 +1522,10 @@ function createContext(
 				};
 			},
 		},
+		ai: createPluginAiApi(permissions, capabilitySessionId),
 		official: createPluginOfficialApi(capabilitySessionId),
 		network: createNetworkApi(plugin, capabilitySessionId),
+		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,
 		storage: createStorageApi(plugin, capabilitySessionId),
 		settings: settingsApi,
 		i18n: createI18nApi(plugin),
@@ -1173,6 +1563,7 @@ async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> 
 	if (!moduleFederation) {
 		throw new Error("Module Federation plugin is missing moduleFederation metadata");
 	}
+	await ensurePluginDevRuntime(plugin);
 	const host = getModuleFederationHost();
 	const remote = {
 		name: moduleFederation.remoteName,
@@ -1196,7 +1587,7 @@ async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> 
 	if (loaded == null) {
 		throw new Error(`Module Federation remote returned null: ${moduleFederation.remoteName}/${expose}`);
 	}
-	return assertPluginModule(loaded);
+	return assertPluginModule(getLatestPluginDevModule(plugin.id) ?? loaded);
 }
 
 export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void): Promise<LoadedPlugin> {
@@ -1210,6 +1601,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 	});
 	const slots: PluginGlobalSlotContribution[] = [];
 	const filePreviews: PluginFilePreviewContribution[] = [];
+	const fileExplorerContextMenuActions: PluginFileExplorerContextMenuContribution[] = [];
+	const fileExplorerToolbarActions: PluginFileExplorerToolbarContribution[] = [];
+	const fileExplorerDecorationProviders: PluginFileExplorerDecorationProvider[] = [];
 	const activityTabs: PluginActivityTabContribution[] = [];
 	const inputActions: PluginInputActionContribution[] = [];
 	const cardRenderers: PluginCardRendererContribution[] = [];
@@ -1225,6 +1619,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		for (const dispose of disposers) dispose();
 		slots.splice(0, slots.length);
 		filePreviews.splice(0, filePreviews.length);
+		fileExplorerContextMenuActions.splice(0, fileExplorerContextMenuActions.length);
+		fileExplorerToolbarActions.splice(0, fileExplorerToolbarActions.length);
+		fileExplorerDecorationProviders.splice(0, fileExplorerDecorationProviders.length);
 		activityTabs.splice(0, activityTabs.length);
 		inputActions.splice(0, inputActions.length);
 		cardRenderers.splice(0, cardRenderers.length);
@@ -1260,6 +1657,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			plugin,
 			slots,
 			filePreviews,
+			fileExplorerContextMenuActions,
+			fileExplorerToolbarActions,
+			fileExplorerDecorationProviders,
 			activityTabs,
 			inputActions,
 			cardRenderers,
@@ -1298,6 +1698,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			locales: plugin.locales,
 			slots,
 			filePreviews,
+			fileExplorerContextMenuActions,
+			fileExplorerToolbarActions,
+			fileExplorerDecorationProviders,
 			activityTabs,
 			inputActions,
 			cardRenderers,

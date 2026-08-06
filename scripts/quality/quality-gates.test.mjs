@@ -7,6 +7,7 @@ import {
 import { findLegacySetupSeedViolations } from "./check-legacy-execution-retirement.mjs";
 import { findPackageBoundaryViolations, findPackageManifestBoundaryViolations } from "./check-package-boundaries.mjs";
 import { batchPaths, createQuickCheckPlan, isBiomeGlobalTrigger } from "./check-quick.mjs";
+import { findSkillFrontmatterProblems } from "./check-skill-frontmatter.mjs";
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
 import { changedFiles, expandTestablePackages, packagesFromPaths, parseBaseArgs, stagedFiles } from "./lib.mjs";
 import { createChangedTestPlan, parseArgs } from "./test-changed.mjs";
@@ -1091,5 +1092,36 @@ describe("workspace build order", () => {
 		expect(findLayeredBuildOrderViolations(packageConfigs, [["runtime-core"], ["coding-agent"]], manifests)).toEqual(
 			[],
 		);
+	});
+});
+
+describe("skill frontmatter analysis", () => {
+	const wrap = (frontmatter) => `---\n${frontmatter}\n---\n\n# Skill body\n`;
+
+	it("accepts a plain skill", () => {
+		expect(findSkillFrontmatterProblems(wrap("name: demo\ndescription: Does a thing when asked."))).toEqual([]);
+	});
+
+	it("rejects an unquoted description containing a colon — it makes the skill vanish silently", () => {
+		const problems = findSkillFrontmatterProblems(wrap("name: demo\ndescription: Use it: it does a thing."));
+		expect(problems).toHaveLength(1);
+		expect(problems[0]).toContain('contains ": "');
+	});
+
+	it("accepts the same description once quoted", () => {
+		expect(findSkillFrontmatterProblems(wrap('name: demo\ndescription: "Use it: it does a thing."'))).toEqual([]);
+	});
+
+	it("accepts folded block scalars and measures their real length", () => {
+		expect(findSkillFrontmatterProblems(wrap("name: demo\ndescription: >\n  Does a thing\n  when asked."))).toEqual(
+			[],
+		);
+		const long = `name: demo\ndescription: >\n  ${"x".repeat(1100)}`;
+		expect(findSkillFrontmatterProblems(wrap(long))).toHaveLength(1);
+	});
+
+	it("requires frontmatter and a description", () => {
+		expect(findSkillFrontmatterProblems("# No frontmatter\n")).toHaveLength(1);
+		expect(findSkillFrontmatterProblems(wrap("name: demo"))).toHaveLength(1);
 	});
 });

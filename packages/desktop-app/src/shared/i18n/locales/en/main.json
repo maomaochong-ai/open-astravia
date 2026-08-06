@@ -31,5 +31,14 @@
 		"openGitHub": "Open GitHub to authorize",
 		"closeAfterAuthorization": "You can close this window once you have authorized in Vetta.",
 		"deviceFlowDisabled": "Device code request failed (422). Enable Device Flow in the OAuth or GitHub App settings: {{details}}"
+	},
+	"updater": {
+		"errors": {
+			"developmentUnsupported": "Automatic updates are unavailable in development mode",
+			"configurationUnavailable": "This build has no update source configured",
+			"checkFailed": "Failed to check for updates",
+			"downloadFailed": "Failed to download the update",
+			"installFailed": "Failed to install the update"
+		}
 	}
 }

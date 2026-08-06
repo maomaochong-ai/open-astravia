@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- V8 JIT -->
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<!-- 内置 Node / Python 运行时与 sidecar 通过环境变量注入路径启动 -->
+	<key>com.apple.security.cs.allow-dyld-environment-variables</key>
+	<true/>
+	<!-- uiohook-napi / electron-liquid-glass / photon 等第三方签名的原生模块 -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<!-- appshot（Vetta Computer Use）通过 Apple Events 驱动其他 app -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+</dict>
+</plist>

@@ -4,10 +4,12 @@ import { useTranslation } from "react-i18next";
 import { resolveAbilityDetailContent } from "../../lib/ability-presentation";
 import type { AbilitiesModel, AbilityItem } from "../../types";
 import { AbilityDetailEnter } from "./AbilityDetailEnter";
-import { ABILITY_DETAIL_ASIDE_BUTTON_CLASS, AbilityDetailHeader } from "./AbilityDetailHeader";
+import { AbilityDetailBlocks } from "./AbilityDetailBlocks";
+import { AbilityDetailHeader } from "./AbilityDetailHeader";
 import { AbilityMarkdownBody } from "./AbilityMarkdownBody";
 import { AbilityMetaList } from "./AbilityMetaList";
 import { AbilityShowcaseList } from "./AbilityShowcaseList";
+import { BundleInstallDialog } from "./BundleInstallDialog";
 import { BundleMembersSection } from "./BundleMembersSection";
 import { BundleUninstallDialog } from "./BundleUninstallDialog";
 import { McpAbilitySection } from "./McpAbilitySection";
@@ -28,15 +30,20 @@ export function AbilityDetailView({
 	// raw.detail.i18n[locale] 覆盖块的取值语言，与界面语言一致。
 	const language = i18n.language;
 	const [bundleDialogOpen, setBundleDialogOpen] = useState(false);
+	const [bundleInstallDialogOpen, setBundleInstallDialogOpen] = useState(false);
 	const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
 
 	const detail = useMemo(
-		() => resolveAbilityDetailContent(item.market?.detail, language),
-		[item.market?.detail, language],
+		() => resolveAbilityDetailContent(item.detail ?? item.market?.detail, language),
+		[item.detail, item.market?.detail, language],
 	);
 
 	const handlePrimary = (): void => {
 		if (!item.installed || item.needsUpdate) {
+			if (item.type === "bundle") {
+				setBundleInstallDialogOpen(true);
+				return;
+			}
 			model.install(item);
 			return;
 		}
@@ -72,25 +79,30 @@ export function AbilityDetailView({
 
 	// 主 CTA 右侧的次要入口：插件是权限配置，mcp 是凭证 / 配置编辑。
 	const primaryAside = ((): JSX.Element | undefined => {
-		if (item.type === "plugin" && item.permissions.length > 0) {
+		if (item.type === "plugin") {
+			if (item.permissions.length === 0 && !item.installed) return undefined;
 			return (
-				<Button
-					variant="outline"
-					size="lg"
-					className={ABILITY_DETAIL_ASIDE_BUTTON_CLASS}
-					onClick={() => setPermissionsDialogOpen(true)}
-				>
-					<span className="icon-[solar--shield-keyhole-linear] h-4 w-4" />
-					{t("plugin.permissionsDialog")}
-				</Button>
+				<>
+					{item.permissions.length > 0 ? (
+						<Button variant="secondary" size="lg" onClick={() => setPermissionsDialogOpen(true)}>
+							<span className="icon-[solar--shield-keyhole-linear] h-4 w-4" />
+							{t("plugin.permissionsDialog")}
+						</Button>
+					) : null}
+					{item.installed ? (
+						<Button variant="secondary" size="lg" disabled={item.busy} onClick={() => model.reloadPlugin(item)}>
+							<span className="icon-[solar--restart-linear] h-4 w-4" />
+							{t("actions.reload")}
+						</Button>
+					) : null}
+				</>
 			);
 		}
 		if (item.type === "mcp" && item.canConfigure) {
 			return (
 				<Button
-					variant="outline"
+					variant="secondary"
 					size="lg"
-					className={ABILITY_DETAIL_ASIDE_BUTTON_CLASS}
 					disabled={item.busy}
 					onClick={() => model.configure(item)}
 				>
@@ -102,9 +114,8 @@ export function AbilityDetailView({
 		if (item.type === "mcp" && item.canEdit) {
 			return (
 				<Button
-					variant="outline"
+					variant="secondary"
 					size="lg"
-					className={ABILITY_DETAIL_ASIDE_BUTTON_CLASS}
 					disabled={item.busy}
 					onClick={() => model.edit(item)}
 				>
@@ -128,37 +139,45 @@ export function AbilityDetailView({
 				/>
 			</AbilityDetailEnter>
 
-			{model.errors.length > 0 ? (
+			{model.detailErrors.length > 0 ? (
 				<div className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] text-muted-foreground/70">
-					{t("error.partial", { error: model.errors.join(" / ") })}
+					{t("error.partial", { error: model.detailErrors.join(" / ") })}
 				</div>
 			) : null}
 
-			{detail.showcases.length > 0 ? (
+			{detail.blocks.length > 0 ? (
 				<AbilityDetailEnter index={1}>
-					<AbilityShowcaseList showcases={detail.showcases} />
+					<AbilityDetailBlocks blocks={detail.blocks} abilityType={item.type} />
 				</AbilityDetailEnter>
-			) : null}
+			) : (
+				<>
+					{detail.showcases.length > 0 ? (
+						<AbilityDetailEnter index={1}>
+							<AbilityShowcaseList showcases={detail.showcases} />
+						</AbilityDetailEnter>
+					) : null}
 
-			<AbilityDetailEnter index={2}>
-				{detail.content ? (
-					<AbilityMarkdownBody content={detail.content} />
-				) : (
-					<p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.noContent")}</p>
-				)}
-			</AbilityDetailEnter>
+					<AbilityDetailEnter index={2}>
+						{detail.content ? (
+							<AbilityMarkdownBody content={detail.content} />
+						) : (
+							<p className="text-[13px] leading-relaxed text-muted-foreground">{t("detail.noContent")}</p>
+						)}
+					</AbilityDetailEnter>
+				</>
+			)}
 
 			{/* 页尾附属信息：与正文之间只用一条分隔线 */}
 			<div className="mt-1 flex flex-col gap-6 border-t border-border/50 pt-6">
 				<AbilityDetailEnter index={3}>
 					{item.type === "plugin" ? <PluginAbilitySection item={item} model={model} /> : null}
 					{item.type === "mcp" ? <McpAbilitySection item={item} model={model} /> : null}
-					{item.type === "bundle" ? <BundleMembersSection item={item} model={model} /> : null}
+					{item.type === "bundle" ? <BundleMembersSection item={item} /> : null}
 				</AbilityDetailEnter>
 
 				{/* 元信息表固定在页尾 */}
 				<AbilityDetailEnter index={4}>
-					<AbilityMetaList meta={detail.meta} />
+					<AbilityMetaList meta={detail.meta} item={item} model={model} />
 				</AbilityDetailEnter>
 			</div>
 
@@ -168,6 +187,15 @@ export function AbilityDetailView({
 					model={model}
 					open={permissionsDialogOpen}
 					onOpenChange={setPermissionsDialogOpen}
+				/>
+			) : null}
+
+			{item.type === "bundle" ? (
+				<BundleInstallDialog
+					bundle={item}
+					open={bundleInstallDialogOpen}
+					onOpenChange={setBundleInstallDialogOpen}
+					onConfirm={(members) => model.installBundleMembers(item, members)}
 				/>
 			) : null}
 

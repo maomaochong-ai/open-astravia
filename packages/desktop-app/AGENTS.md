@@ -62,8 +62,9 @@ src/
     shared/            — 跨领域公共代码
       components/ui/     shadcn 基础组件 (Button, Dialog, Input, Select...)
       components/        TitleBar, ResizeHandle, WelcomeScreen, UpdateChecker...
-      hooks/             useTheme, useShortcuts
-      lib/               utils, platform, shortcuts, api
+      hooks/             useTheme, useShortcuts（全局 app 层快捷键）
+      shortcuts/         ShortcutScopeStack + useShortcutScope（作用域快捷键中心）
+      lib/               utils, platform, shortcuts（绑定读写）, api
       store/             Jotai atoms（按领域拆分 + re-export hub）
         atoms.ts           re-export hub（所有消费者从这里导入）
         chat-atoms.ts      聊天相关 atoms
@@ -112,6 +113,7 @@ src/
 
 - 新功能代码放入对应的 `domains/<领域>/` 目录
 - 跨领域共享的代码放入 `shared/`
+- 可主题化的纯 UI 展现组件放入 `@vetta/theme-ui`；desktop-app 领域层只保留数据加载、状态、i18n 与事件适配，通过 props/view model 驱动 UI。
 - **不要**在 `domains/` 外面创建新的顶层目录（如 `components/`, `hooks/`, `lib/`）
 - 每个领域内部结构：`components/`, `hooks/`, `services/`（按需）
 - 领域间通过 `@shared/store/atoms` 共享状态，不要跨领域直接 import 其他领域的内部模块
@@ -164,6 +166,76 @@ src/
 - **新增 ns** 要在三处注册：`src/shared/i18n/config.ts` 的 `NAMESPACES`、`src/shared/i18n/resources.ts`、`src/renderer/shared/i18n/i18next.d.ts`。
 - **不抽**：代码注释、日志（`*.warn`/`console`）、发给 LLM 或协议/IPC channel 的串——保持原样。
 - 增量推进：尚未抽离的 domain 仍是硬编码中文，**改到这些 domain 时，新增文案必须走 i18n**，并尽量顺手把所在文件抽干净（流程：发现文案 → 给语义 key → 包 `t()`/`<Trans>` → 文案进对应 ns 的 zh.json）。
+
+### 8. 快捷键（**禁止 ad-hoc `window/document.addEventListener("keydown")`**）
+
+渲染层快捷键走 **统一作用域栈**，不要在组件里各自挂 `keydown`。
+
+**代码位置**
+- 栈与匹配：`src/renderer/shared/shortcuts/`（`ShortcutScopeStack`、`useShortcutScope`）
+- 全局可配置动作：`src/shared/shortcuts.ts`（`SHORTCUT_ACTIONS`）+ `useGlobalShortcuts`（注册 `kind: "app"`）
+- 键串格式与 `matchesShortcut`：`src/renderer/shared/lib/platform.ts`（如 `mod+s`、`arrowleft`、`escape`）
+
+**作用域 kind（高 → 低）**
+
+| kind | 用途 | 示例 |
+|------|------|------|
+| `modal` | 对话框，常 `exclusive: true` | 确认删除、更新重启 |
+| `overlay` | 浮层面板 | 命令面板、@ 文件、skill picker |
+| `surface` | 当前主内容面 | 文件预览/图廊、项目详情编辑 |
+| `app` | 全局可配置快捷键 | Cmd/Ctrl+N 新建会话、Cmd/Ctrl+S 保存文件 |
+
+同 kind 内后注册优先。匹配到绑定则 `preventDefault` + `stopPropagation`；`exclusive` 的 scope 未命中也不再向下传。
+
+**怎么写**
+
+```ts
+import { useShortcutScope } from "@shared/shortcuts";
+
+useShortcutScope({
+  id: "surface:file-preview", // 稳定 id，便于排查
+  kind: "surface",
+  active: previewOpen,        // false 时不注册
+  exclusive: false,
+  bindings: [
+    { key: "arrowleft", run: goPrev, when: "not-editable" },
+    { key: "escape", run: onClose, when: "not-editable" },
+  ],
+});
+```
+
+- `when`：`always`（默认）| `editable` | `not-editable`。编辑器（CodeMirror contenteditable）内要留给光标的键用 `not-editable`，避免预览 ←→ 抢走方向键。
+- **theme-ui 视图不绑全局键**；快捷键在 desktop-app 的 hook/model 里用 `useShortcutScope` 注册。
+- 设置页「全局快捷键」只覆盖 `SHORTCUT_ACTIONS`；surface/overlay 的导航键一般写死合理默认，不必进设置。
+- 新增可配置全局动作：先扩 `src/shared/shortcuts.ts` 的 `SHORTCUT_ACTIONS`，再在 `useRootLayoutModel` 的 handler 里处理。
+
+**反例（禁止）**
+
+```ts
+// BAD — 与栈并行抢键，作用域混乱
+useEffect(() => {
+  window.addEventListener("keydown", onKey);
+  return () => window.removeEventListener("keydown", onKey);
+}, []);
+```
+
+## 缓存规范
+
+主进程需要持久化可重新生成或重新下载的内容时，统一使用
+`src/main/cache/application-cache-service.ts` 的 `ApplicationCacheService`，并为每个业务模块分配独立的
+kebab-case namespace。默认根目录为 `~/.vetta/cache/`，例如 Marketplace 使用
+`~/.vetta/cache/marketplace/`；不要再直接拼接 `*-cache` 或 `open-marketplace` 目录。
+
+缓存中不得保存用户配置、安装台账、正式安装内容、凭证或其他不可重建数据。删除某个 cache namespace
+必须不影响其他 namespace 和正式功能；临时文件使用 namespace 的 `createTemporaryDirectory()`，需要清理时使用
+`clear()`。新增缓存使用方时应补充命名空间隔离、路径逃逸和清理边界测试。
+
+## 配置迁移
+
+持久化 JSON 配置需要演进结构时，复用 `packages/toolkit/src` 提供的迁移能力：
+纯 `schemaVersion` 转换使用 `@vetta/toolkit/versioned-config`，文件读写可使用
+`@vetta/toolkit/config-store`。业务 schema 与连续 migration 留在 desktop-app 对应领域内，
+不要在业务模块重复实现迁移框架。
 
 ## 日志规范
 
@@ -231,6 +303,10 @@ imLog.debug("sidecar debug message");
 - 文本日志和 AI 请求调试 JSON 分开管理；`debug-writer.ts` 的请求快照不属于文本日志轮转。
 
 ## 开发注意事项
+
+### UI 验证入口（暂行）
+
+`bun run verify:ui:*` 目前仅用于检查 desktop-app 的启动与连接问题，不用于 UI 功能测试；相关验证能力尚未完善。
 
 ### bun dev 前置依赖构建
 

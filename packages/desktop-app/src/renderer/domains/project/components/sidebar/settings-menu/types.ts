@@ -7,7 +7,6 @@ export interface SettingsMenuThemeOption {
 }
 
 export interface SettingsMenuModel {
-	activeDownloads: number;
 	fiveHourRemainingPercent: number;
 	fiveHourResetAt?: string;
 	goBadgeColor?: string;
@@ -29,7 +28,6 @@ export interface SettingsMenuModel {
 	actions: {
 		login(): void;
 		logout(): void;
-		openDownloads(): void;
 		openSettings(): void;
 		setMode(mode: ThemeMode, event: React.MouseEvent<HTMLButtonElement>): void;
 		setOpen(open: boolean): void;

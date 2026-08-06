@@ -10,6 +10,10 @@ export interface PresetProviderRowModelView {
 	readonly adopted: boolean;
 	readonly offline: boolean;
 	readonly models: readonly unknown[];
+	readonly refreshing: boolean;
+	readonly hasApiKey: boolean;
+	readonly statusLabel: string | null;
+	readonly modelsError: string | null;
 }
 
 export interface PresetProviderRowViewLabels {
@@ -24,7 +28,11 @@ export interface PresetProviderRowViewLabels {
 	readonly enable: string;
 	readonly apiKeyDirect: (name: string) => string;
 	readonly apiKeyPlaceholder: string;
+	readonly encryptedApiKeyPlaceholder: string;
 	readonly save: string;
+	readonly refreshModels: string;
+	readonly refreshingModels: string;
+	readonly copyApiKey: string;
 }
 
 export interface PresetProviderRowViewProps {
@@ -37,6 +45,8 @@ export interface PresetProviderRowViewProps {
 	readonly onDraftKeyChange: (key: string) => void;
 	readonly onAdopt: () => void;
 	readonly onRemove: () => void;
+	readonly onRefreshModels: () => void;
+	readonly onCopyApiKey: () => void;
 	readonly icon: ReactNode;
 	readonly modelsList?: ReactNode;
 }
@@ -51,11 +61,13 @@ export function PresetProviderRowView({
 	onDraftKeyChange,
 	onAdopt,
 	onRemove,
+	onRefreshModels,
+	onCopyApiKey,
 	icon,
 	modelsList,
 }: PresetProviderRowViewProps): JSX.Element {
-	const canEnable = !row.offline;
-	const showInlineKey = !row.adopted && canEnable;
+	// 已下线的旧条目不在内置目录里,给不了 key 也拉不到模型。
+	const canEditKey = !row.offline;
 
 	const tryAdopt = (): void => {
 		if (draftKey.trim() && !saving) onAdopt();
@@ -93,61 +105,68 @@ export function PresetProviderRowView({
 						</div>
 						<div className="mt-0.5 truncate text-[11px] text-muted-foreground">
 							{labels.modelsCount(row.models.length)}
+							{row.statusLabel ? ` · ${row.statusLabel}` : ""}
 						</div>
+						{row.modelsError && (
+							<div className="mt-0.5 truncate text-[11px] text-amber-400">{row.modelsError}</div>
+						)}
 					</div>
 				</button>
 
-				{showInlineKey && (
-					<div className="ml-auto flex shrink-0 items-center gap-2">
-						<div className="w-44" title={labels.apiKeyDirect(row.displayName)}>
-							<InputField
-								value={draftKey}
-								onChange={onDraftKeyChange}
-								placeholder={labels.apiKeyPlaceholder}
-								type="password"
-								disabled={saving}
-								onKeyDown={(event) => {
-									if (event.key === "Enter") {
-										event.preventDefault();
-										tryAdopt();
-									}
-								}}
-							/>
-						</div>
+				<div className="ml-auto flex shrink-0 items-center gap-1">
+					{row.adopted && !row.offline && (
 						<Button
-							variant="primary"
-							size="sm"
-							onClick={tryAdopt}
-							disabled={!draftKey.trim() || saving}
+							variant="ghost"
+							size="icon-sm"
+							onClick={onRefreshModels}
+							disabled={row.refreshing}
+							title={row.refreshing ? labels.refreshingModels : labels.refreshModels}
+							className="text-muted-foreground hover:text-foreground"
 						>
-							{labels.enable}
+							<span className={cn("icon-[mdi--refresh] h-3.5 w-3.5", row.refreshing && "animate-spin")} />
 						</Button>
-					</div>
-				)}
-
-				{row.adopted && (
-					<div className="flex shrink-0 items-center gap-1">
-						<Button variant="ghost" size="sm" onClick={onToggleEditor}>
-							{row.isOpen ? labels.collapse : labels.changeKey}
+					)}
+					{/* key 输入合进这一个图标:行内常驻输入框 + 启用按钮太占地方,点开才展开面板。 */}
+					{canEditKey && (
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							onClick={onToggleEditor}
+							title={row.isOpen ? labels.collapse : row.adopted ? labels.changeKey : labels.enable}
+							aria-label={row.isOpen ? labels.collapse : row.adopted ? labels.changeKey : labels.enable}
+							className={cn(
+								"text-muted-foreground hover:text-foreground",
+								row.isOpen && "text-foreground",
+								!row.adopted && "hover:text-primary",
+							)}
+						>
+							<span
+								className={cn(
+									"h-3.5 w-3.5",
+									row.adopted ? "icon-[mdi--key-outline]" : "icon-[mdi--key-plus]",
+								)}
+							/>
 						</Button>
+					)}
+					{row.adopted && (
 						<Button
 							variant="ghost"
 							size="icon-sm"
 							onClick={onRemove}
 							title={labels.remove}
+							aria-label={labels.remove}
 							className="text-muted-foreground hover:text-destructive"
 						>
 							<span className="icon-[mdi--delete-outline] h-3.5 w-3.5" />
 						</Button>
-					</div>
-				)}
-
-				{!row.adopted && row.offline && (
-					<span className="shrink-0 text-[11px] text-muted-foreground">{labels.deprecated}</span>
-				)}
+					)}
+					{row.offline && !row.adopted && (
+						<span className="text-[11px] text-muted-foreground">{labels.deprecated}</span>
+					)}
+				</div>
 			</div>
 
-			{row.adopted && row.isOpen && (
+			{canEditKey && row.isOpen && (
 				<div className="border-t border-border bg-secondary/40 px-5 py-3">
 					<label className="mb-1 block text-[11px] text-muted-foreground">
 						{labels.apiKeyDirect(row.displayName)}
@@ -157,7 +176,7 @@ export function PresetProviderRowView({
 							<InputField
 								value={draftKey}
 								onChange={onDraftKeyChange}
-								placeholder={labels.apiKeyPlaceholder}
+								placeholder={row.hasApiKey ? labels.encryptedApiKeyPlaceholder : labels.apiKeyPlaceholder}
 								type="password"
 								disabled={saving}
 								onKeyDown={(event) => {
@@ -168,13 +187,24 @@ export function PresetProviderRowView({
 								}}
 							/>
 						</div>
+						{row.hasApiKey && (
+							<Button
+								variant="ghost"
+								size="icon-sm"
+								onClick={onCopyApiKey}
+								title={labels.copyApiKey}
+								aria-label={labels.copyApiKey}
+							>
+								<span className="icon-[mdi--content-copy] h-3.5 w-3.5" />
+							</Button>
+						)}
 						<Button
 							variant="primary"
 							size="sm"
 							onClick={tryAdopt}
 							disabled={!draftKey.trim() || saving}
 						>
-							{labels.save}
+							{row.adopted ? labels.changeKey : labels.enable}
 						</Button>
 					</div>
 				</div>

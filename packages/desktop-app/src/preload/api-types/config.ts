@@ -90,15 +90,6 @@ export interface DesktopConfigData {
 		/** 发送后行为：foreground=打开主窗定位新会话；background=后台运行仅关面板。缺省 foreground。 */
 		postSendBehavior?: "foreground" | "background";
 	};
-	/** 新会话页元素显隐（设置 → 新会话页）。各项缺省 true。 */
-	newSessionPage?: {
-		/** 场景卡片 list。缺省 true。 */
-		showSceneCards?: boolean;
-		/** 技能 badge list。缺省 true。 */
-		showSkillBadges?: boolean;
-		/** 引导词轮播。缺省 true。 */
-		showGuidingWords?: boolean;
-	};
 }
 
 export interface ShortcutsBindingsChangedEvent {

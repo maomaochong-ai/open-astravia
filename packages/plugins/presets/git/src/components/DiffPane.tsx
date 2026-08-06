@@ -1,5 +1,6 @@
 import { PatchDiff } from "@pierre/diffs/react";
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { Component, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { fileDiff } from "../git/run";
@@ -35,9 +36,6 @@ function basename(path: string): string {
 	const i = path.lastIndexOf("/");
 	return i < 0 ? path : path.slice(i + 1);
 }
-
-const iconButton =
-	"flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
 
 /** Right-hand diff view for the selected change. Loads the patch and renders it. */
 export function DiffPane({
@@ -102,17 +100,23 @@ export function DiffPane({
 	return (
 		<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 			<div className="flex h-9 shrink-0 items-center gap-1.5 border-b border-border px-2">
-				<button type="button" onClick={onToggleTree} className={iconButton} title={treeCollapsed ? t("action.showTree") : t("action.hideTree")}>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					onClick={onToggleTree}
+					title={treeCollapsed ? t("action.showTree") : t("action.hideTree")}
+				>
 					<SidebarIcon className="h-3.5 w-3.5" />
-				</button>
+				</Button>
 				<FileIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
 				<span className="min-w-0 flex-1 truncate text-[12px] text-foreground" title={entry.origPath ? `${entry.origPath} → ${entry.path}` : entry.path}>
 					{basename(entry.path)}
 				</span>
 				<StatusBadge code={entry.code} />
-				<button type="button" onClick={onClose} className={iconButton} title={t("action.close")}>
+				<Button type="button" variant="ghost" size="icon-xs" onClick={onClose} title={t("action.close")}>
 					<CloseIcon className="h-3.5 w-3.5" />
-				</button>
+				</Button>
 			</div>
 
 			<div className="min-h-0 flex-1 overflow-auto">

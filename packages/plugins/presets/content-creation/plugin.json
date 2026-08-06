@@ -1,0 +1,85 @@
+{
+	"id": "content-creation",
+	"name": "%plugin.name%",
+	"version": "0.1.1",
+	"icon": "icon.png",
+	"agent_mode": ["work"],
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "content_creation",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.activity-tab",
+		"ui.shortcuts.register",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"ai.models.list",
+		"ai.complete",
+		"media.generate",
+		"network.fetch",
+		"fs.read",
+		"fs.write",
+		"storage.read",
+		"storage.write"
+	],
+	"contributes": {
+		"settings": [
+			{
+				"key": "openaiApiKey",
+				"type": "secret",
+				"title": "%settings.openaiApiKey.title%",
+				"description": "%settings.openaiApiKey.description%"
+			},
+			{
+				"key": "openaiModel",
+				"type": "string",
+				"title": "%settings.openaiModel.title%",
+				"description": "%settings.openaiModel.description%",
+				"default": "gpt-image-2"
+			},
+			{
+				"key": "replicateApiToken",
+				"type": "secret",
+				"title": "%settings.replicateApiToken.title%",
+				"description": "%settings.replicateApiToken.description%"
+			},
+			{
+				"key": "googleApiKey",
+				"type": "secret",
+				"title": "%settings.googleApiKey.title%",
+				"description": "%settings.googleApiKey.description%"
+			},
+			{
+				"key": "customBaseUrl",
+				"type": "string",
+				"title": "%settings.customBaseUrl.title%",
+				"description": "%settings.customBaseUrl.description%"
+			},
+			{
+				"key": "customApiKey",
+				"type": "secret",
+				"title": "%settings.customApiKey.title%",
+				"description": "%settings.customApiKey.description%"
+			},
+			{
+				"key": "customModel",
+				"type": "string",
+				"title": "%settings.customModel.title%",
+				"description": "%settings.customModel.description%"
+			},
+			{
+				"key": "customVideoModel",
+				"type": "string",
+				"title": "%settings.customVideoModel.title%",
+				"description": "%settings.customVideoModel.description%"
+			}
+		]
+	},
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

@@ -4,6 +4,11 @@ export interface SkillInfo {
 	description: string;
 	source: string;
 	type: "skill" | "scene";
+	/**
+	 * 展示图标（若有）：插件贡献的 skill 填宿主插件的 `iconUrl`（多为 `vetta-plugin://`），
+	 * 市场 / 内置图标仍由命令区的目录解析与静态映射补齐，本字段不覆盖它们。
+	 */
+	icon?: string;
 }
 
 export interface MarketSkillMeta {

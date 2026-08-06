@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "office-viewer",
+	"version": "0.1.4",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "docs",
+					"user_prompt": "打开项目里的方案文档，我想先确认表格和关键页面。",
+					"assistant_reply": "你可以直接在 Vetta 中预览 PDF、Word、PowerPoint 和电子表格，无需切换到外部应用。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "本地文档预览",
+				"items": [
+					{
+						"title": "PDF",
+						"description": "分页渲染 PDF，并支持适应宽度查看。",
+						"icon": "solar:file-text-linear"
+					},
+					{
+						"title": "DOCX 与 PPTX",
+						"description": "预览文字文档和演示文稿的主要内容。",
+						"icon": "solar:documents-linear"
+					},
+					{
+						"title": "电子表格",
+						"description": "读取工作表并在应用内浏览表格数据。",
+						"icon": "solar:table-2-linear"
+					},
+					{
+						"title": "离线工作",
+						"description": "文档渲染在本机完成，不依赖在线预览服务。",
+						"icon": "solar:cloud-cross-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "docs",
+							"user_prompt": "Open the proposal in this project so I can check the tables and key pages.",
+							"assistant_reply": "Preview PDF, Word, PowerPoint, and spreadsheet files in Vetta without switching to another app."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Local document preview",
+						"items": [
+							{
+								"title": "PDF",
+								"description": "Render paginated PDFs with fit-to-width viewing.",
+								"icon": "solar:file-text-linear"
+							},
+							{
+								"title": "DOCX and PPTX",
+								"description": "Preview the primary content of documents and presentations.",
+								"icon": "solar:documents-linear"
+							},
+							{
+								"title": "Spreadsheets",
+								"description": "Read worksheets and browse tabular data in the app.",
+								"icon": "solar:table-2-linear"
+							},
+							{
+								"title": "Offline rendering",
+								"description": "Render documents locally without an online preview service.",
+								"icon": "solar:cloud-cross-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

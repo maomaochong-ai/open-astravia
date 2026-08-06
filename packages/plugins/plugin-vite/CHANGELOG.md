@@ -4,6 +4,34 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.
+- Kept validated Iconify mask rules available outside plugin CSS scopes so icons render inside portalled UI components.
+
+### Added
+
+- Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and structured lifecycle events for Desktop plugin hot reload without changing production package output.
+- Added automatic injection of the public plugin-sdk Tailwind theme contract so plugins can use host semantic color utilities without importing Desktop CSS or repeating `@theme` mappings.
+
+## [0.0.5] — 2026-08-04
+
+### Added
+
+- Added the `vetta-plugin validate` and `vetta-plugin pack` CLI so external projects and the plugin workbench use the same manifest parser and archive implementation as Vite builds.
+- **宿主共享 `@vetta/ui`**：`vettaPluginFederation` 默认将 `@vetta/ui` 设为 MF `singleton + import:false`，并 rollup external 到 `vetta-host://ui`，与 desktop-app 的 share scope / host shim 对齐；插件可选用宿主 primitives 而不打进 bundle。
+- **打包纳入能力详情**：根目录存在 `ability.json` 时随 zip 分发，并连带约定的 `presentation/` 展示资源目录；打包期校验 `schemaVersion` / `type` / `slug` / `version` 与 `plugin.json` 身份一致，不一致直接报错。`ability.json` 缺省时行为不变。
+
+### Changed
+
+- Plugin packaging now validates `plugin.json` through `@vetta-org/plugin-sdk/manifest` and only replaces the target archive instead of deleting the entire `release/` directory.
+
+## [0.0.4] — 2026-07-31
+
+### Fixed
+
+- **打包纳入 `plugin.json` 的包内图标**：`icon` 为包内相对路径（png/jpg/webp/gif/svg）时，图标文件此前不会进 zip，导致安装后宿主 `vetta-plugin://` 取图 404、上传能力市场被服务端以「压缩包内缺少 icon 文件」拒绝。判定与宿主 / 服务端一致：Iconify 名与 `http(s)://` 外链不落包；声明的图标文件缺失时打包直接报错。
+
 ## [0.0.3] — 2026-07-23
 
 ### Added

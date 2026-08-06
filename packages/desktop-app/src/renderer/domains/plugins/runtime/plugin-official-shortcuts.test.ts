@@ -36,6 +36,7 @@ describe("createOfficialShortcutsApi", () => {
 			{ id: "new-session", defaultShortcut: "mod+n" },
 			{ id: "open-project", defaultShortcut: "mod+o" },
 			{ id: "open-settings", defaultShortcut: "mod+," },
+			{ id: "save-file", defaultShortcut: "mod+s" },
 		]);
 		await expect(api.get()).resolves.toEqual(settings);
 		await expect(api.setBinding("new-session", "mod+shift+n")).resolves.toEqual({ bindings: [] });

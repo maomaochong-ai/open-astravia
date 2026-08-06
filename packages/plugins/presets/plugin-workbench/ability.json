@@ -1,0 +1,82 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "plugin-workbench",
+	"version": "0.1.6",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "code",
+					"brand_name": "制作插件",
+					"user_prompt": "帮我做一个能在活动面板展示项目指标的 Vetta 插件。",
+					"assistant_reply": "我会先读取内置插件手册，再创建工程、实现扩展点、构建安装包并应用到当前 Vetta。"
+				}
+			},
+			{
+				"type": "steps",
+				"title": "从想法到本机运行",
+				"items": [
+					{
+						"title": "描述插件目标",
+						"description": "说明入口、交互与需要使用的宿主能力。"
+					},
+					{
+						"title": "由 Vetta 实现",
+						"description": "根据包内开发手册创建清单、源码、权限和本地化资源。"
+					},
+					{
+						"title": "构建并应用",
+						"description": "在工作台中构建、安装、重载或开启热更新。"
+					}
+				]
+			},
+			{
+				"type": "callout",
+				"tone": "info",
+				"content": "先从输入栏开启“制作插件”模式，插件文档、Skill 和工作台能力才会进入当前会话。"
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "code",
+							"brand_name": "Plugin Workbench",
+							"user_prompt": "Build a Vetta plugin that shows project metrics in the activity panel.",
+							"assistant_reply": "I’ll read the bundled plugin manual, scaffold the project, implement the extension, package it, and apply it to this Vetta installation."
+						}
+					},
+					{
+						"type": "steps",
+						"title": "From idea to a running plugin",
+						"items": [
+							{
+								"title": "Describe the goal",
+								"description": "Explain the entry point, interaction, and host capabilities you need."
+							},
+							{
+								"title": "Let Vetta implement it",
+								"description": "Create the manifest, source, permissions, and locale resources from the bundled manual."
+							},
+							{
+								"title": "Build and apply",
+								"description": "Package, install, reload, or start hot reload from the workbench."
+							}
+						]
+					},
+					{
+						"type": "callout",
+						"tone": "info",
+						"content": "Enable Plugin Workbench from the input bar before using its documentation, Skill, and project tools in a conversation."
+					}
+				]
+			}
+		}
+	}
+}

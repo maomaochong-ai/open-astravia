@@ -70,6 +70,18 @@ export const OUTPUT_LOCATION_GUIDANCE =
 	"NEVER default to the Desktop, the home directory, /tmp, or any path outside the current working directory. " +
 	"If the user gives only a bare filename with no directory, resolve it relative to the current working directory, not the Desktop.";
 
+/**
+ * 回复语言规则。没有这条时，模型跟的是系统提示/skill 正文的语言而不是用户的语言：
+ * 上下文里只要混进中文（skill 示例、工具描述），英文提问也会拿到中文的 progress、
+ * todo 与正文。判定口径固定为「用户最新消息的语言」，与宿主 UI locale 无关。
+ */
+const RESPONSE_LANGUAGE_GUIDANCE =
+	"CRITICAL — Response language: write EVERYTHING the user reads in the same language as their latest message. " +
+	"This covers your prose, `progress` labels and summaries, todo items, `ask_user_question` questions/options/badges, `md_intro` text, headings, and any user-facing copy you generate inside deliverables (document text, UI labels in a design or app you build). " +
+	"The language of this system prompt, of a skill's instructions, of tool descriptions, and of the app's interface is IRRELEVANT — they are written in one fixed language for maintenance reasons and are NEVER a signal about which language to answer in. " +
+	"If the user writes in English, answer entirely in English even when your instructions and examples are in Chinese. Switch as soon as the user switches. " +
+	"The only exceptions are identifiers you must reproduce verbatim (file paths, code, commands, quoted source text) and content the user explicitly asked for in another language.";
+
 const FINAL_ANSWER_ORDER_GUIDANCE =
 	"Before writing the final user-facing answer, complete all required tool calls and cleanup work, including validation, saving files, todo updates, and status updates. " +
 	"Once you begin the final answer, do not call more tools or perform additional actions. If more work is needed, do it first, then answer.";
@@ -286,6 +298,7 @@ function buildGuidelines(tools: string[], scenario?: ConversationScenario): stri
 		);
 	}
 
+	guidelinesList.push(RESPONSE_LANGUAGE_GUIDANCE);
 	guidelinesList.push(FILENAME_FIDELITY_GUIDANCE);
 	guidelinesList.push("Be concise in your responses");
 	guidelinesList.push(FINAL_ANSWER_ORDER_GUIDANCE);
@@ -365,6 +378,7 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 		if (canUseSkills && skills.length > 0) {
 			blocks.push(coreBlock("core.skills", "skills", formatSkillsForProductPrompt(skills), 800));
 		}
+		blocks.push(coreBlock("core.response-language", "guidelines", RESPONSE_LANGUAGE_GUIDANCE, 890));
 		blocks.push(coreBlock("core.filename-fidelity", "guidelines", FILENAME_FIDELITY_GUIDANCE, 900));
 		blocks.push(coreBlock("core.final-answer-order", "guidelines", FINAL_ANSWER_ORDER_GUIDANCE, 950));
 		blocks.push(coreBlock("core.mode", "mode", modePrompt ?? "", 975));

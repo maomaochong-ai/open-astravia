@@ -73,7 +73,7 @@ export function XianxiaRealmDetailPanel({
 					</div>
 					<button
 						aria-label="关闭境界详情"
-						className="absolute right-0 top-[-0.25rem] flex h-8 w-8 items-center justify-center text-amber-100/90 outline-none transition hover:text-amber-50 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+						className="absolute right-0 top-[-0.25rem] flex h-8 w-8 items-center justify-center text-amber-100/90 outline-none transition hover:text-amber-50 border border-transparent focus-visible:border-amber-200/80"
 						onClick={onClose}
 						type="button"
 					>
@@ -220,7 +220,7 @@ function RealmActionGrid({ actions }: { readonly actions: readonly RealmDetailAc
 		<div className="grid grid-cols-2 gap-2 min-[1280px]:grid-cols-4">
 			{actions.map((action) => (
 				<button
-					className="relative flex h-9 min-w-0 items-center justify-center gap-1.5 px-2 text-[12px] font-semibold text-slate-700 outline-none transition hover:brightness-105 focus-visible:ring-2 focus-visible:ring-amber-200/80"
+					className="relative flex h-9 min-w-0 items-center justify-center gap-1.5 px-2 text-[12px] font-semibold text-slate-700 outline-none transition hover:brightness-105 border border-transparent focus-visible:border-amber-200/80"
 					key={action.label}
 					onClick={() => route.navigate(action.target)}
 					type="button"

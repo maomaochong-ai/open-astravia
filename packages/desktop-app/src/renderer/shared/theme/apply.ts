@@ -59,6 +59,12 @@ export function applyInitialTheme(): void {
 }
 
 const TRANSITION_CLASS = "theme-transitioning";
+/**
+ * 明暗切换期间打在 `<html>` 上。原生 vibrancy 由主进程翻转 nativeTheme 驱动，
+ * 既动不了也进不了 View Transition 快照，会比页面动画早一步瞬变；
+ * 切换期间先把毛玻璃区域改成不透明遮住它，结束后再淡回半透明（见 styles.css）。
+ */
+const TRANSITION_ATTR = "data-theme-transition";
 const TRANSITION_MS = 180;
 let transitionTimer: number | null = null;
 
@@ -73,12 +79,14 @@ function prefersReducedMotion(): boolean {
 
 function runFallbackTransition(root: HTMLElement, fn: () => void): void {
 	root.classList.add(TRANSITION_CLASS);
+	root.setAttribute(TRANSITION_ATTR, "");
 	fn();
 	if (transitionTimer !== null) {
 		window.clearTimeout(transitionTimer);
 	}
 	transitionTimer = window.setTimeout(() => {
 		root.classList.remove(TRANSITION_CLASS);
+		root.removeAttribute(TRANSITION_ATTR);
 		transitionTimer = null;
 	}, TRANSITION_MS);
 }
@@ -97,11 +105,13 @@ export function withThemeTransition(fn: () => void, options: ThemeTransitionOpti
 	root.style.setProperty("--theme-transition-x", `${x}px`);
 	root.style.setProperty("--theme-transition-y", `${y}px`);
 	root.style.setProperty("--theme-transition-radius", `${endRadius}px`);
+	root.setAttribute(TRANSITION_ATTR, "");
 	const transition = document.startViewTransition(fn);
 
 	void transition.finished.finally(() => {
 		root.style.removeProperty("--theme-transition-x");
 		root.style.removeProperty("--theme-transition-y");
 		root.style.removeProperty("--theme-transition-radius");
+		root.removeAttribute(TRANSITION_ATTR);
 	});
 }

@@ -17,10 +17,7 @@ import { DEFAULT_THEME_ID, resolveThemeId, THEMES } from "../theme/themes";
 const COLOR_THEME_LABEL_KEYS = {
 	mono: "colorThemes.mono",
 	default: "colorThemes.default",
-	emerald: "colorThemes.emerald",
 	sand: "colorThemes.sand",
-	slate: "colorThemes.slate",
-	voltage: "colorThemes.voltage",
 } as const;
 
 export function useTheme() {

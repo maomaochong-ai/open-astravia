@@ -13,6 +13,7 @@ import {
 	validateToolArguments,
 } from "@vetta/ai";
 import type { RuntimeObservation, RuntimeObservationUpdate } from "@vetta/runtime-telemetry";
+import { salvageTextToolCalls } from "./salvage-text-tool-calls.js";
 import { AgentToolExecutionError } from "./tool-execution-error.js";
 import type {
 	AgentContext,
@@ -150,6 +151,11 @@ async function runLoop(
 				} else {
 					firstTurn = false;
 				}
+
+				// 每轮重新取工具集/系统提示词：本轮内的改动（如 tool_search 激活 MCP 工具）
+				// 必须马上对下一次请求生效，而不是等下一次 run。
+				if (config.getTools) currentContext.tools = config.getTools();
+				if (config.getSystemPrompt) currentContext.systemPrompt = config.getSystemPrompt();
 
 				// Process pending messages (inject before next assistant response)
 				if (pendingMessages.length > 0) {
@@ -434,6 +440,9 @@ async function streamAssistantResponse(
 				case "done":
 				case "error": {
 					const finalMessage = await response.result();
+					if (event.type === "done" && config.salvageTextToolCalls?.length) {
+						salvageTextToolCalls(finalMessage, llmContext.tools, config.salvageTextToolCalls);
+					}
 					if (addedPartial) {
 						context.messages[context.messages.length - 1] = finalMessage;
 					} else {

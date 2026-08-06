@@ -54,7 +54,7 @@ describe("createToolSearchTool", () => {
 		const text = (result.content[0] as { type: "text"; text: string }).text;
 		expect(text).toContain("Activated 1 MCP tool(s)");
 		expect(text).toContain("mcp_notion_create_page: Create a page");
-		expect(text).toContain("Already active: mcp_notion_query_database");
+		expect(text).toContain("Already active (call directly, do not search again): mcp_notion_query_database");
 		expect((result.details as ToolSearchToolDetails).query).toBe("notion");
 	});
 

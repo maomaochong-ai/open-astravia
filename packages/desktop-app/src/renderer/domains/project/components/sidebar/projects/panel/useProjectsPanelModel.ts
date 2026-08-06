@@ -386,14 +386,10 @@ export function useProjectsPanelModel({
 		}
 	}, [defaultConversationFilter, imCwd, loadSessions]);
 
-	const defaultSessions =
-		defaultConversationFilter === "claw"
-			? imCwd
-				? (sessionsMap.get(imCwd) ?? EMPTY_SESSIONS)
-				: EMPTY_SESSIONS
-			: defaultProject
-				? (sessionsMap.get(defaultProject.cwd) ?? EMPTY_SESSIONS)
-				: EMPTY_SESSIONS;
+	const defaultSessionsCwd = defaultConversationFilter === "claw" ? imCwd : defaultProject?.cwd;
+	const defaultSessions = defaultSessionsCwd
+		? (sessionsMap.get(defaultSessionsCwd) ?? EMPTY_SESSIONS)
+		: EMPTY_SESSIONS;
 
 	return {
 		activeSessionPath,
@@ -401,17 +397,16 @@ export function useProjectsPanelModel({
 		defaultConversationFilter,
 		defaultProject,
 		defaultSessions,
-		defaultSessionsLoading:
-			defaultConversationFilter === "claw"
-				? Boolean(imCwd && sessionLoadingCwds.has(imCwd))
-				: Boolean(defaultProject && sessionLoadingCwds.has(defaultProject.cwd)),
+		defaultSessionsLoading: Boolean(
+			defaultSessionsCwd && sessionLoadingCwds.has(defaultSessionsCwd) && !sessionsMap.has(defaultSessionsCwd),
+		),
 		expandedBatchProjects,
 		expandedProjects,
 		filteredProjects,
 		imCwd,
 		noOtherProjects,
 		projectSessions: (cwd) => sessionsMap.get(cwd) ?? EMPTY_SESSIONS,
-		projectSessionsLoading: (cwd) => sessionLoadingCwds.has(cwd),
+		projectSessionsLoading: (cwd) => sessionLoadingCwds.has(cwd) && !sessionsMap.has(cwd),
 		projectsLoading: !projectsInitialized,
 		showBatchGroup,
 		actions: {

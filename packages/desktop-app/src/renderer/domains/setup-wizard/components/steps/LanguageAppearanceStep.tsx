@@ -42,10 +42,7 @@ const MODE_OPTIONS = [
 const COLOR_THEME_LABEL_KEYS = {
 	mono: "colorThemes.mono",
 	default: "colorThemes.default",
-	emerald: "colorThemes.emerald",
 	sand: "colorThemes.sand",
-	slate: "colorThemes.slate",
-	voltage: "colorThemes.voltage",
 } as const;
 
 function CompactThemeCard({
@@ -265,7 +262,7 @@ export function LanguageAppearanceStep(): JSX.Element {
 				<h3 className="mb-2 text-[12px] font-medium text-muted-foreground">
 					{t("setupWizard.languageAppearance.theme")}
 				</h3>
-				{/* 2×3 铺满宽度；预览 max-h 锁原高度，避免 aspect 随列宽变高 */}
+				{/* 三列铺满宽度；预览高度固定，避免 aspect 随列宽变高 */}
 				<div className="grid w-full grid-cols-3 gap-2.5">
 					{themes.map((theme) => (
 						<CompactThemeCard

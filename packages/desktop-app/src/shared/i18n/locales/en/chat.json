@@ -77,10 +77,9 @@
 			"noRecords": "No execution records"
 		},
 		"htmlPreview": {
-			"preview": "Preview",
-			"code": "Code",
 			"title": "HTML preview"
 		},
+
 		"workflow": {
 			"empty": "No workflows",
 			"noTranscript": "No messages from this workflow yet",
@@ -104,12 +103,30 @@
 		"moveFailed": "Move failed",
 		"deleteFailed": "Delete failed",
 		"selectProject": "Select a project to browse files",
-		"fileList": "File list",
+		"fileList": "Project files",
 		"clearArtifacts": "Clear artifacts",
 		"refresh": "Refresh",
+		"newFile": "New file",
+		"newFolder": "New folder",
+		"collapseAll": "Collapse all",
+		"newFileInputLabel": "Enter a new file name",
+		"newFolderInputLabel": "Enter a new folder name",
+		"createAlreadyExists": "A file or folder with this name already exists",
+		"createFailed": "Failed to create item",
+		"invalidName": {
+			"empty": "Name cannot be empty",
+			"dotPath": "Name cannot be . or ..",
+			"pathSeparator": "Name cannot contain path separators",
+			"invalidCharacter": "Name contains characters not allowed on Windows",
+			"reservedName": "This name is reserved on Windows",
+			"trailingCharacter": "Name cannot end with a space or period"
+		},
 		"emptyFolder": "This folder is empty",
 		"openInFinder": "Reveal in Finder",
 		"openInExplorer": "Reveal in Explorer",
+		"copy": "Copy",
+		"paste": "Paste",
+		"copyPath": "Copy path",
 		"copyName": "Copy name",
 		"rename": "Rename",
 		"delete": "Delete",
@@ -119,7 +136,54 @@
 		"confirmDeletePrefix": "Delete {{type}}",
 		"confirmDeleteSuffix": "?{{folderNote}} This cannot be undone.",
 		"confirmDeleteFolderNote": " All contents inside the folder will be deleted.",
+		"confirmDeleteMultiplePrefix": "Delete these {{count}} items",
+		"confirmDeleteMultipleMore": " and {{count}} more",
+		"confirmDeleteMultipleSuffix": "? This cannot be undone.",
 		"cancel": "Cancel"
+		,"transfer": {
+			"title": "Add files to project",
+			"pasteCopyTitle": "Paste files",
+			"pasteMoveTitle": "Move files",
+			"description": "Place {{count}} item(s) in “{{destination}}”",
+			"moveWarning": "Move removes successfully transferred items from their original location.",
+			"conflictLabel": "{{count}} item(s) have name conflicts",
+			"keepBoth": "Keep both",
+			"replace": "Replace existing items",
+			"skip": "Skip conflicting items",
+			"copy": "Copy",
+			"move": "Move",
+			"cancel": "Cancel",
+			"processing": "Processing…",
+			"prepareFailed": "Unable to read dropped files",
+			"commitFailed": "File transfer failed",
+			"failedCount": "{{count}} item(s) failed to transfer"
+		}
+	},
+	"fileEditor": {
+		"loading": "Opening file…",
+		"edit": "Edit",
+		"preview": "Preview",
+		"save": "Save",
+		"saving": "Saving…",
+		"saved": "Saved",
+		"unsaved": "Unsaved changes",
+		"conflict": "Another program changed this file. Reload it, or explicitly overwrite the version on disk.",
+		"reload": "Reload",
+		"overwrite": "Overwrite",
+		"errorTooLarge": "Files larger than 2 MB cannot be edited",
+		"errorPreviewTooLarge": "This file is too large to preview",
+		"errorNotUtf8": "This file is not valid UTF-8 text and cannot be edited",
+		"errorRead": "Unable to read this file",
+		"errorSave": "Unable to save this file. Try again.",
+		"unsupported": "Preview is not supported for this file type",
+		"download": "Download file",
+		"showTree": "Show file tree",
+		"hideTree": "Hide file tree",
+		"previous": "Previous (←)",
+		"next": "Next (→)",
+		"downloadShort": "Download",
+		"refresh": "Refresh",
+		"close": "Close"
 	},
 	"appshot": {
 		"errorSelfCapture": "Appshot skipped: the frontmost window is Vetta itself",
@@ -263,7 +327,9 @@
 			"appshotIconAlt": "App icon",
 			"removeDefault": "Click to remove",
 			"removeImage": "Remove image",
-			"removeTooltip": "{{path}}\nClick to remove"
+			"removeTooltip": "{{path}}\nClick to remove",
+			"activeGroup": "{{count}} plugins",
+			"imageBadge": "Image {{index}}"
 		},
 		"drawer": {
 			"permissionDesc": "Awaiting confirmation",
@@ -276,10 +342,6 @@
 			"queueEmpty": "No queued messages",
 			"queueLabel": "Queued",
 			"queueSendNow": "Send now"
-		},
-		"hint": {
-			"newline": "⇧⏎ Newline",
-			"send": "⏎ Send"
 		},
 		"permission": {
 			"allow": "Allow once",
@@ -361,6 +423,7 @@
 		"compactionBoundary": "Context compacted",
 		"modelSwitched": "Switched model to {{name}}",
 		"compactionIndicator": "Compacting context...",
+		"retryIndicator": "Connection is flaky — retrying automatically ({{attempt}}/{{maxAttempts}})",
 		"streamingPhrases": [
 			"Vetta is replying…",
 			"Please hold on…",
@@ -369,6 +432,40 @@
 		"copyButton": {
 			"copied": "Copied",
 			"copy": "Copy"
+		},
+		"errorBlock": {
+			"showDetail": "Show details",
+			"hideDetail": "Hide details",
+			"retriedNote": "Retried {{count}} time(s) automatically",
+			"repeatedNote": "Happened {{count}} times",
+			"kinds": {
+				"rate_limit": {
+					"title": "Too many requests",
+					"hint": "Wait a moment, then send again."
+				},
+				"quota": {
+					"title": "You're out of quota",
+					"hint": "Wait for it to reset, or check your plan and usage.",
+					"action": "View quota"
+				},
+				"network": {
+					"title": "No network connection",
+					"hint": "Check your network or proxy, then send again."
+				},
+				"auth": {
+					"title": "Model key is invalid or expired",
+					"hint": "Update the key in model settings and try again.",
+					"action": "Open settings"
+				},
+				"server": {
+					"title": "The service is having trouble",
+					"hint": "It usually recovers within minutes — try again shortly."
+				},
+				"unknown": {
+					"title": "This reply was interrupted",
+					"hint": "Try sending again; if it keeps happening, copy the details to us."
+				}
+			}
 		},
 		"contextMenu": {
 			"edit": "Edit",
@@ -432,14 +529,15 @@
 	"newSession": {
 		"greetingDefault": "How's it going today?",
 		"greetingTitle": "Hi, {{nickname}}",
-		"sceneCarouselNext": "Next",
-		"sceneCarouselPrev": "Previous",
-		"sceneInstallPrompt": "Click to install and use",
-		"skillScrollLeft": "Scroll left",
-		"skillScrollRight": "Scroll right",
 		"subtitle": "I can help you get work done. What can I do for you?",
 		"defaultContext": "General conversation",
-		"projectContext": "Project · {{name}}"
+		"projectContext": "Project · {{name}}",
+		"mascot": {
+			"menuTrigger": "Mascot settings",
+			"hideMascot": "Hide mascot",
+			"showMascot": "Show mascot",
+			"playOnce": "Play the current mascot animation once"
+		}
 	},
 	"questionPanel": {
 		"keyboardHint": "↑↓ Navigate · Space select · ←→ Switch · Enter next",
@@ -496,7 +594,9 @@
 	},
 	"slashPanel": {
 		"emptyNoMatch": "No matches found",
+		"emptyNoMatchHint": "Try another keyword, or just type your request.",
 		"emptyNoSkills": "No skills or scenes available",
+		"emptyNoSkillsHint": "Install a skill or scene from the ability market to call it here.",
 		"header": "Select a scene or skill",
 		"resultCount": "{{count}} results",
 		"scenesSection": "Scenes",
@@ -507,8 +607,12 @@
 			"path": "Custom",
 			"project": "Project",
 			"scene": "Scene",
-			"user": "User"
-		}
+			"user": "User",
+			"builtin": "Built-in",
+			"plugin": "Plugin",
+			"market": "Market"
+		},
+		"connectorsSection": "Connected"
 	},
 	"suggestionBubbles": {
 		"sendTooltip": "Click to send this suggestion"

@@ -56,6 +56,8 @@ export default definePlugin({
 			icon: <WrenchIcon className="h-4 w-4" />,
 			component: WorkbenchPanel,
 			scope_use: ["project", "conversation"],
+			// 出现条件由插件自己驱动：输入栏「插件工作台」toggle 点亮才上栏（见下方 onToggle）。
+			initiallyVisible: false,
 		});
 
 		ctx.ui.registerInputAction({
@@ -65,6 +67,9 @@ export default definePlugin({
 			defaultActive: false,
 			hardIsolation: true,
 			scope_use: ["project", "conversation"],
+			// 工作台面板跟随输入栏 toggle：点亮才上栏（硬隔离只负责关掉时藏起来，
+			// 不会把标签卡放进栏里）。不用 openActivityTab，避免抢焦点弹开面板。
+			onToggle: (active) => ctx.ui.setActivityTabVisible("workbench", active),
 			decoratePrompt: () => ({
 				metadata: {
 					pluginModes: { "plugin-workbench": true },

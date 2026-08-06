@@ -13,6 +13,16 @@ export function ResizeHandle({ side, onResize, onResizeEnd }: ResizeHandleProps)
 		(e: ReactPointerEvent) => {
 			e.preventDefault();
 			startXRef.current = e.clientX;
+			let pendingDelta = 0;
+			let animationFrame: number | null = null;
+
+			const flushResize = () => {
+				animationFrame = null;
+				if (pendingDelta === 0) return;
+				const delta = pendingDelta;
+				pendingDelta = 0;
+				onResize(delta);
+			};
 
 			// Full-screen overlay during drag: independent WebContents (e.g. <webview>)
 			// swallow pointer events; overlay keeps move/up on document until release.
@@ -27,12 +37,15 @@ export function ResizeHandle({ side, onResize, onResizeEnd }: ResizeHandleProps)
 				const delta = ev.clientX - startXRef.current;
 				startXRef.current = ev.clientX;
 				// "right" handle: drag right grows panel; "left" handle: invert.
-				onResize(side === "right" ? delta : -delta);
+				pendingDelta += side === "right" ? delta : -delta;
+				if (animationFrame === null) animationFrame = requestAnimationFrame(flushResize);
 			};
 
 			const onPointerUp = () => {
 				document.removeEventListener("pointermove", onPointerMove);
 				document.removeEventListener("pointerup", onPointerUp);
+				if (animationFrame !== null) cancelAnimationFrame(animationFrame);
+				flushResize();
 				overlay.remove();
 				document.body.style.userSelect = "";
 				onResizeEnd?.();

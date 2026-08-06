@@ -4,6 +4,7 @@ import { createVersionedJsonConfigStore } from "@vetta/toolkit/config-store";
 import { normalizePetConfig, type PetConfig } from "../shared/pet-config.js";
 import { migratePetConfig } from "./config/pet/migrate-config.js";
 import { getAppLogger } from "./logger.js";
+import { broadcastPetConfigChanged } from "./pet/pet-config-events.js";
 
 const PET_CONFIG_PATH = join(getVettaHomePath(), "pet-config.json");
 const log = getAppLogger("pet-config");
@@ -25,5 +26,6 @@ export function readPetConfigSync(): PetConfig {
 }
 
 export async function writePetConfig(config: PetConfig): Promise<void> {
-	return petConfigStore.write(config);
+	await petConfigStore.write(config);
+	broadcastPetConfigChanged(config);
 }

@@ -1,77 +1,49 @@
-import type { SkillInfo } from "@preload/api";
 import { i18n } from "@shared/i18n";
-import { downloadAbility, fetchAbilityInfo } from "@shared/lib/api";
 import {
 	activeSessionAtom,
 	activeToolNamesAtom,
 	applyInputActionWorkingState,
 	attachedImagesAtom,
-	authTokenAtom,
 	authUserAtom,
 	contextUsageAtom,
 	currentScenarioAtom,
 	defaultConversationCwdAtom,
 	emptySessionInputActionState,
-	inputValueAtom,
 	lastActiveSessionAtom,
-	mentionedFilesAtom,
-	newSessionPageVisibilityAtom,
+	newSessionInputDraftKey,
 	pageHeaderTitleAtom,
 	pageHeaderTitleBadgeAtom,
 	pageHeaderTitleHiddenAtom,
 	projectsAtom,
 	promptAttachmentAtom,
-	selectedSkillAtom,
 	sessionExecutionModeAtom,
+	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
 import { useParams } from "@tanstack/react-router";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
-import { startTransition, useCallback, useEffect, useRef, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { startTransition, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionManager } from "../../hooks/useSessionManager";
-import type { GuidingGroup, SceneActionState, SceneItem, SkillSelection } from "./types";
-import { useNewSessionResources } from "./useNewSessionResources";
+import { useSkillList } from "../../hooks/useSkillList";
+import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
 import { useShortViewport } from "./useShortViewport";
-
-function scheduleIdle(callback: () => void, timeout: number): () => void {
-	let cancelled = false;
-	const run = () => {
-		if (!cancelled) callback();
-	};
-	if ("requestIdleCallback" in window) {
-		const id = window.requestIdleCallback(run, { timeout });
-		return () => {
-			cancelled = true;
-			window.cancelIdleCallback(id);
-		};
-	}
-	const id = globalThis.setTimeout(run, timeout);
-	return () => {
-		cancelled = true;
-		globalThis.clearTimeout(id);
-	};
-}
 
 interface NewSessionPageModel {
 	avatarAutoplay: boolean;
+	/** 命令区（`/` 或「+」展开）是否打开：hero 随之淡出让位。 */
+	commandPanelExpanded: boolean;
+	/**
+	 * 输入栏是否要为命令区下沉。
+	 * 条目少时面板长不到会盖住 hero 的高度，那趟位移纯属多余，因此不跟 expanded 一致。
+	 */
+	commandPanelShift: boolean;
 	cwd: string;
 	greetingTitle: string;
-	guidingGroups: GuidingGroup[];
 	isShort: boolean;
 	mounted: boolean;
 	onAbort: () => Promise<void>;
-	onGuidingWord: (word: string) => Promise<void>;
-	onSceneClick: (scene: SceneItem) => void;
-	onSelectSkill: (skill: SkillInfo) => void;
+	onCommandPanelExpandedChange: (expanded: boolean) => void;
 	onSend: () => Promise<void>;
-	/** 资源未就绪且对应区块仍开启时，预留高度避免异步插入抖动。 */
-	reserveGuidingWords: boolean;
-	reserveSceneSlot: boolean;
-	reserveSkillBadges: boolean;
-	sceneActions: Record<string, SceneActionState>;
-	scenes: SceneItem[];
-	selectedSkill: SkillSelection;
-	skillBadges: SkillInfo[];
 	subtitle: string;
 }
 
@@ -91,13 +63,8 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	// Hero 首帧即挂载（仅用 opacity 入场），避免 idle 延迟插入导致输入栏被顶动。
 	const [mounted, setMounted] = useState(false);
 	const [avatarAutoplay, setAvatarAutoplay] = useState(false);
-	const [selectedSkill, setSelectedSkill] = useAtom(selectedSkillAtom);
-	const [sceneActions, setSceneActions] = useState<Record<string, SceneActionState>>({});
-	// 记录最近一次安装/启用的 Promise，发送时 await 它，保证落盘先于 session.create。
-	const installRef = useRef<Promise<void> | null>(null);
-	const setInputValue = useSetAtom(inputValueAtom);
+	const [commandPanelExpanded, setCommandPanelExpanded] = useState(false);
 	const setAttachedImages = useSetAtom(attachedImagesAtom);
-	const setMentionedFiles = useSetAtom(mentionedFilesAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
 	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
 	const setHeaderTitleHidden = useSetAtom(pageHeaderTitleHiddenAtom);
@@ -108,23 +75,23 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const setCurrentScenario = useSetAtom(currentScenarioAtom);
 	const setActiveToolNames = useSetAtom(activeToolNamesAtom);
 	const authUser = useAtomValue(authUserAtom);
-	const token = useAtomValue(authTokenAtom);
 	const executionMode = useAtomValue(sessionExecutionModeAtom);
-	const pageVisibility = useAtomValue(newSessionPageVisibilityAtom);
 	const { openSession, sendMessage, abortMessage } = useSessionManager();
 	const isShort = useShortViewport();
-	const { guidingGroups, loadResources, resourcesLoaded, scenes, skillBadges } = useNewSessionResources(
-		decodedCwd,
-		token,
-	);
+	// 不带过滤词：要的是面板刚展开时那份完整列表的条目数，不能随用户打字过滤而抖。
+	// 数据与命令区共用模块级缓存（InputBar 里的 CommandPanel 挂载即预取），命中即立即可用。
+	const { items: skillItems } = useSkillList({
+		open: commandPanelExpanded,
+		cwd: decodedCwd,
+		filter: "",
+		prefetch: true,
+	});
 
-	// 进入页面时清空上下文输入态，避免从别处带过来未发的内容。
+	// 进入页面：草稿按 `new:${cwd}` 隔离恢复；其它上下文仍重置，避免串会话。
 	useEffect(() => {
-		// decodedCwd 是路由切换的 reset key；effect body 不需要读取其值。
-		void decodedCwd;
-		setInputValue("");
-		setSelectedSkill(null);
-		setMentionedFiles([]);
+		// 先切换草稿作用域（落盘上一会话 → 装入本 cwd 新会话草稿）。
+		switchSessionInputDraftScope(newSessionInputDraftKey(decodedCwd));
+		// 旧 attachedImages 链路兜底清空（正文 token 已由草稿文本恢复）。
 		setAttachedImages([]);
 		// 释放一次性的插件 prompt attachment，避免带进新会话。
 		setPromptAttachment(null);
@@ -146,9 +113,6 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		setLastActiveSession(null);
 	}, [
 		decodedCwd,
-		setInputValue,
-		setSelectedSkill,
-		setMentionedFiles,
 		setAttachedImages,
 		setPromptAttachment,
 		setCurrentScenario,
@@ -186,101 +150,14 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		};
 	}, [decodedCwd]);
 
-	useEffect(() => {
-		// 首帧先画出固定槽位，再在 idle 时拉资源；数据一次落盘替换占位，避免分批插入。
-		return scheduleIdle(() => {
-			startTransition(() => {
-				void loadResources();
-			});
-		}, 120);
-	}, [loadResources]);
-
-	const setSceneAction = useCallback((name: string, state: SceneActionState) => {
-		setSceneActions((prev) => ({ ...prev, [name]: state }));
-	}, []);
-
-	// active → 直接 attach；disabled → toggle 启用后 attach；uninstalled → 下载安装后 attach。
-	// 安装/启用全程同步：成功落盘 + 刷新本地列表后才 setSelectedSkill。
-	const handleSceneClick = useCallback(
-		(item: SceneItem) => {
-			if (item.state === "active") {
-				setSelectedSkill({ name: item.name, alias: item.alias, type: "scene" });
-				return;
-			}
-			if (sceneActions[item.name] === "loading") return;
-			const run = (async () => {
-				setSceneAction(item.name, "loading");
-				try {
-					if (item.state === "uninstalled") {
-						if (!token) throw new Error("未登录，无法安装场景");
-						// SceneItem 不带摘要（类型来自 theme-ui），单独查一次 info 拿 sha256 用于安装前校验
-						const [info, buffer] = await Promise.all([
-							fetchAbilityInfo(token, "scene", item.name),
-							downloadAbility(token, "scene", item.name),
-						]);
-						await window.vetta.skills.installFromMarket(item.name, buffer, "scene", {
-							alias: item.alias,
-							marketDescription: item.description,
-							version: item.version,
-							sha256: info.sha256,
-						});
-					} else {
-						// disabled：已落盘，仅切换启用，无需重新下载。
-						await window.vetta.skills.toggle(item.name);
-					}
-					await loadResources();
-					setSelectedSkill({ name: item.name, alias: item.alias, type: "scene" });
-					setSceneAction(item.name, "idle");
-				} catch (err) {
-					console.error("场景安装失败:", err);
-					setSceneAction(item.name, "error");
-					window.setTimeout(() => setSceneAction(item.name, "idle"), 2200);
-				}
-			})();
-			installRef.current = run;
-		},
-		[sceneActions, token, loadResources, setSceneAction, setSelectedSkill],
-	);
-
-	const handleSelectSkill = useCallback(
-		(skill: SkillInfo) => {
-			const isSelected = selectedSkill?.name === skill.name && selectedSkill?.type === skill.type;
-			setSelectedSkill(isSelected ? null : { name: skill.name, alias: skill.alias, type: skill.type });
-		},
-		[selectedSkill, setSelectedSkill],
-	);
-
-	const waitForInstall = useCallback(async () => {
-		if (!installRef.current) return;
-		try {
-			await installRef.current;
-		} catch {
-			// 安装失败已在点击处处理，这里照常发送（不带场景）。
-		}
-	}, []);
-
 	// 发送：先创建/打开会话（openSession 内部会 navigate('/')），再触发 sendMessage。
 	// sendMessage 现在从 activeSessionRef 读取 session，因此 await 链可以串起来。
 	const handleSend = useCallback(async () => {
-		// 若有正在进行的场景安装，先 await 其落盘，保证 scene 文件先于 session.create 写入，
-		// 否则新 session 扫盘时读不到刚点的场景。
-		await waitForInstall();
 		// 欢迎页选中的执行模式（沙盒受限/完全访问）必须随会话创建一起传给后端，
 		// 否则 session.create 会落到默认 full-access，再被 getState 回填覆盖。
 		await openSession(decodedCwd, undefined, executionMode);
 		await sendMessage();
-	}, [decodedCwd, executionMode, openSession, sendMessage, waitForInstall]);
-
-	// 点击引导词 = 以该文本为 overrideText 立即发起一轮：openSession → sendMessage(word)。
-	// 用 override 传值而非先 setInputValue，避开 atom 异步更新导致 sendMessage 读到旧值。
-	const handleGuidingWord = useCallback(
-		async (word: string) => {
-			await waitForInstall();
-			await openSession(decodedCwd, undefined, executionMode);
-			await sendMessage(word);
-		},
-		[decodedCwd, executionMode, openSession, sendMessage, waitForInstall],
-	);
+	}, [decodedCwd, executionMode, openSession, sendMessage]);
 
 	const greetingTitle = authUser?.nickname
 		? i18n.t("chat:newSession.greetingTitle", { nickname: authUser.nickname })
@@ -288,25 +165,15 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 
 	return {
 		avatarAutoplay,
+		commandPanelExpanded,
+		commandPanelShift: commandPanelExpanded && skillItems.length > PANEL_SHIFT_MIN_ITEMS,
 		cwd: decodedCwd,
 		greetingTitle,
-		// 设置 → 新会话页可隐藏对应区块；隐藏时传空数组，下游 length 判断会跳过渲染。
-		guidingGroups: pageVisibility.showGuidingWords ? guidingGroups : [],
 		isShort,
 		mounted,
 		onAbort: abortMessage,
-		onGuidingWord: handleGuidingWord,
-		onSceneClick: handleSceneClick,
-		onSelectSkill: handleSelectSkill,
+		onCommandPanelExpandedChange: setCommandPanelExpanded,
 		onSend: handleSend,
-		// 仅对设置中仍开启的区块预留高度；隐藏的区块不占位。
-		reserveGuidingWords: !resourcesLoaded && pageVisibility.showGuidingWords,
-		reserveSceneSlot: !resourcesLoaded && pageVisibility.showSceneCards,
-		reserveSkillBadges: !resourcesLoaded && pageVisibility.showSkillBadges,
-		sceneActions,
-		scenes: pageVisibility.showSceneCards ? scenes : [],
-		selectedSkill,
-		skillBadges: pageVisibility.showSkillBadges ? skillBadges : [],
 		subtitle: i18n.t("chat:newSession.subtitle"),
 	};
 }

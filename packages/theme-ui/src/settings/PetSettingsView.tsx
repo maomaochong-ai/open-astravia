@@ -50,6 +50,8 @@ export interface PetSettingsViewProps {
 	readonly alwaysOnTop: boolean;
 	readonly debugFrame: boolean;
 	readonly decorations: readonly PetDecorationView[];
+	/** 是否展示「桌宠装饰」分区；组件与数据链路保留，默认 true。 */
+	readonly showDecorationSection?: boolean;
 	readonly aiAssistSlot: ReactNode;
 	readonly bubbleGrid: ReactNode;
 	readonly onChangeEnabled: (value: boolean) => void;
@@ -64,6 +66,7 @@ export function PetSettingsView({
 	alwaysOnTop,
 	debugFrame,
 	decorations,
+	showDecorationSection = true,
 	aiAssistSlot,
 	bubbleGrid,
 	onChangeEnabled,
@@ -90,45 +93,47 @@ export function PetSettingsView({
 				</SettingRow>
 			</SettingSection>
 
-			<SettingSection
-				title={labels.sections.decoration}
-				section={sections.decoration}
-				description={labels.decorationSectionDescription}
-			>
-				<div className="grid grid-cols-2 gap-3 p-4">
-					{decorations.map((decoration) => (
-						<div
-							key={decoration.id}
-							className="overflow-hidden rounded-lg border border-border bg-card"
-						>
-							<div className="flex h-28 items-center justify-center bg-muted">
-								{decoration.found ? (
-									<img
-										src={decoration.url}
-										alt={decoration.label}
-										className="max-h-full max-w-full object-contain"
-										draggable={false}
-									/>
-								) : (
-									<div className="px-3 text-center text-[12px] text-muted-foreground">
-										{labels.materialMissing}
+			{showDecorationSection && (
+				<SettingSection
+					title={labels.sections.decoration}
+					section={sections.decoration}
+					description={labels.decorationSectionDescription}
+				>
+					<div className="grid grid-cols-2 gap-3 p-4">
+						{decorations.map((decoration) => (
+							<div
+								key={decoration.id}
+								className="overflow-hidden rounded-lg border border-border bg-card"
+							>
+								<div className="flex h-28 items-center justify-center bg-muted">
+									{decoration.found ? (
+										<img
+											src={decoration.url}
+											alt={decoration.label}
+											className="max-h-full max-w-full object-contain"
+											draggable={false}
+										/>
+									) : (
+										<div className="px-3 text-center text-[12px] text-muted-foreground">
+											{labels.materialMissing}
+										</div>
+									)}
+								</div>
+								<div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
+									<div className="min-w-0 truncate text-[12px] font-medium text-foreground">
+										{decoration.label}
 									</div>
-								)}
-							</div>
-							<div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
-								<div className="min-w-0 truncate text-[12px] font-medium text-foreground">
-									{decoration.label}
-								</div>
-								<div className="shrink-0 text-[11px] text-muted-foreground">
-									{decoration.found
-										? labels.decorationAvailable
-										: labels.decorationMissing}
+									<div className="shrink-0 text-[11px] text-muted-foreground">
+										{decoration.found
+											? labels.decorationAvailable
+											: labels.decorationMissing}
+									</div>
 								</div>
 							</div>
-						</div>
-					))}
-				</div>
-			</SettingSection>
+						))}
+					</div>
+				</SettingSection>
+			)}
 
 			<SettingSection
 				title={labels.sections.bubble}

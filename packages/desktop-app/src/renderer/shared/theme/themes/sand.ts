@@ -5,12 +5,14 @@ import { defaultTheme } from "./default";
 // dark accent 抬高以便 bg-accent 与 dropdown 的 hover:bg-accent/50 可辨；
 // light secondary 用于用户消息气泡，须明显深于背景。
 
-const PRIMARY = "rgb(247, 111, 83)"; // #f76f53
+// 原 #f76f53 偏亮偏粉，压暗并减少蓝分量让珊瑚更暖
+const PRIMARY = "rgb(224, 88, 60)"; // #e0583c
 const PRIMARY_FG = "rgb(255, 255, 255)";
 
 // ── dark ──
 const DARK_BG = "rgb(32, 32, 32)"; // #202020
-const DARK_MUTED = "rgb(30, 30, 30)"; // #1e1e1e
+// muted 抬到明显高于 bg(32)：原 30 与背景只差 2 级，bg-muted 的块在深色下几乎看不出
+const DARK_MUTED = "rgb(44, 44, 44)"; // #2c2c2c
 const DARK_SECONDARY = "rgb(26, 26, 26)"; // 略深于 muted
 const DARK_CARD = "rgb(28, 28, 28)"; // #1c1c1c
 const DARK_POPOVER = DARK_CARD;
@@ -43,6 +45,7 @@ export const sandTheme: ThemeDef = {
 		accent: DARK_ACCENT,
 		border: DARK_BORDER,
 		input: DARK_INPUT,
+		inputBarBg: DARK_CARD,
 		primary: PRIMARY,
 		primaryForeground: PRIMARY_FG,
 		ring: PRIMARY,
@@ -57,6 +60,7 @@ export const sandTheme: ThemeDef = {
 		accent: LIGHT_ACCENT,
 		border: LIGHT_BORDER,
 		input: LIGHT_INPUT,
+		inputBarBg: "rgb(255, 255, 255)",
 		primary: PRIMARY,
 		primaryForeground: PRIMARY_FG,
 		ring: PRIMARY,

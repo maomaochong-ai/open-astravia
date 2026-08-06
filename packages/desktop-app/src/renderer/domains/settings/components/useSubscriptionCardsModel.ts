@@ -1,10 +1,13 @@
-import type { SubscriptionStatus } from "@preload/api.js";
-import { formatExpiry, formatResetCountdown, WINDOW_LABELS } from "@shared/lib/subscription-format";
+import type { ResetCountdown } from "@shared/lib/subscription-format";
+import { formatExpiry, getResetCountdown, WINDOW_LABEL_KEYS } from "@shared/lib/subscription-format";
 import { remoteProvidersAtom, subscriptionStatusAtom } from "@shared/store/atoms";
 import { useAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { recordSettingsUsage } from "./recordSettingsUsage";
+
+/** 官网定价页（升级套餐外链目标） */
+const PRICING_URL = "https://openvetta.com/pricing";
 
 export type ModelCost = { cacheRead: number; cacheWrite: number; input: number; output: number };
 export type RemoteModel = {
@@ -25,33 +28,32 @@ export interface SubscriptionWindowViewModel {
 	kind: string;
 	label: string;
 	limit: number;
-	resetAt: string;
+	/** 已本地化的重置倒计时文案（超过一天按「天+小时」计，不再堆几百小时），空串则不展示 */
+	resetLabel: string;
 }
 
 export interface SubscriptionCardsModel {
 	actions: {
 		refresh: () => Promise<void>;
+		/** 打开官网定价页（ADR-0051：desktop 不做站内支付，仅外链引流） */
+		upgrade?: () => void;
 	};
 	expiry: string | null;
 	goProvider: RemoteProvider | undefined;
 	labels: {
-		currentPlan: string;
 		expiryDate: (date: string) => string;
 		freeModel: string;
 		modelMultiplier: (value: string) => string;
-		modelsCount: (count: number) => string;
 		refresh: string;
 		refreshing: string;
 		thinking: string;
-		tokenPlan: string;
 		unlimitedQuota: string;
 		updated: string;
+		upgrade?: string;
 		vision: string;
 	};
-	now: number;
 	refreshing: boolean;
 	showGoCard: boolean;
-	status: SubscriptionStatus;
 	windows: SubscriptionWindowViewModel[];
 }
 
@@ -59,8 +61,8 @@ export function formatMultiplier(n: number): string {
 	return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(2)));
 }
 
-export function formatWindowReset(resetAt: string, now: number): string {
-	return formatResetCountdown(resetAt, now);
+export function formatWindowReset(resetAt: string, now: number): ResetCountdown | null {
+	return getResetCountdown(resetAt, now);
 }
 
 export function useSubscriptionCardsModel(): SubscriptionCardsModel {
@@ -107,17 +109,15 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 
 	const labels = useMemo(
 		() => ({
-			currentPlan: t("subCurrentPlan"),
 			expiryDate: (date: string) => t("expiryDate", { date }),
 			freeModel: t("freeModel"),
 			modelMultiplier: (value: string) => t("modelMultiplier", { value }),
-			modelsCount: (count: number) => t("modelsCount", { count }),
 			refresh: t("refresh"),
 			refreshing: t("refreshing"),
 			thinking: t("thinking"),
-			tokenPlan: t("tokenPlan"),
 			unlimitedQuota: t("unlimitedQuota"),
 			updated: t("updated"),
+			upgrade: t("upgradePlan"),
 			vision: t("vision"),
 		}),
 		[t],
@@ -125,27 +125,35 @@ export function useSubscriptionCardsModel(): SubscriptionCardsModel {
 
 	const windows = useMemo<SubscriptionWindowViewModel[]>(
 		() =>
-			(subscriptionStatus.windows ?? []).map((windowInfo) => ({
-				consumed: windowInfo.consumed,
-				kind: windowInfo.kind,
-				label: WINDOW_LABELS[windowInfo.kind],
-				limit: windowInfo.limit,
-				resetAt: windowInfo.reset_at,
-			})),
-		[subscriptionStatus.windows],
+			(subscriptionStatus.windows ?? []).map((windowInfo) => {
+				const countdown = getResetCountdown(windowInfo.reset_at, now);
+				return {
+					consumed: windowInfo.consumed,
+					kind: windowInfo.kind,
+					label: t(WINDOW_LABEL_KEYS[windowInfo.kind]),
+					limit: windowInfo.limit,
+					resetLabel: countdown ? t(countdown.key, countdown.params ?? {}) : "",
+				};
+			}),
+		[subscriptionStatus.windows, now, t],
 	);
+
+	const handleUpgrade = useCallback(() => {
+		// ADR-0051：desktop 不内嵌收银台（3DS/银行跳转在 BrowserWindow 里不可靠），外链官网定价页
+		void window.vetta.shell.openExternal(PRICING_URL);
+		recordSettingsUsage({ tab: "subscription", action: "selected", target: "upgrade-pricing-link" });
+	}, []);
 
 	return {
 		actions: {
 			refresh: handleRefreshRemote,
+			upgrade: handleUpgrade,
 		},
 		expiry: formatExpiry(subscriptionStatus.expires_at),
 		goProvider,
 		labels,
-		now,
 		refreshing,
 		showGoCard,
-		status: subscriptionStatus,
 		windows,
 	};
 }

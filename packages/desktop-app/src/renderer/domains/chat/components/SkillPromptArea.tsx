@@ -2,7 +2,7 @@ import type { SelectedSkill } from "@shared/store/atoms";
 import { SkillPromptAreaView } from "@vetta/theme-ui/chat";
 import { createPortal } from "react-dom";
 import { useSkillPromptAreaModel } from "../hooks/useSkillPromptAreaModel";
-import { SlashPanel } from "./SlashPanel";
+import { SkillPickerPanel } from "./command-panel/SkillPickerPanel";
 
 interface SkillPromptAreaProps {
 	prompt: string;
@@ -34,7 +34,7 @@ export function SkillPromptArea(props: SkillPromptAreaProps): JSX.Element {
 						}}
 					>
 						<div className="pointer-events-auto relative">
-							<SlashPanel
+							<SkillPickerPanel
 								open={model.slashOpen}
 								onClose={model.handleSlashClose}
 								onSelect={model.handleSlashSelect}

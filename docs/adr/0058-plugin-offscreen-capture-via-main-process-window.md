@@ -1,0 +1,3 @@
+# 插件截图走主进程离屏窗口，而非 DOM 克隆再光栅化
+
+设计画布的位图化此前在 iframe 内用 html-to-image：把整棵 DOM 克隆进 SVG foreignObject、内联计算样式再光栅化。这条路修不完——计算样式序列化只有两位小数，「盒宽恰等于文字 max-content」的元素在克隆体里随舍入方向随机断行（已用截图期 nowrap 钉住）；此外 SVG 图像文档的基线只能落在 CSS 整像素上，活体在 Retina 下却能落半像素，±1 设备像素的基线抖动是该路径的物理极限，无样式层解法。我们决定新增通用 SDK 能力 `ctx.capture.offscreen`（权限 `capture.offscreen`，与 `command.spawn` 同一策展模式，ADR-0054）：主进程用隐藏离屏窗口（sandbox + OSR）加载页面、按页面自己的就绪信号（`prepareScript` / `readyExpression`）等待后 `capturePage`。真实渲染管线出图，与在屏显示逐像素一致，整类克隆偏差（断行、亚像素、emoji 反锯齿、图片 CORS 内联失败）一次性消失；截图移出画布渲染进程主线程，frame 也不再为截图挂活体 iframe。`sessionKey` 复用窗口让 SPA 切路由零加载（实测每帧 ~750ms，其中 300ms 是静置）。代价：一个瞬态隐藏 renderer（闲置 30s 回收、每插件上限 4），以及离屏页面是重新加载的初始态——交互态/动画相位不保真，而位图化的前提本就是「这一帧没在被操作」。html-to-image 保留为旧宿主回落与交付物截图路径。

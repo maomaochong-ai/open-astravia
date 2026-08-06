@@ -1,17 +1,18 @@
 import { Outlet } from "@tanstack/react-router";
+import { cn } from "@shared/lib/utils";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { AppFrame, MainContentFrame, SidebarDock, SidebarOverlay } from "@vetta/theme-ui/layout";
 import { useThemeComponent, useThemeSurface } from "@vetta/theme-sdk";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { Sidebar } from "../domains/project/components/sidebar/Sidebar";
 import { PageHeader } from "../shared/app-shell/page-header";
 import { TooltipProvider } from "../shared/components/ui/tooltip";
+import { useActiveThemePageRoute } from "../shared/theme/pages";
 import { SidebarTour } from "../shared/tour";
 import { AppBackground } from "./app-background/AppBackground";
 import { RootGlobalOverlays } from "./RootGlobalOverlays";
 import type { RootLayoutModel } from "./types";
-import { useActiveThemePageRoute } from "../shared/theme/pages";
 
 interface RootLayoutViewProps {
 	model: RootLayoutModel;
@@ -34,6 +35,19 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	const ensureSidebarVisible = useCallback(() => {
 		if (narrow) actions.openOverlay();
 	}, [actions.openOverlay, narrow]);
+	useEffect(() => {
+		if (routePending) return;
+		let contentPaintFrame = 0;
+		const layoutFrame = requestAnimationFrame(() => {
+			contentPaintFrame = requestAnimationFrame(() => {
+				window.vetta.appLifecycle.reportRendererContentPainted();
+			});
+		});
+		return () => {
+			cancelAnimationFrame(layoutFrame);
+			if (contentPaintFrame !== 0) cancelAnimationFrame(contentPaintFrame);
+		};
+	}, [routePending]);
 	const pageHeader =
 		pageLayout === "content" ? (
 			<PageHeader
@@ -48,13 +62,13 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	return (
 		<TooltipProvider>
 			<AppFrame
-				className={appFrameSurface?.rootClassName}
+				className={cn("app-frame", appFrameSurface?.rootClassName)}
 				decoration={<ThemedAppBackground />}
 				overlay={<ThemeSurface className="z-20" slot="app.frameOverlay" />}
 			>
 				{showSidebar && (
 					<>
-						<SidebarDock visible={!narrow && !sidebarCollapsed}>
+						<SidebarDock className="sidebar-dock" visible={!narrow && !sidebarCollapsed}>
 							<Sidebar onOpenSession={onOpenSession} onCollapse={actions.toggleSidebar} />
 						</SidebarDock>
 						<SidebarOverlay
@@ -68,11 +82,11 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 					</>
 				)}
 				{pageLayout === "app" ? (
-					<div className="flex min-h-0 min-w-[320px] flex-1 overflow-visible">
+					<div className="app-main-frame relative flex min-h-0 min-w-[320px] flex-1 overflow-visible">
 						{routePending ? <RouteContentLoadingView /> : <Outlet />}
 					</div>
 				) : (
-					<MainContentFrame header={pageHeader}>
+					<MainContentFrame className="app-main-frame" header={pageHeader}>
 						{routePending ? <RouteContentLoadingView /> : <Outlet />}
 					</MainContentFrame>
 				)}

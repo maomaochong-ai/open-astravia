@@ -64,7 +64,6 @@ export function navigationTargetLabel(t: TFunction<"common">, target: string): s
 		plugins: t("navigationApproval.targets.plugins"),
 		connectors: t("navigationApproval.targets.connectors"),
 		mcp: t("navigationApproval.targets.connectors"),
-		downloads: t("navigationApproval.targets.downloads"),
 		settings: t("navigationApproval.targets.settings"),
 	};
 	return known[target] ?? target;

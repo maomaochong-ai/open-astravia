@@ -1,15 +1,30 @@
 {
 	"name": "@vetta-org/plugin-sdk",
-	"version": "0.0.4",
+	"version": "0.1.1",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./manifest": {
+			"types": "./dist/manifest.d.ts",
+			"import": "./dist/manifest.js"
+		},
+		"./tailwind-theme.css": "./src/tailwind-theme.css"
+	},
 	"files": [
-		"dist"
+		"dist",
+		"src/tailwind-theme.css"
 	],
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json"
+	},
+	"dependencies": {
+		"@sinclair/typebox": "^0.34.41"
 	},
 	"peerDependencies": {
 		"react": "^19.0.0"

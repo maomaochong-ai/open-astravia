@@ -1,0 +1,77 @@
+/**
+ * Default syntax palettes for the file text editor (CodeMirror).
+ * Inspired by VS Code Dark+ / Light+.
+ *
+ * Hosts that already define `[data-mode]` can rely on these as baselines.
+ * Themes override any subset, e.g.:
+ *
+ *   [data-theme="xianxia"] {
+ *     --syntax-keyword: #c9a227;
+ *     --syntax-string: #7d9b76;
+ *   }
+ */
+
+:root,
+[data-mode="dark"] {
+	/* VS Code Dark+ */
+	--syntax-comment: #6a9955;
+	--syntax-keyword: #569cd6;
+	--syntax-keyword-control: #c586c0;
+	--syntax-storage: #569cd6;
+	--syntax-string: #ce9178;
+	--syntax-number: #b5cea8;
+	--syntax-bool: #569cd6;
+	--syntax-regexp: #d16969;
+	--syntax-type: #4ec9b0;
+	--syntax-class: #4ec9b0;
+	--syntax-function: #dcdcaa;
+	--syntax-variable: #9cdcfe;
+	--syntax-constant: #4fc1ff;
+	--syntax-property: #9cdcfe;
+	--syntax-parameter: #9cdcfe;
+	--syntax-operator: #d4d4d4;
+	--syntax-punctuation: #d4d4d4;
+	--syntax-tag: #569cd6;
+	--syntax-attribute: #9cdcfe;
+	--syntax-attribute-value: #ce9178;
+	--syntax-angle: #808080;
+	--syntax-meta: #569cd6;
+	--syntax-escape: #d7ba7d;
+	--syntax-link: #3794ff;
+	--syntax-heading: #569cd6;
+	--syntax-invalid: #f44747;
+	--syntax-inserted: #b5cea8;
+	--syntax-deleted: #f44747;
+}
+
+[data-mode="light"] {
+	/* VS Code Light+ */
+	--syntax-comment: #008000;
+	--syntax-keyword: #0000ff;
+	--syntax-keyword-control: #af00db;
+	--syntax-storage: #0000ff;
+	--syntax-string: #a31515;
+	--syntax-number: #098658;
+	--syntax-bool: #0000ff;
+	--syntax-regexp: #811f3f;
+	--syntax-type: #267f99;
+	--syntax-class: #267f99;
+	--syntax-function: #795e26;
+	--syntax-variable: #001080;
+	--syntax-constant: #0070c1;
+	--syntax-property: #001080;
+	--syntax-parameter: #001080;
+	--syntax-operator: #000000;
+	--syntax-punctuation: #000000;
+	--syntax-tag: #800000;
+	--syntax-attribute: #e50000;
+	--syntax-attribute-value: #0000ff;
+	--syntax-angle: #800000;
+	--syntax-meta: #0000ff;
+	--syntax-escape: #ee0000;
+	--syntax-link: #0000ff;
+	--syntax-heading: #800000;
+	--syntax-invalid: #cd3131;
+	--syntax-inserted: #098658;
+	--syntax-deleted: #cd3131;
+}

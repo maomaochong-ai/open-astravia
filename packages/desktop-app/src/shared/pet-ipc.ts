@@ -2,6 +2,7 @@ import type { PetActionId } from "./pet-actions.js";
 import type { PetBubbleStyleId } from "./pet-bubbles.js";
 
 export const PET_COMMAND_CHANNEL = "vetta:pet:command";
+export const PET_CONFIG_CHANGED_CHANNEL = "vetta:pet:config-changed";
 export const PET_RESIZE_BY_WHEEL_CHANNEL = "vetta:pet:resize-by-wheel";
 export const PET_RESIZE_VIDEO_BY_WHEEL_CHANNEL = "vetta:pet:resize-video-by-wheel";
 export const PET_BEGIN_WINDOW_MOVE_CHANNEL = "vetta:pet:begin-window-move";

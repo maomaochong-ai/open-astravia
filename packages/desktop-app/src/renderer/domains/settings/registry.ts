@@ -15,8 +15,7 @@ export type SettingsTabLabelKey =
 	| "tabPlugins"
 	| "tabKnowledge"
 	| "tabPet"
-	| "tabPermissions"
-	| "tabNewSession";
+	| "tabPermissions";
 
 export interface SettingsTabRegistration {
 	key: SettingsTab;
@@ -41,7 +40,6 @@ export const SETTINGS_TABS: readonly SettingsTabRegistration[] = [
 	{ key: "account", label: "账户", labelKey: "tabAccount", icon: "icon-[mdi--account-outline]", requireAuth: true },
 	{ key: "general", label: "通用设置", labelKey: "tabGeneral", icon: "icon-[mdi--cog-outline]" },
 	{ key: "appearance", label: "外观", labelKey: "tabAppearance", icon: "icon-[mdi--palette-outline]" },
-	{ key: "newSession", label: "新会话页", labelKey: "tabNewSession", icon: "icon-[mdi--chat-plus-outline]" },
 	{ key: "context", label: "Agent配置", labelKey: "tabContext", icon: "icon-[mdi--robot-outline]" },
 	{ key: "models", label: "模型配置", labelKey: "tabModels", icon: "icon-[mdi--brain]" },
 	// MCP 管理已迁至侧栏「扩展 → 连接器」
@@ -83,8 +81,8 @@ export const SETTINGS_SECTIONS = [
 	{ tab: "appearance", id: "appearance-ui-theme", title: "界面主题", titleKey: "section_appearance-ui-theme" },
 	{ tab: "appearance", id: "appearance-cursor", title: "鼠标指针", titleKey: "section_appearance-cursor" },
 	{ tab: "appearance", id: "appearance-theme", title: "主题", titleKey: "section_appearance-theme" },
+	{ tab: "appearance", id: "appearance-sidebar", title: "侧边栏样式", titleKey: "section_appearance-sidebar" },
 	{ tab: "appearance", id: "appearance-language", title: "语言", titleKey: "section_appearance-language" },
-	{ tab: "newSession", id: "new-session-elements", title: "页面元素", titleKey: "section_new-session-elements" },
 	{ tab: "account", id: "account-profile", title: "个人信息", titleKey: "section_account-profile" },
 	{ tab: "team", id: "team-management", title: "团队管理", titleKey: "section_team-management" },
 	{ tab: "team", id: "team-my-teams", title: "我的团队", titleKey: "section_team-my-teams" },

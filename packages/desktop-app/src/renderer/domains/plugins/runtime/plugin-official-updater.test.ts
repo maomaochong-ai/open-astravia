@@ -7,7 +7,7 @@ afterEach(() => {
 
 describe("createOfficialUpdaterApi", () => {
 	it("routes every operation through the plugin capability session", async () => {
-		const state = { phase: "idle", currentVersion: "1.0.0", pendingInstall: false };
+		const state = { phase: "idle", currentVersion: "1.0.0" };
 		const updater = {
 			getState: vi.fn().mockResolvedValue(state),
 			getCurrentVersion: vi.fn().mockResolvedValue("1.0.0"),

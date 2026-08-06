@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { matchesShortcut } from "../lib/platform";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	getEffectiveShortcut,
 	loadShortcutBindings,
@@ -7,15 +6,16 @@ import {
 	type ShortcutBindings,
 	saveShortcutBindings,
 } from "../lib/shortcuts";
+import { type ShortcutBinding, useShortcutScope } from "../shortcuts";
 
 export type ShortcutHandler = (actionId: string) => void;
 
 /**
- * Global keyboard shortcut listener.
+ * Global (app-scope) keyboard shortcuts.
  *
- * Registers a single keydown handler that checks all defined shortcuts
- * and calls the handler when a match is found.
- * 绑定以 desktop-config 为源，并订阅 main 广播。
+ * Registers the bottom `app` layer on the shared ShortcutScopeStack so
+ * surface/overlay/modal scopes can override keys without ad-hoc listeners.
+ * Bindings load from desktop-config and subscribe to main broadcasts.
  */
 export function useGlobalShortcuts(handler: ShortcutHandler): {
 	customShortcuts: ShortcutBindings;
@@ -25,9 +25,7 @@ export function useGlobalShortcuts(handler: ShortcutHandler): {
 } {
 	const [customShortcuts, setCustomShortcuts] = useState<ShortcutBindings>({});
 	const handlerRef = useRef(handler);
-	const customRef = useRef(customShortcuts);
 	handlerRef.current = handler;
-	customRef.current = customShortcuts;
 
 	useEffect(() => {
 		void loadShortcutBindings().then(setCustomShortcuts);
@@ -37,30 +35,28 @@ export function useGlobalShortcuts(handler: ShortcutHandler): {
 		return unsubscribe;
 	}, []);
 
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			// Skip if user is typing in an input/textarea (unless it's a global shortcut with mod key)
-			const target = e.target as HTMLElement;
-			const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
-
-			const hasMod = navigator.platform.toUpperCase().includes("MAC") ? e.metaKey : e.ctrlKey;
-
-			if (isInput && !hasMod) return;
-
-			for (const action of SHORTCUT_ACTIONS) {
-				const effective = getEffectiveShortcut(action.id, customRef.current);
-				if (effective && matchesShortcut(e, effective)) {
-					e.preventDefault();
-					e.stopPropagation();
+	const resolvedBindings = useMemo((): ShortcutBinding[] => {
+		return SHORTCUT_ACTIONS.map((action) => {
+			const key = getEffectiveShortcut(action.id, customShortcuts);
+			const hasChord = key.includes("mod") || key.includes("ctrl") || key.includes("alt");
+			return {
+				key,
+				// Chorded app shortcuts still work while typing; bare keys never steal from editors.
+				when: hasChord ? "always" : "not-editable",
+				run: () => {
 					handlerRef.current(action.id);
-					return;
-				}
-			}
-		}
+				},
+			};
+		});
+	}, [customShortcuts]);
 
-		document.addEventListener("keydown", handleKeyDown, true);
-		return () => document.removeEventListener("keydown", handleKeyDown, true);
-	}, []);
+	useShortcutScope({
+		id: "app:global",
+		kind: "app",
+		active: true,
+		exclusive: false,
+		bindings: resolvedBindings,
+	});
 
 	const setCustomShortcut = useCallback((actionId: string, shortcut: string) => {
 		setCustomShortcuts((prev) => {

@@ -30,8 +30,15 @@
 ```
 
 - Vite 配 `@tailwindcss/vite`；入口 `import "./style.css"` 一次即可。
+- `vettaPluginFederation` 会在 Tailwind 编译前自动注入
+  `@vetta-org/plugin-sdk/tailwind-theme.css` 的纯 Token 契约；插件不需要导入
+  Desktop CSS、SDK 主题 CSS，也不需要重复声明 `@theme`。
 - `plugin.json`：`"styles": ["dist/style.css"]`。
 - 如不需要 preflight，也可以继续只导入 `theme.css` + `utilities.css` 以减小产物。
+
+`text-foreground`、`text-card-foreground`、`text-muted-foreground/60`、
+`bg-card`、`border-border` 等语义工具类会引用宿主运行时 CSS 变量并随主题切换；
+插件制品不包含 Desktop 的实际颜色值或组件样式。
 
 ### JSX 示例
 
@@ -136,6 +143,30 @@ function Icon() {
 - 你的插件与宿主用**同一个 React**，hook、context、状态都跨得过去（这正是 `useActiveConversation` 等能工作的前提）。
 - `package.json` 里的 `react` 只用于类型与本地构建，别试图 bundle 一份自己的 React。
 - `@vetta-org/plugin-sdk` 同样 external，运行时由宿主提供。
+
+## 可选：`@vetta/ui` 宿主 primitives
+
+插件**可以**直接使用宿主的设计系统 primitives，与 App chrome 对齐：
+
+```tsx
+import { Button, Switch, Slider, Dialog, DialogContent, cn } from "@vetta/ui";
+```
+
+约定：
+
+| 项 | 说明 |
+| --- | --- |
+| 运行时 | 由宿主单例提供（MF share + `vetta-host://ui`），**不要**打进插件 bundle |
+| 构建 | `vettaPluginFederation` 已把 `@vetta/ui` 设为 `shared.singleton + import:false`，并 rollup external |
+| `package.json` | 仅作类型 / 本地 tsc：`devDependencies` 里 `@vetta/ui`（仓库内 `workspace:*`，仓库外按发布版本） |
+| 样式 | 组件 class 走宿主全局 token / Tailwind；插件 scoped CSS **管不到** Dialog 等 portal 到 `document.body` 的浮层（浮层依赖宿主已加载的全局样式，这是预期行为） |
+| 宿主版本 | 需要宿主提供 `vetta-host://ui` shim：desktop-app **>= 0.5.31**，且 `@vetta-org/plugin-vite` **>= 0.0.5**。旧宿主上 import `@vetta/ui` 会在加载插件时解析失败（模块找不到，整个插件不激活）——若你的插件要兼容更早的 App，就别用这条通道，自写 JSX + 语义 class |
+| 稳定性 | **半稳定、可选**。宿主会尽量不无故破坏，但不对跨 App 大版本做 semver 承诺；props / 导出变更时官方插件随 monorepo 同改 |
+| 不在此列 | `@vetta/theme-ui`（业务 View）**尚未**作为插件共享依赖；需要时再另开通道 |
+
+默认路径仍是：自写 JSX + 语义 class（`bg-background` / `text-foreground`…）。`@vetta/ui` 适合按钮、开关、对话框等控件统一，不是强制。
+
+顶层不要对 `@vetta/ui` 做立即求值（与 React 相同，见上文「MF 顶层 JSX 陷阱」）——在组件函数内使用即可。
 
 ## 缓存刷新
 

@@ -1,6 +1,7 @@
+import { type ShortcutBinding, useShortcutScope } from "@shared/shortcuts";
 import { type FilePreviewItem, filePreviewContextReadonlyAtom } from "@shared/store/atoms";
 import { useAtom } from "jotai";
-import { useCallback, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { FilePreviewDialogViewProps } from "../components/FilePreviewDialogView";
 import { usePreviewNav } from "../components/FilePreviewView";
@@ -20,23 +21,21 @@ export function useFilePreviewDialogModel(): FilePreviewDialogModel {
 	const item = ctx ? (ctx.items[ctx.index] ?? null) : null;
 	const isImageGroup = !!ctx && ctx.items.length > 1 && ctx.items.every(isImage);
 
-	useEffect(() => {
-		if (!item) return;
-		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				e.preventDefault();
-				close();
-			} else if (isImageGroup && e.key === "ArrowLeft") {
-				e.preventDefault();
-				goPrev();
-			} else if (isImageGroup && e.key === "ArrowRight") {
-				e.preventDefault();
-				goNext();
-			}
-		};
-		window.addEventListener("keydown", onKey);
-		return () => window.removeEventListener("keydown", onKey);
-	}, [item, isImageGroup, goPrev, goNext, close]);
+	const bindings = useMemo((): ShortcutBinding[] => {
+		const list: ShortcutBinding[] = [{ key: "escape", run: () => close() }];
+		if (isImageGroup) {
+			list.push({ key: "arrowleft", run: () => goPrev() }, { key: "arrowright", run: () => goNext() });
+		}
+		return list;
+	}, [isImageGroup, close, goPrev, goNext]);
+
+	useShortcutScope({
+		id: "surface:file-preview-dialog",
+		kind: "surface",
+		active: item != null,
+		exclusive: false,
+		bindings,
+	});
 
 	const selectIndex = useCallback((index: number) => setCtx((prev) => (prev ? { ...prev, index } : prev)), [setCtx]);
 

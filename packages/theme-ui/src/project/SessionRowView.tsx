@@ -11,6 +11,8 @@ import {
 export interface SessionRowViewProps {
 	active: boolean;
 	label: string;
+	/** On-disk session path; used for fly-to-sidebar targeting. */
+	sessionPath?: string;
 	/** Tooltip / secondary label (e.g. forked-from preview). */
 	titleExtra?: string;
 	/** Session was forked from another session. */
@@ -29,6 +31,7 @@ export interface SessionRowViewProps {
 export function SessionRowView({
 	active,
 	label,
+	sessionPath,
 	titleExtra,
 	forked,
 	onBeforeSelect,
@@ -46,6 +49,7 @@ export function SessionRowView({
 		<button
 			type="button"
 			data-session-active={active ? "true" : undefined}
+			data-session-path={sessionPath || undefined}
 			onClick={(event) => {
 				if (renaming) return;
 				const panelWait = onBeforeSelect?.() ?? false;
@@ -55,7 +59,7 @@ export function SessionRowView({
 			onContextMenu={onOpenContextMenu}
 			className={cn(
 				"relative flex w-full items-center gap-2 rounded-lg px-2.5 py-[6px] text-left transition-colors duration-100",
-				active ? "bg-primary/15 text-foreground" : "hover:bg-accent/50",
+				active ? "bg-accent text-foreground" : "hover:bg-accent/50",
 			)}
 			title={title}
 		>

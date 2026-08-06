@@ -1,4 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { Button } from "@vetta/ui";
 import { useCallback, useEffect, useState } from "react";
 import { commitFileDiff, commitFiles } from "../../git/log";
 import { parseNameStatus } from "../../git/parseLog";
@@ -13,9 +14,6 @@ import { CommitMeta } from "./CommitMeta";
 type ViewMode = "tree" | "flat";
 // Shared with GitChanges so the tree/flat preference stays consistent across views.
 const VIEW_MODE_KEY = "vetta-git-view-mode";
-
-const iconButton =
-	"flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
 
 function basename(path: string): string {
 	const i = path.lastIndexOf("/");
@@ -111,9 +109,9 @@ export function CommitDetailPane({ root, node, onClose }: { root: string; node: 
 				<span className="git-mono min-w-0 flex-1 truncate text-[12px] text-muted-foreground" title={node.hash}>
 					{node.hash.slice(0, 8)}
 				</span>
-				<button type="button" onClick={onClose} className={iconButton} title={t("commit.close")}>
+				<Button type="button" variant="ghost" size="icon-xs" onClick={onClose} title={t("commit.close")}>
 					<CloseIcon className="h-3.5 w-3.5" />
-				</button>
+				</Button>
 			</div>
 
 			{error ? (
@@ -126,14 +124,15 @@ export function CommitDetailPane({ root, node, onClose }: { root: string; node: 
 				<div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
 					<CommitMeta node={node} />
 					<div className="flex h-7 shrink-0 items-center justify-end border-b border-border px-1.5">
-						<button
+						<Button
 							type="button"
+							variant="ghost"
+							size="icon-xs"
 							onClick={toggleView}
 							title={viewMode === "tree" ? t("view.switchToFlat") : t("view.switchToTree")}
-							className={iconButton}
 						>
 							{viewMode === "tree" ? <ListViewIcon className="h-3.5 w-3.5" /> : <TreeViewIcon className="h-3.5 w-3.5" />}
-						</button>
+						</Button>
 					</div>
 					{/* File list: auto height, capped, scrolls internally past the cap. */}
 					<div className="max-h-[40%] shrink-0 overflow-y-auto border-b border-border">

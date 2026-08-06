@@ -4,8 +4,11 @@ import { ProjectsPanelSplitHandle } from "../sidebar/ProjectsPanelSplitHandle";
 import { QuickScrollOverlay, type QuickScrollLabels } from "./QuickScrollOverlay";
 
 const SPLIT_HANDLE_HEIGHT = 10;
+/** Keep the default conversation header, both quick-scroll rails, and two session rows usable. */
+const DEFAULT_CONVERSATION_MIN_HEIGHT = 144;
 
 export interface ProjectsPanelViewProps {
+	defaultConversationRegionRef?: RefObject<HTMLDivElement | null>;
 	defaultSection: ReactNode;
 	/** Host-resolved empty state (i18n). */
 	emptyState: ReactNode;
@@ -32,6 +35,7 @@ export interface ProjectsPanelViewProps {
 }
 
 export function ProjectsPanelView({
+	defaultConversationRegionRef,
 	defaultSection,
 	emptyState,
 	menus,
@@ -67,11 +71,12 @@ export function ProjectsPanelView({
 	);
 
 	const splitProjectsStyle: CSSProperties = {
-		maxHeight: `calc(${splitRatio * 100}% - ${SPLIT_HANDLE_HEIGHT * splitRatio}px)`,
+		maxHeight: `max(0px, min(calc(${splitRatio * 100}% - ${SPLIT_HANDLE_HEIGHT * splitRatio}px), calc(100% - ${SPLIT_HANDLE_HEIGHT + DEFAULT_CONVERSATION_MIN_HEIGHT}px)))`,
 	};
 
 	const conversationRegion = (
 		<div
+			ref={defaultConversationRegionRef}
 			data-tour="sidebar-conversations"
 			className="flex min-h-0 flex-1 flex-col overflow-hidden"
 		>

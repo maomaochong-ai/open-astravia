@@ -57,6 +57,7 @@
 			"@vetta/runtime-subagents": ["./packages/runtime-subagents/src/index.ts"],
 			"@vetta/runtime-subagents/*": ["./packages/runtime-subagents/src/*"],
 			"@vetta-org/plugin-sdk": ["./packages/plugins/plugin-sdk/src/index.ts"],
+			"@vetta-org/plugin-sdk/manifest": ["./packages/plugins/plugin-sdk/src/manifest.ts"],
 			"@vetta-org/plugin-sdk/*": ["./packages/plugins/plugin-sdk/src/*"],
 			"@vetta-org/plugin-vite": ["./packages/plugins/plugin-vite/src/index.ts"],
 			"@vetta-org/plugin-vite/*": ["./packages/plugins/plugin-vite/src/*"],

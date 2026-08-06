@@ -51,6 +51,7 @@ export const TOKEN_CSS_VAR: Record<keyof TokenSet, string> = {
 	destructiveForeground: "--destructive-foreground",
 	border: "--border",
 	input: "--input",
+	inputBarBg: "--input-bar-bg",
 	ring: "--ring",
 	chart1: "--chart-1",
 	chart2: "--chart-2",

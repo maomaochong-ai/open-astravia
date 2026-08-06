@@ -19,8 +19,8 @@ preset 插件 id 完整列表：
 {
   "default": "common",
   "tenants": {
-    "common": ["guiding-words", "image-gen", "svg-viewer"],
-    "tenantb": ["guiding-words", "image-gen", "svg-viewer", "demo-map"]
+    "common": ["vetta-actions", "image-gen", "svg-viewer"],
+    "tenantb": ["vetta-actions", "image-gen", "svg-viewer", "demo-map"]
   }
 }
 ```
@@ -84,8 +84,7 @@ packages/plugins/<presets|externals>/<id>/
 ```
 
 Preset 可参考 `presets/svg-viewer`；外置插件可
-参考 `externals/drawio-viewer`、`externals/global-slot-demo` 和
-`externals/mobile-ui-preview`。
+参考 `externals/global-slot-demo` 和 `externals/mobile-ui-preview`。
 
 ### package.json
 

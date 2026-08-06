@@ -8,6 +8,9 @@
 			"skills": "Capabilities",
 			"scenes": "Scenes",
 			"plugins": "Plugins",
+			"modelSettings": "Model Settings",
+			"agentSettings": "Agent Settings",
+			"appearance": "Appearance",
 			"more": "More",
 			"betaBadge": "BETA"
 		},
@@ -133,11 +136,15 @@
 		"downloading": "Downloading {{version}} ({{pct}}%)",
 		"ready": "Update {{version}} is ready — click to restart",
 		"checkFailed": "Update check failed, click to retry",
-		"downloadProgress": "Download progress"
+		"downloadProgress": "Download progress",
+		"bannerReady": "Version {{version}} is ready",
+		"bannerRestart": "Restart",
+		"bannerDismiss": "Dismiss"
 	},
 	"tabPicker": {
 		"moreTabs": "More tabs",
 		"hiddenPanels": "Hidden panels",
+		"availablePlugins": "Add plugin panels",
 		"menu": "Tab menu"
 	},
 	"tour": {

@@ -23,6 +23,8 @@ export interface McpHttpServerConfig extends McpServerCommonConfig {
 	type: "http";
 	url: string;
 	headers?: Record<string, string>;
+	/** Runtime-only header source for rotating credentials; never persisted to mcp.json. */
+	resolveHeaders?: () => Record<string, string> | Promise<Record<string, string>>;
 	oauthClientId?: string;
 	oauthDeviceFlow?: boolean;
 	oauthScopes?: string;

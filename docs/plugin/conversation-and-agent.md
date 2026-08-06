@@ -270,6 +270,69 @@ const { stdout, exitCode } = await ctx.command.run("git", ["status", "--porcelai
 
 示例：`packages/plugins/presets/git`。
 
+## 长驻进程 command.spawn
+
+`ctx.command.spawn` 启动**长驻**进程（如本地 dev server，ADR-0054）。治理与 `run` 同模式：清单 `commands` 声明二进制 + 用户可关；但权限是独立的 `agent.command.spawn`。
+
+```ts
+interface PluginCommandApi {
+	spawn(
+		file: string,
+		args?: string[],
+		options?: {
+			cwd?: string;
+			env?: Record<string, string>;
+			/** 宿主分配空闲端口，并替换 args/env 值中的字面量 `{{PORT}}`。 */
+			allocatePort?: boolean;
+		},
+	): Promise<PluginCommandSpawnHandle>;
+}
+
+interface PluginCommandSpawnHandle {
+	spawnId: string;
+	pid: number;
+	port?: number; // allocatePort 时有值
+	stop(): Promise<void>; // SIGTERM 进程树，宽限后 SIGKILL；幂等
+	status(): Promise<{ running: boolean; pid: number; port?: number; exit?: { exitCode: number | null; signal: string | null }; recentOutput: string }>;
+	onExit(listener: (exit: { exitCode: number | null; signal: string | null }) => void): Disposable;
+}
+```
+
+- 子进程运行在**独立进程组**：`stop()` 杀整棵树（vite 的 esbuild 子进程等不会残留）。
+- 宿主兜底回收：插件禁用/卸载/重载、App 退出时统一清扫；每插件并发 spawn 上限 8。
+- `recentOutput` 是 stdout+stderr 合并环形缓冲（约 64KB 尾部），用于诊断/进度。
+- 端口竞争极小概率存在：配合 `--strictPort` 类参数，启动失败（onExit）后重试一次即可。
+
+示例：`packages/plugins/presets/vetta-ui-design`（设计引擎 vite dev server 与 `npm install`）。
+
+## 离屏截图 capture.offscreen
+
+`ctx.capture.offscreen` 让宿主用**主进程隐藏窗口**加载并截取一个 http(s) 页面（权限 `capture.offscreen`）。与 html-to-image 等 DOM 克隆方案不同，它走真实 Chromium 渲染管线，产出与页面在屏显示逐像素一致的位图（无克隆重排的断行/亚像素偏差），且完全不占插件所在渲染进程的主线程。旧宿主上 `ctx.capture` 为 `undefined`，使用前判空。
+
+```ts
+interface PluginCaptureApi {
+	offscreen(options: {
+		url: string; // 仅 http(s)
+		width: number; // 视口 CSS 尺寸
+		height: number;
+		sessionKey?: string; // 同 key 串行复用同一窗口；url 未变则跳过重新加载（SPA 切路由零加载）
+		prepareScript?: string; // 加载/复用后注入执行（如 postMessage 切路由）
+		readyExpression?: string; // 轮询到真值才截（页面自己的「渲染完成」信号）
+		settleMs?: number; // 就绪后静置（上限 5s）
+		timeoutMs?: number; // 整体超时（上限 60s）
+		format?: "jpeg" | "png";
+		quality?: number; // 仅 jpeg，0–1
+	}): Promise<{ dataUrl: string; scaleFactor: number }>;
+	releaseOffscreen(sessionKey: string): Promise<void>; // 幂等；下次同 key 重新加载
+}
+```
+
+- `scaleFactor` 是实际设备像素比（跟随主显示器，Retina 为 2），插件不可指定。
+- 会话窗口闲置约 30s 自动回收；插件禁用/卸载/重载、App 退出时统一清扫；每插件并存会话上限 4。
+- `readyExpression` 求值抛错按「未就绪」处理并继续轮询，直到超时。
+
+示例：`packages/plugins/presets/vetta-ui-design` 的画布位图队列（`src/canvas/offscreen-raster.ts`）：一个引擎 dev server 复用一个会话，`prepareScript` 发 `show-frame` 切帧，`readyExpression` 轮询引擎写入的 `window.__vetdPainted`。
+
 ## 文件 API
 
 `ctx.fs` 受权限门控读写文件（`fs.read` / `fs.write`，缺权限**抛错**）。

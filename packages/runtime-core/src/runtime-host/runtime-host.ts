@@ -56,6 +56,9 @@ export type { RunningChangedReason, RuntimeHostOptions } from "./types.js";
 
 const DEFAULT_RUNTIME_SCENARIO: NonNullable<SessionConfig["scenario"]> = "cli";
 
+/** 合并插件激活期间连续产生的配置更新，空闲会话只重建一次工具面。 */
+const IDLE_AGENT_PLUGIN_APPLY_DELAY_MS = 300;
+
 /**
  * 运行时宿主：会话生命周期、事件订阅、执行模式与沙箱授权的编排层。
  * 历史解析 / 事件映射 / 周边 LLM 任务已拆到同目录独立模块。
@@ -192,7 +195,31 @@ export class RuntimeHost implements SessionFacade {
 			handle.pendingAgentPlugins = nextAgentPlugins;
 			handle.hasPendingAgentPlugins = true;
 			debugPluginAgent("runtime reconfigure deferred until prompt", { sessionId });
+			this.scheduleIdleAgentPluginApply(sessionId, handle);
 		}
+	}
+
+	private scheduleIdleAgentPluginApply(sessionId: string, handle: SessionHandle): void {
+		if (handle.idleAgentPluginTimer) clearTimeout(handle.idleAgentPluginTimer);
+		handle.idleAgentPluginTimer = setTimeout(() => {
+			handle.idleAgentPluginTimer = undefined;
+			if (!this.sessions.has(sessionId)) return;
+			void this.applyPendingAgentPlugins(sessionId, handle).catch((error: unknown) => {
+				console.warn(`[RuntimeHost.scheduleIdleAgentPluginApply] session=${sessionId} apply failed:`, error);
+			});
+		}, IDLE_AGENT_PLUGIN_APPLY_DELAY_MS);
+	}
+
+	private broadcastActiveToolNames(sessionId: string, handle: SessionHandle): void {
+		const activeToolNames = [...handle.stateReader.readState().activeToolNames];
+		const fingerprint = [...activeToolNames].sort().join("\0");
+		if (handle.lastBroadcastActiveToolNames === fingerprint) return;
+		handle.lastBroadcastActiveToolNames = fingerprint;
+		this.broadcastSyntheticEvent(sessionId, {
+			...baseSessionEvent(sessionId, "runtime-core"),
+			type: "active_tools_update",
+			activeToolNames,
+		});
 	}
 
 	listSandboxGrants(sessionId: string): RuntimeSandboxGrantInfo[] {
@@ -319,6 +346,7 @@ export class RuntimeHost implements SessionFacade {
 					existing.handle.agentPluginsEnabled = true;
 					existing.handle.pendingAgentPlugins = this.withAdditionalSkillPaths(config.agentPlugins);
 					existing.handle.hasPendingAgentPlugins = true;
+					this.scheduleIdleAgentPluginApply(existing.sessionId, existing.handle);
 				}
 				await existing.handle.hostInteraction.bind(
 					this.createHostInteractionContext({ current: existing.sessionId }),
@@ -435,6 +463,9 @@ export class RuntimeHost implements SessionFacade {
 			agentMode: config.agentMode,
 			pendingAgentMode: undefined,
 			hasPendingAgentMode: false,
+			idleAgentPluginTimer: undefined,
+			agentPluginApplyInFlight: undefined,
+			lastBroadcastActiveToolNames: undefined,
 		});
 		debugPluginAgent("runtime createSession registered", {
 			sessionId,
@@ -677,6 +708,12 @@ export class RuntimeHost implements SessionFacade {
 			} as SessionEvent);
 		}
 
+		handler({
+			...baseSessionEvent(sessionId, "runtime-core"),
+			type: "active_tools_update",
+			activeToolNames: [...handle.stateReader.readState().activeToolNames],
+		});
+
 		// Replay in-flight assistant deltas accumulated since agent_start so that
 		// a renderer reconnecting mid-stream (e.g. after switching sessions away
 		// and back) sees the partial assistant content. Without this, any text
@@ -885,6 +922,7 @@ export class RuntimeHost implements SessionFacade {
 		// lock is released and the in-memory handle does not outlive the file.
 		const existing = this.findHandleBySessionPath(sessionPath);
 		if (existing) {
+			if (existing.handle.idleAgentPluginTimer) clearTimeout(existing.handle.idleAgentPluginTimer);
 			this.detachSessionEventStreams(existing.sessionId);
 			this.inFlightBuffers.delete(existing.sessionId);
 			this.externalSubscribers.delete(existing.sessionId);
@@ -986,6 +1024,7 @@ export class RuntimeHost implements SessionFacade {
 	async disposeSession(sessionId: string): Promise<void> {
 		const handle = this.sessions.get(sessionId);
 		if (!handle) return;
+		if (handle.idleAgentPluginTimer) clearTimeout(handle.idleAgentPluginTimer);
 		this.detachSessionEventStreams(sessionId);
 		this.inFlightBuffers.delete(sessionId);
 		this.externalSubscribers.delete(sessionId);
@@ -1005,6 +1044,7 @@ export class RuntimeHost implements SessionFacade {
 	async disposeAllSessions(): Promise<void> {
 		for (const [sessionId, handle] of this.sessions) {
 			try {
+				if (handle.idleAgentPluginTimer) clearTimeout(handle.idleAgentPluginTimer);
 				this.detachSessionEventStreams(sessionId);
 				await handle.lifecycle.dispose();
 			} catch (err) {
@@ -1089,8 +1129,26 @@ export class RuntimeHost implements SessionFacade {
 	}
 
 	private async applyPendingAgentPlugins(sessionId: string, handle: SessionHandle): Promise<void> {
+		if (handle.agentPluginApplyInFlight) {
+			await handle.agentPluginApplyInFlight.catch(() => {
+				// 失败由发起方记录；这里仅等待并发中的配置应用完成。
+			});
+		}
 		if (!handle.agentPluginsEnabled || !handle.hasPendingAgentPlugins) return;
 		if (handle.executionController.isBusy()) return;
+		const apply = this.applyPendingAgentPluginsOnce(sessionId, handle);
+		handle.agentPluginApplyInFlight = apply.then(
+			() => undefined,
+			() => undefined,
+		);
+		try {
+			await apply;
+		} finally {
+			handle.agentPluginApplyInFlight = undefined;
+		}
+	}
+
+	private async applyPendingAgentPluginsOnce(sessionId: string, handle: SessionHandle): Promise<void> {
 		debugPluginAgent("runtime deferred reconfigure apply", { sessionId });
 		const pendingAgentPlugins = handle.pendingAgentPlugins;
 		handle.pendingAgentPlugins = undefined;
@@ -1104,6 +1162,7 @@ export class RuntimeHost implements SessionFacade {
 			}
 			throw error;
 		}
+		this.broadcastActiveToolNames(sessionId, handle);
 	}
 
 	/**
