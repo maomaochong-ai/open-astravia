@@ -8,7 +8,7 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type {
-	CodingAgentGreenfieldContextRuntime,
+	CodingAgentContextRuntime,
 	CodingAgentGreenfieldExtensionEventBridge,
 	CodingAgentMemoryController,
 	CodingAgentMemoryRolloverRuntime,
@@ -63,7 +63,7 @@ describe("Greenfield Session Resource Lifecycle assembly", () => {
 			dispose() {
 				contextDisposals += 1;
 			},
-		} as unknown as CodingAgentGreenfieldContextRuntime;
+		} as unknown as CodingAgentContextRuntime;
 		const todoRuntime = {
 			async dispose() {
 				todoDisposals += 1;

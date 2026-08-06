@@ -8,7 +8,7 @@ import {
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import {
-	type CodingAgentGreenfieldContextRuntime,
+	type CodingAgentContextRuntime,
 	CodingAgentGreenfieldExtensionEventBridge,
 	type CodingAgentMemoryRolloverRuntime,
 	type CodingAgentRuntimeModelAdapter,
@@ -36,8 +36,8 @@ import type { CodingToolsRuntimeComposition } from "./runtime-tools-composition.
 
 export interface GreenfieldSessionInitializationRegistry {
 	readonly indexes: GreenfieldSessionResourceIndexes;
-	trackContextRuntime(runtime: CodingAgentGreenfieldContextRuntime): void;
-	untrackContextRuntime(runtime: CodingAgentGreenfieldContextRuntime): void;
+	trackContextRuntime(runtime: CodingAgentContextRuntime): void;
+	untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
 	trackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
 	untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
 	trackTodoRuntime(runtime: CodingAgentTodoRuntime): void;

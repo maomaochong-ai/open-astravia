@@ -114,6 +114,37 @@ describe("Coding Agent rewrite progress gate", () => {
 		]);
 	});
 
+	it("keeps Context Runtime modules bounded and its retired aggregate deleted", () => {
+		const aggregate = stateFrom([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/context-runtime/index.ts",
+				text: Array.from({ length: 51 }, () => "export {};").join("\n"),
+			},
+		]);
+		const module = stateFrom([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/context-runtime/context-runtime.ts",
+				text: Array.from({ length: 401 }, () => "export {};").join("\n"),
+			},
+		]);
+		const retired = stateFrom([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-context-runtime.ts",
+				text: "export class CodingAgentGreenfieldContextRuntime {}",
+			},
+		]);
+
+		expect(findCodingAgentRewriteProgressViolations(aggregate, aggregate)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/context-runtime/index.ts: Context Runtime module has 51 lines (limit 50)",
+		]);
+		expect(findCodingAgentRewriteProgressViolations(module, module)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/context-runtime/context-runtime.ts: Context Runtime module has 401 lines (limit 400)",
+		]);
+		expect(retired.oldImplementationFiles).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-context-runtime.ts",
+		]);
+	});
+
 	it("rejects removed Legacy HTML export paths and implicit asset installation", () => {
 		const actual = stateFrom([
 			{

@@ -1,5 +1,5 @@
 {
-	"version": 11,
+	"version": 12,
 	"oldImplementationEdges": [],
 	"runtimeBackedges": [],
 	"oldImplementationFiles": [],
@@ -9,6 +9,7 @@
 	"legacyExampleImports": [],
 	"oversizedStableExtensionModules": [],
 	"oversizedStableResourceModules": [],
+	"oversizedContextRuntimeModules": [],
 	"legacyHtmlExportReferences": [],
 	"legacyMemoryReferences": [],
 	"retiredToolReferences": [],

@@ -9,7 +9,7 @@ import {
 } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 import {
-	type CodingAgentGreenfieldContextRuntime,
+	type CodingAgentContextRuntime,
 	CodingAgentGreenfieldExtensionEventBridge,
 	CodingAgentTodoRuntime,
 } from "../../src/adapters/runtime-core/greenfield.js";
@@ -119,7 +119,7 @@ function createTool(name: string): RuntimeToolDefinition {
 	};
 }
 
-function createContextRuntime(): CodingAgentGreenfieldContextRuntime {
+function createContextRuntime(): CodingAgentContextRuntime {
 	const contextStrategy = new PassthroughContextStrategy();
 	return {
 		id: "test-context",
@@ -128,5 +128,5 @@ function createContextRuntime(): CodingAgentGreenfieldContextRuntime {
 			return input.messages;
 		},
 		async observe() {},
-	} as unknown as CodingAgentGreenfieldContextRuntime;
+	} as unknown as CodingAgentContextRuntime;
 }

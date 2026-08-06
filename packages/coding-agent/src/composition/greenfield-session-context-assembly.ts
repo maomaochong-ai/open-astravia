@@ -7,7 +7,7 @@ import {
 	type InitializationRollbackTask,
 } from "@vetta/runtime-core";
 import {
-	CodingAgentGreenfieldContextRuntime,
+	CodingAgentContextRuntime,
 	CodingAgentGreenfieldMemoryController,
 	type CodingAgentMemoryController,
 	type CodingAgentRuntimeModelAdapter,
@@ -41,8 +41,8 @@ export interface GreenfieldSessionContextAssemblyOptions {
 	readonly createChildComposition: (
 		request: GreenfieldSubagentChildCompositionRequest,
 	) => Promise<GreenfieldSubagentChildComposition>;
-	readonly trackContextRuntime: (runtime: CodingAgentGreenfieldContextRuntime) => void;
-	readonly untrackContextRuntime: (runtime: CodingAgentGreenfieldContextRuntime) => void;
+	readonly trackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
+	readonly untrackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
 }
 
@@ -50,7 +50,7 @@ export interface GreenfieldSessionContextAssembly {
 	readonly modelRuntime: GreenfieldRuntimeModel;
 	readonly memoryController?: CodingAgentMemoryController;
 	readonly hookRuntime: EcosystemHookRuntime;
-	readonly contextRuntime: CodingAgentGreenfieldContextRuntime;
+	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly subagentRuntime?: GreenfieldSubagentRuntime;
 }
 
@@ -96,7 +96,7 @@ export function createGreenfieldSessionContextAssembly(
 		configLayers: profile.hookConfigLayers,
 		maxStopContinuations: profile.maxStopHookContinuations,
 	});
-	const contextRuntime = new CodingAgentGreenfieldContextRuntime({
+	const contextRuntime = new CodingAgentContextRuntime({
 		hookRuntime,
 		resolveApiKey: (model) => modelRuntime.resolveApiKey(model),
 		resolveSettings: profile.resolveCompactionSettings,

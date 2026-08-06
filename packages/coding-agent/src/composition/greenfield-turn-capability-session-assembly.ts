@@ -10,8 +10,8 @@ import {
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools/coding";
 import {
+	type CodingAgentContextRuntime,
 	CodingAgentContinuationOrchestrator,
-	type CodingAgentGreenfieldContextRuntime,
 	type CodingAgentGreenfieldExtensionEventBridge,
 	CodingAgentGreenfieldModelCallMessageFinalizer,
 	CodingAgentGreenfieldPromptAdapter,
@@ -80,7 +80,7 @@ export interface GreenfieldTurnCapabilitySessionAssemblyOptions {
 	readonly todoToolRegistration?: CodingAgentRuntimeToolRegistration;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly subagentRuntime?: GreenfieldSubagentRuntime;
-	readonly contextRuntime: CodingAgentGreenfieldContextRuntime;
+	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly conversationContextProjector: NonNullable<AgentProfile["conversationContextProjector"]>;
 	readonly modelRuntime: GreenfieldRuntimeModel;
 	readonly hookRuntime: EcosystemHookRuntime;

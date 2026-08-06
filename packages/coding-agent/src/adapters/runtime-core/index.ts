@@ -29,6 +29,11 @@ export {
 	createCodingAgentMcpRuntimeToolSource,
 	decorateCodingAgentMcpRuntimeTool,
 } from "./coding-agent-mcp-runtime-source.js";
+export {
+	CodingAgentContextRuntime,
+	type CodingAgentContextRuntimeOptions,
+	type CodingAgentContextUsage,
+} from "./context-runtime/index.js";
 export { CodingAgentGreenfieldAgentMessageContextProjector } from "./greenfield-agent-message-context-projector.js";
 export {
 	type CodingAgentCompactionCommittedInput,
@@ -37,11 +42,6 @@ export {
 	type CodingAgentCompactionExtensionRuntime,
 	createCodingAgentCompactionExtensionRuntime,
 } from "./greenfield-compaction-extension-runtime.js";
-export {
-	type CodingAgentContextUsage,
-	CodingAgentGreenfieldContextRuntime,
-	type CodingAgentGreenfieldContextRuntimeOptions,
-} from "./greenfield-context-runtime.js";
 export {
 	CodingAgentContinuationOrchestrator,
 	type CodingAgentContinuationOrchestratorOptions,

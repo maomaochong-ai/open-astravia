@@ -13,13 +13,13 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import {
 	type CodingAgentCompactionExtensionRuntime,
-	CodingAgentGreenfieldContextRuntime,
-	type CodingAgentGreenfieldContextRuntimeOptions,
+	CodingAgentContextRuntime,
+	type CodingAgentContextRuntimeOptions,
 } from "../../src/adapters/runtime-core/index.js";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../src/compaction/index.js";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/model-context/index.js";
 
-describe("CodingAgentGreenfieldContextRuntime", () => {
+describe("CodingAgentContextRuntime", () => {
 	it("persists a threshold compaction while keeping transient turn input outside the summary", async () => {
 		const history = [
 			userMessage("old request".repeat(40), 1),
@@ -37,7 +37,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 				details: { source: "test" },
 			}),
 		);
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			resolveSettings: compactingSettings,
@@ -109,7 +109,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 			shouldBlock: true,
 			blockReason: "blocked by test",
 		});
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			resolveSettings: compactingSettings,
@@ -144,7 +144,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 			toolResultMessage(1),
 		] satisfies Message[];
 		const providerMessage = userMessage("provider context", 10);
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",
 			resolveSettings: () => ({ ...compactingSettings(), keepRecentTokens: 5 }),
@@ -194,7 +194,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 				tokensBefore: preparation.tokensBefore,
 			}),
 		);
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",
 			resolveSettings: compactingSettings,
@@ -238,7 +238,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 			userMessage("kept request", 3),
 			silentOverflow,
 		] satisfies Message[];
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",
 			resolveSettings: compactingSettings,
@@ -290,7 +290,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 		const generateCompaction = vi.fn(async (): Promise<CompactionResult> => {
 			throw new Error("summarizer must not run");
 		});
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			resolveSettings: compactingSettings,
@@ -364,7 +364,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 			throw new Error("summarizer must not run");
 		});
 		const hooks = createHookRuntime();
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			resolveSettings: compactingSettings,
@@ -391,7 +391,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 	});
 
 	it("microcompacts every model call without mutating persisted messages", async () => {
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",
 		});
@@ -421,7 +421,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 			timestamp: 10,
 		};
 		const transformAgentContext = vi.fn(async (messages) => structuredClone(messages));
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",
 			transformAgentContext,
@@ -457,7 +457,7 @@ describe("CodingAgentGreenfieldContextRuntime", () => {
 	});
 
 	it("restores context usage from the document and then reports exact assistant usage", async () => {
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",
 		});
@@ -523,7 +523,7 @@ function createHookRuntime(preCompactOutcome: HookDispatchOutcome = emptyHookOut
 		runPreCompact: vi.fn(async () => preCompactOutcome),
 		runPostCompact: vi.fn(async () => emptyHookOutcome()),
 		markSessionStart: vi.fn(),
-	} satisfies CodingAgentGreenfieldContextRuntimeOptions["hookRuntime"];
+	} satisfies CodingAgentContextRuntimeOptions["hookRuntime"];
 }
 
 function emptyHookOutcome(): HookDispatchOutcome {

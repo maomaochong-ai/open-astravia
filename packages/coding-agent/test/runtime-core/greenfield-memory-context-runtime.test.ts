@@ -12,7 +12,7 @@ import type {
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import {
-	CodingAgentGreenfieldContextRuntime,
+	CodingAgentContextRuntime,
 	type CodingAgentMemoryFlushInput,
 	CodingAgentMemoryRolloverOrchestrator,
 } from "../../src/adapters/runtime-core/index.js";
@@ -40,7 +40,7 @@ describe("Greenfield memory rollover context integration", () => {
 			},
 		});
 		const hooks = hookRuntime(trace);
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			resolveSettings: baseSettings,
@@ -104,7 +104,7 @@ describe("Greenfield memory rollover context integration", () => {
 			cwd: "C:\\workspace",
 			flushMemory,
 		});
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: hookRuntime(),
 			resolveApiKey: () => "key",
 			resolveSettings: () => ({ ...baseSettings(), reserveTokens: 90 }),
@@ -149,7 +149,7 @@ describe("Greenfield memory rollover context integration", () => {
 			cwd: "C:\\workspace",
 			appendRolloverJournal: () => {},
 		});
-		const runtime = new CodingAgentGreenfieldContextRuntime({
+		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: hooks,
 			resolveApiKey: () => "key",
 			memoryRollover,

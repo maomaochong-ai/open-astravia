@@ -9,7 +9,7 @@ import {
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type {
-	CodingAgentGreenfieldContextRuntime,
+	CodingAgentContextRuntime,
 	CodingAgentGreenfieldExtensionEventBridge,
 	CodingAgentMemoryController,
 	CodingAgentMemoryRolloverRuntime,
@@ -73,7 +73,7 @@ export interface GreenfieldSessionResourceLifecycleAssemblyOptions {
 	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
 	readonly conversationContextOverlay: CodingAgentGreenfieldConversationContextOverlay;
 	readonly modelRuntime: GreenfieldSessionModelRuntimePort;
-	readonly contextRuntime: CodingAgentGreenfieldContextRuntime;
+	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
 	readonly memoryController?: CodingAgentMemoryController;
 	readonly todoRuntime: CodingAgentTodoRuntime;
@@ -98,7 +98,7 @@ export interface GreenfieldSessionResourceLifecycleAssemblyOptions {
 	readonly tracking: {
 		trackHookSessionDisposer(dispose: () => Promise<void>): void;
 		untrackHookSessionDisposer(dispose: () => Promise<void>): void;
-		untrackContextRuntime(runtime: CodingAgentGreenfieldContextRuntime): void;
+		untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
 		untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
 		untrackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
 		untrackTurnCapabilityAssembly(assembly: GreenfieldTurnCapabilitySessionAssembly): void;

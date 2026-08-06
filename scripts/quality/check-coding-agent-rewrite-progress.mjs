@@ -110,12 +110,16 @@ const CLI_COMPOSITION_TYPE_NAMES = new Set([
 ]);
 const STABLE_EXTENSION_CONTRACT_PREFIX = "packages/coding-agent/src/extensions/";
 const STABLE_RESOURCE_DOMAIN_PREFIX = "packages/coding-agent/src/resources/";
+const STABLE_CONTEXT_RUNTIME_PREFIX = "packages/coding-agent/src/adapters/runtime-core/context-runtime/";
 const STABLE_EXTENSION_CONTRACT_AGGREGATE = `${STABLE_EXTENSION_CONTRACT_PREFIX}contracts.ts`;
 const MAX_EXTENSION_AGGREGATE_LINES = 50;
 const MAX_EXTENSION_MODULE_LINES = 300;
 const STABLE_RESOURCE_AGGREGATE = `${STABLE_RESOURCE_DOMAIN_PREFIX}index.ts`;
 const MAX_RESOURCE_AGGREGATE_LINES = 50;
 const MAX_RESOURCE_MODULE_LINES = 600;
+const STABLE_CONTEXT_RUNTIME_AGGREGATE = `${STABLE_CONTEXT_RUNTIME_PREFIX}index.ts`;
+const MAX_CONTEXT_RUNTIME_AGGREGATE_LINES = 50;
+const MAX_CONTEXT_RUNTIME_MODULE_LINES = 400;
 const FORBIDDEN_LEGACY_HTML_EXPORT_MARKERS = Object.freeze([
 	"core/export-html",
 	"installExportTemplateAssets",
@@ -141,6 +145,7 @@ const RUNTIME_PACKAGE_PREFIXES = Object.freeze([
 	"packages/runtime-mcp/src/",
 ]);
 const OLD_IMPLEMENTATION_EXACT_FILES = Object.freeze([
+	"packages/coding-agent/src/adapters/runtime-core/greenfield-context-runtime.ts",
 	"packages/coding-agent/src/adapters/runtime-core/greenfield-model-registry-adapter.ts",
 	"packages/coding-agent/src/adapters/runtime-core/model-registry-shared-model-controller.ts",
 	"packages/coding-agent/src/composition/greenfield-active-session-transition-host.ts",
@@ -208,6 +213,18 @@ export function collectCodingAgentRewriteState({
 			path: file.path,
 			lines: file.text.split(/\r?\n/).length,
 			limit: file.path === STABLE_RESOURCE_AGGREGATE ? MAX_RESOURCE_AGGREGATE_LINES : MAX_RESOURCE_MODULE_LINES,
+		}))
+		.filter((file) => file.lines > file.limit)
+		.sort((left, right) => left.path.localeCompare(right.path));
+	const oversizedContextRuntimeModules = productionFiles
+		.filter((file) => file.path.startsWith(STABLE_CONTEXT_RUNTIME_PREFIX) && file.path.endsWith(".ts"))
+		.map((file) => ({
+			path: file.path,
+			lines: file.text.split(/\r?\n/).length,
+			limit:
+				file.path === STABLE_CONTEXT_RUNTIME_AGGREGATE
+					? MAX_CONTEXT_RUNTIME_AGGREGATE_LINES
+					: MAX_CONTEXT_RUNTIME_MODULE_LINES,
 		}))
 		.filter((file) => file.lines > file.limit)
 		.sort((left, right) => left.path.localeCompare(right.path));
@@ -303,7 +320,7 @@ export function collectCodingAgentRewriteState({
 	);
 
 	return Object.freeze({
-		version: 11,
+		version: 12,
 		oldImplementationEdges,
 		runtimeBackedges,
 		oldImplementationFiles,
@@ -313,6 +330,7 @@ export function collectCodingAgentRewriteState({
 		legacyExampleImports,
 		oversizedStableExtensionModules,
 		oversizedStableResourceModules,
+		oversizedContextRuntimeModules,
 		legacyHtmlExportReferences,
 		legacyMemoryReferences,
 		retiredToolReferences,
@@ -350,6 +368,9 @@ export function findCodingAgentRewriteProgressViolations(actual, baseline) {
 	}
 	for (const file of actual.oversizedStableResourceModules) {
 		violations.push(`${file.path}: stable Resource module has ${file.lines} lines (limit ${file.limit})`);
+	}
+	for (const file of actual.oversizedContextRuntimeModules) {
+		violations.push(`${file.path}: Context Runtime module has ${file.lines} lines (limit ${file.limit})`);
 	}
 	for (const reference of actual.legacyHtmlExportReferences) {
 		violations.push(
@@ -497,6 +518,7 @@ export function summarizeCodingAgentRewriteState(state) {
 		legacyCoreExports: state.legacyCoreExports.length,
 		runtimeHostExports: state.runtimeHostExports.length,
 		legacyExampleImports: state.legacyExampleImports.length,
+		oversizedContextRuntimeModules: state.oversizedContextRuntimeModules.length,
 		legacyHtmlExportReferences: state.legacyHtmlExportReferences.length,
 		legacyMemoryReferences: state.legacyMemoryReferences.length,
 		retiredToolReferences: state.retiredToolReferences.length,
@@ -758,7 +780,7 @@ if (isDirectRun(import.meta.url)) {
 					.map(([domain, count]) => `${domain}=${count}`)
 					.join(", ");
 				ok(
-					`[coding-agent-rewrite] ok (old implementation edges=${summary.oldImplementationEdges}/0, Runtime backedges=${summary.runtimeBackedges}/0, old files=${summary.oldImplementationFiles}/0, compatibility exports=${summary.compatibilityExports}/0, legacy core exports=${summary.legacyCoreExports}/0, Runtime Host exports=${summary.runtimeHostExports}/0, legacy examples=${summary.legacyExampleImports}/0, Legacy HTML export references=${summary.legacyHtmlExportReferences}/0, Legacy Memory references=${summary.legacyMemoryReferences}/0, retired Tool references=${summary.retiredToolReferences}/0, retired runtime-composition files=${summary.retiredRuntimeCompositionFiles}/0, references=${summary.retiredRuntimeCompositionReferences}/0, CLI composition forwarders=${summary.cliCompositionForwarders}/0, CLI public composition edges=${summary.cliCompositionPublicEdges}/0, Desktop-to-CLI composition edges=${summary.desktopCliCompositionEdges}/0, retired CLI Session Host files=${summary.retiredCliSessionHostFiles}/0, references=${summary.retiredCliSessionHostReferences}/0, Coding Agent Session Host protocol references=${summary.codingAgentSessionHostProtocolReferences}/0, retired CLI Runtime Host files=${summary.retiredCliRuntimeHostFiles}/0, references=${summary.retiredCliRuntimeHostReferences}/0, Runtime Host entry ownership references=${summary.runtimeHostEntryOwnershipReferences}/0, Session assembly protocol references=${summary.cliSessionAssemblyProtocolReferences}/0, Composition public exports=${summary.compositionPublicExports}, external deep imports=${summary.externalCompositionDeepImports}/0, package-root exports=${summary.codingAgentRootExportEdges}, disallowed=${summary.codingAgentRootDisallowedExportEdges}/0, retained format boundaries=${summary.retainedFormatBoundaries}, format-to-old edges=${summary.formatBoundaryOldImplementationEdges}/0; domains: ${domains || "none"})`,
+					`[coding-agent-rewrite] ok (old implementation edges=${summary.oldImplementationEdges}/0, Runtime backedges=${summary.runtimeBackedges}/0, old files=${summary.oldImplementationFiles}/0, compatibility exports=${summary.compatibilityExports}/0, legacy core exports=${summary.legacyCoreExports}/0, Runtime Host exports=${summary.runtimeHostExports}/0, legacy examples=${summary.legacyExampleImports}/0, oversized Context Runtime modules=${summary.oversizedContextRuntimeModules}/0, Legacy HTML export references=${summary.legacyHtmlExportReferences}/0, Legacy Memory references=${summary.legacyMemoryReferences}/0, retired Tool references=${summary.retiredToolReferences}/0, retired runtime-composition files=${summary.retiredRuntimeCompositionFiles}/0, references=${summary.retiredRuntimeCompositionReferences}/0, CLI composition forwarders=${summary.cliCompositionForwarders}/0, CLI public composition edges=${summary.cliCompositionPublicEdges}/0, Desktop-to-CLI composition edges=${summary.desktopCliCompositionEdges}/0, retired CLI Session Host files=${summary.retiredCliSessionHostFiles}/0, references=${summary.retiredCliSessionHostReferences}/0, Coding Agent Session Host protocol references=${summary.codingAgentSessionHostProtocolReferences}/0, retired CLI Runtime Host files=${summary.retiredCliRuntimeHostFiles}/0, references=${summary.retiredCliRuntimeHostReferences}/0, Runtime Host entry ownership references=${summary.runtimeHostEntryOwnershipReferences}/0, Session assembly protocol references=${summary.cliSessionAssemblyProtocolReferences}/0, Composition public exports=${summary.compositionPublicExports}, external deep imports=${summary.externalCompositionDeepImports}/0, package-root exports=${summary.codingAgentRootExportEdges}, disallowed=${summary.codingAgentRootDisallowedExportEdges}/0, retained format boundaries=${summary.retainedFormatBoundaries}, format-to-old edges=${summary.formatBoundaryOldImplementationEdges}/0; domains: ${domains || "none"})`,
 				);
 			}
 		}

@@ -9,7 +9,7 @@ import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
 import {
 	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
-	type CodingAgentGreenfieldContextRuntime,
+	type CodingAgentContextRuntime,
 	type CodingAgentMemoryRolloverRuntime,
 	isCodingAgentAskUserQuestionEnabled,
 } from "../adapters/runtime-core/greenfield.js";
@@ -52,7 +52,7 @@ export interface GreenfieldSessionRuntimeResourcesOptions {
 	readonly turnCapabilityAssembly: GreenfieldTurnCapabilitySessionAssembly;
 	readonly modelRuntime: GreenfieldSessionModelRuntimePort;
 	readonly todoRuntime: CodingAgentTodoRuntime;
-	readonly contextRuntime: CodingAgentGreenfieldContextRuntime;
+	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly subagentRuntime?: GreenfieldSubagentRuntime;
 	readonly executionRuntime: GreenfieldSessionExecutionRuntime;
 	readonly configurationState: GreenfieldSessionConfigurationState;
