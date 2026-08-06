@@ -1,5 +1,11 @@
-import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
+import type {
+	PluginMediaApi,
+	PluginMediaProviderDescriptor,
+	PluginNetworkApi,
+	PluginSettingsApi,
+} from "@vetta-org/plugin-sdk";
 import { GeminiProvider } from "./gemini-provider";
+import { HostMediaProvider } from "./host-media-provider";
 import { OPENAI_IMAGE_MODELS } from "./model-catalog";
 import { NewApiVideoProvider } from "./newapi-video-provider";
 import { OpenAiImageProvider } from "./openai-image-provider";
@@ -9,6 +15,8 @@ import { ReplicateProvider } from "./replicate-provider";
 export function createContentProviderRegistry(
 	network: PluginNetworkApi,
 	settings: PluginSettingsApi,
+	media: PluginMediaApi,
+	mediaProviders: readonly PluginMediaProviderDescriptor[],
 ): ContentProviderRegistry {
 	const registry = new ContentProviderRegistry();
 	registry.register(
@@ -38,5 +46,7 @@ export function createContentProviderRegistry(
 			modelSetting: "customVideoModel",
 		}),
 	);
+	const hostMediaProvider = new HostMediaProvider(media, mediaProviders);
+	if (hostMediaProvider.listModels().length > 0) registry.register(hostMediaProvider);
 	return registry;
 }

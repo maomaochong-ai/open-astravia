@@ -156,6 +156,8 @@
 	"port.media": "Media",
 	"port.content": "Content",
 	"option.aspectRatio.1:1": "Square (1:1)",
+	"option.aspectRatio.2:3": "Portrait (2:3)",
+	"option.aspectRatio.3:2": "Landscape (3:2)",
 	"option.aspectRatio.16:9": "Landscape (16:9)",
 	"option.aspectRatio.9:16": "Portrait (9:16)",
 	"option.aspectRatio.4:3": "Standard (4:3)",
@@ -173,6 +175,7 @@
 	"provider.google": "Google AI",
 	"provider.custom": "Compatible image service",
 	"provider.custom-video": "Compatible video service",
+	"provider.host-media": "Host media",
 	"preview.placeholder": "The content preview renderer will be connected in a later phase",
 	"timeline.playhead": "Timeline playhead",
 	"timeline.clip.untitled": "Untitled clip",
@@ -181,6 +184,7 @@
 	"state.loading": "Loading content project…",
 	"error.load": "Unable to load the content project",
 	"error.save": "Unable to save the content project",
+	"error.mediaProviderDiscovery": "Unable to discover host image generation. Existing generation services remain available.",
 	"error.importReference": "Unable to import the reference. Check its media type and the selected model.",
 	"error.importAsset": "Unable to import the asset. Check the file type and try again."
 }

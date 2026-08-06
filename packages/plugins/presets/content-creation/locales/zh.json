@@ -156,6 +156,8 @@
 	"port.media": "媒体",
 	"port.content": "内容",
 	"option.aspectRatio.1:1": "方形（1:1）",
+	"option.aspectRatio.2:3": "竖幅（2:3）",
+	"option.aspectRatio.3:2": "横幅（3:2）",
 	"option.aspectRatio.16:9": "横屏（16:9）",
 	"option.aspectRatio.9:16": "竖屏（9:16）",
 	"option.aspectRatio.4:3": "标准（4:3）",
@@ -173,6 +175,7 @@
 	"provider.google": "Google AI",
 	"provider.custom": "兼容图片服务",
 	"provider.custom-video": "兼容视频服务",
+	"provider.host-media": "宿主媒体",
 	"preview.placeholder": "内容预览渲染器将在后续阶段接入",
 	"timeline.playhead": "时间线播放头",
 	"timeline.clip.untitled": "未命名片段",
@@ -181,6 +184,7 @@
 	"state.loading": "正在加载内容创作项目…",
 	"error.load": "无法加载内容创作项目",
 	"error.save": "无法保存内容创作项目",
+	"error.mediaProviderDiscovery": "无法读取宿主图片生成能力，现有生成服务仍可继续使用",
 	"error.importReference": "无法导入参考素材，请检查素材类型与模型能力",
 	"error.importAsset": "无法导入素材，请检查文件类型后重试"
 }

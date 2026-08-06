@@ -11,10 +11,14 @@ let generationService: ContentGenerationService | null = null;
 let assetPreviewResolver: ContentAssetPreviewResolver | null = null;
 let notify: PluginContext["ui"]["notify"] | null = null;
 
-export function initializePluginRuntime(ctx: PluginContext): ContentCreationWorkspace {
+export async function initializePluginRuntime(ctx: PluginContext): Promise<ContentCreationWorkspace> {
 	workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
 	assetPreviewResolver = new ContentAssetPreviewResolver(ctx.storage);
-	const providers = createContentProviderRegistry(ctx.network, ctx.settings);
+	const mediaProviders = await ctx.media.listProviders().catch((error: unknown) => {
+		ctx.ui.notify({ message: ctx.i18n.t("error.mediaProviderDiscovery"), error });
+		return [];
+	});
+	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, mediaProviders);
 	generationService = new ContentGenerationService(workspace, providers, new PluginContentArtifactStore(ctx.storage));
 	notify = ctx.ui.notify;
 	return workspace;
