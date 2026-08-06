@@ -48,6 +48,10 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
   - `<Sidebar>` 加 memo。它挂在 RootLayout 下，而 RootLayout 同时订阅了附件、提及文件、选中 skill/模型、todo 等一堆与侧栏无关的状态，此前输入框贴张图都会把整条侧栏重渲染。
   - `useProjects` 拆出不订阅任何状态的 `useProjectActions`，只用动作的调用方（应用初始化、会话管理器、批量任务、归档设置、添加项目菜单）不再被会话列表刷新唤醒；项目面板对 `activeSession` 也改成只订阅 path/cwd。
   - 会话列表回填时内容没变就不换引用；`onSessionsChanged` 触发的全量重拉合并成一次（一轮对话原本要拉 2~3 趟，每趟都是一次 IPC + 全侧栏重渲染）。
+- **流式期间整机卡顿（Renderer / GPU 进程 / WindowServer 三高）**。三处，全部行为等价：
+  - 流式 delta 的冲刷从每 rAF 一次（约 60 次/秒 `setChatMessages`）节流到 100ms 一次。文字的视觉揭示在下游本来就是 500ms 批的，60fps 冲刷对画面毫无贡献，只让尾部消息的分组/折叠计算与 Virtuoso 重测每秒白跑 60 遍；主窗口是透明 + vibrancy 窗口，渲染进程每刷一帧 WindowServer 就要整窗重合成一次，重绘频率降 6 倍，WindowServer 负载同比例下降。工具/状态事件前的同步冲刷路径保持不变，块顺序保证不受影响。
+  - 摘掉 `.streaming-chunk` 的 `will-change: opacity, transform`：流式回复每 10 个字符一个 chunk span，此前每个都被永久提升成合成层，一条长回复几百个活层贯穿整个流式期，GPU 进程与 WindowServer 一起被打满。360ms 入场动画期间浏览器本来就会自动提升，动画完让它自然降回普通内容。
+  - 流式指示器的逐字符入场从 motion.span（JS 每帧写内联样式）改为纯 CSS `animation-delay` 错峰，时长/缓动/错峰间隔/模糊参数逐一保留，画面不变，主线程零参与。
 - **对话消息列表在低配机上的滚动与展开卡顿**。改动分三类：
   - **粗粒度订阅导致的全列表重渲染**。展开态存储 `expansionStore` 原本用 `useAtom` 订阅整张 map，视窗内每个折叠组件（每个工具行、每个阶段、每条消息的折叠条、每个错误块）共享同一个对象引用，点开任意一处就把它们全部重渲染一遍——现在按 key 用 `selectAtom` 切片订阅。`useMessageCardsHostModel` 里「card key 归属表」原本每条 assistant 消息各算一遍全量消息扫描（整条列表 O(N²)，流式期间每帧重跑），现在提成派生 atom 全局算一次，且只有真的产出了卡片的消息才订阅它。`useAssistantMessageModel` 与 `useToolCallBlockModel` 不再订阅 `activeSession` 整个对象和 `promptPredicting` 整张 map，只取 `runtimeId` 与本会话的预测位。
   - **展开动画与虚拟列表测量互相打架**。工具卡片、阶段组、思考块、错误详情的折叠动画原本用 framer-motion 的 `height: 0 → auto`，每帧回主线程写内联 height 并触发强制样式重算，外层 Virtuoso 的 ResizeObserver 又把每一帧都变成一次列表重测量。改为 CSS `grid-template-rows: 0fr → 1fr` 过渡（新增共享组件 `CollapsePanel`），不占主线程 JS，也不经过 React 协调；内容仍按需挂载。

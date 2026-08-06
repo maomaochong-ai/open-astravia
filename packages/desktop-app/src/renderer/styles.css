@@ -592,7 +592,9 @@ textarea:focus {
 	display: inline-block;
 	vertical-align: baseline;
 	animation: streaming-chunk-fade 360ms ease-out both;
-	will-change: opacity, transform;
+	/* 刻意不加 will-change：每 10 个字符就是一个 chunk span，加了会把每个都
+	   永久提升成合成层——一条长回复几百个活层，GPU 进程和 WindowServer 一起被
+	   打满。动画期间浏览器本来就会自动提升，360ms 完了让它自然降回普通内容。 */
 }
 @keyframes streaming-chunk-fade {
 	from {

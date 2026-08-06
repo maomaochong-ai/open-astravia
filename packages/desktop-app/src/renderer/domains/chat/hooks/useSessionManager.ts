@@ -140,6 +140,9 @@ function getProjects(): Project[] {
 	return getDefaultStore().get(projectsAtom);
 }
 
+/** 流式 delta 的冲刷节流间隔；下游文字揭示是 500ms 批的，这里不需要更快。 */
+const DELTA_FLUSH_INTERVAL_MS = 100;
+
 export function useSessionManager(): SessionManagerResult {
 	const [activeSession, setActiveSession] = useAtom(activeSessionAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
@@ -234,7 +237,12 @@ export function useSessionManager(): SessionManagerResult {
 	// 气泡 / 令 draft 串台。交由下一轮自己在无重叠时安全重拉。
 	const turnStartDispatchSeqRef = useRef<Map<string, number>>(new Map());
 
-	// ── Delta batching: accumulate text/thinking deltas per rAF frame ──
+	// ── Delta batching: accumulate text/thinking deltas, flush on a throttle timer ──
+	// 原来按 rAF 冲刷（≈60 次/秒 setChatMessages）。但文字的视觉呈现在下游
+	// TextBlockView 是按 500ms 批量揭示的，60fps 的冲刷对画面毫无贡献，只是让
+	// 尾部消息整条重渲染（groupBlocks / 折叠计算 / Virtuoso 重测）每秒白跑 60 遍，
+	// 流式期间 Renderer CPU 的大头就在这。降到 100ms 一次，视觉零差别。
+	// 工具/状态事件前的同步 flushDeltas() 路径保持不变——顺序保证不受影响。
 	const pendingTextDeltaRef = useRef("");
 	const pendingThinkingDeltaRef = useRef("");
 	const deltaRafRef = useRef<number | null>(null);
@@ -249,7 +257,7 @@ export function useSessionManager(): SessionManagerResult {
 	// correct side of tool blocks — see ordering bug fix.
 	const flushDeltas = useCallback(() => {
 		if (deltaRafRef.current !== null) {
-			cancelAnimationFrame(deltaRafRef.current);
+			window.clearTimeout(deltaRafRef.current);
 			deltaRafRef.current = null;
 		}
 		const textDelta = pendingTextDeltaRef.current;
@@ -275,15 +283,15 @@ export function useSessionManager(): SessionManagerResult {
 
 	const scheduleDeltaFlush = useCallback(() => {
 		if (deltaRafRef.current === null) {
-			deltaRafRef.current = requestAnimationFrame(flushDeltas);
+			deltaRafRef.current = window.setTimeout(flushDeltas, DELTA_FLUSH_INTERVAL_MS);
 		}
 	}, [flushDeltas]);
 
-	// Cleanup rAF on unmount
+	// Cleanup pending flush timer on unmount
 	useEffect(() => {
 		return () => {
 			if (deltaRafRef.current !== null) {
-				cancelAnimationFrame(deltaRafRef.current);
+				window.clearTimeout(deltaRafRef.current);
 			}
 		};
 	}, []);
@@ -307,10 +315,10 @@ export function useSessionManager(): SessionManagerResult {
 			// Teardown previous session
 			currentUnsubscribe?.();
 			setCurrentUnsubscribe(null);
-			// Cancel any in-flight rAF and drop pending deltas — otherwise the prior
-			// session's accumulated delta text gets flushed into the new session's atom.
+			// Cancel any in-flight flush timer and drop pending deltas — otherwise the
+			// prior session's accumulated delta text gets flushed into the new session's atom.
 			if (deltaRafRef.current !== null) {
-				cancelAnimationFrame(deltaRafRef.current);
+				window.clearTimeout(deltaRafRef.current);
 				deltaRafRef.current = null;
 			}
 			pendingTextDeltaRef.current = "";
