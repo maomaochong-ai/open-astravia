@@ -147,7 +147,7 @@ export default definePlugin({
 				return;
 			}
 			if (event.type === "tool-call-end") {
-				notifyAgentToolEnd(event.toolCallId);
+				notifyAgentToolEnd(event.toolCallId, event.isError);
 				return;
 			}
 			if (event.type === "turn-end") {

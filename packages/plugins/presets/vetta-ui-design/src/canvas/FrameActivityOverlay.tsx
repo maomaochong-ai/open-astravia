@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { type JSX, useEffect, useState } from "react";
 import type { FrameActivity } from "./design-runtime";
 
 /**
@@ -27,10 +27,26 @@ function BotFace({ mood }: { mood: "think" | "write" | "bounce" }): JSX.Element 
 /** 标题栏同款反向缩放：浮层元素要在任何画布缩放下保持可读大小。 */
 const INVERSE_SCALE = "var(--vetd-lscale, 1)";
 
+/**
+ * 浮层动画的最长寿命：edit/write 态要等 HMR / turn-end 才落定，长轮次里会挂很久，
+ * 满帧动画一直晃眼影响看稿。到点只撤浮层，标题栏 badge 留着继续报状态。
+ */
+const OVERLAY_MAX_MS = 5_000;
+
 export function FrameActivityOverlay({ activity }: { activity: FrameActivity }): JSX.Element | null {
-	if (activity === "updated") return null;
+	const [expired, setExpired] = useState(false);
+	useEffect(() => {
+		setExpired(false);
+		if (activity === "updated") return;
+		const timer = window.setTimeout(() => setExpired(true), OVERLAY_MAX_MS);
+		return () => window.clearTimeout(timer);
+	}, [activity]);
+	if (activity === "updated" || expired) return null;
 	return (
 		<div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+			{/* 全幅蒙层：告诉用户这一帧正被 agent 占用。frame 内容恒为白底 app，
+			    用固定白色而不是主题变量——画布宿主可能是深色主题（下同，胶囊同理）。 */}
+			<div className="vetd-activity-veil" />
 			{activity === "reading" ? (
 				<>
 					<div className="vetd-scan-beam" />

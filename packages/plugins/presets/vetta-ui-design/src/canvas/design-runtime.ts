@@ -19,10 +19,10 @@ type ActivityListener = (activity: ReadonlyMap<string, FrameActivity>) => void;
 let controller: CanvasController | null = null;
 const activity = new Map<string, FrameActivity>();
 const activityListeners = new Set<ActivityListener>();
-/** 挂在某个 frame 上的待清理定时器：「已更新」的淡出，或「浏览中」的最短停留。 */
+/** 挂在某个 frame 上的待清理定时器：「已更新」的淡出，或活动态的最短停留。 */
 const activityTimers = new Map<string, number>();
-/** 进行中的 read 工具调用 → frameId：tool-call-end 只带 toolCallId，靠它找回目标。 */
-const readingCalls = new Map<string, { frameId: string; startedAt: number }>();
+/** 进行中的工具调用 → 目标 frame：tool-call-end 只带 toolCallId，靠它找回目标。 */
+const activeCalls = new Map<string, { frameId: string; kind: Exclude<FrameActivity, "updated">; startedAt: number }>();
 
 export function setCanvasController(next: CanvasController | null): void {
 	controller = next;
@@ -93,8 +93,8 @@ function frameIdForPath(path: string): string | null {
 	return rest.replace(/\.tsx$/, "");
 }
 
-/** 浏览态一闪而过看不清动画：read 结束后至少让它挂满这么久再消失。 */
-const READING_MIN_MS = 1_200;
+/** 工具调用常常不到 1 秒就返回，动画一闪而过；结束后至少挂满这么久再落定。 */
+const MIN_ACTIVE_MS = 1_200;
 
 /** 工具名 → 活动态。带 frame 路径但叫不出名字的工具按「修改中」兜底（与旧行为一致）。 */
 const TOOL_ACTIVITY: Record<string, Exclude<FrameActivity, "updated">> = {
@@ -125,54 +125,65 @@ export function notifyAgentToolStart(
 		if (!frameId) continue;
 		clearTimer(frameId);
 		const kind = TOOL_ACTIVITY[toolName] ?? "modifying";
-		if (kind === "reading") readingCalls.set(toolCallId, { frameId, startedAt: Date.now() });
+		activeCalls.set(toolCallId, { frameId, kind, startedAt: Date.now() });
 		activity.set(frameId, kind);
 		emitActivity();
 	}
 }
 
 /**
- * read 没有产物、等不到 HMR，只能靠 tool-call-end 收掉；edit/write 仍然等
- * HMR / turn-end（notifyFrameSettled）翻成「已更新」。
+ * 与工具调用实时同步：tool-call-end 一到就落定，不等 HMR——edit/write 返回时
+ * 文件已写盘，vite 的热更新紧随其后，等它只是让状态多挂几秒。
+ * 浏览没改过东西、出错的调用没改成东西，都无痕消失；修改/创作闪「已更新」。
+ * HMR / turn-end 的 notifyFrameSettled 仍在，作为 end 事件丢失时的兜底。
  */
-export function notifyAgentToolEnd(toolCallId: string): void {
-	const call = readingCalls.get(toolCallId);
+export function notifyAgentToolEnd(toolCallId: string, isError: boolean): void {
+	const call = activeCalls.get(toolCallId);
 	if (!call) return;
-	readingCalls.delete(toolCallId);
-	const { frameId, startedAt } = call;
-	if (activity.get(frameId) !== "reading") return;
-	const clear = (): void => {
+	activeCalls.delete(toolCallId);
+	const { frameId, kind, startedAt } = call;
+	if (activity.get(frameId) !== kind) return;
+	const finish = (): void => {
 		activityTimers.delete(frameId);
-		if (activity.get(frameId) === "reading") {
+		if (activity.get(frameId) !== kind) return;
+		if (kind === "reading" || isError) {
 			activity.delete(frameId);
 			emitActivity();
+			return;
 		}
+		notifyFrameSettled(frameId);
 	};
-	const remaining = READING_MIN_MS - (Date.now() - startedAt);
+	const remaining = MIN_ACTIVE_MS - (Date.now() - startedAt);
 	if (remaining <= 0) {
-		clear();
+		finish();
 		return;
 	}
 	clearTimer(frameId);
-	activityTimers.set(frameId, window.setTimeout(clear, remaining));
+	activityTimers.set(frameId, window.setTimeout(finish, remaining));
 }
 
 /** HMR arrival or turn end → flash “已更新” then clear.（浏览态没改过东西，直接消失。） */
 export function notifyFrameSettled(frameId: string | null): void {
 	const ids = frameId ? [frameId] : [...activity.keys()];
+	// 还有工具调用在途的 frame 不能被单帧 HMR 落定：那是上一次改动触发的热更新，
+	// 这一次还没写完。turn-end 的全量清扫（frameId 为 null）不受此限——不会再有
+	// end 事件来了，顺带把在途表也清掉，免得丢事件后越积越多。
+	const busy = new Set([...activeCalls.values()].map((call) => call.frameId));
+	if (frameId === null) activeCalls.clear();
 	let changed = false;
 	for (const id of ids) {
+		if (frameId !== null && busy.has(id)) continue;
 		const current = activity.get(id);
 		if (current === undefined || current === "updated") continue;
 		if (current === "reading") {
-			// 只有 turn-end 的全量清扫才收浏览态：单帧的 HMR 信号是别的改动触发的，
-			// 正在看的这一眼不该被它打断。
+			// 单帧的 HMR 信号是别的改动触发的，正在看的这一眼不该被它打断。
 			if (frameId !== null) continue;
 			clearTimer(id);
 			activity.delete(id);
 			changed = true;
 			continue;
 		}
+		clearTimer(id);
 		activity.set(id, "updated");
 		changed = true;
 		const timer = window.setTimeout(() => {
@@ -228,7 +239,7 @@ export function clearFrameErrors(): void {
 
 export function clearFrameActivity(): void {
 	activity.clear();
-	readingCalls.clear();
+	activeCalls.clear();
 	for (const timer of activityTimers.values()) window.clearTimeout(timer);
 	activityTimers.clear();
 	emitActivity();

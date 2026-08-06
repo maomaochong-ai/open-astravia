@@ -405,17 +405,26 @@
 	}
 }
 
-/* 毛玻璃胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。 */
+/* 全幅蒙层：淡淡罩住整帧，示意「这一帧正被 agent 占用」。固定白色——frame
+   内容恒为白底 app，跟宿主主题无关（深色主题下用 --background 会糊成深灰）。 */
+.vetd-activity-veil {
+	position: absolute;
+	inset: 0;
+	background: rgb(255 255 255 / 0.45);
+}
+
+/* 毛玻璃胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。
+   底色同上固定白色，不跟宿主主题。 */
 .vetd-activity-chip {
 	display: flex;
 	align-items: center;
 	gap: 8px;
 	padding: 6px 10px;
 	border-radius: 9999px;
-	background: color-mix(in oklab, var(--background, #fff) 82%, transparent);
+	background: rgb(255 255 255 / 0.88);
 	border: 1px solid color-mix(in oklab, var(--primary, #6366f1) 25%, transparent);
 	backdrop-filter: blur(6px);
-	box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.35);
+	box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.25);
 }
 
 /* 浏览：扫描光带（top/height 都是常量，动画只有 transform）。 */
