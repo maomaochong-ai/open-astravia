@@ -24,7 +24,6 @@ import { setPluginCtx } from "./plugin-context";
 import { VetdPreview } from "./preview/VetdPreview";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
-import { cancelBuildErrorReport, scheduleBuildErrorReport } from "./vetd/build-error-report";
 import { findVetdFiles } from "./vetd/discover";
 
 function DesignIcon() {
@@ -125,7 +124,6 @@ export default definePlugin({
 			}
 			for (const slot of workModeSlots) slot.dispose();
 			workModeSlots = [];
-			cancelBuildErrorReport();
 			// Tab 卸载时 CanvasTab 自己会停引擎，但模式切走属于「这个插件不该再有存在感」，
 			// 兜底收干净：别在编程模式里留一个 vite dev server 跑着。
 			requestMockupExport(null);
@@ -141,8 +139,6 @@ export default definePlugin({
 				if (!cwd) return;
 				// 编程模式下也记住 cwd：切回工作模式时要靠它补跑探测。
 				latestCwd = cwd;
-				// 换了会话，上一份设计的退回计数与待发定时器都不该跟过来。
-				cancelBuildErrorReport();
 				revealTabForCwd(cwd);
 				return;
 			}
@@ -156,9 +152,6 @@ export default definePlugin({
 			}
 			if (event.type === "turn-end") {
 				notifyFrameSettled(null);
-				// 模型不主动截图就发现不了自己写坏了；轮次结束把还挂着的构建错误退回去。
-				// 用户中止的那一轮不退（stopReason 交给 build-error-report 判）。
-				if (isWorkMode()) scheduleBuildErrorReport(ctx, event.stopReason);
 			}
 		});
 
@@ -168,7 +161,6 @@ export default definePlugin({
 		registerDesignTools(ctx);
 	},
 	deactivate() {
-		cancelBuildErrorReport();
 		void stopAllDesignServers();
 	},
 });

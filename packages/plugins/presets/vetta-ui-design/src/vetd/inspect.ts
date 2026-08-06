@@ -1,9 +1,12 @@
 /**
  * 一份设计当前的全部机检结果，给工具返回和轮次兜底共用。
  *
- * 拆出来是因为两条链路要的是同一份东西：vetd_status / vetd_screenshot 把它交给
- * agent 主动读，build-error-report 在轮次结束时挑出其中的硬阻塞主动退回。放在
- * tools.ts 里私有会逼另一边重写一遍收集逻辑。
+ * 拆出来是因为 vetd_status 和 vetd_screenshot 要的是同一份东西：前者一次看全，
+ * 后者只挑当前这一帧的。放在 tools.ts 里私有也行，但收集逻辑本身与工具无关。
+ *
+ * 这是 agent 拿到机检结果的唯一入口——插件不会在轮次结束主动发消息提醒它（那个
+ * 机制删掉了：一轮结束却又冒出一条消息，观感上是 agent 自说自话又跑了起来）。所以
+ * 「写完就截图」这条纪律只能靠 SKILL.md 立，见那里的 Done 定义。
  */
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { checkSources, type SourceFile, type SourceIssue } from "./check-sources";

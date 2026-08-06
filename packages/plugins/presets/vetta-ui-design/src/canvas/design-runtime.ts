@@ -205,10 +205,6 @@ export function getFrameError(frameId: string): string | null {
 	return frameErrors.get(frameId) ?? null;
 }
 
-export function listFrameErrors(): ReadonlyMap<string, string> {
-	return frameErrors;
-}
-
 /** `message` 为 null 表示这一帧恢复正常。 */
 export function setFrameError(frameId: string, message: string | null): void {
 	if ((frameErrors.get(frameId) ?? null) === message) return;

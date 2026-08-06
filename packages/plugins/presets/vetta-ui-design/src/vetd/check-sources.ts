@@ -30,11 +30,10 @@ export interface SourceFile {
 }
 
 /**
- * 尺寸没声明全的画框。单独给个名字是因为它和别的规则不是一个量级：其他规则是
- * 「画得出来但写得不对」，这一条是**画不出来**——源码在磁盘上，画布上却什么都
- * 没有，连一个失败徽标都没有。轮次结束的兜底要靠它把这种静默失败退回去。
+ * 尺寸没声明全的画框。单独给个名字是因为它不走下面那张规则表——判据要看**整份
+ * 设计**（报错里要带上别的画框的尺寸），而规则表是逐行匹配的。
  */
-export const FRAME_SIZE_RULE = "frame-size-missing";
+const FRAME_SIZE_RULE = "frame-size-missing";
 
 /** 单行超过这个长度基本可以断定是把整个组件压成了一行。 */
 const MAX_LINE_LENGTH = 600;

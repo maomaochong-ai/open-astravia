@@ -12,8 +12,9 @@
  * - 画框不存在 —— 看不见，只能靠 agent 主动查状态才知道
  *
  * 所以改成 fail-open。关键是「渲染」和「报错」本来就是两件事，可以都要：画框照常
- * 上画布，`frame-size-missing` 照常从 checkSources 报出去、照常在轮次结束退回。
- * agent 该补的声明一条都没少，只是补之前画布不再是空的。
+ * 上画布，`frame-size-missing` 照常从 checkSources 报出去，随 vetd_screenshot /
+ * vetd_status 的 `issues` 交到 agent 手上。agent 该补的声明一条都没少，只是补之前
+ * 画布不再是空的。
  */
 import type { ParsedFrameMeta } from "./frame-meta";
 import type { FrameMeta, FrameSize } from "./manifest-types";

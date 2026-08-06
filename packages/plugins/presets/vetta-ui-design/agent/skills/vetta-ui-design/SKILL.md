@@ -241,6 +241,14 @@ icon, or a surface whose theme token was never defined). A frame that does not p
 returns the syntax error instead of an image — fix the reported line and
 screenshot again.
 
+Nothing will remind you. Writing a file tells you it was written, not that it
+renders — the checker only speaks through `vetd_screenshot` and `vetd_status`,
+and neither runs by itself. A frame you wrote but never screenshotted may be
+sitting on the canvas as a build error or at a size you never chose, and the
+turn will end that way: the user is looking at the canvas, so they see it and
+you do not. Writing several frames in a row without a single screenshot is how
+that happens; the detail pass exists to prevent it.
+
 **Check the structure**: for a UI product with more than one screen, or with
 chrome that repeats across screens, answer these four before reporting back.
 They are the ones no checker can see; skip them for posters, slides and
@@ -262,9 +270,13 @@ points into `components/`, the change hits every frame using it — say so.
 
 **Done** means: every frame you touched has been screenshotted and the image
 Read, that image is free of the three screenshot defects, and `issues` came back
-empty. At that point stop and report — do not keep polishing. If something is
-still off but you have already revised it twice, say what it is instead of
-attempting a third pass.
+empty. Not one of those three is checked for you at the end of the turn — if you
+report back without them, whatever is broken simply stays broken. So before you
+report, name the frames you touched and confirm each one cleared all three.
+
+At that point stop and report — do not keep polishing. If something is still off
+but you have already revised it twice, say what it is instead of attempting a
+third pass.
 
 ## Do not rework
 
