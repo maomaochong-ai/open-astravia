@@ -1,7 +1,8 @@
-import { AnimatePresence, motion } from "motion/react";
+import { motion } from "motion/react";
 import type { Transition } from "motion/react";
 import type { JSX, ReactNode } from "react";
 import { memo, useId, useState } from "react";
+import { CollapsePanel } from "../shared/CollapsePanel";
 import { CopyIconButton } from "./CopyIconButton";
 
 /** Slide-up + fade for new message segments (not typewriter). */
@@ -10,13 +11,6 @@ const SEGMENT_ANIMATE = { opacity: 1, y: 0 };
 const SEGMENT_TRANSITION = {
 	duration: 0.36,
 	ease: [0.22, 1, 0.36, 1] as const,
-} satisfies Transition;
-const COLLAPSE_INITIAL = { height: 0, opacity: 0 };
-const COLLAPSE_ANIMATE = { height: "auto", opacity: 1 };
-const COLLAPSE_EXIT = { height: 0, opacity: 0 };
-const COLLAPSE_TRANSITION = {
-	duration: 0.2,
-	ease: [0.25, 0.1, 0.25, 1] as const,
 } satisfies Transition;
 
 export interface ToolCallGroupViewLabels {
@@ -70,22 +64,14 @@ export function ToolCallGroupView({
 					</span>
 				</button>
 			</div>
-			<AnimatePresence initial={false}>
-				{open && (
-					<motion.div
-						id={panelId}
-						data-export-collapse-panel={exportMode ? "" : undefined}
-						hidden={exportMode && !expanded && !forceExpanded}
-						initial={COLLAPSE_INITIAL}
-						animate={COLLAPSE_ANIMATE}
-						exit={COLLAPSE_EXIT}
-						transition={COLLAPSE_TRANSITION}
-						className="overflow-hidden"
-					>
-						<div className="flex flex-col gap-0.5 pl-2 pr-1 pb-1">{children}</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
+			<CollapsePanel
+				open={open}
+				id={panelId}
+				exportPanel={exportMode}
+				hidden={exportMode && !expanded && !forceExpanded}
+			>
+				<div className="flex flex-col gap-0.5 pl-2 pr-1 pb-1">{children}</div>
+			</CollapsePanel>
 		</div>
 	);
 }
@@ -201,23 +187,11 @@ export function ErrorBlockView({
 					</div>
 				</div>
 			</div>
-			<AnimatePresence initial={false}>
-				{open && (
-					<motion.div
-						id={panelId}
-						data-export-collapse-panel={exportMode ? "" : undefined}
-						initial={COLLAPSE_INITIAL}
-						animate={COLLAPSE_ANIMATE}
-						exit={COLLAPSE_EXIT}
-						transition={COLLAPSE_TRANSITION}
-						className="overflow-hidden"
-					>
-						<pre className="mt-2 max-h-60 overflow-auto rounded border border-border/50 bg-background/60 px-2 py-1.5 font-mono text-[11.5px] leading-[1.55] text-muted-foreground/75">
-							{detail}
-						</pre>
-					</motion.div>
-				)}
-			</AnimatePresence>
+			<CollapsePanel open={open} id={panelId} exportPanel={exportMode}>
+				<pre className="mt-2 max-h-60 overflow-auto rounded border border-border/50 bg-background/60 px-2 py-1.5 font-mono text-[11.5px] leading-[1.55] text-muted-foreground/75">
+					{detail}
+				</pre>
+			</CollapsePanel>
 		</div>
 	);
 }

@@ -4,6 +4,8 @@ export type {
 	CodeBlockCopyButtonViewProps,
 } from "./CodeBlockCopyButton";
 export { CodeBlockCopyButtonView } from "./CodeBlockCopyButton";
+export type { CollapsePanelProps } from "./CollapsePanel";
+export { CollapsePanel } from "./CollapsePanel";
 export type { MacKeyboardPreviewProps, MacKeyId } from "./MacKeyboardPreview";
 export { MacKeyboardPreview } from "./MacKeyboardPreview";
 export type { MultiplierTagProps } from "./MultiplierTag";

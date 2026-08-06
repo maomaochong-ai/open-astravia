@@ -1,5 +1,5 @@
 import { useBatchTasks } from "@domains/batch-tasks/hooks/useBatchTasks";
-import { useProjects } from "@domains/project/hooks/useProjects";
+import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { fetchServerInfo } from "@shared/lib/api";
 import {
 	defaultConversationCwdAtom,
@@ -24,7 +24,7 @@ export function useAppInit(): void {
 	const setDeployMode = useSetAtom(deployModeAtom);
 	const setKnowledgeBaseEnabled = useSetAtom(knowledgeBaseEnabledAtom);
 	const setKnowledgeProcessingCwd = useSetAtom(knowledgeProcessingCwdAtom);
-	const { refreshProjects } = useProjects();
+	const { refreshProjects } = useProjectActions();
 	const { refreshProjects: refreshBatchProjects } = useBatchTasks();
 
 	useEffect(() => {

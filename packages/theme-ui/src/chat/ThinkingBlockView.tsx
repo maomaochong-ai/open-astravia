@@ -1,6 +1,6 @@
-import { AnimatePresence, motion } from "motion/react";
 import type { JSX } from "react";
 import { useId, useState } from "react";
+import { CollapsePanel } from "../shared/CollapsePanel";
 
 export interface ThinkingBlockViewLabels {
 	readonly title: string;
@@ -43,26 +43,18 @@ export function ThinkingBlockView({
 					className={`icon-[mdi--chevron-right] h-3 w-3 shrink-0 text-muted-foreground/30 transition-transform duration-200 ${expanded ? "rotate-90" : ""}`}
 				/>
 			</button>
-			<AnimatePresence initial={false}>
-				{(expanded || exportMode) && (
-					<motion.div
-						id={panelId}
-						data-export-collapse-panel={exportMode ? "" : undefined}
-						hidden={exportMode && !expanded}
-						initial={{ height: 0, opacity: 0 }}
-						animate={{ height: "auto", opacity: 1 }}
-						exit={{ height: 0, opacity: 0 }}
-						transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
-						className="overflow-hidden"
-					>
-						<div className="ml-2 border-l-2 border-muted-foreground/10 pl-4 pt-1 pb-2">
-							<div className="whitespace-pre-wrap break-words text-[12px] leading-[1.6] text-muted-foreground/60">
-								{text}
-							</div>
-						</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
+			<CollapsePanel
+				open={expanded || exportMode}
+				id={panelId}
+				exportPanel={exportMode}
+				hidden={exportMode && !expanded}
+			>
+				<div className="ml-2 border-l-2 border-muted-foreground/10 pl-4 pt-1 pb-2">
+					<div className="whitespace-pre-wrap break-words text-[12px] leading-[1.6] text-muted-foreground/60">
+						{text}
+					</div>
+				</div>
+			</CollapsePanel>
 		</div>
 	);
 }

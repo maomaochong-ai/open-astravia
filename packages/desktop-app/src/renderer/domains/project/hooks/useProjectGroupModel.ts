@@ -9,10 +9,11 @@ import {
 	sessionDisplayLabel,
 } from "@shared/store/atoms";
 import { DEFAULT_VISIBLE_SESSIONS } from "@vetta/theme-ui/project";
-import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime } from "../components/sidebar/projects/relativeTime";
+import { reuseUnchangedSessionViews } from "./stableSessionViews";
 
 export interface ProjectGroupSessionView {
 	key: string;
@@ -55,9 +56,11 @@ export function useProjectGroupModel({
 }: UseProjectGroupModelArgs) {
 	const { t, i18n } = useTranslation("project");
 	const sortedSessions = useMemo(() => [...sessions].sort((a, b) => b.modifiedAt - a.modifiedAt), [sessions]);
-	const [, setContextMenu] = useAtom(sessionContextMenuAtom);
-	const [, setProjectContextMenu] = useAtom(projectContextMenuAtom);
-	const [renamingSessionPath, setRenamingSessionPath] = useAtom(renamingSessionPathAtom);
+	const setContextMenu = useSetAtom(sessionContextMenuAtom);
+	const setProjectContextMenu = useSetAtom(projectContextMenuAtom);
+	const renamingSessionPath = useAtomValue(renamingSessionPathAtom);
+	const setRenamingSessionPath = useSetAtom(renamingSessionPathAtom);
+	const viewCacheRef = useRef(new Map<string, ProjectGroupSessionView>());
 	const [showAllSessions, setShowAllSessions] = useState(false);
 	const revealedActiveSessionRef = useRef<string | null>(null);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
@@ -98,7 +101,7 @@ export function useProjectGroupModel({
 	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算 timeLabel。
 	const sessionViews: ProjectGroupSessionView[] = useMemo(() => {
 		void i18n.language;
-		return visibleSessions.map((session) => {
+		const next = visibleSessions.map((session) => {
 			const isSessionActive = activeSessionPath === session.path;
 			const isRunning = runningSessionPaths.has(session.path);
 			const isSchedule =
@@ -116,6 +119,8 @@ export function useProjectGroupModel({
 				session,
 			};
 		});
+		// 未变的行还回旧引用，让下游行组件的 memo 生效。
+		return reuseUnchangedSessionViews(viewCacheRef.current, next);
 	}, [
 		activeSessionPath,
 		i18n.language,
@@ -126,6 +131,37 @@ export function useProjectGroupModel({
 		t,
 		visibleSessions,
 	]);
+
+	// per-row 回调必须引用稳定，否则行组件的 memo 永远命中不了。
+	const projectCwd = project.cwd;
+	const collapse = useCallback(() => onCollapse(projectCwd), [onCollapse, projectCwd]);
+	const expand = useCallback(() => onExpand(projectCwd), [onExpand, projectCwd]);
+	const navigateProject = useCallback(() => onNavigateProject(projectCwd), [onNavigateProject, projectCwd]);
+	const newSession = useCallback(() => onNewSession(projectCwd), [onNewSession, projectCwd]);
+	const openProjectContextMenu = useCallback(
+		(event: React.MouseEvent) => {
+			event.preventDefault();
+			setProjectContextMenu({ x: event.clientX, y: event.clientY, project });
+		},
+		[project, setProjectContextMenu],
+	);
+	const openSessionContextMenu = useCallback(
+		(event: React.MouseEvent, session: SessionInfo) => {
+			event.preventDefault();
+			setContextMenu({ x: event.clientX, y: event.clientY, session });
+		},
+		[setContextMenu],
+	);
+	const renameDone = useCallback(() => setRenamingSessionPath(null), [setRenamingSessionPath]);
+	const renameSessionByPath = useCallback(
+		(sessionPath: string, name: string) => onRenameSession(projectCwd, sessionPath, name),
+		[onRenameSession, projectCwd],
+	);
+	const selectSessionByPath = useCallback(
+		(sessionPath: string) => onSelectSession(projectCwd, sessionPath),
+		[onSelectSession, projectCwd],
+	);
+	const toggleShowAll = useCallback(() => setShowAllSessions((value) => !value), []);
 
 	return {
 		displayName,
@@ -146,22 +182,16 @@ export function useProjectGroupModel({
 			expand: t("sidebar.projects.expandMore", { count: hiddenCount }),
 		},
 		actions: {
-			collapse: () => onCollapse(project.cwd),
-			expand: () => onExpand(project.cwd),
-			navigateProject: () => onNavigateProject(project.cwd),
-			newSession: () => onNewSession(project.cwd),
-			openProjectContextMenu: (event: React.MouseEvent) => {
-				event.preventDefault();
-				setProjectContextMenu({ x: event.clientX, y: event.clientY, project });
-			},
-			openSessionContextMenu: (event: React.MouseEvent, session: SessionInfo) => {
-				event.preventDefault();
-				setContextMenu({ x: event.clientX, y: event.clientY, session });
-			},
-			renameDone: () => setRenamingSessionPath(null),
-			renameSession: (sessionPath: string, name: string) => onRenameSession(project.cwd, sessionPath, name),
-			selectSession: (sessionPath: string) => onSelectSession(project.cwd, sessionPath),
-			toggleShowAll: () => setShowAllSessions((value) => !value),
+			collapse,
+			expand,
+			navigateProject,
+			newSession,
+			openProjectContextMenu,
+			openSessionContextMenu,
+			renameDone,
+			renameSession: renameSessionByPath,
+			selectSession: selectSessionByPath,
+			toggleShowAll,
 		},
 	};
 }

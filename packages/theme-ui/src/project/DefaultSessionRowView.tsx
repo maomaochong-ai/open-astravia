@@ -1,11 +1,7 @@
 import { cn } from "@vetta/ui";
-import type { JSX } from "react";
+import { memo, type JSX } from "react";
 import { SessionRenameInputView } from "./SessionRenameInputView";
-import {
-	prepareSidebarSelection,
-	runAfterSidebarSelection,
-	type SidebarSelectionWait,
-} from "./useActiveSessionAutoScroll";
+import { prepareSidebarSelection } from "./useActiveSessionAutoScroll";
 
 export interface DefaultSessionRowViewProps {
 	active: boolean;
@@ -18,7 +14,7 @@ export interface DefaultSessionRowViewProps {
 	titleExtra?: string;
 	/** Session was forked from another session. */
 	forked?: boolean;
-	onBeforeSelect?: () => SidebarSelectionWait;
+	onBeforeSelect?: () => void;
 	onOpenContextMenu: (event: React.MouseEvent) => void;
 	onRename: (name: string) => void;
 	onRenameDone: () => void;
@@ -29,7 +25,8 @@ export interface DefaultSessionRowViewProps {
 	timeLabel: string;
 }
 
-export function DefaultSessionRowView({
+/** memo：理由同 SessionRowView——切换会话只改两行，其余行 props 未变。 */
+export const DefaultSessionRowView = memo(function DefaultSessionRowView({
 	active,
 	contextMenuEnabled,
 	label,
@@ -54,9 +51,9 @@ export function DefaultSessionRowView({
 			data-session-path={sessionPath || undefined}
 			onClick={(event) => {
 				if (renaming) return;
-				const panelWillMove = onBeforeSelect?.() ?? false;
-				const rowWait = prepareSidebarSelection(event.currentTarget);
-				runAfterSidebarSelection(onSelect, [panelWillMove, rowWait]);
+				onBeforeSelect?.();
+				prepareSidebarSelection(event.currentTarget);
+				onSelect();
 			}}
 			onContextMenu={(event) => {
 				event.preventDefault();
@@ -114,4 +111,4 @@ export function DefaultSessionRowView({
 			)}
 		</button>
 	);
-}
+});

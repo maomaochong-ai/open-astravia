@@ -43,6 +43,20 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **侧栏切换会话卡顿**。最大头不是渲染慢，是点击后被排队等了几百毫秒：点会话行会先平滑滚动把行挪进安全区、并等分栏面板的 `max-height` 过渡结束，两个等待 `Promise.all` 完（fallback 分别 800ms 与 450ms）之后才真正发起会话切换——而 `openSession` 内部本来已经做了「拿到 sessionId 就写 activeSession + navigate」的优化，全被这段等待抵消，慢机上还容易吃满 fallback。现在滚动与切换并行，点下去立刻开始切。其余是渲染层：
+  - 会话行改成 memo 组件，per-row 回调（选中/重命名/右键菜单）与行视图对象的引用都稳定下来——切换会话原本只有两行的高亮变了，却会把整份列表重建一遍。
+  - `<Sidebar>` 加 memo。它挂在 RootLayout 下，而 RootLayout 同时订阅了附件、提及文件、选中 skill/模型、todo 等一堆与侧栏无关的状态，此前输入框贴张图都会把整条侧栏重渲染。
+  - `useProjects` 拆出不订阅任何状态的 `useProjectActions`，只用动作的调用方（应用初始化、会话管理器、批量任务、归档设置、添加项目菜单）不再被会话列表刷新唤醒；项目面板对 `activeSession` 也改成只订阅 path/cwd。
+  - 会话列表回填时内容没变就不换引用；`onSessionsChanged` 触发的全量重拉合并成一次（一轮对话原本要拉 2~3 趟，每趟都是一次 IPC + 全侧栏重渲染）。
+- **流式期间整机卡顿（Renderer / GPU 进程 / WindowServer 三高）**。三处，全部行为等价：
+  - 流式 delta 的冲刷从每 rAF 一次（约 60 次/秒 `setChatMessages`）节流到 100ms 一次。文字的视觉揭示在下游本来就是 500ms 批的，60fps 冲刷对画面毫无贡献，只让尾部消息的分组/折叠计算与 Virtuoso 重测每秒白跑 60 遍；主窗口是透明 + vibrancy 窗口，渲染进程每刷一帧 WindowServer 就要整窗重合成一次，重绘频率降 6 倍，WindowServer 负载同比例下降。工具/状态事件前的同步冲刷路径保持不变，块顺序保证不受影响。
+  - 摘掉 `.streaming-chunk` 的 `will-change: opacity, transform`：流式回复每 10 个字符一个 chunk span，此前每个都被永久提升成合成层，一条长回复几百个活层贯穿整个流式期，GPU 进程与 WindowServer 一起被打满。360ms 入场动画期间浏览器本来就会自动提升，动画完让它自然降回普通内容。
+  - 流式指示器的逐字符入场从 motion.span（JS 每帧写内联样式）改为纯 CSS `animation-delay` 错峰，时长/缓动/错峰间隔/模糊参数逐一保留，画面不变，主线程零参与。
+- **对话消息列表在低配机上的滚动与展开卡顿**。改动分三类：
+  - **粗粒度订阅导致的全列表重渲染**。展开态存储 `expansionStore` 原本用 `useAtom` 订阅整张 map，视窗内每个折叠组件（每个工具行、每个阶段、每条消息的折叠条、每个错误块）共享同一个对象引用，点开任意一处就把它们全部重渲染一遍——现在按 key 用 `selectAtom` 切片订阅。`useMessageCardsHostModel` 里「card key 归属表」原本每条 assistant 消息各算一遍全量消息扫描（整条列表 O(N²)，流式期间每帧重跑），现在提成派生 atom 全局算一次，且只有真的产出了卡片的消息才订阅它。`useAssistantMessageModel` 与 `useToolCallBlockModel` 不再订阅 `activeSession` 整个对象和 `promptPredicting` 整张 map，只取 `runtimeId` 与本会话的预测位。
+  - **展开动画与虚拟列表测量互相打架**。工具卡片、阶段组、思考块、错误详情的折叠动画原本用 framer-motion 的 `height: 0 → auto`，每帧回主线程写内联 height 并触发强制样式重算，外层 Virtuoso 的 ResizeObserver 又把每一帧都变成一次列表重测量。改为 CSS `grid-template-rows: 0fr → 1fr` 过渡（新增共享组件 `CollapsePanel`），不占主线程 JS，也不经过 React 协调；内容仍按需挂载。
+  - **收起时的一顿**。折叠动画跑完那一刻要把整棵工具卡片子树同步卸载掉，是一次很长的提交，正好压在动画收尾帧上——所以把动画从 JS 换成 CSS 只让展开变顺，收起没变。现在动画结束先 `display:none`（布局立刻定稿，子树不再参与布局与绘制），真正的卸载挪到浏览器空闲期（2s 兜底）；收起后马上再展开则取消卸载、直接复用已有子树。顺带修掉两处：折叠面板改用 grid 布局后 `display:grid` 会盖过 `[hidden]`，导出态的折叠面板实际没被藏住；以及每个「初始收起」的面板挂载时都会白排一个 200ms 定时器（工作模式一条消息几十行就是几十个）。
+  - **重复计算**。消息列表 `itemContent` 里 `hasAssistantAfter` 原本对每个可见条目做一次 `slice().some()`（O(n²)，流式每帧重跑），改为一次倒序扫描预算位置；`conclusionText` 不再重复调用一次 `getAssistantFoldData`；代码块高亮加了结果缓存，条目滚出视窗再滚回来不必重跑 shiki，也不再「先纯文本、后高亮」变两次高度；虚拟列表未测量条目的高度估算从 80 提到 200（更接近真实中位数，往回滚时少一大截高度修正）；贴底跟随的 rAF 在静止时降频读布局，不再每帧一次强制 reflow。
 - **输入预测不再固定说中文**。喂给预测模型的上下文里每条消息前缀是写死的「用户:」「助手:」标签，等于反复给模型「本会话说中文」的信号，用户全程英文也会拿到中文建议。标签改为英文 `User:` / `Assistant:`，语言回归由用户消息本身决定。
 - **对话里的报错不再是一排看不懂的红块**（ADR-0057）。三处一起改：
   - **不再堆叠**。一次限流原本会连着刷出 6~7 个内容一模一样的红块（自动重试 3 次，每次失败一条，`auto_retry_start` 又算一条）。现在重试期间不再往消息流里塞错误，只在最终失败时留下一条。历史回放走另一条路——会话文件里确实存着每一次失败——由 `historyToChat` / `fullHistoryToChat` 折叠连续同类错误并标「重复出现 N 次」，所以重开旧会话也不会再长回来。

@@ -6,10 +6,11 @@ import {
 	sessionContextMenuAtom,
 	sessionDisplayLabel,
 } from "@shared/store/atoms";
-import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { relativeTime } from "../components/sidebar/projects/relativeTime";
+import { reuseUnchangedSessionViews } from "./stableSessionViews";
 
 const DEFAULT_VISIBLE_DEFAULT_SESSIONS = 5;
 
@@ -46,7 +47,8 @@ export function useDefaultSessionListModel({
 }: UseDefaultSessionListModelArgs) {
 	const { t, i18n } = useTranslation("project");
 	const sorted = useMemo(() => [...sessions].sort((a, b) => b.modifiedAt - a.modifiedAt), [sessions]);
-	const [, setContextMenu] = useAtom(sessionContextMenuAtom);
+	const setContextMenu = useSetAtom(sessionContextMenuAtom);
+	const viewCacheRef = useRef(new Map<string, DefaultSessionListItemView>());
 	const [renamingSessionPath, setRenamingSessionPath] = useAtom(renamingSessionPathAtom);
 	const runningSessionPaths = useAtomValue(runningSessionPathsAtom);
 	const scheduledSessionPaths = useAtomValue(scheduledSessionPathsAtom);
@@ -82,7 +84,7 @@ export function useDefaultSessionListModel({
 	// t 在 changeLanguage 后可能保持同一引用；读 i18n.language 强制语言切换时重算 timeLabel。
 	const allViews: DefaultSessionListItemView[] = useMemo(() => {
 		void i18n.language;
-		return sorted.map((session) => {
+		const next = sorted.map((session) => {
 			const isActive = activeSessionPath === session.path;
 			const isRenaming = renamingSessionPath === session.path;
 			const isRunning = runningSessionPaths.has(session.path);
@@ -101,6 +103,8 @@ export function useDefaultSessionListModel({
 				session,
 			};
 		});
+		// 未变的行还回旧引用，让下游行组件的 memo 生效。
+		return reuseUnchangedSessionViews(viewCacheRef.current, next);
 	}, [
 		activeSessionPath,
 		i18n.language,
@@ -113,6 +117,21 @@ export function useDefaultSessionListModel({
 	]);
 
 	const visibleViews = showAll ? allViews : allViews.slice(0, DEFAULT_VISIBLE_DEFAULT_SESSIONS);
+
+	// per-row 回调必须引用稳定，否则行组件的 memo 永远命中不了。
+	const openContextMenu = useCallback(
+		(event: React.MouseEvent, session: SessionInfo) => {
+			setContextMenu({ x: event.clientX, y: event.clientY, session });
+		},
+		[setContextMenu],
+	);
+	const rename = useCallback(
+		(sessionPath: string, name: string) => onRenameSession(cwd, sessionPath, name),
+		[cwd, onRenameSession],
+	);
+	const renameDone = useCallback(() => setRenamingSessionPath(null), [setRenamingSessionPath]);
+	const select = useCallback((sessionPath: string) => onSelectSession(cwd, sessionPath), [cwd, onSelectSession]);
+	const toggleShowAll = useCallback(() => setShowAll((value) => !value), []);
 
 	const emptyLabels = isClaw
 		? {
@@ -139,13 +158,11 @@ export function useDefaultSessionListModel({
 		visibleSessions: visibleViews,
 		actions: {
 			emptyAction: !isClaw && onNewSession ? onNewSession : undefined,
-			openContextMenu: (event: React.MouseEvent, session: SessionInfo) => {
-				setContextMenu({ x: event.clientX, y: event.clientY, session });
-			},
-			rename: (sessionPath: string, name: string) => onRenameSession(cwd, sessionPath, name),
-			renameDone: () => setRenamingSessionPath(null),
-			select: (sessionPath: string) => onSelectSession(cwd, sessionPath),
-			toggleShowAll: () => setShowAll((value) => !value),
+			openContextMenu,
+			rename,
+			renameDone,
+			select,
+			toggleShowAll,
 		},
 	};
 }

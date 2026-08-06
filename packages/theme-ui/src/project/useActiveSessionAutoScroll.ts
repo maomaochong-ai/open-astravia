@@ -7,12 +7,8 @@ const SAFE_ZONE_BOTTOM_RATIO = 2 / 3;
 const MIN_SCROLL_RANGE = VIRTUAL_SESSION_ROW_HEIGHT;
 const MIN_SCROLL_DELTA = VIRTUAL_SESSION_ROW_HEIGHT / 2;
 const LAYOUT_SETTLE_DELAY_MS = 370;
-const SIDEBAR_SELECTION_DELAY_MS = 370;
-const SCROLL_END_FALLBACK_MS = 800;
-let latestSelectionRequest = 0;
 
 type ScrollAdjustment = "moved" | "stable" | "unavailable";
-export type SidebarSelectionWait = boolean | Promise<void>;
 
 interface ActiveSessionAutoScrollOptions {
 	activeIndex: number;
@@ -65,56 +61,21 @@ function scrollMountedActiveRow(scrollParent: HTMLElement): boolean {
 	return activeRow ? scrollElementIntoSafeZone(scrollParent, activeRow) !== "unavailable" : false;
 }
 
-function waitForScrollEnd(scrollParent: HTMLElement): Promise<void> {
-	return new Promise((resolve) => {
-		let fallbackTimer = 0;
-		const finish = () => {
-			window.clearTimeout(fallbackTimer);
-			scrollParent.removeEventListener("scrollend", finish);
-			resolve();
-		};
-
-		scrollParent.addEventListener("scrollend", finish, { once: true });
-		fallbackTimer = window.setTimeout(finish, SCROLL_END_FALLBACK_MS);
-	});
-}
-
-function waitForDelay(): Promise<void> {
-	return new Promise((resolve) => window.setTimeout(resolve, SIDEBAR_SELECTION_DELAY_MS));
-}
-
-/** Starts click-time sidebar positioning before expensive session or project navigation. */
-export function prepareSidebarSelection(element: HTMLElement): SidebarSelectionWait {
+/**
+ * 点击时把行滚进安全区。**不阻塞导航**：滚动动画和 `openSession` 并行跑。
+ *
+ * 这里原本会返回一个「等滚动结束」的 Promise，调用方 `Promise.all` 完它（再叠加一个
+ * 「等面板 max-height 过渡结束」的 Promise）之后才发起会话切换，fallback 分别是 800ms
+ * 与 450ms。于是点一个不在列表中间的会话，切换要先干等几百毫秒才开始——而 openSession
+ * 内部本来已经做了「拿到 sessionId 就写 activeSession + navigate」的优化，全被这段等待抵消。
+ * 低配机上平滑滚动更慢、掉帧还可能收不到 scrollend / transitionend，直接吃满 fallback。
+ *
+ * 连点由 openSession 自己的 token 机制去重，不需要这里再排队。
+ */
+export function prepareSidebarSelection(element: HTMLElement): void {
 	const scrollParent = element.closest<HTMLElement>('[data-sidebar-selection-scroll="true"]');
-	if (!scrollParent) return false;
-	const moved = scrollElementIntoSafeZone(scrollParent, element) === "moved";
-	if (!moved || prefersReducedMotion()) return false;
-	return waitForScrollEnd(scrollParent);
-}
-
-/** Gives a required sidebar movement priority over navigation and cancels stale rapid-click requests. */
-export function runAfterSidebarSelection(
-	callback: () => void,
-	waits: SidebarSelectionWait | readonly SidebarSelectionWait[],
-): void {
-	const request = ++latestSelectionRequest;
-	const waitList = (Array.isArray(waits) ? waits : [waits]).flatMap((wait) => {
-		if (wait === false) return [];
-		return [wait === true ? waitForDelay() : wait];
-	});
-	if (waitList.length === 0) {
-		callback();
-		return;
-	}
-
-	void Promise.all(waitList).then(() => {
-		if (request !== latestSelectionRequest) return;
-		requestAnimationFrame(() => {
-			window.setTimeout(() => {
-				if (request === latestSelectionRequest) callback();
-			}, 0);
-		});
-	});
+	if (!scrollParent) return;
+	scrollElementIntoSafeZone(scrollParent, element);
 }
 
 /** Scrolls a newly expanded project row only when it falls outside the shared safety band. */

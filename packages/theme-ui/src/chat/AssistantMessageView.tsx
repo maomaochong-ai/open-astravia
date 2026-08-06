@@ -1,14 +1,22 @@
 import { ThemeSurface } from "../appearance/ThemeSurface";
-import { motion } from "motion/react";
 import type { JSX, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-const STREAM_CHAR_HIDDEN = { opacity: 0, filter: "blur(6px)" };
-const STREAM_CHAR_SHOWN = { opacity: 1, filter: "blur(0px)" };
-const STREAM_CHAR_TRANSITION = {
-	duration: 0.42,
-	ease: [0.25, 0.1, 0.25, 1] as const,
-};
+/**
+ * 逐字符入场改为纯 CSS：原来每个字符一个 motion.span，流式全程 JS 每帧写内联
+ * style + 触发样式重算；CSS animation-delay 错峰能给出一模一样的画面，主线程零参与。
+ */
+const STREAM_CHAR_CSS = `
+@keyframes stream-char-in {
+	from { opacity: 0; filter: blur(6px); }
+	to { opacity: 1; filter: blur(0px); }
+}
+.stream-char {
+	display: inline-block;
+	white-space: pre;
+	animation: stream-char-in 420ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+`;
 
 export interface AssistantMessageViewLabels {
 	processing: string;
@@ -127,20 +135,16 @@ export function StreamingIndicator({ phrases }: { phrases: string[] }): JSX.Elem
 	}, [index, list.length, chars.length]);
 	return (
 		<span className="inline-flex text-[11px] font-medium text-muted-foreground/55" aria-label={text}>
+			<style>{STREAM_CHAR_CSS}</style>
 			{chars.map((character, characterIndex) => (
-				<motion.span
+				<span
 					key={`${index}-${characterIndex}`}
 					aria-hidden
-					className="inline-block whitespace-pre"
-					initial={STREAM_CHAR_HIDDEN}
-					animate={STREAM_CHAR_SHOWN}
-					transition={{
-						...STREAM_CHAR_TRANSITION,
-						delay: characterIndex * 0.035,
-					}}
+					className="stream-char"
+					style={{ animationDelay: `${characterIndex * 35}ms` }}
 				>
 					{character}
-				</motion.span>
+				</span>
 			))}
 		</span>
 	);

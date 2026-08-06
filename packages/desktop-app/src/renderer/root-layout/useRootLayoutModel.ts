@@ -8,7 +8,7 @@ import { loadNewSessionPage } from "../domains/chat/components/loadNewSessionPag
 import { useAppInit } from "../domains/chat/hooks/useAppInit";
 import { useSessionManager } from "../domains/chat/hooks/useSessionManager";
 import { useNotificationInit } from "../domains/message/hooks/useNotificationInit";
-import { useProjects } from "../domains/project/hooks/useProjects";
+import { useProjectActions } from "../domains/project/hooks/useProjects";
 import { useMessageQueueDispatcher } from "../shared/hooks/useMessageQueueDispatcher";
 import { useNarrowScreen } from "../shared/hooks/useNarrowScreen";
 import { useRunningSessionsSync } from "../shared/hooks/useRunningSessionsSync";
@@ -24,6 +24,7 @@ import {
 	focusInputRequestAtom,
 	lastActiveSessionAtom,
 	pendingQuestionsAtom,
+	projectsAtom,
 	sandboxPermissionDrawerAtom,
 	scheduledSessionPathsAtom,
 	sidebarCollapsedAtom,
@@ -34,7 +35,8 @@ import type { RootLayoutModel } from "./types";
 type SessionRestoreState = "pending" | "restoring" | "complete";
 
 export function useRootLayoutModel(): RootLayoutModel {
-	const { openProject, projects, ensureLocalSession } = useProjects();
+	const { openProject, ensureLocalSession } = useProjectActions();
+	const projects = useAtomValue(projectsAtom);
 	const navigate = useNavigate();
 	const setSandboxPermissionDrawer = useSetAtom(sandboxPermissionDrawerAtom);
 	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);

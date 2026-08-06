@@ -15,7 +15,7 @@ import {
 	sessionsMapAtom,
 	workspacePathAtom,
 } from "@shared/store/atoms";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { getDefaultStore, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 
 /** firstMessage 是否可直接当展示名（排除空串与 coding-agent 占位）。 */
@@ -35,18 +35,62 @@ let imSubscribed = false;
 let sessionListSubscribed = false;
 const sessionLoadPromises = new Map<string, Promise<void>>();
 
-export function useProjects() {
-	const [projects, setProjects] = useAtom(projectsAtom);
-	const [projectsInitialized, setProjectsInitialized] = useAtom(projectsInitializedAtom);
-	const [sessionsMap, setSessionsMap] = useAtom(sessionsMapAtom);
-	const [sessionLoadingCwds, setSessionLoadingCwds] = useAtom(sessionLoadingCwdsAtom);
-	const scheduledSessionPaths = useAtomValue(scheduledSessionPathsAtom);
+/**
+ * `onSessionsChanged` 每轮对话至少触发 2~3 次（turn 开始 / 结束 / auto-title），
+ * 每次都要一趟全量 listSessions + 整表复制 + 全侧栏重渲染。合并成一次。
+ */
+const SESSION_RELOAD_DEBOUNCE_MS = 300;
+const pendingSessionReloads = new Map<string, number>();
+
+function scheduleSessionReload(cwd: string, run: (cwd: string) => void): void {
+	const pending = pendingSessionReloads.get(cwd);
+	if (pending !== undefined) window.clearTimeout(pending);
+	pendingSessionReloads.set(
+		cwd,
+		window.setTimeout(() => {
+			pendingSessionReloads.delete(cwd);
+			run(cwd);
+		}, SESSION_RELOAD_DEBOUNCE_MS),
+	);
+}
+
+/** 两份会话列表在展示层面是否等价——相等时不换引用，避免下游整树重渲染。 */
+function sessionListsEqual(a: readonly SessionInfo[], b: readonly SessionInfo[]): boolean {
+	if (a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) {
+		const left = a[i];
+		const right = b[i];
+		if (
+			left.path !== right.path ||
+			left.id !== right.id ||
+			left.name !== right.name ||
+			left.firstMessage !== right.firstMessage ||
+			left.modifiedAt !== right.modifiedAt ||
+			left.cwd !== right.cwd
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * 项目 / 会话的**动作**集合，不订阅任何 state atom。
+ *
+ * `useProjects()` 被 8 处调用，其中 RootLayout 与 useSessionManager 都在里面——它们只用
+ * 几个 action，却因为订阅了 `sessionsMapAtom` / `sessionLoadingCwdsAtom` 等高频 atom，
+ * 导致每次会话列表回填都把整棵应用树（含侧栏）重渲染。动作内部需要的 atom 值改为调用
+ * 时用 store 现读，订阅面因此降到零。
+ */
+export function useProjectActions() {
+	const store = getDefaultStore();
+	const setProjects = useSetAtom(projectsAtom);
+	const setProjectsInitialized = useSetAtom(projectsInitializedAtom);
+	const setSessionsMap = useSetAtom(sessionsMapAtom);
+	const setSessionLoadingCwds = useSetAtom(sessionLoadingCwdsAtom);
 	const setScheduledSessionPaths = useSetAtom(scheduledSessionPathsAtom);
 	const setScheduledRecordsVersion = useSetAtom(scheduledRecordsVersionAtom);
-	const [expandedProjects, setExpandedProjects] = useAtom(expandedProjectsAtom);
-	const workspacePath = useAtomValue(workspacePathAtom);
-	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
-	const defaultImConversationCwd = useAtomValue(defaultImConversationCwdAtom);
+	const setExpandedProjects = useSetAtom(expandedProjectsAtom);
 
 	const loadSessions = useCallback(
 		(cwd: string): Promise<void> => {
@@ -73,6 +117,9 @@ export function useProjects() {
 							}
 							return next;
 						});
+						// 内容没变就保持原引用：listSessions 被高频触发时结果往往完全一致，
+						// 换引用会白白唤醒所有 useProjects() 消费者（含 RootLayout 整棵树）。
+						if (sessionListsEqual(prev.get(cwd) ?? [], merged)) return prev;
 						return new Map([...prev, [cwd, merged]]);
 					}),
 				)
@@ -90,25 +137,19 @@ export function useProjects() {
 		[setSessionLoadingCwds, setSessionsMap],
 	);
 
-	// Keep a ref to loadSessions so the IM subscription (set up once at module
-	// scope via imSubscribed) always calls the latest closure.
+	// 订阅在 renderer 生命周期内只装一次（模块级 guard），因此这里不能闭包捕获会变的值，
+	// 需要的 cwd 一律调用时从 store 现读。
 	const loadSessionsRef = useRef(loadSessions);
 	loadSessionsRef.current = loadSessions;
-	const defaultCwdRef = useRef(defaultConversationCwd);
-	defaultCwdRef.current = defaultConversationCwd;
-	const imCwdRef = useRef(defaultImConversationCwd);
-	imCwdRef.current = defaultImConversationCwd;
-	const expandedProjectsRef = useRef(expandedProjects);
-	expandedProjectsRef.current = expandedProjects;
 	useEffect(() => {
 		if (!imSubscribed) {
 			imSubscribed = true;
 			window.vetta.im.onSessionChanged(() => {
 				// Claw 会话写在独立的 IM cwd 下（ADR-0005），fs watcher 监听的也是它；
 				// 桌面「对话」cwd 不会被 sidecar 写，但保留刷新以兼容历史路径。
-				const imCwd = imCwdRef.current;
+				const imCwd = store.get(defaultImConversationCwdAtom);
 				if (imCwd) void loadSessionsRef.current(imCwd);
-				const cwd = defaultCwdRef.current;
+				const cwd = store.get(defaultConversationCwdAtom);
 				if (cwd && cwd !== imCwd) void loadSessionsRef.current(cwd);
 			});
 		}
@@ -141,12 +182,14 @@ export function useProjects() {
 						return new Map([...prev, [cwd, nextSessions]]);
 					});
 				}
-				void loadSessionsRef.current(cwd);
+				// 上面已经就地补过了；全量重拉合并到一次，别每个事件都拉一趟。
+				scheduleSessionReload(cwd, (target) => void loadSessionsRef.current(target));
 			});
 		}
 		// Intentionally no cleanup: the listener lives for the renderer's
 		// lifetime, mirroring the singleton-style hooks (useAppInit, etc.).
-	}, [setSessionsMap]);
+		// loadSessionsRef 刻意不进 deps：订阅只装一次，靠 ref 拿最新闭包。
+	}, [setSessionsMap, store]);
 
 	const refreshProjects = useCallback(async () => {
 		try {
@@ -183,7 +226,7 @@ export function useProjects() {
 
 			// 首屏只加载默认会话与已展开项目；其它项目在展开时局部加载。
 			const projectCwds = new Set(all.map((project) => project.cwd));
-			const cwdsToLoad = new Set([...expandedProjectsRef.current].filter((cwd) => projectCwds.has(cwd)));
+			const cwdsToLoad = new Set([...store.get(expandedProjectsAtom)].filter((cwd) => projectCwds.has(cwd)));
 			if (defaultCwd) cwdsToLoad.add(defaultCwd);
 
 			if (!didAutoExpand && all.length > 0) {
@@ -195,11 +238,12 @@ export function useProjects() {
 		} finally {
 			setProjectsInitialized(true);
 		}
-	}, [loadSessions, setExpandedProjects, setProjects, setProjectsInitialized]);
+	}, [loadSessions, setExpandedProjects, setProjects, setProjectsInitialized, store]);
 
 	/** Create a new project directory in workspace and add to config; returns resolved cwd. */
 	const createProject = useCallback(
 		async (name: string): Promise<string> => {
+			const workspacePath = store.get(workspacePathAtom);
 			const projectPath = `${workspacePath}/${name}`;
 			await window.vetta.fs.createDirectory(projectPath);
 			// Read the resolved path back via listSubDirs to get the absolute path
@@ -218,7 +262,7 @@ export function useProjects() {
 			setExpandedProjects((prev) => new Set([...prev, resolvedPath]));
 			return resolvedPath;
 		},
-		[workspacePath, refreshProjects, setExpandedProjects],
+		[store, refreshProjects, setExpandedProjects],
 	);
 
 	/** Open an existing directory and add to config */
@@ -283,18 +327,18 @@ export function useProjects() {
 	const removeProject = useCallback(
 		async (cwd: string) => {
 			// 默认「对话」项目不允许从列表中移除。
-			if (cwd === defaultConversationCwd) return;
+			if (cwd === store.get(defaultConversationCwdAtom)) return;
 			const config = await window.vetta.config.get();
 			config.projects = config.projects.filter((p) => p.path !== cwd);
 			await window.vetta.config.set({ projects: config.projects });
 			await refreshProjects();
 		},
-		[refreshProjects, defaultConversationCwd],
+		[refreshProjects, store],
 	);
 
 	const archiveProject = useCallback(
 		async (cwd: string) => {
-			if (cwd === defaultConversationCwd) return;
+			if (cwd === store.get(defaultConversationCwdAtom)) return;
 			const config = await window.vetta.config.get();
 			const entry = config.projects.find((p) => p.path === cwd);
 			config.projects = config.projects.filter((p) => p.path !== cwd);
@@ -305,7 +349,7 @@ export function useProjects() {
 			await window.vetta.config.set({ projects: config.projects, archivedProjects: archived });
 			await refreshProjects();
 		},
-		[refreshProjects, defaultConversationCwd],
+		[refreshProjects, store],
 	);
 
 	const unarchiveProject = useCallback(
@@ -330,7 +374,7 @@ export function useProjects() {
 	/** Remove project from config AND delete from disk */
 	const deleteProjectFromDisk = useCallback(
 		async (cwd: string) => {
-			if (cwd === defaultConversationCwd) return;
+			if (cwd === store.get(defaultConversationCwdAtom)) return;
 			const config = await window.vetta.config.get();
 			config.projects = config.projects.filter((p) => p.path !== cwd);
 			const archived = (config.archivedProjects ?? []).filter((p) => p.path !== cwd);
@@ -338,14 +382,14 @@ export function useProjects() {
 			await window.vetta.fs.delete(cwd);
 			await refreshProjects();
 		},
-		[refreshProjects, defaultConversationCwd],
+		[refreshProjects, store],
 	);
 
 	const deleteSession = useCallback(
 		async (_cwd: string, sessionPath: string) => {
 			await window.vetta.session.delete(sessionPath);
 			// 定时任务 session：同步删掉「自动化」里的执行记录，否则历史列表会残留。
-			if (scheduledSessionPaths.has(sessionPath)) {
+			if (store.get(scheduledSessionPathsAtom).has(sessionPath)) {
 				await window.vetta.scheduler.deleteRecordsBySession(sessionPath);
 				setScheduledSessionPaths((prev) => {
 					if (!prev.has(sessionPath)) return prev;
@@ -368,7 +412,7 @@ export function useProjects() {
 				return next;
 			});
 		},
-		[setSessionsMap, scheduledSessionPaths, setScheduledSessionPaths, setScheduledRecordsVersion],
+		[setSessionsMap, store, setScheduledSessionPaths, setScheduledRecordsVersion],
 	);
 
 	/**
@@ -441,11 +485,6 @@ export function useProjects() {
 	);
 
 	return {
-		projects,
-		projectsInitialized,
-		sessionsMap,
-		sessionLoadingCwds,
-		expandedProjects,
 		refreshProjects,
 		loadSessions,
 		createProject,
@@ -462,5 +501,27 @@ export function useProjects() {
 		renameSession,
 		applyLocalRename,
 		ensureLocalSession,
+	};
+}
+
+/**
+ * 动作 + 项目/会话状态。只给真的要渲染列表的调用方用（侧栏面板）；
+ * 只需要动作的地方用 {@link useProjectActions}，避免被高频 atom 唤醒。
+ */
+export function useProjects() {
+	const actions = useProjectActions();
+	const projects = useAtomValue(projectsAtom);
+	const projectsInitialized = useAtomValue(projectsInitializedAtom);
+	const sessionsMap = useAtomValue(sessionsMapAtom);
+	const sessionLoadingCwds = useAtomValue(sessionLoadingCwdsAtom);
+	const expandedProjects = useAtomValue(expandedProjectsAtom);
+
+	return {
+		...actions,
+		projects,
+		projectsInitialized,
+		sessionsMap,
+		sessionLoadingCwds,
+		expandedProjects,
 	};
 }
