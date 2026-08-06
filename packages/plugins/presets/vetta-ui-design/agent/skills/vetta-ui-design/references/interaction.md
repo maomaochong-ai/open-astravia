@@ -37,26 +37,12 @@ Two levels. Pick by whether the chrome must survive navigation.
   real multi-screen app/site with persistent chrome. Files starting with `_` are
   not frames — no canvas artboard is created for them.
 
-```tsx
-// frames/_layout.tsx — must render <Outlet /> itself
-import { Outlet, useLocation } from "react-router";
-import { NavBar } from "../components/NavBar";
+The `_layout.tsx` template is in `SKILL.md` — copy it from there. Two things
+about it that are not obvious from the code:
 
-export default function Layout() {
-	const { pathname } = useLocation();
-	// Screens outside the app shell (login, onboarding, a full-bleed landing
-	// page) opt out here — there is no separate mechanism for it.
-	if (pathname === "/login") return <Outlet />;
-	return (
-		<div className="flex h-full flex-col bg-surface">
-			<NavBar />
-			<div className="min-h-0 flex-1">
-				<Outlet />
-			</div>
-		</div>
-	);
-}
-```
+- It must render `<Outlet />` itself; the engine does not wrap it for you.
+- The `pathname` check is how a screen opts OUT of the shell (login, onboarding,
+  a full-bleed landing page). There is no separate mechanism for it.
 
 Do not create a layout for posters, slides, infographics or a single-screen
 design — there is nothing to persist. No `_layout.tsx` means the engine behaves

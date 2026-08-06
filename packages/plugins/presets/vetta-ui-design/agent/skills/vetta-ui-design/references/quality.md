@@ -89,11 +89,16 @@ problem.
 
 ## When a frame fails to build
 
-The canvas keeps showing its last good rendering with a "build failed" badge,
-and `vetd_screenshot` returns the compile error instead of an image
-(`vetd_status` reports it as `buildError` on the frame). Fix the source and
-screenshot again — never declare a frame done while it still reports a build
-error.
+The canvas keeps showing its last good rendering with a "build failed" badge —
+so a broken frame looks *fine* on the canvas, which is exactly why you cannot
+judge it from there.
+
+Every `vetd_screenshot` parses the sources first. A frame whose own file (or
+`_layout.tsx`, or anything in `components/`) does not parse returns the syntax
+error with its line instead of an image; `vetd_status` reports the same thing
+under `issues`. Go to that line and fix the broken region with an `edit` — a
+full rewrite costs many times more and usually breaks something else. Never
+declare a frame done while it still reports one.
 
 `vetd_status` also returns the engine's recent build output, which is where to
 look when a frame renders blank for no obvious reason.

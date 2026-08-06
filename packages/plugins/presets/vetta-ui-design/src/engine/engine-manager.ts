@@ -259,7 +259,14 @@ export async function buildDesign(ctx: PluginContext, designDir: string, outDir:
 	});
 }
 
-/** Diagnostic snapshot for vetd_status. */
+/**
+ * Diagnostic snapshot for vetd_status.
+ *
+ * The tail is deliberately short and de-ANSI'd: this ships to the model on every
+ * vetd_status call, and vite's raw output is mostly colour escapes wrapped
+ * around routine chatter ("Re-optimizing dependencies…"). Eight clean lines
+ * still carry the one thing worth reading here — the last real failure.
+ */
 export async function engineDiagnostics(designDir: string | null): Promise<{
 	running: boolean;
 	port: number | null;
@@ -271,6 +278,12 @@ export async function engineDiagnostics(designDir: string | null): Promise<{
 	return {
 		running: status.running,
 		port: server.port,
-		recentOutput: status.recentOutput.split("\n").slice(-30).join("\n"),
+		recentOutput: status.recentOutput
+			// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping ANSI escapes is exactly what this does
+			.replace(/\u001b\[[0-9;]*m/g, "")
+			.split("\n")
+			.filter((line) => line.trim().length > 0)
+			.slice(-8)
+			.join("\n"),
 	};
 }
