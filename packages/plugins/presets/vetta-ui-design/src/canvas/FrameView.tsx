@@ -58,6 +58,10 @@ interface FrameViewProps {
 	activity: FrameActivity | undefined;
 	/** 非 null 时这一帧编译/渲染失败：盖住上一张位图，标题栏挂徽标（详情走 title）。 */
 	buildError: string | null;
+	/** 【临时调试】当前位图的来源：cache=启动恢复的缓存 / offscreen=离屏窗口 / clone=html-to-image。 */
+	rasterSource: "cache" | "offscreen" | "clone" | null;
+	/** 【临时调试】最近一次截图失败原因（非 null 时位图停在旧图上）。 */
+	captureFailure: string | null;
 	/** true 时标题变成就地编辑的输入框（双击标题，或右键菜单里的重命名）。 */
 	renaming: boolean;
 	onSelect(frameId: string, additive: boolean): void;
@@ -114,6 +118,8 @@ export const FrameView = memo(function FrameView({
 	placement,
 	activity,
 	buildError,
+	rasterSource,
+	captureFailure,
 	renaming,
 	onSelect,
 	onContextMenu,
@@ -322,6 +328,25 @@ export const FrameView = memo(function FrameView({
 				<span className="text-muted-foreground">
 					{Math.round(rect.width)}×{Math.round(rect.height)}
 				</span>
+				{/* 【临时调试】截图链路指示：确认位图到底出自哪条路径。定位完就删。 */}
+				{rasterSource ? (
+					<span
+						className={`rounded-full px-1.5 py-0.5 ${
+							rasterSource === "offscreen"
+								? "bg-emerald-500/15 text-emerald-600"
+								: rasterSource === "clone"
+									? "bg-amber-500/15 text-amber-600"
+									: "bg-slate-500/15 text-slate-500"
+						}`}
+					>
+						{rasterSource}
+					</span>
+				) : null}
+				{captureFailure ? (
+					<span className="rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600" title={captureFailure}>
+						capture failed
+					</span>
+				) : null}
 				{buildError ? (
 					<span
 						className="flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-red-600"
