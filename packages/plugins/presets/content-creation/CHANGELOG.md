@@ -43,6 +43,7 @@
 
 ### Added
 
+- Added opt-in prompt optimization through host-managed AI models, preserving the original structured prompt below while successful results replace the effective prompt shown on the node.
 - Added host media-provider discovery and image generation through the plugin media capability, with generated artifacts persisted in the existing content asset store.
 - Added structured multimodal prompt documents with compact inline media tokens and mixed `@` prompt references, preserving editable local text while carrying referenced media into generation model compatibility checks.
 - Upgraded asset nodes into scalable image, video, and audio collections with compact canvas summaries, incremental management, and model-compatible selection from connected generation nodes.

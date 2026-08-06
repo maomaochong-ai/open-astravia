@@ -1,5 +1,6 @@
 import type {
 	ContentNodeData,
+	ContentNodeInputBinding,
 	ContentPromptDocument,
 	ContentPromptSegment,
 } from "../project/types";
@@ -119,7 +120,22 @@ export function contentPromptDocumentsEqual(
 }
 
 export function contentPromptTextFromData(data: ContentNodeData): string {
+	return data.promptOptimization ? data.promptOptimization.text : contentPromptOriginalTextFromData(data);
+}
+
+export function contentPromptOriginalTextFromData(data: ContentNodeData): string {
 	return data.promptDocument ? contentPromptText(data.promptDocument) : data.prompt?.trim() ?? "";
+}
+
+export function contentPromptSourceSignature(data: ContentNodeData): string {
+	const document = createContentPromptDocument(data);
+	const bindingsById = new Map((data.inputs ?? []).map((binding) => [binding.id, binding]));
+	return JSON.stringify({
+		document,
+		bindings: listContentPromptBindingIds(document).map((bindingId) =>
+			serializeInputBinding(bindingId, bindingsById.get(bindingId)),
+		),
+	});
 }
 
 function mergeAdjacentTextSegments(segments: readonly ContentPromptSegment[]): ContentPromptSegment[] {
@@ -133,4 +149,15 @@ function mergeAdjacentTextSegments(segments: readonly ContentPromptSegment[]): C
 		}
 	}
 	return merged;
+}
+
+function serializeInputBinding(bindingId: string, binding: ContentNodeInputBinding | undefined) {
+	return binding
+		? {
+				id: binding.id,
+				assetId: binding.assetId,
+				slotId: binding.slotId,
+				sourceNodeId: binding.sourceNodeId ?? null,
+			}
+		: { id: bindingId };
 }

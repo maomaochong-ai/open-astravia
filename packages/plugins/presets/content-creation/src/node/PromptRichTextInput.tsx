@@ -316,6 +316,7 @@ export function PromptRichTextInput({
 				</div>
 			</div>
 			<PopoverContent
+				data-vetta-plugin-root="content-creation"
 				align="end"
 				side="bottom"
 				className="w-80 gap-1.5 p-1.5"

@@ -11,6 +11,7 @@ import type {
 import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
 import { ContentAssetKindIcon } from "./ContentAssetKindIcon";
 import { NodeKindIcon } from "./NodeKindIcon";
+import { contentPromptTextFromData } from "./prompt-document";
 
 interface ContentNodeSurfaceProps {
 	kind: ContentNodeKind;
@@ -107,14 +108,23 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 
 	if (kind === "asset") return <ContentAssetNodeSurface assets={assets} />;
 	if (kind === "prompt") {
+		const prompt = contentPromptTextFromData(data);
 		return (
 			<div
 				className="flex h-full w-full flex-col justify-between [container-type:size]"
 				style={{ gap: "clamp(8px, 2.5cqw, 14px)", padding: "clamp(12px, 4cqw, 20px)" }}
 			>
-				<p className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85" style={surfaceTextStyle}>
-					{data.prompt?.trim() || emptyText}
-				</p>
+				<div className="min-h-0 flex-1">
+					{data.promptOptimization ? (
+						<div className="mb-1.5 flex items-center gap-1 text-[10px] text-muted-foreground/75">
+							<span className="icon-[lucide--sparkles] block size-3" aria-hidden="true" />
+							<span>{t("node.prompt.optimized")}</span>
+						</div>
+					) : null}
+					<p className="m-0 line-clamp-6 whitespace-pre-wrap text-foreground/85" style={surfaceTextStyle}>
+						{prompt || emptyText}
+					</p>
+				</div>
 				{referenceAssets.length > 0 ? (
 					<div className="flex min-w-0 items-center gap-1.5 border-t border-border/55 pt-2">
 						{referenceAssets.slice(0, 2).map((asset) => (

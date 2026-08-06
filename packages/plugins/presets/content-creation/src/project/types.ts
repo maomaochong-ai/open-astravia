@@ -17,6 +17,7 @@ export interface ContentNodeData {
 	label?: string;
 	prompt?: string;
 	promptDocument?: ContentPromptDocument;
+	promptOptimization?: ContentPromptOptimization;
 	assetId?: string;
 	assetIds?: string[];
 	aspectRatio?: string;
@@ -28,6 +29,12 @@ export interface ContentNodeData {
 	modeId?: string;
 	promptSourceNodeId?: string | null;
 	inputs?: ContentNodeInputBinding[];
+}
+
+export interface ContentPromptOptimization {
+	text: string;
+	modelKey: string;
+	createdAt: string;
 }
 
 export interface ContentPromptDocument {
