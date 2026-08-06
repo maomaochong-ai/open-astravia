@@ -405,12 +405,63 @@
 	}
 }
 
-/* 全幅蒙层：淡淡罩住整帧，示意「这一帧正被 agent 占用」。固定白色——frame
-   内容恒为白底 app，跟宿主主题无关（深色主题下用 --background 会糊成深灰）。 */
-.vetd-activity-veil {
+/* 浮层整体渐入渐出：opacity 由组件驱动（挂载下一帧置 1、卸载前归 0），
+   时长与 FrameActivityOverlay 的 FADE_MS 保持一致。 */
+.vetd-activity-overlay {
+	transition: opacity 300ms ease;
+}
+
+/* 混沌流体背景（对齐 image-gen 生成骨架）：实色 blob 漂移缩放 + 旋转层，
+   叠加重模糊融成流动渐变。60% 不透明度，底下的稿子仍隐约可见。 */
+.vetd-fluid {
 	position: absolute;
 	inset: 0;
-	background: rgb(255 255 255 / 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	opacity: 0.6;
+}
+/* 居中大正方形旋转层：180% 宽，任意旋转角内切圆都盖满 frame。 */
+.vetd-fluid-spin {
+	position: relative;
+	width: 180%;
+	aspect-ratio: 1;
+	filter: blur(26px) saturate(120%);
+	animation: vetd-fluid-spin 36s linear infinite;
+	will-change: transform;
+}
+@keyframes vetd-fluid-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.vetd-fluid-blob {
+	width: 100%;
+	height: 100%;
+	border-radius: 9999px;
+	animation-name: vetd-fluid-drift;
+	animation-timing-function: ease-in-out;
+	animation-iteration-count: infinite;
+	animation-direction: alternate;
+	will-change: transform;
+}
+@keyframes vetd-fluid-drift {
+	0% {
+		transform: translate(0%, 0%) scale(1);
+	}
+	25% {
+		transform: translate(22%, -16%) scale(1.22);
+	}
+	50% {
+		transform: translate(-14%, 20%) scale(0.82);
+	}
+	75% {
+		transform: translate(16%, 14%) scale(1.12);
+	}
+	100% {
+		transform: translate(-20%, -10%) scale(0.94);
+	}
 }
 
 /* 毛玻璃胶囊：把头像与效果托在画面中央，避免细节淹没在 frame 内容里。
@@ -526,31 +577,6 @@
 	}
 }
 
-/* 创作：斜向流光扫过整个画面。 */
-.vetd-shimmer {
-	position: absolute;
-	top: -10%;
-	bottom: -10%;
-	left: -45%;
-	width: 40%;
-	background: linear-gradient(
-		to right,
-		transparent,
-		color-mix(in oklab, var(--primary, #6366f1) 14%, transparent),
-		transparent
-	);
-	animation: vetd-shimmer-sweep 2s ease-in-out infinite;
-}
-@keyframes vetd-shimmer-sweep {
-	from {
-		transform: skewX(-18deg) translateX(0);
-	}
-	to {
-		/* 自身宽 40%：370% ≈ 扫出右边缘。 */
-		transform: skewX(-18deg) translateX(370%);
-	}
-}
-
 /* 创作：十字星光，交错闪烁。 */
 .vetd-spark {
 	position: absolute;
@@ -598,7 +624,8 @@
 	.vetd-scan-beam,
 	.vetd-magnifier,
 	.vetd-typing-line,
-	.vetd-shimmer,
+	.vetd-fluid-spin,
+	.vetd-fluid-blob,
 	.vetd-spark {
 		animation: none;
 	}

@@ -435,8 +435,9 @@ export const FrameView = memo(function FrameView({
 					/>
 				}
 				{/* 活动态浮层放最后：DOM 顺序就是叠放顺序，放前面会被位图/遮罩盖住。
-				    自身 pointer-events-none，压在遮罩上也不影响选中/拖拽。 */}
-				{activity !== undefined ? <FrameActivityOverlay activity={activity} /> : null}
+				    自身 pointer-events-none，压在遮罩上也不影响选中/拖拽。
+				    无条件渲染：渐出发生在 activity 清空之后，组件得留着把过渡走完。 */}
+				<FrameActivityOverlay activity={activity} />
 			</div>
 
 			{/* 手柄在元素选择开着时也要留：画面区已经归 iframe 了，缩放只剩这一条路。 */}
