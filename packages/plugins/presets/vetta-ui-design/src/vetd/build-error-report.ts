@@ -6,9 +6,12 @@
  * 的返回值，没法在模型写坏文件的同一步把报错塞回去。能自动闭环的入口只剩一个——
  * 轮次结束时主动发一条后续消息。
  *
- * 两个来源合起来看：
+ * 三个来源合起来看：
  * - **磁盘解析**（check-syntax）是主力。位图态的 frame 没挂 iframe、也就没有 HMR
  *   连接，坏了根本报不出来——这条链路不依赖画布，坏帧躺在哪都抓得到。
+ * - **尺寸没声明全**（check-sources 的 frame-size-missing）。这一类最隐蔽：源码在
+ *   磁盘上，reconcile 却把它整个跳过，画布上不是「坏帧」而是**什么都没有**。实测
+ *   agent 在这种静默下会开始盲改 manifest，而画布已经空了两分多钟。
  * - **HMR 错误**（listFrameErrors）补运行时那一半：语法没问题、渲染时才抛的错。
  *
  * 两道闸避免烦人和死循环：同一条错误只退回一次；同一串错误最多自动退回
@@ -17,7 +20,9 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { getCanvasController, listFrameErrors } from "../canvas/design-runtime";
 import { notify } from "../plugin-context";
-import { checkSyntax } from "./check-syntax";
+import { FRAME_SIZE_RULE } from "./check-sources";
+import { SYNTAX_RULE } from "./check-syntax";
+import { inspectIssues } from "./inspect";
 
 const MAX_AUTO_ROUNDS = 2;
 /**
@@ -33,8 +38,17 @@ let timer: number | null = null;
 /** 递增令牌：flush 是异步的，取消之后在途的那次不能再发出去。 */
 let flushToken = 0;
 
+/**
+ * `build` —— 文件解析不过 / 运行时抛错，画布停在上一张好图，标题栏挂着失败徽标。
+ * `offCanvas` —— 源码在磁盘上，画布上却根本没有这一帧（尺寸没声明全）。这一类
+ * 是**完全静默**的：没有徽标，没有占位，用户看到的就是一片空白，而 agent 在实测
+ * 里会开始盲猜——去 edit 一个不存在的 manifest.json，再直接改 .vetd（明令禁止）。
+ */
+type ErrorKind = "build" | "offCanvas";
+
 interface PendingError {
 	key: string;
+	kind: ErrorKind;
 	/** 相对 sidecar 目录的路径，直接拼给模型看。 */
 	file: string;
 	message: string;
@@ -64,20 +78,56 @@ export function scheduleBuildErrorReport(ctx: PluginContext): void {
 }
 
 async function collectErrors(ctx: PluginContext, dirPath: string): Promise<PendingError[]> {
-	const syntax = await checkSyntax(ctx, dirPath);
-	const syntaxFiles = new Set(syntax.map((issue) => issue.file));
-	const errors: PendingError[] = syntax.map((issue) => ({
-		key: `${issue.file}::${issue.line}::${issue.message}`,
-		file: issue.file,
-		message: issue.line === null ? issue.message : `${issue.message} (line ${issue.line})`,
-	}));
+	const issues = await inspectIssues(ctx, ctx.fs, dirPath);
+	// 只退回硬阻塞。风格违规（hex 颜色、压成一行）随 vetd_screenshot 的 issues 走
+	// 就够了，为它们额外发一条后续消息只是打扰。
+	const errors: PendingError[] = issues
+		.filter((issue) => issue.rule === SYNTAX_RULE || issue.rule === FRAME_SIZE_RULE)
+		.map((issue) => ({
+			key: `${issue.file}::${issue.line}::${issue.rule}`,
+			kind: issue.rule === SYNTAX_RULE ? ("build" as const) : ("offCanvas" as const),
+			file: issue.file,
+			message: issue.line === null ? issue.message : `${issue.message} (line ${issue.line})`,
+		}));
+	const knownFiles = new Set(errors.map((error) => error.file));
 	for (const [frameId, message] of listFrameErrors()) {
 		const file = `frames/${frameId}.tsx`;
 		// 同一个文件已经有精确到行的解析错误了，HMR 那条是同一件事的模糊版本。
-		if (syntaxFiles.has(file)) continue;
-		errors.push({ key: `${file}::${message}`, file, message });
+		if (knownFiles.has(file)) continue;
+		errors.push({ key: `${file}::${message}`, kind: "build", file, message });
 	}
 	return errors;
+}
+
+/** 两类失败的原因不同，退回的话术也不能混：一类是「构建挂了」，一类是「压根没上画布」。 */
+function buildPrompt(dirPath: string, errors: readonly PendingError[]): string {
+	const sections: string[] = [];
+	const offCanvas = errors.filter((error) => error.kind === "offCanvas");
+	const broken = errors.filter((error) => error.kind === "build");
+	if (offCanvas.length > 0) {
+		sections.push(
+			[
+				`${offCanvas.length} frame source(s) are on disk but NOT on the canvas — the canvas is showing nothing for them, silently:`,
+				"",
+				offCanvas.map((error) => `## ${dirPath}/${error.file}\n\n${error.message}`).join("\n\n"),
+				"",
+				"Add the missing `export const frame = { width, height, title }` as the first statement of each file. Do NOT touch the .vetd manifest — it is generated from these declarations.",
+			].join("\n"),
+		);
+	}
+	if (broken.length > 0) {
+		sections.push(
+			[
+				"The design canvas could not build these files, so the frames using them are still showing their previous rendering:",
+				"",
+				broken.map((error) => `## ${dirPath}/${error.file}\n\n${error.message}`).join("\n\n"),
+				"",
+				"Edit the broken region — do not rewrite the whole file.",
+			].join("\n"),
+		);
+	}
+	sections.push("Then verify with vetd_screenshot.");
+	return sections.join("\n\n");
 }
 
 async function flush(ctx: PluginContext): Promise<void> {
@@ -103,15 +153,7 @@ async function flush(ctx: PluginContext): Promise<void> {
 	}
 	rounds += 1;
 	for (const error of fresh) reported.add(error.key);
-	const detail = fresh.map((error) => `## ${controller.session.dirPath}/${error.file}\n\n${error.message}`).join("\n\n");
-	const prompt = [
-		"The design canvas could not build these files, so the frames using them are still showing their previous rendering:",
-		"",
-		detail,
-		"",
-		"Edit the broken region — do not rewrite the whole file — then verify with vetd_screenshot.",
-	].join("\n");
-	void ctx.conversation.sendPrompt(prompt).catch(() => {
+	void ctx.conversation.sendPrompt(buildPrompt(controller.session.dirPath, fresh)).catch(() => {
 		// 会话可能已经切走/正忙，退回失败不值得打扰用户——徽标还在画布上。
 	});
 }

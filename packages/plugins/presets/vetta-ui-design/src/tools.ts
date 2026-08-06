@@ -7,9 +7,10 @@ import { applyDesignSystem, buildRestylePrompt } from "./design-systems/apply";
 import { DESIGN_SYSTEMS, designSystemById } from "./design-systems/index";
 import { engineDiagnostics } from "./engine/engine-manager";
 import { CANVAS_TAB_ID } from "./tab-ids";
-import { checkSources, type SourceFile, type SourceIssue } from "./vetd/check-sources";
-import { blockingSyntaxIssues, checkSyntax, SYNTAX_RULE } from "./vetd/check-syntax";
+import type { SourceIssue } from "./vetd/check-sources";
+import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
+import { inspectIssues } from "./vetd/inspect";
 import { parseFrameMeta } from "./vetd/frame-meta";
 import { scaffoldDesign } from "./vetd/scaffold";
 
@@ -77,43 +78,6 @@ function statusNote(
 		return "This design already has shared UI (see `sharedShell`) — reuse it instead of writing a second copy.";
 	}
 	return "Design open on the canvas.";
-}
-
-/** 送进机检的全部设计源码：画框与共享组件。 */
-async function collectSources(fs: PluginContext["fs"], dirPath: string): Promise<SourceFile[]> {
-	const files: SourceFile[] = [];
-	for (const dir of ["frames", "components"]) {
-		let entries: Awaited<ReturnType<PluginContext["fs"]["readDir"]>>;
-		try {
-			entries = await fs.readDir(`${dirPath}/${dir}`);
-		} catch {
-			continue; // components/ 可以不存在
-		}
-		for (const entry of entries) {
-			if (entry.isDirectory || !entry.name.endsWith(".tsx")) continue;
-			try {
-				const { content } = await fs.readFile(entry.path);
-				files.push({ path: `${dir}/${entry.name}`, content });
-			} catch {
-				// 读不到就跳过：这条链路只做检查，不该因为一个文件失败而整体报错
-			}
-		}
-	}
-	return files;
-}
-
-/**
- * 一份设计当前的全部机检结果：语法错在前，风格违规在后。
- *
- * 顺序不是排版问题——语法错意味着那一帧压根没在渲染，排在一条 hex 颜色后面会被
- * 当成同一量级的建议。两条链路并发跑：正则那条只读文件，esbuild 那条起一个 node。
- */
-async function inspectIssues(ctx: PluginContext, fs: PluginContext["fs"], dirPath: string): Promise<SourceIssue[]> {
-	const [ruleIssues, syntaxIssues] = await Promise.all([
-		collectSources(fs, dirPath).then(checkSources),
-		checkSyntax(ctx, dirPath),
-	]);
-	return [...syntaxIssues, ...ruleIssues];
 }
 
 export function registerDesignTools(ctx: PluginContext): void {

@@ -29,6 +29,13 @@ export interface SourceFile {
 	content: string;
 }
 
+/**
+ * 尺寸没声明全的画框。单独给个名字是因为它和别的规则不是一个量级：其他规则是
+ * 「画得出来但写得不对」，这一条是**画不出来**——源码在磁盘上，画布上却什么都
+ * 没有，连一个失败徽标都没有。轮次结束的兜底要靠它把这种静默失败退回去。
+ */
+export const FRAME_SIZE_RULE = "frame-size-missing";
+
 /** 单行超过这个长度基本可以断定是把整个组件压成了一行。 */
 const MAX_LINE_LENGTH = 600;
 
@@ -115,7 +122,7 @@ function checkFrameSize(file: SourceFile, others: readonly SourceFile[]): Source
 	return {
 		file: file.path,
 		line: null,
-		rule: "frame-size-missing",
+		rule: FRAME_SIZE_RULE,
 		message: `Frame meta is missing ${missing}. Declare it as the first statement: \`export const frame = { width: 390, height: 844, title: "登录" };\`. There is no default size — the frame stays off the canvas until both are declared.${reference}`,
 	};
 }
