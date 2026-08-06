@@ -114,6 +114,16 @@ export type {
 } from "./app-actions.js";
 export { PluginAppActionError } from "./app-actions.js";
 
+// Host-managed AI
+export type {
+	PluginAiApi,
+	PluginAiCompleteRequest,
+	PluginAiCompleteResult,
+	PluginAiModel,
+	PluginAiModelListResult,
+	PluginAiUsage,
+} from "./ai.js";
+
 // Official host capabilities
 export type {
 	PluginOfficialGeneralSettings,

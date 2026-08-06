@@ -35,6 +35,8 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"agent.runtime.configure": "permission.agentRuntimeConfigure",
 	"app.actions.register": "permission.appActionsRegister",
 	"app.actionHandler.execute": "permission.appActionHandlerExecute",
+	"ai.models.list": "permission.aiModelsList",
+	"ai.complete": "permission.aiComplete",
 	"fs.read": "permission.fsRead",
 	"fs.write": "permission.fsWrite",
 	"network.fetch": "permission.networkFetch",

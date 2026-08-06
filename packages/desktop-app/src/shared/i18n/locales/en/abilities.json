@@ -234,6 +234,8 @@
 		"agentRuntimeConfigure": "Configure agent runtime",
 		"appActionsRegister": "Register app actions",
 		"appActionHandlerExecute": "Execute plugin action handlers",
+		"aiModelsList": "List available AI models",
+		"aiComplete": "Complete text with AI models",
 		"fsRead": "Read files",
 		"fsWrite": "Write files",
 		"networkFetch": "Access network",

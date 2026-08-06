@@ -1,6 +1,7 @@
 import { CAPABILITY_CONSTRAINT_KINDS, type CapabilityGrant, createCapabilityGrant } from "../../access.js";
 import {
 	DOMAIN_AGENT_SETTINGS_CAPABILITIES,
+	DOMAIN_AI_CAPABILITIES,
 	DOMAIN_BATCH_TASK_CAPABILITIES,
 	DOMAIN_DOWNLOAD_CAPABILITIES,
 	DOMAIN_GENERAL_SETTINGS_CAPABILITIES,
@@ -39,6 +40,12 @@ export function buildPluginCapabilityGrants(
 	] as const;
 
 	return [
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.AI_MODELS_LIST)
+			? [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.LIST_MODELS)]
+			: []),
+		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.AI_COMPLETE)
+			? [createCapabilityGrant(DOMAIN_AI_CAPABILITIES.COMPLETE)]
+			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.FILESYSTEM_READ)
 			? [
 					createCapabilityGrant(FOUNDATION_FILESYSTEM_CAPABILITIES.READ_DIRECTORY),

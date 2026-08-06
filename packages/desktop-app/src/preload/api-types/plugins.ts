@@ -1,6 +1,9 @@
 import type {
 	AgentExperimentalSettings,
 	AgentExperimentalSettingsUpdate,
+	AiCompleteInput,
+	AiCompleteResult,
+	AiModelListResult,
 	BatchProject,
 	BatchProjectCreateData,
 	BatchProjectUpdateData,
@@ -363,6 +366,11 @@ export interface DesktopPluginCapabilityImApi {
 	setAgentModel(sessionId: string, modelKey: string | null, reasoningLevel?: string): Promise<ImRuntimeStatus>;
 }
 
+export interface DesktopPluginCapabilityAiApi {
+	listModels(sessionId: string): Promise<AiModelListResult>;
+	complete(sessionId: string, input: AiCompleteInput): Promise<AiCompleteResult>;
+}
+
 export interface DesktopPluginCapabilityModelsApi {
 	list(sessionId: string): Promise<ModelListResult>;
 	getConfig(sessionId: string): Promise<ModelConfigSnapshot>;
@@ -520,6 +528,7 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	openSession(pluginId: string): Promise<string>;
 	closeSession(sessionId: string): Promise<void>;
 	agentSettings: DesktopPluginCapabilityAgentSettingsApi;
+	ai: DesktopPluginCapabilityAiApi;
 	batchTasks: DesktopPluginCapabilityBatchTasksApi;
 	filesystem: DesktopPluginCapabilityFilesystemApi;
 	generalSettings: DesktopPluginCapabilityGeneralSettingsApi;

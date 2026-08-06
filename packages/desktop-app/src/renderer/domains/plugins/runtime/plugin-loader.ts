@@ -63,6 +63,7 @@ import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
+import { createPluginAiApi } from "./plugin-ai";
 import {
 	getPluginFileExplorerSelection,
 	getPluginFileExplorerWorkspaceRoots,
@@ -1191,12 +1192,13 @@ function createContext(
 			console.error(`[plugin:${plugin.id}] ${message}\n${detail}`);
 		}
 	};
+	const permissions = createPermissionApi(plugin);
 	return {
 		plugin: {
 			id: plugin.id,
 			version: plugin.activeVersion,
 		},
-		permissions: createPermissionApi(plugin),
+		permissions,
 		ui: {
 			registerGlobalSlot,
 			registerFilePreview,
@@ -1493,6 +1495,7 @@ function createContext(
 				};
 			},
 		},
+		ai: createPluginAiApi(permissions, capabilitySessionId),
 		official: createPluginOfficialApi(capabilitySessionId),
 		network: createNetworkApi(plugin, capabilitySessionId),
 		gateway: plugin.trustLevel === "official" ? createGatewayApi(capabilitySessionId) : undefined,

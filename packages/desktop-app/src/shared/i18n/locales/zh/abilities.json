@@ -234,6 +234,8 @@
 		"agentRuntimeConfigure": "配置 Agent 运行时",
 		"appActionsRegister": "注册应用 Action",
 		"appActionHandlerExecute": "执行插件 Action 处理器",
+		"aiModelsList": "查看可用 AI 模型",
+		"aiComplete": "调用 AI 模型完成文本",
 		"fsRead": "读取文件",
 		"fsWrite": "写入文件",
 		"networkFetch": "访问网络",

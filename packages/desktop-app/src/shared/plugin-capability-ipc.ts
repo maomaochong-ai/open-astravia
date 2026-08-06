@@ -13,6 +13,8 @@ export const PLUGIN_CAPABILITY_CHANNELS = {
 	IM_ENABLED_SET: "vetta:plugins:capabilities:im:enabled:set",
 	IM_RESTART: "vetta:plugins:capabilities:im:restart",
 	IM_AGENT_MODEL_SET: "vetta:plugins:capabilities:im:agent-model:set",
+	AI_MODEL_LIST: "vetta:plugins:capabilities:ai:model:list",
+	AI_COMPLETE: "vetta:plugins:capabilities:ai:complete",
 	MODEL_LIST: "vetta:plugins:capabilities:model:list",
 	MODEL_CONFIG_GET: "vetta:plugins:capabilities:model:config:get",
 	MODEL_PROVIDER_GET: "vetta:plugins:capabilities:model:provider:get",

@@ -1172,6 +1172,189 @@
       "version": 1
     },
     {
+      "id": "cap.domain.vetta.ai.models.list",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {}
+      },
+      "kind": "query",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "defaultModel",
+          "models"
+        ],
+        "properties": {
+          "defaultModel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "modelKey",
+                "provider",
+                "id",
+                "name",
+                "api",
+                "reasoning",
+                "input",
+                "contextWindow",
+                "maxTokens"
+              ],
+              "properties": {
+                "modelKey": {
+                  "type": "string"
+                },
+                "provider": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "api": {
+                  "type": "string"
+                },
+                "reasoning": {
+                  "type": "boolean"
+                },
+                "input": {
+                  "type": "array",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "const": "text",
+                        "type": "string"
+                      },
+                      {
+                        "const": "image",
+                        "type": "string"
+                      }
+                    ]
+                  }
+                },
+                "contextWindow": {
+                  "type": "number"
+                },
+                "maxTokens": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.ai.complete",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "prompt"
+        ],
+        "properties": {
+          "modelKey": {
+            "pattern": "\\S",
+            "type": "string"
+          },
+          "systemPrompt": {
+            "maxLength": 200000,
+            "type": "string"
+          },
+          "prompt": {
+            "minLength": 1,
+            "maxLength": 200000,
+            "type": "string"
+          },
+          "temperature": {
+            "minimum": 0,
+            "maximum": 2,
+            "type": "number"
+          },
+          "maxTokens": {
+            "minimum": 1,
+            "maximum": 65536,
+            "type": "integer"
+          },
+          "reasoning": {
+            "pattern": "\\S",
+            "maxLength": 64,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "modelKey",
+          "text",
+          "stopReason",
+          "usage"
+        ],
+        "properties": {
+          "modelKey": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "stopReason": {
+            "anyOf": [
+              {
+                "const": "stop",
+                "type": "string"
+              },
+              {
+                "const": "length",
+                "type": "string"
+              }
+            ]
+          },
+          "usage": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "inputTokens",
+              "outputTokens",
+              "totalTokens"
+            ],
+            "properties": {
+              "inputTokens": {
+                "type": "number"
+              },
+              "outputTokens": {
+                "type": "number"
+              },
+              "totalTokens": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
       "id": "cap.domain.vetta.batch-task.project.list",
       "inputSchema": {
         "additionalProperties": false,

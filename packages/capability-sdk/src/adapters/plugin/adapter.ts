@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { CapabilityAccessHandle, CapabilityAccessSessionFactory } from "../../access.js";
 import { CAPABILITY_ERROR_CODES, CapabilityError } from "../../contracts.js";
 import { type PluginAgentSettingsMethods, pluginAgentSettingsMethods } from "./domain/agent-settings.js";
+import { type PluginAiMethods, pluginAiMethods } from "./domain/ai.js";
 import { type PluginBatchTaskMethods, pluginBatchTaskMethods } from "./domain/batch-task.js";
 import { type PluginDownloadMethods, pluginDownloadMethods } from "./domain/download.js";
 import { type PluginGeneralSettingsMethods, pluginGeneralSettingsMethods } from "./domain/general-settings.js";
@@ -35,6 +36,7 @@ export interface PluginCapabilityAdapter
 		PluginNetworkMethods,
 		PluginGatewayMethods,
 		PluginStorageMethods,
+		PluginAiMethods,
 		PluginAgentSettingsMethods,
 		PluginGeneralSettingsMethods,
 		PluginImMethods,
@@ -132,6 +134,7 @@ Object.assign(
 	pluginNetworkMethods,
 	pluginGatewayMethods,
 	pluginStorageMethods,
+	pluginAiMethods,
 	pluginAgentSettingsMethods,
 	pluginGeneralSettingsMethods,
 	pluginImMethods,

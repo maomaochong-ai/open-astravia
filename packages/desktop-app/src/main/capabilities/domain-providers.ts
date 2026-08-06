@@ -33,6 +33,7 @@ import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
 import { getDesktopSkillService } from "../skills/skill-service.js";
 import { getAppVersion, updaterService } from "../updater.js";
 import { getWebhookManager } from "../webhook/index.js";
+import { registerDesktopAiProviders } from "./ai-providers.js";
 import { registerDesktopMcpProviders } from "./mcp-providers.js";
 import { registerDesktopMediaProviders } from "./media-providers.js";
 import { registerDesktopModelProviders } from "./model-providers.js";
@@ -69,6 +70,7 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 	const shortcuts = getDesktopShortcutService();
 	const skills = getDesktopSkillService();
 	const webhooks = getWebhookManager();
+	const aiRegistration = registerDesktopAiProviders(registry);
 	const mcpRegistration = registerDesktopMcpProviders(registry);
 	const mediaRegistration = registerDesktopMediaProviders(registry);
 	const modelRegistration = registerDesktopModelProviders(registry);
@@ -640,6 +642,7 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 	]);
 	return {
 		dispose: () => {
+			aiRegistration.dispose();
 			mcpRegistration.dispose();
 			mediaRegistration.dispose();
 			modelRegistration.dispose();

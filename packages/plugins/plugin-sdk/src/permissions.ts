@@ -29,6 +29,8 @@ export const PLUGIN_PERMISSIONS = [
 	"agent.runtime.configure",
 	"app.actions.register",
 	"app.actionHandler.execute",
+	"ai.models.list",
+	"ai.complete",
 	"fs.read",
 	"fs.write",
 	"network.fetch",

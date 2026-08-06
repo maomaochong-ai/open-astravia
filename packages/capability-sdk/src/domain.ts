@@ -10,6 +10,15 @@ export {
 	DOMAIN_AGENT_SETTINGS_CAPABILITY_CATALOG,
 } from "./domain/agent-settings.js";
 export {
+	type AiCompleteInput,
+	type AiCompleteResult,
+	type AiModel,
+	type AiModelListResult,
+	type AiUsage,
+	DOMAIN_AI_CAPABILITIES,
+	DOMAIN_AI_CAPABILITY_CATALOG,
+} from "./domain/ai.js";
+export {
 	BATCH_COMMAND_STATUSES,
 	BATCH_EXECUTION_MODES,
 	BATCH_SKILL_TYPES,

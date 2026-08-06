@@ -1,4 +1,5 @@
 import type { PluginAgentApi } from "./agent.js";
+import type { PluginAiApi } from "./ai.js";
 import type { PluginAppActionsApi } from "./app-actions.js";
 import type { PluginCommandApi } from "./command.js";
 import type { PluginConversationApi } from "./conversation.js";
@@ -34,6 +35,7 @@ export interface PluginContext {
 	conversation: PluginConversationApi;
 	agent: PluginAgentApi;
 	appActions: PluginAppActionsApi;
+	ai: PluginAiApi;
 	official: PluginOfficialApi;
 	fs: PluginFsApi;
 	command: PluginCommandApi;
