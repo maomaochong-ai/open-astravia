@@ -25,6 +25,7 @@
 		"agent.skills.control",
 		"agent.command.run",
 		"agent.command.spawn",
+		"capture.offscreen",
 		"fs.read",
 		"fs.write",
 		"shell.openExternal"

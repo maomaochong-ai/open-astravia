@@ -7,9 +7,11 @@
  */
 import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { BridgeHub } from "../src/canvas/bridge-client";
 import { type FrameRasterState, useFrameRasters } from "../src/canvas/frame-raster";
+import { setPluginCtx } from "../src/plugin-context";
 
 /** SETTLE_MS 的镜像：测试只需要「大于静置时间」，不必和实现逐字节同步。 */
 const SETTLE = 500;
@@ -26,12 +28,17 @@ let latest: FrameRasterState;
 let root: Root;
 let container: HTMLElement;
 
-function Harness(props: { frameIds: readonly string[]; activeFrameId: string | null }): null {
+function Harness(props: {
+	frameIds: readonly string[];
+	activeFrameId: string | null;
+	offscreen?: { port: number; sizeOf(frameId: string): { width: number; height: number } | null } | null;
+}): null {
 	latest = useFrameRasters({
 		bridge,
 		cacheKey: "/design/demo.vetd",
 		frameIds: props.frameIds,
 		activeFrameId: props.activeFrameId,
+		offscreen: props.offscreen ?? null,
 	});
 	return null;
 }
@@ -49,12 +56,15 @@ async function advance(ms: number): Promise<void> {
 	});
 }
 
-async function mount(frameIds: readonly string[]): Promise<void> {
+async function mount(
+	frameIds: readonly string[],
+	offscreen?: { port: number; sizeOf(frameId: string): { width: number; height: number } | null } | null,
+): Promise<void> {
 	container = document.createElement("div");
 	document.body.appendChild(container);
 	root = createRoot(container);
 	await act(async () => {
-		root.render(createElement(Harness, { frameIds, activeFrameId: null }));
+		root.render(createElement(Harness, { frameIds, activeFrameId: null, offscreen }));
 	});
 	await flushMicrotasks();
 }
@@ -155,6 +165,37 @@ it("交付物截图持锁期间，位图队列不会并发截同一帧", async (
 	});
 	await flushMicrotasks();
 	expect(captures.length).toBe(2);
+});
+
+/**
+ * 离屏模式（宿主 ctx.capture 可用）：截图走主进程隐藏窗口，不再要求 frame 挂活体
+ * iframe、也没有 rendered 门禁——冷启动第一轮就能开截。
+ */
+it("离屏模式下不等 rendered 信号、不要求挂载就开始截图", async () => {
+	const offscreenCalls: string[] = [];
+	setPluginCtx({
+		capture: {
+			offscreen: (options: { prepareScript?: string }) => {
+				offscreenCalls.push(options.prepareScript ?? "");
+				return Promise.resolve({ dataUrl: "data:offscreen", scaleFactor: 2 });
+			},
+			releaseOffscreen: () => Promise.resolve(),
+		},
+	} as unknown as PluginContext);
+	try {
+		await mount(["a"], { port: 5173, sizeOf: () => ({ width: 390, height: 844 }) });
+
+		// 没有任何 rendered 信号，也照样进入截图（宿主侧自己等引擎的就绪标记）。
+		await advance(50);
+		await flushMicrotasks();
+		expect(offscreenCalls.length).toBe(1);
+		expect(offscreenCalls[0]).toContain("show-frame");
+		// html-to-image 老路一次都不该走。
+		expect(captures.length).toBe(0);
+		expect(latest.rasterOf("a")).toBe("data:offscreen");
+	} finally {
+		setPluginCtx(null as unknown as PluginContext);
+	}
 });
 
 it("没有 invalidate 时只截一次，位图落地后 frame 退出活体", async () => {

@@ -27,6 +27,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **插件 API `ctx.ui.setActivityPanelWidth(width)`**：插件可随时把活动面板宽度设为像素值或 `"max"`（宿主仍 clamp 到 min/max 并按需收侧边栏）。设计画布据此在每次激活标签卡时占满宽度。
 
+- **插件离屏截图能力 `ctx.capture.offscreen`**（新权限 `capture.offscreen`）：主进程 `offscreen-capture-service` 用隐藏离屏窗口（sandbox + OSR）加载 http(s) 页面并 `capturePage` 出图，位图与在屏渲染逐像素一致。`sessionKey` 串行复用窗口（SPA 切路由零加载），`prepareScript`/`readyExpression` 对接页面就绪信号；窗口闲置 30s 回收，插件禁用/卸载/重载与 App 退出统一清扫，每插件并存会话上限 4。Vetta UI Design 的画布位图队列已切到这条路径：位图不再有 html-to-image 克隆重排带来的文字断行与 ±1 设备像素基线抖动，截图也不再要求 frame 挂活体 iframe、不占画布渲染进程主线程（旧宿主自动回落 html-to-image）。
+
 - **插件长驻进程能力 `ctx.command.spawn`**（ADR-0054）：与 `command.run` 同一治理模式（清单 `commands` 声明 + 新权限 `agent.command.spawn` + 用户可关），主进程管理进程组生命周期（stop/退出事件/`{{PORT}}` 端口分配），插件禁用/卸载/重载与 App 退出时统一清扫。
 
 - **项目文件列表多选与复制粘贴**：支持 Ctrl/Cmd 点选、Shift 范围选、Ctrl/Cmd+A 全选；右键/快捷键复制与粘贴、复制路径；批量删除与多选拖拽；方向键导航、F2 重命名、Delete 删除；空白处单击清空选区，空白处右键为根目录菜单（新建/粘贴/在资源管理器打开）。不做剪切。同目录粘贴会自动生成 `name (1)` 副本。选区状态与预览解耦，避免幽灵高亮。

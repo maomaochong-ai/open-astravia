@@ -220,6 +220,7 @@
 		"agentSessionWrite": "Modify agent session",
 		"agentCommandRun": "Run agent commands",
 		"agentCommandSpawn": "Run long-lived background processes",
+		"captureOffscreen": "Capture pages in hidden offscreen windows",
 		"agentSystemPromptRead": "Read agent system prompt",
 		"agentSystemPromptWrite": "Modify agent system prompt",
 		"agentSystemPromptFullControl": "Full control of agent system prompt",

@@ -6,6 +6,7 @@ import type {
 	PluginAppActionRegistration,
 	PluginCommandRunOptions,
 	PluginInstallOptions,
+	PluginOffscreenCaptureOptions,
 	PluginPermission,
 } from "../../preload/api-types/plugins.js";
 import { PLUGIN_SYSTEM_CHANNELS } from "../../shared/plugin-capability-ipc.js";
@@ -21,6 +22,12 @@ import {
 	stopAllSpawnsForPlugin,
 	stopPluginCommandSpawn,
 } from "../plugins/command-spawner.js";
+import {
+	capturePluginOffscreen,
+	destroyAllOffscreenSessions,
+	destroyOffscreenSessionsForPlugin,
+	releasePluginOffscreenSession,
+} from "../plugins/offscreen-capture-service.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { startPluginDevWatch, stopPluginDevWatch } from "../plugins/plugin-dev-watch.js";
 import {
@@ -411,6 +418,7 @@ function uninstallInstalledPlugin(pluginActionService: PluginActionService, id: 
 	// 卸载前停掉 dev 热更新（vite watch 子进程 + dist 监听）与长驻 spawn 进程。
 	stopPluginDevWatch(pluginId);
 	stopAllSpawnsForPlugin(pluginId);
+	destroyOffscreenSessionsForPlugin(pluginId);
 	uninstallPlugin(pluginId);
 	pluginActionService.clear(pluginId);
 	refreshAgentPlugins();
@@ -428,6 +436,7 @@ function setInstalledPluginEnabled(
 	if (enabled !== true) {
 		stopPluginDevWatch(pluginId);
 		stopAllSpawnsForPlugin(pluginId);
+		destroyOffscreenSessionsForPlugin(pluginId);
 	}
 	const plugin = setPluginEnabled(pluginId, enabled === true);
 	if (!plugin.enabled) pluginActionService.clear(pluginId);
@@ -452,6 +461,7 @@ function grantInstalledPluginPermissions(id: unknown, permissions: unknown): Ins
 function reloadInstalledPlugin(id: unknown): InstalledPlugin {
 	// reload 后 renderer 会重新 activate；旧激活的长驻进程一并回收，避免孤儿 server。
 	stopAllSpawnsForPlugin(asPluginId(id));
+	destroyOffscreenSessionsForPlugin(asPluginId(id));
 	const plugin = reloadPlugin(asPluginId(id));
 	refreshAgentPlugins();
 	recordPluginResourceEvent({ plugin, operation: "reloaded" });
@@ -583,6 +593,12 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	);
 	ipcMain.handle("vetta:plugins:command-spawn-status", (_event, pluginId: unknown, spawnId: unknown) =>
 		getPluginCommandSpawnStatus(asPluginId(pluginId), asPluginId(spawnId)),
+	);
+	ipcMain.handle("vetta:plugins:offscreen-capture", (_event, pluginId: unknown, options: unknown) =>
+		capturePluginOffscreen(asPluginId(pluginId), (options ?? undefined) as PluginOffscreenCaptureOptions | undefined),
+	);
+	ipcMain.handle("vetta:plugins:offscreen-release", (_event, pluginId: unknown, sessionKey: unknown) =>
+		releasePluginOffscreenSession(asPluginId(pluginId), typeof sessionKey === "string" ? sessionKey : ""),
 	);
 	ipcMain.handle("vetta:plugins:reload", (_event, id: unknown) => reloadInstalledPlugin(id));
 	ipcMain.handle(PLUGIN_SYSTEM_CHANNELS.LIST, (_event, sessionId: unknown) => {
@@ -796,7 +812,10 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:command-spawn");
 		ipcMain.removeHandler("vetta:plugins:command-spawn-stop");
 		ipcMain.removeHandler("vetta:plugins:command-spawn-status");
+		ipcMain.removeHandler("vetta:plugins:offscreen-capture");
+		ipcMain.removeHandler("vetta:plugins:offscreen-release");
 		stopAllPluginSpawns();
+		destroyAllOffscreenSessions();
 		ipcMain.removeHandler("vetta:plugins:reload");
 		ipcMain.removeHandler("vetta:plugins:dev-watch-start");
 		ipcMain.removeHandler("vetta:plugins:dev-watch-stop");

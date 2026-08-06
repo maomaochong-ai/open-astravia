@@ -273,6 +273,9 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			getCommandSpawnStatus: (pluginId, spawnId) =>
 				ipc.invoke("vetta:plugins:command-spawn-status", pluginId, spawnId),
 			onCommandSpawnExit: (handler) => onIpcEvent(ipc, "vetta:plugins:command-spawn-exit", handler),
+			offscreenCapture: (pluginId, options) => ipc.invoke("vetta:plugins:offscreen-capture", pluginId, options),
+			offscreenRelease: (pluginId, sessionKey) =>
+				ipc.invoke("vetta:plugins:offscreen-release", pluginId, sessionKey),
 			reload: (id) => ipc.invoke("vetta:plugins:reload", id),
 			startDevWatch: (id, projectDir) => ipc.invoke("vetta:plugins:dev-watch-start", id, projectDir),
 			stopDevWatch: (id) => ipc.invoke("vetta:plugins:dev-watch-stop", id),

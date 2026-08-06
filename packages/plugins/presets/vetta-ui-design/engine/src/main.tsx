@@ -130,7 +130,13 @@ function FramePainted({ frameId }: { frameId: string | null }) {
 		first = requestAnimationFrame(() => {
 			void document.fonts.ready.then(() => {
 				if (cancelled) return;
-				last = requestAnimationFrame(() => notifyFrameRendered(frameId, [...frames.keys()]));
+				last = requestAnimationFrame(() => {
+					// 供宿主离屏截图轮询的就绪标记：与 rendered 信号同一时点。
+					// 离屏窗口是顶层文档（parent === window），postMessage 信号自己
+					// 也能收到，但轮询一个全局值更直接、也无需提前挂监听。
+					(window as { __vetdPainted?: string | null }).__vetdPainted = frameId;
+					notifyFrameRendered(frameId, [...frames.keys()]);
+				});
 			});
 		});
 		return () => {

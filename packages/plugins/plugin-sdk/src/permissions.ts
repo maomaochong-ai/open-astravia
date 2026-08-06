@@ -15,6 +15,7 @@ export const PLUGIN_PERMISSIONS = [
 	"agent.session.write",
 	"agent.command.run",
 	"agent.command.spawn",
+	"capture.offscreen",
 	"agent.systemPrompt.read",
 	"agent.systemPrompt.write",
 	"agent.systemPrompt.fullControl",

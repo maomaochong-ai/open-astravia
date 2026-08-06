@@ -21,6 +21,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"agent.session.write": "permission.agentSessionWrite",
 	"agent.command.run": "permission.agentCommandRun",
 	"agent.command.spawn": "permission.agentCommandSpawn",
+	"capture.offscreen": "permission.captureOffscreen",
 	"agent.systemPrompt.read": "permission.agentSystemPromptRead",
 	"agent.systemPrompt.write": "permission.agentSystemPromptWrite",
 	"agent.systemPrompt.fullControl": "permission.agentSystemPromptFullControl",

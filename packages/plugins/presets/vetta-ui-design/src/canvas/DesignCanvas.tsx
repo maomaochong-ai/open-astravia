@@ -497,7 +497,19 @@ export function DesignCanvas({
 		refreshAll,
 		reloadAll,
 		reloadNonce,
-	} = useFrameRasters({ bridge, cacheKey: session.vetdPath, frameIds: orderedFrameIds, activeFrameId: liveFrameId });
+	} = useFrameRasters({
+		bridge,
+		cacheKey: session.vetdPath,
+		frameIds: orderedFrameIds,
+		activeFrameId: liveFrameId,
+		offscreen: {
+			port,
+			sizeOf: (frameId) => {
+				const frame = manifest.frames.find((candidate) => candidate.id === frameId);
+				return frame ? { width: frame.width, height: frame.height } : null;
+			},
+		},
+	});
 
 	refreshRef.current = reloadAll;
 

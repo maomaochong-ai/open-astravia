@@ -586,6 +586,10 @@ export interface DesktopPluginsApi {
 	getCommandSpawnStatus(pluginId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
 	/** Subscribe to spawn exit events (all plugins; filter by pluginId/spawnId). */
 	onCommandSpawnExit(handler: (event: PluginCommandSpawnExitEvent) => void): () => void;
+	/** 主进程离屏窗口截图（真实渲染管线，`capture.offscreen` 权限）。 */
+	offscreenCapture(pluginId: string, options: PluginOffscreenCaptureOptions): Promise<PluginOffscreenCaptureResult>;
+	/** 释放 sessionKey 对应的离屏窗口。幂等。 */
+	offscreenRelease(pluginId: string, sessionKey: string): Promise<void>;
 	reload(id: string): Promise<InstalledPlugin>;
 	/**
 	 * 开启 dev 热更新：把插件 dev 链接到 projectDir（资源改从工程 dist 加载），
@@ -760,6 +764,28 @@ export interface PluginCommandSpawnStatus {
 export interface PluginCommandSpawnExitEvent extends PluginCommandSpawnExit {
 	pluginId: string;
 	spawnId: string;
+}
+
+export interface PluginOffscreenCaptureOptions {
+	url: string;
+	width: number;
+	height: number;
+	/** 同 key 串行复用同一个离屏窗口（url 未变时跳过重新加载）。 */
+	sessionKey?: string;
+	/** 页面加载/复用后注入执行的脚本（如 postMessage 切路由）。 */
+	prepareScript?: string;
+	/** 轮询到真值才截图。 */
+	readyExpression?: string;
+	settleMs?: number;
+	timeoutMs?: number;
+	format?: "jpeg" | "png";
+	quality?: number;
+}
+
+export interface PluginOffscreenCaptureResult {
+	dataUrl: string;
+	/** 实际设备像素比：位图物理像素 = CSS 尺寸 × 此值。 */
+	scaleFactor: number;
 }
 
 import type { FsEntry, FsFileRef, FsStatResult } from "../fs-types.js";

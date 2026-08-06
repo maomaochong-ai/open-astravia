@@ -28,6 +28,7 @@ import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginCaptureApi,
 	PluginCardRendererContribution,
 	PluginCommandApi,
 	PluginCommandSpawnExit,
@@ -699,6 +700,31 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 	};
 }
 
+function createCaptureApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCaptureApi {
+	const permissions = createPermissionApi(plugin);
+	// 记住用过的会话键：插件卸载/重载时把还开着的离屏窗口一并释放
+	// （主进程在 reload/disable/uninstall 也会兜底清扫）。
+	const sessionKeys = new Set<string>();
+	disposers.push(() => {
+		for (const key of sessionKeys) void window.vetta.plugins.offscreenRelease(plugin.id, key);
+		sessionKeys.clear();
+	});
+	return {
+		offscreen: (options) => {
+			permissions.require("capture.offscreen");
+			if (typeof options?.sessionKey === "string" && options.sessionKey.length > 0) {
+				sessionKeys.add(options.sessionKey);
+			}
+			return window.vetta.plugins.offscreenCapture(plugin.id, options);
+		},
+		releaseOffscreen: (sessionKey) => {
+			permissions.require("capture.offscreen");
+			sessionKeys.delete(sessionKey);
+			return window.vetta.plugins.offscreenRelease(plugin.id, sessionKey);
+		},
+	};
+}
+
 function createContext(
 	plugin: InstalledPlugin,
 	slots: PluginGlobalSlotContribution[],
@@ -1256,6 +1282,7 @@ function createContext(
 		fs,
 		command: createCommandApi(plugin, disposers),
 		media: createMediaApi(plugin, capabilitySessionId),
+		capture: createCaptureApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {
 				debugPluginAgent("renderer registerTool requested", {

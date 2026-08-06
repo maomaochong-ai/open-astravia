@@ -182,6 +182,11 @@ export type {
 	PluginCommandSpawnHandle,
 	PluginCommandApi,
 } from "./command.js";
+export type {
+	PluginCaptureApi,
+	PluginOffscreenCaptureOptions,
+	PluginOffscreenCaptureResult,
+} from "./capture.js";
 export type { PluginImageRef } from "./images.js";
 export type {
 	PluginMediaApi,
