@@ -1,12 +1,6 @@
 export {
-	type AgentRuntimeBackend,
-	type AgentRuntimeDecision,
-	type AgentRuntimeExtensionFallbackDiagnostics,
-	type AgentRuntimeSelection,
-	parseAgentRuntimeSelection,
 	type RunAgentRuntimeCliOptions,
 	runAgentRuntimeCli,
-	writeAgentRuntimeDecision,
 } from "./agent-runtime-selection.js";
 export { GreenfieldImRpcEventAdapter } from "./rpc/greenfield-im-rpc-events.js";
 export {
@@ -18,9 +12,7 @@ export {
 	type CreateGreenfieldImRuntimeHostOptions,
 	createGreenfieldImRuntimeHost,
 	GREENFIELD_IM_EXTENSION_EVENT_PROFILE,
-	type GreenfieldRpcFallbackReason,
 	type GreenfieldRpcRuntimeHostExtensionIncompatible,
-	type GreenfieldRpcRuntimeHostFallback,
 	type GreenfieldRpcRuntimeHostPreparation,
 	type GreenfieldRpcRuntimeHostReady,
 	type GreenfieldRpcRuntimeHostSessionIncompatible,

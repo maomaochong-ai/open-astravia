@@ -66,8 +66,6 @@ export interface SessionStateEntry {
 	updatedAt?: string;
 }
 
-export type CodingAgentRuntimeBackend = "legacy" | "greenfield-im";
-
 // =============================================================================
 // Inbound frames (parent → child)
 // =============================================================================
@@ -95,11 +93,6 @@ export type CodingAgentRuntimeBackend = "legacy" | "greenfield-im";
 export interface CodingAgentSpec {
 	bin: string;
 	prefixArgs?: string[];
-	/**
-	 * Runtime requested for every coding-agent process spawned by this
-	 * sidecar. The Go host passes it through as `--agent-runtime`.
-	 */
-	runtimeBackend: CodingAgentRuntimeBackend;
 	/**
 	 * When true, the sidecar sets `ELECTRON_RUN_AS_NODE=1` before spawning
 	 * `bin`. Windows packaged builds need this because the GUI Electron

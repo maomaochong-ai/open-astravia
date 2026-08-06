@@ -604,8 +604,6 @@ function createSessionCapabilities(): RpcSessionCapabilities {
 
 function createRpcState(): RpcSessionState {
 	return {
-		runtimeBackend: "greenfield",
-		runtimeDecision: { requestedBackend: "greenfield", effectiveBackend: "greenfield" },
 		thinkingLevel: "medium",
 		isStreaming: false,
 		isCompacting: false,

@@ -2,22 +2,18 @@ import type {
 	CodingAgentHistoricalSessionIncompatibilityCode,
 	CodingAgentHistoricalSessionMigrationIncompatible,
 } from "@vetta/coding-agent/historical-sessions";
-import type { RpcRuntimeDecision, RpcSessionIncompatibilityFailure } from "@vetta/coding-agent/rpc";
-
-type RequestedRuntimeBackend = RpcRuntimeDecision["requestedBackend"];
+import type { RpcSessionIncompatibilityFailure } from "@vetta/coding-agent/rpc";
 
 export class SessionCompatibilityError extends Error {
 	readonly errorCode: CodingAgentHistoricalSessionIncompatibilityCode;
-	readonly requestedBackend: RequestedRuntimeBackend;
 	readonly sessionPath: string;
 	readonly sourceVersion: number | undefined;
 	readonly issueCode: string | undefined;
 	readonly issueCount: number | undefined;
 
-	constructor(requestedBackend: RequestedRuntimeBackend, result: CodingAgentHistoricalSessionMigrationIncompatible) {
-		super("Legacy session cannot be resumed safely by the requested runtime");
+	constructor(result: CodingAgentHistoricalSessionMigrationIncompatible) {
+		super("Historical session cannot be imported safely");
 		this.name = "SessionCompatibilityError";
-		this.requestedBackend = requestedBackend;
 		this.errorCode = result.errorCode;
 		this.sessionPath = result.sourcePath;
 		this.sourceVersion = result.sourceVersion;
@@ -32,7 +28,6 @@ export class SessionCompatibilityError extends Error {
 			success: false,
 			errorCode: this.errorCode,
 			error: this.message,
-			requestedBackend: this.requestedBackend,
 			sessionPath: this.sessionPath,
 			...(this.sourceVersion === undefined ? {} : { sourceVersion: this.sourceVersion }),
 			...(this.issueCode === undefined ? {} : { issueCode: this.issueCode }),

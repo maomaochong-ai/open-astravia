@@ -18,9 +18,7 @@ export const RUNTIME_CANARY_KNOWLEDGE_PENDING_SOURCE_PATH = "runtime-canary/pend
 export const RUNTIME_CANARY_KNOWLEDGE_FAILURE_SOURCE_PATH = "runtime-canary/failure.md";
 export const RUNTIME_CANARY_KNOWLEDGE_COMPLETE = "DESKTOP_PROCESS_CANARY_KNOWLEDGE_COMPLETE";
 
-export const runtimeCanaryModeSchema = z.enum(["legacy", "greenfield"]);
-export const runtimeCanarySelectionSchema = z.enum(["default", "legacy", "greenfield"]);
-export const runtimeCanaryProcessingRecordFormatSchema = z.enum(["legacy-jsonl", "conversation-v2-jsonl"]);
+export const runtimeCanaryProcessingRecordFormatSchema = z.literal("conversation-v2-jsonl");
 
 const runtimeCanaryKnowledgeScanSchema = z
 	.object({
@@ -95,8 +93,6 @@ export const runtimeCanarySuccessEnvelopeSchema = z
 		ok: z.literal(true),
 		result: z
 			.object({
-				runtimeSelection: runtimeCanarySelectionSchema,
-				runtimeMode: runtimeCanaryModeSchema,
 				processingRecordFormat: runtimeCanaryProcessingRecordFormatSchema,
 				knowledgeContract: runtimeCanaryKnowledgeContractSchema,
 			})
@@ -119,7 +115,6 @@ export const runtimeCanaryConsumersSchema = z
 
 export const runtimeCanaryFixtureSchema = z
 	.object({
-		mode: runtimeCanaryModeSchema,
 		vettaHome: z.string().min(1),
 		agentDir: z.string().min(1),
 		workspace: z.string().min(1),
@@ -141,7 +136,6 @@ export const runtimeCanaryHostStateSchema = z
 		desktopGeneration: z.number().int().positive(),
 		cdpPort: z.number().int().positive(),
 		runtimeCanary: runtimeCanaryFixtureSchema.extend({
-			selection: runtimeCanarySelectionSchema,
 			providerPid: z.number().int().positive(),
 			exitReportPath: z.string().min(1),
 			restartRequestPath: z.string().min(1),
@@ -176,7 +170,5 @@ export type RuntimeCanaryHostState = z.infer<typeof runtimeCanaryHostStateSchema
 export type RuntimeCanaryRestartReport = z.infer<typeof runtimeCanaryRestartReportSchema>;
 export type RuntimeCanaryExitReport = z.infer<typeof runtimeCanaryExitReportSchema>;
 export type RuntimeCanaryConsumers = z.infer<typeof runtimeCanaryConsumersSchema>;
-export type RuntimeCanaryMode = z.infer<typeof runtimeCanaryModeSchema>;
-export type RuntimeCanarySelection = z.infer<typeof runtimeCanarySelectionSchema>;
 export type RuntimeCanaryProcessingRecordFormat = z.infer<typeof runtimeCanaryProcessingRecordFormatSchema>;
 export type RuntimeCanaryKnowledgeContract = z.infer<typeof runtimeCanaryKnowledgeContractSchema>;

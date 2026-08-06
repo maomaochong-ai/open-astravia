@@ -1,7 +1,6 @@
 import { readFile, realpath, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { parseAgentRuntimeSelection } from "../src/agent-runtime-selection.js";
 import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
@@ -32,67 +31,8 @@ afterEach(async () => {
 	fixtures.clear();
 });
 
-describe("Agent Runtime selection", () => {
-	it("defaults ordinary RPC, Print and neutral control commands to Greenfield", () => {
-		expect(parseAgentRuntimeSelection(["--mode", "rpc"])).toEqual({
-			backend: "greenfield",
-			effectiveBackend: "greenfield",
-			agentArgs: ["--mode", "rpc"],
-		});
-		expect(parseAgentRuntimeSelection(["--mode", "json"])).toEqual({
-			backend: "greenfield",
-			effectiveBackend: "greenfield",
-			agentArgs: ["--mode", "json"],
-		});
-		expect(parseAgentRuntimeSelection(["--print", "hello"])).toEqual({
-			backend: "greenfield",
-			effectiveBackend: "greenfield",
-			agentArgs: ["--print", "hello"],
-		});
-		expect(parseAgentRuntimeSelection(["--help"])).toEqual({
-			backend: "greenfield",
-			effectiveBackend: "greenfield",
-			agentArgs: ["--help"],
-		});
-		expect(parseAgentRuntimeSelection(["--mode=rpc", "--enable-host-bridge"])).toEqual({
-			backend: "greenfield-im",
-			effectiveBackend: "greenfield-im",
-			agentArgs: ["--mode=rpc", "--enable-host-bridge"],
-		});
-		expect(
-			parseAgentRuntimeSelection(["--agent-runtime=greenfield-im", "--mode", "rpc", "--agent-runtime", "legacy"]),
-		).toEqual({
-			backend: "legacy",
-			effectiveBackend: "greenfield",
-			agentArgs: ["--mode", "rpc"],
-		});
-		expect(() => parseAgentRuntimeSelection(["--agent-runtime", "unknown"])).toThrow(
-			"Unsupported --agent-runtime value",
-		);
-	});
-
-	it("maps an explicit Legacy request to the canonical Greenfield host", async () => {
-		const fixture = await createFixture();
-		const process = startAgentRpc(executable, fixture, {
-			backend: "legacy",
-			productionLegacyRequest: true,
-		});
-		runningProcesses.add(process);
-
-		await expect(process.request("retired-legacy-state", "get_state")).resolves.toMatchObject({
-			command: "get_state",
-			success: true,
-			data: {
-				runtimeBackend: "greenfield",
-				runtimeDecision: { requestedBackend: "legacy", effectiveBackend: "greenfield" },
-			},
-		});
-		expect(process.stderr).toContain("requested=legacy effective=greenfield reason=legacy-retired");
-		expect(process.stderr).not.toContain("using Legacy runtime");
-		await process.close();
-	});
-
-	it("runs the full RPC profile through the default neutral Greenfield host", async () => {
+describe("Agent Runtime production host", () => {
+	it("runs the full RPC profile through the single production host", async () => {
 		const fixture = await createFixture();
 		const process = startAgentRpc(executable, fixture, { backend: null });
 		runningProcesses.add(process);
@@ -100,10 +40,7 @@ describe("Agent Runtime selection", () => {
 		await expect(process.request("default-state", "get_state")).resolves.toMatchObject({
 			command: "get_state",
 			success: true,
-			data: {
-				runtimeBackend: "greenfield",
-				runtimeDecision: { requestedBackend: "greenfield", effectiveBackend: "greenfield" },
-			},
+			data: { sessionId: expect.any(String) },
 		});
 		await expect(process.request("models", "get_available_models")).resolves.toMatchObject({
 			command: "get_available_models",
@@ -161,7 +98,6 @@ describe("Agent Runtime selection", () => {
 			data: { path: exportPath },
 		});
 		await expect(stat(exportPath)).resolves.toMatchObject({ size: expect.any(Number) });
-		expect(process.stderr).toContain("requested=greenfield effective=greenfield");
 		await process.close();
 	}, 30_000);
 
@@ -179,7 +115,6 @@ describe("Agent Runtime selection", () => {
 		const sessionFile = readSessionFile(freshState);
 		const sessionId = readSessionId(freshState);
 		expect(sessionFile.endsWith(".conversation.jsonl")).toBe(true);
-		expect(fresh.stderr).toContain("requested=greenfield-im effective=greenfield-im");
 		await expect(stat(`${sessionFile}.owner.lock`)).resolves.toBeDefined();
 		await expect(fresh.request("abort-idle", "abort")).resolves.toMatchObject({
 			id: "abort-idle",
@@ -218,7 +153,6 @@ describe("Agent Runtime selection", () => {
 			success: true,
 			data: { sessionId, sessionFile },
 		});
-		expect(continued.stderr).toContain("requested=greenfield-im effective=greenfield-im");
 		await continued.close();
 	}, 30_000);
 
@@ -234,7 +168,6 @@ describe("Agent Runtime selection", () => {
 			data: { sessionId: expect.any(String) },
 		});
 		expect(readSessionFile(state).endsWith(".conversation.jsonl")).toBe(true);
-		expect(continued.stderr).toContain("requested=greenfield-im effective=greenfield-im");
 		await continued.close();
 	});
 
@@ -268,8 +201,6 @@ describe("Agent Runtime selection", () => {
 			command: "get_state",
 			success: true,
 		});
-		expect(process.stderr).toContain("requested=greenfield-im effective=greenfield-im");
-		expect(process.stderr).not.toContain("fallback=");
 		await process.close();
 	});
 
@@ -291,8 +222,6 @@ describe("Agent Runtime selection", () => {
 			command: "get_state",
 			success: true,
 		});
-		expect(process.stderr).toContain("requested=greenfield-im effective=greenfield-im");
-		expect(process.stderr).not.toContain("fallback=");
 		await process.close();
 	});
 
@@ -313,14 +242,11 @@ describe("Agent Runtime selection", () => {
 			command: "startup",
 			success: false,
 			errorCode: "extension_incompatible",
-			requestedBackend: "greenfield-im",
 			unsupportedEvents: ["future_event"],
 			unmetRuntimeCapabilities: ["event-handler"],
 		});
 		expect(await process.waitForExit()).toBe(2);
 		expect(process.frames).toEqual([failure]);
-		expect(process.stderr).not.toContain("effective=legacy");
-		expect(process.stderr).not.toContain("fallback=");
 	});
 
 	it("preserves the startup lock-conflict wire contract", async () => {
@@ -375,17 +301,11 @@ describe("Agent Runtime selection", () => {
 			data: {
 				sessionId: expect.stringMatching(/^legacy-import-/),
 				sessionFile: expect.stringMatching(/\.conversation\.jsonl$/),
-				runtimeDecision: {
-					requestedBackend: "greenfield-im",
-					effectiveBackend: "greenfield-im",
-					sessionMigration: { status: "migrated" },
-				},
 			},
 		});
 		const migratedSessionId = readSessionId(state);
 		const migratedSessionFile = readSessionFile(state);
 		await migrated.close();
-		expect(migrated.stderr).toContain("sessionMigration=migrated");
 		expect(await readFile(legacySession, "utf8")).toBe(legacyContent);
 
 		const reused = await startRpc(fixture, ["--session", legacySession]);
@@ -398,11 +318,9 @@ describe("Agent Runtime selection", () => {
 			data: {
 				sessionId: migratedSessionId,
 				sessionFile: migratedSessionFile,
-				runtimeDecision: { sessionMigration: { status: "reused" } },
 			},
 		});
 		await reused.close();
-		expect(reused.stderr).toContain("sessionMigration=reused");
 	});
 
 	it("fails explicitly when an existing session is not representable by Greenfield", async () => {
@@ -433,15 +351,12 @@ describe("Agent Runtime selection", () => {
 			command: "startup",
 			success: false,
 			errorCode: "session_incompatible",
-			requestedBackend: "greenfield-im",
 			sessionPath: await realpath(legacySession),
 			issueCode: "invalid-payload",
 			issueCount: 1,
 		});
 		expect(await process.waitForExit()).toBe(2);
 		expect(process.frames).toEqual([failure]);
-		expect(process.stderr).not.toContain("effective=legacy");
-		expect(process.stderr).not.toContain("fallback=");
 	});
 });
 

@@ -10,7 +10,7 @@ import (
 )
 
 func TestDecodeInbound_Init(t *testing.T) {
-	line := []byte(`{"type":"init","feishu":{"appId":"a","appSecret":"s"},"conversationCwd":"/home/u/.vetta/conversation","state":[{"userId":"u","chatId":"c","sessionPath":"/s.jsonl"}],"logLevel":"info","codingAgent":{"bin":"/app/Vetta.exe","prefixArgs":["/res/coding-agent/dist/agent-rpc-cli.mjs"],"runtimeBackend":"greenfield-im","runAsNode":true}}`)
+	line := []byte(`{"type":"init","feishu":{"appId":"a","appSecret":"s"},"conversationCwd":"/home/u/.vetta/conversation","state":[{"userId":"u","chatId":"c","sessionPath":"/s.jsonl"}],"logLevel":"info","codingAgent":{"bin":"/app/Vetta.exe","prefixArgs":["/res/coding-agent/dist/agent-rpc-cli.mjs"],"runAsNode":true}}`)
 	v, err := DecodeInbound(line)
 	if err != nil {
 		t.Fatalf("decode: %v", err)
@@ -36,9 +36,6 @@ func TestDecodeInbound_Init(t *testing.T) {
 	}
 	if len(init.CodingAgent.PrefixArgs) != 1 || init.CodingAgent.PrefixArgs[0] != "/res/coding-agent/dist/agent-rpc-cli.mjs" {
 		t.Errorf("codingAgent prefixArgs mismatch: %+v", init.CodingAgent.PrefixArgs)
-	}
-	if init.CodingAgent.RuntimeBackend != "greenfield-im" {
-		t.Errorf("codingAgent runtimeBackend mismatch: %q", init.CodingAgent.RuntimeBackend)
 	}
 }
 

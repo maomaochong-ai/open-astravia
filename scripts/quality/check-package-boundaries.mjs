@@ -836,11 +836,6 @@ function checkRetiredAutomaticLegacyFallback(posixPath, text, findings) {
 		!posixPath.endsWith(".d.ts") &&
 		!/\.(?:test|spec)\.[cm]?[jt]sx?$/.test(posixPath);
 	if (!isRuntimeProductionSource) return;
-	const compatibilityTypeFiles = new Set([
-		"packages/cli-app/src/rpc/legacy-runtime-fallback-contract.ts",
-		"packages/coding-agent/src/modes/rpc/rpc-types.ts",
-	]);
-	if (compatibilityTypeFiles.has(posixPath)) return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
 	const retiredFallbacks = new Set();
@@ -993,7 +988,7 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 		"packages/cli-app/src/rpc/greenfield-im-legacy-session-migration.ts",
 		"packages/cli-app/src/session-compatibility-error.ts",
 		"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
-		"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-migration-backend.ts",
+		"packages/desktop-app/src/main/greenfield-runtime/desktop-historical-session-import-backend.ts",
 	]);
 
 	for (const specifier of specifiers) {

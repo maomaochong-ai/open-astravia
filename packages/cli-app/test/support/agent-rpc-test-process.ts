@@ -34,7 +34,6 @@ export interface StartAgentRpcOptions {
 	readonly scenario?: "cli" | "im-claw";
 	readonly extraArgs?: readonly string[];
 	readonly env?: Readonly<Record<string, string>>;
-	readonly productionLegacyRequest?: boolean;
 }
 
 export interface RpcFrame {
@@ -133,7 +132,6 @@ export function startAgentRpc(
 	options: StartAgentRpcOptions = {},
 ): AgentRpcProcess {
 	const backend = options.backend === null ? "greenfield" : (options.backend ?? "greenfield-im");
-	const includeRuntimeOption = options.backend !== null;
 	const enableHostBridge = options.enableHostBridge ?? backend === "greenfield-im";
 	const scenario = options.scenario ?? (backend === "greenfield-im" ? "im-claw" : undefined);
 	return new AgentRpcProcess(
@@ -141,7 +139,6 @@ export function startAgentRpc(
 			"bun",
 			[
 				executable.path,
-				...(includeRuntimeOption ? ["--agent-runtime", backend] : []),
 				"--mode",
 				"rpc",
 				...(enableHostBridge ? ["--enable-host-bridge"] : []),

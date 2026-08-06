@@ -3,9 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { app } from "electron";
 import { DEFAULT_SERVER_URL } from "../constants.js";
-import type { CodingAgentRuntimeBackend, CodingAgentSpec } from "./host-protocol.js";
-
-const IM_AGENT_RUNTIME_ENV = "VETTA_IM_AGENT_RUNTIME";
+import type { CodingAgentSpec } from "./host-protocol.js";
 
 /**
  * Resolve the on-disk root of the `@vetta/coding-agent` package so the
@@ -60,16 +58,10 @@ export interface BuildCodingAgentSpecOptions {
 	 * (+ `--thinking <level>` when reasoningLevel is set).
 	 */
 	agentModel?: { provider: string; model: string; reasoningLevel?: string };
-	/**
-	 * Startup-immutable runtime selection. When omitted, the host reads
-	 * VETTA_IM_AGENT_RUNTIME and otherwise uses the Greenfield IM default.
-	 */
-	runtimeBackend?: CodingAgentRuntimeBackend;
 }
 
 export function buildCodingAgentSpec(opts: BuildCodingAgentSpecOptions = {}): CodingAgentSpec {
 	const packageDir = resolveCodingAgentPackageDir();
-	const runtimeBackend = opts.runtimeBackend ?? resolveImAgentRuntimeBackend(process.env[IM_AGENT_RUNTIME_ENV]);
 	const modelArgs: string[] = opts.agentModel
 		? [
 				"--provider",
@@ -94,7 +86,6 @@ export function buildCodingAgentSpec(opts: BuildCodingAgentSpecOptions = {}): Co
 			return {
 				bin: process.execPath,
 				prefixArgs: [join(packageDir, "dist", "agent-rpc-cli.mjs"), ...modelArgs, "--scenario", "im-claw"],
-				runtimeBackend,
 				runAsNode: true,
 				packageDir,
 				serverUrl,
@@ -117,7 +108,6 @@ export function buildCodingAgentSpec(opts: BuildCodingAgentSpecOptions = {}): Co
 		return {
 			bin: process.execPath,
 			prefixArgs,
-			runtimeBackend,
 			packageDir,
 			serverUrl,
 		};
@@ -126,15 +116,7 @@ export function buildCodingAgentSpec(opts: BuildCodingAgentSpecOptions = {}): Co
 	return {
 		bin: process.execPath,
 		prefixArgs: [join(appRoot, "dist/main/index.js"), "--agent-rpc", ...modelArgs, "--scenario", "im-claw"],
-		runtimeBackend,
 		packageDir,
 		serverUrl,
 	};
-}
-
-export function resolveImAgentRuntimeBackend(value: string | undefined): CodingAgentRuntimeBackend {
-	if (value === undefined || value.trim() === "") return "greenfield-im";
-	if (value === "legacy") return value;
-	if (value === "greenfield-im") return value;
-	throw new Error(`${IM_AGENT_RUNTIME_ENV} must be "legacy" or "greenfield-im", received "${value}"`);
 }

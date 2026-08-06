@@ -41,7 +41,7 @@
 		"verify:ui:pw": "node scripts/ui-verification.mjs pw",
 		"verify:ui:detach": "node scripts/ui-verification.mjs detach",
 		"verify:ui:debug": "node scripts/ui-verification.mjs debug",
-		"verify:ui:runtime-diff": "bun scripts/runtime-canary-differential.ts",
+		"verify:ui:runtime-canary": "bun scripts/runtime-canary-acceptance.ts",
 		"prepare:bwrap": "node scripts/prepare-bwrap.js",
 		"prebuild:pack": "bun run clean && bun run prepare:windows && bun run prepare:bwrap && bun run prepare:ocr-models && bun run build && node scripts/prepare-pack.js",
 		"dist:desktop": "bun run prebuild:pack && node scripts/run-electron-builder.js",

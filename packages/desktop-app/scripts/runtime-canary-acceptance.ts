@@ -1,14 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { join } from "node:path";
 import { z } from "zod";
-import {
-	type RuntimeCanarySelection,
-	runtimeCanarySuccessEnvelopeSchema,
-} from "../src/main/app-debug/runtime-canary/contracts.js";
-import {
-	compareRuntimeCanaryDefaultCutover,
-	compareRuntimeCanaryKnowledgeResults,
-} from "../src/main/app-debug/runtime-canary/knowledge-differential.js";
+import { runtimeCanarySuccessEnvelopeSchema } from "../src/main/app-debug/runtime-canary/contracts.js";
 
 const desktopRoot = join(import.meta.dirname, "..");
 const verificationStatusSchema = z
@@ -20,39 +13,21 @@ const verificationStatusSchema = z
 
 try {
 	await ensureNoVerificationHost();
-	const defaultSelection = await runRuntimeCanary("default");
-	const legacy = await runRuntimeCanary("legacy");
-	const greenfield = await runRuntimeCanary("greenfield");
-	const runtimeDifferential = compareRuntimeCanaryKnowledgeResults(legacy, greenfield);
-	const defaultCutover = compareRuntimeCanaryDefaultCutover(defaultSelection, greenfield);
-	if (runtimeDifferential.blockingDifferences.length > 0 || defaultCutover.blockingDifferences.length > 0) {
-		printJson({
-			ok: false,
-			error: {
-				code: "RUNTIME_CANARY_KNOWLEDGE_DIFFERENTIAL_FAILED",
-				message: "Desktop Runtime Canary contracts differ.",
-				runtimeBlockingDifferences: runtimeDifferential.blockingDifferences,
-				defaultBlockingDifferences: defaultCutover.blockingDifferences,
-				allowedDifferences: runtimeDifferential.allowedDifferences,
-			},
-		});
-		process.exitCode = 1;
-	} else {
-		printJson({ ok: true, result: { defaultCutover, runtimeDifferential } });
-	}
+	const result = await runRuntimeCanary();
+	printJson(result);
 } catch (error) {
 	printJson({
 		ok: false,
 		error: {
-			code: "RUNTIME_CANARY_KNOWLEDGE_DIFFERENTIAL_ERROR",
+			code: "RUNTIME_CANARY_ACCEPTANCE_ERROR",
 			message: error instanceof Error ? error.message : String(error),
 		},
 	});
 	process.exitCode = 1;
 }
 
-async function runRuntimeCanary(selection: RuntimeCanarySelection): Promise<unknown> {
-	const host = spawn("bun", ["run", "verify:ui:start", "--runtime-canary", selection], {
+async function runRuntimeCanary(): Promise<z.infer<typeof runtimeCanarySuccessEnvelopeSchema>> {
+	const host = spawn("bun", ["run", "verify:ui:start", "--runtime-canary"], {
 		cwd: desktopRoot,
 		env: process.env,
 		stdio: ["ignore", "pipe", "pipe"],
@@ -66,17 +41,15 @@ async function runRuntimeCanary(selection: RuntimeCanarySelection): Promise<unkn
 		hostOutput = appendTail(hostOutput, chunk.toString("utf8"));
 	});
 	try {
-		await waitForVerificationReady(host, selection);
+		await waitForVerificationReady(host);
 		const debug = await runProcess("bun", ["run", "verify:ui:debug", "runtime-canary"]);
 		if (debug.code !== 0) {
-			throw new Error(
-				`${selection} Runtime Canary failed with code ${debug.code}\n${debug.stdout}\n${debug.stderr}\n${hostOutput}`,
-			);
+			throw new Error(`Runtime Canary failed with code ${debug.code}\n${debug.stdout}\n${debug.stderr}\n${hostOutput}`);
 		}
 		const envelope = parseJsonLine(debug.stdout, runtimeCanarySuccessEnvelopeSchema);
 		await waitForHostExit(host, 30_000);
 		if (host.exitCode !== 0) {
-			throw new Error(`${selection} Runtime Canary host exited with code ${host.exitCode}\n${hostOutput}`);
+			throw new Error(`Runtime Canary host exited with code ${host.exitCode}\n${hostOutput}`);
 		}
 		return envelope;
 	} catch (error) {
@@ -94,14 +67,11 @@ async function ensureNoVerificationHost(): Promise<void> {
 	}
 }
 
-async function waitForVerificationReady(
-	host: ChildProcess,
-	selection: RuntimeCanarySelection,
-): Promise<void> {
+async function waitForVerificationReady(host: ChildProcess): Promise<void> {
 	const startedAt = Date.now();
 	while (Date.now() - startedAt < 120_000) {
 		if (host.exitCode !== null || host.signalCode !== null) {
-			throw new Error(`${selection} UI verification host exited before becoming ready`);
+			throw new Error("UI verification host exited before becoming ready");
 		}
 		const status = await runProcess("bun", ["run", "verify:ui:status"]);
 		try {
@@ -112,7 +82,7 @@ async function waitForVerificationReady(
 		}
 		await delay(500);
 	}
-	throw new Error(`Timed out waiting for ${selection} UI verification host`);
+	throw new Error("Timed out waiting for the UI verification host");
 }
 
 async function waitForHostExit(host: ChildProcess, timeoutMs: number): Promise<void> {

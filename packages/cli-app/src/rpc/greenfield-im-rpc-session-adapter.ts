@@ -4,10 +4,7 @@ import {
 	type GreenfieldRpcSessionAdapterOptions,
 } from "./greenfield-rpc-session-adapter.js";
 
-export type GreenfieldImRpcSessionAdapterOptions = Omit<
-	GreenfieldRpcSessionAdapterOptions,
-	"profile" | "runtimeBackend"
->;
+export type GreenfieldImRpcSessionAdapterOptions = Omit<GreenfieldRpcSessionAdapterOptions, "profile">;
 
 /** @deprecated Use GreenfieldRpcSessionAdapter for new host profiles. */
 export class GreenfieldImRpcSessionAdapter extends GreenfieldRpcSessionAdapter {
@@ -20,7 +17,6 @@ export class GreenfieldImRpcSessionAdapter extends GreenfieldRpcSessionAdapter {
 		super({
 			...options,
 			profile: GREENFIELD_IM_RPC_PROFILE,
-			runtimeBackend: "greenfield-im",
 		});
 	}
 

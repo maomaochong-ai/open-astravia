@@ -29,7 +29,6 @@ describe("Runtime Canary Provider", () => {
 		rootDir = await mkdtemp(join(tmpdir(), "vetta-runtime-canary-provider-"));
 		provider = await startRuntimeCanaryProvider(rootDir);
 
-		expect(provider.fixture.mode).toBe("greenfield");
 		expect(existsSync(join(provider.fixture.agentDir, "models.json"))).toBe(true);
 		expect(existsSync(join(provider.fixture.agentDir, "auth.json"))).toBe(true);
 		expect(existsSync(join(provider.fixture.agentDir, "mcp.json"))).toBe(true);
@@ -134,17 +133,6 @@ describe("Runtime Canary Provider", () => {
 
 		const requestLog = await readFile(provider.fixture.requestLogPath, "utf8");
 		expect(requestLog).toContain(RUNTIME_CANARY_QUESTION_PROMPT);
-	});
-
-	it("seeds the requested Legacy Runtime without changing the fixture boundary", async () => {
-		rootDir = await mkdtemp(join(tmpdir(), "vetta-runtime-canary-provider-legacy-"));
-		provider = await startRuntimeCanaryProvider(rootDir, "legacy");
-
-		expect(provider.fixture.mode).toBe("legacy");
-		expect(existsSync(join(provider.fixture.agentDir, "models.json"))).toBe(true);
-		expect(
-			await readFile(join(provider.fixture.knowledgeRoot, "raws", RUNTIME_CANARY_KNOWLEDGE_SOURCE_PATH), "utf8"),
-		).toBe("Runtime Canary Knowledge Source");
 	});
 });
 

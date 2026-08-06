@@ -200,14 +200,6 @@ Response:
   "command": "get_state",
   "success": true,
   "data": {
-    "runtimeBackend": "greenfield-im",
-    "runtimeDecision": {
-      "requestedBackend": "greenfield-im",
-      "effectiveBackend": "greenfield-im",
-      "sessionMigration": {
-        "status": "migrated"
-      }
-    },
     "model": {...},
     "thinkingLevel": "medium",
     "isStreaming": false,
@@ -224,9 +216,9 @@ Response:
 }
 ```
 
-The `runtimeBackend` field is the runtime that owns the session. Automatic Legacy fallback is not performed; `"legacy"` is reported only when the process was started with an explicit Legacy selection.
-
-`runtimeDecision` is the structured selection result. `requestedBackend` and `effectiveBackend` are always present. A successful Legacy import adds `sessionMigration.status` as `"migrated"` or `"reused"`. The deprecated fallback fields remain in the TypeScript compatibility surface for older clients but are not emitted by current automatic startup paths.
+Runtime implementation identity is not part of session state. When `--session` points to a supported historical
+Coding Agent file, startup imports it non-destructively into a deterministic `.conversation.jsonl` file; `sessionFile`
+and `sessionId` identify the active imported conversation.
 
 The `model` field is a full [Model](#model) object or `null`. The `sessionName` field is the display name set via `set_session_name`, or omitted if not set.
 
@@ -1200,7 +1192,7 @@ Reply from the host. The host MUST echo the same `id`. Exactly one of the two sh
 
 ## Error Handling
 
-Startup compatibility failures are emitted as one failed `startup` response before the process accepts commands, and the process exits with code `2`. Legacy sessions that are corrupt, contain an unsupported future record/version, or cannot be represented losslessly do not start either a Provider call or the Legacy Runtime:
+Startup compatibility failures are emitted as one failed `startup` response before the process accepts commands, and the process exits with code `2`. Historical sessions that are corrupt, contain an unsupported future record/version, or cannot be represented losslessly do not start a Provider call:
 
 ```json
 {
@@ -1208,8 +1200,7 @@ Startup compatibility failures are emitted as one failed `startup` response befo
   "command": "startup",
   "success": false,
   "errorCode": "session_version_unsupported",
-  "error": "Legacy session cannot be resumed safely by the requested runtime",
-  "requestedBackend": "greenfield-im",
+  "error": "Historical session cannot be imported safely",
   "sessionPath": "/path/to/future-session.jsonl",
   "sourceVersion": 4,
   "issueCode": "invalid-header",

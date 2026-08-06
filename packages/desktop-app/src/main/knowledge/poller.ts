@@ -22,7 +22,6 @@ import {
 	recordKnowledgeBaseSnapshot,
 } from "../app-monitor/app-monitor-service.js";
 import { getOrCreateSharedModelRuntime } from "../greenfield-runtime/desktop-coding-agent-host-services.js";
-import { desktopAgentRuntimeDecision } from "../greenfield-runtime/desktop-runtime-decision.js";
 import { KB_PROCESSING_CWD, KB_PROCESSING_SESSION_DIR, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { getKnowledgeRoot } from "./knowledge-layout.js";
@@ -43,12 +42,8 @@ function broadcast(channel: string, payload?: unknown): void {
 
 const log = getAppLogger("kb-poller");
 const knowledgeProcessingSessionFactory = createDesktopKnowledgeProcessingSessionFactory({
-	backend: desktopAgentRuntimeDecision.effectiveBackend,
 	getModelRegistry: getOrCreateSharedModelRuntime,
 });
-log.info(
-	`[agent-runtime] knowledge requested=${desktopAgentRuntimeDecision.requestedBackend} effective=${desktopAgentRuntimeDecision.effectiveBackend} source=${desktopAgentRuntimeDecision.source}`,
-);
 
 /** 上报重建时被排除的坏页（frontmatter 非法/缺失）——否则其源文件永远静默显示未加工。 */
 function logDamagedPages(result: knowledge.RebuildResult): void {

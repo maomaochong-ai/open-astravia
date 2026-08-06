@@ -9,26 +9,26 @@ import type {
 	RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
 
-export class DesktopLegacySessionCompatibilityError extends Error {
+export class DesktopHistoricalSessionImportError extends Error {
 	constructor(readonly incompatibility: CodingAgentHistoricalSessionMigrationIncompatible) {
-		super(`${incompatibility.errorCode}: Legacy session cannot be resumed safely`);
-		this.name = "DesktopLegacySessionCompatibilityError";
+		super(`${incompatibility.errorCode}: Historical session cannot be imported safely`);
+		this.name = "DesktopHistoricalSessionImportError";
 	}
 }
 
-/** Migrates supported Legacy sessions before delegating execution to the Greenfield backend. */
-export class DesktopLegacySessionMigrationBackend implements RuntimeHostSessionBackend {
-	constructor(private readonly greenfieldBackend: RuntimeHostSessionBackend) {}
+/** Imports historical session data before opening it with the production Runtime. */
+export class DesktopHistoricalSessionImportBackend implements RuntimeHostSessionBackend {
+	constructor(private readonly targetBackend: RuntimeHostSessionBackend) {}
 
 	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
 		const sourcePath = request.sessionPath?.trim();
-		if (!sourcePath) throw new Error("Legacy session migration requires a source path");
+		if (!sourcePath) throw new Error("Historical session import requires a source path");
 		const targetRootDir = resolve(request.sessionDir ?? dirname(sourcePath));
 		const migration = await migrateCodingAgentHistoricalSession(sourcePath, targetRootDir);
 		if (migration.kind === "session-incompatible") {
-			throw new DesktopLegacySessionCompatibilityError(migration);
+			throw new DesktopHistoricalSessionImportError(migration);
 		}
-		return this.greenfieldBackend.createAssembly({
+		return this.targetBackend.createAssembly({
 			...request,
 			sessionPath: migration.targetPath,
 			sessionDir: targetRootDir,

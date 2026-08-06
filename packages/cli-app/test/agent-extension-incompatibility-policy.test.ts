@@ -86,11 +86,11 @@ afterEach(() => {
 });
 
 describe("Extension incompatibility policy", () => {
-	it("writes one validated RPC startup failure without invoking Legacy", async () => {
+	it("writes one validated RPC startup failure without opening a session", async () => {
 		const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
 
-		await runAgentRuntimeCli(["--agent-runtime", "greenfield-im", "--mode", "rpc"]);
+		await runAgentRuntimeCli(["--mode", "rpc", "--scenario", "im-claw"]);
 
 		expect(process.exitCode).toBe(2);
 		expect(stdout).toHaveBeenCalledTimes(1);
@@ -99,8 +99,7 @@ describe("Extension incompatibility policy", () => {
 			command: "startup",
 			success: false,
 			errorCode: "extension_incompatible",
-			error: "Extension requires events or runtime capabilities that are not supported by the requested runtime",
-			requestedBackend: "greenfield-im",
+			error: "Extension requires events or runtime capabilities that are not supported by this runtime",
 			unsupportedEvents: ["future_event"],
 			unmetRuntimeCapabilities: ["event-handler"],
 		});
@@ -108,7 +107,7 @@ describe("Extension incompatibility policy", () => {
 		expect(runtimeMocks.runGreenfieldIm).not.toHaveBeenCalled();
 	});
 
-	it("writes Print diagnostics without invoking Legacy or a Greenfield session", async () => {
+	it("writes Print diagnostics without opening a session", async () => {
 		const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
 
@@ -118,7 +117,7 @@ describe("Extension incompatibility policy", () => {
 		expect(stdout).not.toHaveBeenCalled();
 		expect(stderr).toHaveBeenCalledOnce();
 		expect(String(stderr.mock.calls[0]?.[0])).toContain(
-			"errorCode=extension_incompatible requested=greenfield unsupportedEvents=future_event unmetCapabilities=event-handler",
+			"errorCode=extension_incompatible unsupportedEvents=future_event unmetCapabilities=event-handler",
 		);
 		expect(runtimeMocks.runGreenfieldPrint).not.toHaveBeenCalled();
 	});

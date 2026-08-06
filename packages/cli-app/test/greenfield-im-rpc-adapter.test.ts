@@ -17,7 +17,6 @@ describe("Greenfield IM RPC adapter", () => {
 		const memoryCapability = required(fixture.adapter.memory);
 
 		await expect(stateCapability.readState()).resolves.toMatchObject({
-			runtimeBackend: "greenfield-im",
 			sessionId: "session-1",
 			sessionFile: "session-1.conversation.jsonl",
 			steeringMode: "all",

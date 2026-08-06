@@ -7,7 +7,6 @@ import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime }
 import {
 	exportGreenfieldRpcConversation,
 	type GreenfieldRpcRetryEvent,
-	type RpcRuntimeDecision,
 	type RpcSessionCapabilities,
 	type RpcSessionInitialization,
 	type RpcSessionProfile,
@@ -34,14 +33,12 @@ interface ActiveTurnCommand {
 
 export interface GreenfieldRpcSessionAdapterOptions {
 	readonly profile: RpcSessionProfile;
-	readonly runtimeBackend: "greenfield" | "greenfield-im";
 	readonly sessionHost: Pick<
 		CodingAgentGreenfieldActiveSessionHost,
 		"dispose" | "fork" | "newSession" | "readSession" | "startActiveSessionOperation" | "subscribe" | "switchSession"
 	>;
 	readonly runtime: GreenfieldRuntimeComposition;
 	readonly resourceLoader: GreenfieldResourceLoader;
-	readonly runtimeDecision?: RpcRuntimeDecision;
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
 	readonly retryController?: CodingAgentTurnRetryController;
 	readonly turnExecutor?: Pick<CodingAgentTurnExecutor, "prompt">;
@@ -74,8 +71,6 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 	private readonly sessionHost: GreenfieldRpcSessionAdapterOptions["sessionHost"];
 	private readonly runtime: GreenfieldRuntimeComposition;
 	private readonly resourceLoader: GreenfieldResourceLoader;
-	private readonly runtimeBackend: GreenfieldRpcSessionAdapterOptions["runtimeBackend"];
-	private readonly runtimeDecision: RpcRuntimeDecision;
 	private readonly htmlExporter: CodingAgentHtmlExportRuntime;
 	private readonly retryController: CodingAgentTurnRetryController | undefined;
 	private readonly turnExecutor: GreenfieldRpcSessionAdapterOptions["turnExecutor"];
@@ -93,14 +88,9 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 
 	constructor(options: GreenfieldRpcSessionAdapterOptions) {
 		this.profile = options.profile;
-		this.runtimeBackend = options.runtimeBackend;
 		this.sessionHost = options.sessionHost;
 		this.runtime = options.runtime;
 		this.resourceLoader = options.resourceLoader;
-		this.runtimeDecision = options.runtimeDecision ?? {
-			requestedBackend: options.runtimeBackend,
-			effectiveBackend: options.runtimeBackend,
-		};
 		this.htmlExporter = options.htmlExporter ?? createCodingAgentHtmlExportRuntime();
 		this.retryController = options.retryController;
 		this.turnExecutor = options.turnExecutor;
@@ -305,8 +295,6 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 		]);
 		const context = core.contextController?.readState();
 		return {
-			runtimeBackend: this.runtimeBackend,
-			runtimeDecision: this.runtimeDecision,
 			model: state.model,
 			thinkingLevel: state.thinkingLevel,
 			isStreaming: state.isStreaming,

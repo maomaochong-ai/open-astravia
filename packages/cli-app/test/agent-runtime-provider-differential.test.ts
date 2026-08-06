@@ -502,10 +502,8 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 	it("continues a migrated official Legacy session through Provider calls and a process restart", async () => {
 		const observations = await runForBackends(
 			async ({ backend, process, server, fixture }) => {
-				const sourceContent = await readFile(
-					join(fixture.conversationDir, "legacy-execution-source.jsonl"),
-					"utf8",
-				);
+				const sourcePath = join(fixture.conversationDir, "legacy-execution-source.jsonl");
+				const sourceContent = await readFile(sourcePath, "utf8");
 				const initialState = await process.request("legacy-execution-state-before", "get_state");
 				const sessionPath = readSessionFile(initialState);
 				const sessionId = readSessionId(initialState);
@@ -563,15 +561,11 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 						containsVisibleCustom: firstProviderInput.includes(LEGACY_EXECUTION_MARKERS.visibleCustom),
 					},
 					migration: {
+						activeSessionUsesImportedTarget:
+							sessionPath !== sourcePath && sessionPath.endsWith(".conversation.jsonl"),
 						migratedTargetCountValid:
-							backend === "legacy"
-								? migratedTargetsBeforeRestart.length === 0 && migratedTargetsAfterRestart.length === 0
-								: migratedTargetsBeforeRestart.length === 1 && migratedTargetsAfterRestart.length === 1,
-						runtimeDecisionValid: hasExpectedLegacyExecutionRuntimeState(initialState, backend),
-						sourceUnchanged:
-							backend === "legacy" ||
-							(await readFile(join(fixture.conversationDir, "legacy-execution-source.jsonl"), "utf8")) ===
-								sourceContent,
+							migratedTargetsBeforeRestart.length === 1 && migratedTargetsAfterRestart.length === 1,
+						sourceUnchanged: (await readFile(sourcePath, "utf8")) === sourceContent,
 					},
 					persistence: describeContinuedConversation(persistedContent),
 					providerInputs,
@@ -605,7 +599,11 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 				containsVisibleBash: true,
 				containsVisibleCustom: true,
 			},
-			migration: { migratedTargetCountValid: true, runtimeDecisionValid: true, sourceUnchanged: true },
+			migration: {
+				activeSessionUsesImportedTarget: true,
+				migratedTargetCountValid: true,
+				sourceUnchanged: true,
+			},
 			persistence: {
 				activeTailRoles: ["user", "assistant", "user", "assistant"],
 				allParentsResolved: true,
@@ -1233,11 +1231,4 @@ function readStoredEventRole(value: unknown): string | undefined {
 function readStoredMessageRole(value: unknown): string | undefined {
 	if (!isRecord(value) || typeof value.role !== "string") return undefined;
 	return value.role;
-}
-
-function hasExpectedLegacyExecutionRuntimeState(state: RpcFrame, backend: TestAgentRuntimeBackend): boolean {
-	if (!isRecord(state.data) || state.data.runtimeBackend !== backend) return false;
-	if (backend === "legacy") return true;
-	if (!isRecord(state.data.runtimeDecision) || !isRecord(state.data.runtimeDecision.sessionMigration)) return false;
-	return state.data.runtimeDecision.sessionMigration.status === "migrated";
 }

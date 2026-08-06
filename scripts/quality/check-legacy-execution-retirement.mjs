@@ -29,7 +29,7 @@ export const LEGACY_FORMAT_BOUNDARY_GROUPS = Object.freeze({
 		"packages/cli-app/src/rpc/greenfield-im-legacy-session-migration.ts",
 		"packages/cli-app/src/session-compatibility-error.ts",
 		"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
-		"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-migration-backend.ts",
+		"packages/desktop-app/src/main/greenfield-runtime/desktop-historical-session-import-backend.ts",
 	]),
 	moduleEntries: Object.freeze([`${LEGACY_FORMAT_DOMAIN_PREFIX}index.ts`]),
 	publicEntries: Object.freeze(["packages/coding-agent/src/public-api/historical-sessions.ts"]),
@@ -43,6 +43,22 @@ export const LEGACY_SESSION_DATA_MUTATION_BASELINE = Object.freeze([
 ]);
 
 export const LEGACY_PACKAGE_EXPORT_BASELINE = Object.freeze([]);
+
+export const RETIRED_RUNTIME_SELECTION_MARKERS = Object.freeze([
+	"--agent-runtime",
+	"VETTA_DESKTOP_AGENT_RUNTIME",
+	"VETTA_IM_AGENT_RUNTIME",
+	"requestedBackend",
+	"effectiveBackend",
+	"runtimeDecision",
+]);
+
+export const RETIRED_RUNTIME_SELECTION_FILES = Object.freeze([
+	"packages/cli-app/src/rpc/legacy-runtime-fallback-contract.ts",
+	"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-migration-backend.ts",
+	"packages/desktop-app/src/main/greenfield-runtime/desktop-runtime-decision.ts",
+	"packages/desktop-app/src/main/greenfield-runtime/desktop-runtime-selector.ts",
+]);
 
 /**
  * Greenfield 对 Coding Agent 旧产品 Core 的历史静态依赖预算。
@@ -184,6 +200,10 @@ export function findLegacyExecutionRetirementViolations(
 	}
 
 	if (requireBaseline) {
+		for (const retiredPath of RETIRED_RUNTIME_SELECTION_FILES) {
+			if (sourcePaths.has(retiredPath))
+				violations.push(`${retiredPath}: retired Runtime selection file was restored`);
+		}
 		for (const retiredPath of [...RETIRED_LEGACY_EXECUTION_FILES, ...RETIRED_LEGACY_SESSION_SUPPORT_FILES]) {
 			if (sourcePaths.has(retiredPath)) violations.push(`${retiredPath}: retired Legacy CLI source was restored`);
 		}
@@ -241,6 +261,16 @@ export function findLegacyExecutionRetirementViolations(
 	}
 
 	return violations;
+}
+
+export function findRetiredRuntimeSelectionViolations(files) {
+	return files
+		.filter((file) => !/\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(file.path))
+		.flatMap((file) =>
+			RETIRED_RUNTIME_SELECTION_MARKERS.flatMap((marker) =>
+				file.text.includes(marker) ? [`${file.path}: retired Runtime selection marker (${marker})`] : [],
+			),
+		);
 }
 
 export function findLegacyFormatBoundaryClassificationViolations(files) {
@@ -586,7 +616,14 @@ function scriptKind(path) {
 }
 
 function readProductionSources() {
-	return ["packages/coding-agent/src", "packages/cli-app/src", "packages/desktop-app/src"]
+	return [
+		"packages/coding-agent/src",
+		"packages/cli-app/src",
+		"packages/desktop-app/src",
+		"packages/desktop-app/scripts",
+		"packages/im-gateway/cmd",
+		"packages/im-gateway/internal",
+	]
 		.flatMap((root) => walkFiles(join(repoRoot, root)))
 		.map((filePath) => ({ path: rel(filePath), text: readText(filePath) }));
 }
@@ -611,6 +648,7 @@ if (isDirectRun(import.meta.url)) {
 	violations.push(...findGreenfieldProductCoreBoundaryViolations(files));
 	violations.push(...findGreenfieldSdkBoundaryViolations(files));
 	violations.push(...findRuntimePublicBoundaryViolations(files));
+	violations.push(...findRetiredRuntimeSelectionViolations(files));
 	violations.push(...findRetiredLegacySessionTestImportViolations(readCodingAgentTests()));
 	if (violations.length > 0) {
 		for (const violation of violations) fail(`[legacy-execution] ${violation}`);

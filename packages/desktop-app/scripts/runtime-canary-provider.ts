@@ -1,11 +1,9 @@
 import { writeFile } from "node:fs/promises";
-import { runtimeCanaryModeSchema } from "../src/main/app-debug/runtime-canary/contracts.js";
 import { startRuntimeCanaryProvider } from "../src/main/app-debug/runtime-canary/provider.js";
 
 const rootDir = readArgument("--root");
 const readyFilePath = readArgument("--ready-file");
-const mode = runtimeCanaryModeSchema.parse(readArgument("--mode"));
-const provider = await startRuntimeCanaryProvider(rootDir, mode);
+const provider = await startRuntimeCanaryProvider(rootDir);
 await writeFile(readyFilePath, JSON.stringify(provider.fixture, null, 2));
 
 await new Promise<void>((resolve) => {

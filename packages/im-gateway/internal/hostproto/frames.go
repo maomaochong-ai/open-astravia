@@ -118,10 +118,6 @@ type InitFrame struct {
 type CodingAgentSpec struct {
 	Bin        string   `json:"bin"`
 	PrefixArgs []string `json:"prefixArgs,omitempty"`
-	// RuntimeBackend is passed to the cli-app Runtime Selector as
-	// `--agent-runtime`. Empty preserves compatibility with standalone
-	// callers that invoke coding-agent directly.
-	RuntimeBackend string `json:"runtimeBackend,omitempty"`
 	// RunAsNode, when true, asks the sidecar to set ELECTRON_RUN_AS_NODE=1
 	// before spawning Bin. Windows packaged desktop builds use this to run
 	// the Electron executable as a Node runtime for coding-agent's CLI,

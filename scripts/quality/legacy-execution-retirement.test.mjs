@@ -12,6 +12,7 @@ import {
 	findLegacyFormatBoundaryClassificationViolations,
 	findLegacySessionCompatibilityShimViolations,
 	findRetiredLegacySessionTestImportViolations,
+	findRetiredRuntimeSelectionViolations,
 	findRuntimePublicBoundaryViolations,
 	GREENFIELD_PRODUCT_CORE_EDGE_BUDGET,
 	LEGACY_EXECUTION_EDGE_BASELINE,
@@ -21,6 +22,8 @@ import {
 	RETIRED_LEGACY_EXECUTION_FILES,
 	RETIRED_LEGACY_SESSION_PREFIXES,
 	RETIRED_LEGACY_SESSION_SUPPORT_FILES,
+	RETIRED_RUNTIME_SELECTION_FILES,
+	RETIRED_RUNTIME_SELECTION_MARKERS,
 	summarizeGreenfieldProductCoreEdges,
 } from "./check-legacy-execution-retirement.mjs";
 import { findStandaloneCliBuildViolations } from "./check-standalone-cli-build.mjs";
@@ -53,6 +56,28 @@ describe("Legacy execution retirement gate", () => {
 			"packages/coding-agent/src/core/session/system-prompt-builder.ts",
 		);
 		expect(RETIRED_LEGACY_SESSION_PREFIXES).toContain("packages/coding-agent/src/core/session-manager/");
+		expect(RETIRED_RUNTIME_SELECTION_FILES).toContain(
+			"packages/desktop-app/src/main/greenfield-runtime/desktop-runtime-selector.ts",
+		);
+		expect(RETIRED_RUNTIME_SELECTION_MARKERS).toContain("--agent-runtime");
+	});
+
+	it("rejects retired Runtime selection control-plane markers", () => {
+		expect(
+			findRetiredRuntimeSelectionViolations([
+				{
+					path: "packages/cli-app/src/example.ts",
+					text: 'const args = ["--agent-runtime", "legacy"];',
+				},
+				{
+					path: "packages/im-gateway/internal/example.go",
+					text: 'const runtimeDecision = "greenfield"',
+				},
+			]),
+		).toHaveLength(2);
+		expect(
+			findRetiredRuntimeSelectionViolations([{ path: "host.ts", text: "const runtime = createRuntime();" }]),
+		).toEqual([]);
 	});
 
 	it("rejects tests coupled to the retired Legacy Session implementation", () => {

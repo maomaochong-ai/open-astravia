@@ -18,9 +18,8 @@ describe("createDesktopKnowledgeProcessingSessionFactory", () => {
 		factoryMocks.greenfield.mockClear();
 	});
 
-	it("uses Greenfield for the effective Desktop backend", () => {
+	it("creates the production knowledge processing session factory", () => {
 		const factory = createDesktopKnowledgeProcessingSessionFactory({
-			backend: "greenfield",
 			getModelRegistry,
 		});
 

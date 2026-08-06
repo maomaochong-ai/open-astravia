@@ -7,8 +7,8 @@ import { app } from "electron";
 // When the parent process spawns Vetta.app with `--agent-rpc` (followed by
 // the coding-agent CLI args), main.ts short-circuits into this command:
 // we forward everything after `--agent-rpc` to `@vetta/cli-app`'s runtime
-// selector. It keeps Legacy as the default while allowing the IM host to
-// opt into the Greenfield runtime without adding runtime knowledge here.
+// host. The host owns one production Runtime; scenario flags only select
+// product capabilities such as the IM host bridge.
 //
 // Production-only motivation: a packaged Vetta.app does not ship a
 // standalone `vetta` CLI on PATH, so im-gateway cannot spawn coding-agent
@@ -57,8 +57,8 @@ export async function runAgentRpcCommand(args: string[]): Promise<number> {
 		if (!process.env.VETTA_PACKAGE_DIR && !process.env.PI_PACKAGE_DIR) {
 			process.env.VETTA_PACKAGE_DIR = resolveCodingAgentPackageDir();
 		}
-		const { runAgentRuntimeCli, writeAgentRuntimeDecision } = await import("@vetta/cli-app");
-		await runAgentRuntimeCli(args, { onDecision: writeAgentRuntimeDecision });
+		const { runAgentRuntimeCli } = await import("@vetta/cli-app");
+		await runAgentRuntimeCli(args);
 		return typeof process.exitCode === "number" ? process.exitCode : 0;
 	} catch (err) {
 		const msg = err instanceof Error ? (err.stack ?? err.message) : String(err);

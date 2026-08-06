@@ -4,9 +4,9 @@ import { join } from "node:path";
 import type { RuntimeHostSessionAssembly, RuntimeSessionCreateRequest } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-	DesktopLegacySessionCompatibilityError,
-	DesktopLegacySessionMigrationBackend,
-} from "./desktop-legacy-session-migration-backend.js";
+	DesktopHistoricalSessionImportBackend,
+	DesktopHistoricalSessionImportError,
+} from "./desktop-historical-session-import-backend.js";
 
 const temporaryRoots = new Set<string>();
 
@@ -15,14 +15,14 @@ afterEach(async () => {
 	temporaryRoots.clear();
 });
 
-describe("Desktop Legacy session migration backend", () => {
-	it("migrates a supported Legacy session before delegating to Greenfield", async () => {
-		const fixture = await createFixture(legacySession("hello"));
+describe("Desktop historical session import backend", () => {
+	it("imports supported historical data before opening the production Runtime", async () => {
+		const fixture = await createFixture(historicalSession("hello"));
 		const sourceContent = await readFile(fixture.sourcePath, "utf8");
 		const assembly = {} as RuntimeHostSessionAssembly;
 		const createAssembly = vi.fn<(request: RuntimeSessionCreateRequest) => Promise<RuntimeHostSessionAssembly>>();
 		createAssembly.mockResolvedValue(assembly);
-		const backend = new DesktopLegacySessionMigrationBackend({ createAssembly });
+		const backend = new DesktopHistoricalSessionImportBackend({ createAssembly });
 
 		await expect(backend.createAssembly(createRequest(fixture.sourcePath, fixture.targetRootDir))).resolves.toBe(
 			assembly,
@@ -36,7 +36,7 @@ describe("Desktop Legacy session migration backend", () => {
 		expect(await readFile(fixture.sourcePath, "utf8")).toBe(sourceContent);
 	});
 
-	it("rejects incompatible content without invoking Greenfield or creating a target", async () => {
+	it("rejects incompatible content without invoking the Runtime or creating a target", async () => {
 		const fixture = await createFixture(
 			jsonLines([
 				header(4),
@@ -49,12 +49,12 @@ describe("Desktop Legacy session migration backend", () => {
 			]),
 		);
 		const createAssembly = vi.fn<(request: RuntimeSessionCreateRequest) => Promise<RuntimeHostSessionAssembly>>();
-		const backend = new DesktopLegacySessionMigrationBackend({ createAssembly });
+		const backend = new DesktopHistoricalSessionImportBackend({ createAssembly });
 
 		await expect(
 			backend.createAssembly(createRequest(fixture.sourcePath, fixture.targetRootDir)),
 		).rejects.toMatchObject({
-			name: "DesktopLegacySessionCompatibilityError",
+			name: "DesktopHistoricalSessionImportError",
 			incompatibility: {
 				errorCode: "session_version_unsupported",
 				sourceVersion: 4,
@@ -64,8 +64,8 @@ describe("Desktop Legacy session migration backend", () => {
 		await expect(readFile(fixture.targetRootDir)).rejects.toMatchObject({ code: "ENOENT" });
 	});
 
-	it("exposes a typed compatibility error", () => {
-		const error = new DesktopLegacySessionCompatibilityError({
+	it("exposes a typed import error", () => {
+		const error = new DesktopHistoricalSessionImportError({
 			kind: "session-incompatible",
 			status: "not-representable",
 			sourcePath: "C:/sessions/future.jsonl",
@@ -78,9 +78,9 @@ describe("Desktop Legacy session migration backend", () => {
 });
 
 async function createFixture(content: string): Promise<{ sourcePath: string; targetRootDir: string }> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-desktop-legacy-migration-"));
+	const root = await mkdtemp(join(tmpdir(), "vetta-desktop-historical-import-"));
 	temporaryRoots.add(root);
-	const sourcePath = join(root, "legacy.jsonl");
+	const sourcePath = join(root, "historical.jsonl");
 	const targetRootDir = join(root, "conversations");
 	await writeFile(sourcePath, content, "utf8");
 	return { sourcePath, targetRootDir };
@@ -96,7 +96,7 @@ function createRequest(sourcePath: string, sessionDir: string): RuntimeSessionCr
 	};
 }
 
-function legacySession(content: string): string {
+function historicalSession(content: string): string {
 	return jsonLines([
 		header(3),
 		{
@@ -113,9 +113,9 @@ function header(version: number) {
 	return {
 		type: "session",
 		version,
-		id: "legacy-source",
+		id: "historical-source",
 		timestamp: "2026-01-01T00:00:00.000Z",
-		cwd: "C:/legacy-workspace",
+		cwd: "C:/historical-workspace",
 	};
 }
 

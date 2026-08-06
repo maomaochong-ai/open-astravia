@@ -22,7 +22,6 @@ import {
 	RUNTIME_CANARY_SECOND_PROMPT,
 	RUNTIME_CANARY_SKILL_MARKER,
 	type RuntimeCanaryFixture,
-	type RuntimeCanaryMode,
 } from "./contracts.js";
 
 const providerRequestSchema = z
@@ -38,10 +37,7 @@ export interface RuntimeCanaryProvider {
 	close(): Promise<void>;
 }
 
-export async function startRuntimeCanaryProvider(
-	rootDir: string,
-	mode: RuntimeCanaryMode = "greenfield",
-): Promise<RuntimeCanaryProvider> {
+export async function startRuntimeCanaryProvider(rootDir: string): Promise<RuntimeCanaryProvider> {
 	const vettaHome = join(rootDir, "home");
 	const agentDir = join(vettaHome, "agent");
 	const workspace = join(rootDir, "workspace");
@@ -150,7 +146,6 @@ export async function startRuntimeCanaryProvider(
 		throw new Error("Expected Runtime Canary Provider TCP address");
 	}
 	const fixture: RuntimeCanaryFixture = {
-		mode,
 		vettaHome,
 		agentDir,
 		workspace,

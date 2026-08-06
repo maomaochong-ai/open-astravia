@@ -72,12 +72,12 @@ bun run verify:ui:debug -- <Debug CLI 参数>
 
 Debug 返回值用于验证业务执行结果，Playwright 用于验证结果是否正确呈现在 UI 中，两者不能互相替代。
 
-## Greenfield Runtime 进程级 Canary
+## Runtime 进程级 Canary
 
-需要验证真实 Desktop 主进程中的 Greenfield Runtime 时，使用隔离 Canary 模式启动：
+需要验证真实 Desktop 主进程中的生产 Runtime 时，使用隔离 Canary 模式启动：
 
 ```powershell
-bun run verify:ui:start -- --runtime-canary greenfield
+bun run verify:ui:start -- --runtime-canary
 bun run verify:ui:status
 bun run verify:ui:debug -- runtime-canary
 ```

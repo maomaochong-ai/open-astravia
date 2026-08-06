@@ -13,7 +13,6 @@ import {
 	type RpcFrame,
 	readSessionFile,
 	readSessionId,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import {
 	LEGACY_EXECUTION_MARKERS,
@@ -39,7 +38,6 @@ const MCP_TOOL_NAME = "mcp_installed_canary_echo";
 const DYNAMIC_SKILL_V1 = "INSTALLED_ARTIFACT_DYNAMIC_SKILL_V1";
 const DYNAMIC_SKILL_V2 = "INSTALLED_ARTIFACT_DYNAMIC_SKILL_V2";
 const RPC_BASH_MARKER = "INSTALLED_ARTIFACT_GREENFIELD_RPC_BASH";
-const BACKENDS = ["legacy", "greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
 const repositoryRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const compileScriptPath = fileURLToPath(new URL("../scripts/compile-standalone.mjs", import.meta.url));
 const compileTargetByPlatform = {
@@ -111,48 +109,35 @@ afterEach(async () => {
 });
 
 describe("installed standalone CLI artifact", () => {
-	it("preserves the exact im-claw Provider frame when a retired Legacy request is remapped", async () => {
+	it("preserves the exact im-claw Provider frame through the production entry", async () => {
 		await expectStandaloneArtifact(artifact);
 
-		const observations = {} as Record<TestAgentRuntimeBackend, InstalledFrameObservation>;
-		for (const backend of BACKENDS) {
-			let currentFixture: AgentRpcFixture | undefined;
-			let currentProcess: AgentRpcProcess | undefined;
-			let currentServer: OpenAiResponsesTestServer | undefined;
-			try {
-				currentServer = await startOpenAiResponsesTestServer(() => ({
-					kind: "events",
-					events: textResponseEvents("Installed im-claw Provider frame captured."),
-				}));
-				currentFixture = await createAgentRpcFixture({ baseUrl: currentServer.baseUrl });
-				currentProcess = startInstalledCli(
-					artifact.binaryPath,
-					currentFixture,
-					createIsolatedArtifactEnv(currentFixture),
-					{ runtime: backend, hostProfile: "im-claw", noSkills: true },
-				);
-				const mark = currentProcess.mark();
-				await currentProcess.request(`installed-frame-${backend}`, "prompt", {
-					message: "Capture the installed im-claw Provider frame",
-				});
-				await currentProcess.waitFor((frame) => frame.type === "agent_end", mark, 30_000);
-				expect(currentServer.requests).toHaveLength(1);
-				const request = currentServer.requests[0];
-				if (!request) throw new Error(`Expected installed ${backend}/im-claw Provider request`);
-				observations[backend] = {
-					provider: observableProviderRequest(request.body, currentFixture),
-					runtime: observeRuntimeFrames(currentProcess.framesSince(mark)),
-				};
-			} finally {
-				await currentProcess?.close();
-				await currentFixture?.dispose();
-				await currentServer?.dispose();
-			}
-		}
-		expect(providerToolNames(observations["greenfield-im"].provider)).toEqual(
-			providerToolNames(observations.legacy.provider),
-		);
-		expect(observations["greenfield-im"]).toEqual(observations.legacy);
+		providerServer = await startOpenAiResponsesTestServer(() => ({
+			kind: "events",
+			events: textResponseEvents("Installed im-claw Provider frame captured."),
+		}));
+		fixture = await createAgentRpcFixture({ baseUrl: providerServer.baseUrl });
+		activeProcess = startInstalledCli(artifact.binaryPath, fixture, createIsolatedArtifactEnv(fixture), {
+			hostProfile: "im-claw",
+			noSkills: true,
+		});
+		const mark = activeProcess.mark();
+		await activeProcess.request("installed-frame", "prompt", {
+			message: "Capture the installed im-claw Provider frame",
+		});
+		await activeProcess.waitFor((frame) => frame.type === "agent_end", mark, 30_000);
+		expect(providerServer.requests).toHaveLength(1);
+		const request = providerServer.requests[0];
+		if (!request) throw new Error("Expected installed im-claw Provider request");
+		const observation: InstalledFrameObservation = {
+			provider: observableProviderRequest(request.body, fixture),
+			runtime: observeRuntimeFrames(activeProcess.framesSince(mark)),
+		};
+		expect(providerToolNames(observation.provider)).toEqual(expect.arrayContaining(["read", "im_send_attachment"]));
+		expect(observation.runtime).toMatchObject({
+			lifecycle: ["agent_start", "turn_start", "turn_end", "agent_end"],
+			finalText: "Installed im-claw Provider frame captured.",
+		});
 	}, 120_000);
 
 	it("defaults ordinary RPC to the full Greenfield profile across installed executable restarts", async () => {
@@ -168,12 +153,6 @@ describe("installed standalone CLI artifact", () => {
 		activeProcess = startInstalledCli(artifact.binaryPath, fixture, isolatedEnv, { noSkills: true });
 
 		const initialState = await activeProcess.request("installed-default-state", "get_state");
-		expect(initialState).toMatchObject({
-			data: {
-				runtimeBackend: "greenfield",
-				runtimeDecision: { requestedBackend: "greenfield", effectiveBackend: "greenfield" },
-			},
-		});
 		const sessionFile = readSessionFile(initialState);
 		const sessionId = readSessionId(initialState);
 		const ownershipLock = `${sessionFile}.owner.lock`;
@@ -225,8 +204,7 @@ describe("installed standalone CLI artifact", () => {
 			activeProcess.request("installed-export", "export_html", { outputPath: exportPath }),
 		).resolves.toMatchObject({ success: true, data: { path: exportPath } });
 		await expect(stat(exportPath)).resolves.toMatchObject({ size: expect.any(Number) });
-		expect(activeProcess.stderr).toContain("requested=greenfield effective=greenfield");
-		expect(activeProcess.stderr).not.toContain("fallback=");
+		expect(activeProcess.stderr).not.toContain("requested=");
 
 		await expect(activeProcess.close()).resolves.toBe(0);
 		activeProcess = undefined;
@@ -238,11 +216,9 @@ describe("installed standalone CLI artifact", () => {
 		});
 		await expect(activeProcess.request("installed-resumed-state", "get_state")).resolves.toMatchObject({
 			data: {
-				runtimeBackend: "greenfield",
 				sessionId,
 				sessionFile,
 				sessionName: "installed-neutral-rpc",
-				runtimeDecision: { requestedBackend: "greenfield", effectiveBackend: "greenfield" },
 			},
 		});
 		await expect(activeProcess.request("installed-resumed-messages", "get_messages")).resolves.toMatchObject({
@@ -556,7 +532,7 @@ describe("installed standalone CLI artifact", () => {
 		activeProcess = undefined;
 	}, 120_000);
 
-	it("quiets installed background work before publishing a new Session identity after Legacy remapping", async () => {
+	it("quiets installed background work before publishing a new Session identity", async () => {
 		await expectStandaloneArtifact(artifact);
 
 		providerServer = await startOpenAiResponsesTestServer((_request, index) =>
@@ -577,16 +553,9 @@ describe("installed standalone CLI artifact", () => {
 		);
 		fixture = await createAgentRpcFixture({ baseUrl: providerServer.baseUrl });
 		activeProcess = startInstalledCli(artifact.binaryPath, fixture, createIsolatedArtifactEnv(fixture), {
-			runtime: "legacy",
 			noSkills: true,
 		});
 		const sourceState = await activeProcess.request("installed-background-source", "get_state");
-		expect(sourceState).toMatchObject({
-			data: {
-				runtimeBackend: "greenfield",
-				runtimeDecision: { requestedBackend: "legacy", effectiveBackend: "greenfield" },
-			},
-		});
 		const sourcePath = readSessionFile(sourceState);
 
 		await promptInstalledTurn(activeProcess, "installed-background-close", "Start the installed background task");
@@ -680,12 +649,6 @@ describe("installed standalone CLI artifact", () => {
 		const isolatedEnv = createIsolatedArtifactEnv(fixture);
 		activeProcess = startInstalledCli(artifact.binaryPath, fixture, isolatedEnv);
 		const initialState = await activeProcess.request("installed-dynamic-state-before", "get_state");
-		expect(initialState).toMatchObject({
-			data: {
-				runtimeBackend: "greenfield",
-				runtimeDecision: { requestedBackend: "greenfield", effectiveBackend: "greenfield" },
-			},
-		});
 		const sessionFile = readSessionFile(initialState);
 		const sessionId = readSessionId(initialState);
 		const ownershipLock = `${sessionFile}.owner.lock`;
@@ -755,14 +718,8 @@ describe("installed standalone CLI artifact", () => {
 		const state = await activeProcess.request("installed-migration-state", "get_state");
 		expect(state).toMatchObject({
 			data: {
-				runtimeBackend: "greenfield",
 				sessionId: expect.stringMatching(/^legacy-import-/),
 				sessionFile: expect.stringMatching(/\.conversation\.jsonl$/),
-				runtimeDecision: {
-					requestedBackend: "greenfield",
-					effectiveBackend: "greenfield",
-					sessionMigration: { status: "migrated" },
-				},
 			},
 		});
 		const migratedSessionPath = readSessionFile(state);
@@ -781,8 +738,6 @@ describe("installed standalone CLI artifact", () => {
 		expect(firstProviderInput).not.toContain(LEGACY_EXECUTION_MARKERS.pruned);
 		expect(firstProviderInput).not.toContain(LEGACY_EXECUTION_MARKERS.hiddenBash);
 		expect(firstProviderInput).not.toContain(LEGACY_EXECUTION_MARKERS.hiddenCustom);
-		const migrationStderr = activeProcess.stderr;
-
 		await expect(activeProcess.close()).resolves.toBe(0);
 		activeProcess = startInstalledCli(artifact.binaryPath, fixture, isolatedEnv, {
 			extraArgs: ["--extension", extension.path, "--session", migratedSessionPath],
@@ -816,7 +771,7 @@ describe("installed standalone CLI artifact", () => {
 		);
 		expect(contextObservations[0]?.observed).toContain(LEGACY_EXECUTION_MARKERS.hiddenBash);
 		expect(contextObservations[0]?.observed).toContain(LEGACY_EXECUTION_MARKERS.hiddenCustom);
-		expect(migrationStderr).toContain("sessionMigration=migrated");
+		expect(activeProcess.stderr).not.toContain("sessionMigration=");
 		await expect(activeProcess.close()).resolves.toBe(0);
 		activeProcess = undefined;
 	}, 120_000);
@@ -850,7 +805,6 @@ describe("installed standalone CLI artifact", () => {
 			command: "startup",
 			success: false,
 			errorCode: "session_version_unsupported",
-			requestedBackend: "greenfield",
 			sessionPath: await realpath(legacySession),
 			sourceVersion: 3,
 			issueCode: "unsupported-record",
@@ -860,8 +814,6 @@ describe("installed standalone CLI artifact", () => {
 		expect((await readdir(fixture.conversationDir)).some((name) => name.endsWith(".conversation.jsonl"))).toBe(false);
 		await expect(activeProcess.waitForExit()).resolves.toBe(2);
 		expect(activeProcess.frames).toEqual([failure]);
-		expect(activeProcess.stderr).not.toContain("effective=legacy");
-		expect(activeProcess.stderr).not.toContain("fallback=");
 		expect(activeProcess.stderr).not.toContain("must-not-leak");
 		activeProcess = undefined;
 	}, 120_000);
@@ -944,10 +896,8 @@ describe("installed standalone CLI artifact", () => {
 			extraArgs: ["--extension", combinedExtension],
 		});
 		await expect(activeProcess.request("installed-combined-state", "get_state")).resolves.toMatchObject({
-			data: { runtimeBackend: "greenfield" },
+			success: true,
 		});
-		expect(activeProcess.stderr).toContain("requested=greenfield effective=greenfield");
-		expect(activeProcess.stderr).not.toContain("fallback=");
 		await activeProcess.request("installed-extension-command", "prompt", { message: "/extension-audit" });
 		expect(await readFile(commandAuditPath, "utf8")).toBe("executed");
 		const sourceSessionPath = readSessionFile(
@@ -1017,11 +967,7 @@ describe("installed standalone CLI artifact", () => {
 		activeProcess = startInstalledCli(artifact.binaryPath, fixture, isolatedEnv, {
 			extraArgs: ["--extension", uiOnlyExtension],
 		});
-		await expect(activeProcess.request("installed-ui-state", "get_state")).resolves.toMatchObject({
-			data: { runtimeBackend: "greenfield" },
-		});
-		expect(activeProcess.stderr).toContain("requested=greenfield effective=greenfield");
-		expect(activeProcess.stderr).not.toContain("fallback=");
+		await expect(activeProcess.request("installed-ui-state", "get_state")).resolves.toMatchObject({ success: true });
 		await expect(activeProcess.close()).resolves.toBe(0);
 		activeProcess = undefined;
 
@@ -1036,29 +982,11 @@ describe("installed standalone CLI artifact", () => {
 			command: "startup",
 			success: false,
 			errorCode: "extension_incompatible",
-			requestedBackend: "greenfield",
 			unsupportedEvents: ["future_event"],
 			unmetRuntimeCapabilities: ["event-handler"],
 		});
 		await expect(activeProcess.waitForExit()).resolves.toBe(2);
 		expect(activeProcess.frames).toEqual([forwardFailure]);
-		expect(activeProcess.stderr).not.toContain("effective=legacy");
-		expect(activeProcess.stderr).not.toContain("fallback=");
-		activeProcess = undefined;
-
-		activeProcess = startInstalledCli(artifact.binaryPath, fixture, isolatedEnv, {
-			runtime: "legacy",
-			extraArgs: ["--extension", combinedExtension],
-		});
-		await expect(activeProcess.request("installed-legacy-state", "get_state")).resolves.toMatchObject({
-			data: {
-				runtimeBackend: "greenfield",
-				runtimeDecision: { requestedBackend: "legacy", effectiveBackend: "greenfield" },
-			},
-		});
-		expect(activeProcess.stderr).toContain("requested=legacy effective=greenfield reason=legacy-retired");
-		expect(activeProcess.stderr).not.toContain("fallback=");
-		await expect(activeProcess.close()).resolves.toBe(0);
 		activeProcess = undefined;
 	}, 120_000);
 });
@@ -1238,7 +1166,6 @@ function createIsolatedArtifactEnv(currentFixture: AgentRpcFixture): NodeJS.Proc
 }
 
 interface StartInstalledCliOptions {
-	readonly runtime?: TestAgentRuntimeBackend;
 	readonly hostProfile?: "im-claw";
 	readonly skillPath?: string;
 	readonly noSkills?: boolean;
@@ -1255,7 +1182,6 @@ function startInstalledCli(
 		binaryPath,
 		[
 			"agent",
-			...(options.runtime ? ["--agent-runtime", options.runtime] : []),
 			"--mode",
 			"rpc",
 			...(options.hostProfile === "im-claw" ? ["--enable-host-bridge", "--scenario", "im-claw"] : []),

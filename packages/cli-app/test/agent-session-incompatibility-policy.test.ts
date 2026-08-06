@@ -67,7 +67,7 @@ afterEach(() => {
 });
 
 describe("Session incompatibility policy", () => {
-	it("writes one validated RPC startup failure without invoking Legacy", async () => {
+	it("writes one validated RPC startup failure without opening a session", async () => {
 		const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
 
@@ -80,8 +80,7 @@ describe("Session incompatibility policy", () => {
 			command: "startup",
 			success: false,
 			errorCode: "session_version_unsupported",
-			error: "Legacy session cannot be resumed safely by the requested runtime",
-			requestedBackend: "greenfield",
+			error: "Historical session cannot be imported safely",
 			sessionPath: sessionCompatibility.sourcePath,
 			sourceVersion: 4,
 			issueCode: "invalid-header",
@@ -91,7 +90,7 @@ describe("Session incompatibility policy", () => {
 		expect(runtimeMocks.runGreenfieldRpc).not.toHaveBeenCalled();
 	});
 
-	it("writes Print diagnostics without invoking Legacy", async () => {
+	it("writes Print diagnostics without opening a session", async () => {
 		const stdout = vi.spyOn(process.stdout, "write").mockReturnValue(true);
 		const stderr = vi.spyOn(process.stderr, "write").mockReturnValue(true);
 
@@ -100,7 +99,9 @@ describe("Session incompatibility policy", () => {
 		expect(process.exitCode).toBe(2);
 		expect(stdout).not.toHaveBeenCalled();
 		expect(stderr).toHaveBeenCalledOnce();
-		expect(String(stderr.mock.calls[0]?.[0])).toContain("errorCode=session_version_unsupported requested=greenfield");
+		expect(String(stderr.mock.calls[0]?.[0])).toContain(
+			"errorCode=session_version_unsupported session=C:/test/conversations/future.jsonl",
+		);
 		expect(runtimeMocks.runGreenfieldPrint).not.toHaveBeenCalled();
 	});
 });

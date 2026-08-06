@@ -9,13 +9,10 @@ import {
 	runPrintMode,
 } from "@vetta/coding-agent/bootstrap";
 import { resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath } from "@vetta/coding-agent/composition";
-import { type RpcRuntimeDecision, runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
+import { runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope } from "@vetta/runtime-core";
 import { GreenfieldPrintSessionAdapter } from "../../greenfield-print-session-adapter.js";
-import {
-	type GreenfieldImLegacySessionMigration,
-	migrateGreenfieldImLegacySession,
-} from "../greenfield-im-legacy-session-migration.js";
+import { migrateGreenfieldImLegacySession } from "../greenfield-im-legacy-session-migration.js";
 import { resolveGreenfieldImSessionPath } from "../greenfield-im-session-selection.js";
 import {
 	createGreenfieldCliSessionAssembly,
@@ -32,10 +29,6 @@ import type {
 	PrepareGreenfieldRuntimeHostOptions,
 } from "./greenfield-runtime-host-contract.js";
 
-export type {
-	GreenfieldRpcFallbackReason,
-	GreenfieldRpcRuntimeHostFallback,
-} from "../legacy-runtime-fallback-contract.js";
 export type {
 	CreateGreenfieldImRuntimeHostOptions,
 	GreenfieldPrintRuntimeHostPreparation,
@@ -153,11 +146,9 @@ async function prepareGreenfieldRuntimeHost(
 		sessionCatalog: options.sessionCatalog,
 	});
 	let sessionId = resolveSessionId(options.conversationDir, sessionPath, options.createSessionId ?? randomUUID);
-	let sessionMigration: RpcRuntimeDecision["sessionMigration"];
 	if (!sessionId) {
-		if (!sessionPath) throw new Error("Legacy session migration requires a source path");
+		if (!sessionPath) throw new Error("Historical session import requires a source path");
 		const migration = await migrateGreenfieldImLegacySession(sessionPath, options.conversationDir);
-		sessionMigration = toRpcSessionMigration(migration);
 		if (migration.kind === "session-incompatible") {
 			return {
 				kind: "session-incompatible",
@@ -169,11 +160,6 @@ async function prepareGreenfieldRuntimeHost(
 		sessionPath = migration.targetPath;
 		sessionId = migration.targetSessionId;
 	}
-	const runtimeDecision: RpcRuntimeDecision = {
-		requestedBackend: options.requestedBackend ?? backend,
-		effectiveBackend: backend,
-		...(sessionMigration ? { sessionMigration } : {}),
-	};
 
 	const initial = await resolveCodingAgentInitialModel(bootstrap);
 	if (initial.warning) console.warn(initial.warning);
@@ -196,13 +182,12 @@ async function prepareGreenfieldRuntimeHost(
 		createPluginRuntime: options.createPluginRuntime,
 	});
 	if (intent === "print") {
-		return createGreenfieldPrintRuntimeHostReady(bootstrap, assembly, runtimeDecision);
+		return createGreenfieldPrintRuntimeHostReady(bootstrap, assembly);
 	}
 	const capabilities = await createGreenfieldRpcRuntimeCapabilities({
 		bootstrap,
 		assembly,
 		backend,
-		runtimeDecision,
 		htmlExporter: options.htmlExporter,
 	});
 	return {
@@ -213,7 +198,6 @@ async function prepareGreenfieldRuntimeHost(
 		},
 		runtime: assembly.runtime,
 		capabilities,
-		runtimeDecision,
 	};
 }
 
@@ -245,7 +229,6 @@ export async function runGreenfieldPrintRuntimeHost(prepared: GreenfieldPrintRun
 async function createGreenfieldPrintRuntimeHostReady(
 	bootstrap: PrepareGreenfieldRuntimeHostOptions["bootstrap"],
 	assembly: GreenfieldCliSessionAssembly,
-	runtimeDecision: RpcRuntimeDecision,
 ): Promise<GreenfieldPrintRuntimeHostReady> {
 	const rollback = new InitializationRollbackScope();
 	const dismissAssemblyRollback = rollback.defer({
@@ -264,7 +247,6 @@ async function createGreenfieldPrintRuntimeHostReady(
 			},
 			runtime: assembly.runtime,
 			printSession,
-			runtimeDecision,
 		};
 	} catch (error) {
 		return rollback.rollback(error, GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE);
@@ -288,19 +270,6 @@ function assertGreenfieldInvocation(
 	if (backend === "greenfield-im" && parsed.scenario && parsed.scenario !== "im-claw") {
 		throw new Error(`Greenfield IM Runtime requires scenario im-claw, received ${parsed.scenario}`);
 	}
-}
-
-function toRpcSessionMigration(
-	migration: GreenfieldImLegacySessionMigration,
-): NonNullable<RpcRuntimeDecision["sessionMigration"]> {
-	return {
-		status: migration.status,
-		...(migration.kind === "session-incompatible" ? { errorCode: migration.errorCode } : {}),
-		...(migration.kind === "session-incompatible" && migration.issueCode ? { issueCode: migration.issueCode } : {}),
-		...(migration.kind === "session-incompatible" && migration.issueCount
-			? { issueCount: migration.issueCount }
-			: {}),
-	};
 }
 
 function resolveSessionId(

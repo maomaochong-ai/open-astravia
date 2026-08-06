@@ -34,8 +34,8 @@ afterEach(async () => {
 	fixtures.clear();
 }, INTEGRATION_TEST_TIMEOUT_MS);
 
-describe("Legacy session fallback narrowing", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
-	it("reports a startup ownership conflict instead of retrying a locked Legacy source on Legacy Runtime", async () => {
+describe("Historical session import recovery", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
+	it("reports a startup ownership conflict for a locked historical source", async () => {
 		const fixture = await createFixture();
 		const sourcePath = await writeLegacySession(fixture, "locked source");
 		const lockPath = `${sourcePath}.lock`;
@@ -63,8 +63,6 @@ describe("Legacy session fallback narrowing", { timeout: INTEGRATION_TEST_TIMEOU
 				},
 			});
 			expect(await childProcess.waitForExit()).toBe(2);
-			expect(childProcess.stderr).not.toContain("fallback=legacy-session");
-			expect(childProcess.stderr).not.toContain("effective=legacy");
 		} finally {
 			await rm(lockPath, { force: true });
 		}
@@ -79,23 +77,12 @@ describe("Legacy session fallback narrowing", { timeout: INTEGRATION_TEST_TIMEOU
 
 		const recovered = startRpc(fixture, ["--session", sourcePath]);
 		const recoveredState = await recovered.request("recovered-state", "get_state");
-		expect(recoveredState).toMatchObject({
-			success: true,
-			data: {
-				runtimeBackend: "greenfield-im",
-				runtimeDecision: {
-					requestedBackend: "greenfield-im",
-					effectiveBackend: "greenfield-im",
-					sessionMigration: { status: "migrated" },
-				},
-			},
-		});
+		expect(recoveredState).toMatchObject({ success: true });
 		const recoverySessionId = readSessionId(recoveredState);
 		const recoverySessionFile = readSessionFile(recoveredState);
 		expect(recoverySessionId).toBe(`${primary.targetSessionId}-recovery`);
 		expect(recoverySessionFile).not.toBe(primary.targetPath);
 		await recovered.close();
-		expect(recovered.stderr).not.toContain("fallback=legacy-session");
 
 		const reused = startRpc(fixture, ["--session", sourcePath]);
 		const reusedState = await reused.request("reused-state", "get_state");
@@ -104,15 +91,9 @@ describe("Legacy session fallback narrowing", { timeout: INTEGRATION_TEST_TIMEOU
 			data: {
 				sessionId: recoverySessionId,
 				sessionFile: recoverySessionFile,
-				runtimeBackend: "greenfield-im",
-				runtimeDecision: {
-					effectiveBackend: "greenfield-im",
-					sessionMigration: { status: "reused" },
-				},
 			},
 		});
 		await reused.close();
-		expect(reused.stderr).not.toContain("fallback=legacy-session");
 		expect(await readFile(primary.targetPath, "utf8")).toBe("conflicting primary target");
 	});
 });

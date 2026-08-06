@@ -404,8 +404,6 @@ try {
 	printJson({
 		ok: true,
 		result: {
-			runtimeSelection: state.runtimeCanary.selection,
-			runtimeMode: state.runtimeCanary.mode,
 			processingRecordFormat,
 			knowledgeContract,
 			...conversation,
@@ -772,8 +770,7 @@ async function listKnowledgeSessionPaths(knowledgeRoot: string): Promise<string[
 
 function resolveProcessingRecordFormat(paths: readonly string[]): RuntimeCanaryProcessingRecordFormat {
 	if (paths.every((path) => path.endsWith(".conversation.jsonl"))) return "conversation-v2-jsonl";
-	if (paths.every((path) => path.endsWith(".jsonl") && !path.endsWith(".conversation.jsonl"))) return "legacy-jsonl";
-	throw new Error(`Runtime Canary observed mixed Knowledge processing record formats: ${paths}`);
+	throw new Error(`Runtime Canary observed a non-production Knowledge processing record format: ${paths}`);
 }
 
 async function readJsonFile<T>(path: string, schema: z.ZodType<T>): Promise<T> {

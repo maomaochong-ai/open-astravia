@@ -313,18 +313,6 @@ describe("package boundary analysis", () => {
 				'const reason = "legacy-extension";',
 			),
 		).toHaveLength(1);
-		expect(
-			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/legacy-runtime-fallback-contract.ts",
-				'export type RetiredReason = "legacy-extension";',
-			),
-		).toEqual([]);
-		expect(
-			findPackageBoundaryViolations(
-				"packages/coding-agent/src/modes/rpc/rpc-types.ts",
-				'export type RetiredReason = "legacy-extension";',
-			),
-		).toEqual([]);
 	});
 
 	it("keeps automatic Legacy Session execution out of production hosts", () => {
@@ -340,12 +328,6 @@ describe("package boundary analysis", () => {
 				'const cause = "session-migration-gap";',
 			),
 		).toHaveLength(1);
-		expect(
-			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/legacy-runtime-fallback-contract.ts",
-				'export type RetiredReason = "legacy-session";',
-			),
-		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
 				"packages/cli-app/src/agent-runtime-selection.ts",

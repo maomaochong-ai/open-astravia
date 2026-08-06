@@ -42,7 +42,5 @@ export type {
 	RpcBashResult,
 	RpcCommand,
 	RpcResponse,
-	RpcRuntimeDecision,
-	RpcSessionMigrationStatus,
 	RpcSessionState,
 } from "./rpc/rpc-types.js";

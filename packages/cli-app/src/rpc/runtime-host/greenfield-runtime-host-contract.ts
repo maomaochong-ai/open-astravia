@@ -8,7 +8,7 @@ import type {
 	CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
-import type { RpcRuntimeDecision, RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
+import type { RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
 import type { GreenfieldRuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import type { FileConversationOwnershipManagerOptions } from "@vetta/runtime-storage/conversation";
 import type { GreenfieldPrintSessionAdapter } from "../../greenfield-print-session-adapter.js";
@@ -34,7 +34,6 @@ export interface GreenfieldRpcRuntimeHostReady {
 	readonly session: GreenfieldRuntimeSession;
 	readonly runtime: GreenfieldRuntimeComposition;
 	readonly capabilities: RpcSessionCapabilities;
-	readonly runtimeDecision: RpcRuntimeDecision;
 }
 
 export type GreenfieldRpcRuntimeHostPreparation =
@@ -48,7 +47,6 @@ export interface GreenfieldPrintRuntimeHostReady {
 	readonly session: GreenfieldRuntimeSession;
 	readonly runtime: GreenfieldRuntimeComposition;
 	readonly printSession: GreenfieldPrintSessionAdapter;
-	readonly runtimeDecision: RpcRuntimeDecision;
 }
 
 export type GreenfieldPrintRuntimeHostPreparation =
@@ -60,7 +58,6 @@ export interface PrepareGreenfieldRuntimeHostOptions {
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
-	readonly requestedBackend?: RpcRuntimeDecision["requestedBackend"];
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
 	readonly createSessionId?: () => string;
 	readonly ownership?: FileConversationOwnershipManagerOptions;

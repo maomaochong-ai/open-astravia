@@ -103,34 +103,7 @@ export interface RpcSlashCommand {
 // RPC State
 // ============================================================================
 
-export type RpcRuntimeBackend = "legacy" | "greenfield" | "greenfield-im";
-/** @deprecated Automatic Extension fallback is no longer emitted. */
-export type RpcRuntimeFallbackReason = "legacy-session" | "legacy-extension";
-export type RpcSessionMigrationStatus = "migrated" | "reused" | "locked" | "not-representable" | "failed";
-
-export interface RpcRuntimeDecision {
-	readonly requestedBackend: RpcRuntimeBackend;
-	readonly effectiveBackend: RpcRuntimeBackend;
-	readonly fallbackReason?: RpcRuntimeFallbackReason;
-	readonly sessionMigration?: {
-		readonly status: RpcSessionMigrationStatus;
-		readonly errorCode?: string;
-		readonly issueCode?: string;
-		readonly issueCount?: number;
-	};
-	readonly extensionFallback?: {
-		readonly unsupportedEvents: readonly string[];
-		readonly unmetRuntimeCapabilities: readonly string[];
-	};
-}
-
 export interface RpcSessionState {
-	/**
-	 * The runtime that actually owns this session. This may differ from the
-	 * host's requested backend when a Greenfield startup falls back to Legacy.
-	 */
-	runtimeBackend: RpcRuntimeBackend;
-	runtimeDecision: RpcRuntimeDecision;
 	model?: Model<any>;
 	thinkingLevel: ThinkingLevel;
 	isStreaming: boolean;

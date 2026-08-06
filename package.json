@@ -55,7 +55,7 @@
 		"verify:ui:pw": "bun run --cwd packages/desktop-app verify:ui:pw",
 		"verify:ui:detach": "bun run --cwd packages/desktop-app verify:ui:detach",
 		"verify:ui:debug": "bun run --cwd packages/desktop-app verify:ui:debug",
-		"verify:ui:runtime-diff": "bun run --cwd packages/desktop-app verify:ui:runtime-diff",
+		"verify:ui:runtime-canary": "bun run --cwd packages/desktop-app verify:ui:runtime-canary",
 		"verify:artifact:installed": "bun run --cwd packages/cli-app verify:artifact:installed",
 		"verify:runtime-cutover": "bun run --cwd packages/cli-app verify:runtime-cutover",
 		"verify:agent-hosts": "bun scripts/verify-coding-agent-hosts.mjs",

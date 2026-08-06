@@ -40,15 +40,14 @@ import {
 	isSessionPathInDirectory,
 	PathFilteredRuntimeSessionCatalog,
 } from "./desktop-greenfield-session-catalog.js";
+import { DesktopHistoricalSessionImportBackend } from "./desktop-historical-session-import-backend.js";
 import { createDesktopLegacySessionFormatCompatibility } from "./desktop-legacy-session-format-compatibility.js";
-import { DesktopLegacySessionMigrationBackend } from "./desktop-legacy-session-migration-backend.js";
-import { desktopAgentRuntimeDecision } from "./desktop-runtime-decision.js";
 
 const log = getAppLogger("runtime");
 
 export interface DesktopRuntimeComposition {
 	readonly runtime: RuntimeHost;
-	readonly greenfieldBackendPool: DesktopGreenfieldRuntimeBackendPool;
+	readonly runtimeBackendPool: DesktopGreenfieldRuntimeBackendPool;
 }
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
@@ -70,7 +69,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		conversationCatalog,
 		(sessionPath) => !isSessionPathInDirectory(sessionPath, DEFAULT_IM_CONVERSATION_SESSION_DIR),
 	);
-	const greenfieldBackendPool = new DesktopGreenfieldRuntimeBackendPool({
+	const runtimeBackendPool = new DesktopGreenfieldRuntimeBackendPool({
 		compositionDefaults: {
 			modelRegistry: modelRuntime,
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
@@ -91,26 +90,22 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			});
 		},
 	});
-	const legacySessionBackend = new DesktopLegacySessionMigrationBackend(greenfieldBackendPool);
+	const historicalSessionImportBackend = new DesktopHistoricalSessionImportBackend(runtimeBackendPool);
 	const sessionBackend = new CatalogRoutedRuntimeHostSessionBackend({
-		defaultBackend: greenfieldBackendPool,
-		defaultRouteId: "greenfield",
+		defaultBackend: runtimeBackendPool,
+		defaultRouteId: "runtime",
 		routes: [
 			{
-				id: "legacy-migration",
+				id: "historical-session-import",
 				catalog: legacyFormat.sessionCatalog,
-				backend: legacySessionBackend,
+				backend: historicalSessionImportBackend,
 			},
-			{ id: "greenfield", catalog: desktopGreenfieldCatalog, backend: greenfieldBackendPool },
+			{ id: "runtime", catalog: desktopGreenfieldCatalog, backend: runtimeBackendPool },
 		],
 		onRoute: logSessionRoute,
 	});
-	const retirement = desktopAgentRuntimeDecision.requestedBackend === "legacy" ? " reason=legacy-retired" : "";
-	log.info(
-		`[agent-runtime] requested=${desktopAgentRuntimeDecision.requestedBackend} effective=${desktopAgentRuntimeDecision.effectiveBackend} source=${desktopAgentRuntimeDecision.source}${retirement}`,
-	);
 	return {
-		greenfieldBackendPool,
+		runtimeBackendPool,
 		runtime: new RuntimeHost({
 			additionalSkillPaths,
 			getDefaultExecutionMode,
@@ -165,9 +160,9 @@ function logSessionRoute(decision: RuntimeHostSessionBackendRouteDecision): void
 		return;
 	}
 	const reason =
-		decision.routeId === "legacy-migration"
-			? "legacy-session-migration"
-			: decision.routeId === "greenfield"
+		decision.routeId === "historical-session-import"
+			? "historical-session-import"
+			: decision.routeId === "runtime"
 				? "conversation-v2-catalog"
 				: "unknown-catalog";
 	log.info(`[agent-runtime] session-route backend=${decision.routeId ?? "unknown"} reason=${reason}`);

@@ -25,27 +25,11 @@ describe("RPC startup failure contract", () => {
 			success: false,
 			errorCode: "extension_incompatible",
 			error: "Extension is incompatible",
-			requestedBackend: "greenfield",
 			unsupportedEvents: ["future_event"],
 			unmetRuntimeCapabilities: ["event-handler"],
 		} as const satisfies RpcStartupFailure;
 
 		expect(stringifyRpcStartupFailure(failure)).toBe(`${JSON.stringify(failure)}\n`);
-	});
-
-	it("preserves a retired Legacy request in a Greenfield startup failure", () => {
-		const failure = {
-			type: "response",
-			command: "startup",
-			success: false,
-			errorCode: "extension_incompatible",
-			error: "Extension is incompatible",
-			requestedBackend: "legacy",
-			unsupportedEvents: ["future_event"],
-			unmetRuntimeCapabilities: ["event-handler"],
-		} as const satisfies RpcStartupFailure;
-
-		expect(isRpcStartupFailure(failure)).toBe(true);
 	});
 
 	it("rejects incomplete Extension incompatibility frames at runtime", () => {
@@ -55,7 +39,6 @@ describe("RPC startup failure contract", () => {
 			success: false,
 			errorCode: "extension_incompatible",
 			error: "Extension is incompatible",
-			requestedBackend: "greenfield",
 		};
 
 		expect(isRpcStartupFailure(incomplete)).toBe(false);
@@ -70,8 +53,7 @@ describe("RPC startup failure contract", () => {
 			command: "startup",
 			success: false,
 			errorCode: "session_version_unsupported",
-			error: "Legacy session cannot be resumed safely by the requested runtime",
-			requestedBackend: "greenfield-im",
+			error: "Historical session cannot be imported safely",
 			sessionPath: "C:/sessions/future.jsonl",
 			sourceVersion: 4,
 			issueCode: "invalid-header",

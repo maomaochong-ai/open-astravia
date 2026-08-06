@@ -37,11 +37,6 @@ function resolveVerificationEnv(state = readState()) {
 		VETTA_DESKTOP_RUNTIME_CANARY: "1",
 		VETTA_HOME: runtimeCanary.vettaHome,
 	};
-	if (runtimeCanary.selection === "default") {
-		delete env.VETTA_DESKTOP_AGENT_RUNTIME;
-	} else {
-		env.VETTA_DESKTOP_AGENT_RUNTIME = runtimeCanary.mode;
-	}
 	return env;
 }
 
@@ -122,8 +117,6 @@ function statusResult() {
 		desktopGeneration: state?.desktopGeneration ?? null,
 		runtimeCanary: state?.runtimeCanary
 			? {
-					selection: state.runtimeCanary.selection,
-					mode: state.runtimeCanary.mode,
 					workspace: state.runtimeCanary.workspace,
 					providerPid: state.runtimeCanary.providerPid,
 					installedCliPath: state.runtimeCanary.installedCliPath,
@@ -182,8 +175,7 @@ function selectMainWindow(uiInfo) {
 	if (selectResult.status !== 0) throw new Error("Unable to select the Vetta Desktop renderer tab");
 }
 
-async function startRuntimeCanaryProvider(selection) {
-	const mode = selection === "default" ? "greenfield" : selection;
+async function startRuntimeCanaryProvider() {
 	const fixtureRoot = join(runtimeDir, "runtime-canary", `${Date.now()}-${process.pid}`);
 	const readyFilePath = join(fixtureRoot, "provider-ready.json");
 	const exitReportPath = join(fixtureRoot, "host-exit.json");
@@ -192,7 +184,7 @@ async function startRuntimeCanaryProvider(selection) {
 	mkdirSync(fixtureRoot, { recursive: true });
 	const child = spawn(
 		"bun",
-		[runtimeCanaryProviderPath, "--root", fixtureRoot, "--ready-file", readyFilePath, "--mode", mode],
+		[runtimeCanaryProviderPath, "--root", fixtureRoot, "--ready-file", readyFilePath],
 		{
 			cwd: repoRoot,
 			env: baseVerificationEnv,
@@ -218,8 +210,7 @@ async function startRuntimeCanaryProvider(selection) {
 		}
 		const fixture = JSON.parse(readFileSync(readyFilePath, "utf8"));
 		if (
-			fixture?.mode !== mode ||
-			typeof fixture.vettaHome !== "string" ||
+			typeof fixture?.vettaHome !== "string" ||
 			typeof fixture.agentDir !== "string" ||
 			typeof fixture.workspace !== "string" ||
 			typeof fixture.requestLogPath !== "string" ||
@@ -235,7 +226,6 @@ async function startRuntimeCanaryProvider(selection) {
 			child,
 			state: {
 				...fixture,
-				selection,
 				providerPid: child.pid,
 				exitReportPath,
 				restartRequestPath,
@@ -264,26 +254,20 @@ async function stopRuntimeCanaryProvider(child) {
 	return false;
 }
 
-function parseRuntimeCanaryMode(args) {
+function parseRuntimeCanaryEnabled(args) {
 	if (args.length === 0) return null;
-	if (
-		args.length === 2 &&
-		args[0] === "--runtime-canary" &&
-		(args[1] === "default" || args[1] === "legacy" || args[1] === "greenfield")
-	) {
-		return args[1];
-	}
-	throw new Error('Expected "--runtime-canary default", "--runtime-canary legacy", or "--runtime-canary greenfield"');
+	if (args.length === 1 && args[0] === "--runtime-canary") return true;
+	throw new Error('Expected "--runtime-canary"');
 }
 
-async function startHost(runtimeCanaryMode) {
+async function startHost(runtimeCanaryEnabled) {
 	const existingState = readState();
 	if (existingState?.hostPid && isProcessAlive(existingState.hostPid)) {
 		throw new Error(`UI verification host is already running with pid ${existingState.hostPid}`);
 	}
 
 	mkdirSync(artifactDir, { recursive: true });
-	const runtimeCanary = runtimeCanaryMode ? await startRuntimeCanaryProvider(runtimeCanaryMode) : null;
+	const runtimeCanary = runtimeCanaryEnabled ? await startRuntimeCanaryProvider() : null;
 	let activeDesktop;
 	for (const signal of ["SIGINT", "SIGTERM"]) {
 		process.once(signal, () => activeDesktop?.child.kill(signal));
@@ -298,8 +282,6 @@ async function startHost(runtimeCanaryMode) {
 		artifactDir,
 		runtimeCanary: runtimeCanary
 			? {
-					selection: runtimeCanary.state.selection,
-					mode: runtimeCanary.state.mode,
 					workspace: runtimeCanary.state.workspace,
 					providerPid: runtimeCanary.state.providerPid,
 				}
@@ -479,7 +461,7 @@ function requireUiInfo() {
 
 const [command, ...args] = process.argv.slice(2);
 if (command === "start") {
-	await startHost(parseRuntimeCanaryMode(args));
+	await startHost(parseRuntimeCanaryEnabled(args));
 } else if (command === "status") {
 	const status = statusResult();
 	printJson(status);

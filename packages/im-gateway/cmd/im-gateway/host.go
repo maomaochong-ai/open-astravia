@@ -145,19 +145,6 @@ func runHostWithIO(opts hostOptions) int {
 	if initFrame.CodingAgent != nil && initFrame.CodingAgent.Bin != "" {
 		hclocalOpts.Bin = initFrame.CodingAgent.Bin
 		hclocalOpts.BinPrefixArgs = initFrame.CodingAgent.PrefixArgs
-		hclocalOpts.RuntimeBackend = initFrame.CodingAgent.RuntimeBackend
-		hclocalOpts.OnRuntimeDecision = func(decision hclocal.RuntimeDecision) {
-			emitLog("info", "coding-agent runtime resolved",
-				map[string]any{
-					"requestedRuntimeBackend": decision.RequestedBackend,
-					"actualRuntimeBackend":    decision.EffectiveBackend,
-					"fallbackReason":          decision.FallbackReason,
-					"sessionMigrationStatus":  decision.SessionMigrationStatus,
-					"sessionMigrationError":   decision.SessionMigrationError,
-					"sessionMigrationIssue":   decision.SessionMigrationIssue,
-					"sessionMigrationIssues":  decision.SessionMigrationIssues,
-				})
-		}
 		if initFrame.CodingAgent.RunAsNode {
 			if hclocalOpts.ExtraEnv == nil {
 				hclocalOpts.ExtraEnv = map[string]string{}
@@ -178,12 +165,11 @@ func runHostWithIO(opts hostOptions) int {
 		}
 		emitLog("info", "coding-agent binary configured by parent",
 			map[string]any{
-				"bin":            initFrame.CodingAgent.Bin,
-				"prefixArgs":     initFrame.CodingAgent.PrefixArgs,
-				"runtimeBackend": initFrame.CodingAgent.RuntimeBackend,
-				"runAsNode":      initFrame.CodingAgent.RunAsNode,
-				"packageDir":     initFrame.CodingAgent.PackageDir,
-				"serverUrl":      initFrame.CodingAgent.ServerURL,
+				"bin":        initFrame.CodingAgent.Bin,
+				"prefixArgs": initFrame.CodingAgent.PrefixArgs,
+				"runAsNode":  initFrame.CodingAgent.RunAsNode,
+				"packageDir": initFrame.CodingAgent.PackageDir,
+				"serverUrl":  initFrame.CodingAgent.ServerURL,
 			})
 	}
 	hostClient := hclocal.New(hclocalOpts)

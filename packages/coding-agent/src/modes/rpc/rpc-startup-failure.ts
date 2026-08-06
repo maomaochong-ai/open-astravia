@@ -9,12 +9,6 @@ const RpcStartupFailureBaseSchema = {
 	error: Type.String(),
 };
 
-const RpcRequestedRuntimeBackendSchema = Type.Union([
-	Type.Literal("legacy"),
-	Type.Literal("greenfield"),
-	Type.Literal("greenfield-im"),
-]);
-
 const RpcConversationOwnershipFailureSchema = Type.Object(
 	{
 		...RpcStartupFailureBaseSchema,
@@ -33,7 +27,6 @@ const RpcExtensionIncompatibilityFailureSchema = Type.Object(
 	{
 		...RpcStartupFailureBaseSchema,
 		errorCode: Type.Literal("extension_incompatible"),
-		requestedBackend: RpcRequestedRuntimeBackendSchema,
 		unsupportedEvents: Type.Array(Type.String()),
 		unmetRuntimeCapabilities: Type.Array(Type.String()),
 	},
@@ -48,7 +41,6 @@ const RpcSessionIncompatibilityFailureSchema = Type.Object(
 			Type.Literal("session_incompatible"),
 			Type.Literal("session_version_unsupported"),
 		]),
-		requestedBackend: RpcRequestedRuntimeBackendSchema,
 		sessionPath: Type.String(),
 		sourceVersion: Type.Optional(Type.Integer({ minimum: 1 })),
 		issueCode: Type.Optional(Type.String()),

@@ -15,11 +15,11 @@ import (
 const (
 	realAgentBinaryEnv     = "VETTA_TEST_AGENT_BIN"
 	realAgentPackageDirEnv = "VETTA_TEST_PACKAGE_DIR"
-	realAgentReply         = "IM_REAL_AGENT_GREENFIELD_REPLY"
+	realAgentReply         = "IM_REAL_AGENT_REPLY"
 	realAgentFileContent   = "IM real Agent tool loop content"
 )
 
-func TestRealAgent_GreenfieldIMToolLoopAndResume(t *testing.T) {
+func TestRealAgent_IMToolLoopAndResume(t *testing.T) {
 	binaryPath := os.Getenv(realAgentBinaryEnv)
 	packageDir := os.Getenv(realAgentPackageDirEnv)
 	if binaryPath == "" || packageDir == "" {
@@ -44,7 +44,6 @@ func TestRealAgent_GreenfieldIMToolLoopAndResume(t *testing.T) {
 	defer provider.Close()
 	writeRealAgentConfiguration(t, agentDir, provider.URL)
 
-	decisions := make(chan RuntimeDecision, 2)
 	client := New(Options{
 		Bin: binaryPath,
 		BinPrefixArgs: []string{
@@ -58,7 +57,6 @@ func TestRealAgent_GreenfieldIMToolLoopAndResume(t *testing.T) {
 			"--no-themes",
 			"--scenario", "im-claw",
 		},
-		RuntimeBackend:   "greenfield-im",
 		EnableHostBridge: true,
 		SessionDir:       sessionDir,
 		HandshakeTimeout: 30 * time.Second,
@@ -67,9 +65,6 @@ func TestRealAgent_GreenfieldIMToolLoopAndResume(t *testing.T) {
 			"NO_COLOR":               "1",
 			"VETTA_CODING_AGENT_DIR": agentDir,
 			"VETTA_PACKAGE_DIR":      packageDir,
-		},
-		OnRuntimeDecision: func(decision RuntimeDecision) {
-			decisions <- decision
 		},
 	})
 
@@ -86,8 +81,6 @@ func TestRealAgent_GreenfieldIMToolLoopAndResume(t *testing.T) {
 			_ = first.Close()
 		}
 	}()
-	assertGreenfieldIMDecision(t, receiveRuntimeDecision(t, ctx, decisions))
-
 	sessionPath := first.SessionPath()
 	assertPathWithin(t, sessionDir, sessionPath)
 	if _, err := os.Stat(sessionPath); err != nil {
@@ -126,7 +119,6 @@ func TestRealAgent_GreenfieldIMToolLoopAndResume(t *testing.T) {
 		t.Fatalf("resume real Agent session after close: %v", err)
 	}
 	defer second.Close()
-	assertGreenfieldIMDecision(t, receiveRuntimeDecision(t, ctx, decisions))
 	if second.SessionPath() != sessionPath {
 		t.Fatalf("resumed Agent session path = %s, want %s", second.SessionPath(), sessionPath)
 	}
@@ -151,27 +143,6 @@ func TestRealAgent_GreenfieldIMToolLoopAndResume(t *testing.T) {
 		t.Fatalf("close resumed real Agent session: %v", err)
 	}
 	assertPathRemoved(t, ownershipLock)
-}
-
-func receiveRuntimeDecision(t *testing.T, ctx context.Context, decisions <-chan RuntimeDecision) RuntimeDecision {
-	t.Helper()
-	select {
-	case decision := <-decisions:
-		return decision
-	case <-ctx.Done():
-		t.Fatalf("wait for real Agent runtime decision: %v", ctx.Err())
-		return RuntimeDecision{}
-	}
-}
-
-func assertGreenfieldIMDecision(t *testing.T, decision RuntimeDecision) {
-	t.Helper()
-	if decision.RequestedBackend != "greenfield-im" || decision.EffectiveBackend != "greenfield-im" {
-		t.Fatalf("unexpected real Agent runtime decision: %+v", decision)
-	}
-	if decision.FallbackReason != "" || decision.SessionMigrationError != "" {
-		t.Fatalf("real Agent unexpectedly used fallback or failed migration: %+v", decision)
-	}
 }
 
 func waitForAgentEnd(t *testing.T, ctx context.Context, events <-chan hostclient.AgentEvent) []hostclient.AgentEvent {

@@ -51,8 +51,6 @@ func main() {
 	crash := flag.Bool("crash", false, "")
 	silent := flag.Bool("silent", false, "")
 	echo := flag.Bool("echo", false, "")
-	runtimeBackend := flag.String("agent-runtime", "", "")
-	actualRuntime := flag.String("actual-runtime", "", "")
 	// Accept and ignore the flags coding-agent itself uses so the test
 	// invocation looks realistic.
 	_ = flag.String("mode", "rpc", "")
@@ -103,32 +101,13 @@ func main() {
 		}
 		switch cmd.Type {
 		case "get_state":
-			resolvedRuntime := *actualRuntime
-			if resolvedRuntime == "" {
-				resolvedRuntime = *runtimeBackend
-			}
-			runtimeDecision := map[string]any{
-				"requestedBackend": *runtimeBackend,
-				"effectiveBackend": resolvedRuntime,
-			}
-			if resolvedRuntime == "legacy" && *runtimeBackend != resolvedRuntime {
-				runtimeDecision["fallbackReason"] = "legacy-session"
-				runtimeDecision["sessionMigration"] = map[string]any{
-					"status":     "not-representable",
-					"errorCode":  "INVALID_LEGACY_SESSION_EVENT",
-					"issueCode":  "unsupported-record",
-					"issueCount": 2,
-				}
-			}
 			enc.Encode(map[string]any{
 				"id":      cmd.ID,
 				"type":    "response",
 				"command": "get_state",
 				"success": true,
 				"data": map[string]any{
-					"sessionId":     "test-session",
-					"runtimeBackend": resolvedRuntime,
-					"runtimeDecision": runtimeDecision,
+					"sessionId": "test-session",
 				},
 			})
 		case "prompt":
@@ -197,76 +176,6 @@ func TestOpenSession_HandshakeSuccess(t *testing.T) {
 
 	if sess.SessionPath() == "" {
 		t.Error("SessionPath should be set")
-	}
-}
-
-func TestOpenSession_ReportsRequestedAndActualRuntime(t *testing.T) {
-	bin := buildFakeAgent(t)
-	resolved := make(chan [2]string, 1)
-	c := New(Options{
-		Bin:              bin,
-		BinPrefixArgs:    []string{"--actual-runtime", "legacy"},
-		RuntimeBackend:   "greenfield-im",
-		HandshakeTimeout: 5 * time.Second,
-		CloseTimeout:     2 * time.Second,
-		OnRuntimeResolved: func(requested, actual string) {
-			resolved <- [2]string{requested, actual}
-		},
-	})
-
-	sess, err := c.OpenSession(context.Background(), t.TempDir(), filepath.Join(t.TempDir(), "session.jsonl"))
-	if err != nil {
-		t.Fatalf("OpenSession: %v", err)
-	}
-	defer sess.Close()
-
-	select {
-	case got := <-resolved:
-		want := [2]string{"greenfield-im", "legacy"}
-		if got != want {
-			t.Fatalf("runtime resolution: got %v, want %v", got, want)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("runtime resolution callback was not invoked")
-	}
-}
-
-func TestOpenSession_ReportsStructuredRuntimeDecision(t *testing.T) {
-	bin := buildFakeAgent(t)
-	resolved := make(chan RuntimeDecision, 1)
-	c := New(Options{
-		Bin:              bin,
-		BinPrefixArgs:    []string{"--actual-runtime", "legacy"},
-		RuntimeBackend:   "greenfield-im",
-		HandshakeTimeout: 5 * time.Second,
-		CloseTimeout:     2 * time.Second,
-		OnRuntimeDecision: func(decision RuntimeDecision) {
-			resolved <- decision
-		},
-	})
-
-	sess, err := c.OpenSession(context.Background(), t.TempDir(), filepath.Join(t.TempDir(), "session.jsonl"))
-	if err != nil {
-		t.Fatalf("OpenSession: %v", err)
-	}
-	defer sess.Close()
-
-	select {
-	case got := <-resolved:
-		want := (RuntimeDecision{
-			RequestedBackend:       "greenfield-im",
-			EffectiveBackend:       "legacy",
-			FallbackReason:         "legacy-session",
-			SessionMigrationStatus: "not-representable",
-			SessionMigrationError:  "INVALID_LEGACY_SESSION_EVENT",
-			SessionMigrationIssue:  "unsupported-record",
-			SessionMigrationIssues: 2,
-		})
-		if got != want {
-			t.Fatalf("runtime decision: got %+v, want %+v", got, want)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("runtime decision callback was not invoked")
 	}
 }
 

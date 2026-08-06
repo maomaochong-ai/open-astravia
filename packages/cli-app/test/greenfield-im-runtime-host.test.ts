@@ -50,14 +50,7 @@ describe("Greenfield IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 		});
 
-		expect(result).toMatchObject({
-			kind: "greenfield",
-			runtimeDecision: {
-				requestedBackend: "greenfield-im",
-				effectiveBackend: "greenfield-im",
-				sessionMigration: { status: "migrated" },
-			},
-		});
+		expect(result).toMatchObject({ kind: "greenfield" });
 		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
 		preparedHosts.push(result);
 		expect(result.session.sessionId).toMatch(/^legacy-import-/);

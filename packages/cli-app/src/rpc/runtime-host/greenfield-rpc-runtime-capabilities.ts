@@ -4,7 +4,6 @@ import { createHostBashExecutor } from "@vetta/coding-agent/host-services";
 import {
 	GREENFIELD_FULL_RPC_PROFILE,
 	GreenfieldRpcBashCapability,
-	type RpcRuntimeDecision,
 	type RpcSessionCapabilities,
 } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
@@ -19,7 +18,6 @@ export interface CreateGreenfieldRpcRuntimeCapabilitiesOptions {
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly assembly: GreenfieldCliSessionAssembly;
 	readonly backend: "greenfield" | "greenfield-im";
-	readonly runtimeDecision: RpcRuntimeDecision;
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
 }
 
@@ -45,18 +43,15 @@ export async function createGreenfieldRpcRuntimeCapabilities(
 						sessionHost: assembly.sessionHost,
 						runtime: assembly.runtime,
 						resourceLoader: bootstrap.resourceLoader,
-						runtimeDecision: options.runtimeDecision,
 						htmlExporter: options.htmlExporter,
 						extensionCommandHost: assembly.extensionSessionHost,
 						disposeSessionResources: false,
 					})
 				: new GreenfieldRpcSessionAdapter({
 						profile: GREENFIELD_FULL_RPC_PROFILE,
-						runtimeBackend: "greenfield",
 						sessionHost: assembly.sessionHost,
 						runtime: assembly.runtime,
 						resourceLoader: bootstrap.resourceLoader,
-						runtimeDecision: options.runtimeDecision,
 						htmlExporter: options.htmlExporter,
 						retryController: assembly.sessionHost.retryController,
 						turnExecutor: assembly.sessionHost.turnExecutor,

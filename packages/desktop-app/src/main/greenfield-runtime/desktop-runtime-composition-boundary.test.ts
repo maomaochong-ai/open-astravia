@@ -5,7 +5,7 @@ const productionSources = {
 	composition: readSource("./desktop-runtime-composition.ts"),
 	hostServices: readSource("./desktop-coding-agent-host-services.ts"),
 	knowledgeFactory: readSource("../knowledge/processing-session-factory.ts"),
-	legacyMigrationBackend: readSource("./desktop-legacy-session-migration-backend.ts"),
+	historicalImportBackend: readSource("./desktop-historical-session-import-backend.ts"),
 	legacyFormatCompatibility: readSource("./desktop-legacy-session-format-compatibility.ts"),
 	poller: readSource("../knowledge/poller.ts"),
 	runtimeEntry: readSource("../runtime.ts"),
@@ -29,11 +29,11 @@ describe("Desktop Runtime composition boundary", () => {
 		expect(productionSources.legacyFormatCompatibility).not.toContain("LegacyRuntimeSessionFileHistoryReader");
 		expect(productionSources.composition).not.toContain("LegacyCodingAgentSessionBackend");
 		expect(productionSources.composition).not.toContain("createDesktopLegacyExecutionCompatibility");
-		expect(productionSources.composition).toContain("DesktopLegacySessionMigrationBackend");
+		expect(productionSources.composition).toContain("DesktopHistoricalSessionImportBackend");
 		expect(productionSources.composition).toContain("createDesktopLegacySessionFormatCompatibility");
 		expect(productionSources.composition).toContain("createCodingAgentSharedModelController");
-		expect(productionSources.legacyMigrationBackend).not.toContain("LegacyCodingAgentSessionBackend");
-		expect(productionSources.legacyMigrationBackend).toContain("migrateCodingAgentHistoricalSession");
+		expect(productionSources.historicalImportBackend).not.toContain("LegacyCodingAgentSessionBackend");
+		expect(productionSources.historicalImportBackend).toContain("migrateCodingAgentHistoricalSession");
 		expect(productionSources.knowledgeFactory).not.toContain("createLegacyKnowledgeProcessingSessionFactory");
 	});
 

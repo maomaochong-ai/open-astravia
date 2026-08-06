@@ -18,17 +18,12 @@ export type {
 	RpcExtensionUIRequest,
 	RpcExtensionUIResponse,
 	RpcResponse,
-	RpcRuntimeDecision,
 	RpcSessionState,
 } from "./rpc-types.js";
-
-import type { RpcRuntimeDecision } from "./rpc-types.js";
 
 export interface RunRpcModeOptions {
 	/** Register the im_send_attachment tool and accept host_response frames. */
 	enableHostBridge?: boolean;
-	/** Runtime selector decision exposed by get_state for host observation. */
-	runtimeDecision?: RpcRuntimeDecision;
 }
 
 interface RpcModeRuntimeOptions extends RunRpcModeOptions {

@@ -35,14 +35,6 @@ vi.mock("../greenfield-runtime/desktop-coding-agent-host-services.js", () => ({
 	getOrCreateSharedModelRuntime: vi.fn(),
 }));
 
-vi.mock("../greenfield-runtime/desktop-runtime-decision.js", () => ({
-	desktopAgentRuntimeDecision: {
-		requestedBackend: "default",
-		effectiveBackend: "greenfield",
-		source: "default",
-	},
-}));
-
 vi.mock("../ipc/fs.js", () => ({
 	KB_PROCESSING_CWD: "C:/knowledge/processing",
 	KB_PROCESSING_SESSION_DIR: "C:/knowledge/processing/.vetta/sessions",
@@ -101,9 +93,8 @@ describe("Knowledge Poller shutdown", () => {
 		vi.clearAllMocks();
 	});
 
-	it("uses the shared process decision for Knowledge processing", () => {
+	it("uses the shared model service for Knowledge processing", () => {
 		expect(knowledgeFactoryOptions).toEqual({
-			backend: "greenfield",
 			getModelRegistry: expect.any(Function),
 		});
 	});

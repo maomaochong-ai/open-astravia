@@ -6,7 +6,7 @@ import { DesktopRuntimeLifecycle } from "./greenfield-runtime/desktop-runtime-li
 // 进程级共享 RuntimeHost：session IPC、定时任务与批量任务必须复用同一实例，
 // 避免同一进程重复申请 Session 文件锁。
 let sharedRuntime: RuntimeHost | null = null;
-let sharedGreenfieldBackendPool: DesktopGreenfieldRuntimeBackendPool | null = null;
+let sharedRuntimeBackendPool: DesktopGreenfieldRuntimeBackendPool | null = null;
 let sharedRuntimeShutdownPromise: Promise<void> | null = null;
 const sharedRuntimeLifecycle = new DesktopRuntimeLifecycle();
 
@@ -19,7 +19,7 @@ export function getSharedRuntime(): RuntimeHost {
 	if (!sharedRuntime) {
 		const composition = createDesktopRuntimeComposition();
 		sharedRuntime = composition.runtime;
-		sharedGreenfieldBackendPool = composition.greenfieldBackendPool;
+		sharedRuntimeBackendPool = composition.runtimeBackendPool;
 		sharedRuntimeLifecycle.markRunning();
 	}
 	return sharedRuntime;
@@ -33,15 +33,15 @@ export async function disposeSharedRuntime(): Promise<void> {
 	beginSharedRuntimeShutdown();
 	if (sharedRuntimeShutdownPromise) return await sharedRuntimeShutdownPromise;
 	const runtime = sharedRuntime;
-	const greenfieldBackendPool = sharedGreenfieldBackendPool;
+	const runtimeBackendPool = sharedRuntimeBackendPool;
 	sharedRuntime = null;
-	sharedGreenfieldBackendPool = null;
+	sharedRuntimeBackendPool = null;
 	sharedRuntimeShutdownPromise = (async () => {
 		try {
 			await runtime?.disposeAllSessions();
 		} finally {
 			try {
-				await greenfieldBackendPool?.dispose();
+				await runtimeBackendPool?.dispose();
 			} finally {
 				sharedRuntimeLifecycle.markStopped();
 			}
