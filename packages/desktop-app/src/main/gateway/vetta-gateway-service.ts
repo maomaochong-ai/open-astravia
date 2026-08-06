@@ -93,7 +93,10 @@ export async function requestVettaGateway<T = unknown>(
 	const timeoutMs = Math.min(Math.max(request.timeoutMs ?? DEFAULT_TIMEOUT_MS, 1), MAX_TIMEOUT_MS);
 
 	let token = currentToken();
-	if (!token) return { ok: false, status: 401, code: -1, message: "Not signed in" };
+	if (!token) {
+		log.warn(`网关请求被拒绝 (${request.path}): 当前未登录`);
+		return { ok: false, status: 401, code: -1, message: "Not signed in" };
+	}
 
 	const send = async (bearer: string): Promise<Response> => {
 		const controller = new AbortController();
@@ -123,12 +126,17 @@ export async function requestVettaGateway<T = unknown>(
 		if (response.status === 401) {
 			const outcome = await tryRefreshAccessToken();
 			if (outcome.status !== "ok") {
+				log.warn(`网关鉴权失败 (${request.path}): token refresh ${outcome.status}`);
 				return { ok: false, status: 401, code: -1, message: "Unauthorized" };
 			}
 			token = outcome.accessToken;
 			response = await send(token);
 		}
-		return unwrap<T>(response.status, await readBody(response));
+		const result = unwrap<T>(response.status, await readBody(response));
+		if (!result.ok) {
+			log.warn(`网关请求失败 (${request.path}): HTTP ${result.status}, code=${result.code}`);
+		}
+		return result;
 	} catch (error) {
 		log.warn(`网关请求失败 (${request.path}):`, error);
 		return {

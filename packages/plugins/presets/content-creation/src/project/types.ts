@@ -1,3 +1,5 @@
+import type { PluginMediaErrorCode } from "@vetta-org/plugin-sdk";
+
 export const CONTENT_CREATION_SCHEMA_VERSION = 2 as const;
 
 export type ContentNodeKind = "prompt" | "image-generator" | "video-generator" | "asset" | "output";
@@ -87,6 +89,7 @@ export interface GenerationJob {
 	progress: number;
 	assetId?: string;
 	error?: string;
+	errorCode?: PluginMediaErrorCode;
 	createdAt: string;
 	updatedAt: string;
 }

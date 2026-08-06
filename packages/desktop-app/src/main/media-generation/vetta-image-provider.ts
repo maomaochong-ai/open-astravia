@@ -52,6 +52,7 @@ function sniffMime(base64: string): string {
 }
 
 function gatewayFailure(code: number, status: number, message: string): MediaFailure {
+	if (status === 401) return { code: "unauthenticated", message, retryable: false };
 	if (code === IMAGE_ERROR_CODES.QUOTA_EXHAUSTED) return { code: "quota-exhausted", message, retryable: false };
 	if (code === IMAGE_ERROR_CODES.MODEL_NOT_IN_PLAN || code === IMAGE_ERROR_CODES.SUBSCRIPTION_INACTIVE) {
 		return { code: "not-entitled", message, retryable: false };

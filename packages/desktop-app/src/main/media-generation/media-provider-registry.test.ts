@@ -97,6 +97,22 @@ describe("MediaProviderRegistry", () => {
 });
 
 describe("Vetta image provider", () => {
+	it("maps gateway authentication failures to unauthenticated media jobs", async () => {
+		const provider = createVettaImageProvider(async () => ({
+			ok: false,
+			status: 401,
+			code: -1,
+			message: "Not signed in",
+		}));
+
+		await expect(
+			provider.createJob({ kind: "image", mode: "text-to-image", prompt: "draw a fox", references: [] }, { signal }),
+		).resolves.toMatchObject({
+			status: "failed",
+			error: { code: "unauthenticated", message: "Not signed in", retryable: false },
+		});
+	});
+
 	it("owns the gateway route and never accepts one from the caller", async () => {
 		const requests: VettaGatewayRequest[] = [];
 		const requestGateway = async <T>(request: VettaGatewayRequest): Promise<VettaGatewayResponse<T>> => {

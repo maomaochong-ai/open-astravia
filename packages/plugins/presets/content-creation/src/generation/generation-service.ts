@@ -1,3 +1,4 @@
+import { PluginMediaError } from "@vetta-org/plugin-sdk";
 import type {
 	AssetKind,
 	ContentAsset,
@@ -278,7 +279,10 @@ export class ContentGenerationService {
 			]);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
-			await this.workspace.dispatch(cwd, [{ type: "job.fail", jobId, error: message }]);
+			const errorCode = error instanceof PluginMediaError ? error.code : undefined;
+			await this.workspace.dispatch(cwd, [
+				{ type: "job.fail", jobId, error: message, ...(errorCode ? { errorCode } : {}) },
+			]);
 			throw error;
 		}
 	}

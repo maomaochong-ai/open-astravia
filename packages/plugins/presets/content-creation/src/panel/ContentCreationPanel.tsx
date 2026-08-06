@@ -74,8 +74,9 @@ export function ContentCreationPanel() {
 			try {
 				setError(null);
 				await generation.runNode(cwd, nodeId);
-			} catch {
-				// Generation failures are persisted on the node job and rendered there.
+			} catch (generationError) {
+				// The job owns the user-facing error; renderer logging preserves diagnostic details.
+				console.error("[plugin:content-creation] generation failed", generationError);
 			}
 		},
 		[cwd, generation],

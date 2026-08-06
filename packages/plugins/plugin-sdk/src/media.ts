@@ -11,6 +11,7 @@ export type PluginMediaGenerationMode =
 export type PluginMediaJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export type PluginMediaErrorCode =
+	| "unauthenticated"
 	| "provider-unavailable"
 	| "operation-unsupported"
 	| "invalid-request"

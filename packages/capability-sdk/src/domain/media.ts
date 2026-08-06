@@ -28,6 +28,7 @@ export const MEDIA_JOB_STATUSES = {
 } as const;
 
 export const MEDIA_ERROR_CODES = {
+	UNAUTHENTICATED: "unauthenticated",
 	PROVIDER_UNAVAILABLE: "provider-unavailable",
 	OPERATION_UNSUPPORTED: "operation-unsupported",
 	INVALID_REQUEST: "invalid-request",

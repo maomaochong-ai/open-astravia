@@ -4961,6 +4961,10 @@
               "code": {
                 "anyOf": [
                   {
+                    "const": "unauthenticated",
+                    "type": "string"
+                  },
+                  {
                     "const": "provider-unavailable",
                     "type": "string"
                   },
@@ -5142,6 +5146,10 @@
               "code": {
                 "anyOf": [
                   {
+                    "const": "unauthenticated",
+                    "type": "string"
+                  },
+                  {
                     "const": "provider-unavailable",
                     "type": "string"
                   },
@@ -5322,6 +5330,10 @@
             "properties": {
               "code": {
                 "anyOf": [
+                  {
+                    "const": "unauthenticated",
+                    "type": "string"
+                  },
                   {
                     "const": "provider-unavailable",
                     "type": "string"

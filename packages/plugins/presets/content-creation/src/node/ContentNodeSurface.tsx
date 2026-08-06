@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { type PluginMediaErrorCode, useTranslation } from "@vetta-org/plugin-sdk";
 import { Spin } from "@vetta/ui";
 import { memo } from "react";
 import type {
@@ -37,6 +37,19 @@ const captionTextStyle = {
 	fontSize: "clamp(11px, 3cqw, 14px)",
 	lineHeight: 1.4,
 } as const;
+
+const GENERATION_ERROR_KEYS: Record<PluginMediaErrorCode, string> = {
+	unauthenticated: "job.error.unauthenticated",
+	"provider-unavailable": "job.error.providerUnavailable",
+	"operation-unsupported": "job.error.operationUnsupported",
+	"invalid-request": "job.error.invalidRequest",
+	"not-entitled": "job.error.notEntitled",
+	"quota-exhausted": "job.error.quotaExhausted",
+	"content-rejected": "job.error.contentRejected",
+	"provider-timeout": "job.error.providerTimeout",
+	"provider-failed": "job.error.providerFailed",
+	cancelled: "job.error.cancelled",
+};
 
 function MediaPlaceholder({
 	kind,
@@ -90,6 +103,7 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	const isMedia = kind === "image-generator" || kind === "video-generator";
 	const isBusy = status === "running" || status === "queued";
 	const emptyText = kind === "prompt" ? t("node.prompt.doubleClickToEdit") : t(descriptionKey);
+	const jobError = job?.errorCode ? t(GENERATION_ERROR_KEYS[job.errorCode]) : job?.error;
 
 	if (kind === "asset") return <ContentAssetNodeSurface assets={assets} />;
 	if (kind === "prompt") {
@@ -166,13 +180,13 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 						</span>
 					</div>
 				) : null}
-				{job?.status === "failed" && job.error ? (
+				{job?.status === "failed" && jobError ? (
 					<div
 						className="absolute right-2 top-2 max-w-[calc(100%_-_16px)] truncate rounded-md border border-destructive/30 bg-destructive/90 px-2 py-1 font-medium text-destructive-foreground shadow-sm"
 						style={captionTextStyle}
 						title={job.error}
 					>
-						{t("job.failed")}
+						{jobError}
 					</div>
 				) : null}
 			</div>

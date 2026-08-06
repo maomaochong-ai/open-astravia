@@ -52,6 +52,14 @@ describe("media domain capabilities", () => {
 	it("validates terminal media jobs", () => {
 		expect(
 			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseOutput({
+				id: "job-auth",
+				providerId: "desktop-app:vetta",
+				status: MEDIA_JOB_STATUSES.FAILED,
+				error: { code: "unauthenticated", message: "Not signed in", retryable: false },
+			}),
+		).toMatchObject({ status: "failed", error: { code: "unauthenticated" } });
+		expect(
+			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseOutput({
 				id: "job-1",
 				providerId: "desktop-app:vetta",
 				status: MEDIA_JOB_STATUSES.SUCCEEDED,
