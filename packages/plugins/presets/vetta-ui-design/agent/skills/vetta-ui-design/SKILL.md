@@ -7,7 +7,7 @@ agent_mode: work
 # Vetta UI Design
 
 ```text
-login-app.vetd          ← canvas manifest (positions/sizes). NEVER edit.
+login-app.vetd          ← canvas manifest. GENERATED — see below.
 login-app.vetd.d/
   frames/               ← one TSX file = one canvas frame = one route
     index.tsx           ← the site root "/"
@@ -20,7 +20,16 @@ login-app.vetd.d/
 ```
 
 You write the sidecar sources; the plugin owns the manifest and reconciles
-automatically. Every save hot-reloads the canvas.
+automatically. Every save hot-reloads the canvas. Two consequences worth
+internalising before you start:
+
+- **The file name IS the route and the frame id.** Create a screen by writing
+  `frames/<kebab-id>.tsx`, delete one by deleting the file. There is no
+  registration step anywhere.
+- **Editing the `.vetd` manifest is pointless, not just forbidden.** It is
+  regenerated from your tsx declarations on every save, so any hand-edit is
+  overwritten seconds later. If a frame is not showing up the way you expect,
+  the answer is always in the tsx.
 
 ## It is a project, not a picture
 
@@ -39,36 +48,36 @@ If changing the nav bar means editing more than one file, the structure is
 wrong. Posters, slides and infographics are standalone artwork — steps 1-3 do
 not apply to them.
 
-## Hard rules
+## The one rule you have to hold in your head
 
-1. **Never edit the `.vetd` manifest.** Your channel is the sidecar sources.
-2. **Frame meta is the FIRST statement**, one flat line (regex-parsed):
-   `export const frame = { width: 390, height: 844, title: "登录" };`
-   Omit `width`/`height` and the frame still reaches the canvas — it is rendered
-   at a size inferred from the rest of the design — but that is a guess, and
-   `issues` will keep asking you to declare the real one. Sizes come from the
-   product type below; when the design already has frames, `vetd_status` lists
-   their sizes — match them unless the new screen is a different product type.
-3. **One default-exported component per frame**, rendering edge-to-edge — no
-   page margins.
-4. **Frame id = file basename = route.** Create/delete a frame by writing or
-   deleting `frames/<kebab-id>.tsx`.
-5. **No extra npm dependencies.** Available: react, react-router, Tailwind v4,
-   Iconify. No web fonts — build contrast with size/weight/tracking.
+**Frame meta is the FIRST statement**, one flat line (regex-parsed):
 
-### Checked mechanically — copy the templates and these never come up
+```tsx
+export const frame = { width: 390, height: 844, title: "登录" };
+```
 
-A checker parses every source you write. Violations come back as `issues` on
-`vetd_screenshot` and `vetd_status`, naming the file and line. The templates
-below are already correct on all of them:
+Omit `width`/`height` and the frame still reaches the canvas — rendered at a
+size inferred from the rest of the design — but that is a guess, and `issues`
+will keep asking. Sizes come from the product type below; when the design
+already has frames, `vetd_status` lists their sizes — match them unless the new
+screen is a different product type.
+
+It gets its own section because it is the only convention here that needs
+judgment from you. Everything else is either caught automatically or visible in
+the render.
+
+### Caught for you — copy the templates and these never come up
+
+A checker parses every source you write; violations come back as `issues` on
+`vetd_screenshot` and `vetd_status`, naming the file and line. A file that does
+not parse, or that imports a package the engine does not have, comes back the
+same way. The templates below are already correct on all of it:
 
 - `h-full`, never `h-screen`/`min-h-screen` — a frame is a fixed-size canvas,
   not a viewport.
 - Icons are Iconify classes: `<span className="icon-[lucide--search] size-4" />`.
   Never your own icon component, never inline SVG paths. Offline sets: `lucide`,
   `tabler`, `mdi`, `simple-icons`.
-- Theme tokens in `className`, never a hex color. Add tokens to `theme.css`
-  `@theme` instead of hardcoding.
 - `<Link to>` from react-router for internal screens, never `<a href="/…">`, and
   never a locally redefined `Link`/`useNavigate`/`useLocation`.
 - No remote image URLs (`<img>`, `background-image`) — they break screenshots.
@@ -76,6 +85,17 @@ below are already correct on all of them:
 - Normal formatting, one element per line for nested markup. Everything on one
   line destroys element→source mapping, and the user's "让 Vetta 调整" then
   points every element at the same line.
+- One default export per frame, rendering edge-to-edge — no page margins.
+- Only react, react-router, Tailwind v4 and Iconify are installed. No web fonts
+  — build contrast with size/weight/tracking.
+
+### The one thing nothing catches: a token that does not exist
+
+Theme tokens in `className` (`bg-primary`, `text-muted`) instead of hex — but
+**the token must exist in `theme.css` `@theme`**. Tailwind generates nothing for
+a class it cannot resolve, so `bg-brand` without `--color-brand` leaves the
+element with no background at all. Same mechanism as a blank icon: the source
+reads perfectly, and nothing renders. Add the token first, then use it.
 
 ## Pick the product type
 
@@ -167,8 +187,15 @@ export function NavBar() {
 
 ## Workflow
 
-**New document**: `vetd_create` → pick the product type → if the user named no
-style, see `references/design-systems.md`.
+**New document**: `vetd_create` → pick the product type → settle the style.
+The plugin ships curated design systems (Linear, Stripe, Notion, Apple, …), each
+a hand-tuned `theme.css` + `DESIGN.md`; `vetd_design_systems` lists them and its
+own description explains the three usages. Two judgment calls it cannot make for
+you: when the user named a system outright, apply it directly; when they only
+described a vibe ("像个开发者工具", "make it feel premium"), shortlist 2-4 by
+the blurbs and `present` them rather than picking silently. Applying on an empty
+design writes `theme.css` + `DESIGN.md` for you — do NOT rewrite them
+afterwards, just build frames that follow `DESIGN.md`.
 
 **Existing document**: `vetd_status` ONCE first. It returns the frame ids/sizes,
 `sharedShell` (existing `_layout.tsx` + `components/` — reuse them) and
@@ -193,17 +220,35 @@ Single screens, posters and slides skip the skeleton pass — just write the fil
 Read the returned PNG to actually see it. You are looking for rendering defects
 the code cannot show you — run the checklist in `references/quality.md`, which
 starts with the three that account for most of them: **misalignment**,
-**unintended text wrapping**, and **blank icons**. A frame that does not parse
+**unintended text wrapping**, and **classes that resolve to nothing** (a blank
+icon, or a surface whose theme token was never defined). A frame that does not parse
 returns the syntax error instead of an image — fix the reported line and
 screenshot again.
 
 **Check the structure**: for a UI product with more than one screen, or with
-chrome that repeats across screens, read `references/self-check.md` before
-reporting back. It carries the four things the checker cannot see.
+chrome that repeats across screens, answer these four before reporting back.
+They are the ones no checker can see; skip them for posters, slides and
+single-screen designs.
+
+1. **Chrome defined once?** Grep for the nav bar's markup — it must appear in
+   exactly one file. Two frames both containing the sidebar means extract it.
+2. **Shell survives navigation?** Persistent chrome belongs in
+   `frames/_layout.tsx`. Per-frame `AppShell` is acceptable only combined with
+   `<Link>` navigation, otherwise nothing persists at all.
+3. **Props actually match?** Nothing typechecks these sources at runtime, so a
+   renamed prop fails silently — a component taking `name` but always called
+   with `icon` renders one fallback everywhere, and the source reads fine.
+4. **Every touched frame screenshotted, and the PNG actually Read?**
 
 **Editing from an attachment**: the payload carries the exact
 `frames/xxx.tsx:LINE` plus DOM path/classes/text. Edit that location. If it
 points into `components/`, the change hits every frame using it — say so.
+
+**Done** means: every frame you touched has been screenshotted and the image
+Read, that image is free of the three screenshot defects, and `issues` came back
+empty. At that point stop and report — do not keep polishing. If something is
+still off but you have already revised it twice, say what it is instead of
+attempting a third pass.
 
 ## Do not rework
 
@@ -227,6 +272,4 @@ Resolve against `$SKILL_DIR`. Do not read them all up front.
 | File | Read it when |
 | --- | --- |
 | `references/interaction.md` | Wiring clicks, `_layout.tsx`, cross-screen flows |
-| `references/self-check.md` | Checking a multi-screen UI before reporting back |
 | `references/quality.md` | Reviewing a screenshot; before declaring any frame done |
-| `references/design-systems.md` | Starting a new design, or restyling one |

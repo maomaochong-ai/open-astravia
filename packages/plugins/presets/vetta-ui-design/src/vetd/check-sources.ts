@@ -8,7 +8,7 @@
  *
  * 规则只收「能证明是错的」那些，宁可漏报不误报：一条误报会让 agent 去改本来正确
  * 的代码，比不报更糟。判断不了的（外壳是否只定义了一份、prop 是否真的匹配）留给
- * references/self-check.md 让 agent 自己看。
+ * SKILL.md 的结构自查清单让 agent 自己看。
  */
 
 import { isFrameFile } from "../../engine/src/routes";
