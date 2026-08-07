@@ -13,13 +13,13 @@ import {
 	selectCodingToolRegistrations,
 } from "@vetta/runtime-tools/coding";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import { createCodingAgentDesktopCommandPort } from "../runtime-tools/desktop-command-port-adapter.js";
 import {
 	CodingAgentCommandProcessAbortedError,
 	createCodingAgentCommandProcessHost,
 	createCodingAgentDocToPdfOperations,
 	getCodingAgentOcrExecutionGate,
 } from "../runtime-tools/index.js";
-import { createCodingAgentDesktopCommandHost } from "./greenfield-desktop-command-host.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "./greenfield-model-tool-order.js";
 
 export interface CodingAgentGreenfieldProductToolOptions {
@@ -39,7 +39,7 @@ export function createCodingAgentGreenfieldProductToolRegistrations(
 	options: CodingAgentGreenfieldProductToolOptions,
 ): readonly CodingAgentRuntimeToolRegistration[] {
 	const commandProcess = createCodingAgentCommandProcessHost();
-	const desktop = createCodingAgentDesktopCommandHost(commandProcess);
+	const desktop = createCodingAgentDesktopCommandPort(commandProcess);
 	const ocrExecutionGate = getCodingAgentOcrExecutionGate();
 	return [
 		createDocToPdfToolRegistration(options.cwd, {

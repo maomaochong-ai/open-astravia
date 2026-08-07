@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentGreenfieldResourceReloadHost } from "../../src/adapters/runtime-core/greenfield-resource-reload-host.js";
+import { CodingAgentResourceReloadHost } from "../../../src/host/resources/resource-reload-host.js";
 
-describe("CodingAgentGreenfieldResourceReloadHost", () => {
-	it("preserves the Legacy reload order inside the Extension lifecycle", async () => {
+describe("CodingAgentResourceReloadHost", () => {
+	it("preserves the existing reload order inside the Extension lifecycle", async () => {
 		const calls: string[] = [];
-		const host = new CodingAgentGreenfieldResourceReloadHost({
+		const host = new CodingAgentResourceReloadHost({
 			settingsManager: { reload: () => calls.push("settings") },
 			resourceLoader: { reload: async () => void calls.push("resources") },
 			resetProviders: () => calls.push("providers"),
@@ -25,7 +25,7 @@ describe("CodingAgentGreenfieldResourceReloadHost", () => {
 
 	it("does not run post-reload work after resource loading fails", async () => {
 		const afterReload = vi.fn();
-		const host = new CodingAgentGreenfieldResourceReloadHost({
+		const host = new CodingAgentResourceReloadHost({
 			settingsManager: { reload: () => {} },
 			resourceLoader: { reload: async () => Promise.reject(new Error("reload failed")) },
 			resetProviders: () => {},

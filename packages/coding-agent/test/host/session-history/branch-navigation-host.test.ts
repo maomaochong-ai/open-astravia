@@ -5,13 +5,13 @@ import type {
 	GreenfieldRuntimeSessionCoreAssembly,
 } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentGreenfieldBranchNavigationHost } from "../../src/adapters/runtime-core/greenfield-branch-navigation-host.js";
-import type { ExtensionRunner } from "../../src/extensions/index.js";
+import type { ExtensionRunner } from "../../../src/extensions/index.js";
+import { CodingAgentBranchNavigationHost } from "../../../src/host/session-history/branch-navigation-host.js";
 
-describe("CodingAgentGreenfieldBranchNavigationHost", () => {
+describe("CodingAgentBranchNavigationHost", () => {
 	it("preserves Extension summary, label and tree event semantics", async () => {
 		const fixture = createFixture({ extensionSummary: "extension summary" });
-		const host = new CodingAgentGreenfieldBranchNavigationHost({
+		const host = new CodingAgentBranchNavigationHost({
 			withActiveSession: fixture.withActiveSession,
 			readRunner: () => fixture.runner,
 			settingsManager: { getBranchSummarySettings: () => ({ reserveTokens: 1234 }) },
@@ -46,7 +46,7 @@ describe("CodingAgentGreenfieldBranchNavigationHost", () => {
 			readFiles: ["README.md"],
 			modifiedFiles: ["src/index.ts"],
 		}));
-		const host = new CodingAgentGreenfieldBranchNavigationHost({
+		const host = new CodingAgentBranchNavigationHost({
 			withActiveSession: fixture.withActiveSession,
 			readRunner: () => fixture.runner,
 			settingsManager: { getBranchSummarySettings: () => ({ reserveTokens: 2048 }) },

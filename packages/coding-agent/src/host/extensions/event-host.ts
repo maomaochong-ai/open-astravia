@@ -1,7 +1,7 @@
 import { basename, dirname } from "node:path";
 import { type GreenfieldRuntimeSession, RetryableCleanup } from "@vetta/runtime-core";
+import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import { CodingAgentGreenfieldExtensionObservationAdapter } from "../../adapters/runtime-core/greenfield-extension-observation-adapter.js";
-import { createGreenfieldReadonlySessionManager } from "../../adapters/runtime-core/greenfield-readonly-session-manager.js";
 import type { Extension, ExtensionError, ExtensionExecutionHost, ExtensionRuntime } from "../../extensions/index.js";
 import { ExtensionRunner } from "../../extensions/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
@@ -53,7 +53,7 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 			[...options.extensions],
 			options.runtime,
 			options.cwd,
-			createGreenfieldReadonlySessionManager(assembly),
+			createCodingAgentExtensionSessionView(assembly),
 			options.modelRegistry,
 		);
 		this.eventBinding = options.bindEvents(this.runner);

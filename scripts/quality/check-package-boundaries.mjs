@@ -362,8 +362,8 @@ function checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, f
 	visit(sourceFile);
 }
 
-function checkGreenfieldBranchNavigationBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/adapters/runtime-core/greenfield-branch-navigation-host.ts") return;
+function checkBranchNavigationBoundary(posixPath, text, findings) {
+	if (posixPath !== "packages/coding-agent/src/host/session-history/branch-navigation-host.ts") return;
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
 	const visit = (node) => {
 		if (ts.isIdentifier(node) && node.text === "ExtensionCommandContextActions") {
@@ -1146,7 +1146,7 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkGreenfieldRuntimeImports(posixPath, specifiers, findings);
 	checkGreenfieldLegacyStartupSymbols(posixPath, text, findings);
 	checkGreenfieldSessionTransitionBoundary(posixPath, text, specifiers, findings);
-	checkGreenfieldBranchNavigationBoundary(posixPath, text, findings);
+	checkBranchNavigationBoundary(posixPath, text, findings);
 	checkKnowledgeProcessingBoundary(posixPath, text, specifiers, findings);
 	checkGreenfieldSubagentAssemblyBoundary(posixPath, text, findings);
 	checkGreenfieldTurnCapabilityAssemblyBoundary(posixPath, text, findings);

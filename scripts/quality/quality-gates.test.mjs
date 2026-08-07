@@ -603,7 +603,7 @@ describe("package boundary analysis", () => {
 		).not.toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/coding-agent/src/adapters/runtime-core/greenfield-branch-navigation-host.ts",
+				"packages/coding-agent/src/host/session-history/branch-navigation-host.ts",
 				'type Options = Parameters<ExtensionCommandContextActions["navigateTree"]>[1];',
 			),
 		).not.toEqual([]);

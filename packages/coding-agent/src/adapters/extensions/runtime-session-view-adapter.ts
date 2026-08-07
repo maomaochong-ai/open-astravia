@@ -16,12 +16,12 @@ import {
 } from "../../sessions/index.js";
 
 /**
- * 将 Runtime Core 的只读 Conversation 投影为旧 ExtensionContext 所需的窄会话视图。
+ * 将 Runtime Core 的只读 Conversation 投影为 ExtensionContext 所需的窄会话视图。
  *
- * 该适配器不持有 Repository，也不开放 Legacy 写 API；每次读取都基于当前
+ * 该适配器不持有 Repository，也不开放历史写 API；每次读取都基于当前
  * ConversationDocument，因此续接、分支切换和元数据更新会即时可见。
  */
-export function createGreenfieldReadonlySessionManager(
+export function createCodingAgentExtensionSessionView(
 	assembly: GreenfieldRuntimeSessionCoreAssembly,
 ): ReadonlySessionManager {
 	const readDocument = (): ConversationDocument => assembly.conversationView.readDocument();

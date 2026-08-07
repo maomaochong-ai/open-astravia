@@ -11,7 +11,7 @@ const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 34,
+	adapterGreenfieldFiles: 30,
 	compositionGreenfieldFiles: 30,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
@@ -38,6 +38,10 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-action-host.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-event-host.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-contract.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-branch-navigation-host.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-resource-reload-host.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-readonly-session-manager.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-desktop-command-host.ts`,
 	`${COMPOSITION_ROOT}/session-host/extension-session-host.ts`,
 ]);
 
@@ -63,6 +67,10 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"adapters/runtime-core/greenfield-extension-action-host",
 	"adapters/runtime-core/greenfield-extension-event-host",
 	"adapters/runtime-core/greenfield-extension-contract",
+	"adapters/runtime-core/greenfield-branch-navigation-host",
+	"adapters/runtime-core/greenfield-resource-reload-host",
+	"adapters/runtime-core/greenfield-readonly-session-manager",
+	"adapters/runtime-core/greenfield-desktop-command-host",
 	"composition/session-host/extension-session-host",
 ]);
 

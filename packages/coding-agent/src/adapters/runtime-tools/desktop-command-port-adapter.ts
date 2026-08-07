@@ -9,14 +9,14 @@ import {
 	DesktopCommandAbortedError,
 	type DesktopCommandPort,
 } from "@vetta/runtime-tools/coding";
-import { CodingAgentCommandProcessAbortedError, createCodingAgentCommandProcessHost } from "../runtime-tools/index.js";
+import { CodingAgentCommandProcessAbortedError, createCodingAgentCommandProcessHost } from "./index.js";
 
 const DesktopConfigSchema = Type.Object(
 	{ vettaAppPath: Type.Optional(Type.String({ minLength: 1 })) },
 	{ additionalProperties: true },
 );
 
-export function createCodingAgentDesktopCommandHost(
+export function createCodingAgentDesktopCommandPort(
 	commandProcess: CommandProcessPort = createCodingAgentCommandProcessHost(),
 ): DesktopCommandPort {
 	return {

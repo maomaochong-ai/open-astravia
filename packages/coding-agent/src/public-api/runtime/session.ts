@@ -2,24 +2,24 @@ import type { AgentMessage } from "@vetta/agent-core";
 import type { ConversationDocument } from "@vetta/runtime-core/conversation";
 import { projectCodingAgentGreenfieldMessages } from "../../adapters/runtime-core/greenfield-agent-message-context-projector.js";
 import {
-	CodingAgentGreenfieldBranchNavigationHost,
-	type CodingAgentGreenfieldBranchNavigationHostOptions,
-	type CodingAgentGreenfieldBranchNavigationOptions,
-} from "../../adapters/runtime-core/greenfield-branch-navigation-host.js";
-import {
-	CodingAgentGreenfieldResourceReloadHost,
-	type CodingAgentGreenfieldResourceReloadHostOptions,
-} from "../../adapters/runtime-core/greenfield-resource-reload-host.js";
+	CodingAgentResourceReloadHost,
+	type CodingAgentResourceReloadHostOptions,
+} from "../../host/resources/resource-reload-host.js";
 import type { GreenfieldSdkSessionCapabilityPort } from "../../host/sdk-session/runtime-contracts.js";
 import {
 	CodingAgentGreenfieldSessionCapabilityHost,
 	type CodingAgentGreenfieldSessionCapabilityHostOptions,
 } from "../../host/sdk-session/session-capability-host.js";
+import {
+	CodingAgentBranchNavigationHost,
+	type CodingAgentBranchNavigationHostOptions,
+	type CodingAgentBranchNavigationOptions,
+} from "../../host/session-history/branch-navigation-host.js";
 import type { CodingAgentBranchSummaryEntry } from "../../sessions/index.js";
 
-export type CodingAgentRuntimeBranchNavigationOptions = CodingAgentGreenfieldBranchNavigationOptions;
-export type CodingAgentRuntimeBranchNavigationHostOptions = CodingAgentGreenfieldBranchNavigationHostOptions;
-export type CodingAgentRuntimeResourceReloadHostOptions = CodingAgentGreenfieldResourceReloadHostOptions;
+export type CodingAgentRuntimeBranchNavigationOptions = CodingAgentBranchNavigationOptions;
+export type CodingAgentRuntimeBranchNavigationHostOptions = CodingAgentBranchNavigationHostOptions;
+export type CodingAgentRuntimeResourceReloadHostOptions = CodingAgentResourceReloadHostOptions;
 export type CodingAgentSessionCapabilityHostOptions = CodingAgentGreenfieldSessionCapabilityHostOptions;
 export type CodingAgentSessionCapabilityHost = GreenfieldSdkSessionCapabilityPort;
 
@@ -43,13 +43,13 @@ export interface CodingAgentRuntimeResourceReloadHost {
 export function createCodingAgentRuntimeBranchNavigationHost(
 	options: CodingAgentRuntimeBranchNavigationHostOptions,
 ): CodingAgentRuntimeBranchNavigationHost {
-	return new CodingAgentGreenfieldBranchNavigationHost(options);
+	return new CodingAgentBranchNavigationHost(options);
 }
 
 export function createCodingAgentRuntimeResourceReloadHost(
 	options: CodingAgentRuntimeResourceReloadHostOptions,
 ): CodingAgentRuntimeResourceReloadHost {
-	return new CodingAgentGreenfieldResourceReloadHost(options);
+	return new CodingAgentResourceReloadHost(options);
 }
 
 export function createCodingAgentSessionCapabilityHost(

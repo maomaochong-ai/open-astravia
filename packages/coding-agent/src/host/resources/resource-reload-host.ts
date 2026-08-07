@@ -2,7 +2,7 @@ import { resetApiProviders } from "@vetta/ai";
 import type { SessionResourceRuntime } from "../../resources/index.js";
 import type { SettingsRuntime } from "../../settings/index.js";
 
-export interface CodingAgentGreenfieldResourceReloadHostOptions {
+export interface CodingAgentResourceReloadHostOptions {
 	readonly settingsManager: Pick<SettingsRuntime, "reload">;
 	readonly resourceLoader: Pick<SessionResourceRuntime, "reload">;
 	readonly runWithExtensionLifecycle: (operation: () => Promise<void>) => Promise<void>;
@@ -10,11 +10,11 @@ export interface CodingAgentGreenfieldResourceReloadHostOptions {
 	readonly resetProviders?: () => void;
 }
 
-/** 按 Legacy 顺序重载设置、Provider 注册表和本地资源。 */
-export class CodingAgentGreenfieldResourceReloadHost {
+/** 按既有顺序重载设置、Provider 注册表和本地资源。 */
+export class CodingAgentResourceReloadHost {
 	private readonly resetProviders: () => void;
 
-	constructor(private readonly options: CodingAgentGreenfieldResourceReloadHostOptions) {
+	constructor(private readonly options: CodingAgentResourceReloadHostOptions) {
 		this.resetProviders = options.resetProviders ?? resetApiProviders;
 	}
 

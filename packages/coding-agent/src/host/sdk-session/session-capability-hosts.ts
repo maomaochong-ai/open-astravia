@@ -1,7 +1,5 @@
 import { join } from "node:path";
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
-import { CodingAgentGreenfieldBranchNavigationHost } from "../../adapters/runtime-core/greenfield-branch-navigation-host.js";
-import { CodingAgentGreenfieldResourceReloadHost } from "../../adapters/runtime-core/greenfield-resource-reload-host.js";
 import {
 	type CodingAgentHtmlExportRuntime,
 	createToolHtmlRenderer,
@@ -21,6 +19,8 @@ import {
 	projectCodingAgentSkillInfo,
 } from "../coding-agent-sdk-resource-source-adapter.js";
 import { createHostBashExecutor } from "../command-execution/index.js";
+import { CodingAgentResourceReloadHost } from "../resources/resource-reload-host.js";
+import { CodingAgentBranchNavigationHost } from "../session-history/branch-navigation-host.js";
 import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
 import { adaptPublicCodingAgentSdkCustomTools } from "./custom-tool-adapter.js";
 import type {
@@ -46,7 +46,7 @@ export function createCodingAgentSdkSessionCapabilityHostFactory(
 	options: CodingAgentSdkSessionCapabilityFactoriesOptions,
 ): GreenfieldSdkSessionCapabilityHostFactory {
 	return ({ readSession, composition }) => {
-		const reloadHost = new CodingAgentGreenfieldResourceReloadHost({
+		const reloadHost = new CodingAgentResourceReloadHost({
 			settingsManager: options.settingsManager,
 			resourceLoader: options.resourceLoader,
 			runWithExtensionLifecycle: (operation) =>
@@ -136,7 +136,7 @@ export function createCodingAgentSdkActiveSessionCapabilityHostFactory(
 			readShellCommandPrefix: () => options.settingsManager.getShellCommandPrefix(),
 		});
 		bash.bindEvents(sessionHost);
-		const treeNavigation = new CodingAgentGreenfieldBranchNavigationHost({
+		const treeNavigation = new CodingAgentBranchNavigationHost({
 			withActiveSession: (operation) => sessionHost.runActiveSessionMutation(operation),
 			readRunner: () => options.extensionTransitions.readRunner(),
 			settingsManager: options.settingsManager,

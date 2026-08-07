@@ -1,7 +1,7 @@
 import type { ImageContent, TextContent } from "@vetta/ai";
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import { createGreenfieldReadonlySessionManager } from "../../adapters/runtime-core/greenfield-readonly-session-manager.js";
+import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
 import type {
 	GreenfieldSdkActiveSessionCapabilityPort,
@@ -62,7 +62,7 @@ export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements Gree
 	constructor(private readonly options: CodingAgentGreenfieldSdkActiveSessionCapabilityHostOptions) {}
 
 	getSessionBranch() {
-		return createGreenfieldReadonlySessionManager(this.readSession().createCoreAssembly()).getBranch();
+		return createCodingAgentExtensionSessionView(this.readSession().createCoreAssembly()).getBranch();
 	}
 
 	sendCustomMessage<T = unknown>(
@@ -207,7 +207,7 @@ export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements Gree
 	}
 
 	getUserMessagesForForking(): readonly { entryId: string; text: string }[] {
-		return createGreenfieldReadonlySessionManager(this.readSession().createCoreAssembly())
+		return createCodingAgentExtensionSessionView(this.readSession().createCoreAssembly())
 			.getEntries()
 			.flatMap((entry) => {
 				if (entry.type !== "message" || entry.message.role !== "user") return [];

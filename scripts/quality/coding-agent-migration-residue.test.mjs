@@ -118,6 +118,24 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired Session Host and protocol adapter ownership paths", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-branch-navigation-host.ts",
+				text: "export class CodingAgentGreenfieldBranchNavigationHost {}",
+			},
+			{
+				path: "packages/coding-agent/src/host/session-history/branch-navigation-host.ts",
+				text: 'import "../../adapters/runtime-core/greenfield-readonly-session-manager.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-branch-navigation-host.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/host/session-history/branch-navigation-host.ts: retired migration reference (adapters/runtime-core/greenfield-readonly-session-manager)",
+		]);
+	});
+
 	it("rejects growth beyond each migration residue baseline", () => {
 		const files = [
 			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1 }, (_, index) => ({

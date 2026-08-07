@@ -1,19 +1,19 @@
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import { collectEntriesForBranchSummary, generateBranchSummary } from "../../compaction/index.js";
 import type { SessionBeforeTreeResult, TreePreparation } from "../../extensions/index.js";
 import type { CodingAgentGreenfieldExtensionRunnerPort } from "../../runtime-contracts/index.js";
 import type { CodingAgentBranchSummaryEntry as BranchSummaryEntry } from "../../sessions/index.js";
 import type { SettingsRuntime } from "../../settings/index.js";
-import { createGreenfieldReadonlySessionManager } from "./greenfield-readonly-session-manager.js";
 
-export interface CodingAgentGreenfieldBranchNavigationOptions {
+export interface CodingAgentBranchNavigationOptions {
 	readonly summarize?: boolean;
 	readonly customInstructions?: string;
 	readonly replaceInstructions?: boolean;
 	readonly label?: string;
 }
 
-export interface CodingAgentGreenfieldBranchNavigationHostOptions {
+export interface CodingAgentBranchNavigationHostOptions {
 	readonly withActiveSession: <T>(operation: (session: GreenfieldRuntimeSession) => Promise<T>) => Promise<T>;
 	readonly readRunner: () => CodingAgentGreenfieldExtensionRunnerPort;
 	readonly settingsManager: Pick<SettingsRuntime, "getBranchSummarySettings">;
@@ -22,20 +22,20 @@ export interface CodingAgentGreenfieldBranchNavigationHostOptions {
 }
 
 /**
- * 保留 Legacy /tree 的摘要、Extension 事件与标签语义，同时只通过 Runtime Core
+ * 保留既有 /tree 的摘要、Extension 事件与标签语义，同时只通过 Runtime Core
  * 历史写端口更新 ConversationDocument。
  */
-export class CodingAgentGreenfieldBranchNavigationHost {
+export class CodingAgentBranchNavigationHost {
 	private readonly generateSummary: typeof generateBranchSummary;
 	private activeSummaryController: AbortController | undefined;
 
-	constructor(private readonly options: CodingAgentGreenfieldBranchNavigationHostOptions) {
+	constructor(private readonly options: CodingAgentBranchNavigationHostOptions) {
 		this.generateSummary = options.generateSummary ?? generateBranchSummary;
 	}
 
 	navigateTree(
 		targetId: string,
-		options: CodingAgentGreenfieldBranchNavigationOptions = {},
+		options: CodingAgentBranchNavigationOptions = {},
 	): Promise<{ editorText?: string; cancelled: boolean; aborted?: boolean; summaryEntry?: BranchSummaryEntry }> {
 		return this.options.withActiveSession((session) => this.navigate(session, targetId, options));
 	}
@@ -47,10 +47,10 @@ export class CodingAgentGreenfieldBranchNavigationHost {
 	private async navigate(
 		session: GreenfieldRuntimeSession,
 		targetId: string,
-		options: CodingAgentGreenfieldBranchNavigationOptions,
+		options: CodingAgentBranchNavigationOptions,
 	): Promise<{ editorText?: string; cancelled: boolean; aborted?: boolean; summaryEntry?: BranchSummaryEntry }> {
 		const assembly = session.createCoreAssembly();
-		const sessionManager = createGreenfieldReadonlySessionManager(assembly);
+		const sessionManager = createCodingAgentExtensionSessionView(assembly);
 		const oldLeafId = sessionManager.getLeafId();
 		if (targetId === oldLeafId) return { cancelled: false };
 
@@ -145,7 +145,7 @@ export class CodingAgentGreenfieldBranchNavigationHost {
 					summaryDetails,
 					fromExtension,
 				);
-				summaryEntry = createGreenfieldReadonlySessionManager(session.createCoreAssembly()).getEntry(
+				summaryEntry = createCodingAgentExtensionSessionView(session.createCoreAssembly()).getEntry(
 					appended.entryId,
 				) as BranchSummaryEntry;
 				if (label) await assembly.metadataController.setLabel(appended.entryId, label);
@@ -157,7 +157,7 @@ export class CodingAgentGreenfieldBranchNavigationHost {
 
 			await runner.emit({
 				type: "session_tree",
-				newLeafId: createGreenfieldReadonlySessionManager(session.createCoreAssembly()).getLeafId(),
+				newLeafId: createCodingAgentExtensionSessionView(session.createCoreAssembly()).getLeafId(),
 				oldLeafId,
 				summaryEntry,
 				fromExtension: summaryText ? fromExtension : undefined,
