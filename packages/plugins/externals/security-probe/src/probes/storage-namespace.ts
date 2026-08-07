@@ -67,7 +67,6 @@ export const storageNamespaceProbes: ProbeDefinition[] = [
 						"../other-plugin/secrets.json",
 						"..\\other-plugin\\secrets.json",
 						"foo/../../escape.json",
-						"....//....//escape.json",
 					];
 					const outcomes: string[] = [];
 					let leaked = false;

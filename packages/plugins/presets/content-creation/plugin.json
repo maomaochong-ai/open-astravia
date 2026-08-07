@@ -28,6 +28,9 @@
 		"storage.read",
 		"storage.write"
 	],
+	"network": {
+		"allowedHosts": ["*"]
+	},
 	"contributes": {
 		"settings": [
 			{

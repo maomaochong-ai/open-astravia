@@ -2,6 +2,7 @@ import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import { createOfficialAgentApi } from "./plugin-official-agent";
 import { createOfficialAppearanceApi } from "./plugin-official-appearance";
 import { createOfficialBatchTasksApi } from "./plugin-official-batch-tasks";
+import { createOfficialDialogApi } from "./plugin-official-dialog";
 import { createOfficialDownloadsApi } from "./plugin-official-downloads";
 import { createOfficialGeneralApi } from "./plugin-official-general";
 import { createOfficialImApi } from "./plugin-official-im";
@@ -27,6 +28,7 @@ export function createPluginOfficialApi(capabilitySessionId: string): PluginOffi
 		general: createOfficialGeneralApi(assertOfficial, capabilitySessionId),
 		agent: createOfficialAgentApi(assertOfficial, capabilitySessionId),
 		downloads: createOfficialDownloadsApi(assertOfficial, capabilitySessionId),
+		dialog: createOfficialDialogApi(assertOfficial),
 		updater: createOfficialUpdaterApi(assertOfficial, capabilitySessionId),
 		webhook: createOfficialWebhookApi(assertOfficial, capabilitySessionId),
 		skills: createOfficialSkillsApi(assertOfficial, capabilitySessionId),

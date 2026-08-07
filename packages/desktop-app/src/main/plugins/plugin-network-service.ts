@@ -1,9 +1,13 @@
 import type { PluginNetworkRequest, PluginNetworkResponse } from "@vetta-org/plugin-sdk";
+import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_TIMEOUT_MS = 300_000;
 const MAX_REQUEST_BYTES = 32 * 1024 * 1024;
 const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
+const MAX_REDIRECTS = 5;
+
+type PluginNetworkPolicy = Pick<InstalledPlugin, "allowedNetworkHosts" | "id" | "trustLevel">;
 
 function parseUrl(value: string): URL {
 	const url = new URL(value);
@@ -11,6 +15,54 @@ function parseUrl(value: string): URL {
 		throw new Error(`Unsupported network protocol: ${url.protocol}`);
 	}
 	return url;
+}
+
+function normalizeHostname(value: string): string {
+	return value
+		.replace(/^\[|\]$/g, "")
+		.replace(/\.$/, "")
+		.toLowerCase();
+}
+
+export function isPluginNetworkHostAllowed(policy: PluginNetworkPolicy, hostname: string): boolean {
+	const normalized = normalizeHostname(hostname);
+	return policy.allowedNetworkHosts.some((entry) => {
+		if (entry === "*") return policy.trustLevel === "official";
+		if (!entry.startsWith("*.")) return normalized === entry;
+		const suffix = entry.slice(1);
+		return normalized.endsWith(suffix) && normalized.length > suffix.length;
+	});
+}
+
+function assertAllowedNetworkTarget(policy: PluginNetworkPolicy, url: URL): void {
+	if (!isPluginNetworkHostAllowed(policy, url.hostname)) {
+		throw new Error(`Plugin network host is not declared: ${url.hostname}`);
+	}
+}
+
+async function fetchAllowedTarget(policy: PluginNetworkPolicy, url: URL, init: RequestInit): Promise<Response> {
+	let currentUrl = url;
+	for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount++) {
+		assertAllowedNetworkTarget(policy, currentUrl);
+		const response = await fetch(currentUrl, { ...init, redirect: "manual" });
+		if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+		if (redirectCount === MAX_REDIRECTS) throw new Error("Plugin network request exceeded redirect limit");
+		const method = String(init.method ?? "GET").toUpperCase();
+		if (method !== "GET" && method !== "HEAD") {
+			throw new Error("Plugin network redirects are only allowed for GET and HEAD requests");
+		}
+		const location = response.headers.get("location");
+		if (!location) throw new Error("Plugin network redirect is missing Location");
+		const nextUrl = parseUrl(new URL(location, currentUrl).toString());
+		if (nextUrl.origin !== currentUrl.origin && init.headers) {
+			const headers = new Headers(init.headers);
+			headers.delete("authorization");
+			headers.delete("cookie");
+			init = { ...init, headers };
+		}
+		currentUrl = nextUrl;
+	}
+	throw new Error("Plugin network request exceeded redirect limit");
 }
 
 function buildBody(request: PluginNetworkRequest): {
@@ -79,6 +131,7 @@ async function readResponseBytes(response: Response): Promise<Buffer> {
 }
 
 export async function requestForPlugin<T = unknown>(
+	plugin: PluginNetworkPolicy,
 	request: PluginNetworkRequest,
 	signal?: AbortSignal,
 ): Promise<PluginNetworkResponse<T>> {
@@ -91,7 +144,7 @@ export async function requestForPlugin<T = unknown>(
 	else signal?.addEventListener("abort", abortFromCaller, { once: true });
 	try {
 		const { body, headers } = buildBody(request);
-		const response = await fetch(url, {
+		const response = await fetchAllowedTarget(plugin, url, {
 			method: request.method ?? (body ? "POST" : "GET"),
 			headers,
 			body,

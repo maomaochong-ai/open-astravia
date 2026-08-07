@@ -134,6 +134,8 @@ export interface InstalledPlugin {
 	styleUrls: string[];
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];
+	/** Normalized host/IP patterns declared in plugin.json `network.allowedHosts`. */
+	allowedNetworkHosts: string[];
 	/** Executable names declared in plugin.json `commands`. */
 	declaredCommands: string[];
 	/** Subset of declaredCommands the user currently allows (toggleable per command). */

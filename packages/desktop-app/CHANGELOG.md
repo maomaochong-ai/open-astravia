@@ -90,6 +90,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **插件网络目标改为清单声明，命令执行收口到 official 插件**（ADR-0060）：`network.fetch` 必须配置 `network.allowedHosts`，主进程按 capability session 绑定的插件 ID 校验首跳与每次重定向；公网、私网 IP、localhost 均可显式声明，official 插件可使用 `*` 适配用户自定义服务地址。`agent.command.run` / `agent.command.spawn` 及命令授权不再对 local/community 插件生效，执行入口仍做权威 trustLevel 校验。
 - **活动面板拉到最大时给对话区留更多空间**：`ACTIVITY_PANEL_MIN_CHAT_AREA` 由 360 提到 454，消息列表最窄净宽从约 336 提到约 430。
 - **项目文件拖出系统时使用应用内文件类型图标**：原生 `startDrag` 幽灵图与文件树一致（`getFileIcon` / vscode-icons），由渲染进程栅格化为 PNG 后缓存到主进程；pointerdown / 选区变更时预取。缓存未命中时回退应用 logo，不再使用系统 `app.getFileIcon`。
 - **插件可选用宿主 `@vetta/ui` 单例**：Module Federation share 与 `vetta-host://ui` 提供 Button / Dialog / Switch / Slider 等 primitives，构建侧由 `@vetta-org/plugin-vite` external，避免插件自带一份 UI。可选、半稳定，不承诺跨大版本 semver；`@vetta/theme-ui` 仍不共享。见 `docs/plugin/styling-and-pitfalls.md`。

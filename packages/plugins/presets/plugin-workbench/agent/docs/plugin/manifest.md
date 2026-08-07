@@ -36,8 +36,10 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
     "expose": "./plugin"
   },
   "styles": ["dist/style.css"],
-  "permissions": ["ui.slot.global", "agent.session.read", "agent.command.run"],
-  "commands": ["git"],
+  "permissions": ["ui.slot.global", "agent.session.read", "network.fetch"],
+  "network": {
+    "allowedHosts": ["api.example.com", "*.cdn.example.com", "localhost", "192.168.1.20"]
+  },
   "defaultLocale": "zh",
   "description": "一句话说明这个插件做什么",
   "author": "你的名字",
@@ -69,7 +71,8 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `moduleFederation` | MF 必填 | `{ remoteName, expose }` | `remoteName` 与 vite 配置 `name` 一致；`expose` 与 vite `expose` 一致（默认 `./plugin`）。 |
 | `styles` | ❌ | string[] | 要注入的 CSS 文件路径（相对插件根）。 |
 | `permissions` | ❌ | string[] | 声明需要的权限，见 [permissions.md](./permissions.md)。未声明即不可用。 |
-| `commands` | ❌ | string[] | 允许 `ctx.command.run` 的**可执行文件名**（如 `["git","node"]`），见 [commands](#commands)。 |
+| `network` | `network.fetch` 必填 | `{ allowedHosts: string[] }` | `ctx.network.request` 可访问的域名/IP，见 [network](#network)。 |
+| `commands` | ❌ | string[] | official 插件允许 `ctx.command.run` 的**可执行文件名**（如 `["git","node"]`），见 [commands](#commands)。 |
 | `description` | ❌ | string | 简介。可用 `%key%`。 |
 | `author` | ❌ | string | 作者。 |
 | `icon` | ❌ | string | 能力页/插件列表展示的图标。三态：省略（按类型落默认图）、Iconify 名（如 `solar:widget-add-bold`）、`http(s)://` 外链，或包内相对路径（如 `assets/icon.png`）。 |
@@ -100,11 +103,24 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 
 系统插件不进 `~/.vetta/plugins`，见 [system-plugins.md](./system-plugins.md)。
 
+## network
+
+声明 `network.fetch` 时必须同时声明 `network.allowedHosts`，否则清单校验失败。列表按 URL 的 hostname 匹配，不限制端口：
+
+- 精确域名：`api.example.com`。
+- 子域通配：`*.cdn.example.com`，不包含根域 `cdn.example.com`。
+- 精确公网/私网 IP：`203.0.113.10`、`192.168.1.20`、`::1`。
+- 本机名：`localhost`。私网、localhost 与公网使用同一声明规则，不做额外禁止。
+- `*` 表示任意 host，仅随包发布的 official 插件有效；local/community 插件声明后仍会被主进程拒绝。
+- 只写 host，不带协议、端口、路径或凭据。请求仅支持 `http:` / `https:`。
+- 首次请求和每次重定向都会重新匹配，跨 host 重定向会移除 `Authorization` 与 `Cookie`。
+
 ## commands
 
 `commands?: string[]`：**可执行文件名**粒度（如 `"git"`、`"node"`、`"npm"`），不是完整 argv。
 
-- 未列入的二进制：`ctx.command.run` **硬拒绝**。
+- 仅 `trustLevel === "official"` 的系统插件可获得 `agent.command.run` / `agent.command.spawn` 与 `commands`；local/community 插件的相关声明不会成为有效权限。
+- official 插件未列入的二进制：`ctx.command.run` **硬拒绝**。
 - 已声明：用户可在插件设置里**逐条开关**；关闭后调用拦截并提示用户。
 - 需权限 `agent.command.run`。语义与 API 见 [conversation-and-agent.md 命令执行](./conversation-and-agent.md#命令执行-command)（ADR-0032）。
 

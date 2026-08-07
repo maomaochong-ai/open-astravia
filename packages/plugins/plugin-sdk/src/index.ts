@@ -16,6 +16,7 @@ export type {
 	PluginManifestInput,
 	PluginManifestResourceReference,
 	PluginMcpServerConfig,
+	PluginNetworkManifest,
 	PluginSettingSchema,
 } from "./manifest.js";
 

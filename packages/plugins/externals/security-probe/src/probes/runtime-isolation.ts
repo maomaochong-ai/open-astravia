@@ -6,6 +6,13 @@ function topLevelKeys(value: unknown, limit = 40): string[] {
 	return Object.keys(value as object).slice(0, limit);
 }
 
+interface HostApiModule {
+	hostApi?: {
+		plugins?: { list?: () => Promise<unknown> };
+		settings?: { getServerToken?: () => Promise<string | undefined> };
+	};
+}
+
 export const runtimeIsolationProbes: ProbeDefinition[] = [
 	{
 		id: "runtime.same-document",
@@ -84,18 +91,85 @@ export const runtimeIsolationProbes: ProbeDefinition[] = [
 						typeof vetta.plugins?.installFromPath === "function" ||
 						typeof vetta.plugins?.grantPermissions === "function";
 
-					return {
-						status: "finding",
-						severity: "critical",
-						summary: "插件脚本可直接调用宿主 Desktop API，绕过 ctx 权限门控",
-						detail: [
-							`window.vetta top-level: ${topKeys.join(", ") || "(none)"}`,
-							`plugins keys (sample): ${pluginKeys.join(", ") || "(none)"}`,
-							`fs=${hasFs} session=${hasSession} config=${hasConfig} plugins.manage-like=${hasPluginsManage}`,
-							"ctx.fs / ctx.network 等门控只约束 plugin-sdk 封装；同 renderer 内直接 window.vetta.* 不受 PluginPermission 约束。",
-							"主进程部分通道仍有 project-root / capability session 限制，但管理面 API（list/install/grant…）可能被恶意插件直接调用。",
-						].join("\n"),
-					};
+					const surfaceDetail = [
+						`window.vetta top-level: ${topKeys.join(", ") || "(none)"}`,
+						`plugins keys (sample): ${pluginKeys.join(", ") || "(none)"}`,
+						`fs=${hasFs} session=${hasSession} config=${hasConfig} plugins.manage-like=${hasPluginsManage}`,
+					].join("\n");
+					try {
+						await vetta.plugins.list();
+						return {
+							status: "finding",
+							severity: "critical",
+							summary: "插件脚本可直接调用宿主 Desktop API，绕过 ctx 权限门控",
+							detail: surfaceDetail,
+						};
+					} catch (error) {
+						return {
+							status: "blocked",
+							severity: "info",
+							summary: "宿主桥可枚举，但裸调用被闭包令牌拒绝",
+							detail: `${surfaceDetail}\n${errorMessage(error)}`,
+						};
+					}
+				},
+			),
+	},
+	{
+		id: "runtime.host-api-module-bypass",
+		category: "信任模型 / 运行时隔离",
+		title: "可导入宿主持令牌 API 模块",
+		findingSeverity: "critical",
+		run: () =>
+			timedResult(
+				{
+					id: "runtime.host-api-module-bypass",
+					category: "信任模型 / 运行时隔离",
+					title: "可导入宿主持令牌 API 模块",
+				},
+				async () => {
+					const moduleUrl = performance
+						.getEntriesByType("resource")
+						.map((entry) => entry.name)
+						.find((name) => /\/shared\/host-api\.ts(?:\?|$)/.test(name));
+					if (!moduleUrl) {
+						return {
+							status: "skip",
+							severity: "info",
+							summary: "当前构建未暴露可定位的 host-api 模块 URL",
+							detail: "未发现模块不等于同 renderer 已形成安全边界。",
+						};
+					}
+					try {
+						const loaded = (await import(/* @vite-ignore */ moduleUrl)) as HostApiModule;
+						const list = loaded.hostApi?.plugins?.list;
+						if (typeof list !== "function") {
+							return {
+								status: "blocked",
+								severity: "info",
+								summary: "模块可导入，但未暴露可调用的宿主 API",
+								detail: `url=${moduleUrl}; exports=${topLevelKeys(loaded).join(", ")}`,
+							};
+						}
+						const plugins = await list();
+						return {
+							status: "finding",
+							severity: "critical",
+							summary: "插件可导入宿主持令牌模块并绕过 window.vetta 门禁",
+							detail: [
+								`url=${moduleUrl}`,
+								`plugins.list result=${Array.isArray(plugins) ? `${plugins.length} items` : typeof plugins}`,
+								`credential getter exposed=${typeof loaded.hostApi?.settings?.getServerToken === "function"}`,
+							].join("\n"),
+						};
+					} catch (error) {
+						return {
+							status: "blocked",
+							severity: "info",
+							summary: "宿主持令牌模块导入或调用被拒绝",
+							detail: `${moduleUrl}\n${errorMessage(error)}`,
+						};
+					}
 				},
 			),
 	},

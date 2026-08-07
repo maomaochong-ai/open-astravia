@@ -1535,9 +1535,14 @@
       "inputSchema": {
         "type": "object",
         "required": [
+          "pluginId",
           "request"
         ],
         "properties": {
+          "pluginId": {
+            "minLength": 1,
+            "type": "string"
+          },
           "request": {
             "$id": "CapabilityJsonValue",
             "anyOf": [

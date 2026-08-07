@@ -12,6 +12,7 @@ import {
 	type PluginManifest,
 	type PluginManifestInput,
 	type PluginMcpServerConfig,
+	type PluginNetworkManifest,
 	type PluginSettingSchema,
 } from "./manifest-schema.js";
 import { PLUGIN_PERMISSIONS, type PluginPermission } from "./permissions.js";
@@ -26,6 +27,7 @@ export {
 	PluginMcpServerConfigSchema,
 	PluginMcpStdioServerConfigSchema,
 	PluginModuleFederationManifestSchema,
+	PluginNetworkManifestSchema,
 	PluginPermissionSchema,
 	PluginSettingDefinitionSchema,
 	PluginVersionSchema,
@@ -35,6 +37,7 @@ export type {
 	PluginManifest,
 	PluginManifestInput,
 	PluginMcpServerConfig,
+	PluginNetworkManifest,
 	PluginSettingSchema,
 } from "./manifest-schema.js";
 export { PLUGIN_PERMISSIONS } from "./permissions.js";
@@ -127,6 +130,33 @@ function normalizeSettings(settings: PluginSettingSchema[] | undefined): PluginS
 
 function normalizePermissions(permissions: PluginPermission[] | undefined): PluginPermission[] {
 	return Array.from(new Set(permissions ?? []));
+}
+
+function normalizeNetworkHost(value: string): string {
+	const raw = trimString(value).toLowerCase();
+	if (raw === "*") return raw;
+	const wildcard = raw.startsWith("*.");
+	const candidate = wildcard ? raw.slice(2) : raw;
+	if (!candidate || candidate.includes("*") || /[\\/?#@]/.test(candidate)) {
+		throw new Error(`Invalid plugin network.allowedHosts entry: ${value}`);
+	}
+	const unwrapped = candidate.startsWith("[") && candidate.endsWith("]") ? candidate.slice(1, -1) : candidate;
+	if (wildcard && unwrapped.includes(":")) {
+		throw new Error(`Invalid plugin network.allowedHosts entry: ${value}`);
+	}
+	try {
+		const parsed = new URL(`http://${unwrapped.includes(":") ? `[${unwrapped}]` : unwrapped}`);
+		const hostname = parsed.hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "").toLowerCase();
+		if (!hostname || parsed.port || parsed.username || parsed.password) throw new Error("invalid host");
+		return wildcard ? `*.${hostname}` : hostname;
+	} catch {
+		throw new Error(`Invalid plugin network.allowedHosts entry: ${value}`);
+	}
+}
+
+function normalizeNetworkManifest(network: PluginNetworkManifest | undefined): PluginNetworkManifest | undefined {
+	if (!network) return undefined;
+	return { allowedHosts: Array.from(new Set(network.allowedHosts.map(normalizeNetworkHost))) };
 }
 
 function normalizeModuleFederation(
@@ -278,6 +308,11 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 	const runtime = raw.runtime ?? "esm";
 	const commands = parsePluginCommandNames(raw.commands);
 	const icon = raw.icon === undefined ? undefined : trimString(raw.icon);
+	const permissions = normalizePermissions(raw.permissions);
+	const network = normalizeNetworkManifest(raw.network);
+	if (permissions.includes("network.fetch") && !network) {
+		throw new Error("Plugin network.allowedHosts is required with network.fetch");
+	}
 	return {
 		id: raw.id,
 		name: trimString(raw.name),
@@ -289,7 +324,8 @@ export function parsePluginManifest(raw: unknown): PluginManifest {
 			runtime === "module-federation" ? normalizeModuleFederation(raw.moduleFederation) : undefined,
 		agent: normalizeAgentManifest(raw.agent),
 		styles: normalizeStringArray(raw.styles).map((style) => validatePluginRelativePath(style, "styles")),
-		permissions: normalizePermissions(raw.permissions),
+		permissions,
+		network,
 		commands: commands.length > 0 ? commands : undefined,
 		contributes: raw.contributes
 			? (() => {

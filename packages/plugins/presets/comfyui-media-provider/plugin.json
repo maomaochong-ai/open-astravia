@@ -11,6 +11,9 @@
 		"expose": "./plugin"
 	},
 	"permissions": ["media.provider.register", "network.fetch"],
+	"network": {
+		"allowedHosts": ["*"]
+	},
 	"contributes": {
 		"settings": [
 			{
@@ -32,4 +35,3 @@
 	"author": "Vetta",
 	"defaultLocale": "zh"
 }
-

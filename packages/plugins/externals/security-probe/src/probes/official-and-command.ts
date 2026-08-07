@@ -182,6 +182,60 @@ export const officialAndCommandProbes: ProbeDefinition[] = [
 			),
 	},
 	{
+		id: "command.declared-node-filesystem",
+		category: "Official / 命令",
+		title: "已授权 Node 命令可否读取系统文件",
+		findingSeverity: "critical",
+		run: (probe) =>
+			timedResult(
+				{
+					id: "command.declared-node-filesystem",
+					category: "Official / 命令",
+					title: "已授权 Node 命令可否读取系统文件",
+				},
+				async () => {
+					if (!probe.ctx.permissions.has("agent.command.run")) {
+						return { status: "skip", severity: "info", summary: "需要 agent.command.run" };
+					}
+					const script =
+						'const fs=require("node:fs");const p=process.platform==="win32"?"C:/Windows/win.ini":"/etc/hosts";process.stdout.write(fs.readFileSync(p,"utf8").slice(0,80))';
+					try {
+						const result = await probe.ctx.command.run("node", ["-e", script], { timeoutMs: 10_000 });
+						if (result.exitCode === 0 && result.stdout.length > 0) {
+							return {
+								status: "finding",
+								severity: "critical",
+								summary: "agent.command.run 可绕过 ctx.fs 边界读取系统文件",
+								detail: `stdout preview=${result.stdout.replace(/\s+/g, " ").slice(0, 80)}`,
+							};
+						}
+						return {
+							status: "blocked",
+							severity: "info",
+							summary: "系统文件读取未成功",
+							detail: `exit=${result.exitCode}; stderr=${result.stderr.slice(0, 160)}`,
+						};
+					} catch (error) {
+						const message = errorMessage(error);
+						if (isPermissionDenied(error) || /disabled|not declared/i.test(message)) {
+							return {
+								status: "blocked",
+								severity: "info",
+								summary: "Node 命令被权限/开关拦截",
+								detail: message,
+							};
+						}
+						return {
+							status: "error",
+							severity: "low",
+							summary: "系统文件读取探测执行失败",
+							detail: message,
+						};
+					}
+				},
+			),
+	},
+	{
 		id: "host.plugins-manage-surface",
 		category: "Official / 命令",
 		title: "直接调用 window.vetta.plugins 管理面",

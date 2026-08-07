@@ -20,7 +20,7 @@ export interface OAuthLoginModel {
  * 授权登录的发起与等待态，侧边栏授权浮层与引导页登录步共用。
  *
  * 这里不处理登录成功：token 由主进程经 `onOAuthCallback` 广播，
- * 统一在 `useAuth` 落地（写 atom / localStorage / settings）。本 hook 只管
+ * 统一在 `useAuth` 落地（写内存 atom / 主进程凭据存储）。本 hook 只管
  * 「点了按钮之后到 token 到达之前」这段用户看得见的状态。
  */
 export function useOAuthLogin(): OAuthLoginModel {

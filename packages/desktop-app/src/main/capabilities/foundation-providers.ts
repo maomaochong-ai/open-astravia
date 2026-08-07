@@ -17,6 +17,7 @@ import { themeIdFromStorageCapabilityNamespace } from "@vetta/capability-sdk/int
 import { persistArtifact } from "../artifacts/artifact-persistence.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import {
+	assertFilesystemRealPathWithinProject,
 	createFilesystemDirectory,
 	deleteFilesystemPath,
 	listFilesystemFilesRecursive,
@@ -42,6 +43,7 @@ import {
 	writePluginFile as writeNamespacedFile,
 	writePluginJson as writeNamespacedJson,
 } from "../plugins/plugin-storage-service.js";
+import { listPlugins } from "../plugins/plugin-store.js";
 import {
 	clearThemeStorage,
 	getThemeStorageData,
@@ -140,71 +142,86 @@ export function registerDesktopFoundationProviders(
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.READ_DIRECTORY, {
 			execute: async ({ path }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				return readFilesystemDirectory(path);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.READ_FILE, {
 			execute: async ({ path }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				return readFilesystemFile(path);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.READ_BINARY_FILE, {
 			execute: async ({ path }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				return readFilesystemBinaryFile(path);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.WRITE_FILE, {
 			execute: async ({ path, content, encoding }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				await writeFilesystemFile(path, content, encoding);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.STAT, {
 			execute: async ({ path }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				return statFilesystemPath(path);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.RENAME, {
 			execute: async ({ oldPath, newPath }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(oldPath);
+				await assertFilesystemRealPathWithinProject(newPath);
 				await renameFilesystemPath(oldPath, newPath);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.DELETE, {
 			execute: async ({ path }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				await deleteFilesystemPath(path);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.MOVE, {
 			execute: async ({ sourcePath, destinationDirectory }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(sourcePath);
+				await assertFilesystemRealPathWithinProject(destinationDirectory);
 				await moveFilesystemPath(sourcePath, destinationDirectory);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.CREATE_DIRECTORY, {
 			execute: async ({ path }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				await createFilesystemDirectory(path);
 			},
 		}),
 		bindCapability(FOUNDATION_FILESYSTEM_CAPABILITIES.LIST_FILES_RECURSIVE, {
 			execute: async ({ path }, context) => {
 				assertNotAborted(context.signal);
+				await assertFilesystemRealPathWithinProject(path);
 				return listFilesystemFilesRecursive(path);
 			},
 		}),
 	]);
 	const networkStorageRegistration = registry.registerOwner(FOUNDATION_NETWORK_STORAGE_PROVIDER_OWNER, [
 		bindCapability(FOUNDATION_NETWORK_CAPABILITIES.REQUEST, {
-			execute: async ({ request }, context) => {
+			execute: async ({ pluginId, request }, context) => {
 				assertNotAborted(context.signal);
+				const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
+				if (!plugin || !plugin.enabled) throw new Error(`Plugin is not enabled: ${pluginId}`);
 				const response = await requestNetwork(
-					request as unknown as Parameters<typeof requestNetwork>[0],
-					context.signal,
+					plugin,
+					request as unknown as Parameters<typeof requestNetwork>[1],
+					context.signal as Parameters<typeof requestNetwork>[2],
 				);
 				return parseCapabilityJsonValue(response);
 			},

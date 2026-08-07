@@ -44,28 +44,23 @@ export const networkBoundaryProbes: ProbeDefinition[] = [
 	{
 		id: "net.ssrf-localhost",
 		category: "网络边界",
-		title: "主进程代发请求可达 localhost（SSRF 面）",
+		title: "网络 host 声明应允许 localhost 并拒绝未声明地址",
 		findingSeverity: "high",
 		run: (probe) =>
 			timedResult(
 				{
 					id: "net.ssrf-localhost",
 					category: "网络边界",
-					title: "主进程代发请求可达 localhost（SSRF 面）",
+					title: "网络 host 声明应允许 localhost 并拒绝未声明地址",
 				},
 				async () => {
 					if (!probe.ctx.permissions.has("network.fetch")) {
 						return { status: "skip", severity: "info", summary: "需要 network.fetch" };
 					}
-					const urls = [
-						"http://127.0.0.1:1/",
-						"http://localhost:1/",
-						"http://[::1]:1/",
-						"http://169.254.169.254/",
-					];
+					const declaredUrls = ["http://127.0.0.1:1/", "http://localhost:1/", "http://[::1]:1/"];
 					const outcomes: string[] = [];
-					let reachedStack = false;
-					for (const url of urls) {
+					let declaredHostRejected = false;
+					for (const url of declaredUrls) {
 						try {
 							const response = await probe.ctx.network.request({
 								url,
@@ -73,34 +68,39 @@ export const networkBoundaryProbes: ProbeDefinition[] = [
 								responseType: "text",
 								timeoutMs: 2_000,
 							});
-							reachedStack = true;
-							outcomes.push(`${url} => status=${response.status} ok=${response.ok}`);
+							outcomes.push(`${url} => policy allowed, status=${response.status} ok=${response.ok}`);
 						} catch (error) {
 							const message = errorMessage(error);
-							// Connection refused still means the host attempted the request (SSRF surface exists).
-							if (/ECONNREFUSED|fetch failed|network|timed out|abort/i.test(message)) {
-								reachedStack = true;
-							}
+							if (/not declared/i.test(message)) declaredHostRejected = true;
 							outcomes.push(`${url} => ${message}`);
 						}
 					}
-					if (reachedStack) {
+					let undeclaredHostBlocked = false;
+					try {
+						await probe.ctx.network.request({
+							url: "http://169.254.169.254/",
+							method: "GET",
+							responseType: "text",
+							timeoutMs: 2_000,
+						});
+						outcomes.push("http://169.254.169.254/ => request reached undeclared host");
+					} catch (error) {
+						const message = errorMessage(error);
+						undeclaredHostBlocked = /not declared/i.test(message);
+						outcomes.push(`http://169.254.169.254/ => ${message}`);
+					}
+					if (declaredHostRejected || !undeclaredHostBlocked) {
 						return {
 							status: "finding",
 							severity: "high",
-							summary: "ctx.network 可对 localhost / 链路本地地址发起主进程请求",
-							detail: [
-								"plugin-network-service 仅限制 http/https，无 SSRF 黑名单。",
-								"持有 network.fetch 的插件可探测本机服务、云 metadata（若路由可达）。",
-								"",
-								...outcomes,
-							].join("\n"),
+							summary: "网络 host 声明策略未按预期生效",
+							detail: outcomes.join("\n"),
 						};
 					}
 					return {
-						status: "blocked",
+						status: "pass",
 						severity: "info",
-						summary: "内网探测均被提前拦截",
+						summary: "已声明 localhost 进入连接阶段，未声明地址被拒绝",
 						detail: outcomes.join("\n"),
 					};
 				},

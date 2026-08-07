@@ -24,6 +24,9 @@
 		"storage.write",
 		"shell.openExternal"
 	],
+	"network": {
+		"allowedHosts": ["localhost", "127.0.0.1", "::1", "example.com"]
+	},
 	"commands": ["node"],
 	"defaultLocale": "zh",
 	"description": "%plugin.description%",

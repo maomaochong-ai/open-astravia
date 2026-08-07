@@ -26,6 +26,16 @@ export const PluginCommandNameSchema = Type.String({
 
 export const PluginCommandNamesSchema = Type.Array(PluginCommandNameSchema);
 
+export const PluginNetworkManifestSchema = Type.Object(
+	{
+		allowedHosts: Type.Array(Type.String({ minLength: 1, maxLength: 253, pattern: NON_WHITESPACE_PATTERN }), {
+			minItems: 1,
+			maxItems: 128,
+		}),
+	},
+	{ additionalProperties: true },
+);
+
 export const PluginPermissionSchema = Type.Union(
 	PLUGIN_PERMISSIONS.map((permission) => Type.Literal(permission)),
 	{ description: "Host capability requested by the plugin." },
@@ -173,6 +183,7 @@ export const PluginManifestSchema = Type.Object(
 		agent: Type.Optional(PluginAgentManifestSchema),
 		styles: Type.Optional(Type.Array(NonWhitespaceStringSchema)),
 		permissions: Type.Optional(Type.Array(PluginPermissionSchema)),
+		network: Type.Optional(PluginNetworkManifestSchema),
 		commands: Type.Optional(PluginCommandNamesSchema),
 		contributes: Type.Optional(
 			Type.Object(
@@ -209,5 +220,6 @@ export const PluginManifestSchema = Type.Object(
 export type PluginSettingSchema = Static<typeof PluginSettingDefinitionSchema>;
 export type PluginMcpServerConfig = Static<typeof PluginMcpServerConfigSchema>;
 export type PluginAgentManifest = Static<typeof PluginAgentManifestSchema>;
+export type PluginNetworkManifest = Static<typeof PluginNetworkManifestSchema>;
 export type PluginManifestInput = Static<typeof PluginManifestSchema>;
 export type PluginManifest = PluginManifestInput;

@@ -103,10 +103,12 @@ describe("network and namespaced storage foundation capabilities", () => {
 	it("preserves dynamic JSON keys while cleaning contract object fields", () => {
 		expect(
 			FOUNDATION_NETWORK_CAPABILITIES.REQUEST.parseInput({
+				pluginId: "plugin-id",
 				request: { nested: { keep: true }, list: [1, null, "value"] },
 				remove: true,
 			}),
 		).toEqual({
+			pluginId: "plugin-id",
 			request: { nested: { keep: true }, list: [1, null, "value"] },
 		});
 		expect(

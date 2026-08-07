@@ -4,7 +4,10 @@ import { CAPABILITY_LAYERS, defineCapability } from "../contracts.js";
 import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../schema.js";
 import { CAPABILITY_JSON_VALUE_TYPE, type CapabilityJsonValue } from "./json.js";
 
-const networkRequestInputType = Type.Object({ request: CAPABILITY_JSON_VALUE_TYPE });
+const networkRequestInputType = Type.Object({
+	pluginId: Type.String({ minLength: 1 }),
+	request: CAPABILITY_JSON_VALUE_TYPE,
+});
 
 export type NetworkRequestInput = Readonly<Static<typeof networkRequestInputType>>;
 
