@@ -22,7 +22,7 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("real Greenfield RPC CLI initialization failure cleanup", () => {
+describe("RPC CLI initialization failure cleanup contract", () => {
 	it("releases Extension, Hook, MCP and conversation ownership before restarting the same Session", async () => {
 		let fixture: AgentRpcFixture | undefined;
 		let failedProcess: AgentRpcProcess | undefined;
@@ -192,7 +192,7 @@ async function readOnlyConversationPath(fixture: AgentRpcFixture): Promise<strin
 	const files = (await readdir(fixture.conversationDir)).filter((name) => name.endsWith(".conversation.jsonl"));
 	expect(files).toHaveLength(1);
 	const file = files[0];
-	if (!file) throw new Error("Expected one Greenfield conversation file");
+	if (!file) throw new Error("Expected one Runtime conversation file");
 	return join(fixture.conversationDir, file);
 }
 

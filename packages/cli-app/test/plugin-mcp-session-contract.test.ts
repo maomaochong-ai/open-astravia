@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
-describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
+describe("Session-local Plugin MCP contract", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -30,7 +30,7 @@ describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIME
 	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("isolates two sessions and applies complete plugin replacement at the next model call", async () => {
-		const conversationDir = await temporaryDirectory("greenfield-plugin-mcp-");
+		const conversationDir = await temporaryDirectory("runtime-plugin-mcp-");
 		const clients = new FakeClientFactory();
 		const modelMcpTools: string[][] = [];
 		const composition = await createCodingAgentRuntimeComposition({
@@ -81,7 +81,7 @@ describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIME
 	});
 
 	it("includes session plugin tools in progressive disclosure and removes the search surface", async () => {
-		const conversationDir = await temporaryDirectory("greenfield-plugin-mcp-deferred-");
+		const conversationDir = await temporaryDirectory("runtime-plugin-mcp-deferred-");
 		const clients = new FakeClientFactory(16);
 		const modelMcpTools: string[][] = [];
 		const composition = await createCodingAgentRuntimeComposition({
@@ -116,7 +116,7 @@ describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIME
 	});
 
 	it("projects parent plugin MCP bindings into workflow children without creating another plugin runtime", async () => {
-		const conversationDir = await temporaryDirectory("greenfield-plugin-mcp-subagent-");
+		const conversationDir = await temporaryDirectory("runtime-plugin-mcp-subagent-");
 		const clients = new FakeClientFactory();
 		const createPluginMcpRuntime = vi.fn(() => createCodingAgentPluginMcpRuntime({ clientFactory: clients.create }));
 		const rootMcpTools: string[][] = [];

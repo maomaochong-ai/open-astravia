@@ -17,7 +17,7 @@
 		"typecheck": "tsgo --noEmit -p tsconfig.json",
 		"test": "bunx vitest --run",
 		"verify:artifact:installed": "bunx vitest --run test/installed-artifact-runtime.test.ts",
-		"verify:runtime-contract": "bunx vitest --run test/agent-runtime-provider-contract.test.ts test/agent-runtime-extension-history-contract.test.ts test/runtime-host.test.ts test/agent-runtime-selection.test.ts"
+		"verify:runtime-contract": "bunx vitest --run --maxWorkers=4 contract.test.ts test/runtime-host.test.ts test/agent-runtime-selection.test.ts test/rpc-session-adapter.test.ts test/session-resource-close.test.ts test/agent-runtime-initialization-failure.test.ts test/agent-print-mode.test.ts"
 	},
 	"dependencies": {
 		"@vetta/action-rpc": "workspace:*",

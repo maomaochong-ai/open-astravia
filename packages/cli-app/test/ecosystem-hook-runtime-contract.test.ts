@@ -10,9 +10,9 @@ import {
 	type Model,
 } from "@vetta/ai";
 import {
-	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
-	type CodingAgentSessionTransitionLifecycle as CodingAgentGreenfieldSessionTransitionLifecycle,
+	CodingAgentActiveSessionHost,
 	type CodingAgentRuntimeComposition,
+	type CodingAgentSessionTransitionLifecycle,
 	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome, type HookDispatchOutcome } from "@vetta/coding-agent/hooks";
@@ -22,7 +22,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
-describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
+describe("Session-local Ecosystem Hook Runtime contract", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -36,7 +36,7 @@ describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATI
 	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("shares one runtime across prompt, final tools, stop, persistence, resume and dispose", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-hooks-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-hooks-"));
 		temporaryDirectories.push(conversationDir);
 		const hookEvents: EcosystemHookEvent[] = [];
 		const modelCalls: Array<readonly Message[]> = [];
@@ -59,7 +59,7 @@ describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATI
 			}),
 			additionalHookAdapterFactories: [
 				async () => ({
-					id: "greenfield-lifecycle-test",
+					id: "runtime-lifecycle-test",
 					supports: (event) =>
 						event.eventName === "SessionStart" ||
 						event.eventName === "SessionEnd" ||
@@ -140,8 +140,8 @@ describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATI
 		expect(hookEvents.filter((event) => event.eventName === "Stop")).toHaveLength(3);
 	});
 
-	it("preserves Legacy SessionEnd causes and target SessionStart sources across replacements", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-hook-transitions-"));
+	it("preserves historical SessionEnd causes and target SessionStart sources across replacements", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-hook-transitions-"));
 		temporaryDirectories.push(conversationDir);
 		const hookEvents: EcosystemHookEvent[] = [];
 		const composition = await createLifecycleComposition(conversationDir, hookEvents);
@@ -186,7 +186,7 @@ describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATI
 	});
 
 	it("reactivates only the source hooks and removes the uncommitted target after rollback", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-hook-rollback-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-hook-rollback-"));
 		temporaryDirectories.push(conversationDir);
 		const hookEvents: EcosystemHookEvent[] = [];
 		const composition = await createLifecycleComposition(conversationDir, hookEvents);
@@ -228,7 +228,7 @@ async function createLifecycleComposition(
 		resolveSystemPromptOptions: () => ({ customPrompt: "Base prompt", scenario: "cli" }),
 		additionalHookAdapterFactories: [
 			async () => ({
-				id: "greenfield-transition-lifecycle-test",
+				id: "runtime-transition-lifecycle-test",
 				supports: (event) => event.eventName === "SessionStart" || event.eventName === "SessionEnd",
 				async dispatch(event) {
 					hookEvents.push(event);
@@ -245,9 +245,9 @@ function createActiveSessionHost(
 	initialSession: GreenfieldRuntimeSession,
 	conversationDir: string,
 	createSessionId: () => string,
-	lifecycle: CodingAgentGreenfieldSessionTransitionLifecycle | undefined = undefined,
-): CodingAgentGreenfieldActiveSessionHost {
-	return new CodingAgentGreenfieldActiveSessionHost({
+	lifecycle: CodingAgentSessionTransitionLifecycle | undefined = undefined,
+): CodingAgentActiveSessionHost {
+	return new CodingAgentActiveSessionHost({
 		runtime,
 		initialSession,
 		sessionOptions: { cwd: conversationDir },

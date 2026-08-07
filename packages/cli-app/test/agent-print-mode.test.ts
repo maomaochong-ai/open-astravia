@@ -43,7 +43,7 @@ afterAll(async () => {
 });
 
 describe("Agent non-RPC CLI compatibility", () => {
-	it("defaults explicit text Print to Greenfield", async () => {
+	it("defaults explicit text Print to the production Runtime", async () => {
 		const marker = "explicit text print response";
 		const server = await startOpenAiResponsesTestServer(() => ({
 			kind: "events",
@@ -84,21 +84,21 @@ describe("Agent non-RPC CLI compatibility", () => {
 		}
 	}, 30_000);
 
-	it("keeps Greenfield JSON Print core events compatible with the frozen Legacy contract", async () => {
-		const marker = "JSON differential response";
+	it("keeps production JSON Print core events compatible with the frozen historical contract", async () => {
+		const marker = "JSON compatibility response";
 		const server = await startOpenAiResponsesTestServer(() => ({
 			kind: "events",
 			events: textResponseEvents(marker),
 		}));
 		const fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
 		try {
-			const greenfield = await runAgentCli(fixture, ["--mode", "json", "compare JSON events"]);
+			const production = await runAgentCli(fixture, ["--mode", "json", "compare JSON events"]);
 
-			expect(greenfield.code).toBe(0);
-			expect(readCoreEventTypes(greenfield.stdout)).toEqual(legacyRuntimeContract.print.coreEventTypes);
-			expect(greenfield.stdout).toContain(marker);
-			expect(greenfield.stderr).not.toContain("requested=");
-			expect(readSessionHeader(greenfield.stdout)).toMatchObject({ type: "session", version: 3 });
+			expect(production.code).toBe(0);
+			expect(readCoreEventTypes(production.stdout)).toEqual(legacyRuntimeContract.print.coreEventTypes);
+			expect(production.stdout).toContain(marker);
+			expect(production.stderr).not.toContain("requested=");
+			expect(readSessionHeader(production.stdout)).toMatchObject({ type: "session", version: 3 });
 		} finally {
 			await fixture.dispose();
 			await server.dispose();
@@ -126,14 +126,14 @@ describe("Agent non-RPC CLI compatibility", () => {
 	}, 30_000);
 
 	it("keeps piped stdin compatible on the production Print path", async () => {
-		const marker = "Greenfield piped stdin response";
+		const marker = "Runtime piped stdin response";
 		const server = await startOpenAiResponsesTestServer(() => ({
 			kind: "events",
 			events: textResponseEvents(marker),
 		}));
 		const fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
 		try {
-			const result = await runAgentCli(fixture, ["agent"], "reply from Greenfield stdin\n");
+			const result = await runAgentCli(fixture, ["agent"], "reply from Runtime stdin\n");
 
 			expect(result.code).toBe(0);
 			expect(result.stdout).toContain(marker);
@@ -145,7 +145,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		}
 	}, 30_000);
 
-	it("keeps text and image @file inputs compatible with Legacy", async () => {
+	it("keeps text and image @file inputs compatible with the frozen historical contract", async () => {
 		const observation = await runPrintContract(async () => {
 			const marker = "production attachment response";
 			const server = await startOpenAiResponsesTestServer(() => ({
@@ -182,7 +182,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		expect(JSON.stringify(observation.userInput)).toContain("input_image");
 	}, 60_000);
 
-	it("keeps complete tool execution payloads compatible with Legacy", async () => {
+	it("keeps complete tool execution payloads compatible with the frozen historical contract", async () => {
 		const observation = await runPrintContract(async () => {
 			let fixture: AgentRpcFixture | undefined;
 			const server = await startOpenAiResponsesTestServer((_request, index) =>
@@ -213,7 +213,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		expect(observation.secondInputHasResult).toBe(true);
 	}, 60_000);
 
-	it("does not fall back to Legacy when a Greenfield Print tool reports an error", async () => {
+	it("reports production Print tool errors without falling back to another Runtime", async () => {
 		let fixture: AgentRpcFixture | undefined;
 		const server = await startOpenAiResponsesTestServer((_request, index) =>
 			index === 0
@@ -238,7 +238,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		}
 	}, 60_000);
 
-	it("keeps Provider HTTP retry events compatible with Legacy", async () => {
+	it("keeps Provider HTTP retry events compatible with the frozen historical contract", async () => {
 		const observation = await runPrintContract(async () => {
 			const server = await startOpenAiResponsesTestServer((_request, index) =>
 				index < 3
@@ -272,7 +272,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		});
 	}, 60_000);
 
-	it("keeps Provider disconnect retry events compatible with Legacy", async () => {
+	it("keeps Provider disconnect retry events compatible with the frozen historical contract", async () => {
 		const observation = await runPrintContract(async () => {
 			const server = await startOpenAiResponsesTestServer((_request, index) =>
 				index < 3 ? { kind: "disconnect" } : { kind: "events", events: textResponseEvents("disconnect recovered") },
@@ -304,7 +304,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		});
 	}, 60_000);
 
-	it("keeps non-retryable Provider errors compatible with Legacy", async () => {
+	it("keeps non-retryable Provider errors compatible with the frozen historical contract", async () => {
 		const observation = await runPrintContract(async () => {
 			const server = await startOpenAiResponsesTestServer(() => ({
 				kind: "http-error",
@@ -335,7 +335,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		expect(observation).toEqual(legacyRuntimeContract.print.nonRetryableProviderFailure);
 	}, 60_000);
 
-	it("keeps text Print Provider failure exit status compatible with Legacy", async () => {
+	it("keeps text Print Provider failure exit status compatible with the frozen historical contract", async () => {
 		const observation = await runPrintContract(async () => {
 			const server = await startOpenAiResponsesTestServer(() => ({
 				kind: "http-error",
@@ -395,7 +395,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		});
 	}, 60_000);
 
-	it("fails before the Provider request for an unsupported Extension event on default Greenfield Print", async () => {
+	it("fails before the Provider request for an unsupported Extension event on production Print", async () => {
 		const server = await startOpenAiResponsesTestServer(() => ({
 			kind: "events",
 			events: textResponseEvents("extension fallback completed"),
@@ -455,7 +455,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		expect(observation).toEqual({ codes: [0, 0], sameSession: true, continuedContext: true });
 	}, 60_000);
 
-	it("fails before the Provider request for an unrepresentable Legacy session", async () => {
+	it("fails before the Provider request for an unrepresentable historical session", async () => {
 		const server = await startOpenAiResponsesTestServer(() => ({
 			kind: "events",
 			events: textResponseEvents("legacy session fallback completed"),
@@ -493,7 +493,7 @@ describe("Agent non-RPC CLI compatibility", () => {
 		}
 	}, 60_000);
 
-	it("runs control commands without entering Legacy or Greenfield Session Runtime", async () => {
+	it("runs control commands without entering the Session Runtime", async () => {
 		const fixture = await createAgentRpcFixture();
 		const sessionPath = join(fixture.workspace, "control-export.jsonl");
 		const exportPath = join(fixture.workspace, "control-export.html");

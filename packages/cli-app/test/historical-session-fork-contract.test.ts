@@ -13,7 +13,7 @@ import {
 } from "./support/legacy-session-execution-fixture.js";
 import { startOpenAiResponsesTestServer, textResponseEvents } from "./support/openai-responses-test-server.js";
 
-describe("Greenfield migrated session fork", () => {
+describe("Historical session fork contract", () => {
 	let executable: AgentRpcExecutable;
 
 	beforeAll(async () => {

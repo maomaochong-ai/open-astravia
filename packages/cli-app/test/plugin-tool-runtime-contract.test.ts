@@ -17,7 +17,7 @@ import { type EcosystemHookEvent, emptyHookDispatchOutcome } from "@vetta/coding
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { afterEach, describe, expect, it } from "vitest";
 
-describe("Greenfield Plugin Tool runtime composition", () => {
+describe("Plugin Tool Runtime composition contract", () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -31,7 +31,7 @@ describe("Greenfield Plugin Tool runtime composition", () => {
 	});
 
 	it("executes a plugin tool and replays its effects through later calls in the same turn", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-plugin-tool-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-plugin-tool-"));
 		temporaryDirectories.push(conversationDir);
 		const invocations: Parameters<NonNullable<CodingAgentPluginRuntimeSource["invokeTool"]>>[0][] = [];
 		const modelCalls: Array<{

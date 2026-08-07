@@ -303,8 +303,8 @@ describe("RPC session event compatibility", () => {
 	});
 });
 
-describe("Greenfield conversation path identity", () => {
-	test("accepts only canonical Greenfield files directly under the configured repository", () => {
+describe("Runtime conversation path identity", () => {
+	test("accepts only canonical Runtime files directly under the configured repository", () => {
 		const root = join("C:\\", "sessions");
 		const sessionId = "session/with unsafe path";
 		const encoded = Buffer.from(sessionId, "utf8").toString("base64url");

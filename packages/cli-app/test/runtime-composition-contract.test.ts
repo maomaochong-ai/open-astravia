@@ -17,7 +17,7 @@ import {
 import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("Greenfield runtime composition", () => {
+describe("Runtime composition contract", () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -31,9 +31,9 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("runs prompt, real read tool, persistence, resume and continue through the parallel backend", async () => {
-		const workspace = await createTemporaryDirectory("greenfield-runtime-workspace-");
-		const conversations = await createTemporaryDirectory("greenfield-runtime-conversations-");
-		await writeFile(join(workspace, "message.txt"), "hello from the Greenfield composition", "utf8");
+		const workspace = await createTemporaryDirectory("runtime-workspace-");
+		const conversations = await createTemporaryDirectory("runtime-conversations-");
+		await writeFile(join(workspace, "message.txt"), "hello from the Runtime composition", "utf8");
 		await seedRetryConversation(conversations);
 		const responses = [
 			assistantMessage(
@@ -77,7 +77,7 @@ describe("Greenfield runtime composition", () => {
 
 		expect(firstMessages.map(({ role }) => role)).toEqual(["user", "assistant", "toolResult", "assistant"]);
 		expect(firstMessages.find(({ role }) => role === "toolResult")).toMatchObject({
-			content: [{ type: "text", text: expect.stringContaining("hello from the Greenfield composition") }],
+			content: [{ type: "text", text: expect.stringContaining("hello from the Runtime composition") }],
 		});
 		expect(modelCalls.slice(0, 2)).toEqual([
 			{ model: MODEL, apiKey: "test-key", tools: ["read"] },
@@ -111,7 +111,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("wires session-scoped manual compaction through the real composition root", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-manual-compaction-");
+		const conversations = await createTemporaryDirectory("runtime-manual-compaction-");
 		const generateCompaction = vi.fn(async (preparation, _model, _apiKey, customInstructions) => {
 			expect(customInstructions).toBe("preserve architecture decisions");
 			return {
@@ -158,7 +158,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("reflects registry changes on the next model call without rebuilding the session", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-dynamic-tools-");
+		const conversations = await createTemporaryDirectory("runtime-dynamic-tools-");
 		const toolLists: string[][] = [];
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
@@ -204,7 +204,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("assembles real host, execution, background work, todo and configuration ports", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-session-ports-");
+		const conversations = await createTemporaryDirectory("runtime-session-ports-");
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
@@ -243,8 +243,8 @@ describe("Greenfield runtime composition", () => {
 		await session.dispose();
 	});
 
-	it("registers legacy-equivalent knowledge tools while keeping host availability fail-closed", async () => {
-		const enabledConversations = await createTemporaryDirectory("greenfield-runtime-knowledge-enabled-");
+	it("registers knowledge tools while keeping host availability fail-closed", async () => {
+		const enabledConversations = await createTemporaryDirectory("runtime-knowledge-enabled-");
 		const enabledModelTools: string[][] = [];
 		const enabled = await createCodingAgentRuntimeComposition({
 			conversationDir: enabledConversations,
@@ -266,7 +266,7 @@ describe("Greenfield runtime composition", () => {
 		expect(enabledModelTools[1]).toEqual(expect.arrayContaining(["kb_list_available_tags", "kb_filter_by_tags"]));
 		await enabledSession.dispose();
 
-		const disabledConversations = await createTemporaryDirectory("greenfield-runtime-knowledge-disabled-");
+		const disabledConversations = await createTemporaryDirectory("runtime-knowledge-disabled-");
 		const disabledModelTools: string[][] = [];
 		const disabled = await createCodingAgentRuntimeComposition({
 			conversationDir: disabledConversations,
@@ -296,7 +296,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("creates stateful prompt resource resolvers per session", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-session-resolvers-");
+		const conversations = await createTemporaryDirectory("runtime-session-resolvers-");
 		const createPromptResourceResolver = vi.fn((sessionOptions: { readonly sessionId: string }) => {
 			return (text: string) => ({
 				text,
@@ -323,11 +323,11 @@ describe("Greenfield runtime composition", () => {
 		await second.dispose();
 	});
 
-	it("creates a real Resource and Settings prompt runtime for each Greenfield session", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-real-prompt-");
-		const agentDir = await createTemporaryDirectory("greenfield-runtime-agent-dir-");
-		const firstWorkspace = await createTemporaryDirectory("greenfield-runtime-first-workspace-");
-		const secondWorkspace = await createTemporaryDirectory("greenfield-runtime-second-workspace-");
+	it("creates a real Resource and Settings prompt runtime for each Runtime session", async () => {
+		const conversations = await createTemporaryDirectory("runtime-real-prompt-");
+		const agentDir = await createTemporaryDirectory("runtime-agent-dir-");
+		const firstWorkspace = await createTemporaryDirectory("runtime-first-workspace-");
+		const secondWorkspace = await createTemporaryDirectory("runtime-second-workspace-");
 		await writeFile(join(firstWorkspace, "AGENTS.md"), "First session repository instruction", "utf8");
 		await writeFile(join(secondWorkspace, "AGENTS.md"), "Second session repository instruction", "utf8");
 		const systemPrompts: string[] = [];
@@ -359,7 +359,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("recompiles the Coding Agent system prompt from current call tools and session-local options", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-system-prompt-");
+		const conversations = await createTemporaryDirectory("runtime-system-prompt-");
 		const calls: Array<{
 			readonly systemPrompt: string | undefined;
 			readonly messages: readonly string[];
@@ -469,7 +469,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("synchronizes MCP additions and removals before each model call", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-mcp-");
+		const conversations = await createTemporaryDirectory("runtime-mcp-");
 		const tool: McpTool = {
 			name: "lookup",
 			description: "Lookup a value",
@@ -516,7 +516,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("keeps deferred MCP activation session-local and refreshes the model-call contract", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-deferred-mcp-");
+		const conversations = await createTemporaryDirectory("runtime-deferred-mcp-");
 		const fixture = createMcpSourceFixture(16);
 		const modelCalls: Array<{
 			readonly systemPrompt: string | undefined;
@@ -604,7 +604,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("projects all parent file MCP bindings into explorer children without child-side deferral", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-subagent-mcp-");
+		const conversations = await createTemporaryDirectory("runtime-subagent-mcp-");
 		const fixture = createMcpSourceFixture(16);
 		const rootMcpTools: string[][] = [];
 		const childMcpTools: string[][] = [];
@@ -662,7 +662,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("keeps explicit MCP activation eager above the deferred threshold", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-explicit-mcp-");
+		const conversations = await createTemporaryDirectory("runtime-explicit-mcp-");
 		const fixture = createMcpSourceFixture(16);
 		const calls: Array<{ readonly systemPrompt: string | undefined; readonly tools: string[] }> = [];
 		const composition = await createCodingAgentRuntimeComposition({
@@ -696,7 +696,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("merges current session MCP discovery state into the composed Coding Agent prompt", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-composed-mcp-");
+		const conversations = await createTemporaryDirectory("runtime-composed-mcp-");
 		const fixture = createMcpSourceFixture(16);
 		const calls: Array<{ readonly systemPrompt: string | undefined; readonly mcpTools: readonly string[] }> = [];
 		const composition = await createCodingAgentRuntimeComposition({
@@ -739,7 +739,7 @@ describe("Greenfield runtime composition", () => {
 	});
 
 	it("persists hidden prompt contributions while keeping the chat projection clean", async () => {
-		const conversations = await createTemporaryDirectory("greenfield-runtime-prompt-context-");
+		const conversations = await createTemporaryDirectory("runtime-prompt-context-");
 		const modelInputs: string[][] = [];
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,

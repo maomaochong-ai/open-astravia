@@ -10,7 +10,7 @@ import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-ser
 import type { GreenfieldRuntimeSession, RuntimeSessionTodoController } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 
-describe("Greenfield Todo Runtime composition", () => {
+describe("Todo Runtime composition contract", () => {
 	const directories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -24,7 +24,7 @@ describe("Greenfield Todo Runtime composition", () => {
 	});
 
 	it("executes Todo through the model loop and restores the same state after resume", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-todo-runtime-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-todo-"));
 		directories.push(conversationDir);
 		const toolLists: string[][] = [];
 		const responses = [
@@ -113,7 +113,7 @@ describe("Greenfield Todo Runtime composition", () => {
 	});
 
 	it("persists prefilled scene-locked todos before the first turn", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-prefilled-todo-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-prefilled-todo-"));
 		directories.push(conversationDir);
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
@@ -149,7 +149,7 @@ describe("Greenfield Todo Runtime composition", () => {
 
 function requireTodoController(session: GreenfieldRuntimeSession): RuntimeSessionTodoController {
 	const controller = session.createCoreAssembly().todoController;
-	if (!controller) throw new Error("Greenfield Todo Controller was not composed");
+	if (!controller) throw new Error("Todo Controller was not composed");
 	return controller;
 }
 

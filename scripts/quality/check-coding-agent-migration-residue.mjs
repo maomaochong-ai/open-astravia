@@ -22,6 +22,16 @@ const SDK_SESSION_MIGRATION_IDENTITY_PATTERN =
 	/\b(?:(?:[A-Za-z_$][\w$]*)?GreenfieldSdk[\w$]*|CodingAgentGreenfield[\w$]*)\b/g;
 const DESKTOP_RUNTIME_MIGRATION_IDENTITY_PATTERN = /\bDesktopGreenfield[\w$]*\b/g;
 const CLI_RUNTIME_TEST_MIGRATION_IDENTITY_PATTERN = /\bTestAgentRuntimeBackend\b|\bBACKENDS\b/g;
+const CLI_HISTORICAL_ORACLE_REFERENCES = ["legacy-runtime-contract", "legacy-session-execution-fixture"];
+const RUNTIME_CONTRACT_REQUIRED_FILTERS = [
+	"contract.test.ts",
+	"test/runtime-host.test.ts",
+	"test/agent-runtime-selection.test.ts",
+	"test/rpc-session-adapter.test.ts",
+	"test/session-resource-close.test.ts",
+	"test/agent-runtime-initialization-failure.test.ts",
+	"test/agent-print-mode.test.ts",
+];
 const RUNTIME_CONTRACT_CONFIG_FILES = [
 	"package.json",
 	"packages/cli-app/package.json",
@@ -39,6 +49,8 @@ export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	desktopRuntimeMigrationIdentities: 0,
 	cliRuntimeTestMigrationFiles: 0,
 	cliRuntimeTestMigrationIdentities: 0,
+	cliHistoricalOracleProductionReferences: 0,
+	runtimeContractMissingFilters: 0,
 	runtimeCutoverScriptReferences: 0,
 });
 
@@ -484,8 +496,10 @@ export function collectCodingAgentMigrationResidue(files) {
 		),
 		cliRuntimeTestMigrationFiles: cliTestFiles.filter(
 			(file) =>
+				basename(file.path).startsWith("greenfield-") ||
 				basename(file.path).includes("-differential.") ||
-				basename(file.path) === "legacy-session-resource-close.test.ts",
+				basename(file.path) === "legacy-session-resource-close.test.ts" ||
+				basename(file.path) === "legacy-session-fallback-narrowing.test.ts",
 		),
 		cliRuntimeTestMigrationIdentities: cliTestFiles.flatMap((file) =>
 			[...new Set(file.text.match(CLI_RUNTIME_TEST_MIGRATION_IDENTITY_PATTERN) ?? [])].map((identity) => ({
@@ -493,6 +507,13 @@ export function collectCodingAgentMigrationResidue(files) {
 				identity,
 			})),
 		),
+		cliHistoricalOracleProductionReferences: sourceFiles.flatMap((file) =>
+			CLI_HISTORICAL_ORACLE_REFERENCES.filter((reference) => file.text.includes(reference)).map((reference) => ({
+				path: file.path,
+				reference,
+			})),
+		),
+		runtimeContractMissingFilters: collectRuntimeContractMissingFilters(files),
 		runtimeCutoverScriptReferences: files
 			.filter(
 				(file) => RUNTIME_CONTRACT_CONFIG_FILES.includes(file.path) && file.text.includes("verify:runtime-cutover"),
@@ -530,6 +551,29 @@ function collectModuleSpecifiers(text) {
 	const pattern = /(?:from\s+|import\s*\(\s*)["']([^"']+)["']/g;
 	for (const match of text.matchAll(pattern)) specifiers.push(match[1]);
 	return specifiers;
+}
+
+function collectRuntimeContractMissingFilters(files) {
+	const cliPackage = files.find((file) => file.path === "packages/cli-app/package.json");
+	if (!cliPackage) return [];
+	const script = readPackageScript(cliPackage.text, "verify:runtime-contract");
+	return RUNTIME_CONTRACT_REQUIRED_FILTERS.filter((filter) => !script?.includes(filter)).map((filter) => ({
+		path: cliPackage.path,
+		filter,
+	}));
+}
+
+function readPackageScript(text, name) {
+	try {
+		const packageJson = JSON.parse(text);
+		if (typeof packageJson !== "object" || packageJson === null) return undefined;
+		const scripts = packageJson.scripts;
+		if (typeof scripts !== "object" || scripts === null) return undefined;
+		const script = scripts[name];
+		return typeof script === "string" ? script : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 function readCurrentFiles() {
@@ -570,7 +614,7 @@ if (isDirectRun(import.meta.url)) {
 			for (const violation of violations) fail(`[coding-agent-migration-residue] ${violation}`);
 		} else {
 			ok(
-				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, SDK Session migration identities=${state.sdkSessionMigrationIdentities.length}/0, filenames=${state.sdkSessionMigrationFiles.length}/0, Desktop Runtime migration files=${state.desktopRuntimeMigrationFiles.length}/0, identities=${state.desktopRuntimeMigrationIdentities.length}/0, CLI Runtime test migration files=${state.cliRuntimeTestMigrationFiles.length}/0, identities=${state.cliRuntimeTestMigrationIdentities.length}/0, cutover script references=${state.runtimeCutoverScriptReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
+				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, SDK Session migration identities=${state.sdkSessionMigrationIdentities.length}/0, filenames=${state.sdkSessionMigrationFiles.length}/0, Desktop Runtime migration files=${state.desktopRuntimeMigrationFiles.length}/0, identities=${state.desktopRuntimeMigrationIdentities.length}/0, CLI Runtime test migration files=${state.cliRuntimeTestMigrationFiles.length}/0, identities=${state.cliRuntimeTestMigrationIdentities.length}/0, historical Oracle production references=${state.cliHistoricalOracleProductionReferences.length}/0, runtime contract missing filters=${state.runtimeContractMissingFilters.length}/0, cutover script references=${state.runtimeCutoverScriptReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
 			);
 		}
 	}

@@ -18,7 +18,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
-describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
+describe("Runtime Host capabilities contract", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
 	const disposers: Array<() => Promise<void>> = [];
 
@@ -30,8 +30,8 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 	}, INTEGRATION_TEST_TIMEOUT_MS);
 
 	it("maps plugin prompt, tool and continuation invokers and applies live reconfiguration", async () => {
-		const cwd = await temporaryDirectory("greenfield-host-plugin-workspace-");
-		const conversationDir = await temporaryDirectory("greenfield-host-plugin-conversations-");
+		const cwd = await temporaryDirectory("runtime-host-plugin-workspace-");
+		const conversationDir = await temporaryDirectory("runtime-host-plugin-conversations-");
 		const modelCalls: Array<{ readonly prompt?: string; readonly tools: readonly string[] }> = [];
 		const responses = [
 			assistantToolCall("plugin_artifact", { title: "Report", md_intro: "Finding" }),
@@ -128,8 +128,8 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 	});
 
 	it("toggles ask_user_question per model call without rebuilding the session", async () => {
-		const cwd = await temporaryDirectory("greenfield-host-question-workspace-");
-		const conversationDir = await temporaryDirectory("greenfield-host-question-conversations-");
+		const cwd = await temporaryDirectory("runtime-host-question-workspace-");
+		const conversationDir = await temporaryDirectory("runtime-host-question-conversations-");
 		const toolSurfaces: string[][] = [];
 		const responses = [
 			assistantToolCall("ask_user_question", {
@@ -205,8 +205,8 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 	});
 
 	it("rejects ambiguous plugin sources instead of silently overriding one", async () => {
-		const cwd = await temporaryDirectory("greenfield-host-plugin-conflict-workspace-");
-		const conversationDir = await temporaryDirectory("greenfield-host-plugin-conflict-conversations-");
+		const cwd = await temporaryDirectory("runtime-host-plugin-conflict-workspace-");
+		const conversationDir = await temporaryDirectory("runtime-host-plugin-conflict-conversations-");
 		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,

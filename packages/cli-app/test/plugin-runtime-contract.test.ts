@@ -9,7 +9,7 @@ import {
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("Greenfield Plugin runtime composition", () => {
+describe("Plugin Runtime composition contract", () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -23,7 +23,7 @@ describe("Greenfield Plugin runtime composition", () => {
 	});
 
 	it("runs dynamic prompt effects, tool selection and continuation through one session orchestrator", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-plugin-runtime-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-plugin-runtime-"));
 		temporaryDirectories.push(conversationDir);
 		const providerCalls: string[] = [];
 		const modelCalls: Array<{

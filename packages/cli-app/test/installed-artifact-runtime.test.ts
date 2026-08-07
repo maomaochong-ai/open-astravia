@@ -140,7 +140,7 @@ describe("installed standalone CLI artifact", () => {
 		});
 	}, 120_000);
 
-	it("defaults ordinary RPC to the full Greenfield profile across installed executable restarts", async () => {
+	it("defaults ordinary RPC to the full production profile across installed executable restarts", async () => {
 		await expectStandaloneArtifact(artifact);
 
 		providerServer = await startOpenAiResponsesTestServer(() => ({

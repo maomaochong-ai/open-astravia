@@ -190,15 +190,67 @@ describe("Coding Agent migration residue gate", () => {
 				text: "export {};",
 			},
 			{
+				path: "packages/cli-app/test/greenfield-runtime-feature.test.ts",
+				text: "export {};",
+			},
+			{
+				path: "packages/cli-app/test/legacy-session-fallback-narrowing.test.ts",
+				text: "export {};",
+			},
+			{
 				path: "package.json",
 				text: '{"scripts":{"verify:runtime-cutover":"bun run verify"}}',
 			},
 		]);
 
 		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
-			"cliRuntimeTestMigrationFiles: 2 exceeds migration residue limit 0",
+			"cliRuntimeTestMigrationFiles: 4 exceeds migration residue limit 0",
 			"cliRuntimeTestMigrationIdentities: 2 exceeds migration residue limit 0",
 			"runtimeCutoverScriptReferences: 1 exceeds migration residue limit 0",
+		]);
+	});
+
+	it("keeps frozen historical Runtime Oracles out of production source", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/cli-app/src/runtime.ts",
+				text: [
+					'import "../test/support/legacy-runtime-contract.js";',
+					'import "../test/support/legacy-session-execution-fixture.js";',
+				].join("\n"),
+			},
+			{
+				path: "packages/cli-app/test/runtime-contract.test.ts",
+				text: 'import "./support/legacy-runtime-contract.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"cliHistoricalOracleProductionReferences: 2 exceeds migration residue limit 0",
+		]);
+	});
+
+	it("rejects an incomplete production Runtime contract command", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/cli-app/package.json",
+				text: JSON.stringify({
+					scripts: {
+						"verify:runtime-contract": [
+							"bunx vitest --run contract.test.ts",
+							"test/runtime-host.test.ts",
+							"test/agent-runtime-selection.test.ts",
+							"test/rpc-session-adapter.test.ts",
+							"test/session-resource-close.test.ts",
+							"test/agent-runtime-initialization-failure.test.ts",
+						].join(" "),
+					},
+				}),
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"runtimeContractMissingFilters: 1 exceeds migration residue limit 0",
 		]);
 	});
 

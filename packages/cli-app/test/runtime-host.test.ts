@@ -153,7 +153,7 @@ describe("IM Runtime Host", () => {
 		).rejects.toThrow("--resume is no longer supported; use --continue or --session");
 	});
 
-	it("runs Flag and Command Extensions after resolving their Greenfield capabilities", async () => {
+	it("runs Flag and Command Extensions after resolving their Runtime capabilities", async () => {
 		const lifecycle = extensionLifecycleGlobal();
 		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(
@@ -189,7 +189,7 @@ describe("IM Runtime Host", () => {
 		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["audit"]);
 	});
 
-	it("runs Provider/Flag-only Extensions on Greenfield and binds their retained actions", async () => {
+	it("runs Provider/Flag-only Extensions on the production Runtime and binds their retained actions", async () => {
 		const fixture = await createFixture(
 			[],
 			`
@@ -221,7 +221,7 @@ describe("IM Runtime Host", () => {
 		expect(() => result.session).toThrow("active session host is disposed");
 	});
 
-	it("runs Tool-only Extensions on Greenfield without closing unrelated compatibility gaps", async () => {
+	it("runs Tool-only Extensions on the production Runtime without closing unrelated compatibility gaps", async () => {
 		const fixture = await createFixture(
 			[],
 			`
@@ -336,7 +336,7 @@ describe("IM Runtime Host", () => {
 		);
 	});
 
-	it("emits model_select when an Extension changes the Greenfield model", async () => {
+	it("emits model_select when an Extension changes the Runtime model", async () => {
 		const lifecycle = extensionLifecycleGlobal();
 		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(
@@ -506,7 +506,7 @@ describe("IM Runtime Host", () => {
 		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual(["old-shutdown", "new-start", "after-command"]);
 	});
 
-	it("runs supported input events with a real Greenfield session context", async () => {
+	it("runs supported input events with a real Runtime session context", async () => {
 		const fixture = await createFixture(
 			[],
 			`
@@ -549,7 +549,7 @@ describe("IM Runtime Host", () => {
 		await expect(result.session.getMessages()).resolves.toEqual([]);
 	});
 
-	it("emits supported session lifecycle events exactly once through the real Greenfield host", async () => {
+	it("emits supported session lifecycle events exactly once through the real Runtime Host", async () => {
 		const lifecycle = extensionLifecycleGlobal();
 		lifecycle.__vettaGreenfieldExtensionLifecycle = [];
 		const fixture = await createFixture(

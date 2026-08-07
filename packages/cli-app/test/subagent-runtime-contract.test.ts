@@ -17,7 +17,7 @@ import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-ser
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 
-describe("Greenfield Subagent Runtime composition", () => {
+describe("Subagent Runtime composition contract", () => {
 	const directories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -31,8 +31,8 @@ describe("Greenfield Subagent Runtime composition", () => {
 	});
 
 	it("keeps the seven control tools compatible and closes the child notification loop", async () => {
-		const conversationDir = await temporaryDirectory("greenfield-subagents-conversations-");
-		const workspace = await temporaryDirectory("greenfield-subagents-workspace-");
+		const conversationDir = await temporaryDirectory("runtime-subagents-conversations-");
+		const workspace = await temporaryDirectory("runtime-subagents-workspace-");
 		const rootToolSurfaces: string[][] = [];
 		const childToolSurfaces: string[][] = [];
 		const rootInputs: string[][] = [];
@@ -108,7 +108,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 
 		const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
 		expect(assessment.ready).toBe(true);
-		if (!assessment.ready) throw new Error("Expected complete Greenfield RuntimeHost assembly");
+		if (!assessment.ready) throw new Error("Expected complete Runtime Host assembly");
 		const subagent = assessment.assembly.backgroundWorkController.readSubagents()[0];
 		expect(subagent).toMatchObject({
 			taskName: "inspect_repo",
@@ -140,8 +140,8 @@ describe("Greenfield Subagent Runtime composition", () => {
 	}, 30_000);
 
 	it("forks parent context and coding tools into workflow children without recursive delegation", async () => {
-		const conversationDir = await temporaryDirectory("greenfield-workflow-conversations-");
-		const workspace = await temporaryDirectory("greenfield-workflow-workspace-");
+		const conversationDir = await temporaryDirectory("runtime-workflow-conversations-");
+		const workspace = await temporaryDirectory("runtime-workflow-workspace-");
 		const childInputs: string[][] = [];
 		const childToolSurfaces: string[][] = [];
 		let rootCall = 0;
@@ -213,7 +213,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 			expect.arrayContaining(["spawn_agent", "dispatch_workflows", "wait_agent"]),
 		);
 		const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
-		if (!assessment.ready) throw new Error("Expected complete Greenfield RuntimeHost assembly");
+		if (!assessment.ready) throw new Error("Expected complete Runtime Host assembly");
 		expect(assessment.assembly.backgroundWorkController.readSubagents()[0]).toMatchObject({
 			taskName: "implement_scope",
 			agentType: "workflow",
@@ -224,8 +224,8 @@ describe("Greenfield Subagent Runtime composition", () => {
 	}, 30_000);
 
 	it("restores only parent-indexed children, preserves delivery claims and lazily reopens the transcript", async () => {
-		const conversationDir = await temporaryDirectory("greenfield-subagent-recovery-conversations-");
-		const workspace = await temporaryDirectory("greenfield-subagent-recovery-workspace-");
+		const conversationDir = await temporaryDirectory("runtime-subagent-recovery-conversations-");
+		const workspace = await temporaryDirectory("runtime-subagent-recovery-workspace-");
 		let initialRootCall = 0;
 		const initialComposition = await createCodingAgentRuntimeComposition({
 			conversationDir,
@@ -275,7 +275,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 			);
 		});
 		const initialAssessment = assessRuntimeHostSessionAssembly(initialSession.createRuntimeHostAssemblyCandidate());
-		if (!initialAssessment.ready) throw new Error("Expected complete Greenfield RuntimeHost assembly");
+		if (!initialAssessment.ready) throw new Error("Expected complete Runtime Host assembly");
 		const initialChild = initialAssessment.assembly.backgroundWorkController.readSubagents()[0];
 		if (!initialChild?.sessionFile) throw new Error("Expected a persisted child transcript");
 		await initialSession.dispose();

@@ -7,9 +7,9 @@ import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-ser
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import { describe, expect, it } from "vitest";
 
-describe("Greenfield ownership cleanup retry", () => {
+describe("Runtime ownership cleanup contract", () => {
 	it("releases failed initialization ownership before the same Session is started again", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-initialization-rollback-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-initialization-rollback-"));
 		const initializationError = new Error("system prompt initialization failed");
 		let activeOwnerships = 0;
 		let promptAttempts = 0;
@@ -62,7 +62,7 @@ describe("Greenfield ownership cleanup retry", () => {
 	});
 
 	it("retries a failed Session ownership release during final Runtime cleanup", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-ownership-cleanup-"));
+		const conversationDir = await mkdtemp(join(tmpdir(), "runtime-ownership-cleanup-"));
 		let releaseAttempts = 0;
 		const ownershipManager: ConversationOwnershipManager = {
 			acquire: async (conversationPath) => ({
