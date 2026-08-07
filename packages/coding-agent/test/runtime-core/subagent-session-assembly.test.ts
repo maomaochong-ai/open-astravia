@@ -8,16 +8,16 @@ import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { SubagentTypeRegistry } from "@vetta/runtime-subagents";
 import { describe, expect, it, vi } from "vitest";
-import type { GreenfieldSubagentProfile } from "../../src/composition/greenfield-subagent-runtime.js";
+import type { CodingAgentSubagentProfile } from "../../src/composition/subagent/runtime.js";
 import {
-	createGreenfieldSubagentSessionAssembly,
-	type GreenfieldSubagentChildCompositionRequest,
-	type GreenfieldSubagentChildFactory,
-} from "../../src/composition/greenfield-subagent-session-assembly.js";
+	type CodingAgentSubagentChildCompositionRequest,
+	type CodingAgentSubagentChildFactory,
+	createCodingAgentSubagentSessionAssembly,
+} from "../../src/composition/subagent/session-assembly.js";
 
-describe("Greenfield Subagent session assembly", () => {
+describe("Coding Agent Subagent session assembly", () => {
 	it("does not assemble the capability when it is disabled", () => {
-		const runtime = createGreenfieldSubagentSessionAssembly({
+		const runtime = createCodingAgentSubagentSessionAssembly({
 			...baseOptions(),
 			enabled: false,
 		});
@@ -26,7 +26,7 @@ describe("Greenfield Subagent session assembly", () => {
 	});
 
 	it("owns child policy, hook mapping, notifications, observations and cleanup", async () => {
-		const compositionRequests: GreenfieldSubagentChildCompositionRequest[] = [];
+		const compositionRequests: CodingAgentSubagentChildCompositionRequest[] = [];
 		const childSessionOptions: unknown[] = [];
 		const promptInputs: string[] = [];
 		const hookCalls: string[] = [];
@@ -56,7 +56,7 @@ describe("Greenfield Subagent session assembly", () => {
 				observations.push(observation);
 			},
 		} satisfies Pick<GreenfieldRuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
-		const runtime = createGreenfieldSubagentSessionAssembly({
+		const runtime = createCodingAgentSubagentSessionAssembly({
 			enabled: true,
 			cwd: "C:\\workspace",
 			scenario: "cli",
@@ -138,7 +138,7 @@ describe("Greenfield Subagent session assembly", () => {
 
 	it("disposes the child composition once when child Session creation fails", async () => {
 		const dispose = vi.fn(async () => {});
-		const runtime = createGreenfieldSubagentSessionAssembly({
+		const runtime = createCodingAgentSubagentSessionAssembly({
 			...baseOptions(),
 			createChildComposition: async () => ({
 				createSession: async () => {
@@ -184,7 +184,7 @@ describe("Greenfield Subagent session assembly", () => {
 		const secondView = { tools: [{ tool: { name: "mcp_second" } }] } as unknown as McpRuntimeToolView;
 		let currentView = firstView;
 		const received: McpRuntimeToolView[] = [];
-		const runtime = createGreenfieldSubagentSessionAssembly({
+		const runtime = createCodingAgentSubagentSessionAssembly({
 			...baseOptions(),
 			readInheritedMcpView: async () => currentView,
 			createChildComposition: async (request) => {
@@ -223,9 +223,9 @@ describe("Greenfield Subagent session assembly", () => {
 	});
 
 	it("reads an injected type registry live and delegates child creation to the injected factory", async () => {
-		const registry = new SubagentTypeRegistry<GreenfieldSubagentProfile>();
-		const create = vi.fn<GreenfieldSubagentChildFactory["create"]>(async () => completedChild("custom-child"));
-		const runtime = createGreenfieldSubagentSessionAssembly({
+		const registry = new SubagentTypeRegistry<CodingAgentSubagentProfile>();
+		const create = vi.fn<CodingAgentSubagentChildFactory["create"]>(async () => completedChild("custom-child"));
+		const runtime = createCodingAgentSubagentSessionAssembly({
 			...baseOptions(),
 			typeRegistry: registry,
 			createChildFactory: () => ({ create }),
@@ -283,8 +283,8 @@ describe("Greenfield Subagent session assembly", () => {
 		await runtime.dispose();
 	});
 
-	it("injects custom type tools into the default Greenfield child without changing their execution contract", async () => {
-		const registry = new SubagentTypeRegistry<GreenfieldSubagentProfile>().register({
+	it("injects custom type tools into the default Coding Agent child without changing their execution contract", async () => {
+		const registry = new SubagentTypeRegistry<CodingAgentSubagentProfile>().register({
 			id: "reviewer",
 			label: "Reviewer",
 			description: "Review code.",
@@ -309,9 +309,9 @@ describe("Greenfield Subagent session assembly", () => {
 				],
 			},
 		});
-		const compositionRequests: GreenfieldSubagentChildCompositionRequest[] = [];
+		const compositionRequests: CodingAgentSubagentChildCompositionRequest[] = [];
 		const childOptions: unknown[] = [];
-		const runtime = createGreenfieldSubagentSessionAssembly({
+		const runtime = createCodingAgentSubagentSessionAssembly({
 			...baseOptions(),
 			typeRegistry: registry,
 			createChildComposition: async (request) => {

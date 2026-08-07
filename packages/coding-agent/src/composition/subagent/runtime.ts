@@ -23,37 +23,37 @@ import {
 	type SubagentTypeRegistryLike,
 	taskPath,
 } from "@vetta/runtime-subagents";
-import { createCodingAgentSubagentRuntimeToolRegistrations } from "../adapters/runtime-core/greenfield-subagent-tool-registrations.js";
-import type { CodingAgentSubagentWorkRuntime } from "../host/session-execution/background-work-controller.js";
+import { createCodingAgentSubagentRuntimeToolRegistrations } from "../../adapters/runtime-core/greenfield-subagent-tool-registrations.js";
+import type { CodingAgentSubagentWorkRuntime } from "../../host/session-execution/background-work-controller.js";
 import {
-	createDefaultGreenfieldSubagentTypeRegistry,
-	GREENFIELD_SUBAGENT_TYPE_WORKFLOW,
-	type GreenfieldSubagentProfile,
-} from "./greenfield-subagent-profiles.js";
-import { GreenfieldSubagentStatePersistence } from "./greenfield-subagent-state-persistence.js";
+	CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
+	type CodingAgentSubagentProfile,
+	createDefaultCodingAgentSubagentTypeRegistry,
+} from "./profiles.js";
+import { CodingAgentSubagentStatePersistence } from "./state-persistence.js";
 
 export {
-	createDefaultGreenfieldSubagentTypeRegistry,
-	GREENFIELD_SUBAGENT_TYPE_EXPLORER,
-	GREENFIELD_SUBAGENT_TYPE_WORKFLOW,
-	type GreenfieldSubagentProfile,
-} from "./greenfield-subagent-profiles.js";
+	CODING_AGENT_SUBAGENT_TYPE_EXPLORER,
+	CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
+	type CodingAgentSubagentProfile,
+	createDefaultCodingAgentSubagentTypeRegistry,
+} from "./profiles.js";
 
-export interface GreenfieldSubagentRuntimeOptions {
+export interface CodingAgentSubagentRuntimeOptions {
 	readonly parentSessionId: string;
 	readonly maxConcurrent?: number;
 	readonly lifecycle?: SubagentLifecycle;
-	readonly typeRegistry?: SubagentTypeRegistryLike<GreenfieldSubagentProfile>;
+	readonly typeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
 	readonly readParentMessages: () => Promise<readonly Message[]>;
 	readonly createChild: (
 		request: SubagentSpawnRequest,
-		type: SubagentTypeDefinition<GreenfieldSubagentProfile>,
+		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 		forkContext: readonly Message[] | undefined,
 		signal?: AbortSignal,
 	) => Promise<SubagentChildHandle>;
 	readonly reopenChild?: (
 		snapshot: SubagentSnapshot,
-		type: SubagentTypeDefinition<GreenfieldSubagentProfile>,
+		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 		forkContext: readonly Message[] | undefined,
 		signal?: AbortSignal,
 	) => Promise<SubagentChildHandle>;
@@ -64,21 +64,23 @@ export interface GreenfieldSubagentRuntimeOptions {
 }
 
 /**
- * Greenfield Session-local 子代理能力。
+ * Coding Agent Session-local 子代理能力。
  *
  * 调度器只认识 Child Handle；具体 Session、模型、工具、存储和 MCP 继承由
  * Composition Root 注入的 Child Factory 决定。
  */
-export class GreenfieldSubagentRuntime implements CodingAgentSubagentWorkRuntime, GreenfieldRuntimeDocumentParticipant {
+export class CodingAgentSubagentRuntime
+	implements CodingAgentSubagentWorkRuntime, GreenfieldRuntimeDocumentParticipant
+{
 	readonly feature: AgentFeatureDefinition;
-	private readonly coordinator: SubagentCoordinator<GreenfieldSubagentProfile>;
-	private readonly persistence: GreenfieldSubagentStatePersistence;
+	private readonly coordinator: SubagentCoordinator<CodingAgentSubagentProfile>;
+	private readonly persistence: CodingAgentSubagentStatePersistence;
 	private readonly tools: readonly RuntimeToolDefinition[];
 	private disposed = false;
 
-	constructor(options: GreenfieldSubagentRuntimeOptions) {
+	constructor(options: CodingAgentSubagentRuntimeOptions) {
 		const reopenChild = options.reopenChild;
-		const registry = options.typeRegistry ?? createDefaultGreenfieldSubagentTypeRegistry();
+		const registry = options.typeRegistry ?? createDefaultCodingAgentSubagentTypeRegistry();
 		this.coordinator = new SubagentCoordinator({
 			parentSessionId: options.parentSessionId,
 			typeRegistry: registry,
@@ -103,7 +105,7 @@ export class GreenfieldSubagentRuntime implements CodingAgentSubagentWorkRuntime
 					: undefined,
 			},
 		});
-		this.persistence = new GreenfieldSubagentStatePersistence({
+		this.persistence = new CodingAgentSubagentStatePersistence({
 			restore: async (state) => {
 				const agents = await prepareRecoveredAgents(state.agents, registry, options);
 				try {
@@ -117,7 +119,7 @@ export class GreenfieldSubagentRuntime implements CodingAgentSubagentWorkRuntime
 		});
 		this.tools = createCodingAgentSubagentRuntimeToolRegistrations(
 			() => this.coordinator,
-			GREENFIELD_SUBAGENT_TYPE_WORKFLOW,
+			CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
 		).map(({ tool }) => tool);
 		this.feature = {
 			id: "coding-agent-subagents",
@@ -167,8 +169,8 @@ export class GreenfieldSubagentRuntime implements CodingAgentSubagentWorkRuntime
 
 async function prepareRecoveredAgents(
 	agents: readonly SubagentSnapshot[],
-	registry: SubagentTypeRegistryLike<GreenfieldSubagentProfile>,
-	options: GreenfieldSubagentRuntimeOptions,
+	registry: SubagentTypeRegistryLike<CodingAgentSubagentProfile>,
+	options: CodingAgentSubagentRuntimeOptions,
 ): Promise<SubagentSnapshot[]> {
 	const recovered: SubagentSnapshot[] = [];
 	for (const snapshot of agents) {

@@ -9,15 +9,15 @@ import type {
 	CodingAgentRuntimeSessionOptions,
 } from "../../src/composition/contracts/index.js";
 import {
-	createGreenfieldChildCompositionFactory,
-	type GreenfieldChildRuntimeCompositionFactory,
-} from "../../src/composition/greenfield-child-composition-policy.js";
+	type CodingAgentChildRuntimeCompositionFactory,
+	createCodingAgentChildCompositionFactory,
+} from "../../src/composition/subagent/child-composition-policy.js";
 import type {
-	GreenfieldSubagentChildCompositionRequest,
-	GreenfieldSubagentChildSessionOptions,
-} from "../../src/composition/greenfield-subagent-session-assembly.js";
+	CodingAgentSubagentChildCompositionRequest,
+	CodingAgentSubagentChildSessionOptions,
+} from "../../src/composition/subagent/session-assembly.js";
 
-describe("Greenfield Child Composition policy", () => {
+describe("Coding Agent Child Composition policy", () => {
 	it("projects an isolated child composition while preserving allowed parent ports", async () => {
 		const fixture = compositionFixture();
 		const mcpSource = {
@@ -52,7 +52,7 @@ describe("Greenfield Child Composition policy", () => {
 			systemPromptAdvertisedToolNames: ["parent_tool"],
 		};
 		const inheritedMcpView = { tools: [] } as McpRuntimeToolView;
-		const request: GreenfieldSubagentChildCompositionRequest = {
+		const request: CodingAgentSubagentChildCompositionRequest = {
 			conversationDir: "C:\\conversations\\.subagents\\parent",
 			cwd: "C:\\child",
 			initialModel: CHILD_MODEL,
@@ -64,12 +64,12 @@ describe("Greenfield Child Composition policy", () => {
 			readonly options: CodingAgentRuntimeCompositionOptions;
 			readonly inheritedMcpView: McpRuntimeToolView;
 		}> = [];
-		const createComposition: GreenfieldChildRuntimeCompositionFactory = async (options, view) => {
+		const createComposition: CodingAgentChildRuntimeCompositionFactory = async (options, view) => {
 			compositionCalls.push({ options, inheritedMcpView: view });
 			return fixture.composition;
 		};
 
-		const createChild = createGreenfieldChildCompositionFactory({ parentOptions, createComposition });
+		const createChild = createCodingAgentChildCompositionFactory({ parentOptions, createComposition });
 		const child = await createChild(request);
 
 		expect(compositionCalls).toHaveLength(1);
@@ -139,7 +139,7 @@ function compositionFixture() {
 	};
 }
 
-function sessionOptions(sessionId: string): GreenfieldSubagentChildSessionOptions {
+function sessionOptions(sessionId: string): CodingAgentSubagentChildSessionOptions {
 	return {
 		sessionId,
 		cwd: "C:\\child",

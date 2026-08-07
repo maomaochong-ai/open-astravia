@@ -636,8 +636,8 @@ describe("package boundary analysis", () => {
 	it("keeps Subagent session assembly out of the Coding Agent Composition Root", () => {
 		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedAssembly = `
-			const runtime = new GreenfieldSubagentRuntime({});
-			createGreenfieldSubagentChildHandle({});
+			const runtime = new CodingAgentSubagentRuntime({});
+			createCodingAgentSubagentChildHandle({});
 			hooks.runSubagentStart({});
 			const directory = ".subagents";
 			const observation = "subagents_update";
@@ -646,7 +646,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldSubagentSessionAssembly } from "./greenfield-subagent-session-assembly.js";',
+				'import { createCodingAgentSubagentSessionAssembly } from "./subagent/session-assembly.js";',
 			),
 		).toHaveLength(1);
 	});
@@ -664,7 +664,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldTurnCapabilitySessionAssembly } from "./greenfield-turn-capability-session-assembly.js";',
+				'import { createCodingAgentTurnCapabilitySessionAssembly } from "./turn/capability-session-assembly.js";',
 			),
 		).toHaveLength(1);
 	});
@@ -740,7 +740,7 @@ describe("package boundary analysis", () => {
 			const execution = new CodingAgentSessionExecutionRuntime({});
 			const configuration = new CodingAgentSessionConfigurationState();
 			createCodingAgentSessionResourceLifecycle({});
-			createGreenfieldTurnCapabilitySessionAssembly({});
+			createCodingAgentTurnCapabilitySessionAssembly({});
 			rollback.defer({ id: "conversation-ownership" });
 		`;
 		expect(findPackageBoundaryViolations(compositionPath, embeddedInitialization)).toHaveLength(6);
@@ -792,7 +792,7 @@ describe("package boundary analysis", () => {
 			"new GreenfieldRuntimeModel({});",
 			"new CodingAgentGreenfieldContextRuntime({});",
 			"createEcosystemHookRuntime({});",
-			"createGreenfieldSubagentSessionAssembly({});",
+			"createCodingAgentSubagentSessionAssembly({});",
 			"createCodingAgentGreenfieldProductToolRegistrations({});",
 			"createSessionPluginRuntime(options);",
 		];
@@ -893,7 +893,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldChildCompositionFactory } from "./greenfield-child-composition-policy.js";',
+				'import { createCodingAgentChildCompositionFactory } from "./subagent/child-composition-policy.js";',
 			),
 		).toEqual([]);
 	});

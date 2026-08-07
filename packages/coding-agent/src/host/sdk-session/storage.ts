@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
-import type { GreenfieldConversationPersistenceFactory } from "../../composition/greenfield-conversation-persistence.js";
-import { createInMemoryGreenfieldConversationPersistence } from "../../composition/greenfield-conversation-persistence.js";
+import type { CodingAgentConversationPersistenceFactory } from "../../composition/conversation/persistence.js";
+import { createInMemoryCodingAgentConversationPersistence } from "../../composition/conversation/persistence.js";
 
 export type GreenfieldSdkSessionStorageTarget =
 	| { readonly kind: "memory"; readonly sessionId?: string }
@@ -23,7 +23,7 @@ export interface ResolvedGreenfieldSdkSessionStorage {
 	readonly operation: GreenfieldSdkSessionStorageOperation;
 	readonly sessionId: string;
 	readonly conversationDir?: string;
-	readonly createConversationPersistence?: GreenfieldConversationPersistenceFactory;
+	readonly createConversationPersistence?: CodingAgentConversationPersistenceFactory;
 }
 
 export const GREENFIELD_SDK_STORAGE_ERROR_CODES = {
@@ -54,7 +54,7 @@ export function resolveGreenfieldSdkSessionStorage(
 		return {
 			operation: "create",
 			sessionId: normalizeSessionId(target.sessionId, target),
-			createConversationPersistence: () => createInMemoryGreenfieldConversationPersistence(),
+			createConversationPersistence: () => createInMemoryCodingAgentConversationPersistence(),
 		};
 	}
 

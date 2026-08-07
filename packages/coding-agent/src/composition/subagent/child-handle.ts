@@ -3,7 +3,7 @@ import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { SubagentChildHandle, SubagentTodoProgress, SubagentUsageSnapshot } from "@vetta/runtime-subagents";
 
-export interface GreenfieldSubagentChildHandleOptions {
+export interface CodingAgentSubagentChildHandleOptions {
 	readonly session: GreenfieldRuntimeSession;
 	readonly sessionFile?: string;
 	appendContext(records: readonly SessionContextRecord[]): void;
@@ -11,9 +11,9 @@ export interface GreenfieldSubagentChildHandleOptions {
 	disposeComposition(): Promise<void>;
 }
 
-/** 将 Coding Agent Greenfield Session 收窄为通用协调器所需的 Child Handle。 */
-export function createGreenfieldSubagentChildHandle(
-	options: GreenfieldSubagentChildHandleOptions,
+/** 将 Coding Agent Session 收窄为通用协调器所需的 Child Handle。 */
+export function createCodingAgentSubagentChildHandle(
+	options: CodingAgentSubagentChildHandleOptions,
 ): SubagentChildHandle {
 	const todoController = options.session.createCoreAssembly().todoController;
 	let disposed = false;

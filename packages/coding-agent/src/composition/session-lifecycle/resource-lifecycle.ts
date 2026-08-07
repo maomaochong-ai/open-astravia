@@ -21,9 +21,9 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
-import type { GreenfieldSubagentRuntime } from "../greenfield-subagent-runtime.js";
-import type { GreenfieldTurnCapabilitySessionAssembly } from "../greenfield-turn-capability-session-assembly.js";
+import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
 import type { CodingAgentSessionMarkerIndex, CodingAgentSessionValueIndex } from "./indexes.js";
 import {
 	type CodingAgentSessionConversationResources,
@@ -77,7 +77,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoToolRegistration: CodingAgentRuntimeToolRegistration;
 	readonly todoEnabled: boolean;
-	readonly subagentRuntime?: GreenfieldSubagentRuntime;
+	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly configurationState: CodingAgentSessionConfigurationState;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
@@ -99,14 +99,14 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 		untrackContextRuntime(runtime: CodingAgentContextRuntime): void;
 		untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
 		untrackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
-		untrackTurnCapabilityAssembly(assembly: GreenfieldTurnCapabilitySessionAssembly): void;
+		untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	};
 }
 
 export interface CodingAgentSessionResourceLifecycle {
 	readonly hookController: CodingAgentSessionHookController;
 	disposeHookSession(): Promise<void>;
-	attachTurnCapabilityAssembly(assembly: GreenfieldTurnCapabilitySessionAssembly): GreenfieldRuntimeResources;
+	attachTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): GreenfieldRuntimeResources;
 	rollbackBindings(): void;
 }
 
@@ -115,7 +115,7 @@ export function createCodingAgentSessionResourceLifecycle(
 	options: CodingAgentSessionResourceLifecycleOptions,
 ): CodingAgentSessionResourceLifecycle {
 	let hookSessionEnded = false;
-	let attachedAssembly: GreenfieldTurnCapabilitySessionAssembly | undefined;
+	let attachedAssembly: CodingAgentTurnCapabilitySessionAssembly | undefined;
 	const disposeHookSession = (): Promise<void> => endHookSession("dispose");
 	const endHookSession = async (cause: SessionEndCause): Promise<void> => {
 		if (hookSessionEnded) return;
@@ -187,7 +187,7 @@ function unbindAttachedResources(
 
 function createResources(
 	options: CodingAgentSessionResourceLifecycleOptions,
-	turnCapabilityAssembly: GreenfieldTurnCapabilitySessionAssembly,
+	turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly,
 	hookController: CodingAgentSessionHookController,
 	endHookSession: (cause: SessionEndCause) => Promise<void>,
 ): GreenfieldRuntimeResources {
@@ -234,7 +234,7 @@ function createResources(
 
 function createSessionCleanup(
 	options: CodingAgentSessionResourceLifecycleOptions,
-	turnCapabilityAssembly: GreenfieldTurnCapabilitySessionAssembly,
+	turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly,
 	hookController: CodingAgentSessionHookController,
 	endHookSession: (cause: SessionEndCause) => Promise<void>,
 ): RetryableCleanup {

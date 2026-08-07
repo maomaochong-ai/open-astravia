@@ -22,9 +22,9 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
-import type { GreenfieldSubagentRuntime } from "../greenfield-subagent-runtime.js";
-import type { GreenfieldTurnCapabilitySessionAssembly } from "../greenfield-turn-capability-session-assembly.js";
+import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
 
 export interface CodingAgentSessionConversationResources {
 	readonly repository: GreenfieldRuntimeResources["repository"];
@@ -50,11 +50,11 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 		readonly parentEntryId?: string;
 	};
 	readonly conversation: CodingAgentSessionConversationResources;
-	readonly turnCapabilityAssembly: GreenfieldTurnCapabilitySessionAssembly;
+	readonly turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly;
 	readonly modelRuntime: CodingAgentSessionModelRuntimePort;
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
-	readonly subagentRuntime?: GreenfieldSubagentRuntime;
+	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly configurationState: CodingAgentSessionConfigurationState;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;

@@ -6,15 +6,15 @@ import type {
 import type { SubagentRecoveryState, SubagentSnapshot } from "@vetta/runtime-subagents";
 import { describe, expect, it, vi } from "vitest";
 import {
-	GREENFIELD_SUBAGENT_STATE_CUSTOM_TYPE,
-	GreenfieldSubagentStatePersistence,
-} from "../../src/composition/greenfield-subagent-state-persistence.js";
+	CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE,
+	CodingAgentSubagentStatePersistence,
+} from "../../src/composition/subagent/state-persistence.js";
 
-describe("GreenfieldSubagentStatePersistence", () => {
+describe("CodingAgentSubagentStatePersistence", () => {
 	it("folds versioned state events across the parent document and rejects invalid payloads locally", async () => {
 		const restore = vi.fn<(state: SubagentRecoveryState) => void>();
 		const onRecoveryIssue = vi.fn();
-		const runtime = new GreenfieldSubagentStatePersistence({ restore, onRecoveryIssue });
+		const runtime = new CodingAgentSubagentStatePersistence({ restore, onRecoveryIssue });
 		const context = recordingContext();
 		const initial = snapshot("child-1", "completed");
 		const document = conversationDocument([
@@ -50,7 +50,7 @@ describe("GreenfieldSubagentStatePersistence", () => {
 	it("persists only changed agents, removals and new delivery claims", async () => {
 		let sequence = 0;
 		const initial = snapshot("child-1", "completed");
-		const runtime = new GreenfieldSubagentStatePersistence({
+		const runtime = new CodingAgentSubagentStatePersistence({
 			restore: () => {},
 			createEntryId: () => `entry-${++sequence}`,
 			now: () => 1,
@@ -98,7 +98,7 @@ describe("GreenfieldSubagentStatePersistence", () => {
 	it("reasserts session-level state after an external document rewrite removes its entries", async () => {
 		let sequence = 0;
 		const initial = snapshot("child-1", "completed");
-		const runtime = new GreenfieldSubagentStatePersistence({
+		const runtime = new CodingAgentSubagentStatePersistence({
 			restore: () => {},
 			createEntryId: () => `repair-${++sequence}`,
 			now: () => 1,
@@ -171,7 +171,7 @@ function customEntry(id: string, data: unknown): ConversationDocument["entries"]
 		id,
 		parentId: null,
 		timestamp: "2026-07-29T00:00:00.000Z",
-		customType: GREENFIELD_SUBAGENT_STATE_CUSTOM_TYPE,
+		customType: CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE,
 		data,
 	};
 }

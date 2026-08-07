@@ -10,9 +10,9 @@ import type {
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeSessionOptions,
 } from "./contracts/index.js";
+import { resolveCodingAgentConversationPersistence } from "./conversation/persistence.js";
 import { ConversationOwnershipBinding } from "./conversation-ownership-binding.js";
-import { createGreenfieldChildCompositionFactory } from "./greenfield-child-composition-policy.js";
-import { resolveGreenfieldConversationPersistence } from "./greenfield-conversation-persistence.js";
+import { createCodingAgentChildCompositionFactory } from "./subagent/child-composition-policy.js";
 
 export type {
 	CodingAgentInitialTodoLockSource,
@@ -72,7 +72,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		mcpCoordinator,
 		tools,
 	} = toolSurface;
-	const persistence = await resolveGreenfieldConversationPersistence(options);
+	const persistence = await resolveCodingAgentConversationPersistence(options);
 	const repository = persistence.repository;
 	const baseConversationContextProjector = new CodingAgentGreenfieldAgentMessageContextProjector();
 	const conversationContextOverlay = new CodingAgentGreenfieldConversationContextOverlay(
@@ -100,7 +100,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		resolveConversationPath: persistence.resolveConversationPath,
 		resolveSessionPath: persistence.resolveSessionPath,
 	};
-	const createChildComposition = createGreenfieldChildCompositionFactory({
+	const createChildComposition = createCodingAgentChildCompositionFactory({
 		parentOptions: options,
 		createComposition: createCodingAgentRuntimeCompositionInternal,
 	});

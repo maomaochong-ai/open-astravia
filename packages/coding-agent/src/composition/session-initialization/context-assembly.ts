@@ -14,12 +14,12 @@ import {
 } from "../../adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
-import type { GreenfieldSubagentRuntime } from "../greenfield-subagent-runtime.js";
+import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import {
-	createGreenfieldSubagentSessionAssembly,
-	type GreenfieldSubagentChildComposition,
-	type GreenfieldSubagentChildCompositionRequest,
-} from "../greenfield-subagent-session-assembly.js";
+	type CodingAgentSubagentChildComposition,
+	type CodingAgentSubagentChildCompositionRequest,
+	createCodingAgentSubagentSessionAssembly,
+} from "../subagent/session-assembly.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
 import type { CodingAgentSessionPeripheralAssembly } from "./peripheral-assembly.js";
 import type { CodingAgentSessionInitializationProfile } from "./profile.js";
@@ -38,8 +38,8 @@ export interface CodingAgentSessionContextAssemblyOptions {
 	readonly resolveConversationPath: (sessionId: string) => string;
 	readonly readConversationModelMessages: (sessionId: string) => Promise<readonly Message[]>;
 	readonly createChildComposition: (
-		request: GreenfieldSubagentChildCompositionRequest,
-	) => Promise<GreenfieldSubagentChildComposition>;
+		request: CodingAgentSubagentChildCompositionRequest,
+	) => Promise<CodingAgentSubagentChildComposition>;
 	readonly trackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
 	readonly untrackContextRuntime: (runtime: CodingAgentContextRuntime) => void;
 	readonly deferRollback: (task: InitializationRollbackTask) => void;
@@ -50,7 +50,7 @@ export interface CodingAgentSessionContextAssembly {
 	readonly memoryController?: CodingAgentMemoryController;
 	readonly hookRuntime: EcosystemHookRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
-	readonly subagentRuntime?: GreenfieldSubagentRuntime;
+	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 }
 
 /** 组装 Session Model、Hook、Context/Compaction 与 Subagent 上下文能力。 */
@@ -112,7 +112,7 @@ export function createCodingAgentSessionContextAssembly(
 			options.untrackContextRuntime(contextRuntime);
 		},
 	});
-	const subagentRuntime = createGreenfieldSubagentSessionAssembly({
+	const subagentRuntime = createCodingAgentSubagentSessionAssembly({
 		enabled: profile.enableSubagents === true,
 		maxConcurrent: profile.subagentMaxConcurrent,
 		cwd: options.sessionCwd,

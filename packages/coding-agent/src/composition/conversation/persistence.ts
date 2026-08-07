@@ -3,7 +3,7 @@ import type { ConversationContinuationStore, ConversationRepository } from "@vet
 import { FileConversationRepository, InMemoryConversationRepository } from "@vetta/runtime-storage/conversation";
 
 /** Composition 所需的完整 Conversation 持久化端口。 */
-export interface GreenfieldConversationPersistence {
+export interface CodingAgentConversationPersistence {
 	readonly repository: ConversationRepository;
 	readonly documentStore: ConversationDocumentStore;
 	readonly continuationStore: ConversationContinuationStore;
@@ -14,17 +14,17 @@ export interface GreenfieldConversationPersistence {
 	dispose(): Promise<void>;
 }
 
-export interface GreenfieldConversationPersistenceFactoryContext {
+export interface CodingAgentConversationPersistenceFactoryContext {
 	readonly conversationDir?: string;
 }
 
-export type GreenfieldConversationPersistenceFactory = (
-	context: GreenfieldConversationPersistenceFactoryContext,
-) => GreenfieldConversationPersistence | Promise<GreenfieldConversationPersistence>;
+export type CodingAgentConversationPersistenceFactory = (
+	context: CodingAgentConversationPersistenceFactoryContext,
+) => CodingAgentConversationPersistence | Promise<CodingAgentConversationPersistence>;
 
-export function createFileGreenfieldConversationPersistence(
+export function createFileCodingAgentConversationPersistence(
 	conversationDir: string,
-): GreenfieldConversationPersistence {
+): CodingAgentConversationPersistence {
 	const repository = new FileConversationRepository({ rootDir: conversationDir });
 	return {
 		repository,
@@ -36,7 +36,7 @@ export function createFileGreenfieldConversationPersistence(
 	};
 }
 
-export function createInMemoryGreenfieldConversationPersistence(): GreenfieldConversationPersistence {
+export function createInMemoryCodingAgentConversationPersistence(): CodingAgentConversationPersistence {
 	const repository = new InMemoryConversationRepository();
 	return {
 		repository,
@@ -48,16 +48,16 @@ export function createInMemoryGreenfieldConversationPersistence(): GreenfieldCon
 	};
 }
 
-export async function resolveGreenfieldConversationPersistence(options: {
+export async function resolveCodingAgentConversationPersistence(options: {
 	readonly conversationDir?: string;
-	readonly createConversationPersistence?: GreenfieldConversationPersistenceFactory;
-}): Promise<GreenfieldConversationPersistence> {
+	readonly createConversationPersistence?: CodingAgentConversationPersistenceFactory;
+}): Promise<CodingAgentConversationPersistence> {
 	if (options.createConversationPersistence) {
 		return options.createConversationPersistence({ conversationDir: options.conversationDir });
 	}
 	const conversationDir = options.conversationDir?.trim();
 	if (!conversationDir) {
-		throw new Error("Greenfield Runtime requires conversationDir or createConversationPersistence");
+		throw new Error("Coding Agent Runtime requires conversationDir or createConversationPersistence");
 	}
-	return createFileGreenfieldConversationPersistence(conversationDir);
+	return createFileCodingAgentConversationPersistence(conversationDir);
 }

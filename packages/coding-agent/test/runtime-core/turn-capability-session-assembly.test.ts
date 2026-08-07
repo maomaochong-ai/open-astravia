@@ -11,11 +11,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
 import { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
 import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
-import { createGreenfieldTurnCapabilitySessionAssembly } from "../../src/composition/greenfield-turn-capability-session-assembly.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
+import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 
-describe("Greenfield Turn Capability session assembly", () => {
+describe("Coding Agent Turn Capability session assembly", () => {
 	const disposals: Array<() => Promise<void> | void> = [];
 
 	afterEach(async () => {
@@ -39,7 +39,7 @@ describe("Greenfield Turn Capability session assembly", () => {
 			ownsTool: () => false,
 			readAvailableTools: () => new Map([[executionTool.name, executionTool]]),
 		} as unknown as CodingAgentSessionExecutionRuntime;
-		const assembly = await createGreenfieldTurnCapabilitySessionAssembly({
+		const assembly = await createCodingAgentTurnCapabilitySessionAssembly({
 			session: {
 				initialSessionId: "session-1",
 				readSessionId: () => "session-1",

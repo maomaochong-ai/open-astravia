@@ -13,7 +13,6 @@ import type { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapte
 import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import type { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
-import type { GreenfieldTurnCapabilitySessionAssembly } from "../../src/composition/greenfield-turn-capability-session-assembly.js";
 import {
 	InMemoryCodingAgentSessionMarkerIndex,
 	InMemoryCodingAgentSessionValueIndex,
@@ -23,6 +22,7 @@ import {
 	createCodingAgentSessionResourceLifecycle,
 } from "../../src/composition/session-lifecycle/resource-lifecycle.js";
 import type { CodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
+import type { CodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
 import type { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
@@ -78,7 +78,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			promptAdapter: {},
 			readAvailableTools: () => new Map(),
 			readPluginActiveToolNames: () => undefined,
-		} as unknown as GreenfieldTurnCapabilitySessionAssembly;
+		} as unknown as CodingAgentTurnCapabilitySessionAssembly;
 		const overlay = {
 			clear(sessionId: string) {
 				events.push(`clear:${sessionId}`);

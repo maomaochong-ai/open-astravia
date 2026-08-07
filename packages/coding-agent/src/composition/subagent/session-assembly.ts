@@ -21,11 +21,11 @@ import type {
 	SubagentTypeRegistryLike,
 } from "@vetta/runtime-subagents";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
-import { createGreenfieldSubagentChildHandle } from "./greenfield-subagent-child.js";
-import { type GreenfieldSubagentProfile, GreenfieldSubagentRuntime } from "./greenfield-subagent-runtime.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import { createCodingAgentSubagentChildHandle } from "./child-handle.js";
+import { type CodingAgentSubagentProfile, CodingAgentSubagentRuntime } from "./runtime.js";
 
-export interface GreenfieldSubagentChildSessionOptions {
+export interface CodingAgentSubagentChildSessionOptions {
 	readonly sessionId: string;
 	readonly cwd: string;
 	readonly parentSessionPath: string;
@@ -35,7 +35,7 @@ export interface GreenfieldSubagentChildSessionOptions {
 	readonly sessionRuntimeTools?: readonly CodingAgentRuntimeToolRegistration[];
 }
 
-export interface GreenfieldSubagentChildCompositionRequest {
+export interface CodingAgentSubagentChildCompositionRequest {
 	readonly conversationDir: string;
 	readonly cwd: string;
 	readonly initialModel: NonNullable<SessionConfig["model"]>;
@@ -44,15 +44,15 @@ export interface GreenfieldSubagentChildCompositionRequest {
 	readonly inheritedMcpView: McpRuntimeToolView;
 }
 
-export interface GreenfieldSubagentChildComposition {
-	createSession(options: GreenfieldSubagentChildSessionOptions): Promise<GreenfieldRuntimeSession>;
-	resumeSession(options: GreenfieldSubagentChildSessionOptions): Promise<GreenfieldRuntimeSession>;
+export interface CodingAgentSubagentChildComposition {
+	createSession(options: CodingAgentSubagentChildSessionOptions): Promise<GreenfieldRuntimeSession>;
+	resumeSession(options: CodingAgentSubagentChildSessionOptions): Promise<GreenfieldRuntimeSession>;
 	appendSessionContext(sessionId: string, records: readonly SessionContextRecord[]): void;
 	deliverSessionContext(sessionId: string, records: readonly SessionContextRecord[]): Promise<void>;
 	dispose(): Promise<void>;
 }
 
-export interface GreenfieldSubagentSessionAssemblyOptions {
+export interface CodingAgentSubagentSessionAssemblyOptions {
 	readonly enabled: boolean;
 	readonly maxConcurrent?: number;
 	readonly cwd: string;
@@ -63,11 +63,11 @@ export interface GreenfieldSubagentSessionAssemblyOptions {
 	readonly readModel: () => NonNullable<SessionConfig["model"]>;
 	readonly readThinkingLevel: () => NonNullable<SessionConfig["thinkingLevel"]>;
 	readonly readInheritedMcpView: () => Promise<McpRuntimeToolView>;
-	readonly typeRegistry?: SubagentTypeRegistryLike<GreenfieldSubagentProfile>;
-	readonly createChildFactory?: (context: GreenfieldSubagentChildFactoryContext) => GreenfieldSubagentChildFactory;
+	readonly typeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
+	readonly createChildFactory?: (context: CodingAgentSubagentChildFactoryContext) => CodingAgentSubagentChildFactory;
 	readonly createChildComposition: (
-		request: GreenfieldSubagentChildCompositionRequest,
-	) => Promise<GreenfieldSubagentChildComposition>;
+		request: CodingAgentSubagentChildCompositionRequest,
+	) => Promise<CodingAgentSubagentChildComposition>;
 	readonly hookRuntime: Pick<
 		EcosystemHookRuntime,
 		"recordAdditionalContexts" | "runSubagentStart" | "runSubagentStop"
@@ -75,7 +75,7 @@ export interface GreenfieldSubagentSessionAssemblyOptions {
 	readonly resourceContext: Pick<GreenfieldRuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
 }
 
-export interface GreenfieldSubagentChildFactoryContext {
+export interface CodingAgentSubagentChildFactoryContext {
 	readonly cwd: string;
 	readonly scenario: ConversationScenario;
 	readonly readParentSessionId: () => string;
@@ -85,25 +85,25 @@ export interface GreenfieldSubagentChildFactoryContext {
 	readonly readInheritedMcpView: () => Promise<McpRuntimeToolView>;
 }
 
-export interface GreenfieldSubagentChildFactory {
+export interface CodingAgentSubagentChildFactory {
 	create(
 		request: SubagentSpawnRequest,
-		type: SubagentTypeDefinition<GreenfieldSubagentProfile>,
+		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 		forkContext: readonly Message[] | undefined,
 		signal?: AbortSignal,
 	): Promise<SubagentChildHandle>;
 	reopen?(
 		snapshot: SubagentSnapshot,
-		type: SubagentTypeDefinition<GreenfieldSubagentProfile>,
+		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 		forkContext: readonly Message[] | undefined,
 		signal?: AbortSignal,
 	): Promise<SubagentChildHandle>;
 }
 
 /** 组装单个父 Session 的 Subagent 能力；Composition Root 只提供宿主端口。 */
-export function createGreenfieldSubagentSessionAssembly(
-	options: GreenfieldSubagentSessionAssemblyOptions,
-): GreenfieldSubagentRuntime | undefined {
+export function createCodingAgentSubagentSessionAssembly(
+	options: CodingAgentSubagentSessionAssemblyOptions,
+): CodingAgentSubagentRuntime | undefined {
 	if (!options.enabled) return undefined;
 
 	const lifecycle = createSubagentLifecycle(options);
@@ -117,7 +117,7 @@ export function createGreenfieldSubagentSessionAssembly(
 		readInheritedMcpView: options.readInheritedMcpView,
 	});
 	const reopenChild = childFactory?.reopen;
-	return new GreenfieldSubagentRuntime({
+	return new CodingAgentSubagentRuntime({
 		parentSessionId: options.readParentSessionId(),
 		maxConcurrent: options.maxConcurrent,
 		lifecycle,
@@ -167,9 +167,9 @@ export function createGreenfieldSubagentSessionAssembly(
 async function openChild(
 	operation: "create" | "resume",
 	requestOrSnapshot: SubagentSpawnRequest | SubagentSnapshot,
-	type: SubagentTypeDefinition<GreenfieldSubagentProfile>,
+	type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
 	forkContext: readonly Message[] | undefined,
-	options: GreenfieldSubagentSessionAssemblyOptions,
+	options: CodingAgentSubagentSessionAssemblyOptions,
 ): Promise<SubagentChildHandle> {
 	const childSessionId = operation === "create" ? randomUUID() : (requestOrSnapshot as SubagentSnapshot).id;
 	const snapshot = operation === "resume" ? (requestOrSnapshot as SubagentSnapshot) : undefined;
@@ -200,7 +200,7 @@ async function openChild(
 		inheritedMcpView,
 	});
 	try {
-		const childOptions: GreenfieldSubagentChildSessionOptions = {
+		const childOptions: CodingAgentSubagentChildSessionOptions = {
 			sessionId: childSessionId,
 			cwd: options.cwd,
 			parentSessionPath: options.readParentSessionPath(),
@@ -217,7 +217,7 @@ async function openChild(
 				? await childComposition.createSession(childOptions)
 				: await childComposition.resumeSession(childOptions);
 		const childSessionFile = childSession.createCoreAssembly().lifecycle.sessionPath;
-		return createGreenfieldSubagentChildHandle({
+		return createCodingAgentSubagentChildHandle({
 			session: childSession,
 			sessionFile: childSessionFile,
 			appendContext: (records) => childComposition.appendSessionContext(childSession.sessionId, records),
@@ -256,7 +256,7 @@ function filterDeniedMcpTools(view: McpRuntimeToolView, prefixes: readonly strin
 	};
 }
 
-function createSubagentLifecycle(options: GreenfieldSubagentSessionAssemblyOptions): SubagentLifecycle {
+function createSubagentLifecycle(options: CodingAgentSubagentSessionAssemblyOptions): SubagentLifecycle {
 	return {
 		beforeStart: async ({ id, agentType, message }) => {
 			const outcome = await options.hookRuntime.runSubagentStart(

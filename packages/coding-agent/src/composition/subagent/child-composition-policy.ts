@@ -1,24 +1,24 @@
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
-import type { CodingAgentRuntimeComposition, CodingAgentRuntimeCompositionOptions } from "./contracts/index.js";
+import type { CodingAgentRuntimeComposition, CodingAgentRuntimeCompositionOptions } from "../contracts/index.js";
 import type {
-	GreenfieldSubagentChildComposition,
-	GreenfieldSubagentChildCompositionRequest,
-} from "./greenfield-subagent-session-assembly.js";
+	CodingAgentSubagentChildComposition,
+	CodingAgentSubagentChildCompositionRequest,
+} from "./session-assembly.js";
 
-export type GreenfieldChildRuntimeCompositionFactory = (
+export type CodingAgentChildRuntimeCompositionFactory = (
 	options: CodingAgentRuntimeCompositionOptions,
 	inheritedMcpView: McpRuntimeToolView,
 ) => Promise<CodingAgentRuntimeComposition>;
 
-export interface GreenfieldChildCompositionFactoryOptions {
+export interface CodingAgentChildCompositionFactoryOptions {
 	readonly parentOptions: CodingAgentRuntimeCompositionOptions;
-	readonly createComposition: GreenfieldChildRuntimeCompositionFactory;
+	readonly createComposition: CodingAgentChildRuntimeCompositionFactory;
 }
 
 /** 将父 Composition 投影为隔离的单层 Child Composition。 */
-export function createGreenfieldChildCompositionFactory(
-	options: GreenfieldChildCompositionFactoryOptions,
-): (request: GreenfieldSubagentChildCompositionRequest) => Promise<GreenfieldSubagentChildComposition> {
+export function createCodingAgentChildCompositionFactory(
+	options: CodingAgentChildCompositionFactoryOptions,
+): (request: CodingAgentSubagentChildCompositionRequest) => Promise<CodingAgentSubagentChildComposition> {
 	return async (request) => {
 		const childComposition = await options.createComposition(
 			createChildCompositionOptions(options.parentOptions, request),
@@ -36,7 +36,7 @@ export function createGreenfieldChildCompositionFactory(
 
 function createChildCompositionOptions(
 	parent: CodingAgentRuntimeCompositionOptions,
-	request: GreenfieldSubagentChildCompositionRequest,
+	request: CodingAgentSubagentChildCompositionRequest,
 ): CodingAgentRuntimeCompositionOptions {
 	const {
 		mcpSource: _mcpSource,

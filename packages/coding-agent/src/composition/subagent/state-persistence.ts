@@ -8,7 +8,7 @@ import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
 import type { SubagentDeliveryMarker, SubagentRecoveryState, SubagentSnapshot } from "@vetta/runtime-subagents";
 import { z } from "zod";
 
-export const GREENFIELD_SUBAGENT_STATE_CUSTOM_TYPE = "subagent_state_v1";
+export const CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE = "subagent_state_v1";
 
 const SubagentStatusSchema = z.enum(["queued", "pending", "running", "completed", "failed", "interrupted"]);
 const SubagentUsageSchema = z
@@ -73,7 +73,7 @@ const SubagentStateEventSchema = z.discriminatedUnion("event", [
 
 type SubagentStateEvent = z.infer<typeof SubagentStateEventSchema>;
 
-export interface GreenfieldSubagentStatePersistenceOptions {
+export interface CodingAgentSubagentStatePersistenceOptions {
 	readonly restore: (state: SubagentRecoveryState) => void | Promise<void>;
 	readonly onRecoveryIssue?: (message: string) => void;
 	readonly createEntryId?: () => string;
@@ -85,7 +85,7 @@ export interface GreenfieldSubagentStatePersistenceOptions {
  *
  * Runtime Subagent Coordinator 不依赖存储；该 Participant 只负责持久化校验、折叠与串行提交。
  */
-export class GreenfieldSubagentStatePersistence implements GreenfieldRuntimeDocumentParticipant {
+export class CodingAgentSubagentStatePersistence implements GreenfieldRuntimeDocumentParticipant {
 	private readonly createEntryId: () => string;
 	private readonly now: () => number;
 	private readonly knownAgents = new Map<string, SubagentSnapshot>();
@@ -97,7 +97,7 @@ export class GreenfieldSubagentStatePersistence implements GreenfieldRuntimeDocu
 	private initialized = false;
 	private disposed = false;
 
-	constructor(private readonly options: GreenfieldSubagentStatePersistenceOptions) {
+	constructor(private readonly options: CodingAgentSubagentStatePersistenceOptions) {
 		this.createEntryId = options.createEntryId ?? randomUUID;
 		this.now = options.now ?? Date.now;
 	}
@@ -106,7 +106,7 @@ export class GreenfieldSubagentStatePersistence implements GreenfieldRuntimeDocu
 		document: ConversationDocument,
 		context: GreenfieldRuntimeDocumentParticipantContext,
 	): Promise<void> {
-		if (this.initialized) throw new Error("Greenfield Subagent state persistence is already initialized");
+		if (this.initialized) throw new Error("Coding Agent Subagent state persistence is already initialized");
 		this.initialized = true;
 		this.context = context;
 		const state = this.readRecoveryState(document);
@@ -194,11 +194,11 @@ export class GreenfieldSubagentStatePersistence implements GreenfieldRuntimeDocu
 		const agents = new Map<string, SubagentSnapshot>();
 		const delivered = new Map<string, SubagentDeliveryMarker>();
 		for (const entry of document.entries) {
-			if (entry.type !== "custom" || entry.customType !== GREENFIELD_SUBAGENT_STATE_CUSTOM_TYPE) continue;
+			if (entry.type !== "custom" || entry.customType !== CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE) continue;
 			const parsed = SubagentStateEventSchema.safeParse(entry.data);
 			if (!parsed.success) {
 				this.options.onRecoveryIssue?.(
-					`Invalid ${GREENFIELD_SUBAGENT_STATE_CUSTOM_TYPE} entry "${entry.id}": ${z.prettifyError(parsed.error)}`,
+					`Invalid ${CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE} entry "${entry.id}": ${z.prettifyError(parsed.error)}`,
 				);
 				continue;
 			}
@@ -224,7 +224,7 @@ export class GreenfieldSubagentStatePersistence implements GreenfieldRuntimeDocu
 			try {
 				await context.appendCustomEntry({
 					entryId: this.createEntryId(),
-					customType: GREENFIELD_SUBAGENT_STATE_CUSTOM_TYPE,
+					customType: CODING_AGENT_SUBAGENT_STATE_CUSTOM_TYPE,
 					data: event,
 					timestamp: new Date(this.now()).toISOString(),
 				});

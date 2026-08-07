@@ -1,11 +1,11 @@
 import { type SubagentTypeDefinition, SubagentTypeRegistry } from "@vetta/runtime-subagents";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import type { CodingAgentRuntimeToolRegistration } from "../runtime-contracts/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 
-export const GREENFIELD_SUBAGENT_TYPE_EXPLORER = "explorer";
-export const GREENFIELD_SUBAGENT_TYPE_WORKFLOW = "workflow";
+export const CODING_AGENT_SUBAGENT_TYPE_EXPLORER = "explorer";
+export const CODING_AGENT_SUBAGENT_TYPE_WORKFLOW = "workflow";
 
-export interface GreenfieldSubagentProfile {
+export interface CodingAgentSubagentProfile {
 	readonly activation: CodingToolActivation;
 	readonly inheritParentMcp: boolean;
 	readonly systemPromptAddon: string;
@@ -43,13 +43,13 @@ const WORKFLOW_SYSTEM_PROMPT = `You are a workflow subagent: one of several para
 - Do NOT spawn agents or delegate; you are the leaf worker.
 - When you finish (or cannot proceed), end with a concise structured summary: what was done per todo, files touched, and anything the root agent must follow up on.`;
 
-export function createDefaultGreenfieldSubagentTypeRegistry(): SubagentTypeRegistry<GreenfieldSubagentProfile> {
-	return new SubagentTypeRegistry<GreenfieldSubagentProfile>().register(explorerType()).register(workflowType());
+export function createDefaultCodingAgentSubagentTypeRegistry(): SubagentTypeRegistry<CodingAgentSubagentProfile> {
+	return new SubagentTypeRegistry<CodingAgentSubagentProfile>().register(explorerType()).register(workflowType());
 }
 
-function explorerType(): SubagentTypeDefinition<GreenfieldSubagentProfile> {
+function explorerType(): SubagentTypeDefinition<CodingAgentSubagentProfile> {
 	return {
-		id: GREENFIELD_SUBAGENT_TYPE_EXPLORER,
+		id: CODING_AGENT_SUBAGENT_TYPE_EXPLORER,
 		label: "Explorer",
 		description:
 			"Read-only information gathering: codebase recon, local docs, structure, and parent MCP search tools when available. Never writes files.",
@@ -63,9 +63,9 @@ function explorerType(): SubagentTypeDefinition<GreenfieldSubagentProfile> {
 	};
 }
 
-function workflowType(): SubagentTypeDefinition<GreenfieldSubagentProfile> {
+function workflowType(): SubagentTypeDefinition<CodingAgentSubagentProfile> {
 	return {
-		id: GREENFIELD_SUBAGENT_TYPE_WORKFLOW,
+		id: CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
 		label: "Workflow",
 		description:
 			"Todo-driven parallel worker: inherits a snapshot of the parent context, executes a dispatched todo list with full coding tools in the shared cwd. Spawn via dispatch_workflows.",

@@ -15,19 +15,19 @@ import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentTodoRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
-import type {
-	GreenfieldSubagentChildComposition,
-	GreenfieldSubagentChildCompositionRequest,
-} from "../greenfield-subagent-session-assembly.js";
-import {
-	createGreenfieldTurnCapabilitySessionAssembly,
-	type GreenfieldTurnCapabilitySessionAssembly,
-} from "../greenfield-turn-capability-session-assembly.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";
 import type { CodingAgentSessionConversationResources } from "../session-lifecycle/runtime-resources.js";
+import type {
+	CodingAgentSubagentChildComposition,
+	CodingAgentSubagentChildCompositionRequest,
+} from "../subagent/session-assembly.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import {
+	type CodingAgentTurnCapabilitySessionAssembly,
+	createCodingAgentTurnCapabilitySessionAssembly,
+} from "../turn/capability-session-assembly.js";
 import { createCodingAgentSessionContextAssembly } from "./context-assembly.js";
 import { createCodingAgentSessionPeripheralAssembly } from "./peripheral-assembly.js";
 import type { CodingAgentSessionInitializationProfile } from "./profile.js";
@@ -40,8 +40,8 @@ export interface CodingAgentSessionInitializationRegistry {
 	untrackMemoryRuntime(runtime: CodingAgentMemoryRolloverRuntime): void;
 	trackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
 	untrackTodoRuntime(runtime: CodingAgentTodoRuntime): void;
-	trackTurnCapabilityAssembly(assembly: GreenfieldTurnCapabilitySessionAssembly): void;
-	untrackTurnCapabilityAssembly(assembly: GreenfieldTurnCapabilitySessionAssembly): void;
+	trackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
+	untrackTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): void;
 	trackHookSessionDisposer(dispose: () => Promise<void>): void;
 	untrackHookSessionDisposer(dispose: () => Promise<void>): void;
 }
@@ -70,8 +70,8 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 		activeToolNamesOverride?: readonly string[],
 	) => CodingToolActivation;
 	readonly createChildComposition: (
-		request: GreenfieldSubagentChildCompositionRequest,
-	) => Promise<GreenfieldSubagentChildComposition>;
+		request: CodingAgentSubagentChildCompositionRequest,
+	) => Promise<CodingAgentSubagentChildComposition>;
 }
 
 export interface CodingAgentSessionInitializationTransaction {
@@ -245,7 +245,7 @@ async function initializeSession<TOwnershipBinding>(
 			id: "hook-session",
 			rollback: () => resourceLifecycleAssembly.disposeHookSession(),
 		});
-		const turnCapabilityAssembly = await createGreenfieldTurnCapabilitySessionAssembly({
+		const turnCapabilityAssembly = await createCodingAgentTurnCapabilitySessionAssembly({
 			session: {
 				initialSessionId: activeSessionId,
 				readSessionId: () => activeSessionId,

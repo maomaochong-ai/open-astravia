@@ -9,28 +9,28 @@ import {
 } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools/coding";
-import type { CodingAgentContextRuntime } from "../adapters/runtime-core/context-runtime/index.js";
-import { CodingAgentContinuationOrchestrator } from "../adapters/runtime-core/greenfield-continuation-orchestrator.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../adapters/runtime-core/greenfield-extension-event-bridge.js";
-import type { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
-import { createCodingAgentInvokeSkillRuntimeFeature } from "../adapters/runtime-core/greenfield-invoke-skill-runtime.js";
-import { CodingAgentModelCallFrameComposer } from "../adapters/runtime-core/greenfield-model-call-composer.js";
-import { CodingAgentGreenfieldModelCallMessageFinalizer } from "../adapters/runtime-core/greenfield-model-call-message-finalizer.js";
-import { CodingAgentPluginRunOrchestrator } from "../adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
+import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
+import { CodingAgentContinuationOrchestrator } from "../../adapters/runtime-core/greenfield-continuation-orchestrator.js";
+import type { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
+import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import { createCodingAgentInvokeSkillRuntimeFeature } from "../../adapters/runtime-core/greenfield-invoke-skill-runtime.js";
+import { CodingAgentModelCallFrameComposer } from "../../adapters/runtime-core/greenfield-model-call-composer.js";
+import { CodingAgentGreenfieldModelCallMessageFinalizer } from "../../adapters/runtime-core/greenfield-model-call-message-finalizer.js";
+import { CodingAgentPluginRunOrchestrator } from "../../adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
 import {
 	type CodingAgentPluginToolActivation,
 	CodingAgentPluginToolRuntime,
-} from "../adapters/runtime-core/greenfield-plugin-tool-runtime.js";
-import { CodingAgentGreenfieldPromptAdapter } from "../adapters/runtime-core/greenfield-prompt-adapter.js";
-import { createCodingAgentPromptResourceResolver } from "../adapters/runtime-core/greenfield-prompt-resource-resolver.js";
+} from "../../adapters/runtime-core/greenfield-plugin-tool-runtime.js";
+import { CodingAgentGreenfieldPromptAdapter } from "../../adapters/runtime-core/greenfield-prompt-adapter.js";
+import { createCodingAgentPromptResourceResolver } from "../../adapters/runtime-core/greenfield-prompt-resource-resolver.js";
 import {
 	CodingAgentPromptRuntime,
 	createCodingAgentPromptRuntime,
-} from "../adapters/runtime-core/greenfield-prompt-runtime.js";
-import { CodingAgentStopHookContinuationSource } from "../adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
-import { CodingAgentTodoContinuationSource } from "../adapters/runtime-core/greenfield-todo-continuation-source.js";
-import type { CodingAgentSessionExecutionRuntime } from "../host/session-execution/execution-runtime.js";
-import type { CodingAgentMemoryRolloverRuntime } from "../memory/index.js";
+} from "../../adapters/runtime-core/greenfield-prompt-runtime.js";
+import { CodingAgentStopHookContinuationSource } from "../../adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
+import { CodingAgentTodoContinuationSource } from "../../adapters/runtime-core/greenfield-todo-continuation-source.js";
+import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
+import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
@@ -40,11 +40,11 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSystemPromptOptionsResolver,
 	CodingAgentTodoRuntime,
-} from "../runtime-contracts/index.js";
-import type { GreenfieldSubagentRuntime } from "./greenfield-subagent-runtime.js";
-import type { CodingToolsRuntimeComposition } from "./tool-surface/runtime-tools-composition.js";
+} from "../../runtime-contracts/index.js";
+import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
+import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 
-export interface GreenfieldTurnCapabilitySessionIdentity {
+export interface CodingAgentTurnCapabilitySessionIdentity {
 	readonly initialSessionId: string;
 	readonly readSessionId: () => string;
 	readonly cwd: string;
@@ -54,14 +54,14 @@ export interface GreenfieldTurnCapabilitySessionIdentity {
 	readonly systemPromptAddon?: string;
 }
 
-export interface GreenfieldTurnCapabilityActivationPort {
+export interface CodingAgentTurnCapabilityActivationPort {
 	readonly resolve: (context: ModelCallContributionContext) => CodingToolActivation;
 	readonly readAgentMode: () => string | undefined;
 	readonly readAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
 	readonly readActiveToolNamesOverride: () => readonly string[] | undefined;
 }
 
-export interface GreenfieldTurnCapabilityPromptOptions {
+export interface CodingAgentTurnCapabilityPromptOptions {
 	readonly systemPromptOptionsResolver?: CodingAgentSystemPromptOptionsResolver;
 	readonly promptResourceResolver?: CodingAgentPromptResourceResolver;
 	readonly resourceSource?: CodingAgentPromptResourceSource;
@@ -69,10 +69,10 @@ export interface GreenfieldTurnCapabilityPromptOptions {
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
 }
 
-export interface GreenfieldTurnCapabilitySessionAssemblyOptions {
-	readonly session: GreenfieldTurnCapabilitySessionIdentity;
-	readonly activation: GreenfieldTurnCapabilityActivationPort;
-	readonly prompt: GreenfieldTurnCapabilityPromptOptions;
+export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
+	readonly session: CodingAgentTurnCapabilitySessionIdentity;
+	readonly activation: CodingAgentTurnCapabilityActivationPort;
+	readonly prompt: CodingAgentTurnCapabilityPromptOptions;
 	readonly baseProfile: AgentProfile;
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
@@ -81,7 +81,7 @@ export interface GreenfieldTurnCapabilitySessionAssemblyOptions {
 	readonly todoRuntime: CodingAgentTodoRuntime;
 	readonly todoToolRegistration?: CodingAgentRuntimeToolRegistration;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;
-	readonly subagentRuntime?: GreenfieldSubagentRuntime;
+	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly conversationContextProjector: NonNullable<AgentProfile["conversationContextProjector"]>;
 	readonly modelRuntime: GreenfieldRuntimeModel;
@@ -93,7 +93,7 @@ export interface GreenfieldTurnCapabilitySessionAssemblyOptions {
 	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
 }
 
-export interface GreenfieldTurnCapabilitySessionAssembly {
+export interface CodingAgentTurnCapabilitySessionAssembly {
 	readonly capabilities: RuntimeCapabilityComposition;
 	readonly promptAdapter: CodingAgentGreenfieldPromptAdapter;
 	readAvailableTools(): ReadonlyMap<string, RuntimeToolDefinition>;
@@ -104,9 +104,9 @@ export interface GreenfieldTurnCapabilitySessionAssembly {
 }
 
 /** 组装单个 Session 的 Prompt、Plugin、Continuation、Tool Frame 与 Capability snapshot。 */
-export async function createGreenfieldTurnCapabilitySessionAssembly(
-	options: GreenfieldTurnCapabilitySessionAssemblyOptions,
-): Promise<GreenfieldTurnCapabilitySessionAssembly> {
+export async function createCodingAgentTurnCapabilitySessionAssembly(
+	options: CodingAgentTurnCapabilitySessionAssemblyOptions,
+): Promise<CodingAgentTurnCapabilitySessionAssembly> {
 	const mcpController = options.mcpController;
 	const pluginSession = {
 		id: options.session.initialSessionId,
@@ -274,7 +274,7 @@ export async function createGreenfieldTurnCapabilitySessionAssembly(
 }
 
 async function createPromptRuntime(
-	options: GreenfieldTurnCapabilitySessionAssemblyOptions,
+	options: CodingAgentTurnCapabilitySessionAssemblyOptions,
 ): Promise<CodingAgentPromptRuntime | undefined> {
 	const memoryRuntime = options.memoryRuntime;
 	if (options.prompt.systemPromptOptionsResolver) return undefined;

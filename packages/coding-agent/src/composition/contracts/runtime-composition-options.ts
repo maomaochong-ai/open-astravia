@@ -22,12 +22,12 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
-import type { GreenfieldConversationPersistenceFactory } from "../greenfield-conversation-persistence.js";
-import type { GreenfieldSubagentProfile } from "../greenfield-subagent-runtime.js";
+import type { CodingAgentConversationPersistenceFactory } from "../conversation/persistence.js";
+import type { CodingAgentSubagentProfile } from "../subagent/runtime.js";
 import type {
-	GreenfieldSubagentChildFactory,
-	GreenfieldSubagentChildFactoryContext,
-} from "../greenfield-subagent-session-assembly.js";
+	CodingAgentSubagentChildFactory,
+	CodingAgentSubagentChildFactoryContext,
+} from "../subagent/session-assembly.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 
 export interface CodingAgentRuntimeEnvironmentOptions {
@@ -40,7 +40,7 @@ export interface CodingAgentRuntimeConversationOptions {
 	/** 默认文件仓储根目录；注入 createConversationPersistence 时只作为工厂上下文。 */
 	readonly conversationDir: string;
 	/** 为每个 Composition 创建独占持久化端口；Composition 负责关闭。 */
-	readonly createConversationPersistence?: GreenfieldConversationPersistenceFactory;
+	readonly createConversationPersistence?: CodingAgentConversationPersistenceFactory;
 	/** 可选的进程级会话所有权；与 Repository 单次写锁相互独立。 */
 	readonly conversationOwnershipManager?: ConversationOwnershipManager;
 }
@@ -68,11 +68,11 @@ export interface CodingAgentRuntimeSubagentOptions {
 	readonly enableSubagents?: boolean;
 	readonly subagentMaxConcurrent?: number;
 	/** 运行时实时读取的子代理类型注册表；注册变化影响后续 spawn，不重建当前 Session。 */
-	readonly subagentTypeRegistry?: SubagentTypeRegistryLike<GreenfieldSubagentProfile>;
-	/** 子代理 Child 创建的产品边界；未提供时使用 Greenfield Child Composition。 */
+	readonly subagentTypeRegistry?: SubagentTypeRegistryLike<CodingAgentSubagentProfile>;
+	/** 子代理 Child 创建的产品边界；未提供时使用 Coding Agent Child Composition。 */
 	readonly createSubagentChildFactory?: (
-		context: GreenfieldSubagentChildFactoryContext,
-	) => GreenfieldSubagentChildFactory;
+		context: CodingAgentSubagentChildFactoryContext,
+	) => CodingAgentSubagentChildFactory;
 }
 
 export interface CodingAgentRuntimePromptOptions {
