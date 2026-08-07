@@ -1,28 +1,24 @@
 import { type GreenfieldRuntimeSession, InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
 import type { ExtensionCommandContextActions } from "../../extensions/index.js";
-import { createCodingAgentExtensionCommandHost } from "../../host/extensions/command-host.js";
-import type {
-	CodingAgentExtensionCommandHost,
-	CodingAgentExtensionEventHost,
-	CodingAgentExtensionInitialization,
-} from "../../host/extensions/contracts.js";
 import type {
 	CodingAgentPreparedSessionBinding,
 	CodingAgentSessionTransition,
-} from "./active-session-transition-contracts.js";
-
-type CodingAgentExtensionEventHostFactory = (
-	session: GreenfieldRuntimeSession,
-	options?: { readonly replaceExisting?: boolean },
-) => CodingAgentExtensionEventHost;
+} from "../session-transition/contracts.js";
+import { createCodingAgentExtensionCommandHost } from "./command-host.js";
+import type {
+	CodingAgentExtensionCommandHost,
+	CodingAgentExtensionEventHost,
+	CodingAgentExtensionEventHostFactory,
+	CodingAgentExtensionInitialization,
+	CodingAgentExtensionSessionHost,
+} from "./contracts.js";
 
 interface CodingAgentExtensionSessionBinding {
 	readonly events: CodingAgentExtensionEventHost;
 	readonly commands?: CodingAgentExtensionCommandHost;
 }
 
-/** Extension 的 Session 级动态绑定控制器。 */
-export class CodingAgentExtensionSessionHost {
+class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSessionHost {
 	private initialization: CodingAgentExtensionInitialization | undefined;
 	private commandActions: ExtensionCommandContextActions | undefined;
 	private current: CodingAgentExtensionSessionBinding;
@@ -204,4 +200,11 @@ export class CodingAgentExtensionSessionHost {
 		if (!this.current.commands) throw new Error("Greenfield Extension command context is not bound");
 		return this.current.commands;
 	}
+}
+
+export function createCodingAgentExtensionSessionHost(
+	initial: CodingAgentExtensionEventHost,
+	createHost: CodingAgentExtensionEventHostFactory,
+): CodingAgentExtensionSessionHost {
+	return new DefaultCodingAgentExtensionSessionHost(initial, createHost);
 }

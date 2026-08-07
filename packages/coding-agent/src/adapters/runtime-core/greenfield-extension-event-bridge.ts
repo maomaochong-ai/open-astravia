@@ -8,7 +8,7 @@ import type {
 	SessionInput,
 } from "@vetta/runtime-core/kernel";
 import type { InputEventResult, InputSource } from "../../extensions/index.js";
-import type { CodingAgentGreenfieldExtensionRunnerPort } from "./greenfield-extension-contract.js";
+import type { CodingAgentGreenfieldExtensionRunnerPort } from "../../runtime-contracts/index.js";
 import { wrapRuntimeToolsWithExtensions } from "./greenfield-extension-tool-wrapper.js";
 
 /**

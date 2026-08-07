@@ -11,11 +11,11 @@ import {
 } from "@vetta/runtime-tools/coding";
 import type { RegisteredTool } from "../../extensions/index.js";
 import { resolveToolCategory } from "../../profiles/index.js";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type {
 	CodingAgentGreenfieldExtensionRunnerPort,
 	CodingAgentGreenfieldExtensionToolSource,
-} from "./greenfield-extension-contract.js";
+	CodingAgentRuntimeToolRegistration,
+} from "../../runtime-contracts/index.js";
 
 export interface CodingAgentGreenfieldExtensionToolSurface {
 	readonly frame: ModelCallFrame;

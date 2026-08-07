@@ -77,7 +77,6 @@ const CLI_SESSION_ASSEMBLY_PROTOCOL_MARKERS = Object.freeze([
 ]);
 const CODING_AGENT_COMPOSITION_PUBLIC_ENTRY = "packages/coding-agent/src/composition/index.ts";
 const CODING_AGENT_COMPOSITION_PUBLIC_EXPORTS = new Set([
-	"CodingAgentExtensionSessionHost",
 	"CodingAgentActiveSessionHost",
 	"CodingAgentProcessSessionHost",
 	"CodingAgentRuntimeComposition",

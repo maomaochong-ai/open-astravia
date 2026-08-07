@@ -15,13 +15,12 @@ import {
 	PROMPT_ATTACHMENT_REFERENCE_TYPE,
 	PROMPT_RESOURCE_REFERENCE_TYPE,
 } from "../../model-context/index.js";
+import { CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY } from "../../runtime-contracts/extension-runtime.js";
 import type {
 	CodingAgentPromptResourceExpansion,
 	CodingAgentPromptResourceResolver,
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentGreenfieldExtensionEventBridge } from "./greenfield-extension-event-bridge.js";
-
-export const CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY = "codingAgentExtensionInputSource";
 
 export type {
 	CodingAgentPromptResourceExpansion,

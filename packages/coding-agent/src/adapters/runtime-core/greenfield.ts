@@ -17,6 +17,11 @@ export {
 	createCodingAgentMemoryRuntimeFeature,
 } from "../../memory/index.js";
 export type { CodingAgentModelRuntime } from "../../models/index.js";
+export type {
+	CodingAgentGreenfieldExtensionRunnerPort,
+	CodingAgentGreenfieldExtensionToolSource,
+	CodingAgentGreenfieldSessionToolRegistration,
+} from "../../runtime-contracts/index.js";
 export {
 	type CodingAgentMcpRuntimeToolSourceOptions,
 	createCodingAgentMcpRuntimeToolSource,
@@ -55,22 +60,7 @@ export {
 	type CodingAgentContinuationSource,
 } from "./greenfield-continuation-orchestrator.js";
 export { createCodingAgentDesktopCommandHost } from "./greenfield-desktop-command-host.js";
-export {
-	CodingAgentGreenfieldExtensionActionHost,
-	type CodingAgentGreenfieldExtensionActionHostOptions,
-} from "./greenfield-extension-action-host.js";
-export type {
-	CodingAgentGreenfieldExtensionRunnerPort,
-	CodingAgentGreenfieldExtensionToolSource,
-	CodingAgentGreenfieldSessionToolRegistration,
-} from "./greenfield-extension-contract.js";
 export { CodingAgentGreenfieldExtensionEventBridge } from "./greenfield-extension-event-bridge.js";
-export {
-	type CodingAgentGreenfieldExtensionEventBinding,
-	CodingAgentGreenfieldExtensionEventHost,
-	type CodingAgentGreenfieldExtensionEventHostOptions,
-	type CodingAgentGreenfieldExtensionInitialization,
-} from "./greenfield-extension-event-host.js";
 export {
 	CodingAgentGreenfieldExtensionObservationAdapter,
 	type CodingAgentGreenfieldObservedExtensionEvent,
@@ -144,7 +134,6 @@ export {
 	createCodingAgentGreenfieldProductToolRegistrations,
 } from "./greenfield-product-tools-runtime.js";
 export {
-	CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY,
 	CodingAgentGreenfieldPromptAdapter,
 	type CodingAgentGreenfieldPromptAdapterOptions,
 	type CodingAgentPromptResourceExpansion,

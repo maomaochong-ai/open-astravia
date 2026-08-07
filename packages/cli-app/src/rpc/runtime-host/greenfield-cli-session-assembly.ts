@@ -1,6 +1,5 @@
 import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
-	CodingAgentExtensionSessionHost,
 	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
 	CodingAgentProcessSessionHost,
 	createCodingAgentSessionSetupSeedInitializer,
@@ -17,10 +16,12 @@ import {
 } from "@vetta/coding-agent/host-services";
 import {
 	type CodingAgentRuntimeExtensionEventHost,
+	type CodingAgentRuntimeExtensionSessionHost,
 	createCodingAgentCompactionExtensionRuntime,
 	createCodingAgentRuntimeBranchNavigationHost,
 	createCodingAgentRuntimeExtensionCommandActions,
 	createCodingAgentRuntimeExtensionEventHost,
+	createCodingAgentRuntimeExtensionSessionHost,
 	createCodingAgentRuntimeResourceReloadHost,
 } from "@vetta/coding-agent/runtime";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
@@ -54,7 +55,7 @@ export interface GreenfieldCliSessionAssemblyOptions {
 export interface GreenfieldCliSessionAssembly {
 	readonly runtime: GreenfieldRuntimeComposition;
 	readonly sessionHost: CodingAgentProcessSessionHost;
-	readonly extensionSessionHost: CodingAgentExtensionSessionHost;
+	readonly extensionSessionHost: CodingAgentRuntimeExtensionSessionHost;
 	dispose(): Promise<void>;
 }
 
@@ -77,7 +78,7 @@ export async function createGreenfieldCliSessionAssembly(
 	});
 
 	let runtime: GreenfieldRuntimeComposition | undefined;
-	let extensionSessionHost: CodingAgentExtensionSessionHost | undefined;
+	let extensionSessionHost: CodingAgentRuntimeExtensionSessionHost | undefined;
 	let dismissRuntimeRollback: (() => void) | undefined;
 	let dismissSessionRollback: (() => void) | undefined;
 	let dismissExtensionRollback: (() => void) | undefined;
@@ -159,7 +160,7 @@ export async function createGreenfieldCliSessionAssembly(
 			id: "extension-event-host",
 			rollback: () => extensionEventHost.dispose(),
 		});
-		extensionSessionHost = new CodingAgentExtensionSessionHost(extensionEventHost, createExtensionEventHost);
+		extensionSessionHost = createCodingAgentRuntimeExtensionSessionHost(extensionEventHost, createExtensionEventHost);
 		dismissExtensionEventRollback();
 		const acquiredExtensionSessionHost = extensionSessionHost;
 		dismissExtensionRollback = rollback.defer({

@@ -28,7 +28,6 @@
 	"cliSessionAssemblyProtocolReferences": [],
 	"compositionPublicExports": [
 		"CodingAgentActiveSessionHost",
-		"CodingAgentExtensionSessionHost",
 		"CodingAgentProcessSessionHost",
 		"CodingAgentRuntimeComposition",
 		"CodingAgentRuntimeCompositionOptions",

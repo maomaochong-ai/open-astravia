@@ -1,34 +1,31 @@
 import { type GreenfieldRuntimeSession, InitializationRollbackScope } from "@vetta/runtime-core";
-import type {
-	CodingAgentGreenfieldExtensionEventHost,
-	CodingAgentGreenfieldExtensionInitialization,
-} from "../adapters/runtime-core/greenfield.js";
 import type { GreenfieldRuntimeComposition } from "../composition/greenfield-runtime-composition-contract.js";
-import type {
-	CodingAgentPreparedSessionBinding,
-	CodingAgentSessionTransition,
-	CodingAgentSessionTransitionLifecycle,
-} from "../composition/session-host/active-session-transition-contracts.js";
+import type { CodingAgentExtensionEventHost, CodingAgentExtensionInitialization } from "./extensions/contracts.js";
 import type {
 	GreenfieldSdkOwnedResource,
 	GreenfieldSdkSessionInitializationContext,
 } from "./sdk-session/runtime-factory.js";
+import type {
+	CodingAgentPreparedSessionBinding,
+	CodingAgentSessionTransition,
+	CodingAgentSessionTransitionLifecycle,
+} from "./session-transition/contracts.js";
 
 type ExtensionEventHostFactory = (
 	session: GreenfieldRuntimeSession,
 	composition: GreenfieldRuntimeComposition,
 	options?: { readonly replaceExisting?: boolean },
-) => CodingAgentGreenfieldExtensionEventHost;
+) => CodingAgentExtensionEventHost;
 
 /** 把 Session 级 Extension Event Host 纳入 SDK 活动会话的 prepare/commit/rollback 事务。 */
 export class CodingAgentSdkExtensionTransitionAdapter {
 	readonly lifecycle: CodingAgentSessionTransitionLifecycle;
-	private current: CodingAgentGreenfieldExtensionEventHost | undefined;
-	private readonly hosts = new Map<string, CodingAgentGreenfieldExtensionEventHost>();
+	private current: CodingAgentExtensionEventHost | undefined;
+	private readonly hosts = new Map<string, CodingAgentExtensionEventHost>();
 
 	constructor(
 		private readonly createHost: ExtensionEventHostFactory,
-		private readonly initialization: CodingAgentGreenfieldExtensionInitialization = {},
+		private readonly initialization: CodingAgentExtensionInitialization = {},
 	) {
 		this.lifecycle = {
 			before: (transition) => this.before(transition),
@@ -89,7 +86,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 		const previous = this.current;
 		if (!previous) throw new Error("Greenfield SDK Extension session is not initialized");
 		const rollback = new InitializationRollbackScope();
-		let next: CodingAgentGreenfieldExtensionEventHost | undefined;
+		let next: CodingAgentExtensionEventHost | undefined;
 		let replacementAttempted = false;
 		try {
 			await previous.runner.emit({ type: "session_shutdown" });

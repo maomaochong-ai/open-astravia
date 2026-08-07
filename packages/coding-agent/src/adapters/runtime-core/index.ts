@@ -48,10 +48,6 @@ export {
 	type CodingAgentContinuationSource,
 } from "./greenfield-continuation-orchestrator.js";
 export {
-	CodingAgentGreenfieldExtensionActionHost,
-	type CodingAgentGreenfieldExtensionActionHostOptions,
-} from "./greenfield-extension-action-host.js";
-export {
 	type EcosystemHookAwareRuntimeTool,
 	wrapRuntimeToolsWithEcosystemHooks,
 } from "./greenfield-hook-tool-wrapper.js";

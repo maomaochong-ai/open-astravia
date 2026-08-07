@@ -76,6 +76,25 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired Extension Host ownership paths", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-extension-event-host.ts",
+				text: "export class CodingAgentGreenfieldExtensionEventHost {}",
+			},
+			{
+				path: "packages/coding-agent/src/host/extensions/event-host.ts",
+				text: 'import type { Contract } from "../../composition/session-host/extension-session-host.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-extension-event-host.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/host/extensions/event-host.ts: retired migration reference (composition/session-host/extension-session-host)",
+			"hostExtensionCompositionEdgeFiles: 1 exceeds migration residue limit 0",
+		]);
+	});
+
 	it("rejects growth beyond each migration residue baseline", () => {
 		const files = [
 			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1 }, (_, index) => ({
@@ -94,6 +113,10 @@ describe("Coding Agent migration residue gate", () => {
 				path: `packages/coding-agent/src/composition/public-api-edge-${index}.ts`,
 				text: 'import type { Contract } from "../public-api/runtime.js";',
 			})),
+			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles + 1 }, (_, index) => ({
+				path: `packages/coding-agent/src/host/extensions/composition-edge-${index}.ts`,
+				text: 'import type { Contract } from "../../composition/contracts.js";',
+			})),
 		];
 		const state = collectCodingAgentMigrationResidue(files);
 
@@ -102,6 +125,7 @@ describe("Coding Agent migration residue gate", () => {
 			`compositionGreenfieldFiles: ${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}`,
 			`adapterCompositionEdgeFiles: ${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}`,
 			`compositionPublicApiEdgeFiles: ${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}`,
+			`hostExtensionCompositionEdgeFiles: ${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles}`,
 		]);
 	});
 });

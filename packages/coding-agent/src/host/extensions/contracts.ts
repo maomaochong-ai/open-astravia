@@ -1,3 +1,4 @@
+import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import type {
 	ExtensionCommandContextActions,
 	ExtensionError,
@@ -8,7 +9,9 @@ import type {
 } from "../../extensions/index.js";
 import type {
 	CodingAgentNewSessionOptions,
+	CodingAgentPreparedSessionBinding,
 	CodingAgentSessionSeedInitializer,
+	CodingAgentSessionTransition,
 } from "../session-transition/contracts.js";
 
 export interface CodingAgentExtensionTreeNavigationOptions {
@@ -57,4 +60,28 @@ export interface CodingAgentExtensionEventHost {
 	rebindRuntimeActions(): void;
 	rebindRuntimeBindings(): void;
 	dispose(lifecycle?: { readonly emitSessionShutdown?: boolean }): Promise<void>;
+}
+
+export type CodingAgentExtensionEventHostFactory = (
+	session: GreenfieldRuntimeSession,
+	options?: { readonly replaceExisting?: boolean },
+) => CodingAgentExtensionEventHost;
+
+export interface CodingAgentExtensionSessionHost {
+	bindCommandContext(actions: ExtensionCommandContextActions): void;
+	readRunner(): ExtensionRunner;
+	readCommands(): readonly SlashCommandInfo[];
+	tryExecute(text: string): Promise<boolean>;
+	throwIfExtensionCommand(text: string): void;
+	initialize(input: CodingAgentExtensionInitialization): Promise<void>;
+	before(
+		transition: CodingAgentSessionTransition,
+	): Promise<{ readonly cancelled: boolean; readonly skipConversationRestore?: boolean } | undefined>;
+	prepare(
+		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+	): Promise<CodingAgentPreparedSessionBinding>;
+	after(transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession }): Promise<void>;
+	reload(session: GreenfieldRuntimeSession, operation: () => Promise<void>): Promise<void>;
+	shutdown(): Promise<void>;
+	dispose(): Promise<void>;
 }

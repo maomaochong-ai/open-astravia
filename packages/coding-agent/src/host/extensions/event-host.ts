@@ -1,23 +1,16 @@
 import { basename, dirname } from "node:path";
 import { type GreenfieldRuntimeSession, RetryableCleanup } from "@vetta/runtime-core";
-import type {
-	Extension,
-	ExtensionError,
-	ExtensionExecutionHost,
-	ExtensionRuntime,
-	ExtensionUIContext,
-} from "../../extensions/index.js";
+import { CodingAgentGreenfieldExtensionObservationAdapter } from "../../adapters/runtime-core/greenfield-extension-observation-adapter.js";
+import { createGreenfieldReadonlySessionManager } from "../../adapters/runtime-core/greenfield-readonly-session-manager.js";
+import type { Extension, ExtensionError, ExtensionExecutionHost, ExtensionRuntime } from "../../extensions/index.js";
 import { ExtensionRunner } from "../../extensions/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
 import type { ResourceExtensionPaths, SessionResourceRuntime } from "../../resources/index.js";
 import type { CodingAgentGreenfieldExtensionEventBinding } from "../../runtime-contracts/index.js";
-import { CodingAgentGreenfieldExtensionActionHost } from "./greenfield-extension-action-host.js";
-import { CodingAgentGreenfieldExtensionObservationAdapter } from "./greenfield-extension-observation-adapter.js";
-import { createGreenfieldReadonlySessionManager } from "./greenfield-readonly-session-manager.js";
+import { CodingAgentExtensionActionHost } from "./action-host.js";
+import type { CodingAgentExtensionEventHost, CodingAgentExtensionInitialization } from "./contracts.js";
 
-export type { CodingAgentGreenfieldExtensionEventBinding } from "../../runtime-contracts/index.js";
-
-export interface CodingAgentGreenfieldExtensionEventHostOptions {
+export interface CodingAgentExtensionEventHostOptions {
 	readonly extensions: readonly Extension[];
 	readonly runtime: ExtensionRuntime;
 	readonly cwd: string;
@@ -31,21 +24,9 @@ export interface CodingAgentGreenfieldExtensionEventHostOptions {
 	readonly onError?: (error: ExtensionError) => void;
 }
 
-export interface CodingAgentGreenfieldExtensionInitialization {
-	readonly uiContext?: ExtensionUIContext;
-	readonly shutdownHandler?: () => void;
-	readonly onError?: (error: ExtensionError) => void;
-}
-
-/**
- * Greenfield Extension 的 Session 级组合宿主。
- *
- * Action、Context 与事件桥在这里一次性绑定到同一个 Runner；Runtime Core 只暴露
- * 会话端口，CLI 只负责 UI、shutdown 和错误监听生命周期。
- */
-export class CodingAgentGreenfieldExtensionEventHost {
+class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventHost {
 	readonly runner: ExtensionRunner;
-	private readonly actionHost: CodingAgentGreenfieldExtensionActionHost;
+	private readonly actionHost: CodingAgentExtensionActionHost;
 	private eventBinding: CodingAgentGreenfieldExtensionEventBinding;
 	private readonly removeExecutionObservationListener: () => void;
 	private removeErrorListener: (() => void) | undefined;
@@ -57,12 +38,12 @@ export class CodingAgentGreenfieldExtensionEventHost {
 	private readonly cleanup = new RetryableCleanup();
 	private cleanupPrepared = false;
 
-	constructor(private readonly options: CodingAgentGreenfieldExtensionEventHostOptions) {
+	constructor(private readonly options: CodingAgentExtensionEventHostOptions) {
 		const assembly = options.session.createCoreAssembly();
 		const contextController = assembly.contextController;
 		if (!contextController) throw new Error("Greenfield Extension events require a Runtime context controller");
 
-		this.actionHost = new CodingAgentGreenfieldExtensionActionHost({
+		this.actionHost = new CodingAgentExtensionActionHost({
 			session: options.session,
 			resourceLoader: options.resourceLoader,
 			onModelSelect: (event) => this.runner.emit(event),
@@ -114,7 +95,7 @@ export class CodingAgentGreenfieldExtensionEventHost {
 	}
 
 	async initialize(
-		input: CodingAgentGreenfieldExtensionInitialization = {},
+		input: CodingAgentExtensionInitialization = {},
 		lifecycle: { readonly emitSessionStart?: boolean } = {},
 	): Promise<void> {
 		if (input.uiContext) this.runner.setUIContext(input.uiContext);
@@ -210,6 +191,12 @@ export class CodingAgentGreenfieldExtensionEventHost {
 		this.errorListener?.(error);
 		this.options.onError?.(error);
 	}
+}
+
+export function createCodingAgentExtensionEventHost(
+	options: CodingAgentExtensionEventHostOptions,
+): CodingAgentExtensionEventHost {
+	return new DefaultCodingAgentExtensionEventHost(options);
 }
 
 function buildExtensionResourcePaths(entries: Array<{ path: string; extensionPath: string }>) {

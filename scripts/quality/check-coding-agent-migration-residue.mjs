@@ -7,12 +7,14 @@ import { fail, isDirectRun, ok, readText, rel, repoRoot, walkFiles } from "./lib
 const SOURCE_ROOT = "packages/coding-agent/src";
 const ADAPTER_ROOT = `${SOURCE_ROOT}/adapters`;
 const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
+const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 38,
+	adapterGreenfieldFiles: 35,
 	compositionGreenfieldFiles: 30,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
+	hostExtensionCompositionEdgeFiles: 0,
 });
 
 export const RETIRED_MIGRATION_FILES = Object.freeze([
@@ -30,6 +32,10 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-command-host.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-turn-executor.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-turn-retry-controller.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-action-host.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-event-host.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-contract.ts`,
+	`${COMPOSITION_ROOT}/session-host/extension-session-host.ts`,
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
@@ -49,12 +55,17 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"adapters/runtime-core/greenfield-extension-command-host",
 	"adapters/runtime-core/greenfield-turn-executor",
 	"adapters/runtime-core/greenfield-turn-retry-controller",
+	"adapters/runtime-core/greenfield-extension-action-host",
+	"adapters/runtime-core/greenfield-extension-event-host",
+	"adapters/runtime-core/greenfield-extension-contract",
+	"composition/session-host/extension-session-host",
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {
 	const sourceFiles = files.filter((file) => file.path.startsWith(`${SOURCE_ROOT}/`));
 	const adapterFiles = sourceFiles.filter((file) => file.path.startsWith(`${ADAPTER_ROOT}/`));
 	const compositionFiles = sourceFiles.filter((file) => file.path.startsWith(`${COMPOSITION_ROOT}/`));
+	const hostExtensionFiles = sourceFiles.filter((file) => file.path.startsWith(`${HOST_EXTENSION_ROOT}/`));
 	return Object.freeze({
 		retiredFiles: RETIRED_MIGRATION_FILES.filter((path) => sourceFiles.some((file) => file.path === path)),
 		retiredReferences: sourceFiles.flatMap((file) =>
@@ -70,6 +81,9 @@ export function collectCodingAgentMigrationResidue(files) {
 		),
 		compositionPublicApiEdgeFiles: compositionFiles.filter((file) =>
 			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("public-api/")),
+		),
+		hostExtensionCompositionEdgeFiles: hostExtensionFiles.filter((file) =>
+			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("composition/")),
 		),
 	});
 }
@@ -103,7 +117,7 @@ function readCurrentFiles() {
 }
 
 if (isDirectRun(import.meta.url)) {
-	const missingRoots = [SOURCE_ROOT, ADAPTER_ROOT, COMPOSITION_ROOT].filter(
+	const missingRoots = [SOURCE_ROOT, ADAPTER_ROOT, COMPOSITION_ROOT, HOST_EXTENSION_ROOT].filter(
 		(path) => !existsSync(join(repoRoot, path)),
 	);
 	if (missingRoots.length > 0) {
@@ -115,7 +129,7 @@ if (isDirectRun(import.meta.url)) {
 			for (const violation of violations) fail(`[coding-agent-migration-residue] ${violation}`);
 		} else {
 			ok(
-				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles})`,
+				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
 			);
 		}
 	}

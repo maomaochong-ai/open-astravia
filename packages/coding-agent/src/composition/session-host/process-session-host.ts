@@ -5,7 +5,10 @@ import {
 	type SessionEvent,
 } from "@vetta/runtime-core";
 import type { ManagedMcpRuntimeToolSource } from "@vetta/runtime-mcp";
-import type { CodingAgentExtensionInitialization } from "../../host/extensions/contracts.js";
+import type {
+	CodingAgentExtensionInitialization,
+	CodingAgentExtensionSessionHost,
+} from "../../host/extensions/contracts.js";
 import type {
 	CodingAgentTurnExecutor,
 	CodingAgentTurnRetryController,
@@ -16,7 +19,6 @@ import { createCodingAgentTurnExecutor } from "../../host/session-execution/turn
 import { createCodingAgentTurnRetryController } from "../../host/session-execution/turn-retry-controller.js";
 import type { GreenfieldRuntimeComposition } from "../greenfield-runtime-composition-contract.js";
 import type { CodingAgentActiveSessionHost } from "./active-session-transition-host.js";
-import type { CodingAgentExtensionSessionHost } from "./extension-session-host.js";
 
 export interface CodingAgentProcessSessionHostOptions {
 	readonly runtime: GreenfieldRuntimeComposition;

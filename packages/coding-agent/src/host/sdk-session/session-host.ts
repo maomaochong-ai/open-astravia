@@ -2,7 +2,6 @@ import { join } from "node:path";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
 import { createLangfuseRuntimeTracerFromEnv } from "@vetta/runtime-telemetry/langfuse";
 import {
-	CodingAgentGreenfieldExtensionEventHost,
 	createCodingAgentCompactionExtensionRuntime,
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
@@ -22,6 +21,7 @@ import { createCodingAgentSessionResourceRuntime } from "../coding-agent-resourc
 import { CodingAgentSdkExtensionTransitionAdapter } from "../coding-agent-sdk-extension-transition-adapter.js";
 import { CodingAgentSdkResourceSourceAdapter } from "../coding-agent-sdk-resource-source-adapter.js";
 import { resolveCodingAgentSessionDir } from "../coding-agent-session-storage.js";
+import { createCodingAgentExtensionEventHost } from "../extensions/event-host.js";
 import {
 	CODING_AGENT_SDK_HOST_ERROR_CODES,
 	CodingAgentSdkHostError,
@@ -185,7 +185,7 @@ async function createCodingAgentSdkSessionComposition(
 	];
 	const extensionTransitions = new CodingAgentSdkExtensionTransitionAdapter((session, composition, bindingOptions) => {
 		const currentExtensions = resourceLoader.getExtensions();
-		return new CodingAgentGreenfieldExtensionEventHost({
+		return createCodingAgentExtensionEventHost({
 			extensions: currentExtensions.extensions,
 			runtime: currentExtensions.runtime,
 			cwd,

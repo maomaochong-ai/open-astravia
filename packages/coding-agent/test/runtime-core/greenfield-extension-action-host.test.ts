@@ -2,7 +2,7 @@ import type { Api, Model } from "@vetta/ai";
 import type { GreenfieldRuntimeSession, RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentGreenfieldExtensionActionHost } from "../../src/adapters/runtime-core/greenfield-extension-action-host.js";
+import { CodingAgentExtensionActionHost } from "../../src/host/extensions/action-host.js";
 
 const model: Model<Api> = {
 	id: "model",
@@ -17,7 +17,7 @@ const model: Model<Api> = {
 	maxTokens: 1_000,
 };
 
-describe("CodingAgentGreenfieldExtensionActionHost", () => {
+describe("CodingAgentExtensionActionHost", () => {
 	it("maps all command actions to Greenfield-owned ports and preserves delivery timing", async () => {
 		const delivery = vi.fn<RuntimeSessionContextDeliveryController["deliver"]>(async () => {});
 		const prompt = vi.fn(async () => ({ status: "completed" as const }));
@@ -71,7 +71,7 @@ describe("CodingAgentGreenfieldExtensionActionHost", () => {
 				},
 			}),
 		} as unknown as GreenfieldRuntimeSession;
-		const host = new CodingAgentGreenfieldExtensionActionHost({
+		const host = new CodingAgentExtensionActionHost({
 			session,
 			resourceLoader: {
 				getPrompts: () => ({
@@ -167,7 +167,7 @@ describe("CodingAgentGreenfieldExtensionActionHost", () => {
 				},
 			}),
 		} as unknown as GreenfieldRuntimeSession;
-		const host = new CodingAgentGreenfieldExtensionActionHost({
+		const host = new CodingAgentExtensionActionHost({
 			session,
 			resourceLoader: {
 				getPrompts: () => ({ prompts: [], diagnostics: [] }),

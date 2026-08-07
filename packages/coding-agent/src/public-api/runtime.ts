@@ -10,14 +10,17 @@ export {
 	type CodingAgentRuntimeExtensionCommandHost,
 	type CodingAgentRuntimeExtensionCommandHostOptions,
 	type CodingAgentRuntimeExtensionEventHost,
+	type CodingAgentRuntimeExtensionEventHostFactory,
 	type CodingAgentRuntimeExtensionEventHostOptions,
 	type CodingAgentRuntimeExtensionInitialization,
 	type CodingAgentRuntimeExtensionObservationAdapter,
+	type CodingAgentRuntimeExtensionSessionHost,
 	type CodingAgentRuntimeObservedExtensionEvent,
 	createCodingAgentRuntimeExtensionCommandActions,
 	createCodingAgentRuntimeExtensionCommandHost,
 	createCodingAgentRuntimeExtensionEventHost,
 	createCodingAgentRuntimeExtensionObservationAdapter,
+	createCodingAgentRuntimeExtensionSessionHost,
 } from "./runtime/extensions.js";
 export {
 	type CodingAgentRuntimeBranchNavigationHost,

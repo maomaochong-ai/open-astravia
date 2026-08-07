@@ -1,9 +1,5 @@
 import type { RuntimeSessionExecutionObservation } from "@vetta/runtime-core";
 import {
-	CodingAgentGreenfieldExtensionEventHost,
-	type CodingAgentGreenfieldExtensionEventHostOptions,
-} from "../../adapters/runtime-core/greenfield-extension-event-host.js";
-import {
 	CodingAgentGreenfieldExtensionObservationAdapter,
 	type CodingAgentGreenfieldObservedExtensionEvent,
 } from "../../adapters/runtime-core/greenfield-extension-observation-adapter.js";
@@ -15,17 +11,26 @@ import type {
 	CodingAgentExtensionCommandHost,
 	CodingAgentExtensionCommandHostOptions,
 	CodingAgentExtensionEventHost,
+	CodingAgentExtensionEventHostFactory,
 	CodingAgentExtensionInitialization,
+	CodingAgentExtensionSessionHost,
 } from "../../host/extensions/contracts.js";
+import {
+	type CodingAgentExtensionEventHostOptions,
+	createCodingAgentExtensionEventHost,
+} from "../../host/extensions/event-host.js";
+import { createCodingAgentExtensionSessionHost } from "../../host/extensions/session-host.js";
 
 export type CodingAgentRuntimeExtensionInitialization = CodingAgentExtensionInitialization;
-export type CodingAgentRuntimeExtensionEventHostOptions = CodingAgentGreenfieldExtensionEventHostOptions;
+export type CodingAgentRuntimeExtensionEventHostOptions = CodingAgentExtensionEventHostOptions;
+export type CodingAgentRuntimeExtensionEventHostFactory = CodingAgentExtensionEventHostFactory;
 export type CodingAgentRuntimeExtensionCommandActionPorts = CodingAgentExtensionCommandActionPorts;
 export type CodingAgentRuntimeObservedExtensionEvent = CodingAgentGreenfieldObservedExtensionEvent;
 export type CodingAgentRuntimeExtensionCommandContextActions = ExtensionCommandContextActions;
 export type CodingAgentRuntimeExtensionCommandHost = CodingAgentExtensionCommandHost;
 export type CodingAgentRuntimeExtensionCommandHostOptions = CodingAgentExtensionCommandHostOptions;
 export type CodingAgentRuntimeExtensionEventHost = CodingAgentExtensionEventHost;
+export type CodingAgentRuntimeExtensionSessionHost = CodingAgentExtensionSessionHost;
 
 export interface CodingAgentRuntimeExtensionObservationAdapter {
 	observe(observation: RuntimeSessionExecutionObservation): Promise<void>;
@@ -40,7 +45,14 @@ export function createCodingAgentRuntimeExtensionCommandHost(
 export function createCodingAgentRuntimeExtensionEventHost(
 	options: CodingAgentRuntimeExtensionEventHostOptions,
 ): CodingAgentRuntimeExtensionEventHost {
-	return new CodingAgentGreenfieldExtensionEventHost(options);
+	return createCodingAgentExtensionEventHost(options);
+}
+
+export function createCodingAgentRuntimeExtensionSessionHost(
+	initial: CodingAgentRuntimeExtensionEventHost,
+	createHost: CodingAgentRuntimeExtensionEventHostFactory,
+): CodingAgentRuntimeExtensionSessionHost {
+	return createCodingAgentExtensionSessionHost(initial, createHost);
 }
 
 export function createCodingAgentRuntimeExtensionObservationAdapter(

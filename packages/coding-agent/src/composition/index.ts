@@ -23,7 +23,4 @@ export {
 	type CodingAgentSessionTransition,
 	type CodingAgentSessionTransitionLifecycle,
 } from "./session-host/active-session-transition-host.js";
-export {
-	CodingAgentExtensionSessionHost,
-	CodingAgentProcessSessionHost,
-} from "./session-host/index.js";
+export { CodingAgentProcessSessionHost } from "./session-host/index.js";

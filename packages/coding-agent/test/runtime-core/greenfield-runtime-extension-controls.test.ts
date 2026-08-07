@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield.js";
-import type {
-	CodingAgentGreenfieldExtensionRunnerPort,
-	CodingAgentGreenfieldExtensionToolSource,
-} from "../../src/adapters/runtime-core/greenfield-extension-contract.js";
 import {
 	createGreenfieldRuntimeExtensionControls,
 	type GreenfieldExtensionToolHostPort,
 } from "../../src/composition/greenfield-runtime-extension-controls.js";
 import { InMemoryGreenfieldSessionValueIndex } from "../../src/composition/greenfield-session-resource-index.js";
+import type {
+	CodingAgentGreenfieldExtensionRunnerPort,
+	CodingAgentGreenfieldExtensionToolSource,
+} from "../../src/runtime-contracts/index.js";
 
 describe("Greenfield Runtime Extension Controls", () => {
 	it("binds live Event Bridge and Tool Runtime ports with the existing cleanup order", () => {

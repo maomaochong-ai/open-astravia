@@ -1,10 +1,10 @@
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentExtensionSessionHost } from "../../src/composition/session-host/extension-session-host.js";
 import type {
 	CodingAgentRuntimeExtensionEventHost,
 	CodingAgentRuntimeExtensionInitialization,
 } from "../../src/public-api/runtime/extensions.js";
+import { createCodingAgentRuntimeExtensionSessionHost } from "../../src/public-api/runtime/extensions.js";
 
 describe("CodingAgentExtensionSessionHost initialization rollback", () => {
 	it("continues reverse rollback and keeps the reload failure as the primary cause", async () => {
@@ -39,7 +39,7 @@ describe("CodingAgentExtensionSessionHost initialization rollback", () => {
 				throw cleanupError;
 			}),
 		} as unknown as CodingAgentRuntimeExtensionEventHost;
-		const host = new CodingAgentExtensionSessionHost(previous, () => next);
+		const host = createCodingAgentRuntimeExtensionSessionHost(previous, () => next);
 		await host.initialize({
 			uiContext: {} as NonNullable<CodingAgentRuntimeExtensionInitialization["uiContext"]>,
 			shutdownHandler: vi.fn(),

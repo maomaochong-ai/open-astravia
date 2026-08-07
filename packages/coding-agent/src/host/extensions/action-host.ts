@@ -13,9 +13,9 @@ import type {
 } from "../../extensions/index.js";
 import { bindExtensionRuntimeActions } from "../../extensions/index.js";
 import type { SessionResourceRuntime } from "../../resources/index.js";
-import { CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY } from "./greenfield-prompt-adapter.js";
+import { CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY } from "../../runtime-contracts/extension-runtime.js";
 
-export interface CodingAgentGreenfieldExtensionActionHostOptions {
+export interface CodingAgentExtensionActionHostOptions {
 	readonly session: GreenfieldRuntimeSession;
 	readonly resourceLoader: Pick<SessionResourceRuntime, "getPrompts" | "getSkills">;
 	readonly onModelSelect?: (event: ModelSelectEvent) => Promise<void>;
@@ -23,20 +23,15 @@ export interface CodingAgentGreenfieldExtensionActionHostOptions {
 	readonly now?: () => number;
 }
 
-/**
- * Provider/Flag-only Extension 的 Greenfield 命令式宿主。
- *
- * void API 的异步写操作由宿主追踪；错误按旧 Extension runtime 约定上报，
- * dispose 会等待所有已接收动作收敛。
- */
-export class CodingAgentGreenfieldExtensionActionHost {
+/** Provider/Flag-only Extension 的命令式宿主。 */
+export class CodingAgentExtensionActionHost {
 	readonly actions: ExtensionActions;
 	private readonly pending = new Set<Promise<void>>();
 	private mutationTail: Promise<void> = Promise.resolve();
 	private sessionNameOverride: string | undefined;
 	private disposed = false;
 
-	constructor(private readonly options: CodingAgentGreenfieldExtensionActionHostOptions) {
+	constructor(private readonly options: CodingAgentExtensionActionHostOptions) {
 		const assembly = options.session.createCoreAssembly();
 		const toolController = assembly.toolController;
 		if (!toolController) throw new Error("Greenfield Extension actions require a Runtime tool controller");

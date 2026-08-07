@@ -1,5 +1,7 @@
 import type { Extension, ExtensionRunner, RegisteredTool } from "../extensions/index.js";
 
+export const CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY = "codingAgentExtensionInputSource";
+
 export type CodingAgentGreenfieldExtensionRunnerPort = Pick<
 	ExtensionRunner,
 	| "createContext"

@@ -4,39 +4,21 @@ import type {
 	RuntimeSessionCatalog,
 } from "@vetta/runtime-core";
 import type {
+	CodingAgentSessionTransition,
+	CodingAgentSessionTransitionLifecycle,
+} from "../../host/session-transition/contracts.js";
+import type {
 	GreenfieldRuntimeSessionHookLifecycle,
 	GreenfieldRuntimeSessionOptions,
 } from "../greenfield-runtime-composition-contract.js";
 
-export type CodingAgentSessionTransitionKind = "new" | "resume" | "fork";
-
-export interface CodingAgentSessionTransition {
-	readonly kind: CodingAgentSessionTransitionKind;
-	readonly previous: GreenfieldRuntimeSession;
-	readonly next?: GreenfieldRuntimeSession;
-	readonly previousSessionPath: string | undefined;
-	readonly targetSessionPath?: string;
-	readonly entryId?: string;
-}
-
-export interface CodingAgentPreparedSessionBinding {
-	commit(): Promise<void>;
-	rollback(): Promise<void>;
-	finalize(): Promise<void>;
-}
-
-export interface CodingAgentSessionTransitionDecision {
-	readonly cancelled: boolean;
-	readonly skipConversationRestore?: boolean;
-}
-
-export interface CodingAgentSessionTransitionLifecycle {
-	before?(transition: CodingAgentSessionTransition): Promise<CodingAgentSessionTransitionDecision | undefined>;
-	prepare?(
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	): Promise<CodingAgentPreparedSessionBinding | undefined>;
-	after?(transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession }): Promise<void>;
-}
+export type {
+	CodingAgentPreparedSessionBinding,
+	CodingAgentSessionTransition,
+	CodingAgentSessionTransitionDecision,
+	CodingAgentSessionTransitionKind,
+	CodingAgentSessionTransitionLifecycle,
+} from "../../host/session-transition/contracts.js";
 
 export interface CodingAgentSessionTransitionRuntimePort {
 	readonly backend: GreenfieldRuntimeSessionBackend<GreenfieldRuntimeSessionOptions>;
