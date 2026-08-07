@@ -44,6 +44,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **插件官方身份校验补强**：命令执行与长驻进程接口不再接受 renderer 传入的插件 ID，改由主进程从活动 capability session 解析真实调用者；插件 dev watch 也必须携带 official session。插件 SDK 与现有插件调用方式不变。
 - **能力页首开列表转圈过久**：原先 `loading` 要等本地安装态、服务端 `/abilities/market`、开源市场三条 `allSettled` 全结束后才关，外加 `mcp.config === null` 再挡一道，网络 RTT 会直接变成整表转圈。现改为本地 IPC 就绪即出列表（内置/已装先可见），市场在后台合并；MCP 配置缺省按空表组装；开源市场同会话 `list()` 复用进程内快照，避免反复全量校验包。
 - **侧栏切换会话卡顿**。最大头不是渲染慢，是点击后被排队等了几百毫秒：点会话行会先平滑滚动把行挪进安全区、并等分栏面板的 `max-height` 过渡结束，两个等待 `Promise.all` 完（fallback 分别 800ms 与 450ms）之后才真正发起会话切换——而 `openSession` 内部本来已经做了「拿到 sessionId 就写 activeSession + navigate」的优化，全被这段等待抵消，慢机上还容易吃满 fallback。现在滚动与切换并行，点下去立刻开始切。其余是渲染层：
   - 会话行改成 memo 组件，per-row 回调（选中/重命名/右键菜单）与行视图对象的引用都稳定下来——切换会话原本只有两行的高亮变了，却会把整份列表重建一遍。

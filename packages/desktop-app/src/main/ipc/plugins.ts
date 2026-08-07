@@ -570,9 +570,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	});
 	ipcMain.handle(
 		"vetta:plugins:command-run",
-		(_event, pluginId: unknown, file: unknown, args: unknown, options: unknown) =>
+		(_event, sessionId: unknown, file: unknown, args: unknown, options: unknown) =>
 			runPluginCommand(
-				asPluginId(pluginId),
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
 				typeof file === "string" ? file : "",
 				args,
 				(options ?? undefined) as PluginCommandRunOptions | undefined,
@@ -580,19 +580,19 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	);
 	ipcMain.handle(
 		"vetta:plugins:command-spawn",
-		(_event, pluginId: unknown, file: unknown, args: unknown, options: unknown) =>
+		(_event, sessionId: unknown, file: unknown, args: unknown, options: unknown) =>
 			spawnPluginCommand(
-				asPluginId(pluginId),
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
 				typeof file === "string" ? file : "",
 				args,
 				(options ?? undefined) as SpawnPluginCommandOptions | undefined,
 			),
 	);
-	ipcMain.handle("vetta:plugins:command-spawn-stop", (_event, pluginId: unknown, spawnId: unknown) =>
-		stopPluginCommandSpawn(asPluginId(pluginId), asPluginId(spawnId)),
+	ipcMain.handle("vetta:plugins:command-spawn-stop", (_event, sessionId: unknown, spawnId: unknown) =>
+		stopPluginCommandSpawn(capabilityAdapter.pluginIdForSession(asPluginId(sessionId)), asPluginId(spawnId)),
 	);
-	ipcMain.handle("vetta:plugins:command-spawn-status", (_event, pluginId: unknown, spawnId: unknown) =>
-		getPluginCommandSpawnStatus(asPluginId(pluginId), asPluginId(spawnId)),
+	ipcMain.handle("vetta:plugins:command-spawn-status", (_event, sessionId: unknown, spawnId: unknown) =>
+		getPluginCommandSpawnStatus(capabilityAdapter.pluginIdForSession(asPluginId(sessionId)), asPluginId(spawnId)),
 	);
 	ipcMain.handle("vetta:plugins:offscreen-capture", (_event, pluginId: unknown, options: unknown) =>
 		capturePluginOffscreen(asPluginId(pluginId), (options ?? undefined) as PluginOffscreenCaptureOptions | undefined),
@@ -628,7 +628,8 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
 		return reloadInstalledPlugin(id);
 	});
-	ipcMain.handle("vetta:plugins:dev-watch-start", (_event, id: unknown, projectDir: unknown) => {
+	ipcMain.handle("vetta:plugins:dev-watch-start", (_event, sessionId: unknown, id: unknown, projectDir: unknown) => {
+		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
 		const pluginId = asPluginId(id);
 		if (typeof projectDir !== "string" || projectDir.trim().length === 0) {
 			throw new Error("Invalid plugin project dir");
@@ -637,7 +638,8 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		refreshAgentPlugins();
 		return plugin;
 	});
-	ipcMain.handle("vetta:plugins:dev-watch-stop", (_event, id: unknown) => {
+	ipcMain.handle("vetta:plugins:dev-watch-stop", (_event, sessionId: unknown, id: unknown) => {
+		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
 		stopPluginDevWatch(asPluginId(id));
 		refreshAgentPlugins();
 	});

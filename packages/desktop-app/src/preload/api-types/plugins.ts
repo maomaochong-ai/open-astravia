@@ -615,22 +615,22 @@ export interface DesktopPluginsApi {
 	revokeCommands(id: string, names: string[]): Promise<InstalledPlugin>;
 	/** Run an allowed command for a plugin via the main process (execFile, no shell). */
 	runCommand(
-		pluginId: string,
+		sessionId: string,
 		file: string,
 		args?: string[],
 		options?: PluginCommandRunOptions,
 	): Promise<PluginCommandRunResult>;
 	/** Start an allowed long-lived command (ADR-0054). No shell; own process group. */
 	spawnCommand(
-		pluginId: string,
+		sessionId: string,
 		file: string,
 		args?: string[],
 		options?: PluginCommandSpawnOptions,
 	): Promise<PluginCommandSpawnResult>;
 	/** SIGTERM the spawned process tree (SIGKILL after a grace period). */
-	stopCommandSpawn(pluginId: string, spawnId: string): Promise<void>;
+	stopCommandSpawn(sessionId: string, spawnId: string): Promise<void>;
 	/** Liveness, port and recent output for a spawn started by this plugin. */
-	getCommandSpawnStatus(pluginId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
+	getCommandSpawnStatus(sessionId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
 	/** Subscribe to spawn exit events (all plugins; filter by pluginId/spawnId). */
 	onCommandSpawnExit(handler: (event: PluginCommandSpawnExitEvent) => void): () => void;
 	/** 主进程离屏窗口截图（真实渲染管线，`capture.offscreen` 权限）。 */
@@ -642,9 +642,9 @@ export interface DesktopPluginsApi {
 	 * 开启 dev 热更新：把插件 dev 链接到 projectDir（资源改从工程 dist 加载），
 	 * 宿主常驻 `vite build --watch` 并监听 dist，产物变化自动重载。要求插件已安装过一次。
 	 */
-	startDevWatch(id: string, projectDir: string): Promise<InstalledPlugin>;
+	startDevWatch(sessionId: string, id: string, projectDir: string): Promise<InstalledPlugin>;
 	/** 关闭 dev 热更新：停掉 vite watch 与文件监听，资源回落已安装目录。 */
-	stopDevWatch(id: string): Promise<void>;
+	stopDevWatch(sessionId: string, id: string): Promise<void>;
 	/**
 	 * Mark a plugin as contribution-mode-gated (ADR-0041). Until
 	 * {@link setContributionMode} enables it, agent contributions are stripped.

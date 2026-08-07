@@ -58,11 +58,11 @@ export function createOfficialPluginsApi(
 		},
 		startDevWatch: async (id, projectDir) => {
 			assertOfficial();
-			return summarizePlugin(await window.vetta.plugins.startDevWatch(id, projectDir));
+			return summarizePlugin(await window.vetta.plugins.startDevWatch(capabilitySessionId, id, projectDir));
 		},
 		stopDevWatch: async (id) => {
 			assertOfficial();
-			await window.vetta.plugins.stopDevWatch(id);
+			await window.vetta.plugins.stopDevWatch(capabilitySessionId, id);
 		},
 		onChanged: (handler) => {
 			assertOfficial();

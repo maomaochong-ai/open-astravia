@@ -753,7 +753,11 @@ function ensureSpawnExitSubscription(): void {
 	});
 }
 
-function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCommandApi {
+function createCommandApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+	disposers: Array<() => void>,
+): PluginCommandApi {
 	const permissions = createPermissionApi(plugin);
 	const assertCommandAllowed = (file: unknown): string => {
 		if (typeof file !== "string" || file.trim().length === 0) {
@@ -787,18 +791,18 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
 			const allowed = assertCommandAllowed(file);
-			return window.vetta.plugins.runCommand(plugin.id, allowed, args ?? [], options);
+			return window.vetta.plugins.runCommand(capabilitySessionId, allowed, args ?? [], options);
 		},
 		spawn: async (file, args, options): Promise<PluginCommandSpawnHandle> => {
 			permissions.require("agent.command.spawn");
 			const allowed = assertCommandAllowed(file);
 			ensureSpawnExitSubscription();
-			const result = await window.vetta.plugins.spawnCommand(plugin.id, allowed, args ?? [], options);
+			const result = await window.vetta.plugins.spawnCommand(capabilitySessionId, allowed, args ?? [], options);
 			let stopped = false;
 			const stop = async (): Promise<void> => {
 				if (stopped) return;
 				stopped = true;
-				await window.vetta.plugins.stopCommandSpawn(plugin.id, result.spawnId);
+				await window.vetta.plugins.stopCommandSpawn(capabilitySessionId, result.spawnId);
 			};
 			// 插件卸载/重载时统一回收（主进程在 reload/disable/uninstall 也会兜底清扫）。
 			disposers.push(() => void stop());
@@ -807,7 +811,7 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 				pid: result.pid,
 				port: result.port,
 				stop,
-				status: () => window.vetta.plugins.getCommandSpawnStatus(plugin.id, result.spawnId),
+				status: () => window.vetta.plugins.getCommandSpawnStatus(capabilitySessionId, result.spawnId),
 				onExit: (listener) => {
 					const listeners = spawnExitListeners.get(result.spawnId) ?? new Set();
 					listeners.add(listener);
@@ -1403,7 +1407,7 @@ function createContext(
 		},
 		conversation,
 		fs,
-		command: createCommandApi(plugin, disposers),
+		command: createCommandApi(plugin, capabilitySessionId, disposers),
 		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
 		jobs: createJobsApi(plugin, capabilitySessionId),
 		artifacts: createArtifactsApi(plugin, capabilitySessionId),

@@ -294,20 +294,21 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			revokePermissions: (id, permissions) => ipc.invoke("vetta:plugins:revoke-permissions", id, permissions),
 			grantCommands: (id, names) => ipc.invoke("vetta:plugins:grant-commands", id, names),
 			revokeCommands: (id, names) => ipc.invoke("vetta:plugins:revoke-commands", id, names),
-			runCommand: (pluginId, file, args, options) =>
-				ipc.invoke("vetta:plugins:command-run", pluginId, file, args, options),
-			spawnCommand: (pluginId, file, args, options) =>
-				ipc.invoke("vetta:plugins:command-spawn", pluginId, file, args, options),
-			stopCommandSpawn: (pluginId, spawnId) => ipc.invoke("vetta:plugins:command-spawn-stop", pluginId, spawnId),
-			getCommandSpawnStatus: (pluginId, spawnId) =>
-				ipc.invoke("vetta:plugins:command-spawn-status", pluginId, spawnId),
+			runCommand: (sessionId, file, args, options) =>
+				ipc.invoke("vetta:plugins:command-run", sessionId, file, args, options),
+			spawnCommand: (sessionId, file, args, options) =>
+				ipc.invoke("vetta:plugins:command-spawn", sessionId, file, args, options),
+			stopCommandSpawn: (sessionId, spawnId) => ipc.invoke("vetta:plugins:command-spawn-stop", sessionId, spawnId),
+			getCommandSpawnStatus: (sessionId, spawnId) =>
+				ipc.invoke("vetta:plugins:command-spawn-status", sessionId, spawnId),
 			onCommandSpawnExit: (handler) => onIpcEvent(ipc, "vetta:plugins:command-spawn-exit", handler),
 			offscreenCapture: (pluginId, options) => ipc.invoke("vetta:plugins:offscreen-capture", pluginId, options),
 			offscreenRelease: (pluginId, sessionKey) =>
 				ipc.invoke("vetta:plugins:offscreen-release", pluginId, sessionKey),
 			reload: (id) => ipc.invoke("vetta:plugins:reload", id),
-			startDevWatch: (id, projectDir) => ipc.invoke("vetta:plugins:dev-watch-start", id, projectDir),
-			stopDevWatch: (id) => ipc.invoke("vetta:plugins:dev-watch-stop", id),
+			startDevWatch: (sessionId, id, projectDir) =>
+				ipc.invoke("vetta:plugins:dev-watch-start", sessionId, id, projectDir),
+			stopDevWatch: (sessionId, id) => ipc.invoke("vetta:plugins:dev-watch-stop", sessionId, id),
 			registerModeGate: (pluginId) => ipc.invoke("vetta:plugins:register-mode-gate", pluginId),
 			setContributionMode: (pluginId, active) => ipc.invoke("vetta:plugins:set-contribution-mode", pluginId, active),
 			beginAgentContributionsLoad: (pluginId, activationId) =>

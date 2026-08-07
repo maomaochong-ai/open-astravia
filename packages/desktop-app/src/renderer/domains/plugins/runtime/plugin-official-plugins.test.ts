@@ -44,9 +44,11 @@ describe("createOfficialPluginsApi", () => {
 			setEnabled: vi.fn().mockResolvedValue(plugin),
 			reload: vi.fn().mockResolvedValue(plugin),
 		};
+		const startDevWatch = vi.fn().mockResolvedValue(plugin);
+		const stopDevWatch = vi.fn().mockResolvedValue(undefined);
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { pluginSystem } } } },
+			value: { vetta: { plugins: { internalCapabilities: { pluginSystem }, startDevWatch, stopDevWatch } } },
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialPluginsApi(assertOfficial, "capability-session");
@@ -60,8 +62,10 @@ describe("createOfficialPluginsApi", () => {
 		).resolves.toHaveProperty("id", "target");
 		await expect(api.uninstall("target")).resolves.toBeUndefined();
 		await expect(api.reload("target")).resolves.toHaveProperty("id", "target");
+		await expect(api.startDevWatch("target", "C:/plugin-project")).resolves.toHaveProperty("id", "target");
+		await expect(api.stopDevWatch("target")).resolves.toBeUndefined();
 
-		expect(assertOfficial).toHaveBeenCalledTimes(7);
+		expect(assertOfficial).toHaveBeenCalledTimes(9);
 		expect(pluginSystem.list).toHaveBeenCalledTimes(2);
 		expect(pluginSystem.list).toHaveBeenCalledWith("capability-session");
 		expect(pluginSystem.setEnabled).toHaveBeenCalledWith("capability-session", "target", false);
@@ -72,5 +76,7 @@ describe("createOfficialPluginsApi", () => {
 		});
 		expect(pluginSystem.uninstall).toHaveBeenCalledWith("capability-session", "target");
 		expect(pluginSystem.reload).toHaveBeenCalledWith("capability-session", "target");
+		expect(startDevWatch).toHaveBeenCalledWith("capability-session", "target", "C:/plugin-project");
+		expect(stopDevWatch).toHaveBeenCalledWith("capability-session", "target");
 	});
 });

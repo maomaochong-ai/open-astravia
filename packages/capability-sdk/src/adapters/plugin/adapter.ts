@@ -108,6 +108,10 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		this.session(sessionId, { official: true });
 	}
 
+	pluginIdForSession(sessionId: string, requirement: PluginCapabilityRequirement = {}): string {
+		return this.session(sessionId, requirement).pluginId;
+	}
+
 	client(sessionId: string, requirement: PluginCapabilityRequirement): CapabilityAccessHandle["client"] {
 		return this.session(sessionId, requirement).access.client;
 	}
