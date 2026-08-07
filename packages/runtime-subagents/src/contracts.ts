@@ -65,7 +65,7 @@ export interface SubagentChildHandle {
 	prompt(text: string): Promise<void>;
 	sendMessage(text: string): Promise<void>;
 	followUp(text: string): Promise<void>;
-	abort(): void;
+	abort(): void | Promise<void>;
 	waitForIdle(): Promise<void>;
 	isStreaming(): boolean;
 	getLastAssistantText(): string | undefined;
@@ -139,6 +139,8 @@ export interface SubagentCoordinatorOptions<TProfile = unknown> {
 	readonly onNotify?: (agents: readonly SubagentSnapshot[]) => void;
 	readonly onUpdate?: (agents: readonly SubagentSnapshot[]) => void;
 	readonly onDeliveryClaimed?: (marker: SubagentDeliveryMarker) => void;
+	readonly onError?: (error: unknown, operation: string) => void;
+	readonly formatInitialMessage?: (snapshot: SubagentSnapshot, message: string) => string;
 	readonly clock?: { now(): number };
 	readonly idGenerator?: { next(): string };
 	readonly notificationDelayMs?: number;

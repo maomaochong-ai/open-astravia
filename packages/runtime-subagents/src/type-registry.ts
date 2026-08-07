@@ -7,14 +7,14 @@ export class SubagentTypeRegistry<TProfile = unknown> implements SubagentTypeReg
 		const id = definition.id.trim();
 		if (!id) throw new Error("Subagent type id must be non-empty");
 		if (this.types.has(id)) throw new Error(`Subagent type "${id}" is already registered`);
-		this.types.set(id, definition);
+		this.types.set(id, { ...definition, id });
 		return this;
 	}
 
 	upsert(definition: SubagentTypeDefinition<TProfile>): this {
 		const id = definition.id.trim();
 		if (!id) throw new Error("Subagent type id must be non-empty");
-		this.types.set(id, definition);
+		this.types.set(id, { ...definition, id });
 		return this;
 	}
 

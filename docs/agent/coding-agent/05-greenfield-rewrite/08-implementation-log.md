@@ -190,6 +190,8 @@
 | [266-dev-merge-and-greenfield-compatibility.md](./08-implementation-log/266-dev-merge-and-greenfield-compatibility.md) | 合并 dev 功能增量并保持 Greenfield 架构边界 |
 | [297-runtime-subagents-production-kernel.md](./08-implementation-log/297-runtime-subagents-production-kernel.md) | Runtime Subagents 生产内核收敛 |
 | [298-pi-manifest-compatibility-restoration.md](./08-implementation-log/298-pi-manifest-compatibility-restoration.md) | `pi` 资源清单兼容合同恢复 |
+| [299-runtime-subagents-responsibility-ownership.md](./08-implementation-log/299-runtime-subagents-responsibility-ownership.md) | Runtime Subagents 职责所有权与 Coordinator 收敛 |
+| [300-runtime-subagents-test-ownership.md](./08-implementation-log/300-runtime-subagents-test-ownership.md) | Runtime Subagents 测试职责拆分 |
 
 ## 维护约定
 

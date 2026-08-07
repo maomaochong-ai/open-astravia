@@ -1,19 +1,8 @@
-import type { SubagentChildHandle, SubagentSnapshot, SubagentSpawnRequest, SubagentStatus } from "./contracts.js";
+import type { SubagentSnapshot, SubagentStatus } from "./contracts.js";
 
 export type MutableSubagentSnapshot = {
 	-readonly [K in keyof SubagentSnapshot]: SubagentSnapshot[K];
 };
-
-export interface SubagentEntry {
-	snapshot: MutableSubagentSnapshot;
-	handle?: SubagentChildHandle;
-	unsubscribe?: () => void;
-	todoUnsubscribe?: () => void;
-	queuedRequest?: SubagentSpawnRequest;
-	startLifecycleCompleted: boolean;
-	stopContinuationCount: number;
-	endInFlight: boolean;
-}
 
 export function cloneSnapshot(snapshot: SubagentSnapshot): SubagentSnapshot {
 	return {
@@ -21,6 +10,10 @@ export function cloneSnapshot(snapshot: SubagentSnapshot): SubagentSnapshot {
 		usage: { ...snapshot.usage },
 		todoProgress: snapshot.todoProgress ? { ...snapshot.todoProgress } : undefined,
 	};
+}
+
+export function mutableSnapshot(snapshot: SubagentSnapshot): MutableSubagentSnapshot {
+	return cloneSnapshot(snapshot);
 }
 
 export function isActiveStatus(status: SubagentStatus): boolean {

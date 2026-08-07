@@ -23,9 +23,29 @@ const FORBIDDEN_SOURCE_TOKENS = Object.freeze([
 	"typeDocs",
 	"wait_agent",
 ]);
+const REQUIRED_OWNER_FILES = Object.freeze([
+	"packages/runtime-subagents/src/subagent-dispatcher.ts",
+	"packages/runtime-subagents/src/subagent-pool.ts",
+	"packages/runtime-subagents/src/subagent-run.ts",
+	"packages/runtime-subagents/src/recovery.ts",
+]);
+const RETIRED_OWNER_FILES = Object.freeze([
+	"packages/runtime-subagents/src/internal.ts",
+	"packages/runtime-subagents/src/scheduler.ts",
+	"packages/runtime-subagents/src/subagent-store.ts",
+]);
+const COORDINATOR_FORBIDDEN_TOKENS = Object.freeze([
+	"SubagentChildHandle",
+	"MutableSubagentSnapshot",
+	"snapshot.status =",
+	"snapshot.generation +=",
+	"handle.prompt(",
+	"handle.abort(",
+]);
 
 export function findRuntimeSubagentsBoundaryViolations({ manifest, files }) {
 	const violations = [];
+	const paths = new Set(files.map((file) => file.path.replaceAll("\\", "/")));
 	for (const section of DEPENDENCY_SECTIONS) {
 		for (const dependency of Object.keys(manifest.content[section] ?? {})) {
 			if (!dependency.startsWith("@vetta/")) continue;
@@ -33,12 +53,25 @@ export function findRuntimeSubagentsBoundaryViolations({ manifest, files }) {
 		}
 	}
 	for (const file of files) {
+		const normalizedPath = file.path.replaceAll("\\", "/");
 		for (const [index, line] of file.text.split(/\r?\n/u).entries()) {
 			for (const token of FORBIDDEN_SOURCE_TOKENS) {
 				if (!line.includes(token)) continue;
 				violations.push(`${file.path}:${index + 1}: forbidden subagent kernel token ${token}`);
 			}
+			if (normalizedPath === "packages/runtime-subagents/src/coordinator.ts") {
+				for (const token of COORDINATOR_FORBIDDEN_TOKENS) {
+					if (!line.includes(token)) continue;
+					violations.push(`${file.path}:${index + 1}: coordinator must not own ${token}`);
+				}
+			}
 		}
+	}
+	for (const required of REQUIRED_OWNER_FILES) {
+		if (!paths.has(required)) violations.push(`${required}: required runtime-subagents owner file is missing`);
+	}
+	for (const retired of RETIRED_OWNER_FILES) {
+		if (paths.has(retired)) violations.push(`${retired}: retired runtime-subagents owner file still exists`);
 	}
 	return violations;
 }

@@ -116,6 +116,7 @@ export function createCodingAgentSubagentSessionAssembly(
 		parentSessionId: options.readParentSessionId(),
 		maxConcurrent: options.maxConcurrent,
 		lifecycle,
+		formatInitialMessage: formatCodingAgentSubagentTaskMessage,
 		typeRegistry: options.typeRegistry,
 		readParentMessages: options.readParentMessages,
 		createChild: childFactory
@@ -158,6 +159,19 @@ export function createCodingAgentSubagentSessionAssembly(
 				});
 		},
 	});
+}
+
+function formatCodingAgentSubagentTaskMessage(snapshot: SubagentSnapshot, message: string): string {
+	return [
+		"<subagent_task>",
+		`id: ${snapshot.id}`,
+		`path: ${snapshot.path}`,
+		`type: ${snapshot.agentType}`,
+		`task_name: ${snapshot.taskName}`,
+		"</subagent_task>",
+		"",
+		message,
+	].join("\n");
 }
 
 async function openChild(

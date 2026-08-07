@@ -58,6 +58,7 @@ export interface CodingAgentSubagentRuntimeOptions {
 	) => Promise<SubagentChildHandle>;
 	readonly onNotify?: (agents: readonly SubagentSnapshot[]) => void;
 	readonly onUpdate?: (agents: readonly SubagentSnapshot[]) => void;
+	readonly formatInitialMessage?: (snapshot: SubagentSnapshot, message: string) => string;
 	readonly validateRecoveredChild?: (snapshot: SubagentSnapshot) => Promise<string | undefined>;
 	readonly onRecoveryIssue?: (message: string) => void;
 }
@@ -83,6 +84,7 @@ export class CodingAgentSubagentRuntime implements CodingAgentSubagentWorkRuntim
 			typeRegistry: registry,
 			maxConcurrent: options.maxConcurrent,
 			lifecycle: options.lifecycle,
+			formatInitialMessage: options.formatInitialMessage,
 			onNotify: options.onNotify,
 			onUpdate: (agents) => {
 				this.persistence.recordSnapshots(agents);
