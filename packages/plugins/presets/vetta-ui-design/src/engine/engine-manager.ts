@@ -1,9 +1,8 @@
 /**
  * Shared design-engine lifecycle (ADR-0053/0054):
  *
- * 1. Materialize the engine template into ~/.vetta/design-engine/<version>/ via
- *    a `node -e` bootstrap (plugin fs.write is project-scoped; node is a
- *    declared plugin command).
+ * 1. Migrate the legacy ~/.vetta/design-engine directory into this plugin's
+ *    data namespace, then materialize the engine template there via `node -e`.
  * 2. One-time `npm install` through ctx.command.spawn (may take minutes; the
  *    managed runtime env already points npm at the configured mirror).
  * 3. One vite dev server per open design (host-allocated port, {{PORT}}
@@ -37,8 +36,34 @@ const BOOTSTRAP_SCRIPT = [
 	"console.log('ok');",
 ].join("");
 
+const MIGRATE_SCRIPT = [
+	"const fs=require('fs'),p=require('path');",
+	"const legacy=process.env.VETD_ENGINE_LEGACY,newBase=process.env.VETD_ENGINE_BASE;",
+	"if(!legacy||!newBase)throw new Error('engine migration env missing');",
+	"if(!fs.existsSync(legacy)){process.stdout.write('absent');process.exit(0)}",
+	"fs.mkdirSync(p.dirname(newBase),{recursive:true});",
+	"if(!fs.existsSync(newBase)){fs.renameSync(legacy,newBase);process.stdout.write('moved');process.exit(0)}",
+	"for(const ent of fs.readdirSync(legacy,{withFileTypes:true})){",
+	"if(!ent.isDirectory()||!/^\\d+\\.\\d+\\.\\d+$/.test(ent.name))continue;",
+	"const from=p.join(legacy,ent.name),to=p.join(newBase,ent.name);",
+	"if(!fs.existsSync(to))fs.renameSync(from,to);",
+	"}",
+	"if(fs.readdirSync(legacy).length===0)fs.rmdirSync(legacy);",
+	"process.stdout.write('merged');",
+].join("");
+
+const ENGINE_READY_SCRIPT = [
+	"const fs=require('fs'),p=require('path');",
+	"const root=process.env.VETD_ENGINE_ROOT;",
+	"if(!root)throw new Error('VETD_ENGINE_ROOT missing');",
+	"let hash=null;",
+	"try{hash=fs.readFileSync(p.join(root,'.files-hash'),'utf8')}catch(err){if(err.code!=='ENOENT')throw err}",
+	"const vite=fs.existsSync(p.join(root,'node_modules','vite','package.json'));",
+	"process.stdout.write(JSON.stringify({hash,vite}));",
+].join("");
+
 /**
- * 删掉 ~/.vetta/design-engine 下除当前版本外的版本目录。
+ * 删掉插件数据目录下除当前版本外的引擎版本目录。
  *
  * 分版本目录是为了让引擎升级不去动可能正在跑的旧树（见 engine-version.ts），代价
  * 是旧版本会一直堆着——一份 node_modules 就是 90M+，实测两个版本 175M。回收放在
@@ -59,8 +84,17 @@ const PRUNE_SCRIPT = [
 ].join("");
 
 let cachedHome: string | null = null;
+let migrationPromise: Promise<void> | null = null;
 let ensurePromise: Promise<string> | null = null;
 const servers = new Map<string, EngineServer>();
+
+function engineBaseDir(home: string): string {
+	return `${home}/.vetta/plugin-data/vetta-ui-design/design-engine`;
+}
+
+function legacyEngineBaseDir(home: string): string {
+	return `${home}/.vetta/design-engine`;
+}
 
 async function resolveHome(ctx: PluginContext): Promise<string> {
 	if (cachedHome) return cachedHome;
@@ -75,15 +109,26 @@ async function resolveHome(ctx: PluginContext): Promise<string> {
 
 export async function engineRootDir(ctx: PluginContext): Promise<string> {
 	const home = await resolveHome(ctx);
-	return `${home}/.vetta/design-engine/${ENGINE_VERSION}`;
+	if (!migrationPromise) {
+		migrationPromise = migrateLegacyEngine(ctx, home).catch((error: unknown) => {
+			migrationPromise = null;
+			throw error;
+		});
+	}
+	await migrationPromise;
+	return `${engineBaseDir(home)}/${ENGINE_VERSION}`;
 }
 
-async function readTextIfExists(ctx: PluginContext, path: string): Promise<string | null> {
-	try {
-		const result = await ctx.fs.readFile(path);
-		return result.content || null;
-	} catch {
-		return null;
+export async function migrateLegacyEngine(ctx: PluginContext, home: string): Promise<void> {
+	const result = await ctx.command.run("node", ["-e", MIGRATE_SCRIPT], {
+		env: {
+			VETD_ENGINE_LEGACY: legacyEngineBaseDir(home),
+			VETD_ENGINE_BASE: engineBaseDir(home),
+		},
+		timeoutMs: 30_000,
+	});
+	if (result.exitCode !== 0) {
+		throw new Error(`engine migration failed: ${result.stderr || result.stdout}`);
 	}
 }
 
@@ -145,19 +190,33 @@ async function pruneOldEngines(ctx: PluginContext): Promise<void> {
 	const home = await resolveHome(ctx);
 	await ctx.command.run("node", ["-e", PRUNE_SCRIPT], {
 		env: {
-			VETD_ENGINE_BASE: `${home}/.vetta/design-engine`,
+			VETD_ENGINE_BASE: engineBaseDir(home),
 			VETD_ENGINE_KEEP: ENGINE_VERSION,
 		},
 		timeoutMs: 30_000,
 	});
 }
 
-async function engineReady(ctx: PluginContext, engineRoot: string): Promise<boolean> {
-	const [hash, vitePkg] = await Promise.all([
-		readTextIfExists(ctx, `${engineRoot}/.files-hash`),
-		readTextIfExists(ctx, `${engineRoot}/node_modules/vite/package.json`),
-	]);
-	return hash === engineFilesHash() && vitePkg !== null;
+export async function engineReady(ctx: PluginContext, engineRoot: string): Promise<boolean> {
+	const result = await ctx.command.run("node", ["-e", ENGINE_READY_SCRIPT], {
+		env: { VETD_ENGINE_ROOT: engineRoot },
+		timeoutMs: 30_000,
+	});
+	if (result.exitCode !== 0) {
+		throw new Error(`engine readiness check failed: ${result.stderr || result.stdout}`);
+	}
+	const readiness = JSON.parse(result.stdout) as unknown;
+	if (
+		typeof readiness !== "object" ||
+		readiness === null ||
+		!("hash" in readiness) ||
+		!("vite" in readiness) ||
+		(readiness.hash !== null && typeof readiness.hash !== "string") ||
+		typeof readiness.vite !== "boolean"
+	) {
+		throw new Error("engine readiness check returned invalid output");
+	}
+	return readiness.hash === engineFilesHash() && readiness.vite;
 }
 
 /**
@@ -180,7 +239,7 @@ export function ensureEngine(
 		}
 		onProgress({ phase: "materializing" });
 		await materializeEngine(ctx, engineRoot);
-		const viteInstalled = (await readTextIfExists(ctx, `${engineRoot}/node_modules/vite/package.json`)) !== null;
+		const viteInstalled = await engineReady(ctx, engineRoot);
 		if (!viteInstalled) {
 			onProgress({ phase: "installing", outputTail: "" });
 			await installDependencies(ctx, engineRoot, onProgress);
