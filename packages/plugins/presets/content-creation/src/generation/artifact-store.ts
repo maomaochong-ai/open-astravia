@@ -4,6 +4,7 @@ import type {
 	ContentArtifactStore,
 	ContentGenerationReference,
 	GeneratedContent,
+	ImportedContentAsset,
 	StoredContentData,
 	StoredGeneratedContent,
 	StoredImportedContent,
@@ -18,8 +19,10 @@ export class PluginContentArtifactStore implements ContentArtifactStore {
 		private readonly media: PluginMediaApi,
 	) {}
 
-	async putImported(id: string, content: StoredContentData): Promise<StoredImportedContent> {
-		const stored = await this.storage.putBlob({ id, data: content.data, mimeType: content.mimeType });
+	async putImported(id: string, content: ImportedContentAsset): Promise<StoredImportedContent> {
+		const stored = content.file
+			? await this.storage.putBlobFromFile({ id, file: content.file, mimeType: content.mimeType })
+			: await this.storage.putBlob({ id, data: content.data, mimeType: content.mimeType });
 		return { blobId: stored.id, mimeType: stored.mimeType };
 	}
 

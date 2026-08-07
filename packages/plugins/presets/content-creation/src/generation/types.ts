@@ -85,16 +85,15 @@ export interface StoredContentData {
 	mimeType: string;
 }
 
-export interface ImportedContentAsset {
-	name: string;
-	data: string;
-	mimeType: string;
-}
+export type ImportedContentAsset = { name: string; mimeType: string } & (
+	| { file: File; data?: never }
+	| { data: string; file?: never }
+);
 
 export type ImportedContentReference = ImportedContentAsset;
 
 export interface ContentArtifactStore {
-	putImported(id: string, content: StoredContentData): Promise<StoredImportedContent>;
+	putImported(id: string, content: ImportedContentAsset): Promise<StoredImportedContent>;
 	putGenerated(cwd: string, fileName: string, content: GeneratedContent): Promise<StoredGeneratedContent>;
 	readReference(reference: ContentGenerationReference): Promise<StoredContentData | null>;
 }

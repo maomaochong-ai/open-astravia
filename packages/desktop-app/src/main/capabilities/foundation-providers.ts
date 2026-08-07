@@ -30,6 +30,7 @@ import {
 	getPluginBlobRef as getNamespacedBlobRef,
 	listPluginFiles as listNamespacedFiles,
 	putPluginBlob as putNamespacedBlob,
+	putPluginBlobFromFile as putNamespacedBlobFromFile,
 	readPluginBlob as readNamespacedBlob,
 	readPluginFile as readNamespacedFile,
 	readPluginJson as readNamespacedJson,
@@ -219,6 +220,12 @@ export function registerDesktopFoundationProviders(registry: CapabilityRegistry)
 			execute: async ({ namespace, blob }, context) => {
 				assertNotAborted(context.signal);
 				return putNamespacedBlob(namespace, blob);
+			},
+		}),
+		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE, {
+			execute: async ({ namespace, blob }, context) => {
+				assertNotAborted(context.signal);
+				return putNamespacedBlobFromFile(namespace, blob);
 			},
 		}),
 		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.READ_BLOB, {

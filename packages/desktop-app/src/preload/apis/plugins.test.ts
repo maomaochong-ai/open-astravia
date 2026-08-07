@@ -1,14 +1,15 @@
-import type { IpcRenderer, IpcRendererEvent } from "electron";
+import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { describe, expect, it, vi } from "vitest";
 import { createPluginsApi } from "./plugins";
 
 const SETTINGS_CHANGED_CHANNEL = "vetta:plugins:settings-changed";
 type IpcListener = Parameters<IpcRenderer["on"]>[1];
+const webUtils = { getPathForFile: vi.fn() } as unknown as WebUtils;
 
 describe("createPluginsApi settings events", () => {
 	it("multiplexes more than ten subscribers through one IPC listener", () => {
 		const harness = createIpcHarness();
-		const plugins = createPluginsApi(harness.ipc).plugins;
+		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
 		const listeners = Array.from({ length: 12 }, () => vi.fn());
 		const unsubscribers = listeners.map((listener) => plugins.onSettingsChanged(listener));
 		const payload = { pluginId: "plugin", values: { enabled: true } };
@@ -24,7 +25,7 @@ describe("createPluginsApi settings events", () => {
 
 	it("detaches the shared IPC listener after the final subscriber leaves", () => {
 		const harness = createIpcHarness();
-		const plugins = createPluginsApi(harness.ipc).plugins;
+		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
 		const first = vi.fn();
 		const second = vi.fn();
 		const unsubscribeFirst = plugins.onSettingsChanged(first);

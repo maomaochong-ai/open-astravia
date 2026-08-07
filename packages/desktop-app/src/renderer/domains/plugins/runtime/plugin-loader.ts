@@ -590,6 +590,10 @@ function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string):
 			requireWrite();
 			return window.vetta.plugins.storagePutBlob(capabilitySessionId, input);
 		},
+		putBlobFromFile: (input) => {
+			requireWrite();
+			return window.vetta.plugins.storagePutBlobFromFile(capabilitySessionId, input);
+		},
 		readBlob: (id) => {
 			requireRead();
 			return window.vetta.plugins.storageReadBlob(capabilitySessionId, id);

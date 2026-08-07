@@ -6,6 +6,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `PluginStorageApi.putBlobFromFile()`：插件可把用户选择或拖入的真实文件直接交给宿主复制到私有 Blob；preload 负责从 `File` 提取路径，文件字节不进入插件 renderer、不进行 Base64 编码，仍受 `storage.write` 权限约束。
 - `PluginPromptAttachment.context` 结构化、版本化 JSON 上下文与 `lifecycle: "sticky"`：插件可把用户当前选择等应用状态作为可校验对象附到输入栏，宿主发送时冻结快照；`definePluginPromptContext()` 提供 JSON 安全与大小校验，旧的 metadata/instructions 一次性附件保持兼容。
 - `ctx.ai` 宿主管理的文本推理能力：插件通过 `ai.models.list` 获取可用文本模型，通过 `ai.complete` 调用用户已配置的模型。模型解析、凭据注入与请求执行均留在 Desktop 主进程，插件不会接触 API Key；首版契约提供单轮 `systemPrompt + prompt` 完成、推理级别、温度、最大输出和 token 用量。
 - `ctx.media` 宿主媒体协议 v2：消费方用 `media.generate` 列出 Provider、创建/查询/取消图片或视频任务；Provider 插件用新权限 `media.provider.register` 注册统一能力与任务处理器。输入素材只向 Provider 暴露不透明引用 ID，由宿主按需流式上传；远程生成结果由宿主流式导入临时产物，再通过 `saveArtifact()` / `releaseArtifact()` 持久化与释放，媒体字节与素材路径都不经过插件渲染进程。`onProvidersChanged()` 允许并行激活的消费插件响应 Provider 增删。Desktop 内置的 Vetta 图片 Provider 仍固定在主进程调用网关，插件拿不到 JWT，也不能传任意网关路径（ADR-0057）。

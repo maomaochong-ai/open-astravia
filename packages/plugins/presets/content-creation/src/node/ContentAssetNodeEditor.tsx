@@ -5,7 +5,7 @@ import type { ContentAsset, ContentNodeData } from "../project/types";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import { listContentNodeAssetIds } from "./material-assets";
 import { NodeEditorPanel } from "./NodeEditorPanel";
-import { readImportedMediaFile } from "./readImportedMediaFile";
+import { createImportedMediaFile } from "./imported-media-file";
 
 const PAGE_SIZE = 24;
 const IMPORT_BATCH_SIZE = 4;
@@ -37,7 +37,7 @@ export function ContentAssetNodeEditor({ name, data, assets, onUpdate, onRename,
 		try {
 			for (let index = 0; index < files.length; index += IMPORT_BATCH_SIZE) {
 				const batch = files.slice(index, index + IMPORT_BATCH_SIZE);
-				await onImport(await Promise.all(batch.map(readImportedMediaFile)));
+				await onImport(batch.map((file) => createImportedMediaFile(file)));
 			}
 		} finally {
 			setImporting(false);

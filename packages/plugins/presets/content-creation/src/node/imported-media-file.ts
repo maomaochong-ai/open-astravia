@@ -1,15 +1,7 @@
 import type { ImportedContentAsset } from "../generation/types";
 
-export async function readImportedMediaFile(file: File): Promise<ImportedContentAsset> {
-	const dataUrl = await new Promise<string>((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => resolve(String(reader.result ?? ""));
-		reader.onerror = () => reject(reader.error ?? new Error("failed to read imported content asset"));
-		reader.readAsDataURL(file);
-	});
-	const separator = dataUrl.indexOf(",");
-	if (separator < 0) throw new Error("imported content asset is not a valid data URL");
-	return { name: file.name, mimeType: importedMediaMimeType(file), data: dataUrl.slice(separator + 1) };
+export function createImportedMediaFile(file: File, name = file.name): ImportedContentAsset {
+	return { name, mimeType: importedMediaMimeType(file), file };
 }
 
 export function isImportedMediaFile(file: File): boolean {

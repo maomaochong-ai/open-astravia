@@ -97,6 +97,9 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB, {
 						constraints: storageConstraints,
 					}),
+					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE, {
+						constraints: storageConstraints,
+					}),
 				]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MEDIA_GENERATE)

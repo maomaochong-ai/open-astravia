@@ -25,6 +25,7 @@
 | `cap.foundation.vetta.storage.read-file` | foundation | query | 1 |
 | `cap.foundation.vetta.storage.write-file` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.put-blob` | foundation | command | 1 |
+| `cap.foundation.vetta.storage.put-blob-from-file` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.read-blob` | foundation | query | 1 |
 | `cap.foundation.vetta.storage.get-blob-ref` | foundation | query | 1 |
 | `cap.foundation.vetta.network.request` | foundation | command | 1 |

@@ -37,6 +37,8 @@ export {
 	FOUNDATION_STORAGE_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITY_CATALOG,
 	type StorageBlob,
+	type StorageBlobFilePutInput,
+	type StorageBlobFileWrite,
 	type StorageBlobPutInput,
 	type StorageBlobReadInput,
 	type StorageBlobRef,

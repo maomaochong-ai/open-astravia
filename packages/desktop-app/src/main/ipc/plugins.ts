@@ -787,6 +787,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	ipcMain.handle("vetta:plugins:storage:put-blob", (_event, sessionId: unknown, input: unknown) =>
 		capabilityAdapter.putStorageBlob(asPluginId(sessionId), input),
 	);
+	ipcMain.handle("vetta:plugins:storage:put-blob-from-file", (_event, sessionId: unknown, input: unknown) =>
+		capabilityAdapter.putStorageBlobFromFile(asPluginId(sessionId), input),
+	);
 	ipcMain.handle("vetta:plugins:storage:read-blob", (_event, sessionId: unknown, blobId: unknown) =>
 		capabilityAdapter.readStorageBlob(asPluginId(sessionId), asPluginId(blobId)),
 	);
@@ -842,6 +845,7 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:storage:read-file");
 		ipcMain.removeHandler("vetta:plugins:storage:write-file");
 		ipcMain.removeHandler("vetta:plugins:storage:put-blob");
+		ipcMain.removeHandler("vetta:plugins:storage:put-blob-from-file");
 		ipcMain.removeHandler("vetta:plugins:storage:read-blob");
 		ipcMain.removeHandler("vetta:plugins:storage:get-blob-ref");
 		for (const channel of Object.values(PLUGIN_SYSTEM_CHANNELS)) ipcMain.removeHandler(channel);

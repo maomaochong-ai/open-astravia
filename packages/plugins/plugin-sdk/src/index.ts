@@ -232,6 +232,7 @@ export type {
 export type { PluginGatewayApi, PluginGatewayRequest, PluginGatewayResponse } from "./gateway.js";
 export type {
 	PluginPutBlobInput,
+	PluginPutBlobFromFileInput,
 	PluginStorageApi,
 	PluginStoredBlob,
 	PluginStoredBlobRef,

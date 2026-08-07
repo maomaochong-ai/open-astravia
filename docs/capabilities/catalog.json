@@ -851,6 +851,65 @@
       "version": 1
     },
     {
+      "id": "cap.foundation.vetta.storage.put-blob-from-file",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "blob"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "blob": {
+            "type": "object",
+            "required": [
+              "path",
+              "mimeType"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "path": {
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "mimeType": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "mimeType"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
       "id": "cap.foundation.vetta.storage.read-blob",
       "inputSchema": {
         "type": "object",

@@ -88,6 +88,19 @@ export const pluginStorageMethods = {
 		});
 		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB, parsedInput);
 	},
+
+	putStorageBlobFromFile(
+		this: PluginCapabilitySessionAccess,
+		sessionId: string,
+		input: unknown,
+	): Promise<StorageBlobRef> {
+		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.STORAGE_WRITE });
+		const parsedInput = FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE.parseInput({
+			namespace: session.pluginId,
+			blob: input,
+		});
+		return session.access.client.invoke(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE, parsedInput);
+	},
 };
 
 export type PluginStorageMethods = typeof pluginStorageMethods;

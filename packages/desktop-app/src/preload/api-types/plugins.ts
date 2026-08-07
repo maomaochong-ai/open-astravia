@@ -73,6 +73,7 @@ import type {
 	PluginMediaSavedArtifact,
 	PluginMediaTransferResponse,
 	PluginPermission,
+	PluginPutBlobFromFileInput,
 	PluginSettingSchema,
 } from "@vetta-org/plugin-sdk";
 
@@ -699,6 +700,7 @@ export interface DesktopPluginsApi {
 	storageReadFile(sessionId: string, path: string): Promise<string | null>;
 	storageWriteFile(sessionId: string, path: string, data: string): Promise<void>;
 	storagePutBlob(sessionId: string, input: PluginPutBlobInput): Promise<PluginStoredBlobRef>;
+	storagePutBlobFromFile(sessionId: string, input: PluginPutBlobFromFileInput): Promise<PluginStoredBlobRef>;
 	storageReadBlob(sessionId: string, id: string): Promise<PluginStoredBlob | null>;
 	storageGetBlobRef(sessionId: string, id: string): Promise<PluginStoredBlobRef | null>;
 }

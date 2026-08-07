@@ -1,4 +1,4 @@
-import type { IpcRenderer, IpcRendererEvent } from "electron";
+import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { PLUGIN_CAPABILITY_CHANNELS, PLUGIN_SYSTEM_CHANNELS } from "../../shared/plugin-capability-ipc.js";
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
@@ -6,7 +6,7 @@ import { onIpcEvent } from "./helper.js";
 type SettingsChangedListener = Parameters<DesktopApi["plugins"]["onSettingsChanged"]>[0];
 type SettingsChangedPayload = Parameters<SettingsChangedListener>[0];
 
-export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> {
+export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<DesktopApi, "plugins"> {
 	const settingsChangedSubscriptions = new Set<{ readonly listener: SettingsChangedListener }>();
 	const handleSettingsChanged = (_event: IpcRendererEvent, payload: SettingsChangedPayload): void => {
 		for (const subscription of [...settingsChangedSubscriptions]) subscription.listener(payload);
@@ -366,6 +366,15 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			storageWriteFile: (sessionId, path, data) =>
 				ipc.invoke("vetta:plugins:storage:write-file", sessionId, path, data),
 			storagePutBlob: (sessionId, input) => ipc.invoke("vetta:plugins:storage:put-blob", sessionId, input),
+			storagePutBlobFromFile: (sessionId, input) => {
+				const path = webUtils.getPathForFile(input.file);
+				if (!path) return Promise.reject(new Error("Plugin blob import requires a filesystem-backed File"));
+				return ipc.invoke("vetta:plugins:storage:put-blob-from-file", sessionId, {
+					...(input.id === undefined ? {} : { id: input.id }),
+					path,
+					mimeType: input.mimeType,
+				});
+			},
 			storageReadBlob: (sessionId, id) => ipc.invoke("vetta:plugins:storage:read-blob", sessionId, id),
 			storageGetBlobRef: (sessionId, id) => ipc.invoke("vetta:plugins:storage:get-blob-ref", sessionId, id),
 			onSettingsChanged,

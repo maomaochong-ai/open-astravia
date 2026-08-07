@@ -30,6 +30,13 @@ export function isImageGenerationMode(modeId: string): boolean {
 	return modeId === "text-to-image" || modeId === "image-to-image";
 }
 
+export function isContentReferenceSlotCompatible(
+	model: ContentModelDescriptor,
+	reference: ContentReferenceShape,
+): boolean {
+	return model.modes.some((mode) => acceptsReference(mode, reference));
+}
+
 export function resolveContentGenerationMode(
 	model: ContentModelDescriptor,
 	references: readonly ContentReferenceShape[],

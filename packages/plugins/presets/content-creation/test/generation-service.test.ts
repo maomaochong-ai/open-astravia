@@ -92,6 +92,90 @@ describe("ContentGenerationService", () => {
 		});
 	});
 
+	it("reassigns image references when a video node carries a stale slot from another input system", async () => {
+		const fixture = await createFixture("video-generator");
+		const imported = await fixture.service.importReferences("C:/project", "image", [
+			{ name: "start-frame.png", mimeType: "image/png", data: "reference-data" },
+		]);
+		const input = imported.graph.nodes.find((node) => node.id === "image")?.data.inputs?.[0];
+		expect(input).toBeDefined();
+		if (!input) return;
+		await fixture.workspace.dispatch("C:/project", [
+			{
+				type: "node.update",
+				nodeId: "image",
+				data: {
+					modeId: "text-to-video",
+					inputs: [{ ...input, slotId: "promptReferences" }],
+				},
+			},
+		]);
+
+		await fixture.service.runNode("C:/project", "image");
+
+		expect(fixture.generate).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				modeId: "image-to-video",
+				references: [expect.objectContaining({ kind: "image", slotId: "referenceImages" })],
+			}),
+			expect.objectContaining({ readReference: expect.any(Function) }),
+		);
+	});
+
+	it("prefers an explicit image when an implicit image edge exceeds the video model capacity", async () => {
+		const fixture = await createFixture("video-generator");
+		const imported = await fixture.service.importReferences("C:/project", "image", [
+			{ name: "selected-frame.png", mimeType: "image/png", data: "selected-reference" },
+		]);
+		const input = imported.graph.nodes.find((node) => node.id === "image")?.data.inputs?.[0];
+		expect(input).toBeDefined();
+		if (!input) return;
+		await fixture.workspace.dispatch("C:/project", [
+			{
+				type: "asset.add",
+				asset: {
+					id: "generated-image",
+					filePath: "output/generated-image.png",
+					kind: "image",
+					name: "generated-image.png",
+					mimeType: "image/png",
+					createdAt: "2026-08-07T00:00:00.000Z",
+				},
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "image-source",
+					kind: "image-generator",
+					position: { x: -300, y: 0 },
+					data: { assetId: "generated-image" },
+				},
+			},
+			{
+				type: "edge.connect",
+				source: "image-source",
+				target: "image",
+				sourceHandle: "image",
+				targetHandle: "image",
+			},
+		]);
+
+		await fixture.service.runNode("C:/project", "image");
+
+		expect(fixture.generate).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				modeId: "image-to-video",
+				references: [
+					expect.objectContaining({
+						id: input.id,
+						source: { type: "plugin-blob", blobId: imported.assets[0]?.blobId },
+					}),
+				],
+			}),
+			expect.objectContaining({ readReference: expect.any(Function) }),
+		);
+	});
+
 	it("imports mixed media into one asset node without creating one node per file", async () => {
 		const fixture = await createFixture();
 		await fixture.workspace.dispatch("C:/project", [
@@ -224,7 +308,13 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 									inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 4 }],
 								},
 							]
-						: [{ id: modeId, inputs: [] }],
+						: [
+							{ id: modeId, inputs: [] },
+							{
+								id: "image-to-video",
+								inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
+							},
+						],
 				aspectRatios: kind === "video-generator" ? ["16:9"] : ["1:1"],
 			},
 		],

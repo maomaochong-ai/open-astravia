@@ -48,7 +48,7 @@ const api: DesktopApi = {
 	...createSchedulerApi(ipcRenderer),
 	...createWebhookApi(ipcRenderer),
 	...createNotificationApi(ipcRenderer),
-	...createPluginsApi(ipcRenderer),
+	...createPluginsApi(ipcRenderer, webUtils),
 	...createThemesApi(ipcRenderer),
 	...createPetApi(ipcRenderer),
 	...createQuickPanelApi(ipcRenderer),
