@@ -13,7 +13,17 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 		'"fatal"',
 	],
 	"packages/coding-agent/src/modes/rpc/rpc-types.ts": ["RpcFailureMetadata"],
+	"packages/coding-agent/src/modes/rpc/rpc-client.ts": ["reject(rpcClientErrorFromResponse(response))"],
+	"packages/coding-agent/src/composition/greenfield-runtime-host-session-backend.ts": [
+		"CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT",
+		'runtimeError("SESSION_LOCKED"',
+	],
 	"packages/cli-app/src/session-compatibility-error.ts": ["recoverability"],
+	"packages/runtime-core/src/errors.ts": ["SESSION_BUSY", "SESSION_LOCKED", "isSessionError"],
+	"packages/desktop-app/src/main/conversations/desktop-conversation-service.ts": [
+		"RUNTIME_ERROR_CODES.SESSION_BUSY",
+		"RUNTIME_ERROR_CODES.SESSION_LOCKED",
+	],
 	"packages/desktop-app/src/main/greenfield-runtime/desktop-runtime-lifecycle.ts": [
 		"DesktopRuntimeFailure",
 		"DesktopRuntimeHealth",
@@ -22,9 +32,17 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 		"type TypedFailure interface",
 		"FailureRecoverability() FailureRecoverability",
 	],
+	"packages/im-gateway/internal/hostclient/local/session.go": ["failureFromResponse(resp, commandPhase(cmd.Type))"],
+	"packages/im-gateway/internal/hostclient/pool.go": ["func (a *Acquired) Discard() error"],
+	"packages/im-gateway/internal/router/router.go": ["discardRestartRequiredSession", "FailureRestartSession"],
 });
 
-const BOUNDARY_ROOTS = ["packages/coding-agent/src/modes/rpc", "packages/im-gateway/internal/hostclient"];
+const BOUNDARY_ROOTS = [
+	"packages/coding-agent/src/modes/rpc",
+	"packages/im-gateway/internal/hostclient",
+	"packages/im-gateway/internal/bridge",
+	"packages/im-gateway/internal/router",
+];
 
 const BOUNDARY_FILES = [
 	"packages/cli-app/src/agent-runtime-selection.ts",
@@ -32,13 +50,21 @@ const BOUNDARY_FILES = [
 	"packages/cli-app/src/session-compatibility-error.ts",
 	"packages/desktop-app/src/main/greenfield-runtime/desktop-runtime-composition.ts",
 	"packages/desktop-app/src/main/greenfield-runtime/desktop-runtime-lifecycle.ts",
+	"packages/desktop-app/src/main/conversations/desktop-conversation-service.ts",
 	"packages/desktop-app/src/main/runtime.ts",
+	"packages/runtime-core/src/errors.ts",
+	"packages/runtime-core/src/runtime-host/runtime-host.ts",
+	"packages/coding-agent/src/composition/greenfield-runtime-host-session-backend.ts",
 ];
 
 const FORBIDDEN_BOUNDARY_PATTERNS = [
 	{
 		label: "classifies recovery by JavaScript error message",
 		pattern: /(?:error|err)\.message\.(?:includes|match|startsWith|endsWith)\s*\(/,
+	},
+	{
+		label: "classifies recovery by JavaScript error name",
+		pattern: /(?:error|err)\.name\s*===/,
 	},
 	{
 		label: "classifies recovery by Go error message",

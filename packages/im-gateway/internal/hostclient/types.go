@@ -30,7 +30,9 @@ type HostClient interface {
 type HostSession interface {
 	// Send delivers a command and waits for the matching response. The
 	// response correlates by the command's ID field; implementations must
-	// generate one if Cmd.ID is empty.
+	// generate one if Cmd.ID is empty. A wire response with Success=false
+	// is returned together with a TypedFailure; callers must not interpret
+	// it as a successful transport operation.
 	Send(ctx context.Context, cmd Command) (Response, error)
 
 	// SendNoReply delivers a command and returns immediately, without

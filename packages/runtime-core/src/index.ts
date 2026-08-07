@@ -71,7 +71,7 @@ export {
 	createEmptyConversationDocument,
 	selectConversationDocumentEntries,
 } from "./conversation/index.js";
-export { RUNTIME_ERROR_CODES, runtimeError } from "./errors.js";
+export { isSessionError, RUNTIME_ERROR_CODES, runtimeError } from "./errors.js";
 export type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "./runtime-execution-observation.js";
 export type {
 	CatalogRoutedRuntimeHostSessionBackendOptions,

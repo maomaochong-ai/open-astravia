@@ -443,6 +443,118 @@ func (s *streamingFakeSession) Events() <-chan hostclient.AgentEvent { return s.
 func (s *streamingFakeSession) SessionPath() string                  { return s.path }
 func (s *streamingFakeSession) Close() error                         { return nil }
 
+type crashRecoveryClient struct {
+	mu      sync.Mutex
+	opens   int
+	prompts []string
+}
+
+func (c *crashRecoveryClient) OpenSession(_ context.Context, _, _ string) (hostclient.HostSession, error) {
+	c.mu.Lock()
+	c.opens++
+	crash := c.opens == 1
+	c.mu.Unlock()
+	return &crashRecoverySession{
+		client: c,
+		path:   "/sessions/crash-recovery.jsonl",
+		events: make(chan hostclient.AgentEvent, 4),
+		crash:  crash,
+	}, nil
+}
+
+func (c *crashRecoveryClient) snapshot() (int, []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.opens, append([]string(nil), c.prompts...)
+}
+
+type crashRecoverySession struct {
+	client    *crashRecoveryClient
+	path      string
+	events    chan hostclient.AgentEvent
+	crash     bool
+	closeOnce sync.Once
+}
+
+func (s *crashRecoverySession) Send(_ context.Context, cmd hostclient.Command) (hostclient.Response, error) {
+	if cmd.Type != hostclient.CommandTypePrompt {
+		return hostclient.Response{Success: true}, nil
+	}
+	prompt, _ := cmd.Data["message"].(string)
+	s.client.mu.Lock()
+	s.client.prompts = append(s.client.prompts, prompt)
+	s.client.mu.Unlock()
+	if s.crash {
+		go s.closeEvents()
+		return hostclient.Response{Success: true}, nil
+	}
+	go func() {
+		delta, _ := json.Marshal(map[string]any{
+			"type": hostclient.AgentEventTypeMessageUpdate,
+			"assistantMessageEvent": map[string]any{
+				"type":  "text_delta",
+				"delta": "recovered: " + prompt,
+			},
+		})
+		end, _ := json.Marshal(map[string]any{"type": hostclient.AgentEventTypeAgentEnd})
+		s.events <- hostclient.AgentEvent{Type: hostclient.AgentEventTypeMessageUpdate, Raw: delta}
+		s.events <- hostclient.AgentEvent{Type: hostclient.AgentEventTypeAgentEnd, Raw: end}
+	}()
+	return hostclient.Response{Success: true}, nil
+}
+
+func (s *crashRecoverySession) SendNoReply(_ context.Context, _ hostclient.Command) error {
+	return nil
+}
+func (s *crashRecoverySession) Events() <-chan hostclient.AgentEvent { return s.events }
+func (s *crashRecoverySession) SessionPath() string                  { return s.path }
+func (s *crashRecoverySession) Close() error {
+	s.closeEvents()
+	return nil
+}
+func (s *crashRecoverySession) closeEvents() { s.closeOnce.Do(func() { close(s.events) }) }
+
+func TestRouter_DiscardsCrashedSessionWithoutReplayingTurn(t *testing.T) {
+	tr := newFakeTransport()
+	st := newFakeStore()
+	client := &crashRecoveryClient{}
+	pool := hostclient.NewProcessPool(client, 1)
+	r := New(tr, command.NewRouter(), st, pool, testCwd)
+	defer r.Shutdown()
+
+	if err := r.HandleInbound(context.Background(), transport.InboundMessage{
+		Platform: "fake", ChatID: "c1", UserID: "u1", Text: "first prompt",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	waitForSend(t, tr, 1, 2*time.Second)
+	deadline := time.Now().Add(2 * time.Second)
+	for pool.Stats().Size != 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if stats := pool.Stats(); stats.Size != 0 {
+		t.Fatalf("crashed session remained reusable: %+v", stats)
+	}
+	opens, prompts := client.snapshot()
+	if opens != 1 || len(prompts) != 1 || prompts[0] != "first prompt" {
+		t.Fatalf("crashed turn was unexpectedly replayed: opens=%d prompts=%v", opens, prompts)
+	}
+
+	if err := r.HandleInbound(context.Background(), transport.InboundMessage{
+		Platform: "fake", ChatID: "c1", UserID: "u1", Text: "second prompt",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	waitForSend(t, tr, 2, 2*time.Second)
+	opens, prompts = client.snapshot()
+	if opens != 2 {
+		t.Fatalf("next user action did not create a fresh process: opens=%d", opens)
+	}
+	if len(prompts) != 2 || prompts[0] != "first prompt" || prompts[1] != "second prompt" {
+		t.Fatalf("unexpected prompt delivery history: %v", prompts)
+	}
+}
+
 func waitForSend(t *testing.T, tr *fakeTransport, n int, timeout time.Duration) {
 	t.Helper()
 	deadline := time.Now().Add(timeout)

@@ -69,4 +69,44 @@ describe("RpcClient process launch", () => {
 			await rm(fixtureDir, { recursive: true, force: true });
 		}
 	});
+
+	it("rejects failed responses for commands without response data", async () => {
+		const fixtureDir = await mkdtemp(join(tmpdir(), "rpc-client-failure-"));
+		const fixturePath = join(fixtureDir, "failure.mjs");
+		await writeFile(
+			fixturePath,
+			`import { createInterface } from "node:readline";
+const lines = createInterface({ input: process.stdin });
+lines.on("line", (line) => {
+  const command = JSON.parse(line);
+  process.stdout.write(JSON.stringify({
+    id: command.id,
+    type: "response",
+    command: command.type,
+    success: false,
+    error: "prompt was rejected",
+    errorCode: "provider_unavailable",
+    phase: "turn",
+    recoverability: "continue_session"
+  }) + "\\n");
+});
+`,
+			"utf8",
+		);
+		const client = new RpcClient({ cliPath: fixturePath });
+
+		try {
+			await client.start();
+			await expect(client.prompt("hello")).rejects.toMatchObject({
+				message: "prompt was rejected",
+				command: "prompt",
+				errorCode: "provider_unavailable",
+				phase: "turn",
+				recoverability: "continue_session",
+			});
+		} finally {
+			await client.stop();
+			await rm(fixtureDir, { recursive: true, force: true });
+		}
+	});
 });

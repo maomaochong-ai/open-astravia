@@ -452,12 +452,12 @@ describe("OpenMarketplaceService", () => {
 		const current = await service.list();
 
 		expect(current).toMatchObject({ marketplaceVersion: "2026.07.1" });
-		await vi.waitFor(async () => {
-			const state: unknown = JSON.parse(await readFile(join(rootDir, "state.json"), "utf-8"));
-			expect(state).toMatchObject({ marketplaceVersion: "2026.07.2" });
-		});
+		await vi.waitFor(() =>
+			expect(onBackgroundUpdate).toHaveBeenCalledWith(expect.objectContaining({ marketplaceVersion: "2026.07.2" })),
+		);
+		const state: unknown = JSON.parse(await readFile(join(rootDir, "state.json"), "utf-8"));
+		expect(state).toMatchObject({ marketplaceVersion: "2026.07.2" });
 		expect(fetchArchive).toHaveBeenCalledOnce();
-		expect(onBackgroundUpdate).toHaveBeenCalledWith(expect.objectContaining({ marketplaceVersion: "2026.07.2" }));
 		const next = await service.list();
 		expect(next).toMatchObject({ marketplaceVersion: "2026.07.2" });
 		expect(next.abilities[0]?.description).toBe("Updated");

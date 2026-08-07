@@ -1,6 +1,12 @@
 import { stat } from "node:fs/promises";
 import { extname, isAbsolute, resolve } from "node:path";
-import type { PromptRequest, RuntimeHost, SessionConfig } from "../../../../runtime-core/src/index.js";
+import {
+	isSessionError,
+	type PromptRequest,
+	RUNTIME_ERROR_CODES,
+	type RuntimeHost,
+	type SessionConfig,
+} from "../../../../runtime-core/src/index.js";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
 import { monitorRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
@@ -68,12 +74,8 @@ export interface RunDesktopConversationTurnOptions {
 	signal?: AbortSignal;
 }
 
-function isSessionLockError(error: unknown): boolean {
-	return error instanceof Error && error.name === "SessionLockError";
-}
-
-function isBusyError(error: unknown): boolean {
-	return error instanceof Error && error.message.includes("Agent is already processing");
+function hasRuntimeErrorCode(error: unknown, code: string): boolean {
+	return isSessionError(error) && error.code === code;
 }
 
 function findLastAssistantMessage(
@@ -141,10 +143,10 @@ export class DesktopConversationService {
 			return session;
 		} catch (error) {
 			if (error instanceof DesktopConversationError) throw error;
-			if (isSessionLockError(error)) {
+			if (hasRuntimeErrorCode(error, RUNTIME_ERROR_CODES.SESSION_LOCKED)) {
 				throw new DesktopConversationError("SESSION_LOCKED", "Session is locked by another process.");
 			}
-			if (isBusyError(error)) {
+			if (hasRuntimeErrorCode(error, RUNTIME_ERROR_CODES.SESSION_BUSY)) {
 				throw new DesktopConversationError("SESSION_BUSY", "Session is already processing another turn.");
 			}
 			throw error;
@@ -269,7 +271,7 @@ export class DesktopConversationService {
 				sessionPath: options.session.sessionPath,
 			});
 			if (error instanceof DesktopConversationError) throw error;
-			if (isBusyError(error)) {
+			if (hasRuntimeErrorCode(error, RUNTIME_ERROR_CODES.SESSION_BUSY)) {
 				throw new DesktopConversationError("SESSION_BUSY", "Session is already processing another turn.");
 			}
 			throw new DesktopConversationError("TURN_FAILED", error instanceof Error ? error.message : String(error));

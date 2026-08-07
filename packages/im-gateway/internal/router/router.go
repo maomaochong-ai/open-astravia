@@ -2,6 +2,7 @@ package router
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -263,6 +264,7 @@ drain:
 		Type: hostclient.CommandTypePrompt,
 		Data: map[string]any{"message": prompt},
 	}); err != nil {
+		discardRestartRequiredSession(acq, err)
 		return nil, fmt.Errorf("send prompt: %w", err)
 	}
 
@@ -297,6 +299,7 @@ drain:
 	for {
 		select {
 		case err := <-done:
+			discardRestartRequiredSession(acq, err)
 			return nil, err
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -306,10 +309,13 @@ drain:
 			// an agent that is no longer listening.
 			select {
 			case err := <-done:
+				discardRestartRequiredSession(acq, err)
 				return &m, err
 			default:
 			}
-			r.steer(ctx, session, m)
+			if err := r.steer(ctx, session, m); err != nil && discardRestartRequiredSession(acq, err) {
+				return nil, err
+			}
 		}
 	}
 }
@@ -320,14 +326,27 @@ drain:
 // prompt (see rpc-mode.ts). A failed fold is non-fatal and intentionally not
 // surfaced to the user: it only happens on a dead session, which the bridge's
 // done error reports anyway.
-func (r *Router) steer(ctx context.Context, session hostclient.HostSession, msg transport.InboundMessage) {
-	_, _ = session.Send(ctx, hostclient.Command{
+func (r *Router) steer(ctx context.Context, session hostclient.HostSession, msg transport.InboundMessage) error {
+	_, err := session.Send(ctx, hostclient.Command{
 		Type: hostclient.CommandTypePrompt,
 		Data: map[string]any{
 			"message":           buildPromptMessage(msg),
 			"streamingBehavior": "steer",
 		},
 	})
+	return err
+}
+
+func discardRestartRequiredSession(acquired *hostclient.Acquired, err error) bool {
+	if err == nil {
+		return false
+	}
+	var failure hostclient.TypedFailure
+	if !errors.As(err, &failure) || failure.FailureRecoverability() != hostclient.FailureRestartSession {
+		return false
+	}
+	_ = acquired.Discard()
+	return true
 }
 
 // SetDatedCwd toggles per-day run directories (ADR-0009). Called by the

@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { RuntimeHost } from "@vetta/runtime-core";
+import { type RuntimeHost, runtimeError } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type DesktopConversationError, DesktopConversationService } from "./desktop-conversation-service.js";
 
@@ -109,6 +109,46 @@ describe("DesktopConversationService session access", () => {
 		const error = await service.openSession(sessionPath, "sandbox", "interactive").catch((reason: unknown) => reason);
 		expect(error).toMatchObject<Partial<DesktopConversationError>>({ code: "SESSION_READ_ONLY" });
 		expect(runtime.createSession).not.toHaveBeenCalled();
+	});
+
+	it("maps session ownership conflicts by runtime code instead of error name", async () => {
+		const cwd = await createTemporaryRoot();
+		const runtime = {
+			createSession: vi.fn(async () => {
+				throw runtimeError("SESSION_LOCKED", "this message may change", false);
+			}),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		const error = await service.createSession({ cwd }, "other", "interactive").catch((reason: unknown) => reason);
+		expect(error).toMatchObject<Partial<DesktopConversationError>>({ code: "SESSION_LOCKED" });
+	});
+
+	it("maps concurrent turns by runtime code instead of error message", async () => {
+		const runtime = {
+			getState: vi.fn(() => ({ isStreaming: false })),
+			getMessages: vi.fn(() => []),
+			prompt: vi.fn(async () => {
+				throw runtimeError("SESSION_BUSY", "unrelated wording", true);
+			}),
+			abort: vi.fn(async () => undefined),
+		} as unknown as RuntimeHost;
+		const service = new DesktopConversationService(runtime);
+
+		const error = await service
+			.runTurn({
+				session: {
+					sessionId: "session-1",
+					sessionPath: "C:/sessions/session-1.conversation.jsonl",
+					cwd: "C:/workspace",
+					listCwd: "C:/workspace",
+					source: "interactive",
+				},
+				prompt: { text: "hello" },
+				timeoutMs: 1_000,
+			})
+			.catch((reason: unknown) => reason);
+		expect(error).toMatchObject<Partial<DesktopConversationError>>({ code: "SESSION_BUSY" });
 	});
 });
 

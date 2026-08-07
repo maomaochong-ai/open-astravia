@@ -213,6 +213,12 @@ func (s *session) handshake(ctx context.Context, timeout time.Duration) error {
 		Type: hostclient.CommandTypeGetState,
 	})
 	if err != nil {
+		// Send already converted a correlated success:false response into a
+		// TypedFailure. Preserve its wire code/phase/recoverability instead of
+		// replacing it with a generic handshake failure.
+		if resp.ID != "" && resp.Command != "" && !resp.Success {
+			return err
+		}
 		if lockErr := s.detectStartupLockError(); lockErr != nil {
 			return lockErr
 		}

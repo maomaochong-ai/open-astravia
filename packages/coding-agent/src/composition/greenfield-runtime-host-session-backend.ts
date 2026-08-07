@@ -8,7 +8,9 @@ import {
 	type RuntimeHostSessionAssemblyAssessment,
 	type RuntimeHostSessionBackend,
 	type RuntimeSessionCreateRequest,
+	runtimeError,
 } from "@vetta/runtime-core";
+import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "@vetta/runtime-storage";
 import { SettingsRuntime } from "../settings/index.js";
 import { resolveGreenfieldSessionIdFromPath } from "./greenfield-conversation-path.js";
 import type {
@@ -49,9 +51,14 @@ export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBa
 		this.assertSupportedRequest(request);
 		const sessionPath = request.sessionPath?.trim();
 		const sessionOptions = this.toSessionOptions(request);
-		const session = sessionPath
-			? await this.options.composition.backend.resume(sessionOptions)
-			: await this.options.composition.backend.create(sessionOptions);
+		let session: GreenfieldRuntimeSession;
+		try {
+			session = sessionPath
+				? await this.options.composition.backend.resume(sessionOptions)
+				: await this.options.composition.backend.create(sessionOptions);
+		} catch (error) {
+			throw mapRuntimeHostSessionCreationError(error);
+		}
 		const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
 		if (!assessment.ready) {
 			await session.dispose();
@@ -135,6 +142,16 @@ export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBa
 			throw new Error("Greenfield RuntimeHost serverUrl is not supported by this composition");
 		}
 	}
+}
+
+export function mapRuntimeHostSessionCreationError(error: unknown): unknown {
+	if (
+		error instanceof ConversationStorageError &&
+		error.code === CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT
+	) {
+		return runtimeError("SESSION_LOCKED", error.message, false, "runtime");
+	}
+	return error;
 }
 
 function assertSamePath(name: string, requested: string | undefined, configured: string | undefined): void {

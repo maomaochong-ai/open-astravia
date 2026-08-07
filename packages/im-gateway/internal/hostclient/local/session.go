@@ -142,6 +142,9 @@ func (s *session) Send(ctx context.Context, cmd hostclient.Command) (hostclient.
 
 	select {
 	case resp := <-respCh:
+		if !resp.Success {
+			return resp, failureFromResponse(resp, commandPhase(cmd.Type))
+		}
 		return resp, nil
 	case <-s.exited:
 		return hostclient.Response{}, newHostFailure(
@@ -383,7 +386,6 @@ func (s *session) markExited(err error) {
 			Success:        false,
 			Error:          "subprocess exited",
 			ErrorCode:      hostclient.FailureCodeProcessExited,
-			Phase:          hostclient.FailurePhaseCommand,
 			Recoverability: hostclient.FailureRestartSession,
 		}:
 		default:

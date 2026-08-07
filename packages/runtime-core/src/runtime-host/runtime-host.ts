@@ -27,7 +27,7 @@ import type {
 	SessionStateSnapshot,
 	SettingsPatch,
 } from "../contracts.js";
-import { runtimeError } from "../errors.js";
+import { isSessionError, runtimeError } from "../errors.js";
 import {
 	clearSessionGrants,
 	listSessionGrants,
@@ -644,6 +644,9 @@ export class RuntimeHost implements SessionFacade {
 			}
 		}
 		try {
+			if (handle.stateReader.readState().isStreaming) {
+				throw runtimeError("SESSION_BUSY", "Session is already processing another turn.", true, "runtime");
+			}
 			await handle.turnControl.prompt({
 				text,
 				images,
@@ -661,12 +664,12 @@ export class RuntimeHost implements SessionFacade {
 			// 这里合成一个 error 事件广播给所有 subscribe() 拿过 handler 的
 			// 订阅者，然后照原样把异常再向上抛，scheduler / batch-tasks 等
 			// 已经自带 try/catch 的调用方仍然能拿到 reject 做重试 / 落账。
-			const message = err instanceof Error ? err.message : String(err);
+			const message = isSessionError(err) ? err.message : err instanceof Error ? err.message : String(err);
 			console.error(`[RuntimeHost.prompt] session=${sessionId} pre-stream error: ${message}`);
 			this.broadcastSyntheticEvent(sessionId, {
 				...baseSessionEvent(sessionId, "agent"),
 				type: "error",
-				error: runtimeError("INTERNAL_ERROR", message, false, "runtime"),
+				error: isSessionError(err) ? err : runtimeError("INTERNAL_ERROR", message, false, "runtime"),
 			});
 			throw err;
 		}
