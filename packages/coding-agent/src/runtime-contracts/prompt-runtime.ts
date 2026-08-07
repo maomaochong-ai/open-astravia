@@ -1,4 +1,4 @@
-import type { GreenfieldPromptPreparationContext, PromptResourceRef } from "@vetta/runtime-core";
+import type { PromptResourceRef, RuntimePromptPreparationContext } from "@vetta/runtime-core";
 import type { ModelCallFrameCompositionContext } from "@vetta/runtime-core/kernel";
 import type { BuildSystemPromptOptions, PersonalizationSettingsSource } from "../model-context/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
@@ -13,7 +13,7 @@ export interface CodingAgentPromptResourceExpansion {
 export type CodingAgentPromptResourceResolver = (
 	text: string,
 	promptRef: PromptResourceRef,
-	context: GreenfieldPromptPreparationContext,
+	context: RuntimePromptPreparationContext,
 ) => Promise<CodingAgentPromptResourceExpansion> | CodingAgentPromptResourceExpansion;
 
 export type CodingAgentPromptResourceSource = Pick<

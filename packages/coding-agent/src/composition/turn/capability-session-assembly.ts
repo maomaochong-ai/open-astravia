@@ -13,24 +13,22 @@ import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/cont
 import { CodingAgentContinuationOrchestrator } from "../../adapters/runtime-core/greenfield-continuation-orchestrator.js";
 import type { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
 import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import { wrapRuntimeToolsWithEcosystemHooks } from "../../adapters/runtime-core/greenfield-hook-tool-wrapper.js";
 import { createCodingAgentInvokeSkillRuntimeFeature } from "../../adapters/runtime-core/greenfield-invoke-skill-runtime.js";
-import { CodingAgentModelCallFrameComposer } from "../../adapters/runtime-core/greenfield-model-call-composer.js";
-import { CodingAgentGreenfieldModelCallMessageFinalizer } from "../../adapters/runtime-core/greenfield-model-call-message-finalizer.js";
 import { CodingAgentPluginRunOrchestrator } from "../../adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
 import {
 	type CodingAgentPluginToolActivation,
 	CodingAgentPluginToolRuntime,
 } from "../../adapters/runtime-core/greenfield-plugin-tool-runtime.js";
-import { CodingAgentGreenfieldPromptAdapter } from "../../adapters/runtime-core/greenfield-prompt-adapter.js";
-import { createCodingAgentPromptResourceResolver } from "../../adapters/runtime-core/greenfield-prompt-resource-resolver.js";
-import {
-	CodingAgentPromptRuntime,
-	createCodingAgentPromptRuntime,
-} from "../../adapters/runtime-core/greenfield-prompt-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
 import { CodingAgentTodoContinuationSource } from "../../adapters/runtime-core/greenfield-todo-continuation-source.js";
+import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
+import { CodingAgentModelCallFrameComposer } from "../../model-context/model-call-frame-composer.js";
+import { CodingAgentModelCallMessageFinalizer } from "../../model-context/model-call-message-finalizer.js";
+import { CodingAgentPromptRuntime } from "../../model-context/prompt-runtime.js";
+import { createCodingAgentPromptResourceResolver } from "../../resources/prompt-resource-resolver.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
@@ -43,6 +41,7 @@ import type {
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import { createCodingAgentPromptRuntime } from "./prompt-runtime-factory.js";
 
 export interface CodingAgentTurnCapabilitySessionIdentity {
 	readonly initialSessionId: string;
@@ -95,7 +94,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
 	readonly capabilities: RuntimeCapabilityComposition;
-	readonly promptAdapter: CodingAgentGreenfieldPromptAdapter;
+	readonly promptAdapter: CodingAgentPromptRequestAdapter;
 	readAvailableTools(): ReadonlyMap<string, RuntimeToolDefinition>;
 	readPluginActiveToolNames(): readonly string[] | undefined;
 	rebindSession(sessionId: string): void;
@@ -145,7 +144,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		throw new Error("Coding Agent system prompt resolver was not created");
 	}
 	const promptResourceSource = options.prompt.resourceSource ?? promptRuntime?.readResourceSource();
-	const modelCallMessageFinalizer = new CodingAgentGreenfieldModelCallMessageFinalizer(
+	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
 	);
 	const invokeSkillFeature = promptResourceSource
@@ -190,7 +189,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		readAgentMode: options.activation.readAgentMode,
 		isMcpToolVisible: (toolName) => options.mcpController?.isToolVisible(toolName) ?? true,
 		systemPromptAdvertisedToolNames: options.prompt.systemPromptAdvertisedToolNames,
-		hookRuntime: options.hookRuntime,
+		wrapTools: (tools) => wrapRuntimeToolsWithEcosystemHooks(tools, options.hookRuntime),
 		extensionEvents: options.extensionEvents,
 		extensionToolRuntime: options.extensionToolRuntime,
 		resolveExtensionToolActivation: options.activation.resolve,
@@ -230,7 +229,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		initialProfile: profile,
 		compiler: options.codingTools.compiler,
 	});
-	const promptAdapter = new CodingAgentGreenfieldPromptAdapter({
+	const promptAdapter = new CodingAgentPromptRequestAdapter({
 		resolvePromptResource:
 			options.prompt.promptResourceResolver ??
 			(options.prompt.resourceSource

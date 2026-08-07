@@ -8,7 +8,6 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentGreenfieldConversationContextOverlay } from "../../src/adapters/runtime-core/greenfield-conversation-context-overlay.js";
 import type { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
 import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
@@ -27,6 +26,7 @@ import type { CodingAgentSessionConfigurationState } from "../../src/host/sessio
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
+import type { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
 
 describe("Coding Agent Session Resource Lifecycle", () => {
 	it("atomically rebinds session resources and retries only failed cleanup phases", async () => {
@@ -83,7 +83,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			clear(sessionId: string) {
 				events.push(`clear:${sessionId}`);
 			},
-		} as unknown as CodingAgentGreenfieldConversationContextOverlay;
+		} as unknown as CodingAgentConversationContextOverlay;
 		const hookRuntime = {
 			async runSessionEnd(cause: string) {
 				events.push(`end:${cause}`);

@@ -455,11 +455,11 @@ function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, finding
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
 	const forbiddenSymbols = new Set([
 		"CodingAgentContinuationOrchestrator",
-		"CodingAgentGreenfieldModelCallMessageFinalizer",
-		"CodingAgentGreenfieldPromptAdapter",
+		"CodingAgentModelCallMessageFinalizer",
 		"CodingAgentModelCallFrameComposer",
 		"CodingAgentPluginRunOrchestrator",
 		"CodingAgentPluginToolRuntime",
+		"CodingAgentPromptRequestAdapter",
 		"CodingAgentPromptRuntime",
 		"CodingAgentStopHookContinuationSource",
 		"CodingAgentTodoContinuationSource",
@@ -480,6 +480,45 @@ function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, finding
 		ts.forEachChild(node, visit);
 	};
 	visit(sourceFile);
+}
+
+function checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings) {
+	const domainRoots = [
+		"packages/coding-agent/src/model-context/",
+		"packages/coding-agent/src/resources/",
+		"packages/coding-agent/src/sessions/",
+	];
+	if (!domainRoots.some((root) => posixPath.startsWith(root))) return;
+	for (const specifier of specifiers) {
+		if (!specifier.includes("adapters/")) continue;
+		findings.push(`${posixPath}: Coding Agent domain must depend on contracts instead of Adapters (${specifier})`);
+	}
+}
+
+function checkRuntimePromptContractIdentity(posixPath, text, findings) {
+	if (!posixPath.startsWith("packages/runtime-core/src/")) return;
+
+	const retiredSymbols = new Set([
+		"GreenfieldPromptPreparationContext",
+		"GreenfieldPreparedPrompt",
+		"GreenfieldPromptInterceptionResult",
+		"GreenfieldHandledPromptResult",
+		"GreenfieldPromptResult",
+		"GreenfieldPromptAdapter",
+	]);
+	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
+	const foundSymbols = new Set();
+	const visit = (node) => {
+		if (ts.isIdentifier(node) && retiredSymbols.has(node.text)) {
+			foundSymbols.add(node.text);
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(sourceFile);
+
+	for (const symbol of foundSymbols) {
+		findings.push(`${posixPath}: Runtime Prompt contract must use its stable identity (${symbol})`);
+	}
 }
 
 function checkCodingAgentSessionResourceLifecycleBoundary(posixPath, text, findings) {
@@ -1227,6 +1266,8 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkCodingAgentRuntimeToolSurfaceBoundary(posixPath, text, findings);
 	checkCodingAgentRuntimeToolPortBoundary(posixPath, text, findings);
 	checkCodingAgentToolPolicyOwnershipBoundary(posixPath, text, findings);
+	checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings);
+	checkRuntimePromptContractIdentity(posixPath, text, findings);
 	checkCodingAgentChildCompositionPolicyBoundary(posixPath, text, findings);
 	checkGreenfieldRuntimeHostControlSurfaceBoundary(posixPath, text, findings);
 	checkCodingAgentSessionHostOwnershipBoundary(posixPath, text, findings);

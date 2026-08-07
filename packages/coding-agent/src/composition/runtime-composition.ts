@@ -1,10 +1,10 @@
 import { ComposedGreenfieldRuntimeFactory, GreenfieldRuntimeSessionBackend } from "@vetta/runtime-core";
 import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
-import { CodingAgentGreenfieldAgentMessageContextProjector } from "../adapters/runtime-core/greenfield-agent-message-context-projector.js";
-import { CodingAgentGreenfieldConversationContextOverlay } from "../adapters/runtime-core/greenfield-conversation-context-overlay.js";
 import { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
-import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/greenfield-model-runtime-adapter.js";
+import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/model-runtime-adapter.js";
+import { CodingAgentConversationContextOverlay } from "../sessions/projection/conversation-context-overlay.js";
+import { CodingAgentConversationContextProjector } from "../sessions/projection/conversation-context-projector.js";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
@@ -74,10 +74,8 @@ async function createCodingAgentRuntimeCompositionInternal(
 	} = toolSurface;
 	const persistence = await resolveCodingAgentConversationPersistence(options);
 	const repository = persistence.repository;
-	const baseConversationContextProjector = new CodingAgentGreenfieldAgentMessageContextProjector();
-	const conversationContextOverlay = new CodingAgentGreenfieldConversationContextOverlay(
-		baseConversationContextProjector,
-	);
+	const baseConversationContextProjector = new CodingAgentConversationContextProjector();
+	const conversationContextOverlay = new CodingAgentConversationContextOverlay(baseConversationContextProjector);
 	const modelAdapter = new CodingAgentRuntimeModelAdapter(options.modelRegistry);
 	const acquireOwnership = async (sessionId: string): Promise<ConversationOwnershipBinding | undefined> => {
 		const manager = options.conversationOwnershipManager;

@@ -6,7 +6,7 @@ import {
 	ComposedGreenfieldRuntimeFactory,
 	type GreenfieldRuntimeResources,
 } from "../../src/runtime-host/greenfield-runtime-factory.js";
-import type { GreenfieldPromptAdapter } from "../../src/runtime-host/greenfield-session-backend.js";
+import type { RuntimePromptAdapter } from "../../src/runtime-host/greenfield-session-backend.js";
 
 describe("ComposedGreenfieldRuntimeFactory initialization", () => {
 	it("closes an acquired Kernel session before resources and can initialize again", async () => {
@@ -21,7 +21,7 @@ describe("ComposedGreenfieldRuntimeFactory initialization", () => {
 				sessionId: "factory-session",
 				repository: { create: vi.fn(async () => undefined) } as unknown as ConversationRepository,
 				conversationDocumentStore: {} as ConversationDocumentStore,
-				promptAdapter: {} as GreenfieldPromptAdapter,
+				promptAdapter: {} as RuntimePromptAdapter,
 				snapshotProvider: {} as RuntimeSnapshotProvider,
 				modelRuntime: {} as GreenfieldRuntimeModelRuntime,
 				identity: { cwd: "C:/workspace" },
@@ -57,7 +57,7 @@ describe("ComposedGreenfieldRuntimeFactory initialization", () => {
 				sessionId: "factory-publication-session",
 				repository: { create: vi.fn(async () => undefined) } as unknown as ConversationRepository,
 				conversationDocumentStore: {} as ConversationDocumentStore,
-				promptAdapter: {} as GreenfieldPromptAdapter,
+				promptAdapter: {} as RuntimePromptAdapter,
 				snapshotProvider: {} as RuntimeSnapshotProvider,
 				modelRuntime: {} as GreenfieldRuntimeModelRuntime,
 				identity: { cwd: "C:/workspace" },

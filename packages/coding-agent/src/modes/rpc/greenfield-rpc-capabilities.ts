@@ -1,11 +1,11 @@
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import { type Api, type AssistantMessage, type Model, supportsXhigh } from "@vetta/ai";
 import type { ConversationDocument, RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
-import { projectCodingAgentGreenfieldMessages } from "../../adapters/runtime-core/greenfield-agent-message-context-projector.js";
 import type { CodingAgentHtmlExportRuntime } from "../../export-html/index.js";
 import type { HostBashExecutor } from "../../host/command-execution/index.js";
 import { type BashExecutionMessage, bashExecutionToText } from "../../model-context/index.js";
 import { CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE } from "../../sessions/index.js";
+import { projectCodingAgentMessages } from "../../sessions/projection/conversation-context-projector.js";
 import type { RpcBashCapability } from "./rpc-session-capabilities.js";
 import type { RpcBashResult, SessionStats } from "./rpc-types.js";
 
@@ -107,7 +107,7 @@ export function computeGreenfieldRpcSessionStats(
 }
 
 export function readGreenfieldRpcAgentMessages(document: ConversationDocument): readonly AgentMessage[] {
-	return projectCodingAgentGreenfieldMessages(document);
+	return projectCodingAgentMessages(document);
 }
 
 export function resolveNextGreenfieldRpcThinkingLevel(

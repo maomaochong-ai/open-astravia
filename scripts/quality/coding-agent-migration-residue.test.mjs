@@ -236,6 +236,32 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired model call and Prompt boundary identities", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-prompt-adapter.ts",
+				text: "export class CodingAgentGreenfieldPromptAdapter implements GreenfieldPromptAdapter {}",
+			},
+			{
+				path: "packages/coding-agent/src/composition/runtime-composition.ts",
+				text: [
+					'import "../adapters/runtime-core/greenfield-model-call-composer.js";',
+					'import "../adapters/runtime-core/greenfield-agent-message-context-projector.js";',
+					"projectCodingAgentGreenfieldMessages(document);",
+				].join("\n"),
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-prompt-adapter.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-prompt-adapter.ts: retired migration reference (CodingAgentGreenfieldPromptAdapter)",
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-prompt-adapter.ts: retired migration reference (GreenfieldPromptAdapter)",
+			"packages/coding-agent/src/composition/runtime-composition.ts: retired migration reference (greenfield-model-call-composer)",
+			"packages/coding-agent/src/composition/runtime-composition.ts: retired migration reference (greenfield-agent-message-context-projector)",
+			"packages/coding-agent/src/composition/runtime-composition.ts: retired migration reference (projectCodingAgentGreenfieldMessages)",
+		]);
+	});
+
 	it("rejects growth beyond each migration residue baseline", () => {
 		const files = [
 			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1 }, (_, index) => ({

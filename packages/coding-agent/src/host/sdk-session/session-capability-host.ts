@@ -6,7 +6,7 @@ import type {
 	PromptRequest,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
-import { projectCodingAgentGreenfieldMessages } from "../../adapters/runtime-core/greenfield-agent-message-context-projector.js";
+import { projectCodingAgentMessages } from "../../sessions/projection/conversation-context-projector.js";
 import type { CodingAgentTurnRetryController } from "../session-execution/contracts.js";
 import { readCodingAgentFailedTurnMessage } from "../session-execution/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";
@@ -246,7 +246,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 	readSessionStats() {
 		const core = this.readCore();
 		return computeSdkSessionStats(
-			projectCodingAgentGreenfieldMessages(core.conversationView.readDocument()),
+			projectCodingAgentMessages(core.conversationView.readDocument()),
 			core.lifecycle.sessionPath,
 			core.lifecycle.sessionId,
 		);
@@ -257,7 +257,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 	}
 
 	readLastAssistantText(): string | undefined {
-		const messages = projectCodingAgentGreenfieldMessages(this.readCore().conversationView.readDocument());
+		const messages = projectCodingAgentMessages(this.readCore().conversationView.readDocument());
 		return readLastAssistantText(messages);
 	}
 

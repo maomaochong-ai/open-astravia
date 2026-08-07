@@ -13,7 +13,7 @@ interface ConversationContextOverlay {
  * 目标 Conversation 仍按 fork 结果持久化；只有模型可见的活动分支投影会在目标
  * seed 前缀保持不变期间，用源 Session 的执行上下文替换该 seed。
  */
-export class CodingAgentGreenfieldConversationContextOverlay implements ConversationContextProjector {
+export class CodingAgentConversationContextOverlay implements ConversationContextProjector {
 	private readonly overlays = new Map<string, ConversationContextOverlay>();
 
 	constructor(private readonly delegate: ConversationContextProjector) {}

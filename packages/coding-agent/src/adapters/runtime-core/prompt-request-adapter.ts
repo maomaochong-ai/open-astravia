@@ -1,15 +1,15 @@
 import type { ImageContent, UserMessage } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
 import type {
-	GreenfieldPreparedPrompt,
-	GreenfieldPromptAdapter,
-	GreenfieldPromptInterceptionResult,
-	GreenfieldPromptPreparationContext,
 	PromptAttachmentRef,
 	PromptRequest,
+	RuntimePreparedPrompt,
+	RuntimePromptAdapter,
+	RuntimePromptInterceptionResult,
+	RuntimePromptPreparationContext,
 } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
-import type { InputSource } from "../../extensions/index.js";
+import type { InputEventResult, InputSource } from "../../extensions/index.js";
 import {
 	PROMPT_ATTACHMENT_CONTEXT_TYPE,
 	PROMPT_ATTACHMENT_REFERENCE_TYPE,
@@ -20,30 +20,29 @@ import type {
 	CodingAgentPromptResourceExpansion,
 	CodingAgentPromptResourceResolver,
 } from "../../runtime-contracts/index.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "./greenfield-extension-event-bridge.js";
 
 export type {
 	CodingAgentPromptResourceExpansion,
 	CodingAgentPromptResourceResolver,
 } from "../../runtime-contracts/index.js";
 
-export interface CodingAgentGreenfieldPromptAdapterOptions {
+export interface CodingAgentPromptRequestAdapterOptions {
 	readonly now?: () => number;
 	readonly resolvePromptResource?: CodingAgentPromptResourceResolver;
 	readonly hookRuntime?: EcosystemHookRuntime;
-	readonly extensionEvents?: Pick<CodingAgentGreenfieldExtensionEventBridge, "interceptInput">;
+	readonly extensionEvents?: CodingAgentPromptInputInterceptor;
 	readonly inputSource?: Exclude<InputSource, "extension">;
 }
 
 /** 将 coding-agent 宿主语义翻译成业务无关的 Kernel 输入。 */
-export class CodingAgentGreenfieldPromptAdapter implements GreenfieldPromptAdapter {
+export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 	private readonly now: () => number;
 	private readonly resolvePromptResource: CodingAgentPromptResourceResolver | undefined;
 	private readonly hookRuntime: EcosystemHookRuntime | undefined;
-	private readonly extensionEvents: Pick<CodingAgentGreenfieldExtensionEventBridge, "interceptInput"> | undefined;
+	private readonly extensionEvents: CodingAgentPromptInputInterceptor | undefined;
 	private readonly inputSource: Exclude<InputSource, "extension">;
 
-	constructor(options: CodingAgentGreenfieldPromptAdapterOptions = {}) {
+	constructor(options: CodingAgentPromptRequestAdapterOptions = {}) {
 		this.now = options.now ?? Date.now;
 		this.resolvePromptResource = options.resolvePromptResource;
 		this.hookRuntime = options.hookRuntime;
@@ -53,8 +52,8 @@ export class CodingAgentGreenfieldPromptAdapter implements GreenfieldPromptAdapt
 
 	async intercept(
 		request: PromptRequest,
-		_context: GreenfieldPromptPreparationContext,
-	): Promise<GreenfieldPromptInterceptionResult> {
+		_context: RuntimePromptPreparationContext,
+	): Promise<RuntimePromptInterceptionResult> {
 		const intercepted = await this.extensionEvents?.interceptInput(
 			request.text,
 			request.images,
@@ -72,10 +71,7 @@ export class CodingAgentGreenfieldPromptAdapter implements GreenfieldPromptAdapt
 		};
 	}
 
-	async prepare(
-		request: PromptRequest,
-		context: GreenfieldPromptPreparationContext,
-	): Promise<GreenfieldPreparedPrompt> {
+	async prepare(request: PromptRequest, context: RuntimePromptPreparationContext): Promise<RuntimePreparedPrompt> {
 		const expansion = await this.expandPrompt(request, context);
 		const hookContexts = await this.runPromptHooks(expansion.text);
 		const timestamp = this.now();
@@ -129,7 +125,7 @@ export class CodingAgentGreenfieldPromptAdapter implements GreenfieldPromptAdapt
 
 	private async expandPrompt(
 		request: PromptRequest,
-		context: GreenfieldPromptPreparationContext,
+		context: RuntimePromptPreparationContext,
 	): Promise<CodingAgentPromptResourceExpansion> {
 		if (!request.promptRef) return { text: request.text };
 		if (/^\/(?:skill|scene):/.test(request.text)) {
@@ -204,6 +200,10 @@ export class CodingAgentGreenfieldPromptAdapter implements GreenfieldPromptAdapt
 		}
 		return records;
 	}
+}
+
+interface CodingAgentPromptInputInterceptor {
+	interceptInput(text: string, images: ImageContent[] | undefined, source: InputSource): Promise<InputEventResult>;
 }
 
 function hiddenContext(type: string, content: string, metadata?: unknown): SessionContextRecord {

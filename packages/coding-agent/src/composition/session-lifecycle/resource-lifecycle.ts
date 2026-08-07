@@ -9,7 +9,6 @@ import {
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentGreenfieldConversationContextOverlay } from "../../adapters/runtime-core/greenfield-conversation-context-overlay.js";
 import type { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
 import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
 import type { CodingAgentMemoryController } from "../../adapters/runtime-core/greenfield-memory-controller.js";
@@ -21,6 +20,7 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
+import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
@@ -69,7 +69,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly hookRuntime: EcosystemHookRuntime;
 	readonly extensionEvents: CodingAgentGreenfieldExtensionEventBridge;
 	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
-	readonly conversationContextOverlay: CodingAgentGreenfieldConversationContextOverlay;
+	readonly conversationContextOverlay: CodingAgentConversationContextOverlay;
 	readonly modelRuntime: CodingAgentSessionModelRuntimePort;
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly memoryRuntime?: CodingAgentMemoryRolloverRuntime;

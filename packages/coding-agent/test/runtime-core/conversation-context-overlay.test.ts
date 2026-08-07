@@ -1,9 +1,9 @@
 import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
 import type { ConversationContextProjector } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
-import { CodingAgentGreenfieldConversationContextOverlay } from "../../src/adapters/runtime-core/greenfield-conversation-context-overlay.js";
+import { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
 
-describe("CodingAgentGreenfieldConversationContextOverlay", () => {
+describe("CodingAgentConversationContextOverlay", () => {
 	it("replaces the persisted fork seed while retaining messages appended in the target session", () => {
 		const projected = new Map<string, readonly RuntimeMessageEnvelope[]>([
 			["source", messages("source-1", "source-2")],
@@ -34,7 +34,7 @@ function createOverlay(projected: ReadonlyMap<string, readonly RuntimeMessageEnv
 	const delegate: ConversationContextProjector = {
 		project: (value) => projected.get(value.identity.sessionId) ?? [],
 	};
-	return new CodingAgentGreenfieldConversationContextOverlay(delegate);
+	return new CodingAgentConversationContextOverlay(delegate);
 }
 
 function document(sessionId: string): ConversationDocument {

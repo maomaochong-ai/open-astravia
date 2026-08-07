@@ -3,7 +3,6 @@ import type { Message } from "@vetta/ai";
 import type { RuntimeMessageEnvelope } from "@vetta/runtime-core";
 import type { ConversationDocument, ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
-import { CodingAgentGreenfieldAgentMessageContextProjector } from "../../src/adapters/runtime-core/greenfield-agent-message-context-projector.js";
 import {
 	COMPACTION_SUMMARY_PREFIX,
 	COMPACTION_SUMMARY_SUFFIX,
@@ -12,6 +11,7 @@ import {
 } from "../../src/model-context/index.js";
 import { type CodingAgentSessionEntry, projectCodingAgentSessionDocumentEntry } from "../../src/sessions/index.js";
 import { normalizeCodingAgentLegacySessionEntry } from "../../src/sessions/legacy/entry-normalizer.js";
+import { CodingAgentConversationContextProjector } from "../../src/sessions/projection/conversation-context-projector.js";
 
 describe("Coding Agent Legacy session import normalizer", () => {
 	it("uses the same Conversation projection policy for native and historical entries", () => {
@@ -101,7 +101,7 @@ describe("Coding Agent Legacy session import normalizer", () => {
 		const document = normalizedDocument(
 			messages.map((message, index) => legacyMessage(`entry-${index + 1}`, index, message)),
 		);
-		const envelopes = new CodingAgentGreenfieldAgentMessageContextProjector().project(document);
+		const envelopes = new CodingAgentConversationContextProjector().project(document);
 
 		expect(envelopes.map(readIdentityRole)).toEqual(messages.map(({ role }) => role));
 		expect(readModelMessages(envelopes)).toEqual(convertToLlm(messages));
@@ -147,7 +147,7 @@ describe("Coding Agent Legacy session import normalizer", () => {
 			]),
 		);
 
-		const projected = new CodingAgentGreenfieldAgentMessageContextProjector().project(document);
+		const projected = new CodingAgentConversationContextProjector().project(document);
 		expect(readModelMessages(projected).map(messageText)).toEqual([
 			`${COMPACTION_SUMMARY_PREFIX}summary${COMPACTION_SUMMARY_SUFFIX}`,
 			"request",

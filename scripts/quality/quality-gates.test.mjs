@@ -875,6 +875,30 @@ describe("package boundary analysis", () => {
 		expect(findPackageBoundaryViolations(policyPath, compositionPolicy)).toEqual([]);
 	});
 
+	it("keeps model, resource and Session domains independent from concrete Adapters", () => {
+		for (const path of [
+			"packages/coding-agent/src/model-context/model-call-frame-composer.ts",
+			"packages/coding-agent/src/resources/prompt-resource-resolver.ts",
+			"packages/coding-agent/src/sessions/projection/conversation-context-projector.ts",
+		]) {
+			expect(
+				findPackageBoundaryViolations(path, 'import { Adapter } from "../adapters/runtime-core/example.js";'),
+			).toHaveLength(1);
+		}
+		expect(
+			findPackageBoundaryViolations(
+				"packages/coding-agent/src/model-context/model-call-frame-composer.ts",
+				'import type { Port } from "../runtime-contracts/index.js";',
+			),
+		).toEqual([]);
+	});
+
+	it("rejects retired Greenfield identities in the Runtime Prompt contract", () => {
+		const path = "packages/runtime-core/src/runtime-host/prompt-contract.ts";
+		expect(findPackageBoundaryViolations(path, "export interface GreenfieldPromptAdapter {}")).toHaveLength(1);
+		expect(findPackageBoundaryViolations(path, "export interface RuntimePromptAdapter {}")).toEqual([]);
+	});
+
 	it("keeps Child Composition isolation policy out of the Coding Agent Composition Root", () => {
 		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		expect(findPackageBoundaryViolations(compositionPath, "const childComposition = {};")).toHaveLength(1);

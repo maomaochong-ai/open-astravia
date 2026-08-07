@@ -60,41 +60,41 @@ import type {
 	RuntimeSessionToolController,
 } from "./session-ports.js";
 
-export interface GreenfieldPromptPreparationContext {
+export interface RuntimePromptPreparationContext {
 	readonly sessionId: string;
 	readonly queueing: boolean;
 }
 
-export interface GreenfieldPreparedPrompt {
+export interface RuntimePreparedPrompt {
 	readonly input: SessionInput;
 	readonly options?: SessionSendOptions;
 }
 
-export type GreenfieldPromptInterceptionResult =
+export type RuntimePromptInterceptionResult =
 	| { readonly action: "continue"; readonly request: PromptRequest }
 	| { readonly action: "handled" };
 
-export interface GreenfieldHandledPromptResult {
+export interface RuntimeHandledPromptResult {
 	readonly status: "handled";
 	readonly sessionId: string;
 }
 
-export type GreenfieldPromptResult = SessionSendResult | GreenfieldHandledPromptResult;
+export type RuntimePromptResult = SessionSendResult | RuntimeHandledPromptResult;
 
 /** 外部 PromptRequest 到 Kernel 输入的必需反腐层；Backend 不静默忽略宿主字段。 */
-export interface GreenfieldPromptAdapter {
+export interface RuntimePromptAdapter {
 	intercept?(
 		request: PromptRequest,
-		context: GreenfieldPromptPreparationContext,
-	): Promise<GreenfieldPromptInterceptionResult>;
-	prepare(request: PromptRequest, context: GreenfieldPromptPreparationContext): Promise<GreenfieldPreparedPrompt>;
+		context: RuntimePromptPreparationContext,
+	): Promise<RuntimePromptInterceptionResult>;
+	prepare(request: PromptRequest, context: RuntimePromptPreparationContext): Promise<RuntimePreparedPrompt>;
 }
 
 export interface GreenfieldRuntimeAssembly {
 	readonly session: AgentSession;
 	readonly repository: ConversationRepository;
 	readonly conversationDocumentStore: ConversationDocumentStore;
-	readonly promptAdapter: GreenfieldPromptAdapter;
+	readonly promptAdapter: RuntimePromptAdapter;
 	readonly modelRuntime: GreenfieldRuntimeModelRuntime;
 	readonly identity: GreenfieldRuntimeSessionIdentity;
 	readonly stateSource: GreenfieldRuntimeStateSource;
@@ -148,7 +148,7 @@ export type GreenfieldRuntimeSessionCoreAssembly = Pick<
 
 export class GreenfieldRuntimeSession {
 	private readonly session: AgentSession;
-	private readonly promptAdapter: GreenfieldPromptAdapter;
+	private readonly promptAdapter: RuntimePromptAdapter;
 	private readonly eventSink: GreenfieldSessionEventSink;
 	private readonly modelRuntime: GreenfieldRuntimeModelRuntime;
 	private readonly stateSource: GreenfieldRuntimeStateSource;
@@ -225,7 +225,7 @@ export class GreenfieldRuntimeSession {
 		return this.session.id;
 	}
 
-	async prompt(request: PromptRequest): Promise<GreenfieldPromptResult> {
+	async prompt(request: PromptRequest): Promise<RuntimePromptResult> {
 		this.assertOpen();
 		if (this.historyMutation || this.contextController?.readState().isCompacting) throw sessionBusyError();
 		if ((this.session.state === "running" || this.session.state === "cancelling") && !request.streamingBehavior) {

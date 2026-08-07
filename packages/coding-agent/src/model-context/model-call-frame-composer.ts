@@ -1,4 +1,3 @@
-import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
 import type {
 	InstructionBlock,
 	ModelCallFrame,
@@ -7,28 +6,19 @@ import type {
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import {
-	type BuildSystemPromptOptions,
-	buildSystemPromptDraft,
-	renderSystemPromptDraft,
-	type SystemPromptDraft,
-} from "../../model-context/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentSystemPromptOptionsResolver,
-} from "../../runtime-contracts/index.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "./greenfield-extension-event-bridge.js";
-import type { CodingAgentGreenfieldExtensionToolRuntime } from "./greenfield-extension-tool-runtime.js";
-import { wrapRuntimeToolsWithEcosystemHooks } from "./greenfield-hook-tool-wrapper.js";
-import type { CodingAgentPluginRunOrchestrator } from "./greenfield-plugin-run-orchestrator.js";
-import type { CodingAgentPluginToolRuntime } from "./greenfield-plugin-tool-runtime.js";
+} from "../runtime-contracts/index.js";
+import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./product-prompt.js";
+import { renderSystemPromptDraft, type SystemPromptDraft } from "./prompt-document.js";
 
 export type CodingAgentSystemPromptOptions = Omit<BuildSystemPromptOptions, "selectedTools">;
 
 export type {
 	CodingAgentModelCallPromptContext,
 	CodingAgentSystemPromptOptionsResolver,
-} from "../../runtime-contracts/index.js";
+} from "../runtime-contracts/index.js";
 
 export interface CodingAgentModelCallFrameComposerOptions {
 	readonly resolveSystemPromptOptions: CodingAgentSystemPromptOptionsResolver;
@@ -38,13 +28,13 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly readAgentMode?: () => string | undefined;
 	readonly isMcpToolVisible?: (toolName: string) => boolean;
-	readonly pluginRunOrchestrator?: CodingAgentPluginRunOrchestrator;
-	readonly pluginToolRuntime?: CodingAgentPluginToolRuntime;
+	readonly pluginRunOrchestrator?: CodingAgentModelCallPluginRunPort;
+	readonly pluginToolRuntime?: CodingAgentModelCallPluginToolPort;
 	/** 系统提示词额外公布、但不加入可执行 Tool Frame 的既有宿主工具名称。 */
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
-	readonly hookRuntime?: EcosystemHookRuntime;
-	readonly extensionEvents?: Pick<CodingAgentGreenfieldExtensionEventBridge, "recordSystemPrompt" | "wrapTools">;
-	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
+	readonly wrapTools?: CodingAgentModelCallToolWrapper;
+	readonly extensionEvents?: CodingAgentModelCallExtensionEvents;
+	readonly extensionToolRuntime?: CodingAgentModelCallExtensionToolPort;
 	readonly resolveExtensionToolActivation?: (context: ModelCallFrameCompositionContext) => CodingToolActivation;
 }
 
@@ -55,6 +45,46 @@ export interface CodingAgentMcpPromptState {
 	}[];
 	readonly deferred: boolean;
 }
+
+export interface CodingAgentModelCallToolSurface {
+	readonly frame: ModelCallFrame;
+	readonly availableTools: ReadonlyMap<string, RuntimeToolDefinition>;
+}
+
+export interface CodingAgentModelCallExtensionEvents {
+	recordSystemPrompt(systemPrompt: string): void;
+	wrapTools(tools: ReadonlyMap<string, RuntimeToolDefinition>): ReadonlyMap<string, RuntimeToolDefinition>;
+}
+
+export interface CodingAgentModelCallExtensionToolPort {
+	compose(
+		context: ModelCallFrameCompositionContext,
+		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+		activation: CodingToolActivation,
+	): CodingAgentModelCallToolSurface;
+}
+
+export interface CodingAgentModelCallPluginToolPort {
+	compose(
+		context: ModelCallFrameCompositionContext,
+		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+	): CodingAgentModelCallToolSurface;
+}
+
+export interface CodingAgentModelCallPluginRunPort {
+	compose(input: {
+		readonly context: ModelCallFrameCompositionContext;
+		readonly availableTools: ReadonlyMap<string, RuntimeToolDefinition>;
+		readonly createDraft: (activeToolNames: readonly string[]) => SystemPromptDraft;
+	}): Promise<{
+		readonly draft: SystemPromptDraft;
+		readonly tools: ReadonlyMap<string, RuntimeToolDefinition>;
+	}>;
+}
+
+export type CodingAgentModelCallToolWrapper = (
+	tools: ReadonlyMap<string, RuntimeToolDefinition>,
+) => ReadonlyMap<string, RuntimeToolDefinition>;
 
 /**
  * 在 Coding Agent 产品边界内把调用级资源编译成最终系统提示词。
@@ -86,9 +116,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		this.options.extensionEvents?.recordSystemPrompt(systemPrompt);
 		const orderedTools = orderModelTools(selectedTools);
 		const extensionTools = this.options.extensionEvents?.wrapTools(orderedTools) ?? orderedTools;
-		const tools = this.options.hookRuntime
-			? wrapRuntimeToolsWithEcosystemHooks(extensionTools, this.options.hookRuntime)
-			: extensionTools;
+		const tools = this.options.wrapTools?.(extensionTools) ?? extensionTools;
 		return {
 			instructions: [
 				{

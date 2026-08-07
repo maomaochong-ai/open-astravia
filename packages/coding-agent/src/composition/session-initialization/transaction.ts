@@ -8,12 +8,12 @@ import {
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentGreenfieldConversationContextOverlay } from "../../adapters/runtime-core/greenfield-conversation-context-overlay.js";
 import { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
 import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
-import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/greenfield-model-runtime-adapter.js";
+import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentTodoRuntime } from "../../runtime-contracts/index.js";
+import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";
@@ -58,7 +58,7 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	readonly conversation: CodingAgentSessionConversationResources;
 	readonly readConversationModelMessages: (sessionId: string) => Promise<readonly Message[]>;
-	readonly conversationContextOverlay: CodingAgentGreenfieldConversationContextOverlay;
+	readonly conversationContextOverlay: CodingAgentConversationContextOverlay;
 	readonly modelAdapter: CodingAgentRuntimeModelAdapter;
 	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
 	readonly acquireOwnership: (sessionId: string) => Promise<TOwnershipBinding | undefined>;

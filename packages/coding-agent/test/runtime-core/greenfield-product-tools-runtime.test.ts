@@ -28,9 +28,11 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 import { createCodingAgentInvokeSkillRuntimeFeature } from "../../src/adapters/runtime-core/greenfield-invoke-skill-runtime.js";
 import { createCodingAgentGreenfieldProductToolRegistrations } from "../../src/adapters/runtime-core/greenfield-product-tools-runtime.js";
-import type { CodingAgentPromptResourceSource } from "../../src/adapters/runtime-core/greenfield-prompt-runtime.js";
 import type { Skill } from "../../src/resources/skills/index.js";
-import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
+import type {
+	CodingAgentPromptResourceSource,
+	CodingAgentRuntimeToolRegistration,
+} from "../../src/runtime-contracts/index.js";
 
 describe("Greenfield product tools runtime", () => {
 	const temporaryDirectories: string[] = [];

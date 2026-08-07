@@ -11,7 +11,7 @@ const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 29,
+	adapterGreenfieldFiles: 21,
 	compositionGreenfieldFiles: 0,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
@@ -75,6 +75,14 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${COMPOSITION_ROOT}/greenfield-subagent-session-assembly.ts`,
 	`${COMPOSITION_ROOT}/greenfield-turn-capability-session-assembly.ts`,
 	`${COMPOSITION_ROOT}/greenfield-conversation-persistence.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-model-runtime-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-prompt-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-model-call-composer.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-model-call-message-finalizer.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-prompt-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-prompt-resource-resolver.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-agent-message-context-projector.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-conversation-context-overlay.ts`,
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
@@ -238,6 +246,25 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"createFileGreenfieldConversationPersistence",
 	"createInMemoryGreenfieldConversationPersistence",
 	"resolveGreenfieldConversationPersistence",
+	"greenfield-model-runtime-adapter",
+	"greenfield-prompt-adapter",
+	"greenfield-model-call-composer",
+	"greenfield-model-call-message-finalizer",
+	"greenfield-prompt-runtime",
+	"greenfield-prompt-resource-resolver",
+	"greenfield-agent-message-context-projector",
+	"greenfield-conversation-context-overlay",
+	"CodingAgentGreenfieldPromptAdapter",
+	"CodingAgentGreenfieldModelCallMessageFinalizer",
+	"CodingAgentGreenfieldAgentMessageContextProjector",
+	"CodingAgentGreenfieldConversationContextOverlay",
+	"projectCodingAgentGreenfieldMessages",
+	"GreenfieldPromptAdapter",
+	"GreenfieldPromptPreparationContext",
+	"GreenfieldPreparedPrompt",
+	"GreenfieldPromptInterceptionResult",
+	"GreenfieldHandledPromptResult",
+	"GreenfieldPromptResult",
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {

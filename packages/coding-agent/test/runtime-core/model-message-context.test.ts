@@ -5,10 +5,10 @@ import {
 } from "@vetta/runtime-core/conversation";
 import type { ModelCallMessageFinalizationInput } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
-import { CodingAgentGreenfieldAgentMessageContextProjector } from "../../src/adapters/runtime-core/greenfield-agent-message-context-projector.js";
-import { CodingAgentGreenfieldModelCallMessageFinalizer } from "../../src/adapters/runtime-core/greenfield-model-call-message-finalizer.js";
+import { CodingAgentModelCallMessageFinalizer } from "../../src/model-context/model-call-message-finalizer.js";
+import { CodingAgentConversationContextProjector } from "../../src/sessions/projection/conversation-context-projector.js";
 
-describe("Greenfield AgentMessage context boundary", () => {
+describe("Coding Agent model message context boundary", () => {
 	it("projects standard, visible custom and model-invisible custom identities without flattening them", () => {
 		let document = createEmptyConversationDocument({ sessionId: "session-1", createdAt: 0 });
 		document = applyStoredEventToConversationDocument(
@@ -51,7 +51,7 @@ describe("Greenfield AgentMessage context boundary", () => {
 			3,
 		);
 
-		const projected = new CodingAgentGreenfieldAgentMessageContextProjector().project(document);
+		const projected = new CodingAgentConversationContextProjector().project(document);
 
 		expect(projected).toHaveLength(3);
 		expect(projected[0]).toMatchObject({ kind: "message", message: { role: "user", content: "request" } });
@@ -75,7 +75,7 @@ describe("Greenfield AgentMessage context boundary", () => {
 
 	it("applies the legacy image budget and dynamic block-images policy at the final call boundary", async () => {
 		let blocked = false;
-		const finalizer = new CodingAgentGreenfieldModelCallMessageFinalizer({
+		const finalizer = new CodingAgentModelCallMessageFinalizer({
 			getMaxRecentImages: () => 1,
 			getBlockImages: () => blocked,
 		});
@@ -130,7 +130,7 @@ describe("Greenfield AgentMessage context boundary", () => {
 			2,
 		);
 
-		const projected = new CodingAgentGreenfieldAgentMessageContextProjector().project(document);
+		const projected = new CodingAgentConversationContextProjector().project(document);
 
 		expect(projected[0]).toMatchObject({
 			kind: "opaque",

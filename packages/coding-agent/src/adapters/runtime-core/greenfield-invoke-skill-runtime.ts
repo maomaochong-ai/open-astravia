@@ -2,9 +2,9 @@ import type { AgentFeatureDefinition, RuntimeToolDefinition } from "@vetta/runti
 import { createInvokeSkillToolRegistration } from "@vetta/runtime-tools/coding";
 import { matchesAgentMode } from "../../profiles/index.js";
 import { readSkillContent, type Skill } from "../../resources/skills/index.js";
+import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/prompt-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { stripFrontmatter } from "../../utils/frontmatter.js";
-import type { CodingAgentPromptResourceSource } from "./greenfield-prompt-runtime.js";
 
 export interface CodingAgentInvokeSkillRuntimeFeatureOptions {
 	readonly resourceSource: CodingAgentPromptResourceSource;

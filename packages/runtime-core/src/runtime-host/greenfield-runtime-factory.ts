@@ -28,9 +28,9 @@ import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import type { GreenfieldRuntimeDocumentParticipant } from "./greenfield-document-participant.js";
 import type { GreenfieldRuntimeModelRuntime } from "./greenfield-model-runtime.js";
 import type {
-	GreenfieldPromptAdapter,
 	GreenfieldRuntimeAssembly,
 	GreenfieldRuntimeFactory,
+	RuntimePromptAdapter,
 } from "./greenfield-session-backend.js";
 import { GreenfieldSessionContextController } from "./greenfield-session-context-controller.js";
 import type {
@@ -73,7 +73,7 @@ export interface GreenfieldRuntimeResources {
 	readonly repository: ConversationRepository;
 	readonly conversationDocumentStore: ConversationDocumentStore;
 	readonly conversationContinuationStore?: ConversationContinuationStore;
-	readonly promptAdapter: GreenfieldPromptAdapter;
+	readonly promptAdapter: RuntimePromptAdapter;
 	readonly snapshotProvider: RuntimeSnapshotProvider;
 	readonly modelRuntime: GreenfieldRuntimeModelRuntime;
 	readonly identity: GreenfieldRuntimeSessionIdentity;

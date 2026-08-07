@@ -6,9 +6,9 @@ import {
 	type HookDispatchOutcome,
 } from "@vetta/ecosystem-adapter/hooks";
 import { describe, expect, it } from "vitest";
-import { CodingAgentGreenfieldPromptAdapter } from "../../src/adapters/runtime-core/greenfield-prompt-adapter.js";
+import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 
-describe("CodingAgentGreenfieldPromptAdapter ecosystem hooks", () => {
+describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 	it("preserves Legacy SessionStart/UserPrompt context ordering for idle and queued prompts", async () => {
 		const events: EcosystemHookEvent[] = [];
 		const hookRuntime = runtimeFor((event) => {
@@ -21,7 +21,7 @@ describe("CodingAgentGreenfieldPromptAdapter ecosystem hooks", () => {
 			}
 			return emptyHookDispatchOutcome();
 		});
-		const adapter = new CodingAgentGreenfieldPromptAdapter({
+		const adapter = new CodingAgentPromptRequestAdapter({
 			hookRuntime,
 			now: () => 42,
 			resolvePromptResource: async () => ({
@@ -78,7 +78,7 @@ describe("CodingAgentGreenfieldPromptAdapter ecosystem hooks", () => {
 				? outcome({ shouldBlock: true, blockReason: "prompt denied" })
 				: emptyHookDispatchOutcome(),
 		);
-		const adapter = new CodingAgentGreenfieldPromptAdapter({ hookRuntime });
+		const adapter = new CodingAgentPromptRequestAdapter({ hookRuntime });
 
 		await expect(adapter.prepare({ text: "blocked" }, { sessionId: "session-1", queueing: false })).rejects.toThrow(
 			"prompt denied",

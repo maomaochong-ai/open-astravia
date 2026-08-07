@@ -32,12 +32,6 @@ export {
 	type GreenfieldRuntimeSessionPeripherals,
 } from "./greenfield-runtime-factory.js";
 export {
-	type GreenfieldHandledPromptResult,
-	type GreenfieldPreparedPrompt,
-	type GreenfieldPromptAdapter,
-	type GreenfieldPromptInterceptionResult,
-	type GreenfieldPromptPreparationContext,
-	type GreenfieldPromptResult,
 	type GreenfieldRuntimeAssembly,
 	type GreenfieldRuntimeFactory,
 	GreenfieldRuntimeSession,
@@ -45,6 +39,12 @@ export {
 	type GreenfieldRuntimeSessionBackendOptions,
 	type GreenfieldRuntimeSessionCoreAssembly,
 	type GreenfieldRuntimeSessionState,
+	type RuntimeHandledPromptResult,
+	type RuntimePreparedPrompt,
+	type RuntimePromptAdapter,
+	type RuntimePromptInterceptionResult,
+	type RuntimePromptPreparationContext,
+	type RuntimePromptResult,
 } from "./greenfield-session-backend.js";
 export {
 	GreenfieldSessionContextController,

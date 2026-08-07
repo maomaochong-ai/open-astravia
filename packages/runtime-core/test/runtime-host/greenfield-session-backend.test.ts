@@ -36,11 +36,11 @@ import {
 } from "../../src/kernel/index.js";
 import {
 	assessRuntimeHostSessionAssembly,
-	type GreenfieldPromptAdapter,
 	type GreenfieldRuntimeAssembly,
 	GreenfieldRuntimeModel,
 	GreenfieldRuntimeSessionBackend,
 	GreenfieldSessionContextController,
+	type RuntimePromptAdapter,
 } from "../../src/runtime-host/index.js";
 
 interface TestCreateOptions {
@@ -209,7 +209,7 @@ class BlockingTurnEngine implements TurnEnginePort {
 	}
 }
 
-class RecordingPromptAdapter implements GreenfieldPromptAdapter {
+class RecordingPromptAdapter implements RuntimePromptAdapter {
 	readonly requests: Array<{
 		readonly request: PromptRequest;
 		readonly sessionId: string;
@@ -227,7 +227,7 @@ class RecordingPromptAdapter implements GreenfieldPromptAdapter {
 
 function createBackend(
 	turnEngine: TurnEnginePort,
-	promptAdapter: GreenfieldPromptAdapter = new RecordingPromptAdapter(),
+	promptAdapter: RuntimePromptAdapter = new RecordingPromptAdapter(),
 	dispose = vi.fn(async () => {}),
 	contextRuntime?: ManualContextCompactionRuntime,
 	assemblyOverrides: Partial<GreenfieldRuntimeAssembly> = {},

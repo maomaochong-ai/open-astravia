@@ -12,7 +12,7 @@ import {
 	CodingAgentGreenfieldMemoryController,
 	type CodingAgentMemoryController,
 } from "../../adapters/runtime-core/greenfield-memory-controller.js";
-import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/greenfield-model-runtime-adapter.js";
+import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import {

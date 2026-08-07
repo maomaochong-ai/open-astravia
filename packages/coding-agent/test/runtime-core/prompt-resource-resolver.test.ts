@@ -2,12 +2,12 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CodingAgentGreenfieldPromptAdapter } from "../../src/adapters/runtime-core/greenfield-prompt-adapter.js";
-import { createCodingAgentPromptResourceResolver } from "../../src/adapters/runtime-core/greenfield-prompt-resource-resolver.js";
 import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
+import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
+import { createCodingAgentPromptResourceResolver } from "../../src/resources/prompt-resource-resolver.js";
 import type { Skill } from "../../src/resources/skills/index.js";
 
-describe("Greenfield prompt resource resolver", () => {
+describe("Coding Agent prompt resource resolver", () => {
 	let root: string;
 
 	beforeEach(() => {
@@ -32,7 +32,7 @@ describe("Greenfield prompt resource resolver", () => {
 				diagnostics: [],
 			}),
 		};
-		const adapter = new CodingAgentGreenfieldPromptAdapter({
+		const adapter = new CodingAgentPromptRequestAdapter({
 			now: () => 42,
 			resolvePromptResource: createCodingAgentPromptResourceResolver({
 				resourceLoader,
@@ -80,7 +80,7 @@ describe("Greenfield prompt resource resolver", () => {
 		writeFileSync(scenePath, skillDocument("deploy", "deploy instructions", "scene"));
 		writeFileSync(join(sceneDir, "tasks.json"), JSON.stringify(["prepare", "publish"]));
 		const todoState = new CodingAgentTodoRuntime();
-		const adapter = new CodingAgentGreenfieldPromptAdapter({
+		const adapter = new CodingAgentPromptRequestAdapter({
 			resolvePromptResource: createCodingAgentPromptResourceResolver({
 				resourceLoader: {
 					refreshSkillsIfChanged: () => false,

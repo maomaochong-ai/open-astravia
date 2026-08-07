@@ -1,7 +1,7 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Message, TextContent } from "@vetta/ai";
 import type { ModelCallMessageFinalizationInput, ModelCallMessageFinalizer } from "@vetta/runtime-core/kernel";
-import { applyImageBudget } from "../../model-context/image-budget.js";
+import { applyImageBudget } from "./image-budget.js";
 
 export interface CodingAgentImageSettingsSource {
 	reloadImageSettings?(): void;
@@ -9,8 +9,8 @@ export interface CodingAgentImageSettingsSource {
 	getMaxRecentImages?(): number;
 }
 
-/** 复用 Legacy 的动态图片预算与全局禁图语义。 */
-export class CodingAgentGreenfieldModelCallMessageFinalizer implements ModelCallMessageFinalizer {
+/** 在最终模型调用边界应用动态图片预算与全局禁图语义。 */
+export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFinalizer {
 	constructor(private readonly settings?: CodingAgentImageSettingsSource) {}
 
 	async finalize(input: ModelCallMessageFinalizationInput, signal: AbortSignal): Promise<readonly Message[]> {

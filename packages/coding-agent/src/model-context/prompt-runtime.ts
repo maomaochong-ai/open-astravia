@@ -1,25 +1,19 @@
-import {
-	type CodingAgentSessionResourceRuntimeOptions,
-	createCodingAgentSessionResourceRuntime,
-} from "../../host/coding-agent-resource-runtime.js";
-import type { CodingAgentMemoryPromptState } from "../../memory/index.js";
-import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
-import { resolveSystemPromptOptionsFromSources } from "../../model-context/index.js";
-import type { ConversationScenario } from "../../profiles/index.js";
-import type { SessionResourceRuntime } from "../../resources/index.js";
+import type { CodingAgentMemoryPromptState } from "../memory/index.js";
+import type { ConversationScenario } from "../profiles/index.js";
 import type {
 	CodingAgentModelCallPromptContext,
 	CodingAgentPromptResourceSource,
 	CodingAgentPromptSettingsSource,
 	CodingAgentSystemPromptOptionsResolver,
-} from "../../runtime-contracts/index.js";
-import { SettingsRuntime } from "../../settings/index.js";
-import type { CodingAgentSystemPromptOptions } from "./greenfield-model-call-composer.js";
+} from "../runtime-contracts/index.js";
+import type { CodingAgentSystemPromptOptions } from "./model-call-frame-composer.js";
+import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
+import { resolveSystemPromptOptionsFromSources } from "./system-prompt-sources.js";
 
 export type {
 	CodingAgentPromptResourceSource,
 	CodingAgentPromptSettingsSource,
-} from "../../runtime-contracts/index.js";
+} from "../runtime-contracts/index.js";
 
 export type CodingAgentPromptMemoryState = CodingAgentMemoryPromptState;
 
@@ -31,17 +25,6 @@ export interface CodingAgentPromptRuntimeOptions {
 	readonly readAgentMode?: () => string | undefined;
 	readonly readMemory?: () => CodingAgentPromptMemoryState | undefined;
 	readonly readAgentPlugins?: () => AgentPluginRuntimeConfig | undefined;
-}
-
-export interface CreateCodingAgentPromptRuntimeOptions
-	extends Omit<CodingAgentPromptRuntimeOptions, "resourceLoader" | "settingsManager"> {
-	readonly agentDir?: string;
-	readonly resourceLoader?: SessionResourceRuntime;
-	readonly settingsManager?: SettingsRuntime;
-	readonly resourceLoaderOptions?: Omit<
-		CodingAgentSessionResourceRuntimeOptions,
-		"agentDir" | "cwd" | "noExtensions" | "noPromptTemplates" | "noThemes" | "settings" | "packages"
-	>;
 }
 
 /**
@@ -86,31 +69,4 @@ export class CodingAgentPromptRuntime {
 	readSettingsSource(): CodingAgentPromptSettingsSource {
 		return this.options.settingsManager;
 	}
-}
-
-export async function createCodingAgentPromptRuntime(
-	options: CreateCodingAgentPromptRuntimeOptions,
-): Promise<CodingAgentPromptRuntime> {
-	const settingsManager = options.settingsManager ?? SettingsRuntime.create(options.cwd, options.agentDir);
-	const resourceLoader =
-		options.resourceLoader ??
-		createCodingAgentSessionResourceRuntime({
-			...options.resourceLoaderOptions,
-			cwd: options.cwd,
-			agentDir: options.agentDir,
-			settings: settingsManager,
-			noExtensions: true,
-			noPromptTemplates: true,
-			noThemes: true,
-		});
-	await resourceLoader.reload();
-	return new CodingAgentPromptRuntime({
-		cwd: options.cwd,
-		resourceLoader,
-		settingsManager,
-		scenario: options.scenario,
-		readAgentMode: options.readAgentMode,
-		readMemory: options.readMemory,
-		readAgentPlugins: options.readAgentPlugins,
-	});
 }

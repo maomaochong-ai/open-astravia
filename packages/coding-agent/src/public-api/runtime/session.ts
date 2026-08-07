@@ -1,6 +1,5 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ConversationDocument } from "@vetta/runtime-core/conversation";
-import { projectCodingAgentGreenfieldMessages } from "../../adapters/runtime-core/greenfield-agent-message-context-projector.js";
 import {
 	CodingAgentResourceReloadHost,
 	type CodingAgentResourceReloadHostOptions,
@@ -16,6 +15,7 @@ import {
 	type CodingAgentBranchNavigationOptions,
 } from "../../host/session-history/branch-navigation-host.js";
 import type { CodingAgentBranchSummaryEntry } from "../../sessions/index.js";
+import { projectCodingAgentMessages } from "../../sessions/projection/conversation-context-projector.js";
 
 export type CodingAgentRuntimeBranchNavigationOptions = CodingAgentBranchNavigationOptions;
 export type CodingAgentRuntimeBranchNavigationHostOptions = CodingAgentBranchNavigationHostOptions;
@@ -59,5 +59,5 @@ export function createCodingAgentSessionCapabilityHost(
 }
 
 export function projectCodingAgentRuntimeMessages(document: ConversationDocument): readonly AgentMessage[] {
-	return projectCodingAgentGreenfieldMessages(document);
+	return projectCodingAgentMessages(document);
 }

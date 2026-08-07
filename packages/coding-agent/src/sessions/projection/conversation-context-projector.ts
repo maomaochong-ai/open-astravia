@@ -3,15 +3,15 @@ import type { Message } from "@vetta/ai";
 import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
 import type { ConversationContextProjector } from "@vetta/runtime-core/kernel";
 import { convertToLlm } from "../../model-context/index.js";
-import {
-	type CodingAgentCustomMessageEntry as CustomMessageEntry,
-	projectCodingAgentSessionContextEntries,
-	restoreCodingAgentSessionAgentMessageEntry,
-	type CodingAgentSessionEntry as SessionEntry,
-} from "../../sessions/index.js";
+import type {
+	CodingAgentCustomMessageEntry as CustomMessageEntry,
+	CodingAgentSessionEntry as SessionEntry,
+} from "../contracts/session-entry.js";
+import { projectCodingAgentSessionContextEntries } from "./session-context.js";
+import { restoreCodingAgentSessionAgentMessageEntry } from "./session-document-entry.js";
 
-/** 将持久化活动分支恢复为旧 Coding Agent 的完整 AgentMessage 身份。 */
-export class CodingAgentGreenfieldAgentMessageContextProjector implements ConversationContextProjector {
+/** 将持久化活动分支恢复为 Coding Agent 的完整 AgentMessage 身份。 */
+export class CodingAgentConversationContextProjector implements ConversationContextProjector {
 	project(document: ConversationDocument): readonly RuntimeMessageEnvelope[] {
 		const entries = document.entries.map(toSessionEntry);
 		const projection = projectCodingAgentSessionContextEntries(
@@ -48,9 +48,9 @@ export class CodingAgentGreenfieldAgentMessageContextProjector implements Conver
 	}
 }
 
-/** Restore the active Greenfield branch to the product-level AgentMessage identities used by RPC. */
-export function projectCodingAgentGreenfieldMessages(document: ConversationDocument): readonly AgentMessage[] {
-	return new CodingAgentGreenfieldAgentMessageContextProjector().project(document).map((envelope) => {
+/** Restore the active branch to the product-level AgentMessage identities used by hosts. */
+export function projectCodingAgentMessages(document: ConversationDocument): readonly AgentMessage[] {
+	return new CodingAgentConversationContextProjector().project(document).map((envelope) => {
 		if (envelope.kind === "message") return envelope.message;
 		if (envelope.kind === "opaque") return readAgentMessage(envelope.identity);
 		throw new Error("Coding Agent conversation projector returned a context-only envelope");

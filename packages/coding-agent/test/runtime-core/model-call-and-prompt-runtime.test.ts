@@ -1,19 +1,19 @@
 import type { Api, Model } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentModelCallFrameComposer } from "../../src/adapters/runtime-core/greenfield-model-call-composer.js";
 import {
 	CodingAgentRuntimeModelAdapter,
 	type CodingAgentRuntimeModelSource,
-} from "../../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
-import { CodingAgentGreenfieldPromptAdapter } from "../../src/adapters/runtime-core/greenfield-prompt-adapter.js";
-import { CodingAgentPromptRuntime } from "../../src/adapters/runtime-core/greenfield-prompt-runtime.js";
+} from "../../src/adapters/runtime-core/model-runtime-adapter.js";
+import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 import { buildSystemPrompt } from "../../src/model-context/index.js";
+import { CodingAgentModelCallFrameComposer } from "../../src/model-context/model-call-frame-composer.js";
+import { CodingAgentPromptRuntime } from "../../src/model-context/prompt-runtime.js";
 import {
 	CODING_AGENT_MODEL_TOOL_ORDER,
 	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
 } from "../../src/tool-policy/model-tool-order.js";
 
-describe("Greenfield coding-agent adapters", () => {
+describe("Coding Agent model call and prompt runtime", () => {
 	it("adapts the live model runtime to catalog, credentials and auth refresh ports", async () => {
 		const refresh = vi.fn();
 		const getApiKey = vi.fn(async () => "test-key");
@@ -42,7 +42,7 @@ describe("Greenfield coding-agent adapters", () => {
 	});
 
 	it("maps basic prompt fields without adding synthetic context", async () => {
-		const adapter = new CodingAgentGreenfieldPromptAdapter({ now: () => 42 });
+		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
 		const prepared = await adapter.prepare(
 			{
 				text: "inspect image",
@@ -70,7 +70,7 @@ describe("Greenfield coding-agent adapters", () => {
 	});
 
 	it("translates legacy prompt contributions into ordered generic context records", async () => {
-		const adapter = new CodingAgentGreenfieldPromptAdapter({
+		const adapter = new CodingAgentPromptRequestAdapter({
 			now: () => 42,
 			resolvePromptResource: (text, promptRef) => ({
 				text,
@@ -114,7 +114,7 @@ describe("Greenfield coding-agent adapters", () => {
 	});
 
 	it("keeps unavailable resources model-invisible and flattens queued injections like the legacy path", async () => {
-		const unavailable = new CodingAgentGreenfieldPromptAdapter({ now: () => 42 });
+		const unavailable = new CodingAgentPromptRequestAdapter({ now: () => 42 });
 		const prepared = await unavailable.prepare(
 			{ text: "use it", promptRef: { kind: "skill", name: "missing" }, attachments: [] },
 			{ sessionId: "session-1", queueing: false },
@@ -124,7 +124,7 @@ describe("Greenfield coding-agent adapters", () => {
 			{ type: "prompt_resource_reference", modelVisible: false },
 		]);
 
-		const queued = new CodingAgentGreenfieldPromptAdapter({
+		const queued = new CodingAgentPromptRequestAdapter({
 			now: () => 42,
 			resolvePromptResource: (text, promptRef) => ({
 				text,
