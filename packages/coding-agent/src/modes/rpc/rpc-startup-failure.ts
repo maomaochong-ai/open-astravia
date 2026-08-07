@@ -1,5 +1,6 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
+import { RPC_FAILURE_CODES } from "./rpc-failure.js";
 
 const RpcStartupFailureBaseSchema = {
 	id: Type.Optional(Type.String()),
@@ -12,6 +13,9 @@ const RpcStartupFailureBaseSchema = {
 const RpcConversationOwnershipFailureSchema = Type.Object(
 	{
 		...RpcStartupFailureBaseSchema,
+		errorCode: Type.Literal(RPC_FAILURE_CODES.SESSION_LOCKED),
+		phase: Type.Literal("startup"),
+		recoverability: Type.Literal("user_action"),
 		lockHolder: Type.Optional(
 			Type.Object({
 				pid: Type.Number(),
@@ -26,7 +30,9 @@ const RpcConversationOwnershipFailureSchema = Type.Object(
 const RpcExtensionIncompatibilityFailureSchema = Type.Object(
 	{
 		...RpcStartupFailureBaseSchema,
-		errorCode: Type.Literal("extension_incompatible"),
+		errorCode: Type.Literal(RPC_FAILURE_CODES.EXTENSION_INCOMPATIBLE),
+		phase: Type.Literal("startup"),
+		recoverability: Type.Literal("user_action"),
 		unsupportedEvents: Type.Array(Type.String()),
 		unmetRuntimeCapabilities: Type.Array(Type.String()),
 	},
@@ -37,10 +43,12 @@ const RpcSessionIncompatibilityFailureSchema = Type.Object(
 	{
 		...RpcStartupFailureBaseSchema,
 		errorCode: Type.Union([
-			Type.Literal("session_corrupt"),
-			Type.Literal("session_incompatible"),
-			Type.Literal("session_version_unsupported"),
+			Type.Literal(RPC_FAILURE_CODES.SESSION_CORRUPT),
+			Type.Literal(RPC_FAILURE_CODES.SESSION_INCOMPATIBLE),
+			Type.Literal(RPC_FAILURE_CODES.SESSION_VERSION_UNSUPPORTED),
 		]),
+		phase: Type.Literal("startup"),
+		recoverability: Type.Literal("user_action"),
 		sessionPath: Type.String(),
 		sourceVersion: Type.Optional(Type.Integer({ minimum: 1 })),
 		issueCode: Type.Optional(Type.String()),

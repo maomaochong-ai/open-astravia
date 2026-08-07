@@ -99,6 +99,8 @@ describe("Extension incompatibility policy", () => {
 			command: "startup",
 			success: false,
 			errorCode: "extension_incompatible",
+			phase: "startup",
+			recoverability: "user_action",
 			error: "Extension requires events or runtime capabilities that are not supported by this runtime",
 			unsupportedEvents: ["future_event"],
 			unmetRuntimeCapabilities: ["event-handler"],

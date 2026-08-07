@@ -1200,6 +1200,8 @@ Startup compatibility failures are emitted as one failed `startup` response befo
   "command": "startup",
   "success": false,
   "errorCode": "session_version_unsupported",
+  "phase": "startup",
+  "recoverability": "user_action",
   "error": "Historical session cannot be imported safely",
   "sessionPath": "/path/to/future-session.jsonl",
   "sourceVersion": 4,
@@ -1208,7 +1210,17 @@ Startup compatibility failures are emitted as one failed `startup` response befo
 }
 ```
 
-`errorCode` is one of `session_corrupt`, `session_incompatible`, or `session_version_unsupported`. `issueCode` and `issueCount` are content-free diagnostics and never include conversation text. Extension incompatibility uses the same startup envelope with `errorCode: "extension_incompatible"` plus `unsupportedEvents` and `unmetRuntimeCapabilities`.
+Every failed response includes `errorCode`, `phase`, and `recoverability`. `errorCode` is a stable machine-readable slug; hosts must not classify failures by parsing `error`. `phase` is one of `startup`, `command`, `turn`, `transition`, or `shutdown`. `recoverability` is one of:
+
+- `retry_safe`: the requested operation did not begin and may be retried.
+- `continue_session`: the Session remains usable, but the failed operation is not replayed automatically.
+- `restart_session`: dispose the current process/Session and create or resume one explicitly.
+- `user_action`: configuration, input, ownership, or compatibility must be corrected first.
+- `fatal`: the host cannot recover within the current product flow.
+
+For startup import failures, `errorCode` is one of `session_corrupt`, `session_incompatible`, or `session_version_unsupported`. `issueCode` and `issueCount` are content-free diagnostics and never include conversation text. Extension incompatibility uses the same startup envelope with `errorCode: "extension_incompatible"` plus `unsupportedEvents` and `unmetRuntimeCapabilities`.
+
+Hosts must never automatically replay an active Turn after a timeout, process exit, or unknown delivery state. The persisted conversation may be resumed after explicit process recovery, but the user or host workflow must decide whether to submit new input.
 
 Failed commands return a response with `success: false`:
 
@@ -1217,6 +1229,9 @@ Failed commands return a response with `success: false`:
   "type": "response",
   "command": "set_model",
   "success": false,
+  "errorCode": "model_not_found",
+  "phase": "command",
+  "recoverability": "user_action",
   "error": "Model not found: invalid/model"
 }
 ```
@@ -1228,6 +1243,9 @@ Parse errors:
   "type": "response",
   "command": "parse",
   "success": false,
+  "errorCode": "invalid_request",
+  "phase": "command",
+  "recoverability": "user_action",
   "error": "Failed to parse command: Unexpected token..."
 }
 ```

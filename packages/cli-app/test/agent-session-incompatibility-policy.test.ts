@@ -80,6 +80,8 @@ describe("Session incompatibility policy", () => {
 			command: "startup",
 			success: false,
 			errorCode: "session_version_unsupported",
+			phase: "startup",
+			recoverability: "user_action",
 			error: "Historical session cannot be imported safely",
 			sessionPath: sessionCompatibility.sourcePath,
 			sourceVersion: 4,

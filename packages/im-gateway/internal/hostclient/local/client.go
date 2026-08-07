@@ -146,17 +146,17 @@ func (c *Client) OpenSession(ctx context.Context, cwd, sessionPath string) (host
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("hostclient/local: stdin pipe: %w", err)
+		return nil, newHostFailure(hostclient.FailureCodeProcessIOFailed, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe, fmt.Sprintf("hostclient/local: stdin pipe: %v", err), err)
 	}
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("hostclient/local: stdout pipe: %w", err)
+		return nil, newHostFailure(hostclient.FailureCodeProcessIOFailed, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe, fmt.Sprintf("hostclient/local: stdout pipe: %v", err), err)
 	}
 	stderrBuf := &bytes.Buffer{}
 	cmd.Stderr = stderrBuf
 
 	if err := cmd.Start(); err != nil {
-		return nil, fmt.Errorf("hostclient/local: spawn coding-agent (%s): %w", c.opts.Bin, err)
+		return nil, newHostFailure(hostclient.FailureCodeProcessSpawnFailed, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe, fmt.Sprintf("hostclient/local: spawn coding-agent (%s): %v", c.opts.Bin, err), err)
 	}
 
 	s := &session{
@@ -218,7 +218,7 @@ func (s *session) handshake(ctx context.Context, timeout time.Duration) error {
 		}
 		select {
 		case <-s.exited:
-			return fmt.Errorf("hostclient/local: subprocess exited during handshake: %s", s.tailStderr())
+			return newHostFailure(hostclient.FailureCodeProcessExited, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe, fmt.Sprintf("hostclient/local: subprocess exited during handshake: %s", s.tailStderr()), err)
 		default:
 		}
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -228,14 +228,14 @@ func (s *session) handshake(ctx context.Context, timeout time.Duration) error {
 			// swallowing it, so a child that hangs in startup (e.g. Electron
 			// sandbox/GPU init on Linux) is diagnosable without re-spawning.
 			if tail := s.tailStderr(); tail != "" {
-				return fmt.Errorf("hostclient/local: handshake timed out after %v; subprocess stderr: %s", timeout, tail)
+				return newHostFailure(hostclient.FailureCodeHandshakeTimeout, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe, fmt.Sprintf("hostclient/local: handshake timed out after %v; subprocess stderr: %s", timeout, tail), err)
 			}
-			return fmt.Errorf("hostclient/local: handshake timed out after %v", timeout)
+			return newHostFailure(hostclient.FailureCodeHandshakeTimeout, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe, fmt.Sprintf("hostclient/local: handshake timed out after %v", timeout), err)
 		}
-		return fmt.Errorf("hostclient/local: handshake failed: %w", err)
+		return newHostFailure(hostclient.FailureCodeCommandFailed, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe, fmt.Sprintf("hostclient/local: handshake failed: %v", err), err)
 	}
 	if !resp.Success {
-		return fmt.Errorf("hostclient/local: handshake response error: %s", resp.Error)
+		return failureFromResponse(resp, hostclient.FailurePhaseStartup)
 	}
 	// Capture the session file path the agent ended up using. This is
 	// either the explicit --session we passed or, when we passed nothing,
@@ -251,8 +251,8 @@ func (s *session) handshake(ctx context.Context, timeout time.Duration) error {
 }
 
 // detectStartupLockError scans the events channel (non-blockingly) for the
-// structured startup lock error emitted by main.ts when SessionManager
-// cannot acquire the .jsonl lock. The shape is:
+// structured startup lock error emitted before the Runtime accepts commands.
+// The shape is:
 //
 //	{"type":"response","command":"startup","success":false,
 //	 "error":"...","lockHolder":{"pid":...,"hostname":"...","openedAt":"..."}}

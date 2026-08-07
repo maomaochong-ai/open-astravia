@@ -27,6 +27,8 @@ export class SessionCompatibilityError extends Error {
 			command: "startup",
 			success: false,
 			errorCode: this.errorCode,
+			phase: "startup",
+			recoverability: "user_action",
 			error: this.message,
 			sessionPath: this.sessionPath,
 			...(this.sourceVersion === undefined ? {} : { sourceVersion: this.sourceVersion }),

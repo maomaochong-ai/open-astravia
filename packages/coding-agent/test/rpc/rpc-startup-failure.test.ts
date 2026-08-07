@@ -6,12 +6,15 @@ import {
 } from "../../src/modes/rpc/rpc-startup-failure.js";
 
 describe("RPC startup failure contract", () => {
-	it("accepts the existing ownership conflict wire", () => {
+	it("accepts a typed ownership conflict wire", () => {
 		expect(
 			isRpcStartupFailure({
 				type: "response",
 				command: "startup",
 				success: false,
+				errorCode: "session_locked",
+				phase: "startup",
+				recoverability: "user_action",
 				error: "Conversation is already owned",
 				lockHolder: { pid: 123, hostname: "test-host", openedAt: "2026-08-02T00:00:00.000Z" },
 			}),
@@ -24,6 +27,8 @@ describe("RPC startup failure contract", () => {
 			command: "startup",
 			success: false,
 			errorCode: "extension_incompatible",
+			phase: "startup",
+			recoverability: "user_action",
 			error: "Extension is incompatible",
 			unsupportedEvents: ["future_event"],
 			unmetRuntimeCapabilities: ["event-handler"],
@@ -38,6 +43,8 @@ describe("RPC startup failure contract", () => {
 			command: "startup",
 			success: false,
 			errorCode: "extension_incompatible",
+			phase: "startup",
+			recoverability: "user_action",
 			error: "Extension is incompatible",
 		};
 
@@ -53,6 +60,8 @@ describe("RPC startup failure contract", () => {
 			command: "startup",
 			success: false,
 			errorCode: "session_version_unsupported",
+			phase: "startup",
+			recoverability: "user_action",
 			error: "Historical session cannot be imported safely",
 			sessionPath: "C:/sessions/future.jsonl",
 			sourceVersion: 4,

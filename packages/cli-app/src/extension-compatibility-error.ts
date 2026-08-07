@@ -19,6 +19,8 @@ export class ExtensionCompatibilityError extends Error {
 			command: "startup",
 			success: false,
 			errorCode: this.errorCode,
+			phase: "startup",
+			recoverability: "user_action",
 			error: this.message,
 			unsupportedEvents: [...this.unsupportedEvents],
 			unmetRuntimeCapabilities: [...this.unmetRuntimeCapabilities],

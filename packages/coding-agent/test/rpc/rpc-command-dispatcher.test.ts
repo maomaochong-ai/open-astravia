@@ -103,6 +103,9 @@ describe("RPC command dispatcher", () => {
 				command: "prompt",
 				success: false,
 				error: "provider failed",
+				errorCode: "command_failed",
+				phase: "turn",
+				recoverability: "continue_session",
 			},
 		]);
 	});
@@ -117,6 +120,9 @@ describe("RPC command dispatcher", () => {
 			command: "set_session_name",
 			success: false,
 			error: "Session name cannot be empty",
+			errorCode: "invalid_request",
+			phase: "command",
+			recoverability: "user_action",
 		});
 		expect(required(session.session).setName).not.toHaveBeenCalled();
 	});
@@ -136,6 +142,9 @@ describe("RPC command dispatcher", () => {
 			command: "switch_session",
 			success: false,
 			error: "target session is locked",
+			errorCode: "command_failed",
+			phase: "transition",
+			recoverability: "continue_session",
 		});
 	});
 
@@ -167,6 +176,9 @@ describe("RPC command dispatcher", () => {
 			command: "bash",
 			success: false,
 			error: "Command bash is not supported by RPC profile greenfield-im",
+			errorCode: "command_not_supported",
+			phase: "command",
+			recoverability: "user_action",
 		});
 	});
 

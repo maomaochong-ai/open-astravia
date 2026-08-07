@@ -1,7 +1,7 @@
 import { createAgentCliBootstrap, resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import { runCodingAgentCliControl } from "@vetta/coding-agent/cli-control";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
-import { stringifyRpcStartupFailure } from "@vetta/coding-agent/rpc";
+import { RPC_FAILURE_CODES, stringifyRpcStartupFailure } from "@vetta/coding-agent/rpc";
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
 import { classifyAgentCliIntent } from "./agent-cli-intent.js";
 import { ExtensionCompatibilityError } from "./extension-compatibility-error.js";
@@ -89,6 +89,9 @@ export async function runAgentRuntimeCli(
 				type: "response",
 				command: "startup",
 				success: false,
+				errorCode: RPC_FAILURE_CODES.SESSION_LOCKED,
+				phase: "startup",
+				recoverability: "user_action",
 				error: error.message,
 				...(error.holder
 					? {

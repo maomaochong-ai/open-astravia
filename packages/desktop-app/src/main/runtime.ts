@@ -1,7 +1,7 @@
 import type { RuntimeHost } from "../../../runtime-core/src/index.js";
 import type { DesktopGreenfieldRuntimeBackendPool } from "./greenfield-runtime/desktop-greenfield-runtime-backend-pool.js";
 import { createDesktopRuntimeComposition } from "./greenfield-runtime/desktop-runtime-composition.js";
-import { DesktopRuntimeLifecycle } from "./greenfield-runtime/desktop-runtime-lifecycle.js";
+import { type DesktopRuntimeHealth, DesktopRuntimeLifecycle } from "./greenfield-runtime/desktop-runtime-lifecycle.js";
 
 // 进程级共享 RuntimeHost：session IPC、定时任务与批量任务必须复用同一实例，
 // 避免同一进程重复申请 Session 文件锁。
@@ -14,13 +14,27 @@ export function peekSharedRuntime(): RuntimeHost | null {
 	return sharedRuntime;
 }
 
+export function getSharedRuntimeHealth(): DesktopRuntimeHealth {
+	return sharedRuntimeLifecycle.snapshot();
+}
+
 export function getSharedRuntime(): RuntimeHost {
 	sharedRuntimeLifecycle.assertCanAccessRuntime();
 	if (!sharedRuntime) {
-		const composition = createDesktopRuntimeComposition();
-		sharedRuntime = composition.runtime;
-		sharedRuntimeBackendPool = composition.runtimeBackendPool;
-		sharedRuntimeLifecycle.markRunning();
+		try {
+			const composition = createDesktopRuntimeComposition();
+			sharedRuntime = composition.runtime;
+			sharedRuntimeBackendPool = composition.runtimeBackendPool;
+			sharedRuntimeLifecycle.markRunning();
+		} catch (error) {
+			sharedRuntimeLifecycle.recordFailure({
+				errorCode: "runtime_startup_failed",
+				phase: "startup",
+				recoverability: "retry_safe",
+				message: errorMessage(error),
+			});
+			throw error;
+		}
 	}
 	return sharedRuntime;
 }
@@ -38,14 +52,28 @@ export async function disposeSharedRuntime(): Promise<void> {
 	sharedRuntimeBackendPool = null;
 	sharedRuntimeShutdownPromise = (async () => {
 		try {
-			await runtime?.disposeAllSessions();
-		} finally {
 			try {
-				await runtimeBackendPool?.dispose();
+				await runtime?.disposeAllSessions();
 			} finally {
-				sharedRuntimeLifecycle.markStopped();
+				try {
+					await runtimeBackendPool?.dispose();
+				} finally {
+					sharedRuntimeLifecycle.markStopped();
+				}
 			}
+		} catch (error) {
+			sharedRuntimeLifecycle.recordFailure({
+				errorCode: "runtime_shutdown_failed",
+				phase: "shutdown",
+				recoverability: "restart_session",
+				message: errorMessage(error),
+			});
+			throw error;
 		}
 	})();
 	return await sharedRuntimeShutdownPromise;
+}
+
+function errorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
 }

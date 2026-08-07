@@ -28,4 +28,30 @@ describe("DesktopRuntimeLifecycle", () => {
 		expect(lifecycle.state).toBe("stopped");
 		expect(() => lifecycle.assertCanAccessRuntime()).toThrowError("Desktop RuntimeHost is stopped");
 	});
+
+	it("records typed process-level failures and clears them after a successful start", () => {
+		const lifecycle = new DesktopRuntimeLifecycle();
+
+		lifecycle.recordFailure({
+			errorCode: "runtime_startup_failed",
+			phase: "startup",
+			recoverability: "retry_safe",
+			message: "model bootstrap failed",
+		});
+
+		expect(lifecycle.snapshot()).toMatchObject({
+			state: "idle",
+			lastFailure: {
+				errorCode: "runtime_startup_failed",
+				phase: "startup",
+				recoverability: "retry_safe",
+				message: "model bootstrap failed",
+				occurredAt: expect.any(String),
+			},
+		});
+
+		lifecycle.markRunning();
+
+		expect(lifecycle.snapshot()).toEqual({ state: "running" });
+	});
 });

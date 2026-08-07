@@ -6,8 +6,14 @@
  */
 
 import type { Readable, Writable } from "node:stream";
-import { createRpcCommandDispatcher, type RpcFrameOutput, rpcError } from "./rpc-command-dispatcher.js";
+import {
+	createRpcCommandDispatcher,
+	type RpcFrameOutput,
+	rpcError,
+	rpcFailureMetadataForCommand,
+} from "./rpc-command-dispatcher.js";
 import { RpcExtensionUIBridge } from "./rpc-extension-ui-bridge.js";
+import { RPC_FAILURE_CODES } from "./rpc-failure.js";
 import { validateRpcInboundFrame } from "./rpc-frame-validator.js";
 import { RpcHostBridge } from "./rpc-host-bridge.js";
 import { RpcJsonlTransport } from "./rpc-jsonl-transport.js";
@@ -101,7 +107,14 @@ export async function runRpcModeWithCapabilities(
 	let shutdownPromise: Promise<void> | undefined;
 	const shutdown = (): Promise<void> => {
 		shutdownPromise ??= session.shutdown().catch((error: unknown) => {
-			output(rpcError(undefined, "shutdown", `Failed to shut down RPC session: ${errorMessage(error)}`));
+			output(
+				rpcError(
+					undefined,
+					"shutdown",
+					`Failed to shut down RPC session: ${errorMessage(error)}`,
+					rpcFailureMetadataForCommand("shutdown", RPC_FAILURE_CODES.SHUTDOWN_FAILED),
+				),
+			);
 		});
 		return shutdownPromise;
 	};
@@ -139,19 +152,44 @@ export async function runRpcModeWithCapabilities(
 					hostBridge?.handle(frame.value);
 					return;
 				case "unknown":
-					output(rpcError(undefined, frame.type, `Unknown command: ${frame.type}`));
+					output(
+						rpcError(
+							undefined,
+							frame.type,
+							`Unknown command: ${frame.type}`,
+							rpcFailureMetadataForCommand(frame.type, RPC_FAILURE_CODES.COMMAND_NOT_SUPPORTED),
+						),
+					);
 					return;
 				case "invalid":
 					throw new Error(frame.message);
 				case "command": {
-					const response = await dispatch(frame.value);
-					output(response);
+					try {
+						const response = await dispatch(frame.value);
+						output(response);
+					} catch (error) {
+						output(
+							rpcError(
+								frame.value.id,
+								frame.value.type,
+								errorMessage(error),
+								rpcFailureMetadataForCommand(frame.value.type, errorCode(error)),
+							),
+						);
+					}
 					if (shutdownRequested) scheduleRequestedShutdown();
 					return;
 				}
 			}
 		} catch (error: unknown) {
-			output(rpcError(undefined, "parse", `Failed to parse command: ${errorMessage(error)}`));
+			output(
+				rpcError(
+					undefined,
+					"parse",
+					`Failed to parse command: ${errorMessage(error)}`,
+					rpcFailureMetadataForCommand("parse", RPC_FAILURE_CODES.INVALID_REQUEST),
+				),
+			);
 		}
 	};
 
@@ -168,7 +206,14 @@ export async function runRpcModeWithCapabilities(
 			void cleanup().then(
 				() => exit(0),
 				(error: unknown) => {
-					output(rpcError(undefined, "shutdown", `Failed to dispose RPC session: ${errorMessage(error)}`));
+					output(
+						rpcError(
+							undefined,
+							"shutdown",
+							`Failed to dispose RPC session: ${errorMessage(error)}`,
+							rpcFailureMetadataForCommand("shutdown", RPC_FAILURE_CODES.SHUTDOWN_FAILED),
+						),
+					);
 					exit(1);
 				},
 			);
@@ -180,4 +225,12 @@ export async function runRpcModeWithCapabilities(
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function errorCode(error: unknown): string {
+	if (typeof error === "object" && error !== null) {
+		const code = Reflect.get(error, "code");
+		if (typeof code === "string" && code.length > 0) return code;
+	}
+	return RPC_FAILURE_CODES.COMMAND_FAILED;
 }

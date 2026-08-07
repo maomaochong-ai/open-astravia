@@ -1,3 +1,4 @@
+import { RPC_FAILURE_CODES, type RpcFailureMetadata } from "./rpc-failure.js";
 import { type RpcSessionCapabilities, supportsRpcCommand } from "./rpc-session-capabilities.js";
 import type { RpcCommand, RpcResponse } from "./rpc-types.js";
 
@@ -19,8 +20,27 @@ export function rpcSuccess<T extends RpcCommand["type"]>(
 	return { id, type: "response", command, success: true, data } as RpcResponse;
 }
 
-export function rpcError(id: string | undefined, command: string, message: string): RpcResponse {
-	return { id, type: "response", command, success: false, error: message };
+export function rpcError(
+	id: string | undefined,
+	command: string,
+	message: string,
+	metadata: RpcFailureMetadata = rpcFailureMetadataForCommand(command),
+): RpcResponse {
+	return { id, type: "response", command, success: false, error: message, ...metadata };
+}
+
+export function rpcFailureMetadataForCommand(
+	command: string,
+	errorCode: string = RPC_FAILURE_CODES.COMMAND_FAILED,
+): RpcFailureMetadata {
+	if (command === "shutdown") return { errorCode, phase: "shutdown", recoverability: "restart_session" };
+	if (command === "prompt" || command === "steer" || command === "follow_up" || command === "abort") {
+		return { errorCode, phase: "turn", recoverability: "continue_session" };
+	}
+	if (command === "new_session" || command === "switch_session" || command === "fork") {
+		return { errorCode, phase: "transition", recoverability: "continue_session" };
+	}
+	return { errorCode, phase: "command", recoverability: "user_action" };
 }
 
 export function createRpcCommandDispatcher(
@@ -35,6 +55,7 @@ export function createRpcCommandDispatcher(
 				id,
 				command.type,
 				`Command ${command.type} is not supported by RPC profile ${session.profile.id}`,
+				rpcFailureMetadataForCommand(command.type, RPC_FAILURE_CODES.COMMAND_NOT_SUPPORTED),
 			);
 		}
 		switch (command.type) {
@@ -45,7 +66,16 @@ export function createRpcCommandDispatcher(
 						streamingBehavior: command.streamingBehavior,
 						source: "rpc",
 					})
-					.catch((error: unknown) => output(rpcError(id, "prompt", errorMessage(error))));
+					.catch((error: unknown) =>
+						output(
+							rpcError(
+								id,
+								"prompt",
+								errorMessage(error),
+								rpcFailureMetadataForCommand("prompt", errorCode(error)),
+							),
+						),
+					);
 				options.onBackgroundTask?.(task);
 				return rpcSuccess(id, "prompt");
 			}
@@ -81,7 +111,12 @@ export function createRpcCommandDispatcher(
 					command.modelId,
 				);
 				if (!model) {
-					return rpcError(id, "set_model", `Model not found: ${command.provider}/${command.modelId}`);
+					return rpcError(
+						id,
+						"set_model",
+						`Model not found: ${command.provider}/${command.modelId}`,
+						rpcFailureMetadataForCommand("set_model", RPC_FAILURE_CODES.MODEL_NOT_FOUND),
+					);
 				}
 				return rpcSuccess(id, "set_model", model);
 			}
@@ -186,7 +221,12 @@ export function createRpcCommandDispatcher(
 			case "set_session_name": {
 				const name = command.name.trim();
 				if (!name) {
-					return rpcError(id, "set_session_name", "Session name cannot be empty");
+					return rpcError(
+						id,
+						"set_session_name",
+						"Session name cannot be empty",
+						rpcFailureMetadataForCommand("set_session_name", RPC_FAILURE_CODES.INVALID_REQUEST),
+					);
 				}
 				await requireCapability(session.session, "session", command.type).setName(name);
 				return rpcSuccess(id, "set_session_name");
@@ -201,7 +241,12 @@ export function createRpcCommandDispatcher(
 				});
 			default: {
 				const unknownCommand = command as { type: string };
-				return rpcError(undefined, unknownCommand.type, `Unknown command: ${unknownCommand.type}`);
+				return rpcError(
+					undefined,
+					unknownCommand.type,
+					`Unknown command: ${unknownCommand.type}`,
+					rpcFailureMetadataForCommand(unknownCommand.type, RPC_FAILURE_CODES.COMMAND_NOT_SUPPORTED),
+				);
 			}
 		}
 	};
@@ -216,4 +261,12 @@ function requireCapability<T>(capability: T | undefined, name: string, command: 
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+function errorCode(error: unknown): string {
+	if (typeof error === "object" && error !== null) {
+		const code = Reflect.get(error, "code");
+		if (typeof code === "string" && code.length > 0) return code;
+	}
+	return RPC_FAILURE_CODES.COMMAND_FAILED;
 }

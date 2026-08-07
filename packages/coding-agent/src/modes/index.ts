@@ -17,7 +17,24 @@ export {
 	readGreenfieldRpcAgentMessages,
 	resolveNextGreenfieldRpcThinkingLevel,
 } from "./rpc/greenfield-rpc-capabilities.js";
-export { type ModelInfo, RpcClient, type RpcClientOptions, type RpcEventListener } from "./rpc/rpc-client.js";
+export {
+	type ModelInfo,
+	RpcClient,
+	RpcClientError,
+	type RpcClientOptions,
+	type RpcEventListener,
+	rpcClientErrorFromResponse,
+} from "./rpc/rpc-client.js";
+export {
+	isRpcFailureMetadata,
+	RPC_FAILURE_CODES,
+	type RpcFailureMetadata,
+	RpcFailureMetadataSchema,
+	type RpcFailurePhase,
+	RpcFailurePhaseSchema,
+	type RpcFailureRecoverability,
+	RpcFailureRecoverabilitySchema,
+} from "./rpc/rpc-failure.js";
 export { type RunRpcModeOptions, runRpcModeWithCapabilities } from "./rpc/rpc-mode.js";
 export {
 	assertRpcSessionCapabilities,
@@ -41,6 +58,7 @@ export {
 export type {
 	RpcBashResult,
 	RpcCommand,
+	RpcErrorResponse,
 	RpcResponse,
 	RpcSessionState,
 } from "./rpc/rpc-types.js";

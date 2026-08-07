@@ -156,7 +156,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 
 function logSessionRoute(decision: RuntimeHostSessionBackendRouteDecision): void {
 	if (decision.source === "default") {
-		log.info(`[agent-runtime] session-route backend=${decision.routeId ?? "unknown"} reason=new-session-default`);
+		log.info(`[agent-runtime] session-route route=${decision.routeId ?? "unknown"} reason=new-session-default`);
 		return;
 	}
 	const reason =
@@ -165,7 +165,7 @@ function logSessionRoute(decision: RuntimeHostSessionBackendRouteDecision): void
 			: decision.routeId === "runtime"
 				? "conversation-v2-catalog"
 				: "unknown-catalog";
-	log.info(`[agent-runtime] session-route backend=${decision.routeId ?? "unknown"} reason=${reason}`);
+	log.info(`[agent-runtime] session-route route=${decision.routeId ?? "unknown"} reason=${reason}`);
 }
 
 function resolveDesktopGreenfieldSessionRoots(): RuntimeConversationSessionRoot[] {
