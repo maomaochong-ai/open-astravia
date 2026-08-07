@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createDesktopLegacySessionFormatCompatibility } from "./desktop-legacy-session-format-compatibility.js";
+import { createDesktopHistoricalSessionFormat } from "./historical-session-format.js";
 
 const temporaryRoots = new Set<string>();
 
@@ -19,23 +19,23 @@ describe("Desktop historical session format compatibility", () => {
 		writeFileSync(sessionPath, historicalSession(), "utf8");
 		writeFileSync(`${sessionPath}.lock`, "stale lock", "utf8");
 
-		const compatibility = createDesktopLegacySessionFormatCompatibility();
-		expect(await compatibility.sessionCatalog.ownsSession(sessionPath)).toBe(true);
-		expect(await compatibility.sessionCatalog.listSessions("C:\\workspace", directory)).toEqual([
+		const historicalFormat = createDesktopHistoricalSessionFormat();
+		expect(await historicalFormat.sessionCatalog.ownsSession(sessionPath)).toBe(true);
+		expect(await historicalFormat.sessionCatalog.listSessions("C:\\workspace", directory)).toEqual([
 			expect.objectContaining({
 				id: "historical-session",
 				firstMessage: "first prompt",
 				lastMessagePreview: "final answer",
 			}),
 		]);
-		expect(compatibility.sessionFileHistoryReader.read(sessionPath).history).toHaveLength(2);
+		expect(historicalFormat.sessionFileHistoryReader.read(sessionPath).history).toHaveLength(2);
 
 		rmSync(`${sessionPath}.lock`);
-		await compatibility.sessionCatalog.renameSession(sessionPath, "renamed session");
+		await historicalFormat.sessionCatalog.renameSession(sessionPath, "renamed session");
 		expect(readFileSync(sessionPath, "utf8")).toContain('"name":"renamed session"');
 
 		writeFileSync(`${sessionPath}.lock`, "stale lock", "utf8");
-		await compatibility.sessionCatalog.deleteSessionArtifacts(sessionPath);
+		await historicalFormat.sessionCatalog.deleteSessionArtifacts(sessionPath);
 		expect(existsSync(sessionPath)).toBe(false);
 		expect(existsSync(`${sessionPath}.lock`)).toBe(false);
 	});

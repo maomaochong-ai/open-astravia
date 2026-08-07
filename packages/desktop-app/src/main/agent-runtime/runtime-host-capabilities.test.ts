@@ -10,9 +10,9 @@ import {
 	RuntimeHost,
 } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DesktopGreenfieldRuntimeBackendPool } from "./desktop-greenfield-runtime-backend-pool.js";
+import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 
-describe("Desktop Greenfield RuntimeHost capabilities", () => {
+describe("Desktop RuntimeHost capabilities", () => {
 	const directories: string[] = [];
 	const disposers: Array<() => Promise<void>> = [];
 
@@ -24,8 +24,8 @@ describe("Desktop Greenfield RuntimeHost capabilities", () => {
 	});
 
 	it("passes plugin prompt, tool and continuation capabilities through the Desktop backend pool", async () => {
-		const cwd = await temporaryDirectory("desktop-greenfield-plugin-workspace-");
-		const sessionDir = await temporaryDirectory("desktop-greenfield-plugin-sessions-");
+		const cwd = await temporaryDirectory("desktop-runtime-plugin-workspace-");
+		const sessionDir = await temporaryDirectory("desktop-runtime-plugin-sessions-");
 		const modelCalls: Array<{ readonly prompt?: string; readonly tools: readonly string[] }> = [];
 		const responses = [
 			assistantToolCall("plugin_artifact", { title: "Report" }),
@@ -34,7 +34,7 @@ describe("Desktop Greenfield RuntimeHost capabilities", () => {
 			assistantText("plugins disabled"),
 		];
 		let responseIndex = 0;
-		const pool = new DesktopGreenfieldRuntimeBackendPool({
+		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				activation: { mode: "explicit", toolNames: ["plugin_artifact"] },
 				modelRegistry: modelRegistry(),
@@ -116,8 +116,8 @@ describe("Desktop Greenfield RuntimeHost capabilities", () => {
 	});
 
 	it("applies live user-question handler removal without rebuilding the Desktop session", async () => {
-		const cwd = await temporaryDirectory("desktop-greenfield-question-workspace-");
-		const sessionDir = await temporaryDirectory("desktop-greenfield-question-sessions-");
+		const cwd = await temporaryDirectory("desktop-runtime-question-workspace-");
+		const sessionDir = await temporaryDirectory("desktop-runtime-question-sessions-");
 		const toolSurfaces: string[][] = [];
 		const responses = [
 			assistantToolCall("ask_user_question", {
@@ -137,7 +137,7 @@ describe("Desktop Greenfield RuntimeHost capabilities", () => {
 			assistantText("question tool disabled"),
 		];
 		let responseIndex = 0;
-		const pool = new DesktopGreenfieldRuntimeBackendPool({
+		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				activation: { mode: "explicit", toolNames: [] },
 				modelRegistry: modelRegistry(),
@@ -182,7 +182,7 @@ describe("Desktop Greenfield RuntimeHost capabilities", () => {
 		expect(runtime.getState(created.sessionId).activeToolNames).not.toContain("ask_user_question");
 	});
 
-	function registerDisposal(runtime: RuntimeHost, pool: DesktopGreenfieldRuntimeBackendPool): void {
+	function registerDisposal(runtime: RuntimeHost, pool: DesktopRuntimeBackendPool): void {
 		disposers.push(async () => {
 			await runtime.disposeAllSessions();
 			await pool.dispose();

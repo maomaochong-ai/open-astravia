@@ -15,13 +15,13 @@ import { join } from "node:path";
 import * as knowledge from "@vetta/runtime-knowledge";
 import { BrowserWindow } from "electron";
 import { AsyncTask, SimpleIntervalJob, ToadScheduler } from "toad-scheduler";
+import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
 import {
 	recordKnowledgeBaseProcessingResult,
 	recordKnowledgeBaseProcessingRound,
 	recordKnowledgeBaseProcessingUsage,
 	recordKnowledgeBaseSnapshot,
 } from "../app-monitor/app-monitor-service.js";
-import { getOrCreateSharedModelRuntime } from "../greenfield-runtime/desktop-coding-agent-host-services.js";
 import { KB_PROCESSING_CWD, KB_PROCESSING_SESSION_DIR, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { getKnowledgeRoot } from "./knowledge-layout.js";

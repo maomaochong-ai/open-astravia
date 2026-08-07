@@ -6,7 +6,7 @@ import {
 	type Disposable,
 	DOMAIN_AI_CAPABILITIES,
 } from "@vetta/capability-sdk";
-import { getOrCreateSharedModelRuntime } from "../greenfield-runtime/desktop-coding-agent-host-services.js";
+import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
 import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
 
 const DOMAIN_AI_PROVIDER_OWNER = "vetta.domain.ai";

@@ -119,6 +119,23 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired Desktop Runtime migration paths and identities", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/desktop-app/src/main/greenfield-runtime/desktop-greenfield-runtime-candidate.ts",
+				text: [
+					'import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";',
+					"export class DesktopGreenfieldRuntimeCandidate {}",
+				].join("\n"),
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"desktopRuntimeMigrationFiles: 1 exceeds migration residue limit 0",
+			"desktopRuntimeMigrationIdentities: 1 exceeds migration residue limit 0",
+		]);
+	});
+
 	it("rejects retired files and symbols", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{

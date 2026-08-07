@@ -7,13 +7,13 @@ import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-ser
 import { RuntimeHost } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DesktopGreenfieldRuntimeBackendPool } from "./desktop-greenfield-runtime-backend-pool.js";
-import { DesktopGreenfieldRuntimeSessionCatalog } from "./desktop-greenfield-session-catalog.js";
+import { DesktopRuntimeBackendPool } from "./backend-pool.js";
+import { DesktopRuntimeSessionCatalog } from "./session-catalog.js";
 
-describe("DesktopGreenfieldRuntimeBackendPool", () => {
+describe("DesktopRuntimeBackendPool", () => {
 	const directories: string[] = [];
 	const runtimes: RuntimeHost[] = [];
-	const pools: DesktopGreenfieldRuntimeBackendPool[] = [];
+	const pools: DesktopRuntimeBackendPool[] = [];
 
 	afterEach(async () => {
 		for (const runtime of runtimes.splice(0).reverse()) await runtime.disposeAllSessions();
@@ -24,8 +24,8 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 	});
 
 	it("reuses one scoped composition and isolates different workspaces", async () => {
-		const firstCwd = await temporaryDirectory("desktop-greenfield-pool-first-");
-		const secondCwd = await temporaryDirectory("desktop-greenfield-pool-second-");
+		const firstCwd = await temporaryDirectory("desktop-runtime-pool-first-");
+		const secondCwd = await temporaryDirectory("desktop-runtime-pool-second-");
 		const pool = createPool();
 		const runtime = new RuntimeHost({
 			sessionBackend: pool,
@@ -59,7 +59,7 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 	});
 
 	it("uses cwd/.vetta/sessions for project listing when sessionDir is omitted", async () => {
-		const cwd = await temporaryDirectory("desktop-greenfield-catalog-root-");
+		const cwd = await temporaryDirectory("desktop-runtime-catalog-root-");
 		const pool = createPool();
 		const runtime = new RuntimeHost({
 			sessionBackend: pool,
@@ -73,7 +73,7 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 			model: MODEL,
 			scenario: "batch",
 		});
-		const catalog = new DesktopGreenfieldRuntimeSessionCatalog({
+		const catalog = new DesktopRuntimeSessionCatalog({
 			resolveRoots: () => [{ cwd, sessionDir: join(cwd, ".vetta", "sessions") }],
 		});
 		const sessions = await catalog.listSessions(cwd);
@@ -86,7 +86,7 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 	});
 
 	it("deduplicates concurrent host ownership and resumes after the backend pool is recreated", async () => {
-		const cwd = await temporaryDirectory("desktop-greenfield-restart-");
+		const cwd = await temporaryDirectory("desktop-runtime-restart-");
 		const initialPool = createPool();
 		const initialRuntime = new RuntimeHost({
 			sessionBackend: initialPool,
@@ -101,7 +101,7 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 			scenario: "batch",
 		});
 		const sessionPath = initialRuntime.getSessionPath(created.sessionId);
-		if (!sessionPath) throw new Error("Greenfield pool did not expose a session path");
+		if (!sessionPath) throw new Error("Runtime pool did not expose a session path");
 		const duplicateOpen = await initialRuntime.createSession({
 			cwd,
 			sessionPath,
@@ -134,7 +134,7 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 	});
 
 	it("does not accept new sessions after the process-level pool is disposed", async () => {
-		const cwd = await temporaryDirectory("desktop-greenfield-disposed-pool-");
+		const cwd = await temporaryDirectory("desktop-runtime-disposed-pool-");
 		const pool = createPool();
 		pools.push(pool);
 		await pool.dispose();
@@ -148,14 +148,14 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 	});
 
 	it("injects and disposes one managed MCP source per workspace scope", async () => {
-		const cwd = await temporaryDirectory("desktop-greenfield-mcp-source-");
+		const cwd = await temporaryDirectory("desktop-runtime-mcp-source-");
 		const source = {
 			refresh: async () => ({ tools: [] }),
 		} satisfies McpRuntimeToolSource;
 		const dispose = vi.fn(async () => undefined);
 		const createMcpRuntimeSource = vi.fn(async () => ({ source, dispose }));
 		let capturedSource: McpRuntimeToolSource | undefined;
-		const pool = new DesktopGreenfieldRuntimeBackendPool({
+		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
@@ -186,12 +186,12 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 	});
 
 	it("disposes the managed MCP source when composition creation fails", async () => {
-		const cwd = await temporaryDirectory("desktop-greenfield-mcp-failure-");
+		const cwd = await temporaryDirectory("desktop-runtime-mcp-failure-");
 		const source = {
 			refresh: async () => ({ tools: [] }),
 		} satisfies McpRuntimeToolSource;
 		const dispose = vi.fn(async () => undefined);
-		const pool = new DesktopGreenfieldRuntimeBackendPool({
+		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
@@ -216,8 +216,8 @@ describe("DesktopGreenfieldRuntimeBackendPool", () => {
 		expect(pool.readScopeCount()).toBe(0);
 	});
 
-	function createPool(): DesktopGreenfieldRuntimeBackendPool {
-		return new DesktopGreenfieldRuntimeBackendPool({
+	function createPool(): DesktopRuntimeBackendPool {
+		return new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				modelRegistry: modelRegistry(),
 				initialModel: MODEL,
@@ -245,8 +245,8 @@ function modelRegistry(): CodingAgentRuntimeModelSource {
 }
 
 const MODEL: Model<Api> = {
-	id: "desktop-greenfield-model",
-	name: "Desktop Greenfield Model",
+	id: "desktop-runtime-model",
+	name: "Desktop Runtime Model",
 	api: "openai-responses",
 	provider: "test",
 	baseUrl: "https://example.test",

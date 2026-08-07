@@ -18,9 +18,9 @@ import {
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
-import { DesktopGreenfieldRuntimeBackendPool } from "./desktop-greenfield-runtime-backend-pool.js";
+import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 
-type RuntimeBackend = "greenfield";
+type RuntimeBackend = "runtime";
 
 interface RuntimeFixture {
 	readonly runtime: RuntimeHost;
@@ -31,7 +31,7 @@ interface ModelCallObservation {
 	readonly body: Readonly<Record<string, unknown>>;
 }
 
-describe("Desktop RuntimeHost model-call frame cutover readiness", () => {
+describe("Desktop RuntimeHost model-call frame contract", () => {
 	const directories: string[] = [];
 	const fixtures: RuntimeFixture[] = [];
 	const servers: OpenAiResponsesTestServer[] = [];
@@ -62,14 +62,14 @@ describe("Desktop RuntimeHost model-call frame cutover readiness", () => {
 			const cwd = await temporaryDirectory(`desktop-frame-${scenario}-workspace-`);
 			const observations = await observeBackends(cwd, scenario);
 
-			assertCanonicalModelCallFrame(observations.greenfield);
+			assertCanonicalModelCallFrame(observations.runtime);
 		}, 30_000);
 	}
 
-	it("applies host capability changes at the same turn boundary across backends", async () => {
+	it("applies host capability changes at the next production Runtime turn boundary", async () => {
 		const cwd = await temporaryDirectory("desktop-frame-dynamic-workspace-");
 		const observations: Record<RuntimeBackend, readonly ModelCallObservation[]> = {
-			greenfield: [],
+			runtime: [],
 		};
 
 		for (const backend of RUNTIME_BACKENDS) {
@@ -125,7 +125,7 @@ describe("Desktop RuntimeHost model-call frame cutover readiness", () => {
 			observations[backend] = [firstFrame, secondFrame];
 		}
 
-		const [before, after] = observations.greenfield;
+		const [before, after] = observations.runtime;
 		if (!before || !after) {
 			throw new Error("Expected two model-call observations");
 		}
@@ -144,7 +144,7 @@ describe("Desktop RuntimeHost model-call frame cutover readiness", () => {
 
 	it("applies Skill add, change and deletion on the next model call without rebuilding the session", async () => {
 		const observations: Record<RuntimeBackend, readonly SkillFrameObservation[]> = {
-			greenfield: [],
+			runtime: [],
 		};
 
 		for (const backend of RUNTIME_BACKENDS) {
@@ -188,7 +188,7 @@ describe("Desktop RuntimeHost model-call frame cutover readiness", () => {
 			{ hasVersionOne: false, hasVersionTwo: true },
 			{ hasVersionOne: false, hasVersionTwo: false },
 		];
-		expect(observations.greenfield).toEqual(expected);
+		expect(observations.runtime).toEqual(expected);
 	}, 30_000);
 
 	it("keeps product-tool cwd isolated across sessions sharing one RuntimeHost", async () => {
@@ -218,7 +218,7 @@ describe("Desktop RuntimeHost model-call frame cutover readiness", () => {
 		servers.push(server);
 		const model = { ...MODEL, baseUrl: server.baseUrl };
 		const agentStateDir = await temporaryDirectory("desktop-frame-cwd-agent-");
-		const fixture = createRuntimeFixture("greenfield", agentStateDir, model);
+		const fixture = createRuntimeFixture("runtime", agentStateDir, model);
 		fixtures.push(fixture);
 
 		const first = await fixture.runtime.createSession({
@@ -411,7 +411,7 @@ function pluginConfiguration(): AgentPluginRuntimeConfig {
 }
 
 function createRuntimeFixture(_backend: RuntimeBackend, _agentStateDir: string, model: Model<Api>): RuntimeFixture {
-	const pool = new DesktopGreenfieldRuntimeBackendPool({
+	const pool = new DesktopRuntimeBackendPool({
 		compositionDefaults: {
 			modelRegistry: modelRegistry(model),
 			initialModel: model,
@@ -453,7 +453,7 @@ function modelRegistry(model: Model<Api>): CodingAgentRuntimeModelSource {
 	};
 }
 
-const RUNTIME_BACKENDS = ["greenfield"] as const;
+const RUNTIME_BACKENDS = ["runtime"] as const;
 const PHASE_112_SKILL_V1 = "Phase 112 dynamic skill version one";
 const PHASE_112_SKILL_V2 = "Phase 112 dynamic skill version two with changed instructions";
 

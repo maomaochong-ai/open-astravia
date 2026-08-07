@@ -1,7 +1,4 @@
-import {
-	getOrCreateSharedModelRuntime,
-	syncSharedModelRuntimeCredentials,
-} from "../greenfield-runtime/desktop-coding-agent-host-services.js";
+import { getOrCreateSharedModelRuntime, syncSharedModelRuntimeCredentials } from "../agent-runtime/host-services.js";
 import { getAppLogger } from "../logger.js";
 import { getDesktopModelCredentialStore } from "./model-credential-store.js";
 import {

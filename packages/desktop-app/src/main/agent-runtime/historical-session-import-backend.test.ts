@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	DesktopHistoricalSessionImportBackend,
 	DesktopHistoricalSessionImportError,
-} from "./desktop-historical-session-import-backend.js";
+} from "./historical-session-import-backend.js";
 
 const temporaryRoots = new Set<string>();
 
@@ -15,7 +15,7 @@ afterEach(async () => {
 	temporaryRoots.clear();
 });
 
-describe("Desktop historical session import backend", () => {
+describe("Desktop historical session import", () => {
 	it("imports supported historical data before opening the production Runtime", async () => {
 		const fixture = await createFixture(historicalSession("hello"));
 		const sourceContent = await readFile(fixture.sourcePath, "utf8");

@@ -1100,8 +1100,8 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 		"packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
 		"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
 		"packages/cli-app/src/session-compatibility-error.ts",
-		"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
-		"packages/desktop-app/src/main/greenfield-runtime/desktop-historical-session-import-backend.ts",
+		"packages/desktop-app/src/main/agent-runtime/historical-session-format.ts",
+		"packages/desktop-app/src/main/agent-runtime/historical-session-import-backend.ts",
 	]);
 
 	for (const specifier of specifiers) {

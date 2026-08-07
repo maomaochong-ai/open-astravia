@@ -1,3 +1,4 @@
+// Imports historical session data before handing ownership to the production Runtime.
 import { dirname, resolve } from "node:path";
 import {
 	type CodingAgentHistoricalSessionMigrationIncompatible,

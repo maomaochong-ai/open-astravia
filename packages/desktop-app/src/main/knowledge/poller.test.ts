@@ -31,7 +31,7 @@ vi.mock("../app-monitor/app-monitor-service.js", () => ({
 	recordKnowledgeBaseSnapshot: vi.fn(),
 }));
 
-vi.mock("../greenfield-runtime/desktop-coding-agent-host-services.js", () => ({
+vi.mock("../agent-runtime/host-services.js", () => ({
 	getOrCreateSharedModelRuntime: vi.fn(),
 }));
 

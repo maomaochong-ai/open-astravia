@@ -10,14 +10,14 @@ import {
 	textResponseEvents,
 	toolCallResponseEvents,
 } from "../../../../cli-app/test/support/openai-responses-test-server.js";
-import { DesktopGreenfieldRuntimeBackendPool } from "./desktop-greenfield-runtime-backend-pool.js";
+import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 
 interface RuntimeFixture {
 	readonly runtime: RuntimeHost;
 	readonly dispose: () => Promise<void>;
 }
 
-describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
+describe("Desktop RuntimeHost production contract", () => {
 	const directories: string[] = [];
 	const fixtures: RuntimeFixture[] = [];
 
@@ -28,11 +28,11 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 		}
 	});
 
-	for (const backend of ["greenfield"] as const) {
+	for (const backend of ["runtime"] as const) {
 		it(`${backend} preserves the common Desktop host lifecycle contract`, async () => {
-			const cwd = await temporaryDirectory(`desktop-${backend}-differential-workspace-`);
-			const sessionDir = await temporaryDirectory(`desktop-${backend}-differential-sessions-`);
-			const agentStateDir = await temporaryDirectory(`desktop-${backend}-differential-agent-`);
+			const cwd = await temporaryDirectory(`desktop-${backend}-contract-workspace-`);
+			const sessionDir = await temporaryDirectory(`desktop-${backend}-contract-sessions-`);
+			const agentStateDir = await temporaryDirectory(`desktop-${backend}-contract-agent-`);
 			const fixture = createRuntimeFixture(backend, agentStateDir);
 			fixtures.push(fixture);
 
@@ -85,12 +85,12 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 		}, 30_000);
 	}
 
-	it("preserves real Tool Loop events, persistence and host-restart recovery across backends", async () => {
-		const observations: Record<"greenfield", RuntimeLifecycleObservation> = {
-			greenfield: emptyLifecycleObservation(),
+	it("preserves real Tool Loop events, persistence and host-restart recovery", async () => {
+		const observations: Record<"runtime", RuntimeLifecycleObservation> = {
+			runtime: emptyLifecycleObservation(),
 		};
 
-		for (const backend of ["greenfield"] as const) {
+		for (const backend of ["runtime"] as const) {
 			const cwd = await temporaryDirectory(`desktop-${backend}-turn-workspace-`);
 			const sessionDir = await temporaryDirectory(`desktop-${backend}-turn-sessions-`);
 			const agentStateDir = await temporaryDirectory(`desktop-${backend}-turn-agent-`);
@@ -169,7 +169,7 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 			}
 		}
 
-		expect(observations.greenfield).toMatchObject({
+		expect(observations.runtime).toMatchObject({
 			initial: {
 				lifecycle: ["created", "agent_start", "turn_start", "turn_end", "turn_start", "turn_end", "agent_end"],
 				finalAssistantText: "The Desktop file was read.",
@@ -187,7 +187,7 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 			resumedProviderSawPriorToolResult: true,
 			resumedProviderSawPriorAssistant: true,
 		});
-		expect(observations.greenfield.initial.events.map(({ type }) => type)).toEqual([
+		expect(observations.runtime.initial.events.map(({ type }) => type)).toEqual([
 			"session.lifecycle",
 			"active_tools_update",
 			"mcp.reload.start",
@@ -209,10 +209,10 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 		]);
 	}, 30_000);
 
-	it("preserves history mutations, forks and resumed Provider context across backends", async () => {
-		const observations: Partial<Record<"greenfield", RuntimeHistoryMutationObservation>> = {};
+	it("preserves history mutations, forks and resumed Provider context", async () => {
+		const observations: Partial<Record<"runtime", RuntimeHistoryMutationObservation>> = {};
 
-		for (const backend of ["greenfield"] as const) {
+		for (const backend of ["runtime"] as const) {
 			const cwd = await temporaryDirectory(`desktop-${backend}-history-workspace-`);
 			const sessionDir = await temporaryDirectory(`desktop-${backend}-history-sessions-`);
 			const agentStateDir = await temporaryDirectory(`desktop-${backend}-history-agent-`);
@@ -400,7 +400,7 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 			}
 		}
 
-		expect(observations.greenfield).toEqual({
+		expect(observations.runtime).toEqual({
 			mutationEvents: [],
 			parentRestored: true,
 			childRestored: [
@@ -423,7 +423,7 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 		});
 	}, 60_000);
 
-	for (const backend of ["greenfield"] as const) {
+	for (const backend of ["runtime"] as const) {
 		it(`${backend} keeps interactive, automation and batch ownership isolated in one RuntimeHost`, async () => {
 			const agentStateDir = await temporaryDirectory(`desktop-${backend}-consumers-agent-`);
 			const fixture = createRuntimeFixture(backend, agentStateDir);
@@ -458,11 +458,11 @@ describe("Desktop RuntimeHost Legacy/Greenfield differential gate", () => {
 	}
 
 	function createRuntimeFixture(
-		_backend: "greenfield",
+		_backend: "runtime",
 		_agentStateDir: string,
 		model: Model<Api> = MODEL,
 	): RuntimeFixture {
-		const pool = new DesktopGreenfieldRuntimeBackendPool({
+		const pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				modelRegistry: modelRegistry(model),
 				initialModel: model,
@@ -708,8 +708,8 @@ function modelRegistry(model: Model<Api> = MODEL): CodingAgentRuntimeModelSource
 }
 
 const MODEL: Model<Api> = {
-	id: "desktop-differential-model",
-	name: "Desktop Differential Model",
+	id: "desktop-runtime-contract-model",
+	name: "Desktop Runtime Contract Model",
 	api: "openai-responses",
 	provider: "test",
 	baseUrl: "https://example.test",

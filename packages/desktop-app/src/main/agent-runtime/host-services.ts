@@ -1,3 +1,4 @@
+// Shared Desktop host services used by the production Agent Runtime composition.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getAgentDir } from "@vetta/coding-agent/config";

@@ -33,21 +33,21 @@ import { getDesktopUserQuestionBroker } from "../conversations/user-question-bro
 import { getAppLogger } from "../logger.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
-import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./desktop-coding-agent-host-services.js";
-import { DesktopGreenfieldRuntimeBackendPool } from "./desktop-greenfield-runtime-backend-pool.js";
+import { DesktopRuntimeBackendPool } from "./backend-pool.js";
+import { createDesktopHistoricalSessionFormat } from "./historical-session-format.js";
+import { DesktopHistoricalSessionImportBackend } from "./historical-session-import-backend.js";
+import { getOrCreateSharedModelRuntime, readDesktopMcpDebug } from "./host-services.js";
 import {
-	DesktopGreenfieldRuntimeSessionCatalog,
+	DesktopRuntimeSessionCatalog,
 	isSessionPathInDirectory,
 	PathFilteredRuntimeSessionCatalog,
-} from "./desktop-greenfield-session-catalog.js";
-import { DesktopHistoricalSessionImportBackend } from "./desktop-historical-session-import-backend.js";
-import { createDesktopLegacySessionFormatCompatibility } from "./desktop-legacy-session-format-compatibility.js";
+} from "./session-catalog.js";
 
 const log = getAppLogger("runtime");
 
 export interface DesktopRuntimeComposition {
 	readonly runtime: RuntimeHost;
-	readonly runtimeBackendPool: DesktopGreenfieldRuntimeBackendPool;
+	readonly runtimeBackendPool: DesktopRuntimeBackendPool;
 }
 
 export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
@@ -58,18 +58,18 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const macosSandboxExecPath = getAvailableMacosSandboxExecPath();
 	const userQuestionHandler = getDesktopUserQuestionBroker().handle;
 	const additionalSkillPaths = getBuiltinSkillPaths();
-	const legacyFormat = createDesktopLegacySessionFormatCompatibility();
-	const conversationCatalog = new DesktopGreenfieldRuntimeSessionCatalog({
-		resolveRoots: resolveDesktopGreenfieldSessionRoots,
+	const historicalFormat = createDesktopHistoricalSessionFormat();
+	const conversationCatalog = new DesktopRuntimeSessionCatalog({
+		resolveRoots: resolveDesktopRuntimeSessionRoots,
 	});
 	const imConversationCatalog = new PathFilteredRuntimeSessionCatalog(conversationCatalog, (sessionPath) =>
 		isSessionPathInDirectory(sessionPath, DEFAULT_IM_CONVERSATION_SESSION_DIR),
 	);
-	const desktopGreenfieldCatalog = new PathFilteredRuntimeSessionCatalog(
+	const desktopRuntimeCatalog = new PathFilteredRuntimeSessionCatalog(
 		conversationCatalog,
 		(sessionPath) => !isSessionPathInDirectory(sessionPath, DEFAULT_IM_CONVERSATION_SESSION_DIR),
 	);
-	const runtimeBackendPool = new DesktopGreenfieldRuntimeBackendPool({
+	const runtimeBackendPool = new DesktopRuntimeBackendPool({
 		compositionDefaults: {
 			modelRegistry: modelRuntime,
 			createPluginMcpRuntime: ({ cwd, agentDir }) => {
@@ -97,10 +97,10 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		routes: [
 			{
 				id: "historical-session-import",
-				catalog: legacyFormat.sessionCatalog,
+				catalog: historicalFormat.sessionCatalog,
 				backend: historicalSessionImportBackend,
 			},
-			{ id: "runtime", catalog: desktopGreenfieldCatalog, backend: runtimeBackendPool },
+			{ id: "runtime", catalog: desktopRuntimeCatalog, backend: runtimeBackendPool },
 		],
 		onRoute: logSessionRoute,
 	});
@@ -114,14 +114,14 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 			sandboxHostPath,
 			serverUrl: DEFAULT_SERVER_URL,
 			sessionBackend,
-			sessionCatalog: new CompositeRuntimeSessionCatalog([legacyFormat.sessionCatalog, conversationCatalog]),
+			sessionCatalog: new CompositeRuntimeSessionCatalog([historicalFormat.sessionCatalog, conversationCatalog]),
 			sessionFileHistoryReader: new CompositeRuntimeSessionFileHistoryReader([
-				legacyFormat.sessionFileHistoryReader,
+				historicalFormat.sessionFileHistoryReader,
 				new FileConversationRuntimeSessionFileHistoryReader(),
 			]),
 			sessionAccessResolver: new CatalogRoutedRuntimeSessionAccessResolver([
 				{
-					catalog: legacyFormat.sessionCatalog,
+					catalog: historicalFormat.sessionCatalog,
 					access: {
 						readHistory: true,
 						interactiveResume: true,
@@ -139,7 +139,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 					},
 				},
 				{
-					catalog: desktopGreenfieldCatalog,
+					catalog: desktopRuntimeCatalog,
 					access: {
 						readHistory: true,
 						interactiveResume: true,
@@ -168,7 +168,7 @@ function logSessionRoute(decision: RuntimeHostSessionBackendRouteDecision): void
 	log.info(`[agent-runtime] session-route route=${decision.routeId ?? "unknown"} reason=${reason}`);
 }
 
-function resolveDesktopGreenfieldSessionRoots(): RuntimeConversationSessionRoot[] {
+function resolveDesktopRuntimeSessionRoots(): RuntimeConversationSessionRoot[] {
 	const config = readConfigSync();
 	const projectRoots = [...config.projects, ...config.archivedProjects].map(({ path }) => ({
 		cwd: path,

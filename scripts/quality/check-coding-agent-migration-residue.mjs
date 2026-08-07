@@ -8,6 +8,9 @@ const SOURCE_ROOT = "packages/coding-agent/src";
 const TEST_ROOT = "packages/coding-agent/test";
 const CLI_SOURCE_ROOT = "packages/cli-app/src";
 const CLI_TEST_ROOT = "packages/cli-app/test";
+const DESKTOP_MAIN_ROOT = "packages/desktop-app/src/main";
+const DESKTOP_AGENT_RUNTIME_ROOT = `${DESKTOP_MAIN_ROOT}/agent-runtime`;
+const RETIRED_DESKTOP_RUNTIME_ROOT = `${DESKTOP_MAIN_ROOT}/greenfield-runtime`;
 const ADAPTER_ROOT = `${SOURCE_ROOT}/adapters`;
 const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
@@ -17,6 +20,7 @@ const SDK_RUNTIME_PUBLIC_API = `${SOURCE_ROOT}/public-api/runtime/session.ts`;
 const SDK_TEST_ROOT = `${TEST_ROOT}/sdk`;
 const SDK_SESSION_MIGRATION_IDENTITY_PATTERN =
 	/\b(?:(?:[A-Za-z_$][\w$]*)?GreenfieldSdk[\w$]*|CodingAgentGreenfield[\w$]*)\b/g;
+const DESKTOP_RUNTIME_MIGRATION_IDENTITY_PATTERN = /\bDesktopGreenfield[\w$]*\b/g;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	adapterGreenfieldFiles: 0,
@@ -25,6 +29,8 @@ export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
 	hostExtensionCompositionEdgeFiles: 0,
+	desktopRuntimeMigrationFiles: 0,
+	desktopRuntimeMigrationIdentities: 0,
 });
 
 export const RETIRED_MIGRATION_FILES = Object.freeze([
@@ -414,6 +420,7 @@ export function collectCodingAgentMigrationResidue(files) {
 	const cliFiles = sourceFiles.filter((file) => file.path.startsWith(`${CLI_SOURCE_ROOT}/`));
 	const compositionFiles = sourceFiles.filter((file) => file.path.startsWith(`${COMPOSITION_ROOT}/`));
 	const hostExtensionFiles = sourceFiles.filter((file) => file.path.startsWith(`${HOST_EXTENSION_ROOT}/`));
+	const desktopFiles = files.filter((file) => file.path.startsWith(`${DESKTOP_MAIN_ROOT}/`));
 	const sdkSessionBoundaryFiles = files.filter(
 		(file) =>
 			file.path.startsWith(`${SDK_SESSION_HOST_ROOT}/`) ||
@@ -453,6 +460,18 @@ export function collectCodingAgentMigrationResidue(files) {
 			})),
 		),
 		sdkSessionMigrationFiles: sdkSessionBoundaryFiles.filter((file) => basename(file.path).startsWith("greenfield")),
+		desktopRuntimeMigrationFiles: desktopFiles.filter(
+			(file) =>
+				file.path.startsWith(`${RETIRED_DESKTOP_RUNTIME_ROOT}/`) ||
+				basename(file.path).startsWith("desktop-greenfield-") ||
+				basename(file.path).includes("-differential."),
+		),
+		desktopRuntimeMigrationIdentities: desktopFiles.flatMap((file) =>
+			[...new Set(file.text.match(DESKTOP_RUNTIME_MIGRATION_IDENTITY_PATTERN) ?? [])].map((identity) => ({
+				path: file.path,
+				identity,
+			})),
+		),
 	});
 }
 
@@ -488,7 +507,7 @@ function collectModuleSpecifiers(text) {
 }
 
 function readCurrentFiles() {
-	return [SOURCE_ROOT, TEST_ROOT, CLI_SOURCE_ROOT, CLI_TEST_ROOT].flatMap((root) =>
+	return [SOURCE_ROOT, TEST_ROOT, CLI_SOURCE_ROOT, CLI_TEST_ROOT, DESKTOP_MAIN_ROOT].flatMap((root) =>
 		walkFiles(join(repoRoot, root), { extensions: [".ts"] }).map((filePath) => ({
 			path: rel(filePath),
 			text: readText(filePath),
@@ -508,6 +527,8 @@ if (isDirectRun(import.meta.url)) {
 		SDK_SESSION_HOST_ROOT,
 		SDK_PUBLIC_API_ROOT,
 		SDK_TEST_ROOT,
+		DESKTOP_MAIN_ROOT,
+		DESKTOP_AGENT_RUNTIME_ROOT,
 	].filter((path) => !existsSync(join(repoRoot, path)));
 	if (missingRoots.length > 0) {
 		for (const path of missingRoots) fail(`[coding-agent-migration-residue] missing source root (${path})`);
@@ -518,7 +539,7 @@ if (isDirectRun(import.meta.url)) {
 			for (const violation of violations) fail(`[coding-agent-migration-residue] ${violation}`);
 		} else {
 			ok(
-				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, SDK Session migration identities=${state.sdkSessionMigrationIdentities.length}/0, filenames=${state.sdkSessionMigrationFiles.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
+				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, SDK Session migration identities=${state.sdkSessionMigrationIdentities.length}/0, filenames=${state.sdkSessionMigrationFiles.length}/0, Desktop Runtime migration files=${state.desktopRuntimeMigrationFiles.length}/0, identities=${state.desktopRuntimeMigrationIdentities.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
 			);
 		}
 	}

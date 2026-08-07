@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import type { ProjectInfo, RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
-import { isSessionPathInDirectory, PathFilteredRuntimeSessionCatalog } from "./desktop-greenfield-session-catalog.js";
+import { isSessionPathInDirectory, PathFilteredRuntimeSessionCatalog } from "./session-catalog.js";
 
 describe("PathFilteredRuntimeSessionCatalog", () => {
-	it("keeps IM ownership separate from Desktop Greenfield ownership", async () => {
+	it("keeps IM ownership separate from Desktop Runtime ownership", async () => {
 		const catalog = alwaysOwnedCatalog();
 		const sessionDir = join(process.cwd(), "vetta", "im", ".vetta", "sessions");
 		const imCatalog = new PathFilteredRuntimeSessionCatalog(catalog, (path) =>

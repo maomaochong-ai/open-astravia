@@ -31,63 +31,61 @@ export type DesktopCodingAgentRuntimeCompositionDefaults = Omit<
 > &
 	Partial<Pick<CodingAgentRuntimeCompositionOptions, "initialModel" | "initialThinkingLevel">>;
 
-export interface DesktopGreenfieldRuntimeBackendPoolOptions {
+export interface DesktopRuntimeBackendPoolOptions {
 	readonly compositionDefaults: DesktopCodingAgentRuntimeCompositionDefaults;
 	readonly createComposition?: (
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
-	readonly createMcpRuntimeSource?: (
-		scope: DesktopGreenfieldMcpRuntimeScope,
-	) => Promise<DesktopGreenfieldManagedMcpRuntimeSource>;
+	readonly createMcpRuntimeSource?: (scope: DesktopMcpRuntimeScope) => Promise<DesktopManagedMcpRuntimeSource>;
 }
 
-export interface DesktopGreenfieldMcpRuntimeScope {
+export interface DesktopMcpRuntimeScope {
 	readonly cwd: string;
 	readonly agentDir?: string;
 }
 
-export interface DesktopGreenfieldManagedMcpRuntimeSource {
+export interface DesktopManagedMcpRuntimeSource {
 	readonly source: McpRuntimeToolSource;
 	dispose(): Promise<void>;
 }
 
-interface DesktopGreenfieldRuntimeScope extends DesktopGreenfieldMcpRuntimeScope {
+interface DesktopRuntimeScope extends DesktopMcpRuntimeScope {
 	readonly conversationDir: string;
 	readonly scenario: ConversationScenario;
 	readonly enableSubagents: boolean;
 	readonly serverUrl?: string;
 }
 
-interface DesktopGreenfieldRuntimeBackendEntry {
+interface DesktopRuntimeBackendEntry {
 	readonly composition: CodingAgentRuntimeComposition;
 	readonly backend: CodingAgentRuntimeHostSessionBackend;
-	readonly managedMcpSource?: DesktopGreenfieldManagedMcpRuntimeSource;
+	readonly managedMcpSource?: DesktopManagedMcpRuntimeSource;
 }
 
 /**
- * Desktop 进程级 Greenfield Backend 池。
+ * Desktop 进程级 Runtime Backend 池。
  *
  * RuntimeHost 仍然只有一个；本对象只按 Composition 固定参数复用工作区后端，
  * 不持有第二套宿主会话状态。会话级模型、thinking、插件和执行模式继续由
  * RuntimeSessionCreateRequest 传给对应 Session。
  */
-export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBackend {
-	private readonly entries = new Map<string, Promise<DesktopGreenfieldRuntimeBackendEntry>>();
-	private readonly resolvedEntries = new Map<string, DesktopGreenfieldRuntimeBackendEntry>();
+export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
+	private readonly entries = new Map<string, Promise<DesktopRuntimeBackendEntry>>();
+	private readonly resolvedEntries = new Map<string, DesktopRuntimeBackendEntry>();
 	private readonly createComposition: (
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
 	private disposed = false;
 
-	constructor(private readonly options: DesktopGreenfieldRuntimeBackendPoolOptions) {
+	constructor(private readonly options: DesktopRuntimeBackendPoolOptions) {
 		this.createComposition = options.createComposition ?? createCodingAgentRuntimeComposition;
 	}
 
 	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
-		if (this.disposed) throw new Error("Desktop Greenfield Runtime backend pool is disposed");
+		if (this.disposed) throw new Error("Desktop Runtime backend pool is disposed");
 		const scope = resolveRuntimeScope(request);
 		const entry = await this.getOrCreateEntry(scope, request);
-		if (this.disposed) throw new Error("Desktop Greenfield Runtime backend pool is disposed");
+		if (this.disposed) throw new Error("Desktop Runtime backend pool is disposed");
 		return entry.backend.createAssembly(request);
 	}
 
@@ -123,7 +121,7 @@ export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBa
 				result.status === "rejected" ? [result.reason] : [],
 			);
 			if (errors.length > 0) {
-				throw new AggregateError(errors, "Desktop Greenfield Runtime backend pool disposal failed");
+				throw new AggregateError(errors, "Desktop Runtime backend pool disposal failed");
 			}
 		} finally {
 			this.entries.clear();
@@ -132,9 +130,9 @@ export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBa
 	}
 
 	private getOrCreateEntry(
-		scope: DesktopGreenfieldRuntimeScope,
+		scope: DesktopRuntimeScope,
 		request: RuntimeSessionCreateRequest,
-	): Promise<DesktopGreenfieldRuntimeBackendEntry> {
+	): Promise<DesktopRuntimeBackendEntry> {
 		const key = runtimeScopeKey(scope);
 		const existing = this.entries.get(key);
 		if (existing) return existing;
@@ -154,9 +152,9 @@ export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBa
 	}
 
 	private async createEntry(
-		scope: DesktopGreenfieldRuntimeScope,
+		scope: DesktopRuntimeScope,
 		request: RuntimeSessionCreateRequest,
-	): Promise<DesktopGreenfieldRuntimeBackendEntry> {
+	): Promise<DesktopRuntimeBackendEntry> {
 		const initialModel = resolveInitialModel(request, this.options.compositionDefaults);
 		const initialThinkingLevel =
 			request.thinkingLevel ?? this.options.compositionDefaults.initialThinkingLevel ?? "off";
@@ -197,7 +195,7 @@ export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBa
 	}
 }
 
-function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopGreenfieldRuntimeScope {
+function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRuntimeScope {
 	const cwd = resolve(request.cwd ?? process.cwd());
 	const sessionPath = request.sessionPath?.trim();
 	const conversationDir = resolve(
@@ -219,12 +217,12 @@ function resolveInitialModel(
 ): Model<Api> {
 	const model = request.model ?? defaults.initialModel ?? defaults.modelRegistry.getAvailable()[0];
 	if (!model) {
-		throw new Error("Desktop Greenfield Runtime requires at least one available model");
+		throw new Error("Desktop Runtime requires at least one available model");
 	}
 	return model;
 }
 
-function runtimeScopeKey(scope: DesktopGreenfieldRuntimeScope): string {
+function runtimeScopeKey(scope: DesktopRuntimeScope): string {
 	return JSON.stringify([
 		scope.cwd,
 		scope.conversationDir,
@@ -235,7 +233,7 @@ function runtimeScopeKey(scope: DesktopGreenfieldRuntimeScope): string {
 	]);
 }
 
-async function disposeEntry(entry: DesktopGreenfieldRuntimeBackendEntry): Promise<void> {
+async function disposeEntry(entry: DesktopRuntimeBackendEntry): Promise<void> {
 	const errors: unknown[] = [];
 	try {
 		await entry.composition.dispose();
@@ -248,6 +246,6 @@ async function disposeEntry(entry: DesktopGreenfieldRuntimeBackendEntry): Promis
 		errors.push(error);
 	}
 	if (errors.length > 0) {
-		throw new AggregateError(errors, "Desktop Greenfield Runtime scope disposal failed");
+		throw new AggregateError(errors, "Desktop Runtime scope disposal failed");
 	}
 }

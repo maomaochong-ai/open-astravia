@@ -1,12 +1,12 @@
 import type { RuntimeHost } from "../../../runtime-core/src/index.js";
-import type { DesktopGreenfieldRuntimeBackendPool } from "./greenfield-runtime/desktop-greenfield-runtime-backend-pool.js";
-import { createDesktopRuntimeComposition } from "./greenfield-runtime/desktop-runtime-composition.js";
-import { type DesktopRuntimeHealth, DesktopRuntimeLifecycle } from "./greenfield-runtime/desktop-runtime-lifecycle.js";
+import type { DesktopRuntimeBackendPool } from "./agent-runtime/backend-pool.js";
+import { createDesktopRuntimeComposition } from "./agent-runtime/composition.js";
+import { type DesktopRuntimeHealth, DesktopRuntimeLifecycle } from "./agent-runtime/lifecycle.js";
 
 // 进程级共享 RuntimeHost：session IPC、定时任务与批量任务必须复用同一实例，
 // 避免同一进程重复申请 Session 文件锁。
 let sharedRuntime: RuntimeHost | null = null;
-let sharedRuntimeBackendPool: DesktopGreenfieldRuntimeBackendPool | null = null;
+let sharedRuntimeBackendPool: DesktopRuntimeBackendPool | null = null;
 let sharedRuntimeShutdownPromise: Promise<void> | null = null;
 const sharedRuntimeLifecycle = new DesktopRuntimeLifecycle();
 

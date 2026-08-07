@@ -1,3 +1,4 @@
+// Process-level lifecycle state for the production Desktop Agent Runtime.
 export type DesktopRuntimeLifecycleState = "idle" | "running" | "stopping" | "stopped";
 
 export interface DesktopRuntimeFailure {

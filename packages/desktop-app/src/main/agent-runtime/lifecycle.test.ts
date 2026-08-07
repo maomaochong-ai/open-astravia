@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DesktopRuntimeLifecycle } from "./desktop-runtime-lifecycle.js";
+import { DesktopRuntimeLifecycle } from "./lifecycle.js";
 
 describe("DesktopRuntimeLifecycle", () => {
 	it("allows one runtime to become active before shutdown", () => {

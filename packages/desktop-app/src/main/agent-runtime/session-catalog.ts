@@ -6,21 +6,21 @@ import {
 	type RuntimeConversationSessionRoot,
 } from "@vetta/runtime-storage/conversation";
 
-export interface DesktopGreenfieldRuntimeSessionCatalogOptions
+export interface DesktopRuntimeSessionCatalogOptions
 	extends Pick<FileConversationRuntimeSessionCatalogOptions, "ownershipManager"> {
 	readonly resolveRoots: () => readonly RuntimeConversationSessionRoot[];
 }
 
 /**
- * Desktop 的 Greenfield 目录策略适配器。
+ * Desktop Runtime 的会话目录策略适配器。
  *
  * 文件格式识别和写操作仍由 runtime-storage 拥有；这里只补充 Desktop 动态项目根
  * 与 cwd/.vetta/sessions 默认目录，不把宿主路径规则下沉到存储包。
  */
-export class DesktopGreenfieldRuntimeSessionCatalog implements RuntimeSessionCatalog {
+export class DesktopRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	private readonly catalog: FileConversationRuntimeSessionCatalog;
 
-	constructor(private readonly options: DesktopGreenfieldRuntimeSessionCatalogOptions) {
+	constructor(private readonly options: DesktopRuntimeSessionCatalogOptions) {
 		this.catalog = new FileConversationRuntimeSessionCatalog({
 			ownershipManager: options.ownershipManager,
 		});

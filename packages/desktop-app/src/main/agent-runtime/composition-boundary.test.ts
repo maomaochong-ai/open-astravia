@@ -2,11 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const productionSources = {
-	composition: readSource("./desktop-runtime-composition.ts"),
-	hostServices: readSource("./desktop-coding-agent-host-services.ts"),
+	composition: readSource("./composition.ts"),
+	hostServices: readSource("./host-services.ts"),
 	knowledgeFactory: readSource("../knowledge/processing-session-factory.ts"),
-	historicalImportBackend: readSource("./desktop-historical-session-import-backend.ts"),
-	legacyFormatCompatibility: readSource("./desktop-legacy-session-format-compatibility.ts"),
+	historicalImportBackend: readSource("./historical-session-import-backend.ts"),
+	historicalSessionFormat: readSource("./historical-session-format.ts"),
 	poller: readSource("../knowledge/poller.ts"),
 	runtimeEntry: readSource("../runtime.ts"),
 };
@@ -20,17 +20,17 @@ describe("Desktop Runtime composition boundary", () => {
 	});
 
 	it("keeps Legacy format migration without a production execution backend", () => {
-		expect(productionSources.legacyFormatCompatibility).not.toContain("LegacyCodingAgentSessionBackend");
-		expect(productionSources.legacyFormatCompatibility).toContain("createCodingAgentHistoricalSessionCatalog");
-		expect(productionSources.legacyFormatCompatibility).toContain(
+		expect(productionSources.historicalSessionFormat).not.toContain("LegacyCodingAgentSessionBackend");
+		expect(productionSources.historicalSessionFormat).toContain("createCodingAgentHistoricalSessionCatalog");
+		expect(productionSources.historicalSessionFormat).toContain(
 			"createCodingAgentHistoricalSessionFileHistoryReader",
 		);
-		expect(productionSources.legacyFormatCompatibility).not.toContain("LegacyRuntimeSessionCatalog");
-		expect(productionSources.legacyFormatCompatibility).not.toContain("LegacyRuntimeSessionFileHistoryReader");
+		expect(productionSources.historicalSessionFormat).not.toContain("LegacyRuntimeSessionCatalog");
+		expect(productionSources.historicalSessionFormat).not.toContain("LegacyRuntimeSessionFileHistoryReader");
 		expect(productionSources.composition).not.toContain("LegacyCodingAgentSessionBackend");
 		expect(productionSources.composition).not.toContain("createDesktopLegacyExecutionCompatibility");
 		expect(productionSources.composition).toContain("DesktopHistoricalSessionImportBackend");
-		expect(productionSources.composition).toContain("createDesktopLegacySessionFormatCompatibility");
+		expect(productionSources.composition).toContain("createDesktopHistoricalSessionFormat");
 		expect(productionSources.composition).toContain("createCodingAgentSharedModelController");
 		expect(productionSources.historicalImportBackend).not.toContain("LegacyCodingAgentSessionBackend");
 		expect(productionSources.historicalImportBackend).toContain("migrateCodingAgentHistoricalSession");
@@ -40,7 +40,7 @@ describe("Desktop Runtime composition boundary", () => {
 	it("keeps the Runtime entry limited to singleton lifecycle ownership", () => {
 		expect(productionSources.runtimeEntry).toContain("createDesktopRuntimeComposition");
 		expect(productionSources.runtimeEntry).not.toContain("CatalogRoutedRuntimeHostSessionBackend");
-		expect(productionSources.runtimeEntry).not.toContain("DesktopGreenfieldRuntimeSessionCatalog");
+		expect(productionSources.runtimeEntry).not.toContain("DesktopRuntimeSessionCatalog");
 	});
 });
 

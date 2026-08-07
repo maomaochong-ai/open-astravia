@@ -16,9 +16,9 @@ import {
 	startOpenAiResponsesTestServer,
 	textResponseEvents,
 } from "../../../../../cli-app/test/support/openai-responses-test-server.js";
+import { DesktopRuntimeBackendPool } from "../../agent-runtime/backend-pool.js";
+import { DesktopRuntimeSessionCatalog } from "../../agent-runtime/session-catalog.js";
 import { DesktopConversationService } from "../../conversations/desktop-conversation-service.js";
-import { DesktopGreenfieldRuntimeBackendPool } from "../../greenfield-runtime/desktop-greenfield-runtime-backend-pool.js";
-import { DesktopGreenfieldRuntimeSessionCatalog } from "../../greenfield-runtime/desktop-greenfield-session-catalog.js";
 import { type DesktopLocalRpcServerHandle, startDesktopLocalRpcServer } from "../../local-rpc/server.js";
 import { AppDebugCatalog } from "../catalog.js";
 import { createDebugRpcRuntime } from "../rpc.js";
@@ -116,11 +116,11 @@ interface CliResult {
 	readonly stderr: string;
 }
 
-describe("Vetta CLI Desktop Greenfield runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
+describe("Vetta CLI Desktop Runtime canary", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
 	let provider: OpenAiResponsesTestServer | undefined;
 	let runtime: RuntimeHost | undefined;
-	let pool: DesktopGreenfieldRuntimeBackendPool | undefined;
+	let pool: DesktopRuntimeBackendPool | undefined;
 	let rpcServer: DesktopLocalRpcServerHandle | undefined;
 
 	afterEach(async () => {
@@ -158,14 +158,14 @@ describe("Vetta CLI Desktop Greenfield runtime canary", { timeout: INTEGRATION_T
 			...canaryModel,
 			baseUrl: provider.baseUrl,
 		};
-		pool = new DesktopGreenfieldRuntimeBackendPool({
+		pool = new DesktopRuntimeBackendPool({
 			compositionDefaults: {
 				modelRegistry: modelRegistry(model),
 				initialModel: model,
 				initialThinkingLevel: "off",
 			},
 		});
-		const sessionCatalog = new DesktopGreenfieldRuntimeSessionCatalog({
+		const sessionCatalog = new DesktopRuntimeSessionCatalog({
 			resolveRoots: () => [{ cwd: workspace, sessionDir: join(workspace, ".vetta", "sessions") }],
 		});
 		runtime = new RuntimeHost({
