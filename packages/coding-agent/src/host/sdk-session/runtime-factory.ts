@@ -13,76 +13,73 @@ import {
 	type CodingAgentPreparedSessionBinding,
 	type CodingAgentSessionTransitionLifecycle,
 } from "../../composition/session-host/active-session-transition-host.js";
-import { GreenfieldSdkActiveSessionAdapter } from "./active-session-adapter.js";
-import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
-import { bindGreenfieldSdkActiveSessionRuntime } from "./runtime-binding.js";
+import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
+import type { CodingAgentSession } from "../../public-api/sdk/sdk-session-contract.js";
+import { CodingAgentSdkActiveSessionAdapter } from "./active-session-adapter.js";
+import { CodingAgentSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
+import { bindCodingAgentSdkActiveSessionRuntime } from "./runtime-binding.js";
 import type {
-	GreenfieldSdkActiveSession,
-	GreenfieldSdkActiveSessionCapabilityPort,
-	GreenfieldSdkSessionCapabilityPort,
+	CodingAgentSdkActiveSessionCapabilityPort,
+	CodingAgentSdkSessionCapabilityPort,
 } from "./runtime-contracts.js";
-import { CodingAgentGreenfieldSessionCapabilityHost } from "./session-capability-host.js";
-import {
-	type GreenfieldSdkSessionStorageTarget,
-	type ResolvedGreenfieldSdkSessionStorage,
-	resolveGreenfieldSdkSessionStorage,
-} from "./storage.js";
+import { CodingAgentSdkSessionCapabilityHost } from "./session-capability-host.js";
+import { type ResolvedCodingAgentSdkSessionStorage, resolveCodingAgentSdkSessionStorage } from "./storage.js";
 
-type GreenfieldSdkCompositionOptions = Omit<
+type CodingAgentSdkCompositionOptions = Omit<
 	CodingAgentRuntimeCompositionOptions,
 	"conversationDir" | "createConversationPersistence"
 >;
 
-type GreenfieldSdkRuntimeSessionOptions = Omit<CodingAgentRuntimeSessionOptions, "sessionId">;
+type CodingAgentSdkRuntimeSessionOptions = Omit<CodingAgentRuntimeSessionOptions, "sessionId">;
 
-export interface GreenfieldSdkSessionFactoryOptions {
-	readonly storage: GreenfieldSdkSessionStorageTarget;
-	readonly composition: GreenfieldSdkCompositionOptions;
-	readonly session?: GreenfieldSdkRuntimeSessionOptions;
+export interface CodingAgentSdkSessionFactoryOptions {
+	readonly storage: CodingAgentSessionStorageTarget;
+	readonly composition: CodingAgentSdkCompositionOptions;
+	readonly session?: CodingAgentSdkRuntimeSessionOptions;
 	/** Composition 创建前已由产品宿主取得、并随 SDK Session 释放的资源。 */
-	readonly ownedResources?: readonly GreenfieldSdkOwnedResource[];
+	readonly ownedResources?: readonly CodingAgentSdkOwnedResource[];
 	/** Runtime Session 创建后绑定 Extension 等 Session 级产品资源。 */
-	readonly initializeSession?: GreenfieldSdkSessionInitializer;
+	readonly initializeSession?: CodingAgentSdkSessionInitializer;
 	/** 将产品设置、模型范围和重试控制接入可切换的 Session 能力宿主。 */
-	readonly createCapabilityHost?: GreenfieldSdkSessionCapabilityHostFactory;
+	readonly createCapabilityHost?: CodingAgentSdkSessionCapabilityHostFactory;
 	/** Extension 等产品绑定参与活动 Session 切换事务的生命周期。 */
 	readonly transitionLifecycle?: CodingAgentSessionTransitionLifecycle;
 	/** 为 SDK 补充树导航、Bash 和 Legacy setup 等活动会话能力。 */
-	readonly createActiveCapabilityHost?: GreenfieldSdkActiveSessionCapabilityHostFactory;
+	readonly createActiveCapabilityHost?: CodingAgentSdkActiveSessionCapabilityHostFactory;
 	/** 完整清理成功后通知外层 Host 释放 Session 所有权。 */
 	readonly onSessionClosed?: () => void;
 }
 
-export interface GreenfieldSdkOwnedResource {
+export interface CodingAgentSdkOwnedResource {
 	readonly id: string;
 	dispose(): void | Promise<void>;
 }
 
-export interface GreenfieldSdkSessionInitializationContext {
+export interface CodingAgentSdkSessionInitializationContext {
 	readonly session: GreenfieldRuntimeSession;
 	readonly composition: CodingAgentRuntimeComposition;
 	readonly source: "initial" | "transition";
 }
 
-export type GreenfieldSdkSessionInitializer = (
-	context: GreenfieldSdkSessionInitializationContext,
-) => Promise<GreenfieldSdkOwnedResource | undefined>;
+export type CodingAgentSdkSessionInitializer = (
+	context: CodingAgentSdkSessionInitializationContext,
+) => Promise<CodingAgentSdkOwnedResource | undefined>;
 
-export type GreenfieldSdkSessionCapabilityHostFactory = (
-	context: GreenfieldSdkSessionInitializationContext & { readonly readSession: () => GreenfieldRuntimeSession },
-) => GreenfieldSdkSessionCapabilityPort;
+export type CodingAgentSdkSessionCapabilityHostFactory = (
+	context: CodingAgentSdkSessionInitializationContext & { readonly readSession: () => GreenfieldRuntimeSession },
+) => CodingAgentSdkSessionCapabilityPort;
 
-export interface GreenfieldSdkActiveSessionCapabilityHostContext {
+export interface CodingAgentSdkActiveSessionCapabilityHostContext {
 	readonly sessionHost: CodingAgentActiveSessionHost;
 	readonly composition: CodingAgentRuntimeComposition;
 }
 
-export type GreenfieldSdkActiveSessionCapabilityHostFactory = (
-	context: GreenfieldSdkActiveSessionCapabilityHostContext,
-) => GreenfieldSdkActiveSessionCapabilityPort;
+export type CodingAgentSdkActiveSessionCapabilityHostFactory = (
+	context: CodingAgentSdkActiveSessionCapabilityHostContext,
+) => CodingAgentSdkActiveSessionCapabilityPort;
 
-export interface GreenfieldSdkSessionFactoryResult {
-	readonly session: GreenfieldSdkActiveSession;
+export interface CodingAgentSdkSessionFactoryResult {
+	readonly session: CodingAgentSession;
 }
 
 /**
@@ -91,16 +88,16 @@ export interface GreenfieldSdkSessionFactoryResult {
  * 包根兼容工厂不直接进入这里；本工厂只接受已经完成产品资源解析的中立
  * Composition 参数，并显式处理存储目标、create/resume 路由与失败回滚。
  */
-export async function createGreenfieldSdkSession(
-	options: GreenfieldSdkSessionFactoryOptions,
-): Promise<GreenfieldSdkSessionFactoryResult> {
+export async function createCodingAgentSdkSession(
+	options: CodingAgentSdkSessionFactoryOptions,
+): Promise<CodingAgentSdkSessionFactoryResult> {
 	const rollback = new InitializationRollbackScope();
 	for (const resource of options.ownedResources ?? []) {
 		rollback.defer({ id: resource.id, rollback: () => resource.dispose() });
 	}
-	let storage: ResolvedGreenfieldSdkSessionStorage;
+	let storage: ResolvedCodingAgentSdkSessionStorage;
 	try {
-		storage = resolveGreenfieldSdkSessionStorage(options.storage);
+		storage = resolveCodingAgentSdkSessionStorage(options.storage);
 	} catch (error) {
 		return rollback.rollback(error, "Greenfield SDK storage resolution and rollback failed");
 	}
@@ -132,7 +129,7 @@ export async function createGreenfieldSdkSession(
 			rollback.defer({ id: activeResource.id, rollback: () => activeResource?.dispose() });
 		}
 		const conversationDir = storage.conversationDir ?? "memory://conversation";
-		let activeCapabilities: GreenfieldSdkActiveSessionCapabilityPort | undefined;
+		let activeCapabilities: CodingAgentSdkActiveSessionCapabilityPort | undefined;
 		const sessionHost = new CodingAgentActiveSessionHost({
 			runtime: {
 				...composition,
@@ -164,10 +161,10 @@ export async function createGreenfieldSdkSession(
 				composition,
 				source: "initial",
 				readSession: () => sessionHost.readSession(),
-			}) ?? new CodingAgentGreenfieldSessionCapabilityHost({ readSession: () => sessionHost.readSession() });
+			}) ?? new CodingAgentSdkSessionCapabilityHost({ readSession: () => sessionHost.readSession() });
 		activeCapabilities =
 			options.createActiveCapabilityHost?.({ sessionHost, composition }) ??
-			new CodingAgentGreenfieldSdkActiveSessionCapabilityHost({ sessionHost });
+			new CodingAgentSdkActiveSessionCapabilityHost({ sessionHost });
 		const cleanup = createActiveSessionCleanup(
 			sessionHost,
 			composition,
@@ -176,10 +173,10 @@ export async function createGreenfieldSdkSession(
 			options.ownedResources ?? [],
 			() => activeResource,
 		);
-		const runtime = bindGreenfieldSdkActiveSessionRuntime(sessionHost, capabilityHost, () =>
+		const runtime = bindCodingAgentSdkActiveSessionRuntime(sessionHost, capabilityHost, () =>
 			cleanup.run("Failed to dispose Greenfield SDK active session resources"),
 		);
-		const session = new GreenfieldSdkActiveSessionAdapter(runtime, activeCapabilities, options.onSessionClosed);
+		const session = new CodingAgentSdkActiveSessionAdapter(runtime, activeCapabilities, options.onSessionClosed);
 		rollback.commit();
 		return { session };
 	} catch (error) {
@@ -190,10 +187,10 @@ export async function createGreenfieldSdkSession(
 function createActiveSessionCleanup(
 	sessionHost: CodingAgentActiveSessionHost,
 	composition: CodingAgentRuntimeComposition,
-	activeCapabilities: GreenfieldSdkActiveSessionCapabilityPort,
-	capabilityHost: GreenfieldSdkSessionCapabilityPort,
-	ownedResources: readonly GreenfieldSdkOwnedResource[],
-	readActiveResource: () => GreenfieldSdkOwnedResource | undefined,
+	activeCapabilities: CodingAgentSdkActiveSessionCapabilityPort,
+	capabilityHost: CodingAgentSdkSessionCapabilityPort,
+	ownedResources: readonly CodingAgentSdkOwnedResource[],
+	readActiveResource: () => CodingAgentSdkOwnedResource | undefined,
 ): RetryableCleanup {
 	const cleanup = new RetryableCleanup();
 	cleanup.add({ id: "session-capability-host", phase: 0, cleanup: () => capabilityHost.abortRetry() });
@@ -212,7 +209,7 @@ function createActiveSessionCleanup(
 }
 
 function createSessionCatalog(
-	storage: ResolvedGreenfieldSdkSessionStorage,
+	storage: ResolvedCodingAgentSdkSessionStorage,
 	cwd: string | undefined,
 ): RuntimeSessionCatalog {
 	if (!storage.conversationDir) return EMPTY_SESSION_CATALOG;
@@ -223,16 +220,16 @@ function createSessionCatalog(
 
 function createResourceAwareTransitionLifecycle(
 	composition: CodingAgentRuntimeComposition,
-	options: GreenfieldSdkSessionFactoryOptions,
-	readActiveResource: () => GreenfieldSdkOwnedResource | undefined,
-	setActiveResource: (resource: GreenfieldSdkOwnedResource | undefined) => void,
+	options: CodingAgentSdkSessionFactoryOptions,
+	readActiveResource: () => CodingAgentSdkOwnedResource | undefined,
+	setActiveResource: (resource: CodingAgentSdkOwnedResource | undefined) => void,
 ): CodingAgentSessionTransitionLifecycle | undefined {
 	if (!options.initializeSession && !options.transitionLifecycle) return undefined;
 	return {
 		before: (transition) => options.transitionLifecycle?.before?.(transition) ?? Promise.resolve(undefined),
 		prepare: async (transition) => {
 			const previousResource = readActiveResource();
-			let nextResource: GreenfieldSdkOwnedResource | undefined;
+			let nextResource: CodingAgentSdkOwnedResource | undefined;
 			let externalPrepared: CodingAgentPreparedSessionBinding | undefined;
 			try {
 				nextResource = await options.initializeSession?.({

@@ -3,53 +3,41 @@ import { resolve } from "node:path";
 import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type { CodingAgentConversationPersistenceFactory } from "../../composition/conversation/persistence.js";
 import { createInMemoryCodingAgentConversationPersistence } from "../../composition/conversation/persistence.js";
+import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
 
-export type GreenfieldSdkSessionStorageTarget =
-	| { readonly kind: "memory"; readonly sessionId?: string }
-	| {
-			readonly kind: "file-create";
-			readonly conversationDir: string;
-			readonly sessionId?: string;
-	  }
-	| {
-			readonly kind: "file-resume";
-			readonly conversationDir: string;
-			readonly sessionPath: string;
-	  };
+export type CodingAgentSdkSessionStorageOperation = "create" | "resume";
 
-export type GreenfieldSdkSessionStorageOperation = "create" | "resume";
-
-export interface ResolvedGreenfieldSdkSessionStorage {
-	readonly operation: GreenfieldSdkSessionStorageOperation;
+export interface ResolvedCodingAgentSdkSessionStorage {
+	readonly operation: CodingAgentSdkSessionStorageOperation;
 	readonly sessionId: string;
 	readonly conversationDir?: string;
 	readonly createConversationPersistence?: CodingAgentConversationPersistenceFactory;
 }
 
-export const GREENFIELD_SDK_STORAGE_ERROR_CODES = {
+export const CODING_AGENT_SDK_STORAGE_ERROR_CODES = {
 	INVALID_CONVERSATION_DIR: "greenfield_sdk_invalid_conversation_dir",
 	INVALID_SESSION_ID: "greenfield_sdk_invalid_session_id",
 	INVALID_SESSION_PATH: "greenfield_sdk_invalid_session_path",
 } as const;
 
-export type GreenfieldSdkStorageErrorCode =
-	(typeof GREENFIELD_SDK_STORAGE_ERROR_CODES)[keyof typeof GREENFIELD_SDK_STORAGE_ERROR_CODES];
+export type CodingAgentSdkStorageErrorCode =
+	(typeof CODING_AGENT_SDK_STORAGE_ERROR_CODES)[keyof typeof CODING_AGENT_SDK_STORAGE_ERROR_CODES];
 
-export class GreenfieldSdkStorageError extends Error {
+export class CodingAgentSdkStorageError extends Error {
 	constructor(
-		readonly code: GreenfieldSdkStorageErrorCode,
+		readonly code: CodingAgentSdkStorageErrorCode,
 		message: string,
-		readonly target: GreenfieldSdkSessionStorageTarget,
+		readonly target: CodingAgentSessionStorageTarget,
 	) {
 		super(message);
-		this.name = "GreenfieldSdkStorageError";
+		this.name = "CodingAgentSdkStorageError";
 	}
 }
 
 /** 把 SDK 存储意图解析为 Composition 可消费的持久化配置。 */
-export function resolveGreenfieldSdkSessionStorage(
-	target: GreenfieldSdkSessionStorageTarget,
-): ResolvedGreenfieldSdkSessionStorage {
+export function resolveCodingAgentSdkSessionStorage(
+	target: CodingAgentSessionStorageTarget,
+): ResolvedCodingAgentSdkSessionStorage {
 	if (target.kind === "memory") {
 		return {
 			operation: "create",
@@ -60,8 +48,8 @@ export function resolveGreenfieldSdkSessionStorage(
 
 	const conversationDir = target.conversationDir.trim();
 	if (!conversationDir) {
-		throw new GreenfieldSdkStorageError(
-			GREENFIELD_SDK_STORAGE_ERROR_CODES.INVALID_CONVERSATION_DIR,
+		throw new CodingAgentSdkStorageError(
+			CODING_AGENT_SDK_STORAGE_ERROR_CODES.INVALID_CONVERSATION_DIR,
 			"Greenfield SDK file storage requires a conversation directory",
 			target,
 		);
@@ -77,8 +65,8 @@ export function resolveGreenfieldSdkSessionStorage(
 	const resolvedConversationDir = resolve(conversationDir);
 	const sessionId = resolveSessionIdFromPath(resolvedConversationDir, target.sessionPath);
 	if (!sessionId) {
-		throw new GreenfieldSdkStorageError(
-			GREENFIELD_SDK_STORAGE_ERROR_CODES.INVALID_SESSION_PATH,
+		throw new CodingAgentSdkStorageError(
+			CODING_AGENT_SDK_STORAGE_ERROR_CODES.INVALID_SESSION_PATH,
 			`Greenfield SDK cannot resume a session outside the native conversation directory: ${target.sessionPath}`,
 			target,
 		);
@@ -90,12 +78,12 @@ export function resolveGreenfieldSdkSessionStorage(
 	};
 }
 
-function normalizeSessionId(sessionId: string | undefined, target: GreenfieldSdkSessionStorageTarget): string {
+function normalizeSessionId(sessionId: string | undefined, target: CodingAgentSessionStorageTarget): string {
 	if (sessionId === undefined) return randomUUID();
 	const normalized = sessionId.trim();
 	if (normalized) return normalized;
-	throw new GreenfieldSdkStorageError(
-		GREENFIELD_SDK_STORAGE_ERROR_CODES.INVALID_SESSION_ID,
+	throw new CodingAgentSdkStorageError(
+		CODING_AGENT_SDK_STORAGE_ERROR_CODES.INVALID_SESSION_ID,
 		"Greenfield SDK session ID must not be empty",
 		target,
 	);

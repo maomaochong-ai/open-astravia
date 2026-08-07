@@ -4,10 +4,10 @@ import {
 	CodingAgentResourceReloadHost,
 	type CodingAgentResourceReloadHostOptions,
 } from "../../host/resources/resource-reload-host.js";
-import type { GreenfieldSdkSessionCapabilityPort } from "../../host/sdk-session/runtime-contracts.js";
+import type { CodingAgentSdkSessionCapabilityPort } from "../../host/sdk-session/runtime-contracts.js";
 import {
-	CodingAgentGreenfieldSessionCapabilityHost,
-	type CodingAgentGreenfieldSessionCapabilityHostOptions,
+	CodingAgentSdkSessionCapabilityHost,
+	type CodingAgentSdkSessionCapabilityHostOptions,
 } from "../../host/sdk-session/session-capability-host.js";
 import {
 	CodingAgentBranchNavigationHost,
@@ -20,8 +20,8 @@ import { projectCodingAgentMessages } from "../../sessions/projection/conversati
 export type CodingAgentRuntimeBranchNavigationOptions = CodingAgentBranchNavigationOptions;
 export type CodingAgentRuntimeBranchNavigationHostOptions = CodingAgentBranchNavigationHostOptions;
 export type CodingAgentRuntimeResourceReloadHostOptions = CodingAgentResourceReloadHostOptions;
-export type CodingAgentSessionCapabilityHostOptions = CodingAgentGreenfieldSessionCapabilityHostOptions;
-export type CodingAgentSessionCapabilityHost = GreenfieldSdkSessionCapabilityPort;
+export type CodingAgentSessionCapabilityHostOptions = CodingAgentSdkSessionCapabilityHostOptions;
+export type CodingAgentSessionCapabilityHost = CodingAgentSdkSessionCapabilityPort;
 
 export interface CodingAgentRuntimeBranchNavigationHost {
 	navigateTree(
@@ -55,7 +55,7 @@ export function createCodingAgentRuntimeResourceReloadHost(
 export function createCodingAgentSessionCapabilityHost(
 	options: CodingAgentSessionCapabilityHostOptions,
 ): CodingAgentSessionCapabilityHost {
-	return new CodingAgentGreenfieldSessionCapabilityHost(options);
+	return new CodingAgentSdkSessionCapabilityHost(options);
 }
 
 export function projectCodingAgentRuntimeMessages(document: ConversationDocument): readonly AgentMessage[] {

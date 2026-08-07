@@ -4,25 +4,25 @@ import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
 import type {
-	GreenfieldSdkActiveSessionCapabilityPort,
-	GreenfieldSdkBashOperations,
-	GreenfieldSdkBashResult,
-	GreenfieldSdkNewSessionOptions,
-	GreenfieldSdkTreeNavigationOptions,
-	GreenfieldSdkTreeNavigationResult,
-} from "./runtime-contracts.js";
+	CodingAgentBashOperations,
+	CodingAgentBashResult,
+	CodingAgentNewSessionOptions,
+	CodingAgentTreeNavigationOptions,
+	CodingAgentTreeNavigationResult,
+} from "../../public-api/sdk/sdk-session-contract.js";
+import type { CodingAgentSdkActiveSessionCapabilityPort } from "./runtime-contracts.js";
 
-export interface CodingAgentGreenfieldSdkBashPort {
+export interface CodingAgentSdkBashPort {
 	execute(
 		session: GreenfieldRuntimeSession,
 		command: string,
 		onChunk?: (chunk: string) => void,
-		options?: { readonly excludeFromContext?: boolean; readonly operations?: GreenfieldSdkBashOperations },
-	): Promise<GreenfieldSdkBashResult>;
+		options?: { readonly excludeFromContext?: boolean; readonly operations?: CodingAgentBashOperations },
+	): Promise<CodingAgentBashResult>;
 	record(
 		session: GreenfieldRuntimeSession,
 		command: string,
-		result: GreenfieldSdkBashResult,
+		result: CodingAgentBashResult,
 		options?: { readonly excludeFromContext?: boolean },
 	): Promise<void>;
 	abort(): void;
@@ -32,15 +32,12 @@ export interface CodingAgentGreenfieldSdkBashPort {
 	dispose(): Promise<void>;
 }
 
-export interface CodingAgentGreenfieldSdkTreeNavigationPort {
-	navigateTree(
-		targetId: string,
-		options?: GreenfieldSdkTreeNavigationOptions,
-	): Promise<GreenfieldSdkTreeNavigationResult>;
+export interface CodingAgentSdkTreeNavigationPort {
+	navigateTree(targetId: string, options?: CodingAgentTreeNavigationOptions): Promise<CodingAgentTreeNavigationResult>;
 	abortBranchSummary(): void;
 }
 
-export interface CodingAgentGreenfieldSdkActiveSessionCapabilityHostOptions {
+export interface CodingAgentSdkActiveSessionCapabilityHostOptions {
 	readonly sessionHost: Pick<
 		CodingAgentActiveSessionHost,
 		| "fork"
@@ -51,15 +48,15 @@ export interface CodingAgentGreenfieldSdkActiveSessionCapabilityHostOptions {
 		| "switchSession"
 	>;
 	readonly createSessionSetupInitializer?: (
-		setup: NonNullable<GreenfieldSdkNewSessionOptions["setup"]>,
+		setup: NonNullable<CodingAgentNewSessionOptions["setup"]>,
 	) => NonNullable<Parameters<CodingAgentActiveSessionHost["newSession"]>[0]>["seedInitializer"];
-	readonly treeNavigation?: CodingAgentGreenfieldSdkTreeNavigationPort;
-	readonly bash?: CodingAgentGreenfieldSdkBashPort;
+	readonly treeNavigation?: CodingAgentSdkTreeNavigationPort;
+	readonly bash?: CodingAgentSdkBashPort;
 }
 
 /** SDK 活动会话命令到 Runtime 历史、上下文和身份事务端口的适配器。 */
-export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements GreenfieldSdkActiveSessionCapabilityPort {
-	constructor(private readonly options: CodingAgentGreenfieldSdkActiveSessionCapabilityHostOptions) {}
+export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdkActiveSessionCapabilityPort {
+	constructor(private readonly options: CodingAgentSdkActiveSessionCapabilityHostOptions) {}
 
 	getSessionBranch() {
 		return createCodingAgentExtensionSessionView(this.readSession().createCoreAssembly()).getBranch();
@@ -102,7 +99,7 @@ export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements Gree
 		});
 	}
 
-	async newSession(options?: GreenfieldSdkNewSessionOptions): Promise<boolean> {
+	async newSession(options?: CodingAgentNewSessionOptions): Promise<boolean> {
 		const seedInitializer = options?.setup ? this.options.createSessionSetupInitializer?.(options.setup) : undefined;
 		if (options?.setup && !seedInitializer) {
 			throw new Error("Greenfield SDK session setup compatibility is unavailable");
@@ -121,8 +118,8 @@ export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements Gree
 	executeBash(
 		command: string,
 		onChunk?: (chunk: string) => void,
-		options?: { readonly excludeFromContext?: boolean; readonly operations?: GreenfieldSdkBashOperations },
-	): Promise<GreenfieldSdkBashResult> {
+		options?: { readonly excludeFromContext?: boolean; readonly operations?: CodingAgentBashOperations },
+	): Promise<CodingAgentBashResult> {
 		const bash = this.requireBash();
 		return this.options.sessionHost.startActiveSessionOperation((session) =>
 			bash.execute(session, command, onChunk, options),
@@ -131,7 +128,7 @@ export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements Gree
 
 	recordBashResult(
 		command: string,
-		result: GreenfieldSdkBashResult,
+		result: CodingAgentBashResult,
 		options?: { readonly excludeFromContext?: boolean },
 	): Promise<void> {
 		const bash = this.requireBash();
@@ -163,8 +160,8 @@ export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements Gree
 
 	navigateTree(
 		targetId: string,
-		options?: GreenfieldSdkTreeNavigationOptions,
-	): Promise<GreenfieldSdkTreeNavigationResult> {
+		options?: CodingAgentTreeNavigationOptions,
+	): Promise<CodingAgentTreeNavigationResult> {
 		if (!this.options.treeNavigation) {
 			throw new Error("Greenfield SDK tree navigation capability is unavailable");
 		}
@@ -229,7 +226,7 @@ export class CodingAgentGreenfieldSdkActiveSessionCapabilityHost implements Gree
 		return this.options.sessionHost.readSession();
 	}
 
-	private requireBash(): CodingAgentGreenfieldSdkBashPort {
+	private requireBash(): CodingAgentSdkBashPort {
 		if (!this.options.bash) throw new Error("Greenfield SDK Bash capability is unavailable");
 		return this.options.bash;
 	}

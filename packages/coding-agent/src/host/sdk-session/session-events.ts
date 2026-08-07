@@ -4,7 +4,7 @@ import type { CustomMessage } from "../../model-context/index.js";
 import type { CodingAgentSessionEvent } from "../../public-api/sdk/sdk-event-contract.js";
 
 /** 将完整 Runtime 执行观察事件适配为现有 SDK Agent 事件。 */
-export function mapGreenfieldSdkExecutionEvent(
+export function mapCodingAgentSdkExecutionEvent(
 	observation: RuntimeSessionExecutionObservation,
 ): CodingAgentSessionEvent {
 	const { event } = observation;

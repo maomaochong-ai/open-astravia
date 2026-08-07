@@ -8,7 +8,7 @@ import {
 	CodingAgentSdkResourceSourceAdapter,
 	projectCodingAgentSkillInfo,
 } from "../../src/host/coding-agent-sdk-resource-source-adapter.js";
-import { CodingAgentGreenfieldSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
+import { CodingAgentSdkSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
 import {
 	type CodingAgentExtensionSourceSnapshot,
 	type CodingAgentSkillSourceSnapshot,
@@ -166,7 +166,7 @@ describe("Coding Agent SDK dynamic resources", () => {
 	it("refreshes invalidated sources only before a new Turn, not while queueing input", async () => {
 		const beforePrompt = vi.fn(async () => {});
 		const prompt = vi.fn(async () => ({ status: "completed" as const }));
-		const host = new CodingAgentGreenfieldSessionCapabilityHost({
+		const host = new CodingAgentSdkSessionCapabilityHost({
 			readSession: () => ({ prompt }) as unknown as GreenfieldRuntimeSession,
 			beforePrompt,
 		});

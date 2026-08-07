@@ -6,39 +6,39 @@ import type {
 	PromptRequest,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
+import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
+import type {
+	CodingAgentMemoryConfiguration,
+	CodingAgentModelCycleResult,
+	CodingAgentPromptTemplate,
+	CodingAgentScopedModel,
+	CodingAgentSkillInfo,
+	CodingAgentToolInfo,
+} from "../../public-api/sdk/sdk-session-contract.js";
+import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
 import { projectCodingAgentMessages } from "../../sessions/projection/conversation-context-projector.js";
 import type { CodingAgentTurnRetryController } from "../session-execution/contracts.js";
 import { readCodingAgentFailedTurnMessage } from "../session-execution/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";
-import type {
-	GreenfieldSdkCustomToolDefinition,
-	GreenfieldSdkMemoryConfiguration,
-	GreenfieldSdkModelCycleResult,
-	GreenfieldSdkPromptTemplate,
-	GreenfieldSdkRetryEvent,
-	GreenfieldSdkScopedModel,
-	GreenfieldSdkSessionCapabilityPort,
-	GreenfieldSdkSkillInfo,
-	GreenfieldSdkToolInfo,
-} from "./runtime-contracts.js";
-import type { CodingAgentGreenfieldSessionCapabilityHostOptions } from "./session-capability-options.js";
+import type { CodingAgentSdkSessionCapabilityPort } from "./runtime-contracts.js";
+import type { CodingAgentSdkSessionCapabilityHostOptions } from "./session-capability-options.js";
 import { computeSdkSessionStats, readLastAssistantText, toSdkToolInfo } from "./session-capability-projections.js";
 import { CodingAgentSessionModelCapabilities } from "./session-model-capabilities.js";
 
 export type {
-	CodingAgentGreenfieldSessionCapabilityHostOptions,
-	CodingAgentGreenfieldSessionCapabilitySettings,
+	CodingAgentSdkSessionCapabilityHostOptions,
+	CodingAgentSdkSessionCapabilitySettings,
 } from "./session-capability-options.js";
 
 /** SDK 与 RPC 共用的 Session 内操作能力；不拥有 Session，也不执行身份迁移。 */
-export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdkSessionCapabilityPort {
-	private scopedModels: GreenfieldSdkScopedModel[];
+export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessionCapabilityPort {
+	private scopedModels: CodingAgentScopedModel[];
 	private agentMode: string | undefined;
 	private readonly retryController: CodingAgentTurnRetryController | undefined;
-	private readonly retryListeners = new Set<(event: GreenfieldSdkRetryEvent) => void>();
+	private readonly retryListeners = new Set<(event: CodingAgentRetryEvent) => void>();
 	private readonly modelCapabilities: CodingAgentSessionModelCapabilities;
 
-	constructor(private readonly options: CodingAgentGreenfieldSessionCapabilityHostOptions) {
+	constructor(private readonly options: CodingAgentSdkSessionCapabilityHostOptions) {
 		this.scopedModels = [...(options.scopedModels ?? [])];
 		this.agentMode = options.initialAgentMode;
 		this.modelCapabilities = new CodingAgentSessionModelCapabilities({
@@ -77,7 +77,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		return result;
 	}
 
-	subscribeRetryEvents(handler: (event: GreenfieldSdkRetryEvent) => void): () => void {
+	subscribeRetryEvents(handler: (event: CodingAgentRetryEvent) => void): () => void {
 		this.retryListeners.add(handler);
 		return () => this.retryListeners.delete(handler);
 	}
@@ -90,7 +90,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		return this.readCore().toolController?.readActiveToolNames() ?? [];
 	}
 
-	readAllTools(): readonly GreenfieldSdkToolInfo[] {
+	readAllTools(): readonly CodingAgentToolInfo[] {
 		const tools = this.readCore().toolController?.readAvailableTools();
 		return tools ? toSdkToolInfo(tools) : [];
 	}
@@ -101,7 +101,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		controller.setActiveToolNames(toolNames);
 	}
 
-	reconfigureCustomTools(customTools: readonly GreenfieldSdkCustomToolDefinition[] | undefined): void {
+	reconfigureCustomTools(customTools: readonly CodingAgentSessionToolDefinition[] | undefined): void {
 		if (!this.options.reconfigureCustomTools) {
 			throw new Error("Greenfield session custom tool capability is unavailable");
 		}
@@ -133,11 +133,11 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		return this.readCore().metadataController.readName();
 	}
 
-	readScopedModels(): readonly GreenfieldSdkScopedModel[] {
+	readScopedModels(): readonly CodingAgentScopedModel[] {
 		return [...this.scopedModels];
 	}
 
-	setScopedModels(scopedModels: readonly GreenfieldSdkScopedModel[]): void {
+	setScopedModels(scopedModels: readonly CodingAgentScopedModel[]): void {
 		this.scopedModels = [...scopedModels];
 	}
 
@@ -165,7 +165,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		this.modelCapabilities.setThinkingLevel(level);
 	}
 
-	async cycleModel(direction: "forward" | "backward" = "forward"): Promise<GreenfieldSdkModelCycleResult | undefined> {
+	async cycleModel(direction: "forward" | "backward" = "forward"): Promise<CodingAgentModelCycleResult | undefined> {
 		return this.modelCapabilities.cycleModel(direction);
 	}
 
@@ -281,7 +281,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		return this.options.readSystemPrompt?.() ?? "";
 	}
 
-	readSkills(): readonly GreenfieldSdkSkillInfo[] {
+	readSkills(): readonly CodingAgentSkillInfo[] {
 		return (
 			this.options.readSkills?.().map((skill) => ({
 				...skill,
@@ -290,7 +290,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		);
 	}
 
-	readPromptTemplates(): readonly GreenfieldSdkPromptTemplate[] {
+	readPromptTemplates(): readonly CodingAgentPromptTemplate[] {
 		return this.options.readPromptTemplates?.().map((template) => ({ ...template })) ?? [];
 	}
 
@@ -331,7 +331,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		return this.readCore().todoController?.clear() ?? false;
 	}
 
-	readMemoryConfiguration(): GreenfieldSdkMemoryConfiguration {
+	readMemoryConfiguration(): CodingAgentMemoryConfiguration {
 		return { ...(this.options.memoryConfiguration ?? { enabled: false, file: undefined, charLimit: 0 }) };
 	}
 

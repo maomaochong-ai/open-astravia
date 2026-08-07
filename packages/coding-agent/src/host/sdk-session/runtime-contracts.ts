@@ -12,51 +12,21 @@ import type {
 	RuntimeSubagentSnapshot,
 	TodoItem,
 } from "@vetta/runtime-core";
-import type {
-	CodingAgentRetryEvent,
-	CodingAgentSessionEventListener,
-} from "../../public-api/sdk/sdk-event-contract.js";
-import type { CodingAgentPromptOptions } from "../../public-api/sdk/sdk-prompt-contract.js";
+import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
 import type {
 	CodingAgentActiveSessionCapabilities,
-	CodingAgentBashOperations,
-	CodingAgentBashResult,
-	CodingAgentFixedSession,
 	CodingAgentMemoryConfiguration,
 	CodingAgentModelCycleResult,
-	CodingAgentNewSessionOptions,
 	CodingAgentPromptTemplate,
 	CodingAgentScopedModel,
-	CodingAgentSession,
 	CodingAgentSessionStats,
 	CodingAgentSkillInfo,
 	CodingAgentToolInfo,
-	CodingAgentTreeNavigationOptions,
-	CodingAgentTreeNavigationResult,
 } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
 
-export type GreenfieldSdkPromptOptions = CodingAgentPromptOptions;
-export type GreenfieldSdkSessionEventListener = CodingAgentSessionEventListener;
-export type GreenfieldSdkCustomToolDefinition = CodingAgentSessionToolDefinition;
-export type GreenfieldSdkScopedModel = CodingAgentScopedModel;
-export type GreenfieldSdkModelCycleResult = CodingAgentModelCycleResult;
-export type GreenfieldSdkToolInfo = CodingAgentToolInfo;
-export type GreenfieldSdkPromptTemplate = CodingAgentPromptTemplate;
-export type GreenfieldSdkMemoryConfiguration = CodingAgentMemoryConfiguration;
-export type GreenfieldSdkSessionStats = CodingAgentSessionStats;
-export type GreenfieldSdkSkillInfo = CodingAgentSkillInfo;
-export type GreenfieldSdkRetryEvent = CodingAgentRetryEvent;
-export type GreenfieldSdkSession = CodingAgentFixedSession;
-export type GreenfieldSdkBashOperations = CodingAgentBashOperations;
-export type GreenfieldSdkBashResult = CodingAgentBashResult;
-export type GreenfieldSdkNewSessionOptions = CodingAgentNewSessionOptions;
-export type GreenfieldSdkTreeNavigationOptions = CodingAgentTreeNavigationOptions;
-export type GreenfieldSdkTreeNavigationResult = CodingAgentTreeNavigationResult;
-export type GreenfieldSdkActiveSession = CodingAgentSession;
-
 /** 固定会话适配器依赖的内部能力端口。 */
-export interface GreenfieldSdkSessionCapabilityPort {
+export interface CodingAgentSdkSessionCapabilityPort {
 	prompt(request: PromptRequest): Promise<unknown>;
 	selectModel(provider: string, modelId: string): Promise<Model<Api> | undefined>;
 	setThinkingLevel(level: ThinkingLevel): void;
@@ -119,16 +89,16 @@ export interface GreenfieldSdkSessionCapabilityPort {
 }
 
 /** 活动会话适配器依赖的内部身份与历史端口。 */
-export interface GreenfieldSdkActiveSessionCapabilityPort extends CodingAgentActiveSessionCapabilities {
+export interface CodingAgentSdkActiveSessionCapabilityPort extends CodingAgentActiveSessionCapabilities {
 	quiesceIdentity(): Promise<void>;
 	dispose(): Promise<void>;
 }
 
 /** 内部适配器依赖的最小 Runtime 会话端口。 */
-export interface GreenfieldSdkSessionRuntimePort {
+export interface CodingAgentSdkSessionRuntimePort {
 	readonly sessionId: string;
 	readonly sessionPath: string | undefined;
-	readonly capabilities: GreenfieldSdkSessionCapabilityPort;
+	readonly capabilities: CodingAgentSdkSessionCapabilityPort;
 	prompt(request: PromptRequest): Promise<unknown>;
 	abort(reason?: string): Promise<void>;
 	readState(): RuntimeSessionState;

@@ -1,8 +1,8 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import { type Api, type Model, modelsAreEqual, supportsXhigh } from "@vetta/ai";
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
-import type { GreenfieldSdkModelCycleResult, GreenfieldSdkScopedModel } from "./runtime-contracts.js";
-import type { CodingAgentGreenfieldSessionCapabilitySettings } from "./session-capability-options.js";
+import type { CodingAgentModelCycleResult, CodingAgentScopedModel } from "../../public-api/sdk/sdk-session-contract.js";
+import type { CodingAgentSdkSessionCapabilitySettings } from "./session-capability-options.js";
 
 const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high"];
 const THINKING_LEVELS_WITH_XHIGH: readonly ThinkingLevel[] = [...THINKING_LEVELS, "xhigh"];
@@ -12,8 +12,8 @@ type SessionCore = ReturnType<GreenfieldRuntimeSession["createCoreAssembly"]>;
 export interface CodingAgentSessionModelCapabilitiesOptions {
 	readonly readCore: () => SessionCore;
 	readonly readAvailableModels: () => Promise<readonly Model<Api>[]>;
-	readonly readScopedModels: () => readonly GreenfieldSdkScopedModel[];
-	readonly settings?: CodingAgentGreenfieldSessionCapabilitySettings;
+	readonly readScopedModels: () => readonly CodingAgentScopedModel[];
+	readonly settings?: CodingAgentSdkSessionCapabilitySettings;
 }
 
 export class CodingAgentSessionModelCapabilities {
@@ -35,7 +35,7 @@ export class CodingAgentSessionModelCapabilities {
 		this.options.settings?.setDefaultThinkingLevel(core.corePorts.stateReader.readState().thinkingLevel);
 	}
 
-	async cycleModel(direction: "forward" | "backward" = "forward"): Promise<GreenfieldSdkModelCycleResult | undefined> {
+	async cycleModel(direction: "forward" | "backward" = "forward"): Promise<CodingAgentModelCycleResult | undefined> {
 		const core = this.options.readCore();
 		const scopedModels = this.options.readScopedModels();
 		const candidates =
@@ -90,10 +90,10 @@ function availableThinkingLevels(model: Model<Api> | undefined): readonly Thinki
 }
 
 async function readUsableScopedModels(
-	scopedModels: readonly GreenfieldSdkScopedModel[],
+	scopedModels: readonly CodingAgentScopedModel[],
 	resolveApiKey: (model: Model<Api>) => Promise<string | undefined>,
-): Promise<GreenfieldSdkScopedModel[]> {
-	const usable: GreenfieldSdkScopedModel[] = [];
+): Promise<CodingAgentScopedModel[]> {
+	const usable: CodingAgentScopedModel[] = [];
 	for (const scoped of scopedModels) {
 		if (await resolveApiKey(scoped.model)) usable.push(scoped);
 	}

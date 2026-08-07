@@ -8,16 +8,16 @@ import type {
 } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type {
-	GreenfieldSdkRetryEvent,
-	GreenfieldSdkSessionCapabilityPort,
-	GreenfieldSdkSessionRuntimePort,
+	CodingAgentSdkSessionCapabilityPort,
+	CodingAgentSdkSessionRuntimePort,
 } from "../../src/host/sdk-session/runtime-contracts.js";
-import { GreenfieldSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
+import { CodingAgentSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
+import type { CodingAgentRetryEvent } from "../../src/public-api/sdk/sdk-event-contract.js";
 
-describe("Greenfield SDK session adapter", () => {
+describe("Coding Agent SDK session adapter", () => {
 	it("maps prompt, queue, model and thinking controls onto the narrow Runtime port", async () => {
 		const runtime = new FakeSdkRuntime();
-		const session = new GreenfieldSdkSessionAdapter(runtime);
+		const session = new CodingAgentSdkSessionAdapter(runtime);
 		const image = { type: "image" as const, data: "image-data", mimeType: "image/png" };
 
 		await session.prompt("first", { images: [image], metadata: { source: "sdk" } });
@@ -42,7 +42,7 @@ describe("Greenfield SDK session adapter", () => {
 
 	it("forwards fixed-session subagent observation and control without exposing the coordinator", () => {
 		const runtime = new FakeSdkRuntime();
-		const session = new GreenfieldSdkSessionAdapter(runtime);
+		const session = new CodingAgentSdkSessionAdapter(runtime);
 
 		expect(session.listSubagents()).toEqual([expect.objectContaining({ id: "child-1", status: "running" })]);
 		expect(session.interruptSubagent("child-1")).toMatchObject({ id: "child-1", status: "interrupted" });
@@ -54,7 +54,7 @@ describe("Greenfield SDK session adapter", () => {
 
 	it("exposes product behavior through narrow views and asynchronous commands", async () => {
 		const runtime = new FakeSdkRuntime();
-		const session = new GreenfieldSdkSessionAdapter(runtime);
+		const session = new CodingAgentSdkSessionAdapter(runtime);
 
 		expect(await session.listAvailableModels()).toEqual([]);
 		expect(session.getSystemPrompt()).toBe("effective prompt");
@@ -76,7 +76,7 @@ describe("Greenfield SDK session adapter", () => {
 
 	it("projects complete execution observations onto existing Agent events", () => {
 		const runtime = new FakeSdkRuntime();
-		const session = new GreenfieldSdkSessionAdapter(runtime);
+		const session = new CodingAgentSdkSessionAdapter(runtime);
 		const eventTypes: string[] = [];
 		session.subscribe((event) => eventTypes.push(event.type));
 
@@ -109,7 +109,7 @@ describe("Greenfield SDK session adapter", () => {
 
 	it("isolates listeners and closes Runtime ownership exactly once", async () => {
 		const runtime = new FakeSdkRuntime();
-		const session = new GreenfieldSdkSessionAdapter(runtime);
+		const session = new CodingAgentSdkSessionAdapter(runtime);
 		const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 		const observed: string[] = [];
 		session.subscribe(() => {
@@ -132,7 +132,7 @@ describe("Greenfield SDK session adapter", () => {
 		const runtime = new FakeSdkRuntime();
 		runtime.disposeFailures = 1;
 		const onClosed = vi.fn();
-		const session = new GreenfieldSdkSessionAdapter(runtime, onClosed);
+		const session = new CodingAgentSdkSessionAdapter(runtime, onClosed);
 
 		await expect(session.close()).rejects.toThrow("runtime cleanup failed");
 		expect(onClosed).not.toHaveBeenCalled();
@@ -143,7 +143,7 @@ describe("Greenfield SDK session adapter", () => {
 	});
 });
 
-class FakeSdkRuntime implements GreenfieldSdkSessionRuntimePort {
+class FakeSdkRuntime implements CodingAgentSdkSessionRuntimePort {
 	readonly sessionId = "sdk-session";
 	readonly sessionPath = "C:/sessions/sdk-session.jsonl";
 	readonly prompts: PromptRequest[] = [];
@@ -151,13 +151,13 @@ class FakeSdkRuntime implements GreenfieldSdkSessionRuntimePort {
 	readonly thinkingLevels: ThinkingLevel[] = [];
 	readonly customToolReconfigurations: Array<readonly unknown[] | undefined> = [];
 	readonly observers = new Set<(observation: RuntimeSessionExecutionObservation) => Promise<void> | void>();
-	readonly retryObservers = new Set<(event: GreenfieldSdkRetryEvent) => void>();
+	readonly retryObservers = new Set<(event: CodingAgentRetryEvent) => void>();
 	readonly interruptedSubagents: string[] = [];
 	readonly productCommands: string[] = [];
 	clearFinishedSubagentCalls = 0;
 	disposeCalls = 0;
 	disposeFailures = 0;
-	readonly capabilities: GreenfieldSdkSessionCapabilityPort = {
+	readonly capabilities: CodingAgentSdkSessionCapabilityPort = {
 		prompt: async () => undefined,
 		selectModel: async () => undefined,
 		setThinkingLevel: () => undefined,
@@ -310,7 +310,7 @@ class FakeSdkRuntime implements GreenfieldSdkSessionRuntimePort {
 		}
 	}
 
-	emitRetry(event: GreenfieldSdkRetryEvent): void {
+	emitRetry(event: CodingAgentRetryEvent): void {
 		for (const observer of this.retryObservers) observer(event);
 	}
 }

@@ -1,12 +1,12 @@
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
-import type { GreenfieldSdkSessionCapabilityPort, GreenfieldSdkSessionRuntimePort } from "./runtime-contracts.js";
+import type { CodingAgentSdkSessionCapabilityPort, CodingAgentSdkSessionRuntimePort } from "./runtime-contracts.js";
 
 /** 唯一允许感知 GreenfieldRuntimeSession 具体表面的 SDK 组合边界。 */
-export function bindGreenfieldSdkSessionRuntime(
+export function bindCodingAgentSdkSessionRuntime(
 	session: GreenfieldRuntimeSession,
-	capabilities: GreenfieldSdkSessionCapabilityPort,
-): GreenfieldSdkSessionRuntimePort {
+	capabilities: CodingAgentSdkSessionCapabilityPort,
+): CodingAgentSdkSessionRuntimePort {
 	const assembly = session.createCoreAssembly();
 	return {
 		capabilities,
@@ -32,14 +32,14 @@ export function bindGreenfieldSdkSessionRuntime(
 }
 
 /** 活动会话宿主到稳定 SDK Runtime Port 的绑定；所有读取都解析当前 Session。 */
-export function bindGreenfieldSdkActiveSessionRuntime(
+export function bindCodingAgentSdkActiveSessionRuntime(
 	host: Pick<
 		CodingAgentActiveSessionHost,
 		"readSession" | "startActiveSessionOperation" | "subscribeExecutionObservations"
 	>,
-	capabilities: GreenfieldSdkSessionCapabilityPort,
+	capabilities: CodingAgentSdkSessionCapabilityPort,
 	dispose: () => Promise<void>,
-): GreenfieldSdkSessionRuntimePort {
+): CodingAgentSdkSessionRuntimePort {
 	const readAssembly = () => host.readSession().createCoreAssembly();
 	return {
 		capabilities,

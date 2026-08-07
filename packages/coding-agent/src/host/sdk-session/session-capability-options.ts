@@ -4,16 +4,16 @@ import type {
 	GreenfieldRuntimeSession,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
-import type { CodingAgentTurnRetryController, CodingAgentTurnRetrySettings } from "../session-execution/contracts.js";
 import type {
-	GreenfieldSdkCustomToolDefinition,
-	GreenfieldSdkMemoryConfiguration,
-	GreenfieldSdkPromptTemplate,
-	GreenfieldSdkScopedModel,
-	GreenfieldSdkSkillInfo,
-} from "./runtime-contracts.js";
+	CodingAgentMemoryConfiguration,
+	CodingAgentPromptTemplate,
+	CodingAgentScopedModel,
+	CodingAgentSkillInfo,
+} from "../../public-api/sdk/sdk-session-contract.js";
+import type { CodingAgentSessionToolDefinition } from "../../public-api/sdk/sdk-tool-contract.js";
+import type { CodingAgentTurnRetryController, CodingAgentTurnRetrySettings } from "../session-execution/contracts.js";
 
-export interface CodingAgentGreenfieldSessionCapabilitySettings {
+export interface CodingAgentSdkSessionCapabilitySettings {
 	setDefaultModelAndProvider(provider: string, modelId: string): void;
 	setDefaultThinkingLevel(level: string): void;
 	setSteeringMode(mode: RuntimeSessionInputQueueMode): void;
@@ -23,20 +23,20 @@ export interface CodingAgentGreenfieldSessionCapabilitySettings {
 	setRetryEnabled(enabled: boolean): void;
 }
 
-export interface CodingAgentGreenfieldSessionCapabilityHostOptions {
+export interface CodingAgentSdkSessionCapabilityHostOptions {
 	readonly readSession: () => GreenfieldRuntimeSession;
 	readonly readAvailableModels?: () => Promise<readonly Model<Api>[]>;
-	readonly scopedModels?: readonly GreenfieldSdkScopedModel[];
+	readonly scopedModels?: readonly CodingAgentScopedModel[];
 	readonly initialAgentMode?: string;
-	readonly settings?: CodingAgentGreenfieldSessionCapabilitySettings;
+	readonly settings?: CodingAgentSdkSessionCapabilitySettings;
 	readonly retryController?: CodingAgentTurnRetryController;
-	readonly reconfigureCustomTools?: (customTools: readonly GreenfieldSdkCustomToolDefinition[] | undefined) => void;
+	readonly reconfigureCustomTools?: (customTools: readonly CodingAgentSessionToolDefinition[] | undefined) => void;
 	readonly beforePrompt?: () => Promise<void> | void;
 	readonly readSystemPrompt?: () => string;
-	readonly readSkills?: () => readonly GreenfieldSdkSkillInfo[];
-	readonly readPromptTemplates?: () => readonly GreenfieldSdkPromptTemplate[];
+	readonly readSkills?: () => readonly CodingAgentSkillInfo[];
+	readonly readPromptTemplates?: () => readonly CodingAgentPromptTemplate[];
 	readonly reconfigureAgentPlugins?: (agentPlugins: AgentPluginRuntimeConfig | undefined) => Promise<void> | void;
-	readonly memoryConfiguration?: GreenfieldSdkMemoryConfiguration;
+	readonly memoryConfiguration?: CodingAgentMemoryConfiguration;
 	readonly flushMemory?: (signal?: AbortSignal) => Promise<number>;
 	readonly reloadMcp?: () => Promise<void>;
 	readonly reload?: () => Promise<void>;

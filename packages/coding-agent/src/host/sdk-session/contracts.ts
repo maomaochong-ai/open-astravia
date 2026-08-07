@@ -2,8 +2,8 @@ import type { CodingAgentAuthRuntime } from "../../auth/index.js";
 import type { CodingAgentHtmlExportRuntime } from "../../export-html/index.js";
 import type { LoadExtensionsResult } from "../../extensions/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
+import type { CodingAgentSession } from "../../public-api/sdk/sdk-session-contract.js";
 import type { SettingsRuntime } from "../../settings/index.js";
-import type { GreenfieldSdkActiveSession } from "./runtime-contracts.js";
 
 export const CODING_AGENT_SDK_HOST_ERROR_CODES = {
 	NO_MODEL: "greenfield_sdk_no_model",
@@ -31,7 +31,7 @@ export interface CodingAgentSdkPublicHostContext {
 }
 
 export interface CodingAgentSdkSessionCompositionResult {
-	readonly session: GreenfieldSdkActiveSession;
+	readonly session: CodingAgentSession;
 	readonly extensionsResult: LoadExtensionsResult;
 	readonly modelFallbackMessage?: string;
 }

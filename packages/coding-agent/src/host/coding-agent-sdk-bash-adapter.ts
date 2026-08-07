@@ -3,7 +3,7 @@ import type { CodingAgentActiveSessionHost } from "../composition/session-host/a
 import { type BashExecutionMessage, bashExecutionToText } from "../model-context/index.js";
 import { CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE } from "../sessions/index.js";
 import type { HostBashExecutor, HostBashResult } from "./command-execution/index.js";
-import type { CodingAgentGreenfieldSdkBashPort } from "./sdk-session/active-session-capability-host.js";
+import type { CodingAgentSdkBashPort } from "./sdk-session/active-session-capability-host.js";
 
 export interface CodingAgentSdkBashAdapterOptions {
 	readonly executor: HostBashExecutor;
@@ -11,7 +11,7 @@ export interface CodingAgentSdkBashAdapterOptions {
 }
 
 /** 公开 SDK 的直接 Bash 执行兼容层；运行状态和待投递结果按 Session 身份隔离。 */
-export class CodingAgentSdkBashAdapter implements CodingAgentGreenfieldSdkBashPort {
+export class CodingAgentSdkBashAdapter implements CodingAgentSdkBashPort {
 	private active:
 		| {
 				readonly sessionId: string;
@@ -37,7 +37,7 @@ export class CodingAgentSdkBashAdapter implements CodingAgentGreenfieldSdkBashPo
 		session: GreenfieldRuntimeSession,
 		command: string,
 		onChunk?: (chunk: string) => void,
-		options?: Parameters<CodingAgentGreenfieldSdkBashPort["execute"]>[3],
+		options?: Parameters<CodingAgentSdkBashPort["execute"]>[3],
 	): Promise<HostBashResult> {
 		if (this.active) throw new Error("A Greenfield SDK Bash command is already running");
 		const controller = new AbortController();

@@ -2,8 +2,8 @@ import { type GreenfieldRuntimeSession, InitializationRollbackScope } from "@vet
 import type { CodingAgentRuntimeComposition } from "../composition/contracts/index.js";
 import type { CodingAgentExtensionEventHost, CodingAgentExtensionInitialization } from "./extensions/contracts.js";
 import type {
-	GreenfieldSdkOwnedResource,
-	GreenfieldSdkSessionInitializationContext,
+	CodingAgentSdkOwnedResource,
+	CodingAgentSdkSessionInitializationContext,
 } from "./sdk-session/runtime-factory.js";
 import type {
 	CodingAgentPreparedSessionBinding,
@@ -35,8 +35,8 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	}
 
 	initializeSession = async (
-		context: GreenfieldSdkSessionInitializationContext,
-	): Promise<GreenfieldSdkOwnedResource> => {
+		context: CodingAgentSdkSessionInitializationContext,
+	): Promise<CodingAgentSdkOwnedResource> => {
 		const host = this.createHost(context.session, context.composition);
 		this.hosts.set(context.session.sessionId, host);
 		try {

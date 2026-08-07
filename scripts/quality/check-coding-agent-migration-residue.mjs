@@ -11,6 +11,12 @@ const CLI_TEST_ROOT = "packages/cli-app/test";
 const ADAPTER_ROOT = `${SOURCE_ROOT}/adapters`;
 const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
+const SDK_SESSION_HOST_ROOT = `${SOURCE_ROOT}/host/sdk-session`;
+const SDK_PUBLIC_API_ROOT = `${SOURCE_ROOT}/public-api/sdk`;
+const SDK_RUNTIME_PUBLIC_API = `${SOURCE_ROOT}/public-api/runtime/session.ts`;
+const SDK_TEST_ROOT = `${TEST_ROOT}/sdk`;
+const SDK_SESSION_MIGRATION_IDENTITY_PATTERN =
+	/\b(?:(?:[A-Za-z_$][\w$]*)?GreenfieldSdk[\w$]*|CodingAgentGreenfield[\w$]*)\b/g;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	adapterGreenfieldFiles: 0,
@@ -396,6 +402,14 @@ export function collectCodingAgentMigrationResidue(files) {
 	const cliFiles = sourceFiles.filter((file) => file.path.startsWith(`${CLI_SOURCE_ROOT}/`));
 	const compositionFiles = sourceFiles.filter((file) => file.path.startsWith(`${COMPOSITION_ROOT}/`));
 	const hostExtensionFiles = sourceFiles.filter((file) => file.path.startsWith(`${HOST_EXTENSION_ROOT}/`));
+	const sdkSessionBoundaryFiles = files.filter(
+		(file) =>
+			file.path.startsWith(`${SDK_SESSION_HOST_ROOT}/`) ||
+			file.path.startsWith(`${SOURCE_ROOT}/host/coding-agent-sdk-`) ||
+			file.path.startsWith(`${SDK_PUBLIC_API_ROOT}/`) ||
+			file.path === SDK_RUNTIME_PUBLIC_API ||
+			file.path.startsWith(`${SDK_TEST_ROOT}/`),
+	);
 	return Object.freeze({
 		retiredFiles: RETIRED_MIGRATION_FILES.filter((path) => sourceFiles.some((file) => file.path === path)),
 		retiredReferences: files.flatMap((file) =>
@@ -420,6 +434,13 @@ export function collectCodingAgentMigrationResidue(files) {
 		hostExtensionCompositionEdgeFiles: hostExtensionFiles.filter((file) =>
 			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("composition/")),
 		),
+		sdkSessionMigrationIdentities: sdkSessionBoundaryFiles.flatMap((file) =>
+			[...new Set(file.text.match(SDK_SESSION_MIGRATION_IDENTITY_PATTERN) ?? [])].map((identity) => ({
+				path: file.path,
+				identity,
+			})),
+		),
+		sdkSessionMigrationFiles: sdkSessionBoundaryFiles.filter((file) => basename(file.path).startsWith("greenfield")),
 	});
 }
 
@@ -428,6 +449,12 @@ export function findCodingAgentMigrationResidueViolations(state) {
 	for (const path of state.retiredFiles) violations.push(`${path}: retired migration file must stay deleted`);
 	for (const reference of state.retiredReferences) {
 		violations.push(`${reference.path}: retired migration reference (${reference.reference})`);
+	}
+	for (const reference of state.sdkSessionMigrationIdentities) {
+		violations.push(`${reference.path}: retired SDK Session migration identity (${reference.identity})`);
+	}
+	for (const file of state.sdkSessionMigrationFiles) {
+		violations.push(`${file.path}: retired SDK Session migration filename`);
 	}
 	for (const key of Object.keys(MIGRATION_RESIDUE_LIMITS)) {
 		const actual = state[key].length;
@@ -466,6 +493,9 @@ if (isDirectRun(import.meta.url)) {
 		ADAPTER_ROOT,
 		COMPOSITION_ROOT,
 		HOST_EXTENSION_ROOT,
+		SDK_SESSION_HOST_ROOT,
+		SDK_PUBLIC_API_ROOT,
+		SDK_TEST_ROOT,
 	].filter((path) => !existsSync(join(repoRoot, path)));
 	if (missingRoots.length > 0) {
 		for (const path of missingRoots) fail(`[coding-agent-migration-residue] missing source root (${path})`);
@@ -476,7 +506,7 @@ if (isDirectRun(import.meta.url)) {
 			for (const violation of violations) fail(`[coding-agent-migration-residue] ${violation}`);
 		} else {
 			ok(
-				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
+				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, SDK Session migration identities=${state.sdkSessionMigrationIdentities.length}/0, filenames=${state.sdkSessionMigrationFiles.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
 			);
 		}
 	}

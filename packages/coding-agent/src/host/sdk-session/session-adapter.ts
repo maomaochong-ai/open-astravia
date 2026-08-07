@@ -1,25 +1,23 @@
-import type {
-	GreenfieldSdkPromptOptions,
-	GreenfieldSdkSession,
-	GreenfieldSdkSessionEventListener,
-	GreenfieldSdkSessionRuntimePort,
-} from "./runtime-contracts.js";
-import { mapGreenfieldSdkExecutionEvent } from "./session-events.js";
+import type { CodingAgentSessionEventListener } from "../../public-api/sdk/sdk-event-contract.js";
+import type { CodingAgentPromptOptions } from "../../public-api/sdk/sdk-prompt-contract.js";
+import type { CodingAgentFixedSession } from "../../public-api/sdk/sdk-session-contract.js";
+import type { CodingAgentSdkSessionRuntimePort } from "./runtime-contracts.js";
+import { mapCodingAgentSdkExecutionEvent } from "./session-events.js";
 
-/** Greenfield Runtime 到现有 SDK 核心会话语义的并行兼容门面。 */
-export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
-	private readonly listeners = new Set<GreenfieldSdkSessionEventListener>();
+/** Runtime 到稳定 SDK 核心会话语义的门面。 */
+export class CodingAgentSdkSessionAdapter implements CodingAgentFixedSession {
+	private readonly listeners = new Set<CodingAgentSessionEventListener>();
 	private readonly unsubscribeExecutionObservation: () => void;
 	private readonly unsubscribeRetryEvents: () => void;
 	private closePromise: Promise<void> | undefined;
 	private closed = false;
 
 	constructor(
-		private readonly runtime: GreenfieldSdkSessionRuntimePort,
+		private readonly runtime: CodingAgentSdkSessionRuntimePort,
 		private readonly onClosed?: () => void,
 	) {
 		this.unsubscribeExecutionObservation = runtime.subscribeExecutionObservation((observation) => {
-			this.emit(mapGreenfieldSdkExecutionEvent(observation));
+			this.emit(mapCodingAgentSdkExecutionEvent(observation));
 		});
 		this.unsubscribeRetryEvents = runtime.capabilities.subscribeRetryEvents((event) => this.emit(event));
 	}
@@ -32,15 +30,15 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.sessionPath;
 	}
 
-	get state(): GreenfieldSdkSession["state"] {
+	get state(): CodingAgentFixedSession["state"] {
 		return this.runtime.readState();
 	}
 
-	get model(): GreenfieldSdkSession["model"] {
+	get model(): CodingAgentFixedSession["model"] {
 		return this.state.model;
 	}
 
-	get thinkingLevel(): GreenfieldSdkSession["thinkingLevel"] {
+	get thinkingLevel(): CodingAgentFixedSession["thinkingLevel"] {
 		return this.state.thinkingLevel;
 	}
 
@@ -48,7 +46,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.state.isStreaming;
 	}
 
-	get messages(): GreenfieldSdkSession["messages"] {
+	get messages(): CodingAgentFixedSession["messages"] {
 		return this.runtime.readMessages();
 	}
 
@@ -64,11 +62,11 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.readIsCompacting();
 	}
 
-	get steeringMode(): GreenfieldSdkSession["steeringMode"] {
+	get steeringMode(): CodingAgentFixedSession["steeringMode"] {
 		return this.runtime.capabilities.readSteeringMode();
 	}
 
-	get followUpMode(): GreenfieldSdkSession["followUpMode"] {
+	get followUpMode(): CodingAgentFixedSession["followUpMode"] {
 		return this.runtime.capabilities.readFollowUpMode();
 	}
 
@@ -76,7 +74,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.readSessionName();
 	}
 
-	get scopedModels(): GreenfieldSdkSession["scopedModels"] {
+	get scopedModels(): CodingAgentFixedSession["scopedModels"] {
 		return this.runtime.capabilities.readScopedModels();
 	}
 
@@ -96,7 +94,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.readAutoRetryEnabled();
 	}
 
-	async prompt(text: string, options: GreenfieldSdkPromptOptions = {}): Promise<void> {
+	async prompt(text: string, options: CodingAgentPromptOptions = {}): Promise<void> {
 		this.assertOpen();
 		await this.runtime.prompt({
 			text,
@@ -108,11 +106,11 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		});
 	}
 
-	async steer(text: string, images?: GreenfieldSdkPromptOptions["images"]): Promise<void> {
+	async steer(text: string, images?: CodingAgentPromptOptions["images"]): Promise<void> {
 		await this.prompt(text, { images, streamingBehavior: "steer" });
 	}
 
-	async followUp(text: string, images?: GreenfieldSdkPromptOptions["images"]): Promise<void> {
+	async followUp(text: string, images?: CodingAgentPromptOptions["images"]): Promise<void> {
 		await this.prompt(text, { images, streamingBehavior: "followUp" });
 	}
 
@@ -121,21 +119,21 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.abort();
 	}
 
-	setModel(model: NonNullable<GreenfieldSdkSession["model"]>): Promise<void> {
+	setModel(model: NonNullable<CodingAgentFixedSession["model"]>): Promise<void> {
 		this.assertOpen();
 		return this.runtime.selectModel(`${model.provider}/${model.id}`);
 	}
 
-	setThinkingLevel(level: GreenfieldSdkSession["thinkingLevel"]): void {
+	setThinkingLevel(level: CodingAgentFixedSession["thinkingLevel"]): void {
 		this.assertOpen();
 		this.runtime.setThinkingLevel(level);
 	}
 
-	getActiveToolNames(): ReturnType<GreenfieldSdkSession["getActiveToolNames"]> {
+	getActiveToolNames(): ReturnType<CodingAgentFixedSession["getActiveToolNames"]> {
 		return this.runtime.capabilities.readActiveToolNames();
 	}
 
-	getAllTools(): ReturnType<GreenfieldSdkSession["getAllTools"]> {
+	getAllTools(): ReturnType<CodingAgentFixedSession["getAllTools"]> {
 		return this.runtime.capabilities.readAllTools();
 	}
 
@@ -144,7 +142,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		this.runtime.capabilities.setActiveToolNames(toolNames);
 	}
 
-	reconfigureCustomTools(customTools: Parameters<GreenfieldSdkSession["reconfigureCustomTools"]>[0]): void {
+	reconfigureCustomTools(customTools: Parameters<CodingAgentFixedSession["reconfigureCustomTools"]>[0]): void {
 		this.assertOpen();
 		this.runtime.capabilities.reconfigureCustomTools(customTools);
 	}
@@ -154,12 +152,12 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		this.runtime.capabilities.setAgentMode(mode);
 	}
 
-	setScopedModels(scopedModels: GreenfieldSdkSession["scopedModels"]): void {
+	setScopedModels(scopedModels: CodingAgentFixedSession["scopedModels"]): void {
 		this.assertOpen();
 		this.runtime.capabilities.setScopedModels(scopedModels);
 	}
 
-	clearQueue(): ReturnType<GreenfieldSdkSession["clearQueue"]> {
+	clearQueue(): ReturnType<CodingAgentFixedSession["clearQueue"]> {
 		this.assertOpen();
 		return this.runtime.capabilities.clearQueue();
 	}
@@ -172,17 +170,17 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.readFollowUpMessages();
 	}
 
-	cycleModel(direction?: "forward" | "backward"): ReturnType<GreenfieldSdkSession["cycleModel"]> {
+	cycleModel(direction?: "forward" | "backward"): ReturnType<CodingAgentFixedSession["cycleModel"]> {
 		this.assertOpen();
 		return this.runtime.capabilities.cycleModel(direction);
 	}
 
-	cycleThinkingLevel(): ReturnType<GreenfieldSdkSession["cycleThinkingLevel"]> {
+	cycleThinkingLevel(): ReturnType<CodingAgentFixedSession["cycleThinkingLevel"]> {
 		this.assertOpen();
 		return this.runtime.capabilities.cycleThinkingLevel();
 	}
 
-	getAvailableThinkingLevels(): ReturnType<GreenfieldSdkSession["getAvailableThinkingLevels"]> {
+	getAvailableThinkingLevels(): ReturnType<CodingAgentFixedSession["getAvailableThinkingLevels"]> {
 		return this.runtime.capabilities.readAvailableThinkingLevels();
 	}
 
@@ -194,17 +192,17 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.supportsThinking();
 	}
 
-	setSteeringMode(mode: GreenfieldSdkSession["steeringMode"]): void {
+	setSteeringMode(mode: CodingAgentFixedSession["steeringMode"]): void {
 		this.assertOpen();
 		this.runtime.capabilities.setSteeringMode(mode);
 	}
 
-	setFollowUpMode(mode: GreenfieldSdkSession["followUpMode"]): void {
+	setFollowUpMode(mode: CodingAgentFixedSession["followUpMode"]): void {
 		this.assertOpen();
 		this.runtime.capabilities.setFollowUpMode(mode);
 	}
 
-	compact(customInstructions?: string, signal?: AbortSignal): ReturnType<GreenfieldSdkSession["compact"]> {
+	compact(customInstructions?: string, signal?: AbortSignal): ReturnType<CodingAgentFixedSession["compact"]> {
 		this.assertOpen();
 		return this.runtime.capabilities.compact(customInstructions, signal);
 	}
@@ -230,11 +228,11 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.setSessionName(name);
 	}
 
-	getSessionStats(): ReturnType<GreenfieldSdkSession["getSessionStats"]> {
+	getSessionStats(): ReturnType<CodingAgentFixedSession["getSessionStats"]> {
 		return this.runtime.capabilities.readSessionStats();
 	}
 
-	getContextUsage(): ReturnType<GreenfieldSdkSession["getContextUsage"]> {
+	getContextUsage(): ReturnType<CodingAgentFixedSession["getContextUsage"]> {
 		return this.runtime.capabilities.readContextUsage();
 	}
 
@@ -242,11 +240,11 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.readLastAssistantText();
 	}
 
-	listSubagents(): ReturnType<GreenfieldSdkSession["listSubagents"]> {
+	listSubagents(): ReturnType<CodingAgentFixedSession["listSubagents"]> {
 		return this.runtime.capabilities.readSubagents();
 	}
 
-	interruptSubagent(target: string): ReturnType<GreenfieldSdkSession["interruptSubagent"]> {
+	interruptSubagent(target: string): ReturnType<CodingAgentFixedSession["interruptSubagent"]> {
 		this.assertOpen();
 		return this.runtime.capabilities.interruptSubagent(target);
 	}
@@ -256,7 +254,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.clearFinishedSubagents();
 	}
 
-	listAvailableModels(): ReturnType<GreenfieldSdkSession["listAvailableModels"]> {
+	listAvailableModels(): ReturnType<CodingAgentFixedSession["listAvailableModels"]> {
 		return this.runtime.capabilities.readAvailableModels();
 	}
 
@@ -264,22 +262,22 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.readSystemPrompt();
 	}
 
-	getSkills(): ReturnType<GreenfieldSdkSession["getSkills"]> {
+	getSkills(): ReturnType<CodingAgentFixedSession["getSkills"]> {
 		return this.runtime.capabilities.readSkills();
 	}
 
-	getPromptTemplates(): ReturnType<GreenfieldSdkSession["getPromptTemplates"]> {
+	getPromptTemplates(): ReturnType<CodingAgentFixedSession["getPromptTemplates"]> {
 		return this.runtime.capabilities.readPromptTemplates();
 	}
 
 	reconfigureAgentPlugins(
-		agentPlugins: Parameters<GreenfieldSdkSession["reconfigureAgentPlugins"]>[0],
+		agentPlugins: Parameters<CodingAgentFixedSession["reconfigureAgentPlugins"]>[0],
 	): Promise<void> {
 		this.assertOpen();
 		return this.runtime.capabilities.reconfigureAgentPlugins(agentPlugins);
 	}
 
-	listBackgroundTasks(): ReturnType<GreenfieldSdkSession["listBackgroundTasks"]> {
+	listBackgroundTasks(): ReturnType<CodingAgentFixedSession["listBackgroundTasks"]> {
 		return this.runtime.capabilities.readBackgroundTasks();
 	}
 
@@ -293,7 +291,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.clearFinishedBackgroundTasks();
 	}
 
-	getTodos(): ReturnType<GreenfieldSdkSession["getTodos"]> {
+	getTodos(): ReturnType<CodingAgentFixedSession["getTodos"]> {
 		return this.runtime.capabilities.readTodos();
 	}
 
@@ -302,7 +300,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.clearTodos();
 	}
 
-	getMemoryConfiguration(): ReturnType<GreenfieldSdkSession["getMemoryConfiguration"]> {
+	getMemoryConfiguration(): ReturnType<CodingAgentFixedSession["getMemoryConfiguration"]> {
 		return this.runtime.capabilities.readMemoryConfiguration();
 	}
 
@@ -330,7 +328,7 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return this.runtime.capabilities.hasExtensionHandlers(eventType);
 	}
 
-	subscribe(listener: GreenfieldSdkSessionEventListener): () => void {
+	subscribe(listener: CodingAgentSessionEventListener): () => void {
 		this.assertOpen();
 		this.listeners.add(listener);
 		return () => this.listeners.delete(listener);
@@ -355,12 +353,12 @@ export class GreenfieldSdkSessionAdapter implements GreenfieldSdkSession {
 		return tracked;
 	}
 
-	private emit(event: Parameters<GreenfieldSdkSessionEventListener>[0]): void {
+	private emit(event: Parameters<CodingAgentSessionEventListener>[0]): void {
 		for (const listener of this.listeners) {
 			try {
 				listener(event);
 			} catch (error: unknown) {
-				console.warn("[GreenfieldSdkSessionAdapter] Event listener failed", error);
+				console.warn("[CodingAgentSdkSessionAdapter] Event listener failed", error);
 			}
 		}
 	}

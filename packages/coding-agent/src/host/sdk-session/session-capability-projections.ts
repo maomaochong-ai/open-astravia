@@ -1,9 +1,9 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { AssistantMessage } from "@vetta/ai";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
-import type { GreenfieldSdkSessionStats, GreenfieldSdkToolInfo } from "./runtime-contracts.js";
+import type { CodingAgentSessionStats, CodingAgentToolInfo } from "../../public-api/sdk/sdk-session-contract.js";
 
-export function toSdkToolInfo(tools: ReadonlyMap<string, RuntimeToolDefinition>): GreenfieldSdkToolInfo[] {
+export function toSdkToolInfo(tools: ReadonlyMap<string, RuntimeToolDefinition>): CodingAgentToolInfo[] {
 	return [...tools.values()].map((tool) => ({
 		name: tool.name,
 		description: tool.description,
@@ -34,7 +34,7 @@ export function computeSdkSessionStats(
 	messages: readonly AgentMessage[],
 	sessionFile: string | undefined,
 	sessionId: string,
-): GreenfieldSdkSessionStats {
+): CodingAgentSessionStats {
 	let toolCalls = 0;
 	let input = 0;
 	let output = 0;

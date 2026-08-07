@@ -7,16 +7,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
 import type { CodingAgentRuntimeComposition } from "../../src/composition/contracts/index.js";
 import { createCodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
-import { bindGreenfieldSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
-import type { GreenfieldSdkSession } from "../../src/host/sdk-session/runtime-contracts.js";
-import { createGreenfieldSdkSession } from "../../src/host/sdk-session/runtime-factory.js";
-import { GreenfieldSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
-import { CodingAgentGreenfieldSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
+import { bindCodingAgentSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
+import { createCodingAgentSdkSession } from "../../src/host/sdk-session/runtime-factory.js";
+import { CodingAgentSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
+import { CodingAgentSdkSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
+import type { CodingAgentFixedSession } from "../../src/public-api/sdk/sdk-session-contract.js";
 
-describe("Greenfield SDK session integration", () => {
+describe("Coding Agent SDK session integration", () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
-	const sdkSessions: GreenfieldSdkSession[] = [];
+	const sdkSessions: CodingAgentFixedSession[] = [];
 
 	afterEach(async () => {
 		await Promise.all(sdkSessions.splice(0).map((session) => session.close()));
@@ -26,7 +26,7 @@ describe("Greenfield SDK session integration", () => {
 		);
 	});
 
-	it("runs the SDK core facade through the real Greenfield composition", async () => {
+	it("runs the SDK core facade through the production composition", async () => {
 		const conversationDir = await temporaryDirectory("greenfield-sdk-conversations-");
 		const workspace = await temporaryDirectory("greenfield-sdk-workspace-");
 		const composition = await createCodingAgentRuntimeComposition({
@@ -37,15 +37,15 @@ describe("Greenfield SDK session integration", () => {
 			initialThinkingLevel: "off",
 			enableSubagents: false,
 			activation: { mode: "explicit", toolNames: [] },
-			streamFn: () => new RecordedAssistantStream(assistantMessage("Greenfield SDK response")),
+			streamFn: () => new RecordedAssistantStream(assistantMessage("Coding Agent SDK response")),
 		});
 		compositions.push(composition);
 		const runtimeSession = await composition.backend.create({
 			sessionId: "sdk-integration",
 			includeAgentSkills: false,
 		});
-		const capabilities = new CodingAgentGreenfieldSessionCapabilityHost({ readSession: () => runtimeSession });
-		const session = new GreenfieldSdkSessionAdapter(bindGreenfieldSdkSessionRuntime(runtimeSession, capabilities));
+		const capabilities = new CodingAgentSdkSessionCapabilityHost({ readSession: () => runtimeSession });
+		const session = new CodingAgentSdkSessionAdapter(bindCodingAgentSdkSessionRuntime(runtimeSession, capabilities));
 		const eventTypes: string[] = [];
 		session.subscribe((event) => eventTypes.push(event.type));
 
@@ -69,7 +69,7 @@ describe("Greenfield SDK session integration", () => {
 
 	it("creates a real in-memory SDK session without exposing a session file", async () => {
 		const workspace = await temporaryDirectory("greenfield-sdk-memory-workspace-");
-		const { session } = await createGreenfieldSdkSession({
+		const { session } = await createCodingAgentSdkSession({
 			storage: { kind: "memory", sessionId: "sdk-memory" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -86,7 +86,7 @@ describe("Greenfield SDK session integration", () => {
 	it("preserves queued steering and follow-up messages through the Runtime queue port", async () => {
 		const workspace = await temporaryDirectory("greenfield-sdk-queue-workspace-");
 		let stream: DeferredAssistantStream | undefined;
-		const { session } = await createGreenfieldSdkSession({
+		const { session } = await createCodingAgentSdkSession({
 			storage: { kind: "memory", sessionId: "sdk-queue" },
 			composition: {
 				...factoryComposition(workspace),
@@ -121,7 +121,7 @@ describe("Greenfield SDK session integration", () => {
 		const workspace = await temporaryDirectory("greenfield-sdk-retry-workspace-");
 		let streamCalls = 0;
 		let retryEnabled = true;
-		const { session } = await createGreenfieldSdkSession({
+		const { session } = await createCodingAgentSdkSession({
 			storage: { kind: "memory", sessionId: "sdk-retry" },
 			composition: {
 				...factoryComposition(workspace),
@@ -136,7 +136,7 @@ describe("Greenfield SDK session integration", () => {
 			},
 			session: { includeAgentSkills: false },
 			createCapabilityHost: ({ session: runtimeSession }) =>
-				new CodingAgentGreenfieldSessionCapabilityHost({
+				new CodingAgentSdkSessionCapabilityHost({
 					readSession: () => runtimeSession,
 					settings: {
 						setDefaultModelAndProvider: () => undefined,
@@ -167,7 +167,7 @@ describe("Greenfield SDK session integration", () => {
 	it("creates and resumes a native file session through the SDK storage target", async () => {
 		const conversationDir = await temporaryDirectory("greenfield-sdk-factory-conversations-");
 		const workspace = await temporaryDirectory("greenfield-sdk-factory-workspace-");
-		const created = await createGreenfieldSdkSession({
+		const created = await createCodingAgentSdkSession({
 			storage: { kind: "file-create", conversationDir, sessionId: "sdk-file" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -179,7 +179,7 @@ describe("Greenfield SDK session integration", () => {
 		await created.session.close();
 
 		if (!sessionPath) throw new Error("Expected a persisted SDK session path");
-		const resumed = await createGreenfieldSdkSession({
+		const resumed = await createCodingAgentSdkSession({
 			storage: { kind: "file-resume", conversationDir, sessionPath },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -196,7 +196,7 @@ describe("Greenfield SDK session integration", () => {
 	it("keeps one SDK facade and its subscriptions across new, switch and fork transitions", async () => {
 		const conversationDir = await temporaryDirectory("greenfield-sdk-active-conversations-");
 		const workspace = await temporaryDirectory("greenfield-sdk-active-workspace-");
-		const created = await createGreenfieldSdkSession({
+		const created = await createCodingAgentSdkSession({
 			storage: { kind: "file-create", conversationDir, sessionId: "sdk-active-initial" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -223,7 +223,7 @@ describe("Greenfield SDK session integration", () => {
 		await expect(created.session.switchSession(initialPath)).resolves.toBe(true);
 		expect(created.session).toBe(stableFacade);
 		expect(created.session.sessionId).toBe("sdk-active-initial");
-		expect(created.session.getLastAssistantText()).toBe("Greenfield SDK response");
+		expect(created.session.getLastAssistantText()).toBe("Coding Agent SDK response");
 
 		const fork = await created.session.fork(initialForkMessage.entryId);
 		expect(fork).toEqual({ selectedText: "initial prompt", cancelled: false });
@@ -235,7 +235,7 @@ describe("Greenfield SDK session integration", () => {
 	it("keeps the current SDK session usable when a switch target is invalid", async () => {
 		const conversationDir = await temporaryDirectory("greenfield-sdk-switch-rollback-conversations-");
 		const workspace = await temporaryDirectory("greenfield-sdk-switch-rollback-workspace-");
-		const { session } = await createGreenfieldSdkSession({
+		const { session } = await createCodingAgentSdkSession({
 			storage: { kind: "file-create", conversationDir, sessionId: "sdk-switch-source" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -255,7 +255,7 @@ describe("Greenfield SDK session integration", () => {
 		const workspace = await temporaryDirectory("greenfield-sdk-resource-transition-workspace-");
 		const initialized: string[] = [];
 		const disposed: string[] = [];
-		const { session } = await createGreenfieldSdkSession({
+		const { session } = await createCodingAgentSdkSession({
 			storage: { kind: "file-create", conversationDir, sessionId: "sdk-resource-initial" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -284,7 +284,7 @@ describe("Greenfield SDK session integration", () => {
 		const conversationDir = await temporaryDirectory("greenfield-sdk-resource-rollback-conversations-");
 		const workspace = await temporaryDirectory("greenfield-sdk-resource-rollback-workspace-");
 		const disposed: string[] = [];
-		const { session } = await createGreenfieldSdkSession({
+		const { session } = await createCodingAgentSdkSession({
 			storage: { kind: "file-create", conversationDir, sessionId: "sdk-resource-source" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -314,7 +314,7 @@ describe("Greenfield SDK session integration", () => {
 		const conversationDir = await temporaryDirectory("greenfield-sdk-rollback-conversations-");
 		const workspace = await temporaryDirectory("greenfield-sdk-rollback-workspace-");
 		await expect(
-			createGreenfieldSdkSession({
+			createCodingAgentSdkSession({
 				storage: { kind: "file-create", conversationDir, sessionId: "sdk-rollback" },
 				composition: {
 					...factoryComposition(workspace),
@@ -326,7 +326,7 @@ describe("Greenfield SDK session integration", () => {
 			}),
 		).rejects.toThrow("system prompt initialization failed");
 
-		const recovered = await createGreenfieldSdkSession({
+		const recovered = await createCodingAgentSdkSession({
 			storage: { kind: "file-create", conversationDir, sessionId: "sdk-rollback" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -338,7 +338,7 @@ describe("Greenfield SDK session integration", () => {
 	it("owns product resources before and after the Runtime Session lifecycle", async () => {
 		const workspace = await temporaryDirectory("greenfield-sdk-owned-resource-workspace-");
 		const disposed: string[] = [];
-		const { session } = await createGreenfieldSdkSession({
+		const { session } = await createCodingAgentSdkSession({
 			storage: { kind: "memory", sessionId: "sdk-owned-resources" },
 			composition: factoryComposition(workspace),
 			session: { includeAgentSkills: false },
@@ -379,7 +379,7 @@ function factoryComposition(workspace: string) {
 		initialThinkingLevel: "off" as const,
 		enableSubagents: false,
 		activation: { mode: "explicit" as const, toolNames: [] },
-		streamFn: () => new RecordedAssistantStream(assistantMessage("Greenfield SDK response")),
+		streamFn: () => new RecordedAssistantStream(assistantMessage("Coding Agent SDK response")),
 	};
 }
 

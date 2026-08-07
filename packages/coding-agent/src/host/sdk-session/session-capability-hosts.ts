@@ -21,13 +21,13 @@ import {
 import { createHostBashExecutor } from "../command-execution/index.js";
 import { CodingAgentResourceReloadHost } from "../resources/resource-reload-host.js";
 import { CodingAgentBranchNavigationHost } from "../session-history/branch-navigation-host.js";
-import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
+import { CodingAgentSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
 import { adaptPublicCodingAgentSdkCustomTools } from "./custom-tool-adapter.js";
 import type {
-	GreenfieldSdkActiveSessionCapabilityHostFactory,
-	GreenfieldSdkSessionCapabilityHostFactory,
+	CodingAgentSdkActiveSessionCapabilityHostFactory,
+	CodingAgentSdkSessionCapabilityHostFactory,
 } from "./runtime-factory.js";
-import { CodingAgentGreenfieldSessionCapabilityHost } from "./session-capability-host.js";
+import { CodingAgentSdkSessionCapabilityHost } from "./session-capability-host.js";
 
 export interface CodingAgentSdkSessionCapabilityFactoriesOptions {
 	readonly sdkOptions: CreateCodingAgentSessionOptions;
@@ -44,7 +44,7 @@ export interface CodingAgentSdkSessionCapabilityFactoriesOptions {
 
 export function createCodingAgentSdkSessionCapabilityHostFactory(
 	options: CodingAgentSdkSessionCapabilityFactoriesOptions,
-): GreenfieldSdkSessionCapabilityHostFactory {
+): CodingAgentSdkSessionCapabilityHostFactory {
 	return ({ readSession, composition }) => {
 		const reloadHost = new CodingAgentResourceReloadHost({
 			settingsManager: options.settingsManager,
@@ -77,7 +77,7 @@ export function createCodingAgentSdkSessionCapabilityHostFactory(
 			if (refreshed.extensionsChanged) await reloadHost.reload();
 			else options.resourceLoader.reloadSkills();
 		};
-		return new CodingAgentGreenfieldSessionCapabilityHost({
+		return new CodingAgentSdkSessionCapabilityHost({
 			readSession,
 			beforePrompt: refreshInvalidatedResourceSources,
 			readAvailableModels: async () => options.modelRegistry.getAvailable(),
@@ -129,7 +129,7 @@ export function createCodingAgentSdkSessionCapabilityHostFactory(
 
 export function createCodingAgentSdkActiveSessionCapabilityHostFactory(
 	options: Pick<CodingAgentSdkSessionCapabilityFactoriesOptions, "extensionTransitions" | "settingsManager">,
-): GreenfieldSdkActiveSessionCapabilityHostFactory {
+): CodingAgentSdkActiveSessionCapabilityHostFactory {
 	return ({ sessionHost, composition }) => {
 		const bash = new CodingAgentSdkBashAdapter({
 			executor: createHostBashExecutor(),
@@ -142,7 +142,7 @@ export function createCodingAgentSdkActiveSessionCapabilityHostFactory(
 			settingsManager: options.settingsManager,
 			clearExecutionContext: (sessionId) => composition.clearSessionExecutionContext(sessionId),
 		});
-		return new CodingAgentGreenfieldSdkActiveSessionCapabilityHost({
+		return new CodingAgentSdkActiveSessionCapabilityHost({
 			sessionHost,
 			bash,
 			treeNavigation,

@@ -11,6 +11,7 @@ import { createCodingAgentPluginMcpRuntime } from "../../plugins/runtime/mcp-run
 import {
 	CODING_AGENT_SESSION_CREATE_ERROR_CODES,
 	CodingAgentSessionCreateError,
+	type CodingAgentSessionStorageTarget,
 	type CreateCodingAgentSessionOptions,
 	type CreateCodingAgentSessionResult,
 } from "../../public-api/sdk/index.js";
@@ -28,12 +29,11 @@ import {
 } from "./contracts.js";
 import { adaptPublicCodingAgentSdkCustomTools, resolvePublicSdkActiveToolNames } from "./custom-tool-adapter.js";
 import { resolveSdkInitialModel } from "./initial-model.js";
-import { createGreenfieldSdkSession, type GreenfieldSdkOwnedResource } from "./runtime-factory.js";
+import { type CodingAgentSdkOwnedResource, createCodingAgentSdkSession } from "./runtime-factory.js";
 import {
 	createCodingAgentSdkActiveSessionCapabilityHostFactory,
 	createCodingAgentSdkSessionCapabilityHostFactory,
 } from "./session-capability-hosts.js";
-import type { GreenfieldSdkSessionStorageTarget } from "./storage.js";
 
 /** `@vetta/coding-agent/sdk` 的产品 Composition 入口；具体管理器不进入公共参数或返回值。 */
 export async function createCodingAgentSessionFromPublicOptions(
@@ -162,7 +162,7 @@ async function createCodingAgentSdkSessionComposition(
 	});
 	await resourceLoader.reload();
 	const extensionsResult = resourceLoader.getExtensions();
-	const storage: GreenfieldSdkSessionStorageTarget = options.storage ?? {
+	const storage: CodingAgentSessionStorageTarget = options.storage ?? {
 		kind: "file-create",
 		conversationDir: resolveCodingAgentSessionDir(cwd),
 	};
@@ -177,7 +177,7 @@ async function createCodingAgentSdkSessionComposition(
 				enabled: true,
 			})
 		: undefined;
-	const ownedResources: GreenfieldSdkOwnedResource[] = [
+	const ownedResources: CodingAgentSdkOwnedResource[] = [
 		...(resourceSourceAdapter ? [resourceSourceAdapter] : []),
 		...(managedMcpSource ? [{ id: "sdk-mcp-source", dispose: () => managedMcpSource.dispose() }] : []),
 	];
@@ -211,7 +211,7 @@ async function createCodingAgentSdkSessionComposition(
 		},
 	};
 
-	const created = await createGreenfieldSdkSession({
+	const created = await createCodingAgentSdkSession({
 		storage,
 		ownedResources,
 		composition: {

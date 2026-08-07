@@ -39,6 +39,45 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects SDK Session migration identities while allowing the upstream Runtime Session type", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/host/sdk-session/runtime-binding.ts",
+				text: [
+					'import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";',
+					"export function bindGreenfieldSdkSessionRuntime(session: GreenfieldRuntimeSession) {}",
+				].join("\n"),
+			},
+			{
+				path: "packages/coding-agent/src/public-api/sdk/sdk-session-contract.ts",
+				text: "export type CodingAgentGreenfieldSdkSession = {};",
+			},
+			{
+				path: "packages/coding-agent/src/host/coding-agent-sdk-extension-transition-adapter.ts",
+				text: "export interface GreenfieldSdkOwnedResource {}",
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/host/sdk-session/runtime-binding.ts: retired SDK Session migration identity (bindGreenfieldSdkSessionRuntime)",
+			"packages/coding-agent/src/public-api/sdk/sdk-session-contract.ts: retired SDK Session migration identity (CodingAgentGreenfieldSdkSession)",
+			"packages/coding-agent/src/host/coding-agent-sdk-extension-transition-adapter.ts: retired SDK Session migration identity (GreenfieldSdkOwnedResource)",
+		]);
+	});
+
+	it("rejects migration filenames in the SDK Session boundary", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/test/sdk/greenfield-sdk-session.test.ts",
+				text: "export {};",
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/test/sdk/greenfield-sdk-session.test.ts: retired SDK Session migration filename",
+		]);
+	});
+
 	it("rejects retired files and symbols", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{

@@ -1,31 +1,30 @@
 import type { ImageContent, TextContent } from "@vetta/ai";
 import type {
-	GreenfieldSdkActiveSession,
-	GreenfieldSdkActiveSessionCapabilityPort,
-	GreenfieldSdkNewSessionOptions,
-	GreenfieldSdkSessionRuntimePort,
-	GreenfieldSdkTreeNavigationOptions,
+	CodingAgentNewSessionOptions,
+	CodingAgentSession,
+	CodingAgentTreeNavigationOptions,
+} from "../../public-api/sdk/sdk-session-contract.js";
+import type {
+	CodingAgentSdkActiveSessionCapabilityPort,
+	CodingAgentSdkSessionRuntimePort,
 } from "./runtime-contracts.js";
-import { GreenfieldSdkSessionAdapter } from "./session-adapter.js";
+import { CodingAgentSdkSessionAdapter } from "./session-adapter.js";
 
 /**
  * 在固定 Session 门面之外叠加活动会话所有权。
  *
  * 对象本身保持稳定；身份切换只替换 Active Session Host 内部的 Runtime Session。
  */
-export class GreenfieldSdkActiveSessionAdapter
-	extends GreenfieldSdkSessionAdapter
-	implements GreenfieldSdkActiveSession
-{
+export class CodingAgentSdkActiveSessionAdapter extends CodingAgentSdkSessionAdapter implements CodingAgentSession {
 	constructor(
-		runtime: GreenfieldSdkSessionRuntimePort,
-		private readonly active: GreenfieldSdkActiveSessionCapabilityPort,
+		runtime: CodingAgentSdkSessionRuntimePort,
+		private readonly active: CodingAgentSdkActiveSessionCapabilityPort,
 		onClosed?: () => void,
 	) {
 		super(runtime, onClosed);
 	}
 
-	getSessionBranch(): ReturnType<GreenfieldSdkActiveSession["getSessionBranch"]> {
+	getSessionBranch(): ReturnType<CodingAgentSession["getSessionBranch"]> {
 		return this.active.getSessionBranch();
 	}
 
@@ -36,19 +35,19 @@ export class GreenfieldSdkActiveSessionAdapter
 			readonly display: boolean;
 			readonly details?: T;
 		},
-		options?: Parameters<GreenfieldSdkActiveSession["sendCustomMessage"]>[1],
+		options?: Parameters<CodingAgentSession["sendCustomMessage"]>[1],
 	): Promise<void> {
 		return this.active.sendCustomMessage<T>(message, options);
 	}
 
 	sendUserMessage(
-		content: Parameters<GreenfieldSdkActiveSession["sendUserMessage"]>[0],
-		options?: Parameters<GreenfieldSdkActiveSession["sendUserMessage"]>[1],
+		content: Parameters<CodingAgentSession["sendUserMessage"]>[0],
+		options?: Parameters<CodingAgentSession["sendUserMessage"]>[1],
 	): Promise<void> {
 		return this.active.sendUserMessage(content, options);
 	}
 
-	newSession(options?: GreenfieldSdkNewSessionOptions): Promise<boolean> {
+	newSession(options?: CodingAgentNewSessionOptions): Promise<boolean> {
 		return this.active.newSession(options);
 	}
 
@@ -59,15 +58,15 @@ export class GreenfieldSdkActiveSessionAdapter
 	executeBash(
 		command: string,
 		onChunk?: (chunk: string) => void,
-		options?: Parameters<GreenfieldSdkActiveSession["executeBash"]>[2],
-	): ReturnType<GreenfieldSdkActiveSession["executeBash"]> {
+		options?: Parameters<CodingAgentSession["executeBash"]>[2],
+	): ReturnType<CodingAgentSession["executeBash"]> {
 		return this.active.executeBash(command, onChunk, options);
 	}
 
 	recordBashResult(
 		command: string,
-		result: Parameters<GreenfieldSdkActiveSession["recordBashResult"]>[1],
-		options?: Parameters<GreenfieldSdkActiveSession["recordBashResult"]>[2],
+		result: Parameters<CodingAgentSession["recordBashResult"]>[1],
+		options?: Parameters<CodingAgentSession["recordBashResult"]>[2],
 	): Promise<void> {
 		return this.active.recordBashResult(command, result, options);
 	}
@@ -94,12 +93,12 @@ export class GreenfieldSdkActiveSessionAdapter
 
 	navigateTree(
 		targetId: string,
-		options?: GreenfieldSdkTreeNavigationOptions,
-	): ReturnType<GreenfieldSdkActiveSession["navigateTree"]> {
+		options?: CodingAgentTreeNavigationOptions,
+	): ReturnType<CodingAgentSession["navigateTree"]> {
 		return this.active.navigateTree(targetId, options);
 	}
 
-	switchBranch(targetId: string): ReturnType<GreenfieldSdkActiveSession["switchBranch"]> {
+	switchBranch(targetId: string): ReturnType<CodingAgentSession["switchBranch"]> {
 		return this.active.switchBranch(targetId);
 	}
 
@@ -108,23 +107,23 @@ export class GreenfieldSdkActiveSessionAdapter
 		summary: string,
 		details?: unknown,
 		fromHook?: boolean,
-	): ReturnType<GreenfieldSdkActiveSession["appendBranchSummary"]> {
+	): ReturnType<CodingAgentSession["appendBranchSummary"]> {
 		return this.active.appendBranchSummary(parentId, summary, details, fromHook);
 	}
 
-	deleteMessage(entryId: string): ReturnType<GreenfieldSdkActiveSession["deleteMessage"]> {
+	deleteMessage(entryId: string): ReturnType<CodingAgentSession["deleteMessage"]> {
 		return this.active.deleteMessage(entryId);
 	}
 
-	replaceLastUserMessage(entryId: string): ReturnType<GreenfieldSdkActiveSession["replaceLastUserMessage"]> {
+	replaceLastUserMessage(entryId: string): ReturnType<CodingAgentSession["replaceLastUserMessage"]> {
 		return this.active.replaceLastUserMessage(entryId);
 	}
 
-	exportForkToNewFile(entryId: string): ReturnType<GreenfieldSdkActiveSession["exportForkToNewFile"]> {
+	exportForkToNewFile(entryId: string): ReturnType<CodingAgentSession["exportForkToNewFile"]> {
 		return this.active.exportForkToNewFile(entryId);
 	}
 
-	getUserMessagesForForking(): ReturnType<GreenfieldSdkActiveSession["getUserMessagesForForking"]> {
+	getUserMessagesForForking(): ReturnType<CodingAgentSession["getUserMessagesForForking"]> {
 		return this.active.getUserMessagesForForking();
 	}
 }
