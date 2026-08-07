@@ -146,7 +146,11 @@ function checkPluginDesktopDeepImport(posixPath, specifiers, findings) {
 
 function checkPluginDesktopGlobal(posixPath, text, findings) {
 	if (!isPluginPackageFile(posixPath) || posixPath.endsWith(".d.ts")) return;
+	// Explicit exceptions that must touch the host Desktop API surface:
+	// - plugin-workbench: trusted host management UI (install/dev-watch)
+	// - security-probe: intentional audit of window.vetta bypass / trust boundary
 	if (posixPath.startsWith("packages/plugins/presets/plugin-workbench/")) return;
+	if (posixPath.startsWith("packages/plugins/externals/security-probe/")) return;
 	if (usesDesktopPluginGlobal(posixPath, text)) {
 		findings.push(`${posixPath}: plugins must use the public plugin SDK instead of window.vetta`);
 	}

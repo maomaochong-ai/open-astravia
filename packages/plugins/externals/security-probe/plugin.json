@@ -1,0 +1,31 @@
+{
+	"id": "security-probe",
+	"name": "%plugin.name%",
+	"version": "0.1.0",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "security_probe",
+		"expose": "./plugin"
+	},
+	"styles": ["dist/style.css"],
+	"permissions": [
+		"ui.slot.global",
+		"ui.slot.activity-tab",
+		"workspace.read",
+		"agent.session.read",
+		"agent.session.write",
+		"agent.command.run",
+		"fs.read",
+		"fs.write",
+		"network.fetch",
+		"storage.read",
+		"storage.write",
+		"shell.openExternal"
+	],
+	"commands": ["node"],
+	"defaultLocale": "zh",
+	"description": "%plugin.description%",
+	"author": "Vetta Security"
+}
