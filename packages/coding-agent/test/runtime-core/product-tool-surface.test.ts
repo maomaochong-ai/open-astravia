@@ -26,15 +26,15 @@ import {
 	RENDER_PDF_PAGE_TOOL_SCOPES,
 } from "@vetta/runtime-tools/coding";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCodingAgentInvokeSkillRuntimeFeature } from "../../src/adapters/runtime-core/greenfield-invoke-skill-runtime.js";
-import { createCodingAgentGreenfieldProductToolRegistrations } from "../../src/adapters/runtime-core/greenfield-product-tools-runtime.js";
+import { createCodingAgentProductToolRegistrations } from "../../src/composition/tool-surface/product-tools.js";
 import type { Skill } from "../../src/resources/skills/index.js";
+import { createCodingAgentInvokeSkillFeature } from "../../src/resources/skills/invoke-skill-feature.js";
 import type {
 	CodingAgentPromptResourceSource,
 	CodingAgentRuntimeToolRegistration,
 } from "../../src/runtime-contracts/index.js";
 
-describe("Greenfield product tools runtime", () => {
+describe("Coding Agent product tool surface", () => {
 	const temporaryDirectories: string[] = [];
 
 	afterEach(async () => {
@@ -46,7 +46,7 @@ describe("Greenfield product tools runtime", () => {
 	it("assembles the complete runtime product tool definitions and activation metadata", () => {
 		const cwd = process.cwd();
 		const knowledgeOperations = createKnowledgeOperations();
-		const registrations = createCodingAgentGreenfieldProductToolRegistrations({
+		const registrations = createCodingAgentProductToolRegistrations({
 			cwd,
 			knowledgePageWriter: knowledgeOperations,
 		});
@@ -88,7 +88,7 @@ describe("Greenfield product tools runtime", () => {
 	});
 
 	it("refreshes skill visibility per call and resolves the current file at execution", async () => {
-		const directory = await mkdtemp(join(tmpdir(), "greenfield-invoke-skill-"));
+		const directory = await mkdtemp(join(tmpdir(), "coding-agent-invoke-skill-"));
 		temporaryDirectories.push(directory);
 		const filePath = join(directory, "SKILL.md");
 		await writeFile(filePath, "---\nname: sample\ndescription: sample\n---\nUse the sample workflow.\n", "utf8");
@@ -101,7 +101,7 @@ describe("Greenfield product tools runtime", () => {
 				refreshCount += 1;
 			},
 		});
-		const definition = createCodingAgentInvokeSkillRuntimeFeature({
+		const definition = createCodingAgentInvokeSkillFeature({
 			resourceSource: source,
 			readAgentMode: () => mode,
 		});

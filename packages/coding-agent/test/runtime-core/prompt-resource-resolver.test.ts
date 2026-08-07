@@ -2,10 +2,10 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 import { createCodingAgentPromptResourceResolver } from "../../src/resources/prompt-resource-resolver.js";
 import type { Skill } from "../../src/resources/skills/index.js";
+import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
 
 describe("Coding Agent prompt resource resolver", () => {
 	let root: string;

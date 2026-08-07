@@ -12,22 +12,22 @@ import {
 	RenderPdfPageProcessAbortedError,
 	selectCodingToolRegistrations,
 } from "@vetta/runtime-tools/coding";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import { createCodingAgentDesktopCommandPort } from "../runtime-tools/desktop-command-port-adapter.js";
+import { createCodingAgentDesktopCommandPort } from "../../adapters/runtime-tools/desktop-command-port-adapter.js";
 import {
 	CodingAgentCommandProcessAbortedError,
 	createCodingAgentCommandProcessHost,
 	createCodingAgentDocToPdfOperations,
 	getCodingAgentOcrExecutionGate,
-} from "../runtime-tools/index.js";
+} from "../../adapters/runtime-tools/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 
-export interface CodingAgentGreenfieldProductToolOptions {
+export interface CodingAgentProductToolOptions {
 	readonly cwd: string;
 	readonly knowledgePageWriter: KbWritePageOperations;
 }
 
-export interface CodingAgentGreenfieldProductToolFeatureOptions {
+export interface CodingAgentProductToolFeatureOptions {
 	readonly registrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
@@ -35,8 +35,8 @@ export interface CodingAgentGreenfieldProductToolFeatureOptions {
 }
 
 /** 组装产品级 Runtime 工具及其宿主端口；工具执行合同由 runtime-tools 提供。 */
-export function createCodingAgentGreenfieldProductToolRegistrations(
-	options: CodingAgentGreenfieldProductToolOptions,
+export function createCodingAgentProductToolRegistrations(
+	options: CodingAgentProductToolOptions,
 ): readonly CodingAgentRuntimeToolRegistration[] {
 	const commandProcess = createCodingAgentCommandProcessHost();
 	const desktop = createCodingAgentDesktopCommandPort(commandProcess);
@@ -91,8 +91,8 @@ export function createCodingAgentGreenfieldProductToolRegistrations(
 }
 
 /** 产品工具按 Session 创建，避免把 Composition Root cwd 固化到其他会话。 */
-export function createCodingAgentGreenfieldProductToolFeature(
-	options: CodingAgentGreenfieldProductToolFeatureOptions,
+export function createCodingAgentProductToolFeature(
+	options: CodingAgentProductToolFeatureOptions,
 ): AgentFeatureDefinition {
 	return {
 		id: "coding-agent.product-tools",

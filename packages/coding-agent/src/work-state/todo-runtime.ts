@@ -5,22 +5,15 @@ import type {
 	RuntimeSessionTodoController,
 } from "@vetta/runtime-core";
 import { selectConversationDocumentEntries } from "@vetta/runtime-core";
-import type { AgentFeatureDefinition, StoredSessionEvent } from "@vetta/runtime-core/kernel";
-import {
-	type CodingToolRegistration,
-	createTodoToolRegistration,
-	type TodoToolInput,
-} from "@vetta/runtime-tools/coding";
-import type { CodingAgentTodoRuntime as CodingAgentTodoRuntimePort } from "../../runtime-contracts/index.js";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import {
-	parseTodoSnapshot,
-	TODO_SNAPSHOT_TYPE,
-	type TodoLockSource,
-	type TodoSnapshot,
-	type TodoSnapshotEnvelope,
-	TodoState,
-} from "../../work-state/index.js";
+import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
+import type {
+	CodingAgentTodoRuntime as CodingAgentTodoRuntimePort,
+	TodoLockSource,
+	TodoSnapshot,
+	TodoSnapshotEnvelope,
+} from "./contracts.js";
+import { parseTodoSnapshot, TODO_SNAPSHOT_TYPE } from "./todo-snapshot.js";
+import { TodoState } from "./todo-state.js";
 
 export interface CodingAgentTodoRuntimeOptions {
 	readonly state?: TodoState;
@@ -182,44 +175,6 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 			this.restoring = false;
 		}
 	}
-}
-
-export function createCodingAgentTodoRuntimeToolRegistration(
-	runtime: CodingAgentTodoRuntimePort,
-): CodingToolRegistration<TodoToolInput> {
-	const registration = createTodoToolRegistration({
-		getTodoStore: () => runtime,
-		modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.todo,
-	});
-	return {
-		...registration,
-		tool: {
-			...registration.tool,
-			async execute(request) {
-				const result = await registration.tool.execute(request);
-				await runtime.flush();
-				return result;
-			},
-		},
-	};
-}
-
-export function createCodingAgentTodoRuntimeFeature(
-	registration: CodingToolRegistration<TodoToolInput>,
-): AgentFeatureDefinition {
-	return {
-		id: "coding-agent.todo",
-		async prepare(context) {
-			context.signal.throwIfAborted();
-			return {
-				async contribute(contributionContext) {
-					contributionContext.signal.throwIfAborted();
-					return { tools: [registration.tool] };
-				},
-				async dispose() {},
-			};
-		},
-	};
 }
 
 function latestTodoSnapshot(document: ConversationDocument): TodoSnapshot | undefined {

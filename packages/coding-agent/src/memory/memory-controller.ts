@@ -1,12 +1,12 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
-import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
+import type { CodingAgentMemoryRolloverRuntime } from "./memory-runtime-contract.js";
 
 export interface CodingAgentMemoryController {
 	flushMemory(signal?: AbortSignal): Promise<number>;
 }
 
-export interface CodingAgentGreenfieldMemoryControllerOptions {
+export interface CodingAgentSessionMemoryControllerOptions {
 	readonly runtime: CodingAgentMemoryRolloverRuntime;
 	readonly readMessages: () => Promise<readonly AgentMessage[]> | readonly AgentMessage[];
 	readonly readModel: () => Model<Api> | undefined;
@@ -14,15 +14,15 @@ export interface CodingAgentGreenfieldMemoryControllerOptions {
 }
 
 /**
- * Greenfield 宿主的按需 MEMORY flush 边界。
+ * Session 宿主的按需 MEMORY flush 边界。
  *
  * 当前上下文、模型和凭据由 Composition Root 提供；Memory 文件与写入策略继续由
  * CodingAgentMemoryRolloverRuntime 持有。
  */
-export class CodingAgentGreenfieldMemoryController implements CodingAgentMemoryController {
-	private readonly options: CodingAgentGreenfieldMemoryControllerOptions;
+export class CodingAgentSessionMemoryController implements CodingAgentMemoryController {
+	private readonly options: CodingAgentSessionMemoryControllerOptions;
 
-	constructor(options: CodingAgentGreenfieldMemoryControllerOptions) {
+	constructor(options: CodingAgentSessionMemoryControllerOptions) {
 		this.options = options;
 	}
 

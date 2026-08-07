@@ -285,6 +285,28 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects the retired product capability Adapter paths and symbols", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-mcp-deferred-adapter.ts",
+				text: "export {};",
+			},
+			{
+				path: "packages/coding-agent/src/composition/session-initialization/peripheral-assembly.ts",
+				text: [
+					'import "../../adapters/runtime-core/greenfield-product-tools-runtime.js";',
+					"createCodingAgentGreenfieldProductToolRegistrations({});",
+				].join("\n"),
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-mcp-deferred-adapter.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/composition/session-initialization/peripheral-assembly.ts: retired migration reference (adapters/runtime-core/greenfield-product-tools-runtime)",
+			"packages/coding-agent/src/composition/session-initialization/peripheral-assembly.ts: retired migration reference (createCodingAgentGreenfieldProductToolRegistrations)",
+		]);
+	});
+
 	it("rejects growth beyond each migration residue baseline", () => {
 		const files = [
 			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1 }, (_, index) => ({

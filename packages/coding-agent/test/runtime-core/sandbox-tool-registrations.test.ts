@@ -16,7 +16,7 @@ import {
 	type ForegroundCommandOperations,
 } from "@vetta/runtime-tools/coding";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCodingAgentGreenfieldSandboxToolRegistrations } from "../../src/adapters/runtime-core/greenfield-sandbox-tool-adapter.js";
+import { createCodingAgentSandboxToolRegistrations } from "../../src/host/session-execution/sandbox-tool-registrations.js";
 
 const SESSION_IDS = ["sandbox-read-session", "sandbox-deny-session", "sandbox-shell-session"] as const;
 
@@ -24,7 +24,7 @@ afterEach(() => {
 	for (const sessionId of SESSION_IDS) clearSessionGrants(sessionId);
 });
 
-describe("Greenfield native Runtime sandbox tools", () => {
+describe("Coding Agent sandbox tool registrations", () => {
 	it.each([
 		{ platform: "linux" as const, commandToolName: "bash" },
 		{ platform: "darwin" as const, commandToolName: "bash" },
@@ -192,7 +192,7 @@ function createRegistrations(options: CreateRegistrationsOptions): readonly Codi
 			return options.decision;
 		},
 	};
-	return createCodingAgentGreenfieldSandboxToolRegistrations({
+	return createCodingAgentSandboxToolRegistrations({
 		cwd: options.cwd,
 		platform: options.platform,
 		hostInteraction,

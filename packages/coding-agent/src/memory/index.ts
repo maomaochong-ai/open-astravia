@@ -5,6 +5,11 @@ export {
 } from "./ai-memory-fact-extractor.js";
 export { FileMemoryJournal, type FileMemoryJournalOptions, type MemoryJournal } from "./file-memory-journal.js";
 export {
+	type CodingAgentMemoryController,
+	CodingAgentSessionMemoryController,
+	type CodingAgentSessionMemoryControllerOptions,
+} from "./memory-controller.js";
+export {
 	applyMemoryDocumentOperation,
 	DEFAULT_MEMORY_CHAR_LIMIT,
 	type MemoryAction,

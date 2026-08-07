@@ -23,7 +23,6 @@ import {
 	type SubagentTypeRegistryLike,
 	taskPath,
 } from "@vetta/runtime-subagents";
-import { createCodingAgentSubagentRuntimeToolRegistrations } from "../../adapters/runtime-core/greenfield-subagent-tool-registrations.js";
 import type { CodingAgentSubagentWorkRuntime } from "../../host/session-execution/background-work-controller.js";
 import {
 	CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
@@ -31,6 +30,7 @@ import {
 	createDefaultCodingAgentSubagentTypeRegistry,
 } from "./profiles.js";
 import { CodingAgentSubagentStatePersistence } from "./state-persistence.js";
+import { createCodingAgentSubagentRuntimeToolRegistrations } from "./tool-registrations.js";
 
 export {
 	CODING_AGENT_SUBAGENT_TYPE_EXPLORER,

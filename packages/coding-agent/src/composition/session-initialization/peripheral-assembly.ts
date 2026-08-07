@@ -8,16 +8,6 @@ import type {
 import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
-import { createCodingAgentAskUserQuestionRuntimeFeature } from "../../adapters/runtime-core/greenfield-ask-user-question-runtime.js";
-import {
-	createCodingAgentGreenfieldProductToolFeature,
-	createCodingAgentGreenfieldProductToolRegistrations,
-} from "../../adapters/runtime-core/greenfield-product-tools-runtime.js";
-import {
-	createCodingAgentTodoRuntimeFeature,
-	createCodingAgentTodoRuntimeToolRegistration,
-	CodingAgentTodoRuntime as DefaultCodingAgentTodoRuntime,
-} from "../../adapters/runtime-core/greenfield-todo-runtime.js";
 import { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import {
@@ -29,12 +19,22 @@ import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeToolRegistration,
-	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
+import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
+import { CodingAgentTodoRuntime as DefaultCodingAgentTodoRuntime } from "../../work-state/todo-runtime.js";
+import {
+	createCodingAgentTodoRuntimeFeature,
+	createCodingAgentTodoRuntimeToolRegistration,
+} from "../../work-state/todo-tool-feature.js";
 import { createCodingAgentKnowledgeWriteOperations } from "../coding-agent-knowledge-runtime.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
+import { createCodingAgentAskUserQuestionFeature } from "../tool-surface/ask-user-question-feature.js";
 import type { CodingAgentMcpSessionCoordinator } from "../tool-surface/mcp-session-coordinator.js";
+import {
+	createCodingAgentProductToolFeature,
+	createCodingAgentProductToolRegistrations,
+} from "../tool-surface/product-tools.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentSessionInitializationProfile } from "./profile.js";
 
@@ -91,14 +91,14 @@ export async function createCodingAgentSessionPeripheralAssembly(
 		pluginRuntime?.readAgentPlugins(),
 	);
 	const productToolRegistrations = [
-		...createCodingAgentGreenfieldProductToolRegistrations({
+		...createCodingAgentProductToolRegistrations({
 			cwd: options.sessionCwd,
 			knowledgePageWriter:
 				sessionOptions.knowledgePageWriter ?? createCodingAgentKnowledgeWriteOperations(profile.knowledgeRoot),
 		}),
 		...(sessionOptions.sessionRuntimeTools ?? []),
 	];
-	const productToolFeature = createCodingAgentGreenfieldProductToolFeature({
+	const productToolFeature = createCodingAgentProductToolFeature({
 		registrations: productToolRegistrations,
 		resolveActivation: (context) =>
 			options.resolveActivation(
@@ -211,7 +211,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const todoRegistration = createCodingAgentTodoRuntimeToolRegistration(todoRuntime);
 	const todoEnabled = selectCodingToolRegistrations([todoRegistration], options.activation).length > 0;
 	const askUserQuestionFeature = sessionOptions.askUserQuestion
-		? createCodingAgentAskUserQuestionRuntimeFeature({
+		? createCodingAgentAskUserQuestionFeature({
 				capability: sessionOptions.askUserQuestion,
 				scenario: options.scenario,
 			})

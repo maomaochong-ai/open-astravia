@@ -9,8 +9,6 @@ import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
-import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield-memory-controller.js";
-import type { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import {
 	InMemoryCodingAgentSessionMarkerIndex,
 	InMemoryCodingAgentSessionValueIndex,
@@ -23,10 +21,11 @@ import type { CodingToolsRuntimeComposition } from "../../src/composition/tool-s
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
 import type { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
-import type { CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
+import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
+import type { CodingAgentTodoRuntime } from "../../src/work-state/contracts.js";
 
 describe("Coding Agent Session Resource Lifecycle", () => {
 	it("atomically rebinds session resources and retries only failed cleanup phases", async () => {

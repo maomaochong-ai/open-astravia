@@ -10,7 +10,6 @@ import {
 	type Model,
 } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import {
 	type CodingAgentRuntimeComposition,
 	createCodingAgentRuntimeComposition,
@@ -24,6 +23,7 @@ import type {
 	CodingAgentPluginRuntimeSource,
 	CodingAgentRuntimeModelSource,
 } from "../../src/public-api/host-services.js";
+import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
 
 describe("Coding Agent continuation orchestration", () => {
 	const temporaryDirectories: string[] = [];

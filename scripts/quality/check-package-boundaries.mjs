@@ -464,7 +464,7 @@ function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, finding
 		"CodingAgentStopHookContinuationSource",
 		"CodingAgentTodoContinuationSource",
 		"RuntimeCapabilityComposition",
-		"createCodingAgentInvokeSkillRuntimeFeature",
+		"createCodingAgentInvokeSkillFeature",
 		"createCodingAgentPromptResourceResolver",
 		"createCodingAgentPromptRuntime",
 		"joinPromptAddons",
@@ -485,6 +485,7 @@ function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, finding
 function checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings) {
 	const domainRoots = [
 		"packages/coding-agent/src/extensions/",
+		"packages/coding-agent/src/memory/",
 		"packages/coding-agent/src/mcp/",
 		"packages/coding-agent/src/model-context/",
 		"packages/coding-agent/src/plugins/",
@@ -700,7 +701,7 @@ function checkCodingAgentSessionInitializationStageBoundary(posixPath, text, fin
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
 	const forbiddenConstructors = new Set([
 		"CodingAgentGreenfieldContextRuntime",
-		"CodingAgentGreenfieldMemoryController",
+		"CodingAgentSessionMemoryController",
 		"CodingAgentMemoryRolloverOrchestrator",
 		"CodingAgentTodoRuntime",
 		"GreenfieldRuntimeModel",
@@ -708,7 +709,7 @@ function checkCodingAgentSessionInitializationStageBoundary(posixPath, text, fin
 		"CodingAgentSessionExecutionRuntime",
 	]);
 	const forbiddenFactories = new Set([
-		"createCodingAgentGreenfieldProductToolRegistrations",
+		"createCodingAgentProductToolRegistrations",
 		"createCodingAgentTodoRuntimeToolRegistration",
 		"createEcosystemHookRuntime",
 		"createForkContextFeature",

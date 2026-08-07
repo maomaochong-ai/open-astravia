@@ -1,4 +1,5 @@
 export type {
+	CodingAgentTodoRuntime,
 	SceneTodoState,
 	TodoContinuationState,
 	TodoItem,
@@ -14,3 +15,7 @@ export {
 } from "./todo-continuation-source.js";
 export { parseTodoSnapshot, TODO_SNAPSHOT_TYPE } from "./todo-snapshot.js";
 export { TodoState } from "./todo-state.js";
+export {
+	createCodingAgentTodoRuntimeFeature,
+	createCodingAgentTodoRuntimeToolRegistration,
+} from "./todo-tool-feature.js";

@@ -5,7 +5,6 @@ import type {
 } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield-memory-controller.js";
 import { InMemoryCodingAgentSessionValueIndex } from "../../src/composition/session-lifecycle/indexes.js";
 import type {
 	CodingAgentSessionHookController,
@@ -13,6 +12,7 @@ import type {
 } from "../../src/composition/session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentRuntimeSessionControls } from "../../src/composition/session-lifecycle/session-controls.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
+import type { CodingAgentMemoryController } from "../../src/memory/index.js";
 
 describe("Coding Agent Runtime Session Controls", () => {
 	it("delegates through live Session resource indexes and conversation projection ports", async () => {

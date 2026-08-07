@@ -10,17 +10,13 @@ import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/r
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
-import type { CodingAgentMemoryController } from "../../adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
-import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
-import type {
-	CodingAgentPluginMcpRuntime,
-	CodingAgentRuntimeToolRegistration,
-	CodingAgentTodoRuntime,
-} from "../../runtime-contracts/index.js";
+import type { CodingAgentMemoryController, CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
+import type { CodingAgentPluginMcpRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
+import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";

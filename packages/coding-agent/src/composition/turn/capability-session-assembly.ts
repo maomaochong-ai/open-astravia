@@ -12,7 +12,6 @@ import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/r
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import { wrapRuntimeToolsWithEcosystemHooks } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
-import { createCodingAgentInvokeSkillRuntimeFeature } from "../../adapters/runtime-core/greenfield-invoke-skill-runtime.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
@@ -27,6 +26,7 @@ import {
 	CodingAgentPluginToolRuntime,
 } from "../../plugins/runtime/tool-runtime.js";
 import { createCodingAgentPromptResourceResolver } from "../../resources/prompt-resource-resolver.js";
+import { createCodingAgentInvokeSkillFeature } from "../../resources/skills/invoke-skill-feature.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
@@ -35,8 +35,8 @@ import type {
 	CodingAgentPromptSettingsSource,
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSystemPromptOptionsResolver,
-	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
+import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import { CodingAgentTodoContinuationSource } from "../../work-state/todo-continuation-source.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
@@ -148,7 +148,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
 	);
 	const invokeSkillFeature = promptResourceSource
-		? createCodingAgentInvokeSkillRuntimeFeature({
+		? createCodingAgentInvokeSkillFeature({
 				resourceSource: promptResourceSource,
 				readAgentMode: options.activation.readAgentMode,
 			})

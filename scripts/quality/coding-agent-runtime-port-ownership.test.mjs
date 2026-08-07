@@ -5,7 +5,7 @@ import {
 } from "./check-coding-agent-runtime-port-ownership.mjs";
 
 const PLUGIN_MCP_RUNTIME_PATH = "packages/coding-agent/src/plugins/runtime/mcp-runtime.ts";
-const TODO_RUNTIME_PATH = "packages/coding-agent/src/adapters/runtime-core/greenfield-todo-runtime.ts";
+const TODO_RUNTIME_PATH = "packages/coding-agent/src/work-state/todo-runtime.ts";
 
 describe("Coding Agent Runtime Port ownership gate", () => {
 	it("accepts stable imports, value Adapter imports and explicit implementation conformance", () => {

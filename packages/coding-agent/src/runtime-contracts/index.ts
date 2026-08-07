@@ -18,4 +18,4 @@ export type {
 	CodingAgentPromptSettingsSource,
 	CodingAgentSystemPromptOptionsResolver,
 } from "./prompt-runtime.js";
-export type { CodingAgentRuntimeToolRegistration, CodingAgentTodoRuntime } from "./tool-runtime.js";
+export type { CodingAgentRuntimeToolRegistration } from "./tool-runtime.js";

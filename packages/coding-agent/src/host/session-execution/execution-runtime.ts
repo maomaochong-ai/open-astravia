@@ -28,11 +28,11 @@ import {
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
 } from "@vetta/runtime-tools/coding";
-import { createCodingAgentGreenfieldSandboxToolRegistrations } from "../../adapters/runtime-core/greenfield-sandbox-tool-adapter.js";
 import {
 	createCodingAgentBackgroundCommandHost,
 	createCodingAgentForegroundCommandHost,
 } from "../../adapters/runtime-tools/index.js";
+import { createCodingAgentSandboxToolRegistrations } from "./sandbox-tool-registrations.js";
 
 const SESSION_EXECUTION_FEATURE_ID = "coding-session-execution-tools";
 
@@ -231,7 +231,7 @@ export class CodingAgentSessionExecutionRuntime {
 		);
 		if (mode === "full-access") return fullAccessRegistrations;
 		return [
-			...createCodingAgentGreenfieldSandboxToolRegistrations({
+			...createCodingAgentSandboxToolRegistrations({
 				cwd: this.options.cwd,
 				hostInteraction: this.hostInteraction,
 				windowsSandboxHostPath: update.sandboxHostPath,

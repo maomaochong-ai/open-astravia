@@ -1,17 +1,17 @@
 import type { AgentFeatureDefinition, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { createInvokeSkillToolRegistration } from "@vetta/runtime-tools/coding";
 import { matchesAgentMode } from "../../profiles/index.js";
-import { readSkillContent, type Skill } from "../../resources/skills/index.js";
 import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/prompt-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { stripFrontmatter } from "../../utils/frontmatter.js";
+import { readSkillContent, type Skill } from "./index.js";
 
-export interface CodingAgentInvokeSkillRuntimeFeatureOptions {
+export interface CodingAgentInvokeSkillFeatureOptions {
 	readonly resourceSource: CodingAgentPromptResourceSource;
 	readonly readAgentMode?: () => string | undefined;
 }
 
-export interface CodingAgentInvokeSkillRuntimeFeature extends AgentFeatureDefinition {
+export interface CodingAgentInvokeSkillFeature extends AgentFeatureDefinition {
 	readonly tool: RuntimeToolDefinition;
 }
 
@@ -21,9 +21,9 @@ export interface CodingAgentInvokeSkillRuntimeFeature extends AgentFeatureDefini
  * 每个模型调用边界重新刷新资源；执行时再次解析当前可见 Skill，避免把已删除或已切换模式的
  * 本地 Skill 固化在 Session/Turn 之外的快照中。
  */
-export function createCodingAgentInvokeSkillRuntimeFeature(
-	options: CodingAgentInvokeSkillRuntimeFeatureOptions,
-): CodingAgentInvokeSkillRuntimeFeature {
+export function createCodingAgentInvokeSkillFeature(
+	options: CodingAgentInvokeSkillFeatureOptions,
+): CodingAgentInvokeSkillFeature {
 	const readVisibleSkills = (): Skill[] => {
 		options.resourceSource.refreshSkillsIfChanged();
 		const mode = options.readAgentMode?.();

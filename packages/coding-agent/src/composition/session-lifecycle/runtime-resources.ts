@@ -8,21 +8,18 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import {
-	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
-	isCodingAgentAskUserQuestionEnabled,
-} from "../../adapters/runtime-core/greenfield-ask-user-question-runtime.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentBackgroundWorkController } from "../../host/session-execution/background-work-controller.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
-import type {
-	CodingAgentPluginMcpRuntime,
-	CodingAgentRuntimeToolRegistration,
-	CodingAgentTodoRuntime,
-} from "../../runtime-contracts/index.js";
+import type { CodingAgentPluginMcpRuntime, CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
+import {
+	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
+	isCodingAgentAskUserQuestionEnabled,
+} from "../tool-surface/ask-user-question-feature.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
 

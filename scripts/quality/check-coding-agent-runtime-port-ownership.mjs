@@ -28,7 +28,6 @@ export const STABLE_RUNTIME_PORT_NAMES = Object.freeze([
 	"CodingAgentRuntimeModelSource",
 	"CodingAgentRuntimeToolRegistration",
 	"CodingAgentSystemPromptOptionsResolver",
-	"CodingAgentTodoRuntime",
 ]);
 
 const REQUIRED_IMPLEMENTATIONS = Object.freeze([
@@ -38,7 +37,7 @@ const REQUIRED_IMPLEMENTATIONS = Object.freeze([
 		pattern: /export\s+class\s+CodingAgentPluginMcpRuntime\s+implements\s+CodingAgentPluginMcpRuntimePort\b/,
 	},
 	{
-		path: `${RUNTIME_ADAPTER_ROOT}/greenfield-todo-runtime.ts`,
+		path: "packages/coding-agent/src/work-state/todo-runtime.ts",
 		name: "CodingAgentTodoRuntime",
 		pattern: /export\s+class\s+CodingAgentTodoRuntime\s+implements\s+CodingAgentTodoRuntimePort\b/,
 	},
@@ -80,7 +79,7 @@ export function findCodingAgentRuntimePortOwnershipViolations(state) {
 				`${path}: stable Runtime Port is imported from Adapter (${name} from ${specifier})`,
 		),
 		...state.missingImplementations.map(
-			({ path, name }) => `${path}: Adapter does not explicitly implement stable Runtime Port (${name})`,
+			({ path, name }) => `${path}: implementation does not explicitly implement its Runtime contract (${name})`,
 		),
 	];
 }

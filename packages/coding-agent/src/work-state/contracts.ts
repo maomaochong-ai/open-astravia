@@ -23,3 +23,18 @@ export interface SceneTodoState {
 	readSceneTodoState(): { readonly locked: boolean; readonly itemCount: number };
 	initializeSceneTodoItems(contents: readonly string[]): void;
 }
+
+export interface CodingAgentTodoRuntime extends GreenfieldRuntimeDocumentParticipant, RuntimeSessionTodoController {
+	getAll(): ReadonlyArray<TodoItem>;
+	isLocked(): boolean;
+	getLockSource(): TodoLockSource | null;
+	createMany(contents: string[]): TodoItem[];
+	update(id: number, status: TodoItem["status"]): TodoItem | undefined;
+	initializeTodoItems(contents: readonly string[], lockSource?: TodoLockSource): void;
+	readSceneTodoState(): { readonly locked: boolean; readonly itemCount: number };
+	initializeSceneTodoItems(contents: readonly string[]): void;
+	flush(): Promise<void>;
+	dispose(): Promise<void>;
+}
+
+import type { GreenfieldRuntimeDocumentParticipant, RuntimeSessionTodoController } from "@vetta/runtime-core";

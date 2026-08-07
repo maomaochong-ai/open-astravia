@@ -793,7 +793,7 @@ describe("package boundary analysis", () => {
 			"new CodingAgentGreenfieldContextRuntime({});",
 			"createEcosystemHookRuntime({});",
 			"createCodingAgentSubagentSessionAssembly({});",
-			"createCodingAgentGreenfieldProductToolRegistrations({});",
+			"createCodingAgentProductToolRegistrations({});",
 			"createSessionPluginRuntime(options);",
 		];
 		for (const source of forbiddenConstructions) {
@@ -878,6 +878,7 @@ describe("package boundary analysis", () => {
 	it("keeps Coding Agent product domains independent from concrete Adapters", () => {
 		for (const path of [
 			"packages/coding-agent/src/extensions/runtime/extension-tool-runtime.ts",
+			"packages/coding-agent/src/memory/memory-controller.ts",
 			"packages/coding-agent/src/mcp/runtime/tool-source.ts",
 			"packages/coding-agent/src/model-context/model-call-frame-composer.ts",
 			"packages/coding-agent/src/plugins/runtime/tool-runtime.ts",

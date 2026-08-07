@@ -12,8 +12,8 @@ import { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/exte
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
-import type { CodingAgentTodoRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
+import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "../session-lifecycle/resource-lifecycle.js";
 import { createCodingAgentSessionResourceLifecycle } from "../session-lifecycle/resource-lifecycle.js";

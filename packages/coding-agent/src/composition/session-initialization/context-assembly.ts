@@ -8,11 +8,8 @@ import {
 } from "@vetta/runtime-core";
 import { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
-import {
-	CodingAgentGreenfieldMemoryController,
-	type CodingAgentMemoryController,
-} from "../../adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
+import { type CodingAgentMemoryController, CodingAgentSessionMemoryController } from "../../memory/index.js";
 import type { CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import {
@@ -65,7 +62,7 @@ export function createCodingAgentSessionContextAssembly(
 		credentials: options.modelAdapter,
 	});
 	const memoryController = peripherals.memoryRuntime
-		? new CodingAgentGreenfieldMemoryController({
+		? new CodingAgentSessionMemoryController({
 				runtime: peripherals.memoryRuntime,
 				readMessages: () => options.readConversationModelMessages(options.readSessionId()),
 				readModel: () => modelRuntime.readCurrentModel(),

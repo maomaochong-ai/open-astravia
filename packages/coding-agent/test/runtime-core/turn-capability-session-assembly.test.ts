@@ -10,10 +10,10 @@ import {
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
 import { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
-import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
+import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
 
 describe("Coding Agent Turn Capability session assembly", () => {
 	const disposals: Array<() => Promise<void> | void> = [];

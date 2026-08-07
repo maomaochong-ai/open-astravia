@@ -5,7 +5,7 @@ import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-orde
 
 export const CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
 
-export interface CodingAgentAskUserQuestionRuntimeFeatureOptions {
+export interface CodingAgentAskUserQuestionFeatureOptions {
 	readonly capability: AskUserQuestionCapability;
 	readonly scenario: ConversationScenario;
 }
@@ -13,8 +13,8 @@ export interface CodingAgentAskUserQuestionRuntimeFeatureOptions {
 /**
  * 在每次模型调用前读取宿主提问能力，避免把动态 handler 固化进 Session 快照。
  */
-export function createCodingAgentAskUserQuestionRuntimeFeature(
-	options: CodingAgentAskUserQuestionRuntimeFeatureOptions,
+export function createCodingAgentAskUserQuestionFeature(
+	options: CodingAgentAskUserQuestionFeatureOptions,
 ): AgentFeatureDefinition {
 	const tool = createAskUserQuestionToolRegistration({
 		ask: (request, signal) => options.capability.ask(request, signal),
@@ -42,6 +42,6 @@ export function createCodingAgentAskUserQuestionRuntimeFeature(
 	};
 }
 
-export function isCodingAgentAskUserQuestionEnabled(options: CodingAgentAskUserQuestionRuntimeFeatureOptions): boolean {
+export function isCodingAgentAskUserQuestionEnabled(options: CodingAgentAskUserQuestionFeatureOptions): boolean {
 	return (options.scenario === "conversation" || options.scenario === "project") && options.capability.isEnabled();
 }

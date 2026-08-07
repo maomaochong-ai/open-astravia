@@ -11,7 +11,7 @@ const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 8,
+	adapterGreenfieldFiles: 0,
 	compositionGreenfieldFiles: 0,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
@@ -98,6 +98,14 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${ADAPTER_ROOT}/runtime-core/greenfield-todo-continuation-source.ts`,
 	`${ADAPTER_ROOT}/runtime-core/coding-agent-mcp-runtime-source.ts`,
 	`${ADAPTER_ROOT}/runtime-core/coding-agent-mcp-supervisor.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-ask-user-question-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-invoke-skill-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-mcp-deferred-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-memory-controller.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-product-tools-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-sandbox-tool-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-subagent-tool-registrations.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-todo-runtime.ts`,
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
@@ -295,6 +303,23 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"adapters/runtime-core/greenfield-todo-continuation-source",
 	"adapters/runtime-core/coding-agent-mcp-runtime-source",
 	"adapters/runtime-core/coding-agent-mcp-supervisor",
+	"adapters/runtime-core/greenfield-ask-user-question-runtime",
+	"adapters/runtime-core/greenfield-invoke-skill-runtime",
+	"adapters/runtime-core/greenfield-mcp-deferred-adapter",
+	"adapters/runtime-core/greenfield-memory-controller",
+	"adapters/runtime-core/greenfield-product-tools-runtime",
+	"adapters/runtime-core/greenfield-sandbox-tool-adapter",
+	"adapters/runtime-core/greenfield-subagent-tool-registrations",
+	"adapters/runtime-core/greenfield-todo-runtime",
+	"CodingAgentGreenfieldMemoryController",
+	"CodingAgentGreenfieldProductToolFeatureOptions",
+	"CodingAgentGreenfieldProductToolOptions",
+	"CodingAgentGreenfieldSandboxToolsOptions",
+	"createCodingAgentAskUserQuestionRuntimeFeature",
+	"createCodingAgentGreenfieldProductToolFeature",
+	"createCodingAgentGreenfieldProductToolRegistrations",
+	"createCodingAgentGreenfieldSandboxToolRegistrations",
+	"createCodingAgentInvokeSkillRuntimeFeature",
 	"CodingAgentGreenfieldExtensionRunnerPort",
 	"CodingAgentGreenfieldExtensionToolSource",
 	"CodingAgentGreenfieldSessionToolRegistration",
@@ -321,7 +346,9 @@ export function collectCodingAgentMigrationResidue(files) {
 				}),
 			),
 		),
-		adapterGreenfieldFiles: adapterFiles.filter((file) => basename(file.path).startsWith("greenfield")),
+		adapterGreenfieldFiles: adapterFiles.filter(
+			(file) => basename(file.path).startsWith("greenfield") && !RETIRED_MIGRATION_FILES.includes(file.path),
+		),
 		compositionGreenfieldFiles: compositionFiles.filter((file) => basename(file.path).startsWith("greenfield")),
 		adapterCompositionEdgeFiles: adapterFiles.filter((file) =>
 			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("composition/")),

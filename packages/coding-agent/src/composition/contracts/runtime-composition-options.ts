@@ -20,8 +20,8 @@ import type {
 	CodingAgentPromptSettingsSource,
 	CodingAgentRuntimeModelSource,
 	CodingAgentSystemPromptOptionsResolver,
-	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
+import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import type { CodingAgentConversationPersistenceFactory } from "../conversation/persistence.js";
 import type { CodingAgentSubagentProfile } from "../subagent/runtime.js";
 import type {
