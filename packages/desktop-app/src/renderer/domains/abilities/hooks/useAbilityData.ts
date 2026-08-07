@@ -1,6 +1,9 @@
 /**
  * 能力页的原始数据源：市场行 + 安装台账 + 三条安装轨道的本地状态。
  * 只负责取数与刷新，条目组装在 lib/build-ability-items.ts。
+ *
+ * 首屏策略：本地安装态就绪即结束 loading（列表可出内置/已装项），
+ * 服务端市场与开源市场在后台合并，避免网络把整表挡住转圈。
  */
 import type {
 	AbilityLedger,
@@ -16,9 +19,13 @@ import type { MarketAbility } from "@shared/lib/api";
 import { fetchMarketAbilities } from "@shared/lib/api";
 import { authTokenAtom } from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { areAllAttemptedMarketSourcesUnavailable, getOpenMarketplaceLoadState } from "../lib/ability-load-policy";
+import {
+	type AbilityMarketSourceState,
+	getOpenMarketplaceLoadState,
+	shouldReportAbilityLoadFailure,
+} from "../lib/ability-load-policy";
 import { mergeAbilityCatalogs } from "../lib/merge-ability-catalogs";
 
 export interface AbilityData {
@@ -57,10 +64,13 @@ export function useAbilityData(): AbilityData {
 	const [loading, setLoading] = useState(true);
 	const [refreshing, setRefreshing] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const loadGenerationRef = useRef(0);
 
 	const load = useCallback(
 		(forceOpenMarketplaceRefresh: boolean) => {
+			const generation = ++loadGenerationRef.current;
 			setRefreshing(true);
+
 			const local = Promise.all([
 				window.vetta.abilities.getLedger(),
 				window.vetta.abilities.listBuiltinPresentations(),
@@ -76,46 +86,72 @@ export function useAbilityData(): AbilityData {
 				? window.vetta.abilities.refreshOpenMarketplaces()
 				: window.vetta.abilities.listOpenMarketplaces();
 
+			// 本地态先落地并结束列表转圈；市场两条在后台合并。
+			void local
+				.then((value) => {
+					if (generation !== loadGenerationRef.current) return;
+					const [nextLedger, presentations, manifest, skills, installedPlugins] = value;
+					setLedger(nextLedger);
+					setBuiltinPresentations(presentations);
+					setSkillManifest(manifest);
+					setLocalSkills(skills.filter((skill) => isReadonlySkillSource(skill.source)));
+					setPlugins(installedPlugins);
+				})
+				.catch((reason) => {
+					if (generation !== loadGenerationRef.current) return;
+					console.warn("Ability local state load failed", reason);
+				})
+				.finally(() => {
+					if (generation !== loadGenerationRef.current) return;
+					setLoading(false);
+				});
+
+			void remote
+				.then((value) => {
+					if (generation !== loadGenerationRef.current) return;
+					setServerMarket(value);
+				})
+				.catch((reason) => {
+					if (generation !== loadGenerationRef.current) return;
+					console.warn("Ability server marketplace load failed", reason);
+				});
+
+			void open
+				.then((value) => {
+					if (generation !== loadGenerationRef.current) return;
+					setOpenMarketplace(value);
+					if (value.failedSourceIds.length > 0) {
+						console.warn("Open marketplace sources failed", value.failedSourceIds);
+					}
+				})
+				.catch((reason) => {
+					if (generation !== loadGenerationRef.current) return;
+					console.warn("Open marketplace catalog load failed", reason);
+				});
+
 			void Promise.allSettled([local, remote, open])
 				.then(([localResult, remoteResult, openResult]) => {
-					const errors: string[] = [];
-					if (localResult.status === "fulfilled") {
-						const [nextLedger, presentations, manifest, skills, installedPlugins] = localResult.value;
-						setLedger(nextLedger);
-						setBuiltinPresentations(presentations);
-						setSkillManifest(manifest);
-						setLocalSkills(skills.filter((skill) => isReadonlySkillSource(skill.source)));
-						setPlugins(installedPlugins);
-					} else {
-						console.warn("Ability local state load failed", localResult.reason);
-						errors.push(i18n.t("abilities:error.loadFailed"));
-					}
-					const serverState = {
+					if (generation !== loadGenerationRef.current) return;
+					const serverState: AbilityMarketSourceState = {
 						attempted: true,
 						usable: remoteResult.status === "fulfilled",
 					};
-					if (remoteResult.status === "fulfilled") {
-						setServerMarket(remoteResult.value);
-					} else {
-						console.warn("Ability server marketplace load failed", remoteResult.reason);
-					}
-					let openState = { attempted: true, usable: false };
-					if (openResult.status === "fulfilled") {
-						setOpenMarketplace(openResult.value);
-						openState = getOpenMarketplaceLoadState(openResult.value);
-						if (openResult.value.failedSourceIds.length > 0) {
-							console.warn("Open marketplace sources failed", openResult.value.failedSourceIds);
-						}
-					} else {
-						console.warn("Open marketplace catalog load failed", openResult.reason);
-					}
-					if (areAllAttemptedMarketSourcesUnavailable([serverState, openState])) {
-						errors.push(i18n.t("abilities:error.loadFailed"));
-					}
-					setError(errors.length > 0 ? errors.join("; ") : null);
+					const openState: AbilityMarketSourceState =
+						openResult.status === "fulfilled"
+							? getOpenMarketplaceLoadState(openResult.value)
+							: { attempted: true, usable: false };
+					setError(
+						shouldReportAbilityLoadFailure({
+							localFailed: localResult.status === "rejected",
+							server: serverState,
+							open: openState,
+						})
+							? i18n.t("abilities:error.loadFailed")
+							: null,
+					);
 				})
 				.finally(() => {
-					setLoading(false);
+					if (generation !== loadGenerationRef.current) return;
 					setRefreshing(false);
 				});
 		},
