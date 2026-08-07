@@ -29,10 +29,4 @@ export class SubagentTypeRegistry<TProfile = unknown> implements SubagentTypeReg
 	ids(): readonly SubagentTypeId[] {
 		return [...this.types.keys()];
 	}
-
-	describeForTools(): string {
-		return this.list()
-			.map((type) => `- \`${type.id}\`: ${type.description}`)
-			.join("\n");
-	}
 }

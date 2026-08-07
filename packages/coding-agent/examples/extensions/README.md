@@ -66,7 +66,7 @@ Coding Agent Extension 示例。扩展契约从 `@vetta/coding-agent` 导入。
 | Extension | Description |
 |-----------|-------------|
 | `dynamic-resources/` | `resources_discover` 动态资源 |
-| `event-bus.ts` | 扩展间 `pi.events` 通信 |
+| `event-bus.ts` | 扩展间 `api.events` 通信 |
 | `file-trigger.ts` | 监视触发文件并注入消息 |
 
 ### Session Metadata
@@ -98,15 +98,15 @@ Coding Agent Extension 示例。扩展契约从 `@vetta/coding-agent` 导入。
 import type { ExtensionAPI } from "@vetta/coding-agent";
 import { Type } from "@sinclair/typebox";
 
-export default function (pi: ExtensionAPI) {
-  pi.on("tool_call", async (event, ctx) => {
+export default function (api: ExtensionAPI) {
+  api.on("tool_call", async (event, ctx) => {
     if (event.toolName === "bash" && event.input.command?.includes("rm -rf")) {
       const ok = await ctx.ui.confirm("Dangerous!", "Allow rm -rf?");
       if (!ok) return { block: true, reason: "Blocked by user" };
     }
   });
 
-  pi.registerTool({
+  api.registerTool({
     name: "greet",
     label: "Greeting",
     description: "Generate a greeting",

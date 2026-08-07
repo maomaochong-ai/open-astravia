@@ -67,6 +67,36 @@ describe("SubagentCoordinator", () => {
 		expect((await fixture.coordinator.wait({ targets: ["claimed"] })).agents).toEqual([]);
 	});
 
+	it("emits terminal snapshots without model-facing tool protocol", async () => {
+		const onNotify = vi.fn();
+		const fixture = createFixture({ onNotify, notificationDelayMs: 1 });
+		await fixture.coordinator.spawn(request("notified"));
+
+		fixture.children[0]?.complete("done");
+		await vi.waitFor(() => expect(onNotify).toHaveBeenCalledOnce());
+
+		expect(onNotify).toHaveBeenCalledWith([
+			expect.objectContaining({ taskName: "notified", status: "completed", finalText: "done" }),
+		]);
+		expect(await fixture.coordinator.wait({ targets: ["notified"] })).toEqual({ timedOut: false, agents: [] });
+	});
+
+	it("batches terminal notifications in completion order", async () => {
+		const onNotify = vi.fn();
+		const fixture = createFixture({ onNotify, notificationDelayMs: 5 });
+		fixture.coordinator.spawnMany([request("first"), request("second")]);
+		await waitUntil(() => fixture.children.length === 2);
+
+		fixture.children[1]?.complete("second result");
+		fixture.children[0]?.complete("first result");
+		await vi.waitFor(() => expect(onNotify).toHaveBeenCalledOnce());
+
+		expect(onNotify.mock.calls[0]?.[0].map(({ taskName }: SubagentSnapshot) => taskName)).toEqual([
+			"second",
+			"first",
+		]);
+	});
+
 	it("restores terminal entries and deterministically normalizes abandoned work", async () => {
 		const fixture = createFixture({ now: 500 });
 		fixture.coordinator.restore({
@@ -205,6 +235,29 @@ describe("SubagentCoordinator", () => {
 		expect(calls).toEqual(["start", "stop"]);
 	});
 
+	it("caps stop lifecycle continuations without stranding the active slot", async () => {
+		let stopCalls = 0;
+		const fixture = createFixture({
+			lifecycle: {
+				async beforeStop() {
+					stopCalls += 1;
+					return { continuation: `continue-${stopCalls}` };
+				},
+			},
+		});
+		await fixture.coordinator.spawn(request("continuations"));
+		await waitUntil(() => fixture.children[0]?.prompts.length === 1);
+
+		for (let completion = 1; completion <= 9; completion += 1) {
+			fixture.children[0]?.complete(`result-${completion}`);
+			if (completion <= 8) await waitUntil(() => fixture.children[0]?.prompts.length === completion + 1);
+		}
+		await waitUntil(() => fixture.coordinator.get("continuations")?.status === "completed");
+
+		expect(stopCalls).toBe(9);
+		expect(fixture.children[0]?.prompts).toHaveLength(9);
+	});
+
 	it("fails and disposes the child when start lifecycle blocks", async () => {
 		const fixture = createFixture({
 			lifecycle: {
@@ -324,13 +377,26 @@ describe("SubagentCoordinator", () => {
 		await disposing;
 		expect(lateChild.disposeCalls).toBe(1);
 	});
+
+	it("wakes active waiters with interrupted snapshots during shutdown", async () => {
+		const fixture = createFixture();
+		await fixture.coordinator.spawn(request("waiting"));
+		const waiting = fixture.coordinator.wait({ targets: ["waiting"], timeoutMs: 5_000 });
+
+		await fixture.coordinator.dispose();
+
+		await expect(waiting).resolves.toEqual({
+			timedOut: false,
+			agents: [expect.objectContaining({ taskName: "waiting", status: "interrupted", generation: 1 })],
+		});
+	});
 });
 
 function createFixture(
 	options: {
 		readonly maxConcurrent?: number;
 		readonly notificationDelayMs?: number;
-		readonly onNotify?: (payload: { readonly agents: readonly SubagentSnapshot[]; readonly text: string }) => void;
+		readonly onNotify?: (agents: readonly SubagentSnapshot[]) => void;
 		readonly onDeliveryClaimed?: (marker: { readonly id: string; readonly generation: number }) => void;
 		readonly now?: number;
 		readonly reopen?: boolean;

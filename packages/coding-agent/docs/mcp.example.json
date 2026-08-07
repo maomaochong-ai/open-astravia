@@ -1,0 +1,31 @@
+{
+	"mcpServers": {
+		"filesystem": {
+			"command": "npx",
+			"args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/directory"],
+			"disabled": false,
+			"autoApprove": ["read_file", "list_directory"],
+			"debug": false
+		},
+		"github": {
+			"command": "npx",
+			"args": ["-y", "@modelcontextprotocol/server-github"],
+			"env": {
+				"GITHUB_TOKEN": "${GITHUB_TOKEN}"
+			},
+			"disabled": true
+		},
+		"custom": {
+			"command": "node",
+			"args": ["./scripts/mcp-server.js"],
+			"cwd": "${PROJECT_ROOT}",
+			"env": {
+				"API_KEY": "${MY_API_KEY}",
+				"NODE_ENV": "production"
+			},
+			"disabled": true,
+			"startupTimeout": 15000,
+			"debug": false
+		}
+	}
+}

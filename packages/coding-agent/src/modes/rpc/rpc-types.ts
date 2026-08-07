@@ -291,7 +291,7 @@ export type RpcExtensionUIResponse =
 // Enabled only with `--mode rpc --enable-host-bridge`. Lets built-in tools
 // (currently `im_send_attachment`) call back into the host process — for
 // im-gateway that means "actually send this image/file via the IM
-// transport, return the messageId or a structured error". See docs/rpc.md.
+// transport, return the messageId or a structured error". Wire types below; overview in docs/rpc.md.
 //
 // Wire shape mirrors the extension_ui_request / _response pair: stdout
 // carries `host_request`, stdin carries `host_response`, both correlate by

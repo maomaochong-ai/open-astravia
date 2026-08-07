@@ -183,6 +183,7 @@
 
 ### Changed
 
+- **精简 `docs/` 用户与集成文档**：删除过时或可合并篇目（`session.md`、`stable-sdk.md`、`providers.md`、`custom-provider.md`、`compaction.md`、`json.md`、`windows.md`、`shell-aliases.md`）；重写保留文档为短文并统一 `~/.vetta` 路径与当前公开入口；新增 `docs/README.md` 索引；`rpc.md` 以命令表 + 源码指针为主，不再展开全文协议教程。
 - **知识检索改为硬隔离**：input-pipeline 在未携带 `metadata.knowledgeMode` 时，从本轮 tool list 剥离 `category: "kb-read"` 工具（`kb_list_available_tags` / `kb_filter_by_tags`）；开启「知识检索」后才暴露并注入隐形「优先查知识库」指令。`kb-processing` 场景例外（无 toggle、加工依赖这些工具）。与图像生成的软隔离相反。
 - **图像工具改为软隔离**：input-pipeline 不再在未开「图像生成」时从本轮 tool list 剥离 `generate_image` / `edit_image`。工具始终按 `scope_use` 暴露；用户自然语言明确要求生图/改图即可调用。`metadata.imageMode` / `editImageId` 仅注入隐形意图指令（加强引导）。同步收紧 tool description（仅实际要产出/编辑图时调用）与 imageMode 提示文案。
 - **input-pipeline 支持设置页 AI 协助隐藏指令**：读取 `PromptOptions.metadata.settingsAssistInstruction`（非空字符串）时，在用户消息前注入 `display:false` 的 `settings_assist_instruction` 自定义消息，仅模型可见；用户气泡与历史只保留用户意图正文。

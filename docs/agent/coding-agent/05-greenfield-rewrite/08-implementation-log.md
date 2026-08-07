@@ -188,6 +188,8 @@
 | [178-greenfield-print-production-parity-gate.md](./08-implementation-log/178-greenfield-print-production-parity-gate.md) | Greenfield Print 附件、工具、Provider 故障、Extension 与跨进程继续会话生产差分门禁 |
 | [179-greenfield-print-default-cutover-and-artifact-closure.md](./08-implementation-log/179-greenfield-print-default-cutover-and-artifact-closure.md) | Greenfield Print 默认切换、统一会话目录与单文件图片能力闭环 |
 | [266-dev-merge-and-greenfield-compatibility.md](./08-implementation-log/266-dev-merge-and-greenfield-compatibility.md) | 合并 dev 功能增量并保持 Greenfield 架构边界 |
+| [297-runtime-subagents-production-kernel.md](./08-implementation-log/297-runtime-subagents-production-kernel.md) | Runtime Subagents 生产内核收敛 |
+| [298-pi-manifest-compatibility-restoration.md](./08-implementation-log/298-pi-manifest-compatibility-restoration.md) | `pi` 资源清单兼容合同恢复 |
 
 ## 维护约定
 

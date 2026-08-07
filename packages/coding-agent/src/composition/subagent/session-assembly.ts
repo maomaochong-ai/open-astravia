@@ -15,7 +15,7 @@ import type {
 	SubagentTypeDefinition,
 	SubagentTypeRegistryLike,
 } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
+import { buildSubagentNotification, type CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import { createCodingAgentSubagentChildHandle } from "./child-handle.js";
 import { type CodingAgentSubagentProfile, CodingAgentSubagentRuntime } from "./runtime.js";
@@ -131,7 +131,8 @@ export function createCodingAgentSubagentSessionAssembly(
 		onRecoveryIssue: (message) => {
 			console.warn("[coding-agent-runtime] subagent recovery issue", message);
 		},
-		onNotify: (payload) => {
+		onNotify: (agents) => {
+			const payload = buildSubagentNotification(agents);
 			void options.resourceContext
 				.deliverAsyncContext([
 					{

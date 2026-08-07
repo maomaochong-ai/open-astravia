@@ -1,54 +1,27 @@
-# Built-in Tool Integration
+# 内置 Tool
 
-Built-in Tool implementations belong to `@vetta/runtime-tools/coding`. `coding-agent` owns only product composition,
-host adapters and activation policy; it must not define or re-export concrete built-in Tool factories.
+实现归属 **`@vetta/runtime-tools/coding`**。`coding-agent` 只做产品组合、宿主适配与激活策略，不定义/再导出具体 Tool 工厂。
 
-## Implement the Tool
+## 新增 Tool
 
-Create `packages/runtime-tools/src/coding/tools/<tool-name>/` with separate modules for:
+在 `packages/runtime-tools/src/coding/tools/<name>/`：
 
-- `description.ts`: model-facing description as a TypeScript constant.
-- `<tool-name>-tool.ts`: TypeBox input schema, Runtime Tool definition and narrow Operations ports.
-- `registration.ts`: scope, capability requirements, category and optional model order.
-- `index.ts`: the Tool-local public surface.
+| 文件 | 内容 |
+|------|------|
+| `description.ts` | 模型可见描述常量 |
+| `*-tool.ts` | TypeBox schema、Tool 定义、Operations 端口 |
+| `registration.ts` | scope、capability、category、order |
+| `index.ts` | 工具局部公开面 |
 
-The Tool implementation may depend on Runtime contracts and injected Operations. It must not import `coding-agent`.
-Stateful behavior remains owned by the Session or product host and is injected through a Store or Operations port.
+- 可依赖 Runtime 合同与注入的 Operations；**禁止** import `coding-agent`。
+- 从 `packages/runtime-tools/src/coding/index.ts` 导出；产品组合根注册到动态 catalog。
+- 注册/移除影响后续模型调用，不重建整个 Runtime；进行中的调用保持已绑定能力。
 
-## Compose the Tool
+## 替换旧实现
 
-Export the Tool from `packages/runtime-tools/src/coding/index.ts`. Product composition roots register it with the dynamic
-`CodingToolRegistry`; `coding-agent` may provide host capabilities and product activation names, but must not wrap the
-Tool in a second implementation.
-
-Runtime Catalog membership is dynamic. Registration or removal affects subsequent model calls without rebuilding the
-whole Agent Runtime; an in-flight model call continues to use its acquired capability binding.
-
-## Preserve Behavior
-
-When replacing an existing Tool, test the observable contract before deleting the old implementation:
-
-- name, label, description and TypeBox schema;
-- scope, capability requirements, category and model order;
-- result content, details and exact error text;
-- cancellation, progress, state sequencing and side effects;
-- CLI, SDK, RPC and IM activation behavior.
-
-The old implementation may be used temporarily as a test Oracle, but new production code must not call it. Delete the
-old implementation and structural tests after the native replacement is verified.
-
-## Verify
-
-Run targeted tests from the owning package, then the repository quality gates:
+合同测试覆盖：name/label/description/schema、scope/requires、结果与错误文案、取消/进度/副作用、CLI/SDK/RPC 激活。旧代码仅可作测试 oracle，验证后删除。
 
 ```bash
 cd packages/runtime-tools
 bunx vitest --run test/coding/<tool-name>.test.ts
-
-cd ../..
-bun run check:quick
-bun run check
 ```
-
-The rewrite guard must report zero Runtime-to-`coding-agent` backedges. Once a migrated legacy domain reaches zero,
-update its baseline to zero so future imports fail the guard.

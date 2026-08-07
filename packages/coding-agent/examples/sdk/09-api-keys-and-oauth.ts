@@ -10,8 +10,8 @@ import {
 	createCodingAgentModelRuntime,
 } from "@vetta/coding-agent/host-services";
 
-// Default: AuthStorage uses ~/.pi/agent/auth.json
-// CodingAgentModelRuntime loads built-in + custom models from ~/.pi/agent/models.json
+// Default: AuthStorage uses ~/.vetta/agent/auth.json
+// CodingAgentModelRuntime loads built-in + custom models from ~/.vetta/agent/models.json
 const authStorage = AuthStorage.create();
 const modelRuntime = createCodingAgentModelRuntime(authStorage);
 

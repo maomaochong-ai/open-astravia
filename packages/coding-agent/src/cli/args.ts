@@ -52,7 +52,7 @@ export interface Args {
 	 * Enable the host-bridge channel in rpc mode. Registers the `im_send_attachment`
 	 * tool and lets it issue `host_request` events that the host (im-gateway)
 	 * answers via `host_response` commands. Only meaningful with `--mode rpc`.
-	 * See docs/rpc.md.
+	 * See docs/rpc.md and RpcHostRequest in modes/rpc/rpc-types.ts.
 	 */
 	enableHostBridge?: boolean;
 	/**

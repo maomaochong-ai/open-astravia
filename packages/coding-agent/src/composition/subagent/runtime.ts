@@ -16,7 +16,6 @@ import {
 	type SubagentChildHandle,
 	SubagentCoordinator,
 	type SubagentLifecycle,
-	type SubagentNotificationPayload,
 	type SubagentSnapshot,
 	type SubagentSpawnRequest,
 	type SubagentTypeDefinition,
@@ -57,7 +56,7 @@ export interface CodingAgentSubagentRuntimeOptions {
 		forkContext: readonly Message[] | undefined,
 		signal?: AbortSignal,
 	) => Promise<SubagentChildHandle>;
-	readonly onNotify?: (payload: SubagentNotificationPayload) => void;
+	readonly onNotify?: (agents: readonly SubagentSnapshot[]) => void;
 	readonly onUpdate?: (agents: readonly SubagentSnapshot[]) => void;
 	readonly validateRecoveredChild?: (snapshot: SubagentSnapshot) => Promise<string | undefined>;
 	readonly onRecoveryIssue?: (message: string) => void;

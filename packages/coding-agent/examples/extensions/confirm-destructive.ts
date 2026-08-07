@@ -7,8 +7,8 @@
 
 import type { ExtensionAPI, SessionBeforeSwitchEvent } from "@vetta/coding-agent";
 
-export default function (pi: ExtensionAPI) {
-	pi.on("session_before_switch", async (event: SessionBeforeSwitchEvent, ctx) => {
+export default function (api: ExtensionAPI) {
+	api.on("session_before_switch", async (event: SessionBeforeSwitchEvent, ctx) => {
 		if (!ctx.hasUI) return;
 
 		if (event.reason === "new") {
@@ -41,7 +41,7 @@ export default function (pi: ExtensionAPI) {
 		}
 	});
 
-	pi.on("session_before_fork", async (event, ctx) => {
+	api.on("session_before_fork", async (event, ctx) => {
 		if (!ctx.hasUI) return;
 
 		const choice = await ctx.ui.select(`Fork from entry ${event.entryId.slice(0, 8)}?`, [

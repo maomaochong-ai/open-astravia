@@ -1,22 +1,28 @@
 import {
-	clipFinalText,
 	emptyUsage,
 	isValidTaskName,
 	type SubagentChildHandle,
 	type SubagentCoordinatorOptions,
 	type SubagentCoordinatorPort,
-	type SubagentDeliveryMarker,
 	type SubagentRecoveryState,
 	type SubagentSnapshot,
 	type SubagentSpawnRequest,
-	type SubagentStatus,
 	type SubagentTypeDefinition,
 	type SubagentTypeId,
 	type SubagentWaitOptions,
 	type SubagentWaitResult,
 	taskPath,
 } from "./contracts.js";
-import { buildSubagentNotification, SubagentDeliveryTracker } from "./notifications.js";
+import { SubagentDelivery } from "./delivery.js";
+import {
+	cloneSnapshot,
+	isActiveStatus,
+	isTerminalStatus,
+	type MutableSubagentSnapshot,
+	type SubagentEntry,
+} from "./internal.js";
+import { SubagentScheduler } from "./scheduler.js";
+import { SubagentStore } from "./subagent-store.js";
 
 const DEFAULT_MAX_CONCURRENT = 3;
 const DEFAULT_WAIT_TIMEOUT_MS = 30_000;
@@ -26,36 +32,14 @@ const DEFAULT_NOTIFICATION_DELAY_MS = 50;
 const MAX_TERMINAL_HANDLES = 50;
 const MAX_STOP_CONTINUATIONS = 8;
 
-type MutableSnapshot = {
-	-readonly [K in keyof SubagentSnapshot]: SubagentSnapshot[K];
-};
-
-interface InternalChild {
-	snapshot: MutableSnapshot;
-	handle?: SubagentChildHandle;
-	unsubscribe?: () => void;
-	todoUnsubscribe?: () => void;
-	holdsActiveSlot: boolean;
-	waiters: Array<() => void>;
-	queuedRequest?: SubagentSpawnRequest;
-	startLifecycleCompleted: boolean;
-	stopContinuationCount: number;
-	endInFlight: boolean;
-}
-
 export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordinatorPort {
-	private readonly children = new Map<string, InternalChild>();
-	private readonly byTaskName = new Map<string, string>();
-	private readonly queue: string[] = [];
-	private readonly delivery = new SubagentDeliveryTracker();
+	private readonly store = new SubagentStore();
+	private readonly scheduler: SubagentScheduler;
+	private readonly delivery: SubagentDelivery;
 	private readonly clock: { now(): number };
 	private readonly idGenerator: { next(): string };
-	private readonly maxConcurrent: number;
-	private readonly notificationDelayMs: number;
 	private readonly lifecycleAbortController = new AbortController();
 	private readonly startOperations = new Set<Promise<void>>();
-	private notifyBuffer: SubagentSnapshot[] = [];
-	private notifyTimer?: ReturnType<typeof setTimeout>;
 	private disposed = false;
 	private disposePromise: Promise<void> | undefined;
 
@@ -64,39 +48,35 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		this.idGenerator = options.idGenerator ?? {
 			next: () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
 		};
-		this.maxConcurrent = options.maxConcurrent ?? DEFAULT_MAX_CONCURRENT;
-		if (!Number.isInteger(this.maxConcurrent) || this.maxConcurrent < 1) {
-			throw new Error("Subagent maxConcurrent must be a positive integer");
-		}
-		this.notificationDelayMs = options.notificationDelayMs ?? DEFAULT_NOTIFICATION_DELAY_MS;
+		this.scheduler = new SubagentScheduler(options.maxConcurrent ?? DEFAULT_MAX_CONCURRENT);
+		this.delivery = new SubagentDelivery({
+			notificationDelayMs: options.notificationDelayMs ?? DEFAULT_NOTIFICATION_DELAY_MS,
+			onNotify: options.onNotify,
+			onDeliveryClaimed: options.onDeliveryClaimed,
+		});
 	}
 
 	list(): readonly SubagentSnapshot[] {
-		return [...this.children.values()]
-			.map((entry) => cloneSnapshot(entry.snapshot))
-			.sort((left, right) => left.startedAt - right.startedAt);
+		return this.store.list();
 	}
 
 	get(target: string): SubagentSnapshot | undefined {
-		const entry = this.resolveChild(target);
+		const entry = this.store.resolve(target);
 		return entry ? cloneSnapshot(entry.snapshot) : undefined;
 	}
 
 	restore(state: SubagentRecoveryState): readonly SubagentSnapshot[] {
 		this.assertNotDisposed();
-		if (this.children.size > 0) throw new Error("SubagentCoordinator recovery requires an empty coordinator");
+		if (this.store.size > 0) throw new Error("SubagentCoordinator recovery requires an empty coordinator");
 		const restored = this.validateRecoveryState(state);
 		for (const snapshot of restored) {
-			const entry: InternalChild = {
+			const entry: SubagentEntry = {
 				snapshot,
-				holdsActiveSlot: false,
-				waiters: [],
 				startLifecycleCompleted: snapshot.sessionFile !== undefined,
 				stopContinuationCount: 0,
 				endInFlight: false,
 			};
-			this.children.set(snapshot.id, entry);
-			this.byTaskName.set(snapshot.taskName, snapshot.id);
+			this.store.add(entry);
 		}
 		this.delivery.restore(state.delivered);
 		this.emitUpdate();
@@ -107,18 +87,13 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		return this.options.typeRegistry.ids();
 	}
 
-	typeDocs(): string {
-		return this.options.typeRegistry.describeForTools();
-	}
-
 	clearFinished(): number {
 		if (this.disposed) return 0;
 		let removed = 0;
-		for (const [id, entry] of [...this.children]) {
+		for (const [id, entry] of this.store.entries()) {
 			if (!isTerminalStatus(entry.snapshot.status)) continue;
 			this.disposeHandle(entry);
-			this.children.delete(id);
-			this.byTaskName.delete(entry.snapshot.taskName);
+			this.store.remove(id);
 			removed += 1;
 		}
 		if (removed > 0) this.emitUpdate();
@@ -128,13 +103,14 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 	async spawn(request: SubagentSpawnRequest): Promise<SubagentSnapshot> {
 		this.assertNotDisposed();
 		const taskName = this.validateRequest(request);
-		const activeCount = this.countActive();
-		if (activeCount >= this.maxConcurrent) {
+		const activeCount = this.scheduler.activeCount;
+		if (!this.scheduler.hasCapacity) {
 			throw new Error(
-				`Too many active subagents (${activeCount}/${this.maxConcurrent}). Wait or interrupt one before spawning more.`,
+				`Too many active subagents (${activeCount}/${this.scheduler.maxConcurrent}). Wait or interrupt one before spawning more.`,
 			);
 		}
 		const entry = this.reserve(request, taskName, "pending");
+		this.scheduler.acquire(entry.snapshot.id);
 		this.emitUpdate();
 		try {
 			await this.startChild(entry);
@@ -156,7 +132,8 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 
 		const requestedTypes = new Set(requests.map((request) => request.agentType));
 		const reusableTaskNames = new Set(
-			[...this.children.values()]
+			this.store
+				.values()
 				.filter(
 					(entry) =>
 						requestedTypes.has(entry.snapshot.agentType) &&
@@ -176,10 +153,14 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 
 		this.clearCompletedByTypes(requestedTypes);
 		const entries = validated.map(({ request, taskName }) => {
-			const hasSlot = this.countActive() < this.maxConcurrent;
+			const hasSlot = this.scheduler.hasCapacity;
 			const entry = this.reserve(request, taskName, hasSlot ? "pending" : "queued");
-			if (hasSlot) void this.startChildInBackground(entry);
-			else this.queue.push(entry.snapshot.id);
+			if (hasSlot) {
+				this.scheduler.acquire(entry.snapshot.id);
+				void this.startChildInBackground(entry);
+			} else {
+				this.scheduler.enqueue(entry.snapshot.id);
+			}
 			return entry;
 		});
 		this.emitUpdate();
@@ -212,10 +193,9 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		}
 
 		if (isTerminalStatus(entry.snapshot.status)) {
-			if (this.countActive() >= this.maxConcurrent) {
-				throw new Error(`Too many active subagents (${this.maxConcurrent} max)`);
+			if (!this.scheduler.acquire(entry.snapshot.id)) {
+				throw new Error(`Too many active subagents (${this.scheduler.maxConcurrent} max)`);
 			}
-			entry.holdsActiveSlot = true;
 			entry.snapshot.status = "running";
 			entry.snapshot.task = message;
 			entry.snapshot.endedAt = undefined;
@@ -240,13 +220,14 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		const finalText = entry.handle?.getLastAssistantText();
 		entry.handle?.abort();
 		entry.queuedRequest = undefined;
+		this.scheduler.removeQueued(entry.snapshot.id);
 		entry.snapshot.finalText = finalText ?? entry.snapshot.finalText;
 		entry.snapshot.status = "interrupted";
 		entry.snapshot.endedAt = this.clock.now();
 		entry.snapshot.generation += 1;
 		this.updateUsage(entry);
-		this.releaseActiveSlot(entry);
-		this.wakeWaiters(entry);
+		this.scheduler.release(entry.snapshot.id);
+		this.delivery.wake();
 		this.emitUpdate();
 		this.queueNotification(entry.snapshot);
 		this.drainQueue();
@@ -257,11 +238,11 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 	async wait(options: SubagentWaitOptions = {}): Promise<SubagentWaitResult> {
 		this.assertNotDisposed();
 		const timeoutMs = clamp(options.timeoutMs ?? DEFAULT_WAIT_TIMEOUT_MS, MIN_WAIT_TIMEOUT_MS, MAX_WAIT_TIMEOUT_MS);
-		const resolveTargets = (): InternalChild[] => {
+		const resolveTargets = (): SubagentEntry[] => {
 			if (!options.targets || options.targets.length === 0) {
-				return [...this.children.values()].filter(
-					(entry) => !isTerminalStatus(entry.snapshot.status) || this.hasUndelivered(entry),
-				);
+				return this.store
+					.values()
+					.filter((entry) => !isTerminalStatus(entry.snapshot.status) || this.hasUndelivered(entry));
 			}
 			return options.targets.map((target) => this.requireChild(target));
 		};
@@ -269,12 +250,8 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 			const ready: SubagentSnapshot[] = [];
 			for (const entry of resolveTargets()) {
 				if (!isTerminalStatus(entry.snapshot.status)) continue;
-				if (!this.delivery.tryClaim(entry.snapshot.id, entry.snapshot.generation)) continue;
-				this.emitDeliveryClaimed(entry.snapshot);
-				ready.push({
-					...cloneSnapshot(entry.snapshot),
-					finalText: clipFinalText(entry.snapshot.finalText),
-				});
+				const claimed = this.delivery.claim(entry.snapshot);
+				if (claimed) ready.push(claimed);
 			}
 			return ready;
 		};
@@ -286,14 +263,12 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		return new Promise((resolve) => {
 			let settled = false;
 			let timer: ReturnType<typeof setTimeout>;
+			let unsubscribe = () => {};
 			const finish = (timedOut: boolean) => {
 				if (settled) return;
 				settled = true;
 				clearTimeout(timer);
-				for (const entry of active) {
-					const index = entry.waiters.indexOf(onWake);
-					if (index >= 0) entry.waiters.splice(index, 1);
-				}
+				unsubscribe();
 				resolve({ timedOut, agents: collectReady() });
 			};
 			const onWake = () => {
@@ -302,7 +277,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 				);
 				if (ready) finish(false);
 			};
-			for (const entry of active) entry.waiters.push(onWake);
+			unsubscribe = this.delivery.subscribe(onWake);
 			timer = setTimeout(() => finish(true), timeoutMs);
 		});
 	}
@@ -311,10 +286,8 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		if (this.disposePromise) return this.disposePromise;
 		this.disposed = true;
 		this.lifecycleAbortController.abort();
-		if (this.notifyTimer) clearTimeout(this.notifyTimer);
-		this.notifyTimer = undefined;
-		this.notifyBuffer = [];
-		this.queue.length = 0;
+		this.delivery.closeNotifications();
+		this.scheduler.clear();
 		this.disposePromise = this.performDispose();
 		return this.disposePromise;
 	}
@@ -323,20 +296,21 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		const initialDisposal = this.disposeChildren();
 		await Promise.allSettled([initialDisposal, ...this.startOperations]);
 		await this.disposeChildren();
+		this.delivery.clearWaiters();
 		this.emitUpdate();
 	}
 
 	private async disposeChildren(): Promise<void> {
 		const disposals: Promise<void>[] = [];
-		for (const entry of this.children.values()) {
+		for (const entry of this.store.values()) {
 			if (!isTerminalStatus(entry.snapshot.status)) {
 				entry.handle?.abort();
 				entry.snapshot.status = "interrupted";
 				entry.snapshot.endedAt = this.clock.now();
 				entry.snapshot.generation += 1;
 			}
-			this.releaseActiveSlot(entry);
-			this.wakeWaiters(entry);
+			this.scheduler.release(entry.snapshot.id);
+			this.delivery.wake();
 			const disposal = this.disposeHandle(entry);
 			if (disposal) disposals.push(disposal);
 		}
@@ -352,15 +326,15 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		}
 		if (!request.message.trim()) throw new Error("message must be non-empty");
 		this.requireType(request.agentType);
-		if (this.byTaskName.has(taskName) && !reusableTaskNames.has(taskName)) {
+		if (this.store.hasTaskName(taskName) && !reusableTaskNames.has(taskName)) {
 			throw new Error(`task_name "${taskName}" is already used in this session`);
 		}
 		return taskName;
 	}
 
-	private reserve(request: SubagentSpawnRequest, taskName: string, status: "pending" | "queued"): InternalChild {
+	private reserve(request: SubagentSpawnRequest, taskName: string, status: "pending" | "queued"): SubagentEntry {
 		const id = `pending-${taskName}-${this.idGenerator.next()}`;
-		const snapshot: MutableSnapshot = {
+		const snapshot: MutableSubagentSnapshot = {
 			id,
 			taskName,
 			path: taskPath(taskName),
@@ -374,25 +348,22 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 			title: request.title?.trim() || undefined,
 			todoProgress: request.todos ? { done: 0, total: request.todos.length } : undefined,
 		};
-		const entry: InternalChild = {
+		const entry: SubagentEntry = {
 			snapshot,
-			holdsActiveSlot: status === "pending",
-			waiters: [],
 			queuedRequest: request,
 			startLifecycleCompleted: false,
 			stopContinuationCount: 0,
 			endInFlight: false,
 		};
-		this.children.set(id, entry);
-		this.byTaskName.set(taskName, id);
+		this.store.add(entry);
 		return entry;
 	}
 
-	private startChild(entry: InternalChild): Promise<void> {
+	private startChild(entry: SubagentEntry): Promise<void> {
 		return this.trackStartOperation(this.createAndStartChild(entry));
 	}
 
-	private async createAndStartChild(entry: InternalChild): Promise<void> {
+	private async createAndStartChild(entry: SubagentEntry): Promise<void> {
 		const request = entry.queuedRequest;
 		if (!request) throw new Error(`Subagent "${entry.snapshot.taskName}" has no queued request`);
 		const type = this.requireType(entry.snapshot.agentType);
@@ -418,14 +389,13 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		void this.runInitialPrompt(entry, lifecycle?.message ?? request.message);
 	}
 
-	private attachHandle(entry: InternalChild, handle: SubagentChildHandle): void {
+	private attachHandle(entry: SubagentEntry, handle: SubagentChildHandle): void {
 		const provisionalId = entry.snapshot.id;
-		this.children.delete(provisionalId);
 		entry.snapshot.id = handle.sessionId;
 		entry.snapshot.sessionFile = handle.sessionFile;
 		entry.handle = handle;
-		this.children.set(handle.sessionId, entry);
-		this.byTaskName.set(entry.snapshot.taskName, handle.sessionId);
+		this.store.rekey(entry, provisionalId);
+		this.scheduler.rekey(provisionalId, handle.sessionId);
 		entry.unsubscribe = handle.subscribe((event) => {
 			if (event.type === "agent_start" && entry.snapshot.status === "pending") {
 				entry.snapshot.status = "running";
@@ -442,7 +412,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		}
 	}
 
-	private async reopen(entry: InternalChild, type: SubagentTypeDefinition<TProfile>): Promise<void> {
+	private async reopen(entry: SubagentEntry, type: SubagentTypeDefinition<TProfile>): Promise<void> {
 		const reopen = this.options.factory.reopen;
 		if (!reopen) throw new Error(`Subagent "${entry.snapshot.id}" is not live and reopen is not supported`);
 		const handle = await this.trackStartOperation(
@@ -465,7 +435,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		return operation;
 	}
 
-	private async runInitialPrompt(entry: InternalChild, message: string): Promise<void> {
+	private async runInitialPrompt(entry: SubagentEntry, message: string): Promise<void> {
 		const handle = entry.handle;
 		if (!handle) return;
 		try {
@@ -485,7 +455,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		}
 	}
 
-	private async runFollowUp(entry: InternalChild, message: string): Promise<void> {
+	private async runFollowUp(entry: SubagentEntry, message: string): Promise<void> {
 		try {
 			await entry.handle?.prompt(message);
 			if (entry.handle && !entry.handle.isStreaming() && entry.snapshot.status === "running") {
@@ -499,7 +469,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		}
 	}
 
-	private async onChildAgentEnd(entry: InternalChild): Promise<void> {
+	private async onChildAgentEnd(entry: SubagentEntry): Promise<void> {
 		if (isTerminalStatus(entry.snapshot.status) || entry.endInFlight) return;
 		entry.endInFlight = true;
 		try {
@@ -525,9 +495,9 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 			entry.snapshot.status = "completed";
 			entry.snapshot.endedAt = this.clock.now();
 			entry.snapshot.generation += 1;
-			this.releaseActiveSlot(entry);
+			this.scheduler.release(entry.snapshot.id);
 			this.trimTerminalHandles();
-			this.wakeWaiters(entry);
+			this.delivery.wake();
 			this.emitUpdate();
 			this.queueNotification(entry.snapshot);
 			this.drainQueue();
@@ -536,7 +506,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		}
 	}
 
-	private async runTerminalStopLifecycle(entry: InternalChild, interrupted: boolean): Promise<void> {
+	private async runTerminalStopLifecycle(entry: SubagentEntry, interrupted: boolean): Promise<void> {
 		if (!entry.startLifecycleCompleted) return;
 		await this.options.lifecycle
 			?.beforeStop?.({
@@ -551,7 +521,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 			.catch(() => undefined);
 	}
 
-	private startChildInBackground(entry: InternalChild): Promise<void> {
+	private startChildInBackground(entry: SubagentEntry): Promise<void> {
 		return this.startChild(entry).catch((error) => {
 			if (this.disposed) return;
 			if (!isTerminalStatus(entry.snapshot.status)) {
@@ -564,30 +534,31 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 	}
 
 	private clearCompletedByTypes(types: ReadonlySet<SubagentTypeId>): void {
-		for (const [id, entry] of [...this.children]) {
+		for (const [id, entry] of this.store.entries()) {
 			if (!types.has(entry.snapshot.agentType)) continue;
 			if (entry.snapshot.status !== "completed" && entry.snapshot.status !== "failed") continue;
 			this.disposeHandle(entry);
-			this.children.delete(id);
-			this.byTaskName.delete(entry.snapshot.taskName);
+			this.store.remove(id);
 		}
 	}
 
 	private drainQueue(): void {
 		if (this.disposed) return;
-		while (this.queue.length > 0 && this.countActive() < this.maxConcurrent) {
-			const id = this.queue.shift();
+		while (this.scheduler.hasCapacity) {
+			const id = this.scheduler.takeNext();
 			if (!id) return;
-			const entry = this.children.get(id);
-			if (!entry || entry.snapshot.status !== "queued") continue;
+			const entry = this.store.getById(id);
+			if (!entry || entry.snapshot.status !== "queued") {
+				this.scheduler.release(id);
+				continue;
+			}
 			entry.snapshot.status = "pending";
-			entry.holdsActiveSlot = true;
 			this.emitUpdate();
 			void this.startChildInBackground(entry);
 		}
 	}
 
-	private releaseEntry(entry: InternalChild, status: "failed" | "interrupted", errorMessageText?: string): void {
+	private releaseEntry(entry: SubagentEntry, status: "failed" | "interrupted", errorMessageText?: string): void {
 		entry.snapshot.finalText = entry.handle?.getLastAssistantText() ?? entry.snapshot.finalText;
 		entry.snapshot.status = status;
 		entry.snapshot.endedAt = this.clock.now();
@@ -595,18 +566,18 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		entry.snapshot.generation += 1;
 		entry.queuedRequest = undefined;
 		this.updateUsage(entry);
-		this.releaseActiveSlot(entry);
-		this.wakeWaiters(entry);
+		this.scheduler.release(entry.snapshot.id);
+		this.delivery.wake();
 		this.disposeHandle(entry);
 		void this.runTerminalStopLifecycle(entry, status === "interrupted");
 	}
 
-	private updateUsage(entry: InternalChild): void {
+	private updateUsage(entry: SubagentEntry): void {
 		const usage = entry.handle?.readUsage?.();
 		if (usage) entry.snapshot.usage = { ...usage };
 	}
 
-	private disposeHandle(entry: InternalChild): Promise<void> | undefined {
+	private disposeHandle(entry: SubagentEntry): Promise<void> | undefined {
 		entry.unsubscribe?.();
 		entry.todoUnsubscribe?.();
 		entry.unsubscribe = undefined;
@@ -622,7 +593,8 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 	}
 
 	private trimTerminalHandles(): void {
-		const terminal = [...this.children.values()]
+		const terminal = this.store
+			.values()
 			.filter((entry) => isTerminalStatus(entry.snapshot.status) && entry.handle)
 			.sort((left, right) => (left.snapshot.endedAt ?? 0) - (right.snapshot.endedAt ?? 0));
 		while (terminal.length > MAX_TERMINAL_HANDLES) {
@@ -632,67 +604,16 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 	}
 
 	private queueNotification(snapshot: SubagentSnapshot): void {
-		if (this.disposed || !this.options.onNotify) return;
-		if (this.delivery.isDelivered(snapshot.id, snapshot.generation)) return;
-		this.notifyBuffer.push(cloneSnapshot(snapshot));
-		if (this.notifyTimer) return;
-		this.notifyTimer = setTimeout(() => {
-			this.notifyTimer = undefined;
-			this.flushNotifications();
-		}, this.notificationDelayMs);
+		if (this.disposed) return;
+		this.delivery.queue(snapshot);
 	}
 
-	private flushNotifications(): void {
-		const notify = this.options.onNotify;
-		if (this.disposed || !notify) {
-			this.notifyBuffer = [];
-			return;
-		}
-		const batch = this.notifyBuffer
-			.filter((snapshot) => {
-				if (!this.delivery.tryClaim(snapshot.id, snapshot.generation)) return false;
-				this.emitDeliveryClaimed(snapshot);
-				return true;
-			})
-			.map((snapshot) => ({
-				...cloneSnapshot(snapshot),
-				finalText: clipFinalText(snapshot.finalText),
-			}));
-		this.notifyBuffer = [];
-		if (batch.length > 0) notify(buildSubagentNotification(batch));
+	private hasUndelivered(entry: SubagentEntry): boolean {
+		return this.delivery.hasUndelivered(entry.snapshot);
 	}
 
-	private countActive(): number {
-		return [...this.children.values()].filter(
-			(entry) => entry.holdsActiveSlot && isActiveStatus(entry.snapshot.status),
-		).length;
-	}
-
-	private hasUndelivered(entry: InternalChild): boolean {
-		return (
-			isTerminalStatus(entry.snapshot.status) &&
-			!this.delivery.isDelivered(entry.snapshot.id, entry.snapshot.generation)
-		);
-	}
-
-	private releaseActiveSlot(entry: InternalChild): void {
-		entry.holdsActiveSlot = false;
-	}
-
-	private wakeWaiters(entry: InternalChild): void {
-		for (const waiter of entry.waiters.splice(0)) waiter();
-	}
-
-	private resolveChild(target: string): InternalChild | undefined {
-		const direct = this.children.get(target);
-		if (direct) return direct;
-		const taskName = target.startsWith("/root/") ? target.slice("/root/".length) : target;
-		const id = this.byTaskName.get(taskName);
-		return id ? this.children.get(id) : undefined;
-	}
-
-	private requireChild(target: string): InternalChild {
-		const entry = this.resolveChild(target);
+	private requireChild(target: string): SubagentEntry {
+		const entry = this.store.resolve(target);
 		if (!entry) throw new Error(`Subagent "${target}" not found`);
 		return entry;
 	}
@@ -723,15 +644,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 		this.options.onUpdate?.(this.list());
 	}
 
-	private emitDeliveryClaimed(snapshot: Pick<SubagentSnapshot, "generation" | "id">): void {
-		const marker: SubagentDeliveryMarker = {
-			id: snapshot.id,
-			generation: snapshot.generation,
-		};
-		this.options.onDeliveryClaimed?.(marker);
-	}
-
-	private validateRecoveryState(state: SubagentRecoveryState): MutableSnapshot[] {
+	private validateRecoveryState(state: SubagentRecoveryState): MutableSubagentSnapshot[] {
 		const ids = new Set<string>();
 		const taskNames = new Set<string>();
 		return state.agents.map((source) => {
@@ -749,7 +662,7 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 			}
 			ids.add(source.id);
 			taskNames.add(source.taskName);
-			const snapshot: MutableSnapshot = cloneSnapshot(source);
+			const snapshot: MutableSubagentSnapshot = cloneSnapshot(source);
 			if (!isTerminalStatus(snapshot.status)) {
 				snapshot.status = snapshot.sessionFile ? "interrupted" : "failed";
 				snapshot.endedAt = this.clock.now();
@@ -765,22 +678,6 @@ export class SubagentCoordinator<TProfile = unknown> implements SubagentCoordina
 	private assertNotDisposed(): void {
 		if (this.disposed) throw new Error("SubagentCoordinator is disposed");
 	}
-}
-
-function isActiveStatus(status: SubagentStatus): boolean {
-	return status === "pending" || status === "running";
-}
-
-function isTerminalStatus(status: SubagentStatus): boolean {
-	return status === "completed" || status === "failed" || status === "interrupted";
-}
-
-function cloneSnapshot(snapshot: SubagentSnapshot): SubagentSnapshot {
-	return {
-		...snapshot,
-		usage: { ...snapshot.usage },
-		todoProgress: snapshot.todoProgress ? { ...snapshot.todoProgress } : undefined,
-	};
 }
 
 function errorMessage(error: unknown): string {

@@ -53,11 +53,10 @@ export interface SubagentTypeRegistryLike<TProfile = unknown> {
 	get(id: SubagentTypeId): SubagentTypeDefinition<TProfile> | undefined;
 	list(): readonly SubagentTypeDefinition<TProfile>[];
 	ids(): readonly SubagentTypeId[];
-	describeForTools(): string;
 }
 
 export interface SubagentChildEvent {
-	readonly type: "agent_start" | "agent_end" | string;
+	readonly type: "agent_start" | "agent_end";
 }
 
 export interface SubagentChildHandle {
@@ -121,11 +120,6 @@ export interface SubagentLifecycle {
 	beforeStop?(input: SubagentStopLifecycleInput): Promise<SubagentStopLifecycleResult | undefined>;
 }
 
-export interface SubagentNotificationPayload {
-	readonly agents: readonly SubagentSnapshot[];
-	readonly text: string;
-}
-
 export interface SubagentDeliveryMarker {
 	readonly id: string;
 	readonly generation: number;
@@ -142,7 +136,7 @@ export interface SubagentCoordinatorOptions<TProfile = unknown> {
 	readonly parentSessionId: string;
 	readonly maxConcurrent?: number;
 	readonly lifecycle?: SubagentLifecycle;
-	readonly onNotify?: (payload: SubagentNotificationPayload) => void;
+	readonly onNotify?: (agents: readonly SubagentSnapshot[]) => void;
 	readonly onUpdate?: (agents: readonly SubagentSnapshot[]) => void;
 	readonly onDeliveryClaimed?: (marker: SubagentDeliveryMarker) => void;
 	readonly clock?: { now(): number };
@@ -166,13 +160,12 @@ export interface SubagentCoordinatorPort {
 	get(target: string): SubagentSnapshot | undefined;
 	clearFinished(): number;
 	registeredTypeIds(): readonly SubagentTypeId[];
-	typeDocs(): string;
 	spawn(request: SubagentSpawnRequest): Promise<SubagentSnapshot>;
-	spawnMany(requests: SubagentSpawnRequest[]): readonly SubagentSnapshot[];
+	spawnMany(requests: readonly SubagentSpawnRequest[]): readonly SubagentSnapshot[];
 	sendMessage(target: string, message: string): Promise<SubagentSnapshot>;
 	followUp(target: string, message: string): Promise<SubagentSnapshot>;
 	interrupt(target: string): SubagentSnapshot;
-	wait(options?: { targets?: string[]; timeoutMs?: number }): Promise<SubagentWaitResult>;
+	wait(options?: SubagentWaitOptions): Promise<SubagentWaitResult>;
 	dispose(): Promise<void>;
 }
 

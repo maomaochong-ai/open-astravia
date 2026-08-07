@@ -15,7 +15,7 @@ cd packages/coding-agent
 bun examples/sdk/01-minimal.ts
 ```
 
-详见 [sdk/README.md](sdk/README.md) 与 [docs/sdk.md](../docs/sdk.md)、[docs/stable-sdk.md](../docs/stable-sdk.md)。
+详见 [sdk/README.md](sdk/README.md) 与 [docs/sdk.md](../docs/sdk.md)。
 
 ### [extensions/](extensions/)
 
@@ -25,6 +25,8 @@ Extension 示例（钩子、自定义工具、命令、Git 集成、自定义 pr
 
 ## Documentation
 
-- [SDK](../docs/sdk.md) / [Stable SDK](../docs/stable-sdk.md)
+- [文档索引](../docs/README.md)
+- [SDK](../docs/sdk.md)
 - [Extensions](../docs/extensions.md)
 - [Skills](../docs/skills.md)
+- [RPC](../docs/rpc.md)

@@ -33,7 +33,7 @@ export async function resolveSdkInitialModel(
 		if (!model) {
 			throw new CodingAgentSdkHostError(
 				CODING_AGENT_SDK_HOST_ERROR_CODES.NO_MODEL,
-				`No models available. Use /login or set an API key environment variable. See ${join(getDocsPath(), "providers.md")}. Then use /model to select a model.`,
+				`No models available. Use /login or set an API key environment variable. See ${join(getDocsPath(), "models.md")}. Then use /model to select a model.`,
 			);
 		}
 	}

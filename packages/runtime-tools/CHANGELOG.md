@@ -34,6 +34,7 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Changed
 
+- **Subagent 通知投影所有权**：模型可见通知文本由 Runtime Tools 生成，通用 Subagent 调度内核只交付终态快照；通知格式、工具提示和交付语义保持不变。
 - **Coding Tools 调用级动态能力源**：Feature 支持在每次模型调用前刷新外部 Catalog、解析 activation 并执行 registration filter；局部工具变化无需重编译 Snapshot，显式激活也不能绕过宿主硬隔离策略。
 - **Coding Tool 调用级动态解析**：Coding Tools Feature 不再在 prepare 时固定 Catalog 成员；每次模型调用读取最新注册集合，执行前再次校验工具仍存在且定义未替换，普通注册变化无需全量重编译 Runtime Snapshot。
 - **Coding Tool 绑定改用稳定 revision**：模型调用 Frame 保存 `sourceId + capabilityId + revision`，不再以 JavaScript 对象引用判断工具是否替换；Catalog 原子完成状态校验和在途执行登记。

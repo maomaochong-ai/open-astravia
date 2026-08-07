@@ -17,6 +17,7 @@ const steps = [
 	["scripts/quality/check-coding-agent-composition-contract.mjs"],
 	["scripts/quality/check-coding-agent-runtime-port-ownership.mjs"],
 	["scripts/quality/check-runtime-coding-agent-independence.mjs"],
+	["scripts/quality/check-runtime-subagents-boundary.mjs"],
 	["scripts/quality/check-runtime-failure-contract.mjs"],
 	["scripts/quality/check-coding-agent-implementation-log.mjs"],
 	["scripts/quality/check-standalone-cli-build.mjs"],

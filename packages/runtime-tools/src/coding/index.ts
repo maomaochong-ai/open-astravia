@@ -80,6 +80,10 @@ export {
 } from "./shared/foreground-command-executor.js";
 export { resolveExistingPath } from "./shared/path-resolution.js";
 export {
+	buildSubagentNotification,
+	type SubagentNotificationPayload,
+} from "./shared/subagent-notification.js";
+export {
 	DEFAULT_MAX_BYTES,
 	DEFAULT_MAX_LINES,
 	formatSize,

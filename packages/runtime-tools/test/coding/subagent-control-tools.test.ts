@@ -203,7 +203,7 @@ function createCoordinatorFixture() {
 	const spawn = vi.fn(async (request: SubagentSpawnRequest) =>
 		snapshot(request.taskName, request.agentType, "running"),
 	);
-	const spawnMany = vi.fn((requests: SubagentSpawnRequest[]) =>
+	const spawnMany = vi.fn((requests: readonly SubagentSpawnRequest[]) =>
 		requests.map((request) => ({
 			...snapshot(request.taskName, request.agentType, "queued"),
 			id: "workflow-1",
@@ -238,7 +238,6 @@ function createCoordinatorFixture() {
 			get: (target) => fixture.listed.find((entry) => entry.id === target || entry.taskName === target),
 			clearFinished: () => 0,
 			registeredTypeIds: () => ["explorer", "workflow"],
-			typeDocs: () => "explorer, workflow",
 			spawn,
 			spawnMany,
 			sendMessage,

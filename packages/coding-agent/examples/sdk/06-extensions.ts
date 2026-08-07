@@ -5,12 +5,12 @@
  * They provide a unified system for extensions, custom tools, commands, and more.
  *
  * By default, extension files are discovered from:
- * - ~/.pi/agent/extensions/
- * - <cwd>/.pi/extensions/
+ * - ~/.vetta/agent/extensions/
+ * - <cwd>/.vetta/extensions/
  * - Paths specified in settings.json "extensions" array
  *
  * An extension is a TypeScript file that exports a default function:
- *   export default function (pi: ExtensionAPI) { ... }
+ *   export default function (api: ExtensionAPI) { ... }
  */
 
 import type { CodingAgentExtensionSourceSnapshot } from "@vetta/coding-agent/sdk";
@@ -45,23 +45,23 @@ await session.close();
 /*
 import type { ExtensionAPI } from "@vetta/coding-agent/extensions";
 
-export default function (pi: ExtensionAPI) {
-	pi.on("agent_start", async () => {
+export default function (api: ExtensionAPI) {
+	api.on("agent_start", async () => {
 		console.log("[Extension] Agent starting");
 	});
 
-	pi.on("tool_call", async (event) => {
+	api.on("tool_call", async (event) => {
 		console.log(\`[Extension] Tool: \${event.toolName}\`);
 		// Return { block: true, reason: "..." } to block execution
 		return undefined;
 	});
 
-	pi.on("agent_end", async (event) => {
+	api.on("agent_end", async (event) => {
 		console.log(\`[Extension] Done, \${event.messages.length} messages\`);
 	});
 
 	// Register a custom tool
-	pi.registerTool({
+	api.registerTool({
 		name: "my_tool",
 		label: "My Tool",
 		description: "Does something useful",
@@ -75,7 +75,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// Register a command
-	pi.registerCommand("mycommand", {
+	api.registerCommand("mycommand", {
 		description: "Do something",
 		handler: async (args, ctx) => {
 			ctx.ui.notify(\`Command executed with: \${args}\`);
