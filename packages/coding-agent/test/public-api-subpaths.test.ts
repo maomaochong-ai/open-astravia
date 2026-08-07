@@ -22,11 +22,7 @@ import {
 import { VETTA_CLI_GUIDANCE } from "../src/public-api/product-prompt.js";
 import { ALL_SCENARIOS, PERSONAS } from "../src/public-api/profile.js";
 import { createCodingAgentSessionResourceRuntime } from "../src/public-api/resources.js";
-import {
-	GREENFIELD_FULL_RPC_PROFILE,
-	GREENFIELD_IM_RPC_PROFILE,
-	runRpcModeWithCapabilities,
-} from "../src/public-api/rpc.js";
+import { RPC_FULL_SESSION_PROFILE, RPC_IM_SESSION_PROFILE, runRpcModeWithCapabilities } from "../src/public-api/rpc.js";
 import {
 	createCodingAgentRuntimeExtensionCommandHost,
 	createCodingAgentSessionCapabilityHost,
@@ -55,8 +51,8 @@ describe("coding-agent public subpaths", () => {
 		expect(createAgentCliBootstrap).toBeTypeOf("function");
 		expect(createCodingAgentHostBootstrap).toBeTypeOf("function");
 		expect(runRpcModeWithCapabilities).toBeTypeOf("function");
-		expect(GREENFIELD_IM_RPC_PROFILE.id).toBe("greenfield-im");
-		expect(GREENFIELD_FULL_RPC_PROFILE.id).toBe("greenfield");
+		expect(RPC_IM_SESSION_PROFILE.id).toBe("greenfield-im");
+		expect(RPC_FULL_SESSION_PROFILE.id).toBe("greenfield");
 		expect(ALL_SCENARIOS.length).toBeGreaterThan(0);
 		expect(PERSONAS.length).toBeGreaterThan(0);
 		expect(config.getAgentDir).toBeTypeOf("function");

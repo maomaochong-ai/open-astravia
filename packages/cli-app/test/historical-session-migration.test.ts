@@ -1,9 +1,9 @@
 import { mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { hostname, tmpdir } from "node:os";
 import { join } from "node:path";
+import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage/conversation";
 import { afterEach, describe, expect, it } from "vitest";
-import { migrateGreenfieldImLegacySession } from "../src/rpc/greenfield-im-legacy-session-migration.js";
 
 const temporaryRoots = new Set<string>();
 
@@ -12,13 +12,13 @@ afterEach(async () => {
 	temporaryRoots.clear();
 });
 
-describe("Greenfield IM Legacy session migration", () => {
+describe("historical session migration", () => {
 	it("migrates without changing the source and reuses an identical target", async () => {
 		const fixture = await createFixture(legacySession("hello"));
 		const sourceContent = await readFile(fixture.sourcePath, "utf8");
 
-		const migrated = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
-		const reused = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+		const migrated = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
 		expect(migrated).toMatchObject({ kind: "greenfield", status: "migrated" });
 		expect(reused).toEqual({ ...migrated, status: "reused" });
@@ -27,10 +27,10 @@ describe("Greenfield IM Legacy session migration", () => {
 
 	it("creates a new deterministic target when the source content changes", async () => {
 		const fixture = await createFixture(legacySession("before"));
-		const before = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+		const before = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 		await writeFile(fixture.sourcePath, legacySession("after"), "utf8");
 
-		const after = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+		const after = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
 		expect(before).toMatchObject({ kind: "greenfield", status: "migrated" });
 		expect(after).toMatchObject({ kind: "greenfield", status: "migrated" });
@@ -40,12 +40,12 @@ describe("Greenfield IM Legacy session migration", () => {
 
 	it("uses and reuses a stable recovery target without overwriting a conflicting deterministic target", async () => {
 		const fixture = await createFixture(legacySession("target conflict"));
-		const migrated = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+		const migrated = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 		if (migrated.kind !== "greenfield") throw new Error("Expected initial migration");
 		await writeFile(migrated.targetPath, "conflicting target", "utf8");
 
-		const recovered = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
-		const reused = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+		const recovered = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
+		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
 		expect(recovered).toMatchObject({ kind: "greenfield", status: "migrated" });
 		expect(reused).toEqual({ ...recovered, status: "reused" });
@@ -78,7 +78,7 @@ describe("Greenfield IM Legacy session migration", () => {
 			]),
 		);
 
-		const result = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+		const result = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
 		expect(result).toMatchObject({ kind: "greenfield", status: "migrated" });
 		if (result.kind !== "greenfield") throw new Error("Expected Greenfield migration");
@@ -109,7 +109,7 @@ describe("Greenfield IM Legacy session migration", () => {
 		);
 
 		try {
-			const migration = migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+			const migration = migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 			await expect(migration).rejects.toBeInstanceOf(ConversationOwnershipConflictError);
 			await expect(migration).rejects.toMatchObject({
 				name: "ConversationOwnershipConflictError",
@@ -130,7 +130,9 @@ describe("Greenfield IM Legacy session migration", () => {
 		const fixture = await createFixture(legacySession("filesystem failure"));
 		await writeFile(fixture.targetRootDir, "not a directory", "utf8");
 
-		await expect(migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir)).rejects.toMatchObject({
+		await expect(
+			migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir),
+		).rejects.toMatchObject({
 			code: expect.stringMatching(/^(?:EEXIST|ENOTDIR)$/),
 		});
 	});
@@ -149,7 +151,9 @@ describe("Greenfield IM Legacy session migration", () => {
 			]),
 		);
 
-		await expect(migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir)).resolves.toMatchObject({
+		await expect(
+			migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir),
+		).resolves.toMatchObject({
 			kind: "session-incompatible",
 			status: "not-representable",
 			errorCode: "session_incompatible",
@@ -169,7 +173,7 @@ describe("Greenfield IM Legacy session migration", () => {
 			})}\n{broken}\n`,
 		);
 
-		const result = await migrateGreenfieldImLegacySession(fixture.sourcePath, fixture.targetRootDir);
+		const result = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
 		expect(result).toMatchObject({
 			kind: "session-incompatible",

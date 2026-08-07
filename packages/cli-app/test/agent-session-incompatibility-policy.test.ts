@@ -6,8 +6,8 @@ const runtimeMocks = vi.hoisted(() => ({
 	createBootstrap: vi.fn<() => Promise<unknown>>(),
 	preparePrint: vi.fn<() => Promise<unknown>>(),
 	prepareRpc: vi.fn<() => Promise<unknown>>(),
-	runGreenfieldPrint: vi.fn<() => Promise<void>>(),
-	runGreenfieldRpc: vi.fn<() => Promise<void>>(),
+	runPrint: vi.fn<() => Promise<void>>(),
+	runRpc: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("@vetta/coding-agent/bootstrap", () => ({
@@ -23,11 +23,11 @@ vi.mock("../src/rpc/cli-session-format-compatibility.js", () => ({
 	createCliRuntimeSessionCatalog: () => ({}),
 }));
 
-vi.mock("../src/rpc/runtime-host/greenfield-runtime-host.js", () => ({
-	prepareGreenfieldPrintRuntimeHost: runtimeMocks.preparePrint,
-	prepareGreenfieldRpcRuntimeHost: runtimeMocks.prepareRpc,
-	runGreenfieldPrintRuntimeHost: runtimeMocks.runGreenfieldPrint,
-	runGreenfieldRpcRuntimeHost: runtimeMocks.runGreenfieldRpc,
+vi.mock("../src/rpc/runtime-host/runtime-host.js", () => ({
+	preparePrintRuntimeHost: runtimeMocks.preparePrint,
+	prepareRpcRuntimeHost: runtimeMocks.prepareRpc,
+	runPrintRuntimeHost: runtimeMocks.runPrint,
+	runRpcRuntimeHost: runtimeMocks.runRpc,
 }));
 
 const bootstrap = {
@@ -56,7 +56,7 @@ beforeEach(() => {
 			sessionCompatibility,
 		});
 	}
-	for (const run of [runtimeMocks.runGreenfieldPrint, runtimeMocks.runGreenfieldRpc]) {
+	for (const run of [runtimeMocks.runPrint, runtimeMocks.runRpc]) {
 		run.mockReset().mockResolvedValue(undefined);
 	}
 });
@@ -89,7 +89,7 @@ describe("Session incompatibility policy", () => {
 			issueCount: 1,
 		});
 		expect(stderr).not.toHaveBeenCalled();
-		expect(runtimeMocks.runGreenfieldRpc).not.toHaveBeenCalled();
+		expect(runtimeMocks.runRpc).not.toHaveBeenCalled();
 	});
 
 	it("writes Print diagnostics without opening a session", async () => {
@@ -104,6 +104,6 @@ describe("Session incompatibility policy", () => {
 		expect(String(stderr.mock.calls[0]?.[0])).toContain(
 			"errorCode=session_version_unsupported session=C:/test/conversations/future.jsonl",
 		);
-		expect(runtimeMocks.runGreenfieldPrint).not.toHaveBeenCalled();
+		expect(runtimeMocks.runPrint).not.toHaveBeenCalled();
 	});
 });

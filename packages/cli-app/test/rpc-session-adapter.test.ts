@@ -5,10 +5,10 @@ import type { GreenfieldRuntimeSession, GreenfieldRuntimeSessionCoreAssembly, Se
 import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";
 import { describe, expect, test, vi } from "vitest";
-import { GreenfieldImRpcEventAdapter } from "../src/rpc/greenfield-im-rpc-events.js";
-import { GreenfieldImRpcSessionAdapter } from "../src/rpc/greenfield-im-rpc-session-adapter.js";
+import { type CreateImRpcSessionAdapterOptions, createImRpcSessionAdapter } from "../src/rpc/rpc-session-adapter.js";
+import { RpcSessionEventAdapter } from "../src/rpc/rpc-session-event-adapter.js";
 
-describe("Greenfield IM RPC adapter", () => {
+describe("IM RPC session adapter", () => {
 	test("projects current identity asynchronously and follows rollover for state and memory flush", async () => {
 		const fixture = createAdapterFixture();
 		const stateCapability = required(fixture.adapter.state);
@@ -221,9 +221,9 @@ describe("Greenfield IM RPC adapter", () => {
 	});
 });
 
-describe("Greenfield IM RPC event compatibility", () => {
+describe("RPC session event compatibility", () => {
 	test("maps the event fields consumed by IM gateway without claiming full legacy parity", () => {
-		const adapter = new GreenfieldImRpcEventAdapter();
+		const adapter = new RpcSessionEventAdapter();
 		const frames = [
 			...adapter.map(sessionEvent({ type: "session.lifecycle", phase: "agent_start" })),
 			...adapter.map(sessionEvent({ type: "session.lifecycle", phase: "turn_start" })),
@@ -318,7 +318,7 @@ describe("Greenfield conversation path identity", () => {
 
 function createAdapterFixture(
 	scenario: CodingAgentRuntimeComposition["scenario"] = "im-claw",
-	extensionCommandHost?: ConstructorParameters<typeof GreenfieldImRpcSessionAdapter>[0]["extensionCommandHost"],
+	extensionCommandHost?: CreateImRpcSessionAdapterOptions["extensionCommandHost"],
 ) {
 	let sessionId = "session-1";
 	let sessionPath = "session-1.conversation.jsonl";
@@ -435,9 +435,9 @@ function createAdapterFixture(
 			],
 			diagnostics: [],
 		}),
-	} as ConstructorParameters<typeof GreenfieldImRpcSessionAdapter>[0]["resourceLoader"];
+	} as CreateImRpcSessionAdapterOptions["resourceLoader"];
 	return {
-		adapter: new GreenfieldImRpcSessionAdapter({
+		adapter: createImRpcSessionAdapter({
 			sessionHost,
 			runtime,
 			resourceLoader,

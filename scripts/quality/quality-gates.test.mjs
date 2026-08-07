@@ -273,7 +273,7 @@ describe("package boundary analysis", () => {
 	it("keeps greenfield product modules independent from legacy startup symbols", () => {
 		const source = "const startup = runLegacyAgentWithBootstrap;";
 		expect(
-			findPackageBoundaryViolations("packages/cli-app/src/rpc/greenfield-im-runtime-host.ts", source),
+			findPackageBoundaryViolations("packages/cli-app/src/rpc/runtime-host/runtime-host.ts", source),
 		).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations("packages/runtime-composition/src/greenfield-runtime-composition.ts", source),
@@ -294,13 +294,13 @@ describe("package boundary analysis", () => {
 	it("keeps Extension Legacy policy out of Greenfield product modules", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/greenfield-im-runtime-host.ts",
+				"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
 				'const reason = "legacy-extension";',
 			),
 		).toHaveLength(2);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/cli-app/src/rpc/greenfield-im-runtime-host.ts",
+				"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
 				'const kind = "extension-incompatible";',
 			),
 		).toEqual([]);
@@ -509,6 +509,12 @@ describe("package boundary analysis", () => {
 			findPackageBoundaryViolations(
 				"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
 				'import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";',
+			),
+		).toEqual([]);
+		expect(
+			findPackageBoundaryViolations(
+				"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
+				'import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toEqual([]);
 		expect(

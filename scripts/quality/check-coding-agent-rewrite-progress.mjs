@@ -59,19 +59,17 @@ const RETIRED_CLI_RUNTIME_HOST_MARKERS = Object.freeze([
 	"PrepareGreenfieldImRuntimeHostOptions",
 	"PrepareGreenfieldRpcRuntimeHostOptions",
 ]);
-const CLI_RUNTIME_HOST_ENTRY = "packages/cli-app/src/rpc/runtime-host/greenfield-runtime-host.ts";
+const CLI_RUNTIME_HOST_ENTRY = "packages/cli-app/src/rpc/runtime-host/runtime-host.ts";
 const CLI_RUNTIME_HOST_ENTRY_OWNERSHIP_MARKERS = Object.freeze([
-	"class GreenfieldRpcRuntimeHostCapabilities",
+	"class CliRpcRuntimeHostCapabilities",
 	"createCodingAgentMcpRuntimeToolSource",
 	"new CodingAgentProcessSessionHost",
-	"new GreenfieldImRpcSessionAdapter",
-	"new GreenfieldRpcSessionAdapter",
+	"new CliRpcSessionAdapter",
 ]);
-const CLI_SESSION_ASSEMBLY = "packages/cli-app/src/rpc/runtime-host/greenfield-cli-session-assembly.ts";
+const CLI_SESSION_ASSEMBLY = "packages/cli-app/src/rpc/runtime-host/cli-session-assembly.ts";
 const CLI_SESSION_ASSEMBLY_PROTOCOL_MARKERS = Object.freeze([
-	"GreenfieldImRpcSessionAdapter",
-	"GreenfieldPrintSessionAdapter",
-	"GreenfieldRpcSessionAdapter",
+	"CliPrintSessionAdapter",
+	"CliRpcSessionAdapter",
 	"RpcSessionCapabilities",
 	"runRpcModeWithCapabilities",
 ]);

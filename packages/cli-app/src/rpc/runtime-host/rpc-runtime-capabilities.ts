@@ -2,27 +2,23 @@ import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import { createHostBashExecutor } from "@vetta/coding-agent/host-services";
 import {
-	GREENFIELD_FULL_RPC_PROFILE,
-	GreenfieldRpcBashCapability,
+	CodingAgentRpcBashCapability,
+	RPC_FULL_SESSION_PROFILE,
 	type RpcSessionCapabilities,
 } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
-import { GreenfieldImRpcSessionAdapter } from "../greenfield-im-rpc-session-adapter.js";
-import { GreenfieldRpcSessionAdapter } from "../greenfield-rpc-session-adapter.js";
-import {
-	GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE,
-	type GreenfieldCliSessionAssembly,
-} from "./greenfield-cli-session-assembly.js";
+import { CliRpcSessionAdapter, createImRpcSessionAdapter } from "../rpc-session-adapter.js";
+import { CLI_RUNTIME_HOST_STARTUP_FAILURE, type CliSessionAssembly } from "./cli-session-assembly.js";
 
-export interface CreateGreenfieldRpcRuntimeCapabilitiesOptions {
+export interface CreateRpcRuntimeCapabilitiesOptions {
 	readonly bootstrap: CodingAgentHostBootstrap;
-	readonly assembly: GreenfieldCliSessionAssembly;
-	readonly backend: "greenfield" | "greenfield-im";
+	readonly assembly: CliSessionAssembly;
+	readonly backend: "rpc" | "im";
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
 }
 
-export async function createGreenfieldRpcRuntimeCapabilities(
-	options: CreateGreenfieldRpcRuntimeCapabilitiesOptions,
+export async function createRpcRuntimeCapabilities(
+	options: CreateRpcRuntimeCapabilitiesOptions,
 ): Promise<RpcSessionCapabilities> {
 	const { assembly, bootstrap } = options;
 	const rollback = new InitializationRollbackScope();
@@ -31,15 +27,15 @@ export async function createGreenfieldRpcRuntimeCapabilities(
 		rollback: () => assembly.dispose(),
 	});
 	try {
-		const bash = new GreenfieldRpcBashCapability({
+		const bash = new CodingAgentRpcBashCapability({
 			executor: createHostBashExecutor(),
 			readContextDeliveryController: () =>
 				assembly.sessionHost.readSession().createCoreAssembly().contextDeliveryController,
 			readShellCommandPrefix: () => bootstrap.settingsManager.getShellCommandPrefix(),
 		});
 		const adapter =
-			options.backend === "greenfield-im"
-				? new GreenfieldImRpcSessionAdapter({
+			options.backend === "im"
+				? createImRpcSessionAdapter({
 						sessionHost: assembly.sessionHost,
 						runtime: assembly.runtime,
 						resourceLoader: bootstrap.resourceLoader,
@@ -47,8 +43,8 @@ export async function createGreenfieldRpcRuntimeCapabilities(
 						extensionCommandHost: assembly.extensionSessionHost,
 						disposeSessionResources: false,
 					})
-				: new GreenfieldRpcSessionAdapter({
-						profile: GREENFIELD_FULL_RPC_PROFILE,
+				: new CliRpcSessionAdapter({
+						profile: RPC_FULL_SESSION_PROFILE,
 						sessionHost: assembly.sessionHost,
 						runtime: assembly.runtime,
 						resourceLoader: bootstrap.resourceLoader,
@@ -65,17 +61,17 @@ export async function createGreenfieldRpcRuntimeCapabilities(
 						extensionCommandHost: assembly.extensionSessionHost,
 					});
 		const dismissAdapterRollback = rollback.defer({ id: "rpc-adapter", rollback: () => adapter.dispose() });
-		const capabilities = new GreenfieldRpcRuntimeHostCapabilities(adapter, assembly);
+		const capabilities = new CliRpcRuntimeHostCapabilities(adapter, assembly);
 		dismissAdapterRollback();
 		dismissAssemblyRollback();
 		rollback.commit();
 		return capabilities;
 	} catch (error) {
-		return rollback.rollback(error, GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE);
+		return rollback.rollback(error, CLI_RUNTIME_HOST_STARTUP_FAILURE);
 	}
 }
 
-class GreenfieldRpcRuntimeHostCapabilities implements RpcSessionCapabilities {
+class CliRpcRuntimeHostCapabilities implements RpcSessionCapabilities {
 	readonly profile;
 	readonly turn;
 	readonly state;
@@ -90,8 +86,8 @@ class GreenfieldRpcRuntimeHostCapabilities implements RpcSessionCapabilities {
 	private readonly cleanup = new RetryableCleanup();
 
 	constructor(
-		private readonly adapter: GreenfieldRpcSessionAdapter,
-		private readonly assembly: GreenfieldCliSessionAssembly,
+		private readonly adapter: CliRpcSessionAdapter,
+		private readonly assembly: CliSessionAssembly,
 	) {
 		this.profile = adapter.profile;
 		this.turn = adapter.turn;

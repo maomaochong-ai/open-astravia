@@ -7,13 +7,10 @@ import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { CONVERSATION_STORAGE_ERROR_CODES } from "@vetta/runtime-storage/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCliRuntimeSessionCatalog } from "../src/rpc/cli-session-format-compatibility.js";
-import {
-	type GreenfieldRpcRuntimeHostReady,
-	prepareGreenfieldImRuntimeHost,
-} from "../src/rpc/runtime-host/greenfield-runtime-host.js";
+import { prepareImRuntimeHost, type RpcRuntimeHostReady } from "../src/rpc/runtime-host/runtime-host.js";
 
 const temporaryDirectories: string[] = [];
-const preparedHosts: GreenfieldRpcRuntimeHostReady[] = [];
+const preparedHosts: RpcRuntimeHostReady[] = [];
 
 afterEach(async () => {
 	for (const prepared of preparedHosts.splice(0).reverse()) await prepared.capabilities.dispose();
@@ -44,7 +41,7 @@ describe("Greenfield IM Runtime Host", () => {
 		await writeFile(legacyPath, legacyContent, "utf8");
 		const bootstrap = await createBootstrap(fixture, ["--session", legacyPath]);
 
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -59,7 +56,7 @@ describe("Greenfield IM Runtime Host", () => {
 
 	it("owns fresh and resumed conversations for the whole runtime lifetime", async () => {
 		const fixture = await createFixture([]);
-		const fresh = await prepareGreenfieldImRuntimeHost({
+		const fresh = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -75,7 +72,7 @@ describe("Greenfield IM Runtime Host", () => {
 
 		const conflictingBootstrap = await createBootstrap(fixture, ["--session", sessionPath]);
 		await expect(
-			prepareGreenfieldImRuntimeHost({
+			prepareImRuntimeHost({
 				bootstrap: conflictingBootstrap,
 				conversationDir: fixture.conversationDir,
 				sessionCatalog: fixture.sessionCatalog,
@@ -87,7 +84,7 @@ describe("Greenfield IM Runtime Host", () => {
 		await expect(stat(ownerPath)).rejects.toMatchObject({ code: "ENOENT" });
 
 		const resumedBootstrap = await createBootstrap(fixture, ["--session", sessionPath]);
-		const resumed = await prepareGreenfieldImRuntimeHost({
+		const resumed = await prepareImRuntimeHost({
 			bootstrap: resumedBootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -101,7 +98,7 @@ describe("Greenfield IM Runtime Host", () => {
 	it("transitions new and resumed sessions through the production RPC capability", async () => {
 		const fixture = await createFixture([]);
 		const sessionIds = ["transition-initial", "transition-next"];
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -136,7 +133,7 @@ describe("Greenfield IM Runtime Host", () => {
 		const fixture = await createFixture(["--session", join("outside", "bad.conversation.jsonl")]);
 
 		await expect(
-			prepareGreenfieldImRuntimeHost({
+			prepareImRuntimeHost({
 				bootstrap: fixture.bootstrap,
 				conversationDir: fixture.conversationDir,
 				sessionCatalog: fixture.sessionCatalog,
@@ -148,7 +145,7 @@ describe("Greenfield IM Runtime Host", () => {
 		const fixture = await createFixture(["--resume"]);
 
 		await expect(
-			prepareGreenfieldImRuntimeHost({
+			prepareImRuntimeHost({
 				bootstrap: fixture.bootstrap,
 				conversationDir: fixture.conversationDir,
 				sessionCatalog: fixture.sessionCatalog,
@@ -178,7 +175,7 @@ describe("Greenfield IM Runtime Host", () => {
 			requiresLegacyRuntime: true,
 		});
 
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -209,7 +206,7 @@ describe("Greenfield IM Runtime Host", () => {
 			`,
 		);
 
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -252,7 +249,7 @@ describe("Greenfield IM Runtime Host", () => {
 			requiresLegacyRuntime: true,
 		});
 
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -277,7 +274,7 @@ describe("Greenfield IM Runtime Host", () => {
 			}`,
 		);
 
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -297,7 +294,7 @@ describe("Greenfield IM Runtime Host", () => {
 			}`,
 		);
 
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -326,7 +323,7 @@ describe("Greenfield IM Runtime Host", () => {
 			}`,
 		);
 		await writeFile(join(fixture.workspace, "extension-prompt.md"), "Discovered prompt", "utf8");
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -372,7 +369,7 @@ describe("Greenfield IM Runtime Host", () => {
 				});
 			}`,
 		);
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -401,7 +398,7 @@ describe("Greenfield IM Runtime Host", () => {
 				});
 			}`,
 		);
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -422,7 +419,7 @@ describe("Greenfield IM Runtime Host", () => {
 
 	it("exposes both resource and Extension command discovery", async () => {
 		const fixture = await createFixture([]);
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -443,7 +440,7 @@ describe("Greenfield IM Runtime Host", () => {
 				pi.registerCommand("audit", { handler: async () => {} });
 			}`,
 		);
-		const commandResult = await prepareGreenfieldImRuntimeHost({
+		const commandResult = await prepareImRuntimeHost({
 			bootstrap: commandFixture.bootstrap,
 			conversationDir: commandFixture.conversationDir,
 			sessionCatalog: commandFixture.sessionCatalog,
@@ -469,7 +466,7 @@ describe("Greenfield IM Runtime Host", () => {
 				pi.registerCommand("reload-fixture", { handler: async (_args, ctx) => ctx.reload() });
 			}`,
 		);
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -538,7 +535,7 @@ describe("Greenfield IM Runtime Host", () => {
 			`,
 		);
 
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -573,7 +570,7 @@ describe("Greenfield IM Runtime Host", () => {
 		);
 
 		const sessionIds = ["extension-lifecycle-session", "extension-lifecycle-next"];
-		const result = await prepareGreenfieldImRuntimeHost({
+		const result = await prepareImRuntimeHost({
 			bootstrap: fixture.bootstrap,
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
@@ -606,7 +603,7 @@ function extensionLifecycleGlobal(): typeof globalThis & {
 	return globalThis;
 }
 
-async function initialize(result: GreenfieldRpcRuntimeHostReady): Promise<void> {
+async function initialize(result: RpcRuntimeHostReady): Promise<void> {
 	await result.capabilities.initialize({
 		uiContext: {} as RpcSessionInitialization["uiContext"],
 		hostBridge: { sendAttachment: vi.fn(async () => ({})) },

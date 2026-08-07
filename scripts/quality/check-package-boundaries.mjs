@@ -309,7 +309,7 @@ function checkGreenfieldRuntimeImports(posixPath, specifiers, findings) {
 
 function checkGreenfieldLegacyStartupSymbols(posixPath, text, findings) {
 	const isGreenfieldProductModule =
-		posixPath.startsWith("packages/cli-app/src/rpc/greenfield") ||
+		posixPath.startsWith("packages/cli-app/src/rpc/") ||
 		posixPath.startsWith("packages/coding-agent/src/composition/");
 	if (!isGreenfieldProductModule) return;
 
@@ -1097,7 +1097,8 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 	const historicalSessionPublicSubpath = "@vetta/coding-agent/historical-sessions";
 	const historicalSessionConsumers = new Set([
 		"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
-		"packages/cli-app/src/rpc/greenfield-im-legacy-session-migration.ts",
+		"packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
+		"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
 		"packages/cli-app/src/session-compatibility-error.ts",
 		"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
 		"packages/desktop-app/src/main/greenfield-runtime/desktop-historical-session-import-backend.ts",
@@ -1120,7 +1121,7 @@ function checkCodingAgentLegacyBoundaries(posixPath, text, specifiers, findings)
 	};
 	visit(sourceFile);
 
-	if (posixPath.startsWith("packages/cli-app/src/") && !posixPath.startsWith("packages/cli-app/src/rpc/greenfield")) {
+	if (posixPath.startsWith("packages/cli-app/src/") && !posixPath.startsWith("packages/cli-app/src/rpc/")) {
 		for (const symbol of ["runLegacyAgent", "runLegacyAgentWithBootstrap"]) {
 			if (usedSymbols.has(symbol)) {
 				findings.push(`${posixPath}: Legacy startup symbol ${symbol} is outside the execution gateway`);

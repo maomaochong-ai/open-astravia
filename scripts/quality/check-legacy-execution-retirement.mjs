@@ -26,7 +26,7 @@ export const LEGACY_FORMAT_BOUNDARY_GROUPS = Object.freeze({
 	]),
 	hostAdapters: Object.freeze([
 		"packages/cli-app/src/rpc/cli-session-format-compatibility.ts",
-		"packages/cli-app/src/rpc/greenfield-im-legacy-session-migration.ts",
+		"packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
 		"packages/cli-app/src/session-compatibility-error.ts",
 		"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
 		"packages/desktop-app/src/main/greenfield-runtime/desktop-historical-session-import-backend.ts",

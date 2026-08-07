@@ -58,6 +58,27 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired CLI RPC migration identities", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/cli-app/src/rpc/runtime-host/greenfield-runtime-host.ts",
+				text: "export function prepareGreenfieldImRuntimeHost() {}",
+			},
+			{
+				path: "packages/cli-app/test/runtime-host.test.ts",
+				text: 'import { GreenfieldImRpcSessionAdapter } from "../src/rpc/greenfield-im-rpc-session-adapter.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/cli-app/src/rpc/runtime-host/greenfield-runtime-host.ts: retired migration file must stay deleted",
+			"packages/cli-app/src/rpc/runtime-host/greenfield-runtime-host.ts: retired migration reference (prepareGreenfieldImRuntimeHost)",
+			"packages/cli-app/test/runtime-host.test.ts: retired migration reference (greenfield-im-rpc-session-adapter)",
+			"packages/cli-app/test/runtime-host.test.ts: retired migration reference (GreenfieldImRpcSessionAdapter)",
+			"cliGreenfieldFiles: 1 exceeds migration residue limit 0",
+		]);
+	});
+
 	it("rejects the retired Composition root identity", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{
@@ -313,6 +334,10 @@ describe("Coding Agent migration residue gate", () => {
 				path: `packages/coding-agent/src/adapters/runtime-core/greenfield-adapter-${index}.ts`,
 				text: "export {};",
 			})),
+			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles + 1 }, (_, index) => ({
+				path: `packages/cli-app/src/rpc/greenfield-host-${index}.ts`,
+				text: "export {};",
+			})),
 			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles + 1 }, (_, index) => ({
 				path: `packages/coding-agent/src/composition/greenfield-composition-${index}.ts`,
 				text: "export {};",
@@ -334,6 +359,7 @@ describe("Coding Agent migration residue gate", () => {
 
 		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
 			`adapterGreenfieldFiles: ${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}`,
+			`cliGreenfieldFiles: ${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}`,
 			`compositionGreenfieldFiles: ${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}`,
 			`adapterCompositionEdgeFiles: ${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}`,
 			`compositionPublicApiEdgeFiles: ${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}`,

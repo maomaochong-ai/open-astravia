@@ -1,17 +1,15 @@
 import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
-import type {
-	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
-	CodingAgentRuntimeComposition,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentActiveSessionHost, CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {
-	exportGreenfieldRpcConversation,
-	type GreenfieldRpcRetryEvent,
+	type CodingAgentTurnRetryEvent,
+	exportCodingAgentRpcConversation,
+	RPC_IM_SESSION_PROFILE,
 	type RpcSessionCapabilities,
 	type RpcSessionInitialization,
 	type RpcSessionProfile,
 	type RpcSessionState,
-	readGreenfieldRpcAgentMessages,
+	readCodingAgentRpcAgentMessages,
 } from "@vetta/coding-agent/rpc";
 import {
 	type CodingAgentRuntimeExtensionCommandHost,
@@ -22,23 +20,23 @@ import {
 } from "@vetta/coding-agent/runtime";
 import { type GreenfieldRuntimeSession, type HistoryEntry, RetryableCleanup } from "@vetta/runtime-core";
 import { type CodingToolRegistration, createImSendAttachmentToolRegistration } from "@vetta/runtime-tools/coding";
-import { GreenfieldRpcEventAdapter } from "./greenfield-rpc-events.js";
+import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
 
-type GreenfieldResourceLoader = Pick<CodingAgentHostBootstrap["resourceLoader"], "getPrompts" | "getSkills">;
-type GreenfieldCommandDiscoveryCapability = NonNullable<RpcSessionCapabilities["commands"]>;
+type RpcResourceLoader = Pick<CodingAgentHostBootstrap["resourceLoader"], "getPrompts" | "getSkills">;
+type RpcCommandDiscoveryCapability = NonNullable<RpcSessionCapabilities["commands"]>;
 
 interface ActiveTurnCommand {
 	readonly terminalDeliveries: Array<() => void>;
 }
 
-export interface GreenfieldRpcSessionAdapterOptions {
+export interface CliRpcSessionAdapterOptions {
 	readonly profile: RpcSessionProfile;
 	readonly sessionHost: Pick<
-		CodingAgentGreenfieldActiveSessionHost,
+		CodingAgentActiveSessionHost,
 		"dispose" | "fork" | "newSession" | "readSession" | "startActiveSessionOperation" | "subscribe" | "switchSession"
 	>;
 	readonly runtime: CodingAgentRuntimeComposition;
-	readonly resourceLoader: GreenfieldResourceLoader;
+	readonly resourceLoader: RpcResourceLoader;
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
 	readonly retryController?: CodingAgentTurnRetryController;
 	readonly turnExecutor?: Pick<CodingAgentTurnExecutor, "prompt">;
@@ -52,10 +50,26 @@ export interface GreenfieldRpcSessionAdapterOptions {
 	readonly createHostToolRegistration?: (
 		hostBridge: NonNullable<RpcSessionInitialization["hostBridge"]>,
 	) => CodingToolRegistration;
+	readonly disposeFailureMessage?: string;
 }
 
-/** Greenfield Runtime 到 RPC capability 合同的中性产品宿主适配器。 */
-export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
+export type CreateImRpcSessionAdapterOptions = Omit<CliRpcSessionAdapterOptions, "profile">;
+
+export function createImRpcSessionAdapter(options: CreateImRpcSessionAdapterOptions): CliRpcSessionAdapter {
+	if (options.runtime.scenario !== "im-claw") {
+		throw new Error(
+			`Greenfield IM RPC adapter requires runtime scenario im-claw, received ${options.runtime.scenario}`,
+		);
+	}
+	return new CliRpcSessionAdapter({
+		...options,
+		profile: RPC_IM_SESSION_PROFILE,
+		disposeFailureMessage: "Failed to dispose Greenfield IM RPC resources",
+	});
+}
+
+/** Runtime 到 RPC capability 合同的产品宿主适配器。 */
+export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 	readonly profile;
 	readonly turn;
 	readonly state;
@@ -66,27 +80,26 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 	readonly retry;
 	readonly bash: RpcSessionCapabilities["bash"];
 	readonly session;
-	readonly commands: GreenfieldCommandDiscoveryCapability;
+	readonly commands: RpcCommandDiscoveryCapability;
 
-	private readonly sessionHost: GreenfieldRpcSessionAdapterOptions["sessionHost"];
+	private readonly sessionHost: CliRpcSessionAdapterOptions["sessionHost"];
 	private readonly runtime: CodingAgentRuntimeComposition;
-	private readonly resourceLoader: GreenfieldResourceLoader;
+	private readonly resourceLoader: RpcResourceLoader;
 	private readonly htmlExporter: CodingAgentHtmlExportRuntime;
 	private readonly retryController: CodingAgentTurnRetryController | undefined;
-	private readonly turnExecutor: GreenfieldRpcSessionAdapterOptions["turnExecutor"];
-	private readonly readAvailableModels: NonNullable<GreenfieldRpcSessionAdapterOptions["readAvailableModels"]>;
+	private readonly turnExecutor: CliRpcSessionAdapterOptions["turnExecutor"];
+	private readonly readAvailableModels: NonNullable<CliRpcSessionAdapterOptions["readAvailableModels"]>;
 	private readonly sessionCapabilities: CodingAgentSessionCapabilityHost;
-	private readonly extensionCommandHost: GreenfieldRpcSessionAdapterOptions["extensionCommandHost"];
-	private readonly createHostToolRegistration: NonNullable<
-		GreenfieldRpcSessionAdapterOptions["createHostToolRegistration"]
-	>;
+	private readonly extensionCommandHost: CliRpcSessionAdapterOptions["extensionCommandHost"];
+	private readonly createHostToolRegistration: NonNullable<CliRpcSessionAdapterOptions["createHostToolRegistration"]>;
+	private readonly disposeFailureMessage: string;
 	private unregisterHostTool: (() => void) | undefined;
 	private initialized = false;
 	private readonly activeTurnCommands: ActiveTurnCommand[] = [];
 	private readonly supplementalListeners = new Set<(event: unknown) => void>();
 	private readonly cleanup = new RetryableCleanup();
 
-	constructor(options: GreenfieldRpcSessionAdapterOptions) {
+	constructor(options: CliRpcSessionAdapterOptions) {
 		this.profile = options.profile;
 		this.sessionHost = options.sessionHost;
 		this.runtime = options.runtime;
@@ -104,6 +117,7 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 			retryController: options.retryController,
 		});
 		this.extensionCommandHost = options.extensionCommandHost;
+		this.disposeFailureMessage = options.disposeFailureMessage ?? "Failed to dispose Greenfield RPC resources";
 		this.createHostToolRegistration =
 			options.createHostToolRegistration ??
 			((hostBridge) => createImSendAttachmentToolRegistration({ sender: hostBridge }));
@@ -181,7 +195,7 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 		} satisfies NonNullable<RpcSessionCapabilities["turn"]>;
 		this.state = {
 			readState: () => this.readRpcState(),
-			readMessages: () => readGreenfieldRpcAgentMessages(this.readCore().conversationView.readDocument()),
+			readMessages: () => readCodingAgentRpcAgentMessages(this.readCore().conversationView.readDocument()),
 		} satisfies NonNullable<RpcSessionCapabilities["state"]>;
 		this.model = {
 			selectModel: (provider, modelId) => this.sessionCapabilities.selectModel(provider, modelId),
@@ -216,7 +230,7 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 			exportHtml: (outputPath) => {
 				const core = this.readCore();
 				if (!core.lifecycle.sessionPath) throw new Error("Cannot export an in-memory Greenfield session");
-				return exportGreenfieldRpcConversation(
+				return exportCodingAgentRpcConversation(
 					this.htmlExporter,
 					core.conversationView.readDocument(),
 					core.lifecycle.sessionPath,
@@ -245,7 +259,7 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 	}
 
 	subscribe(listener: (event: unknown) => void): () => void {
-		const adapter = new GreenfieldRpcEventAdapter();
+		const adapter = new RpcSessionEventAdapter();
 		let subscribed = true;
 		this.supplementalListeners.add(listener);
 		const unsubscribe = this.sessionHost.subscribe((event) => {
@@ -273,16 +287,13 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 		this.retryController?.abortRetry();
 		this.supplementalListeners.clear();
 		try {
-			await this.cleanup.run("Failed to dispose Greenfield RPC resources");
+			await this.cleanup.run(this.disposeFailureMessage);
 		} catch (error) {
-			throw new AggregateError(
-				error instanceof AggregateError ? error.errors : [error],
-				"Failed to dispose Greenfield RPC resources",
-			);
+			throw new AggregateError(error instanceof AggregateError ? error.errors : [error], this.disposeFailureMessage);
 		}
 	}
 
-	emitSupplementalEvent(event: GreenfieldRpcRetryEvent): void {
+	emitSupplementalEvent(event: CodingAgentTurnRetryEvent): void {
 		for (const listener of this.supplementalListeners) listener(event);
 	}
 
@@ -363,8 +374,8 @@ function isAgentEndFrame(event: unknown): boolean {
 }
 
 function readResourceCommands(
-	resourceLoader: GreenfieldResourceLoader,
-): ReturnType<GreenfieldCommandDiscoveryCapability["readCommands"]> {
+	resourceLoader: RpcResourceLoader,
+): ReturnType<RpcCommandDiscoveryCapability["readCommands"]> {
 	const prompts = resourceLoader.getPrompts().prompts.map((template) => ({
 		name: template.name,
 		description: template.description,

@@ -7,13 +7,13 @@ import { classifyAgentCliIntent } from "./agent-cli-intent.js";
 import { ExtensionCompatibilityError } from "./extension-compatibility-error.js";
 import { createCliRuntimeSessionCatalog } from "./rpc/cli-session-format-compatibility.js";
 import {
-	prepareGreenfieldImRuntimeHost,
-	prepareGreenfieldPrintRuntimeHost,
-	prepareGreenfieldRpcRuntimeHost,
-	runGreenfieldImRuntimeHost,
-	runGreenfieldPrintRuntimeHost,
-	runGreenfieldRpcRuntimeHost,
-} from "./rpc/runtime-host/greenfield-runtime-host.js";
+	prepareImRuntimeHost,
+	preparePrintRuntimeHost,
+	prepareRpcRuntimeHost,
+	runImRuntimeHost,
+	runPrintRuntimeHost,
+	runRpcRuntimeHost,
+} from "./rpc/runtime-host/runtime-host.js";
 import { SessionCompatibilityError } from "./session-compatibility-error.js";
 
 export interface RunAgentRuntimeCliOptions {
@@ -42,20 +42,20 @@ export async function runAgentRuntimeCli(
 			throw new Error("IM host capabilities only support RPC mode");
 		}
 		const prepared = await (intent === "print"
-			? prepareGreenfieldPrintRuntimeHost({
+			? preparePrintRuntimeHost({
 					bootstrap,
 					conversationDir,
 					sessionCatalog,
 					htmlExporter: options.htmlExporter,
 				})
 			: imHost
-				? prepareGreenfieldImRuntimeHost({
+				? prepareImRuntimeHost({
 						bootstrap,
 						conversationDir,
 						sessionCatalog,
 						htmlExporter: options.htmlExporter,
 					})
-				: prepareGreenfieldRpcRuntimeHost({
+				: prepareRpcRuntimeHost({
 						bootstrap,
 						conversationDir,
 						sessionCatalog,
@@ -67,9 +67,9 @@ export async function runAgentRuntimeCli(
 		if (prepared.kind === "session-incompatible") {
 			throw new SessionCompatibilityError(prepared.sessionCompatibility);
 		}
-		if (prepared.kind === "greenfield-print") await runGreenfieldPrintRuntimeHost(prepared);
-		else if (imHost) await runGreenfieldImRuntimeHost(prepared);
-		else await runGreenfieldRpcRuntimeHost(prepared);
+		if (prepared.kind === "greenfield-print") await runPrintRuntimeHost(prepared);
+		else if (imHost) await runImRuntimeHost(prepared);
+		else await runRpcRuntimeHost(prepared);
 	} catch (error) {
 		if (error instanceof ExtensionCompatibilityError) {
 			if (intent === "rpc") process.stdout.write(stringifyRpcStartupFailure(error.toRpcStartupFailure()));

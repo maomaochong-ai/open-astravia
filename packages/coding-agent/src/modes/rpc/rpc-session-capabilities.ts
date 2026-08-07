@@ -12,7 +12,7 @@ export interface RpcSessionProfile {
 	readonly hostBridge: "optional" | "required";
 }
 
-export const GREENFIELD_IM_RPC_PROFILE: RpcSessionProfile = Object.freeze({
+export const RPC_IM_SESSION_PROFILE: RpcSessionProfile = Object.freeze({
 	id: "greenfield-im",
 	commands: Object.freeze([
 		"prompt",
@@ -28,7 +28,7 @@ export const GREENFIELD_IM_RPC_PROFILE: RpcSessionProfile = Object.freeze({
 	hostBridge: "required",
 });
 
-export const GREENFIELD_FULL_RPC_PROFILE: RpcSessionProfile = Object.freeze({
+export const RPC_FULL_SESSION_PROFILE: RpcSessionProfile = Object.freeze({
 	id: "greenfield",
 	commands: "all",
 	hostBridge: "optional",

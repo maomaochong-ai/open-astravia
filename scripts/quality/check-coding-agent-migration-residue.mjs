@@ -6,12 +6,15 @@ import { fail, isDirectRun, ok, readText, rel, repoRoot, walkFiles } from "./lib
 
 const SOURCE_ROOT = "packages/coding-agent/src";
 const TEST_ROOT = "packages/coding-agent/test";
+const CLI_SOURCE_ROOT = "packages/cli-app/src";
+const CLI_TEST_ROOT = "packages/cli-app/test";
 const ADAPTER_ROOT = `${SOURCE_ROOT}/adapters`;
 const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	adapterGreenfieldFiles: 0,
+	cliGreenfieldFiles: 0,
 	compositionGreenfieldFiles: 0,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
@@ -19,6 +22,18 @@ export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 });
 
 export const RETIRED_MIGRATION_FILES = Object.freeze([
+	`${SOURCE_ROOT}/modes/rpc/greenfield-rpc-capabilities.ts`,
+	`${CLI_SOURCE_ROOT}/greenfield-print-session-adapter.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/greenfield-im-legacy-session-migration.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/greenfield-im-rpc-events.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/greenfield-im-rpc-session-adapter.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/greenfield-im-session-selection.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/greenfield-rpc-events.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/greenfield-rpc-session-adapter.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/runtime-host/greenfield-cli-session-assembly.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/runtime-host/greenfield-rpc-runtime-capabilities.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/runtime-host/greenfield-runtime-host-contract.ts`,
+	`${CLI_SOURCE_ROOT}/rpc/runtime-host/greenfield-runtime-host.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield.ts`,
 	`${ADAPTER_ROOT}/runtime-core/index.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-tool-adapter.ts`,
@@ -109,6 +124,48 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
+	"greenfield-rpc-capabilities",
+	"GreenfieldRpcBashCapability",
+	"computeGreenfieldRpcSessionStats",
+	"exportGreenfieldRpcConversation",
+	"readGreenfieldRpcAgentMessages",
+	"resolveNextGreenfieldRpcThinkingLevel",
+	"greenfield-print-session-adapter",
+	"GreenfieldPrintSessionAdapter",
+	"greenfield-im-legacy-session-migration",
+	"migrateGreenfieldImLegacySession",
+	"greenfield-im-rpc-events",
+	"GreenfieldImRpcEventAdapter",
+	"greenfield-im-rpc-session-adapter",
+	"GreenfieldImRpcSessionAdapter",
+	"greenfield-im-session-selection",
+	"resolveGreenfieldImSessionPath",
+	"greenfield-rpc-events",
+	"GreenfieldRpcEventAdapter",
+	"greenfield-rpc-session-adapter",
+	"GreenfieldRpcSessionAdapter",
+	"greenfield-cli-session-assembly",
+	"GreenfieldCliSessionAssembly",
+	"createGreenfieldCliSessionAssembly",
+	"greenfield-rpc-runtime-capabilities",
+	"GreenfieldRpcRuntimeHostCapabilities",
+	"createGreenfieldRpcRuntimeCapabilities",
+	"greenfield-runtime-host-contract",
+	"greenfield-runtime-host",
+	"GREENFIELD_IM_EXTENSION_EVENT_PROFILE",
+	"GreenfieldRpcRuntimeHostPreparation",
+	"GreenfieldRpcRuntimeHostReady",
+	"GreenfieldPrintRuntimeHostPreparation",
+	"GreenfieldPrintRuntimeHostReady",
+	"PrepareGreenfieldRuntimeHostOptions",
+	"CreateGreenfieldImRuntimeHostOptions",
+	"createGreenfieldImRuntimeHost",
+	"prepareGreenfieldImRuntimeHost",
+	"prepareGreenfieldPrintRuntimeHost",
+	"prepareGreenfieldRpcRuntimeHost",
+	"runGreenfieldImRuntimeHost",
+	"runGreenfieldPrintRuntimeHost",
+	"runGreenfieldRpcRuntimeHost",
 	"adapters/runtime-core/greenfield.js",
 	"adapters/runtime-core/index.js",
 	"adaptCodingAgentToolRegistration",
@@ -332,8 +389,11 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {
-	const sourceFiles = files.filter((file) => file.path.startsWith(`${SOURCE_ROOT}/`));
+	const sourceFiles = files.filter(
+		(file) => file.path.startsWith(`${SOURCE_ROOT}/`) || file.path.startsWith(`${CLI_SOURCE_ROOT}/`),
+	);
 	const adapterFiles = sourceFiles.filter((file) => file.path.startsWith(`${ADAPTER_ROOT}/`));
+	const cliFiles = sourceFiles.filter((file) => file.path.startsWith(`${CLI_SOURCE_ROOT}/`));
 	const compositionFiles = sourceFiles.filter((file) => file.path.startsWith(`${COMPOSITION_ROOT}/`));
 	const hostExtensionFiles = sourceFiles.filter((file) => file.path.startsWith(`${HOST_EXTENSION_ROOT}/`));
 	return Object.freeze({
@@ -349,6 +409,7 @@ export function collectCodingAgentMigrationResidue(files) {
 		adapterGreenfieldFiles: adapterFiles.filter(
 			(file) => basename(file.path).startsWith("greenfield") && !RETIRED_MIGRATION_FILES.includes(file.path),
 		),
+		cliGreenfieldFiles: cliFiles.filter((file) => basename(file.path).startsWith("greenfield")),
 		compositionGreenfieldFiles: compositionFiles.filter((file) => basename(file.path).startsWith("greenfield")),
 		adapterCompositionEdgeFiles: adapterFiles.filter((file) =>
 			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("composition/")),
@@ -388,7 +449,7 @@ function collectModuleSpecifiers(text) {
 }
 
 function readCurrentFiles() {
-	return [SOURCE_ROOT, TEST_ROOT].flatMap((root) =>
+	return [SOURCE_ROOT, TEST_ROOT, CLI_SOURCE_ROOT, CLI_TEST_ROOT].flatMap((root) =>
 		walkFiles(join(repoRoot, root), { extensions: [".ts"] }).map((filePath) => ({
 			path: rel(filePath),
 			text: readText(filePath),
@@ -397,9 +458,15 @@ function readCurrentFiles() {
 }
 
 if (isDirectRun(import.meta.url)) {
-	const missingRoots = [SOURCE_ROOT, TEST_ROOT, ADAPTER_ROOT, COMPOSITION_ROOT, HOST_EXTENSION_ROOT].filter(
-		(path) => !existsSync(join(repoRoot, path)),
-	);
+	const missingRoots = [
+		SOURCE_ROOT,
+		TEST_ROOT,
+		CLI_SOURCE_ROOT,
+		CLI_TEST_ROOT,
+		ADAPTER_ROOT,
+		COMPOSITION_ROOT,
+		HOST_EXTENSION_ROOT,
+	].filter((path) => !existsSync(join(repoRoot, path)));
 	if (missingRoots.length > 0) {
 		for (const path of missingRoots) fail(`[coding-agent-migration-residue] missing source root (${path})`);
 	} else {
@@ -409,7 +476,7 @@ if (isDirectRun(import.meta.url)) {
 			for (const violation of violations) fail(`[coding-agent-migration-residue] ${violation}`);
 		} else {
 			ok(
-				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
+				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
 			);
 		}
 	}

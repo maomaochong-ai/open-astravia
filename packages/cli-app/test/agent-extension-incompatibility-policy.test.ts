@@ -10,9 +10,9 @@ const runtimeMocks = vi.hoisted(() => ({
 	prepareIm: vi.fn<() => Promise<unknown>>(),
 	preparePrint: vi.fn<() => Promise<unknown>>(),
 	prepareRpc: vi.fn<() => Promise<unknown>>(),
-	runGreenfieldIm: vi.fn<() => Promise<void>>(),
-	runGreenfieldPrint: vi.fn<() => Promise<void>>(),
-	runGreenfieldRpc: vi.fn<() => Promise<void>>(),
+	runIm: vi.fn<() => Promise<void>>(),
+	runPrint: vi.fn<() => Promise<void>>(),
+	runRpc: vi.fn<() => Promise<void>>(),
 }));
 
 vi.mock("@vetta/coding-agent/bootstrap", () => ({
@@ -28,13 +28,13 @@ vi.mock("../src/rpc/cli-session-format-compatibility.js", () => ({
 	createCliRuntimeSessionCatalog: () => ({}),
 }));
 
-vi.mock("../src/rpc/runtime-host/greenfield-runtime-host.js", () => ({
-	prepareGreenfieldImRuntimeHost: runtimeMocks.prepareIm,
-	prepareGreenfieldPrintRuntimeHost: runtimeMocks.preparePrint,
-	prepareGreenfieldRpcRuntimeHost: runtimeMocks.prepareRpc,
-	runGreenfieldImRuntimeHost: runtimeMocks.runGreenfieldIm,
-	runGreenfieldPrintRuntimeHost: runtimeMocks.runGreenfieldPrint,
-	runGreenfieldRpcRuntimeHost: runtimeMocks.runGreenfieldRpc,
+vi.mock("../src/rpc/runtime-host/runtime-host.js", () => ({
+	prepareImRuntimeHost: runtimeMocks.prepareIm,
+	preparePrintRuntimeHost: runtimeMocks.preparePrint,
+	prepareRpcRuntimeHost: runtimeMocks.prepareRpc,
+	runImRuntimeHost: runtimeMocks.runIm,
+	runPrintRuntimeHost: runtimeMocks.runPrint,
+	runRpcRuntimeHost: runtimeMocks.runRpc,
 }));
 
 const bootstrap = {
@@ -75,7 +75,7 @@ beforeEach(() => {
 			extensionCompatibility,
 		});
 	}
-	for (const run of [runtimeMocks.runGreenfieldIm, runtimeMocks.runGreenfieldPrint, runtimeMocks.runGreenfieldRpc]) {
+	for (const run of [runtimeMocks.runIm, runtimeMocks.runPrint, runtimeMocks.runRpc]) {
 		run.mockReset().mockResolvedValue(undefined);
 	}
 });
@@ -106,7 +106,7 @@ describe("Extension incompatibility policy", () => {
 			unmetRuntimeCapabilities: ["event-handler"],
 		});
 		expect(stderr).not.toHaveBeenCalled();
-		expect(runtimeMocks.runGreenfieldIm).not.toHaveBeenCalled();
+		expect(runtimeMocks.runIm).not.toHaveBeenCalled();
 	});
 
 	it("writes Print diagnostics without opening a session", async () => {
@@ -121,6 +121,6 @@ describe("Extension incompatibility policy", () => {
 		expect(String(stderr.mock.calls[0]?.[0])).toContain(
 			"errorCode=extension_incompatible unsupportedEvents=future_event unmetCapabilities=event-handler",
 		);
-		expect(runtimeMocks.runGreenfieldPrint).not.toHaveBeenCalled();
+		expect(runtimeMocks.runPrint).not.toHaveBeenCalled();
 	});
 });

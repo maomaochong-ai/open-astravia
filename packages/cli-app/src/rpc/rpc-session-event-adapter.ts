@@ -1,13 +1,13 @@
 import type { SessionEvent } from "@vetta/runtime-core";
 
 /**
- * Greenfield SessionEvent 到现有 RPC wire event 的窄适配器。
+ * Runtime SessionEvent 到现有 RPC wire event 的窄适配器。
  *
  * 这里只保证 RPC 宿主实际消费的字段，不把它声明为完整 Legacy AgentEvent
  * 适配器。Greenfield 稳定事件没有携带流式 partial message、turn toolResults 等
  * Legacy 细节，不能伪造这些数据。
  */
-export class GreenfieldRpcEventAdapter {
+export class RpcSessionEventAdapter {
 	private turnIndex = 0;
 
 	map(event: SessionEvent): readonly unknown[] {
@@ -132,6 +132,3 @@ export class GreenfieldRpcEventAdapter {
 		}
 	}
 }
-
-/** @deprecated Use GreenfieldRpcEventAdapter. */
-export class GreenfieldImRpcEventAdapter extends GreenfieldRpcEventAdapter {}

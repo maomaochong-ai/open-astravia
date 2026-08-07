@@ -8,27 +8,27 @@ import type {
 	CodingAgentRuntimeCompositionOptions,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
+import type { CodingAgentHistoricalSessionMigrationIncompatible } from "@vetta/coding-agent/historical-sessions";
 import type { RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
 import type { GreenfieldRuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import type { FileConversationOwnershipManagerOptions } from "@vetta/runtime-storage/conversation";
-import type { GreenfieldPrintSessionAdapter } from "../../greenfield-print-session-adapter.js";
-import type { GreenfieldImLegacySessionMigrationIncompatible } from "../greenfield-im-legacy-session-migration.js";
+import type { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 
-export interface GreenfieldRpcRuntimeHostExtensionIncompatible {
+export interface RpcRuntimeHostExtensionIncompatible {
 	readonly kind: "extension-incompatible";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly sessionPath: string | undefined;
 	readonly extensionCompatibility: CodingAgentExtensionCompatibilityAssessment;
 }
 
-export interface GreenfieldRpcRuntimeHostSessionIncompatible {
+export interface RpcRuntimeHostSessionIncompatible {
 	readonly kind: "session-incompatible";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly sessionPath: string;
-	readonly sessionCompatibility: GreenfieldImLegacySessionMigrationIncompatible;
+	readonly sessionCompatibility: CodingAgentHistoricalSessionMigrationIncompatible;
 }
 
-export interface GreenfieldRpcRuntimeHostReady {
+export interface RpcRuntimeHostReady {
 	readonly kind: "greenfield";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly session: GreenfieldRuntimeSession;
@@ -36,25 +36,25 @@ export interface GreenfieldRpcRuntimeHostReady {
 	readonly capabilities: RpcSessionCapabilities;
 }
 
-export type GreenfieldRpcRuntimeHostPreparation =
-	| GreenfieldRpcRuntimeHostExtensionIncompatible
-	| GreenfieldRpcRuntimeHostSessionIncompatible
-	| GreenfieldRpcRuntimeHostReady;
+export type RpcRuntimeHostPreparation =
+	| RpcRuntimeHostExtensionIncompatible
+	| RpcRuntimeHostSessionIncompatible
+	| RpcRuntimeHostReady;
 
-export interface GreenfieldPrintRuntimeHostReady {
+export interface PrintRuntimeHostReady {
 	readonly kind: "greenfield-print";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly session: GreenfieldRuntimeSession;
 	readonly runtime: CodingAgentRuntimeComposition;
-	readonly printSession: GreenfieldPrintSessionAdapter;
+	readonly printSession: CliPrintSessionAdapter;
 }
 
-export type GreenfieldPrintRuntimeHostPreparation =
-	| GreenfieldRpcRuntimeHostExtensionIncompatible
-	| GreenfieldRpcRuntimeHostSessionIncompatible
-	| GreenfieldPrintRuntimeHostReady;
+export type PrintRuntimeHostPreparation =
+	| RpcRuntimeHostExtensionIncompatible
+	| RpcRuntimeHostSessionIncompatible
+	| PrintRuntimeHostReady;
 
-export interface PrepareGreenfieldRuntimeHostOptions {
+export interface PrepareRuntimeHostOptions {
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
@@ -64,6 +64,6 @@ export interface PrepareGreenfieldRuntimeHostOptions {
 	readonly createPluginRuntime?: CodingAgentRuntimeCompositionOptions["createPluginRuntime"];
 }
 
-export interface CreateGreenfieldImRuntimeHostOptions
-	extends Omit<PrepareGreenfieldRuntimeHostOptions, "bootstrap">,
+export interface CreateImRuntimeHostOptions
+	extends Omit<PrepareRuntimeHostOptions, "bootstrap">,
 		CodingAgentHostBootstrapOptions {}

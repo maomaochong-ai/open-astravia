@@ -1,8 +1,8 @@
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { join } from "node:path";
+import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { migrateGreenfieldImLegacySession } from "../src/rpc/greenfield-im-legacy-session-migration.js";
 import {
 	type AgentRpcExecutable,
 	type AgentRpcFixture,
@@ -71,7 +71,7 @@ describe("Historical session import recovery", { timeout: INTEGRATION_TEST_TIMEO
 	it("keeps a conflicting primary target and reuses one stable Greenfield recovery target", async () => {
 		const fixture = await createFixture();
 		const sourcePath = await writeLegacySession(fixture, "target conflict");
-		const primary = await migrateGreenfieldImLegacySession(sourcePath, fixture.conversationDir);
+		const primary = await migrateCodingAgentHistoricalSession(sourcePath, fixture.conversationDir);
 		if (primary.kind !== "greenfield") throw new Error("Expected primary migration");
 		await writeFile(primary.targetPath, "conflicting primary target", "utf8");
 

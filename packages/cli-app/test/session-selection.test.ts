@@ -1,14 +1,14 @@
 import type { RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
-import { resolveGreenfieldImSessionPath } from "../src/rpc/greenfield-im-session-selection.js";
+import { resolveImSessionPath } from "../src/rpc/im-session-selection.js";
 
-describe("Greenfield IM session selection", () => {
+describe("IM session selection", () => {
 	it("keeps explicit and fresh session selection independent from catalog order", async () => {
 		const listSessions = vi.fn(async () => []);
 		const sessionCatalog = createSessionCatalog(listSessions);
 
 		await expect(
-			resolveGreenfieldImSessionPath({
+			resolveImSessionPath({
 				explicitSessionPath: "C:/sessions/explicit.conversation.jsonl",
 				continueSession: true,
 				cwd: "C:/workspace",
@@ -17,7 +17,7 @@ describe("Greenfield IM session selection", () => {
 			}),
 		).resolves.toBe("C:/sessions/explicit.conversation.jsonl");
 		await expect(
-			resolveGreenfieldImSessionPath({
+			resolveImSessionPath({
 				continueSession: false,
 				cwd: "C:/workspace",
 				sessionDir: "C:/sessions",
@@ -36,7 +36,7 @@ describe("Greenfield IM session selection", () => {
 		const listSessions = vi.fn(async () => sessions);
 
 		await expect(
-			resolveGreenfieldImSessionPath({
+			resolveImSessionPath({
 				continueSession: true,
 				cwd: "C:/workspace",
 				sessionDir: "C:/sessions",
@@ -48,7 +48,7 @@ describe("Greenfield IM session selection", () => {
 
 	it("returns no path when continue has no existing session", async () => {
 		await expect(
-			resolveGreenfieldImSessionPath({
+			resolveImSessionPath({
 				continueSession: true,
 				cwd: "C:/workspace",
 				sessionDir: "C:/sessions",

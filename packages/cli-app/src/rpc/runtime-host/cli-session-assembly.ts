@@ -1,6 +1,6 @@
 import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
-	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
+	CodingAgentActiveSessionHost,
 	CodingAgentProcessSessionHost,
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
@@ -35,9 +35,9 @@ import {
 	resolveSessionIdFromPath,
 } from "@vetta/runtime-storage/conversation";
 
-export const GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE = "Greenfield IM Runtime startup and cleanup failed";
+export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "Greenfield IM Runtime startup and cleanup failed";
 
-export interface GreenfieldCliSessionAssemblyOptions {
+export interface CliSessionAssemblyOptions {
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
@@ -45,23 +45,21 @@ export interface GreenfieldCliSessionAssemblyOptions {
 	readonly sessionPath?: string;
 	readonly initialModel: CodingAgentRuntimeCompositionOptions["initialModel"];
 	readonly initialThinkingLevel: CodingAgentRuntimeCompositionOptions["initialThinkingLevel"];
-	readonly backend: "greenfield" | "greenfield-im";
+	readonly backend: "rpc" | "im";
 	readonly intent: "rpc" | "print";
 	readonly createSessionId: () => string;
 	readonly ownership?: FileConversationOwnershipManagerOptions;
 	readonly createPluginRuntime?: CodingAgentRuntimeCompositionOptions["createPluginRuntime"];
 }
 
-export interface GreenfieldCliSessionAssembly {
+export interface CliSessionAssembly {
 	readonly runtime: CodingAgentRuntimeComposition;
 	readonly sessionHost: CodingAgentProcessSessionHost;
 	readonly extensionSessionHost: CodingAgentRuntimeExtensionSessionHost;
 	dispose(): Promise<void>;
 }
 
-export async function createGreenfieldCliSessionAssembly(
-	options: GreenfieldCliSessionAssemblyOptions,
-): Promise<GreenfieldCliSessionAssembly> {
+export async function createCliSessionAssembly(options: CliSessionAssemblyOptions): Promise<CliSessionAssembly> {
 	const { bootstrap } = options;
 	const { parsed } = bootstrap;
 	const mcpDebug = bootstrap.settingsManager.getMcpDebug();
@@ -95,17 +93,17 @@ export async function createGreenfieldCliSessionAssembly(
 				cwd: bootstrap.cwd,
 				vettaHome: getVettaHomePath(),
 			}),
-			scenario: options.backend === "greenfield-im" ? "im-claw" : (parsed.scenario ?? "cli"),
+			scenario: options.backend === "im" ? "im-claw" : (parsed.scenario ?? "cli"),
 			activation:
 				parsed.noTools || parsed.tools
 					? { mode: "explicit", toolNames: parsed.tools ?? [] }
 					: {
 							mode: "scope",
-							scope: options.backend === "greenfield-im" ? "im-claw" : (parsed.scenario ?? "cli"),
+							scope: options.backend === "im" ? "im-claw" : (parsed.scenario ?? "cli"),
 						},
-			enableSubagents: options.backend !== "greenfield-im" && options.intent === "rpc",
+			enableSubagents: options.backend !== "im" && options.intent === "rpc",
 			systemPromptAdvertisedToolNames:
-				options.backend === "greenfield-im" && !parsed.noTools && !parsed.tools
+				options.backend === "im" && !parsed.noTools && !parsed.tools
 					? ["kb_filter_by_tags", "kb_list_available_tags"]
 					: undefined,
 			mcpSource: managedMcpSource.source,
@@ -167,7 +165,7 @@ export async function createGreenfieldCliSessionAssembly(
 			id: "extension-session-host",
 			rollback: () => acquiredExtensionSessionHost.dispose(),
 		});
-		const activeSessionHost = new CodingAgentGreenfieldActiveSessionHost({
+		const activeSessionHost = new CodingAgentActiveSessionHost({
 			runtime,
 			initialSession: session,
 			sessionOptions,
@@ -239,6 +237,6 @@ export async function createGreenfieldCliSessionAssembly(
 			dispose: () => sessionHost.dispose(),
 		};
 	} catch (error) {
-		return rollback.rollback(error, GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE);
+		return rollback.rollback(error, CLI_RUNTIME_HOST_STARTUP_FAILURE);
 	}
 }

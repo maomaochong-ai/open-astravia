@@ -8,39 +8,39 @@ import {
 	resolveCodingAgentInitialModel,
 	runPrintMode,
 } from "@vetta/coding-agent/bootstrap";
+import { migrateCodingAgentHistoricalSession } from "@vetta/coding-agent/historical-sessions";
 import { runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope } from "@vetta/runtime-core";
 import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
-import { GreenfieldPrintSessionAdapter } from "../../greenfield-print-session-adapter.js";
-import { migrateGreenfieldImLegacySession } from "../greenfield-im-legacy-session-migration.js";
-import { resolveGreenfieldImSessionPath } from "../greenfield-im-session-selection.js";
+import { CliPrintSessionAdapter } from "../../print-session-adapter.js";
+import { resolveImSessionPath } from "../im-session-selection.js";
 import {
-	createGreenfieldCliSessionAssembly,
-	GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE,
-	type GreenfieldCliSessionAssembly,
-} from "./greenfield-cli-session-assembly.js";
-import { createGreenfieldRpcRuntimeCapabilities } from "./greenfield-rpc-runtime-capabilities.js";
+	CLI_RUNTIME_HOST_STARTUP_FAILURE,
+	type CliSessionAssembly,
+	createCliSessionAssembly,
+} from "./cli-session-assembly.js";
+import { createRpcRuntimeCapabilities } from "./rpc-runtime-capabilities.js";
 import type {
-	CreateGreenfieldImRuntimeHostOptions,
-	GreenfieldPrintRuntimeHostPreparation,
-	GreenfieldPrintRuntimeHostReady,
-	GreenfieldRpcRuntimeHostPreparation,
-	GreenfieldRpcRuntimeHostReady,
-	PrepareGreenfieldRuntimeHostOptions,
-} from "./greenfield-runtime-host-contract.js";
+	CreateImRuntimeHostOptions,
+	PrepareRuntimeHostOptions,
+	PrintRuntimeHostPreparation,
+	PrintRuntimeHostReady,
+	RpcRuntimeHostPreparation,
+	RpcRuntimeHostReady,
+} from "./runtime-host-contract.js";
 
 export type {
-	CreateGreenfieldImRuntimeHostOptions,
-	GreenfieldPrintRuntimeHostPreparation,
-	GreenfieldPrintRuntimeHostReady,
-	GreenfieldRpcRuntimeHostExtensionIncompatible,
-	GreenfieldRpcRuntimeHostPreparation,
-	GreenfieldRpcRuntimeHostReady,
-	GreenfieldRpcRuntimeHostSessionIncompatible,
-	PrepareGreenfieldRuntimeHostOptions,
-} from "./greenfield-runtime-host-contract.js";
+	CreateImRuntimeHostOptions,
+	PrepareRuntimeHostOptions,
+	PrintRuntimeHostPreparation,
+	PrintRuntimeHostReady,
+	RpcRuntimeHostExtensionIncompatible,
+	RpcRuntimeHostPreparation,
+	RpcRuntimeHostReady,
+	RpcRuntimeHostSessionIncompatible,
+} from "./runtime-host-contract.js";
 
-export const GREENFIELD_IM_EXTENSION_EVENT_PROFILE = {
+export const IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE = {
 	input: "supported",
 	before_agent_start: "supported",
 	resources_discover: "supported",
@@ -72,59 +72,53 @@ export const GREENFIELD_IM_EXTENSION_EVENT_PROFILE = {
 	user_bash: "inapplicable",
 } as const satisfies CodingAgentExtensionEventCompatibilityProfile;
 
-/** 构建显式 opt-in 的 Greenfield IM Runtime Host。 */
-export async function createGreenfieldImRuntimeHost(
-	options: CreateGreenfieldImRuntimeHostOptions,
-): Promise<GreenfieldRpcRuntimeHostPreparation> {
+/** 构建启用 Host Bridge 的 IM Runtime Host。 */
+export async function createImRuntimeHost(options: CreateImRuntimeHostOptions): Promise<RpcRuntimeHostPreparation> {
 	const bootstrap = await createCodingAgentHostBootstrap(options);
-	return prepareGreenfieldImRuntimeHost({ ...options, bootstrap });
+	return prepareImRuntimeHost({ ...options, bootstrap });
 }
 
-export async function prepareGreenfieldImRuntimeHost(
-	options: PrepareGreenfieldRuntimeHostOptions,
-): Promise<GreenfieldRpcRuntimeHostPreparation> {
-	return prepareGreenfieldRuntimeHost(options, "greenfield-im", "rpc");
+export async function prepareImRuntimeHost(options: PrepareRuntimeHostOptions): Promise<RpcRuntimeHostPreparation> {
+	return prepareRuntimeHost(options, "im", "rpc");
 }
 
-export async function prepareGreenfieldRpcRuntimeHost(
-	options: PrepareGreenfieldRuntimeHostOptions,
-): Promise<GreenfieldRpcRuntimeHostPreparation> {
-	return prepareGreenfieldRuntimeHost(options, "greenfield", "rpc");
+export async function prepareRpcRuntimeHost(options: PrepareRuntimeHostOptions): Promise<RpcRuntimeHostPreparation> {
+	return prepareRuntimeHost(options, "rpc", "rpc");
 }
 
-export async function prepareGreenfieldPrintRuntimeHost(
-	options: PrepareGreenfieldRuntimeHostOptions,
-): Promise<GreenfieldPrintRuntimeHostPreparation> {
-	return prepareGreenfieldRuntimeHost(options, "greenfield", "print");
+export async function preparePrintRuntimeHost(
+	options: PrepareRuntimeHostOptions,
+): Promise<PrintRuntimeHostPreparation> {
+	return prepareRuntimeHost(options, "rpc", "print");
 }
 
-async function prepareGreenfieldRuntimeHost(
-	options: PrepareGreenfieldRuntimeHostOptions,
-	backend: "greenfield-im",
+async function prepareRuntimeHost(
+	options: PrepareRuntimeHostOptions,
+	backend: "im",
 	intent: "rpc",
-): Promise<GreenfieldRpcRuntimeHostPreparation>;
-async function prepareGreenfieldRuntimeHost(
-	options: PrepareGreenfieldRuntimeHostOptions,
-	backend: "greenfield",
+): Promise<RpcRuntimeHostPreparation>;
+async function prepareRuntimeHost(
+	options: PrepareRuntimeHostOptions,
+	backend: "rpc",
 	intent: "rpc",
-): Promise<GreenfieldRpcRuntimeHostPreparation>;
-async function prepareGreenfieldRuntimeHost(
-	options: PrepareGreenfieldRuntimeHostOptions,
-	backend: "greenfield",
+): Promise<RpcRuntimeHostPreparation>;
+async function prepareRuntimeHost(
+	options: PrepareRuntimeHostOptions,
+	backend: "rpc",
 	intent: "print",
-): Promise<GreenfieldPrintRuntimeHostPreparation>;
-async function prepareGreenfieldRuntimeHost(
-	options: PrepareGreenfieldRuntimeHostOptions,
-	backend: "greenfield" | "greenfield-im",
+): Promise<PrintRuntimeHostPreparation>;
+async function prepareRuntimeHost(
+	options: PrepareRuntimeHostOptions,
+	backend: "rpc" | "im",
 	intent: "rpc" | "print",
-): Promise<GreenfieldRpcRuntimeHostPreparation | GreenfieldPrintRuntimeHostPreparation> {
+): Promise<RpcRuntimeHostPreparation | PrintRuntimeHostPreparation> {
 	const { bootstrap } = options;
 	const { parsed } = bootstrap;
-	assertGreenfieldInvocation(bootstrap, backend, intent);
+	assertRuntimeInvocation(bootstrap, backend, intent);
 
 	const extensionCompatibility = resolveCodingAgentGreenfieldExtensionCompatibility(bootstrap.extensionCompatibility, {
 		actions: true,
-		eventProfile: GREENFIELD_IM_EXTENSION_EVENT_PROFILE,
+		eventProfile: IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE,
 		tools: true,
 		commands: true,
 		inapplicableRuntimeCapabilities: ["shortcut", "message-renderer"],
@@ -138,7 +132,7 @@ async function prepareGreenfieldRuntimeHost(
 		};
 	}
 
-	let sessionPath = await resolveGreenfieldImSessionPath({
+	let sessionPath = await resolveImSessionPath({
 		explicitSessionPath: parsed.session,
 		continueSession: parsed.continue === true,
 		cwd: bootstrap.cwd,
@@ -148,7 +142,7 @@ async function prepareGreenfieldRuntimeHost(
 	let sessionId = resolveSessionId(options.conversationDir, sessionPath, options.createSessionId ?? randomUUID);
 	if (!sessionId) {
 		if (!sessionPath) throw new Error("Historical session import requires a source path");
-		const migration = await migrateGreenfieldImLegacySession(sessionPath, options.conversationDir);
+		const migration = await migrateCodingAgentHistoricalSession(sessionPath, options.conversationDir);
 		if (migration.kind === "session-incompatible") {
 			return {
 				kind: "session-incompatible",
@@ -167,7 +161,7 @@ async function prepareGreenfieldRuntimeHost(
 	if (!initial.model) throw new Error("No models available for Greenfield Runtime");
 	if (parsed.apiKey) bootstrap.authStorage.setRuntimeApiKey(initial.model.provider, parsed.apiKey);
 
-	const assembly = await createGreenfieldCliSessionAssembly({
+	const assembly = await createCliSessionAssembly({
 		bootstrap,
 		conversationDir: options.conversationDir,
 		sessionCatalog: options.sessionCatalog,
@@ -182,9 +176,9 @@ async function prepareGreenfieldRuntimeHost(
 		createPluginRuntime: options.createPluginRuntime,
 	});
 	if (intent === "print") {
-		return createGreenfieldPrintRuntimeHostReady(bootstrap, assembly);
+		return createPrintRuntimeHostReady(bootstrap, assembly);
 	}
-	const capabilities = await createGreenfieldRpcRuntimeCapabilities({
+	const capabilities = await createRpcRuntimeCapabilities({
 		bootstrap,
 		assembly,
 		backend,
@@ -201,17 +195,17 @@ async function prepareGreenfieldRuntimeHost(
 	};
 }
 
-export async function runGreenfieldImRuntimeHost(prepared: GreenfieldRpcRuntimeHostReady): Promise<never> {
+export async function runImRuntimeHost(prepared: RpcRuntimeHostReady): Promise<never> {
 	return runRpcModeWithCapabilities(prepared.capabilities, { enableHostBridge: true });
 }
 
-export async function runGreenfieldRpcRuntimeHost(prepared: GreenfieldRpcRuntimeHostReady): Promise<never> {
+export async function runRpcRuntimeHost(prepared: RpcRuntimeHostReady): Promise<never> {
 	return runRpcModeWithCapabilities(prepared.capabilities, {
 		enableHostBridge: prepared.bootstrap.parsed.enableHostBridge === true,
 	});
 }
 
-export async function runGreenfieldPrintRuntimeHost(prepared: GreenfieldPrintRuntimeHostReady): Promise<void> {
+export async function runPrintRuntimeHost(prepared: PrintRuntimeHostReady): Promise<void> {
 	try {
 		const invocation = await prepareCodingAgentPrintInvocation({
 			parsed: prepared.bootstrap.parsed,
@@ -226,17 +220,17 @@ export async function runGreenfieldPrintRuntimeHost(prepared: GreenfieldPrintRun
 	}
 }
 
-async function createGreenfieldPrintRuntimeHostReady(
-	bootstrap: PrepareGreenfieldRuntimeHostOptions["bootstrap"],
-	assembly: GreenfieldCliSessionAssembly,
-): Promise<GreenfieldPrintRuntimeHostReady> {
+async function createPrintRuntimeHostReady(
+	bootstrap: PrepareRuntimeHostOptions["bootstrap"],
+	assembly: CliSessionAssembly,
+): Promise<PrintRuntimeHostReady> {
 	const rollback = new InitializationRollbackScope();
 	const dismissAssemblyRollback = rollback.defer({
 		id: "cli-session-assembly",
 		rollback: () => assembly.dispose(),
 	});
 	try {
-		const printSession = new GreenfieldPrintSessionAdapter({ sessionHost: assembly.sessionHost });
+		const printSession = new CliPrintSessionAdapter({ sessionHost: assembly.sessionHost });
 		dismissAssemblyRollback();
 		rollback.commit();
 		return {
@@ -249,25 +243,24 @@ async function createGreenfieldPrintRuntimeHostReady(
 			printSession,
 		};
 	} catch (error) {
-		return rollback.rollback(error, GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE);
+		return rollback.rollback(error, CLI_RUNTIME_HOST_STARTUP_FAILURE);
 	}
 }
 
-function assertGreenfieldInvocation(
-	bootstrap: PrepareGreenfieldRuntimeHostOptions["bootstrap"],
-	backend: "greenfield" | "greenfield-im",
+function assertRuntimeInvocation(
+	bootstrap: PrepareRuntimeHostOptions["bootstrap"],
+	backend: "rpc" | "im",
 	intent: "rpc" | "print",
 ): void {
 	const { parsed } = bootstrap;
 	if (intent === "rpc" && parsed.mode !== "rpc") throw new Error("Greenfield Runtime requires --mode rpc");
 	if (intent === "print" && parsed.mode === "rpc") throw new Error("Greenfield Print does not support RPC mode");
-	if (intent === "print" && backend === "greenfield-im")
-		throw new Error("Greenfield IM Runtime only supports RPC mode");
-	if (backend === "greenfield-im" && !parsed.enableHostBridge) {
+	if (intent === "print" && backend === "im") throw new Error("Greenfield IM Runtime only supports RPC mode");
+	if (backend === "im" && !parsed.enableHostBridge) {
 		throw new Error("Greenfield IM Runtime requires --enable-host-bridge");
 	}
 	if (parsed.resume) throw new Error("--resume is no longer supported; use --continue or --session");
-	if (backend === "greenfield-im" && parsed.scenario && parsed.scenario !== "im-claw") {
+	if (backend === "im" && parsed.scenario && parsed.scenario !== "im-claw") {
 		throw new Error(`Greenfield IM Runtime requires scenario im-claw, received ${parsed.scenario}`);
 	}
 }

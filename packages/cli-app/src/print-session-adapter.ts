@@ -6,7 +6,7 @@ import {
 } from "@vetta/coding-agent/runtime";
 import type { GreenfieldRuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 
-interface GreenfieldPrintSessionHost {
+interface PrintSessionHost {
 	readonly turnExecutor: Pick<CodingAgentTurnExecutor, "prompt">;
 	readSession(): GreenfieldRuntimeSession;
 	initializeExtensions(input: { readonly onError: (error: PrintExtensionError) => void }): Promise<void>;
@@ -18,13 +18,13 @@ interface GreenfieldPrintSessionHost {
 	dispose(): Promise<void>;
 }
 
-interface GreenfieldPrintSessionAdapterOptions {
-	readonly sessionHost: GreenfieldPrintSessionHost;
+interface PrintSessionAdapterOptions {
+	readonly sessionHost: PrintSessionHost;
 }
 
-/** Greenfield Runtime 到既有单次 Print 合同的候选宿主适配器。 */
-export class GreenfieldPrintSessionAdapter implements PrintSessionCapabilities {
-	constructor(private readonly options: GreenfieldPrintSessionAdapterOptions) {}
+/** Runtime 到既有单次 Print 合同的产品宿主适配器。 */
+export class CliPrintSessionAdapter implements PrintSessionCapabilities {
+	constructor(private readonly options: PrintSessionAdapterOptions) {}
 
 	readHeader(): unknown {
 		const identity = this.readDocument().identity;

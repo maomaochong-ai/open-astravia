@@ -3,8 +3,8 @@ import { describe, expect, test, vi } from "vitest";
 import { createRpcCommandDispatcher, type RpcFrameOutput } from "../../src/modes/rpc/rpc-command-dispatcher.js";
 import { runRpcModeWithCapabilities } from "../../src/modes/rpc/rpc-mode.js";
 import {
-	GREENFIELD_FULL_RPC_PROFILE,
-	GREENFIELD_IM_RPC_PROFILE,
+	RPC_FULL_SESSION_PROFILE,
+	RPC_IM_SESSION_PROFILE,
 	type RpcSessionCapabilities,
 	type RpcSessionInitialization,
 } from "../../src/modes/rpc/rpc-session-capabilities.js";
@@ -150,7 +150,7 @@ describe("RPC command dispatcher", () => {
 
 	test("rejects commands outside the selected profile without invoking absent capabilities", async () => {
 		const session: RpcSessionCapabilities = {
-			profile: GREENFIELD_IM_RPC_PROFILE,
+			profile: RPC_IM_SESSION_PROFILE,
 			turn: {
 				prompt: vi.fn(async () => {}),
 				steer: vi.fn(async () => {}),
@@ -532,7 +532,7 @@ describe("RPC command dispatcher", () => {
 
 function createSessionCapabilities(): RpcSessionCapabilities {
 	return {
-		profile: GREENFIELD_FULL_RPC_PROFILE,
+		profile: RPC_FULL_SESSION_PROFILE,
 		turn: {
 			prompt: vi.fn(async () => {}),
 			steer: vi.fn(async () => {}),

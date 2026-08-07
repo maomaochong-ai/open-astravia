@@ -2,21 +2,17 @@
  * Run modes for the coding agent.
  */
 
+export type {
+	CodingAgentTurnRetryEvent,
+	CodingAgentTurnRetrySettings,
+} from "../host/session-execution/contracts.js";
+export { CodingAgentSessionTurnRetryController } from "../host/session-execution/turn-retry-controller.js";
 export { type PrintModeOptions, runPrintMode } from "./print-mode.js";
 export type {
 	PrintExtensionError,
 	PrintSessionCapabilities,
 } from "./print-session-capabilities.js";
-export {
-	computeGreenfieldRpcSessionStats,
-	exportGreenfieldRpcConversation,
-	GreenfieldRpcBashCapability,
-	GreenfieldRpcRetryController,
-	type GreenfieldRpcRetryEvent,
-	type GreenfieldRpcRetrySettings,
-	readGreenfieldRpcAgentMessages,
-	resolveNextGreenfieldRpcThinkingLevel,
-} from "./rpc/greenfield-rpc-capabilities.js";
+export { CodingAgentRpcBashCapability } from "./rpc/rpc-bash-capability.js";
 export {
 	type ModelInfo,
 	RpcClient,
@@ -38,15 +34,21 @@ export {
 export { type RunRpcModeOptions, runRpcModeWithCapabilities } from "./rpc/rpc-mode.js";
 export {
 	assertRpcSessionCapabilities,
-	GREENFIELD_FULL_RPC_PROFILE,
-	GREENFIELD_IM_RPC_PROFILE,
 	type ImHostBridge,
+	RPC_FULL_SESSION_PROFILE,
+	RPC_IM_SESSION_PROFILE,
 	type RpcSessionCapabilities,
 	type RpcSessionInitialization,
 	type RpcSessionProfile,
 	type RpcSessionProfileId,
 	supportsRpcCommand,
 } from "./rpc/rpc-session-capabilities.js";
+export {
+	computeCodingAgentRpcSessionStats,
+	exportCodingAgentRpcConversation,
+	readCodingAgentRpcAgentMessages,
+	resolveNextCodingAgentRpcThinkingLevel,
+} from "./rpc/rpc-session-operations.js";
 export {
 	isRpcStartupFailure,
 	type RpcExtensionIncompatibilityFailure,

@@ -1,6 +1,0 @@
-export {
-	type CodingAgentHistoricalSessionMigration as GreenfieldImLegacySessionMigration,
-	type CodingAgentHistoricalSessionMigrationIncompatible as GreenfieldImLegacySessionMigrationIncompatible,
-	type CodingAgentHistoricalSessionMigrationSuccess as GreenfieldImLegacySessionMigrationSuccess,
-	migrateCodingAgentHistoricalSession as migrateGreenfieldImLegacySession,
-} from "@vetta/coding-agent/historical-sessions";

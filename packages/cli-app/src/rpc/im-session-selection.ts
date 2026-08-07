@@ -1,6 +1,6 @@
 import type { RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
 
-export interface ResolveGreenfieldImSessionPathOptions {
+export interface ResolveImSessionPathOptions {
 	readonly explicitSessionPath?: string;
 	readonly continueSession: boolean;
 	readonly cwd: string;
@@ -13,9 +13,7 @@ export interface ResolveGreenfieldImSessionPathOptions {
  *
  * 格式归属仍由各 Catalog 判断；这里不读取或解析任何持久化文件。
  */
-export async function resolveGreenfieldImSessionPath(
-	options: ResolveGreenfieldImSessionPathOptions,
-): Promise<string | undefined> {
+export async function resolveImSessionPath(options: ResolveImSessionPathOptions): Promise<string | undefined> {
 	if (options.explicitSessionPath || !options.continueSession) return options.explicitSessionPath;
 	const sessions = await options.sessionCatalog.listSessions(options.cwd, options.sessionDir);
 	return selectMostRecentSession(sessions)?.path;
