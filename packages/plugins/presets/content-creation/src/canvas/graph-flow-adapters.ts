@@ -21,6 +21,7 @@ export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
 	onDuplicate: (nodeId: string) => void;
 	onToggleLock: (nodeId: string) => void;
+	onRename: (nodeId: string, name: string) => Promise<void>;
 	onUpdate: (nodeId: string, data: ContentNodeData) => Promise<void>;
 	onResize: (nodeId: string, position: { x: number; y: number }, width: number, height: number) => void;
 	onRunNode: (nodeId: string) => Promise<void>;
@@ -83,6 +84,7 @@ export function toContentFlowNodes(
 			draggable: !node.locked,
 			data: {
 				kind: node.kind,
+				name: node.name?.trim() || node.kind,
 				nodeData: node.data,
 				assets,
 				connectedAssets,
@@ -98,6 +100,7 @@ export function toContentFlowNodes(
 				onDelete: () => actions.onDelete(node.id),
 				onDuplicate: () => actions.onDuplicate(node.id),
 				onToggleLock: () => actions.onToggleLock(node.id),
+				onRename: (name) => actions.onRename(node.id, name),
 				onUpdate: (data) => actions.onUpdate(node.id, data),
 				onResize: (position, width, height) => actions.onResize(node.id, position, width, height),
 				onRunNode: () => actions.onRunNode(node.id),

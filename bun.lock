@@ -542,6 +542,8 @@
       "name": "@vetta/plugin-content-creation",
       "version": "0.1.1",
       "dependencies": {
+        "@sinclair/typebox": "^0.34.41",
+        "@vetta/toolkit": "workspace:*",
         "@xyflow/react": "^12.10.2",
       },
       "devDependencies": {

@@ -3,6 +3,7 @@ import type { ContentProjectCommand } from "../project/commands";
 import { CONTENT_NODE_DEFINITIONS } from "../node/definitions";
 import type { ContentNode, ContentNodeKind } from "../project/types";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import { createContentCreationAgentState } from "./agent-state";
 
 const TAB_ID = "workspace";
 const SCOPE_USE = ["conversation", "project"] as const;
@@ -39,13 +40,22 @@ const applyOperationsSchema = {
 				properties: {
 					type: {
 						type: "string",
-						enum: ["add_node", "update_node", "duplicate_node", "delete_node", "connect_nodes", "delete_edge", "add_timeline_clip"],
+						enum: [
+							"add_node",
+							"rename_node",
+							"update_node",
+							"duplicate_node",
+							"delete_node",
+							"connect_nodes",
+							"delete_edge",
+							"add_timeline_clip",
+						],
 					},
 					id: { type: "string" },
 					kind: { type: "string", enum: NODE_KINDS },
 					x: { type: "number" },
 					y: { type: "number" },
-					label: { type: "string" },
+					name: { type: "string" },
 					prompt: { type: "string" },
 					aspectRatio: { type: "string" },
 					quality: { type: "string" },
@@ -95,13 +105,14 @@ function requiredNumber(record: Record<string, unknown>, key: string): number {
 
 function parseNodeData(record: Record<string, unknown>): ContentNode["data"] {
 	const data: ContentNode["data"] = {};
-	const label = optionalString(record, "label");
 	const prompt = optionalString(record, "prompt");
 	const aspectRatio = optionalString(record, "aspectRatio");
 	const quality = optionalString(record, "quality");
 	const resolution = optionalString(record, "resolution");
-	if (label !== undefined) data.label = label;
-	if (prompt !== undefined) data.prompt = prompt;
+	if (prompt !== undefined) {
+		data.prompt = prompt;
+		data.promptOptimization = undefined;
+	}
 	if (aspectRatio !== undefined) data.aspectRatio = aspectRatio;
 	if (quality !== undefined) data.quality = quality;
 	if (resolution !== undefined) data.resolution = resolution;
@@ -121,11 +132,18 @@ function parseOperation(value: unknown): ContentProjectCommand {
 				node: {
 					id: optionalString(operation, "id"),
 					kind: kind as ContentNodeKind,
+					name: optionalString(operation, "name"),
 					position: { x: requiredNumber(operation, "x"), y: requiredNumber(operation, "y") },
 					data: parseNodeData(operation),
 				},
 			};
 		}
+		case "rename_node":
+			return {
+				type: "node.rename",
+				nodeId: requiredString(operation, "nodeId"),
+				name: requiredString(operation, "name"),
+			};
 		case "update_node":
 			return {
 				type: "node.update",
@@ -201,7 +219,7 @@ export function registerContentCreationTools(ctx: PluginContext, workspace: Cont
 		scope_use: SCOPE_USE,
 		handler: async ({ session, trigger }) => {
 			const cwd = resolveCwd(trigger.input, session.cwd);
-			return workspace.load(cwd);
+			return createContentCreationAgentState(await workspace.load(cwd), (key) => ctx.i18n.t(key));
 		},
 	});
 

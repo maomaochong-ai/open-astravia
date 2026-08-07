@@ -12,6 +12,7 @@ import {
 import {
 	type PluginShortcutBinding,
 	usePluginShortcutScope,
+	useTranslation,
 } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findContentAlignmentGuides } from "./alignment-guides";
@@ -83,6 +84,7 @@ export function GraphWorkspace({
 	onImportAssets,
 	onImportReferences,
 }: GraphWorkspaceProps) {
+	const { t } = useTranslation();
 	const flowContainerRef = useRef<HTMLDivElement>(null);
 	const flowInstanceRef = useRef<ReactFlowInstance<ContentFlowNode, Edge> | null>(null);
 	const alignmentGuidesLayerRef = useRef<AlignmentGuidesLayerHandle>(null);
@@ -130,6 +132,9 @@ export function GraphWorkspace({
 			onToggleLock: (nodeId) => {
 				const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
 				if (node) void onDispatch([{ type: "node.lock", nodeId, locked: !node.locked }]);
+			},
+			onRename: async (nodeId, name) => {
+				await onDispatch([{ type: "node.rename", nodeId, name }]);
 			},
 			onUpdate: async (nodeId, data) => {
 				const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
@@ -219,9 +224,12 @@ export function GraphWorkspace({
 			const size = getContentNodeSize(kind, createDefaultContentNodeData(kind).aspectRatio);
 			const offset = project.graph.nodes.length * 18;
 			const position = { x: center.x - size.width / 2 + offset, y: center.y - size.height / 2 + offset };
-			void onDispatch([{ type: "node.add", node: { id: nodeId, kind, position } }]).then(() => setSelectedNodeIds([nodeId]));
+			const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+			void onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]).then(() =>
+				setSelectedNodeIds([nodeId]),
+			);
 		},
-		[onDispatch, project.graph.nodes.length],
+		[onDispatch, project.graph.nodes, t],
 	);
 
 	const clampOverlay = useCallback((clientX: number, clientY: number, size: { width: number; height: number }) => {
@@ -308,7 +316,16 @@ export function GraphWorkspace({
 				x: pendingMenu.position.x - size.width / 2,
 				y: pendingMenu.position.y - size.height / 2,
 			};
-			const candidateNode: ContentNode = { id: nodeId, kind, position, ...size, status: "idle", data };
+			const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+			const candidateNode: ContentNode = {
+				id: nodeId,
+				kind,
+				name,
+				position,
+				...size,
+				status: "idle",
+				data,
+			};
 			const candidateProject: ContentProjectDocument = {
 				...project,
 				graph: { ...project.graph, nodes: [...project.graph.nodes, candidateNode] },
@@ -320,13 +337,13 @@ export function GraphWorkspace({
 			const connection = resolveContentConnection(candidateProject, sourceNode, targetNode);
 			if (!connection) return;
 			void onDispatch([
-				{ type: "node.add", node: { id: nodeId, kind, position } },
+				{ type: "node.add", node: { id: nodeId, kind, name, position } },
 				{ type: "edge.connect", source: sourceNode.id, target: targetNode.id, ...connection },
 			]);
 			setSelectedNodeIds([nodeId]);
 			setPendingMenu(null);
 		},
-		[onDispatch, pendingMenu, project],
+		[onDispatch, pendingMenu, project, t],
 	);
 
 	const selectedProjectNodes = useMemo(

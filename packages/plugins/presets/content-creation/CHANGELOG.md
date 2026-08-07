@@ -20,6 +20,7 @@
 
 ### Changed
 
+- Split persistent content documents from hidden generation runtime state: visible project JSON now carries stable node names and AI-readable graph data while jobs and transient node statuses live in plugin storage, with toolkit-managed schema v3 migration and TypeBox validation.
 - Moved workspace project persistence to the visible root `content-creation.json`; legacy hidden projects are copied forward, and generated media now lives under the workspace `output/` folder with relative project references.
 - Content assets now persist stable blob IDs and resolve host media URLs at runtime; schema v1 projects migrate automatically to schema v2.
 - Limited asset preview URL resolution to eight concurrent host lookups and evicted cached references outside the current project.

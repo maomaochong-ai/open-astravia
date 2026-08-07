@@ -27,9 +27,9 @@ function createFsHarness() {
 	return { fs, files, directories };
 }
 
-function createStorage(): PluginStorageApi {
+function createStorage() {
 	const json = new Map<string, unknown>();
-	return {
+	const storage: PluginStorageApi = {
 		readJson: async <T>(key: string) => (json.get(key) as T | undefined) ?? null,
 		writeJson: async (key, value) => {
 			json.set(key, structuredClone(value));
@@ -41,39 +41,46 @@ function createStorage(): PluginStorageApi {
 		readBlob: async () => null,
 		getBlobRef: async () => null,
 	};
+	return { json, storage };
 }
 
 describe("PluginContentProjectRepository", () => {
 	it("stores a visible project document at the active Windows project root", async () => {
 		const harness = createFsHarness();
-		const repository = new PluginContentProjectRepository(harness.fs, createStorage());
+		const storage = createStorage();
+		const repository = new PluginContentProjectRepository(harness.fs, storage.storage);
 		const project = createContentProject("C:\\project");
 
 		await repository.write("C:\\project", project);
 
 		expect(harness.directories).toEqual([]);
 		expect(harness.files.has("C:\\project\\content-creation.json")).toBe(true);
-		expect(await repository.read("C:\\project")).toMatchObject({ projectId: project.projectId, cwd: "C:\\project" });
+		const visible = JSON.parse(harness.files.get("C:\\project\\content-creation.json") ?? "") as Record<string, unknown>;
+		expect(visible).toMatchObject({ projectId: project.projectId, schemaVersion: 3 });
+		expect(visible).not.toHaveProperty("cwd");
+		expect(visible).not.toHaveProperty("jobs");
+		expect(storage.json.get(`projects/${project.projectId}/runtime.json`)).toMatchObject({ jobs: [] });
+		expect(await repository.read("C:\\project")).toMatchObject({ document: { projectId: project.projectId } });
 	});
 
 	it("copies a legacy hidden project document to the visible project path", async () => {
 		const harness = createFsHarness();
-		const repository = new PluginContentProjectRepository(harness.fs, createStorage());
+		const repository = new PluginContentProjectRepository(harness.fs, createStorage().storage);
 		const project = createContentProject("C:\\project");
 		harness.files.set("C:\\project\\.vetta\\content-creation\\project.json", JSON.stringify(project));
 
-		expect(await repository.read("C:\\project")).toMatchObject({ projectId: project.projectId });
+		expect(await repository.read("C:\\project")).toMatchObject({ document: { projectId: project.projectId } });
 		expect(harness.files.has("C:\\project\\content-creation.json")).toBe(true);
 	});
 
 	it("uses plugin storage when no project directory exists", async () => {
 		const harness = createFsHarness();
-		const repository = new PluginContentProjectRepository(harness.fs, createStorage());
+		const repository = new PluginContentProjectRepository(harness.fs, createStorage().storage);
 		const project = createContentProject(null);
 
 		await repository.write(null, project);
 
 		expect(harness.files.size).toBe(0);
-		expect(await repository.read(null)).toMatchObject({ projectId: project.projectId, cwd: null });
+		expect(await repository.read(null)).toMatchObject({ document: { projectId: project.projectId } });
 	});
 });

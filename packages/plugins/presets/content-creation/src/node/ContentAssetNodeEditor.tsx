@@ -11,20 +11,22 @@ const PAGE_SIZE = 24;
 const IMPORT_BATCH_SIZE = 4;
 
 interface ContentAssetNodeEditorProps {
+	name: string;
 	data: ContentNodeData;
 	assets: readonly ContentAsset[];
 	onUpdate: (data: ContentNodeData) => Promise<void>;
+	onRename: (name: string) => Promise<void>;
 	onImport: (files: readonly ImportedContentAsset[]) => Promise<void>;
 }
 
-export function ContentAssetNodeEditor({ data, assets, onUpdate, onImport }: ContentAssetNodeEditorProps) {
+export function ContentAssetNodeEditor({ name, data, assets, onUpdate, onRename, onImport }: ContentAssetNodeEditorProps) {
 	const { t } = useTranslation();
 	const inputRef = useRef<HTMLInputElement>(null);
-	const [label, setLabel] = useState(data.label ?? "");
+	const [nameDraft, setNameDraft] = useState(name);
 	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 	const [importing, setImporting] = useState(false);
 
-	useEffect(() => setLabel(data.label ?? ""), [data.label]);
+	useEffect(() => setNameDraft(name), [name]);
 	useEffect(() => setVisibleCount(PAGE_SIZE), [assets.length]);
 
 	const handleFiles = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -55,10 +57,10 @@ export function ContentAssetNodeEditor({ data, assets, onUpdate, onImport }: Con
 			<div className="flex items-center gap-2">
 				<input
 					className="min-w-0 flex-1 rounded-lg border border-border/70 bg-background/60 px-2.5 py-1.5 text-xs font-medium outline-none focus-visible:border-primary/50"
-					value={label}
+					value={nameDraft}
 					placeholder={t("nodeEditor.label")}
-					onChange={(event) => setLabel(event.target.value)}
-					onBlur={() => void onUpdate({ ...data, label })}
+					onChange={(event) => setNameDraft(event.target.value)}
+					onBlur={() => void onRename(nameDraft)}
 				/>
 				<button
 					type="button"

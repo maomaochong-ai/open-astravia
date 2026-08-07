@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type { ContentProjectDocument } from "../src/project/types";
 import type { ContentProjectRepository } from "../src/project/repository";
+import { serializeContentProject, serializeContentProjectRuntime } from "../src/project/persistence";
 import { ContentCreationWorkspace, ContentProjectRevisionError } from "../src/project/workspace";
 
 function createMemoryRepository(writeDelay = 0): ContentProjectRepository {
-	const projects = new Map<string, unknown>();
+	const projects = new Map<string, ContentProjectDocument>();
 	return {
-		read: async (cwd) => projects.get(cwd ?? "__global__") ?? null,
+		read: async (cwd) => {
+			const project = projects.get(cwd ?? "__global__");
+			return project
+				? { document: serializeContentProject(project), runtime: serializeContentProjectRuntime(project) }
+				: null;
+		},
 		write: async (cwd, project: ContentProjectDocument) => {
 			if (writeDelay > 0) await new Promise((resolve) => setTimeout(resolve, writeDelay));
 			projects.set(cwd ?? "__global__", structuredClone(project));

@@ -17,7 +17,7 @@ export interface ContentNodePropertyOption {
 }
 
 export interface ContentNodePropertyDefinition {
-	key: keyof ContentNodeData;
+	key: keyof ContentNodeData | "name";
 	labelKey: string;
 	editor: ContentNodePropertyEditor;
 	placeholderKey?: string;
@@ -40,7 +40,7 @@ export interface ContentNodeDefinition {
 }
 
 const LABEL_PROPERTY: ContentNodePropertyDefinition = {
-	key: "label",
+	key: "name",
 	labelKey: "nodeEditor.label",
 	editor: "text",
 };

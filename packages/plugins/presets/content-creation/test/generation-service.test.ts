@@ -4,6 +4,7 @@ import { ContentGenerationService } from "../src/generation/generation-service";
 import { ContentProviderRegistry } from "../src/generation/provider-registry";
 import type { ContentArtifactStore, ContentProviderAdapter } from "../src/generation/types";
 import type { ContentProjectRepository } from "../src/project/repository";
+import { serializeContentProject, serializeContentProjectRuntime } from "../src/project/persistence";
 import { ContentCreationWorkspace } from "../src/project/workspace";
 
 describe("ContentGenerationService", () => {
@@ -238,8 +239,13 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 class MemoryRepository implements ContentProjectRepository {
 	private project: ContentProjectDocument | null = null;
 
-	async read(cwd: string | null): Promise<unknown> {
-		return this.project ?? createContentProject(cwd, "2026-01-01T00:00:00.000Z");
+	async read(_cwd: string | null) {
+		return this.project
+			? {
+					document: serializeContentProject(this.project),
+					runtime: serializeContentProjectRuntime(this.project),
+				}
+			: null;
 	}
 
 	async write(_cwd: string | null, project: ContentProjectDocument): Promise<void> {

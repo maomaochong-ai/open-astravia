@@ -1,6 +1,7 @@
 import type { PluginMediaErrorCode } from "@vetta-org/plugin-sdk";
 
-export const CONTENT_CREATION_SCHEMA_VERSION = 2 as const;
+export const CONTENT_CREATION_SCHEMA_VERSION = 3 as const;
+export const CONTENT_CREATION_RUNTIME_SCHEMA_VERSION = 1 as const;
 
 export type ContentNodeKind = "prompt" | "image-generator" | "video-generator" | "asset" | "output";
 export type ContentNodeStatus = "idle" | "queued" | "running" | "succeeded" | "failed";
@@ -14,7 +15,6 @@ export interface CanvasPosition {
 }
 
 export interface ContentNodeData {
-	label?: string;
 	prompt?: string;
 	promptDocument?: ContentPromptDocument;
 	promptOptimization?: ContentPromptOptimization;
@@ -57,6 +57,8 @@ export interface ContentNodeInputBinding {
 export interface ContentNode {
 	id: string;
 	kind: ContentNodeKind;
+	/** Persisted, user-facing node identity. Older in-memory test fixtures may omit it. */
+	name?: string;
 	position: CanvasPosition;
 	width?: number;
 	height?: number;
@@ -137,6 +139,14 @@ export interface ContentProjectDocument {
 	timeline: {
 		tracks: TimelineTrack[];
 	};
+}
+
+export interface ContentProjectRuntimeDocument {
+	schemaVersion: typeof CONTENT_CREATION_RUNTIME_SCHEMA_VERSION;
+	projectId: string;
+	updatedAt: string;
+	jobs: GenerationJob[];
+	nodeStatuses: Record<string, ContentNodeStatus>;
 }
 
 export function createContentProject(cwd: string | null, now = new Date().toISOString()): ContentProjectDocument {

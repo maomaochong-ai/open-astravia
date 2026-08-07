@@ -260,7 +260,7 @@ export class ContentGenerationService {
 				resolution: node.data.resolution,
 				references,
 			});
-			const fileName = generatedFileName(node.data.label, generated.kind, assetId, generated.mimeType);
+			const fileName = generatedFileName(node.name, generated.kind, assetId, generated.mimeType);
 			const stored = await this.artifacts.putGenerated(cwd, fileName, generated);
 			return await this.workspace.dispatch(cwd, [
 				{

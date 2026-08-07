@@ -12,6 +12,7 @@ import { contentNodeDataEqual } from "../node/content-node-data-equal";
 import { resolveContentConnection } from "../node/connections";
 import { createDefaultContentNodeData } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
+import { createContentPromptDocument } from "../node/prompt-document";
 
 export type ContentProjectCommand =
 	| {
@@ -19,10 +20,12 @@ export type ContentProjectCommand =
 			node: {
 				id?: string;
 				kind: ContentNodeKind;
+				name?: string;
 				position: CanvasPosition;
 				data?: ContentNode["data"];
 			};
 	  }
+	| { type: "node.rename"; nodeId: string; name: string }
 	| { type: "node.update"; nodeId: string; data: ContentNode["data"] }
 	| { type: "node.move"; nodeId: string; position: CanvasPosition }
 	| { type: "node.resize"; nodeId: string; width: number; height: number; position?: CanvasPosition }
@@ -100,6 +103,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			project.graph.nodes.push({
 				id,
 				kind: command.node.kind,
+				name: command.node.name?.trim() || defaultNodeName(project, command.node.kind),
 				position: command.node.position,
 				...size,
 				status: "idle",
@@ -107,9 +111,19 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			});
 			return;
 		}
+		case "node.rename": {
+			const name = command.name.trim();
+			if (!name) throw new ContentProjectCommandError("node name must not be empty");
+			findNode(project, command.nodeId).name = name;
+			return;
+		}
 		case "node.update": {
 			const node = findNode(project, command.nodeId);
-			node.data = { ...node.data, ...command.data };
+			const nextData = { ...node.data, ...command.data };
+			if (command.data.prompt !== undefined && command.data.promptDocument === undefined) {
+				nextData.promptDocument = createContentPromptDocument(nextData);
+			}
+			node.data = nextData;
 			return;
 		}
 		case "node.move": {
@@ -306,6 +320,11 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			return;
 		}
 	}
+}
+
+function defaultNodeName(project: ContentProjectDocument, kind: ContentNodeKind): string {
+	const ordinal = project.graph.nodes.filter((node) => node.kind === kind).length + 1;
+	return `${kind} ${ordinal}`;
 }
 
 export function applyContentProjectCommands(

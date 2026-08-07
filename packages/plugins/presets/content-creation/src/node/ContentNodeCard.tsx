@@ -30,6 +30,7 @@ import { isImportedMediaFile, readImportedMediaFile } from "./readImportedMediaF
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
 	kind: ContentNodeKind;
+	name: string;
 	nodeData: ContentNodeData;
 	assets: readonly ContentAsset[];
 	connectedAssets: readonly ConnectedContentAsset[];
@@ -45,6 +46,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	onDelete: () => void;
 	onDuplicate: () => void;
 	onToggleLock: () => void;
+	onRename: (name: string) => Promise<void>;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onResize: (position: CanvasPosition, width: number, height: number) => void;
 	onRunNode: () => Promise<void>;
@@ -69,7 +71,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const [importingDrop, setImportingDrop] = useState(false);
 	const [focusPromptRequest, setFocusPromptRequest] = useState(0);
 	const definition = getContentNodeDefinition(data.kind);
-	const title = data.nodeData.label?.trim() || t(`node.kind.${data.kind}`);
+	const title = data.name || t(`node.kind.${data.kind}`);
 	const singleSelection = selected && selectionCount === 1;
 	const showQuickToolbar = singleSelection || (hovered && selectionCount === 0);
 	const isResizable = !data.locked && (definition.category === "generation" || definition.category === "resource");
@@ -257,6 +259,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				<div className="max-w-[calc(100vw-32px)]">
 					<ContentNodeEditor
 						kind={data.kind}
+						name={data.name}
 						status={data.status}
 						data={data.nodeData}
 						properties={definition.properties}
@@ -268,6 +271,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						referenceAssets={data.referenceAssets}
 						focusPromptRequest={focusPromptRequest}
 						onUpdate={data.onUpdate}
+						onRename={data.onRename}
 						onRunNode={data.onRunNode}
 						onImportAssets={data.onImportAssets}
 						onImportReferences={data.onImportReferences}
