@@ -1,0 +1,21 @@
+{
+	"name": "@vetta/docs-site",
+	"version": "0.55.3",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "astro dev --host 0.0.0.0",
+		"build": "astro build",
+		"preview": "astro preview --host 0.0.0.0",
+		"check": "astro check"
+	},
+	"dependencies": {
+		"@astrojs/starlight": "0.37.7",
+		"astro": "5.18.2",
+		"lucide-astro": "0.556.0"
+	},
+	"devDependencies": {
+		"@astrojs/check": "0.9.10",
+		"typescript": "~5.9.3"
+	}
+}
