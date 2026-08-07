@@ -1,5 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
@@ -115,8 +115,8 @@ describe("Coding Agent Child Composition policy", () => {
 });
 
 function compositionFixture() {
-	const createdSession = { sessionId: "child-create" } as GreenfieldRuntimeSession;
-	const resumedSession = { sessionId: "child-resume" } as GreenfieldRuntimeSession;
+	const createdSession = { sessionId: "child-create" } as RuntimeSession;
+	const resumedSession = { sessionId: "child-resume" } as RuntimeSession;
 	const createSession = vi.fn(async (_options: CodingAgentRuntimeSessionOptions) => createdSession);
 	const resumeSession = vi.fn(async (_options: CodingAgentRuntimeSessionOptions) => resumedSession);
 	const appendSessionContext = vi.fn((_sessionId: string, _records: readonly SessionContextRecord[]) => {});

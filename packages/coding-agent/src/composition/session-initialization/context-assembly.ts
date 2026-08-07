@@ -2,9 +2,9 @@ import type { Message } from "@vetta/ai";
 import { createEcosystemHookRuntime, type EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import {
 	type ConversationScenario,
-	GreenfieldRuntimeModel,
-	type GreenfieldRuntimeResourceContext,
 	type InitializationRollbackTask,
+	RuntimeModel,
+	type RuntimeResourceContext,
 } from "@vetta/runtime-core";
 import { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
@@ -26,7 +26,7 @@ export interface CodingAgentSessionContextAssemblyOptions {
 	readonly sessionOptions: CodingAgentRuntimeSessionOptions;
 	readonly sessionCwd: string;
 	readonly scenario: ConversationScenario;
-	readonly resourceContext: GreenfieldRuntimeResourceContext;
+	readonly resourceContext: RuntimeResourceContext;
 	readonly peripherals: CodingAgentSessionPeripheralAssembly;
 	readonly modelAdapter: CodingAgentRuntimeModelAdapter;
 	readonly extensionEvents: CodingAgentExtensionRunAdapter;
@@ -43,7 +43,7 @@ export interface CodingAgentSessionContextAssemblyOptions {
 }
 
 export interface CodingAgentSessionContextAssembly {
-	readonly modelRuntime: GreenfieldRuntimeModel;
+	readonly modelRuntime: RuntimeModel;
 	readonly memoryController?: CodingAgentMemoryController;
 	readonly hookRuntime: EcosystemHookRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
@@ -55,7 +55,7 @@ export function createCodingAgentSessionContextAssembly(
 	options: CodingAgentSessionContextAssemblyOptions,
 ): CodingAgentSessionContextAssembly {
 	const { peripherals, profile, sessionOptions } = options;
-	const modelRuntime = new GreenfieldRuntimeModel({
+	const modelRuntime = new RuntimeModel({
 		initialModel: sessionOptions.model ?? profile.initialModel,
 		initialThinkingLevel: sessionOptions.thinkingLevel ?? profile.initialThinkingLevel,
 		catalog: options.modelAdapter,

@@ -2,9 +2,9 @@ import type { UserMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { createSeededConversationDocument } from "../../src/conversation/index.js";
 import type { ConversationContinuedEvent, StoredConversation } from "../../src/kernel/index.js";
-import { GreenfieldSessionProjection, mapGreenfieldKernelEventToSessionEvents } from "../../src/runtime-host/index.js";
+import { mapKernelEventToSessionEvents, RuntimeSessionProjection } from "../../src/runtime-host/index.js";
 
-describe("Greenfield session continuation projection", () => {
+describe("Runtime session continuation projection", () => {
 	it("rebinds a projection before applying the persisted turn continuation", () => {
 		const sourceConversation: StoredConversation = {
 			sessionId: "source-session",
@@ -14,7 +14,7 @@ describe("Greenfield session continuation projection", () => {
 			events: [],
 		};
 		const sourceDocument = createSeededConversationDocument({ sessionId: "source-session", createdAt: 1 }, [], null);
-		const projection = new GreenfieldSessionProjection(sourceConversation, sourceDocument);
+		const projection = new RuntimeSessionProjection(sourceConversation, sourceDocument);
 		const seedDocument = createSeededConversationDocument(
 			{
 				sessionId: "target-session",
@@ -81,7 +81,7 @@ describe("Greenfield session continuation projection", () => {
 			revision: 2,
 		});
 		expect(projection.readMessages().map((message) => message.content)).toEqual(["kept"]);
-		expect(mapGreenfieldKernelEventToSessionEvents(transition)).toMatchObject([
+		expect(mapKernelEventToSessionEvents(transition)).toMatchObject([
 			{
 				type: "session.path_changed",
 				sessionId: "target-session",

@@ -133,7 +133,7 @@ async function disposeRuntimeSession(
 function readInitialModel(modelRuntime: CodingAgentRuntimeModelSource): Model<Api> {
 	const model = modelRuntime.getAvailable()[0];
 	if (!model) {
-		throw new Error("Greenfield Knowledge Processing requires at least one available model");
+		throw new Error("Knowledge Processing requires at least one available model");
 	}
 	return model;
 }

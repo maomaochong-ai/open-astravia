@@ -243,7 +243,7 @@ describe("Coding Agent SDK session integration", () => {
 		sdkSessions.push(session);
 
 		await expect(session.switchSession(join(conversationDir, "invalid.conversation.jsonl"))).rejects.toThrow(
-			"Greenfield session path is invalid",
+			"Session path is invalid",
 		);
 		expect(session.sessionId).toBe("sdk-switch-source");
 		await expect(session.prompt("still usable")).resolves.toBeUndefined();

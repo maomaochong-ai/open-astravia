@@ -27,7 +27,7 @@ import { composeModelCallSystemPrompt, resolveModelCallFrame } from "./model-cal
 import { RuntimeToolExecutionError } from "./tool-execution-error.js";
 
 export interface AgentCoreTurnEngineOptions {
-	/** 兼容静态组合；Greenfield 应通过 TurnEngineRequest.modelBinding 提供模型。 */
+	/** 兼容静态组合；生产 Runtime 应通过 TurnEngineRequest.modelBinding 提供模型。 */
 	readonly model?: Model<Api>;
 	readonly streamOptions?: Omit<SimpleStreamOptions, "sessionId" | "signal">;
 	readonly streamFn?: StreamFn;
@@ -36,7 +36,7 @@ export interface AgentCoreTurnEngineOptions {
 	readonly tracer?: AgentLoopConfig["tracer"];
 	/** Turn 共享的观测策略；实际 Session 身份由 execute 请求覆盖。 */
 	readonly tracing?: AgentLoopConfig["tracing"];
-	/** Greenfield 按 Turn binding 的精确模型解析凭证，避免切模后读取另一个模型的凭证。 */
+	/** 按 Turn binding 的精确模型解析凭证，避免切模后读取另一个模型的凭证。 */
 	readonly resolveApiKey?: (model: Model<Api>) => Promise<string | undefined> | string | undefined;
 }
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
-import { type GreenfieldRuntimeSession, InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
+import { InitializationRollbackScope, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
 import { FileConversationRuntimeSessionCatalog, resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type {
 	CodingAgentRuntimeComposition,
@@ -56,7 +56,7 @@ export interface CodingAgentSdkOwnedResource {
 }
 
 export interface CodingAgentSdkSessionInitializationContext {
-	readonly session: GreenfieldRuntimeSession;
+	readonly session: RuntimeSession;
 	readonly composition: CodingAgentRuntimeComposition;
 	readonly source: "initial" | "transition";
 }
@@ -66,7 +66,7 @@ export type CodingAgentSdkSessionInitializer = (
 ) => Promise<CodingAgentSdkOwnedResource | undefined>;
 
 export type CodingAgentSdkSessionCapabilityHostFactory = (
-	context: CodingAgentSdkSessionInitializationContext & { readonly readSession: () => GreenfieldRuntimeSession },
+	context: CodingAgentSdkSessionInitializationContext & { readonly readSession: () => RuntimeSession },
 ) => CodingAgentSdkSessionCapabilityPort;
 
 export interface CodingAgentSdkActiveSessionCapabilityHostContext {
@@ -83,7 +83,7 @@ export interface CodingAgentSdkSessionFactoryResult {
 }
 
 /**
- * Greenfield SDK 的内部 Composition Root。
+ * Coding Agent SDK 的内部 Composition Root。
  *
  * 包根兼容工厂不直接进入这里；本工厂只接受已经完成产品资源解析的中立
  * Composition 参数，并显式处理存储目标、create/resume 路由与失败回滚。
@@ -99,7 +99,7 @@ export async function createCodingAgentSdkSession(
 	try {
 		storage = resolveCodingAgentSdkSessionStorage(options.storage);
 	} catch (error) {
-		return rollback.rollback(error, "Greenfield SDK storage resolution and rollback failed");
+		return rollback.rollback(error, "SDK storage resolution and rollback failed");
 	}
 	let composition: CodingAgentRuntimeComposition;
 	try {
@@ -109,7 +109,7 @@ export async function createCodingAgentSdkSession(
 			createConversationPersistence: storage.createConversationPersistence,
 		});
 	} catch (error) {
-		return rollback.rollback(error, "Greenfield SDK composition initialization failed");
+		return rollback.rollback(error, "SDK composition initialization failed");
 	}
 	rollback.defer({ id: "runtime-composition", rollback: () => composition.dispose() });
 
@@ -174,13 +174,13 @@ export async function createCodingAgentSdkSession(
 			() => activeResource,
 		);
 		const runtime = bindCodingAgentSdkActiveSessionRuntime(sessionHost, capabilityHost, () =>
-			cleanup.run("Failed to dispose Greenfield SDK active session resources"),
+			cleanup.run("Failed to dispose SDK active session resources"),
 		);
 		const session = new CodingAgentSdkActiveSessionAdapter(runtime, activeCapabilities, options.onSessionClosed);
 		rollback.commit();
 		return { session };
 	} catch (error) {
-		return rollback.rollback(error, "Greenfield SDK session initialization and rollback failed");
+		return rollback.rollback(error, "SDK session initialization and rollback failed");
 	}
 }
 
@@ -267,7 +267,7 @@ const EMPTY_SESSION_CATALOG: RuntimeSessionCatalog = {
 	listProjects: async () => [],
 	listSessions: async () => [],
 	renameSession: async () => {
-		throw new Error("In-memory Greenfield SDK sessions cannot be renamed through a file catalog");
+		throw new Error("In-memory SDK sessions cannot be renamed through a file catalog");
 	},
 	deleteSessionArtifacts: async () => {},
 };

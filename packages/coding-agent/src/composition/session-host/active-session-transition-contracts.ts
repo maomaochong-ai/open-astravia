@@ -1,8 +1,4 @@
-import type {
-	GreenfieldRuntimeSession,
-	GreenfieldRuntimeSessionBackend,
-	RuntimeSessionCatalog,
-} from "@vetta/runtime-core";
+import type { KernelRuntimeSessionBackend, RuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import type {
 	CodingAgentSessionTransition,
 	CodingAgentSessionTransitionLifecycle,
@@ -18,7 +14,7 @@ export type {
 } from "../../host/session-transition/contracts.js";
 
 export interface CodingAgentSessionTransitionRuntimePort {
-	readonly backend: GreenfieldRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
+	readonly backend: KernelRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
 	readonly sessionHooks: CodingAgentRuntimeSessionHookLifecycle;
 	quiesceSessionBackgroundCommands(sessionId: string): Promise<void>;
 	preserveSessionExecutionContext(sourceSessionId: string, targetSessionId: string): Promise<void>;
@@ -26,7 +22,7 @@ export interface CodingAgentSessionTransitionRuntimePort {
 
 export interface CodingAgentActiveSessionHostOptions {
 	readonly runtime: CodingAgentSessionTransitionRuntimePort;
-	readonly initialSession: GreenfieldRuntimeSession;
+	readonly initialSession: RuntimeSession;
 	readonly sessionOptions: Omit<CodingAgentRuntimeSessionOptions, "sessionId" | "parentSessionPath" | "parentEntryId">;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
@@ -35,6 +31,6 @@ export interface CodingAgentActiveSessionHostOptions {
 	readonly lifecycle?: CodingAgentSessionTransitionLifecycle;
 	readonly onTransitionCleanupError?: (
 		error: AggregateError,
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
 	) => void;
 }

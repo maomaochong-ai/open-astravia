@@ -30,7 +30,7 @@ export interface FileConversationRuntimeSessionCatalogOptions {
 	readonly ownershipManager?: ConversationOwnershipManager;
 }
 
-/** Greenfield conversation 文件的离线目录与生命周期适配器。 */
+/** Native conversation 文件的离线目录与生命周期适配器。 */
 export class FileConversationRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	private readonly roots: readonly RuntimeConversationSessionRoot[];
 	private readonly ownershipManager: ConversationOwnershipManager;
@@ -135,7 +135,7 @@ export class FileConversationRuntimeSessionCatalog implements RuntimeSessionCata
 	}
 }
 
-/** Greenfield conversation 文件到 Runtime 历史合同的同步只读投影。 */
+/** Native conversation 文件到 Runtime 历史合同的同步只读投影。 */
 export class FileConversationRuntimeSessionFileHistoryReader implements RuntimeSessionFileHistoryReader {
 	canRead(sessionPath: string): boolean {
 		try {
@@ -150,7 +150,7 @@ export class FileConversationRuntimeSessionFileHistoryReader implements RuntimeS
 		const text = readFileSync(sessionPath, "utf8");
 		const header = parseConversationHeader(text);
 		if (!header || !isCanonicalConversationPath(sessionPath, header.sessionId)) {
-			throw new Error(`Unsupported Greenfield conversation file: ${sessionPath}`);
+			throw new Error(`Unsupported native conversation file: ${sessionPath}`);
 		}
 		const file = parseConversationFile(text, header.sessionId);
 		return { history: projectConversationDocumentHistory(documentFromFile(header.sessionId, file)) };
@@ -161,7 +161,7 @@ async function readSessionHistoryInfo(sessionPath: string, fallbackCwd: string):
 	const text = await readFile(sessionPath, "utf8");
 	const header = parseConversationHeader(text);
 	if (!header || !isCanonicalConversationPath(sessionPath, header.sessionId)) {
-		throw new Error(`Unsupported Greenfield conversation file: ${sessionPath}`);
+		throw new Error(`Unsupported native conversation file: ${sessionPath}`);
 	}
 	const document = documentFromFile(header.sessionId, parseConversationFile(text, header.sessionId));
 	const history = projectConversationDocumentHistory(document);
@@ -208,7 +208,7 @@ function normalizeMessageText(text: string): string | undefined {
 async function requireConversationHeader(sessionPath: string): Promise<ReadConversationFileHeader> {
 	const header = await readConversationHeader(sessionPath);
 	if (!header || !isCanonicalConversationPath(sessionPath, header.sessionId)) {
-		throw new Error(`Unsupported Greenfield conversation file: ${sessionPath}`);
+		throw new Error(`Unsupported native conversation file: ${sessionPath}`);
 	}
 	return header;
 }

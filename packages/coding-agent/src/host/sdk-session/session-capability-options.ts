@@ -1,9 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type {
-	AgentPluginRuntimeConfig,
-	GreenfieldRuntimeSession,
-	RuntimeSessionInputQueueMode,
-} from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig, RuntimeSession, RuntimeSessionInputQueueMode } from "@vetta/runtime-core";
 import type {
 	CodingAgentMemoryConfiguration,
 	CodingAgentPromptTemplate,
@@ -24,7 +20,7 @@ export interface CodingAgentSdkSessionCapabilitySettings {
 }
 
 export interface CodingAgentSdkSessionCapabilityHostOptions {
-	readonly readSession: () => GreenfieldRuntimeSession;
+	readonly readSession: () => RuntimeSession;
 	readonly readAvailableModels?: () => Promise<readonly Model<Api>[]>;
 	readonly scopedModels?: readonly CodingAgentScopedModel[];
 	readonly initialAgentMode?: string;

@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeResourceContext } from "@vetta/runtime-core";
+import type { RuntimeResourceContext } from "@vetta/runtime-core";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
@@ -47,7 +47,7 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 		pluginMcpRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>(),
 		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
 		configurationStates: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>(),
-		resourceContexts: new InMemoryCodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>(),
+		resourceContexts: new InMemoryCodingAgentSessionValueIndex<RuntimeResourceContext>(),
 		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>(),
 		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionHookController>(),

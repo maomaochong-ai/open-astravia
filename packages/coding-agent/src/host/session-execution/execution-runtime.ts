@@ -1,6 +1,6 @@
 import {
-	type GreenfieldRuntimeResourceContext,
 	type RuntimeExecutionModeUpdate,
+	type RuntimeResourceContext,
 	type RuntimeSessionExecutionController,
 	RuntimeSessionHostInteractionBroker,
 	type SessionExecutionMode,
@@ -47,7 +47,7 @@ export interface CodingAgentSessionExecutionRuntimeOptions {
 	readonly macosSandboxExecPath?: string;
 	readonly readSessionId: () => string;
 	readonly resolveToolEntry?: (toolName: string) => CodingToolCatalogEntry | undefined;
-	readonly resourceContext: GreenfieldRuntimeResourceContext;
+	readonly resourceContext: RuntimeResourceContext;
 }
 
 /** Session-local 的命令、后台任务、sandbox 与宿主交互组合。 */
@@ -142,7 +142,7 @@ export class CodingAgentSessionExecutionRuntime {
 					source: "tool",
 				})
 				.catch((error: unknown) => {
-					console.warn("[greenfield-runtime] failed to publish background task observation", error);
+					console.warn("[coding-agent-runtime] failed to publish background task observation", error);
 				});
 		});
 		this.disposeTaskNotifications = this.backgroundService.subscribeNotifications((task) => {
@@ -156,7 +156,7 @@ export class CodingAgentSessionExecutionRuntime {
 					},
 				])
 				.catch((error: unknown) => {
-					console.warn("[greenfield-runtime] failed to deliver background task notification", error);
+					console.warn("[coding-agent-runtime] failed to deliver background task notification", error);
 				});
 		});
 	}

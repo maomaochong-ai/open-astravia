@@ -8,10 +8,10 @@ import {
 } from "@vetta/coding-agent/composition";
 import type {
 	ConversationScenario,
-	GreenfieldRuntimeSession,
 	RuntimeHostSessionAssembly,
 	RuntimeHostSessionAssemblyAssessment,
 	RuntimeHostSessionBackend,
+	RuntimeSession,
 	RuntimeSessionCreateRequest,
 } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
@@ -89,7 +89,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		return entry.backend.createAssembly(request);
 	}
 
-	readSession(sessionId: string): GreenfieldRuntimeSession | undefined {
+	readSession(sessionId: string): RuntimeSession | undefined {
 		for (const entry of this.resolvedEntries.values()) {
 			const session = entry.backend.readSession(sessionId);
 			if (session) return session;

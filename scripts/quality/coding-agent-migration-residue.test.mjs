@@ -21,6 +21,41 @@ describe("Coding Agent migration residue gate", () => {
 		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([]);
 	});
 
+	it("rejects source compatibility shims, unclassified Greenfield text and migration test filenames", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/extensions/session-contracts.ts",
+				text: "interface Writer { isPersisted(): boolean }",
+			},
+			{
+				path: "packages/coding-agent/src/extensions/runtime.ts",
+				text: "// Greenfield compatibility",
+			},
+			{
+				path: "packages/coding-agent/test/greenfield-session.test.ts",
+				text: "export {};",
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/extensions/session-contracts.ts: retired migration reference (isPersisted)",
+			"codingAgentGreenfieldTestFiles: 1 exceeds migration residue limit 0",
+			"unclassifiedProductionGreenfieldOccurrences: 1 exceeds migration residue limit 0",
+			"sourceCompatibilityShimReferences: 1 exceeds migration residue limit 0",
+		]);
+	});
+
+	it("allows frozen Greenfield protocol literals only at their owning boundaries", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
+				text: 'type Kind = "greenfield" | "greenfield-print";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([]);
+	});
+
 	it("rejects retired Extension compatibility migration contracts", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{
@@ -80,7 +115,7 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
-	it("rejects SDK Session migration identities while allowing the upstream Runtime Session type", () => {
+	it("rejects SDK Session and upstream Runtime migration identities", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{
 				path: "packages/coding-agent/src/host/sdk-session/runtime-binding.ts",
@@ -103,6 +138,7 @@ describe("Coding Agent migration residue gate", () => {
 			"packages/coding-agent/src/host/sdk-session/runtime-binding.ts: retired SDK Session migration identity (bindGreenfieldSdkSessionRuntime)",
 			"packages/coding-agent/src/public-api/sdk/sdk-session-contract.ts: retired SDK Session migration identity (CodingAgentGreenfieldSdkSession)",
 			"packages/coding-agent/src/host/coding-agent-sdk-extension-transition-adapter.ts: retired SDK Session migration identity (GreenfieldSdkOwnedResource)",
+			"productRuntimeMigrationIdentities: 1 exceeds migration residue limit 0",
 		]);
 	});
 
@@ -133,6 +169,25 @@ describe("Coding Agent migration residue gate", () => {
 		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
 			"desktopRuntimeMigrationFiles: 1 exceeds migration residue limit 0",
 			"desktopRuntimeMigrationIdentities: 1 exceeds migration residue limit 0",
+			"productRuntimeMigrationIdentities: 1 exceeds migration residue limit 0",
+		]);
+	});
+
+	it("rejects Runtime Core migration filenames and product Runtime migration identities", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/runtime-core/src/runtime-host/greenfield-session-backend.ts",
+				text: "export interface GreenfieldRuntimeSession {}",
+			},
+			{
+				path: "packages/coding-agent/src/host/session-host.ts",
+				text: 'import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"runtimeCoreMigrationFiles: 1 exceeds migration residue limit 0",
+			"productRuntimeMigrationIdentities: 2 exceeds migration residue limit 0",
 		]);
 	});
 
@@ -271,6 +326,7 @@ describe("Coding Agent migration residue gate", () => {
 			"packages/coding-agent/src/composition/greenfield-runtime-composition.ts: retired migration reference (createGreenfieldRuntimeComposition)",
 			"packages/coding-agent/src/composition/greenfield-runtime-composition.ts: retired migration reference (GreenfieldRuntimeComposition)",
 			"compositionGreenfieldFiles: 1 exceeds migration residue limit 0",
+			"productRuntimeMigrationIdentities: 1 exceeds migration residue limit 0",
 		]);
 	});
 
@@ -291,6 +347,7 @@ describe("Coding Agent migration residue gate", () => {
 			"packages/coding-agent/src/composition/greenfield-runtime-host-session-backend.ts: retired migration reference (resolveGreenfieldSessionIdFromPath)",
 			"packages/coding-agent/src/composition/greenfield-runtime-host-session-backend.ts: retired migration reference (GreenfieldRuntimeHostSessionBackend)",
 			"compositionGreenfieldFiles: 1 exceeds migration residue limit 0",
+			"productRuntimeMigrationIdentities: 1 exceeds migration residue limit 0",
 		]);
 	});
 
@@ -384,6 +441,7 @@ describe("Coding Agent migration residue gate", () => {
 			"packages/coding-agent/src/composition/greenfield-session-execution-runtime.ts: retired migration file must stay deleted",
 			"packages/coding-agent/src/composition/greenfield-session-execution-runtime.ts: retired migration reference (GreenfieldSessionExecutionRuntime)",
 			"compositionGreenfieldFiles: 1 exceeds migration residue limit 0",
+			"productRuntimeMigrationIdentities: 1 exceeds migration residue limit 0",
 		]);
 	});
 

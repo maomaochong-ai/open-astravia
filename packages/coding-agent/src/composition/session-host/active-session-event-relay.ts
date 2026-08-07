@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 
 /** Keeps host-level listeners stable while the active Runtime Session changes. */
 export class CodingAgentActiveSessionEventRelay {
@@ -10,7 +10,7 @@ export class CodingAgentActiveSessionEventRelay {
 	>();
 	private suppressEvents = false;
 
-	constructor(session: GreenfieldRuntimeSession) {
+	constructor(session: RuntimeSession) {
 		this.bind(session);
 	}
 
@@ -26,7 +26,7 @@ export class CodingAgentActiveSessionEventRelay {
 		return () => this.observationListeners.delete(listener);
 	}
 
-	replaceSession(session: GreenfieldRuntimeSession, replaceActiveSession: () => void): void {
+	replaceSession(session: RuntimeSession, replaceActiveSession: () => void): void {
 		this.releaseEvents();
 		this.releaseObservations();
 		replaceActiveSession();
@@ -56,14 +56,14 @@ export class CodingAgentActiveSessionEventRelay {
 		this.observationListeners.clear();
 	}
 
-	private bind(session: GreenfieldRuntimeSession): void {
+	private bind(session: RuntimeSession): void {
 		this.eventUnsubscribe = session.subscribe((event) => {
 			if (this.suppressEvents) return;
 			for (const listener of this.listeners) {
 				try {
 					listener(event);
 				} catch (error) {
-					console.warn("[GreenfieldActiveSessionHost] Event listener failed", error);
+					console.warn("[CodingAgentActiveSessionHost] Event listener failed", error);
 				}
 			}
 		});
@@ -74,7 +74,7 @@ export class CodingAgentActiveSessionEventRelay {
 					try {
 						await listener(observation);
 					} catch (error) {
-						console.warn("[GreenfieldActiveSessionHost] Execution observation listener failed", error);
+						console.warn("[CodingAgentActiveSessionHost] Execution observation listener failed", error);
 					}
 				}
 			});

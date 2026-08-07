@@ -121,7 +121,7 @@ export interface ContextProvider {
 	provide(input: ContextProviderInput, signal: AbortSignal): Promise<readonly Message[]>;
 }
 
-/** 早期 Greenfield V2 只记录计数；保留读取兼容，但不会改变 Conversation Document 投影。 */
+/** 早期 V2 记录只包含计数；保留读取兼容，但不会改变 Conversation Document 投影。 */
 export interface LegacyCompactionRecord {
 	readonly id: string;
 	readonly sourceMessageCount: number;

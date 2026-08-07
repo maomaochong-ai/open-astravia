@@ -1,8 +1,8 @@
 import type { Message } from "@vetta/ai";
 import type {
 	ConversationDocument,
-	GreenfieldRuntimeDocumentParticipant,
-	GreenfieldRuntimeDocumentParticipantContext,
+	RuntimeDocumentParticipant,
+	RuntimeDocumentParticipantContext,
 	RuntimeSubagentSnapshot,
 } from "@vetta/runtime-core";
 import type {
@@ -69,9 +69,7 @@ export interface CodingAgentSubagentRuntimeOptions {
  * 调度器只认识 Child Handle；具体 Session、模型、工具、存储和 MCP 继承由
  * Composition Root 注入的 Child Factory 决定。
  */
-export class CodingAgentSubagentRuntime
-	implements CodingAgentSubagentWorkRuntime, GreenfieldRuntimeDocumentParticipant
-{
+export class CodingAgentSubagentRuntime implements CodingAgentSubagentWorkRuntime, RuntimeDocumentParticipant {
 	readonly feature: AgentFeatureDefinition;
 	private readonly coordinator: SubagentCoordinator<CodingAgentSubagentProfile>;
 	private readonly persistence: CodingAgentSubagentStatePersistence;
@@ -147,7 +145,7 @@ export class CodingAgentSubagentRuntime
 		return toRuntimeSnapshot(this.coordinator.interrupt(target));
 	}
 
-	initialize(document: ConversationDocument, context: GreenfieldRuntimeDocumentParticipantContext): Promise<void> {
+	initialize(document: ConversationDocument, context: RuntimeDocumentParticipantContext): Promise<void> {
 		return this.persistence.initialize(document, context);
 	}
 

@@ -4,65 +4,65 @@
  * 目录职责：
  * - runtime-host.ts      会话生命周期与编排（SessionFacade）
  * - session-events.ts    旧事件 → Session Observation → SessionEvent 映射
- * - greenfield-session-events.ts  KernelEvent → SessionEvent 映射
+ * - kernel-session-events.ts      KernelEvent → SessionEvent 映射
  * - history.ts           会话历史 / 分支 / turn timing 解析
  * - peripheral-tasks.ts  自动标题、输入预测（轻量 LLM + 失败轮转）
  * - plugin-debug.ts      插件调试日志
  * - types.ts             共享类型
  */
 
-export type {
-	GreenfieldRuntimeCustomEntryInput,
-	GreenfieldRuntimeDocumentParticipant,
-	GreenfieldRuntimeDocumentParticipantContext,
-} from "./greenfield-document-participant.js";
 export {
-	GreenfieldRuntimeModel,
-	type GreenfieldRuntimeModelOptions,
-	type GreenfieldRuntimeModelRuntime,
-	type RuntimeModelCatalog,
-	type RuntimeModelCredentialResolver,
-} from "./greenfield-model-runtime.js";
+	ComposedRuntimeFactory,
+	type ComposedRuntimeFactoryOptions,
+	type RuntimeAssemblyOperation,
+	type RuntimeResourceContext,
+	type RuntimeResources,
+	type RuntimeSessionPeripherals,
+} from "./composed-runtime-factory.js";
 export {
-	ComposedGreenfieldRuntimeFactory,
-	type ComposedGreenfieldRuntimeFactoryOptions,
-	type GreenfieldRuntimeOperation,
-	type GreenfieldRuntimeResourceContext,
-	type GreenfieldRuntimeResources,
-	type GreenfieldRuntimeSessionPeripherals,
-} from "./greenfield-runtime-factory.js";
+	InitializationRollbackScope,
+	type InitializationRollbackTask,
+} from "./initialization-rollback-scope.js";
 export {
-	type GreenfieldRuntimeAssembly,
-	type GreenfieldRuntimeFactory,
-	GreenfieldRuntimeSession,
-	GreenfieldRuntimeSessionBackend,
-	type GreenfieldRuntimeSessionBackendOptions,
-	type GreenfieldRuntimeSessionCoreAssembly,
-	type GreenfieldRuntimeSessionState,
+	type KernelRuntimeAssembly,
+	type KernelRuntimeFactory,
+	KernelRuntimeSessionBackend,
+	type KernelRuntimeSessionBackendOptions,
 	type RuntimeHandledPromptResult,
 	type RuntimePreparedPrompt,
 	type RuntimePromptAdapter,
 	type RuntimePromptInterceptionResult,
 	type RuntimePromptPreparationContext,
 	type RuntimePromptResult,
-} from "./greenfield-session-backend.js";
-export {
-	GreenfieldSessionContextController,
-	type GreenfieldSessionContextControllerOptions,
-} from "./greenfield-session-context-controller.js";
-export { mapGreenfieldKernelEventToSessionEvents } from "./greenfield-session-events.js";
-export {
-	type GreenfieldRuntimeDynamicState,
-	type GreenfieldRuntimeSessionIdentity,
-	type GreenfieldRuntimeStateSource,
-	GreenfieldSessionProjection,
-} from "./greenfield-session-projection.js";
-export {
-	InitializationRollbackScope,
-	type InitializationRollbackTask,
-} from "./initialization-rollback-scope.js";
+	RuntimeSession,
+	type RuntimeSessionCoreAssembly,
+	type RuntimeSessionStatus,
+} from "./kernel-runtime-session-backend.js";
+export { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
 export { RetryableCleanup, type RetryableCleanupTask } from "./retryable-cleanup.js";
+export type {
+	RuntimeCustomEntryInput,
+	RuntimeDocumentParticipant,
+	RuntimeDocumentParticipantContext,
+} from "./runtime-document-participant.js";
 export { RuntimeHost } from "./runtime-host.js";
+export {
+	RuntimeModel,
+	type RuntimeModelCatalog,
+	type RuntimeModelCredentialResolver,
+	type RuntimeModelOptions,
+	type RuntimeModelRuntime,
+} from "./runtime-model.js";
+export {
+	KernelRuntimeSessionContextController,
+	type RuntimeSessionContextControllerOptions,
+} from "./runtime-session-context-controller.js";
+export {
+	type RuntimeDynamicState,
+	type RuntimeSessionIdentity,
+	RuntimeSessionProjection,
+	type RuntimeStateSource,
+} from "./runtime-session-projection.js";
 export type {
 	CatalogRoutedRuntimeHostSessionBackendOptions,
 	RuntimeHostSessionAssembly,

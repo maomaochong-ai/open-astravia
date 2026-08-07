@@ -15,7 +15,7 @@ import type {
 	RuntimeSessionContextController,
 } from "./session-ports.js";
 
-export interface GreenfieldSessionContextControllerOptions {
+export interface RuntimeSessionContextControllerOptions {
 	readonly session: AgentSession;
 	readonly repository: ConversationRepository;
 	readonly conversationDocumentReader: ConversationDocumentReader;
@@ -25,12 +25,12 @@ export interface GreenfieldSessionContextControllerOptions {
 	readonly committer: ContextCompactionCommitter;
 }
 
-/** Greenfield Session 的手动压缩、取消和自动压缩开关编排。 */
-export class GreenfieldSessionContextController implements RuntimeSessionContextController {
-	private readonly options: GreenfieldSessionContextControllerOptions;
+/** Runtime Session 的手动压缩、取消和自动压缩开关编排。 */
+export class KernelRuntimeSessionContextController implements RuntimeSessionContextController {
+	private readonly options: RuntimeSessionContextControllerOptions;
 	private activeController: AbortController | undefined;
 
-	constructor(options: GreenfieldSessionContextControllerOptions) {
+	constructor(options: RuntimeSessionContextControllerOptions) {
 		this.options = options;
 	}
 

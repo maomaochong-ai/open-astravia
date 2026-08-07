@@ -1,5 +1,5 @@
 import type { ImageContent, TextContent } from "@vetta/ai";
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
@@ -14,13 +14,13 @@ import type { CodingAgentSdkActiveSessionCapabilityPort } from "./runtime-contra
 
 export interface CodingAgentSdkBashPort {
 	execute(
-		session: GreenfieldRuntimeSession,
+		session: RuntimeSession,
 		command: string,
 		onChunk?: (chunk: string) => void,
 		options?: { readonly excludeFromContext?: boolean; readonly operations?: CodingAgentBashOperations },
 	): Promise<CodingAgentBashResult>;
 	record(
-		session: GreenfieldRuntimeSession,
+		session: RuntimeSession,
 		command: string,
 		result: CodingAgentBashResult,
 		options?: { readonly excludeFromContext?: boolean },
@@ -28,7 +28,7 @@ export interface CodingAgentSdkBashPort {
 	abort(): void;
 	readonly isRunning: boolean;
 	hasPending(sessionId: string): boolean;
-	quiesce(session: GreenfieldRuntimeSession): Promise<void>;
+	quiesce(session: RuntimeSession): Promise<void>;
 	dispose(): Promise<void>;
 }
 
@@ -102,7 +102,7 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 	async newSession(options?: CodingAgentNewSessionOptions): Promise<boolean> {
 		const seedInitializer = options?.setup ? this.options.createSessionSetupInitializer?.(options.setup) : undefined;
 		if (options?.setup && !seedInitializer) {
-			throw new Error("Greenfield SDK session setup compatibility is unavailable");
+			throw new Error("SDK session setup capability is unavailable");
 		}
 		const result = await this.options.sessionHost.newSession({
 			...(options?.parentSession ? { parentSession: options.parentSession } : {}),
@@ -163,7 +163,7 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 		options?: CodingAgentTreeNavigationOptions,
 	): Promise<CodingAgentTreeNavigationResult> {
 		if (!this.options.treeNavigation) {
-			throw new Error("Greenfield SDK tree navigation capability is unavailable");
+			throw new Error("SDK tree navigation capability is unavailable");
 		}
 		return this.options.treeNavigation.navigateTree(targetId, options);
 	}
@@ -222,18 +222,18 @@ export class CodingAgentSdkActiveSessionCapabilityHost implements CodingAgentSdk
 		return this.options.bash?.dispose() ?? Promise.resolve();
 	}
 
-	private readSession(): GreenfieldRuntimeSession {
+	private readSession(): RuntimeSession {
 		return this.options.sessionHost.readSession();
 	}
 
 	private requireBash(): CodingAgentSdkBashPort {
-		if (!this.options.bash) throw new Error("Greenfield SDK Bash capability is unavailable");
+		if (!this.options.bash) throw new Error("SDK Bash capability is unavailable");
 		return this.options.bash;
 	}
 }
 
 function resolveCustomMessageDeliveryMode(
-	session: GreenfieldRuntimeSession,
+	session: RuntimeSession,
 	options: { readonly triggerTurn?: boolean; readonly deliverAs?: "steer" | "followUp" | "nextTurn" } | undefined,
 ) {
 	if (options?.deliverAs === "nextTurn") return "nextTurn" as const;

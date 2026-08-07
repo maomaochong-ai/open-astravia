@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import type {
 	ConversationDocument,
-	GreenfieldRuntimeDocumentParticipant,
-	GreenfieldRuntimeDocumentParticipantContext,
+	RuntimeDocumentParticipant,
+	RuntimeDocumentParticipantContext,
 } from "@vetta/runtime-core";
 import type { StoredSessionEvent } from "@vetta/runtime-core/kernel";
 import type { SubagentDeliveryMarker, SubagentRecoveryState, SubagentSnapshot } from "@vetta/runtime-subagents";
@@ -85,12 +85,12 @@ export interface CodingAgentSubagentStatePersistenceOptions {
  *
  * Runtime Subagent Coordinator 不依赖存储；该 Participant 只负责持久化校验、折叠与串行提交。
  */
-export class CodingAgentSubagentStatePersistence implements GreenfieldRuntimeDocumentParticipant {
+export class CodingAgentSubagentStatePersistence implements RuntimeDocumentParticipant {
 	private readonly createEntryId: () => string;
 	private readonly now: () => number;
 	private readonly knownAgents = new Map<string, SubagentSnapshot>();
 	private readonly delivered = new Map<string, SubagentDeliveryMarker>();
-	private context: GreenfieldRuntimeDocumentParticipantContext | undefined;
+	private context: RuntimeDocumentParticipantContext | undefined;
 	private persistenceTail: Promise<void> = Promise.resolve();
 	private latestPersistence: Promise<void> = Promise.resolve();
 	private documentWriteDepth = 0;
@@ -102,10 +102,7 @@ export class CodingAgentSubagentStatePersistence implements GreenfieldRuntimeDoc
 		this.now = options.now ?? Date.now;
 	}
 
-	async initialize(
-		document: ConversationDocument,
-		context: GreenfieldRuntimeDocumentParticipantContext,
-	): Promise<void> {
+	async initialize(document: ConversationDocument, context: RuntimeDocumentParticipantContext): Promise<void> {
 		if (this.initialized) throw new Error("Coding Agent Subagent state persistence is already initialized");
 		this.initialized = true;
 		this.context = context;

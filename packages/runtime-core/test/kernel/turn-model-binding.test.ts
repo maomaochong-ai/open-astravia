@@ -22,7 +22,7 @@ import {
 	type TurnEngineRequest,
 	TurnPipeline,
 } from "../../src/kernel/index.js";
-import { GreenfieldRuntimeModel } from "../../src/runtime-host/index.js";
+import { RuntimeModel } from "../../src/runtime-host/index.js";
 
 describe("Turn model binding", () => {
 	it("keeps the active turn binding stable and applies model changes to the next turn", async () => {
@@ -194,8 +194,8 @@ class InMemoryConversationRepository implements ConversationRepository {
 	async close(): Promise<void> {}
 }
 
-function createModelRuntime(): GreenfieldRuntimeModel {
-	return new GreenfieldRuntimeModel({
+function createModelRuntime(): RuntimeModel {
+	return new RuntimeModel({
 		initialModel: INITIAL_MODEL,
 		initialThinkingLevel: "off",
 		catalog: {

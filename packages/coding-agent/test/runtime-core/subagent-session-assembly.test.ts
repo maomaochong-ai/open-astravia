@@ -3,7 +3,7 @@ import { Type } from "@sinclair/typebox";
 import type { Api, Message, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import { emptyHookDispatchOutcome } from "@vetta/ecosystem-adapter";
-import type { GreenfieldRuntimeResourceContext, GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeResourceContext, RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { SubagentTypeRegistry } from "@vetta/runtime-subagents";
@@ -55,7 +55,7 @@ describe("Coding Agent Subagent session assembly", () => {
 			async reportObservation(observation) {
 				observations.push(observation);
 			},
-		} satisfies Pick<GreenfieldRuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
+		} satisfies Pick<RuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
 		const runtime = createCodingAgentSubagentSessionAssembly({
 			enabled: true,
 			cwd: "C:\\workspace",
@@ -382,11 +382,11 @@ function baseOptions() {
 		resourceContext: {
 			async deliverAsyncContext() {},
 			async reportObservation() {},
-		} satisfies Pick<GreenfieldRuntimeResourceContext, "deliverAsyncContext" | "reportObservation">,
+		} satisfies Pick<RuntimeResourceContext, "deliverAsyncContext" | "reportObservation">,
 	};
 }
 
-function childSession(sessionId: string, promptInputs: string[]): GreenfieldRuntimeSession {
+function childSession(sessionId: string, promptInputs: string[]): RuntimeSession {
 	const session = {
 		sessionId,
 		createCoreAssembly: () => ({
@@ -402,7 +402,7 @@ function childSession(sessionId: string, promptInputs: string[]): GreenfieldRunt
 		dispose: async () => {},
 		subscribe: () => () => {},
 	};
-	return session as unknown as GreenfieldRuntimeSession;
+	return session as unknown as RuntimeSession;
 }
 
 function completedChild(sessionId: string) {

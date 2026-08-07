@@ -1,6 +1,6 @@
 import {
-	type GreenfieldRuntimeSession,
 	RetryableCleanup,
+	type RuntimeSession,
 	type RuntimeSessionExecutionObservation,
 	type SessionEvent,
 } from "@vetta/runtime-core";
@@ -70,11 +70,11 @@ export class CodingAgentProcessSessionHost {
 		this.cleanup.add({ id: "mcp-source", phase: 3, cleanup: () => options.mcpSource.dispose() });
 	}
 
-	readSession(): GreenfieldRuntimeSession {
+	readSession(): RuntimeSession {
 		return this.options.activeSessionHost.readSession();
 	}
 
-	startActiveSessionOperation<T>(operation: (session: GreenfieldRuntimeSession) => Promise<T>): Promise<T> {
+	startActiveSessionOperation<T>(operation: (session: RuntimeSession) => Promise<T>): Promise<T> {
 		return this.options.activeSessionHost.startActiveSessionOperation(operation);
 	}
 

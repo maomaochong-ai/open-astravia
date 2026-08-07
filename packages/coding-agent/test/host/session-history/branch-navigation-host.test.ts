@@ -1,9 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type {
-	ConversationDocument,
-	GreenfieldRuntimeSession,
-	GreenfieldRuntimeSessionCoreAssembly,
-} from "@vetta/runtime-core";
+import type { ConversationDocument, RuntimeSession, RuntimeSessionCoreAssembly } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type { ExtensionRunner } from "../../../src/extensions/index.js";
 import { CodingAgentBranchNavigationHost } from "../../../src/host/session-history/branch-navigation-host.js";
@@ -154,11 +150,11 @@ function createFixture(options: { readonly extensionSummary?: string } = {}) {
 			navigateForEdit: vi.fn(async () => ({ text: "target branch", cancelled: false })),
 		},
 		metadataController: { setLabel },
-	} as unknown as GreenfieldRuntimeSessionCoreAssembly;
+	} as unknown as RuntimeSessionCoreAssembly;
 	const session = {
 		sessionId: "session-1",
 		createCoreAssembly: () => assembly,
-	} as unknown as GreenfieldRuntimeSession;
+	} as unknown as RuntimeSession;
 	const emit = vi.fn(async (event: { readonly type: string }) => {
 		if (event.type === "session_before_tree" && options.extensionSummary) {
 			return { summary: { summary: options.extensionSummary } };
@@ -169,9 +165,8 @@ function createFixture(options: { readonly extensionSummary?: string } = {}) {
 		hasHandlers: (event: string) => event === "session_before_tree" && options.extensionSummary !== undefined,
 		emit,
 	} as unknown as ExtensionRunner;
-	const withActiveSession = async <T>(
-		operation: (activeSession: GreenfieldRuntimeSession) => Promise<T>,
-	): Promise<T> => operation(session);
+	const withActiveSession = async <T>(operation: (activeSession: RuntimeSession) => Promise<T>): Promise<T> =>
+		operation(session);
 
 	return { appendBranchSummary, clearExecutionContext, emit, runner, setLabel, withActiveSession };
 }

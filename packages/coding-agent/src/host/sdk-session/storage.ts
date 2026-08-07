@@ -50,7 +50,7 @@ export function resolveCodingAgentSdkSessionStorage(
 	if (!conversationDir) {
 		throw new CodingAgentSdkStorageError(
 			CODING_AGENT_SDK_STORAGE_ERROR_CODES.INVALID_CONVERSATION_DIR,
-			"Greenfield SDK file storage requires a conversation directory",
+			"SDK file storage requires a conversation directory",
 			target,
 		);
 	}
@@ -67,7 +67,7 @@ export function resolveCodingAgentSdkSessionStorage(
 	if (!sessionId) {
 		throw new CodingAgentSdkStorageError(
 			CODING_AGENT_SDK_STORAGE_ERROR_CODES.INVALID_SESSION_PATH,
-			`Greenfield SDK cannot resume a session outside the native conversation directory: ${target.sessionPath}`,
+			`SDK cannot resume a session outside the native conversation directory: ${target.sessionPath}`,
 			target,
 		);
 	}
@@ -84,7 +84,7 @@ function normalizeSessionId(sessionId: string | undefined, target: CodingAgentSe
 	if (normalized) return normalized;
 	throw new CodingAgentSdkStorageError(
 		CODING_AGENT_SDK_STORAGE_ERROR_CODES.INVALID_SESSION_ID,
-		"Greenfield SDK session ID must not be empty",
+		"SDK session ID must not be empty",
 		target,
 	);
 }

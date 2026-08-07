@@ -19,7 +19,7 @@ interface RuntimeSessionObservationBase {
  * Session 执行期间的瞬时观察事件。
  *
  * 该合同不依赖旧 coding-agent AgentSessionEvent，也不包含宿主生成的 eventId、
- * sessionId 与 schemaVersion。生产旧后端和 Greenfield Kernel 都先适配到这里，
+ * sessionId 与 schemaVersion。各生产执行后端都先适配到这里，
  * 再由 runtime-host 生成稳定的 SessionEvent。
  */
 export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &

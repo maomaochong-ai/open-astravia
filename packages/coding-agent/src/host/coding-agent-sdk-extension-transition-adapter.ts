@@ -1,4 +1,4 @@
-import { type GreenfieldRuntimeSession, InitializationRollbackScope } from "@vetta/runtime-core";
+import { InitializationRollbackScope, type RuntimeSession } from "@vetta/runtime-core";
 import type { CodingAgentRuntimeComposition } from "../composition/contracts/index.js";
 import type { CodingAgentExtensionEventHost, CodingAgentExtensionInitialization } from "./extensions/contracts.js";
 import type {
@@ -12,7 +12,7 @@ import type {
 } from "./session-transition/contracts.js";
 
 type ExtensionEventHostFactory = (
-	session: GreenfieldRuntimeSession,
+	session: RuntimeSession,
 	composition: CodingAgentRuntimeComposition,
 	options?: { readonly replaceExisting?: boolean },
 ) => CodingAgentExtensionEventHost;
@@ -62,7 +62,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	};
 
 	readRunner() {
-		if (!this.current) throw new Error("Greenfield SDK Extension session is not initialized");
+		if (!this.current) throw new Error("SDK Extension session is not initialized");
 		return this.current.runner;
 	}
 
@@ -79,12 +79,12 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	}
 
 	async reload(
-		session: GreenfieldRuntimeSession,
+		session: RuntimeSession,
 		composition: CodingAgentRuntimeComposition,
 		operation: () => Promise<void>,
 	): Promise<void> {
 		const previous = this.current;
-		if (!previous) throw new Error("Greenfield SDK Extension session is not initialized");
+		if (!previous) throw new Error("SDK Extension session is not initialized");
 		const rollback = new InitializationRollbackScope();
 		let next: CodingAgentExtensionEventHost | undefined;
 		let replacementAttempted = false;
@@ -116,7 +116,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 			this.hosts.set(session.sessionId, next);
 			rollback.commit();
 		} catch (error) {
-			return rollback.rollback(error, "Greenfield SDK Extension reload and rollback failed");
+			return rollback.rollback(error, "SDK Extension reload and rollback failed");
 		}
 		await previous.dispose({ emitSessionShutdown: false });
 	}
@@ -141,11 +141,11 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 	}
 
 	private async prepare(
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
 	): Promise<CodingAgentPreparedSessionBinding> {
 		const previous = this.current;
 		const next = this.hosts.get(transition.next.sessionId);
-		if (!previous || !next) throw new Error("Greenfield SDK Extension transition binding is unavailable");
+		if (!previous || !next) throw new Error("SDK Extension transition binding is unavailable");
 		return {
 			commit: async () => {
 				this.current = next;
@@ -158,9 +158,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 		};
 	}
 
-	private async after(
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
-	): Promise<void> {
+	private async after(transition: CodingAgentSessionTransition & { readonly next: RuntimeSession }): Promise<void> {
 		if (transition.kind === "fork") {
 			await this.readRunner().emit({
 				type: "session_fork",

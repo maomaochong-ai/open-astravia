@@ -4,11 +4,11 @@ import {
 	createCodingAgentRuntimeExtensionObservationAdapter,
 	projectCodingAgentRuntimeMessages,
 } from "@vetta/coding-agent/runtime";
-import type { GreenfieldRuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 
 interface PrintSessionHost {
 	readonly turnExecutor: Pick<CodingAgentTurnExecutor, "prompt">;
-	readSession(): GreenfieldRuntimeSession;
+	readSession(): RuntimeSession;
 	initializeExtensions(input: { readonly onError: (error: PrintExtensionError) => void }): Promise<void>;
 	subscribe(listener: (event: SessionEvent) => void): () => void;
 	subscribeExecutionObservations(

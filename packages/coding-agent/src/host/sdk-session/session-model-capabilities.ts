@@ -1,13 +1,13 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import { type Api, type Model, modelsAreEqual, supportsXhigh } from "@vetta/ai";
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import type { CodingAgentModelCycleResult, CodingAgentScopedModel } from "../../public-api/sdk/sdk-session-contract.js";
 import type { CodingAgentSdkSessionCapabilitySettings } from "./session-capability-options.js";
 
 const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high"];
 const THINKING_LEVELS_WITH_XHIGH: readonly ThinkingLevel[] = [...THINKING_LEVELS, "xhigh"];
 
-type SessionCore = ReturnType<GreenfieldRuntimeSession["createCoreAssembly"]>;
+type SessionCore = ReturnType<RuntimeSession["createCoreAssembly"]>;
 
 export interface CodingAgentSessionModelCapabilitiesOptions {
 	readonly readCore: () => SessionCore;

@@ -1,8 +1,4 @@
-import type {
-	ConversationDocument,
-	GreenfieldRuntimeResourceContext,
-	RuntimeMessageEnvelope,
-} from "@vetta/runtime-core";
+import type { ConversationDocument, RuntimeMessageEnvelope, RuntimeResourceContext } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { InMemoryCodingAgentSessionValueIndex } from "../../src/composition/session-lifecycle/indexes.js";
@@ -31,7 +27,7 @@ describe("Coding Agent Runtime Session Controls", () => {
 		fixture.indexes.resourceContexts.set("session", {
 			contextAppender: { append },
 			deliverAsyncContext,
-		} as unknown as GreenfieldRuntimeResourceContext);
+		} as unknown as RuntimeResourceContext);
 		fixture.indexes.executionRuntimes.set("session", {
 			quiesceBackgroundCommands,
 		} as unknown as CodingAgentSessionExecutionRuntime);
@@ -74,19 +70,15 @@ describe("Coding Agent Runtime Session Controls", () => {
 		const records: SessionContextRecord[] = [{ type: "test", content: "context", modelVisible: true }];
 
 		await expect(controls.sessionHooks.end("missing", "dispose")).rejects.toThrow(
-			"Greenfield session hook lifecycle not found: missing",
+			"Session hook lifecycle not found: missing",
 		);
 		expect(() => controls.sessionHooks.start("missing", "resume")).toThrow(
-			"Greenfield session hook lifecycle not found: missing",
+			"Session hook lifecycle not found: missing",
 		);
-		expect(() => controls.sessionHooks.discard("missing")).toThrow(
-			"Greenfield session hook lifecycle not found: missing",
-		);
-		expect(() => controls.appendSessionContext("missing", records)).toThrow(
-			"Greenfield session context not found: missing",
-		);
+		expect(() => controls.sessionHooks.discard("missing")).toThrow("Session hook lifecycle not found: missing");
+		expect(() => controls.appendSessionContext("missing", records)).toThrow("Session context not found: missing");
 		await expect(controls.deliverSessionContext("missing", records)).rejects.toThrow(
-			"Greenfield session context not found: missing",
+			"Session context not found: missing",
 		);
 		await expect(controls.quiesceSessionBackgroundCommands("missing")).resolves.toBeUndefined();
 		await expect(controls.flushMemory("missing")).resolves.toBe(0);
@@ -99,7 +91,7 @@ function createFixture() {
 		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
 		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionHookController>(),
 		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
-		resourceContexts: new InMemoryCodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>(),
+		resourceContexts: new InMemoryCodingAgentSessionValueIndex<RuntimeResourceContext>(),
 	} satisfies Pick<
 		CodingAgentSessionResourceIndexes,
 		"executionRuntimes" | "hookSessionControllers" | "memoryControllers" | "resourceContexts"

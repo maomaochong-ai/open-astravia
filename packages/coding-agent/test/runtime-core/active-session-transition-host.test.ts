@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type {
-	GreenfieldRuntimeSession,
+	RuntimeSession,
 	RuntimeSessionCatalog,
 	RuntimeSessionExecutionObservation,
 	SessionEvent,
@@ -202,7 +202,7 @@ describe("CodingAgentActiveSessionHost", () => {
 			await expect(fixture.host.switchSession(fixture.sessionPath("next"))).resolves.toEqual({ cancelled: false });
 			expect(fixture.host.readSession()).toBe(next.session);
 			expect(warning).toHaveBeenCalledWith(
-				"[GreenfieldActiveSessionHost] Failed to report committed session transition cleanup",
+				"[CodingAgentActiveSessionHost] Failed to report committed session transition cleanup",
 				expect.any(AggregateError),
 			);
 		} finally {
@@ -253,7 +253,6 @@ describe("CodingAgentActiveSessionHost", () => {
 			fixture.host.newSession({
 				parentSession: fixture.initial.path,
 				seedInitializer: createCodingAgentSessionSetupSeedInitializer(async (sessionManager) => {
-					expect(sessionManager.isPersisted()).toBe(true);
 					setupSessionFile = sessionManager.getSessionFile();
 					expect(sessionManager.getSessionId()).toBe("created");
 					sessionManager.appendMessage({
@@ -404,8 +403,8 @@ async function createFixture(
 	const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-active-session-host-"));
 	temporaryDirectories.push(conversationDir);
 	const initial = createSession("initial", sessionPath(conversationDir, "initial"));
-	const create = vi.fn<(options: { sessionId: string }) => Promise<GreenfieldRuntimeSession>>();
-	const resume = vi.fn<(options: { sessionId: string }) => Promise<GreenfieldRuntimeSession>>();
+	const create = vi.fn<(options: { sessionId: string }) => Promise<RuntimeSession>>();
+	const resume = vi.fn<(options: { sessionId: string }) => Promise<RuntimeSession>>();
 	const preserveSessionExecutionContext = vi.fn(async (sourceSessionId: string, targetSessionId: string) => {
 		lifecycleOrder.push(`preserve:${sourceSessionId}:${targetSessionId}`);
 	});
@@ -544,7 +543,7 @@ function createSession(id: string, path: string) {
 		prompt,
 		forkSession,
 		dispose,
-	} as unknown as GreenfieldRuntimeSession;
+	} as unknown as RuntimeSession;
 	return {
 		session,
 		path,

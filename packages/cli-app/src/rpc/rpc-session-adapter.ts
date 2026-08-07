@@ -18,7 +18,7 @@ import {
 	type CodingAgentTurnRetryController,
 	createCodingAgentSessionCapabilityHost,
 } from "@vetta/coding-agent/runtime";
-import { type GreenfieldRuntimeSession, type HistoryEntry, RetryableCleanup } from "@vetta/runtime-core";
+import { type HistoryEntry, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
 import { type CodingToolRegistration, createImSendAttachmentToolRegistration } from "@vetta/runtime-tools/coding";
 import { RpcSessionEventAdapter } from "./rpc-session-event-adapter.js";
 
@@ -319,11 +319,11 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 		};
 	}
 
-	private readSession(): GreenfieldRuntimeSession {
+	private readSession(): RuntimeSession {
 		return this.sessionHost.readSession();
 	}
 
-	private readCore(): ReturnType<GreenfieldRuntimeSession["createCoreAssembly"]> {
+	private readCore(): ReturnType<RuntimeSession["createCoreAssembly"]> {
 		return this.readSession().createCoreAssembly();
 	}
 
@@ -395,7 +395,7 @@ function normalizeLocation(source: string): "user" | "project" | "path" | undefi
 	return source === "user" || source === "project" || source === "path" ? source : undefined;
 }
 
-function readForkMessages(session: GreenfieldRuntimeSession): readonly { entryId: string; text: string }[] {
+function readForkMessages(session: RuntimeSession): readonly { entryId: string; text: string }[] {
 	return session
 		.readHistory()
 		.filter(

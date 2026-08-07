@@ -5,9 +5,9 @@ type CapabilityStatus = "implemented" | "missing";
 
 /**
  * 可执行的迁移矩阵：新增或删除 RuntimeHost Assembly 能力时必须显式更新。
- * `missing` 不是运行时 fallback；Greenfield Backend 在这些能力实现前不能注入 RuntimeHost。
+ * `missing` 不是运行时 fallback；Kernel Backend 在这些能力实现前不能注入 RuntimeHost。
  */
-const GREENFIELD_CAPABILITY_MATRIX = {
+const RUNTIME_CAPABILITY_MATRIX = {
 	lifecycle: "implemented",
 	historyReader: "implemented",
 	historyController: "implemented",
@@ -22,10 +22,10 @@ const GREENFIELD_CAPABILITY_MATRIX = {
 	corePorts: "implemented",
 } as const satisfies Record<keyof RuntimeHostSessionAssembly, CapabilityStatus>;
 
-describe("Greenfield RuntimeHost capability matrix", () => {
+describe("RuntimeHost capability matrix", () => {
 	it("exposes only genuinely implemented assembly capabilities", () => {
-		expect(Object.keys(GREENFIELD_CAPABILITY_MATRIX)).toEqual(RUNTIME_HOST_SESSION_PORT_NAMES);
-		const implemented = Object.entries(GREENFIELD_CAPABILITY_MATRIX)
+		expect(Object.keys(RUNTIME_CAPABILITY_MATRIX)).toEqual(RUNTIME_HOST_SESSION_PORT_NAMES);
+		const implemented = Object.entries(RUNTIME_CAPABILITY_MATRIX)
 			.filter(([, status]) => status === "implemented")
 			.map(([name]) => name);
 
@@ -38,6 +38,6 @@ describe("Greenfield RuntimeHost capability matrix", () => {
 			"modelView",
 			"corePorts",
 		]);
-		expect(Object.values(GREENFIELD_CAPABILITY_MATRIX).filter((status) => status === "missing")).toHaveLength(5);
+		expect(Object.values(RUNTIME_CAPABILITY_MATRIX).filter((status) => status === "missing")).toHaveLength(5);
 	});
 });

@@ -1,14 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ConversationDocumentStore } from "../../src/conversation/index.js";
 import type { ConversationRepository, EventSink, RuntimeSnapshotProvider } from "../../src/kernel/index.js";
-import type { GreenfieldRuntimeModelRuntime } from "../../src/runtime-host/greenfield-model-runtime.js";
-import {
-	ComposedGreenfieldRuntimeFactory,
-	type GreenfieldRuntimeResources,
-} from "../../src/runtime-host/greenfield-runtime-factory.js";
-import type { RuntimePromptAdapter } from "../../src/runtime-host/greenfield-session-backend.js";
+import { ComposedRuntimeFactory, type RuntimeResources } from "../../src/runtime-host/composed-runtime-factory.js";
+import type { RuntimePromptAdapter } from "../../src/runtime-host/kernel-runtime-session-backend.js";
+import type { RuntimeModelRuntime } from "../../src/runtime-host/runtime-model.js";
 
-describe("ComposedGreenfieldRuntimeFactory initialization", () => {
+describe("ComposedRuntimeFactory initialization", () => {
 	it("closes an acquired Kernel session before resources and can initialize again", async () => {
 		const initializationError = new Error("peripheral initialization failed");
 		const order: string[] = [];
@@ -16,14 +13,14 @@ describe("ComposedGreenfieldRuntimeFactory initialization", () => {
 		const disposeResources = vi.fn(async () => {
 			order.push("resources");
 		});
-		const factory = new ComposedGreenfieldRuntimeFactory<Record<string, never>>({
+		const factory = new ComposedRuntimeFactory<Record<string, never>>({
 			createResources: async () => ({
 				sessionId: "factory-session",
 				repository: { create: vi.fn(async () => undefined) } as unknown as ConversationRepository,
 				conversationDocumentStore: {} as ConversationDocumentStore,
 				promptAdapter: {} as RuntimePromptAdapter,
 				snapshotProvider: {} as RuntimeSnapshotProvider,
-				modelRuntime: {} as GreenfieldRuntimeModelRuntime,
+				modelRuntime: {} as RuntimeModelRuntime,
 				identity: { cwd: "C:/workspace" },
 				stateSource: { read: () => ({ contextPercent: 0, contextWindow: 8_000, activeToolNames: [] }) },
 				createSessionPeripherals: (session) => {
@@ -52,14 +49,14 @@ describe("ComposedGreenfieldRuntimeFactory initialization", () => {
 	it("rolls back when final assembly projection fails before publication", async () => {
 		const publicationError = new Error("assembly projection failed");
 		const order: string[] = [];
-		const factory = new ComposedGreenfieldRuntimeFactory<Record<string, never>>({
+		const factory = new ComposedRuntimeFactory<Record<string, never>>({
 			createResources: async () => ({
 				sessionId: "factory-publication-session",
 				repository: { create: vi.fn(async () => undefined) } as unknown as ConversationRepository,
 				conversationDocumentStore: {} as ConversationDocumentStore,
 				promptAdapter: {} as RuntimePromptAdapter,
 				snapshotProvider: {} as RuntimeSnapshotProvider,
-				modelRuntime: {} as GreenfieldRuntimeModelRuntime,
+				modelRuntime: {} as RuntimeModelRuntime,
 				identity: { cwd: "C:/workspace" },
 				stateSource: { read: () => ({ contextPercent: 0, contextWindow: 8_000, activeToolNames: [] }) },
 				createSessionPeripherals: (session) => {
@@ -68,7 +65,7 @@ describe("ComposedGreenfieldRuntimeFactory initialization", () => {
 					});
 					return {};
 				},
-				get toolController(): GreenfieldRuntimeResources["toolController"] {
+				get toolController(): RuntimeResources["toolController"] {
 					throw publicationError;
 				},
 				dispose: async () => {

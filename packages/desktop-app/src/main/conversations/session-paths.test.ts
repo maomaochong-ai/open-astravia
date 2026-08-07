@@ -13,18 +13,18 @@ describe("readDesktopSessionHeader", () => {
 		}
 	});
 
-	it("reads both Legacy and Greenfield cwd headers", async () => {
+	it("reads both historical and native cwd headers", async () => {
 		const directory = await temporaryDirectory("desktop-session-header-");
 		const cwd = join(directory, "workspace");
 		const legacyPath = join(directory, "legacy.jsonl");
-		const greenfieldPath = join(directory, "greenfield.conversation.jsonl");
+		const nativePath = join(directory, "native.conversation.jsonl");
 		await writeFile(legacyPath, `${JSON.stringify({ type: "session", cwd })}\n`, "utf8");
 		await writeFile(
-			greenfieldPath,
+			nativePath,
 			`${JSON.stringify({
 				recordType: "conversation.header",
 				schemaVersion: 2,
-				sessionId: "greenfield-session",
+				sessionId: "native-session",
 				createdAt: Date.now(),
 				cwd,
 			})}\n`,
@@ -32,7 +32,7 @@ describe("readDesktopSessionHeader", () => {
 		);
 
 		await expect(readDesktopSessionHeader(legacyPath)).resolves.toEqual({ type: "session", cwd });
-		await expect(readDesktopSessionHeader(greenfieldPath)).resolves.toEqual({ type: "session", cwd });
+		await expect(readDesktopSessionHeader(nativePath)).resolves.toEqual({ type: "session", cwd });
 	});
 
 	it("rejects unsupported or relative cwd headers", async () => {

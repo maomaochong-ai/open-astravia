@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import {
 	type CodingAgentTurnExecutor,
@@ -113,7 +113,7 @@ function createExecutor(options: CreateExecutorOptions): CodingAgentTurnExecutor
 	const session = {
 		prompt: options.prompt,
 		retry: options.retryTurn ?? (async () => ({ status: "completed" })),
-	} as unknown as GreenfieldRuntimeSession;
+	} as unknown as RuntimeSession;
 	const retryController = createCodingAgentTurnRetryController({
 		readSettings: () => options.retry ?? { enabled: false, maxRetries: 0, baseDelayMs: 0 },
 		setEnabled: vi.fn(),

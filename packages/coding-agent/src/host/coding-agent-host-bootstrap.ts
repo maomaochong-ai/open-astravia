@@ -55,7 +55,7 @@ export interface CodingAgentInitialModelResolution {
 }
 
 /**
- * Legacy 与 Greenfield 宿主共享的进程级启动资源。
+ * 所有 Coding Agent 宿主共享的进程级启动资源。
  *
  * 这里只负责参数、设置、凭据、模型目录和动态资源加载；Session/Runtime 的选择仍由
  * 外层 Composition Root 决定。

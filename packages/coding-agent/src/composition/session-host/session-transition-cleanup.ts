@@ -1,10 +1,10 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import { RetryableCleanup } from "@vetta/runtime-core";
 import type { CodingAgentActiveSessionEventRelay } from "./active-session-event-relay.js";
 import type { CodingAgentPreparedSessionBinding } from "./active-session-transition-contracts.js";
 
 export interface CodingAgentRetiredSessionCleanupOptions {
-	readonly previous: GreenfieldRuntimeSession;
+	readonly previous: RuntimeSession;
 	readonly prepared?: CodingAgentPreparedSessionBinding;
 	readonly reportError: (error: AggregateError) => void;
 }
@@ -12,7 +12,7 @@ export interface CodingAgentRetiredSessionCleanupOptions {
 export interface CodingAgentActiveSessionCleanupOptions {
 	readonly waitForTransitions: () => Promise<void>;
 	readonly events: CodingAgentActiveSessionEventRelay;
-	readonly readActiveSession: () => GreenfieldRuntimeSession;
+	readonly readActiveSession: () => RuntimeSession;
 }
 
 /** Owns retryable cleanup after a Session transition has already committed. */
@@ -32,13 +32,13 @@ export class CodingAgentSessionTransitionCleanup {
 		}
 		cleanup.add({ id: "previous-session", cleanup: () => options.previous.dispose() });
 		try {
-			await cleanup.run("Greenfield session transition committed, but cleanup failed");
+			await cleanup.run("Session transition committed, but cleanup failed");
 			this.retired.delete(cleanupId);
 		} catch (error) {
 			options.reportError(
 				error instanceof AggregateError
 					? error
-					: new AggregateError([error], "Greenfield session transition committed, but cleanup failed"),
+					: new AggregateError([error], "Session transition committed, but cleanup failed"),
 			);
 		}
 	}
@@ -46,7 +46,7 @@ export class CodingAgentSessionTransitionCleanup {
 	async dispose(options: CodingAgentActiveSessionCleanupOptions): Promise<void> {
 		this.disposePreparation ??= this.prepareDisposal(options);
 		await this.disposePreparation;
-		await this.finalCleanup.run("Failed to dispose Greenfield active session host");
+		await this.finalCleanup.run("Failed to dispose active session host");
 	}
 
 	private async prepareDisposal(options: CodingAgentActiveSessionCleanupOptions): Promise<void> {
@@ -56,7 +56,7 @@ export class CodingAgentSessionTransitionCleanup {
 				id: `retired-transition:${cleanupId}`,
 				phase: 0,
 				cleanup: async () => {
-					await retiredCleanup.run("Failed to dispose retired Greenfield session resources");
+					await retiredCleanup.run("Failed to dispose retired session resources");
 					this.retired.delete(cleanupId);
 				},
 			});

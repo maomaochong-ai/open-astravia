@@ -65,7 +65,7 @@ describe("Coding Agent composition shutdown", () => {
 		});
 
 		const firstDisposal = shutdown.dispose();
-		await expect(firstDisposal).rejects.toThrow("Failed to dispose one or more Greenfield runtime resources");
+		await expect(firstDisposal).rejects.toThrow("Failed to dispose one or more runtime resources");
 		await expect(firstDisposal).rejects.toMatchObject({
 			errors: [expect.objectContaining({ message: "transient ownership failure" })],
 		});

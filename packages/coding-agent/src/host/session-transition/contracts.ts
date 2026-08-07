@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 
 export interface CodingAgentSessionSeedTarget {
 	readonly cwd: string;
@@ -20,8 +20,8 @@ export type CodingAgentSessionTransitionKind = "new" | "resume" | "fork";
 
 export interface CodingAgentSessionTransition {
 	readonly kind: CodingAgentSessionTransitionKind;
-	readonly previous: GreenfieldRuntimeSession;
-	readonly next?: GreenfieldRuntimeSession;
+	readonly previous: RuntimeSession;
+	readonly next?: RuntimeSession;
 	readonly previousSessionPath: string | undefined;
 	readonly targetSessionPath?: string;
 	readonly entryId?: string;
@@ -41,7 +41,7 @@ export interface CodingAgentSessionTransitionDecision {
 export interface CodingAgentSessionTransitionLifecycle {
 	before?(transition: CodingAgentSessionTransition): Promise<CodingAgentSessionTransitionDecision | undefined>;
 	prepare?(
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
 	): Promise<CodingAgentPreparedSessionBinding | undefined>;
-	after?(transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession }): Promise<void>;
+	after?(transition: CodingAgentSessionTransition & { readonly next: RuntimeSession }): Promise<void>;
 }

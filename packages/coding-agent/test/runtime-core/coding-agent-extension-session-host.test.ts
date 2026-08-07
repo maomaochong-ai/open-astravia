@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import type {
 	CodingAgentRuntimeExtensionEventHost,
@@ -49,7 +49,7 @@ describe("CodingAgentExtensionSessionHost initialization rollback", () => {
 
 		let caught: unknown;
 		try {
-			await host.reload({} as GreenfieldRuntimeSession, async () => undefined);
+			await host.reload({} as RuntimeSession, async () => undefined);
 		} catch (error) {
 			caught = error;
 		}
@@ -63,7 +63,7 @@ describe("CodingAgentExtensionSessionHost initialization rollback", () => {
 		]);
 		expect(host.readRunner()).toBe(previousRunner);
 		expect(caught).toMatchObject({
-			message: "Greenfield Extension reload and rollback failed",
+			message: "Extension reload and rollback failed",
 			cause: initializationError,
 			errors: [initializationError, cleanupError],
 		});

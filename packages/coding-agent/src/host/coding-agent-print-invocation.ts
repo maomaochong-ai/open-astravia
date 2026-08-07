@@ -14,7 +14,7 @@ export type CodingAgentPrintInvocation =
 	| { readonly kind: "print"; readonly options: PrintModeOptions }
 	| { readonly kind: "interactive-unsupported" };
 
-/** Prepare host input once so Legacy and Greenfield Print keep identical CLI semantics. */
+/** Prepare host input once so historical and native Print paths keep identical CLI semantics. */
 export async function prepareCodingAgentPrintInvocation(
 	options: PrepareCodingAgentPrintInvocationOptions,
 ): Promise<CodingAgentPrintInvocation> {

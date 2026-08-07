@@ -1,6 +1,6 @@
 import { dirname } from "node:path";
 import type { AgentMessage } from "@vetta/agent-core";
-import type { ConversationDocument, GreenfieldRuntimeSessionCoreAssembly } from "@vetta/runtime-core";
+import type { ConversationDocument, RuntimeSessionCoreAssembly } from "@vetta/runtime-core";
 import type { ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
 import type { ExtensionSessionView as ReadonlySessionManager } from "../../extensions/index.js";
 import {
@@ -21,9 +21,7 @@ import {
  * 该适配器不持有 Repository，也不开放历史写 API；每次读取都基于当前
  * ConversationDocument，因此续接、分支切换和元数据更新会即时可见。
  */
-export function createCodingAgentExtensionSessionView(
-	assembly: GreenfieldRuntimeSessionCoreAssembly,
-): ReadonlySessionManager {
+export function createCodingAgentExtensionSessionView(assembly: RuntimeSessionCoreAssembly): ReadonlySessionManager {
 	const readDocument = (): ConversationDocument => assembly.conversationView.readDocument();
 	const readEntries = (): SessionEntry[] => readDocument().entries.map(toSessionEntry);
 	const readCwd = (): string => assembly.workspaceView.readWorkingDirectory() ?? readDocument().identity.cwd ?? "";

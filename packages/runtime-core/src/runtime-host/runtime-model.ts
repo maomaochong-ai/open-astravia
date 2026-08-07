@@ -23,14 +23,14 @@ export interface RuntimeModelCredentialResolver {
 	refreshAuth(token: string | undefined): Promise<void>;
 }
 
-export interface GreenfieldRuntimeModelOptions {
+export interface RuntimeModelOptions {
 	readonly initialModel: Model<Api>;
 	readonly initialThinkingLevel: ThinkingLevel;
 	readonly catalog: RuntimeModelCatalog;
 	readonly credentials: RuntimeModelCredentialResolver;
 }
 
-export interface GreenfieldRuntimeModelRuntime
+export interface RuntimeModelRuntime
 	extends RuntimeSessionModelController,
 		RuntimeSessionModelView,
 		RuntimeTurnModelBindingProvider {
@@ -38,18 +38,18 @@ export interface GreenfieldRuntimeModelRuntime
 }
 
 /**
- * Greenfield Session 的模型单一事实源。
+ * Runtime Session 的模型单一事实源。
  *
  * Controller、View、State 和 Turn binding 必须共享同一实例，避免宿主显示状态与
  * 实际模型执行分离。bind() 返回独立冻结对象，后续切模不会修改活动 Turn。
  */
-export class GreenfieldRuntimeModel implements GreenfieldRuntimeModelRuntime {
+export class RuntimeModel implements RuntimeModelRuntime {
 	private readonly catalog: RuntimeModelCatalog;
 	private readonly credentials: RuntimeModelCredentialResolver;
 	private currentModel: Model<Api>;
 	private thinkingLevel: ThinkingLevel;
 
-	constructor(options: GreenfieldRuntimeModelOptions) {
+	constructor(options: RuntimeModelOptions) {
 		this.catalog = options.catalog;
 		this.credentials = options.credentials;
 		this.currentModel = options.initialModel;

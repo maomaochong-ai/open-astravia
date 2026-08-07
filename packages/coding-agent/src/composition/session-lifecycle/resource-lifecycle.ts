@@ -1,9 +1,9 @@
 import type { EcosystemHookRuntime, SessionEndCause, SessionStartSource } from "@vetta/ecosystem-adapter";
 import {
 	type ConversationScenario,
-	type GreenfieldRuntimeResourceContext,
-	type GreenfieldRuntimeResources,
 	RetryableCleanup,
+	type RuntimeResourceContext,
+	type RuntimeResources,
 	type RuntimeSessionAskUserQuestionCapability,
 } from "@vetta/runtime-core";
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
@@ -38,7 +38,7 @@ export interface CodingAgentSessionResourceIndexes {
 	readonly pluginMcpRuntimes: CodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>;
 	readonly executionRuntimes: CodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>;
 	readonly configurationStates: CodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>;
-	readonly resourceContexts: CodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>;
+	readonly resourceContexts: CodingAgentSessionValueIndex<RuntimeResourceContext>;
 	readonly extensionEventBridges: CodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>;
 	readonly memoryControllers: CodingAgentSessionValueIndex<CodingAgentMemoryController>;
 	readonly hookSessionControllers: CodingAgentSessionValueIndex<CodingAgentSessionHookController>;
@@ -60,7 +60,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 		rebind(sessionId: string): Promise<void>;
 		release(): Promise<void>;
 	};
-	readonly resourceContext: GreenfieldRuntimeResourceContext;
+	readonly resourceContext: RuntimeResourceContext;
 	readonly indexes: CodingAgentSessionResourceIndexes;
 	readonly hookRuntime: EcosystemHookRuntime;
 	readonly extensionEvents: CodingAgentExtensionRunAdapter;
@@ -102,7 +102,7 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 export interface CodingAgentSessionResourceLifecycle {
 	readonly hookController: CodingAgentSessionHookController;
 	disposeHookSession(): Promise<void>;
-	attachTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): GreenfieldRuntimeResources;
+	attachTurnCapabilityAssembly(assembly: CodingAgentTurnCapabilitySessionAssembly): RuntimeResources;
 	rollbackBindings(): void;
 }
 
@@ -120,7 +120,7 @@ export function createCodingAgentSessionResourceLifecycle(
 		try {
 			await options.hookRuntime.runSessionEnd(cause);
 		} catch (error) {
-			console.warn(`[ecosystem-hooks] SessionEnd failed during Greenfield ${cause}`, error);
+			console.warn(`[ecosystem-hooks] SessionEnd failed during Runtime ${cause}`, error);
 		}
 	};
 	const hookController: CodingAgentSessionHookController = {
@@ -142,7 +142,7 @@ export function createCodingAgentSessionResourceLifecycle(
 		hookController,
 		disposeHookSession,
 		attachTurnCapabilityAssembly(assembly) {
-			if (attachedAssembly) throw new Error("Greenfield Session Resource Lifecycle is already attached");
+			if (attachedAssembly) throw new Error("Session Resource Lifecycle is already attached");
 			attachedAssembly = assembly;
 			bindAttachedResources(options, hookController, disposeHookSession);
 			return createResources(options, assembly, hookController, endHookSession);
@@ -186,7 +186,7 @@ function createResources(
 	turnCapabilityAssembly: CodingAgentTurnCapabilitySessionAssembly,
 	hookController: CodingAgentSessionHookController,
 	endHookSession: (cause: SessionEndCause) => Promise<void>,
-): GreenfieldRuntimeResources {
+): RuntimeResources {
 	const sessionCleanup = createSessionCleanup(options, turnCapabilityAssembly, hookController, endHookSession);
 	return createCodingAgentSessionRuntimeResources({
 		session: options.session,
@@ -224,7 +224,7 @@ function createResources(
 			rebindSessionIndexes(options, hookController, previousSessionId, result.sessionId);
 			options.extensionToolRuntime?.rebindSession(previousSessionId, result.sessionId);
 		},
-		dispose: () => sessionCleanup.run("Failed to dispose Greenfield session assembly resources"),
+		dispose: () => sessionCleanup.run("Failed to dispose session assembly resources"),
 	});
 }
 

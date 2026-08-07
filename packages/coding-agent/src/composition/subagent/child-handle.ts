@@ -1,10 +1,10 @@
 import type { AssistantMessage, Message } from "@vetta/ai";
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { SubagentChildHandle, SubagentTodoProgress, SubagentUsageSnapshot } from "@vetta/runtime-subagents";
 
 export interface CodingAgentSubagentChildHandleOptions {
-	readonly session: GreenfieldRuntimeSession;
+	readonly session: RuntimeSession;
 	readonly sessionFile?: string;
 	appendContext(records: readonly SessionContextRecord[]): void;
 	deliverContext(records: readonly SessionContextRecord[]): Promise<void>;
@@ -67,7 +67,7 @@ function contextRecord(type: string, text: string): SessionContextRecord {
 	};
 }
 
-async function waitForIdle(session: GreenfieldRuntimeSession): Promise<void> {
+async function waitForIdle(session: RuntimeSession): Promise<void> {
 	if (!session.readState().isStreaming) return;
 	await new Promise<void>((resolve) => {
 		const unsubscribe = session.subscribe((event) => {

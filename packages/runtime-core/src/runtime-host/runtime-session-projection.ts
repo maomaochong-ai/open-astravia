@@ -6,23 +6,20 @@ import { projectConversationDocumentHistory } from "../conversation/history-proj
 import type { StoredConversation, StoredSessionEvent } from "../kernel/contracts.js";
 import type { RuntimeSessionState } from "./session-ports.js";
 
-export interface GreenfieldRuntimeSessionIdentity {
+export interface RuntimeSessionIdentity {
 	readonly cwd?: string;
 	readonly sessionPath?: string;
 	readonly parentSessionPath?: string;
 	readonly parentEntryId?: string;
 }
 
-export type GreenfieldRuntimeDynamicState = Pick<
-	RuntimeSessionState,
-	"contextPercent" | "contextWindow" | "activeToolNames"
-> & {
+export type RuntimeDynamicState = Pick<RuntimeSessionState, "contextPercent" | "contextWindow" | "activeToolNames"> & {
 	readonly contextTokens?: number | null;
 };
 
-/** 由 Greenfield Composition Root 提供上下文和当前 Snapshot 的实时只读状态。 */
-export interface GreenfieldRuntimeStateSource {
-	read(): GreenfieldRuntimeDynamicState;
+/** 由 Runtime Composition Root 提供上下文和当前 Snapshot 的实时只读状态。 */
+export interface RuntimeStateSource {
+	read(): RuntimeDynamicState;
 }
 
 /**
@@ -32,7 +29,7 @@ export interface GreenfieldRuntimeStateSource {
  * `message.appended` 已成功持久化并发布时更新投影，因此 RuntimeHost 无需把
  * 既有同步读取 API 改成异步，也不会在每次读取时重新访问文件。
  */
-export class GreenfieldSessionProjection {
+export class RuntimeSessionProjection {
 	private sessionId: string;
 	private readonly messages: Message[];
 	private document: ConversationDocument;

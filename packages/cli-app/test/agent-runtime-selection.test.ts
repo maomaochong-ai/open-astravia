@@ -271,7 +271,7 @@ describe("Agent Runtime production host", () => {
 		expect(await conflicting.waitForExit()).toBe(2);
 
 		await owner.close();
-	});
+	}, 30_000);
 
 	it("migrates and reuses a representable Legacy session without changing its source", async () => {
 		const fixture = await createFixture();

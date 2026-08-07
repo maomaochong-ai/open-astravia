@@ -7,7 +7,7 @@ import {
 	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import type { GreenfieldRuntimeSession, RuntimeSessionTodoController } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionTodoController } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 describe("Todo Runtime composition contract", () => {
@@ -147,7 +147,7 @@ describe("Todo Runtime composition contract", () => {
 	});
 });
 
-function requireTodoController(session: GreenfieldRuntimeSession): RuntimeSessionTodoController {
+function requireTodoController(session: RuntimeSession): RuntimeSessionTodoController {
 	const controller = session.createCoreAssembly().todoController;
 	if (!controller) throw new Error("Todo Controller was not composed");
 	return controller;

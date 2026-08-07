@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeResourceContext } from "@vetta/runtime-core";
+import type { RuntimeResourceContext } from "@vetta/runtime-core";
 import {
 	createMcpDeferredToolController,
 	createMcpRuntimeToolSynchronizer,
@@ -14,7 +14,7 @@ import type { CodingAgentSessionMarkerIndex, CodingAgentSessionValueIndex } from
 
 export interface CodingAgentMcpSessionIndexes {
 	readonly pluginMcpRuntimes: CodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>;
-	readonly resourceContexts: CodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>;
+	readonly resourceContexts: CodingAgentSessionValueIndex<RuntimeResourceContext>;
 	readonly mcpControllers: CodingAgentSessionValueIndex<McpDeferredToolController>;
 	readonly mcpRefreshObservedSessions: CodingAgentSessionMarkerIndex;
 	readonly mcpPromptRefreshReuseSessions: CodingAgentSessionMarkerIndex;

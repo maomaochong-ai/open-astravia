@@ -1,7 +1,7 @@
 import type {
 	ConversationDocument,
-	GreenfieldRuntimeCustomEntryInput,
-	GreenfieldRuntimeDocumentParticipantContext,
+	RuntimeCustomEntryInput,
+	RuntimeDocumentParticipantContext,
 } from "@vetta/runtime-core";
 import type { SubagentRecoveryState, SubagentSnapshot } from "@vetta/runtime-subagents";
 import { describe, expect, it, vi } from "vitest";
@@ -141,10 +141,10 @@ describe("CodingAgentSubagentStatePersistence", () => {
 });
 
 function recordingContext(): {
-	readonly entries: GreenfieldRuntimeCustomEntryInput[];
-	readonly value: GreenfieldRuntimeDocumentParticipantContext;
+	readonly entries: RuntimeCustomEntryInput[];
+	readonly value: RuntimeDocumentParticipantContext;
 } {
-	const entries: GreenfieldRuntimeCustomEntryInput[] = [];
+	const entries: RuntimeCustomEntryInput[] = [];
 	return {
 		entries,
 		value: {

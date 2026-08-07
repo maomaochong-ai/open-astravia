@@ -24,11 +24,7 @@ import {
 	createCodingAgentRuntimeResourceReloadHost,
 } from "@vetta/coding-agent/runtime";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
-import {
-	type GreenfieldRuntimeSession,
-	InitializationRollbackScope,
-	type RuntimeSessionCatalog,
-} from "@vetta/runtime-core";
+import { InitializationRollbackScope, type RuntimeSession, type RuntimeSessionCatalog } from "@vetta/runtime-core";
 import {
 	FileConversationOwnershipManager,
 	type FileConversationOwnershipManagerOptions,
@@ -138,7 +134,7 @@ export async function createCliSessionAssembly(options: CliSessionAssemblyOption
 		dismissSessionRollback = dismissSession;
 		runtime.sessionHooks.start(session.sessionId, "resume");
 		const createExtensionEventHost = (
-			targetSession: GreenfieldRuntimeSession,
+			targetSession: RuntimeSession,
 			bindingOptions?: { readonly replaceExisting?: boolean },
 		) => {
 			const extensionsResult = bootstrap.resourceLoader.getExtensions();

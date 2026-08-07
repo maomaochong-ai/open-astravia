@@ -25,19 +25,16 @@ import {
 	TurnPipeline,
 } from "../kernel/index.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
-import type { GreenfieldRuntimeDocumentParticipant } from "./greenfield-document-participant.js";
-import type { GreenfieldRuntimeModelRuntime } from "./greenfield-model-runtime.js";
-import type {
-	GreenfieldRuntimeAssembly,
-	GreenfieldRuntimeFactory,
-	RuntimePromptAdapter,
-} from "./greenfield-session-backend.js";
-import { GreenfieldSessionContextController } from "./greenfield-session-context-controller.js";
-import type {
-	GreenfieldRuntimeSessionIdentity,
-	GreenfieldRuntimeStateSource,
-} from "./greenfield-session-projection.js";
 import { InitializationRollbackScope } from "./initialization-rollback-scope.js";
+import type {
+	KernelRuntimeAssembly,
+	KernelRuntimeFactory,
+	RuntimePromptAdapter,
+} from "./kernel-runtime-session-backend.js";
+import type { RuntimeDocumentParticipant } from "./runtime-document-participant.js";
+import type { RuntimeModelRuntime } from "./runtime-model.js";
+import { KernelRuntimeSessionContextController } from "./runtime-session-context-controller.js";
+import type { RuntimeSessionIdentity, RuntimeStateSource } from "./runtime-session-projection.js";
 import type {
 	RuntimeSessionBackgroundWorkController,
 	RuntimeSessionConfigurationController,
@@ -47,17 +44,17 @@ import type {
 	RuntimeSessionToolController,
 } from "./session-ports.js";
 
-export type GreenfieldRuntimeOperation = "create" | "resume";
+export type RuntimeAssemblyOperation = "create" | "resume";
 
-export type GreenfieldRuntimeSessionPeripherals = Partial<
+export type RuntimeSessionPeripherals = Partial<
 	Pick<
-		GreenfieldRuntimeAssembly,
+		KernelRuntimeAssembly,
 		"hostInteraction" | "executionController" | "backgroundWorkController" | "configurationController"
 	>
 >;
 
-export interface GreenfieldRuntimeResourceContext {
-	readonly operation: GreenfieldRuntimeOperation;
+export interface RuntimeResourceContext {
+	readonly operation: RuntimeAssemblyOperation;
 	readonly contextAppender: RuntimeSessionContextAppender;
 	/**
 	 * 投递由后台工作产生的上下文，并按 follow-up 语义唤醒或续跑 Session。
@@ -68,17 +65,17 @@ export interface GreenfieldRuntimeResourceContext {
 	reportObservation(observation: RuntimeSessionObservationEvent): Promise<void>;
 }
 
-export interface GreenfieldRuntimeResources {
+export interface RuntimeResources {
 	readonly sessionId: string;
 	readonly repository: ConversationRepository;
 	readonly conversationDocumentStore: ConversationDocumentStore;
 	readonly conversationContinuationStore?: ConversationContinuationStore;
 	readonly promptAdapter: RuntimePromptAdapter;
 	readonly snapshotProvider: RuntimeSnapshotProvider;
-	readonly modelRuntime: GreenfieldRuntimeModelRuntime;
-	readonly identity: GreenfieldRuntimeSessionIdentity;
-	readonly stateSource: GreenfieldRuntimeStateSource;
-	readonly documentParticipants?: readonly GreenfieldRuntimeDocumentParticipant[];
+	readonly modelRuntime: RuntimeModelRuntime;
+	readonly identity: RuntimeSessionIdentity;
+	readonly stateSource: RuntimeStateSource;
+	readonly documentParticipants?: readonly RuntimeDocumentParticipant[];
 	readonly todoController?: RuntimeSessionTodoController;
 	readonly hostInteraction?: RuntimeSessionHostInteraction;
 	readonly executionController?: RuntimeSessionExecutionController;
@@ -89,7 +86,7 @@ export interface GreenfieldRuntimeResources {
 	 * 需要绑定真实 Kernel Session 的外围控制器工厂。
 	 * 它在 create/resume 完成后执行，返回值优先于上面的预创建控制器。
 	 */
-	createSessionPeripherals?(session: AgentSession): GreenfieldRuntimeSessionPeripherals;
+	createSessionPeripherals?(session: AgentSession): RuntimeSessionPeripherals;
 	readonly contextRuntime?: ManualContextCompactionRuntime;
 	readonly steeringMode?: SessionInputQueueMode;
 	readonly followUpMode?: SessionInputQueueMode;
@@ -97,11 +94,8 @@ export interface GreenfieldRuntimeResources {
 	dispose?(): Promise<void>;
 }
 
-export interface ComposedGreenfieldRuntimeFactoryOptions<TCreateOptions> {
-	createResources(
-		options: TCreateOptions,
-		context: GreenfieldRuntimeResourceContext,
-	): Promise<GreenfieldRuntimeResources>;
+export interface ComposedRuntimeFactoryOptions<TCreateOptions> {
+	createResources(options: TCreateOptions, context: RuntimeResourceContext): Promise<RuntimeResources>;
 	readonly streamFn?: StreamFn;
 	readonly streamOptions?: Omit<SimpleStreamOptions, "sessionId" | "signal">;
 	readonly tracer?: AgentCoreTurnEngineOptions["tracer"];
@@ -111,35 +105,35 @@ export interface ComposedGreenfieldRuntimeFactoryOptions<TCreateOptions> {
 }
 
 /**
- * 只组合 Runtime-owned 对象的默认 Greenfield Factory。
+ * 只组合 Runtime-owned 对象的默认 Runtime Factory。
  *
  * Repository、Snapshot、Model Runtime 和宿主资源仍由上层提供；本类负责保证
  * AgentSession、TurnPipeline、TurnEngine 使用同一组 Session 资源。
  */
-export class ComposedGreenfieldRuntimeFactory<TCreateOptions> implements GreenfieldRuntimeFactory<TCreateOptions> {
-	private readonly options: ComposedGreenfieldRuntimeFactoryOptions<TCreateOptions>;
+export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFactory<TCreateOptions> {
+	private readonly options: ComposedRuntimeFactoryOptions<TCreateOptions>;
 	private readonly clock: Clock;
 	private readonly idGenerator: IdGenerator;
 
-	constructor(options: ComposedGreenfieldRuntimeFactoryOptions<TCreateOptions>) {
+	constructor(options: ComposedRuntimeFactoryOptions<TCreateOptions>) {
 		this.options = options;
 		this.clock = options.clock ?? new SystemClock();
 		this.idGenerator = options.idGenerator ?? new RandomIdGenerator();
 	}
 
-	create(options: TCreateOptions, eventSink: EventSink): Promise<GreenfieldRuntimeAssembly> {
+	create(options: TCreateOptions, eventSink: EventSink): Promise<KernelRuntimeAssembly> {
 		return this.assemble("create", options, eventSink);
 	}
 
-	resume(options: TCreateOptions, eventSink: EventSink): Promise<GreenfieldRuntimeAssembly> {
+	resume(options: TCreateOptions, eventSink: EventSink): Promise<KernelRuntimeAssembly> {
 		return this.assemble("resume", options, eventSink);
 	}
 
 	private async assemble(
-		operation: GreenfieldRuntimeOperation,
+		operation: RuntimeAssemblyOperation,
 		options: TCreateOptions,
 		eventSink: EventSink,
-	): Promise<GreenfieldRuntimeAssembly> {
+	): Promise<KernelRuntimeAssembly> {
 		const runtimeContext = new BufferedRuntimeSessionContext();
 		let abortCurrentRun = (): void => {};
 		let requestContinuation: ((records: readonly SessionContextRecord[]) => Promise<void>) | undefined;
@@ -237,11 +231,11 @@ export class ComposedGreenfieldRuntimeFactory<TCreateOptions> implements Greenfi
 			}
 			abortCurrentRun = () => {
 				void session.cancel().catch((error) => {
-					console.warn("[runtime-core] failed to abort Greenfield session", error);
+					console.warn("[runtime-core] failed to abort Runtime session", error);
 				});
 			};
 			const contextController = resources.contextRuntime
-				? new GreenfieldSessionContextController({
+				? new KernelRuntimeSessionContextController({
 						session,
 						repository: resources.repository,
 						conversationDocumentReader: resources.conversationDocumentStore,
@@ -253,7 +247,7 @@ export class ComposedGreenfieldRuntimeFactory<TCreateOptions> implements Greenfi
 				: undefined;
 			const sessionPeripherals = resources.createSessionPeripherals?.(session);
 			const dispose = resources.dispose;
-			const assembly: GreenfieldRuntimeAssembly = {
+			const assembly: KernelRuntimeAssembly = {
 				session,
 				repository: resources.repository,
 				conversationDocumentStore: resources.conversationDocumentStore,
@@ -292,7 +286,7 @@ export class ComposedGreenfieldRuntimeFactory<TCreateOptions> implements Greenfi
 			rollback.commit();
 			return assembly;
 		} catch (error) {
-			return rollback.rollback(error, "Greenfield Runtime initialization and rollback failed");
+			return rollback.rollback(error, "Runtime initialization and rollback failed");
 		}
 	}
 }

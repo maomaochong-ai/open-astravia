@@ -409,4 +409,3 @@ Key methods for working with sessions programmatically.
 - `getSessionDir()` - Session storage directory
 - `getSessionId()` - Session UUID
 - `getSessionFile()` - Session file path (undefined for in-memory)
-- `isPersisted()` - Whether session is saved to disk

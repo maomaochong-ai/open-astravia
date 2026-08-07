@@ -29,7 +29,7 @@ export interface ConversationDocumentCompactionEntry extends ConversationDocumen
 	readonly tokensBefore: number;
 	readonly details?: unknown;
 	readonly fromHook?: boolean;
-	/** Native Greenfield records persist the exact model-visible summary message. */
+	/** Native records persist the exact model-visible summary message. */
 	readonly summaryMessage?: UserMessage;
 	readonly reason?: ContextCompactionRecord["reason"];
 }

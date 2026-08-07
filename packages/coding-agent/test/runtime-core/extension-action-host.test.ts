@@ -1,5 +1,5 @@
 import type { Api, Model } from "@vetta/ai";
-import type { GreenfieldRuntimeSession, RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionContextDeliveryController } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentExtensionActionHost } from "../../src/host/extensions/action-host.js";
@@ -70,7 +70,7 @@ describe("CodingAgentExtensionActionHost", () => {
 					setThinkingLevel,
 				},
 			}),
-		} as unknown as GreenfieldRuntimeSession;
+		} as unknown as RuntimeSession;
 		const host = new CodingAgentExtensionActionHost({
 			session,
 			resourceLoader: {
@@ -166,7 +166,7 @@ describe("CodingAgentExtensionActionHost", () => {
 					setThinkingLevel: vi.fn(),
 				},
 			}),
-		} as unknown as GreenfieldRuntimeSession;
+		} as unknown as RuntimeSession;
 		const host = new CodingAgentExtensionActionHost({
 			session,
 			resourceLoader: {

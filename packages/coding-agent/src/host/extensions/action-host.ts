@@ -1,5 +1,5 @@
 import { type ImageContent, modelsAreEqual, Type } from "@vetta/ai";
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition, SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type {
 	ExtensionActions,
@@ -16,7 +16,7 @@ import type { SessionResourceRuntime } from "../../resources/index.js";
 import { CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY } from "../../runtime-contracts/extension-runtime.js";
 
 export interface CodingAgentExtensionActionHostOptions {
-	readonly session: GreenfieldRuntimeSession;
+	readonly session: RuntimeSession;
 	readonly resourceLoader: Pick<SessionResourceRuntime, "getPrompts" | "getSkills">;
 	readonly onModelSelect?: (event: ModelSelectEvent) => Promise<void>;
 	readonly onError?: (error: ExtensionError) => void;
@@ -34,7 +34,7 @@ export class CodingAgentExtensionActionHost {
 	constructor(private readonly options: CodingAgentExtensionActionHostOptions) {
 		const assembly = options.session.createCoreAssembly();
 		const toolController = assembly.toolController;
-		if (!toolController) throw new Error("Greenfield Extension actions require a Runtime tool controller");
+		if (!toolController) throw new Error("Extension actions require a Runtime tool controller");
 		const now = options.now ?? Date.now;
 		const setModel: SetModelHandler = async (model) => {
 			await this.mutationTail;
@@ -124,7 +124,7 @@ export class CodingAgentExtensionActionHost {
 
 	private enqueueMutation(operation: () => Promise<void>, event: string): void {
 		if (this.disposed) {
-			this.report(event, new Error("Greenfield Extension action host is disposed"));
+			this.report(event, new Error("Extension action host is disposed"));
 			return;
 		}
 		const task = this.mutationTail.then(operation);
@@ -135,7 +135,7 @@ export class CodingAgentExtensionActionHost {
 
 	private track(operation: Promise<void>, event: string): void {
 		if (this.disposed) {
-			this.report(event, new Error("Greenfield Extension action host is disposed"));
+			this.report(event, new Error("Extension action host is disposed"));
 			return;
 		}
 		const tracked = operation

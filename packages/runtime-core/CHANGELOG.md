@@ -4,6 +4,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- **Runtime Host 生产 API 移除 Greenfield 迁移命名**：Kernel 驱动的会话、模型、投影、上下文与组合工厂统一改用稳定的 `Runtime*` / `KernelRuntime*` 名称，并重命名对应生产模块；不保留旧类型别名。运行时协议值、会话持久化格式和宿主行为不变。
+
 ### Added
 
 - **一次性初始化回滚事务**：新增 `InitializationRollbackScope`，按资源实际获取顺序登记、严格逆序全量回滚，并支持所有权转移时撤销旧任务；无清理错误时原样抛出初始化失败，清理也失败时以初始化错误为 `cause` 聚合诊断。Greenfield Runtime Factory 在外围初始化失败时会先关闭已创建的 Kernel Session，再释放 Composition 资源。

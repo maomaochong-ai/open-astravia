@@ -4,7 +4,7 @@ import type { ExtensionActions, ExtensionContextActions, ExtensionRuntime } from
  * Extension 命令式 API 的宿主合同。
  *
  * 它只描述 Extension Runtime 需要的动作，不暴露 AgentSession、SessionManager
- * 或具体 UI。Legacy 与 Greenfield 必须分别提供真实实现，不能用 no-op 补齐缺口。
+ * 或具体 UI。不同宿主必须分别提供真实实现，不能用 no-op 补齐缺口。
  */
 export interface ExtensionExecutionHost {
 	readonly actions: ExtensionActions;

@@ -14,10 +14,7 @@ import {
 	type TurnEngineRequest,
 	TurnPipeline,
 } from "../../../runtime-core/src/kernel/index.js";
-import {
-	GreenfieldRuntimeModel,
-	GreenfieldRuntimeSessionBackend,
-} from "../../../runtime-core/src/runtime-host/index.js";
+import { KernelRuntimeSessionBackend, RuntimeModel } from "../../../runtime-core/src/runtime-host/index.js";
 import { FileConversationRepository } from "../../src/conversation/index.js";
 
 const temporaryRoots: string[] = [];
@@ -153,8 +150,8 @@ describe("FileConversationRepository Greenfield projection", () => {
 function createBackend(
 	rootDir: string,
 	turnEngine: TurnEnginePort = new CompletingTurnEngine(),
-): GreenfieldRuntimeSessionBackend<{ readonly id: string }> {
-	return new GreenfieldRuntimeSessionBackend({
+): KernelRuntimeSessionBackend<{ readonly id: string }> {
+	return new KernelRuntimeSessionBackend({
 		runtimeFactory: {
 			create: (options, eventSink) => createAssembly("create", rootDir, options.id, eventSink, turnEngine),
 			resume: (options, eventSink) => createAssembly("resume", rootDir, options.id, eventSink, turnEngine),
@@ -171,7 +168,7 @@ async function createAssembly(
 ) {
 	let turnIndex = 0;
 	const repository = new FileConversationRepository({ rootDir });
-	const modelRuntime = new GreenfieldRuntimeModel({
+	const modelRuntime = new RuntimeModel({
 		initialModel: TEST_MODEL,
 		initialThinkingLevel: "off",
 		catalog: {

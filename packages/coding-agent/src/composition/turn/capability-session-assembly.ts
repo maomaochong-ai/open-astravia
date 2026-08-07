@@ -1,5 +1,5 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { AgentPluginRuntimeConfig, ConversationScenario, GreenfieldRuntimeModel } from "@vetta/runtime-core";
+import type { AgentPluginRuntimeConfig, ConversationScenario, RuntimeModel } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type AgentProfile,
@@ -83,7 +83,7 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly subagentRuntime?: CodingAgentSubagentRuntime;
 	readonly contextRuntime: CodingAgentContextRuntime;
 	readonly conversationContextProjector: NonNullable<AgentProfile["conversationContextProjector"]>;
-	readonly modelRuntime: GreenfieldRuntimeModel;
+	readonly modelRuntime: RuntimeModel;
 	readonly hookRuntime: EcosystemHookRuntime;
 	readonly pluginRuntime?: CodingAgentPluginRuntimeSource;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;

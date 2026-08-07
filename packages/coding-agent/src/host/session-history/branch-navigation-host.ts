@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import { collectEntriesForBranchSummary, generateBranchSummary } from "../../compaction/index.js";
 import type { SessionBeforeTreeResult, TreePreparation } from "../../extensions/index.js";
@@ -14,7 +14,7 @@ export interface CodingAgentBranchNavigationOptions {
 }
 
 export interface CodingAgentBranchNavigationHostOptions {
-	readonly withActiveSession: <T>(operation: (session: GreenfieldRuntimeSession) => Promise<T>) => Promise<T>;
+	readonly withActiveSession: <T>(operation: (session: RuntimeSession) => Promise<T>) => Promise<T>;
 	readonly readRunner: () => CodingAgentExtensionRunnerPort;
 	readonly settingsManager: Pick<SettingsRuntime, "getBranchSummarySettings">;
 	readonly generateSummary?: typeof generateBranchSummary;
@@ -45,7 +45,7 @@ export class CodingAgentBranchNavigationHost {
 	}
 
 	private async navigate(
-		session: GreenfieldRuntimeSession,
+		session: RuntimeSession,
 		targetId: string,
 		options: CodingAgentBranchNavigationOptions,
 	): Promise<{ editorText?: string; cancelled: boolean; aborted?: boolean; summaryEntry?: BranchSummaryEntry }> {

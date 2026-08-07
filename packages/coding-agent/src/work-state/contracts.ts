@@ -24,7 +24,7 @@ export interface SceneTodoState {
 	initializeSceneTodoItems(contents: readonly string[]): void;
 }
 
-export interface CodingAgentTodoRuntime extends GreenfieldRuntimeDocumentParticipant, RuntimeSessionTodoController {
+export interface CodingAgentTodoRuntime extends RuntimeDocumentParticipant, RuntimeSessionTodoController {
 	getAll(): ReadonlyArray<TodoItem>;
 	isLocked(): boolean;
 	getLockSource(): TodoLockSource | null;
@@ -37,4 +37,4 @@ export interface CodingAgentTodoRuntime extends GreenfieldRuntimeDocumentPartici
 	dispose(): Promise<void>;
 }
 
-import type { GreenfieldRuntimeDocumentParticipant, RuntimeSessionTodoController } from "@vetta/runtime-core";
+import type { RuntimeDocumentParticipant, RuntimeSessionTodoController } from "@vetta/runtime-core";

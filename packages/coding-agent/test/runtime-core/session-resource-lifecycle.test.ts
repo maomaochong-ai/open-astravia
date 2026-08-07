@@ -1,9 +1,5 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type {
-	GreenfieldRuntimeModel,
-	GreenfieldRuntimeResourceContext,
-	GreenfieldRuntimeResources,
-} from "@vetta/runtime-core";
+import type { RuntimeModel, RuntimeResourceContext, RuntimeResources } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
@@ -50,7 +46,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			},
 		} as unknown as CodingAgentSessionExecutionRuntime;
 		const configurationState = {} as CodingAgentSessionConfigurationState;
-		const resourceContext = {} as GreenfieldRuntimeResourceContext;
+		const resourceContext = {} as RuntimeResourceContext;
 		const extensionEvents = {} as CodingAgentExtensionRunAdapter;
 		const memoryController = {} as CodingAgentMemoryController;
 		const memoryRuntime = {
@@ -121,7 +117,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 			hookRuntime,
 			extensionEvents,
 			conversationContextOverlay: overlay,
-			modelRuntime: {} as GreenfieldRuntimeModel,
+			modelRuntime: {} as RuntimeModel,
 			contextRuntime,
 			memoryRuntime,
 			memoryController,
@@ -190,7 +186,7 @@ function createIndexes(): CodingAgentSessionResourceIndexes {
 		pluginMcpRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentPluginMcpRuntime>(),
 		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
 		configurationStates: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>(),
-		resourceContexts: new InMemoryCodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>(),
+		resourceContexts: new InMemoryCodingAgentSessionValueIndex<RuntimeResourceContext>(),
 		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>(),
 		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex(),
@@ -200,11 +196,11 @@ function createIndexes(): CodingAgentSessionResourceIndexes {
 }
 
 function createConversationResources() {
-	const storage = {} as GreenfieldRuntimeResources["repository"];
+	const storage = {} as RuntimeResources["repository"];
 	return {
 		repository: storage,
-		documentStore: storage as unknown as GreenfieldRuntimeResources["conversationDocumentStore"],
-		continuationStore: storage as unknown as NonNullable<GreenfieldRuntimeResources["conversationContinuationStore"]>,
+		documentStore: storage as unknown as RuntimeResources["conversationDocumentStore"],
+		continuationStore: storage as unknown as NonNullable<RuntimeResources["conversationContinuationStore"]>,
 		resolveConversationPath: (sessionId: string) => `C:\\conversations\\${sessionId}.jsonl`,
 		resolveSessionPath: (sessionId: string) => `C:\\conversations\\${sessionId}.jsonl`,
 	};
@@ -214,7 +210,7 @@ function continuation(sourceSessionId: string, sessionId: string): ConversationC
 	return { sourceSessionId, sessionId } as unknown as ConversationContinuationResult;
 }
 
-async function disposeResources(resources: GreenfieldRuntimeResources): Promise<void> {
+async function disposeResources(resources: RuntimeResources): Promise<void> {
 	if (!resources.dispose) throw new Error("Expected resource disposal");
 	await resources.dispose();
 }

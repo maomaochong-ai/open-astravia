@@ -40,12 +40,12 @@ export function createCodingAgentRuntimeSessionControls(
 		},
 		appendSessionContext(sessionId, records) {
 			const context = options.indexes.resourceContexts.get(sessionId);
-			if (!context) throw new Error(`Greenfield session context not found: ${sessionId}`);
+			if (!context) throw new Error(`Session context not found: ${sessionId}`);
 			context.contextAppender.append(records);
 		},
 		async deliverSessionContext(sessionId, records) {
 			const context = options.indexes.resourceContexts.get(sessionId);
-			if (!context) throw new Error(`Greenfield session context not found: ${sessionId}`);
+			if (!context) throw new Error(`Session context not found: ${sessionId}`);
 			await context.deliverAsyncContext(records);
 		},
 		async quiesceSessionBackgroundCommands(sessionId) {
@@ -79,6 +79,6 @@ function requireSessionHookController(
 	sessionId: string,
 ): CodingAgentSessionHookController {
 	const controller = controllers.get(sessionId);
-	if (!controller) throw new Error(`Greenfield session hook lifecycle not found: ${sessionId}`);
+	if (!controller) throw new Error(`Session hook lifecycle not found: ${sessionId}`);
 	return controller;
 }

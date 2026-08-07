@@ -1,12 +1,12 @@
 import type { Api, Model } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
 import {
-	GreenfieldRuntimeModel,
+	RuntimeModel,
 	type RuntimeModelCatalog,
 	type RuntimeModelCredentialResolver,
 } from "../../src/runtime-host/index.js";
 
-describe("GreenfieldRuntimeModel", () => {
+describe("RuntimeModel", () => {
 	it("resolves available models before fallback and preserves model ids containing slashes", async () => {
 		const available = model("available", "model/with/slash", true);
 		const fallback = model("fallback", "fallback-model", true);
@@ -115,8 +115,8 @@ function createRuntime(
 		readonly catalog?: RuntimeModelCatalog;
 		readonly credentials?: RuntimeModelCredentialResolver;
 	} = {},
-): GreenfieldRuntimeModel {
-	return new GreenfieldRuntimeModel({
+): RuntimeModel {
+	return new RuntimeModel({
 		initialModel: INITIAL_MODEL,
 		initialThinkingLevel: options.initialThinkingLevel ?? "off",
 		catalog: options.catalog ?? catalog([INITIAL_MODEL]),

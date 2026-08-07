@@ -1,4 +1,4 @@
-import { type GreenfieldRuntimeSession, InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
+import { InitializationRollbackScope, RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
 import type { ExtensionCommandContextActions } from "../../extensions/index.js";
 import type {
 	CodingAgentPreparedSessionBinding,
@@ -84,7 +84,7 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 	}
 
 	async prepare(
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
 	): Promise<CodingAgentPreparedSessionBinding> {
 		const previous = this.current;
 		const events = this.createHost(transition.next);
@@ -118,11 +118,11 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 			rollback.commit();
 			return prepared;
 		} catch (error) {
-			return rollback.rollback(error, "Greenfield Extension session preparation and rollback failed");
+			return rollback.rollback(error, "Extension session preparation and rollback failed");
 		}
 	}
 
-	async after(transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession }): Promise<void> {
+	async after(transition: CodingAgentSessionTransition & { readonly next: RuntimeSession }): Promise<void> {
 		if (transition.kind === "fork") {
 			await this.current.events.runner.emit({
 				type: "session_fork",
@@ -137,7 +137,7 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 		});
 	}
 
-	async reload(session: GreenfieldRuntimeSession, operation: () => Promise<void>): Promise<void> {
+	async reload(session: RuntimeSession, operation: () => Promise<void>): Promise<void> {
 		const previous = this.current;
 		const rollback = new InitializationRollbackScope();
 		let next: CodingAgentExtensionSessionBinding | undefined;
@@ -178,7 +178,7 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 			this.current = next;
 			rollback.commit();
 		} catch (error) {
-			return rollback.rollback(error, "Greenfield Extension reload and rollback failed");
+			return rollback.rollback(error, "Extension reload and rollback failed");
 		}
 		await previous.events.dispose({ emitSessionShutdown: false });
 	}
@@ -193,11 +193,11 @@ class DefaultCodingAgentExtensionSessionHost implements CodingAgentExtensionSess
 			const current = this.current;
 			this.cleanup.add({ id: "current-event-host", cleanup: () => current.events.dispose() });
 		}
-		await this.cleanup.run("Failed to dispose Greenfield Extension session host");
+		await this.cleanup.run("Failed to dispose Extension session host");
 	}
 
 	private requireCommands(): CodingAgentExtensionCommandHost {
-		if (!this.current.commands) throw new Error("Greenfield Extension command context is not bound");
+		if (!this.current.commands) throw new Error("Extension command context is not bound");
 		return this.current.commands;
 	}
 }

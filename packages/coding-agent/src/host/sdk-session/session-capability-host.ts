@@ -2,8 +2,8 @@ import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
 import type {
 	AgentPluginRuntimeConfig,
-	GreenfieldRuntimeSession,
 	PromptRequest,
+	RuntimeSession,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
 import type { CodingAgentRetryEvent } from "../../public-api/sdk/sdk-event-contract.js";
@@ -97,13 +97,13 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 
 	setActiveToolNames(toolNames: readonly string[]): void {
 		const controller = this.readCore().toolController;
-		if (!controller) throw new Error("Greenfield session tool capability is unavailable");
+		if (!controller) throw new Error("Session tool capability is unavailable");
 		controller.setActiveToolNames(toolNames);
 	}
 
 	reconfigureCustomTools(customTools: readonly CodingAgentSessionToolDefinition[] | undefined): void {
 		if (!this.options.reconfigureCustomTools) {
-			throw new Error("Greenfield session custom tool capability is unavailable");
+			throw new Error("Session custom tool capability is unavailable");
 		}
 		this.options.reconfigureCustomTools(customTools);
 	}
@@ -314,7 +314,7 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	clearFinishedBackgroundTasks(): number {
 		const controller = this.readBackgroundWorkController();
 		if (!controller?.clearFinishedTasks) {
-			throw new Error("Greenfield session background task cleanup capability is unavailable");
+			throw new Error("Session background task cleanup capability is unavailable");
 		}
 		return controller.clearFinishedTasks();
 	}
@@ -340,17 +340,17 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 	}
 
 	reloadMcp(): Promise<void> {
-		if (!this.options.reloadMcp) throw new Error("Greenfield session MCP reload capability is unavailable");
+		if (!this.options.reloadMcp) throw new Error("Session MCP reload capability is unavailable");
 		return this.options.reloadMcp();
 	}
 
 	reload(): Promise<void> {
-		if (!this.options.reload) throw new Error("Greenfield session resource reload capability is unavailable");
+		if (!this.options.reload) throw new Error("Session resource reload capability is unavailable");
 		return this.options.reload();
 	}
 
 	exportToHtml(outputPath?: string): Promise<string> {
-		if (!this.options.exportToHtml) throw new Error("Greenfield session HTML export capability is unavailable");
+		if (!this.options.exportToHtml) throw new Error("Session HTML export capability is unavailable");
 		return this.options.exportToHtml(outputPath);
 	}
 
@@ -358,19 +358,19 @@ export class CodingAgentSdkSessionCapabilityHost implements CodingAgentSdkSessio
 		return this.options.hasExtensionHandlers?.(eventType) ?? false;
 	}
 
-	private readCore(): ReturnType<GreenfieldRuntimeSession["createCoreAssembly"]> {
+	private readCore(): ReturnType<RuntimeSession["createCoreAssembly"]> {
 		return this.options.readSession().createCoreAssembly();
 	}
 
 	private readConfigurationController() {
 		const controller = this.options.readSession().createRuntimeHostAssemblyCandidate().configurationController;
-		if (!controller) throw new Error("Greenfield session configuration capability is unavailable");
+		if (!controller) throw new Error("Session configuration capability is unavailable");
 		return controller;
 	}
 
 	private readContextController() {
 		const controller = this.readCore().contextController;
-		if (!controller) throw new Error("Greenfield session context capability is unavailable");
+		if (!controller) throw new Error("Session context capability is unavailable");
 		return controller;
 	}
 

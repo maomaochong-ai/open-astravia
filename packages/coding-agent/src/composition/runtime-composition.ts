@@ -1,4 +1,4 @@
-import { ComposedGreenfieldRuntimeFactory, GreenfieldRuntimeSessionBackend } from "@vetta/runtime-core";
+import { ComposedRuntimeFactory, KernelRuntimeSessionBackend } from "@vetta/runtime-core";
 import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/model-runtime-adapter.js";
@@ -129,14 +129,14 @@ async function createCodingAgentRuntimeCompositionInternal(
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
 	});
-	const runtimeFactory = new ComposedGreenfieldRuntimeFactory<CodingAgentRuntimeSessionOptions>({
+	const runtimeFactory = new ComposedRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,
 		tracer: options.tracer,
 		tracing: options.tracing,
 		createResources: (sessionOptions, resourceContext) =>
 			sessionInitialization.initialize(sessionOptions, resourceContext),
 	});
-	const backend = new GreenfieldRuntimeSessionBackend({ runtimeFactory });
+	const backend = new KernelRuntimeSessionBackend({ runtimeFactory });
 	const compositionShutdown = createCodingAgentCompositionShutdown({
 		registry: resourceRegistry,
 		clearConversationContextOverlay: () => conversationContextOverlay.clearAll(),

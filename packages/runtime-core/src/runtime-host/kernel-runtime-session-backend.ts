@@ -23,19 +23,16 @@ import type {
 	TurnResult,
 } from "../kernel/contracts.js";
 import { sessionBusyError, sessionClosedError } from "../kernel/errors.js";
-import { GreenfieldDocumentMutationCoordinator } from "./greenfield-document-mutation-coordinator.js";
-import type {
-	GreenfieldRuntimeDocumentParticipant,
-	GreenfieldRuntimeDocumentParticipantContext,
-} from "./greenfield-document-participant.js";
-import type { GreenfieldRuntimeModelRuntime } from "./greenfield-model-runtime.js";
-import { mapGreenfieldKernelEventToSessionEvents } from "./greenfield-session-events.js";
-import {
-	type GreenfieldRuntimeSessionIdentity,
-	type GreenfieldRuntimeStateSource,
-	GreenfieldSessionProjection,
-} from "./greenfield-session-projection.js";
+import { ConversationDocumentMutationCoordinator } from "./conversation-document-mutation-coordinator.js";
+import { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
 import { RetryableCleanup } from "./retryable-cleanup.js";
+import type { RuntimeDocumentParticipant, RuntimeDocumentParticipantContext } from "./runtime-document-participant.js";
+import type { RuntimeModelRuntime } from "./runtime-model.js";
+import {
+	type RuntimeSessionIdentity,
+	RuntimeSessionProjection,
+	type RuntimeStateSource,
+} from "./runtime-session-projection.js";
 import type {
 	RuntimeHostSessionAssembly,
 	RuntimeHostSessionAssemblyCandidate,
@@ -90,15 +87,15 @@ export interface RuntimePromptAdapter {
 	prepare(request: PromptRequest, context: RuntimePromptPreparationContext): Promise<RuntimePreparedPrompt>;
 }
 
-export interface GreenfieldRuntimeAssembly {
+export interface KernelRuntimeAssembly {
 	readonly session: AgentSession;
 	readonly repository: ConversationRepository;
 	readonly conversationDocumentStore: ConversationDocumentStore;
 	readonly promptAdapter: RuntimePromptAdapter;
-	readonly modelRuntime: GreenfieldRuntimeModelRuntime;
-	readonly identity: GreenfieldRuntimeSessionIdentity;
-	readonly stateSource: GreenfieldRuntimeStateSource;
-	readonly documentParticipants?: readonly GreenfieldRuntimeDocumentParticipant[];
+	readonly modelRuntime: RuntimeModelRuntime;
+	readonly identity: RuntimeSessionIdentity;
+	readonly stateSource: RuntimeStateSource;
+	readonly documentParticipants?: readonly RuntimeDocumentParticipant[];
 	readonly todoController?: RuntimeSessionTodoController;
 	readonly contextController?: RuntimeSessionContextController;
 	readonly contextDeliveryController?: RuntimeSessionContextDeliveryController;
@@ -111,16 +108,16 @@ export interface GreenfieldRuntimeAssembly {
 	dispose?(): Promise<void>;
 }
 
-export interface GreenfieldRuntimeFactory<TCreateOptions> {
-	create(options: TCreateOptions, eventSink: EventSink): Promise<GreenfieldRuntimeAssembly>;
-	resume(options: TCreateOptions, eventSink: EventSink): Promise<GreenfieldRuntimeAssembly>;
+export interface KernelRuntimeFactory<TCreateOptions> {
+	create(options: TCreateOptions, eventSink: EventSink): Promise<KernelRuntimeAssembly>;
+	resume(options: TCreateOptions, eventSink: EventSink): Promise<KernelRuntimeAssembly>;
 }
 
-export interface GreenfieldRuntimeSessionBackendOptions<TCreateOptions> {
-	readonly runtimeFactory: GreenfieldRuntimeFactory<TCreateOptions>;
+export interface KernelRuntimeSessionBackendOptions<TCreateOptions> {
+	readonly runtimeFactory: KernelRuntimeFactory<TCreateOptions>;
 }
 
-export interface GreenfieldRuntimeSessionState {
+export interface RuntimeSessionStatus {
 	readonly sessionId: string;
 	readonly state: AgentSessionState;
 	readonly pendingMessageCount: number;
@@ -129,8 +126,8 @@ export interface GreenfieldRuntimeSessionState {
 	readonly messageCount: number;
 }
 
-/** Greenfield 当前真实具备的 RuntimeHost 核心能力；不包含尚未迁移的外围 Port。 */
-export type GreenfieldRuntimeSessionCoreAssembly = Pick<
+/** Kernel Runtime 当前真实具备的 RuntimeHost 核心能力。 */
+export type RuntimeSessionCoreAssembly = Pick<
 	RuntimeHostSessionAssembly,
 	"lifecycle" | "historyReader" | "historyController" | "modelController" | "modelView" | "workspaceView" | "corePorts"
 > & {
@@ -146,16 +143,16 @@ export type GreenfieldRuntimeSessionCoreAssembly = Pick<
 	readonly toolController?: RuntimeSessionToolController;
 };
 
-export class GreenfieldRuntimeSession {
+export class RuntimeSession {
 	private readonly session: AgentSession;
 	private readonly promptAdapter: RuntimePromptAdapter;
-	private readonly eventSink: GreenfieldSessionEventSink;
-	private readonly modelRuntime: GreenfieldRuntimeModelRuntime;
-	private readonly stateSource: GreenfieldRuntimeStateSource;
+	private readonly eventSink: RuntimeSessionEventSink;
+	private readonly modelRuntime: RuntimeModelRuntime;
+	private readonly stateSource: RuntimeStateSource;
 	private readonly conversationDocumentStore: ConversationDocumentStore;
-	private readonly projection: GreenfieldSessionProjection;
-	private readonly documentMutations: GreenfieldDocumentMutationCoordinator;
-	private readonly documentParticipants: readonly GreenfieldRuntimeDocumentParticipant[];
+	private readonly projection: RuntimeSessionProjection;
+	private readonly documentMutations: ConversationDocumentMutationCoordinator;
+	private readonly documentParticipants: readonly RuntimeDocumentParticipant[];
 	private readonly todoController: RuntimeSessionTodoController | undefined;
 	private readonly contextController: RuntimeSessionContextController | undefined;
 	private readonly contextDeliveryController: RuntimeSessionContextDeliveryController;
@@ -170,9 +167,9 @@ export class GreenfieldRuntimeSession {
 	private historyMutation = false;
 
 	constructor(
-		assembly: GreenfieldRuntimeAssembly,
-		eventSink: GreenfieldSessionEventSink,
-		projection: GreenfieldSessionProjection,
+		assembly: KernelRuntimeAssembly,
+		eventSink: RuntimeSessionEventSink,
+		projection: RuntimeSessionProjection,
 	) {
 		this.session = assembly.session;
 		this.promptAdapter = assembly.promptAdapter;
@@ -181,7 +178,7 @@ export class GreenfieldRuntimeSession {
 		this.stateSource = assembly.stateSource;
 		this.conversationDocumentStore = assembly.conversationDocumentStore;
 		this.projection = projection;
-		this.documentMutations = new GreenfieldDocumentMutationCoordinator({
+		this.documentMutations = new ConversationDocumentMutationCoordinator({
 			readSessionId: () => this.session.id,
 			store: this.conversationDocumentStore,
 			readProjectedDocument: () => this.projection.readDocument(),
@@ -277,7 +274,7 @@ export class GreenfieldRuntimeSession {
 		return this.eventSink.subscribe(handler);
 	}
 
-	async getState(): Promise<GreenfieldRuntimeSessionState> {
+	async getState(): Promise<RuntimeSessionStatus> {
 		this.assertOpen();
 		return {
 			sessionId: this.sessionId,
@@ -423,7 +420,7 @@ export class GreenfieldRuntimeSession {
 		});
 	}
 
-	createCoreAssembly(): GreenfieldRuntimeSessionCoreAssembly {
+	createCoreAssembly(): RuntimeSessionCoreAssembly {
 		this.assertOpen();
 		const runtimeSession = this;
 		const queueController: RuntimeSessionQueueController = {
@@ -538,11 +535,11 @@ export class GreenfieldRuntimeSession {
 
 	async dispose(): Promise<void> {
 		this.disposed = true;
-		await this.cleanup.run("Failed to dispose Greenfield runtime session");
+		await this.cleanup.run("Failed to dispose Runtime session");
 	}
 
 	async initializeDocumentParticipants(document: ConversationDocument): Promise<void> {
-		const context: GreenfieldRuntimeDocumentParticipantContext = {
+		const context: RuntimeDocumentParticipantContext = {
 			appendCustomEntry: async (entry) => {
 				await this.executeDocumentCommand({
 					type: "custom.append",
@@ -603,42 +600,41 @@ export class GreenfieldRuntimeSession {
 }
 
 /**
- * Greenfield Kernel 的显式并行后端。
+ * Kernel 驱动的 Runtime Session 后端。
  *
- * 它实现通用 RuntimeSessionBackend 工厂合同，但返回独立 Greenfield 门面；当前
- * RuntimeHost 仍使用默认类型参数下的 Legacy Session，不能把本类直接注入生产入口。
+ * 它将 Kernel Session、Conversation Store 与宿主端口组合为稳定的 RuntimeSession。
  */
-export class GreenfieldRuntimeSessionBackend<TCreateOptions>
-	implements RuntimeSessionBackend<TCreateOptions, GreenfieldRuntimeSession>
+export class KernelRuntimeSessionBackend<TCreateOptions>
+	implements RuntimeSessionBackend<TCreateOptions, RuntimeSession>
 {
-	private readonly options: GreenfieldRuntimeSessionBackendOptions<TCreateOptions>;
+	private readonly options: KernelRuntimeSessionBackendOptions<TCreateOptions>;
 
-	constructor(options: GreenfieldRuntimeSessionBackendOptions<TCreateOptions>) {
+	constructor(options: KernelRuntimeSessionBackendOptions<TCreateOptions>) {
 		this.options = options;
 	}
 
-	async create(options: TCreateOptions): Promise<GreenfieldRuntimeSession> {
+	async create(options: TCreateOptions): Promise<RuntimeSession> {
 		return this.assemble("create", options);
 	}
 
-	async resume(options: TCreateOptions): Promise<GreenfieldRuntimeSession> {
+	async resume(options: TCreateOptions): Promise<RuntimeSession> {
 		return this.assemble("resume", options);
 	}
 
-	private async assemble(operation: "create" | "resume", options: TCreateOptions): Promise<GreenfieldRuntimeSession> {
-		const eventSink = new GreenfieldSessionEventSink();
+	private async assemble(operation: "create" | "resume", options: TCreateOptions): Promise<RuntimeSession> {
+		const eventSink = new RuntimeSessionEventSink();
 		const assembly = await this.options.runtimeFactory[operation](options, eventSink);
 		try {
 			const [conversation, document] = await Promise.all([
 				assembly.repository.load(assembly.session.id),
 				assembly.conversationDocumentStore.readDocument(assembly.session.id),
 			]);
-			const projection = new GreenfieldSessionProjection(conversation, document);
+			const projection = new RuntimeSessionProjection(conversation, document);
 			eventSink.bindProjection(projection);
 			eventSink.bindIdentity(assembly.identity);
 			eventSink.bindStateSource(assembly.stateSource);
 			eventSink.bindDocumentParticipants(assembly.documentParticipants ?? []);
-			const runtimeSession = new GreenfieldRuntimeSession(assembly, eventSink, projection);
+			const runtimeSession = new RuntimeSession(assembly, eventSink, projection);
 			await runtimeSession.initializeDocumentParticipants(document);
 			eventSink.finishInitialization();
 			return runtimeSession;
@@ -653,17 +649,17 @@ export class GreenfieldRuntimeSessionBackend<TCreateOptions>
 	}
 }
 
-class GreenfieldSessionEventSink implements EventSink {
+class RuntimeSessionEventSink implements EventSink {
 	private readonly listeners = new Set<(event: SessionEvent) => void>();
 	private readonly executionObservationListeners = new Set<
 		(observation: RuntimeSessionExecutionObservation) => Promise<void> | void
 	>();
 	private readonly initializationEvents: SessionEvent[] = [];
-	private documentParticipants: readonly GreenfieldRuntimeDocumentParticipant[] = [];
-	private documentMutationCoordinator: GreenfieldDocumentMutationCoordinator | undefined;
-	private identity: GreenfieldRuntimeSessionIdentity = {};
-	private projection: GreenfieldSessionProjection | undefined;
-	private stateSource: GreenfieldRuntimeStateSource | undefined;
+	private documentParticipants: readonly RuntimeDocumentParticipant[] = [];
+	private documentMutationCoordinator: ConversationDocumentMutationCoordinator | undefined;
+	private identity: RuntimeSessionIdentity = {};
+	private projection: RuntimeSessionProjection | undefined;
+	private stateSource: RuntimeStateSource | undefined;
 	private initializing = true;
 
 	async publish(event: KernelEvent): Promise<void> {
@@ -698,7 +694,7 @@ class GreenfieldSessionEventSink implements EventSink {
 				await participant.onSessionEvent?.(event);
 			}
 		}
-		for (const mappedEvent of mapGreenfieldKernelEventToSessionEvents(event)) {
+		for (const mappedEvent of mapKernelEventToSessionEvents(event)) {
 			const mapped = this.withDynamicState(mappedEvent);
 			if (this.initializing) {
 				this.initializationEvents.push(mapped);
@@ -731,27 +727,27 @@ class GreenfieldSessionEventSink implements EventSink {
 		this.initializing = false;
 	}
 
-	bindProjection(projection: GreenfieldSessionProjection): void {
+	bindProjection(projection: RuntimeSessionProjection): void {
 		this.projection = projection;
 	}
 
-	bindIdentity(identity: GreenfieldRuntimeSessionIdentity): void {
+	bindIdentity(identity: RuntimeSessionIdentity): void {
 		this.identity = { ...identity };
 	}
 
-	readIdentity(): GreenfieldRuntimeSessionIdentity {
+	readIdentity(): RuntimeSessionIdentity {
 		return this.identity;
 	}
 
-	bindStateSource(stateSource: GreenfieldRuntimeStateSource): void {
+	bindStateSource(stateSource: RuntimeStateSource): void {
 		this.stateSource = stateSource;
 	}
 
-	bindDocumentParticipants(participants: readonly GreenfieldRuntimeDocumentParticipant[]): void {
+	bindDocumentParticipants(participants: readonly RuntimeDocumentParticipant[]): void {
 		this.documentParticipants = participants;
 	}
 
-	bindDocumentMutationCoordinator(coordinator: GreenfieldDocumentMutationCoordinator): void {
+	bindDocumentMutationCoordinator(coordinator: ConversationDocumentMutationCoordinator): void {
 		this.documentMutationCoordinator = coordinator;
 	}
 

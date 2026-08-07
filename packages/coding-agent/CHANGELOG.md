@@ -2,6 +2,7 @@
 
 ### Breaking Changes
 
+- **移除 Extension setup 的旧 SessionManager 源码兼容 shim**：`ExtensionSessionWriter` 不再提供恒为 `true` 的 `isPersisted()`，`ExtensionSessionSetup` 改为直接的函数合同，不再通过双变签名兼容以具体 `SessionManager` 标注参数的旧回调。setup 仍在原生 Conversation seed 创建后执行，已有写入、分支、标签和读取能力及持久化时序不变。
 - **收口 Extension 宿主兼容性合同**：`@vetta/coding-agent/bootstrap` 将 Bootstrap 的未解析结果改为 `extensionRequirements`，宿主通过 `resolveCodingAgentExtensionCompatibility()` 解析为带 `compatible` 的最终评估；移除误导性的 Legacy/Greenfield 类型、函数、常量和 `requiresLegacyRuntime` 字段，不改变 Extension 功能、未知事件拒绝策略或 CLI/RPC 错误协议。
 - **收口包根公共面**：`@vetta/coding-agent` 现在只暴露稳定 Extension 合同及扩展所需的消息投影、压缩序列化和主题辅助 API；SDK、RPC、Host、Settings、Profile、Resource 等能力继续保留，但必须从各自显式公共子路径导入。此变更只调整模块边界，不改变会话执行、工具、资源或协议行为。
 - **退役旧 Session 执行公共面**：删除旧 `AgentSession`、`SessionManager`、包根 `createAgentSession`、旧 SDK/RPC 适配器及深层会话控制器；稳定 `@vetta/coding-agent/sdk` 与 capability-based RPC 成为唯一会话执行入口。CLI 导出、会话历史格式、Extension、工具、资源和运行时行为继续由 Greenfield 组合提供。
@@ -49,6 +50,7 @@
 
 ### Changed
 
+- **生产 Runtime 迁移身份收口**：内部诊断、日志和注释不再使用 Greenfield 迁移称谓，剩余 7 个 Coding Agent `greenfield-*.test.ts` 按职责重命名；保留既有 CLI RuntimeHost 判别值、RPC profile、SDK 错误码和历史迁移结果等已发布协议字面值。迁移残留门禁新增源码兼容 shim、迁移测试文件和非协议 Greenfield 文本三项零基线。
 - **SDK Session Host 组合边界拆分**：将原 603 行公共 SDK 产品宿主适配器拆为薄组合入口、公共 Tool 校验、初始模型选择、能力宿主和合同模块；旧单文件加入退役与模块行数守卫。TypeBox 继续只校验 SDK Tool 外部 schema/input，模型、资源、MCP、Extension、存储、错误码和 CLI/Desktop/IM 可观察行为保持不变。
 - **Context Runtime 适配边界拆分**：将原 725 行 Session Context Runtime 拆为中性编排器、模型调用投影、Conversation 压缩投影和 Prefire 生命周期模块；旧文件与迁移期类名退役，并新增模块行数和旧路径回流守卫。压缩阈值、摘要、溢出恢复、microcompact、Extension Hook、Memory Rollover、Prefire 和 CLI/Desktop/IM 行为保持不变。
 - **活动 Session 事务宿主职责拆分**：将原 511 行根级活动 Session Host 拆为中性的事务编排、共享合同、稳定事件转发和可重试资源清理模块；Coding Agent 自有类型不再通过 `Greenfield` 内部名称再导出，旧根级文件加入退役守卫。new/switch/fork、事件顺序、取消、回滚、Extension 生命周期、资源释放及 CLI/Desktop/IM 行为保持不变。

@@ -10,17 +10,17 @@ import {
 	createEmptyConversationDocument,
 } from "../../src/conversation/index.js";
 import type { StoredSessionEvent } from "../../src/kernel/contracts.js";
-import { GreenfieldDocumentMutationCoordinator } from "../../src/runtime-host/greenfield-document-mutation-coordinator.js";
+import { ConversationDocumentMutationCoordinator } from "../../src/runtime-host/conversation-document-mutation-coordinator.js";
 
 const SESSION_ID = "coordinated-session";
 
-describe("GreenfieldDocumentMutationCoordinator", () => {
+describe("ConversationDocumentMutationCoordinator", () => {
 	it("reloads the authoritative document before replaying a command that loses a Journal race", async () => {
 		const store = new ControlledDocumentStore();
 		let projected = createDocument();
 		const event = messageEvent();
 		store.beforeNextExecute = () => store.appendEvent(event);
-		const coordinator = new GreenfieldDocumentMutationCoordinator({
+		const coordinator = new ConversationDocumentMutationCoordinator({
 			readSessionId: () => SESSION_ID,
 			store,
 			readProjectedDocument: () => projected,
@@ -41,7 +41,7 @@ describe("GreenfieldDocumentMutationCoordinator", () => {
 		const store = new ControlledDocumentStore();
 		let projected = createDocument();
 		store.appendEvent(messageEvent());
-		const coordinator = new GreenfieldDocumentMutationCoordinator({
+		const coordinator = new ConversationDocumentMutationCoordinator({
 			readSessionId: () => SESSION_ID,
 			store,
 			readProjectedDocument: () => projected,
@@ -60,7 +60,7 @@ describe("GreenfieldDocumentMutationCoordinator", () => {
 	it("serializes concurrent direct commands without regressing the projection", async () => {
 		const store = new ControlledDocumentStore();
 		let projected = createDocument();
-		const coordinator = new GreenfieldDocumentMutationCoordinator({
+		const coordinator = new ConversationDocumentMutationCoordinator({
 			readSessionId: () => SESSION_ID,
 			store,
 			readProjectedDocument: () => projected,

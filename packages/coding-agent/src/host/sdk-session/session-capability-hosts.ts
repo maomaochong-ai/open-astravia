@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import {
 	type CodingAgentHtmlExportRuntime,
 	createToolHtmlRenderer,
@@ -152,7 +152,7 @@ export function createCodingAgentSdkActiveSessionCapabilityHostFactory(
 }
 
 async function exportCodingAgentSdkSessionToHtml(
-	session: GreenfieldRuntimeSession,
+	session: RuntimeSession,
 	htmlExporter: CodingAgentHtmlExportRuntime,
 	themeName: string | undefined,
 	runner: ReturnType<CodingAgentSdkExtensionTransitionAdapter["readRunnerOrUndefined"]>,

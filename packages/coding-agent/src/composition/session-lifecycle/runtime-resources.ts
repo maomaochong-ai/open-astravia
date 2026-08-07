@@ -1,7 +1,7 @@
 import type { Api, Model } from "@vetta/ai";
 import type {
 	ConversationScenario,
-	GreenfieldRuntimeResources,
+	RuntimeResources,
 	RuntimeSessionAskUserQuestionCapability,
 } from "@vetta/runtime-core";
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
@@ -24,17 +24,14 @@ import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tool
 import type { CodingAgentTurnCapabilitySessionAssembly } from "../turn/capability-session-assembly.js";
 
 export interface CodingAgentSessionConversationResources {
-	readonly repository: GreenfieldRuntimeResources["repository"];
-	readonly documentStore: GreenfieldRuntimeResources["conversationDocumentStore"];
-	readonly continuationStore: NonNullable<GreenfieldRuntimeResources["conversationContinuationStore"]>;
+	readonly repository: RuntimeResources["repository"];
+	readonly documentStore: RuntimeResources["conversationDocumentStore"];
+	readonly continuationStore: NonNullable<RuntimeResources["conversationContinuationStore"]>;
 	resolveConversationPath(sessionId: string): string;
 	resolveSessionPath(sessionId: string): string | undefined;
 }
 
-export type CodingAgentSessionModelRuntimePort = Omit<
-	GreenfieldRuntimeResources["modelRuntime"],
-	"readCurrentModel"
-> & {
+export type CodingAgentSessionModelRuntimePort = Omit<RuntimeResources["modelRuntime"], "readCurrentModel"> & {
 	readCurrentModel(): Model<Api>;
 };
 
@@ -72,10 +69,10 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly dispose: () => Promise<void>;
 }
 
-/** 将产品 Session runtime 投影为 runtime-core 的 GreenfieldRuntimeResources 合同。 */
+/** 将产品 Session runtime 投影为 runtime-core 的 RuntimeResources 合同。 */
 export function createCodingAgentSessionRuntimeResources(
 	options: CodingAgentSessionRuntimeResourcesOptions,
-): GreenfieldRuntimeResources {
+): RuntimeResources {
 	const stateActivation = createStateActivation(options);
 	const pluginMcpRuntime = options.pluginMcpRuntime;
 	return {

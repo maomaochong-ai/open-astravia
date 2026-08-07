@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import type { SessionEndCause } from "@vetta/ecosystem-adapter";
-import type { GreenfieldRuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
 import type {
 	CodingAgentNewSessionOptions,
 	CodingAgentSessionSeedInitializer,
@@ -35,7 +35,7 @@ export type {
  * Event rebinding and committed-resource cleanup are delegated to dedicated collaborators.
  */
 export class CodingAgentActiveSessionHost {
-	private activeSession: GreenfieldRuntimeSession;
+	private activeSession: RuntimeSession;
 	private readonly events: CodingAgentActiveSessionEventRelay;
 	private readonly cleanup = new CodingAgentSessionTransitionCleanup();
 	private transitionTail: Promise<void> = Promise.resolve();
@@ -46,7 +46,7 @@ export class CodingAgentActiveSessionHost {
 		this.events = new CodingAgentActiveSessionEventRelay(options.initialSession);
 	}
 
-	readSession(): GreenfieldRuntimeSession {
+	readSession(): RuntimeSession {
 		this.assertOpen();
 		return this.activeSession;
 	}
@@ -67,17 +67,17 @@ export class CodingAgentActiveSessionHost {
 		return this.runExclusive(() => waitForIdle(this.activeSession));
 	}
 
-	startActiveSessionOperation<T>(operation: (session: GreenfieldRuntimeSession) => Promise<T>): Promise<T> {
+	startActiveSessionOperation<T>(operation: (session: RuntimeSession) => Promise<T>): Promise<T> {
 		let started: Promise<T> | undefined;
 		return this.runExclusive(async () => {
 			started = operation(this.activeSession);
 		}).then(() => {
-			if (!started) throw new Error("Greenfield active session operation did not start");
+			if (!started) throw new Error("Active session operation did not start");
 			return started;
 		});
 	}
 
-	runActiveSessionMutation<T>(operation: (session: GreenfieldRuntimeSession) => Promise<T>): Promise<T> {
+	runActiveSessionMutation<T>(operation: (session: RuntimeSession) => Promise<T>): Promise<T> {
 		return this.runExclusive(async () => {
 			await waitForIdle(this.activeSession);
 			return operation(this.activeSession);
@@ -121,7 +121,7 @@ export class CodingAgentActiveSessionHost {
 			return this.withEndedSourceHooks(previous, "switch_session", async () => {
 				await this.options.runtime.quiesceSessionBackgroundCommands(previous.sessionId);
 				const sessionId = this.options.resolveSessionId(sessionPath);
-				if (!sessionId) throw new Error(`Greenfield session path is invalid: ${sessionPath}`);
+				if (!sessionId) throw new Error(`Session path is invalid: ${sessionPath}`);
 				const next = await this.options.runtime.backend.resume({
 					...this.options.sessionOptions,
 					sessionId,
@@ -147,9 +147,9 @@ export class CodingAgentActiveSessionHost {
 				const sessionId = this.options.resolveSessionId(fork.path);
 				if (!sessionId) {
 					await this.deleteCreatedTarget(fork.path);
-					throw new Error(`Greenfield fork path is invalid: ${fork.path}`);
+					throw new Error(`Fork path is invalid: ${fork.path}`);
 				}
-				let next: GreenfieldRuntimeSession | undefined;
+				let next: RuntimeSession | undefined;
 				try {
 					next = await this.options.runtime.backend.resume({
 						...this.options.sessionOptions,
@@ -168,7 +168,7 @@ export class CodingAgentActiveSessionHost {
 					await this.deleteCreatedTarget(fork.path);
 					throw error;
 				}
-				if (!next) throw new Error("Greenfield fork did not produce a target session");
+				if (!next) throw new Error("Fork did not produce a target session");
 				await this.commitTransition(
 					{ ...transition, next, targetSessionPath: fork.path },
 					{ deleteTargetOnRollback: true },
@@ -189,7 +189,7 @@ export class CodingAgentActiveSessionHost {
 
 	private describe(
 		kind: CodingAgentSessionTransitionKind,
-		previous: GreenfieldRuntimeSession,
+		previous: RuntimeSession,
 		extra: Partial<Pick<CodingAgentSessionTransition, "targetSessionPath" | "entryId">> = {},
 	): CodingAgentSessionTransition {
 		return {
@@ -207,7 +207,7 @@ export class CodingAgentActiveSessionHost {
 	}
 
 	private async commitTransition(
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
 		options: { readonly deleteTargetOnRollback?: boolean } = {},
 	): Promise<void> {
 		const previous = transition.previous;
@@ -240,24 +240,24 @@ export class CodingAgentActiveSessionHost {
 
 	private reportTransitionCleanupError(
 		error: AggregateError,
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
 	): void {
 		try {
 			if (this.options.onTransitionCleanupError) {
 				this.options.onTransitionCleanupError(error, transition);
 				return;
 			}
-			console.warn("[GreenfieldActiveSessionHost] Committed session transition cleanup failed", error);
+			console.warn("[CodingAgentActiveSessionHost] Committed session transition cleanup failed", error);
 		} catch (reportError) {
 			console.warn(
-				"[GreenfieldActiveSessionHost] Failed to report committed session transition cleanup",
+				"[CodingAgentActiveSessionHost] Failed to report committed session transition cleanup",
 				new AggregateError([error, reportError]),
 			);
 		}
 	}
 
 	private async withEndedSourceHooks<T>(
-		previous: GreenfieldRuntimeSession,
+		previous: RuntimeSession,
 		cause: SessionEndCause,
 		operation: () => Promise<T>,
 	): Promise<T> {
@@ -272,13 +272,13 @@ export class CodingAgentActiveSessionHost {
 		}
 	}
 
-	private replaceActiveSession(session: GreenfieldRuntimeSession): void {
+	private replaceActiveSession(session: RuntimeSession): void {
 		this.events.replaceSession(session, () => {
 			this.activeSession = session;
 		});
 	}
 
-	private async interruptActiveTurn(session: GreenfieldRuntimeSession, reason: string): Promise<void> {
+	private async interruptActiveTurn(session: RuntimeSession, reason: string): Promise<void> {
 		if (!session.readState().isStreaming) return;
 		this.events.setEventsSuppressed(true);
 		try {
@@ -293,7 +293,7 @@ export class CodingAgentActiveSessionHost {
 		sessionId: string,
 		parentSession: string | undefined,
 		initializer: CodingAgentSessionSeedInitializer,
-	): Promise<GreenfieldRuntimeSession> {
+	): Promise<RuntimeSession> {
 		try {
 			await initializer.initializeSeed({
 				cwd: this.options.sessionOptions.cwd ?? process.cwd(),
@@ -337,11 +337,11 @@ export class CodingAgentActiveSessionHost {
 	}
 
 	private assertOpen(): void {
-		if (this.disposed) throw new Error("Greenfield active session host is disposed");
+		if (this.disposed) throw new Error("active session host is disposed");
 	}
 }
 
-async function waitForIdle(session: GreenfieldRuntimeSession): Promise<void> {
+async function waitForIdle(session: RuntimeSession): Promise<void> {
 	await new Promise<void>((resolve) => {
 		let unsubscribe: (() => void) | undefined;
 		let settled = false;

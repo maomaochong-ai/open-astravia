@@ -17,7 +17,7 @@ import {
 } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome, type HookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
-import type { GreenfieldRuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 
 const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
@@ -242,7 +242,7 @@ async function createLifecycleComposition(
 
 function createActiveSessionHost(
 	runtime: CodingAgentRuntimeComposition,
-	initialSession: GreenfieldRuntimeSession,
+	initialSession: RuntimeSession,
 	conversationDir: string,
 	createSessionId: () => string,
 	lifecycle: CodingAgentSessionTransitionLifecycle | undefined = undefined,

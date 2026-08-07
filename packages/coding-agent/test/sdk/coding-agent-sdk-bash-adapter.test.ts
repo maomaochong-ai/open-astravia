@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import { CodingAgentSdkBashAdapter } from "../../src/host/coding-agent-sdk-bash-adapter.js";
 import { createHostBashExecutor } from "../../src/host/command-execution/index.js";
@@ -88,6 +88,6 @@ function createSession(streaming: boolean) {
 			workspaceView: { readWorkingDirectory: () => "C:/workspace" },
 			contextDeliveryController: { deliver },
 		}),
-	} as unknown as GreenfieldRuntimeSession;
+	} as unknown as RuntimeSession;
 	return { deliver, session };
 }

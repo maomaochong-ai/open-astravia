@@ -1,5 +1,5 @@
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { GreenfieldRuntimeModel } from "@vetta/runtime-core";
+import type { RuntimeModel } from "@vetta/runtime-core";
 import {
 	type AgentFeatureDefinition,
 	type ConversationContextProjector,
@@ -68,7 +68,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			conversationContextProjector: {
 				project: () => [],
 			} satisfies ConversationContextProjector,
-			modelRuntime: {} as GreenfieldRuntimeModel,
+			modelRuntime: {} as RuntimeModel,
 			hookRuntime: {} as unknown as EcosystemHookRuntime,
 			extensionEvents,
 		});

@@ -1,5 +1,5 @@
 import { basename, dirname } from "node:path";
-import { type GreenfieldRuntimeSession, RetryableCleanup } from "@vetta/runtime-core";
+import { RetryableCleanup, type RuntimeSession } from "@vetta/runtime-core";
 import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
 import { CodingAgentExtensionObservationAdapter } from "../../adapters/runtime-core/extension-observation-adapter.js";
 import type { Extension, ExtensionError, ExtensionExecutionHost, ExtensionRuntime } from "../../extensions/index.js";
@@ -14,7 +14,7 @@ export interface CodingAgentExtensionEventHostOptions {
 	readonly extensions: readonly Extension[];
 	readonly runtime: ExtensionRuntime;
 	readonly cwd: string;
-	readonly session: GreenfieldRuntimeSession;
+	readonly session: RuntimeSession;
 	readonly modelRegistry: CodingAgentModelRuntime;
 	readonly resourceLoader: Pick<SessionResourceRuntime, "extendResources" | "getPrompts" | "getSkills">;
 	readonly bindEvents: (
@@ -41,7 +41,7 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 	constructor(private readonly options: CodingAgentExtensionEventHostOptions) {
 		const assembly = options.session.createCoreAssembly();
 		const contextController = assembly.contextController;
-		if (!contextController) throw new Error("Greenfield Extension events require a Runtime context controller");
+		if (!contextController) throw new Error("Extension events require a Runtime context controller");
 
 		this.actionHost = new CodingAgentExtensionActionHost({
 			session: options.session,
@@ -135,12 +135,12 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 	}
 
 	rebindRuntimeActions(): void {
-		if (this.disposed) throw new Error("Greenfield Extension event host is disposed");
+		if (this.disposed) throw new Error("Extension event host is disposed");
 		this.actionHost.bind(this.options.runtime);
 	}
 
 	rebindRuntimeBindings(): void {
-		if (this.disposed) throw new Error("Greenfield Extension event host is disposed");
+		if (this.disposed) throw new Error("Extension event host is disposed");
 		this.actionHost.bind(this.options.runtime);
 		this.eventBinding.dispose();
 		this.eventBinding = this.options.bindEvents(this.runner, { replaceExisting: true });
@@ -149,7 +149,7 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 	async dispose(lifecycle: { readonly emitSessionShutdown?: boolean } = {}): Promise<void> {
 		this.disposed = true;
 		if (!this.cleanupPrepared) this.prepareCleanup(lifecycle.emitSessionShutdown !== false);
-		await this.cleanup.run("Failed to dispose Greenfield Extension event host");
+		await this.cleanup.run("Failed to dispose Extension event host");
 	}
 
 	private prepareCleanup(emitSessionShutdown: boolean): void {

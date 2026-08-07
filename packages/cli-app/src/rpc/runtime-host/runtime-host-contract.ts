@@ -10,7 +10,7 @@ import type {
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import type { CodingAgentHistoricalSessionMigrationIncompatible } from "@vetta/coding-agent/historical-sessions";
 import type { RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
-import type { GreenfieldRuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionCatalog } from "@vetta/runtime-core";
 import type { FileConversationOwnershipManagerOptions } from "@vetta/runtime-storage/conversation";
 import type { CliPrintSessionAdapter } from "../../print-session-adapter.js";
 
@@ -31,7 +31,7 @@ export interface RpcRuntimeHostSessionIncompatible {
 export interface RpcRuntimeHostReady {
 	readonly kind: "greenfield";
 	readonly bootstrap: CodingAgentHostBootstrap;
-	readonly session: GreenfieldRuntimeSession;
+	readonly session: RuntimeSession;
 	readonly runtime: CodingAgentRuntimeComposition;
 	readonly capabilities: RpcSessionCapabilities;
 }
@@ -44,7 +44,7 @@ export type RpcRuntimeHostPreparation =
 export interface PrintRuntimeHostReady {
 	readonly kind: "greenfield-print";
 	readonly bootstrap: CodingAgentHostBootstrap;
-	readonly session: GreenfieldRuntimeSession;
+	readonly session: RuntimeSession;
 	readonly runtime: CodingAgentRuntimeComposition;
 	readonly printSession: CliPrintSessionAdapter;
 }

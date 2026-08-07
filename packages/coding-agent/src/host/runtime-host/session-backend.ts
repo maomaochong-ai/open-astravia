@@ -3,10 +3,10 @@ import { resolve } from "node:path";
 import {
 	assessRuntimeHostSessionAssembly,
 	type ConversationScenario,
-	type GreenfieldRuntimeSession,
 	type RuntimeHostSessionAssembly,
 	type RuntimeHostSessionAssemblyAssessment,
 	type RuntimeHostSessionBackend,
+	type RuntimeSession,
 	type RuntimeSessionCreateRequest,
 	runtimeError,
 } from "@vetta/runtime-core";
@@ -36,7 +36,7 @@ export interface CodingAgentRuntimeHostSessionBackendOptions {
  * 组合根固定的参数必须相等；尚未接线的宿主能力必须显式失败，禁止静默丢失。
  */
 export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionBackend {
-	private readonly sessions = new Map<string, GreenfieldRuntimeSession>();
+	private readonly sessions = new Map<string, RuntimeSession>();
 	private readonly assessments = new Map<string, RuntimeHostSessionAssemblyAssessment>();
 	private readonly retrySettings: CodingAgentRuntimeHostRetrySettings;
 
@@ -48,7 +48,7 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 		this.assertSupportedRequest(request);
 		const sessionPath = request.sessionPath?.trim();
 		const sessionOptions = this.toSessionOptions(request);
-		let session: GreenfieldRuntimeSession;
+		let session: RuntimeSession;
 		try {
 			session = sessionPath
 				? await this.options.composition.backend.resume(sessionOptions)
@@ -59,7 +59,7 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 		const assessment = assessRuntimeHostSessionAssembly(session.createRuntimeHostAssemblyCandidate());
 		if (!assessment.ready) {
 			await session.dispose();
-			throw new Error(`Greenfield RuntimeHost assembly is incomplete: ${assessment.missingPorts.join(", ")}`);
+			throw new Error(`RuntimeHost assembly is incomplete: ${assessment.missingPorts.join(", ")}`);
 		}
 
 		const sessionId = session.sessionId;
@@ -83,7 +83,7 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 		};
 	}
 
-	readSession(sessionId: string): GreenfieldRuntimeSession | undefined {
+	readSession(sessionId: string): RuntimeSession | undefined {
 		return this.sessions.get(sessionId);
 	}
 
@@ -97,7 +97,7 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 			? resolveSessionIdFromPath(this.options.conversationDir, sessionPath)
 			: randomUUID();
 		if (!sessionId) {
-			throw new Error(`Greenfield session path is invalid: ${request.sessionPath}`);
+			throw new Error(`Session path is invalid: ${request.sessionPath}`);
 		}
 		return {
 			sessionId,
@@ -127,16 +127,16 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 		assertSamePath("agentDir", request.agentDir, this.options.agentDir);
 		if (request.scenario !== undefined && request.scenario !== this.options.scenario) {
 			throw new Error(
-				`Greenfield RuntimeHost scenario mismatch: expected ${this.options.scenario}, received ${request.scenario}`,
+				`RuntimeHost scenario mismatch: expected ${this.options.scenario}, received ${request.scenario}`,
 			);
 		}
 		if (request.enableSubagents !== this.options.enableSubagents) {
 			throw new Error(
-				`Greenfield RuntimeHost subagent mismatch: expected ${this.options.enableSubagents}, received ${request.enableSubagents}`,
+				`RuntimeHost subagent mismatch: expected ${this.options.enableSubagents}, received ${request.enableSubagents}`,
 			);
 		}
 		if (request.serverUrl !== undefined && request.serverUrl !== this.options.serverUrl) {
-			throw new Error("Greenfield RuntimeHost serverUrl is not supported by this composition");
+			throw new Error("RuntimeHost serverUrl is not supported by this composition");
 		}
 	}
 }
@@ -154,7 +154,5 @@ export function mapRuntimeHostSessionCreationError(error: unknown): unknown {
 function assertSamePath(name: string, requested: string | undefined, configured: string | undefined): void {
 	if (requested === undefined) return;
 	if (configured !== undefined && resolve(requested) === resolve(configured)) return;
-	throw new Error(
-		`Greenfield RuntimeHost ${name} mismatch: expected ${configured ?? "<unset>"}, received ${requested}`,
-	);
+	throw new Error(`RuntimeHost ${name} mismatch: expected ${configured ?? "<unset>"}, received ${requested}`);
 }

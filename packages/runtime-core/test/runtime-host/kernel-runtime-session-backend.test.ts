@@ -36,10 +36,10 @@ import {
 } from "../../src/kernel/index.js";
 import {
 	assessRuntimeHostSessionAssembly,
-	type GreenfieldRuntimeAssembly,
-	GreenfieldRuntimeModel,
-	GreenfieldRuntimeSessionBackend,
-	GreenfieldSessionContextController,
+	type KernelRuntimeAssembly,
+	KernelRuntimeSessionBackend,
+	KernelRuntimeSessionContextController,
+	RuntimeModel,
 	type RuntimePromptAdapter,
 } from "../../src/runtime-host/index.js";
 
@@ -230,10 +230,10 @@ function createBackend(
 	promptAdapter: RuntimePromptAdapter = new RecordingPromptAdapter(),
 	dispose = vi.fn(async () => {}),
 	contextRuntime?: ManualContextCompactionRuntime,
-	assemblyOverrides: Partial<GreenfieldRuntimeAssembly> = {},
+	assemblyOverrides: Partial<KernelRuntimeAssembly> = {},
 ) {
 	return {
-		backend: new GreenfieldRuntimeSessionBackend<TestCreateOptions>({
+		backend: new KernelRuntimeSessionBackend<TestCreateOptions>({
 			runtimeFactory: {
 				async create(options: TestCreateOptions, eventSink: EventSink) {
 					let turnIndex = 0;
@@ -264,7 +264,7 @@ function createBackend(
 					});
 					const session = await createAgentSession({ id: options.id, pipeline });
 					const contextController = contextRuntime
-						? new GreenfieldSessionContextController({
+						? new KernelRuntimeSessionContextController({
 								session,
 								repository,
 								conversationDocumentReader: repository,
@@ -295,7 +295,7 @@ function createBackend(
 	};
 }
 
-describe("GreenfieldRuntimeSessionBackend", () => {
+describe("KernelRuntimeSessionBackend", () => {
 	it("adapts prompts, publishes mapped events and reports repository-backed state", async () => {
 		const promptAdapter = new RecordingPromptAdapter();
 		const { backend } = createBackend(new CompletingTurnEngine(), promptAdapter);
@@ -520,7 +520,7 @@ describe("GreenfieldRuntimeSessionBackend", () => {
 				reconfigureAgentPlugins: vi.fn(async () => {}),
 				setAgentMode: vi.fn(),
 			},
-		} satisfies Partial<GreenfieldRuntimeAssembly>;
+		} satisfies Partial<KernelRuntimeAssembly>;
 		const { backend } = createBackend(
 			new CompletingTurnEngine(),
 			new RecordingPromptAdapter(),
@@ -581,7 +581,7 @@ describe("GreenfieldRuntimeSessionBackend", () => {
 				...details,
 			};
 		});
-		const backend = new GreenfieldRuntimeSessionBackend<TestCreateOptions>({
+		const backend = new KernelRuntimeSessionBackend<TestCreateOptions>({
 			runtimeFactory: { create, resume },
 		});
 
@@ -806,7 +806,7 @@ function runtimeAssemblyDetails(sessionId: string) {
 		find: (provider: string, modelId: string) =>
 			[TEST_MODEL, ALTERNATE_MODEL].find((model) => model.provider === provider && model.id === modelId),
 	};
-	const modelRuntime = new GreenfieldRuntimeModel({
+	const modelRuntime = new RuntimeModel({
 		initialModel: TEST_MODEL,
 		initialThinkingLevel: "off",
 		catalog,

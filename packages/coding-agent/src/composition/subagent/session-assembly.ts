@@ -3,12 +3,7 @@ import { stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import type { Message } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type {
-	ConversationScenario,
-	GreenfieldRuntimeResourceContext,
-	GreenfieldRuntimeSession,
-	SessionConfig,
-} from "@vetta/runtime-core";
+import type { ConversationScenario, RuntimeResourceContext, RuntimeSession, SessionConfig } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
@@ -45,8 +40,8 @@ export interface CodingAgentSubagentChildCompositionRequest {
 }
 
 export interface CodingAgentSubagentChildComposition {
-	createSession(options: CodingAgentSubagentChildSessionOptions): Promise<GreenfieldRuntimeSession>;
-	resumeSession(options: CodingAgentSubagentChildSessionOptions): Promise<GreenfieldRuntimeSession>;
+	createSession(options: CodingAgentSubagentChildSessionOptions): Promise<RuntimeSession>;
+	resumeSession(options: CodingAgentSubagentChildSessionOptions): Promise<RuntimeSession>;
 	appendSessionContext(sessionId: string, records: readonly SessionContextRecord[]): void;
 	deliverSessionContext(sessionId: string, records: readonly SessionContextRecord[]): Promise<void>;
 	dispose(): Promise<void>;
@@ -72,7 +67,7 @@ export interface CodingAgentSubagentSessionAssemblyOptions {
 		EcosystemHookRuntime,
 		"recordAdditionalContexts" | "runSubagentStart" | "runSubagentStop"
 	>;
-	readonly resourceContext: Pick<GreenfieldRuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
+	readonly resourceContext: Pick<RuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
 }
 
 export interface CodingAgentSubagentChildFactoryContext {
@@ -134,7 +129,7 @@ export function createCodingAgentSubagentSessionAssembly(
 		validateRecoveredChild: (snapshot) =>
 			validateRecoveredSubagentTranscript(snapshot, options.readParentSessionPath()),
 		onRecoveryIssue: (message) => {
-			console.warn("[greenfield-runtime] subagent recovery issue", message);
+			console.warn("[coding-agent-runtime] subagent recovery issue", message);
 		},
 		onNotify: (payload) => {
 			void options.resourceContext
@@ -147,7 +142,7 @@ export function createCodingAgentSubagentSessionAssembly(
 					},
 				])
 				.catch((error: unknown) => {
-					console.warn("[greenfield-runtime] failed to deliver subagent notification", error);
+					console.warn("[coding-agent-runtime] failed to deliver subagent notification", error);
 				});
 		},
 		onUpdate: (agents) => {
@@ -158,7 +153,7 @@ export function createCodingAgentSubagentSessionAssembly(
 					source: "tool",
 				})
 				.catch((error: unknown) => {
-					console.warn("[greenfield-runtime] failed to publish subagent observation", error);
+					console.warn("[coding-agent-runtime] failed to publish subagent observation", error);
 				});
 		},
 	});

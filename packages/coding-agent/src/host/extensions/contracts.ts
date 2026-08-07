@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import type {
 	ExtensionCommandContextActions,
 	ExtensionError,
@@ -63,7 +63,7 @@ export interface CodingAgentExtensionEventHost {
 }
 
 export type CodingAgentExtensionEventHostFactory = (
-	session: GreenfieldRuntimeSession,
+	session: RuntimeSession,
 	options?: { readonly replaceExisting?: boolean },
 ) => CodingAgentExtensionEventHost;
 
@@ -78,10 +78,10 @@ export interface CodingAgentExtensionSessionHost {
 		transition: CodingAgentSessionTransition,
 	): Promise<{ readonly cancelled: boolean; readonly skipConversationRestore?: boolean } | undefined>;
 	prepare(
-		transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession },
+		transition: CodingAgentSessionTransition & { readonly next: RuntimeSession },
 	): Promise<CodingAgentPreparedSessionBinding>;
-	after(transition: CodingAgentSessionTransition & { readonly next: GreenfieldRuntimeSession }): Promise<void>;
-	reload(session: GreenfieldRuntimeSession, operation: () => Promise<void>): Promise<void>;
+	after(transition: CodingAgentSessionTransition & { readonly next: RuntimeSession }): Promise<void>;
+	reload(session: RuntimeSession, operation: () => Promise<void>): Promise<void>;
 	shutdown(): Promise<void>;
 	dispose(): Promise<void>;
 }

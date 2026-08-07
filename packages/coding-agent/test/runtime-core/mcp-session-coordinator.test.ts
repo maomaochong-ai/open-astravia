@@ -1,4 +1,4 @@
-import type { GreenfieldRuntimeResourceContext } from "@vetta/runtime-core";
+import type { RuntimeResourceContext } from "@vetta/runtime-core";
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type {
 	McpRuntimeToolBinding,
@@ -87,7 +87,7 @@ describe("Coding Agent MCP Session Coordinator", () => {
 			}) => {
 				observations.push(event);
 			},
-		} as unknown as GreenfieldRuntimeResourceContext);
+		} as unknown as RuntimeResourceContext);
 		const controller = coordinator.createSessionController({
 			sessionId: "session",
 			activation: { mode: "scope", scope: "cli" },

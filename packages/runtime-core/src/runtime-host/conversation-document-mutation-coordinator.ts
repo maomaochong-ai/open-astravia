@@ -5,7 +5,7 @@ import type {
 	ConversationDocumentStore,
 } from "../conversation/index.js";
 
-export interface GreenfieldDocumentMutationCoordinatorOptions {
+export interface ConversationDocumentMutationCoordinatorOptions {
 	readonly readSessionId: () => string;
 	readonly store: ConversationDocumentStore;
 	readonly readProjectedDocument: () => ConversationDocument;
@@ -22,10 +22,10 @@ type DocumentCommandAttempt =
  * Repository revision checks remain authoritative. Projection refreshes read the persisted
  * document so Journal events and direct commands cannot be reconstructed from different bases.
  */
-export class GreenfieldDocumentMutationCoordinator {
+export class ConversationDocumentMutationCoordinator {
 	private operationTail: Promise<void> = Promise.resolve();
 
-	constructor(private readonly options: GreenfieldDocumentMutationCoordinatorOptions) {}
+	constructor(private readonly options: ConversationDocumentMutationCoordinatorOptions) {}
 
 	async execute(command: ConversationDocumentCommand): Promise<ConversationDocumentCommandResult> {
 		for (;;) {

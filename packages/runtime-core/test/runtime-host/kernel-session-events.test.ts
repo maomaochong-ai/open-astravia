@@ -2,7 +2,7 @@ import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import type { SessionEvent } from "../../src/contracts.js";
 import type { KernelEvent } from "../../src/kernel/index.js";
-import { mapGreenfieldKernelEventToSessionEvents } from "../../src/runtime-host/index.js";
+import { mapKernelEventToSessionEvents } from "../../src/runtime-host/index.js";
 
 function assistantMessage(stopReason: AssistantMessage["stopReason"] = "stop"): AssistantMessage {
 	return {
@@ -32,7 +32,7 @@ function payload(event: SessionEvent): Record<string, unknown> {
 
 describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 	it("maps transient observations without changing their payload or source", () => {
-		const events = mapGreenfieldKernelEventToSessionEvents({
+		const events = mapKernelEventToSessionEvents({
 			type: "session.observation",
 			sessionId: "session-1",
 			turnId: "turn-1",
@@ -51,7 +51,7 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 	});
 
 	it("maps persisted assistant messages to final and usage events", () => {
-		const events = mapGreenfieldKernelEventToSessionEvents({
+		const events = mapKernelEventToSessionEvents({
 			type: "message.appended",
 			sessionId: "session-1",
 			turnId: "turn-1",
@@ -74,8 +74,8 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 	});
 
 	it("maps assistant provider errors and aborts with legacy-compatible semantics", () => {
-		const failed = mapGreenfieldKernelEventToSessionEvents(messageEvent(assistantMessage("error")));
-		const aborted = mapGreenfieldKernelEventToSessionEvents(messageEvent(assistantMessage("aborted")));
+		const failed = mapKernelEventToSessionEvents(messageEvent(assistantMessage("error")));
+		const aborted = mapKernelEventToSessionEvents(messageEvent(assistantMessage("aborted")));
 
 		expect(failed.map((event) => event.type)).toEqual(["message.final", "usage.update", "error"]);
 		expect(payload(failed[2])).toMatchObject({
@@ -86,21 +86,21 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 	});
 
 	it("maps cancellation, failure and compaction terminal events", () => {
-		const cancelled = mapGreenfieldKernelEventToSessionEvents({
+		const cancelled = mapKernelEventToSessionEvents({
 			type: "turn.cancelled",
 			sessionId: "session-1",
 			turnId: "turn-1",
 			reason: "user",
 			timestamp: 10,
 		});
-		const failed = mapGreenfieldKernelEventToSessionEvents({
+		const failed = mapKernelEventToSessionEvents({
 			type: "turn.failed",
 			sessionId: "session-1",
 			turnId: "turn-1",
 			error: { code: "turn_failed", message: "failed" },
 			timestamp: 11,
 		});
-		const compacted = mapGreenfieldKernelEventToSessionEvents({
+		const compacted = mapKernelEventToSessionEvents({
 			type: "context.compacted",
 			sessionId: "session-1",
 			turnId: "turn-1",
@@ -131,8 +131,8 @@ describe("Greenfield KernelEvent to SessionEvent adapter", () => {
 			timestamp: 3,
 		};
 
-		expect(mapGreenfieldKernelEventToSessionEvents(userEvent)).toEqual([]);
-		expect(mapGreenfieldKernelEventToSessionEvents(stageEvent)).toEqual([]);
+		expect(mapKernelEventToSessionEvents(userEvent)).toEqual([]);
+		expect(mapKernelEventToSessionEvents(stageEvent)).toEqual([]);
 	});
 });
 

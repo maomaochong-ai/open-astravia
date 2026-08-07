@@ -1,5 +1,5 @@
 import type { SessionEndCause, SessionStartSource } from "@vetta/ecosystem-adapter";
-import type { ConversationScenario, GreenfieldRuntimeSessionBackend } from "@vetta/runtime-core";
+import type { ConversationScenario, KernelRuntimeSessionBackend } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { CodingToolRegistry } from "@vetta/runtime-tools/coding";
 import type {
@@ -45,7 +45,7 @@ export interface CodingAgentRuntimeToolAccess {
 export interface CodingAgentRuntimeComposition
 	extends CodingAgentRuntimeSessionControls,
 		CodingAgentRuntimeExtensionControls {
-	readonly backend: GreenfieldRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
+	readonly backend: KernelRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
 	readonly tools: CodingAgentRuntimeToolAccess;
 	readonly scenario: ConversationScenario;
 	dispose(): Promise<void>;

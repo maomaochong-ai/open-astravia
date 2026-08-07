@@ -23,7 +23,6 @@ describe("Coding Agent Session setup seed initializer", () => {
 			targetRootDir,
 			targetSessionId: "setup-seed",
 			setup: async (writer) => {
-				expect(writer.isPersisted()).toBe(true);
 				expect(writer.getSessionId()).toBe("setup-seed");
 				expect(writer.getSessionDir()).toBe(targetRootDir);
 				const sessionFile = writer.getSessionFile();

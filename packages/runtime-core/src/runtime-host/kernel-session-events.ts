@@ -5,8 +5,8 @@ import type { KernelEvent } from "../kernel/contracts.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import { baseSessionEvent, mapRuntimeSessionObservationEvent } from "./session-events.js";
 
-/** 将 Greenfield Kernel EventSink 事件适配为现有宿主 SessionEvent。 */
-export function mapGreenfieldKernelEventToSessionEvents(event: KernelEvent): SessionEvent[] {
+/** 将 Kernel EventSink 事件适配为宿主 SessionEvent。 */
+export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[] {
 	if (event.type === "conversation.continued") {
 		return [
 			{

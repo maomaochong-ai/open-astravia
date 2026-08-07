@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
-import type { GreenfieldRuntimeSession, GreenfieldRuntimeSessionCoreAssembly, SessionEvent } from "@vetta/runtime-core";
+import type { RuntimeSession, RuntimeSessionCoreAssembly, SessionEvent } from "@vetta/runtime-core";
 import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";
 import { describe, expect, test, vi } from "vitest";
@@ -363,7 +363,7 @@ function createAdapterFixture(
 			abortCompaction: vi.fn(),
 			setAutoCompactionEnabled: vi.fn(),
 		},
-	} as unknown as GreenfieldRuntimeSessionCoreAssembly;
+	} as unknown as RuntimeSessionCoreAssembly;
 	const session = {
 		get sessionId() {
 			return sessionId;
@@ -386,7 +386,7 @@ function createAdapterFixture(
 			};
 		}),
 		dispose: disposeSession,
-	} as unknown as GreenfieldRuntimeSession;
+	} as unknown as RuntimeSession;
 	const runtime = {
 		scenario,
 		tools: { registry: { register, unregister } },
@@ -395,8 +395,7 @@ function createAdapterFixture(
 	} as unknown as CodingAgentRuntimeComposition;
 	const sessionHost = {
 		readSession: () => session,
-		startActiveSessionOperation: <T>(operation: (active: GreenfieldRuntimeSession) => Promise<T>) =>
-			operation(session),
+		startActiveSessionOperation: <T>(operation: (active: RuntimeSession) => Promise<T>) => operation(session),
 		subscribe: (handler: (event: SessionEvent) => void) => session.subscribe(handler),
 		newSession,
 		switchSession,

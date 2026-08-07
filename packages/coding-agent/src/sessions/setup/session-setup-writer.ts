@@ -62,10 +62,6 @@ export class CodingAgentSessionSetupWriter implements ExtensionSessionWriter {
 		return this.options.sessionPath;
 	}
 
-	isPersisted(): boolean {
-		return true;
-	}
-
 	getLeafId(): string | null {
 		return this.leafId;
 	}

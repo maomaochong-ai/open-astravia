@@ -1,9 +1,9 @@
 import type { Message } from "@vetta/ai";
 import {
 	type ConversationScenario,
-	type GreenfieldRuntimeResourceContext,
-	type GreenfieldRuntimeResources,
 	InitializationRollbackScope,
+	type RuntimeResourceContext,
+	type RuntimeResources,
 } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
@@ -77,8 +77,8 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 export interface CodingAgentSessionInitializationTransaction {
 	initialize(
 		sessionOptions: CodingAgentRuntimeSessionOptions,
-		resourceContext: GreenfieldRuntimeResourceContext,
-	): Promise<GreenfieldRuntimeResources>;
+		resourceContext: RuntimeResourceContext,
+	): Promise<RuntimeResources>;
 }
 
 /** 创建单个 Session 的完整对象图，并在提交前统一持有初始化失败回滚责任。 */
@@ -93,8 +93,8 @@ export function createCodingAgentSessionInitializationTransaction<TOwnershipBind
 async function initializeSession<TOwnershipBinding>(
 	options: CodingAgentSessionInitializationTransactionOptions<TOwnershipBinding>,
 	sessionOptions: CodingAgentRuntimeSessionOptions,
-	resourceContext: GreenfieldRuntimeResourceContext,
-): Promise<GreenfieldRuntimeResources> {
+	resourceContext: RuntimeResourceContext,
+): Promise<RuntimeResources> {
 	const profile = options.profile;
 	let activeSessionId = sessionOptions.sessionId;
 	let activeOwnership = await options.acquireOwnership(activeSessionId);
@@ -309,6 +309,6 @@ async function initializeSession<TOwnershipBinding>(
 		rollback.commit();
 		return resources;
 	} catch (error) {
-		return rollback.rollback(error, "Greenfield session resource initialization and rollback failed");
+		return rollback.rollback(error, "Session resource initialization and rollback failed");
 	}
 }

@@ -32,11 +32,11 @@ export function createCodingAgentCompositionShutdown(
 				prepareCleanup(cleanup, options, options.registry.readCleanupSnapshot());
 			}
 			try {
-				await cleanup.run("Failed to dispose one or more Greenfield runtime resources");
+				await cleanup.run("Failed to dispose one or more runtime resources");
 			} catch (error) {
 				throw new AggregateError(
 					error instanceof AggregateError ? error.errors : [error],
-					"Failed to dispose one or more Greenfield runtime resources",
+					"Failed to dispose one or more runtime resources",
 				);
 			}
 		},

@@ -1,10 +1,6 @@
 import { join } from "node:path";
 import type { Message } from "@vetta/ai";
-import type {
-	ConversationScenario,
-	GreenfieldRuntimeResourceContext,
-	InitializationRollbackTask,
-} from "@vetta/runtime-core";
+import type { ConversationScenario, InitializationRollbackTask, RuntimeResourceContext } from "@vetta/runtime-core";
 import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
@@ -47,7 +43,7 @@ export interface CodingAgentSessionPeripheralAssemblyOptions {
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly indexes: CodingAgentSessionResourceIndexes;
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
-	readonly resourceContext: GreenfieldRuntimeResourceContext;
+	readonly resourceContext: RuntimeResourceContext;
 	readonly readSessionId: () => string;
 	readonly resolveActivation: (
 		context: ModelCallContributionContext,
@@ -84,7 +80,7 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	const requestedPluginRuntime = createSessionPluginRuntime(sessionOptions);
 	const configuredPluginRuntime = profile.createPluginRuntime?.(sessionOptions);
 	if (requestedPluginRuntime && configuredPluginRuntime) {
-		throw new Error("Greenfield session plugin capabilities conflict with createPluginRuntime");
+		throw new Error("Session plugin capabilities conflict with createPluginRuntime");
 	}
 	const pluginRuntime = requestedPluginRuntime ?? configuredPluginRuntime;
 	const configurationState = new CodingAgentSessionConfigurationState(sessionOptions.agentMode, () =>

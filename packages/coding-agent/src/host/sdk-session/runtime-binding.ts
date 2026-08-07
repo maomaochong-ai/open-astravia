@@ -1,10 +1,10 @@
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
+import type { RuntimeSession } from "@vetta/runtime-core";
 import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
 import type { CodingAgentSdkSessionCapabilityPort, CodingAgentSdkSessionRuntimePort } from "./runtime-contracts.js";
 
-/** 唯一允许感知 GreenfieldRuntimeSession 具体表面的 SDK 组合边界。 */
+/** 唯一允许感知 RuntimeSession 具体表面的 SDK 组合边界。 */
 export function bindCodingAgentSdkSessionRuntime(
-	session: GreenfieldRuntimeSession,
+	session: RuntimeSession,
 	capabilities: CodingAgentSdkSessionCapabilityPort,
 ): CodingAgentSdkSessionRuntimePort {
 	const assembly = session.createCoreAssembly();

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
 	ConversationDocument,
-	GreenfieldRuntimeDocumentParticipantContext,
+	RuntimeDocumentParticipantContext,
 	RuntimeSessionTodoController,
 } from "@vetta/runtime-core";
 import { selectConversationDocumentEntries } from "@vetta/runtime-core";
@@ -31,7 +31,7 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 	private readonly state: TodoState;
 	private readonly createEntryId: () => string;
 	private readonly now: () => number;
-	private documentContext: GreenfieldRuntimeDocumentParticipantContext | undefined;
+	private documentContext: RuntimeDocumentParticipantContext | undefined;
 	private unsubscribe: (() => void) | undefined;
 	private persistenceTail: Promise<void> = Promise.resolve();
 	private latestPersistence: Promise<void> = Promise.resolve();
@@ -91,7 +91,7 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 		return true;
 	}
 
-	initialize(document: ConversationDocument, context: GreenfieldRuntimeDocumentParticipantContext): void {
+	initialize(document: ConversationDocument, context: RuntimeDocumentParticipantContext): void {
 		if (this.documentContext) {
 			throw new Error("Coding Agent Todo Runtime is already initialized");
 		}

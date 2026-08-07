@@ -1,6 +1,6 @@
 import type {
-	GreenfieldRuntimeSession,
 	RuntimeHostSessionAssembly,
+	RuntimeSession,
 	RuntimeSessionEventStream,
 	RuntimeTurnPrompt,
 	SessionEvent,
@@ -22,7 +22,7 @@ type RuntimeErrorEvent = Extract<SessionEvent, { readonly type: "error" }>;
  * Runtime Core 只看到标准 SessionEvent，不依赖具体设置存储或错误判定规则。
  */
 export function withCodingAgentRuntimeHostRetry(
-	session: GreenfieldRuntimeSession,
+	session: RuntimeSession,
 	assembly: RuntimeHostSessionAssembly,
 	settings: CodingAgentRuntimeHostRetrySettings,
 ): RuntimeHostSessionAssembly {

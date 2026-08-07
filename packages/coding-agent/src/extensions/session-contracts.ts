@@ -23,8 +23,6 @@ export type {
 export interface ExtensionSessionView extends CodingAgentSessionView {}
 
 export interface ExtensionSessionWriter extends CodingAgentSessionWriter {
-	/** Compatibility query retained for existing newSession.setup callbacks. */
-	isPersisted(): boolean;
 	appendMessage(message: AgentMessage): string;
 	appendThinkingLevelChange(thinkingLevel: string): string;
 	appendToolTiming(
@@ -56,7 +54,4 @@ export interface ExtensionSessionWriter extends CodingAgentSessionWriter {
 	appendLabelChange(targetId: string, label: string | undefined): string;
 }
 
-/** Bivariant for source compatibility with callbacks previously typed with the concrete SessionManager. */
-export type ExtensionSessionSetup = {
-	setup(sessionManager: ExtensionSessionWriter): Promise<void>;
-}["setup"];
+export type ExtensionSessionSetup = (session: ExtensionSessionWriter) => Promise<void>;
