@@ -12,7 +12,7 @@ import type {
 	AgentPluginToolInvoker,
 } from "../../model-context/index.js";
 import { type ConversationScenario, resolveActiveToolNames } from "../../profiles/index.js";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "./greenfield-model-tool-order.js";
+import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import type { CodingAgentPluginRunOrchestrator } from "./greenfield-plugin-run-orchestrator.js";
 import { validatePluginToolHandlerResult } from "./greenfield-plugin-runtime-effect.js";
 

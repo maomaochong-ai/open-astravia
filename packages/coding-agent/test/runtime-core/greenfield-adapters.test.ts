@@ -5,13 +5,13 @@ import {
 	CodingAgentRuntimeModelAdapter,
 	type CodingAgentRuntimeModelSource,
 } from "../../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
-import {
-	CODING_AGENT_MODEL_TOOL_ORDER,
-	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
-} from "../../src/adapters/runtime-core/greenfield-model-tool-order.js";
 import { CodingAgentGreenfieldPromptAdapter } from "../../src/adapters/runtime-core/greenfield-prompt-adapter.js";
 import { CodingAgentPromptRuntime } from "../../src/adapters/runtime-core/greenfield-prompt-runtime.js";
 import { buildSystemPrompt } from "../../src/model-context/index.js";
+import {
+	CODING_AGENT_MODEL_TOOL_ORDER,
+	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
+} from "../../src/tool-policy/model-tool-order.js";
 
 describe("Greenfield coding-agent adapters", () => {
 	it("adapts the live model runtime to catalog, credentials and auth refresh ports", async () => {

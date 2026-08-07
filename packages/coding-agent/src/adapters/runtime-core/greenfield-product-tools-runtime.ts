@@ -13,6 +13,7 @@ import {
 	selectCodingToolRegistrations,
 } from "@vetta/runtime-tools/coding";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { createCodingAgentDesktopCommandPort } from "../runtime-tools/desktop-command-port-adapter.js";
 import {
 	CodingAgentCommandProcessAbortedError,
@@ -20,7 +21,6 @@ import {
 	createCodingAgentDocToPdfOperations,
 	getCodingAgentOcrExecutionGate,
 } from "../runtime-tools/index.js";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "./greenfield-model-tool-order.js";
 
 export interface CodingAgentGreenfieldProductToolOptions {
 	readonly cwd: string;

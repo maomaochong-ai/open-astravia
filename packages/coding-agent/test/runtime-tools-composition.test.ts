@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createCodingToolsRuntimeComposition } from "../src/composition/runtime-tools-composition.js";
+import { createCodingToolsRuntimeComposition } from "../src/composition/tool-surface/runtime-tools-composition.js";
 import { ALL_SCENARIOS } from "../src/profiles/index.js";
 
 const DEFAULT_TOOL_NAMES = {

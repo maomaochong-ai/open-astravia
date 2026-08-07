@@ -12,6 +12,7 @@ import {
 	type TodoToolInput,
 } from "@vetta/runtime-tools/coding";
 import type { CodingAgentTodoRuntime as CodingAgentTodoRuntimePort } from "../../runtime-contracts/index.js";
+import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import {
 	parseTodoSnapshot,
 	TODO_SNAPSHOT_TYPE,
@@ -20,7 +21,6 @@ import {
 	type TodoSnapshotEnvelope,
 	TodoState,
 } from "../../work-state/index.js";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "./greenfield-model-tool-order.js";
 
 export interface CodingAgentTodoRuntimeOptions {
 	readonly state?: TodoState;

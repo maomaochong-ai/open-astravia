@@ -5,7 +5,6 @@ import type {
 	RuntimeToolExecutionError,
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../src/adapters/runtime-core/greenfield-model-tool-order.js";
 import { CodingAgentPluginRunOrchestrator } from "../../src/adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
 import {
 	CodingAgentPluginToolRuntime,
@@ -17,6 +16,7 @@ import type {
 	AgentPluginToolInvocation,
 } from "../../src/model-context/index.js";
 import { buildSystemPromptDraft, renderSystemPromptDraft } from "../../src/model-context/index.js";
+import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../src/tool-policy/model-tool-order.js";
 
 describe("CodingAgentPluginToolRuntime", () => {
 	it("compiles session-local tools with legacy activation, collision and policy precedence", () => {

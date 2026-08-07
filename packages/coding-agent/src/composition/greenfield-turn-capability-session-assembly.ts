@@ -29,6 +29,7 @@ import {
 } from "../adapters/runtime-core/greenfield-prompt-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
 import { CodingAgentTodoContinuationSource } from "../adapters/runtime-core/greenfield-todo-continuation-source.js";
+import type { CodingAgentSessionExecutionRuntime } from "../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
@@ -40,9 +41,8 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 	CodingAgentTodoRuntime,
 } from "../runtime-contracts/index.js";
-import type { GreenfieldSessionExecutionRuntime } from "./greenfield-session-execution-runtime.js";
 import type { GreenfieldSubagentRuntime } from "./greenfield-subagent-runtime.js";
-import type { CodingToolsRuntimeComposition } from "./runtime-tools-composition.js";
+import type { CodingToolsRuntimeComposition } from "./tool-surface/runtime-tools-composition.js";
 
 export interface GreenfieldTurnCapabilitySessionIdentity {
 	readonly initialSessionId: string;
@@ -75,7 +75,7 @@ export interface GreenfieldTurnCapabilitySessionAssemblyOptions {
 	readonly prompt: GreenfieldTurnCapabilityPromptOptions;
 	readonly baseProfile: AgentProfile;
 	readonly codingTools: CodingToolsRuntimeComposition;
-	readonly executionRuntime: GreenfieldSessionExecutionRuntime;
+	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly productToolFeature: AgentFeatureDefinition;
 	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly todoRuntime: CodingAgentTodoRuntime;

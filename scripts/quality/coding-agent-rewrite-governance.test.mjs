@@ -341,7 +341,7 @@ describe("Coding Agent rewrite progress gate", () => {
 		const actual = stateFrom([
 			{
 				path: "packages/coding-agent/src/composition/index.ts",
-				text: 'export { createCodingToolsRuntimeComposition } from "./runtime-tools-composition.js";',
+				text: 'export { createCodingToolsRuntimeComposition } from "./tool-surface/runtime-tools-composition.js";',
 			},
 			{
 				path: "packages/cli-app/src/runtime.ts",

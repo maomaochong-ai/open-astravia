@@ -24,7 +24,7 @@ import {
 	taskPath,
 } from "@vetta/runtime-subagents";
 import { createCodingAgentSubagentRuntimeToolRegistrations } from "../adapters/runtime-core/greenfield-subagent-tool-registrations.js";
-import type { GreenfieldSubagentWorkRuntime } from "./greenfield-session-peripherals.js";
+import type { CodingAgentSubagentWorkRuntime } from "../host/session-execution/background-work-controller.js";
 import {
 	createDefaultGreenfieldSubagentTypeRegistry,
 	GREENFIELD_SUBAGENT_TYPE_WORKFLOW,
@@ -69,7 +69,7 @@ export interface GreenfieldSubagentRuntimeOptions {
  * 调度器只认识 Child Handle；具体 Session、模型、工具、存储和 MCP 继承由
  * Composition Root 注入的 Child Factory 决定。
  */
-export class GreenfieldSubagentRuntime implements GreenfieldSubagentWorkRuntime, GreenfieldRuntimeDocumentParticipant {
+export class GreenfieldSubagentRuntime implements CodingAgentSubagentWorkRuntime, GreenfieldRuntimeDocumentParticipant {
 	readonly feature: AgentFeatureDefinition;
 	private readonly coordinator: SubagentCoordinator<GreenfieldSubagentProfile>;
 	private readonly persistence: GreenfieldSubagentStatePersistence;

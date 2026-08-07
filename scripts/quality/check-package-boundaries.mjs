@@ -482,14 +482,14 @@ function checkGreenfieldTurnCapabilityAssemblyBoundary(posixPath, text, findings
 	visit(sourceFile);
 }
 
-function checkGreenfieldSessionResourceLifecycleAssemblyBoundary(posixPath, text, findings) {
+function checkCodingAgentSessionResourceLifecycleBoundary(posixPath, text, findings) {
 	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
 	const forbiddenSymbols = new Set([
 		"CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME",
-		"GreenfieldBackgroundWorkController",
-		"GreenfieldRuntimeResources",
+		"CodingAgentBackgroundWorkController",
+		"CodingAgentSessionRuntimeResources",
 		"createSessionPeripherals",
 		"hookSessionController",
 		"hookSessionEnded",
@@ -511,13 +511,13 @@ function checkGreenfieldSessionResourceLifecycleAssemblyBoundary(posixPath, text
 	visit(sourceFile);
 }
 
-function checkGreenfieldCompositionResourceRegistryBoundary(posixPath, text, findings) {
+function checkCodingAgentCompositionResourceRegistryBoundary(posixPath, text, findings) {
 	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
 	const forbiddenSymbols = new Set([
-		"InMemoryGreenfieldSessionMarkerIndex",
-		"InMemoryGreenfieldSessionValueIndex",
+		"InMemoryCodingAgentSessionMarkerIndex",
+		"InMemoryCodingAgentSessionValueIndex",
 		"RetryableCleanup",
 		"compositionCleanup",
 		"contextRuntimes",
@@ -539,7 +539,7 @@ function checkGreenfieldCompositionResourceRegistryBoundary(posixPath, text, fin
 	visit(sourceFile);
 }
 
-function checkGreenfieldMcpSessionCoordinatorBoundary(posixPath, text, findings) {
+function checkCodingAgentMcpSessionCoordinatorBoundary(posixPath, text, findings) {
 	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
@@ -568,7 +568,7 @@ function checkGreenfieldMcpSessionCoordinatorBoundary(posixPath, text, findings)
 	visit(sourceFile);
 }
 
-function checkGreenfieldSessionInitializationTransactionBoundary(posixPath, text, findings) {
+function checkCodingAgentSessionInitializationTransactionBoundary(posixPath, text, findings) {
 	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
@@ -576,12 +576,12 @@ function checkGreenfieldSessionInitializationTransactionBoundary(posixPath, text
 		"CodingAgentGreenfieldContextRuntime",
 		"CodingAgentMemoryRolloverOrchestrator",
 		"CodingAgentTodoRuntime",
-		"GreenfieldSessionConfigurationState",
-		"GreenfieldSessionExecutionRuntime",
+		"CodingAgentSessionConfigurationState",
+		"CodingAgentSessionExecutionRuntime",
 		"InitializationRollbackScope",
 		"createEcosystemHookRuntime",
 		"createForkContextFeature",
-		"createGreenfieldSessionResourceLifecycleAssembly",
+		"createCodingAgentSessionResourceLifecycle",
 		"createGreenfieldSubagentSessionAssembly",
 		"createGreenfieldTurnCapabilitySessionAssembly",
 		"createSessionPluginRuntime",
@@ -618,9 +618,9 @@ function checkGreenfieldSessionInitializationTransactionBoundary(posixPath, text
 	visit(sourceFile);
 }
 
-function checkGreenfieldSessionInitializationProfileBoundary(posixPath, text, findings) {
+function checkCodingAgentSessionInitializationProfileBoundary(posixPath, text, findings) {
 	const compositionRootPath = "packages/coding-agent/src/composition/runtime-composition.ts";
-	const transactionPath = "packages/coding-agent/src/composition/greenfield-session-initialization-transaction.ts";
+	const transactionPath = "packages/coding-agent/src/composition/session-initialization/transaction.ts";
 	if (posixPath !== compositionRootPath && posixPath !== transactionPath) return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
@@ -649,8 +649,8 @@ function checkGreenfieldSessionInitializationProfileBoundary(posixPath, text, fi
 	visit(sourceFile);
 }
 
-function checkGreenfieldSessionInitializationStageBoundary(posixPath, text, findings) {
-	if (posixPath !== "packages/coding-agent/src/composition/greenfield-session-initialization-transaction.ts") {
+function checkCodingAgentSessionInitializationStageBoundary(posixPath, text, findings) {
+	if (posixPath !== "packages/coding-agent/src/composition/session-initialization/transaction.ts") {
 		return;
 	}
 
@@ -661,8 +661,8 @@ function checkGreenfieldSessionInitializationStageBoundary(posixPath, text, find
 		"CodingAgentMemoryRolloverOrchestrator",
 		"CodingAgentTodoRuntime",
 		"GreenfieldRuntimeModel",
-		"GreenfieldSessionConfigurationState",
-		"GreenfieldSessionExecutionRuntime",
+		"CodingAgentSessionConfigurationState",
+		"CodingAgentSessionExecutionRuntime",
 	]);
 	const forbiddenFactories = new Set([
 		"createCodingAgentGreenfieldProductToolRegistrations",
@@ -696,7 +696,7 @@ function checkGreenfieldSessionInitializationStageBoundary(posixPath, text, find
 	visit(sourceFile);
 }
 
-function checkGreenfieldRuntimeToolSurfaceBoundary(posixPath, text, findings) {
+function checkCodingAgentRuntimeToolSurfaceBoundary(posixPath, text, findings) {
 	if (posixPath !== "packages/coding-agent/src/composition/runtime-composition.ts") return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
@@ -705,12 +705,12 @@ function checkGreenfieldRuntimeToolSurfaceBoundary(posixPath, text, findings) {
 		"CODING_TOOL_SCOPES",
 		"adaptCodingAgentToolRegistration",
 		"createCodingToolsRuntimeComposition",
-		"createGreenfieldMcpSessionCoordinator",
+		"createCodingAgentMcpSessionCoordinator",
 		"createKbFilterByTagsTool",
 		"createKbListTagsTool",
-		"isGreenfieldKnowledgeToolEnabled",
+		"isCodingAgentKnowledgeToolEnabled",
 		"isKnowledgeToolEnabled",
-		"resolveGreenfieldToolActivation",
+		"resolveCodingAgentToolActivation",
 		"resolveTurnToolActivation",
 	]);
 	const visit = (node) => {
@@ -725,9 +725,9 @@ function checkGreenfieldRuntimeToolSurfaceBoundary(posixPath, text, findings) {
 	visit(sourceFile);
 }
 
-function checkGreenfieldRuntimeToolPortBoundary(posixPath, text, findings) {
+function checkCodingAgentRuntimeToolPortBoundary(posixPath, text, findings) {
 	const contractPath = "packages/coding-agent/src/composition/contracts/runtime-composition-result.ts";
-	const compositionPath = "packages/coding-agent/src/composition/runtime-tools-composition.ts";
+	const compositionPath = "packages/coding-agent/src/composition/tool-surface/runtime-tools-composition.ts";
 	if (posixPath !== contractPath && posixPath !== compositionPath) return;
 
 	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
@@ -763,6 +763,44 @@ function checkGreenfieldRuntimeToolPortBoundary(posixPath, text, findings) {
 			}
 		}
 	}
+}
+
+function checkCodingAgentToolPolicyOwnershipBoundary(posixPath, text, findings) {
+	const isAdapter = posixPath.startsWith("packages/coding-agent/src/adapters/");
+	const isComposition = posixPath.startsWith("packages/coding-agent/src/composition/");
+	if (!isAdapter && !isComposition) return;
+
+	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
+	const compositionPolicyDeclarations = new Set([
+		"CodingAgentToolAvailability",
+		"isCodingAgentKnowledgeToolEnabled",
+		"resolveCodingAgentToolActivation",
+	]);
+	const adapterPolicyDeclarations = new Set([
+		"CODING_AGENT_MODEL_TOOL_ORDER",
+		"CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP",
+	]);
+	const visit = (node) => {
+		if (
+			isAdapter &&
+			ts.isVariableDeclaration(node) &&
+			ts.isIdentifier(node.name) &&
+			adapterPolicyDeclarations.has(node.name.text)
+		) {
+			findings.push(`${posixPath}: Coding Agent Adapter must not own Tool policy (${node.name.text})`);
+		}
+		if (
+			isComposition &&
+			((ts.isFunctionDeclaration(node) && node.name) ||
+				(ts.isInterfaceDeclaration(node) && node.name) ||
+				(ts.isTypeAliasDeclaration(node) && node.name)) &&
+			compositionPolicyDeclarations.has(node.name.text)
+		) {
+			findings.push(`${posixPath}: Coding Agent Composition must not declare Tool policy (${node.name.text})`);
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(sourceFile);
 }
 
 function checkGreenfieldChildCompositionPolicyBoundary(posixPath, text, findings) {
@@ -827,6 +865,32 @@ function checkGreenfieldRuntimeHostControlSurfaceBoundary(posixPath, text, findi
 		if (ts.isIdentifier(node) && forbiddenSymbols.has(node.text)) {
 			findings.push(
 				`${posixPath}: Coding Agent Composition Root must delegate Runtime Host Controls (${node.text})`,
+			);
+		}
+		ts.forEachChild(node, visit);
+	};
+	visit(sourceFile);
+}
+
+function checkCodingAgentSessionHostOwnershipBoundary(posixPath, text, findings) {
+	if (!posixPath.startsWith("packages/coding-agent/src/composition/")) return;
+
+	const sourceFile = ts.createSourceFile(posixPath, text, ts.ScriptTarget.Latest, true, scriptKind(posixPath));
+	const hostOwnedDeclarations = new Set([
+		"CodingAgentBackgroundWorkController",
+		"CodingAgentPluginReconfiguration",
+		"CodingAgentSessionConfigurationState",
+		"CodingAgentSessionExecutionRuntime",
+		"CodingAgentSubagentWorkRuntime",
+	]);
+	const visit = (node) => {
+		if (
+			(ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node)) &&
+			node.name &&
+			hostOwnedDeclarations.has(node.name.text)
+		) {
+			findings.push(
+				`${posixPath}: Coding Agent Composition must not declare Session Host capability (${node.name.text})`,
 			);
 		}
 		ts.forEachChild(node, visit);
@@ -1154,16 +1218,18 @@ export function findPackageBoundaryViolations(posixPath, text, options = {}) {
 	checkKnowledgeProcessingBoundary(posixPath, text, specifiers, findings);
 	checkGreenfieldSubagentAssemblyBoundary(posixPath, text, findings);
 	checkGreenfieldTurnCapabilityAssemblyBoundary(posixPath, text, findings);
-	checkGreenfieldSessionResourceLifecycleAssemblyBoundary(posixPath, text, findings);
-	checkGreenfieldCompositionResourceRegistryBoundary(posixPath, text, findings);
-	checkGreenfieldMcpSessionCoordinatorBoundary(posixPath, text, findings);
-	checkGreenfieldSessionInitializationTransactionBoundary(posixPath, text, findings);
-	checkGreenfieldSessionInitializationProfileBoundary(posixPath, text, findings);
-	checkGreenfieldSessionInitializationStageBoundary(posixPath, text, findings);
-	checkGreenfieldRuntimeToolSurfaceBoundary(posixPath, text, findings);
-	checkGreenfieldRuntimeToolPortBoundary(posixPath, text, findings);
+	checkCodingAgentSessionResourceLifecycleBoundary(posixPath, text, findings);
+	checkCodingAgentCompositionResourceRegistryBoundary(posixPath, text, findings);
+	checkCodingAgentMcpSessionCoordinatorBoundary(posixPath, text, findings);
+	checkCodingAgentSessionInitializationTransactionBoundary(posixPath, text, findings);
+	checkCodingAgentSessionInitializationProfileBoundary(posixPath, text, findings);
+	checkCodingAgentSessionInitializationStageBoundary(posixPath, text, findings);
+	checkCodingAgentRuntimeToolSurfaceBoundary(posixPath, text, findings);
+	checkCodingAgentRuntimeToolPortBoundary(posixPath, text, findings);
+	checkCodingAgentToolPolicyOwnershipBoundary(posixPath, text, findings);
 	checkGreenfieldChildCompositionPolicyBoundary(posixPath, text, findings);
 	checkGreenfieldRuntimeHostControlSurfaceBoundary(posixPath, text, findings);
+	checkCodingAgentSessionHostOwnershipBoundary(posixPath, text, findings);
 	checkRetiredAutomaticLegacyFallback(posixPath, text, findings);
 	checkRetiredCompositionBoundaries(posixPath, text, specifiers, findings);
 	checkCodingAgentRootImports(posixPath, specifiers, findings);

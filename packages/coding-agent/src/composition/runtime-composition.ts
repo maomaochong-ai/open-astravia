@@ -12,8 +12,6 @@ import type {
 } from "./contracts/index.js";
 import { ConversationOwnershipBinding } from "./conversation-ownership-binding.js";
 import { createGreenfieldChildCompositionFactory } from "./greenfield-child-composition-policy.js";
-import { GreenfieldCompositionResourceRegistry } from "./greenfield-composition-resource-registry.js";
-import { createGreenfieldCompositionShutdown } from "./greenfield-composition-shutdown.js";
 import { resolveGreenfieldConversationPersistence } from "./greenfield-conversation-persistence.js";
 
 export type {
@@ -27,11 +25,13 @@ export type {
 	CodingAgentRuntimeToolAccess,
 } from "./contracts/index.js";
 
-import { createGreenfieldRuntimeExtensionControls } from "./greenfield-runtime-extension-controls.js";
-import { createGreenfieldRuntimeSessionControls } from "./greenfield-runtime-session-controls.js";
-import { createGreenfieldRuntimeToolSurface } from "./greenfield-runtime-tool-surface.js";
-import { createGreenfieldSessionInitializationProfile } from "./greenfield-session-initialization-profile.js";
-import { createGreenfieldSessionInitializationTransaction } from "./greenfield-session-initialization-transaction.js";
+import { createCodingAgentSessionInitializationProfile } from "./session-initialization/profile.js";
+import { createCodingAgentSessionInitializationTransaction } from "./session-initialization/transaction.js";
+import { createCodingAgentCompositionShutdown } from "./session-lifecycle/composition-shutdown.js";
+import { createCodingAgentRuntimeExtensionControls } from "./session-lifecycle/extension-controls.js";
+import { CodingAgentCompositionResourceRegistry } from "./session-lifecycle/resource-registry.js";
+import { createCodingAgentRuntimeSessionControls } from "./session-lifecycle/session-controls.js";
+import { createCodingAgentRuntimeToolSurface } from "./tool-surface/runtime-tool-surface.js";
 
 /**
  * Coding Agent Runtime 的共享组合入口。
@@ -50,10 +50,10 @@ async function createCodingAgentRuntimeCompositionInternal(
 ): Promise<CodingAgentRuntimeComposition> {
 	const cwd = options.cwd ?? process.cwd();
 	const scenario = options.scenario ?? "cli";
-	const sessionInitializationProfile = createGreenfieldSessionInitializationProfile(options);
+	const sessionInitializationProfile = createCodingAgentSessionInitializationProfile(options);
 	const extensionToolRuntime = new CodingAgentGreenfieldExtensionToolRuntime(options.extensionTools ?? []);
-	const resourceRegistry = new GreenfieldCompositionResourceRegistry();
-	const toolSurface = await createGreenfieldRuntimeToolSurface({
+	const resourceRegistry = new CodingAgentCompositionResourceRegistry();
+	const toolSurface = await createCodingAgentRuntimeToolSurface({
 		cwd,
 		scenario,
 		activation: options.activation,
@@ -104,7 +104,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		parentOptions: options,
 		createComposition: createCodingAgentRuntimeCompositionInternal,
 	});
-	const sessionInitialization = createGreenfieldSessionInitializationTransaction({
+	const sessionInitialization = createCodingAgentSessionInitializationTransaction({
 		profile: sessionInitializationProfile,
 		cwd,
 		scenario,
@@ -139,14 +139,14 @@ async function createCodingAgentRuntimeCompositionInternal(
 			sessionInitialization.initialize(sessionOptions, resourceContext),
 	});
 	const backend = new GreenfieldRuntimeSessionBackend({ runtimeFactory });
-	const compositionShutdown = createGreenfieldCompositionShutdown({
+	const compositionShutdown = createCodingAgentCompositionShutdown({
 		registry: resourceRegistry,
 		clearConversationContextOverlay: () => conversationContextOverlay.clearAll(),
 		closeConversationRepository: () => persistence.dispose(),
 		disposeMcpSynchronizer: mcpCoordinator.sharedRuntimeAvailable ? () => mcpCoordinator.dispose() : undefined,
 		disposeCodingTools: () => tools.dispose(),
 	});
-	const sessionControls = createGreenfieldRuntimeSessionControls({
+	const sessionControls = createCodingAgentRuntimeSessionControls({
 		indexes: resourceRegistry.indexes,
 		readConversationDocument: (sessionId) => persistence.documentStore.readDocument(sessionId),
 		projectConversationContext: (document) => conversationContextOverlay.project(document),
@@ -156,7 +156,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 		clearConversationContext: (sessionId) => conversationContextOverlay.clear(sessionId),
 		reloadMcp: (sessionId) => mcpCoordinator.refreshSession(sessionId, false),
 	});
-	const extensionControls = createGreenfieldRuntimeExtensionControls({
+	const extensionControls = createCodingAgentRuntimeExtensionControls({
 		indexes: resourceRegistry.indexes,
 		extensionToolRuntime,
 	});

@@ -174,6 +174,39 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired Session initialization and lifecycle identities", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/composition/greenfield-session-execution-runtime.ts",
+				text: "export class GreenfieldSessionExecutionRuntime {}",
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/composition/greenfield-session-execution-runtime.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/composition/greenfield-session-execution-runtime.ts: retired migration reference (GreenfieldSessionExecutionRuntime)",
+		]);
+	});
+
+	it("rejects retired Tool Surface and Adapter policy identities", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/composition/greenfield-runtime-tool-surface.ts",
+				text: "export function createGreenfieldRuntimeToolSurface() {}",
+			},
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-model-tool-order.ts",
+				text: "export const order = {};",
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-model-tool-order.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/composition/greenfield-runtime-tool-surface.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/composition/greenfield-runtime-tool-surface.ts: retired migration reference (createGreenfieldRuntimeToolSurface)",
+		]);
+	});
+
 	it("rejects growth beyond each migration residue baseline", () => {
 		const files = [
 			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1 }, (_, index) => ({

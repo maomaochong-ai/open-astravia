@@ -1,7 +1,7 @@
 import type { AgentFeatureDefinition, ModelCallContributionProvider } from "@vetta/runtime-core/kernel";
 import { type AskUserQuestionCapability, createAskUserQuestionToolRegistration } from "@vetta/runtime-tools/coding";
 import type { ConversationScenario } from "../../profiles/index.js";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "./greenfield-model-tool-order.js";
+import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 
 export const CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME = "ask_user_question";
 

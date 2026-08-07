@@ -672,10 +672,10 @@ describe("package boundary analysis", () => {
 	it("keeps Session Resource Lifecycle assembly out of the Coding Agent Composition Root", () => {
 		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedAssembly = `
-			const resources: GreenfieldRuntimeResources = {};
+			const resources: CodingAgentSessionRuntimeResources = {};
 			const sessionCleanup = new RetryableCleanup();
 			const hookSessionController = {};
-			const background = new GreenfieldBackgroundWorkController();
+			const background = new CodingAgentBackgroundWorkController();
 			resources.createSessionPeripherals = () => ({});
 			resources.stateSource = {};
 			resources.onConversationContinued = async () => {};
@@ -685,7 +685,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldSessionResourceLifecycleAssembly } from "./greenfield-session-resource-lifecycle-assembly.js";',
+				'import { createCodingAgentSessionResourceLifecycle } from "./session-lifecycle/resource-lifecycle.js";',
 			),
 		).toHaveLength(1);
 	});
@@ -693,8 +693,8 @@ describe("package boundary analysis", () => {
 	it("keeps Composition resource registries and shutdown transactions out of the Coding Agent Composition Root", () => {
 		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedLifecycle = `
-			const sessionValues = new InMemoryGreenfieldSessionValueIndex();
-			const sessionMarkers = new InMemoryGreenfieldSessionMarkerIndex();
+			const sessionValues = new InMemoryCodingAgentSessionValueIndex();
+			const sessionMarkers = new InMemoryCodingAgentSessionMarkerIndex();
 			const compositionCleanup = new RetryableCleanup();
 			const contextRuntimes = new Set();
 			const memoryRuntimes = new Set();
@@ -708,7 +708,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldCompositionShutdown } from "./greenfield-composition-shutdown.js";',
+				'import { createCodingAgentCompositionShutdown } from "./session-lifecycle/composition-shutdown.js";',
 			),
 		).toEqual([]);
 	});
@@ -728,7 +728,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldMcpSessionCoordinator } from "./greenfield-mcp-session-coordinator.js";',
+				'import { createCodingAgentMcpSessionCoordinator } from "./tool-surface/mcp-session-coordinator.js";',
 			),
 		).toHaveLength(1);
 	});
@@ -737,9 +737,9 @@ describe("package boundary analysis", () => {
 		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedInitialization = `
 			const rollback = new InitializationRollbackScope();
-			const execution = new GreenfieldSessionExecutionRuntime({});
-			const configuration = new GreenfieldSessionConfigurationState();
-			createGreenfieldSessionResourceLifecycleAssembly({});
+			const execution = new CodingAgentSessionExecutionRuntime({});
+			const configuration = new CodingAgentSessionConfigurationState();
+			createCodingAgentSessionResourceLifecycle({});
 			createGreenfieldTurnCapabilitySessionAssembly({});
 			rollback.defer({ id: "conversation-ownership" });
 		`;
@@ -747,19 +747,19 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldSessionInitializationTransaction } from "./greenfield-session-initialization-transaction.js";',
+				'import { createCodingAgentSessionInitializationTransaction } from "./session-initialization/transaction.js";',
 			),
 		).toEqual([]);
 	});
 
 	it("projects public Composition options into a narrow Session initialization profile", () => {
 		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
-		const transactionPath = "packages/coding-agent/src/composition/greenfield-session-initialization-transaction.ts";
+		const transactionPath = "packages/coding-agent/src/composition/session-initialization/transaction.ts";
 
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				"createGreenfieldSessionInitializationTransaction({ composition: options });",
+				"createCodingAgentSessionInitializationTransaction({ composition: options });",
 			),
 		).not.toEqual([]);
 		expect(
@@ -772,22 +772,22 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				"createGreenfieldSessionInitializationTransaction({ profile: sessionInitializationProfile });",
+				"createCodingAgentSessionInitializationTransaction({ profile: sessionInitializationProfile });",
 			),
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
 				transactionPath,
-				`import type { GreenfieldSessionInitializationProfile } from "./greenfield-session-initialization-profile.js";
+				`import type { CodingAgentSessionInitializationProfile } from "./profile.js";
 				const profile = options.profile;`,
 			),
 		).toEqual([]);
 	});
 
 	it("keeps peripheral and context construction out of the Session initialization transaction", () => {
-		const transactionPath = "packages/coding-agent/src/composition/greenfield-session-initialization-transaction.ts";
+		const transactionPath = "packages/coding-agent/src/composition/session-initialization/transaction.ts";
 		const forbiddenConstructions = [
-			"new GreenfieldSessionExecutionRuntime({});",
+			"new CodingAgentSessionExecutionRuntime({});",
 			"new CodingAgentMemoryRolloverOrchestrator({});",
 			"new GreenfieldRuntimeModel({});",
 			"new CodingAgentGreenfieldContextRuntime({});",
@@ -802,8 +802,8 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				transactionPath,
-				`const peripherals = await createGreenfieldSessionPeripheralAssembly(options);
-				const context = createGreenfieldSessionContextAssembly({ peripherals });`,
+				`const peripherals = await createCodingAgentSessionPeripheralAssembly(options);
+				const context = createCodingAgentSessionContextAssembly({ peripherals });`,
 			),
 		).toEqual([]);
 	});
@@ -814,18 +814,18 @@ describe("package boundary analysis", () => {
 			const scopes = CODING_TOOL_SCOPES;
 			const order = CODING_AGENT_MODEL_TOOL_ORDER;
 			createCodingToolsRuntimeComposition({});
-			createGreenfieldMcpSessionCoordinator({});
+			createCodingAgentMcpSessionCoordinator({});
 			adaptCodingAgentToolRegistration({});
 			createKbListTagsTool();
 			createKbFilterByTagsTool();
-			resolveGreenfieldToolActivation({});
+			resolveCodingAgentToolActivation({});
 			const instruction = "knowledge_mode_instruction";
 		`;
 		expect(findPackageBoundaryViolations(compositionPath, embeddedToolSurface)).toHaveLength(9);
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldRuntimeToolSurface } from "./greenfield-runtime-tool-surface.js";',
+				'import { createCodingAgentRuntimeToolSurface } from "./tool-surface/runtime-tool-surface.js";',
 			),
 		).toEqual([]);
 	});
@@ -845,7 +845,7 @@ describe("package boundary analysis", () => {
 			),
 		).toEqual([]);
 
-		const compositionPath = "packages/coding-agent/src/composition/runtime-tools-composition.ts";
+		const compositionPath = "packages/coding-agent/src/composition/tool-surface/runtime-tools-composition.ts";
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
@@ -858,6 +858,21 @@ describe("package boundary analysis", () => {
 				"interface CodingToolsRuntimeComposition { readonly registry: CodingToolRegistry; }",
 			),
 		).toEqual([]);
+	});
+
+	it("keeps Tool policy declarations out of Adapters and Composition", () => {
+		const adapterPath = "packages/coding-agent/src/adapters/runtime-core/model-tool-order.ts";
+		const compositionPath = "packages/coding-agent/src/composition/tool-surface/activation-policy.ts";
+		const policyPath = "packages/coding-agent/src/tool-policy/activation-policy.ts";
+		const adapterPolicy = "export const CODING_AGENT_MODEL_TOOL_ORDER = {};";
+		const compositionPolicy = `
+			export interface CodingAgentToolAvailability {}
+			export function resolveCodingAgentToolActivation() {}
+		`;
+
+		expect(findPackageBoundaryViolations(adapterPath, adapterPolicy)).toHaveLength(1);
+		expect(findPackageBoundaryViolations(compositionPath, compositionPolicy)).toHaveLength(2);
+		expect(findPackageBoundaryViolations(policyPath, compositionPolicy)).toEqual([]);
 	});
 
 	it("keeps Child Composition isolation policy out of the Coding Agent Composition Root", () => {
@@ -905,15 +920,27 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldRuntimeSessionControls } from "./greenfield-runtime-session-controls.js";',
+				'import { createCodingAgentRuntimeSessionControls } from "./session-lifecycle/session-controls.js";',
 			),
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
 				compositionPath,
-				'import { createGreenfieldRuntimeExtensionControls } from "./greenfield-runtime-extension-controls.js";',
+				'import { createCodingAgentRuntimeExtensionControls } from "./session-lifecycle/extension-controls.js";',
 			),
 		).toEqual([]);
+	});
+
+	it("keeps Session Host capability declarations out of Composition", () => {
+		const compositionPath = "packages/coding-agent/src/composition/session-initialization/peripheral-assembly.ts";
+		const hostPath = "packages/coding-agent/src/host/session-execution/execution-runtime.ts";
+		const hostCapabilities = `
+			export class CodingAgentSessionExecutionRuntime {}
+			export interface CodingAgentSubagentWorkRuntime {}
+		`;
+
+		expect(findPackageBoundaryViolations(compositionPath, hostCapabilities)).toHaveLength(2);
+		expect(findPackageBoundaryViolations(hostPath, hostCapabilities)).toEqual([]);
 	});
 
 	it("requires scoped production packages to declare workspace imports", () => {
