@@ -7,7 +7,7 @@ import { PluginContributionsSection } from "./PluginContributionsSection";
 
 /**
  * plugin 专属区块：权限清单（只读）与命令开关。
- * 权限的授予与否移到头部的「权限配置」弹窗；系统插件权限自动授予、不可改。
+ * 权限的授予与解释放在详情页的二级权限视图；系统插件权限自动授予、不可改。
  */
 export function PluginAbilitySection({
 	item,
@@ -66,7 +66,7 @@ export function PluginAbilitySection({
 						</span>
 					) : null}
 				</div>
-				{/* 只列清单，不做卡片；授予与否在头部的「权限配置」弹窗里改 */}
+				{/* 这里只保留可扫描的清单；授予与解释在二级权限视图中完成。 */}
 				{item.permissions.length > 0 ? (
 					<div className="grid grid-cols-3 gap-x-4 gap-y-1">
 						{item.permissions.map((permission) => (

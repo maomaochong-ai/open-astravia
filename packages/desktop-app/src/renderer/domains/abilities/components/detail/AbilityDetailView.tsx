@@ -1,4 +1,5 @@
 import { Button } from "@vetta/ui";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveAbilityDetailContent } from "../../lib/ability-presentation";
@@ -14,7 +15,20 @@ import { BundleMembersSection } from "./BundleMembersSection";
 import { BundleUninstallDialog } from "./BundleUninstallDialog";
 import { McpAbilitySection } from "./McpAbilitySection";
 import { PluginAbilitySection } from "./PluginAbilitySection";
-import { PluginPermissionsDialog } from "./PluginPermissionsDialog";
+import { PluginPermissionsView } from "./PluginPermissionsView";
+
+interface DetailPageTransition {
+	direction: 1 | -1;
+	reduceMotion: boolean;
+}
+
+const DETAIL_PAGE_VARIANTS = {
+	enter: ({ direction, reduceMotion }: DetailPageTransition) =>
+		reduceMotion ? { opacity: 0, x: 0 } : { opacity: 0, x: direction > 0 ? "100%" : "-24%" },
+	center: { opacity: 1, x: 0 },
+	exit: ({ direction, reduceMotion }: DetailPageTransition) =>
+		reduceMotion ? { opacity: 0, x: 0 } : { opacity: 0, x: direction > 0 ? "-24%" : "100%" },
+};
 
 /** 通用壳层 + markdown 正文 + showcases + type 专属区块。 */
 export function AbilityDetailView({
@@ -31,7 +45,8 @@ export function AbilityDetailView({
 	const language = i18n.language;
 	const [bundleDialogOpen, setBundleDialogOpen] = useState(false);
 	const [bundleInstallDialogOpen, setBundleInstallDialogOpen] = useState(false);
-	const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
+	const [page, setPage] = useState<"detail" | "permissions">("detail");
+	const reduceMotion = useReducedMotion();
 
 	const detail = useMemo(
 		() => resolveAbilityDetailContent(item.detail ?? item.market?.detail, language),
@@ -84,9 +99,9 @@ export function AbilityDetailView({
 			return (
 				<>
 					{item.permissions.length > 0 ? (
-						<Button variant="secondary" size="lg" onClick={() => setPermissionsDialogOpen(true)}>
+						<Button variant="secondary" size="lg" onClick={() => setPage("permissions")}>
 							<span className="icon-[solar--shield-keyhole-linear] h-4 w-4" />
-							{t("plugin.permissionsDialog")}
+							{t("permission.page.open")}
 						</Button>
 					) : null}
 					{item.installed ? (
@@ -127,8 +142,7 @@ export function AbilityDetailView({
 		return undefined;
 	})();
 
-	// 滚动与内边距由外层容器（AbilityDetailSheet）负责，这里只排内容列。
-	return (
+	const detailPage = (
 		<div className="flex w-full flex-col gap-7">
 			<AbilityDetailEnter index={0}>
 				<AbilityDetailHeader
@@ -181,15 +195,6 @@ export function AbilityDetailView({
 				</AbilityDetailEnter>
 			</div>
 
-			{item.type === "plugin" && item.permissions.length > 0 ? (
-				<PluginPermissionsDialog
-					item={item}
-					model={model}
-					open={permissionsDialogOpen}
-					onOpenChange={setPermissionsDialogOpen}
-				/>
-			) : null}
-
 			{item.type === "bundle" ? (
 				<BundleInstallDialog
 					bundle={item}
@@ -207,6 +212,33 @@ export function AbilityDetailView({
 					onConfirm={(members) => model.uninstallBundleMembers(members)}
 				/>
 			) : null}
+		</div>
+	);
+
+	const transition: DetailPageTransition = {
+		direction: page === "permissions" ? 1 : -1,
+		reduceMotion: Boolean(reduceMotion),
+	};
+	return (
+		<div className="relative h-full overflow-hidden">
+			<AnimatePresence initial={false} custom={transition}>
+				<motion.div
+					key={page}
+					custom={transition}
+					className="absolute inset-0 overflow-y-auto overflow-x-hidden px-5 pb-8 pt-8"
+					variants={DETAIL_PAGE_VARIANTS}
+					initial="enter"
+					animate="center"
+					exit="exit"
+					transition={{ duration: reduceMotion ? 0.12 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+				>
+					{page === "permissions" && item.type === "plugin" ? (
+						<PluginPermissionsView item={item} model={model} onBack={() => setPage("detail")} />
+					) : (
+						detailPage
+					)}
+				</motion.div>
+			</AnimatePresence>
 		</div>
 	);
 }
