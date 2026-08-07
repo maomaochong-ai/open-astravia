@@ -5,6 +5,7 @@ import {
 	type Disposable,
 	type PluginPendingToolCall,
 } from "@vetta-org/plugin-sdk";
+import vetdIconUrl from "../icon.png";
 import "./style.css";
 import { DESIGN_SYSTEM_CARD_TYPE } from "./cards/design-system-card";
 import { DesignSystemPickerCard } from "./cards/DesignSystemPickerCard";
@@ -44,6 +45,10 @@ function ScreenshotIcon() {
 			<path d="M8.5 6l1.3-2h4.4l1.3 2" strokeLinejoin="round" />
 		</svg>
 	);
+}
+
+function VetdFileIcon() {
+	return <img src={vetdIconUrl} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
 }
 
 /**
@@ -157,6 +162,12 @@ export default definePlugin({
 
 		// 跨模式唯一保留的能力：编程模式里也可能点开一份 .vetd 看看。
 		ctx.ui.registerFilePreview({ extensions: ["vetd"], component: VetdPreview });
+		ctx.fileExplorer.registerDecorationProvider({
+			id: "vetd-file-icon",
+			priority: 100,
+			when: { resourceType: "file", extensions: ["vetd"] },
+			provideDecoration: () => ({ icon: <VetdFileIcon /> }),
+		});
 
 		registerDesignTools(ctx);
 	},

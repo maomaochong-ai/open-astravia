@@ -18,6 +18,7 @@
 		"ui.slot.activity-tab",
 		"ui.slot.file-preview",
 		"ui.slot.message",
+		"ui.file-explorer.decorations",
 		"agent.session.read",
 		"agent.session.write",
 		"agent.tools.register",
