@@ -4,14 +4,14 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
-import type { GreenfieldKnowledgeProcessingSessionFactoryOptions } from "../src/composition/greenfield-knowledge-processing-session.js";
-import { createKnowledgeProcessingSessionFactory as createGreenfieldKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
+import { createKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
+import type { KnowledgeProcessingSessionFactoryOptions } from "../src/composition/knowledge-processing-session.js";
 import {
 	type CodingAgentRuntimeCompositionOptions,
 	createCodingAgentRuntimeComposition,
 } from "../src/composition/runtime-composition.js";
 
-describe("Greenfield knowledge processing session adapter", () => {
+describe("Knowledge processing session", () => {
 	const directories: string[] = [];
 
 	afterEach(async () => {
@@ -85,7 +85,7 @@ describe("Greenfield knowledge processing session adapter", () => {
 		];
 		let responseIndex = 0;
 		const disposeComposition = vi.fn(async () => {});
-		const factory = createGreenfieldKnowledgeProcessingSessionFactory({
+		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => registry,
 			knowledgeRoot: knowledgeDirectory,
 			createSessionId: () => "knowledge-session",
@@ -173,7 +173,7 @@ describe("Greenfield knowledge processing session adapter", () => {
 		const conversationDir = await createTemporaryDirectory("greenfield-kb-missing-sessions-");
 		const registry = modelRegistry([]);
 		const stream = vi.fn();
-		const factory = createGreenfieldKnowledgeProcessingSessionFactory({
+		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => ({
 				...registry,
 				find: () => undefined,
@@ -220,7 +220,7 @@ function createRecordedComposition(options: {
 	) => void;
 	readonly readResponse: () => AssistantMessage;
 	readonly onDispose: () => Promise<void>;
-}): NonNullable<GreenfieldKnowledgeProcessingSessionFactoryOptions["createComposition"]> {
+}): NonNullable<KnowledgeProcessingSessionFactoryOptions["createComposition"]> {
 	return async (compositionOptions) => {
 		const composition = await createCodingAgentRuntimeComposition({
 			...compositionOptions,

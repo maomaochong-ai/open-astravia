@@ -1,5 +1,5 @@
 import {
-	createKnowledgeProcessingSessionFactory as createGreenfieldKnowledgeProcessingSessionFactory,
+	createKnowledgeProcessingSessionFactory,
 	type KnowledgeProcessingSessionFactory,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentModelRuntime } from "@vetta/coding-agent/host-services";
@@ -12,7 +12,7 @@ export interface DesktopKnowledgeProcessingSessionFactoryOptions {
 export function createDesktopKnowledgeProcessingSessionFactory(
 	options: DesktopKnowledgeProcessingSessionFactoryOptions,
 ): KnowledgeProcessingSessionFactory {
-	return createGreenfieldKnowledgeProcessingSessionFactory({
+	return createKnowledgeProcessingSessionFactory({
 		getModelRegistry: options.getModelRegistry,
 	});
 }

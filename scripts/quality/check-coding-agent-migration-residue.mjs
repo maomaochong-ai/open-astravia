@@ -12,7 +12,7 @@ const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	adapterGreenfieldFiles: 30,
-	compositionGreenfieldFiles: 28,
+	compositionGreenfieldFiles: 24,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
 	hostExtensionCompositionEdgeFiles: 0,
@@ -45,6 +45,10 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${COMPOSITION_ROOT}/session-host/extension-session-host.ts`,
 	`${COMPOSITION_ROOT}/greenfield-runtime-composition.ts`,
 	`${COMPOSITION_ROOT}/greenfield-runtime-composition-contract.ts`,
+	`${COMPOSITION_ROOT}/greenfield-conversation-path.ts`,
+	`${COMPOSITION_ROOT}/greenfield-knowledge-processing-session.ts`,
+	`${COMPOSITION_ROOT}/greenfield-runtime-host-session-backend.ts`,
+	`${COMPOSITION_ROOT}/greenfield-runtime-host-retry.ts`,
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
@@ -94,6 +98,17 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"GreenfieldRuntimeToolAccess",
 	"GreenfieldRuntimeToolOptions",
 	"GreenfieldInitialTodoLockSource",
+	"greenfield-conversation-path",
+	"resolveGreenfieldSessionIdFromPath",
+	"greenfield-knowledge-processing-session",
+	"createGreenfieldKnowledgeProcessingSessionFactory",
+	"GreenfieldKnowledgeProcessingSessionFactoryOptions",
+	"greenfield-runtime-host-session-backend",
+	"GreenfieldRuntimeHostSessionBackend",
+	"GreenfieldRuntimeHostSessionBackendOptions",
+	"greenfield-runtime-host-retry",
+	"GreenfieldRuntimeHostRetrySettings",
+	"withGreenfieldRuntimeHostRetry",
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {

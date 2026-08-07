@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { type GreenfieldRuntimeSession, InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
-import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/conversation";
+import { FileConversationRuntimeSessionCatalog, resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type {
 	CodingAgentRuntimeComposition,
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeSessionOptions,
 } from "../../composition/contracts/index.js";
-import { resolveGreenfieldSessionIdFromPath } from "../../composition/greenfield-conversation-path.js";
 import { createCodingAgentRuntimeComposition } from "../../composition/runtime-composition.js";
 import {
 	CodingAgentActiveSessionHost,
@@ -147,7 +146,7 @@ export async function createGreenfieldSdkSession(
 			conversationDir,
 			sessionCatalog: createSessionCatalog(storage, options.session?.cwd),
 			createSessionId: randomUUID,
-			resolveSessionId: (path) => resolveGreenfieldSessionIdFromPath(conversationDir, path),
+			resolveSessionId: (path) => resolveSessionIdFromPath(conversationDir, path),
 			lifecycle: createResourceAwareTransitionLifecycle(
 				composition,
 				options,

@@ -1,8 +1,8 @@
 import { ConversationOwnershipConflictError } from "@vetta/runtime-storage";
 import { describe, expect, it } from "vitest";
-import { mapRuntimeHostSessionCreationError } from "../../src/composition/greenfield-runtime-host-session-backend.js";
+import { mapRuntimeHostSessionCreationError } from "../../src/host/runtime-host/session-backend.js";
 
-describe("Greenfield RuntimeHost session errors", () => {
+describe("Coding Agent RuntimeHost session errors", () => {
 	it("maps storage ownership conflicts to the stable Runtime session-lock code", () => {
 		const mapped = mapRuntimeHostSessionCreationError(
 			new ConversationOwnershipConflictError(

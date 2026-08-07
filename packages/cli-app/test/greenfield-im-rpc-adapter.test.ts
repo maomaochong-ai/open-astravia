@@ -1,10 +1,8 @@
 import { join } from "node:path";
-import {
-	type CodingAgentRuntimeComposition,
-	resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath,
-} from "@vetta/coding-agent/composition";
+import type { CodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
 import type { GreenfieldRuntimeSession, GreenfieldRuntimeSessionCoreAssembly, SessionEvent } from "@vetta/runtime-core";
+import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type { CodingToolRegistration } from "@vetta/runtime-tools/coding";
 import { describe, expect, test, vi } from "vitest";
 import { GreenfieldImRpcEventAdapter } from "../src/rpc/greenfield-im-rpc-events.js";
@@ -311,14 +309,10 @@ describe("Greenfield conversation path identity", () => {
 		const sessionId = "session/with unsafe path";
 		const encoded = Buffer.from(sessionId, "utf8").toString("base64url");
 
-		expect(resolveGreenfieldSessionIdFromPath(root, join(root, `${encoded}.conversation.jsonl`))).toBe(sessionId);
-		expect(resolveGreenfieldSessionIdFromPath(root, join(root, "legacy.jsonl"))).toBeUndefined();
-		expect(
-			resolveGreenfieldSessionIdFromPath(root, join(root, "nested", `${encoded}.conversation.jsonl`)),
-		).toBeUndefined();
-		expect(
-			resolveGreenfieldSessionIdFromPath(root, join(root, "..", `${encoded}.conversation.jsonl`)),
-		).toBeUndefined();
+		expect(resolveSessionIdFromPath(root, join(root, `${encoded}.conversation.jsonl`))).toBe(sessionId);
+		expect(resolveSessionIdFromPath(root, join(root, "legacy.jsonl"))).toBeUndefined();
+		expect(resolveSessionIdFromPath(root, join(root, "nested", `${encoded}.conversation.jsonl`))).toBeUndefined();
+		expect(resolveSessionIdFromPath(root, join(root, "..", `${encoded}.conversation.jsonl`))).toBeUndefined();
 	});
 });
 

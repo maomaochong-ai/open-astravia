@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
 	type CodingAgentRuntimeComposition,
+	CodingAgentRuntimeHostSessionBackend,
 	createCodingAgentRuntimeComposition,
-	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import {
@@ -60,7 +60,7 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 				return new RecordedAssistantStream(response);
 			},
 		});
-		const backend = new GreenfieldRuntimeHostSessionBackend({
+		const backend = new CodingAgentRuntimeHostSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -166,7 +166,7 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 				return new RecordedAssistantStream(response);
 			},
 		});
-		const backend = new GreenfieldRuntimeHostSessionBackend({
+		const backend = new CodingAgentRuntimeHostSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -217,7 +217,7 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 			initialThinkingLevel: "off",
 			createPluginRuntime: () => ({ readAgentPlugins: () => undefined }),
 		});
-		const backend = new GreenfieldRuntimeHostSessionBackend({
+		const backend = new CodingAgentRuntimeHostSessionBackend({
 			composition,
 			conversationDir,
 			cwd,

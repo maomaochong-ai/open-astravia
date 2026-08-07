@@ -8,9 +8,9 @@ import {
 	resolveCodingAgentInitialModel,
 	runPrintMode,
 } from "@vetta/coding-agent/bootstrap";
-import { resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath } from "@vetta/coding-agent/composition";
 import { runRpcModeWithCapabilities } from "@vetta/coding-agent/rpc";
 import { InitializationRollbackScope } from "@vetta/runtime-core";
+import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import { GreenfieldPrintSessionAdapter } from "../../greenfield-print-session-adapter.js";
 import { migrateGreenfieldImLegacySession } from "../greenfield-im-legacy-session-migration.js";
 import { resolveGreenfieldImSessionPath } from "../greenfield-im-session-selection.js";
@@ -278,7 +278,7 @@ function resolveSessionId(
 	createSessionId: () => string,
 ): string | undefined {
 	if (!sessionPath) return createSessionId();
-	const sessionId = resolveGreenfieldSessionIdFromPath(conversationDir, sessionPath);
+	const sessionId = resolveSessionIdFromPath(conversationDir, sessionPath);
 	if (sessionId) return sessionId;
 	if (sessionPath.endsWith(".conversation.jsonl")) {
 		throw new Error(`Invalid Greenfield conversation path: ${sessionPath}`);

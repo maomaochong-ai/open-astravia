@@ -13,12 +13,12 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import {
-	createGreenfieldKnowledgeProcessingSessionFactory,
-	type GreenfieldKnowledgeProcessingSessionFactoryOptions,
-} from "../src/composition/greenfield-knowledge-processing-session.js";
+	createKnowledgeProcessingSessionFactory,
+	type KnowledgeProcessingSessionFactoryOptions,
+} from "../src/composition/knowledge-processing-session.js";
 import { createCodingAgentRuntimeComposition } from "../src/composition/runtime-composition.js";
 
-describe("Greenfield knowledge processing batches", () => {
+describe("Knowledge processing batches", () => {
 	const directories: string[] = [];
 
 	afterEach(async () => {
@@ -43,7 +43,7 @@ describe("Greenfield knowledge processing batches", () => {
 		const sharedWrite = vi.fn(writer.write.bind(writer));
 		const disposeComposition = vi.fn(async () => {});
 		let nextSessionId = 1;
-		const factory = createGreenfieldKnowledgeProcessingSessionFactory({
+		const factory = createKnowledgeProcessingSessionFactory({
 			getModelRegistry: () => modelRegistry(),
 			knowledgeRoot: root,
 			createSessionId: () => `knowledge-batch-${nextSessionId++}`,
@@ -91,7 +91,7 @@ describe("Greenfield knowledge processing batches", () => {
 function createBatchComposition(
 	requests: readonly [WritePageRequest, WritePageRequest],
 	onDispose: () => Promise<void>,
-): NonNullable<GreenfieldKnowledgeProcessingSessionFactoryOptions["createComposition"]> {
+): NonNullable<KnowledgeProcessingSessionFactoryOptions["createComposition"]> {
 	return async (options) => {
 		let request: WritePageRequest | undefined;
 		let streamIndex = 0;

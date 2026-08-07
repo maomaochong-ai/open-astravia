@@ -19,7 +19,7 @@ import {
 	createCodingAgentRuntimeComposition,
 } from "./runtime-composition.js";
 
-export interface GreenfieldKnowledgeProcessingSessionFactoryOptions {
+export interface KnowledgeProcessingSessionFactoryOptions {
 	readonly getModelRegistry: () => CodingAgentRuntimeModelSource;
 	readonly knowledgeRoot?: string;
 	readonly createSessionId?: () => string;
@@ -29,13 +29,13 @@ export interface GreenfieldKnowledgeProcessingSessionFactoryOptions {
 }
 
 /**
- * 在 Knowledge Processing Port 后组合独占的 Greenfield Runtime。
+ * 在 Knowledge Processing Port 后组合独占的 Coding Agent Runtime。
  *
  * Writer 与 Todo 锁都停留在 Coding Agent 产品层；通用 RuntimeHost 无需认识
  * Knowledge、KbWriteSession 或可写 TodoStore。
  */
-export function createGreenfieldKnowledgeProcessingSessionFactory(
-	options: GreenfieldKnowledgeProcessingSessionFactoryOptions,
+export function createKnowledgeProcessingSessionFactory(
+	options: KnowledgeProcessingSessionFactoryOptions,
 ): KnowledgeProcessingSessionFactory {
 	const createSessionId = options.createSessionId ?? randomUUID;
 	const createComposition = options.createComposition ?? createCodingAgentRuntimeComposition;

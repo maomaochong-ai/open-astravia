@@ -615,7 +615,7 @@ describe("package boundary analysis", () => {
 	it("keeps Knowledge Processing contracts independent from backend implementations", () => {
 		expect(
 			findPackageBoundaryViolations(
-				"packages/coding-agent/src/composition/greenfield-knowledge-processing-session.ts",
+				"packages/coding-agent/src/composition/knowledge-processing-session.ts",
 				'import type { KnowledgeProcessingSession } from "./legacy-knowledge-processing-session.js";',
 			),
 		).not.toEqual([]);

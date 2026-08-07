@@ -1,10 +1,9 @@
+export { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
+export { CodingAgentRuntimeHostSessionBackend } from "../host/runtime-host/session-backend.js";
 export {
 	type CodingAgentSessionSetup,
 	createCodingAgentSessionSetupSeedInitializer,
 } from "../sessions/setup/session-setup-seed-initializer.js";
-export { resolveGreenfieldSessionIdFromPath as resolveSessionIdFromPath } from "./greenfield-conversation-path.js";
-export { createGreenfieldKnowledgeProcessingSessionFactory as createKnowledgeProcessingSessionFactory } from "./greenfield-knowledge-processing-session.js";
-export { GreenfieldRuntimeHostSessionBackend as CodingAgentRuntimeHostSessionBackend } from "./greenfield-runtime-host-session-backend.js";
 export type {
 	KnowledgeProcessingPageWriter,
 	KnowledgeProcessingSession,
@@ -12,6 +11,7 @@ export type {
 	KnowledgeProcessingSessionRequest,
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
+export { createKnowledgeProcessingSessionFactory } from "./knowledge-processing-session.js";
 export {
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,

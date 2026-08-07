@@ -1,3 +1,4 @@
+export { resolveSessionIdFromPath } from "./conversation-file-path.js";
 export {
 	type ConversationOwnershipLease,
 	type ConversationOwnershipManager,

@@ -14,7 +14,7 @@ export const REQUIRED_RUNTIME_FAILURE_MARKERS = Object.freeze({
 	],
 	"packages/coding-agent/src/modes/rpc/rpc-types.ts": ["RpcFailureMetadata"],
 	"packages/coding-agent/src/modes/rpc/rpc-client.ts": ["reject(rpcClientErrorFromResponse(response))"],
-	"packages/coding-agent/src/composition/greenfield-runtime-host-session-backend.ts": [
+	"packages/coding-agent/src/host/runtime-host/session-backend.ts": [
 		"CONVERSATION_STORAGE_ERROR_CODES.OWNERSHIP_CONFLICT",
 		'runtimeError("SESSION_LOCKED"',
 	],
@@ -54,7 +54,7 @@ const BOUNDARY_FILES = [
 	"packages/desktop-app/src/main/runtime.ts",
 	"packages/runtime-core/src/errors.ts",
 	"packages/runtime-core/src/runtime-host/runtime-host.ts",
-	"packages/coding-agent/src/composition/greenfield-runtime-host-session-backend.ts",
+	"packages/coding-agent/src/host/runtime-host/session-backend.ts",
 ];
 
 const FORBIDDEN_BOUNDARY_PATTERNS = [

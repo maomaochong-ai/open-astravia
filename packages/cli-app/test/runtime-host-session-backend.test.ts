@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
+	CodingAgentRuntimeHostSessionBackend,
 	createCodingAgentRuntimeComposition,
-	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it } from "vitest";
 
-describe("GreenfieldRuntimeHostSessionBackend", () => {
+describe("CodingAgentRuntimeHostSessionBackend", () => {
 	const directories: string[] = [];
 	const disposers: Array<() => Promise<void>> = [];
 
@@ -33,7 +33,7 @@ describe("GreenfieldRuntimeHostSessionBackend", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 		});
-		const backend = new GreenfieldRuntimeHostSessionBackend({
+		const backend = new CodingAgentRuntimeHostSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -103,7 +103,7 @@ describe("GreenfieldRuntimeHostSessionBackend", () => {
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 		});
-		const backend = new GreenfieldRuntimeHostSessionBackend({
+		const backend = new CodingAgentRuntimeHostSessionBackend({
 			composition,
 			conversationDir,
 			cwd,
@@ -151,7 +151,7 @@ describe("GreenfieldRuntimeHostSessionBackend", () => {
 			initialThinkingLevel: "off",
 			streamFn: () => new RecordedAssistantStream(responses[callCount++] ?? assistantMessage("stop")),
 		});
-		const backend = new GreenfieldRuntimeHostSessionBackend({
+		const backend = new CodingAgentRuntimeHostSessionBackend({
 			composition,
 			conversationDir,
 			cwd,

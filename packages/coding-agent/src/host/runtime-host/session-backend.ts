@@ -11,15 +11,15 @@ import {
 	runtimeError,
 } from "@vetta/runtime-core";
 import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "@vetta/runtime-storage";
-import { SettingsRuntime } from "../settings/index.js";
-import { resolveGreenfieldSessionIdFromPath } from "./greenfield-conversation-path.js";
-import {
-	type GreenfieldRuntimeHostRetrySettings,
-	withGreenfieldRuntimeHostRetry,
-} from "./greenfield-runtime-host-retry.js";
-import type { CodingAgentRuntimeComposition, CodingAgentRuntimeSessionOptions } from "./runtime-composition.js";
+import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
+import type {
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeSessionOptions,
+} from "../../composition/runtime-composition.js";
+import { SettingsRuntime } from "../../settings/index.js";
+import { type CodingAgentRuntimeHostRetrySettings, withCodingAgentRuntimeHostRetry } from "./session-retry.js";
 
-export interface GreenfieldRuntimeHostSessionBackendOptions {
+export interface CodingAgentRuntimeHostSessionBackendOptions {
 	readonly composition: CodingAgentRuntimeComposition;
 	readonly conversationDir: string;
 	readonly cwd: string;
@@ -27,20 +27,20 @@ export interface GreenfieldRuntimeHostSessionBackendOptions {
 	readonly scenario: ConversationScenario;
 	readonly enableSubagents: boolean;
 	readonly serverUrl?: string;
-	readonly retrySettings?: GreenfieldRuntimeHostRetrySettings;
+	readonly retrySettings?: CodingAgentRuntimeHostRetrySettings;
 }
 
 /**
- * 将 RuntimeHost 的实现无关请求适配到 Coding Agent Greenfield Backend。
+ * 将 RuntimeHost 的实现无关请求适配到 Coding Agent Backend。
  *
  * 组合根固定的参数必须相等；尚未接线的宿主能力必须显式失败，禁止静默丢失。
  */
-export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBackend {
+export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionBackend {
 	private readonly sessions = new Map<string, GreenfieldRuntimeSession>();
 	private readonly assessments = new Map<string, RuntimeHostSessionAssemblyAssessment>();
-	private readonly retrySettings: GreenfieldRuntimeHostRetrySettings;
+	private readonly retrySettings: CodingAgentRuntimeHostRetrySettings;
 
-	constructor(private readonly options: GreenfieldRuntimeHostSessionBackendOptions) {
+	constructor(private readonly options: CodingAgentRuntimeHostSessionBackendOptions) {
 		this.retrySettings = options.retrySettings ?? SettingsRuntime.create(options.cwd, options.agentDir);
 	}
 
@@ -65,7 +65,7 @@ export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBa
 		const sessionId = session.sessionId;
 		this.sessions.set(sessionId, session);
 		this.assessments.set(sessionId, assessment);
-		const retryAssembly = withGreenfieldRuntimeHostRetry(session, assessment.assembly, this.retrySettings);
+		const retryAssembly = withCodingAgentRuntimeHostRetry(session, assessment.assembly, this.retrySettings);
 		const lifecycle = retryAssembly.lifecycle;
 		return {
 			...retryAssembly,
@@ -94,7 +94,7 @@ export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBa
 	private toSessionOptions(request: RuntimeSessionCreateRequest): CodingAgentRuntimeSessionOptions {
 		const sessionPath = request.sessionPath?.trim();
 		const sessionId = sessionPath
-			? resolveGreenfieldSessionIdFromPath(this.options.conversationDir, sessionPath)
+			? resolveSessionIdFromPath(this.options.conversationDir, sessionPath)
 			: randomUUID();
 		if (!sessionId) {
 			throw new Error(`Greenfield session path is invalid: ${request.sessionPath}`);

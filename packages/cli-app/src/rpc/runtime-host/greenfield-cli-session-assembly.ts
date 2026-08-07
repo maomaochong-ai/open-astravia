@@ -7,7 +7,6 @@ import {
 	type CodingAgentRuntimeSessionOptions,
 	createCodingAgentRuntimeComposition,
 	createCodingAgentSessionSetupSeedInitializer,
-	resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath,
 } from "@vetta/coding-agent/composition";
 import { getVettaHomePath } from "@vetta/coding-agent/config";
 import {
@@ -33,6 +32,7 @@ import {
 import {
 	FileConversationOwnershipManager,
 	type FileConversationOwnershipManagerOptions,
+	resolveSessionIdFromPath,
 } from "@vetta/runtime-storage/conversation";
 
 export const GREENFIELD_RUNTIME_HOST_STARTUP_FAILURE = "Greenfield IM Runtime startup and cleanup failed";
@@ -174,7 +174,7 @@ export async function createGreenfieldCliSessionAssembly(
 			conversationDir: options.conversationDir,
 			sessionCatalog: options.sessionCatalog,
 			createSessionId: options.createSessionId,
-			resolveSessionId: (path) => resolveGreenfieldSessionIdFromPath(options.conversationDir, path),
+			resolveSessionId: (path) => resolveSessionIdFromPath(options.conversationDir, path),
 			lifecycle: {
 				before: (transition) => extensionSessionHost!.before(transition),
 				prepare: (transition) => extensionSessionHost!.prepare(transition),

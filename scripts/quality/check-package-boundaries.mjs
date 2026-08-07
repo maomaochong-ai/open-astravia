@@ -375,12 +375,12 @@ function checkBranchNavigationBoundary(posixPath, text, findings) {
 }
 
 function checkKnowledgeProcessingBoundary(posixPath, text, specifiers, findings) {
-	const greenfieldPath = "packages/coding-agent/src/composition/greenfield-knowledge-processing-session.ts";
+	const processingPath = "packages/coding-agent/src/composition/knowledge-processing-session.ts";
 	const contractPath = "packages/coding-agent/src/composition/knowledge-processing-contract.ts";
-	if (posixPath === greenfieldPath) {
+	if (posixPath === processingPath) {
 		for (const specifier of specifiers) {
 			if (specifier.includes("legacy-knowledge-processing-session")) {
-				findings.push(`${posixPath}: Greenfield Knowledge Processing must depend on the neutral contract`);
+				findings.push(`${posixPath}: Knowledge Processing must depend on the neutral contract`);
 			}
 		}
 		return;

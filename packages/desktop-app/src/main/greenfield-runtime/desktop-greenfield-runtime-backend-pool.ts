@@ -3,8 +3,8 @@ import type { Api, Model } from "@vetta/ai";
 import {
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeHostSessionBackend,
 	createCodingAgentRuntimeComposition,
-	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type {
 	ConversationScenario,
@@ -60,7 +60,7 @@ interface DesktopGreenfieldRuntimeScope extends DesktopGreenfieldMcpRuntimeScope
 
 interface DesktopGreenfieldRuntimeBackendEntry {
 	readonly composition: CodingAgentRuntimeComposition;
-	readonly backend: GreenfieldRuntimeHostSessionBackend;
+	readonly backend: CodingAgentRuntimeHostSessionBackend;
 	readonly managedMcpSource?: DesktopGreenfieldManagedMcpRuntimeSource;
 }
 
@@ -184,7 +184,7 @@ export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBa
 		return {
 			composition,
 			managedMcpSource,
-			backend: new GreenfieldRuntimeHostSessionBackend({
+			backend: new CodingAgentRuntimeHostSessionBackend({
 				composition,
 				conversationDir: scope.conversationDir,
 				cwd: scope.cwd,

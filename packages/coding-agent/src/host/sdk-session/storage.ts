@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { resolveGreenfieldSessionIdFromPath } from "../../composition/greenfield-conversation-path.js";
+import { resolveSessionIdFromPath } from "@vetta/runtime-storage/conversation";
 import type { GreenfieldConversationPersistenceFactory } from "../../composition/greenfield-conversation-persistence.js";
 import { createInMemoryGreenfieldConversationPersistence } from "../../composition/greenfield-conversation-persistence.js";
 
@@ -75,7 +75,7 @@ export function resolveGreenfieldSdkSessionStorage(
 	}
 
 	const resolvedConversationDir = resolve(conversationDir);
-	const sessionId = resolveGreenfieldSessionIdFromPath(resolvedConversationDir, target.sessionPath);
+	const sessionId = resolveSessionIdFromPath(resolvedConversationDir, target.sessionPath);
 	if (!sessionId) {
 		throw new GreenfieldSdkStorageError(
 			GREENFIELD_SDK_STORAGE_ERROR_CODES.INVALID_SESSION_PATH,

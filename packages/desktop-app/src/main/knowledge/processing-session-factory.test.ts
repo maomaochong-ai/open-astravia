@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDesktopKnowledgeProcessingSessionFactory } from "./processing-session-factory.js";
 
 const factoryMocks = vi.hoisted(() => ({
-	greenfield: vi.fn(() => ({ create: vi.fn() })),
+	create: vi.fn(() => ({ create: vi.fn() })),
 }));
 
 vi.mock("@vetta/coding-agent/composition", () => ({
-	createKnowledgeProcessingSessionFactory: factoryMocks.greenfield,
+	createKnowledgeProcessingSessionFactory: factoryMocks.create,
 }));
 
 describe("createDesktopKnowledgeProcessingSessionFactory", () => {
@@ -15,7 +15,7 @@ describe("createDesktopKnowledgeProcessingSessionFactory", () => {
 	const getModelRegistry = () => modelRegistry;
 
 	beforeEach(() => {
-		factoryMocks.greenfield.mockClear();
+		factoryMocks.create.mockClear();
 	});
 
 	it("creates the production knowledge processing session factory", () => {
@@ -23,7 +23,7 @@ describe("createDesktopKnowledgeProcessingSessionFactory", () => {
 			getModelRegistry,
 		});
 
-		expect(factory).toBe(factoryMocks.greenfield.mock.results[0]?.value);
-		expect(factoryMocks.greenfield).toHaveBeenCalledWith({ getModelRegistry });
+		expect(factory).toBe(factoryMocks.create.mock.results[0]?.value);
+		expect(factoryMocks.create).toHaveBeenCalledWith({ getModelRegistry });
 	});
 });
