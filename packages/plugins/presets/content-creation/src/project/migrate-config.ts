@@ -1,9 +1,14 @@
 import { migrateVersionedConfig, type VersionedConfigMigrationResult } from "@vetta/toolkit/versioned-config";
 import { contentProjectMigration001To2 } from "./migrations/001_to_2";
 import { contentProjectMigration002To3 } from "./migrations/002_to_3";
+import { contentProjectMigration003To4 } from "./migrations/003_to_4";
 import { CONTENT_CREATION_SCHEMA_VERSION } from "./types";
 
-const CONTENT_PROJECT_MIGRATIONS = [contentProjectMigration001To2, contentProjectMigration002To3] as const;
+const CONTENT_PROJECT_MIGRATIONS = [
+	contentProjectMigration001To2,
+	contentProjectMigration002To3,
+	contentProjectMigration003To4,
+] as const;
 
 export function migrateContentProjectConfig(value: unknown): VersionedConfigMigrationResult {
 	return migrateVersionedConfig(value, {

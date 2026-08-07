@@ -84,6 +84,10 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 					getJob: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_GET, sessionId, input),
 					cancelJob: (sessionId, input) =>
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, sessionId, input),
+					saveArtifact: (sessionId, input) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_ARTIFACT_SAVE, sessionId, input),
+					releaseArtifact: (sessionId, artifactId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_ARTIFACT_RELEASE, sessionId, artifactId),
 				},
 				mcp: {
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, sessionId),

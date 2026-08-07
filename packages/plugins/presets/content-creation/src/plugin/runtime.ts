@@ -22,7 +22,11 @@ export async function initializePluginRuntime(ctx: PluginContext): Promise<Conte
 		return [];
 	});
 	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, mediaProviders);
-	generationService = new ContentGenerationService(workspace, providers, new PluginContentArtifactStore(ctx.fs, ctx.storage));
+	generationService = new ContentGenerationService(
+		workspace,
+		providers,
+		new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.media),
+	);
 	notify = ctx.ui.notify;
 	return workspace;
 }

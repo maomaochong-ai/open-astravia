@@ -1,4 +1,5 @@
 export type PluginMediaKind = "image" | "video";
+export type PluginMediaReferenceKind = PluginMediaKind | "audio";
 
 export type PluginMediaGenerationMode =
 	| "text-to-image"
@@ -45,20 +46,46 @@ export interface PluginMediaDimensions {
 	height: number;
 }
 
-/** Base64 bytes passed between a media consumer and provider in renderer memory. */
+export type PluginMediaReferenceSource =
+	| { type: "plugin-blob"; blobId: string }
+	| { type: "workspace-file"; path: string };
+
 export interface PluginMediaReference {
 	id?: string;
-	kind: PluginMediaKind;
-	mimeType: string;
-	data: string;
+	kind: PluginMediaReferenceKind;
+	mimeType?: string;
+	source: PluginMediaReferenceSource;
 }
 
-/** A generated result. Consumers decide where and how to persist these bytes. */
-export interface PluginMediaArtifact extends PluginMediaReference {
+/** Host-managed generated media. Persist it with saveArtifact before releasing it. */
+export interface PluginMediaArtifact {
+	id: string;
+	kind: PluginMediaKind;
+	mimeType: string;
+	sizeBytes: number;
 	width?: number;
 	height?: number;
 	durationSeconds?: number;
 }
+
+export type PluginMediaArtifactDestination =
+	| { type: "plugin-blob"; blobId?: string }
+	| { type: "workspace-file"; path: string };
+
+export type PluginMediaSavedArtifact =
+	| {
+			type: "plugin-blob";
+			blobId: string;
+			url: string;
+			mimeType: string;
+			sizeBytes: number;
+	  }
+	| {
+			type: "workspace-file";
+			path: string;
+			mimeType: string;
+			sizeBytes: number;
+	  };
 
 export interface PluginMediaCapability {
 	kind: PluginMediaKind;
@@ -108,4 +135,9 @@ export interface PluginMediaApi {
 	createJob(request: PluginMediaCreateJobRequest): Promise<PluginMediaJob>;
 	getJob(job: PluginMediaJobRef): Promise<PluginMediaJob>;
 	cancelJob(job: PluginMediaJobRef): Promise<PluginMediaJob>;
+	saveArtifact(request: {
+		artifactId: string;
+		destination: PluginMediaArtifactDestination;
+	}): Promise<PluginMediaSavedArtifact>;
+	releaseArtifact(artifactId: string): Promise<void>;
 }

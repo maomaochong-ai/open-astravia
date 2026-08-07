@@ -9,7 +9,6 @@ import {
 } from "@vetta-org/plugin-sdk";
 import type {
 	ContentGenerationMode,
-	ContentGenerationModeId,
 	ContentGenerationRequest,
 	ContentModelDescriptor,
 	ContentProviderAdapter,
@@ -17,7 +16,7 @@ import type {
 } from "./types";
 
 const HOST_MEDIA_PROVIDER_ID = "host-media";
-const HOST_MEDIA_JOB_TIMEOUT_MS = 5 * 60 * 1000;
+const HOST_MEDIA_JOB_TIMEOUT_MS = 30 * 60 * 1000;
 const HOST_MEDIA_POLL_INTERVAL_MS = 1000;
 
 const TEXT_TO_IMAGE_MODE: ContentGenerationMode = {
@@ -28,10 +27,28 @@ const IMAGE_TO_IMAGE_MODE: ContentGenerationMode = {
 	id: "image-to-image",
 	inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
 };
+const TEXT_TO_VIDEO_MODE: ContentGenerationMode = { id: "text-to-video", inputs: [] };
+const IMAGE_TO_VIDEO_MODE: ContentGenerationMode = {
+	id: "image-to-video",
+	inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
+};
+const VIDEO_TO_VIDEO_MODE: ContentGenerationMode = {
+	id: "video-to-video",
+	inputs: [{ id: "referenceVideo", accepts: ["video"], minItems: 1, maxItems: 1 }],
+};
+const REFERENCE_TO_VIDEO_MODE: ContentGenerationMode = {
+	id: "reference-to-video",
+	inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 8 }],
+};
+
+interface HostMediaModelBinding {
+	provider: PluginMediaProviderDescriptor;
+	outputKind: "image" | "video";
+}
 
 export class HostMediaProvider implements ContentProviderAdapter {
 	readonly id = HOST_MEDIA_PROVIDER_ID;
-	private readonly providers = new Map<string, PluginMediaProviderDescriptor>();
+	private readonly bindings = new Map<string, HostMediaModelBinding>();
 	private readonly models: readonly ContentModelDescriptor[];
 
 	constructor(
@@ -39,10 +56,11 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		providers: readonly PluginMediaProviderDescriptor[],
 	) {
 		this.models = providers.flatMap((provider) => {
-			const model = createImageModel(provider);
-			if (!model) return [];
-			this.providers.set(provider.id, provider);
-			return [model];
+			const models = createModels(provider);
+			for (const model of models) {
+				this.bindings.set(model.modelId, { provider, outputKind: model.outputKind });
+			}
+			return models;
 		});
 	}
 
@@ -51,39 +69,35 @@ export class HostMediaProvider implements ContentProviderAdapter {
 	}
 
 	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
-		const provider = this.providers.get(request.modelId);
-		if (!provider) throw new Error(`host media provider not found: ${request.modelId}`);
-		if (!isImageMode(request.modeId)) {
-			throw new Error(`host media provider does not support ${request.modeId}: ${provider.id}`);
-		}
+		const binding = this.bindings.get(request.modelId);
+		if (!binding) throw new Error(`host media provider not found: ${request.modelId}`);
+		const { provider, outputKind } = binding;
 
 		const references = request.references.map<PluginMediaReference>((reference) => {
-			if (reference.kind !== "image") {
-				throw new Error(`host image generation does not accept ${reference.kind} references`);
-			}
 			return {
 				id: reference.id,
 				kind: reference.kind,
 				mimeType: reference.mimeType,
-				data: reference.data,
+				source: reference.source,
 			};
 		});
 		const job = await this.media.createJob({
 			providerId: provider.id,
-			kind: "image",
+			kind: outputKind,
 			mode: request.modeId,
 			prompt: request.prompt,
 			aspectRatio: request.aspectRatio,
 			dimensions: dimensionsFromAspectRatio(request.aspectRatio),
 			resolution: request.resolution,
+			durationSeconds: request.duration,
 			references,
 		});
 		const completed = await waitForMediaJob(this.media, job);
-		const artifact = completed.artifacts?.find((candidate) => candidate.kind === "image");
+		const artifact = completed.artifacts?.find((candidate) => candidate.kind === outputKind);
 		if (!artifact) {
 			throw new PluginMediaError({
 				code: "provider-failed",
-				message: `host media provider returned no image artifact: ${provider.id}`,
+				message: `host media provider returned no ${outputKind} artifact: ${provider.id}`,
 				retryable: true,
 			});
 		}
@@ -91,34 +105,49 @@ export class HostMediaProvider implements ContentProviderAdapter {
 	}
 }
 
-function createImageModel(provider: PluginMediaProviderDescriptor): ContentModelDescriptor | null {
-	const imageCapabilities = provider.capabilities.filter((capability) => capability.kind === "image");
-	const modes = imageCapabilities
-		.flatMap((capability) => capability.modes)
-		.filter(isImageMode)
-		.filter((mode, index, all) => all.indexOf(mode) === index)
-		.map(contentModeFromMediaMode);
-	if (modes.length === 0) return null;
-
-	const aspectRatios = imageCapabilities
-		.flatMap((capability) => capability.aspectRatios ?? [])
-		.filter((aspectRatio, index, all) => all.indexOf(aspectRatio) === index);
-	return {
-		providerId: HOST_MEDIA_PROVIDER_ID,
-		modelId: provider.id,
-		displayName: provider.id === "desktop-app:vetta" ? "Vetta Image" : provider.id,
-		outputKind: "image",
-		modes,
-		aspectRatios,
-	};
+function createModels(provider: PluginMediaProviderDescriptor): ContentModelDescriptor[] {
+	const outputKinds = provider.capabilities
+		.map((capability) => capability.kind)
+		.filter((kind, index, all) => all.indexOf(kind) === index);
+	return outputKinds.flatMap((outputKind) => {
+		const capabilities = provider.capabilities.filter((capability) => capability.kind === outputKind);
+		const modes = capabilities
+			.flatMap((capability) => capability.modes)
+			.filter((mode, index, all) => all.indexOf(mode) === index)
+			.map(contentModeFromMediaMode);
+		if (modes.length === 0) return [];
+		return [{
+			providerId: HOST_MEDIA_PROVIDER_ID,
+			modelId: outputKinds.length === 1 ? provider.id : `${provider.id}:${outputKind}`,
+			displayName: provider.id === "desktop-app:vetta" && outputKind === "image" ? "Vetta Image" : provider.id,
+			outputKind,
+			modes,
+			aspectRatios: unique(capabilities.flatMap((capability) => capability.aspectRatios ?? [])),
+			resolutions: unique(capabilities.flatMap((capability) => capability.resolutions ?? [])),
+			durations: unique(capabilities.flatMap((capability) => capability.durationsSeconds ?? [])),
+		}];
+	});
 }
 
-function isImageMode(mode: ContentGenerationModeId | PluginMediaGenerationMode): mode is "text-to-image" | "image-to-image" {
-	return mode === "text-to-image" || mode === "image-to-image";
+function contentModeFromMediaMode(mode: PluginMediaGenerationMode): ContentGenerationMode {
+	switch (mode) {
+		case "text-to-image":
+			return TEXT_TO_IMAGE_MODE;
+		case "image-to-image":
+			return IMAGE_TO_IMAGE_MODE;
+		case "text-to-video":
+			return TEXT_TO_VIDEO_MODE;
+		case "image-to-video":
+			return IMAGE_TO_VIDEO_MODE;
+		case "video-to-video":
+			return VIDEO_TO_VIDEO_MODE;
+		case "reference-to-video":
+			return REFERENCE_TO_VIDEO_MODE;
+	}
 }
 
-function contentModeFromMediaMode(mode: "text-to-image" | "image-to-image"): ContentGenerationMode {
-	return mode === "text-to-image" ? TEXT_TO_IMAGE_MODE : IMAGE_TO_IMAGE_MODE;
+function unique<Value>(values: readonly Value[]): Value[] {
+	return values.filter((value, index, all) => all.indexOf(value) === index);
 }
 
 function dimensionsFromAspectRatio(aspectRatio?: string): { width: number; height: number } | undefined {
@@ -170,8 +199,8 @@ async function waitForMediaJob(media: PluginMediaApi, initialJob: PluginMediaJob
 
 function generatedContentFromArtifact(artifact: PluginMediaArtifact): GeneratedContent {
 	return {
-		kind: "image",
-		data: artifact.data,
+		kind: artifact.kind,
+		source: { type: "host-artifact", artifactId: artifact.id },
 		mimeType: artifact.mimeType,
 		width: artifact.width,
 		height: artifact.height,

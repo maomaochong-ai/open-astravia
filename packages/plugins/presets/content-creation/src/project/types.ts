@@ -1,6 +1,7 @@
 import type { PluginMediaErrorCode } from "@vetta-org/plugin-sdk";
 
-export const CONTENT_CREATION_SCHEMA_VERSION = 3 as const;
+export const CONTENT_CREATION_FORMAT = "vetta.content-workflow" as const;
+export const CONTENT_CREATION_SCHEMA_VERSION = 4 as const;
 export const CONTENT_CREATION_RUNTIME_SCHEMA_VERSION = 1 as const;
 
 export type ContentNodeKind = "prompt" | "image-generator" | "video-generator" | "asset" | "output";
@@ -8,6 +9,18 @@ export type ContentNodeStatus = "idle" | "queued" | "running" | "succeeded" | "f
 export type AssetKind = "image" | "video" | "audio";
 export type TrackKind = "video" | "audio";
 export type GenerationJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface ContentWorkflowDeliverable {
+	type: AssetKind | "text" | "content";
+	fromNode: string;
+	description: string;
+}
+
+export interface ContentWorkflow {
+	title: string;
+	objective: string;
+	deliverables: ContentWorkflowDeliverable[];
+}
 
 export interface CanvasPosition {
 	x: number;
@@ -59,6 +72,8 @@ export interface ContentNode {
 	kind: ContentNodeKind;
 	/** Persisted, user-facing node identity. Older in-memory test fixtures may omit it. */
 	name?: string;
+	/** Semantic role in the workflow, used by people and AI independently of canvas layout. */
+	purpose?: string;
 	position: CanvasPosition;
 	width?: number;
 	height?: number;
@@ -130,6 +145,7 @@ export interface ContentProjectDocument {
 	cwd: string | null;
 	createdAt: string;
 	updatedAt: string;
+	workflow: ContentWorkflow;
 	graph: {
 		nodes: ContentNode[];
 		edges: ContentEdge[];
@@ -157,6 +173,11 @@ export function createContentProject(cwd: string | null, now = new Date().toISOS
 		cwd,
 		createdAt: now,
 		updatedAt: now,
+		workflow: {
+			title: "Untitled content workflow",
+			objective: "",
+			deliverables: [],
+		},
 		graph: { nodes: [], edges: [] },
 		assets: [],
 		jobs: [],

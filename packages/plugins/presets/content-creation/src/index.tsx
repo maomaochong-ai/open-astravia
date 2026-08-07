@@ -1,7 +1,7 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "@xyflow/react/dist/style.css";
 import "./styles/index.css";
-import { setRegisterShortcutScope } from "./plugin/plugin-ui";
+import { setActivityPanelWidthController, setRegisterShortcutScope } from "./plugin/plugin-ui";
 import { registerContentCreationTools } from "./plugin/register-tools";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import { initializePluginRuntime } from "./plugin/runtime";
@@ -10,6 +10,7 @@ export default definePlugin({
 	async activate(ctx) {
 		const workspace = await initializePluginRuntime(ctx);
 		setRegisterShortcutScope((contribution) => ctx.ui.registerShortcutScope(contribution));
+		setActivityPanelWidthController((width) => ctx.ui.setActivityPanelWidth(width));
 		ctx.ui.registerActivityTab({
 			id: "workspace",
 			label: "%tab.workspace.label%",
@@ -23,5 +24,6 @@ export default definePlugin({
 	},
 	deactivate() {
 		setRegisterShortcutScope(null);
+		setActivityPanelWidthController(null);
 	},
 });

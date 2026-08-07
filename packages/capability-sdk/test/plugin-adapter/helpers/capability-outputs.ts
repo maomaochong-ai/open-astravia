@@ -55,7 +55,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 			{
 				id: "desktop-app:vetta",
 				ownerId: "desktop-app",
-				protocolVersion: 1,
+				protocolVersion: 2,
 				capabilities: [{ kind: "image", modes: ["text-to-image", "image-to-image"] }],
 			},
 		];
@@ -69,9 +69,19 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 			id: "job-1",
 			providerId: "desktop-app:vetta",
 			status: "succeeded",
-			artifacts: [{ kind: "image", mimeType: "image/png", data: "aW1hZ2U=" }],
+			artifacts: [{ id: "artifact-1", kind: "image", mimeType: "image/png", sizeBytes: 5 }],
 		};
 	}
+	if (capabilityId === DOMAIN_MEDIA_CAPABILITIES.SAVE_ARTIFACT.id) {
+		return {
+			type: "plugin-blob",
+			blobId: "blob",
+			url: "vetta-media://local/blob",
+			mimeType: "image/png",
+			sizeBytes: 5,
+		};
+	}
+	if (capabilityId === DOMAIN_MEDIA_CAPABILITIES.RELEASE_ARTIFACT.id) return {};
 	if (
 		capabilityId === DOMAIN_AGENT_SETTINGS_CAPABILITIES.GET_EXPERIMENTAL.id ||
 		capabilityId === DOMAIN_AGENT_SETTINGS_CAPABILITIES.SET_EXPERIMENTAL.id

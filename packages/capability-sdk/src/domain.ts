@@ -127,7 +127,11 @@ export {
 	MEDIA_JOB_STATUSES,
 	MEDIA_KINDS,
 	MEDIA_PROTOCOL_VERSION,
+	MEDIA_REFERENCE_KINDS,
 	type MediaArtifact,
+	type MediaArtifactDestination,
+	type MediaArtifactRef,
+	type MediaArtifactSaveInput,
 	type MediaCapability,
 	type MediaCreateJobInput,
 	type MediaDimensions,
@@ -142,6 +146,9 @@ export {
 	type MediaProviderDescriptor,
 	type MediaProviderJob,
 	type MediaReference,
+	type MediaReferenceKind,
+	type MediaReferenceSource,
+	type MediaSavedArtifact,
 } from "./domain/media.js";
 export {
 	DOMAIN_MODEL_CAPABILITIES,

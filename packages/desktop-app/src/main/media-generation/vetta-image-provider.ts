@@ -11,6 +11,7 @@ import {
 	type VettaGatewayRequest,
 	type VettaGatewayResponse,
 } from "../gateway/vetta-gateway-service.js";
+import type { MediaArtifactStore } from "./media-artifact-store.js";
 import type { MediaProviderRegistration } from "./media-provider-registry.js";
 
 interface GatewayImageResult {
@@ -65,6 +66,7 @@ function gatewayFailure(code: number, status: number, message: string): MediaFai
 }
 
 async function createImageJob(
+	artifacts: MediaArtifactStore,
 	requestGateway: GatewayRequest,
 	input: MediaProviderCreateJobInput,
 	signal: AbortSignal,
@@ -84,6 +86,7 @@ async function createImageJob(
 			error: { code: "invalid-request", message: "Image editing requires exactly one image", retryable: false },
 		};
 	}
+	const resolvedSource = source ? await artifacts.resolveReference(source) : undefined;
 	const response = await requestGateway<GatewayImageResult>(
 		{
 			path: input.mode === "image-to-image" ? "images/edit" : "images/generate",
@@ -91,7 +94,9 @@ async function createImageJob(
 			body: {
 				prompt: input.prompt,
 				size: dimensionsToSize(input.dimensions),
-				...(source ? { image: source.data, mime_type: source.mimeType } : {}),
+				...(resolvedSource
+					? { image: resolvedSource.data.toString("base64"), mime_type: resolvedSource.mimeType }
+					: {}),
 			},
 			timeoutMs: 300_000,
 		},
@@ -109,22 +114,21 @@ async function createImageJob(
 		};
 	}
 	const dimensions = dimensionsFromSize(response.data.size);
+	const artifact = await artifacts.putBase64(response.data.data, {
+		kind: "image",
+		mimeType: response.data.mime_type || sniffMime(response.data.data),
+		...dimensions,
+	});
 	return {
 		id: randomUUID(),
 		status: "succeeded",
 		progress: 1,
-		artifacts: [
-			{
-				kind: "image",
-				data: response.data.data,
-				mimeType: response.data.mime_type || sniffMime(response.data.data),
-				...dimensions,
-			},
-		],
+		artifacts: [artifact],
 	};
 }
 
 export function createVettaImageProvider(
+	artifacts: MediaArtifactStore,
 	requestGateway: GatewayRequest = requestVettaGateway,
 ): MediaProviderRegistration {
 	return {
@@ -140,6 +144,6 @@ export function createVettaImageProvider(
 				},
 			],
 		},
-		createJob: (input, context) => createImageJob(requestGateway, input, context.signal),
+		createJob: (input, context) => createImageJob(artifacts, requestGateway, input, context.signal),
 	};
 }

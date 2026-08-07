@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { ReplicateProvider } from "../src/generation/replicate-provider";
-import { base64Response, createSettings, jsonResponse, QueueNetwork } from "./provider-test-fixtures";
+import {
+	base64Response,
+	createGenerationContext,
+	createSettings,
+	jsonResponse,
+	QueueNetwork,
+} from "./provider-test-fixtures";
 
 describe("ReplicateProvider", () => {
 	it("maps a catalog image model to the Replicate prediction protocol", async () => {
@@ -21,7 +27,7 @@ describe("ReplicateProvider", () => {
 			aspectRatio: "16:9",
 			quality: "ultra",
 			references: [],
-		});
+		}, createGenerationContext());
 
 		expect(network.requests[0]).toMatchObject({
 			url: "https://replicate.test/v1/models/bytedance/seedream-4.5/predictions",
@@ -31,7 +37,11 @@ describe("ReplicateProvider", () => {
 				value: { input: { prompt: "A paper city", aspect_ratio: "16:9", size: "4K" } },
 			},
 		});
-		expect(result).toMatchObject({ kind: "image", data: "image-data", mimeType: "image/webp" });
+		expect(result).toMatchObject({
+			kind: "image",
+			source: { type: "inline", data: "image-data" },
+			mimeType: "image/webp",
+		});
 	});
 
 	it("maps video fields without exposing model conditions to the node", async () => {
@@ -53,7 +63,7 @@ describe("ReplicateProvider", () => {
 			duration: 8,
 			resolution: "1080p",
 			references: [],
-		});
+		}, createGenerationContext());
 
 		expect(network.requests[0]?.body).toEqual({
 			type: "json",
@@ -66,7 +76,13 @@ describe("ReplicateProvider", () => {
 				},
 			},
 		});
-		expect(result).toMatchObject({ kind: "video", data: "video-data", duration: 8, width: 1080, height: 1920 });
+		expect(result).toMatchObject({
+			kind: "video",
+			source: { type: "inline", data: "video-data" },
+			duration: 8,
+			width: 1080,
+			height: 1920,
+		});
 	});
 
 	it("maps mixed image and video references into Kling O1 fields", async () => {
@@ -85,10 +101,25 @@ describe("ReplicateProvider", () => {
 			modelId: "kwaivgi/kling-o1",
 			prompt: "Restyle the movement",
 			references: [
-				{ id: "image", slotId: "referenceImages", kind: "image", data: "image-data", mimeType: "image/png" },
-				{ id: "video", slotId: "referenceVideo", kind: "video", data: "video-data", mimeType: "video/mp4" },
+				{
+					id: "image",
+					slotId: "referenceImages",
+					kind: "image",
+					mimeType: "image/png",
+					source: { type: "plugin-blob", blobId: "image" },
+				},
+				{
+					id: "video",
+					slotId: "referenceVideo",
+					kind: "video",
+					mimeType: "video/mp4",
+					source: { type: "plugin-blob", blobId: "video" },
+				},
 			],
-		});
+		}, createGenerationContext({
+			image: { data: "image-data", mimeType: "image/png" },
+			video: { data: "video-data", mimeType: "video/mp4" },
+		}));
 
 		expect(network.requests[0]?.body).toMatchObject({
 			type: "json",

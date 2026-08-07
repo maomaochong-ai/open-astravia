@@ -1,7 +1,7 @@
 import type { ConfigRecord } from "@vetta/toolkit/versioned-config";
-import { contentNodeStatusFromRuntime, resolveContentProjectRuntime } from "./legacy-runtime";
+import { resolveContentProjectRuntime } from "./legacy-runtime";
 import { migrateContentProjectConfig } from "./migrate-config";
-import { isContentProjectFile } from "./persistence";
+import { hydrateContentProject, isContentProjectFile } from "./persistence";
 import type { ContentProjectDocument } from "./types";
 
 export interface ContentProjectMigrationResult {
@@ -31,18 +31,7 @@ export function migrateContentProjectDocument(
 	);
 	return {
 		migrated: migration.migrated || runtimeResult.migrated,
-		project: {
-			...structuredClone(migration.config),
-			cwd,
-			graph: {
-				...structuredClone(migration.config.graph),
-				nodes: migration.config.graph.nodes.map((node) => ({
-					...structuredClone(node),
-					status: contentNodeStatusFromRuntime(runtimeResult.runtime, node.id),
-				})),
-			},
-			jobs: structuredClone(runtimeResult.runtime.jobs),
-		},
+		project: hydrateContentProject(migration.config, cwd, runtimeResult.runtime),
 	};
 }
 

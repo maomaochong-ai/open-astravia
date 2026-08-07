@@ -21,7 +21,7 @@ describe("content project migrations", () => {
 
 		const migrated = migrateContentProjectDocument(legacy, null, "C:/project");
 
-		expect(migrated?.project.schemaVersion).toBe(3);
+		expect(migrated?.project.schemaVersion).toBe(4);
 		expect(migrated?.project.assets).toEqual([
 			{
 				id: "asset",
@@ -69,6 +69,7 @@ describe("content project migrations", () => {
 
 		expect(migrated?.migrated).toBe(true);
 		expect(migrated?.project.graph.nodes[0]).toMatchObject({ name: "电影提示词", status: "failed" });
+		expect(migrated?.project.graph.nodes[0]?.purpose).toBeTruthy();
 		expect(migrated?.project.graph.nodes[0]?.data).not.toHaveProperty("label");
 		expect(migrated?.project.jobs).toHaveLength(1);
 	});

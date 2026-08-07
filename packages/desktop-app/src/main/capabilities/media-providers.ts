@@ -1,5 +1,6 @@
 import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
 import { type Disposable, DOMAIN_MEDIA_CAPABILITIES } from "@vetta/capability-sdk";
+import { MediaArtifactStore } from "../media-generation/media-artifact-store.js";
 import { MediaProviderRegistry } from "../media-generation/media-provider-registry.js";
 import { createVettaImageProvider } from "../media-generation/vetta-image-provider.js";
 
@@ -7,7 +8,8 @@ const DOMAIN_MEDIA_PROVIDER_OWNER = "vetta.domain.media";
 
 export function registerDesktopMediaProviders(registry: CapabilityRegistry): Disposable {
 	const providers = new MediaProviderRegistry();
-	const vettaRegistration = providers.registerProvider(createVettaImageProvider());
+	const artifacts = new MediaArtifactStore();
+	const vettaRegistration = providers.registerProvider(createVettaImageProvider(artifacts));
 	const capabilityRegistration = registry.registerOwner(DOMAIN_MEDIA_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS, {
 			execute: async () => providers.listProviders(),
@@ -21,11 +23,21 @@ export function registerDesktopMediaProviders(registry: CapabilityRegistry): Dis
 		bindCapability(DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB, {
 			execute: (input, context) => providers.cancelJob(input, context.signal),
 		}),
+		bindCapability(DOMAIN_MEDIA_CAPABILITIES.SAVE_ARTIFACT, {
+			execute: (input) => artifacts.save(input.artifactId, input.destination),
+		}),
+		bindCapability(DOMAIN_MEDIA_CAPABILITIES.RELEASE_ARTIFACT, {
+			execute: async (input) => {
+				await artifacts.release(input.artifactId);
+				return {};
+			},
+		}),
 	]);
 	return {
 		dispose: () => {
 			capabilityRegistration.dispose();
 			vettaRegistration.dispose();
+			artifacts.dispose();
 		},
 	};
 }

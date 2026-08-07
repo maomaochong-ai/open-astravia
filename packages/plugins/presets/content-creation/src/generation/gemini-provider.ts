@@ -1,11 +1,19 @@
 import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
-import { delay, dimensionsFor, downloadGeneratedContent, nearestValue, requireStringSetting } from "./adapter-utils";
+import {
+	delay,
+	dimensionsFor,
+	downloadGeneratedContent,
+	nearestValue,
+	requireStringSetting,
+	resolveReferenceData,
+} from "./adapter-utils";
 import { GEMINI_IMAGE_MODELS, GEMINI_VIDEO_MODELS } from "./model-catalog";
 import { isImageGenerationMode } from "./model-inputs";
 import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
 	ContentProviderAdapter,
+	ContentProviderGenerationContext,
 	GeneratedContent,
 } from "./types";
 
@@ -44,15 +52,20 @@ export class GeminiProvider implements ContentProviderAdapter {
 		return [...GEMINI_IMAGE_MODELS, ...GEMINI_VIDEO_MODELS];
 	}
 
-	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
+	async generate(request: ContentGenerationRequest, context: ContentProviderGenerationContext): Promise<GeneratedContent> {
 		const apiKey = requireStringSetting(this.settings, this.options.apiKeySetting, this.id);
 		return isImageGenerationMode(request.modeId)
-			? this.generateImage(request, apiKey)
+			? this.generateImage(request, context, apiKey)
 			: this.generateVideo(request, apiKey);
 	}
 
-	private async generateImage(request: ContentGenerationRequest, apiKey: string): Promise<GeneratedContent> {
+	private async generateImage(
+		request: ContentGenerationRequest,
+		context: ContentProviderGenerationContext,
+		apiKey: string,
+	): Promise<GeneratedContent> {
 		const model = apiModelId(request.modelId);
+		const references = await resolveReferenceData(request.references, context);
 		const response = await this.network.request<GeminiImageResponse>({
 			url: `${this.baseUrl()}/models/${model}:generateContent`,
 			method: "POST",
@@ -64,7 +77,7 @@ export class GeminiProvider implements ContentProviderAdapter {
 						{
 							role: "user",
 							parts: [
-								...request.references.map((reference) => ({
+								...references.map((reference) => ({
 									inlineData: { data: reference.data, mimeType: reference.mimeType },
 								})),
 								{ text: request.prompt },
@@ -91,7 +104,7 @@ export class GeminiProvider implements ContentProviderAdapter {
 		if (!inlineData?.data) throw new Error("Gemini response is missing image data");
 		return {
 			kind: "image",
-			data: inlineData.data,
+			source: { type: "inline", data: inlineData.data },
 			mimeType: inlineData.mimeType ?? "image/png",
 			...dimensionsFor(request.aspectRatio),
 		};

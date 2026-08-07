@@ -1,6 +1,7 @@
 import { MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import type { VettaGatewayRequest, VettaGatewayResponse } from "../gateway/vetta-gateway-service.js";
+import { MediaArtifactStore } from "./media-artifact-store.js";
 import { MediaProviderRegistry } from "./media-provider-registry.js";
 import { createVettaImageProvider } from "./vetta-image-provider.js";
 
@@ -12,7 +13,7 @@ function succeededJob(id = "job-1"): MediaProviderJob {
 	return {
 		id,
 		status: "succeeded",
-		artifacts: [{ kind: "image", mimeType: "image/png", data: "aW1hZ2U=" }],
+		artifacts: [{ id: "artifact-1", kind: "image", mimeType: "image/png", sizeBytes: 5 }],
 	};
 }
 
@@ -98,7 +99,7 @@ describe("MediaProviderRegistry", () => {
 
 describe("Vetta image provider", () => {
 	it("maps gateway authentication failures to unauthenticated media jobs", async () => {
-		const provider = createVettaImageProvider(async () => ({
+		const provider = createVettaImageProvider(new MediaArtifactStore(), async () => ({
 			ok: false,
 			status: 401,
 			code: -1,
@@ -125,9 +126,10 @@ describe("Vetta image provider", () => {
 				data: { data: "aW1hZ2U=", mime_type: "image/png", size: "1024x1024" } as T,
 			};
 		};
-		const provider = createVettaImageProvider(requestGateway);
+		const artifacts = new MediaArtifactStore();
+		const provider = createVettaImageProvider(artifacts, requestGateway);
 
-		await provider.createJob(
+		const job = await provider.createJob(
 			{
 				kind: "image",
 				mode: "text-to-image",
@@ -139,5 +141,6 @@ describe("Vetta image provider", () => {
 		expect(requests).toEqual([
 			expect.objectContaining({ path: "images/generate", body: { prompt: "draw a fox", size: "1024x1024" } }),
 		]);
+		await artifacts.release(job.artifacts?.[0]?.id ?? "");
 	});
 });

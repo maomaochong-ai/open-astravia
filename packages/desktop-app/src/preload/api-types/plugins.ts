@@ -24,7 +24,6 @@ import type {
 	McpServerDetail,
 	McpServerSummary,
 	McpServerUpsertData,
-	MediaCreateJobInput,
 	MediaJob,
 	MediaJobRef,
 	MediaProviderDescriptor,
@@ -63,7 +62,14 @@ import type {
 	WebhookUpdateData,
 	WorkspaceSettingInput,
 } from "@vetta/capability-sdk";
-import type { PluginAgentManifest, PluginPermission, PluginSettingSchema } from "@vetta-org/plugin-sdk";
+import type {
+	PluginAgentManifest,
+	PluginMediaArtifactDestination,
+	PluginMediaCreateJobRequest,
+	PluginMediaSavedArtifact,
+	PluginPermission,
+	PluginSettingSchema,
+} from "@vetta-org/plugin-sdk";
 
 export type {
 	PluginAgentManifest,
@@ -388,9 +394,14 @@ export interface DesktopPluginCapabilityModelsApi {
 
 export interface DesktopPluginCapabilityMediaApi {
 	listProviders(sessionId: string): Promise<MediaProviderDescriptor[]>;
-	createJob(sessionId: string, input: MediaCreateJobInput): Promise<MediaJob>;
+	createJob(sessionId: string, input: PluginMediaCreateJobRequest): Promise<MediaJob>;
 	getJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
 	cancelJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
+	saveArtifact(
+		sessionId: string,
+		input: { artifactId: string; destination: PluginMediaArtifactDestination },
+	): Promise<PluginMediaSavedArtifact>;
+	releaseArtifact(sessionId: string, artifactId: string): Promise<void>;
 }
 
 export interface DesktopPluginCapabilityMcpApi {

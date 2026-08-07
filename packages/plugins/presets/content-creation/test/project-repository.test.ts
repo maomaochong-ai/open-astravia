@@ -56,7 +56,15 @@ describe("PluginContentProjectRepository", () => {
 		expect(harness.directories).toEqual([]);
 		expect(harness.files.has("C:\\project\\content-creation.json")).toBe(true);
 		const visible = JSON.parse(harness.files.get("C:\\project\\content-creation.json") ?? "") as Record<string, unknown>;
-		expect(visible).toMatchObject({ projectId: project.projectId, schemaVersion: 3 });
+		expect(visible).toMatchObject({
+			format: "vetta.content-workflow",
+			projectId: project.projectId,
+			schemaVersion: 4,
+			workflow: { title: "Untitled content workflow", objective: "", deliverables: [] },
+		});
+		expect(visible).toHaveProperty("nodes");
+		expect(visible).toHaveProperty("view.nodes");
+		expect(visible).not.toHaveProperty("graph");
 		expect(visible).not.toHaveProperty("cwd");
 		expect(visible).not.toHaveProperty("jobs");
 		expect(storage.json.get(`projects/${project.projectId}/runtime.json`)).toMatchObject({ jobs: [] });

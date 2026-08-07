@@ -20,6 +20,7 @@ describe("ContentGenerationService", () => {
 				modelId: "mock-image",
 				prompt: "A small lighthouse",
 			}),
+			expect.objectContaining({ readReference: expect.any(Function) }),
 		);
 		expect(fixture.putGenerated).toHaveBeenCalledOnce();
 		expect(result.graph.nodes.find((node) => node.id === "image")).toMatchObject({
@@ -50,7 +51,13 @@ describe("ContentGenerationService", () => {
 		await fixture.service.importReferences("C:/project", "image", [
 			{ name: "missing.png", mimeType: "image/png", data: "reference-data" },
 		]);
-		fixture.read.mockRejectedValueOnce(new Error("reference unavailable"));
+		fixture.readReference.mockRejectedValueOnce(new Error("reference unavailable"));
+		fixture.generate.mockImplementationOnce(async (request, context) => {
+			const reference = request.references[0];
+			if (!reference) throw new Error("reference fixture is missing");
+			await context.readReference(reference);
+			throw new Error("provider should not continue after a reference failure");
+		});
 
 		await expect(fixture.service.runNode("C:/project", "image")).rejects.toThrow(
 			"reference unavailable",
@@ -58,7 +65,8 @@ describe("ContentGenerationService", () => {
 		const project = fixture.workspace.getSnapshot("C:/project");
 		expect(project?.graph.nodes.find((node) => node.id === "image")?.status).toBe("failed");
 		expect(project?.jobs[0]).toMatchObject({ status: "failed", error: "reference unavailable" });
-		expect(fixture.generate).not.toHaveBeenCalled();
+		expect(fixture.generate).toHaveBeenCalledOnce();
+		expect(fixture.readReference).toHaveBeenCalledOnce();
 	});
 
 	it("runs video nodes through the same mode-based orchestration", async () => {
@@ -73,6 +81,7 @@ describe("ContentGenerationService", () => {
 				duration: 8,
 				resolution: "1080p",
 			}),
+			expect.objectContaining({ readReference: expect.any(Function) }),
 		);
 		expect(result.assets[0]).toMatchObject({
 			kind: "video",
@@ -146,18 +155,20 @@ describe("ContentGenerationService", () => {
 			],
 		});
 		await fixture.service.runNode("C:/project", "image");
-		expect(fixture.read).toHaveBeenCalledWith(
-			"C:/project",
-			expect.objectContaining({ blobId: imported.assets[0]?.blobId }),
-		);
+		expect(fixture.readReference).not.toHaveBeenCalled();
 		expect(fixture.generate).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				modeId: "image-to-image",
 				prompt: "A lighthouse at blue hour",
 				references: [
-					expect.objectContaining({ kind: "image", slotId: "referenceImages", data: "reference-data" }),
+					expect.objectContaining({
+						kind: "image",
+						slotId: "referenceImages",
+						source: { type: "plugin-blob", blobId: imported.assets[0]?.blobId },
+					}),
 				],
 			}),
+			expect.objectContaining({ readReference: expect.any(Function) }),
 		);
 	});
 });
@@ -187,8 +198,11 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 	]);
 	const generate = vi.fn<ContentProviderAdapter["generate"]>().mockResolvedValue({
 		kind: kind === "video-generator" ? "video" : "image",
-		data: kind === "video-generator" ? "AAAAIGZ0eXA" : "iVBORw0KGgoAAA",
 		mimeType: kind === "video-generator" ? "video/mp4" : "image/png",
+		source: {
+			type: "inline",
+			data: kind === "video-generator" ? "AAAAIGZ0eXA" : "iVBORw0KGgoAAA",
+		},
 		duration: kind === "video-generator" ? 8 : undefined,
 		width: kind === "video-generator" ? 1920 : undefined,
 		height: kind === "video-generator" ? 1080 : undefined,
@@ -228,12 +242,12 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 			filePath: `output/${fileName}`,
 			mimeType: content.mimeType,
 		}));
-	const read = vi.fn<ContentArtifactStore["read"]>().mockResolvedValue({
+	const readReference = vi.fn<ContentArtifactStore["readReference"]>().mockResolvedValue({
 		data: "reference-data",
 		mimeType: "image/png",
 	});
-	const service = new ContentGenerationService(workspace, providers, { putImported, putGenerated, read });
-	return { service, workspace, generate, putImported, putGenerated, read };
+	const service = new ContentGenerationService(workspace, providers, { putImported, putGenerated, readReference });
+	return { service, workspace, generate, putImported, putGenerated, readReference };
 }
 
 class MemoryRepository implements ContentProjectRepository {

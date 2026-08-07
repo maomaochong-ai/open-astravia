@@ -19,6 +19,7 @@ import {
 	createContentPromptDocument,
 } from "../node/prompt-document";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import { joinContentPath } from "../shared/path";
 import {
 	assignContentReferenceSlots,
 	listAcceptedReferenceKinds,
@@ -249,17 +250,26 @@ export class ContentGenerationService {
 		]);
 		try {
 			const references = await this.resolveReferences(cwd, candidates, assignment.assignedSlotIds);
-			const generated = await this.providers.generate({
-				modeId: mode.id,
-				providerId: model.providerId,
-				modelId: model.modelId,
-				prompt,
-				aspectRatio: node.data.aspectRatio,
-				quality: node.data.quality,
-				duration: node.data.duration,
-				resolution: node.data.resolution,
-				references,
-			});
+			const generated = await this.providers.generate(
+				{
+					modeId: mode.id,
+					providerId: model.providerId,
+					modelId: model.modelId,
+					prompt,
+					aspectRatio: node.data.aspectRatio,
+					quality: node.data.quality,
+					duration: node.data.duration,
+					resolution: node.data.resolution,
+					references,
+				},
+				{
+					readReference: async (reference) => {
+						const stored = await this.artifacts.readReference(reference);
+						if (!stored) throw new Error(`content reference data not found: ${reference.id}`);
+						return stored;
+					},
+				},
+			);
 			const fileName = generatedFileName(node.name, generated.kind, assetId, generated.mimeType);
 			const stored = await this.artifacts.putGenerated(cwd, fileName, generated);
 			return await this.workspace.dispatch(cwd, [
@@ -290,7 +300,7 @@ export class ContentGenerationService {
 	}
 
 	private async resolveReferences(
-		cwd: string | null,
+		cwd: string,
 		candidates: readonly ReferenceCandidate[],
 		assignedSlotIds: readonly string[],
 	): Promise<ContentGenerationReference[]> {
@@ -300,9 +310,13 @@ export class ContentGenerationService {
 				const slotId = candidate.slotId ?? assignedSlotIds[unassignedIndex++];
 				if (!slotId) throw new Error(`content reference slot not resolved: ${candidate.asset.id}`);
 				const asset = candidate.asset;
-				const stored = await this.artifacts.read(cwd, asset);
-				if (!stored) throw new Error(`content reference data not found: ${asset.id}`);
-				return { id: candidate.id, slotId, kind: asset.kind, ...stored };
+				const source = asset.filePath
+					? { type: "workspace-file" as const, path: joinContentPath(cwd, asset.filePath) }
+					: asset.blobId
+						? { type: "plugin-blob" as const, blobId: asset.blobId }
+						: null;
+				if (!source) throw new Error(`content reference location not found: ${asset.id}`);
+				return { id: candidate.id, slotId, kind: asset.kind, mimeType: asset.mimeType, source };
 			}),
 		);
 	}

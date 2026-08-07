@@ -105,6 +105,8 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB),
 					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.GET_JOB),
 					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.SAVE_ARTIFACT),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.RELEASE_ARTIFACT),
 				]
 			: []),
 		...(official ? buildOfficialDomainGrants() : []),

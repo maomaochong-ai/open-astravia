@@ -6,6 +6,7 @@ import type {
 	ContentNode,
 	ContentNodeKind,
 	ContentProjectDocument,
+	ContentWorkflow,
 	TimelineClip,
 } from "./types";
 import { contentNodeDataEqual } from "../node/content-node-data-equal";
@@ -13,19 +14,23 @@ import { resolveContentConnection } from "../node/connections";
 import { createDefaultContentNodeData } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
 import { createContentPromptDocument } from "../node/prompt-document";
+import { getDefaultNodePurpose } from "./node-semantics";
 
 export type ContentProjectCommand =
+	| { type: "workflow.update"; workflow: Partial<ContentWorkflow> }
 	| {
 			type: "node.add";
 			node: {
 				id?: string;
 				kind: ContentNodeKind;
 				name?: string;
+				purpose?: string;
 				position: CanvasPosition;
 				data?: ContentNode["data"];
 			};
 	  }
 	| { type: "node.rename"; nodeId: string; name: string }
+	| { type: "node.set-purpose"; nodeId: string; purpose: string }
 	| { type: "node.update"; nodeId: string; data: ContentNode["data"] }
 	| { type: "node.move"; nodeId: string; position: CanvasPosition }
 	| { type: "node.resize"; nodeId: string; width: number; height: number; position?: CanvasPosition }
@@ -90,8 +95,25 @@ function findJob(project: ContentProjectDocument, jobId: string): GenerationJob 
 	return job;
 }
 
+function assertWorkflow(project: ContentProjectDocument): void {
+	if (!project.workflow.title.trim()) throw new ContentProjectCommandError("workflow title must not be empty");
+	for (const deliverable of project.workflow.deliverables) {
+		if (!project.graph.nodes.some((node) => node.id === deliverable.fromNode)) {
+			throw new ContentProjectCommandError(`deliverable node not found: ${deliverable.fromNode}`);
+		}
+	}
+}
+
 function applyCommand(project: ContentProjectDocument, command: ContentProjectCommand, now: string): void {
 	switch (command.type) {
+		case "workflow.update": {
+			if (command.workflow.title !== undefined) project.workflow.title = command.workflow.title;
+			if (command.workflow.objective !== undefined) project.workflow.objective = command.workflow.objective;
+			if (command.workflow.deliverables !== undefined) {
+				project.workflow.deliverables = structuredClone(command.workflow.deliverables);
+			}
+			return;
+		}
 		case "node.add": {
 			assertPosition(command.node.position);
 			const id = command.node.id ?? crypto.randomUUID();
@@ -104,6 +126,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				id,
 				kind: command.node.kind,
 				name: command.node.name?.trim() || defaultNodeName(project, command.node.kind),
+				purpose: command.node.purpose?.trim() || getDefaultNodePurpose(command.node.kind),
 				position: command.node.position,
 				...size,
 				status: "idle",
@@ -115,6 +138,12 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			const name = command.name.trim();
 			if (!name) throw new ContentProjectCommandError("node name must not be empty");
 			findNode(project, command.nodeId).name = name;
+			return;
+		}
+		case "node.set-purpose": {
+			const purpose = command.purpose.trim();
+			if (!purpose) throw new ContentProjectCommandError("node purpose must not be empty");
+			findNode(project, command.nodeId).purpose = purpose;
 			return;
 		}
 		case "node.update": {
@@ -172,6 +201,9 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				track.clips = track.clips.filter((clip) => clip.sourceNodeId !== command.nodeId);
 			}
 			project.jobs = project.jobs.filter((job) => job.nodeId !== command.nodeId);
+			project.workflow.deliverables = project.workflow.deliverables.filter(
+				(deliverable) => deliverable.fromNode !== command.nodeId,
+			);
 			return;
 		}
 		case "edge.connect": {
@@ -342,6 +374,7 @@ export function applyContentProjectCommands(
 	}
 	const next = structuredClone(project);
 	for (const command of commands) applyCommand(next, command, now);
+	assertWorkflow(next);
 	next.revision = project.revision + 1;
 	next.updatedAt = now;
 	return next;

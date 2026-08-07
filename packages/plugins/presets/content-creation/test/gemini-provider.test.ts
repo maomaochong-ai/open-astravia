@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { GeminiProvider } from "../src/generation/gemini-provider";
-import { base64Response, createSettings, jsonResponse, QueueNetwork } from "./provider-test-fixtures";
+import {
+	base64Response,
+	createGenerationContext,
+	createSettings,
+	jsonResponse,
+	QueueNetwork,
+} from "./provider-test-fixtures";
 
 describe("GeminiProvider", () => {
 	it("uses Gemini generateContent for image models", async () => {
@@ -20,13 +26,17 @@ describe("GeminiProvider", () => {
 			aspectRatio: "1:1",
 			quality: "hd",
 			references: [],
-		});
+		}, createGenerationContext());
 
 		expect(network.requests[0]?.url).toBe(
 			"https://google.test/v1beta/models/gemini-2.5-flash-image:generateContent",
 		);
 		expect(network.requests[0]?.headers).toEqual({ "x-goog-api-key": "google-test" });
-		expect(result).toMatchObject({ kind: "image", data: "png-data", mimeType: "image/png" });
+		expect(result).toMatchObject({
+			kind: "image",
+			source: { type: "inline", data: "png-data" },
+			mimeType: "image/png",
+		});
 	});
 
 	it("uses Gemini long-running operations for Veo models", async () => {
@@ -51,13 +61,13 @@ describe("GeminiProvider", () => {
 			duration: 7,
 			resolution: "1080p",
 			references: [],
-		});
+		}, createGenerationContext());
 
 		expect(network.requests[0]?.body).toMatchObject({
 			type: "json",
 			value: { parameters: { durationSeconds: 6, resolution: "1080p" } },
 		});
 		expect(network.requests[1]?.headers).toEqual({ "x-goog-api-key": "google-test" });
-		expect(result).toMatchObject({ kind: "video", data: "video-data", duration: 6 });
+		expect(result).toMatchObject({ kind: "video", source: { type: "inline", data: "video-data" }, duration: 6 });
 	});
 });

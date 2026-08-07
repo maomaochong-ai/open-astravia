@@ -29,6 +29,10 @@ describe("NewApiVideoProvider", () => {
 			url: "https://newapi.test/v1/video/generations",
 			headers: { Authorization: "Bearer secret" },
 		});
-		expect(result).toMatchObject({ kind: "video", data: "video-data", duration: 10 });
+		expect(result).toMatchObject({
+			kind: "video",
+			source: { type: "inline", data: "video-data" },
+			duration: 10,
+		});
 	});
 });

@@ -469,6 +469,14 @@ function createMediaApi(plugin: InstalledPlugin, capabilitySessionId: string): P
 			permissions.require("media.generate");
 			return media.cancelJob(capabilitySessionId, job);
 		},
+		saveArtifact: (request) => {
+			permissions.require("media.generate");
+			return media.saveArtifact(capabilitySessionId, request);
+		},
+		releaseArtifact: (artifactId) => {
+			permissions.require("media.generate");
+			return media.releaseArtifact(capabilitySessionId, artifactId);
+		},
 	};
 }
 

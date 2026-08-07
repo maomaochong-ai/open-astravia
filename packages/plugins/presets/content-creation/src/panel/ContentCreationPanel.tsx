@@ -10,6 +10,7 @@ import {
 	notifyContentCreationError,
 } from "../plugin/runtime";
 import { GraphWorkspace } from "../canvas/GraphWorkspace";
+import { maximizeActivityPanel } from "../plugin/plugin-ui";
 
 export function ContentCreationPanel() {
 	const { cwd } = useActiveConversation();
@@ -21,6 +22,9 @@ export function ContentCreationPanel() {
 	const generation = getContentGenerationService();
 	const assetPreviewResolver = getContentAssetPreviewResolver();
 	const models = useMemo(() => generation.listModels(), [generation]);
+
+	// Match the design canvas: maximize on each tab activation, then leave resizing to the user.
+	useEffect(() => maximizeActivityPanel(), []);
 
 	useEffect(() => {
 		let active = true;

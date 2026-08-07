@@ -177,6 +177,14 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, (_event, sessionId: unknown, input: unknown) =>
 		adapter.cancelMediaJob(requireString(sessionId, "sessionId"), input),
 	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_ARTIFACT_SAVE, (_event, sessionId: unknown, input: unknown) =>
+		adapter.saveMediaArtifact(requireString(sessionId, "sessionId"), input),
+	);
+	ipcMain.handle(
+		PLUGIN_CAPABILITY_CHANNELS.MEDIA_ARTIFACT_RELEASE,
+		(_event, sessionId: unknown, artifactId: unknown) =>
+			adapter.releaseMediaArtifact(requireString(sessionId, "sessionId"), requireString(artifactId, "artifactId")),
+	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, (_event, sessionId: unknown) =>
 		adapter.listMcpServers(requireString(sessionId, "sessionId")),
 	);

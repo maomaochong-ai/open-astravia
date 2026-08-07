@@ -4808,7 +4808,7 @@
               "type": "string"
             },
             "protocolVersion": {
-              "const": 1,
+              "const": 2,
               "type": "number"
             },
             "capabilities": {
@@ -4893,7 +4893,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.media.job.create",
@@ -4999,8 +4999,7 @@
               "type": "object",
               "required": [
                 "kind",
-                "mimeType",
-                "data"
+                "source"
               ],
               "properties": {
                 "id": {
@@ -5016,6 +5015,10 @@
                     {
                       "const": "video",
                       "type": "string"
+                    },
+                    {
+                      "const": "audio",
+                      "type": "string"
                     }
                   ]
                 },
@@ -5023,10 +5026,50 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
-                  "type": "string"
+                "source": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "namespace",
+                        "blobId"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "plugin-blob",
+                          "type": "string"
+                        },
+                        "namespace": {
+                          "minLength": 1,
+                          "type": "string"
+                        },
+                        "blobId": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    },
+                    {
+                      "additionalProperties": false,
+                      "type": "object",
+                      "required": [
+                        "type",
+                        "path"
+                      ],
+                      "properties": {
+                        "type": {
+                          "const": "workspace-file",
+                          "type": "string"
+                        },
+                        "path": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    }
+                  ]
                 }
               }
             }
@@ -5087,9 +5130,10 @@
               "additionalProperties": false,
               "type": "object",
               "required": [
+                "id",
                 "kind",
                 "mimeType",
-                "data"
+                "sizeBytes"
               ],
               "properties": {
                 "id": {
@@ -5112,10 +5156,9 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
-                  "type": "string"
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "width": {
                   "minimum": 1,
@@ -5196,7 +5239,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.media.job.get",
@@ -5272,9 +5315,10 @@
               "additionalProperties": false,
               "type": "object",
               "required": [
+                "id",
                 "kind",
                 "mimeType",
-                "data"
+                "sizeBytes"
               ],
               "properties": {
                 "id": {
@@ -5297,10 +5341,9 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
-                  "type": "string"
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "width": {
                   "minimum": 1,
@@ -5381,7 +5424,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.media.job.cancel",
@@ -5457,9 +5500,10 @@
               "additionalProperties": false,
               "type": "object",
               "required": [
+                "id",
                 "kind",
                 "mimeType",
-                "data"
+                "sizeBytes"
               ],
               "properties": {
                 "id": {
@@ -5482,10 +5526,9 @@
                   "minLength": 1,
                   "type": "string"
                 },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
-                  "type": "string"
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
                 },
                 "width": {
                   "minimum": 1,
@@ -5565,6 +5608,159 @@
             }
           }
         }
+      },
+      "version": 2
+    },
+    {
+      "id": "cap.domain.vetta.media.artifact.save",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "artifactId",
+          "destination"
+        ],
+        "properties": {
+          "artifactId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "type",
+                  "namespace"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "plugin-blob",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "blobId": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "type",
+                  "path"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "workspace-file",
+                    "type": "string"
+                  },
+                  "path": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "type",
+              "blobId",
+              "url",
+              "mimeType",
+              "sizeBytes"
+            ],
+            "properties": {
+              "type": {
+                "const": "plugin-blob",
+                "type": "string"
+              },
+              "blobId": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "url": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "mimeType": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "sizeBytes": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "type",
+              "path",
+              "mimeType",
+              "sizeBytes"
+            ],
+            "properties": {
+              "type": {
+                "const": "workspace-file",
+                "type": "string"
+              },
+              "path": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "mimeType": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "sizeBytes": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            }
+          }
+        ]
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.media.artifact.release",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "artifactId"
+        ],
+        "properties": {
+          "artifactId": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "properties": {}
       },
       "version": 1
     },

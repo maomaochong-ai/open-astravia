@@ -27,6 +27,8 @@ export const PLUGIN_CAPABILITY_CHANNELS = {
 	MEDIA_JOB_CREATE: "vetta:plugins:capabilities:media:job:create",
 	MEDIA_JOB_GET: "vetta:plugins:capabilities:media:job:get",
 	MEDIA_JOB_CANCEL: "vetta:plugins:capabilities:media:job:cancel",
+	MEDIA_ARTIFACT_SAVE: "vetta:plugins:capabilities:media:artifact:save",
+	MEDIA_ARTIFACT_RELEASE: "vetta:plugins:capabilities:media:artifact:release",
 	MCP_SERVER_LIST: "vetta:plugins:capabilities:mcp:server:list",
 	MCP_SERVER_GET: "vetta:plugins:capabilities:mcp:server:get",
 	MCP_SERVER_UPSERT: "vetta:plugins:capabilities:mcp:server:upsert",

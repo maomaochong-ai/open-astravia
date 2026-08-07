@@ -1,11 +1,18 @@
 import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
-import { delay, dimensionsFor, downloadGeneratedContent, requireStringSetting } from "./adapter-utils";
+import {
+	delay,
+	dimensionsFor,
+	downloadGeneratedContent,
+	requireStringSetting,
+	resolveReferenceData,
+} from "./adapter-utils";
 import { REPLICATE_IMAGE_MODELS, REPLICATE_VIDEO_MODELS } from "./model-catalog";
 import { isImageGenerationMode } from "./model-inputs";
 import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
 	ContentProviderAdapter,
+	ContentProviderGenerationContext,
 	GeneratedContent,
 } from "./types";
 
@@ -44,11 +51,13 @@ export class ReplicateProvider implements ContentProviderAdapter {
 		return [...REPLICATE_IMAGE_MODELS, ...REPLICATE_VIDEO_MODELS];
 	}
 
-	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
+	async generate(request: ContentGenerationRequest, context: ContentProviderGenerationContext): Promise<GeneratedContent> {
 		const token = requireStringSetting(this.settings, this.options.apiTokenSetting, this.id);
 		const baseUrl = (this.options.baseUrl ?? "https://api.replicate.com/v1").replace(/\/$/, "");
 		const imageGeneration = isImageGenerationMode(request.modeId);
-		const { endpoint, input } = imageGeneration ? buildImageInput(request) : buildVideoInput(request);
+		const { endpoint, input } = imageGeneration
+			? await buildImageInput(request, context)
+			: await buildVideoInput(request, context);
 		const response = await this.network.request<ReplicatePrediction>({
 			url: `${baseUrl}/models/${endpoint}/predictions`,
 			method: "POST",
@@ -95,7 +104,10 @@ export class ReplicateProvider implements ContentProviderAdapter {
 	}
 }
 
-function buildImageInput(request: ContentGenerationRequest): { endpoint: string; input: Record<string, unknown> } {
+async function buildImageInput(
+	request: ContentGenerationRequest,
+	context: ContentProviderGenerationContext,
+): Promise<{ endpoint: string; input: Record<string, unknown> }> {
 	const input: Record<string, unknown> = { prompt: request.prompt };
 	const aspectRatio = request.aspectRatio ?? "1:1";
 	if (request.modelId === "recraft-ai/recraft-v3") {
@@ -106,7 +118,8 @@ function buildImageInput(request: ContentGenerationRequest): { endpoint: string;
 	}
 	applyImageQuality(input, request.modelId, request.quality);
 	const imageField = imageInputFieldForReplicateModel(request.modelId);
-	const images = request.references.filter((reference) => reference.kind === "image").map(toDataUrl);
+	const references = await resolveReferenceData(request.references, context);
+	const images = references.filter((reference) => reference.kind === "image").map(toDataUrl);
 	if (images.length > 0 && !imageField) throw new Error(`Replicate image model does not accept references: ${request.modelId}`);
 	if (imageField === "input_image") input[imageField] = images[0];
 	if (imageField === "input_images" || imageField === "image_input") input[imageField] = images;
@@ -133,13 +146,17 @@ function applyImageQuality(input: Record<string, unknown>, modelId: string, qual
 	if (modelId === "bytedance/seedream-4") input.size = resolution;
 }
 
-function buildVideoInput(request: ContentGenerationRequest): { endpoint: string; input: Record<string, unknown> } {
+async function buildVideoInput(
+	request: ContentGenerationRequest,
+	context: ContentProviderGenerationContext,
+): Promise<{ endpoint: string; input: Record<string, unknown> }> {
 	const input: Record<string, unknown> = { prompt: request.prompt };
 	let endpoint = request.modelId;
 	const duration = request.duration ?? 5;
 	const aspectRatio = request.aspectRatio ?? "16:9";
-	const images = request.references.filter((reference) => reference.kind === "image").map(toDataUrl);
-	const video = request.references.find((reference) => reference.kind === "video");
+	const references = await resolveReferenceData(request.references, context);
+	const images = references.filter((reference) => reference.kind === "image").map(toDataUrl);
+	const video = references.find((reference) => reference.kind === "video");
 
 	if (request.modelId === "wan-video/wan-2.6") endpoint = "wan-video/wan-2.6-t2v";
 	if (request.modelId.startsWith("kwaivgi/kling-")) {

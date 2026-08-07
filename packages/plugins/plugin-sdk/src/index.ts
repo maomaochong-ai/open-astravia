@@ -191,6 +191,7 @@ export type { PluginImageRef } from "./images.js";
 export type {
 	PluginMediaApi,
 	PluginMediaArtifact,
+	PluginMediaArtifactDestination,
 	PluginMediaCapability,
 	PluginMediaCreateJobRequest,
 	PluginMediaDimensions,
@@ -203,6 +204,9 @@ export type {
 	PluginMediaKind,
 	PluginMediaProviderDescriptor,
 	PluginMediaReference,
+	PluginMediaReferenceKind,
+	PluginMediaReferenceSource,
+	PluginMediaSavedArtifact,
 } from "./media.js";
 export { PluginMediaError } from "./media.js";
 export type { PluginPromptAttachment } from "./prompt-attachment.js";

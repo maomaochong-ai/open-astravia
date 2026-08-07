@@ -15,6 +15,8 @@ describe("media domain capabilities", () => {
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.create`,
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.get`,
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.cancel`,
+			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.artifact.save`,
+			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.artifact.release`,
 		]);
 	});
 
@@ -63,7 +65,7 @@ describe("media domain capabilities", () => {
 				id: "job-1",
 				providerId: "desktop-app:vetta",
 				status: MEDIA_JOB_STATUSES.SUCCEEDED,
-				artifacts: [{ kind: MEDIA_KINDS.IMAGE, mimeType: "image/png", data: "aW1hZ2U=" }],
+				artifacts: [{ id: "artifact-1", kind: MEDIA_KINDS.IMAGE, mimeType: "image/png", sizeBytes: 5 }],
 			}),
 		).toMatchObject({ id: "job-1", providerId: "desktop-app:vetta", status: "succeeded" });
 		expect(() =>
@@ -75,8 +77,57 @@ describe("media domain capabilities", () => {
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }));
 	});
 
+	it("accepts handle references and rejects legacy inline media data", () => {
+		expect(
+			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseInput({
+				providerId: "desktop-app:vetta",
+				kind: MEDIA_KINDS.VIDEO,
+				mode: MEDIA_GENERATION_MODES.IMAGE_TO_VIDEO,
+				prompt: "animate",
+				references: [
+					{
+						id: "reference-1",
+						kind: MEDIA_KINDS.IMAGE,
+						mimeType: "image/png",
+						source: { type: "plugin-blob", namespace: "content-creation", blobId: "blob-1" },
+					},
+				],
+			}),
+		).toMatchObject({
+			references: [
+				{
+					source: { type: "plugin-blob", namespace: "content-creation", blobId: "blob-1" },
+				},
+			],
+		});
+		expect(() =>
+			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseInput({
+				providerId: "desktop-app:vetta",
+				kind: MEDIA_KINDS.IMAGE,
+				mode: MEDIA_GENERATION_MODES.IMAGE_TO_IMAGE,
+				prompt: "edit",
+				references: [{ id: "legacy", kind: MEDIA_KINDS.IMAGE, mimeType: "image/png", data: "aW1hZ2U=" }],
+			}),
+		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
+	});
+
+	it("validates explicit artifact persistence and release requests", () => {
+		expect(
+			DOMAIN_MEDIA_CAPABILITIES.SAVE_ARTIFACT.parseInput({
+				artifactId: "artifact-1",
+				destination: { type: "workspace-file", path: "C:/workspace/output/image.png" },
+			}),
+		).toEqual({
+			artifactId: "artifact-1",
+			destination: { type: "workspace-file", path: "C:/workspace/output/image.png" },
+		});
+		expect(DOMAIN_MEDIA_CAPABILITIES.RELEASE_ARTIFACT.parseInput({ artifactId: "artifact-1" })).toEqual({
+			artifactId: "artifact-1",
+		});
+	});
+
 	it("publishes media schemas in its catalog", () => {
-		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG).toHaveLength(4);
+		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG).toHaveLength(6);
 		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG[0]?.outputSchema).toMatchObject({ type: "array" });
 		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG[1]?.inputSchema).toMatchObject({
 			type: "object",
