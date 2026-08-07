@@ -60,9 +60,9 @@ export default definePlugin({
 });
 ```
 
-:::caution[不要在模块顶层创建 JSX]
-Module Federation 的共享 React 依赖在 bootstrap 后才可用。把 JSX 放在组件或 `activate()` 调用后的执行路径中。
-:::
+<Callout title="不要在模块顶层创建 JSX" type="warn">
+  Module Federation 的共享 React 依赖在 bootstrap 后才可用。把 JSX 放在组件或 `activate()` 调用后的执行路径中。
+</Callout>
 
 ## 构建与安装
 
