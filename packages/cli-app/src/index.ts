@@ -4,9 +4,9 @@ export {
 } from "./agent-runtime-selection.js";
 export { installRpcStdoutGuard, type RpcStdoutGuard } from "./rpc/rpc-stdout-guard.js";
 export {
+	CLI_EXTENSION_EVENT_COMPATIBILITY_PROFILE,
 	type CreateImRuntimeHostOptions,
 	createImRuntimeHost,
-	IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE,
 	type PrepareRuntimeHostOptions,
 	prepareImRuntimeHost,
 	type RpcRuntimeHostExtensionIncompatible,

@@ -1,18 +1,4 @@
 export { createAgentCliBootstrap } from "../host/coding-agent-cli-bootstrap.js";
-export type {
-	CodingAgentExtensionBootstrapContributions,
-	CodingAgentExtensionCompatibilityAssessment,
-	CodingAgentExtensionEventCompatibilityProfile,
-	CodingAgentExtensionEventCompatibilityStatus,
-	CodingAgentExtensionEventType,
-	CodingAgentExtensionRegistrationSummary,
-	CodingAgentGreenfieldExtensionHostCapabilities,
-	CodingAgentLegacyExtensionRuntimeCapability,
-} from "../host/coding-agent-extension-compatibility.js";
-export {
-	CODING_AGENT_GREENFIELD_EXTENSION_EVENTS,
-	resolveCodingAgentGreenfieldExtensionCompatibility,
-} from "../host/coding-agent-extension-compatibility.js";
 export {
 	type CodingAgentHostBootstrap,
 	type CodingAgentHostBootstrapDiagnostics,
@@ -28,6 +14,21 @@ export {
 	prepareCodingAgentPrintInvocation,
 } from "../host/coding-agent-print-invocation.js";
 export { resolveCodingAgentSessionDir } from "../host/coding-agent-session-storage.js";
+export type {
+	CodingAgentExtensionBootstrapContributions,
+	CodingAgentExtensionCompatibilityAssessment,
+	CodingAgentExtensionEventCompatibilityProfile,
+	CodingAgentExtensionEventCompatibilityStatus,
+	CodingAgentExtensionEventType,
+	CodingAgentExtensionHostCapabilities,
+	CodingAgentExtensionRegistrationSummary,
+	CodingAgentExtensionRequirements,
+	CodingAgentExtensionRuntimeCapability,
+} from "../host/extensions/compatibility/index.js";
+export {
+	CODING_AGENT_EXTENSION_HOST_SUPPORTED_EVENTS,
+	resolveCodingAgentExtensionCompatibility,
+} from "../host/extensions/compatibility/index.js";
 export {
 	CODING_AGENT_SDK_HOST_ERROR_CODES,
 	CodingAgentSdkHostError,

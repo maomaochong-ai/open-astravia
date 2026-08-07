@@ -29,6 +29,7 @@ export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 
 export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${SOURCE_ROOT}/modes/rpc/greenfield-rpc-capabilities.ts`,
+	`${SOURCE_ROOT}/host/coding-agent-extension-compatibility.ts`,
 	`${CLI_SOURCE_ROOT}/greenfield-print-session-adapter.ts`,
 	`${CLI_SOURCE_ROOT}/rpc/greenfield-im-legacy-session-migration.ts`,
 	`${CLI_SOURCE_ROOT}/rpc/greenfield-im-rpc-events.ts`,
@@ -130,6 +131,17 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
+	"coding-agent-extension-compatibility",
+	"assessCodingAgentExtensionCompatibility",
+	"CodingAgentLegacyExtensionRuntimeCapability",
+	"CodingAgentGreenfieldExtensionHostCapabilities",
+	"CODING_AGENT_GREENFIELD_EXTENSION_EVENTS",
+	"resolveCodingAgentGreenfieldExtensionCompatibility",
+	"requiresLegacyRuntime",
+	"IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE",
+	"GREENFIELD_EXTENSION_EVENT_PROFILE",
+	"GREENFIELD_EXTENSION_HOST_CAPABILITIES",
+	"bootstrap.extensionCompatibility",
 	"greenfield-rpc-capabilities",
 	"GreenfieldRpcBashCapability",
 	"computeGreenfieldRpcSessionStats",

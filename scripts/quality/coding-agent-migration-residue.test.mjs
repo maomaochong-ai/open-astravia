@@ -21,6 +21,47 @@ describe("Coding Agent migration residue gate", () => {
 		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([]);
 	});
 
+	it("rejects retired Extension compatibility migration contracts", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/host/coding-agent-extension-compatibility.ts",
+				text: [
+					'export * from "./coding-agent-extension-compatibility.js";',
+					"export type CodingAgentLegacyExtensionRuntimeCapability = string;",
+					"export interface CodingAgentGreenfieldExtensionHostCapabilities {}",
+					"export const CODING_AGENT_GREENFIELD_EXTENSION_EVENTS = [];",
+					"export function assessCodingAgentExtensionCompatibility() {}",
+					"export function resolveCodingAgentGreenfieldExtensionCompatibility() {}",
+					"const requiresLegacyRuntime = true;",
+				].join("\n"),
+			},
+			{
+				path: "packages/cli-app/src/rpc/runtime-host/runtime-host.ts",
+				text: [
+					"export const IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE = {};",
+					"const GREENFIELD_EXTENSION_EVENT_PROFILE = {};",
+					"const GREENFIELD_EXTENSION_HOST_CAPABILITIES = {};",
+					"const requirements = bootstrap.extensionCompatibility;",
+				].join("\n"),
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration reference (coding-agent-extension-compatibility)",
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration reference (assessCodingAgentExtensionCompatibility)",
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration reference (CodingAgentLegacyExtensionRuntimeCapability)",
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration reference (CodingAgentGreenfieldExtensionHostCapabilities)",
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration reference (CODING_AGENT_GREENFIELD_EXTENSION_EVENTS)",
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration reference (resolveCodingAgentGreenfieldExtensionCompatibility)",
+			"packages/coding-agent/src/host/coding-agent-extension-compatibility.ts: retired migration reference (requiresLegacyRuntime)",
+			"packages/cli-app/src/rpc/runtime-host/runtime-host.ts: retired migration reference (IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE)",
+			"packages/cli-app/src/rpc/runtime-host/runtime-host.ts: retired migration reference (GREENFIELD_EXTENSION_EVENT_PROFILE)",
+			"packages/cli-app/src/rpc/runtime-host/runtime-host.ts: retired migration reference (GREENFIELD_EXTENSION_HOST_CAPABILITIES)",
+			"packages/cli-app/src/rpc/runtime-host/runtime-host.ts: retired migration reference (bootstrap.extensionCompatibility)",
+		]);
+	});
+
 	it("rejects retired SDK Session ownership paths", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{

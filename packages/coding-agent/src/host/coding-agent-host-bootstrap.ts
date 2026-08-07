@@ -17,11 +17,11 @@ import {
 } from "../models/index.js";
 import type { SessionResourceRuntime } from "../resources/index.js";
 import { type SettingsError, SettingsRuntime } from "../settings/index.js";
-import {
-	assessCodingAgentExtensionCompatibility,
-	type CodingAgentExtensionCompatibilityAssessment,
-} from "./coding-agent-extension-compatibility.js";
 import { createCodingAgentSessionResourceRuntime } from "./coding-agent-resource-runtime.js";
+import {
+	type CodingAgentExtensionRequirements,
+	collectCodingAgentExtensionRequirements,
+} from "./extensions/compatibility/index.js";
 
 export interface CodingAgentHostBootstrapDiagnostics {
 	readonly onSettingsError?: (error: SettingsError) => void;
@@ -43,7 +43,7 @@ export interface CodingAgentHostBootstrap {
 	readonly modelRegistry: CodingAgentModelRuntime;
 	readonly resourceLoader: SessionResourceRuntime;
 	readonly extensionsResult: LoadExtensionsResult;
-	readonly extensionCompatibility: CodingAgentExtensionCompatibilityAssessment;
+	readonly extensionRequirements: CodingAgentExtensionRequirements;
 }
 
 export interface CodingAgentInitialModelResolution {
@@ -109,7 +109,7 @@ export async function createCodingAgentHostBootstrap(
 
 	const extensionsResult = resourceLoader.getExtensions();
 	for (const error of extensionsResult.errors) options.onExtensionError?.(error);
-	const extensionCompatibility = assessCodingAgentExtensionCompatibility({
+	const extensionRequirements = collectCodingAgentExtensionRequirements({
 		extensions: extensionsResult.extensions,
 		pendingProviderNames: extensionsResult.runtime.pendingProviderRegistrations.map(({ name }) => name),
 	});
@@ -136,7 +136,7 @@ export async function createCodingAgentHostBootstrap(
 		modelRegistry,
 		resourceLoader,
 		extensionsResult,
-		extensionCompatibility,
+		extensionRequirements,
 	};
 }
 

@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-	assessCodingAgentExtensionCompatibility,
-	CODING_AGENT_GREENFIELD_EXTENSION_EVENTS,
+	CODING_AGENT_EXTENSION_HOST_SUPPORTED_EVENTS,
 	type CodingAgentExtensionEventCompatibilityProfile,
-	resolveCodingAgentGreenfieldExtensionCompatibility,
-} from "../src/host/coding-agent-extension-compatibility.js";
+	collectCodingAgentExtensionRequirements,
+	resolveCodingAgentExtensionCompatibility,
+} from "../src/host/extensions/compatibility/index.js";
 
-const GREENFIELD_EXTENSION_EVENT_PROFILE = {
+const EXTENSION_EVENT_PROFILE = {
 	input: "supported",
 	before_agent_start: "supported",
 	resources_discover: "supported",
@@ -38,15 +38,15 @@ const GREENFIELD_EXTENSION_EVENT_PROFILE = {
 	user_bash: "unsupported",
 } as const satisfies CodingAgentExtensionEventCompatibilityProfile;
 
-const GREENFIELD_EXTENSION_HOST_CAPABILITIES = {
-	actions: true,
-	eventProfile: GREENFIELD_EXTENSION_EVENT_PROFILE,
+const EXTENSION_HOST_CAPABILITIES = {
+	runtimeActions: true,
+	eventProfile: EXTENSION_EVENT_PROFILE,
 } as const;
 
 describe("Coding Agent Extension compatibility assessment", () => {
 	it("keeps the supported event export aligned with the exhaustive compatibility profile", () => {
-		expect([...CODING_AGENT_GREENFIELD_EXTENSION_EVENTS].sort()).toEqual(
-			Object.entries(GREENFIELD_EXTENSION_EVENT_PROFILE)
+		expect([...CODING_AGENT_EXTENSION_HOST_SUPPORTED_EVENTS].sort()).toEqual(
+			Object.entries(EXTENSION_EVENT_PROFILE)
 				.filter(([, status]) => status === "supported")
 				.map(([event]) => event)
 				.sort(),
@@ -55,7 +55,7 @@ describe("Coding Agent Extension compatibility assessment", () => {
 
 	it("reports no runtime requirement when no Extension is loaded", () => {
 		expect(
-			assessCodingAgentExtensionCompatibility({
+			collectCodingAgentExtensionRequirements({
 				extensions: [],
 				pendingProviderNames: [],
 			}),
@@ -67,16 +67,11 @@ describe("Coding Agent Extension compatibility assessment", () => {
 			},
 			registrations: [],
 			requiredRuntimeCapabilities: [],
-			inapplicableRuntimeCapabilities: [],
-			unmetRuntimeCapabilities: [],
-			inapplicableEvents: [],
-			unsupportedEvents: [],
-			requiresLegacyRuntime: false,
 		});
 	});
 
 	it("separates bootstrap contributions from registered runtime capabilities", () => {
-		const assessment = assessCodingAgentExtensionCompatibility({
+		const requirements = collectCodingAgentExtensionRequirements({
 			extensions: [
 				{
 					path: "z-extension.ts",
@@ -107,7 +102,7 @@ describe("Coding Agent Extension compatibility assessment", () => {
 			pendingProviderNames: ["z-provider", "a-provider", "z-provider"],
 		});
 
-		expect(assessment).toEqual({
+		expect(requirements).toEqual({
 			extensionCount: 2,
 			bootstrapContributions: {
 				providers: ["a-provider", "z-provider"],
@@ -141,23 +136,11 @@ describe("Coding Agent Extension compatibility assessment", () => {
 				"shortcut",
 				"message-renderer",
 			],
-			inapplicableRuntimeCapabilities: [],
-			unmetRuntimeCapabilities: [
-				"opaque-runtime-api",
-				"event-handler",
-				"tool",
-				"command",
-				"shortcut",
-				"message-renderer",
-			],
-			inapplicableEvents: [],
-			unsupportedEvents: ["agent_start", "turn_end"],
-			requiresLegacyRuntime: true,
 		});
 	});
 
 	it("allows bootstrap-only registrations after the Greenfield Action Host closes the opaque API gap", () => {
-		const assessment = assessCodingAgentExtensionCompatibility({
+		const requirements = collectCodingAgentExtensionRequirements({
 			extensions: [
 				{
 					path: "bootstrap-extension.ts",
@@ -172,24 +155,21 @@ describe("Coding Agent Extension compatibility assessment", () => {
 			pendingProviderNames: ["custom-provider"],
 		});
 
-		expect(assessment.bootstrapContributions).toEqual({
+		expect(requirements.bootstrapContributions).toEqual({
 			providers: ["custom-provider"],
 			flags: ["custom-endpoint"],
 		});
-		expect(assessment.requiredRuntimeCapabilities).toEqual(["opaque-runtime-api"]);
-		expect(assessment.requiresLegacyRuntime).toBe(true);
-		expect(
-			resolveCodingAgentGreenfieldExtensionCompatibility(assessment, GREENFIELD_EXTENSION_HOST_CAPABILITIES),
-		).toMatchObject({
+		expect(requirements.requiredRuntimeCapabilities).toEqual(["opaque-runtime-api"]);
+		expect(resolveCodingAgentExtensionCompatibility(requirements, EXTENSION_HOST_CAPABILITIES)).toMatchObject({
 			requiredRuntimeCapabilities: ["opaque-runtime-api"],
 			unmetRuntimeCapabilities: [],
 			unsupportedEvents: [],
-			requiresLegacyRuntime: false,
+			compatible: true,
 		});
 	});
 
 	it("allows the lossless input, lifecycle and tool events implemented by the Greenfield event host", () => {
-		const assessment = assessCodingAgentExtensionCompatibility({
+		const requirements = collectCodingAgentExtensionRequirements({
 			extensions: [
 				{
 					path: "supported-events.ts",
@@ -226,17 +206,15 @@ describe("Coding Agent Extension compatibility assessment", () => {
 			pendingProviderNames: [],
 		});
 
-		expect(
-			resolveCodingAgentGreenfieldExtensionCompatibility(assessment, GREENFIELD_EXTENSION_HOST_CAPABILITIES),
-		).toMatchObject({
+		expect(resolveCodingAgentExtensionCompatibility(requirements, EXTENSION_HOST_CAPABILITIES)).toMatchObject({
 			unmetRuntimeCapabilities: [],
 			unsupportedEvents: [],
-			requiresLegacyRuntime: false,
+			compatible: true,
 		});
 	});
 
 	it("distinguishes host-inapplicable registrations from unsupported runtime gaps", () => {
-		const assessment = assessCodingAgentExtensionCompatibility({
+		const requirements = collectCodingAgentExtensionRequirements({
 			extensions: [
 				{
 					path: "rpc-ui-extension.ts",
@@ -255,10 +233,10 @@ describe("Coding Agent Extension compatibility assessment", () => {
 		});
 
 		expect(
-			resolveCodingAgentGreenfieldExtensionCompatibility(assessment, {
-				...GREENFIELD_EXTENSION_HOST_CAPABILITIES,
+			resolveCodingAgentExtensionCompatibility(requirements, {
+				...EXTENSION_HOST_CAPABILITIES,
 				eventProfile: {
-					...GREENFIELD_EXTENSION_EVENT_PROFILE,
+					...EXTENSION_EVENT_PROFILE,
 					user_bash: "inapplicable",
 				},
 				inapplicableRuntimeCapabilities: ["shortcut", "message-renderer"],
@@ -268,12 +246,12 @@ describe("Coding Agent Extension compatibility assessment", () => {
 			unmetRuntimeCapabilities: ["event-handler"],
 			inapplicableEvents: ["user_bash"],
 			unsupportedEvents: ["unknown_event"],
-			requiresLegacyRuntime: true,
+			compatible: false,
 		});
 	});
 
 	it("allows the historical context transformation event after lossless context projection", () => {
-		const assessment = assessCodingAgentExtensionCompatibility({
+		const requirements = collectCodingAgentExtensionRequirements({
 			extensions: [
 				{
 					path: "event-extension.ts",
@@ -293,17 +271,15 @@ describe("Coding Agent Extension compatibility assessment", () => {
 			pendingProviderNames: [],
 		});
 
-		expect(
-			resolveCodingAgentGreenfieldExtensionCompatibility(assessment, GREENFIELD_EXTENSION_HOST_CAPABILITIES),
-		).toMatchObject({
+		expect(resolveCodingAgentExtensionCompatibility(requirements, EXTENSION_HOST_CAPABILITIES)).toMatchObject({
 			unmetRuntimeCapabilities: [],
 			unsupportedEvents: [],
-			requiresLegacyRuntime: false,
+			compatible: true,
 		});
 	});
 
 	it("only closes the Extension Tool capability when the host installs the tool runtime", () => {
-		const assessment = assessCodingAgentExtensionCompatibility({
+		const requirements = collectCodingAgentExtensionRequirements({
 			extensions: [
 				{
 					path: "tool-extension.ts",
@@ -319,13 +295,13 @@ describe("Coding Agent Extension compatibility assessment", () => {
 		});
 
 		expect(
-			resolveCodingAgentGreenfieldExtensionCompatibility(assessment, {
-				...GREENFIELD_EXTENSION_HOST_CAPABILITIES,
+			resolveCodingAgentExtensionCompatibility(requirements, {
+				...EXTENSION_HOST_CAPABILITIES,
 				tools: true,
 			}),
 		).toMatchObject({
 			unmetRuntimeCapabilities: ["command"],
-			requiresLegacyRuntime: true,
+			compatible: false,
 		});
 	});
 });

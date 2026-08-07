@@ -2,6 +2,7 @@
 
 ### Breaking Changes
 
+- **收口 Extension 宿主兼容性合同**：`@vetta/coding-agent/bootstrap` 将 Bootstrap 的未解析结果改为 `extensionRequirements`，宿主通过 `resolveCodingAgentExtensionCompatibility()` 解析为带 `compatible` 的最终评估；移除误导性的 Legacy/Greenfield 类型、函数、常量和 `requiresLegacyRuntime` 字段，不改变 Extension 功能、未知事件拒绝策略或 CLI/RPC 错误协议。
 - **收口包根公共面**：`@vetta/coding-agent` 现在只暴露稳定 Extension 合同及扩展所需的消息投影、压缩序列化和主题辅助 API；SDK、RPC、Host、Settings、Profile、Resource 等能力继续保留，但必须从各自显式公共子路径导入。此变更只调整模块边界，不改变会话执行、工具、资源或协议行为。
 - **退役旧 Session 执行公共面**：删除旧 `AgentSession`、`SessionManager`、包根 `createAgentSession`、旧 SDK/RPC 适配器及深层会话控制器；稳定 `@vetta/coding-agent/sdk` 与 capability-based RPC 成为唯一会话执行入口。CLI 导出、会话历史格式、Extension、工具、资源和运行时行为继续由 Greenfield 组合提供。
 - **退役旧 SettingsManager 公共面**：删除包根与 `core/settings-manager.js` 深层入口，宿主服务参数由 `settingsManager` 改为 `settings`；设置能力改由显式 `@vetta/coding-agent/settings` 子路径和 `host-services` 暴露的 `SettingsRuntime` 合同提供。

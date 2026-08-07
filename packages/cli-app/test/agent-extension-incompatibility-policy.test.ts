@@ -58,7 +58,7 @@ const extensionCompatibility = {
 	],
 	requiredRuntimeCapabilities: ["opaque-runtime-api", "event-handler"],
 	inapplicableRuntimeCapabilities: [],
-	requiresLegacyRuntime: true,
+	compatible: false,
 	inapplicableEvents: [],
 	unsupportedEvents: ["future_event"],
 	unmetRuntimeCapabilities: ["event-handler"],

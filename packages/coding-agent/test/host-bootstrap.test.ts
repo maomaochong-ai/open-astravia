@@ -77,16 +77,11 @@ describe("Coding Agent Host Bootstrap", () => {
 			},
 		});
 		expect(bootstrap.resourceLoader.getSkills()).toEqual({ skills: [], diagnostics: [] });
-		expect(bootstrap.extensionCompatibility).toEqual({
+		expect(bootstrap.extensionRequirements).toEqual({
 			extensionCount: 0,
 			bootstrapContributions: { providers: [], flags: [] },
 			registrations: [],
 			requiredRuntimeCapabilities: [],
-			inapplicableRuntimeCapabilities: [],
-			unmetRuntimeCapabilities: [],
-			inapplicableEvents: [],
-			unsupportedEvents: [],
-			requiresLegacyRuntime: false,
 		});
 		expect(initial).toMatchObject({
 			model: { provider: "test", id: "plain-model" },

@@ -4,7 +4,7 @@ import {
 	type CodingAgentExtensionEventCompatibilityProfile,
 	createCodingAgentHostBootstrap,
 	prepareCodingAgentPrintInvocation,
-	resolveCodingAgentGreenfieldExtensionCompatibility,
+	resolveCodingAgentExtensionCompatibility,
 	resolveCodingAgentInitialModel,
 	runPrintMode,
 } from "@vetta/coding-agent/bootstrap";
@@ -40,7 +40,7 @@ export type {
 	RpcRuntimeHostSessionIncompatible,
 } from "./runtime-host-contract.js";
 
-export const IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE = {
+export const CLI_EXTENSION_EVENT_COMPATIBILITY_PROFILE = {
 	input: "supported",
 	before_agent_start: "supported",
 	resources_discover: "supported",
@@ -116,14 +116,14 @@ async function prepareRuntimeHost(
 	const { parsed } = bootstrap;
 	assertRuntimeInvocation(bootstrap, backend, intent);
 
-	const extensionCompatibility = resolveCodingAgentGreenfieldExtensionCompatibility(bootstrap.extensionCompatibility, {
-		actions: true,
-		eventProfile: IM_EXTENSION_EVENT_COMPATIBILITY_PROFILE,
+	const extensionCompatibility = resolveCodingAgentExtensionCompatibility(bootstrap.extensionRequirements, {
+		runtimeActions: true,
+		eventProfile: CLI_EXTENSION_EVENT_COMPATIBILITY_PROFILE,
 		tools: true,
 		commands: true,
 		inapplicableRuntimeCapabilities: ["shortcut", "message-renderer"],
 	});
-	if (extensionCompatibility.requiresLegacyRuntime) {
+	if (!extensionCompatibility.compatible) {
 		return {
 			kind: "extension-incompatible",
 			bootstrap,

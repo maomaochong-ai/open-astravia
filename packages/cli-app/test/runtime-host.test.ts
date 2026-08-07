@@ -168,11 +168,9 @@ describe("Greenfield IM Runtime Host", () => {
 			`,
 		);
 		expect(fixture.bootstrap.extensionsResult.extensions).toHaveLength(1);
-		expect(fixture.bootstrap.extensionCompatibility).toMatchObject({
+		expect(fixture.bootstrap.extensionRequirements).toMatchObject({
 			bootstrapContributions: { flags: ["audit-mode"] },
 			requiredRuntimeCapabilities: ["opaque-runtime-api", "command"],
-			unsupportedEvents: [],
-			requiresLegacyRuntime: true,
 		});
 
 		const result = await prepareImRuntimeHost({
@@ -244,9 +242,8 @@ describe("Greenfield IM Runtime Host", () => {
 				}
 			`,
 		);
-		expect(fixture.bootstrap.extensionCompatibility).toMatchObject({
+		expect(fixture.bootstrap.extensionRequirements).toMatchObject({
 			requiredRuntimeCapabilities: ["opaque-runtime-api", "tool"],
-			requiresLegacyRuntime: true,
 		});
 
 		const result = await prepareImRuntimeHost({
@@ -304,7 +301,7 @@ describe("Greenfield IM Runtime Host", () => {
 			kind: "extension-incompatible",
 			sessionPath: undefined,
 			extensionCompatibility: {
-				requiresLegacyRuntime: true,
+				compatible: false,
 				unsupportedEvents: ["future_event"],
 				unmetRuntimeCapabilities: ["event-handler"],
 			},
