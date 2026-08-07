@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PLUGIN_CAPABILITY_PERMISSIONS, PluginCapabilityAdapter } from "../../src/adapters/plugin/index.js";
 import { CAPABILITY_ERROR_CODES } from "../../src/contracts.js";
 import { DOMAIN_MEDIA_CAPABILITIES } from "../../src/domain.js";
+import { FOUNDATION_ARTIFACT_CAPABILITIES, FOUNDATION_JOB_CAPABILITIES } from "../../src/foundation.js";
 import { RecordingAccessFactory } from "./helpers/recording-access-factory.js";
 
 describe("PluginCapabilityAdapter media permission", () => {
@@ -16,21 +17,23 @@ describe("PluginCapabilityAdapter media permission", () => {
 
 		expect(access.sessions[0]?.grants).toEqual([
 			{ capabilityId: DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.id },
-			{ capabilityId: DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.id },
-			{ capabilityId: DOMAIN_MEDIA_CAPABILITIES.GET_JOB.id },
-			{ capabilityId: DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB.id },
-			{ capabilityId: DOMAIN_MEDIA_CAPABILITIES.SAVE_ARTIFACT.id },
-			{ capabilityId: DOMAIN_MEDIA_CAPABILITIES.RELEASE_ARTIFACT.id },
+			{ capabilityId: DOMAIN_MEDIA_CAPABILITIES.SUBMIT.id },
+			{ capabilityId: FOUNDATION_JOB_CAPABILITIES.GET.id },
+			{ capabilityId: FOUNDATION_JOB_CAPABILITIES.CANCEL.id },
+			{ capabilityId: FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST.id },
+			{ capabilityId: FOUNDATION_ARTIFACT_CAPABILITIES.RELEASE.id },
 		]);
 		await expect(adapter.listMediaProviders(sessionId)).resolves.toHaveLength(1);
 		await expect(
-			adapter.createMediaJob(sessionId, {
+			adapter.submitMedia(sessionId, {
 				providerId: "desktop-app:vetta",
+				operation: "generate",
 				kind: "image",
 				mode: "text-to-image",
 				prompt: "draw a fox",
+				inputs: [],
 			}),
-		).resolves.toMatchObject({ providerId: "desktop-app:vetta", status: "succeeded" });
+		).resolves.toMatchObject({ domain: "media", status: "succeeded" });
 
 		permissions = [];
 		expect(() => adapter.listMediaProviders(sessionId)).toThrowError(
@@ -38,7 +41,7 @@ describe("PluginCapabilityAdapter media permission", () => {
 		);
 	});
 
-	it("qualifies plugin blob references with the current plugin namespace", async () => {
+	it("qualifies plugin blob inputs with the current plugin namespace", async () => {
 		const access = new RecordingAccessFactory();
 		const adapter = new PluginCapabilityAdapter(access, {
 			isOfficialPlugin: () => false,
@@ -49,12 +52,13 @@ describe("PluginCapabilityAdapter media permission", () => {
 		});
 		const sessionId = adapter.openSession("media-consumer");
 
-		await adapter.createMediaJob(sessionId, {
+		await adapter.submitMedia(sessionId, {
 			providerId: "desktop-app:vetta",
+			operation: "generate",
 			kind: "image",
 			mode: "image-to-image",
 			prompt: "edit",
-			references: [
+			inputs: [
 				{
 					id: "reference-1",
 					kind: "image",
@@ -65,9 +69,10 @@ describe("PluginCapabilityAdapter media permission", () => {
 		});
 
 		expect(access.invocations.at(-1)).toMatchObject({
-			capabilityId: DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.id,
+			capabilityId: DOMAIN_MEDIA_CAPABILITIES.SUBMIT.id,
 			input: {
-				references: [
+				ownerId: "media-consumer",
+				inputs: [
 					{
 						source: { type: "plugin-blob", namespace: "media-consumer", blobId: "blob-1" },
 					},
@@ -85,12 +90,13 @@ describe("PluginCapabilityAdapter media permission", () => {
 		const sessionId = adapter.openSession("media-consumer");
 
 		expect(() =>
-			adapter.createMediaJob(sessionId, {
+			adapter.submitMedia(sessionId, {
 				providerId: "desktop-app:vetta",
+				operation: "generate",
 				kind: "image",
 				mode: "image-to-image",
 				prompt: "edit",
-				references: [{ kind: "image", source: { type: "plugin-blob", blobId: "blob-1" } }],
+				inputs: [{ kind: "image", source: { type: "plugin-blob", blobId: "blob-1" } }],
 			}),
 		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }));
 		expect(access.invocations).toHaveLength(0);
@@ -108,25 +114,26 @@ describe("PluginCapabilityAdapter media permission", () => {
 		});
 		const sessionId = adapter.openSession("media-consumer");
 
-		await adapter.saveMediaArtifact(sessionId, {
+		await adapter.persistArtifact(sessionId, {
 			artifactId: "artifact-1",
 			destination: { type: "plugin-blob", blobId: "result-1" },
 		});
 		expect(access.invocations.at(-1)).toEqual({
-			capabilityId: DOMAIN_MEDIA_CAPABILITIES.SAVE_ARTIFACT.id,
+			capabilityId: FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST.id,
 			input: {
+				ownerId: "media-consumer",
 				artifactId: "artifact-1",
 				destination: {
-					type: "plugin-blob",
+					type: "storage-blob",
 					namespace: "media-consumer",
-					blobId: "result-1",
+					id: "result-1",
 				},
 			},
 		});
 
 		permissions = [PLUGIN_CAPABILITY_PERMISSIONS.MEDIA_GENERATE];
 		expect(() =>
-			adapter.saveMediaArtifact(sessionId, {
+			adapter.persistArtifact(sessionId, {
 				artifactId: "artifact-2",
 				destination: { type: "workspace-file", path: "C:/workspace/output.png" },
 			}),

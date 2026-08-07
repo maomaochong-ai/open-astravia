@@ -5,6 +5,8 @@
 
 | Capability ID | Layer | Kind | Version |
 | --- | --- | --- | ---: |
+| `cap.foundation.vetta.artifact.persist` | foundation | command | 1 |
+| `cap.foundation.vetta.artifact.release` | foundation | command | 1 |
 | `cap.foundation.vetta.fs.read-directory` | foundation | query | 1 |
 | `cap.foundation.vetta.fs.read-file` | foundation | query | 1 |
 | `cap.foundation.vetta.fs.read-binary-file` | foundation | query | 1 |
@@ -15,6 +17,8 @@
 | `cap.foundation.vetta.fs.move` | foundation | command | 1 |
 | `cap.foundation.vetta.fs.create-directory` | foundation | command | 1 |
 | `cap.foundation.vetta.fs.list-files-recursive` | foundation | query | 1 |
+| `cap.foundation.vetta.job.get` | foundation | query | 1 |
+| `cap.foundation.vetta.job.cancel` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.get-all` | foundation | query | 1 |
 | `cap.foundation.vetta.storage.set` | foundation | command | 1 |
 | `cap.foundation.vetta.storage.remove` | foundation | command | 1 |
@@ -79,12 +83,8 @@
 | `cap.domain.vetta.mcp.server.upsert` | domain | command | 1 |
 | `cap.domain.vetta.mcp.server.set-enabled` | domain | command | 1 |
 | `cap.domain.vetta.mcp.server.remove` | domain | command | 1 |
-| `cap.domain.vetta.media.provider.list` | domain | query | 2 |
-| `cap.domain.vetta.media.job.create` | domain | command | 2 |
-| `cap.domain.vetta.media.job.get` | domain | query | 2 |
-| `cap.domain.vetta.media.job.cancel` | domain | command | 2 |
-| `cap.domain.vetta.media.artifact.save` | domain | command | 1 |
-| `cap.domain.vetta.media.artifact.release` | domain | command | 1 |
+| `cap.domain.vetta.media.provider.list` | domain | query | 3 |
+| `cap.domain.vetta.media.job.submit` | domain | command | 1 |
 | `cap.domain.vetta.model.list` | domain | query | 1 |
 | `cap.domain.vetta.model.config.get` | domain | query | 1 |
 | `cap.domain.vetta.model.provider.get` | domain | query | 1 |

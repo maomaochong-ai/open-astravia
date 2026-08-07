@@ -3,7 +3,7 @@ import type {
 	PluginImageRef,
 	PluginMediaArtifact,
 	PluginMediaGenerationMode,
-	PluginMediaReference,
+	PluginMediaInput,
 	PluginStoredBlobRef,
 } from "@vetta-org/plugin-sdk";
 import { PluginMediaError } from "@vetta-org/plugin-sdk";
@@ -134,7 +134,10 @@ function dimensionsFromSize(size: string | undefined): { width: number; height: 
 async function findProvider(ctx: PluginContext, mode: PluginMediaGenerationMode): Promise<string> {
 	const providers = (await ctx.media.listProviders()).filter((candidate) =>
 			candidate.capabilities.some(
-				(capability) => capability.kind === "image" && capability.modes.includes(mode),
+				(capability) =>
+					capability.operation === "generate" &&
+					capability.kind === "image" &&
+					capability.modes.includes(mode),
 			),
 		);
 	const provider =
@@ -163,35 +166,30 @@ function requireImageArtifact(artifact: PluginMediaArtifact | undefined): Plugin
 async function generateThroughMedia(
 	ctx: PluginContext,
 	input: { prompt: string; size?: string },
-	source?: PluginMediaReference,
+	source?: PluginMediaInput,
 ): Promise<PluginStoredBlobRef> {
 	const mode = source ? "image-to-image" : "text-to-image";
-	let job = await ctx.media.createJob({
+	const submitted = await ctx.media.submit({
+		operation: "generate",
 		providerId: await findProvider(ctx, mode),
 		kind: "image",
 		mode,
 		prompt: input.prompt,
 		dimensions: dimensionsFromSize(input.size),
-		references: source ? [source] : [],
+		inputs: source ? [source] : [],
 	});
-	while (job.status === "queued" || job.status === "running") {
-		await new Promise((resolve) => setTimeout(resolve, 1_000));
-		job = await ctx.media.getJob(job);
-	}
+	const job = await ctx.jobs.wait(submitted, { pollIntervalMs: 1_000 });
 	if (job.status === "failed" && job.error) throw new PluginMediaError(job.error);
 	if (job.status === "cancelled") {
 		throw new PluginMediaError({ code: "cancelled", message: "Image generation was cancelled", retryable: false });
 	}
-	const artifact = requireImageArtifact(job.artifacts?.[0]);
+	const artifact = requireImageArtifact(job.artifacts[0]);
 	try {
-		const saved = await ctx.media.saveArtifact({
-			artifactId: artifact.id,
-			destination: { type: "plugin-blob" },
-		});
+		const saved = await ctx.artifacts.persist(artifact, { type: "plugin-blob" });
 		if (saved.type !== "plugin-blob") throw new Error("Generated image was not saved to plugin storage");
 		return { id: saved.blobId, url: saved.url, mimeType: saved.mimeType };
 	} finally {
-		await ctx.media.releaseArtifact(artifact.id).catch(() => undefined);
+		await ctx.artifacts.release(artifact).catch(() => undefined);
 	}
 }
 
@@ -247,7 +245,7 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 			const generatedSource = input.sourceImageId
 				? await repository.read(input.sourceImageId)
 				: null;
-			const source: PluginMediaReference | null = generatedSource
+			const source: PluginMediaInput | null = generatedSource
 				? {
 						kind: "image",
 						mimeType: generatedSource.mimeType,

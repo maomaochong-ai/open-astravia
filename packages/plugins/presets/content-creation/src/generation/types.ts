@@ -48,7 +48,7 @@ export interface ContentGenerationReference {
 	slotId: string;
 	kind: ContentReferenceKind;
 	mimeType: string;
-	source: PluginMediaReferenceSource;
+	source: PluginMediaInputSource;
 }
 
 export interface GeneratedContent {
@@ -97,4 +97,4 @@ export interface ContentArtifactStore {
 	putGenerated(cwd: string, fileName: string, content: GeneratedContent): Promise<StoredGeneratedContent>;
 	readReference(reference: ContentGenerationReference): Promise<StoredContentData | null>;
 }
-import type { PluginMediaReferenceSource } from "@vetta-org/plugin-sdk";
+import type { PluginMediaInputSource } from "@vetta-org/plugin-sdk";

@@ -20,6 +20,7 @@
 
 ### Changed
 
+- Migrated host media generation to the generic `media.submit`, `jobs`, and `artifacts` APIs so the same runtime can later consume composition Providers without depending on a specific render engine.
 - The content-creation activity tab now expands to the host's maximum available panel width whenever it is activated, while remaining user-resizable afterward.
 - Reworked visible project JSON as a self-describing schema v4 workflow document with explicit goals, deliverables, node purposes, typed inputs/results, semantic assets, and separate canvas layout; jobs and transient statuses remain in plugin storage, with toolkit-managed migration and TypeBox validation.
 - Moved workspace project persistence to the visible root `content-creation.json`; legacy hidden projects are copied forward, and generated media now lives under the workspace `output/` folder with relative project references.

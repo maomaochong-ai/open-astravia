@@ -1,11 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { openAsBlob } from "node:fs";
 import { basename } from "node:path";
-import { MEDIA_PROTOCOL_VERSION, type MediaProviderJob, type MediaReference } from "@vetta/capability-sdk";
+import {
+	MEDIA_PROTOCOL_VERSION,
+	type MediaArtifact,
+	type MediaInput,
+	type MediaProviderDescriptor,
+	type MediaProviderJob,
+} from "@vetta/capability-sdk";
 import type {
-	PluginMediaProviderCreateJobRequest,
+	PluginMediaInputUploadRequest,
 	PluginMediaProviderJob,
-	PluginMediaReferenceUploadRequest,
+	PluginMediaProviderSubmitRequest,
 	PluginMediaTransferResponse,
 	PluginPermission,
 } from "@vetta-org/plugin-sdk";
@@ -23,7 +29,7 @@ const UNREGISTER_CHANNEL = "vetta:plugins:media-provider-unregister";
 const REQUEST_CHANNEL = "vetta:plugins:media-provider-request";
 const CHANGED_CHANNEL = "vetta:plugins:media-providers-changed";
 const RESPONSE_CHANNEL = "vetta:plugins:media-provider-response";
-const UPLOAD_REFERENCE_CHANNEL = "vetta:plugins:media-provider-reference-upload";
+const UPLOAD_INPUT_CHANNEL = "vetta:plugins:media-provider-input-upload";
 const PROVIDER_TIMEOUT_MS = 30 * 60_000;
 const TRANSFER_TIMEOUT_MS = 10 * 60_000;
 const MAX_TRANSFER_RESPONSE_BYTES = 4 * 1024 * 1024;
@@ -31,7 +37,7 @@ const MAX_TRANSFER_RESPONSE_BYTES = 4 * 1024 * 1024;
 interface PendingInvocation {
 	pluginId: string;
 	sender: WebContents;
-	references: ReadonlyMap<string, MediaReference>;
+	inputs: ReadonlyMap<string, MediaInput>;
 	signal: AbortSignal;
 	resolve: (result: PluginMediaProviderJob) => void;
 	reject: (error: Error) => void;
@@ -49,11 +55,11 @@ function requireString(value: unknown, label: string): string {
 	return value.trim();
 }
 
-function assertProviderPermission(pluginId: string, includeNetwork = false): void {
+function assertProviderPermission(pluginId: string, additional?: PluginPermission): void {
 	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 	if (!plugin?.enabled) throw new Error(`Plugin is unavailable: ${pluginId}`);
-	const required: readonly PluginPermission[] = includeNetwork
-		? ["media.provider.register", "network.fetch"]
+	const required: readonly PluginPermission[] = additional
+		? ["media.provider.register", additional]
 		: ["media.provider.register"];
 	for (const permission of required) {
 		if (!plugin.permissions.includes(permission) || !plugin.grantedPermissions.includes(permission)) {
@@ -109,19 +115,47 @@ async function readTransferResponse(response: Response): Promise<PluginMediaTran
 	};
 }
 
-function opaqueReferences(references: readonly MediaReference[]): {
-	input: PluginMediaProviderCreateJobRequest["references"];
-	lookup: ReadonlyMap<string, MediaReference>;
+function opaqueInputs(inputs: readonly MediaInput[]): {
+	input: PluginMediaProviderSubmitRequest["inputs"];
+	lookup: ReadonlyMap<string, MediaInput>;
 } {
-	const lookup = new Map<string, MediaReference>();
-	const input = references.map((reference, index) => {
-		const baseId = reference.id?.trim() || `reference-${index + 1}`;
+	const lookup = new Map<string, MediaInput>();
+	const input = inputs.map((mediaInput, index) => {
+		const baseId = mediaInput.id?.trim() || `input-${index + 1}`;
 		let id = baseId;
 		for (let suffix = 2; lookup.has(id); suffix += 1) id = `${baseId}-${suffix}`;
-		lookup.set(id, reference);
-		return { id, kind: reference.kind, mimeType: reference.mimeType };
+		lookup.set(id, mediaInput);
+		return { id, kind: mediaInput.kind, mimeType: mediaInput.mimeType };
 	});
 	return { input, lookup };
+}
+
+function cloneCapabilities(
+	capabilities: readonly PluginMediaProviderHostRegistration["capabilities"][number][],
+): MediaProviderDescriptor["capabilities"] {
+	return capabilities.map((capability) => {
+		if (capability.operation === "generate") {
+			return {
+				...capability,
+				modes: [...capability.modes],
+				aspectRatios: capability.aspectRatios ? [...capability.aspectRatios] : undefined,
+				resolutions: capability.resolutions ? [...capability.resolutions] : undefined,
+				durationsSeconds: capability.durationsSeconds ? [...capability.durationsSeconds] : undefined,
+			};
+		}
+		if (capability.operation === "compose") {
+			return {
+				...capability,
+				documentMimeTypes: [...capability.documentMimeTypes],
+				outputMimeTypes: [...capability.outputMimeTypes],
+			};
+		}
+		return {
+			...capability,
+			inputMimeTypes: [...capability.inputMimeTypes],
+			outputMimeTypes: [...capability.outputMimeTypes],
+		};
+	});
 }
 
 function normalizedTimeout(value: number | undefined): number {
@@ -146,9 +180,9 @@ export function registerPluginMediaProvidersIpc(): () => void {
 		sender: WebContents,
 		pluginId: string,
 		handlerId: string,
-		operation: "createJob" | "getJob" | "cancelJob",
-		input: PluginMediaProviderCreateJobRequest | { jobId: string },
-		references: ReadonlyMap<string, MediaReference>,
+		operation: "submit" | "getJob" | "cancelJob",
+		input: PluginMediaProviderSubmitRequest | { jobId: string },
+		inputs: ReadonlyMap<string, MediaInput>,
 		context: MediaProviderCallContext,
 	): Promise<PluginMediaProviderJob> => {
 		const requestId = randomUUID();
@@ -166,7 +200,7 @@ export function registerPluginMediaProvidersIpc(): () => void {
 			pending.set(requestId, {
 				pluginId,
 				sender,
-				references,
+				inputs,
 				signal: context.signal,
 				resolve,
 				reject,
@@ -183,43 +217,71 @@ export function registerPluginMediaProvidersIpc(): () => void {
 
 	const materializeJob = async (
 		job: PluginMediaProviderJob,
+		pluginId: string,
 		context: MediaProviderCallContext,
 	): Promise<MediaProviderJob> => {
 		if (!job.artifacts || job.artifacts.length === 0) return { ...job, artifacts: [] };
-		const stored = [];
+		const stored: MediaArtifact[] = [];
 		try {
 			for (const artifact of job.artifacts) {
-				const transfer = linkTransferSignal(context.signal, TRANSFER_TIMEOUT_MS);
-				try {
-					const response = await fetch(parseNetworkUrl(artifact.source.url), {
-						headers: artifact.source.headers,
-						signal: transfer.signal,
-					});
-					if (!response.ok || !response.body) {
-						throw new Error(
-							`Media artifact download failed: HTTP ${response.status} ${response.statusText}`.trim(),
+				if (artifact.source.type === "remote-url") {
+					assertProviderPermission(pluginId, "network.fetch");
+					const transfer = linkTransferSignal(context.signal, TRANSFER_TIMEOUT_MS);
+					try {
+						const response = await fetch(parseNetworkUrl(artifact.source.url), {
+							headers: artifact.source.headers,
+							signal: transfer.signal,
+						});
+						if (!response.ok || !response.body) {
+							throw new Error(
+								`Media artifact download failed: HTTP ${response.status} ${response.statusText}`.trim(),
+							);
+						}
+						const mimeType =
+							artifact.mimeType ??
+							response.headers.get("content-type")?.split(";", 1)[0] ??
+							(artifact.kind === "video" ? "video/mp4" : artifact.kind === "audio" ? "audio/mpeg" : "image/png");
+						stored.push(
+							await getDesktopMediaRuntime().artifacts.putStream(context.ownerId, response.body, {
+								kind: artifact.kind,
+								mimeType,
+								name: artifact.name,
+								width: artifact.width,
+								height: artifact.height,
+								durationSeconds: artifact.durationSeconds,
+							}),
 						);
+					} finally {
+						transfer.dispose();
 					}
-					const mimeType =
-						artifact.mimeType ??
-						response.headers.get("content-type")?.split(";", 1)[0] ??
-						(artifact.kind === "video" ? "video/mp4" : "image/png");
-					stored.push(
-						await getDesktopMediaRuntime().artifacts.putStream(response.body, {
-							kind: artifact.kind,
-							mimeType,
-							width: artifact.width,
-							height: artifact.height,
-							durationSeconds: artifact.durationSeconds,
-						}),
-					);
-				} finally {
-					transfer.dispose();
+					continue;
 				}
+				assertProviderPermission(pluginId, artifact.source.type === "plugin-blob" ? "storage.read" : "fs.read");
+				const input: MediaInput = {
+					kind: artifact.kind,
+					mimeType: artifact.mimeType,
+					source:
+						artifact.source.type === "plugin-blob"
+							? { type: "plugin-blob", namespace: pluginId, blobId: artifact.source.blobId }
+							: { type: "workspace-file", path: artifact.source.path },
+				};
+				const file = await getDesktopMediaRuntime().artifacts.resolveInputFile(input);
+				stored.push(
+					await getDesktopMediaRuntime().artifacts.putFile(context.ownerId, file.path, {
+						kind: artifact.kind,
+						mimeType: artifact.mimeType ?? file.mimeType,
+						name: artifact.name,
+						width: artifact.width,
+						height: artifact.height,
+						durationSeconds: artifact.durationSeconds,
+					}),
+				);
 			}
 			return { ...job, artifacts: stored };
 		} catch (error) {
-			await Promise.all(stored.map((artifact) => getDesktopMediaRuntime().artifacts.release(artifact.id)));
+			await Promise.all(
+				stored.map((artifact) => getDesktopMediaRuntime().artifacts.release(context.ownerId, artifact.id)),
+			);
 			throw error;
 		}
 	};
@@ -240,39 +302,33 @@ export function registerPluginMediaProvidersIpc(): () => void {
 				displayName: registration.displayName?.trim() || undefined,
 				ownerId: pluginId,
 				protocolVersion: MEDIA_PROTOCOL_VERSION,
-				capabilities: registration.capabilities.map((capability) => ({
-					...capability,
-					modes: [...capability.modes],
-					aspectRatios: capability.aspectRatios ? [...capability.aspectRatios] : undefined,
-					resolutions: capability.resolutions ? [...capability.resolutions] : undefined,
-					durationsSeconds: capability.durationsSeconds ? [...capability.durationsSeconds] : undefined,
-				})),
+				capabilities: cloneCapabilities(registration.capabilities),
 			},
-			createJob: async (input, context) => {
-				assertProviderPermission(pluginId, true);
-				const references = opaqueReferences(input.references);
-				const { references: _references, ...request } = input;
+			submit: async (input, context) => {
+				assertProviderPermission(pluginId);
+				const inputs = opaqueInputs(input.inputs);
+				const { inputs: _inputs, ...request } = input;
 				const job = await invoke(
 					event.sender,
 					pluginId,
 					handlerId,
-					"createJob",
-					{ ...request, references: references.input },
-					references.lookup,
+					"submit",
+					{ ...request, inputs: inputs.input } as PluginMediaProviderSubmitRequest,
+					inputs.lookup,
 					context,
 				);
-				return materializeJob(job, context);
+				return materializeJob(job, pluginId, context);
 			},
 			getJob: registration.hasGetJob
 				? async (jobId, context) => {
-						assertProviderPermission(pluginId, true);
+						assertProviderPermission(pluginId);
 						const job = await invoke(event.sender, pluginId, handlerId, "getJob", { jobId }, new Map(), context);
-						return materializeJob(job, context);
+						return materializeJob(job, pluginId, context);
 					}
 				: undefined,
 			cancelJob: registration.hasCancelJob
 				? async (jobId, context) => {
-						assertProviderPermission(pluginId, true);
+						assertProviderPermission(pluginId);
 						const job = await invoke(
 							event.sender,
 							pluginId,
@@ -282,7 +338,7 @@ export function registerPluginMediaProvidersIpc(): () => void {
 							new Map(),
 							context,
 						);
-						return materializeJob(job, context);
+						return materializeJob(job, pluginId, context);
 					}
 				: undefined,
 		});
@@ -321,18 +377,18 @@ export function registerPluginMediaProvidersIpc(): () => void {
 	});
 
 	ipcMain.handle(
-		UPLOAD_REFERENCE_CHANNEL,
-		async (event: IpcMainInvokeEvent, requestIdValue: unknown, referenceIdValue: unknown, requestValue: unknown) => {
+		UPLOAD_INPUT_CHANNEL,
+		async (event: IpcMainInvokeEvent, requestIdValue: unknown, inputIdValue: unknown, requestValue: unknown) => {
 			const requestId = requireString(requestIdValue, "Media provider request id");
 			const invocation = pending.get(requestId);
 			if (!invocation || invocation.sender.id !== event.sender.id)
 				throw new Error("Media provider invocation is unavailable");
-			assertProviderPermission(invocation.pluginId, true);
-			const referenceId = requireString(referenceIdValue, "Media reference id");
-			const reference = invocation.references.get(referenceId);
-			if (!reference) throw new Error(`Media reference is unavailable: ${referenceId}`);
-			const request = requestValue as PluginMediaReferenceUploadRequest;
-			const file = await getDesktopMediaRuntime().artifacts.resolveReferenceFile(reference);
+			assertProviderPermission(invocation.pluginId, "network.fetch");
+			const inputId = requireString(inputIdValue, "Media input id");
+			const input = invocation.inputs.get(inputId);
+			if (!input) throw new Error(`Media input is unavailable: ${inputId}`);
+			const request = requestValue as PluginMediaInputUploadRequest;
+			const file = await getDesktopMediaRuntime().artifacts.resolveInputFile(input);
 			const form = new FormData();
 			for (const [name, value] of Object.entries(request.fields ?? {})) form.set(name, value);
 			form.append(
@@ -358,7 +414,7 @@ export function registerPluginMediaProvidersIpc(): () => void {
 	);
 
 	return () => {
-		for (const channel of [REGISTER_CHANNEL, UNREGISTER_CHANNEL, RESPONSE_CHANNEL, UPLOAD_REFERENCE_CHANNEL]) {
+		for (const channel of [REGISTER_CHANNEL, UNREGISTER_CHANNEL, RESPONSE_CHANNEL, UPLOAD_INPUT_CHANNEL]) {
 			ipcMain.removeHandler(channel);
 		}
 		for (const invocation of pending.values())

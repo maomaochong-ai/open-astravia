@@ -5,13 +5,17 @@ import {
 	type CapabilityJsonMap,
 	type CapabilityJsonValue,
 	type Disposable,
+	FOUNDATION_ARTIFACT_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_GATEWAY_CAPABILITIES,
+	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
 	parseCapabilityJsonValue,
 } from "@vetta/capability-sdk";
 import { themeIdFromStorageCapabilityNamespace } from "@vetta/capability-sdk/internal/theme-adapter";
+import { persistArtifact } from "../artifacts/artifact-persistence.js";
+import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import {
 	createFilesystemDirectory,
 	deleteFilesystemPath,
@@ -25,6 +29,7 @@ import {
 	writeFilesystemFile,
 } from "../filesystem/filesystem-service.js";
 import { requestVettaGateway as requestGateway } from "../gateway/vetta-gateway-service.js";
+import type { JobManager } from "../jobs/job-manager.js";
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
 import {
 	getPluginBlobRef as getNamespacedBlobRef,
@@ -47,6 +52,8 @@ import {
 const FOUNDATION_STORAGE_PROVIDER_OWNER = "vetta.foundation.storage";
 const FOUNDATION_FILESYSTEM_PROVIDER_OWNER = "vetta.foundation.filesystem";
 const FOUNDATION_NETWORK_STORAGE_PROVIDER_OWNER = "vetta.foundation.network-storage";
+const FOUNDATION_ARTIFACT_PROVIDER_OWNER = "vetta.foundation.artifact";
+const FOUNDATION_JOB_PROVIDER_OWNER = "vetta.foundation.job";
 
 interface NamespacedStorageBackend {
 	clear(namespace: string): Promise<CapabilityJsonMap>;
@@ -76,7 +83,33 @@ function assertNotAborted(signal: AbortSignal): void {
 	}
 }
 
-export function registerDesktopFoundationProviders(registry: CapabilityRegistry): Disposable {
+export function registerDesktopFoundationProviders(
+	registry: CapabilityRegistry,
+	artifacts: ArtifactStore,
+	jobs: JobManager,
+): Disposable {
+	const artifactRegistration = registry.registerOwner(FOUNDATION_ARTIFACT_PROVIDER_OWNER, [
+		bindCapability(FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST, {
+			execute: async (input, context) => {
+				assertNotAborted(context.signal);
+				return persistArtifact(artifacts, input);
+			},
+		}),
+		bindCapability(FOUNDATION_ARTIFACT_CAPABILITIES.RELEASE, {
+			execute: async ({ ownerId, artifactId }, context) => {
+				assertNotAborted(context.signal);
+				await artifacts.release(ownerId, artifactId);
+			},
+		}),
+	]);
+	const jobRegistration = registry.registerOwner(FOUNDATION_JOB_PROVIDER_OWNER, [
+		bindCapability(FOUNDATION_JOB_CAPABILITIES.GET, {
+			execute: ({ ownerId, id }, context) => jobs.get(ownerId, id, context.signal),
+		}),
+		bindCapability(FOUNDATION_JOB_CAPABILITIES.CANCEL, {
+			execute: ({ ownerId, id }, context) => jobs.cancel(ownerId, id, context.signal),
+		}),
+	]);
 	const storageRegistration = registry.registerOwner(FOUNDATION_STORAGE_PROVIDER_OWNER, [
 		bindCapability(FOUNDATION_STORAGE_CAPABILITIES.GET_ALL, {
 			execute: async ({ namespace }, context) => {
@@ -246,6 +279,8 @@ export function registerDesktopFoundationProviders(registry: CapabilityRegistry)
 			networkStorageRegistration.dispose();
 			filesystemRegistration.dispose();
 			storageRegistration.dispose();
+			jobRegistration.dispose();
+			artifactRegistration.dispose();
 		},
 	};
 }

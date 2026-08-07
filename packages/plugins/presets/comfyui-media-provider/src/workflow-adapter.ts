@@ -1,4 +1,6 @@
-import type { PluginMediaProviderCreateJobRequest } from "@vetta-org/plugin-sdk";
+import type { PluginMediaProviderSubmitRequest } from "@vetta-org/plugin-sdk";
+
+type GenerateRequest = Extract<PluginMediaProviderSubmitRequest, { operation: "generate" }>;
 
 export interface ComfyPromptNode {
 	class_type: string;
@@ -44,7 +46,7 @@ export function isCompatibleMinimaxPrompt(value: unknown): value is ComfyPrompt 
 
 export function adaptMinimaxWorkflow(
 	template: ComfyPrompt,
-	request: PluginMediaProviderCreateJobRequest,
+	request: GenerateRequest,
 	uploadedImage: string,
 	seed: number,
 ): AdaptedWorkflow {
@@ -67,4 +69,3 @@ export function adaptMinimaxWorkflow(
 	if (noise) noise.inputs.noise_seed = seed;
 	return { prompt, outputNodeId };
 }
-

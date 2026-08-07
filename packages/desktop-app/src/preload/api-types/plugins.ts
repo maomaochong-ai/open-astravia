@@ -16,6 +16,7 @@ import type {
 	ImRuntimeStatus,
 	ImStatusSnapshot,
 	InstalledSkill,
+	Job,
 	KnowledgeBase,
 	KnowledgeFileStatuses,
 	KnowledgeProcessingSettings,
@@ -24,8 +25,6 @@ import type {
 	McpServerDetail,
 	McpServerSummary,
 	McpServerUpsertData,
-	MediaJob,
-	MediaJobRef,
 	MediaProviderDescriptor,
 	ModelConfigSnapshot,
 	ModelDefaultResult,
@@ -35,6 +34,7 @@ import type {
 	ModelProviderDetail,
 	ModelProviderUpsertData,
 	NotificationsSettingInput,
+	PersistedArtifact,
 	ProjectEntry,
 	ProjectListResult,
 	QuickPanelPostSendBehavior,
@@ -64,13 +64,13 @@ import type {
 } from "@vetta/capability-sdk";
 import type {
 	PluginAgentManifest,
-	PluginMediaArtifactDestination,
+	PluginArtifactDestination,
 	PluginMediaCapability,
-	PluginMediaCreateJobRequest,
-	PluginMediaProviderCreateJobRequest,
+	PluginMediaInputUploadRequest,
+	PluginMediaJob,
 	PluginMediaProviderJob,
-	PluginMediaReferenceUploadRequest,
-	PluginMediaSavedArtifact,
+	PluginMediaProviderSubmitRequest,
+	PluginMediaSubmitRequest,
 	PluginMediaTransferResponse,
 	PluginPermission,
 	PluginPutBlobFromFileInput,
@@ -400,14 +400,20 @@ export interface DesktopPluginCapabilityModelsApi {
 
 export interface DesktopPluginCapabilityMediaApi {
 	listProviders(sessionId: string): Promise<MediaProviderDescriptor[]>;
-	createJob(sessionId: string, input: PluginMediaCreateJobRequest): Promise<MediaJob>;
-	getJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
-	cancelJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
-	saveArtifact(
+	submit(sessionId: string, input: PluginMediaSubmitRequest): Promise<PluginMediaJob>;
+}
+
+export interface DesktopPluginCapabilityJobsApi {
+	get(sessionId: string, id: string): Promise<Job>;
+	cancel(sessionId: string, id: string): Promise<Job>;
+}
+
+export interface DesktopPluginCapabilityArtifactsApi {
+	persist(
 		sessionId: string,
-		input: { artifactId: string; destination: PluginMediaArtifactDestination },
-	): Promise<PluginMediaSavedArtifact>;
-	releaseArtifact(sessionId: string, artifactId: string): Promise<void>;
+		input: { artifactId: string; destination: PluginArtifactDestination },
+	): Promise<PersistedArtifact>;
+	release(sessionId: string, artifactId: string): Promise<void>;
 }
 
 export interface DesktopPluginCapabilityMcpApi {
@@ -546,10 +552,12 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	closeSession(sessionId: string): Promise<void>;
 	agentSettings: DesktopPluginCapabilityAgentSettingsApi;
 	ai: DesktopPluginCapabilityAiApi;
+	artifacts: DesktopPluginCapabilityArtifactsApi;
 	batchTasks: DesktopPluginCapabilityBatchTasksApi;
 	filesystem: DesktopPluginCapabilityFilesystemApi;
 	generalSettings: DesktopPluginCapabilityGeneralSettingsApi;
 	im: DesktopPluginCapabilityImApi;
+	jobs: DesktopPluginCapabilityJobsApi;
 	mcp: DesktopPluginCapabilityMcpApi;
 	media: DesktopPluginCapabilityMediaApi;
 	models: DesktopPluginCapabilityModelsApi;
@@ -579,8 +587,8 @@ export interface PluginMediaProviderInvocationRequest {
 	requestId: string;
 	pluginId: string;
 	handlerId: string;
-	operation: "createJob" | "getJob" | "cancelJob";
-	input: PluginMediaProviderCreateJobRequest | { jobId: string };
+	operation: "submit" | "getJob" | "cancelJob";
+	input: PluginMediaProviderSubmitRequest | { jobId: string };
 }
 
 export type PluginMediaProviderInvocationResult = { value: PluginMediaProviderJob } | { error: string };
@@ -678,10 +686,10 @@ export interface DesktopPluginsApi {
 	onMediaProvidersChanged(handler: () => void): () => void;
 	onMediaProviderRequest(handler: (request: PluginMediaProviderInvocationRequest) => void): () => void;
 	respondMediaProvider(requestId: string, result: PluginMediaProviderInvocationResult): Promise<void>;
-	uploadMediaProviderReference<T = unknown>(
+	uploadMediaProviderInput<T = unknown>(
 		requestId: string,
-		referenceId: string,
-		request: PluginMediaReferenceUploadRequest,
+		inputId: string,
+		request: PluginMediaInputUploadRequest,
 	): Promise<PluginMediaTransferResponse<T>>;
 	/** Effective setting values for a plugin (schema defaults merged with stored). */
 	getSettings(id: string): Promise<Record<string, unknown>>;

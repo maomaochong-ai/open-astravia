@@ -59,8 +59,8 @@ export class ComfyUiClient {
 		return response.body;
 	}
 
-	async uploadImage(referenceId: string, context: PluginMediaProviderHandlerContext): Promise<string> {
-		const response = await context.uploadReference<{ name?: string; subfolder?: string }>(referenceId, {
+	async uploadImage(inputId: string, context: PluginMediaProviderHandlerContext): Promise<string> {
+		const response = await context.uploadInput<{ name?: string; subfolder?: string }>(inputId, {
 			url: `${this.baseUrl}/upload/image`,
 			fieldName: "image",
 			fields: { overwrite: "true", type: "input" },

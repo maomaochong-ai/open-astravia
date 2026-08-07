@@ -28,6 +28,7 @@ import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginArtifactsApi,
 	PluginCaptureApi,
 	PluginCardRendererContribution,
 	PluginCommandApi,
@@ -46,6 +47,8 @@ import type {
 	PluginI18nApi,
 	PluginImageRef,
 	PluginInputActionContribution,
+	PluginJob,
+	PluginJobsApi,
 	PluginLocales,
 	PluginMediaApi,
 	PluginNetworkApi,
@@ -462,15 +465,13 @@ function createMediaApi(
 	return {
 		registerProvider: (registration) => {
 			permissions.require("media.provider.register");
-			permissions.require("network.fetch");
 			if (typeof registration.id !== "string" || !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(registration.id)) {
 				throw new Error("Media provider id must be 1-64 lowercase characters, numbers, dot, underscore, or dash");
 			}
 			if (!Array.isArray(registration.capabilities) || registration.capabilities.length === 0) {
 				throw new Error("Media provider capabilities are required");
 			}
-			if (typeof registration.createJob !== "function")
-				throw new Error("Media provider createJob handler is required");
+			if (typeof registration.submit !== "function") throw new Error("Media provider submit handler is required");
 			const handlerId = `${registration.id}:${crypto.randomUUID()}`;
 			const handlerHandle = registerPluginMediaProviderHandler({
 				pluginId: plugin.id,
@@ -511,25 +512,80 @@ function createMediaApi(
 			const unsubscribe = window.vetta.plugins.onMediaProvidersChanged(listener);
 			return { dispose: unsubscribe };
 		},
-		createJob: (request) => {
+		submit: (request) => {
 			permissions.require("media.generate");
-			return media.createJob(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.createJob>[1]);
+			return media.submit(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.submit>[1]);
 		},
-		getJob: (job) => {
+	};
+}
+
+function abortError(signal: AbortSignal): Error {
+	return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted", "AbortError");
+}
+
+function waitForPoll(ms: number, signal?: AbortSignal): Promise<void> {
+	if (signal?.aborted) return Promise.reject(abortError(signal));
+	return new Promise((resolve, reject) => {
+		const timeout = window.setTimeout(() => {
+			signal?.removeEventListener("abort", onAbort);
+			resolve();
+		}, ms);
+		const onAbort = (): void => {
+			window.clearTimeout(timeout);
+			reject(signal ? abortError(signal) : new DOMException("The operation was aborted", "AbortError"));
+		};
+		signal?.addEventListener("abort", onAbort, { once: true });
+	});
+}
+
+function createJobsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginJobsApi {
+	const permissions = createPermissionApi(plugin);
+	const jobs = window.vetta.plugins.internalCapabilities.jobs;
+	const idOf = (job: string | { id: string }): string => (typeof job === "string" ? job : job.id);
+	return {
+		get: (job) => {
 			permissions.require("media.generate");
-			return media.getJob(capabilitySessionId, job);
+			return jobs.get(capabilitySessionId, idOf(job));
 		},
-		cancelJob: (job) => {
+		cancel: (job) => {
 			permissions.require("media.generate");
-			return media.cancelJob(capabilitySessionId, job);
+			return jobs.cancel(capabilitySessionId, idOf(job));
 		},
-		saveArtifact: (request) => {
+		wait: async <TJob extends PluginJob>(
+			job: TJob | { id: string } | string,
+			options?: Parameters<PluginJobsApi["wait"]>[1],
+		) => {
 			permissions.require("media.generate");
-			return media.saveArtifact(capabilitySessionId, request);
+			const id = idOf(job);
+			let current =
+				typeof job === "object" && "status" in job ? job : ((await jobs.get(capabilitySessionId, id)) as TJob);
+			const terminal = new Set(["succeeded", "failed", "cancelled"]);
+			while (!terminal.has(current.status)) {
+				await waitForPoll(options?.pollIntervalMs ?? 500, options?.signal);
+				current = (await jobs.get(capabilitySessionId, id)) as TJob;
+			}
+			return current;
 		},
-		releaseArtifact: (artifactId) => {
+	};
+}
+
+function createArtifactsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginArtifactsApi {
+	const permissions = createPermissionApi(plugin);
+	const artifacts = window.vetta.plugins.internalCapabilities.artifacts;
+	return {
+		persist: async (artifact, destination) => {
 			permissions.require("media.generate");
-			return media.releaseArtifact(capabilitySessionId, artifactId);
+			const persisted = await artifacts.persist(capabilitySessionId, {
+				artifactId: typeof artifact === "string" ? artifact : artifact.id,
+				destination,
+			});
+			return persisted.type === "storage-blob"
+				? { ...persisted, type: "plugin-blob", blobId: persisted.id }
+				: { ...persisted, type: "workspace-file" };
+		},
+		release: (artifact) => {
+			permissions.require("media.generate");
+			return artifacts.release(capabilitySessionId, typeof artifact === "string" ? artifact : artifact.id);
 		},
 	};
 }
@@ -1348,6 +1404,8 @@ function createContext(
 		fs,
 		command: createCommandApi(plugin, disposers),
 		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
+		jobs: createJobsApi(plugin, capabilitySessionId),
+		artifacts: createArtifactsApi(plugin, capabilitySessionId),
 		capture: createCaptureApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {

@@ -22,11 +22,11 @@ async function refreshMediaProviders(ctx: PluginContext): Promise<void> {
 		return [];
 	});
 	if (refreshVersion !== mediaProviderRefreshVersion || !workspace) return;
-	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, mediaProviders);
+	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, ctx.jobs, mediaProviders);
 	generationService = new ContentGenerationService(
 		workspace,
 		providers,
-		new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.media),
+		new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.artifacts),
 	);
 }
 

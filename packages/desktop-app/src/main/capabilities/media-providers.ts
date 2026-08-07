@@ -1,5 +1,7 @@
 import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
 import { type Disposable, DOMAIN_MEDIA_CAPABILITIES } from "@vetta/capability-sdk";
+import type { ArtifactStore } from "../artifacts/artifact-store.js";
+import type { JobManager } from "../jobs/job-manager.js";
 import { MediaArtifactStore } from "../media-generation/media-artifact-store.js";
 import { MediaProviderRegistry } from "../media-generation/media-provider-registry.js";
 import { createVettaImageProvider } from "../media-generation/vetta-image-provider.js";
@@ -18,32 +20,21 @@ export function getDesktopMediaRuntime(): DesktopMediaRuntime {
 	return desktopMediaRuntime;
 }
 
-export function registerDesktopMediaProviders(registry: CapabilityRegistry): Disposable {
-	const providers = new MediaProviderRegistry();
-	const artifacts = new MediaArtifactStore();
+export function registerDesktopMediaProviders(
+	registry: CapabilityRegistry,
+	artifactStore: ArtifactStore,
+	jobs: JobManager,
+): Disposable {
+	const providers = new MediaProviderRegistry(jobs);
+	const artifacts = new MediaArtifactStore(artifactStore);
 	desktopMediaRuntime = { providers, artifacts };
 	const vettaRegistration = providers.registerProvider(createVettaImageProvider(artifacts));
 	const capabilityRegistration = registry.registerOwner(DOMAIN_MEDIA_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS, {
 			execute: async () => providers.listProviders(),
 		}),
-		bindCapability(DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB, {
-			execute: (input, context) => providers.createJob(input, context.signal),
-		}),
-		bindCapability(DOMAIN_MEDIA_CAPABILITIES.GET_JOB, {
-			execute: (input, context) => providers.getJob(input, context.signal),
-		}),
-		bindCapability(DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB, {
-			execute: (input, context) => providers.cancelJob(input, context.signal),
-		}),
-		bindCapability(DOMAIN_MEDIA_CAPABILITIES.SAVE_ARTIFACT, {
-			execute: (input) => artifacts.save(input.artifactId, input.destination),
-		}),
-		bindCapability(DOMAIN_MEDIA_CAPABILITIES.RELEASE_ARTIFACT, {
-			execute: async (input) => {
-				await artifacts.release(input.artifactId);
-				return {};
-			},
+		bindCapability(DOMAIN_MEDIA_CAPABILITIES.SUBMIT, {
+			execute: (input, context) => providers.submit(input, context.signal),
 		}),
 	]);
 	return {
@@ -51,7 +42,6 @@ export function registerDesktopMediaProviders(registry: CapabilityRegistry): Dis
 			if (desktopMediaRuntime?.providers === providers) desktopMediaRuntime = undefined;
 			capabilityRegistration.dispose();
 			vettaRegistration.dispose();
-			artifacts.dispose();
 		},
 	};
 }

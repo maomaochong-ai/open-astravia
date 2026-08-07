@@ -1,10 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type {
-	MediaDimensions,
-	MediaFailure,
-	MediaProviderCreateJobInput,
-	MediaProviderJob,
-} from "@vetta/capability-sdk";
+import type { MediaDimensions, MediaFailure, MediaProviderJob } from "@vetta/capability-sdk";
 import { MEDIA_PROTOCOL_VERSION } from "@vetta/capability-sdk";
 import {
 	requestVettaGateway,
@@ -12,7 +7,7 @@ import {
 	type VettaGatewayResponse,
 } from "../gateway/vetta-gateway-service.js";
 import type { MediaArtifactStore } from "./media-artifact-store.js";
-import type { MediaProviderRegistration } from "./media-provider-registry.js";
+import type { MediaHostProviderSubmitInput, MediaProviderRegistration } from "./media-provider-registry.js";
 
 interface GatewayImageResult {
 	data: string;
@@ -21,6 +16,7 @@ interface GatewayImageResult {
 }
 
 type GatewayRequest = <T>(request: VettaGatewayRequest, signal?: AbortSignal) => Promise<VettaGatewayResponse<T>>;
+type GenerateInput = Extract<MediaHostProviderSubmitInput, { readonly operation: "generate" }>;
 
 const DEFAULT_SIZE = "1024x1024";
 const IMAGE_ERROR_CODES = {
@@ -68,25 +64,26 @@ function gatewayFailure(code: number, status: number, message: string): MediaFai
 async function createImageJob(
 	artifacts: MediaArtifactStore,
 	requestGateway: GatewayRequest,
-	input: MediaProviderCreateJobInput,
+	ownerId: string,
+	input: GenerateInput,
 	signal: AbortSignal,
 ): Promise<MediaProviderJob> {
-	const source = input.mode === "image-to-image" ? input.references[0] : undefined;
-	if (input.mode === "text-to-image" && input.references.length !== 0) {
+	const source = input.mode === "image-to-image" ? input.inputs[0] : undefined;
+	if (input.mode === "text-to-image" && input.inputs.length !== 0) {
 		return {
 			id: randomUUID(),
 			status: "failed",
 			error: { code: "invalid-request", message: "Text-to-image does not accept references", retryable: false },
 		};
 	}
-	if (input.mode === "image-to-image" && (input.references.length !== 1 || source?.kind !== "image")) {
+	if (input.mode === "image-to-image" && (input.inputs.length !== 1 || source?.kind !== "image")) {
 		return {
 			id: randomUUID(),
 			status: "failed",
 			error: { code: "invalid-request", message: "Image editing requires exactly one image", retryable: false },
 		};
 	}
-	const resolvedSource = source ? await artifacts.resolveReference(source) : undefined;
+	const resolvedSource = source ? await artifacts.resolveInput(source) : undefined;
 	const response = await requestGateway<GatewayImageResult>(
 		{
 			path: input.mode === "image-to-image" ? "images/edit" : "images/generate",
@@ -114,7 +111,7 @@ async function createImageJob(
 		};
 	}
 	const dimensions = dimensionsFromSize(response.data.size);
-	const artifact = await artifacts.putBase64(response.data.data, {
+	const artifact = await artifacts.putBase64(ownerId, response.data.data, {
 		kind: "image",
 		mimeType: response.data.mime_type || sniffMime(response.data.data),
 		...dimensions,
@@ -138,12 +135,26 @@ export function createVettaImageProvider(
 			protocolVersion: MEDIA_PROTOCOL_VERSION,
 			capabilities: [
 				{
+					operation: "generate",
 					kind: "image",
 					modes: ["text-to-image", "image-to-image"],
 					aspectRatios: ["1:1", "2:3", "3:2"],
 				},
 			],
 		},
-		createJob: (input, context) => createImageJob(artifacts, requestGateway, input, context.signal),
+		submit: (input, context) => {
+			if (input.operation !== "generate") {
+				return Promise.resolve({
+					id: randomUUID(),
+					status: "failed",
+					error: {
+						code: "operation-unsupported",
+						message: `Vetta image provider does not support ${input.operation}`,
+						retryable: false,
+					},
+				});
+			}
+			return createImageJob(artifacts, requestGateway, context.ownerId, input, context.signal);
+		},
 	};
 }

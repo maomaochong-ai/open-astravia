@@ -23,14 +23,22 @@ export function createComfyUiProvider(ctx: PluginContext): PluginMediaProviderRe
 		displayName: ctx.i18n.t("provider.name"),
 		capabilities: [
 			{
+				operation: "generate",
 				kind: "video",
 				modes: ["image-to-video"],
 				aspectRatios: ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"],
 				durationsSeconds: [5, 10, 15],
 			},
 		],
-		async createJob(request, context) {
-			const images = request.references.filter((reference) => reference.kind === "image");
+		async submit(request, context) {
+			if (request.operation !== "generate") {
+				return {
+					id: crypto.randomUUID(),
+					status: "failed",
+					error: { code: "operation-unsupported", message: "MiniMax H3 only generates video", retryable: false },
+				};
+			}
+			const images = request.inputs.filter((input) => input.kind === "image");
 			if (images.length !== 1) {
 				return {
 					id: crypto.randomUUID(),

@@ -23,9 +23,9 @@ import type {
 	PluginConversationApi,
 	PluginDynamicSystemPromptOperation,
 	PluginHostBridge,
-	PluginMediaProviderCreateJobRequest,
 	PluginMediaProviderJob,
 	PluginMediaProviderRegistration,
+	PluginMediaProviderSubmitRequest,
 	PluginPromptAttachment,
 	PluginSystemPromptProviderHandler,
 } from "@vetta-org/plugin-sdk";
@@ -432,14 +432,14 @@ function startMediaProviderRequestListener(): void {
 		}
 		const context = {
 			invocationId: request.requestId,
-			uploadReference: <T = unknown>(
-				referenceId: string,
-				input: Parameters<typeof window.vetta.plugins.uploadMediaProviderReference>[2],
-			) => window.vetta.plugins.uploadMediaProviderReference<T>(request.requestId, referenceId, input),
+			uploadInput: <T = unknown>(
+				inputId: string,
+				input: Parameters<typeof window.vetta.plugins.uploadMediaProviderInput>[2],
+			) => window.vetta.plugins.uploadMediaProviderInput<T>(request.requestId, inputId, input),
 		};
 		let invocation: Promise<PluginMediaProviderJob> | undefined;
-		if (request.operation === "createJob") {
-			invocation = registration.createJob(request.input as PluginMediaProviderCreateJobRequest, context);
+		if (request.operation === "submit") {
+			invocation = registration.submit(request.input as PluginMediaProviderSubmitRequest, context);
 		} else if (request.operation === "getJob") {
 			invocation = registration.getJob?.((request.input as { jobId: string }).jobId, context);
 		} else {

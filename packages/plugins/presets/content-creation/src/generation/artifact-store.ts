@@ -1,4 +1,4 @@
-import type { PluginFsApi, PluginMediaApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginArtifactsApi, PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
 import { joinContentPath } from "../shared/path";
 import type {
 	ContentArtifactStore,
@@ -16,7 +16,7 @@ export class PluginContentArtifactStore implements ContentArtifactStore {
 	constructor(
 		private readonly fs: PluginFsApi,
 		private readonly storage: PluginStorageApi,
-		private readonly media: PluginMediaApi,
+		private readonly artifacts: PluginArtifactsApi,
 	) {}
 
 	async putImported(id: string, content: ImportedContentAsset): Promise<StoredImportedContent> {
@@ -36,14 +36,14 @@ export class PluginContentArtifactStore implements ContentArtifactStore {
 			return { filePath: relativePath, mimeType: content.mimeType };
 		}
 		try {
-			const saved = await this.media.saveArtifact({
-				artifactId: content.source.artifactId,
-				destination: { type: "workspace-file", path: outputPath },
+			const saved = await this.artifacts.persist(content.source.artifactId, {
+				type: "workspace-file",
+				path: outputPath,
 			});
 			if (saved.type !== "workspace-file") throw new Error("Media artifact was not saved to the workspace");
 			return { filePath: relativePath, mimeType: saved.mimeType };
 		} finally {
-			await this.media.releaseArtifact(content.source.artifactId).catch(() => undefined);
+			await this.artifacts.release(content.source.artifactId).catch(() => undefined);
 		}
 	}
 

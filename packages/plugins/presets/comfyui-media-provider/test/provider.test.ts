@@ -1,7 +1,7 @@
 import type {
 	PluginContext,
+	PluginMediaInputUploadRequest,
 	PluginMediaProviderHandlerContext,
-	PluginMediaReferenceUploadRequest,
 	PluginMediaTransferResponse,
 	PluginNetworkApi,
 	PluginNetworkRequest,
@@ -62,25 +62,26 @@ describe("ComfyUI media provider", () => {
 			settings: { get: (key: string) => (key === "baseUrl" ? "http://comfy.local:8188" : undefined) },
 			i18n: { t: () => "ComfyUI · MiniMax H3" },
 		} as unknown as PluginContext;
-		const uploadReferenceMock = vi.fn();
-		const uploadReference = async <T = unknown>(
-			referenceId: string,
-			request: PluginMediaReferenceUploadRequest,
+		const uploadInputMock = vi.fn();
+		const uploadInput = async <T = unknown>(
+			inputId: string,
+			request: PluginMediaInputUploadRequest,
 		): Promise<PluginMediaTransferResponse<T>> => {
-			uploadReferenceMock(referenceId, request);
+			uploadInputMock(inputId, request);
 			return response({ name: "input.png", subfolder: "uploads" }) as PluginMediaTransferResponse<T>;
 		};
-		const context: PluginMediaProviderHandlerContext = { invocationId: "invocation-1", uploadReference };
+		const context: PluginMediaProviderHandlerContext = { invocationId: "invocation-1", uploadInput };
 		const provider = createComfyUiProvider(ctx);
 
-		const queued = await provider.createJob(
+		const queued = await provider.submit(
 			{
+				operation: "generate",
 				kind: "video",
 				mode: "image-to-video",
 				prompt: "a slow camera move",
 				aspectRatio: "16:9",
 				durationSeconds: 10,
-				references: [{ id: "reference-1", kind: "image", mimeType: "image/png" }],
+				inputs: [{ id: "input-1", kind: "image", mimeType: "image/png" }],
 			},
 			context,
 		);
@@ -91,7 +92,7 @@ describe("ComfyUI media provider", () => {
 			.find((request) => request.url.endsWith("/history?max_items=20"));
 		expect(historyRequest).toMatchObject({ method: "GET" });
 		expect(historyRequest).not.toHaveProperty("body");
-		expect(uploadReferenceMock).toHaveBeenCalledWith("reference-1", {
+		expect(uploadInputMock).toHaveBeenCalledWith("input-1", {
 			url: "http://comfy.local:8188/upload/image",
 			fieldName: "image",
 			fields: { overwrite: "true", type: "input" },

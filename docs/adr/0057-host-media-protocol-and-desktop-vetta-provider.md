@@ -2,7 +2,7 @@
 
 ## 状态
 
-已采纳。取代 ADR-0056 中由 `image-gen` 直接调用 `ctx.gateway` 的客户端分层；服务端模型选择、鉴权和积分计费决策不变。
+已被 ADR-0059 取代。由本 ADR 建立的 Provider Registry 与主进程 Vetta Provider 保留，媒体任务和产物 API 已重构。
 
 ## 背景
 

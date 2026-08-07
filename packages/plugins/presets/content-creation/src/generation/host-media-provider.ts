@@ -1,11 +1,11 @@
 import {
 	PluginMediaError,
+	type PluginJobsApi,
 	type PluginMediaApi,
 	type PluginMediaArtifact,
 	type PluginMediaGenerationMode,
-	type PluginMediaJob,
 	type PluginMediaProviderDescriptor,
-	type PluginMediaReference,
+	type PluginMediaInput,
 } from "@vetta-org/plugin-sdk";
 import type {
 	ContentGenerationMode,
@@ -53,6 +53,7 @@ export class HostMediaProvider implements ContentProviderAdapter {
 
 	constructor(
 		private readonly media: PluginMediaApi,
+		private readonly jobs: PluginJobsApi,
 		providers: readonly PluginMediaProviderDescriptor[],
 	) {
 		this.models = providers.flatMap((provider) => {
@@ -73,7 +74,7 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		if (!binding) throw new Error(`host media provider not found: ${request.modelId}`);
 		const { provider, outputKind } = binding;
 
-		const references = request.references.map<PluginMediaReference>((reference) => {
+		const inputs = request.references.map<PluginMediaInput>((reference) => {
 			return {
 				id: reference.id,
 				kind: reference.kind,
@@ -81,7 +82,8 @@ export class HostMediaProvider implements ContentProviderAdapter {
 				source: reference.source,
 			};
 		});
-		const job = await this.media.createJob({
+		const job = await this.media.submit({
+			operation: "generate",
 			providerId: provider.id,
 			kind: outputKind,
 			mode: request.modeId,
@@ -90,10 +92,39 @@ export class HostMediaProvider implements ContentProviderAdapter {
 			dimensions: dimensionsFromAspectRatio(request.aspectRatio),
 			resolution: request.resolution,
 			durationSeconds: request.duration,
-			references,
+			inputs,
 		});
-		const completed = await waitForMediaJob(this.media, job);
-		const artifact = completed.artifacts?.find((candidate) => candidate.kind === outputKind);
+		let completed;
+		try {
+			completed = await this.jobs.wait(job, {
+				pollIntervalMs: HOST_MEDIA_POLL_INTERVAL_MS,
+				signal: AbortSignal.timeout(HOST_MEDIA_JOB_TIMEOUT_MS),
+			});
+		} catch {
+			await this.jobs.cancel(job).catch(() => undefined);
+			throw new PluginMediaError({
+				code: "provider-timeout",
+				message: `host media job timed out: ${provider.id}`,
+				retryable: true,
+			});
+		}
+		if (completed.status === "failed") {
+			throw new PluginMediaError(
+				completed.error ?? {
+					code: "provider-failed",
+					message: `host media job failed: ${provider.id}`,
+					retryable: true,
+				},
+			);
+		}
+		if (completed.status === "cancelled") {
+			throw new PluginMediaError({
+				code: "cancelled",
+				message: `host media job was cancelled: ${provider.id}`,
+				retryable: true,
+			});
+		}
+		const artifact = completed.artifacts.find((candidate) => candidate.kind === outputKind);
 		if (!artifact) {
 			throw new PluginMediaError({
 				code: "provider-failed",
@@ -106,11 +137,14 @@ export class HostMediaProvider implements ContentProviderAdapter {
 }
 
 function createModels(provider: PluginMediaProviderDescriptor): ContentModelDescriptor[] {
-	const outputKinds = provider.capabilities
+	const generationCapabilities = provider.capabilities.filter(
+		(capability) => capability.operation === "generate",
+	);
+	const outputKinds = generationCapabilities
 		.map((capability) => capability.kind)
 		.filter((kind, index, all) => all.indexOf(kind) === index);
 	return outputKinds.flatMap((outputKind) => {
-		const capabilities = provider.capabilities.filter((capability) => capability.kind === outputKind);
+		const capabilities = generationCapabilities.filter((capability) => capability.kind === outputKind);
 		const modes = capabilities
 			.flatMap((capability) => capability.modes)
 			.filter((mode, index, all) => all.indexOf(mode) === index)
@@ -165,40 +199,6 @@ function dimensionsFromAspectRatio(aspectRatio?: string): { width: number; heigh
 	};
 }
 
-async function waitForMediaJob(media: PluginMediaApi, initialJob: PluginMediaJob): Promise<PluginMediaJob> {
-	let job = initialJob;
-	const deadline = Date.now() + HOST_MEDIA_JOB_TIMEOUT_MS;
-	while (job.status === "queued" || job.status === "running") {
-		if (Date.now() >= deadline) {
-			await media.cancelJob({ providerId: job.providerId, id: job.id }).catch(() => undefined);
-			throw new PluginMediaError({
-				code: "provider-timeout",
-				message: `host media job timed out: ${job.providerId}`,
-				retryable: true,
-			});
-		}
-		await delay(HOST_MEDIA_POLL_INTERVAL_MS);
-		job = await media.getJob({ providerId: job.providerId, id: job.id });
-	}
-	if (job.status === "failed") {
-		throw new PluginMediaError(
-			job.error ?? {
-				code: "provider-failed",
-				message: `host media job failed: ${job.providerId}`,
-				retryable: true,
-			},
-		);
-	}
-	if (job.status === "cancelled") {
-		throw new PluginMediaError({
-			code: "cancelled",
-			message: `host media job was cancelled: ${job.providerId}`,
-			retryable: true,
-		});
-	}
-	return job;
-}
-
 function generatedContentFromArtifact(artifact: PluginMediaArtifact): GeneratedContent {
 	return {
 		kind: artifact.kind,
@@ -208,8 +208,4 @@ function generatedContentFromArtifact(artifact: PluginMediaArtifact): GeneratedC
 		height: artifact.height,
 		duration: artifact.durationSeconds,
 	};
-}
-
-function delay(milliseconds: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }

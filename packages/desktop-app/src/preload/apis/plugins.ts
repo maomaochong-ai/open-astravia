@@ -33,6 +33,11 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			internalCapabilities: {
 				openSession: (pluginId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.OPEN_SESSION, pluginId),
 				closeSession: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.CLOSE_SESSION, sessionId),
+				artifacts: {
+					persist: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.ARTIFACT_PERSIST, sessionId, input),
+					release: (sessionId, artifactId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.ARTIFACT_RELEASE, sessionId, artifactId),
+				},
 				ai: {
 					listModels: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_MODEL_LIST, sessionId),
 					complete: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, sessionId, input),
@@ -79,15 +84,11 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				},
 				media: {
 					listProviders: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_PROVIDER_LIST, sessionId),
-					createJob: (sessionId, input) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CREATE, sessionId, input),
-					getJob: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_GET, sessionId, input),
-					cancelJob: (sessionId, input) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, sessionId, input),
-					saveArtifact: (sessionId, input) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_ARTIFACT_SAVE, sessionId, input),
-					releaseArtifact: (sessionId, artifactId) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_ARTIFACT_RELEASE, sessionId, artifactId),
+					submit: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_SUBMIT, sessionId, input),
+				},
+				jobs: {
+					get: (sessionId, id) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.JOB_GET, sessionId, id),
+					cancel: (sessionId, id) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.JOB_CANCEL, sessionId, id),
 				},
 				mcp: {
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, sessionId),
@@ -352,8 +353,8 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			onMediaProviderRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:media-provider-request", handler),
 			respondMediaProvider: (requestId, result) =>
 				ipc.invoke("vetta:plugins:media-provider-response", requestId, result),
-			uploadMediaProviderReference: (requestId, referenceId, request) =>
-				ipc.invoke("vetta:plugins:media-provider-reference-upload", requestId, referenceId, request),
+			uploadMediaProviderInput: (requestId, inputId, request) =>
+				ipc.invoke("vetta:plugins:media-provider-input-upload", requestId, inputId, request),
 			getSettings: (id) => ipc.invoke("vetta:plugins:get-settings", id),
 			setSettings: (id, values) => ipc.invoke("vetta:plugins:set-settings", id, values),
 			networkRequest: (sessionId, request) => ipc.invoke("vetta:plugins:network:request", sessionId, request),
