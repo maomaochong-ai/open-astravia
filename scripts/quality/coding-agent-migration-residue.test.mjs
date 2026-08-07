@@ -58,6 +58,24 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired Session Host implementation paths", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-turn-executor.ts",
+				text: "export class CodingAgentGreenfieldTurnExecutor {}",
+			},
+			{
+				path: "packages/coding-agent/src/host/session-execution/turn-executor.ts",
+				text: 'import "../../adapters/runtime-core/greenfield-turn-retry-controller.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-turn-executor.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/host/session-execution/turn-executor.ts: retired migration reference (adapters/runtime-core/greenfield-turn-retry-controller)",
+		]);
+	});
+
 	it("rejects growth beyond each migration residue baseline", () => {
 		const files = [
 			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1 }, (_, index) => ({
@@ -72,6 +90,10 @@ describe("Coding Agent migration residue gate", () => {
 				path: `packages/coding-agent/src/adapters/runtime-core/adapter-edge-${index}.ts`,
 				text: 'import type { Contract } from "../../composition/contracts.js";',
 			})),
+			...Array.from({ length: MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles + 1 }, (_, index) => ({
+				path: `packages/coding-agent/src/composition/public-api-edge-${index}.ts`,
+				text: 'import type { Contract } from "../public-api/runtime.js";',
+			})),
 		];
 		const state = collectCodingAgentMigrationResidue(files);
 
@@ -79,6 +101,7 @@ describe("Coding Agent migration residue gate", () => {
 			`adapterGreenfieldFiles: ${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}`,
 			`compositionGreenfieldFiles: ${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}`,
 			`adapterCompositionEdgeFiles: ${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}`,
+			`compositionPublicApiEdgeFiles: ${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles + 1} exceeds migration residue limit ${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}`,
 		]);
 	});
 });

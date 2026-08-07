@@ -6,15 +6,12 @@ import type {
 	SessionEvent,
 } from "@vetta/runtime-core";
 import { mapRuntimeSessionObservationEvent } from "@vetta/runtime-core";
-import { readGreenfieldFailedTurnMessage } from "../adapters/runtime-core/greenfield-turn-executor.js";
-import {
-	CodingAgentGreenfieldTurnRetryController,
-	type CodingAgentGreenfieldTurnRetryEvent,
-	type CodingAgentGreenfieldTurnRetrySettings,
-} from "../adapters/runtime-core/greenfield-turn-retry-controller.js";
+import type { CodingAgentTurnRetryEvent, CodingAgentTurnRetrySettings } from "../host/session-execution/contracts.js";
+import { readCodingAgentFailedTurnMessage } from "../host/session-execution/turn-executor.js";
+import { createCodingAgentTurnRetryController } from "../host/session-execution/turn-retry-controller.js";
 
 export interface GreenfieldRuntimeHostRetrySettings {
-	getRetrySettings(): CodingAgentGreenfieldTurnRetrySettings;
+	getRetrySettings(): CodingAgentTurnRetrySettings;
 	setRetryEnabled(enabled: boolean): void;
 }
 
@@ -30,15 +27,15 @@ export function withGreenfieldRuntimeHostRetry(
 	settings: GreenfieldRuntimeHostRetrySettings,
 ): RuntimeHostSessionAssembly {
 	const events = new DeferredRuntimeErrorEventStream(assembly.lifecycle.sessionId, assembly.corePorts.eventStream);
-	const retry = new CodingAgentGreenfieldTurnRetryController({
+	const retry = createCodingAgentTurnRetryController({
 		readSettings: () => settings.getRetrySettings(),
 		setEnabled: (enabled) => settings.setRetryEnabled(enabled),
 		emit: (event) => events.emitRetry(event),
 	});
 	const run = async (execute: () => Promise<unknown>): Promise<void> => {
 		try {
-			const result = await retry.run(execute, () => session.retry(), readGreenfieldFailedTurnMessage);
-			if (readGreenfieldFailedTurnMessage(result)) events.flushPendingError();
+			const result = await retry.run(execute, () => session.retry(), readCodingAgentFailedTurnMessage);
+			if (readCodingAgentFailedTurnMessage(result)) events.flushPendingError();
 			else events.clearPendingError();
 		} catch (error) {
 			if (!events.flushPendingError()) throw error;
@@ -89,7 +86,7 @@ class DeferredRuntimeErrorEventStream implements RuntimeSessionEventStream {
 		return () => this.listeners.delete(handler);
 	}
 
-	emitRetry(event: CodingAgentGreenfieldTurnRetryEvent): void {
+	emitRetry(event: CodingAgentTurnRetryEvent): void {
 		if (event.type === "auto_retry_start") {
 			this.retryAttempts = event.attempt;
 			this.broadcast(

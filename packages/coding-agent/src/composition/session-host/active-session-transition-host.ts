@@ -1,12 +1,14 @@
 import { join } from "node:path";
 import type { SessionEndCause } from "@vetta/ecosystem-adapter";
 import type { GreenfieldRuntimeSession, RuntimeSessionExecutionObservation, SessionEvent } from "@vetta/runtime-core";
+import type {
+	CodingAgentNewSessionOptions,
+	CodingAgentSessionSeedInitializer,
+} from "../../host/session-transition/contracts.js";
 import { CodingAgentActiveSessionEventRelay } from "./active-session-event-relay.js";
 import type {
 	CodingAgentActiveSessionHostOptions,
-	CodingAgentNewSessionOptions,
 	CodingAgentPreparedSessionBinding,
-	CodingAgentSessionSeedInitializer,
 	CodingAgentSessionTransition,
 	CodingAgentSessionTransitionDecision,
 	CodingAgentSessionTransitionKind,
@@ -14,11 +16,13 @@ import type {
 import { CodingAgentSessionTransitionCleanup } from "./session-transition-cleanup.js";
 
 export type {
-	CodingAgentActiveSessionHostOptions,
 	CodingAgentNewSessionOptions,
-	CodingAgentPreparedSessionBinding,
 	CodingAgentSessionSeedInitializer,
 	CodingAgentSessionSeedTarget,
+} from "../../host/session-transition/contracts.js";
+export type {
+	CodingAgentActiveSessionHostOptions,
+	CodingAgentPreparedSessionBinding,
 	CodingAgentSessionTransition,
 	CodingAgentSessionTransitionDecision,
 	CodingAgentSessionTransitionKind,

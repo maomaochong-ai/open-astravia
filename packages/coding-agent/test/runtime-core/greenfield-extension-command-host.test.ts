@@ -2,11 +2,11 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CodingAgentGreenfieldExtensionCommandHost } from "../../src/adapters/runtime-core/greenfield-extension-command-host.js";
 import { AuthStorage } from "../../src/auth/index.js";
 import type { ExtensionCommandContextActions } from "../../src/extensions/index.js";
 import { discoverAndLoadExtensions, ExtensionRunner } from "../../src/extensions/index.js";
 import { createCodingAgentModelRuntime } from "../../src/models/index.js";
+import { createCodingAgentRuntimeExtensionCommandHost } from "../../src/public-api/runtime/extensions.js";
 import { createExtensionSessionView } from "../fixtures/extension-session-view.js";
 
 const temporaryDirectories: string[] = [];
@@ -17,7 +17,7 @@ afterEach(() => {
 	}
 });
 
-describe("CodingAgentGreenfieldExtensionCommandHost", () => {
+describe("Coding Agent Runtime Extension command host", () => {
 	it("binds the complete command action contract and preserves Legacy argument parsing", async () => {
 		const runner = await createRunner(`
 			export default function(extension) {
@@ -36,7 +36,7 @@ describe("CodingAgentGreenfieldExtensionCommandHost", () => {
 			}
 		`);
 		const actions = createActions();
-		const host = new CodingAgentGreenfieldExtensionCommandHost({ runner, actions });
+		const host = createCodingAgentRuntimeExtensionCommandHost({ runner, actions });
 
 		await expect(host.tryExecute("/workflow first  second")).resolves.toBe(true);
 		expect(actions.waitForIdle).toHaveBeenCalledOnce();
@@ -61,7 +61,7 @@ describe("CodingAgentGreenfieldExtensionCommandHost", () => {
 				extension.registerCommand("workflow", { handler: async () => {} });
 			}
 		`);
-		const host = new CodingAgentGreenfieldExtensionCommandHost({ runner, actions: createActions() });
+		const host = createCodingAgentRuntimeExtensionCommandHost({ runner, actions: createActions() });
 
 		await expect(host.tryExecute("plain text")).resolves.toBe(false);
 		await expect(host.tryExecute("/missing")).resolves.toBe(false);
@@ -81,7 +81,7 @@ describe("CodingAgentGreenfieldExtensionCommandHost", () => {
 		`);
 		const errors: Array<{ extensionPath: string; event: string; error: string }> = [];
 		runner.onError((error) => errors.push(error));
-		const host = new CodingAgentGreenfieldExtensionCommandHost({ runner, actions: createActions() });
+		const host = createCodingAgentRuntimeExtensionCommandHost({ runner, actions: createActions() });
 
 		await expect(host.tryExecute("/fail")).resolves.toBe(true);
 		expect(errors).toEqual([

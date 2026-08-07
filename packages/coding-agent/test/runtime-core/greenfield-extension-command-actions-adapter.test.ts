@@ -1,18 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-	type CodingAgentGreenfieldExtensionCommandActionPorts,
-	createCodingAgentGreenfieldExtensionCommandActions,
-} from "../../src/adapters/runtime-core/greenfield-extension-command-actions-adapter.js";
-import type { CodingAgentSessionSeedInitializer } from "../../src/composition/session-host/active-session-transition-contracts.js";
 import type { ExtensionSessionWriter } from "../../src/extensions/index.js";
+import type { CodingAgentSessionSeedInitializer } from "../../src/host/session-transition/contracts.js";
+import {
+	type CodingAgentRuntimeExtensionCommandActionPorts,
+	createCodingAgentRuntimeExtensionCommandActions,
+} from "../../src/public-api/runtime/extensions.js";
 
-describe("createCodingAgentGreenfieldExtensionCommandActions", () => {
+describe("createCodingAgentRuntimeExtensionCommandActions", () => {
 	it("maps the complete Extension command action contract to neutral Greenfield ports", async () => {
 		const initializer: CodingAgentSessionSeedInitializer = {
 			initializeSeed: vi.fn(async () => {}),
 		};
 		const ports = createPorts(initializer);
-		const actions = createCodingAgentGreenfieldExtensionCommandActions(ports);
+		const actions = createCodingAgentRuntimeExtensionCommandActions(ports);
 		const setup = async (_session: ExtensionSessionWriter): Promise<void> => {};
 
 		await expect(actions.waitForIdle()).resolves.toBeUndefined();
@@ -51,9 +51,7 @@ describe("createCodingAgentGreenfieldExtensionCommandActions", () => {
 	});
 });
 
-function createPorts(
-	initializer: CodingAgentSessionSeedInitializer,
-): CodingAgentGreenfieldExtensionCommandActionPorts & {
+function createPorts(initializer: CodingAgentSessionSeedInitializer): CodingAgentRuntimeExtensionCommandActionPorts & {
 	readonly waitForIdle: ReturnType<typeof vi.fn>;
 	readonly newSession: ReturnType<typeof vi.fn>;
 	readonly createSessionSetupInitializer: ReturnType<typeof vi.fn>;

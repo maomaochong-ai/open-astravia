@@ -1,33 +1,13 @@
-import type { ImageContent } from "@vetta/ai";
-import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
-import type { CodingAgentGreenfieldTurnRetryControllerPort } from "./greenfield-turn-retry-controller.js";
+import type {
+	CodingAgentTurnExecutor,
+	CodingAgentTurnExecutorOptions,
+	CodingAgentTurnPromptOptions,
+} from "./contracts.js";
 
-export interface CodingAgentGreenfieldTurnSessionHost {
-	startActiveSessionOperation<T>(operation: (session: GreenfieldRuntimeSession) => Promise<T>): Promise<T>;
-}
+export class CodingAgentSessionTurnExecutor implements CodingAgentTurnExecutor {
+	constructor(private readonly options: CodingAgentTurnExecutorOptions) {}
 
-export interface CodingAgentGreenfieldTurnCommandHost {
-	throwIfExtensionCommand(text: string): void;
-	tryExecute(text: string): Promise<boolean>;
-}
-
-export interface CodingAgentGreenfieldTurnExecutorOptions {
-	readonly sessionHost: CodingAgentGreenfieldTurnSessionHost;
-	readonly retryController: CodingAgentGreenfieldTurnRetryControllerPort;
-	readonly commandHost?: CodingAgentGreenfieldTurnCommandHost;
-}
-
-export interface CodingAgentGreenfieldTurnPromptOptions {
-	readonly images?: readonly ImageContent[];
-	readonly streamingBehavior?: "steer" | "followUp";
-	readonly throwOnFailure?: boolean;
-}
-
-/** Prompt、Extension command、continue 与 retry 的中立 Turn 编排入口。 */
-export class CodingAgentGreenfieldTurnExecutor {
-	constructor(private readonly options: CodingAgentGreenfieldTurnExecutorOptions) {}
-
-	async prompt(message: string, promptOptions: CodingAgentGreenfieldTurnPromptOptions = {}): Promise<void> {
+	async prompt(message: string, promptOptions: CodingAgentTurnPromptOptions = {}): Promise<void> {
 		if (!promptOptions.streamingBehavior) {
 			const executed = await this.options.sessionHost.startActiveSessionOperation(
 				async () => this.options.commandHost?.tryExecute(message) ?? false,
@@ -48,14 +28,18 @@ export class CodingAgentGreenfieldTurnExecutor {
 		const result = await this.options.retryController.run(
 			executeInitial,
 			() => this.options.sessionHost.startActiveSessionOperation((session) => session.retry()),
-			readGreenfieldFailedTurnMessage,
+			readCodingAgentFailedTurnMessage,
 		);
-		const failedMessage = readGreenfieldFailedTurnMessage(result);
+		const failedMessage = readCodingAgentFailedTurnMessage(result);
 		if (failedMessage && promptOptions.throwOnFailure !== false) throw new Error(failedMessage);
 	}
 }
 
-export function readGreenfieldFailedTurnMessage(value: unknown): string | undefined {
+export function createCodingAgentTurnExecutor(options: CodingAgentTurnExecutorOptions): CodingAgentTurnExecutor {
+	return new CodingAgentSessionTurnExecutor(options);
+}
+
+export function readCodingAgentFailedTurnMessage(value: unknown): string | undefined {
 	if (typeof value !== "object" || value === null) return undefined;
 	const error = Reflect.get(value, "error");
 	if (

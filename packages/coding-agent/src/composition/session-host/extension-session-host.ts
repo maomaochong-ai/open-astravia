@@ -1,11 +1,11 @@
 import { type GreenfieldRuntimeSession, InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
+import type { ExtensionCommandContextActions } from "../../extensions/index.js";
+import { createCodingAgentExtensionCommandHost } from "../../host/extensions/command-host.js";
 import type {
-	CodingAgentRuntimeExtensionCommandContextActions,
-	CodingAgentRuntimeExtensionCommandHost,
-	CodingAgentRuntimeExtensionEventHost,
-	CodingAgentRuntimeExtensionInitialization,
-} from "../../public-api/runtime/extensions.js";
-import { createCodingAgentRuntimeExtensionCommandHost } from "../../public-api/runtime/extensions.js";
+	CodingAgentExtensionCommandHost,
+	CodingAgentExtensionEventHost,
+	CodingAgentExtensionInitialization,
+} from "../../host/extensions/contracts.js";
 import type {
 	CodingAgentPreparedSessionBinding,
 	CodingAgentSessionTransition,
@@ -14,33 +14,33 @@ import type {
 type CodingAgentExtensionEventHostFactory = (
 	session: GreenfieldRuntimeSession,
 	options?: { readonly replaceExisting?: boolean },
-) => CodingAgentRuntimeExtensionEventHost;
+) => CodingAgentExtensionEventHost;
 
 interface CodingAgentExtensionSessionBinding {
-	readonly events: CodingAgentRuntimeExtensionEventHost;
-	readonly commands?: CodingAgentRuntimeExtensionCommandHost;
+	readonly events: CodingAgentExtensionEventHost;
+	readonly commands?: CodingAgentExtensionCommandHost;
 }
 
 /** Extension 的 Session 级动态绑定控制器。 */
 export class CodingAgentExtensionSessionHost {
-	private initialization: CodingAgentRuntimeExtensionInitialization | undefined;
-	private commandActions: CodingAgentRuntimeExtensionCommandContextActions | undefined;
+	private initialization: CodingAgentExtensionInitialization | undefined;
+	private commandActions: ExtensionCommandContextActions | undefined;
 	private current: CodingAgentExtensionSessionBinding;
 	private readonly cleanup = new RetryableCleanup();
 	private cleanupPrepared = false;
 
 	constructor(
-		initial: CodingAgentRuntimeExtensionEventHost,
+		initial: CodingAgentExtensionEventHost,
 		private readonly createHost: CodingAgentExtensionEventHostFactory,
 	) {
 		this.current = { events: initial };
 	}
 
-	bindCommandContext(actions: CodingAgentRuntimeExtensionCommandContextActions): void {
+	bindCommandContext(actions: ExtensionCommandContextActions): void {
 		this.commandActions = actions;
 		this.current = {
 			...this.current,
-			commands: createCodingAgentRuntimeExtensionCommandHost({ runner: this.current.events.runner, actions }),
+			commands: createCodingAgentExtensionCommandHost({ runner: this.current.events.runner, actions }),
 		};
 	}
 
@@ -48,7 +48,7 @@ export class CodingAgentExtensionSessionHost {
 		return this.current.events.runner;
 	}
 
-	readCommands(): ReturnType<CodingAgentRuntimeExtensionCommandHost["readCommands"]> {
+	readCommands(): ReturnType<CodingAgentExtensionCommandHost["readCommands"]> {
 		return this.current.commands?.readCommands() ?? [];
 	}
 
@@ -60,7 +60,7 @@ export class CodingAgentExtensionSessionHost {
 		this.requireCommands().throwIfExtensionCommand(text);
 	}
 
-	async initialize(input: CodingAgentRuntimeExtensionInitialization): Promise<void> {
+	async initialize(input: CodingAgentExtensionInitialization): Promise<void> {
 		this.initialization = input;
 		await this.current.events.initialize(input);
 		await this.current.events.discoverResources("startup");
@@ -95,7 +95,7 @@ export class CodingAgentExtensionSessionHost {
 		const next: CodingAgentExtensionSessionBinding = {
 			events,
 			commands: this.commandActions
-				? createCodingAgentRuntimeExtensionCommandHost({ runner: events.runner, actions: this.commandActions })
+				? createCodingAgentExtensionCommandHost({ runner: events.runner, actions: this.commandActions })
 				: undefined,
 		};
 		const rollback = new InitializationRollbackScope();
@@ -167,7 +167,7 @@ export class CodingAgentExtensionSessionHost {
 			next = {
 				events,
 				commands: this.commandActions
-					? createCodingAgentRuntimeExtensionCommandHost({ runner: events.runner, actions: this.commandActions })
+					? createCodingAgentExtensionCommandHost({ runner: events.runner, actions: this.commandActions })
 					: undefined,
 			};
 			rollback.defer({
@@ -200,7 +200,7 @@ export class CodingAgentExtensionSessionHost {
 		await this.cleanup.run("Failed to dispose Greenfield Extension session host");
 	}
 
-	private requireCommands(): CodingAgentRuntimeExtensionCommandHost {
+	private requireCommands(): CodingAgentExtensionCommandHost {
 		if (!this.current.commands) throw new Error("Greenfield Extension command context is not bound");
 		return this.current.commands;
 	}

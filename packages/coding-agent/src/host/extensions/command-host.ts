@@ -1,18 +1,11 @@
-import type { ExtensionCommandContextActions, ExtensionRunner, SlashCommandInfo } from "../../extensions/index.js";
+import type { SlashCommandInfo } from "../../extensions/index.js";
+import type {
+	CodingAgentExtensionCommandHost as CodingAgentExtensionCommandHostContract,
+	CodingAgentExtensionCommandHostOptions,
+} from "./contracts.js";
 
-export interface CodingAgentGreenfieldExtensionCommandHostOptions {
-	readonly runner: ExtensionRunner;
-	readonly actions: ExtensionCommandContextActions;
-}
-
-/**
- * Extension slash command 的 Greenfield 执行边界。
- *
- * 命令发现、文本解析、错误上报和队列限制保持 Legacy 语义；会话切换等产品动作
- * 由外层宿主显式注入，缺少完整动作合同时不能构造本宿主。
- */
-export class CodingAgentGreenfieldExtensionCommandHost {
-	constructor(private readonly options: CodingAgentGreenfieldExtensionCommandHostOptions) {
+export class CodingAgentExtensionCommandHost implements CodingAgentExtensionCommandHostContract {
+	constructor(private readonly options: CodingAgentExtensionCommandHostOptions) {
 		options.runner.bindCommandContext(options.actions);
 	}
 
@@ -52,6 +45,12 @@ export class CodingAgentGreenfieldExtensionCommandHost {
 			`Extension command "/${commandName}" cannot be queued. Use prompt() or execute the command when not streaming.`,
 		);
 	}
+}
+
+export function createCodingAgentExtensionCommandHost(
+	options: CodingAgentExtensionCommandHostOptions,
+): CodingAgentExtensionCommandHostContract {
+	return new CodingAgentExtensionCommandHost(options);
 }
 
 function readCommandName(text: string): string | undefined {

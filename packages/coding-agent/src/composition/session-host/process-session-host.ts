@@ -5,14 +5,15 @@ import {
 	type SessionEvent,
 } from "@vetta/runtime-core";
 import type { ManagedMcpRuntimeToolSource } from "@vetta/runtime-mcp";
+import type { CodingAgentExtensionInitialization } from "../../host/extensions/contracts.js";
 import type {
-	CodingAgentRuntimeExtensionInitialization,
 	CodingAgentTurnExecutor,
 	CodingAgentTurnRetryController,
 	CodingAgentTurnRetryEvent,
 	CodingAgentTurnRetrySettings,
-} from "../../public-api/runtime.js";
-import { createCodingAgentTurnExecutor, createCodingAgentTurnRetryController } from "../../public-api/runtime.js";
+} from "../../host/session-execution/contracts.js";
+import { createCodingAgentTurnExecutor } from "../../host/session-execution/turn-executor.js";
+import { createCodingAgentTurnRetryController } from "../../host/session-execution/turn-retry-controller.js";
 import type { GreenfieldRuntimeComposition } from "../greenfield-runtime-composition-contract.js";
 import type { CodingAgentActiveSessionHost } from "./active-session-transition-host.js";
 import type { CodingAgentExtensionSessionHost } from "./extension-session-host.js";
@@ -90,7 +91,7 @@ export class CodingAgentProcessSessionHost {
 		return () => this.retryListeners.delete(listener);
 	}
 
-	initializeExtensions(input: CodingAgentRuntimeExtensionInitialization): Promise<void> {
+	initializeExtensions(input: CodingAgentExtensionInitialization): Promise<void> {
 		return this.options.extensionSessionHost.initialize(input);
 	}
 

@@ -7,11 +7,9 @@ import type {
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
 import { projectCodingAgentGreenfieldMessages } from "../../adapters/runtime-core/greenfield-agent-message-context-projector.js";
-import { readGreenfieldFailedTurnMessage } from "../../adapters/runtime-core/greenfield-turn-executor.js";
-import {
-	CodingAgentGreenfieldTurnRetryController,
-	type CodingAgentGreenfieldTurnRetryControllerPort,
-} from "../../adapters/runtime-core/greenfield-turn-retry-controller.js";
+import type { CodingAgentTurnRetryController } from "../session-execution/contracts.js";
+import { readCodingAgentFailedTurnMessage } from "../session-execution/turn-executor.js";
+import { createCodingAgentTurnRetryController } from "../session-execution/turn-retry-controller.js";
 import type {
 	GreenfieldSdkCustomToolDefinition,
 	GreenfieldSdkMemoryConfiguration,
@@ -36,7 +34,7 @@ export type {
 export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdkSessionCapabilityPort {
 	private scopedModels: GreenfieldSdkScopedModel[];
 	private agentMode: string | undefined;
-	private readonly retryController: CodingAgentGreenfieldTurnRetryControllerPort | undefined;
+	private readonly retryController: CodingAgentTurnRetryController | undefined;
 	private readonly retryListeners = new Set<(event: GreenfieldSdkRetryEvent) => void>();
 	private readonly modelCapabilities: CodingAgentSessionModelCapabilities;
 
@@ -53,7 +51,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 		this.retryController =
 			options.retryController ??
 			(settings
-				? new CodingAgentGreenfieldTurnRetryController({
+				? createCodingAgentTurnRetryController({
 						readSettings: () => settings.getRetrySettings(),
 						setEnabled: (enabled) => settings.setRetryEnabled(enabled),
 						emit: (event) => {
@@ -71,10 +69,10 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 			? await retryController.run(
 					executeInitial,
 					() => this.options.readSession().retry(),
-					readGreenfieldFailedTurnMessage,
+					readCodingAgentFailedTurnMessage,
 				)
 			: await executeInitial();
-		const failure = readGreenfieldFailedTurnMessage(result);
+		const failure = readCodingAgentFailedTurnMessage(result);
 		if (failure) throw new Error(failure);
 		return result;
 	}

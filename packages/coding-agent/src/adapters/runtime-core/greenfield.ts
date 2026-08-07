@@ -59,14 +59,6 @@ export {
 	CodingAgentGreenfieldExtensionActionHost,
 	type CodingAgentGreenfieldExtensionActionHostOptions,
 } from "./greenfield-extension-action-host.js";
-export {
-	type CodingAgentGreenfieldExtensionCommandActionPorts,
-	createCodingAgentGreenfieldExtensionCommandActions,
-} from "./greenfield-extension-command-actions-adapter.js";
-export {
-	CodingAgentGreenfieldExtensionCommandHost,
-	type CodingAgentGreenfieldExtensionCommandHostOptions,
-} from "./greenfield-extension-command-host.js";
 export type {
 	CodingAgentGreenfieldExtensionRunnerPort,
 	CodingAgentGreenfieldExtensionToolSource,
@@ -196,19 +188,6 @@ export {
 	createCodingAgentTodoRuntimeFeature,
 	createCodingAgentTodoRuntimeToolRegistration,
 } from "./greenfield-todo-runtime.js";
-export {
-	type CodingAgentGreenfieldTurnCommandHost,
-	CodingAgentGreenfieldTurnExecutor,
-	type CodingAgentGreenfieldTurnExecutorOptions,
-	type CodingAgentGreenfieldTurnPromptOptions,
-	type CodingAgentGreenfieldTurnSessionHost,
-} from "./greenfield-turn-executor.js";
-export {
-	CodingAgentGreenfieldTurnRetryController,
-	type CodingAgentGreenfieldTurnRetryControllerOptions,
-	type CodingAgentGreenfieldTurnRetryEvent,
-	type CodingAgentGreenfieldTurnRetrySettings,
-} from "./greenfield-turn-retry-controller.js";
 export {
 	CodingAgentSharedModelController,
 	type CodingAgentSharedModelSource,

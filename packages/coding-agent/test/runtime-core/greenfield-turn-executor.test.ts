@@ -1,12 +1,13 @@
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import { describe, expect, it, vi } from "vitest";
 import {
-	CodingAgentGreenfieldTurnExecutor,
-	CodingAgentGreenfieldTurnRetryController,
-	type CodingAgentGreenfieldTurnRetryEvent,
-} from "../../src/adapters/runtime-core/greenfield.js";
+	type CodingAgentTurnExecutor,
+	type CodingAgentTurnRetryEvent,
+	createCodingAgentTurnExecutor,
+	createCodingAgentTurnRetryController,
+} from "../../src/public-api/runtime/turn.js";
 
-describe("CodingAgentGreenfieldTurnExecutor", () => {
+describe("Coding Agent Turn executor", () => {
 	it("executes an Extension command without starting a model turn", async () => {
 		const prompt = vi.fn(async () => ({ status: "completed" }));
 		const commandHost = {
@@ -22,7 +23,7 @@ describe("CodingAgentGreenfieldTurnExecutor", () => {
 	});
 
 	it("retries a retryable failed turn through the active session retry operation", async () => {
-		const events: CodingAgentGreenfieldTurnRetryEvent[] = [];
+		const events: CodingAgentTurnRetryEvent[] = [];
 		const prompt = vi.fn(async () => ({ status: "failed", error: { message: "503 service unavailable" } }));
 		const retryTurn = vi.fn(async () => ({ status: "completed" }));
 		const executor = createExecutor({
@@ -40,7 +41,7 @@ describe("CodingAgentGreenfieldTurnExecutor", () => {
 	});
 
 	it("retries Agent Core completed results whose assistant stop reason is error", async () => {
-		const events: CodingAgentGreenfieldTurnRetryEvent[] = [];
+		const events: CodingAgentTurnRetryEvent[] = [];
 		const prompt = vi.fn(async () => ({
 			status: "completed",
 			stopReason: "error",
@@ -105,20 +106,20 @@ interface CreateExecutorOptions {
 		readonly tryExecute: (text: string) => Promise<boolean>;
 	};
 	readonly retry?: { readonly enabled: boolean; readonly maxRetries: number; readonly baseDelayMs: number };
-	readonly onRetryEvent?: (event: CodingAgentGreenfieldTurnRetryEvent) => void;
+	readonly onRetryEvent?: (event: CodingAgentTurnRetryEvent) => void;
 }
 
-function createExecutor(options: CreateExecutorOptions): CodingAgentGreenfieldTurnExecutor {
+function createExecutor(options: CreateExecutorOptions): CodingAgentTurnExecutor {
 	const session = {
 		prompt: options.prompt,
 		retry: options.retryTurn ?? (async () => ({ status: "completed" })),
 	} as unknown as GreenfieldRuntimeSession;
-	const retryController = new CodingAgentGreenfieldTurnRetryController({
+	const retryController = createCodingAgentTurnRetryController({
 		readSettings: () => options.retry ?? { enabled: false, maxRetries: 0, baseDelayMs: 0 },
 		setEnabled: vi.fn(),
 		emit: options.onRetryEvent ?? vi.fn(),
 	});
-	return new CodingAgentGreenfieldTurnExecutor({
+	return createCodingAgentTurnExecutor({
 		sessionHost: {
 			startActiveSessionOperation: (operation) => operation(session),
 		},

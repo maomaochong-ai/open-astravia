@@ -1,49 +1,10 @@
-export interface CodingAgentGreenfieldTurnRetrySettings {
-	readonly enabled: boolean;
-	readonly maxRetries: number;
-	readonly baseDelayMs: number;
-	readonly maxDelayMs?: number;
-}
+import type { CodingAgentTurnRetryController, CodingAgentTurnRetryControllerOptions } from "./contracts.js";
 
-export type CodingAgentGreenfieldTurnRetryEvent =
-	| {
-			readonly type: "auto_retry_start";
-			readonly attempt: number;
-			readonly maxAttempts: number;
-			readonly delayMs: number;
-			readonly errorMessage: string;
-	  }
-	| {
-			readonly type: "auto_retry_end";
-			readonly success: boolean;
-			readonly attempt: number;
-			readonly finalError?: string;
-	  };
-
-export interface CodingAgentGreenfieldTurnRetryControllerOptions {
-	readonly readSettings: () => CodingAgentGreenfieldTurnRetrySettings;
-	readonly setEnabled: (enabled: boolean) => void;
-	readonly emit: (event: CodingAgentGreenfieldTurnRetryEvent) => void;
-}
-
-export interface CodingAgentGreenfieldTurnRetryControllerPort {
-	readonly retryAttempt: number;
-	readonly isRetrying: boolean;
-	setAutoRetryEnabled(enabled: boolean): void;
-	abortRetry(): void;
-	run<T>(
-		executeInitial: () => Promise<T>,
-		executeRetry: () => Promise<T>,
-		readFailure: (result: T) => string | undefined,
-	): Promise<T>;
-}
-
-/** Greenfield Turn 级重试编排；不依赖 RPC transport 或具体 Session 实现。 */
-export class CodingAgentGreenfieldTurnRetryController implements CodingAgentGreenfieldTurnRetryControllerPort {
+export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRetryController {
 	private abortController: AbortController | undefined;
 	private attempt = 0;
 
-	constructor(private readonly options: CodingAgentGreenfieldTurnRetryControllerOptions) {}
+	constructor(private readonly options: CodingAgentTurnRetryControllerOptions) {}
 
 	get retryAttempt(): number {
 		return this.attempt;
@@ -123,6 +84,12 @@ export class CodingAgentGreenfieldTurnRetryController implements CodingAgentGree
 		}
 		return result;
 	}
+}
+
+export function createCodingAgentTurnRetryController(
+	options: CodingAgentTurnRetryControllerOptions,
+): CodingAgentTurnRetryController {
+	return new CodingAgentSessionTurnRetryController(options);
 }
 
 function isRetryableError(message: string): boolean {

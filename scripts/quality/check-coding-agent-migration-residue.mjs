@@ -9,9 +9,10 @@ const ADAPTER_ROOT = `${SOURCE_ROOT}/adapters`;
 const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 42,
+	adapterGreenfieldFiles: 38,
 	compositionGreenfieldFiles: 30,
-	adapterCompositionEdgeFiles: 1,
+	adapterCompositionEdgeFiles: 0,
+	compositionPublicApiEdgeFiles: 0,
 });
 
 export const RETIRED_MIGRATION_FILES = Object.freeze([
@@ -25,6 +26,10 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${COMPOSITION_ROOT}/greenfield-sdk-runtime-contract.ts`,
 	`${COMPOSITION_ROOT}/greenfield-sdk-session-factory.ts`,
 	`${COMPOSITION_ROOT}/greenfield-sdk-session-storage.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-command-actions-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-command-host.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-turn-executor.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-turn-retry-controller.ts`,
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
@@ -40,6 +45,10 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"composition/greenfield-sdk-runtime-contract",
 	"composition/greenfield-sdk-session-factory",
 	"composition/greenfield-sdk-session-storage",
+	"adapters/runtime-core/greenfield-extension-command-actions-adapter",
+	"adapters/runtime-core/greenfield-extension-command-host",
+	"adapters/runtime-core/greenfield-turn-executor",
+	"adapters/runtime-core/greenfield-turn-retry-controller",
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {
@@ -58,6 +67,9 @@ export function collectCodingAgentMigrationResidue(files) {
 		compositionGreenfieldFiles: compositionFiles.filter((file) => basename(file.path).startsWith("greenfield")),
 		adapterCompositionEdgeFiles: adapterFiles.filter((file) =>
 			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("composition/")),
+		),
+		compositionPublicApiEdgeFiles: compositionFiles.filter((file) =>
+			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("public-api/")),
 		),
 	});
 }
@@ -103,7 +115,7 @@ if (isDirectRun(import.meta.url)) {
 			for (const violation of violations) fail(`[coding-agent-migration-residue] ${violation}`);
 		} else {
 			ok(
-				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles})`,
+				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles})`,
 			);
 		}
 	}

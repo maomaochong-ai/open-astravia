@@ -4,10 +4,7 @@ import type {
 	GreenfieldRuntimeSession,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
-import type {
-	CodingAgentGreenfieldTurnRetryControllerPort,
-	CodingAgentGreenfieldTurnRetrySettings,
-} from "../../adapters/runtime-core/greenfield-turn-retry-controller.js";
+import type { CodingAgentTurnRetryController, CodingAgentTurnRetrySettings } from "../session-execution/contracts.js";
 import type {
 	GreenfieldSdkCustomToolDefinition,
 	GreenfieldSdkMemoryConfiguration,
@@ -22,7 +19,7 @@ export interface CodingAgentGreenfieldSessionCapabilitySettings {
 	setSteeringMode(mode: RuntimeSessionInputQueueMode): void;
 	setFollowUpMode(mode: RuntimeSessionInputQueueMode): void;
 	getRetryEnabled(): boolean;
-	getRetrySettings(): CodingAgentGreenfieldTurnRetrySettings;
+	getRetrySettings(): CodingAgentTurnRetrySettings;
 	setRetryEnabled(enabled: boolean): void;
 }
 
@@ -32,7 +29,7 @@ export interface CodingAgentGreenfieldSessionCapabilityHostOptions {
 	readonly scopedModels?: readonly GreenfieldSdkScopedModel[];
 	readonly initialAgentMode?: string;
 	readonly settings?: CodingAgentGreenfieldSessionCapabilitySettings;
-	readonly retryController?: CodingAgentGreenfieldTurnRetryControllerPort;
+	readonly retryController?: CodingAgentTurnRetryController;
 	readonly reconfigureCustomTools?: (customTools: readonly GreenfieldSdkCustomToolDefinition[] | undefined) => void;
 	readonly beforePrompt?: () => Promise<void> | void;
 	readonly readSystemPrompt?: () => string;

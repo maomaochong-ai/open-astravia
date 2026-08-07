@@ -1,9 +1,9 @@
 import { createConversationSeedDraft } from "@vetta/runtime-storage/conversation";
+import type { ExtensionSessionSetup } from "../../extensions/index.js";
 import type {
 	CodingAgentSessionSeedInitializer,
 	CodingAgentSessionSeedTarget,
-} from "../../composition/session-host/active-session-transition-contracts.js";
-import type { ExtensionSessionSetup } from "../../extensions/index.js";
+} from "../../host/session-transition/contracts.js";
 import { projectCodingAgentSessionDocumentEntry } from "../projection/session-document-entry.js";
 import { CodingAgentSessionSetupWriter } from "./session-setup-writer.js";
 

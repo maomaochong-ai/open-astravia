@@ -9,12 +9,12 @@ import { CODING_AGENT_EXTENDED_MESSAGE_CONTEXT_TYPE } from "../../sessions/index
 import type { RpcBashCapability } from "./rpc-session-capabilities.js";
 import type { RpcBashResult, SessionStats } from "./rpc-types.js";
 
-export {
-	CodingAgentGreenfieldTurnRetryController as GreenfieldRpcRetryController,
-	type CodingAgentGreenfieldTurnRetryControllerOptions as GreenfieldRpcRetryControllerOptions,
-	type CodingAgentGreenfieldTurnRetryEvent as GreenfieldRpcRetryEvent,
-	type CodingAgentGreenfieldTurnRetrySettings as GreenfieldRpcRetrySettings,
-} from "../../adapters/runtime-core/greenfield-turn-retry-controller.js";
+export type {
+	CodingAgentTurnRetryControllerOptions as GreenfieldRpcRetryControllerOptions,
+	CodingAgentTurnRetryEvent as GreenfieldRpcRetryEvent,
+	CodingAgentTurnRetrySettings as GreenfieldRpcRetrySettings,
+} from "../../host/session-execution/contracts.js";
+export { CodingAgentSessionTurnRetryController as GreenfieldRpcRetryController } from "../../host/session-execution/turn-retry-controller.js";
 
 export interface GreenfieldRpcBashCapabilityOptions {
 	readonly executor: HostBashExecutor;
