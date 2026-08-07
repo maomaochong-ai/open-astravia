@@ -4,13 +4,13 @@ import { createWriteStream, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import stripAnsi from "strip-ansi";
+import { sanitizeBinaryOutput } from "../../host/command-execution/command-output.js";
+import { killProcessTree } from "../../host/command-execution/process-tree.js";
 import {
 	getDefaultShellCommandPrefix,
 	getShellConfig,
-	killProcessTree,
 	prependCommandPrefixes,
-	sanitizeBinaryOutput,
-} from "../../utils/shell.js";
+} from "../../host/command-execution/shell-runtime.js";
 
 export interface RuntimeBackgroundCommandProcess {
 	stop(): void;

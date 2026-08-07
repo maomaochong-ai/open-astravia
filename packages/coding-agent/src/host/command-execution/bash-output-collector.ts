@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_MAX_BYTES, truncateTail } from "@vetta/runtime-tools/coding";
 import stripAnsi from "strip-ansi";
-import { sanitizeBinaryOutput } from "../../utils/shell.js";
+import { sanitizeBinaryOutput } from "./command-output.js";
 import type { HostBashExecutionOptions, HostBashResult } from "./contracts.js";
 
 /** 在本地进程和远程 Operations 之间复用完全相同的输出处理语义。 */

@@ -5,7 +5,7 @@ import { delimiter, isAbsolute, join, resolve as resolvePath } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import { getSandboxShellGrant, type SandboxShellGrant } from "@vetta/runtime-core/sandbox";
 import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools/coding";
-import { getShellConfig } from "../../../utils/shell.js";
+import { getShellConfig } from "../../../host/command-execution/shell-runtime.js";
 import { createSandboxToolRegistrations, type SandboxRuntimeToolOptions } from "./sandbox-tool-utils.js";
 
 const LINUX_ENV_WHITELIST = [

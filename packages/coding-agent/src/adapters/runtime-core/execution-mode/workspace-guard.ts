@@ -2,7 +2,7 @@ import { realpath, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, relative, resolve as resolvePath } from "node:path";
 
-// Coding-tool path guard; kept with the legacy coding-agent runtime adapter.
+// Host-side workspace boundary used by coding-tool execution policies.
 
 function expandHome(inputPath: string): string {
 	if (inputPath === "~") return homedir();

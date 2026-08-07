@@ -40,8 +40,8 @@ import {
 	createCodingAgentEditPathPolicy,
 	createCodingAgentForegroundCommandHost,
 	createCodingAgentWritePathPolicy,
-	createToolExecutableResolver,
-	type EnsureTool,
+	createManagedCodingToolExecutableResolver,
+	type ResolveCodingToolExecutable,
 } from "../../adapters/runtime-tools/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 
@@ -53,7 +53,7 @@ export interface CodingToolsRuntimeCompositionOptions {
 	readonly filterRegistration?: CodingToolRegistrationFilter;
 	readonly backgroundService?: BackgroundCommandService;
 	readonly commandExecutor?: CommandToolExecutor;
-	readonly ensureTool?: EnsureTool;
+	readonly ensureTool?: ResolveCodingToolExecutable;
 	readonly additionalRegistrations?: readonly CodingToolRegistration[];
 	readonly tokenBudget?: number;
 	readonly reservedOutputTokens?: number;
@@ -90,7 +90,7 @@ export function createCodingToolsRuntimeComposition(
 					backgroundService,
 				})
 			: foregroundExecutor);
-	const executableResolver = createToolExecutableResolver(options.ensureTool);
+	const executableResolver = createManagedCodingToolExecutableResolver(options.ensureTool);
 	const registry = new InMemoryCodingToolRegistry([
 		withModelOrder(createCurrentTimeToolRegistration(), CODING_AGENT_MODEL_TOOL_ORDER.currentTime),
 		withModelOrder(createReadToolRegistration(cwd), CODING_AGENT_MODEL_TOOL_ORDER.read),

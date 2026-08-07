@@ -26,13 +26,12 @@ export {
 	type RuntimeEditPathPolicy,
 } from "./edit-path-policy.js";
 export {
-	createToolExecutableResolver,
-	type EnsureTool,
-	type EnsureToolDependencies,
-	ensureToolWithDependencies,
-	type ToolExecutableName,
-	type ToolExecutableResolver,
-} from "./executable-resolver.js";
+	createManagedCodingToolExecutableResolver,
+	ensureManagedCodingToolExecutable,
+	type ManagedCodingToolExecutableDependencies,
+	type ResolveCodingToolExecutable,
+	resolveManagedCodingToolExecutable,
+} from "./executables/index.js";
 export {
 	type CodingAgentForegroundCommandHost,
 	createCodingAgentForegroundCommandHost,

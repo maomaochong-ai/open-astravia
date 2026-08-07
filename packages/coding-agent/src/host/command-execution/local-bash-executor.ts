@@ -1,13 +1,8 @@
 import { type ChildProcess, spawn } from "node:child_process";
-import {
-	getDefaultShellCommandPrefix,
-	getShellConfig,
-	getShellEnv,
-	killProcessTree,
-	prependCommandPrefixes,
-} from "../../utils/shell.js";
 import { BashOutputCollector } from "./bash-output-collector.js";
 import type { HostBashExecutionOptions, HostBashResult } from "./contracts.js";
+import { killProcessTree } from "./process-tree.js";
+import { getDefaultShellCommandPrefix, getShellConfig, getShellEnv, prependCommandPrefixes } from "./shell-runtime.js";
 
 export function executeLocalHostBash(command: string, options?: HostBashExecutionOptions): Promise<HostBashResult> {
 	return new Promise((resolve, reject) => {

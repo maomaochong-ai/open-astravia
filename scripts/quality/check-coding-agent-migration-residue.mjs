@@ -77,6 +77,13 @@ const RUNTIME_CONTRACT_CONFIG_FILES = [
 	"packages/cli-app/package.json",
 	".github/workflows/quality.yml",
 ];
+const RETIRED_INFRASTRUCTURE_FILES = [
+	`${SOURCE_ROOT}/utils/tools-manager.ts`,
+	`${SOURCE_ROOT}/utils/shell.ts`,
+	`${ADAPTER_ROOT}/runtime-tools/executable-resolver.ts`,
+	`${TEST_ROOT}/tools-manager-resolver.test.ts`,
+];
+const LEGACY_INFRASTRUCTURE_ADAPTER_LABELS = ["legacy downloader", "legacy coding-agent runtime adapter"];
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	adapterGreenfieldFiles: 0,
@@ -97,6 +104,9 @@ export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	codingAgentGreenfieldTestFiles: 0,
 	unclassifiedProductionGreenfieldOccurrences: 0,
 	sourceCompatibilityShimReferences: 0,
+	retiredInfrastructureFiles: 0,
+	runtimeAdapterUtilityBackedgeFiles: 0,
+	legacyInfrastructureAdapterLabels: 0,
 });
 
 export const RETIRED_MIGRATION_FILES = Object.freeze([
@@ -596,6 +606,18 @@ export function collectCodingAgentMigrationResidue(files) {
 				.filter((reference) => file.text.includes(reference))
 				.map((reference) => ({ path: file.path, reference })),
 		),
+		retiredInfrastructureFiles: RETIRED_INFRASTRUCTURE_FILES.filter((path) =>
+			files.some((file) => file.path === path),
+		).map((path) => ({ path })),
+		runtimeAdapterUtilityBackedgeFiles: adapterFiles.filter((file) =>
+			collectModuleSpecifiers(file.text).some((specifier) => specifier.includes("/utils/")),
+		),
+		legacyInfrastructureAdapterLabels: sourceFiles.flatMap((file) =>
+			LEGACY_INFRASTRUCTURE_ADAPTER_LABELS.filter((label) => file.text.includes(label)).map((label) => ({
+				path: file.path,
+				label,
+			})),
+		),
 	});
 }
 
@@ -728,7 +750,7 @@ if (isDirectRun(import.meta.url)) {
 			for (const violation of violations) fail(`[coding-agent-migration-residue] ${violation}`);
 		} else {
 			ok(
-				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, SDK Session migration identities=${state.sdkSessionMigrationIdentities.length}/0, filenames=${state.sdkSessionMigrationFiles.length}/0, Desktop Runtime migration files=${state.desktopRuntimeMigrationFiles.length}/0, identities=${state.desktopRuntimeMigrationIdentities.length}/0, CLI Runtime test migration files=${state.cliRuntimeTestMigrationFiles.length}/0, identities=${state.cliRuntimeTestMigrationIdentities.length}/0, historical Oracle production references=${state.cliHistoricalOracleProductionReferences.length}/0, runtime contract missing filters=${state.runtimeContractMissingFilters.length}/0, cutover script references=${state.runtimeCutoverScriptReferences.length}/0, Runtime Core migration files=${state.runtimeCoreMigrationFiles.length}/0, product Runtime migration identities=${state.productRuntimeMigrationIdentities.length}/0, Coding Agent Greenfield test files=${state.codingAgentGreenfieldTestFiles.length}/0, unclassified production Greenfield occurrences=${state.unclassifiedProductionGreenfieldOccurrences.length}/0, source compatibility shim references=${state.sourceCompatibilityShimReferences.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
+				`[coding-agent-migration-residue] ok (retired files=${state.retiredFiles.length}/0, retired references=${state.retiredReferences.length}/0, SDK Session migration identities=${state.sdkSessionMigrationIdentities.length}/0, filenames=${state.sdkSessionMigrationFiles.length}/0, Desktop Runtime migration files=${state.desktopRuntimeMigrationFiles.length}/0, identities=${state.desktopRuntimeMigrationIdentities.length}/0, CLI Runtime test migration files=${state.cliRuntimeTestMigrationFiles.length}/0, identities=${state.cliRuntimeTestMigrationIdentities.length}/0, historical Oracle production references=${state.cliHistoricalOracleProductionReferences.length}/0, runtime contract missing filters=${state.runtimeContractMissingFilters.length}/0, cutover script references=${state.runtimeCutoverScriptReferences.length}/0, Runtime Core migration files=${state.runtimeCoreMigrationFiles.length}/0, product Runtime migration identities=${state.productRuntimeMigrationIdentities.length}/0, Coding Agent Greenfield test files=${state.codingAgentGreenfieldTestFiles.length}/0, unclassified production Greenfield occurrences=${state.unclassifiedProductionGreenfieldOccurrences.length}/0, source compatibility shim references=${state.sourceCompatibilityShimReferences.length}/0, retired infrastructure files=${state.retiredInfrastructureFiles.length}/0, Runtime Adapter utility backedges=${state.runtimeAdapterUtilityBackedgeFiles.length}/0, legacy infrastructure Adapter labels=${state.legacyInfrastructureAdapterLabels.length}/0, Adapter greenfield files=${state.adapterGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterGreenfieldFiles}, CLI greenfield files=${state.cliGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.cliGreenfieldFiles}, Composition greenfield files=${state.compositionGreenfieldFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionGreenfieldFiles}, Adapter->Composition edge files=${state.adapterCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.adapterCompositionEdgeFiles}, Composition->public API edge files=${state.compositionPublicApiEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.compositionPublicApiEdgeFiles}, Extension Host->Composition edge files=${state.hostExtensionCompositionEdgeFiles.length}/${MIGRATION_RESIDUE_LIMITS.hostExtensionCompositionEdgeFiles})`,
 			);
 		}
 	}

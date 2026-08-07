@@ -2,6 +2,7 @@
 
 ### Breaking Changes
 
+- **收口宿主可执行文件适配器 API**：`@vetta/coding-agent/host` 以 `createManagedCodingToolExecutableResolver`、`ResolveCodingToolExecutable`、`ManagedCodingToolExecutableDependencies` 和 `resolveManagedCodingToolExecutable` 替代旧的 `createToolExecutableResolver`、`EnsureTool`、`EnsureToolDependencies` 与 `ensureToolWithDependencies`，并删除与 `@vetta/runtime-tools` 重复的 `ToolExecutableName` / `ToolExecutableResolver` 类型。`fd`/`rg` 的本地优先、PATH 查找、离线与 Termux 策略、下载和失败降级行为不变。
 - **移除 Extension setup 的旧 SessionManager 源码兼容 shim**：`ExtensionSessionWriter` 不再提供恒为 `true` 的 `isPersisted()`，`ExtensionSessionSetup` 改为直接的函数合同，不再通过双变签名兼容以具体 `SessionManager` 标注参数的旧回调。setup 仍在原生 Conversation seed 创建后执行，已有写入、分支、标签和读取能力及持久化时序不变。
 - **收口 Extension 宿主兼容性合同**：`@vetta/coding-agent/bootstrap` 将 Bootstrap 的未解析结果改为 `extensionRequirements`，宿主通过 `resolveCodingAgentExtensionCompatibility()` 解析为带 `compatible` 的最终评估；移除误导性的 Legacy/Greenfield 类型、函数、常量和 `requiresLegacyRuntime` 字段，不改变 Extension 功能、未知事件拒绝策略或 CLI/RPC 错误协议。
 - **收口包根公共面**：`@vetta/coding-agent` 现在只暴露稳定 Extension 合同及扩展所需的消息投影、压缩序列化和主题辅助 API；SDK、RPC、Host、Settings、Profile、Resource 等能力继续保留，但必须从各自显式公共子路径导入。此变更只调整模块边界，不改变会话执行、工具、资源或协议行为。
@@ -50,6 +51,7 @@
 
 ### Changed
 
+- **宿主基础设施适配器生产化**：工具版本查询、下载重试、归档安装和受管可执行文件解析按职责收口到 `adapters/runtime-tools/executables`，Shell 发现、环境、输出解码和进程树控制收口到 `host/command-execution`；删除旧 `utils/tools-manager.ts`、`utils/shell.ts` 和只做转发的 Resolver Adapter。GitHub Release 响应改用 TypeBox 校验，新增旧基础设施文件、Adapter utility 反向依赖和迁移标签三项零残留门禁。
 - **生产 Runtime 迁移身份收口**：内部诊断、日志和注释不再使用 Greenfield 迁移称谓，剩余 7 个 Coding Agent `greenfield-*.test.ts` 按职责重命名；保留既有 CLI RuntimeHost 判别值、RPC profile、SDK 错误码和历史迁移结果等已发布协议字面值。迁移残留门禁新增源码兼容 shim、迁移测试文件和非协议 Greenfield 文本三项零基线。
 - **SDK Session Host 组合边界拆分**：将原 603 行公共 SDK 产品宿主适配器拆为薄组合入口、公共 Tool 校验、初始模型选择、能力宿主和合同模块；旧单文件加入退役与模块行数守卫。TypeBox 继续只校验 SDK Tool 外部 schema/input，模型、资源、MCP、Extension、存储、错误码和 CLI/Desktop/IM 可观察行为保持不变。
 - **Context Runtime 适配边界拆分**：将原 725 行 Session Context Runtime 拆为中性编排器、模型调用投影、Conversation 压缩投影和 Prefire 生命周期模块；旧文件与迁移期类名退役，并新增模块行数和旧路径回流守卫。压缩阈值、摘要、溢出恢复、microcompact、Extension Hook、Memory Rollover、Prefire 和 CLI/Desktop/IM 行为保持不变。

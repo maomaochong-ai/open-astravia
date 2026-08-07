@@ -13,21 +13,21 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-	createToolExecutableResolver,
-	type EnsureToolDependencies,
-	ensureToolWithDependencies,
-} from "../src/adapters/runtime-tools/executable-resolver.js";
-import {
-	createToolDownloadPlan,
-	downloadFileWithRetry,
-	fetchLatestVersion,
-	installToolArchive,
+	type CodingToolArchiveOperations,
+	type CodingToolHttpResponse,
+	createCodingToolDownloadPlan,
+	createManagedCodingToolExecutableResolver,
+	downloadCodingToolArchiveWithRetry,
+	fetchLatestCodingToolVersion,
+	installCodingToolArchive,
+	type ManagedCodingToolExecutableDependencies,
 	parseLatestReleaseVersion,
-	type ToolArchiveOperations,
-	type ToolHttpResponse,
-} from "../src/utils/tools-manager.js";
+	resolveManagedCodingToolExecutable,
+} from "../src/adapters/runtime-tools/executables/index.js";
 
-function createDependencies(overrides: Partial<EnsureToolDependencies> = {}): EnsureToolDependencies {
+function createDependencies(
+	overrides: Partial<ManagedCodingToolExecutableDependencies> = {},
+): ManagedCodingToolExecutableDependencies {
 	return {
 		getPath: () => null,
 		isOffline: () => false,
@@ -37,10 +37,10 @@ function createDependencies(overrides: Partial<EnsureToolDependencies> = {}): En
 	};
 }
 
-describe("legacy tool executable resolver adapter", () => {
+describe("managed tool executable resolver adapter", () => {
 	it("delegates resolution silently and preserves resolved paths", async () => {
 		const calls: Array<{ readonly tool: "fd" | "rg"; readonly silent: boolean | undefined }> = [];
-		const resolver = createToolExecutableResolver(async (tool, silent) => {
+		const resolver = createManagedCodingToolExecutableResolver(async (tool, silent) => {
 			calls.push({ tool, silent });
 			return `${tool}-path`;
 		});
@@ -54,13 +54,13 @@ describe("legacy tool executable resolver adapter", () => {
 	});
 
 	it("preserves unavailable tools as undefined", async () => {
-		const resolver = createToolExecutableResolver(async () => undefined);
+		const resolver = createManagedCodingToolExecutableResolver(async () => undefined);
 
 		await expect(resolver.resolve("rg")).resolves.toBeUndefined();
 	});
 });
 
-describe("ensureTool host behavior", () => {
+describe("managed executable host behavior", () => {
 	it("returns an existing executable without downloading", async () => {
 		let downloads = 0;
 		const dependencies = createDependencies({
@@ -71,7 +71,7 @@ describe("ensureTool host behavior", () => {
 			},
 		});
 
-		await expect(ensureToolWithDependencies("rg", true, dependencies)).resolves.toBe("/managed/rg");
+		await expect(resolveManagedCodingToolExecutable("rg", true, dependencies)).resolves.toBe("/managed/rg");
 		expect(downloads).toBe(0);
 	});
 
@@ -85,7 +85,7 @@ describe("ensureTool host behavior", () => {
 			},
 		});
 
-		await expect(ensureToolWithDependencies("rg", true, dependencies)).resolves.toBeUndefined();
+		await expect(resolveManagedCodingToolExecutable("rg", true, dependencies)).resolves.toBeUndefined();
 		expect(downloads).toBe(0);
 	});
 
@@ -99,7 +99,7 @@ describe("ensureTool host behavior", () => {
 			},
 		});
 
-		await expect(ensureToolWithDependencies("fd", true, dependencies)).resolves.toBeUndefined();
+		await expect(resolveManagedCodingToolExecutable("fd", true, dependencies)).resolves.toBeUndefined();
 		expect(downloads).toBe(0);
 	});
 
@@ -107,14 +107,14 @@ describe("ensureTool host behavior", () => {
 		const dependencies = createDependencies({
 			download: async (tool) => `/downloaded/${tool}`,
 		});
-		await expect(ensureToolWithDependencies("fd", true, dependencies)).resolves.toBe("/downloaded/fd");
+		await expect(resolveManagedCodingToolExecutable("fd", true, dependencies)).resolves.toBe("/downloaded/fd");
 
 		const failedDependencies = createDependencies({
 			download: async () => {
 				throw new Error("network unavailable");
 			},
 		});
-		await expect(ensureToolWithDependencies("rg", true, failedDependencies)).resolves.toBeUndefined();
+		await expect(resolveManagedCodingToolExecutable("rg", true, failedDependencies)).resolves.toBeUndefined();
 	});
 });
 
@@ -127,7 +127,7 @@ describe("tool download plans", () => {
 	] as const)(
 		"creates a stable %s %s %s/%s plan",
 		(tool, version, platform, architecture, assetName, binaryFileName) => {
-			const plan = createToolDownloadPlan({
+			const plan = createCodingToolDownloadPlan({
 				tool,
 				version,
 				platform,
@@ -153,7 +153,7 @@ describe("tool download plans", () => {
 
 	it("returns no plan for unsupported platforms", () => {
 		expect(
-			createToolDownloadPlan({
+			createCodingToolDownloadPlan({
 				tool: "rg",
 				version: "14.1.0",
 				platform: "freebsd",
@@ -166,7 +166,7 @@ describe("tool download plans", () => {
 
 describe("tool archive installation", () => {
 	it("finds nested binaries, makes Unix binaries executable, and cleans up", async () => {
-		const plan = createToolDownloadPlan({
+		const plan = createCodingToolDownloadPlan({
 			tool: "fd",
 			version: "1.0.0",
 			platform: "darwin",
@@ -178,7 +178,7 @@ describe("tool archive installation", () => {
 		const extractDirectory = "C:/vetta/extract-fd";
 		const nestedBinary = join(extractDirectory, "fd-v1.0.0", plan.binaryFileName);
 		const calls: string[] = [];
-		const operations: ToolArchiveOperations = {
+		const operations: CodingToolArchiveOperations = {
 			extractTarGz: (archivePath, directory, assetName) => {
 				calls.push(`tar:${archivePath}:${directory}:${assetName}`);
 			},
@@ -194,7 +194,7 @@ describe("tool archive installation", () => {
 		};
 
 		await expect(
-			installToolArchive({
+			installCodingToolArchive({
 				plan,
 				extractDirectory,
 				platform: "darwin",
@@ -211,7 +211,7 @@ describe("tool archive installation", () => {
 	});
 
 	it("uses zip archives on Windows without changing executable permissions", async () => {
-		const plan = createToolDownloadPlan({
+		const plan = createCodingToolDownloadPlan({
 			tool: "rg",
 			version: "14.1.0",
 			platform: "win32",
@@ -223,7 +223,7 @@ describe("tool archive installation", () => {
 		const extractDirectory = "C:/vetta/extract-rg";
 		const extractedBinary = join(extractDirectory, plan.binaryFileName);
 		const calls: string[] = [];
-		const operations: ToolArchiveOperations = {
+		const operations: CodingToolArchiveOperations = {
 			extractTarGz: () => {
 				throw new Error("tar should not be used");
 			},
@@ -243,7 +243,7 @@ describe("tool archive installation", () => {
 		};
 
 		await expect(
-			installToolArchive({
+			installCodingToolArchive({
 				plan,
 				extractDirectory,
 				platform: "win32",
@@ -259,7 +259,7 @@ describe("tool archive installation", () => {
 	});
 
 	it("cleans up the archive and extraction directory when the binary is missing", async () => {
-		const plan = createToolDownloadPlan({
+		const plan = createCodingToolDownloadPlan({
 			tool: "rg",
 			version: "14.1.0",
 			platform: "linux",
@@ -270,7 +270,7 @@ describe("tool archive installation", () => {
 
 		const extractDirectory = "C:/vetta/extract-rg";
 		const cleanup: string[] = [];
-		const operations: ToolArchiveOperations = {
+		const operations: CodingToolArchiveOperations = {
 			extractTarGz: () => {},
 			extractZip: async () => {},
 			fileExists: () => false,
@@ -286,7 +286,7 @@ describe("tool archive installation", () => {
 		};
 
 		await expect(
-			installToolArchive({
+			installCodingToolArchive({
 				plan,
 				extractDirectory,
 				platform: "linux",
@@ -306,7 +306,7 @@ describe("tool network boundaries", () => {
 
 	it("fetches and parses the latest release response", async () => {
 		let requestedUrl = "";
-		const request = async (url: string): Promise<ToolHttpResponse> => {
+		const request = async (url: string): Promise<CodingToolHttpResponse> => {
 			requestedUrl = url;
 			return {
 				ok: true,
@@ -316,13 +316,13 @@ describe("tool network boundaries", () => {
 			};
 		};
 
-		await expect(fetchLatestVersion("sharkdp/fd", request)).resolves.toBe("1.2.3");
+		await expect(fetchLatestCodingToolVersion("sharkdp/fd", request)).resolves.toBe("1.2.3");
 		expect(requestedUrl).toBe("https://api.github.com/repos/sharkdp/fd/releases/latest");
 	});
 
 	it("does not retry HTTP errors from the release endpoint", async () => {
 		let requests = 0;
-		const request = async (): Promise<ToolHttpResponse> => {
+		const request = async (): Promise<CodingToolHttpResponse> => {
 			requests += 1;
 			return {
 				ok: false,
@@ -332,7 +332,9 @@ describe("tool network boundaries", () => {
 			};
 		};
 
-		await expect(fetchLatestVersion("BurntSushi/ripgrep", request)).rejects.toThrow("GitHub API error: 503");
+		await expect(fetchLatestCodingToolVersion("BurntSushi/ripgrep", request)).rejects.toThrow(
+			"GitHub API error: 503",
+		);
 		expect(requests).toBe(1);
 	});
 
@@ -340,7 +342,7 @@ describe("tool network boundaries", () => {
 		const directory = mkdtempSync(join(tmpdir(), "coding-agent-download-"));
 		const destination = join(directory, "tool.archive");
 		let requests = 0;
-		const request = async (): Promise<ToolHttpResponse> => {
+		const request = async (): Promise<CodingToolHttpResponse> => {
 			requests += 1;
 			if (requests < 3) throw new TypeError("temporary network failure");
 			return {
@@ -352,7 +354,7 @@ describe("tool network boundaries", () => {
 		};
 
 		try {
-			await downloadFileWithRetry("https://example.test/tool", destination, request, {
+			await downloadCodingToolArchiveWithRetry("https://example.test/tool", destination, request, {
 				retryDelayMs: 0,
 			});
 			expect(requests).toBe(3);
@@ -364,7 +366,7 @@ describe("tool network boundaries", () => {
 
 	it("does not retry non-success download responses", async () => {
 		let requests = 0;
-		const request = async (): Promise<ToolHttpResponse> => {
+		const request = async (): Promise<CodingToolHttpResponse> => {
 			requests += 1;
 			return {
 				ok: false,
@@ -375,7 +377,7 @@ describe("tool network boundaries", () => {
 		};
 
 		await expect(
-			downloadFileWithRetry("https://example.test/missing", "C:/missing.archive", request, {
+			downloadCodingToolArchiveWithRetry("https://example.test/missing", "C:/missing.archive", request, {
 				retryDelayMs: 0,
 			}),
 		).rejects.toThrow("Failed to download: 404");
@@ -391,7 +393,7 @@ describe("tool network boundaries", () => {
 		mkdirSync(sourceDirectory, { recursive: true });
 		mkdirSync(extractDirectory, { recursive: true });
 
-		const plan = createToolDownloadPlan({
+		const plan = createCodingToolDownloadPlan({
 			tool: "fd",
 			version: "1.0.0",
 			platform: "linux",
@@ -413,7 +415,7 @@ describe("tool network boundaries", () => {
 			expect(archiveResult.status, archiveResult.stderr).toBe(0);
 
 			await expect(
-				installToolArchive({
+				installCodingToolArchive({
 					plan,
 					extractDirectory,
 					platform: "linux",

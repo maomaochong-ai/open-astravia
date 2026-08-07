@@ -2,13 +2,13 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { CONFIG_DIR_NAME, getAgentDir, getSceneDir, getUserSkillsDir } from "../../config.js";
+import { killProcessTree } from "../../host/command-execution/process-tree.js";
 import {
 	getDefaultShellCommandPrefix,
 	getShellConfig,
 	getShellEnv,
-	killProcessTree,
 	prependCommandPrefixes,
-} from "../../utils/shell.js";
+} from "../../host/command-execution/shell-runtime.js";
 
 export interface RuntimeForegroundCommandOperations {
 	exec(

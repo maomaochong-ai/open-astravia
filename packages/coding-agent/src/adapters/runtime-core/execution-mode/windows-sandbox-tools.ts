@@ -6,7 +6,7 @@ import { delimiter, dirname, join, resolve as resolvePath } from "node:path";
 import { fileURLToPath } from "node:url";
 import { getSandboxShellGrant } from "@vetta/runtime-core/sandbox";
 import type { CodingToolRegistration, ForegroundCommandOperations } from "@vetta/runtime-tools/coding";
-import { getDefaultShellCommandPrefix, prependCommandPrefixes } from "../../../utils/shell.js";
+import { getDefaultShellCommandPrefix, prependCommandPrefixes } from "../../../host/command-execution/shell-runtime.js";
 import { createSandboxToolRegistrations, type SandboxRuntimeToolOptions } from "./sandbox-tool-utils.js";
 import { buildWindowsSandboxPolicy } from "./windows-sandbox-policy.js";
 

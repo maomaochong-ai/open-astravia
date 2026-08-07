@@ -56,6 +56,29 @@ describe("Coding Agent migration residue gate", () => {
 		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([]);
 	});
 
+	it("rejects retired infrastructure utilities and Adapter backedges", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/utils/tools-manager.ts",
+				text: "export function ensureTool() {}",
+			},
+			{
+				path: "packages/coding-agent/src/adapters/runtime-tools/executable-resolver.ts",
+				text: [
+					'import { getShellConfig } from "../../utils/shell.js";',
+					"// Adapt the legacy downloader.",
+					"// Kept with the legacy coding-agent runtime adapter.",
+				].join("\n"),
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"retiredInfrastructureFiles: 2 exceeds migration residue limit 0",
+			"runtimeAdapterUtilityBackedgeFiles: 1 exceeds migration residue limit 0",
+			"legacyInfrastructureAdapterLabels: 2 exceeds migration residue limit 0",
+		]);
+	});
+
 	it("rejects retired Extension compatibility migration contracts", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{
