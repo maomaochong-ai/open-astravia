@@ -10,14 +10,12 @@ import {
 	selectCodingToolRegistrations,
 } from "@vetta/runtime-tools/coding";
 import type { RegisteredTool } from "../../extensions/index.js";
+import { resolveToolCategory } from "../../profiles/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import type {
 	CodingAgentGreenfieldExtensionRunnerPort,
 	CodingAgentGreenfieldExtensionToolSource,
 } from "./greenfield-extension-contract.js";
-import {
-	type CodingAgentRuntimeToolRegistration,
-	resolveCodingAgentRuntimeToolCategory,
-} from "./greenfield-tool-adapter.js";
 
 export interface CodingAgentGreenfieldExtensionToolSurface {
 	readonly frame: ModelCallFrame;
@@ -189,7 +187,7 @@ export class CodingAgentGreenfieldExtensionToolRuntime {
 			},
 			scopeUse: definition.scope_use ?? CODING_TOOL_SCOPES,
 			requires: definition.requires,
-			category: resolveCodingAgentRuntimeToolCategory(definition.category),
+			category: resolveToolCategory(definition.category),
 		};
 	}
 }

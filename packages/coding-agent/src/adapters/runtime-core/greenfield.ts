@@ -202,12 +202,6 @@ export {
 	createCodingAgentTodoRuntimeToolRegistration,
 } from "./greenfield-todo-runtime.js";
 export {
-	type AdaptCodingAgentToolRegistrationOptions,
-	adaptCodingAgentToolRegistration,
-	type CodingAgentRuntimeToolRegistration,
-	type LegacyCodingAgentTool,
-} from "./greenfield-tool-adapter.js";
-export {
 	type CodingAgentGreenfieldTurnCommandHost,
 	CodingAgentGreenfieldTurnExecutor,
 	type CodingAgentGreenfieldTurnExecutorOptions,

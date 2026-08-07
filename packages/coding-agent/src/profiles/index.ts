@@ -13,3 +13,4 @@ export {
 export { getModePrompt, MODE_PROMPTS, type ModePromptInfo } from "./mode-prompt.js";
 export { DEFAULT_PERSONA_ID, getPersonaPrompt, PERSONAS, type Persona } from "./personas.js";
 export { matchesAgentMode, resolveActiveToolNames } from "./tool-activation.js";
+export { resolveToolCategory } from "./tool-category.js";

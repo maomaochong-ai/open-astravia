@@ -13,6 +13,7 @@ const steps = [
 	["scripts/quality/check-package-boundaries.mjs"],
 	["scripts/quality/check-legacy-execution-retirement.mjs"],
 	["scripts/quality/check-coding-agent-rewrite-progress.mjs"],
+	["scripts/quality/check-coding-agent-migration-residue.mjs"],
 	["scripts/quality/check-coding-agent-composition-contract.mjs"],
 	["scripts/quality/check-coding-agent-runtime-port-ownership.mjs"],
 	["scripts/quality/check-runtime-coding-agent-independence.mjs"],

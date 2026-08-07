@@ -13,7 +13,6 @@ import type {
 	CodingAgentMemoryController,
 	CodingAgentMemoryRolloverRuntime,
 	CodingAgentPluginMcpRuntime,
-	CodingAgentRuntimeToolRegistration,
 	CodingAgentTodoRuntime,
 } from "../../src/adapters/runtime-core/greenfield.js";
 import type { CodingAgentGreenfieldConversationContextOverlay } from "../../src/adapters/runtime-core/greenfield-conversation-context-overlay.js";
@@ -29,6 +28,7 @@ import {
 } from "../../src/composition/greenfield-session-resource-lifecycle-assembly.js";
 import type { GreenfieldTurnCapabilitySessionAssembly } from "../../src/composition/greenfield-turn-capability-session-assembly.js";
 import type { CodingToolsRuntimeComposition } from "../../src/composition/runtime-tools-composition.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
 
 describe("Greenfield Session Resource Lifecycle assembly", () => {
 	it("atomically rebinds session resources and retries only failed cleanup phases", async () => {

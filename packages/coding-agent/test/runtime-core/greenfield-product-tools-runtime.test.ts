@@ -31,8 +31,8 @@ import {
 	createCodingAgentInvokeSkillRuntimeFeature,
 } from "../../src/adapters/runtime-core/greenfield.js";
 import type { CodingAgentPromptResourceSource } from "../../src/adapters/runtime-core/greenfield-prompt-runtime.js";
-import type { CodingAgentRuntimeToolRegistration } from "../../src/adapters/runtime-core/greenfield-tool-adapter.js";
 import type { Skill } from "../../src/resources/skills/index.js";
+import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
 
 describe("Greenfield product tools runtime", () => {
 	const temporaryDirectories: string[] = [];

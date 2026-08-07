@@ -12,6 +12,7 @@ import {
 	RenderPdfPageProcessAbortedError,
 	selectCodingToolRegistrations,
 } from "@vetta/runtime-tools/coding";
+import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
 import {
 	CodingAgentCommandProcessAbortedError,
 	createCodingAgentCommandProcessHost,
@@ -20,7 +21,6 @@ import {
 } from "../runtime-tools/index.js";
 import { createCodingAgentDesktopCommandHost } from "./greenfield-desktop-command-host.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "./greenfield-model-tool-order.js";
-import type { CodingAgentRuntimeToolRegistration } from "./greenfield-tool-adapter.js";
 
 export interface CodingAgentGreenfieldProductToolOptions {
 	readonly cwd: string;

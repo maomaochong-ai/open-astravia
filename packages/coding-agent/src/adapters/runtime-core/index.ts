@@ -143,11 +143,6 @@ export {
 	createCodingAgentTodoRuntimeToolRegistration,
 } from "./greenfield-todo-runtime.js";
 export {
-	adaptCodingAgentToolRegistration,
-	type CodingAgentRuntimeToolRegistration,
-	type LegacyCodingAgentTool,
-} from "./greenfield-tool-adapter.js";
-export {
 	CodingAgentSharedModelController,
 	type CodingAgentSharedModelSource,
 } from "./shared-model-controller.js";
