@@ -182,6 +182,8 @@ export interface PromptOptions {
 	 * model as content; consumed in the input pipeline:
 	 * - `{ pluginInstructions: string[] }` — hidden instructions contributed by
 	 *   active plugins for this turn.
+	 * - `{ pluginPromptContexts: PluginPromptContext[] }` — versioned structured
+	 *   application state attached by plugins and projected model-side once.
 	 * - `{ knowledgeMode: true }` — hard isolation: exposes kb-read tools and
 	 *   injects a hidden “prefer knowledge base” instruction; without it those
 	 *   tools are stripped for this turn (except kb-processing scenario).

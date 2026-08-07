@@ -217,7 +217,12 @@ export type {
 	PluginMediaTransferResponse,
 } from "./media.js";
 export { PluginMediaError } from "./media.js";
-export type { PluginPromptAttachment } from "./prompt-attachment.js";
+export type {
+	PluginPromptAttachment,
+	PluginPromptContext,
+	PluginPromptContextJsonValue,
+} from "./prompt-attachment.js";
+export { definePluginPromptContext } from "./prompt-attachment.js";
 export type {
 	PluginNetworkApi,
 	PluginNetworkBody,

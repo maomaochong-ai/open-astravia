@@ -47,6 +47,7 @@
 
 ### Added
 
+- Added a structured, persistent input-bar context for the current canvas selection so the agent receives selected node IDs, semantic v4 node data, adjacent connections, and safe asset summaries without canvas layout, jobs, timestamps, previews, or private storage IDs.
 - Added input-bound, opt-in prompt optimization through host-managed AI models with reusable node-specific profiles; successful results replace the effective prompt while preserving the structured original.
 - Added host media-provider discovery and image generation through the plugin media capability, with generated artifacts persisted as visible workspace output files.
 - Added structured multimodal prompt documents with compact inline media tokens and mixed `@` prompt references, preserving editable local text while carrying referenced media into generation model compatibility checks.

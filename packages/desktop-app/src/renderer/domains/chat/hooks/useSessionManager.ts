@@ -68,7 +68,7 @@ import {
 	removeQueuedMessageAtom,
 } from "@shared/store/message-queue-atoms";
 import { useNavigate } from "@tanstack/react-router";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { ConversationScenario, PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import type { PromptAttachmentRef, PromptRequest } from "../../../../../../runtime-core/src/index.js";
@@ -1237,6 +1237,7 @@ export function useSessionManager(): SessionManagerResult {
 			const pluginStore = getDefaultStore();
 			const usedInputActions: Parameters<typeof recordInputActionsUsed>[0] = [];
 			const pluginInstructions: string[] = [];
+			const pluginPromptContexts: Array<PluginPromptContext & { pluginId: string }> = [];
 			const activeActionIds = pluginStore.get(activeInputActionIdsAtom);
 			if (activeActionIds.size > 0) {
 				for (const action of pluginStore.get(pluginInputActionsAtom)) {
@@ -1266,7 +1267,8 @@ export function useSessionManager(): SessionManagerResult {
 					actionKind: "builtin",
 				});
 			}
-			// Plugin-owned attachment guidance is opaque to the host and one-shot.
+			// Plugin-owned attachment data stays structured until the coding-agent
+			// input boundary. Legacy metadata/instructions remain supported.
 			const promptAttachment = pluginStore.get(promptAttachmentAtom);
 			if (promptAttachment) {
 				if (promptAttachment.metadata) {
@@ -1277,10 +1279,21 @@ export function useSessionManager(): SessionManagerResult {
 						(instruction) => typeof instruction === "string" && instruction.trim().length > 0,
 					),
 				);
-				pluginStore.set(promptAttachmentAtom, null);
+				if (promptAttachment.context) {
+					pluginPromptContexts.push({
+						pluginId: promptAttachment.ownerPluginId,
+						...structuredClone(promptAttachment.context),
+					});
+				}
+				if (promptAttachment.lifecycle !== "sticky") {
+					pluginStore.set(promptAttachmentAtom, null);
+				}
 			}
 			if (pluginInstructions.length > 0) {
 				promptReq.metadata = { ...promptReq.metadata, pluginInstructions };
+			}
+			if (pluginPromptContexts.length > 0) {
+				promptReq.metadata = { ...promptReq.metadata, pluginPromptContexts };
 			}
 			recordInputActionsUsed(usedInputActions);
 			// streaming 中：把组装好的完整 promptReq 快照入队，等当前回合自然 agent_end 后

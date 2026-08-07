@@ -342,9 +342,9 @@ export interface RegisteredTurnCard {
 export const pluginTurnCardsAtom = atom<RegisteredTurnCard[]>([]);
 
 /**
- * Plugin-owned one-shot context for the next outgoing prompt. The host renders
- * its label/icon in the input bar, merges metadata and hidden instructions at
- * send time, then clears it. `null` when nothing is attached.
+ * Plugin-owned context for outgoing prompts. The host renders its label/icon,
+ * snapshots structured context at send time, and keeps sticky attachments until
+ * explicitly cleared. `null` when nothing is attached.
  */
 export interface RegisteredPromptAttachment extends PluginPromptAttachment {
 	ownerPluginId: string;

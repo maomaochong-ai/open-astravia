@@ -25,6 +25,7 @@ import type { TodoStore } from "../todo-store.js";
 import type { BashController } from "./bash-controller.js";
 import type { CompactionController } from "./compaction-controller.js";
 import { normalizeUserImages } from "./normalize-images.js";
+import { buildPluginPromptContextMessage, parsePluginPromptContexts } from "./plugin-prompt-context.js";
 import type { QueueController } from "./queue-controller.js";
 import type { RetryController } from "./retry-controller.js";
 import type { RuntimeManager } from "./runtime-manager.js";
@@ -166,6 +167,7 @@ export class InputPipeline {
 		if (expandPromptTemplates) {
 			expandedText = expandPromptTemplate(expandedText, [...this.resourceLoader.getPrompts().prompts]);
 		}
+		const pluginPromptContexts = parsePluginPromptContexts(options?.metadata?.pluginPromptContexts);
 
 		// If streaming, queue via steer() or followUp() based on option
 		if (this.ctx.agent.state.isStreaming) {
@@ -179,7 +181,9 @@ export class InputPipeline {
 			const attachmentContext = options?.attachments?.length
 				? buildPromptAttachmentContext(options.attachments)
 				: undefined;
-			const injection = [...hookContexts, attachmentContext, skillInjection, sceneInjection]
+			const pluginPromptContext =
+				pluginPromptContexts.length > 0 ? buildPluginPromptContextMessage(pluginPromptContexts) : undefined;
+			const injection = [...hookContexts, attachmentContext, pluginPromptContext, skillInjection, sceneInjection]
 				.filter(Boolean)
 				.join("\n\n");
 			const textForStream = injection ? `${injection}\n\n${expandedText}` : expandedText;
@@ -252,6 +256,16 @@ export class InputPipeline {
 				customType: "plugin_prompt_instruction",
 				content: instruction.trim(),
 				display: false,
+				timestamp: Date.now(),
+			});
+		}
+		if (pluginPromptContexts.length > 0) {
+			messages.push({
+				role: "custom",
+				customType: "plugin_prompt_context",
+				content: buildPluginPromptContextMessage(pluginPromptContexts),
+				display: false,
+				details: { contexts: pluginPromptContexts },
 				timestamp: Date.now(),
 			});
 		}

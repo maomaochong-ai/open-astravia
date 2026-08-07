@@ -1,4 +1,4 @@
-import type { PluginRegisterShortcutScope } from "@vetta-org/plugin-sdk";
+import type { PluginPromptAttachment, PluginRegisterShortcutScope } from "@vetta-org/plugin-sdk";
 
 /**
  * Captured in activate for React components (same pattern as media-viewer notify).
@@ -6,6 +6,7 @@ import type { PluginRegisterShortcutScope } from "@vetta-org/plugin-sdk";
  */
 let registerShortcutScope: PluginRegisterShortcutScope | null = null;
 let setActivityPanelWidth: ((width: number | "max") => void) | null = null;
+let setPromptAttachment: ((attachment: PluginPromptAttachment | null) => void) | null = null;
 
 export function setRegisterShortcutScope(register: PluginRegisterShortcutScope | null): void {
 	registerShortcutScope = register;
@@ -21,4 +22,14 @@ export function setActivityPanelWidthController(controller: ((width: number | "m
 
 export function maximizeActivityPanel(): void {
 	setActivityPanelWidth?.("max");
+}
+
+export function setPromptAttachmentController(
+	controller: ((attachment: PluginPromptAttachment | null) => void) | null,
+): void {
+	setPromptAttachment = controller;
+}
+
+export function publishPromptAttachment(attachment: PluginPromptAttachment | null): void {
+	setPromptAttachment?.(attachment);
 }

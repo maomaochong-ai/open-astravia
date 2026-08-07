@@ -1,5 +1,9 @@
-import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+	useActiveConversation,
+	usePromptAttachment,
+	useTranslation,
+} from "@vetta-org/plugin-sdk";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
 import type { ImportedContentAsset, ImportedContentReference } from "../generation/types";
@@ -10,7 +14,12 @@ import {
 	notifyContentCreationError,
 } from "../plugin/runtime";
 import { GraphWorkspace } from "../canvas/GraphWorkspace";
-import { maximizeActivityPanel } from "../plugin/plugin-ui";
+import { maximizeActivityPanel, publishPromptAttachment } from "../plugin/plugin-ui";
+import {
+	CONTENT_SELECTION_PROMPT_ATTACHMENT_ID,
+	createContentSelectionPromptAttachment,
+	isCurrentContentSelectionPromptAttachment,
+} from "../plugin/selection-prompt-context";
 
 export function ContentCreationPanel() {
 	const { cwd } = useActiveConversation();
@@ -18,17 +27,76 @@ export function ContentCreationPanel() {
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [assetPreviewUrls, setAssetPreviewUrls] = useState<ReadonlyMap<string, string>>(new Map());
+	const [selectedNodeIds, setSelectedNodeIds] = useState<readonly string[]>([]);
+	const promptAttachment = usePromptAttachment();
+	const publishedSelectionRef = useRef<string | null>(null);
+	const dismissedSelectionRef = useRef<string | null>(null);
+	const previousSelectionRef = useRef("");
 	const workspace = getContentCreationWorkspace();
 	const generation = getContentGenerationService();
 	const assetPreviewResolver = getContentAssetPreviewResolver();
 	const models = useMemo(() => generation.listModels(), [generation]);
+	const selectionSignature = useMemo(
+		() => `${project?.projectId ?? ""}\u0000${[...selectedNodeIds].sort().join("\u0001")}`,
+		[project?.projectId, selectedNodeIds],
+	);
+	const selectionAttachment = useMemo(() => {
+		if (!project || selectedNodeIds.length === 0) return null;
+		const selectedNodes = project.graph.nodes.filter((node) => selectedNodeIds.includes(node.id));
+		if (selectedNodes.length === 0) return null;
+		const label =
+			selectedNodes.length === 1
+				? selectedNodes[0].name?.trim() || t(`node.kind.${selectedNodes[0].kind}`)
+				: t("selection.count", { count: selectedNodes.length });
+		return createContentSelectionPromptAttachment(project, selectedNodeIds, label);
+	}, [project, selectedNodeIds, t]);
 
 	// Match the design canvas: maximize on each tab activation, then leave resizing to the user.
 	useEffect(() => maximizeActivityPanel(), []);
 
 	useEffect(() => {
+		const selectionChanged = previousSelectionRef.current !== selectionSignature;
+		if (selectionChanged) {
+			previousSelectionRef.current = selectionSignature;
+			publishedSelectionRef.current = null;
+			dismissedSelectionRef.current = null;
+		}
+		if (!selectionAttachment) {
+			if (promptAttachment?.id === CONTENT_SELECTION_PROMPT_ATTACHMENT_ID) {
+				publishPromptAttachment(null);
+			}
+			publishedSelectionRef.current = null;
+			return;
+		}
+		if (promptAttachment && promptAttachment.id !== CONTENT_SELECTION_PROMPT_ATTACHMENT_ID) {
+			publishedSelectionRef.current = null;
+			return;
+		}
+		if (!promptAttachment && publishedSelectionRef.current === selectionSignature) {
+			dismissedSelectionRef.current = selectionSignature;
+			publishedSelectionRef.current = null;
+			return;
+		}
+		if (dismissedSelectionRef.current === selectionSignature) return;
+		if (isCurrentContentSelectionPromptAttachment(promptAttachment, selectionAttachment)) {
+			publishedSelectionRef.current = selectionSignature;
+			return;
+		}
+		publishPromptAttachment(selectionAttachment);
+		publishedSelectionRef.current = selectionSignature;
+	}, [promptAttachment, selectionAttachment, selectionSignature]);
+
+	useEffect(
+		() => () => {
+			publishPromptAttachment(null);
+		},
+		[],
+	);
+
+	useEffect(() => {
 		let active = true;
 		setProject(workspace.getSnapshot(cwd));
+		setSelectedNodeIds([]);
 		setError(null);
 		const unsubscribe = workspace.subscribe(cwd, () => {
 			if (active) setProject(workspace.getSnapshot(cwd));
@@ -139,6 +207,7 @@ export function ContentCreationPanel() {
 					onRunNode={runNode}
 					onImportAssets={importAssets}
 					onImportReferences={importReferences}
+					onSelectedNodeIdsChange={setSelectedNodeIds}
 				/>
 			</main>
 		</div>

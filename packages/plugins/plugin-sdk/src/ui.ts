@@ -369,9 +369,10 @@ export interface PluginUiApi {
 	 */
 	setActivityPanelWidth(width: number | "max"): void;
 	/**
-	 * Bind or clear plugin-owned one-shot context for the next outgoing prompt.
-	 * The host renders its label/icon, merges metadata and hidden instructions,
-	 * then clears it after send or when the user closes the capsule.
+	 * Bind or clear plugin-owned context for outgoing prompts. The host renders
+	 * its label/icon and carries a structured `context` as a versioned snapshot.
+	 * Attachments default to one-shot; `lifecycle: "sticky"` remains until the
+	 * plugin or user clears the capsule.
 	 */
 	setPromptAttachment(attachment: PluginPromptAttachment | null): void;
 	/**

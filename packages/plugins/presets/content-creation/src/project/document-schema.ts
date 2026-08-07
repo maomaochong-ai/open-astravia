@@ -75,7 +75,7 @@ const NodeCommon = {
 	purpose: Type.String(),
 };
 
-const WorkflowNodeSchema = Type.Union([
+export const WorkflowNodeSchema = Type.Union([
 	StrictObject({
 		...NodeCommon,
 		type: Type.Literal("prompt"),
@@ -132,7 +132,7 @@ const WorkflowNodeSchema = Type.Union([
 	}),
 ]);
 
-const AssetSchema = StrictObject({
+export const AssetSchema = StrictObject({
 	id: Type.String(),
 	name: Type.String(),
 	type: Type.Union([Type.Literal("image"), Type.Literal("video"), Type.Literal("audio")]),

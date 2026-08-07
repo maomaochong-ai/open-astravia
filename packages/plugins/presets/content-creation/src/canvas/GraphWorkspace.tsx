@@ -73,6 +73,7 @@ interface GraphWorkspaceProps {
 	onRunNode: (nodeId: string) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
+	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
 }
 
 export function GraphWorkspace({
@@ -83,6 +84,7 @@ export function GraphWorkspace({
 	onRunNode,
 	onImportAssets,
 	onImportReferences,
+	onSelectedNodeIdsChange,
 }: GraphWorkspaceProps) {
 	const { t } = useTranslation();
 	const flowContainerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +106,9 @@ export function GraphWorkspace({
 		[project.graph.nodes, selectedNodeIds],
 	);
 	const selectedNodeIdSet = useMemo(() => new Set(activeSelectedNodeIds), [activeSelectedNodeIds]);
+	useEffect(() => {
+		onSelectedNodeIdsChange(activeSelectedNodeIds);
+	}, [activeSelectedNodeIds, onSelectedNodeIdsChange]);
 	const canvasInteraction = getCanvasInteraction(canvasTool);
 	const projectSyncKey = `${createContentProjectSyncKey(
 		{
