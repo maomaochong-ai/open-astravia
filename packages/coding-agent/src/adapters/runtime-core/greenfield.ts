@@ -181,11 +181,6 @@ export {
 	createCodingAgentGreenfieldSandboxToolRegistrations,
 } from "./greenfield-sandbox-tool-adapter.js";
 export {
-	CodingAgentGreenfieldSessionCapabilityHost,
-	type CodingAgentGreenfieldSessionCapabilityHostOptions,
-	type CodingAgentGreenfieldSessionCapabilitySettings,
-} from "./greenfield-session-capability-host.js";
-export {
 	CodingAgentStopHookContinuationSource,
 	type CodingAgentStopHookContinuationSourceOptions,
 } from "./greenfield-stop-hook-continuation-source.js";

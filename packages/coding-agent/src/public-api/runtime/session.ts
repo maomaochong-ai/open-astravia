@@ -10,11 +10,11 @@ import {
 	CodingAgentGreenfieldResourceReloadHost,
 	type CodingAgentGreenfieldResourceReloadHostOptions,
 } from "../../adapters/runtime-core/greenfield-resource-reload-host.js";
+import type { GreenfieldSdkSessionCapabilityPort } from "../../host/sdk-session/runtime-contracts.js";
 import {
 	CodingAgentGreenfieldSessionCapabilityHost,
 	type CodingAgentGreenfieldSessionCapabilityHostOptions,
-} from "../../adapters/runtime-core/greenfield-session-capability-host.js";
-import type { GreenfieldSdkSessionCapabilityPort } from "../../composition/greenfield-sdk-runtime-contract.js";
+} from "../../host/sdk-session/session-capability-host.js";
 import type { CodingAgentBranchSummaryEntry } from "../../sessions/index.js";
 
 export type CodingAgentRuntimeBranchNavigationOptions = CodingAgentGreenfieldBranchNavigationOptions;

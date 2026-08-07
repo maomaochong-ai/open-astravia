@@ -1,12 +1,17 @@
-import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
-import { type Api, type AssistantMessage, type Model, modelsAreEqual, supportsXhigh } from "@vetta/ai";
+import type { ThinkingLevel } from "@vetta/agent-core";
+import type { Api, Model } from "@vetta/ai";
 import type {
 	AgentPluginRuntimeConfig,
 	GreenfieldRuntimeSession,
 	PromptRequest,
 	RuntimeSessionInputQueueMode,
 } from "@vetta/runtime-core";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import { projectCodingAgentGreenfieldMessages } from "../../adapters/runtime-core/greenfield-agent-message-context-projector.js";
+import { readGreenfieldFailedTurnMessage } from "../../adapters/runtime-core/greenfield-turn-executor.js";
+import {
+	CodingAgentGreenfieldTurnRetryController,
+	type CodingAgentGreenfieldTurnRetryControllerPort,
+} from "../../adapters/runtime-core/greenfield-turn-retry-controller.js";
 import type {
 	GreenfieldSdkCustomToolDefinition,
 	GreenfieldSdkMemoryConfiguration,
@@ -15,51 +20,17 @@ import type {
 	GreenfieldSdkRetryEvent,
 	GreenfieldSdkScopedModel,
 	GreenfieldSdkSessionCapabilityPort,
-	GreenfieldSdkSessionStats,
 	GreenfieldSdkSkillInfo,
 	GreenfieldSdkToolInfo,
-} from "../../composition/greenfield-sdk-runtime-contract.js";
-import { projectCodingAgentGreenfieldMessages } from "./greenfield-agent-message-context-projector.js";
-import { readGreenfieldFailedTurnMessage } from "./greenfield-turn-executor.js";
-import {
-	CodingAgentGreenfieldTurnRetryController,
-	type CodingAgentGreenfieldTurnRetryControllerPort,
-	type CodingAgentGreenfieldTurnRetrySettings,
-} from "./greenfield-turn-retry-controller.js";
+} from "./runtime-contracts.js";
+import type { CodingAgentGreenfieldSessionCapabilityHostOptions } from "./session-capability-options.js";
+import { computeSdkSessionStats, readLastAssistantText, toSdkToolInfo } from "./session-capability-projections.js";
+import { CodingAgentSessionModelCapabilities } from "./session-model-capabilities.js";
 
-const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high"];
-const THINKING_LEVELS_WITH_XHIGH: readonly ThinkingLevel[] = [...THINKING_LEVELS, "xhigh"];
-
-export interface CodingAgentGreenfieldSessionCapabilitySettings {
-	setDefaultModelAndProvider(provider: string, modelId: string): void;
-	setDefaultThinkingLevel(level: string): void;
-	setSteeringMode(mode: RuntimeSessionInputQueueMode): void;
-	setFollowUpMode(mode: RuntimeSessionInputQueueMode): void;
-	getRetryEnabled(): boolean;
-	getRetrySettings(): CodingAgentGreenfieldTurnRetrySettings;
-	setRetryEnabled(enabled: boolean): void;
-}
-
-export interface CodingAgentGreenfieldSessionCapabilityHostOptions {
-	readonly readSession: () => GreenfieldRuntimeSession;
-	readonly readAvailableModels?: () => Promise<readonly Model<Api>[]>;
-	readonly scopedModels?: readonly GreenfieldSdkScopedModel[];
-	readonly initialAgentMode?: string;
-	readonly settings?: CodingAgentGreenfieldSessionCapabilitySettings;
-	readonly retryController?: CodingAgentGreenfieldTurnRetryControllerPort;
-	readonly reconfigureCustomTools?: (customTools: readonly GreenfieldSdkCustomToolDefinition[] | undefined) => void;
-	readonly beforePrompt?: () => Promise<void> | void;
-	readonly readSystemPrompt?: () => string;
-	readonly readSkills?: () => readonly GreenfieldSdkSkillInfo[];
-	readonly readPromptTemplates?: () => readonly GreenfieldSdkPromptTemplate[];
-	readonly reconfigureAgentPlugins?: (agentPlugins: AgentPluginRuntimeConfig | undefined) => Promise<void> | void;
-	readonly memoryConfiguration?: GreenfieldSdkMemoryConfiguration;
-	readonly flushMemory?: (signal?: AbortSignal) => Promise<number>;
-	readonly reloadMcp?: () => Promise<void>;
-	readonly reload?: () => Promise<void>;
-	readonly exportToHtml?: (outputPath?: string) => Promise<string>;
-	readonly hasExtensionHandlers?: (eventType: string) => boolean;
-}
+export type {
+	CodingAgentGreenfieldSessionCapabilityHostOptions,
+	CodingAgentGreenfieldSessionCapabilitySettings,
+} from "./session-capability-options.js";
 
 /** SDK 与 RPC 共用的 Session 内操作能力；不拥有 Session，也不执行身份迁移。 */
 export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdkSessionCapabilityPort {
@@ -67,10 +38,17 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 	private agentMode: string | undefined;
 	private readonly retryController: CodingAgentGreenfieldTurnRetryControllerPort | undefined;
 	private readonly retryListeners = new Set<(event: GreenfieldSdkRetryEvent) => void>();
+	private readonly modelCapabilities: CodingAgentSessionModelCapabilities;
 
 	constructor(private readonly options: CodingAgentGreenfieldSessionCapabilityHostOptions) {
 		this.scopedModels = [...(options.scopedModels ?? [])];
 		this.agentMode = options.initialAgentMode;
+		this.modelCapabilities = new CodingAgentSessionModelCapabilities({
+			readCore: () => this.readCore(),
+			readAvailableModels: () => this.readAvailableModelSource(),
+			readScopedModels: () => this.scopedModels,
+			settings: options.settings,
+		});
 		const settings = options.settings;
 		this.retryController =
 			options.retryController ??
@@ -116,7 +94,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 
 	readAllTools(): readonly GreenfieldSdkToolInfo[] {
 		const tools = this.readCore().toolController?.readAvailableTools();
-		return tools ? toToolInfo(tools) : [];
+		return tools ? toSdkToolInfo(tools) : [];
 	}
 
 	setActiveToolNames(toolNames: readonly string[]): void {
@@ -182,66 +160,31 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 	}
 
 	async selectModel(provider: string, modelId: string): Promise<Model<Api> | undefined> {
-		const model = (await this.readAvailableModels()).find(
-			(candidate) => candidate.provider === provider && candidate.id === modelId,
-		);
-		if (!model) return undefined;
-		await this.readCore().modelController.selectModel(`${provider}/${modelId}`, "always");
-		this.options.settings?.setDefaultModelAndProvider(provider, modelId);
-		return this.readCore().modelView.readCurrentModel();
+		return this.modelCapabilities.selectModel(provider, modelId);
 	}
 
 	setThinkingLevel(level: ThinkingLevel): void {
-		const core = this.readCore();
-		core.modelController.setThinkingLevel(level);
-		this.options.settings?.setDefaultThinkingLevel(core.corePorts.stateReader.readState().thinkingLevel);
+		this.modelCapabilities.setThinkingLevel(level);
 	}
 
 	async cycleModel(direction: "forward" | "backward" = "forward"): Promise<GreenfieldSdkModelCycleResult | undefined> {
-		const core = this.readCore();
-		const candidates =
-			this.scopedModels.length > 0
-				? await this.readUsableScopedModels(core.modelView.resolveApiKey.bind(core.modelView))
-				: (await this.readAvailableModels()).map((model) => ({
-						model,
-						thinkingLevel: core.corePorts.stateReader.readState().thinkingLevel,
-					}));
-		if (candidates.length <= 1) return undefined;
-		const current = core.modelView.readCurrentModel();
-		let currentIndex = candidates.findIndex((candidate) => modelsAreEqual(candidate.model, current));
-		if (currentIndex === -1) currentIndex = 0;
-		const offset = direction === "forward" ? 1 : -1;
-		const next = candidates[(currentIndex + offset + candidates.length) % candidates.length];
-		await core.modelController.selectModel(`${next.model.provider}/${next.model.id}`, "always");
-		core.modelController.setThinkingLevel(next.thinkingLevel);
-		const thinkingLevel = core.corePorts.stateReader.readState().thinkingLevel;
-		this.options.settings?.setDefaultModelAndProvider(next.model.provider, next.model.id);
-		this.options.settings?.setDefaultThinkingLevel(thinkingLevel);
-		return { model: next.model, thinkingLevel, isScoped: this.scopedModels.length > 0 };
+		return this.modelCapabilities.cycleModel(direction);
 	}
 
 	cycleThinkingLevel(): ThinkingLevel | undefined {
-		const core = this.readCore();
-		const state = core.corePorts.stateReader.readState();
-		const levels = availableThinkingLevels(core.modelView.readCurrentModel());
-		if (levels.length === 1) return undefined;
-		const next = levels[(levels.indexOf(state.thinkingLevel) + 1) % levels.length];
-		core.modelController.setThinkingLevel(next);
-		this.options.settings?.setDefaultThinkingLevel(next);
-		return next;
+		return this.modelCapabilities.cycleThinkingLevel();
 	}
 
 	readAvailableThinkingLevels(): readonly ThinkingLevel[] {
-		return availableThinkingLevels(this.readCore().modelView.readCurrentModel());
+		return this.modelCapabilities.readAvailableThinkingLevels();
 	}
 
 	supportsXhighThinking(): boolean {
-		const model = this.readCore().modelView.readCurrentModel();
-		return model ? supportsXhigh(model) : false;
+		return this.modelCapabilities.supportsXhighThinking();
 	}
 
 	supportsThinking(): boolean {
-		return !!this.readCore().modelView.readCurrentModel()?.reasoning;
+		return this.modelCapabilities.supportsThinking();
 	}
 
 	setSteeringMode(mode: RuntimeSessionInputQueueMode): void {
@@ -304,7 +247,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 
 	readSessionStats() {
 		const core = this.readCore();
-		return computeSessionStats(
+		return computeSdkSessionStats(
 			projectCodingAgentGreenfieldMessages(core.conversationView.readDocument()),
 			core.lifecycle.sessionPath,
 			core.lifecycle.sessionId,
@@ -317,22 +260,7 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 
 	readLastAssistantText(): string | undefined {
 		const messages = projectCodingAgentGreenfieldMessages(this.readCore().conversationView.readDocument());
-		for (let index = messages.length - 1; index >= 0; index -= 1) {
-			const message = messages[index];
-			if (message.role !== "assistant") continue;
-			const assistant = message as AssistantMessage;
-			if (assistant.stopReason === "aborted" && assistant.content.length === 0) continue;
-			const text = assistant.content
-				.filter(
-					(content): content is Extract<(typeof assistant.content)[number], { readonly type: "text" }> =>
-						content.type === "text",
-				)
-				.map((content) => content.text)
-				.join("")
-				.trim();
-			return text || undefined;
-		}
-		return undefined;
+		return readLastAssistantText(messages);
 	}
 
 	readSubagents() {
@@ -455,61 +383,4 @@ export class CodingAgentGreenfieldSessionCapabilityHost implements GreenfieldSdk
 	private readAvailableModelSource(): Promise<readonly Model<Api>[]> {
 		return this.options.readAvailableModels?.() ?? Promise.resolve(this.readCore().modelView.readAvailableModels());
 	}
-
-	private async readUsableScopedModels(
-		resolveApiKey: (model: Model<Api>) => Promise<string | undefined>,
-	): Promise<GreenfieldSdkScopedModel[]> {
-		const usable: GreenfieldSdkScopedModel[] = [];
-		for (const scoped of this.scopedModels) {
-			if (await resolveApiKey(scoped.model)) usable.push(scoped);
-		}
-		return usable;
-	}
-}
-
-function availableThinkingLevels(model: Model<Api> | undefined): readonly ThinkingLevel[] {
-	if (!model?.reasoning) return ["off"];
-	return supportsXhigh(model) ? THINKING_LEVELS_WITH_XHIGH : THINKING_LEVELS;
-}
-
-function toToolInfo(tools: ReadonlyMap<string, RuntimeToolDefinition>): GreenfieldSdkToolInfo[] {
-	return [...tools.values()].map((tool) => ({
-		name: tool.name,
-		description: tool.description,
-		parameters: tool.inputSchema,
-	}));
-}
-
-function computeSessionStats(
-	messages: readonly AgentMessage[],
-	sessionFile: string | undefined,
-	sessionId: string,
-): GreenfieldSdkSessionStats {
-	let toolCalls = 0;
-	let input = 0;
-	let output = 0;
-	let cacheRead = 0;
-	let cacheWrite = 0;
-	let cost = 0;
-	for (const message of messages) {
-		if (message.role !== "assistant") continue;
-		const assistant = message as AssistantMessage;
-		toolCalls += assistant.content.filter((content) => content.type === "toolCall").length;
-		input += assistant.usage.input;
-		output += assistant.usage.output;
-		cacheRead += assistant.usage.cacheRead;
-		cacheWrite += assistant.usage.cacheWrite;
-		cost += assistant.usage.cost.total;
-	}
-	return {
-		sessionFile,
-		sessionId,
-		userMessages: messages.filter((message) => message.role === "user").length,
-		assistantMessages: messages.filter((message) => message.role === "assistant").length,
-		toolCalls,
-		toolResults: messages.filter((message) => message.role === "toolResult").length,
-		totalMessages: messages.length,
-		tokens: { input, output, cacheRead, cacheWrite, total: input + output + cacheRead + cacheWrite },
-		cost,
-	};
 }

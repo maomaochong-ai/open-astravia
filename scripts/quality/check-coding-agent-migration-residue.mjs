@@ -9,17 +9,37 @@ const ADAPTER_ROOT = `${SOURCE_ROOT}/adapters`;
 const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 47,
-	compositionGreenfieldFiles: 34,
-	adapterCompositionEdgeFiles: 5,
+	adapterGreenfieldFiles: 42,
+	compositionGreenfieldFiles: 30,
+	adapterCompositionEdgeFiles: 1,
 });
 
-export const RETIRED_MIGRATION_FILES = Object.freeze([`${ADAPTER_ROOT}/runtime-core/greenfield-tool-adapter.ts`]);
+export const RETIRED_MIGRATION_FILES = Object.freeze([
+	`${ADAPTER_ROOT}/runtime-core/greenfield-tool-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-sdk-active-session-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-sdk-active-session-capability-host.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-sdk-session-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-sdk-session-events.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-session-capability-host.ts`,
+	`${COMPOSITION_ROOT}/greenfield-sdk-runtime-binding.ts`,
+	`${COMPOSITION_ROOT}/greenfield-sdk-runtime-contract.ts`,
+	`${COMPOSITION_ROOT}/greenfield-sdk-session-factory.ts`,
+	`${COMPOSITION_ROOT}/greenfield-sdk-session-storage.ts`,
+]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"adaptCodingAgentToolRegistration",
 	"LegacyCodingAgentTool",
 	"greenfield-tool-adapter",
+	"adapters/runtime-core/greenfield-sdk-active-session-adapter",
+	"adapters/runtime-core/greenfield-sdk-active-session-capability-host",
+	"adapters/runtime-core/greenfield-sdk-session-adapter",
+	"adapters/runtime-core/greenfield-sdk-session-events",
+	"adapters/runtime-core/greenfield-session-capability-host",
+	"composition/greenfield-sdk-runtime-binding",
+	"composition/greenfield-sdk-runtime-contract",
+	"composition/greenfield-sdk-session-factory",
+	"composition/greenfield-sdk-session-storage",
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {

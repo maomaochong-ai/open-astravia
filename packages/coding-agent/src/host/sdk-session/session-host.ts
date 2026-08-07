@@ -8,11 +8,6 @@ import {
 	createCodingAgentPluginMcpRuntime,
 } from "../../adapters/runtime-core/greenfield.js";
 import { createCodingAgentAuthRuntime } from "../../auth/index.js";
-import {
-	createGreenfieldSdkSession,
-	type GreenfieldSdkOwnedResource,
-} from "../../composition/greenfield-sdk-session-factory.js";
-import type { GreenfieldSdkSessionStorageTarget } from "../../composition/greenfield-sdk-session-storage.js";
 import { DEFAULT_SERVER_URL, ENV_SERVER_URL, getAgentDir, getVettaHomePath } from "../../config.js";
 import { createCodingAgentHtmlExportRuntime } from "../../export-html/index.js";
 import { createCodingAgentModelRuntime } from "../../models/index.js";
@@ -35,10 +30,12 @@ import {
 } from "./contracts.js";
 import { adaptPublicCodingAgentSdkCustomTools, resolvePublicSdkActiveToolNames } from "./custom-tool-adapter.js";
 import { resolveSdkInitialModel } from "./initial-model.js";
+import { createGreenfieldSdkSession, type GreenfieldSdkOwnedResource } from "./runtime-factory.js";
 import {
 	createCodingAgentSdkActiveSessionCapabilityHostFactory,
 	createCodingAgentSdkSessionCapabilityHostFactory,
 } from "./session-capability-hosts.js";
+import type { GreenfieldSdkSessionStorageTarget } from "./storage.js";
 
 /** `@vetta/coding-agent/sdk` 的产品 Composition 入口；具体管理器不进入公共参数或返回值。 */
 export async function createCodingAgentSessionFromPublicOptions(

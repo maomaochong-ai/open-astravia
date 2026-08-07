@@ -4,11 +4,11 @@ import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CodingAgentGreenfieldSessionCapabilityHost } from "../../src/adapters/runtime-core/greenfield-session-capability-host.js";
 import {
 	CodingAgentSdkResourceSourceAdapter,
 	projectCodingAgentSkillInfo,
 } from "../../src/host/coding-agent-sdk-resource-source-adapter.js";
+import { CodingAgentGreenfieldSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
 import {
 	type CodingAgentExtensionSourceSnapshot,
 	type CodingAgentSkillSourceSnapshot,

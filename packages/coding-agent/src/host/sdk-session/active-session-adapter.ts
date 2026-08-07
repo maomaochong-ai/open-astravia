@@ -5,8 +5,8 @@ import type {
 	GreenfieldSdkNewSessionOptions,
 	GreenfieldSdkSessionRuntimePort,
 	GreenfieldSdkTreeNavigationOptions,
-} from "../../composition/greenfield-sdk-runtime-contract.js";
-import { GreenfieldSdkSessionAdapter } from "./greenfield-sdk-session-adapter.js";
+} from "./runtime-contracts.js";
+import { GreenfieldSdkSessionAdapter } from "./session-adapter.js";
 
 /**
  * 在固定 Session 门面之外叠加活动会话所有权。

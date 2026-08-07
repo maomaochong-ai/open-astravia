@@ -6,7 +6,7 @@ import {
 } from "./check-coding-agent-migration-residue.mjs";
 
 describe("Coding Agent migration residue gate", () => {
-	it("accepts production files without retired tool adapter seams", () => {
+	it("accepts production files without retired migration seams", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{
 				path: "packages/coding-agent/src/adapters/runtime-core/model-adapter.ts",
@@ -19,6 +19,24 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 
 		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([]);
+	});
+
+	it("rejects retired SDK Session ownership paths", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield-sdk-session-adapter.ts",
+				text: "export class GreenfieldSdkSessionAdapter {}",
+			},
+			{
+				path: "packages/coding-agent/src/host/sdk-session/session-host.ts",
+				text: 'import "../../composition/greenfield-sdk-session-factory.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield-sdk-session-adapter.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/host/sdk-session/session-host.ts: retired migration reference (composition/greenfield-sdk-session-factory)",
+		]);
 	});
 
 	it("rejects retired files and symbols", () => {

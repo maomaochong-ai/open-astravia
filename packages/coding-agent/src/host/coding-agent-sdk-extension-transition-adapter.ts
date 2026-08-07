@@ -5,14 +5,14 @@ import type {
 } from "../adapters/runtime-core/greenfield.js";
 import type { GreenfieldRuntimeComposition } from "../composition/greenfield-runtime-composition-contract.js";
 import type {
-	GreenfieldSdkOwnedResource,
-	GreenfieldSdkSessionInitializationContext,
-} from "../composition/greenfield-sdk-session-factory.js";
-import type {
 	CodingAgentPreparedSessionBinding,
 	CodingAgentSessionTransition,
 	CodingAgentSessionTransitionLifecycle,
 } from "../composition/session-host/active-session-transition-contracts.js";
+import type {
+	GreenfieldSdkOwnedResource,
+	GreenfieldSdkSessionInitializationContext,
+} from "./sdk-session/runtime-factory.js";
 
 type ExtensionEventHostFactory = (
 	session: GreenfieldRuntimeSession,

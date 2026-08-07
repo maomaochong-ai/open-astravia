@@ -1,6 +1,8 @@
 import type { ImageContent, TextContent } from "@vetta/ai";
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+import { createGreenfieldReadonlySessionManager } from "../../adapters/runtime-core/greenfield-readonly-session-manager.js";
+import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
 import type {
 	GreenfieldSdkActiveSessionCapabilityPort,
 	GreenfieldSdkBashOperations,
@@ -8,9 +10,7 @@ import type {
 	GreenfieldSdkNewSessionOptions,
 	GreenfieldSdkTreeNavigationOptions,
 	GreenfieldSdkTreeNavigationResult,
-} from "../../composition/greenfield-sdk-runtime-contract.js";
-import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
-import { createGreenfieldReadonlySessionManager } from "./greenfield-readonly-session-manager.js";
+} from "./runtime-contracts.js";
 
 export interface CodingAgentGreenfieldSdkBashPort {
 	execute(

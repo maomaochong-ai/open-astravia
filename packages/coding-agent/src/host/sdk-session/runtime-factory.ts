@@ -2,32 +2,32 @@ import { randomUUID } from "node:crypto";
 import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { type GreenfieldRuntimeSession, InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
 import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/conversation";
-import { GreenfieldSdkActiveSessionAdapter } from "../adapters/runtime-core/greenfield-sdk-active-session-adapter.js";
-import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "../adapters/runtime-core/greenfield-sdk-active-session-capability-host.js";
-import { CodingAgentGreenfieldSessionCapabilityHost } from "../adapters/runtime-core/greenfield-session-capability-host.js";
-import { resolveGreenfieldSessionIdFromPath } from "./greenfield-conversation-path.js";
-import { createGreenfieldRuntimeComposition } from "./greenfield-runtime-composition.js";
+import { resolveGreenfieldSessionIdFromPath } from "../../composition/greenfield-conversation-path.js";
+import { createGreenfieldRuntimeComposition } from "../../composition/greenfield-runtime-composition.js";
 import type {
 	GreenfieldRuntimeComposition,
 	GreenfieldRuntimeCompositionOptions,
 	GreenfieldRuntimeSessionOptions,
-} from "./greenfield-runtime-composition-contract.js";
-import { bindGreenfieldSdkActiveSessionRuntime } from "./greenfield-sdk-runtime-binding.js";
-import type {
-	GreenfieldSdkActiveSession,
-	GreenfieldSdkActiveSessionCapabilityPort,
-	GreenfieldSdkSessionCapabilityPort,
-} from "./greenfield-sdk-runtime-contract.js";
-import {
-	type GreenfieldSdkSessionStorageTarget,
-	type ResolvedGreenfieldSdkSessionStorage,
-	resolveGreenfieldSdkSessionStorage,
-} from "./greenfield-sdk-session-storage.js";
+} from "../../composition/greenfield-runtime-composition-contract.js";
 import {
 	CodingAgentActiveSessionHost,
 	type CodingAgentPreparedSessionBinding,
 	type CodingAgentSessionTransitionLifecycle,
-} from "./session-host/active-session-transition-host.js";
+} from "../../composition/session-host/active-session-transition-host.js";
+import { GreenfieldSdkActiveSessionAdapter } from "./active-session-adapter.js";
+import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
+import { bindGreenfieldSdkActiveSessionRuntime } from "./runtime-binding.js";
+import type {
+	GreenfieldSdkActiveSession,
+	GreenfieldSdkActiveSessionCapabilityPort,
+	GreenfieldSdkSessionCapabilityPort,
+} from "./runtime-contracts.js";
+import { CodingAgentGreenfieldSessionCapabilityHost } from "./session-capability-host.js";
+import {
+	type GreenfieldSdkSessionStorageTarget,
+	type ResolvedGreenfieldSdkSessionStorage,
+	resolveGreenfieldSdkSessionStorage,
+} from "./storage.js";
 
 type GreenfieldSdkCompositionOptions = Omit<
 	GreenfieldRuntimeCompositionOptions,

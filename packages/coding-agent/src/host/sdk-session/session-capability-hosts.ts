@@ -3,13 +3,7 @@ import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import {
 	CodingAgentGreenfieldBranchNavigationHost,
 	CodingAgentGreenfieldResourceReloadHost,
-	CodingAgentGreenfieldSessionCapabilityHost,
 } from "../../adapters/runtime-core/greenfield.js";
-import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "../../adapters/runtime-core/greenfield-sdk-active-session-capability-host.js";
-import type {
-	GreenfieldSdkActiveSessionCapabilityHostFactory,
-	GreenfieldSdkSessionCapabilityHostFactory,
-} from "../../composition/greenfield-sdk-session-factory.js";
 import {
 	type CodingAgentHtmlExportRuntime,
 	createToolHtmlRenderer,
@@ -29,7 +23,13 @@ import {
 	projectCodingAgentSkillInfo,
 } from "../coding-agent-sdk-resource-source-adapter.js";
 import { createHostBashExecutor } from "../command-execution/index.js";
+import { CodingAgentGreenfieldSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
 import { adaptPublicCodingAgentSdkCustomTools } from "./custom-tool-adapter.js";
+import type {
+	GreenfieldSdkActiveSessionCapabilityHostFactory,
+	GreenfieldSdkSessionCapabilityHostFactory,
+} from "./runtime-factory.js";
+import { CodingAgentGreenfieldSessionCapabilityHost } from "./session-capability-host.js";
 
 export interface CodingAgentSdkSessionCapabilityFactoriesOptions {
 	readonly sdkOptions: CreateCodingAgentSessionOptions;

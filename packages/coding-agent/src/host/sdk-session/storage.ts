@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { resolveGreenfieldSessionIdFromPath } from "./greenfield-conversation-path.js";
-import type { GreenfieldConversationPersistenceFactory } from "./greenfield-conversation-persistence.js";
-import { createInMemoryGreenfieldConversationPersistence } from "./greenfield-conversation-persistence.js";
+import { resolveGreenfieldSessionIdFromPath } from "../../composition/greenfield-conversation-path.js";
+import type { GreenfieldConversationPersistenceFactory } from "../../composition/greenfield-conversation-persistence.js";
+import { createInMemoryGreenfieldConversationPersistence } from "../../composition/greenfield-conversation-persistence.js";
 
 export type GreenfieldSdkSessionStorageTarget =
 	| { readonly kind: "memory"; readonly sessionId?: string }

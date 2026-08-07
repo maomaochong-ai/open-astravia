@@ -1,9 +1,6 @@
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
-import type {
-	GreenfieldSdkSessionCapabilityPort,
-	GreenfieldSdkSessionRuntimePort,
-} from "./greenfield-sdk-runtime-contract.js";
-import type { CodingAgentActiveSessionHost } from "./session-host/active-session-transition-host.js";
+import type { CodingAgentActiveSessionHost } from "../../composition/session-host/active-session-transition-host.js";
+import type { GreenfieldSdkSessionCapabilityPort, GreenfieldSdkSessionRuntimePort } from "./runtime-contracts.js";
 
 /** 唯一允许感知 GreenfieldRuntimeSession 具体表面的 SDK 组合边界。 */
 export function bindGreenfieldSdkSessionRuntime(

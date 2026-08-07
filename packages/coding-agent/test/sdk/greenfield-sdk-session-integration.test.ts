@@ -4,16 +4,14 @@ import { join } from "node:path";
 import type { Api, AssistantMessage, AssistantMessageEvent, Model } from "@vetta/ai";
 import { EventStream } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	CodingAgentGreenfieldSessionCapabilityHost,
-	type CodingAgentRuntimeModelSource,
-} from "../../src/adapters/runtime-core/greenfield.js";
-import { GreenfieldSdkSessionAdapter } from "../../src/adapters/runtime-core/greenfield-sdk-session-adapter.js";
+import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/greenfield.js";
 import { createGreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition.js";
 import type { GreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition-contract.js";
-import { bindGreenfieldSdkSessionRuntime } from "../../src/composition/greenfield-sdk-runtime-binding.js";
-import type { GreenfieldSdkSession } from "../../src/composition/greenfield-sdk-runtime-contract.js";
-import { createGreenfieldSdkSession } from "../../src/composition/greenfield-sdk-session-factory.js";
+import { bindGreenfieldSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
+import type { GreenfieldSdkSession } from "../../src/host/sdk-session/runtime-contracts.js";
+import { createGreenfieldSdkSession } from "../../src/host/sdk-session/runtime-factory.js";
+import { GreenfieldSdkSessionAdapter } from "../../src/host/sdk-session/session-adapter.js";
+import { CodingAgentGreenfieldSessionCapabilityHost } from "../../src/host/sdk-session/session-capability-host.js";
 
 describe("Greenfield SDK session integration", () => {
 	const temporaryDirectories: string[] = [];
