@@ -1,5 +1,16 @@
 import { motion } from "motion/react";
-import { useCallback, useEffect, useId, useRef, useState, type JSX, type ReactNode } from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+	type JSX,
+	type PointerEvent as ReactPointerEvent,
+	type ReactNode,
+	type RefObject,
+} from "react";
+import { hasReachedTabDragDistance, moveTabKey } from "./tab-drag";
 
 function cn(...parts: Array<string | false | null | undefined>): string {
 	return parts.filter(Boolean).join(" ");
@@ -16,6 +27,22 @@ export interface TabBarItem<T extends string> {
 	removable?: boolean;
 }
 
+export interface TabBarDragBounds {
+	bottom: number;
+	height: number;
+	left: number;
+	right: number;
+	top: number;
+	width: number;
+}
+
+export interface TabBarDragEvent<T extends string> {
+	bounds: TabBarDragBounds;
+	cancelled: boolean;
+	key: T;
+	point: { x: number; y: number };
+}
+
 export interface TabBarProps<T extends string> {
 	items: TabBarItem<T>[];
 	value: T;
@@ -27,6 +54,12 @@ export interface TabBarProps<T extends string> {
 	onRemove?: (key: T) => void;
 	/** 拖拽排序结束后回调完整的新顺序；未传则禁用拖拽 */
 	onReorder?: (keys: T[]) => void;
+	/** 宿主读取真实 tab 列表边界，用于把浮动 tab 拖回栏内。 */
+	listRef?: RefObject<HTMLDivElement | null>;
+	/** 页签指针拖拽生命周期；宿主可在拖出栏后接管为面板移动。 */
+	onTabDragStart?: (event: TabBarDragEvent<T>) => void;
+	onTabDragMove?: (event: TabBarDragEvent<T>) => void;
+	onTabDragEnd?: (event: TabBarDragEvent<T>) => boolean | undefined;
 	/**
 	 * 响应式溢出回调：按当前宽度容纳不下、被收纳起来的页签 key 列表（保持原顺序）。
 	 * 由父级渲染到"下拉"菜单里。传了此回调即开启响应式收纳。
@@ -38,17 +71,6 @@ export interface TabBarProps<T extends string> {
 const ROW_PADDING_X = 12;
 /** 相邻页签的负边距重叠量（-ml-2 = 0.5rem），计算容纳宽度时需扣除。 */
 const TAB_OVERLAP = 8;
-
-/** 把 from 处的 key 移动到 to 处，返回新数组。 */
-function moveKey<T>(keys: T[], from: T, to: T): T[] {
-	const fromIdx = keys.indexOf(from);
-	const toIdx = keys.indexOf(to);
-	if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return keys;
-	const next = [...keys];
-	next.splice(fromIdx, 1);
-	next.splice(toIdx, 0, from);
-	return next;
-}
 
 /**
  * 贪心计算溢出 key：始终保证激活页签可见（优先占位），再按顺序从头容纳，放不下即收纳其后全部。
@@ -142,12 +164,30 @@ export function TabBar<T extends string>({
 	suppressLayoutAnimation = false,
 	onRemove,
 	onReorder,
+	listRef,
+	onTabDragStart,
+	onTabDragMove,
+	onTabDragEnd,
 	onOverflowChange,
 }: TabBarProps<T>): JSX.Element {
 	const layoutId = useId();
 	// 拖拽中：dragKey 为被拖动的页签，order 为拖拽过程中的临时顺序（提交前不触碰 props）
 	const [dragKey, setDragKey] = useState<T | null>(null);
 	const [order, setOrder] = useState<T[] | null>(null);
+	const dragKeyRef = useRef<T | null>(null);
+	const orderRef = useRef<T[] | null>(null);
+	const pointerSessionRef = useRef<{
+		bounds: TabBarDragBounds;
+		cleanupGlobalCapture: (() => void) | null;
+		clientX: number;
+		clientY: number;
+		key: T;
+		pointerId: number;
+		startX: number;
+		startY: number;
+		started: boolean;
+	} | null>(null);
+	const suppressClickRef = useRef<T | null>(null);
 	// 悬浮页签：减号按钮的显隐走 state 而非 CSS group-hover（group-hover 依赖的类链在部分
 	// 环境下未生效，导致按钮永不出现），同时用于把该页签 z-index 提到最高防被相邻页签盖住。
 	const [hoverKey, setHoverKey] = useState<T | null>(null);
@@ -160,24 +200,193 @@ export function TabBar<T extends string>({
 
 	const dragging = dragKey != null;
 	const beginDrag = (key: T) => {
+		dragKeyRef.current = key;
 		setDragKey(key);
-		setOrder(items.map((it) => it.key));
+		const nextOrder = items.map((it) => it.key);
+		orderRef.current = nextOrder;
+		setOrder(nextOrder);
 	};
 	const dragOver = (overKey: T) => {
-		if (dragKey == null || dragKey === overKey) return;
-		setOrder((prev) => (prev == null ? prev : moveKey(prev, dragKey, overKey)));
+		const currentDragKey = dragKeyRef.current;
+		const currentOrder = orderRef.current;
+		if (currentDragKey == null || currentOrder == null || currentDragKey === overKey) return;
+		const nextOrder = moveTabKey(currentOrder, currentDragKey, overKey);
+		orderRef.current = nextOrder;
+		setOrder(nextOrder);
 	};
-	const endDrag = () => {
-		if (order != null && onReorder != null) {
-			const changed = order.some((k, i) => k !== items[i]?.key);
-			if (changed) onReorder(order);
+	const endDrag = (commit: boolean) => {
+		const finalOrder = orderRef.current;
+		if (commit && finalOrder != null && onReorder != null) {
+			const changed = finalOrder.some((k, i) => k !== items[i]?.key);
+			if (changed) onReorder(finalOrder);
 		}
+		dragKeyRef.current = null;
+		orderRef.current = null;
 		setDragKey(null);
 		setOrder(null);
 	};
 
+	const dragEvent = (
+		session: NonNullable<typeof pointerSessionRef.current>,
+		clientX: number,
+		clientY: number,
+		cancelled = false,
+	): TabBarDragEvent<T> => ({
+		bounds: session.bounds,
+		cancelled,
+		key: session.key,
+		point: { x: clientX, y: clientY },
+	});
+
+	const findOverKey = (clientX: number, clientY: number): T | null => {
+		const row = rowRef.current;
+		const session = pointerSessionRef.current;
+		if (!row || !session || clientY < session.bounds.top - 16 || clientY > session.bounds.bottom + 16) {
+			return null;
+		}
+		let closest: { distance: number; key: T } | null = null;
+		for (const child of Array.from(row.children) as HTMLElement[]) {
+			const key = child.dataset.tabkey as T | undefined;
+			if (!key) continue;
+			const bounds = child.getBoundingClientRect();
+			const distance = Math.abs(clientX - (bounds.left + bounds.right) / 2);
+			if (!closest || distance < closest.distance) closest = { distance, key };
+		}
+		return closest?.key ?? null;
+	};
+
+	const finishPointerDrag = (clientX: number, clientY: number, cancelled: boolean): void => {
+		const session = pointerSessionRef.current;
+		if (!session) return;
+		pointerSessionRef.current = null;
+		session.cleanupGlobalCapture?.();
+		if (session.started) {
+			const shouldCommit = onTabDragEnd?.(dragEvent(session, clientX, clientY, cancelled)) !== false;
+			endDrag(!cancelled && shouldCommit);
+			setTimeout(() => {
+				if (suppressClickRef.current === session.key) suppressClickRef.current = null;
+			}, 0);
+		}
+	};
+
+	const continuePointerDrag = (clientX: number, clientY: number): void => {
+		const session = pointerSessionRef.current;
+		if (!session) return;
+		session.clientX = clientX;
+		session.clientY = clientY;
+		const overKey = findOverKey(clientX, clientY);
+		if (overKey) dragOver(overKey);
+		onTabDragMove?.(dragEvent(session, clientX, clientY));
+	};
+
+	const startGlobalCapture = (session: NonNullable<typeof pointerSessionRef.current>): void => {
+		if (session.cleanupGlobalCapture) return;
+		const overlay = document.createElement("div");
+		overlay.dataset.tabDragOverlay = "";
+		overlay.style.position = "fixed";
+		overlay.style.inset = "0";
+		overlay.style.zIndex = "9999";
+		overlay.style.cursor = "grabbing";
+		overlay.style.touchAction = "none";
+		const previousUserSelect = document.body.style.userSelect;
+
+		const onPointerMove = (event: PointerEvent): void => {
+			if (event.pointerId !== session.pointerId) return;
+			event.preventDefault();
+			continuePointerDrag(event.clientX, event.clientY);
+		};
+		const onPointerUp = (event: PointerEvent): void => {
+			if (event.pointerId !== session.pointerId) return;
+			finishPointerDrag(event.clientX, event.clientY, false);
+		};
+		const onPointerCancel = (event: PointerEvent): void => {
+			if (event.pointerId !== session.pointerId) return;
+			finishPointerDrag(event.clientX, event.clientY, true);
+		};
+		const onKeyDown = (event: KeyboardEvent): void => {
+			if (event.key === "Escape") finishPointerDrag(session.clientX, session.clientY, true);
+		};
+		const onWindowBlur = (): void => finishPointerDrag(session.clientX, session.clientY, true);
+		const cleanup = (): void => {
+			overlay.removeEventListener("pointermove", onPointerMove);
+			overlay.removeEventListener("pointerup", onPointerUp);
+			overlay.removeEventListener("pointercancel", onPointerCancel);
+			document.removeEventListener("keydown", onKeyDown);
+			window.removeEventListener("blur", onWindowBlur);
+			overlay.remove();
+			document.body.style.userSelect = previousUserSelect;
+			session.cleanupGlobalCapture = null;
+		};
+
+		overlay.addEventListener("pointermove", onPointerMove);
+		overlay.addEventListener("pointerup", onPointerUp);
+		overlay.addEventListener("pointercancel", onPointerCancel);
+		document.addEventListener("keydown", onKeyDown);
+		window.addEventListener("blur", onWindowBlur);
+		document.body.appendChild(overlay);
+		document.body.style.userSelect = "none";
+		session.cleanupGlobalCapture = cleanup;
+	};
+
+	const onTabPointerDown = (event: ReactPointerEvent<HTMLDivElement>, key: T): void => {
+		if (
+			event.button !== 0 ||
+			(onReorder == null && onTabDragStart == null && onTabDragMove == null && onTabDragEnd == null)
+		) {
+			return;
+		}
+		const row = rowRef.current;
+		if (!row) return;
+		const bounds = row.getBoundingClientRect();
+		pointerSessionRef.current = {
+			bounds: {
+				bottom: bounds.bottom,
+				height: bounds.height,
+				left: bounds.left,
+				right: bounds.right,
+				top: bounds.top,
+				width: bounds.width,
+			},
+			cleanupGlobalCapture: null,
+			clientX: event.clientX,
+			clientY: event.clientY,
+			key,
+			pointerId: event.pointerId,
+			startX: event.clientX,
+			startY: event.clientY,
+			started: false,
+		};
+	};
+
+	const onTabPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+		const session = pointerSessionRef.current;
+		if (!session || session.pointerId !== event.pointerId) return;
+		if (
+			!session.started &&
+			!hasReachedTabDragDistance(event.clientX - session.startX, event.clientY - session.startY)
+		) {
+			return;
+		}
+		if (!session.started) {
+			session.started = true;
+			suppressClickRef.current = session.key;
+			beginDrag(session.key);
+			onTabDragStart?.(dragEvent(session, event.clientX, event.clientY));
+			startGlobalCapture(session);
+		}
+		event.preventDefault();
+		continuePointerDrag(event.clientX, event.clientY);
+	};
+
 	// 响应式收纳：用隐藏测量层量出每个页签自然宽度，按可用宽度贪心算出溢出 key。
 	const rowRef = useRef<HTMLDivElement>(null);
+	const setRowRef = useCallback(
+		(node: HTMLDivElement | null): void => {
+			rowRef.current = node;
+			if (listRef) listRef.current = node;
+		},
+		[listRef],
+	);
 	const measureRef = useRef<HTMLDivElement>(null);
 	const rafRef = useRef<number | undefined>(undefined);
 	const [overflowKeys, setOverflowKeys] = useState<T[]>([]);
@@ -218,13 +427,22 @@ export function TabBar<T extends string>({
 		onOverflowChange?.(overflowKeys);
 	}, [overflowKeys, onOverflowChange]);
 
+	useEffect(
+		() => () => {
+			const session = pointerSessionRef.current;
+			pointerSessionRef.current = null;
+			session?.cleanupGlobalCapture?.();
+		},
+		[],
+	);
+
 	const overflowSet = responsive ? new Set(overflowKeys) : null;
 	const visibleItems = overflowSet ? renderItems.filter((it) => !overflowSet.has(it.key)) : renderItems;
 	const activeIndex = visibleItems.findIndex((item) => item.key === value);
 
 	return (
 		<div className={cn("group/tabbar relative z-10 min-w-0", className)}>
-			<div ref={rowRef} className="flex items-end overflow-visible px-3">
+			<div ref={setRowRef} className="flex min-h-[29px] items-end overflow-visible px-3">
 				{visibleItems.map(({ key, label, icon, badge, removable }, index) => {
 					const active = value === key;
 					const isDragged = dragKey === key;
@@ -236,37 +454,44 @@ export function TabBar<T extends string>({
 							: active
 								? visibleItems.length + 1
 								: visibleItems.length - Math.abs(index - activeIndex);
-					// 用普通 div：拖拽走原生 HTML5 draggable，不需要 framer。激活态切换会改变页签
+					// 用普通 div：指针拖拽不需要 framer。激活态切换会改变页签
 					// 高度(29↔23)，任何 framer layout 动画都会用 scale 变换拉伸带边框的盒子致边框闪
 					// 一下——所以这里不挂 framer，切换即时无动画。
 					return (
 						<div
 							key={key}
+							data-tabkey={key}
 							style={{ zIndex }}
-							draggable={onReorder != null}
-							onDragStart={() => beginDrag(key)}
-							onDragEnter={() => dragOver(key)}
-							onDragOver={(e) => {
-								if (dragging) e.preventDefault();
-							}}
-							onDragEnd={endDrag}
+							onPointerDown={(event) => onTabPointerDown(event, key)}
+							onPointerMove={onTabPointerMove}
+							onPointerUp={(event) => finishPointerDrag(event.clientX, event.clientY, false)}
+							onPointerCancel={(event) => finishPointerDrag(event.clientX, event.clientY, true)}
 							onMouseEnter={() => setHoverKey(key)}
 							onMouseLeave={() => setHoverKey((prev) => (prev === key ? null : prev))}
-							onDrop={(e) => {
-								if (dragging) e.preventDefault();
-							}}
-							className={cn("group/tab relative", index > 0 && "-ml-2", isDragged && "opacity-50")}
+							className={cn(
+								"group/tab relative touch-none",
+								index > 0 && "-ml-2",
+								isDragged && "opacity-50",
+							)}
 						>
 							<button
 								type="button"
-								onClick={() => onChange(key)}
+								onClick={(event) => {
+									if (suppressClickRef.current === key) {
+										suppressClickRef.current = null;
+										event.preventDefault();
+										return;
+									}
+									onChange(key);
+								}}
 								// 边框色用 inline style 钉死：非激活页签的 `border-border/70` 若走 class，
 								// 在「变非激活、刚获得边框」那一帧会回退到 currentColor(=foreground) 闪出前景色
 								// （浅黑/深白）。inline 优先级最高，杜绝回退。激活态无 border 宽度，不受影响。
 								style={{ borderColor: "color-mix(in oklab, var(--border) 70%, transparent)" }}
 								className={cn(
 									"relative flex w-full select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg text-[11px] font-medium leading-none",
-									onReorder != null && "cursor-grab active:cursor-grabbing",
+								(onReorder != null || onTabDragStart != null) &&
+									"cursor-grab active:cursor-grabbing",
 									active
 										? "h-[29px] px-4 text-foreground"
 										: "h-[23px] border border-b-0 bg-muted px-4 text-muted-foreground hover:brightness-110 hover:text-foreground/80 dark:bg-secondary",
@@ -293,7 +518,7 @@ export function TabBar<T extends string>({
 									role="button"
 									title="隐藏此面板"
 									aria-label="隐藏此面板"
-									onMouseDown={(e) => e.stopPropagation()}
+									onPointerDown={(e) => e.stopPropagation()}
 									onClick={(e) => {
 										e.stopPropagation();
 										onRemove(key);

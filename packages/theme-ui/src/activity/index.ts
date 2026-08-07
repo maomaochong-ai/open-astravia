@@ -31,6 +31,11 @@ export type { DebugSubTab, DebugTabPanelViewProps } from "./DebugTabPanelView";
 export { DebugTabPanelView } from "./DebugTabPanelView";
 export type { FileTabContentViewProps } from "./FileTabContentView";
 export { FileTabContentView } from "./FileTabContentView";
+export type {
+	FloatingActivityTabViewProps,
+	FloatingActivityTabViewRect,
+} from "./FloatingActivityTabView";
+export { FloatingActivityTabView } from "./FloatingActivityTabView";
 export type { HtmlPreviewViewProps } from "./HtmlPreviewView";
 export { HtmlPreviewView } from "./HtmlPreviewView";
 export type {
