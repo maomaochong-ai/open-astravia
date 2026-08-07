@@ -10,24 +10,22 @@ import {
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import { CodingAgentContinuationOrchestrator } from "../../adapters/runtime-core/greenfield-continuation-orchestrator.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
-import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
-import { wrapRuntimeToolsWithEcosystemHooks } from "../../adapters/runtime-core/greenfield-hook-tool-wrapper.js";
+import { wrapRuntimeToolsWithEcosystemHooks } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
+import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import { createCodingAgentInvokeSkillRuntimeFeature } from "../../adapters/runtime-core/greenfield-invoke-skill-runtime.js";
-import { CodingAgentPluginRunOrchestrator } from "../../adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
-import {
-	type CodingAgentPluginToolActivation,
-	CodingAgentPluginToolRuntime,
-} from "../../adapters/runtime-core/greenfield-plugin-tool-runtime.js";
-import { CodingAgentStopHookContinuationSource } from "../../adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
-import { CodingAgentTodoContinuationSource } from "../../adapters/runtime-core/greenfield-todo-continuation-source.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
+import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
+import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import { CodingAgentModelCallFrameComposer } from "../../model-context/model-call-frame-composer.js";
 import { CodingAgentModelCallMessageFinalizer } from "../../model-context/model-call-message-finalizer.js";
 import { CodingAgentPromptRuntime } from "../../model-context/prompt-runtime.js";
+import { CodingAgentPluginRunOrchestrator } from "../../plugins/runtime/run-orchestrator.js";
+import {
+	type CodingAgentPluginToolActivation,
+	CodingAgentPluginToolRuntime,
+} from "../../plugins/runtime/tool-runtime.js";
 import { createCodingAgentPromptResourceResolver } from "../../resources/prompt-resource-resolver.js";
 import type {
 	CodingAgentPluginMcpRuntime,
@@ -39,8 +37,10 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 	CodingAgentTodoRuntime,
 } from "../../runtime-contracts/index.js";
+import { CodingAgentTodoContinuationSource } from "../../work-state/todo-continuation-source.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
+import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
 import { createCodingAgentPromptRuntime } from "./prompt-runtime-factory.js";
 
 export interface CodingAgentTurnCapabilitySessionIdentity {
@@ -88,8 +88,8 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly pluginRuntime?: CodingAgentPluginRuntimeSource;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
 	readonly mcpController?: McpDeferredToolController;
-	readonly extensionEvents: CodingAgentGreenfieldExtensionEventBridge;
-	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
+	readonly extensionEvents: CodingAgentExtensionRunAdapter;
+	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {

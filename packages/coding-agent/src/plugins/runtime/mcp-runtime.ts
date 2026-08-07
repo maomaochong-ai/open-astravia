@@ -14,11 +14,11 @@ import {
 	type McpServerConfig,
 	type McpServerSupervisor,
 } from "@vetta/runtime-mcp";
+import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "../../mcp/runtime/supervisor.js";
+import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
 import { matchesAgentMode } from "../../profiles/index.js";
 import type { CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort } from "../../runtime-contracts/index.js";
-import { decorateCodingAgentMcpRuntimeTool } from "./coding-agent-mcp-runtime-source.js";
-import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "./coding-agent-mcp-supervisor.js";
 
 export type CodingAgentPluginMcpRuntimeOptions = Pick<
 	CodingAgentMcpSupervisorOptions,

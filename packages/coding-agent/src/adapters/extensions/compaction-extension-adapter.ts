@@ -2,7 +2,7 @@ import type { CompactionPreparation, CompactionResult } from "../../compaction/i
 import type { SessionBeforeCompactResult } from "../../extensions/index.js";
 import type {
 	CodingAgentCompactionExtensionRuntime,
-	CodingAgentGreenfieldExtensionRunnerPort,
+	CodingAgentExtensionRunnerPort,
 } from "../../runtime-contracts/index.js";
 import type {
 	CodingAgentCompactionEntry as CompactionEntry,
@@ -28,7 +28,7 @@ export interface CodingAgentCompactionCommittedInput {
 	readonly fromExtension: boolean;
 }
 
-type CompactionExtensionRunner = Pick<CodingAgentGreenfieldExtensionRunnerPort, "emit" | "hasHandlers">;
+type CompactionExtensionRunner = Pick<CodingAgentExtensionRunnerPort, "emit" | "hasHandlers">;
 
 export function createCodingAgentCompactionExtensionRuntime(
 	readRunner: () => CompactionExtensionRunner | undefined,

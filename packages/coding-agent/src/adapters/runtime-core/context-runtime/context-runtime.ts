@@ -25,8 +25,8 @@ import {
 	shouldPrefire,
 } from "../../../compaction/index.js";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../../model-context/index.js";
+import type { CodingAgentCompactionExtensionRuntime } from "../../../runtime-contracts/index.js";
 import type { CodingAgentCompactionEntry as CompactionEntry } from "../../../sessions/index.js";
-import type { CodingAgentCompactionExtensionRuntime } from "../greenfield-compaction-extension-runtime.js";
 import { CompactionPrefireCache } from "./compaction-prefire-cache.js";
 import type { CodingAgentContextRuntimeOptions, CodingAgentContextUsage } from "./contracts.js";
 import {

@@ -1,14 +1,14 @@
 import type { AssistantMessage } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import {
-	CodingAgentGreenfieldExtensionObservationAdapter,
-	type CodingAgentGreenfieldObservedExtensionEvent,
-} from "../../src/adapters/runtime-core/greenfield-extension-observation-adapter.js";
+	CodingAgentExtensionObservationAdapter,
+	type CodingAgentObservedExtensionEvent,
+} from "../../src/adapters/runtime-core/extension-observation-adapter.js";
 
-describe("CodingAgentGreenfieldExtensionObservationAdapter", () => {
+describe("CodingAgentExtensionObservationAdapter", () => {
 	it("preserves lifecycle order, turn indexes, timestamps and turn payloads", async () => {
-		const events: CodingAgentGreenfieldObservedExtensionEvent[] = [];
-		const adapter = new CodingAgentGreenfieldExtensionObservationAdapter(async (event) => {
+		const events: CodingAgentObservedExtensionEvent[] = [];
+		const adapter = new CodingAgentExtensionObservationAdapter(async (event) => {
 			events.push(event);
 		});
 		const message = assistantMessage();
@@ -37,8 +37,8 @@ describe("CodingAgentGreenfieldExtensionObservationAdapter", () => {
 	});
 
 	it("preserves complete tool execution payloads", async () => {
-		const events: CodingAgentGreenfieldObservedExtensionEvent[] = [];
-		const adapter = new CodingAgentGreenfieldExtensionObservationAdapter(async (event) => {
+		const events: CodingAgentObservedExtensionEvent[] = [];
+		const adapter = new CodingAgentExtensionObservationAdapter(async (event) => {
 			events.push(event);
 		});
 		const result = { content: [{ type: "text" as const, text: "done" }], details: { ok: true } };
@@ -127,8 +127,8 @@ describe("CodingAgentGreenfieldExtensionObservationAdapter", () => {
 	});
 
 	it("restores custom message identity across message lifecycle and agent end events", async () => {
-		const events: CodingAgentGreenfieldObservedExtensionEvent[] = [];
-		const adapter = new CodingAgentGreenfieldExtensionObservationAdapter(async (event) => {
+		const events: CodingAgentObservedExtensionEvent[] = [];
+		const adapter = new CodingAgentExtensionObservationAdapter(async (event) => {
 			events.push(event);
 		});
 		const message = assistantMessage();

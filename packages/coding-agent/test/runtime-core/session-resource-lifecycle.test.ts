@@ -8,9 +8,8 @@ import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel"
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
+import type { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield-memory-controller.js";
-import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import type { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import {
 	InMemoryCodingAgentSessionMarkerIndex,
@@ -25,6 +24,7 @@ import type { CodingAgentTurnCapabilitySessionAssembly } from "../../src/composi
 import type { CodingAgentSessionConfigurationState } from "../../src/host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
+import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../src/sessions/projection/conversation-context-overlay.js";
 
@@ -52,7 +52,7 @@ describe("Coding Agent Session Resource Lifecycle", () => {
 		} as unknown as CodingAgentSessionExecutionRuntime;
 		const configurationState = {} as CodingAgentSessionConfigurationState;
 		const resourceContext = {} as GreenfieldRuntimeResourceContext;
-		const extensionEvents = {} as CodingAgentGreenfieldExtensionEventBridge;
+		const extensionEvents = {} as CodingAgentExtensionRunAdapter;
 		const memoryController = {} as CodingAgentMemoryController;
 		const memoryRuntime = {
 			dispose: vi.fn(),
@@ -192,7 +192,7 @@ function createIndexes(): CodingAgentSessionResourceIndexes {
 		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
 		configurationStates: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>(),
 		resourceContexts: new InMemoryCodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>(),
-		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentGreenfieldExtensionEventBridge>(),
+		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>(),
 		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex(),
 		mcpRefreshObservedSessions: new InMemoryCodingAgentSessionMarkerIndex(),

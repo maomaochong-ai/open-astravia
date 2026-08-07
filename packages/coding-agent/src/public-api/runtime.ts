@@ -2,7 +2,7 @@ export {
 	type CodingAgentCompactionExtensionInput,
 	type CodingAgentCompactionExtensionResult,
 	createCodingAgentCompactionExtensionRuntime,
-} from "../adapters/runtime-core/greenfield-compaction-extension-runtime.js";
+} from "../adapters/extensions/compaction-extension-adapter.js";
 export type { CodingAgentCompactionExtensionRuntime } from "../runtime-contracts/index.js";
 export {
 	type CodingAgentRuntimeExtensionCommandActionPorts,

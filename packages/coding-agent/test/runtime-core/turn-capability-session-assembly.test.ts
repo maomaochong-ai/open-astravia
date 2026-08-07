@@ -9,7 +9,7 @@ import {
 } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
-import { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
+import { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/tool-surface/runtime-tools-composition.js";
 import { createCodingAgentTurnCapabilitySessionAssembly } from "../../src/composition/turn/capability-session-assembly.js";
@@ -30,7 +30,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 		const todoRuntime = new CodingAgentTodoRuntime();
 		disposals.push(() => todoRuntime.dispose());
 		const contextRuntime = createContextRuntime();
-		const extensionEvents = new CodingAgentGreenfieldExtensionEventBridge();
+		const extensionEvents = new CodingAgentExtensionRunAdapter();
 		const productTool = createTool("product_tool");
 		const executionTool = createTool("execution_tool");
 		const executionFeature = createFeature("execution", []);

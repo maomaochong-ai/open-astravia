@@ -7,7 +7,7 @@ import {
 	type InitializationRollbackTask,
 } from "@vetta/runtime-core";
 import { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
+import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import {
 	CodingAgentGreenfieldMemoryController,
 	type CodingAgentMemoryController,
@@ -32,7 +32,7 @@ export interface CodingAgentSessionContextAssemblyOptions {
 	readonly resourceContext: GreenfieldRuntimeResourceContext;
 	readonly peripherals: CodingAgentSessionPeripheralAssembly;
 	readonly modelAdapter: CodingAgentRuntimeModelAdapter;
-	readonly extensionEvents: CodingAgentGreenfieldExtensionEventBridge;
+	readonly extensionEvents: CodingAgentExtensionRunAdapter;
 	readonly mcpCoordinator: CodingAgentMcpSessionCoordinator;
 	readonly readSessionId: () => string;
 	readonly resolveConversationPath: (sessionId: string) => string;

@@ -13,8 +13,8 @@ import type {
 } from "../../model-context/index.js";
 import { type ConversationScenario, resolveActiveToolNames } from "../../profiles/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import type { CodingAgentPluginRunOrchestrator } from "./greenfield-plugin-run-orchestrator.js";
-import { validatePluginToolHandlerResult } from "./greenfield-plugin-runtime-effect.js";
+import type { CodingAgentPluginRunOrchestrator } from "./run-orchestrator.js";
+import { validatePluginToolHandlerResult } from "./runtime-effect-schema.js";
 
 export type CodingAgentPluginToolActivation =
 	| {
@@ -35,7 +35,7 @@ export interface CodingAgentPluginToolRuntimeOptions {
 	readonly runOrchestrator: CodingAgentPluginRunOrchestrator;
 	readonly resolveActivation: (context: ModelCallFrameCompositionContext) => CodingAgentPluginToolActivation;
 	/**
-	 * 标记在 Legacy 注册顺序中晚于 Plugin Tool 的宿主工具。
+	 * 标记在既有注册顺序中晚于 Plugin Tool 的宿主工具。
 	 * 这些工具发生同名冲突时保留宿主实现，例如动态 MCP Tool。
 	 */
 	readonly shouldPreserveBaseTool?: (toolName: string) => boolean;

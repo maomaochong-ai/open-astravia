@@ -8,9 +8,9 @@ import type {
 	RuntimeMcpClientFactory,
 } from "@vetta/runtime-mcp";
 import { describe, expect, it } from "vitest";
-import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/greenfield-hook-tool-wrapper.js";
-import { createCodingAgentPluginMcpRuntime } from "../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
+import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import type { AgentPluginRuntimeConfig } from "../src/model-context/index.js";
+import { createCodingAgentPluginMcpRuntime } from "../src/plugins/runtime/mcp-runtime.js";
 
 describe("CodingAgentPluginMcpRuntime", () => {
 	it("isolates dynamic servers, preserves metadata and filters tools by session agent mode", async () => {

@@ -2,15 +2,15 @@ import type { Api, Message, Model } from "@vetta/ai";
 import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
-	type CodingAgentPluginProviderFailure,
-	CodingAgentPluginRunOrchestrator,
-} from "../../src/adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
-import {
 	type AgentPluginRuntimeConfig,
 	type AgentPluginRuntimeEffect,
 	buildSystemPromptDraft,
 	renderSystemPromptDraft,
 } from "../../src/model-context/index.js";
+import {
+	type CodingAgentPluginProviderFailure,
+	CodingAgentPluginRunOrchestrator,
+} from "../../src/plugins/runtime/run-orchestrator.js";
 
 describe("CodingAgentPluginRunOrchestrator", () => {
 	it("orders providers, applies prompt/tool effects once per turn and queues requested continuations", async () => {

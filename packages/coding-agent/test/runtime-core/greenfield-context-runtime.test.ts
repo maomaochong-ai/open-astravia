@@ -15,9 +15,9 @@ import {
 	CodingAgentContextRuntime,
 	type CodingAgentContextRuntimeOptions,
 } from "../../src/adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentCompactionExtensionRuntime } from "../../src/adapters/runtime-core/greenfield-compaction-extension-runtime.js";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../src/compaction/index.js";
 import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/model-context/index.js";
+import type { CodingAgentCompactionExtensionRuntime } from "../../src/runtime-contracts/index.js";
 
 describe("CodingAgentContextRuntime", () => {
 	it("persists a threshold compaction while keeping transient turn input outside the summary", async () => {

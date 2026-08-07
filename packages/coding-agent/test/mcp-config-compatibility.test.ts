@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { createCodingAgentMcpSupervisor } from "../src/adapters/runtime-core/coding-agent-mcp-supervisor.js";
+import { createCodingAgentMcpSupervisor } from "../src/mcp/runtime/supervisor.js";
 
 describe("MCP config compatibility", () => {
 	const temporaryDirectories: string[] = [];

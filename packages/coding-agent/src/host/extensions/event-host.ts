@@ -1,12 +1,12 @@
 import { basename, dirname } from "node:path";
 import { type GreenfieldRuntimeSession, RetryableCleanup } from "@vetta/runtime-core";
 import { createCodingAgentExtensionSessionView } from "../../adapters/extensions/runtime-session-view-adapter.js";
-import { CodingAgentGreenfieldExtensionObservationAdapter } from "../../adapters/runtime-core/greenfield-extension-observation-adapter.js";
+import { CodingAgentExtensionObservationAdapter } from "../../adapters/runtime-core/extension-observation-adapter.js";
 import type { Extension, ExtensionError, ExtensionExecutionHost, ExtensionRuntime } from "../../extensions/index.js";
 import { ExtensionRunner } from "../../extensions/index.js";
 import type { CodingAgentModelRuntime } from "../../models/index.js";
 import type { ResourceExtensionPaths, SessionResourceRuntime } from "../../resources/index.js";
-import type { CodingAgentGreenfieldExtensionEventBinding } from "../../runtime-contracts/index.js";
+import type { CodingAgentExtensionEventBinding } from "../../runtime-contracts/index.js";
 import { CodingAgentExtensionActionHost } from "./action-host.js";
 import type { CodingAgentExtensionEventHost, CodingAgentExtensionInitialization } from "./contracts.js";
 
@@ -20,14 +20,14 @@ export interface CodingAgentExtensionEventHostOptions {
 	readonly bindEvents: (
 		runner: ExtensionRunner,
 		options?: { readonly replaceExisting?: boolean },
-	) => CodingAgentGreenfieldExtensionEventBinding;
+	) => CodingAgentExtensionEventBinding;
 	readonly onError?: (error: ExtensionError) => void;
 }
 
 class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventHost {
 	readonly runner: ExtensionRunner;
 	private readonly actionHost: CodingAgentExtensionActionHost;
-	private eventBinding: CodingAgentGreenfieldExtensionEventBinding;
+	private eventBinding: CodingAgentExtensionEventBinding;
 	private readonly removeExecutionObservationListener: () => void;
 	private removeErrorListener: (() => void) | undefined;
 	private shutdownHandler: () => void = () => {};
@@ -57,7 +57,7 @@ class DefaultCodingAgentExtensionEventHost implements CodingAgentExtensionEventH
 			options.modelRegistry,
 		);
 		this.eventBinding = options.bindEvents(this.runner);
-		const observationAdapter = new CodingAgentGreenfieldExtensionObservationAdapter(async (event) => {
+		const observationAdapter = new CodingAgentExtensionObservationAdapter(async (event) => {
 			await this.runner.emit(event);
 		});
 		this.removeExecutionObservationListener = assembly.executionObservationStream.subscribe(async (observation) => {

@@ -9,9 +9,9 @@ import {
 import type { McpDeferredToolController, McpRuntimeToolSnapshot } from "@vetta/runtime-mcp";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
-import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentMemoryController } from "../../adapters/runtime-core/greenfield-memory-controller.js";
+import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
@@ -43,7 +43,7 @@ export interface CodingAgentSessionResourceIndexes {
 	readonly executionRuntimes: CodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>;
 	readonly configurationStates: CodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>;
 	readonly resourceContexts: CodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>;
-	readonly extensionEventBridges: CodingAgentSessionValueIndex<CodingAgentGreenfieldExtensionEventBridge>;
+	readonly extensionEventBridges: CodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>;
 	readonly memoryControllers: CodingAgentSessionValueIndex<CodingAgentMemoryController>;
 	readonly hookSessionControllers: CodingAgentSessionValueIndex<CodingAgentSessionHookController>;
 	readonly mcpRefreshObservedSessions: CodingAgentSessionMarkerIndex;
@@ -67,8 +67,8 @@ export interface CodingAgentSessionResourceLifecycleOptions {
 	readonly resourceContext: GreenfieldRuntimeResourceContext;
 	readonly indexes: CodingAgentSessionResourceIndexes;
 	readonly hookRuntime: EcosystemHookRuntime;
-	readonly extensionEvents: CodingAgentGreenfieldExtensionEventBridge;
-	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
+	readonly extensionEvents: CodingAgentExtensionRunAdapter;
+	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	readonly conversationContextOverlay: CodingAgentConversationContextOverlay;
 	readonly modelRuntime: CodingAgentSessionModelRuntimePort;
 	readonly contextRuntime: CodingAgentContextRuntime;

@@ -1,8 +1,8 @@
 import { ComposedGreenfieldRuntimeFactory, GreenfieldRuntimeSessionBackend } from "@vetta/runtime-core";
 import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
-import { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
 import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/model-runtime-adapter.js";
+import { CodingAgentExtensionToolRuntime } from "../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentConversationContextOverlay } from "../sessions/projection/conversation-context-overlay.js";
 import { CodingAgentConversationContextProjector } from "../sessions/projection/conversation-context-projector.js";
 import type {
@@ -51,7 +51,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 	const cwd = options.cwd ?? process.cwd();
 	const scenario = options.scenario ?? "cli";
 	const sessionInitializationProfile = createCodingAgentSessionInitializationProfile(options);
-	const extensionToolRuntime = new CodingAgentGreenfieldExtensionToolRuntime(options.extensionTools ?? []);
+	const extensionToolRuntime = new CodingAgentExtensionToolRuntime(options.extensionTools ?? []);
 	const resourceRegistry = new CodingAgentCompositionResourceRegistry();
 	const toolSurface = await createCodingAgentRuntimeToolSurface({
 		cwd,

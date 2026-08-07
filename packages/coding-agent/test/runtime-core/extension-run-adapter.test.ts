@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
+import { CodingAgentExtensionRunAdapter } from "../../src/adapters/runtime-core/extension-run-adapter.js";
 import { AuthStorage } from "../../src/auth/index.js";
 import { discoverAndLoadExtensions, ExtensionRunner } from "../../src/extensions/index.js";
 import { createCodingAgentModelRuntime } from "../../src/models/index.js";
@@ -16,9 +16,9 @@ afterEach(() => {
 	}
 });
 
-describe("CodingAgentGreenfieldExtensionEventBridge", () => {
+describe("CodingAgentExtensionRunAdapter", () => {
 	it("keeps Prompt resolution lazy when no before_agent_start handler exists", async () => {
-		const bridge = new CodingAgentGreenfieldExtensionEventBridge();
+		const bridge = new CodingAgentExtensionRunAdapter();
 		bridge.bind(await createRunner());
 		let resolutionCount = 0;
 
@@ -66,7 +66,7 @@ describe("CodingAgentGreenfieldExtensionEventBridge", () => {
 				}));
 			}
 		`);
-		const bridge = new CodingAgentGreenfieldExtensionEventBridge();
+		const bridge = new CodingAgentExtensionRunAdapter();
 		const unbind = bridge.bind(runner);
 		let resolutionCount = 0;
 
@@ -157,7 +157,7 @@ describe("CodingAgentGreenfieldExtensionEventBridge", () => {
 				}));
 			}
 		`);
-		const bridge = new CodingAgentGreenfieldExtensionEventBridge();
+		const bridge = new CodingAgentExtensionRunAdapter();
 		bridge.bind(runner);
 		const input = [{ role: "user" as const, content: "request", timestamp: 1 }];
 
@@ -185,7 +185,7 @@ describe("CodingAgentGreenfieldExtensionEventBridge", () => {
 				}));
 			}
 		`);
-		const bridge = new CodingAgentGreenfieldExtensionEventBridge();
+		const bridge = new CodingAgentExtensionRunAdapter();
 		const unbindFirst = bridge.bind(first);
 		expect(() => bridge.bind(second)).toThrow("already bound");
 		const unbindSecond = bridge.bind(second, { replaceExisting: true });
@@ -208,7 +208,7 @@ describe("CodingAgentGreenfieldExtensionEventBridge", () => {
 });
 
 async function createRunner(extensionSource?: string): Promise<ExtensionRunner> {
-	const directory = fs.mkdtempSync(path.join(os.tmpdir(), "greenfield-extension-event-"));
+	const directory = fs.mkdtempSync(path.join(os.tmpdir(), "extension-run-adapter-"));
 	temporaryDirectories.push(directory);
 	const extensionsDirectory = path.join(directory, "extensions");
 	fs.mkdirSync(extensionsDirectory);

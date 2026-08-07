@@ -1,7 +1,7 @@
 import type {
-	CodingAgentGreenfieldExtensionRunnerPort,
-	CodingAgentGreenfieldExtensionToolSource,
-	CodingAgentGreenfieldSessionToolRegistration,
+	CodingAgentExtensionRunnerPort,
+	CodingAgentExtensionToolSource,
+	CodingAgentSessionToolRegistration,
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentRuntimeExtensionControls } from "../contracts/index.js";
 import type { CodingAgentSessionResourceIndexes } from "./resource-lifecycle.js";
@@ -9,11 +9,11 @@ import type { CodingAgentSessionResourceIndexes } from "./resource-lifecycle.js"
 export interface CodingAgentExtensionToolHostPort {
 	bindRunner(
 		sessionId: string,
-		runner: CodingAgentGreenfieldExtensionRunnerPort,
+		runner: CodingAgentExtensionRunnerPort,
 		options?: { readonly replaceExisting?: boolean },
 	): () => void;
-	refresh(extensions: readonly CodingAgentGreenfieldExtensionToolSource[]): void;
-	replaceSessionTools(sessionId: string, tools: readonly CodingAgentGreenfieldSessionToolRegistration[]): void;
+	refresh(extensions: readonly CodingAgentExtensionToolSource[]): void;
+	replaceSessionTools(sessionId: string, tools: readonly CodingAgentSessionToolRegistration[]): void;
 	clearSessionTools(sessionId: string): void;
 }
 
@@ -29,7 +29,7 @@ export function createCodingAgentRuntimeExtensionControls(
 	return {
 		bindExtensionRunner(sessionId, runner, bindingOptions) {
 			const bridge = options.indexes.extensionEventBridges.get(sessionId);
-			if (!bridge) throw new Error(`Greenfield Extension event bridge not found: ${sessionId}`);
+			if (!bridge) throw new Error(`Extension run adapter not found: ${sessionId}`);
 			const unbindEvents = bridge.bind(runner, bindingOptions);
 			const unbindTools = options.extensionToolRuntime?.bindRunner(sessionId, runner, bindingOptions);
 			return {
@@ -44,7 +44,7 @@ export function createCodingAgentRuntimeExtensionControls(
 			options.extensionToolRuntime?.refresh(extensions);
 		},
 		replaceSessionTools(sessionId, tools) {
-			if (!options.extensionToolRuntime) throw new Error("Greenfield Session tool runtime is unavailable");
+			if (!options.extensionToolRuntime) throw new Error("Session tool runtime is unavailable");
 			options.extensionToolRuntime.replaceSessionTools(sessionId, tools);
 		},
 		clearSessionTools(sessionId) {

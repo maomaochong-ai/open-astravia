@@ -4,13 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	CodingAgentContinuationOrchestrator,
 	type CodingAgentContinuationSource,
-} from "../../src/adapters/runtime-core/greenfield-continuation-orchestrator.js";
-import { CodingAgentStopHookContinuationSource } from "../../src/adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
-import { CodingAgentTodoContinuationSource } from "../../src/adapters/runtime-core/greenfield-todo-continuation-source.js";
+} from "../../src/composition/turn/continuation-orchestrator.js";
+import { CodingAgentStopHookContinuationSource } from "../../src/extensions/runtime/stop-hook-continuation-source.js";
 import type { TodoItem } from "../../src/work-state/index.js";
+import { CodingAgentTodoContinuationSource } from "../../src/work-state/todo-continuation-source.js";
 
 describe("CodingAgentContinuationOrchestrator", () => {
-	it("selects Todo, Plugin and Stop Hook in legacy priority order", async () => {
+	it("selects Todo, Plugin and Stop Hook in the established priority order", async () => {
 		let todoMessages: readonly UserMessage[] = [userMessage("todo")];
 		let pluginMessages: readonly UserMessage[] = [userMessage("plugin")];
 		const todo = source(() => todoMessages);

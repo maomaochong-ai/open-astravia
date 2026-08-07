@@ -2,7 +2,7 @@ import type { Extension, ExtensionRunner, RegisteredTool } from "../extensions/i
 
 export const CODING_AGENT_EXTENSION_INPUT_SOURCE_METADATA_KEY = "codingAgentExtensionInputSource";
 
-export type CodingAgentGreenfieldExtensionRunnerPort = Pick<
+export type CodingAgentExtensionRunnerPort = Pick<
 	ExtensionRunner,
 	| "createContext"
 	| "emit"
@@ -14,10 +14,10 @@ export type CodingAgentGreenfieldExtensionRunnerPort = Pick<
 	| "hasHandlers"
 >;
 
-export type CodingAgentGreenfieldExtensionToolSource = Pick<Extension, "tools">;
-export type CodingAgentGreenfieldSessionToolRegistration = RegisteredTool;
+export type CodingAgentExtensionToolSource = Pick<Extension, "tools">;
+export type CodingAgentSessionToolRegistration = RegisteredTool;
 
-export interface CodingAgentGreenfieldExtensionEventBinding {
+export interface CodingAgentExtensionEventBinding {
 	readSystemPrompt(): string;
 	dispose(): void;
 }

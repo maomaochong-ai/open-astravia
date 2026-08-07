@@ -875,11 +875,15 @@ describe("package boundary analysis", () => {
 		expect(findPackageBoundaryViolations(policyPath, compositionPolicy)).toEqual([]);
 	});
 
-	it("keeps model, resource and Session domains independent from concrete Adapters", () => {
+	it("keeps Coding Agent product domains independent from concrete Adapters", () => {
 		for (const path of [
+			"packages/coding-agent/src/extensions/runtime/extension-tool-runtime.ts",
+			"packages/coding-agent/src/mcp/runtime/tool-source.ts",
 			"packages/coding-agent/src/model-context/model-call-frame-composer.ts",
+			"packages/coding-agent/src/plugins/runtime/tool-runtime.ts",
 			"packages/coding-agent/src/resources/prompt-resource-resolver.ts",
 			"packages/coding-agent/src/sessions/projection/conversation-context-projector.ts",
+			"packages/coding-agent/src/work-state/todo-continuation-source.ts",
 		]) {
 			expect(
 				findPackageBoundaryViolations(path, 'import { Adapter } from "../adapters/runtime-core/example.js";'),

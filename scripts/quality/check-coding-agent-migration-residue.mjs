@@ -11,7 +11,7 @@ const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 21,
+	adapterGreenfieldFiles: 8,
 	compositionGreenfieldFiles: 0,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
@@ -83,6 +83,21 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${ADAPTER_ROOT}/runtime-core/greenfield-prompt-resource-resolver.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-agent-message-context-projector.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-conversation-context-overlay.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-compaction-extension-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-continuation-orchestrator.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-event-bridge.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-observation-adapter.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-tool-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-extension-tool-wrapper.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-hook-tool-wrapper.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-plugin-mcp-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-plugin-run-orchestrator.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-plugin-runtime-effect.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-plugin-tool-runtime.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-stop-hook-continuation-source.ts`,
+	`${ADAPTER_ROOT}/runtime-core/greenfield-todo-continuation-source.ts`,
+	`${ADAPTER_ROOT}/runtime-core/coding-agent-mcp-runtime-source.ts`,
+	`${ADAPTER_ROOT}/runtime-core/coding-agent-mcp-supervisor.ts`,
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
@@ -265,6 +280,30 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"GreenfieldPromptInterceptionResult",
 	"GreenfieldHandledPromptResult",
 	"GreenfieldPromptResult",
+	"adapters/runtime-core/greenfield-compaction-extension-runtime",
+	"adapters/runtime-core/greenfield-continuation-orchestrator",
+	"adapters/runtime-core/greenfield-extension-event-bridge",
+	"adapters/runtime-core/greenfield-extension-observation-adapter",
+	"adapters/runtime-core/greenfield-extension-tool-runtime",
+	"adapters/runtime-core/greenfield-extension-tool-wrapper",
+	"adapters/runtime-core/greenfield-hook-tool-wrapper",
+	"adapters/runtime-core/greenfield-plugin-mcp-runtime",
+	"adapters/runtime-core/greenfield-plugin-run-orchestrator",
+	"adapters/runtime-core/greenfield-plugin-runtime-effect",
+	"adapters/runtime-core/greenfield-plugin-tool-runtime",
+	"adapters/runtime-core/greenfield-stop-hook-continuation-source",
+	"adapters/runtime-core/greenfield-todo-continuation-source",
+	"adapters/runtime-core/coding-agent-mcp-runtime-source",
+	"adapters/runtime-core/coding-agent-mcp-supervisor",
+	"CodingAgentGreenfieldExtensionRunnerPort",
+	"CodingAgentGreenfieldExtensionToolSource",
+	"CodingAgentGreenfieldSessionToolRegistration",
+	"CodingAgentGreenfieldExtensionEventBinding",
+	"CodingAgentGreenfieldExtensionEventBridge",
+	"CodingAgentGreenfieldExtensionObservationAdapter",
+	"CodingAgentGreenfieldExtensionToolRuntime",
+	"CodingAgentGreenfieldObservedExtensionEvent",
+	"CodingAgentGreenfieldExtensionToolSurface",
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {

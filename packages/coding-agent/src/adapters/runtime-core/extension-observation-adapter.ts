@@ -15,7 +15,7 @@ import type {
 } from "../../extensions/index.js";
 import type { CustomMessage } from "../../model-context/index.js";
 
-export type CodingAgentGreenfieldObservedExtensionEvent =
+export type CodingAgentObservedExtensionEvent =
 	| AgentStartEvent
 	| AgentEndEvent
 	| TurnStartEvent
@@ -34,10 +34,10 @@ export type CodingAgentGreenfieldObservedExtensionEvent =
  * turnIndex 保持 Legacy EventRouter 的 Agent Run 级语义：agent_start 归零，
  * 每个 turn_end 完成后递增。
  */
-export class CodingAgentGreenfieldExtensionObservationAdapter {
+export class CodingAgentExtensionObservationAdapter {
 	private turnIndex = 0;
 
-	constructor(private readonly emit: (event: CodingAgentGreenfieldObservedExtensionEvent) => Promise<void>) {}
+	constructor(private readonly emit: (event: CodingAgentObservedExtensionEvent) => Promise<void>) {}
 
 	async observe(observation: RuntimeSessionExecutionObservation): Promise<void> {
 		const { event } = observation;

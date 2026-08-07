@@ -5,11 +5,11 @@ import type { Api, Model } from "@vetta/ai";
 import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { ConversationOwnershipManager } from "@vetta/runtime-storage/conversation";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/model-runtime-adapter.js";
 import { createCodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
 import { CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
+import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 
 describe("Coding Agent Session Initialization Transaction", () => {
 	it("rolls back acquired resources in reverse order and allows the same Session to restart", async () => {

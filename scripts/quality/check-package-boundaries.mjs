@@ -484,9 +484,13 @@ function checkCodingAgentTurnCapabilityAssemblyBoundary(posixPath, text, finding
 
 function checkCodingAgentDomainAdapterBoundary(posixPath, specifiers, findings) {
 	const domainRoots = [
+		"packages/coding-agent/src/extensions/",
+		"packages/coding-agent/src/mcp/",
 		"packages/coding-agent/src/model-context/",
+		"packages/coding-agent/src/plugins/",
 		"packages/coding-agent/src/resources/",
 		"packages/coding-agent/src/sessions/",
+		"packages/coding-agent/src/work-state/",
 	];
 	if (!domainRoots.some((root) => posixPath.startsWith(root))) return;
 	for (const specifier of specifiers) {

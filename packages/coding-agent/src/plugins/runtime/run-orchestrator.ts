@@ -17,10 +17,7 @@ import type {
 } from "../../model-context/index.js";
 import { applySystemPromptOperations, renderSystemPromptDraft } from "../../model-context/index.js";
 import type { CodingAgentPluginRuntimeSource } from "../../runtime-contracts/index.js";
-import {
-	validatePluginContinuationHandlerResult,
-	validatePluginRuntimeEffects,
-} from "./greenfield-plugin-runtime-effect.js";
+import { validatePluginContinuationHandlerResult, validatePluginRuntimeEffects } from "./runtime-effect-schema.js";
 
 const DEFAULT_PLUGIN_PROVIDER_TIMEOUT_MS = 3_000;
 const DEFAULT_MAX_PLUGIN_CONTINUATIONS_PER_TURN = 8;
@@ -92,7 +89,7 @@ interface PluginTurnState {
  *
  * Provider 在一个 Turn 内只执行一次；它产出的 Prompt/Tool effect 会在同一 Turn
  * 的后续模型调用上重放。Continuation Provider 的 effect 延迟到下一个 Turn，
- * 与 Legacy “next agent run” 语义一致。
+ * 与既有“next agent run”语义一致。
  */
 export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 	private readonly now: () => number;

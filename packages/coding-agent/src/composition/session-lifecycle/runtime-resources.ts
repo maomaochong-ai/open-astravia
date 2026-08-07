@@ -12,7 +12,7 @@ import {
 	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
 	isCodingAgentAskUserQuestionEnabled,
 } from "../../adapters/runtime-core/greenfield-ask-user-question-runtime.js";
-import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import { CodingAgentBackgroundWorkController } from "../../host/session-execution/background-work-controller.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
@@ -58,7 +58,7 @@ export interface CodingAgentSessionRuntimeResourcesOptions {
 	readonly executionRuntime: CodingAgentSessionExecutionRuntime;
 	readonly configurationState: CodingAgentSessionConfigurationState;
 	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
-	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
+	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	readonly codingTools: CodingToolsRuntimeComposition;
 	readonly productToolRegistrations: readonly CodingAgentRuntimeToolRegistration[];
 	readonly todoToolRegistration: CodingAgentRuntimeToolRegistration;

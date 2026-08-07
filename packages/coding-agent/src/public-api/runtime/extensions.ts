@@ -1,8 +1,8 @@
 import type { RuntimeSessionExecutionObservation } from "@vetta/runtime-core";
 import {
-	CodingAgentGreenfieldExtensionObservationAdapter,
-	type CodingAgentGreenfieldObservedExtensionEvent,
-} from "../../adapters/runtime-core/greenfield-extension-observation-adapter.js";
+	CodingAgentExtensionObservationAdapter,
+	type CodingAgentObservedExtensionEvent,
+} from "../../adapters/runtime-core/extension-observation-adapter.js";
 import type { ExtensionCommandContextActions } from "../../extensions/index.js";
 import { createCodingAgentExtensionCommandActions } from "../../host/extensions/command-actions.js";
 import { createCodingAgentExtensionCommandHost } from "../../host/extensions/command-host.js";
@@ -25,7 +25,7 @@ export type CodingAgentRuntimeExtensionInitialization = CodingAgentExtensionInit
 export type CodingAgentRuntimeExtensionEventHostOptions = CodingAgentExtensionEventHostOptions;
 export type CodingAgentRuntimeExtensionEventHostFactory = CodingAgentExtensionEventHostFactory;
 export type CodingAgentRuntimeExtensionCommandActionPorts = CodingAgentExtensionCommandActionPorts;
-export type CodingAgentRuntimeObservedExtensionEvent = CodingAgentGreenfieldObservedExtensionEvent;
+export type CodingAgentRuntimeObservedExtensionEvent = CodingAgentObservedExtensionEvent;
 export type CodingAgentRuntimeExtensionCommandContextActions = ExtensionCommandContextActions;
 export type CodingAgentRuntimeExtensionCommandHost = CodingAgentExtensionCommandHost;
 export type CodingAgentRuntimeExtensionCommandHostOptions = CodingAgentExtensionCommandHostOptions;
@@ -58,7 +58,7 @@ export function createCodingAgentRuntimeExtensionSessionHost(
 export function createCodingAgentRuntimeExtensionObservationAdapter(
 	emit: (event: CodingAgentRuntimeObservedExtensionEvent) => Promise<void>,
 ): CodingAgentRuntimeExtensionObservationAdapter {
-	return new CodingAgentGreenfieldExtensionObservationAdapter(emit);
+	return new CodingAgentExtensionObservationAdapter(emit);
 }
 
 export function createCodingAgentRuntimeExtensionCommandActions(

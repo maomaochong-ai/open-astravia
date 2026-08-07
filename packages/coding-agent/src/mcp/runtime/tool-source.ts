@@ -4,12 +4,12 @@ import {
 	type ManagedMcpRuntimeToolSource,
 	type McpRuntimeToolDecorationContext,
 } from "@vetta/runtime-mcp";
-import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "./coding-agent-mcp-supervisor.js";
-import type { EcosystemHookAwareRuntimeTool } from "./greenfield-hook-tool-wrapper.js";
+import type { EcosystemHookAwareRuntimeTool } from "../../extensions/runtime/ecosystem-hook-tool-wrapper.js";
+import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "./supervisor.js";
 
 export interface CodingAgentMcpRuntimeToolSourceOptions extends CodingAgentMcpSupervisorOptions {}
 
-/** Greenfield product composition that bypasses the legacy Manager and AgentTool protocol. */
+/** Product MCP composition built directly on the Runtime Tool protocol. */
 export async function createCodingAgentMcpRuntimeToolSource(
 	options: CodingAgentMcpRuntimeToolSourceOptions = {},
 ): Promise<ManagedMcpRuntimeToolSource> {

@@ -5,21 +5,18 @@ import type {
 	RuntimeToolExecutionError,
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import { CodingAgentPluginRunOrchestrator } from "../../src/adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
-import {
-	CodingAgentPluginToolRuntime,
-	withMdIntroParameter,
-} from "../../src/adapters/runtime-core/greenfield-plugin-tool-runtime.js";
 import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginToolContribution,
 	AgentPluginToolInvocation,
 } from "../../src/model-context/index.js";
 import { buildSystemPromptDraft, renderSystemPromptDraft } from "../../src/model-context/index.js";
+import { CodingAgentPluginRunOrchestrator } from "../../src/plugins/runtime/run-orchestrator.js";
+import { CodingAgentPluginToolRuntime, withMdIntroParameter } from "../../src/plugins/runtime/tool-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../src/tool-policy/model-tool-order.js";
 
 describe("CodingAgentPluginToolRuntime", () => {
-	it("compiles session-local tools with legacy activation, collision and policy precedence", () => {
+	it("compiles session-local tools with established activation, collision and policy precedence", () => {
 		const config: AgentPluginRuntimeConfig = {
 			toolContributions: [
 				pluginTool("plugin-a", "read", { scope_use: ["cli"] }),

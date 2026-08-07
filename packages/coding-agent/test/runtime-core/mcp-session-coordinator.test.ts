@@ -7,9 +7,9 @@ import type {
 	McpRuntimeToolView,
 } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import { CodingAgentCompositionResourceRegistry } from "../../src/composition/session-lifecycle/resource-registry.js";
 import { createCodingAgentMcpSessionCoordinator } from "../../src/composition/tool-surface/mcp-session-coordinator.js";
+import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 
 describe("Coding Agent MCP Session Coordinator", () => {
 	it("merges shared and plugin MCP state for Session controllers and Subagent inheritance", async () => {

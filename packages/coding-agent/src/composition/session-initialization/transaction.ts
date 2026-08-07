@@ -8,9 +8,9 @@ import {
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
-import type { CodingAgentGreenfieldExtensionToolRuntime } from "../../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentRuntimeModelAdapter } from "../../adapters/runtime-core/model-runtime-adapter.js";
+import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import type { CodingAgentTodoRuntime } from "../../runtime-contracts/index.js";
 import type { CodingAgentConversationContextOverlay } from "../../sessions/projection/conversation-context-overlay.js";
@@ -60,7 +60,7 @@ export interface CodingAgentSessionInitializationTransactionOptions<TOwnershipBi
 	readonly readConversationModelMessages: (sessionId: string) => Promise<readonly Message[]>;
 	readonly conversationContextOverlay: CodingAgentConversationContextOverlay;
 	readonly modelAdapter: CodingAgentRuntimeModelAdapter;
-	readonly extensionToolRuntime?: CodingAgentGreenfieldExtensionToolRuntime;
+	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
 	readonly acquireOwnership: (sessionId: string) => Promise<TOwnershipBinding | undefined>;
 	readonly rebindOwnership: (binding: TOwnershipBinding | undefined, sessionId: string) => Promise<void>;
 	readonly releaseOwnership: (binding: TOwnershipBinding | undefined) => Promise<void>;
@@ -106,7 +106,7 @@ async function initializeSession<TOwnershipBinding>(
 			activeOwnership = undefined;
 		},
 	});
-	const extensionEvents = new CodingAgentGreenfieldExtensionEventBridge();
+	const extensionEvents = new CodingAgentExtensionRunAdapter();
 	options.registry.indexes.resourceContexts.set(activeSessionId, resourceContext);
 	rollback.defer({
 		id: "resource-context-binding",

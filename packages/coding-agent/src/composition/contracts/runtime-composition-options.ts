@@ -12,7 +12,7 @@ import type {
 import type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
-	CodingAgentGreenfieldExtensionToolSource,
+	CodingAgentExtensionToolSource,
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
 	CodingAgentPromptResourceResolver,
@@ -110,7 +110,7 @@ export interface CodingAgentRuntimePluginOptions {
 
 export interface CodingAgentRuntimeExtensionOptions {
 	/** 已由宿主加载的 Extension Tool 注册；只在 Coding Agent 调用级 Frame 中物化。 */
-	readonly extensionTools?: readonly CodingAgentGreenfieldExtensionToolSource[];
+	readonly extensionTools?: readonly CodingAgentExtensionToolSource[];
 	/** 追加到每个 Session 内置 Codex/Claude Hook Adapter 之后。 */
 	readonly additionalHookAdapterFactories?: readonly EcosystemHookAdapterFactory[];
 	/** 显式 Hook 配置层；未提供时由内置 Adapter 使用各自默认发现规则。 */
@@ -123,7 +123,7 @@ export interface CodingAgentRuntimeContextOptions {
 	readonly createTodoRuntime?: (sessionOptions: CodingAgentRuntimeSessionOptions) => CodingAgentTodoRuntime;
 	/** 运行中读取压缩设置；未提供时使用 Coding Agent 既有默认值。 */
 	readonly resolveCompactionSettings?: CodingAgentCompactionRuntimeOptions["resolveSettings"];
-	/** 为每个 Session 创建旧 Extension 压缩事件的窄适配器。 */
+	/** 为每个 Session 创建 Extension 压缩事件的窄适配器。 */
 	readonly createCompactionExtensionRuntime?: (
 		sessionOptions: CodingAgentRuntimeSessionOptions,
 	) => CodingAgentCompactionExtensionRuntime | undefined;

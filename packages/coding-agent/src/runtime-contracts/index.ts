@@ -3,10 +3,10 @@ export type {
 	CodingAgentCompactionRuntimeOptions,
 } from "./context-runtime.js";
 export type {
-	CodingAgentGreenfieldExtensionEventBinding,
-	CodingAgentGreenfieldExtensionRunnerPort,
-	CodingAgentGreenfieldExtensionToolSource,
-	CodingAgentGreenfieldSessionToolRegistration,
+	CodingAgentExtensionEventBinding,
+	CodingAgentExtensionRunnerPort,
+	CodingAgentExtensionToolSource,
+	CodingAgentSessionToolRegistration,
 } from "./extension-runtime.js";
 export type { CodingAgentRuntimeModelSource } from "./model-runtime.js";
 export type { CodingAgentPluginMcpRuntime, CodingAgentPluginRuntimeSource } from "./plugin-runtime.js";

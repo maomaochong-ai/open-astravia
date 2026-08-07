@@ -8,8 +8,8 @@ import type {
 	SessionInput,
 } from "@vetta/runtime-core/kernel";
 import type { InputEventResult, InputSource } from "../../extensions/index.js";
-import type { CodingAgentGreenfieldExtensionRunnerPort } from "../../runtime-contracts/index.js";
-import { wrapRuntimeToolsWithExtensions } from "./greenfield-extension-tool-wrapper.js";
+import type { CodingAgentExtensionRunnerPort } from "../../runtime-contracts/index.js";
+import { wrapRuntimeToolsWithExtensions } from "./extension-tool-wrapper.js";
 
 /**
  * Session 级 Extension 事件桥。
@@ -17,18 +17,15 @@ import { wrapRuntimeToolsWithExtensions } from "./greenfield-extension-tool-wrap
  * Composition Root 在 Session 构建时持有桥，宿主随后绑定 Runner；因此 Prompt 与
  * Tool Frame 只依赖稳定桥接口，不依赖 CLI 生命周期或 Extension Loader。
  */
-export class CodingAgentGreenfieldExtensionEventBridge implements AgentRunPreparer {
-	private runner: CodingAgentGreenfieldExtensionRunnerPort | undefined;
+export class CodingAgentExtensionRunAdapter implements AgentRunPreparer {
+	private runner: CodingAgentExtensionRunnerPort | undefined;
 	private baseSystemPrompt = "";
 	private systemPrompt = "";
 	private runSystemPromptOverride: string | undefined;
 
-	bind(
-		runner: CodingAgentGreenfieldExtensionRunnerPort,
-		options: { readonly replaceExisting?: boolean } = {},
-	): () => void {
+	bind(runner: CodingAgentExtensionRunnerPort, options: { readonly replaceExisting?: boolean } = {}): () => void {
 		if (this.runner && this.runner !== runner && options.replaceExisting !== true) {
-			throw new Error("Greenfield Extension event bridge is already bound");
+			throw new Error("Extension run adapter is already bound");
 		}
 		this.runner = runner;
 		return () => {

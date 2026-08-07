@@ -3,10 +3,10 @@ import type { ConversationScenario, GreenfieldRuntimeSessionBackend } from "@vet
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { CodingToolRegistry } from "@vetta/runtime-tools/coding";
 import type {
-	CodingAgentGreenfieldExtensionEventBinding,
-	CodingAgentGreenfieldExtensionRunnerPort,
-	CodingAgentGreenfieldExtensionToolSource,
-	CodingAgentGreenfieldSessionToolRegistration,
+	CodingAgentExtensionEventBinding,
+	CodingAgentExtensionRunnerPort,
+	CodingAgentExtensionToolSource,
+	CodingAgentSessionToolRegistration,
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 
@@ -30,11 +30,11 @@ export interface CodingAgentRuntimeSessionControls {
 export interface CodingAgentRuntimeExtensionControls {
 	bindExtensionRunner(
 		sessionId: string,
-		runner: CodingAgentGreenfieldExtensionRunnerPort,
+		runner: CodingAgentExtensionRunnerPort,
 		options?: { readonly replaceExisting?: boolean },
-	): CodingAgentGreenfieldExtensionEventBinding;
-	refreshExtensionTools(extensions: readonly CodingAgentGreenfieldExtensionToolSource[]): void;
-	replaceSessionTools(sessionId: string, tools: readonly CodingAgentGreenfieldSessionToolRegistration[]): void;
+	): CodingAgentExtensionEventBinding;
+	refreshExtensionTools(extensions: readonly CodingAgentExtensionToolSource[]): void;
+	replaceSessionTools(sessionId: string, tools: readonly CodingAgentSessionToolRegistration[]): void;
 	clearSessionTools(sessionId: string): void;
 }
 

@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	type EcosystemHookAwareRuntimeTool,
 	wrapRuntimeToolsWithEcosystemHooks,
-} from "../../src/adapters/runtime-core/greenfield-hook-tool-wrapper.js";
+} from "../../src/adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import {
 	type EcosystemHookAwareTool,
 	wrapToolsWithEcosystemHooks,

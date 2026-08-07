@@ -25,7 +25,7 @@ import type {
 	CodingAgentRuntimeModelSource,
 } from "../../src/public-api/host-services.js";
 
-describe("Greenfield continuation orchestration", () => {
+describe("Coding Agent continuation orchestration", () => {
 	const temporaryDirectories: string[] = [];
 	const compositions: CodingAgentRuntimeComposition[] = [];
 
@@ -38,8 +38,8 @@ describe("Greenfield continuation orchestration", () => {
 		}
 	});
 
-	it("runs Todo, Plugin and Stop Hook continuations in legacy order", async () => {
-		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-continuation-"));
+	it("runs Todo, Plugin and Stop Hook continuations in the established order", async () => {
+		const conversationDir = await mkdtemp(join(tmpdir(), "continuation-orchestration-"));
 		temporaryDirectories.push(conversationDir);
 		const todoRuntime = new CodingAgentTodoRuntime();
 		const pluginInvocations: string[] = [];

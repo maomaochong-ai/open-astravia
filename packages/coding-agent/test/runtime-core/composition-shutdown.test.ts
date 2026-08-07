@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import { createCodingAgentCompositionShutdown } from "../../src/composition/session-lifecycle/composition-shutdown.js";
 import { CodingAgentCompositionResourceRegistry } from "../../src/composition/session-lifecycle/resource-registry.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../src/host/session-execution/execution-runtime.js";
+import type { CodingAgentPluginMcpRuntime } from "../../src/plugins/runtime/mcp-runtime.js";
 
 describe("Coding Agent composition shutdown", () => {
 	it("deduplicates Session aliases, preserves phase order and retries only failed resources", async () => {

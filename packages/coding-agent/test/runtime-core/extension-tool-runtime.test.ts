@@ -1,7 +1,6 @@
 import { Type } from "@sinclair/typebox";
 import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
-import { CodingAgentGreenfieldExtensionToolRuntime } from "../../src/adapters/runtime-core/greenfield-extension-tool-runtime.js";
 import type {
 	Extension,
 	ExtensionContext,
@@ -9,12 +8,13 @@ import type {
 	RegisteredTool,
 	ToolDefinition,
 } from "../../src/extensions/index.js";
+import { CodingAgentExtensionToolRuntime } from "../../src/extensions/runtime/extension-tool-runtime.js";
 
 const echoParameters = Type.Object({ value: Type.String() });
 
-describe("CodingAgentGreenfieldExtensionToolRuntime", () => {
-	it("keeps Legacy first-wins registration and hides a shadowed base tool when inactive", () => {
-		const runtime = new CodingAgentGreenfieldExtensionToolRuntime([
+describe("CodingAgentExtensionToolRuntime", () => {
+	it("keeps first-wins registration and hides a shadowed base tool when inactive", () => {
+		const runtime = new CodingAgentExtensionToolRuntime([
 			extensionWithTool("first", echoTool("first")),
 			extensionWithTool("second", echoTool("second")),
 		]);
@@ -33,9 +33,7 @@ describe("CodingAgentGreenfieldExtensionToolRuntime", () => {
 	});
 
 	it("places active Extension tools before non-shadowed host tools", () => {
-		const runtime = new CodingAgentGreenfieldExtensionToolRuntime([
-			extensionWithTool("extension", echoTool("extension")),
-		]);
+		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("extension", echoTool("extension"))]);
 		const hostTool = runtimeTool("host_tool", "host");
 		const context = compositionContext(new Map([[hostTool.name, hostTool]]));
 
@@ -56,7 +54,7 @@ describe("CodingAgentGreenfieldExtensionToolRuntime", () => {
 				};
 			},
 		};
-		const runtime = new CodingAgentGreenfieldExtensionToolRuntime([extensionWithTool("bound", tool)]);
+		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("bound", tool)]);
 		const extensionContext = { cwd: "C:/workspace" } as unknown as ExtensionContext;
 		const runner = { createContext: () => extensionContext } as unknown as ExtensionRunner;
 		const unbind = runtime.bindRunner("session-1", runner);
@@ -86,7 +84,7 @@ describe("CodingAgentGreenfieldExtensionToolRuntime", () => {
 	});
 
 	it("replaces Extension tool definitions without losing Session runner bindings", async () => {
-		const runtime = new CodingAgentGreenfieldExtensionToolRuntime([extensionWithTool("before", echoTool("before"))]);
+		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("before", echoTool("before"))]);
 		const runner = { createContext: () => ({ cwd: "C:/workspace" }) } as unknown as ExtensionRunner;
 		runtime.bindRunner("session-1", runner);
 
@@ -107,9 +105,7 @@ describe("CodingAgentGreenfieldExtensionToolRuntime", () => {
 	});
 
 	it("isolates Session overlays and lets Session tools override process Extension tools", () => {
-		const runtime = new CodingAgentGreenfieldExtensionToolRuntime([
-			extensionWithTool("extension", echoTool("extension")),
-		]);
+		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("extension", echoTool("extension"))]);
 		runtime.replaceSessionTools("session-1", [registeredTool("<sdk-1>", echoTool("session-1"))]);
 		runtime.replaceSessionTools("session-2", [registeredTool("<sdk-2>", echoTool("session-2"))]);
 
@@ -123,7 +119,7 @@ describe("CodingAgentGreenfieldExtensionToolRuntime", () => {
 	});
 
 	it("keeps a captured Model Call Frame stable while replacements affect the next call", async () => {
-		const runtime = new CodingAgentGreenfieldExtensionToolRuntime([]);
+		const runtime = new CodingAgentExtensionToolRuntime([]);
 		const runner = { createContext: () => ({ cwd: "C:/workspace" }) } as unknown as ExtensionRunner;
 		runtime.bindRunner("session-1", runner);
 		runtime.replaceSessionTools("session-1", [registeredTool("<sdk>", echoTool("before"))]);

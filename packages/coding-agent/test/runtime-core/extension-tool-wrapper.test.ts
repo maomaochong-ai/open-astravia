@@ -1,10 +1,10 @@
 import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import { wrapRuntimeToolsWithExtensions } from "../../src/adapters/runtime-core/greenfield-extension-tool-wrapper.js";
+import { wrapRuntimeToolsWithExtensions } from "../../src/adapters/runtime-core/extension-tool-wrapper.js";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 import type { ExtensionRunner, ToolCallEvent, ToolResultEvent } from "../../src/extensions/index.js";
 
-describe("Greenfield Extension events", () => {
+describe("Extension events", () => {
 	it("transforms input before prompt resource expansion and can handle it without a turn", async () => {
 		const order: string[] = [];
 		const adapter = new CodingAgentPromptRequestAdapter({

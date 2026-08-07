@@ -6,16 +6,6 @@
  */
 import type { RuntimeSharedModelController } from "@vetta/runtime-core";
 import {
-	type CodingAgentMcpRuntimeToolSourceOptions,
-	createCodingAgentMcpRuntimeToolSource,
-} from "../adapters/runtime-core/coding-agent-mcp-runtime-source.js";
-import {
-	type CodingAgentPluginMcpCompositionOptions,
-	type CodingAgentPluginMcpRuntimeOptions,
-	type CodingAgentPluginMcpToolSurface,
-	createCodingAgentPluginMcpRuntime,
-} from "../adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
-import {
 	CodingAgentSharedModelController,
 	type CodingAgentSharedModelSource,
 } from "../adapters/runtime-core/shared-model-controller.js";
@@ -24,7 +14,17 @@ import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime }
 import { createCodingAgentHostFromSessionFactory } from "../host/coding-agent-host.js";
 import { createHostBashExecutor } from "../host/command-execution/index.js";
 import { createCodingAgentSessionFromPublicOptions } from "../host/sdk-session/index.js";
+import {
+	type CodingAgentMcpRuntimeToolSourceOptions,
+	createCodingAgentMcpRuntimeToolSource,
+} from "../mcp/runtime/tool-source.js";
 import { type CodingAgentModelRuntime, createCodingAgentModelRuntime } from "../models/index.js";
+import {
+	type CodingAgentPluginMcpCompositionOptions,
+	type CodingAgentPluginMcpRuntimeOptions,
+	type CodingAgentPluginMcpToolSurface,
+	createCodingAgentPluginMcpRuntime,
+} from "../plugins/runtime/mcp-runtime.js";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import { SettingsRuntime } from "../settings/index.js";
 import type { CodingAgentHost, CodingAgentHostSessionDefaults } from "./sdk/index.js";

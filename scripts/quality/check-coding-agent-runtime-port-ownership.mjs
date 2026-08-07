@@ -4,14 +4,20 @@ import { join } from "node:path";
 import { fail, isDirectRun, ok, readText, rel, repoRoot, walkFiles } from "./lib.mjs";
 
 const RUNTIME_ADAPTER_ROOT = "packages/coding-agent/src/adapters/runtime-core";
+const RUNTIME_IMPLEMENTATION_ROOTS = [
+	RUNTIME_ADAPTER_ROOT,
+	"packages/coding-agent/src/extensions/runtime",
+	"packages/coding-agent/src/plugins/runtime",
+	"packages/coding-agent/src/work-state",
+];
 const STABLE_CONSUMER_ROOTS = ["packages/coding-agent/src/composition", "packages/coding-agent/src/public-api"];
 
 export const STABLE_RUNTIME_PORT_NAMES = Object.freeze([
 	"CodingAgentCompactionExtensionRuntime",
-	"CodingAgentGreenfieldExtensionEventBinding",
-	"CodingAgentGreenfieldExtensionRunnerPort",
-	"CodingAgentGreenfieldExtensionToolSource",
-	"CodingAgentGreenfieldSessionToolRegistration",
+	"CodingAgentExtensionEventBinding",
+	"CodingAgentExtensionRunnerPort",
+	"CodingAgentExtensionToolSource",
+	"CodingAgentSessionToolRegistration",
 	"CodingAgentModelCallPromptContext",
 	"CodingAgentPluginMcpRuntime",
 	"CodingAgentPluginRuntimeSource",
@@ -27,7 +33,7 @@ export const STABLE_RUNTIME_PORT_NAMES = Object.freeze([
 
 const REQUIRED_IMPLEMENTATIONS = Object.freeze([
 	{
-		path: `${RUNTIME_ADAPTER_ROOT}/greenfield-plugin-mcp-runtime.ts`,
+		path: "packages/coding-agent/src/plugins/runtime/mcp-runtime.ts",
 		name: "CodingAgentPluginMcpRuntime",
 		pattern: /export\s+class\s+CodingAgentPluginMcpRuntime\s+implements\s+CodingAgentPluginMcpRuntimePort\b/,
 	},
@@ -40,7 +46,7 @@ const REQUIRED_IMPLEMENTATIONS = Object.freeze([
 
 export function collectCodingAgentRuntimePortOwnershipState(files) {
 	const duplicateDeclarations = files
-		.filter((file) => file.path.startsWith(`${RUNTIME_ADAPTER_ROOT}/`))
+		.filter((file) => RUNTIME_IMPLEMENTATION_ROOTS.some((root) => file.path.startsWith(`${root}/`)))
 		.flatMap((file) =>
 			STABLE_RUNTIME_PORT_NAMES.filter((name) =>
 				new RegExp(`export\\s+(?:interface|type)\\s+${name}\\b`).test(file.text),
@@ -100,7 +106,7 @@ function collectNamedImports(text) {
 }
 
 function readCurrentFiles() {
-	const directories = [RUNTIME_ADAPTER_ROOT, ...STABLE_CONSUMER_ROOTS];
+	const directories = [...RUNTIME_IMPLEMENTATION_ROOTS, ...STABLE_CONSUMER_ROOTS];
 	const files = directories.flatMap((directory) =>
 		walkFiles(join(repoRoot, directory), { extensions: [".ts"] }).map((filePath) => ({
 			path: rel(filePath),

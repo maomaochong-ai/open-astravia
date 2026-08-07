@@ -1,16 +1,15 @@
 import { Type } from "@sinclair/typebox";
-import type { EcosystemHookRuntime, EcosystemToolDescriptor } from "@vetta/ecosystem-adapter/hooks";
+import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
 import type { RuntimeToolDefinition, RuntimeToolExecutionRequest, RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import {
+	type EcosystemHookAwareRuntimeTool,
 	type EcosystemHookAwareTool,
 	wrapToolsWithEcosystemHooks,
 } from "../../extensions/runtime/ecosystem-hook-tool-wrapper.js";
 
-export type EcosystemHookAwareRuntimeTool = RuntimeToolDefinition & {
-	readonly ecosystemHook?: EcosystemToolDescriptor;
-};
+export type { EcosystemHookAwareRuntimeTool };
 
-/** 在最终 Model Call Frame 上复用 Legacy Tool Hook 的完整执行语义。 */
+/** 在最终 Model Call Frame 上应用 Ecosystem Tool Hook 的完整执行语义。 */
 export function wrapRuntimeToolsWithEcosystemHooks(
 	tools: ReadonlyMap<string, RuntimeToolDefinition>,
 	hooks: EcosystemHookRuntime,

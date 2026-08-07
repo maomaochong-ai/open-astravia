@@ -3,7 +3,7 @@ import type { Api, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../../compaction/index.js";
 import type { CodingAgentMemoryCompactionPolicy } from "../../../memory/index.js";
-import type { CodingAgentCompactionExtensionRuntime } from "../greenfield-compaction-extension-runtime.js";
+import type { CodingAgentCompactionExtensionRuntime } from "../../../runtime-contracts/index.js";
 
 export type ContextHookRuntime = Pick<EcosystemHookRuntime, "markSessionStart" | "runPostCompact" | "runPreCompact">;
 

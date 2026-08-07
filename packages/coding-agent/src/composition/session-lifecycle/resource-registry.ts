@@ -1,6 +1,6 @@
 import type { GreenfieldRuntimeResourceContext } from "@vetta/runtime-core";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../../adapters/runtime-core/greenfield-extension-event-bridge.js";
+import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import type { CodingAgentMemoryController } from "../../adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentSessionConfigurationState } from "../../host/session-configuration/configuration-state.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
@@ -48,7 +48,7 @@ export class CodingAgentCompositionResourceRegistry implements CodingAgentCompos
 		executionRuntimes: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionExecutionRuntime>(),
 		configurationStates: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionConfigurationState>(),
 		resourceContexts: new InMemoryCodingAgentSessionValueIndex<GreenfieldRuntimeResourceContext>(),
-		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentGreenfieldExtensionEventBridge>(),
+		extensionEventBridges: new InMemoryCodingAgentSessionValueIndex<CodingAgentExtensionRunAdapter>(),
 		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentSessionHookController>(),
 		mcpRefreshObservedSessions: new InMemoryCodingAgentSessionMarkerIndex(),

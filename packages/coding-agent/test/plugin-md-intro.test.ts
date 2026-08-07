@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	stripMdIntroParameter,
-	withMdIntroParameter,
-} from "../src/adapters/runtime-core/greenfield-plugin-tool-runtime.js";
+import { stripMdIntroParameter, withMdIntroParameter } from "../src/plugins/runtime/tool-runtime.js";
 
 const schema = {
 	type: "object",
