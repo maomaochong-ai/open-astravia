@@ -14,7 +14,6 @@ import {
 	readSessionId,
 	type StartAgentRpcOptions,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import { legacyRuntimeContract } from "./support/legacy-runtime-contract.js";
 import {
@@ -32,8 +31,7 @@ import {
 	toolCallResponseEvents,
 } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
-const PROVIDER_DIFFERENTIAL_HOST_OPTIONS = {
+const PROVIDER_CONTRACT_HOST_OPTIONS = {
 	enableHostBridge: true,
 	scenario: "im-claw",
 } as const satisfies StartAgentRpcOptions;
@@ -50,7 +48,7 @@ afterAll(async () => {
 
 describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 	it("preserves the exact Provider request body and ordered tool surface", async () => {
-		const observations = await runForBackends(
+		const frame = await runRuntimeScenario(
 			async ({ process, server, fixture }) => {
 				const mark = process.mark();
 				await process.request("prompt-provider-frame", "prompt", {
@@ -64,14 +62,13 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			},
 			() => ({ kind: "events", events: textResponseEvents("Provider frame captured.") }),
 		);
-		const frame = observations["greenfield-im"];
 		expect(frame.model).toBe("test-model");
 		expect(JSON.stringify(frame.input)).toContain("Capture the exact Provider request frame");
 		expect(providerToolNames(frame)).toEqual(expect.arrayContaining(["read", "im_send_attachment"]));
 	}, 30_000);
 
 	it("preserves the IM-consumed streaming text contract", async () => {
-		const observations = await runForBackends(
+		const observation = await runRuntimeScenario(
 			async ({ process, server }) => {
 				const mark = process.mark();
 				await expect(process.request("prompt-text", "prompt", { message: "Say hello" })).resolves.toMatchObject({
@@ -86,7 +83,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			() => ({ kind: "events", events: textResponseEvents("Hello from fixture.") }),
 		);
 
-		expect(observations["greenfield-im"]).toEqual({
+		expect(observation).toEqual({
 			lifecycle: legacyRuntimeContract.rpc.streamingLifecycle,
 			textDelta: "Hello from fixture.",
 			finalText: "Hello from fixture.",
@@ -96,7 +93,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 	});
 
 	it("preserves Tool Call, Tool Result and second model-call behavior", async () => {
-		const observations = await runForBackends(
+		const observation = await runRuntimeScenario(
 			async ({ process, server, fixture }) => {
 				const sourcePath = join(fixture.workspace, "message.txt");
 				await writeFile(sourcePath, "tool fixture content", "utf8");
@@ -122,7 +119,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 					: { kind: "events", events: textResponseEvents("The file was read.") },
 		);
 
-		expect(observations["greenfield-im"]).toMatchObject({
+		expect(observation).toMatchObject({
 			lifecycle: ["agent_start", "turn_start", "turn_end", "turn_start", "turn_end", "agent_end"],
 			finalText: "The file was read.",
 			tools: [{ name: "read", isError: false }],
@@ -130,7 +127,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 	});
 
 	it("preserves Extension Tool schema, execution context, progress and Tool Loop result", async () => {
-		const observations = await runForBackends(
+		const observation = await runRuntimeScenario(
 			async ({ process, server, fixture }) => {
 				const mark = process.mark();
 				await process.request("prompt-extension-tool", "prompt", { message: "Run extension_echo with hello" });
@@ -153,13 +150,13 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 					? { kind: "events", events: toolCallResponseEvents("extension_echo", { value: "hello" }) }
 					: { kind: "events", events: textResponseEvents("Extension Tool completed.") },
 			async (fixture) => ({
-				extraArgs: ["--extension", await writeToolDifferentialExtension(fixture)],
+				extraArgs: ["--extension", await writeToolContractExtension(fixture)],
 			}),
 		);
 
-		expect(providerToolNames(observations["greenfield-im"].firstProviderRequest)).toContain("extension_echo");
-		expect(JSON.stringify(observations["greenfield-im"].secondProviderInput)).toContain("extension-result:hello");
-		expect(observations["greenfield-im"]).toMatchObject({
+		expect(providerToolNames(observation.firstProviderRequest)).toContain("extension_echo");
+		expect(JSON.stringify(observation.secondProviderInput)).toContain("extension-result:hello");
+		expect(observation).toMatchObject({
 			frames: {
 				finalText: "Extension Tool completed.",
 				tools: [{ name: "extension_echo", isError: false }],
@@ -169,7 +166,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 	}, 30_000);
 
 	it("preserves in-flight abort behavior and closes the Provider request", async () => {
-		const observations = await runForBackends(
+		const observation = await runRuntimeScenario(
 			async ({ process, server }) => {
 				const mark = process.mark();
 				await process.request("prompt-abort", "prompt", { message: "Stream until aborted" });
@@ -189,13 +186,13 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			}),
 		);
 
-		expect(observations["greenfield-im"].lifecycle.at(0)).toBe("agent_start");
-		expect(observations["greenfield-im"].lifecycle.at(-1)).toBe("agent_end");
-		expect(observations["greenfield-im"].textDelta).toBe("partial");
+		expect(observation.lifecycle.at(0)).toBe("agent_start");
+		expect(observation.lifecycle.at(-1)).toBe("agent_end");
+		expect(observation.textDelta).toBe("partial");
 	});
 
 	it("preserves the attachment Host Bridge round trip", async () => {
-		const observations = await runForBackends(
+		const observation = await runRuntimeScenario(
 			async ({ process, server, fixture }) => {
 				const attachmentPath = join(fixture.workspace, "artifact.txt");
 				await writeFile(attachmentPath, "attachment", "utf8");
@@ -228,15 +225,15 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 					: { kind: "events", events: textResponseEvents("Attachment sent.") },
 		);
 
-		expect(observations["greenfield-im"]).toMatchObject({
+		expect(observation).toMatchObject({
 			finalText: "Attachment sent.",
 			tools: [{ name: "im_send_attachment", isError: false }],
 		});
 	});
 
 	it("enforces the replacement and storage-continuation resource matrix", async () => {
-		const replacement = await runForBackends(
-			async ({ backend, process, server, fixture }) => {
+		const replacement = await runRuntimeScenario(
+			async ({ process, server, fixture }) => {
 				const sourcePath = readSessionFile(await process.request("replacement-source", "get_state"));
 				const pid = await seedSessionResources(process, fixture, "replacement");
 				const transitionMark = process.mark();
@@ -248,8 +245,8 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 				await process.request("replacement-inspect", "prompt", { message: "inspect-replacement-todos" });
 				await process.waitFor((frame) => frame.type === "agent_end", inspectMark, 10_000);
 
-				const sourceLock = persistentSessionLockPath(backend, sourcePath);
-				const targetLock = persistentSessionLockPath(backend, targetPath);
+				const sourceLock = persistentSessionLockPath(sourcePath);
+				const targetLock = persistentSessionLockPath(targetPath);
 				const inspection = server.requests.at(-1)?.rawBody ?? "";
 				const backgroundStopped = await waitForProcessExit(pid);
 				const observation = {
@@ -270,8 +267,8 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			(request, _index, fixture) => sessionContinuityResponse(request, fixture, "replacement"),
 		);
 
-		const continuation = await runForBackends(
-			async ({ backend, process, server, fixture }) => {
+		const continuation = await runRuntimeScenario(
+			async ({ process, server, fixture }) => {
 				const sourcePath = readSessionFile(await process.request("continuation-source", "get_state"));
 				const pid = await seedSessionResources(process, fixture, "continuation");
 				const transitionMark = process.mark();
@@ -286,8 +283,8 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 				const targetPath = pathChange.to;
 				if (typeof targetPath !== "string") throw new Error("Expected rollover target path");
 				const targetState = await process.request("continuation-target", "get_state");
-				const sourceLock = persistentSessionLockPath(backend, sourcePath);
-				const targetLock = persistentSessionLockPath(backend, targetPath);
+				const sourceLock = persistentSessionLockPath(sourcePath);
+				const targetLock = persistentSessionLockPath(targetPath);
 				const transitionFrames = process.framesSince(transitionMark);
 				const transitionOwnership = {
 					sourceOwnershipReleased: !existsSync(sourceLock),
@@ -298,7 +295,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 				await process.waitFor((frame) => frame.type === "agent_end", inspectMark, 10_000);
 
 				const finalPath = readSessionFile(await process.request("continuation-final", "get_state"));
-				const finalLock = persistentSessionLockPath(backend, finalPath);
+				const finalLock = persistentSessionLockPath(finalPath);
 				const inspection = server.requests.at(-1)?.rawBody ?? "";
 				const observation = {
 					backgroundPreserved: isProcessAlive(pid),
@@ -326,7 +323,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			}),
 		);
 
-		expect(replacement["greenfield-im"]).toEqual({
+		expect(replacement).toEqual({
 			backgroundStopped: true,
 			pathChanged: true,
 			pathChangeCount: 0,
@@ -335,7 +332,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			targetOwnershipReleased: true,
 			todoState: true,
 		});
-		expect(continuation["greenfield-im"]).toEqual({
+		expect(continuation).toEqual({
 			backgroundPreserved: true,
 			backgroundStoppedOnClose: true,
 			lifecycle: ["agent_start", "turn_start", "turn_end", "agent_end"],
@@ -351,7 +348,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 	}, 60_000);
 
 	it("preserves Extension context identity, once-per-call execution and transient Tool Loop transforms", async () => {
-		const observations = await runForBackends(
+		const observation = await runRuntimeScenario(
 			async ({ process, server, fixture }) => {
 				const sourcePath = join(fixture.workspace, "context-message.txt");
 				await writeFile(sourcePath, "context tool fixture", "utf8");
@@ -382,11 +379,11 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 						}
 					: { kind: "events", events: textResponseEvents("Context Tool Loop completed.") },
 			async (fixture) => ({
-				extraArgs: ["--extension", await writeContextDifferentialExtension(fixture)],
+				extraArgs: ["--extension", await writeContextContractExtension(fixture)],
 			}),
 		);
 
-		expect(observations["greenfield-im"]).toMatchObject({
+		expect(observation).toMatchObject({
 			firstHasCallOne: true,
 			firstHasCustomIdentity: true,
 			secondHasOnlyCallTwo: true,
@@ -395,8 +392,8 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 	}, 30_000);
 
 	it("preserves context-before-compaction order and restored context through a CLI process restart", async () => {
-		const observations = await runForBackends(
-			async ({ backend, process, server, fixture }) => {
+		const observation = await runRuntimeScenario(
+			async ({ process, server, fixture }) => {
 				let mark = process.mark();
 				await process.request("prompt-before-compaction", "prompt", {
 					message: "initial-before-compaction",
@@ -415,11 +412,10 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 				await process.close();
 
 				const resumed = startAgentRpc(executable, fixture, {
-					backend,
-					...PROVIDER_DIFFERENTIAL_HOST_OPTIONS,
+					...PROVIDER_CONTRACT_HOST_OPTIONS,
 					extraArgs: [
 						"--extension",
-						join(fixture.root, "context-differential-extension.ts"),
+						join(fixture.root, "context-contract-extension.ts"),
 						"--session",
 						sessionPath,
 					],
@@ -439,7 +435,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 					rawBody.includes("trigger-context-compaction"),
 				);
 				const resumedRequest = normalRequests.find(({ rawBody }) => rawBody.includes("after-context-restart"));
-				const contextObservations = await readContextDifferentialObservations(fixture);
+				const contextObservations = await readContextContractObservations(fixture);
 				return {
 					inputs: normalRequests.map(({ body }) => normalizeProviderValue(body.input, fixture)),
 					contextIdentities: contextObservations.map(({ identities }) => identities),
@@ -484,24 +480,24 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 					}),
 					"utf8",
 				);
-				return { extraArgs: ["--extension", await writeContextDifferentialExtension(fixture)] };
+				return { extraArgs: ["--extension", await writeContextContractExtension(fixture)] };
 			},
 			{ contextWindow: 1_000, maxTokens: 100 },
 		);
 
-		expect(observations["greenfield-im"]).toMatchObject({
+		expect(observation).toMatchObject({
 			agentRequestKinds: ["initial", "compacted", "resumed"],
 			contextCallCounts: [1, 2, 1],
 			contextObservedPreCompactionHistory: true,
 			providerReceivedCompactionSummary: true,
 			resumedContextRestoredSummaryIdentity: true,
 		});
-		expect(observations["greenfield-im"].compactionRequestCount).toBeGreaterThan(0);
+		expect(observation.compactionRequestCount).toBeGreaterThan(0);
 	}, 40_000);
 
 	it("continues a migrated official Legacy session through Provider calls and a process restart", async () => {
-		const observations = await runForBackends(
-			async ({ backend, process, server, fixture }) => {
+		const observation = await runRuntimeScenario(
+			async ({ process, server, fixture }) => {
 				const sourcePath = join(fixture.conversationDir, "legacy-execution-source.jsonl");
 				const sourceContent = await readFile(sourcePath, "utf8");
 				const initialState = await process.request("legacy-execution-state-before", "get_state");
@@ -515,8 +511,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 
 				const migratedTargetsBeforeRestart = await listMigratedTargets(fixture);
 				const resumed = startAgentRpc(executable, fixture, {
-					backend,
-					...PROVIDER_DIFFERENTIAL_HOST_OPTIONS,
+					...PROVIDER_CONTRACT_HOST_OPTIONS,
 					extraArgs: [
 						"--extension",
 						join(fixture.root, "legacy-execution-context-extension.ts"),
@@ -586,7 +581,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			},
 		);
 
-		expect(observations["greenfield-im"]).toMatchObject({
+		expect(observation).toMatchObject({
 			contextCallCounts: [1, 1],
 			firstProviderBoundary: {
 				containsAbandonedBranch: false,
@@ -611,18 +606,18 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			},
 			resumedIdentityStable: true,
 		});
-		expect(observations["greenfield-im"].contextIdentities[0]).toContain("compactionSummary");
-		expect(observations["greenfield-im"].contextIdentities[0]).toContain("bashExecution");
-		expect(observations["greenfield-im"].contextIdentities[0]).toContain("custom:legacy-visible-context");
-		expect(observations["greenfield-im"].contextIdentities[0]).toContain("custom:prompt_resource_reference");
-		expect(observations["greenfield-im"].contextIdentities[0]).toContain("branchSummary");
-		expect(observations["greenfield-im"].contextObserved[0]).toContain(LEGACY_EXECUTION_MARKERS.hiddenBash);
-		expect(observations["greenfield-im"].contextObserved[0]).toContain(LEGACY_EXECUTION_MARKERS.hiddenCustom);
-		expect(observations["greenfield-im"].contextObserved[0]).not.toContain(LEGACY_EXECUTION_MARKERS.abandonedBranch);
+		expect(observation.contextIdentities[0]).toContain("compactionSummary");
+		expect(observation.contextIdentities[0]).toContain("bashExecution");
+		expect(observation.contextIdentities[0]).toContain("custom:legacy-visible-context");
+		expect(observation.contextIdentities[0]).toContain("custom:prompt_resource_reference");
+		expect(observation.contextIdentities[0]).toContain("branchSummary");
+		expect(observation.contextObserved[0]).toContain(LEGACY_EXECUTION_MARKERS.hiddenBash);
+		expect(observation.contextObserved[0]).toContain(LEGACY_EXECUTION_MARKERS.hiddenCustom);
+		expect(observation.contextObserved[0]).not.toContain(LEGACY_EXECUTION_MARKERS.abandonedBranch);
 	}, 40_000);
 
 	it("preserves dynamic image blocking at the final Provider boundary without rewriting history", async () => {
-		const observations = await runForBackends(
+		const observation = await runRuntimeScenario(
 			async ({ process, server, fixture }) => {
 				let mark = process.mark();
 				await process.request("prompt-image-visible", "prompt", {
@@ -663,7 +658,7 @@ describe("Agent Runtime Provider contract", { timeout: 30_000 }, () => {
 			{ modelInput: ["text", "image"] },
 		);
 
-		expect(observations["greenfield-im"]).toMatchObject({
+		expect(observation).toMatchObject({
 			firstProviderReceivedImage: true,
 			secondProviderBlockedAllImages: true,
 			historyRetainedImages: true,
@@ -678,45 +673,36 @@ type ScenarioHandler = (
 ) => ReturnType<Parameters<typeof startOpenAiResponsesTestServer>[0]>;
 
 interface ScenarioContext {
-	readonly backend: TestAgentRuntimeBackend;
 	readonly fixture: AgentRpcFixture;
 	readonly process: AgentRpcProcess;
 	readonly server: OpenAiResponsesTestServer;
 }
 
-async function runForBackends<T>(
+async function runRuntimeScenario<T>(
 	run: (context: ScenarioContext) => Promise<T>,
 	handler: ScenarioHandler,
-	resolveStartOptions?: (
-		fixture: AgentRpcFixture,
-		backend: TestAgentRuntimeBackend,
-	) => Promise<StartAgentRpcOptions> | StartAgentRpcOptions,
+	resolveStartOptions?: (fixture: AgentRpcFixture) => Promise<StartAgentRpcOptions> | StartAgentRpcOptions,
 	fixtureOptions: CreateAgentRpcFixtureOptions = {},
-): Promise<Record<TestAgentRuntimeBackend, T>> {
-	const observations = {} as Record<TestAgentRuntimeBackend, T>;
-	for (const backend of BACKENDS) {
-		let fixture: AgentRpcFixture | undefined;
-		let process: AgentRpcProcess | undefined;
-		let server: OpenAiResponsesTestServer | undefined;
-		try {
-			server = await startOpenAiResponsesTestServer((request, index) => {
-				if (!fixture) throw new Error("Agent RPC fixture was not initialized");
-				return handler(request, index, fixture);
-			});
-			fixture = await createAgentRpcFixture({ ...fixtureOptions, baseUrl: server.baseUrl });
-			process = startAgentRpc(executable, fixture, {
-				backend,
-				...(await resolveStartOptions?.(fixture, backend)),
-				...PROVIDER_DIFFERENTIAL_HOST_OPTIONS,
-			});
-			observations[backend] = await run({ backend, fixture, process, server });
-		} finally {
-			await process?.close();
-			await fixture?.dispose();
-			await server?.dispose();
-		}
+): Promise<T> {
+	let fixture: AgentRpcFixture | undefined;
+	let process: AgentRpcProcess | undefined;
+	let server: OpenAiResponsesTestServer | undefined;
+	try {
+		server = await startOpenAiResponsesTestServer((request, index) => {
+			if (!fixture) throw new Error("Agent RPC fixture was not initialized");
+			return handler(request, index, fixture);
+		});
+		fixture = await createAgentRpcFixture({ ...fixtureOptions, baseUrl: server.baseUrl });
+		process = startAgentRpc(executable, fixture, {
+			...(await resolveStartOptions?.(fixture)),
+			...PROVIDER_CONTRACT_HOST_OPTIONS,
+		});
+		return await run({ fixture, process, server });
+	} finally {
+		await process?.close();
+		await fixture?.dispose();
+		await server?.dispose();
 	}
-	return observations;
 }
 
 interface RuntimeObservation {
@@ -781,8 +767,8 @@ function readAssistantText(value: unknown): string {
 		.join("\n");
 }
 
-function persistentSessionLockPath(backend: TestAgentRuntimeBackend, sessionPath: string): string {
-	return backend === "legacy" ? `${sessionPath}.lock` : `${sessionPath}.owner.lock`;
+function persistentSessionLockPath(sessionPath: string): string {
+	return `${sessionPath}.owner.lock`;
 }
 
 async function seedSessionResources(
@@ -958,9 +944,9 @@ const TEST_IMAGE = {
 	mimeType: "image/png",
 } as const;
 
-async function writeContextDifferentialExtension(fixture: AgentRpcFixture): Promise<string> {
-	const path = join(fixture.root, "context-differential-extension.ts");
-	const observationPath = join(fixture.root, "context-differential-observations.jsonl");
+async function writeContextContractExtension(fixture: AgentRpcFixture): Promise<string> {
+	const path = join(fixture.root, "context-contract-extension.ts");
+	const observationPath = join(fixture.root, "context-contract-observations.jsonl");
 	await writeFile(
 		path,
 		`import { appendFileSync } from "node:fs";
@@ -1011,8 +997,8 @@ async function writeContextDifferentialExtension(fixture: AgentRpcFixture): Prom
 	return path;
 }
 
-async function writeToolDifferentialExtension(fixture: AgentRpcFixture): Promise<string> {
-	const path = join(fixture.root, "tool-differential-extension.ts");
+async function writeToolContractExtension(fixture: AgentRpcFixture): Promise<string> {
+	const path = join(fixture.root, "tool-contract-extension.ts");
 	await writeFile(
 		path,
 		`export default function(extension) {
@@ -1051,23 +1037,23 @@ async function writeToolDifferentialExtension(fixture: AgentRpcFixture): Promise
 	return path;
 }
 
-interface ContextDifferentialObservation {
+interface ContextContractObservation {
 	readonly call: number;
 	readonly identities: readonly string[];
 	readonly observed: string;
 }
 
-async function readContextDifferentialObservations(
+async function readContextContractObservations(
 	fixture: AgentRpcFixture,
-): Promise<readonly ContextDifferentialObservation[]> {
-	const content = await readFile(join(fixture.root, "context-differential-observations.jsonl"), "utf8");
+): Promise<readonly ContextContractObservation[]> {
+	const content = await readFile(join(fixture.root, "context-contract-observations.jsonl"), "utf8");
 	return content
 		.trim()
 		.split("\n")
-		.map((line) => readContextDifferentialObservation(JSON.parse(line)));
+		.map((line) => readContextContractObservation(JSON.parse(line)));
 }
 
-function readContextDifferentialObservation(value: unknown): ContextDifferentialObservation {
+function readContextContractObservation(value: unknown): ContextContractObservation {
 	if (typeof value !== "object" || value === null) throw new Error("Invalid context observation");
 	const call = Reflect.get(value, "call");
 	const identities = Reflect.get(value, "identities");

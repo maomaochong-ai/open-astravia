@@ -57,7 +57,7 @@
 		"verify:ui:debug": "bun run --cwd packages/desktop-app verify:ui:debug",
 		"verify:ui:runtime-canary": "bun run --cwd packages/desktop-app verify:ui:runtime-canary",
 		"verify:artifact:installed": "bun run --cwd packages/cli-app verify:artifact:installed",
-		"verify:runtime-cutover": "bun run --cwd packages/cli-app verify:runtime-cutover",
+		"verify:runtime-contract": "bun run --cwd packages/cli-app verify:runtime-contract",
 		"verify:agent-hosts": "bun scripts/verify-coding-agent-hosts.mjs",
 		"check:lint": "bun run scripts/quality/check-lint.mjs",
 		"check:lint:fix": "bun run scripts/quality/check-lint.mjs --write",

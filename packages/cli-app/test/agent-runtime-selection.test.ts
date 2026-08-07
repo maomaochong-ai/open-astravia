@@ -34,7 +34,7 @@ afterEach(async () => {
 describe("Agent Runtime production host", () => {
 	it("runs the full RPC profile through the single production host", async () => {
 		const fixture = await createFixture();
-		const process = startAgentRpc(executable, fixture, { backend: null });
+		const process = startAgentRpc(executable, fixture, { enableHostBridge: false });
 		runningProcesses.add(process);
 
 		await expect(process.request("default-state", "get_state")).resolves.toMatchObject({
@@ -69,12 +69,12 @@ describe("Agent Runtime production host", () => {
 			success: true,
 		});
 		const bash = await process.request("bash", "bash", {
-			command: `node -e "process.stdout.write('greenfield-rpc')"`,
+			command: `node -e "process.stdout.write('runtime-rpc')"`,
 		});
 		expect(bash).toMatchObject({
 			command: "bash",
 			success: true,
-			data: { output: "greenfield-rpc", exitCode: 0, cancelled: false },
+			data: { output: "runtime-rpc", exitCode: 0, cancelled: false },
 		});
 		await expect(process.request("messages", "get_messages")).resolves.toMatchObject({
 			command: "get_messages",
@@ -91,7 +91,7 @@ describe("Agent Runtime production host", () => {
 		await expect(process.request("renamed-state", "get_state")).resolves.toMatchObject({
 			data: { sessionName: "neutral-rpc", autoCompactionEnabled: false },
 		});
-		const exportPath = join(fixture.root, "greenfield-session.html");
+		const exportPath = join(fixture.root, "runtime-session.html");
 		await expect(process.request("export", "export_html", { outputPath: exportPath })).resolves.toMatchObject({
 			command: "export_html",
 			success: true,
@@ -101,7 +101,7 @@ describe("Agent Runtime production host", () => {
 		await process.close();
 	}, 30_000);
 
-	it("runs fresh and resumed Greenfield conversations through pure JSONL stdout and releases ownership", async () => {
+	it("runs fresh and resumed Runtime conversations through pure JSONL stdout and releases ownership", async () => {
 		const fixture = await createFixture();
 		const fresh = await startRpc(fixture);
 		const freshState = await fresh.request("fresh-state", "get_state");
@@ -156,7 +156,7 @@ describe("Agent Runtime production host", () => {
 		await continued.close();
 	}, 30_000);
 
-	it("creates a Greenfield conversation when continue has no previous session", async () => {
+	it("creates a Runtime conversation when continue has no previous session", async () => {
 		const fixture = await createFixture();
 		const continued = await startRpc(fixture, ["--continue"]);
 		const state = await continued.request("empty-continue-state", "get_state");
@@ -171,7 +171,7 @@ describe("Agent Runtime production host", () => {
 		await continued.close();
 	});
 
-	it("keeps a combined event, tool and command Extension on the Greenfield runtime", async () => {
+	it("keeps a combined event, tool and command Extension on the production runtime", async () => {
 		const fixture = await createFixture();
 		const extensionPath = await writeFixtureExtension(
 			fixture,
@@ -323,7 +323,7 @@ describe("Agent Runtime production host", () => {
 		await reused.close();
 	});
 
-	it("fails explicitly when an existing session is not representable by Greenfield", async () => {
+	it("fails explicitly when an existing session is not representable by the production Runtime", async () => {
 		const fixture = await createFixture();
 		const legacySession = join(fixture.conversationDir, "legacy-assistant.jsonl");
 		await writeFile(

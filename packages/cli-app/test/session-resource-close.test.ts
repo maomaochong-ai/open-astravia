@@ -25,7 +25,7 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("Greenfield Session resource close", () => {
+describe("Runtime Session resource close", () => {
 	it("quiets background work before new_session publishes the target identity", async () => {
 		const server = await startOpenAiResponsesTestServer((_request, index) =>
 			index === 0
@@ -39,7 +39,7 @@ describe("Greenfield Session resource close", () => {
 				: { kind: "events", events: textResponseEvents(index === 1 ? "Task accepted." : "Recovered.") },
 		);
 		const fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		const agentProcess = startAgentRpc(executable, fixture, { backend: "greenfield-im" });
+		const agentProcess = startAgentRpc(executable, fixture);
 		try {
 			const sourcePath = readSessionFile(await agentProcess.request("transition-source", "get_state"));
 			const turnMark = agentProcess.mark();
@@ -81,7 +81,7 @@ describe("Greenfield Session resource close", () => {
 				: { kind: "events", events: textResponseEvents("Background task started.") },
 		);
 		const fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		const agentProcess = startAgentRpc(executable, fixture, { backend: "greenfield-im" });
+		const agentProcess = startAgentRpc(executable, fixture);
 		try {
 			const mark = agentProcess.mark();
 			await agentProcess.request("background-close", "prompt", { message: "Start the background task" });

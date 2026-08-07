@@ -129,11 +129,11 @@ class CliRpcRuntimeHostCapabilities implements RpcSessionCapabilities {
 
 	async dispose(): Promise<void> {
 		try {
-			await this.cleanup.run("Failed to dispose Greenfield IM Runtime host");
+			await this.cleanup.run("Failed to dispose RPC Runtime host");
 		} catch (error) {
 			throw new AggregateError(
 				error instanceof AggregateError ? error.errors : [error],
-				"Failed to dispose Greenfield IM Runtime host",
+				"Failed to dispose RPC Runtime host",
 			);
 		}
 	}

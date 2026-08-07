@@ -158,7 +158,7 @@ async function prepareRuntimeHost(
 	const initial = await resolveCodingAgentInitialModel(bootstrap);
 	if (initial.warning) console.warn(initial.warning);
 	if (initial.error) throw new Error(initial.error);
-	if (!initial.model) throw new Error("No models available for Greenfield Runtime");
+	if (!initial.model) throw new Error("No models available for Agent Runtime");
 	if (parsed.apiKey) bootstrap.authStorage.setRuntimeApiKey(initial.model.provider, parsed.apiKey);
 
 	const assembly = await createCliSessionAssembly({
@@ -253,15 +253,15 @@ function assertRuntimeInvocation(
 	intent: "rpc" | "print",
 ): void {
 	const { parsed } = bootstrap;
-	if (intent === "rpc" && parsed.mode !== "rpc") throw new Error("Greenfield Runtime requires --mode rpc");
-	if (intent === "print" && parsed.mode === "rpc") throw new Error("Greenfield Print does not support RPC mode");
-	if (intent === "print" && backend === "im") throw new Error("Greenfield IM Runtime only supports RPC mode");
+	if (intent === "rpc" && parsed.mode !== "rpc") throw new Error("Agent Runtime requires --mode rpc");
+	if (intent === "print" && parsed.mode === "rpc") throw new Error("Print Runtime does not support RPC mode");
+	if (intent === "print" && backend === "im") throw new Error("IM Runtime only supports RPC mode");
 	if (backend === "im" && !parsed.enableHostBridge) {
-		throw new Error("Greenfield IM Runtime requires --enable-host-bridge");
+		throw new Error("IM Runtime requires --enable-host-bridge");
 	}
 	if (parsed.resume) throw new Error("--resume is no longer supported; use --continue or --session");
 	if (backend === "im" && parsed.scenario && parsed.scenario !== "im-claw") {
-		throw new Error(`Greenfield IM Runtime requires scenario im-claw, received ${parsed.scenario}`);
+		throw new Error(`IM Runtime requires scenario im-claw, received ${parsed.scenario}`);
 	}
 }
 
@@ -274,7 +274,7 @@ function resolveSessionId(
 	const sessionId = resolveSessionIdFromPath(conversationDir, sessionPath);
 	if (sessionId) return sessionId;
 	if (sessionPath.endsWith(".conversation.jsonl")) {
-		throw new Error(`Invalid Greenfield conversation path: ${sessionPath}`);
+		throw new Error(`Invalid Runtime conversation path: ${sessionPath}`);
 	}
 	if (extname(sessionPath) === ".jsonl") return undefined;
 	throw new Error(`Unsupported session path: ${sessionPath}`);

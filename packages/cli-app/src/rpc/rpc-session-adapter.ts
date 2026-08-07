@@ -57,14 +57,12 @@ export type CreateImRpcSessionAdapterOptions = Omit<CliRpcSessionAdapterOptions,
 
 export function createImRpcSessionAdapter(options: CreateImRpcSessionAdapterOptions): CliRpcSessionAdapter {
 	if (options.runtime.scenario !== "im-claw") {
-		throw new Error(
-			`Greenfield IM RPC adapter requires runtime scenario im-claw, received ${options.runtime.scenario}`,
-		);
+		throw new Error(`IM RPC adapter requires runtime scenario im-claw, received ${options.runtime.scenario}`);
 	}
 	return new CliRpcSessionAdapter({
 		...options,
 		profile: RPC_IM_SESSION_PROFILE,
-		disposeFailureMessage: "Failed to dispose Greenfield IM RPC resources",
+		disposeFailureMessage: "Failed to dispose IM RPC resources",
 	});
 }
 
@@ -117,7 +115,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 			retryController: options.retryController,
 		});
 		this.extensionCommandHost = options.extensionCommandHost;
-		this.disposeFailureMessage = options.disposeFailureMessage ?? "Failed to dispose Greenfield RPC resources";
+		this.disposeFailureMessage = options.disposeFailureMessage ?? "Failed to dispose RPC resources";
 		this.createHostToolRegistration =
 			options.createHostToolRegistration ??
 			((hostBridge) => createImSendAttachmentToolRegistration({ sender: hostBridge }));
@@ -229,7 +227,7 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 			readStats: () => this.sessionCapabilities.readSessionStats(),
 			exportHtml: (outputPath) => {
 				const core = this.readCore();
-				if (!core.lifecycle.sessionPath) throw new Error("Cannot export an in-memory Greenfield session");
+				if (!core.lifecycle.sessionPath) throw new Error("Cannot export an in-memory Runtime session");
 				return exportCodingAgentRpcConversation(
 					this.htmlExporter,
 					core.conversationView.readDocument(),
@@ -298,10 +296,10 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 	}
 
 	private async readRpcState(): Promise<RpcSessionState> {
-		const greenfieldSession = this.readSession();
-		const core = greenfieldSession.createCoreAssembly();
+		const session = this.readSession();
+		const core = session.createCoreAssembly();
 		const [sessionState, state] = await Promise.all([
-			greenfieldSession.getState(),
+			session.getState(),
 			Promise.resolve(core.corePorts.stateReader.readState()),
 		]);
 		const context = core.contextController?.readState();

@@ -5,8 +5,6 @@ import { join } from "node:path";
 import { createInterface, type Interface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
-export type TestAgentRuntimeBackend = "legacy" | "greenfield" | "greenfield-im";
-
 export interface AgentRpcExecutable {
 	readonly path: string;
 	dispose(): Promise<void>;
@@ -29,7 +27,6 @@ export interface CreateAgentRpcFixtureOptions {
 }
 
 export interface StartAgentRpcOptions {
-	readonly backend?: TestAgentRuntimeBackend | null;
 	readonly enableHostBridge?: boolean;
 	readonly scenario?: "cli" | "im-claw";
 	readonly extraArgs?: readonly string[];
@@ -131,9 +128,8 @@ export function startAgentRpc(
 	fixture: AgentRpcFixture,
 	options: StartAgentRpcOptions = {},
 ): AgentRpcProcess {
-	const backend = options.backend === null ? "greenfield" : (options.backend ?? "greenfield-im");
-	const enableHostBridge = options.enableHostBridge ?? backend === "greenfield-im";
-	const scenario = options.scenario ?? (backend === "greenfield-im" ? "im-claw" : undefined);
+	const enableHostBridge = options.enableHostBridge ?? true;
+	const scenario = options.scenario ?? (enableHostBridge ? "im-claw" : undefined);
 	return new AgentRpcProcess(
 		spawn(
 			"bun",

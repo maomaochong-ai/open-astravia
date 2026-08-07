@@ -9,12 +9,10 @@ import {
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import { legacyRuntimeContract } from "./support/legacy-runtime-contract.js";
 import { startOpenAiResponsesTestServer, textResponseEvents } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
@@ -25,12 +23,10 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("Agent Runtime terminal differential", () => {
+describe("Agent Runtime terminal contract", () => {
 	it("emits one terminal outcome and recovers after a Provider HTTP failure", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, TerminalRecoveryObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runHttpFailureRecovery(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runHttpFailureRecovery();
+		expect(observation).toEqual({
 			failureTerminalKinds: legacyRuntimeContract.rpc.terminalFailureKinds,
 			idleAfterFailure: true,
 			providerRequestCount: 3,
@@ -38,10 +34,8 @@ describe("Agent Runtime terminal differential", () => {
 	}, 30_000);
 
 	it("emits one terminal outcome and recovers after a Provider stream disconnect", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, StreamRecoveryObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runStreamDisconnectRecovery(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runStreamDisconnectRecovery();
+		expect(observation).toEqual({
 			failureTerminalKinds: legacyRuntimeContract.rpc.terminalFailureKinds,
 			idleAfterFailure: true,
 			partialText: "partial-before-disconnect",
@@ -50,10 +44,8 @@ describe("Agent Runtime terminal differential", () => {
 	}, 30_000);
 
 	it("returns to idle and recovers in-process and after restart following abort", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, TerminalRecoveryObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runAbortRecovery(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runAbortRecovery();
+		expect(observation).toEqual({
 			failureTerminalKinds: legacyRuntimeContract.rpc.terminalFailureKinds,
 			idleAfterFailure: true,
 			providerRequestCount: 3,
@@ -71,7 +63,7 @@ interface StreamRecoveryObservation extends TerminalRecoveryObservation {
 	readonly partialText: string;
 }
 
-async function runHttpFailureRecovery(backend: TestAgentRuntimeBackend): Promise<TerminalRecoveryObservation> {
+async function runHttpFailureRecovery(): Promise<TerminalRecoveryObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
@@ -85,7 +77,7 @@ async function runHttpFailureRecovery(backend: TestAgentRuntimeBackend): Promise
 	});
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 
 		const failureMark = process.mark();
 		await process.request("prompt-provider-failure", "prompt", { message: "Trigger Provider failure" });
@@ -99,7 +91,7 @@ async function runHttpFailureRecovery(backend: TestAgentRuntimeBackend): Promise
 		const resumedSessionPath = readSessionFile(await process.request("state-before-restart", "get_state"));
 		await process.close();
 
-		process = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", resumedSessionPath] });
+		process = startAgentRpc(executable, fixture, { extraArgs: ["--session", resumedSessionPath] });
 		const restartMark = process.mark();
 		await process.request("prompt-restart-recovery", "prompt", { message: "Recover after restart" });
 		await process.waitFor((frame) => frame.type === "agent_end", restartMark);
@@ -116,7 +108,7 @@ async function runHttpFailureRecovery(backend: TestAgentRuntimeBackend): Promise
 	}
 }
 
-async function runStreamDisconnectRecovery(backend: TestAgentRuntimeBackend): Promise<StreamRecoveryObservation> {
+async function runStreamDisconnectRecovery(): Promise<StreamRecoveryObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
@@ -132,7 +124,7 @@ async function runStreamDisconnectRecovery(backend: TestAgentRuntimeBackend): Pr
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
 		await writeFile(join(fixture.agentDir, "settings.json"), JSON.stringify({ retry: { enabled: false } }), "utf8");
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 
 		const failureMark = process.mark();
 		await process.request("prompt-stream-disconnect", "prompt", { message: "Trigger stream disconnect" });
@@ -167,7 +159,7 @@ async function runStreamDisconnectRecovery(backend: TestAgentRuntimeBackend): Pr
 	}
 }
 
-async function runAbortRecovery(backend: TestAgentRuntimeBackend): Promise<TerminalRecoveryObservation> {
+async function runAbortRecovery(): Promise<TerminalRecoveryObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
@@ -181,7 +173,7 @@ async function runAbortRecovery(backend: TestAgentRuntimeBackend): Promise<Termi
 	});
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 
 		const abortMark = process.mark();
 		await process.request("prompt-before-abort", "prompt", { message: "Stream until aborted" });
@@ -198,7 +190,7 @@ async function runAbortRecovery(backend: TestAgentRuntimeBackend): Promise<Termi
 		const resumedSessionPath = readSessionFile(await process.request("state-before-abort-restart", "get_state"));
 		await process.close();
 
-		process = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", resumedSessionPath] });
+		process = startAgentRpc(executable, fixture, { extraArgs: ["--session", resumedSessionPath] });
 		const restartMark = process.mark();
 		await process.request("prompt-after-abort-restart", "prompt", { message: "Recover after abort restart" });
 		await process.waitFor((frame) => frame.type === "agent_end", restartMark);

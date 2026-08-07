@@ -10,7 +10,6 @@ import {
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import {
 	type ProviderRequestRecord,
@@ -19,7 +18,6 @@ import {
 	toolCallResponseEvents,
 } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
@@ -30,12 +28,10 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("Agent Runtime session replacement resource differential", () => {
+describe("Agent Runtime session replacement resource contract", () => {
 	it("replaces the resource domain across switch_session", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, SuccessfulReplacementObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runSuccessfulSwitch(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runSuccessfulSwitch();
+		expect(observation).toEqual({
 			backgroundStopped: true,
 			pathChanged: true,
 			sourceOwnershipReleased: true,
@@ -46,10 +42,8 @@ describe("Agent Runtime session replacement resource differential", () => {
 	}, 40_000);
 
 	it("retains the source resource domain when switch_session acquisition fails", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, FailedReplacementObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runFailedSwitch(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runFailedSwitch();
+		expect(observation).toEqual({
 			backgroundPreserved: false,
 			backgroundStoppedOnClose: true,
 			sourceIdentityRetained: true,
@@ -61,10 +55,8 @@ describe("Agent Runtime session replacement resource differential", () => {
 	}, 40_000);
 
 	it("creates a fresh resource domain across fork", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, SuccessfulReplacementObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runSuccessfulFork(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runSuccessfulFork();
+		expect(observation).toEqual({
 			backgroundStopped: true,
 			pathChanged: true,
 			sourceOwnershipReleased: true,
@@ -96,14 +88,14 @@ interface FailedReplacementObservation {
 
 type ResourceSemantic = "fork" | "switch-failure" | "switch-success";
 
-async function runSuccessfulSwitch(backend: TestAgentRuntimeBackend): Promise<SuccessfulReplacementObservation> {
+async function runSuccessfulSwitch(): Promise<SuccessfulReplacementObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const semantic = "switch-success";
 	const server = await startOpenAiResponsesTestServer((request) => resourceResponse(request, semantic));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await process.request("switch-resource-source", "get_state"));
 		await process.request("switch-resource-create-target", "new_session");
 		const targetPath = readSessionFile(await process.request("switch-resource-target", "get_state"));
@@ -114,12 +106,12 @@ async function runSuccessfulSwitch(backend: TestAgentRuntimeBackend): Promise<Su
 			process.request("switch-resource-transition", "switch_session", { sessionPath: targetPath }),
 		).resolves.toMatchObject({ success: true });
 		const state = await process.request("switch-resource-state", "get_state");
-		const targetOwnership = ownershipPath(backend, targetPath);
+		const targetOwnership = ownershipPath(targetPath);
 		const targetTodoReset = await inspectTodo(process, server.requests, semantic, false);
 		const observation = {
 			backgroundStopped: await waitForProcessExit(pid),
 			pathChanged: readSessionFile(state) === targetPath && targetPath !== sourcePath,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
 			targetOwnershipHeld: existsSync(targetOwnership),
 			targetTodoReset,
 		};
@@ -133,7 +125,7 @@ async function runSuccessfulSwitch(backend: TestAgentRuntimeBackend): Promise<Su
 	}
 }
 
-async function runFailedSwitch(backend: TestAgentRuntimeBackend): Promise<FailedReplacementObservation> {
+async function runFailedSwitch(): Promise<FailedReplacementObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let sourceProcess: AgentRpcProcess | undefined;
 	let targetProcess: AgentRpcProcess | undefined;
@@ -141,14 +133,14 @@ async function runFailedSwitch(backend: TestAgentRuntimeBackend): Promise<Failed
 	const server = await startOpenAiResponsesTestServer((request) => resourceResponse(request, semantic));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		sourceProcess = startAgentRpc(executable, fixture, { backend });
+		sourceProcess = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await sourceProcess.request("failed-resource-source", "get_state"));
 		await sourceProcess.request("failed-resource-create-target", "new_session");
 		const targetPath = readSessionFile(await sourceProcess.request("failed-resource-target", "get_state"));
 		await sourceProcess.request("failed-resource-restore-source", "switch_session", { sessionPath: sourcePath });
 		const pid = await seedResources(sourceProcess, fixture, semantic);
 
-		targetProcess = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", targetPath] });
+		targetProcess = startAgentRpc(executable, fixture, { extraArgs: ["--session", targetPath] });
 		await targetProcess.request("failed-resource-holder", "get_state");
 		const transition = await sourceProcess.request("failed-resource-transition", "switch_session", {
 			sessionPath: targetPath,
@@ -158,9 +150,9 @@ async function runFailedSwitch(backend: TestAgentRuntimeBackend): Promise<Failed
 		const observation = {
 			backgroundPreserved: isProcessAlive(pid),
 			sourceIdentityRetained: readSessionFile(state) === sourcePath,
-			sourceOwnershipHeld: existsSync(ownershipPath(backend, sourcePath)),
+			sourceOwnershipHeld: existsSync(ownershipPath(sourcePath)),
 			sourceTodoRetained,
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			transitionFailed: transition.type === "response" && transition.success === false,
 		};
 
@@ -174,14 +166,14 @@ async function runFailedSwitch(backend: TestAgentRuntimeBackend): Promise<Failed
 	}
 }
 
-async function runSuccessfulFork(backend: TestAgentRuntimeBackend): Promise<SuccessfulReplacementObservation> {
+async function runSuccessfulFork(): Promise<SuccessfulReplacementObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const semantic = "fork";
 	const server = await startOpenAiResponsesTestServer((request) => resourceResponse(request, semantic));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await process.request("fork-resource-source", "get_state"));
 		const pid = await seedResources(process, fixture, semantic);
 		const messages = await process.request("fork-resource-messages", "get_fork_messages");
@@ -193,12 +185,12 @@ async function runSuccessfulFork(backend: TestAgentRuntimeBackend): Promise<Succ
 		});
 		const state = await process.request("fork-resource-state", "get_state");
 		const targetPath = readSessionFile(state);
-		const targetOwnership = ownershipPath(backend, targetPath);
+		const targetOwnership = ownershipPath(targetPath);
 		const targetTodoReset = await inspectTodo(process, server.requests, semantic, false);
 		const observation = {
 			backgroundStopped: await waitForProcessExit(pid),
 			pathChanged: targetPath !== sourcePath,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
 			targetOwnershipHeld: existsSync(targetOwnership),
 			targetTodoReset,
 		};
@@ -347,8 +339,8 @@ function isProcessAlive(pid: number): boolean {
 	}
 }
 
-function ownershipPath(backend: TestAgentRuntimeBackend, sessionPath: string): string {
-	return backend === "legacy" ? `${sessionPath}.lock` : `${sessionPath}.owner.lock`;
+function ownershipPath(sessionPath: string): string {
+	return `${sessionPath}.owner.lock`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

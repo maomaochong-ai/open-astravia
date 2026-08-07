@@ -176,6 +176,32 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired CLI Runtime test migration scaffolding", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/cli-app/test/agent-runtime-provider-differential.test.ts",
+				text: [
+					'type TestAgentRuntimeBackend = "legacy" | "greenfield-im";',
+					'const BACKENDS = ["greenfield-im"];',
+				].join("\n"),
+			},
+			{
+				path: "packages/cli-app/test/legacy-session-resource-close.test.ts",
+				text: "export {};",
+			},
+			{
+				path: "package.json",
+				text: '{"scripts":{"verify:runtime-cutover":"bun run verify"}}',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"cliRuntimeTestMigrationFiles: 2 exceeds migration residue limit 0",
+			"cliRuntimeTestMigrationIdentities: 2 exceeds migration residue limit 0",
+			"runtimeCutoverScriptReferences: 1 exceeds migration residue limit 0",
+		]);
+	});
+
 	it("rejects the retired Composition root identity", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{

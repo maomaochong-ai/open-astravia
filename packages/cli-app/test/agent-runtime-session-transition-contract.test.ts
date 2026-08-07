@@ -10,11 +10,9 @@ import {
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import { startOpenAiResponsesTestServer, textResponseEvents } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
@@ -25,12 +23,10 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("Agent Runtime active-turn session transition differential", () => {
+describe("Agent Runtime active-turn session transition contract", () => {
 	it("interrupts an active turn, changes ownership and recovers across new_session", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, TransitionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runActiveTurnNewSession(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runActiveTurnNewSession();
+		expect(observation).toEqual({
 			providerRequestClosed: true,
 			terminalKinds: [],
 			sourceOwnershipReleased: true,
@@ -42,10 +38,8 @@ describe("Agent Runtime active-turn session transition differential", () => {
 	}, 30_000);
 
 	it("interrupts an active turn, transfers ownership and recovers across switch_session", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, TransitionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runActiveTurnSwitchSession(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runActiveTurnSwitchSession();
+		expect(observation).toEqual({
 			providerRequestClosed: true,
 			terminalKinds: [],
 			sourceOwnershipReleased: true,
@@ -57,10 +51,8 @@ describe("Agent Runtime active-turn session transition differential", () => {
 	}, 30_000);
 
 	it("applies the same interruption and ownership contract to Extension session commands", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, TransitionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runActiveTurnExtensionNewSession(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runActiveTurnExtensionNewSession();
+		expect(observation).toEqual({
 			providerRequestClosed: true,
 			terminalKinds: [],
 			sourceOwnershipReleased: true,
@@ -72,10 +64,8 @@ describe("Agent Runtime active-turn session transition differential", () => {
 	}, 30_000);
 
 	it("keeps the source identity usable when target ownership acquisition fails", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, FailedTransitionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runLockedTargetSwitch(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runLockedTargetSwitch();
+		expect(observation).toEqual({
 			transitionFailed: true,
 			sourceIdentityRetained: true,
 			sourceOwnershipHeld: true,
@@ -105,7 +95,7 @@ interface FailedTransitionObservation {
 	readonly providerRequestCount: number;
 }
 
-async function runActiveTurnNewSession(backend: TestAgentRuntimeBackend): Promise<TransitionObservation> {
+async function runActiveTurnNewSession(): Promise<TransitionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
@@ -117,7 +107,7 @@ async function runActiveTurnNewSession(backend: TestAgentRuntimeBackend): Promis
 	});
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 		const initialState = await process.request("transition-initial-state", "get_state");
 		const sourcePath = readSessionFile(initialState);
 
@@ -144,7 +134,7 @@ async function runActiveTurnNewSession(backend: TestAgentRuntimeBackend): Promis
 		await process.waitFor((frame) => frame.type === "agent_end", recoveryMark);
 		await process.close();
 
-		process = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", targetPath] });
+		process = startAgentRpc(executable, fixture, { extraArgs: ["--session", targetPath] });
 		const restartMark = process.mark();
 		await process.request("transition-restart-recovery", "prompt", { message: "Continue after transition restart" });
 		await process.waitFor((frame) => frame.type === "agent_end", restartMark);
@@ -152,8 +142,8 @@ async function runActiveTurnNewSession(backend: TestAgentRuntimeBackend): Promis
 		return {
 			providerRequestClosed: true,
 			terminalKinds,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			identityChanged: targetPath !== sourcePath,
 			idleAfterTransition: transitionedState.data?.isStreaming === false,
 			providerRequestCount: server.requests.length,
@@ -165,7 +155,7 @@ async function runActiveTurnNewSession(backend: TestAgentRuntimeBackend): Promis
 	}
 }
 
-async function runActiveTurnSwitchSession(backend: TestAgentRuntimeBackend): Promise<TransitionObservation> {
+async function runActiveTurnSwitchSession(): Promise<TransitionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
@@ -177,7 +167,7 @@ async function runActiveTurnSwitchSession(backend: TestAgentRuntimeBackend): Pro
 	});
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await process.request("switch-source-state", "get_state"));
 		await process.request("switch-create-target", "new_session");
 		const targetPath = readSessionFile(await process.request("switch-target-state", "get_state"));
@@ -205,7 +195,7 @@ async function runActiveTurnSwitchSession(backend: TestAgentRuntimeBackend): Pro
 		await process.waitFor((frame) => frame.type === "agent_end", recoveryMark);
 		await process.close();
 
-		process = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", targetPath] });
+		process = startAgentRpc(executable, fixture, { extraArgs: ["--session", targetPath] });
 		const restartMark = process.mark();
 		await process.request("switch-restart-recovery", "prompt", { message: "Continue after switch restart" });
 		await process.waitFor((frame) => frame.type === "agent_end", restartMark);
@@ -213,8 +203,8 @@ async function runActiveTurnSwitchSession(backend: TestAgentRuntimeBackend): Pro
 		return {
 			providerRequestClosed: true,
 			terminalKinds,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			identityChanged: readSessionFile(transitionedState) === targetPath && targetPath !== sourcePath,
 			idleAfterTransition: transitionedState.data?.isStreaming === false,
 			providerRequestCount: server.requests.length,
@@ -226,7 +216,7 @@ async function runActiveTurnSwitchSession(backend: TestAgentRuntimeBackend): Pro
 	}
 }
 
-async function runActiveTurnExtensionNewSession(backend: TestAgentRuntimeBackend): Promise<TransitionObservation> {
+async function runActiveTurnExtensionNewSession(): Promise<TransitionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
@@ -238,8 +228,8 @@ async function runActiveTurnExtensionNewSession(backend: TestAgentRuntimeBackend
 	});
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		const auditPath = join(fixture.root, `${backend}-extension-transition.txt`);
-		const extensionPath = join(fixture.root, `${backend}-session-transition-extension.ts`);
+		const auditPath = join(fixture.root, "runtime-extension-transition.txt");
+		const extensionPath = join(fixture.root, "runtime-session-transition-extension.ts");
 		await writeFile(
 			extensionPath,
 			`import { appendFileSync } from "node:fs";
@@ -254,7 +244,7 @@ async function runActiveTurnExtensionNewSession(backend: TestAgentRuntimeBackend
 			}`,
 			"utf8",
 		);
-		process = startAgentRpc(executable, fixture, { backend, extraArgs: ["--extension", extensionPath] });
+		process = startAgentRpc(executable, fixture, { extraArgs: ["--extension", extensionPath] });
 		const sourcePath = readSessionFile(await process.request("extension-source-state", "get_state"));
 
 		const turnMark = process.mark();
@@ -276,7 +266,7 @@ async function runActiveTurnExtensionNewSession(backend: TestAgentRuntimeBackend
 		await process.waitFor((frame) => frame.type === "agent_end", recoveryMark);
 		await process.close();
 
-		process = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", targetPath] });
+		process = startAgentRpc(executable, fixture, { extraArgs: ["--session", targetPath] });
 		const restartMark = process.mark();
 		await process.request("extension-restart-recovery", "prompt", { message: "Continue after Extension restart" });
 		await process.waitFor((frame) => frame.type === "agent_end", restartMark);
@@ -284,8 +274,8 @@ async function runActiveTurnExtensionNewSession(backend: TestAgentRuntimeBackend
 		return {
 			providerRequestClosed: true,
 			terminalKinds,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			identityChanged: targetPath !== sourcePath,
 			idleAfterTransition: transitionedState.data?.isStreaming === false,
 			providerRequestCount: server.requests.length,
@@ -297,7 +287,7 @@ async function runActiveTurnExtensionNewSession(backend: TestAgentRuntimeBackend
 	}
 }
 
-async function runLockedTargetSwitch(backend: TestAgentRuntimeBackend): Promise<FailedTransitionObservation> {
+async function runLockedTargetSwitch(): Promise<FailedTransitionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let sourceProcess: AgentRpcProcess | undefined;
 	let targetProcess: AgentRpcProcess | undefined;
@@ -309,7 +299,7 @@ async function runLockedTargetSwitch(backend: TestAgentRuntimeBackend): Promise<
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
 		stage = "start source";
-		sourceProcess = startAgentRpc(executable, fixture, { backend });
+		sourceProcess = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await sourceProcess.request("locked-source-state", "get_state"));
 		stage = "create target";
 		await sourceProcess.request("locked-create-target", "new_session");
@@ -318,7 +308,7 @@ async function runLockedTargetSwitch(backend: TestAgentRuntimeBackend): Promise<
 		await sourceProcess.request("locked-restore-source", "switch_session", { sessionPath: sourcePath });
 
 		stage = "start target holder";
-		targetProcess = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", targetPath] });
+		targetProcess = startAgentRpc(executable, fixture, { extraArgs: ["--session", targetPath] });
 		await targetProcess.request("locked-holder-state", "get_state");
 
 		stage = "attempt locked switch";
@@ -335,13 +325,13 @@ async function runLockedTargetSwitch(backend: TestAgentRuntimeBackend): Promise<
 		return {
 			transitionFailed: transition.type === "response" && transition.success === false,
 			sourceIdentityRetained: readSessionFile(stateAfterFailure) === sourcePath,
-			sourceOwnershipHeld: existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipHeld: existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			recoveryCompleted: sourceProcess.framesSince(recoveryMark).some((frame) => frame.type === "agent_end"),
 			providerRequestCount: server.requests.length,
 		};
 	} catch (error) {
-		throw new Error(`${backend} locked-target stage failed: ${stage}`, { cause: error });
+		throw new Error(`Runtime locked-target stage failed: ${stage}`, { cause: error });
 	} finally {
 		await sourceProcess?.close();
 		await targetProcess?.close();
@@ -367,6 +357,6 @@ function isMissingFileError(error: unknown): boolean {
 	return typeof error === "object" && error !== null && Reflect.get(error, "code") === "ENOENT";
 }
 
-function ownershipPath(backend: TestAgentRuntimeBackend, sessionPath: string): string {
-	return backend === "legacy" ? `${sessionPath}.lock` : `${sessionPath}.owner.lock`;
+function ownershipPath(sessionPath: string): string {
+	return `${sessionPath}.owner.lock`;
 }

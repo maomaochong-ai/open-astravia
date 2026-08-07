@@ -20,7 +20,7 @@ afterEach(async () => {
 	delete extensionLifecycleGlobal().__vettaGreenfieldExtensionLifecycle;
 });
 
-describe("Greenfield IM Runtime Host", () => {
+describe("IM Runtime Host", () => {
 	it("migrates a representable Legacy session without changing its source", async () => {
 		const fixture = await createFixture([]);
 		const legacyPath = join(fixture.conversationDir, "legacy.jsonl");
@@ -129,7 +129,7 @@ describe("Greenfield IM Runtime Host", () => {
 		await expect(stat(nextOwnerPath)).rejects.toMatchObject({ code: "ENOENT" });
 	});
 
-	it("rejects malformed Greenfield paths instead of treating them as Legacy", async () => {
+	it("rejects malformed Runtime paths instead of treating them as historical sessions", async () => {
 		const fixture = await createFixture(["--session", join("outside", "bad.conversation.jsonl")]);
 
 		await expect(
@@ -138,7 +138,7 @@ describe("Greenfield IM Runtime Host", () => {
 				conversationDir: fixture.conversationDir,
 				sessionCatalog: fixture.sessionCatalog,
 			}),
-		).rejects.toThrow("Invalid Greenfield conversation path");
+		).rejects.toThrow("Invalid Runtime conversation path");
 	});
 
 	it("rejects the removed interactive resume selection", async () => {
@@ -620,7 +620,7 @@ async function createFixture(
 	readonly sessionCatalog: RuntimeSessionCatalog;
 	readonly bootstrap: CodingAgentHostBootstrap;
 }> {
-	const root = await mkdtemp(join(tmpdir(), "vetta-greenfield-im-host-"));
+	const root = await mkdtemp(join(tmpdir(), "vetta-im-runtime-host-"));
 	temporaryDirectories.push(root);
 	const fixture = {
 		root,

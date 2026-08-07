@@ -10,7 +10,6 @@ import {
 	readSessionFile,
 	readSessionId,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import {
 	type OpenAiResponsesTestServer,
@@ -18,7 +17,7 @@ import {
 	textResponseEvents,
 } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
+const RUNTIME_ID = "runtime";
 const TREE_PREFIX = "EXTENSION_TREE_PREFIX";
 const TREE_ABANDONED = "EXTENSION_TREE_ABANDONED";
 const TREE_SUMMARY = "EXTENSION_TREE_SUMMARY";
@@ -53,10 +52,10 @@ afterEach(async () => {
 	activeServers.clear();
 });
 
-describe("real RPC CLI Extension history command differential", () => {
+describe("real RPC CLI Extension history command contract", () => {
 	it("preserves tree cancellation, Extension summary, label, events and restart context", async () => {
-		const observations = await observeBackends(runTreeScenario);
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runTreeScenario();
+		expect(observation).toEqual({
 			cancelKeptIdentity: true,
 			events: [
 				{ type: "session_before_tree", mode: "cancel" },
@@ -72,8 +71,8 @@ describe("real RPC CLI Extension history command differential", () => {
 	}, 120_000);
 
 	it("preserves fork cancellation, skipConversationRestore and persisted restart history", async () => {
-		const observations = await observeBackends(runForkScenario);
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runForkScenario();
+		expect(observation).toEqual({
 			cancelKeptIdentity: true,
 			events: [
 				{ type: "session_before_fork", mode: "cancel" },
@@ -90,33 +89,25 @@ describe("real RPC CLI Extension history command differential", () => {
 	}, 120_000);
 });
 
-async function observeBackends<T>(
-	run: (backend: TestAgentRuntimeBackend) => Promise<T>,
-): Promise<Record<TestAgentRuntimeBackend, T>> {
-	const observations = {} as Record<TestAgentRuntimeBackend, T>;
-	for (const backend of BACKENDS) observations[backend] = await run(backend);
-	return observations;
-}
+async function runTreeScenario() {
+	const scenario = await createScenario();
+	await promptTurn(scenario.process, `${RUNTIME_ID}-tree-prefix`, TREE_PREFIX);
+	await promptTurn(scenario.process, `${RUNTIME_ID}-tree-abandoned`, TREE_ABANDONED);
+	const before = await request(scenario.process, `${RUNTIME_ID}-tree-state-before`, "get_state");
 
-async function runTreeScenario(backend: TestAgentRuntimeBackend) {
-	const scenario = await createScenario(backend);
-	await promptTurn(scenario.process, `${backend}-tree-prefix`, TREE_PREFIX);
-	await promptTurn(scenario.process, `${backend}-tree-abandoned`, TREE_ABANDONED);
-	const before = await request(scenario.process, `${backend}-tree-state-before`, "get_state");
-
-	await request(scenario.process, `${backend}-tree-cancel`, "prompt", { message: "/history-tree cancel" });
+	await request(scenario.process, `${RUNTIME_ID}-tree-cancel`, "prompt", { message: "/history-tree cancel" });
 	await waitForObservationCount(scenario.observationPath, 2);
 	await waitForObservationCount(scenario.commandCompletionPath, 1);
-	const afterCancel = await request(scenario.process, `${backend}-tree-state-cancel`, "get_state");
-	await request(scenario.process, `${backend}-tree-summary`, "prompt", { message: "/history-tree summary" });
+	const afterCancel = await request(scenario.process, `${RUNTIME_ID}-tree-state-cancel`, "get_state");
+	await request(scenario.process, `${RUNTIME_ID}-tree-summary`, "prompt", { message: "/history-tree summary" });
 	await waitForObservationCount(scenario.observationPath, 5);
 	await waitForObservationCount(scenario.commandCompletionPath, 2);
-	const afterSummary = await request(scenario.process, `${backend}-tree-state-summary`, "get_state");
+	const afterSummary = await request(scenario.process, `${RUNTIME_ID}-tree-state-summary`, "get_state");
 
 	try {
-		await promptTurn(scenario.process, `${backend}-tree-after`, TREE_AFTER);
+		await promptTurn(scenario.process, `${RUNTIME_ID}-tree-after`, TREE_AFTER);
 	} catch (error) {
-		const state = await request(scenario.process, `${backend}-tree-failed-state`, "get_state");
+		const state = await request(scenario.process, `${RUNTIME_ID}-tree-failed-state`, "get_state");
 		const sessionTail = (await readFile(readSessionFile(state), "utf8"))
 			.trim()
 			.split(/\r?\n/u)
@@ -143,11 +134,10 @@ async function runTreeScenario(backend: TestAgentRuntimeBackend) {
 	await closeProcess(scenario.process);
 	scenario.process = startTrackedProcess(
 		startAgentRpc(executable, scenario.fixture, {
-			backend,
 			extraArgs: ["--extension", scenario.extensionPath, "--session", sessionFile],
 		}),
 	);
-	await promptTurn(scenario.process, `${backend}-tree-restart`, TREE_RESTART);
+	await promptTurn(scenario.process, `${RUNTIME_ID}-tree-restart`, TREE_RESTART);
 	const providerAfterRestart = scenario.server.requests.at(-1)?.rawBody ?? "";
 
 	return {
@@ -172,35 +162,34 @@ async function runTreeScenario(backend: TestAgentRuntimeBackend) {
 	};
 }
 
-async function runForkScenario(backend: TestAgentRuntimeBackend) {
-	const scenario = await createScenario(backend);
-	await promptTurn(scenario.process, `${backend}-fork-prefix`, FORK_PREFIX);
-	await promptTurn(scenario.process, `${backend}-fork-selected`, FORK_SELECTED);
-	await promptTurn(scenario.process, `${backend}-fork-tail`, FORK_TAIL);
-	const before = await request(scenario.process, `${backend}-fork-state-before`, "get_state");
+async function runForkScenario() {
+	const scenario = await createScenario();
+	await promptTurn(scenario.process, `${RUNTIME_ID}-fork-prefix`, FORK_PREFIX);
+	await promptTurn(scenario.process, `${RUNTIME_ID}-fork-selected`, FORK_SELECTED);
+	await promptTurn(scenario.process, `${RUNTIME_ID}-fork-tail`, FORK_TAIL);
+	const before = await request(scenario.process, `${RUNTIME_ID}-fork-state-before`, "get_state");
 	const sourceFile = readSessionFile(before);
 	const sourceBefore = await readFile(sourceFile, "utf8");
 
-	await request(scenario.process, `${backend}-fork-cancel`, "prompt", { message: "/history-fork cancel" });
+	await request(scenario.process, `${RUNTIME_ID}-fork-cancel`, "prompt", { message: "/history-fork cancel" });
 	await waitForObservationCount(scenario.observationPath, 2);
 	await waitForObservationCount(scenario.commandCompletionPath, 1);
-	const afterCancel = await request(scenario.process, `${backend}-fork-state-cancel`, "get_state");
-	await request(scenario.process, `${backend}-fork-preserve`, "prompt", { message: "/history-fork preserve" });
+	const afterCancel = await request(scenario.process, `${RUNTIME_ID}-fork-state-cancel`, "get_state");
+	await request(scenario.process, `${RUNTIME_ID}-fork-preserve`, "prompt", { message: "/history-fork preserve" });
 	await waitForObservationCount(scenario.observationPath, 5);
 	await waitForObservationCount(scenario.commandCompletionPath, 2);
-	const afterFork = await request(scenario.process, `${backend}-fork-state-success`, "get_state");
+	const afterFork = await request(scenario.process, `${RUNTIME_ID}-fork-state-success`, "get_state");
 
-	await promptTurn(scenario.process, `${backend}-fork-after`, FORK_AFTER);
+	await promptTurn(scenario.process, `${RUNTIME_ID}-fork-after`, FORK_AFTER);
 	const providerAfter = scenario.server.requests.at(-1)?.rawBody ?? "";
 	const forkFile = readSessionFile(afterFork);
 	await closeProcess(scenario.process);
 	scenario.process = startTrackedProcess(
 		startAgentRpc(executable, scenario.fixture, {
-			backend,
 			extraArgs: ["--extension", scenario.extensionPath, "--session", forkFile],
 		}),
 	);
-	await promptTurn(scenario.process, `${backend}-fork-restart`, FORK_RESTART);
+	await promptTurn(scenario.process, `${RUNTIME_ID}-fork-restart`, FORK_RESTART);
 	const providerAfterRestart = scenario.server.requests.at(-1)?.rawBody ?? "";
 
 	return {
@@ -234,7 +223,7 @@ interface Scenario {
 	process: AgentRpcProcess;
 }
 
-async function createScenario(backend: TestAgentRuntimeBackend): Promise<Scenario> {
+async function createScenario(): Promise<Scenario> {
 	const server = await startOpenAiResponsesTestServer((_request, index) => ({
 		kind: "events",
 		events: textResponseEvents(`Extension history response ${index}.`, { responseId: `extension_${index}` }),
@@ -244,7 +233,7 @@ async function createScenario(backend: TestAgentRuntimeBackend): Promise<Scenari
 	activeFixtures.add(fixture);
 	const { commandCompletionPath, extensionPath, observationPath } = await writeHistoryExtension(fixture);
 	const process = startTrackedProcess(
-		startAgentRpc(executable, fixture, { backend, extraArgs: ["--extension", extensionPath] }),
+		startAgentRpc(executable, fixture, { extraArgs: ["--extension", extensionPath] }),
 	);
 	return { commandCompletionPath, extensionPath, fixture, observationPath, process, server };
 }

@@ -11,11 +11,9 @@ import {
 	readSessionFile,
 	readSessionId,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import { startOpenAiResponsesTestServer, textResponseEvents } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
@@ -26,12 +24,10 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("real RPC CLI replacement lifecycle side effects differential", () => {
+describe("real RPC CLI replacement lifecycle side effects contract", () => {
 	it("preserves Extension and project Hook ordering across cancellation, replacement and shutdown", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, LifecycleObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runLifecycleScenario(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runLifecycleScenario();
+		expect(observation).toEqual({
 			cancelledNewKeptIdentity: true,
 			exitCode: 0,
 			replacementCommandsSucceeded: true,
@@ -166,7 +162,7 @@ interface LifecycleObservation {
 	readonly timeline: readonly unknown[];
 }
 
-async function runLifecycleScenario(backend: TestAgentRuntimeBackend): Promise<LifecycleObservation> {
+async function runLifecycleScenario(): Promise<LifecycleObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) => ({
@@ -175,36 +171,35 @@ async function runLifecycleScenario(backend: TestAgentRuntimeBackend): Promise<L
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		const auditPath = join(fixture.root, `${backend}-lifecycle.jsonl`);
-		const cancelPath = join(fixture.root, `${backend}-cancel-next-new`);
+		const auditPath = join(fixture.root, "runtime-lifecycle.jsonl");
+		const cancelPath = join(fixture.root, "runtime-cancel-next-new");
 		const extensionPath = await writeLifecycleExtension(fixture, auditPath, cancelPath);
 		await writeProjectHookConfigs(fixture, auditPath);
 		process = startAgentRpc(executable, fixture, {
-			backend,
 			extraArgs: ["--extension", extensionPath],
 			env: { VETTA_TEST_FAIL_HOOK: "SessionEnd" },
 		});
 
-		const source = readIdentity(await process.request(`${backend}-source-state`, "get_state"));
-		await promptTurn(process, `${backend}-source-prompt`, "source lifecycle prompt");
+		const source = readIdentity(await process.request("runtime-source-state", "get_state"));
+		await promptTurn(process, "runtime-source-prompt", "source lifecycle prompt");
 
 		await writeFile(cancelPath, "cancel", "utf8");
-		const cancelledNew = await process.request(`${backend}-cancelled-new`, "new_session");
-		const afterCancellation = readIdentity(await process.request(`${backend}-after-cancel`, "get_state"));
+		const cancelledNew = await process.request("runtime-cancelled-new", "new_session");
+		const afterCancellation = readIdentity(await process.request("runtime-after-cancel", "get_state"));
 
-		const newResponse = await process.request(`${backend}-new`, "new_session");
-		const created = readIdentity(await process.request(`${backend}-new-state`, "get_state"));
-		await promptTurn(process, `${backend}-new-prompt`, "new session lifecycle prompt");
+		const newResponse = await process.request("runtime-new", "new_session");
+		const created = readIdentity(await process.request("runtime-new-state", "get_state"));
+		await promptTurn(process, "runtime-new-prompt", "new session lifecycle prompt");
 
-		const switchResponse = await process.request(`${backend}-switch`, "switch_session", {
+		const switchResponse = await process.request("runtime-switch", "switch_session", {
 			sessionPath: source.path,
 		});
-		await promptTurn(process, `${backend}-resumed-prompt`, "resumed source lifecycle prompt");
-		const forkMessages = await process.request(`${backend}-fork-messages`, "get_fork_messages");
+		await promptTurn(process, "runtime-resumed-prompt", "resumed source lifecycle prompt");
+		const forkMessages = await process.request("runtime-fork-messages", "get_fork_messages");
 		const entryId = readForkEntryId(forkMessages, "resumed source lifecycle prompt");
-		const forkResponse = await process.request(`${backend}-fork`, "fork", { entryId });
-		const forked = readIdentity(await process.request(`${backend}-fork-state`, "get_state"));
-		await promptTurn(process, `${backend}-fork-prompt`, "fork lifecycle prompt");
+		const forkResponse = await process.request("runtime-fork", "fork", { entryId });
+		const forked = readIdentity(await process.request("runtime-fork-state", "get_state"));
+		await promptTurn(process, "runtime-fork-prompt", "fork lifecycle prompt");
 
 		const exitCode = await process.close();
 		const records = await readAuditRecords(auditPath);

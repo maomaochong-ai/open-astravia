@@ -59,8 +59,8 @@ describe("IM RPC session adapter", () => {
 
 		const first = fixture.adapter.dispose();
 		const concurrent = fixture.adapter.dispose();
-		await expect(first).rejects.toThrow("Failed to dispose Greenfield IM RPC resources");
-		await expect(concurrent).rejects.toThrow("Failed to dispose Greenfield IM RPC resources");
+		await expect(first).rejects.toThrow("Failed to dispose IM RPC resources");
+		await expect(concurrent).rejects.toThrow("Failed to dispose IM RPC resources");
 		expect(fixture.unregister).toHaveBeenCalledOnce();
 		expect(fixture.disposeRuntime).toHaveBeenCalledOnce();
 

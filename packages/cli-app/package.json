@@ -17,7 +17,7 @@
 		"typecheck": "tsgo --noEmit -p tsconfig.json",
 		"test": "bunx vitest --run",
 		"verify:artifact:installed": "bunx vitest --run test/installed-artifact-runtime.test.ts",
-		"verify:runtime-cutover": "bunx vitest --run test/agent-runtime-provider-differential.test.ts test/agent-runtime-extension-history-differential.test.ts test/greenfield-im-runtime-host.test.ts test/agent-runtime-selection.test.ts"
+		"verify:runtime-contract": "bunx vitest --run test/agent-runtime-provider-contract.test.ts test/agent-runtime-extension-history-contract.test.ts test/runtime-host.test.ts test/agent-runtime-selection.test.ts"
 	},
 	"dependencies": {
 		"@vetta/action-rpc": "workspace:*",

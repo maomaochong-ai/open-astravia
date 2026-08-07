@@ -35,7 +35,7 @@ import {
 	resolveSessionIdFromPath,
 } from "@vetta/runtime-storage/conversation";
 
-export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "Greenfield IM Runtime startup and cleanup failed";
+export const CLI_RUNTIME_HOST_STARTUP_FAILURE = "CLI Runtime startup and cleanup failed";
 
 export interface CliSessionAssemblyOptions {
 	readonly bootstrap: CodingAgentHostBootstrap;

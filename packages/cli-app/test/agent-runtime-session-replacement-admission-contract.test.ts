@@ -10,11 +10,9 @@ import {
 	createAgentRpcFixture,
 	readSessionFile,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import { startOpenAiResponsesTestServer, textResponseEvents } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
 let executable: AgentRpcExecutable;
 
 beforeAll(async () => {
@@ -25,12 +23,10 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("Agent Runtime session replacement admission differential", () => {
+describe("Agent Runtime session replacement admission contract", () => {
 	it("binds a prompt queued after switch_session to the target identity", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, SuccessfulAdmissionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runSwitchThenPrompt(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runSwitchThenPrompt();
+		expect(observation).toEqual({
 			finalIdentityIsTarget: true,
 			promptResponseCount: 1,
 			promptPersistedInSource: false,
@@ -45,10 +41,8 @@ describe("Agent Runtime session replacement admission differential", () => {
 	}, 30_000);
 
 	it("binds a prompt queued after a failed switch_session back to the source identity", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, FailedAdmissionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runFailedSwitchThenPrompt(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runFailedSwitchThenPrompt();
+		expect(observation).toEqual({
 			finalIdentityIsSource: true,
 			promptResponseCount: 1,
 			promptPersistedInSource: true,
@@ -64,10 +58,8 @@ describe("Agent Runtime session replacement admission differential", () => {
 	}, 40_000);
 
 	it("binds a prompt queued after fork to the fork identity", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, ForkAdmissionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runForkThenPrompt(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runForkThenPrompt();
+		expect(observation).toEqual({
 			finalIdentityChanged: true,
 			forkSucceeded: true,
 			promptResponseCount: 1,
@@ -83,10 +75,8 @@ describe("Agent Runtime session replacement admission differential", () => {
 	}, 40_000);
 
 	it("linearizes consecutive switch_session commands before admitting the next prompt", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, ConsecutiveAdmissionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runConsecutiveSwitchesThenPrompt(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runConsecutiveSwitchesThenPrompt();
+		expect(observation).toEqual({
 			finalIdentityIsLastTarget: true,
 			intermediateOwnershipReleased: true,
 			lastTargetOwnershipHeld: true,
@@ -103,10 +93,8 @@ describe("Agent Runtime session replacement admission differential", () => {
 	}, 40_000);
 
 	it("runs an Extension command queued after switch_session against the target identity", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, ExtensionAdmissionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runSwitchThenExtensionCommand(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runSwitchThenExtensionCommand();
+		expect(observation).toEqual({
 			commandCompleted: true,
 			finalIdentityChangedAgain: true,
 			firstPreviousIdentityWasSource: true,
@@ -189,17 +177,17 @@ interface SessionSwitchAuditRecord {
 	readonly previousSessionFile?: string;
 }
 
-async function runSwitchThenPrompt(backend: TestAgentRuntimeBackend): Promise<SuccessfulAdmissionObservation> {
+async function runSwitchThenPrompt(): Promise<SuccessfulAdmissionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
-	const prompt = `queued-after-switch-${backend}`;
+	const prompt = "queued-after-switch-runtime";
 	const server = await startOpenAiResponsesTestServer(() => ({
 		kind: "events",
 		events: textResponseEvents("queued switch prompt completed"),
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await process.request("switch-admission-source", "get_state"));
 		const targetPath = await createTargetAndRestoreSource(process, sourcePath, "switch-admission");
 
@@ -218,8 +206,8 @@ async function runSwitchThenPrompt(backend: TestAgentRuntimeBackend): Promise<Su
 			promptPersistedInTarget: await fileContains(targetPath, prompt),
 			promptReachedProvider: server.requests.some((request) => request.rawBody.includes(prompt)),
 			providerRequestCount: server.requests.length,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			terminalOutcomeCount: countPromptTerminalOutcomes(process, mark, "switch-admission-prompt"),
 			transitionResponseCount: countResponses(process, mark, "switch-admission-transition", "switch_session"),
 		};
@@ -230,21 +218,21 @@ async function runSwitchThenPrompt(backend: TestAgentRuntimeBackend): Promise<Su
 	}
 }
 
-async function runFailedSwitchThenPrompt(backend: TestAgentRuntimeBackend): Promise<FailedAdmissionObservation> {
+async function runFailedSwitchThenPrompt(): Promise<FailedAdmissionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let sourceProcess: AgentRpcProcess | undefined;
 	let targetProcess: AgentRpcProcess | undefined;
-	const prompt = `queued-after-failed-switch-${backend}`;
+	const prompt = "queued-after-failed-switch-runtime";
 	const server = await startOpenAiResponsesTestServer(() => ({
 		kind: "events",
 		events: textResponseEvents("queued failed-switch prompt completed"),
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		sourceProcess = startAgentRpc(executable, fixture, { backend });
+		sourceProcess = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await sourceProcess.request("failed-admission-source", "get_state"));
 		const targetPath = await createTargetAndRestoreSource(sourceProcess, sourcePath, "failed-admission");
-		targetProcess = startAgentRpc(executable, fixture, { backend, extraArgs: ["--session", targetPath] });
+		targetProcess = startAgentRpc(executable, fixture, { extraArgs: ["--session", targetPath] });
 		await targetProcess.request("failed-admission-holder", "get_state");
 
 		const mark = sourceProcess.mark();
@@ -266,8 +254,8 @@ async function runFailedSwitchThenPrompt(backend: TestAgentRuntimeBackend): Prom
 			promptPersistedInTarget: await fileContains(targetPath, prompt),
 			promptReachedProvider: server.requests.some((request) => request.rawBody.includes(prompt)),
 			providerRequestCount: server.requests.length,
-			sourceOwnershipHeld: existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipHeld: existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			terminalOutcomeCount: countPromptTerminalOutcomes(sourceProcess, mark, "failed-admission-prompt"),
 			transitionFailed: transition.success === false,
 			transitionResponseCount: countResponses(sourceProcess, mark, "failed-admission-transition", "switch_session"),
@@ -280,18 +268,18 @@ async function runFailedSwitchThenPrompt(backend: TestAgentRuntimeBackend): Prom
 	}
 }
 
-async function runForkThenPrompt(backend: TestAgentRuntimeBackend): Promise<ForkAdmissionObservation> {
+async function runForkThenPrompt(): Promise<ForkAdmissionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
-	const seedPrompt = `fork-admission-seed-${backend}`;
-	const queuedPrompt = `queued-after-fork-${backend}`;
+	const seedPrompt = "fork-admission-seed-runtime";
+	const queuedPrompt = "queued-after-fork-runtime";
 	const server = await startOpenAiResponsesTestServer((_request, index) => ({
 		kind: "events",
 		events: textResponseEvents(index === 0 ? "fork seed completed" : "queued fork prompt completed"),
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await process.request("fork-admission-source", "get_state"));
 		const seedMark = process.mark();
 		await process.request("fork-admission-seed", "prompt", { message: seedPrompt });
@@ -315,8 +303,8 @@ async function runForkThenPrompt(backend: TestAgentRuntimeBackend): Promise<Fork
 			promptPersistedInTarget: await fileContains(targetPath, queuedPrompt),
 			promptReachedProvider: server.requests.some((request) => request.rawBody.includes(queuedPrompt)),
 			providerRequestCount: server.requests.length,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			terminalOutcomeCount: countPromptTerminalOutcomes(process, mark, "fork-admission-prompt"),
 			transitionResponseCount: countResponses(process, mark, "fork-admission-transition", "fork"),
 		};
@@ -327,19 +315,17 @@ async function runForkThenPrompt(backend: TestAgentRuntimeBackend): Promise<Fork
 	}
 }
 
-async function runConsecutiveSwitchesThenPrompt(
-	backend: TestAgentRuntimeBackend,
-): Promise<ConsecutiveAdmissionObservation> {
+async function runConsecutiveSwitchesThenPrompt(): Promise<ConsecutiveAdmissionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
-	const prompt = `queued-after-consecutive-switches-${backend}`;
+	const prompt = "queued-after-consecutive-switches-runtime";
 	const server = await startOpenAiResponsesTestServer(() => ({
 		kind: "events",
 		events: textResponseEvents("queued consecutive-switch prompt completed"),
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend });
+		process = startAgentRpc(executable, fixture);
 		const sourcePath = readSessionFile(await process.request("consecutive-admission-source", "get_state"));
 		await process.request("consecutive-admission-create-a", "new_session");
 		const targetA = readSessionFile(await process.request("consecutive-admission-a", "get_state"));
@@ -359,15 +345,15 @@ async function runConsecutiveSwitchesThenPrompt(
 
 		return {
 			finalIdentityIsLastTarget: finalPath === targetB,
-			intermediateOwnershipReleased: !existsSync(ownershipPath(backend, targetA)),
-			lastTargetOwnershipHeld: existsSync(ownershipPath(backend, targetB)),
+			intermediateOwnershipReleased: !existsSync(ownershipPath(targetA)),
+			lastTargetOwnershipHeld: existsSync(ownershipPath(targetB)),
 			promptPersistedInIntermediate: await fileContains(targetA, prompt),
 			promptPersistedInLastTarget: await fileContains(targetB, prompt),
 			promptPersistedInSource: await fileContains(sourcePath, prompt),
 			promptReachedProvider: server.requests.some((request) => request.rawBody.includes(prompt)),
 			promptResponseCount: countResponses(process, mark, "consecutive-admission-prompt", "prompt"),
 			providerRequestCount: server.requests.length,
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
 			terminalOutcomeCount: countPromptTerminalOutcomes(process, mark, "consecutive-admission-prompt"),
 			transitionResponseCount: process
 				.framesSince(mark)
@@ -385,13 +371,13 @@ async function runConsecutiveSwitchesThenPrompt(
 	}
 }
 
-async function runSwitchThenExtensionCommand(backend: TestAgentRuntimeBackend): Promise<ExtensionAdmissionObservation> {
+async function runSwitchThenExtensionCommand(): Promise<ExtensionAdmissionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	try {
 		fixture = await createAgentRpcFixture();
-		const auditPath = join(fixture.root, `${backend}-replacement-extension-admission.jsonl`);
-		const extensionPath = join(fixture.root, `${backend}-replacement-extension-admission.ts`);
+		const auditPath = join(fixture.root, "runtime-replacement-extension-admission.jsonl");
+		const extensionPath = join(fixture.root, "runtime-replacement-extension-admission.ts");
 		await writeFile(
 			extensionPath,
 			`import { appendFileSync } from "node:fs";
@@ -408,7 +394,7 @@ async function runSwitchThenExtensionCommand(backend: TestAgentRuntimeBackend): 
 			}`,
 			"utf8",
 		);
-		process = startAgentRpc(executable, fixture, { backend, extraArgs: ["--extension", extensionPath] });
+		process = startAgentRpc(executable, fixture, { extraArgs: ["--extension", extensionPath] });
 		const sourcePath = readSessionFile(await process.request("extension-admission-source", "get_state"));
 		const targetPath = await createTargetAndRestoreSource(process, sourcePath, "extension-admission");
 		await writeFile(auditPath, "", "utf8");
@@ -518,8 +504,8 @@ function isSessionSwitchAuditRecord(value: unknown): value is SessionSwitchAudit
 	);
 }
 
-function ownershipPath(backend: TestAgentRuntimeBackend, sessionPath: string): string {
-	return backend === "legacy" ? `${sessionPath}.lock` : `${sessionPath}.owner.lock`;
+function ownershipPath(sessionPath: string): string {
+	return `${sessionPath}.owner.lock`;
 }
 
 function isMissingFileError(error: unknown): boolean {

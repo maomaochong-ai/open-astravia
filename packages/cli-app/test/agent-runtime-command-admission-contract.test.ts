@@ -12,7 +12,6 @@ import {
 	readSessionFile,
 	type StartAgentRpcOptions,
 	startAgentRpc,
-	type TestAgentRuntimeBackend,
 } from "./support/agent-rpc-test-process.js";
 import {
 	startOpenAiResponsesTestServer,
@@ -20,7 +19,6 @@ import {
 	toolCallResponseEvents,
 } from "./support/openai-responses-test-server.js";
 
-const BACKENDS = ["greenfield-im"] as const satisfies readonly TestAgentRuntimeBackend[];
 const COMMAND_ADMISSION_HOST_OPTIONS = {
 	enableHostBridge: true,
 	scenario: "im-claw",
@@ -35,12 +33,10 @@ afterAll(async () => {
 	await executable.dispose();
 });
 
-describe("Agent Runtime RPC command admission differential", () => {
+describe("Agent Runtime RPC command admission contract", () => {
 	it("preserves idle new_session and prompt ordering", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, IdleAdmissionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runIdleTransitionThenPrompt(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runIdleTransitionThenPrompt();
+		expect(observation).toEqual({
 			outcome: "completed",
 			providerRequestCount: 1,
 			queuedPromptReachedProvider: true,
@@ -51,8 +47,7 @@ describe("Agent Runtime RPC command admission differential", () => {
 	}, 30_000);
 
 	it("keeps a prompt received during active-turn new_session off the released source session", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, AdmissionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runTransitionThenPrompt(backend);
+		const observation = await runTransitionThenPrompt();
 
 		expect([
 			{
@@ -65,15 +60,13 @@ describe("Agent Runtime RPC command admission differential", () => {
 				identityChanged: true,
 			},
 			completedAdmissionObservation(),
-		]).toContainEqual(observations["greenfield-im"]);
-		expect(observations["greenfield-im"]).toEqual(completedAdmissionObservation());
+		]).toContainEqual(observation);
+		expect(observation).toEqual(completedAdmissionObservation());
 	}, 30_000);
 
 	it("keeps abort scoped to the source turn while new_session is pending", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, AbortDuringTransitionObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runTransitionThenAbort(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runTransitionThenAbort();
+		expect(observation).toEqual({
 			providerRequestClosed: true,
 			providerRequestCount: 1,
 			terminalKinds: [],
@@ -84,10 +77,8 @@ describe("Agent Runtime RPC command admission differential", () => {
 	}, 30_000);
 
 	it("finishes an accepted session transition before transport cleanup", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, TransitionShutdownObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runTransitionThenClose(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runTransitionThenClose();
+		expect(observation).toEqual({
 			exitCode: 0,
 			providerRequestClosed: true,
 			providerRequestCount: 1,
@@ -97,10 +88,8 @@ describe("Agent Runtime RPC command admission differential", () => {
 	}, 30_000);
 
 	it("honors an asynchronous Extension shutdown request exactly once", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, ExtensionShutdownObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runExtensionShutdown(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runExtensionShutdown();
+		expect(observation).toEqual({
 			exitCode: 0,
 			promptResponseCount: 1,
 			audit: ["handler-before", "handler-after", "session-shutdown"],
@@ -109,10 +98,8 @@ describe("Agent Runtime RPC command admission differential", () => {
 	}, 30_000);
 
 	it("settles an active Provider prompt before transport exit", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, PromptShutdownObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runHeldPromptThenClose(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runHeldPromptThenClose();
+		expect(observation).toEqual({
 			exitCode: 0,
 			providerRequestClosed: true,
 			providerRequestCount: 1,
@@ -123,10 +110,8 @@ describe("Agent Runtime RPC command admission differential", () => {
 	}, 30_000);
 
 	it("cancels an accepted memory flush before transport exit", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, MemoryFlushShutdownObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runHeldMemoryFlushThenClose(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runHeldMemoryFlushThenClose();
+		expect(observation).toEqual({
 			exitCode: 0,
 			providerRequestClosed: true,
 			providerRequestCount: 2,
@@ -136,10 +121,8 @@ describe("Agent Runtime RPC command admission differential", () => {
 	}, 30_000);
 
 	it("settles a prompt waiting on host_response before transport exit", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, HostBridgeShutdownObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runHostBridgeThenClose(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runHostBridgeThenClose();
+		expect(observation).toEqual({
 			exitCode: 0,
 			providerRequestCount: 1,
 			hostRequestCount: 1,
@@ -150,10 +133,8 @@ describe("Agent Runtime RPC command admission differential", () => {
 	}, 30_000);
 
 	it("cancels a prompt waiting on extension_ui_response before transport exit", async () => {
-		const observations = {} as Record<TestAgentRuntimeBackend, ExtensionUiShutdownObservation>;
-		for (const backend of BACKENDS) observations[backend] = await runExtensionUiThenClose(backend);
-
-		expect(observations["greenfield-im"]).toEqual({
+		const observation = await runExtensionUiThenClose();
+		expect(observation).toEqual({
 			exitCode: 0,
 			promptResponseCount: 1,
 			extensionUiRequestCount: 1,
@@ -240,17 +221,17 @@ interface ExtensionUiShutdownObservation {
 	readonly ownershipLockCount: number;
 }
 
-async function runIdleTransitionThenPrompt(backend: TestAgentRuntimeBackend): Promise<IdleAdmissionObservation> {
+async function runIdleTransitionThenPrompt(): Promise<IdleAdmissionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
-	const queuedPrompt = `queued-after-idle-transition-${backend}`;
+	const queuedPrompt = "queued-after-idle-transition-runtime";
 	const server = await startOpenAiResponsesTestServer(() => ({
 		kind: "events",
 		events: textResponseEvents("idle queued prompt completed"),
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend, ...COMMAND_ADMISSION_HOST_OPTIONS });
+		process = startAgentRpc(executable, fixture, COMMAND_ADMISSION_HOST_OPTIONS);
 		const sourcePath = readSessionFile(await process.request("idle-admission-source-state", "get_state"));
 
 		const concurrentMark = process.mark();
@@ -287,8 +268,8 @@ async function runIdleTransitionThenPrompt(backend: TestAgentRuntimeBackend): Pr
 			outcome: terminal.type === "agent_end" ? "completed" : "failed",
 			providerRequestCount: server.requests.length,
 			queuedPromptReachedProvider: server.requests.some((request) => request.rawBody.includes(queuedPrompt)),
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			identityChanged: targetPath !== sourcePath,
 		};
 	} finally {
@@ -298,17 +279,17 @@ async function runIdleTransitionThenPrompt(backend: TestAgentRuntimeBackend): Pr
 	}
 }
 
-async function runTransitionThenPrompt(backend: TestAgentRuntimeBackend): Promise<AdmissionObservation> {
+async function runTransitionThenPrompt(): Promise<AdmissionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
-	const queuedPrompt = `queued-after-transition-${backend}`;
+	const queuedPrompt = "queued-after-transition-runtime";
 	const server = await startOpenAiResponsesTestServer((_request, index) => {
 		if (index === 0) return { kind: "hold", events: textResponseEvents("partial-before-admission").slice(0, 3) };
 		return { kind: "events", events: textResponseEvents("queued prompt completed") };
 	});
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend, ...COMMAND_ADMISSION_HOST_OPTIONS });
+		process = startAgentRpc(executable, fixture, COMMAND_ADMISSION_HOST_OPTIONS);
 		const sourcePath = readSessionFile(await process.request("admission-source-state", "get_state"));
 
 		const heldMark = process.mark();
@@ -350,8 +331,8 @@ async function runTransitionThenPrompt(backend: TestAgentRuntimeBackend): Promis
 			providerRequestClosed: true,
 			providerRequestCount: server.requests.length,
 			queuedPromptReachedProvider: server.requests.some((request) => request.rawBody.includes(queuedPrompt)),
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			identityChanged: targetPath !== sourcePath,
 		};
 	} finally {
@@ -361,7 +342,7 @@ async function runTransitionThenPrompt(backend: TestAgentRuntimeBackend): Promis
 	}
 }
 
-async function runTransitionThenAbort(backend: TestAgentRuntimeBackend): Promise<AbortDuringTransitionObservation> {
+async function runTransitionThenAbort(): Promise<AbortDuringTransitionObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer(() => ({
@@ -370,7 +351,7 @@ async function runTransitionThenAbort(backend: TestAgentRuntimeBackend): Promise
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend, ...COMMAND_ADMISSION_HOST_OPTIONS });
+		process = startAgentRpc(executable, fixture, COMMAND_ADMISSION_HOST_OPTIONS);
 		const sourcePath = readSessionFile(await process.request("abort-source-state", "get_state"));
 
 		const heldMark = process.mark();
@@ -398,8 +379,8 @@ async function runTransitionThenAbort(backend: TestAgentRuntimeBackend): Promise
 			terminalKinds: process
 				.framesSince(heldMark)
 				.flatMap((frame) => (frame.type === "agent_end" ? ["agent_end"] : [])),
-			sourceOwnershipReleased: !existsSync(ownershipPath(backend, sourcePath)),
-			targetOwnershipHeld: existsSync(ownershipPath(backend, targetPath)),
+			sourceOwnershipReleased: !existsSync(ownershipPath(sourcePath)),
+			targetOwnershipHeld: existsSync(ownershipPath(targetPath)),
 			identityChanged: targetPath !== sourcePath,
 		};
 	} finally {
@@ -409,7 +390,7 @@ async function runTransitionThenAbort(backend: TestAgentRuntimeBackend): Promise
 	}
 }
 
-async function runTransitionThenClose(backend: TestAgentRuntimeBackend): Promise<TransitionShutdownObservation> {
+async function runTransitionThenClose(): Promise<TransitionShutdownObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer(() => ({
@@ -418,7 +399,7 @@ async function runTransitionThenClose(backend: TestAgentRuntimeBackend): Promise
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend, ...COMMAND_ADMISSION_HOST_OPTIONS });
+		process = startAgentRpc(executable, fixture, COMMAND_ADMISSION_HOST_OPTIONS);
 		await process.request("close-source-state", "get_state");
 
 		const heldMark = process.mark();
@@ -447,13 +428,13 @@ async function runTransitionThenClose(backend: TestAgentRuntimeBackend): Promise
 	}
 }
 
-async function runExtensionShutdown(backend: TestAgentRuntimeBackend): Promise<ExtensionShutdownObservation> {
+async function runExtensionShutdown(): Promise<ExtensionShutdownObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	try {
 		fixture = await createAgentRpcFixture();
-		const auditPath = `${fixture.root}/${backend}-extension-shutdown.txt`;
-		const extensionPath = `${fixture.root}/${backend}-extension-shutdown.ts`;
+		const auditPath = `${fixture.root}/runtime-extension-shutdown.txt`;
+		const extensionPath = `${fixture.root}/runtime-extension-shutdown.ts`;
 		await writeFile(
 			extensionPath,
 			`import { appendFileSync } from "node:fs";
@@ -473,7 +454,6 @@ async function runExtensionShutdown(backend: TestAgentRuntimeBackend): Promise<E
 			"utf8",
 		);
 		process = startAgentRpc(executable, fixture, {
-			backend,
 			...COMMAND_ADMISSION_HOST_OPTIONS,
 			extraArgs: ["--extension", extensionPath],
 		});
@@ -504,7 +484,7 @@ async function runExtensionShutdown(backend: TestAgentRuntimeBackend): Promise<E
 	}
 }
 
-async function runHeldPromptThenClose(backend: TestAgentRuntimeBackend): Promise<PromptShutdownObservation> {
+async function runHeldPromptThenClose(): Promise<PromptShutdownObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer(() => ({
@@ -513,7 +493,7 @@ async function runHeldPromptThenClose(backend: TestAgentRuntimeBackend): Promise
 	}));
 	try {
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
-		process = startAgentRpc(executable, fixture, { backend, ...COMMAND_ADMISSION_HOST_OPTIONS });
+		process = startAgentRpc(executable, fixture, COMMAND_ADMISSION_HOST_OPTIONS);
 		await process.request("prompt-close-state", "get_state");
 
 		const mark = process.mark();
@@ -540,7 +520,7 @@ async function runHeldPromptThenClose(backend: TestAgentRuntimeBackend): Promise
 	}
 }
 
-async function runHeldMemoryFlushThenClose(backend: TestAgentRuntimeBackend): Promise<MemoryFlushShutdownObservation> {
+async function runHeldMemoryFlushThenClose(): Promise<MemoryFlushShutdownObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	const server = await startOpenAiResponsesTestServer((_request, index) =>
@@ -551,7 +531,6 @@ async function runHeldMemoryFlushThenClose(backend: TestAgentRuntimeBackend): Pr
 		const memoryFile = join(fixture.workspace, "MEMORY.md");
 		await writeFile(memoryFile, "# Memory\n", "utf8");
 		process = startAgentRpc(executable, fixture, {
-			backend,
 			...COMMAND_ADMISSION_HOST_OPTIONS,
 			extraArgs: ["--memory-mode", "--memory-file", memoryFile],
 		});
@@ -586,7 +565,7 @@ async function runHeldMemoryFlushThenClose(backend: TestAgentRuntimeBackend): Pr
 	}
 }
 
-async function runHostBridgeThenClose(backend: TestAgentRuntimeBackend): Promise<HostBridgeShutdownObservation> {
+async function runHostBridgeThenClose(): Promise<HostBridgeShutdownObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	let attachmentPath = "";
@@ -602,7 +581,7 @@ async function runHostBridgeThenClose(backend: TestAgentRuntimeBackend): Promise
 		fixture = await createAgentRpcFixture({ baseUrl: server.baseUrl });
 		attachmentPath = join(fixture.workspace, "bridge-close.txt");
 		await writeFile(attachmentPath, "bridge close", "utf8");
-		process = startAgentRpc(executable, fixture, { backend, ...COMMAND_ADMISSION_HOST_OPTIONS });
+		process = startAgentRpc(executable, fixture, COMMAND_ADMISSION_HOST_OPTIONS);
 		await process.request("host-close-state", "get_state");
 
 		const mark = process.mark();
@@ -628,13 +607,13 @@ async function runHostBridgeThenClose(backend: TestAgentRuntimeBackend): Promise
 	}
 }
 
-async function runExtensionUiThenClose(backend: TestAgentRuntimeBackend): Promise<ExtensionUiShutdownObservation> {
+async function runExtensionUiThenClose(): Promise<ExtensionUiShutdownObservation> {
 	let fixture: AgentRpcFixture | undefined;
 	let process: AgentRpcProcess | undefined;
 	try {
 		fixture = await createAgentRpcFixture();
-		const auditPath = join(fixture.root, `${backend}-extension-ui-close.txt`);
-		const extensionPath = join(fixture.root, `${backend}-extension-ui-close.ts`);
+		const auditPath = join(fixture.root, "runtime-extension-ui-close.txt");
+		const extensionPath = join(fixture.root, "runtime-extension-ui-close.ts");
 		await writeFile(
 			extensionPath,
 			`import { appendFileSync } from "node:fs";
@@ -650,7 +629,6 @@ async function runExtensionUiThenClose(backend: TestAgentRuntimeBackend): Promis
 			"utf8",
 		);
 		process = startAgentRpc(executable, fixture, {
-			backend,
 			...COMMAND_ADMISSION_HOST_OPTIONS,
 			extraArgs: ["--extension", extensionPath],
 		});
@@ -678,8 +656,8 @@ async function runExtensionUiThenClose(backend: TestAgentRuntimeBackend): Promis
 	}
 }
 
-function ownershipPath(backend: TestAgentRuntimeBackend, sessionPath: string): string {
-	return backend === "legacy" ? `${sessionPath}.lock` : `${sessionPath}.owner.lock`;
+function ownershipPath(sessionPath: string): string {
+	return `${sessionPath}.owner.lock`;
 }
 
 function completedAdmissionObservation(): AdmissionObservation {
