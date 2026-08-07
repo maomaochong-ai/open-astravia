@@ -1,4 +1,8 @@
-import type { PluginContext, PluginMediaProviderHandlerContext } from "@vetta-org/plugin-sdk";
+import type {
+	PluginContext,
+	PluginMediaProviderHandlerContext,
+	PluginNetworkRequest,
+} from "@vetta-org/plugin-sdk";
 import { isCompatibleMinimaxPrompt, type ComfyPrompt } from "./workflow-adapter";
 
 interface HistoryEntry {
@@ -41,13 +45,14 @@ export class ComfyUiClient {
 	}
 
 	private async request<T>(path: string, init?: { method?: "GET" | "POST"; body?: unknown }): Promise<T> {
-		const response = await this.ctx.network.request<T>({
+		const request: PluginNetworkRequest = {
 			url: `${this.baseUrl}${path}`,
-			method: init?.method,
-			body: init?.body === undefined ? undefined : { type: "json", value: init.body },
+			method: init?.method ?? "GET",
 			responseType: "json",
 			timeoutMs: 120_000,
-		});
+			...(init?.body === undefined ? {} : { body: { type: "json", value: init.body } }),
+		};
+		const response = await this.ctx.network.request<T>(request);
 		if (!response.ok) {
 			throw new Error(`ComfyUI ${path} failed: HTTP ${response.status} ${errorDetail(response.body)}`);
 		}

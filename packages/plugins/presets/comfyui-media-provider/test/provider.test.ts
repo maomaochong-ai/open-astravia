@@ -86,6 +86,11 @@ describe("ComfyUI media provider", () => {
 		);
 
 		expect(queued).toEqual({ id: "job-1", status: "queued" });
+		const historyRequest = networkRequest.mock.calls
+			.map(([request]) => request)
+			.find((request) => request.url.endsWith("/history?max_items=20"));
+		expect(historyRequest).toMatchObject({ method: "GET" });
+		expect(historyRequest).not.toHaveProperty("body");
 		expect(uploadReferenceMock).toHaveBeenCalledWith("reference-1", {
 			url: "http://comfy.local:8188/upload/image",
 			fieldName: "image",
