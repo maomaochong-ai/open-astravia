@@ -92,6 +92,7 @@ import {
 	normalizePluginShortcutBindings,
 	registerPluginShortcutScopeOnHost,
 } from "./plugin-shortcut-scope";
+import { createQuickJsPluginDefinition } from "./quickjs-plugin-runtime";
 
 export interface LoadedPlugin {
 	id: string;
@@ -1680,6 +1681,9 @@ async function assertPluginEntryFetchable(plugin: InstalledPlugin): Promise<void
 }
 
 async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> {
+	if (plugin.runtime === "quickjs") {
+		return { default: createQuickJsPluginDefinition(plugin) };
+	}
 	if (plugin.runtime !== "module-federation") {
 		return assertPluginModule(await import(/* @vite-ignore */ plugin.entryUrl));
 	}

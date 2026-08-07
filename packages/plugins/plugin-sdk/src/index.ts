@@ -257,6 +257,26 @@ export type {
 } from "./storage.js";
 export type { PluginSettingsApi } from "./settings.js";
 
+// QuickJS sandbox runtime and host-rendered declarative UI
+export type {
+	PluginDeclarativeActionEvent,
+	PluginDeclarativeButton,
+	PluginDeclarativeDivider,
+	PluginDeclarativeInput,
+	PluginDeclarativeNode,
+	PluginDeclarativeSection,
+	PluginDeclarativeSelect,
+	PluginDeclarativeSelectOption,
+	PluginDeclarativeStack,
+	PluginDeclarativeSwitch,
+	PluginDeclarativeText,
+	PluginDeclarativeTextarea,
+	PluginDeclarativeTextTone,
+	PluginQuickJsActivityTab,
+	PluginQuickJsApi,
+	PluginQuickJsContext,
+} from "./quickjs.js";
+
 // i18n
 export type {
 	PluginLocaleCatalog,

@@ -226,31 +226,33 @@ async function collectRuntimeFiles(
 		}
 	}
 
-	const federationManifestPath = resolve(rootDir, pluginManifest.entry);
-	addFile(federationManifestPath);
+	const runtimeEntryPath = resolve(rootDir, pluginManifest.entry);
+	addFile(runtimeEntryPath);
 
-	const federationManifest = parseJsonObject(await readFile(federationManifestPath), basename(federationManifestPath));
-	const remoteEntry = readManifestRemoteEntry(federationManifest);
-	if (remoteEntry) {
-		addFile(resolve(dirname(federationManifestPath), remoteEntry));
-	}
-
-	const assetsDir = join(distDir, "assets");
-	for (const file of await collectFiles(assetsDir)) {
-		addFile(file.fullPath);
-	}
-
-	// Vite cssCodeSplit emits extra files like dist/style2.css for async chunks;
-	// include all dist-root CSS so preload-helper can fetch them (not only styles[]).
-	try {
-		for (const file of await collectFiles(distDir)) {
-			const rel = relative(distDir, file.fullPath).replace(/\\/g, "/");
-			if (rel.endsWith(".css") && !rel.includes("/")) {
-				addFile(file.fullPath);
-			}
+	if (pluginManifest.runtime === "module-federation") {
+		const federationManifest = parseJsonObject(await readFile(runtimeEntryPath), basename(runtimeEntryPath));
+		const remoteEntry = readManifestRemoteEntry(federationManifest);
+		if (remoteEntry) {
+			addFile(resolve(dirname(runtimeEntryPath), remoteEntry));
 		}
-	} catch {
-		// dist missing
+
+		const assetsDir = join(distDir, "assets");
+		for (const file of await collectFiles(assetsDir)) {
+			addFile(file.fullPath);
+		}
+
+		// Vite cssCodeSplit emits extra files like dist/style2.css for async chunks;
+		// include all dist-root CSS so preload-helper can fetch them (not only styles[]).
+		try {
+			for (const file of await collectFiles(distDir)) {
+				const rel = relative(distDir, file.fullPath).replace(/\\/g, "/");
+				if (rel.endsWith(".css") && !rel.includes("/")) {
+					addFile(file.fullPath);
+				}
+			}
+		} catch {
+			// dist missing
+		}
 	}
 
 	for (const resource of listPluginManifestResources(pluginManifest)) {

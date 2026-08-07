@@ -122,7 +122,7 @@ export interface InstalledPlugin {
 	version: string;
 	activeVersion: string;
 	pluginApiVersion: string;
-	runtime: "esm" | "module-federation";
+	runtime: "esm" | "module-federation" | "quickjs";
 	entryUrl: string;
 	moduleFederation?: {
 		remoteName: string;

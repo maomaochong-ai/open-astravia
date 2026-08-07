@@ -306,6 +306,12 @@ export function isPluginPackagedIconPath(icon: string): boolean {
 export function parsePluginManifest(raw: unknown): PluginManifest {
 	assertSchema(PluginManifestSchema, raw, "manifest");
 	const runtime = raw.runtime ?? "esm";
+	if (runtime === "quickjs" && (raw.styles?.length ?? 0) > 0) {
+		throw new Error("QuickJS plugins cannot load custom styles");
+	}
+	if (runtime === "quickjs" && raw.moduleFederation) {
+		throw new Error("QuickJS plugins cannot declare moduleFederation metadata");
+	}
 	const commands = parsePluginCommandNames(raw.commands);
 	const icon = raw.icon === undefined ? undefined : trimString(raw.icon);
 	const permissions = normalizePermissions(raw.permissions);

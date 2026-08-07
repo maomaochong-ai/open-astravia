@@ -243,10 +243,9 @@ ctx.agent.registerContinuationProvider({
 
 `ctx.command.run` 在**宿主主进程**用 `execFile` 跑命令（**不走 shell**，参数数组传递，无注入）。需：
 
-1. 插件由宿主判定为 `trustLevel === "official"`
-2. 权限 `agent.command.run`
-3. `plugin.json` 的 `commands` 声明该二进制名
-4. 用户未在设置里关闭该命令
+1. 权限 `agent.command.run`
+2. `plugin.json` 的 `commands` 声明该二进制名
+3. 用户未在设置里关闭该命令
 
 ```ts
 interface PluginCommandApi {
@@ -265,8 +264,7 @@ const { stdout, exitCode } = await ctx.command.run("git", ["status", "--porcelai
 });
 ```
 
-- local/community 插件即使在清单中声明权限和命令也会被主进程拒绝。
-- official 插件未声明 / 用户关闭 / 无权限：拒绝（关闭时宿主会通知用户）。
+- 未声明 / 用户关闭 / 无权限：拒绝（关闭时宿主会通知用户）。
 - 非零 exit：**resolve** 并带 `exitCode`，不 throw（spawn 失败才 reject）。
 - 粒度 = **可执行文件名**（`git` 的所有子命令共用一条声明）。见 ADR-0032、[manifest commands](./manifest.md#commands)。
 
@@ -274,7 +272,7 @@ const { stdout, exitCode } = await ctx.command.run("git", ["status", "--porcelai
 
 ## 长驻进程 command.spawn
 
-`ctx.command.spawn` 启动**长驻**进程（如本地 dev server，ADR-0054）。它同样只对 official 插件有效，治理与 `run` 同模式：清单 `commands` 声明二进制 + 用户可关；但权限是独立的 `agent.command.spawn`。
+`ctx.command.spawn` 启动**长驻**进程（如本地 dev server，ADR-0054）。治理与 `run` 同模式：清单 `commands` 声明二进制 + 用户可关；但权限是独立的 `agent.command.spawn`。
 
 ```ts
 interface PluginCommandApi {
@@ -359,7 +357,7 @@ interface PluginFsApi {
 
 ## 网络 API
 
-`ctx.network.request` 通过宿主主进程发起 HTTP(S) 请求，避免 renderer CORS 差异。需要 `network.fetch`，并在清单 `network.allowedHosts` 声明目标域名/IP；请求与响应各最多 32 MiB，超时最多 300 秒。调用绑定当前插件的 capability session，插件 id 不由 renderer 传入。
+`ctx.network.request` 通过宿主主进程发起 HTTP(S) 请求，避免 renderer CORS 差异。需要 `network.fetch`；请求与响应各最多 32 MiB，超时最多 300 秒。调用绑定当前插件的 capability session，插件 id 不由 renderer 传入。
 
 ```ts
 const response = await ctx.network.request<{ data: unknown[] }>({
@@ -373,8 +371,6 @@ const response = await ctx.network.request<{ data: unknown[] }>({
 ```
 
 `body.type` 也可取 `"multipart"`，通过 `fields` 和 base64 `files` 组装表单。API 返回 `{ ok, status, statusText, headers, body }`，非 2xx 不自动抛错；JSON 错误响应若不是合法 JSON，会以文本返回。响应按流读取，超过上限会立即中止。
-
-host 声明只匹配 hostname，不限制端口；公网、私网、localhost 均可声明。支持精确 host 和 `*.example.com` 子域通配，每次重定向都会重新校验。`*` 仅对 official 插件有效。完整格式见 [manifest network](./manifest.md#network)。
 
 ## 插件私有存储 API
 
