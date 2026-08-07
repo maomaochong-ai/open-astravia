@@ -8,10 +8,8 @@ import type {
 	RuntimeMcpClientFactory,
 } from "@vetta/runtime-mcp";
 import { describe, expect, it } from "vitest";
-import {
-	createCodingAgentPluginMcpRuntime,
-	type EcosystemHookAwareRuntimeTool,
-} from "../src/adapters/runtime-core/greenfield.js";
+import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/greenfield-hook-tool-wrapper.js";
+import { createCodingAgentPluginMcpRuntime } from "../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import type { AgentPluginRuntimeConfig } from "../src/model-context/index.js";
 
 describe("CodingAgentPluginMcpRuntime", () => {

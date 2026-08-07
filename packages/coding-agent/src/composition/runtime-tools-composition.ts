@@ -35,7 +35,7 @@ import {
 	createWriteToolRegistration,
 	InMemoryCodingToolRegistry,
 } from "@vetta/runtime-tools/coding";
-import { CODING_AGENT_MODEL_TOOL_ORDER } from "../adapters/runtime-core/greenfield.js";
+import { CODING_AGENT_MODEL_TOOL_ORDER } from "../adapters/runtime-core/greenfield-model-tool-order.js";
 import {
 	createCodingAgentBackgroundCommandHost,
 	createCodingAgentEditPathPolicy,

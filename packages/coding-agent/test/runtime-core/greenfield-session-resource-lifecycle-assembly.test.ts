@@ -7,15 +7,12 @@ import type {
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import type {
-	CodingAgentContextRuntime,
-	CodingAgentGreenfieldExtensionEventBridge,
-	CodingAgentMemoryController,
-	CodingAgentMemoryRolloverRuntime,
-	CodingAgentPluginMcpRuntime,
-	CodingAgentTodoRuntime,
-} from "../../src/adapters/runtime-core/greenfield.js";
+import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentGreenfieldConversationContextOverlay } from "../../src/adapters/runtime-core/greenfield-conversation-context-overlay.js";
+import type { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
+import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield-memory-controller.js";
+import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
+import type { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import type { GreenfieldSessionExecutionRuntime } from "../../src/composition/greenfield-session-execution-runtime.js";
 import type { GreenfieldSessionConfigurationState } from "../../src/composition/greenfield-session-peripherals.js";
 import {
@@ -28,6 +25,7 @@ import {
 } from "../../src/composition/greenfield-session-resource-lifecycle-assembly.js";
 import type { GreenfieldTurnCapabilitySessionAssembly } from "../../src/composition/greenfield-turn-capability-session-assembly.js";
 import type { CodingToolsRuntimeComposition } from "../../src/composition/runtime-tools-composition.js";
+import type { CodingAgentMemoryRolloverRuntime } from "../../src/memory/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";
 
 describe("Greenfield Session Resource Lifecycle assembly", () => {

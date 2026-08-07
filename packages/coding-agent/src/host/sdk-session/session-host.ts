@@ -1,11 +1,9 @@
 import { join } from "node:path";
 import { buildDefaultHookConfigLayers } from "@vetta/ecosystem-adapter";
 import { createLangfuseRuntimeTracerFromEnv } from "@vetta/runtime-telemetry/langfuse";
-import {
-	createCodingAgentCompactionExtensionRuntime,
-	createCodingAgentMcpRuntimeToolSource,
-	createCodingAgentPluginMcpRuntime,
-} from "../../adapters/runtime-core/greenfield.js";
+import { createCodingAgentMcpRuntimeToolSource } from "../../adapters/runtime-core/coding-agent-mcp-runtime-source.js";
+import { createCodingAgentCompactionExtensionRuntime } from "../../adapters/runtime-core/greenfield-compaction-extension-runtime.js";
+import { createCodingAgentPluginMcpRuntime } from "../../adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import { createCodingAgentAuthRuntime } from "../../auth/index.js";
 import { DEFAULT_SERVER_URL, ENV_SERVER_URL, getAgentDir, getVettaHomePath } from "../../config.js";
 import { createCodingAgentHtmlExportRuntime } from "../../export-html/index.js";

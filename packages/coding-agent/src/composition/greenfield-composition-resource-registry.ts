@@ -1,9 +1,7 @@
 import type { GreenfieldRuntimeResourceContext } from "@vetta/runtime-core";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import type {
-	CodingAgentGreenfieldExtensionEventBridge,
-	CodingAgentMemoryController,
-} from "../adapters/runtime-core/greenfield.js";
+import type { CodingAgentGreenfieldExtensionEventBridge } from "../adapters/runtime-core/greenfield-extension-event-bridge.js";
+import type { CodingAgentMemoryController } from "../adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentPluginMcpRuntime } from "../runtime-contracts/index.js";
 import type { GreenfieldSessionExecutionRuntime } from "./greenfield-session-execution-runtime.js";
 import type { GreenfieldSessionConfigurationState } from "./greenfield-session-peripherals.js";

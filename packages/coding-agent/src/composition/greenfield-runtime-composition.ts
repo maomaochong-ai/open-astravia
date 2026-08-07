@@ -1,12 +1,10 @@
 import { ComposedGreenfieldRuntimeFactory, GreenfieldRuntimeSessionBackend } from "@vetta/runtime-core";
 import { selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
-import {
-	CodingAgentGreenfieldAgentMessageContextProjector,
-	CodingAgentRuntimeModelAdapter,
-} from "../adapters/runtime-core/greenfield.js";
+import { CodingAgentGreenfieldAgentMessageContextProjector } from "../adapters/runtime-core/greenfield-agent-message-context-projector.js";
 import { CodingAgentGreenfieldConversationContextOverlay } from "../adapters/runtime-core/greenfield-conversation-context-overlay.js";
 import { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import { ConversationOwnershipBinding } from "./conversation-ownership-binding.js";
 import { createGreenfieldChildCompositionFactory } from "./greenfield-child-composition-policy.js";
 import { GreenfieldCompositionResourceRegistry } from "./greenfield-composition-resource-registry.js";

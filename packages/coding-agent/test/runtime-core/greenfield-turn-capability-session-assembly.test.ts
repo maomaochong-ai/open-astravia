@@ -8,11 +8,9 @@ import {
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-	type CodingAgentContextRuntime,
-	CodingAgentGreenfieldExtensionEventBridge,
-	CodingAgentTodoRuntime,
-} from "../../src/adapters/runtime-core/greenfield.js";
+import type { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
+import { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
+import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import type { GreenfieldSessionExecutionRuntime } from "../../src/composition/greenfield-session-execution-runtime.js";
 import { createGreenfieldTurnCapabilitySessionAssembly } from "../../src/composition/greenfield-turn-capability-session-assembly.js";
 import { createCodingToolsRuntimeComposition } from "../../src/composition/runtime-tools-composition.js";

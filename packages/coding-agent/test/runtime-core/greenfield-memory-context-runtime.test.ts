@@ -11,12 +11,9 @@ import type {
 	ConversationContinuationResult,
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import {
-	CodingAgentContextRuntime,
-	type CodingAgentMemoryFlushInput,
-	CodingAgentMemoryRolloverOrchestrator,
-} from "../../src/adapters/runtime-core/index.js";
+import { CodingAgentContextRuntime } from "../../src/adapters/runtime-core/context-runtime/index.js";
 import type { CompactionSettings } from "../../src/compaction/index.js";
+import { type CodingAgentMemoryFlushInput, CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 
 describe("Greenfield memory rollover context integration", () => {
 	it("applies the legacy memory threshold, flushes the discarded prefix and requests generic continuation", async () => {

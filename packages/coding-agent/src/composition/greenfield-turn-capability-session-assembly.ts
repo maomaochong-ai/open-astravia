@@ -9,25 +9,27 @@ import {
 } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools/coding";
+import type { CodingAgentContextRuntime } from "../adapters/runtime-core/context-runtime/index.js";
+import { CodingAgentContinuationOrchestrator } from "../adapters/runtime-core/greenfield-continuation-orchestrator.js";
+import type { CodingAgentGreenfieldExtensionEventBridge } from "../adapters/runtime-core/greenfield-extension-event-bridge.js";
+import type { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import { createCodingAgentInvokeSkillRuntimeFeature } from "../adapters/runtime-core/greenfield-invoke-skill-runtime.js";
+import { CodingAgentModelCallFrameComposer } from "../adapters/runtime-core/greenfield-model-call-composer.js";
+import { CodingAgentGreenfieldModelCallMessageFinalizer } from "../adapters/runtime-core/greenfield-model-call-message-finalizer.js";
+import { CodingAgentPluginRunOrchestrator } from "../adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
 import {
-	type CodingAgentContextRuntime,
-	CodingAgentContinuationOrchestrator,
-	type CodingAgentGreenfieldExtensionEventBridge,
-	CodingAgentGreenfieldModelCallMessageFinalizer,
-	CodingAgentGreenfieldPromptAdapter,
-	type CodingAgentMemoryRolloverRuntime,
-	CodingAgentModelCallFrameComposer,
-	CodingAgentPluginRunOrchestrator,
 	type CodingAgentPluginToolActivation,
 	CodingAgentPluginToolRuntime,
+} from "../adapters/runtime-core/greenfield-plugin-tool-runtime.js";
+import { CodingAgentGreenfieldPromptAdapter } from "../adapters/runtime-core/greenfield-prompt-adapter.js";
+import { createCodingAgentPromptResourceResolver } from "../adapters/runtime-core/greenfield-prompt-resource-resolver.js";
+import {
 	CodingAgentPromptRuntime,
-	CodingAgentStopHookContinuationSource,
-	CodingAgentTodoContinuationSource,
-	createCodingAgentInvokeSkillRuntimeFeature,
-	createCodingAgentPromptResourceResolver,
 	createCodingAgentPromptRuntime,
-} from "../adapters/runtime-core/greenfield.js";
-import type { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+} from "../adapters/runtime-core/greenfield-prompt-runtime.js";
+import { CodingAgentStopHookContinuationSource } from "../adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
+import { CodingAgentTodoContinuationSource } from "../adapters/runtime-core/greenfield-todo-continuation-source.js";
+import type { CodingAgentMemoryRolloverRuntime } from "../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,

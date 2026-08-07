@@ -26,10 +26,8 @@ import {
 	RENDER_PDF_PAGE_TOOL_SCOPES,
 } from "@vetta/runtime-tools/coding";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-	createCodingAgentGreenfieldProductToolRegistrations,
-	createCodingAgentInvokeSkillRuntimeFeature,
-} from "../../src/adapters/runtime-core/greenfield.js";
+import { createCodingAgentInvokeSkillRuntimeFeature } from "../../src/adapters/runtime-core/greenfield-invoke-skill-runtime.js";
+import { createCodingAgentGreenfieldProductToolRegistrations } from "../../src/adapters/runtime-core/greenfield-product-tools-runtime.js";
 import type { CodingAgentPromptResourceSource } from "../../src/adapters/runtime-core/greenfield-prompt-runtime.js";
 import type { Skill } from "../../src/resources/skills/index.js";
 import type { CodingAgentRuntimeToolRegistration } from "../../src/runtime-contracts/index.js";

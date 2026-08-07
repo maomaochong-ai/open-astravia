@@ -3,7 +3,7 @@ import type { Message } from "@vetta/ai";
 import type { RuntimeMessageEnvelope } from "@vetta/runtime-core";
 import type { ConversationDocument, ConversationDocumentEntry } from "@vetta/runtime-core/conversation";
 import { describe, expect, it } from "vitest";
-import { CodingAgentGreenfieldAgentMessageContextProjector } from "../../src/adapters/runtime-core/greenfield.js";
+import { CodingAgentGreenfieldAgentMessageContextProjector } from "../../src/adapters/runtime-core/greenfield-agent-message-context-projector.js";
 import {
 	COMPACTION_SUMMARY_PREFIX,
 	COMPACTION_SUMMARY_SUFFIX,

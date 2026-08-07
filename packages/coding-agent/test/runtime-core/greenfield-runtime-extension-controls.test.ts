@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield.js";
+import type { CodingAgentGreenfieldExtensionEventBridge } from "../../src/adapters/runtime-core/greenfield-extension-event-bridge.js";
 import {
 	createGreenfieldRuntimeExtensionControls,
 	type GreenfieldExtensionToolHostPort,

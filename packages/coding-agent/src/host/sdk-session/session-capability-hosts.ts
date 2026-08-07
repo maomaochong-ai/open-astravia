@@ -1,9 +1,7 @@
 import { join } from "node:path";
 import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
-import {
-	CodingAgentGreenfieldBranchNavigationHost,
-	CodingAgentGreenfieldResourceReloadHost,
-} from "../../adapters/runtime-core/greenfield.js";
+import { CodingAgentGreenfieldBranchNavigationHost } from "../../adapters/runtime-core/greenfield-branch-navigation-host.js";
+import { CodingAgentGreenfieldResourceReloadHost } from "../../adapters/runtime-core/greenfield-resource-reload-host.js";
 import {
 	type CodingAgentHtmlExportRuntime,
 	createToolHtmlRenderer,

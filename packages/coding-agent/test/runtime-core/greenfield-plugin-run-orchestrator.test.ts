@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
 	type CodingAgentPluginProviderFailure,
 	CodingAgentPluginRunOrchestrator,
-} from "../../src/adapters/runtime-core/index.js";
+} from "../../src/adapters/runtime-core/greenfield-plugin-run-orchestrator.js";
 import {
 	type AgentPluginRuntimeConfig,
 	type AgentPluginRuntimeEffect,

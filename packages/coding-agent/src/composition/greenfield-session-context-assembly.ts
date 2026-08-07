@@ -1,19 +1,18 @@
 import type { Message } from "@vetta/ai";
-import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
+import { createEcosystemHookRuntime, type EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
 import {
 	type ConversationScenario,
 	GreenfieldRuntimeModel,
 	type GreenfieldRuntimeResourceContext,
 	type InitializationRollbackTask,
 } from "@vetta/runtime-core";
+import { CodingAgentContextRuntime } from "../adapters/runtime-core/context-runtime/index.js";
+import type { CodingAgentGreenfieldExtensionEventBridge } from "../adapters/runtime-core/greenfield-extension-event-bridge.js";
 import {
-	CodingAgentContextRuntime,
 	CodingAgentGreenfieldMemoryController,
 	type CodingAgentMemoryController,
-	type CodingAgentRuntimeModelAdapter,
-	createEcosystemHookRuntime,
-} from "../adapters/runtime-core/greenfield.js";
-import type { CodingAgentGreenfieldExtensionEventBridge } from "../adapters/runtime-core/greenfield-extension-event-bridge.js";
+} from "../adapters/runtime-core/greenfield-memory-controller.js";
+import type { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import type { GreenfieldMcpSessionCoordinator } from "./greenfield-mcp-session-coordinator.js";
 import type { GreenfieldRuntimeSessionOptions } from "./greenfield-runtime-composition-contract.js";
 import type { GreenfieldSessionInitializationProfile } from "./greenfield-session-initialization-profile.js";

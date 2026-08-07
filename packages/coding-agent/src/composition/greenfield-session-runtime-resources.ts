@@ -7,13 +7,13 @@ import type {
 import type { ConversationContinuationResult } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
+import type { CodingAgentContextRuntime } from "../adapters/runtime-core/context-runtime/index.js";
 import {
 	CODING_AGENT_ASK_USER_QUESTION_TOOL_NAME,
-	type CodingAgentContextRuntime,
-	type CodingAgentMemoryRolloverRuntime,
 	isCodingAgentAskUserQuestionEnabled,
-} from "../adapters/runtime-core/greenfield.js";
+} from "../adapters/runtime-core/greenfield-ask-user-question-runtime.js";
 import type { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import type { CodingAgentMemoryRolloverRuntime } from "../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentRuntimeToolRegistration,

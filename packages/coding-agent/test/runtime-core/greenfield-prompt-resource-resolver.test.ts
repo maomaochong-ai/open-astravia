@@ -2,11 +2,9 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, unlinkSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-	CodingAgentGreenfieldPromptAdapter,
-	CodingAgentTodoRuntime,
-	createCodingAgentPromptResourceResolver,
-} from "../../src/adapters/runtime-core/index.js";
+import { CodingAgentGreenfieldPromptAdapter } from "../../src/adapters/runtime-core/greenfield-prompt-adapter.js";
+import { createCodingAgentPromptResourceResolver } from "../../src/adapters/runtime-core/greenfield-prompt-resource-resolver.js";
+import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import type { Skill } from "../../src/resources/skills/index.js";
 
 describe("Greenfield prompt resource resolver", () => {

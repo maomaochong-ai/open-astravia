@@ -7,14 +7,12 @@ import {
 } from "@vetta/runtime-core";
 import type { ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import {
-	type CodingAgentContextRuntime,
-	CodingAgentGreenfieldExtensionEventBridge,
-	type CodingAgentMemoryRolloverRuntime,
-	type CodingAgentRuntimeModelAdapter,
-} from "../adapters/runtime-core/greenfield.js";
+import type { CodingAgentContextRuntime } from "../adapters/runtime-core/context-runtime/index.js";
 import type { CodingAgentGreenfieldConversationContextOverlay } from "../adapters/runtime-core/greenfield-conversation-context-overlay.js";
+import { CodingAgentGreenfieldExtensionEventBridge } from "../adapters/runtime-core/greenfield-extension-event-bridge.js";
 import type { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
+import type { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/greenfield-model-runtime-adapter.js";
+import type { CodingAgentMemoryRolloverRuntime } from "../memory/index.js";
 import type { CodingAgentTodoRuntime } from "../runtime-contracts/index.js";
 import type { GreenfieldMcpSessionCoordinator } from "./greenfield-mcp-session-coordinator.js";
 import type { GreenfieldRuntimeSessionOptions } from "./greenfield-runtime-composition-contract.js";

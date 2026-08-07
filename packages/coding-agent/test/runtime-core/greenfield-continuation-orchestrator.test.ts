@@ -4,9 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	CodingAgentContinuationOrchestrator,
 	type CodingAgentContinuationSource,
-	CodingAgentStopHookContinuationSource,
-	CodingAgentTodoContinuationSource,
-} from "../../src/adapters/runtime-core/index.js";
+} from "../../src/adapters/runtime-core/greenfield-continuation-orchestrator.js";
+import { CodingAgentStopHookContinuationSource } from "../../src/adapters/runtime-core/greenfield-stop-hook-continuation-source.js";
+import { CodingAgentTodoContinuationSource } from "../../src/adapters/runtime-core/greenfield-todo-continuation-source.js";
 import type { TodoItem } from "../../src/work-state/index.js";
 
 describe("CodingAgentContinuationOrchestrator", () => {

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { Api, AssistantMessage, AssistantMessageEvent, Model } from "@vetta/ai";
 import { EventStream } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/greenfield.js";
+import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import { createGreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition.js";
 import type { GreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition-contract.js";
 import { bindGreenfieldSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";

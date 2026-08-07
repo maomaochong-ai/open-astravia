@@ -7,7 +7,7 @@ import type {
 	McpRuntimeToolView,
 } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield.js";
+import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import { GreenfieldCompositionResourceRegistry } from "../../src/composition/greenfield-composition-resource-registry.js";
 import { createGreenfieldMcpSessionCoordinator } from "../../src/composition/greenfield-mcp-session-coordinator.js";
 

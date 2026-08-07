@@ -5,12 +5,13 @@ import { basename, join } from "node:path";
 import { fail, isDirectRun, ok, readText, rel, repoRoot, walkFiles } from "./lib.mjs";
 
 const SOURCE_ROOT = "packages/coding-agent/src";
+const TEST_ROOT = "packages/coding-agent/test";
 const ADAPTER_ROOT = `${SOURCE_ROOT}/adapters`;
 const COMPOSITION_ROOT = `${SOURCE_ROOT}/composition`;
 const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
-	adapterGreenfieldFiles: 35,
+	adapterGreenfieldFiles: 34,
 	compositionGreenfieldFiles: 30,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
@@ -18,6 +19,8 @@ export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 });
 
 export const RETIRED_MIGRATION_FILES = Object.freeze([
+	`${ADAPTER_ROOT}/runtime-core/greenfield.ts`,
+	`${ADAPTER_ROOT}/runtime-core/index.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-tool-adapter.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-sdk-active-session-adapter.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-sdk-active-session-capability-host.ts`,
@@ -39,6 +42,8 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
+	"adapters/runtime-core/greenfield.js",
+	"adapters/runtime-core/index.js",
 	"adaptCodingAgentToolRegistration",
 	"LegacyCodingAgentTool",
 	"greenfield-tool-adapter",
@@ -68,7 +73,7 @@ export function collectCodingAgentMigrationResidue(files) {
 	const hostExtensionFiles = sourceFiles.filter((file) => file.path.startsWith(`${HOST_EXTENSION_ROOT}/`));
 	return Object.freeze({
 		retiredFiles: RETIRED_MIGRATION_FILES.filter((path) => sourceFiles.some((file) => file.path === path)),
-		retiredReferences: sourceFiles.flatMap((file) =>
+		retiredReferences: files.flatMap((file) =>
 			RETIRED_MIGRATION_REFERENCES.filter((reference) => file.text.includes(reference)).map((reference) => ({
 				path: file.path,
 				reference,
@@ -110,14 +115,16 @@ function collectModuleSpecifiers(text) {
 }
 
 function readCurrentFiles() {
-	return walkFiles(join(repoRoot, SOURCE_ROOT), { extensions: [".ts"] }).map((filePath) => ({
-		path: rel(filePath),
-		text: readText(filePath),
-	}));
+	return [SOURCE_ROOT, TEST_ROOT].flatMap((root) =>
+		walkFiles(join(repoRoot, root), { extensions: [".ts"] }).map((filePath) => ({
+			path: rel(filePath),
+			text: readText(filePath),
+		})),
+	);
 }
 
 if (isDirectRun(import.meta.url)) {
-	const missingRoots = [SOURCE_ROOT, ADAPTER_ROOT, COMPOSITION_ROOT, HOST_EXTENSION_ROOT].filter(
+	const missingRoots = [SOURCE_ROOT, TEST_ROOT, ADAPTER_ROOT, COMPOSITION_ROOT, HOST_EXTENSION_ROOT].filter(
 		(path) => !existsSync(join(repoRoot, path)),
 	);
 	if (missingRoots.length > 0) {

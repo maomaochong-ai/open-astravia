@@ -28,7 +28,7 @@ import {
 	guardCodingToolRegistration,
 	InMemoryCodingToolRegistry,
 } from "@vetta/runtime-tools/coding";
-import { createCodingAgentGreenfieldSandboxToolRegistrations } from "../adapters/runtime-core/greenfield.js";
+import { createCodingAgentGreenfieldSandboxToolRegistrations } from "../adapters/runtime-core/greenfield-sandbox-tool-adapter.js";
 import {
 	createCodingAgentBackgroundCommandHost,
 	createCodingAgentForegroundCommandHost,

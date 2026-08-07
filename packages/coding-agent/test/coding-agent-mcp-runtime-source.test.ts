@@ -7,10 +7,8 @@ import type {
 	RuntimeMcpClientFactoryOptions,
 } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
-import {
-	createCodingAgentMcpRuntimeToolSource,
-	type EcosystemHookAwareRuntimeTool,
-} from "../src/adapters/runtime-core/greenfield.js";
+import { createCodingAgentMcpRuntimeToolSource } from "../src/adapters/runtime-core/coding-agent-mcp-runtime-source.js";
+import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/greenfield-hook-tool-wrapper.js";
 
 describe("Coding Agent native MCP runtime source", () => {
 	it("composes product client options, hook metadata and lifecycle without a legacy Manager", async () => {

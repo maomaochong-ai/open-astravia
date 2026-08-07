@@ -58,6 +58,29 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects retired runtime-core barrels from production and tests", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/adapters/runtime-core/greenfield.ts",
+				text: "export {};",
+			},
+			{
+				path: "packages/coding-agent/src/composition/runtime-composition.ts",
+				text: 'import "../adapters/runtime-core/greenfield.js";',
+			},
+			{
+				path: "packages/coding-agent/test/runtime-core/runtime.test.ts",
+				text: 'import "../../src/adapters/runtime-core/index.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/adapters/runtime-core/greenfield.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/composition/runtime-composition.ts: retired migration reference (adapters/runtime-core/greenfield.js)",
+			"packages/coding-agent/test/runtime-core/runtime.test.ts: retired migration reference (adapters/runtime-core/index.js)",
+		]);
+	});
+
 	it("rejects retired Session Host implementation paths", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{

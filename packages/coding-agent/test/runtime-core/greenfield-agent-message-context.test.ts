@@ -5,10 +5,8 @@ import {
 } from "@vetta/runtime-core/conversation";
 import type { ModelCallMessageFinalizationInput } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
-import {
-	CodingAgentGreenfieldAgentMessageContextProjector,
-	CodingAgentGreenfieldModelCallMessageFinalizer,
-} from "../../src/adapters/runtime-core/greenfield.js";
+import { CodingAgentGreenfieldAgentMessageContextProjector } from "../../src/adapters/runtime-core/greenfield-agent-message-context-projector.js";
+import { CodingAgentGreenfieldModelCallMessageFinalizer } from "../../src/adapters/runtime-core/greenfield-model-call-message-finalizer.js";
 
 describe("Greenfield AgentMessage context boundary", () => {
 	it("projects standard, visible custom and model-invisible custom identities without flattening them", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield.js";
+import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import { GreenfieldCompositionResourceRegistry } from "../../src/composition/greenfield-composition-resource-registry.js";
 import { createGreenfieldCompositionShutdown } from "../../src/composition/greenfield-composition-shutdown.js";
 import type { GreenfieldSessionExecutionRuntime } from "../../src/composition/greenfield-session-execution-runtime.js";

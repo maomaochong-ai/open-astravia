@@ -1,16 +1,16 @@
 import type { Api, Model } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
+import { CodingAgentModelCallFrameComposer } from "../../src/adapters/runtime-core/greenfield-model-call-composer.js";
+import {
+	CodingAgentRuntimeModelAdapter,
+	type CodingAgentRuntimeModelSource,
+} from "../../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import {
 	CODING_AGENT_MODEL_TOOL_ORDER,
 	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
 } from "../../src/adapters/runtime-core/greenfield-model-tool-order.js";
-import {
-	CodingAgentGreenfieldPromptAdapter,
-	CodingAgentModelCallFrameComposer,
-	CodingAgentPromptRuntime,
-	CodingAgentRuntimeModelAdapter,
-	type CodingAgentRuntimeModelSource,
-} from "../../src/adapters/runtime-core/index.js";
+import { CodingAgentGreenfieldPromptAdapter } from "../../src/adapters/runtime-core/greenfield-prompt-adapter.js";
+import { CodingAgentPromptRuntime } from "../../src/adapters/runtime-core/greenfield-prompt-runtime.js";
 import { buildSystemPrompt } from "../../src/model-context/index.js";
 
 describe("Greenfield coding-agent adapters", () => {

@@ -4,12 +4,12 @@ import { join } from "node:path";
 import type { Api, AssistantMessage, Model } from "@vetta/ai";
 import type { ContextCompactionRecord, StoredSessionEvent } from "@vetta/runtime-core/kernel";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { CompactionPreparation, CompactionSettings } from "../../src/compaction/index.js";
 import {
 	CodingAgentMemoryRolloverOrchestrator,
 	type CodingAgentMemoryRolloverPreparation,
 	createCodingAgentMemoryRuntimeFeature,
-} from "../../src/adapters/runtime-core/index.js";
-import type { CompactionPreparation, CompactionSettings } from "../../src/compaction/index.js";
+} from "../../src/memory/index.js";
 
 const temporaryRoots: string[] = [];
 

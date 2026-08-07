@@ -5,7 +5,7 @@ import type {
 } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
-import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield.js";
+import type { CodingAgentMemoryController } from "../../src/adapters/runtime-core/greenfield-memory-controller.js";
 import { createGreenfieldRuntimeSessionControls } from "../../src/composition/greenfield-runtime-session-controls.js";
 import type { GreenfieldSessionExecutionRuntime } from "../../src/composition/greenfield-session-execution-runtime.js";
 import { InMemoryGreenfieldSessionValueIndex } from "../../src/composition/greenfield-session-resource-index.js";

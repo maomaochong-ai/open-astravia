@@ -8,17 +8,21 @@ import type {
 import type { AgentFeatureDefinition, AgentProfile, ModelCallContributionContext } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, selectCodingToolRegistrations } from "@vetta/runtime-tools/coding";
+import { createCodingAgentAskUserQuestionRuntimeFeature } from "../adapters/runtime-core/greenfield-ask-user-question-runtime.js";
 import {
-	CodingAgentMemoryRolloverOrchestrator,
-	type CodingAgentMemoryRolloverRuntime,
-	createCodingAgentAskUserQuestionRuntimeFeature,
 	createCodingAgentGreenfieldProductToolFeature,
 	createCodingAgentGreenfieldProductToolRegistrations,
-	createCodingAgentMemoryRuntimeFeature,
+} from "../adapters/runtime-core/greenfield-product-tools-runtime.js";
+import {
 	createCodingAgentTodoRuntimeFeature,
 	createCodingAgentTodoRuntimeToolRegistration,
 	CodingAgentTodoRuntime as DefaultCodingAgentTodoRuntime,
-} from "../adapters/runtime-core/greenfield.js";
+} from "../adapters/runtime-core/greenfield-todo-runtime.js";
+import {
+	CodingAgentMemoryRolloverOrchestrator,
+	type CodingAgentMemoryRolloverRuntime,
+	createCodingAgentMemoryRuntimeFeature,
+} from "../memory/index.js";
 import type {
 	CodingAgentPluginMcpRuntime,
 	CodingAgentPluginRuntimeSource,
