@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { createCodingAgentPluginMcpRuntime } from "@vetta/coding-agent/host-services";
 import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
@@ -20,7 +20,7 @@ const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
 describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const directories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) await composition.dispose();
@@ -33,7 +33,7 @@ describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIME
 		const conversationDir = await temporaryDirectory("greenfield-plugin-mcp-");
 		const clients = new FakeClientFactory();
 		const modelMcpTools: string[][] = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -84,7 +84,7 @@ describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIME
 		const conversationDir = await temporaryDirectory("greenfield-plugin-mcp-deferred-");
 		const clients = new FakeClientFactory(16);
 		const modelMcpTools: string[][] = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -122,7 +122,7 @@ describe("Greenfield session-local plugin MCP", { timeout: INTEGRATION_TEST_TIME
 		const rootMcpTools: string[][] = [];
 		const childMcpTools: string[][] = [];
 		let rootCalls = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			enableSubagents: true,
 			modelRegistry: modelRegistry(),

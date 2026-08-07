@@ -5,11 +5,11 @@ import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStrea
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import type { GreenfieldKnowledgeProcessingSessionFactoryOptions } from "../src/composition/greenfield-knowledge-processing-session.js";
-import {
-	createGreenfieldRuntimeComposition,
-	type GreenfieldRuntimeCompositionOptions,
-} from "../src/composition/greenfield-runtime-composition.js";
 import { createKnowledgeProcessingSessionFactory as createGreenfieldKnowledgeProcessingSessionFactory } from "../src/composition/index.js";
+import {
+	type CodingAgentRuntimeCompositionOptions,
+	createCodingAgentRuntimeComposition,
+} from "../src/composition/runtime-composition.js";
 
 describe("Greenfield knowledge processing session adapter", () => {
 	const directories: string[] = [];
@@ -179,7 +179,7 @@ describe("Greenfield knowledge processing session adapter", () => {
 				find: () => undefined,
 			}),
 			createComposition: (options) =>
-				createGreenfieldRuntimeComposition({
+				createCodingAgentRuntimeComposition({
 					...options,
 					resolveSystemPromptOptions: () => ({
 						customPrompt: "Base prompt",
@@ -222,7 +222,7 @@ function createRecordedComposition(options: {
 	readonly onDispose: () => Promise<void>;
 }): NonNullable<GreenfieldKnowledgeProcessingSessionFactoryOptions["createComposition"]> {
 	return async (compositionOptions) => {
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			...compositionOptions,
 			resolveSystemPromptOptions: () => ({
 				customPrompt: "Base prompt",
@@ -246,7 +246,7 @@ function createRecordedComposition(options: {
 	};
 }
 
-type GreenfieldStreamFn = NonNullable<GreenfieldRuntimeCompositionOptions["streamFn"]>;
+type GreenfieldStreamFn = NonNullable<CodingAgentRuntimeCompositionOptions["streamFn"]>;
 
 class RecordedAssistantStream extends EventStream<AssistantMessageEvent, AssistantMessage> {
 	constructor(message: AssistantMessage) {

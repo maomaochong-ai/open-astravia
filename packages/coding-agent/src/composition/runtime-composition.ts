@@ -5,27 +5,27 @@ import { CodingAgentGreenfieldAgentMessageContextProjector } from "../adapters/r
 import { CodingAgentGreenfieldConversationContextOverlay } from "../adapters/runtime-core/greenfield-conversation-context-overlay.js";
 import { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runtime-core/greenfield-extension-tool-runtime.js";
 import { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/greenfield-model-runtime-adapter.js";
+import type {
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeSessionOptions,
+} from "./contracts/index.js";
 import { ConversationOwnershipBinding } from "./conversation-ownership-binding.js";
 import { createGreenfieldChildCompositionFactory } from "./greenfield-child-composition-policy.js";
 import { GreenfieldCompositionResourceRegistry } from "./greenfield-composition-resource-registry.js";
 import { createGreenfieldCompositionShutdown } from "./greenfield-composition-shutdown.js";
 import { resolveGreenfieldConversationPersistence } from "./greenfield-conversation-persistence.js";
-import type {
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeCompositionOptions,
-	GreenfieldRuntimeSessionOptions,
-} from "./greenfield-runtime-composition-contract.js";
 
 export type {
-	GreenfieldInitialTodoLockSource,
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeCompositionOptions,
-	GreenfieldRuntimeExtensionControls,
-	GreenfieldRuntimeSessionControls,
-	GreenfieldRuntimeSessionHookLifecycle,
-	GreenfieldRuntimeSessionOptions,
-	GreenfieldRuntimeToolAccess,
-} from "./greenfield-runtime-composition-contract.js";
+	CodingAgentInitialTodoLockSource,
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeExtensionControls,
+	CodingAgentRuntimeSessionControls,
+	CodingAgentRuntimeSessionHookLifecycle,
+	CodingAgentRuntimeSessionOptions,
+	CodingAgentRuntimeToolAccess,
+} from "./contracts/index.js";
 
 import { createGreenfieldRuntimeExtensionControls } from "./greenfield-runtime-extension-controls.js";
 import { createGreenfieldRuntimeSessionControls } from "./greenfield-runtime-session-controls.js";
@@ -34,20 +34,20 @@ import { createGreenfieldSessionInitializationProfile } from "./greenfield-sessi
 import { createGreenfieldSessionInitializationTransaction } from "./greenfield-session-initialization-transaction.js";
 
 /**
- * Greenfield Runtime 的共享组合入口。
+ * Coding Agent Runtime 的共享组合入口。
  *
  * 它使用真实文件 Repository 与 Runtime Coding Tools；宿主必须显式持有并使用返回的 Backend。
  */
-export async function createGreenfieldRuntimeComposition(
-	options: GreenfieldRuntimeCompositionOptions,
-): Promise<GreenfieldRuntimeComposition> {
-	return createGreenfieldRuntimeCompositionInternal(options, EMPTY_MCP_TOOL_VIEW);
+export async function createCodingAgentRuntimeComposition(
+	options: CodingAgentRuntimeCompositionOptions,
+): Promise<CodingAgentRuntimeComposition> {
+	return createCodingAgentRuntimeCompositionInternal(options, EMPTY_MCP_TOOL_VIEW);
 }
 
-async function createGreenfieldRuntimeCompositionInternal(
-	options: GreenfieldRuntimeCompositionOptions,
+async function createCodingAgentRuntimeCompositionInternal(
+	options: CodingAgentRuntimeCompositionOptions,
 	inheritedMcpView: McpRuntimeToolView,
-): Promise<GreenfieldRuntimeComposition> {
+): Promise<CodingAgentRuntimeComposition> {
 	const cwd = options.cwd ?? process.cwd();
 	const scenario = options.scenario ?? "cli";
 	const sessionInitializationProfile = createGreenfieldSessionInitializationProfile(options);
@@ -102,7 +102,7 @@ async function createGreenfieldRuntimeCompositionInternal(
 	};
 	const createChildComposition = createGreenfieldChildCompositionFactory({
 		parentOptions: options,
-		createComposition: createGreenfieldRuntimeCompositionInternal,
+		createComposition: createCodingAgentRuntimeCompositionInternal,
 	});
 	const sessionInitialization = createGreenfieldSessionInitializationTransaction({
 		profile: sessionInitializationProfile,
@@ -131,7 +131,7 @@ async function createGreenfieldRuntimeCompositionInternal(
 		resolveActivation: toolSurface.resolveActivation,
 		createChildComposition,
 	});
-	const runtimeFactory = new ComposedGreenfieldRuntimeFactory<GreenfieldRuntimeSessionOptions>({
+	const runtimeFactory = new ComposedGreenfieldRuntimeFactory<CodingAgentRuntimeSessionOptions>({
 		streamFn: options.streamFn,
 		tracer: options.tracer,
 		tracing: options.tracing,

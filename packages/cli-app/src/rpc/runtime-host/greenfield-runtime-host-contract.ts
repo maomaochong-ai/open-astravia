@@ -4,8 +4,8 @@ import type {
 	CodingAgentHostBootstrapOptions,
 } from "@vetta/coding-agent/bootstrap";
 import type {
-	CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
-	CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import type { RpcSessionCapabilities } from "@vetta/coding-agent/rpc";
@@ -32,7 +32,7 @@ export interface GreenfieldRpcRuntimeHostReady {
 	readonly kind: "greenfield";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly session: GreenfieldRuntimeSession;
-	readonly runtime: GreenfieldRuntimeComposition;
+	readonly runtime: CodingAgentRuntimeComposition;
 	readonly capabilities: RpcSessionCapabilities;
 }
 
@@ -45,7 +45,7 @@ export interface GreenfieldPrintRuntimeHostReady {
 	readonly kind: "greenfield-print";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly session: GreenfieldRuntimeSession;
-	readonly runtime: GreenfieldRuntimeComposition;
+	readonly runtime: CodingAgentRuntimeComposition;
 	readonly printSession: GreenfieldPrintSessionAdapter;
 }
 
@@ -61,7 +61,7 @@ export interface PrepareGreenfieldRuntimeHostOptions {
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
 	readonly createSessionId?: () => string;
 	readonly ownership?: FileConversationOwnershipManagerOptions;
-	readonly createPluginRuntime?: GreenfieldRuntimeCompositionOptions["createPluginRuntime"];
+	readonly createPluginRuntime?: CodingAgentRuntimeCompositionOptions["createPluginRuntime"];
 }
 
 export interface CreateGreenfieldImRuntimeHostOptions

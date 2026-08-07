@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import {
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
 	resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath,
 } from "@vetta/coding-agent/composition";
 import type { RpcSessionInitialization, RpcSessionState } from "@vetta/coding-agent/rpc";
@@ -323,7 +323,7 @@ describe("Greenfield conversation path identity", () => {
 });
 
 function createAdapterFixture(
-	scenario: GreenfieldRuntimeComposition["scenario"] = "im-claw",
+	scenario: CodingAgentRuntimeComposition["scenario"] = "im-claw",
 	extensionCommandHost?: ConstructorParameters<typeof GreenfieldImRpcSessionAdapter>[0]["extensionCommandHost"],
 ) {
 	let sessionId = "session-1";
@@ -398,7 +398,7 @@ function createAdapterFixture(
 		tools: { registry: { register, unregister } },
 		flushMemory,
 		dispose: disposeRuntime,
-	} as unknown as GreenfieldRuntimeComposition;
+	} as unknown as CodingAgentRuntimeComposition;
 	const sessionHost = {
 		readSession: () => session,
 		startActiveSessionOperation: <T>(operation: (active: GreenfieldRuntimeSession) => Promise<T>) =>

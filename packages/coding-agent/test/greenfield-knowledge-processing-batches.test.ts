@@ -16,7 +16,7 @@ import {
 	createGreenfieldKnowledgeProcessingSessionFactory,
 	type GreenfieldKnowledgeProcessingSessionFactoryOptions,
 } from "../src/composition/greenfield-knowledge-processing-session.js";
-import { createGreenfieldRuntimeComposition } from "../src/composition/greenfield-runtime-composition.js";
+import { createCodingAgentRuntimeComposition } from "../src/composition/runtime-composition.js";
 
 describe("Greenfield knowledge processing batches", () => {
 	const directories: string[] = [];
@@ -95,7 +95,7 @@ function createBatchComposition(
 	return async (options) => {
 		let request: WritePageRequest | undefined;
 		let streamIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			...options,
 			resolveSystemPromptOptions: () => ({
 				customPrompt: "Base prompt",

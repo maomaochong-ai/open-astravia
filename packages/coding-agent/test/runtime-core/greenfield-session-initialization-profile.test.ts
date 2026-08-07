@@ -1,12 +1,12 @@
 import type { Api, Model } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
-import type { GreenfieldRuntimeCompositionOptions } from "../../src/composition/greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeCompositionOptions } from "../../src/composition/contracts/index.js";
 import { createGreenfieldSessionInitializationProfile } from "../../src/composition/greenfield-session-initialization-profile.js";
 
 describe("Greenfield session initialization profile", () => {
 	it("只投影 Session 初始化需要的配置并保留动态来源引用", () => {
-		const promptResourceSource = {} as NonNullable<GreenfieldRuntimeCompositionOptions["promptResourceSource"]>;
-		const promptSettingsSource = {} as NonNullable<GreenfieldRuntimeCompositionOptions["promptSettingsSource"]>;
+		const promptResourceSource = {} as NonNullable<CodingAgentRuntimeCompositionOptions["promptResourceSource"]>;
+		const promptSettingsSource = {} as NonNullable<CodingAgentRuntimeCompositionOptions["promptSettingsSource"]>;
 		const createPluginRuntime = () => undefined;
 		const options = {
 			...createBaseOptions(),
@@ -16,7 +16,7 @@ describe("Greenfield session initialization profile", () => {
 			enableSubagents: false,
 			subagentMaxConcurrent: 4,
 			systemPromptAdvertisedToolNames: ["read", "write"],
-		} satisfies GreenfieldRuntimeCompositionOptions;
+		} satisfies CodingAgentRuntimeCompositionOptions;
 
 		const profile = createGreenfieldSessionInitializationProfile(options);
 
@@ -57,8 +57,8 @@ describe("Greenfield session initialization profile", () => {
 	});
 
 	it("在创建运行时资源前校验 prompt 动态来源必须成对提供", () => {
-		const promptResourceSource = {} as NonNullable<GreenfieldRuntimeCompositionOptions["promptResourceSource"]>;
-		const promptSettingsSource = {} as NonNullable<GreenfieldRuntimeCompositionOptions["promptSettingsSource"]>;
+		const promptResourceSource = {} as NonNullable<CodingAgentRuntimeCompositionOptions["promptResourceSource"]>;
+		const promptSettingsSource = {} as NonNullable<CodingAgentRuntimeCompositionOptions["promptSettingsSource"]>;
 
 		expect(() =>
 			createGreenfieldSessionInitializationProfile({
@@ -75,10 +75,10 @@ describe("Greenfield session initialization profile", () => {
 	});
 });
 
-function createBaseOptions(): GreenfieldRuntimeCompositionOptions {
+function createBaseOptions(): CodingAgentRuntimeCompositionOptions {
 	return {
 		conversationDir: "C:\\conversations",
-		modelRegistry: {} as GreenfieldRuntimeCompositionOptions["modelRegistry"],
+		modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 		initialModel: MODEL,
 		initialThinkingLevel: "off",
 	};

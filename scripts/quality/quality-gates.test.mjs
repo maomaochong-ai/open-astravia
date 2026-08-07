@@ -279,16 +279,13 @@ describe("package boundary analysis", () => {
 			findPackageBoundaryViolations("packages/runtime-composition/src/greenfield-runtime-composition.ts", source),
 		).toHaveLength(1);
 		expect(
-			findPackageBoundaryViolations(
-				"packages/coding-agent/src/composition/greenfield-runtime-composition.ts",
-				source,
-			),
+			findPackageBoundaryViolations("packages/coding-agent/src/composition/runtime-composition.ts", source),
 		).toHaveLength(1);
 		expect(findPackageBoundaryViolations("packages/cli-app/src/agent-runtime-selection.ts", source)).toHaveLength(1);
 		expect(findPackageBoundaryViolations("packages/cli-app/src/legacy-runtime-gateway.ts", source)).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/coding-agent/src/composition/greenfield-runtime-composition.ts",
+				"packages/coding-agent/src/composition/runtime-composition.ts",
 				"// runLegacyAgentWithBootstrap is a compatibility-only entry point.",
 			),
 		).toEqual([]);
@@ -361,7 +358,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				"packages/desktop-app/src/main/runtime.ts",
-				'import type { GreenfieldRuntimeCompositionOptions } from "@vetta/cli-app";',
+				'import type { CodingAgentRuntimeCompositionOptions } from "@vetta/cli-app";',
 			),
 		).toHaveLength(1);
 		expect(
@@ -587,7 +584,7 @@ describe("package boundary analysis", () => {
 				'import { migrateLegacySessionToV2 } from "@vetta/runtime-storage/conversation";',
 			),
 		).not.toEqual([]);
-		expect(findPackageBoundaryViolations(hostPath, "type Runtime = GreenfieldRuntimeComposition;")).toHaveLength(1);
+		expect(findPackageBoundaryViolations(hostPath, "type Runtime = CodingAgentRuntimeComposition;")).toHaveLength(1);
 		expect(
 			findPackageBoundaryViolations(hostPath, "type Runtime = CodingAgentGreenfieldSessionTransitionRuntimePort;"),
 		).toEqual([]);
@@ -636,8 +633,8 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 	});
 
-	it("keeps Subagent session assembly out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Subagent session assembly out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedAssembly = `
 			const runtime = new GreenfieldSubagentRuntime({});
 			createGreenfieldSubagentChildHandle({});
@@ -654,8 +651,8 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
-	it("keeps Turn Capability session assembly out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Turn Capability session assembly out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedAssembly = `
 			const plugin = new CodingAgentPluginRunOrchestrator({});
 			const prompt = new CodingAgentPromptRuntime({});
@@ -672,8 +669,8 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
-	it("keeps Session Resource Lifecycle assembly out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Session Resource Lifecycle assembly out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedAssembly = `
 			const resources: GreenfieldRuntimeResources = {};
 			const sessionCleanup = new RetryableCleanup();
@@ -693,8 +690,8 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
-	it("keeps Composition resource registries and shutdown transactions out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Composition resource registries and shutdown transactions out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedLifecycle = `
 			const sessionValues = new InMemoryGreenfieldSessionValueIndex();
 			const sessionMarkers = new InMemoryGreenfieldSessionMarkerIndex();
@@ -716,8 +713,8 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 	});
 
-	it("keeps MCP Session coordination out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps MCP Session coordination out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedCoordinator = `
 			const synchronizer: McpRuntimeToolSynchronizer = createMcpRuntimeToolSynchronizer(source, registry);
 			const controller = createMcpDeferredToolController(options);
@@ -736,8 +733,8 @@ describe("package boundary analysis", () => {
 		).toHaveLength(1);
 	});
 
-	it("keeps Session initialization transactions out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Session initialization transactions out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedInitialization = `
 			const rollback = new InitializationRollbackScope();
 			const execution = new GreenfieldSessionExecutionRuntime({});
@@ -756,7 +753,7 @@ describe("package boundary analysis", () => {
 	});
 
 	it("projects public Composition options into a narrow Session initialization profile", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const transactionPath = "packages/coding-agent/src/composition/greenfield-session-initialization-transaction.ts";
 
 		expect(
@@ -768,7 +765,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				transactionPath,
-				`import type { GreenfieldRuntimeCompositionOptions } from "./greenfield-runtime-composition-contract.js";
+				`import type { CodingAgentRuntimeCompositionOptions } from "./contracts/index.js";
 				const composition = options.composition;`,
 			),
 		).not.toEqual([]);
@@ -811,8 +808,8 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 	});
 
-	it("keeps Runtime Tool Surface assembly out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Runtime Tool Surface assembly out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedToolSurface = `
 			const scopes = CODING_TOOL_SCOPES;
 			const order = CODING_AGENT_MODEL_TOOL_ORDER;
@@ -833,8 +830,8 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 	});
 
-	it("exposes Greenfield Runtime Tools through the abstract Registry port", () => {
-		const contractPath = "packages/coding-agent/src/composition/greenfield-runtime-composition-contract.ts";
+	it("exposes Coding Agent Runtime Tools through the abstract Registry port", () => {
+		const contractPath = "packages/coding-agent/src/composition/contracts/runtime-composition-result.ts";
 		const concreteContract = `
 			type Tools = CodingToolsRuntimeComposition;
 			type Registry = InMemoryCodingToolRegistry;
@@ -844,7 +841,7 @@ describe("package boundary analysis", () => {
 		expect(
 			findPackageBoundaryViolations(
 				contractPath,
-				"interface GreenfieldRuntimeToolAccess { readonly registry: CodingToolRegistry; }",
+				"interface CodingAgentRuntimeToolAccess { readonly registry: CodingToolRegistry; }",
 			),
 		).toEqual([]);
 
@@ -863,8 +860,8 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 	});
 
-	it("keeps Child Composition isolation policy out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Child Composition isolation policy out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		expect(findPackageBoundaryViolations(compositionPath, "const childComposition = {};")).toHaveLength(1);
 		expect(findPackageBoundaryViolations(compositionPath, "const childCompositionOptions = {};")).toHaveLength(1);
 		expect(
@@ -886,8 +883,8 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 	});
 
-	it("keeps Runtime Host Controls out of the Greenfield Composition Root", () => {
-		const compositionPath = "packages/coding-agent/src/composition/greenfield-runtime-composition.ts";
+	it("keeps Runtime Host Controls out of the Coding Agent Composition Root", () => {
+		const compositionPath = "packages/coding-agent/src/composition/runtime-composition.ts";
 		const embeddedControls = `
 			const sessionHooks = {};
 			bindExtensionRunner();

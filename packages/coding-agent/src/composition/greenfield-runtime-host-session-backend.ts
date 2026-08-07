@@ -13,17 +13,14 @@ import {
 import { CONVERSATION_STORAGE_ERROR_CODES, ConversationStorageError } from "@vetta/runtime-storage";
 import { SettingsRuntime } from "../settings/index.js";
 import { resolveGreenfieldSessionIdFromPath } from "./greenfield-conversation-path.js";
-import type {
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeSessionOptions,
-} from "./greenfield-runtime-composition.js";
 import {
 	type GreenfieldRuntimeHostRetrySettings,
 	withGreenfieldRuntimeHostRetry,
 } from "./greenfield-runtime-host-retry.js";
+import type { CodingAgentRuntimeComposition, CodingAgentRuntimeSessionOptions } from "./runtime-composition.js";
 
 export interface GreenfieldRuntimeHostSessionBackendOptions {
-	readonly composition: GreenfieldRuntimeComposition;
+	readonly composition: CodingAgentRuntimeComposition;
 	readonly conversationDir: string;
 	readonly cwd: string;
 	readonly agentDir?: string;
@@ -94,7 +91,7 @@ export class GreenfieldRuntimeHostSessionBackend implements RuntimeHostSessionBa
 		return this.assessments.get(sessionId);
 	}
 
-	private toSessionOptions(request: RuntimeSessionCreateRequest): GreenfieldRuntimeSessionOptions {
+	private toSessionOptions(request: RuntimeSessionCreateRequest): CodingAgentRuntimeSessionOptions {
 		const sessionPath = request.sessionPath?.trim();
 		const sessionId = sessionPath
 			? resolveGreenfieldSessionIdFromPath(this.options.conversationDir, sessionPath)

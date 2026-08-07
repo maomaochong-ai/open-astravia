@@ -3,15 +3,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("Greenfield Plugin runtime composition", () => {
 	const temporaryDirectories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -69,7 +69,7 @@ describe("Greenfield Plugin runtime composition", () => {
 		);
 		const responses = [assistantMessage("first response"), assistantMessage("continued response")];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

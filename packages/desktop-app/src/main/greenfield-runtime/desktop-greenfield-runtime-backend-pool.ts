@@ -1,9 +1,9 @@
 import { dirname, join, resolve } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
-	type CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
+	type CodingAgentRuntimeComposition,
+	type CodingAgentRuntimeCompositionOptions,
+	createCodingAgentRuntimeComposition,
 	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type {
@@ -25,15 +25,17 @@ type CompositionFixedOption =
 	| "initialThinkingLevel"
 	| "scenario";
 
-export type DesktopGreenfieldRuntimeCompositionDefaults = Omit<
-	GreenfieldRuntimeCompositionOptions,
+export type DesktopCodingAgentRuntimeCompositionDefaults = Omit<
+	CodingAgentRuntimeCompositionOptions,
 	CompositionFixedOption
 > &
-	Partial<Pick<GreenfieldRuntimeCompositionOptions, "initialModel" | "initialThinkingLevel">>;
+	Partial<Pick<CodingAgentRuntimeCompositionOptions, "initialModel" | "initialThinkingLevel">>;
 
 export interface DesktopGreenfieldRuntimeBackendPoolOptions {
-	readonly compositionDefaults: DesktopGreenfieldRuntimeCompositionDefaults;
-	readonly createComposition?: (options: GreenfieldRuntimeCompositionOptions) => Promise<GreenfieldRuntimeComposition>;
+	readonly compositionDefaults: DesktopCodingAgentRuntimeCompositionDefaults;
+	readonly createComposition?: (
+		options: CodingAgentRuntimeCompositionOptions,
+	) => Promise<CodingAgentRuntimeComposition>;
 	readonly createMcpRuntimeSource?: (
 		scope: DesktopGreenfieldMcpRuntimeScope,
 	) => Promise<DesktopGreenfieldManagedMcpRuntimeSource>;
@@ -57,7 +59,7 @@ interface DesktopGreenfieldRuntimeScope extends DesktopGreenfieldMcpRuntimeScope
 }
 
 interface DesktopGreenfieldRuntimeBackendEntry {
-	readonly composition: GreenfieldRuntimeComposition;
+	readonly composition: CodingAgentRuntimeComposition;
 	readonly backend: GreenfieldRuntimeHostSessionBackend;
 	readonly managedMcpSource?: DesktopGreenfieldManagedMcpRuntimeSource;
 }
@@ -73,12 +75,12 @@ export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBa
 	private readonly entries = new Map<string, Promise<DesktopGreenfieldRuntimeBackendEntry>>();
 	private readonly resolvedEntries = new Map<string, DesktopGreenfieldRuntimeBackendEntry>();
 	private readonly createComposition: (
-		options: GreenfieldRuntimeCompositionOptions,
-	) => Promise<GreenfieldRuntimeComposition>;
+		options: CodingAgentRuntimeCompositionOptions,
+	) => Promise<CodingAgentRuntimeComposition>;
 	private disposed = false;
 
 	constructor(private readonly options: DesktopGreenfieldRuntimeBackendPoolOptions) {
-		this.createComposition = options.createComposition ?? createGreenfieldRuntimeComposition;
+		this.createComposition = options.createComposition ?? createCodingAgentRuntimeComposition;
 	}
 
 	async createAssembly(request: RuntimeSessionCreateRequest): Promise<RuntimeHostSessionAssembly> {
@@ -162,7 +164,7 @@ export class DesktopGreenfieldRuntimeBackendPool implements RuntimeHostSessionBa
 			cwd: scope.cwd,
 			agentDir: scope.agentDir,
 		});
-		let composition: GreenfieldRuntimeComposition;
+		let composition: CodingAgentRuntimeComposition;
 		try {
 			composition = await this.createComposition({
 				...this.options.compositionDefaults,
@@ -213,7 +215,7 @@ function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopGreen
 
 function resolveInitialModel(
 	request: RuntimeSessionCreateRequest,
-	defaults: DesktopGreenfieldRuntimeCompositionDefaults,
+	defaults: DesktopCodingAgentRuntimeCompositionDefaults,
 ): Model<Api> {
 	const model = request.model ?? defaults.initialModel ?? defaults.modelRegistry.getAvailable()[0];
 	if (!model) {

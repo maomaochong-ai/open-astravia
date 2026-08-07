@@ -1,5 +1,5 @@
 import type { ConversationDocument, RuntimeMessageEnvelope } from "@vetta/runtime-core";
-import type { GreenfieldRuntimeSessionControls } from "./greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeSessionControls } from "./contracts/index.js";
 import type { GreenfieldSessionValueIndex } from "./greenfield-session-resource-index.js";
 import type {
 	GreenfieldSessionHookController,
@@ -28,7 +28,7 @@ export interface GreenfieldRuntimeSessionControlsOptions {
 /** 将宿主的 Session 控制调用投影到实时 Composition 资源索引。 */
 export function createGreenfieldRuntimeSessionControls(
 	options: GreenfieldRuntimeSessionControlsOptions,
-): GreenfieldRuntimeSessionControls {
+): CodingAgentRuntimeSessionControls {
 	return {
 		sessionHooks: {
 			async end(sessionId, cause) {

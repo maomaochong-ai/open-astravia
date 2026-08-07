@@ -5,14 +5,14 @@ import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStrea
 import { FileConversationRepository } from "@vetta/runtime-storage/conversation";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "../../src/composition/index.js";
 import { type CodingAgentMemoryFlushInput, CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 import type { CodingAgentRuntimeModelSource } from "../../src/public-api/host-services.js";
 
 const temporaryRoots: string[] = [];
-const compositions: GreenfieldRuntimeComposition[] = [];
+const compositions: CodingAgentRuntimeComposition[] = [];
 
 afterEach(async () => {
 	for (const composition of compositions.splice(0).reverse()) await composition.dispose();
@@ -45,7 +45,7 @@ describe("Greenfield CLI memory runtime", () => {
 			assistantMessage([{ type: "text", text: "Memory saved." }]),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -95,7 +95,7 @@ describe("Greenfield CLI memory runtime", () => {
 		const workspace = await temporaryRoot("greenfield-non-memory-workspace-");
 		const conversations = await temporaryRoot("greenfield-non-memory-conversations-");
 		const calls: Array<{ readonly systemPrompt: string; readonly tools: readonly string[] }> = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -136,7 +136,7 @@ describe("Greenfield CLI memory runtime", () => {
 				"saved fact",
 			],
 		);
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -188,7 +188,7 @@ describe("Greenfield CLI memory runtime", () => {
 			assistantMessage([{ type: "text", text: "Second response." }], "stop", 6_000),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

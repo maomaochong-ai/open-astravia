@@ -2,13 +2,13 @@ import { randomUUID } from "node:crypto";
 import type { RuntimeSessionCatalog } from "@vetta/runtime-core";
 import { type GreenfieldRuntimeSession, InitializationRollbackScope, RetryableCleanup } from "@vetta/runtime-core";
 import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/conversation";
-import { resolveGreenfieldSessionIdFromPath } from "../../composition/greenfield-conversation-path.js";
-import { createGreenfieldRuntimeComposition } from "../../composition/greenfield-runtime-composition.js";
 import type {
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeCompositionOptions,
-	GreenfieldRuntimeSessionOptions,
-} from "../../composition/greenfield-runtime-composition-contract.js";
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeSessionOptions,
+} from "../../composition/contracts/index.js";
+import { resolveGreenfieldSessionIdFromPath } from "../../composition/greenfield-conversation-path.js";
+import { createCodingAgentRuntimeComposition } from "../../composition/runtime-composition.js";
 import {
 	CodingAgentActiveSessionHost,
 	type CodingAgentPreparedSessionBinding,
@@ -30,11 +30,11 @@ import {
 } from "./storage.js";
 
 type GreenfieldSdkCompositionOptions = Omit<
-	GreenfieldRuntimeCompositionOptions,
+	CodingAgentRuntimeCompositionOptions,
 	"conversationDir" | "createConversationPersistence"
 >;
 
-type GreenfieldSdkRuntimeSessionOptions = Omit<GreenfieldRuntimeSessionOptions, "sessionId">;
+type GreenfieldSdkRuntimeSessionOptions = Omit<CodingAgentRuntimeSessionOptions, "sessionId">;
 
 export interface GreenfieldSdkSessionFactoryOptions {
 	readonly storage: GreenfieldSdkSessionStorageTarget;
@@ -61,7 +61,7 @@ export interface GreenfieldSdkOwnedResource {
 
 export interface GreenfieldSdkSessionInitializationContext {
 	readonly session: GreenfieldRuntimeSession;
-	readonly composition: GreenfieldRuntimeComposition;
+	readonly composition: CodingAgentRuntimeComposition;
 	readonly source: "initial" | "transition";
 }
 
@@ -75,7 +75,7 @@ export type GreenfieldSdkSessionCapabilityHostFactory = (
 
 export interface GreenfieldSdkActiveSessionCapabilityHostContext {
 	readonly sessionHost: CodingAgentActiveSessionHost;
-	readonly composition: GreenfieldRuntimeComposition;
+	readonly composition: CodingAgentRuntimeComposition;
 }
 
 export type GreenfieldSdkActiveSessionCapabilityHostFactory = (
@@ -105,9 +105,9 @@ export async function createGreenfieldSdkSession(
 	} catch (error) {
 		return rollback.rollback(error, "Greenfield SDK storage resolution and rollback failed");
 	}
-	let composition: GreenfieldRuntimeComposition;
+	let composition: CodingAgentRuntimeComposition;
 	try {
-		composition = await createGreenfieldRuntimeComposition({
+		composition = await createCodingAgentRuntimeComposition({
 			...options.composition,
 			conversationDir: storage.conversationDir ?? "memory://conversation",
 			createConversationPersistence: storage.createConversationPersistence,
@@ -190,7 +190,7 @@ export async function createGreenfieldSdkSession(
 
 function createActiveSessionCleanup(
 	sessionHost: CodingAgentActiveSessionHost,
-	composition: GreenfieldRuntimeComposition,
+	composition: CodingAgentRuntimeComposition,
 	activeCapabilities: GreenfieldSdkActiveSessionCapabilityPort,
 	capabilityHost: GreenfieldSdkSessionCapabilityPort,
 	ownedResources: readonly GreenfieldSdkOwnedResource[],
@@ -223,7 +223,7 @@ function createSessionCatalog(
 }
 
 function createResourceAwareTransitionLifecycle(
-	composition: GreenfieldRuntimeComposition,
+	composition: CodingAgentRuntimeComposition,
 	options: GreenfieldSdkSessionFactoryOptions,
 	readActiveResource: () => GreenfieldSdkOwnedResource | undefined,
 	setActiveResource: (resource: GreenfieldSdkOwnedResource | undefined) => void,

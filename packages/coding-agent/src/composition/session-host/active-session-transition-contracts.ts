@@ -7,10 +7,7 @@ import type {
 	CodingAgentSessionTransition,
 	CodingAgentSessionTransitionLifecycle,
 } from "../../host/session-transition/contracts.js";
-import type {
-	GreenfieldRuntimeSessionHookLifecycle,
-	GreenfieldRuntimeSessionOptions,
-} from "../greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeSessionHookLifecycle, CodingAgentRuntimeSessionOptions } from "../contracts/index.js";
 
 export type {
 	CodingAgentPreparedSessionBinding,
@@ -21,8 +18,8 @@ export type {
 } from "../../host/session-transition/contracts.js";
 
 export interface CodingAgentSessionTransitionRuntimePort {
-	readonly backend: GreenfieldRuntimeSessionBackend<GreenfieldRuntimeSessionOptions>;
-	readonly sessionHooks: GreenfieldRuntimeSessionHookLifecycle;
+	readonly backend: GreenfieldRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
+	readonly sessionHooks: CodingAgentRuntimeSessionHookLifecycle;
 	quiesceSessionBackgroundCommands(sessionId: string): Promise<void>;
 	preserveSessionExecutionContext(sourceSessionId: string, targetSessionId: string): Promise<void>;
 }
@@ -30,7 +27,7 @@ export interface CodingAgentSessionTransitionRuntimePort {
 export interface CodingAgentActiveSessionHostOptions {
 	readonly runtime: CodingAgentSessionTransitionRuntimePort;
 	readonly initialSession: GreenfieldRuntimeSession;
-	readonly sessionOptions: Omit<GreenfieldRuntimeSessionOptions, "sessionId" | "parentSessionPath" | "parentEntryId">;
+	readonly sessionOptions: Omit<CodingAgentRuntimeSessionOptions, "sessionId" | "parentSessionPath" | "parentEntryId">;
 	readonly conversationDir: string;
 	readonly sessionCatalog: RuntimeSessionCatalog;
 	readonly createSessionId: () => string;

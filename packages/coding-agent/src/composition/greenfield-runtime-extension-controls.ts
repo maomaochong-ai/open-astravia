@@ -3,7 +3,7 @@ import type {
 	CodingAgentGreenfieldExtensionToolSource,
 	CodingAgentGreenfieldSessionToolRegistration,
 } from "../runtime-contracts/index.js";
-import type { GreenfieldRuntimeExtensionControls } from "./greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeExtensionControls } from "./contracts/index.js";
 import type { GreenfieldSessionResourceIndexes } from "./greenfield-session-resource-lifecycle-assembly.js";
 
 export interface GreenfieldExtensionToolHostPort {
@@ -25,7 +25,7 @@ export interface GreenfieldRuntimeExtensionControlsOptions {
 /** 将宿主 Extension 调用投影到 Session Event Bridge 与进程级 Tool Runtime。 */
 export function createGreenfieldRuntimeExtensionControls(
 	options: GreenfieldRuntimeExtensionControlsOptions,
-): GreenfieldRuntimeExtensionControls {
+): CodingAgentRuntimeExtensionControls {
 	return {
 		bindExtensionRunner(sessionId, runner, bindingOptions) {
 			const bridge = options.indexes.extensionEventBridges.get(sessionId);

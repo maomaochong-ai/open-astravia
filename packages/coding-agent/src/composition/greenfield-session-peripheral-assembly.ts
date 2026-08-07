@@ -30,8 +30,8 @@ import type {
 	CodingAgentTodoRuntime,
 } from "../runtime-contracts/index.js";
 import { createCodingAgentKnowledgeWriteOperations } from "./coding-agent-knowledge-runtime.js";
+import type { CodingAgentRuntimeSessionOptions } from "./contracts/index.js";
 import type { GreenfieldMcpSessionCoordinator } from "./greenfield-mcp-session-coordinator.js";
-import type { GreenfieldRuntimeSessionOptions } from "./greenfield-runtime-composition-contract.js";
 import { GreenfieldSessionExecutionRuntime } from "./greenfield-session-execution-runtime.js";
 import type { GreenfieldSessionInitializationProfile } from "./greenfield-session-initialization-profile.js";
 import { GreenfieldSessionConfigurationState } from "./greenfield-session-peripherals.js";
@@ -40,7 +40,7 @@ import type { CodingToolsRuntimeComposition } from "./runtime-tools-composition.
 
 export interface GreenfieldSessionPeripheralAssemblyOptions {
 	readonly profile: GreenfieldSessionInitializationProfile;
-	readonly sessionOptions: GreenfieldRuntimeSessionOptions;
+	readonly sessionOptions: CodingAgentRuntimeSessionOptions;
 	readonly sessionCwd: string;
 	readonly scenario: ConversationScenario;
 	readonly activation: CodingToolActivation;
@@ -268,7 +268,7 @@ function createForkContextFeature(messages: readonly Message[]): AgentFeatureDef
 }
 
 function createSessionPluginRuntime(
-	sessionOptions: GreenfieldRuntimeSessionOptions,
+	sessionOptions: CodingAgentRuntimeSessionOptions,
 ): CodingAgentPluginRuntimeSource | undefined {
 	if (
 		sessionOptions.agentPlugins === undefined &&

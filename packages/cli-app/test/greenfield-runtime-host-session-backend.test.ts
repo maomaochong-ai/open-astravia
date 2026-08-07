@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
@@ -24,7 +24,7 @@ describe("GreenfieldRuntimeHostSessionBackend", () => {
 	it("maps supported RuntimeHost session options and resumes the persisted conversation", async () => {
 		const cwd = await temporaryDirectory("greenfield-host-workspace-");
 		const conversationDir = await temporaryDirectory("greenfield-host-conversations-");
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
 			scenario: "batch",
@@ -94,7 +94,7 @@ describe("GreenfieldRuntimeHostSessionBackend", () => {
 	it("fails closed for composition and serverUrl mismatches", async () => {
 		const cwd = await temporaryDirectory("greenfield-host-gate-workspace-");
 		const conversationDir = await temporaryDirectory("greenfield-host-gate-conversations-");
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
 			scenario: "batch",
@@ -141,7 +141,7 @@ describe("GreenfieldRuntimeHostSessionBackend", () => {
 		const conversationDir = await temporaryDirectory("greenfield-host-retry-conversations-");
 		const responses = [assistantMessage("error", "503 service unavailable"), assistantMessage("stop")];
 		let callCount = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
 			scenario: "batch",

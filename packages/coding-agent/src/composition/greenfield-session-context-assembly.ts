@@ -13,8 +13,8 @@ import {
 	type CodingAgentMemoryController,
 } from "../adapters/runtime-core/greenfield-memory-controller.js";
 import type { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/greenfield-model-runtime-adapter.js";
+import type { CodingAgentRuntimeSessionOptions } from "./contracts/index.js";
 import type { GreenfieldMcpSessionCoordinator } from "./greenfield-mcp-session-coordinator.js";
-import type { GreenfieldRuntimeSessionOptions } from "./greenfield-runtime-composition-contract.js";
 import type { GreenfieldSessionInitializationProfile } from "./greenfield-session-initialization-profile.js";
 import type { GreenfieldSessionPeripheralAssembly } from "./greenfield-session-peripheral-assembly.js";
 import type { GreenfieldSubagentRuntime } from "./greenfield-subagent-runtime.js";
@@ -26,7 +26,7 @@ import {
 
 export interface GreenfieldSessionContextAssemblyOptions {
 	readonly profile: GreenfieldSessionInitializationProfile;
-	readonly sessionOptions: GreenfieldRuntimeSessionOptions;
+	readonly sessionOptions: CodingAgentRuntimeSessionOptions;
 	readonly sessionCwd: string;
 	readonly scenario: ConversationScenario;
 	readonly resourceContext: GreenfieldRuntimeResourceContext;

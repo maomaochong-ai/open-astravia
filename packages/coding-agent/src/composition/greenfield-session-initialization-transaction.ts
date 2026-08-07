@@ -14,8 +14,8 @@ import type { CodingAgentGreenfieldExtensionToolRuntime } from "../adapters/runt
 import type { CodingAgentRuntimeModelAdapter } from "../adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../memory/index.js";
 import type { CodingAgentTodoRuntime } from "../runtime-contracts/index.js";
+import type { CodingAgentRuntimeSessionOptions } from "./contracts/index.js";
 import type { GreenfieldMcpSessionCoordinator } from "./greenfield-mcp-session-coordinator.js";
-import type { GreenfieldRuntimeSessionOptions } from "./greenfield-runtime-composition-contract.js";
 import { createGreenfieldSessionContextAssembly } from "./greenfield-session-context-assembly.js";
 import type { GreenfieldSessionInitializationProfile } from "./greenfield-session-initialization-profile.js";
 import { createGreenfieldSessionPeripheralAssembly } from "./greenfield-session-peripheral-assembly.js";
@@ -76,7 +76,7 @@ export interface GreenfieldSessionInitializationTransactionOptions<TOwnershipBin
 
 export interface GreenfieldSessionInitializationTransaction {
 	initialize(
-		sessionOptions: GreenfieldRuntimeSessionOptions,
+		sessionOptions: CodingAgentRuntimeSessionOptions,
 		resourceContext: GreenfieldRuntimeResourceContext,
 	): Promise<GreenfieldRuntimeResources>;
 }
@@ -92,7 +92,7 @@ export function createGreenfieldSessionInitializationTransaction<TOwnershipBindi
 
 async function initializeSession<TOwnershipBinding>(
 	options: GreenfieldSessionInitializationTransactionOptions<TOwnershipBinding>,
-	sessionOptions: GreenfieldRuntimeSessionOptions,
+	sessionOptions: CodingAgentRuntimeSessionOptions,
 	resourceContext: GreenfieldRuntimeResourceContext,
 ): Promise<GreenfieldRuntimeResources> {
 	const profile = options.profile;

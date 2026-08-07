@@ -12,8 +12,8 @@ import {
 import {
 	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
 	type CodingAgentSessionTransitionLifecycle as CodingAgentGreenfieldSessionTransitionLifecycle,
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome, type HookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
@@ -24,7 +24,7 @@ const INTEGRATION_TEST_TIMEOUT_MS = 30_000;
 
 describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATION_TEST_TIMEOUT_MS }, () => {
 	const temporaryDirectories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -47,7 +47,7 @@ describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATI
 			assistantText("resumed complete"),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -218,8 +218,8 @@ describe("Greenfield Session-local Ecosystem Hook Runtime", { timeout: INTEGRATI
 async function createLifecycleComposition(
 	conversationDir: string,
 	hookEvents: EcosystemHookEvent[],
-): Promise<GreenfieldRuntimeComposition> {
-	return createGreenfieldRuntimeComposition({
+): Promise<CodingAgentRuntimeComposition> {
+	return createCodingAgentRuntimeComposition({
 		conversationDir,
 		modelRegistry: modelRegistry(),
 		initialModel: MODEL,
@@ -241,7 +241,7 @@ async function createLifecycleComposition(
 }
 
 function createActiveSessionHost(
-	runtime: GreenfieldRuntimeComposition,
+	runtime: CodingAgentRuntimeComposition,
 	initialSession: GreenfieldRuntimeSession,
 	conversationDir: string,
 	createSessionId: () => string,

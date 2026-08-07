@@ -1,7 +1,7 @@
 import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
 import type {
 	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
-	CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	CodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { type CodingAgentHtmlExportRuntime, createCodingAgentHtmlExportRuntime } from "@vetta/coding-agent/export-html";
 import {
@@ -37,7 +37,7 @@ export interface GreenfieldRpcSessionAdapterOptions {
 		CodingAgentGreenfieldActiveSessionHost,
 		"dispose" | "fork" | "newSession" | "readSession" | "startActiveSessionOperation" | "subscribe" | "switchSession"
 	>;
-	readonly runtime: GreenfieldRuntimeComposition;
+	readonly runtime: CodingAgentRuntimeComposition;
 	readonly resourceLoader: GreenfieldResourceLoader;
 	readonly htmlExporter?: CodingAgentHtmlExportRuntime;
 	readonly retryController?: CodingAgentTurnRetryController;
@@ -69,7 +69,7 @@ export class GreenfieldRpcSessionAdapter implements RpcSessionCapabilities {
 	readonly commands: GreenfieldCommandDiscoveryCapability;
 
 	private readonly sessionHost: GreenfieldRpcSessionAdapterOptions["sessionHost"];
-	private readonly runtime: GreenfieldRuntimeComposition;
+	private readonly runtime: CodingAgentRuntimeComposition;
 	private readonly resourceLoader: GreenfieldResourceLoader;
 	private readonly htmlExporter: CodingAgentHtmlExportRuntime;
 	private readonly retryController: CodingAgentTurnRetryController | undefined;

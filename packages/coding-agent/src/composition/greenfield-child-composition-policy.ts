@@ -1,20 +1,17 @@
 import type { McpRuntimeToolView } from "@vetta/runtime-mcp";
-import type {
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeCompositionOptions,
-} from "./greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeComposition, CodingAgentRuntimeCompositionOptions } from "./contracts/index.js";
 import type {
 	GreenfieldSubagentChildComposition,
 	GreenfieldSubagentChildCompositionRequest,
 } from "./greenfield-subagent-session-assembly.js";
 
 export type GreenfieldChildRuntimeCompositionFactory = (
-	options: GreenfieldRuntimeCompositionOptions,
+	options: CodingAgentRuntimeCompositionOptions,
 	inheritedMcpView: McpRuntimeToolView,
-) => Promise<GreenfieldRuntimeComposition>;
+) => Promise<CodingAgentRuntimeComposition>;
 
 export interface GreenfieldChildCompositionFactoryOptions {
-	readonly parentOptions: GreenfieldRuntimeCompositionOptions;
+	readonly parentOptions: CodingAgentRuntimeCompositionOptions;
 	readonly createComposition: GreenfieldChildRuntimeCompositionFactory;
 }
 
@@ -38,9 +35,9 @@ export function createGreenfieldChildCompositionFactory(
 }
 
 function createChildCompositionOptions(
-	parent: GreenfieldRuntimeCompositionOptions,
+	parent: CodingAgentRuntimeCompositionOptions,
 	request: GreenfieldSubagentChildCompositionRequest,
-): GreenfieldRuntimeCompositionOptions {
+): CodingAgentRuntimeCompositionOptions {
 	const {
 		mcpSource: _mcpSource,
 		createPluginMcpRuntime: _createPluginMcpRuntime,

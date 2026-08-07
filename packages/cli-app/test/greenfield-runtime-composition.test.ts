@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
@@ -19,7 +19,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("Greenfield runtime composition", () => {
 	const temporaryDirectories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -49,7 +49,7 @@ describe("Greenfield runtime composition", () => {
 			readonly tools: string[];
 		}> = [];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -121,7 +121,7 @@ describe("Greenfield runtime composition", () => {
 				details: { source: "composition-test" },
 			};
 		});
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -160,7 +160,7 @@ describe("Greenfield runtime composition", () => {
 	it("reflects registry changes on the next model call without rebuilding the session", async () => {
 		const conversations = await createTemporaryDirectory("greenfield-runtime-dynamic-tools-");
 		const toolLists: string[][] = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -205,7 +205,7 @@ describe("Greenfield runtime composition", () => {
 
 	it("assembles real host, execution, background work, todo and configuration ports", async () => {
 		const conversations = await createTemporaryDirectory("greenfield-runtime-session-ports-");
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -246,7 +246,7 @@ describe("Greenfield runtime composition", () => {
 	it("registers legacy-equivalent knowledge tools while keeping host availability fail-closed", async () => {
 		const enabledConversations = await createTemporaryDirectory("greenfield-runtime-knowledge-enabled-");
 		const enabledModelTools: string[][] = [];
-		const enabled = await createGreenfieldRuntimeComposition({
+		const enabled = await createCodingAgentRuntimeComposition({
 			conversationDir: enabledConversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -268,7 +268,7 @@ describe("Greenfield runtime composition", () => {
 
 		const disabledConversations = await createTemporaryDirectory("greenfield-runtime-knowledge-disabled-");
 		const disabledModelTools: string[][] = [];
-		const disabled = await createGreenfieldRuntimeComposition({
+		const disabled = await createCodingAgentRuntimeComposition({
 			conversationDir: disabledConversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -303,7 +303,7 @@ describe("Greenfield runtime composition", () => {
 				skillInjection: `<skill>${sessionOptions.sessionId}</skill>`,
 			});
 		});
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -331,7 +331,7 @@ describe("Greenfield runtime composition", () => {
 		await writeFile(join(firstWorkspace, "AGENTS.md"), "First session repository instruction", "utf8");
 		await writeFile(join(secondWorkspace, "AGENTS.md"), "Second session repository instruction", "utf8");
 		const systemPrompts: string[] = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -399,7 +399,7 @@ describe("Greenfield runtime composition", () => {
 				};
 			},
 		);
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -483,7 +483,7 @@ describe("Greenfield runtime composition", () => {
 			getReadyServerBindings: () => (available ? [createMcpServerBinding(client, [tool])] : []),
 		});
 		const modelTools: string[][] = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -546,7 +546,7 @@ describe("Greenfield runtime composition", () => {
 			assistantMessage([{ type: "text", text: "restored" }]),
 			assistantMessage([{ type: "text", text: "resumed" }]),
 		];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -609,7 +609,7 @@ describe("Greenfield runtime composition", () => {
 		const rootMcpTools: string[][] = [];
 		const childMcpTools: string[][] = [];
 		let rootCalls = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			enableSubagents: true,
 			modelRegistry: modelRegistry(),
@@ -665,7 +665,7 @@ describe("Greenfield runtime composition", () => {
 		const conversations = await createTemporaryDirectory("greenfield-runtime-explicit-mcp-");
 		const fixture = createMcpSourceFixture(16);
 		const calls: Array<{ readonly systemPrompt: string | undefined; readonly tools: string[] }> = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -699,7 +699,7 @@ describe("Greenfield runtime composition", () => {
 		const conversations = await createTemporaryDirectory("greenfield-runtime-composed-mcp-");
 		const fixture = createMcpSourceFixture(16);
 		const calls: Array<{ readonly systemPrompt: string | undefined; readonly mcpTools: readonly string[] }> = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -741,7 +741,7 @@ describe("Greenfield runtime composition", () => {
 	it("persists hidden prompt contributions while keeping the chat projection clean", async () => {
 		const conversations = await createTemporaryDirectory("greenfield-runtime-prompt-context-");
 		const modelInputs: string[][] = [];
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir: conversations,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

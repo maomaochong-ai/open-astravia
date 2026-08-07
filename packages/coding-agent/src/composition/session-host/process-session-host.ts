@@ -17,11 +17,11 @@ import type {
 } from "../../host/session-execution/contracts.js";
 import { createCodingAgentTurnExecutor } from "../../host/session-execution/turn-executor.js";
 import { createCodingAgentTurnRetryController } from "../../host/session-execution/turn-retry-controller.js";
-import type { GreenfieldRuntimeComposition } from "../greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeComposition } from "../contracts/index.js";
 import type { CodingAgentActiveSessionHost } from "./active-session-transition-host.js";
 
 export interface CodingAgentProcessSessionHostOptions {
-	readonly runtime: GreenfieldRuntimeComposition;
+	readonly runtime: CodingAgentRuntimeComposition;
 	readonly activeSessionHost: CodingAgentActiveSessionHost;
 	readonly extensionSessionHost: CodingAgentExtensionSessionHost;
 	readonly mcpSource: ManagedMcpRuntimeToolSource;
@@ -31,7 +31,7 @@ export interface CodingAgentProcessSessionHostOptions {
 
 /** Runtime、活动 Session、Extension、MCP、Turn 与最终清理的进程宿主。 */
 export class CodingAgentProcessSessionHost {
-	readonly runtime: GreenfieldRuntimeComposition;
+	readonly runtime: CodingAgentRuntimeComposition;
 	readonly retryController: CodingAgentTurnRetryController;
 	readonly turnExecutor: CodingAgentTurnExecutor;
 	private readonly retryListeners = new Set<(event: CodingAgentTurnRetryEvent) => void>();

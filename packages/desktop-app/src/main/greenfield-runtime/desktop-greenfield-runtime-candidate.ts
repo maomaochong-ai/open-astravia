@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import type {
-	CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
-	CodingAgentRuntimeSessionOptions as GreenfieldRuntimeSessionOptions,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeSessionOptions,
 } from "@vetta/coding-agent/composition";
 import { FileConversationRuntimeSessionCatalog } from "@vetta/runtime-storage/conversation";
 import {
@@ -19,7 +19,7 @@ import {
 import { DesktopGreenfieldRuntimeBackendPool } from "./desktop-greenfield-runtime-backend-pool.js";
 
 export type DesktopGreenfieldSessionOptions = Pick<
-	GreenfieldRuntimeSessionOptions,
+	CodingAgentRuntimeSessionOptions,
 	| "cwd"
 	| "model"
 	| "thinkingLevel"
@@ -128,7 +128,7 @@ export class DesktopGreenfieldRuntimeCandidate {
 }
 
 export async function createDesktopGreenfieldRuntimeCandidate(
-	options: GreenfieldRuntimeCompositionOptions,
+	options: CodingAgentRuntimeCompositionOptions,
 	hostOptions: DesktopGreenfieldRuntimeCandidateHostOptions = {},
 ): Promise<DesktopGreenfieldRuntimeCandidate> {
 	const scenario = options.scenario ?? "conversation";

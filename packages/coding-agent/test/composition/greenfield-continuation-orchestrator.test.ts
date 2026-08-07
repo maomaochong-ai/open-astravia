@@ -12,8 +12,8 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "../../src/composition/index.js";
 import {
 	type EcosystemHookEvent,
@@ -27,7 +27,7 @@ import type {
 
 describe("Greenfield continuation orchestration", () => {
 	const temporaryDirectories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -77,7 +77,7 @@ describe("Greenfield continuation orchestration", () => {
 			assistantMessage("hook response"),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

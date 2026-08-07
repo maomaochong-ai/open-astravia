@@ -8,7 +8,7 @@ import type {
 	SessionEvent,
 } from "@vetta/runtime-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { GreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition.js";
+import type { CodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
 import {
 	CodingAgentActiveSessionHost,
 	type CodingAgentPreparedSessionBinding,
@@ -424,7 +424,7 @@ async function createFixture(
 			start: sessionHookStart,
 			discard: sessionHookDiscard,
 		},
-	} as unknown as GreenfieldRuntimeComposition;
+	} as unknown as CodingAgentRuntimeComposition;
 	const catalog: RuntimeSessionCatalog = {
 		ownsSession: async (path) => {
 			try {

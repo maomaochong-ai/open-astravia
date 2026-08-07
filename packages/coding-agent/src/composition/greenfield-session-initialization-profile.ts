@@ -1,7 +1,7 @@
-import type { GreenfieldRuntimeCompositionOptions } from "./greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeCompositionOptions } from "./contracts/index.js";
 
 export type GreenfieldSessionInitializationProfile = Pick<
-	GreenfieldRuntimeCompositionOptions,
+	CodingAgentRuntimeCompositionOptions,
 	| "additionalHookAdapterFactories"
 	| "agentDir"
 	| "createCompactionExtensionRuntime"
@@ -30,7 +30,7 @@ export type GreenfieldSessionInitializationProfile = Pick<
 >;
 
 export function createGreenfieldSessionInitializationProfile(
-	options: GreenfieldRuntimeCompositionOptions,
+	options: CodingAgentRuntimeCompositionOptions,
 ): GreenfieldSessionInitializationProfile {
 	if ((options.promptResourceSource === undefined) !== (options.promptSettingsSource === undefined)) {
 		throw new Error("promptResourceSource and promptSettingsSource must be provided together");

@@ -2,11 +2,11 @@ import type { CodingAgentHostBootstrap } from "@vetta/coding-agent/bootstrap";
 import {
 	CodingAgentActiveSessionHost as CodingAgentGreenfieldActiveSessionHost,
 	CodingAgentProcessSessionHost,
+	type CodingAgentRuntimeComposition,
+	type CodingAgentRuntimeCompositionOptions,
+	type CodingAgentRuntimeSessionOptions,
+	createCodingAgentRuntimeComposition,
 	createCodingAgentSessionSetupSeedInitializer,
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
-	type CodingAgentRuntimeCompositionOptions as GreenfieldRuntimeCompositionOptions,
-	type CodingAgentRuntimeSessionOptions as GreenfieldRuntimeSessionOptions,
 	resolveSessionIdFromPath as resolveGreenfieldSessionIdFromPath,
 } from "@vetta/coding-agent/composition";
 import { getVettaHomePath } from "@vetta/coding-agent/config";
@@ -43,17 +43,17 @@ export interface GreenfieldCliSessionAssemblyOptions {
 	readonly sessionCatalog: RuntimeSessionCatalog;
 	readonly sessionId: string;
 	readonly sessionPath?: string;
-	readonly initialModel: GreenfieldRuntimeCompositionOptions["initialModel"];
-	readonly initialThinkingLevel: GreenfieldRuntimeCompositionOptions["initialThinkingLevel"];
+	readonly initialModel: CodingAgentRuntimeCompositionOptions["initialModel"];
+	readonly initialThinkingLevel: CodingAgentRuntimeCompositionOptions["initialThinkingLevel"];
 	readonly backend: "greenfield" | "greenfield-im";
 	readonly intent: "rpc" | "print";
 	readonly createSessionId: () => string;
 	readonly ownership?: FileConversationOwnershipManagerOptions;
-	readonly createPluginRuntime?: GreenfieldRuntimeCompositionOptions["createPluginRuntime"];
+	readonly createPluginRuntime?: CodingAgentRuntimeCompositionOptions["createPluginRuntime"];
 }
 
 export interface GreenfieldCliSessionAssembly {
-	readonly runtime: GreenfieldRuntimeComposition;
+	readonly runtime: CodingAgentRuntimeComposition;
 	readonly sessionHost: CodingAgentProcessSessionHost;
 	readonly extensionSessionHost: CodingAgentRuntimeExtensionSessionHost;
 	dispose(): Promise<void>;
@@ -77,14 +77,14 @@ export async function createGreenfieldCliSessionAssembly(
 		rollback: () => managedMcpSource.dispose(),
 	});
 
-	let runtime: GreenfieldRuntimeComposition | undefined;
+	let runtime: CodingAgentRuntimeComposition | undefined;
 	let extensionSessionHost: CodingAgentRuntimeExtensionSessionHost | undefined;
 	let dismissRuntimeRollback: (() => void) | undefined;
 	let dismissSessionRollback: (() => void) | undefined;
 	let dismissExtensionRollback: (() => void) | undefined;
 	let dismissActiveSessionRollback: (() => void) | undefined;
 	try {
-		runtime = await createGreenfieldRuntimeComposition({
+		runtime = await createCodingAgentRuntimeComposition({
 			conversationDir: options.conversationDir,
 			modelRegistry: bootstrap.modelRegistry,
 			initialModel: options.initialModel,
@@ -124,7 +124,7 @@ export async function createGreenfieldCliSessionAssembly(
 			id: "runtime-composition",
 			rollback: () => acquiredRuntime.dispose(),
 		});
-		const sessionOptions: GreenfieldRuntimeSessionOptions = {
+		const sessionOptions: CodingAgentRuntimeSessionOptions = {
 			sessionId: options.sessionId,
 			cwd: bootstrap.cwd,
 			memoryMode: parsed.memoryMode || parsed.memoryFile !== undefined,

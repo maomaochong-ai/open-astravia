@@ -5,22 +5,20 @@ import { fail, isDirectRun, ok, readText, rel, repoRoot, walkFiles } from "./lib
 
 const COMPOSITION_CONTRACT_ROOT = "packages/coding-agent/src/composition/contracts";
 const RUNTIME_CONTRACT_ROOT = "packages/coding-agent/src/runtime-contracts";
-const COMPOSITION_CONTRACT_FACADE = "packages/coding-agent/src/composition/greenfield-runtime-composition-contract.ts";
 const COMPOSITION_OPTIONS_PATH = "packages/coding-agent/src/composition/contracts/runtime-composition-options.ts";
-const MAX_FACADE_LINES = 40;
 const MAX_CONTRACT_MODULE_LINES = 180;
 
 export const REQUIRED_COMPOSITION_OPTION_FACETS = Object.freeze([
-	"GreenfieldRuntimeEnvironmentOptions",
-	"GreenfieldRuntimeConversationOptions",
-	"GreenfieldRuntimeModelOptions",
-	"GreenfieldRuntimeToolOptions",
-	"GreenfieldRuntimeSubagentOptions",
-	"GreenfieldRuntimePromptOptions",
-	"GreenfieldRuntimePluginOptions",
-	"GreenfieldRuntimeExtensionOptions",
-	"GreenfieldRuntimeContextOptions",
-	"GreenfieldRuntimeObservabilityOptions",
+	"CodingAgentRuntimeEnvironmentOptions",
+	"CodingAgentRuntimeConversationOptions",
+	"CodingAgentRuntimeModelOptions",
+	"CodingAgentRuntimeToolOptions",
+	"CodingAgentRuntimeSubagentOptions",
+	"CodingAgentRuntimePromptOptions",
+	"CodingAgentRuntimePluginOptions",
+	"CodingAgentRuntimeExtensionOptions",
+	"CodingAgentRuntimeContextOptions",
+	"CodingAgentRuntimeObservabilityOptions",
 ]);
 
 export function collectCodingAgentCompositionContractState(files) {
@@ -31,10 +29,10 @@ export function collectCodingAgentCompositionContractState(files) {
 			.map((specifier) => ({ path: file.path, specifier })),
 	);
 	const oversizedModules = contractFiles
-		.map((file) => ({ path: file.path, lines: countLines(file.text), limit: moduleLineLimit(file.path) }))
+		.map((file) => ({ path: file.path, lines: countLines(file.text), limit: MAX_CONTRACT_MODULE_LINES }))
 		.filter((file) => file.lines > file.limit);
 	const compositionOptions = files.find((file) => file.path === COMPOSITION_OPTIONS_PATH)?.text ?? "";
-	const optionHeritage = collectInterfaceHeritage(compositionOptions, "GreenfieldRuntimeCompositionOptions");
+	const optionHeritage = collectInterfaceHeritage(compositionOptions, "CodingAgentRuntimeCompositionOptions");
 	const composedFacets = REQUIRED_COMPOSITION_OPTION_FACETS.filter((facet) =>
 		new RegExp(`\\b${facet}\\b`).test(optionHeritage),
 	);
@@ -63,15 +61,7 @@ export function findCodingAgentCompositionContractViolations(state) {
 }
 
 function isContractFile(path) {
-	return (
-		path === COMPOSITION_CONTRACT_FACADE ||
-		path.startsWith(`${COMPOSITION_CONTRACT_ROOT}/`) ||
-		path.startsWith(`${RUNTIME_CONTRACT_ROOT}/`)
-	);
-}
-
-function moduleLineLimit(path) {
-	return path === COMPOSITION_CONTRACT_FACADE ? MAX_FACADE_LINES : MAX_CONTRACT_MODULE_LINES;
+	return path.startsWith(`${COMPOSITION_CONTRACT_ROOT}/`) || path.startsWith(`${RUNTIME_CONTRACT_ROOT}/`);
 }
 
 function countLines(text) {
@@ -92,18 +82,12 @@ function collectInterfaceHeritage(text, interfaceName) {
 
 function readCurrentFiles() {
 	const directories = [COMPOSITION_CONTRACT_ROOT, RUNTIME_CONTRACT_ROOT];
-	return [
-		...directories.flatMap((directory) =>
-			walkFiles(join(repoRoot, directory), { extensions: [".ts"] }).map((filePath) => ({
-				path: rel(filePath),
-				text: readText(filePath),
-			})),
-		),
-		{
-			path: COMPOSITION_CONTRACT_FACADE,
-			text: readText(join(repoRoot, COMPOSITION_CONTRACT_FACADE)),
-		},
-	];
+	return directories.flatMap((directory) =>
+		walkFiles(join(repoRoot, directory), { extensions: [".ts"] }).map((filePath) => ({
+			path: rel(filePath),
+			text: readText(filePath),
+		})),
+	);
 }
 
 if (isDirectRun(import.meta.url)) {

@@ -14,9 +14,9 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
 
-export type GreenfieldInitialTodoLockSource = "scene";
+export type CodingAgentInitialTodoLockSource = "scene";
 
-export interface GreenfieldRuntimeSessionOptions {
+export interface CodingAgentRuntimeSessionOptions {
 	readonly sessionId: string;
 	readonly cwd?: string;
 	readonly model?: NonNullable<SessionConfig["model"]>;
@@ -46,7 +46,7 @@ export interface GreenfieldRuntimeSessionOptions {
 	/** Workflow 子 Session 的初始 Todo。 */
 	readonly initialTodos?: readonly string[];
 	/** 产品组合创建初始 Todo 后施加的锁；不会暴露可写 TodoStore 给宿主。 */
-	readonly initialTodoLockSource?: GreenfieldInitialTodoLockSource;
+	readonly initialTodoLockSource?: CodingAgentInitialTodoLockSource;
 	/** 产品会话自己的 Knowledge Writer；普通会话继续使用 Composition 默认实现。 */
 	readonly knowledgePageWriter?: KbWritePageOperations;
 	/** 由产品宿主校验并适配的 Session 私有工具；同名定义覆盖进程级 Extension 工具。 */

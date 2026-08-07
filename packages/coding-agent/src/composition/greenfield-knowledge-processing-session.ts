@@ -6,11 +6,6 @@ import { wikiDir } from "@vetta/runtime-knowledge";
 import type { KbWritePageOperations } from "@vetta/runtime-tools/coding";
 import type { CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import { resolveCodingAgentKnowledgeRoot } from "./coding-agent-knowledge-runtime.js";
-import {
-	createGreenfieldRuntimeComposition,
-	type GreenfieldRuntimeComposition,
-	type GreenfieldRuntimeCompositionOptions,
-} from "./greenfield-runtime-composition.js";
 import type {
 	KnowledgeProcessingPageWriter,
 	KnowledgeProcessingSession,
@@ -18,12 +13,19 @@ import type {
 	KnowledgeProcessingSessionRequest,
 	KnowledgeProcessingUsage,
 } from "./knowledge-processing-contract.js";
+import {
+	type CodingAgentRuntimeComposition,
+	type CodingAgentRuntimeCompositionOptions,
+	createCodingAgentRuntimeComposition,
+} from "./runtime-composition.js";
 
 export interface GreenfieldKnowledgeProcessingSessionFactoryOptions {
 	readonly getModelRegistry: () => CodingAgentRuntimeModelSource;
 	readonly knowledgeRoot?: string;
 	readonly createSessionId?: () => string;
-	readonly createComposition?: (options: GreenfieldRuntimeCompositionOptions) => Promise<GreenfieldRuntimeComposition>;
+	readonly createComposition?: (
+		options: CodingAgentRuntimeCompositionOptions,
+	) => Promise<CodingAgentRuntimeComposition>;
 }
 
 /**
@@ -36,7 +38,7 @@ export function createGreenfieldKnowledgeProcessingSessionFactory(
 	options: GreenfieldKnowledgeProcessingSessionFactoryOptions,
 ): KnowledgeProcessingSessionFactory {
 	const createSessionId = options.createSessionId ?? randomUUID;
-	const createComposition = options.createComposition ?? createGreenfieldRuntimeComposition;
+	const createComposition = options.createComposition ?? createCodingAgentRuntimeComposition;
 	const resolvedKnowledgeRoot = resolveCodingAgentKnowledgeRoot(options.knowledgeRoot);
 
 	return {
@@ -55,7 +57,7 @@ export function createGreenfieldKnowledgeProcessingSessionFactory(
 				knowledgeRoot: resolvedKnowledgeRoot,
 				enableSubagents: false,
 			});
-			let runtimeSession: Awaited<ReturnType<GreenfieldRuntimeComposition["backend"]["create"]>>;
+			let runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>;
 			try {
 				runtimeSession = await composition.backend.create({
 					sessionId: createSessionId(),
@@ -79,8 +81,8 @@ export function createGreenfieldKnowledgeProcessingSessionFactory(
 }
 
 function createKnowledgeProcessingSession(
-	runtimeSession: Awaited<ReturnType<GreenfieldRuntimeComposition["backend"]["create"]>>,
-	composition: GreenfieldRuntimeComposition,
+	runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>,
+	composition: CodingAgentRuntimeComposition,
 	request: KnowledgeProcessingSessionRequest,
 	modelRuntime: CodingAgentRuntimeModelSource,
 ): KnowledgeProcessingSession {
@@ -118,8 +120,8 @@ function createKnowledgeProcessingSession(
 }
 
 async function disposeRuntimeSession(
-	runtimeSession: Awaited<ReturnType<GreenfieldRuntimeComposition["backend"]["create"]>>,
-	composition: GreenfieldRuntimeComposition,
+	runtimeSession: Awaited<ReturnType<CodingAgentRuntimeComposition["backend"]["create"]>>,
+	composition: CodingAgentRuntimeComposition,
 ): Promise<void> {
 	try {
 		await runtimeSession.dispose();

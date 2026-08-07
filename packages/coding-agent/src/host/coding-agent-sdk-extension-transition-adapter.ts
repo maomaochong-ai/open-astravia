@@ -1,5 +1,5 @@
 import { type GreenfieldRuntimeSession, InitializationRollbackScope } from "@vetta/runtime-core";
-import type { GreenfieldRuntimeComposition } from "../composition/greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeComposition } from "../composition/contracts/index.js";
 import type { CodingAgentExtensionEventHost, CodingAgentExtensionInitialization } from "./extensions/contracts.js";
 import type {
 	GreenfieldSdkOwnedResource,
@@ -13,7 +13,7 @@ import type {
 
 type ExtensionEventHostFactory = (
 	session: GreenfieldRuntimeSession,
-	composition: GreenfieldRuntimeComposition,
+	composition: CodingAgentRuntimeComposition,
 	options?: { readonly replaceExisting?: boolean },
 ) => CodingAgentExtensionEventHost;
 
@@ -80,7 +80,7 @@ export class CodingAgentSdkExtensionTransitionAdapter {
 
 	async reload(
 		session: GreenfieldRuntimeSession,
-		composition: GreenfieldRuntimeComposition,
+		composition: CodingAgentRuntimeComposition,
 		operation: () => Promise<void>,
 	): Promise<void> {
 		const previous = this.current;

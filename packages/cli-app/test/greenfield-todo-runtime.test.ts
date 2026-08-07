@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import type { GreenfieldRuntimeSession, RuntimeSessionTodoController } from "@vetta/runtime-core";
@@ -12,7 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 describe("Greenfield Todo Runtime composition", () => {
 	const directories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -62,7 +62,7 @@ describe("Greenfield Todo Runtime composition", () => {
 			assistantMessage([{ type: "text", text: "complete" }]),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,
@@ -115,7 +115,7 @@ describe("Greenfield Todo Runtime composition", () => {
 	it("persists prefilled scene-locked todos before the first turn", async () => {
 		const conversationDir = await mkdtemp(join(tmpdir(), "greenfield-prefilled-todo-"));
 		directories.push(conversationDir);
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

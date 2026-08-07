@@ -5,11 +5,11 @@ import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStrea
 import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import {
-	createGreenfieldRuntimeComposition,
-	type GreenfieldRuntimeCompositionOptions,
-} from "../../src/composition/greenfield-runtime-composition.js";
+	type CodingAgentRuntimeCompositionOptions,
+	createCodingAgentRuntimeComposition,
+} from "../../src/composition/runtime-composition.js";
 
-type TestTracer = NonNullable<GreenfieldRuntimeCompositionOptions["tracer"]>;
+type TestTracer = NonNullable<CodingAgentRuntimeCompositionOptions["tracer"]>;
 type TestObservation = ReturnType<TestTracer["startObservation"]>;
 type TestObservationUpdate = Parameters<TestTracer["startObservation"]>[1];
 type TestObservationOptions = Parameters<TestTracer["startObservation"]>[2];
@@ -32,7 +32,7 @@ describe("Greenfield Runtime tracing", () => {
 			flush,
 			shutdown,
 		};
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

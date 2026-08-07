@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 	CodingAgentRuntimeHostSessionBackend as GreenfieldRuntimeHostSessionBackend,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
@@ -40,7 +40,7 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 			assistantText("plugins disabled"),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
 			scenario: "batch",
@@ -149,7 +149,7 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 			assistantText("question tool disabled"),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
 			scenario: "conversation",
@@ -207,7 +207,7 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 	it("rejects ambiguous plugin sources instead of silently overriding one", async () => {
 		const cwd = await temporaryDirectory("greenfield-host-plugin-conflict-workspace-");
 		const conversationDir = await temporaryDirectory("greenfield-host-plugin-conflict-conversations-");
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd,
 			scenario: "batch",
@@ -237,7 +237,7 @@ describe("Greenfield RuntimeHost capabilities", { timeout: INTEGRATION_TEST_TIME
 		).rejects.toThrow("plugin capabilities conflict with createPluginRuntime");
 	});
 
-	function registerDisposal(runtime: RuntimeHost, composition: GreenfieldRuntimeComposition): void {
+	function registerDisposal(runtime: RuntimeHost, composition: CodingAgentRuntimeComposition): void {
 		disposers.push(async () => {
 			await runtime.disposeAllSessions();
 			await composition.dispose();

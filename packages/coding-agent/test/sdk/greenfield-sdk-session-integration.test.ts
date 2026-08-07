@@ -5,8 +5,8 @@ import type { Api, AssistantMessage, AssistantMessageEvent, Model } from "@vetta
 import { EventStream } from "@vetta/ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
-import { createGreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition.js";
-import type { GreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition-contract.js";
+import type { CodingAgentRuntimeComposition } from "../../src/composition/contracts/index.js";
+import { createCodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
 import { bindGreenfieldSdkSessionRuntime } from "../../src/host/sdk-session/runtime-binding.js";
 import type { GreenfieldSdkSession } from "../../src/host/sdk-session/runtime-contracts.js";
 import { createGreenfieldSdkSession } from "../../src/host/sdk-session/runtime-factory.js";
@@ -15,7 +15,7 @@ import { CodingAgentGreenfieldSessionCapabilityHost } from "../../src/host/sdk-s
 
 describe("Greenfield SDK session integration", () => {
 	const temporaryDirectories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 	const sdkSessions: GreenfieldSdkSession[] = [];
 
 	afterEach(async () => {
@@ -29,7 +29,7 @@ describe("Greenfield SDK session integration", () => {
 	it("runs the SDK core facade through the real Greenfield composition", async () => {
 		const conversationDir = await temporaryDirectory("greenfield-sdk-conversations-");
 		const workspace = await temporaryDirectory("greenfield-sdk-workspace-");
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd: workspace,
 			modelRegistry: modelRegistry(),

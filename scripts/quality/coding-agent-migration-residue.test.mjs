@@ -58,6 +58,25 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("rejects the retired Composition root identity", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/composition/greenfield-runtime-composition.ts",
+				text: [
+					'import type { Contract } from "./greenfield-runtime-composition-contract.js";',
+					"export function createGreenfieldRuntimeComposition(): GreenfieldRuntimeComposition {}",
+				].join("\n"),
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"packages/coding-agent/src/composition/greenfield-runtime-composition.ts: retired migration file must stay deleted",
+			"packages/coding-agent/src/composition/greenfield-runtime-composition.ts: retired migration reference (greenfield-runtime-composition)",
+			"packages/coding-agent/src/composition/greenfield-runtime-composition.ts: retired migration reference (createGreenfieldRuntimeComposition)",
+			"packages/coding-agent/src/composition/greenfield-runtime-composition.ts: retired migration reference (GreenfieldRuntimeComposition)",
+		]);
+	});
+
 	it("rejects retired runtime-core barrels from production and tests", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{

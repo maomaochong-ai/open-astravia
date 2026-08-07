@@ -10,8 +10,8 @@ import {
 	type Model,
 } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { assessRuntimeHostSessionAssembly } from "@vetta/runtime-core";
@@ -19,7 +19,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 describe("Greenfield Subagent Runtime composition", () => {
 	const directories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -37,7 +37,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 		const childToolSurfaces: string[][] = [];
 		const rootInputs: string[][] = [];
 		let rootCall = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd: workspace,
 			enableSubagents: true,
@@ -145,7 +145,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 		const childInputs: string[][] = [];
 		const childToolSurfaces: string[][] = [];
 		let rootCall = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd: workspace,
 			enableSubagents: true,
@@ -227,7 +227,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 		const conversationDir = await temporaryDirectory("greenfield-subagent-recovery-conversations-");
 		const workspace = await temporaryDirectory("greenfield-subagent-recovery-workspace-");
 		let initialRootCall = 0;
-		const initialComposition = await createGreenfieldRuntimeComposition({
+		const initialComposition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd: workspace,
 			enableSubagents: true,
@@ -284,7 +284,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 
 		let resumedRootCall = 0;
 		const resumedChildSessions: string[] = [];
-		const resumedComposition = await createGreenfieldRuntimeComposition({
+		const resumedComposition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd: workspace,
 			enableSubagents: true,
@@ -378,7 +378,7 @@ describe("Greenfield Subagent Runtime composition", () => {
 		await rm(initialChild.sessionFile, { force: true });
 		await writeFile(join(dirname(initialChild.sessionFile), "rogue.conversation.jsonl"), "", "utf8");
 
-		const missingComposition = await createGreenfieldRuntimeComposition({
+		const missingComposition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			cwd: workspace,
 			enableSubagents: true,

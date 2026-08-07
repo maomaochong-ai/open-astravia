@@ -12,7 +12,7 @@ const HOST_EXTENSION_ROOT = `${SOURCE_ROOT}/host/extensions`;
 
 export const MIGRATION_RESIDUE_LIMITS = Object.freeze({
 	adapterGreenfieldFiles: 30,
-	compositionGreenfieldFiles: 30,
+	compositionGreenfieldFiles: 28,
 	adapterCompositionEdgeFiles: 0,
 	compositionPublicApiEdgeFiles: 0,
 	hostExtensionCompositionEdgeFiles: 0,
@@ -43,6 +43,8 @@ export const RETIRED_MIGRATION_FILES = Object.freeze([
 	`${ADAPTER_ROOT}/runtime-core/greenfield-readonly-session-manager.ts`,
 	`${ADAPTER_ROOT}/runtime-core/greenfield-desktop-command-host.ts`,
 	`${COMPOSITION_ROOT}/session-host/extension-session-host.ts`,
+	`${COMPOSITION_ROOT}/greenfield-runtime-composition.ts`,
+	`${COMPOSITION_ROOT}/greenfield-runtime-composition-contract.ts`,
 ]);
 
 const RETIRED_MIGRATION_REFERENCES = Object.freeze([
@@ -72,6 +74,26 @@ const RETIRED_MIGRATION_REFERENCES = Object.freeze([
 	"adapters/runtime-core/greenfield-readonly-session-manager",
 	"adapters/runtime-core/greenfield-desktop-command-host",
 	"composition/session-host/extension-session-host",
+	"greenfield-runtime-composition",
+	"createGreenfieldRuntimeComposition",
+	"GreenfieldRuntimeComposition",
+	"GreenfieldRuntimeCompositionOptions",
+	"GreenfieldRuntimeContextOptions",
+	"GreenfieldRuntimeConversationOptions",
+	"GreenfieldRuntimeEnvironmentOptions",
+	"GreenfieldRuntimeExtensionControls",
+	"GreenfieldRuntimeExtensionOptions",
+	"GreenfieldRuntimeModelOptions",
+	"GreenfieldRuntimeObservabilityOptions",
+	"GreenfieldRuntimePluginOptions",
+	"GreenfieldRuntimePromptOptions",
+	"GreenfieldRuntimeSessionControls",
+	"GreenfieldRuntimeSessionHookLifecycle",
+	"GreenfieldRuntimeSessionOptions",
+	"GreenfieldRuntimeSubagentOptions",
+	"GreenfieldRuntimeToolAccess",
+	"GreenfieldRuntimeToolOptions",
+	"GreenfieldInitialTodoLockSource",
 ]);
 
 export function collectCodingAgentMigrationResidue(files) {
@@ -82,10 +104,12 @@ export function collectCodingAgentMigrationResidue(files) {
 	return Object.freeze({
 		retiredFiles: RETIRED_MIGRATION_FILES.filter((path) => sourceFiles.some((file) => file.path === path)),
 		retiredReferences: files.flatMap((file) =>
-			RETIRED_MIGRATION_REFERENCES.filter((reference) => file.text.includes(reference)).map((reference) => ({
-				path: file.path,
-				reference,
-			})),
+			RETIRED_MIGRATION_REFERENCES.filter((reference) => containsRetiredReference(file.text, reference)).map(
+				(reference) => ({
+					path: file.path,
+					reference,
+				}),
+			),
 		),
 		adapterGreenfieldFiles: adapterFiles.filter((file) => basename(file.path).startsWith("greenfield")),
 		compositionGreenfieldFiles: compositionFiles.filter((file) => basename(file.path).startsWith("greenfield")),
@@ -113,6 +137,10 @@ export function findCodingAgentMigrationResidueViolations(state) {
 		if (actual > limit) violations.push(`${key}: ${actual} exceeds migration residue limit ${limit}`);
 	}
 	return violations;
+}
+
+function containsRetiredReference(text, reference) {
+	return /^[A-Za-z_$][\w$]*$/.test(reference) ? new RegExp(`\\b${reference}\\b`).test(text) : text.includes(reference);
 }
 
 function collectModuleSpecifiers(text) {

@@ -3,15 +3,15 @@ import type { GreenfieldRuntimeSession } from "@vetta/runtime-core";
 import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSource, McpRuntimeToolView } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
+import type {
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeSessionOptions,
+} from "../../src/composition/contracts/index.js";
 import {
 	createGreenfieldChildCompositionFactory,
 	type GreenfieldChildRuntimeCompositionFactory,
 } from "../../src/composition/greenfield-child-composition-policy.js";
-import type {
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeCompositionOptions,
-	GreenfieldRuntimeSessionOptions,
-} from "../../src/composition/greenfield-runtime-composition-contract.js";
 import type {
 	GreenfieldSubagentChildCompositionRequest,
 	GreenfieldSubagentChildSessionOptions,
@@ -27,15 +27,15 @@ describe("Greenfield Child Composition policy", () => {
 			throw new Error("child must not create a plugin MCP runtime");
 		};
 		const createPluginRuntime = () => undefined;
-		const extensionTools: NonNullable<GreenfieldRuntimeCompositionOptions["extensionTools"]> = [];
-		const tracer = {} as NonNullable<GreenfieldRuntimeCompositionOptions["tracer"]>;
-		const tracing: NonNullable<GreenfieldRuntimeCompositionOptions["tracing"]> = {
+		const extensionTools: NonNullable<CodingAgentRuntimeCompositionOptions["extensionTools"]> = [];
+		const tracer = {} as NonNullable<CodingAgentRuntimeCompositionOptions["tracer"]>;
+		const tracing: NonNullable<CodingAgentRuntimeCompositionOptions["tracing"]> = {
 			traceName: "parent-trace",
 			metadata: { app: "coding-agent" },
 		};
-		const parentOptions: GreenfieldRuntimeCompositionOptions = {
+		const parentOptions: CodingAgentRuntimeCompositionOptions = {
 			conversationDir: "C:\\conversations",
-			modelRegistry: {} as GreenfieldRuntimeCompositionOptions["modelRegistry"],
+			modelRegistry: {} as CodingAgentRuntimeCompositionOptions["modelRegistry"],
 			initialModel: MODEL,
 			initialThinkingLevel: "off",
 			cwd: "C:\\parent",
@@ -61,7 +61,7 @@ describe("Greenfield Child Composition policy", () => {
 			inheritedMcpView,
 		};
 		const compositionCalls: Array<{
-			readonly options: GreenfieldRuntimeCompositionOptions;
+			readonly options: CodingAgentRuntimeCompositionOptions;
 			readonly inheritedMcpView: McpRuntimeToolView;
 		}> = [];
 		const createComposition: GreenfieldChildRuntimeCompositionFactory = async (options, view) => {
@@ -117,8 +117,8 @@ describe("Greenfield Child Composition policy", () => {
 function compositionFixture() {
 	const createdSession = { sessionId: "child-create" } as GreenfieldRuntimeSession;
 	const resumedSession = { sessionId: "child-resume" } as GreenfieldRuntimeSession;
-	const createSession = vi.fn(async (_options: GreenfieldRuntimeSessionOptions) => createdSession);
-	const resumeSession = vi.fn(async (_options: GreenfieldRuntimeSessionOptions) => resumedSession);
+	const createSession = vi.fn(async (_options: CodingAgentRuntimeSessionOptions) => createdSession);
+	const resumeSession = vi.fn(async (_options: CodingAgentRuntimeSessionOptions) => resumedSession);
 	const appendSessionContext = vi.fn((_sessionId: string, _records: readonly SessionContextRecord[]) => {});
 	const deliverSessionContext = vi.fn(async (_sessionId: string, _records: readonly SessionContextRecord[]) => {});
 	const dispose = vi.fn(async () => {});
@@ -135,7 +135,7 @@ function compositionFixture() {
 			appendSessionContext,
 			deliverSessionContext,
 			dispose,
-		} as unknown as GreenfieldRuntimeComposition,
+		} as unknown as CodingAgentRuntimeComposition,
 	};
 }
 

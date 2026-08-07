@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { CodingAgentRuntimeModelSource } from "../../src/adapters/runtime-core/greenfield-model-runtime-adapter.js";
 import type { CodingAgentPluginMcpRuntime } from "../../src/adapters/runtime-core/greenfield-plugin-mcp-runtime.js";
 import { CodingAgentTodoRuntime } from "../../src/adapters/runtime-core/greenfield-todo-runtime.js";
-import { createGreenfieldRuntimeComposition } from "../../src/composition/greenfield-runtime-composition.js";
+import { createCodingAgentRuntimeComposition } from "../../src/composition/runtime-composition.js";
 import { CodingAgentMemoryRolloverOrchestrator } from "../../src/memory/index.js";
 
 describe("Greenfield Session Initialization Transaction", () => {
@@ -40,7 +40,7 @@ describe("Greenfield Session Initialization Transaction", () => {
 				};
 			},
 		};
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			conversationOwnershipManager: ownershipManager,
 			modelRegistry: modelRegistry(),
@@ -111,7 +111,7 @@ describe("Greenfield Session Initialization Transaction", () => {
 		const rollbackOrder: string[] = [];
 		const pluginRuntime = createPluginMcpRuntime(rollbackOrder);
 		vi.spyOn(pluginRuntime, "reconfigure").mockRejectedValue(new Error("plugin MCP reconfiguration failed"));
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

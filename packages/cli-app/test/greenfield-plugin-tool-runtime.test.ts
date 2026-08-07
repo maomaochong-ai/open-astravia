@@ -10,8 +10,8 @@ import {
 	type Model,
 } from "@vetta/ai";
 import {
-	createCodingAgentRuntimeComposition as createGreenfieldRuntimeComposition,
-	type CodingAgentRuntimeComposition as GreenfieldRuntimeComposition,
+	type CodingAgentRuntimeComposition,
+	createCodingAgentRuntimeComposition,
 } from "@vetta/coding-agent/composition";
 import { type EcosystemHookEvent, emptyHookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
@@ -19,7 +19,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 describe("Greenfield Plugin Tool runtime composition", () => {
 	const temporaryDirectories: string[] = [];
-	const compositions: GreenfieldRuntimeComposition[] = [];
+	const compositions: CodingAgentRuntimeComposition[] = [];
 
 	afterEach(async () => {
 		for (const composition of compositions.splice(0).reverse()) {
@@ -97,7 +97,7 @@ describe("Greenfield Plugin Tool runtime composition", () => {
 			assistantText("verification response"),
 		];
 		let responseIndex = 0;
-		const composition = await createGreenfieldRuntimeComposition({
+		const composition = await createCodingAgentRuntimeComposition({
 			conversationDir,
 			modelRegistry: modelRegistry(),
 			initialModel: MODEL,

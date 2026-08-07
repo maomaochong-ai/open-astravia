@@ -1,21 +1,21 @@
 export type {
-	GreenfieldRuntimeCompositionOptions,
-	GreenfieldRuntimeContextOptions,
-	GreenfieldRuntimeConversationOptions,
-	GreenfieldRuntimeEnvironmentOptions,
-	GreenfieldRuntimeExtensionOptions,
-	GreenfieldRuntimeModelOptions,
-	GreenfieldRuntimeObservabilityOptions,
-	GreenfieldRuntimePluginOptions,
-	GreenfieldRuntimePromptOptions,
-	GreenfieldRuntimeSubagentOptions,
-	GreenfieldRuntimeToolOptions,
+	CodingAgentRuntimeCompositionOptions,
+	CodingAgentRuntimeContextOptions,
+	CodingAgentRuntimeConversationOptions,
+	CodingAgentRuntimeEnvironmentOptions,
+	CodingAgentRuntimeExtensionOptions,
+	CodingAgentRuntimeModelOptions,
+	CodingAgentRuntimeObservabilityOptions,
+	CodingAgentRuntimePluginOptions,
+	CodingAgentRuntimePromptOptions,
+	CodingAgentRuntimeSubagentOptions,
+	CodingAgentRuntimeToolOptions,
 } from "./runtime-composition-options.js";
 export type {
-	GreenfieldRuntimeComposition,
-	GreenfieldRuntimeExtensionControls,
-	GreenfieldRuntimeSessionControls,
-	GreenfieldRuntimeSessionHookLifecycle,
-	GreenfieldRuntimeToolAccess,
+	CodingAgentRuntimeComposition,
+	CodingAgentRuntimeExtensionControls,
+	CodingAgentRuntimeSessionControls,
+	CodingAgentRuntimeSessionHookLifecycle,
+	CodingAgentRuntimeToolAccess,
 } from "./runtime-composition-result.js";
-export type { GreenfieldInitialTodoLockSource, GreenfieldRuntimeSessionOptions } from "./runtime-session-options.js";
+export type { CodingAgentInitialTodoLockSource, CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";

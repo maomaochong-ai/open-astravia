@@ -8,16 +8,16 @@ import type {
 	CodingAgentGreenfieldExtensionToolSource,
 	CodingAgentGreenfieldSessionToolRegistration,
 } from "../../runtime-contracts/index.js";
-import type { GreenfieldRuntimeSessionOptions } from "./runtime-session-options.js";
+import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 
-export interface GreenfieldRuntimeSessionHookLifecycle {
+export interface CodingAgentRuntimeSessionHookLifecycle {
 	end(sessionId: string, cause: SessionEndCause): Promise<void>;
 	start(sessionId: string, source: SessionStartSource): void;
 	discard(sessionId: string): void;
 }
 
-export interface GreenfieldRuntimeSessionControls {
-	readonly sessionHooks: GreenfieldRuntimeSessionHookLifecycle;
+export interface CodingAgentRuntimeSessionControls {
+	readonly sessionHooks: CodingAgentRuntimeSessionHookLifecycle;
 	appendSessionContext(sessionId: string, records: readonly SessionContextRecord[]): void;
 	deliverSessionContext(sessionId: string, records: readonly SessionContextRecord[]): Promise<void>;
 	quiesceSessionBackgroundCommands(sessionId: string): Promise<void>;
@@ -27,7 +27,7 @@ export interface GreenfieldRuntimeSessionControls {
 	reloadMcp(sessionId: string): Promise<void>;
 }
 
-export interface GreenfieldRuntimeExtensionControls {
+export interface CodingAgentRuntimeExtensionControls {
 	bindExtensionRunner(
 		sessionId: string,
 		runner: CodingAgentGreenfieldExtensionRunnerPort,
@@ -38,15 +38,15 @@ export interface GreenfieldRuntimeExtensionControls {
 	clearSessionTools(sessionId: string): void;
 }
 
-export interface GreenfieldRuntimeToolAccess {
+export interface CodingAgentRuntimeToolAccess {
 	readonly registry: CodingToolRegistry;
 }
 
-export interface GreenfieldRuntimeComposition
-	extends GreenfieldRuntimeSessionControls,
-		GreenfieldRuntimeExtensionControls {
-	readonly backend: GreenfieldRuntimeSessionBackend<GreenfieldRuntimeSessionOptions>;
-	readonly tools: GreenfieldRuntimeToolAccess;
+export interface CodingAgentRuntimeComposition
+	extends CodingAgentRuntimeSessionControls,
+		CodingAgentRuntimeExtensionControls {
+	readonly backend: GreenfieldRuntimeSessionBackend<CodingAgentRuntimeSessionOptions>;
+	readonly tools: CodingAgentRuntimeToolAccess;
 	readonly scenario: ConversationScenario;
 	dispose(): Promise<void>;
 }
