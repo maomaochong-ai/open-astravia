@@ -44,6 +44,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"storage.read": "permission.storageRead",
 	"storage.write": "permission.storageWrite",
 	"media.generate": "permission.mediaGenerate",
+	"media.provider.register": "permission.mediaProviderRegister",
 	"settings.read": "permission.settingsRead",
 	"settings.write": "permission.settingsWrite",
 	"shell.openExternal": "permission.shellOpenExternal",

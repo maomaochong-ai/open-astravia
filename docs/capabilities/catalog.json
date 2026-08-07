@@ -4802,6 +4802,11 @@
               "maxLength": 129,
               "type": "string"
             },
+            "displayName": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
             "ownerId": {
               "minLength": 1,
               "maxLength": 128,

@@ -1,0 +1,10 @@
+{
+	"plugin.name": "ComfyUI 视频生成",
+	"plugin.description": "将本地 ComfyUI 工作流作为统一的视频生成 Provider。",
+	"provider.name": "ComfyUI · MiniMax H3",
+	"settings.baseUrl.title": "ComfyUI 服务地址",
+	"settings.baseUrl.description": "ComfyUI HTTP API 的根地址。",
+	"settings.templatePromptId.title": "模板任务 ID",
+	"settings.templatePromptId.description": "可选。固定一个成功任务作为 API Prompt 模板；留空时使用最近的兼容成功任务。"
+}
+

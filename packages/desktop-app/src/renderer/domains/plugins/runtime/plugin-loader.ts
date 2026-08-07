@@ -78,6 +78,7 @@ import {
 	registerPluginAgentToolHandler,
 	registerPluginAppActionHandler,
 	registerPluginContinuationHandler,
+	registerPluginMediaProviderHandler,
 	registerPluginSystemPromptHandler,
 } from "./plugin-host-bridge";
 import { createPluginOfficialApi } from "./plugin-official-api";
@@ -449,13 +450,66 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 	};
 }
 
-function createMediaApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginMediaApi {
+function createMediaApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+	activationId: string,
+	disposers: Array<() => void>,
+	pendingRuntimeRegistrations: Promise<void>[],
+): PluginMediaApi {
 	const permissions = createPermissionApi(plugin);
 	const media = window.vetta.plugins.internalCapabilities.media;
 	return {
+		registerProvider: (registration) => {
+			permissions.require("media.provider.register");
+			permissions.require("network.fetch");
+			if (typeof registration.id !== "string" || !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(registration.id)) {
+				throw new Error("Media provider id must be 1-64 lowercase characters, numbers, dot, underscore, or dash");
+			}
+			if (!Array.isArray(registration.capabilities) || registration.capabilities.length === 0) {
+				throw new Error("Media provider capabilities are required");
+			}
+			if (typeof registration.createJob !== "function")
+				throw new Error("Media provider createJob handler is required");
+			const handlerId = `${registration.id}:${crypto.randomUUID()}`;
+			const handlerHandle = registerPluginMediaProviderHandler({
+				pluginId: plugin.id,
+				handlerId,
+				registration,
+			});
+			const registrationPromise = window.vetta.plugins
+				.registerMediaProvider(plugin.id, {
+					id: registration.id,
+					displayName: registration.displayName?.trim() || undefined,
+					capabilities: registration.capabilities,
+					handlerId,
+					activationId,
+					hasGetJob: typeof registration.getJob === "function",
+					hasCancelJob: typeof registration.cancelJob === "function",
+				})
+				.catch((error: Error) => {
+					handlerHandle.dispose();
+					throw error;
+				});
+			pendingRuntimeRegistrations.push(registrationPromise);
+			let disposed = false;
+			const dispose = (): void => {
+				if (disposed) return;
+				disposed = true;
+				handlerHandle.dispose();
+				void window.vetta.plugins.unregisterMediaProvider(plugin.id, registration.id, activationId);
+			};
+			disposers.push(dispose);
+			return { dispose };
+		},
 		listProviders: () => {
 			permissions.require("media.generate");
 			return media.listProviders(capabilitySessionId);
+		},
+		onProvidersChanged: (listener) => {
+			permissions.require("media.generate");
+			const unsubscribe = window.vetta.plugins.onMediaProvidersChanged(listener);
+			return { dispose: unsubscribe };
 		},
 		createJob: (request) => {
 			permissions.require("media.generate");
@@ -1289,7 +1343,7 @@ function createContext(
 		conversation,
 		fs,
 		command: createCommandApi(plugin, disposers),
-		media: createMediaApi(plugin, capabilitySessionId),
+		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
 		capture: createCaptureApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {

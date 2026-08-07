@@ -6,9 +6,22 @@ import { createVettaImageProvider } from "../media-generation/vetta-image-provid
 
 const DOMAIN_MEDIA_PROVIDER_OWNER = "vetta.domain.media";
 
+export interface DesktopMediaRuntime {
+	readonly providers: MediaProviderRegistry;
+	readonly artifacts: MediaArtifactStore;
+}
+
+let desktopMediaRuntime: DesktopMediaRuntime | undefined;
+
+export function getDesktopMediaRuntime(): DesktopMediaRuntime {
+	if (!desktopMediaRuntime) throw new Error("Desktop media runtime is not initialized");
+	return desktopMediaRuntime;
+}
+
 export function registerDesktopMediaProviders(registry: CapabilityRegistry): Disposable {
 	const providers = new MediaProviderRegistry();
 	const artifacts = new MediaArtifactStore();
+	desktopMediaRuntime = { providers, artifacts };
 	const vettaRegistration = providers.registerProvider(createVettaImageProvider(artifacts));
 	const capabilityRegistration = registry.registerOwner(DOMAIN_MEDIA_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS, {
@@ -35,6 +48,7 @@ export function registerDesktopMediaProviders(registry: CapabilityRegistry): Dis
 	]);
 	return {
 		dispose: () => {
+			if (desktopMediaRuntime?.providers === providers) desktopMediaRuntime = undefined;
 			capabilityRegistration.dispose();
 			vettaRegistration.dispose();
 			artifacts.dispose();

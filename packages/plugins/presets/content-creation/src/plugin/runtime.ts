@@ -12,23 +12,41 @@ let generationService: ContentGenerationService | null = null;
 let assetPreviewResolver: ContentAssetPreviewResolver | null = null;
 let promptOptimizationService: ContentPromptOptimizationService | null = null;
 let notify: PluginContext["ui"]["notify"] | null = null;
+let mediaProviderSubscription: { dispose(): void } | null = null;
+let mediaProviderRefreshVersion = 0;
 
-export async function initializePluginRuntime(ctx: PluginContext): Promise<ContentCreationWorkspace> {
-	workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
-	assetPreviewResolver = new ContentAssetPreviewResolver(ctx.fs, ctx.storage);
-	promptOptimizationService = new ContentPromptOptimizationService(ctx.ai);
+async function refreshMediaProviders(ctx: PluginContext): Promise<void> {
+	const refreshVersion = ++mediaProviderRefreshVersion;
 	const mediaProviders = await ctx.media.listProviders().catch((error: unknown) => {
 		ctx.ui.notify({ message: ctx.i18n.t("error.mediaProviderDiscovery"), error });
 		return [];
 	});
+	if (refreshVersion !== mediaProviderRefreshVersion || !workspace) return;
 	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, mediaProviders);
 	generationService = new ContentGenerationService(
 		workspace,
 		providers,
 		new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.media),
 	);
+}
+
+export async function initializePluginRuntime(ctx: PluginContext): Promise<ContentCreationWorkspace> {
+	mediaProviderSubscription?.dispose();
+	workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
+	assetPreviewResolver = new ContentAssetPreviewResolver(ctx.fs, ctx.storage);
+	promptOptimizationService = new ContentPromptOptimizationService(ctx.ai);
 	notify = ctx.ui.notify;
+	mediaProviderSubscription = ctx.media.onProvidersChanged(() => {
+		void refreshMediaProviders(ctx);
+	});
+	await refreshMediaProviders(ctx);
 	return workspace;
+}
+
+export function disposePluginRuntime(): void {
+	mediaProviderRefreshVersion += 1;
+	mediaProviderSubscription?.dispose();
+	mediaProviderSubscription = null;
 }
 
 export function getContentGenerationService(): ContentGenerationService {

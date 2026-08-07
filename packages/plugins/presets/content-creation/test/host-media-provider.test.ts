@@ -31,7 +31,9 @@ function createMediaApi() {
 	const saveArtifact = vi.fn<PluginMediaApi["saveArtifact"]>();
 	const releaseArtifact = vi.fn<PluginMediaApi["releaseArtifact"]>();
 	const media: PluginMediaApi = {
+		registerProvider: vi.fn(),
 		listProviders,
+		onProvidersChanged: vi.fn(),
 		createJob,
 		getJob,
 		cancelJob,

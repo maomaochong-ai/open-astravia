@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"strict": true,
+		"skipLibCheck": true,
+		"moduleResolution": "bundler",
+		"baseUrl": ".",
+		"paths": {
+			"@vetta-org/plugin-sdk": ["../../plugin-sdk/src/index.ts"],
+			"@vetta-org/plugin-sdk/*": ["../../plugin-sdk/src/*"]
+		},
+		"isolatedModules": true,
+		"noEmit": true
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"]
+}
+

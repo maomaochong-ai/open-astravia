@@ -538,6 +538,17 @@
         "vite": "^7.1.7",
       },
     },
+    "packages/plugins/presets/comfyui-media-provider": {
+      "name": "@vetta/plugin-comfyui-media-provider",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@vetta-org/plugin-sdk": "workspace:*",
+        "@vetta-org/plugin-vite": "workspace:*",
+        "typescript": "^5.9.2",
+        "vite": "^7.1.7",
+        "vitest": "^3.2.4",
+      },
+    },
     "packages/plugins/presets/content-creation": {
       "name": "@vetta/plugin-content-creation",
       "version": "0.1.1",
@@ -2578,6 +2589,8 @@
     "@vetta/markdown": ["@vetta/markdown@workspace:packages/markdown"],
 
     "@vetta/plugin-chart-renderer": ["@vetta/plugin-chart-renderer@workspace:packages/plugins/presets/chart-renderer"],
+
+    "@vetta/plugin-comfyui-media-provider": ["@vetta/plugin-comfyui-media-provider@workspace:packages/plugins/presets/comfyui-media-provider"],
 
     "@vetta/plugin-content-creation": ["@vetta/plugin-content-creation@workspace:packages/plugins/presets/content-creation"],
 

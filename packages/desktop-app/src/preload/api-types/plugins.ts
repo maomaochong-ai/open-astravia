@@ -65,8 +65,13 @@ import type {
 import type {
 	PluginAgentManifest,
 	PluginMediaArtifactDestination,
+	PluginMediaCapability,
 	PluginMediaCreateJobRequest,
+	PluginMediaProviderCreateJobRequest,
+	PluginMediaProviderJob,
+	PluginMediaReferenceUploadRequest,
 	PluginMediaSavedArtifact,
+	PluginMediaTransferResponse,
 	PluginPermission,
 	PluginSettingSchema,
 } from "@vetta-org/plugin-sdk";
@@ -559,6 +564,26 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	webhook: DesktopPluginCapabilityWebhookApi;
 }
 
+export interface PluginMediaProviderHostRegistration {
+	id: string;
+	displayName?: string;
+	capabilities: readonly PluginMediaCapability[];
+	handlerId: string;
+	activationId: string;
+	hasGetJob: boolean;
+	hasCancelJob: boolean;
+}
+
+export interface PluginMediaProviderInvocationRequest {
+	requestId: string;
+	pluginId: string;
+	handlerId: string;
+	operation: "createJob" | "getJob" | "cancelJob";
+	input: PluginMediaProviderCreateJobRequest | { jobId: string };
+}
+
+export type PluginMediaProviderInvocationResult = { value: PluginMediaProviderJob } | { error: string };
+
 export interface DesktopPluginsApi {
 	readonly internalCapabilities: DesktopPluginInternalCapabilitiesApi;
 	/** 当前工作模式（agent_mode 轴）下可见的插件；工作台与 UI 贡献用它。见 ADR-0046。 */
@@ -647,6 +672,16 @@ export interface DesktopPluginsApi {
 		requestId: string,
 		result: PluginHandlerInvocationResult<PluginDynamicSystemPromptOperation[]> | { error: string },
 	): Promise<void>;
+	registerMediaProvider(pluginId: string, registration: PluginMediaProviderHostRegistration): Promise<void>;
+	unregisterMediaProvider(pluginId: string, providerId: string, activationId: string): Promise<void>;
+	onMediaProvidersChanged(handler: () => void): () => void;
+	onMediaProviderRequest(handler: (request: PluginMediaProviderInvocationRequest) => void): () => void;
+	respondMediaProvider(requestId: string, result: PluginMediaProviderInvocationResult): Promise<void>;
+	uploadMediaProviderReference<T = unknown>(
+		requestId: string,
+		referenceId: string,
+		request: PluginMediaReferenceUploadRequest,
+	): Promise<PluginMediaTransferResponse<T>>;
 	/** Effective setting values for a plugin (schema defaults merged with stored). */
 	getSettings(id: string): Promise<Record<string, unknown>>;
 	/** Persist setting values for a plugin (merged over existing). */

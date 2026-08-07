@@ -135,6 +135,25 @@ describe("MediaArtifactStore", () => {
 		await store.release(artifact.id);
 	});
 
+	it("streams a remote media body into a host artifact without base64 conversion", async () => {
+		const store = createStore();
+		const bytes = Buffer.from("streamed generated video");
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(bytes.subarray(0, 8));
+				controller.enqueue(bytes.subarray(8));
+				controller.close();
+			},
+		});
+
+		const artifact = await store.putStream(stream, { kind: "video", mimeType: "video/mp4" });
+		const artifactPath = join(artifactRoot, `${artifact.id}.mp4`);
+
+		expect(artifact.sizeBytes).toBe(bytes.byteLength);
+		await expect(readFile(artifactPath)).resolves.toEqual(bytes);
+		await store.release(artifact.id);
+	});
+
 	it("invalidates all remaining handles when disposed", async () => {
 		const store = createStore();
 		const artifact = await store.putBase64(Buffer.from("temporary").toString("base64"), {

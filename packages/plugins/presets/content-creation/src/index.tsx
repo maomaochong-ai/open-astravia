@@ -4,7 +4,7 @@ import "./styles/index.css";
 import { setActivityPanelWidthController, setRegisterShortcutScope } from "./plugin/plugin-ui";
 import { registerContentCreationTools } from "./plugin/register-tools";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
-import { initializePluginRuntime } from "./plugin/runtime";
+import { disposePluginRuntime, initializePluginRuntime } from "./plugin/runtime";
 
 export default definePlugin({
 	async activate(ctx) {
@@ -23,6 +23,7 @@ export default definePlugin({
 		registerContentCreationTools(ctx, workspace);
 	},
 	deactivate() {
+		disposePluginRuntime();
 		setRegisterShortcutScope(null);
 		setActivityPanelWidthController(null);
 	},

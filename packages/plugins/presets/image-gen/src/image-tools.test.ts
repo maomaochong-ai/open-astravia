@@ -39,7 +39,9 @@ describe("image generation media tools", () => {
 	const sessionLineages = vi.fn<ImageRepository["sessionLineages"]>();
 	const openActivityTab = vi.fn();
 	const media: PluginMediaApi = {
+		registerProvider: vi.fn(),
 		listProviders,
+		onProvidersChanged: vi.fn(),
 		createJob,
 		getJob,
 		cancelJob,

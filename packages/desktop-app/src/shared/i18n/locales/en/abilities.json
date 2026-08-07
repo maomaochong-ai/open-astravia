@@ -243,6 +243,7 @@
 		"storageRead": "Read private plugin data",
 		"storageWrite": "Write private plugin data",
 		"mediaGenerate": "Use media generation providers",
+		"mediaProviderRegister": "Provide media generation providers",
 		"settingsRead": "Read settings",
 		"settingsWrite": "Modify settings",
 		"shellOpenExternal": "Open links in the system browser"

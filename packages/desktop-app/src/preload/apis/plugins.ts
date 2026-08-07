@@ -344,6 +344,16 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			onSystemPromptRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:system-prompt-request", handler),
 			respondSystemPrompt: (requestId, result) =>
 				ipc.invoke("vetta:plugins:system-prompt-response", requestId, result),
+			registerMediaProvider: (pluginId, registration) =>
+				ipc.invoke("vetta:plugins:media-provider-register", pluginId, registration),
+			unregisterMediaProvider: (pluginId, providerId, activationId) =>
+				ipc.invoke("vetta:plugins:media-provider-unregister", pluginId, providerId, activationId),
+			onMediaProvidersChanged: (handler) => onIpcEvent(ipc, "vetta:plugins:media-providers-changed", handler),
+			onMediaProviderRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:media-provider-request", handler),
+			respondMediaProvider: (requestId, result) =>
+				ipc.invoke("vetta:plugins:media-provider-response", requestId, result),
+			uploadMediaProviderReference: (requestId, referenceId, request) =>
+				ipc.invoke("vetta:plugins:media-provider-reference-upload", requestId, referenceId, request),
 			getSettings: (id) => ipc.invoke("vetta:plugins:get-settings", id),
 			setSettings: (id, values) => ipc.invoke("vetta:plugins:set-settings", id, values),
 			networkRequest: (sessionId, request) => ipc.invoke("vetta:plugins:network:request", sessionId, request),

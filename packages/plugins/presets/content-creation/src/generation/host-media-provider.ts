@@ -119,7 +119,9 @@ function createModels(provider: PluginMediaProviderDescriptor): ContentModelDesc
 		return [{
 			providerId: HOST_MEDIA_PROVIDER_ID,
 			modelId: outputKinds.length === 1 ? provider.id : `${provider.id}:${outputKind}`,
-			displayName: provider.id === "desktop-app:vetta" && outputKind === "image" ? "Vetta Image" : provider.id,
+			displayName:
+				provider.displayName ??
+				(provider.id === "desktop-app:vetta" && outputKind === "image" ? "Vetta Image" : provider.id),
 			outputKind,
 			modes,
 			aspectRatios: unique(capabilities.flatMap((capability) => capability.aspectRatios ?? [])),

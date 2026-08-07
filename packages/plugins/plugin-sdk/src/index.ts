@@ -203,10 +203,18 @@ export type {
 	PluginMediaJobStatus,
 	PluginMediaKind,
 	PluginMediaProviderDescriptor,
+	PluginMediaProviderArtifact,
+	PluginMediaProviderCreateJobRequest,
+	PluginMediaProviderHandlerContext,
+	PluginMediaProviderJob,
+	PluginMediaProviderReference,
+	PluginMediaProviderRegistration,
 	PluginMediaReference,
 	PluginMediaReferenceKind,
 	PluginMediaReferenceSource,
+	PluginMediaReferenceUploadRequest,
 	PluginMediaSavedArtifact,
+	PluginMediaTransferResponse,
 } from "./media.js";
 export { PluginMediaError } from "./media.js";
 export type { PluginPromptAttachment } from "./prompt-attachment.js";

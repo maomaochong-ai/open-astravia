@@ -23,6 +23,9 @@ import type {
 	PluginConversationApi,
 	PluginDynamicSystemPromptOperation,
 	PluginHostBridge,
+	PluginMediaProviderCreateJobRequest,
+	PluginMediaProviderJob,
+	PluginMediaProviderRegistration,
 	PluginPromptAttachment,
 	PluginSystemPromptProviderHandler,
 } from "@vetta-org/plugin-sdk";
@@ -47,6 +50,7 @@ const appActionHandlers = new Map<string, PluginAppActionHandlerEntry>();
 const appActionInvocations = new Map<string, { controller: AbortController; handlerKey: string }>();
 const continuationHandlers = new Map<string, { handler: PluginContinuationHandler; api: PluginAgentToolApi }>();
 const systemPromptHandlers = new Map<string, { handler: PluginSystemPromptProviderHandler; api: PluginAgentToolApi }>();
+const mediaProviderHandlers = new Map<string, PluginMediaProviderRegistration>();
 
 function handlerKey(pluginId: string, handlerId: string): string {
 	return `${pluginId}:${handlerId}`;
@@ -413,6 +417,50 @@ function startSystemPromptRequestListener(): void {
 	});
 }
 
+let mediaProviderRequestListenerStarted = false;
+
+function startMediaProviderRequestListener(): void {
+	if (mediaProviderRequestListenerStarted) return;
+	mediaProviderRequestListenerStarted = true;
+	window.vetta.plugins.onMediaProviderRequest((request) => {
+		const registration = mediaProviderHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		if (!registration) {
+			void window.vetta.plugins.respondMediaProvider(request.requestId, {
+				error: `Plugin media provider handler not found: ${request.pluginId}/${request.handlerId}`,
+			});
+			return;
+		}
+		const context = {
+			invocationId: request.requestId,
+			uploadReference: <T = unknown>(
+				referenceId: string,
+				input: Parameters<typeof window.vetta.plugins.uploadMediaProviderReference>[2],
+			) => window.vetta.plugins.uploadMediaProviderReference<T>(request.requestId, referenceId, input),
+		};
+		let invocation: Promise<PluginMediaProviderJob> | undefined;
+		if (request.operation === "createJob") {
+			invocation = registration.createJob(request.input as PluginMediaProviderCreateJobRequest, context);
+		} else if (request.operation === "getJob") {
+			invocation = registration.getJob?.((request.input as { jobId: string }).jobId, context);
+		} else {
+			invocation = registration.cancelJob?.((request.input as { jobId: string }).jobId, context);
+		}
+		if (!invocation) {
+			void window.vetta.plugins.respondMediaProvider(request.requestId, {
+				error: `Plugin media provider operation is unsupported: ${request.operation}`,
+			});
+			return;
+		}
+		void Promise.resolve(invocation).then(
+			(value) => window.vetta.plugins.respondMediaProvider(request.requestId, { value }),
+			(error: unknown) =>
+				window.vetta.plugins.respondMediaProvider(request.requestId, {
+					error: error instanceof Error ? error.message : String(error),
+				}),
+		);
+	});
+}
+
 export function registerPluginAgentToolHandler(options: {
 	pluginId: string;
 	toolId: string;
@@ -486,6 +534,20 @@ export function registerPluginSystemPromptHandler(options: {
 			if (systemPromptHandlers.get(key)?.handler === options.handler) {
 				systemPromptHandlers.delete(key);
 			}
+		},
+	};
+}
+
+export function registerPluginMediaProviderHandler(options: {
+	pluginId: string;
+	handlerId: string;
+	registration: PluginMediaProviderRegistration;
+}): Disposable {
+	const key = handlerKey(options.pluginId, options.handlerId);
+	mediaProviderHandlers.set(key, options.registration);
+	return {
+		dispose: () => {
+			if (mediaProviderHandlers.get(key) === options.registration) mediaProviderHandlers.delete(key);
 		},
 	};
 }
@@ -586,6 +648,7 @@ export function installPluginHostBridge(): void {
 	startAppActionRequestListener();
 	startContinuationRequestListener();
 	startSystemPromptRequestListener();
+	startMediaProviderRequestListener();
 	if (installed) return;
 	installed = true;
 	__setPluginHostBridge(pluginHostBridge);

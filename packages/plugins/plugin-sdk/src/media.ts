@@ -98,6 +98,7 @@ export interface PluginMediaCapability {
 export interface PluginMediaProviderDescriptor {
 	/** Host-qualified provider id. */
 	id: string;
+	displayName?: string;
 	ownerId: string;
 	protocolVersion: number;
 	capabilities: readonly PluginMediaCapability[];
@@ -130,8 +131,79 @@ export interface PluginMediaJobRef {
 	id: string;
 }
 
+/** A media reference exposed to its provider without revealing its storage location. */
+export interface PluginMediaProviderReference {
+	id: string;
+	kind: PluginMediaReferenceKind;
+	mimeType?: string;
+}
+
+export interface PluginMediaReferenceUploadRequest {
+	url: string;
+	fieldName: string;
+	fileName?: string;
+	fields?: Record<string, string>;
+	headers?: Record<string, string>;
+	timeoutMs?: number;
+}
+
+export interface PluginMediaTransferResponse<T = unknown> {
+	ok: boolean;
+	status: number;
+	statusText: string;
+	headers: Record<string, string>;
+	body: T;
+}
+
+export interface PluginMediaProviderHandlerContext {
+	readonly invocationId: string;
+	uploadReference<T = unknown>(
+		referenceId: string,
+		request: PluginMediaReferenceUploadRequest,
+	): Promise<PluginMediaTransferResponse<T>>;
+}
+
+export type PluginMediaProviderCreateJobRequest = Omit<PluginMediaCreateJobRequest, "providerId" | "references"> & {
+	readonly references: readonly PluginMediaProviderReference[];
+};
+
+export interface PluginMediaProviderArtifact {
+	kind: PluginMediaKind;
+	mimeType?: string;
+	width?: number;
+	height?: number;
+	durationSeconds?: number;
+	source: {
+		type: "remote-url";
+		url: string;
+		headers?: Record<string, string>;
+	};
+}
+
+export interface PluginMediaProviderJob {
+	id: string;
+	status: PluginMediaJobStatus;
+	progress?: number;
+	artifacts?: readonly PluginMediaProviderArtifact[];
+	error?: PluginMediaFailure;
+}
+
+export interface PluginMediaProviderRegistration {
+	id: string;
+	displayName?: string;
+	capabilities: readonly PluginMediaCapability[];
+	createJob(
+		request: PluginMediaProviderCreateJobRequest,
+		context: PluginMediaProviderHandlerContext,
+	): Promise<PluginMediaProviderJob>;
+	getJob?(jobId: string, context: PluginMediaProviderHandlerContext): Promise<PluginMediaProviderJob>;
+	cancelJob?(jobId: string, context: PluginMediaProviderHandlerContext): Promise<PluginMediaProviderJob>;
+}
+
 export interface PluginMediaApi {
+	registerProvider(registration: PluginMediaProviderRegistration): Disposable;
 	listProviders(): Promise<readonly PluginMediaProviderDescriptor[]>;
+	onProvidersChanged(listener: () => void): Disposable;
 	createJob(request: PluginMediaCreateJobRequest): Promise<PluginMediaJob>;
 	getJob(job: PluginMediaJobRef): Promise<PluginMediaJob>;
 	cancelJob(job: PluginMediaJobRef): Promise<PluginMediaJob>;
@@ -141,3 +213,4 @@ export interface PluginMediaApi {
 	}): Promise<PluginMediaSavedArtifact>;
 	releaseArtifact(artifactId: string): Promise<void>;
 }
+import type { Disposable } from "./disposable.js";

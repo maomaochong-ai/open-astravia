@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
 import { copyFile, mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, extname, join } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import type {
 	MediaArtifact,
 	MediaArtifactDestination,
@@ -27,6 +31,12 @@ export interface MediaArtifactMetadata {
 export interface ResolvedMediaReference {
 	data: Buffer;
 	mimeType: string;
+}
+
+export interface ResolvedMediaReferenceFile {
+	path: string;
+	mimeType: string;
+	sizeBytes: number;
 }
 
 function extensionForMimeType(mimeType: string): string {
@@ -88,16 +98,43 @@ export class MediaArtifactStore {
 		return artifact;
 	}
 
-	async resolveReference(reference: MediaReference): Promise<ResolvedMediaReference> {
+	async putStream(stream: ReadableStream<Uint8Array>, metadata: MediaArtifactMetadata): Promise<MediaArtifact> {
+		const id = randomUUID();
+		const path = join(this.root, `${id}${extensionForMimeType(metadata.mimeType)}`);
+		await mkdir(this.root, { recursive: true });
+		try {
+			await pipeline(Readable.fromWeb(stream as unknown as NodeReadableStream<Uint8Array>), createWriteStream(path));
+			const file = await stat(path);
+			const artifact: MediaArtifact = { id, sizeBytes: file.size, ...metadata };
+			this.artifacts.set(id, { artifact, path });
+			return artifact;
+		} catch (error) {
+			await unlink(path).catch(() => undefined);
+			throw error;
+		}
+	}
+
+	async resolveReferenceFile(reference: MediaReference): Promise<ResolvedMediaReferenceFile> {
 		if (reference.source.type === "plugin-blob") {
 			const file = await getPluginBlobFile(reference.source.namespace, reference.source.blobId);
 			if (!file) throw new Error(`Media reference blob was not found: ${reference.source.blobId}`);
-			return { data: await readFile(file.path), mimeType: reference.mimeType ?? file.mimeType };
+			return {
+				path: file.path,
+				mimeType: reference.mimeType ?? file.mimeType,
+				sizeBytes: file.sizeBytes,
+			};
 		}
+		const file = await stat(reference.source.path);
 		return {
-			data: await readFile(reference.source.path),
+			path: reference.source.path,
 			mimeType: reference.mimeType ?? mimeTypeForPath(reference.source.path),
+			sizeBytes: file.size,
 		};
+	}
+
+	async resolveReference(reference: MediaReference): Promise<ResolvedMediaReference> {
+		const file = await this.resolveReferenceFile(reference);
+		return { data: await readFile(file.path), mimeType: file.mimeType };
 	}
 
 	async save(artifactId: string, destination: MediaArtifactDestination): Promise<MediaSavedArtifact> {

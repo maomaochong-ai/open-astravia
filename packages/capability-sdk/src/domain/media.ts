@@ -106,6 +106,7 @@ const mediaCapabilityType = Type.Object(
 const mediaProviderDescriptorType = Type.Object(
 	{
 		id: Type.String({ minLength: 1, maxLength: 129 }),
+		displayName: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
 		ownerId: Type.String({ minLength: 1, maxLength: 128 }),
 		protocolVersion: Type.Literal(MEDIA_PROTOCOL_VERSION),
 		capabilities: Type.Array(mediaCapabilityType, { minItems: 1 }),
