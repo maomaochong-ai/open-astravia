@@ -12,7 +12,8 @@
       "git",
       "plugin-workbench",
       "comfyui-media-provider",
-      "content-creation"
+      "content-creation",
+      "remotion-renderer"
     ]
   }
 }

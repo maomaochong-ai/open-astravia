@@ -1,0 +1,36 @@
+{
+	"id": "remotion-renderer",
+	"name": "%plugin.name%",
+	"icon": "solar:clapperboard-play-linear",
+	"version": "0.1.0",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "remotion_renderer",
+		"expose": "./plugin"
+	},
+	"permissions": [
+		"agent.skills.control",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.command.run",
+		"agent.command.spawn",
+		"media.generate",
+		"media.provider.register",
+		"network.fetch",
+		"fs.read",
+		"fs.write"
+	],
+	"network": {
+		"allowedHosts": ["127.0.0.1", "localhost"]
+	},
+	"commands": ["node"],
+	"agent": {
+		"skillPaths": ["agent/skills/remotion-video"]
+	},
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}
+

@@ -1,0 +1,89 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "remotion-renderer",
+	"version": "0.1.0",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "design",
+					"brand_name": "Remotion",
+					"user_prompt": "做一个 10 秒的产品介绍视频并导出 MP4。",
+					"assistant_reply": "我会在当前对话工程中编写 Remotion 组件，并使用本地渲染器导出视频。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "对话即 Remotion 工程",
+				"items": [
+					{
+						"title": "标准 React 工程",
+						"description": "源码、依赖、资源和输出都保存在当前对话目录。",
+						"icon": "solar:code-square-linear"
+					},
+					{
+						"title": "原生 CLI 渲染",
+						"description": "调用工程本地 Remotion CLI，保留配置文件和扩展能力。",
+						"icon": "solar:clapperboard-play-linear"
+					},
+					{
+						"title": "任务进度",
+						"description": "渲染通过媒体任务运行，支持查询进度和取消。",
+						"icon": "solar:clock-circle-linear"
+					},
+					{
+						"title": "直接输出 MP4",
+						"description": "完成的视频写入工程 out 目录，可在文件列表中预览。",
+						"icon": "solar:video-frame-play-horizontal-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "design",
+							"brand_name": "Remotion",
+							"user_prompt": "Create a 10-second product video and export it as MP4.",
+							"assistant_reply": "I will build the Remotion components in this conversation project and render the video locally."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Each conversation is a Remotion project",
+						"items": [
+							{
+								"title": "Standard React project",
+								"description": "Source, dependencies, assets, and output stay in the conversation directory.",
+								"icon": "solar:code-square-linear"
+							},
+							{
+								"title": "Native CLI rendering",
+								"description": "Uses the project's local Remotion CLI, including its config and extensions.",
+								"icon": "solar:clapperboard-play-linear"
+							},
+							{
+								"title": "Job progress",
+								"description": "Rendering runs as a media job with progress and cancellation support.",
+								"icon": "solar:clock-circle-linear"
+							},
+							{
+								"title": "MP4 output",
+								"description": "Completed videos are written to out and can be previewed from the file list.",
+								"icon": "solar:video-frame-play-horizontal-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}
+

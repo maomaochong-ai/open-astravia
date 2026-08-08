@@ -1,0 +1,7 @@
+{
+	"plugin.name": "Remotion Video",
+	"plugin.description": "Create React videos in the current conversation project and render them to MP4 with the project's local Remotion CLI.",
+	"provider.name": "Local Remotion",
+	"tool.render": "Render Remotion video"
+}
+

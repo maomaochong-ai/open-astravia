@@ -1,0 +1,7 @@
+{
+	"plugin.name": "Remotion 视频",
+	"plugin.description": "在当前对话工程中创建 React 视频，并通过工程本地的 Remotion CLI 渲染为 MP4。",
+	"provider.name": "本地 Remotion",
+	"tool.render": "渲染 Remotion 视频"
+}
+
