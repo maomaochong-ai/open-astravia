@@ -84,7 +84,7 @@ async function projectLargeResult(
 
 function measureInlinePayload(result: RuntimeToolResult): number {
 	const contentBytes = result.content.reduce(
-		(total, item) => total + Buffer.byteLength(item.type === "text" ? item.text : item.data, "utf8"),
+		(total, item) => total + (item.type === "text" ? Buffer.byteLength(item.text, "utf8") : 0),
 		0,
 	);
 	if (result.details === undefined) return contentBytes;

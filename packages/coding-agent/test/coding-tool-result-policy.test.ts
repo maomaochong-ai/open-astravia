@@ -48,7 +48,7 @@ describe("coding agent coding tool result policy", () => {
 		expect(request?.byteLength).toBe(Buffer.byteLength(request?.data ?? "", "utf8"));
 	});
 
-	it("measures image and details payloads instead of text alone", async () => {
+	it("does not offload image payloads that remain attached", async () => {
 		const store = artifactStore();
 		const policy = createCodingAgentCodingToolResultPolicy({ artifactStore: store, maxInlineResultBytes: 20 });
 		const result: RuntimeToolResult = {
@@ -56,17 +56,28 @@ describe("coding agent coding tool result policy", () => {
 				{ type: "text", text: "ok" },
 				{ type: "image", data: "x".repeat(40), mimeType: "image/png" },
 			],
+		};
+
+		const projected = await policy.project(result, context);
+
+		expect(projected).toBe(result);
+		expect(store.write).not.toHaveBeenCalled();
+	});
+
+	it("includes details in the inline result budget", async () => {
+		const store = artifactStore();
+		const policy = createCodingAgentCodingToolResultPolicy({ artifactStore: store, maxInlineResultBytes: 20 });
+		const result: RuntimeToolResult = {
+			content: [{ type: "text", text: "ok" }],
 			details: { diagnostic: "y".repeat(40) },
 		};
 
 		const projected = await policy.project(result, context);
 
 		expect(store.write).toHaveBeenCalledOnce();
-		expect(projected.content[0]).toMatchObject({ type: "text" });
 		expect(projected.content[0]?.type === "text" ? projected.content[0].text : "").toContain(
 			"Full result: artifact.json",
 		);
-		expect(projected.content[1]).toBe(result.content[1]);
 		expect(projected.details).toBe(result.details);
 	});
 
