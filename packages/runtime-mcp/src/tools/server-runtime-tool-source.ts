@@ -2,6 +2,7 @@ import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolBinding, McpRuntimeToolSource, McpRuntimeToolView } from "../runtime-tool-synchronizer.js";
 import type { McpServerBinding } from "../server/index.js";
 import { createMcpRuntimeTool } from "./mcp-runtime-tool.js";
+import type { McpToolResultPolicy } from "./mcp-tool-result-policy.js";
 
 export interface McpServerRuntimePort {
 	reloadIfChanged(): Promise<boolean>;
@@ -20,6 +21,7 @@ export type McpRuntimeToolDecorator = (
 
 export interface McpServerRuntimeToolSourceOptions {
 	readonly decorateTool?: McpRuntimeToolDecorator;
+	readonly resultPolicy?: McpToolResultPolicy;
 }
 
 /** Publishes ready Supervisor bindings directly as Runtime tools, without an AgentTool round-trip. */
@@ -36,7 +38,9 @@ export class McpServerRuntimeToolSource implements McpRuntimeToolSource {
 			const client = binding.client;
 			if (!client) continue;
 			for (const mcpTool of binding.view.tools) {
-				const baseTool = createMcpRuntimeTool(mcpTool, client, binding.view.name);
+				const baseTool = createMcpRuntimeTool(mcpTool, client, binding.view.name, {
+					resultPolicy: this.options.resultPolicy,
+				});
 				const tool = this.options.decorateTool
 					? this.options.decorateTool(baseTool, {
 							serverName: binding.view.name,

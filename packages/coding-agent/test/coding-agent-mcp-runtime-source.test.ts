@@ -1,11 +1,16 @@
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type {
 	McpClientHandle,
 	McpConfig,
 	McpConfigSource,
 	McpServerConfig,
+	McpToolResultOffloadDetails,
 	RuntimeMcpClientFactory,
 	RuntimeMcpClientFactoryOptions,
 } from "@vetta/runtime-mcp";
+import { DEFAULT_MCP_MAX_INLINE_RESULT_BYTES } from "@vetta/runtime-mcp";
 import { describe, expect, it, vi } from "vitest";
 import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import { createCodingAgentMcpRuntimeToolSource } from "../src/mcp/runtime/tool-source.js";
@@ -64,6 +69,39 @@ describe("Coding Agent native MCP runtime source", () => {
 		await managed.dispose();
 		expect(client.close).toHaveBeenCalledOnce();
 	});
+
+	it("uses the product file policy for large results", async () => {
+		const agentDir = await mkdtemp(join(tmpdir(), "vetta-native-mcp-"));
+		const source = new StaticConfigSource({ search: { command: "search" } });
+		const originalText = `start-${"x".repeat(DEFAULT_MCP_MAX_INLINE_RESULT_BYTES)}-end`;
+		const client = new FakeClient(originalText);
+		const managed = await createCodingAgentMcpRuntimeToolSource({
+			configSource: source,
+			clientFactory: () => client,
+			agentDir,
+			includeBuiltinServers: false,
+		});
+		try {
+			const tool = (await managed.source.refresh()).tools[0]?.tool;
+			const result = await tool?.execute({
+				sessionId: "session",
+				turnId: "turn",
+				toolCallId: "call",
+				input: {},
+				signal: new AbortController().signal,
+			});
+			const details = result?.details as McpToolResultOffloadDetails;
+
+			expect(details).toMatchObject({ offloaded: true, textTruncated: true });
+			expect(details.artifact.reference.startsWith(join(agentDir, "mcp-results"))).toBe(true);
+			expect(JSON.parse(await readFile(details.artifact.reference, "utf8"))).toEqual({
+				content: [{ type: "text", text: originalText }],
+			});
+		} finally {
+			await managed.dispose();
+			await rm(agentDir, { recursive: true, force: true });
+		}
+	});
 });
 
 class StaticConfigSource implements McpConfigSource {
@@ -93,6 +131,8 @@ class StaticConfigSource implements McpConfigSource {
 class FakeClient implements McpClientHandle {
 	readonly close = vi.fn(async () => {});
 
+	constructor(private readonly resultText = "native result") {}
+
 	async initialize() {
 		return {
 			protocolVersion: "test",
@@ -114,7 +154,7 @@ class FakeClient implements McpClientHandle {
 	}
 
 	async callTool() {
-		return { content: [{ type: "text" as const, text: "native result" }] };
+		return { content: [{ type: "text" as const, text: this.resultText }] };
 	}
 
 	async listResources() {

@@ -1,6 +1,11 @@
 import { type TLiteralValue, type TSchema, Type } from "@sinclair/typebox";
 import type { RuntimeToolDefinition, RuntimeToolResult } from "@vetta/runtime-core/kernel";
-import type { IMcpClient, McpContent, McpJsonObject, McpTool } from "../protocol/index.js";
+import type { IMcpClient, McpJsonObject, McpTool } from "../protocol/index.js";
+import {
+	type McpToolResultContext,
+	type McpToolResultPolicy,
+	preserveMcpToolResult,
+} from "./mcp-tool-result-policy.js";
 
 /** Preserve the legacy MCP JSON Schema projection used by Coding Agent tools. */
 export function convertMcpJsonSchemaToTypeBox(jsonSchema: unknown): TSchema {
@@ -57,10 +62,16 @@ export async function executeMcpToolCall(
 	client: IMcpClient,
 	mcpTool: McpTool,
 	input: Readonly<Record<string, unknown>>,
+	options: {
+		readonly context?: McpToolResultContext;
+		readonly resultPolicy?: McpToolResultPolicy;
+	} = {},
 ): Promise<RuntimeToolResult> {
 	try {
 		const result = await client.callTool(mcpTool.name, input as McpJsonObject);
-		return { content: convertMcpContent(result.content), details: result };
+		return options.resultPolicy && options.context
+			? options.resultPolicy.project(result, options.context)
+			: preserveMcpToolResult(result);
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		return {
@@ -73,35 +84,33 @@ export async function executeMcpToolCall(
 	}
 }
 
-export function createMcpRuntimeTool(mcpTool: McpTool, client: IMcpClient, serverName: string): RuntimeToolDefinition {
+export interface McpRuntimeToolOptions {
+	readonly resultPolicy?: McpToolResultPolicy;
+}
+
+export function createMcpRuntimeTool(
+	mcpTool: McpTool,
+	client: IMcpClient,
+	serverName: string,
+	options: McpRuntimeToolOptions = {},
+): RuntimeToolDefinition {
 	return {
 		name: `mcp_${serverName}_${mcpTool.name}`,
 		label: `${serverName}: ${mcpTool.name}`,
 		description: mcpTool.description || `MCP tool from ${serverName}`,
 		inputSchema: convertMcpJsonSchemaToTypeBox(mcpTool.inputSchema),
-		execute: (request) => executeMcpToolCall(client, mcpTool, request.input),
+		execute: (request) =>
+			executeMcpToolCall(client, mcpTool, request.input, {
+				resultPolicy: options.resultPolicy,
+				context: {
+					sessionId: request.sessionId,
+					turnId: request.turnId,
+					toolCallId: request.toolCallId,
+					serverName,
+					toolName: mcpTool.name,
+				},
+			}),
 	};
-}
-
-function convertMcpContent(mcpContent: readonly McpContent[]): RuntimeToolResult["content"] {
-	const content: Array<RuntimeToolResult["content"][number]> = [];
-	for (const item of mcpContent) {
-		if (item.type === "text") {
-			content.push({ type: "text", text: item.text });
-		} else if (item.type === "image") {
-			content.push({ type: "image", data: item.data, mimeType: item.mimeType });
-		} else if (item.type === "resource") {
-			const resource = item.resource;
-			let text = `Resource: ${resource.uri}`;
-			if (resource.text) {
-				text += `\n${resource.text}`;
-			} else if (resource.blob) {
-				text += `\n[Binary data: ${resource.mimeType || "unknown"}]`;
-			}
-			content.push({ type: "text", text });
-		}
-	}
-	return content;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

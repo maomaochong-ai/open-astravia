@@ -5,9 +5,10 @@ import type {
 	McpResourceReadResult,
 	McpServerConfig,
 	McpToolCallResult,
+	McpToolResultPolicy,
 	RuntimeMcpClientFactory,
 } from "@vetta/runtime-mcp";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { EcosystemHookAwareRuntimeTool } from "../src/adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import type { AgentPluginRuntimeConfig } from "../src/model-context/index.js";
 import { createCodingAgentPluginMcpRuntime } from "../src/plugins/runtime/mcp-runtime.js";
@@ -81,6 +82,41 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		expect(await runtime.reconfigure(undefined)).toBe(true);
 		expect(clients.latest("plugin-alpha-docs").closeCalls).toBe(1);
 		expect(runtime.snapshot().tools).toEqual([]);
+		await runtime.dispose();
+	});
+
+	it("applies the configured result policy to dynamic plugin MCP tools", async () => {
+		const clients = new FakeClientFactory();
+		const resultPolicy: McpToolResultPolicy = {
+			project: vi.fn(async (_result, context) => ({
+				content: [{ type: "text" as const, text: `projected:${context.serverName}:${context.toolName}` }],
+				details: { projected: true },
+			})),
+		};
+		const runtime = await createCodingAgentPluginMcpRuntime({
+			clientFactory: clients.create,
+			resultPolicy,
+		});
+		await runtime.reconfigure(pluginConfig("alpha", "coding"));
+		const surface = runtime.compose(compositionContext(), new Map(), {
+			agentMode: "coding",
+			isToolVisible: () => true,
+		});
+		const tool = surface.frame.tools.get("mcp_plugin-alpha-docs_lookup");
+
+		await expect(
+			tool?.execute({
+				sessionId: "session",
+				turnId: "turn",
+				toolCallId: "call",
+				input: {},
+				signal: new AbortController().signal,
+			}),
+		).resolves.toEqual({
+			content: [{ type: "text", text: "projected:plugin-alpha-docs:lookup" }],
+			details: { projected: true },
+		});
+		expect(resultPolicy.project).toHaveBeenCalledOnce();
 		await runtime.dispose();
 	});
 });

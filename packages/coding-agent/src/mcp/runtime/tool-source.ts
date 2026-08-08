@@ -3,11 +3,15 @@ import {
 	createMcpServerRuntimeToolSource,
 	type ManagedMcpRuntimeToolSource,
 	type McpRuntimeToolDecorationContext,
+	type McpToolResultPolicy,
 } from "@vetta/runtime-mcp";
 import type { EcosystemHookAwareRuntimeTool } from "../../extensions/runtime/ecosystem-hook-tool-wrapper.js";
+import { createCodingAgentMcpToolResultPolicy } from "./result-policy.js";
 import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "./supervisor.js";
 
-export interface CodingAgentMcpRuntimeToolSourceOptions extends CodingAgentMcpSupervisorOptions {}
+export interface CodingAgentMcpRuntimeToolSourceOptions extends CodingAgentMcpSupervisorOptions {
+	readonly resultPolicy?: McpToolResultPolicy;
+}
 
 /** Product MCP composition built directly on the Runtime Tool protocol. */
 export async function createCodingAgentMcpRuntimeToolSource(
@@ -21,6 +25,7 @@ export async function createCodingAgentMcpRuntimeToolSource(
 	return {
 		source: createMcpServerRuntimeToolSource(composition.supervisor, {
 			decorateTool: decorateCodingAgentMcpRuntimeTool,
+			resultPolicy: options.resultPolicy ?? createCodingAgentMcpToolResultPolicy(options.agentDir),
 		}),
 		dispose: () => composition.supervisor.shutdown(),
 	};

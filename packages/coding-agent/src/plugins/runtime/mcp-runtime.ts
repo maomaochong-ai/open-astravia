@@ -13,17 +13,19 @@ import {
 	type McpRuntimeToolView,
 	type McpServerConfig,
 	type McpServerSupervisor,
+	type McpToolResultPolicy,
 } from "@vetta/runtime-mcp";
+import { createCodingAgentMcpToolResultPolicy } from "../../mcp/runtime/result-policy.js";
 import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "../../mcp/runtime/supervisor.js";
 import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
 import { matchesAgentMode } from "../../profiles/index.js";
 import type { CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort } from "../../runtime-contracts/index.js";
 
-export type CodingAgentPluginMcpRuntimeOptions = Pick<
-	CodingAgentMcpSupervisorOptions,
-	"agentDir" | "clientFactory" | "debug"
->;
+export interface CodingAgentPluginMcpRuntimeOptions
+	extends Pick<CodingAgentMcpSupervisorOptions, "agentDir" | "clientFactory" | "debug"> {
+	readonly resultPolicy?: McpToolResultPolicy;
+}
 
 export interface CodingAgentPluginMcpToolSurface {
 	readonly frame: ModelCallFrame;
@@ -166,6 +168,7 @@ export async function createCodingAgentPluginMcpRuntime(
 	await composition.supervisor.initialize();
 	const source = createMcpDynamicServerRuntimeToolSource(composition.supervisor, {
 		decorateTool: decorateCodingAgentMcpRuntimeTool,
+		resultPolicy: options.resultPolicy ?? createCodingAgentMcpToolResultPolicy(options.agentDir),
 	});
 	return new CodingAgentPluginMcpRuntime(composition.supervisor, source, options.debug ?? false);
 }

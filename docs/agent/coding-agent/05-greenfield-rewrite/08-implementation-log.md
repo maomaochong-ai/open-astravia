@@ -195,6 +195,7 @@
 | [301-agent-ai-maintainability-ownership.md](./08-implementation-log/301-agent-ai-maintainability-ownership.md) | Agent 与 AI 可维护性职责收敛 |
 | [302-production-identity-and-runtime-import-closure.md](./08-implementation-log/302-production-identity-and-runtime-import-closure.md) | 生产迁移身份归零与 Desktop Runtime 公开包入口收口 |
 | [303-public-protocol-and-type-gate-stability.md](./08-implementation-log/303-public-protocol-and-type-gate-stability.md) | 公开协议兼容恢复与类型门禁稳定性 |
+| [306-mcp-result-capacity-boundary.md](./08-implementation-log/306-mcp-result-capacity-boundary.md) | MCP 大结果容量边界、产物存储端口与兼容回退 |
 
 ## 维护约定
 
