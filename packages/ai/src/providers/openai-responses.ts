@@ -13,6 +13,7 @@ import type {
 	Usage,
 } from "../types.js";
 import { AssistantMessageEventStream } from "../utils/event-stream.js";
+import { createLinkedAbortSignal } from "../utils/linked-abort-signal.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.js";
 import { convertResponsesMessages, convertResponsesTools, processResponsesStream } from "./openai-responses-shared.js";
 import { buildBaseOptions } from "./simple-options.js";
@@ -84,6 +85,7 @@ export const streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIRes
 			stopReason: "stop",
 			timestamp: Date.now(),
 		};
+		const requestAbort = createLinkedAbortSignal(options?.signal);
 
 		try {
 			// Create OpenAI client
@@ -93,7 +95,7 @@ export const streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIRes
 			options?.onPayload?.(params);
 			const openaiStream = await client.responses.create(
 				params,
-				options?.signal ? { signal: options.signal } : undefined,
+				requestAbort.signal ? { signal: requestAbort.signal } : undefined,
 			);
 			stream.push({ type: "start", partial: output });
 
@@ -118,6 +120,8 @@ export const streamOpenAIResponses: StreamFunction<"openai-responses", OpenAIRes
 			output.errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
 			stream.push({ type: "error", reason: output.stopReason, error: output });
 			stream.end();
+		} finally {
+			requestAbort.dispose();
 		}
 	})();
 

@@ -1,9 +1,13 @@
+import { getEventListeners } from "node:events";
 import { Type } from "@sinclair/typebox";
 import { describe, expect, it, vi } from "vitest";
 import { streamOpenAICompletions } from "../src/providers/openai-completions.js";
 import type { Model, Tool } from "../src/types.js";
 
-const mockState = vi.hoisted(() => ({ lastParams: undefined as unknown }));
+const mockState = vi.hoisted(() => ({
+	lastParams: undefined as unknown,
+	lastSignal: undefined as AbortSignal | undefined,
+}));
 
 const baseModel: Model<"openai-completions"> = {
 	id: "gpt-4o-mini",
@@ -22,8 +26,9 @@ vi.mock("openai", () => {
 	class FakeOpenAI {
 		chat = {
 			completions: {
-				create: async (params: unknown) => {
+				create: async (params: unknown, options?: { signal?: AbortSignal }) => {
 					mockState.lastParams = params;
+					mockState.lastSignal = options?.signal;
 					return {
 						async *[Symbol.asyncIterator]() {
 							yield {
@@ -46,6 +51,24 @@ vi.mock("openai", () => {
 });
 
 describe("openai-completions tool_choice", () => {
+	it("releases the turn abort listener after each streamed request", async () => {
+		const controller = new AbortController();
+
+		for (let index = 0; index < 20; index += 1) {
+			await streamOpenAICompletions(
+				baseModel,
+				{
+					messages: [{ role: "user", content: "Hello", timestamp: Date.now() }],
+				},
+				{ apiKey: "test", signal: controller.signal },
+			).result();
+			expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+		}
+
+		expect(mockState.lastSignal).toBeDefined();
+		expect(mockState.lastSignal).not.toBe(controller.signal);
+	});
+
 	it("forwards toolChoice from simple options to payload", async () => {
 		const tools: Tool[] = [
 			{

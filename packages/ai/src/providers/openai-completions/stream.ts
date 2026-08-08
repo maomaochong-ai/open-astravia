@@ -14,6 +14,7 @@ import type {
 } from "../../types.js";
 import { AssistantMessageEventStream } from "../../utils/event-stream.js";
 import { parseStreamingJson } from "../../utils/json-parse.js";
+import { createLinkedAbortSignal } from "../../utils/linked-abort-signal.js";
 import { buildBaseOptions } from "../simple-options.js";
 import { type ThinkingTagSegment, ThinkingTagSplitter } from "../thinking-tag-splitter.js";
 import type { OpenAICompletionsOptions } from "./options.js";
@@ -36,12 +37,13 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 
 	(async () => {
 		const output = createAssistantMessage(model);
+		const requestAbort = createLinkedAbortSignal(options?.signal);
 		try {
 			const apiKey = options?.apiKey || getEnvApiKey(model.provider) || "";
 			const client = createOpenAICompletionsClient(model, context, apiKey, options?.headers);
 			const params = buildOpenAICompletionsParams(model, context, options);
 			options?.onPayload?.(params);
-			const response = await client.chat.completions.create(params, { signal: options?.signal });
+			const response = await client.chat.completions.create(params, { signal: requestAbort.signal });
 			stream.push({ type: "start", partial: output });
 
 			let currentBlock: TextContent | ThinkingContent | PartialToolCall | null = null;
@@ -190,6 +192,8 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions", OpenA
 			if (rawMetadata) output.errorMessage += `\n${rawMetadata}`;
 			stream.push({ type: "error", reason: output.stopReason, error: output });
 			stream.end();
+		} finally {
+			requestAbort.dispose();
 		}
 	})();
 
