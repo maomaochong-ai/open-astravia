@@ -1,9 +1,9 @@
 ---
-title: Vetta 文档
-description: 使用 Vetta、扩展桌面能力并接入核心 SDK。
+title: Vetta 开发者文档
+description: 配置 Vetta、运行 Agent 任务，并通过插件、主题和 MCP 扩展桌面能力。
 ---
 
-这里汇总了使用 Vetta、构建自动化任务与扩展桌面能力所需的产品指南和技术参考。
+这里提供可以直接照做的 Vetta 使用指南和扩展开发文档。先完成模型配置和第一个任务，再按目标进入对应主题。
 
 ## 从这里开始
 
@@ -14,19 +14,27 @@ description: 使用 Vetta、扩展桌面能力并接入核心 SDK。
   <Card title="运行第一个任务" href="/getting-started/first-task/">
     创建会话、提供上下文，并检查 Agent 的执行结果。
   </Card>
-  <Card title="产品能力" href="/product/overview/">
-    了解项目、批量任务、自动化、工作流与扩展能力。
+  <Card title="使用指南" href="/product/overview/">
+    配置模型、连接 MCP、管理知识库并运行自动化任务。
   </Card>
   <Card title="插件开发" href="/plugins/getting-started/">
     使用插件 SDK 扩展界面、Agent 工具与宿主能力。
   </Card>
-  <Card title="架构指南" href="/developers/architecture/">
-    理解 AI、Agent、运行时和桌面宿主之间的边界。
+  <Card title="主题开发" href="/themes/getting-started/">
+    创建主题模块并覆盖外观令牌、页面和界面区域。
   </Card>
   <Card title="故障排查" href="/troubleshooting/">
     定位登录、模型调用、文件访问和插件加载问题。
   </Card>
 </Cards>
+
+## 按目标查找
+
+- 要给 Agent 增加外部工具：阅读 [MCP 连接器](/product/mcp/) 或 [能力市场](/product/abilities/)。
+- 要重复处理多个目录：阅读[批量任务](/product/batch-tasks/)。
+- 要定时运行任务：阅读[自动化](/product/automation/)。
+- 要在飞书或微信中使用：先配置 [IM 渠道](/product/im/)，再阅读 [Vetta Claw](/product/claw/)。
+- 要扩展桌面界面或 Agent：从[插件开发概览](/plugins/overview/)开始。
 
 ## 没有找到答案？
 

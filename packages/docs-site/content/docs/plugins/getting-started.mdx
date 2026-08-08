@@ -9,6 +9,13 @@ description: 创建、构建并安装一个最小 Vetta 桌面插件。
 - React 19。
 - 用于安装和调试插件的 Vetta 桌面客户端。
 
+安装当前公开版本：
+
+```bash
+bun add @vetta-org/plugin-sdk@^0.1.1
+bun add -d @vetta-org/plugin-vite@^0.0.5 vite@^7 react@^19
+```
+
 ## 项目结构
 
 ```text
@@ -68,4 +75,6 @@ export default definePlugin({
 
 运行 `bunx vite build` 生成 `dist/mf-manifest.json`、`remoteEntry.js` 和样式文件。发布包应在归档根目录包含 `plugin.json` 和 `dist/`。
 
-在 Vetta 的插件设置中选择本地 ZIP，授予清单声明的权限后启用插件。
+在“能力”页面的导入菜单中选择插件 ZIP，核对插件身份和权限后安装并启用。打开插件注册的界面或触发其工具，确认产物确实被宿主加载。
+
+开发期间使用 `bunx vetta-plugin dev` 启动插件开发服务，再通过 Vetta 的开发链接加载。发布前仍要执行生产构建并测试 ZIP 安装流程。

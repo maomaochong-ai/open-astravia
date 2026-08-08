@@ -22,6 +22,8 @@ Vetta 插件用于扩展桌面客户端的界面、文件浏览器、对话和 A
 
 ## 可扩展范围
 
-插件可以注册界面插槽、文件预览、消息卡片、Agent 工具和 App Action，也可以在获得授权后访问文件、网络、私有存储及用户配置的 AI 模型。
+插件可以注册界面插槽、页面、文件预览、消息卡片、Agent 工具和 App Action，也可以在获得授权后访问文件、网络、私有存储、自动化任务及用户配置的 AI 模型。
 
-继续阅读[创建第一个插件](/plugins/getting-started/)。
+如果只是给 Agent 增加一组指令，优先发布技能；如果只是连接外部工具，优先使用 MCP。只有需要桌面 UI、宿主 API 或完整生命周期时才创建插件。
+
+继续阅读[创建第一个插件](/plugins/getting-started/)、[清单与权限](/plugins/manifest-and-permissions/)和[扩展点](/plugins/extension-points/)。

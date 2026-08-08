@@ -17,6 +17,14 @@ bun run build
 
 Fumadocs 搜索索引由站点内容生成，因此需要通过构建后的站点验证搜索。
 
+## LLM 入口
+
+- `/llms.txt`：文档索引，适合 Agent 发现页面。
+- `/llms-full.txt`：合并后的完整文档，适合一次性获取上下文。
+- `/*.md`：对应文档页的纯 Markdown，例如 `/product/models.md`。
+
+这些内容由 `content/docs/` 构建生成，不单独维护副本。
+
 ## 部署
 
 将部署项目的根目录设为 `packages/docs-site`，构建命令使用 `bun run build`，启动命令使用

@@ -1,4 +1,16 @@
 {
-	"title": "产品指南",
-	"pages": ["overview"]
+	"title": "使用指南",
+	"pages": [
+		"overview",
+		"models",
+		"abilities",
+		"mcp",
+		"knowledge-base",
+		"batch-tasks",
+		"automation",
+		"claw",
+		"im",
+		"application-environment",
+		"desktop-pet"
+	]
 }
