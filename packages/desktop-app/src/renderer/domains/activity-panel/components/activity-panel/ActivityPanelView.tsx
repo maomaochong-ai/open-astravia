@@ -24,6 +24,7 @@ export function ActivityPanelView({
 				<TabBar
 					className="min-w-0 flex-1"
 					items={model.tabItems}
+					activateOnFileDragHover
 					listRef={model.mainTabListRef}
 					value={model.activeTab}
 					onChange={actions.onTabChange}

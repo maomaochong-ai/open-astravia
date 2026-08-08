@@ -53,7 +53,7 @@ export function ActivityTabSurface({
 		const tabItem = {
 			key: tab.id as ActivityTabKey,
 			label: tab.label,
-			icon: typeof tab.icon === "string" ? tab.icon : undefined,
+			icon: tab.icon,
 			badge: tab.badge,
 			removable: tab.removable,
 		};

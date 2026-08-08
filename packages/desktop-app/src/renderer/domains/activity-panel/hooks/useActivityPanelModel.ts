@@ -32,7 +32,7 @@ function toTabBarItem(tab: ResolvedActivityTab): TabBarItem<ActivityTabKey> {
 	return {
 		key: tab.id as ActivityTabKey,
 		label: tab.label,
-		icon: typeof tab.icon === "string" ? tab.icon : undefined,
+		icon: tab.icon,
 		badge: tab.badge,
 		removable: tab.removable,
 	};
@@ -97,7 +97,7 @@ export function useActivityPanelModel({
 			resolved.restorable.map((item) => ({
 				key: item.id,
 				label: item.label,
-				icon: typeof item.icon === "string" ? item.icon : undefined,
+				icon: item.icon,
 			})),
 		[resolved.restorable],
 	);
@@ -106,7 +106,7 @@ export function useActivityPanelModel({
 			resolved.availablePlugins.map((item) => ({
 				key: item.id,
 				label: item.label,
-				icon: typeof item.icon === "string" ? item.icon : undefined,
+				icon: item.icon,
 				subtitle: item.pluginName,
 			})),
 		[resolved.availablePlugins],

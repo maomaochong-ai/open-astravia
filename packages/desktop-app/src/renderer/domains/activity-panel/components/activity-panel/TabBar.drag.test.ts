@@ -20,6 +20,12 @@ function pointerEvent(type: string, x: number, y: number, pointerId = 1): MouseE
 	return event;
 }
 
+function fileDragEvent(type: string): Event {
+	const event = new Event(type, { bubbles: true });
+	Object.defineProperty(event, "dataTransfer", { value: { types: ["Files"] } });
+	return event;
+}
+
 function bounds(left: number, top: number, width: number, height: number): DOMRect {
 	return {
 		bottom: top + height,
@@ -80,6 +86,7 @@ describe("TabBar pointer drag", () => {
 	afterEach(() => {
 		act(() => root.unmount());
 		container.remove();
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
 		document.querySelector<HTMLElement>("[data-tab-drag-overlay]")?.remove();
 	});
@@ -112,6 +119,31 @@ describe("TabBar pointer drag", () => {
 		expect(onChange).toHaveBeenCalledOnce();
 		expect(onDragStart).not.toHaveBeenCalled();
 		expect(document.querySelector("[data-tab-drag-overlay]")).toBeNull();
+	});
+
+	it("activates a tab after a file drag hovers over it", () => {
+		vi.useFakeTimers();
+		const onChange = vi.fn();
+		act(() => {
+			root.render(
+				createElement(TabBar, {
+					items: [
+						{ key: "a", label: "A" },
+						{ key: "b", label: "B" },
+					],
+					value: "a",
+					onChange,
+					activateOnFileDragHover: true,
+				}),
+			);
+		});
+		const tab = container.querySelector<HTMLElement>('[data-tabkey="b"]');
+		if (!tab) throw new Error("tab not found");
+
+		act(() => tab.dispatchEvent(fileDragEvent("dragenter")));
+		expect(onChange).not.toHaveBeenCalled();
+		act(() => vi.advanceTimersByTime(300));
+		expect(onChange).toHaveBeenCalledWith("b");
 	});
 
 	it("continues dragging after the source tab is removed", () => {

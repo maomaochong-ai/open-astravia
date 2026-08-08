@@ -6,6 +6,7 @@ import {
 	useRef,
 	useState,
 	type JSX,
+	type DragEvent as ReactDragEvent,
 	type PointerEvent as ReactPointerEvent,
 	type ReactNode,
 	type RefObject,
@@ -65,12 +66,20 @@ export interface TabBarProps<T extends string> {
 	 * 由父级渲染到"下拉"菜单里。传了此回调即开启响应式收纳。
 	 */
 	onOverflowChange?: (overflowKeys: T[]) => void;
+	/** 文件拖拽悬停到非激活页签时切换页签，供内容区接管后续 drop。 */
+	activateOnFileDragHover?: boolean;
 }
 
 /** 页签条左右内边距（px-3 = 0.75rem）。 */
 const ROW_PADDING_X = 12;
 /** 相邻页签的负边距重叠量（-ml-2 = 0.5rem），计算容纳宽度时需扣除。 */
 const TAB_OVERLAP = 8;
+const FILE_DRAG_HOVER_DELAY_MS = 300;
+
+function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
+	const types = Array.from(event.dataTransfer.types);
+	return types.includes("Files") || types.includes("application/vetta-path");
+}
 
 /**
  * 贪心计算溢出 key：始终保证激活页签可见（优先占位），再按顺序从头容纳，放不下即收纳其后全部。
@@ -169,6 +178,7 @@ export function TabBar<T extends string>({
 	onTabDragMove,
 	onTabDragEnd,
 	onOverflowChange,
+	activateOnFileDragHover = false,
 }: TabBarProps<T>): JSX.Element {
 	const layoutId = useId();
 	// 拖拽中：dragKey 为被拖动的页签，order 为拖拽过程中的临时顺序（提交前不触碰 props）
@@ -191,6 +201,56 @@ export function TabBar<T extends string>({
 	// 悬浮页签：减号按钮的显隐走 state 而非 CSS group-hover（group-hover 依赖的类链在部分
 	// 环境下未生效，导致按钮永不出现），同时用于把该页签 z-index 提到最高防被相邻页签盖住。
 	const [hoverKey, setHoverKey] = useState<T | null>(null);
+	const fileDragHoverRef = useRef<{ key: T; timer: number } | null>(null);
+
+	const clearFileDragHover = useCallback((key?: T): void => {
+		const pending = fileDragHoverRef.current;
+		if (!pending || (key != null && pending.key !== key)) return;
+		window.clearTimeout(pending.timer);
+		fileDragHoverRef.current = null;
+	}, []);
+
+	const onFileDragEnter = useCallback(
+		(event: ReactDragEvent<HTMLDivElement>, key: T): void => {
+			if (!activateOnFileDragHover || key === value || !isFileDrag(event)) return;
+			if (fileDragHoverRef.current?.key === key) return;
+			clearFileDragHover();
+			const timer = window.setTimeout(() => {
+				fileDragHoverRef.current = null;
+				onChange(key);
+			}, FILE_DRAG_HOVER_DELAY_MS);
+			fileDragHoverRef.current = { key, timer };
+		},
+		[activateOnFileDragHover, clearFileDragHover, onChange, value],
+	);
+
+	const onFileDragLeave = useCallback(
+		(event: ReactDragEvent<HTMLDivElement>, key: T): void => {
+			const nextTarget = event.relatedTarget;
+			if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+			clearFileDragHover(key);
+		},
+		[clearFileDragHover],
+	);
+
+	const onFileDragOver = useCallback(
+		(event: ReactDragEvent<HTMLDivElement>): void => {
+			if (!activateOnFileDragHover || !isFileDrag(event)) return;
+			event.preventDefault();
+			event.dataTransfer.dropEffect = "copy";
+		},
+		[activateOnFileDragHover],
+	);
+
+	const onFileDrop = useCallback(
+		(event: ReactDragEvent<HTMLDivElement>, key: T): void => {
+			if (!activateOnFileDragHover || !isFileDrag(event)) return;
+			event.preventDefault();
+			clearFileDragHover(key);
+			if (key !== value) onChange(key);
+		},
+		[activateOnFileDragHover, clearFileDragHover, onChange, value],
+	);
 
 	// 拖拽中按临时顺序渲染，否则按 props 顺序
 	const renderItems =
@@ -429,11 +489,12 @@ export function TabBar<T extends string>({
 
 	useEffect(
 		() => () => {
+			clearFileDragHover();
 			const session = pointerSessionRef.current;
 			pointerSessionRef.current = null;
 			session?.cleanupGlobalCapture?.();
 		},
-		[],
+		[clearFileDragHover],
 	);
 
 	const overflowSet = responsive ? new Set(overflowKeys) : null;
@@ -468,6 +529,10 @@ export function TabBar<T extends string>({
 							onPointerCancel={(event) => finishPointerDrag(event.clientX, event.clientY, true)}
 							onMouseEnter={() => setHoverKey(key)}
 							onMouseLeave={() => setHoverKey((prev) => (prev === key ? null : prev))}
+							onDragEnter={(event) => onFileDragEnter(event, key)}
+							onDragLeave={(event) => onFileDragLeave(event, key)}
+							onDragOver={onFileDragOver}
+							onDrop={(event) => onFileDrop(event, key)}
 							className={cn(
 								"group/tab relative touch-none",
 								index > 0 && "-ml-2",

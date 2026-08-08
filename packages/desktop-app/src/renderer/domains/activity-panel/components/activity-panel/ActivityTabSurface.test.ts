@@ -77,6 +77,7 @@ describe("ActivityTabSurface", () => {
 		const tab: ResolvedActivityTab = {
 			id: "file",
 			label: "A",
+			icon: createElement("span", { "data-custom-tab-icon": "" }),
 			removable: false,
 			source: "builtin",
 			definition,
@@ -113,6 +114,7 @@ describe("ActivityTabSurface", () => {
 		});
 		const floatingPanel = container.querySelector("[data-floating-activity-tab]");
 		expect(floatingPanel?.querySelector("[data-content-instance]")).toBe(content);
+		expect(floatingPanel?.querySelector("[data-custom-tab-icon]")).not.toBeNull();
 		act(() => content?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true })));
 		expect(surfaceActions.onFloatingTabFocus).toHaveBeenCalledWith("file");
 		expect(mounts).toBe(1);
