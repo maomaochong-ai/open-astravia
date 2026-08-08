@@ -18,10 +18,11 @@ export type {
 } from "./ToasterView";
 export { ToasterView } from "./ToasterView";
 export type {
+	UpdateCheckerPhase,
 	UpdateCheckerViewLabels,
 	UpdateCheckerViewProps,
 } from "./UpdateCheckerView";
-export { UpdateCheckerView } from "./UpdateCheckerView";
+export { UpdateCheckerAction, UpdateCheckerDetail, UpdateCheckerView } from "./UpdateCheckerView";
 export type {
 	UpdateRestartDialogViewLabels,
 	UpdateRestartDialogViewProps,

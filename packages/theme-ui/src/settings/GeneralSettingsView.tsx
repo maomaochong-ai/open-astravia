@@ -23,6 +23,8 @@ export interface GeneralSettingsViewLabels {
 	readonly startAppGuide: string;
 	readonly startAppGuideDescription: string;
 	readonly startAppGuideAction: string;
+	/** App updates row title, e.g. "当前版本". */
+	readonly appVersion: string;
 	readonly fullAccess: string;
 	readonly useSandbox: string;
 	readonly export: string;
@@ -40,7 +42,10 @@ export interface GeneralSettingsViewProps {
 	readonly workspacePath: string;
 	readonly onSelectWorkspace: () => void;
 	readonly onResetWorkspace: () => void;
-	readonly updatesSlot: ReactNode;
+	/** 与 App 引导同构：description + 右侧 action；有更新时 detail 挂在行下。 */
+	readonly updatesDescription: string;
+	readonly updatesAction: ReactNode;
+	readonly updatesDetail: ReactNode;
 	readonly executionMode: string;
 	readonly onExecutionModeChange: (mode: string) => void;
 	readonly sandboxUnavailableReason: string | null;
@@ -68,7 +73,9 @@ export function GeneralSettingsView({
 	workspacePath,
 	onSelectWorkspace,
 	onResetWorkspace,
-	updatesSlot,
+	updatesDescription,
+	updatesAction,
+	updatesDetail,
 	executionMode,
 	onExecutionModeChange,
 	sandboxUnavailableReason,
@@ -132,8 +139,15 @@ export function GeneralSettingsView({
 			</SettingSection>
 
 			<SettingSection title={labels.sections.app} section={sections.app}>
-				{/* UpdateChecker is full-width (status + release notes); not constrained by SettingRow */}
-				<div className="border-b border-border px-5 py-4">{updatesSlot}</div>
+				{/* 与下方 App 引导同一 SettingRow：左标题+描述，右 outline sm 按钮。 */}
+				<SettingRow
+					title={labels.appVersion}
+					description={updatesDescription || undefined}
+					border={!updatesDetail}
+				>
+					{updatesAction}
+				</SettingRow>
+				{updatesDetail ? <div className="border-b border-border px-5 pb-4">{updatesDetail}</div> : null}
 				<SettingRow title={labels.startAppGuide} description={labels.startAppGuideDescription} border={false}>
 					<Button size="sm" variant="outline" onClick={onStartAppGuide}>
 						{labels.startAppGuideAction}
