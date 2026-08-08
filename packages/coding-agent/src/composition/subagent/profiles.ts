@@ -1,19 +1,10 @@
 import { type SubagentTypeDefinition, SubagentTypeRegistry } from "@vetta/runtime-subagents";
-import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
-import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import type { CodingAgentSubagentProfile } from "../contracts/index.js";
+
+export type { CodingAgentSubagentProfile } from "../contracts/index.js";
 
 export const CODING_AGENT_SUBAGENT_TYPE_EXPLORER = "explorer";
 export const CODING_AGENT_SUBAGENT_TYPE_WORKFLOW = "workflow";
-
-export interface CodingAgentSubagentProfile {
-	readonly activation: CodingToolActivation;
-	readonly inheritParentMcp: boolean;
-	readonly systemPromptAddon: string;
-	readonly forkParentContext: boolean;
-	readonly includeTodo: boolean;
-	readonly createRuntimeTools?: (cwd: string) => readonly CodingAgentRuntimeToolRegistration[];
-	readonly denyToolNamePrefixes?: readonly string[];
-}
 
 const EXPLORER_SYSTEM_PROMPT = `You are an explorer subagent. Your job is to gather information for the root agent.
 

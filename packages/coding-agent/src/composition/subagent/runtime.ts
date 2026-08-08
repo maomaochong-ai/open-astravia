@@ -23,18 +23,15 @@ import {
 	taskPath,
 } from "@vetta/runtime-subagents";
 import type { CodingAgentSubagentWorkRuntime } from "../../host/session-execution/background-work-controller.js";
-import {
-	CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
-	type CodingAgentSubagentProfile,
-	createDefaultCodingAgentSubagentTypeRegistry,
-} from "./profiles.js";
+import type { CodingAgentSubagentProfile } from "../contracts/index.js";
+import { CODING_AGENT_SUBAGENT_TYPE_WORKFLOW, createDefaultCodingAgentSubagentTypeRegistry } from "./profiles.js";
 import { CodingAgentSubagentStatePersistence } from "./state-persistence.js";
 import { createCodingAgentSubagentRuntimeToolRegistrations } from "./tool-registrations.js";
 
+export type { CodingAgentSubagentProfile } from "../contracts/index.js";
 export {
 	CODING_AGENT_SUBAGENT_TYPE_EXPLORER,
 	CODING_AGENT_SUBAGENT_TYPE_WORKFLOW,
-	type CodingAgentSubagentProfile,
 	createDefaultCodingAgentSubagentTypeRegistry,
 } from "./profiles.js";
 

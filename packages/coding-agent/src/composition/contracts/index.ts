@@ -1,4 +1,9 @@
 export type {
+	CodingAgentConversationPersistence,
+	CodingAgentConversationPersistenceFactory,
+	CodingAgentConversationPersistenceFactoryContext,
+} from "./conversation-persistence.js";
+export type {
 	CodingAgentRuntimeCompositionOptions,
 	CodingAgentRuntimeContextOptions,
 	CodingAgentRuntimeConversationOptions,
@@ -19,3 +24,8 @@ export type {
 	CodingAgentRuntimeToolAccess,
 } from "./runtime-composition-result.js";
 export type { CodingAgentInitialTodoLockSource, CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
+export type {
+	CodingAgentSubagentChildFactory,
+	CodingAgentSubagentChildFactoryContext,
+	CodingAgentSubagentProfile,
+} from "./subagent.js";

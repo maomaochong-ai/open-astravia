@@ -22,13 +22,13 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 } from "../../runtime-contracts/index.js";
 import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
-import type { CodingAgentConversationPersistenceFactory } from "../conversation/persistence.js";
-import type { CodingAgentSubagentProfile } from "../subagent/runtime.js";
+import type { CodingAgentConversationPersistenceFactory } from "./conversation-persistence.js";
+import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
 import type {
 	CodingAgentSubagentChildFactory,
 	CodingAgentSubagentChildFactoryContext,
-} from "../subagent/session-assembly.js";
-import type { CodingAgentRuntimeSessionOptions } from "./runtime-session-options.js";
+	CodingAgentSubagentProfile,
+} from "./subagent.js";
 
 export interface CodingAgentRuntimeEnvironmentOptions {
 	readonly cwd?: string;

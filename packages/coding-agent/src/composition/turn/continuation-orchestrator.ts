@@ -1,9 +1,8 @@
 import type { UserMessage } from "@vetta/ai";
 import type { ContinuationPolicy, ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
+import type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
 
-export interface CodingAgentContinuationSource {
-	collect(context: ContinuationPolicyContext): Promise<readonly UserMessage[]>;
-}
+export type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
 
 export interface CodingAgentContinuationOrchestratorOptions {
 	readonly todo?: CodingAgentContinuationSource;

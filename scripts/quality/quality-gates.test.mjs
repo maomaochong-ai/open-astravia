@@ -4,7 +4,6 @@ import {
 	findLayeredBuildOrderViolations,
 	parseBuildPackageOrder,
 } from "./check-build-order.mjs";
-import { findLegacySetupSeedViolations } from "./check-legacy-execution-retirement.mjs";
 import { findPackageBoundaryViolations, findPackageManifestBoundaryViolations } from "./check-package-boundaries.mjs";
 import { batchPaths, createQuickCheckPlan, isBiomeGlobalTrigger } from "./check-quick.mjs";
 import { findSkillFrontmatterProblems } from "./check-skill-frontmatter.mjs";
@@ -504,7 +503,7 @@ describe("package boundary analysis", () => {
 		).toEqual([]);
 		expect(
 			findPackageBoundaryViolations(
-				"packages/desktop-app/src/main/greenfield-runtime/desktop-legacy-session-format-compatibility.ts",
+				"packages/desktop-app/src/main/agent-runtime/historical-session-format.ts",
 				'import { createCodingAgentHistoricalSessionCatalog } from "@vetta/coding-agent/historical-sessions";',
 			),
 		).toEqual([]);
@@ -1018,34 +1017,6 @@ describe("package boundary analysis", () => {
 				'import { agentLoopContinue } from "@vetta/agent-core";',
 			),
 		).toEqual([]);
-	});
-});
-
-describe("Legacy Session setup seed retirement", () => {
-	it("allows only the explicit historical migration adapter", () => {
-		expect(
-			findLegacySetupSeedViolations([
-				{
-					path: "packages/coding-agent/src/sessions/legacy/migration.ts",
-					text: "return migrateLegacySessionToV2(options);",
-				},
-			]),
-		).toEqual([]);
-	});
-
-	it("rejects generated Legacy setup writers and migration detours", () => {
-		expect(
-			findLegacySetupSeedViolations([
-				{
-					path: "packages/coding-agent/src/sessions/setup/reintroduced-writer.ts",
-					text: "new LegacySessionSetupWriter();",
-				},
-				{
-					path: "packages/coding-agent/src/sessions/setup/reintroduced-migration.ts",
-					text: "await migrateLegacySessionToV2(options);",
-				},
-			]),
-		).toHaveLength(2);
 	});
 });
 

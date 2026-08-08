@@ -1,6 +1,6 @@
 import type { UserMessage } from "@vetta/ai";
 import type { ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
-import type { CodingAgentContinuationSource } from "../composition/turn/continuation-orchestrator.js";
+import type { CodingAgentContinuationSource } from "../runtime-contracts/index.js";
 import type { TodoContinuationState } from "./contracts.js";
 import { buildTodoContinuationMessages } from "./todo-continuation.js";
 

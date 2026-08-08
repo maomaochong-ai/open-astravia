@@ -30,6 +30,8 @@ scripts/quality/
   check-conflict-markers.mjs   未解决冲突标记
   check-build-order.mjs        workspace 正式依赖构建顺序
   check-package-boundaries.mjs 库/插件不得依赖 app 宿主
+  check-coding-agent-architecture.mjs
+                               Coding Agent 当前架构依赖与公开面
   test-pkg.mjs                 按包名跑 vitest
   test-changed.mjs             按 git 变更和依赖图选包
   quality-gates.test.mjs       质量脚本定向测试
@@ -83,6 +85,26 @@ bun run --cwd packages/desktop-app test:coverage
 - plugin presets/externals **deep-import** `desktop-app/src/**`
 
 `coding-agent/examples/**` 已排除。
+
+## Coding Agent 架构规则（`check-coding-agent-architecture`）
+
+该守卫不生成全量 AST 模块图，也不启动 TypeScript TypeChecker。它只用 TypeScript AST 从
+`import`、`export ... from` 和动态 `import()` 中提取模块边，再执行声明式规则，因此不会把注释、
+字符串或同名变量误判为依赖。
+
+长期规则包括：
+
+- 合同不能反向依赖 Adapter、Composition 实现、Host 实现或公开门面；
+- 产品能力域不能依赖 Adapter、Composition 实现或公开门面；
+- Adapter 可以依赖 Composition 合同，但不能反向依赖 Composition 实现或公开门面；
+- 历史会话格式模块不能依赖 Agent 执行；格式转换与文件生命周期可以在 `sessions/legacy` 边界内按职责拆分；
+- 外部消费者只能使用 `package.json#exports` 声明的稳定子路径，支持精确和通配符导出；
+- 包根保持 Extension facade；Composition 允许扩展根级能力与合同，但不能导出内部组装实现；
+- 旧 `src/core`、`src/compat` 实现目录不得恢复。
+
+公开子路径以 manifest 为唯一事实来源，不在守卫中维护第二份符号或子路径快照。旧迁移进度基线、
+Greenfield/Legacy 名称墓碑、固定文件数量、行数阈值及实施日志格式不再进入构建门禁。
+架构规则测试位于 `scripts/quality/coding-agent-architecture.test.mjs`。
 
 ## Workspace 构建顺序（`check-build-order`）
 

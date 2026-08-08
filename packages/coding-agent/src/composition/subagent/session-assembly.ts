@@ -17,8 +17,18 @@ import type {
 } from "@vetta/runtime-subagents";
 import { buildSubagentNotification, type CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type { CodingAgentRuntimeToolRegistration } from "../../runtime-contracts/index.js";
+import type {
+	CodingAgentSubagentChildFactory,
+	CodingAgentSubagentChildFactoryContext,
+	CodingAgentSubagentProfile,
+} from "../contracts/index.js";
 import { createCodingAgentSubagentChildHandle } from "./child-handle.js";
-import { type CodingAgentSubagentProfile, CodingAgentSubagentRuntime } from "./runtime.js";
+import { CodingAgentSubagentRuntime } from "./runtime.js";
+
+export type {
+	CodingAgentSubagentChildFactory,
+	CodingAgentSubagentChildFactoryContext,
+} from "../contracts/index.js";
 
 export interface CodingAgentSubagentChildSessionOptions {
 	readonly sessionId: string;
@@ -68,31 +78,6 @@ export interface CodingAgentSubagentSessionAssemblyOptions {
 		"recordAdditionalContexts" | "runSubagentStart" | "runSubagentStop"
 	>;
 	readonly resourceContext: Pick<RuntimeResourceContext, "deliverAsyncContext" | "reportObservation">;
-}
-
-export interface CodingAgentSubagentChildFactoryContext {
-	readonly cwd: string;
-	readonly scenario: ConversationScenario;
-	readonly readParentSessionId: () => string;
-	readonly readParentSessionPath: () => string;
-	readonly readModel: () => NonNullable<SessionConfig["model"]>;
-	readonly readThinkingLevel: () => NonNullable<SessionConfig["thinkingLevel"]>;
-	readonly readInheritedMcpView: () => Promise<McpRuntimeToolView>;
-}
-
-export interface CodingAgentSubagentChildFactory {
-	create(
-		request: SubagentSpawnRequest,
-		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
-		forkContext: readonly Message[] | undefined,
-		signal?: AbortSignal,
-	): Promise<SubagentChildHandle>;
-	reopen?(
-		snapshot: SubagentSnapshot,
-		type: SubagentTypeDefinition<CodingAgentSubagentProfile>,
-		forkContext: readonly Message[] | undefined,
-		signal?: AbortSignal,
-	): Promise<SubagentChildHandle>;
 }
 
 /** 组装单个父 Session 的 Subagent 能力；Composition Root 只提供宿主端口。 */

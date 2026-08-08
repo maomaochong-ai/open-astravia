@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
-import { ENV_AGENT_DIR } from "@vetta/coding-agent/config.js";
+import { ENV_AGENT_DIR } from "@vetta/coding-agent/config";
 import {
 	type CodingAgentRuntimeModelSource,
 	createCodingAgentMcpRuntimeToolSource,

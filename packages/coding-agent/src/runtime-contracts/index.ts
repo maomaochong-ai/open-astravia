@@ -2,6 +2,7 @@ export type {
 	CodingAgentCompactionExtensionRuntime,
 	CodingAgentCompactionRuntimeOptions,
 } from "./context-runtime.js";
+export type { CodingAgentContinuationSource } from "./continuation-runtime.js";
 export type {
 	CodingAgentExtensionEventBinding,
 	CodingAgentExtensionRunnerPort,
