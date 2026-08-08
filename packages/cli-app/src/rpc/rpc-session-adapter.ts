@@ -71,13 +71,13 @@ export class CliRpcSessionAdapter implements RpcSessionCapabilities {
 	readonly profile;
 	readonly turn;
 	readonly state;
-	readonly model;
+	readonly model: NonNullable<RpcSessionCapabilities["model"]>;
 	readonly queue;
 	readonly context;
 	readonly memory;
 	readonly retry;
 	readonly bash: RpcSessionCapabilities["bash"];
-	readonly session;
+	readonly session: NonNullable<RpcSessionCapabilities["session"]>;
 	readonly commands: RpcCommandDiscoveryCapability;
 
 	private readonly sessionHost: CliRpcSessionAdapterOptions["sessionHost"];
