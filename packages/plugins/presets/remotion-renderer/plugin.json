@@ -12,6 +12,7 @@
 		"expose": "./plugin"
 	},
 	"permissions": [
+		"ui.slot.activity-tab",
 		"agent.skills.control",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
@@ -26,6 +27,7 @@
 	"network": {
 		"allowedHosts": ["127.0.0.1", "localhost"]
 	},
+	"styles": ["dist/style.css"],
 	"commands": ["node"],
 	"agent": {
 		"skillPaths": ["agent/skills/remotion-video"]
@@ -33,4 +35,3 @@
 	"description": "%plugin.description%",
 	"author": "Vetta"
 }
-

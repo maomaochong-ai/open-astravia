@@ -6,6 +6,7 @@
 		"strict": true,
 		"skipLibCheck": true,
 		"moduleResolution": "bundler",
+		"jsx": "react-jsx",
 		"baseUrl": ".",
 		"paths": {
 			"@vetta-org/plugin-sdk": ["../../plugin-sdk/src/index.ts"],
@@ -15,6 +16,5 @@
 		"noEmit": true,
 		"types": ["vite/client"]
 	},
-	"include": ["src/**/*.ts"]
+	"include": ["src/**/*.ts", "src/**/*.tsx"]
 }
-

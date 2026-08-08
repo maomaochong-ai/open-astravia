@@ -2,6 +2,18 @@
 	"plugin.name": "Remotion 视频",
 	"plugin.description": "在当前对话工程中创建 React 视频，并通过工程本地的 Remotion CLI 渲染为 MP4。",
 	"provider.name": "本地 Remotion",
-	"tool.render": "渲染 Remotion 视频"
+	"tool.render": "渲染 Remotion 视频",
+	"tab.studio": "Remotion",
+	"studio.title": "Remotion Studio",
+	"studio.action.restart": "重启 Studio",
+	"studio.state.starting": "正在启动当前工程的 Remotion Studio...",
+	"studio.state.noCwdTitle": "尚未选择工程",
+	"studio.state.noCwdBody": "打开一个对话工程后即可使用 Remotion Studio。",
+	"studio.state.notProjectTitle": "未找到 Remotion 工程",
+	"studio.state.notProjectBody": "在当前对话中创建 Remotion 工程，然后重启 Studio。",
+	"studio.state.dependenciesTitle": "缺少 Remotion 依赖",
+	"studio.state.dependenciesBody": "安装当前工程依赖后，再重启 Studio。",
+	"studio.state.errorTitle": "Remotion Studio 启动失败",
+	"studio.state.errorBody": "请检查工程文件和 Studio 输出，然后重试。",
+	"studio.iframeTitle": "Remotion Studio"
 }
-

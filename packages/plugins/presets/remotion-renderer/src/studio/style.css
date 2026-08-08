@@ -1,0 +1,81 @@
+.remotion-studio-panel {
+	display: flex;
+	height: 100%;
+	min-height: 0;
+	flex-direction: column;
+	background: var(--background);
+	color: var(--foreground);
+}
+
+.remotion-studio-toolbar {
+	display: flex;
+	height: 36px;
+	min-height: 36px;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	border-bottom: 1px solid var(--border);
+	padding: 0 10px 0 12px;
+}
+
+.remotion-studio-title {
+	overflow: hidden;
+	font-size: 12px;
+	font-weight: 600;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.remotion-studio-frame {
+	display: block;
+	width: 100%;
+	min-height: 0;
+	flex: 1;
+	border: 0;
+	background: #fff;
+}
+
+.remotion-studio-state {
+	display: flex;
+	min-height: 0;
+	flex: 1;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+	gap: 8px;
+	padding: 24px;
+	text-align: center;
+}
+
+.remotion-studio-state h2,
+.remotion-studio-state p {
+	margin: 0;
+}
+
+.remotion-studio-state h2 {
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.remotion-studio-state p {
+	max-width: 360px;
+	font-size: 12px;
+	line-height: 1.6;
+	color: var(--muted-foreground);
+}
+
+.remotion-studio-state pre {
+	max-width: min(100%, 560px);
+	max-height: 180px;
+	overflow: auto;
+	margin: 4px 0 0;
+	padding: 8px 10px;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 11px;
+	line-height: 1.5;
+	text-align: left;
+	white-space: pre-wrap;
+	word-break: break-word;
+}
