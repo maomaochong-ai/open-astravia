@@ -55,9 +55,18 @@ const storageBlobWriteType = Type.Object({
 	data: requiredInputStringType,
 	mimeType: requiredInputStringType,
 });
+const storageBlobFileWriteType = Type.Object({
+	id: Type.Optional(Type.String({ minLength: 1 })),
+	path: requiredInputStringType,
+	mimeType: requiredInputStringType,
+});
 const storageBlobPutInputType = Type.Object({
 	namespace: storageNamespaceType,
 	blob: storageBlobWriteType,
+});
+const storageBlobFilePutInputType = Type.Object({
+	namespace: storageNamespaceType,
+	blob: storageBlobFileWriteType,
 });
 const storageBlobReadInputType = Type.Object({
 	namespace: storageNamespaceType,
@@ -82,7 +91,9 @@ export type StorageListInput = Readonly<Static<typeof storageListInputType>>;
 export type StorageFileReadInput = Readonly<Static<typeof storageFileReadInputType>>;
 export type StorageFileWriteInput = Readonly<Static<typeof storageFileWriteInputType>>;
 export type StorageBlobWrite = Readonly<Static<typeof storageBlobWriteType>>;
+export type StorageBlobFileWrite = Readonly<Static<typeof storageBlobFileWriteType>>;
 export type StorageBlobPutInput = Readonly<Static<typeof storageBlobPutInputType>>;
+export type StorageBlobFilePutInput = Readonly<Static<typeof storageBlobFilePutInputType>>;
 export type StorageBlobReadInput = Readonly<Static<typeof storageBlobReadInputType>>;
 export type StorageBlobRef = Readonly<Static<typeof storageBlobRefType>>;
 export type StorageBlob = Readonly<Static<typeof storageBlobType>>;
@@ -96,6 +107,7 @@ const storageListInputSchema = defineCapabilityInputSchema(storageListInputType,
 const storageFileReadInputSchema = defineCapabilityInputSchema(storageFileReadInputType, { clean: true });
 const storageFileWriteInputSchema = defineCapabilityInputSchema(storageFileWriteInputType, { clean: true });
 const storageBlobPutInputSchema = defineCapabilityInputSchema(storageBlobPutInputType, { clean: true });
+const storageBlobFilePutInputSchema = defineCapabilityInputSchema(storageBlobFilePutInputType, { clean: true });
 const storageBlobReadInputSchema = defineCapabilityInputSchema(storageBlobReadInputType, { clean: true });
 const storageJsonMapOutputSchema = defineCapabilityOutputSchema(CAPABILITY_JSON_MAP_TYPE);
 const storageJsonValueOutputSchema = defineCapabilityOutputSchema(CAPABILITY_JSON_VALUE_TYPE);
@@ -189,6 +201,14 @@ export const FOUNDATION_STORAGE_CAPABILITIES = {
 		layer: CAPABILITY_LAYERS.FOUNDATION,
 		version: 1,
 		input: storageBlobPutInputSchema,
+		output: storageBlobRefOutputSchema,
+	}),
+	PUT_BLOB_FROM_FILE: defineCapability<StorageBlobFilePutInput, StorageBlobRef>({
+		id: "cap.foundation.vetta.storage.put-blob-from-file",
+		kind: "command",
+		layer: CAPABILITY_LAYERS.FOUNDATION,
+		version: 1,
+		input: storageBlobFilePutInputSchema,
 		output: storageBlobRefOutputSchema,
 	}),
 	READ_BLOB: defineCapability<StorageBlobReadInput, StorageBlob | null>({

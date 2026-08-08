@@ -44,7 +44,7 @@ function createManifest(id: string, name: string): PluginManifest {
 		runtime: "module-federation",
 		entry: "dist/mf-manifest.json",
 		moduleFederation: { remoteName: id.replaceAll("-", "_"), expose: "./plugin" },
-		permissions: ["ui.slot.global", "agent.tools.register"],
+		permissions: ["ui.slot.global", "agent.tools.register", "agent.command.run"],
 		commands: [`${id}.run`],
 	};
 }
@@ -62,6 +62,7 @@ function createInstalledPlugin(id: string, source: "archive" | "remote"): Instal
 		styleUrls: [],
 		permissions: ["ui.slot.global"],
 		grantedPermissions: ["ui.slot.global"],
+		allowedNetworkHosts: [],
 		declaredCommands: [],
 		grantedCommandNames: [],
 		defaultLocale: "zh",
@@ -130,7 +131,13 @@ describe("plugin development links", () => {
 			rootPath: projectDir,
 			devWatch: { projectDir, status: "starting" },
 		});
-		expect(linked.grantedPermissions).toEqual(["ui.slot.global", "agent.tools.register"]);
+		expect(linked.grantedPermissions).toEqual(
+			trustLevel === "official"
+				? ["ui.slot.global", "agent.tools.register", "agent.command.run"]
+				: ["ui.slot.global", "agent.tools.register"],
+		);
+		expect(linked.declaredCommands).toEqual(trustLevel === "official" ? [`${id}.run`] : []);
+		expect(linked.grantedCommandNames).toEqual(trustLevel === "official" ? [`${id}.run`] : []);
 		expect(listPlugins().find((plugin) => plugin.id === id)).toMatchObject({
 			name: expect.stringContaining("development"),
 			source,

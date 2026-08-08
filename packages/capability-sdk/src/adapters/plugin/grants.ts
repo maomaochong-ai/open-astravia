@@ -20,8 +20,10 @@ import {
 	DOMAIN_WEBHOOK_CAPABILITIES,
 } from "../../domain.js";
 import {
+	FOUNDATION_ARTIFACT_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_GATEWAY_CAPABILITIES,
+	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
 } from "../../foundation.js";
@@ -97,14 +99,19 @@ export function buildPluginCapabilityGrants(
 					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB, {
 						constraints: storageConstraints,
 					}),
+					createCapabilityGrant(FOUNDATION_STORAGE_CAPABILITIES.PUT_BLOB_FROM_FILE, {
+						constraints: storageConstraints,
+					}),
 				]
 			: []),
 		...(permissions.has(PLUGIN_CAPABILITY_PERMISSIONS.MEDIA_GENERATE)
 			? [
 					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS),
-					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB),
-					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.GET_JOB),
-					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB),
+					createCapabilityGrant(DOMAIN_MEDIA_CAPABILITIES.SUBMIT),
+					createCapabilityGrant(FOUNDATION_JOB_CAPABILITIES.GET),
+					createCapabilityGrant(FOUNDATION_JOB_CAPABILITIES.CANCEL),
+					createCapabilityGrant(FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST),
+					createCapabilityGrant(FOUNDATION_ARTIFACT_CAPABILITIES.RELEASE),
 				]
 			: []),
 		...(official ? buildOfficialDomainGrants() : []),

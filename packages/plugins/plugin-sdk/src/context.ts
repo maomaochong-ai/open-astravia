@@ -1,6 +1,7 @@
 import type { PluginAgentApi } from "./agent.js";
 import type { PluginAiApi } from "./ai.js";
 import type { PluginAppActionsApi } from "./app-actions.js";
+import type { PluginArtifactsApi } from "./artifacts.js";
 import type { PluginCaptureApi } from "./capture.js";
 import type { PluginCommandApi } from "./command.js";
 import type { PluginConversationApi } from "./conversation.js";
@@ -9,6 +10,7 @@ import type { PluginFileExplorerApi } from "./file-explorer.js";
 import type { PluginFsApi } from "./fs.js";
 import type { PluginGatewayApi } from "./gateway.js";
 import type { PluginI18nApi } from "./i18n.js";
+import type { PluginJobsApi } from "./jobs.js";
 import type { PluginMediaApi } from "./media.js";
 import type { PluginNetworkApi } from "./network.js";
 import type { PluginOfficialApi } from "./official.js";
@@ -41,6 +43,8 @@ export interface PluginContext {
 	fs: PluginFsApi;
 	command: PluginCommandApi;
 	media: PluginMediaApi;
+	jobs: PluginJobsApi;
+	artifacts: PluginArtifactsApi;
 	/** 主进程离屏窗口截图（`capture.offscreen` 权限）。旧宿主上为 `undefined`，使用前判空。 */
 	capture?: PluginCaptureApi;
 	network: PluginNetworkApi;

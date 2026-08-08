@@ -1,0 +1,9 @@
+{
+	"plugin.name": "ComfyUI Video Generation",
+	"plugin.description": "Expose a local ComfyUI workflow as a unified video generation provider.",
+	"provider.name": "ComfyUI · MiniMax H3",
+	"settings.baseUrl.title": "ComfyUI server URL",
+	"settings.baseUrl.description": "Root URL of the ComfyUI HTTP API.",
+	"settings.templatePromptId.title": "Template prompt ID",
+	"settings.templatePromptId.description": "Optional successful job to use as the API Prompt template. The latest compatible success is used when empty."
+}

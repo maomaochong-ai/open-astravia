@@ -47,7 +47,7 @@ const IMPORT_SOURCE = /^\s*(?:import|export)\b(?:[^'"]*\bfrom\s*)?["']([^"']+)["
 /**
  * 引擎 node_modules 里真实存在的东西（与 engine/package.json 的 dependencies 及
  * vite.config.mjs 的 alias 三处对齐）。设计源码 import 别的包一律构建失败——引擎是
- * 物化到 ~/.vetta/design-engine 的固定模板，agent 装不了包，也没有装包的入口。
+ * 物化到插件数据目录的固定模板，agent 装不了包，也没有装包的入口。
  *
  * `lucide-react` 在这里是**兜底**，不是推荐用法：skill 只教 Iconify 的 CSS 类，但
  * 模型对「图标」的第一反应就是去 import 它，提示词纠正不掉。既然纠不掉就接住——

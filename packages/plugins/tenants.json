@@ -11,6 +11,7 @@
       "chart-renderer",
       "git",
       "plugin-workbench",
+      "comfyui-media-provider",
       "content-creation"
     ]
   }

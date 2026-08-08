@@ -35,7 +35,8 @@ export interface PluginNetworkResponse<T = unknown> {
  * Host-mediated network access for trusted plugins.
  *
  * Requests run in the main process so plugins do not depend on renderer CORS
- * behavior. Access requires the `network.fetch` permission.
+ * behavior. Access requires the `network.fetch` permission and a matching
+ * `plugin.json` `network.allowedHosts` declaration.
  */
 export interface PluginNetworkApi {
 	request<T = unknown>(request: PluginNetworkRequest): Promise<PluginNetworkResponse<T>>;

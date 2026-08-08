@@ -20,6 +20,9 @@
 
 ### Changed
 
+- Migrated host media generation to the generic `media.submit`, `jobs`, and `artifacts` APIs so the same runtime can later consume composition Providers without depending on a specific render engine.
+- The content-creation activity tab now expands to the host's maximum available panel width whenever it is activated, while remaining user-resizable afterward.
+- Reworked visible project JSON as a self-describing schema v4 workflow document with explicit goals, deliverables, node purposes, typed inputs/results, semantic assets, and separate canvas layout; jobs and transient statuses remain in plugin storage, with toolkit-managed migration and TypeBox validation.
 - Moved workspace project persistence to the visible root `content-creation.json`; legacy hidden projects are copied forward, and generated media now lives under the workspace `output/` folder with relative project references.
 - Content assets now persist stable blob IDs and resolve host media URLs at runtime; schema v1 projects migrate automatically to schema v2.
 - Limited asset preview URL resolution to eight concurrent host lookups and evicted cached references outside the current project.
@@ -45,10 +48,11 @@
 
 ### Added
 
+- Added a structured, persistent input-bar context for the current canvas selection so the agent receives selected node IDs, semantic v4 node data, adjacent connections, and safe asset summaries without canvas layout, jobs, timestamps, previews, or private storage IDs.
 - Added input-bound, opt-in prompt optimization through host-managed AI models with reusable node-specific profiles; successful results replace the effective prompt while preserving the structured original.
 - Added host media-provider discovery and image generation through the plugin media capability, with generated artifacts persisted as visible workspace output files.
 - Added structured multimodal prompt documents with compact inline media tokens and mixed `@` prompt references, preserving editable local text while carrying referenced media into generation model compatibility checks.
-- Upgraded asset nodes into scalable image, video, and audio collections with direct file drop, compact canvas summaries, incremental management, and model-compatible selection from connected generation nodes.
+- Upgraded asset nodes into scalable image, video, and audio collections with recursive file or folder drop, host-side zero-Base64 import, canvas drop-to-create, compact summaries, incremental management, and model-compatible selection from connected generation nodes.
 - Added explicit select and hand tools to the canvas dock with visible active state.
 - Added the initial content-creation canvas and multitrack composition preset foundation.
 - Added reference-project design notes, a schema-driven node registry, typed ports, connection validation, compatible-node creation, and node workflow tests.

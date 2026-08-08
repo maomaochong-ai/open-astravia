@@ -7,6 +7,8 @@ const MIN_SCROLL_LERP_RATIO = 0.045;
 const IDLE_MAX_SCROLL_LERP_RATIO = 0.18;
 const STREAMING_MAX_SCROLL_LERP_RATIO = 0.28;
 const SCROLL_DISTANCE_FOR_MAX_RATIO = 900;
+/** 贴底静止时的降频测量间隔：每 N 帧才读一次布局，而不是每帧强制 reflow。 */
+const IDLE_MEASURE_EVERY_N_FRAMES = 4;
 
 function getScrollLerpRatio(diff: number, isStreaming: boolean): number {
 	const maxRatio = isStreaming ? STREAMING_MAX_SCROLL_LERP_RATIO : IDLE_MAX_SCROLL_LERP_RATIO;
@@ -51,6 +53,7 @@ export function useMessageListScrollModel({
 	const pendingUserAnimationIdRef = useRef<string | null>(null);
 	const [activeUserAnimationId, setActiveUserAnimationId] = useState<string | null>(null);
 	const lerpAnimationFrameRef = useRef<number | null>(null);
+	const idleFrameCountRef = useRef(0);
 	const lastTouchYRef = useRef<number | null>(null);
 	const isStreamingRef = useRef(isStreaming);
 	isStreamingRef.current = isStreaming;
@@ -67,23 +70,38 @@ export function useMessageListScrollModel({
 		const element = scrollerElementRef.current;
 		if (!element || !shouldFollowBottomRef.current) {
 			lerpAnimationFrameRef.current = null;
+			idleFrameCountRef.current = 0;
+			return;
+		}
+		// 流式期间这个循环会一直空转（内容可能因为图片/高亮异步撑高，而 scroller 的
+		// ResizeObserver 只报 border-box、报不出 scrollHeight 变化，所以不能直接停）。
+		// 但每帧读 scrollHeight/clientHeight 都是一次强制同步布局；贴底静止时按
+		// IDLE_MEASURE_EVERY_N_FRAMES 降频测量，把这份 reflow 摊薄。
+		if (idleFrameCountRef.current > 0 && idleFrameCountRef.current % IDLE_MEASURE_EVERY_N_FRAMES !== 0) {
+			idleFrameCountRef.current++;
+			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
 			return;
 		}
 		const target = Math.max(0, element.scrollHeight - element.clientHeight);
 		const diff = target - element.scrollTop;
 		if (diff > 0.5) {
+			idleFrameCountRef.current = 0;
 			element.scrollTop = element.scrollTop + diff * getScrollLerpRatio(diff, isStreamingRef.current);
 			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
 		} else if (isStreamingRef.current) {
+			idleFrameCountRef.current++;
 			releasePendingUserAnimation();
 			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
 		} else {
+			idleFrameCountRef.current = 0;
 			releasePendingUserAnimation();
 			lerpAnimationFrameRef.current = null;
 		}
 	}, [releasePendingUserAnimation]);
 
 	const startFollowingBottom = useCallback(() => {
+		// 有新内容进来就恢复逐帧测量，别让降频把这次追底拖后。
+		idleFrameCountRef.current = 0;
 		if (lerpAnimationFrameRef.current === null) {
 			lerpAnimationFrameRef.current = requestAnimationFrame(tickLerp);
 		}
@@ -103,6 +121,7 @@ export function useMessageListScrollModel({
 
 	const stopFollowingBottom = useCallback(() => {
 		shouldFollowBottomRef.current = false;
+		idleFrameCountRef.current = 0;
 		if (lerpAnimationFrameRef.current !== null) {
 			cancelAnimationFrame(lerpAnimationFrameRef.current);
 			lerpAnimationFrameRef.current = null;

@@ -1,4 +1,4 @@
-import { getWorkbenchCommand, withWorkbenchFs } from "./runtime";
+import { getWorkbenchCommand, getWorkbenchPlugins, withWorkbenchFs } from "./runtime";
 import { joinPath, readJson, type ProjectInfo, resolveWorkbenchRoot } from "./project";
 
 export interface ApplyPluginOptions {
@@ -28,6 +28,7 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 	const { project, forceBuild = false, refreshApp = false, startHotReload = true } = options;
 	const workbenchRoot = options.workbenchRoot ?? (await resolveWorkbenchRoot());
 	const command = getWorkbenchCommand();
+	const plugins = getWorkbenchPlugins();
 
 	let zip = project.zipPath;
 	if (forceBuild || !zip) {
@@ -48,16 +49,16 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 	const st = await withWorkbenchFs((fs) => fs.stat(zip));
 	if (!st) throw new Error(`Zip not found: ${zip}`);
 
-	await window.vetta.plugins.installFromPath(zip, {
+	await plugins.installFromPath(zip, {
 		grantedPermissions: project.permissions,
 		enable: true,
 	});
-	await window.vetta.plugins.setEnabled(project.id, true);
+	await plugins.setEnabled(project.id, true);
 	if (project.permissions.length > 0) {
-		await window.vetta.plugins.grantPermissions(project.id, project.permissions);
+		await plugins.grantPermissions(project.id, project.permissions);
 	}
 	try {
-		await window.vetta.plugins.reload(project.id);
+		await plugins.reload(project.id);
 	} catch {
 		// first install may not need reload
 	}
@@ -72,7 +73,7 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 
 	if (startHotReload) {
 		try {
-			await window.vetta.plugins.startDevWatch(project.id, project.dir);
+			await plugins.startDevWatch(project.id, project.dir);
 		} catch {
 			// hot reload is best-effort after apply
 		}

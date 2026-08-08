@@ -1,4 +1,4 @@
-import { useProjects } from "@domains/project/hooks/useProjects";
+import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { pathBasename } from "@shared/lib/utils";
 import {
 	batchProjectsAtom,
@@ -19,7 +19,7 @@ export function useBatchTasks() {
 	// Batch project create/delete also mutates desktop-config.json (single
 	// source of sidebar truth), so we must refresh the config-driven project
 	// list whenever a batch CRUD lands.
-	const { refreshProjects: refreshConfigProjects } = useProjects();
+	const { refreshProjects: refreshConfigProjects } = useProjectActions();
 
 	const refreshProjects = useCallback(async () => {
 		const loadedProjects = await window.vetta.batchTasks.getProjects();

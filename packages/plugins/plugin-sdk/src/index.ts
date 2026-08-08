@@ -16,6 +16,7 @@ export type {
 	PluginManifestInput,
 	PluginManifestResourceReference,
 	PluginMcpServerConfig,
+	PluginNetworkManifest,
 	PluginSettingSchema,
 } from "./manifest.js";
 
@@ -189,23 +190,57 @@ export type {
 } from "./capture.js";
 export type { PluginImageRef } from "./images.js";
 export type {
+	PluginArtifactDestination,
+	PluginArtifactRef,
+	PluginArtifactsApi,
+	PluginPersistedArtifact,
+} from "./artifacts.js";
+export type {
+	PluginJob,
+	PluginJobFailure,
+	PluginJobProgress,
+	PluginJobRef,
+	PluginJobsApi,
+	PluginJobStatus,
+	PluginJobWaitOptions,
+} from "./jobs.js";
+export type {
 	PluginMediaApi,
 	PluginMediaArtifact,
 	PluginMediaCapability,
-	PluginMediaCreateJobRequest,
+	PluginMediaComposeRequest,
 	PluginMediaDimensions,
 	PluginMediaErrorCode,
 	PluginMediaFailure,
+	PluginMediaGenerateRequest,
 	PluginMediaGenerationMode,
+	PluginMediaInput,
+	PluginMediaInputSource,
+	PluginMediaInputUploadRequest,
 	PluginMediaJob,
-	PluginMediaJobRef,
-	PluginMediaJobStatus,
 	PluginMediaKind,
+	PluginMediaOperation,
+	PluginMediaOutput,
+	PluginMediaOutputKind,
 	PluginMediaProviderDescriptor,
-	PluginMediaReference,
+	PluginMediaProviderArtifact,
+	PluginMediaProviderArtifactSource,
+	PluginMediaProviderHandlerContext,
+	PluginMediaProviderInput,
+	PluginMediaProviderJob,
+	PluginMediaProviderRegistration,
+	PluginMediaProviderSubmitRequest,
+	PluginMediaSubmitRequest,
+	PluginMediaTranscodeRequest,
+	PluginMediaTransferResponse,
 } from "./media.js";
 export { PluginMediaError } from "./media.js";
-export type { PluginPromptAttachment } from "./prompt-attachment.js";
+export type {
+	PluginPromptAttachment,
+	PluginPromptContext,
+	PluginPromptContextJsonValue,
+} from "./prompt-attachment.js";
+export { definePluginPromptContext } from "./prompt-attachment.js";
 export type {
 	PluginNetworkApi,
 	PluginNetworkBody,
@@ -215,11 +250,32 @@ export type {
 export type { PluginGatewayApi, PluginGatewayRequest, PluginGatewayResponse } from "./gateway.js";
 export type {
 	PluginPutBlobInput,
+	PluginPutBlobFromFileInput,
 	PluginStorageApi,
 	PluginStoredBlob,
 	PluginStoredBlobRef,
 } from "./storage.js";
 export type { PluginSettingsApi } from "./settings.js";
+
+// QuickJS sandbox runtime and host-rendered declarative UI
+export type {
+	PluginDeclarativeActionEvent,
+	PluginDeclarativeButton,
+	PluginDeclarativeDivider,
+	PluginDeclarativeInput,
+	PluginDeclarativeNode,
+	PluginDeclarativeSection,
+	PluginDeclarativeSelect,
+	PluginDeclarativeSelectOption,
+	PluginDeclarativeStack,
+	PluginDeclarativeSwitch,
+	PluginDeclarativeText,
+	PluginDeclarativeTextarea,
+	PluginDeclarativeTextTone,
+	PluginQuickJsActivityTab,
+	PluginQuickJsApi,
+	PluginQuickJsContext,
+} from "./quickjs.js";
 
 // i18n
 export type {

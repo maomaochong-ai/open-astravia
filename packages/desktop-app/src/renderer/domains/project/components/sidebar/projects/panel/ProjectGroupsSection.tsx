@@ -3,7 +3,7 @@ import type { ProjectsPanelModel } from "./types";
 
 interface ProjectGroupsSectionProps {
 	model: ProjectsPanelModel;
-	onProjectInteract: () => boolean | Promise<void>;
+	onProjectInteract: () => void;
 	scrollParent: HTMLElement | null;
 }
 

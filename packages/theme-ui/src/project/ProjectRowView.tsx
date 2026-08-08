@@ -2,10 +2,6 @@ import { cn } from "@vetta/ui";
 import type { JSX, Ref } from "react";
 import { RunningPulseDot } from "../sidebar/RunningPulseDot";
 import { PROJECT_TYPE_ICONS, type ProjectTypeIconKey } from "./types";
-import {
-	runAfterSidebarSelection,
-	type SidebarSelectionWait,
-} from "./useActiveSessionAutoScroll";
 
 export interface ProjectRowViewProps {
 	badge?: string;
@@ -16,7 +12,7 @@ export interface ProjectRowViewProps {
 	newSessionTitle: string;
 	onCollapse: () => void;
 	onExpand: () => void;
-	onInteract?: () => SidebarSelectionWait | readonly SidebarSelectionWait[];
+	onInteract?: () => void;
 	onNavigateProject: () => void;
 	onNewSession: () => void;
 	onOpenContextMenu: (event: React.MouseEvent) => void;
@@ -34,7 +30,7 @@ export function ProjectRowView({
 	newSessionTitle,
 	onCollapse,
 	onExpand,
-	onInteract = () => false,
+	onInteract,
 	onNavigateProject,
 	onNewSession,
 	onOpenContextMenu,
@@ -42,10 +38,6 @@ export function ProjectRowView({
 	projectType,
 	rowRef,
 }: ProjectRowViewProps): JSX.Element {
-	const navigateProject = (waits: SidebarSelectionWait | readonly SidebarSelectionWait[]) => {
-		runAfterSidebarSelection(onNavigateProject, waits);
-	};
-
 	return (
 		<div
 			ref={rowRef}
@@ -59,13 +51,13 @@ export function ProjectRowView({
 			<button
 				type="button"
 				onClick={() => {
-					const interactionWait = onInteract();
+					onInteract?.();
 					if (expanded) {
 						onCollapse();
 						return;
 					}
 					onExpand();
-					navigateProject([interactionWait, !expanded].flat());
+					onNavigateProject();
 				}}
 				className="relative flex shrink-0 items-center justify-center"
 			>
@@ -80,11 +72,11 @@ export function ProjectRowView({
 			<button
 				type="button"
 				onClick={() => {
-					const interactionWait = onInteract();
+					onInteract?.();
 					if (!expanded) {
 						onExpand();
 					}
-					navigateProject([interactionWait, !expanded].flat());
+					onNavigateProject();
 				}}
 				className={cn(
 					"min-w-0 flex-1 truncate text-left text-[13px] font-medium",

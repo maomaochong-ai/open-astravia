@@ -28,6 +28,7 @@
 	"mode.timeline": "Timeline",
 	"canvas.tool.select": "Select",
 	"canvas.tool.pan": "Hand tool",
+	"canvas.drop.createAsset": "Drop to create an asset node and import",
 	"action.addPrompt": "Prompt",
 	"action.addImageGenerator": "Image generator",
 	"action.addVideoGenerator": "Video generator",

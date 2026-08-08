@@ -1,12 +1,20 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import type { ContentProjectCommand } from "../project/commands";
 import { CONTENT_NODE_DEFINITIONS } from "../node/definitions";
-import type { ContentNode, ContentNodeKind } from "../project/types";
+import type { ContentNode, ContentNodeKind, ContentWorkflowDeliverable } from "../project/types";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import { createContentCreationAgentState } from "./agent-state";
 
 const TAB_ID = "workspace";
 const SCOPE_USE = ["conversation", "project"] as const;
 const NODE_KINDS: readonly ContentNodeKind[] = CONTENT_NODE_DEFINITIONS.map((definition) => definition.kind);
+const DELIVERABLE_TYPES: readonly ContentWorkflowDeliverable["type"][] = [
+	"image",
+	"video",
+	"audio",
+	"text",
+	"content",
+];
 
 interface ProjectInput {
 	projectDir?: string;
@@ -39,13 +47,41 @@ const applyOperationsSchema = {
 				properties: {
 					type: {
 						type: "string",
-						enum: ["add_node", "update_node", "duplicate_node", "delete_node", "connect_nodes", "delete_edge", "add_timeline_clip"],
+						enum: [
+							"update_workflow",
+							"add_node",
+							"rename_node",
+							"set_node_purpose",
+							"update_node",
+							"duplicate_node",
+							"delete_node",
+							"connect_nodes",
+							"delete_edge",
+							"add_timeline_clip",
+						],
 					},
 					id: { type: "string" },
 					kind: { type: "string", enum: NODE_KINDS },
 					x: { type: "number" },
 					y: { type: "number" },
-					label: { type: "string" },
+					name: { type: "string" },
+					title: { type: "string" },
+					objective: { type: "string" },
+					purpose: { type: "string" },
+					assetIds: { type: "array", items: { type: "string" } },
+					deliverables: {
+						type: "array",
+						items: {
+							type: "object",
+							properties: {
+								type: { type: "string", enum: DELIVERABLE_TYPES },
+								fromNode: { type: "string" },
+								description: { type: "string" },
+							},
+							required: ["type", "fromNode", "description"],
+							additionalProperties: false,
+						},
+					},
 					prompt: { type: "string" },
 					aspectRatio: { type: "string" },
 					quality: { type: "string" },
@@ -95,24 +131,65 @@ function requiredNumber(record: Record<string, unknown>, key: string): number {
 
 function parseNodeData(record: Record<string, unknown>): ContentNode["data"] {
 	const data: ContentNode["data"] = {};
-	const label = optionalString(record, "label");
 	const prompt = optionalString(record, "prompt");
 	const aspectRatio = optionalString(record, "aspectRatio");
 	const quality = optionalString(record, "quality");
 	const resolution = optionalString(record, "resolution");
-	if (label !== undefined) data.label = label;
-	if (prompt !== undefined) data.prompt = prompt;
+	const assetIds = record.assetIds;
+	if (prompt !== undefined) {
+		data.prompt = prompt;
+		data.promptOptimization = undefined;
+	}
 	if (aspectRatio !== undefined) data.aspectRatio = aspectRatio;
 	if (quality !== undefined) data.quality = quality;
 	if (resolution !== undefined) data.resolution = resolution;
+	if (assetIds !== undefined) {
+		if (!Array.isArray(assetIds) || !assetIds.every((assetId) => typeof assetId === "string")) {
+			throw new Error("assetIds must be an array of strings");
+		}
+		data.assetIds = assetIds;
+	}
 	if (typeof record.duration === "number" && Number.isFinite(record.duration)) data.duration = record.duration;
 	return data;
+}
+
+function parseDeliverables(value: unknown): ContentWorkflowDeliverable[] | undefined {
+	if (value === undefined) return undefined;
+	if (!Array.isArray(value)) throw new Error("deliverables must be an array");
+	return value.map((item) => {
+		const deliverable = asRecord(item);
+		const type = requiredString(deliverable, "type");
+		if (!DELIVERABLE_TYPES.includes(type as ContentWorkflowDeliverable["type"])) {
+			throw new Error(`unsupported deliverable type: ${type}`);
+		}
+		return {
+			type: type as ContentWorkflowDeliverable["type"],
+			fromNode: requiredString(deliverable, "fromNode"),
+			description: requiredString(deliverable, "description"),
+		};
+	});
 }
 
 function parseOperation(value: unknown): ContentProjectCommand {
 	const operation = asRecord(value);
 	const type = requiredString(operation, "type");
 	switch (type) {
+		case "update_workflow": {
+			const title = optionalString(operation, "title");
+			const objective = optionalString(operation, "objective");
+			const deliverables = parseDeliverables(operation.deliverables);
+			if (title === undefined && objective === undefined && deliverables === undefined) {
+				throw new Error("update_workflow requires title, objective, or deliverables");
+			}
+			return {
+				type: "workflow.update",
+				workflow: {
+					...(title === undefined ? {} : { title: title.trim() }),
+					...(objective === undefined ? {} : { objective }),
+					...(deliverables === undefined ? {} : { deliverables }),
+				},
+			};
+		}
 		case "add_node": {
 			const kind = requiredString(operation, "kind");
 			if (!NODE_KINDS.includes(kind as ContentNodeKind)) throw new Error(`unsupported node kind: ${kind}`);
@@ -121,11 +198,25 @@ function parseOperation(value: unknown): ContentProjectCommand {
 				node: {
 					id: optionalString(operation, "id"),
 					kind: kind as ContentNodeKind,
+					name: optionalString(operation, "name"),
+					purpose: optionalString(operation, "purpose"),
 					position: { x: requiredNumber(operation, "x"), y: requiredNumber(operation, "y") },
 					data: parseNodeData(operation),
 				},
 			};
 		}
+		case "rename_node":
+			return {
+				type: "node.rename",
+				nodeId: requiredString(operation, "nodeId"),
+				name: requiredString(operation, "name"),
+			};
+		case "set_node_purpose":
+			return {
+				type: "node.set-purpose",
+				nodeId: requiredString(operation, "nodeId"),
+				purpose: requiredString(operation, "purpose"),
+			};
 		case "update_node":
 			return {
 				type: "node.update",
@@ -201,7 +292,7 @@ export function registerContentCreationTools(ctx: PluginContext, workspace: Cont
 		scope_use: SCOPE_USE,
 		handler: async ({ session, trigger }) => {
 			const cwd = resolveCwd(trigger.input, session.cwd);
-			return workspace.load(cwd);
+			return createContentCreationAgentState(await workspace.load(cwd));
 		},
 	});
 
@@ -210,7 +301,7 @@ export function registerContentCreationTools(ctx: PluginContext, workspace: Cont
 		name: "content_creation_apply_operations",
 		label: "%tool.apply.label%",
 		description:
-			"Apply a small atomic batch of structured operations to the content graph or composition timeline. Read state first and pass expectedRevision. The UI and this tool share the same command bus.",
+			"Apply a small atomic batch of structured operations to the content workflow or composition timeline. Read state first and pass expectedRevision. The UI and this tool share the same command bus.",
 		parameters: applyOperationsSchema,
 		scope_use: SCOPE_USE,
 		handler: async ({ session, trigger }) => {

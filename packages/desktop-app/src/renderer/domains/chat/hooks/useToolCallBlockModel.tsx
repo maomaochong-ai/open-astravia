@@ -10,6 +10,7 @@ import {
 } from "@shared/store/atoms";
 import type { ToolCallBlockViewProps } from "@vetta/theme-ui/chat";
 import { useAtomValue } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { Component, type ErrorInfo, type ReactNode, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PluginI18nBoundary } from "../../plugins/runtime/plugin-i18n";
@@ -36,6 +37,12 @@ import {
 import { useElapsedWhilePending } from "../components/blocks/tool-views/shared/use-elapsed";
 
 const CONSPICUOUS_DURATION_MS = 1000;
+
+/**
+ * 视窗里每一行工具调用都跑一次这个 hook。订阅 activeSessionAtom 整个对象会让
+ * session 上任何字段变动都把所有工具行重渲染一遍，这里只需要 runtimeId。
+ */
+const activeRuntimeIdAtom = selectAtom(activeSessionAtom, (session) => session?.runtimeId ?? null);
 
 class PluginToolCallErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 	state = { failed: false };
@@ -82,13 +89,13 @@ export function useToolCallBlockModel(block: ToolCallBlock, exportMode = false, 
 	const icon = toolIcon(block.toolName);
 	const shellCommand = getShellCommand(block);
 
-	const activeSession = useAtomValue(activeSessionAtom);
+	const activeRuntimeId = useAtomValue(activeRuntimeIdAtom);
 	const backgroundTasksMap = useAtomValue(backgroundTasksBySessionAtom);
 	const backgroundTask = useMemo(() => {
 		if (!shellCommand) return undefined;
-		const tasks = getBackgroundTasksForSession(backgroundTasksMap, activeSession?.runtimeId ?? null);
+		const tasks = getBackgroundTasksForSession(backgroundTasksMap, activeRuntimeId);
 		return tasks.find((t) => t.toolCallId === block.toolCallId);
-	}, [shellCommand, backgroundTasksMap, activeSession?.runtimeId, block.toolCallId]);
+	}, [shellCommand, backgroundTasksMap, activeRuntimeId, block.toolCallId]);
 
 	const isPending = block.status === "pending";
 	const iconColorClass =

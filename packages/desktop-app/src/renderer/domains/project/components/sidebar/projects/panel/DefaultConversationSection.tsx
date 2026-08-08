@@ -12,7 +12,7 @@ interface DefaultConversationSectionProps {
 	defaultConversationFilter: DefaultConversationFilter;
 	listClassName?: string;
 	onNewSession: (cwd: string) => void;
-	onBeforeSelectSession: () => boolean | Promise<void>;
+	onBeforeSelectSession: () => void;
 	onRenameSession: (cwd: string, sessionPath: string, name: string) => void;
 	onSelectSession: (cwd: string, sessionPath: string) => void;
 	project: Project;

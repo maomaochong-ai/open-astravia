@@ -26,10 +26,12 @@ import { ContentNodeEditor } from "./ContentNodeEditor";
 import type { ConnectedContentAsset } from "./material-assets";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
 import { resolveContentPrompt, type ConnectedPromptSource } from "./prompt-sources";
-import { isImportedMediaFile, readImportedMediaFile } from "./readImportedMediaFile";
+import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "./dropped-media";
+import { getContentNodeFileDropBehavior } from "./drop-behaviors";
 
 export interface ContentFlowNodeData extends Record<string, unknown> {
 	kind: ContentNodeKind;
+	name: string;
 	nodeData: ContentNodeData;
 	assets: readonly ContentAsset[];
 	connectedAssets: readonly ConnectedContentAsset[];
@@ -45,6 +47,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	onDelete: () => void;
 	onDuplicate: () => void;
 	onToggleLock: () => void;
+	onRename: (name: string) => Promise<void>;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onResize: (position: CanvasPosition, width: number, height: number) => void;
 	onRunNode: () => Promise<void>;
@@ -57,7 +60,6 @@ export type ContentFlowNode = Node<ContentFlowNodeData, "contentNode">;
 
 /** Match bottom composer gap (`mt-2` = 8px) so top actions sit equally close to the card. */
 const QUICK_TOOLBAR_OFFSET = 8;
-const DROP_IMPORT_BATCH_SIZE = 4;
 
 export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }: NodeProps<ContentFlowNode>) {
 	const { t } = useTranslation();
@@ -69,7 +71,8 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const [importingDrop, setImportingDrop] = useState(false);
 	const [focusPromptRequest, setFocusPromptRequest] = useState(0);
 	const definition = getContentNodeDefinition(data.kind);
-	const title = data.nodeData.label?.trim() || t(`node.kind.${data.kind}`);
+	const fileDropBehavior = getContentNodeFileDropBehavior(data.kind);
+	const title = data.name || t(`node.kind.${data.kind}`);
 	const singleSelection = selected && selectionCount === 1;
 	const showQuickToolbar = singleSelection || (hovered && selectionCount === 0);
 	const isResizable = !data.locked && (definition.category === "generation" || definition.category === "resource");
@@ -98,7 +101,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 		hoverLeaveTimerRef.current = window.setTimeout(() => setHovered(false), 120);
 	};
 	const acceptsFileDrop = (event: DragEvent<HTMLDivElement>) =>
-		data.kind === "asset" && event.dataTransfer.types.includes("Files");
+		Boolean(fileDropBehavior) && dataTransferHasFiles(event.dataTransfer);
 	const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
 		if (!acceptsFileDrop(event)) return;
 		event.preventDefault();
@@ -113,26 +116,22 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 		event.dataTransfer.dropEffect = "copy";
 	};
 	const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
-		if (data.kind !== "asset") return;
+		if (!fileDropBehavior) return;
 		event.preventDefault();
 		event.stopPropagation();
 		dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
 		if (dragDepthRef.current === 0) setDropActive(false);
 	};
 	const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
-		if (data.kind !== "asset") return;
+		if (fileDropBehavior?.action !== "append-assets") return;
 		event.preventDefault();
 		event.stopPropagation();
 		dragDepthRef.current = 0;
 		setDropActive(false);
-		const files = Array.from(event.dataTransfer.files).filter(isImportedMediaFile);
-		if (files.length === 0) return;
 		setImportingDrop(true);
 		try {
-			for (let index = 0; index < files.length; index += DROP_IMPORT_BATCH_SIZE) {
-				const batch = files.slice(index, index + DROP_IMPORT_BATCH_SIZE);
-				await data.onImportAssets(await Promise.all(batch.map(readImportedMediaFile)));
-			}
+			const files = await collectDroppedMediaFiles(event.dataTransfer);
+			await importDroppedMediaFiles(files, data.onImportAssets);
 		} finally {
 			setImportingDrop(false);
 		}
@@ -230,7 +229,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 					assetKind={data.assetKind}
 					job={data.job}
 				/>
-				{data.kind === "asset" && (dropActive || importingDrop) ? (
+				{fileDropBehavior?.action === "append-assets" && (dropActive || importingDrop) ? (
 					<div className="pointer-events-none absolute inset-1 z-30 grid place-items-center rounded-lg border border-dashed border-primary/55 bg-background/90 text-center backdrop-blur-sm">
 						<div className="flex flex-col items-center gap-2 px-4 text-xs font-medium text-foreground">
 							<span className="icon-[lucide--file-down] block size-6 text-primary" aria-hidden="true" />
@@ -257,6 +256,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				<div className="max-w-[calc(100vw-32px)]">
 					<ContentNodeEditor
 						kind={data.kind}
+						name={data.name}
 						status={data.status}
 						data={data.nodeData}
 						properties={definition.properties}
@@ -268,6 +268,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 						referenceAssets={data.referenceAssets}
 						focusPromptRequest={focusPromptRequest}
 						onUpdate={data.onUpdate}
+						onRename={data.onRename}
 						onRunNode={data.onRunNode}
 						onImportAssets={data.onImportAssets}
 						onImportReferences={data.onImportReferences}

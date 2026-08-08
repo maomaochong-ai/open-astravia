@@ -2,11 +2,16 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { useEffect, useMemo, useState } from "react";
 import {
 	assignContentReferenceSlots,
+	isContentReferenceSlotCompatible,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
 	slotIdForReferenceKind,
 } from "../generation/model-inputs";
-import type { ContentModelDescriptor, ImportedContentReference } from "../generation/types";
+import type {
+	ContentModelDescriptor,
+	ContentReferenceKind,
+	ImportedContentReference,
+} from "../generation/types";
 import type {
 	ContentAsset,
 	ContentNodeData,
@@ -79,10 +84,6 @@ export function ContentGeneratorComposer({
 		const asset = assetById.get(binding.assetId);
 		return asset ? [{ binding, asset }] : [];
 	});
-	const fixedReferenceShapes = draftReferenceAssets.map(({ binding, asset }) => ({
-		slotId: binding.slotId,
-		kind: asset.kind,
-	}));
 	const selectedPromptSources = resolveConnectedPromptSources(connectedPrompts, draft);
 	const localAssetIds = new Set(draftReferenceAssets.map(({ asset }) => asset.id));
 	const promptReferenceAssets = selectedPromptSources.flatMap((source) => source.references).filter(
@@ -96,12 +97,12 @@ export function ContentGeneratorComposer({
 		) ??
 		availableModels.find(
 			(model) =>
-				assignContentReferenceSlots(model, fixedReferenceShapes, promptReferenceKinds, draft.modeId).mode !== null,
+				assignGeneratorReferences(model, draftReferenceAssets, promptReferenceKinds, draft.modeId).mode !== null,
 		) ??
 		availableModels[0];
 	const resolution = selectedModel
-		? assignContentReferenceSlots(selectedModel, fixedReferenceShapes, promptReferenceKinds, draft.modeId)
-		: { mode: null, reason: null, references: fixedReferenceShapes, assignedSlotIds: [] };
+		? assignGeneratorReferences(selectedModel, draftReferenceAssets, promptReferenceKinds, draft.modeId)
+		: { mode: null, reason: null, references: [], assignedSlotIds: [] };
 	const referenceShapes = resolution.references;
 	const acceptedKinds = selectedModel ? listAcceptedReferenceKinds(selectedModel, referenceShapes) : [];
 	const selectedAssetIds = new Set([
@@ -219,9 +220,9 @@ export function ContentGeneratorComposer({
 				canGenerate={canGenerate}
 				onChange={commit}
 				onModelChange={(model) => {
-					const nextMode = assignContentReferenceSlots(
+					const nextMode = assignGeneratorReferences(
 						model,
-						fixedReferenceShapes,
+						draftReferenceAssets,
 						promptReferenceKinds,
 					).mode;
 					const aspectRatio = model.aspectRatios.includes(draft.aspectRatio ?? "")
@@ -238,5 +239,27 @@ export function ContentGeneratorComposer({
 				onSubmit={submit}
 			/>
 		</NodeEditorPanel>
+	);
+}
+
+function assignGeneratorReferences(
+	model: ContentModelDescriptor,
+	references: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[],
+	unassignedKinds: readonly ContentReferenceKind[],
+	preferredModeId?: string,
+) {
+	const fixedReferences = references.flatMap(({ binding, asset }) => {
+		const reference = { slotId: binding.slotId, kind: asset.kind };
+		return isContentReferenceSlotCompatible(model, reference) ? [reference] : [];
+	});
+	const reassignedKinds = references.flatMap(({ binding, asset }) => {
+		const reference = { slotId: binding.slotId, kind: asset.kind };
+		return isContentReferenceSlotCompatible(model, reference) ? [] : [asset.kind];
+	});
+	return assignContentReferenceSlots(
+		model,
+		fixedReferences,
+		[...reassignedKinds, ...unassignedKinds],
+		preferredModeId,
 	);
 }

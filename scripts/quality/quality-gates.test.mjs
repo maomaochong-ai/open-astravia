@@ -185,12 +185,15 @@ describe("package boundary analysis", () => {
 		);
 	});
 
-	it("blocks Desktop globals in ordinary plugins while preserving the built-in workbench exception", () => {
+	it("blocks Desktop globals in ordinary plugins while preserving workbench and security-probe exceptions", () => {
 		const source = "window.vetta.fs.readFile(path);";
 		expect(findPackageBoundaryViolations("packages/plugins/externals/example/src/index.ts", source)).toHaveLength(1);
 		expect(findPackageBoundaryViolations("packages/plugins/presets/plugin-workbench/src/index.ts", source)).toEqual(
 			[],
 		);
+		expect(
+			findPackageBoundaryViolations("packages/plugins/externals/security-probe/src/probes/host.ts", source),
+		).toEqual([]);
 	});
 
 	it("blocks Desktop production imports from cli-app source paths", () => {

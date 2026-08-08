@@ -2,6 +2,8 @@ import type { RefreshOutcome } from "@preload/api";
 import { i18n } from "@shared/i18n";
 
 let cachedBaseUrl: string | undefined;
+const hostFetch = globalThis.fetch.bind(globalThis);
+const HostHeaders = globalThis.Headers;
 
 async function getApiBase(): Promise<string> {
 	if (cachedBaseUrl) return cachedBaseUrl;
@@ -25,8 +27,7 @@ function notifyUnauthorized(): void {
 }
 
 /**
- * Listeners notified after a successful refresh — gives renderer atoms /
- * localStorage / settings.json a single sync point.
+ * Listeners notified after a successful refresh so renderer atoms update in one place.
  */
 type TokenRefreshedListener = (next: { accessToken: string; refreshToken: string }) => void;
 const tokenRefreshedListeners = new Set<TokenRefreshedListener>();
@@ -48,19 +49,12 @@ interface ApiResponse<T> {
 	data?: T;
 }
 
-const ACCESS_TOKEN_KEY = "vetta-auth-token";
-const REFRESH_TOKEN_KEY = "vetta-refresh-token";
-
-function readStoredAccessToken(): string | undefined {
-	return localStorage.getItem(ACCESS_TOKEN_KEY) ?? undefined;
-}
-
 /**
  * 单飞：并发 401 只触发一次 refresh。
  * 实现：委托主进程做唯一权威 refresh，避免主/渲染两端同时拿同一个
  * refresh_token 调 /auth/refresh 触发服务端 reuse-detection 的 revoked 错误。
  * 主进程成功后会写 settings.json + 广播 `vetta:auth:token-refreshed`，
- * 渲染层的 localStorage / atom 由顶部的广播订阅 + notifyTokenRefreshed 同步。
+ * renderer atom 由顶部的广播订阅 + notifyTokenRefreshed 同步。
  */
 let refreshInFlight: Promise<RefreshOutcome> | null = null;
 
@@ -82,12 +76,9 @@ export async function tryRefreshAccessToken(): Promise<RefreshOutcome> {
 }
 
 /**
- * 主进程广播的 refresh 结果：把新 token 也写到 localStorage，并通知 atom 订阅者。
- * 主进程已经写过 settings.json，所以这里不再回写主进程，避免回环。
+ * 主进程广播 refresh 结果后只通知内存订阅者，不在 renderer 持久化凭据。
  */
 window.vetta?.auth?.onTokenRefreshed?.((next) => {
-	localStorage.setItem(ACCESS_TOKEN_KEY, next.accessToken);
-	localStorage.setItem(REFRESH_TOKEN_KEY, next.refreshToken);
 	notifyTokenRefreshed(next);
 });
 
@@ -96,7 +87,7 @@ window.vetta?.auth?.onTokenRefreshed?.((next) => {
  */
 function withNewAuth(options: RequestInit | undefined, accessToken: string): RequestInit | undefined {
 	if (!options?.headers) return options;
-	const headers = new Headers(options.headers as HeadersInit);
+	const headers = new HostHeaders(options.headers as HeadersInit);
 	if (headers.has("Authorization")) {
 		headers.set("Authorization", `Bearer ${accessToken}`);
 		return { ...options, headers };
@@ -106,7 +97,7 @@ function withNewAuth(options: RequestInit | undefined, accessToken: string): Req
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
 	const base = await getApiBase();
-	let res = await fetch(base + path, options);
+	let res = await hostFetch(base + path, options);
 	if (res.status === 401) {
 		// 不要给 /auth/refresh 自身做 refresh-retry，避免死循环
 		if (path === "/auth/refresh") {
@@ -122,7 +113,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 			notifyUnauthorized();
 			throw new Error("登录已过期，请重新登录");
 		}
-		res = await fetch(base + path, withNewAuth(options, outcome.accessToken));
+		res = await hostFetch(base + path, withNewAuth(options, outcome.accessToken));
 		if (res.status === 401) {
 			notifyUnauthorized();
 			throw new Error("登录已过期，请重新登录");
@@ -133,15 +124,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 		throw new Error(json.message);
 	}
 	return json.data as T;
-}
-
-/**
- * 读取当前最新的 access token（refresh 后会自动更新）。
- * 提供给 SSE / 直接拼 URL（如 flowingDownloadUrl）的场景使用——
- * 这些路径不走 request()，所以无法自动 refresh，至少要能拿到最新值。
- */
-export function getCurrentAccessToken(): string | undefined {
-	return readStoredAccessToken();
 }
 
 function authHeaders(token: string): HeadersInit {
@@ -252,7 +234,7 @@ export async function logoutOnServer(refreshToken: string | undefined): Promise<
 	if (!refreshToken) return;
 	try {
 		const base = await getApiBase();
-		await fetch(`${base}/auth/logout`, {
+		await hostFetch(`${base}/auth/logout`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ refresh_token: refreshToken }),
@@ -513,9 +495,12 @@ export async function fetchAbilityInfo(type: AbilityType, slug: string, token?: 
 /** mcp / bundle 无产物，服务端直接 400——调用前请自行判断 type。 */
 export async function downloadAbility(type: AbilityType, slug: string, token?: string | null): Promise<ArrayBuffer> {
 	const serverUrl = await window.vetta.settings.getServerUrl();
-	const resp = await fetch(`${serverUrl}/abilities/${encodeURIComponent(type)}/${encodeURIComponent(slug)}/download`, {
-		headers: optionalAuthHeaders(token),
-	});
+	const resp = await hostFetch(
+		`${serverUrl}/abilities/${encodeURIComponent(type)}/${encodeURIComponent(slug)}/download`,
+		{
+			headers: optionalAuthHeaders(token),
+		},
+	);
 	if (!resp.ok) throw new Error(i18n.t("abilities:error.downloadFailed", { status: resp.status }));
 	return resp.arrayBuffer();
 }

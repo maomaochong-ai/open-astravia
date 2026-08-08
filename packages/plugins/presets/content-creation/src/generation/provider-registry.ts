@@ -3,6 +3,7 @@ import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
 	ContentProviderAdapter,
+	ContentProviderGenerationContext,
 	GeneratedContent,
 } from "./types";
 import { resolveContentGenerationMode } from "./model-inputs";
@@ -23,7 +24,7 @@ export class ContentProviderRegistry {
 		);
 	}
 
-	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
+	async generate(request: ContentGenerationRequest, context: ContentProviderGenerationContext): Promise<GeneratedContent> {
 		const provider = this.providers.get(request.providerId);
 		if (!provider) throw new Error(`content provider not found: ${request.providerId}`);
 		const model = provider.listModels().find((candidate) => candidate.modelId === request.modelId);
@@ -33,6 +34,6 @@ export class ContentProviderRegistry {
 		if (!model || resolution?.mode?.id !== request.modeId) {
 			throw new Error(`content model does not support ${request.modeId}: ${request.providerId}/${request.modelId}`);
 		}
-		return provider.generate(request);
+		return provider.generate(request, context);
 	}
 }

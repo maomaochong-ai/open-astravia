@@ -10,6 +10,10 @@
 
 修改子目录文件前仍需继续读取更具体的同级或下级说明文件（如存在）。
 
+## 相关文档
+
+- [Module Federation 共享依赖约定](./docs/module-federation.md)：说明 `vettaPluginFederation` 的宿主共享依赖、构建期本地依赖要求、顶层求值限制和验证方式。
+
 ## 租户化打包（tenants.json）
 
 系统插件按业务租户动态构建/打包。`tenants.json` 定义每个租户要包含的
@@ -163,6 +167,10 @@ Preset 和 external 插件直接纳入根 `package.json` 定义的 workspace。�
 - 权限列表和 API 说明见 `docs/plugin/`（开发手册：清单 `manifest.md`、权限 `permissions.md`、各扩展点 `ui-slots.md` / `message-cards.md` / `conversation-and-agent.md`）。
 
 ### Vite 配置
+
+Module Federation 的共享依赖约定和常见构建警告见
+[docs/module-federation.md](./docs/module-federation.md)。新增或修改插件的
+`vite.config.ts`、共享依赖或 `package.json` 时，必须同步检查该文档中的依赖和验证清单。
 
 ```ts
 import { vettaPluginFederation } from "@vetta-org/plugin-vite";

@@ -4,7 +4,7 @@ import type { ContentReferenceKind, ImportedContentReference } from "../generati
 import type { ContentAsset, ContentNodeInputBinding } from "../project/types";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import { ConnectedAssetPicker, type ConnectedReferenceOption } from "./ConnectedAssetPicker";
-import { readImportedMediaFile } from "./readImportedMediaFile";
+import { createImportedMediaFile } from "./imported-media-file";
 
 interface ContentReferenceInputProps {
 	references: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
@@ -34,7 +34,7 @@ export function ContentReferenceInput({
 		const files = Array.from(event.target.files ?? []);
 		event.target.value = "";
 		if (files.length === 0) return;
-		await onImport(await Promise.all(files.map(readImportedMediaFile)));
+		await onImport(files.map((file) => createImportedMediaFile(file)));
 	};
 
 	return (

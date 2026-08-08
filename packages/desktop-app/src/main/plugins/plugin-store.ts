@@ -58,6 +58,7 @@ const manifestPath = join(getVettaHomePath(), "plugins-manifest.json");
 const tmpBaseDir = join(getVettaHomePath(), "tmp", "plugins");
 // 系统插件的用户态偏好（目前仅停用开关），与用户插件注册表分离（ADR-0024）。
 const systemPrefsPath = join(getVettaHomePath(), "system-plugin-prefs.json");
+const OFFICIAL_COMMAND_PERMISSIONS = new Set<PluginPermission>(["agent.command.run", "agent.command.spawn"]);
 
 type PluginManifestFile = Record<string, InstalledPlugin>;
 type SystemPluginPrefs = Record<string, { enabled: boolean; disabledCommands?: string[] }>;
@@ -77,6 +78,19 @@ const dynamicSystemPromptProviders = new Map<string, Map<string, RegisteredSyste
 const modeGatedPluginIds = new Set<string>();
 /** Subset of mode-gated plugins currently active (toggle on). */
 const activeContributionModeIds = new Set<string>();
+
+function effectivePermissions(
+	permissions: readonly PluginPermission[],
+	trustLevel: InstalledPlugin["trustLevel"],
+): PluginPermission[] {
+	return trustLevel === "official"
+		? [...permissions]
+		: permissions.filter((permission) => !OFFICIAL_COMMAND_PERMISSIONS.has(permission));
+}
+
+function effectiveCommands(commands: readonly string[], trustLevel: InstalledPlugin["trustLevel"]): string[] {
+	return trustLevel === "official" ? [...commands] : [];
+}
 
 /**
  * Tell every renderer to re-list and re-load plugins (MF remotes + activity tabs).
@@ -252,10 +266,7 @@ function readRegistry(): PluginManifestFile {
 		const registry = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifestFile;
 		for (const plugin of Object.values(registry)) {
 			plugin.runtime ??= "esm";
-			plugin.permissions ??= [];
-			plugin.grantedPermissions ??= [];
-			plugin.declaredCommands ??= [];
-			plugin.grantedCommandNames ??= [];
+			plugin.allowedNetworkHosts ??= [];
 			plugin.styleUrls ??= [];
 			plugin.activeVersion ??= plugin.version;
 			plugin.defaultLocale ??= "zh";
@@ -264,6 +275,10 @@ function readRegistry(): PluginManifestFile {
 			plugin.required = false;
 			// 用户可编辑的注册表不是信任根；远端签名链接入前一律按来源降为非官方。
 			plugin.trustLevel = plugin.source === "remote" ? "community" : "local";
+			plugin.permissions = effectivePermissions(plugin.permissions ?? [], plugin.trustLevel);
+			plugin.grantedPermissions = effectivePermissions(plugin.grantedPermissions ?? [], plugin.trustLevel);
+			plugin.declaredCommands = effectiveCommands(plugin.declaredCommands ?? [], plugin.trustLevel);
+			plugin.grantedCommandNames = effectiveCommands(plugin.grantedCommandNames ?? [], plugin.trustLevel);
 			plugin.rootPath = computePluginRootPath(plugin.id, plugin.source, plugin.activeVersion);
 		}
 		return registry;
@@ -338,23 +353,19 @@ function installedFromManifest(
 	const entryUrl = previous?.entryUrl ?? toPluginUrl(manifest.id, activeVersion, manifest.entry);
 	const styleUrls =
 		previous?.styleUrls ?? (manifest.styles ?? []).map((style) => toPluginUrl(manifest.id, activeVersion, style));
+	const trustLevel: InstalledPlugin["trustLevel"] = options?.source === "remote" ? "community" : "local";
+	const permissions = effectivePermissions(manifest.permissions ?? [], trustLevel);
 	const grantedPermissions = Array.from(
 		new Set(
-			(options?.grantedPermissions ?? previous?.grantedPermissions ?? []).filter((p) =>
-				manifest.permissions?.includes(p),
-			),
+			(options?.grantedPermissions ?? previous?.grantedPermissions ?? []).filter((p) => permissions.includes(p)),
 		),
 	);
 	// 与 entryUrl/styleUrls 同源：已安装过就沿用 activeVersion 的图标 URL，避免指向未生效的新版本。
 	const iconUrl = previous
 		? previous.iconUrl
 		: resolveIconUrl(manifest.icon, (path) => toPluginUrl(manifest.id, activeVersion, path));
-	const declaredCommands = manifest.commands ?? [];
-	// Fresh install enables all declared commands by default; the user can toggle
-	// any of them off later. A reinstall preserves the prior allow set.
-	const grantedCommandNames = Array.from(
-		new Set((previous?.grantedCommandNames ?? declaredCommands).filter((name) => declaredCommands.includes(name))),
-	);
+	const declaredCommands = effectiveCommands(manifest.commands ?? [], trustLevel);
+	const grantedCommandNames = effectiveCommands(previous?.grantedCommandNames ?? [], trustLevel);
 	return {
 		id: manifest.id,
 		name: manifest.name,
@@ -368,8 +379,9 @@ function installedFromManifest(
 		// 插件级工作模式白名单（agent_mode 轴）：始终跟随最新 manifest。见 ADR-0046。
 		agent_mode: manifest.agent_mode,
 		styleUrls,
-		permissions: manifest.permissions ?? [],
+		permissions,
 		grantedPermissions,
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
 		declaredCommands,
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
@@ -384,7 +396,7 @@ function installedFromManifest(
 		installedAt: previous?.installedAt ?? now,
 		updatedAt: now,
 		source: options?.source ?? "archive",
-		trustLevel: options?.source === "remote" ? "community" : "local",
+		trustLevel,
 		availableVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
 		pendingVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
 		rootPath: computePluginRootPath(manifest.id, options?.source ?? "archive", activeVersion),
@@ -556,19 +568,25 @@ function toDevPluginUrl(pluginId: string, relativePath: string, token: string): 
  *
  * Dev 期额外同步安装态字段（仅内存，不写注册表）：
  * - permissions / declaredCommands / settingsSchema 跟工程 plugin.json
- * - 新声明的权限与命令在热更新会话内自动视为已授权，避免「改了 permissions
- *   却必须重新安装」的开发摩擦；关热更新或重启后仍回落注册表安装态。
+ * - 新声明的普通权限在热更新会话内自动视为已授权，避免「改了 permissions
+ *   却必须重新安装」的开发摩擦；命令权限仍只给 official 插件。
  * 正式发布 / 关热更新后的持久授权仍走「应用到 Vetta / 重新安装」。
  */
 function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 	const link = devLinks.get(plugin.id);
 	if (!link) return plugin;
 	const manifest = link.manifest;
-	const permissions = manifest.permissions ?? [];
-	const declaredCommands = manifest.commands ?? [];
+	const permissions = effectivePermissions(manifest.permissions ?? [], plugin.trustLevel);
+	const declaredCommands = effectiveCommands(manifest.commands ?? [], plugin.trustLevel);
 	// 热更新会话内：声明即放行（合并用户已授权集合，不收回已有授权）。
-	const grantedPermissions = Array.from(new Set([...plugin.grantedPermissions, ...permissions]));
-	const grantedCommandNames = Array.from(new Set([...(plugin.grantedCommandNames ?? []), ...declaredCommands]));
+	const grantedPermissions = effectivePermissions(
+		Array.from(new Set([...plugin.grantedPermissions, ...permissions])),
+		plugin.trustLevel,
+	);
+	const grantedCommandNames = effectiveCommands(
+		Array.from(new Set([...(plugin.grantedCommandNames ?? []), ...declaredCommands])),
+		plugin.trustLevel,
+	);
 	return {
 		...plugin,
 		name: manifest.name,
@@ -590,6 +608,7 @@ function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 		locales: link.locales,
 		permissions,
 		grantedPermissions,
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
 		declaredCommands,
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
@@ -1087,6 +1106,7 @@ function systemInstalledFromManifest(
 		permissions: manifest.permissions ?? [],
 		// 系统插件随包发的可信代码：声明权限全部自动授予，用户不可撤（ADR-0024）。
 		grantedPermissions: manifest.permissions ?? [],
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
 		declaredCommands,
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
@@ -1218,7 +1238,7 @@ export async function installPluginFromArchive(
 		// Fresh install with explicit grants: if caller passed permissions, keep them.
 		// ADR-0042 agent path typically grants all declared permissions at approve time.
 		if (options?.grantedPermissions && options.grantedPermissions.length > 0) {
-			const allowed = new Set(manifest.permissions ?? []);
+			const allowed = new Set(installed.permissions);
 			installed = {
 				...installed,
 				grantedPermissions: options.grantedPermissions.filter((p) => allowed.has(p)),
@@ -1314,7 +1334,7 @@ export function grantPluginPermissions(id: string, permissions: PluginPermission
 	const registry = readRegistry();
 	const plugin = registry[id];
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
-	const allowed = new Set(plugin.permissions);
+	const allowed = new Set(effectivePermissions(plugin.permissions, plugin.trustLevel));
 	plugin.grantedPermissions = Array.from(
 		new Set([...plugin.grantedPermissions, ...permissions.filter((p) => allowed.has(p))]),
 	);
@@ -1359,16 +1379,7 @@ export function grantPluginCommands(id: string, names: string[]): InstalledPlugi
 		if (!refreshed) throw new Error(`Plugin not found: ${id}`);
 		return refreshed;
 	}
-	const registry = readRegistry();
-	const plugin = registry[id];
-	if (!plugin) throw new Error(`Plugin not found: ${id}`);
-	const declared = new Set(plugin.declaredCommands);
-	plugin.grantedCommandNames = Array.from(
-		new Set([...plugin.grantedCommandNames, ...requested.filter((name) => declared.has(name))]),
-	);
-	plugin.updatedAt = new Date().toISOString();
-	writeRegistry(registry);
-	return plugin;
+	throw new Error(`Plugin command execution is restricted to official plugins: ${id}`);
 }
 
 /** Disable declared command names. Inverse of {@link grantPluginCommands}. */
@@ -1424,6 +1435,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	plugin.entryUrl = `${toPluginUrl(plugin.id, plugin.activeVersion, manifest.entry)}&reload=${reloadToken}`;
 	plugin.moduleFederation = manifest.moduleFederation;
 	plugin.agent = manifest.agent;
+	plugin.allowedNetworkHosts = manifest.network?.allowedHosts ?? [];
 	plugin.styleUrls = (manifest.styles ?? []).map(
 		(style) => `${toPluginUrl(plugin.id, plugin.activeVersion, style)}&reload=${reloadToken}`,
 	);
@@ -1434,7 +1446,11 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	);
 	// 重载到新版本时同步命令声明，并把用户授权裁剪到新声明集合内（避免授权指向已移除的命令、
 	// 或新增命令因 declaredCommands 陈旧而永远无法授权）。
-	plugin.declaredCommands = manifest.commands ?? [];
+	plugin.permissions = effectivePermissions(manifest.permissions ?? [], plugin.trustLevel);
+	plugin.grantedPermissions = effectivePermissions(plugin.grantedPermissions, plugin.trustLevel).filter((permission) =>
+		plugin.permissions.includes(permission),
+	);
+	plugin.declaredCommands = effectiveCommands(manifest.commands ?? [], plugin.trustLevel);
 	plugin.grantedCommandNames = (plugin.grantedCommandNames ?? []).filter((name) =>
 		plugin.declaredCommands.includes(name),
 	);

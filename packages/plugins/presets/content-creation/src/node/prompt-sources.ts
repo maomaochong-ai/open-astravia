@@ -57,7 +57,7 @@ export function listConnectedPromptSources(
 			return [
 				{
 					nodeId: source.id,
-					label: source.data.label,
+					label: source.name,
 					prompt: contentPromptTextFromData(source.data),
 					references: listContentPromptReferences(project, source),
 				},

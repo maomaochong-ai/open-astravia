@@ -138,7 +138,8 @@ export function useAbilitiesModel(): AbilitiesModel {
 		groups,
 		allItems,
 		bannerIcons,
-		loading: data.loading || mcp.config === null,
+		// mcpConfig 缺省时 buildMcpAbilities 按空表处理，不必再挡整表转圈。
+		loading: data.loading,
 		refreshing: data.refreshing,
 		errors,
 		detailErrors,

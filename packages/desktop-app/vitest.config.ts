@@ -6,6 +6,7 @@ const codingAgentSrc = resolve(__dirname, "../coding-agent/src");
 export default defineConfig({
 	resolve: {
 		alias: [
+			{ find: "@", replacement: resolve(__dirname, "./src") },
 			{ find: "@shared", replacement: resolve(__dirname, "./src/renderer/shared") },
 			{ find: "@domains", replacement: resolve(__dirname, "./src/renderer/domains") },
 			{

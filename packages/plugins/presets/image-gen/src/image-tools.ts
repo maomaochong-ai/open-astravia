@@ -3,7 +3,8 @@ import type {
 	PluginImageRef,
 	PluginMediaArtifact,
 	PluginMediaGenerationMode,
-	PluginStoredBlob,
+	PluginMediaInput,
+	PluginStoredBlobRef,
 } from "@vetta-org/plugin-sdk";
 import { PluginMediaError } from "@vetta-org/plugin-sdk";
 import type { ImageRepository } from "./image-repository";
@@ -133,7 +134,10 @@ function dimensionsFromSize(size: string | undefined): { width: number; height: 
 async function findProvider(ctx: PluginContext, mode: PluginMediaGenerationMode): Promise<string> {
 	const providers = (await ctx.media.listProviders()).filter((candidate) =>
 			candidate.capabilities.some(
-				(capability) => capability.kind === "image" && capability.modes.includes(mode),
+				(capability) =>
+					capability.operation === "generate" &&
+					capability.kind === "image" &&
+					capability.modes.includes(mode),
 			),
 		);
 	const provider =
@@ -148,7 +152,7 @@ async function findProvider(ctx: PluginContext, mode: PluginMediaGenerationMode)
 	return provider.id;
 }
 
-function artifactBytes(artifact: PluginMediaArtifact | undefined): PluginStoredBlob {
+function requireImageArtifact(artifact: PluginMediaArtifact | undefined): PluginMediaArtifact {
 	if (!artifact || artifact.kind !== "image") {
 		throw new PluginMediaError({
 			code: "provider-failed",
@@ -156,32 +160,37 @@ function artifactBytes(artifact: PluginMediaArtifact | undefined): PluginStoredB
 			retryable: false,
 		});
 	}
-	return { data: artifact.data, mimeType: artifact.mimeType };
+	return artifact;
 }
 
 async function generateThroughMedia(
 	ctx: PluginContext,
 	input: { prompt: string; size?: string },
-	source?: PluginStoredBlob,
-): Promise<PluginStoredBlob> {
+	source?: PluginMediaInput,
+): Promise<PluginStoredBlobRef> {
 	const mode = source ? "image-to-image" : "text-to-image";
-	let job = await ctx.media.createJob({
+	const submitted = await ctx.media.submit({
+		operation: "generate",
 		providerId: await findProvider(ctx, mode),
 		kind: "image",
 		mode,
 		prompt: input.prompt,
 		dimensions: dimensionsFromSize(input.size),
-		references: source ? [{ kind: "image", data: source.data, mimeType: source.mimeType }] : [],
+		inputs: source ? [source] : [],
 	});
-	while (job.status === "queued" || job.status === "running") {
-		await new Promise((resolve) => setTimeout(resolve, 1_000));
-		job = await ctx.media.getJob(job);
-	}
+	const job = await ctx.jobs.wait(submitted, { pollIntervalMs: 1_000 });
 	if (job.status === "failed" && job.error) throw new PluginMediaError(job.error);
 	if (job.status === "cancelled") {
 		throw new PluginMediaError({ code: "cancelled", message: "Image generation was cancelled", retryable: false });
 	}
-	return artifactBytes(job.artifacts?.[0]);
+	const artifact = requireImageArtifact(job.artifacts[0]);
+	try {
+		const saved = await ctx.artifacts.persist(artifact, { type: "plugin-blob" });
+		if (saved.type !== "plugin-blob") throw new Error("Generated image was not saved to plugin storage");
+		return { id: saved.blobId, url: saved.url, mimeType: saved.mimeType };
+	} finally {
+		await ctx.artifacts.release(artifact).catch(() => undefined);
+	}
 }
 
 export function registerImageTools(ctx: PluginContext, repository: ImageRepository): void {
@@ -195,14 +204,14 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,
 		handler: async ({ session, trigger }) => {
-			let bytes: PluginStoredBlob;
+			let blob: PluginStoredBlobRef;
 			try {
-				bytes = await generateThroughMedia(ctx, trigger.input);
+				blob = await generateThroughMedia(ctx, trigger.input);
 			} catch (error) {
 				if (error instanceof PluginMediaError) return mediaFailure(error);
 				throw error;
 			}
-			const image = await repository.persist(bytes, { sessionId: session.id });
+			const image = await repository.persist(blob, { sessionId: session.id });
 			ctx.ui.openActivityTab(HISTORY_TAB_ID);
 			return result("generated", [image]);
 		},
@@ -217,7 +226,7 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		parameters: editParameters,
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,
-		handler: async ({ host, session, trigger }) => {
+		handler: async ({ session, trigger }) => {
 			const input = trigger.input;
 			if (!input.sourceImageId && !input.sourceImagePath) {
 				return {
@@ -236,20 +245,19 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 			const generatedSource = input.sourceImageId
 				? await repository.read(input.sourceImageId)
 				: null;
-			const localSource = input.sourceImagePath
-				? await host.fs.readBinaryFile(input.sourceImagePath)
-				: null;
-			const source = generatedSource ??
-				(localSource
-					? {
-							data: localSource.data,
-							mimeType: localSource.mimeType,
-						}
-					: null);
+			const source: PluginMediaInput | null = generatedSource
+				? {
+						kind: "image",
+						mimeType: generatedSource.mimeType,
+						source: { type: "plugin-blob", blobId: generatedSource.id },
+					}
+				: input.sourceImagePath
+					? { kind: "image", source: { type: "workspace-file", path: input.sourceImagePath } }
+					: null;
 			if (!source) throw new Error("Image source was not found");
-			let bytes: PluginStoredBlob;
+			let blob: PluginStoredBlobRef;
 			try {
-				bytes = await generateThroughMedia(ctx, {
+				blob = await generateThroughMedia(ctx, {
 					prompt: input.prompt,
 					size: input.size,
 				}, source);
@@ -261,7 +269,7 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 				? await repository.lineage(input.sourceImageId)
 				: [];
 			const rootId = sourceLineage[0]?.rootId;
-			const image = await repository.persist(bytes, {
+			const image = await repository.persist(blob, {
 				rootId,
 				parent: input.sourceImageId,
 				sessionId: session.id,

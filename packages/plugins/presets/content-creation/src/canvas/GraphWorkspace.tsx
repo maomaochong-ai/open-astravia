@@ -12,8 +12,9 @@ import {
 import {
 	type PluginShortcutBinding,
 	usePluginShortcutScope,
+	useTranslation,
 } from "@vetta-org/plugin-sdk";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findContentAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";
 import type { ContentProjectCommand } from "../project/commands";
@@ -56,6 +57,7 @@ import { CONTENT_FLOW_SOURCE_HANDLE_ID } from "./flow-handles";
 import { reconcileSelectedNodeIds } from "./selection-state";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { DEFAULT_CANVAS_TOOL, getCanvasInteraction } from "./canvas-tools";
+import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "../node/dropped-media";
 
 const nodeTypes: NodeTypes = { contentNode: ContentNodeCard };
 const CREATE_MENU_SIZE = { width: 320, height: 420 };
@@ -72,6 +74,7 @@ interface GraphWorkspaceProps {
 	onRunNode: (nodeId: string) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
+	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
 }
 
 export function GraphWorkspace({
@@ -82,7 +85,9 @@ export function GraphWorkspace({
 	onRunNode,
 	onImportAssets,
 	onImportReferences,
+	onSelectedNodeIdsChange,
 }: GraphWorkspaceProps) {
+	const { t } = useTranslation();
 	const flowContainerRef = useRef<HTMLDivElement>(null);
 	const flowInstanceRef = useRef<ReactFlowInstance<ContentFlowNode, Edge> | null>(null);
 	const alignmentGuidesLayerRef = useRef<AlignmentGuidesLayerHandle>(null);
@@ -92,7 +97,10 @@ export function GraphWorkspace({
 	 * opened by `onConnectEnd`.
 	 */
 	const suppressNextPaneClickRef = useRef(false);
+	const canvasDropDepthRef = useRef(0);
 	const [canvasTool, setCanvasTool] = useState(DEFAULT_CANVAS_TOOL);
+	const [canvasDropActive, setCanvasDropActive] = useState(false);
+	const [importingCanvasDrop, setImportingCanvasDrop] = useState(false);
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 	const [pendingMenu, setPendingMenu] = useState<PendingConnectionMenu | null>(null);
 	const [canvasMenu, setCanvasMenu] = useState<CanvasCreateMenuState | null>(null);
@@ -102,6 +110,9 @@ export function GraphWorkspace({
 		[project.graph.nodes, selectedNodeIds],
 	);
 	const selectedNodeIdSet = useMemo(() => new Set(activeSelectedNodeIds), [activeSelectedNodeIds]);
+	useEffect(() => {
+		onSelectedNodeIdsChange(activeSelectedNodeIds);
+	}, [activeSelectedNodeIds, onSelectedNodeIdsChange]);
 	const canvasInteraction = getCanvasInteraction(canvasTool);
 	const projectSyncKey = `${createContentProjectSyncKey(
 		{
@@ -130,6 +141,9 @@ export function GraphWorkspace({
 			onToggleLock: (nodeId) => {
 				const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
 				if (node) void onDispatch([{ type: "node.lock", nodeId, locked: !node.locked }]);
+			},
+			onRename: async (nodeId, name) => {
+				await onDispatch([{ type: "node.rename", nodeId, name }]);
 			},
 			onUpdate: async (nodeId, data) => {
 				const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
@@ -219,9 +233,62 @@ export function GraphWorkspace({
 			const size = getContentNodeSize(kind, createDefaultContentNodeData(kind).aspectRatio);
 			const offset = project.graph.nodes.length * 18;
 			const position = { x: center.x - size.width / 2 + offset, y: center.y - size.height / 2 + offset };
-			void onDispatch([{ type: "node.add", node: { id: nodeId, kind, position } }]).then(() => setSelectedNodeIds([nodeId]));
+			const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+			void onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]).then(() =>
+				setSelectedNodeIds([nodeId]),
+			);
 		},
-		[onDispatch, project.graph.nodes.length],
+		[onDispatch, project.graph.nodes, t],
+	);
+
+	const handleCanvasDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
+		if (!dataTransferHasFiles(event.dataTransfer)) return;
+		event.preventDefault();
+		canvasDropDepthRef.current += 1;
+		setCanvasDropActive(true);
+	}, []);
+	const handleCanvasDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+		if (!dataTransferHasFiles(event.dataTransfer)) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = "copy";
+	}, []);
+	const handleCanvasDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+		if (!dataTransferHasFiles(event.dataTransfer)) return;
+		event.preventDefault();
+		canvasDropDepthRef.current = Math.max(0, canvasDropDepthRef.current - 1);
+		if (canvasDropDepthRef.current === 0) setCanvasDropActive(false);
+	}, []);
+	const handleCanvasDrop = useCallback(
+		async (event: DragEvent<HTMLDivElement>) => {
+			if (!dataTransferHasFiles(event.dataTransfer)) return;
+			event.preventDefault();
+			const dataTransfer = event.dataTransfer;
+			const pointer = { x: event.clientX, y: event.clientY };
+			canvasDropDepthRef.current = 0;
+			setCanvasDropActive(false);
+			const instance = flowInstanceRef.current;
+			if (!instance) return;
+
+			setImportingCanvasDrop(true);
+			try {
+				const files = await collectDroppedMediaFiles(dataTransfer);
+				if (files.length === 0) return;
+				const kind = "asset";
+				const nodeId = crypto.randomUUID();
+				const center = instance.screenToFlowPosition(pointer);
+				const data = createDefaultContentNodeData(kind);
+				const size = getContentNodeSize(kind, data.aspectRatio);
+				const position = { x: center.x - size.width / 2, y: center.y - size.height / 2 };
+				const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+				closeMenus();
+				await onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]);
+				setSelectedNodeIds([nodeId]);
+				await importDroppedMediaFiles(files, (batch) => onImportAssets(nodeId, batch));
+			} finally {
+				setImportingCanvasDrop(false);
+			}
+		},
+		[closeMenus, onDispatch, onImportAssets, project.graph.nodes, t],
 	);
 
 	const clampOverlay = useCallback((clientX: number, clientY: number, size: { width: number; height: number }) => {
@@ -308,7 +375,16 @@ export function GraphWorkspace({
 				x: pendingMenu.position.x - size.width / 2,
 				y: pendingMenu.position.y - size.height / 2,
 			};
-			const candidateNode: ContentNode = { id: nodeId, kind, position, ...size, status: "idle", data };
+			const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+			const candidateNode: ContentNode = {
+				id: nodeId,
+				kind,
+				name,
+				position,
+				...size,
+				status: "idle",
+				data,
+			};
 			const candidateProject: ContentProjectDocument = {
 				...project,
 				graph: { ...project.graph, nodes: [...project.graph.nodes, candidateNode] },
@@ -320,13 +396,13 @@ export function GraphWorkspace({
 			const connection = resolveContentConnection(candidateProject, sourceNode, targetNode);
 			if (!connection) return;
 			void onDispatch([
-				{ type: "node.add", node: { id: nodeId, kind, position } },
+				{ type: "node.add", node: { id: nodeId, kind, name, position } },
 				{ type: "edge.connect", source: sourceNode.id, target: targetNode.id, ...connection },
 			]);
 			setSelectedNodeIds([nodeId]);
 			setPendingMenu(null);
 		},
-		[onDispatch, pendingMenu, project],
+		[onDispatch, pendingMenu, project, t],
 	);
 
 	const selectedProjectNodes = useMemo(
@@ -539,6 +615,10 @@ export function GraphWorkspace({
 			<div
 				ref={flowContainerRef}
 				className="content-creation-flow relative min-h-0 flex-1 overflow-hidden bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]"
+				onDragEnter={handleCanvasDragEnter}
+				onDragOver={handleCanvasDragOver}
+				onDragLeave={handleCanvasDragLeave}
+				onDrop={(event) => void handleCanvasDrop(event)}
 			>
 				<ContentCanvasSelectionProvider count={activeSelectedNodeIds.length}>
 					<ReactFlow<ContentFlowNode, Edge>
@@ -609,6 +689,14 @@ export function GraphWorkspace({
 					onDeleteEdge={(edgeId) => void onDispatch([{ type: "edge.delete", edgeId }])}
 					onCloseContextMenu={() => setContextMenu(null)}
 				/>
+				{canvasDropActive || importingCanvasDrop ? (
+					<div className="pointer-events-none absolute inset-3 z-30 grid place-items-center rounded-lg border border-dashed border-border/80 bg-background/55 backdrop-blur-[1px]">
+						<div className="flex items-center gap-2 rounded-lg border border-border/80 bg-popover/95 px-3 py-2 text-xs font-medium text-popover-foreground shadow-sm">
+							<span className="icon-[lucide--folder-input] block size-4 text-muted-foreground" aria-hidden="true" />
+							<span>{t(importingCanvasDrop ? "assetNode.importing" : "canvas.drop.createAsset")}</span>
+						</div>
+					</div>
+				) : null}
 			</div>
 		</div>
 	);

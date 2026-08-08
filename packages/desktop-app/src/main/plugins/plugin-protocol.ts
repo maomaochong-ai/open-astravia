@@ -116,6 +116,7 @@ export const __PluginI18nContext = sdk.__PluginI18nContext;
 export const interpolatePluginText = sdk.interpolatePluginText;
 export const resolveCatalogKey = sdk.resolveCatalogKey;
 export const resolvePluginText = sdk.resolvePluginText;
+export const definePluginPromptContext = sdk.definePluginPromptContext;
 export const PluginAppActionError = sdk.PluginAppActionError;
 export const PluginMediaError = sdk.PluginMediaError;
 export const usePluginShortcutScope = sdk.usePluginShortcutScope;

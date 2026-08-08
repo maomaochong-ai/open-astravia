@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Dirent, Stats } from "node:fs";
-import { cp, mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import {
@@ -81,6 +81,33 @@ export function assertFilesystemPathWithinProject(targetPath: string): void {
 	if (!isWithinAllowedRoots(targetPath)) {
 		throw new Error("Path is outside any known project directory");
 	}
+}
+
+/** 同时解析现有祖先路径，阻止项目目录内的符号链接跳出授权根。 */
+export async function assertFilesystemRealPathWithinProject(targetPath: string): Promise<void> {
+	assertFilesystemPathWithinProject(targetPath);
+	let existingPath = resolve(targetPath);
+	while (true) {
+		try {
+			await lstat(existingPath);
+			break;
+		} catch (error: unknown) {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+			const parent = dirname(existingPath);
+			if (parent === existingPath) throw new Error("Path has no existing ancestor");
+			existingPath = parent;
+		}
+	}
+
+	const canonicalTarget = await realpath(existingPath);
+	for (const root of allowedRoots) {
+		try {
+			if (isPathWithin(await realpath(root), canonicalTarget)) return;
+		} catch {
+			// Ignore stale project roots that no longer exist.
+		}
+	}
+	throw new Error("Resolved path is outside any known project directory");
 }
 
 export function allowProjectRoot(cwd: string): void {

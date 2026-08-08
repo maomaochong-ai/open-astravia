@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "bunx vite build",
-		"check": "bunx tsc --noEmit"
+		"check": "bunx tsc --noEmit",
+		"test": "bunx vitest --run"
 	},
 	"devDependencies": {
 		"@iconify-json/solar": "^1.2.5",

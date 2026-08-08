@@ -1,15 +1,6 @@
-import { AnimatePresence, motion } from "motion/react";
-import type { Transition } from "motion/react";
 import type { JSX, ReactNode } from "react";
 import { useId, useState } from "react";
-
-const COLLAPSE_INITIAL = { height: 0, opacity: 0 };
-const COLLAPSE_ANIMATE = { height: "auto", opacity: 1 };
-const COLLAPSE_EXIT = { height: 0, opacity: 0 };
-const COLLAPSE_TRANSITION = {
-	duration: 0.2,
-	ease: [0.25, 0.1, 0.25, 1] as const,
-} satisfies Transition;
+import { CollapsePanel } from "../shared/CollapsePanel";
 
 export interface ProgressGroupViewProps {
 	/** Agent-authored stage title (in-progress or completed wording). */
@@ -76,22 +67,14 @@ export function ProgressGroupView({
 					)}
 				</button>
 			</div>
-			<AnimatePresence initial={false}>
-				{open && hasRows && (
-					<motion.div
-						id={panelId}
-						data-export-collapse-panel={exportMode ? "" : undefined}
-						hidden={exportMode && !expanded}
-						initial={COLLAPSE_INITIAL}
-						animate={COLLAPSE_ANIMATE}
-						exit={COLLAPSE_EXIT}
-						transition={COLLAPSE_TRANSITION}
-						className="overflow-hidden"
-					>
-						<div className="flex flex-col gap-0.5 border-border/50 border-l pb-1 pl-3 ml-2">{children}</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
+			<CollapsePanel
+				open={open && hasRows}
+				id={panelId}
+				exportPanel={exportMode}
+				hidden={exportMode && !expanded}
+			>
+				<div className="flex flex-col gap-0.5 border-border/50 border-l pb-1 pl-3 ml-2">{children}</div>
+			</CollapsePanel>
 		</div>
 	);
 }
@@ -147,19 +130,9 @@ export function ProgressGroupRow({
 					/>
 				)}
 			</button>
-			<AnimatePresence initial={false}>
-				{showDetails && (
-					<motion.div
-						initial={COLLAPSE_INITIAL}
-						animate={COLLAPSE_ANIMATE}
-						exit={COLLAPSE_EXIT}
-						transition={COLLAPSE_TRANSITION}
-						className="overflow-hidden"
-					>
-						<div className="pb-1 pl-5">{details}</div>
-					</motion.div>
-				)}
-			</AnimatePresence>
+			<CollapsePanel open={showDetails}>
+				<div className="pb-1 pl-5">{details}</div>
+			</CollapsePanel>
 		</div>
 	);
 }

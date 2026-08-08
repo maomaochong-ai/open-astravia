@@ -1,0 +1,37 @@
+{
+	"id": "comfyui-media-provider",
+	"name": "%plugin.name%",
+	"icon": "solar:video-frame-play-horizontal-linear",
+	"version": "0.1.0",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "comfyui_media_provider",
+		"expose": "./plugin"
+	},
+	"permissions": ["media.provider.register", "network.fetch"],
+	"network": {
+		"allowedHosts": ["*"]
+	},
+	"contributes": {
+		"settings": [
+			{
+				"key": "baseUrl",
+				"type": "string",
+				"title": "%settings.baseUrl.title%",
+				"description": "%settings.baseUrl.description%",
+				"default": "http://192.168.50.50:8188"
+			},
+			{
+				"key": "templatePromptId",
+				"type": "string",
+				"title": "%settings.templatePromptId.title%",
+				"description": "%settings.templatePromptId.description%"
+			}
+		]
+	},
+	"description": "%plugin.description%",
+	"author": "Vetta",
+	"defaultLocale": "zh"
+}

@@ -2,6 +2,165 @@
   "generatedFrom": "@vetta/capability-sdk Capability Tokens",
   "foundation": [
     {
+      "id": "cap.foundation.vetta.artifact.persist",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ownerId",
+          "artifactId",
+          "destination"
+        ],
+        "properties": {
+          "ownerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "artifactId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "type",
+                  "namespace"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "storage-blob",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "type",
+                  "path"
+                ],
+                "properties": {
+                  "type": {
+                    "const": "filesystem",
+                    "type": "string"
+                  },
+                  "path": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "type",
+              "id",
+              "url",
+              "mimeType",
+              "sizeBytes"
+            ],
+            "properties": {
+              "type": {
+                "const": "storage-blob",
+                "type": "string"
+              },
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "url": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "mimeType": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "sizeBytes": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "type",
+              "path",
+              "mimeType",
+              "sizeBytes"
+            ],
+            "properties": {
+              "type": {
+                "const": "filesystem",
+                "type": "string"
+              },
+              "path": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "mimeType": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "sizeBytes": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            }
+          }
+        ]
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.artifact.release",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ownerId",
+          "artifactId"
+        ],
+        "properties": {
+          "ownerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "artifactId": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": false,
+      "version": 1
+    },
+    {
       "id": "cap.foundation.vetta.fs.read-directory",
       "inputSchema": {
         "type": "object",
@@ -327,6 +486,374 @@
             },
             "relPath": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.job.get",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ownerId",
+          "id"
+        ],
+        "properties": {
+          "ownerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "query",
+      "layer": "foundation",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "domain",
+          "operation",
+          "status",
+          "artifacts"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "operation": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "queued",
+                "type": "string"
+              },
+              {
+                "const": "running",
+                "type": "string"
+              },
+              {
+                "const": "succeeded",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "cancelled",
+                "type": "string"
+              }
+            ]
+          },
+          "progress": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "phase": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "additionalProperties": true,
+              "type": "object",
+              "required": [
+                "id",
+                "mimeType",
+                "sizeBytes",
+                "lifetime"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "mimeType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "lifetime": {
+                  "const": "temporary",
+                  "type": "string"
+                },
+                "name": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "patternProperties": {
+              "^(.*)$": {
+                "$id": "CapabilityJsonValue",
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "CapabilityJsonValue"
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "$ref": "CapabilityJsonValue"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "error": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "version": 1
+    },
+    {
+      "id": "cap.foundation.vetta.job.cancel",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ownerId",
+          "id"
+        ],
+        "properties": {
+          "ownerId": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "domain",
+          "operation",
+          "status",
+          "artifacts"
+        ],
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "domain": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "operation": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "const": "queued",
+                "type": "string"
+              },
+              {
+                "const": "running",
+                "type": "string"
+              },
+              {
+                "const": "succeeded",
+                "type": "string"
+              },
+              {
+                "const": "failed",
+                "type": "string"
+              },
+              {
+                "const": "cancelled",
+                "type": "string"
+              }
+            ]
+          },
+          "progress": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "value"
+            ],
+            "properties": {
+              "value": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
+              },
+              "phase": {
+                "minLength": 1,
+                "type": "string"
+              }
+            }
+          },
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "additionalProperties": true,
+              "type": "object",
+              "required": [
+                "id",
+                "mimeType",
+                "sizeBytes",
+                "lifetime"
+              ],
+              "properties": {
+                "id": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "mimeType": {
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "lifetime": {
+                  "const": "temporary",
+                  "type": "string"
+                },
+                "name": {
+                  "minLength": 1,
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "patternProperties": {
+              "^(.*)$": {
+                "$id": "CapabilityJsonValue",
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "CapabilityJsonValue"
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "$ref": "CapabilityJsonValue"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "error": {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "code",
+              "message",
+              "retryable"
+            ],
+            "properties": {
+              "code": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "message": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "retryable": {
+                "type": "boolean"
+              }
             }
           }
         }
@@ -851,6 +1378,65 @@
       "version": 1
     },
     {
+      "id": "cap.foundation.vetta.storage.put-blob-from-file",
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "blob"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^(?!.*\\.\\.)[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$",
+            "type": "string"
+          },
+          "blob": {
+            "type": "object",
+            "required": [
+              "path",
+              "mimeType"
+            ],
+            "properties": {
+              "id": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "path": {
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "mimeType": {
+                "pattern": "\\S",
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "foundation",
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "mimeType"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          }
+        }
+      },
+      "version": 1
+    },
+    {
       "id": "cap.foundation.vetta.storage.read-blob",
       "inputSchema": {
         "type": "object",
@@ -949,9 +1535,14 @@
       "inputSchema": {
         "type": "object",
         "required": [
+          "pluginId",
           "request"
         ],
         "properties": {
+          "pluginId": {
+            "minLength": 1,
+            "type": "string"
+          },
           "request": {
             "$id": "CapabilityJsonValue",
             "anyOf": [
@@ -4802,24 +5393,496 @@
               "maxLength": 129,
               "type": "string"
             },
+            "displayName": {
+              "minLength": 1,
+              "maxLength": 128,
+              "type": "string"
+            },
             "ownerId": {
               "minLength": 1,
               "maxLength": 128,
               "type": "string"
             },
             "protocolVersion": {
-              "const": 1,
+              "const": 3,
               "type": "number"
             },
             "capabilities": {
               "minItems": 1,
               "type": "array",
               "items": {
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "operation",
+                      "kind",
+                      "modes"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "const": "generate",
+                        "type": "string"
+                      },
+                      "kind": {
+                        "anyOf": [
+                          {
+                            "const": "image",
+                            "type": "string"
+                          },
+                          {
+                            "const": "video",
+                            "type": "string"
+                          }
+                        ]
+                      },
+                      "modes": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "const": "text-to-image",
+                              "type": "string"
+                            },
+                            {
+                              "const": "image-to-image",
+                              "type": "string"
+                            },
+                            {
+                              "const": "text-to-video",
+                              "type": "string"
+                            },
+                            {
+                              "const": "image-to-video",
+                              "type": "string"
+                            },
+                            {
+                              "const": "video-to-video",
+                              "type": "string"
+                            },
+                            {
+                              "const": "reference-to-video",
+                              "type": "string"
+                            }
+                          ]
+                        }
+                      },
+                      "aspectRatios": {
+                        "type": "array",
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "resolutions": {
+                        "type": "array",
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "durationsSeconds": {
+                        "type": "array",
+                        "items": {
+                          "exclusiveMinimum": 0,
+                          "type": "number"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "operation",
+                      "documentMimeTypes",
+                      "outputMimeTypes"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "const": "compose",
+                        "type": "string"
+                      },
+                      "documentMimeTypes": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "outputMimeTypes": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "operation",
+                      "inputMimeTypes",
+                      "outputMimeTypes"
+                    ],
+                    "properties": {
+                      "operation": {
+                        "const": "transcode",
+                        "type": "string"
+                      },
+                      "inputMimeTypes": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      },
+                      "outputMimeTypes": {
+                        "minItems": 1,
+                        "type": "array",
+                        "items": {
+                          "minLength": 1,
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "version": 3
+    },
+    {
+      "id": "cap.domain.vetta.media.job.submit",
+      "inputSchema": {
+        "anyOf": [
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "ownerId",
+              "providerId",
+              "inputs",
+              "operation",
+              "kind",
+              "mode",
+              "prompt"
+            ],
+            "properties": {
+              "ownerId": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "providerId": {
+                "minLength": 1,
+                "maxLength": 129,
+                "type": "string"
+              },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "source"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "role": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "const": "image",
+                          "type": "string"
+                        },
+                        {
+                          "const": "video",
+                          "type": "string"
+                        },
+                        {
+                          "const": "audio",
+                          "type": "string"
+                        },
+                        {
+                          "const": "document",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "mimeType": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "namespace",
+                            "blobId"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "plugin-blob",
+                              "type": "string"
+                            },
+                            "namespace": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "blobId": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "path"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "workspace-file",
+                              "type": "string"
+                            },
+                            "path": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "operation": {
+                "const": "generate",
+                "type": "string"
+              },
+              "kind": {
+                "anyOf": [
+                  {
+                    "const": "image",
+                    "type": "string"
+                  },
+                  {
+                    "const": "video",
+                    "type": "string"
+                  }
+                ]
+              },
+              "mode": {
+                "anyOf": [
+                  {
+                    "const": "text-to-image",
+                    "type": "string"
+                  },
+                  {
+                    "const": "image-to-image",
+                    "type": "string"
+                  },
+                  {
+                    "const": "text-to-video",
+                    "type": "string"
+                  },
+                  {
+                    "const": "image-to-video",
+                    "type": "string"
+                  },
+                  {
+                    "const": "video-to-video",
+                    "type": "string"
+                  },
+                  {
+                    "const": "reference-to-video",
+                    "type": "string"
+                  }
+                ]
+              },
+              "prompt": {
+                "minLength": 1,
+                "maxLength": 65536,
+                "type": "string"
+              },
+              "modelId": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "dimensions": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "width",
+                  "height"
+                ],
+                "properties": {
+                  "width": {
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "height": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                }
+              },
+              "aspectRatio": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "resolution": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "durationSeconds": {
+                "exclusiveMinimum": 0,
+                "type": "number"
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "ownerId",
+              "providerId",
+              "inputs",
+              "operation",
+              "output"
+            ],
+            "properties": {
+              "ownerId": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "providerId": {
+                "minLength": 1,
+                "maxLength": 129,
+                "type": "string"
+              },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "source"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "role": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "kind": {
+                      "anyOf": [
+                        {
+                          "const": "image",
+                          "type": "string"
+                        },
+                        {
+                          "const": "video",
+                          "type": "string"
+                        },
+                        {
+                          "const": "audio",
+                          "type": "string"
+                        },
+                        {
+                          "const": "document",
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "mimeType": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "namespace",
+                            "blobId"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "plugin-blob",
+                              "type": "string"
+                            },
+                            "namespace": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "blobId": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "path"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "workspace-file",
+                              "type": "string"
+                            },
+                            "path": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "operation": {
+                "const": "compose",
+                "type": "string"
+              },
+              "output": {
                 "additionalProperties": false,
                 "type": "object",
                 "required": [
                   "kind",
-                  "modes"
+                  "mimeType"
                 ],
                 "properties": {
                   "kind": {
@@ -4831,207 +5894,236 @@
                       {
                         "const": "video",
                         "type": "string"
+                      },
+                      {
+                        "const": "audio",
+                        "type": "string"
                       }
                     ]
                   },
-                  "modes": {
-                    "minItems": 1,
-                    "type": "array",
-                    "items": {
+                  "mimeType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "dimensions": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "width",
+                      "height"
+                    ],
+                    "properties": {
+                      "width": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "height": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "fps": {
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "durationSeconds": {
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "videoCodec": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "audioCodec": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "additionalProperties": false,
+            "type": "object",
+            "required": [
+              "ownerId",
+              "providerId",
+              "inputs",
+              "operation",
+              "output"
+            ],
+            "properties": {
+              "ownerId": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "providerId": {
+                "minLength": 1,
+                "maxLength": 129,
+                "type": "string"
+              },
+              "inputs": {
+                "type": "array",
+                "items": {
+                  "additionalProperties": false,
+                  "type": "object",
+                  "required": [
+                    "kind",
+                    "source"
+                  ],
+                  "properties": {
+                    "id": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "role": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "kind": {
                       "anyOf": [
                         {
-                          "const": "text-to-image",
+                          "const": "image",
                           "type": "string"
                         },
                         {
-                          "const": "image-to-image",
+                          "const": "video",
                           "type": "string"
                         },
                         {
-                          "const": "text-to-video",
+                          "const": "audio",
                           "type": "string"
                         },
                         {
-                          "const": "image-to-video",
-                          "type": "string"
-                        },
-                        {
-                          "const": "video-to-video",
-                          "type": "string"
-                        },
-                        {
-                          "const": "reference-to-video",
+                          "const": "document",
                           "type": "string"
                         }
                       ]
-                    }
-                  },
-                  "aspectRatios": {
-                    "type": "array",
-                    "items": {
+                    },
+                    "mimeType": {
                       "minLength": 1,
                       "type": "string"
+                    },
+                    "source": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "namespace",
+                            "blobId"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "plugin-blob",
+                              "type": "string"
+                            },
+                            "namespace": {
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "blobId": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        },
+                        {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "type",
+                            "path"
+                          ],
+                          "properties": {
+                            "type": {
+                              "const": "workspace-file",
+                              "type": "string"
+                            },
+                            "path": {
+                              "minLength": 1,
+                              "type": "string"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              "operation": {
+                "const": "transcode",
+                "type": "string"
+              },
+              "output": {
+                "additionalProperties": false,
+                "type": "object",
+                "required": [
+                  "kind",
+                  "mimeType"
+                ],
+                "properties": {
+                  "kind": {
+                    "anyOf": [
+                      {
+                        "const": "image",
+                        "type": "string"
+                      },
+                      {
+                        "const": "video",
+                        "type": "string"
+                      },
+                      {
+                        "const": "audio",
+                        "type": "string"
+                      }
+                    ]
+                  },
+                  "mimeType": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "dimensions": {
+                    "additionalProperties": false,
+                    "type": "object",
+                    "required": [
+                      "width",
+                      "height"
+                    ],
+                    "properties": {
+                      "width": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "height": {
+                        "minimum": 1,
+                        "type": "integer"
+                      }
                     }
                   },
-                  "resolutions": {
-                    "type": "array",
-                    "items": {
-                      "minLength": 1,
-                      "type": "string"
-                    }
+                  "fps": {
+                    "exclusiveMinimum": 0,
+                    "type": "number"
                   },
-                  "durationsSeconds": {
-                    "type": "array",
-                    "items": {
-                      "exclusiveMinimum": 0,
-                      "type": "number"
-                    }
+                  "durationSeconds": {
+                    "exclusiveMinimum": 0,
+                    "type": "number"
+                  },
+                  "videoCodec": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "audioCodec": {
+                    "minLength": 1,
+                    "type": "string"
                   }
                 }
               }
             }
           }
-        }
-      },
-      "version": 1
-    },
-    {
-      "id": "cap.domain.vetta.media.job.create",
-      "inputSchema": {
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "providerId",
-          "kind",
-          "mode",
-          "prompt"
-        ],
-        "properties": {
-          "providerId": {
-            "minLength": 1,
-            "maxLength": 129,
-            "type": "string"
-          },
-          "kind": {
-            "anyOf": [
-              {
-                "const": "image",
-                "type": "string"
-              },
-              {
-                "const": "video",
-                "type": "string"
-              }
-            ]
-          },
-          "mode": {
-            "anyOf": [
-              {
-                "const": "text-to-image",
-                "type": "string"
-              },
-              {
-                "const": "image-to-image",
-                "type": "string"
-              },
-              {
-                "const": "text-to-video",
-                "type": "string"
-              },
-              {
-                "const": "image-to-video",
-                "type": "string"
-              },
-              {
-                "const": "video-to-video",
-                "type": "string"
-              },
-              {
-                "const": "reference-to-video",
-                "type": "string"
-              }
-            ]
-          },
-          "prompt": {
-            "minLength": 1,
-            "maxLength": 65536,
-            "type": "string"
-          },
-          "modelId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "dimensions": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "width",
-              "height"
-            ],
-            "properties": {
-              "width": {
-                "minimum": 1,
-                "type": "integer"
-              },
-              "height": {
-                "minimum": 1,
-                "type": "integer"
-              }
-            }
-          },
-          "aspectRatio": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "resolution": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "durationSeconds": {
-            "exclusiveMinimum": 0,
-            "type": "number"
-          },
-          "references": {
-            "maxItems": 8,
-            "type": "array",
-            "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "kind",
-                "mimeType",
-                "data"
-              ],
-              "properties": {
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "kind": {
-                  "anyOf": [
-                    {
-                      "const": "image",
-                      "type": "string"
-                    },
-                    {
-                      "const": "video",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "mimeType": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
+        ]
       },
       "kind": "command",
       "layer": "domain",
@@ -5040,15 +6132,21 @@
         "type": "object",
         "required": [
           "id",
-          "providerId",
-          "status"
+          "domain",
+          "operation",
+          "status",
+          "artifacts"
         ],
         "properties": {
           "id": {
             "minLength": 1,
             "type": "string"
           },
-          "providerId": {
+          "domain": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "operation": {
             "minLength": 1,
             "type": "string"
           },
@@ -5077,243 +6175,91 @@
             ]
           },
           "progress": {
-            "minimum": 0,
-            "maximum": 1,
-            "type": "number"
-          },
-          "artifacts": {
-            "type": "array",
-            "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "kind",
-                "mimeType",
-                "data"
-              ],
-              "properties": {
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "kind": {
-                  "anyOf": [
-                    {
-                      "const": "image",
-                      "type": "string"
-                    },
-                    {
-                      "const": "video",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "mimeType": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
-                  "type": "string"
-                },
-                "width": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "height": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "durationSeconds": {
-                  "exclusiveMinimum": 0,
-                  "type": "number"
-                }
-              }
-            }
-          },
-          "error": {
             "additionalProperties": false,
             "type": "object",
             "required": [
-              "code",
-              "message",
-              "retryable"
+              "value"
             ],
             "properties": {
-              "code": {
-                "anyOf": [
-                  {
-                    "const": "unauthenticated",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-unavailable",
-                    "type": "string"
-                  },
-                  {
-                    "const": "operation-unsupported",
-                    "type": "string"
-                  },
-                  {
-                    "const": "invalid-request",
-                    "type": "string"
-                  },
-                  {
-                    "const": "not-entitled",
-                    "type": "string"
-                  },
-                  {
-                    "const": "quota-exhausted",
-                    "type": "string"
-                  },
-                  {
-                    "const": "content-rejected",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-timeout",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-failed",
-                    "type": "string"
-                  },
-                  {
-                    "const": "cancelled",
-                    "type": "string"
-                  }
-                ]
+              "value": {
+                "minimum": 0,
+                "maximum": 1,
+                "type": "number"
               },
-              "message": {
+              "phase": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "retryable": {
-                "type": "boolean"
               }
             }
-          }
-        }
-      },
-      "version": 1
-    },
-    {
-      "id": "cap.domain.vetta.media.job.get",
-      "inputSchema": {
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "providerId",
-          "id"
-        ],
-        "properties": {
-          "providerId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "id": {
-            "minLength": 1,
-            "type": "string"
-          }
-        }
-      },
-      "kind": "query",
-      "layer": "domain",
-      "outputSchema": {
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "providerId",
-          "status"
-        ],
-        "properties": {
-          "id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "const": "queued",
-                "type": "string"
-              },
-              {
-                "const": "running",
-                "type": "string"
-              },
-              {
-                "const": "succeeded",
-                "type": "string"
-              },
-              {
-                "const": "failed",
-                "type": "string"
-              },
-              {
-                "const": "cancelled",
-                "type": "string"
-              }
-            ]
-          },
-          "progress": {
-            "minimum": 0,
-            "maximum": 1,
-            "type": "number"
           },
           "artifacts": {
             "type": "array",
             "items": {
-              "additionalProperties": false,
+              "additionalProperties": true,
               "type": "object",
               "required": [
-                "kind",
+                "id",
                 "mimeType",
-                "data"
+                "sizeBytes",
+                "lifetime"
               ],
               "properties": {
                 "id": {
                   "minLength": 1,
                   "type": "string"
                 },
-                "kind": {
-                  "anyOf": [
-                    {
-                      "const": "image",
-                      "type": "string"
-                    },
-                    {
-                      "const": "video",
-                      "type": "string"
-                    }
-                  ]
-                },
                 "mimeType": {
                   "minLength": 1,
                   "type": "string"
                 },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
+                "sizeBytes": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "lifetime": {
+                  "const": "temporary",
                   "type": "string"
                 },
-                "width": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "height": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "durationSeconds": {
-                  "exclusiveMinimum": 0,
-                  "type": "number"
+                "name": {
+                  "minLength": 1,
+                  "type": "string"
                 }
+              }
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "patternProperties": {
+              "^(.*)$": {
+                "$id": "CapabilityJsonValue",
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "$ref": "CapabilityJsonValue"
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "patternProperties": {
+                      "^(.*)$": {
+                        "$ref": "CapabilityJsonValue"
+                      }
+                    }
+                  }
+                ]
               }
             }
           },
@@ -5327,233 +6273,8 @@
             ],
             "properties": {
               "code": {
-                "anyOf": [
-                  {
-                    "const": "unauthenticated",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-unavailable",
-                    "type": "string"
-                  },
-                  {
-                    "const": "operation-unsupported",
-                    "type": "string"
-                  },
-                  {
-                    "const": "invalid-request",
-                    "type": "string"
-                  },
-                  {
-                    "const": "not-entitled",
-                    "type": "string"
-                  },
-                  {
-                    "const": "quota-exhausted",
-                    "type": "string"
-                  },
-                  {
-                    "const": "content-rejected",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-timeout",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-failed",
-                    "type": "string"
-                  },
-                  {
-                    "const": "cancelled",
-                    "type": "string"
-                  }
-                ]
-              },
-              "message": {
                 "minLength": 1,
                 "type": "string"
-              },
-              "retryable": {
-                "type": "boolean"
-              }
-            }
-          }
-        }
-      },
-      "version": 1
-    },
-    {
-      "id": "cap.domain.vetta.media.job.cancel",
-      "inputSchema": {
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "providerId",
-          "id"
-        ],
-        "properties": {
-          "providerId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "id": {
-            "minLength": 1,
-            "type": "string"
-          }
-        }
-      },
-      "kind": "command",
-      "layer": "domain",
-      "outputSchema": {
-        "additionalProperties": false,
-        "type": "object",
-        "required": [
-          "id",
-          "providerId",
-          "status"
-        ],
-        "properties": {
-          "id": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "providerId": {
-            "minLength": 1,
-            "type": "string"
-          },
-          "status": {
-            "anyOf": [
-              {
-                "const": "queued",
-                "type": "string"
-              },
-              {
-                "const": "running",
-                "type": "string"
-              },
-              {
-                "const": "succeeded",
-                "type": "string"
-              },
-              {
-                "const": "failed",
-                "type": "string"
-              },
-              {
-                "const": "cancelled",
-                "type": "string"
-              }
-            ]
-          },
-          "progress": {
-            "minimum": 0,
-            "maximum": 1,
-            "type": "number"
-          },
-          "artifacts": {
-            "type": "array",
-            "items": {
-              "additionalProperties": false,
-              "type": "object",
-              "required": [
-                "kind",
-                "mimeType",
-                "data"
-              ],
-              "properties": {
-                "id": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "kind": {
-                  "anyOf": [
-                    {
-                      "const": "image",
-                      "type": "string"
-                    },
-                    {
-                      "const": "video",
-                      "type": "string"
-                    }
-                  ]
-                },
-                "mimeType": {
-                  "minLength": 1,
-                  "type": "string"
-                },
-                "data": {
-                  "minLength": 1,
-                  "maxLength": 33554432,
-                  "type": "string"
-                },
-                "width": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "height": {
-                  "minimum": 1,
-                  "type": "integer"
-                },
-                "durationSeconds": {
-                  "exclusiveMinimum": 0,
-                  "type": "number"
-                }
-              }
-            }
-          },
-          "error": {
-            "additionalProperties": false,
-            "type": "object",
-            "required": [
-              "code",
-              "message",
-              "retryable"
-            ],
-            "properties": {
-              "code": {
-                "anyOf": [
-                  {
-                    "const": "unauthenticated",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-unavailable",
-                    "type": "string"
-                  },
-                  {
-                    "const": "operation-unsupported",
-                    "type": "string"
-                  },
-                  {
-                    "const": "invalid-request",
-                    "type": "string"
-                  },
-                  {
-                    "const": "not-entitled",
-                    "type": "string"
-                  },
-                  {
-                    "const": "quota-exhausted",
-                    "type": "string"
-                  },
-                  {
-                    "const": "content-rejected",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-timeout",
-                    "type": "string"
-                  },
-                  {
-                    "const": "provider-failed",
-                    "type": "string"
-                  },
-                  {
-                    "const": "cancelled",
-                    "type": "string"
-                  }
-                ]
               },
               "message": {
                 "minLength": 1,

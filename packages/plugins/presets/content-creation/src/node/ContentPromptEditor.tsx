@@ -25,7 +25,7 @@ import type { PromptMentionOption } from "./PromptMentionMenu";
 import { PromptRichTextInput, type PromptMentionInsertion } from "./PromptRichTextInput";
 import { PROMPT_REFERENCE_SLOT_ID } from "./prompt-sources";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
-import { readImportedMediaFile } from "./readImportedMediaFile";
+import { createImportedMediaFile } from "./imported-media-file";
 
 interface ContentPromptEditorProps {
 	data: ContentNodeData;
@@ -126,7 +126,7 @@ export function ContentPromptEditor({
 		event.target.value = "";
 		if (files.length === 0) return;
 		await onUpdate(draftRef.current);
-		await onImportReferences(await Promise.all(files.map(readImportedMediaFile)));
+		await onImportReferences(files.map((file) => createImportedMediaFile(file)));
 	};
 	const handleOptimize = async () => {
 		if (!selectedModelKey || isOptimizing) return;

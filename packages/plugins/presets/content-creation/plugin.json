@@ -15,6 +15,7 @@
 	"styles": ["dist/style.css"],
 	"permissions": [
 		"ui.slot.activity-tab",
+		"ui.slot.input-action",
 		"ui.shortcuts.register",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
@@ -27,6 +28,9 @@
 		"storage.read",
 		"storage.write"
 	],
+	"network": {
+		"allowedHosts": ["*"]
+	},
 	"contributes": {
 		"settings": [
 			{

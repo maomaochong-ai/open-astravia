@@ -1,4 +1,4 @@
-import type { IpcRenderer, IpcRendererEvent } from "electron";
+import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { PLUGIN_CAPABILITY_CHANNELS, PLUGIN_SYSTEM_CHANNELS } from "../../shared/plugin-capability-ipc.js";
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
@@ -6,7 +6,7 @@ import { onIpcEvent } from "./helper.js";
 type SettingsChangedListener = Parameters<DesktopApi["plugins"]["onSettingsChanged"]>[0];
 type SettingsChangedPayload = Parameters<SettingsChangedListener>[0];
 
-export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> {
+export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<DesktopApi, "plugins"> {
 	const settingsChangedSubscriptions = new Set<{ readonly listener: SettingsChangedListener }>();
 	const handleSettingsChanged = (_event: IpcRendererEvent, payload: SettingsChangedPayload): void => {
 		for (const subscription of [...settingsChangedSubscriptions]) subscription.listener(payload);
@@ -33,6 +33,11 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			internalCapabilities: {
 				openSession: (pluginId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.OPEN_SESSION, pluginId),
 				closeSession: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.CLOSE_SESSION, sessionId),
+				artifacts: {
+					persist: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.ARTIFACT_PERSIST, sessionId, input),
+					release: (sessionId, artifactId) =>
+						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.ARTIFACT_RELEASE, sessionId, artifactId),
+				},
 				ai: {
 					listModels: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_MODEL_LIST, sessionId),
 					complete: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.AI_COMPLETE, sessionId, input),
@@ -79,11 +84,11 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 				},
 				media: {
 					listProviders: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_PROVIDER_LIST, sessionId),
-					createJob: (sessionId, input) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CREATE, sessionId, input),
-					getJob: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_GET, sessionId, input),
-					cancelJob: (sessionId, input) =>
-						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, sessionId, input),
+					submit: (sessionId, input) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MEDIA_SUBMIT, sessionId, input),
+				},
+				jobs: {
+					get: (sessionId, id) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.JOB_GET, sessionId, id),
+					cancel: (sessionId, id) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.JOB_CANCEL, sessionId, id),
 				},
 				mcp: {
 					list: (sessionId) => ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, sessionId),
@@ -289,20 +294,21 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			revokePermissions: (id, permissions) => ipc.invoke("vetta:plugins:revoke-permissions", id, permissions),
 			grantCommands: (id, names) => ipc.invoke("vetta:plugins:grant-commands", id, names),
 			revokeCommands: (id, names) => ipc.invoke("vetta:plugins:revoke-commands", id, names),
-			runCommand: (pluginId, file, args, options) =>
-				ipc.invoke("vetta:plugins:command-run", pluginId, file, args, options),
-			spawnCommand: (pluginId, file, args, options) =>
-				ipc.invoke("vetta:plugins:command-spawn", pluginId, file, args, options),
-			stopCommandSpawn: (pluginId, spawnId) => ipc.invoke("vetta:plugins:command-spawn-stop", pluginId, spawnId),
-			getCommandSpawnStatus: (pluginId, spawnId) =>
-				ipc.invoke("vetta:plugins:command-spawn-status", pluginId, spawnId),
+			runCommand: (sessionId, file, args, options) =>
+				ipc.invoke("vetta:plugins:command-run", sessionId, file, args, options),
+			spawnCommand: (sessionId, file, args, options) =>
+				ipc.invoke("vetta:plugins:command-spawn", sessionId, file, args, options),
+			stopCommandSpawn: (sessionId, spawnId) => ipc.invoke("vetta:plugins:command-spawn-stop", sessionId, spawnId),
+			getCommandSpawnStatus: (sessionId, spawnId) =>
+				ipc.invoke("vetta:plugins:command-spawn-status", sessionId, spawnId),
 			onCommandSpawnExit: (handler) => onIpcEvent(ipc, "vetta:plugins:command-spawn-exit", handler),
 			offscreenCapture: (pluginId, options) => ipc.invoke("vetta:plugins:offscreen-capture", pluginId, options),
 			offscreenRelease: (pluginId, sessionKey) =>
 				ipc.invoke("vetta:plugins:offscreen-release", pluginId, sessionKey),
 			reload: (id) => ipc.invoke("vetta:plugins:reload", id),
-			startDevWatch: (id, projectDir) => ipc.invoke("vetta:plugins:dev-watch-start", id, projectDir),
-			stopDevWatch: (id) => ipc.invoke("vetta:plugins:dev-watch-stop", id),
+			startDevWatch: (sessionId, id, projectDir) =>
+				ipc.invoke("vetta:plugins:dev-watch-start", sessionId, id, projectDir),
+			stopDevWatch: (sessionId, id) => ipc.invoke("vetta:plugins:dev-watch-stop", sessionId, id),
 			registerModeGate: (pluginId) => ipc.invoke("vetta:plugins:register-mode-gate", pluginId),
 			setContributionMode: (pluginId, active) => ipc.invoke("vetta:plugins:set-contribution-mode", pluginId, active),
 			beginAgentContributionsLoad: (pluginId, activationId) =>
@@ -340,6 +346,16 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			onSystemPromptRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:system-prompt-request", handler),
 			respondSystemPrompt: (requestId, result) =>
 				ipc.invoke("vetta:plugins:system-prompt-response", requestId, result),
+			registerMediaProvider: (pluginId, registration) =>
+				ipc.invoke("vetta:plugins:media-provider-register", pluginId, registration),
+			unregisterMediaProvider: (pluginId, providerId, activationId) =>
+				ipc.invoke("vetta:plugins:media-provider-unregister", pluginId, providerId, activationId),
+			onMediaProvidersChanged: (handler) => onIpcEvent(ipc, "vetta:plugins:media-providers-changed", handler),
+			onMediaProviderRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:media-provider-request", handler),
+			respondMediaProvider: (requestId, result) =>
+				ipc.invoke("vetta:plugins:media-provider-response", requestId, result),
+			uploadMediaProviderInput: (requestId, inputId, request) =>
+				ipc.invoke("vetta:plugins:media-provider-input-upload", requestId, inputId, request),
 			getSettings: (id) => ipc.invoke("vetta:plugins:get-settings", id),
 			setSettings: (id, values) => ipc.invoke("vetta:plugins:set-settings", id, values),
 			networkRequest: (sessionId, request) => ipc.invoke("vetta:plugins:network:request", sessionId, request),
@@ -352,6 +368,15 @@ export function createPluginsApi(ipc: IpcRenderer): Pick<DesktopApi, "plugins"> 
 			storageWriteFile: (sessionId, path, data) =>
 				ipc.invoke("vetta:plugins:storage:write-file", sessionId, path, data),
 			storagePutBlob: (sessionId, input) => ipc.invoke("vetta:plugins:storage:put-blob", sessionId, input),
+			storagePutBlobFromFile: (sessionId, input) => {
+				const path = webUtils.getPathForFile(input.file);
+				if (!path) return Promise.reject(new Error("Plugin blob import requires a filesystem-backed File"));
+				return ipc.invoke("vetta:plugins:storage:put-blob-from-file", sessionId, {
+					...(input.id === undefined ? {} : { id: input.id }),
+					path,
+					mimeType: input.mimeType,
+				});
+			},
 			storageReadBlob: (sessionId, id) => ipc.invoke("vetta:plugins:storage:read-blob", sessionId, id),
 			storageGetBlobRef: (sessionId, id) => ipc.invoke("vetta:plugins:storage:get-blob-ref", sessionId, id),
 			onSettingsChanged,

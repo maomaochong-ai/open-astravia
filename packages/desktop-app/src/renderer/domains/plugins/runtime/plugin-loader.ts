@@ -28,6 +28,7 @@ import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginArtifactsApi,
 	PluginCaptureApi,
 	PluginCardRendererContribution,
 	PluginCommandApi,
@@ -46,6 +47,8 @@ import type {
 	PluginI18nApi,
 	PluginImageRef,
 	PluginInputActionContribution,
+	PluginJob,
+	PluginJobsApi,
 	PluginLocales,
 	PluginMediaApi,
 	PluginNetworkApi,
@@ -78,6 +81,7 @@ import {
 	registerPluginAgentToolHandler,
 	registerPluginAppActionHandler,
 	registerPluginContinuationHandler,
+	registerPluginMediaProviderHandler,
 	registerPluginSystemPromptHandler,
 } from "./plugin-host-bridge";
 import { createPluginOfficialApi } from "./plugin-official-api";
@@ -88,6 +92,7 @@ import {
 	normalizePluginShortcutBindings,
 	registerPluginShortcutScopeOnHost,
 } from "./plugin-shortcut-scope";
+import { createQuickJsPluginDefinition } from "./quickjs-plugin-runtime";
 
 export interface LoadedPlugin {
 	id: string;
@@ -449,25 +454,139 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 	};
 }
 
-function createMediaApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginMediaApi {
+function createMediaApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+	activationId: string,
+	disposers: Array<() => void>,
+	pendingRuntimeRegistrations: Promise<void>[],
+): PluginMediaApi {
 	const permissions = createPermissionApi(plugin);
 	const media = window.vetta.plugins.internalCapabilities.media;
 	return {
+		registerProvider: (registration) => {
+			permissions.require("media.provider.register");
+			if (typeof registration.id !== "string" || !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(registration.id)) {
+				throw new Error("Media provider id must be 1-64 lowercase characters, numbers, dot, underscore, or dash");
+			}
+			if (!Array.isArray(registration.capabilities) || registration.capabilities.length === 0) {
+				throw new Error("Media provider capabilities are required");
+			}
+			if (typeof registration.submit !== "function") throw new Error("Media provider submit handler is required");
+			const handlerId = `${registration.id}:${crypto.randomUUID()}`;
+			const handlerHandle = registerPluginMediaProviderHandler({
+				pluginId: plugin.id,
+				handlerId,
+				registration,
+			});
+			const registrationPromise = window.vetta.plugins
+				.registerMediaProvider(plugin.id, {
+					id: registration.id,
+					displayName: registration.displayName?.trim() || undefined,
+					capabilities: registration.capabilities,
+					handlerId,
+					activationId,
+					hasGetJob: typeof registration.getJob === "function",
+					hasCancelJob: typeof registration.cancelJob === "function",
+				})
+				.catch((error: Error) => {
+					handlerHandle.dispose();
+					throw error;
+				});
+			pendingRuntimeRegistrations.push(registrationPromise);
+			let disposed = false;
+			const dispose = (): void => {
+				if (disposed) return;
+				disposed = true;
+				handlerHandle.dispose();
+				void window.vetta.plugins.unregisterMediaProvider(plugin.id, registration.id, activationId);
+			};
+			disposers.push(dispose);
+			return { dispose };
+		},
 		listProviders: () => {
 			permissions.require("media.generate");
 			return media.listProviders(capabilitySessionId);
 		},
-		createJob: (request) => {
+		onProvidersChanged: (listener) => {
 			permissions.require("media.generate");
-			return media.createJob(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.createJob>[1]);
+			const unsubscribe = window.vetta.plugins.onMediaProvidersChanged(listener);
+			return { dispose: unsubscribe };
 		},
-		getJob: (job) => {
+		submit: (request) => {
 			permissions.require("media.generate");
-			return media.getJob(capabilitySessionId, job);
+			return media.submit(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.submit>[1]);
 		},
-		cancelJob: (job) => {
+	};
+}
+
+function abortError(signal: AbortSignal): Error {
+	return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted", "AbortError");
+}
+
+function waitForPoll(ms: number, signal?: AbortSignal): Promise<void> {
+	if (signal?.aborted) return Promise.reject(abortError(signal));
+	return new Promise((resolve, reject) => {
+		const timeout = window.setTimeout(() => {
+			signal?.removeEventListener("abort", onAbort);
+			resolve();
+		}, ms);
+		const onAbort = (): void => {
+			window.clearTimeout(timeout);
+			reject(signal ? abortError(signal) : new DOMException("The operation was aborted", "AbortError"));
+		};
+		signal?.addEventListener("abort", onAbort, { once: true });
+	});
+}
+
+function createJobsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginJobsApi {
+	const permissions = createPermissionApi(plugin);
+	const jobs = window.vetta.plugins.internalCapabilities.jobs;
+	const idOf = (job: string | { id: string }): string => (typeof job === "string" ? job : job.id);
+	return {
+		get: (job) => {
 			permissions.require("media.generate");
-			return media.cancelJob(capabilitySessionId, job);
+			return jobs.get(capabilitySessionId, idOf(job));
+		},
+		cancel: (job) => {
+			permissions.require("media.generate");
+			return jobs.cancel(capabilitySessionId, idOf(job));
+		},
+		wait: async <TJob extends PluginJob>(
+			job: TJob | { id: string } | string,
+			options?: Parameters<PluginJobsApi["wait"]>[1],
+		) => {
+			permissions.require("media.generate");
+			const id = idOf(job);
+			let current =
+				typeof job === "object" && "status" in job ? job : ((await jobs.get(capabilitySessionId, id)) as TJob);
+			const terminal = new Set(["succeeded", "failed", "cancelled"]);
+			while (!terminal.has(current.status)) {
+				await waitForPoll(options?.pollIntervalMs ?? 500, options?.signal);
+				current = (await jobs.get(capabilitySessionId, id)) as TJob;
+			}
+			return current;
+		},
+	};
+}
+
+function createArtifactsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginArtifactsApi {
+	const permissions = createPermissionApi(plugin);
+	const artifacts = window.vetta.plugins.internalCapabilities.artifacts;
+	return {
+		persist: async (artifact, destination) => {
+			permissions.require("media.generate");
+			const persisted = await artifacts.persist(capabilitySessionId, {
+				artifactId: typeof artifact === "string" ? artifact : artifact.id,
+				destination,
+			});
+			return persisted.type === "storage-blob"
+				? { ...persisted, type: "plugin-blob", blobId: persisted.id }
+				: { ...persisted, type: "workspace-file" };
+		},
+		release: (artifact) => {
+			permissions.require("media.generate");
+			return artifacts.release(capabilitySessionId, typeof artifact === "string" ? artifact : artifact.id);
 		},
 	};
 }
@@ -527,6 +646,10 @@ function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string):
 		putBlob: (input) => {
 			requireWrite();
 			return window.vetta.plugins.storagePutBlob(capabilitySessionId, input);
+		},
+		putBlobFromFile: (input) => {
+			requireWrite();
+			return window.vetta.plugins.storagePutBlobFromFile(capabilitySessionId, input);
 		},
 		readBlob: (id) => {
 			requireRead();
@@ -630,7 +753,11 @@ function ensureSpawnExitSubscription(): void {
 	});
 }
 
-function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCommandApi {
+function createCommandApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+	disposers: Array<() => void>,
+): PluginCommandApi {
 	const permissions = createPermissionApi(plugin);
 	const assertCommandAllowed = (file: unknown): string => {
 		if (typeof file !== "string" || file.trim().length === 0) {
@@ -664,18 +791,18 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
 			const allowed = assertCommandAllowed(file);
-			return window.vetta.plugins.runCommand(plugin.id, allowed, args ?? [], options);
+			return window.vetta.plugins.runCommand(capabilitySessionId, allowed, args ?? [], options);
 		},
 		spawn: async (file, args, options): Promise<PluginCommandSpawnHandle> => {
 			permissions.require("agent.command.spawn");
 			const allowed = assertCommandAllowed(file);
 			ensureSpawnExitSubscription();
-			const result = await window.vetta.plugins.spawnCommand(plugin.id, allowed, args ?? [], options);
+			const result = await window.vetta.plugins.spawnCommand(capabilitySessionId, allowed, args ?? [], options);
 			let stopped = false;
 			const stop = async (): Promise<void> => {
 				if (stopped) return;
 				stopped = true;
-				await window.vetta.plugins.stopCommandSpawn(plugin.id, result.spawnId);
+				await window.vetta.plugins.stopCommandSpawn(capabilitySessionId, result.spawnId);
 			};
 			// 插件卸载/重载时统一回收（主进程在 reload/disable/uninstall 也会兜底清扫）。
 			disposers.push(() => void stop());
@@ -684,7 +811,7 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 				pid: result.pid,
 				port: result.port,
 				stop,
-				status: () => window.vetta.plugins.getCommandSpawnStatus(plugin.id, result.spawnId),
+				status: () => window.vetta.plugins.getCommandSpawnStatus(capabilitySessionId, result.spawnId),
 				onExit: (listener) => {
 					const listeners = spawnExitListeners.get(result.spawnId) ?? new Set();
 					listeners.add(listener);
@@ -1280,8 +1407,10 @@ function createContext(
 		},
 		conversation,
 		fs,
-		command: createCommandApi(plugin, disposers),
-		media: createMediaApi(plugin, capabilitySessionId),
+		command: createCommandApi(plugin, capabilitySessionId, disposers),
+		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
+		jobs: createJobsApi(plugin, capabilitySessionId),
+		artifacts: createArtifactsApi(plugin, capabilitySessionId),
 		capture: createCaptureApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {
@@ -1556,6 +1685,9 @@ async function assertPluginEntryFetchable(plugin: InstalledPlugin): Promise<void
 }
 
 async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> {
+	if (plugin.runtime === "quickjs") {
+		return { default: createQuickJsPluginDefinition(plugin) };
+	}
 	if (plugin.runtime !== "module-federation") {
 		return assertPluginModule(await import(/* @vite-ignore */ plugin.entryUrl));
 	}

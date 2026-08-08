@@ -1,8 +1,10 @@
-import type { PluginCommandApi, PluginFsApi } from "@vetta-org/plugin-sdk";
+import type { PluginCommandApi, PluginFsApi, PluginOfficialApi } from "@vetta-org/plugin-sdk";
 
 interface WorkbenchRuntime {
 	command: PluginCommandApi | null;
 	fs: PluginFsApi | null;
+	plugins: PluginOfficialApi["plugins"] | null;
+	dialog: PluginOfficialApi["dialog"] | null;
 }
 
 const KEY = "__vettaPluginWorkbenchRuntime__";
@@ -10,15 +12,34 @@ const KEY = "__vettaPluginWorkbenchRuntime__";
 function runtime(): WorkbenchRuntime {
 	const g = globalThis as Record<string, unknown>;
 	if (!g[KEY]) {
-		g[KEY] = { command: null, fs: null };
+		g[KEY] = { command: null, fs: null, plugins: null, dialog: null };
 	}
 	return g[KEY] as WorkbenchRuntime;
 }
 
-export function setWorkbenchRuntime(command: PluginCommandApi, fs: PluginFsApi): void {
+export function setWorkbenchRuntime(
+	command: PluginCommandApi,
+	fs: PluginFsApi,
+	plugins: PluginOfficialApi["plugins"],
+	dialog: PluginOfficialApi["dialog"],
+): void {
 	const r = runtime();
 	r.command = command;
 	r.fs = fs;
+	r.plugins = plugins;
+	r.dialog = dialog;
+}
+
+export function getWorkbenchPlugins(): PluginOfficialApi["plugins"] {
+	const plugins = runtime().plugins;
+	if (!plugins) throw new Error("Workbench plugins API not ready");
+	return plugins;
+}
+
+export function getWorkbenchDialog(): PluginOfficialApi["dialog"] {
+	const dialog = runtime().dialog;
+	if (!dialog) throw new Error("Workbench dialog API not ready");
+	return dialog;
 }
 
 export function getWorkbenchCommand(): PluginCommandApi {

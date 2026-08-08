@@ -19,8 +19,10 @@ import {
 	createContentPromptDocument,
 } from "../node/prompt-document";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import { joinContentPath } from "../shared/path";
 import {
 	assignContentReferenceSlots,
+	isContentReferenceSlotCompatible,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
 	slotIdForReferenceKind,
@@ -46,6 +48,7 @@ interface ReferenceCandidate {
 	id: string;
 	asset: ContentAsset;
 	slotId?: string;
+	origin: "binding" | "edge" | "prompt";
 }
 
 export class ContentGenerationService {
@@ -115,12 +118,10 @@ export class ContentGenerationService {
 		const promptSources = listConnectedPromptSources(project, node.id);
 		const selectedPrompts = resolveConnectedPromptSources(promptSources, node.data);
 		const existingCandidates = listGenerationReferenceCandidates(project, node, selectedPrompts);
-		const fixedShapes = referenceShapes(existingCandidates.filter((candidate) => candidate.slotId));
-		const promptKinds = existingCandidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
-		const model = findSelectedModel(this.listModels(outputKind), node, fixedShapes, promptKinds);
+		const model = findSelectedModel(this.listModels(outputKind), node, existingCandidates);
 		if (!model) throw new Error("no compatible content model is configured");
 
-		const currentAssignment = assignContentReferenceSlots(model, fixedShapes, promptKinds, node.data.modeId);
+		const currentAssignment = assignReferenceCandidates(model, existingCandidates, node.data.modeId).assignment;
 		const nextShapes = [...currentAssignment.references];
 		const pending: Array<{
 			asset: ContentAsset;
@@ -229,11 +230,10 @@ export class ContentGenerationService {
 		const prompt = resolveContentPrompt(promptSources, node.data);
 		if (!prompt) throw new Error("content generation requires a prompt");
 		const candidates = listGenerationReferenceCandidates(project, node, selectedPrompts);
-		const fixedShapes = referenceShapes(candidates.filter((candidate) => candidate.slotId));
-		const unassignedKinds = candidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
-		const model = findSelectedModel(this.listModels(outputKind), node, fixedShapes, unassignedKinds);
+		const model = findSelectedModel(this.listModels(outputKind), node, candidates);
 		if (!model) throw new Error("no compatible content model is configured");
-		const assignment = assignContentReferenceSlots(model, fixedShapes, unassignedKinds, node.data.modeId);
+		const prepared = assignReferenceCandidates(model, candidates, node.data.modeId);
+		const assignment = prepared.assignment;
 		const mode = assignment.mode;
 		if (!mode) throw new Error(`content model inputs are incompatible: ${model.providerId}/${model.modelId}`);
 		const jobId = crypto.randomUUID();
@@ -248,19 +248,28 @@ export class ContentGenerationService {
 			{ type: "job.start", job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId } },
 		]);
 		try {
-			const references = await this.resolveReferences(cwd, candidates, assignment.assignedSlotIds);
-			const generated = await this.providers.generate({
-				modeId: mode.id,
-				providerId: model.providerId,
-				modelId: model.modelId,
-				prompt,
-				aspectRatio: node.data.aspectRatio,
-				quality: node.data.quality,
-				duration: node.data.duration,
-				resolution: node.data.resolution,
-				references,
-			});
-			const fileName = generatedFileName(node.data.label, generated.kind, assetId, generated.mimeType);
+			const references = await this.resolveReferences(cwd, prepared.candidates, assignment.assignedSlotIds);
+			const generated = await this.providers.generate(
+				{
+					modeId: mode.id,
+					providerId: model.providerId,
+					modelId: model.modelId,
+					prompt,
+					aspectRatio: node.data.aspectRatio,
+					quality: node.data.quality,
+					duration: node.data.duration,
+					resolution: node.data.resolution,
+					references,
+				},
+				{
+					readReference: async (reference) => {
+						const stored = await this.artifacts.readReference(reference);
+						if (!stored) throw new Error(`content reference data not found: ${reference.id}`);
+						return stored;
+					},
+				},
+			);
+			const fileName = generatedFileName(node.name, generated.kind, assetId, generated.mimeType);
 			const stored = await this.artifacts.putGenerated(cwd, fileName, generated);
 			return await this.workspace.dispatch(cwd, [
 				{
@@ -290,7 +299,7 @@ export class ContentGenerationService {
 	}
 
 	private async resolveReferences(
-		cwd: string | null,
+		cwd: string,
 		candidates: readonly ReferenceCandidate[],
 		assignedSlotIds: readonly string[],
 	): Promise<ContentGenerationReference[]> {
@@ -300,9 +309,13 @@ export class ContentGenerationService {
 				const slotId = candidate.slotId ?? assignedSlotIds[unassignedIndex++];
 				if (!slotId) throw new Error(`content reference slot not resolved: ${candidate.asset.id}`);
 				const asset = candidate.asset;
-				const stored = await this.artifacts.read(cwd, asset);
-				if (!stored) throw new Error(`content reference data not found: ${asset.id}`);
-				return { id: candidate.id, slotId, kind: asset.kind, ...stored };
+				const source = asset.filePath
+					? { type: "workspace-file" as const, path: joinContentPath(cwd, asset.filePath) }
+					: asset.blobId
+						? { type: "plugin-blob" as const, blobId: asset.blobId }
+						: null;
+				if (!source) throw new Error(`content reference location not found: ${asset.id}`);
+				return { id: candidate.id, slotId, kind: asset.kind, mimeType: asset.mimeType, source };
 			}),
 		);
 	}
@@ -317,17 +330,61 @@ function requireOutputKind(node: ContentNode): ContentGenerationOutputKind {
 function findSelectedModel(
 	models: readonly ContentModelDescriptor[],
 	node: ContentNode,
-	fixedReferences: readonly ContentReferenceShape[],
-	unassignedKinds: readonly AssetKind[],
+	references: readonly ReferenceCandidate[],
 ): ContentModelDescriptor | undefined {
 	const selected = models.find(
 		(model) => model.providerId === node.data.providerId && model.modelId === node.data.modelId,
 	);
 	if (selected) return selected;
 	return models.find(
-		(model) =>
-			assignContentReferenceSlots(model, fixedReferences, unassignedKinds, node.data.modeId).mode !== null,
+		(model) => assignReferenceCandidates(model, references, node.data.modeId).assignment.mode !== null,
 	);
+}
+
+function assignReferenceCandidates(
+	model: ContentModelDescriptor,
+	candidates: readonly ReferenceCandidate[],
+	preferredModeId?: string,
+) {
+	const normalizedCandidates = candidates.map((candidate) => {
+		if (
+			!candidate.slotId ||
+			isContentReferenceSlotCompatible(model, { slotId: candidate.slotId, kind: candidate.asset.kind })
+		) {
+			return candidate;
+		}
+		return { ...candidate, slotId: undefined };
+	});
+	const assignment = assignCandidates(model, normalizedCandidates, preferredModeId);
+	const result = {
+		candidates: normalizedCandidates,
+		assignment,
+	};
+	if (assignment.mode || assignment.reason !== "too-many-inputs") return result;
+
+	const explicitKinds = new Set(
+		normalizedCandidates
+			.filter((candidate) => candidate.origin !== "edge")
+			.map(({ asset }) => asset.kind),
+	);
+	const prioritizedCandidates = normalizedCandidates.filter(
+		(candidate) => candidate.origin !== "edge" || !explicitKinds.has(candidate.asset.kind),
+	);
+	if (prioritizedCandidates.length === normalizedCandidates.length) return result;
+	const prioritizedAssignment = assignCandidates(model, prioritizedCandidates, preferredModeId);
+	return prioritizedAssignment.mode
+		? { candidates: prioritizedCandidates, assignment: prioritizedAssignment }
+		: result;
+}
+
+function assignCandidates(
+	model: ContentModelDescriptor,
+	candidates: readonly ReferenceCandidate[],
+	preferredModeId?: string,
+) {
+	const fixedReferences = referenceShapes(candidates.filter((candidate) => candidate.slotId));
+	const unassignedKinds = candidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
+	return assignContentReferenceSlots(model, fixedReferences, unassignedKinds, preferredModeId);
 }
 
 function listGenerationReferenceCandidates(
@@ -338,7 +395,7 @@ function listGenerationReferenceCandidates(
 	const candidates: ReferenceCandidate[] = (node.data.inputs ?? []).flatMap((binding) => {
 		if (!isContentInputBindingAvailable(project, node.id, binding)) return [];
 		const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
-		return asset ? [{ id: binding.id, asset, slotId: binding.slotId }] : [];
+		return asset ? [{ id: binding.id, asset, slotId: binding.slotId, origin: "binding" }] : [];
 	});
 	for (const edge of project.graph.edges.filter((candidate) => candidate.target === node.id)) {
 		if (edge.targetHandle === "prompt") continue;
@@ -351,11 +408,12 @@ function listGenerationReferenceCandidates(
 			id: `edge:${edge.id}`,
 			asset,
 			slotId: asset.kind === "image" ? "referenceImages" : "referenceVideo",
+			origin: "edge",
 		});
 	}
 	for (const promptSource of promptSources) {
 		for (const { binding, asset } of promptSource.references) {
-			candidates.push({ id: `prompt:${promptSource.nodeId}:${binding.id}`, asset });
+			candidates.push({ id: `prompt:${promptSource.nodeId}:${binding.id}`, asset, origin: "prompt" });
 		}
 	}
 	return candidates.filter(

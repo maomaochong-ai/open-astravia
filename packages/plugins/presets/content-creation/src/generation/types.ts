@@ -47,14 +47,14 @@ export interface ContentGenerationReference {
 	id: string;
 	slotId: string;
 	kind: ContentReferenceKind;
-	data: string;
 	mimeType: string;
+	source: PluginMediaInputSource;
 }
 
 export interface GeneratedContent {
 	kind: "image" | "video";
-	data: string;
 	mimeType: string;
+	source: { type: "inline"; data: string } | { type: "host-artifact"; artifactId: string };
 	width?: number;
 	height?: number;
 	duration?: number;
@@ -63,7 +63,11 @@ export interface GeneratedContent {
 export interface ContentProviderAdapter {
 	readonly id: string;
 	listModels(): readonly ContentModelDescriptor[];
-	generate(request: ContentGenerationRequest): Promise<GeneratedContent>;
+	generate(request: ContentGenerationRequest, context: ContentProviderGenerationContext): Promise<GeneratedContent>;
+}
+
+export interface ContentProviderGenerationContext {
+	readReference(reference: ContentGenerationReference): Promise<StoredContentData>;
 }
 
 export interface StoredImportedContent {
@@ -81,16 +85,16 @@ export interface StoredContentData {
 	mimeType: string;
 }
 
-export interface ImportedContentAsset {
-	name: string;
-	data: string;
-	mimeType: string;
-}
+export type ImportedContentAsset = { name: string; mimeType: string } & (
+	| { file: File; data?: never }
+	| { data: string; file?: never }
+);
 
 export type ImportedContentReference = ImportedContentAsset;
 
 export interface ContentArtifactStore {
-	putImported(id: string, content: StoredContentData): Promise<StoredImportedContent>;
-	putGenerated(cwd: string, fileName: string, content: StoredContentData): Promise<StoredGeneratedContent>;
-	read(cwd: string | null, location: { blobId?: string; filePath?: string }): Promise<StoredContentData | null>;
+	putImported(id: string, content: ImportedContentAsset): Promise<StoredImportedContent>;
+	putGenerated(cwd: string, fileName: string, content: GeneratedContent): Promise<StoredGeneratedContent>;
+	readReference(reference: ContentGenerationReference): Promise<StoredContentData | null>;
 }
+import type { PluginMediaInputSource } from "@vetta-org/plugin-sdk";

@@ -168,14 +168,20 @@ export function registerPluginCapabilitiesIpc(): () => void {
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_PROVIDER_LIST, (_event, sessionId: unknown) =>
 		adapter.listMediaProviders(requireString(sessionId, "sessionId")),
 	);
-	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CREATE, (_event, sessionId: unknown, input: unknown) =>
-		adapter.createMediaJob(requireString(sessionId, "sessionId"), input),
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_SUBMIT, (_event, sessionId: unknown, input: unknown) =>
+		adapter.submitMedia(requireString(sessionId, "sessionId"), input),
 	);
-	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_GET, (_event, sessionId: unknown, input: unknown) =>
-		adapter.getMediaJob(requireString(sessionId, "sessionId"), input),
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.JOB_GET, (_event, sessionId: unknown, id: unknown) =>
+		adapter.getJob(requireString(sessionId, "sessionId"), requireString(id, "id")),
 	);
-	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MEDIA_JOB_CANCEL, (_event, sessionId: unknown, input: unknown) =>
-		adapter.cancelMediaJob(requireString(sessionId, "sessionId"), input),
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.JOB_CANCEL, (_event, sessionId: unknown, id: unknown) =>
+		adapter.cancelJob(requireString(sessionId, "sessionId"), requireString(id, "id")),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.ARTIFACT_PERSIST, (_event, sessionId: unknown, input: unknown) =>
+		adapter.persistArtifact(requireString(sessionId, "sessionId"), input),
+	);
+	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.ARTIFACT_RELEASE, (_event, sessionId: unknown, artifactId: unknown) =>
+		adapter.releaseArtifact(requireString(sessionId, "sessionId"), requireString(artifactId, "artifactId")),
 	);
 	ipcMain.handle(PLUGIN_CAPABILITY_CHANNELS.MCP_SERVER_LIST, (_event, sessionId: unknown) =>
 		adapter.listMcpServers(requireString(sessionId, "sessionId")),

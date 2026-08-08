@@ -1,5 +1,5 @@
 import { applyContentProjectCommands, type ContentProjectCommand } from "./commands";
-import { migrateContentProjectDocument } from "./migrations";
+import { migrateContentProjectDocument } from "./migrate-project";
 import { createContentProject, type ContentProjectDocument } from "./types";
 import type { ContentProjectRepository } from "./repository";
 
@@ -48,8 +48,12 @@ export class ContentCreationWorkspace {
 		if (existingLoad) return existingLoad;
 		const load = this.repository
 			.read(cwd)
-			.then((stored) => {
-				const project = migrateContentProjectDocument(stored, cwd) ?? current?.project ?? createContentProject(cwd);
+			.then(async (stored) => {
+				const migration = stored
+					? migrateContentProjectDocument(stored.document, stored.runtime, cwd)
+					: null;
+				const project = migration?.project ?? current?.project ?? createContentProject(cwd);
+				if (migration?.migrated) await this.repository.write(cwd, project);
 				const listeners = current?.listeners ?? new Set<() => void>();
 				this.records.set(key, { project, listeners });
 				for (const listener of listeners) listener();

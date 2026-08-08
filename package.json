@@ -32,6 +32,7 @@
 		"packages/cli-app",
 		"packages/desktop-app",
 		"packages/admin",
+		"packages/docs-site",
 		"packages/site",
 		"packages/coding-agent/examples/extensions/with-deps",
 		"packages/coding-agent/examples/extensions/custom-provider-anthropic",
@@ -45,6 +46,7 @@
 		"build:desktop": "./scripts/build.sh desktop",
 		"build:cli": "./scripts/build.sh cli",
 		"build:admin": "./scripts/build.sh admin",
+		"build:docs": "bun run --cwd packages/docs-site build",
 		"build:preset": "./scripts/build.sh preset",
 		"dev": "concurrently --names \"ai,agent,coding-agent\" --prefix-colors \"cyan,yellow,red\" \"cd packages/ai && bun run dev\" \"cd packages/agent && bun run dev\" \"cd packages/coding-agent && bun run dev\"",
 		"dev:tsc": "concurrently --names \"ai\" --prefix-colors \"cyan\" \"cd packages/ai && bun run dev:tsc\"",
@@ -61,7 +63,7 @@
 		"verify:agent-hosts": "bun scripts/verify-coding-agent-hosts.mjs",
 		"check:lint": "bun run scripts/quality/check-lint.mjs",
 		"check:lint:fix": "bun run scripts/quality/check-lint.mjs --write",
-		"check:types": "concurrently --names \"root,cli,desktop,admin\" --prefix-colors \"blue,yellow,green,cyan\" \"tsgo --noEmit\" \"bun run --cwd packages/cli-app typecheck\" \"bunx tsc --noEmit -p packages/desktop-app/tsconfig.json --incremental --tsBuildInfoFile node_modules/.desktop-app-check.tsbuildinfo\" \"bun run --cwd packages/admin check\"",
+		"check:types": "concurrently --names \"root,cli,desktop,admin,docs\" --prefix-colors \"blue,yellow,green,cyan,magenta\" \"tsgo --noEmit\" \"bun run --cwd packages/cli-app typecheck\" \"bunx tsc --noEmit -p packages/desktop-app/tsconfig.json --incremental --tsBuildInfoFile node_modules/.desktop-app-check.tsbuildinfo\" \"bun run --cwd packages/admin check\" \"bun run --cwd packages/docs-site check\"",
 		"check:types:build-surfaces": "bunx tsgo --noEmit -p packages/cli-app/tsconfig.build.json",
 		"check:guards": "bun run scripts/quality/check-guards.mjs",
 		"check:staged": "bunx @biomejs/biome check --write --error-on-warnings --staged --no-errors-on-unmatched",
@@ -120,6 +122,7 @@
 		"koffi": "^2.15.1"
 	},
 	"overrides": {
+		"@types/react": "19.2.17",
 		"rimraf": "6.1.2",
 		"@wdio/native-utils": "2.5.0"
 	}

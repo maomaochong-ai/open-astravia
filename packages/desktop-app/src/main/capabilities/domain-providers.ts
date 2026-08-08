@@ -19,6 +19,7 @@ import {
 	DOMAIN_WEBHOOK_CAPABILITIES,
 } from "@vetta/capability-sdk";
 import { getDesktopAgentSettingsService } from "../agent-settings/agent-settings-service.js";
+import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import { getDesktopBatchTaskService } from "../batch-tasks/batch-task-service.js";
 import { readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
@@ -26,6 +27,7 @@ import { getDesktopDownloadService } from "../downloads/download-service.js";
 import { allowProjectRoot, createFilesystemDirectory } from "../filesystem/filesystem-service.js";
 import { getDesktopGeneralSettingsService } from "../general-settings/general-settings-service.js";
 import { getImHost } from "../im-host/index.js";
+import type { JobManager } from "../jobs/job-manager.js";
 import { getKnowledgeService } from "../knowledge/knowledge-service.js";
 import { ProjectService } from "../projects/project-service.js";
 import { getDesktopSchedulerService } from "../scheduler/scheduler-service.js";
@@ -59,7 +61,11 @@ function assertNotAborted(signal: AbortSignal): void {
 	}
 }
 
-export function registerDesktopDomainProviders(registry: CapabilityRegistry): Disposable {
+export function registerDesktopDomainProviders(
+	registry: CapabilityRegistry,
+	artifacts: ArtifactStore,
+	jobs: JobManager,
+): Disposable {
 	const agentSettings = getDesktopAgentSettingsService();
 	const batchTasks = getDesktopBatchTaskService();
 	const downloads = getDesktopDownloadService();
@@ -72,7 +78,7 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 	const webhooks = getWebhookManager();
 	const aiRegistration = registerDesktopAiProviders(registry);
 	const mcpRegistration = registerDesktopMcpProviders(registry);
-	const mediaRegistration = registerDesktopMediaProviders(registry);
+	const mediaRegistration = registerDesktopMediaProviders(registry, artifacts, jobs);
 	const modelRegistration = registerDesktopModelProviders(registry);
 	const projects = new ProjectService({
 		allowProjectRoot,

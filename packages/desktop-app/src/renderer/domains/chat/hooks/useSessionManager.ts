@@ -1,6 +1,6 @@
 import { waitForPluginHostReady } from "@domains/plugins/runtime/plugin-events";
 import { pluginSendMessageRef } from "@domains/plugins/runtime/plugin-host-bridge";
-import { useProjects } from "@domains/project/hooks/useProjects";
+import { useProjectActions } from "@domains/project/hooks/useProjects";
 import { i18n } from "@shared/i18n";
 import {
 	BUILTIN_KNOWLEDGE_RETRIEVAL_ACTION_ID,
@@ -38,8 +38,10 @@ import {
 	modelSupportsImagesAtom,
 	newSessionInputDraftKey,
 	openSessionFnRef,
+	type Project,
 	pendingMessageEditAtom,
 	pluginInputActionsAtom,
+	projectsAtom,
 	promptAttachmentAtom,
 	promptPredictingAtom,
 	promptSuggestionsAtom,
@@ -66,7 +68,7 @@ import {
 	removeQueuedMessageAtom,
 } from "@shared/store/message-queue-atoms";
 import { useNavigate } from "@tanstack/react-router";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { ConversationScenario, PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import type { PromptAttachmentRef, PromptRequest } from "../../../../../../runtime-core/src/index.js";
@@ -130,6 +132,17 @@ interface SessionManagerResult {
 	>;
 }
 
+/**
+ * projects 只在回调里按 cwd 反查类型。订阅 projectsAtom 会让项目列表每次刷新都把整个
+ * 会话管理器（以及它所在的 RootLayout 子树，含侧栏）重渲染，这里改成调用时现读。
+ */
+function getProjects(): Project[] {
+	return getDefaultStore().get(projectsAtom);
+}
+
+/** 流式 delta 的冲刷节流间隔；下游文字揭示是 500ms 批的，这里不需要更快。 */
+const DELTA_FLUSH_INTERVAL_MS = 100;
+
 export function useSessionManager(): SessionManagerResult {
 	const [activeSession, setActiveSession] = useAtom(activeSessionAtom);
 	const setChatMessages = useSetAtom(chatMessagesAtom);
@@ -177,9 +190,7 @@ export function useSessionManager(): SessionManagerResult {
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const batchProjectsRef = useRef(batchProjects);
 	batchProjectsRef.current = batchProjects;
-	const { loadSessions, applyLocalRename, ensureLocalSession, projects } = useProjects();
-	const projectsRef = useRef(projects);
-	projectsRef.current = projects;
+	const { loadSessions, applyLocalRename, ensureLocalSession } = useProjectActions();
 	// ADR-0007：「对话」session 运行 cwd 是项目根下的 per-session 子目录，但其 jsonl 与
 	// 侧边栏 sessionsMap bucket 都挂在项目根 cwd 上。重命名/刷新必须落到「根」bucket，
 	// 否则侧边栏与顶部标题读不到更新。用此 ref 把子目录 cwd 归一回项目根。
@@ -226,7 +237,12 @@ export function useSessionManager(): SessionManagerResult {
 	// 气泡 / 令 draft 串台。交由下一轮自己在无重叠时安全重拉。
 	const turnStartDispatchSeqRef = useRef<Map<string, number>>(new Map());
 
-	// ── Delta batching: accumulate text/thinking deltas per rAF frame ──
+	// ── Delta batching: accumulate text/thinking deltas, flush on a throttle timer ──
+	// 原来按 rAF 冲刷（≈60 次/秒 setChatMessages）。但文字的视觉呈现在下游
+	// TextBlockView 是按 500ms 批量揭示的，60fps 的冲刷对画面毫无贡献，只是让
+	// 尾部消息整条重渲染（groupBlocks / 折叠计算 / Virtuoso 重测）每秒白跑 60 遍，
+	// 流式期间 Renderer CPU 的大头就在这。降到 100ms 一次，视觉零差别。
+	// 工具/状态事件前的同步 flushDeltas() 路径保持不变——顺序保证不受影响。
 	const pendingTextDeltaRef = useRef("");
 	const pendingThinkingDeltaRef = useRef("");
 	const deltaRafRef = useRef<number | null>(null);
@@ -241,7 +257,7 @@ export function useSessionManager(): SessionManagerResult {
 	// correct side of tool blocks — see ordering bug fix.
 	const flushDeltas = useCallback(() => {
 		if (deltaRafRef.current !== null) {
-			cancelAnimationFrame(deltaRafRef.current);
+			window.clearTimeout(deltaRafRef.current);
 			deltaRafRef.current = null;
 		}
 		const textDelta = pendingTextDeltaRef.current;
@@ -267,15 +283,15 @@ export function useSessionManager(): SessionManagerResult {
 
 	const scheduleDeltaFlush = useCallback(() => {
 		if (deltaRafRef.current === null) {
-			deltaRafRef.current = requestAnimationFrame(flushDeltas);
+			deltaRafRef.current = window.setTimeout(flushDeltas, DELTA_FLUSH_INTERVAL_MS);
 		}
 	}, [flushDeltas]);
 
-	// Cleanup rAF on unmount
+	// Cleanup pending flush timer on unmount
 	useEffect(() => {
 		return () => {
 			if (deltaRafRef.current !== null) {
-				cancelAnimationFrame(deltaRafRef.current);
+				window.clearTimeout(deltaRafRef.current);
 			}
 		};
 	}, []);
@@ -299,10 +315,10 @@ export function useSessionManager(): SessionManagerResult {
 			// Teardown previous session
 			currentUnsubscribe?.();
 			setCurrentUnsubscribe(null);
-			// Cancel any in-flight rAF and drop pending deltas — otherwise the prior
-			// session's accumulated delta text gets flushed into the new session's atom.
+			// Cancel any in-flight flush timer and drop pending deltas — otherwise the
+			// prior session's accumulated delta text gets flushed into the new session's atom.
 			if (deltaRafRef.current !== null) {
-				cancelAnimationFrame(deltaRafRef.current);
+				window.clearTimeout(deltaRafRef.current);
 				deltaRafRef.current = null;
 			}
 			pendingTextDeltaRef.current = "";
@@ -327,7 +343,7 @@ export function useSessionManager(): SessionManagerResult {
 				sessionPath !== undefined &&
 				batchProjectsRef.current.some((project) => project.tasks.some((task) => task.sessionPath === sessionPath));
 			const isBatchProject = batchProjectsRef.current.some((project) => project.id === cwd);
-			const projectType = projectsRef.current.find((project) => project.cwd === cwd)?.type;
+			const projectType = getProjects().find((project) => project.cwd === cwd)?.type;
 			const sessionKind = isBatchSession || isBatchProject || projectType === "batch" ? "other" : "conversation";
 			// 对话场景显式下发（不依赖 sessionKind，避免改 kind 牵动 VETTA_CLI/子目录等行为）：
 			// - 批量 → "batch"（与 batch-task-executor 一致，重开不退化成 project，输入栏 badge 不复活）。
@@ -592,7 +608,7 @@ export function useSessionManager(): SessionManagerResult {
 							// Skip auto-title for batch-task projects entirely — those sessions
 							// are driven by the batch executor and should keep their batch-managed
 							// names (or default firstMessage label).
-							const projectType = cwd ? projectsRef.current.find((p) => p.cwd === cwd)?.type : undefined;
+							const projectType = cwd ? getProjects().find((p) => p.cwd === cwd)?.type : undefined;
 							if (sp && cwd && rid && projectType !== "batch" && !autoTitledSessionsRef.current.has(sp)) {
 								autoTitledSessionsRef.current.add(sp);
 								// Snapshot current chat messages via a no-op updater, then run
@@ -1184,7 +1200,7 @@ export function useSessionManager(): SessionManagerResult {
 			// 批量任务依赖严格 todo 机制，不在此清空；scene 等 lock 状态后端会自行拒绝。
 			// streaming 入队时不清：当前正在跑的回合仍拥有这些 todo。
 			if (!streaming) {
-				const projectType = projectsRef.current.find((p) => p.cwd === session.cwd)?.type;
+				const projectType = getProjects().find((p) => p.cwd === session.cwd)?.type;
 				if (projectType !== "batch") {
 					const items = todoItemsMapRef.current.get(session.runtimeId) ?? [];
 					if (items.length > 0 && items.every((i) => i.status === "done")) {
@@ -1226,6 +1242,7 @@ export function useSessionManager(): SessionManagerResult {
 			const pluginStore = getDefaultStore();
 			const usedInputActions: Parameters<typeof recordInputActionsUsed>[0] = [];
 			const pluginInstructions: string[] = [];
+			const pluginPromptContexts: Array<PluginPromptContext & { pluginId: string }> = [];
 			const activeActionIds = pluginStore.get(activeInputActionIdsAtom);
 			if (activeActionIds.size > 0) {
 				for (const action of pluginStore.get(pluginInputActionsAtom)) {
@@ -1255,7 +1272,8 @@ export function useSessionManager(): SessionManagerResult {
 					actionKind: "builtin",
 				});
 			}
-			// Plugin-owned attachment guidance is opaque to the host and one-shot.
+			// Plugin-owned attachment data stays structured until the coding-agent
+			// input boundary. Legacy metadata/instructions remain supported.
 			const promptAttachment = pluginStore.get(promptAttachmentAtom);
 			if (promptAttachment) {
 				if (promptAttachment.metadata) {
@@ -1266,10 +1284,21 @@ export function useSessionManager(): SessionManagerResult {
 						(instruction) => typeof instruction === "string" && instruction.trim().length > 0,
 					),
 				);
-				pluginStore.set(promptAttachmentAtom, null);
+				if (promptAttachment.context) {
+					pluginPromptContexts.push({
+						pluginId: promptAttachment.ownerPluginId,
+						...structuredClone(promptAttachment.context),
+					});
+				}
+				if (promptAttachment.lifecycle !== "sticky") {
+					pluginStore.set(promptAttachmentAtom, null);
+				}
 			}
 			if (pluginInstructions.length > 0) {
 				promptReq.metadata = { ...promptReq.metadata, pluginInstructions };
+			}
+			if (pluginPromptContexts.length > 0) {
+				promptReq.metadata = { ...promptReq.metadata, pluginPromptContexts };
 			}
 			recordInputActionsUsed(usedInputActions);
 			// streaming 中：把组装好的完整 promptReq 快照入队，等当前回合自然 agent_end 后

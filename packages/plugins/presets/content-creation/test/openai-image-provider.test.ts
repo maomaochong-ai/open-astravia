@@ -8,6 +8,8 @@ import type {
 import { describe, expect, it } from "vitest";
 import { OpenAiImageProvider } from "../src/generation/openai-image-provider";
 
+const generationContext = { readReference: async () => ({ data: "", mimeType: "application/octet-stream" }) };
+
 describe("OpenAiImageProvider", () => {
 	it("maps a generation request to the real OpenAI-compatible endpoint", async () => {
 		const network = new QueueNetwork([
@@ -33,9 +35,13 @@ describe("OpenAiImageProvider", () => {
 			prompt: "A paper city",
 			aspectRatio: "16:9",
 			references: [],
-		});
+		}, generationContext);
 
-		expect(result).toEqual({ kind: "image", data: "iVBORw0KGgoAAA", mimeType: "image/png" });
+		expect(result).toEqual({
+			kind: "image",
+			source: { type: "inline", data: "iVBORw0KGgoAAA" },
+			mimeType: "image/png",
+		});
 		expect(network.requests[0]).toMatchObject({
 			url: "https://api.openai.com/v1/images/generations",
 			method: "POST",
@@ -63,7 +69,7 @@ describe("OpenAiImageProvider", () => {
 				modelId: "image-model",
 				prompt: "A paper city",
 				references: [],
-			}),
+			}, generationContext),
 		).rejects.toThrow("API key is not configured");
 		expect(network.requests).toHaveLength(0);
 	});

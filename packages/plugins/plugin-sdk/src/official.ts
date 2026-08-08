@@ -1,3 +1,5 @@
+import type { PluginPermission } from "./permissions.js";
+
 export interface PluginOfficialGeneralSettings {
 	workspacePath: string;
 	defaultExecutionMode?: "sandbox" | "full-access";
@@ -304,7 +306,19 @@ export interface PluginOfficialPluginSummary {
 	source: string;
 	permissions: string[];
 	description?: string;
+	rootPath?: string;
 	devWatch?: unknown;
+}
+
+export interface PluginOfficialPluginChangedEvent {
+	reason?: string;
+	pluginId?: string;
+}
+
+export interface PluginOfficialSaveCopyOptions {
+	defaultFileName?: string;
+	title?: string;
+	filters?: Array<{ name: string; extensions: string[] }>;
 }
 
 export interface PluginOfficialKnowledgeBase {
@@ -429,6 +443,13 @@ export interface PluginOfficialApi {
 		): Promise<PluginOfficialPluginSummary>;
 		uninstall(id: string): Promise<void>;
 		reload(id: string): Promise<PluginOfficialPluginSummary>;
+		grantPermissions(id: string, permissions: PluginPermission[]): Promise<PluginOfficialPluginSummary>;
+		startDevWatch(id: string, projectDir: string): Promise<PluginOfficialPluginSummary>;
+		stopDevWatch(id: string): Promise<void>;
+		onChanged(handler: (event?: PluginOfficialPluginChangedEvent) => void): () => void;
+	};
+	dialog: {
+		saveCopy(sourcePath: string, options?: PluginOfficialSaveCopyOptions): Promise<string | null>;
 	};
 	knowledge: {
 		list(): Promise<PluginOfficialKnowledgeBase[]>;

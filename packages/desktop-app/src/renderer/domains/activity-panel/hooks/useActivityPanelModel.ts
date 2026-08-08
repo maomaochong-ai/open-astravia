@@ -23,6 +23,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityPanelActions, ActivityPanelModel, ActivityPanelProps } from "../components/activity-panel/types";
 import { resolveActivityTabs } from "../registry/resolve-activity-tabs";
 import type { ActivityTabDefinition, ActivityTabId, ActivityTabMeta, ResolvedActivityTab } from "../registry/types";
+import { mergeDockedTabOrder } from "../services/floating-activity-tab";
+import { useFloatingActivityTabs } from "./useFloatingActivityTabs";
 
 const NON_HIDEABLE_TABS = new Set<string>(["file", "knowledge-history"]);
 
@@ -65,6 +67,8 @@ export function useActivityPanelModel({
 	const widthCollapsedSidebarRef = useRef<boolean | null>(null);
 	const prevSidebarCollapsedRef = useRef(sidebarCollapsed);
 	const { profile } = useProjectProfile(cwd);
+	const mainTabListRef = useRef<HTMLDivElement | null>(null);
+	const panelRef = useRef<HTMLDivElement | null>(null);
 
 	const tabVisibilityRecords = useMemo(
 		() => (cwd ? (attachedPluginTabsMap.get(cwd) ?? []) : []),
@@ -113,6 +117,44 @@ export function useActivityPanelModel({
 		for (const def of definitions) map.set(def.id, def);
 		return map;
 	}, [definitions]);
+	const onTabChange = useCallback(
+		(next: ActivityTabKey) => {
+			if (!cwd) return;
+			setTabByProject((previous) => {
+				const map = new Map(previous);
+				map.set(cwd, next);
+				return map;
+			});
+		},
+		[cwd, setTabByProject],
+	);
+	const onTabOrderChange = useCallback(
+		(keys: ActivityTabKey[]) => {
+			if (!cwd) return;
+			const next = new Map(tabOrderMap);
+			next.set(cwd, keys);
+			setTabOrderMap(next);
+		},
+		[cwd, setTabOrderMap, tabOrderMap],
+	);
+	const allTabKeys = useMemo(() => tabItems.map((item) => item.key), [tabItems]);
+	const floating = useFloatingActivityTabs({
+		allTabKeys,
+		mainTabListRef,
+		onActiveTabChange: onTabChange,
+		onTabOrderChange,
+		panelRef,
+		panelWidth: width,
+		scopeKey: cwd,
+	});
+	const floatingKeys = useMemo(
+		() => (narrow ? new Set<ActivityTabKey>() : floating.model.floatingKeys),
+		[narrow, floating.model.floatingKeys],
+	);
+	const dockedTabItems = useMemo(
+		() => tabItems.filter((item) => !floatingKeys.has(item.key)),
+		[tabItems, floatingKeys],
+	);
 
 	const onResize = useCallback(
 		(delta: number) => {
@@ -138,7 +180,6 @@ export function useActivityPanelModel({
 		const openLimit = Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - sidebarWidth - ACTIVITY_PANEL_MIN_CHAT_AREA);
 		const collapsedChanged = prevSidebarCollapsedRef.current !== sidebarCollapsed;
 		prevSidebarCollapsedRef.current = sidebarCollapsed;
-
 		if (collapsedChanged && !sidebarCollapsed && isOpen && width > openLimit) {
 			widthCollapsedSidebarRef.current = null;
 			setWidth(openLimit);
@@ -159,18 +200,22 @@ export function useActivityPanelModel({
 	}, [width, windowWidth, sidebarWidth, isOpen, sidebarCollapsed, setSidebarCollapsed, setWidth]);
 
 	const activeTab = useMemo<ActivityTabKey>(() => {
-		if (knowledgeHistory) return "knowledge-history";
+		if (knowledgeHistory && dockedTabItems.some((item) => item.key === "knowledge-history")) {
+			return "knowledge-history";
+		}
 		if (cwd) {
 			const remembered = tabByProject.get(cwd);
-			if (remembered && tabItems.some((item) => item.key === remembered)) return remembered;
+			if (remembered && dockedTabItems.some((item) => item.key === remembered)) return remembered;
 			// Keep plugin tab sticky while contributions briefly disappear (reload / hot reload).
 			// Falling back to "file" mounts FileTabContent and its unmount cleanup can reset width.
-			if (remembered?.startsWith("plugin:")) return remembered;
+			if (remembered?.startsWith("plugin:") && !tabItems.some((item) => item.key === remembered)) {
+				return remembered;
+			}
 		}
 		const fallback = profile?.defaultActivityTab ?? "file";
-		if (tabItems.some((item) => item.key === fallback)) return fallback;
-		return tabItems[0]?.key ?? fallback;
-	}, [knowledgeHistory, cwd, tabByProject, profile, tabItems]);
+		if (dockedTabItems.some((item) => item.key === fallback)) return fallback;
+		return dockedTabItems[0]?.key ?? fallback;
+	}, [knowledgeHistory, cwd, tabByProject, profile, dockedTabItems, tabItems]);
 
 	// 程序切到某 tab 时若它在 hidden 列表，自动恢复（与旧行为一致）。
 	useEffect(() => {
@@ -186,24 +231,23 @@ export function useActivityPanelModel({
 		setHiddenTabsMap(next);
 	}, [cwd, tabByProject, hiddenKeys, resolved.candidates, hiddenTabsMap, setHiddenTabsMap]);
 
-	const onTabChange = useCallback(
-		(next: ActivityTabKey) => {
-			if (!cwd) return;
-			setTabByProject((previous) => {
-				const map = new Map(previous);
-				map.set(cwd, next);
-				return map;
-			});
+	const onTabDragStart = useCallback<ActivityPanelActions["onTabDragStart"]>(
+		(event) => {
+			onTabChange(event.key);
+			floating.actions.onDockedTabDragStart(event);
 		},
-		[cwd, setTabByProject],
+		[onTabChange, floating.actions.onDockedTabDragStart],
 	);
 
-	const activeDefinition = definitionById.get(activeTab) ?? null;
-
-	/** 需保活的候选（含当前激活项）：始终挂载，View 用 CSS 显隐，避免 webview remount。 */
-	const keepAliveTabs = useMemo(
-		() => resolved.candidates.filter((item) => item.definition.keepAliveWhenAvailable),
-		[resolved.candidates],
+	const mountedTabs = useMemo(
+		() =>
+			resolved.candidates.filter(
+				(item) =>
+					item.definition.keepAliveWhenAvailable ||
+					floating.model.floatingKeys.has(item.id as ActivityTabKey) ||
+					item.id === activeTab,
+			),
+		[resolved.candidates, floating.model.floatingKeys, activeTab],
 	);
 
 	const onRemoveTab = useCallback(
@@ -211,6 +255,7 @@ export function useActivityPanelModel({
 			if (!cwd || NON_HIDEABLE_TABS.has(key)) return;
 			const def = definitionById.get(key);
 			if (def && def.removable === false) return;
+			floating.actions.clearFloatingTab(key);
 
 			// 插件 tab：写显式下栏，回到「+」可添加池（不进 hidden 列表）。
 			if (key.startsWith("plugin:")) {
@@ -218,7 +263,7 @@ export function useActivityPanelModel({
 				const nextAttached = withPluginTabVisibility(attachedPluginTabsMap, cwd, attachKey, false);
 				if (nextAttached) setAttachedPluginTabsMap(nextAttached);
 				if (activeTab === key) {
-					onTabChange(tabItems.find((item) => item.key !== key)?.key ?? "file");
+					onTabChange(dockedTabItems.find((item) => item.key !== key)?.key ?? "file");
 				}
 				return;
 			}
@@ -227,7 +272,7 @@ export function useActivityPanelModel({
 			if (!current.includes(key)) next.set(cwd, [...current, key]);
 			setHiddenTabsMap(next);
 			if (activeTab === key) {
-				onTabChange(tabItems.find((item) => item.key !== key)?.key ?? "file");
+				onTabChange(dockedTabItems.find((item) => item.key !== key)?.key ?? "file");
 			}
 		},
 		[
@@ -238,8 +283,9 @@ export function useActivityPanelModel({
 			hiddenTabsMap,
 			setHiddenTabsMap,
 			activeTab,
-			tabItems,
+			dockedTabItems,
 			onTabChange,
+			floating.actions.clearFloatingTab,
 		],
 	);
 	const onRestoreTab = useCallback(
@@ -269,12 +315,10 @@ export function useActivityPanelModel({
 	);
 	const onReorderTabs = useCallback(
 		(keys: ActivityTabKey[]) => {
-			if (!cwd) return;
-			const next = new Map(tabOrderMap);
-			next.set(cwd, keys);
-			setTabOrderMap(next);
+			const merged = mergeDockedTabOrder(allTabKeys, floatingKeys, keys);
+			onTabOrderChange(merged);
 		},
-		[cwd, tabOrderMap, setTabOrderMap],
+		[allTabKeys, floatingKeys, onTabOrderChange],
 	);
 	const overflowTabs = useMemo(
 		() =>
@@ -292,6 +336,12 @@ export function useActivityPanelModel({
 		actions: {
 			onAttachPluginTab,
 			onClose,
+			onFloatingResize: floating.actions.onFloatingResize,
+			onFloatingResizeEnd: floating.actions.onFloatingResizeEnd,
+			onFloatingTabDragEnd: floating.actions.onFloatingTabDragEnd,
+			onFloatingTabDragMove: floating.actions.onFloatingTabDragMove,
+			onFloatingTabDragStart: floating.actions.onFloatingTabDragStart,
+			onFloatingTabFocus: floating.actions.onFloatingTabFocus,
 			onOverflowChange: setOverflowKeys,
 			onRemoveTab,
 			onReorderTabs,
@@ -299,22 +349,28 @@ export function useActivityPanelModel({
 			onResizeEnd,
 			onRestoreTab,
 			onTabChange,
+			onTabDragEnd: floating.actions.onDockedTabDragEnd,
+			onTabDragMove: floating.actions.onDockedTabDragMove,
+			onTabDragStart,
 		},
 		model: {
-			activeDefinition,
 			activeTab,
 			availablePluginTabs,
 			bottomSheet: narrow && isOpen,
 			cwd,
+			dockPreviewBounds: narrow ? null : floating.model.dockPreviewBounds,
+			floatingTabs: narrow ? [] : floating.model.floatingTabs,
 			isOpen,
 			isResizing,
-			keepAliveTabs,
 			knowledgeHistory,
+			mainTabListRef,
+			mountedTabs,
 			narrowSheet: narrow,
 			overflowTabs,
+			panelRef,
 			restorableTabs,
 			showTabPicker,
-			tabItems,
+			tabItems: dockedTabItems,
 			width,
 		},
 	};

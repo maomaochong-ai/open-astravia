@@ -18,10 +18,51 @@ describe("applyContentProjectCommands", () => {
 		expect(next.revision).toBe(1);
 		expect(next.updatedAt).toBe("2026-01-02T00:00:00.000Z");
 		expect(next.graph.nodes).toHaveLength(2);
+		expect(next.graph.nodes.map((node) => node.name)).toEqual(["prompt 1", "video-generator 1"]);
 		expect(next.graph.edges).toHaveLength(1);
 		expect(next.graph.edges[0]).toMatchObject({ sourceHandle: "text", targetHandle: "prompt" });
 		expect(next.graph.nodes[1]?.data).toMatchObject({ aspectRatio: "16:9", duration: 5, resolution: "720p" });
 		expect(project.graph.nodes).toHaveLength(0);
+	});
+
+	it("persists an explicit node name and rejects empty renames", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "prompt", kind: "prompt", name: "分镜提示词", position: { x: 0, y: 0 } } },
+		]);
+		const renamed = applyContentProjectCommands(project, [
+			{ type: "node.rename", nodeId: "prompt", name: "电影提示词" },
+		]);
+
+		expect(renamed.graph.nodes[0]?.name).toBe("电影提示词");
+		expect(() =>
+			applyContentProjectCommands(renamed, [{ type: "node.rename", nodeId: "prompt", name: "  " }]),
+		).toThrow(ContentProjectCommandError);
+	});
+
+	it("stores workflow intent and semantic node purpose", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "workflow.update",
+				workflow: {
+					title: "产品发布视频",
+					objective: "生成一支介绍核心功能的短视频",
+					deliverables: [{ type: "video", fromNode: "video", description: "最终成片" }],
+				},
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "video",
+					kind: "video-generator",
+					name: "主视频",
+					purpose: "根据分镜提示词生成最终成片",
+					position: { x: 0, y: 0 },
+				},
+			},
+		]);
+
+		expect(project.workflow).toMatchObject({ title: "产品发布视频", deliverables: [{ fromNode: "video" }] });
+		expect(project.graph.nodes[0]).toMatchObject({ purpose: "根据分镜提示词生成最终成片" });
 	});
 
 	it("rejects incompatible and cyclic connections while allowing multiple prompt sources", () => {

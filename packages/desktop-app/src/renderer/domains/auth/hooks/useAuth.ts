@@ -13,9 +13,6 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
 import { setProductAnalyticsUser } from "../../../telemetry/product-analytics";
 
-const ACCESS_TOKEN_KEY = "vetta-auth-token";
-const REFRESH_TOKEN_KEY = "vetta-refresh-token";
-
 export function useAuth() {
 	const [token, setToken] = useAtom(authTokenAtom);
 	const [user, setUser] = useAtom(authUserAtom);
@@ -33,21 +30,18 @@ export function useAuth() {
 		// 注意：这里只清服务器侧状态（token / user / 远程 providers / SSE）。
 		// 不要中断正在运行的会话，也不要清 selectedModel——
 		// 用户可能正用本地模型离线工作，token 掉了完全不影响他们。
-		const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY) ?? undefined;
-		void logoutOnServer(storedRefresh);
+		void window.vetta.settings
+			.getServerRefreshToken()
+			.then((storedRefresh) => logoutOnServer(storedRefresh))
+			.finally(() => window.vetta.settings.setServerRefreshToken(undefined));
 		setToken(null);
 		setUser(null);
-		localStorage.removeItem(ACCESS_TOKEN_KEY);
-		localStorage.removeItem(REFRESH_TOKEN_KEY);
 		void window.vetta.settings.setServerToken(undefined);
-		void window.vetta.settings.setServerRefreshToken(undefined);
 		setRemoteProviders({});
 		sseClient.disconnect();
 	}, [setToken, setUser, setRemoteProviders, sseClient]);
 
-	// 启动对齐：渲染层的 token 在 localStorage，主进程的在 settings.json。
-	// 二者可能不同步（localStorage 被清、上一次写入没落盘），此时磁盘上的凭据仍然
-	// 有效，却因为 atom 是空的而表现为「掉登录」。以主进程为准补一次。
+	// 启动时只从主进程凭据存储读取一次，renderer 不再持久化 token。
 	//
 	// 只在挂载时跑一次：若跟着 token 变化跑，logout 把 token 置空会立刻触发它，
 	// 而 setServerToken(undefined) 是另一条 IPC 通道、不保证已经落盘，
@@ -60,7 +54,6 @@ export function useAuth() {
 		void window.vetta.settings.getServerToken().then((stored) => {
 			if (!stored) return;
 			setToken(stored);
-			localStorage.setItem(ACCESS_TOKEN_KEY, stored);
 		});
 	}, [token, setToken]);
 
@@ -113,15 +106,12 @@ export function useAuth() {
 	useEffect(() => {
 		const cleanup = window.vetta.auth.onOAuthCallback((data) => {
 			setToken(data.token);
-			localStorage.setItem(ACCESS_TOKEN_KEY, data.token);
 			if (data.refreshToken) {
-				localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken);
 				void window.vetta.settings.setServerRefreshToken(data.refreshToken);
 			} else {
 				// 本次登录没带 refresh 时，绝不能留着上一次登录的旧值：它多半已被轮换
 				// 作废，下次刷新出示它会被服务端按重放处理，直接撤掉整条链。
 				// 宁可没有 refresh（access 到期后重新登录一次），也不要一个会踢人的旧值。
-				localStorage.removeItem(REFRESH_TOKEN_KEY);
 				void window.vetta.settings.setServerRefreshToken(undefined);
 			}
 			setLoginOpen(false);

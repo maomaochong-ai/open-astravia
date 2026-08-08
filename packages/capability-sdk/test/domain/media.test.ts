@@ -4,83 +4,94 @@ import {
 	DOMAIN_MEDIA_CAPABILITIES,
 	DOMAIN_MEDIA_CAPABILITY_CATALOG,
 	MEDIA_GENERATION_MODES,
-	MEDIA_JOB_STATUSES,
 	MEDIA_KINDS,
+	MEDIA_OPERATIONS,
 } from "../../src/domain.js";
+import { JOB_STATUSES } from "../../src/foundation.js";
 
 describe("media domain capabilities", () => {
 	it("uses one stable id per media operation", () => {
 		expect(Object.values(DOMAIN_MEDIA_CAPABILITIES).map((capability) => capability.id)).toEqual([
 			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.provider.list`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.create`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.get`,
-			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.cancel`,
+			`${CAPABILITY_PREFIXES.VETTA_DOMAIN}media.job.submit`,
 		]);
 	});
 
-	it("validates media requests and strips unknown fields", () => {
+	it("validates generation requests and strips unknown fields", () => {
 		expect(DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.parseInput({})).toEqual({});
 		expect(() => DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.parseInput({ ignored: true })).toThrowError(
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
 		);
 		expect(
-			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseInput({
+			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseInput({
+				ownerId: "image-gen",
 				providerId: "desktop-app:vetta",
+				operation: MEDIA_OPERATIONS.GENERATE,
 				kind: MEDIA_KINDS.IMAGE,
 				mode: MEDIA_GENERATION_MODES.TEXT_TO_IMAGE,
 				prompt: "draw a fox",
 				dimensions: { width: 1024, height: 1024 },
+				inputs: [],
 				ignored: true,
 			}),
 		).toEqual({
+			ownerId: "image-gen",
 			providerId: "desktop-app:vetta",
-			kind: MEDIA_KINDS.IMAGE,
-			mode: MEDIA_GENERATION_MODES.TEXT_TO_IMAGE,
+			operation: "generate",
+			kind: "image",
+			mode: "text-to-image",
 			prompt: "draw a fox",
 			dimensions: { width: 1024, height: 1024 },
+			inputs: [],
 		});
-		expect(() =>
-			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseInput({
-				providerId: "desktop-app:vetta",
-				kind: MEDIA_KINDS.IMAGE,
-				mode: MEDIA_GENERATION_MODES.TEXT_TO_IMAGE,
-				prompt: "",
-			}),
-		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }));
 	});
 
-	it("validates terminal media jobs", () => {
+	it("validates composition without binding the document format to an engine", () => {
 		expect(
-			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseOutput({
-				id: "job-auth",
-				providerId: "desktop-app:vetta",
-				status: MEDIA_JOB_STATUSES.FAILED,
-				error: { code: "unauthenticated", message: "Not signed in", retryable: false },
+			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseInput({
+				ownerId: "video-editor",
+				providerId: "renderer:timeline",
+				operation: "compose",
+				inputs: [
+					{
+						kind: "document",
+						mimeType: "application/vnd.example.timeline+json",
+						source: { type: "plugin-blob", namespace: "video-editor", blobId: "project" },
+					},
+				],
+				output: { kind: "video", mimeType: "video/mp4", fps: 30 },
 			}),
-		).toMatchObject({ status: "failed", error: { code: "unauthenticated" } });
+		).toMatchObject({ operation: "compose", output: { kind: "video", mimeType: "video/mp4", fps: 30 } });
+	});
+
+	it("validates host jobs with temporary artifacts", () => {
 		expect(
-			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseOutput({
+			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseOutput({
 				id: "job-1",
-				providerId: "desktop-app:vetta",
-				status: MEDIA_JOB_STATUSES.SUCCEEDED,
-				artifacts: [{ kind: MEDIA_KINDS.IMAGE, mimeType: "image/png", data: "aW1hZ2U=" }],
+				domain: "media",
+				operation: "generate",
+				status: JOB_STATUSES.SUCCEEDED,
+				artifacts: [
+					{
+						id: "artifact-1",
+						kind: "image",
+						mimeType: "image/png",
+						sizeBytes: 5,
+						lifetime: "temporary",
+					},
+				],
 			}),
-		).toMatchObject({ id: "job-1", providerId: "desktop-app:vetta", status: "succeeded" });
-		expect(() =>
-			DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.parseOutput({
-				id: "job-1",
-				providerId: "desktop-app:vetta",
-				status: "unknown",
-			}),
-		).toThrowError(expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_OUTPUT }));
+		).toMatchObject({
+			id: "job-1",
+			domain: "media",
+			status: "succeeded",
+			artifacts: [{ kind: "image", lifetime: "temporary" }],
+		});
 	});
 
 	it("publishes media schemas in its catalog", () => {
-		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG).toHaveLength(4);
+		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG).toHaveLength(2);
 		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG[0]?.outputSchema).toMatchObject({ type: "array" });
-		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG[1]?.inputSchema).toMatchObject({
-			type: "object",
-			required: ["providerId", "kind", "mode", "prompt"],
-		});
+		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG[1]?.inputSchema).toHaveProperty("anyOf");
 	});
 });

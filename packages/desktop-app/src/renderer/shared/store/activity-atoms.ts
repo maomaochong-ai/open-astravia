@@ -4,6 +4,18 @@ import { atom } from "jotai";
 export const activityPanelOpenAtom = atom<boolean>(false);
 export const activityPanelResizingAtom = atom<boolean>(false);
 
+export interface FloatingActivityTabPlacement {
+	height: number;
+	key: ActivityTabKey;
+	width: number;
+	x: number;
+	y: number;
+	zIndex: number;
+}
+
+/** 浮动 tab 按项目隔离；切换项目时隐藏，返回项目后恢复。 */
+export const floatingActivityTabsByProjectAtom = atom<Map<string, FloatingActivityTabPlacement[]>>(new Map());
+
 /** 活动面板默认宽度，也是关闭内嵌预览时回拉的兜底值。 */
 export const ACTIVITY_PANEL_DEFAULT_WIDTH = 360;
 

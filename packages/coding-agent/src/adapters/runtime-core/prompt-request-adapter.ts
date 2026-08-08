@@ -20,6 +20,11 @@ import type {
 	CodingAgentPromptResourceExpansion,
 	CodingAgentPromptResourceResolver,
 } from "../../runtime-contracts/index.js";
+import {
+	type AgentPluginPromptContext,
+	buildPluginPromptContextMessage,
+	parsePluginPromptContexts,
+} from "./plugin-prompt-context.js";
 
 export type {
 	CodingAgentPromptResourceExpansion,
@@ -78,8 +83,11 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 		const attachmentContext = request.attachments?.length
 			? buildPromptAttachmentContext(request.attachments)
 			: undefined;
+		const pluginPromptContexts = parsePluginPromptContexts(request.metadata?.pluginPromptContexts);
+		const pluginPromptContext =
+			pluginPromptContexts.length > 0 ? buildPluginPromptContextMessage(pluginPromptContexts) : undefined;
 		const queuedInjection = context.queueing
-			? [...hookContexts, attachmentContext, expansion.skillInjection, expansion.sceneInjection]
+			? [...hookContexts, attachmentContext, pluginPromptContext, expansion.skillInjection, expansion.sceneInjection]
 					.filter(isNonEmptyString)
 					.join("\n\n")
 			: "";
@@ -97,7 +105,7 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 			? []
 			: [
 					...hookContexts.map((content) => hiddenContext("ecosystem_hook_context", content)),
-					...this.buildContext(request, expansion),
+					...this.buildContext(request, expansion, pluginPromptContexts),
 				];
 		return {
 			input: {
@@ -142,6 +150,7 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 	private buildContext(
 		request: PromptRequest,
 		expansion: CodingAgentPromptResourceExpansion,
+		pluginPromptContexts: readonly AgentPluginPromptContext[],
 	): readonly SessionContextRecord[] {
 		const records: SessionContextRecord[] = [];
 		const pluginInstructions = Array.isArray(request.metadata?.pluginInstructions)
@@ -149,6 +158,13 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 			: [];
 		for (const instruction of pluginInstructions) {
 			records.push(hiddenContext("plugin_prompt_instruction", instruction.trim()));
+		}
+		if (pluginPromptContexts.length > 0) {
+			records.push(
+				hiddenContext("plugin_prompt_context", buildPluginPromptContextMessage(pluginPromptContexts), {
+					contexts: pluginPromptContexts,
+				}),
+			);
 		}
 
 		if (request.metadata?.knowledgeMode === true) {

@@ -12,6 +12,7 @@ import {
 } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
@@ -19,6 +20,13 @@ import { useProjects } from "../../../../hooks/useProjects";
 import type { BatchProjectEntry, ProjectsPanelModel, ProjectsPanelProps } from "./types";
 
 const EMPTY_SESSIONS: SessionInfo[] = [];
+
+/**
+ * 侧栏只关心当前会话的 path / cwd。订阅 activeSession 整个对象会让 session 上任何字段
+ * 变动（token 计数、运行状态）都把整块项目面板重渲染一遍。
+ */
+const activeSessionPathAtom = selectAtom(activeSessionAtom, (session) => session?.sessionPath ?? "");
+const activeSessionCwdAtom = selectAtom(activeSessionAtom, (session) => session?.cwd ?? "");
 
 export function useProjectsPanelModel({
 	filter,
@@ -40,7 +48,8 @@ export function useProjectsPanelModel({
 		deleteProjectFromDisk,
 		loadSessions,
 	} = useProjects();
-	const activeSession = useAtomValue(activeSessionAtom);
+	const activeSessionPathValue = useAtomValue(activeSessionPathAtom);
+	const activeSessionCwd = useAtomValue(activeSessionCwdAtom);
 	const imCwd = useAtomValue(defaultImConversationCwdAtom);
 	const setActiveSession = useSetAtom(activeSessionAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
@@ -50,7 +59,7 @@ export function useProjectsPanelModel({
 	const currentPath = matches[matches.length - 1]?.pathname ?? "/";
 	const viewerParams = matches[matches.length - 1]?.params as { path?: string } | undefined;
 	const viewerSessionPath = viewerParams?.path ? decodeURIComponent(viewerParams.path) : "";
-	const activeSessionPath = viewerSessionPath || activeSession?.sessionPath || "";
+	const activeSessionPath = viewerSessionPath || activeSessionPathValue;
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();
@@ -175,7 +184,7 @@ export function useProjectsPanelModel({
 
 	const deletePanelSession = useCallback(
 		(session: { cwd: string; path: string }) => {
-			const wasActive = activeSession?.sessionPath === session.path;
+			const wasActive = activeSessionPathValue === session.path;
 			const goToProjectDetail = (projectCwd: string): void => {
 				if (!wasActive) return;
 				setActiveSession(null);
@@ -197,7 +206,7 @@ export function useProjectsPanelModel({
 			void deleteSession(session.cwd, session.path);
 			goToProjectDetail(session.cwd);
 		},
-		[activeSession, batchProjects, deleteBatchTask, deleteSession, setActiveSession, currentPath, navigate],
+		[activeSessionPathValue, batchProjects, deleteBatchTask, deleteSession, setActiveSession, currentPath, navigate],
 	);
 
 	const renamePanelSession = useCallback(
@@ -209,16 +218,15 @@ export function useProjectsPanelModel({
 
 	const cleanupAfterProjectGone = useCallback(
 		(projectCwd: string, sessionPathsInProject: string[]) => {
-			const activeBelongsToProject = activeSession
-				? activeSession.cwd === projectCwd || sessionPathsInProject.includes(activeSession.sessionPath)
-				: false;
+			const activeBelongsToProject =
+				activeSessionCwd === projectCwd || sessionPathsInProject.includes(activeSessionPathValue);
 			if (activeBelongsToProject) setActiveSession(null);
 			const onDeletedProjectPage = currentPath === `/project/${encodeURIComponent(projectCwd)}`;
 			if (onDeletedProjectPage) {
 				void navigate({ to: "/" });
 			}
 		},
-		[activeSession, setActiveSession, currentPath, navigate],
+		[activeSessionCwd, activeSessionPathValue, setActiveSession, currentPath, navigate],
 	);
 
 	const confirmDeleteBatchProject = useCallback(
@@ -315,10 +323,7 @@ export function useProjectsPanelModel({
 				onConfirm: async () => {
 					await window.vetta.session.clearDefaultConversation("conversation");
 					const removedPaths = new Set(allSessions.map((session) => session.path));
-					if (
-						activeSession &&
-						(removedPaths.has(activeSession.sessionPath) || (activeSession.cwd === cwd && !removedPaths.size))
-					) {
+					if (removedPaths.has(activeSessionPathValue) || (activeSessionCwd === cwd && !removedPaths.size)) {
 						setActiveSession(null);
 						void navigate({
 							to: "/new-session/$cwd",
@@ -329,7 +334,7 @@ export function useProjectsPanelModel({
 				},
 			});
 		},
-		[setConfirm, sessionsMap, activeSession, setActiveSession, navigate, loadSessions, t],
+		[setConfirm, sessionsMap, activeSessionPathValue, activeSessionCwd, setActiveSession, navigate, loadSessions, t],
 	);
 
 	const clearClaw = useCallback(
@@ -343,7 +348,7 @@ export function useProjectsPanelModel({
 				onConfirm: async () => {
 					await window.vetta.session.clearDefaultConversation("claw");
 					const removedPaths = new Set(imSessions.map((session) => session.path));
-					if (activeSession && removedPaths.has(activeSession.sessionPath)) {
+					if (removedPaths.has(activeSessionPathValue)) {
 						setActiveSession(null);
 						void navigate({
 							to: "/new-session/$cwd",
@@ -354,7 +359,7 @@ export function useProjectsPanelModel({
 				},
 			});
 		},
-		[setConfirm, sessionsMap, imCwd, activeSession, setActiveSession, navigate, loadSessions, t],
+		[setConfirm, sessionsMap, imCwd, activeSessionPathValue, setActiveSession, navigate, loadSessions, t],
 	);
 
 	const activeProjectCandidates = useMemo(() => {
