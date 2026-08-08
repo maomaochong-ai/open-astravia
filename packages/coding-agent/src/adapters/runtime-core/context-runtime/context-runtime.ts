@@ -14,6 +14,7 @@ import type {
 	TurnObserver,
 } from "@vetta/runtime-core/kernel";
 import {
+	appendCompactionWorkState,
 	CompactionCircuitBreaker,
 	type CompactionResult,
 	type CompactionSettings,
@@ -289,13 +290,14 @@ export class CodingAgentContextRuntime
 		fromExtension: boolean,
 	): ContextCompactionRecord {
 		const timestamp = this.now();
+		const summary = appendCompactionWorkState(result.summary, this.options.readCompactionWorkState?.());
 		const summaryMessage: UserMessage = {
 			role: "user",
-			content: [{ type: "text", text: COMPACTION_SUMMARY_PREFIX + result.summary + COMPACTION_SUMMARY_SUFFIX }],
+			content: [{ type: "text", text: COMPACTION_SUMMARY_PREFIX + summary + COMPACTION_SUMMARY_SUFFIX }],
 			timestamp,
 		};
 		return {
-			summary: result.summary,
+			summary,
 			summaryMessage,
 			firstKeptEntryId: result.firstKeptEntryId,
 			tokensBefore: result.tokensBefore,

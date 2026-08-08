@@ -100,6 +100,16 @@ export function createCodingAgentSessionContextAssembly(
 		extensionRuntime: profile.createCompactionExtensionRuntime?.(sessionOptions),
 		memoryRollover: peripherals.memoryRuntime,
 		transformAgentContext: (messages) => options.extensionEvents.transformContext(messages),
+		readCompactionWorkState: () => ({
+			todos: peripherals.todoRuntime.getAll().map((item) => ({ ...item })),
+			backgroundTasks: peripherals.executionRuntime.backgroundService.list().map((task) => ({
+				id: task.id,
+				command: task.command,
+				status: task.status,
+				outputFile: task.outputFile,
+				...(task.exitCode === undefined ? {} : { exitCode: task.exitCode }),
+			})),
+		}),
 	});
 	options.trackContextRuntime(contextRuntime);
 	options.deferRollback({

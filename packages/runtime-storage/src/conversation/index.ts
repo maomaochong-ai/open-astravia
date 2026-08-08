@@ -27,6 +27,7 @@ export {
 	type FileConversationRepositoryOptions,
 } from "./file-conversation-repository.js";
 export {
+	type ConversationSessionArtifactCleaner,
 	FileConversationRuntimeSessionCatalog,
 	type FileConversationRuntimeSessionCatalogOptions,
 	FileConversationRuntimeSessionFileHistoryReader,

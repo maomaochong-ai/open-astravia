@@ -242,7 +242,7 @@ describe("native capability tool compatibility", () => {
 			content: [
 				{
 					type: "text",
-					text: "Activated 1 MCP tool(s) — callable from now on:\n- github_issue: Manage repository issues\nAlready active: notion_page",
+					text: "Activated 1 MCP tool(s) — callable from now on:\n- github_issue: Manage repository issues\nAlready active (call directly, do not search again): notion_page",
 				},
 			],
 			details: {

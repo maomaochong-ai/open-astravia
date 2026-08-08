@@ -1,3 +1,4 @@
+import { isRetryableRuntimeError } from "../../utils/retryable-error.js";
 import type { CodingAgentTurnRetryController, CodingAgentTurnRetryControllerOptions } from "./contracts.js";
 
 export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRetryController {
@@ -29,7 +30,7 @@ export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRet
 	): Promise<T> {
 		let result = await executeInitial();
 		let failure = readFailure(result);
-		while (failure && isRetryableError(failure)) {
+		while (failure && isRetryableRuntimeError(failure)) {
 			const settings = this.options.readSettings();
 			if (!settings.enabled || this.attempt >= settings.maxRetries) break;
 			this.attempt += 1;
@@ -90,19 +91,6 @@ export function createCodingAgentTurnRetryController(
 	options: CodingAgentTurnRetryControllerOptions,
 ): CodingAgentTurnRetryController {
 	return new CodingAgentSessionTurnRetryController(options);
-}
-
-function isRetryableError(message: string): boolean {
-	if (
-		/额度已用尽|额度不足|窗口额度|余额不足|Token Plan|insufficient.?quota|insufficient.?balance|quota.?exhausted|quota.?exceeded|out of quota|exceeded your current quota/i.test(
-			message,
-		)
-	) {
-		return false;
-	}
-	return /overloaded|rate.?limit|too many requests|429|500|502|503|504|service.?unavailable|server error|internal error|connection.?error|connection.?refused|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE|EHOSTUNREACH|ENETUNREACH|other side closed|fetch failed|upstream.?connect|reset before headers|terminated|retry delay/i.test(
-		message,
-	);
 }
 
 function waitForDelay(delayMs: number, signal: AbortSignal): Promise<void> {

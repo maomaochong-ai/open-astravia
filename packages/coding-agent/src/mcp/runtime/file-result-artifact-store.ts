@@ -29,6 +29,10 @@ export class FileMcpToolResultArtifactStore implements McpToolResultArtifactStor
 		}
 		return { reference: targetPath };
 	}
+
+	deleteSessionArtifacts(sessionId: string): Promise<void> {
+		return rm(join(this.root, safeSegment(sessionId)), { force: true, recursive: true });
+	}
 }
 
 function safeSegment(value: string): string {

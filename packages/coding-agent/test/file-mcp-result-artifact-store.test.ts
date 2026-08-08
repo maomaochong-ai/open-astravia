@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -23,6 +24,8 @@ describe("FileMcpToolResultArtifactStore", () => {
 			expect(artifact.reference.startsWith(root)).toBe(true);
 			expect(artifact.reference).toMatch(/server-name-[a-f0-9]{12}-lookup-value-[a-f0-9]{12}-.*\.json$/);
 			expect(await readFile(artifact.reference, "utf8")).toBe('{"content":[{"type":"text","text":"complete"}]}');
+			await store.deleteSessionArtifacts("../session:one");
+			expect(existsSync(artifact.reference)).toBe(false);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

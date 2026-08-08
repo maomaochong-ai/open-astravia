@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { MessageAppendedEvent, TurnCompletedEvent, TurnStartedEvent } from "@vetta/runtime-core/kernel";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	ConversationOwnershipConflictError,
 	FileConversationOwnershipManager,
@@ -45,6 +45,11 @@ describe("Greenfield runtime session services", () => {
 
 		const catalog = new FileConversationRuntimeSessionCatalog({
 			roots: [{ cwd, sessionDir: rootDir }],
+			artifactCleaner: {
+				deleteSessionArtifacts: vi.fn(async (deletedSessionId) => {
+					expect(deletedSessionId).toBe(sessionId);
+				}),
+			},
 		});
 		const reader = new FileConversationRuntimeSessionFileHistoryReader();
 
@@ -77,6 +82,25 @@ describe("Greenfield runtime session services", () => {
 		expect(existsSync(`${sessionPath}.lock`)).toBe(false);
 		expect(existsSync(`${sessionPath}.owner.lock`)).toBe(false);
 		expect(existsSync(snapshotPath)).toBe(false);
+	});
+
+	it("keeps the session file when auxiliary artifact cleanup fails so deletion can be retried", async () => {
+		const rootDir = await createTemporaryRoot();
+		const repository = new FileConversationRepository({ rootDir });
+		const sessionId = "retryable-cleanup";
+		await repository.create({ sessionId, createdAt: 100 });
+		const sessionPath = repository.resolveConversationPath(sessionId);
+		await repository.close();
+		const catalog = new FileConversationRuntimeSessionCatalog({
+			artifactCleaner: {
+				deleteSessionArtifacts: async () => {
+					throw new Error("artifact cleanup failed");
+				},
+			},
+		});
+
+		await expect(catalog.deleteSessionArtifacts(sessionPath)).rejects.toThrow("artifact cleanup failed");
+		expect(existsSync(sessionPath)).toBe(true);
 	});
 
 	it("rejects lifecycle writes while another process-lifetime owner holds the conversation", async () => {

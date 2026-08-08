@@ -28,16 +28,23 @@ export interface RuntimeConversationSessionRoot {
 export interface FileConversationRuntimeSessionCatalogOptions {
 	readonly roots?: readonly RuntimeConversationSessionRoot[];
 	readonly ownershipManager?: ConversationOwnershipManager;
+	readonly artifactCleaner?: ConversationSessionArtifactCleaner;
+}
+
+export interface ConversationSessionArtifactCleaner {
+	deleteSessionArtifacts(sessionId: string): Promise<void>;
 }
 
 /** Native conversation 文件的离线目录与生命周期适配器。 */
 export class FileConversationRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	private readonly roots: readonly RuntimeConversationSessionRoot[];
 	private readonly ownershipManager: ConversationOwnershipManager;
+	private readonly artifactCleaner: ConversationSessionArtifactCleaner | undefined;
 
 	constructor(options: FileConversationRuntimeSessionCatalogOptions = {}) {
 		this.roots = options.roots ?? [];
 		this.ownershipManager = options.ownershipManager ?? new FileConversationOwnershipManager();
+		this.artifactCleaner = options.artifactCleaner;
 	}
 
 	async ownsSession(sessionPath: string): Promise<boolean> {
@@ -102,6 +109,7 @@ export class FileConversationRuntimeSessionCatalog implements RuntimeSessionCata
 		try {
 			const header = await requireConversationHeader(path);
 			releaseFileLock = await acquireConversationFileLock(`${path}.lock`, header.sessionId);
+			await this.artifactCleaner?.deleteSessionArtifacts(header.sessionId);
 			await rm(join(dirname(path), `${encodeConversationSessionId(header.sessionId)}.snapshot.json`), {
 				force: true,
 			});

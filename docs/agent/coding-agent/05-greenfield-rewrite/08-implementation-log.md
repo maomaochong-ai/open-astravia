@@ -197,6 +197,7 @@
 | [303-public-protocol-and-type-gate-stability.md](./08-implementation-log/303-public-protocol-and-type-gate-stability.md) | 公开协议兼容恢复与类型门禁稳定性 |
 | [306-mcp-result-capacity-boundary.md](./08-implementation-log/306-mcp-result-capacity-boundary.md) | MCP 大结果容量边界、产物存储端口与兼容回退 |
 | [307-mcp-result-policy-invariant.md](./08-implementation-log/307-mcp-result-policy-invariant.md) | MCP Tool 非空结果策略合同与动态 Tool 默认策略 |
+| [308-context-resilience-and-artifact-lifecycle.md](./08-implementation-log/308-context-resilience-and-artifact-lifecycle.md) | Tool 结果、上下文压力、压缩恢复与 Session 产物生命周期闭环 |
 
 ## 维护约定
 

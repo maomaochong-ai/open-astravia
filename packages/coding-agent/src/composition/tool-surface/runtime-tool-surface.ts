@@ -33,6 +33,7 @@ export interface CodingAgentRuntimeToolSurfaceIndexes extends CodingAgentMcpSess
 
 export interface CodingAgentRuntimeToolSurfaceOptions {
 	readonly cwd: string;
+	readonly agentDir?: string;
 	readonly scenario: ConversationScenario;
 	readonly activation?: CodingToolActivation;
 	readonly knowledgeEnabled?: boolean;
@@ -80,6 +81,7 @@ export async function createCodingAgentRuntimeToolSurface(
 		);
 	const tools = createCodingToolsRuntimeComposition({
 		cwd: options.cwd,
+		agentDir: options.agentDir,
 		activation,
 		resolveActivation: (context) => {
 			const configuration = options.indexes.configurationStates.get(context.sessionId);

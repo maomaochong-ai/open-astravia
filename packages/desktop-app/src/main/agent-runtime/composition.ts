@@ -3,6 +3,7 @@ import { getAgentDir } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentPluginMcpRuntime,
+	createCodingAgentSessionArtifactCleaner,
 	createCodingAgentSharedModelController,
 } from "@vetta/coding-agent/host-services";
 import {
@@ -62,6 +63,7 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 	const historicalFormat = createDesktopHistoricalSessionFormat();
 	const conversationCatalog = new DesktopRuntimeSessionCatalog({
 		resolveRoots: resolveDesktopRuntimeSessionRoots,
+		artifactCleaner: createCodingAgentSessionArtifactCleaner(getAgentDir()),
 	});
 	const imConversationCatalog = new PathFilteredRuntimeSessionCatalog(conversationCatalog, (sessionPath) =>
 		isSessionPathInDirectory(sessionPath, DEFAULT_IM_CONVERSATION_SESSION_DIR),

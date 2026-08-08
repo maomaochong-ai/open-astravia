@@ -16,6 +16,14 @@ import {
 } from "../model-context/index.js";
 import type { CompactionEntry, CompactionHistoryEntry, CompactionResult, CompactionSettings } from "./contracts.js";
 import {
+	type CompactionSummaryGenerationRecoveryOptions,
+	generateCompactionSummaryWithRecovery,
+} from "./summary-generation-recovery.js";
+import {
+	type CompactionSummaryInputCandidate,
+	createCompactionSummaryInputCandidates,
+} from "./summary-input-degradation.js";
+import {
 	computeFileLists,
 	createFileOps,
 	extractFileOpsFromMessage,
@@ -393,6 +401,10 @@ function extractSummaryFromResponse(text: string): string {
  * Generate a summary of the conversation using the LLM.
  * If previousSummary is provided, uses the update prompt to merge.
  */
+export interface CompactionSummaryGenerationOptions extends CompactionSummaryGenerationRecoveryOptions {
+	readonly completion?: typeof completeSimple;
+}
+
 export async function generateSummary(
 	currentMessages: AgentMessage[],
 	model: Model<Api>,
@@ -401,6 +413,7 @@ export async function generateSummary(
 	signal?: AbortSignal,
 	customInstructions?: string,
 	previousSummary?: string,
+	generationOptions: CompactionSummaryGenerationOptions = {},
 ): Promise<string> {
 	const maxTokens = Math.floor(0.8 * reserveTokens);
 
@@ -410,42 +423,25 @@ export async function generateSummary(
 		basePrompt = `${basePrompt}\n\nAdditional focus: ${customInstructions}`;
 	}
 
-	// Serialize conversation to text so model doesn't try to continue it
-	// Convert to LLM messages first (handles custom types like bashExecution, custom, etc.)
-	const llmMessages = convertToLlm(currentMessages);
-	const conversationText = serializeConversation(llmMessages);
-
-	// Build the prompt with conversation wrapped in tags
-	let promptText = `<conversation>\n${conversationText}\n</conversation>\n\n`;
-	if (previousSummary) {
-		promptText += `<previous-summary>\n${previousSummary}\n</previous-summary>\n\n`;
-	}
-	promptText += basePrompt;
-
-	const summarizationMessages = [
-		{
-			role: "user" as const,
-			content: [{ type: "text" as const, text: promptText }],
-			timestamp: Date.now(),
-		},
-	];
-
-	const response = await completeSimple(
-		model,
-		{ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages },
-		{ maxTokens, signal, apiKey, reasoning: "high" },
+	const candidates = createCompactionSummaryInputCandidates(currentMessages);
+	return generateCompactionSummaryWithRecovery(
+		candidates,
+		(candidate) =>
+			completeSummaryCandidate({
+				candidate,
+				model,
+				apiKey,
+				maxTokens,
+				signal,
+				basePrompt,
+				previousSummary,
+				completion: generationOptions.completion ?? completeSimple,
+				reasoning: "high",
+				errorPrefix: "Summarization failed",
+			}),
+		signal,
+		generationOptions,
 	);
-
-	if (response.stopReason === "error") {
-		throw new Error(`Summarization failed: ${response.errorMessage || "Unknown error"}`);
-	}
-
-	const textContent = response.content
-		.filter((c): c is { type: "text"; text: string } => c.type === "text")
-		.map((c) => c.text)
-		.join("\n");
-
-	return extractSummaryFromResponse(textContent);
 }
 
 // ============================================================================
@@ -584,6 +580,7 @@ export async function compact(
 	apiKey: string,
 	customInstructions?: string,
 	signal?: AbortSignal,
+	generationOptions: CompactionSummaryGenerationOptions = {},
 ): Promise<CompactionResult> {
 	const {
 		firstKeptEntryId,
@@ -611,9 +608,17 @@ export async function compact(
 						signal,
 						customInstructions,
 						previousSummary,
+						generationOptions,
 					)
 				: Promise.resolve("No prior history."),
-			generateTurnPrefixSummary(turnPrefixMessages, model, settings.reserveTokens, apiKey, signal),
+			generateTurnPrefixSummary(
+				turnPrefixMessages,
+				model,
+				settings.reserveTokens,
+				apiKey,
+				signal,
+				generationOptions,
+			),
 		]);
 		// Merge into single summary
 		summary = `${historyResult}\n\n---\n\n**Turn Context (split turn):**\n\n${turnPrefixResult}`;
@@ -627,6 +632,7 @@ export async function compact(
 			signal,
 			customInstructions,
 			previousSummary,
+			generationOptions,
 		);
 	}
 
@@ -655,31 +661,69 @@ async function generateTurnPrefixSummary(
 	reserveTokens: number,
 	apiKey: string,
 	signal?: AbortSignal,
+	generationOptions: CompactionSummaryGenerationOptions = {},
 ): Promise<string> {
 	const maxTokens = Math.floor(0.5 * reserveTokens); // Smaller budget for turn prefix
-	const llmMessages = convertToLlm(messages);
-	const conversationText = serializeConversation(llmMessages);
-	const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${TURN_PREFIX_SUMMARIZATION_PROMPT}`;
-	const summarizationMessages = [
-		{
-			role: "user" as const,
-			content: [{ type: "text" as const, text: promptText }],
-			timestamp: Date.now(),
-		},
-	];
-
-	const response = await completeSimple(
-		model,
-		{ systemPrompt: SUMMARIZATION_SYSTEM_PROMPT, messages: summarizationMessages },
-		{ maxTokens, signal, apiKey },
+	return generateCompactionSummaryWithRecovery(
+		createCompactionSummaryInputCandidates(messages),
+		(candidate) =>
+			completeSummaryCandidate({
+				candidate,
+				model,
+				apiKey,
+				maxTokens,
+				signal,
+				basePrompt: TURN_PREFIX_SUMMARIZATION_PROMPT,
+				completion: generationOptions.completion ?? completeSimple,
+				errorPrefix: "Turn prefix summarization failed",
+			}),
+		signal,
+		generationOptions,
 	);
+}
 
-	if (response.stopReason === "error") {
-		throw new Error(`Turn prefix summarization failed: ${response.errorMessage || "Unknown error"}`);
+interface CompleteSummaryCandidateOptions {
+	readonly candidate: CompactionSummaryInputCandidate;
+	readonly model: Model<Api>;
+	readonly apiKey: string;
+	readonly maxTokens: number;
+	readonly signal?: AbortSignal;
+	readonly basePrompt: string;
+	readonly previousSummary?: string;
+	readonly completion: typeof completeSimple;
+	readonly reasoning?: "high";
+	readonly errorPrefix: string;
+}
+
+async function completeSummaryCandidate(options: CompleteSummaryCandidateOptions): Promise<string> {
+	const conversationText = serializeConversation(convertToLlm([...options.candidate.messages]));
+	let promptText = `<conversation>\n${conversationText}\n</conversation>\n\n`;
+	if (options.previousSummary) {
+		promptText += `<previous-summary>\n${options.previousSummary}\n</previous-summary>\n\n`;
 	}
-
-	return response.content
-		.filter((c): c is { type: "text"; text: string } => c.type === "text")
-		.map((c) => c.text)
-		.join("\n");
+	promptText += options.basePrompt;
+	const response = await options.completion(
+		options.model,
+		{
+			systemPrompt: SUMMARIZATION_SYSTEM_PROMPT,
+			messages: [
+				{
+					role: "user",
+					content: [{ type: "text", text: promptText }],
+					timestamp: Date.now(),
+				},
+			],
+		},
+		{
+			maxTokens: options.maxTokens,
+			signal: options.signal,
+			apiKey: options.apiKey,
+			...(options.reasoning ? { reasoning: options.reasoning } : {}),
+		},
+	);
+	if (response.stopReason === "error") {
+		throw new Error(`${options.errorPrefix}: ${response.errorMessage || "Unknown error"}`);
+	}
+	const text = response.content.flatMap((content) => (content.type === "text" ? [content.text] : [])).join("\n");
+	return extractSummaryFromResponse(text);
 }

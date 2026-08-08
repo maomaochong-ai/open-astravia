@@ -129,4 +129,37 @@ describe("applyImageBudget", () => {
 		const messages = [toolResult(img("p1")), assistant()];
 		expect(applyImageBudget(messages, 5)).toBe(messages);
 	});
+
+	it("drops oldest seen images to the low watermark only after crossing the high watermark", () => {
+		const messages = [
+			toolResult(img("a".repeat(10))),
+			toolResult(img("b".repeat(10))),
+			toolResult(img("c".repeat(10))),
+			assistant(),
+			toolResult(img("new".repeat(4))),
+		];
+
+		const result = applyImageBudget(messages, {
+			maxRecentImages: 10,
+			highWatermarkBytes: 35,
+			lowWatermarkBytes: 25,
+		});
+
+		expect(result.flatMap(imageDataIds)).toEqual(["c".repeat(10), "new".repeat(4)]);
+		expect(omittedCount(result)).toBe(2);
+		expect(imageDataIds(messages[0])).toEqual(["a".repeat(10)]);
+	});
+
+	it("keeps unseen images even when they alone remain above the low watermark", () => {
+		const messages = [toolResult(img("old".repeat(5))), assistant(), toolResult(img("new".repeat(20)))];
+
+		const result = applyImageBudget(messages, {
+			maxRecentImages: 10,
+			highWatermarkBytes: 30,
+			lowWatermarkBytes: 10,
+		});
+
+		expect(result.flatMap(imageDataIds)).toEqual(["new".repeat(20)]);
+		expect(omittedCount(result)).toBe(1);
+	});
 });

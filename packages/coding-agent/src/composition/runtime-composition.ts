@@ -55,6 +55,7 @@ async function createCodingAgentRuntimeCompositionInternal(
 	const resourceRegistry = new CodingAgentCompositionResourceRegistry();
 	const toolSurface = await createCodingAgentRuntimeToolSurface({
 		cwd,
+		agentDir: options.agentDir,
 		scenario,
 		activation: options.activation,
 		knowledgeEnabled: options.knowledgeEnabled,

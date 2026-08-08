@@ -2,6 +2,7 @@ import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../../compaction/index.js";
+import type { CompactionWorkStateSnapshot } from "../../../compaction/work-state-recovery.js";
 import type { CodingAgentMemoryCompactionPolicy } from "../../../memory/index.js";
 import type { CodingAgentCompactionExtensionRuntime } from "../../../runtime-contracts/index.js";
 
@@ -25,6 +26,7 @@ export interface CodingAgentContextRuntimeOptions {
 		signal: AbortSignal,
 	) => Promise<readonly AgentMessage[]>;
 	readonly now?: () => number;
+	readonly readCompactionWorkState?: () => CompactionWorkStateSnapshot;
 }
 
 export interface CodingAgentContextUsage {

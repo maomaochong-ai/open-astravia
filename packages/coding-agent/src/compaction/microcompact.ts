@@ -15,6 +15,8 @@ export interface MicrocompactOptions {
 	keepRecent: number;
 	/** Only clear results older than this (ms). 0 = skip time check, prune by count only. */
 	maxAgeMs: number;
+	/** Disable count-based ToolResult pruning when a pressure-aware policy owns that responsibility. */
+	pruneToolResults?: boolean;
 }
 
 export const DEFAULT_MICROCOMPACT_OPTIONS: MicrocompactOptions = {
@@ -50,7 +52,7 @@ export function microcompact(
 	options: MicrocompactOptions = DEFAULT_MICROCOMPACT_OPTIONS,
 ): AgentMessage[] {
 	let result = messages;
-	result = pruneToolResults(result, options);
+	if (options.pruneToolResults !== false) result = pruneToolResults(result, options);
 	result = pruneThinkingBlocks(result, options);
 	return result;
 }

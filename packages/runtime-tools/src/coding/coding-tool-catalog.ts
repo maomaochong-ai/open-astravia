@@ -6,6 +6,7 @@ import type {
 } from "@vetta/runtime-core/kernel";
 import { CODING_TOOL_AVAILABILITY_ERROR_CODES, CodingToolAvailabilityError } from "./coding-tool-availability.js";
 import { CodingToolExecutionTracker } from "./coding-tool-execution-tracker.js";
+import { type CodingToolResultPolicy, PRESERVE_CODING_TOOL_RESULT_POLICY } from "./coding-tool-result-policy.js";
 import type { CodingToolRegistration } from "./tool-registration.js";
 
 export type CodingToolAvailabilityState = "active" | "deactivated" | "revoked";
@@ -42,12 +43,14 @@ export interface CodingToolRegistry extends CodingToolCatalog {
 
 export interface InMemoryCodingToolRegistryOptions {
 	readonly sourceId?: string;
+	readonly resultPolicy?: CodingToolResultPolicy;
 }
 
 export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 	private readonly entriesByName = new Map<string, CodingToolCatalogEntry>();
 	private readonly executionTracker = new CodingToolExecutionTracker();
 	private readonly sourceId: string;
+	private readonly resultPolicy: CodingToolResultPolicy;
 	private version = 0;
 	private nextRevision = 0;
 	private cachedSnapshot: CodingToolCatalogSnapshot | undefined;
@@ -57,6 +60,7 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		options: InMemoryCodingToolRegistryOptions = {},
 	) {
 		this.sourceId = options.sourceId ?? "coding-tools";
+		this.resultPolicy = options.resultPolicy ?? PRESERVE_CODING_TOOL_RESULT_POLICY;
 		for (const registration of initialRegistrations) {
 			this.addInitialRegistration(registration);
 		}
@@ -125,7 +129,16 @@ export class InMemoryCodingToolRegistry implements CodingToolRegistry {
 		return this.executionTracker.run(
 			binding.capabilityId,
 			request.signal,
-			(signal) => current.registration.tool.execute({ ...request, signal }),
+			async (signal) => {
+				const result = await current.registration.tool.execute({ ...request, signal });
+				return this.resultPolicy.project(result, {
+					sessionId: request.sessionId,
+					turnId: request.turnId,
+					toolCallId: request.toolCallId,
+					toolName: current.registration.tool.name,
+					category: current.registration.category,
+				});
+			},
 			() => this.availabilityError(CODING_TOOL_AVAILABILITY_ERROR_CODES.REVOKED, binding),
 		);
 	}

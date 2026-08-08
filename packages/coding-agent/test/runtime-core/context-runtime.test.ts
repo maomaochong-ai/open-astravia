@@ -94,6 +94,52 @@ describe("CodingAgentContextRuntime", () => {
 		expect(observations).toEqual([{ type: "compaction.start", reason: "threshold", source: "agent" }]);
 	});
 
+	it("persists recoverable work state in both the compaction record and model-visible summary", async () => {
+		const history = [
+			userMessage("old request".repeat(40), 1),
+			assistantMessage("old response", 90, 2),
+			userMessage("kept request", 3),
+		] satisfies Message[];
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: compactingSettings,
+			generateCompaction: async (preparation) => ({
+				summary: "summary",
+				firstKeptEntryId: preparation.firstKeptEntryId,
+				tokensBefore: preparation.tokensBefore,
+			}),
+			readCompactionWorkState: () => ({
+				todos: [{ id: 1, content: "run checks", status: "in_progress" }],
+				backgroundTasks: [
+					{
+						id: "task-1",
+						command: "bunx vitest --run",
+						status: "running",
+						outputFile: "C:/tmp/task-1.log",
+					},
+				],
+			}),
+			now: () => 42,
+		});
+
+		const record = await runtime.compactManual(
+			{
+				sessionId: "session-1",
+				document: documentFromMessages(history),
+				modelBinding: { model: MODEL },
+			},
+			new AbortController().signal,
+		);
+
+		expect(record.summary).toContain("<runtime-work-state>");
+		expect(record.summary).toContain('"nextTodoId":1');
+		expect(record.summary).toContain('"id":"task-1"');
+		expect(messageText(record.summaryMessage)).toBe(
+			`${COMPACTION_SUMMARY_PREFIX}${record.summary}${COMPACTION_SUMMARY_SUFFIX}`,
+		);
+	});
+
 	it("does not generate or persist a compaction when the pre-compact hook blocks", async () => {
 		const history = [
 			userMessage("old request".repeat(40), 1),
@@ -390,7 +436,7 @@ describe("CodingAgentContextRuntime", () => {
 		expect(hooks.markSessionStart).not.toHaveBeenCalled();
 	});
 
-	it("microcompacts every model call without mutating persisted messages", async () => {
+	it("keeps low-pressure ToolResults on every model call without mutating persisted messages", async () => {
 		const runtime = new CodingAgentContextRuntime({
 			hookRuntime: createHookRuntime(),
 			resolveApiKey: () => "key",
@@ -406,8 +452,8 @@ describe("CodingAgentContextRuntime", () => {
 		const first = await runtime.transform(input, new AbortController().signal);
 		const second = await runtime.transform(input, new AbortController().signal);
 
-		expect(messageText(first[0])).toBe("[tool result cleared — old context]");
-		expect(messageText(second[0])).toBe("[tool result cleared — old context]");
+		expect(messageText(first[0])).toBe("result-0");
+		expect(messageText(second[0])).toBe("result-0");
 		expect(messageText(messages[0])).toBe("result-0");
 		expect(first).not.toBe(second);
 	});

@@ -7,7 +7,7 @@ import {
 } from "@vetta/runtime-storage/conversation";
 
 export interface DesktopRuntimeSessionCatalogOptions
-	extends Pick<FileConversationRuntimeSessionCatalogOptions, "ownershipManager"> {
+	extends Pick<FileConversationRuntimeSessionCatalogOptions, "artifactCleaner" | "ownershipManager"> {
 	readonly resolveRoots: () => readonly RuntimeConversationSessionRoot[];
 }
 
@@ -22,6 +22,7 @@ export class DesktopRuntimeSessionCatalog implements RuntimeSessionCatalog {
 
 	constructor(private readonly options: DesktopRuntimeSessionCatalogOptions) {
 		this.catalog = new FileConversationRuntimeSessionCatalog({
+			artifactCleaner: options.artifactCleaner,
 			ownershipManager: options.ownershipManager,
 		});
 	}
@@ -49,6 +50,7 @@ export class DesktopRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	private catalogForCurrentRoots(): FileConversationRuntimeSessionCatalog {
 		return new FileConversationRuntimeSessionCatalog({
 			roots: deduplicateRoots(this.options.resolveRoots()),
+			artifactCleaner: this.options.artifactCleaner,
 			ownershipManager: this.options.ownershipManager,
 		});
 	}

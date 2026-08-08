@@ -27,6 +27,7 @@ import {
 } from "../plugins/runtime/mcp-runtime.js";
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "../runtime-contracts/index.js";
 import { SettingsRuntime } from "../settings/index.js";
+import { createCodingAgentSessionArtifactCleaner } from "../tool-results/session-artifact-cleaner.js";
 import type { CodingAgentHost, CodingAgentHostSessionDefaults } from "./sdk/index.js";
 
 export {
@@ -36,6 +37,7 @@ export {
 	createCodingAgentMcpRuntimeToolSource,
 	createCodingAgentModelRuntime,
 	createCodingAgentPluginMcpRuntime,
+	createCodingAgentSessionArtifactCleaner,
 	createHostBashExecutor,
 	SettingsRuntime,
 };

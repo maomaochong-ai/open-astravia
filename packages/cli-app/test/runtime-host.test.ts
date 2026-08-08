@@ -670,6 +670,7 @@ async function createFixture(
 	const sessionCatalog = createCliRuntimeSessionCatalog({
 		cwd: fixture.workspace,
 		sessionDir: fixture.conversationDir,
+		agentDir: fixture.agentDir,
 	});
 	return { ...fixture, sessionCatalog, bootstrap };
 }

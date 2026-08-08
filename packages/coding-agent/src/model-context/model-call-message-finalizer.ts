@@ -7,6 +7,8 @@ export interface CodingAgentImageSettingsSource {
 	reloadImageSettings?(): void;
 	getBlockImages?(): boolean;
 	getMaxRecentImages?(): number;
+	getImageRequestHighWatermarkBytes?(): number;
+	getImageRequestLowWatermarkBytes?(): number;
 }
 
 /** 在最终模型调用边界应用动态图片预算与全局禁图语义。 */
@@ -16,10 +18,11 @@ export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFin
 	async finalize(input: ModelCallMessageFinalizationInput, signal: AbortSignal): Promise<readonly Message[]> {
 		signal.throwIfAborted();
 		this.settings?.reloadImageSettings?.();
-		const budgeted = applyImageBudget(
-			[...input.messages] satisfies AgentMessage[],
-			this.settings?.getMaxRecentImages?.() ?? 2,
-		).filter(isRuntimeMessage);
+		const budgeted = applyImageBudget([...input.messages] satisfies AgentMessage[], {
+			maxRecentImages: this.settings?.getMaxRecentImages?.() ?? 2,
+			highWatermarkBytes: this.settings?.getImageRequestHighWatermarkBytes?.(),
+			lowWatermarkBytes: this.settings?.getImageRequestLowWatermarkBytes?.(),
+		}).filter(isRuntimeMessage);
 		return this.settings?.getBlockImages?.() === true ? budgeted.map(blockImages) : budgeted;
 	}
 }

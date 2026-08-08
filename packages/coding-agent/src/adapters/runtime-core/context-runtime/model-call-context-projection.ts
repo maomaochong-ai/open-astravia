@@ -2,7 +2,7 @@ import type { AgentMessage } from "@vetta/agent-core";
 import type { Message } from "@vetta/ai";
 import type { RuntimeMessageEnvelope } from "@vetta/runtime-core";
 import type { ModelCallContextTransformationInput } from "@vetta/runtime-core/kernel";
-import { estimateContextTokens, microcompact } from "../../../compaction/index.js";
+import { estimateContextTokens, microcompact, reduceContextByPressure } from "../../../compaction/index.js";
 import { convertToLlm, createCustomMessage } from "../../../model-context/index.js";
 import type { CodingAgentContextRuntimeOptions } from "./contracts.js";
 
@@ -22,8 +22,16 @@ export async function projectModelCallContext(
 	const invisibleIdentities = readInvisibleIdentityCounts(envelopes);
 	const extensionMessages = transformAgentContext ? await transformAgentContext(agentMessages, signal) : agentMessages;
 	signal.throwIfAborted();
+	const visibleMessages = microcompact([...extensionMessages], {
+		keepRecent: 8,
+		maxAgeMs: 30 * 1000,
+		pruneToolResults: false,
+	}).filter((message) => !consumeIdentity(invisibleIdentities, message));
 	const messages = convertToLlm(
-		microcompact([...extensionMessages]).filter((message) => !consumeIdentity(invisibleIdentities, message)),
+		reduceContextByPressure(visibleMessages, {
+			contextWindow: input.modelBinding.model.contextWindow,
+			estimatedTokens: estimateContextTokens(visibleMessages).tokens,
+		}),
 	);
 	return { messages, estimatedTokens: estimateContextTokens(messages).tokens };
 }

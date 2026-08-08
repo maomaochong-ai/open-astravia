@@ -34,7 +34,11 @@ export async function runAgentRuntimeCli(
 	}
 	const bootstrap = await createAgentCliBootstrap([...args]);
 	const conversationDir = resolveCodingAgentSessionDir(bootstrap.cwd, bootstrap.parsed.sessionDir);
-	const sessionCatalog = createCliRuntimeSessionCatalog({ cwd: bootstrap.cwd, sessionDir: conversationDir });
+	const sessionCatalog = createCliRuntimeSessionCatalog({
+		cwd: bootstrap.cwd,
+		sessionDir: conversationDir,
+		agentDir: bootstrap.agentDir,
+	});
 	const imHost = bootstrap.parsed.enableHostBridge === true || bootstrap.parsed.scenario === "im-claw";
 
 	try {

@@ -15,6 +15,7 @@ import {
 } from "../../composition/session-host/active-session-transition-host.js";
 import type { CodingAgentSessionStorageTarget } from "../../public-api/sdk/sdk-create-contract.js";
 import type { CodingAgentSession } from "../../public-api/sdk/sdk-session-contract.js";
+import { createCodingAgentSessionArtifactCleaner } from "../../tool-results/session-artifact-cleaner.js";
 import { CodingAgentSdkActiveSessionAdapter } from "./active-session-adapter.js";
 import { CodingAgentSdkActiveSessionCapabilityHost } from "./active-session-capability-host.js";
 import { bindCodingAgentSdkActiveSessionRuntime } from "./runtime-binding.js";
@@ -141,7 +142,7 @@ export async function createCodingAgentSdkSession(
 			initialSession: runtimeSession,
 			sessionOptions: options.session ?? {},
 			conversationDir,
-			sessionCatalog: createSessionCatalog(storage, options.session?.cwd),
+			sessionCatalog: createSessionCatalog(storage, options.session?.cwd, options.composition.agentDir),
 			createSessionId: randomUUID,
 			resolveSessionId: (path) => resolveSessionIdFromPath(conversationDir, path),
 			lifecycle: createResourceAwareTransitionLifecycle(
@@ -211,10 +212,12 @@ function createActiveSessionCleanup(
 function createSessionCatalog(
 	storage: ResolvedCodingAgentSdkSessionStorage,
 	cwd: string | undefined,
+	agentDir: string | undefined,
 ): RuntimeSessionCatalog {
 	if (!storage.conversationDir) return EMPTY_SESSION_CATALOG;
 	return new FileConversationRuntimeSessionCatalog({
 		roots: [{ cwd: cwd ?? process.cwd(), sessionDir: storage.conversationDir }],
+		artifactCleaner: createCodingAgentSessionArtifactCleaner(agentDir),
 	});
 }
 

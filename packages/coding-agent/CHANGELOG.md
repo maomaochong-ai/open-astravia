@@ -51,6 +51,7 @@
 
 ### Changed
 
+- **模型上下文韧性与 Session 产物生命周期闭环**：普通 Coding Tool 结果统一经过可注入末端策略，超大结果落为 Session 级产物并保留头尾预览；模型调用投影按 50%/75% 上下文压力截断或清理旧 ToolResult，同时保护最近 3 个真实用户轮次。图片请求增加 16/12 MiB 高低水位，Compaction 增加四级输入降级、瞬时错误分类重试、退化摘要拒绝，并在摘要中恢复 Todo 派生计划和后台任务引用。MCP 独立策略、动态能力、持久化历史和用户可见 Tool 行为不变。
 - **宿主基础设施适配器生产化**：工具版本查询、下载重试、归档安装和受管可执行文件解析按职责收口到 `adapters/runtime-tools/executables`，Shell 发现、环境、输出解码和进程树控制收口到 `host/command-execution`；删除旧 `utils/tools-manager.ts`、`utils/shell.ts` 和只做转发的 Resolver Adapter。GitHub Release 响应改用 TypeBox 校验，新增旧基础设施文件、Adapter utility 反向依赖和迁移标签三项零残留门禁。
 - **生产 Runtime 迁移身份收口**：内部诊断、日志和注释不再使用 Greenfield 迁移称谓，剩余 7 个 Coding Agent `greenfield-*.test.ts` 按职责重命名；保留既有 CLI RuntimeHost 判别值、RPC profile、SDK 错误码和历史迁移结果等已发布协议字面值。迁移残留门禁新增源码兼容 shim、迁移测试文件和非协议 Greenfield 文本三项零基线。
 - **SDK Session Host 组合边界拆分**：将原 603 行公共 SDK 产品宿主适配器拆为薄组合入口、公共 Tool 校验、初始模型选择、能力宿主和合同模块；旧单文件加入退役与模块行数守卫。TypeBox 继续只校验 SDK Tool 外部 schema/input，模型、资源、MCP、Extension、存储、错误码和 CLI/Desktop/IM 可观察行为保持不变。

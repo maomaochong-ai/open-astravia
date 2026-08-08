@@ -15,6 +15,7 @@ import {
 	type CodingToolRegistration,
 	type CodingToolRegistrationFilter,
 	type CodingToolRegistry,
+	type CodingToolResultPolicy,
 	type CommandToolExecutor,
 	createBackgroundCommandService,
 	createBackgroundCommandToolExecutor,
@@ -44,6 +45,7 @@ import {
 	type ResolveCodingToolExecutable,
 } from "../../adapters/runtime-tools/index.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
+import { createCodingAgentCodingToolResultPolicy } from "../../tool-results/result-policy.js";
 
 export interface CodingToolsRuntimeCompositionOptions {
 	readonly cwd?: string;
@@ -55,6 +57,8 @@ export interface CodingToolsRuntimeCompositionOptions {
 	readonly commandExecutor?: CommandToolExecutor;
 	readonly ensureTool?: ResolveCodingToolExecutable;
 	readonly additionalRegistrations?: readonly CodingToolRegistration[];
+	readonly resultPolicy?: CodingToolResultPolicy;
+	readonly agentDir?: string;
 	readonly tokenBudget?: number;
 	readonly reservedOutputTokens?: number;
 }
@@ -91,47 +95,50 @@ export function createCodingToolsRuntimeComposition(
 				})
 			: foregroundExecutor);
 	const executableResolver = createManagedCodingToolExecutableResolver(options.ensureTool);
-	const registry = new InMemoryCodingToolRegistry([
-		withModelOrder(createCurrentTimeToolRegistration(), CODING_AGENT_MODEL_TOOL_ORDER.currentTime),
-		withModelOrder(createReadToolRegistration(cwd), CODING_AGENT_MODEL_TOOL_ORDER.read),
-		withModelOrder(
-			createEditToolRegistration(cwd, { pathPolicy: createCodingAgentEditPathPolicy(cwd) }),
-			CODING_AGENT_MODEL_TOOL_ORDER.edit,
-		),
-		withModelOrder(
-			createBashToolRegistration(cwd, { executor: commandExecutor }),
-			CODING_AGENT_MODEL_TOOL_ORDER.command,
-		),
-		withModelOrder(
-			createShellToolRegistration(cwd, { executor: commandExecutor }),
-			CODING_AGENT_MODEL_TOOL_ORDER.command,
-		),
-		...(backgroundService
-			? [
-					withModelOrder(
-						createTaskOutputToolRegistration({ backgroundService }),
-						CODING_AGENT_MODEL_TOOL_ORDER.taskOutput,
-					),
-					withModelOrder(
-						createTaskStopToolRegistration({ backgroundService }),
-						CODING_AGENT_MODEL_TOOL_ORDER.taskStop,
-					),
-				]
-			: []),
-		withModelOrder(createLsToolRegistration(cwd), CODING_AGENT_MODEL_TOOL_ORDER.ls),
-		withModelOrder(createGlobToolRegistration(cwd), CODING_AGENT_MODEL_TOOL_ORDER.glob),
-		withModelOrder(createGrepToolRegistration(cwd, { executableResolver }), CODING_AGENT_MODEL_TOOL_ORDER.grep),
-		withModelOrder(createFindToolRegistration(cwd, { executableResolver }), CODING_AGENT_MODEL_TOOL_ORDER.find),
-		withModelOrder(
-			createTreeToolRegistration(cwd, { executableResolver }),
-			CODING_AGENT_MODEL_TOOL_ORDER.directoryTree,
-		),
-		withModelOrder(
-			createWriteToolRegistration(cwd, { pathPolicy: createCodingAgentWritePathPolicy(cwd) }),
-			CODING_AGENT_MODEL_TOOL_ORDER.write,
-		),
-		...(options.additionalRegistrations ?? []),
-	]);
+	const registry = new InMemoryCodingToolRegistry(
+		[
+			withModelOrder(createCurrentTimeToolRegistration(), CODING_AGENT_MODEL_TOOL_ORDER.currentTime),
+			withModelOrder(createReadToolRegistration(cwd), CODING_AGENT_MODEL_TOOL_ORDER.read),
+			withModelOrder(
+				createEditToolRegistration(cwd, { pathPolicy: createCodingAgentEditPathPolicy(cwd) }),
+				CODING_AGENT_MODEL_TOOL_ORDER.edit,
+			),
+			withModelOrder(
+				createBashToolRegistration(cwd, { executor: commandExecutor }),
+				CODING_AGENT_MODEL_TOOL_ORDER.command,
+			),
+			withModelOrder(
+				createShellToolRegistration(cwd, { executor: commandExecutor }),
+				CODING_AGENT_MODEL_TOOL_ORDER.command,
+			),
+			...(backgroundService
+				? [
+						withModelOrder(
+							createTaskOutputToolRegistration({ backgroundService }),
+							CODING_AGENT_MODEL_TOOL_ORDER.taskOutput,
+						),
+						withModelOrder(
+							createTaskStopToolRegistration({ backgroundService }),
+							CODING_AGENT_MODEL_TOOL_ORDER.taskStop,
+						),
+					]
+				: []),
+			withModelOrder(createLsToolRegistration(cwd), CODING_AGENT_MODEL_TOOL_ORDER.ls),
+			withModelOrder(createGlobToolRegistration(cwd), CODING_AGENT_MODEL_TOOL_ORDER.glob),
+			withModelOrder(createGrepToolRegistration(cwd, { executableResolver }), CODING_AGENT_MODEL_TOOL_ORDER.grep),
+			withModelOrder(createFindToolRegistration(cwd, { executableResolver }), CODING_AGENT_MODEL_TOOL_ORDER.find),
+			withModelOrder(
+				createTreeToolRegistration(cwd, { executableResolver }),
+				CODING_AGENT_MODEL_TOOL_ORDER.directoryTree,
+			),
+			withModelOrder(
+				createWriteToolRegistration(cwd, { pathPolicy: createCodingAgentWritePathPolicy(cwd) }),
+				CODING_AGENT_MODEL_TOOL_ORDER.write,
+			),
+			...(options.additionalRegistrations ?? []),
+		],
+		{ resultPolicy: options.resultPolicy ?? createCodingAgentCodingToolResultPolicy(options.agentDir) },
+	);
 	const feature = createCodingToolsFeature({
 		catalog: registry,
 		resolveActivation: options.resolveActivation,
