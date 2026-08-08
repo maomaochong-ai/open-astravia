@@ -72,7 +72,7 @@ describe("Historical session import recovery", { timeout: INTEGRATION_TEST_TIMEO
 		const fixture = await createFixture();
 		const sourcePath = await writeLegacySession(fixture, "target conflict");
 		const primary = await migrateCodingAgentHistoricalSession(sourcePath, fixture.conversationDir);
-		if (primary.kind !== "session") throw new Error("Expected imported Runtime session");
+		if (primary.kind !== "greenfield") throw new Error("Expected imported Runtime session");
 		await writeFile(primary.targetPath, "conflicting primary target", "utf8");
 
 		const recovered = startRpc(fixture, ["--session", sourcePath]);

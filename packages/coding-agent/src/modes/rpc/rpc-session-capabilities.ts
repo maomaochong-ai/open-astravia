@@ -4,7 +4,8 @@ import type { CompactionResult } from "../../compaction/index.js";
 import type { ExtensionUIContext, ExtensionUIDialogOptions, ExtensionWidgetOptions } from "../../extensions/index.js";
 import type { RpcBashResult, RpcCommandType, RpcSessionState, RpcSlashCommand, SessionStats } from "./rpc-types.js";
 
-export type RpcSessionProfileId = "full" | "im";
+/** Stable external identifiers retained for RPC consumers; they do not select an execution backend. */
+export type RpcSessionProfileId = "greenfield" | "greenfield-im";
 
 export interface RpcSessionProfile {
 	readonly id: RpcSessionProfileId;
@@ -13,7 +14,7 @@ export interface RpcSessionProfile {
 }
 
 export const RPC_IM_SESSION_PROFILE: RpcSessionProfile = Object.freeze({
-	id: "im",
+	id: "greenfield-im",
 	commands: Object.freeze([
 		"prompt",
 		"abort",
@@ -29,7 +30,7 @@ export const RPC_IM_SESSION_PROFILE: RpcSessionProfile = Object.freeze({
 });
 
 export const RPC_FULL_SESSION_PROFILE: RpcSessionProfile = Object.freeze({
-	id: "full",
+	id: "greenfield",
 	commands: "all",
 	hostBridge: "optional",
 });

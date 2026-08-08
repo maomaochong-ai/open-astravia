@@ -194,6 +194,7 @@
 | [300-runtime-subagents-test-ownership.md](./08-implementation-log/300-runtime-subagents-test-ownership.md) | Runtime Subagents 测试职责拆分 |
 | [301-agent-ai-maintainability-ownership.md](./08-implementation-log/301-agent-ai-maintainability-ownership.md) | Agent 与 AI 可维护性职责收敛 |
 | [302-production-identity-and-runtime-import-closure.md](./08-implementation-log/302-production-identity-and-runtime-import-closure.md) | 生产迁移身份归零与 Desktop Runtime 公开包入口收口 |
+| [303-public-protocol-and-type-gate-stability.md](./08-implementation-log/303-public-protocol-and-type-gate-stability.md) | 公开协议兼容恢复与类型门禁稳定性 |
 
 ## 维护约定
 

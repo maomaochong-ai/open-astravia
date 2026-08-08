@@ -58,6 +58,39 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
+	it("allows frozen public protocol literals only at their owning boundaries", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/modes/rpc/rpc-session-capabilities.ts",
+				text: 'type Id = "greenfield" | "greenfield-im"; const full = "greenfield"; const im = "greenfield-im";',
+			},
+			{
+				path: "packages/coding-agent/src/sessions/legacy/migration.ts",
+				text: 'type Kind = "greenfield"; const kind = "greenfield";',
+			},
+			{
+				path: "packages/coding-agent/src/host/sdk-session/contracts.ts",
+				text: 'const noModel = "greenfield_sdk_no_model";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([]);
+	});
+
+	it("rejects missing or additional frozen public protocol literals", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/coding-agent/src/modes/rpc/rpc-session-capabilities.ts",
+				text: 'type Id = "greenfield" | "greenfield-im"; const first = "greenfield-im"; const extra = "greenfield-im";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"frozenPublicProtocolMismatches: 2 exceeds migration residue limit 0",
+			"unclassifiedProductionGreenfieldOccurrences: 1 exceeds migration residue limit 0",
+		]);
+	});
+
 	it("rejects Desktop imports that bypass Runtime package entrypoints", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{

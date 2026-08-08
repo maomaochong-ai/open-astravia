@@ -175,7 +175,7 @@ describe("RPC command dispatcher", () => {
 			type: "response",
 			command: "bash",
 			success: false,
-			error: "Command bash is not supported by RPC profile im",
+			error: "Command bash is not supported by RPC profile greenfield-im",
 			errorCode: "command_not_supported",
 			phase: "command",
 			recoverability: "user_action",

@@ -18,7 +18,8 @@ export type CodingAgentLegacySessionIncompatibilityCode =
 	| "session_version_unsupported";
 
 export interface CodingAgentLegacySessionMigrationSuccess {
-	readonly kind: "session";
+	/** Stable public migration-result discriminant; it is not a Runtime backend selector. */
+	readonly kind: "greenfield";
 	readonly status: "migrated" | "reused";
 	readonly sourcePath: string;
 	readonly targetPath: string;
@@ -61,7 +62,7 @@ export async function migrateCodingAgentLegacySession(
 		try {
 			const result = await migrateWithConflictRecovery(canonicalSourcePath, targetRootDir, targetSessionId);
 			return {
-				kind: "session",
+				kind: "greenfield",
 				status: result.created ? "migrated" : "reused",
 				sourcePath: canonicalSourcePath,
 				targetPath: result.targetPath,

@@ -4,7 +4,11 @@ import { createLimiter } from "../src/concurrency/index.js";
 import * as config from "../src/config.js";
 import { createExtensionEventBus } from "../src/extensions/runtime/event-bus.js";
 import * as root from "../src/index.js";
-import { createAgentCliBootstrap, createCodingAgentHostBootstrap } from "../src/public-api/bootstrap.js";
+import {
+	CODING_AGENT_SDK_HOST_ERROR_CODES,
+	createAgentCliBootstrap,
+	createCodingAgentHostBootstrap,
+} from "../src/public-api/bootstrap.js";
 import { runCodingAgentCliControl } from "../src/public-api/cli-control.js";
 import { createCodingAgentHtmlExportRuntime } from "../src/public-api/export-html.js";
 import * as extensionApi from "../src/public-api/extensions.js";
@@ -51,8 +55,9 @@ describe("coding-agent public subpaths", () => {
 		expect(createAgentCliBootstrap).toBeTypeOf("function");
 		expect(createCodingAgentHostBootstrap).toBeTypeOf("function");
 		expect(runRpcModeWithCapabilities).toBeTypeOf("function");
-		expect(RPC_IM_SESSION_PROFILE.id).toBe("im");
-		expect(RPC_FULL_SESSION_PROFILE.id).toBe("full");
+		expect(RPC_IM_SESSION_PROFILE.id).toBe("greenfield-im");
+		expect(RPC_FULL_SESSION_PROFILE.id).toBe("greenfield");
+		expect(CODING_AGENT_SDK_HOST_ERROR_CODES.NO_MODEL).toBe("greenfield_sdk_no_model");
 		expect(ALL_SCENARIOS.length).toBeGreaterThan(0);
 		expect(PERSONAS.length).toBeGreaterThan(0);
 		expect(config.getAgentDir).toBeTypeOf("function");

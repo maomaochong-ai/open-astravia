@@ -1,4 +1,4 @@
-import type { JSX, KeyboardEvent } from "react";
+import type { FocusEventHandler, JSX, KeyboardEvent } from "react";
 import { cn } from "@vetta/ui";
 import { MotionSelect } from "./MotionSelect";
 
@@ -47,7 +47,7 @@ export function InputField({
 	placeholder?: string;
 	type?: string;
 	disabled?: boolean;
-	onBlur?: () => void;
+	onBlur?: FocusEventHandler<HTMLInputElement>;
 	onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
 	autoFocus?: boolean;
 	"aria-label"?: string;
