@@ -205,17 +205,26 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 
 ### 依赖注意（用户机）
 
-仓库内 preset 可用 `workspace:*` 链本地 SDK。**用户自建工程**应使用已发布的 `@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` **semver**（当前 sdk `^0.1.1` / vite `^0.0.5`，两者版本独立），并保证 registry 可达。
+仓库内 preset / external 可用 `workspace:*` 链本地 SDK。**用户自建工程**应使用发布到 registry 的 `@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` **semver**（sdk `^0.1.1`；版本化热更新协议对应 vite `^0.0.6`，两者版本独立）。推出包含该脚手架的 Desktop 前，必须先发布对应的 vite 版本并确认 registry 可达。
 
 ## 8. 调试闭环（dev loop）
 
-1. 首次先构建、安装并启用一次插件；dev 链接沿用这份安装记录的权限与启用状态。
-2. 在插件工作台开启「热更新」。Desktop 会启动工程内的 `vetta-plugin dev`，不需要另开 `vite build --watch`。
+1. 插件工作台制作的用户插件首次先点「应用到 Vetta」；安装、授权和启用完成后，工作台会等待工程内的 `vetta-plugin dev` 真正就绪，再把热更新标为运行中。
+2. 后续可在插件工作台开关热更新；开发进程由 Desktop 主进程持有，关闭工作台面板不会中止，不需要另开 `vite build --watch`。
 3. 修改 React 组件或 CSS 后由 Vite HMR 直接更新，组件状态在 Fast Refresh 可保留时不会丢失。
 4. 修改插件入口、`plugin.json`、locale 或 agent 资源时，宿主只替换当前插件的 activation，其他插件不重载。
 5. permissions、commands 等安装态能力需要正式同步时，再重新构建并安装 zip。
 
 `bun run dev` 可单独启动同一个开发服务器并输出 NDJSON 状态，主要用于宿主或工具集成；使用插件工作台时不要重复启动。安装更新版本仍会记为 **pending**，直到 `reload` 才切换正式安装态的 `activeVersion`。
+
+开发 Desktop 仓库内的 preset / external 时，不需要打开插件工作台。通过环境变量显式选择要接入宿主的插件：
+
+```powershell
+$env:VETTA_PLUGIN_DEV="git,mobile-ui-preview"
+bun run --cwd packages/desktop-app dev
+```
+
+仓库外工程使用 `VETTA_PLUGIN_DEV_ROOTS`，多个绝对路径以当前平台的 PATH 分隔符分开。该入口只在未打包的 Desktop 中生效；显式选择但尚未安装的 external 使用纯内存开发记录，退出 App 后不会写入插件注册表。
 
 ## 下一步
 

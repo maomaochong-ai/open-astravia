@@ -74,6 +74,7 @@ describe("startVettaPluginDevServer", () => {
 		expect(server.origin).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
 		expect(events[0]).toEqual({
 			type: "ready",
+			protocolVersion: 1,
 			pluginId: "dev-server-test",
 			entryUrl: `${server.origin}/mf-manifest.json`,
 			origin: server.origin,

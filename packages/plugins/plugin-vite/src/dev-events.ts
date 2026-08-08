@@ -1,6 +1,9 @@
+export const VETTA_PLUGIN_DEV_PROTOCOL_VERSION = 1;
+
 export type VettaPluginDevEvent =
 	| {
 			type: "ready";
+			protocolVersion: typeof VETTA_PLUGIN_DEV_PROTOCOL_VERSION;
 			pluginId: string;
 			entryUrl: string;
 			origin: string;

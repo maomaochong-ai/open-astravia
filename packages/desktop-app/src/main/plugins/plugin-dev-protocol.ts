@@ -1,5 +1,13 @@
+export const PLUGIN_DEV_PROTOCOL_VERSION = 1;
+
 export type PluginDevServerEvent =
-	| { type: "ready"; pluginId: string; entryUrl: string; origin: string }
+	| {
+			type: "ready";
+			protocolVersion: typeof PLUGIN_DEV_PROTOCOL_VERSION;
+			pluginId: string;
+			entryUrl: string;
+			origin: string;
+	  }
 	| { type: "update"; pluginId: string }
 	| { type: "error"; pluginId?: string; message: string };
 
@@ -27,7 +35,21 @@ export function parsePluginDevServerEvent(line: string): PluginDevServerEvent | 
 		"origin" in value &&
 		typeof value.origin === "string"
 	) {
-		return { type: "ready", pluginId: value.pluginId, entryUrl: value.entryUrl, origin: value.origin };
+		if (!("protocolVersion" in value) || value.protocolVersion !== PLUGIN_DEV_PROTOCOL_VERSION) {
+			const received = "protocolVersion" in value ? String(value.protocolVersion) : "legacy";
+			return {
+				type: "error",
+				pluginId: value.pluginId,
+				message: `Incompatible plugin-vite development protocol: expected ${PLUGIN_DEV_PROTOCOL_VERSION}, received ${received}. Update @vetta-org/plugin-vite.`,
+			};
+		}
+		return {
+			type: "ready",
+			protocolVersion: PLUGIN_DEV_PROTOCOL_VERSION,
+			pluginId: value.pluginId,
+			entryUrl: value.entryUrl,
+			origin: value.origin,
+		};
 	}
 	if (value.type === "update" && "pluginId" in value && typeof value.pluginId === "string") {
 		return { type: "update", pluginId: value.pluginId };

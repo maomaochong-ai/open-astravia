@@ -72,11 +72,7 @@ export async function applyPluginToVetta(options: ApplyPluginOptions): Promise<{
 	}
 
 	if (startHotReload) {
-		try {
-			await plugins.startDevWatch(project.id, project.dir);
-		} catch {
-			// hot reload is best-effort after apply
-		}
+		await plugins.startDevWatch(project.id, project.dir);
 	}
 	window.dispatchEvent(new Event("vetta:plugins-changed"));
 	return { zipPath: zip };

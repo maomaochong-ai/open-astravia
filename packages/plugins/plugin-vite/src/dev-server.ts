@@ -7,15 +7,26 @@ import {
 	parsePluginManifest,
 	type PluginManifest,
 } from "@vetta-org/plugin-sdk/manifest";
-import { type FSWatcher, watch } from "chokidar";
+import { watch } from "chokidar";
 import { createServer, type ViteDevServer } from "vite";
-import { emitVettaPluginDevEvent, setVettaPluginDevEventListener, type VettaPluginDevEvent } from "./dev-events.js";
+import {
+	emitVettaPluginDevEvent,
+	setVettaPluginDevEventListener,
+	type VettaPluginDevEvent,
+	VETTA_PLUGIN_DEV_PROTOCOL_VERSION,
+} from "./dev-events.js";
 
 export interface VettaPluginDevServer {
 	pluginId: string;
 	entryUrl: string;
 	origin: string;
 	close(): Promise<void>;
+}
+
+function debugDevServer(message: string): void {
+	if (process.env.VETTA_PLUGIN_DEV_DEBUG === "1") {
+		process.stderr.write(`[vetta-plugin dev] ${message}\n`);
+	}
 }
 
 async function readManifest(rootDir: string): Promise<PluginManifest> {
@@ -97,21 +108,6 @@ async function assertDevEntryAvailable(entryUrl: string): Promise<void> {
 	await response.body?.cancel();
 }
 
-async function waitForWatcherReady(watcher: FSWatcher): Promise<void> {
-	await new Promise<void>((resolvePromise, reject) => {
-		const handleReady = () => {
-			watcher.off("error", handleError);
-			resolvePromise();
-		};
-		const handleError = (error: unknown) => {
-			watcher.off("ready", handleReady);
-			reject(error);
-		};
-		watcher.once("ready", handleReady);
-		watcher.once("error", handleError);
-	});
-}
-
 export async function startVettaPluginDevServer(
 	rootDir: string,
 	onEvent: (event: VettaPluginDevEvent) => void,
@@ -134,6 +130,7 @@ export async function startVettaPluginDevServer(
 			hmr: { overlay: false },
 		},
 	});
+	debugDevServer("vite server created");
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 	const resourceWatcher = watch(watchedResourceRoots, { ignoreInitial: true });
 	resourceWatcher.on("error", (error) => {
@@ -179,17 +176,27 @@ export async function startVettaPluginDevServer(
 	let entryUrl: string;
 	try {
 		assertDevPluginsConfigured(server);
-		await Promise.all([server.listen(), waitForWatcherReady(resourceWatcher)]);
+		debugDevServer("starting vite listener");
+		await server.listen();
+		debugDevServer("vite listener ready");
 		origin = resolveServerOrigin(server);
 		entryUrl = `${origin}/mf-manifest.json`;
+		debugDevServer(`probing ${entryUrl}`);
 		await assertDevEntryAvailable(entryUrl);
+		debugDevServer("plugin entry ready");
 	} catch (error) {
 		if (refreshTimer) clearTimeout(refreshTimer);
 		setVettaPluginDevEventListener(undefined);
 		await Promise.all([resourceWatcher.close(), server.close()]);
 		throw error;
 	}
-	const readyEvent: VettaPluginDevEvent = { type: "ready", pluginId: manifest.id, entryUrl, origin };
+	const readyEvent: VettaPluginDevEvent = {
+		type: "ready",
+		protocolVersion: VETTA_PLUGIN_DEV_PROTOCOL_VERSION,
+		pluginId: manifest.id,
+		entryUrl,
+		origin,
+	};
 	onEvent(readyEvent);
 
 	return {

@@ -57,6 +57,7 @@ import { startPetIdleGuard } from "./pet/pet-idle-guard.js";
 import { initializePetWindow } from "./pet-window.js";
 import { stopAllPluginSpawns } from "./plugins/command-spawner.js";
 import { PluginActionService } from "./plugins/plugin-action-service.js";
+import { startConfiguredPluginDevWatches } from "./plugins/plugin-dev-bootstrap.js";
 import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
 import { discoverSystemPlugins } from "./plugins/plugin-store.js";
@@ -689,6 +690,19 @@ if (!gotSingleLock) {
 		// 后台 poller 等真实内容绘制后再启动。
 		registerKnowledgeIpc();
 		appLifecycle.markReady();
+		if (!app.isPackaged) {
+			void startConfiguredPluginDevWatches(appRoot)
+				.then((projects) => {
+					if (projects.length > 0) {
+						mainLog.info("plugin development sessions ready", {
+							plugins: projects.map((project) => project.id),
+						});
+					}
+				})
+				.catch((error: unknown) => {
+					mainLog.error("failed to start configured plugin development sessions", error);
+				});
+		}
 
 		app.on("activate", () => {
 			showMainWindow();
@@ -818,7 +832,7 @@ setQuitCleanup(async () => {
 	// 退出前注销全部全局键盘监听消费者（快捷面板双击 + appshot 双键同按），避免 uiohook 线程残留。
 	stopAllUiohookConsumers();
 
-	// 停掉插件工作台 dev 热更新和插件命令拉起的长驻进程。
+	// 停掉插件开发会话和插件命令拉起的长驻进程。
 	stopAllPluginDevWatches();
 	stopAllPluginSpawns();
 

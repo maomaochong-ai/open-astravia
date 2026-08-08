@@ -174,7 +174,7 @@ import { Button, Switch, Slider, Dialog, DialogContent, cn } from "@vetta/ui";
 
 可靠的强刷办法：**把 `plugin.json` 的 `version` 往上 bump**，宿主当作新版本重新拉取。配合在设置页 `reload(id)`（或重开 App）。调试期每次有效改动都建议 bump 一下 patch 版本。
 
-**开发期更省事的做法：插件工作台面板的「热更新」开关**。对已安装过一次的插件打开后，宿主把该插件 dev 链接到工程目录（资源直接从工程 `dist/` 加载）、常驻 `vite build --watch` 并监听 dist——保存源码即自动构建 + 自动重载，无需 bump / 重打 zip / 手动 reload。关闭开关（或重启 App）后回落安装目录。注意：dev 期改 `permissions` 不会自动授权，需重新走一次「应用到 Vetta」。
+**开发期更省事的做法：插件工作台面板的「热更新」开关**。对已安装过一次的插件打开后，宿主把该插件 dev 链接到工程目录并常驻 `vetta-plugin dev`：React / CSS 走 HMR，清单与 agent 等资源定向重载，无需 bump / 重打 zip / 手动 reload。关闭开关（或重启 App）后回落安装目录。dev 会话内新增的普通权限仅在内存中放行；要在关闭热更新或重启后保留，仍需重新应用插件。
 
 ## 清理副作用
 

@@ -11,6 +11,7 @@ describe("plugin dev server protocol", () => {
 			parsePluginDevServerEvent(
 				JSON.stringify({
 					type: "ready",
+					protocolVersion: 1,
 					pluginId: "demo",
 					entryUrl: "http://127.0.0.1:4100/mf-manifest.json",
 					origin: "http://127.0.0.1:4100",
@@ -18,6 +19,7 @@ describe("plugin dev server protocol", () => {
 			),
 		).toEqual({
 			type: "ready",
+			protocolVersion: 1,
 			pluginId: "demo",
 			entryUrl: "http://127.0.0.1:4100/mf-manifest.json",
 			origin: "http://127.0.0.1:4100",
@@ -32,6 +34,22 @@ describe("plugin dev server protocol", () => {
 		});
 		expect(parsePluginDevServerEvent("not-json")).toBeUndefined();
 		expect(parsePluginDevServerEvent(JSON.stringify({ type: "ready", pluginId: "demo" }))).toBeUndefined();
+		expect(
+			parsePluginDevServerEvent(
+				JSON.stringify({
+					type: "ready",
+					protocolVersion: 2,
+					pluginId: "demo",
+					entryUrl: "http://127.0.0.1:4100/mf-manifest.json",
+					origin: "http://127.0.0.1:4100",
+				}),
+			),
+		).toEqual({
+			type: "error",
+			pluginId: "demo",
+			message:
+				"Incompatible plugin-vite development protocol: expected 1, received 2. Update @vetta-org/plugin-vite.",
+		});
 	});
 
 	it("preserves split lines across stdout chunks and ignores unrelated output", () => {

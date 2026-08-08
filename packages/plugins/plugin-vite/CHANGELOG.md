@@ -6,13 +6,14 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Fixed
 
+- Stopped the resource watcher's initial scan from blocking the development server ready handshake after Vite was already serving the plugin entry.
 - Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.
 - Kept validated Iconify mask rules available outside plugin CSS scopes so icons render inside portalled UI components.
 - Packaged QuickJS plugin script entries directly instead of parsing them as Module Federation manifests.
 
 ### Added
 
-- Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and structured lifecycle events for Desktop plugin hot reload without changing production package output.
+- Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and versioned lifecycle events for Desktop plugin hot reload without changing production package output.
 - Added automatic injection of the public plugin-sdk Tailwind theme contract so plugins can use host semantic color utilities without importing Desktop CSS or repeating `@theme` mappings.
 
 ## [0.0.5] — 2026-08-04

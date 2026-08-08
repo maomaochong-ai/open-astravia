@@ -33,6 +33,7 @@ import {
 const SYSTEM_PLUGIN_ID = "system-dev-test";
 const ARCHIVE_PLUGIN_ID = "archive-dev-test";
 const REMOTE_PLUGIN_ID = "remote-dev-test";
+const EPHEMERAL_PLUGIN_ID = "ephemeral-dev-test";
 const originalResourcesPath = Object.getOwnPropertyDescriptor(process, "resourcesPath");
 
 function createManifest(id: string, name: string): PluginManifest {
@@ -109,7 +110,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-	for (const id of [SYSTEM_PLUGIN_ID, ARCHIVE_PLUGIN_ID, REMOTE_PLUGIN_ID]) clearPluginDevLink(id);
+	for (const id of [SYSTEM_PLUGIN_ID, ARCHIVE_PLUGIN_ID, REMOTE_PLUGIN_ID, EPHEMERAL_PLUGIN_ID])
+		clearPluginDevLink(id);
 	await rm(testPaths.root, { recursive: true, force: true });
 	if (originalResourcesPath) Object.defineProperty(process, "resourcesPath", originalResourcesPath);
 	else Reflect.deleteProperty(process, "resourcesPath");
@@ -170,5 +172,25 @@ describe("plugin development links", () => {
 			trustLevel: "official",
 		});
 		expect(restored).not.toHaveProperty("devWatch");
+	});
+
+	it("registers an explicitly selected uninstalled plugin only for the development session", async () => {
+		const projectDir = join(testPaths.root, "projects", EPHEMERAL_PLUGIN_ID);
+		await writePluginProject(projectDir, createManifest(EPHEMERAL_PLUGIN_ID, "Ephemeral development"));
+
+		const linked = setPluginDevLink(EPHEMERAL_PLUGIN_ID, projectDir, { allowUninstalled: true });
+
+		expect(linked).toMatchObject({
+			id: EPHEMERAL_PLUGIN_ID,
+			source: "archive",
+			trustLevel: "local",
+			enabled: true,
+			rootPath: projectDir,
+			devWatch: { projectDir, status: "starting" },
+		});
+		expect(listPlugins().some((plugin) => plugin.id === EPHEMERAL_PLUGIN_ID)).toBe(true);
+
+		clearPluginDevLink(EPHEMERAL_PLUGIN_ID);
+		expect(listPlugins().some((plugin) => plugin.id === EPHEMERAL_PLUGIN_ID)).toBe(false);
 	});
 });

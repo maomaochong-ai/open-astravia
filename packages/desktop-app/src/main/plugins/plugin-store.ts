@@ -540,7 +540,7 @@ function pluginResourceRelativePath(plugin: InstalledPlugin, relativePath: strin
 }
 
 // =============================================================================
-// Dev 热更新链接（插件工作台）—— 纯内存态，不落注册表：App 重启即回落安装目录，
+// Dev 热更新链接——纯内存态，不落注册表：App 重启即回落安装目录，
 // 注册表始终保持可发布的安装态（避免崩溃后 entryUrl 指向不存在的工程目录）。
 // =============================================================================
 
@@ -556,6 +556,12 @@ interface PluginDevLink {
 }
 
 const devLinks = new Map<string, PluginDevLink>();
+const ephemeralDevPlugins = new Map<string, InstalledPlugin>();
+
+export interface SetPluginDevLinkOptions {
+	/** Allow an explicitly selected development project to exist without a persisted install record. */
+	allowUninstalled?: boolean;
+}
 
 /** dev 资源 URL：直接以工程根为根（无 versions/ 段），token 变化驱动 MF 强制重注册。 */
 function toDevPluginUrl(pluginId: string, relativePath: string, token: string): string {
@@ -635,17 +641,67 @@ function readDevProjectManifest(projectDir: string, expectedId: string): PluginM
 	return manifest;
 }
 
+function ephemeralInstalledFromManifest(projectDir: string, manifest: PluginManifest): InstalledPlugin {
+	if (!supportsPluginApi(manifest.pluginApiVersion)) {
+		throw new Error(`Unsupported plugin API version: ${manifest.pluginApiVersion}`);
+	}
+	const now = new Date().toISOString();
+	const permissions = effectivePermissions(manifest.permissions ?? [], "local");
+	return {
+		id: manifest.id,
+		name: manifest.name,
+		version: manifest.version,
+		activeVersion: manifest.version,
+		pluginApiVersion: manifest.pluginApiVersion,
+		runtime: manifest.runtime ?? "esm",
+		entryUrl: toDevPluginUrl(manifest.id, manifest.entry, now),
+		moduleFederation: manifest.moduleFederation,
+		agent: manifest.agent,
+		agent_mode: manifest.agent_mode,
+		styleUrls: (manifest.styles ?? []).map((style) => toDevPluginUrl(manifest.id, style, now)),
+		permissions,
+		grantedPermissions: permissions,
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
+		declaredCommands: [],
+		grantedCommandNames: [],
+		settingsSchema: manifest.contributes?.settings,
+		description: manifest.description,
+		author: manifest.author,
+		iconUrl: resolveIconUrl(manifest.icon, (path) => toDevPluginUrl(manifest.id, path, now)),
+		guidingWords: manifest.guidingWords,
+		defaultLocale: manifest.defaultLocale ?? "zh",
+		locales: loadPluginLocales(projectDir),
+		enabled: true,
+		required: false,
+		installedAt: now,
+		updatedAt: now,
+		source: "archive",
+		trustLevel: "local",
+		rootPath: projectDir,
+	};
+}
+
 function getInstalledPluginForDevLink(id: string): InstalledPlugin | undefined {
-	return discoverSystemPlugins().find((plugin) => plugin.id === id) ?? readRegistry()[id];
+	return (
+		discoverSystemPlugins().find((plugin) => plugin.id === id) ?? readRegistry()[id] ?? ephemeralDevPlugins.get(id)
+	);
 }
 
 /** 建立 dev 链接。系统插件沿用随包状态，用户插件要求已安装过一次。 */
-export function setPluginDevLink(id: string, projectDir: string): InstalledPlugin {
+export function setPluginDevLink(
+	id: string,
+	projectDir: string,
+	options: SetPluginDevLinkOptions = {},
+): InstalledPlugin {
 	validatePluginId(id);
-	const plugin = getInstalledPluginForDevLink(id);
-	if (!plugin) throw new Error(`Plugin not installed (apply it once before enabling hot reload): ${id}`);
 	const resolvedDir = resolve(projectDir);
 	const manifest = readDevProjectManifest(resolvedDir, id);
+	let plugin = getInstalledPluginForDevLink(id);
+	if (!plugin && options.allowUninstalled) {
+		plugin = ephemeralInstalledFromManifest(resolvedDir, manifest);
+		ephemeralDevPlugins.set(id, plugin);
+	}
+	if (!plugin) throw new Error(`Plugin not installed (apply it once before enabling hot reload): ${id}`);
 	devLinks.set(id, {
 		projectDir: resolvedDir,
 		manifest,
@@ -658,7 +714,11 @@ export function setPluginDevLink(id: string, projectDir: string): InstalledPlugi
 }
 
 export function clearPluginDevLink(id: string): void {
-	if (devLinks.delete(id)) broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
+	const changed = devLinks.delete(id) || ephemeralDevPlugins.delete(id);
+	if (changed) {
+		ephemeralDevPlugins.delete(id);
+		broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
+	}
 }
 
 export function hasPluginDevLink(id: string): boolean {
@@ -1210,10 +1270,15 @@ export function listPlugins(): InstalledPlugin[] {
 	const system = discoverSystemPlugins();
 	const reserved = new Set(system.map((plugin) => plugin.id));
 	// id 冲突时系统插件遮蔽用户插件（ADR-0024）。
-	const userPlugins = Object.values(readRegistry())
-		.filter((plugin) => !reserved.has(plugin.id))
+	const registryPlugins = Object.values(readRegistry());
+	const userPlugins = registryPlugins.filter((plugin) => !reserved.has(plugin.id)).map(applyDevOverlay);
+	const persistedIds = new Set(registryPlugins.map((plugin) => plugin.id));
+	const ephemeralPlugins = Array.from(ephemeralDevPlugins.values())
+		.filter((plugin) => !reserved.has(plugin.id) && !persistedIds.has(plugin.id))
 		.map(applyDevOverlay);
-	return [...system.map(applyDevOverlay), ...userPlugins].sort((a, b) => a.name.localeCompare(b.name));
+	return [...system.map(applyDevOverlay), ...userPlugins, ...ephemeralPlugins].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	);
 }
 
 export async function installPluginFromArchive(
