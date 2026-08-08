@@ -145,6 +145,7 @@
 		"moreTabs": "More tabs",
 		"hiddenPanels": "Hidden panels",
 		"availablePlugins": "Add plugin panels",
+		"hideTab": "Hide tab",
 		"menu": "Tab menu"
 	},
 	"tour": {

@@ -87,6 +87,7 @@ describe("ActivityTabSurface", () => {
 			actions: surfaceActions,
 			dockedOutlet,
 			Frame: frame,
+			removeLabel: "Hide tab",
 			tab,
 		};
 

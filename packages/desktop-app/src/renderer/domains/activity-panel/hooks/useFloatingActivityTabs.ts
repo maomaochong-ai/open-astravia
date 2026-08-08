@@ -4,8 +4,9 @@ import {
 	ACTIVITY_PANEL_MIN_WIDTH,
 	type FloatingActivityTabPlacement,
 	floatingActivityTabsByProjectAtom,
+	setActivityPanelTabDraggingAtom,
 } from "@shared/store/atoms";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type ActivityTabBounds,
@@ -102,6 +103,7 @@ export function useFloatingActivityTabs({
 } {
 	const projectKey = scopeKey ?? GLOBAL_ACTIVITY_SCOPE;
 	const [tabsByProject, setTabsByProject] = useAtom(floatingActivityTabsByProjectAtom);
+	const setTabDragging = useSetAtom(setActivityPanelTabDraggingAtom);
 	const floatingTabs = tabsByProject.get(projectKey) ?? [];
 	const floatingTabsRef = useRef(floatingTabs);
 	floatingTabsRef.current = floatingTabs;
@@ -171,6 +173,7 @@ export function useFloatingActivityTabs({
 		(event: TabBarDragEvent<ActivityTabKey>): void => {
 			const panel = panelRef.current;
 			if (!panel) return;
+			setTabDragging(true);
 			const panelBounds = toBounds(panel.getBoundingClientRect());
 			dragSessionRef.current = {
 				detached: false,
@@ -187,7 +190,7 @@ export function useFloatingActivityTabs({
 				workspace: viewportBounds(),
 			};
 		},
-		[panelRef, panelWidth],
+		[panelRef, panelWidth, setTabDragging],
 	);
 
 	const onDockedTabDragMove = useCallback(
@@ -259,25 +262,30 @@ export function useFloatingActivityTabs({
 			const session = dragSessionRef.current;
 			dragSessionRef.current = null;
 			setDockPreviewBounds(null);
-			if (!session) return;
-			if (event.cancelled) {
-				updatePlacements(() => session.initialPlacements);
-				if (session.source === "docked" && session.detached) onActiveTabChange(session.key);
+			try {
+				if (!session) return;
+				if (event.cancelled) {
+					updatePlacements(() => session.initialPlacements);
+					if (session.source === "docked" && session.detached) onActiveTabChange(session.key);
+					return session.detached ? false : undefined;
+				}
+				const stripBounds = currentTabStripBounds();
+				if (stripBounds && isInsideTabStrip(event.point, stripBounds)) {
+					dockTab(session.key, event.point);
+				}
 				return session.detached ? false : undefined;
+			} finally {
+				setTabDragging(false);
 			}
-			const stripBounds = currentTabStripBounds();
-			if (stripBounds && isInsideTabStrip(event.point, stripBounds)) {
-				dockTab(session.key, event.point);
-			}
-			return session.detached ? false : undefined;
 		},
-		[currentTabStripBounds, dockTab, onActiveTabChange, updatePlacements],
+		[currentTabStripBounds, dockTab, onActiveTabChange, setTabDragging, updatePlacements],
 	);
 
 	const onFloatingTabDragStart = useCallback(
 		(event: TabBarDragEvent<ActivityTabKey>): void => {
 			const placement = floatingTabsRef.current.find((item) => item.key === event.key);
 			if (!placement) return;
+			setTabDragging(true);
 			onFloatingTabFocus(event.key);
 			dragSessionRef.current = {
 				detached: true,
@@ -289,7 +297,7 @@ export function useFloatingActivityTabs({
 				workspace: viewportBounds(),
 			};
 		},
-		[onFloatingTabFocus],
+		[onFloatingTabFocus, setTabDragging],
 	);
 
 	const onFloatingTabDragMove = useCallback(
@@ -331,6 +339,7 @@ export function useFloatingActivityTabs({
 	}, []);
 
 	useEffect(() => {
+		setTabDragging(false);
 		dragSessionRef.current = null;
 		resizeRectsRef.current.clear();
 		setDockPreviewBounds(null);
@@ -341,7 +350,8 @@ export function useFloatingActivityTabs({
 				...clampFloatingTabRect(placementRect(placement), workspace, ACTIVITY_PANEL_MIN_WIDTH),
 			})),
 		);
-	}, [updatePlacements]);
+		return () => setTabDragging(false);
+	}, [setTabDragging, updatePlacements]);
 
 	useEffect(() => {
 		const constrain = (): void => {

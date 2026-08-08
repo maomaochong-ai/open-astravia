@@ -233,8 +233,8 @@ export function useActivityPanelModel({
 
 	const onTabDragStart = useCallback<ActivityPanelActions["onTabDragStart"]>(
 		(event) => {
-			onTabChange(event.key);
 			floating.actions.onDockedTabDragStart(event);
+			onTabChange(event.key);
 		},
 		[onTabChange, floating.actions.onDockedTabDragStart],
 	);

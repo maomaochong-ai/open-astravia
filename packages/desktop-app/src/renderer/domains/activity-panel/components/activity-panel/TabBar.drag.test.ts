@@ -141,9 +141,35 @@ describe("TabBar pointer drag", () => {
 		if (!tab) throw new Error("tab not found");
 
 		act(() => tab.dispatchEvent(fileDragEvent("dragenter")));
+		expect(tab.hasAttribute("data-file-drag-hover")).toBe(true);
 		expect(onChange).not.toHaveBeenCalled();
 		act(() => vi.advanceTimersByTime(300));
 		expect(onChange).toHaveBeenCalledWith("b");
+	});
+
+	it("keeps the close action inside the active tab", () => {
+		const onChange = vi.fn();
+		const onRemove = vi.fn();
+		act(() => {
+			root.render(
+				createElement(TabBar, {
+					items: [
+						{ key: "a", label: "A" },
+						{ key: "b", label: "B", removable: true },
+					],
+					value: "b",
+					onChange,
+					onRemove,
+					removeLabel: "Hide tab",
+				}),
+			);
+		});
+		const close = container.querySelector<HTMLButtonElement>('button[aria-label="Hide tab: B"]');
+		if (!close) throw new Error("close button not found");
+
+		act(() => close.click());
+		expect(onRemove).toHaveBeenCalledWith("b");
+		expect(onChange).not.toHaveBeenCalled();
 	});
 
 	it("continues dragging after the source tab is removed", () => {

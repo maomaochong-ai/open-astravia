@@ -57,7 +57,7 @@ The test: Every changed line should trace directly to the user's request.
 
 **Define success criteria. Loop until verified.**
 
-Transform tasks into verifiable goals:
+Transform tasks into verifiable goals (behavior changes include tests — see **Testing**):
 - "Add validation" → "Write tests for invalid inputs, then make them pass"
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
 - "Refactor X" → "Ensure tests pass before and after"
@@ -74,6 +74,37 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## Testing
+
+**Behavior changes require runnable tests, green before handoff.** The monorepo is large enough that tests are not optional. Package-level `AGENTS.md` may tighten this (e.g. desktop-app); it must not weaken it.
+
+### What to test (scope)
+
+**Must test** (behavior with a fixed expected outcome):
+- Business rules, validation, state machines, error classification/mapping, authz and edge cases
+- Bug fixes: failing repro first, then green
+- Protocol / IPC / schema / public API contracts and compatibility
+- Non-trivial parse, transform, or selection logic (table-driven input → output)
+
+**Usually skip**:
+- Copy-only / style-only / branchless layout and wiring
+- One-off scripts, docs-only, config with no logic
+- Behavior that only a real environment can express stably — use the package’s existing e2e / canary / `verify:ui` (or similar) and say so in the handoff
+
+**Prefer decisions and data over full UI trees.** Extract pure functions and unit-test them; test components only when the interaction itself is the requirement.
+
+### How to write
+
+- **Lightest tool first:** Vitest `node` for pure functions; opt in per-file `jsdom` (or the package’s existing pattern) only when DOM is required. Do not default to mounting full React trees or pull in unstandardized frameworks for a single interaction.
+- **Assert observable behavior** (outputs, state, call contracts), not implementation noise (private shape, incidental class names, call-order thrash).
+- **Mock sparingly:** unstable I/O only (network, clock, filesystem boundaries); never mock away the logic under test.
+- **Small and stable:** one intent per case; table-drive edges and regressions; avoid order-dependent or live-network flaky tests.
+- **Ship with the change:** place tests where the package already expects them (`*.test.ts` / package `test/`); run at least the tests touched by this change.
+
+### How to run
+
+See **Commands** below. `bun run check` does **not** run tests — you must run them separately.
 
 ## Code Quality
 - No `any` types unless absolutely necessary
@@ -105,18 +136,16 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - After completing one round of code changes (not after every edit, and not for documentation-only changes), run `bun run check` once with full output. Fix all errors, warnings, and infos before handing off or opening a PR.
 - Root `bun run check` runs full Biome, monorepo `tsgo --noEmit`, **desktop-app** `tsc --noEmit` (`packages/desktop-app/tsconfig.json`), **admin** `tsc -b` (`packages/admin`), and quality guards (`check:guards`) in parallel. Do not skip desktop by only running `tsc`/`tsgo` at repo root without `-p packages/desktop-app/tsconfig.json`. desktop-app and admin are **not** in the root `tsconfig.json` `include` — they are only typechecked via their own project configs, so dropping either from `check:types` silently stops checking them.
 - Quality gates (layered): see `docs/dev/quality-gates.md`. Husky pre-commit runs **fast** `check:precommit` (staged Biome + key/conflict guards) only; full typecheck is **not** in the hook — still run `bun run check` before PR.
-- Prefer targeted tests: `bun run test:pkg <ai|agent|coding-agent|ecosystem-adapter>` or `bun run test:changed`. `bun run test:unit` runs those four packages. Root `bun run test` still runs all workspace packages that define `test`.
+- **Behavior changes must run related tests** (see **Testing**). Prefer targeted runs: `bunx vitest --run <path-to-test>`, or `bun run test:pkg <…>` / `bun run test:changed`; `bun run test:unit` covers ai/agent/coding-agent/ecosystem-adapter. Full package suite: `bun run test` from the **package root**. Root `bun run test` walks every workspace package that defines `test` — do not use it as the default feedback loop.
 - Note: `bun run check` does not run tests. Optional dead-code report: `bun run deadcode:report` (Knip; not part of `check`).
-- NEVER run: `bun run dev`, `bun run build`, `bun test`
-- desktop-app UI 自验只能使用仓库根目录的 `bun run verify:ui:*` 命令。允许 AI 运行
-  `verify:ui:start`（长驻）、`verify:ui:status`、`verify:ui:attach`、
-  `verify:ui:pw -- <playwright-cli args>`、`verify:ui:debug -- <debug args>`、
-  `verify:ui:detach` 与 `verify:ui:stop`；
-  不得用 `bun run dev` 绕过该隔离入口。完整流程见
-  `docs/dev/README.md`。
-- Only run specific tests if user instructs. From the **package root**: `bunx vitest --run test/specific.test.ts` (Vitest is a monorepo root `devDependency`; each package keeps its own `vitest.config.*` and `"test"` script).
-- Run tests from the package root, not the repo root. Full package suite: `bun run test` in that package (root `bun run test` runs all workspace packages that define `test`).
-- When writing tests, run them, identify issues in either the test or implementation, and iterate until fixed.
+- NEVER run: `bun run dev`, `bun run build`, `bun test` (bare `bun test` tends to over-scan the monorepo; use targeted runs or package `bun run test` above)
+- desktop-app UI verification must use root `bun run verify:ui:*` only. AI may run
+  `verify:ui:start` (long-lived), `verify:ui:status`, `verify:ui:attach`,
+  `verify:ui:pw -- <playwright-cli args>`, `verify:ui:debug -- <debug args>`,
+  `verify:ui:detach`, and `verify:ui:stop`;
+  do not bypass via `bun run dev`. Full flow: `docs/dev/README.md`.
+  `verify:ui:*` is **not** a substitute for unit/behavior tests.
+- Vitest is a monorepo-root `devDependency`; packages may keep their own `vitest.config.*` and `"test"` script. Written tests must be green; if they fail, fix the test or the implementation and re-run until pass.
 - NEVER commit unless user asks
 
 ## Style

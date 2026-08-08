@@ -24,7 +24,7 @@ export interface TabBarItem<T extends string> {
 	icon?: ReactNode;
 	/** 可选未读小红点（>0 显示） */
 	badge?: number;
-	/** 为 true 时 hover 该页签浮现减号按钮，点击触发 onRemove（文件等固定 tab 不可移除） */
+	/** 为 true 时显示关闭按钮，点击触发 onRemove（文件等固定 tab 不可移除） */
 	removable?: boolean;
 }
 
@@ -51,8 +51,10 @@ export interface TabBarProps<T extends string> {
 	className?: string;
 	/** 容器尺寸正在变化时设为 true，禁用激活指示器的滑动动画，避免抖动 */
 	suppressLayoutAnimation?: boolean;
-	/** 点击页签减号时触发；未传则不渲染减号按钮 */
+	/** 点击页签关闭按钮时触发；未传则不渲染关闭按钮。 */
 	onRemove?: (key: T) => void;
+	/** 关闭按钮的本地化名称；传入 onRemove 时必须同时传入。 */
+	removeLabel?: string;
 	/** 拖拽排序结束后回调完整的新顺序；未传则禁用拖拽 */
 	onReorder?: (keys: T[]) => void;
 	/** 宿主读取真实 tab 列表边界，用于把浮动 tab 拖回栏内。 */
@@ -72,8 +74,6 @@ export interface TabBarProps<T extends string> {
 
 /** 页签条左右内边距（px-3 = 0.75rem）。 */
 const ROW_PADDING_X = 12;
-/** 相邻页签的负边距重叠量（-ml-2 = 0.5rem），计算容纳宽度时需扣除。 */
-const TAB_OVERLAP = 8;
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
@@ -95,13 +95,13 @@ function computeOverflow<T extends string>(
 	const visible = new Set<T>();
 	let used = 0;
 	const take = (key: T): void => {
-		used += visible.size > 0 ? Math.max(0, widthOf(key) - TAB_OVERLAP) : widthOf(key);
+		used += widthOf(key);
 		visible.add(key);
 	};
 	if (items.some((it) => it.key === activeKey)) take(activeKey);
 	for (const it of items) {
 		if (visible.has(it.key)) continue;
-		const add = visible.size > 0 ? Math.max(0, widthOf(it.key) - TAB_OVERLAP) : widthOf(it.key);
+		const add = widthOf(it.key);
 		if (used + add <= avail) {
 			used += add;
 			visible.add(it.key);
@@ -129,7 +129,7 @@ function TabInner({
 	active: boolean;
 }): JSX.Element {
 	return (
-		<span className="relative z-10 flex items-center gap-1.5">
+		<span className="relative z-10 flex min-w-0 flex-1 items-center gap-1.5">
 			{icon != null &&
 				(typeof icon === "string" ? (
 					<span className={cn(icon, "h-3.5 w-3.5 shrink-0", active ? "text-primary" : "opacity-70")} />
@@ -143,9 +143,9 @@ function TabInner({
 						{icon}
 					</span>
 				))}
-			{label}
+			<span className="min-w-0 flex-1 truncate">{label}</span>
 			{badge && badge > 0 ? (
-				<span className="inline-flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-semibold leading-none text-white">
+				<span className="inline-flex h-3.5 min-w-3.5 shrink-0 items-center justify-center rounded-full bg-primary/15 px-1 text-[10px] font-semibold leading-none text-primary">
 					{badge > 99 ? "99+" : badge}
 				</span>
 			) : null}
@@ -154,13 +154,11 @@ function TabInner({
 }
 
 /**
- * 浏览器/文件夹式选项卡：页签悬浮在内容卡片上方。相邻页签以负边距互相重叠、靠
- * z-index 分层，形成卡片堆叠的层次感（越靠近激活页签层级越高，向激活页签汇聚叠
- * 压）。激活页签层级最高、圆角凸起、底色与卡片一致并向下延伸 1px 盖住卡片描边，
- * 与卡片无缝融合并带顶部投影抬升；非激活页签为下沉的半透明圆角块、带细描边。
+ * 浏览器式选项卡：所有页签保持等高、互不覆盖。激活页签与内容卡片同色并向下延伸
+ * 1px 盖住卡片描边；非激活页签仅在 hover 时显示浅背景，避免切换时产生尺寸跳动。
  *
  * 须与带 1px `border-border` 边框的内容卡片紧贴配套使用（见 ActivityPanel），
- * 激活页签的左/右/上边框会与卡片边框接成一条连续轮廓。
+ * 激活页签的顶部、侧边和两侧凹形连接角共同延续卡片边框，内部保持同色。
  *
  * 传入 onOverflowChange 时开启响应式收纳：按可用宽度容纳尽量多的页签，放不下的
  * 通过回调交给父级收进"下拉"菜单；宽度变化（拉伸/收窄）自动增减可见数量。
@@ -172,6 +170,7 @@ export function TabBar<T extends string>({
 	className,
 	suppressLayoutAnimation = false,
 	onRemove,
+	removeLabel,
 	onReorder,
 	listRef,
 	onTabDragStart,
@@ -198,23 +197,28 @@ export function TabBar<T extends string>({
 		started: boolean;
 	} | null>(null);
 	const suppressClickRef = useRef<T | null>(null);
-	// 悬浮页签：减号按钮的显隐走 state 而非 CSS group-hover（group-hover 依赖的类链在部分
-	// 环境下未生效，导致按钮永不出现），同时用于把该页签 z-index 提到最高防被相邻页签盖住。
-	const [hoverKey, setHoverKey] = useState<T | null>(null);
 	const fileDragHoverRef = useRef<{ key: T; timer: number } | null>(null);
+	const fileDragHoverKeyRef = useRef<T | null>(null);
+	const [fileDragHoverKey, setFileDragHoverKey] = useState<T | null>(null);
 
 	const clearFileDragHover = useCallback((key?: T): void => {
+		if (key != null && fileDragHoverKeyRef.current !== key) return;
 		const pending = fileDragHoverRef.current;
-		if (!pending || (key != null && pending.key !== key)) return;
-		window.clearTimeout(pending.timer);
+		if (pending) window.clearTimeout(pending.timer);
 		fileDragHoverRef.current = null;
+		fileDragHoverKeyRef.current = null;
+		setFileDragHoverKey(null);
 	}, []);
 
 	const onFileDragEnter = useCallback(
 		(event: ReactDragEvent<HTMLDivElement>, key: T): void => {
-			if (!activateOnFileDragHover || key === value || !isFileDrag(event)) return;
-			if (fileDragHoverRef.current?.key === key) return;
-			clearFileDragHover();
+			if (!activateOnFileDragHover || !isFileDrag(event)) return;
+			if (fileDragHoverKeyRef.current !== key) {
+				clearFileDragHover();
+				fileDragHoverKeyRef.current = key;
+				setFileDragHoverKey(key);
+			}
+			if (key === value || fileDragHoverRef.current?.key === key) return;
 			const timer = window.setTimeout(() => {
 				fileDragHoverRef.current = null;
 				onChange(key);
@@ -258,7 +262,6 @@ export function TabBar<T extends string>({
 			? order.map((k) => items.find((it) => it.key === k)).filter((it): it is TabBarItem<T> => it != null)
 			: items;
 
-	const dragging = dragKey != null;
 	const beginDrag = (key: T) => {
 		dragKeyRef.current = key;
 		setDragKey(key);
@@ -499,48 +502,44 @@ export function TabBar<T extends string>({
 
 	const overflowSet = responsive ? new Set(overflowKeys) : null;
 	const visibleItems = overflowSet ? renderItems.filter((it) => !overflowSet.has(it.key)) : renderItems;
-	const activeIndex = visibleItems.findIndex((item) => item.key === value);
-
 	return (
 		<div className={cn("group/tabbar relative z-10 min-w-0", className)}>
-			<div ref={setRowRef} className="flex min-h-[29px] items-end overflow-visible px-3">
+			<div ref={setRowRef} role="tablist" className="flex h-8 items-end overflow-visible px-3">
 				{visibleItems.map(({ key, label, icon, badge, removable }, index) => {
 					const active = value === key;
 					const isDragged = dragKey === key;
-					// 激活页签置顶；非激活页签越靠近激活页签层级越高，向激活页签方向叠压
-					// 悬浮页签置于最顶，保证右上角减号按钮不被相邻页签（重叠 -ml-2）盖住
-					const zIndex =
-						hoverKey === key
-							? visibleItems.length + 2
-							: active
-								? visibleItems.length + 1
-								: visibleItems.length - Math.abs(index - activeIndex);
-					// 用普通 div：指针拖拽不需要 framer。激活态切换会改变页签
-					// 高度(29↔23)，任何 framer layout 动画都会用 scale 变换拉伸带边框的盒子致边框闪
-					// 一下——所以这里不挂 framer，切换即时无动画。
+					const fileDragHovered = fileDragHoverKey === key;
+					const canRemove = removable && onRemove != null && removeLabel != null;
+					const nextItem = visibleItems[index + 1];
+					const showSeparator =
+						!active &&
+						nextItem != null &&
+						nextItem.key !== value &&
+						!fileDragHovered &&
+						fileDragHoverKey !== nextItem.key;
 					return (
 						<div
 							key={key}
 							data-tabkey={key}
-							style={{ zIndex }}
+							data-file-drag-hover={fileDragHovered ? "" : undefined}
 							onPointerDown={(event) => onTabPointerDown(event, key)}
 							onPointerMove={onTabPointerMove}
 							onPointerUp={(event) => finishPointerDrag(event.clientX, event.clientY, false)}
 							onPointerCancel={(event) => finishPointerDrag(event.clientX, event.clientY, true)}
-							onMouseEnter={() => setHoverKey(key)}
-							onMouseLeave={() => setHoverKey((prev) => (prev === key ? null : prev))}
 							onDragEnter={(event) => onFileDragEnter(event, key)}
 							onDragLeave={(event) => onFileDragLeave(event, key)}
 							onDragOver={onFileDragOver}
 							onDrop={(event) => onFileDrop(event, key)}
 							className={cn(
-								"group/tab relative touch-none",
-								index > 0 && "-ml-2",
-								isDragged && "opacity-50",
+								"group/tab relative min-w-[72px] max-w-[160px] shrink-0 touch-none",
+								active ? "z-10" : "z-0",
+								isDragged && "opacity-60",
 							)}
 						>
 							<button
 								type="button"
+								role="tab"
+								aria-selected={active}
 								onClick={(event) => {
 									if (suppressClickRef.current === key) {
 										suppressClickRef.current = null;
@@ -549,49 +548,69 @@ export function TabBar<T extends string>({
 									}
 									onChange(key);
 								}}
-								// 边框色用 inline style 钉死：非激活页签的 `border-border/70` 若走 class，
-								// 在「变非激活、刚获得边框」那一帧会回退到 currentColor(=foreground) 闪出前景色
-								// （浅黑/深白）。inline 优先级最高，杜绝回退。激活态无 border 宽度，不受影响。
-								style={{ borderColor: "color-mix(in oklab, var(--border) 70%, transparent)" }}
 								className={cn(
-									"relative flex w-full select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg text-[11px] font-medium leading-none",
-								(onReorder != null || onTabDragStart != null) &&
-									"cursor-grab active:cursor-grabbing",
-									active
-										? "h-[29px] px-4 text-foreground"
-										: "h-[23px] border border-b-0 bg-muted px-4 text-muted-foreground hover:brightness-110 hover:text-foreground/80 dark:bg-secondary",
+									"relative flex h-8 w-full select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 border-transparent pl-3 text-[11px] font-medium leading-none transition-colors",
+									canRemove ? "pr-7" : "pr-3",
+									isDragged ? "cursor-grabbing" : "cursor-pointer",
+									active ? "text-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+									fileDragHovered && !active && "border-primary/50 bg-primary/10 text-foreground",
+									fileDragHovered && active && "text-primary",
 								)}
 							>
 								{active && (
-									// 激活指示器：用 layoutId 共享布局在页签间平滑滑动。borderColor 仍 inline 钉死
-									// 防 v4 currentColor 回退（闪烁根因是边框色、与此动画无关，已修复）。
 									<motion.span
 										layoutId={`tabbar-active-${layoutId}`}
-										style={{ borderColor: "var(--border)" }}
-										className="absolute inset-x-0 top-0 -bottom-px rounded-t-lg border border-b-0 bg-muted shadow-[0_-2px_6px_rgba(0,0,0,0.08)]"
+										aria-hidden
+										className="pointer-events-none absolute inset-x-0 top-0 -bottom-px rounded-t-lg border border-b-0 border-border bg-muted"
+										data-active-tab-indicator
 										transition={
 											suppressLayoutAnimation
 												? { duration: 0 }
 												: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
 										}
-									/>
+									>
+										<span className="absolute bottom-0 left-0 h-2 w-px bg-muted" />
+										<svg
+											viewBox="0 0 9 9"
+											className="absolute -left-2 -bottom-px h-[9px] w-[9px] fill-muted stroke-border"
+											data-tab-join-curve="left"
+										>
+											<path d="M0 9 C5 9 9 5 9 0 L9 9 Z" stroke="none" />
+											<path d="M0 8.5 C4.7 8.5 8.5 4.7 8.5 0" fill="none" />
+										</svg>
+										<span className="absolute bottom-0 right-0 h-2 w-px bg-muted" />
+										<svg
+											viewBox="0 0 9 9"
+											className="absolute -right-2 -bottom-px h-[9px] w-[9px] fill-muted stroke-border"
+											data-tab-join-curve="right"
+										>
+											<path d="M0 0 C0 5 4 9 9 9 H0 Z" stroke="none" />
+											<path d="M0.5 0 C0.5 4.7 4.3 8.5 9 8.5" fill="none" />
+										</svg>
+									</motion.span>
 								)}
 								<TabInner icon={icon} label={label} badge={badge} active={active} />
 							</button>
-							{removable && onRemove != null && hoverKey === key && !dragging && (
+							{showSeparator && (
 								<span
-									role="button"
-									title="隐藏此面板"
-									aria-label="隐藏此面板"
+									aria-hidden
+									className="pointer-events-none absolute right-0 top-1/2 z-10 h-3.5 w-px -translate-y-1/2 bg-border/60"
+								/>
+							)}
+							{canRemove && (
+								<button
+									type="button"
+									title={removeLabel}
+									aria-label={`${removeLabel}: ${label}`}
 									onPointerDown={(e) => e.stopPropagation()}
 									onClick={(e) => {
 										e.stopPropagation();
 										onRemove(key);
 									}}
-									className="absolute -right-1 -top-1 z-20 flex h-3.5 w-3.5 cursor-pointer items-center justify-center rounded-full bg-muted-foreground/85 text-background shadow-sm hover:bg-foreground"
+									className="absolute right-1 top-1/2 z-20 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 								>
-									<span className="icon-[mdi--minus] h-2.5 w-2.5" />
-								</span>
+									<span className="icon-[mdi--close] h-3.5 w-3.5" />
+								</button>
 							)}
 						</div>
 					);
@@ -605,11 +624,14 @@ export function TabBar<T extends string>({
 					aria-hidden
 					className="pointer-events-none absolute left-0 top-0 flex items-end opacity-0"
 				>
-					{renderItems.map(({ key, label, icon, badge }) => (
+					{renderItems.map(({ key, label, icon, badge, removable }) => (
 						<div
 							key={key}
 							data-tabkey={key}
-							className="flex h-[23px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 px-4 text-[11px] font-medium leading-none"
+							className={cn(
+								"flex h-8 min-w-[72px] max-w-[160px] select-none items-center gap-1.5 whitespace-nowrap rounded-t-lg border border-b-0 pl-3 text-[11px] font-medium leading-none",
+								removable && onRemove != null && removeLabel != null ? "pr-7" : "pr-3",
+							)}
 						>
 							<TabInner icon={icon} label={label} badge={badge} active={false} />
 						</div>

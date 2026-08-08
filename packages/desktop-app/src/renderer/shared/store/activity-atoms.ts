@@ -79,6 +79,9 @@ export const activityPanelWidthAtom = atom(
 	},
 );
 
+const activityPanelTabDraggingAtom = atom(false);
+const pendingActivityPanelWidthAtom = atom<number | "max" | null>(null);
+
 /** 拖拽中的瞬时宽度：实时更新布局，但不在每一帧同步写 localStorage。 */
 export const setTransientActivityPanelWidthAtom = atom(null, (get, set, update: ActivityPanelWidthUpdate) => {
 	const prev = get(activityPanelWidthBaseAtom);
@@ -100,10 +103,24 @@ export function activityPanelMaxWidth(windowWidth: number): number {
  * 写入活动面板宽度并夹到 [MIN, max] 内。传 "max" 表示拉到当前窗口下的最大宽度。
  * 供插件 API（openActivityTab 的 width 选项）与 ResizeHandle 复用同一套约束。
  */
-export const setActivityPanelWidthAtom = atom(null, (_get, set, width: number | "max") => {
+export const setActivityPanelWidthAtom = atom(null, (get, set, width: number | "max") => {
+	if (get(activityPanelTabDraggingAtom)) {
+		set(pendingActivityPanelWidthAtom, width);
+		return;
+	}
 	const max = activityPanelMaxWidth(window.innerWidth);
 	const target = width === "max" ? max : width;
 	set(activityPanelWidthAtom, Math.min(max, Math.max(ACTIVITY_PANEL_MIN_WIDTH, target)));
+});
+
+/** Tab 拖拽期间延迟插件宽度请求，结束时只应用最后一次请求。 */
+export const setActivityPanelTabDraggingAtom = atom(null, (get, set, dragging: boolean) => {
+	set(activityPanelTabDraggingAtom, dragging);
+	if (dragging) return;
+	const pendingWidth = get(pendingActivityPanelWidthAtom);
+	if (pendingWidth == null) return;
+	set(pendingActivityPanelWidthAtom, null);
+	set(setActivityPanelWidthAtom, pendingWidth);
 });
 
 /**

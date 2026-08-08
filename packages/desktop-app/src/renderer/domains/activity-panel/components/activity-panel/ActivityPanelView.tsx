@@ -2,6 +2,7 @@ import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { ActivityPanelView as ThemeActivityPanelView } from "@vetta/theme-ui/activity";
 import { type ComponentType, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PluginTabPicker } from "../PluginTabPicker";
 import { ActivityTabSurface } from "./ActivityTabSurface";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
@@ -18,6 +19,8 @@ export function ActivityPanelView({
 	Frame,
 	model,
 }: ActivityPanelViewProps): JSX.Element {
+	const { t } = useTranslation("project");
+	const removeLabel = t("tabPicker.hideTab");
 	const tabBar = useMemo(
 		() =>
 			model.tabItems.length > 0 || model.floatingTabs.length > 0 || model.showTabPicker ? (
@@ -33,6 +36,7 @@ export function ActivityPanelView({
 					onTabDragEnd={model.narrowSheet ? undefined : actions.onTabDragEnd}
 					suppressLayoutAnimation={model.isResizing}
 					onRemove={model.knowledgeHistory ? undefined : actions.onRemoveTab}
+					removeLabel={removeLabel}
 					onReorder={model.knowledgeHistory ? undefined : actions.onReorderTabs}
 					onOverflowChange={model.knowledgeHistory ? undefined : actions.onOverflowChange}
 				/>
@@ -45,6 +49,7 @@ export function ActivityPanelView({
 			actions.onTabDragEnd,
 			actions.onTabDragMove,
 			actions.onTabDragStart,
+			removeLabel,
 			model.activeTab,
 			model.isResizing,
 			model.floatingTabs.length,
@@ -127,6 +132,7 @@ export function ActivityPanelView({
 						Frame={Frame}
 						floating={floating}
 						isActiveDocked={floating === null && tab.id === model.activeTab}
+						removeLabel={removeLabel}
 						tab={tab}
 					/>
 				);

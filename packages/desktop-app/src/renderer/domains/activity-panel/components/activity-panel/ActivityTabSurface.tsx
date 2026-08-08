@@ -14,6 +14,7 @@ export interface ActivityTabSurfaceProps {
 	Frame: ComponentType<ActivityPanelFrameProps>;
 	floating: FloatingActivityTabPlacement | null;
 	isActiveDocked: boolean;
+	removeLabel: string;
 	tab: ResolvedActivityTab;
 }
 
@@ -23,6 +24,7 @@ export function ActivityTabSurface({
 	Frame,
 	floating,
 	isActiveDocked,
+	removeLabel,
 	tab,
 }: ActivityTabSurfaceProps): JSX.Element {
 	const [contentHost] = useState(() => {
@@ -64,6 +66,7 @@ export function ActivityTabSurface({
 				value={tabItem.key}
 				onChange={() => actions.onFloatingTabFocus(tabItem.key)}
 				onRemove={tab.removable ? actions.onRemoveTab : undefined}
+				removeLabel={removeLabel}
 				onTabDragStart={actions.onFloatingTabDragStart}
 				onTabDragMove={actions.onFloatingTabDragMove}
 				onTabDragEnd={actions.onFloatingTabDragEnd}

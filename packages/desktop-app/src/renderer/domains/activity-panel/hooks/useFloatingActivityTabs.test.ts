@@ -2,6 +2,7 @@
 
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
+import { activityPanelWidthAtom, setActivityPanelWidthAtom } from "@shared/store/atoms";
 import { createStore, Provider } from "jotai";
 import { act, createElement, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -96,6 +97,7 @@ function Harness(): ReturnType<typeof createElement> {
 describe("useFloatingActivityTabs", () => {
 	let container: HTMLDivElement;
 	let root: Root;
+	let store: ReturnType<typeof createStore>;
 
 	beforeEach(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -125,7 +127,9 @@ describe("useFloatingActivityTabs", () => {
 		container = document.createElement("div");
 		document.body.appendChild(container);
 		root = createRoot(container);
-		act(() => root.render(createElement(Provider, { store: createStore() }, createElement(Harness))));
+		store = createStore();
+		store.set(activityPanelWidthAtom, 360);
+		act(() => root.render(createElement(Provider, { store }, createElement(Harness))));
 	});
 
 	afterEach(() => {
@@ -179,5 +183,27 @@ describe("useFloatingActivityTabs", () => {
 		const output = container.querySelector("output");
 		expect(output?.dataset.active).toBe("file");
 		expect(output?.dataset.order).toBe("file,browser");
+	});
+
+	it("defers plugin width requests until tab dragging ends", () => {
+		const panel = container.querySelector<HTMLElement>("[data-panel]");
+		const mainFile = container.querySelector<HTMLElement>('[data-panel] [data-tabkey="file"]');
+		const mainRow = mainFile?.parentElement;
+		if (!panel || !mainFile || !mainRow) throw new Error("main tab bar not found");
+		panel.getBoundingClientRect = () => bounds(640, 30, 360, 700);
+		mainRow.getBoundingClientRect = () => bounds(640, 0, 360, 30);
+
+		act(() => {
+			mainFile.dispatchEvent(pointerEvent("pointerdown", 680, 10));
+			mainFile.dispatchEvent(pointerEvent("pointermove", 690, 10));
+		});
+		const overlay = document.querySelector<HTMLElement>("[data-tab-drag-overlay]");
+		if (!overlay) throw new Error("drag overlay not found");
+
+		act(() => store.set(setActivityPanelWidthAtom, 480));
+		expect(store.get(activityPanelWidthAtom)).toBe(360);
+
+		act(() => overlay.dispatchEvent(pointerEvent("pointerup", 690, 10)));
+		expect(store.get(activityPanelWidthAtom)).toBe(480);
 	});
 });

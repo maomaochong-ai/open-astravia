@@ -145,6 +145,7 @@
 		"moreTabs": "更多标签页",
 		"hiddenPanels": "已隐藏面板",
 		"availablePlugins": "可添加插件面板",
+		"hideTab": "隐藏标签页",
 		"menu": "标签页菜单"
 	},
 	"tour": {

@@ -99,7 +99,7 @@ export function FloatingActivityTabView({
 				zIndex,
 			}}
 		>
-			<div className="group/activity-tabs relative z-20 flex h-[29px] shrink-0 items-end">{tabBar}</div>
+			<div className="group/activity-tabs relative z-20 flex h-8 shrink-0 items-end">{tabBar}</div>
 			<Frame className="shadow-xl">{children}</Frame>
 			<CornerResizeHandle onResize={onResize} onResizeEnd={onResizeEnd} />
 		</section>

@@ -1,7 +1,7 @@
 import { useState, type JSX, type ReactNode } from "react";
 import { Popover, PopoverContent, PopoverTrigger, cn } from "@vetta/ui";
 
-export const DEFAULT_PLUGIN_TAB_ICON = "icon-[mdi--puzzle-outline]";
+export const DEFAULT_PLUGIN_TAB_ICON = "icon-[solar--widget-5-linear]";
 
 function TabIcon({ icon, className }: { icon: ReactNode; className?: string }): JSX.Element {
 	if (typeof icon === "string") {
@@ -74,20 +74,21 @@ export function PluginTabPickerView({
 				<button
 					type="button"
 					title={labels.menu}
-					className={cn(
-						"mb-1 mr-3 flex h-5 shrink-0 items-center justify-center gap-0.5 rounded-md px-1 text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100",
-						// 有收纳/可添加项时常显；否则跟随 tab 栏 hover 浮现
-						open || hasOverflow || hasAvailable
-							? "opacity-100"
-							: "opacity-0 group-hover/activity-tabs:opacity-100",
-					)}
+					aria-label={labels.menu}
+					className="mb-0.5 mr-2 flex h-7 min-w-7 shrink-0 items-center justify-center gap-0.5 rounded-md px-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
 				>
 					{hasOverflow && (
 						<span className="text-[10px] font-semibold tabular-nums leading-none">
 							{overflowTabs.length}
 						</span>
 					)}
-					<span className={hasAvailable ? "icon-[mdi--plus] h-4 w-4" : "icon-[mdi--chevron-down] h-4 w-4"} />
+					<span
+						className={
+							hasAvailable
+								? "icon-[solar--add-circle-linear] h-4 w-4"
+								: "icon-[solar--alt-arrow-down-linear] h-4 w-4"
+						}
+					/>
 				</button>
 			</PopoverTrigger>
 			<PopoverContent align="end" sideOffset={6} className="w-60 gap-0 p-1.5">
@@ -120,7 +121,7 @@ export function PluginTabPickerView({
 										</span>
 									) : null}
 								</span>
-								<span className="icon-[mdi--plus] h-4 w-4 shrink-0 text-muted-foreground" />
+								<span className="icon-[solar--add-circle-linear] h-4 w-4 shrink-0 text-muted-foreground" />
 							</button>
 						))}
 					</>
@@ -170,7 +171,7 @@ export function PluginTabPickerView({
 								<span className="min-w-0 flex-1 truncate text-[13px] leading-tight text-foreground">
 									{tab.label}
 								</span>
-								<span className="icon-[mdi--plus] h-4 w-4 shrink-0 text-muted-foreground" />
+								<span className="icon-[solar--add-circle-linear] h-4 w-4 shrink-0 text-muted-foreground" />
 							</button>
 						))}
 					</>
