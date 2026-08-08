@@ -2,7 +2,7 @@ import { HookDispatcher } from "../../hooks/dispatcher.js";
 import type { EcosystemHookAdapter, EcosystemHookEvent } from "../../hooks/runtime.js";
 import type { HookConfigLayer, HookDiagnostic, HookRequest, HookRunSummary } from "../../hooks/types.js";
 import { ClaudeHookCommandExecutor } from "./command-executor.js";
-import { discoverClaudeHookHandlers } from "./config.js";
+import { discoverClaudeHookHandlers, discoverClaudeHookHandlersFromDocument } from "./config.js";
 import { CLAUDE_CODE_HOOK_PROFILE_ID, claudeCodeHookProfile } from "./profile.js";
 import { mapToolToClaude } from "./tool-mapper.js";
 
@@ -14,40 +14,35 @@ export interface ClaudeHookAdapterOptions {
 	onFailedRun?: (summary: HookRunSummary) => void;
 }
 
-export async function createClaudeHookAdapter(
-	options: ClaudeHookAdapterOptions,
-): Promise<EcosystemHookAdapter | undefined> {
+export async function createClaudeHookAdapter(options: ClaudeHookAdapterOptions): Promise<EcosystemHookAdapter> {
 	const discovery = await discoverClaudeHookHandlers(options.configLayers, {
 		projectDir: options.projectDir,
 	});
 	for (const diagnostic of discovery.diagnostics) options.onDiagnostic?.(diagnostic);
 
-	if (discovery.handlers.length === 0 && discovery.diagnostics.length === 0) {
-		// No Claude sources present; omit adapter to keep multi-adapter dispatch quiet.
-		return undefined;
+	if (discovery.handlers.length > 0 || discovery.diagnostics.length > 0) {
+		const byEvent: Record<string, number> = {};
+		for (const handler of discovery.handlers) {
+			byEvent[handler.eventName] = (byEvent[handler.eventName] ?? 0) + 1;
+		}
+		const sources = options.configLayers.flatMap((layer) =>
+			(
+				layer.sources ?? [
+					{ path: `${layer.directory}/settings.json` },
+					{ path: `${layer.directory}/settings.local.json` },
+				]
+			)
+				.filter((source) => source.profileId?.startsWith("claude-code-hooks") || !source.profileId)
+				.map((source) => source.path),
+		);
+		console.info("[ecosystem-hooks] claude handlers loaded", {
+			profile: CLAUDE_CODE_HOOK_PROFILE_ID,
+			total: discovery.handlers.length,
+			byEvent,
+			sources,
+			diagnostics: discovery.diagnostics.length,
+		});
 	}
-
-	const byEvent: Record<string, number> = {};
-	for (const handler of discovery.handlers) {
-		byEvent[handler.eventName] = (byEvent[handler.eventName] ?? 0) + 1;
-	}
-	const sources = options.configLayers.flatMap((layer) =>
-		(
-			layer.sources ?? [
-				{ path: `${layer.directory}/settings.json` },
-				{ path: `${layer.directory}/settings.local.json` },
-			]
-		)
-			.filter((source) => source.profileId?.startsWith("claude-code-hooks") || !source.profileId)
-			.map((source) => source.path),
-	);
-	console.info("[ecosystem-hooks] claude handlers loaded", {
-		profile: CLAUDE_CODE_HOOK_PROFILE_ID,
-		total: discovery.handlers.length,
-		byEvent,
-		sources,
-		diagnostics: discovery.diagnostics.length,
-	});
 
 	const dispatcher = new HookDispatcher({
 		profile: claudeCodeHookProfile,
@@ -60,6 +55,25 @@ export async function createClaudeHookAdapter(
 		id: CLAUDE_CODE_HOOK_PROFILE_ID,
 		supports: () => true,
 		dispatch: (event, signal) => dispatcher.dispatch(toClaudeRequest(event), signal),
+		async registerContribution(source) {
+			const dynamic = discoverClaudeHookHandlersFromDocument(
+				source.configuration,
+				{
+					path: source.sourcePath,
+					env: source.env,
+					pluginId: source.pluginId,
+					profileId: source.profileId,
+				},
+				{ projectDir: options.projectDir },
+			);
+			for (const diagnostic of dynamic.diagnostics) options.onDiagnostic?.(diagnostic);
+			return dispatcher.registerContribution({
+				id: source.id,
+				revision: source.revision,
+				handlers: dynamic.handlers,
+			});
+		},
+		resetSessionState: () => dispatcher.resetSessionState(),
 	};
 }
 

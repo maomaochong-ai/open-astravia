@@ -70,6 +70,7 @@ export interface SkillFrontmatter {
 	/** 工作模式白名单（agent_mode 轴）。缺省/空 = 通用。字符串或字符串数组。见 ADR-0046。 */
 	agent_mode?: string | string[];
 	"disable-model-invocation"?: boolean;
+	hooks?: unknown;
 	metadata?: {
 		type?: string;
 		[key: string]: unknown;

@@ -5,10 +5,41 @@ import {
 	emptyHookDispatchOutcome,
 	type HookDispatchOutcome,
 } from "@vetta/ecosystem-adapter/hooks";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 
 describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
+	it("registers an explicitly expanded Skill contribution before UserPromptSubmit", async () => {
+		const order: string[] = [];
+		const register = vi.fn(() => order.push("register"));
+		const hookRuntime = runtimeFor((event) => {
+			order.push(event.eventName);
+			return emptyHookDispatchOutcome();
+		}, register);
+		const adapter = new CodingAgentPromptRequestAdapter({
+			hookRuntime,
+			resolvePromptResource: () => ({
+				text: "expanded prompt",
+				skillInjection: "skill injection",
+				skillHookContribution: {
+					id: "skill:C:/skills/demo/SKILL.md",
+					revision: "v1",
+					profileId: "test",
+					sourcePath: "C:/skills/demo/SKILL.md",
+					configuration: { UserPromptSubmit: [] },
+				},
+			}),
+		});
+
+		await adapter.prepare(
+			{ text: "original", promptRef: { kind: "skill", name: "demo" } },
+			{ sessionId: "session-1", queueing: false },
+		);
+
+		expect(register).toHaveBeenCalledTimes(1);
+		expect(order).toEqual(["SessionStart", "register", "UserPromptSubmit"]);
+	});
+
 	it("preserves Legacy SessionStart/UserPrompt context ordering for idle and queued prompts", async () => {
 		const events: EcosystemHookEvent[] = [];
 		const hookRuntime = runtimeFor((event) => {
@@ -86,11 +117,18 @@ describe("CodingAgentPromptRequestAdapter ecosystem hooks", () => {
 	});
 });
 
-function runtimeFor(resolve: (event: EcosystemHookEvent) => HookDispatchOutcome): EcosystemHookRuntime {
+function runtimeFor(
+	resolve: (event: EcosystemHookEvent) => HookDispatchOutcome,
+	onRegister?: () => void,
+): EcosystemHookRuntime {
 	const adapter: EcosystemHookAdapter = {
 		id: "test",
 		supports: () => true,
 		dispatch: async (event) => resolve(event),
+		async registerContribution() {
+			onRegister?.();
+			return { release() {} };
+		},
 	};
 	return new EcosystemHookRuntime({
 		host: {

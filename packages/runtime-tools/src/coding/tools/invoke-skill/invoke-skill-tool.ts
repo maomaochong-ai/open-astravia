@@ -1,5 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
-import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { RuntimeToolDefinition, RuntimeToolExecutionRequest } from "@vetta/runtime-core/kernel";
 import { ToolCallDescriptionSchema } from "../../shared/tool-call-description.js";
 import { INVOKE_SKILL_TOOL_DESCRIPTION } from "./description.js";
 
@@ -27,7 +27,7 @@ export interface InvokeSkillToolDetails {
 
 export interface InvokeSkillToolOptions<TSkill extends InvokableSkillDescriptor = InvokableSkillDescriptor> {
 	readonly getSkills: () => readonly TSkill[];
-	readonly readBody: (skill: TSkill) => string;
+	readonly readBody: (skill: TSkill, request: RuntimeToolExecutionRequest<InvokeSkillToolInput>) => string;
 }
 
 export function createInvokeSkillTool<TSkill extends InvokableSkillDescriptor>(
@@ -38,7 +38,8 @@ export function createInvokeSkillTool<TSkill extends InvokableSkillDescriptor>(
 		label: "invoke_skill",
 		description: INVOKE_SKILL_TOOL_DESCRIPTION,
 		inputSchema: InvokeSkillToolInputSchema,
-		async execute({ input: { name, args } }) {
+		async execute(request) {
+			const { name, args } = request.input;
 			const skills = options.getSkills();
 			const skill = skills.find((candidate) => candidate.name === name);
 			if (!skill) {
@@ -58,7 +59,7 @@ export function createInvokeSkillTool<TSkill extends InvokableSkillDescriptor>(
 			}
 
 			try {
-				const body = options.readBody(skill).trim();
+				const body = options.readBody(skill, request).trim();
 				const lines = [
 					`<skill name="${skill.name}" location="${skill.filePath}">`,
 					"",

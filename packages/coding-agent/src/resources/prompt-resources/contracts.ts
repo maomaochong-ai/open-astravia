@@ -1,3 +1,4 @@
+import type { EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
 import type { PromptResourceRef } from "@vetta/runtime-core";
 import type { SessionResourceRuntime } from "../index.js";
 
@@ -12,6 +13,7 @@ export interface PromptResourceExpansion {
 	text: string;
 	sceneInjection?: string;
 	skillInjection?: string;
+	skillHookContribution?: EcosystemHookContributionSource;
 	promptRef?: PromptResourceRef;
 }
 

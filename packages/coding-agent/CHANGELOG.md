@@ -47,6 +47,7 @@
 - **内建 MCP 携带 `X-Vetta-Client-Version` 头**：服务端据此决定下发哪些工具。必须每一版都带——老客户端不会补发这个头，闸门一旦漏发就永久失效。
 
 - **外部生态 Hook `SessionEnd` / `PostToolUseFailure` 宿主接线**：`newSession` / `switchSession` / `fork` 在切换会话 id 前 `await runSessionEnd`（Vetta cause：`new_session` / `switch_session` / `fork_session`）；`dispose` best-effort `runSessionEnd("dispose")`（同步捕获 session 元数据）。Claude wire `reason` 仅在 ecosystem-adapter Claude profile 映射。工具 wrapper 在真实 `execute` 抛错后触发 `PostToolUseFailure`（`error` / `is_interrupt` / `duration_ms`），Pre/Post 阻断不计入失败；失败 hook 的 `additionalContext` / exit 2 反馈可进入模型上下文或错误消息。
+- **Skill frontmatter Hook 激活**：模型调用 `invoke_skill` 或用户显式使用 `/skill` / `promptRef` 时读取同一份 `SKILL.md` 正文与 `hooks`，在 Skill 成功注入后将 Claude command hook 注册到当前轮次；调用失败回滚，Stop、轮次终态和 SessionEnd 统一释放。
 - **外部生态 Hook `PermissionRequest` / `SubagentStart` / `SubagentStop` 宿主接线**：沙箱权限 UI 弹出前经 `ExtensionContext.requestEcosystemPermission` 跑 `PermissionRequest`（allow/deny 短路、否则回落用户 UI；会话 grant 缓存命中时不触发）。`SubagentCoordinator` 在子会话创建后首轮 prompt 前 `runSubagentStart`（可阻断 spawn、additionalContext 注入任务消息），正常结束可 `SubagentStop` 续跑（≤8 次），interrupt/failed 终态 best-effort `SubagentStop`（不续跑）。
 
 ### Changed

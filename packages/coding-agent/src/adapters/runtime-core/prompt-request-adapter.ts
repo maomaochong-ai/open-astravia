@@ -78,7 +78,7 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 
 	async prepare(request: PromptRequest, context: RuntimePromptPreparationContext): Promise<RuntimePreparedPrompt> {
 		const expansion = await this.expandPrompt(request, context);
-		const hookContexts = await this.runPromptHooks(expansion.text);
+		const hookContexts = await this.runPromptHooks(expansion.text, expansion.skillHookContribution);
 		const timestamp = this.now();
 		const attachmentContext = request.attachments?.length
 			? buildPromptAttachmentContext(request.attachments)
@@ -116,7 +116,10 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 		};
 	}
 
-	private async runPromptHooks(prompt: string): Promise<readonly string[]> {
+	private async runPromptHooks(
+		prompt: string,
+		skillHookContribution: CodingAgentPromptResourceExpansion["skillHookContribution"],
+	): Promise<readonly string[]> {
 		if (!this.hookRuntime) return [];
 		const sessionStart = await this.hookRuntime.runPendingSessionStart();
 		if (sessionStart?.shouldStop || sessionStart?.shouldBlock) {
@@ -124,7 +127,11 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 				sessionStart.stopReason ?? sessionStart.blockReason ?? "Session start blocked by ecosystem hook",
 			);
 		}
-		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(prompt);
+		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(
+			prompt,
+			undefined,
+			skillHookContribution ? [skillHookContribution] : [],
+		);
 		if (promptSubmit.shouldStop || promptSubmit.shouldBlock) {
 			throw new Error(promptSubmit.stopReason ?? promptSubmit.blockReason ?? "Prompt blocked by ecosystem hook");
 		}

@@ -1,3 +1,4 @@
+import type { EcosystemHookContributionSource } from "@vetta/ecosystem-adapter";
 import type { PromptResourceRef, RuntimePromptPreparationContext } from "@vetta/runtime-core";
 import type { ModelCallFrameCompositionContext } from "@vetta/runtime-core/kernel";
 import type { BuildSystemPromptOptions, PersonalizationSettingsSource } from "../model-context/index.js";
@@ -7,6 +8,7 @@ export interface CodingAgentPromptResourceExpansion {
 	readonly text: string;
 	readonly promptRef?: PromptResourceRef;
 	readonly skillInjection?: string;
+	readonly skillHookContribution?: EcosystemHookContributionSource;
 	readonly sceneInjection?: string;
 }
 

@@ -2,8 +2,10 @@ import type {
 	ConfiguredHookHandler,
 	HookCommandExecutor,
 	HookCompatibilityProfile,
+	HookContributionLease,
 	HookDispatchEffect,
 	HookDispatchOutcome,
+	HookHandlerContribution,
 	HookHandlerOutcome,
 	HookObserver,
 	HookRequest,
@@ -19,19 +21,38 @@ export interface HookDispatcherOptions {
 
 export class HookDispatcher {
 	private readonly profile: HookCompatibilityProfile;
-	private readonly handlers: readonly ConfiguredHookHandler[];
+	private readonly contributions = new Map<string, RegisteredContribution>();
+	private readonly onceClaims = new Set<string>();
 	private readonly executor: HookCommandExecutor;
 	private readonly observer?: HookObserver;
 
 	constructor(options: HookDispatcherOptions) {
 		this.profile = options.profile;
-		this.handlers = options.handlers;
 		this.executor = options.executor;
 		this.observer = options.observer;
+		this.setContribution({ id: "__static__", revision: "initial", handlers: options.handlers });
+	}
+
+	registerContribution(contribution: HookHandlerContribution): HookContributionLease {
+		const generation = this.setContribution(contribution);
+		let released = false;
+		return {
+			release: () => {
+				if (released) return;
+				released = true;
+				if (this.contributions.get(contribution.id)?.generation === generation) {
+					this.contributions.delete(contribution.id);
+				}
+			},
+		};
+	}
+
+	resetSessionState(): void {
+		this.onceClaims.clear();
 	}
 
 	hasHandlers(eventName: HookRequest["eventName"]): boolean {
-		return this.handlers.some((handler) => handler.eventName === eventName);
+		return this.snapshotHandlers().some(({ handler }) => handler.eventName === eventName);
 	}
 
 	async dispatch(request: HookRequest, signal?: AbortSignal): Promise<HookDispatchOutcome> {
@@ -51,7 +72,7 @@ export class HookDispatcher {
 				status: "Failed",
 				entries: [{ kind: "Error", text: `failed to serialize hook input: ${message}` }],
 			}));
-			const runs = handlers.map((handler, index) => {
+			const runs = handlers.map(({ handler }, index) => {
 				const run = this.completedSummary(handler, request, outcomes[index], {
 					startedAt: now,
 					completedAt: now,
@@ -65,13 +86,13 @@ export class HookDispatcher {
 			return { ...effect, runs };
 		}
 
-		for (const handler of handlers) {
+		for (const { handler } of handlers) {
 			this.notifyStarted(this.runningSummary(handler, request));
 		}
 
 		let completionOrder = 0;
 		const results = await Promise.all(
-			handlers.map(async (handler) => {
+			handlers.map(async ({ handler }) => {
 				const result = await this.executor.execute(
 					{
 						command: handler.command,
@@ -86,7 +107,7 @@ export class HookDispatcher {
 			}),
 		);
 		const outcomes = results.map((result) => this.profile.interpretResult(request, result));
-		const runs = handlers.map((handler, index) => {
+		const runs = handlers.map(({ handler }, index) => {
 			const result = results[index];
 			const run = this.completedSummary(handler, request, outcomes[index], result);
 			this.notifyCompleted(run);
@@ -98,10 +119,40 @@ export class HookDispatcher {
 		return { ...effect, runs };
 	}
 
-	private selectHandlers(request: HookRequest): ConfiguredHookHandler[] {
-		return this.handlers
-			.filter((handler) => handler.eventName === request.eventName)
-			.filter((handler) => this.profile.matches(request, handler.matcher));
+	private selectHandlers(request: HookRequest): RegisteredHandler[] {
+		return this.snapshotHandlers()
+			.filter(({ handler }) => handler.eventName === request.eventName)
+			.filter(({ handler }) => this.profile.matches(request, handler.matcher))
+			.filter((entry) => this.claimOnce(entry));
+	}
+
+	private setContribution(contribution: HookHandlerContribution): symbol {
+		const generation = Symbol(contribution.id);
+		this.contributions.set(contribution.id, {
+			generation,
+			revision: contribution.revision,
+			handlers: [...contribution.handlers],
+		});
+		return generation;
+	}
+
+	private snapshotHandlers(): RegisteredHandler[] {
+		return [...this.contributions].flatMap(([contributionId, contribution]) =>
+			contribution.handlers.map((handler, handlerIndex) => ({
+				contributionId,
+				revision: contribution.revision,
+				handlerIndex,
+				handler,
+			})),
+		);
+	}
+
+	private claimOnce(entry: RegisteredHandler): boolean {
+		if (entry.handler.once !== true) return true;
+		const key = `${entry.contributionId}\0${entry.revision}\0${entry.handlerIndex}`;
+		if (this.onceClaims.has(key)) return false;
+		this.onceClaims.add(key);
+		return true;
 	}
 
 	private runningSummary(handler: ConfiguredHookHandler, request: HookRequest): HookRunSummary {
@@ -160,6 +211,19 @@ export class HookDispatcher {
 			// Observability must not change hook behavior.
 		}
 	}
+}
+
+interface RegisteredContribution {
+	readonly generation: symbol;
+	readonly revision: string;
+	readonly handlers: readonly ConfiguredHookHandler[];
+}
+
+interface RegisteredHandler {
+	readonly contributionId: string;
+	readonly revision: string;
+	readonly handlerIndex: number;
+	readonly handler: ConfiguredHookHandler;
 }
 
 export function emptyEffect() {

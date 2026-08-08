@@ -41,6 +41,7 @@ import { CodingAgentTodoContinuationSource } from "../../work-state/todo-continu
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
 import type { CodingToolsRuntimeComposition } from "../tool-surface/runtime-tools-composition.js";
 import { CodingAgentContinuationOrchestrator } from "./continuation-orchestrator.js";
+import { createEcosystemHookTurnObserver } from "./ecosystem-hook-turn-observer.js";
 import { createCodingAgentPromptRuntime } from "./prompt-runtime-factory.js";
 
 export interface CodingAgentTurnCapabilitySessionIdentity {
@@ -153,6 +154,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		? createCodingAgentInvokeSkillFeature({
 				resourceSource: promptResourceSource,
 				readAgentMode: options.activation.readAgentMode,
+				hookRuntime: options.hookRuntime,
 			})
 		: undefined;
 	const readAvailableTools = () =>
@@ -191,7 +193,10 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		readAgentMode: options.activation.readAgentMode,
 		isMcpToolVisible: (toolName) => options.mcpController?.isToolVisible(toolName) ?? true,
 		systemPromptAdvertisedToolNames: options.prompt.systemPromptAdvertisedToolNames,
-		wrapTools: (tools) => wrapRuntimeToolsWithEcosystemHooks(tools, options.hookRuntime),
+		wrapTools: (tools) => {
+			const hookedTools = wrapRuntimeToolsWithEcosystemHooks(tools, options.hookRuntime);
+			return invokeSkillFeature?.wrapHookActivation(hookedTools) ?? hookedTools;
+		},
 		extensionEvents: options.extensionEvents,
 		extensionToolRuntime: options.extensionToolRuntime,
 		resolveExtensionToolActivation: options.activation.resolve,
@@ -217,6 +222,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		observers: [
 			...(options.baseProfile.observers ?? []),
 			options.contextRuntime,
+			createEcosystemHookTurnObserver(options.hookRuntime),
 			...(options.memoryRuntime ? [options.memoryRuntime] : []),
 		],
 		contextStrategy: options.contextRuntime,

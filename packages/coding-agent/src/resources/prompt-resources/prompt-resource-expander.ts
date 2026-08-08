@@ -1,8 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { PromptResourceRef } from "@vetta/runtime-core";
-import { stripFrontmatter } from "../../utils/frontmatter.js";
-import { readSkillContent } from "../skills/index.js";
+import { createSkillHookContribution, readSkillInvocationDocument } from "../skills/skill-document.js";
 import type { PromptResourceExpansion, PromptResourceExpansionDependencies } from "./contracts.js";
 
 function expandPromptResource(
@@ -23,7 +22,8 @@ function expandPromptResource(
 	}
 
 	try {
-		const body = stripFrontmatter(readSkillContent(skill)).trim();
+		const document = readSkillInvocationDocument(skill);
+		const body = document.body.trim();
 		if (isScene) {
 			const lines: string[] = [
 				`<scene name="${skill.name}" location="${skill.filePath}">`,
@@ -91,7 +91,12 @@ function expandPromptResource(
 			path: skill.filePath,
 			hasArgs: Boolean(options.legacyArgs),
 		});
-		return { text, skillInjection: skillBlock, promptRef };
+		return {
+			text,
+			skillInjection: skillBlock,
+			skillHookContribution: createSkillHookContribution(skill, document),
+			promptRef,
+		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		console.info("[skills] expand error", {

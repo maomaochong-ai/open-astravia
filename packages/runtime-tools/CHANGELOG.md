@@ -34,6 +34,7 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Changed
 
+- **`invoke_skill` 读取回调上下文**：`readBody` 现接收完整 `RuntimeToolExecutionRequest`，使宿主可按 `toolCallId` 将 Skill 文档解析与当前工具事务关联，原有 Skill 文本结果保持不变。
 - **Coding Tool 结果策略合同**：Catalog 在执行跟踪边界统一应用可注入 `CodingToolResultPolicy`，默认 Preserve Policy 保持完整结果；产品组合可实现容量保护而无需让 Runtime Tools 依赖具体文件存储，撤销、取消和动态绑定语义不变。
 - **Subagent 通知投影所有权**：模型可见通知文本由 Runtime Tools 生成，通用 Subagent 调度内核只交付终态快照；通知格式、工具提示和交付语义保持不变。
 - **Coding Tools 调用级动态能力源**：Feature 支持在每次模型调用前刷新外部 Catalog、解析 activation 并执行 registration filter；局部工具变化无需重编译 Snapshot，显式激活也不能绕过宿主硬隔离策略。
