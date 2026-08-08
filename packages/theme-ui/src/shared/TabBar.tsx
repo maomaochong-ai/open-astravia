@@ -72,8 +72,9 @@ export interface TabBarProps<T extends string> {
 	activateOnFileDragHover?: boolean;
 }
 
-/** 页签条左右内边距（px-3 = 0.75rem）。 */
-const ROW_PADDING_X = 12;
+/** 左侧需避开内容卡片的 12px 圆角和激活页签向外延伸的连接弧。 */
+const ROW_PADDING_LEFT = 20;
+const ROW_PADDING_RIGHT = 12;
 const FILE_DRAG_HOVER_DELAY_MS = 300;
 
 function isFileDrag(event: ReactDragEvent<HTMLElement>): boolean {
@@ -459,7 +460,7 @@ export function TabBar<T extends string>({
 		const row = rowRef.current;
 		const mz = measureRef.current;
 		if (!row || !mz) return;
-		const avail = row.clientWidth - ROW_PADDING_X * 2;
+		const avail = row.clientWidth - ROW_PADDING_LEFT - ROW_PADDING_RIGHT;
 		const widths = new Map<string, number>();
 		for (const c of Array.from(mz.children) as HTMLElement[]) {
 			const k = c.dataset.tabkey;
@@ -504,7 +505,7 @@ export function TabBar<T extends string>({
 	const visibleItems = overflowSet ? renderItems.filter((it) => !overflowSet.has(it.key)) : renderItems;
 	return (
 		<div className={cn("group/tabbar relative z-10 min-w-0", className)}>
-			<div ref={setRowRef} role="tablist" className="flex h-8 items-end overflow-visible px-3">
+			<div ref={setRowRef} role="tablist" className="flex h-8 items-end overflow-visible pl-5 pr-3">
 				{visibleItems.map(({ key, label, icon, badge, removable }, index) => {
 					const active = value === key;
 					const isDragged = dragKey === key;
@@ -569,23 +570,23 @@ export function TabBar<T extends string>({
 												: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
 										}
 									>
-										<span className="absolute bottom-0 left-0 h-2 w-px bg-muted" />
+										<span className="absolute -left-px bottom-[0.5px] h-2 w-0.5 bg-muted" />
 										<svg
-											viewBox="0 0 9 9"
-											className="absolute -left-2 -bottom-px h-[9px] w-[9px] fill-muted stroke-border"
+											viewBox="0 0 8 8"
+											className="absolute -left-2 bottom-[0.5px] h-2 w-2 fill-muted stroke-border"
 											data-tab-join-curve="left"
 										>
-											<path d="M0 9 C5 9 9 5 9 0 L9 9 Z" stroke="none" />
-											<path d="M0 8.5 C4.7 8.5 8.5 4.7 8.5 0" fill="none" />
+											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0 H8 V8 H0 Z" stroke="none" />
+											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0" fill="none" strokeLinecap="round" />
 										</svg>
-										<span className="absolute bottom-0 right-0 h-2 w-px bg-muted" />
+										<span className="absolute -right-px bottom-[0.5px] h-2 w-0.5 bg-muted" />
 										<svg
-											viewBox="0 0 9 9"
-											className="absolute -right-2 -bottom-px h-[9px] w-[9px] fill-muted stroke-border"
+											viewBox="0 0 8 8"
+											className="absolute -right-2 bottom-[0.5px] h-2 w-2 -scale-x-100 fill-muted stroke-border"
 											data-tab-join-curve="right"
 										>
-											<path d="M0 0 C0 5 4 9 9 9 H0 Z" stroke="none" />
-											<path d="M0.5 0 C0.5 4.7 4.3 8.5 9 8.5" fill="none" />
+											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0 H8 V8 H0 Z" stroke="none" />
+											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0" fill="none" strokeLinecap="round" />
 										</svg>
 									</motion.span>
 								)}

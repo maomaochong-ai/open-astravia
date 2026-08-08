@@ -45,6 +45,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **活动面板视频预览被裁切**：内置 `media-viewer` 的视频预览原先用 `object-cover` 铺满容器会裁掉画面；改为 `object-contain`，按面板尺寸等比缩放完整显示（黑底 letterbox）。
+
 - **插件工作台热更新失败不再静默**：应用插件后会等待开发服务器 ready；CLI 缺失、版本不兼容、启动退出或超时会回传到工作台，而不是显示应用成功但源码修改无效。CLI 改按项目模块图解析，兼容 workspace 链接与标准用户工程安装。
 
 - **插件官方身份校验补强**：命令执行与长驻进程接口不再接受 renderer 传入的插件 ID，改由主进程从活动 capability session 解析真实调用者；插件 dev watch 也必须携带 official session。插件 SDK 与现有插件调用方式不变。
