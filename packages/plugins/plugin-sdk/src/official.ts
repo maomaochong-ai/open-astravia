@@ -376,6 +376,14 @@ export interface PluginOfficialApi {
 		getManifest(): Promise<Record<string, PluginOfficialInstalledSkill>>;
 		setEnabled(name: string, enabled: boolean): Promise<{ name: string; enabled: boolean }>;
 		uninstall(name: string, type?: "skill" | "scene"): Promise<void>;
+		/**
+		 * 从能力市场按 slug 安装 skill/scene（产品文案：能力）。
+		 * 下载在主进程完成；密钥类凭证不经过此 API。
+		 */
+		installFromMarket(
+			type: "skill" | "scene",
+			slug: string,
+		): Promise<{ name: string; type: "skill" | "scene"; version: string; updated: boolean }>;
 	};
 	shortcuts: {
 		listAvailableActions(): Array<{ id: string; defaultShortcut: string }>;
@@ -398,6 +406,18 @@ export interface PluginOfficialApi {
 			reasoningLevel?: string,
 		): Promise<{ status: unknown }>;
 		assertModelKeyExists(modelKey: string): Promise<void>;
+		/**
+		 * 写入飞书凭证。Agent 应省略 appSecret 等密钥，由审批弹窗让用户手填。
+		 * 空字符串密钥字段表示保持现有值不改。
+		 */
+		setFeishuConfig(input: {
+			enabled?: boolean;
+			appId?: string;
+			appSecret?: string;
+			verificationToken?: string;
+			encryptKey?: string;
+			baseUrl?: string;
+		}): Promise<{ ok: boolean; error?: string }>;
 	};
 	mcp: {
 		list(): Promise<PluginOfficialMcpServerSummary[]>;

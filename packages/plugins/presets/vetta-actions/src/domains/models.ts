@@ -79,8 +79,12 @@ const queryExamples: PluginAppActionExample<ModelsQueryInput>[] = [
 const manageExamples: PluginAppActionExample<ModelsManageInput>[] = [
 	{ description: "设置默认模型", input: { operation: "set-default", modelKey: "openai/gpt-4o" } },
 	{
-		description: "更新 provider API Key",
-		input: { operation: "upsert-provider", provider: "openai", data: { apiKey: "sk-..." } },
+		description: "创建/更新服务商（API Key 由用户在审批弹窗填写，勿在参数中传真实密钥）",
+		input: {
+			operation: "upsert-provider",
+			provider: "openai",
+			data: { baseUrl: "https://api.openai.com/v1", displayName: "OpenAI" },
+		},
 	},
 ];
 
@@ -98,7 +102,8 @@ export function registerModelsActions(ctx: PluginContext): void {
 		handler: async ({ input }) => {
 			if (input.operation === "help") {
 				return {
-					guidance: "写操作使用 models.manage。list/get 返回的 apiKey 为 ***，不要把脱敏值写回 upsert。",
+					guidance:
+						"写操作使用 models.manage。list/get 返回的 apiKey 为 ***，不要把脱敏值写回 upsert。upsert-provider 时省略 apiKey，审批弹窗会让用户手填密钥。",
 					actions: [
 						{ id: "models.query", inputSchema: querySchema, examples: queryExamples },
 						{ id: "models.manage", inputSchema: manageSchema, examples: manageExamples },
@@ -118,8 +123,8 @@ export function registerModelsActions(ctx: PluginContext): void {
 		title: "管理模型配置",
 		summary: "设置默认模型，创建或更新 provider，删除 provider。",
 		description:
-			'对象参数；operation 为 "set-default"、"upsert-provider" 或 "remove-provider"。modelKey 格式为 "provider/modelId"。upsert 为 patch。',
-		keywords: ["模型", "model", "provider", "默认模型", "API Key", "服务商", "set-default"],
+			'对象参数；operation 为 "set-default"、"upsert-provider" 或 "remove-provider"。modelKey 格式为 "provider/modelId"。upsert 为 patch；apiKey 请省略，由审批弹窗手填。',
+		keywords: ["模型", "model", "provider", "默认模型", "API Key", "服务商", "set-default", "密钥"],
 		effect: "write",
 		approval: {
 			defaultPresentation: "models.set-default",

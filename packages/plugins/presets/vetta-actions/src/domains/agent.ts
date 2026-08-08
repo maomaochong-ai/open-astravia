@@ -64,7 +64,7 @@ export function registerAgentActions(ctx: PluginContext): void {
 			if (input.operation === "help") {
 				return {
 					guidance:
-						"agent 对应设置 → Agent 配置的实验开关。工作区/通知/执行模式 → general.*；外观查询 → appearance.query；语言/主题变更 → appearance.theme；技能启停 → skills.*。",
+						"agent 对应设置 → Agent 配置的实验开关。工作区/通知/执行模式 → general.*；外观查询 → appearance.query；语言/主题变更 → appearance.theme；能力（skill/scene）启停与市场安装 → skills.*。",
 					actions: [
 						{ id: "agent.query", inputSchema: querySchema, examples: queryExamples },
 						{ id: "agent.manage", inputSchema: manageSchema, examples: manageExamples },

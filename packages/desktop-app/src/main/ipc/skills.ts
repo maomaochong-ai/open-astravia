@@ -9,15 +9,14 @@ import { ipcMain } from "electron";
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import { buildAgentPluginRuntimeConfig } from "../plugins/plugin-store.js";
+import { installSkillFromMarketArchive, installSkillFromMarketSlug } from "../skills/skill-market-install.js";
 import {
-	ensureDirWritable,
 	getDesktopSkillService,
 	getSkillBaseDir,
 	readSkillsManifest,
 	recordSkillResourceEvent,
 	writeSkillsManifest,
 } from "../skills/skill-service.js";
-import { verifySha256 } from "../utils/integrity.js";
 import { allowProjectRoot } from "./fs.js";
 
 function assertNonEmptyString(value: unknown, fieldName: string): asserts value is string {
@@ -125,18 +124,6 @@ function findShallowestSkillMd(rootDir: string): string | null {
 	return holder.best?.path ?? null;
 }
 
-function parseVersionFromSkillDir(skillDir: string): string {
-	const skillMdPath = join(skillDir, "SKILL.md");
-	if (!existsSync(skillMdPath)) return "0.0.0";
-	try {
-		const content = readFileSync(skillMdPath, "utf-8");
-		const versionMatch = content.match(/version:\s*["']?([^\s"']+)["']?/i);
-		return versionMatch?.[1] ?? "0.0.0";
-	} catch {
-		return "0.0.0";
-	}
-}
-
 export function registerSkillsIpc(): () => void {
 	const skills = getDesktopSkillService();
 	// 允许通用 fs IPC 读取技能 / 场景目录下的文件（用于 SKILL.md 预览等）
@@ -177,65 +164,17 @@ export function registerSkillsIpc(): () => void {
 				version?: string;
 				sha256?: string;
 			};
-
 			const buffer = Buffer.isBuffer(archiveBuffer) ? archiveBuffer : Buffer.from(archiveBuffer as ArrayBuffer);
-			verifySha256(buffer, metaObj.sha256, `技能 ${name}`);
-
-			const baseDir = getSkillBaseDir(itemType);
-			if (!existsSync(baseDir)) {
-				await mkdir(baseDir, { recursive: true });
-			}
-			ensureDirWritable(baseDir);
-
-			const skillDir = join(baseDir, name);
-			if (!existsSync(skillDir)) {
-				await mkdir(skillDir, { recursive: true });
-			}
-			ensureDirWritable(skillDir);
-
-			await mkdir(tmpBaseDir, { recursive: true });
-			const tmpFile = join(tmpBaseDir, `_install_${name}_${Date.now()}.tar.gz`);
-			try {
-				await writeFile(tmpFile, buffer);
-				execSync(`tar -xzf "${tmpFile}" -C "${skillDir}"`, { timeout: 30000 });
-			} finally {
-				try {
-					await rm(tmpFile, { force: true });
-				} catch {
-					// ignore cleanup errors
-				}
-			}
-
-			// 版本以服务端为唯一真相：优先用 meta.version；缺省才回落到本地解析（兼容旧客户端）。
-			// 避免「服务端默认版本与本地解析默认值不一致 → 永远显示可更新」的问题。
-			const version =
-				typeof metaObj.version === "string" && metaObj.version.trim().length > 0
-					? metaObj.version.trim()
-					: parseVersionFromSkillDir(skillDir);
-
-			const manifest = readSkillsManifest();
-			const previous = manifest[name];
-			manifest[name] = {
-				name,
-				version,
-				installedAt: new Date().toISOString(),
-				source: "market",
-				enabled: true,
-				type: itemType,
-				alias: metaObj.alias,
-				marketDescription: metaObj.marketDescription,
-			};
-			writeSkillsManifest(manifest);
-			// 能力安装台账（ADR-0049）：只记索引，产物仍在 skills/ 或 scene/ 下。
-			recordAbilityInstall(itemType, name, version);
-			recordSkillResourceEvent({
-				name,
-				type: itemType,
-				source: "market",
-				operation: previous ? "updated" : "installed",
-			});
+			await installSkillFromMarketArchive(name, itemType, buffer, metaObj);
 		},
 	);
+
+	/** Action / 官方插件：按市场 slug 下载并安装能力（skill/scene）。 */
+	ipcMain.handle("vetta:skills:install-from-market-slug", async (_event, type: unknown, slug: unknown) => {
+		assertNonEmptyString(slug, "slug");
+		const itemType: "skill" | "scene" = type === "scene" ? "scene" : "skill";
+		return installSkillFromMarketSlug(itemType, slug);
+	});
 
 	ipcMain.handle("vetta:skills:uninstall", async (_event, name: unknown, type: unknown) => {
 		assertNonEmptyString(name, "name");
@@ -364,6 +303,7 @@ export function registerSkillsIpc(): () => void {
 	return () => {
 		ipcMain.removeHandler("vetta:skills:list");
 		ipcMain.removeHandler("vetta:skills:install-from-market");
+		ipcMain.removeHandler("vetta:skills:install-from-market-slug");
 		ipcMain.removeHandler("vetta:skills:uninstall");
 		ipcMain.removeHandler("vetta:skills:toggle");
 		ipcMain.removeHandler("vetta:skills:get-market-manifest");

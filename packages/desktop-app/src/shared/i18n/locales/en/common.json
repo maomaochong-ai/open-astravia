@@ -86,14 +86,14 @@
 				"disableImpact": "This MCP pauses immediately. Settings remain; nothing is uninstalled."
 			},
 			"skills": {
-				"enableTitle": "Turn on skill",
-				"disableTitle": "Turn off skill",
-				"enableSummary": "Once on, the AI can use this skill or scene in chat when needed.",
-				"disableSummary": "Once off, this skill/scene will not be used. Files are not uninstalled.",
+				"enableTitle": "Turn on ability",
+				"disableTitle": "Turn off ability",
+				"enableSummary": "Once on, the AI can use this ability (skill/scene) in chat when needed.",
+				"disableSummary": "Once off, this ability will not be used. Files are not uninstalled.",
 				"enableConfirm": "Turn on",
 				"disableConfirm": "Turn off",
-				"enableImpact": "The skill becomes available for use in chat.",
-				"disableImpact": "The skill is paused. Configuration and files remain."
+				"enableImpact": "The ability becomes available for use in chat.",
+				"disableImpact": "The ability is paused. Configuration and files remain."
 			},
 			"plugins": {
 				"enableTitle": "Turn on plugin",
@@ -144,7 +144,15 @@
 			"config": "Config",
 			"serverName": "MCP server",
 			"enabled": "Enabled",
-			"skillName": "Skill name",
+			"skillName": "Ability name",
+			"abilitySlug": "Ability slug",
+			"skill": "Skill",
+			"scene": "Scene",
+			"appId": "App ID",
+			"appSecret": "App Secret",
+			"verificationToken": "Verification Token",
+			"encryptKey": "Encrypt Key",
+			"env": "Environment (KEY=VALUE)",
 			"resourceType": "Type",
 			"name": "Name",
 			"newName": "New name",
@@ -308,24 +316,33 @@
 					"warning": "You will need to reconfigure the MCP server to restore it."
 				}
 			},
-			"headersConfigured": "Custom headers included (secrets masked)"
+			"headersConfigured": "Custom headers included (secrets masked)",
+			"envPlaceholder": "One KEY=VALUE per line; fill secrets here yourself",
+			"headersPlaceholder": "One HeaderName=value per line; fill secrets here yourself"
 		},
 		"skills": {
 			"ops": {
 				"set-enabled": {
-					"title": "Enable/Disable Skill Confirmation",
-					"summary": "Change whether this skill or scene is enabled.",
+					"title": "Enable/Disable Ability Confirmation",
+					"summary": "Change whether this ability (skill/scene) is enabled.",
 					"confirm": "Confirm status change",
-					"badge": "Skill",
-					"impact": "Skill/scene enabled state takes effect immediately."
+					"badge": "Ability",
+					"impact": "Ability enabled state takes effect immediately."
 				},
 				"uninstall": {
-					"title": "Uninstall Skill Confirmation",
-					"summary": "Local skill files will be removed. This cannot be undone.",
+					"title": "Uninstall Ability Confirmation",
+					"summary": "Local ability files will be removed. This cannot be undone.",
 					"confirm": "Uninstall",
 					"badge": "Uninstall",
-					"impact": "Local skill files will be uninstalled and cannot be restored easily.",
-					"warning": "Skill files will be removed. This cannot be undone."
+					"impact": "Local ability files will be uninstalled and cannot be restored easily.",
+					"warning": "Ability files will be removed. This cannot be undone."
+				},
+				"install-from-market": {
+					"title": "Install Ability from Market Confirmation",
+					"summary": "Download and install this ability (skill or scene) from the market.",
+					"confirm": "Install",
+					"badge": "Install",
+					"impact": "The ability will be downloaded and appear on the Abilities page, enabled by default."
 				}
 			}
 		},
@@ -585,6 +602,13 @@
 					"confirm": "Save model",
 					"badge": "Claw model",
 					"impact": "Later chats from Feishu/WeChat use this model. Leave empty to follow the default."
+				},
+				"set-feishu-config": {
+					"title": "Configure Feishu credentials",
+					"summary": "Enter App ID and secrets below. Fill secrets yourself; do not rely on the AI to pass them.",
+					"confirm": "Save Feishu config",
+					"badge": "Feishu",
+					"impact": "Local Feishu bridge credentials will be updated. Empty secret fields keep existing values."
 				}
 			},
 			"enableTitle": "Enable IM gateway",
@@ -592,6 +616,8 @@
 			"restartTarget": "Local IM gateway process",
 			"channelName": "Claw (IM bridge)",
 			"channelHint": "Connect external chat channels such as Feishu and WeChat",
+			"feishuTarget": "Feishu app",
+			"feishuHint": "Fill App Secret and other secrets below yourself",
 			"modelKeyPlaceholder": "Select a model, or clear",
 			"modelSectionTitle": "Claw model",
 			"modelSectionDescription": "Same as Settings → Claw. Supports model and reasoning level.",

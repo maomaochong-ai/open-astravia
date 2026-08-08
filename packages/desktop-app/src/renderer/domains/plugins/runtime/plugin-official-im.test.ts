@@ -27,9 +27,22 @@ describe("createOfficialImApi", () => {
 		const models = {
 			validateModelKey: vi.fn().mockResolvedValue(undefined),
 		};
+		const hostIm = {
+			getConfig: vi.fn().mockResolvedValue({
+				enabled: true,
+				transport: "feishu",
+				feishu: { appId: "old", appSecret: "hidden", verificationToken: "", encryptKey: "" },
+			}),
+			setConfig: vi.fn().mockResolvedValue({ ok: true }),
+		};
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { im, models } } } },
+			value: {
+				vetta: {
+					plugins: { internalCapabilities: { im, models } },
+					im: hostIm,
+				},
+			},
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialImApi(assertOfficial, "capability-session");
@@ -40,13 +53,19 @@ describe("createOfficialImApi", () => {
 		await expect(api.restart()).resolves.toEqual({ status: runtime });
 		await expect(api.setAgentModel("openai/gpt-5", "high")).resolves.toEqual({ status: runtime });
 		await expect(api.assertModelKeyExists("openai/gpt-5")).resolves.toBeUndefined();
+		await expect(api.setFeishuConfig({ appId: "cli_new", appSecret: "s3cret" })).resolves.toEqual({ ok: true });
 
-		expect(assertOfficial).toHaveBeenCalledTimes(6);
+		expect(assertOfficial).toHaveBeenCalledTimes(7);
 		expect(im.getStatus).toHaveBeenCalledWith("capability-session");
 		expect(im.listLogs).toHaveBeenCalledWith("capability-session", 50);
 		expect(im.setEnabled).toHaveBeenCalledWith("capability-session", true);
 		expect(im.restart).toHaveBeenCalledWith("capability-session");
 		expect(im.setAgentModel).toHaveBeenCalledWith("capability-session", "openai/gpt-5", "high");
 		expect(models.validateModelKey).toHaveBeenCalledWith("capability-session", "openai/gpt-5", "set-agent-model");
+		expect(hostIm.setConfig).toHaveBeenCalledWith({
+			enabled: true,
+			transport: "feishu",
+			feishu: { appId: "cli_new", appSecret: "s3cret" },
+		});
 	});
 });

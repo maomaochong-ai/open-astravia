@@ -6,6 +6,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **App Action 能力适配与密钥弹窗补齐**：`skills.*` 文案对齐产品「能力页」（公共 id 兼容不变），`skills.manage` 新增 `install-from-market`（主进程按 slug 下载安装）；`im.manage` 新增 `set-feishu-config`，审批弹窗手填 App Secret 等密钥；`mcp.upsert` 审批支持 env/headers 手填；`models.upsert-provider` 指引 Agent 省略 apiKey。导航目录补 `abilities` / `scenes` / `knowledge`。补齐官方 API、审批解析与 vetta-actions 域单测。
 - **第三方插件可选 QuickJS-WASM Worker 沙盒**（ADR-0061）：`runtime: "quickjs"` 的入口只作为文本进入独立 Worker/QuickJS context，不可访问 DOM、Electron、Node、原生 fetch 或模块加载器；插件用宿主渲染的声明式 Activity Tab 获得布局、文本、表单和动作 UI，网络/私有存储/设置/i18n 经固定 JSON RPC allowlist 接回现有 capability session。每个上下文配置 32 MB 内存、512 KB 栈、1 秒单次执行和待处理任务上限；现有 ESM/MF 插件行为不变。
 - **底层媒体生成能力、插件 Provider SPI 与内置 Vetta 图片实现**（ADR-0057）：通用图片/视频契约下沉到 Domain Capability；插件除可通过 `media.generate` 消费外，还可用 `media.provider.register` 注册 Provider。宿主把素材引用转换为不透明 ID，负责流式上传与远程产物落盘，不向 Provider 暴露其它插件的存储路径，也不经 renderer 传 Base64；Provider 增删事件会让并行激活的消费插件刷新模型列表。默认 `desktop-app:vetta` Provider 仍固定在主进程调用 `images/generate` / `images/edit`，renderer 插件无法读取 JWT 或指定任意网关路径。新增 `comfyui-media-provider` 预设插件，将本地 ComfyUI 的成功 API Prompt 作为模板，在插件内部适配 MiniMax H3 图生视频节点、队列与输出文件，内容创作节点只传统一的提示词、比例、时长和素材引用。
 - **设计画布新增预览模式**：设计稿现在是可点的真实站点。顶栏「预览」打开一个浏览器窗口——按钮、tab、表单都是真交互，跨屏跳转走真实路由（`frames/login.tsx` 就是 `/login`，`frames/index.tsx` 就是首页 `/`），带前进/后退/刷新/地址显示/画框切换/视口预设，窗口可自由拉伸，也可以一键交给系统默认浏览器打开（该地址随设计画布关闭而失效）。预览期间画布整体降为位图，不再同时养 N 份活体渲染树。引擎因此升级到 0.2.0（引入 react-router），首次打开设计稿会重跑一次依赖安装。见 ADR-0055。

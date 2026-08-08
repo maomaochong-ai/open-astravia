@@ -8,7 +8,18 @@ type ImQueryInput =
 type ImManageInput =
 	| { operation: "set-enabled"; enabled: boolean }
 	| { operation: "restart" }
-	| { operation: "set-agent-model"; modelKey: string | null; reasoningLevel?: string };
+	| { operation: "set-agent-model"; modelKey: string | null; reasoningLevel?: string }
+	| {
+			operation: "set-feishu-config";
+			/** 可省略；审批弹窗中由用户填写。 */
+			appId?: string;
+			/** 切勿由 Agent 填写真实密钥；留空，审批弹窗由用户手填。 */
+			appSecret?: string;
+			verificationToken?: string;
+			encryptKey?: string;
+			baseUrl?: string;
+			enabled?: boolean;
+	  };
 
 const querySchema: PluginJsonSchema = {
 	type: "object",
@@ -47,6 +58,19 @@ const manageSchema: PluginJsonSchema = {
 			required: ["operation", "modelKey"],
 			additionalProperties: false,
 		},
+		{
+			properties: {
+				operation: { const: "set-feishu-config" },
+				appId: { type: "string" },
+				appSecret: { type: "string" },
+				verificationToken: { type: "string" },
+				encryptKey: { type: "string" },
+				baseUrl: { type: "string" },
+				enabled: { type: "boolean" },
+			},
+			required: ["operation"],
+			additionalProperties: false,
+		},
 	],
 };
 
@@ -56,6 +80,10 @@ const queryExamples: PluginAppActionExample<ImQueryInput>[] = [
 const manageExamples: PluginAppActionExample<ImManageInput>[] = [
 	{ description: "启用 IM", input: { operation: "set-enabled", enabled: true } },
 	{ description: "重启 IM", input: { operation: "restart" } },
+	{
+		description: "配置飞书凭证（密钥由用户在弹窗填写）",
+		input: { operation: "set-feishu-config", appId: "cli_xxx" },
+	},
 ];
 
 export function registerImActions(ctx: PluginContext): void {
@@ -72,7 +100,8 @@ export function registerImActions(ctx: PluginContext): void {
 		handler: async ({ input }) => {
 			if (input.operation === "help") {
 				return {
-					guidance: "绑定凭证请在设置 → Claw 完成；Action 可启停、重启与设置 agentModel。",
+					guidance:
+						"写操作用 im.manage。配置飞书凭证用 set-feishu-config：不要在参数里传 appSecret/verificationToken/encryptKey，审批弹窗由用户手填密钥。",
 					actions: [
 						{ id: "im.query", inputSchema: querySchema, examples: queryExamples },
 						{ id: "im.manage", inputSchema: manageSchema, examples: manageExamples },
@@ -87,10 +116,10 @@ export function registerImActions(ctx: PluginContext): void {
 		id: "im.manage",
 		publicId: "im.manage",
 		title: "管理 IM/Claw",
-		summary: "启用/停用 IM 桥接、重启或设置对话模型。",
+		summary: "启停、重启、设置对话模型，或弹出飞书凭证配置（密钥由用户填写）。",
 		description:
-			'对象参数；operation 为 "set-enabled"、"restart" 或 "set-agent-model"。凭证绑定请在设置页完成。',
-		keywords: ["im", "claw", "启用", "重启", "飞书"],
+			'对象参数；operation 为 "set-enabled"、"restart"、"set-agent-model" 或 "set-feishu-config"。set-feishu-config 的密钥字段请省略，由审批弹窗手填。',
+		keywords: ["im", "claw", "启用", "重启", "飞书", "凭证", "appSecret", "密钥"],
 		effect: "write",
 		approval: {
 			defaultPresentation: "im.set-enabled",
@@ -98,11 +127,17 @@ export function registerImActions(ctx: PluginContext): void {
 				{ id: "im.set-enabled", title: "启用/停用 IM 旁路确认", description: "展示 IM 旁路启用状态变更。" },
 				{ id: "im.restart", title: "重启 IM 旁路确认", description: "确认重启本地 IM 旁路。" },
 				{ id: "im.set-agent-model", title: "设置 IM Agent 模型确认", description: "展示并可编辑 IM Agent 模型。" },
+				{
+					id: "im.set-feishu-config",
+					title: "配置飞书凭证确认",
+					description: "展示飞书应用配置表单；密钥由用户手填，不经过 Agent。",
+				},
 			],
 			presentationByOperation: {
 				"set-enabled": "im.set-enabled",
 				restart: "im.restart",
 				"set-agent-model": "im.set-agent-model",
+				"set-feishu-config": "im.set-feishu-config",
 			},
 		},
 		inputSchema: manageSchema,
@@ -134,6 +169,17 @@ export function registerImActions(ctx: PluginContext): void {
 					operation: input.operation,
 					...(await ctx.official.im.setAgentModel(input.modelKey, input.reasoningLevel)),
 				};
+			}
+			if (input.operation === "set-feishu-config") {
+				const result = await ctx.official.im.setFeishuConfig({
+					appId: input.appId,
+					appSecret: input.appSecret,
+					verificationToken: input.verificationToken,
+					encryptKey: input.encryptKey,
+					baseUrl: input.baseUrl,
+					enabled: input.enabled,
+				});
+				return { operation: input.operation, ...result };
 			}
 			return {
 				operation: input.operation,

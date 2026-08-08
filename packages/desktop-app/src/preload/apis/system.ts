@@ -148,6 +148,7 @@ export function createSystemApi(
 			list: (cwd) => ipc.invoke("vetta:skills:list", cwd),
 			installFromMarket: (name, archiveBuffer, type, meta) =>
 				ipc.invoke("vetta:skills:install-from-market", name, archiveBuffer, type, meta),
+			installFromMarketSlug: (type, slug) => ipc.invoke("vetta:skills:install-from-market-slug", type, slug),
 			importCustom: (archiveBuffer) => ipc.invoke("vetta:skills:import-custom", archiveBuffer),
 			uninstall: (name, type) => ipc.invoke("vetta:skills:uninstall", name, type),
 			toggle: (name) => ipc.invoke("vetta:skills:toggle", name),

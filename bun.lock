@@ -821,6 +821,7 @@
         "react-dom": "19.1.1",
         "typescript": "^5.9.2",
         "vite": "^7.1.7",
+        "vitest": "^3.2.4",
       },
     },
     "packages/plugins/presets/vetta-ui-design": {

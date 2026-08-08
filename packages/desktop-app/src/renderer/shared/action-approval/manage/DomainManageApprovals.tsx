@@ -6,7 +6,12 @@ import {
 	GeneralSetNotificationsApproval,
 	GeneralSetWorkspaceApproval,
 } from "./general";
-import { ImRestartApproval, ImSetAgentModelApproval, ImSetEnabledApproval } from "./im";
+import {
+	ImRestartApproval,
+	ImSetAgentModelApproval,
+	ImSetEnabledApproval,
+	ImSetFeishuConfigApproval,
+} from "./im";
 import {
 	KnowledgeAddFilesApproval,
 	KnowledgeCreateApproval,
@@ -45,7 +50,11 @@ import {
 	ShortcutsSetQuickPanelBehaviorApproval,
 	ShortcutsSetQuickPanelTriggerApproval,
 } from "./shortcuts";
-import { SkillsSetEnabledApproval, SkillsUninstallApproval } from "./skills";
+import {
+	SkillsInstallFromMarketApproval,
+	SkillsSetEnabledApproval,
+	SkillsUninstallApproval,
+} from "./skills";
 import {
 	UpdaterCancelApproval,
 	UpdaterCheckApproval,
@@ -79,6 +88,7 @@ export function DomainManageApprovals(): JSX.Element {
 
 			<SkillsSetEnabledApproval />
 			<SkillsUninstallApproval />
+			<SkillsInstallFromMarketApproval />
 
 			<ProjectsCreateApproval />
 			<ProjectsOpenApproval />
@@ -119,6 +129,7 @@ export function DomainManageApprovals(): JSX.Element {
 			<ImSetEnabledApproval />
 			<ImRestartApproval />
 			<ImSetAgentModelApproval />
+			<ImSetFeishuConfigApproval />
 
 			<WebhookCreateApproval />
 			<WebhookUpdateApproval />
