@@ -37,6 +37,7 @@ export interface DesktopRuntimeBackendPoolOptions {
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
 	readonly createMcpRuntimeSource?: (scope: DesktopMcpRuntimeScope) => Promise<DesktopManagedMcpRuntimeSource>;
+	readonly resolveMcpRuntimeScope?: (scope: DesktopMcpRuntimeScope) => DesktopMcpRuntimeScope;
 }
 
 export interface DesktopMcpRuntimeScope {
@@ -59,7 +60,6 @@ interface DesktopRuntimeScope extends DesktopMcpRuntimeScope {
 interface DesktopRuntimeBackendEntry {
 	readonly composition: CodingAgentRuntimeComposition;
 	readonly backend: CodingAgentRuntimeHostSessionBackend;
-	readonly managedMcpSource?: DesktopManagedMcpRuntimeSource;
 }
 
 /**
@@ -72,6 +72,7 @@ interface DesktopRuntimeBackendEntry {
 export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 	private readonly entries = new Map<string, Promise<DesktopRuntimeBackendEntry>>();
 	private readonly resolvedEntries = new Map<string, DesktopRuntimeBackendEntry>();
+	private readonly mcpSources = new Map<string, Promise<DesktopManagedMcpRuntimeSource>>();
 	private readonly createComposition: (
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
@@ -109,16 +110,29 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		return this.resolvedEntries.size;
 	}
 
+	readMcpScopeCount(): number {
+		return this.mcpSources.size;
+	}
+
+	async prewarmMcp(scope: DesktopMcpRuntimeScope): Promise<void> {
+		if (this.disposed) throw new Error("Desktop Runtime backend pool is disposed");
+		await this.getOrCreateMcpRuntimeSource(scope);
+	}
+
 	async dispose(): Promise<void> {
 		if (this.disposed) return;
 		this.disposed = true;
 		const pendingEntries = [...this.entries.values()];
+		const pendingMcpSources = [...this.mcpSources.values()];
 		try {
 			const entryResults = await Promise.allSettled(pendingEntries);
 			const entries = entryResults.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
 			const disposeResults = await Promise.allSettled(entries.map(disposeEntry));
-			const errors = [...entryResults, ...disposeResults].flatMap((result) =>
-				result.status === "rejected" ? [result.reason] : [],
+			const mcpSourceResults = await Promise.allSettled(pendingMcpSources);
+			const mcpSources = mcpSourceResults.flatMap((result) => (result.status === "fulfilled" ? [result.value] : []));
+			const mcpDisposeResults = await Promise.allSettled(mcpSources.map((source) => source.dispose()));
+			const errors = [...entryResults, ...disposeResults, ...mcpSourceResults, ...mcpDisposeResults].flatMap(
+				(result) => (result.status === "rejected" ? [result.reason] : []),
 			);
 			if (errors.length > 0) {
 				throw new AggregateError(errors, "Desktop Runtime backend pool disposal failed");
@@ -126,6 +140,7 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		} finally {
 			this.entries.clear();
 			this.resolvedEntries.clear();
+			this.mcpSources.clear();
 		}
 	}
 
@@ -158,30 +173,23 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		const initialModel = resolveInitialModel(request, this.options.compositionDefaults);
 		const initialThinkingLevel =
 			request.thinkingLevel ?? this.options.compositionDefaults.initialThinkingLevel ?? "off";
-		const managedMcpSource = await this.options.createMcpRuntimeSource?.({
+		const managedMcpSource = await this.getOrCreateMcpRuntimeSource({
 			cwd: scope.cwd,
 			agentDir: scope.agentDir,
 		});
-		let composition: CodingAgentRuntimeComposition;
-		try {
-			composition = await this.createComposition({
-				...this.options.compositionDefaults,
-				...(managedMcpSource ? { mcpSource: managedMcpSource.source } : {}),
-				conversationDir: scope.conversationDir,
-				cwd: scope.cwd,
-				agentDir: scope.agentDir,
-				scenario: scope.scenario,
-				enableSubagents: scope.enableSubagents,
-				initialModel,
-				initialThinkingLevel,
-			});
-		} catch (error) {
-			await managedMcpSource?.dispose();
-			throw error;
-		}
+		const composition = await this.createComposition({
+			...this.options.compositionDefaults,
+			...(managedMcpSource ? { mcpSource: managedMcpSource.source } : {}),
+			conversationDir: scope.conversationDir,
+			cwd: scope.cwd,
+			agentDir: scope.agentDir,
+			scenario: scope.scenario,
+			enableSubagents: scope.enableSubagents,
+			initialModel,
+			initialThinkingLevel,
+		});
 		return {
 			composition,
-			managedMcpSource,
 			backend: new CodingAgentRuntimeHostSessionBackend({
 				composition,
 				conversationDir: scope.conversationDir,
@@ -192,6 +200,27 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 				serverUrl: scope.serverUrl,
 			}),
 		};
+	}
+
+	private getOrCreateMcpRuntimeSource(
+		scope: DesktopMcpRuntimeScope,
+	): Promise<DesktopManagedMcpRuntimeSource> | undefined {
+		if (!this.options.createMcpRuntimeSource) return undefined;
+		const resolvedScope = this.options.resolveMcpRuntimeScope?.(scope) ?? scope;
+		const normalizedScope = {
+			cwd: resolve(resolvedScope.cwd),
+			agentDir: resolvedScope.agentDir ? resolve(resolvedScope.agentDir) : undefined,
+		};
+		const key = mcpRuntimeScopeKey(normalizedScope);
+		const existing = this.mcpSources.get(key);
+		if (existing) return existing;
+
+		const created = this.options.createMcpRuntimeSource(normalizedScope).catch((error: unknown) => {
+			this.mcpSources.delete(key);
+			throw error;
+		});
+		this.mcpSources.set(key, created);
+		return created;
 	}
 }
 
@@ -233,19 +262,10 @@ function runtimeScopeKey(scope: DesktopRuntimeScope): string {
 	]);
 }
 
+function mcpRuntimeScopeKey(scope: DesktopMcpRuntimeScope): string {
+	return JSON.stringify([scope.cwd, scope.agentDir ?? null]);
+}
+
 async function disposeEntry(entry: DesktopRuntimeBackendEntry): Promise<void> {
-	const errors: unknown[] = [];
-	try {
-		await entry.composition.dispose();
-	} catch (error) {
-		errors.push(error);
-	}
-	try {
-		await entry.managedMcpSource?.dispose();
-	} catch (error) {
-		errors.push(error);
-	}
-	if (errors.length > 0) {
-		throw new AggregateError(errors, "Desktop Runtime scope disposal failed");
-	}
+	await entry.composition.dispose();
 }

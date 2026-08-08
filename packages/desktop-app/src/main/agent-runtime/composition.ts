@@ -29,6 +29,7 @@ import {
 	readDesktopConfig,
 } from "../config/desktop-config-store.js";
 import { DEFAULT_SERVER_URL } from "../constants.js";
+import { resolveSessionListCwd } from "../conversations/session-paths.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
@@ -89,6 +90,13 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				enabled: true,
 			});
 		},
+		resolveMcpRuntimeScope: ({ cwd, agentDir }) => ({
+			cwd: resolveSessionListCwd(cwd),
+			agentDir,
+		}),
+	});
+	void runtimeBackendPool.prewarmMcp({ cwd: DEFAULT_CONVERSATION_CWD }).catch((error: unknown) => {
+		log.warn("[agent-runtime] default conversation MCP prewarm failed", error);
 	});
 	const historicalSessionImportBackend = new DesktopHistoricalSessionImportBackend(runtimeBackendPool);
 	const sessionBackend = new CatalogRoutedRuntimeHostSessionBackend({

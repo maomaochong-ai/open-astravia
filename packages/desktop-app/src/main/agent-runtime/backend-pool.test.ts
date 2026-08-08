@@ -185,7 +185,73 @@ describe("DesktopRuntimeBackendPool", () => {
 		expect(dispose).toHaveBeenCalledTimes(1);
 	});
 
-	it("disposes the managed MCP source when composition creation fails", async () => {
+	it("reuses one MCP source across isolated runtime scopes with the same MCP scope", async () => {
+		const rootCwd = await temporaryDirectory("desktop-runtime-mcp-root-");
+		const firstCwd = join(rootCwd, "first-session");
+		const secondCwd = join(rootCwd, "second-session");
+		const source = {
+			refresh: async () => ({ tools: [] }),
+		} satisfies McpRuntimeToolSource;
+		const dispose = vi.fn(async () => undefined);
+		const createMcpRuntimeSource = vi.fn(async () => ({ source, dispose }));
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+			},
+			createMcpRuntimeSource,
+			resolveMcpRuntimeScope: ({ agentDir }) => ({ cwd: rootCwd, agentDir }),
+		});
+		const runtime = new RuntimeHost({
+			sessionBackend: pool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		await runtime.createSession({ cwd: firstCwd, model: MODEL, scenario: "conversation" });
+		await runtime.createSession({ cwd: secondCwd, model: MODEL, scenario: "conversation" });
+
+		expect(pool.readScopeCount()).toBe(2);
+		expect(pool.readMcpScopeCount()).toBe(1);
+		expect(createMcpRuntimeSource).toHaveBeenCalledTimes(1);
+		expect(createMcpRuntimeSource).toHaveBeenCalledWith({ cwd: rootCwd, agentDir: undefined });
+		await runtime.disposeAllSessions();
+		await pool.dispose();
+		expect(dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it("reuses a prewarmed MCP source for the first runtime scope", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-mcp-prewarm-");
+		const source = {
+			refresh: async () => ({ tools: [] }),
+		} satisfies McpRuntimeToolSource;
+		const dispose = vi.fn(async () => undefined);
+		const createMcpRuntimeSource = vi.fn(async () => ({ source, dispose }));
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+			},
+			createMcpRuntimeSource,
+		});
+		const runtime = new RuntimeHost({
+			sessionBackend: pool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		await pool.prewarmMcp({ cwd });
+		await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+
+		expect(createMcpRuntimeSource).toHaveBeenCalledTimes(1);
+		expect(pool.readMcpScopeCount()).toBe(1);
+	});
+
+	it("keeps the shared MCP source alive when one composition creation fails", async () => {
 		const cwd = await temporaryDirectory("desktop-runtime-mcp-failure-");
 		const source = {
 			refresh: async () => ({ tools: [] }),
@@ -212,8 +278,10 @@ describe("DesktopRuntimeBackendPool", () => {
 		await expect(runtime.createSession({ cwd, model: MODEL, scenario: "batch" })).rejects.toThrow(
 			"composition failed",
 		);
-		expect(dispose).toHaveBeenCalledTimes(1);
+		expect(dispose).not.toHaveBeenCalled();
 		expect(pool.readScopeCount()).toBe(0);
+		await pool.dispose();
+		expect(dispose).toHaveBeenCalledTimes(1);
 	});
 
 	function createPool(): DesktopRuntimeBackendPool {

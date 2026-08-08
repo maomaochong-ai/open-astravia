@@ -893,13 +893,16 @@ export function useSessionManager(): SessionManagerResult {
 			}
 
 			// ADR-0007: 侧边栏 sessionsMap 挂在「对话」项目根；运行 cwd 可能是 UUID 子目录。
-			// 必须归一到 bucket 再 list，否则 fork/打开已有会话后侧栏不出现该条。
+			// 必须归一到 bucket 再 list，否则 fork/打开已有会话后侧栏不出现该条。这里不再
+			// 阻塞 openSession：新会话的首条 prompt 只依赖上面的订阅与运行时状态，侧边栏
+			// 对账可以在发送之后异步完成。
 			const bucketCwd = conversationBucketCwd(effectiveCwd, defaultConversationCwdRef.current);
-			await loadSessions(bucketCwd);
-			// 乐观兜底：fork 刚写出的文件若 list 未收录，再插入一次（已有则不动，避免改 modifiedAt 排序）。
-			if (cachedKey) {
-				const listed = getDefaultStore().get(sessionsMapAtom).get(bucketCwd) ?? [];
-				if (!listed.some((s) => s.path === cachedKey)) {
+			void loadSessions(bucketCwd)
+				.then(() => {
+					// 乐观兜底：fork 刚写出的文件若 list 未收录，再插入一次（已有则不动，避免改 modifiedAt 排序）。
+					if (!cachedKey) return;
+					const listed = getDefaultStore().get(sessionsMapAtom).get(bucketCwd) ?? [];
+					if (listed.some((s) => s.path === cachedKey)) return;
 					const firstUser = mapped.find((m) => m.role === "user");
 					const firstMessage =
 						(firstUser?.text ?? "").trim().slice(0, 80) || i18n.t("chat:session.emptyMessageLabel");
@@ -912,8 +915,10 @@ export function useSessionManager(): SessionManagerResult {
 						parentSessionPath,
 						parentEntryId,
 					});
-				}
-			}
+				})
+				.catch((err) => {
+					console.warn("[useSessionManager] background session list refresh failed", err);
+				});
 		},
 		[
 			setChatMessages,
@@ -1294,7 +1299,9 @@ export function useSessionManager(): SessionManagerResult {
 			}
 			// ADR-0007：归一回项目根 bucket，否则「对话」session 刷的是没用的子目录桶，
 			// 侧边栏默认列表（挂在根 bucket）拿不到这一轮的对账更新。
-			await loadSessions(conversationBucketCwd(session.cwd, defaultConversationCwdRef.current));
+			void loadSessions(conversationBucketCwd(session.cwd, defaultConversationCwdRef.current)).catch((err) => {
+				console.warn("[useSessionManager.sendMessage] background session list refresh failed", err);
+			});
 		},
 		[
 			// 输入文本调用时读 store，其余输入相关值读 ref，不再入依赖，保证
