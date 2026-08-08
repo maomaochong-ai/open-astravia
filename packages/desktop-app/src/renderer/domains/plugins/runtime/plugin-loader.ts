@@ -1034,6 +1034,7 @@ function createContext(
 			component: contribution.component,
 			scope_use: contribution.scope_use,
 			initiallyVisible: contribution.initiallyVisible,
+			keepAliveWhenAvailable: contribution.keepAliveWhenAvailable,
 		};
 		activityTabs.push(normalized);
 		onChanged();

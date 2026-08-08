@@ -3,6 +3,7 @@
 import { act, createElement, type ReactNode, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useActivityTabActivation } from "../../registry/activation-context";
 import type { ActivityTabDefinition, ResolvedActivityTab } from "../../registry/types";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
 import { ActivityTabSurface } from "./ActivityTabSurface";
@@ -131,6 +132,57 @@ describe("ActivityTabSurface", () => {
 			);
 		});
 		expect(dockedOutlet.querySelector("[data-content-instance]")).toBe(content);
+		expect(mounts).toBe(1);
+		expect(unmounts).toBe(0);
+	});
+
+	it("updates activation state without remounting kept content", () => {
+		let mounts = 0;
+		let unmounts = 0;
+		function Content(): ReturnType<typeof createElement> {
+			const active = useActivityTabActivation();
+			useEffect(() => {
+				mounts += 1;
+				return () => {
+					unmounts += 1;
+				};
+			}, []);
+			return createElement("div", { "data-active": String(active) });
+		}
+		const definition: ActivityTabDefinition = {
+			id: "plugin:remotion-renderer:studio",
+			source: "plugin",
+			useMeta: () => ({ label: "Studio" }),
+			component: Content,
+			keepAliveWhenAvailable: true,
+		};
+		const tab: ResolvedActivityTab = {
+			id: definition.id,
+			label: "Studio",
+			removable: true,
+			source: "plugin",
+			definition,
+		};
+		const shared = {
+			actions: actions(),
+			dockedOutlet,
+			Frame: frame,
+			floating: null,
+			removeLabel: "Hide tab",
+			tab,
+		};
+
+		act(() => {
+			root.render(createElement(ActivityTabSurface, { ...shared, isActiveDocked: true }));
+		});
+		const content = dockedOutlet.querySelector("[data-active]");
+		expect(content?.getAttribute("data-active")).toBe("true");
+
+		act(() => {
+			root.render(createElement(ActivityTabSurface, { ...shared, isActiveDocked: false }));
+		});
+		expect(dockedOutlet.querySelector("[data-active]")).toBe(content);
+		expect(content?.getAttribute("data-active")).toBe("false");
 		expect(mounts).toBe(1);
 		expect(unmounts).toBe(0);
 	});

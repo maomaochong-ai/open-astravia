@@ -75,6 +75,8 @@ export interface RegisteredActivityTab {
 	scope_use?: PluginActivityTabContribution["scope_use"];
 	/** 注册后是否默认上栏（缺省 true）；false = 出现条件由插件自己驱动。 */
 	initiallyVisible?: PluginActivityTabContribution["initiallyVisible"];
+	/** 未激活时仍保留组件实例，适用于内嵌浏览器、编辑器等有状态运行时。 */
+	keepAliveWhenAvailable?: PluginActivityTabContribution["keepAliveWhenAvailable"];
 }
 
 /**

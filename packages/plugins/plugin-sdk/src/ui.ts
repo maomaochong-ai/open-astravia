@@ -89,6 +89,12 @@ export interface PluginActivityTabContribution {
 	 * 工作台跟随输入栏 toggle）。无论哪种，用户仍可用减号手动隐藏。
 	 */
 	initiallyVisible?: boolean;
+	/**
+	 * Keep the component mounted while this tab is available but inactive. Use
+	 * this for stateful embedded runtimes such as browsers or editors whose
+	 * session would otherwise be lost when the user briefly switches tabs.
+	 */
+	keepAliveWhenAvailable?: boolean;
 }
 
 /** Options for {@link PluginUiApi.openActivityTab}. */

@@ -11,6 +11,7 @@ import { useAtomValue } from "jotai";
 import { type ComponentType, useMemo } from "react";
 import { BUILTIN_ACTIVITY_TABS } from "../builtins";
 import { DEFAULT_PLUGIN_TAB_ICON } from "../components/PluginTabPicker";
+import { useActivityTabActivation } from "./activation-context";
 import { useActivityPanelCwd } from "./context";
 import type { ActivityTabDefinition } from "./types";
 
@@ -25,15 +26,16 @@ function getPluginTabComponent(pluginId: string, tabId: string): ComponentType {
 			const tabs = useAtomValue(pluginActivityTabsAtom);
 			const tab = tabs.find((entry) => entry.pluginId === pluginId && entry.tabId === tabId);
 			const cwd = useActivityPanelCwd();
+			const active = useActivityTabActivation();
 			if (!tab) return null;
-			return <PluginActivityTabPanel tab={tab} cwd={cwd} />;
+			return <PluginActivityTabPanel tab={tab} cwd={cwd} active={active} />;
 		};
 		pluginComponentCache.set(key, Comp);
 	}
 	return Comp;
 }
 
-function toPluginDefinition(
+export function toPluginDefinition(
 	tab: RegisteredActivityTab,
 	trPlugin: (pluginId: string, text: string) => string,
 ): ActivityTabDefinition {
@@ -47,6 +49,7 @@ function toPluginDefinition(
 		pluginName: trPlugin(tab.pluginId, tab.pluginName),
 		scope_use: tab.scope_use,
 		initiallyVisible: tab.initiallyVisible,
+		keepAliveWhenAvailable: tab.keepAliveWhenAvailable,
 		useMeta: () => ({
 			label: trPlugin(tab.pluginId, tab.label),
 			icon: tab.icon ?? DEFAULT_PLUGIN_TAB_ICON,

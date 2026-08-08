@@ -242,6 +242,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				component: tab.component,
 				scope_use: tab.scope_use,
 				initiallyVisible: tab.initiallyVisible,
+				keepAliveWhenAvailable: tab.keepAliveWhenAvailable,
 			})),
 		);
 		if (tabs.length > 0 || !hostLoading) setActivityTabs(tabs);

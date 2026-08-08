@@ -23,6 +23,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityPanelActions, ActivityPanelModel, ActivityPanelProps } from "../components/activity-panel/types";
 import { resolveActivityTabs } from "../registry/resolve-activity-tabs";
 import type { ActivityTabDefinition, ActivityTabId, ActivityTabMeta, ResolvedActivityTab } from "../registry/types";
+import { resolveMountedActivityTabs } from "../services/activity-tab-lifecycle";
 import { mergeDockedTabOrder } from "../services/floating-activity-tab";
 import { useFloatingActivityTabs } from "./useFloatingActivityTabs";
 
@@ -216,7 +217,6 @@ export function useActivityPanelModel({
 		if (dockedTabItems.some((item) => item.key === fallback)) return fallback;
 		return dockedTabItems[0]?.key ?? fallback;
 	}, [knowledgeHistory, cwd, tabByProject, profile, dockedTabItems, tabItems]);
-
 	// 程序切到某 tab 时若它在 hidden 列表，自动恢复（与旧行为一致）。
 	useEffect(() => {
 		if (!cwd) return;
@@ -240,13 +240,7 @@ export function useActivityPanelModel({
 	);
 
 	const mountedTabs = useMemo(
-		() =>
-			resolved.candidates.filter(
-				(item) =>
-					item.definition.keepAliveWhenAvailable ||
-					floating.model.floatingKeys.has(item.id as ActivityTabKey) ||
-					item.id === activeTab,
-			),
+		() => resolveMountedActivityTabs(resolved.candidates, floating.model.floatingKeys, activeTab),
 		[resolved.candidates, floating.model.floatingKeys, activeTab],
 	);
 

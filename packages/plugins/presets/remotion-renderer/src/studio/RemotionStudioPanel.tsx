@@ -8,6 +8,7 @@ import {
 	RemotionStudioProjectError,
 	startRemotionStudio,
 } from "./studio-manager";
+import { applyStudioPanelWidth } from "./studio-panel-width";
 
 type PanelState =
 	| { kind: "no-cwd" }
@@ -25,10 +26,14 @@ function projectErrorState(error: RemotionStudioProjectError): PanelState {
 }
 
 export function RemotionStudioPanel(): JSX.Element {
-	const { cwd } = useActivityTab();
+	const { cwd, active } = useActivityTab();
 	const { t } = useTranslation();
 	const [state, setState] = useState<PanelState>(cwd ? { kind: "starting" } : { kind: "no-cwd" });
 	const [reloadToken, setReloadToken] = useState(0);
+
+	useEffect(() => {
+		applyStudioPanelWidth(getPluginContext(), active);
+	}, [active]);
 
 	useEffect(() => {
 		let cancelled = false;

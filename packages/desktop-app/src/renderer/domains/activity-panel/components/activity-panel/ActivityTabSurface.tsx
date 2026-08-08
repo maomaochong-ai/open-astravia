@@ -4,6 +4,7 @@ import type { FloatingActivityTabPlacement } from "@shared/store/atoms";
 import { FloatingActivityTabView } from "@vetta/theme-ui/activity";
 import { type ComponentType, type JSX, useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { ActivityTabActivationContextProvider } from "../../registry/activation-context";
 import type { ResolvedActivityTab } from "../../registry/types";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
 import type { ActivityPanelActions } from "./types";
@@ -50,7 +51,14 @@ export function ActivityTabSurface({
 	}, [actions.onFloatingTabFocus, contentHost, floatingKey]);
 
 	const Content = tab.definition.component;
-	const contentPortal = createPortal(<Content />, contentHost, `activity-tab-content:${tab.id}`);
+	const active = floating !== null || isActiveDocked;
+	const contentPortal = createPortal(
+		<ActivityTabActivationContextProvider value={active}>
+			<Content />
+		</ActivityTabActivationContextProvider>,
+		contentHost,
+		`activity-tab-content:${tab.id}`,
+	);
 	if (floating) {
 		const tabItem = {
 			key: tab.id as ActivityTabKey,
