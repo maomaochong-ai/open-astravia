@@ -14,7 +14,7 @@ import type {
 	SessionExecutionMode,
 	SessionStateSnapshot,
 	SettingsPatch,
-} from "../../../../runtime-core/src/index.js";
+} from "@vetta/runtime-core";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 
 /** 工作模式（agent_mode 轴，见 ADR-0046）。 */

@@ -1,4 +1,4 @@
-import type { RuntimeHost, SessionEvent } from "../../../../runtime-core/src/index.js";
+import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
 import type { AppMonitorEvent, AppMonitorInputImageAttachment } from "../../preload/api-types/app-monitor.js";
 import { getAppLogger } from "../logger.js";
 import { formatDayKey, getDayBounds, getPreviousDayKey, getPreviousMonthKey } from "./app-monitor-calendar.js";

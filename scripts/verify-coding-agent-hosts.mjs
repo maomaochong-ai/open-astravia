@@ -50,7 +50,7 @@ try {
 		[compileScript, "--target", compileTarget, "--outfile", binaryPath],
 		repositoryRoot,
 	);
-	await run("IM Gateway and real Greenfield Agent suite", "go", ["test", "./...", "-count=1"], imGatewayDir, {
+	await run("IM Gateway and real Agent suite", "go", ["test", "./...", "-count=1"], imGatewayDir, {
 		VETTA_TEST_AGENT_BIN: binaryPath,
 		VETTA_TEST_PACKAGE_DIR: packageDir,
 	});

@@ -45,7 +45,7 @@ describe("Coding Agent migration residue gate", () => {
 		]);
 	});
 
-	it("allows frozen Greenfield protocol literals only at their owning boundaries", () => {
+	it("rejects migration identity literals even at former protocol boundaries", () => {
 		const state = collectCodingAgentMigrationResidue([
 			{
 				path: "packages/cli-app/src/rpc/runtime-host/runtime-host-contract.ts",
@@ -53,7 +53,22 @@ describe("Coding Agent migration residue gate", () => {
 			},
 		]);
 
-		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([]);
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"unclassifiedProductionGreenfieldOccurrences: 2 exceeds migration residue limit 0",
+		]);
+	});
+
+	it("rejects Desktop imports that bypass Runtime package entrypoints", () => {
+		const state = collectCodingAgentMigrationResidue([
+			{
+				path: "packages/desktop-app/src/main/agent-runtime/composition.ts",
+				text: 'import type { RuntimeHost } from "../../../../runtime-core/src/index.js";',
+			},
+		]);
+
+		expect(findCodingAgentMigrationResidueViolations(state)).toEqual([
+			"desktopRuntimeSourceImportFiles: 1 exceeds migration residue limit 0",
+		]);
 	});
 
 	it("rejects retired infrastructure utilities and Adapter backedges", () => {

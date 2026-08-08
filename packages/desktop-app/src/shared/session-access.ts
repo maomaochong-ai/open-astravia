@@ -1,4 +1,4 @@
-import type { RuntimeSessionAccess, SessionHistoryInfo } from "../../../runtime-core/src/index.js";
+import type { RuntimeSessionAccess, SessionHistoryInfo } from "@vetta/runtime-core";
 
 export interface DesktopSessionHistoryInfo extends SessionHistoryInfo {
 	readonly access: RuntimeSessionAccess;

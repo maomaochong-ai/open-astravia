@@ -20,7 +20,7 @@ describe("historical session migration", () => {
 		const migrated = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
-		expect(migrated).toMatchObject({ kind: "greenfield", status: "migrated" });
+		expect(migrated).toMatchObject({ kind: "session", status: "migrated" });
 		expect(reused).toEqual({ ...migrated, status: "reused" });
 		expect(await readFile(fixture.sourcePath, "utf8")).toBe(sourceContent);
 	});
@@ -32,24 +32,24 @@ describe("historical session migration", () => {
 
 		const after = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
-		expect(before).toMatchObject({ kind: "greenfield", status: "migrated" });
-		expect(after).toMatchObject({ kind: "greenfield", status: "migrated" });
-		if (before.kind !== "greenfield" || after.kind !== "greenfield") throw new Error("Expected migrations");
+		expect(before).toMatchObject({ kind: "session", status: "migrated" });
+		expect(after).toMatchObject({ kind: "session", status: "migrated" });
+		if (before.kind !== "session" || after.kind !== "session") throw new Error("Expected migrations");
 		expect(after.targetPath).not.toBe(before.targetPath);
 	});
 
 	it("uses and reuses a stable recovery target without overwriting a conflicting deterministic target", async () => {
 		const fixture = await createFixture(legacySession("target conflict"));
 		const migrated = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
-		if (migrated.kind !== "greenfield") throw new Error("Expected initial migration");
+		if (migrated.kind !== "session") throw new Error("Expected initial migration");
 		await writeFile(migrated.targetPath, "conflicting target", "utf8");
 
 		const recovered = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 		const reused = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
-		expect(recovered).toMatchObject({ kind: "greenfield", status: "migrated" });
+		expect(recovered).toMatchObject({ kind: "session", status: "migrated" });
 		expect(reused).toEqual({ ...recovered, status: "reused" });
-		if (recovered.kind !== "greenfield") throw new Error("Expected recovery migration");
+		if (recovered.kind !== "session") throw new Error("Expected recovery migration");
 		expect(recovered.targetSessionId).toBe(`${migrated.targetSessionId}-recovery`);
 		expect(recovered.targetPath).not.toBe(migrated.targetPath);
 		expect(await readFile(migrated.targetPath, "utf8")).toBe("conflicting target");
@@ -80,8 +80,8 @@ describe("historical session migration", () => {
 
 		const result = await migrateCodingAgentHistoricalSession(fixture.sourcePath, fixture.targetRootDir);
 
-		expect(result).toMatchObject({ kind: "greenfield", status: "migrated" });
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield migration");
+		expect(result).toMatchObject({ kind: "session", status: "migrated" });
+		if (result.kind !== "session") throw new Error("Expected session migration");
 		const records = (await readFile(result.targetPath, "utf8"))
 			.trim()
 			.split("\n")

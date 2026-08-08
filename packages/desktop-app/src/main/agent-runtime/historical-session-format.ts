@@ -2,7 +2,7 @@ import {
 	createCodingAgentHistoricalSessionCatalog,
 	createCodingAgentHistoricalSessionFileHistoryReader,
 } from "@vetta/coding-agent/historical-sessions";
-import type { RuntimeSessionCatalog, RuntimeSessionFileHistoryReader } from "../../../../runtime-core/src/index.js";
+import type { RuntimeSessionCatalog, RuntimeSessionFileHistoryReader } from "@vetta/runtime-core";
 
 export interface DesktopHistoricalSessionFormat {
 	readonly sessionCatalog: RuntimeSessionCatalog;

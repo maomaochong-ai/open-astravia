@@ -18,7 +18,7 @@ export type CodingAgentLegacySessionIncompatibilityCode =
 	| "session_version_unsupported";
 
 export interface CodingAgentLegacySessionMigrationSuccess {
-	readonly kind: "greenfield";
+	readonly kind: "session";
 	readonly status: "migrated" | "reused";
 	readonly sourcePath: string;
 	readonly targetPath: string;
@@ -61,7 +61,7 @@ export async function migrateCodingAgentLegacySession(
 		try {
 			const result = await migrateWithConflictRecovery(canonicalSourcePath, targetRootDir, targetSessionId);
 			return {
-				kind: "greenfield",
+				kind: "session",
 				status: result.created ? "migrated" : "reused",
 				sourcePath: canonicalSourcePath,
 				targetPath: result.targetPath,

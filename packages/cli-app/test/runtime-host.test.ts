@@ -47,8 +47,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 		});
 
-		expect(result).toMatchObject({ kind: "greenfield" });
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result).toMatchObject({ kind: "rpc" });
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		expect(result.session.sessionId).toMatch(/^legacy-import-/);
 		expect(await readFile(legacyPath, "utf8")).toBe(legacyContent);
@@ -62,8 +62,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "im-session",
 		});
-		expect(fresh.kind).toBe("greenfield");
-		if (fresh.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(fresh.kind).toBe("rpc");
+		if (fresh.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(fresh);
 		const sessionPath = fresh.session.createCoreAssembly().lifecycle.sessionPath;
 		if (!sessionPath) throw new Error("Expected persisted Greenfield session path");
@@ -89,8 +89,8 @@ describe("IM Runtime Host", () => {
 			conversationDir: fixture.conversationDir,
 			sessionCatalog: fixture.sessionCatalog,
 		});
-		expect(resumed.kind).toBe("greenfield");
-		if (resumed.kind !== "greenfield") throw new Error("Expected resumed Greenfield runtime");
+		expect(resumed.kind).toBe("rpc");
+		if (resumed.kind !== "rpc") throw new Error("Expected resumed Greenfield runtime");
 		preparedHosts.push(resumed);
 		expect(resumed.session.sessionId).toBe("im-session");
 	});
@@ -104,8 +104,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => sessionIds.shift() ?? "unexpected-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		const sessionCapability = result.capabilities.session;
 		if (!sessionCapability) throw new Error("Expected Greenfield session capability");
@@ -179,8 +179,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "command-extension-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		await initialize(result);
 
@@ -210,8 +210,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "extension-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 
 		fixture.bootstrap.extensionsResult.runtime.setSessionName("Extension Session");
@@ -252,8 +252,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "extension-tool-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 
 		expect(result.session.createCoreAssembly().corePorts.stateReader.readState()).toMatchObject({
@@ -278,8 +278,8 @@ describe("IM Runtime Host", () => {
 			createSessionId: () => "inapplicable-extension-session",
 		});
 
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 	});
 
@@ -326,8 +326,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "resource-extension-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		await initialize(result);
 
@@ -372,8 +372,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "model-select-extension-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		await initialize(result);
 
@@ -401,8 +401,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "compaction-extension-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		await initialize(result);
 		const assembly = result.session.createCoreAssembly();
@@ -422,8 +422,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "command-discovery-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 
 		expect(result.capabilities.profile.commands).toContain("get_commands");
@@ -443,8 +443,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: commandFixture.sessionCatalog,
 			createSessionId: () => "extension-command-discovery-session",
 		});
-		expect(commandResult.kind).toBe("greenfield");
-		if (commandResult.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(commandResult.kind).toBe("rpc");
+		if (commandResult.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(commandResult);
 		expect(commandResult.capabilities.commands?.readCommands()).toContainEqual(
 			expect.objectContaining({ name: "audit", source: "extension" }),
@@ -469,8 +469,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "extension-reload-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 		await initialize(result);
 		await writeFile(join(fixture.workspace, "reloaded-prompt.md"), "Reloaded prompt", "utf8");
@@ -538,8 +538,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => "extension-event-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 
 		await expect(result.session.prompt({ text: "handled by extension" })).resolves.toEqual({
@@ -573,8 +573,8 @@ describe("IM Runtime Host", () => {
 			sessionCatalog: fixture.sessionCatalog,
 			createSessionId: () => sessionIds.shift() ?? "unexpected-session",
 		});
-		expect(result.kind).toBe("greenfield");
-		if (result.kind !== "greenfield") throw new Error("Expected Greenfield runtime");
+		expect(result.kind).toBe("rpc");
+		if (result.kind !== "rpc") throw new Error("Expected RPC runtime");
 		preparedHosts.push(result);
 
 		expect(lifecycle.__vettaGreenfieldExtensionLifecycle).toEqual([]);

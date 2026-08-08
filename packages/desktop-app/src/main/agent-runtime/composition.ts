@@ -6,17 +6,17 @@ import {
 	createCodingAgentSharedModelController,
 } from "@vetta/coding-agent/host-services";
 import {
-	FileConversationRuntimeSessionFileHistoryReader,
-	type RuntimeConversationSessionRoot,
-} from "@vetta/runtime-storage/conversation";
-import {
 	CatalogRoutedRuntimeHostSessionBackend,
 	CatalogRoutedRuntimeSessionAccessResolver,
 	CompositeRuntimeSessionCatalog,
 	CompositeRuntimeSessionFileHistoryReader,
 	RuntimeHost,
 	type RuntimeHostSessionBackendRouteDecision,
-} from "../../../../runtime-core/src/index.js";
+} from "@vetta/runtime-core";
+import {
+	FileConversationRuntimeSessionFileHistoryReader,
+	type RuntimeConversationSessionRoot,
+} from "@vetta/runtime-storage/conversation";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
 import {
 	DEFAULT_CONVERSATION_CWD,

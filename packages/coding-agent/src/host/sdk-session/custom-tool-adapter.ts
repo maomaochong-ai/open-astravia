@@ -10,8 +10,8 @@ import {
 } from "../../public-api/sdk/index.js";
 
 export const CODING_AGENT_SDK_CUSTOM_TOOL_ERROR_CODES = {
-	INVALID_SCHEMA: "greenfield_sdk_custom_tool_invalid_schema",
-	INVALID_INPUT: "greenfield_sdk_custom_tool_invalid_input",
+	INVALID_SCHEMA: "coding_agent_sdk_custom_tool_invalid_schema",
+	INVALID_INPUT: "coding_agent_sdk_custom_tool_invalid_input",
 } as const;
 
 export type CodingAgentSdkCustomToolErrorCode =

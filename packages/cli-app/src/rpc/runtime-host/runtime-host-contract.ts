@@ -29,7 +29,7 @@ export interface RpcRuntimeHostSessionIncompatible {
 }
 
 export interface RpcRuntimeHostReady {
-	readonly kind: "greenfield";
+	readonly kind: "rpc";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly session: RuntimeSession;
 	readonly runtime: CodingAgentRuntimeComposition;
@@ -42,7 +42,7 @@ export type RpcRuntimeHostPreparation =
 	| RpcRuntimeHostReady;
 
 export interface PrintRuntimeHostReady {
-	readonly kind: "greenfield-print";
+	readonly kind: "print";
 	readonly bootstrap: CodingAgentHostBootstrap;
 	readonly session: RuntimeSession;
 	readonly runtime: CodingAgentRuntimeComposition;

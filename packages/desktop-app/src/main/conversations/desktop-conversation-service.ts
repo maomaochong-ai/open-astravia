@@ -6,7 +6,7 @@ import {
 	RUNTIME_ERROR_CODES,
 	type RuntimeHost,
 	type SessionConfig,
-} from "../../../../runtime-core/src/index.js";
+} from "@vetta/runtime-core";
 import { type DesktopSessionHistoryInfo, UNAVAILABLE_RUNTIME_SESSION_ACCESS } from "../../shared/session-access.js";
 import { monitorRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";

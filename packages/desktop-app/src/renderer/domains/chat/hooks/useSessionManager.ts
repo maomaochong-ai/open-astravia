@@ -68,10 +68,10 @@ import {
 	removeQueuedMessageAtom,
 } from "@shared/store/message-queue-atoms";
 import { useNavigate } from "@tanstack/react-router";
+import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
 import type { ConversationScenario, PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import type { PromptAttachmentRef, PromptRequest } from "../../../../../../runtime-core/src/index.js";
 import {
 	adoptDraftId,
 	appendError,

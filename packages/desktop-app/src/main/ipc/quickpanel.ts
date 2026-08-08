@@ -1,5 +1,5 @@
+import type { SessionHistoryInfo } from "@vetta/runtime-core";
 import { ipcMain } from "electron";
-import type { SessionHistoryInfo } from "../../../../runtime-core/src/index.js";
 import {
 	QUICK_PANEL_CHANNELS,
 	type QuickPanelConfigSnapshot,

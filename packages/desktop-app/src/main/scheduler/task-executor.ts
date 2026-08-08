@@ -1,4 +1,4 @@
-import type { RuntimeHost, SessionEvent } from "../../../../runtime-core/src/index.js";
+import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
 import { formatScheduleSessionName } from "../../shared/scheduled-session.js";
 import { monitorRuntimeSession, recordAutomationRunStarted } from "../app-monitor/app-monitor-service.js";
 import { resolveExecutionMode } from "../execution-mode.js";

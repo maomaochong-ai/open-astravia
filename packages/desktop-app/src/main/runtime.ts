@@ -1,4 +1,4 @@
-import type { RuntimeHost } from "../../../runtime-core/src/index.js";
+import type { RuntimeHost } from "@vetta/runtime-core";
 import type { DesktopRuntimeBackendPool } from "./agent-runtime/backend-pool.js";
 import { createDesktopRuntimeComposition } from "./agent-runtime/composition.js";
 import { type DesktopRuntimeHealth, DesktopRuntimeLifecycle } from "./agent-runtime/lifecycle.js";

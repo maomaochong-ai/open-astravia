@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AssistantMessage, Message, StopReason } from "@vetta/ai";
-import type { RuntimeHost, SessionExecutionMode } from "../../../../runtime-core/src/index.js";
+import type { RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
 import { monitorRuntimeSession, recordBatchRunStarted } from "../app-monitor/app-monitor-service.js";
 import { resolveExecutionMode } from "../execution-mode.js";
 import { readDesktopConfig } from "../ipc/fs.js";

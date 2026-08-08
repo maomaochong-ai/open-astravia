@@ -3,7 +3,6 @@ import { type Dirent, type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
-import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
@@ -19,7 +18,8 @@ import type {
 	SessionEvent,
 	SessionExecutionMode,
 	SettingsPatch,
-} from "../../../../runtime-core/src/index.js";
+} from "@vetta/runtime-core";
+import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";

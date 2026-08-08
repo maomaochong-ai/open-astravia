@@ -51,8 +51,8 @@ describe("coding-agent public subpaths", () => {
 		expect(createAgentCliBootstrap).toBeTypeOf("function");
 		expect(createCodingAgentHostBootstrap).toBeTypeOf("function");
 		expect(runRpcModeWithCapabilities).toBeTypeOf("function");
-		expect(RPC_IM_SESSION_PROFILE.id).toBe("greenfield-im");
-		expect(RPC_FULL_SESSION_PROFILE.id).toBe("greenfield");
+		expect(RPC_IM_SESSION_PROFILE.id).toBe("im");
+		expect(RPC_FULL_SESSION_PROFILE.id).toBe("full");
 		expect(ALL_SCENARIOS.length).toBeGreaterThan(0);
 		expect(PERSONAS.length).toBeGreaterThan(0);
 		expect(config.getAgentDir).toBeTypeOf("function");

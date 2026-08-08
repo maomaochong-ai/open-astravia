@@ -1,5 +1,5 @@
+import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { RuntimeHost, SessionEvent } from "../../../../runtime-core/src/index.js";
 import type { ScheduledTask, TaskExecutionRecord } from "./task-storage.js";
 
 const mocks = vi.hoisted(() => ({

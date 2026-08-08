@@ -67,7 +67,7 @@ export async function runAgentRuntimeCli(
 		if (prepared.kind === "session-incompatible") {
 			throw new SessionCompatibilityError(prepared.sessionCompatibility);
 		}
-		if (prepared.kind === "greenfield-print") await runPrintRuntimeHost(prepared);
+		if (prepared.kind === "print") await runPrintRuntimeHost(prepared);
 		else if (imHost) await runImRuntimeHost(prepared);
 		else await runRpcRuntimeHost(prepared);
 	} catch (error) {

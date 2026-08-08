@@ -1,4 +1,4 @@
-import type { SessionHistoryInfo } from "../../../../../runtime-core/src/index.js";
+import type { SessionHistoryInfo } from "@vetta/runtime-core";
 import {
 	DesktopConversationError,
 	type DesktopConversationService,

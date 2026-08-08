@@ -1,4 +1,4 @@
-import type { ProjectInfo } from "../../../../runtime-core/src/index.js";
+import type { ProjectInfo } from "@vetta/runtime-core";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 import { allowProjectRoot } from "../filesystem/filesystem-service.js";
 import { getSharedRuntime } from "../runtime.js";

@@ -15,9 +15,9 @@ export interface ResolvedCodingAgentSdkSessionStorage {
 }
 
 export const CODING_AGENT_SDK_STORAGE_ERROR_CODES = {
-	INVALID_CONVERSATION_DIR: "greenfield_sdk_invalid_conversation_dir",
-	INVALID_SESSION_ID: "greenfield_sdk_invalid_session_id",
-	INVALID_SESSION_PATH: "greenfield_sdk_invalid_session_path",
+	INVALID_CONVERSATION_DIR: "coding_agent_sdk_invalid_conversation_dir",
+	INVALID_SESSION_ID: "coding_agent_sdk_invalid_session_id",
+	INVALID_SESSION_PATH: "coding_agent_sdk_invalid_session_path",
 } as const;
 
 export type CodingAgentSdkStorageErrorCode =

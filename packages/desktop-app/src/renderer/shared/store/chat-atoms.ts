@@ -1,7 +1,7 @@
 import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
+import type { PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { atom } from "jotai";
-import type { PromptAttachmentRef, PromptResourceRef } from "../../../../../runtime-core/src/index.js";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
 // ─── Rich content blocks ───

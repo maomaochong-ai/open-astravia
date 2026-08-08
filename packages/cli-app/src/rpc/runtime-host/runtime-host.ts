@@ -185,7 +185,7 @@ async function prepareRuntimeHost(
 		htmlExporter: options.htmlExporter,
 	});
 	return {
-		kind: "greenfield",
+		kind: "rpc",
 		bootstrap,
 		get session() {
 			return assembly.sessionHost.readSession();
@@ -234,7 +234,7 @@ async function createPrintRuntimeHostReady(
 		dismissAssemblyRollback();
 		rollback.commit();
 		return {
-			kind: "greenfield-print",
+			kind: "print",
 			bootstrap,
 			get session() {
 				return assembly.sessionHost.readSession();
