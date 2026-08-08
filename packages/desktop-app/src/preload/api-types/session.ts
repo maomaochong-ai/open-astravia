@@ -90,8 +90,6 @@ export interface DesktopSessionApi {
 	onAgentModeChanged(handler: (mode: AgentMode) => void): () => void;
 	setGlobalThinkingLevel(level: string): Promise<void>;
 	getGlobalThinkingLevel(): Promise<string>;
-	setMaxRecentImages(count: number): Promise<void>;
-	getMaxRecentImages(): Promise<number>;
 	getPersonas(): Promise<PersonaOption[]>;
 	getPersonalization(): Promise<PersonalizationConfig>;
 	setPersonalization(input: PersonalizationConfig): Promise<void>;

@@ -8,7 +8,6 @@ export interface CodingAgentImageSettingsSource {
 	reloadImageSettings?(): void;
 	getImageAutoResize?(): boolean;
 	getBlockImages?(): boolean;
-	getMaxRecentImages?(): number;
 	getImageRequestHighWatermarkBytes?(): number;
 	getImageRequestLowWatermarkBytes?(): number;
 }
@@ -32,7 +31,6 @@ export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFin
 						this.imageProcessor ? { processor: this.imageProcessor } : {},
 					);
 		const budgeted = applyImageBudget([...normalized] satisfies AgentMessage[], {
-			maxRecentImages: this.settings?.getMaxRecentImages?.() ?? 2,
 			highWatermarkBytes: this.settings?.getImageRequestHighWatermarkBytes?.(),
 			lowWatermarkBytes: this.settings?.getImageRequestLowWatermarkBytes?.(),
 		}).filter(isRuntimeMessage);

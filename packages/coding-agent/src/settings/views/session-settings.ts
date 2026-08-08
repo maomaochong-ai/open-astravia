@@ -36,8 +36,6 @@ export function createSessionSettingsView(state: SettingsStatePort): SessionSett
 		setImageAutoResize: (autoResize) => state.patchGlobal({ images: { autoResize } }),
 		getBlockImages: () => state.read().images?.blockImages ?? false,
 		setBlockImages: (blockImages) => state.patchGlobal({ images: { blockImages } }),
-		getMaxRecentImages: () => state.read().images?.maxRecentImages ?? 2,
-		setMaxRecentImages: (maxRecentImages) => state.patchGlobal({ images: { maxRecentImages } }),
 		getPersonalization: () => ({
 			personaId: state.read().personalization?.personaId ?? "default",
 			customPrompt: state.read().personalization?.customPrompt ?? "",

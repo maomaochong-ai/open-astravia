@@ -44,90 +44,49 @@ function omittedCount(messages: AgentMessage[]): number {
 }
 
 describe("applyImageBudget", () => {
-	it("keeps ALL unseen images from a fresh batch regardless of budget", () => {
-		// 6 images read in one turn (after the last assistant message), budget 2.
+	it("keeps any number of seen and unseen images while the request remains below the byte watermark", () => {
 		const messages = [
-			user(text("read these pages")),
-			assistant(),
 			toolResult(img("p1")),
 			toolResult(img("p2")),
 			toolResult(img("p3")),
 			toolResult(img("p4")),
 			toolResult(img("p5")),
 			toolResult(img("p6")),
+			assistant(),
+			user(text("read another page"), img("p7")),
 		];
 
-		const result = applyImageBudget(messages, 2);
+		const result = applyImageBudget(messages);
 
-		// All 6 survive — the upcoming call is the model's first viewing.
+		expect(result).toBe(messages);
 		expect(omittedCount(result)).toBe(0);
-		const kept = result.flatMap(imageDataIds);
-		expect(kept).toEqual(["p1", "p2", "p3", "p4", "p5", "p6"]);
-	});
-
-	it("applies the budget to already-seen images (before the last assistant message)", () => {
-		// Images read, then an assistant message follows → now "seen".
-		const messages = [
-			toolResult(img("p1")),
-			toolResult(img("p2")),
-			toolResult(img("p3")),
-			assistant(), // last assistant: everything before it is seen
-		];
-
-		const result = applyImageBudget(messages, 2);
-
-		// Keep newest 2 seen images, omit the oldest.
-		expect(omittedCount(result)).toBe(1);
-		const kept = result.flatMap(imageDataIds);
-		expect(kept).toEqual(["p2", "p3"]);
-	});
-
-	it("keeps unseen images AND budgets seen images in the same stream", () => {
-		const messages = [
-			toolResult(img("old1")),
-			toolResult(img("old2")),
-			toolResult(img("old3")),
-			assistant(), // seen | unseen boundary
-			toolResult(img("new1")),
-			toolResult(img("new2")),
-		];
-
-		const result = applyImageBudget(messages, 1);
-
-		// Unseen new1/new2 always kept; among seen old*, keep newest 1 (old3).
-		const kept = result.flatMap(imageDataIds);
-		expect(kept).toEqual(["old3", "new1", "new2"]);
-		expect(omittedCount(result)).toBe(2); // old1, old2
+		expect(result.flatMap(imageDataIds)).toEqual(["p1", "p2", "p3", "p4", "p5", "p6", "p7"]);
 	});
 
 	it("keeps all images when there is no assistant message yet", () => {
 		const messages = [user(img("a"), text("hi")), toolResult(img("b")), toolResult(img("c"))];
 
-		const result = applyImageBudget(messages, 1);
+		const result = applyImageBudget(messages);
 
 		expect(omittedCount(result)).toBe(0);
 		expect(result.flatMap(imageDataIds)).toEqual(["a", "b", "c"]);
-	});
-
-	it("budget <= 0 disables the filter and returns the original array", () => {
-		const messages = [toolResult(img("a"), img("b")), assistant()];
-		expect(applyImageBudget(messages, 0)).toBe(messages);
-		expect(applyImageBudget(messages, -1)).toBe(messages);
-		expect(applyImageBudget(messages, Number.NaN)).toBe(messages);
 	});
 
 	it("does not mutate the original messages", () => {
 		const messages = [toolResult(img("p1")), toolResult(img("p2")), toolResult(img("p3")), assistant()];
 		const snapshot = JSON.stringify(messages);
 
-		applyImageBudget(messages, 1);
+		applyImageBudget(messages, {
+			highWatermarkBytes: estimateModelMessageRequestBytes(messages) - 1,
+			lowWatermarkBytes: 1,
+		});
 
 		expect(JSON.stringify(messages)).toBe(snapshot);
 	});
 
-	it("returns the original array untouched when nothing exceeds budget", () => {
+	it("returns the original array untouched when nothing exceeds the byte watermark", () => {
 		const messages = [toolResult(img("p1")), assistant()];
-		expect(applyImageBudget(messages, 5)).toBe(messages);
+		expect(applyImageBudget(messages)).toBe(messages);
 	});
 
 	it("drops oldest seen images according to serialized request watermarks", () => {
@@ -148,7 +107,6 @@ describe("applyImageBudget", () => {
 		const requestBytes = estimateModelMessageRequestBytes(messages);
 
 		const result = applyImageBudget(messages, {
-			maxRecentImages: 10,
 			highWatermarkBytes: requestBytes - 1,
 			lowWatermarkBytes: estimateModelMessageRequestBytes(afterTwoOmissions),
 		});
@@ -164,7 +122,6 @@ describe("applyImageBudget", () => {
 		const requestBytes = estimateModelMessageRequestBytes(messages);
 
 		const result = applyImageBudget(messages, {
-			maxRecentImages: 10,
 			highWatermarkBytes: requestBytes - 1,
 			lowWatermarkBytes: estimateModelMessageRequestBytes(unseenOnly) - 1,
 		});
@@ -173,7 +130,7 @@ describe("applyImageBudget", () => {
 		expect(omittedCount(result)).toBe(1);
 	});
 
-	it("allows byte watermarks without enabling the legacy image count cap", () => {
+	it("applies byte watermarks without a separate image count cap", () => {
 		const messages = [toolResult(img("old".repeat(10))), assistant()];
 		const requestBytes = estimateModelMessageRequestBytes(messages);
 

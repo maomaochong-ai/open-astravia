@@ -30,7 +30,6 @@ export interface CodingAgentPromptSettingsSource extends PersonalizationSettings
 	reloadPersonalizationSettings(): void;
 	reloadImageSettings?(): void;
 	getBlockImages?(): boolean;
-	getMaxRecentImages?(): number;
 }
 
 export interface CodingAgentModelCallPromptContext extends ModelCallFrameCompositionContext {

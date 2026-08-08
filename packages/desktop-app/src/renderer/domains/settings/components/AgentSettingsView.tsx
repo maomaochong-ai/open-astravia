@@ -1,5 +1,4 @@
 import { Button } from "@vetta/ui";
-import { Slider } from "@shared/components/ui/slider";
 import { Switch } from "@vetta/ui";
 import { useMemo } from "react";
 import { SettingsAiAssist } from "../ai-assist";
@@ -83,54 +82,6 @@ export function AgentSettingsView({ model }: AgentSettingsViewProps): JSX.Elemen
 			</div>
 
 			<div>
-				<SettingSection title={model.labels.sections.images} section={SETTINGS_SECTION["agent-images"]}>
-					<div className="px-5 py-4">
-						<div className="flex items-baseline justify-between gap-4">
-							<div className="text-[13px] font-medium text-foreground">{model.labels.maxRecentImages}</div>
-							<div className="shrink-0 text-[13px] font-semibold tabular-nums text-primary">
-								{model.maxRecentImages} {model.labels.images}
-							</div>
-						</div>
-						<p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-							{model.labels.maxRecentImagesDescription}
-						</p>
-
-						<div className="mt-7 px-2.5">
-							<Slider
-								value={[model.maxRecentImages]}
-								min={model.minImages}
-								max={model.maxImages}
-								step={1}
-								onValueChange={(values) => model.actions.previewMaxRecentImages(values[0])}
-								onValueCommit={(values) => model.actions.commitMaxRecentImages(values[0])}
-								aria-label={model.labels.maxRecentImages}
-							/>
-							<div className="mt-3 flex w-full items-center justify-between gap-1 px-0.5 text-[11px] font-medium text-muted-foreground">
-								{Array.from({ length: model.maxImages }, (_, index) => {
-									const position = index + model.minImages;
-									const isCurrent = position === model.maxRecentImages;
-									return (
-										<button
-											type="button"
-											key={position}
-											onClick={() => model.actions.commitMaxRecentImages(position)}
-											aria-label={`${model.labels.maxRecentImages}: ${position}`}
-											className="flex w-0 cursor-pointer flex-col items-center gap-1.5 outline-none"
-										>
-											<span className="h-1 w-px bg-muted-foreground/50" />
-											<span className={isCurrent ? "text-primary" : "transition-colors hover:text-foreground"}>
-												{position}
-											</span>
-										</button>
-									);
-								})}
-							</div>
-						</div>
-					</div>
-				</SettingSection>
-			</div>
-
-			<div className="mt-2">
 				<SettingSection title={model.labels.sections.experimental} section={SETTINGS_SECTION["agent-experimental"]}>
 					<SettingRow
 						title={model.labels.appOp}

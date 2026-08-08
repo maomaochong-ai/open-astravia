@@ -73,10 +73,10 @@ describe("Coding Agent model message context boundary", () => {
 		expect(projected[2]).not.toHaveProperty("modelMessage");
 	});
 
-	it("applies the legacy image budget and dynamic block-images policy at the final call boundary", async () => {
+	it("keeps images below the request watermark and applies dynamic block-images policy", async () => {
 		let blocked = false;
 		const finalizer = new CodingAgentModelCallMessageFinalizer({
-			getMaxRecentImages: () => 1,
+			getImageAutoResize: () => false,
 			getBlockImages: () => blocked,
 		});
 		const messages = [
@@ -86,9 +86,8 @@ describe("Coding Agent model message context boundary", () => {
 			imageMessage("new", 4),
 		] satisfies Message[];
 
-		const budgeted = await finalizer.finalize(finalizationInput(messages), new AbortController().signal);
-		expect(texts(budgeted[0])).toContain("[earlier image omitted to conserve memory]");
-		expect(imageCount(budgeted)).toBe(2);
+		const finalized = await finalizer.finalize(finalizationInput(messages), new AbortController().signal);
+		expect(imageCount(finalized)).toBe(3);
 
 		blocked = true;
 		const withoutImages = await finalizer.finalize(finalizationInput(messages), new AbortController().signal);

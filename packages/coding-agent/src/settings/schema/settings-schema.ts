@@ -78,7 +78,6 @@ export const SettingsDocumentSchema = Type.Object(
 				{
 					autoResize: Type.Optional(Type.Boolean()),
 					blockImages: Type.Optional(Type.Boolean()),
-					maxRecentImages: Type.Optional(Type.Number()),
 				},
 				{ additionalProperties: true },
 			),

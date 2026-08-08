@@ -26,7 +26,6 @@ export interface TerminalSettings {
 export interface ImageSettings {
 	autoResize?: boolean;
 	blockImages?: boolean;
-	maxRecentImages?: number;
 }
 
 export interface PersonalizationSettings {

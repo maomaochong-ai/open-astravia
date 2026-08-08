@@ -4,9 +4,6 @@ import { useTranslation } from "react-i18next";
 import { SETTINGS_SECTION } from "../registry";
 import { recordSettingsUsage } from "./recordSettingsUsage";
 
-const MIN_IMAGES = 1;
-const MAX_IMAGES = 10;
-
 const PERSONA_I18N_KEYS = {
 	default: {
 		label: "personas.default.label",
@@ -21,11 +18,6 @@ const PERSONA_I18N_KEYS = {
 		description: "personas.interactive.description",
 	},
 } as const;
-
-function clampImages(value: number): number {
-	if (!Number.isFinite(value)) return 2;
-	return Math.min(Math.max(Math.round(value), MIN_IMAGES), MAX_IMAGES);
-}
 
 type PersonaI18nKey = (typeof PERSONA_I18N_KEYS)[keyof typeof PERSONA_I18N_KEYS]["label" | "description"];
 
@@ -42,8 +34,6 @@ function localizePersona(persona: PersonaOption, t: (key: PersonaI18nKey) => str
 export interface AgentSettingsModel {
 	actions: {
 		applyPersonalization: () => Promise<void>;
-		commitMaxRecentImages: (value: number) => void;
-		previewMaxRecentImages: (value: number) => void;
 		setCustomPrompt: (value: string) => void;
 		setPersonaId: (value: string) => void;
 		toggleAgentSkills: (checked: boolean) => void;
@@ -55,9 +45,6 @@ export interface AgentSettingsModel {
 	dirty: boolean;
 	justSaved: boolean;
 	labels: AgentSettingsLabels;
-	maxImages: number;
-	maxRecentImages: number;
-	minImages: number;
 	personaId: string;
 	personas: readonly PersonaOption[];
 	promptPredictionEnabled: boolean;
@@ -78,16 +65,12 @@ interface AgentSettingsLabels {
 	customInstructionsDescription: string;
 	customInstructionsPlaceholder: string;
 	defaultPersona: string;
-	images: string;
 	inputPrediction: string;
 	inputPredictionDescription: string;
-	maxRecentImages: string;
-	maxRecentImagesDescription: string;
 	persona: string;
 	saving: string;
 	sections: {
 		experimental: string;
-		images: string;
 		personalization: string;
 	};
 	title: string;
@@ -95,7 +78,6 @@ interface AgentSettingsLabels {
 
 export function useAgentSettingsModel(): AgentSettingsModel {
 	const { t } = useTranslation("settings");
-	const [maxRecentImages, setMaxRecentImages] = useState(2);
 	const [personas, setPersonas] = useState<PersonaOption[]>([]);
 	const [personaId, setPersonaId] = useState("default");
 	const [customPrompt, setCustomPrompt] = useState("");
@@ -107,7 +89,6 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 	const [agentSkillsEnabled, setAgentSkillsEnabled] = useState(true);
 
 	useEffect(() => {
-		void window.vetta.session.getMaxRecentImages().then((value) => setMaxRecentImages(clampImages(value)));
 		void window.vetta.session.getPersonas().then(setPersonas);
 		void window.vetta.session.getPersonalization().then((config) => {
 			setPersonaId(config.personaId);
@@ -165,17 +146,6 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 		}
 	}, [customPrompt, personaId]);
 
-	const previewMaxRecentImages = useCallback((value: number) => {
-		setMaxRecentImages(clampImages(value));
-	}, []);
-
-	const commitMaxRecentImages = useCallback((value: number) => {
-		const nextValue = clampImages(value);
-		setMaxRecentImages(nextValue);
-		void window.vetta.session.setMaxRecentImages(nextValue);
-		recordSettingsUsage({ tab: "agent", action: "changed", target: "max-recent-images", value: String(nextValue) });
-	}, []);
-
 	const labels = useMemo<AgentSettingsLabels>(
 		() => ({
 			agentDescription: t("agentDescription"),
@@ -189,16 +159,12 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 			customInstructionsDescription: t("agentSettings.customInstructionsDesc"),
 			customInstructionsPlaceholder: t("agentSettings.customInstructionsPlaceholder"),
 			defaultPersona: t("agentSettings.default"),
-			images: t("agentSettings.images"),
 			inputPrediction: t("agentSettings.inputPrediction"),
 			inputPredictionDescription: t("agentSettings.inputPredictionDesc"),
-			maxRecentImages: t("agentSettings.maxRecentImages"),
-			maxRecentImagesDescription: t("agentSettings.maxRecentImagesDesc"),
 			persona: t("agentSettings.persona"),
 			saving: t("agentSettings.saving"),
 			sections: {
 				experimental: t(SETTINGS_SECTION["agent-experimental"].titleKey),
-				images: t(SETTINGS_SECTION["agent-images"].titleKey),
 				personalization: t(SETTINGS_SECTION["agent-personalization"].titleKey),
 			},
 			title: t("agentSettings.title"),
@@ -209,8 +175,6 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 	return {
 		actions: {
 			applyPersonalization,
-			commitMaxRecentImages,
-			previewMaxRecentImages,
 			setCustomPrompt,
 			setPersonaId,
 			toggleAgentSkills,
@@ -222,9 +186,6 @@ export function useAgentSettingsModel(): AgentSettingsModel {
 		dirty,
 		justSaved,
 		labels,
-		maxImages: MAX_IMAGES,
-		maxRecentImages,
-		minImages: MIN_IMAGES,
 		personaId,
 		personas: localizedPersonas,
 		promptPredictionEnabled,

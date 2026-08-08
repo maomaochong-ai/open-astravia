@@ -40,7 +40,6 @@ describe("model input image normalization", () => {
 		const finalizer = new CodingAgentModelCallMessageFinalizer(
 			{
 				getImageAutoResize: () => false,
-				getMaxRecentImages: () => 2,
 			},
 			processor,
 		);

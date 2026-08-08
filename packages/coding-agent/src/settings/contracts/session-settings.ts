@@ -33,7 +33,5 @@ export interface SessionSettingsPort {
 	setImageAutoResize(enabled: boolean): void;
 	getBlockImages(): boolean;
 	setBlockImages(blocked: boolean): void;
-	getMaxRecentImages(): number;
-	setMaxRecentImages(count: number): void;
 	getPersonalization(): { personaId: string; customPrompt: string };
 }

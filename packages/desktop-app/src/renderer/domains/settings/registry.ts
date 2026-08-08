@@ -117,7 +117,6 @@ export const SETTINGS_SECTIONS = [
 	{ tab: "appshot", id: "appshot-permissions", title: "权限", titleKey: "section_appshot-permissions" },
 	{ tab: "archive", id: "archived-list", title: "归档列表", titleKey: "section_archived-list" },
 	{ tab: "context", id: "agent-personalization", title: "个性化", titleKey: "section_agent-personalization" },
-	{ tab: "context", id: "agent-images", title: "图片", titleKey: "section_agent-images" },
 	{ tab: "context", id: "agent-experimental", title: "扩展功能", titleKey: "section_agent-experimental" },
 	{ tab: "knowledge", id: "knowledge-processing", title: "后台加工", titleKey: "section_knowledge-processing" },
 	{ tab: "knowledge", id: "knowledge-actions", title: "手动操作", titleKey: "section_knowledge-actions" },
