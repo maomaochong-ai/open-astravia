@@ -196,6 +196,7 @@
 | [302-production-identity-and-runtime-import-closure.md](./08-implementation-log/302-production-identity-and-runtime-import-closure.md) | 生产迁移身份归零与 Desktop Runtime 公开包入口收口 |
 | [303-public-protocol-and-type-gate-stability.md](./08-implementation-log/303-public-protocol-and-type-gate-stability.md) | 公开协议兼容恢复与类型门禁稳定性 |
 | [306-mcp-result-capacity-boundary.md](./08-implementation-log/306-mcp-result-capacity-boundary.md) | MCP 大结果容量边界、产物存储端口与兼容回退 |
+| [307-mcp-result-policy-invariant.md](./08-implementation-log/307-mcp-result-policy-invariant.md) | MCP Tool 非空结果策略合同与动态 Tool 默认策略 |
 
 ## 维护约定
 

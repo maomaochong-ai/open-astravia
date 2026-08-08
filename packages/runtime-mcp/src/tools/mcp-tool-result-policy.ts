@@ -51,6 +51,12 @@ export interface McpToolResultPolicy {
 	project(result: McpToolCallResult, context: McpToolResultContext): Promise<RuntimeToolResult>;
 }
 
+export const PRESERVE_MCP_TOOL_RESULT_POLICY: McpToolResultPolicy = Object.freeze({
+	async project(result: McpToolCallResult) {
+		return preserveMcpToolResult(result);
+	},
+});
+
 export interface McpToolResultPolicyOptions {
 	readonly artifactStore: McpToolResultArtifactStore;
 	readonly maxInlineResultBytes?: number;

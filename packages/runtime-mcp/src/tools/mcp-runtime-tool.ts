@@ -4,7 +4,7 @@ import type { IMcpClient, McpJsonObject, McpTool } from "../protocol/index.js";
 import {
 	type McpToolResultContext,
 	type McpToolResultPolicy,
-	preserveMcpToolResult,
+	PRESERVE_MCP_TOOL_RESULT_POLICY,
 } from "./mcp-tool-result-policy.js";
 
 /** Preserve the legacy MCP JSON Schema projection used by Coding Agent tools. */
@@ -62,16 +62,12 @@ export async function executeMcpToolCall(
 	client: IMcpClient,
 	mcpTool: McpTool,
 	input: Readonly<Record<string, unknown>>,
-	options: {
-		readonly context?: McpToolResultContext;
-		readonly resultPolicy?: McpToolResultPolicy;
-	} = {},
+	options?: McpToolCallExecutionOptions,
 ): Promise<RuntimeToolResult> {
 	try {
 		const result = await client.callTool(mcpTool.name, input as McpJsonObject);
-		return options.resultPolicy && options.context
-			? options.resultPolicy.project(result, options.context)
-			: preserveMcpToolResult(result);
+		const resultPolicy = options?.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY;
+		return resultPolicy.project(result, options?.context ?? directExecutionContext(mcpTool.name));
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		return {
@@ -84,15 +80,20 @@ export async function executeMcpToolCall(
 	}
 }
 
+export interface McpToolCallExecutionOptions {
+	readonly context: McpToolResultContext;
+	readonly resultPolicy: McpToolResultPolicy;
+}
+
 export interface McpRuntimeToolOptions {
-	readonly resultPolicy?: McpToolResultPolicy;
+	readonly resultPolicy: McpToolResultPolicy;
 }
 
 export function createMcpRuntimeTool(
 	mcpTool: McpTool,
 	client: IMcpClient,
 	serverName: string,
-	options: McpRuntimeToolOptions = {},
+	options: McpRuntimeToolOptions = DEFAULT_MCP_RUNTIME_TOOL_OPTIONS,
 ): RuntimeToolDefinition {
 	return {
 		name: `mcp_${serverName}_${mcpTool.name}`,
@@ -110,6 +111,20 @@ export function createMcpRuntimeTool(
 					toolName: mcpTool.name,
 				},
 			}),
+	};
+}
+
+const DEFAULT_MCP_RUNTIME_TOOL_OPTIONS: McpRuntimeToolOptions = Object.freeze({
+	resultPolicy: PRESERVE_MCP_TOOL_RESULT_POLICY,
+});
+
+function directExecutionContext(toolName: string): McpToolResultContext {
+	return {
+		sessionId: "",
+		turnId: "",
+		toolCallId: "",
+		serverName: "",
+		toolName,
 	};
 }
 

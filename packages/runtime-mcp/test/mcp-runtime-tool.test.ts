@@ -12,9 +12,11 @@ import type {
 import {
 	createMcpRuntimeTool,
 	createMcpToolResultPolicy,
+	executeMcpToolCall,
 	type McpToolResultArtifactStore,
 	type McpToolResultArtifactWriteRequest,
 	type McpToolResultOffloadDetails,
+	type McpToolResultPolicy,
 } from "../src/tools/index.js";
 
 describe("MCP Runtime Tool result policy", () => {
@@ -118,6 +120,39 @@ describe("MCP Runtime Tool result policy", () => {
 		await expect(tool.execute(EXECUTION_REQUEST)).resolves.toEqual({
 			content: [{ type: "text", text: "Error calling MCP tool 'lookup': remote failed" }],
 			details: { content: [{ type: "text", text: "remote failed" }], isError: true },
+		});
+	});
+
+	it("uses an explicit preserve policy for the compatible direct execution entry", async () => {
+		const result: McpToolCallResult = { content: [{ type: "text", text: "direct result" }] };
+
+		await expect(executeMcpToolCall(createClient(result), TOOL, {})).resolves.toEqual({
+			content: result.content,
+			details: result,
+		});
+	});
+
+	it("always invokes the Runtime Tool policy with complete execution identity", async () => {
+		const resultPolicy: McpToolResultPolicy = {
+			project: async (_result, context) => ({
+				content: [{ type: "text", text: JSON.stringify(context) }],
+			}),
+		};
+		const tool = createMcpRuntimeTool(TOOL, createClient({ content: [] }), "search", { resultPolicy });
+
+		await expect(tool.execute(EXECUTION_REQUEST)).resolves.toEqual({
+			content: [
+				{
+					type: "text",
+					text: JSON.stringify({
+						sessionId: "session",
+						turnId: "turn",
+						toolCallId: "call",
+						serverName: "search",
+						toolName: "lookup",
+					}),
+				},
+			],
 		});
 	});
 });

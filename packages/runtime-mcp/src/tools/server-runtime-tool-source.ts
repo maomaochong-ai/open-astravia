@@ -2,7 +2,7 @@ import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolBinding, McpRuntimeToolSource, McpRuntimeToolView } from "../runtime-tool-synchronizer.js";
 import type { McpServerBinding } from "../server/index.js";
 import { createMcpRuntimeTool } from "./mcp-runtime-tool.js";
-import type { McpToolResultPolicy } from "./mcp-tool-result-policy.js";
+import { type McpToolResultPolicy, PRESERVE_MCP_TOOL_RESULT_POLICY } from "./mcp-tool-result-policy.js";
 
 export interface McpServerRuntimePort {
 	reloadIfChanged(): Promise<boolean>;
@@ -33,13 +33,14 @@ export class McpServerRuntimeToolSource implements McpRuntimeToolSource {
 
 	async refresh(): Promise<McpRuntimeToolView> {
 		await this.servers.reloadIfChanged();
+		const resultPolicy = this.options.resultPolicy ?? PRESERVE_MCP_TOOL_RESULT_POLICY;
 		const tools: McpRuntimeToolBinding[] = [];
 		for (const binding of this.servers.getReadyServerBindings()) {
 			const client = binding.client;
 			if (!client) continue;
 			for (const mcpTool of binding.view.tools) {
 				const baseTool = createMcpRuntimeTool(mcpTool, client, binding.view.name, {
-					resultPolicy: this.options.resultPolicy,
+					resultPolicy,
 				});
 				const tool = this.options.decorateTool
 					? this.options.decorateTool(baseTool, {

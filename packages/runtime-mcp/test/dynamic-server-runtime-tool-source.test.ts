@@ -62,6 +62,18 @@ describe("McpDynamicServerRuntimeToolSource", () => {
 			label: "unused",
 			description: "Search docs",
 		});
+		await expect(
+			view.tools[0]?.tool.execute({
+				sessionId: "session",
+				turnId: "turn",
+				toolCallId: "call",
+				input: {},
+				signal: new AbortController().signal,
+			}),
+		).resolves.toEqual({
+			content: [{ type: "text", text: "ok" }],
+			details: { content: [{ type: "text", text: "ok" }] },
+		});
 	});
 });
 
