@@ -19,6 +19,7 @@ const steps = [
 	["scripts/quality/check-runtime-coding-agent-independence.mjs"],
 	["scripts/quality/check-runtime-subagents-boundary.mjs"],
 	["scripts/quality/check-runtime-failure-contract.mjs"],
+	["scripts/quality/check-agent-ai-maintainability.mjs"],
 	["scripts/quality/check-coding-agent-implementation-log.mjs"],
 	["scripts/quality/check-standalone-cli-build.mjs"],
 	["scripts/quality/check-skill-frontmatter.mjs"],

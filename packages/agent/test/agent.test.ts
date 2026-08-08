@@ -1,5 +1,5 @@
 import { Type } from "@sinclair/typebox";
-import { type AssistantMessage, type AssistantMessageEvent, EventStream, getModel, type Model } from "@vetta/ai";
+import { type AssistantMessage, type AssistantMessageEvent, EventStream, type Model } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
 import { Agent } from "../src/index.js";
 import type { AgentTool } from "../src/types.js";
@@ -69,7 +69,7 @@ describe("Agent", () => {
 
 		expect(agent.state).toBeDefined();
 		expect(agent.state.systemPrompt).toBe("");
-		expect(agent.state.model).toBeDefined();
+		expect(agent.state.model).toBeUndefined();
 		expect(agent.state.thinkingLevel).toBe("off");
 		expect(agent.state.tools).toEqual([]);
 		expect(agent.state.messages).toEqual([]);
@@ -80,7 +80,7 @@ describe("Agent", () => {
 	});
 
 	it("should create an agent instance with custom initial state", () => {
-		const customModel = getModel("openai", "gpt-4o-mini");
+		const customModel = createMockModel();
 		const agent = new Agent({
 			initialState: {
 				systemPrompt: "You are a helpful assistant.",
@@ -124,7 +124,7 @@ describe("Agent", () => {
 		expect(agent.state.systemPrompt).toBe("Custom prompt");
 
 		// Test setModel
-		const newModel = getModel("google", "gemini-2.5-flash");
+		const newModel = createMockModel();
 		agent.setModel(newModel);
 		expect(agent.state.model).toBe(newModel);
 
@@ -184,6 +184,7 @@ describe("Agent", () => {
 	it("should throw when prompt() called while streaming", async () => {
 		let abortSignal: AbortSignal | undefined;
 		const agent = new Agent({
+			initialState: { model: createMockModel() },
 			// Use a stream function that responds to abort
 			streamFn: (_model, _context, options) => {
 				abortSignal = options?.signal;
@@ -224,6 +225,7 @@ describe("Agent", () => {
 	it("should throw when continue() called while streaming", async () => {
 		let abortSignal: AbortSignal | undefined;
 		const agent = new Agent({
+			initialState: { model: createMockModel() },
 			streamFn: (_model, _context, options) => {
 				abortSignal = options?.signal;
 				const stream = new MockAssistantStream();
@@ -259,6 +261,7 @@ describe("Agent", () => {
 
 	it("continue() should process queued follow-up messages after an assistant turn", async () => {
 		const agent = new Agent({
+			initialState: { model: createMockModel() },
 			streamFn: () => {
 				const stream = new MockAssistantStream();
 				queueMicrotask(() => {
@@ -342,6 +345,7 @@ describe("Agent", () => {
 	it("continue() should keep one-at-a-time steering semantics from assistant tail", async () => {
 		let responseCount = 0;
 		const agent = new Agent({
+			initialState: { model: createMockModel() },
 			streamFn: () => {
 				const stream = new MockAssistantStream();
 				responseCount++;
@@ -386,6 +390,7 @@ describe("Agent", () => {
 	it("forwards sessionId to streamFn options", async () => {
 		let receivedSessionId: string | undefined;
 		const agent = new Agent({
+			initialState: { model: createMockModel() },
 			sessionId: "session-abc",
 			streamFn: (_model, _context, options) => {
 				receivedSessionId = options?.sessionId;
