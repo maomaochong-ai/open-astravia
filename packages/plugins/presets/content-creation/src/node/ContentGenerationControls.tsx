@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
+import { useState } from "react";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData, ContentNodeKind } from "../project/types";
 
@@ -30,8 +31,11 @@ export function ContentGenerationControls({
 	onSubmit,
 }: ContentGenerationControlsProps) {
 	const { t } = useTranslation();
+	const [openSelect, setOpenSelect] = useState<"model" | "aspect-ratio" | "quality" | null>(null);
 	const modelValue = selectedModel ? `${selectedModel.providerId}\u0000${selectedModel.modelId}` : undefined;
 	const aspectRatios = selectedModel?.aspectRatios ?? [];
+	const aspectRatio = draft.aspectRatio ?? aspectRatios[0];
+	const quality = draft.quality ?? "standard";
 
 	return (
 		<div className="flex min-w-0 flex-wrap items-center gap-1.5 border-t border-border/45 pt-2.5">
@@ -40,6 +44,8 @@ export function ContentGenerationControls({
 				<span>{t(`node.kind.${kind}`)}</span>
 			</div>
 			<Select
+				open={openSelect === "model"}
+				onOpenChange={(open) => setOpenSelect(open ? "model" : null)}
 				value={modelValue}
 				onValueChange={(value) => {
 					const model = models.find((candidate) => `${candidate.providerId}\u0000${candidate.modelId}` === value);
@@ -47,42 +53,65 @@ export function ContentGenerationControls({
 				}}
 			>
 				<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-					<SelectValue className={AUTO_VALUE_CLASS} placeholder={t("nodeEditor.modelUnavailable")} />
+					<SelectValue className={AUTO_VALUE_CLASS} placeholder={t("nodeEditor.modelUnavailable")}>
+						{selectedModel ? `${t(`provider.${selectedModel.providerId}`)} · ${selectedModel.displayName}` : undefined}
+					</SelectValue>
 				</SelectTrigger>
-				<SelectContent className="z-[100]">
-					{models.map((model) => (
-						<SelectItem key={`${model.providerId}:${model.modelId}`} value={`${model.providerId}\u0000${model.modelId}`}>
-							{t(`provider.${model.providerId}`)} · {model.displayName}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
-			{aspectRatios.length > 0 ? (
-				<Select value={draft.aspectRatio ?? aspectRatios[0]} onValueChange={(aspectRatio) => onChange({ ...draft, aspectRatio })}>
-					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS} />
-					</SelectTrigger>
+				{openSelect === "model" ? (
 					<SelectContent className="z-[100]">
-						{aspectRatios.map((aspectRatio) => (
-							<SelectItem key={aspectRatio} value={aspectRatio}>
-								{t(`option.aspectRatio.${aspectRatio}`)}
+						{models.map((model) => (
+							<SelectItem
+								key={`${model.providerId}:${model.modelId}`}
+								value={`${model.providerId}\u0000${model.modelId}`}
+							>
+								{t(`provider.${model.providerId}`)} · {model.displayName}
 							</SelectItem>
 						))}
 					</SelectContent>
+				) : null}
+			</Select>
+			{aspectRatios.length > 0 ? (
+				<Select
+					open={openSelect === "aspect-ratio"}
+					onOpenChange={(open) => setOpenSelect(open ? "aspect-ratio" : null)}
+					value={aspectRatio}
+					onValueChange={(nextAspectRatio) => onChange({ ...draft, aspectRatio: nextAspectRatio })}
+				>
+					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
+						<SelectValue className={AUTO_VALUE_CLASS}>
+							{t(`option.aspectRatio.${aspectRatio}`)}
+						</SelectValue>
+					</SelectTrigger>
+					{openSelect === "aspect-ratio" ? (
+						<SelectContent className="z-[100]">
+							{aspectRatios.map((option) => (
+								<SelectItem key={option} value={option}>
+									{t(`option.aspectRatio.${option}`)}
+								</SelectItem>
+							))}
+						</SelectContent>
+					) : null}
 				</Select>
 			) : null}
 			{kind === "image-generator" ? (
-				<Select value={draft.quality ?? "standard"} onValueChange={(quality) => onChange({ ...draft, quality })}>
+				<Select
+					open={openSelect === "quality"}
+					onOpenChange={(open) => setOpenSelect(open ? "quality" : null)}
+					value={quality}
+					onValueChange={(nextQuality) => onChange({ ...draft, quality: nextQuality })}
+				>
 					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS} />
+						<SelectValue className={AUTO_VALUE_CLASS}>{t(`option.quality.${quality}`)}</SelectValue>
 					</SelectTrigger>
-					<SelectContent className="z-[100]">
-						{["standard", "hd", "ultra"].map((quality) => (
-							<SelectItem key={quality} value={quality}>
-								{t(`option.quality.${quality}`)}
-							</SelectItem>
-						))}
-					</SelectContent>
+					{openSelect === "quality" ? (
+						<SelectContent className="z-[100]">
+							{["standard", "hd", "ultra"].map((option) => (
+								<SelectItem key={option} value={option}>
+									{t(`option.quality.${option}`)}
+								</SelectItem>
+							))}
+						</SelectContent>
+					) : null}
 				</Select>
 			) : (
 				<VideoControls draft={draft} model={selectedModel} onChange={onChange} />
@@ -113,42 +142,57 @@ function VideoControls({
 	onChange: (data: ContentNodeData) => void;
 }) {
 	const { t } = useTranslation();
+	const [openSelect, setOpenSelect] = useState<"duration" | "resolution" | null>(null);
 	const durations = model?.durations ?? [];
 	const resolutions = model?.resolutions ?? [];
+	const duration = String(draft.duration ?? durations[0]);
+	const resolution = draft.resolution ?? resolutions[0];
 	return (
 		<>
 			{durations.length > 0 ? (
 				<Select
-					value={String(draft.duration ?? durations[0])}
-					onValueChange={(duration) => onChange({ ...draft, duration: Number(duration) })}
+					open={openSelect === "duration"}
+					onOpenChange={(open) => setOpenSelect(open ? "duration" : null)}
+					value={duration}
+					onValueChange={(nextDuration) => onChange({ ...draft, duration: Number(nextDuration) })}
 				>
 					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS} />
+						<SelectValue className={AUTO_VALUE_CLASS}>
+							{t("option.duration.seconds", { duration: Number(duration) })}
+						</SelectValue>
 					</SelectTrigger>
-					<SelectContent className="z-[100]">
-						{durations.map((duration) => (
-							<SelectItem key={duration} value={String(duration)}>
-								{t("option.duration.seconds", { duration })}
-							</SelectItem>
-						))}
-					</SelectContent>
+					{openSelect === "duration" ? (
+						<SelectContent className="z-[100]">
+							{durations.map((option) => (
+								<SelectItem key={option} value={String(option)}>
+									{t("option.duration.seconds", { duration: option })}
+								</SelectItem>
+							))}
+						</SelectContent>
+					) : null}
 				</Select>
 			) : null}
 			{resolutions.length > 0 ? (
 				<Select
-					value={draft.resolution ?? resolutions[0]}
-					onValueChange={(resolution) => onChange({ ...draft, resolution })}
+					open={openSelect === "resolution"}
+					onOpenChange={(open) => setOpenSelect(open ? "resolution" : null)}
+					value={resolution}
+					onValueChange={(nextResolution) => onChange({ ...draft, resolution: nextResolution })}
 				>
 					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS} />
+						<SelectValue className={AUTO_VALUE_CLASS}>
+							{t(`option.resolution.${resolution}`)}
+						</SelectValue>
 					</SelectTrigger>
-					<SelectContent className="z-[100]">
-						{resolutions.map((resolution) => (
-							<SelectItem key={resolution} value={resolution}>
-								{t(`option.resolution.${resolution}`)}
-							</SelectItem>
-						))}
-					</SelectContent>
+					{openSelect === "resolution" ? (
+						<SelectContent className="z-[100]">
+							{resolutions.map((option) => (
+								<SelectItem key={option} value={option}>
+									{t(`option.resolution.${option}`)}
+								</SelectItem>
+							))}
+						</SelectContent>
+					) : null}
 				</Select>
 			) : null}
 		</>

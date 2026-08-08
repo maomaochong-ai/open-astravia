@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Kept node editors hidden during dragging and delayed a newly selected node's editor until drag end, while preserving already mounted editor state.
+- Deferred generation-control option trees until their dropdown opens, avoiding a large first-frame mount when dragging an unselected generator node.
+- Prevented React Flow position updates from rerendering the selected node's full generation editor during canvas dragging.
 - Restored asset and generated-image previews after switching away from and back to the content-creation activity tab.
 - Scoped generation failures to their originating node job instead of repeating them in the node editor, panel banner, and host notification.
 - Kept node-bound editors mounted outside the card viewport and constrained long prompt inputs to internal scrolling.

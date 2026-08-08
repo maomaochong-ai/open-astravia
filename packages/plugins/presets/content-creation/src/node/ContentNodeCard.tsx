@@ -60,8 +60,20 @@ export type ContentFlowNode = Node<ContentFlowNodeData, "contentNode">;
 
 /** Match bottom composer gap (`mt-2` = 8px) so top actions sit equally close to the card. */
 const QUICK_TOOLBAR_OFFSET = 8;
+const StableContentNodeEditor = memo(ContentNodeEditor);
 
-export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }: NodeProps<ContentFlowNode>) {
+function areContentNodeCardPropsEqual(
+	previous: NodeProps<ContentFlowNode>,
+	next: NodeProps<ContentFlowNode>,
+) {
+	return (
+		previous.data === next.data &&
+		previous.selected === next.selected &&
+		previous.dragging === next.dragging
+	);
+}
+
+export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, selected }: NodeProps<ContentFlowNode>) {
 	const { t } = useTranslation();
 	const selectionCount = useContentCanvasSelectionCount();
 	const hoverLeaveTimerRef = useRef<number | null>(null);
@@ -70,13 +82,14 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 	const [dropActive, setDropActive] = useState(false);
 	const [importingDrop, setImportingDrop] = useState(false);
 	const [focusPromptRequest, setFocusPromptRequest] = useState(0);
+	const [editorMounted, setEditorMounted] = useState(false);
 	const definition = getContentNodeDefinition(data.kind);
 	const fileDropBehavior = getContentNodeFileDropBehavior(data.kind);
 	const title = data.name || t(`node.kind.${data.kind}`);
 	const singleSelection = selected && selectionCount === 1;
 	const showQuickToolbar = singleSelection || (hovered && selectionCount === 0);
 	const isResizable = !data.locked && (definition.category === "generation" || definition.category === "resource");
-	const showEditor = singleSelection && definition.properties.length > 0;
+	const showEditor = singleSelection && editorMounted && definition.properties.length > 0;
 	const inputLabel = definition.inputs.map((port) => t(port.labelKey)).join(", ");
 	const outputLabel = definition.outputs.map((port) => t(port.labelKey)).join(", ");
 	const surfaceData =
@@ -90,6 +103,13 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 		},
 		[],
 	);
+	useEffect(() => {
+		if (!singleSelection) {
+			setEditorMounted(false);
+			return;
+		}
+		if (!dragging) setEditorMounted(true);
+	}, [dragging, singleSelection]);
 
 	const keepQuickToolbar = () => {
 		if (hoverLeaveTimerRef.current !== null) window.clearTimeout(hoverLeaveTimerRef.current);
@@ -253,8 +273,11 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 				selected={selected}
 			/>
 			<NodeToolbar isVisible={showEditor} position={Position.Bottom} offset={QUICK_TOOLBAR_OFFSET}>
-				<div className="max-w-[calc(100vw-32px)]">
-					<ContentNodeEditor
+				<div
+					className={`max-w-[calc(100vw-32px)] ${dragging ? "invisible pointer-events-none" : ""}`}
+					aria-hidden={dragging || undefined}
+				>
+					<StableContentNodeEditor
 						kind={data.kind}
 						name={data.name}
 						status={data.status}
@@ -278,4 +301,4 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, selected }:
 			</NodeToolbar>
 		</div>
 	);
-});
+}, areContentNodeCardPropsEqual);
