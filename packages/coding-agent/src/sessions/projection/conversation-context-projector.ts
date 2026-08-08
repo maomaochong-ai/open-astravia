@@ -34,7 +34,11 @@ export class CodingAgentConversationContextProjector implements ConversationCont
 				continue;
 			}
 			if (isRuntimeMessage(message)) {
-				envelopes.push({ kind: "message", message });
+				envelopes.push({
+					kind: "message",
+					message,
+					...(source?.type === "message" && source.origin ? { origin: source.origin } : {}),
+				});
 				continue;
 			}
 			envelopes.push({

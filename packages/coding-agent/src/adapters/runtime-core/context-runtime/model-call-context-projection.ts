@@ -18,6 +18,12 @@ export async function projectModelCallContext(
 ): Promise<ProjectedModelCallContext> {
 	signal.throwIfAborted();
 	const envelopes = input.messageEnvelopes ?? input.messages.map(toMessageEnvelope);
+	const continuationMessages = new WeakSet<object>();
+	for (const envelope of envelopes) {
+		if (envelope.kind === "message" && envelope.origin?.kind === "continuation") {
+			continuationMessages.add(envelope.message);
+		}
+	}
 	const agentMessages = envelopes.flatMap(toAgentMessages);
 	const invisibleIdentities = readInvisibleIdentityCounts(envelopes);
 	const extensionMessages = transformAgentContext ? await transformAgentContext(agentMessages, signal) : agentMessages;
@@ -31,6 +37,7 @@ export async function projectModelCallContext(
 		reduceContextByPressure(visibleMessages, {
 			contextWindow: input.modelBinding.model.contextWindow,
 			estimatedTokens: estimateContextTokens(visibleMessages).tokens,
+			isRealUserTurn: (message) => message.role === "user" && !continuationMessages.has(message),
 		}),
 	);
 	return { messages, estimatedTokens: estimateContextTokens(messages).tokens };

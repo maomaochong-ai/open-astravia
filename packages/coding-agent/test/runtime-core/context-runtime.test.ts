@@ -276,6 +276,68 @@ describe("CodingAgentContextRuntime", () => {
 		expect(observations).toEqual([{ type: "compaction.start", reason: "overflow", source: "agent" }]);
 	});
 
+	it("retries an image-rejected request once without images before falling back to overflow compaction", async () => {
+		const rejected = {
+			...assistantMessage("rejected", 0, 4),
+			stopReason: "error" as const,
+			errorMessage: "413 status code (no body)",
+		};
+		const messages = [
+			userMessage("old request".repeat(40), 1),
+			assistantMessage("old response", 90, 2),
+			userImageMessage("image-data", 3),
+			rejected,
+		] satisfies Message[];
+		const generateCompaction = vi.fn(
+			async (preparation: CompactionPreparation): Promise<CompactionResult> => ({
+				summary: "image overflow summary",
+				firstKeptEntryId: preparation.firstKeptEntryId,
+				tokensBefore: preparation.tokensBefore,
+			}),
+		);
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: compactingSettings,
+			generateCompaction,
+		});
+		const observations: RuntimeSessionObservationEvent[] = [];
+
+		const imageRetry = await runtime.prepare(
+			{
+				...preparationInput(documentFromMessages(messages), messages, messages, observations),
+				reason: "assistant_error",
+				triggeringAssistantMessage: rejected,
+				recoveryAttempt: 0,
+			},
+			new AbortController().signal,
+		);
+		const repeated = { ...rejected, timestamp: 5 };
+		const repeatedMessages = [...imageRetry.messages, repeated];
+		const compacted = await runtime.prepare(
+			{
+				...preparationInput(
+					documentFromMessages(repeatedMessages),
+					repeatedMessages,
+					repeatedMessages,
+					observations,
+				),
+				reason: "assistant_error",
+				triggeringAssistantMessage: repeated,
+				recoveryAttempt: 1,
+			},
+			new AbortController().signal,
+		);
+
+		expect(imageRetry.retry).toBe(true);
+		expect(imageRetry.compaction).toBeUndefined();
+		expect(imageRetry.messages).not.toContain(rejected);
+		expect(messageText(imageRetry.messages.at(-1))).toContain("image omitted after the model rejected");
+		expect(messageText(messages[2])).toBe("");
+		expect(compacted.compaction?.reason).toBe("overflow");
+		expect(generateCompaction).toHaveBeenCalledOnce();
+	});
+
 	it("treats a successful response whose input usage exceeds the context window as overflow", async () => {
 		const silentOverflow = assistantMessage("truncated response", 101, 4);
 		const messages = [
@@ -593,6 +655,10 @@ function compactingSettings(): CompactionSettings {
 
 function userMessage(text: string, timestamp: number): UserMessage {
 	return { role: "user", content: text, timestamp };
+}
+
+function userImageMessage(data: string, timestamp: number): UserMessage {
+	return { role: "user", content: [{ type: "image", data, mimeType: "image/png" }], timestamp };
 }
 
 function assistantMessage(text: string, totalTokens: number, timestamp: number): AssistantMessage {

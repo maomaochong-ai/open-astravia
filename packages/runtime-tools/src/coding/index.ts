@@ -411,9 +411,12 @@ export {
 export {
 	createReadTool,
 	createReadToolRegistration,
+	formatDimensionNote,
+	formatImageResizeFailureNote,
 	type ImageResizeFailure,
 	type ImageResizeOptions,
 	type ImageResizeResult,
+	isImageResizeFailure,
 	READ_TOOL_CATEGORY,
 	READ_TOOL_DESCRIPTION,
 	READ_TOOL_SCOPES,
@@ -424,6 +427,7 @@ export {
 	ReadToolInputSchema,
 	type ReadToolOptions,
 	type ResizedImage,
+	resizeImageBuffer,
 } from "./tools/read/index.js";
 export {
 	createRenderPdfPageTool,

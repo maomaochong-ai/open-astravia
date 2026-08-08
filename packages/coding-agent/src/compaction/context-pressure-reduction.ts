@@ -2,11 +2,12 @@ import { Buffer } from "node:buffer";
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ToolResultMessage } from "@vetta/ai";
 import type { BashExecutionMessage } from "../model-context/index.js";
-import { findRecentUserTurnBoundary } from "./user-turn-boundary.js";
+import { findRecentMatchingUserTurnBoundary } from "./user-turn-boundary.js";
 
 export const DEFAULT_CONTEXT_REDUCTION_SOFT_PRESSURE = 0.5;
 export const DEFAULT_CONTEXT_REDUCTION_HARD_PRESSURE = 0.75;
 export const DEFAULT_PROTECTED_USER_TURNS = 3;
+export const DEFAULT_HARD_CLEAR_USER_TURN_AGE = 10;
 export const DEFAULT_SOFT_TOOL_RESULT_BYTES = 8 * 1024;
 
 const CLEARED_MESSAGE = "[tool result cleared — context pressure]";
@@ -17,7 +18,9 @@ export interface ContextPressureReductionOptions {
 	readonly softPressure?: number;
 	readonly hardPressure?: number;
 	readonly protectedUserTurns?: number;
+	readonly hardClearUserTurnAge?: number;
 	readonly softToolResultBytes?: number;
+	readonly isRealUserTurn?: (message: AgentMessage, index: number) => boolean;
 }
 
 /** Transient ToolResult projection. It never mutates the persisted message objects. */
@@ -31,23 +34,28 @@ export function reduceContextByPressure(
 	if (pressure < softPressure) return [...messages];
 
 	const protectedUserTurns = nonNegativeInteger(options.protectedUserTurns, DEFAULT_PROTECTED_USER_TURNS);
-	const protectedFromIndex = findRecentUserTurnBoundary(messages, protectedUserTurns);
+	const isRealUserTurn = options.isRealUserTurn ?? ((message: AgentMessage) => message.role === "user");
+	const protectedFromIndex = findRecentMatchingUserTurnBoundary(messages, protectedUserTurns, isRealUserTurn);
+	const hardClearUserTurnAge = positiveInteger(options.hardClearUserTurnAge, DEFAULT_HARD_CLEAR_USER_TURN_AGE);
+	const hardClearFromIndex = findRecentMatchingUserTurnBoundary(messages, hardClearUserTurnAge, isRealUserTurn);
 	const softToolResultBytes = positiveInteger(options.softToolResultBytes, DEFAULT_SOFT_TOOL_RESULT_BYTES);
 	const hard = pressure >= Math.max(softPressure, hardPressure);
 	let changed = false;
 	const result = messages.map((message, index) => {
 		if (index >= protectedFromIndex) return message;
 		if (message.role === "toolResult") {
-			const projected = hard
-				? clearToolResult(message as ToolResultMessage)
-				: truncateToolResult(message as ToolResultMessage, softToolResultBytes);
+			const projected =
+				hard && index < hardClearFromIndex
+					? clearToolResult(message as ToolResultMessage)
+					: truncateToolResult(message as ToolResultMessage, softToolResultBytes);
 			changed ||= projected !== message;
 			return projected;
 		}
 		if (message.role === "bashExecution") {
-			const projected = hard
-				? clearBashResult(message as BashExecutionMessage)
-				: truncateBashResult(message as BashExecutionMessage, softToolResultBytes);
+			const projected =
+				hard && index < hardClearFromIndex
+					? clearBashResult(message as BashExecutionMessage)
+					: truncateBashResult(message as BashExecutionMessage, softToolResultBytes);
 			changed ||= projected !== message;
 			return projected;
 		}

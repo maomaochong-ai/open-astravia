@@ -649,6 +649,55 @@ describe("greenfield runtime kernel", () => {
 		]);
 	});
 
+	it("returns a transient assistant-error retry without requiring a compaction record", async () => {
+		const retryMessages = [userMessage("retry without images")];
+		let checkpointResult: Parameters<
+			Extract<TurnEngineEvent, { type: "context_checkpoint" }>["request"]["complete"]
+		>[0];
+		const contextStrategy: ContextStrategy = {
+			async prepare(input) {
+				if (input.reason !== "assistant_error") {
+					return { messages: input.messages, estimatedTokens: input.messages.length };
+				}
+				return { messages: retryMessages, estimatedTokens: 1, retry: true };
+			},
+		};
+		const rejected = { ...assistantMessage("rejected"), stopReason: "error" as const };
+		const engine: TurnEnginePort = {
+			async *execute() {
+				yield {
+					type: "context_checkpoint",
+					request: {
+						reason: "assistant_error",
+						messages: [userMessage("current input"), rejected],
+						assistantMessage: rejected,
+						recoveryAttempt: 0,
+						complete(result) {
+							checkpointResult = result;
+						},
+						fail(error) {
+							throw error;
+						},
+					},
+				};
+				yield { type: "message", message: assistantMessage("done") };
+				yield { type: "completed", stopReason: "stop" };
+			},
+		};
+		const harness = await createHarness({ contextStrategy, turnEngine: engine });
+
+		await harness.session.send({ message: userMessage("current input") });
+
+		expect(checkpointResult).toEqual({
+			messages: retryMessages,
+			contextMessages: retryMessages,
+			retry: true,
+		});
+		expect((await harness.repository.load("session-1")).events.some(({ type }) => type === "context.compacted")).toBe(
+			false,
+		);
+	});
+
 	it("rejects an in-flight context checkpoint when the turn is cancelled", async () => {
 		let markCheckpoint: (() => void) | undefined;
 		const checkpointStarted = new Promise<void>((resolve) => {

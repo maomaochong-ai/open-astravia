@@ -23,18 +23,22 @@ describe("CodingAgentContinuationOrchestrator", () => {
 		});
 		const context = continuationContext("turn-1");
 
-		await expect(orchestrator.collect(context)).resolves.toEqual([userMessage("todo")]);
+		await expect(orchestrator.collect(context)).resolves.toEqual([{ message: userMessage("todo"), source: "todo" }]);
 		expect(todo.collect).toHaveBeenCalledOnce();
 		expect(plugin.collect).not.toHaveBeenCalled();
 		expect(stopHook.collect).not.toHaveBeenCalled();
 
 		todoMessages = [];
-		await expect(orchestrator.collect(context)).resolves.toEqual([userMessage("plugin")]);
+		await expect(orchestrator.collect(context)).resolves.toEqual([
+			{ message: userMessage("plugin"), source: "plugin" },
+		]);
 		expect(plugin.collect).toHaveBeenCalledOnce();
 		expect(stopHook.collect).not.toHaveBeenCalled();
 
 		pluginMessages = [];
-		await expect(orchestrator.collect(context)).resolves.toEqual([userMessage("stop")]);
+		await expect(orchestrator.collect(context)).resolves.toEqual([
+			{ message: userMessage("stop"), source: "stop-hook" },
+		]);
 		expect(stopHook.collect).toHaveBeenCalledOnce();
 	});
 

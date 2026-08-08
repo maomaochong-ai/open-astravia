@@ -1,6 +1,7 @@
 import type { ToolPhase } from "@vetta/agent-core";
 import type { UserMessage } from "@vetta/ai";
 import type { ContextCompactionRecord, StoredSessionEvent } from "../kernel/contracts.js";
+import type { RuntimeMessageOrigin } from "../runtime-execution-observation.js";
 
 export interface ConversationDocumentIdentity {
 	readonly sessionId: string;
@@ -20,6 +21,7 @@ export interface ConversationDocumentMessageEntry extends ConversationDocumentEn
 	readonly type: "message";
 	/** Legacy sessions may contain extension-specific AgentMessage variants. */
 	readonly message: unknown;
+	readonly origin?: RuntimeMessageOrigin;
 }
 
 export interface ConversationDocumentCompactionEntry extends ConversationDocumentEntryBase {
@@ -263,6 +265,7 @@ export function applyStoredEventToConversationDocument(
 						type: "message",
 						...entryReference,
 						message: event.message,
+						...(event.origin ? { origin: event.origin } : {}),
 					}
 				: {
 						type: "custom_message",

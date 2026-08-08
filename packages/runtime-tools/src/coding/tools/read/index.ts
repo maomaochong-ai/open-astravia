@@ -6,6 +6,12 @@ export type {
 	ResizedImage,
 } from "./image-resize.js";
 export {
+	formatDimensionNote,
+	formatImageResizeFailureNote,
+	isImageResizeFailure,
+	resizeImageBuffer,
+} from "./image-resize.js";
+export {
 	createReadTool,
 	type ReadImageProcessor,
 	type ReadOperations,

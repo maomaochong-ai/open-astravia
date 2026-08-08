@@ -165,12 +165,21 @@ const TurnContinuedEventSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
+const RuntimeMessageOriginSchema = Type.Object(
+	{
+		kind: Type.Literal("continuation"),
+		source: Type.String(),
+	},
+	{ additionalProperties: false },
+);
+
 const MessageAppendedEventSchema = Type.Object(
 	{
 		type: Type.Literal("message.appended"),
 		sessionId: Type.String(),
 		turnId: Type.String(),
 		message: ConversationMessageSchema,
+		origin: Type.Optional(RuntimeMessageOriginSchema),
 		timestamp: Type.Number(),
 	},
 	{ additionalProperties: false },
@@ -448,6 +457,7 @@ export const ConversationDocumentEntrySchema = Type.Union([
 			...ConversationDocumentEntryBaseSchema,
 			type: Type.Literal("message"),
 			message: ConversationMessageSchema,
+			origin: Type.Optional(RuntimeMessageOriginSchema),
 		},
 		{ additionalProperties: false },
 	),

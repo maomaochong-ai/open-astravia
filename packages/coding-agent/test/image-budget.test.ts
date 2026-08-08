@@ -1,7 +1,7 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { ImageContent, TextContent } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
-import { applyImageBudget } from "../src/model-context/image-budget.js";
+import { applyImageBudget, estimateModelMessageRequestBytes } from "../src/model-context/image-budget.js";
 
 const OMITTED = "[earlier image omitted to conserve memory]";
 
@@ -130,36 +130,59 @@ describe("applyImageBudget", () => {
 		expect(applyImageBudget(messages, 5)).toBe(messages);
 	});
 
-	it("drops oldest seen images to the low watermark only after crossing the high watermark", () => {
+	it("drops oldest seen images according to serialized request watermarks", () => {
 		const messages = [
-			toolResult(img("a".repeat(10))),
-			toolResult(img("b".repeat(10))),
-			toolResult(img("c".repeat(10))),
+			toolResult(img("a".repeat(100))),
+			toolResult(img("b".repeat(100))),
+			toolResult(img("c".repeat(100))),
 			assistant(),
 			toolResult(img("new".repeat(4))),
 		];
+		const afterTwoOmissions = [
+			toolResult(text(OMITTED)),
+			toolResult(text(OMITTED)),
+			toolResult(img("c".repeat(100))),
+			assistant(),
+			toolResult(img("new".repeat(4))),
+		];
+		const requestBytes = estimateModelMessageRequestBytes(messages);
 
 		const result = applyImageBudget(messages, {
 			maxRecentImages: 10,
-			highWatermarkBytes: 35,
-			lowWatermarkBytes: 25,
+			highWatermarkBytes: requestBytes - 1,
+			lowWatermarkBytes: estimateModelMessageRequestBytes(afterTwoOmissions),
 		});
 
-		expect(result.flatMap(imageDataIds)).toEqual(["c".repeat(10), "new".repeat(4)]);
+		expect(result.flatMap(imageDataIds)).toEqual(["c".repeat(100), "new".repeat(4)]);
 		expect(omittedCount(result)).toBe(2);
-		expect(imageDataIds(messages[0])).toEqual(["a".repeat(10)]);
+		expect(imageDataIds(messages[0])).toEqual(["a".repeat(100)]);
 	});
 
 	it("keeps unseen images even when they alone remain above the low watermark", () => {
-		const messages = [toolResult(img("old".repeat(5))), assistant(), toolResult(img("new".repeat(20)))];
+		const messages = [toolResult(img("old".repeat(50))), assistant(), toolResult(img("new".repeat(20)))];
+		const unseenOnly = [toolResult(text(OMITTED)), assistant(), toolResult(img("new".repeat(20)))];
+		const requestBytes = estimateModelMessageRequestBytes(messages);
 
 		const result = applyImageBudget(messages, {
 			maxRecentImages: 10,
-			highWatermarkBytes: 30,
-			lowWatermarkBytes: 10,
+			highWatermarkBytes: requestBytes - 1,
+			lowWatermarkBytes: estimateModelMessageRequestBytes(unseenOnly) - 1,
 		});
 
 		expect(result.flatMap(imageDataIds)).toEqual(["new".repeat(20)]);
+		expect(omittedCount(result)).toBe(1);
+	});
+
+	it("allows byte watermarks without enabling the legacy image count cap", () => {
+		const messages = [toolResult(img("old".repeat(10))), assistant()];
+		const requestBytes = estimateModelMessageRequestBytes(messages);
+
+		const result = applyImageBudget(messages, {
+			highWatermarkBytes: requestBytes - 1,
+			lowWatermarkBytes: 1,
+		});
+
+		expect(result.flatMap(imageDataIds)).toEqual([]);
 		expect(omittedCount(result)).toBe(1);
 	});
 });

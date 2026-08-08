@@ -10,7 +10,11 @@ import type {
 	UserMessage,
 } from "@vetta/ai";
 import type { ConversationDocument } from "../conversation/document.js";
-import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
+import type {
+	RuntimeExecutionObservationEvent,
+	RuntimeMessageEnvelope,
+	RuntimeMessageOrigin,
+} from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 
 export type AgentSessionState = "idle" | "running" | "cancelling" | "closing" | "closed";
@@ -168,6 +172,8 @@ export interface PreparedContext {
 	readonly messages: readonly Message[];
 	readonly estimatedTokens: number;
 	readonly compaction?: ContextCompactionRecord;
+	/** assistant_error 检查点可请求用当前瞬态消息视图重试。 */
+	readonly retry?: boolean;
 }
 
 /** 将持久化 Conversation 投影为产品无损的活动分支消息身份。 */
@@ -347,6 +353,11 @@ export interface ContinuationPolicyContext {
 	readonly modelBinding?: RuntimeTurnModelBinding;
 }
 
+export interface ContinuationMessage {
+	readonly message: UserMessage;
+	readonly source: string;
+}
+
 /**
  * Profile 独占的自然停止续跑策略。
  *
@@ -354,7 +365,7 @@ export interface ContinuationPolicyContext {
  * follow-up 队列的用户消息。
  */
 export interface ContinuationPolicy {
-	collect(context: ContinuationPolicyContext): Promise<readonly UserMessage[]>;
+	collect(context: ContinuationPolicyContext): Promise<readonly (UserMessage | ContinuationMessage)[]>;
 }
 
 export interface RuntimeSnapshot {
@@ -527,6 +538,7 @@ export interface MessageAppendedEvent {
 	readonly sessionId: string;
 	readonly turnId: string;
 	readonly message: Message;
+	readonly origin?: RuntimeMessageOrigin;
 	readonly timestamp: number;
 }
 
@@ -743,6 +755,7 @@ export type TurnEngineEvent =
 	| {
 			readonly type: "message";
 			readonly message: Message;
+			readonly origin?: RuntimeMessageOrigin;
 	  }
 	| {
 			readonly type: "context_checkpoint";

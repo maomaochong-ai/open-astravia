@@ -1,4 +1,8 @@
-export type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
+export type {
+	RuntimeExecutionObservationEvent,
+	RuntimeMessageEnvelope,
+	RuntimeMessageOrigin,
+} from "../runtime-execution-observation.js";
 export type {
 	RuntimeSessionLifecyclePhase,
 	RuntimeSessionObservationEvent,
@@ -38,6 +42,7 @@ export type {
 	ContextProviderInput,
 	ContextRecordedEvent,
 	ContextStrategy,
+	ContinuationMessage,
 	ContinuationPolicy,
 	ContinuationPolicyContext,
 	ContinueConversationInput,

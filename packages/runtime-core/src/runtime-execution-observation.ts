@@ -2,11 +2,18 @@ import type { ToolPhase } from "@vetta/agent-core";
 import type { AssistantMessageEvent, Message, ToolResultMessage } from "@vetta/ai";
 import type { RuntimeToolResult, SessionContextRecord } from "./kernel/contracts.js";
 
+/** 非外部用户输入的消息来源；缺省的 user 消息视为真实用户输入。 */
+export interface RuntimeMessageOrigin {
+	readonly kind: "continuation";
+	readonly source: string;
+}
+
 /** 保留产品上下文身份的执行期消息信封；不进入模型消息或 Conversation 投影。 */
 export type RuntimeMessageEnvelope =
 	| {
 			readonly kind: "message";
 			readonly message: Message;
+			readonly origin?: RuntimeMessageOrigin;
 	  }
 	| {
 			readonly kind: "context";

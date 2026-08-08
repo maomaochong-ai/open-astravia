@@ -513,6 +513,7 @@ export class TurnPipeline {
 						sessionId: state.sessionId,
 						turnId,
 						message: event.message,
+						...(event.origin ? { origin: event.origin } : {}),
 						timestamp: this.clock.now(),
 					};
 					await this.append(state, signal, [storedEvent]);
@@ -534,6 +535,7 @@ export class TurnPipeline {
 					sessionId: state.sessionId,
 					turnId,
 					message: event.message,
+					...(event.origin ? { origin: event.origin } : {}),
 					timestamp: this.clock.now(),
 				};
 				await this.append(state, signal, [storedEvent]);
@@ -634,8 +636,11 @@ export class TurnPipeline {
 		signal.throwIfAborted();
 
 		if (!prepared.compaction) {
-			if (request.reason === "assistant_error") return undefined;
-			return { messages: prepared.messages };
+			if (request.reason === "assistant_error" && prepared.retry !== true) return undefined;
+			return {
+				messages: prepared.messages,
+				...(prepared.retry === true ? { contextMessages: prepared.messages, retry: true } : {}),
+			};
 		}
 
 		const committedDocument = await this.commitCompaction(turnId, prepared.compaction, state, signal, snapshot);

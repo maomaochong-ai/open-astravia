@@ -12,6 +12,7 @@ import { type Api, type Message, type Model, type SimpleStreamOptions, Type } fr
 import type { RuntimeExecutionObservationEvent, RuntimeMessageEnvelope } from "../runtime-execution-observation.js";
 import type { RuntimeSessionObservationEvent } from "../session-observation.js";
 import type {
+	ContinuationMessage,
 	QueuedSessionInput,
 	RuntimeSnapshot,
 	RuntimeToolDefinition,
@@ -113,6 +114,7 @@ export class AgentCoreTurnEngine implements TurnEnginePort {
 			yield {
 				type: "message",
 				message: event.message,
+				...messageOrigin(event.message, contextMessageIdentities),
 			};
 		}
 
@@ -213,7 +215,7 @@ export class AgentCoreTurnEngine implements TurnEnginePort {
 				inputQueue || request.snapshot.continuationPolicy
 					? async (messages, signal) => {
 							const executionSignal = signal ?? request.signal;
-							const policyMessages =
+							const policyEntries =
 								(await request.snapshot.continuationPolicy?.collect({
 									sessionId: request.sessionId,
 									turnId: request.turnId,
@@ -221,6 +223,15 @@ export class AgentCoreTurnEngine implements TurnEnginePort {
 									messages: toRuntimeMessages(messages, contextMessageIdentities),
 									modelBinding: request.modelBinding,
 								})) ?? [];
+							const policyMessages = policyEntries.map((entry) => {
+								if (!isContinuationMessage(entry)) return entry;
+								contextMessageIdentities.set(entry.message, {
+									kind: "message",
+									message: entry.message,
+									origin: { kind: "continuation", source: entry.source },
+								});
+								return entry.message;
+							});
 							if (!inputQueue) return [...policyMessages];
 							inputQueue.enqueueFollowUps(policyMessages);
 							return inputQueue.takeFollowUpInputs
@@ -551,9 +562,23 @@ function hydrateAgentMessages(
 ): AgentMessage[] {
 	return envelopes.map((envelope) => {
 		const message = envelopeToAgentPlaceholder(envelope);
-		if (envelope.kind !== "message") contextMessageIdentities.set(message, envelope);
+		if (envelope.kind !== "message" || envelope.origin) contextMessageIdentities.set(message, envelope);
 		return message;
 	});
+}
+
+function messageOrigin(
+	message: Message,
+	contextMessageIdentities: WeakMap<object, RuntimeMessageEnvelope>,
+): Pick<Extract<TurnEngineEvent, { readonly type: "message" }>, "origin"> | Record<never, never> {
+	const envelope = contextMessageIdentities.get(message);
+	return envelope?.kind === "message" && envelope.origin ? { origin: envelope.origin } : {};
+}
+
+function isContinuationMessage(
+	value: ContinuationMessage["message"] | ContinuationMessage,
+): value is ContinuationMessage {
+	return "message" in value && "source" in value;
 }
 
 function envelopeToAgentPlaceholder(envelope: RuntimeMessageEnvelope): AgentMessage {

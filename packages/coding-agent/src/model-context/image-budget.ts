@@ -7,7 +7,7 @@ export const DEFAULT_IMAGE_REQUEST_HIGH_WATERMARK_BYTES = 16 * 1024 * 1024;
 export const DEFAULT_IMAGE_REQUEST_LOW_WATERMARK_BYTES = 12 * 1024 * 1024;
 
 export interface ImageBudgetOptions {
-	readonly maxRecentImages: number;
+	readonly maxRecentImages?: number;
 	readonly highWatermarkBytes?: number;
 	readonly lowWatermarkBytes?: number;
 }
@@ -26,8 +26,8 @@ function carriesImageContent(message: AgentMessage): message is MessageWithImage
 
 /** Keep recent seen images while always retaining images not yet observed by the model. */
 export function applyImageBudget(messages: AgentMessage[], options: number | ImageBudgetOptions): AgentMessage[] {
+	if (typeof options === "number" && (!Number.isFinite(options) || options <= 0)) return messages;
 	const budget = typeof options === "number" ? options : options.maxRecentImages;
-	if (!Number.isFinite(budget) || budget <= 0) return messages;
 
 	let lastAssistantIndex = -1;
 	for (let index = messages.length - 1; index >= 0; index--) {
@@ -37,7 +37,8 @@ export function applyImageBudget(messages: AgentMessage[], options: number | Ima
 		}
 	}
 
-	let remaining = budget;
+	let remaining =
+		typeof budget === "number" && Number.isFinite(budget) && budget > 0 ? budget : Number.POSITIVE_INFINITY;
 	let mutated = false;
 	const reversedResult: AgentMessage[] = [];
 
@@ -90,43 +91,54 @@ export function applyImageBudget(messages: AgentMessage[], options: number | Ima
 			? DEFAULT_IMAGE_REQUEST_LOW_WATERMARK_BYTES
 			: positiveInteger(options.lowWatermarkBytes, DEFAULT_IMAGE_REQUEST_LOW_WATERMARK_BYTES),
 	);
-	return applyImageByteWatermarks(countBudgeted, lastAssistantIndex, highWatermarkBytes, lowWatermarkBytes);
+	return applyImageRequestWatermarks(countBudgeted, lastAssistantIndex, highWatermarkBytes, lowWatermarkBytes);
 }
 
-function applyImageByteWatermarks(
+function applyImageRequestWatermarks(
 	messages: AgentMessage[],
 	lastAssistantIndex: number,
 	highWatermarkBytes: number,
 	lowWatermarkBytes: number,
 ): AgentMessage[] {
-	let totalBytes = 0;
-	const seenImages: Array<{ readonly messageIndex: number; readonly contentIndex: number; readonly bytes: number }> =
-		[];
+	let requestBytes = estimateModelMessageRequestBytes(messages);
+	if (requestBytes <= highWatermarkBytes) return messages;
+	const seenImages: Array<{ readonly messageIndex: number; readonly contentIndex: number }> = [];
 	for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
 		const message = messages[messageIndex];
 		if (!carriesImageContent(message)) continue;
 		for (let contentIndex = 0; contentIndex < message.content.length; contentIndex += 1) {
 			const item = message.content[contentIndex];
 			if (item?.type !== "image") continue;
-			const bytes = Buffer.byteLength(item.data, "utf8");
-			totalBytes += bytes;
-			if (messageIndex <= lastAssistantIndex) seenImages.push({ messageIndex, contentIndex, bytes });
+			if (messageIndex <= lastAssistantIndex) seenImages.push({ messageIndex, contentIndex });
 		}
 	}
-	if (totalBytes <= highWatermarkBytes || seenImages.length === 0) return messages;
+	if (seenImages.length === 0) return messages;
 
 	const omitted = new Map<number, Set<number>>();
 	for (const image of seenImages) {
-		if (totalBytes <= lowWatermarkBytes) break;
+		if (requestBytes <= lowWatermarkBytes) break;
 		let indices = omitted.get(image.messageIndex);
 		if (!indices) {
 			indices = new Set<number>();
 			omitted.set(image.messageIndex, indices);
 		}
 		indices.add(image.contentIndex);
-		totalBytes -= image.bytes;
+		const projectedBytes = estimateModelMessageRequestBytes(projectOmittedImages(messages, omitted));
+		if (projectedBytes >= requestBytes) {
+			indices.delete(image.contentIndex);
+			if (indices.size === 0) omitted.delete(image.messageIndex);
+			continue;
+		}
+		requestBytes = projectedBytes;
 	}
 	if (omitted.size === 0) return messages;
+	return projectOmittedImages(messages, omitted);
+}
+
+function projectOmittedImages(
+	messages: AgentMessage[],
+	omitted: ReadonlyMap<number, ReadonlySet<number>>,
+): AgentMessage[] {
 	return messages.map((message, messageIndex) => {
 		const indices = omitted.get(messageIndex);
 		if (!indices || !carriesImageContent(message)) return message;
@@ -137,6 +149,10 @@ function applyImageByteWatermarks(
 			),
 		};
 	});
+}
+
+export function estimateModelMessageRequestBytes(messages: readonly AgentMessage[]): number {
+	return Buffer.byteLength(JSON.stringify(messages), "utf8");
 }
 
 function positiveInteger(value: number | undefined, fallback: number): number {

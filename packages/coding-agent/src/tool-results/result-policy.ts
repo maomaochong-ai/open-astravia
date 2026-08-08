@@ -44,26 +44,33 @@ async function projectLargeResult(
 		.map((item) => item.text)
 		.join("\n\n");
 	const textBytes = Buffer.byteLength(text, "utf8");
-	if (textBytes <= maxInlineResultBytes) return result;
+	const inlinePayloadBytes = measureInlinePayload(result);
+	if (inlinePayloadBytes <= maxInlineResultBytes) return result;
+	let serializedResult: string;
+	try {
+		serializedResult = JSON.stringify({
+			content: result.content,
+			...(result.details === undefined ? {} : { details: result.details }),
+		});
+	} catch {
+		return result;
+	}
+	const resultBytes = Buffer.byteLength(serializedResult, "utf8");
 
-	const serializedContent = JSON.stringify({ content: result.content });
 	let artifact: CodingToolResultArtifact;
 	try {
 		artifact = await artifactStore.write({
 			...context,
 			mediaType: "application/json",
-			data: serializedContent,
-			byteLength: Buffer.byteLength(serializedContent, "utf8"),
+			data: serializedResult,
+			byteLength: resultBytes,
 		});
 	} catch {
 		return result;
 	}
 
-	const notice = `[Tool result truncated (${textBytes} text bytes). Full result: ${artifact.reference}]`;
-	const projectedText = `${sliceUtf8Start(text, Math.floor(maxInlineResultBytes * 0.6))}\n\n${notice}\n\n${sliceUtf8End(
-		text,
-		Math.floor(maxInlineResultBytes * 0.2),
-	)}`;
+	const notice = `[Tool result exceeds inline budget (${inlinePayloadBytes} bytes). Full result: ${artifact.reference}]`;
+	const projectedText = projectText(text, textBytes, maxInlineResultBytes, notice);
 	return {
 		content: [
 			{ type: "text", text: projectedText },
@@ -73,6 +80,27 @@ async function projectLargeResult(
 		],
 		details: result.details,
 	};
+}
+
+function measureInlinePayload(result: RuntimeToolResult): number {
+	const contentBytes = result.content.reduce(
+		(total, item) => total + Buffer.byteLength(item.type === "text" ? item.text : item.data, "utf8"),
+		0,
+	);
+	if (result.details === undefined) return contentBytes;
+	try {
+		return contentBytes + Buffer.byteLength(JSON.stringify(result.details), "utf8");
+	} catch {
+		return Number.POSITIVE_INFINITY;
+	}
+}
+
+function projectText(text: string, textBytes: number, maxBytes: number, notice: string): string {
+	if (textBytes <= maxBytes) return text.length > 0 ? `${text}\n\n${notice}` : notice;
+	return `${sliceUtf8Start(text, Math.floor(maxBytes * 0.6))}\n\n${notice}\n\n${sliceUtf8End(
+		text,
+		Math.floor(maxBytes * 0.2),
+	)}`;
 }
 
 function sliceUtf8Start(value: string, maxBytes: number): string {

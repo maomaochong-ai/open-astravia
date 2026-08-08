@@ -30,34 +30,57 @@ describe("context pressure reduction", () => {
 		expect(text(messages[1])).toBe("0123456789abcdefghijklmnopqrstuvwxyz-0");
 	});
 
-	it("clears old results at hard pressure while preserving the latest three user turns", () => {
-		const messages = conversation(5, "result");
+	it("shortens results aged three to nine turns at hard pressure", () => {
+		const messages = conversation(5, "0123456789abcdefghijklmnopqrstuvwxyz");
+
+		const projected = reduceContextByPressure(messages, {
+			contextWindow: 100,
+			estimatedTokens: 75,
+			softToolResultBytes: 20,
+		});
+
+		expect(text(projected[1])).toContain("shortened by context pressure");
+		expect(text(projected[3])).toContain("shortened by context pressure");
+		expect(projected[5]).toBe(messages[5]);
+		expect(projected[7]).toBe(messages[7]);
+		expect(projected[9]).toBe(messages[9]);
+	});
+
+	it("clears results only after ten real user turns at hard pressure", () => {
+		const messages = conversation(12, "result");
 
 		const projected = reduceContextByPressure(messages, { contextWindow: 100, estimatedTokens: 75 });
 
 		expect(text(projected[1])).toBe("[tool result cleared — context pressure]");
 		expect(text(projected[3])).toBe("[tool result cleared — context pressure]");
 		expect(text(projected[5])).toBe("result-2");
-		expect(text(projected[7])).toBe("result-3");
-		expect(text(projected[9])).toBe("result-4");
+		expect(projected[19]).toBe(messages[19]);
 	});
 
-	it("does not count custom or compaction summary messages as real user turns", () => {
+	it("does not count continuation or compaction messages as real user turns", () => {
+		const continuation = user("internal continuation", 6);
 		const messages: AgentMessage[] = [
 			user("old", 1),
-			tool("old-result", 2),
+			tool("0123456789abcdefghijklmnopqrstuvwxyz-old", 2),
 			{ role: "compactionSummary", summary: "summary", tokensBefore: 0, timestamp: 3 },
 			user("one", 4),
 			tool("one-result", 5),
-			user("two", 6),
+			continuation,
 			tool("two-result", 7),
-			user("three", 8),
-			tool("three-result", 9),
+			user("two", 8),
+			tool("two-result", 9),
+			user("three", 10),
+			tool("three-result", 11),
 		];
 
-		const projected = reduceContextByPressure(messages, { contextWindow: 100, estimatedTokens: 90 });
+		const projected = reduceContextByPressure(messages, {
+			contextWindow: 100,
+			estimatedTokens: 90,
+			softToolResultBytes: 20,
+			isRealUserTurn: (message) => message.role === "user" && message !== continuation,
+		});
 
-		expect(text(projected[1])).toBe("[tool result cleared — context pressure]");
+		expect(text(projected[1])).toContain("shortened by context pressure");
 		expect(text(projected[4])).toBe("one-result");
 	});
 });

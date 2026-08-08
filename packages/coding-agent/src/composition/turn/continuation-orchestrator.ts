@@ -1,5 +1,4 @@
-import type { UserMessage } from "@vetta/ai";
-import type { ContinuationPolicy, ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
+import type { ContinuationMessage, ContinuationPolicy, ContinuationPolicyContext } from "@vetta/runtime-core/kernel";
 import type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
 
 export type { CodingAgentContinuationSource } from "../../runtime-contracts/index.js";
@@ -19,12 +18,16 @@ export interface CodingAgentContinuationOrchestratorOptions {
 export class CodingAgentContinuationOrchestrator implements ContinuationPolicy {
 	constructor(private readonly options: CodingAgentContinuationOrchestratorOptions) {}
 
-	async collect(context: ContinuationPolicyContext): Promise<readonly UserMessage[]> {
+	async collect(context: ContinuationPolicyContext): Promise<readonly ContinuationMessage[]> {
 		if (context.signal.aborted) return [];
-		for (const source of [this.options.todo, this.options.plugin, this.options.stopHook]) {
+		for (const [sourceId, source] of [
+			["todo", this.options.todo],
+			["plugin", this.options.plugin],
+			["stop-hook", this.options.stopHook],
+		] as const) {
 			if (!source) continue;
 			const messages = await source.collect(context);
-			if (messages.length > 0) return messages;
+			if (messages.length > 0) return messages.map((message) => ({ message, source: sourceId }));
 			if (context.signal.aborted) return [];
 		}
 		return [];

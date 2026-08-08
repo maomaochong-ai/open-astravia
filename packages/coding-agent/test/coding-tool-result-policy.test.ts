@@ -1,3 +1,4 @@
+import { Buffer } from "node:buffer";
 import type { RuntimeToolResult } from "@vetta/runtime-core/kernel";
 import { describe, expect, it, vi } from "vitest";
 import type { CodingToolResultArtifactStore } from "../src/tool-results/contracts.js";
@@ -23,7 +24,7 @@ describe("coding agent coding tool result policy", () => {
 		expect(store.write).not.toHaveBeenCalled();
 	});
 
-	it("offloads full content while preserving details and images", async () => {
+	it("offloads the full result while preserving details and images", async () => {
 		const store = artifactStore();
 		const policy = createCodingAgentCodingToolResultPolicy({ artifactStore: store, maxInlineResultBytes: 20 });
 		const details = { exitCode: 0 };
@@ -43,7 +44,30 @@ describe("coding agent coding tool result policy", () => {
 		);
 		expect(projected.content[1]).toEqual({ type: "image", data: "image-data", mimeType: "image/png" });
 		const request = vi.mocked(store.write).mock.calls[0]?.[0];
-		expect(request ? JSON.parse(request.data) : undefined).toEqual({ content: result.content });
+		expect(request ? JSON.parse(request.data) : undefined).toEqual({ content: result.content, details });
+		expect(request?.byteLength).toBe(Buffer.byteLength(request?.data ?? "", "utf8"));
+	});
+
+	it("measures image and details payloads instead of text alone", async () => {
+		const store = artifactStore();
+		const policy = createCodingAgentCodingToolResultPolicy({ artifactStore: store, maxInlineResultBytes: 20 });
+		const result: RuntimeToolResult = {
+			content: [
+				{ type: "text", text: "ok" },
+				{ type: "image", data: "x".repeat(40), mimeType: "image/png" },
+			],
+			details: { diagnostic: "y".repeat(40) },
+		};
+
+		const projected = await policy.project(result, context);
+
+		expect(store.write).toHaveBeenCalledOnce();
+		expect(projected.content[0]).toMatchObject({ type: "text" });
+		expect(projected.content[0]?.type === "text" ? projected.content[0].text : "").toContain(
+			"Full result: artifact.json",
+		);
+		expect(projected.content[1]).toBe(result.content[1]);
+		expect(projected.details).toBe(result.details);
 	});
 
 	it("keeps the only result copy when artifact storage fails", async () => {

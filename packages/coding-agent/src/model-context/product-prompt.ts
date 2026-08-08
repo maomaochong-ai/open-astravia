@@ -1,6 +1,7 @@
 /** Coding Agent product prompt policy and model-call prompt assembly. */
 
 import type { ConversationScenario } from "@vetta/runtime-core";
+import { renderMcpToolsPromptSection } from "@vetta/runtime-mcp";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
 import {
 	applySystemPromptOperations,
@@ -158,40 +159,8 @@ export interface BuildSystemPromptOptions {
 	mcpDeferred?: boolean;
 }
 
-/**
- * MCP 工具的完整 description 已随请求的 tools 数组下发，这里的清单只是索引；
- * 只取首行摘要，避免长描述（如 Notion 单工具数千字符）在系统提示词里重复计费。
- */
-function firstLine(text: string): string {
-	const line = text.split("\n", 1)[0]?.trim() ?? "";
-	return line.length > 200 ? `${line.slice(0, 200)}…` : line;
-}
-
 export function renderMcpToolsSection(mcpTools: McpToolInfo[], markdownTools: boolean, mcpDeferred = false): string {
-	if (mcpTools.length === 0) {
-		return "";
-	}
-	const toolsList = mcpTools
-		.map((tool) =>
-			markdownTools
-				? `- **${tool.name}**: ${firstLine(tool.description)}`
-				: `- ${tool.name}: ${firstLine(tool.description)}`,
-		)
-		.join("\n");
-
-	const header = markdownTools
-		? "# MCP (Model Context Protocol) Tools\n\nThe following MCP tools are available from external servers:"
-		: "MCP (Model Context Protocol) tools:";
-
-	const usage = mcpDeferred
-		? '**MCP tool usage (deferred)**: the list above is an INDEX — these tools are not loaded into your tool list yet. Before calling one, activate it via the `tool_search` tool (keyword search over this index); activated tools stay callable for the rest of the session. Tool names are prefixed with "mcp_[servername]_". When the user explicitly asks to use a specific MCP server or tool, search for it by name and use it instead of a built-in equivalent.'
-		: '**MCP tool usage**: tool names are prefixed with "mcp_[servername]_" (e.g., mcp_filesystem_list_directory). When the user explicitly asks to use a specific MCP server or tool (e.g. "use filesystem MCP to list files"), you MUST use the corresponding MCP tool instead of a built-in equivalent.';
-
-	return `${header}
-
-${toolsList}
-
-${usage}`;
+	return renderMcpToolsPromptSection(mcpTools, { deferred: mcpDeferred, markdown: markdownTools });
 }
 
 function renderContextFilesSection(contextFiles: Array<{ path: string; content: string }>): string {

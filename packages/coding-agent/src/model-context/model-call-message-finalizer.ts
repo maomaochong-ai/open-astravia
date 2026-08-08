@@ -2,9 +2,11 @@ import type { AgentMessage } from "@vetta/agent-core";
 import type { Message, TextContent } from "@vetta/ai";
 import type { ModelCallMessageFinalizationInput, ModelCallMessageFinalizer } from "@vetta/runtime-core/kernel";
 import { applyImageBudget } from "./image-budget.js";
+import { type ModelInputImageProcessor, normalizeModelInputImages } from "./image-normalization.js";
 
 export interface CodingAgentImageSettingsSource {
 	reloadImageSettings?(): void;
+	getImageAutoResize?(): boolean;
 	getBlockImages?(): boolean;
 	getMaxRecentImages?(): number;
 	getImageRequestHighWatermarkBytes?(): number;
@@ -13,12 +15,23 @@ export interface CodingAgentImageSettingsSource {
 
 /** 在最终模型调用边界应用动态图片预算与全局禁图语义。 */
 export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFinalizer {
-	constructor(private readonly settings?: CodingAgentImageSettingsSource) {}
+	constructor(
+		private readonly settings?: CodingAgentImageSettingsSource,
+		private readonly imageProcessor?: ModelInputImageProcessor,
+	) {}
 
 	async finalize(input: ModelCallMessageFinalizationInput, signal: AbortSignal): Promise<readonly Message[]> {
 		signal.throwIfAborted();
 		this.settings?.reloadImageSettings?.();
-		const budgeted = applyImageBudget([...input.messages] satisfies AgentMessage[], {
+		const normalized =
+			this.settings?.getImageAutoResize?.() === false
+				? [...input.messages]
+				: await normalizeModelInputImages(
+						input.messages,
+						signal,
+						this.imageProcessor ? { processor: this.imageProcessor } : {},
+					);
+		const budgeted = applyImageBudget([...normalized] satisfies AgentMessage[], {
 			maxRecentImages: this.settings?.getMaxRecentImages?.() ?? 2,
 			highWatermarkBytes: this.settings?.getImageRequestHighWatermarkBytes?.(),
 			lowWatermarkBytes: this.settings?.getImageRequestLowWatermarkBytes?.(),

@@ -17,7 +17,12 @@ export {
 	type McpToolSearchResult,
 	scoreMcpDeferredTools,
 } from "./deferred-tool-search.js";
-export { renderMcpToolsInstruction } from "./mcp-prompt.js";
+export {
+	DEFAULT_MCP_COMPACT_PROMPT_THRESHOLD,
+	type RenderMcpToolsPromptSectionOptions,
+	renderMcpToolsInstruction,
+	renderMcpToolsPromptSection,
+} from "./mcp-prompt.js";
 export * from "./protocol/index.js";
 export {
 	createMcpRuntimeToolSynchronizer,

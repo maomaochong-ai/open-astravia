@@ -29,7 +29,11 @@ import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../../m
 import type { CodingAgentCompactionExtensionRuntime } from "../../../runtime-contracts/index.js";
 import type { CodingAgentCompactionEntry as CompactionEntry } from "../../../sessions/index.js";
 import { CompactionPrefireCache } from "./compaction-prefire-cache.js";
-import type { CodingAgentContextRuntimeOptions, CodingAgentContextUsage } from "./contracts.js";
+import type {
+	CodingAgentContextRuntimeOptions,
+	CodingAgentContextUsage,
+	CodingAgentModelCallFailureRecovery,
+} from "./contracts.js";
 import {
 	assemblePreparedMessages,
 	isOverflowFromCurrentModel,
@@ -38,6 +42,7 @@ import {
 	removeAssistantMessage,
 	toCompactionSessionEntries,
 } from "./conversation-compaction-projection.js";
+import { CodingAgentImageRequestFailureRecovery, hasImageRetryPlaceholder } from "./image-request-failure-recovery.js";
 import { projectModelCallContext } from "./model-call-context-projection.js";
 
 /**
@@ -52,6 +57,7 @@ export class CodingAgentContextRuntime
 	private readonly generateCompaction: NonNullable<CodingAgentContextRuntimeOptions["generateCompaction"]>;
 	private readonly extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined;
 	private readonly now: () => number;
+	private readonly failureRecovery: CodingAgentModelCallFailureRecovery;
 	private readonly circuitBreaker = new CompactionCircuitBreaker();
 	private readonly prefire: CompactionPrefireCache;
 	private currentTokens = 0;
@@ -65,6 +71,7 @@ export class CodingAgentContextRuntime
 				compact(preparation, model, apiKey, customInstructions, signal));
 		this.extensionRuntime = options.extensionRuntime;
 		this.now = options.now ?? Date.now;
+		this.failureRecovery = options.failureRecovery ?? new CodingAgentImageRequestFailureRecovery();
 		this.prefire = new CompactionPrefireCache({
 			resolveApiKey: options.resolveApiKey,
 			generateCompaction: this.generateCompaction,
@@ -88,9 +95,27 @@ export class CodingAgentContextRuntime
 		const baseSettings = this.readSettings();
 		const settings =
 			this.options.memoryRollover?.adjustCompactionSettings(baseSettings, contextWindow) ?? baseSettings;
+		if (reason === "assistant_error" && input.triggeringAssistantMessage) {
+			const recovery = await this.failureRecovery.recover(
+				{
+					messages: input.messages,
+					assistantMessage: input.triggeringAssistantMessage,
+					recoveryAttempt: input.recoveryAttempt ?? 0,
+				},
+				signal,
+			);
+			if (recovery) {
+				const recoveredTokens = estimateContextTokens(recovery.messages).tokens;
+				this.currentTokens = recoveredTokens;
+				return { messages: recovery.messages, estimatedTokens: recoveredTokens, retry: true };
+			}
+		}
+		const canRecoverOverflow =
+			(input.recoveryAttempt ?? 0) === 0 ||
+			((input.recoveryAttempt ?? 0) === 1 && hasImageRetryPlaceholder(input.messages));
 		const overflow =
 			(reason === "assistant_error" || reason === "assistant_result") &&
-			input.recoveryAttempt === 0 &&
+			canRecoverOverflow &&
 			model !== undefined &&
 			isOverflowFromCurrentModel(input.triggeringAssistantMessage, model, contextWindow);
 		const callMessages = overflow
