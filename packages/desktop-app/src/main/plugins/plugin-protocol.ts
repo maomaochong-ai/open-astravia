@@ -104,6 +104,7 @@ export const jsxDEV = jsxDevRuntime.jsxDEV;
 		// 抛 "does not provide an export named ..." 导致整个插件加载失败。
 		return moduleResponse(`
 const sdk = globalThis.__VETTA_PLUGIN_HOST__.pluginSdk;
+export const PLUGIN_PERMISSIONS = sdk.PLUGIN_PERMISSIONS;
 export const definePlugin = sdk.definePlugin;
 export const useActiveConversation = sdk.useActiveConversation;
 export const useConversationMessages = sdk.useConversationMessages;

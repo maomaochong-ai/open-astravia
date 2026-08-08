@@ -8,6 +8,7 @@
 
 // Core primitives
 export type { ConversationScenario } from "./scenario.js";
+export { PLUGIN_PERMISSIONS } from "./permissions.js";
 export type { PluginPermission } from "./permissions.js";
 export type { Disposable } from "./disposable.js";
 export type {
