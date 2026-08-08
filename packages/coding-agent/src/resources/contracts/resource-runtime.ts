@@ -27,6 +27,7 @@ export interface SessionResourceRuntime {
 	reloadSkills(): void;
 	reload(): Promise<void>;
 	refreshSkillsIfChanged(): boolean;
+	refreshContextResourcesIfChanged(): boolean;
 }
 
 export interface SessionResourceRuntimeOptions {

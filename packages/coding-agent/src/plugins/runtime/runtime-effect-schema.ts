@@ -46,7 +46,6 @@ const PromptBlockPatchSchema = Type.Partial(
 	Type.Object(
 		{
 			type: PromptBlockTypeSchema,
-			source: PromptBlockSourceSchema,
 			content: Type.String(),
 			priority: Type.Number(),
 			enabled: Type.Boolean(),

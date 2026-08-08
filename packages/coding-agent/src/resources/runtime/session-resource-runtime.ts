@@ -56,6 +56,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	private lastPromptPaths: string[] = [];
 	private lastThemePaths: string[] = [];
 	private skillsFingerprint = "";
+	private contextResourcesFingerprint = "";
 
 	constructor(options: SessionResourceRuntimeOptions) {
 		this.options = options;
@@ -227,6 +228,15 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		return true;
 	}
 
+	refreshContextResourcesIfChanged(): boolean {
+		const resources = this.readContextResources();
+		const fingerprint = JSON.stringify(resources);
+		if (fingerprint === this.contextResourcesFingerprint) return false;
+		this.applyContextResources(resources);
+		this.contextResourcesFingerprint = fingerprint;
+		return true;
+	}
+
 	private enabledPaths(resources: ResolvedResourcePath[]): string[] {
 		return this.metadata.enabled(resources).map((resource) => resource.path);
 	}
@@ -326,21 +336,32 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	}
 
 	private updateContextResources(): void {
-		const agentsFiles = { agentsFiles: loadProjectContextFiles(this.options.cwd, this.options.agentDir) };
-		this.agentsFiles = (this.options.agentsFilesOverride?.(agentsFiles) ?? agentsFiles).agentsFiles;
+		const resources = this.readContextResources();
+		this.applyContextResources(resources);
+		this.contextResourcesFingerprint = JSON.stringify(resources);
+	}
+
+	private readContextResources(): ContextResourcesSnapshot {
+		const agentsFiles = loadProjectContextFiles(this.options.cwd, this.options.agentDir);
 		const systemPrompt = resolvePromptInput(
 			this.options.systemPrompt ?? discoverPromptFile(this.options.cwd, this.options.agentDir, "SYSTEM.md"),
 			"system prompt",
 		);
-		this.systemPrompt = this.options.systemPromptOverride
-			? this.options.systemPromptOverride(systemPrompt)
-			: systemPrompt;
 		const append = resolvePromptInput(
 			this.options.appendSystemPrompt ??
 				discoverPromptFile(this.options.cwd, this.options.agentDir, "APPEND_SYSTEM.md"),
 			"append system prompt",
 		);
-		const appendPrompts = append ? [append] : [];
+		return { agentsFiles, systemPrompt, appendSystemPrompt: append ? [append] : [] };
+	}
+
+	private applyContextResources(resources: ContextResourcesSnapshot): void {
+		const agentsFiles = { agentsFiles: resources.agentsFiles };
+		this.agentsFiles = (this.options.agentsFilesOverride?.(agentsFiles) ?? agentsFiles).agentsFiles;
+		this.systemPrompt = this.options.systemPromptOverride
+			? this.options.systemPromptOverride(resources.systemPrompt)
+			: resources.systemPrompt;
+		const appendPrompts = resources.appendSystemPrompt;
 		this.appendSystemPrompt = this.options.appendSystemPromptOverride?.(appendPrompts) ?? appendPrompts;
 	}
 
@@ -365,4 +386,10 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 			includeAgentSkills: this.options.includeAgentSkills ?? true,
 		});
 	}
+}
+
+interface ContextResourcesSnapshot {
+	readonly agentsFiles: Array<{ path: string; content: string }>;
+	readonly systemPrompt: string | undefined;
+	readonly appendSystemPrompt: string[];
 }

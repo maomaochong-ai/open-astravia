@@ -24,6 +24,7 @@ export type CodingAgentPromptResourceSource = Pick<
 	| "getAppendSystemPrompt"
 	| "getSkills"
 	| "getSystemPrompt"
+	| "refreshContextResourcesIfChanged"
 	| "refreshSkillsIfChanged"
 	| "setRuntimeSkillPaths"
 >;

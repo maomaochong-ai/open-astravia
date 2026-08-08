@@ -341,6 +341,41 @@ Content`,
 
 			expect(loader.getAppendSystemPrompt()).toContain("Additional instructions.");
 		});
+
+		it("should refresh prompt context resources created, changed, or deleted during a session", async () => {
+			const loader = createCodingAgentSessionResourceRuntime({ cwd, agentDir });
+			await loader.reload();
+			const configDir = join(cwd, CONFIG_DIR_NAME);
+			const agentsPath = join(cwd, "AGENTS.md");
+			const systemPath = join(configDir, "SYSTEM.md");
+			const appendPath = join(configDir, "APPEND_SYSTEM.md");
+
+			expect(loader.refreshContextResourcesIfChanged()).toBe(false);
+			mkdirSync(configDir, { recursive: true });
+			writeFileSync(agentsPath, "First project instruction");
+			writeFileSync(systemPath, "First system prompt");
+			writeFileSync(appendPath, "First appended prompt");
+			expect(loader.refreshContextResourcesIfChanged()).toBe(true);
+			expect(loader.getAgentsFiles().agentsFiles[0]?.content).toBe("First project instruction");
+			expect(loader.getSystemPrompt()).toBe("First system prompt");
+			expect(loader.getAppendSystemPrompt()).toEqual(["First appended prompt"]);
+
+			writeFileSync(agentsPath, "Second project instruction");
+			writeFileSync(systemPath, "Second system prompt");
+			writeFileSync(appendPath, "Second appended prompt");
+			expect(loader.refreshContextResourcesIfChanged()).toBe(true);
+			expect(loader.getAgentsFiles().agentsFiles[0]?.content).toBe("Second project instruction");
+			expect(loader.getSystemPrompt()).toBe("Second system prompt");
+			expect(loader.getAppendSystemPrompt()).toEqual(["Second appended prompt"]);
+
+			rmSync(agentsPath);
+			rmSync(systemPath);
+			rmSync(appendPath);
+			expect(loader.refreshContextResourcesIfChanged()).toBe(true);
+			expect(loader.getAgentsFiles().agentsFiles).toEqual([]);
+			expect(loader.getSystemPrompt()).toBeUndefined();
+			expect(loader.getAppendSystemPrompt()).toEqual([]);
+		});
 	});
 
 	describe("extendResources", () => {

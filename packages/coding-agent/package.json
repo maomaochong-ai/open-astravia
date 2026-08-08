@@ -103,6 +103,7 @@
 		"build": "bun run generate:personas && bun run generate:modes && tsgo -p tsconfig.build.json && bun run copy-assets",
 		"generate:personas": "node scripts/generate-personas.mjs",
 		"generate:modes": "node scripts/generate-modes.mjs",
+		"check:generated-prompts": "node scripts/generate-personas.mjs --check && node scripts/generate-modes.mjs --check",
 		"copy-assets": "shx mkdir -p dist/modes/interactive/theme && shx cp src/modes/interactive/theme/*.json dist/modes/interactive/theme/ && shx mkdir -p dist/export-html/vendor && shx cp src/export-html/assets/template.html src/export-html/assets/template.css src/export-html/assets/template.js dist/export-html/ && shx cp src/export-html/assets/vendor/*.js dist/export-html/vendor/",
 		"test": "vitest --run",
 		"test:coverage": "vitest --run --coverage",

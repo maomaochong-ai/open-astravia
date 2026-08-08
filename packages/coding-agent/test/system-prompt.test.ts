@@ -159,4 +159,20 @@ describe("buildSystemPrompt", () => {
 			expect(prompt).toContain("Available tools:\n- novel_write_chapter_file:");
 		});
 	});
+
+	describe("custom prompt", () => {
+		test("uses the same capability and scenario policies as the default prompt", () => {
+			const prompt = buildSystemPrompt({
+				customPrompt: "Custom base instruction",
+				selectedTools: ["read", "bash"],
+				contextFiles: [],
+				skills: [],
+				scenario: "cli",
+			});
+
+			expect(prompt).toContain("Custom base instruction");
+			expect(prompt).toContain("run_in_background: true");
+			expect(prompt).not.toContain("MANDATORY file-link format");
+		});
+	});
 });

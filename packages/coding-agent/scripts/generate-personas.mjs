@@ -7,7 +7,7 @@
 // 触发：coding-agent 的 `bun run build` 会先跑本脚本（见 package.json `build`）。
 // 手改 md 后想立即生效，单独跑 `bun run generate:personas`。
 
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
@@ -15,6 +15,7 @@ import { parse } from "yaml";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const personasDir = join(__dirname, "..", "src", "profiles", "personas");
 const outFile = join(__dirname, "..", "src", "profiles", "personas-data.ts");
+const checkOnly = process.argv.includes("--check");
 
 function parseMd(raw) {
 	const n = raw.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -29,14 +30,17 @@ const files = readdirSync(personasDir)
 	.sort();
 
 const personas = [];
+const seenIds = new Set();
 for (const file of files) {
 	const { fm, body } = parseMd(readFileSync(join(personasDir, file), "utf-8"));
 	const id = typeof fm.id === "string" ? fm.id.trim() : "";
 	const label = typeof fm.label === "string" ? fm.label.trim() : "";
 	if (!id || !label) {
-		console.warn(`[generate-personas] 跳过 ${file}：缺少 id 或 label`);
-		continue;
+		throw new Error(`[generate-personas] ${file} 缺少 id 或 label`);
 	}
+	if (!body.trim()) throw new Error(`[generate-personas] ${file} 的提示词正文为空`);
+	if (seenIds.has(id)) throw new Error(`[generate-personas] persona id 重复: ${id}`);
+	seenIds.add(id);
 	personas.push({
 		id,
 		label,
@@ -57,5 +61,12 @@ export interface RawPersona {
 export const FILE_PERSONAS: RawPersona[] = ${JSON.stringify(personas, null, "\t")};
 `;
 
-writeFileSync(outFile, content, "utf-8");
-console.log(`[generate-personas] wrote ${personas.length} personas to personas-data.ts`);
+if (checkOnly) {
+	if (readFileSync(outFile, "utf-8") !== content) {
+		throw new Error("[generate-personas] personas-data.ts 已过期，请运行 bun run generate:personas");
+	}
+	console.log(`[generate-personas] ${personas.length} personas 与 personas-data.ts 一致`);
+} else {
+	writeFileSync(outFile, content, "utf-8");
+	console.log(`[generate-personas] wrote ${personas.length} personas to personas-data.ts`);
+}

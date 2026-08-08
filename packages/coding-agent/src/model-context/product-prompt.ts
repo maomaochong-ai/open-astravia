@@ -15,7 +15,7 @@ import { formatSkillsForProductPrompt, type ProductPromptSkill } from "./skill-p
 const SUBCONSCIOUS = `**Your name is Vetta. You are an AI assistant.**`;
 
 /** Tool descriptions for system prompt */
-const toolDescriptions: Record<string, string> = {
+const builtInToolDescriptions: Record<string, string> = {
 	read: "Read file contents",
 	bash: "Execute bash commands (ls, grep, find, etc.)",
 	shell: "Execute shell commands (PowerShell on Windows by default)",
@@ -78,7 +78,7 @@ export const OUTPUT_LOCATION_GUIDANCE =
  */
 const RESPONSE_LANGUAGE_GUIDANCE =
 	"CRITICAL — Response language: write EVERYTHING the user reads in the same language as their latest message. " +
-	"This covers your prose, `progress` labels and summaries, todo items, `ask_user_question` questions/options/badges, `md_intro` text, headings, and any user-facing copy you generate inside deliverables (document text, UI labels in a design or app you build). " +
+	"This includes prose, headings, status text, questions, option labels, task lists, and user-facing copy inside generated deliverables. " +
 	"The language of this system prompt, of a skill's instructions, of tool descriptions, and of the app's interface is IRRELEVANT — they are written in one fixed language for maintenance reasons and are NEVER a signal about which language to answer in. " +
 	"If the user writes in English, answer entirely in English even when your instructions and examples are in Chinese. Switch as soon as the user switches. " +
 	"The only exceptions are identifiers you must reproduce verbatim (file paths, code, commands, quoted source text) and content the user explicitly asked for in another language.";
@@ -123,6 +123,10 @@ export interface BuildSystemPromptOptions {
 	customPrompt?: string;
 	/** Tools to include in prompt. Default: [read, command-tool, edit, write, dir_tree] */
 	selectedTools?: string[];
+	/** Runtime tool descriptions keyed by name. These override built-in SDK fallbacks. */
+	toolDescriptions?: Readonly<Record<string, string>>;
+	/** Optional warning threshold used by prompt diagnostics. Content is never truncated automatically. */
+	promptBudgetTokens?: number;
 	/** Text to append to system prompt. */
 	appendSystemPrompt?: string;
 	/** Working directory. Default: process.cwd() */
@@ -285,11 +289,15 @@ function buildGuidelines(tools: string[], scenario?: ConversationScenario): stri
 	return guidelinesList.map((guideline) => `- ${guideline}`).join("\n");
 }
 
-function buildToolDescriptions(agentPlugins: AgentPluginRuntimeConfig | undefined): Record<string, string> {
-	const descriptions = { ...toolDescriptions };
+function buildToolDescriptions(
+	agentPlugins: AgentPluginRuntimeConfig | undefined,
+	runtimeDescriptions: Readonly<Record<string, string>> | undefined,
+): Record<string, string> {
+	const descriptions = { ...builtInToolDescriptions };
 	for (const tool of agentPlugins?.toolContributions ?? []) {
 		descriptions[tool.name] = tool.description;
 	}
+	Object.assign(descriptions, runtimeDescriptions);
 	return descriptions;
 }
 
@@ -312,6 +320,8 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 	const {
 		customPrompt,
 		selectedTools,
+		toolDescriptions: runtimeToolDescriptions,
+		promptBudgetTokens,
 		appendSystemPrompt,
 		cwd,
 		contextFiles: providedContextFiles,
@@ -330,59 +340,28 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 	const contextFiles = providedContextFiles ?? [];
 	const skills = providedSkills ?? [];
 	const mcpTools = providedMcpTools ?? [];
-	const resolvedToolDescriptions = buildToolDescriptions(agentPlugins);
+	const resolvedToolDescriptions = buildToolDescriptions(agentPlugins, runtimeToolDescriptions);
 	const tools = resolvePromptTools(selectedTools, defaultCommandTool, resolvedToolDescriptions);
 	const toolsList = renderToolsList(tools, resolvedToolDescriptions);
 	const blocks: SystemPromptBlock[] = [];
-
-	if (customPrompt) {
-		blocks.push(coreBlock("core.subconscious", "subconscious", SUBCONSCIOUS, 100));
-		blocks.push(coreBlock("core.base", "base", customPrompt, 200));
-		blocks.push(coreBlock("core.tools", "tools", `Available tools:\n${toolsList}`, 300));
-		blocks.push(coreBlock("core.append", "append", appendSystemPrompt ?? "", 400));
-		blocks.push(coreBlock("core.mcp", "mcp", renderMcpToolsSection(mcpTools, true, mcpDeferred), 500));
-		blocks.push(coreBlock("core.context", "context", renderContextFilesSection(contextFiles), 600));
-		blocks.push(coreBlock("core.memory", "memory", memory ?? "", 700));
-		const canUseSkills = !selectedTools || selectedTools.includes("invoke_skill") || selectedTools.includes("read");
-		if (canUseSkills && skills.length > 0) {
-			blocks.push(coreBlock("core.skills", "skills", formatSkillsForProductPrompt(skills), 800));
-		}
-		blocks.push(coreBlock("core.response-language", "guidelines", RESPONSE_LANGUAGE_GUIDANCE, 890));
-		blocks.push(coreBlock("core.filename-fidelity", "guidelines", FILENAME_FIDELITY_GUIDANCE, 900));
-		blocks.push(coreBlock("core.final-answer-order", "guidelines", FINAL_ANSWER_ORDER_GUIDANCE, 950));
-		blocks.push(coreBlock("core.mode", "mode", modePrompt ?? "", 975));
-		blocks.push(coreBlock("core.personalization", "personalization", personalization ?? "", 1000));
-		blocks.push(coreBlock("core.footer", "footer", renderFooter(dateTime, resolvedCwd), 1100));
-		const draft: SystemPromptDraft = { blocks, metadata: { cwd: resolvedCwd, dateTime } };
-		applySystemPromptContributions(draft, agentPlugins);
-		return draft;
-	}
-
-	const mcpToolsSection = renderMcpToolsSection(mcpTools, false, mcpDeferred);
 	const hasInvokeSkill = tools.includes("invoke_skill");
 	const hasRead = tools.includes("read");
+	const skillsSection = (hasRead || hasInvokeSkill) && skills.length > 0 ? formatSkillsForProductPrompt(skills) : "";
 
 	blocks.push(coreBlock("core.subconscious", "subconscious", SUBCONSCIOUS, 100));
-	blocks.push(
-		coreBlock(
-			"core.tools",
-			"tools",
-			`Available tools:\n${toolsList}${mcpToolsSection ? `\n\n${mcpToolsSection}` : ""}`,
-			200,
-		),
-	);
+	blocks.push(coreBlock("core.base", "base", customPrompt ?? "", 150));
+	blocks.push(coreBlock("core.tools", "tools", `Available tools:\n${toolsList}`, 200));
+	blocks.push(coreBlock("core.mcp", "mcp", renderMcpToolsSection(mcpTools, false, mcpDeferred), 250));
 	blocks.push(coreBlock("core.guidelines", "guidelines", `Guidelines:\n${buildGuidelines(tools, scenario)}\n`, 300));
 	blocks.push(coreBlock("core.append", "append", appendSystemPrompt ?? "", 400));
 	blocks.push(coreBlock("core.context", "context", renderContextFilesSection(contextFiles), 500));
 	blocks.push(coreBlock("core.memory", "memory", memory ?? "", 600));
-	if ((hasRead || hasInvokeSkill) && skills.length > 0) {
-		blocks.push(coreBlock("core.skills", "skills", formatSkillsForProductPrompt(skills), 700));
-	}
+	blocks.push(coreBlock("core.skills", "skills", skillsSection, 700));
 	blocks.push(coreBlock("core.mode", "mode", modePrompt ?? "", 850));
 	blocks.push(coreBlock("core.personalization", "personalization", personalization ?? "", 900));
 	blocks.push(coreBlock("core.footer", "footer", renderFooter(dateTime, resolvedCwd), 1000));
 
-	const draft: SystemPromptDraft = { blocks, metadata: { cwd: resolvedCwd, dateTime } };
+	const draft: SystemPromptDraft = { blocks, metadata: { cwd: resolvedCwd, dateTime, promptBudgetTokens } };
 	applySystemPromptContributions(draft, agentPlugins);
 	return draft;
 }

@@ -16,6 +16,7 @@ import {
 } from "../model-context/index.js";
 import type { BranchHistoryReader, CompactionHistoryEntry } from "./contracts.js";
 import {
+	buildSummaryGenerationPrompt,
 	computeFileLists,
 	createFileOps,
 	extractFileOpsFromMessage,
@@ -303,14 +304,16 @@ export async function generateBranchSummary(
 
 	// Build prompt
 	let instructions: string;
+	let customFocus: string | undefined;
 	if (replaceInstructions && customInstructions) {
 		instructions = customInstructions;
 	} else if (customInstructions) {
-		instructions = `${BRANCH_SUMMARY_PROMPT}\n\nAdditional focus: ${customInstructions}`;
+		instructions = BRANCH_SUMMARY_PROMPT;
+		customFocus = customInstructions;
 	} else {
 		instructions = BRANCH_SUMMARY_PROMPT;
 	}
-	const promptText = `<conversation>\n${conversationText}\n</conversation>\n\n${instructions}`;
+	const promptText = buildSummaryGenerationPrompt({ conversation: conversationText, instructions, customFocus });
 
 	const summarizationMessages = [
 		{

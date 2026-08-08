@@ -41,6 +41,7 @@ export class CodingAgentPromptRuntime {
 
 	resolve(context: CodingAgentModelCallPromptContext): CodingAgentSystemPromptOptions {
 		context.signal.throwIfAborted();
+		this.options.resourceLoader.refreshContextResourcesIfChanged();
 		this.options.resourceLoader.refreshSkillsIfChanged();
 		this.options.settingsManager.reloadPersonalizationSettings();
 		const memory = this.options.readMemory?.();

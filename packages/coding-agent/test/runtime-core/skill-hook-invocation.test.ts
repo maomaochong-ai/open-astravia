@@ -76,6 +76,7 @@ function createFeature(
 		content,
 	};
 	const resourceSource: CodingAgentPromptResourceSource = {
+		refreshContextResourcesIfChanged: () => false,
 		refreshSkillsIfChanged: () => false,
 		getSkills: () => ({ skills: [skill], diagnostics: [] }),
 		getAgentsFiles: () => ({ agentsFiles: [] }),

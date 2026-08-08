@@ -231,10 +231,15 @@ describe("Coding Agent model call and prompt runtime", () => {
 			expect(frame.instructions).toEqual([
 				{
 					id: "coding-agent.system-prompt",
-					content: buildSystemPrompt({ ...promptOptions, selectedTools: ["read"] }),
+					content: buildSystemPrompt({
+						...promptOptions,
+						selectedTools: ["read"],
+						toolDescriptions: { read: "Read a file" },
+					}),
 					priority: 0,
 				},
 			]);
+			expect(frame.instructions[0]?.content).toContain("- read: Read a file");
 			expect([...frame.tools.keys()]).toEqual(["read"]);
 		} finally {
 			vi.useRealTimers();
@@ -276,6 +281,35 @@ describe("Coding Agent model call and prompt runtime", () => {
 				},
 			}),
 		).rejects.toThrow("Duplicate Coding Agent system prompt block id: core.tools");
+	});
+
+	it("reports final prompt diagnostics after feature contributions", async () => {
+		const diagnostics = vi.fn();
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: () => ({
+				customPrompt: "Base prompt",
+				cwd: "C:\\workspace",
+				promptBudgetTokens: 1,
+			}),
+			onPromptDiagnostics: diagnostics,
+		});
+
+		await composer.compose({
+			sessionId: "session-1",
+			turnId: "turn-1",
+			signal: new AbortController().signal,
+			messages: [],
+			frame: {
+				instructions: [{ id: "feature.extra", content: "Feature instruction", priority: 500 }],
+				tools: new Map(),
+			},
+		});
+
+		expect(diagnostics).toHaveBeenCalledOnce();
+		expect(diagnostics).toHaveBeenCalledWith(expect.objectContaining({ promptBudgetTokens: 1, overBudget: true }));
+		expect(diagnostics.mock.calls[0]?.[0].blocks).toEqual(
+			expect.arrayContaining([expect.objectContaining({ id: "feature.extra" })]),
+		);
 	});
 
 	it("emits tools by generic modelOrder metadata while preserving unordered contribution order", async () => {
@@ -347,11 +381,13 @@ describe("Coding Agent model call and prompt runtime", () => {
 		let firstMode: string | undefined = "work";
 		let firstMemory = "First memory v1";
 		const firstRefresh = vi.fn();
+		const firstContextRefresh = vi.fn();
 		const firstReloadPersonalization = vi.fn();
 		const first = new CodingAgentPromptRuntime({
 			cwd: "C:\\first",
 			scenario: "cli",
 			resourceLoader: {
+				refreshContextResourcesIfChanged: firstContextRefresh,
 				getSystemPrompt: () => firstBasePrompt,
 				getAppendSystemPrompt: () => ["First append"],
 				getAgentsFiles: () => ({
@@ -377,6 +413,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 			cwd: "C:\\second",
 			scenario: "cli",
 			resourceLoader: {
+				refreshContextResourcesIfChanged: () => false,
 				getSystemPrompt: () => "Second session prompt",
 				getAppendSystemPrompt: () => [],
 				getAgentsFiles: () => ({ agentsFiles: [] }),
@@ -425,6 +462,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 			personalization: "Second persona",
 		});
 		expect(firstRefresh).toHaveBeenCalledTimes(2);
+		expect(firstContextRefresh).toHaveBeenCalledTimes(2);
 		expect(firstReloadPersonalization).toHaveBeenCalledTimes(2);
 	});
 });

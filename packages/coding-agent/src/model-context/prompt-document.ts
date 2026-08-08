@@ -32,10 +32,33 @@ export interface SystemPromptDraft {
 	metadata: {
 		cwd: string;
 		dateTime: string;
+		promptBudgetTokens?: number;
 	};
 }
 
-export type SystemPromptBlockPatch = Partial<Omit<SystemPromptBlock, "id">>;
+export interface SystemPromptBlockDiagnostics {
+	readonly id: string;
+	readonly type: SystemPromptBlockType;
+	readonly source: SystemPromptBlock["source"];
+	readonly charCount: number;
+	readonly estimatedTokens: number;
+}
+
+export interface SystemPromptDiagnostics {
+	readonly charCount: number;
+	readonly estimatedTokens: number;
+	readonly enabledBlockCount: number;
+	readonly promptBudgetTokens?: number;
+	readonly overBudget: boolean;
+	readonly blocks: readonly SystemPromptBlockDiagnostics[];
+}
+
+export interface CompiledSystemPrompt {
+	readonly content: string;
+	readonly diagnostics: SystemPromptDiagnostics;
+}
+
+export type SystemPromptBlockPatch = Partial<Omit<SystemPromptBlock, "id" | "source">>;
 
 export type SystemPromptOperation =
 	| { type: "addBlock"; block: SystemPromptBlock }
@@ -70,15 +93,21 @@ export function applySystemPromptOperation(
 	pluginId: string,
 	operation: SystemPromptOperation,
 ): void {
+	assertSystemPromptDraft(draft);
 	switch (operation.type) {
-		case "addBlock":
+		case "addBlock": {
+			assertPluginBlockIdAvailable(draft, operation.block.id);
 			draft.blocks.push({
 				...operation.block,
 				source: { kind: "plugin", pluginId },
 			});
 			return;
+		}
 		case "replaceBlock": {
 			const index = draft.blocks.findIndex((block) => block.id === operation.blockId);
+			if (index < 0 && isCoreBlockId(operation.blockId)) {
+				throw new Error(`Cannot replace missing core system prompt block: ${operation.blockId}`);
+			}
 			const nextBlock: SystemPromptBlock = {
 				...operation.block,
 				id: operation.blockId,
@@ -94,7 +123,11 @@ export function applySystemPromptOperation(
 		case "updateBlock": {
 			const block = draft.blocks.find((candidate) => candidate.id === operation.blockId);
 			if (block) {
-				Object.assign(block, operation.patch);
+				const { type, content, priority, enabled } = operation.patch;
+				if (type !== undefined) block.type = type;
+				if (content !== undefined) block.content = content;
+				if (priority !== undefined) block.priority = priority;
+				if (enabled !== undefined) block.enabled = enabled;
 			}
 			return;
 		}
@@ -123,13 +156,77 @@ export function applySystemPromptOperations(
 	for (const operation of operations) {
 		applySystemPromptOperation(nextDraft, pluginId, operation);
 	}
+	assertSystemPromptDraft(nextDraft);
 	return nextDraft;
 }
 
-export function renderSystemPromptDraft(draft: SystemPromptDraft): string {
-	return draft.blocks
+export function compileSystemPromptDraft(draft: SystemPromptDraft): CompiledSystemPrompt {
+	assertSystemPromptDraft(draft);
+	const enabledBlocks = draft.blocks
 		.filter((block) => block.enabled && block.content.length > 0)
-		.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id))
-		.map((block) => block.content)
-		.join("\n\n");
+		.sort((a, b) => a.priority - b.priority || a.id.localeCompare(b.id));
+	const content = enabledBlocks.map((block) => block.content).join("\n\n");
+	const estimatedTokens = estimateTextTokens(content);
+	return {
+		content,
+		diagnostics: {
+			charCount: content.length,
+			estimatedTokens,
+			enabledBlockCount: enabledBlocks.length,
+			promptBudgetTokens: draft.metadata.promptBudgetTokens,
+			overBudget:
+				draft.metadata.promptBudgetTokens !== undefined && estimatedTokens > draft.metadata.promptBudgetTokens,
+			blocks: enabledBlocks.map((block) => ({
+				id: block.id,
+				type: block.type,
+				source: { ...block.source },
+				charCount: block.content.length,
+				estimatedTokens: estimateTextTokens(block.content),
+			})),
+		},
+	};
+}
+
+export function renderSystemPromptDraft(draft: SystemPromptDraft): string {
+	return compileSystemPromptDraft(draft).content;
+}
+
+export function assertSystemPromptDraft(draft: SystemPromptDraft): void {
+	if (
+		draft.metadata.promptBudgetTokens !== undefined &&
+		(!Number.isFinite(draft.metadata.promptBudgetTokens) || draft.metadata.promptBudgetTokens <= 0)
+	) {
+		throw new Error("System prompt token budget must be a positive finite number");
+	}
+	const ids = new Set<string>();
+	for (const block of draft.blocks) {
+		if (!block.id.trim()) throw new Error("System prompt block id cannot be empty");
+		if (ids.has(block.id)) throw new Error(`Duplicate system prompt block id: ${block.id}`);
+		if (!Number.isFinite(block.priority)) {
+			throw new Error(`System prompt block priority must be finite: ${block.id}`);
+		}
+		if (block.source.kind === "core") {
+			if (!isCoreBlockId(block.id) || block.source.pluginId !== undefined) {
+				throw new Error(`Invalid core system prompt block provenance: ${block.id}`);
+			}
+		} else if (!block.source.pluginId?.trim()) {
+			throw new Error(`Plugin system prompt block is missing pluginId: ${block.id}`);
+		}
+		ids.add(block.id);
+	}
+}
+
+function estimateTextTokens(content: string): number {
+	return Math.ceil(content.length / 4);
+}
+
+function assertPluginBlockIdAvailable(draft: SystemPromptDraft, blockId: string): void {
+	if (isCoreBlockId(blockId)) throw new Error(`Plugin cannot add reserved core system prompt block: ${blockId}`);
+	if (draft.blocks.some(({ id }) => id === blockId)) {
+		throw new Error(`Duplicate system prompt block id: ${blockId}`);
+	}
+}
+
+function isCoreBlockId(blockId: string): boolean {
+	return blockId.startsWith("core.");
 }

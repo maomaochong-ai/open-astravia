@@ -11,7 +11,7 @@ import type {
 	CodingAgentSystemPromptOptionsResolver,
 } from "../runtime-contracts/index.js";
 import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./product-prompt.js";
-import { renderSystemPromptDraft, type SystemPromptDraft } from "./prompt-document.js";
+import { compileSystemPromptDraft, type SystemPromptDiagnostics, type SystemPromptDraft } from "./prompt-document.js";
 
 export type CodingAgentSystemPromptOptions = Omit<BuildSystemPromptOptions, "selectedTools">;
 
@@ -36,6 +36,7 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	readonly extensionEvents?: CodingAgentModelCallExtensionEvents;
 	readonly extensionToolRuntime?: CodingAgentModelCallExtensionToolPort;
 	readonly resolveExtensionToolActivation?: (context: ModelCallFrameCompositionContext) => CodingToolActivation;
+	readonly onPromptDiagnostics?: (diagnostics: SystemPromptDiagnostics) => void;
 }
 
 export interface CodingAgentMcpPromptState {
@@ -112,7 +113,9 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 					),
 				)
 			: (pluginFrame?.tools ?? prepared.effectiveContext.frame.tools);
-		const systemPrompt = renderSystemPromptDraft(draft);
+		const compiledPrompt = compileSystemPromptDraft(draft);
+		this.options.onPromptDiagnostics?.(compiledPrompt.diagnostics);
+		const systemPrompt = compiledPrompt.content;
 		this.options.extensionEvents?.recordSystemPrompt(systemPrompt);
 		const orderedTools = orderModelTools(selectedTools);
 		const extensionTools = this.options.extensionEvents?.wrapTools(orderedTools) ?? orderedTools;
@@ -137,7 +140,9 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 	 */
 	async previewSystemPrompt(context: ModelCallFrameCompositionContext): Promise<string> {
 		const prepared = await this.prepare(context);
-		const systemPrompt = renderSystemPromptDraft(prepared.createDraft(prepared.activeToolNames));
+		const compiledPrompt = compileSystemPromptDraft(prepared.createDraft(prepared.activeToolNames));
+		this.options.onPromptDiagnostics?.(compiledPrompt.diagnostics);
+		const systemPrompt = compiledPrompt.content;
 		this.options.extensionEvents?.recordSystemPrompt(systemPrompt);
 		return systemPrompt;
 	}
@@ -187,6 +192,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			const draft = buildSystemPromptDraft({
 				...promptOptions,
 				selectedTools: orderModelToolNames(advertisedTools, availableTools),
+				toolDescriptions: Object.fromEntries([...availableTools].map(([name, tool]) => [name, tool.description])),
 				...(mcpPromptState
 					? {
 							mcpTools: mcpPromptState.tools.map(({ name, description }) => ({ name, description })),
