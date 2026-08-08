@@ -128,16 +128,12 @@ export function createCodingAgentSessionRuntimeResources(
 				options.executionRuntime.backgroundService,
 				options.subagentRuntime,
 			),
-			configurationController: options.configurationState.createController(
-				session,
-				pluginMcpRuntime
-					? {
-							reconfigureAgentPlugins: async (agentPlugins) => {
-								await pluginMcpRuntime.reconfigure(agentPlugins);
-							},
-						}
-					: undefined,
-			),
+			configurationController: options.configurationState.createController(session, {
+				reconfigureAgentPlugins: async (agentPlugins) => {
+					await pluginMcpRuntime?.reconfigure(agentPlugins);
+					options.turnCapabilityAssembly.reconfigureAgentPluginSkills(agentPlugins);
+				},
+			}),
 		}),
 		contextRuntime: options.contextRuntime,
 		identity: {

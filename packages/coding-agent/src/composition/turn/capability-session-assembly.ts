@@ -97,6 +97,7 @@ export interface CodingAgentTurnCapabilitySessionAssembly {
 	readonly promptAdapter: CodingAgentPromptRequestAdapter;
 	readAvailableTools(): ReadonlyMap<string, RuntimeToolDefinition>;
 	readPluginActiveToolNames(): readonly string[] | undefined;
+	reconfigureAgentPluginSkills(agentPlugins: AgentPluginRuntimeConfig | undefined): void;
 	rebindSession(sessionId: string): void;
 	previewInitialSystemPrompt(): Promise<void>;
 	dispose(): Promise<void>;
@@ -144,6 +145,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		throw new Error("Coding Agent system prompt resolver was not created");
 	}
 	const promptResourceSource = options.prompt.resourceSource ?? promptRuntime?.readResourceSource();
+	promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(options.activation.readAgentPlugins()));
 	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
 	);
@@ -247,6 +249,9 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		promptAdapter,
 		readAvailableTools,
 		readPluginActiveToolNames: () => pluginRunOrchestrator?.readActiveToolNames(),
+		reconfigureAgentPluginSkills(agentPlugins) {
+			promptResourceSource?.setRuntimeSkillPaths(readPluginSkillPaths(agentPlugins));
+		},
 		rebindSession(sessionId) {
 			pluginSession.id = sessionId;
 		},
@@ -299,6 +304,10 @@ async function createPromptRuntime(
 		readMemory: memoryRuntime ? () => memoryRuntime.readPromptMemory() : undefined,
 		readAgentPlugins: options.activation.readAgentPlugins,
 	});
+}
+
+function readPluginSkillPaths(agentPlugins: AgentPluginRuntimeConfig | undefined): string[] {
+	return agentPlugins?.skillPathContributions?.flatMap((contribution) => contribution.paths) ?? [];
 }
 
 function toPluginToolActivation(

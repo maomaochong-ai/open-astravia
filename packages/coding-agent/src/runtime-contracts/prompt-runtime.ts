@@ -18,7 +18,12 @@ export type CodingAgentPromptResourceResolver = (
 
 export type CodingAgentPromptResourceSource = Pick<
 	SessionResourceRuntime,
-	"getAgentsFiles" | "getAppendSystemPrompt" | "getSkills" | "getSystemPrompt" | "refreshSkillsIfChanged"
+	| "getAgentsFiles"
+	| "getAppendSystemPrompt"
+	| "getSkills"
+	| "getSystemPrompt"
+	| "refreshSkillsIfChanged"
+	| "setRuntimeSkillPaths"
 >;
 
 export interface CodingAgentPromptSettingsSource extends PersonalizationSettingsSource {

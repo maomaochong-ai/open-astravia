@@ -40,6 +40,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	private readonly eventBus: EventBus;
 	private additionalExtensionPaths: string[];
 	private additionalSkillPaths: string[];
+	private runtimeSkillPaths: string[] = [];
 	private extensionsResult: LoadExtensionsResult;
 	private skills: Skill[] = [];
 	private skillDiagnostics: ResourceDiagnostic[] = [];
@@ -50,6 +51,7 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 	private agentsFiles: Array<{ path: string; content: string }> = [];
 	private systemPrompt: string | undefined;
 	private appendSystemPrompt: string[] = [];
+	private nonRuntimeSkillPaths: string[] = [];
 	private lastSkillPaths: string[] = [];
 	private lastPromptPaths: string[] = [];
 	private lastThemePaths: string[] = [];
@@ -107,10 +109,25 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		}
 		const previous = new Set(previousPaths);
 		this.additionalSkillPaths = nextPaths;
-		this.lastSkillPaths = this.merge(
-			this.lastSkillPaths.filter((path) => !previous.has(resolve(path))),
+		this.nonRuntimeSkillPaths = this.merge(
+			this.nonRuntimeSkillPaths.filter((path) => !previous.has(resolve(path))),
 			this.additionalSkillPaths,
 		);
+		this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
+		this.updateSkills(this.lastSkillPaths);
+		this.skillsFingerprint = this.computeFingerprint();
+	}
+
+	setRuntimeSkillPaths(paths: string[]): void {
+		const nextPaths = this.merge([], paths);
+		if (
+			this.runtimeSkillPaths.length === nextPaths.length &&
+			this.runtimeSkillPaths.every((path, index) => path === nextPaths[index])
+		) {
+			return;
+		}
+		this.runtimeSkillPaths = nextPaths;
+		this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
 		this.updateSkills(this.lastSkillPaths);
 		this.skillsFingerprint = this.computeFingerprint();
 	}
@@ -129,10 +146,11 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		const prompts = this.normalizeExtensionPaths(paths.promptPaths ?? []);
 		const themes = this.normalizeExtensionPaths(paths.themePaths ?? []);
 		if (skills.length > 0) {
-			this.lastSkillPaths = this.merge(
-				this.lastSkillPaths,
+			this.nonRuntimeSkillPaths = this.merge(
+				this.nonRuntimeSkillPaths,
 				skills.map((entry) => entry.path),
 			);
+			this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
 			this.updateSkills(this.lastSkillPaths, skills);
 			this.skillsFingerprint = this.computeFingerprint();
 		}
@@ -183,8 +201,9 @@ class DefaultSessionResourceRuntime implements SessionResourceRuntime {
 		const skillPaths = this.options.noSkills
 			? this.merge(additionalSkills, this.additionalSkillPaths)
 			: this.merge([...enabledSkills, ...additionalSkills, getSceneDir()], this.additionalSkillPaths);
-		this.lastSkillPaths = skillPaths;
-		this.updateSkills(skillPaths);
+		this.nonRuntimeSkillPaths = skillPaths;
+		this.lastSkillPaths = this.merge(this.nonRuntimeSkillPaths, this.runtimeSkillPaths);
+		this.updateSkills(this.lastSkillPaths);
 		const promptPaths = this.options.noPromptTemplates
 			? this.merge(additionalPrompts, this.options.additionalPromptTemplatePaths ?? [])
 			: this.merge([...enabledPrompts, ...additionalPrompts], this.options.additionalPromptTemplatePaths ?? []);

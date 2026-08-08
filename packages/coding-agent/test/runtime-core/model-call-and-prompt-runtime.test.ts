@@ -358,6 +358,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 					agentsFiles: [{ path: "C:\\first\\AGENTS.md", content: "First repository instruction" }],
 				}),
 				getSkills: () => ({ skills: [], diagnostics: [] }),
+				setRuntimeSkillPaths: () => {},
 				refreshSkillsIfChanged: firstRefresh,
 			},
 			settingsManager: {
@@ -380,6 +381,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 				getAppendSystemPrompt: () => [],
 				getAgentsFiles: () => ({ agentsFiles: [] }),
 				getSkills: () => ({ skills: [], diagnostics: [] }),
+				setRuntimeSkillPaths: () => {},
 				refreshSkillsIfChanged: () => false,
 			},
 			settingsManager: {

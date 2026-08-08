@@ -22,6 +22,7 @@ export interface SessionResourceRuntime {
 	getPathMetadata(): Map<string, ResourcePathMetadata>;
 	extendResources(paths: ResourceExtensionPaths): void;
 	setAdditionalSkillPaths(paths: string[]): void;
+	setRuntimeSkillPaths(paths: string[]): void;
 	setAdditionalExtensionPaths(paths: string[]): void;
 	reloadSkills(): void;
 	reload(): Promise<void>;

@@ -188,6 +188,7 @@ function promptResourceSource(options: {
 		getAppendSystemPrompt: () => [],
 		getSkills: () => ({ skills: options.readSkills(), diagnostics: [] }),
 		getSystemPrompt: () => undefined,
+		setRuntimeSkillPaths: () => {},
 		refreshSkillsIfChanged: () => {
 			options.onRefresh();
 			return true;

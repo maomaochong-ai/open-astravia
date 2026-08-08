@@ -240,6 +240,7 @@
 
 ### Fixed
 
+- 修复插件贡献的 Skill 只出现在 Desktop Skill 列表、却未进入新 Runtime 会话 `invoke_skill` 资源集合的问题；会话创建及插件运行时重配置现在都会同步插件 Skill 路径，同时保留宿主已有的附加 Skill 路径。
 - 修复独立可执行产物未向外部 Extension 提供 `@vetta/coding-agent/extensions` 运行时入口的问题；包根与显式 Extension 子路径现在都映射到同一稳定 facade，发布二进制仍保持零外部导入。
 - 修复自定义系统提示词分支漏渲染 `Available tools` 的问题；插件工具现在在默认提示词和自定义提示词路径下都会进入 agent 上下文，避免工具已注册但模型认为不可用。
 - **配额耗尽类 429 不再自动重试**：`AgentSession._isRetryableError` 原先正则命中 `429` 就当瞬时错误重试（默认 3 次、2s/4s/8s 退避）。但「429 Token Plan 5h 窗口额度已用尽，将于 … 重置」这类**计划/窗口配额耗尽**错误的重置时间在数小时后，退避窗口内绝无可能恢复——白重试 3 次，每次还经 runtime-host 转成一条 `error` 事件推给 UI，桌面端表现为同一条 429 连刷 4 条。修复：在瞬时错误判定前先匹配配额耗尽关键词（`额度已用尽` / `窗口额度` / `余额不足` / `Token Plan` / `insufficient quota` / `quota exhausted` 等），命中即判为不可重试，立即向用户呈现单条错误并停下；真正的瞬时 429/限速/5xx 仍照常重试。
