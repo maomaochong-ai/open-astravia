@@ -1,5 +1,5 @@
 import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
-import type { PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
+import type { ContextCompositionReport, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { atom } from "jotai";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
@@ -286,6 +286,8 @@ export interface ContextUsageData {
 	percent: number | null;
 	/** Context window size in tokens */
 	contextWindow: number;
+	/** Latest privacy-safe model-call composition report. */
+	composition?: ContextCompositionReport;
 }
 
 // ─── Slash panel (skill/scene selection) ───

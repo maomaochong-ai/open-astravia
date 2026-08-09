@@ -256,6 +256,37 @@
 			"compacting": "Compacting context...",
 			"unknown": "Context window {{window}} (usage unknown)",
 			"usage": "Context {{percent}}% used ({{window}} window)"
+		},
+		"details": {
+			"title": "Context composition",
+			"actual": "Actual input",
+			"estimated": "Estimated",
+			"section": "Section",
+			"tokens": "Tokens",
+			"share": "Share",
+			"unknown": "Unknown",
+			"coverage": {
+				"complete": "Estimate coverage is complete",
+				"partial": "Some sections could not be estimated",
+				"none": "No estimate is available"
+			},
+			"owner": {
+				"core": "System",
+				"skill": "Skill",
+				"plugin": "Plugin",
+				"mcp": "MCP",
+				"extension": "Extension",
+				"runtime": "Runtime",
+				"user": "User",
+				"unknown": "Unattributed"
+			},
+			"kind": {
+				"instruction": "Instruction",
+				"tool_schema": "Tool schema",
+				"history": "History",
+				"runtime_context": "Runtime context",
+				"user_input": "Current input"
+			}
 		}
 	},
 	"copyButton": {

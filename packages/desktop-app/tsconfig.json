@@ -24,6 +24,8 @@
 			"@vetta/capability-runtime": ["../capability-runtime/src/index.ts"],
 			"@vetta/capability-runtime/*": ["../capability-runtime/src/*"],
 			"@vetta/ai": ["../ai/src/index.ts"],
+			"@vetta/ai/protocol": ["../ai/src/protocol/index.ts"],
+			"@vetta/ai/testing": ["../ai/src/testing/index.ts"],
 			"@vetta/ai/*": ["../ai/src/*"],
 			"@vetta/agent-core": ["../agent/src/index.ts"],
 			"@vetta/agent-core/*": ["../agent/src/*"],

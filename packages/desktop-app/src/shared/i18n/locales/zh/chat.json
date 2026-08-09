@@ -256,6 +256,37 @@
 			"compacting": "正在压缩上下文...",
 			"unknown": "上下文窗口 {{window}}（使用量未知）",
 			"usage": "上下文已使用 {{percent}}%（{{window}} 窗口）"
+		},
+		"details": {
+			"title": "上下文构成",
+			"actual": "实际输入",
+			"estimated": "估算",
+			"section": "区块",
+			"tokens": "Token",
+			"share": "占比",
+			"unknown": "未知",
+			"coverage": {
+				"complete": "估算覆盖完整",
+				"partial": "部分区块无法估算",
+				"none": "无可用估算"
+			},
+			"owner": {
+				"core": "系统",
+				"skill": "Skill",
+				"plugin": "插件",
+				"mcp": "MCP",
+				"extension": "扩展",
+				"runtime": "运行时",
+				"user": "用户",
+				"unknown": "未归因"
+			},
+			"kind": {
+				"instruction": "指令",
+				"tool_schema": "工具 Schema",
+				"history": "历史消息",
+				"runtime_context": "运行时上下文",
+				"user_input": "当前输入"
+			}
 		}
 	},
 	"copyButton": {

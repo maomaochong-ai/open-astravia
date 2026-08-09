@@ -399,6 +399,7 @@ export function useSessionManager(): SessionManagerResult {
 			setContextUsage({
 				percent: state.contextPercent,
 				contextWindow: state.contextWindow,
+				...(state.contextComposition ? { composition: state.contextComposition } : {}),
 			});
 			setModelSupportsImages(state.model?.input?.includes("image") ?? false);
 			setSessionExecutionMode(state.executionMode);
@@ -804,6 +805,7 @@ export function useSessionManager(): SessionManagerResult {
 					setContextUsage({
 						percent: event.contextPercent ?? null,
 						contextWindow: event.contextWindow ?? 0,
+						...(event.contextComposition ? { composition: event.contextComposition } : {}),
 					});
 					return;
 				}
