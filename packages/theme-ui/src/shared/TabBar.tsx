@@ -3,6 +3,7 @@ import {
 	useCallback,
 	useEffect,
 	useId,
+	useLayoutEffect,
 	useRef,
 	useState,
 	type JSX,
@@ -11,6 +12,7 @@ import {
 	type ReactNode,
 	type RefObject,
 } from "react";
+import { createConnectedTabOutlineGeometry } from "./connected-tab-outline";
 import { hasReachedTabDragDistance, moveTabKey } from "./tab-drag";
 
 function cn(...parts: Array<string | false | null | undefined>): string {
@@ -115,6 +117,72 @@ function computeOverflow<T extends string>(
 
 function sameKeys<T>(a: T[], b: T[]): boolean {
 	return a.length === b.length && a.every((k, i) => k === b[i]);
+}
+
+function ActiveTabIndicator({
+	layoutId,
+	suppressLayoutAnimation,
+}: {
+	layoutId: string;
+	suppressLayoutAnimation: boolean;
+}): JSX.Element {
+	const indicatorRef = useRef<HTMLSpanElement>(null);
+	const [tabWidth, setTabWidth] = useState(0);
+
+	useLayoutEffect(() => {
+		const indicator = indicatorRef.current;
+		if (!indicator) return;
+		const updateWidth = (): void => {
+			const nextWidth = indicator.offsetWidth;
+			setTabWidth((currentWidth) => (currentWidth === nextWidth ? currentWidth : nextWidth));
+		};
+		updateWidth();
+		const observer = new ResizeObserver(updateWidth);
+		observer.observe(indicator);
+		return () => observer.disconnect();
+	}, []);
+
+	const geometry = tabWidth > 0 ? createConnectedTabOutlineGeometry(tabWidth) : null;
+
+	return (
+		<motion.span
+			ref={indicatorRef}
+			layoutId={`tabbar-active-${layoutId}`}
+			aria-hidden
+			className="pointer-events-none absolute inset-x-0 top-0 -bottom-px rounded-t-lg bg-muted"
+			data-active-tab-indicator
+			transition={
+				suppressLayoutAnimation
+					? { duration: 0 }
+					: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
+			}
+		>
+			{geometry && (
+				<svg
+					viewBox={`0 0 ${geometry.width} ${geometry.height}`}
+					aria-hidden
+					className="absolute top-0 overflow-visible fill-muted stroke-border"
+					data-connected-tab-outline
+					shapeRendering="geometricPrecision"
+					style={{
+						height: geometry.height,
+						left: -geometry.offsetX,
+						width: geometry.width,
+					}}
+				>
+					<path d={geometry.fillPath} stroke="none" />
+					<path
+						d={geometry.outlinePath}
+						fill="none"
+						strokeLinecap="square"
+						strokeLinejoin="round"
+						strokeWidth="1"
+						vectorEffect="non-scaling-stroke"
+					/>
+				</svg>
+			)}
+		</motion.span>
+	);
 }
 
 /** 页签内容（图标 + 文字 + 小红点），真实页签与隐藏测量层共用，保证宽度一致。 */
@@ -559,36 +627,7 @@ export function TabBar<T extends string>({
 								)}
 							>
 								{active && (
-									<motion.span
-										layoutId={`tabbar-active-${layoutId}`}
-										aria-hidden
-										className="pointer-events-none absolute inset-x-0 top-0 -bottom-px rounded-t-lg border border-b-0 border-border bg-muted"
-										data-active-tab-indicator
-										transition={
-											suppressLayoutAnimation
-												? { duration: 0 }
-												: { type: "spring", stiffness: 480, damping: 36, mass: 0.8 }
-										}
-									>
-										<span className="absolute -left-px bottom-[0.5px] h-2 w-0.5 bg-muted" />
-										<svg
-											viewBox="0 0 8 8"
-											className="absolute -left-2 bottom-[0.5px] h-2 w-2 fill-muted stroke-border"
-											data-tab-join-curve="left"
-										>
-											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0 H8 V8 H0 Z" stroke="none" />
-											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0" fill="none" strokeLinecap="round" />
-										</svg>
-										<span className="absolute -right-px bottom-[0.5px] h-2 w-0.5 bg-muted" />
-										<svg
-											viewBox="0 0 8 8"
-											className="absolute -right-2 bottom-[0.5px] h-2 w-2 -scale-x-100 fill-muted stroke-border"
-											data-tab-join-curve="right"
-										>
-											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0 H8 V8 H0 Z" stroke="none" />
-											<path d="M0 7.5 A7.5 7.5 0 0 0 7.5 0" fill="none" strokeLinecap="round" />
-										</svg>
-									</motion.span>
+									<ActiveTabIndicator layoutId={layoutId} suppressLayoutAnimation={suppressLayoutAnimation} />
 								)}
 								<TabInner icon={icon} label={label} badge={badge} active={active} />
 							</button>
