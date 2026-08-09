@@ -1,6 +1,7 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Api, AssistantMessage, Message, Model } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
+import type { ContextCompositionReport } from "@vetta/runtime-core";
 import type { CompactionPreparation, CompactionResult, CompactionSettings } from "../../../compaction/index.js";
 import type { CompactionWorkStateSnapshot } from "../../../compaction/work-state-recovery.js";
 import type { CodingAgentMemoryCompactionPolicy } from "../../../memory/index.js";
@@ -51,4 +52,5 @@ export interface CodingAgentContextUsage {
 	readonly tokens: number;
 	readonly contextWindow: number;
 	readonly percent: number;
+	readonly composition?: ContextCompositionReport;
 }

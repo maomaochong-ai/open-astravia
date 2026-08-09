@@ -241,6 +241,27 @@ describe("Coding Agent model call and prompt runtime", () => {
 			]);
 			expect(frame.instructions[0]?.content).toContain("- read: Read a file");
 			expect([...frame.tools.keys()]).toEqual(["read"]);
+			const composition = frame.contextCompositionSections ?? [];
+			expect(composition).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						id: "instruction:plugin.extra",
+						kind: "instruction",
+						source: { owner: "plugin", id: "plugin-a" },
+					}),
+					expect.objectContaining({
+						id: "tool:read",
+						kind: "tool_schema",
+						source: { owner: "runtime", id: "read" },
+					}),
+				]),
+			);
+			expect(
+				composition
+					.filter(({ kind }) => kind === "instruction")
+					.map(({ content }) => content)
+					.join("\n\n"),
+			).toBe(frame.instructions[0]?.content);
 		} finally {
 			vi.useRealTimers();
 		}

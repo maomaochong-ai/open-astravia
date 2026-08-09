@@ -226,6 +226,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			...(options.memoryRuntime ? [options.memoryRuntime] : []),
 		],
 		contextStrategy: options.contextRuntime,
+		contextCompositionPublisher: options.contextRuntime,
 		modelCallContextTransformer: options.contextRuntime,
 		modelCallMessageFinalizer,
 		conversationContextProjector: options.conversationContextProjector,

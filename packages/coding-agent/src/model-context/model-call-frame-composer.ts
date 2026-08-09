@@ -1,3 +1,4 @@
+import type { ContextCompositionSectionInput } from "@vetta/runtime-core";
 import type {
 	InstructionBlock,
 	ModelCallFrame,
@@ -129,6 +130,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 				},
 			],
 			tools,
+			contextCompositionSections: composeContextSections(draft, tools),
 		};
 	}
 
@@ -211,6 +213,48 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			createDraft,
 		};
 	}
+}
+
+function composeContextSections(
+	draft: SystemPromptDraft,
+	tools: ReadonlyMap<string, RuntimeToolDefinition>,
+): readonly ContextCompositionSectionInput[] {
+	const instructions = draft.blocks
+		.filter((block) => block.enabled && block.content.length > 0)
+		.sort((left, right) => left.priority - right.priority || left.id.localeCompare(right.id))
+		.map(
+			(block): ContextCompositionSectionInput => ({
+				id: `instruction:${block.id}`,
+				kind: "instruction",
+				category: block.type,
+				source: {
+					owner:
+						block.type === "skills"
+							? "skill"
+							: block.type === "mcp"
+								? "mcp"
+								: block.source.kind === "plugin"
+									? "plugin"
+									: "core",
+					id: block.source.pluginId ?? block.id,
+				},
+				content: block.content,
+			}),
+		);
+	const toolSchemas = [...tools.values()].map(
+		(tool): ContextCompositionSectionInput => ({
+			id: `tool:${tool.name}`,
+			kind: "tool_schema",
+			category: tool.contextCategory,
+			source: tool.contextSource ?? { owner: "runtime", id: tool.name },
+			content: JSON.stringify({
+				name: tool.name,
+				description: tool.description,
+				inputSchema: tool.inputSchema,
+			}),
+		}),
+	);
+	return [...instructions, ...toolSchemas];
 }
 
 interface PreparedModelCallFrame {

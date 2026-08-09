@@ -1,7 +1,9 @@
 import type { Message, UserMessage } from "@vetta/ai";
+import type { ContextCompositionReport } from "@vetta/runtime-core";
 import { type ConversationDocument, selectConversationDocumentModelMessages } from "@vetta/runtime-core/conversation";
 import type {
 	ContextCompactionRecord,
+	ContextCompositionPublisher,
 	ContextPreparationInput,
 	ContextStrategy,
 	ConversationContinuationResult,
@@ -50,7 +52,12 @@ import { projectModelCallContext } from "./model-call-context-projection.js";
  * 模型调用前的 microcompact 永不直接改写 Conversation Document。
  */
 export class CodingAgentContextRuntime
-	implements ContextStrategy, ManualContextCompactionRuntime, ModelCallContextTransformer, TurnObserver
+	implements
+		ContextStrategy,
+		ManualContextCompactionRuntime,
+		ModelCallContextTransformer,
+		TurnObserver,
+		ContextCompositionPublisher
 {
 	readonly id = "coding-agent.context-runtime";
 	private readonly resolveSettings: () => CompactionSettings;
@@ -61,6 +68,7 @@ export class CodingAgentContextRuntime
 	private readonly circuitBreaker = new CompactionCircuitBreaker();
 	private readonly prefire: CompactionPrefireCache;
 	private currentTokens = 0;
+	private contextComposition: ContextCompositionReport | undefined;
 	private autoCompactionEnabledOverride: boolean | undefined;
 
 	constructor(private readonly options: CodingAgentContextRuntimeOptions) {
@@ -302,7 +310,15 @@ export class CodingAgentContextRuntime
 			tokens: this.currentTokens,
 			contextWindow,
 			percent: contextWindow > 0 ? (this.currentTokens / contextWindow) * 100 : 0,
+			...(this.contextComposition ? { composition: this.contextComposition } : {}),
 		};
+	}
+
+	publishContextComposition(report: ContextCompositionReport): void {
+		this.contextComposition = report;
+		if (report.phase === "completed" && report.providerReportedInputTokens !== undefined) {
+			this.currentTokens = report.providerReportedInputTokens ?? this.currentTokens;
+		}
 	}
 
 	dispose(): void {
