@@ -1,10 +1,12 @@
+import { BrandMark } from "@/components/brand-mark";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
 export function baseOptions(): BaseLayoutProps {
 	return {
 		nav: {
-			title: "Vetta 文档",
+			title: <BrandMark />,
 			url: "/",
+			transparentMode: "none",
 		},
 	};
 }

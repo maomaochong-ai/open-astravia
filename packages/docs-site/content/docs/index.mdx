@@ -1,41 +1,81 @@
 ---
 title: Vetta 开发者文档
 description: 配置 Vetta、运行 Agent 任务，并通过插件、主题和 MCP 扩展桌面能力。
+full: true
 ---
 
-这里提供可以直接照做的 Vetta 使用指南和扩展开发文档。先完成模型配置和第一个任务，再按目标进入对应主题。
+<header className="docs-home-hero">
+  <div className="docs-home-hero__copy">
+    <p className="docs-home-kicker">VETTA / DOCUMENTATION</p>
+    <h1>把想法交给 Vetta，<br />把方法留在这里。</h1>
+    <p className="docs-home-lead">从第一次模型配置，到连接外部能力、组织长期知识和开发自己的扩展。</p>
+    <div className="docs-home-actions">
+      <a className="docs-home-primary" href="/getting-started/">开始使用 <span aria-hidden="true">→</span></a>
+      <a className="docs-home-secondary" href="/product/overview/">浏览全部指南</a>
+    </div>
+  </div>
+  <div className="docs-home-hero__visual" aria-label="Vetta 文档主题概览">
+    <div className="docs-home-visual-head">
+      <span>FIELD INDEX</span>
+      <span>2026.08</span>
+    </div>
+    <div className="docs-home-visual-core">
+      <img src="/images/vetta-app-icon.webp" alt="Vetta" width="144" height="144" />
+      <span>OPEN VETTA</span>
+    </div>
+    <ol className="docs-home-visual-list">
+      <li><span>01</span><strong>Models</strong><small>模型与推理</small></li>
+      <li><span>02</span><strong>Connect</strong><small>MCP 与知识</small></li>
+      <li><span>03</span><strong>Run</strong><small>批量与自动化</small></li>
+      <li><span>04</span><strong>Extend</strong><small>插件与主题</small></li>
+    </ol>
+  </div>
+</header>
 
-## 从这里开始
+<section className="docs-home-section docs-home-catalogue">
+  <div className="docs-home-section__heading">
+    <p className="docs-home-kicker">01 / EXPLORE</p>
+    <h2>选择你要完成的事</h2>
+    <p>不必先理解所有概念，沿着当前目标开始。</p>
+  </div>
+  <div className="docs-home-index">
+    <div className="docs-home-index__group">
+      <div className="docs-home-index__title"><span>01</span><h3>开始与连接</h3></div>
+      <a href="/product/models/"><span>配置模型</span><small>供应商、能力与默认模型</small><b aria-hidden="true">↗</b></a>
+      <a href="/product/abilities/"><span>能力</span><small>技能、场景、MCP、插件与套装</small><b aria-hidden="true">↗</b></a>
+      <a href="/product/mcp/"><span>MCP 连接器</span><small>接入外部工具和数据</small><b aria-hidden="true">↗</b></a>
+      <a href="/product/knowledge-base/"><span>知识库</span><small>整理可长期复用的资料</small><b aria-hidden="true">↗</b></a>
+    </div>
+    <div className="docs-home-index__group">
+      <div className="docs-home-index__title"><span>02</span><h3>执行与协作</h3></div>
+      <a href="/getting-started/first-task/"><span>第一个任务</span><small>目标、上下文与验收</small><b aria-hidden="true">↗</b></a>
+      <a href="/product/batch-tasks/"><span>批量任务</span><small>同时处理多个目标目录</small><b aria-hidden="true">↗</b></a>
+      <a href="/product/automation/"><span>自动化</span><small>按计划持续运行任务</small><b aria-hidden="true">↗</b></a>
+      <a href="/product/claw/"><span>Claw 与 IM</span><small>从飞书或微信继续工作</small><b aria-hidden="true">↗</b></a>
+    </div>
+    <div className="docs-home-index__group">
+      <div className="docs-home-index__title"><span>03</span><h3>设计与扩展</h3></div>
+      <a href="/plugins/overview/"><span>插件系统</span><small>扩展界面与 Agent 能力</small><b aria-hidden="true">↗</b></a>
+      <a href="/themes/overview/"><span>主题系统</span><small>塑造完整的桌面体验</small><b aria-hidden="true">↗</b></a>
+      <a href="/product/application-environment/"><span>应用环境</span><small>Node.js、Python 与镜像</small><b aria-hidden="true">↗</b></a>
+      <a href="/troubleshooting/"><span>故障排查</span><small>从现象定位运行问题</small><b aria-hidden="true">↗</b></a>
+    </div>
+  </div>
+</section>
 
-<Cards>
-  <Card title="快速开始" href="/getting-started/">
-    安装桌面客户端、登录账号并完成模型配置。
-  </Card>
-  <Card title="运行第一个任务" href="/getting-started/first-task/">
-    创建会话、提供上下文，并检查 Agent 的执行结果。
-  </Card>
-  <Card title="使用指南" href="/product/overview/">
-    配置模型、连接 MCP、管理知识库并运行自动化任务。
-  </Card>
-  <Card title="插件开发" href="/plugins/getting-started/">
-    使用插件 SDK 扩展界面、Agent 工具与宿主能力。
-  </Card>
-  <Card title="主题开发" href="/themes/getting-started/">
-    创建主题模块并覆盖外观令牌、页面和界面区域。
-  </Card>
-  <Card title="故障排查" href="/troubleshooting/">
-    定位登录、模型调用、文件访问和插件加载问题。
-  </Card>
-</Cards>
+<section className="docs-home-section docs-home-paths">
+  <div className="docs-home-section__heading">
+    <p className="docs-home-kicker">02 / PATHS</p>
+    <h2>三条常用路径</h2>
+  </div>
+  <ol>
+    <li><span>连接服务</span><p>先配置模型，再通过 MCP 为 Agent 增加外部工具。</p><a href="/product/mcp/">查看连接指南 <b aria-hidden="true">→</b></a></li>
+    <li><span>持续执行</span><p>用批量任务处理多个目标，用自动化承接周期工作。</p><a href="/product/automation/">创建自动化 <b aria-hidden="true">→</b></a></li>
+    <li><span>创造扩展</span><p>从最小插件开始，需要完整视觉表达时再进入主题系统。</p><a href="/plugins/getting-started/">开始开发插件 <b aria-hidden="true">→</b></a></li>
+  </ol>
+</section>
 
-## 按目标查找
-
-- 要给 Agent 增加外部工具：阅读 [MCP 连接器](/product/mcp/) 或 [能力市场](/product/abilities/)。
-- 要重复处理多个目录：阅读[批量任务](/product/batch-tasks/)。
-- 要定时运行任务：阅读[自动化](/product/automation/)。
-- 要在飞书或微信中使用：先配置 [IM 渠道](/product/im/)，再阅读 [Vetta Claw](/product/claw/)。
-- 要扩展桌面界面或 Agent：从[插件开发概览](/plugins/overview/)开始。
-
-## 没有找到答案？
-
-先查看[常见故障](/troubleshooting/)和[文档范围](/reference/documentation-policy/)，再提交包含复现信息的问题。
+<footer className="docs-home-footer">
+  <p className="docs-home-kicker">03 / FOR HUMANS AND AGENTS</p>
+  <div><h2>同一份文档，<br />也为 AI 准备。</h2><p>通过 <a href="/llms.txt">llms.txt</a>、<a href="/llms-full.txt">完整上下文</a>或任意页面的 Markdown 版本读取。</p></div>
+</footer>

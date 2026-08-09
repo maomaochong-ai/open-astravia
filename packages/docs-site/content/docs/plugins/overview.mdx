@@ -1,0 +1,58 @@
+---
+title: 插件开发概览
+description: 理解 Vetta 插件的运行方式、能力出口和信任边界。
+---
+
+Vetta 插件用于扩展桌面客户端的界面、文件浏览器、对话和 Agent 能力。插件通过 `@vetta-org/plugin-sdk` 获取宿主提供的策展能力出口。
+
+## 运行模型
+
+- 插件使用 React、TypeScript 和 Vite 开发。
+- 生产产物通过 Module Federation 加载。
+- React、React DOM 和插件 SDK 由宿主以共享单例提供。
+- 插件在桌面渲染进程内运行，不是 iframe 或 Worker 沙箱。
+
+## 信任与权限
+
+插件面向官方或合作方策展的扩展，不应被视为可直接运行的任意不可信代码。需要权限的能力必须同时满足：
+
+<Steps>
+  <Step>
+    ### 在清单中声明
+
+    在 `plugin.json` 中声明权限。
+  </Step>
+  <Step>
+    ### 安装时授权
+
+    用户或管理员在安装流程中确认授权。
+  </Step>
+  <Step>
+    ### 运行时校验
+
+    宿主在调用对应 API 时再次校验权限。
+  </Step>
+</Steps>
+
+## 先选正确的扩展形态
+
+并非所有扩展都需要做成插件：
+
+<Cards>
+  <Card title="技能" description="给 Agent 增加一组指令与工作流时优先使用技能。" />
+  <Card title="MCP" href="/product/mcp/" description="只连接外部工具或数据源时优先使用 MCP。" />
+  <Card title="插件" href="/plugins/getting-started/" description="需要桌面 UI、宿主 API 或完整生命周期时再创建插件。" />
+  <Card title="主题" href="/themes/overview/" description="需要一致的外观、组件替换或主题页面时使用主题系统。" />
+</Cards>
+
+## 可扩展范围
+
+插件可以注册界面插槽、页面、文件预览、消息卡片、Agent 工具和 App Action，也可以在获得授权后访问文件、网络、私有存储、自动化任务及用户配置的 AI 模型。
+
+## 继续阅读
+
+<Cards>
+  <Card title="创建第一个插件" href="/plugins/getting-started/" description="从最小项目结构到构建、安装与开发调试。" />
+  <Card title="清单与权限" href="/plugins/manifest-and-permissions/" description="声明身份、入口、样式、权限和发布检查。" />
+  <Card title="扩展点" href="/plugins/extension-points/" description="按产品目标选择 UI、文件、消息、Agent 或 App Action。" />
+</Cards>

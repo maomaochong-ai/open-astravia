@@ -1,0 +1,51 @@
+---
+title: 选择插件扩展点
+description: 根据产品目标选择 UI、文件、消息、Agent 或 App Action 扩展点。
+---
+
+先选择最接近用户任务的扩展点，再在 `activate(ctx)` 中注册。一个插件可以组合多个扩展点，但每项都应有明确用途和独立权限。
+
+## UI 与页面
+
+<Cards>
+  <Card title="全局或局部插槽" description="在宿主预留位置增加操作或状态。" />
+  <Card title="页面与导航" description="提供需要完整工作区的功能。" />
+  <Card title="设置项" description="让用户配置插件行为，避免把可变值写死。" />
+</Cards>
+
+组件应使用宿主共享的 React 和设计令牌。注册函数返回清理句柄时，在停用阶段释放，避免重载后重复注册。
+
+## 文件与消息
+
+<Cards>
+  <Card title="文件预览" description="为特定扩展名或内容提供查看器。" />
+  <Card title="消息卡片" description="把插件或工具结果渲染为可操作的会话内容。" />
+  <Card title="输入区操作" description="为清晰、频繁的命令增加入口。" />
+</Cards>
+
+文件解析和 UI 渲染应分离，解析失败时返回可理解的错误状态，不要让单个文件使整个会话视图崩溃。
+
+## Agent 能力
+
+<Cards>
+  <Card title="工具注册" description="提供有固定输入输出契约的动作。" />
+  <Card title="系统提示与技能" description="补充领域规则和工作流程。" />
+  <Card title="工具策略与继续执行" description="控制工具可用性或任务推进。" />
+</Cards>
+
+工具输入使用 SDK 提供的结构化 schema，并把外部 I/O 错误映射为稳定结果。需要宿主文件、网络或模型能力时，先在清单中声明最小权限。
+
+## App Action
+
+App Action 让插件通过宿主动作系统暴露可发现命令，适合导航、打开面板或执行确定性操作。
+
+<Callout title="不要绕过确认" type="warn">
+  不要用 App Action 绕过用户确认去执行高风险文件或网络操作。
+</Callout>
+
+## 相关文档
+
+<Cards>
+  <Card title="创建第一个插件" href="/plugins/getting-started/" description="完整加载、构建与安装流程。" />
+  <Card title="清单与权限" href="/plugins/manifest-and-permissions/" description="权限声明与发布前检查。" />
+</Cards>

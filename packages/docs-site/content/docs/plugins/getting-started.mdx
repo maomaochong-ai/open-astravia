@@ -18,16 +18,18 @@ bun add -d @vetta-org/plugin-vite@^0.0.5 vite@^7 react@^19
 
 ## 项目结构
 
-```text
-my-plugin/
-├── plugin.json
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── src/
-    ├── index.tsx
-    └── style.css
-```
+<Files>
+  <Folder name="my-plugin" defaultOpen>
+    <File name="plugin.json" />
+    <File name="package.json" />
+    <File name="tsconfig.json" />
+    <File name="vite.config.ts" />
+    <Folder name="src" defaultOpen>
+      <File name="index.tsx" />
+      <File name="style.css" />
+    </Folder>
+  </Folder>
+</Files>
 
 ## 配置构建
 
@@ -71,10 +73,43 @@ export default definePlugin({
   Module Federation 的共享 React 依赖在 bootstrap 后才可用。把 JSX 放在组件或 `activate()` 调用后的执行路径中。
 </Callout>
 
-## 构建与安装
+## 构建与加载
 
-运行 `bunx vite build` 生成 `dist/mf-manifest.json`、`remoteEntry.js` 和样式文件。发布包应在归档根目录包含 `plugin.json` 和 `dist/`。
+按开发调试与正式发布选择路径：
 
-在“能力”页面的导入菜单中选择插件 ZIP，核对插件身份和权限后安装并启用。打开插件注册的界面或触发其工具，确认产物确实被宿主加载。
+<Tabs items={["开发调试", "发布安装"]}>
+  <Tab value="开发调试">
+    使用 `bunx vetta-plugin dev` 启动插件开发服务，再通过 Vetta 的开发链接加载。改动后可快速验证界面与工具注册，但发布前仍要执行生产构建并测试 ZIP 安装流程。
+  </Tab>
+  <Tab value="发布安装">
+    <Steps>
+      <Step>
+        ### 生产构建
 
-开发期间使用 `bunx vetta-plugin dev` 启动插件开发服务，再通过 Vetta 的开发链接加载。发布前仍要执行生产构建并测试 ZIP 安装流程。
+        运行 `bunx vite build`，生成 `dist/mf-manifest.json`、`remoteEntry.js` 和样式文件。
+      </Step>
+      <Step>
+        ### 打包归档
+
+        发布包应在归档根目录包含 `plugin.json` 和 `dist/`。
+      </Step>
+      <Step>
+        ### 安装并启用
+
+        在侧栏 **能力** 页打开 **添加能力 → 导入插件压缩包**，选择 ZIP；安装后在 **启用与权限** 对话框中启用并授权。
+      </Step>
+      <Step>
+        ### 验证加载
+
+        打开插件注册的界面或触发其工具，确认产物确实被宿主加载。
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
+## 下一步
+
+<Cards>
+  <Card title="清单与权限" href="/plugins/manifest-and-permissions/" description="对齐 plugin.json 字段、权限声明与发布前检查。" />
+  <Card title="扩展点" href="/plugins/extension-points/" description="选择 UI、文件、消息、Agent 或 App Action 扩展点。" />
+</Cards>

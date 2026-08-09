@@ -22,15 +22,15 @@ const translations = {
 
 export const metadata: Metadata = {
 	metadataBase: new URL(process.env.DOCS_SITE_URL ?? "https://docs.openvetta.com"),
-	title: "Vetta 文档",
-	description: "使用 Vetta、扩展桌面能力并接入核心 SDK。",
+	title: "Vetta 开发者文档",
+	description: "配置 Vetta、运行 Agent 任务，并通过插件、主题和 MCP 扩展桌面能力。",
 	icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
 		<html lang="zh-CN" suppressHydrationWarning>
-			<body className="flex min-h-screen flex-col">
+			<body className="vetta-docs flex min-h-screen flex-col">
 				<RootProvider i18n={{ locale: "zh-CN", translations }}>{children}</RootProvider>
 			</body>
 		</html>

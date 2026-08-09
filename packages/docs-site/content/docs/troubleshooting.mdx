@@ -1,0 +1,55 @@
+---
+title: 故障排查
+description: 排查登录、模型、文件访问、知识库、MCP、插件与 Claw 问题。
+---
+
+按现象展开。反馈问题时可使用 **设置 → 通用设置 → 导出诊断包**；不要附完整访问密钥。
+
+<Accordions type="single">
+  <Accordion id="login-failed" title="登录失败或授权链接失效">
+    桌面端使用浏览器 **授权登录**。请确认系统时间正确、网络可访问认证服务，并在登录弹层中 **重新授权** 或 **重新打开链接**。企业账号问题联系组织管理员。
+  </Accordion>
+  <Accordion id="model-failed" title="模型无法调用">
+    依次确认：
+
+    1. 会话或任务中已选择可用模型，或已设置默认模型。
+    2. **设置 → 模型配置** 中服务商 API Key、Base URL、模型 ID 正确。
+    3. 网络与代理可访问对应上游。
+    4. 未触发上下文过长、配额或速率限制。
+    5. 知识库加工场景下，在 **知识库设置** 中对处理模型执行 **测试连接**。
+
+    <Callout title="不要泄露密钥" type="warn">
+      不要把完整访问密钥写进日志或问题报告。配置文件默认在 `~/.vetta/agent/models.json`。
+    </Callout>
+  </Accordion>
+  <Accordion id="file-access" title="无法读取或写入项目文件">
+    确认会话绑定了正确工作目录，目标路径仍存在，且当前系统用户有权限。沙盒模式下仅允许工作区受限访问；需要更广访问时切换会话 **执行模式** 为 **完全访问**（并理解风险）。
+  </Accordion>
+  <Accordion id="knowledge" title="知识库不整理或不检索">
+    确认知识库总开关已开、处理模型已选且测试连接成功；查看待加工文件与 **整理记录**；对失败项使用 **重试失败文件**。清空 Wiki 只会删整理结果，原始文件仍在。
+  </Accordion>
+  <Accordion id="mcp" title="MCP 工具不可用">
+    在 **能力 → 我的** 确认 MCP 已添加且已启用，凭证或 OAuth 已完成。检查 `~/.vetta/agent/mcp.json` 中 command/url 是否正确，stdio 命令是否在 PATH 中可执行。
+  </Accordion>
+  <Accordion id="plugin-load" title="插件加载失败">
+    导入 zip 根目录须含 `plugin.json` 与构建产物（如 `dist/mf-manifest.json`）。清单中 `remoteName` / `expose` / `entry` 须与 Vite 配置一致。安装后须在 **启用与权限** 对话框中启用并授权。系统内置插件权限自动授予且不可改。
+  </Accordion>
+  <Accordion id="claw" title="Claw / IM 无回复">
+    确认 **设置 → Claw** 总开关打开、活动渠道正确（飞书凭证或微信已绑定）、对话模型可用，并保持 Vetta 运行。使用 **查看日志** 与 **重启**。在 IM 中先发 `/help` 验证命令通道。
+  </Accordion>
+  <Accordion id="batch-stop" title="批量任务无法删除或状态异常">
+    删除运行中的批量项目前需先 **停止**。停止会重置未完成任务的会话与产物；已完成任务默认保留（以确认对话框文案为准）。
+  </Accordion>
+  <Accordion id="runtime" title="Agent 里 node/python 不可用">
+    打开 **设置 → 应用环境**，对 Node / Python 执行获取或重装，再在 **Vetta 会话** 中验证版本。系统终端版本与内置环境无关。
+  </Accordion>
+</Accordions>
+
+## 相关指南
+
+<Cards>
+  <Card title="配置模型" href="/product/models/" description="服务商、模型与思考档位。" />
+  <Card title="能力" href="/product/abilities/" description="技能、MCP、插件安装与管理。" />
+  <Card title="Claw" href="/product/claw/" description="IM 旁路总开关与命令。" />
+  <Card title="应用环境" href="/product/application-environment/" description="内置 Node / Python 与镜像。" />
+</Cards>

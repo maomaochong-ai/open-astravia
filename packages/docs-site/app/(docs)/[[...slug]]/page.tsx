@@ -13,6 +13,16 @@ interface PageProps {
 	params: Promise<{ slug?: string[] }>;
 }
 
+const sectionLabels: Record<string, string> = {
+	"getting-started": "01 / 开始使用",
+	product: "02 / 使用指南",
+	plugins: "03 / 插件开发",
+	themes: "04 / 主题开发",
+	developers: "05 / 开发者",
+	reference: "06 / 参考",
+	troubleshooting: "07 / 支持",
+};
+
 export default async function Page({ params }: PageProps) {
 	const { slug } = await params;
 	const page = source.getPage(slug);
@@ -20,12 +30,28 @@ export default async function Page({ params }: PageProps) {
 	if (!page) notFound();
 
 	const MDX = page.data.body;
+	const isHome = page.slugs.length === 0;
+
+	if (isHome) {
+		return (
+			<DocsPage full breadcrumb={{ enabled: false }} footer={{ enabled: false }} className="docs-home-page">
+				<DocsBody className="docs-home-body">
+					<MDX components={getMDXComponents()} />
+				</DocsBody>
+			</DocsPage>
+		);
+	}
+
+	const sectionLabel = sectionLabels[page.slugs[0] ?? ""] ?? "VETTA / DOCUMENTATION";
 
 	return (
-		<DocsPage toc={page.data.toc} full={page.data.full}>
-			<DocsTitle>{page.data.title}</DocsTitle>
-			<DocsDescription>{page.data.description}</DocsDescription>
-			<DocsBody>
+		<DocsPage toc={page.data.toc} full={page.data.full} className="docs-article-page">
+			<header className="docs-page-header">
+				<p className="docs-page-eyebrow">{sectionLabel}</p>
+				<DocsTitle className="docs-page-title">{page.data.title}</DocsTitle>
+				<DocsDescription className="docs-page-description">{page.data.description}</DocsDescription>
+			</header>
+			<DocsBody className="docs-article-body">
 				<MDX components={getMDXComponents()} />
 			</DocsBody>
 		</DocsPage>
