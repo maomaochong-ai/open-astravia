@@ -25,6 +25,7 @@ import {
 	StaticRuntimeSnapshotProvider,
 	type StoredConversation,
 	type StoredSessionEvent,
+	type TurnEngineContextCheckpointResult,
 	type TurnEngineEvent,
 	type TurnEnginePort,
 	type TurnEngineRequest,
@@ -575,9 +576,7 @@ describe("greenfield runtime kernel", () => {
 		const preparationReasons: Array<string | undefined> = [];
 		let transformerCalls = 0;
 		const checkpointMessages = [userMessage("current input"), toolResultMessage("call-1")];
-		let checkpointResult: Parameters<
-			Extract<TurnEngineEvent, { type: "context_checkpoint" }>["request"]["complete"]
-		>[0];
+		let checkpointResult: TurnEngineContextCheckpointResult | undefined;
 		const contextStrategy: ContextStrategy = {
 			async prepare(input) {
 				preparationReasons.push(input.reason);
@@ -598,22 +597,16 @@ describe("greenfield runtime kernel", () => {
 			},
 		};
 		const engine: TurnEnginePort = {
-			async *execute() {
+			async *execute(request) {
 				yield { type: "message", message: checkpointMessages[1] };
-				yield {
-					type: "context_checkpoint",
-					request: {
+				checkpointResult = await request.checkpoint?.(
+					{
 						reason: "model_call",
 						messages: checkpointMessages,
 						recoveryAttempt: 0,
-						complete(result) {
-							checkpointResult = result;
-						},
-						fail(error) {
-							throw error;
-						},
 					},
-				};
+					request.signal,
+				);
 				yield { type: "message", message: assistantMessage("done") };
 				yield { type: "completed", stopReason: "stop" };
 			},
@@ -651,9 +644,7 @@ describe("greenfield runtime kernel", () => {
 
 	it("returns a transient assistant-error retry without requiring a compaction record", async () => {
 		const retryMessages = [userMessage("retry without images")];
-		let checkpointResult: Parameters<
-			Extract<TurnEngineEvent, { type: "context_checkpoint" }>["request"]["complete"]
-		>[0];
+		let checkpointResult: TurnEngineContextCheckpointResult | undefined;
 		const contextStrategy: ContextStrategy = {
 			async prepare(input) {
 				if (input.reason !== "assistant_error") {
@@ -664,22 +655,16 @@ describe("greenfield runtime kernel", () => {
 		};
 		const rejected = { ...assistantMessage("rejected"), stopReason: "error" as const };
 		const engine: TurnEnginePort = {
-			async *execute() {
-				yield {
-					type: "context_checkpoint",
-					request: {
+			async *execute(request) {
+				checkpointResult = await request.checkpoint?.(
+					{
 						reason: "assistant_error",
 						messages: [userMessage("current input"), rejected],
 						assistantMessage: rejected,
 						recoveryAttempt: 0,
-						complete(result) {
-							checkpointResult = result;
-						},
-						fail(error) {
-							throw error;
-						},
 					},
-				};
+					request.signal,
+				);
 				yield { type: "message", message: assistantMessage("done") };
 				yield { type: "completed", stopReason: "stop" };
 			},
@@ -703,7 +688,7 @@ describe("greenfield runtime kernel", () => {
 		const checkpointStarted = new Promise<void>((resolve) => {
 			markCheckpoint = resolve;
 		});
-		let checkpointFailed = false;
+		let checkpointRejected = false;
 		const contextStrategy: ContextStrategy = {
 			async prepare(input, signal) {
 				if (input.reason !== "model_call") {
@@ -715,19 +700,20 @@ describe("greenfield runtime kernel", () => {
 			},
 		};
 		const engine: TurnEnginePort = {
-			async *execute() {
-				yield {
-					type: "context_checkpoint",
-					request: {
-						reason: "model_call",
-						messages: [userMessage("current input")],
-						recoveryAttempt: 0,
-						complete() {},
-						fail() {
-							checkpointFailed = true;
+			async *execute(request) {
+				try {
+					await request.checkpoint?.(
+						{
+							reason: "model_call",
+							messages: [userMessage("current input")],
+							recoveryAttempt: 0,
 						},
-					},
-				};
+						request.signal,
+					);
+				} catch (error) {
+					checkpointRejected = true;
+					throw error;
+				}
 				yield { type: "completed", stopReason: "stop" };
 			},
 		};
@@ -739,7 +725,7 @@ describe("greenfield runtime kernel", () => {
 		const result = await turn;
 
 		expect(result).toMatchObject({ status: "cancelled", reason: "cancel checkpoint" });
-		expect(checkpointFailed).toBe(true);
+		expect(checkpointRejected).toBe(true);
 		expect((await harness.repository.load("session-1")).events.at(-1)?.type).toBe("turn.cancelled");
 	});
 

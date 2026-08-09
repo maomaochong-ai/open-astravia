@@ -1,5 +1,6 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Api, Message, Model } from "@vetta/ai";
+import type { ContextCompositionReport } from "../context-composition/contracts.js";
 import type {
 	AgentPluginRuntimeConfig,
 	BackgroundTaskInfo,
@@ -70,6 +71,7 @@ export type RuntimeSessionState = Pick<
 	| "messageCount"
 	| "contextPercent"
 	| "contextWindow"
+	| "contextComposition"
 	| "activeToolNames"
 	| "parentSessionPath"
 	| "parentEntryId"
@@ -177,6 +179,7 @@ export interface RuntimeSessionContextUsage {
 	readonly tokens: number | null;
 	readonly contextWindow: number;
 	readonly percent: number | null;
+	readonly composition?: ContextCompositionReport;
 }
 
 /** 当前模型上下文占用的同步只读视图。 */

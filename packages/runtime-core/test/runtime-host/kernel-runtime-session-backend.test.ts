@@ -1,5 +1,6 @@
 import type { Api, AssistantMessage, Message, Model, UserMessage } from "@vetta/ai";
 import { describe, expect, it, vi } from "vitest";
+import type { ContextCompositionReport } from "../../src/context-composition/index.js";
 import type { PromptRequest, SessionEvent } from "../../src/contracts.js";
 import {
 	applyConversationDocumentCommand,
@@ -296,6 +297,55 @@ function createBackend(
 }
 
 describe("KernelRuntimeSessionBackend", () => {
+	it("exposes context composition through state and usage events", async () => {
+		const composition: ContextCompositionReport = {
+			version: 1,
+			callId: "call-1",
+			snapshotId: "snapshot-1",
+			phase: "completed",
+			createdAt: 1,
+			model: { provider: "test", modelId: "test-model", contextWindow: 8_000 },
+			estimate: { tokens: 100, knownTokens: 100, coverage: "complete" },
+			providerReportedInputTokens: 120,
+			sections: [],
+		};
+		const { backend } = createBackend(
+			new CompletingTurnEngine(),
+			new RecordingPromptAdapter(),
+			undefined,
+			undefined,
+			{
+				stateSource: {
+					read: () => ({
+						contextTokens: 120,
+						contextPercent: 1.5,
+						contextWindow: 8_000,
+						contextComposition: composition,
+						activeToolNames: ["read"],
+					}),
+				},
+			},
+		);
+		const session = await backend.create({ id: "session-1" });
+		const assembly = session.createCoreAssembly();
+		const events: SessionEvent[] = [];
+		assembly.corePorts.eventStream.subscribe((event) => events.push(event));
+
+		expect(assembly.corePorts.stateReader.readState()).toMatchObject({ contextComposition: composition });
+		expect(assembly.contextUsageView.readContextUsage()).toEqual({
+			tokens: 120,
+			contextWindow: 8_000,
+			percent: 1.5,
+			composition,
+		});
+
+		await assembly.corePorts.turnControl.prompt({ text: "hello" });
+		expect(events.find((event) => event.type === "usage.update")).toMatchObject({
+			type: "usage.update",
+			contextComposition: composition,
+		});
+	});
+
 	it("adapts prompts, publishes mapped events and reports repository-backed state", async () => {
 		const promptAdapter = new RecordingPromptAdapter();
 		const { backend } = createBackend(new CompletingTurnEngine(), promptAdapter);

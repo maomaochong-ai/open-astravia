@@ -75,6 +75,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Changed
 
+- **Agent Core Turn Engine 切换为无状态 Engine**：公共 `AgentCoreTurnEngine` 保持构造契约不变，生产执行改由 `runAgentTurn()` 驱动；动态 Frame、checkpoint、队列、工具进度、Runtime observation 与 tracing 由内部 Adapter 投影。Provider error 与取消分别走失败和 `AbortError`，不再伪装为正常 `completed` 终态；checkpoint 通过事件交付屏障保持消息先交付再持久化的顺序。
 - **模型调用压缩的稳定切点合同**：Context Preparation 现在显式区分最新持久化 Document 与稳定的 compaction source；模型调用按 Turn 进入时分支计算切点、在最新分支提交和投影，assistant result/error 仍读取当前文档。消息身份协调同时把字符串与单一 text block 视为等价 UserMessage 表达，但保留时间戳和其他身份字段。
 - **Greenfield Prompt Adapter 改为 Session 所有**：Adapter 由每个 Runtime Assembly 独立交付，不再由 Backend 全局共享，使 ResourceLoader、TodoStore 等有状态 Prompt 资源可按会话隔离。
 - **Runtime Core 依赖倒置**：生产源码不再导入 `@vetta/coding-agent`；Legacy Session、历史、事件和平台沙箱工具适配器移至 `@vetta/coding-agent/runtime-host`，Desktop 通过显式 Composition Root 保持原生产行为。`RuntimeHost` 不再隐式创建具体 Backend/Catalog/History Reader，缺失组合时返回明确错误。

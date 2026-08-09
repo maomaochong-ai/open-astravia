@@ -8,8 +8,10 @@ import {
 	type UserMessage,
 } from "@vetta/ai";
 import { describe, expect, it } from "vitest";
+import type { ContextCompositionReport } from "../../src/context-composition/index.js";
 import {
 	AgentCoreTurnEngine,
+	type ContextCompositionPublisher,
 	type ContinuationPolicy,
 	type ModelCallContextTransformer,
 	type ModelCallFrameComposer,
@@ -125,6 +127,7 @@ function snapshot(options?: {
 	readonly continuationPolicy?: ContinuationPolicy;
 	readonly modelCallContextTransformer?: ModelCallContextTransformer;
 	readonly modelCallMessageFinalizer?: ModelCallMessageFinalizer;
+	readonly contextCompositionPublisher?: ContextCompositionPublisher;
 }): RuntimeSnapshot {
 	return {
 		id: "snapshot-1",
@@ -138,6 +141,7 @@ function snapshot(options?: {
 		continuationPolicy: options?.continuationPolicy,
 		modelCallContextTransformer: options?.modelCallContextTransformer,
 		modelCallMessageFinalizer: options?.modelCallMessageFinalizer,
+		contextCompositionPublisher: options?.contextCompositionPublisher,
 		contextProviders: [],
 		contextStrategy: {
 			async prepare(input) {
@@ -182,6 +186,50 @@ async function collect(
 }
 
 describe("AgentCoreTurnEngine", () => {
+	it("publishes prepared and completed reports for the exact model call", async () => {
+		const reports: ContextCompositionReport[] = [];
+		const engine = new AgentCoreTurnEngine({
+			model: model(),
+			streamFn: () => new RecordedAssistantStream(assistantMessage([{ type: "text", text: "done" }])),
+		});
+		const runtimeSnapshot = snapshot({
+			contextCompositionPublisher: {
+				publishContextComposition(report) {
+					reports.push(report);
+				},
+			},
+			modelCallFrameComposer: {
+				async compose(context) {
+					return {
+						...context.frame,
+						contextCompositionSections: [
+							{
+								id: "instruction:base",
+								kind: "instruction",
+								source: { owner: "core", id: "base" },
+								content: "Base instruction\n\nFeature instruction",
+							},
+						],
+					};
+				},
+			},
+		});
+
+		await collect(engine, runtimeSnapshot);
+
+		expect(reports.map(({ phase }) => phase)).toEqual(["prepared", "completed"]);
+		expect(reports[1]).toMatchObject({
+			callId: "turn-1:model-call:1",
+			providerReportedInputTokens: 1,
+			sections: [
+				{ id: "instruction:base", source: { owner: "core", id: "base" } },
+				{ id: "message:0", kind: "history" },
+			],
+		});
+		expect(JSON.stringify(reports)).not.toContain("Base instruction");
+		expect(JSON.stringify(reports)).not.toContain("hello");
+	});
+
 	it("passes the product salvage whitelist to Agent Core", async () => {
 		const progressCalls: unknown[] = [];
 		const progress: RuntimeToolDefinition = {
@@ -613,7 +661,7 @@ describe("AgentCoreTurnEngine", () => {
 		});
 		const visible = userMessage("visible");
 
-		for await (const event of engine.execute({
+		for await (const _event of engine.execute({
 			sessionId: "session-1",
 			turnId: "turn-1",
 			snapshot: runtimeSnapshot,
@@ -623,9 +671,9 @@ describe("AgentCoreTurnEngine", () => {
 				{ kind: "opaque", identity: { type: "hidden" }, timestamp: 2 },
 			],
 			signal: new AbortController().signal,
-			contextCheckpoints: true,
+			checkpoint: async (checkpointRequest) => ({ messages: checkpointRequest.messages }),
 		})) {
-			if (event.type === "context_checkpoint") event.request.complete({ messages: event.request.messages });
+			// Exhaust the engine stream.
 		}
 
 		expect(transformerEnvelopes).toEqual([["opaque", "opaque"]]);
@@ -672,13 +720,11 @@ describe("AgentCoreTurnEngine", () => {
 			snapshot: runtimeSnapshot,
 			messages: [userMessage("hello")],
 			signal: new AbortController().signal,
-			contextCheckpoints: true,
+			checkpoint: async (checkpointRequest) => {
+				order.push(`checkpoint:${checkpointRequest.messages.map(({ role }) => role).join(",")}`);
+				return { messages: checkpointRequest.messages };
+			},
 		})) {
-			if (event.type === "context_checkpoint") {
-				order.push(`checkpoint:${event.request.messages.map(({ role }) => role).join(",")}`);
-				event.request.complete({ messages: event.request.messages });
-				continue;
-			}
 			if (event.type === "message") {
 				order.push(event.message.role);
 				continue;
@@ -798,7 +844,7 @@ describe("AgentCoreTurnEngine", () => {
 		});
 	});
 
-	it("forwards the request cancellation signal to the model stream", async () => {
+	it("forwards the request cancellation signal and rejects the turn", async () => {
 		const controller = new AbortController();
 		let markStarted: (() => void) | undefined;
 		const started = new Promise<void>((resolve) => {
@@ -829,24 +875,7 @@ describe("AgentCoreTurnEngine", () => {
 		await started;
 		controller.abort("cancelled by test");
 
-		const events = await result;
-		expect(
-			events
-				.filter((event): event is Extract<TurnEngineEvent, { type: "observation" }> => event.type === "observation")
-				.map((event) =>
-					event.observation.type === "lifecycle" ? event.observation.phase : event.observation.type,
-				),
-		).toEqual(["agent_start", "turn_start", "turn_end", "agent_end"]);
-		expect(events.filter((event) => event.type !== "observation" && event.type !== "execution_observation")).toEqual([
-			{
-				type: "message",
-				message: assistantMessage([{ type: "text", text: "cancelled" }], "aborted"),
-			},
-			{
-				type: "completed",
-				stopReason: "aborted",
-			},
-		]);
+		await expect(result).rejects.toMatchObject({ name: "AbortError" });
 	});
 
 	it("delivers steering before follow-up input and emits delivered user messages", async () => {
@@ -954,7 +983,7 @@ describe("AgentCoreTurnEngine", () => {
 		});
 	});
 
-	it("does not consume follow-up input after an error terminal", async () => {
+	it("rejects an error terminal without consuming follow-up input", async () => {
 		const queue = new SessionInputQueue();
 		queue.followUp({ message: userMessage("retry later") });
 		const engine = new AgentCoreTurnEngine({
@@ -962,9 +991,11 @@ describe("AgentCoreTurnEngine", () => {
 			streamFn: () => new RecordedAssistantStream(assistantMessage([{ type: "text", text: "failed" }], "error")),
 		});
 
-		const events = await collect(engine, snapshot(), new AbortController().signal, queue);
+		await expect(collect(engine, snapshot(), new AbortController().signal, queue)).rejects.toMatchObject({
+			name: "AI_TRANSPORT_FAILED",
+			message: "Language model provider failed",
+		});
 
-		expect(events.at(-1)).toEqual({ type: "completed", stopReason: "error" });
 		expect(queue.pendingCount).toBe(1);
 		expect(queue.followUpInputs.map(({ message }) => message.content)).toEqual(["retry later"]);
 	});

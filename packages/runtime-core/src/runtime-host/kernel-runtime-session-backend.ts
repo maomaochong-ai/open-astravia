@@ -481,6 +481,7 @@ export class RuntimeSession {
 						tokens: state.contextTokens ?? null,
 						contextWindow: state.contextWindow,
 						percent: state.contextPercent,
+						...(state.contextComposition ? { composition: state.contextComposition } : {}),
 					};
 				},
 			},
@@ -775,6 +776,7 @@ class RuntimeSessionEventSink implements EventSink {
 			...event,
 			contextPercent: state.contextWindow > 0 ? (contextTokens / state.contextWindow) * 100 : null,
 			contextWindow: state.contextWindow,
+			...(state.contextComposition ? { contextComposition: state.contextComposition } : {}),
 		};
 	}
 

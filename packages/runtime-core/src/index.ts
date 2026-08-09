@@ -1,3 +1,4 @@
+export * from "./context-composition/index.js";
 export type {
 	AgentPluginContinuationContribution,
 	AgentPluginContinuationInvocation,

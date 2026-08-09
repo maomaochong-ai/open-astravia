@@ -843,6 +843,7 @@ export class RuntimeHost implements SessionFacade {
 			messageCount: state.messageCount,
 			contextPercent: state.contextPercent,
 			contextWindow: state.contextWindow,
+			...(state.contextComposition ? { contextComposition: state.contextComposition } : {}),
 			activeToolNames: [...state.activeToolNames],
 			scenario: handle.scenario,
 			parentSessionPath: state.parentSessionPath,

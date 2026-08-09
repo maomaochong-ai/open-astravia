@@ -9,6 +9,11 @@ import type {
 	TextContent,
 	UserMessage,
 } from "@vetta/ai";
+import type {
+	ContextCompositionReport,
+	ContextCompositionSectionInput,
+	ContextSectionSource,
+} from "../context-composition/contracts.js";
 import type { ConversationDocument } from "../conversation/document.js";
 import type {
 	RuntimeExecutionObservationEvent,
@@ -80,6 +85,9 @@ export interface RuntimeToolDefinition<TInput extends object = Readonly<Record<s
 	readonly label: string;
 	readonly description: string;
 	readonly inputSchema: Readonly<Record<string, unknown>>;
+	/** Optional provenance used by context composition reports. */
+	readonly contextSource?: ContextSectionSource;
+	readonly contextCategory?: string;
 	/** 模型工具数组中的可选稳定顺序；未声明时保持贡献顺序并排在已声明工具之后。 */
 	readonly modelOrder?: number;
 	execute(request: RuntimeToolExecutionRequest<TInput>): Promise<RuntimeToolResult>;
@@ -299,6 +307,12 @@ export interface ModelCallContributionProvider {
 export interface ModelCallFrame {
 	readonly instructions: readonly InstructionBlock[];
 	readonly tools: ReadonlyMap<string, RuntimeToolDefinition>;
+	/** Call-scoped sensitive inputs; reporters must not expose their content. */
+	readonly contextCompositionSections?: readonly ContextCompositionSectionInput[];
+}
+
+export interface ContextCompositionPublisher {
+	publishContextComposition(report: ContextCompositionReport): Promise<void> | void;
 }
 
 export interface ModelCallFrameCompositionContext {
@@ -376,6 +390,7 @@ export interface RuntimeSnapshot {
 	readonly tools: ReadonlyMap<string, RuntimeToolDefinition>;
 	readonly modelCallProviders?: readonly ModelCallContributionProvider[];
 	readonly modelCallFrameComposer?: ModelCallFrameComposer;
+	readonly contextCompositionPublisher?: ContextCompositionPublisher;
 	readonly agentRunPreparer?: AgentRunPreparer;
 	readonly continuationPolicy?: ContinuationPolicy;
 	readonly modelCallContextTransformer?: ModelCallContextTransformer;
@@ -445,6 +460,7 @@ export interface AgentProfile {
 	readonly features: readonly AgentFeatureDefinition[];
 	readonly observers?: readonly TurnObserver[];
 	readonly modelCallFrameComposer?: ModelCallFrameComposer;
+	readonly contextCompositionPublisher?: ContextCompositionPublisher;
 	readonly agentRunPreparer?: AgentRunPreparer;
 	readonly continuationPolicy?: ContinuationPolicy;
 	readonly modelCallContextTransformer?: ModelCallContextTransformer;
@@ -723,8 +739,8 @@ export interface TurnEngineRequest {
 	readonly input?: SessionInput;
 	/** Engine 消费流式队列上下文时，必须先交回 Pipeline 持久化。 */
 	appendQueuedContext?(records: readonly SessionContextRecord[]): Promise<void>;
-	/** 由 TurnPipeline 启用，使 Engine 在模型调用边界等待持久化处理。 */
-	readonly contextCheckpoints?: boolean;
+	/** 模型调用边界的持久化/压缩请求，沿普通异步调用栈完成。 */
+	readonly checkpoint?: TurnEngineContextCheckpointHandler;
 }
 
 export interface TurnEngineContextCheckpointResult {
@@ -739,9 +755,12 @@ export interface TurnEngineContextCheckpointRequest {
 	readonly messages: readonly Message[];
 	readonly assistantMessage?: AssistantMessage;
 	readonly recoveryAttempt: number;
-	complete(result?: TurnEngineContextCheckpointResult): void;
-	fail(error: unknown): void;
 }
+
+export type TurnEngineContextCheckpointHandler = (
+	request: TurnEngineContextCheckpointRequest,
+	signal: AbortSignal,
+) => Promise<TurnEngineContextCheckpointResult | undefined>;
 
 export type TurnEngineEvent =
 	| {
@@ -756,10 +775,6 @@ export type TurnEngineEvent =
 			readonly type: "message";
 			readonly message: Message;
 			readonly origin?: RuntimeMessageOrigin;
-	  }
-	| {
-			readonly type: "context_checkpoint";
-			readonly request: TurnEngineContextCheckpointRequest;
 	  }
 	| {
 			readonly type: "completed";

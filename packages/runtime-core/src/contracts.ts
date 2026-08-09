@@ -1,5 +1,6 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { Message, Model } from "@vetta/ai";
+import type { ContextCompositionReport } from "./context-composition/contracts.js";
 
 /** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
 export type ConversationScenario =
@@ -385,6 +386,8 @@ export interface UsageUpdateEvent extends SessionEventBase {
 	contextPercent: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
+	/** Privacy-safe breakdown for the exact provider-facing context. */
+	contextComposition?: ContextCompositionReport;
 }
 
 export interface SessionError {
@@ -603,6 +606,8 @@ export interface SessionStateSnapshot {
 	contextPercent: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
+	/** Latest model-call context composition, when a call has been prepared. */
+	contextComposition?: ContextCompositionReport;
 	/** 当前激活（模型可见）的工具名集合。renderer 据此让输入栏 badge 跟随工具 scope。 */
 	activeToolNames: string[];
 	/**

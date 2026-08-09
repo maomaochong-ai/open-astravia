@@ -20,6 +20,10 @@ export {
 	ContextCompactionCommitter,
 	type ContextCompactionCommitterOptions,
 } from "./context-compaction-committer.js";
+export {
+	type ContextCompositionLifecycleOptions,
+	createContextCompositionLifecycle,
+} from "./context-composition-lifecycle.js";
 export type {
 	AgentFeature,
 	AgentFeatureDefinition,
@@ -37,6 +41,7 @@ export type {
 	ContextCompactionCommitResult,
 	ContextCompactionFinalizationResult,
 	ContextCompactionRecord,
+	ContextCompositionPublisher,
 	ContextPreparationInput,
 	ContextProvider,
 	ContextProviderInput,
@@ -102,6 +107,7 @@ export type {
 	ToolPolicyRequest,
 	TurnCompletedEvent,
 	TurnContinuedEvent,
+	TurnEngineContextCheckpointHandler,
 	TurnEngineContextCheckpointRequest,
 	TurnEngineContextCheckpointResult,
 	TurnEngineEvent,

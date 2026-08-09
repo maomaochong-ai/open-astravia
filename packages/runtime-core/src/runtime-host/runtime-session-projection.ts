@@ -1,4 +1,5 @@
 import type { Message } from "@vetta/ai";
+import type { ContextCompositionReport } from "../context-composition/contracts.js";
 import type { HistoryEntry } from "../contracts.js";
 import { selectConversationDocumentMessages } from "../conversation/commands.js";
 import { applyStoredEventToConversationDocument, type ConversationDocument } from "../conversation/document.js";
@@ -15,6 +16,7 @@ export interface RuntimeSessionIdentity {
 
 export type RuntimeDynamicState = Pick<RuntimeSessionState, "contextPercent" | "contextWindow" | "activeToolNames"> & {
 	readonly contextTokens?: number | null;
+	readonly contextComposition?: ContextCompositionReport;
 };
 
 /** 由 Runtime Composition Root 提供上下文和当前 Snapshot 的实时只读状态。 */

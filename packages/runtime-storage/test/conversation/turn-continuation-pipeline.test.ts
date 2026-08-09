@@ -218,19 +218,14 @@ class CheckpointTurnEngine implements TurnEnginePort {
 	) {}
 
 	async *execute(request: TurnEngineRequest): AsyncIterable<TurnEngineEvent> {
-		const checkpoint = deferredCheckpoint();
-		void checkpoint.result.catch(() => {});
-		yield {
-			type: "context_checkpoint",
-			request: {
+		this.checkpointResult = await request.checkpoint?.(
+			{
 				reason: this.checkpointReason,
 				messages: request.messages,
 				recoveryAttempt: 0,
-				complete: checkpoint.complete,
-				fail: checkpoint.fail,
 			},
-		};
-		this.checkpointResult = await checkpoint.result;
+			request.signal,
+		);
 		this.sessionIdAfterCheckpoint = request.sessionId;
 		yield { type: "message", message: assistantMessage("continued response", 2) };
 		yield { type: "completed", stopReason: "stop" };
@@ -287,20 +282,6 @@ function snapshot(
 		reservedOutputTokens: 1_000,
 		observers: [],
 	};
-}
-
-function deferredCheckpoint(): {
-	readonly result: Promise<TurnEngineContextCheckpointResult | undefined>;
-	readonly complete: (result?: TurnEngineContextCheckpointResult) => void;
-	readonly fail: (error: unknown) => void;
-} {
-	let complete: (result?: TurnEngineContextCheckpointResult) => void = () => {};
-	let fail: (error: unknown) => void = () => {};
-	const result = new Promise<TurnEngineContextCheckpointResult | undefined>((resolve, reject) => {
-		complete = resolve;
-		fail = reject;
-	});
-	return { result, complete, fail };
 }
 
 function userMessage(content: string, timestamp: number): UserMessage {

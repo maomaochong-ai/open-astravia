@@ -464,30 +464,20 @@ export class TurnPipeline {
 						})),
 					);
 				},
-				contextCheckpoints: true,
+				checkpoint: async (request, checkpointSignal) =>
+					await this.prepareContextCheckpoint({
+						turnId,
+						snapshot,
+						modelBinding,
+						providerMessages,
+						compactionSourceDocument: request.reason === "model_call" ? conversationDocument : undefined,
+						request,
+						state,
+						signal: checkpointSignal,
+					}),
 			})) {
 				if (stopReason) {
 					throw turnProtocolError("Turn engine emitted an event after completion");
-				}
-				if (event.type === "context_checkpoint") {
-					try {
-						signal.throwIfAborted();
-						const result = await this.prepareContextCheckpoint({
-							turnId,
-							snapshot,
-							modelBinding,
-							providerMessages,
-							compactionSourceDocument: event.request.reason === "model_call" ? conversationDocument : undefined,
-							request: event.request,
-							state,
-							signal,
-						});
-						event.request.complete(result);
-					} catch (error) {
-						event.request.fail(error);
-						throw error;
-					}
-					continue;
 				}
 				if (event.type === "execution_observation") {
 					await this.publishExecutionObservation(state.sessionId, turnId, event.observation);

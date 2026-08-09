@@ -1,3 +1,4 @@
+import type { ContextCompositionSectionInput } from "../context-composition/contracts.js";
 import type {
 	InstructionBlock,
 	ModelCallContribution,
@@ -36,12 +37,17 @@ export async function resolveModelCallFrame(
 		frame: candidate,
 	});
 	context.signal.throwIfAborted();
-	return createModelCallFrame(composed.instructions, [...composed.tools.values()]);
+	return createModelCallFrame(
+		composed.instructions,
+		[...composed.tools.values()],
+		composed.contextCompositionSections,
+	);
 }
 
 function createModelCallFrame(
 	instructionValues: readonly InstructionBlock[],
 	toolValues: readonly RuntimeToolDefinition[],
+	contextCompositionSections?: readonly ContextCompositionSectionInput[],
 ): ModelCallFrame {
 	const instructions = uniqueValues("instruction", instructionValues, ({ id }) => id)
 		.sort(compareInstruction)
@@ -51,6 +57,13 @@ function createModelCallFrame(
 	return Object.freeze({
 		instructions: Object.freeze(instructions),
 		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
+		contextCompositionSections: contextCompositionSections
+			? Object.freeze(
+					contextCompositionSections.map((section) =>
+						Object.freeze({ ...section, source: Object.freeze({ ...section.source }) }),
+					),
+				)
+			: undefined,
 	});
 }
 
