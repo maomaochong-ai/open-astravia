@@ -32,6 +32,7 @@ import type {
 	AgentContext,
 	AgentEvent,
 	AgentLoopConfig,
+	AgentLoopLimits,
 	AgentMessage,
 	AgentState,
 	AgentTool,
@@ -128,6 +129,9 @@ export interface AgentOptions {
 	 * 允许从助手正文中还原调用的工具名白名单，详见 AgentLoopConfig.salvageTextToolCalls。
 	 */
 	salvageTextToolCalls?: string[];
+
+	/** Finite execution budgets for each prompt. */
+	limits?: AgentLoopLimits;
 }
 
 export class Agent {
@@ -160,6 +164,7 @@ export class Agent {
 	private tracer?: RuntimeTracer;
 	private tracing?: AgentTracingOptions;
 	private salvageTextToolCalls?: string[];
+	private limits?: AgentLoopLimits;
 
 	constructor(opts: AgentOptions = {}) {
 		this._state = { ...this._state, ...opts.initialState };
@@ -178,6 +183,7 @@ export class Agent {
 		this.tracer = opts.tracer;
 		this.tracing = opts.tracing;
 		this.salvageTextToolCalls = opts.salvageTextToolCalls;
+		this.limits = opts.limits;
 	}
 
 	/**
@@ -455,6 +461,7 @@ export class Agent {
 			transport: this._transport,
 			thinkingBudgets: this._thinkingBudgets,
 			maxRetryDelayMs: this._maxRetryDelayMs,
+			limits: this.limits,
 			tracer: this.tracer,
 			tracing: {
 				...this.tracing,

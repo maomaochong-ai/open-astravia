@@ -2,6 +2,7 @@ import type { Static, TSchema } from "@sinclair/typebox";
 import type {
 	AssistantMessage,
 	AssistantMessageEvent,
+	Context,
 	ImageContent,
 	Message,
 	Model,
@@ -29,6 +30,17 @@ export interface AgentCallContext {
 	readonly tools?: NonNullable<AgentContext["tools"]>;
 }
 
+/** Hooks around the exact provider-facing context of a model call. */
+export interface AgentModelCallLifecycle {
+	prepared(context: Readonly<Context>, signal?: AbortSignal): Promise<void> | void;
+	completed(
+		context: Readonly<Context>,
+		message: Readonly<AssistantMessage>,
+		signal?: AbortSignal,
+	): Promise<void> | void;
+	failed(context: Readonly<Context>, error: unknown, signal?: AbortSignal): Promise<void> | void;
+}
+
 export type AgentContextCheckpointReason = "model_call" | "assistant_result" | "assistant_error";
 
 export interface AgentContextCheckpointResult {
@@ -47,6 +59,15 @@ export interface AgentContextCheckpointRequest {
 	readonly recoveryAttempt: number;
 	complete(result?: AgentContextCheckpointResult): void;
 	fail(error: unknown): void;
+}
+
+export interface AgentLoopLimits {
+	/** Maximum number of model calls in one run, including recovery and continuation calls. */
+	readonly maxModelCalls?: number;
+	/** Maximum number of tool calls returned by models in one run. */
+	readonly maxToolCalls?: number;
+	/** Maximum time a host may leave a context checkpoint unresolved. */
+	readonly contextCheckpointTimeoutMs?: number;
 }
 
 /**
@@ -109,6 +130,9 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 */
 	resolveCallContext?: (context: AgentCallContextRequest, signal?: AbortSignal) => Promise<AgentCallContext>;
 
+	/** Observes the final provider-facing context and its terminal outcome. */
+	modelCallLifecycle?: AgentModelCallLifecycle;
+
 	/**
 	 * 在每次模型调用前以及 assistant error 后发出请求—应答检查点。
 	 *
@@ -116,6 +140,9 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 * 调用保持关闭，不会产生额外事件或改变既有执行顺序。
 	 */
 	contextCheckpoints?: boolean;
+
+	/** Finite execution budgets. Omitted fields use conservative library defaults. */
+	limits?: AgentLoopLimits;
 
 	/**
 	 * Resolves an API key dynamically for each LLM call.

@@ -3,6 +3,7 @@ import type { RuntimeObservation, RuntimeObservationUpdate } from "@vetta/runtim
 import { salvageTextToolCalls } from "../salvage-text-tool-calls.js";
 import type { AgentContext, AgentEvent, AgentLoopConfig, AgentMessage, StreamFn } from "../types.js";
 import { requestContextCheckpoint } from "./context-checkpoint.js";
+import type { DEFAULT_AGENT_LOOP_LIMITS } from "./limits.js";
 import {
 	assistantTelemetryUpdate,
 	generationInput,
@@ -18,6 +19,7 @@ export async function streamAssistantResponse(
 	stream: EventStream<AgentEvent, AgentMessage[]>,
 	streamFn?: StreamFn,
 	traceParent?: RuntimeObservation,
+	limits?: typeof DEFAULT_AGENT_LOOP_LIMITS,
 ): Promise<AssistantMessage> {
 	if (config.resolveCallContext) {
 		signal?.throwIfAborted();
@@ -35,7 +37,11 @@ export async function streamAssistantResponse(
 	}
 
 	if (config.contextCheckpoints) {
-		const prepared = await requestContextCheckpoint("model_call", messages, 0, stream);
+		if (!limits) throw new Error("Agent loop limits are required for context checkpoints");
+		const prepared = await requestContextCheckpoint("model_call", messages, 0, stream, {
+			signal,
+			timeoutMs: limits.contextCheckpointTimeoutMs,
+		});
 		if (prepared) {
 			messages = [...prepared.messages];
 			if (prepared.contextMessages) context.messages = [...prepared.contextMessages];
@@ -50,6 +56,8 @@ export async function streamAssistantResponse(
 	};
 
 	const streamFunction = streamFn || streamSimple;
+	await config.modelCallLifecycle?.prepared(llmContext, signal);
+	let failureReported = false;
 	const generationObservation = traceParent?.startObservation(
 		`llm.${config.model.provider}.${config.model.id}`,
 		{
@@ -114,6 +122,7 @@ export async function streamAssistantResponse(
 					else context.messages.push(finalMessage);
 					if (!addedPartial) stream.push({ type: "message_start", message: { ...finalMessage } });
 					stream.push({ type: "message_end", message: finalMessage });
+					failureReported = await reportModelCallTerminal(config, llmContext, finalMessage, signal);
 					endGeneration(assistantTelemetryUpdate(finalMessage, config.tracing?.captureContent === true));
 					return finalMessage;
 				}
@@ -121,10 +130,26 @@ export async function streamAssistantResponse(
 		}
 
 		const finalMessage = await response.result();
+		failureReported = await reportModelCallTerminal(config, llmContext, finalMessage, signal);
 		endGeneration(assistantTelemetryUpdate(finalMessage, config.tracing?.captureContent === true));
 		return finalMessage;
 	} catch (error) {
+		if (!failureReported) await config.modelCallLifecycle?.failed(llmContext, error, signal);
 		endGeneration({ level: "ERROR", statusMessage: getErrorMessage(error) });
 		throw error;
 	}
+}
+
+async function reportModelCallTerminal(
+	config: AgentLoopConfig,
+	context: Readonly<Context>,
+	message: Readonly<AssistantMessage>,
+	signal: AbortSignal | undefined,
+): Promise<boolean> {
+	if (message.stopReason === "error" || message.stopReason === "aborted") {
+		await config.modelCallLifecycle?.failed(context, message, signal);
+		return true;
+	}
+	await config.modelCallLifecycle?.completed(context, message, signal);
+	return false;
 }

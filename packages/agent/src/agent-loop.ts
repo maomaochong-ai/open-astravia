@@ -6,6 +6,7 @@
 import { EventStream, type ToolResultMessage } from "@vetta/ai";
 import { streamAssistantResponse } from "./loop/assistant-stream.js";
 import { AgentContextCheckpointFailure, requestContextCheckpoint } from "./loop/context-checkpoint.js";
+import { assertWithinAgentLoopLimit, resolveAgentLoopLimits } from "./loop/limits.js";
 import {
 	agentRunInput,
 	agentRunOutput,
@@ -31,7 +32,7 @@ export function agentLoop(
 ): EventStream<AgentEvent, AgentMessage[]> {
 	const stream = createAgentStream();
 
-	(async () => {
+	void (async () => {
 		const newMessages: AgentMessage[] = [...prompts];
 		const currentContext: AgentContext = {
 			...context,
@@ -46,7 +47,7 @@ export function agentLoop(
 		}
 
 		await runLoop(currentContext, newMessages, config, signal, stream, streamFn);
-	})();
+	})().catch((error) => stream.fail(error));
 
 	return stream;
 }
@@ -75,7 +76,7 @@ export function agentLoopContinue(
 
 	const stream = createAgentStream();
 
-	(async () => {
+	void (async () => {
 		const newMessages: AgentMessage[] = [];
 		const currentContext: AgentContext = { ...context };
 
@@ -83,7 +84,7 @@ export function agentLoopContinue(
 		stream.push({ type: "turn_start" });
 
 		await runLoop(currentContext, newMessages, config, signal, stream, streamFn);
-	})();
+	})().catch((error) => stream.fail(error));
 
 	return stream;
 }
@@ -103,6 +104,7 @@ async function runLoop(
 	stream: EventStream<AgentEvent, AgentMessage[]>,
 	streamFn?: StreamFn,
 ): Promise<void> {
+	const limits = resolveAgentLoopLimits(config.limits);
 	const traceChildren = config.tracing?.detail !== "agent";
 	const captureTraceContent = config.tracing?.captureContent === true;
 	const agentObservation = config.tracer?.startObservation(
@@ -122,6 +124,8 @@ async function runLoop(
 		{ type: "agent" },
 	);
 	let firstTurn = true;
+	let modelCallCount = 0;
+	let toolCallCount = 0;
 	let recoveryAttempt = 0;
 	let pendingMessages: AgentMessage[] = (await config.getSteeringMessages?.()) || [];
 
@@ -147,6 +151,8 @@ async function runLoop(
 					pendingMessages = [];
 				}
 
+				modelCallCount += 1;
+				assertWithinAgentLoopLimit("model_calls", modelCallCount, limits.maxModelCalls);
 				const message = await streamAssistantResponse(
 					currentContext,
 					config,
@@ -154,6 +160,7 @@ async function runLoop(
 					stream,
 					streamFn,
 					traceChildren ? agentObservation : undefined,
+					limits,
 				);
 				newMessages.push(message);
 
@@ -172,6 +179,7 @@ async function runLoop(
 							currentContext.messages,
 							recoveryAttempt,
 							stream,
+							{ signal, timeoutMs: limits.contextCheckpointTimeoutMs },
 							message,
 						);
 						if (recovery?.retry) {
@@ -187,6 +195,8 @@ async function runLoop(
 				}
 
 				const toolCalls = message.content.filter((content) => content.type === "toolCall");
+				toolCallCount += toolCalls.length;
+				assertWithinAgentLoopLimit("tool_calls", toolCallCount, limits.maxToolCalls);
 				hasMoreToolCalls = toolCalls.length > 0;
 				const toolResults: ToolResultMessage[] = [];
 				if (hasMoreToolCalls) {
@@ -221,6 +231,7 @@ async function runLoop(
 						currentContext.messages,
 						recoveryAttempt,
 						stream,
+						{ signal, timeoutMs: limits.contextCheckpointTimeoutMs },
 						message,
 					);
 					if (result?.contextMessages) currentContext.messages = [...result.contextMessages];
