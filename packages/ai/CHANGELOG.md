@@ -6,14 +6,18 @@
 
 - 新增 `zai-openai-completions` 与 `zhipu-openai-completions` provider 变体，复用 OpenAI Chat Completions 流式实现并内置 GLM 思考控制：下发 `thinking: { type: "enabled" | "disabled" }`，启用时将模型配置的 `reasoning_effort`（含 `none` / `minimal` / `low` / `medium` / `high` / `max`）原样透传；同时新增 `zhipu` KnownProvider 与 `ZHIPU_API_KEY` 识别。
 - 新增 `openai-completions-deepseek` provider 变体（DeepSeek 直连），照搬 qwen/nvidia 的 thinkingFormat 模式：v4 统一模型（deepseek-v4-flash / deepseek-v4-pro）通过 `thinking: { type: "enabled" | "disabled", reasoning_effort }` 控制思考，`reasoning_effort` 取值 `high`/`max` 按模型配置透传；无推理请求时下发 `thinking: { type: "disabled" }`。reasoning 输出（`reasoning_content`）与工具轮的 reasoning 回传规则复用既有 `openai-completions` 逻辑。同时新增 `deepseek` KnownProvider 与 `DEEPSEEK_API_KEY` 环境变量识别。
+- 新增 `@vetta/ai/protocol` 稳定协议子路径，集中导出 Provider 中立的消息、工具、usage、reasoning、终止原因、流事件与结构化 AI 错误类型；旧根入口保持兼容 re-export。
+- 新增隔离的 `LanguageModelAdapter`/`AdapterRegistry`、`@vetta/ai/testing` 脚本模型与可控 Provider transport；OpenAI Completions 和 Anthropic 试点增加 TypeBox wire 校验及无网络 conformance 覆盖。
 
 ### Changed
 
+- **OpenAI Responses 协议族切换为原生 `LanguageModelAdapter`**：OpenAI、Azure 与 Codex Responses 不再由新 Registry 反向包装 legacy stream；三者共享按 `output_index` 归约的流状态机、TypeBox wire 校验、结构化失败与严格终止律，OpenAI/Azure endpoint 和 Codex SSE/WebSocket 仍由各自 transport 负责。旧 `stream*()` 入口保留为从新 Adapter 到 error-event 语义的单向兼容投影。
 - **Vitest 依赖上收到 monorepo 根**：本包不再声明 `devDependencies.vitest`，改用根目录统一版本；包内仍保留 `vitest.config.ts` 与 `"test": "vitest --run"`。
 - `SimpleStreamOptions.reasoning` 由固定的 `ThinkingLevel` 联合类型放宽为任意字符串（保留 `ThinkingLevel` 字面量自动补全），以支持每模型自定义推理档位（如 OpenAI 的 `none`、DeepSeek 的 `max`）。`openai-completions` / `openai-responses` 及其衍生 v1 适配器（azure / codex）改为将档位值**原样透传**到 provider 的推理字段，移除 `supportsXhigh` / `clampReasoning` 的 xhigh 夹取——模型只提供自身支持的档位，由调用方保证取值合法。token 预算型 provider（Anthropic / Bedrock / Google）行为不变，仍按档位映射预算。
 
 ### Fixed
 
+- 修复 Responses 流对空流、缺失终态、畸形 SSE/WebSocket JSON、乱序或交错 output item 静默成功/错配的问题；`response.incomplete` 现在稳定映射为 `length`，`response.failed` 和取消通过原生失败通道拒绝。Codex `sessionId` 同时写入 `conversation_id`、`session_id`、`prompt_cache_key` 与 `prompt_cache_retention: "in-memory"`，避免会话缓存身份不完整。
 - 修复部分 OpenAI 兼容网关把推理摘要泄漏到 `delta.content` 时，`<thinking>...</thinking>` 被当作正文渲染的问题。实测 vetta-go 的 GPT 系模型（hellox-gpt-5.6-luna）在有多段 reasoning summary 时，只把第一段放进 `reasoning_content`，其余段落带标签塞进 `content`。`openai-completions` 流式解析新增 `ThinkingTagSplitter`：在消息尚未产出任何实际正文前，把 content 中的 `<thinking>` 包裹段剥离并并入思考块（支持标签跨 delta 切分）；一旦出现真实正文，后续 `<thinking>` 一律按字面量保留，避免误吃模型正文里讨论该标签的场景。
 - 修复通过通用 `openai-completions` 通道接入的推理型 DeepSeek 模型（在 admin 里当普通 openai-completions 模型 + 勾选 reasoning 配置，而非内置 `openai-completions-deepseek`）思考档位选「关闭」仍然思考的回归。上一次改动把通用分支的「off」无条件归一为 `reasoning_effort: "none"` 下发给所有端点，但 `none` 是 OpenAI gpt-5 系专有的关思考值，DeepSeek / 聚合网关 / vLLM 等后端不认、直接忽略，导致思考关不掉。现仅在 `api.openai.com` 官方端点下发 `none`，其余端点的「off」恢复为省略 `reasoning_effort` 字段，让后端回落到非思考默认。
 - 修复自建 vLLM / SGLang 部署的 Qwen 模型思考档位选「关闭」仍然思考的回归。`qwen` thinkingFormat 分支此前只下发顶层 `enable_thinking`，而自建 vLLM/SGLang 只认 `chat_template_kwargs.enable_thinking`（顶层参数被静默丢弃），关闭指令对这类后端从未生效——之前是靠同时下发的 `reasoning_effort: "none"` 关掉的，`reasoning_effort: "none"` 被移除后彻底失效。改为同时下发顶层 `enable_thinking` 与 `chat_template_kwargs.enable_thinking`，兼顾 DashScope（读顶层）与自建 vLLM/SGLang（读 chat_template_kwargs）。

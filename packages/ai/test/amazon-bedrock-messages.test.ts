@@ -86,4 +86,76 @@ describe("Amazon Bedrock message conversion", () => {
 		});
 		expect(other.at(0)?.content?.at(0)).toEqual({ text: "reason" });
 	});
+
+	it("converts nested tool arguments to a Bedrock document", () => {
+		const messages: Message[] = [
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "toolCall",
+						id: "call-1",
+						name: "search",
+						arguments: { query: "test", filters: { active: true, scores: [1, 2, null] } },
+					},
+				],
+				api: "bedrock-converse-stream",
+				provider: "amazon-bedrock",
+				model: anthropicModel.id,
+				usage: {
+					input: 0,
+					output: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 0,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				stopReason: "toolUse",
+				timestamp: 1,
+			},
+		];
+
+		const converted = convertBedrockMessages({ messages }, anthropicModel, "none");
+
+		expect(converted.at(0)?.content?.at(0)).toEqual({
+			toolUse: {
+				toolUseId: "call-1",
+				name: "search",
+				input: { query: "test", filters: { active: true, scores: [1, 2, null] } },
+			},
+		});
+	});
+
+	it("rejects non-JSON values at the Bedrock SDK boundary", () => {
+		const messages: Message[] = [
+			{
+				role: "assistant",
+				content: [
+					{
+						type: "toolCall",
+						id: "call-1",
+						name: "search",
+						arguments: { invalid: undefined },
+					},
+				],
+				api: "bedrock-converse-stream",
+				provider: "amazon-bedrock",
+				model: anthropicModel.id,
+				usage: {
+					input: 0,
+					output: 0,
+					cacheRead: 0,
+					cacheWrite: 0,
+					totalTokens: 0,
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+				},
+				stopReason: "toolUse",
+				timestamp: 1,
+			},
+		];
+
+		expect(() => convertBedrockMessages({ messages }, anthropicModel, "none")).toThrow(
+			"Bedrock tool arguments must contain JSON values, received undefined",
+		);
+	});
 });

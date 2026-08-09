@@ -1,4 +1,5 @@
-import type { SimpleStreamOptions, StreamOptions, ThinkingBudgets, ThinkingLevel } from "../../types.js";
+import type { StreamOptions, ThinkingBudgets, ThinkingLevel } from "../../types.js";
+import { mapClaudeThinkingLevelToEffort, supportsClaudeAdaptiveThinking } from "../claude-thinking.js";
 
 export interface BedrockOptions extends StreamOptions {
 	region?: string;
@@ -9,30 +10,5 @@ export interface BedrockOptions extends StreamOptions {
 	interleavedThinking?: boolean;
 }
 
-export function supportsAdaptiveThinking(modelId: string): boolean {
-	return (
-		modelId.includes("opus-4-6") ||
-		modelId.includes("opus-4.6") ||
-		modelId.includes("sonnet-4-6") ||
-		modelId.includes("sonnet-4.6")
-	);
-}
-
-export function mapThinkingLevelToEffort(
-	level: SimpleStreamOptions["reasoning"],
-	modelId: string,
-): "low" | "medium" | "high" | "max" {
-	switch (level) {
-		case "minimal":
-		case "low":
-			return "low";
-		case "medium":
-			return "medium";
-		case "high":
-			return "high";
-		case "xhigh":
-			return modelId.includes("opus-4-6") || modelId.includes("opus-4.6") ? "max" : "high";
-		default:
-			return "high";
-	}
-}
+export const supportsAdaptiveThinking = supportsClaudeAdaptiveThinking;
+export const mapThinkingLevelToEffort = mapClaudeThinkingLevelToEffort;

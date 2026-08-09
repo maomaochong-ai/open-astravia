@@ -1,4 +1,4 @@
-import type { Context, Model } from "../../types.js";
+import type { Context, FetchFunction, Model } from "../../types.js";
 import { convertResponsesMessages, convertResponsesTools } from "../openai-responses-shared.js";
 import type { CodexRequestBody, OpenAICodexResponsesOptions } from "./options.js";
 
@@ -37,6 +37,7 @@ export function buildCodexRequestBody(
 		text: { verbosity: options?.textVerbosity || "medium" },
 		include: ["reasoning.encrypted_content"],
 		prompt_cache_key: options?.sessionId,
+		prompt_cache_retention: options?.sessionId ? "in-memory" : undefined,
 		tool_choice: "auto",
 		parallel_tool_calls: true,
 	};
@@ -70,7 +71,10 @@ export function buildCodexHeaders(
 	headers.set("accept", "text/event-stream");
 	headers.set("content-type", "application/json");
 	for (const [key, value] of Object.entries(additionalHeaders || {})) headers.set(key, value);
-	if (sessionId) headers.set("session_id", sessionId);
+	if (sessionId) {
+		headers.set("conversation_id", sessionId);
+		headers.set("session_id", sessionId);
+	}
 	return headers;
 }
 
@@ -111,23 +115,14 @@ export async function fetchCodexResponse(
 	headers: Headers,
 	body: string,
 	signal?: AbortSignal,
+	fetchFunction: FetchFunction = globalThis.fetch,
 ): Promise<Response> {
-	let response: Response | undefined;
 	let lastError: Error | undefined;
 	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 		if (signal?.aborted) throw new Error("Request was aborted");
+		let response: Response;
 		try {
-			response = await fetch(url, { method: "POST", headers, body, signal });
-			if (response.ok) return response;
-			const errorText = await response.text();
-			if (attempt < MAX_RETRIES && isRetryableError(response.status, errorText)) {
-				await sleep(BASE_DELAY_MS * 2 ** attempt, signal);
-				continue;
-			}
-			const info = await parseErrorResponse(
-				new Response(errorText, { status: response.status, statusText: response.statusText }),
-			);
-			throw new Error(info.friendlyMessage || info.message);
+			response = await fetchFunction(url, { method: "POST", headers, body, signal });
 		} catch (error) {
 			if (error instanceof Error && (error.name === "AbortError" || error.message === "Request was aborted")) {
 				throw new Error("Request was aborted");
@@ -139,6 +134,14 @@ export async function fetchCodexResponse(
 			}
 			throw lastError;
 		}
+		if (response.ok) return response;
+		const errorText = await response.text();
+		if (attempt < MAX_RETRIES && isRetryableError(response.status, errorText)) {
+			await sleep(BASE_DELAY_MS * 2 ** attempt, signal);
+			continue;
+		}
+		const info = parseErrorResponse(response.status, response.statusText, errorText);
+		throw createHttpError(info.friendlyMessage || info.message, response.status);
 	}
 	throw lastError ?? new Error("Failed after retries");
 }
@@ -179,9 +182,12 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 	});
 }
 
-async function parseErrorResponse(response: Response): Promise<{ message: string; friendlyMessage?: string }> {
-	const raw = await response.text();
-	let message = raw || response.statusText || "Request failed";
+function parseErrorResponse(
+	status: number,
+	statusText: string,
+	raw: string,
+): { message: string; friendlyMessage?: string } {
+	let message = raw || statusText || "Request failed";
 	let friendlyMessage: string | undefined;
 	try {
 		const parsed = JSON.parse(raw) as {
@@ -190,7 +196,7 @@ async function parseErrorResponse(response: Response): Promise<{ message: string
 		const error = parsed.error;
 		if (error) {
 			const code = error.code || error.type || "";
-			if (/usage_limit_reached|usage_not_included|rate_limit_exceeded/i.test(code) || response.status === 429) {
+			if (/usage_limit_reached|usage_not_included|rate_limit_exceeded/i.test(code) || status === 429) {
 				const plan = error.plan_type ? ` (${error.plan_type.toLowerCase()} plan)` : "";
 				const minutes = error.resets_at
 					? Math.max(0, Math.round((error.resets_at * 1000 - Date.now()) / 60000))
@@ -202,4 +208,10 @@ async function parseErrorResponse(response: Response): Promise<{ message: string
 		}
 	} catch {}
 	return { message, friendlyMessage };
+}
+
+function createHttpError(message: string, status: number): Error {
+	const error = new Error(message) as Error & { status: number };
+	error.status = status;
+	return error;
 }

@@ -8,151 +8,212 @@ import {
 	type ConverseStreamOutput,
 } from "@aws-sdk/client-bedrock-runtime";
 import { calculateCost } from "../../models.js";
+import { AIStreamProtocolError } from "../../protocol/index.js";
+import type { LanguageModelStream } from "../../runtime/language-model-adapter.js";
 import type { AssistantMessage, Model, StopReason, TextContent, ThinkingContent, ToolCall } from "../../types.js";
-import type { AssistantMessageEventStream } from "../../utils/event-stream.js";
 import { parseStreamingJson } from "../../utils/json-parse.js";
 
-export type BedrockStreamBlock = (TextContent | ThinkingContent | ToolCall) & {
-	index?: number;
-	partialJson?: string;
-};
+type BedrockStreamBlock = (TextContent | ThinkingContent | ToolCall) & { partialJson?: string };
 
-export function handleBedrockStreamEvent(
-	item: ConverseStreamOutput,
-	blocks: BedrockStreamBlock[],
-	output: AssistantMessage,
-	stream: AssistantMessageEventStream,
-	model: Model<"bedrock-converse-stream">,
-): void {
-	if (item.messageStart) {
-		if (item.messageStart.role !== ConversationRole.ASSISTANT) {
-			throw new Error("Unexpected assistant message start but got user message start instead");
+interface ActiveBlock {
+	readonly protocolIndex: number;
+	readonly contentIndex?: number;
+	readonly block?: BedrockStreamBlock;
+}
+
+export class BedrockEventReducer {
+	readonly #activeBlocks = new Map<number, ActiveBlock>();
+	readonly #closedBlocks = new Set<number>();
+	#messageStarted = false;
+	#messageStopped = false;
+
+	constructor(
+		private readonly output: AssistantMessage,
+		private readonly stream: LanguageModelStream,
+		private readonly model: Model<"bedrock-converse-stream">,
+	) {}
+
+	consume(item: ConverseStreamOutput): void {
+		if (this.#messageStopped && !item.metadata) {
+			this.#fail("Received an event after messageStop");
 		}
-		stream.push({ type: "start", partial: output });
-	} else if (item.contentBlockStart) {
-		handleContentBlockStart(item.contentBlockStart, blocks, output, stream);
-	} else if (item.contentBlockDelta) {
-		handleContentBlockDelta(item.contentBlockDelta, blocks, output, stream);
-	} else if (item.contentBlockStop) {
-		handleContentBlockStop(item.contentBlockStop, blocks, output, stream);
-	} else if (item.messageStop) {
-		output.stopReason = mapStopReason(item.messageStop.stopReason);
-	} else if (item.metadata) {
-		handleMetadata(item.metadata, model, output);
-	} else if (item.internalServerException) {
-		throw new Error(`Internal server error: ${item.internalServerException.message}`);
-	} else if (item.modelStreamErrorException) {
-		throw new Error(`Model stream error: ${item.modelStreamErrorException.message}`);
-	} else if (item.validationException) {
-		throw new Error(`Validation error: ${item.validationException.message}`);
-	} else if (item.throttlingException) {
-		throw new Error(`Throttling error: ${item.throttlingException.message}`);
-	} else if (item.serviceUnavailableException) {
-		throw new Error(`Service unavailable: ${item.serviceUnavailableException.message}`);
+
+		if (item.messageStart) {
+			this.#startMessage(item.messageStart.role);
+		} else if (item.contentBlockStart) {
+			this.#requireMessageStart("contentBlockStart");
+			this.#startBlock(item.contentBlockStart);
+		} else if (item.contentBlockDelta) {
+			this.#requireMessageStart("contentBlockDelta");
+			this.#updateBlock(item.contentBlockDelta);
+		} else if (item.contentBlockStop) {
+			this.#requireMessageStart("contentBlockStop");
+			this.#finishBlock(item.contentBlockStop);
+		} else if (item.messageStop) {
+			this.#requireMessageStart("messageStop");
+			if (this.#activeBlocks.size > 0) this.#fail("Received messageStop with open content blocks");
+			this.output.stopReason = mapStopReason(item.messageStop.stopReason);
+			this.#messageStopped = true;
+		} else if (item.metadata) {
+			this.#requireMessageStart("metadata");
+			handleMetadata(item.metadata, this.model, this.output);
+		} else if (item.internalServerException) {
+			throw bedrockEventError("Internal server error", item.internalServerException.message, 500);
+		} else if (item.modelStreamErrorException) {
+			throw bedrockEventError("Model stream error", item.modelStreamErrorException.message, 500);
+		} else if (item.validationException) {
+			throw bedrockEventError("Validation error", item.validationException.message, 400);
+		} else if (item.throttlingException) {
+			throw bedrockEventError("Throttling error", item.throttlingException.message, 429);
+		} else if (item.serviceUnavailableException) {
+			throw bedrockEventError("Service unavailable", item.serviceUnavailableException.message, 503);
+		} else {
+			this.#fail("Received an unknown Bedrock Converse stream event");
+		}
 	}
-}
 
-function handleContentBlockStart(
-	event: ContentBlockStartEvent,
-	blocks: BedrockStreamBlock[],
-	output: AssistantMessage,
-	stream: AssistantMessageEventStream,
-): void {
-	const start = event.start;
-	if (!start?.toolUse) return;
-	const block: BedrockStreamBlock = {
-		type: "toolCall",
-		id: start.toolUse.toolUseId || "",
-		name: start.toolUse.name || "",
-		arguments: {},
-		partialJson: "",
-		index: event.contentBlockIndex!,
-	};
-	blocks.push(block);
-	stream.push({ type: "toolcall_start", contentIndex: blocks.length - 1, partial: output });
-}
+	finish(): void {
+		if (!this.#messageStarted) this.#fail("Stream ended without messageStart");
+		if (this.#activeBlocks.size > 0) this.#fail("Stream ended with open content blocks");
+		if (!this.#messageStopped) this.#fail("Stream ended without messageStop");
+	}
 
-function handleContentBlockDelta(
-	event: ContentBlockDeltaEvent,
-	blocks: BedrockStreamBlock[],
-	output: AssistantMessage,
-	stream: AssistantMessageEventStream,
-): void {
-	const protocolIndex = event.contentBlockIndex!;
-	const delta = event.delta;
-	let index = blocks.findIndex((block) => block.index === protocolIndex);
-	let block = blocks[index];
-	if (delta?.text !== undefined) {
-		if (!block) {
-			block = { type: "text", text: "", index: protocolIndex };
-			blocks.push(block);
-			index = blocks.length - 1;
-			stream.push({ type: "text_start", contentIndex: index, partial: output });
+	#startMessage(role: string | undefined): void {
+		if (this.#messageStarted) this.#fail("Received duplicate messageStart");
+		if (role !== ConversationRole.ASSISTANT) this.#fail("Bedrock messageStart role must be assistant", { role });
+		this.#messageStarted = true;
+		this.stream.push({ type: "start", partial: this.output });
+	}
+
+	#startBlock(event: ContentBlockStartEvent): void {
+		const protocolIndex = requireProtocolIndex(event.contentBlockIndex, "contentBlockStart", this.#fail.bind(this));
+		if (this.#activeBlocks.has(protocolIndex) || this.#closedBlocks.has(protocolIndex)) {
+			this.#fail("Received duplicate contentBlockStart", { protocolIndex });
 		}
-		if (block.type === "text") {
+		const toolUse = event.start?.toolUse;
+		if (!toolUse) {
+			this.#activeBlocks.set(protocolIndex, { protocolIndex });
+			return;
+		}
+		const block: BedrockStreamBlock = {
+			type: "toolCall",
+			id: toolUse.toolUseId || "",
+			name: toolUse.name || "",
+			arguments: {},
+			partialJson: "",
+		};
+		const contentIndex = this.output.content.length;
+		this.output.content.push(block);
+		this.#activeBlocks.set(protocolIndex, { protocolIndex, contentIndex, block });
+		this.stream.push({ type: "toolcall_start", contentIndex, partial: this.output });
+	}
+
+	#updateBlock(event: ContentBlockDeltaEvent): void {
+		const protocolIndex = requireProtocolIndex(event.contentBlockIndex, "contentBlockDelta", this.#fail.bind(this));
+		const delta = event.delta;
+		if (!delta) this.#fail("Bedrock contentBlockDelta is missing delta", { protocolIndex });
+		let active = this.#activeBlocks.get(protocolIndex);
+		if (!active) {
+			if (this.#closedBlocks.has(protocolIndex)) {
+				this.#fail("Received contentBlockDelta for a closed block", { protocolIndex });
+			}
+			const block = createDeltaStartedBlock(delta);
+			if (!block) {
+				this.#activeBlocks.set(protocolIndex, { protocolIndex });
+				return;
+			}
+			const contentIndex = this.output.content.length;
+			this.output.content.push(block);
+			active = { protocolIndex, contentIndex, block };
+			this.#activeBlocks.set(protocolIndex, active);
+			this.stream.push({ type: startEventType(block), contentIndex, partial: this.output });
+		}
+		if (!active.block || active.contentIndex === undefined) return;
+
+		const { block, contentIndex } = active;
+		if (delta.text !== undefined) {
+			if (block.type !== "text") this.#fail("Received text delta for a non-text block", { protocolIndex });
 			block.text += delta.text;
-			stream.push({ type: "text_delta", contentIndex: index, delta: delta.text, partial: output });
-		}
-	} else if (delta?.toolUse && block?.type === "toolCall") {
-		block.partialJson = (block.partialJson || "") + (delta.toolUse.input || "");
-		block.arguments = parseStreamingJson(block.partialJson);
-		stream.push({
-			type: "toolcall_delta",
-			contentIndex: index,
-			delta: delta.toolUse.input || "",
-			partial: output,
-		});
-	} else if (delta?.reasoningContent) {
-		let thinkingBlock = block;
-		let thinkingIndex = index;
-		if (!thinkingBlock) {
-			thinkingBlock = {
-				type: "thinking",
-				thinking: "",
-				thinkingSignature: "",
-				index: protocolIndex,
-			};
-			blocks.push(thinkingBlock);
-			thinkingIndex = blocks.length - 1;
-			stream.push({ type: "thinking_start", contentIndex: thinkingIndex, partial: output });
-		}
-		if (thinkingBlock.type === "thinking") {
+			this.stream.push({ type: "text_delta", contentIndex, delta: delta.text, partial: this.output });
+		} else if (delta.toolUse) {
+			if (block.type !== "toolCall") this.#fail("Received tool delta for a non-tool block", { protocolIndex });
+			const value = delta.toolUse.input || "";
+			block.partialJson = (block.partialJson || "") + value;
+			block.arguments = parseStreamingJson(block.partialJson);
+			this.stream.push({ type: "toolcall_delta", contentIndex, delta: value, partial: this.output });
+		} else if (delta.reasoningContent) {
+			if (block.type !== "thinking") {
+				this.#fail("Received reasoning delta for a non-thinking block", { protocolIndex });
+			}
 			if (delta.reasoningContent.text) {
-				thinkingBlock.thinking += delta.reasoningContent.text;
-				stream.push({
+				block.thinking += delta.reasoningContent.text;
+				this.stream.push({
 					type: "thinking_delta",
-					contentIndex: thinkingIndex,
+					contentIndex,
 					delta: delta.reasoningContent.text,
-					partial: output,
+					partial: this.output,
 				});
 			}
 			if (delta.reasoningContent.signature) {
-				thinkingBlock.thinkingSignature =
-					(thinkingBlock.thinkingSignature || "") + delta.reasoningContent.signature;
+				block.thinkingSignature = (block.thinkingSignature || "") + delta.reasoningContent.signature;
 			}
 		}
 	}
+
+	#finishBlock(event: ContentBlockStopEvent): void {
+		const protocolIndex = requireProtocolIndex(event.contentBlockIndex, "contentBlockStop", this.#fail.bind(this));
+		const active = this.#activeBlocks.get(protocolIndex);
+		if (!active) this.#fail("Received contentBlockStop for an inactive block", { protocolIndex });
+		this.#activeBlocks.delete(protocolIndex);
+		this.#closedBlocks.add(protocolIndex);
+		if (!active.block || active.contentIndex === undefined) return;
+
+		const { block, contentIndex } = active;
+		if (block.type === "text") {
+			this.stream.push({ type: "text_end", contentIndex, content: block.text, partial: this.output });
+		} else if (block.type === "thinking") {
+			this.stream.push({ type: "thinking_end", contentIndex, content: block.thinking, partial: this.output });
+		} else {
+			if (block.partialJson) block.arguments = parseStreamingJson(block.partialJson);
+			Reflect.deleteProperty(block, "partialJson");
+			this.stream.push({ type: "toolcall_end", contentIndex, toolCall: block, partial: this.output });
+		}
+	}
+
+	#requireMessageStart(eventType: string): void {
+		if (!this.#messageStarted) this.#fail(`Received ${eventType} before messageStart`);
+	}
+
+	#fail(message: string, metadata?: Record<string, unknown>): never {
+		throw new AIStreamProtocolError(message, {
+			provider: this.model.provider,
+			modelId: this.model.id,
+			metadata,
+		});
+	}
 }
 
-function handleContentBlockStop(
-	event: ContentBlockStopEvent,
-	blocks: BedrockStreamBlock[],
-	output: AssistantMessage,
-	stream: AssistantMessageEventStream,
-): void {
-	const index = blocks.findIndex((block) => block.index === event.contentBlockIndex);
-	const block = blocks[index];
-	if (!block) return;
-	Reflect.deleteProperty(block, "index");
-	if (block.type === "text") {
-		stream.push({ type: "text_end", contentIndex: index, content: block.text, partial: output });
-	} else if (block.type === "thinking") {
-		stream.push({ type: "thinking_end", contentIndex: index, content: block.thinking, partial: output });
-	} else {
-		block.arguments = parseStreamingJson(block.partialJson);
-		Reflect.deleteProperty(block, "partialJson");
-		stream.push({ type: "toolcall_end", contentIndex: index, toolCall: block, partial: output });
+function createDeltaStartedBlock(delta: NonNullable<ContentBlockDeltaEvent["delta"]>): BedrockStreamBlock | undefined {
+	if (delta.text !== undefined) return { type: "text", text: "" };
+	if (delta.reasoningContent) {
+		return { type: "thinking", thinking: "", thinkingSignature: "" };
 	}
+	return undefined;
+}
+
+function startEventType(block: BedrockStreamBlock): "text_start" | "thinking_start" | "toolcall_start" {
+	if (block.type === "text") return "text_start";
+	if (block.type === "thinking") return "thinking_start";
+	return "toolcall_start";
+}
+
+function requireProtocolIndex(
+	value: number | undefined,
+	eventType: string,
+	fail: (message: string, metadata?: Record<string, unknown>) => never,
+): number {
+	if (value === undefined) fail(`${eventType} is missing contentBlockIndex`);
+	return value;
 }
 
 function handleMetadata(
@@ -165,7 +226,9 @@ function handleMetadata(
 	output.usage.output = event.usage.outputTokens || 0;
 	output.usage.cacheRead = event.usage.cacheReadInputTokens || 0;
 	output.usage.cacheWrite = event.usage.cacheWriteInputTokens || 0;
-	output.usage.totalTokens = event.usage.totalTokens || output.usage.input + output.usage.output;
+	output.usage.totalTokens =
+		event.usage.totalTokens ||
+		output.usage.input + output.usage.output + output.usage.cacheRead + output.usage.cacheWrite;
 	calculateCost(model, output.usage);
 }
 
@@ -179,7 +242,16 @@ function mapStopReason(reason: string | undefined): StopReason {
 			return "length";
 		case BedrockStopReason.TOOL_USE:
 			return "toolUse";
+		case BedrockStopReason.CONTENT_FILTERED:
+		case BedrockStopReason.GUARDRAIL_INTERVENED:
+		case BedrockStopReason.MALFORMED_MODEL_OUTPUT:
+		case BedrockStopReason.MALFORMED_TOOL_USE:
+			throw new Error(`Bedrock stopped with provider failure: ${reason}`);
 		default:
-			return "error";
+			throw new AIStreamProtocolError(`Unhandled Bedrock stop reason: ${reason ?? "missing"}`);
 	}
+}
+
+function bedrockEventError(prefix: string, message: string | undefined, status: number): Error & { status: number } {
+	return Object.assign(new Error(`${prefix}: ${message || "Unknown error"}`), { status });
 }

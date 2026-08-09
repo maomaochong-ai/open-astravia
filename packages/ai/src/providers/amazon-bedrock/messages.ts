@@ -8,7 +8,7 @@ import {
 	type SystemContentBlock,
 	ToolResultStatus,
 } from "@aws-sdk/client-bedrock-runtime";
-import type { CacheRetention, Context, Model, ToolResultMessage } from "../../types.js";
+import type { CacheRetention, Context, JsonValue, Model, ToolResultMessage } from "../../types.js";
 import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
 import { transformMessages } from "../transform-messages.js";
 
@@ -64,7 +64,7 @@ export function convertBedrockMessages(
 					if (content.text.trim().length > 0) contentBlocks.push({ text: sanitizeSurrogates(content.text) });
 				} else if (content.type === "toolCall") {
 					contentBlocks.push({
-						toolUse: { toolUseId: content.id, name: content.name, input: content.arguments },
+						toolUse: { toolUseId: content.id, name: content.name, input: toJsonValue(content.arguments) },
 					});
 				} else if (content.thinking.trim().length > 0) {
 					contentBlocks.push({
@@ -134,6 +134,19 @@ function supportsThinkingSignature(model: Model<"bedrock-converse-stream">): boo
 
 function normalizeToolCallId(id: string): string {
 	return id.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 64);
+}
+
+function toJsonValue(value: unknown): JsonValue {
+	if (value === null || typeof value === "boolean" || typeof value === "number" || typeof value === "string") {
+		return value;
+	}
+	if (Array.isArray(value)) return value.map(toJsonValue);
+	if (typeof value === "object") {
+		const result: Record<string, JsonValue> = {};
+		for (const [key, entry] of Object.entries(value)) result[key] = toJsonValue(entry);
+		return result;
+	}
+	throw new TypeError(`Bedrock tool arguments must contain JSON values, received ${typeof value}`);
 }
 
 function createImageBlock(mimeType: string, data: string): { source: { bytes: Uint8Array }; format: ImageFormat } {

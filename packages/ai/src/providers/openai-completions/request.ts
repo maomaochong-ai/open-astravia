@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions.js";
-import type { Context, Message, Model } from "../../types.js";
+import type { Context, FetchFunction, Message, Model } from "../../types.js";
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "../github-copilot-headers.js";
 import { resolveOpenAICompletionsCompat } from "./compatibility.js";
 import { convertMessages, convertTools } from "./messages.js";
@@ -11,6 +11,7 @@ export function createOpenAICompletionsClient(
 	context: Context,
 	apiKey?: string,
 	optionsHeaders?: Record<string, string>,
+	providerFetch?: FetchFunction,
 ): OpenAI {
 	let resolvedApiKey = apiKey;
 	if (!resolvedApiKey) {
@@ -39,6 +40,7 @@ export function createOpenAICompletionsClient(
 		baseURL: model.gatewayUrl || model.baseUrl,
 		dangerouslyAllowBrowser: true,
 		defaultHeaders: headers,
+		fetch: providerFetch,
 	});
 }
 

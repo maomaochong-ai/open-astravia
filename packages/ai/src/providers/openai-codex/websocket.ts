@@ -1,5 +1,6 @@
 import type { AssistantMessage, Model } from "../../types.js";
-import type { AssistantMessageEventStream } from "../../utils/event-stream.js";
+import type { ResponsesEventSink } from "../openai-responses/events.js";
+import { createResponsesJsonParseError } from "../openai-responses/response-schema.js";
 import { processCodexEvents } from "./events.js";
 import type { CodexRequestBody, OpenAICodexResponsesOptions } from "./options.js";
 
@@ -34,7 +35,7 @@ export async function processCodexWebSocketStream(
 	body: CodexRequestBody,
 	headers: Headers,
 	output: AssistantMessage,
-	stream: AssistantMessageEventStream,
+	stream: ResponsesEventSink,
 	model: Model<"openai-codex-responses">,
 	onStart: () => void,
 	options?: OpenAICodexResponsesOptions,
@@ -188,7 +189,11 @@ async function* parseWebSocket(socket: WebSocketLike, signal?: AbortSignal): Asy
 				}
 				queue.push(parsed);
 				wake();
-			} catch {}
+			} catch (error) {
+				failed = createResponsesJsonParseError("openai-codex", error);
+				done = true;
+				wake();
+			}
 		})();
 	};
 	const onError: WebSocketListener = (event) => {

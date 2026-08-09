@@ -1,7 +1,7 @@
 import type { ResponseStreamEvent } from "openai/resources/responses/responses.js";
 import type { AssistantMessage, Model } from "../../types.js";
-import type { AssistantMessageEventStream } from "../../utils/event-stream.js";
-import { processResponsesStream } from "../openai-responses-shared.js";
+import { processResponsesStream, type ResponsesEventSink } from "../openai-responses/events.js";
+import { createResponsesJsonParseError } from "../openai-responses/response-schema.js";
 
 type CodexResponseStatus = "completed" | "incomplete" | "failed" | "cancelled" | "queued" | "in_progress";
 
@@ -17,7 +17,7 @@ const CODEX_RESPONSE_STATUSES = new Set<CodexResponseStatus>([
 export async function processCodexEvents(
 	events: AsyncIterable<Record<string, unknown>>,
 	output: AssistantMessage,
-	stream: AssistantMessageEventStream,
+	stream: ResponsesEventSink,
 	model: Model<"openai-codex-responses">,
 ): Promise<void> {
 	await processResponsesStream(mapCodexEvents(events), output, stream, model);
@@ -26,7 +26,7 @@ export async function processCodexEvents(
 export async function processCodexSseResponse(
 	response: Response,
 	output: AssistantMessage,
-	stream: AssistantMessageEventStream,
+	stream: ResponsesEventSink,
 	model: Model<"openai-codex-responses">,
 ): Promise<void> {
 	await processCodexEvents(parseSSE(response), output, stream, model);
@@ -35,19 +35,9 @@ export async function processCodexSseResponse(
 async function* mapCodexEvents(events: AsyncIterable<Record<string, unknown>>): AsyncGenerator<ResponseStreamEvent> {
 	for await (const event of events) {
 		const type = typeof event.type === "string" ? event.type : undefined;
-		if (!type) continue;
-		if (type === "error") {
-			const code = typeof event.code === "string" ? event.code : "";
-			const message = typeof event.message === "string" ? event.message : "";
-			throw new Error(`Codex error: ${message || code || JSON.stringify(event)}`);
-		}
-		if (type === "response.failed") {
-			const response = event.response;
-			const message =
-				response && typeof response === "object" && "error" in response
-					? (response as { error?: { message?: string } }).error?.message
-					: undefined;
-			throw new Error(message || "Codex response failed");
+		if (!type) {
+			yield event as unknown as ResponseStreamEvent;
+			continue;
 		}
 		if (type === "response.done" || type === "response.completed") {
 			const response = event.response;
@@ -87,7 +77,9 @@ async function* parseSSE(response: Response): AsyncGenerator<Record<string, unkn
 			if (data && data !== "[DONE]") {
 				try {
 					yield JSON.parse(data) as Record<string, unknown>;
-				} catch {}
+				} catch (error) {
+					throw createResponsesJsonParseError("openai-codex", error);
+				}
 			}
 			boundary = buffer.indexOf("\n\n");
 		}

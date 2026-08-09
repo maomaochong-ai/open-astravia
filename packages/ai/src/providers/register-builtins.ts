@@ -1,102 +1,173 @@
 import { clearApiProviders, registerApiProvider } from "../api-registry.js";
-import { streamBedrock, streamSimpleBedrock } from "./amazon-bedrock.js";
-import { streamAnthropic, streamSimpleAnthropic } from "./anthropic.js";
-import { streamAzureOpenAIResponses, streamSimpleAzureOpenAIResponses } from "./azure-openai-responses.js";
-import { streamDeepSeek, streamSimpleDeepSeek } from "./deepseek.js";
+import type { AdapterRegistry, ApiProvider } from "../runtime/adapter-registry.js";
+import { adaptApiProvider, type LanguageModelAdapter } from "../runtime/language-model-adapter.js";
+import type { Api, StreamOptions } from "../types.js";
+import { bedrockAdapter, streamBedrock, streamSimpleBedrock } from "./amazon-bedrock.js";
+import { anthropicAdapter, streamAnthropic, streamSimpleAnthropic } from "./anthropic.js";
+import {
+	azureOpenAIResponsesAdapter,
+	streamAzureOpenAIResponses,
+	streamSimpleAzureOpenAIResponses,
+} from "./azure-openai-responses.js";
+import { deepSeekAdapter, streamDeepSeek, streamSimpleDeepSeek } from "./deepseek.js";
 import { streamGoogle, streamSimpleGoogle } from "./google.js";
 import { streamGoogleGeminiCli, streamSimpleGoogleGeminiCli } from "./google-gemini-cli.js";
 import { streamGoogleVertex, streamSimpleGoogleVertex } from "./google-vertex.js";
-import { streamNvidia, streamSimpleNvidia } from "./nvidia.js";
-import { streamOpenAICodexResponses, streamSimpleOpenAICodexResponses } from "./openai-codex-responses.js";
-import { streamOpenAICompletions, streamSimpleOpenAICompletions } from "./openai-completions.js";
-import { streamOpenAIResponses, streamSimpleOpenAIResponses } from "./openai-responses.js";
-import { streamQwen, streamSimpleQwen } from "./qwen.js";
-import { streamSimpleZai, streamZai } from "./zai.js";
-import { streamSimpleZhipu, streamZhipu } from "./zhipu.js";
+import { nvidiaAdapter, streamNvidia, streamSimpleNvidia } from "./nvidia.js";
+import {
+	openAICodexResponsesAdapter,
+	streamOpenAICodexResponses,
+	streamSimpleOpenAICodexResponses,
+} from "./openai-codex-responses.js";
+import {
+	openAICompletionsAdapter,
+	streamOpenAICompletions,
+	streamSimpleOpenAICompletions,
+} from "./openai-completions.js";
+import { openAIResponsesAdapter, streamOpenAIResponses, streamSimpleOpenAIResponses } from "./openai-responses.js";
+import { qwenAdapter, streamQwen, streamSimpleQwen } from "./qwen.js";
+import { streamSimpleZai, streamZai, zaiAdapter } from "./zai.js";
+import { streamSimpleZhipu, streamZhipu, zhipuAdapter } from "./zhipu.js";
 
-export function registerBuiltInApiProviders(): void {
-	registerApiProvider({
-		api: "anthropic-messages",
-		stream: streamAnthropic,
-		streamSimple: streamSimpleAnthropic,
-	});
+interface BuiltInProviderVisitor {
+	register<TApi extends Api, TOptions extends StreamOptions>(
+		provider: ApiProvider<TApi, TOptions>,
+		adapter?: LanguageModelAdapter<TApi, TOptions>,
+	): void;
+}
 
-	registerApiProvider({
-		api: "openai-completions",
-		stream: streamOpenAICompletions,
-		streamSimple: streamSimpleOpenAICompletions,
-	});
+function visitBuiltInProviders(visitor: BuiltInProviderVisitor): void {
+	visitor.register(
+		{
+			api: "anthropic-messages",
+			stream: streamAnthropic,
+			streamSimple: streamSimpleAnthropic,
+		},
+		anthropicAdapter,
+	);
 
-	registerApiProvider({
-		api: "openai-responses",
-		stream: streamOpenAIResponses,
-		streamSimple: streamSimpleOpenAIResponses,
-	});
+	visitor.register(
+		{
+			api: "openai-completions",
+			stream: streamOpenAICompletions,
+			streamSimple: streamSimpleOpenAICompletions,
+		},
+		openAICompletionsAdapter,
+	);
 
-	registerApiProvider({
-		api: "azure-openai-responses",
-		stream: streamAzureOpenAIResponses,
-		streamSimple: streamSimpleAzureOpenAIResponses,
-	});
+	visitor.register(
+		{
+			api: "openai-responses",
+			stream: streamOpenAIResponses,
+			streamSimple: streamSimpleOpenAIResponses,
+		},
+		openAIResponsesAdapter,
+	);
 
-	registerApiProvider({
-		api: "openai-codex-responses",
-		stream: streamOpenAICodexResponses,
-		streamSimple: streamSimpleOpenAICodexResponses,
-	});
+	visitor.register(
+		{
+			api: "azure-openai-responses",
+			stream: streamAzureOpenAIResponses,
+			streamSimple: streamSimpleAzureOpenAIResponses,
+		},
+		azureOpenAIResponsesAdapter,
+	);
 
-	registerApiProvider({
+	visitor.register(
+		{
+			api: "openai-codex-responses",
+			stream: streamOpenAICodexResponses,
+			streamSimple: streamSimpleOpenAICodexResponses,
+		},
+		openAICodexResponsesAdapter,
+	);
+
+	visitor.register({
 		api: "google-generative-ai",
 		stream: streamGoogle,
 		streamSimple: streamSimpleGoogle,
 	});
 
-	registerApiProvider({
+	visitor.register({
 		api: "google-gemini-cli",
 		stream: streamGoogleGeminiCli,
 		streamSimple: streamSimpleGoogleGeminiCli,
 	});
 
-	registerApiProvider({
+	visitor.register({
 		api: "google-vertex",
 		stream: streamGoogleVertex,
 		streamSimple: streamSimpleGoogleVertex,
 	});
 
-	registerApiProvider({
-		api: "nvidia-openai-responses",
-		stream: streamNvidia,
-		streamSimple: streamSimpleNvidia,
-	});
+	visitor.register(
+		{
+			api: "nvidia-openai-responses",
+			stream: streamNvidia,
+			streamSimple: streamSimpleNvidia,
+		},
+		nvidiaAdapter,
+	);
 
-	registerApiProvider({
-		api: "qwen-openai-completions",
-		stream: streamQwen,
-		streamSimple: streamSimpleQwen,
-	});
+	visitor.register(
+		{
+			api: "qwen-openai-completions",
+			stream: streamQwen,
+			streamSimple: streamSimpleQwen,
+		},
+		qwenAdapter,
+	);
 
-	registerApiProvider({
-		api: "openai-completions-deepseek",
-		stream: streamDeepSeek,
-		streamSimple: streamSimpleDeepSeek,
-	});
+	visitor.register(
+		{
+			api: "openai-completions-deepseek",
+			stream: streamDeepSeek,
+			streamSimple: streamSimpleDeepSeek,
+		},
+		deepSeekAdapter,
+	);
 
-	registerApiProvider({
-		api: "zai-openai-completions",
-		stream: streamZai,
-		streamSimple: streamSimpleZai,
-	});
+	visitor.register(
+		{
+			api: "zai-openai-completions",
+			stream: streamZai,
+			streamSimple: streamSimpleZai,
+		},
+		zaiAdapter,
+	);
 
-	registerApiProvider({
-		api: "zhipu-openai-completions",
-		stream: streamZhipu,
-		streamSimple: streamSimpleZhipu,
-	});
+	visitor.register(
+		{
+			api: "zhipu-openai-completions",
+			stream: streamZhipu,
+			streamSimple: streamSimpleZhipu,
+		},
+		zhipuAdapter,
+	);
 
-	registerApiProvider({
-		api: "bedrock-converse-stream",
-		stream: streamBedrock,
-		streamSimple: streamSimpleBedrock,
+	visitor.register(
+		{
+			api: "bedrock-converse-stream",
+			stream: streamBedrock,
+			streamSimple: streamSimpleBedrock,
+		},
+		bedrockAdapter,
+	);
+}
+
+export function registerBuiltInApiProviders(): void {
+	visitBuiltInProviders({
+		register(provider, _adapter) {
+			registerApiProvider(provider, "built-in");
+		},
+	});
+}
+
+export function registerBuiltInAdapters(registry: AdapterRegistry): void {
+	visitBuiltInProviders({
+		register(provider, adapter) {
+			registry.register(adapter ?? adaptApiProvider(provider), { sourceId: "built-in" });
+		},
 	});
 }
 

@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { Model } from "../../types.js";
+import type { FetchFunction, Model } from "../../types.js";
 
 const claudeCodeVersion = "2.1.2";
 
@@ -9,6 +9,7 @@ export function createAnthropicClient(
 	interleavedThinking: boolean,
 	optionsHeaders?: Record<string, string>,
 	dynamicHeaders?: Record<string, string>,
+	providerFetch?: FetchFunction,
 ): { client: Anthropic; isOAuthToken: boolean } {
 	if (model.provider === "github-copilot") {
 		const betaFeatures = interleavedThinking ? ["interleaved-thinking-2025-05-14"] : [];
@@ -28,6 +29,7 @@ export function createAnthropicClient(
 					dynamicHeaders,
 					optionsHeaders,
 				),
+				fetch: providerFetch,
 			}),
 			isOAuthToken: false,
 		};
@@ -54,6 +56,7 @@ export function createAnthropicClient(
 					model.headers,
 					optionsHeaders,
 				),
+				fetch: providerFetch,
 			}),
 			isOAuthToken: true,
 		};
@@ -73,6 +76,7 @@ export function createAnthropicClient(
 				model.headers,
 				optionsHeaders,
 			),
+			fetch: providerFetch,
 		}),
 		isOAuthToken: false,
 	};
