@@ -2,7 +2,7 @@ import type { PluginContext } from "@vetta-org/plugin-sdk";
 
 let pluginContext: PluginContext | null = null;
 
-export function setPluginContext(ctx: PluginContext | null): void {
+export function setPluginContext(ctx: PluginContext): void {
 	pluginContext = ctx;
 }
 

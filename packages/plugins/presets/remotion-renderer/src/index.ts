@@ -20,7 +20,8 @@ export default definePlugin({
 		registerRenderTool(ctx);
 	},
 	deactivate() {
-		setPluginContext(null);
+		// The host activates the replacement before disposing the previous instance.
+		// Keep the latest context so the old deactivation cannot invalidate live tabs.
 		return Promise.all([stopRemotionServer(), stopAllRemotionStudios()]).then(() => undefined);
 	},
 });
