@@ -31,6 +31,12 @@ Run `bun dev` from this package after installing the monorepo dependencies. The 
 builds changed workspace prerequisites, stages plugin and theme manifests, then starts the renderer,
 theme server, and Electron process in parallel.
 
+Normal development is isolated from packaged application data: it defaults to
+`VETTA_CONFIG_DIR=.vetta-dev` and stores the Chromium profile under
+`~/.vetta-dev/electron-user-data`. Packaged builds continue to use `~/.vetta`. Set
+`VETTA_CONFIG_DIR` and `VETTA_DESKTOP_USER_DATA_DIR` together when a custom isolated development
+environment is required.
+
 Main-process sourcemaps are disabled by default to keep startup builds fast. Set
 `VETTA_MAIN_SOURCEMAP=true` when source-mapped Electron stack traces are needed.
 

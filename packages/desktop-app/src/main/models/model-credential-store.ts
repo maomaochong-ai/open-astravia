@@ -1,9 +1,11 @@
 import type { AuthStorage } from "@vetta/coding-agent/host-services";
 import type { CredentialVault } from "../credentials/credential-vault.js";
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
+import { getAppLogger } from "../logger.js";
 
 const MODEL_CREDENTIAL_NAMESPACE = "models";
 const MODEL_API_KEY_NAME = "api-key";
+const modelCredentialLog = getAppLogger("model-credentials");
 
 export interface ModelCredentialStore {
 	isAvailable(): boolean;
@@ -27,7 +29,15 @@ export class DesktopModelCredentialStore implements ModelCredentialStore {
 	}
 
 	get(credentialRef: string): string | undefined {
-		return this.vault.get(modelApiKeyRef(credentialRef));
+		try {
+			return this.vault.get(modelApiKeyRef(credentialRef));
+		} catch (error) {
+			modelCredentialLog.warn("模型凭据无法解密，将按未配置处理", {
+				credentialRef,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	set(credentialRef: string, value: string): void {

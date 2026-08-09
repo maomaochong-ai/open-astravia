@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import electronPath from "electron";
 
 const projectRoot = join(import.meta.dirname, "..");
@@ -21,6 +22,17 @@ function waitForExit(child) {
 	});
 }
 
+export function resolveDevLaunchEnvironment(environment = process.env, homeDirectory = homedir()) {
+	const verificationEnabled = environment.VETTA_UI_VERIFICATION === "1";
+	const configDir =
+		environment.VETTA_CONFIG_DIR?.trim() || (verificationEnabled ? ".vetta-ui-verify" : ".vetta-dev");
+	const configuredUserDataDir = environment.VETTA_DESKTOP_USER_DATA_DIR?.trim();
+	const userDataDir = configuredUserDataDir
+		? resolve(configuredUserDataDir)
+		: join(homeDirectory, configDir, "electron-user-data");
+	return { configDir, userDataDir };
+}
+
 async function main() {
 	const rendererPort = resolveRendererPort();
 	const rendererUrl = `http://127.0.0.1:${rendererPort}`;
@@ -34,25 +46,22 @@ async function main() {
 		return;
 	}
 
+	const { configDir, userDataDir } = resolveDevLaunchEnvironment();
 	const electronArgs = [];
 	if (process.env.VETTA_UI_VERIFICATION === "1") {
-		const configDir = process.env.VETTA_CONFIG_DIR ?? ".vetta-ui-verify";
-		const userDataDir = process.env.VETTA_DESKTOP_USER_DATA_DIR?.trim();
 		if (process.env.VETTA_DESKTOP_RUNTIME_CANARY === "1") {
 			electronArgs.push("--disable-gpu");
 			electronArgs.push("--no-sandbox");
 		}
-		electronArgs.push(
-			`--user-data-dir=${userDataDir ? resolve(userDataDir) : join(homedir(), configDir, "electron-user-data")}`,
-		);
 	}
+	electronArgs.push(`--user-data-dir=${userDataDir}`);
 	electronArgs.push(join(projectRoot, "dist", "main", "index.js"));
 
 	const electronProcess = spawn(electronPath, electronArgs, {
 		cwd: projectRoot,
 		env: {
 			...process.env,
-			VETTA_CONFIG_DIR: process.env.VETTA_CONFIG_DIR ?? ".vetta",
+			VETTA_CONFIG_DIR: configDir,
 			VETTA_DESKTOP_DEV_URL: rendererUrl,
 		},
 		stdio: "inherit",
@@ -68,4 +77,4 @@ async function main() {
 	process.exitCode = electronResult.code ?? 1;
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main();
