@@ -1,6 +1,6 @@
 import { clearApiProviders, registerApiProvider } from "../api-registry.js";
 import type { AdapterRegistry, ApiProvider } from "../runtime/adapter-registry.js";
-import { adaptApiProvider, type LanguageModelAdapter } from "../runtime/language-model-adapter.js";
+import type { LanguageModelAdapter } from "../runtime/language-model-adapter.js";
 import type { Api, StreamOptions } from "../types.js";
 import { bedrockAdapter, streamBedrock, streamSimpleBedrock } from "./amazon-bedrock.js";
 import { anthropicAdapter, streamAnthropic, streamSimpleAnthropic } from "./anthropic.js";
@@ -10,9 +10,9 @@ import {
 	streamSimpleAzureOpenAIResponses,
 } from "./azure-openai-responses.js";
 import { deepSeekAdapter, streamDeepSeek, streamSimpleDeepSeek } from "./deepseek.js";
-import { streamGoogle, streamSimpleGoogle } from "./google.js";
-import { streamGoogleGeminiCli, streamSimpleGoogleGeminiCli } from "./google-gemini-cli.js";
-import { streamGoogleVertex, streamSimpleGoogleVertex } from "./google-vertex.js";
+import { googleAdapter, streamGoogle, streamSimpleGoogle } from "./google.js";
+import { googleGeminiCliAdapter, streamGoogleGeminiCli, streamSimpleGoogleGeminiCli } from "./google-gemini-cli.js";
+import { googleVertexAdapter, streamGoogleVertex, streamSimpleGoogleVertex } from "./google-vertex.js";
 import { nvidiaAdapter, streamNvidia, streamSimpleNvidia } from "./nvidia.js";
 import {
 	openAICodexResponsesAdapter,
@@ -32,7 +32,7 @@ import { streamSimpleZhipu, streamZhipu, zhipuAdapter } from "./zhipu.js";
 interface BuiltInProviderVisitor {
 	register<TApi extends Api, TOptions extends StreamOptions>(
 		provider: ApiProvider<TApi, TOptions>,
-		adapter?: LanguageModelAdapter<TApi, TOptions>,
+		adapter: LanguageModelAdapter<TApi, TOptions>,
 	): void;
 }
 
@@ -82,23 +82,32 @@ function visitBuiltInProviders(visitor: BuiltInProviderVisitor): void {
 		openAICodexResponsesAdapter,
 	);
 
-	visitor.register({
-		api: "google-generative-ai",
-		stream: streamGoogle,
-		streamSimple: streamSimpleGoogle,
-	});
+	visitor.register(
+		{
+			api: "google-generative-ai",
+			stream: streamGoogle,
+			streamSimple: streamSimpleGoogle,
+		},
+		googleAdapter,
+	);
 
-	visitor.register({
-		api: "google-gemini-cli",
-		stream: streamGoogleGeminiCli,
-		streamSimple: streamSimpleGoogleGeminiCli,
-	});
+	visitor.register(
+		{
+			api: "google-gemini-cli",
+			stream: streamGoogleGeminiCli,
+			streamSimple: streamSimpleGoogleGeminiCli,
+		},
+		googleGeminiCliAdapter,
+	);
 
-	visitor.register({
-		api: "google-vertex",
-		stream: streamGoogleVertex,
-		streamSimple: streamSimpleGoogleVertex,
-	});
+	visitor.register(
+		{
+			api: "google-vertex",
+			stream: streamGoogleVertex,
+			streamSimple: streamSimpleGoogleVertex,
+		},
+		googleVertexAdapter,
+	);
 
 	visitor.register(
 		{
@@ -157,7 +166,7 @@ function visitBuiltInProviders(visitor: BuiltInProviderVisitor): void {
 
 export function registerBuiltInApiProviders(): void {
 	visitBuiltInProviders({
-		register(provider, _adapter) {
+		register(provider) {
 			registerApiProvider(provider, "built-in");
 		},
 	});
@@ -165,8 +174,8 @@ export function registerBuiltInApiProviders(): void {
 
 export function registerBuiltInAdapters(registry: AdapterRegistry): void {
 	visitBuiltInProviders({
-		register(provider, adapter) {
-			registry.register(adapter ?? adaptApiProvider(provider), { sourceId: "built-in" });
+		register(_provider, adapter) {
+			registry.register(adapter, { sourceId: "built-in" });
 		},
 	});
 }

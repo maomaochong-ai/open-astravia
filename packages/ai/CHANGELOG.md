@@ -11,12 +11,16 @@
 
 ### Changed
 
+- **Google 协议族切换为原生 `LanguageModelAdapter`**：Google Generative AI、Vertex 与 Gemini CLI 不再由新 Registry 反向包装 legacy stream；三种 transport 共享 TypeBox wire schema、Gemini event reducer、usage 和严格终止律，同时保留 API key、ADC 与 Cloud Code OAuth/endpoint/retry 的独立所有权。顶层 provider 入口收敛为轻量 facade，官方/Vertex sender 与 Gemini CLI fetch 支持确定性离线测试。
+- **Anthropic 与 Amazon Bedrock 切换为原生 `LanguageModelAdapter`**：两者不再由新 Registry 反向包装 legacy stream；分别使用符合各自 wire 顺序的显式状态机、TypeBox 入站校验、结构化失败与严格终止律。Claude adaptive-thinking/effort 规则和 legacy error-event projector 收敛为共享模块，Bedrock 增加不泄漏到公共 options 的 command sender 构造注入点供离线测试。
 - **OpenAI Responses 协议族切换为原生 `LanguageModelAdapter`**：OpenAI、Azure 与 Codex Responses 不再由新 Registry 反向包装 legacy stream；三者共享按 `output_index` 归约的流状态机、TypeBox wire 校验、结构化失败与严格终止律，OpenAI/Azure endpoint 和 Codex SSE/WebSocket 仍由各自 transport 负责。旧 `stream*()` 入口保留为从新 Adapter 到 error-event 语义的单向兼容投影。
 - **Vitest 依赖上收到 monorepo 根**：本包不再声明 `devDependencies.vitest`，改用根目录统一版本；包内仍保留 `vitest.config.ts` 与 `"test": "vitest --run"`。
 - `SimpleStreamOptions.reasoning` 由固定的 `ThinkingLevel` 联合类型放宽为任意字符串（保留 `ThinkingLevel` 字面量自动补全），以支持每模型自定义推理档位（如 OpenAI 的 `none`、DeepSeek 的 `max`）。`openai-completions` / `openai-responses` 及其衍生 v1 适配器（azure / codex）改为将档位值**原样透传**到 provider 的推理字段，移除 `supportsXhigh` / `clampReasoning` 的 xhigh 夹取——模型只提供自身支持的档位，由调用方保证取值合法。token 预算型 provider（Anthropic / Bedrock / Google）行为不变，仍按档位映射预算。
 
 ### Fixed
 
+- 修复 Google/Vertex 缺失 `finishReason`、terminal 后继续输出和畸形 Gemini chunk 被错误视为成功的问题；修复 cached input 同时计入 `input` 与 `cacheRead` 导致的 token/成本重复计算。Gemini CLI 畸形 SSE JSON 不再静默跳过，非重试型 4xx 不再误重试，HTTP status 进入稳定错误分类。
+- 修复 Anthropic/Bedrock 空流、缺失 `message_stop`/`messageStop`、未闭合或乱序 content block 被错误视为成功的问题；Bedrock streamed exception 与 AWS SDK `$metadata.httpStatusCode` 现在会保留状态码并映射到稳定错误类型，调用前和流中取消通过原生失败通道拒绝。
 - 修复 Responses 流对空流、缺失终态、畸形 SSE/WebSocket JSON、乱序或交错 output item 静默成功/错配的问题；`response.incomplete` 现在稳定映射为 `length`，`response.failed` 和取消通过原生失败通道拒绝。Codex `sessionId` 同时写入 `conversation_id`、`session_id`、`prompt_cache_key` 与 `prompt_cache_retention: "in-memory"`，避免会话缓存身份不完整。
 - 修复部分 OpenAI 兼容网关把推理摘要泄漏到 `delta.content` 时，`<thinking>...</thinking>` 被当作正文渲染的问题。实测 vetta-go 的 GPT 系模型（hellox-gpt-5.6-luna）在有多段 reasoning summary 时，只把第一段放进 `reasoning_content`，其余段落带标签塞进 `content`。`openai-completions` 流式解析新增 `ThinkingTagSplitter`：在消息尚未产出任何实际正文前，把 content 中的 `<thinking>` 包裹段剥离并并入思考块（支持标签跨 delta 切分）；一旦出现真实正文，后续 `<thinking>` 一律按字面量保留，避免误吃模型正文里讨论该标签的场景。
 - 修复通过通用 `openai-completions` 通道接入的推理型 DeepSeek 模型（在 admin 里当普通 openai-completions 模型 + 勾选 reasoning 配置，而非内置 `openai-completions-deepseek`）思考档位选「关闭」仍然思考的回归。上一次改动把通用分支的「off」无条件归一为 `reasoning_effort: "none"` 下发给所有端点，但 `none` 是 OpenAI gpt-5 系专有的关思考值，DeepSeek / 聚合网关 / vLLM 等后端不认、直接忽略，导致思考关不掉。现仅在 `api.openai.com` 官方端点下发 `none`，其余端点的「off」恢复为省略 `reasoning_effort` 字段，让后端回落到非思考默认。

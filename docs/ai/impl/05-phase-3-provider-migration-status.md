@@ -6,16 +6,12 @@
 
 ## 当前总览
 
-14 个内置 API 仍通过同一 `visitBuiltInProviders()` 同时注册 legacy provider 和新 Adapter。当前 9 个 API 已注册原生 Adapter：
+14 个内置 API 仍通过同一 `visitBuiltInProviders()` 同时注册 legacy provider 和新 Adapter。当前 14 个 API 已全部注册原生 Adapter：
 
 - OpenAI-compatible：OpenAI Completions、NVIDIA、Qwen、DeepSeek、Z.ai、智谱。
 - Responses：OpenAI Responses、Azure OpenAI Responses、OpenAI Codex Responses。
-
-剩余 5 个 API 仍由 `adaptApiProvider()` 包装旧实现：
-
-- Anthropic Messages。
-- Google Generative AI、Gemini CLI、Vertex。
-- Amazon Bedrock Converse Stream。
+- Messages/Converse：Anthropic Messages、Amazon Bedrock Converse Stream。
+- Google：Google Generative AI、Gemini CLI、Vertex。
 
 ## 已实现
 
@@ -45,11 +41,29 @@
 
 详细记录见 [14-phase-3b-responses-native-adapters.md](./14-phase-3b-responses-native-adapters.md)。
 
+### Phase 3C：Anthropic/Bedrock
+
+- Anthropic 与 Bedrock 已切换为原生 Adapter，失败/取消使用 rejection，旧 stream 只做单向兼容投影。
+- 两个协议分别使用显式状态机；不强行共享 start/delta/stop 顺序不同的 wire reducer。
+- Anthropic 保留 cache control、OAuth tool casing、thinking signature 和 adaptive thinking。
+- Bedrock 通过 Adapter 构造注入 command sender 进行离线测试，AWS SDK client 不进入公共 `StreamOptions`。
+- TypeBox 校验 wire event；Bedrock streamed exception 与 `$metadata.httpStatusCode` 进入稳定错误分类。
+
+详细记录见 [15-phase-3c-anthropic-bedrock-native-adapters.md](./15-phase-3c-anthropic-bedrock-native-adapters.md)。
+
+### Phase 3D：Google
+
+- Google Generative AI、Vertex 与 Gemini CLI 已切换为原生 Adapter；内置 Registry 不再使用 fallback。
+- 三种入口共享 TypeBox response schema、Gemini event reducer、usage 与严格终止律；API key、ADC 和 Cloud Code OAuth/retry 仍由独立 transport 所有。
+- 官方 Gemini/Vertex 的 cached input 不再重复计入 `input`；Cloud Code 非重试型 4xx 不再误重试且保留 HTTP status。
+- 顶层 provider 文件已收敛为轻量 facade，SDK sender/fetch 可离线注入。
+
+详细记录见 [16-phase-3d-google-native-adapters.md](./16-phase-3d-google-native-adapters.md)。
+
 ## 尚未实现
 
-- Anthropic 当前已有 TypeBox wire pilot 和注入式 fetch，但 Registry 仍注册 legacy bridge，尚不能计作原生迁移。
-- Bedrock 尚未与 Anthropic 形成共享的 Messages 语义边界；AWS SDK transport、usage/cache 和错误 metadata 仍需独立适配。
-- Google/Vertex/Gemini CLI 尚未拆分认证、endpoint、retry 与 Gemini event reducer 的所有权。
+- Anthropic server tools/citation/context management 与 Bedrock output image/tool-result 尚未进入统一公共内容协议，本阶段只保持已有能力并严格跟踪其 wire 生命周期。
+- Google partial function arguments、server tools、grounding、URL context 与 inline output 尚未进入统一公共内容协议。
 - OpenAI SDK 和 Codex transport 仍各自保留内部 retry；统一 retry policy 尚未上移到 Runtime。
 - live canary 因当前环境没有 Provider 凭据而未执行，不能用离线矩阵替代真实服务的 header、代理、连接关闭和限流验证。
 - legacy registry 和公共 `stream*()` 仍有兼容消费者，删除受 Phase 7 发布周期约束。
@@ -65,13 +79,15 @@
 ## 验证
 
 - Responses family 直接矩阵：1 个测试文件、41 条测试通过。
-- 覆盖文本、usage、工具参数分片、交错 output item、incomplete、failed、HTTP error、wire schema、空流、缺失终态、调用前/流中 abort、默认 Registry、legacy 投影和 Provider 特有 request mapping。
+- Anthropic/Bedrock 直接矩阵：1 个测试文件、20 条测试通过。
+- Google 直接矩阵：1 个测试文件、15 条测试通过；合并既有 Google 回归为 7 个文件、29 条通过。
+- 覆盖文本、thinking/signature、usage/cache、工具参数分片、交错 output item、incomplete、failed、HTTP/AWS metadata error、wire schema、空流、缺失终态、调用前/流中 abort、legacy 投影和 Provider 特有 request mapping。
 - Codex WebSocket 覆盖成功、畸形 JSON、terminal 前关闭和流中取消。
-- AI 默认全量、`bun run check:quick` 与根 `bun run check` 的最终数字记录在 Phase 3B 文档。
+- AI 默认全量、Agent 上游、`bun run check:quick` 与根 `bun run check` 的最新数字记录在 Phase 3D 文档。
 
 ## 下一迁移入口
 
-1. 把 Anthropic wire pilot 提升为原生 Adapter，并以共享 Messages 语义评估 Bedrock；不要让 AWS 认证或 SDK command 类型进入 reducer。
-2. 再迁移 Google Generative AI、Vertex 和 Gemini CLI，先拆认证/endpoint，再共享 Gemini event reducer。
-3. 所有协议族原生化后，上移统一 retry policy并移除 `adaptApiProvider()` fallback。
-4. 满足 live canary 和两个锁步发布周期后，进入 Phase 7 收窄根 exports 与删除 legacy registry。
+1. 在 Runtime 设计统一 retry policy、attempt budget 与 telemetry，再逐 Provider 移除内部 retry。
+2. 为 server tools/citations/grounding/compaction 等新内容类型单独设计公共协议，不能在 Provider reducer 中静默伪装为文本。
+3. 完成具备凭据的 live canary，并持续验证所有内置 API 都走原生 Registry 路径。
+4. 满足两个锁步发布周期后，进入 Phase 7 收窄根 exports、删除 legacy registry 与 `adaptApiProvider()`。

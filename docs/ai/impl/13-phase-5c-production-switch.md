@@ -81,6 +81,6 @@ Provider error 与取消的旧 `completed` 行为没有保留。这是有意的�
 ## 尚未完成
 
 - `packages/agent` 的兼容 Agent facade 和旧 loop 仍有调用方，需在 Phase 7 按发布周期退出，不能立即删除。
-- 其余 5 个 Provider API 仍通过 AI legacy bridge；`streamSimple()` compatibility projection 暂时保留。
+- 14 个内置 Provider API 已全部使用原生 Adapter；`streamSimple()` compatibility projection 与 legacy registry 仍按 Phase 7 发布周期保留。
 - Coding Agent 非适配层仍存在 Agent 类型依赖，类型所有权归位继续属于 Phase 5 后续工作。
 - live Provider canary 仍受凭据条件约束。

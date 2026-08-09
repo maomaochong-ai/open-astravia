@@ -71,45 +71,54 @@ export async function fetchGoogleCloudCodeResponse(
 	body: string,
 	options?: GoogleGeminiCliOptions,
 ): Promise<GoogleCloudCodeResponse> {
-	let response: Response | undefined;
 	let lastError: Error | undefined;
-	let requestUrl: string | undefined;
 	for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
 		if (options?.signal?.aborted) throw new Error("Request was aborted");
+		const requestUrl = buildGoogleCloudCodeUrl(endpoints[Math.min(attempt, endpoints.length - 1)]);
+		let response: Response;
 		try {
-			requestUrl = buildGoogleCloudCodeUrl(endpoints[Math.min(attempt, endpoints.length - 1)]);
-			response = await fetch(requestUrl, { method: "POST", headers, body, signal: options?.signal });
-			if (response.ok) return { response, requestUrl };
-			const errorText = await response.text();
-			if (attempt < MAX_RETRIES && isRetryableError(response.status, errorText)) {
-				const serverDelay = extractRetryDelay(errorText, response);
-				const delay = serverDelay ?? BASE_DELAY_MS * 2 ** attempt;
-				const maxDelay = options?.maxRetryDelayMs ?? 60000;
-				if (maxDelay > 0 && serverDelay && serverDelay > maxDelay) {
-					throw new Error(
-						`Server requested ${Math.ceil(serverDelay / 1000)}s retry delay (max: ${Math.ceil(maxDelay / 1000)}s). ${extractErrorMessage(errorText)}`,
-					);
-				}
-				await sleepWithAbort(delay, options?.signal);
-				continue;
-			}
-			throw new Error(`Cloud Code Assist API error (${response.status}): ${extractErrorMessage(errorText)}`);
+			response = await fetchGoogleCloudCodeUrl(requestUrl, headers, body, options);
 		} catch (error) {
-			if (error instanceof Error && (error.name === "AbortError" || error.message === "Request was aborted")) {
-				throw new Error("Request was aborted");
-			}
-			lastError = error instanceof Error ? error : new Error(String(error));
-			if (lastError.message === "fetch failed" && lastError.cause instanceof Error) {
-				lastError = new Error(`Network error: ${lastError.cause.message}`);
-			}
-			if (attempt < MAX_RETRIES) {
-				await sleepWithAbort(BASE_DELAY_MS * 2 ** attempt, options?.signal);
-				continue;
-			}
-			throw lastError;
+			if (isAbortError(error)) throw new Error("Request was aborted");
+			lastError = normalizeNetworkError(error);
+			if (attempt === MAX_RETRIES) throw lastError;
+			await sleepWithAbort(BASE_DELAY_MS * 2 ** attempt, options?.signal);
+			continue;
 		}
+		if (response.ok) return { response, requestUrl };
+		const errorText = await response.text();
+		if (attempt === MAX_RETRIES || !isRetryableError(response.status, errorText)) {
+			throw createHttpError(response.status, errorText);
+		}
+		const serverDelay = extractRetryDelay(errorText, response);
+		const delay = serverDelay ?? BASE_DELAY_MS * 2 ** attempt;
+		const maxDelay = options?.maxRetryDelayMs ?? 60000;
+		if (maxDelay > 0 && serverDelay && serverDelay > maxDelay) {
+			throw createHttpError(
+				response.status,
+				`Server requested ${Math.ceil(serverDelay / 1000)}s retry delay (max: ${Math.ceil(maxDelay / 1000)}s). ${extractErrorMessage(errorText)}`,
+			);
+		}
+		await sleepWithAbort(delay, options?.signal);
 	}
 	throw lastError ?? new Error("Failed to get response after retries");
+}
+
+export async function fetchGoogleCloudCodeUrl(
+	requestUrl: string,
+	headers: Record<string, string>,
+	body: string,
+	options?: GoogleGeminiCliOptions,
+): Promise<Response> {
+	const fetchFn = options?.fetch ?? globalThis.fetch;
+	return await fetchFn(requestUrl, { method: "POST", headers, body, signal: options?.signal });
+}
+
+export function assertGoogleCloudCodeResponse(response: Response): Promise<Response> {
+	if (response.ok) return Promise.resolve(response);
+	return response.text().then((errorText) => {
+		throw createHttpError(response.status, errorText);
+	});
 }
 
 export function sleepWithAbort(milliseconds: number, signal?: AbortSignal): Promise<void> {
@@ -146,8 +155,10 @@ function parseMatchedDelay(
 }
 
 function isRetryableError(status: number, errorText: string): boolean {
-	if ([429, 500, 502, 503, 504].includes(status)) return true;
-	return /resource.?exhausted|rate.?limit|overloaded|service.?unavailable|other.?side.?closed/i.test(errorText);
+	return (
+		[429, 500, 502, 503, 504].includes(status) ||
+		/resource.?exhausted|rate.?limit|overloaded|service.?unavailable|other.?side.?closed/i.test(errorText)
+	);
 }
 
 function extractErrorMessage(errorText: string): string {
@@ -156,4 +167,22 @@ function extractErrorMessage(errorText: string): string {
 		if (parsed.error?.message) return parsed.error.message;
 	} catch {}
 	return errorText;
+}
+
+function createHttpError(status: number, errorText: string): Error & { status: number } {
+	return Object.assign(new Error(`Cloud Code Assist API error (${status}): ${extractErrorMessage(errorText)}`), {
+		status,
+	});
+}
+
+function isAbortError(error: unknown): boolean {
+	return error instanceof Error && (error.name === "AbortError" || error.message === "Request was aborted");
+}
+
+function normalizeNetworkError(error: unknown): Error {
+	const normalized = error instanceof Error ? error : new Error(String(error));
+	if (normalized.message === "fetch failed" && normalized.cause instanceof Error) {
+		return new Error(`Network error: ${normalized.cause.message}`);
+	}
+	return normalized;
 }

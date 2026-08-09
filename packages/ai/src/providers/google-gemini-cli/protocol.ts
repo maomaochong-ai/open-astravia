@@ -1,5 +1,7 @@
 import type { ThinkingConfig } from "@google/genai";
+import { type Static, Type } from "@sinclair/typebox";
 import type { convertMessages, convertTools, mapToolChoice } from "../google-shared.js";
+import { geminiResponseChunkSchema } from "../google-stream/response-schema.js";
 
 export interface CloudCodeAssistRequest {
 	project: string;
@@ -25,33 +27,12 @@ export interface CloudCodeAssistRequest {
 	requestId?: string;
 }
 
-export interface CloudCodeAssistResponseChunk {
-	response?: {
-		candidates?: Array<{
-			content?: {
-				role: string;
-				parts?: Array<{
-					text?: string;
-					thought?: boolean;
-					thoughtSignature?: string;
-					functionCall?: {
-						name: string;
-						args: Record<string, unknown>;
-						id?: string;
-					};
-				}>;
-			};
-			finishReason?: string;
-		}>;
-		usageMetadata?: {
-			promptTokenCount?: number;
-			candidatesTokenCount?: number;
-			thoughtsTokenCount?: number;
-			totalTokenCount?: number;
-			cachedContentTokenCount?: number;
-		};
-		modelVersion?: string;
-		responseId?: string;
-	};
-	traceId?: string;
-}
+export const cloudCodeAssistResponseChunkSchema = Type.Object(
+	{
+		response: Type.Optional(geminiResponseChunkSchema),
+		traceId: Type.Optional(Type.String()),
+	},
+	{ additionalProperties: true },
+);
+
+export type CloudCodeAssistResponseChunk = Static<typeof cloudCodeAssistResponseChunkSchema>;

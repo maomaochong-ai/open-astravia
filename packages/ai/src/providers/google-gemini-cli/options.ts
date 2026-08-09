@@ -1,6 +1,7 @@
 import type { StreamOptions } from "../../types.js";
+import type { GoogleThinkingLevel } from "../google-stream/thinking.js";
 
-export type GoogleThinkingLevel = "THINKING_LEVEL_UNSPECIFIED" | "MINIMAL" | "LOW" | "MEDIUM" | "HIGH";
+export type { GoogleThinkingLevel } from "../google-stream/thinking.js";
 
 export interface GoogleGeminiCliOptions extends StreamOptions {
 	toolChoice?: "auto" | "none" | "any";
