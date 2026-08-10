@@ -1,4 +1,3 @@
-import type { PluginStorageApi } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it } from "vitest";
 import { claimCanvasAutoOpen, resetCanvasAutoOpenCache } from "../src/vetd/auto-open";
 import { isPureDesignProject, pickVetdFiles } from "../src/vetd/discover";
@@ -33,6 +32,17 @@ describe("isPureDesignProject", () => {
 	it("sidecar 里的 .vetd 不算数", () => {
 		expect(isPureDesignProject([ref("landing.vetd.d/nested.vetd")])).toBe(false);
 	});
+
+	it("sidecar 工作目录里的素材文件不破坏纯设计判定", () => {
+		expect(
+			isPureDesignProject([
+				ref("app.vetd"),
+				ref("app.vetd.d/theme.css"),
+				ref("app.vetd.d/frames/home.tsx"),
+				ref("app.vetd.d/assets/logo.png"),
+			]),
+		).toBe(true);
+	});
 });
 
 describe("pickVetdFiles", () => {
@@ -44,49 +54,23 @@ describe("pickVetdFiles", () => {
 	});
 });
 
-function fakeStorage(initial: Record<string, unknown> = {}): PluginStorageApi {
-	const store = new Map<string, unknown>(Object.entries(initial));
-	return {
-		readJson: async <T>(key: string) => (store.get(key) as T | undefined) ?? null,
-		writeJson: async (key: string, value: unknown) => {
-			store.set(key, value);
-		},
-		list: async () => [...store.keys()],
-		readFile: async () => null,
-		writeFile: async () => {},
-		putBlob: async () => ({ id: "", url: "", mimeType: "" }),
-		putBlobFromFile: async () => ({ id: "", url: "", mimeType: "" }),
-		readBlob: async () => null,
-		getBlobRef: async () => null,
-	};
-}
-
 describe("claimCanvasAutoOpen", () => {
 	beforeEach(() => {
 		resetCanvasAutoOpenCache();
 	});
 
-	it("同一项目只认领一次", async () => {
-		const storage = fakeStorage();
-		expect(await claimCanvasAutoOpen(storage, "/proj")).toBe(true);
-		expect(await claimCanvasAutoOpen(storage, "/proj")).toBe(false);
+	it("同一会话的连发事件只认领一次", () => {
+		expect(claimCanvasAutoOpen("s1")).toBe(true);
+		expect(claimCanvasAutoOpen("s1")).toBe(false);
 	});
 
-	it("重启后读到持久记录仍不再自动打开", async () => {
-		const storage = fakeStorage();
-		expect(await claimCanvasAutoOpen(storage, "/proj")).toBe(true);
-		resetCanvasAutoOpenCache();
-		expect(await claimCanvasAutoOpen(storage, "/proj")).toBe(false);
+	it("切到别的会话再切回，算一次新的打开", () => {
+		expect(claimCanvasAutoOpen("s1")).toBe(true);
+		expect(claimCanvasAutoOpen("s2")).toBe(true);
+		expect(claimCanvasAutoOpen("s1")).toBe(true);
 	});
 
-	it("不同项目各自认领", async () => {
-		const storage = fakeStorage();
-		expect(await claimCanvasAutoOpen(storage, "/a")).toBe(true);
-		expect(await claimCanvasAutoOpen(storage, "/b")).toBe(true);
-	});
-
-	it("storage 报错时保守不打开", async () => {
-		const storage = { ...fakeStorage(), readJson: async () => Promise.reject(new Error("boom")) } as PluginStorageApi;
-		expect(await claimCanvasAutoOpen(storage, "/proj")).toBe(false);
+	it("没有会话 id 时不自动打开", () => {
+		expect(claimCanvasAutoOpen(null)).toBe(false);
 	});
 });

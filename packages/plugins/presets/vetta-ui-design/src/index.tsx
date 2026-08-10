@@ -80,28 +80,28 @@ export default definePlugin({
 		let workModeSlots: Disposable[] = [];
 		const isWorkMode = (): boolean => ctx.getAgentMode() === "work";
 
-		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的探测结果。 */
+		/** 最近一次 conversation-changed 的 cwd 与会话 id，用于丢弃过期的探测结果。 */
 		let latestCwd: string | null = null;
+		let latestSessionId: string | null = null;
 
 		/**
 		 * cwd 里有 .vetd 才把画布 Tab 上栏。切回工作模式时也要重跑一次。
 		 *
 		 * 纯设计项目（除设计稿和 README 之类外没有别的文件）额外自动展开画布：
-		 * 这种目录打开就是为了看设计，先给面板。混合项目不抢，且每个项目只自动
-		 * 打开一次，用户关掉之后不再反复弹。
+		 * 这种目录打开就是为了看设计，先给面板。混合项目不抢；每次打开（切入）
+		 * 会话都展开一次，同一会话内关掉后不再反复弹。
 		 */
-		const revealTabForCwd = (cwd: string | null): void => {
+		const revealTabForCwd = (cwd: string | null, sessionId: string | null): void => {
 			if (!cwd || !isWorkMode()) return;
 			void ctx.fs
 				.listFilesRecursive(cwd)
 				.catch(() => [])
-				.then(async (files) => {
-					if (latestCwd !== cwd || !isWorkMode()) return;
+				.then((files) => {
+					if (latestCwd !== cwd || latestSessionId !== sessionId || !isWorkMode()) return;
 					const found = pickVetdFiles(files);
 					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found.length > 0);
 					if (found.length === 0 || !isPureDesignProject(files)) return;
-					if (!(await claimCanvasAutoOpen(ctx.storage, cwd))) return;
-					if (latestCwd !== cwd || !isWorkMode()) return;
+					if (!claimCanvasAutoOpen(sessionId)) return;
 					ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
 				});
 		};
@@ -140,7 +140,7 @@ export default definePlugin({
 					}),
 				];
 				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。
-				revealTabForCwd(latestCwd);
+				revealTabForCwd(latestCwd, latestSessionId);
 				return;
 			}
 			for (const slot of workModeSlots) slot.dispose();
@@ -156,11 +156,12 @@ export default definePlugin({
 
 		ctx.conversation.on((event) => {
 			if (event.type === "conversation-changed") {
-				const { cwd } = event.conversation;
+				const { cwd, id } = event.conversation;
 				if (!cwd) return;
 				// 编程模式下也记住 cwd：切回工作模式时要靠它补跑探测。
 				latestCwd = cwd;
-				revealTabForCwd(cwd);
+				latestSessionId = id;
+				revealTabForCwd(cwd, id);
 				return;
 			}
 			if (event.type === "tool-call-start") {

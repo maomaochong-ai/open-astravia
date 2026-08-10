@@ -21,9 +21,10 @@ export function pickVetdFiles(files: PluginFsFileRef[]): string[] {
 }
 
 /**
- * 根目录下允许与设计稿共存、仍算「纯设计项目」的元文件。宿主的递归列举本身
- * 已经跳过了隐藏项（含 `.vetd.d` 工作态目录、`.git`）和 node_modules/dist 之类，
- * 所以这里只需要放过人和 Agent 顺手留下的说明文件。
+ * 根目录下允许与设计稿共存、仍算「纯设计项目」的元文件。宿主的递归列举跳过
+ * 隐藏项（`.git`、`.vetta` 等）和 node_modules/dist 之类，但 `.vetd.d` 工作态
+ * 目录不是隐藏目录，其内容会被列出来，判定时单独豁免；这里只需要放过人和
+ * Agent 顺手留下的说明文件。
  */
 const PURE_PROJECT_META_FILES = new Set(["readme.md", "readme", "license", "license.md", "agents.md", "claude.md"]);
 
@@ -34,8 +35,10 @@ const PURE_PROJECT_META_FILES = new Set(["readme.md", "readme", "license", "lice
 export function isPureDesignProject(files: PluginFsFileRef[]): boolean {
 	let hasVetd = false;
 	for (const file of files) {
+		// sidecar 工作目录（frames/theme/assets 等）是设计稿的一部分，不影响判定。
+		if (file.relPath.includes(".vetd.d/")) continue;
 		if (file.name.endsWith(".vetd")) {
-			if (!file.relPath.includes(".vetd.d/")) hasVetd = true;
+			hasVetd = true;
 			continue;
 		}
 		const isRootLevel = !file.relPath.includes("/") && !file.relPath.includes("\\");
