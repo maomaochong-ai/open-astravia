@@ -10,10 +10,12 @@ import {
 	activityPanelResizingAtom,
 	activityPanelTabByProjectAtom,
 	activityPanelWidthAtom,
+	activityPanelWidthModeAtom,
 	activityTabOrderAtom,
 	attachedPluginTabsAtom,
 	hiddenActivityTabsAtom,
 	persistActivityPanelWidthAtom,
+	resolveActivityPanelWidth,
 	setTransientActivityPanelWidthAtom,
 	sidebarCollapsedAtom,
 	sidebarWidthAtom,
@@ -61,6 +63,7 @@ export function useActivityPanelModel({
 	const setTransientWidth = useSetAtom(setTransientActivityPanelWidthAtom);
 	const persistWidth = useSetAtom(persistActivityPanelWidthAtom);
 	const syncWidthToWindow = useSetAtom(syncActivityPanelWidthToWindowAtom);
+	const widthMode = useAtomValue(activityPanelWidthModeAtom);
 	const [overflowKeys, setOverflowKeys] = useState<ActivityTabKey[]>([]);
 	const [tabByProject, setTabByProject] = useAtom(activityPanelTabByProjectAtom);
 	const windowWidth = useWindowWidth();
@@ -180,17 +183,24 @@ export function useActivityPanelModel({
 		syncWidthToWindow(windowWidth);
 	}, [windowWidth, syncWidthToWindow]);
 
+	/**
+	 * 当前窗口宽度下面板**应有**的宽度。侧边栏联动必须用它而不是 `width`：`width` 由上面的
+	 * effect 异步写回，窗口刚变宽的那一轮里它还是旧值，用旧宽度会误判成「面板不再过宽」而
+	 * 展开侧边栏，下一轮又把面板压回 openLimit——拉满态会因此被打回固定宽度。
+	 */
+	const effectiveWidth = resolveActivityPanelWidth(widthMode, windowWidth);
+
 	useEffect(() => {
 		const openLimit = Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - sidebarWidth - ACTIVITY_PANEL_MIN_CHAT_AREA);
 		const collapsedChanged = prevSidebarCollapsedRef.current !== sidebarCollapsed;
 		prevSidebarCollapsedRef.current = sidebarCollapsed;
-		if (collapsedChanged && !sidebarCollapsed && isOpen && width > openLimit) {
+		if (collapsedChanged && !sidebarCollapsed && isOpen && effectiveWidth > openLimit) {
 			widthCollapsedSidebarRef.current = null;
 			setWidth(openLimit);
 			return;
 		}
 
-		const shouldCollapse = isOpen && width > openLimit;
+		const shouldCollapse = isOpen && effectiveWidth > openLimit;
 		if (shouldCollapse) {
 			if (widthCollapsedSidebarRef.current === null) {
 				widthCollapsedSidebarRef.current = sidebarCollapsed;
@@ -201,7 +211,7 @@ export function useActivityPanelModel({
 			widthCollapsedSidebarRef.current = null;
 			setSidebarCollapsed(restore);
 		}
-	}, [width, windowWidth, sidebarWidth, isOpen, sidebarCollapsed, setSidebarCollapsed, setWidth]);
+	}, [effectiveWidth, windowWidth, sidebarWidth, isOpen, sidebarCollapsed, setSidebarCollapsed, setWidth]);
 
 	const activeTab = useMemo<ActivityTabKey>(() => {
 		if (knowledgeHistory && dockedTabItems.some((item) => item.key === "knowledge-history")) {
