@@ -1,5 +1,5 @@
 import type { ActivityTabKey } from "@shared/lib/project-profile";
-import { atom } from "jotai";
+import { atom, type Getter, type Setter } from "jotai";
 
 export const activityPanelOpenAtom = atom<boolean>(false);
 export const activityPanelResizingAtom = atom<boolean>(false);
@@ -36,28 +36,73 @@ export const ACTIVITY_PANEL_PREVIEW_MIN_WIDTH = 520;
 
 export const ACTIVITY_PANEL_WIDTH_STORAGE_KEY = "vetta-activity-panel-width";
 
-function readPersistedPanelWidth(): number {
+/** 当前窗口宽度下，活动面板的最大宽度。 */
+export function activityPanelMaxWidth(windowWidth: number): number {
+	return Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - ACTIVITY_PANEL_MIN_CHAT_AREA);
+}
+
+/**
+ * 面板宽度的**意图**，而非结果：`fixed` 是用户/插件指定的具体像素，`max` 是「跟随窗口拉满」。
+ * 只有存意图才能让 `max` 在窗口变大时重新求值——存夹紧后的像素数会让面板只缩不涨。
+ * 新增档位（如按比例）时在此加分支，公共插件 API 仍只暴露 `number | "max"`。
+ */
+export type ActivityPanelWidthMode = { kind: "fixed"; px: number } | { kind: "max" };
+
+/** localStorage 里 `max` 意图的哨兵值；其余情况仍写裸数字，兼容历史记录。 */
+const PERSISTED_MAX_WIDTH = "max";
+
+function readPersistedWidthMode(): ActivityPanelWidthMode {
 	try {
 		const raw = localStorage.getItem(ACTIVITY_PANEL_WIDTH_STORAGE_KEY);
-		if (raw == null) return ACTIVITY_PANEL_DEFAULT_WIDTH;
+		if (raw == null) return { kind: "fixed", px: ACTIVITY_PANEL_DEFAULT_WIDTH };
+		if (raw === PERSISTED_MAX_WIDTH) return { kind: "max" };
 		const value = Number(raw);
-		if (!Number.isFinite(value)) return ACTIVITY_PANEL_DEFAULT_WIDTH;
-		return Math.max(ACTIVITY_PANEL_MIN_WIDTH, value);
+		if (!Number.isFinite(value)) return { kind: "fixed", px: ACTIVITY_PANEL_DEFAULT_WIDTH };
+		return { kind: "fixed", px: Math.max(ACTIVITY_PANEL_MIN_WIDTH, value) };
 	} catch {
-		return ACTIVITY_PANEL_DEFAULT_WIDTH;
+		return { kind: "fixed", px: ACTIVITY_PANEL_DEFAULT_WIDTH };
 	}
 }
 
-function persistPanelWidth(width: number): void {
+function persistWidthMode(mode: ActivityPanelWidthMode): void {
 	try {
-		localStorage.setItem(ACTIVITY_PANEL_WIDTH_STORAGE_KEY, String(width));
+		localStorage.setItem(
+			ACTIVITY_PANEL_WIDTH_STORAGE_KEY,
+			mode.kind === "max" ? PERSISTED_MAX_WIDTH : String(mode.px),
+		);
 	} catch {
 		// ignore quota / private mode
 	}
 }
 
-/** Internal primitive store; public API is {@link activityPanelWidthAtom}. */
-const activityPanelWidthBaseAtom = atom(readPersistedPanelWidth());
+/** 把意图落到当前窗口下的实际像素宽度。 */
+export function resolveActivityPanelWidth(mode: ActivityPanelWidthMode, windowWidth: number): number {
+	const max = activityPanelMaxWidth(windowWidth);
+	if (mode.kind === "max") return max;
+	return Math.min(max, Math.max(ACTIVITY_PANEL_MIN_WIDTH, mode.px));
+}
+
+function sameWidthMode(a: ActivityPanelWidthMode, b: ActivityPanelWidthMode): boolean {
+	if (a.kind === "max") return b.kind === "max";
+	return b.kind === "fixed" && a.px === b.px;
+}
+
+const initialWidthMode = readPersistedWidthMode();
+
+/** Internal primitive stores; public API is {@link activityPanelWidthAtom} / {@link activityPanelWidthModeAtom}. */
+const activityPanelWidthModeBaseAtom = atom<ActivityPanelWidthMode>(initialWidthMode);
+const activityPanelWidthBaseAtom = atom(resolveActivityPanelWidth(initialWidthMode, window.innerWidth));
+
+/** 当前宽度意图，只读。判断面板是否处于「跟随窗口拉满」用它。 */
+export const activityPanelWidthModeAtom = atom((get) => get(activityPanelWidthModeBaseAtom));
+
+/** 同时更新意图与解析后的像素宽度；夹紧在此统一完成。 */
+function applyWidthMode(get: Getter, set: Setter, mode: ActivityPanelWidthMode, persist: boolean): void {
+	if (!sameWidthMode(get(activityPanelWidthModeBaseAtom), mode)) set(activityPanelWidthModeBaseAtom, mode);
+	const next = resolveActivityPanelWidth(mode, window.innerWidth);
+	if (next !== get(activityPanelWidthBaseAtom)) set(activityPanelWidthBaseAtom, next);
+	if (persist) persistWidthMode(mode);
+}
 
 type ActivityPanelWidthUpdate = number | ((prev: number) => number);
 
@@ -66,16 +111,14 @@ function resolvePanelWidthUpdate(prev: number, update: ActivityPanelWidthUpdate)
 }
 
 /**
- * 活动面板宽度。读写均经此 atom；写入时同步 localStorage，避免 reload/热更新后回到默认值。
+ * 活动面板宽度。读写均经此 atom；写入具体像素即退出「跟随窗口」并同步 localStorage，
+ * 避免 reload/热更新后回到默认值。
  */
 export const activityPanelWidthAtom = atom(
 	(get) => get(activityPanelWidthBaseAtom),
 	(get, set, update: ActivityPanelWidthUpdate) => {
-		const prev = get(activityPanelWidthBaseAtom);
-		const next = resolvePanelWidthUpdate(prev, update);
-		if (next === prev) return;
-		set(activityPanelWidthBaseAtom, next);
-		persistPanelWidth(next);
+		const next = resolvePanelWidthUpdate(get(activityPanelWidthBaseAtom), update);
+		applyWidthMode(get, set, { kind: "fixed", px: next }, true);
 	},
 );
 
@@ -84,23 +127,18 @@ const pendingActivityPanelWidthAtom = atom<number | "max" | null>(null);
 
 /** 拖拽中的瞬时宽度：实时更新布局，但不在每一帧同步写 localStorage。 */
 export const setTransientActivityPanelWidthAtom = atom(null, (get, set, update: ActivityPanelWidthUpdate) => {
-	const prev = get(activityPanelWidthBaseAtom);
-	const next = resolvePanelWidthUpdate(prev, update);
-	if (next !== prev) set(activityPanelWidthBaseAtom, next);
+	const next = resolvePanelWidthUpdate(get(activityPanelWidthBaseAtom), update);
+	applyWidthMode(get, set, { kind: "fixed", px: next }, false);
 });
 
 /** 拖拽结束时把最终宽度持久化一次。 */
 export const persistActivityPanelWidthAtom = atom(null, (get) => {
-	persistPanelWidth(get(activityPanelWidthBaseAtom));
+	persistWidthMode(get(activityPanelWidthModeBaseAtom));
 });
 
-/** 当前窗口宽度下，活动面板的最大宽度。 */
-export function activityPanelMaxWidth(windowWidth: number): number {
-	return Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - ACTIVITY_PANEL_MIN_CHAT_AREA);
-}
-
 /**
- * 写入活动面板宽度并夹到 [MIN, max] 内。传 "max" 表示拉到当前窗口下的最大宽度。
+ * 写入活动面板宽度并夹到 [MIN, max] 内。传 "max" 表示「跟随窗口拉满」——它是一种会随
+ * 窗口尺寸重新求值的持续状态，直到用户拖动分隔条或有人写入具体像素为止。
  * 供插件 API（openActivityTab 的 width 选项）与 ResizeHandle 复用同一套约束。
  */
 export const setActivityPanelWidthAtom = atom(null, (get, set, width: number | "max") => {
@@ -108,9 +146,16 @@ export const setActivityPanelWidthAtom = atom(null, (get, set, width: number | "
 		set(pendingActivityPanelWidthAtom, width);
 		return;
 	}
-	const max = activityPanelMaxWidth(window.innerWidth);
-	const target = width === "max" ? max : width;
-	set(activityPanelWidthAtom, Math.min(max, Math.max(ACTIVITY_PANEL_MIN_WIDTH, target)));
+	applyWidthMode(get, set, width === "max" ? { kind: "max" } : { kind: "fixed", px: width }, true);
+});
+
+/**
+ * 窗口宽度变化时按当前意图重解析：`max` 跟着窗口涨落，`fixed` 在窗口变窄时夹紧、
+ * 变宽时回到用户原本指定的宽度。不落盘——意图没变，存的仍是意图。
+ */
+export const syncActivityPanelWidthToWindowAtom = atom(null, (get, set, windowWidth: number) => {
+	const next = resolveActivityPanelWidth(get(activityPanelWidthModeBaseAtom), windowWidth);
+	if (next !== get(activityPanelWidthBaseAtom)) set(activityPanelWidthBaseAtom, next);
 });
 
 /** Tab 拖拽期间延迟插件宽度请求，结束时只应用最后一次请求。 */

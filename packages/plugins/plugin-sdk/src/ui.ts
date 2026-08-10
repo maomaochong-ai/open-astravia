@@ -100,9 +100,10 @@ export interface PluginActivityTabContribution {
 /** Options for {@link PluginUiApi.openActivityTab}. */
 export interface PluginOpenActivityTabOptions {
 	/**
-	 * Desired panel width as it opens: a pixel number, or `"max"` for the widest
-	 * the current window allows. The host clamps to its min/max bounds. Omit to
-	 * keep the user's current width.
+	 * Desired panel width as it opens: a pixel number, or `"max"` to track the
+	 * widest the window allows — `"max"` keeps following window resizes until the
+	 * user drags the divider. The host clamps to its min/max bounds. Omit to keep
+	 * the user's current width.
 	 */
 	width?: number | "max";
 }
@@ -366,8 +367,11 @@ export interface PluginUiApi {
 	 */
 	setActivityTabVisible(tabId: string, visible: boolean): void;
 	/**
-	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示当前窗口下的最大宽度（宿主仍
-	 * 会夹到自己的 min/max 内，必要时自动收起侧边栏）。
+	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示「跟随窗口拉满」（宿主仍会夹到
+	 * 自己的 min/max 内，必要时自动收起侧边栏）。
+	 *
+	 * `"max"` 是一种持续状态而非一次性求值：窗口尺寸变化时面板跟着变宽变窄，直到
+	 * 用户拖动分隔条或有人写入具体像素为止。传数字则是一次性的固定宽度。
 	 *
 	 * 与 `openActivityTab(id, { width })` 的区别：那里的宽度只在标签卡首次 attach
 	 * 时生效（避免 activate 重放覆盖用户手拖的宽度）；这个是命令式的，每次调用都

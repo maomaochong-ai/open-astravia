@@ -17,6 +17,7 @@ import {
 	setTransientActivityPanelWidthAtom,
 	sidebarCollapsedAtom,
 	sidebarWidthAtom,
+	syncActivityPanelWidthToWindowAtom,
 } from "@shared/store/atoms";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -59,6 +60,7 @@ export function useActivityPanelModel({
 	const [isResizing, setIsResizing] = useAtom(activityPanelResizingAtom);
 	const setTransientWidth = useSetAtom(setTransientActivityPanelWidthAtom);
 	const persistWidth = useSetAtom(persistActivityPanelWidthAtom);
+	const syncWidthToWindow = useSetAtom(syncActivityPanelWidthToWindowAtom);
 	const [overflowKeys, setOverflowKeys] = useState<ActivityTabKey[]>([]);
 	const [tabByProject, setTabByProject] = useAtom(activityPanelTabByProjectAtom);
 	const windowWidth = useWindowWidth();
@@ -173,9 +175,10 @@ export function useActivityPanelModel({
 	const onClose = useCallback(() => setOpen(false), [setOpen]);
 	useEffect(() => () => setIsResizing(false), [setIsResizing]);
 
+	// 窗口尺寸变化时按宽度意图重解析：拉满态跟着窗口一起变宽，固定像素则夹紧/回弹。
 	useEffect(() => {
-		setWidth((currentWidth) => Math.min(maxWidth, Math.max(ACTIVITY_PANEL_MIN_WIDTH, currentWidth)));
-	}, [maxWidth, setWidth]);
+		syncWidthToWindow(windowWidth);
+	}, [windowWidth, syncWidthToWindow]);
 
 	useEffect(() => {
 		const openLimit = Math.max(ACTIVITY_PANEL_MIN_WIDTH, windowWidth - sidebarWidth - ACTIVITY_PANEL_MIN_CHAT_AREA);
