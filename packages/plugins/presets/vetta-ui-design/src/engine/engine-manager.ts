@@ -3,8 +3,9 @@
  *
  * 1. Migrate the legacy ~/.vetta/design-engine directory into this plugin's
  *    data namespace, then materialize the engine template there via `node -e`.
- * 2. One-time `npm install` through ctx.command.spawn (may take minutes; the
- *    managed runtime env already points npm at the configured mirror).
+ * 2. One-time `npm ci` through ctx.command.spawn against the materialized
+ *    package-lock.json (the managed runtime env points npm at the configured
+ *    mirror and shared cache — see createPluginCommandEnvironment).
  * 3. One vite dev server per open design (host-allocated port, {{PORT}}
  *    substitution), stopped when the canvas leaves the design.
  */
@@ -162,7 +163,10 @@ async function installDependencies(
 	engineRoot: string,
 	onProgress: (progress: EngineProgress) => void,
 ): Promise<void> {
-	const handle = await ctx.command.spawn("npm", ["install", "--no-audit", "--no-fund"], {
+	// `ci` 而不是 `install`：模板连 package-lock.json 一起 materialize，所以这里的树
+	// 永远与 lock 同源，不需要再向 registry 解析一遍版本范围。--prefer-offline 让第二个
+	// 引擎版本直接吃托管 npm 缓存。
+	const handle = await ctx.command.spawn("npm", ["ci", "--no-audit", "--no-fund", "--prefer-offline"], {
 		cwd: engineRoot,
 	});
 	let done = false;
