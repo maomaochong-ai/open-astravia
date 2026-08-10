@@ -2,6 +2,7 @@ import { i18n } from "@shared/i18n";
 import {
 	activeSessionAtom,
 	activeToolNamesAtom,
+	activityPanelOpenAtom,
 	applyInputActionWorkingState,
 	attachedImagesAtom,
 	authUserAtom,
@@ -20,7 +21,7 @@ import {
 	switchSessionInputDraftScope,
 } from "@shared/store/atoms";
 import { useParams } from "@tanstack/react-router";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { startTransition, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSessionManager } from "../../hooks/useSessionManager";
@@ -29,6 +30,8 @@ import { PANEL_SHIFT_MIN_ITEMS } from "./constants";
 import { useShortViewport } from "./useShortViewport";
 
 interface NewSessionPageModel {
+	/** 右侧活动面板是否展开（与会话页、项目详情页共用同一状态）。 */
+	activityOpen: boolean;
 	avatarAutoplay: boolean;
 	/** 命令区（`/` 或「+」展开）是否打开：hero 随之淡出让位。 */
 	commandPanelExpanded: boolean;
@@ -44,6 +47,11 @@ interface NewSessionPageModel {
 	onAbort: () => Promise<void>;
 	onCommandPanelExpandedChange: (expanded: boolean) => void;
 	onSend: () => Promise<void>;
+	onToggleActivity: () => void;
+	onTogglePin: () => Promise<void>;
+	panelTitle: string;
+	pinTitle: string;
+	pinned: boolean;
 	subtitle: string;
 }
 
@@ -64,6 +72,8 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 	const [mounted, setMounted] = useState(false);
 	const [avatarAutoplay, setAvatarAutoplay] = useState(false);
 	const [commandPanelExpanded, setCommandPanelExpanded] = useState(false);
+	const [activityOpen, setActivityOpen] = useAtom(activityPanelOpenAtom);
+	const [pinned, setPinned] = useState(false);
 	const setAttachedImages = useSetAtom(attachedImagesAtom);
 	const setHeaderTitle = useSetAtom(pageHeaderTitleAtom);
 	const setHeaderTitleBadge = useSetAtom(pageHeaderTitleBadgeAtom);
@@ -159,11 +169,25 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		await sendMessage();
 	}, [decodedCwd, executionMode, openSession, sendMessage]);
 
+	useEffect(() => {
+		void window.vetta.window.isAlwaysOnTop().then(setPinned);
+	}, []);
+
+	const handleTogglePin = useCallback(async () => {
+		const next = await window.vetta.window.toggleAlwaysOnTop();
+		setPinned(next);
+	}, []);
+
+	const handleToggleActivity = useCallback(() => {
+		setActivityOpen((open) => !open);
+	}, [setActivityOpen]);
+
 	const greetingTitle = authUser?.nickname
 		? i18n.t("chat:newSession.greetingTitle", { nickname: authUser.nickname })
 		: i18n.t("chat:newSession.greetingDefault");
 
 	return {
+		activityOpen,
 		avatarAutoplay,
 		commandPanelExpanded,
 		commandPanelShift: commandPanelExpanded && skillItems.length > PANEL_SHIFT_MIN_ITEMS,
@@ -174,6 +198,11 @@ export function useNewSessionPageModel(): NewSessionPageModel {
 		onAbort: abortMessage,
 		onCommandPanelExpandedChange: setCommandPanelExpanded,
 		onSend: handleSend,
+		onToggleActivity: handleToggleActivity,
+		onTogglePin: handleTogglePin,
+		panelTitle: activityOpen ? t("chat:chatView.panelButton.open") : t("chat:chatView.panelButton.closed"),
+		pinTitle: pinned ? t("chat:chatView.pinButton.pinned") : t("chat:chatView.pinButton.unpinned"),
+		pinned,
 		subtitle: i18n.t("chat:newSession.subtitle"),
 	};
 }

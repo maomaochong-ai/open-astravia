@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **新会话欢迎页支持右侧活动面板**：欢迎页标题栏右侧补上「窗口置顶」与「活动面板」两个按钮，面板按当前项目 cwd 取上下文（文件、调试等 tab），与会话页、项目详情页共用同一开关状态与宽度。
+
 - **媒体生成角色化输入协议 v4**：宿主在 Provider 注册、能力发现和不透明输入转发中保留模式级输入槽与 `role`，支持首帧/尾帧及图片、视频、音频参考，同时继续隔离真实素材路径。
 - **插件动态接入 Coding Agent Hook**（ADR-0064）：Plugin API 1.3.0 新增 `ctx.agent.registerHook()`，ESM / Module Federation 插件可按场景、工作模式和工具名动态注册 Coding Agent 的 12 类原生 Hook 事件。Desktop callback adapter 通过既有 `additionalHookAdapterFactories` 进入每 Session 唯一 Hook Runtime；注册、执行、注销经 preload/main/renderer IPC bridge 回到插件 handler，并受 `agent.hooks.register` + `agent.hookHandler.execute` 双权限、超时、取消与结构校验约束。插件停用、重载和卸载会停止新调用，在途 dispatch 使用稳定快照；QuickJS 继续不开放 Agent 动态 handler。
 - **App Action 能力适配与密钥弹窗补齐**：`skills.*` 文案对齐产品「能力页」（公共 id 兼容不变），`skills.manage` 新增 `install-from-market`（主进程按 slug 下载安装）；`im.manage` 新增 `set-feishu-config`，审批弹窗手填 App Secret 等密钥；`mcp.upsert` 审批支持 env/headers 手填；`models.upsert-provider` 指引 Agent 省略 apiKey。导航目录补 `abilities` / `scenes` / `knowledge`。补齐官方 API、审批解析与 vetta-actions 域单测。
