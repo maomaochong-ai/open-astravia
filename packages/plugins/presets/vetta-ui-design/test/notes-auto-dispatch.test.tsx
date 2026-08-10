@@ -129,7 +129,7 @@ it("空闲时落一条备注，自己就派出去了", () => {
 	elapse();
 
 	expect(sendPrompt).toHaveBeenCalledTimes(1);
-	expect(sendPrompt.mock.calls[0][0]).toContain("1 note(s) are pending");
+	expect(sendPrompt.mock.calls[0][0]).toContain("pinned notes on the design canvas");
 });
 
 it("派活 prompt 不把 agent 的视野锁死在某一条上", () => {
@@ -182,7 +182,21 @@ it("连着放几条，合并成一次派活", () => {
 	elapse();
 
 	expect(sendPrompt).toHaveBeenCalledTimes(1);
-	expect(sendPrompt.mock.calls[0][0]).toContain("3 note(s) are pending");
+});
+
+it("派活 prompt 不写死数量——用户随时还会再贴", () => {
+	// 数量是发消息那一刻的快照。写死「3 条」等于给了 agent 一个做完就收工的借口，
+	// 而这期间用户完全可能又贴了两条。只能让它实时查。
+	mount();
+	act(() => {
+		store.addNote(anchor, "第一条");
+		store.addNote(anchor, "第二条");
+	});
+	elapse();
+
+	const prompt = sendPrompt.mock.calls[0][0] as string;
+	expect(prompt).not.toMatch(/\d+\s*note/i);
+	expect(prompt).toContain("pendingRemaining");
 });
 
 it("agent 正在跑时落的备注交给它自检，跑完也不补一条 prompt 去催", () => {

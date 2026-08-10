@@ -94,7 +94,7 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 						onClick={() => {
 							// 手动催一次也要向 store 报备，否则自动派活器随后又派一遍。
 							store.markDispatched(pending);
-							handoff.sendAll(pending.length);
+							handoff.sendAll();
 						}}
 						className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-45"
 					>

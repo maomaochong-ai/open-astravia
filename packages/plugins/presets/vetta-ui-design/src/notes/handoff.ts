@@ -22,7 +22,7 @@ export interface NotesHandoff {
 	blocked: NotesHandoffBlock | null;
 	/** null = 可以发送；否则是禁用原因（已本地化，直接展示）。 */
 	blockedReason: string | null;
-	sendAll(count: number): void;
+	sendAll(): void;
 	sendOne(noteId: string): void;
 }
 
@@ -70,7 +70,7 @@ export function useNotesHandoff(cwd: string | null): NotesHandoff {
 		blockedReason,
 		// 派活 prompt 面向模型，不走 i18n：与工具 description、附件 instructions 同类，
 		// 一律英文。备注内容本身是用户写的，agent 用什么语言回复跟着它走。
-		sendAll: (count) => send(dispatchAllPrompt(count)),
+		sendAll: () => send(dispatchAllPrompt()),
 		sendOne: (noteId) => send(dispatchOnePrompt(noteId)),
 	};
 }
@@ -80,9 +80,11 @@ export function useNotesHandoff(cwd: string | null): NotesHandoff {
  * 只查了那一条，从头到尾没列过全量待办，于是用户在它干活期间新贴的两条被整轮无视。
  * 让它自己列全量，视野就不会被这句话锁死。
  */
-function dispatchAllPrompt(count: number): string {
+function dispatchAllPrompt(): string {
 	return [
-		`${count} note(s) are pending on the design canvas.`,
+		// 刻意不写数量：它是发出这条消息那一刻的快照，而用户随时还在往画布上贴。
+		// 写死「3 条」等于给了 agent 一个做完就收工的借口。数量只能实时查。
+		"The user has pinned notes on the design canvas.",
 		"Call vetd_notes with no arguments to list every pending note — each comes with its position, a freshly re-resolved source anchor, and an annotated screenshot.",
 		"Work through them ONE AT A TIME: make the change, verify it with vetd_screenshot, then resolve that single note before starting the next.",
 		"Each resolve tells you what is still pending — keep going until it reports `pendingRemaining: 0`, including notes the user adds while you work.",
@@ -159,7 +161,7 @@ export function useNotesAutoDispatch(notes: NotesStore, cwd: string | null): voi
 			notes.markDispatched(fresh);
 			// 一律走全量，哪怕此刻只有一条：带 id 的那条 prompt 会把 agent 的视野锁死在
 			// 那一条上（它就照着 ids 查，再不看别的），而用户随时可能在它干活期间再贴。
-			handoffRef.current.sendAll(pending.length);
+			handoffRef.current.sendAll();
 		}, AUTO_DISPATCH_DEBOUNCE_MS);
 		return () => window.clearTimeout(timer);
 	}, [blocked, notes, version]);
