@@ -95,6 +95,26 @@ async function downloadImage(ref: PluginImageRef): Promise<void> {
 	URL.revokeObjectURL(objectUrl);
 }
 
+/**
+ * Copy an image to the system clipboard through the host's native clipboard.
+ * The bytes are re-encoded to PNG via a canvas because `ui.copyImage` feeds
+ * `nativeImage.createFromDataURL`, which only decodes PNG/JPEG — a generated
+ * image may well be webp.
+ */
+async function copyImageToClipboard(ref: PluginImageRef): Promise<void> {
+	const response = await fetch(ref.url);
+	const blob = await response.blob();
+	const bitmap = await createImageBitmap(blob);
+	const canvas = document.createElement("canvas");
+	canvas.width = bitmap.width;
+	canvas.height = bitmap.height;
+	const context = canvas.getContext("2d");
+	if (!context) throw new Error("2d canvas context unavailable");
+	context.drawImage(bitmap, 0, 0);
+	bitmap.close();
+	await pluginCtx?.ui.copyImage(canvas.toDataURL("image/png"));
+}
+
 // ─── Icons (created at render — never at module top level in an MF remote) ───
 
 const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 1.7, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -124,6 +144,23 @@ function IconDownload({ className }: { className?: string }) {
 			<path d="M12 3v12" />
 			<path d="M7 11l5 5 5-5" />
 			<path d="M5 21h14" />
+		</svg>
+	);
+}
+
+function IconCopy({ className }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 24 24" {...stroke} className={className}>
+			<rect x="9" y="9" width="12" height="12" rx="2.5" />
+			<path d="M6 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V6" />
+		</svg>
+	);
+}
+
+function IconCheck({ className }: { className?: string }) {
+	return (
+		<svg viewBox="0 0 24 24" {...stroke} className={className}>
+			<path d="M4 12.5l5 5L20 6.5" />
 		</svg>
 	);
 }
@@ -255,7 +292,26 @@ function SwiperItem({
 	// Hover-only reveal via explicit pointer state (not Tailwind group-hover —
 	// it's unreliable in this MF-remote CSS build). Icons hidden at rest.
 	const [hover, setHover] = useState(false);
+	// 复制成功后短暂把图标换成对勾（就地反馈，不弹 toast）；失败才提示。
+	const [copied, setCopied] = useState(false);
+	const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(() => () => {
+		if (copiedTimer.current) clearTimeout(copiedTimer.current);
+	}, []);
 	const { t } = useTranslation();
+
+	const onCopy = (): void => {
+		void copyImageToClipboard(ref)
+			.then(() => {
+				setCopied(true);
+				if (copiedTimer.current) clearTimeout(copiedTimer.current);
+				copiedTimer.current = setTimeout(() => setCopied(false), 1600);
+			})
+			.catch((error: unknown) => {
+				pluginCtx?.ui.notify({ message: t("ui.copy.failed"), error });
+			});
+	};
+
 	return (
 		<div
 			onPointerEnter={() => setHover(true)}
@@ -278,6 +334,11 @@ function SwiperItem({
 				style={{ opacity: hover ? 1 : 0, pointerEvents: hover ? "auto" : "none", transition: "opacity 150ms" }}
 			>
 				<IconButton icon={<IconEdit className="h-3.5 w-3.5" />} title={t("ui.action.edit")} onClick={() => onEdit(ref)} />
+				<IconButton
+					icon={copied ? <IconCheck className="h-3.5 w-3.5" /> : <IconCopy className="h-3.5 w-3.5" />}
+					title={copied ? t("ui.copy.done") : t("ui.action.copy")}
+					onClick={onCopy}
+				/>
 				<IconButton icon={<IconDownload className="h-3.5 w-3.5" />} title={t("ui.action.download")} onClick={() => void downloadImage(ref)} />
 			</div>
 		</div>
