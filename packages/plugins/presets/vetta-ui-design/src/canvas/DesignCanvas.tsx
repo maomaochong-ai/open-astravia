@@ -1525,13 +1525,11 @@ export function DesignCanvas({
 				/>
 				{/* 选框右上角的追问徽标：单选（一个画框、或画框里的一个元素）时才有。 */}
 				<SelectionAskBadge
-					session={session}
 					notes={notes}
 					selection={selection}
 					frames={manifest.frames}
 					visible={askActive}
 					blockedReason={blockedReason}
-					capture={captureFaithfully}
 					open={askOpen}
 					onOpenChange={setAskOpen}
 					onSubmitted={handleAskSubmitted}

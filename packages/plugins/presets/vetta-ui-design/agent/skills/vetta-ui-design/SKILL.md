@@ -300,24 +300,20 @@ unconditionally instead of waiting for some tool response to mention one. That
 check is the only way those notes ever reach you: nothing will send you a
 follow-up message about them, so a note you skip just sits there unanswered.
 
-Every instruction the user gives from the canvas becomes a note, including the
-ones sent to you as a message right away — those arrive with a `noteId` in the
-attached selection context (see below). So when the Done check turns up a
-pending note, first look at whether its `id` is the one you were just handed: if
-so it is the request you have already been working on, not new work. Either way
-you finish by replying through `vetd_notes`'s `resolve`, which is what puts your
-answer back on the canvas where the user asked and clears the pending badge.
+Every instruction the user gives from the canvas becomes a note, so a message
+asking you to handle canvas notes never carries the request text itself — the
+text lives in the notes, and `vetd_notes` is where you read it. You finish each
+one by replying through `vetd_notes`'s `resolve`, which is what puts your answer
+back on the canvas where the user asked and clears the pending badge.
 
-**Editing from an attachment**: when the user asks a question from the canvas
-with something selected, that selection rides along as structured context
-(`vetta.ui-design.canvas-selection`), and it describes **that message only** —
-one frame with its absolute `file`, and for an element selection the exact
-`frames/xxx.tsx:LINE` in `source` plus DOM path/classes/text. Read every
-`screenshot` path it carries before editing (it normally carries one; if it
-doesn't, `vetd_screenshot` what you need). Edit that location. If it points into
-`components/`, the change hits every frame using it — say so. The context also
-carries `noteId`: the same request is pinned on the canvas as that note, so
-`resolve` it when you are done rather than counting it as work you never started.
+**Everything from the canvas arrives as a note.** Whether the user pinned it with
+the note tool or typed it into the badge on a selected frame or element, it lands
+in `.notes.json` and reaches you through `vetd_notes` — there is no separate
+attachment format to learn. A note anchored to an element carries the exact
+`frames/xxx.tsx:LINE` in `element.source` (re-resolved at read time, authoritative
+unless `anchorStale`) plus its DOM path, classes and text, which is your edit
+target. If that location points into `components/`, the change hits every frame
+using it — say so in your reply.
 
 **Done** means: every frame you touched has been screenshotted and the image
 Read, that image is free of the three screenshot defects, `issues` came back
