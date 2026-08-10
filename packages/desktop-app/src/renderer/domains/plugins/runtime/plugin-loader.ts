@@ -1235,7 +1235,7 @@ function createContext(
 			throw new Error("Prompt attachment id and label are required");
 		}
 		// 逐条 label 由输入框直接渲染，先在边界上清掉空串/非字符串；清空后当作没给，
-		// 回落到单条 label，而不是让输入框上出现一个空的 `#`。
+		// 回落到单条 label，而不是让输入框上出现一处空白。
 		const labels = (attachment.labels ?? [])
 			.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
 			.map((entry) => entry.trim());

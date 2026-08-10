@@ -99,8 +99,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
-- **插件附件改为输入框外的引用行**：插件挂上来的上下文不再是输入卡片里的胶囊，改画在卡片**外面**顶部——来源图标 + 逐条 `#xxx`（右侧 hover 出移除），一次选中三个对象就是三条 `#`，而不是「3 个画框」这种数不出是哪几个的汇总。插件 SDK 的 `PluginPromptAttachment` 因此新增可选的 `labels: string[]`（省略时回落到 `[label]`），vetta-ui-design 与内容创作都已按条给名。
-- **Vetta UI Design 选中改为挂到 AI 输入框**：画布不再自带「让 Vetta 调整」按钮与浮层。选中画框或 Figma 式选中的 DOM 元素后，输入框上方直接出现 `#画框名` 的引用行，用户在输入框里正常提问即可，选中作为结构化上下文（`vetta.ui-design.canvas-selection`：画框绝对路径/尺寸、元素的插桩源码位置与 DOM 路径）随这一轮发出。单选画框/元素时后台截一张图（元素保留高亮描边）一并带上；多选只给元数据，由 agent 按需 `vetd_screenshot`。引用可随手摘掉，摘掉后同一次选中不再自动挂回。
+- **插件附件改为输入框外的引用行**：插件挂上来的上下文不再是输入卡片里的胶囊，改画在卡片**外面**顶部——来源图标 + 逐条列出的名字（右侧 hover 出移除），一次选中三个对象就是三条，而不是「3 个画框」这种数不出是哪几个的汇总。插件 SDK 的 `PluginPromptAttachment` 因此新增可选的 `labels: string[]`（省略时回落到 `[label]`），vetta-ui-design 与内容创作都已按条给名。
+- **Vetta UI Design 选中改为挂到 AI 输入框**：画布不再自带「让 Vetta 调整」按钮与浮层。选中画框或 Figma 式选中的 DOM 元素后，输入框上方直接出现画框名那一行引用，用户在输入框里正常提问即可，选中作为结构化上下文（`vetta.ui-design.canvas-selection`：画框绝对路径/尺寸、元素的插桩源码位置与 DOM 路径）随这一轮发出。单选画框/元素时后台截一张图（元素保留高亮描边）一并带上；多选只给元数据，由 agent 按需 `vetd_screenshot`。引用可随手摘掉，摘掉后同一次选中不再自动挂回。
 - **插件网络目标改为清单声明，命令执行收口到 official 插件**（ADR-0060）：`network.fetch` 必须配置 `network.allowedHosts`，主进程按 capability session 绑定的插件 ID 校验首跳与每次重定向；公网、私网 IP、localhost 均可显式声明，official 插件可使用 `*` 适配用户自定义服务地址。`agent.command.run` / `agent.command.spawn` 及命令授权不再对 local/community 插件生效，执行入口仍做权威 trustLevel 校验。
 - **活动面板拉到最大时给对话区留更多空间**：`ACTIVITY_PANEL_MIN_CHAT_AREA` 由 360 提到 454，消息列表最窄净宽从约 336 提到约 430。
 - **项目文件拖出系统时使用应用内文件类型图标**：原生 `startDrag` 幽灵图与文件树一致（`getFileIcon` / vscode-icons），由渲染进程栅格化为 PNG 后缓存到主进程；pointerdown / 选区变更时预取。缓存未命中时回退应用 logo，不再使用系统 `app.getFileIcon`。

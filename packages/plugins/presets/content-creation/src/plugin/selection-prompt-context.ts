@@ -53,7 +53,7 @@ export function createContentSelectionPromptAttachment(
 	project: ContentProjectDocument,
 	selectedNodeIds: readonly string[],
 	label: string,
-	/** Per-entry labels the input bar renders as `#xxx`. */
+	/** Per-entry labels the input bar renders one by one. */
 	labels: readonly string[],
 ): PluginPromptAttachment<ContentSelectionPromptPayload> | null {
 	const selectedIds = new Set(selectedNodeIds);

@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Selected nodes are now named one by one on the input bar (`#node`) instead of collapsing into a single "N nodes" capsule, matching the host's new attachment strip.
+- Selected nodes are now named one by one on the input bar instead of collapsing into a single "N nodes" capsule, matching the host's new attachment strip.
 
 ### Fixed
 

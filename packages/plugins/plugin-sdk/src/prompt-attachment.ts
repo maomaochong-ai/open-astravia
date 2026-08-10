@@ -64,7 +64,7 @@ export interface PluginPromptAttachment<TPayload extends object = object> {
 	id: string;
 	label: string;
 	/**
-	 * 附件里的条目，宿主逐条渲染成 `#xxx`。省略时就是 `[label]`。
+	 * 附件里的条目，宿主逐条渲染成一枚名字。省略时就是 `[label]`。
 	 *
 	 * 存在的理由是一次附件常常指向多个对象（三个设计画框、两个节点），把它们挤进
 	 * 一条 label 就只剩「3 个画框」这种数不出是哪几个的说法。

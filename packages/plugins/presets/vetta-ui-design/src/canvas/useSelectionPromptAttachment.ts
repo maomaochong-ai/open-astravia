@@ -27,7 +27,7 @@ interface Options {
 }
 
 /**
- * 把画布选中态挂到 AI 输入框上：选中画框或元素 → 输入框上方出现 `#画框名` 一行
+ * 把画布选中态挂到 AI 输入框上：选中画框或元素 → 输入框上方出现画框名那一行
  * 引用 → 用户在输入框里正常提问，选中作为结构化上下文一并发出。画布内不再自带
  * 输入框。
  *
@@ -87,7 +87,7 @@ export function useSelectionPromptAttachment({ session, selection, frames, captu
 	}, [capture, captureFrameId, keepHighlight, session.dirPath, signature]);
 
 	/**
-	 * 输入框上逐条画成 `#xxx` 的条目：选了几个画框就是几条，钻进元素时再补一条
+	 * 输入框上逐条画出的条目：选了几个画框就是几条，钻进元素时再补一条
 	 * `<tag>`——「3 个画框」这种汇总说法数不出到底是哪几个。
 	 */
 	const labels = useMemo(() => {

@@ -44,7 +44,7 @@ export function ContentCreationPanel() {
 		if (!project || selectedNodeIds.length === 0) return null;
 		const selectedNodes = project.graph.nodes.filter((node) => selectedNodeIds.includes(node.id));
 		if (selectedNodes.length === 0) return null;
-		// 输入框逐条画成 `#xxx`，所以按节点给名字；label 只是没有 labels 时的回退说法。
+		// 输入框逐条画出条目，所以按节点给名字；label 只是没有 labels 时的回退说法。
 		const names = selectedNodes.map((node) => node.name?.trim() || t(`node.kind.${node.kind}`));
 		const label = names.length === 1 ? names[0] : t("selection.count", { count: selectedNodes.length });
 		return createContentSelectionPromptAttachment(project, selectedNodeIds, label, names);
