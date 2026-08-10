@@ -11,6 +11,7 @@ import type {
 import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
 import { ContentAssetKindIcon } from "./ContentAssetKindIcon";
 import { NodeKindIcon } from "./NodeKindIcon";
+import { ContentVideoPreview } from "./ContentVideoPreview";
 import { contentPromptTextFromData } from "./prompt-document";
 
 interface ContentNodeSurfaceProps {
@@ -149,12 +150,7 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 		return (
 			<div className="relative h-full w-full bg-muted/40 [container-type:size]">
 				{assetUrl && assetKind === "video" ? (
-					<video
-						className="nodrag nowheel block h-full w-full border-0 bg-background object-contain"
-						src={assetUrl}
-						controls
-						preload="none"
-					/>
+					<ContentVideoPreview src={assetUrl} />
 				) : assetUrl ? (
 					<img
 						className="block h-full w-full border-0 bg-background object-contain"

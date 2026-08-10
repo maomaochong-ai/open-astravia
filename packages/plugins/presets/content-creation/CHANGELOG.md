@@ -8,10 +8,12 @@
 
 ### Fixed
 
+- Generated video nodes now preserve a playable video MIME type and preload metadata instead of rendering an unusable `0:00` player.
+- Generated video nodes now use compact custom playback controls; the video surface remains available for dragging the React Flow node while controls stay interactive.
 - Image and video generation nodes now persist their host job handle, resume status/progress polling after a renderer refresh, and finish artifact persistence instead of remaining stuck in the last saved running state.
 - Missing host jobs now become retryable generation failures instead of being polled indefinitely after recovery.
 - Video generation now follows the first input image's aspect ratio by default, including legacy assets without persisted dimensions, preventing portrait MiniMax H3 frames from being stretched into a landscape canvas while preserving explicit ratio choices.
-- Video generation settings now open from one compact summary into a correctly scoped grouped panel styled with the shared borderless Select trigger, preserving hover feedback outside either open panel, consistently bounded aspect-ratio previews, no duplicate inline controls, and stale options filtered against the selected model's capabilities.
+- Generator option menus and video settings now use consistent non-modal DropdownMenu/Popover interaction with shared borderless triggers and a canvas-aware capture boundary, preserving outside hover and reliable blank-area dismissal without event-order coordination; the grouped panel also consistently bounds aspect-ratio previews, removes duplicate inline controls, and filters stale model options.
 - Video aspect-ratio chips stay on one row without vertical overflow: ratio icons use a fixed visual budget, and the settings popover is height-capped with scroll when space is tight.
 - Strengthened the multi-node selection group outline: more visible primary fill, dashed border, and 12px inset spacing from selected cards (plus a clearer marquee while dragging).
 - Kept node editors hidden during dragging and delayed a newly selected node's editor until drag end, while preserving already mounted editor state.

@@ -231,7 +231,14 @@ export async function saveEditableTextFile(
 	};
 }
 
-function detectBinaryMimeType(buffer: Buffer): string {
+const BINARY_MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
+	mp4: "video/mp4",
+	m4v: "video/mp4",
+	mov: "video/quicktime",
+	webm: "video/webm",
+};
+
+function detectBinaryMimeType(buffer: Buffer, filePath: string): string {
 	if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
 		return "image/png";
 	}
@@ -241,7 +248,7 @@ function detectBinaryMimeType(buffer: Buffer): string {
 	if (buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") {
 		return "image/webp";
 	}
-	return "application/octet-stream";
+	return BINARY_MIME_BY_EXTENSION[extname(filePath).slice(1).toLowerCase()] ?? "application/octet-stream";
 }
 
 export async function readFilesystemBinaryFile(
@@ -255,7 +262,7 @@ export async function readFilesystemBinaryFile(
 	const buffer = await readFile(resolved);
 	return {
 		data: buffer.toString("base64"),
-		mimeType: detectBinaryMimeType(buffer),
+		mimeType: detectBinaryMimeType(buffer, resolved),
 		size: buffer.byteLength,
 	};
 }

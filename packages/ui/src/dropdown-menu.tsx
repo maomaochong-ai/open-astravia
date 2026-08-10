@@ -1,5 +1,6 @@
 import * as React from "react";
 import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui";
+import { CheckIcon } from "lucide-react";
 import { cn } from "./utils";
 
 function DropdownMenu(props: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
@@ -36,6 +37,31 @@ const ITEM_CLASS =
 function DropdownMenuItem({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Item>) {
 	return (
 		<DropdownMenuPrimitive.Item data-slot="dropdown-menu-item" className={cn(ITEM_CLASS, className)} {...props} />
+	);
+}
+
+function DropdownMenuRadioGroup(props: React.ComponentProps<typeof DropdownMenuPrimitive.RadioGroup>) {
+	return <DropdownMenuPrimitive.RadioGroup data-slot="dropdown-menu-radio-group" {...props} />;
+}
+
+function DropdownMenuRadioItem({
+	className,
+	children,
+	...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.RadioItem>) {
+	return (
+		<DropdownMenuPrimitive.RadioItem
+			data-slot="dropdown-menu-radio-item"
+			className={cn(ITEM_CLASS, "pr-8", className)}
+			{...props}
+		>
+			<span className="pointer-events-none absolute right-2 flex size-3.5 items-center justify-center text-primary">
+				<DropdownMenuPrimitive.ItemIndicator>
+					<CheckIcon className="size-3.5" />
+				</DropdownMenuPrimitive.ItemIndicator>
+			</span>
+			{children}
+		</DropdownMenuPrimitive.RadioItem>
 	);
 }
 
@@ -102,6 +128,8 @@ export {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuLabel,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuSub,
 	DropdownMenuSubContent,

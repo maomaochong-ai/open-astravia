@@ -1,10 +1,12 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { resolveSupportedModelOption } from "../generation/model-options";
 import type { ContentGenerationModeId, ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData } from "../project/types";
+import { CONTENT_GENERATION_TRIGGER_CLASS } from "./content-generation-control-styles";
+import { useCanvasOverlayOutsideDismiss } from "./use-canvas-overlay-dismiss";
 
 const AUTOMATIC_ASPECT_RATIO = "__automatic__";
 
@@ -25,6 +27,10 @@ export function ContentVideoGenerationSettings({
 }: ContentVideoGenerationSettingsProps) {
 	const { t } = useTranslation();
 	const [open, setOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const contentRef = useRef<HTMLDivElement>(null);
+	const dismiss = useCallback(() => setOpen(false), []);
+	useCanvasOverlayOutsideDismiss(open, triggerRef, contentRef, dismiss);
 	const aspectRatios = model?.aspectRatios ?? [];
 	const durations = model?.durations ?? [];
 	const resolutions = model?.resolutions ?? [];
@@ -46,8 +52,9 @@ export function ContentVideoGenerationSettings({
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<button
+					ref={triggerRef}
 					type="button"
-					className="no-drag pointer-events-auto flex h-7 min-w-0 max-w-full select-none items-center gap-1.5 whitespace-nowrap rounded-lg border-0 bg-transparent px-2.5 text-[12px] font-medium text-foreground shadow-none outline-none transition-colors hover:bg-accent aria-expanded:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+					className={CONTENT_GENERATION_TRIGGER_CLASS}
 					aria-label={t("nodeEditor.videoSettings.open")}
 					aria-expanded={open}
 				>
@@ -61,6 +68,7 @@ export function ContentVideoGenerationSettings({
 			</PopoverTrigger>
 			{open ? (
 				<PopoverContent
+					ref={contentRef}
 					data-vetta-plugin-root="content-creation"
 					align="start"
 					side="top"

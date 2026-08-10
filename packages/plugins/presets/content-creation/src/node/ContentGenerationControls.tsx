@@ -1,12 +1,18 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@vetta/ui";
-import { useState } from "react";
+import {
+	Button,
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuTrigger,
+} from "@vetta/ui";
+import { useCallback, useRef, useState } from "react";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData, ContentNodeKind } from "../project/types";
+import { CONTENT_GENERATION_TRIGGER_CLASS } from "./content-generation-control-styles";
 import { ContentVideoGenerationSettings } from "./ContentVideoGenerationSettings";
-
-const AUTO_TRIGGER_CLASS = "w-fit max-w-none flex-none border-0 bg-transparent shadow-none";
-const AUTO_VALUE_CLASS = "line-clamp-none! overflow-visible! whitespace-nowrap";
+import { useCanvasOverlayOutsideDismiss } from "./use-canvas-overlay-dismiss";
 
 interface ContentGenerationControlsProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
@@ -34,7 +40,6 @@ export function ContentGenerationControls({
 	onSubmit,
 }: ContentGenerationControlsProps) {
 	const { t } = useTranslation();
-	const [openSelect, setOpenSelect] = useState<"model" | "aspect-ratio" | "quality" | null>(null);
 	const modelValue = selectedModel ? `${selectedModel.providerId}\u0000${selectedModel.modelId}` : undefined;
 	const aspectRatios = selectedModel?.aspectRatios ?? [];
 	const aspectRatio = draft.aspectRatio ?? aspectRatios[0];
@@ -46,76 +51,43 @@ export function ContentGenerationControls({
 				<span className="icon-[lucide--image] block size-3.5 shrink-0" aria-hidden="true" />
 				<span>{t(`node.kind.${kind}`)}</span>
 			</div>
-			<Select
-				open={openSelect === "model"}
-				onOpenChange={(open) => setOpenSelect(open ? "model" : null)}
+			<ContentOptionMenu
 				value={modelValue}
+				label={
+					selectedModel
+						? `${t(`provider.${selectedModel.providerId}`)} · ${selectedModel.displayName}`
+						: t("nodeEditor.modelUnavailable")
+				}
+				options={models.map((model) => ({
+					value: `${model.providerId}\u0000${model.modelId}`,
+					label: `${t(`provider.${model.providerId}`)} · ${model.displayName}`,
+				}))}
 				onValueChange={(value) => {
 					const model = models.find((candidate) => `${candidate.providerId}\u0000${candidate.modelId}` === value);
 					if (model) onModelChange(model);
 				}}
-			>
-				<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-					<SelectValue className={AUTO_VALUE_CLASS} placeholder={t("nodeEditor.modelUnavailable")}>
-						{selectedModel ? `${t(`provider.${selectedModel.providerId}`)} · ${selectedModel.displayName}` : undefined}
-					</SelectValue>
-				</SelectTrigger>
-				{openSelect === "model" ? (
-					<SelectContent className="z-[100]">
-						{models.map((model) => (
-							<SelectItem
-								key={`${model.providerId}:${model.modelId}`}
-								value={`${model.providerId}\u0000${model.modelId}`}
-							>
-								{t(`provider.${model.providerId}`)} · {model.displayName}
-							</SelectItem>
-						))}
-					</SelectContent>
-				) : null}
-			</Select>
+			/>
 			{kind === "image-generator" && aspectRatios.length > 0 ? (
-				<Select
-					open={openSelect === "aspect-ratio"}
-					onOpenChange={(open) => setOpenSelect(open ? "aspect-ratio" : null)}
+				<ContentOptionMenu
 					value={aspectRatio}
+					label={t(`option.aspectRatio.${aspectRatio}`)}
+					options={aspectRatios.map((option) => ({
+						value: option,
+						label: t(`option.aspectRatio.${option}`),
+					}))}
 					onValueChange={(nextAspectRatio) => onChange({ ...draft, aspectRatio: nextAspectRatio })}
-				>
-					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS}>
-							{t(`option.aspectRatio.${aspectRatio}`)}
-						</SelectValue>
-					</SelectTrigger>
-					{openSelect === "aspect-ratio" ? (
-						<SelectContent className="z-[100]">
-							{aspectRatios.map((option) => (
-								<SelectItem key={option} value={option}>
-									{t(`option.aspectRatio.${option}`)}
-								</SelectItem>
-							))}
-						</SelectContent>
-					) : null}
-				</Select>
+				/>
 			) : null}
 			{kind === "image-generator" ? (
-				<Select
-					open={openSelect === "quality"}
-					onOpenChange={(open) => setOpenSelect(open ? "quality" : null)}
+				<ContentOptionMenu
 					value={quality}
+					label={t(`option.quality.${quality}`)}
+					options={["standard", "hd", "ultra"].map((option) => ({
+						value: option,
+						label: t(`option.quality.${option}`),
+					}))}
 					onValueChange={(nextQuality) => onChange({ ...draft, quality: nextQuality })}
-				>
-					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS}>{t(`option.quality.${quality}`)}</SelectValue>
-					</SelectTrigger>
-					{openSelect === "quality" ? (
-						<SelectContent className="z-[100]">
-							{["standard", "hd", "ultra"].map((option) => (
-								<SelectItem key={option} value={option}>
-									{t(`option.quality.${option}`)}
-								</SelectItem>
-							))}
-						</SelectContent>
-					) : null}
-				</Select>
+				/>
 			) : (
 				<ContentVideoGenerationSettings
 					draft={draft}
@@ -137,5 +109,56 @@ export function ContentGenerationControls({
 				<span className="icon-[lucide--arrow-up] block size-5 shrink-0" aria-hidden="true" />
 			</Button>
 		</div>
+	);
+}
+
+interface ContentOptionMenuProps {
+	value?: string;
+	label: string;
+	options: readonly { value: string; label: string }[];
+	onValueChange: (value: string) => void;
+}
+
+function ContentOptionMenu({ value, label, options, onValueChange }: ContentOptionMenuProps) {
+	const [open, setOpen] = useState(false);
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const contentRef = useRef<HTMLDivElement>(null);
+	const dismiss = useCallback(() => setOpen(false), []);
+	useCanvasOverlayOutsideDismiss(open, triggerRef, contentRef, dismiss);
+
+	return (
+		<DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
+			<DropdownMenuTrigger asChild>
+				<button
+					ref={triggerRef}
+					type="button"
+					className={CONTENT_GENERATION_TRIGGER_CLASS}
+					aria-expanded={open}
+				>
+					<span className="truncate">{label}</span>
+					<span className="icon-[lucide--chevron-down] block size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+				</button>
+			</DropdownMenuTrigger>
+			{open ? (
+				<DropdownMenuContent
+					ref={contentRef}
+					data-vetta-plugin-root="content-creation"
+					align="start"
+					className="z-[100] min-w-36 rounded-lg p-1"
+				>
+					<DropdownMenuRadioGroup value={value} onValueChange={onValueChange}>
+						{options.map((option) => (
+							<DropdownMenuRadioItem
+								key={option.value}
+								value={option.value}
+								className="rounded-md px-2 py-[5px] pr-8 text-[12px] font-medium focus:bg-accent data-highlighted:bg-accent"
+							>
+								{option.label}
+							</DropdownMenuRadioItem>
+						))}
+					</DropdownMenuRadioGroup>
+				</DropdownMenuContent>
+			) : null}
+		</DropdownMenu>
 	);
 }

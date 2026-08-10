@@ -117,6 +117,26 @@ describe("ContentAssetPreviewResolver", () => {
 		);
 		expect(readBinaryFile).toHaveBeenCalledWith("C:\\project\\output\\result.png");
 	});
+
+	it("uses the persisted video MIME type when an older host reports generic binary data", async () => {
+		const readBinaryFile = vi.fn<PluginFsApi["readBinaryFile"]>().mockResolvedValue({
+			data: "AAAAGGZ0eXBpc29t",
+			mimeType: "application/octet-stream",
+			size: 12,
+		});
+		const asset: ContentAsset = {
+			...ASSET,
+			blobId: undefined,
+			filePath: "output/result.mp4",
+			kind: "video",
+			mimeType: "video/mp4",
+		};
+		const resolver = new ContentAssetPreviewResolver(createFs(readBinaryFile), createStorage(async () => null));
+
+		expect(await resolver.resolveAll("C:\\project", [asset])).toEqual(
+			new Map([["asset", "data:video/mp4;base64,AAAAGGZ0eXBpc29t"]]),
+		);
+	});
 });
 
 function createAsset(index: number): ContentAsset {

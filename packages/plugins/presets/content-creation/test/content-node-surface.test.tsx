@@ -8,6 +8,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 
 vi.mock("@vetta/ui", () => ({
 	Spin: ({ label }: { label?: string }) => <span data-testid="spin">{label}</span>,
+	Slider: ({ "aria-label": ariaLabel }: { "aria-label"?: string }) => <span data-slider aria-label={ariaLabel} />,
 }));
 
 describe("ContentNodeSurface", () => {
@@ -41,6 +42,26 @@ describe("ContentNodeSurface", () => {
 		expect(markup).toContain("<img");
 		expect(markup).toContain("data:image/png;base64,AA==");
 		expect(markup).not.toContain("border-dashed");
+	});
+
+	it("uses custom video controls while keeping the video surface draggable", () => {
+		const markup = renderToStaticMarkup(
+			<ContentNodeSurface
+				kind="video-generator"
+				status="succeeded"
+				data={{ assetId: "video" }}
+				descriptionKey="node.description.video-generator"
+				assetUrl="data:video/mp4;base64,AAAA"
+				assetKind="video"
+			/>,
+		);
+
+		expect(markup).toContain("<video");
+		expect(markup).toContain('preload="metadata"');
+		expect(markup).not.toContain(" controls=");
+		expect(markup).toContain("pointer-events-none");
+		expect(markup).toContain("data-content-video-controls");
+		expect(markup).toContain("nodrag nowheel");
 	});
 
 	it("shows a themed busy overlay while generating", () => {
