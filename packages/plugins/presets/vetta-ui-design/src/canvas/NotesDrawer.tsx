@@ -59,7 +59,7 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 	return (
 		// 悬浮而非贴边：画布是无限的，抽屉贴死右边缘会读成「面板被截断了」。
 		<div
-			className="vetd-note vetd-note-drawer-enter pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl"
+			className="vetd-note vetd-note-drawer-enter vetd-note-surface pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl"
 			style={{ top: PANEL_GAP, bottom: PANEL_GAP, right: PANEL_GAP, width: PANEL_WIDTH }}
 		>
 			<header className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">

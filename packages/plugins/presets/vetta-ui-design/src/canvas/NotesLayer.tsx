@@ -187,7 +187,8 @@ export function NotesLayer({
 						onPointerUp={stopAll}
 						// 气泡尖角钉在锚点上：整体上移一个自身高，origin 定在左下。
 						// 外层只管定位/缩放/动效，长相交给 NotePin（与抽屉列表共用）。
-						className={`absolute z-30 rounded-full rounded-bl-[4px] ${
+						// 气泡可点可拖，指针要盖过画布根的 crosshair（备注工具态）。
+						className={`absolute z-30 cursor-pointer rounded-full rounded-bl-[4px] ${
 							celebrating ? "vetd-note-celebrate vetd-note-ripple" : ""
 						} ${interactive ? "pointer-events-auto" : "pointer-events-none"}`}
 						style={{
@@ -262,7 +263,7 @@ function NotePanel({ x, y, children }: { x: number; y: number; children: ReactNo
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the panel
 		<div
-			className="vetd-note-enter pointer-events-auto absolute z-40"
+			className="vetd-note-enter vetd-note-surface pointer-events-auto absolute z-40"
 			style={{ left: x, top: y, transform: `scale(${INVERSE_SCALE})`, transformOrigin: "left top" }}
 			onPointerDown={stopAll}
 			onPointerMove={stopAll}
@@ -329,7 +330,7 @@ function NoteComposer({
 	};
 
 	return (
-		<form onSubmit={submit} className="rounded-xl bg-muted/40 p-1.5 ring-1 ring-border/50 focus-within:ring-ring/50">
+		<form onSubmit={submit} className="rounded-xl bg-muted/40 p-1.5 ring-1 ring-border/50">
 			<textarea
 				// biome-ignore lint/a11y/noAutofocus: 放置备注的下一步就是打字，焦点必须直达
 				autoFocus

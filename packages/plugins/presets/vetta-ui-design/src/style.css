@@ -605,3 +605,19 @@
 		display: none;
 	}
 }
+
+/* 备注浮层的指针形态。
+   画布根在备注/画框工具下是 crosshair，而 cursor 会继承——不接管的话浮层里
+   （面板、thread、输入框）鼠标全是十字星。插件刻意不引入 preflight，button
+   也就没有 v4 默认的 pointer，一并在作用域根上给，省得逐个元素挂类。 */
+.vetd-note-surface {
+	cursor: default;
+}
+.vetd-note-surface button:not(:disabled),
+.vetd-note-surface [role="button"]:not([aria-disabled="true"]) {
+	cursor: pointer;
+}
+.vetd-note-surface textarea,
+.vetd-note-surface input {
+	cursor: text;
+}
