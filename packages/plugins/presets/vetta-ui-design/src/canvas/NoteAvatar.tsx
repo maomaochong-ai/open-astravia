@@ -49,3 +49,46 @@ export function NoteAvatar({ author, size, tone = "solid" }: NoteAvatarProps) {
 		</span>
 	);
 }
+
+interface NotePinProps {
+	resolved: boolean;
+	/** pin 外径（px）。 */
+	size: number;
+	/** 待处理备注的编号，挂右上角；已处理传 null。 */
+	number: number | null;
+}
+
+/**
+ * 备注 pin 的视觉本体：状态色 + 头像 + 编号徽标。
+ *
+ * 画布气泡与抽屉列表共用同一个组件，抽屉里那一行因此长得就是画布上那个气泡的
+ * 缩小版——两边是同一个对象，不需要再靠色条之类的第二套编码去暗示对应关系。
+ * 定位、缩放、交互与完成动效都留给外层，这里只管长相。
+ */
+export function NotePin({ resolved, size, number }: NotePinProps) {
+	return (
+		<span
+			className={`vetd-note-pin relative flex items-center justify-center rounded-full rounded-bl-[4px] ${
+				resolved ? "vetd-note-pin-resolved" : ""
+			}`}
+			style={{ width: size, height: size }}
+		>
+			<NoteAvatar author={resolved ? "agent" : "user"} size={Math.round(size * 0.72)} tone="onColor" />
+			{number !== null ? (
+				<span
+					className="absolute -right-1 -top-1 flex items-center justify-center rounded-full font-semibold tabular-nums text-[var(--vetd-note-pending,#2563eb)]"
+					style={{
+						minWidth: Math.round(size * 0.5),
+						paddingInline: 3,
+						fontSize: Math.max(9, Math.round(size * 0.32)),
+						lineHeight: `${Math.round(size * 0.5)}px`,
+						background: "#fff",
+						boxShadow: "0 1px 3px -1px rgba(0,0,0,.4)",
+					}}
+				>
+					{number}
+				</span>
+			) : null}
+		</span>
+	);
+}

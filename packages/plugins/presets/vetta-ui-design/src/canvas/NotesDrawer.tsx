@@ -4,7 +4,7 @@ import { useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { type DesignNote, pendingNotes, resolvedNotes } from "../notes/types";
 import type { DesignSession } from "../vetd/design-session";
-import { NoteAvatar } from "./NoteAvatar";
+import { NotePin } from "./NoteAvatar";
 
 interface NotesDrawerProps {
 	store: NotesStore;
@@ -198,32 +198,17 @@ function NoteRow({
 
 	return (
 		<div
-			className={`group relative mb-1.5 overflow-hidden rounded-xl border transition-colors ${
+			className={`group relative mb-1.5 rounded-xl border transition-colors ${
 				resolved
 					? "border-border/40 bg-muted/20 hover:border-border/70 hover:bg-muted/40"
 					: "border-border/60 bg-card/60 hover:border-border hover:bg-accent/40"
 			}`}
 		>
-			{/* 左侧状态色条：不占布局宽度，扫一眼就能分出两段。 */}
-			<span
-				className="absolute inset-y-0 left-0 w-[3px]"
-				style={{
-					background: resolved ? "var(--vetd-note-resolved, #10b981)" : "var(--vetd-note-pending, #2563eb)",
-					opacity: resolved ? 0.5 : 1,
-				}}
-				aria-hidden
-			/>
-			<button type="button" onClick={onLocate} className="flex w-full items-start gap-2 px-2.5 py-2 text-left">
-				<span className="relative mt-0.5 shrink-0">
-					<NoteAvatar author={resolved ? "agent" : "user"} size={20} />
-					{!resolved ? (
-						<span
-							className="absolute -right-1 -top-1 flex min-w-[13px] items-center justify-center rounded-full px-[3px] text-[9px] font-semibold leading-[13px] text-white"
-							style={{ background: "var(--vetd-note-pending, #2563eb)" }}
-						>
-							{number}
-						</span>
-					) : null}
+			<button type="button" onClick={onLocate} className="flex w-full items-start gap-2.5 px-2.5 py-2 text-left">
+				{/* 画布气泡的缩小版：状态色 + 头像 + 编号都在里面，这一行和画布上那个
+				    气泡是同一个对象，不必再加第二套状态编码。 */}
+				<span className="mt-0.5 shrink-0">
+					<NotePin resolved={resolved} size={22} number={number} />
 				</span>
 				<span className="min-w-0 flex-1">
 					<span className={`block text-xs leading-snug ${resolved ? "text-muted-foreground" : "text-foreground"} line-clamp-2`}>

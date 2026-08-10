@@ -13,7 +13,7 @@ import type { NotesStore } from "../notes/notes-store";
 import { type DesignNote, noteStatus, noteWorldPosition, pendingNotes } from "../notes/types";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { SelectedElementPayload } from "./bridge-client";
-import { NoteAvatar } from "./NoteAvatar";
+import { NoteAvatar, NotePin } from "./NoteAvatar";
 
 /** 拖动阈值（屏幕像素）：低于它算点击（开 thread），高于它算拖动气泡。 */
 const DRAG_THRESHOLD_PX = 3;
@@ -186,16 +186,13 @@ export function NotesLayer({
 						onPointerMove={stopAll}
 						onPointerUp={stopAll}
 						// 气泡尖角钉在锚点上：整体上移一个自身高，origin 定在左下。
-						className={`vetd-note-pin absolute z-30 flex items-center justify-center rounded-full rounded-bl-[4px] ${
-							resolved ? "vetd-note-pin-resolved" : ""
-						} ${celebrating ? "vetd-note-celebrate vetd-note-ripple" : ""} ${
-							interactive ? "pointer-events-auto" : "pointer-events-none"
-						}`}
+						// 外层只管定位/缩放/动效，长相交给 NotePin（与抽屉列表共用）。
+						className={`absolute z-30 rounded-full rounded-bl-[4px] ${
+							celebrating ? "vetd-note-celebrate vetd-note-ripple" : ""
+						} ${interactive ? "pointer-events-auto" : "pointer-events-none"}`}
 						style={{
 							left: pos.x,
 							top: pos.y,
-							width: 28,
-							height: 28,
 							transform: `translateY(-100%) scale(${INVERSE_SCALE})`,
 							transformOrigin: "left bottom",
 							// 打开中的气泡加一圈外环，和 thread 弹层呼应。
@@ -204,15 +201,7 @@ export function NotesLayer({
 						}}
 					>
 						{/* 头像即状态：待处理是提问的人，已处理是回复过的 Vetta。 */}
-						<NoteAvatar author={resolved ? "agent" : "user"} size={20} tone="onColor" />
-						{!resolved && number !== undefined ? (
-							<span
-								className="absolute -right-1 -top-1 flex min-w-[14px] items-center justify-center rounded-full px-[3px] text-[9px] font-semibold leading-[14px] tabular-nums text-[var(--vetd-note-pending,#2563eb)]"
-								style={{ background: "#fff", boxShadow: "0 1px 3px -1px rgba(0,0,0,.4)" }}
-							>
-								{number}
-							</span>
-						) : null}
+						<NotePin resolved={resolved} size={28} number={resolved ? null : (number ?? null)} />
 					</button>
 				);
 			})}
@@ -300,6 +289,16 @@ function NoteComposer({
 	onCancel(): void;
 }) {
 	const [text, setText] = useState("");
+	/**
+	 * 输入法组合中。中文/日文输入时 Enter 是「选中候选词」、Esc 是「取消这次组合」，
+	 * 都不该走到提交/关闭——否则打「badge」还没选词就把半成品发出去了。
+	 *
+	 * 两道判断都要：`isComposing` 是标准信号，但 compositionend 与随后那次 keydown
+	 * 的先后顺序各引擎不一致（确认候选词的那一下就落在这个缝里），所以再用
+	 * compositionend 之后的一小段时间兜底。
+	 */
+	const composingRef = useRef(false);
+	const composedAtRef = useRef(0);
 
 	const submit = (event?: FormEvent): void => {
 		event?.preventDefault();
@@ -313,7 +312,11 @@ function NoteComposer({
 		setText("");
 	};
 
+	const isComposing = (event: ReactKeyboardEvent<HTMLTextAreaElement>): boolean =>
+		composingRef.current || event.nativeEvent.isComposing || Date.now() - composedAtRef.current < 80;
+
 	const onKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>): void => {
+		if (isComposing(event)) return;
 		if (event.key === "Escape") {
 			event.preventDefault();
 			onCancel();
@@ -333,6 +336,13 @@ function NoteComposer({
 				value={text}
 				onChange={(event) => setText(event.target.value)}
 				onKeyDown={onKeyDown}
+				onCompositionStart={() => {
+					composingRef.current = true;
+				}}
+				onCompositionEnd={() => {
+					composingRef.current = false;
+					composedAtRef.current = Date.now();
+				}}
 				placeholder={placeholder}
 				rows={2}
 				className="w-full resize-none bg-transparent px-1 py-0.5 text-xs leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
