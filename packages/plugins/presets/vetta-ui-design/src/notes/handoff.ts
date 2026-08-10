@@ -68,9 +68,36 @@ export function useNotesHandoff(cwd: string | null): NotesHandoff {
 	return {
 		blocked,
 		blockedReason,
-		sendAll: (count) => send(t("notes.prompt.all", { count })),
-		sendOne: (noteId) => send(t("notes.prompt.one", { id: noteId })),
+		// 派活 prompt 面向模型，不走 i18n：与工具 description、附件 instructions 同类，
+		// 一律英文。备注内容本身是用户写的，agent 用什么语言回复跟着它走。
+		sendAll: (count) => send(dispatchAllPrompt(count)),
+		sendOne: (noteId) => send(dispatchOnePrompt(noteId)),
 	};
+}
+
+/**
+ * 派活 prompt。刻意不提 `ids`：一次事故里派活说了「ids 传入该 id」，agent 老老实实
+ * 只查了那一条，从头到尾没列过全量待办，于是用户在它干活期间新贴的两条被整轮无视。
+ * 让它自己列全量，视野就不会被这句话锁死。
+ */
+function dispatchAllPrompt(count: number): string {
+	return [
+		`${count} note(s) are pending on the design canvas.`,
+		"Call vetd_notes with no arguments to list every pending note — each comes with its position, a freshly re-resolved source anchor, and an annotated screenshot.",
+		"Work through them ONE AT A TIME: make the change, verify it with vetd_screenshot, then resolve that single note before starting the next.",
+		"Each resolve tells you what is still pending — keep going until it reports `pendingRemaining: 0`, including notes the user adds while you work.",
+		"Write each reply in the language the user wrote that note in.",
+	].join(" ");
+}
+
+/** 抽屉里「处理这一条」：用户点名了某一条，带 id 只读它（省掉逐帧拉活体截图）。 */
+function dispatchOnePrompt(noteId: string): string {
+	return [
+		`Handle the note pinned on the design canvas with id \`${noteId}\`:`,
+		"call vetd_notes with that id to see its position, anchor and annotated screenshot, make the change, verify it with vetd_screenshot, then resolve it.",
+		"The resolve reports whatever is still pending — if anything is, handle those too before you finish.",
+		"Write your reply in the language the user wrote the note in.",
+	].join(" ");
 }
 
 /**
@@ -127,10 +154,9 @@ export function useNotesAutoDispatch(notes: NotesStore, cwd: string | null): voi
 		// 就自然合并成最后那一次派活。
 		const timer = window.setTimeout(() => {
 			notes.markDispatched(fresh);
-			// 单条时把 id 指出来，agent 直接按 id 取；多条就让它拉全部待处理的——
-			// 已经派过但还没做完的那些，本来也该一起收拾掉。
-			if (pending.length === 1) handoffRef.current.sendOne(pending[0].id);
-			else handoffRef.current.sendAll(pending.length);
+			// 一律走全量，哪怕此刻只有一条：带 id 的那条 prompt 会把 agent 的视野锁死在
+			// 那一条上（它就照着 ids 查，再不看别的），而用户随时可能在它干活期间再贴。
+			handoffRef.current.sendAll(pending.length);
 		}, AUTO_DISPATCH_DEBOUNCE_MS);
 		return () => window.clearTimeout(timer);
 	}, [blocked, notes, version]);

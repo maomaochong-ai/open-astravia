@@ -1,6 +1,11 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import type { ElementQuery, SelectedElementPayload } from "./canvas/bridge-client";
-import { getCanvasController, getFrameError, setPendingDesignPath } from "./canvas/design-runtime";
+import {
+	type CanvasController,
+	getCanvasController,
+	getFrameError,
+	setPendingDesignPath,
+} from "./canvas/design-runtime";
 import { designSystemCardDescriptor } from "./cards/design-system-card";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
@@ -451,6 +456,19 @@ export function registerDesignTools(ctx: PluginContext): void {
 		resolve?: { id: string; reply: string }[];
 	}
 
+	/** 拿到一批待办时的干活方式。列表读取与 resolve 后的续办共用。 */
+	const NOTES_WORK_THROUGH_HINT =
+		"Read every screenshot path — the numbered pins mark each note's position (numbers match `number`). `element.source` (file:line) was re-resolved just now and is the authoritative edit target unless `anchorStale`. Work through them ONE AT A TIME: edit for a note, verify it with vetd_screenshot, then immediately call vetd_notes with `resolve` for that single note before starting the next one. Do not batch the replies until the end — the user watches each note flip to resolved on the canvas as you go, and a turn that dies halfway must leave the finished ones already marked.";
+
+	/**
+	 * resolve 之后还有待办。这条提示得把「还没完」说死：这些备注多半是用户在你干活
+	 * 期间新贴上来的，不会有任何消息通知你，这里就是它们唯一的入口。
+	 */
+	const NOTES_KEEP_GOING_HINT = `You are NOT done — \`notes\` above lists what is still pending, including anything the user pinned while you were working (nothing else will notify you about those). Keep going in this same turn: handle the next one now, resolve it, and repeat until a resolve comes back with \`pendingRemaining: 0\`. Do not report back or end your turn while notes remain. ${NOTES_WORK_THROUGH_HINT}`;
+
+	const NOTES_ALL_CLEAR_HINT =
+		"All notes are resolved — nothing is pending on the canvas. You can finish the rest of your checks and report back.";
+
 	/** vetd_notes 返回给模型的一条备注。 */
 	interface NoteView {
 		number: number;
@@ -516,12 +534,28 @@ export function registerDesignTools(ctx: PluginContext): void {
 						if (!controller.notes.appendMessage(entry.id, "agent", entry.reply)) unknown.push(entry.id);
 					}
 					await controller.notes.flush();
-					const remaining = pendingNotes(controller.notes.notes).length;
-					return {
+					const remaining = pendingNotes(controller.notes.notes);
+					const head = {
 						ok: unknown.length === 0,
 						resolved: resolve.length - unknown.length,
 						...(unknown.length > 0 ? { unknownIds: unknown } : {}),
-						pendingRemaining: remaining,
+						pendingRemaining: remaining.length,
+					};
+					if (remaining.length === 0) return { ...head, note: NOTES_ALL_CLEAR_HINT };
+					/**
+					 * 还有待办就连同锚点与标注图一并回给它。
+					 *
+					 * 只回一个 `pendingRemaining: 2` 是不够的——实测 agent 拿到这个数字照样
+					 * 收工报告，因为「用户交代的那件事」已经做完了。而这些备注往往是用户在
+					 * 它干活期间新贴上来的，除了这里没有别的入口能送到它眼前。把下一批活直接
+					 * 摆上来，顺带省掉它再查一次的那趟往返（那一趟同样要拉活体、截图）。
+					 */
+					const next = await readNotesLive(controller, host, remaining);
+					return {
+						...head,
+						notes: next.notes,
+						...(next.screenshots.length > 0 ? { screenshots: next.screenshots } : {}),
+						note: NOTES_KEEP_GOING_HINT,
 					};
 				}
 				// 画布没开：没有别的写者，直接 patch 文件（同样按 id 定点，不整体重写语义）。
@@ -544,11 +578,19 @@ export function registerDesignTools(ctx: PluginContext): void {
 					note.messages.push({ author: "agent", text: entry.reply, at: Date.now() });
 				}
 				await host.fs.writeFile(path, `${JSON.stringify(file satisfies NotesFile, null, "\t")}\n`);
+				// 画布没开：拉不了活体，给不出保鲜锚点与标注图，只能列出冻结快照。
+				const remaining = pendingNotes(file.notes);
 				return {
 					ok: unknown.length === 0,
 					resolved: resolve.length - unknown.length,
 					...(unknown.length > 0 ? { unknownIds: unknown } : {}),
-					pendingRemaining: pendingNotes(file.notes).length,
+					pendingRemaining: remaining.length,
+					...(remaining.length > 0
+						? {
+								notes: remaining.map((note, index) => toNoteView(note, index + 1, dirPath)),
+								note: NOTES_KEEP_GOING_HINT,
+							}
+						: { note: NOTES_ALL_CLEAR_HINT }),
 				};
 			}
 
@@ -570,29 +612,52 @@ export function registerDesignTools(ctx: PluginContext): void {
 				};
 			}
 
-			const { dirPath } = controller.session;
 			const all = controller.notes.notes;
 			const targets = ids && ids.length > 0 ? all.filter((note) => ids.includes(note.id)) : pendingNotes(all);
 			const unknownIds = ids?.filter((id) => !controller.notes.noteById(id)) ?? [];
 			if (targets.length === 0) {
 				return { ok: true, notes: [], ...(unknownIds.length > 0 ? { unknownIds } : {}), note: "No pending notes." };
 			}
-			const numberOf = new Map(targets.map((note, index) => [note.id, index + 1]));
+			const { notes: views, screenshots } = await readNotesLive(controller, host, targets);
+			return {
+				ok: true,
+				notes: views,
+				...(unknownIds.length > 0 ? { unknownIds } : {}),
+				...(screenshots.length > 0 ? { screenshots } : {}),
+				note: NOTES_WORK_THROUGH_HINT,
+			};
+		},
+	});
 
-			// 按 frame 分组做锚点保鲜 + 标注图；自由备注只有文本。
-			const frames = controller.session.manifest.frames;
-			const byFrame = new Map<string, DesignNote[]>();
-			for (const note of targets) {
-				const anchor = note.anchor;
-				if (anchor.kind === "free") continue;
-				if (!frames.some((frame) => frame.id === anchor.frameId)) continue;
-				const group = byFrame.get(anchor.frameId) ?? [];
-				group.push(note);
-				byFrame.set(anchor.frameId, group);
-			}
+	/**
+	 * 读一批备注：锚点保鲜 + 每帧标注图。画布开着才走这条（要拉活体）。
+	 *
+	 * 读取与 resolve 后的「还剩什么」共用同一条实现：agent 处理完一条后，剩下的待办
+	 * 连同标注图一并回给它，省掉一次往返，也省掉它自己想起来要再查一次。
+	 */
+	async function readNotesLive(
+		controller: CanvasController,
+		host: { fs: PluginContext["fs"] },
+		targets: readonly DesignNote[],
+	): Promise<{ notes: NoteView[]; screenshots: { frame: string; path: string }[] }> {
+		const { dirPath } = controller.session;
+		const numberOf = new Map(targets.map((note, index) => [note.id, index + 1]));
 
-			const staleIds = new Set<string>();
-			const screenshots: { frame: string; path: string }[] = [];
+		// 按 frame 分组做锚点保鲜 + 标注图；自由备注只有文本。
+		const frames = controller.session.manifest.frames;
+		const byFrame = new Map<string, DesignNote[]>();
+		for (const note of targets) {
+			const anchor = note.anchor;
+			if (anchor.kind === "free") continue;
+			if (!frames.some((frame) => frame.id === anchor.frameId)) continue;
+			const group = byFrame.get(anchor.frameId) ?? [];
+			group.push(note);
+			byFrame.set(anchor.frameId, group);
+		}
+
+		const staleIds = new Set<string>();
+		const screenshots: { frame: string; path: string }[] = [];
+		{
 			for (const [frameId, group] of byFrame) {
 				const frame = frames.find((candidate) => candidate.id === frameId);
 				if (!frame) continue;
@@ -644,23 +709,17 @@ export function registerDesignTools(ctx: PluginContext): void {
 					// 截不到图不拦整个读取：文本锚点仍然可用。
 				}
 			}
+		}
 
-			// 保鲜写回后从 store 取最新锚点。
-			const views = targets.map((note) => {
-				const fresh = controller.notes.noteById(note.id) ?? note;
-				const view = toNoteView(fresh, numberOf.get(note.id) ?? 0, dirPath);
-				if (staleIds.has(note.id)) view.anchorStale = true;
-				return view;
-			});
-			return {
-				ok: true,
-				notes: views,
-				...(unknownIds.length > 0 ? { unknownIds } : {}),
-				...(screenshots.length > 0 ? { screenshots } : {}),
-				note: "Read every screenshot path — the numbered pins mark each note's position (numbers match `number`). `element.source` (file:line) was re-resolved just now and is the authoritative edit target unless `anchorStale`. Work through them ONE AT A TIME: edit for a note, verify it with vetd_screenshot, then immediately call vetd_notes with `resolve` for that single note before starting the next one. Do not batch the replies until the end — the user watches each note flip to resolved on the canvas as you go, and a turn that dies halfway must leave the finished ones already marked.",
-			};
-		},
-	});
+		// 保鲜写回后从 store 取最新锚点。
+		const notes = targets.map((note) => {
+			const fresh = controller.notes.noteById(note.id) ?? note;
+			const view = toNoteView(fresh, numberOf.get(note.id) ?? 0, dirPath);
+			if (staleIds.has(note.id)) view.anchorStale = true;
+			return view;
+		});
+		return { notes, screenshots };
+	}
 
 	/** DesignNote → 模型视图（与画布/抽屉共享同一份状态推导）。 */
 	function toNoteView(note: DesignNote, number: number, dirPath: string): NoteView {

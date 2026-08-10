@@ -103,8 +103,23 @@ it("空闲时落一条备注，自己就派出去了", () => {
 	elapse();
 
 	expect(sendPrompt).toHaveBeenCalledTimes(1);
-	// 单条时精确指向它的 id。
-	expect(sendPrompt.mock.calls[0][0]).toContain(store.notes[0].id);
+	expect(sendPrompt.mock.calls[0][0]).toContain("1 note(s) are pending");
+});
+
+it("派活 prompt 不把 agent 的视野锁死在某一条上", () => {
+	// 曾经单条派活会说「ids 传入该 id」，agent 就只查那一条、再不看别的，
+	// 用户在它干活期间新贴的备注被整轮无视。派活一律让它列全量。
+	mount();
+	act(() => {
+		store.addNote(anchor, "只有这一条");
+	});
+	elapse();
+
+	const prompt = sendPrompt.mock.calls[0][0] as string;
+	expect(prompt).toContain("no arguments");
+	expect(prompt).not.toContain(store.notes[0].id);
+	// 也要交代「做完一条还要看还剩什么」，不能做完就收工。
+	expect(prompt).toContain("pendingRemaining");
 });
 
 it("防抖期间画布在不停重渲染，派活照样落地", () => {
@@ -141,7 +156,7 @@ it("连着放几条，合并成一次派活", () => {
 	elapse();
 
 	expect(sendPrompt).toHaveBeenCalledTimes(1);
-	expect(sendPrompt.mock.calls[0][0]).toContain("notes.prompt.all");
+	expect(sendPrompt.mock.calls[0][0]).toContain("3 note(s) are pending");
 });
 
 it("agent 正在跑时落的备注交给它自检，跑完也不补一条 prompt 去催", () => {

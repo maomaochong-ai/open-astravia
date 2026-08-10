@@ -280,7 +280,14 @@ exact spots. Take them **one at a time**: edit for one note, verify it with
 next — never hold the replies back until every note is done. The user is watching
 the canvas, where each bubble flips to resolved the moment you reply, and a turn
 that dies halfway has to leave the finished ones already marked. That reply is
-what marks a note handled; never touch `.notes.json` yourself. Notes reach you three ways: the
+what marks a note handled; never touch `.notes.json` yourself.
+
+Each `resolve` response tells you what is still pending — when notes remain it
+lists them in full, anchors and annotated screenshots included, so you can go
+straight into the next one without another lookup. Treat `pendingRemaining` as
+your loop condition: keep handling and resolving until a resolve comes back with
+`pendingRemaining: 0`. Anything that appears there but was not in your original
+list is something the user pinned while you were working. Notes reach you three ways: the
 user sends an explicit "handle my notes" prompt, `vetd_status` reports a
 `pendingNotes` count, and `vetd_screenshot` flags pending notes on the frame it
 just shot.

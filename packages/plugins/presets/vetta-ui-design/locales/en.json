@@ -210,8 +210,6 @@
 	"notes.handoff.otherWorkspace": "The active conversation is in another workspace.",
 	"notes.handoff.streaming": "Vetta is busy — available after this turn ends.",
 	"notes.handoff.failed": "Failed to send",
-	"notes.prompt.all": "Please handle the {{count}} pending note(s) on the design canvas: call vetd_notes to see each note's position, anchor and annotated screenshot, then work through them one at a time — finish a note, verify it, and resolve that one note before moving on to the next; do not save all the replies for the end.",
-	"notes.prompt.one": "Please handle this note on the design canvas (id: {{id}}): call vetd_notes with this id to see its position, anchor and annotated screenshot, make the change, then reply via resolve to mark it done.",
 	"notes.bubble.label": "Note",
 	"notes.bubble.detached": "Original frame no longer exists",
 	"notes.composer.placeholder": "Add a note…",
