@@ -1,4 +1,5 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type { ElementQuery, SelectedElementPayload } from "./canvas/bridge-client";
 import { getCanvasController, getFrameError, setPendingDesignPath } from "./canvas/design-runtime";
 import { designSystemCardDescriptor } from "./cards/design-system-card";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
@@ -6,11 +7,15 @@ import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/sn
 import { applyDesignSystem, buildRestylePrompt } from "./design-systems/apply";
 import { DESIGN_SYSTEMS, designSystemById } from "./design-systems/index";
 import { engineDiagnostics } from "./engine/engine-manager";
+import { composeNotePins } from "./notes/annotate";
+import { notesFilePath } from "./notes/notes-store";
+import { type DesignNote, type NotesFile, noteStatus, parseNotesFile, pendingNotes } from "./notes/types";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import type { SourceIssue } from "./vetd/check-sources";
 import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
+import { sidecarDirOf } from "./vetd/manifest-types";
 import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
 import { scaffoldDesign } from "./vetd/scaffold";
 
@@ -252,9 +257,20 @@ export function registerDesignTools(ctx: PluginContext): void {
 			// 只带这一帧自己的违规：截图是逐帧调的，把整份设计的 issues 全塞进来会让
 			// agent 拿着别的 frame 的报错去改当前这个。
 			const frameIssues = issues.filter((issue) => issue.file === `frames/${frameId}.tsx`);
+			// 搭车提醒（与 issues 同一先例）：截图是每帧必调的，这一帧有待处理的用户
+			// 备注就在这里点名，agent 不必单独巡检。
+			const framePendingNotes = pendingNotes(controller.notes.notes).filter(
+				(note) => note.anchor.kind !== "free" && note.anchor.frameId === frameId,
+			).length;
 			return {
 				ok: true,
 				path,
+				...(framePendingNotes > 0
+					? {
+							pendingNotes: framePendingNotes,
+							notesReminder: `This frame has ${framePendingNotes} pending user note(s). Call vetd_notes to see them (annotated screenshot + source anchors) and address them before you finish.`,
+						}
+					: {}),
 				...(frameIssues.length > 0 ? { issues: frameIssues } : {}),
 				// 光说「截好了」模型会只瞟一眼就宣布完成。把该找什么写在这里：工具返回是
 				// 每次都读的，而 references/quality.md 未必被翻开。三项是实测最高频的
@@ -296,6 +312,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
 							sharedShell: shell,
 							issues,
+							// 用户在画布上留的待处理备注数。非零时先调 vetd_notes 看内容。
+							pendingNotes: pendingNotes(controller.notes.notes).length,
 							frames: controller.session.manifest.frames.map((frame) => {
 								const buildError = getFrameError(frame.id);
 								return {
@@ -427,4 +445,261 @@ export function registerDesignTools(ctx: PluginContext): void {
 			};
 		},
 	});
+
+	interface NotesInput {
+		ids?: string[];
+		resolve?: { id: string; reply: string }[];
+	}
+
+	/** vetd_notes 返回给模型的一条备注。 */
+	interface NoteView {
+		number: number;
+		id: string;
+		status: "pending" | "resolved";
+		messages: { author: string; text: string }[];
+		/** 锚在哪：frame 内（含元素）或画布空白处。 */
+		location:
+			| { kind: "frame"; frame: string; frameFile: string; x: number; y: number }
+			| { kind: "canvas"; x: number; y: number; detachedFromDeletedFrame?: string };
+		/** 元素锚（刚刚现场重解析过）；`source` 即 `frames/x.tsx:行号`。 */
+		element?: { source: string | null; domPath: string; tag: string; text: string };
+		/** true = 原锚定元素在当前 DOM 里已找不到，element 是放置时的旧快照，行号不可信。 */
+		anchorStale?: boolean;
+	}
+
+	ctx.agent.registerTool<NotesInput>({
+		id: "vetd-notes",
+		name: "vetd_notes",
+		label: "%tool.vetd_notes%",
+		description:
+			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.",
+		parameters: {
+			type: "object",
+			properties: {
+				ids: {
+					type: "array",
+					items: { type: "string" },
+					description: "Note ids to read (default: all pending notes).",
+				},
+				resolve: {
+					type: "array",
+					items: {
+						type: "object",
+						properties: {
+							id: { type: "string" },
+							reply: {
+								type: "string",
+								description: "What you changed, one or two sentences, in the user's language.",
+							},
+						},
+						required: ["id", "reply"],
+						additionalProperties: false,
+					},
+					description: "Mark notes resolved with a reply each. Only resolve notes you actually addressed.",
+				},
+			},
+			additionalProperties: false,
+		},
+		scope_use: SCOPE_USE,
+		agent_mode: AGENT_MODE,
+		// 读取要为每个涉及的 frame 拉活体 + 截图 + 合成，逐帧 30s 的链路可能串联多次。
+		timeoutMs: 120_000,
+		handler: async ({ host, session, trigger }) => {
+			const { ids, resolve } = trigger.input;
+			const controller = getCanvasController();
+
+			// —— 回写：agent 处理完的备注在这里定点落状态（插件仍是唯一写者）。 ——
+			if (resolve && resolve.length > 0) {
+				if (controller) {
+					const unknown: string[] = [];
+					for (const entry of resolve) {
+						if (!controller.notes.appendMessage(entry.id, "agent", entry.reply)) unknown.push(entry.id);
+					}
+					await controller.notes.flush();
+					const remaining = pendingNotes(controller.notes.notes).length;
+					return {
+						ok: unknown.length === 0,
+						resolved: resolve.length - unknown.length,
+						...(unknown.length > 0 ? { unknownIds: unknown } : {}),
+						pendingRemaining: remaining,
+					};
+				}
+				// 画布没开：没有别的写者，直接 patch 文件（同样按 id 定点，不整体重写语义）。
+				let vetdPath: string;
+				try {
+					vetdPath = await resolveVetdPath(host, session.cwd);
+				} catch (error) {
+					return { ok: false, error: error instanceof Error ? error.message : String(error) };
+				}
+				const dirPath = sidecarDirOf(vetdPath);
+				const path = notesFilePath(dirPath);
+				const file = parseNotesFile(await host.fs.readFile(path).then((r) => r.content, () => ""));
+				const unknown: string[] = [];
+				for (const entry of resolve) {
+					const note = file.notes.find((candidate) => candidate.id === entry.id);
+					if (!note) {
+						unknown.push(entry.id);
+						continue;
+					}
+					note.messages.push({ author: "agent", text: entry.reply, at: Date.now() });
+				}
+				await host.fs.writeFile(path, `${JSON.stringify(file satisfies NotesFile, null, "\t")}\n`);
+				return {
+					ok: unknown.length === 0,
+					resolved: resolve.length - unknown.length,
+					...(unknown.length > 0 ? { unknownIds: unknown } : {}),
+					pendingRemaining: pendingNotes(file.notes).length,
+				};
+			}
+
+			// —— 读取。画布没开时退化成纯文本锚点（截不了标注图，锚点也无法保鲜）。 ——
+			if (!controller) {
+				let vetdPath: string;
+				try {
+					vetdPath = await resolveVetdPath(host, session.cwd);
+				} catch (error) {
+					return { ok: false, error: error instanceof Error ? error.message : String(error) };
+				}
+				const dirPath = sidecarDirOf(vetdPath);
+				const file = parseNotesFile(await host.fs.readFile(notesFilePath(dirPath)).then((r) => r.content, () => ""));
+				const targets = ids && ids.length > 0 ? file.notes.filter((note) => ids.includes(note.id)) : pendingNotes(file.notes);
+				return {
+					ok: true,
+					notes: targets.map((note, index) => toNoteView(note, index + 1, dirPath)),
+					note: "The design canvas is not open, so anchors are frozen snapshots (source line numbers may have drifted) and no annotated screenshots are available. Locate elements by their text/domPath if a line looks wrong.",
+				};
+			}
+
+			const { dirPath } = controller.session;
+			const all = controller.notes.notes;
+			const targets = ids && ids.length > 0 ? all.filter((note) => ids.includes(note.id)) : pendingNotes(all);
+			const unknownIds = ids?.filter((id) => !controller.notes.noteById(id)) ?? [];
+			if (targets.length === 0) {
+				return { ok: true, notes: [], ...(unknownIds.length > 0 ? { unknownIds } : {}), note: "No pending notes." };
+			}
+			const numberOf = new Map(targets.map((note, index) => [note.id, index + 1]));
+
+			// 按 frame 分组做锚点保鲜 + 标注图；自由备注只有文本。
+			const frames = controller.session.manifest.frames;
+			const byFrame = new Map<string, DesignNote[]>();
+			for (const note of targets) {
+				const anchor = note.anchor;
+				if (anchor.kind === "free") continue;
+				if (!frames.some((frame) => frame.id === anchor.frameId)) continue;
+				const group = byFrame.get(anchor.frameId) ?? [];
+				group.push(note);
+				byFrame.set(anchor.frameId, group);
+			}
+
+			const staleIds = new Set<string>();
+			const screenshots: { frame: string; path: string }[] = [];
+			for (const [frameId, group] of byFrame) {
+				const frame = frames.find((candidate) => candidate.id === frameId);
+				if (!frame) continue;
+				// 保鲜：元素锚按 domPath 重查（行号跟着代码走），frame 锚按坐标补一次 hit-test。
+				const queries: ElementQuery[] = group.map((note) => {
+					const anchor = note.anchor;
+					if (anchor.kind === "element") return { domPath: anchor.element.domPath };
+					if (anchor.kind === "frame") return { x: anchor.fx, y: anchor.fy };
+					return { x: 0, y: 0 }; // free 不进分组，纯类型收口
+				});
+				let payloads: (SelectedElementPayload | null)[] = [];
+				try {
+					payloads = await controller.resolveNoteElements(frameId, queries);
+				} catch {
+					payloads = queries.map(() => null);
+				}
+				group.forEach((note, index) => {
+					const payload = payloads[index];
+					if (payload) {
+						controller.notes.upgradeAnchor(note.id, {
+							domPath: payload.domPath,
+							tag: payload.tag,
+							text: payload.text,
+							classes: payload.classes,
+							source: payload.source,
+						});
+					} else if (note.anchor.kind === "element") {
+						staleIds.add(note.id);
+					}
+				});
+				// 标注图：干净截图 + 编号气泡二次合成（编号与返回列表严格同号）。
+				try {
+					const dataUrl = await controller.captureFrame(frameId);
+					const annotated = await composeNotePins(
+						dataUrl,
+						{ width: frame.width, height: frame.height },
+						group.map((note) => ({
+							fx: note.anchor.kind === "free" ? 0 : note.anchor.fx,
+							fy: note.anchor.kind === "free" ? 0 : note.anchor.fy,
+							label: numberOf.get(note.id) ?? 0,
+						})),
+					);
+					const path = snapshotPath(dirPath, `notes-${frameId}`, Date.now());
+					await host.fs.writeFile(path, annotated.split(",")[1] ?? "", "base64");
+					await ensureSnapshotsIgnored(host.fs, dirPath);
+					await pruneSnapshots(host.fs, dirPath, `notes-${frameId}`);
+					screenshots.push({ frame: frameId, path });
+				} catch {
+					// 截不到图不拦整个读取：文本锚点仍然可用。
+				}
+			}
+
+			// 保鲜写回后从 store 取最新锚点。
+			const views = targets.map((note) => {
+				const fresh = controller.notes.noteById(note.id) ?? note;
+				const view = toNoteView(fresh, numberOf.get(note.id) ?? 0, dirPath);
+				if (staleIds.has(note.id)) view.anchorStale = true;
+				return view;
+			});
+			return {
+				ok: true,
+				notes: views,
+				...(unknownIds.length > 0 ? { unknownIds } : {}),
+				...(screenshots.length > 0 ? { screenshots } : {}),
+				note: "Read every screenshot path — the numbered pins mark each note's position (numbers match `number`). `element.source` (file:line) was re-resolved just now and is the authoritative edit target unless `anchorStale`. Address each note with a targeted edit, verify with vetd_screenshot, then call vetd_notes again with `resolve` to reply and mark them done.",
+			};
+		},
+	});
+
+	/** DesignNote → 模型视图（与画布/抽屉共享同一份状态推导）。 */
+	function toNoteView(note: DesignNote, number: number, dirPath: string): NoteView {
+		const base = {
+			number,
+			id: note.id,
+			status: noteStatus(note),
+			messages: note.messages.map((message) => ({ author: message.author, text: message.text })),
+		};
+		if (note.anchor.kind === "free") {
+			return {
+				...base,
+				location: {
+					kind: "canvas",
+					x: note.anchor.x,
+					y: note.anchor.y,
+					...(note.anchor.detachedFrom ? { detachedFromDeletedFrame: note.anchor.detachedFrom } : {}),
+				},
+			};
+		}
+		return {
+			...base,
+			location: {
+				kind: "frame",
+				frame: note.anchor.frameId,
+				frameFile: `${dirPath}/frames/${note.anchor.frameId}.tsx`,
+				x: note.anchor.fx,
+				y: note.anchor.fy,
+			},
+			...(note.anchor.kind === "element"
+				? {
+						element: {
+							source: note.anchor.element.source,
+							domPath: note.anchor.element.domPath,
+							tag: note.anchor.element.tag,
+							text: note.anchor.element.text,
+						},
+					}
+				: {}),
+		};
+	}
 }

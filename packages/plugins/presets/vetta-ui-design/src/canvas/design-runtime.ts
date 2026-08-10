@@ -3,14 +3,23 @@
  * (vetd_screenshot / vetd_status need to reach the live canvas), plus the
  * "modifying" frame state fed by conversation tool events (index.tsx).
  */
+import type { NotesStore } from "../notes/notes-store";
 import type { DesignSession } from "../vetd/design-session";
+import type { ElementQuery, SelectedElementPayload } from "./bridge-client";
 
 export type FrameActivity = "reading" | "modifying" | "creating" | "updated";
 
 export interface CanvasController {
 	session: DesignSession;
+	/** 当前打开设计的备注（vetd_notes / vetd_status 都从这里读写）。 */
+	notes: NotesStore;
 	port: number;
 	captureFrame(frameId: string): Promise<string>;
+	/**
+	 * 备注锚点保鲜：把 frame 拉回活体后逐条查元素（按 domPath 或坐标）。
+	 * 查不到的条目返回 null，不抛错。
+	 */
+	resolveNoteElements(frameId: string, queries: ElementQuery[]): Promise<(SelectedElementPayload | null)[]>;
 	openDesign(vetdPath: string): void;
 }
 

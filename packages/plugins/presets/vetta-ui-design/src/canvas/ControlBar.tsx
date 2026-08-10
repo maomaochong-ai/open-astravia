@@ -2,7 +2,7 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DOCK_GAP, DOCK_ICON, dockMagnifyScale, dockTransition, usePrefersReducedMotion } from "./dock-magnify";
 
-export type CanvasTool = "select" | "hand" | "frame";
+export type CanvasTool = "select" | "hand" | "frame" | "note";
 
 interface ControlBarProps {
 	tool: CanvasTool;
@@ -51,6 +51,15 @@ const icons = {
 	frame: (
 		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 			<path d="M6 2v20M18 2v20M2 6h20M2 18h20" strokeLinecap="round" />
+		</svg>
+	),
+	note: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path
+				d="M21 11.5a8.5 8.5 0 01-8.5 8.5H4l1.6-3.2A8.5 8.5 0 1121 11.5z"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	),
 	mockup: (
@@ -127,6 +136,14 @@ export function ControlBar({
 				active: tool === "frame",
 				onClick: () => onToolChange("frame"),
 				content: icons.frame,
+			},
+			{
+				type: "item",
+				key: "note",
+				label: t("controlbar.note"),
+				active: tool === "note",
+				onClick: () => onToolChange("note"),
+				content: icons.note,
 			},
 			{
 				type: "item",

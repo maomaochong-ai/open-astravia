@@ -7,8 +7,9 @@
  *
  * Message contract (both directions carry `{ vetd: true }`):
  *   parent → iframe: set-mode | show-frame | navigate | reload | clear-selection | capture
+ *                    | resolve-element
  *   iframe → parent: ready | rendered | selected | exit-inspect | captured | hmr-updated
- *                    | frame-error | context-menu | navigated | wheel | space
+ *                    | frame-error | context-menu | navigated | wheel | space | element-resolved
  */
 import { toJpeg, toPng } from "html-to-image";
 import { pathOfFrame } from "./routes";
@@ -550,6 +551,23 @@ export function installBridge(host: BridgeHost): void {
 			case "clear-selection":
 				reset();
 				return;
+			// 备注锚定：放置时按坐标问「这个点下面是什么元素」，读取时按 domPath 重查
+			// 「当时那个元素现在还在吗、行号漂到哪了」。都不依赖 inspect 模式。
+			case "resolve-element": {
+				const requestId = typeof data.requestId === "string" ? data.requestId : "";
+				let target: Element | null = null;
+				if (typeof data.domPath === "string" && data.domPath) {
+					try {
+						target = document.querySelector(data.domPath);
+					} catch {
+						target = null; // 非法选择器按查不到处理
+					}
+				} else if (typeof data.x === "number" && typeof data.y === "number") {
+					target = hitAt(data.x, data.y);
+				}
+				post({ type: "element-resolved", requestId, payload: target ? payloadFor(target) : null });
+				return;
+			}
 			case "capture": {
 				const requestId = typeof data.requestId === "string" ? data.requestId : "";
 				// keepHighlight: bake the selected-element outline into the shot (used by

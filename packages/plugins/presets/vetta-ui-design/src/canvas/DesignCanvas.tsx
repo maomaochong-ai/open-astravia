@@ -1,4 +1,4 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { usePluginShortcutScope, useTranslation } from "@vetta-org/plugin-sdk";
 import {
 	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
@@ -10,6 +10,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import type { NotesStore } from "../notes/notes-store";
+import { noteWorldPosition } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
 import type { VetdFrameEntry, VetdManifest } from "../vetd/manifest-types";
@@ -23,7 +25,7 @@ import {
 	type Placement,
 } from "./arrange";
 import { ArrangeToolbar } from "./ArrangeToolbar";
-import { BridgeHub, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
+import { BridgeHub, type ElementQuery, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import {
@@ -41,6 +43,7 @@ import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
+import { type NoteDraft, NotesLayer } from "./NotesLayer";
 import {
 	boundsOf,
 	describeSnap,
@@ -64,6 +67,10 @@ export type FrameCapture = (frameId: string) => Promise<string>;
 
 interface DesignCanvasProps {
 	session: DesignSession;
+	/** 当前设计的备注（与 session 同生命周期，CanvasTab 创建）。 */
+	notes: NotesStore;
+	/** 活动面板的 cwd，「让 Vetta 处理」的会话闸口用。 */
+	cwd: string | null;
 	port: number;
 	bridge: BridgeHub;
 	/**
@@ -87,6 +94,15 @@ interface DesignCanvasProps {
 	 * 活体 React 应用与 HMR 连接。
 	 */
 	previewing: boolean;
+	/**
+	 * 出口：vetd_notes 的锚点保鲜。拉活体后按 domPath/坐标逐条查元素，
+	 * 与 captureRef 同型（runLive 只存在于本组件）。
+	 */
+	resolveNoteElementsRef: RefObject<
+		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
+	>;
+	/** 出口：抽屉「定位到备注」——把视口挪到气泡上并打开它的 thread。 */
+	focusNoteRef: RefObject<((noteId: string) => void) | null>;
 }
 
 interface Viewport {
@@ -107,8 +123,9 @@ const MAX_ZOOM = 4;
 const ZOOM_STEP = 1.2;
 /** Below this the marquee counts as a click, not a drag. */
 const MARQUEE_MIN = 4;
-/** sidecar 里的生成物，不参与「源码变了要重截」的判断。 */
-const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/"];
+/** sidecar 里的生成物，不参与「源码变了要重截」的判断。`.notes.json` 是备注数据：
+    它不影响任何 frame 的渲染，进了这个判断每写一条备注就全画布重截图。 */
+const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/", ".notes.json"];
 /** 右键「复制为图片」的截图倍率：粘到聊天/文档里要经得起看，1 倍太糊。 */
 const COPY_PIXEL_RATIO = 2;
 /**
@@ -239,12 +256,16 @@ function applyResizeSnap(
 
 export function DesignCanvas({
 	session,
+	notes,
+	cwd,
 	port,
 	bridge,
 	captureRef,
 	refreshRef,
 	previewTargetRef,
 	previewing,
+	resolveNoteElementsRef,
+	focusNoteRef,
 }: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -262,7 +283,16 @@ export function DesignCanvas({
 	// 渲染完成…），下一个滚轮 tick 就从旧位置重算，画布随机弹回起点。
 	if (!panLiveRef.current) viewportRef.current = viewport;
 	const [tool, setTool] = useState<CanvasTool>("select");
+	const toolRef = useRef(tool);
+	toolRef.current = tool;
 	const [spaceHeld, setSpaceHeld] = useState(false);
+	/** 备注放置草稿（点了画布、输入框开着）与点开的备注 thread。 */
+	const [noteDraft, setNoteDraft] = useState<NoteDraft | null>(null);
+	const noteDraftRef = useRef(noteDraft);
+	noteDraftRef.current = noteDraft;
+	const [openNoteId, setOpenNoteId] = useState<string | null>(null);
+	const openNoteIdRef = useRef(openNoteId);
+	openNoteIdRef.current = openNoteId;
 	const [selection, setSelection] = useState<CanvasSelection>(null);
 	const selectionRef = useRef(selection);
 	selectionRef.current = selection;
@@ -510,6 +540,67 @@ export function DesignCanvas({
 	refreshRef.current = reloadAll;
 
 	/**
+	 * 备注锚定的元素查询：位图态的 frame 先经 runLive 拉回活体，再逐条问引擎 bridge。
+	 * 放置时的 hit-test 与 vetd_notes 的锚点保鲜共用这一条。
+	 */
+	const resolveNoteElements = useCallback(
+		(frameId: string, queries: ElementQuery[]): Promise<(SelectedElementPayload | null)[]> =>
+			runLive(frameId, async () => {
+				const results: (SelectedElementPayload | null)[] = [];
+				for (const query of queries) results.push(await bridge.resolveElement(frameId, query));
+				return results;
+			}),
+		[bridge, runLive],
+	);
+
+	useEffect(() => {
+		resolveNoteElementsRef.current = resolveNoteElements;
+		return () => {
+			resolveNoteElementsRef.current = null;
+		};
+	}, [resolveNoteElementsRef, resolveNoteElements]);
+
+	// 抽屉「定位到备注」：视口居中到气泡上，顺带打开它的 thread。
+	useEffect(() => {
+		focusNoteRef.current = (noteId) => {
+			const note = notes.noteById(noteId);
+			if (!note) return;
+			const pos = noteWorldPosition(note, (frameId) => manifestRef.current.frames.find((f) => f.id === frameId));
+			const { width, height } = sizeRef.current;
+			const zoom = viewportRef.current.zoom;
+			panLiveRef.current = null;
+			const next = { zoom, x: width / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom };
+			setViewport(next);
+			session.saveViewport(next);
+			setOpenNoteId(noteId);
+		};
+		return () => {
+			focusNoteRef.current = null;
+		};
+	}, [notes, session, focusNoteRef]);
+
+	// 快捷键 c 切到备注工具。走宿主 ShortcutScopeStack（不裸挂 keydown），
+	// not-editable：备注输入框里打字母 c 不能把工具切走。
+	const registerShortcutScope = useMemo(() => {
+		const ui = getPluginCtx().ui;
+		return ui.registerShortcutScope.bind(ui);
+	}, []);
+	usePluginShortcutScope(registerShortcutScope, {
+		id: "note-tool",
+		kind: "surface",
+		bindings: [{ key: "c", when: "not-editable", run: () => setTool("note") }],
+	});
+
+	// 切离备注工具就收掉没提交的草稿；换设计时 thread 弹层也一并收掉。
+	useEffect(() => {
+		if (tool !== "note") setNoteDraft(null);
+	}, [tool]);
+	useEffect(() => {
+		setNoteDraft(null);
+		setOpenNoteId(null);
+	}, [session]);
+
+	/**
 	 * 位图化后 iframe 会被卸掉，也就收不到 HMR 了；agent 改完代码画布必须自己发现。
 	 *
 	 * 宿主的目录监听回调拿不到具体文件——它广播的是**被监听目录**的路径，而且所有
@@ -728,10 +819,19 @@ export function DesignCanvas({
 				event.preventDefault();
 				setSpaceHeld(true);
 			} else if (event.key === "Escape") {
-				// 焦点在画布上时的 Esc（元素选中期间焦点在 iframe 里，那时 Esc 由引擎侧
-				// 处理：逐级选父元素，到顶再发 exit-inspect 把元素选中清掉）。
-				// 到这里就是最后一级：取消 frame 选中。
-				setSelection(null);
+				// 备注态优先逐级退出：草稿 → thread 弹层 → 备注工具本身。
+				if (noteDraftRef.current) {
+					setNoteDraft(null);
+				} else if (openNoteIdRef.current) {
+					setOpenNoteId(null);
+				} else if (toolRef.current === "note") {
+					setTool("select");
+				} else {
+					// 焦点在画布上时的 Esc（元素选中期间焦点在 iframe 里，那时 Esc 由引擎侧
+					// 处理：逐级选父元素，到顶再发 exit-inspect 把元素选中清掉）。
+					// 到这里就是最后一级：取消 frame 选中。
+					setSelection(null);
+				}
 			}
 		};
 		const onKeyUp = (event: KeyboardEvent): void => {
@@ -811,6 +911,40 @@ export function DesignCanvas({
 			};
 			return;
 		}
+		// 备注工具：点哪儿就在哪儿出草稿输入框（frame 上命中就锚 frame，空白处是自由
+		// 备注）。frame 上的命中元素解析在后台跑，不阻塞输入；空内容提交即丢弃。
+		if (tool === "note") {
+			setOpenNoteId(null);
+			const world = toWorld(event.clientX, event.clientY);
+			const hitFrame =
+				[...manifestRef.current.frames]
+					.reverse()
+					.find(
+						(frame) =>
+							world.x >= frame.x &&
+							world.x <= frame.x + frame.width &&
+							world.y >= frame.y &&
+							world.y <= frame.y + frame.height,
+					) ?? null;
+			if (hitFrame) {
+				const fx = Math.round(world.x - hitFrame.x);
+				const fy = Math.round(world.y - hitFrame.y);
+				setNoteDraft({
+					world: { x: Math.round(world.x), y: Math.round(world.y) },
+					frameId: hitFrame.id,
+					fx,
+					fy,
+					hit: resolveNoteElements(hitFrame.id, [{ x: fx, y: fy }])
+						.then((results) => results[0] ?? null)
+						.catch(() => null),
+				});
+			} else {
+				setNoteDraft({ world: { x: Math.round(world.x), y: Math.round(world.y) }, frameId: null, fx: 0, fy: 0, hit: null });
+			}
+			return;
+		}
+		// 空白处起手（框选/新建）时点开的备注 thread 让位。
+		setOpenNoteId(null);
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		const mode = tool === "frame" ? "create" : "select";
 		marqueeRef.current = {
@@ -1229,7 +1363,7 @@ export function DesignCanvas({
 
 	const deletingFrame = deletingId ? manifest.frames.find((frame) => frame.id === deletingId) : undefined;
 
-	const cursor = panActive ? "grab" : tool === "frame" ? "crosshair" : "default";
+	const cursor = panActive ? "grab" : tool === "frame" || tool === "note" ? "crosshair" : "default";
 
 	/**
 	 * 整理相关的浮层出不出。拖动/改尺寸期间收起来：那时选区每帧都在动，工具条跟着
@@ -1331,6 +1465,17 @@ export function DesignCanvas({
 					/>
 				) : null}
 				{snapView ? <SnapGuides guides={snapView.guides} gaps={snapView.gaps} scale={1 / viewport.zoom} /> : null}
+				<NotesLayer
+					store={notes}
+					frames={manifest.frames}
+					interactive={(tool === "select" || tool === "note") && !panActive && !previewing}
+					cwd={cwd}
+					draft={noteDraft}
+					onDraftClose={() => setNoteDraft(null)}
+					openNoteId={openNoteId}
+					onOpenNote={setOpenNoteId}
+					getZoom={getZoom}
+				/>
 				{/* 整理工具条与 gap 手柄：多选且不在拖动/缩放中才出，免得跟正在进行的操作抢指针。 */}
 				{arrangeActive && arrangeBounds ? (
 					<>

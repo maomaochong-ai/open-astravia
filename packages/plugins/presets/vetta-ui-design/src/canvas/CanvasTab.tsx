@@ -6,15 +6,18 @@ import {
 	stopDesignServer,
 } from "../engine/engine-manager";
 import { exportDesign } from "../export/export-design";
+import { NotesStore } from "../notes/notes-store";
+import { pendingNotes } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
 import { PreviewDialog } from "../preview-mode/PreviewDialog";
 import { DesignSession } from "../vetd/design-session";
 import { findVetdFiles, sniffVetdKind } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
-import { BridgeHub } from "./bridge-client";
+import { BridgeHub, type ElementQuery, type SelectedElementPayload } from "./bridge-client";
 import { DOCK_GAP, DOCK_ICON } from "./dock-magnify";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
 import { byCanvasOrder, DesignCanvas, type FrameCapture } from "./DesignCanvas";
+import { NotesDrawer } from "./NotesDrawer";
 import { ThemePalette } from "./ThemePalette";
 
 type Phase =
@@ -37,6 +40,9 @@ export function CanvasTab() {
 	const [selectedPath, setSelectedPath] = useState<string | null>(null);
 	const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 	const [session, setSession] = useState<DesignSession | null>(null);
+	const [notesStore, setNotesStore] = useState<NotesStore | null>(null);
+	const [notesOpen, setNotesOpen] = useState(false);
+	const [pendingCount, setPendingCount] = useState(0);
 	const [showPalette, setShowPalette] = useState(false);
 	const [exporting, setExporting] = useState(false);
 	const [reloadNonce, setReloadNonce] = useState(0);
@@ -49,6 +55,12 @@ export function CanvasTab() {
 	const previewTargetRef = useRef<(() => string | null) | null>(null);
 	/** 预览窗口打开在哪一帧上；null 表示没开。 */
 	const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
+	/** 同 captureRef：vetd_notes 的锚点保鲜入口，画布挂载后填入。 */
+	const resolveNoteElementsRef = useRef<
+		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
+	>(null);
+	/** 抽屉「定位到备注」的入口，画布挂载后填入。 */
+	const focusNoteRef = useRef<((noteId: string) => void) | null>(null);
 
 	// 画布很吃宽度：每次激活本标签卡（切走会卸载，故每次都触发）把活动面板拉满，
 	// 用户之后仍可自行拖窄。
@@ -98,15 +110,19 @@ export function CanvasTab() {
 	useEffect(() => {
 		if (!selectedPath || !cwd) {
 			setSession(null);
+			setNotesStore(null);
 			setPhase({ kind: "idle" });
 			return;
 		}
 		localStorage.setItem(storageKey(cwd), selectedPath);
 		const ctx = getPluginCtx();
 		const nextSession = new DesignSession(ctx, selectedPath);
+		const nextNotes = new NotesStore(ctx.fs, nextSession.dirPath);
 		let cancelled = false;
 		setPhase({ kind: "preparing", progress: { phase: "checking" } });
 		setSession(nextSession);
+		setNotesStore(nextNotes);
+		void nextNotes.load();
 		void (async () => {
 			await nextSession.open();
 			const server = await startDesignServer(ctx, nextSession.dirPath, (progress) => {
@@ -115,12 +131,18 @@ export function CanvasTab() {
 			if (cancelled) return;
 			setCanvasController({
 				session: nextSession,
+				notes: nextNotes,
 				port: server.port,
 				captureFrame: (frameId) => {
 					const capture = captureRef.current;
 					// 画布还没挂上（引擎刚就绪那一瞬），直接说清楚，别让工具卡到超时。
 					if (!capture) return Promise.reject(new Error("design canvas is not rendered yet"));
 					return capture(frameId);
+				},
+				resolveNoteElements: (frameId, queries) => {
+					const resolve = resolveNoteElementsRef.current;
+					if (!resolve) return Promise.reject(new Error("design canvas is not rendered yet"));
+					return resolve(frameId, queries);
 				},
 				openDesign: (vetdPath) => {
 					setPendingDesignPath(vetdPath);
@@ -136,11 +158,24 @@ export function CanvasTab() {
 		return () => {
 			cancelled = true;
 			nextSession.dispose();
+			nextNotes.dispose();
 			setCanvasController(null);
 			clearFrameActivity();
 			void stopDesignServer(nextSession.dirPath);
 		};
 	}, [selectedPath, cwd, t, refreshFiles, reloadNonce]);
+
+	// 顶部备注按钮的角标：待处理数量。
+	useEffect(() => {
+		if (!notesStore) {
+			setPendingCount(0);
+			return;
+		}
+		const update = (): void => setPendingCount(pendingNotes(notesStore.notes).length);
+		update();
+		const handle = notesStore.on(update);
+		return () => handle.dispose();
+	}, [notesStore]);
 
 	const createDesign = async (): Promise<void> => {
 		if (!cwd) return;
@@ -246,6 +281,31 @@ export function CanvasTab() {
 					>
 						◐
 					</button>
+					{/* 备注抽屉开关：有待处理时挂角标。 */}
+					<button
+						type="button"
+						onClick={() => setNotesOpen((open) => !open)}
+						title={t("notes.drawer.title")}
+						aria-label={t("notes.drawer.title")}
+						aria-pressed={notesOpen}
+						className={`relative flex shrink-0 items-center justify-center rounded-[10px] ${
+							notesOpen ? "bg-primary/12 text-primary" : "bg-muted/55 text-foreground hover:bg-muted"
+						}`}
+						style={{ width: DOCK_ICON, height: DOCK_ICON }}
+					>
+						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path
+								d="M21 11.5a8.5 8.5 0 01-8.5 8.5H4l1.6-3.2A8.5 8.5 0 1121 11.5z"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+						{pendingCount > 0 ? (
+							<span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-[var(--vetd-accent,#6366f1)] px-0.5 text-[9px] font-semibold leading-none text-white">
+								{pendingCount > 99 ? "99+" : pendingCount}
+							</span>
+						) : null}
+					</button>
 					{/* 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
 					    强制所有 frame 重新加载最新代码并重截位图。 */}
 					<button
@@ -318,18 +378,31 @@ export function CanvasTab() {
 						</button>
 					</div>
 				) : null}
-				{phase.kind === "ready" && session ? (
+				{phase.kind === "ready" && session && notesStore ? (
 					<>
 						<DesignCanvas
 							session={session}
+							notes={notesStore}
+							cwd={cwd}
 							port={phase.port}
 							bridge={bridgeRef.current}
 							captureRef={captureRef}
 							refreshRef={refreshRef}
 							previewTargetRef={previewTargetRef}
 							previewing={previewFrameId !== null}
+							resolveNoteElementsRef={resolveNoteElementsRef}
+							focusNoteRef={focusNoteRef}
 						/>
 						{showPalette ? <ThemePalette session={session} /> : null}
+						{notesOpen ? (
+							<NotesDrawer
+								store={notesStore}
+								session={session}
+								cwd={cwd}
+								onLocate={(noteId) => focusNoteRef.current?.(noteId)}
+								onClose={() => setNotesOpen(false)}
+							/>
+						) : null}
 						{previewFrameId !== null ? (
 							<PreviewDialog
 								port={phase.port}

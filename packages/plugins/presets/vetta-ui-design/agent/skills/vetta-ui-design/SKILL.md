@@ -270,6 +270,18 @@ single-screen designs.
    with `icon` renders one fallback everywhere, and the source reads fine.
 4. **Every touched frame screenshotted, and the PNG actually Read?**
 
+**User notes on the canvas**: the user pins Figma-style notes onto frames (or
+onto empty canvas) — each is a request addressed to you. `vetd_notes` lists the
+pending ones: every note carries its thread, a source anchor re-resolved at read
+time (`element.source` = `frames/x.tsx:LINE` — the authoritative edit target
+unless `anchorStale`), and per-frame screenshots where numbered pins mark the
+exact spots. Address each with a targeted edit, verify with `vetd_screenshot`,
+then reply through `vetd_notes`'s `resolve` — that reply is what marks the note
+handled; never touch `.notes.json` yourself. Notes reach you three ways: the
+user sends an explicit "handle my notes" prompt, `vetd_status` reports a
+`pendingNotes` count, and `vetd_screenshot` flags pending notes on the frame it
+just shot.
+
 **Editing from an attachment**: the canvas attaches the user's selection as
 structured context (`vetta.ui-design.canvas-selection`) — the selected frames
 with their absolute `file`, and for an element selection the exact
@@ -279,8 +291,9 @@ none — `vetd_screenshot` what you need). Edit that location. If it points into
 `components/`, the change hits every frame using it — say so.
 
 **Done** means: every frame you touched has been screenshotted and the image
-Read, that image is free of the three screenshot defects, and `issues` came back
-empty. Not one of those three is checked for you at the end of the turn — if you
+Read, that image is free of the three screenshot defects, `issues` came back
+empty, and no user note is left pending — if any tool response mentioned pending
+notes, run `vetd_notes` and address them before reporting back. Not one of those three is checked for you at the end of the turn — if you
 report back without them, whatever is broken simply stays broken. So before you
 report, name the frames you touched and confirm each one cleared all three.
 

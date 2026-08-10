@@ -62,9 +62,18 @@ interface PendingCapture {
 	timer: number;
 }
 
+interface PendingResolve {
+	resolve(payload: SelectedElementPayload | null): void;
+	timer: number;
+}
+
+/** 备注锚定的元素查询：按坐标（放置时 hit-test）或按 domPath（读取时保鲜）。 */
+export type ElementQuery = { x: number; y: number } | { domPath: string };
+
 export class BridgeHub {
 	private readonly frames = new Map<string, HTMLIFrameElement>();
 	private readonly captures = new Map<string, PendingCapture>();
+	private readonly resolves = new Map<string, PendingResolve>();
 	private events: BridgeHubEvents | null = null;
 	private captureCounter = 0;
 	/** frameId → 期望的检查模式，供 iframe 重新挂载后补发。 */
@@ -132,6 +141,15 @@ export class BridgeHub {
 			case "hmr-updated":
 				this.events?.onHmrUpdated(frameId);
 				return;
+			case "element-resolved": {
+				const requestId = typeof data.requestId === "string" ? data.requestId : "";
+				const pending = this.resolves.get(requestId);
+				if (!pending) return;
+				this.resolves.delete(requestId);
+				window.clearTimeout(pending.timer);
+				pending.resolve((data.payload as SelectedElementPayload | null) ?? null);
+				return;
+			}
 			case "captured": {
 				const requestId = typeof data.requestId === "string" ? data.requestId : "";
 				const pending = this.captures.get(requestId);
@@ -160,6 +178,11 @@ export class BridgeHub {
 			pending.reject(new Error("bridge stopped"));
 		}
 		this.captures.clear();
+		for (const pending of this.resolves.values()) {
+			window.clearTimeout(pending.timer);
+			pending.resolve(null);
+		}
+		this.resolves.clear();
 		this.frames.clear();
 		this.ready.clear();
 		for (const waiters of this.readyWaiters.values()) {
@@ -259,6 +282,26 @@ export class BridgeHub {
 
 	clearSelection(frameId: string): void {
 		this.post(frameId, { type: "clear-selection" });
+	}
+
+	/**
+	 * 备注锚定的元素查询。查不到、iframe 没挂、bridge 没就绪、超时都返回 null——
+	 * 锚不上元素备注照样成立（frame 锚），这条路上没有值得抛给用户的错误。
+	 */
+	async resolveElement(frameId: string, query: ElementQuery, timeoutMs = 5_000): Promise<SelectedElementPayload | null> {
+		if (!this.frames.has(frameId)) return null;
+		if (!(await this.waitReady(frameId, READY_TIMEOUT_MS))) return null;
+		if (!this.frames.has(frameId)) return null;
+		this.captureCounter += 1;
+		const requestId = `res-${this.captureCounter}`;
+		return new Promise<SelectedElementPayload | null>((resolve) => {
+			const timer = window.setTimeout(() => {
+				this.resolves.delete(requestId);
+				resolve(null);
+			}, timeoutMs);
+			this.resolves.set(requestId, { resolve, timer });
+			this.post(frameId, { type: "resolve-element", requestId, ...query });
+		});
 	}
 
 	async capture(

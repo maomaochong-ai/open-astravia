@@ -4,7 +4,8 @@ import { buildDesign } from "../engine/engine-manager";
 import type { DesignSession } from "../vetd/design-session";
 
 const BUILD_DIR = ".vetd-build";
-const EXCLUDED_PREFIXES = [`${BUILD_DIR}/`, "node_modules/", ".snapshots/"];
+// `.notes.json` 是用户和 Vetta 之间的工作批注，不是设计内容，分享包不带。
+const EXCLUDED_PREFIXES = [`${BUILD_DIR}/`, "node_modules/", ".snapshots/", ".notes.json"];
 
 function base64FromBytes(bytes: Uint8Array): string {
 	let binary = "";
