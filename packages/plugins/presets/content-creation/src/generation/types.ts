@@ -18,6 +18,10 @@ export interface ContentModelInputSlot {
 export interface ContentGenerationMode {
 	id: ContentGenerationModeId;
 	inputs: readonly ContentModelInputSlot[];
+	minTotalItems?: number;
+	maxTotalItems?: number;
+	aspectRatioPolicy?: "configurable" | "input-derived";
+	audioGeneration?: "none" | "always" | "optional";
 }
 
 export interface ContentModelDescriptor {

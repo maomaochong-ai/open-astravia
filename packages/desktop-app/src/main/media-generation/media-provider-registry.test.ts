@@ -35,6 +35,43 @@ describe("MediaProviderRegistry", () => {
 		expect(createRegistry().listProviders()).toEqual([]);
 	});
 
+	it("publishes cloned role-aware generation mode capabilities", () => {
+		const registry = createRegistry();
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:minimax-h3",
+				ownerId: "comfyui-media-provider",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [
+					{
+						operation: "generate",
+						kind: "video",
+						modes: ["image-to-video"],
+						modeCapabilities: [
+							{
+								mode: "image-to-video",
+								inputs: [{ role: "firstFrame", kinds: ["image"], minItems: 0, maxItems: 1 }],
+								minTotalItems: 1,
+								aspectRatioPolicy: "input-derived",
+							},
+						],
+					},
+				],
+			},
+			submit: vi.fn(),
+		});
+
+		expect(registry.listProviders()[0]?.capabilities[0]).toMatchObject({
+			modeCapabilities: [
+				{
+					mode: "image-to-video",
+					inputs: [{ role: "firstFrame", kinds: ["image"] }],
+					aspectRatioPolicy: "input-derived",
+				},
+			],
+		});
+	});
+
 	it("routes submissions through a registered host provider", async () => {
 		const registry = createRegistry();
 		const submit = vi.fn().mockResolvedValue(succeededJob());

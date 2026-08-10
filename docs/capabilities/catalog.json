@@ -610,6 +610,34 @@
                 "name": {
                   "minLength": 1,
                   "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    },
+                    {
+                      "const": "audio",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "durationSeconds": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
                 }
               }
             }
@@ -794,6 +822,34 @@
                 "name": {
                   "minLength": 1,
                   "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    },
+                    {
+                      "const": "audio",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "durationSeconds": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
                 }
               }
             }
@@ -5404,7 +5460,7 @@
               "type": "string"
             },
             "protocolVersion": {
-              "const": 3,
+              "const": 4,
               "type": "number"
             },
             "capabilities": {
@@ -5488,6 +5544,134 @@
                         "items": {
                           "exclusiveMinimum": 0,
                           "type": "number"
+                        }
+                      },
+                      "modeCapabilities": {
+                        "type": "array",
+                        "items": {
+                          "additionalProperties": false,
+                          "type": "object",
+                          "required": [
+                            "mode",
+                            "inputs"
+                          ],
+                          "properties": {
+                            "mode": {
+                              "anyOf": [
+                                {
+                                  "const": "text-to-image",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "image-to-image",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "text-to-video",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "image-to-video",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "video-to-video",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "reference-to-video",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "inputs": {
+                              "type": "array",
+                              "items": {
+                                "additionalProperties": false,
+                                "type": "object",
+                                "required": [
+                                  "role",
+                                  "kinds",
+                                  "minItems",
+                                  "maxItems"
+                                ],
+                                "properties": {
+                                  "role": {
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "kinds": {
+                                    "minItems": 1,
+                                    "type": "array",
+                                    "items": {
+                                      "anyOf": [
+                                        {
+                                          "const": "image",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "const": "video",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "const": "audio",
+                                          "type": "string"
+                                        },
+                                        {
+                                          "const": "document",
+                                          "type": "string"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "minItems": {
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "maxItems": {
+                                    "minimum": 1,
+                                    "type": "integer"
+                                  }
+                                }
+                              }
+                            },
+                            "minTotalItems": {
+                              "minimum": 0,
+                              "type": "integer"
+                            },
+                            "maxTotalItems": {
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "aspectRatioPolicy": {
+                              "anyOf": [
+                                {
+                                  "const": "configurable",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "input-derived",
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "audioGeneration": {
+                              "anyOf": [
+                                {
+                                  "const": "none",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "always",
+                                  "type": "string"
+                                },
+                                {
+                                  "const": "optional",
+                                  "type": "string"
+                                }
+                              ]
+                            }
+                          }
                         }
                       }
                     }
@@ -6223,6 +6407,34 @@
                 "name": {
                   "minLength": 1,
                   "type": "string"
+                },
+                "kind": {
+                  "anyOf": [
+                    {
+                      "const": "image",
+                      "type": "string"
+                    },
+                    {
+                      "const": "video",
+                      "type": "string"
+                    },
+                    {
+                      "const": "audio",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "durationSeconds": {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
                 }
               }
             }

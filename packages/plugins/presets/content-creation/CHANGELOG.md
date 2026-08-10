@@ -4,6 +4,7 @@
 
 ### Changed
 
+- MiniMax H3 视频输入改为能力驱动的两种创作模式：首尾帧显示独立的首帧/尾帧槽并跟随输入比例，全能参考接受模型声明的图片、视频和音频数量；切换模式会保留非当前模式素材，但生成时只提交当前模式输入。
 - Selected nodes are now named one by one on the input bar instead of collapsing into a single "N nodes" capsule, matching the host's new attachment strip.
 
 ### Fixed

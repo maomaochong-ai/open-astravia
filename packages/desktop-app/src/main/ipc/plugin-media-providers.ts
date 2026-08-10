@@ -125,7 +125,7 @@ function opaqueInputs(inputs: readonly MediaInput[]): {
 		let id = baseId;
 		for (let suffix = 2; lookup.has(id); suffix += 1) id = `${baseId}-${suffix}`;
 		lookup.set(id, mediaInput);
-		return { id, kind: mediaInput.kind, mimeType: mediaInput.mimeType };
+		return { id, role: mediaInput.role, kind: mediaInput.kind, mimeType: mediaInput.mimeType };
 	});
 	return { input, lookup };
 }
@@ -138,6 +138,10 @@ function cloneCapabilities(
 			return {
 				...capability,
 				modes: [...capability.modes],
+				modeCapabilities: capability.modeCapabilities?.map((mode) => ({
+					...mode,
+					inputs: mode.inputs.map((input) => ({ ...input, kinds: [...input.kinds] })),
+				})),
 				aspectRatios: capability.aspectRatios ? [...capability.aspectRatios] : undefined,
 				resolutions: capability.resolutions ? [...capability.resolutions] : undefined,
 				durationsSeconds: capability.durationsSeconds ? [...capability.durationsSeconds] : undefined,

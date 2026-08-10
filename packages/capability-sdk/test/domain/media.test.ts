@@ -46,6 +46,56 @@ describe("media domain capabilities", () => {
 		});
 	});
 
+	it("preserves semantic input roles and mode capability metadata", () => {
+		expect(
+			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseInput({
+				ownerId: "content-creation",
+				providerId: "plugin:minimax-h3",
+				operation: "generate",
+				kind: "video",
+				mode: "image-to-video",
+				prompt: "transition",
+				inputs: [
+					{
+						role: "lastFrame",
+						kind: "image",
+						source: { type: "plugin-blob", namespace: "content-creation", blobId: "last" },
+					},
+				],
+			}),
+		).toMatchObject({ inputs: [{ role: "lastFrame", kind: "image" }] });
+		expect(
+			DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.parseOutput([
+				{
+					id: "plugin:minimax-h3",
+					ownerId: "comfyui-media-provider",
+					protocolVersion: 4,
+					capabilities: [
+						{
+							operation: "generate",
+							kind: "video",
+							modes: ["image-to-video"],
+							modeCapabilities: [
+								{
+									mode: "image-to-video",
+									inputs: [{ role: "firstFrame", kinds: ["image"], minItems: 0, maxItems: 1 }],
+									minTotalItems: 1,
+									aspectRatioPolicy: "input-derived",
+								},
+							],
+						},
+					],
+				},
+			]),
+		).toMatchObject([
+			{
+				capabilities: [
+					{ modeCapabilities: [{ inputs: [{ role: "firstFrame" }], aspectRatioPolicy: "input-derived" }] },
+				],
+			},
+		]);
+	});
+
 	it("validates composition without binding the document format to an engine", () => {
 		expect(
 			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseInput({

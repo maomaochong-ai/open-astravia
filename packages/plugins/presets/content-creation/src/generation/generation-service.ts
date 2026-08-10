@@ -23,7 +23,9 @@ import type { ContentCreationWorkspace } from "../project/workspace";
 import { joinContentPath } from "../shared/path";
 import {
 	assignContentReferenceSlots,
-	isContentReferenceSlotCompatible,
+	isContentReferenceSlotCompatibleWithMode,
+	isContentReferenceSlotDeclared,
+	isRoleScopedContentGenerationMode,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
 	slotIdForReferenceKind,
@@ -119,6 +121,7 @@ export class ContentGenerationService {
 		cwd: string | null,
 		nodeId: string,
 		files: readonly ImportedContentReference[],
+		preferredSlotId?: string,
 	): Promise<ContentProjectDocument> {
 		if (files.length === 0) return await this.workspace.load(cwd);
 		const project = await this.workspace.load(cwd);
@@ -143,10 +146,27 @@ export class ContentGenerationService {
 		}> = [];
 		for (const file of files) {
 			const kind = assetKindForMimeType(file.mimeType);
-			if (!kind || !listAcceptedReferenceKinds(model, nextShapes).includes(kind)) {
+			const preferredSlot = preferredSlotId
+				? model.modes
+						.find((mode) => mode.id === node.data.modeId)
+						?.inputs.find((slot) => slot.id === preferredSlotId && kind && slot.accepts.includes(kind))
+				: undefined;
+			if (
+				!kind ||
+				(preferredSlotId
+					? !preferredSlot
+					: !listAcceptedReferenceKinds(model, nextShapes, node.data.modeId).includes(kind))
+			) {
 				throw new Error(`content model does not accept ${file.mimeType}: ${model.providerId}/${model.modelId}`);
 			}
-			const slotId = slotIdForReferenceKind(model, nextShapes, kind);
+			const preferredCount = preferredSlot
+				? nextShapes.filter((shape) => shape.slotId === preferredSlot.id).length
+				: 0;
+			const slotId = preferredSlotId
+				? preferredSlot && preferredCount < preferredSlot.maxItems
+					? preferredSlot.id
+					: null
+				: slotIdForReferenceKind(model, nextShapes, kind, node.data.modeId);
 			if (!slotId) throw new Error(`content model input capacity exceeded: ${model.providerId}/${model.modelId}`);
 			const assetId = crypto.randomUUID();
 			const binding = { id: crypto.randomUUID(), assetId, slotId };
@@ -270,9 +290,10 @@ export class ContentGenerationService {
 		this.activeJobIds.add(jobId);
 		try {
 			const references = await this.resolveReferences(cwd, prepared.candidates, assignment.assignedSlotIds);
+			const explicitAspectRatio = mode.aspectRatioPolicy === "input-derived" ? undefined : node.data.aspectRatio;
 			const aspectRatioReferences = await this.resolveAspectRatioReferences(
 				outputKind,
-				node.data.aspectRatio,
+				explicitAspectRatio,
 				prepared.candidates,
 				references,
 			);
@@ -284,7 +305,7 @@ export class ContentGenerationService {
 					prompt,
 					aspectRatio: resolveContentAspectRatio({
 						outputKind,
-						explicitAspectRatio: node.data.aspectRatio,
+						explicitAspectRatio,
 						supportedAspectRatios: model.aspectRatios,
 						references: aspectRatioReferences,
 					}),
@@ -469,14 +490,22 @@ function assignReferenceCandidates(
 	candidates: readonly ReferenceCandidate[],
 	preferredModeId?: string,
 ) {
-	const normalizedCandidates = candidates.map((candidate) => {
+	const strictPreferredMode = isRoleScopedContentGenerationMode(preferredModeId);
+	const preferredMode = strictPreferredMode ? model.modes.find((mode) => mode.id === preferredModeId) : undefined;
+	const normalizedCandidates = candidates.flatMap((candidate) => {
 		if (
 			!candidate.slotId ||
-			isContentReferenceSlotCompatible(model, { slotId: candidate.slotId, kind: candidate.asset.kind })
+			isContentReferenceSlotCompatibleWithMode(model, preferredModeId, {
+				slotId: candidate.slotId,
+				kind: candidate.asset.kind,
+			})
 		) {
-			return candidate;
+			return [candidate];
 		}
-		return { ...candidate, slotId: undefined };
+		if (preferredMode && candidate.origin === "binding" && isContentReferenceSlotDeclared(model, candidate.slotId)) {
+			return [];
+		}
+		return [{ ...candidate, slotId: undefined }];
 	});
 	const assignment = assignCandidates(model, normalizedCandidates, preferredModeId);
 	const result = {
@@ -507,7 +536,13 @@ function assignCandidates(
 ) {
 	const fixedReferences = referenceShapes(candidates.filter((candidate) => candidate.slotId));
 	const unassignedKinds = candidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
-	return assignContentReferenceSlots(model, fixedReferences, unassignedKinds, preferredModeId);
+	return assignContentReferenceSlots(
+		model,
+		fixedReferences,
+		unassignedKinds,
+		preferredModeId,
+		isRoleScopedContentGenerationMode(preferredModeId) && model.modes.some((mode) => mode.id === preferredModeId),
+	);
 }
 
 function listGenerationReferenceCandidates(

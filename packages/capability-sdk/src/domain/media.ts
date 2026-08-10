@@ -4,7 +4,7 @@ import { CAPABILITY_LAYERS, defineCapability } from "../contracts.js";
 import { JOB_TYPE, type Job } from "../foundation/job.js";
 import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../schema.js";
 
-export const MEDIA_PROTOCOL_VERSION = 3 as const;
+export const MEDIA_PROTOCOL_VERSION = 4 as const;
 
 export const MEDIA_OPERATIONS = {
 	GENERATE: "generate",
@@ -116,6 +116,28 @@ const mediaArtifactType = Type.Object(
 	},
 	{ additionalProperties: false },
 );
+const mediaGenerationInputSlotType = Type.Object(
+	{
+		role: requiredStringType,
+		kinds: Type.Array(mediaInputKindType, { minItems: 1 }),
+		minItems: Type.Integer({ minimum: 0 }),
+		maxItems: Type.Integer({ minimum: 1 }),
+	},
+	{ additionalProperties: false },
+);
+const mediaGenerationModeCapabilityType = Type.Object(
+	{
+		mode: mediaGenerationModeType,
+		inputs: Type.Array(mediaGenerationInputSlotType),
+		minTotalItems: Type.Optional(Type.Integer({ minimum: 0 })),
+		maxTotalItems: Type.Optional(Type.Integer({ minimum: 1 })),
+		aspectRatioPolicy: Type.Optional(Type.Union([Type.Literal("configurable"), Type.Literal("input-derived")])),
+		audioGeneration: Type.Optional(
+			Type.Union([Type.Literal("none"), Type.Literal("always"), Type.Literal("optional")]),
+		),
+	},
+	{ additionalProperties: false },
+);
 const mediaGenerateCapabilityType = Type.Object(
 	{
 		operation: Type.Literal(MEDIA_OPERATIONS.GENERATE),
@@ -124,6 +146,7 @@ const mediaGenerateCapabilityType = Type.Object(
 		aspectRatios: Type.Optional(Type.Array(requiredStringType)),
 		resolutions: Type.Optional(Type.Array(requiredStringType)),
 		durationsSeconds: Type.Optional(Type.Array(Type.Number({ exclusiveMinimum: 0 }))),
+		modeCapabilities: Type.Optional(Type.Array(mediaGenerationModeCapabilityType)),
 	},
 	{ additionalProperties: false },
 );
@@ -232,6 +255,8 @@ export type MediaInput = Readonly<Static<typeof mediaInputType>>;
 export type MediaProviderInput = Readonly<Static<typeof mediaProviderInputType>>;
 export type MediaOutput = Readonly<Static<typeof mediaOutputType>>;
 export type MediaArtifact = Readonly<Static<typeof mediaArtifactType>>;
+export type MediaGenerationInputSlot = Readonly<Static<typeof mediaGenerationInputSlotType>>;
+export type MediaGenerationModeCapability = Readonly<Static<typeof mediaGenerationModeCapabilityType>>;
 export type MediaProviderCapability = Readonly<Static<typeof mediaProviderCapabilityType>>;
 export type MediaProviderDescriptor = Readonly<Static<typeof mediaProviderDescriptorType>>;
 export type MediaSubmitInput = Readonly<Static<typeof mediaSubmitInputType>>;

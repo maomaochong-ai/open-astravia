@@ -34,15 +34,18 @@ export function ContentVideoGenerationSettings({
 	const aspectRatios = model?.aspectRatios ?? [];
 	const durations = model?.durations ?? [];
 	const resolutions = model?.resolutions ?? [];
-	const aspectRatio = draft.aspectRatio ?? AUTOMATIC_ASPECT_RATIO;
 	const duration = resolveSupportedModelOption(draft.duration, durations);
 	const resolution = resolveSupportedModelOption(draft.resolution, resolutions);
 	const availableMethods = videoMethods(model);
 	const method = resolveVideoMethod(draft.modeId, availableMethods);
+	const selectedMode = model?.modes.find((candidate) => candidate.id === availableMethods[method ?? "frames"]);
+	const configurableAspectRatio = selectedMode?.aspectRatioPolicy !== "input-derived";
+	const aspectRatio = configurableAspectRatio ? draft.aspectRatio ?? AUTOMATIC_ASPECT_RATIO : AUTOMATIC_ASPECT_RATIO;
+	const audioGeneration = selectedMode?.audioGeneration ?? "none";
 	const summary = [
 		t(`nodeEditor.videoSettings.method.${method ?? "unavailable"}`),
 		aspectRatio === AUTOMATIC_ASPECT_RATIO
-			? resolvedAspectRatio ?? aspectRatios[0]
+			? resolvedAspectRatio ?? t("nodeEditor.videoSettings.followImageShort")
 			: aspectRatio,
 		resolution,
 		duration === undefined ? undefined : t("nodeEditor.videoSettings.durationSummary", { duration }),
@@ -62,7 +65,10 @@ export function ContentVideoGenerationSettings({
 					<span className="text-muted-foreground" aria-hidden="true">
 						·
 					</span>
-					<span className="icon-[lucide--volume-x] block size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<span
+						className={`${audioGeneration === "always" ? "icon-[lucide--volume-2]" : "icon-[lucide--volume-x]"} block size-3.5 shrink-0 text-muted-foreground`}
+						aria-hidden="true"
+					/>
 					<span className="icon-[lucide--chevron-down] block size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				</button>
 			</PopoverTrigger>
@@ -88,7 +94,15 @@ export function ContentVideoGenerationSettings({
 										className={segmentedOptionClass(method === option)}
 										disabled={!modeId}
 										aria-pressed={method === option}
-										onClick={() => modeId && onChange({ ...draft, modeId })}
+										onClick={() => {
+											if (!modeId) return;
+											const mode = model?.modes.find((candidate) => candidate.id === modeId);
+											onChange({
+												...draft,
+												modeId,
+												...(mode?.aspectRatioPolicy === "input-derived" ? { aspectRatio: undefined } : {}),
+											});
+										}}
 									>
 										{t(`nodeEditor.videoSettings.method.${option}`)}
 										{option === "omni" ? (
@@ -109,18 +123,18 @@ export function ContentVideoGenerationSettings({
 							{/* Single row: keep every ratio chip on one line; icon height is capped so portrait frames do not blow the row. */}
 							<div
 								className={optionGroupClass("grid min-w-0")}
-								style={{ gridTemplateColumns: equalColumns(aspectRatios.length + 1) }}
+								style={{ gridTemplateColumns: equalColumns(configurableAspectRatio ? aspectRatios.length + 1 : 1) }}
 							>
 								<AspectRatioOption
 									label={t("nodeEditor.videoSettings.followImageShort")}
-									ratio={resolvedAspectRatio ?? aspectRatios[0]}
+									ratio={resolvedAspectRatio}
 									selected={aspectRatio === AUTOMATIC_ASPECT_RATIO}
 									title={t("nodeEditor.videoSettings.followImageSummary", {
 										ratio: resolvedAspectRatio ?? aspectRatios[0] ?? "",
 									})}
 									onClick={() => onChange({ ...draft, aspectRatio: undefined })}
 								/>
-								{aspectRatios.map((option) => (
+								{configurableAspectRatio ? aspectRatios.map((option) => (
 									<AspectRatioOption
 										key={option}
 										label={option}
@@ -128,7 +142,7 @@ export function ContentVideoGenerationSettings({
 										selected={aspectRatio === option}
 										onClick={() => onChange({ ...draft, aspectRatio: option })}
 									/>
-								))}
+								)) : null}
 							</div>
 						</SettingsSection>
 					) : null}
@@ -174,20 +188,33 @@ export function ContentVideoGenerationSettings({
 
 					<SettingsSection
 						label={t("nodeEditor.videoSettings.generateAudio")}
-						hint={t("nodeEditor.videoSettings.audioUnsupported")}
+						hint={t(
+							audioGeneration === "always"
+								? "nodeEditor.videoSettings.audioAlways"
+								: "nodeEditor.videoSettings.audioUnsupported",
+						)}
 					>
 						<div
 							className={optionGroupClass("grid grid-cols-2")}
-							title={t("nodeEditor.videoSettings.audioUnsupported")}
+							title={t(
+								audioGeneration === "always"
+									? "nodeEditor.videoSettings.audioAlways"
+									: "nodeEditor.videoSettings.audioUnsupported",
+							)}
 						>
-							<button type="button" className={segmentedOptionClass(false)} disabled>
+							<button
+								type="button"
+								className={`${segmentedOptionClass(audioGeneration === "always")} disabled:opacity-100`}
+								disabled
+								aria-pressed={audioGeneration === "always"}
+							>
 								{t("nodeEditor.videoSettings.audio.on")}
 							</button>
 							<button
 								type="button"
-								className={`${segmentedOptionClass(true)} disabled:opacity-100`}
+								className={`${segmentedOptionClass(audioGeneration !== "always")} disabled:opacity-100`}
 								disabled
-								aria-pressed="true"
+								aria-pressed={audioGeneration !== "always"}
 							>
 								{t("nodeEditor.videoSettings.audio.off")}
 							</button>

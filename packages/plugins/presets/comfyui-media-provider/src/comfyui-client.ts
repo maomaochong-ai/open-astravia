@@ -1,5 +1,6 @@
 import type {
 	PluginContext,
+	PluginMediaGenerationMode,
 	PluginMediaProviderHandlerContext,
 	PluginNetworkRequest,
 } from "@vetta-org/plugin-sdk";
@@ -59,7 +60,7 @@ export class ComfyUiClient {
 		return response.body;
 	}
 
-	async uploadImage(inputId: string, context: PluginMediaProviderHandlerContext): Promise<string> {
+	async uploadInput(inputId: string, context: PluginMediaProviderHandlerContext): Promise<string> {
 		const response = await context.uploadInput<{ name?: string; subfolder?: string }>(inputId, {
 			url: `${this.baseUrl}/upload/image`,
 			fieldName: "image",
@@ -71,19 +72,20 @@ export class ComfyUiClient {
 		return response.body.subfolder ? `${response.body.subfolder}/${response.body.name}` : response.body.name;
 	}
 
-	async loadTemplate(): Promise<ComfyPrompt> {
-		const configuredId = this.ctx.settings.get<string>("templatePromptId")?.trim();
+	async loadTemplate(mode: PluginMediaGenerationMode): Promise<ComfyPrompt> {
+		const settingKey = mode === "reference-to-video" ? "referenceTemplatePromptId" : "templatePromptId";
+		const configuredId = this.ctx.settings.get<string>(settingKey)?.trim();
 		const history = await this.request<Record<string, HistoryEntry>>(
 			configuredId ? `/history/${encodeURIComponent(configuredId)}` : "/history?max_items=20",
 		);
 		for (const entry of Object.values(history).reverse()) {
 			const prompt = entry.prompt?.[2];
-			if (entry.status?.status_str === "success" && isCompatibleMinimaxPrompt(prompt)) return prompt;
+			if (entry.status?.status_str === "success" && isCompatibleMinimaxPrompt(prompt, mode)) return prompt;
 		}
 		throw new Error(
 			configuredId
 				? `Configured ComfyUI template job is unavailable or incompatible: ${configuredId}`
-				: "No successful compatible MiniMax H3 API Prompt was found in ComfyUI history",
+				: `No successful compatible MiniMax H3 ${mode} API Prompt was found in ComfyUI history`,
 		);
 	}
 

@@ -73,7 +73,7 @@ interface GraphWorkspaceProps {
 	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
-	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
+	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
 }
 

@@ -61,6 +61,7 @@ describe("PluginCapabilityAdapter media permission", () => {
 			inputs: [
 				{
 					id: "reference-1",
+					role: "firstFrame",
 					kind: "image",
 					mimeType: "image/png",
 					source: { type: "plugin-blob", blobId: "blob-1" },
@@ -74,6 +75,7 @@ describe("PluginCapabilityAdapter media permission", () => {
 				ownerId: "media-consumer",
 				inputs: [
 					{
+						role: "firstFrame",
 						source: { type: "plugin-blob", namespace: "media-consumer", blobId: "blob-1" },
 					},
 				],

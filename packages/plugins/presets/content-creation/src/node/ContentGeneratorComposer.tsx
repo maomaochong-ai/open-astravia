@@ -2,7 +2,9 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { useEffect, useMemo, useState } from "react";
 import {
 	assignContentReferenceSlots,
-	isContentReferenceSlotCompatible,
+	isContentReferenceSlotCompatibleWithMode,
+	isContentReferenceSlotDeclared,
+	isRoleScopedContentGenerationMode,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
 	slotIdForReferenceKind,
@@ -29,6 +31,7 @@ import {
 	type ContentGeneratorAssetMention,
 } from "./ContentGeneratorPromptEditor";
 import { ContentReferenceInput } from "./ContentReferenceInput";
+import { ContentVideoReferenceInput } from "./ContentVideoReferenceInput";
 import type { ConnectedContentAsset } from "./material-assets";
 import { NodeEditorPanel } from "./NodeEditorPanel";
 import {
@@ -49,7 +52,7 @@ interface ContentGeneratorComposerProps {
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onRunNode: () => Promise<void>;
-	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
+	onImportReferences: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 }
 
 export function ContentGeneratorComposer({
@@ -107,17 +110,32 @@ export function ContentGeneratorComposer({
 		? assignGeneratorReferences(selectedModel, draftReferenceAssets, promptReferenceKinds, draft.modeId)
 		: { mode: null, reason: null, references: [], assignedSlotIds: [] };
 	const referenceShapes = resolution.references;
-	const acceptedKinds = selectedModel ? listAcceptedReferenceKinds(selectedModel, referenceShapes) : [];
+	const activeReferenceAssets = selectedModel
+		? draftReferenceAssets.filter(({ binding, asset }) =>
+				isContentReferenceSlotCompatibleWithMode(selectedModel, resolution.mode?.id ?? draft.modeId, {
+					slotId: binding.slotId,
+					kind: asset.kind,
+				}),
+			)
+		: draftReferenceAssets;
+	const acceptedKinds = selectedModel
+		? listAcceptedReferenceKinds(selectedModel, referenceShapes, resolution.mode?.id ?? draft.modeId)
+		: [];
 	const selectedAssetIds = new Set([
-		...draftReferenceAssets.map(({ asset }) => asset.id),
+		...activeReferenceAssets.map(({ asset }) => asset.id),
 		...promptReferenceAssets.map(({ asset }) => asset.id),
 	]);
 	const connectedReferenceOptions = connectedAssets
 		.filter(({ asset }) => !selectedAssetIds.has(asset.id))
 		.map((candidate) => ({
 			...candidate,
-			slotId: selectedModel
-				? slotIdForReferenceKind(selectedModel, referenceShapes, candidate.asset.kind)
+				slotId: selectedModel
+				? slotIdForReferenceKind(
+						selectedModel,
+						referenceShapes,
+						candidate.asset.kind,
+						resolution.mode?.id ?? draft.modeId,
+					)
 				: null,
 		}));
 	const promptReferenceAssetIds = new Set(promptReferenceAssets.map(({ asset }) => asset.id));
@@ -126,13 +144,20 @@ export function ContentGeneratorComposer({
 		if (!binding && promptReferenceAssetIds.has(candidate.asset.id)) return [];
 		const slotId =
 			binding?.slotId ??
-			(selectedModel ? slotIdForReferenceKind(selectedModel, referenceShapes, candidate.asset.kind) : null);
+			(selectedModel
+				? slotIdForReferenceKind(
+						selectedModel,
+						referenceShapes,
+						candidate.asset.kind,
+						resolution.mode?.id ?? draft.modeId,
+					)
+				: null);
 		return slotId ? [{ candidate, slotId, binding }] : [];
 	});
 	const isRunning = status === "running" || status === "queued";
 	const resolvedPrompt = resolveContentPrompt(connectedPrompts, draft);
 	const canGenerate = Boolean(selectedModel && resolution.mode && resolvedPrompt && !isRunning);
-	const aspectRatioAssets = [...draftReferenceAssets, ...promptReferenceAssets].map(({ asset }) => asset);
+	const aspectRatioAssets = [...activeReferenceAssets, ...promptReferenceAssets].map(({ asset }) => asset);
 	const firstImage = kind === "video-generator" ? aspectRatioAssets.find(({ kind }) => kind === "image") : undefined;
 	const inferredImageDimensions = useInferredImageDimensions(firstImage);
 	const resolvedAspectRatio = selectedModel
@@ -202,9 +227,39 @@ export function ContentGeneratorComposer({
 					<span className="icon-[lucide--library] block size-3" aria-hidden="true" />
 					<span>{t("nodeEditor.reference.section")}</span>
 				</div>
+				{kind === "video-generator" ? (
+					<ContentVideoReferenceInput
+						modeId={resolution.mode?.id ?? draft.modeId}
+						model={selectedModel}
+						references={activeReferenceAssets}
+						connectedReferences={connectedReferenceOptions}
+						acceptedKinds={acceptedKinds}
+						disabled={isRunning}
+						onImport={async (files, slotId) => {
+							if (!selectedModel) return;
+							const next = { ...draft, providerId: selectedModel.providerId, modelId: selectedModel.modelId };
+							setDraft(next);
+							await onUpdate(next);
+							await onImportReferences(files, slotId);
+						}}
+						onRemove={(bindingId) => {
+							commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
+						}}
+						onSelectConnected={({ sourceNodeId, asset, slotId }) => {
+							if (!slotId) return;
+							commit({
+								...draft,
+								inputs: [
+									...(draft.inputs ?? []),
+									{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
+								],
+							});
+						}}
+					/>
+				) : (
 				<ContentReferenceInput
 					compact
-					references={draftReferenceAssets}
+					references={activeReferenceAssets}
 					connectedReferences={connectedReferenceOptions}
 					acceptedKinds={acceptedKinds}
 					disabled={isRunning}
@@ -229,6 +284,7 @@ export function ContentGeneratorComposer({
 						});
 					}}
 				/>
+				)}
 			</div>
 			{compatibilityMessage ? (
 				<p className="mb-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
@@ -302,18 +358,30 @@ function assignGeneratorReferences(
 	unassignedKinds: readonly ContentReferenceKind[],
 	preferredModeId?: string,
 ) {
-	const fixedReferences = references.flatMap(({ binding, asset }) => {
+	const preferredMode = isRoleScopedContentGenerationMode(preferredModeId)
+		? model.modes.find((mode) => mode.id === preferredModeId)
+		: undefined;
+	const activeReferences = references.filter(({ binding, asset }) => {
 		const reference = { slotId: binding.slotId, kind: asset.kind };
-		return isContentReferenceSlotCompatible(model, reference) ? [reference] : [];
+		return (
+			!preferredMode ||
+			isContentReferenceSlotCompatibleWithMode(model, preferredModeId, reference) ||
+			!isContentReferenceSlotDeclared(model, binding.slotId)
+		);
 	});
-	const reassignedKinds = references.flatMap(({ binding, asset }) => {
+	const fixedReferences = activeReferences.flatMap(({ binding, asset }) => {
 		const reference = { slotId: binding.slotId, kind: asset.kind };
-		return isContentReferenceSlotCompatible(model, reference) ? [] : [asset.kind];
+		return isContentReferenceSlotCompatibleWithMode(model, preferredModeId, reference) ? [reference] : [];
+	});
+	const reassignedKinds = activeReferences.flatMap(({ binding, asset }) => {
+		const reference = { slotId: binding.slotId, kind: asset.kind };
+		return isContentReferenceSlotCompatibleWithMode(model, preferredModeId, reference) ? [] : [asset.kind];
 	});
 	return assignContentReferenceSlots(
 		model,
 		fixedReferences,
 		[...reassignedKinds, ...unassignedKinds],
 		preferredModeId,
+		Boolean(preferredMode),
 	);
 }

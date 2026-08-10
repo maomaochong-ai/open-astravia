@@ -1,6 +1,7 @@
 import type {
 	PluginJobsApi,
 	PluginMediaApi,
+	PluginMediaJob,
 	PluginMediaProviderDescriptor,
 } from "@vetta-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
@@ -9,7 +10,7 @@ import { HostMediaProvider } from "../src/generation/host-media-provider";
 const providerDescriptor: PluginMediaProviderDescriptor = {
 	id: "host:media",
 	ownerId: "host",
-	protocolVersion: 3,
+	protocolVersion: 4,
 	capabilities: [
 		{
 			operation: "generate",
@@ -24,6 +25,19 @@ const providerDescriptor: PluginMediaProviderDescriptor = {
 			aspectRatios: ["16:9"],
 			resolutions: ["1080p"],
 			durationsSeconds: [4, 8],
+			modeCapabilities: [
+				{
+					mode: "image-to-video",
+					inputs: [
+						{ role: "firstFrame", kinds: ["image"], minItems: 0, maxItems: 1 },
+						{ role: "lastFrame", kinds: ["image"], minItems: 0, maxItems: 1 },
+					],
+					minTotalItems: 1,
+					maxTotalItems: 2,
+					aspectRatioPolicy: "input-derived",
+					audioGeneration: "always",
+				},
+			],
 		},
 	],
 };
@@ -59,6 +73,15 @@ describe("HostMediaProvider", () => {
 				durations: [4, 8],
 			}),
 		]);
+		expect(provider.listModels()[1]?.modes.find(({ id }) => id === "image-to-video")).toMatchObject({
+			inputs: [
+				{ id: "firstFrame", maxItems: 1 },
+				{ id: "lastFrame", maxItems: 1 },
+			],
+			minTotalItems: 1,
+			aspectRatioPolicy: "input-derived",
+			audioGeneration: "always",
+		});
 	});
 
 	it("persists the host execution before returning a completed artifact", async () => {
@@ -98,6 +121,61 @@ describe("HostMediaProvider", () => {
 		expect(onExecution).toHaveBeenCalledWith({ kind: "host-job", jobId: "job-1", outputKind: "image" });
 	});
 
+	it("forwards distinct first and last frame roles through the host media contract", async () => {
+		const { provider, submit } = createProvider();
+		submit.mockResolvedValue({
+			id: "job-frames",
+			domain: "media",
+			operation: "generate",
+			status: "succeeded",
+			artifacts: [
+				{
+					id: "artifact-frames",
+					kind: "video",
+					mimeType: "video/mp4",
+					sizeBytes: 64,
+					lifetime: "temporary",
+				},
+			],
+		});
+
+		await provider.generate(
+			{
+				providerId: "host-media",
+				modelId: "host:media:video",
+				modeId: "image-to-video",
+				prompt: "transition between frames",
+				references: [
+					{
+						id: "first",
+						slotId: "firstFrame",
+						kind: "image",
+						mimeType: "image/png",
+						source: { type: "plugin-blob", blobId: "first" },
+					},
+					{
+						id: "last",
+						slotId: "lastFrame",
+						kind: "image",
+						mimeType: "image/png",
+						source: { type: "plugin-blob", blobId: "last" },
+					},
+				],
+			},
+			{ readReference: vi.fn() },
+		);
+
+		expect(submit).toHaveBeenCalledWith(
+			expect.objectContaining({
+				mode: "image-to-video",
+				inputs: [
+					expect.objectContaining({ id: "first", role: "firstFrame" }),
+					expect.objectContaining({ id: "last", role: "lastFrame" }),
+				],
+			}),
+		);
+	});
+
 	it("resumes a persisted queued job and reports progress", async () => {
 		vi.useFakeTimers();
 		try {
@@ -110,7 +188,7 @@ describe("HostMediaProvider", () => {
 					status: "running",
 					progress: { value: 0.6 },
 					artifacts: [],
-				})
+				} as PluginMediaJob)
 				.mockResolvedValueOnce({
 					id: "job-2",
 					domain: "media",
@@ -125,7 +203,7 @@ describe("HostMediaProvider", () => {
 						lifetime: "temporary",
 					},
 					],
-				});
+				} as PluginMediaJob);
 			const onProgress = vi.fn().mockResolvedValue(undefined);
 			const result = provider.resume(
 				{ kind: "host-job", jobId: "job-2", outputKind: "video" },

@@ -4,6 +4,8 @@
 	"provider.name": "ComfyUI · MiniMax H3",
 	"settings.baseUrl.title": "ComfyUI 服务地址",
 	"settings.baseUrl.description": "ComfyUI HTTP API 的根地址。",
-	"settings.templatePromptId.title": "模板任务 ID",
-	"settings.templatePromptId.description": "可选。固定一个成功任务作为 API Prompt 模板；留空时使用最近的兼容成功任务。"
+	"settings.templatePromptId.title": "首尾帧模板任务 ID",
+	"settings.templatePromptId.description": "可选。固定一个成功的 MiniMax H3 首尾帧任务作为 API Prompt 模板；留空时使用最近的兼容成功任务。",
+	"settings.referenceTemplatePromptId.title": "全能参考模板任务 ID",
+	"settings.referenceTemplatePromptId.description": "填写一个成功的 MiniMax H3 全能参考任务 ID 后启用全能参考模式。模板应保留所需的图片、视频和音频加载节点。"
 }

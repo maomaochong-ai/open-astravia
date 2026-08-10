@@ -99,11 +99,32 @@ export function resolveContentPrompt(
 		return data.promptDocument.segments
 			.flatMap((segment) => {
 				if (segment.type === "text") return [segment.text];
-				if (segment.type === "asset-reference") return [];
+				if (segment.type === "asset-reference") {
+					const token = contentMediaReferenceToken(data, segment.bindingId);
+					return token ? [token] : [];
+				}
 				return [sources.find((source) => source.nodeId === segment.sourceNodeId)?.prompt ?? ""];
 			})
 			.join("")
 			.trim();
 	}
 	return resolveConnectedPromptSource(sources, data)?.prompt.trim() ?? contentPromptTextFromData(data);
+}
+
+function contentMediaReferenceToken(data: ContentNodeData, bindingId: string): string | null {
+	const bindings = data.inputs ?? [];
+	const binding = bindings.find((candidate) => candidate.id === bindingId);
+	if (!binding) return null;
+	const label =
+		binding.slotId === "referenceImages"
+			? "Picture"
+			: binding.slotId === "referenceVideos" || binding.slotId === "referenceVideo"
+				? "Video"
+				: binding.slotId === "referenceAudios"
+					? "Audio"
+					: null;
+	if (!label) return null;
+	const sameRole = bindings.filter((candidate) => candidate.slotId === binding.slotId);
+	const index = sameRole.findIndex((candidate) => candidate.id === bindingId);
+	return index < 0 ? null : `<${label} ${index + 1}>`;
 }

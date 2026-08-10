@@ -2,7 +2,7 @@
 
 ## 状态
 
-已采纳。取代 ADR-0057 的媒体协议 v2；当前未发布，因此不提供兼容层。
+已采纳。取代 ADR-0057 的媒体协议 v2；媒体协议当前版本为 v4。
 
 ## 背景
 
@@ -22,6 +22,8 @@ Remotion 暴露了问题，但不是协议的设计中心：公共 API 不应包
 
 Provider 用同样的判别联合声明能力。`compose` 按接受的工程 MIME 与输出 MIME 匹配，`transcode` 按输入、输出 MIME 匹配。公共协议不认识具体引擎。
 
+生成 Provider 除 `modes` 外可用 `modeCapabilities` 声明每种模式的语义输入槽：稳定的 `role`、接受的媒体 kind、单槽与总数量上下限，以及比例和音频策略。提交输入携带相同 `role`，宿主在不透明化与转发时保留它。这样“首帧/尾帧”和“图片/视频/音频参考”等创作语义可以跨宿主与 Provider 对齐，同时不暴露 ComfyUI 节点名、云厂商字段或文件路径。旧 Provider 只声明 `modes` 时，消费方可继续使用既有的模式级默认规则。
+
 ### 2. 任务成为 Foundation Capability
 
 媒体提交返回宿主生成的通用 `Job`：`id`、`domain`、`operation`、`status`、结构化进度、临时产物、元数据和错误。`ctx.jobs` 统一提供 `get()`、`wait()` 与 `cancel()`。
@@ -38,7 +40,7 @@ JobManager 仍是主进程内存状态；如果主进程重启或调用方恢复
 
 ### 4. Provider 传输与执行方式解耦
 
-Provider 输入只包含不透明 input id、kind 与 MIME。远程 Provider 可在单次调用上下文用 `uploadInput()` 流式上传；Provider 输出可引用远程 URL、自己的插件 Blob 或有权限读取的工作区文件，宿主统一导入为消费方临时产物。
+Provider 输入只包含不透明 input id、语义 role、kind 与 MIME。远程 Provider 可在单次调用上下文用 `uploadInput()` 流式上传；Provider 输出可引用远程 URL、自己的插件 Blob 或有权限读取的工作区文件，宿主统一导入为消费方临时产物。
 
 注册本地 Provider 不再强制 `network.fetch`。只有实际使用远程 URL 或上传时才检查网络权限；插件 Blob 和工作区文件分别检查 `storage.read` 与 `fs.read`。
 

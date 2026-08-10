@@ -6,6 +6,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **媒体生成角色化输入协议 v4**：宿主在 Provider 注册、能力发现和不透明输入转发中保留模式级输入槽与 `role`，支持首帧/尾帧及图片、视频、音频参考，同时继续隔离真实素材路径。
 - **插件动态 Agent 工具 Hook**（ADR-0062）：Plugin API 1.3.0 新增 `ctx.agent.registerHook()`，ESM / Module Federation 插件可按场景、工作模式和工具名注册 `tool.before` / `tool.after` / `tool.error` handler；注册、执行、注销经 preload/main/renderer IPC bridge 回到插件 handler，并受 `agent.hooks.register` + `agent.hookHandler.execute` 双权限、30 秒超时上限、取消与结构校验约束。插件停用、重载和卸载会清理 contribution；QuickJS 继续不开放 Agent 动态 handler。
 - **App Action 能力适配与密钥弹窗补齐**：`skills.*` 文案对齐产品「能力页」（公共 id 兼容不变），`skills.manage` 新增 `install-from-market`（主进程按 slug 下载安装）；`im.manage` 新增 `set-feishu-config`，审批弹窗手填 App Secret 等密钥；`mcp.upsert` 审批支持 env/headers 手填；`models.upsert-provider` 指引 Agent 省略 apiKey。导航目录补 `abilities` / `scenes` / `knowledge`。补齐官方 API、审批解析与 vetta-actions 域单测。
 - **第三方插件可选 QuickJS-WASM Worker 沙盒**（ADR-0061）：`runtime: "quickjs"` 的入口只作为文本进入独立 Worker/QuickJS context，不可访问 DOM、Electron、Node、原生 fetch 或模块加载器；插件用宿主渲染的声明式 Activity Tab 获得布局、文本、表单和动作 UI，网络/私有存储/设置/i18n 经固定 JSON RPC allowlist 接回现有 capability session。每个上下文配置 32 MB 内存、512 KB 栈、1 秒单次执行和待处理任务上限；现有 ESM/MF 插件行为不变。

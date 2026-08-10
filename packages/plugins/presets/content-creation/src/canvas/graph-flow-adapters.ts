@@ -26,7 +26,7 @@ export interface ContentNodeActions {
 	onResize: (nodeId: string, position: { x: number; y: number }, width: number, height: number) => void;
 	onRunNode: (nodeId: string) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
-	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
+	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onAddToTimeline: (nodeId: string) => Promise<void>;
 }
 
@@ -105,7 +105,7 @@ export function toContentFlowNodes(
 				onResize: (position, width, height) => actions.onResize(node.id, position, width, height),
 				onRunNode: () => actions.onRunNode(node.id),
 				onImportAssets: (files) => actions.onImportAssets(node.id, files),
-				onImportReferences: (files) => actions.onImportReferences(node.id, files),
+				onImportReferences: (files, slotId) => actions.onImportReferences(node.id, files, slotId),
 				onAddToTimeline:
 					node.kind === "image-generator" || node.kind === "video-generator" || node.kind === "asset"
 						? () => actions.onAddToTimeline(node.id)

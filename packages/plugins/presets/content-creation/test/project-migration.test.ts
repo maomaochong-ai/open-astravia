@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { migrateContentProjectDocument } from "../src/project/migrate-project";
+import { serializeContentProject } from "../src/project/persistence";
 import { createContentProject } from "../src/project/types";
 
 describe("content project migrations", () => {
@@ -72,5 +73,36 @@ describe("content project migrations", () => {
 		expect(migrated?.project.graph.nodes[0]?.purpose).toBeTruthy();
 		expect(migrated?.project.graph.nodes[0]?.data).not.toHaveProperty("label");
 		expect(migrated?.project.jobs).toHaveLength(1);
+	});
+
+	it("round-trips frame and omni-reference roles without losing inactive mode inputs", () => {
+		const project = createContentProject("C:/project", "2026-08-10T00:00:00.000Z");
+		project.assets.push(
+			{ id: "first", blobId: "first", kind: "image", name: "first.png", mimeType: "image/png", createdAt: project.createdAt },
+			{ id: "last", blobId: "last", kind: "image", name: "last.png", mimeType: "image/png", createdAt: project.createdAt },
+			{ id: "video", blobId: "video", kind: "video", name: "video.mp4", mimeType: "video/mp4", createdAt: project.createdAt },
+		);
+		project.graph.nodes.push({
+			id: "generator",
+			kind: "video-generator",
+			position: { x: 0, y: 0 },
+			status: "idle",
+			data: {
+				modeId: "image-to-video",
+				inputs: [
+					{ id: "first-binding", assetId: "first", slotId: "firstFrame" },
+					{ id: "last-binding", assetId: "last", slotId: "lastFrame" },
+					{ id: "video-binding", assetId: "video", slotId: "referenceVideos" },
+				],
+			},
+		});
+
+		const restored = migrateContentProjectDocument(serializeContentProject(project), null, "C:/project")?.project;
+
+		expect(restored?.graph.nodes[0]?.data.inputs).toEqual([
+			expect.objectContaining({ assetId: "first", slotId: "firstFrame" }),
+			expect.objectContaining({ assetId: "last", slotId: "lastFrame" }),
+			expect.objectContaining({ assetId: "video", slotId: "referenceVideos" }),
+		]);
 	});
 });

@@ -53,6 +53,7 @@ export type PluginMediaInputSource =
 
 export interface PluginMediaInput {
 	id?: string;
+	role?: string;
 	kind: PluginMediaKind;
 	mimeType?: string;
 	source: PluginMediaInputSource;
@@ -108,6 +109,22 @@ export type PluginMediaSubmitRequest =
 	| PluginMediaComposeRequest
 	| PluginMediaTranscodeRequest;
 
+export interface PluginMediaGenerationInputSlot {
+	role: string;
+	kinds: readonly PluginMediaKind[];
+	minItems: number;
+	maxItems: number;
+}
+
+export interface PluginMediaGenerationModeCapability {
+	mode: PluginMediaGenerationMode;
+	inputs: readonly PluginMediaGenerationInputSlot[];
+	minTotalItems?: number;
+	maxTotalItems?: number;
+	aspectRatioPolicy?: "configurable" | "input-derived";
+	audioGeneration?: "none" | "always" | "optional";
+}
+
 export type PluginMediaCapability =
 	| {
 			operation: "generate";
@@ -116,6 +133,7 @@ export type PluginMediaCapability =
 			aspectRatios?: readonly string[];
 			resolutions?: readonly string[];
 			durationsSeconds?: readonly number[];
+			modeCapabilities?: readonly PluginMediaGenerationModeCapability[];
 	  }
 	| {
 			operation: "compose";
@@ -144,6 +162,7 @@ export type PluginMediaJob = Omit<PluginJob<PluginMediaArtifact>, "error"> & {
 /** A media input exposed to its provider without revealing its storage location. */
 export interface PluginMediaProviderInput {
 	id: string;
+	role?: string;
 	kind: PluginMediaKind;
 	mimeType?: string;
 }

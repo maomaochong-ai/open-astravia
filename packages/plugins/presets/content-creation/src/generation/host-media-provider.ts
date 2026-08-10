@@ -5,6 +5,7 @@ import {
 	type PluginMediaApi,
 	type PluginMediaArtifact,
 	type PluginMediaGenerationMode,
+	type PluginMediaJob,
 	type PluginMediaProviderDescriptor,
 	type PluginMediaInput,
 } from "@vetta-org/plugin-sdk";
@@ -33,15 +34,20 @@ const IMAGE_TO_IMAGE_MODE: ContentGenerationMode = {
 const TEXT_TO_VIDEO_MODE: ContentGenerationMode = { id: "text-to-video", inputs: [] };
 const IMAGE_TO_VIDEO_MODE: ContentGenerationMode = {
 	id: "image-to-video",
-	inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
+	inputs: [{ id: "firstFrame", accepts: ["image"], minItems: 1, maxItems: 1 }],
 };
 const VIDEO_TO_VIDEO_MODE: ContentGenerationMode = {
 	id: "video-to-video",
-	inputs: [{ id: "referenceVideo", accepts: ["video"], minItems: 1, maxItems: 1 }],
+	inputs: [{ id: "referenceVideos", accepts: ["video"], minItems: 1, maxItems: 1 }],
 };
 const REFERENCE_TO_VIDEO_MODE: ContentGenerationMode = {
 	id: "reference-to-video",
-	inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 8 }],
+	inputs: [
+		{ id: "referenceImages", accepts: ["image"], minItems: 0, maxItems: 8 },
+		{ id: "referenceVideos", accepts: ["video"], minItems: 0, maxItems: 1 },
+		{ id: "referenceAudios", accepts: ["audio"], minItems: 0, maxItems: 1 },
+	],
+	minTotalItems: 1,
 };
 
 interface HostMediaModelBinding {
@@ -83,6 +89,7 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		const inputs = request.references.map<PluginMediaInput>((reference) => {
 			return {
 				id: reference.id,
+				role: reference.slotId,
 				kind: reference.kind,
 				mimeType: reference.mimeType,
 				source: reference.source,
@@ -115,11 +122,11 @@ export class HostMediaProvider implements ContentProviderAdapter {
 	private async waitForJob(
 		execution: ContentProviderExecution,
 		context: ContentProviderGenerationContext,
-		initial?: PluginJob,
+		initial?: PluginMediaJob,
 	): Promise<GeneratedContent> {
 		const timeoutSignal = AbortSignal.timeout(HOST_MEDIA_JOB_TIMEOUT_MS);
 		const signal = context.signal ? AbortSignal.any([context.signal, timeoutSignal]) : timeoutSignal;
-		let completed = initial;
+		let completed: PluginJob | undefined = initial;
 		try {
 			while (!completed || !isTerminalJob(completed)) {
 				if (completed) await notifyProgress(context, completed);
@@ -141,15 +148,22 @@ export class HostMediaProvider implements ContentProviderAdapter {
 				retryable: true,
 			});
 		}
+		if (completed.status === "failed" && completed.error?.code === "job-not-found") {
+			throw new PluginMediaError({
+				code: "provider-failed",
+				message: `host media job is no longer available: ${execution.jobId}`,
+				retryable: true,
+			});
+		}
+		if (!isMediaJob(completed)) {
+			throw new PluginMediaError({
+				code: "provider-failed",
+				message: `host job is not a media job: ${execution.jobId}`,
+				retryable: true,
+			});
+		}
 		await notifyProgress(context, completed);
 		if (completed.status === "failed") {
-			if (completed.error?.code === "job-not-found") {
-				throw new PluginMediaError({
-					code: "provider-failed",
-					message: `host media job is no longer available: ${execution.jobId}`,
-					retryable: true,
-				});
-			}
 			throw new PluginMediaError(
 				completed.error ?? {
 					code: "provider-failed",
@@ -165,7 +179,10 @@ export class HostMediaProvider implements ContentProviderAdapter {
 				retryable: true,
 			});
 		}
-		const artifact = completed.artifacts.find((candidate) => candidate.kind === execution.outputKind);
+		const artifact = completed.artifacts.find(
+			(candidate): candidate is PluginMediaArtifact & { kind: "image" | "video" } =>
+				candidate.kind === execution.outputKind,
+		);
 		if (!artifact) {
 			throw new PluginMediaError({
 				code: "provider-failed",
@@ -175,6 +192,17 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		}
 		return generatedContentFromArtifact(artifact);
 	}
+}
+
+function isMediaJob(job: PluginJob): job is PluginMediaJob {
+	return (
+		job.domain === "media" &&
+		job.artifacts.every(
+			(artifact): artifact is PluginMediaArtifact =>
+				"kind" in artifact &&
+				(artifact.kind === "image" || artifact.kind === "video" || artifact.kind === "audio"),
+		)
+	);
 }
 
 function isTerminalJob(job: PluginJob): boolean {
@@ -217,7 +245,7 @@ function createModels(provider: PluginMediaProviderDescriptor): ContentModelDesc
 		const modes = capabilities
 			.flatMap((capability) => capability.modes)
 			.filter((mode, index, all) => all.indexOf(mode) === index)
-			.map(contentModeFromMediaMode);
+			.map((mode) => contentModeFromMediaMode(mode, capabilities));
 		if (modes.length === 0) return [];
 		return [{
 			providerId: HOST_MEDIA_PROVIDER_ID,
@@ -234,7 +262,28 @@ function createModels(provider: PluginMediaProviderDescriptor): ContentModelDesc
 	});
 }
 
-function contentModeFromMediaMode(mode: PluginMediaGenerationMode): ContentGenerationMode {
+function contentModeFromMediaMode(
+	mode: PluginMediaGenerationMode,
+	capabilities: readonly Extract<PluginMediaProviderDescriptor["capabilities"][number], { operation: "generate" }>[],
+): ContentGenerationMode {
+	const declared = capabilities.flatMap((capability) => capability.modeCapabilities ?? []).find((item) => item.mode === mode);
+	if (declared) {
+		return {
+			id: mode,
+			inputs: declared.inputs.map((input) => ({
+				id: input.role,
+				accepts: input.kinds.filter(
+					(kind): kind is "image" | "video" | "audio" => kind === "image" || kind === "video" || kind === "audio",
+				),
+				minItems: input.minItems,
+				maxItems: input.maxItems,
+			})),
+			minTotalItems: declared.minTotalItems,
+			maxTotalItems: declared.maxTotalItems,
+			aspectRatioPolicy: declared.aspectRatioPolicy,
+			audioGeneration: declared.audioGeneration,
+		};
+	}
 	switch (mode) {
 		case "text-to-image":
 			return TEXT_TO_IMAGE_MODE;
@@ -268,7 +317,9 @@ function dimensionsFromAspectRatio(aspectRatio?: string): { width: number; heigh
 	};
 }
 
-function generatedContentFromArtifact(artifact: PluginMediaArtifact): GeneratedContent {
+function generatedContentFromArtifact(
+	artifact: PluginMediaArtifact & { kind: "image" | "video" },
+): GeneratedContent {
 	return {
 		kind: artifact.kind,
 		source: { type: "host-artifact", artifactId: artifact.id },

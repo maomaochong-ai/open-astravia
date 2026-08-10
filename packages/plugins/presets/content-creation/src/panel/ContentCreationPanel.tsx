@@ -161,10 +161,10 @@ export function ContentCreationPanel() {
 		[cwd, generation, t],
 	);
 	const importReferences = useCallback(
-		async (nodeId: string, files: readonly ImportedContentReference[]) => {
+		async (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => {
 			try {
 				setError(null);
-				await generation.importReferences(cwd, nodeId, files);
+				await generation.importReferences(cwd, nodeId, files, slotId);
 			} catch (importError) {
 				setError(t("error.importReference"));
 				notifyContentCreationError(t("error.importReference"), importError);

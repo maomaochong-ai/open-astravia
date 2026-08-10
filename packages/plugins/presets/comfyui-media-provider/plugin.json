@@ -28,6 +28,12 @@
 				"type": "string",
 				"title": "%settings.templatePromptId.title%",
 				"description": "%settings.templatePromptId.description%"
+			},
+			{
+				"key": "referenceTemplatePromptId",
+				"type": "string",
+				"title": "%settings.referenceTemplatePromptId.title%",
+				"description": "%settings.referenceTemplatePromptId.description%"
 			}
 		]
 	},

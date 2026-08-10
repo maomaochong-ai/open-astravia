@@ -76,7 +76,7 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 			{
 				id: "desktop-app:vetta",
 				ownerId: "desktop-app",
-				protocolVersion: 3,
+				protocolVersion: 4,
 				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image", "image-to-image"] }],
 			},
 		];

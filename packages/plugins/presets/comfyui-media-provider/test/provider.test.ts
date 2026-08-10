@@ -15,7 +15,7 @@ const template: ComfyPrompt = {
 	load: { class_type: "LoadImage", inputs: { image: "old.png" } },
 	resolution: { class_type: "ResolutionSelector", inputs: { aspect_ratio: "1:1 (Square)" } },
 	duration: { class_type: "PrimitiveFloat", inputs: { value: 5 }, _meta: { title: "Float (duration)" } },
-	generate: { class_type: "MiniMaxH3ImageToVideo", inputs: { prompt: "old" } },
+	generate: { class_type: "MiniMaxH3ImageToVideo", inputs: { prompt: "old", first_frame: ["load", 0] } },
 	save: { class_type: "SaveVideo", inputs: {} },
 };
 
@@ -24,6 +24,33 @@ function response<T>(body: T): PluginNetworkResponse<T> {
 }
 
 describe("ComfyUI media provider", () => {
+	it("advertises omni-reference only when its dedicated workflow template is configured", () => {
+		const context = {
+			network: { request: vi.fn() },
+			settings: {
+				get: (key: string) => (key === "referenceTemplatePromptId" ? "reference-job" : undefined),
+			},
+			i18n: { t: () => "ComfyUI · MiniMax H3" },
+		} as unknown as PluginContext;
+		const provider = createComfyUiProvider(context);
+
+		expect(provider.capabilities[0]).toMatchObject({
+			modes: ["image-to-video", "reference-to-video"],
+			modeCapabilities: [
+				expect.objectContaining({ mode: "image-to-video", maxTotalItems: 2 }),
+				expect.objectContaining({
+					mode: "reference-to-video",
+					maxTotalItems: 12,
+					inputs: [
+						expect.objectContaining({ role: "referenceImages", maxItems: 9 }),
+						expect.objectContaining({ role: "referenceVideos", maxItems: 3 }),
+						expect.objectContaining({ role: "referenceAudios", maxItems: 3 }),
+					],
+				}),
+			],
+		});
+	});
+
 	it("keeps ComfyUI workflow details behind the generic media provider request", async () => {
 		let submittedPrompt: ComfyPrompt | undefined;
 		let completed = false;
@@ -72,6 +99,19 @@ describe("ComfyUI media provider", () => {
 		};
 		const context: PluginMediaProviderHandlerContext = { invocationId: "invocation-1", uploadInput };
 		const provider = createComfyUiProvider(ctx);
+		expect(provider.capabilities[0]).toMatchObject({
+			modes: ["image-to-video"],
+			modeCapabilities: [
+				{
+					mode: "image-to-video",
+					aspectRatioPolicy: "input-derived",
+					inputs: [
+						{ role: "firstFrame", maxItems: 1 },
+						{ role: "lastFrame", maxItems: 1 },
+					],
+				},
+			],
+		});
 
 		const queued = await provider.submit(
 			{
@@ -81,7 +121,7 @@ describe("ComfyUI media provider", () => {
 				prompt: "a slow camera move",
 				aspectRatio: "16:9",
 				durationSeconds: 10,
-				inputs: [{ id: "input-1", kind: "image", mimeType: "image/png" }],
+				inputs: [{ id: "input-1", role: "firstFrame", kind: "image", mimeType: "image/png" }],
 			},
 			context,
 		);

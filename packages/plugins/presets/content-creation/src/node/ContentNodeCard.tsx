@@ -52,7 +52,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	onResize: (position: CanvasPosition, width: number, height: number) => void;
 	onRunNode: () => Promise<void>;
 	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
-	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
+	onImportReferences: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
 

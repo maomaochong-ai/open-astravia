@@ -268,4 +268,46 @@ describe("ContentGenerationControls option mounting", () => {
 			resolution: "720p",
 		});
 	});
+
+	it("uses input-derived ratio and always-on audio for a declared frame capability", () => {
+		const model: ContentModelDescriptor = {
+			...videoModel,
+			aspectRatios: ["16:9", "9:16"],
+			modes: [
+				{
+					id: "image-to-video",
+					inputs: [
+						{ id: "firstFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+						{ id: "lastFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+					],
+					minTotalItems: 1,
+					aspectRatioPolicy: "input-derived",
+					audioGeneration: "always",
+				},
+			],
+		};
+		render(
+			<ContentGenerationControls
+				kind="video-generator"
+				draft={{ modeId: "image-to-video", aspectRatio: "16:9", duration: 5 }}
+				models={[model]}
+				selectedModel={model}
+				isRunning={false}
+				canGenerate
+				onChange={vi.fn()}
+				onModelChange={vi.fn()}
+				onSubmit={vi.fn()}
+			/>,
+		);
+
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").textContent).toContain(
+			"nodeEditor.videoSettings.followImageShort",
+		);
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").textContent).not.toContain("16:9");
+		fireEvent.click(screen.getByTestId("popover-toggle"));
+		expect(screen.getByText("nodeEditor.videoSettings.followImageShort").closest("button")?.parentElement?.style.gridTemplateColumns).toBe(
+			"repeat(1, minmax(0, 1fr))",
+		);
+		expect(screen.getByText("nodeEditor.videoSettings.audio.on").closest("button")?.className).toContain("bg-accent");
+	});
 });
