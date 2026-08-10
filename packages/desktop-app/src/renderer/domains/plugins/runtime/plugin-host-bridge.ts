@@ -15,6 +15,8 @@ import type {
 	ConversationState,
 	Disposable,
 	PluginAgentActions,
+	PluginAgentHookHandler,
+	PluginAgentHookPoint,
 	PluginAgentToolApi,
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
@@ -41,6 +43,10 @@ interface PluginAgentToolHandlerEntry {
 }
 
 const agentToolHandlers = new Map<string, PluginAgentToolHandlerEntry>();
+const agentHookHandlers = new Map<
+	string,
+	{ handler: PluginAgentHookHandler<PluginAgentHookPoint>; api: PluginAgentToolApi }
+>();
 interface PluginAppActionHandlerEntry {
 	handler: PluginAppActionHandler;
 	assertReady?: PluginAppActionReadyHandler;
@@ -250,6 +256,53 @@ function startToolRequestListener(): void {
 				}),
 			(error: unknown) =>
 				window.vetta.plugins.respondAgentTool(request.requestId, {
+					error: error instanceof Error ? error.message : String(error),
+				}),
+		);
+	});
+}
+
+let hookRequestListenerStarted = false;
+
+function startHookRequestListener(): void {
+	if (hookRequestListenerStarted) return;
+	hookRequestListenerStarted = true;
+	window.vetta.plugins.onAgentHookRequest((request) => {
+		const entry = agentHookHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		if (!entry) {
+			void window.vetta.plugins.respondAgentHook(request.requestId, {
+				error: `Plugin hook handler not found: ${request.pluginId}/${request.handlerId}`,
+			});
+			return;
+		}
+		const execution = createAgentActions();
+		void Promise.resolve(
+			entry.handler({
+				invocationId: request.requestId,
+				plugin: {
+					id: request.pluginId,
+					contributionId: request.hookId,
+					settings: request.settings,
+				},
+				session: {
+					...request.session,
+					scenario: request.session.scenario as Parameters<typeof entry.handler>[0]["session"]["scenario"],
+				},
+				model: request.model,
+				conversation: request.conversation,
+				runtime: request.runtime,
+				trigger: request.trigger,
+				actions: execution.actions,
+				host: entry.api,
+			}),
+		).then(
+			(value) =>
+				window.vetta.plugins.respondAgentHook(request.requestId, {
+					value,
+					effects: execution.effects,
+				}),
+			(error: unknown) =>
+				window.vetta.plugins.respondAgentHook(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				}),
 		);
@@ -480,6 +533,21 @@ export function registerPluginAgentToolHandler(options: {
 	};
 }
 
+export function registerPluginAgentHookHandler(options: {
+	pluginId: string;
+	handlerId: string;
+	handler: PluginAgentHookHandler<PluginAgentHookPoint>;
+	api: PluginAgentToolApi;
+}): Disposable {
+	const key = handlerKey(options.pluginId, options.handlerId);
+	agentHookHandlers.set(key, { handler: options.handler, api: options.api });
+	return {
+		dispose: () => {
+			if (agentHookHandlers.get(key)?.handler === options.handler) agentHookHandlers.delete(key);
+		},
+	};
+}
+
 export function registerPluginAppActionHandler(options: {
 	pluginId: string;
 	handlerId: string;
@@ -645,6 +713,7 @@ let installed = false;
 export function installPluginHostBridge(): void {
 	startTranslator();
 	startToolRequestListener();
+	startHookRequestListener();
 	startAppActionRequestListener();
 	startContinuationRequestListener();
 	startSystemPromptRequestListener();

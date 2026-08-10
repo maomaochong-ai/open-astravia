@@ -15,6 +15,7 @@
 
 ### Added
 
+- **统一动态工具拦截管线**：新增 generation-safe Contribution Catalog 与强类型 `before` / `after` / `onError` Pipeline，Ecosystem Hook、Desktop Plugin Hook 和 Coding Extension 通过窄 Adapter 接入唯一工具包装点。现有 Ecosystem/Extension 顺序与失败语义保持，Desktop Plugin 插入稳定阶段并支持下一次 dispatch 生效的动态注册快照（ADR-0062）。
 - **稳定 SDK Host Composition**：`@vetta/coding-agent/sdk` 新增拥有多 Session 生命周期的 `createCodingAgentHost()`；Host 在关闭时等待已准入的创建、关闭剩余 Session、聚合失败并允许重试，Session 单独关闭后自动释放 Host 所有权。`@vetta/coding-agent/host-services` 新增 `createCodingAgentHostWithServices()`，把既有 `AuthStorage`、`ModelRegistry`、`SettingsManager` 作为调用方持有的共享宿主服务适配给稳定 Session，不把具体 Manager 暴露为 Session 属性；Storage 与动态 Skill/Extension Source 保持逐 Session 所有权。
 - **稳定 SDK 动态 Skill / Extension 来源合同**：`createCodingAgentSession()` 新增 Session-owned `skillSources`、`extensionSources`、内联 Skill 值和声明式 Skill Policy；Source 以 `id + revision + invalidation` 表达运行时变化，当前 Turn 保持已取得能力，下一普通 Prompt 或显式 `reload()` 才刷新。Skill-only 更新只重算 Skill，Extension 更新复用既有生命周期事务；关闭和创建回滚会解除订阅并释放 Source。完整 `ResourceLoader`、任意覆盖回调和 inline Extension Factory 仍留在兼容入口。
 - **稳定 SDK 会话目录与资源贡献合同**：`@vetta/coding-agent/sdk` 新增独立 `createCodingAgentSessionCatalog()`，通过只读摘要完成原生会话 list/recent 查询并与活动 Session 生命周期分离；`createCodingAgentSession()` 新增系统提示词、Extension/Skill/Prompt 路径、内联 Prompt Template 和 Context File 值贡献，由产品 Host Adapter 转换到现有资源发现与 reload 生命周期，不公开 `SessionManager` 或 `ResourceLoader`。

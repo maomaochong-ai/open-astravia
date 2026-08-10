@@ -42,6 +42,7 @@ import {
 	installPluginFromUrl,
 	listPlugins,
 	pluginVisibleInAgentMode,
+	registerDynamicAgentHook,
 	registerDynamicAgentTool,
 	registerDynamicContinuationProvider,
 	registerDynamicSystemPromptProvider,
@@ -54,6 +55,7 @@ import {
 	setPluginSettings,
 	summarizeAgentPluginRuntimeConfig,
 	uninstallPlugin,
+	unregisterDynamicAgentHook,
 	unregisterDynamicAgentTool,
 	unregisterDynamicContinuationProvider,
 	unregisterDynamicSystemPromptProvider,
@@ -127,6 +129,14 @@ function asOptionalStringArray(value: unknown): string[] | undefined {
 	return out.length > 0 ? out : [];
 }
 
+function asStrictOptionalStringArray(value: unknown, fieldName: string): string[] | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim().length === 0)) {
+		throw new Error(`Invalid ${fieldName}`);
+	}
+	return value.map((item) => item.trim());
+}
+
 function asHandlerContext(value: unknown): { conversation?: "summary" | "messages" } | undefined {
 	if (value === undefined) return undefined;
 	const input = asRecord(value, "handler context");
@@ -175,6 +185,39 @@ function asAgentToolRegistration(value: unknown): {
 		context: asHandlerContext(input.context),
 		// 渲染进程在注册时探测该工具有没有 tool-call slot；有则宿主注入 md_intro 参数。
 		rendersCard: input.rendersCard === true ? true : undefined,
+	};
+}
+
+function asAgentHookRegistration(value: unknown): {
+	id: string;
+	point: "tool.before" | "tool.after" | "tool.error";
+	handlerId: string;
+	activationId?: string;
+	timeoutMs?: number;
+	scope_use: string[];
+	agent_mode?: string[];
+	toolNames?: string[];
+	context?: { conversation?: "summary" | "messages" };
+} {
+	const input = asRecord(value, "agent hook registration");
+	if (input.point !== "tool.before" && input.point !== "tool.after" && input.point !== "tool.error") {
+		throw new Error("Invalid agent hook point");
+	}
+	const scopeUse = asStrictOptionalStringArray(input.scope_use, "agent hook scope_use");
+	if (!scopeUse?.length) throw new Error("Agent hook scope_use must not be empty");
+	return {
+		id: asPluginId(input.id),
+		point: input.point,
+		handlerId: asPluginId(input.handlerId),
+		activationId: asOptionalStringId(input.activationId, "agent hook activation id"),
+		timeoutMs:
+			typeof input.timeoutMs === "number" && Number.isFinite(input.timeoutMs) && input.timeoutMs > 0
+				? Math.min(Math.floor(input.timeoutMs), 30_000)
+				: undefined,
+		scope_use: scopeUse,
+		agent_mode: asStrictOptionalStringArray(input.agent_mode, "agent hook agent_mode"),
+		toolNames: asStrictOptionalStringArray(input.toolNames, "agent hook toolNames"),
+		context: asHandlerContext(input.context),
 	};
 }
 
@@ -725,6 +768,21 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		registerDynamicAgentTool(normalizedPluginId, normalizedRegistration);
 		refreshAgentPlugins();
 	});
+	ipcMain.handle("vetta:plugins:agent-hook-register", (_event, pluginId: unknown, registration: unknown) => {
+		registerDynamicAgentHook(asPluginId(pluginId), asAgentHookRegistration(registration));
+		refreshAgentPlugins();
+	});
+	ipcMain.handle(
+		"vetta:plugins:agent-hook-unregister",
+		(_event, pluginId: unknown, hookId: unknown, activationId: unknown) => {
+			unregisterDynamicAgentHook(
+				asPluginId(pluginId),
+				asPluginId(hookId),
+				asOptionalStringId(activationId, "agent hook activation id"),
+			);
+			refreshAgentPlugins();
+		},
+	);
 	ipcMain.handle(
 		"vetta:plugins:agent-tool-unregister",
 		(_event, pluginId: unknown, toolId: unknown, activationId: unknown) => {
@@ -827,6 +885,8 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:agent-contributions-begin-load");
 		ipcMain.removeHandler("vetta:plugins:agent-tool-register");
 		ipcMain.removeHandler("vetta:plugins:agent-tool-unregister");
+		ipcMain.removeHandler("vetta:plugins:agent-hook-register");
+		ipcMain.removeHandler("vetta:plugins:agent-hook-unregister");
 		ipcMain.removeHandler("vetta:plugins:agent-contributions-clear");
 		ipcMain.removeHandler("vetta:plugins:app-action-register");
 		ipcMain.removeHandler("vetta:plugins:app-action-activation-commit");

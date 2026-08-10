@@ -200,6 +200,66 @@ export interface PluginContinuationRegistration {
 	handler: PluginContinuationHandler;
 }
 
+export type PluginAgentHookPoint = "tool.before" | "tool.after" | "tool.error";
+
+export type PluginAgentHookContent =
+	| { type: "text"; text: string }
+	| { type: "image"; data: string; mimeType: string };
+
+export type PluginAgentHookTrigger<P extends PluginAgentHookPoint> = P extends "tool.before"
+	? {
+			kind: "tool.before";
+			timestamp: number;
+			toolCallId: string;
+			toolName: string;
+			input: Readonly<Record<string, unknown>>;
+		}
+	: P extends "tool.after"
+		? {
+				kind: "tool.after";
+				timestamp: number;
+				toolCallId: string;
+				toolName: string;
+				input: Readonly<Record<string, unknown>>;
+				result: { content: readonly PluginAgentHookContent[]; details?: unknown };
+			}
+		: {
+				kind: "tool.error";
+				timestamp: number;
+				toolCallId: string;
+				toolName: string;
+				input: Readonly<Record<string, unknown>>;
+				error: string;
+				aborted: boolean;
+			};
+
+export type PluginAgentHookResult<P extends PluginAgentHookPoint> = P extends "tool.before"
+	? { action: "continue"; input?: Record<string, unknown> } | { action: "block"; reason: string }
+	: P extends "tool.after"
+		?
+				| { action: "continue" }
+				| { action: "replace"; content?: PluginAgentHookContent[]; details?: unknown }
+				| { action: "block"; reason: string }
+		: { action: "continue" } | { action: "feedback"; text: string };
+
+export type PluginAgentHookHandler<P extends PluginAgentHookPoint> = (
+	context: PluginAgentHandlerContext<PluginAgentHookTrigger<P>>,
+) => void | PluginAgentHookResult<P> | Promise<void | PluginAgentHookResult<P>>;
+
+export interface PluginAgentHookRegistration<P extends PluginAgentHookPoint = PluginAgentHookPoint> {
+	id: string;
+	point: P;
+	/** Hook 是可执行贡献，必须显式声明允许出现的会话场景。 */
+	scope_use: readonly ConversationScenario[];
+	/** 允许出现的工作模式；缺省/空数组表示通用。 */
+	agent_mode?: readonly string[];
+	/** 只匹配列出的工具；缺省/空数组表示所有工具。 */
+	toolNames?: readonly string[];
+	timeoutMs?: number;
+	context?: { conversation?: "summary" | "messages" };
+	handler: PluginAgentHookHandler<P>;
+}
+
 export interface PluginAgentApi {
 	registerTool<TInput = unknown>(registration: PluginAgentToolRegistration<TInput>): Disposable;
 	/** Register a provider evaluated before every Agent run. */
@@ -209,4 +269,6 @@ export interface PluginAgentApi {
 	 * Return null to allow the agent to stop, or a message to continue with another turn.
 	 */
 	registerContinuationProvider(registration: PluginContinuationRegistration): Disposable;
+	/** Register a typed, dynamically removable Agent execution hook. */
+	registerHook<P extends PluginAgentHookPoint>(registration: PluginAgentHookRegistration<P>): Disposable;
 }

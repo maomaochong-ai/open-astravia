@@ -10,16 +10,23 @@ import {
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
 import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
-import { wrapRuntimeToolsWithEcosystemHooks } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
+import { createEcosystemToolInterceptor } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
 import { CodingAgentPromptRequestAdapter } from "../../adapters/runtime-core/prompt-request-adapter.js";
 import type { CodingAgentExtensionToolRuntime } from "../../extensions/runtime/extension-tool-runtime.js";
 import { CodingAgentStopHookContinuationSource } from "../../extensions/runtime/stop-hook-continuation-source.js";
 import type { CodingAgentSessionExecutionRuntime } from "../../host/session-execution/execution-runtime.js";
+import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
+import {
+	CODING_AGENT_TOOL_INTERCEPTION_ORDER,
+	type CodingAgentToolInterceptor,
+} from "../../interception/tool/contracts.js";
+import { wrapRuntimeToolsWithInterceptionPipeline } from "../../interception/tool/pipeline.js";
 import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import { CodingAgentModelCallFrameComposer } from "../../model-context/model-call-frame-composer.js";
 import { CodingAgentModelCallMessageFinalizer } from "../../model-context/model-call-message-finalizer.js";
 import { CodingAgentPromptRuntime } from "../../model-context/prompt-runtime.js";
+import { CodingAgentPluginHookRuntime } from "../../plugins/runtime/hook-runtime.js";
 import { CodingAgentPluginRunOrchestrator } from "../../plugins/runtime/run-orchestrator.js";
 import {
 	type CodingAgentPluginToolActivation,
@@ -134,6 +141,15 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 						toPluginToolActivation(options.activation.resolve(context), options.activation.readAgentMode()),
 				})
 			: undefined;
+	const pluginHookRuntime =
+		options.pluginRuntime?.invokeHook && pluginRunOrchestrator
+			? new CodingAgentPluginHookRuntime({
+					...options.pluginRuntime,
+					readAgentPlugins: options.activation.readAgentPlugins,
+					readAgentMode: options.activation.readAgentMode,
+					runOrchestrator: pluginRunOrchestrator,
+				})
+			: undefined;
 	const continuationOrchestrator = new CodingAgentContinuationOrchestrator({
 		todo: new CodingAgentTodoContinuationSource({ state: options.todoRuntime }),
 		plugin: pluginRunOrchestrator,
@@ -157,6 +173,32 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				hookRuntime: options.hookRuntime,
 			})
 		: undefined;
+	const toolInterceptionCatalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
+	toolInterceptionCatalog.register({
+		sourceId: "ecosystem",
+		localId: "tool-hooks",
+		revision: "session",
+		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
+		value: createEcosystemToolInterceptor(options.hookRuntime),
+	});
+	if (pluginHookRuntime) {
+		toolInterceptionCatalog.register({
+			sourceId: "desktop-plugin",
+			localId: "tool-hooks",
+			revision: "session",
+			order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.plugin,
+			value: pluginHookRuntime,
+		});
+	}
+	if (options.extensionEvents) {
+		toolInterceptionCatalog.register({
+			sourceId: "coding-extension",
+			localId: "tool-events",
+			revision: "session",
+			order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.extension,
+			value: options.extensionEvents.createToolInterceptor(),
+		});
+	}
 	const readAvailableTools = () =>
 		new Map([
 			...options.codingTools.registry
@@ -193,8 +235,8 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		readAgentMode: options.activation.readAgentMode,
 		isMcpToolVisible: (toolName) => options.mcpController?.isToolVisible(toolName) ?? true,
 		systemPromptAdvertisedToolNames: options.prompt.systemPromptAdvertisedToolNames,
-		wrapTools: (tools) => {
-			const hookedTools = wrapRuntimeToolsWithEcosystemHooks(tools, options.hookRuntime);
+		wrapTools: (tools, context) => {
+			const hookedTools = wrapRuntimeToolsWithInterceptionPipeline(tools, toolInterceptionCatalog, context);
 			return invokeSkillFeature?.wrapHookActivation(hookedTools) ?? hookedTools;
 		},
 		extensionEvents: options.extensionEvents,

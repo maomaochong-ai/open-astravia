@@ -24,6 +24,8 @@ export const PLUGIN_PERMISSIONS = [
 	"agent.tools.control",
 	"agent.tools.register",
 	"agent.toolHandler.execute",
+	"agent.hooks.register",
+	"agent.hookHandler.execute",
 	"agent.state.read",
 	"agent.state.write",
 	"agent.continuation.register",

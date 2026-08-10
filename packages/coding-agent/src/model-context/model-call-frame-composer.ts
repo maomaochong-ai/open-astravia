@@ -55,7 +55,6 @@ export interface CodingAgentModelCallToolSurface {
 
 export interface CodingAgentModelCallExtensionEvents {
 	recordSystemPrompt(systemPrompt: string): void;
-	wrapTools(tools: ReadonlyMap<string, RuntimeToolDefinition>): ReadonlyMap<string, RuntimeToolDefinition>;
 }
 
 export interface CodingAgentModelCallExtensionToolPort {
@@ -86,6 +85,7 @@ export interface CodingAgentModelCallPluginRunPort {
 
 export type CodingAgentModelCallToolWrapper = (
 	tools: ReadonlyMap<string, RuntimeToolDefinition>,
+	context: ModelCallFrameCompositionContext,
 ) => ReadonlyMap<string, RuntimeToolDefinition>;
 
 /**
@@ -119,8 +119,7 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 		const systemPrompt = compiledPrompt.content;
 		this.options.extensionEvents?.recordSystemPrompt(systemPrompt);
 		const orderedTools = orderModelTools(selectedTools);
-		const extensionTools = this.options.extensionEvents?.wrapTools(orderedTools) ?? orderedTools;
-		const tools = this.options.wrapTools?.(extensionTools) ?? extensionTools;
+		const tools = this.options.wrapTools?.(orderedTools, prepared.effectiveContext) ?? orderedTools;
 		return {
 			instructions: [
 				{

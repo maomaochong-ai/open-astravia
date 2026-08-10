@@ -1,5 +1,6 @@
 import type {
 	AgentPluginContinuationInvoker,
+	AgentPluginHookInvoker,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
@@ -47,6 +48,7 @@ export interface RuntimeSessionCreateRequest {
 	readonly includeAgentSkills?: SessionConfig["includeAgentSkills"];
 	readonly agentPlugins?: AgentPluginRuntimeConfig;
 	readonly invokePluginTool?: AgentPluginToolInvoker;
+	readonly invokePluginHook?: AgentPluginHookInvoker;
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
 	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;

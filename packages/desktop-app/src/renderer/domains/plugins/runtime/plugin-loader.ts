@@ -3,7 +3,7 @@ import {
 	type ModuleFederation,
 	type ModuleFederationRuntimePlugin,
 } from "@module-federation/enhanced/runtime";
-import type { InstalledPlugin, PluginAgentToolRegistration } from "@preload/api";
+import type { InstalledPlugin, PluginAgentHookHostRegistration, PluginAgentToolRegistration } from "@preload/api";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
 	activeInputActionIdsAtom,
@@ -25,6 +25,8 @@ import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
 	PluginActivityTabContribution,
+	PluginAgentHookHandler,
+	PluginAgentHookPoint,
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
@@ -78,6 +80,7 @@ import {
 } from "./plugin-file-explorer-host";
 import {
 	pluginHostBridge,
+	registerPluginAgentHookHandler,
 	registerPluginAgentToolHandler,
 	registerPluginAppActionHandler,
 	registerPluginContinuationHandler,
@@ -1492,6 +1495,64 @@ function createContext(
 						registeredAgentTools.delete(toolName);
 						if (label) setAgentToolLabel(plugin.id, toolName, null);
 						void window.vetta.plugins.unregisterAgentTool(plugin.id, toolId, activationId);
+					},
+				};
+			},
+			registerHook: (registration) => {
+				if (!hasPermission(plugin, "agent.hooks.register")) {
+					warnSkippedContribution(plugin, "agent.hooks.register", "agent hook");
+					return noopDisposable;
+				}
+				if (!hasPermission(plugin, "agent.hookHandler.execute")) {
+					warnSkippedContribution(plugin, "agent.hookHandler.execute", "agent hook handler");
+					return noopDisposable;
+				}
+				if (typeof registration.id !== "string" || registration.id.trim().length === 0) {
+					throw new Error("Agent hook id is required");
+				}
+				if (
+					registration.point !== "tool.before" &&
+					registration.point !== "tool.after" &&
+					registration.point !== "tool.error"
+				) {
+					throw new Error("Agent hook point is invalid");
+				}
+				if (!Array.isArray(registration.scope_use) || registration.scope_use.length === 0) {
+					throw new Error("Agent hook scope_use is required");
+				}
+				if (typeof registration.handler !== "function") {
+					throw new Error("Agent hook handler is required");
+				}
+				const hookId = registration.id.trim();
+				const handlerId = `${hookId}:${crypto.randomUUID()}`;
+				const handlerHandle = registerPluginAgentHookHandler({
+					pluginId: plugin.id,
+					handlerId,
+					handler: registration.handler as PluginAgentHookHandler<PluginAgentHookPoint>,
+					api: { fs, conversation },
+				});
+				const payload: PluginAgentHookHostRegistration = {
+					id: hookId,
+					point: registration.point,
+					handlerId,
+					activationId,
+					timeoutMs: registration.timeoutMs,
+					scope_use: registration.scope_use,
+					agent_mode: registration.agent_mode,
+					toolNames: registration.toolNames,
+					context: registration.context,
+				};
+				const registrationPromise = window.vetta.plugins
+					.registerAgentHook(plugin.id, payload)
+					.catch((error: Error) => {
+						handlerHandle.dispose();
+						console.error(`Plugin ${plugin.id} failed to register agent hook ${hookId}`, error);
+					});
+				pendingRuntimeRegistrations.push(registrationPromise);
+				return {
+					dispose: () => {
+						handlerHandle.dispose();
+						void window.vetta.plugins.unregisterAgentHook(plugin.id, hookId, activationId);
 					},
 				};
 			},

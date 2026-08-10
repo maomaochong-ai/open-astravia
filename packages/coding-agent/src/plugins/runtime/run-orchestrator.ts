@@ -108,6 +108,10 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 		return this.activeTurn ? [...this.activeTurn.lastActiveToolNames] : undefined;
 	}
 
+	readSession(): CodingAgentPluginRunOrchestratorOptions["session"] {
+		return this.options.session;
+	}
+
 	createToolHandlerContext(input: {
 		readonly turnId: string;
 		readonly messages: readonly Message[];

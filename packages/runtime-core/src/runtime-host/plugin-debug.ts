@@ -6,6 +6,8 @@ export function summarizeAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | u
 		skillPlugins: agentPlugins?.skillPathContributions?.map((item) => item.pluginId) ?? [],
 		toolPolicyPlugins: agentPlugins?.toolPolicyContributions?.map((item) => item.pluginId) ?? [],
 		toolContributions: agentPlugins?.toolContributions?.map((tool) => `${tool.pluginId}:${tool.name}`) ?? [],
+		hookContributions:
+			agentPlugins?.hookContributions?.map((hook) => `${hook.pluginId}:${hook.id}:${hook.point}`) ?? [],
 		continuationContributions:
 			agentPlugins?.continuationContributions?.map((provider) => `${provider.pluginId}:${provider.id}`) ?? [],
 		systemPromptProviders:

@@ -30,6 +30,8 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"agent.tools.control": "permission.agentToolsControl",
 	"agent.tools.register": "permission.agentToolsRegister",
 	"agent.toolHandler.execute": "permission.agentToolHandlerExecute",
+	"agent.hooks.register": "permission.agentHooksRegister",
+	"agent.hookHandler.execute": "permission.agentHookHandlerExecute",
 	"agent.state.read": "permission.agentStateRead",
 	"agent.state.write": "permission.agentStateWrite",
 	"agent.continuation.register": "permission.agentContinuationRegister",
@@ -249,6 +251,18 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 	},
 	"agent.toolHandler.execute": {
 		descriptionKey: "permission.description.agentToolHandlerExecute",
+		group: "agent",
+		risk: "high",
+		visual: "agent",
+	},
+	"agent.hooks.register": {
+		descriptionKey: "permission.description.agentHooksRegister",
+		group: "agent",
+		risk: "high",
+		visual: "agent",
+	},
+	"agent.hookHandler.execute": {
+		descriptionKey: "permission.description.agentHookHandlerExecute",
 		group: "agent",
 		risk: "high",
 		visual: "agent",

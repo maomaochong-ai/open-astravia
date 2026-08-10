@@ -280,6 +280,7 @@ async function createCodingAgentSdkSessionComposition(
 			includeAgentSkills: options.includeAgentSkills,
 			agentPlugins: options.agentPlugins,
 			invokePluginTool: options.invokePluginTool,
+			invokePluginHook: options.invokePluginHook,
 			invokePluginContinuation: options.invokePluginContinuation,
 			invokePluginSystemPrompt: options.invokePluginSystemPrompt,
 			sessionTools,

@@ -8,8 +8,9 @@ import type {
 	SessionInput,
 } from "@vetta/runtime-core/kernel";
 import type { InputEventResult, InputSource } from "../../extensions/index.js";
+import type { CodingAgentToolInterceptor } from "../../interception/tool/contracts.js";
 import type { CodingAgentExtensionRunnerPort } from "../../runtime-contracts/index.js";
-import { wrapRuntimeToolsWithExtensions } from "./extension-tool-wrapper.js";
+import { createExtensionToolInterceptor, wrapRuntimeToolsWithExtensions } from "./extension-tool-wrapper.js";
 
 /**
  * Session 级 Extension 事件桥。
@@ -43,6 +44,10 @@ export class CodingAgentExtensionRunAdapter implements AgentRunPreparer {
 
 	wrapTools(tools: ReadonlyMap<string, RuntimeToolDefinition>): ReadonlyMap<string, RuntimeToolDefinition> {
 		return this.runner ? wrapRuntimeToolsWithExtensions(tools, this.runner) : tools;
+	}
+
+	createToolInterceptor(): CodingAgentToolInterceptor {
+		return createExtensionToolInterceptor(() => this.runner);
 	}
 
 	async transformContext(messages: readonly AgentMessage[]): Promise<readonly AgentMessage[]> {
