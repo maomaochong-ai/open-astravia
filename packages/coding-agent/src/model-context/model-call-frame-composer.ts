@@ -63,6 +63,10 @@ export interface CodingAgentModelCallExtensionToolPort {
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
 		activation: CodingToolActivation,
 	): CodingAgentModelCallToolSurface;
+	contributePrompt?(
+		draft: SystemPromptDraft,
+		input: { readonly sessionId: string; readonly activeToolNames: readonly string[] },
+	): SystemPromptDraft;
 }
 
 export interface CodingAgentModelCallPluginToolPort {
@@ -202,7 +206,12 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 					: {}),
 			});
 			appendFeatureInstructions(draft, effectiveContext.frame.instructions);
-			return draft;
+			return (
+				this.options.extensionToolRuntime?.contributePrompt?.(draft, {
+					sessionId: context.sessionId,
+					activeToolNames: selectedTools,
+				}) ?? draft
+			);
 		};
 		return {
 			effectiveContext,

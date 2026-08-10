@@ -107,8 +107,9 @@ export async function loadExtensionFromFactory(
 	eventBus: EventBus,
 	runtime: ExtensionRuntime,
 	extensionPath = "<inline>",
+	resolvedPath = extensionPath,
 ): Promise<Extension> {
-	return registerExtensionFactory(factory, cwd, eventBus, runtime, extensionPath, extensionPath);
+	return registerExtensionFactory(factory, cwd, eventBus, runtime, extensionPath, resolvedPath);
 }
 
 async function registerExtensionFactory(

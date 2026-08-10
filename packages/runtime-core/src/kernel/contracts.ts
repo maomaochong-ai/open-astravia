@@ -85,6 +85,8 @@ export interface RuntimeToolDefinition<TInput extends object = Readonly<Record<s
 	readonly label: string;
 	readonly description: string;
 	readonly inputSchema: Readonly<Record<string, unknown>>;
+	/** Optional host validator/decoder for schema dialects or normalized input. */
+	readonly validateInput?: (input: Record<string, unknown>) => TInput;
 	/** Optional provenance used by context composition reports. */
 	readonly contextSource?: ContextSectionSource;
 	readonly contextCategory?: string;

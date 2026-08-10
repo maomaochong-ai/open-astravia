@@ -15,6 +15,7 @@
 
 ### Added
 
+- **Vetta native Tool 扩展与 Pi host-neutral ACL**：Extension Tool 新增输入 normalize/custom validator 和 active-tool-only 结构化 Prompt contribution，进程级 Tool refresh 复用 generation-safe Contribution Catalog；新增显式 `@vetta/coding-agent/extensions/pi-compat` 入口，以隔离的 `typebox@1.3.7` facade 兼容 Pi current/legacy namespace 的顺序 Tool、`prepareArguments` 与 prompt metadata。Pi TUI renderer/shortcut 明确剥离，parallel Tool、未落地事实事件和未具备 owner/unregister 的 Provider fail closed（ADR-0063）。
 - **统一动态工具拦截管线**：新增 generation-safe Contribution Catalog 与强类型 `before` / `after` / `onError` Pipeline，Ecosystem Hook、Desktop Plugin Hook 和 Coding Extension 通过窄 Adapter 接入唯一工具包装点。现有 Ecosystem/Extension 顺序与失败语义保持，Desktop Plugin 插入稳定阶段并支持下一次 dispatch 生效的动态注册快照（ADR-0062）。
 - **稳定 SDK Host Composition**：`@vetta/coding-agent/sdk` 新增拥有多 Session 生命周期的 `createCodingAgentHost()`；Host 在关闭时等待已准入的创建、关闭剩余 Session、聚合失败并允许重试，Session 单独关闭后自动释放 Host 所有权。`@vetta/coding-agent/host-services` 新增 `createCodingAgentHostWithServices()`，把既有 `AuthStorage`、`ModelRegistry`、`SettingsManager` 作为调用方持有的共享宿主服务适配给稳定 Session，不把具体 Manager 暴露为 Session 属性；Storage 与动态 Skill/Extension Source 保持逐 Session 所有权。
 - **稳定 SDK 动态 Skill / Extension 来源合同**：`createCodingAgentSession()` 新增 Session-owned `skillSources`、`extensionSources`、内联 Skill 值和声明式 Skill Policy；Source 以 `id + revision + invalidation` 表达运行时变化，当前 Turn 保持已取得能力，下一普通 Prompt 或显式 `reload()` 才刷新。Skill-only 更新只重算 Skill，Extension 更新复用既有生命周期事务；关闭和创建回滚会解除订阅并释放 Source。完整 `ResourceLoader`、任意覆盖回调和 inline Extension Factory 仍留在兼容入口。

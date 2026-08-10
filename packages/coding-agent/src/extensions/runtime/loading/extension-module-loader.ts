@@ -5,17 +5,45 @@ import { createJiti } from "@mariozechner/jiti";
 import * as bundledTypebox from "@sinclair/typebox";
 import * as bundledAgentCore from "@vetta/agent-core";
 import * as bundledAi from "@vetta/ai";
+import * as piTypebox from "typebox";
+import * as piCompile from "typebox/compile";
+import * as piValue from "typebox/value";
 import { isBunBinary } from "../../../config.js";
 import * as bundledCodingAgent from "../../../index.js";
 import type { ExtensionFactory } from "../../api-contracts.js";
 
-const VIRTUAL_MODULES: Record<string, unknown> = {
+const NATIVE_VIRTUAL_MODULES: Record<string, unknown> = {
 	"@sinclair/typebox": bundledTypebox,
 	"@vetta/agent-core": bundledAgentCore,
 	"@vetta/ai": bundledAi,
 	"@vetta/coding-agent": bundledCodingAgent,
 	"@vetta/coding-agent/extensions": bundledCodingAgent,
 };
+
+const piCodingAgentFacade = Object.freeze({
+	defineTool: <T>(definition: T): T => definition,
+});
+
+const piAiFacade = Object.freeze({
+	Type: piTypebox.Type,
+	StringEnum: <T extends readonly string[]>(values: T) =>
+		piTypebox.Type.Union(values.map((value) => piTypebox.Type.Literal(value))),
+});
+
+const PI_VIRTUAL_MODULES: Record<string, unknown> = {
+	typebox: piTypebox,
+	"typebox/compile": piCompile,
+	"typebox/value": piValue,
+	"@sinclair/typebox": piTypebox,
+	"@sinclair/typebox/compile": piCompile,
+	"@sinclair/typebox/value": piValue,
+	"@earendil-works/pi-coding-agent": piCodingAgentFacade,
+	"@earendil-works/pi-ai": piAiFacade,
+	"@mariozechner/pi-coding-agent": piCodingAgentFacade,
+	"@mariozechner/pi-ai": piAiFacade,
+};
+
+export type ExtensionModuleProfile = "native" | "pi";
 
 const require = createRequire(import.meta.url);
 let aliases: Record<string, string> | undefined;
@@ -44,11 +72,14 @@ function optionalAliases(): Record<string, string> | undefined {
 	}
 }
 
-export async function loadExtensionFactory(extensionPath: string): Promise<ExtensionFactory | undefined> {
-	const alias = optionalAliases();
+export async function loadExtensionFactory(
+	extensionPath: string,
+	profile: ExtensionModuleProfile = "native",
+): Promise<ExtensionFactory | undefined> {
+	const alias = profile === "native" ? optionalAliases() : undefined;
 	const jiti = createJiti(import.meta.url, {
 		moduleCache: false,
-		virtualModules: VIRTUAL_MODULES,
+		virtualModules: profile === "pi" ? PI_VIRTUAL_MODULES : NATIVE_VIRTUAL_MODULES,
 		tryNative: false,
 		...(alias ? { alias } : {}),
 	});

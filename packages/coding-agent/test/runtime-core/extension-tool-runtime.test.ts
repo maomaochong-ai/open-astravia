@@ -9,6 +9,7 @@ import type {
 	ToolDefinition,
 } from "../../src/extensions/index.js";
 import { CodingAgentExtensionToolRuntime } from "../../src/extensions/runtime/extension-tool-runtime.js";
+import { CodingAgentModelCallFrameComposer } from "../../src/model-context/model-call-frame-composer.js";
 
 const echoParameters = Type.Object({ value: Type.String() });
 
@@ -83,6 +84,69 @@ describe("CodingAgentExtensionToolRuntime", () => {
 		).rejects.toThrow("runner is not bound");
 	});
 
+	it("normalizes and validates native Extension tool input before execution", async () => {
+		const numberParameters = Type.Object({ value: Type.Number() });
+		const definition: ToolDefinition<typeof numberParameters> = {
+			name: "extension_decode",
+			label: "Extension Decode",
+			description: "decode",
+			parameters: numberParameters,
+			normalizeInput(input) {
+				if (typeof input !== "object" || input === null) return input;
+				const value = Reflect.get(input, "value");
+				return { value: typeof value === "string" ? Number(value) : value };
+			},
+			async execute(_toolCallId, params) {
+				return { content: [{ type: "text", text: String(params.value) }], details: undefined };
+			},
+		};
+		const runtime = new CodingAgentExtensionToolRuntime([
+			extensionWithTool("decode", definition as unknown as ToolDefinition),
+		]);
+		const advertised = runtime.readAvailableTools().get("extension_decode");
+		if (!advertised?.validateInput) throw new Error("Missing Extension tool validator");
+
+		expect(advertised.validateInput({ value: "7" })).toEqual({ value: 7 });
+		expect(() => advertised.validateInput?.({ value: "not-a-number" })).toThrow("Expected number");
+	});
+
+	it("publishes native prompt contributions only for active Extension tools", async () => {
+		const definition: ToolDefinition = {
+			...echoTool("prompted"),
+			prompt: {
+				summary: "Use this tool to echo verified text.",
+				guidelines: ["Keep the value concise.", "Do not invent a value."],
+			},
+		};
+		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("extension-a", definition)]);
+		let active = true;
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: () => ({ customPrompt: "Base prompt", cwd: "C:/workspace" }),
+			extensionToolRuntime: runtime,
+			resolveExtensionToolActivation: () =>
+				active ? { mode: "explicit", toolNames: [definition.name] } : { mode: "explicit", toolNames: [] },
+		});
+		const context = compositionContext(new Map());
+
+		const activeFrame = await composer.compose(context);
+		const activePrompt = activeFrame.instructions[0]?.content ?? "";
+		expect(activePrompt).toContain("Tool guidance for extension_echo");
+		expect(activePrompt).toContain("- Keep the value concise.");
+		expect(activeFrame.contextCompositionSections).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: "instruction:extension.tool.extension_echo.summary",
+					source: { owner: "plugin", id: "extension-a" },
+				}),
+			]),
+		);
+
+		active = false;
+		const inactiveFrame = await composer.compose(context);
+		expect(inactiveFrame.instructions[0]?.content).not.toContain("Tool guidance for extension_echo");
+		expect(inactiveFrame.instructions[0]?.content).not.toContain("Keep the value concise");
+	});
+
 	it("replaces Extension tool definitions without losing Session runner bindings", async () => {
 		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("before", echoTool("before"))]);
 		const runner = { createContext: () => ({ cwd: "C:/workspace" }) } as unknown as ExtensionRunner;
@@ -102,6 +166,18 @@ describe("CodingAgentExtensionToolRuntime", () => {
 				signal: new AbortController().signal,
 			}),
 		).resolves.toMatchObject({ content: [{ type: "text", text: "updated" }] });
+	});
+
+	it("retires removed process sources while preserving first-wins catalog order", () => {
+		const runtime = new CodingAgentExtensionToolRuntime([
+			extensionWithTool("first", echoTool("first")),
+			extensionWithTool("second", echoTool("second")),
+		]);
+
+		expect(runtime.readAvailableTools().get("extension_echo")?.description).toBe("first");
+		runtime.refresh([extensionWithTool("second", echoTool("second-refreshed"))]);
+
+		expect(runtime.readAvailableTools().get("extension_echo")?.description).toBe("second-refreshed");
 	});
 
 	it("isolates Session overlays and lets Session tools override process Extension tools", () => {

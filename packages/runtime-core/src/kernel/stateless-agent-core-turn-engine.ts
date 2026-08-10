@@ -612,17 +612,20 @@ function toAgentTool(
 		description: tool.description,
 		parameters: Type.Unsafe<Record<string, unknown>>({ ...tool.inputSchema }),
 	};
+	const validateInput = tool.validateInput;
 	return {
 		name: tool.name,
 		description: tool.description,
 		inputSchema: modelTool.parameters,
-		validateInput: (input) =>
-			validateToolArguments(modelTool, {
-				type: "toolCall",
-				id: "runtime-validation",
-				name: tool.name,
-				arguments: input,
-			}),
+		validateInput: validateInput
+			? (input) => validateInput(input)
+			: (input) =>
+					validateToolArguments(modelTool, {
+						type: "toolCall",
+						id: "runtime-validation",
+						name: tool.name,
+						arguments: input,
+					}),
 		async execute(input, context) {
 			try {
 				const result = await tool.execute({

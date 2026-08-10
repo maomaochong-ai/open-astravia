@@ -54,7 +54,8 @@ Pi source module
 5. [加载、生命周期与功能适配](04-runtime-semantics.md)
 6. [测试、阶段和验收标准](05-testing-and-delivery.md)
 7. [Pi 设计复盘与替代方案](06-pi-design-review.md)
+8. [首轮实施状态与未完成边界](08-implementation-status.md)
 
 ## 最终建议
 
-先完成 Vetta native catalog/generation 和 Tool contract，再补原生 lifecycle/Provider ownership，最后交付“工具 + 共有事件 + 命令 + 会话动作 + 资源”的 Pi 行为映射。结构化交互仅支持 `notify/select/confirm/input`。Pi TUI 不进入任何阶段；完整原生 Provider 和任意请求拦截也不属于首个 profile。兼容率必须由固定的非 TUI corpus 计算，而不是由 API 名称对齐率计算。
+首轮已经完成 Runtime validator、native Tool normalize/prompt、Tool generation catalog 和最小 Pi Tool ACL，准确范围见[实施状态](08-implementation-status.md)。下一步应补原生 lifecycle/Provider ownership，再扩展“共有事件 + 命令 + 会话动作 + 资源”的 Pi 行为映射。结构化交互仅支持 `notify/select/confirm/input`。Pi TUI 不进入任何阶段；完整原生 Provider 和任意请求拦截也不属于首个 profile。兼容率必须由固定的非 TUI corpus 计算，而不是由 API 名称对齐率计算。

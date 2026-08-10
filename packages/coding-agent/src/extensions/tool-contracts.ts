@@ -15,6 +15,12 @@ export interface ToolRenderResultOptions {
 	isPartial: boolean;
 }
 
+/** Optional model-facing guidance contributed while this tool is active. */
+export interface ExtensionToolPromptContribution {
+	readonly summary?: string;
+	readonly guidelines?: readonly string[];
+}
+
 /**
  * Tool definition for registerTool().
  */
@@ -27,6 +33,12 @@ export interface ToolDefinition<TParams extends TSchema = TSchema, TDetails = un
 	description: string;
 	/** Parameter schema (TypeBox) */
 	parameters: TParams;
+	/** Normalize provider arguments before the declared schema validates them. */
+	normalizeInput?: (input: unknown) => unknown;
+	/** Optional schema-dialect validator/decoder applied after normalization. */
+	validateInput?: (input: unknown) => Static<TParams>;
+	/** Structured prompt metadata, published only while this tool is active. */
+	prompt?: ExtensionToolPromptContribution;
 
 	/**
 	 * 工具可用性元数据（见 AgentTool 同名字段）。host-custom / plugin / extension 工具

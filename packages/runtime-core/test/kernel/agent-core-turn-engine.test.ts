@@ -459,6 +459,49 @@ describe("AgentCoreTurnEngine", () => {
 		});
 	});
 
+	it("uses the runtime tool validator to normalize input before execution", async () => {
+		const executionInputs: Readonly<Record<string, unknown>>[] = [];
+		const tool: RuntimeToolDefinition = {
+			name: "decode",
+			label: "Decode",
+			description: "Decode a numeric string",
+			inputSchema: {
+				type: "object",
+				properties: { value: { type: "number" } },
+				required: ["value"],
+			},
+			validateInput(input) {
+				if (typeof input.value !== "string") throw new Error("value must be a numeric string");
+				return { value: Number(input.value) };
+			},
+			async execute(request) {
+				executionInputs.push(request.input);
+				return { content: [{ type: "text", text: String(request.input.value) }] };
+			},
+		};
+		const responses = [
+			assistantMessage(
+				[{ type: "toolCall", id: "tool-call-1", name: "decode", arguments: { value: "7" } }],
+				"toolUse",
+			),
+			assistantMessage([{ type: "text", text: "finished" }]),
+		];
+		let responseIndex = 0;
+		const engine = new AgentCoreTurnEngine({
+			model: model(),
+			streamFn: () => {
+				const response = responses[responseIndex];
+				responseIndex += 1;
+				if (!response) throw new Error("Missing recorded response");
+				return new RecordedAssistantStream(response);
+			},
+		});
+
+		await collect(engine, snapshot({ tools: [tool] }));
+
+		expect(executionInputs).toEqual([{ value: 7 }]);
+	});
+
 	it("preserves explicit-run message identity and order in execution observations", async () => {
 		const response = assistantMessage([{ type: "text", text: "done" }]);
 		const input = userMessage("hello");

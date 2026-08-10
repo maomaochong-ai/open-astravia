@@ -112,6 +112,10 @@ describe("coding-agent public subpaths", () => {
 				types: "./dist/public-api/extensions.d.ts",
 				import: "./dist/public-api/extensions.js",
 			},
+			"./extensions/pi-compat": {
+				types: "./dist/extensions/pi-compat/index.d.ts",
+				import: "./dist/extensions/pi-compat/index.js",
+			},
 			"./export-html": {
 				types: "./dist/public-api/export-html.d.ts",
 				import: "./dist/public-api/export-html.js",

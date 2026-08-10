@@ -1,4 +1,5 @@
 import type { Static, TSchema } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
@@ -9,6 +10,8 @@ import {
 	type CodingToolActivation,
 	selectCodingToolRegistrations,
 } from "@vetta/runtime-tools/coding";
+import { type ContributionLease, DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
+import { applySystemPromptOperations, type SystemPromptDraft } from "../../model-context/index.js";
 import { resolveToolCategory } from "../../profiles/index.js";
 import type {
 	CodingAgentExtensionRunnerPort,
@@ -22,6 +25,11 @@ export interface CodingAgentExtensionToolSurface {
 	readonly availableTools: ReadonlyMap<string, RuntimeToolDefinition>;
 }
 
+interface AdaptedExtensionToolRegistration extends CodingAgentRuntimeToolRegistration {
+	readonly extensionPath: string;
+	readonly definition: RegisteredTool["definition"];
+}
+
 /**
  * 进程级 Extension Tool 注册表与 Session Runner 绑定。
  *
@@ -29,13 +37,16 @@ export interface CodingAgentExtensionToolSurface {
  * 解析到对应 Session Runner。工具只在当前模型调用 Frame 中覆盖同名能力，不进入 Runtime Core。
  */
 export class CodingAgentExtensionToolRuntime {
-	private registrations: readonly CodingAgentRuntimeToolRegistration[] = [];
-	private registrationsByName: ReadonlyMap<string, CodingAgentRuntimeToolRegistration> = new Map();
+	private readonly processCatalog = new DynamicContributionCatalog<AdaptedExtensionToolRegistration>();
+	private readonly processSourceLeases = new Map<string, ContributionLease>();
+	private processRevision = 0;
+	private registrations: readonly AdaptedExtensionToolRegistration[] = [];
+	private registrationsByName: ReadonlyMap<string, AdaptedExtensionToolRegistration> = new Map();
 	private readonly sessionRegistrations = new Map<
 		string,
 		{
-			readonly registrations: readonly CodingAgentRuntimeToolRegistration[];
-			readonly registrationsByName: ReadonlyMap<string, CodingAgentRuntimeToolRegistration>;
+			readonly registrations: readonly AdaptedExtensionToolRegistration[];
+			readonly registrationsByName: ReadonlyMap<string, AdaptedExtensionToolRegistration>;
 		}
 	>();
 	private readonly runners = new Map<string, CodingAgentExtensionRunnerPort>();
@@ -45,7 +56,39 @@ export class CodingAgentExtensionToolRuntime {
 	}
 
 	refresh(extensions: readonly CodingAgentExtensionToolSource[]): void {
-		this.registrations = Object.freeze(collectRegisteredTools(extensions).map((tool) => this.adaptTool(tool)));
+		const sources = new Map<
+			string,
+			Array<{ readonly localId: string; readonly order: number; readonly value: AdaptedExtensionToolRegistration }>
+		>();
+		for (const [sourceIndex, extension] of extensions.entries()) {
+			for (const [toolIndex, tool] of [...extension.tools.values()].entries()) {
+				const contributions = sources.get(tool.extensionPath) ?? [];
+				contributions.push({
+					localId: tool.definition.name,
+					order: sourceIndex * 1_000_000 + toolIndex,
+					value: this.adaptTool(tool),
+				});
+				sources.set(tool.extensionPath, contributions);
+			}
+		}
+		const nextSources = new Set<string>();
+		for (const [sourceId, contributions] of sources) {
+			nextSources.add(sourceId);
+			const lease = this.processCatalog.replaceSource(sourceId, String(++this.processRevision), contributions);
+			this.processSourceLeases.get(sourceId)?.release();
+			this.processSourceLeases.set(sourceId, lease);
+		}
+		for (const [sourceId, lease] of this.processSourceLeases) {
+			if (nextSources.has(sourceId)) continue;
+			lease.release();
+			this.processSourceLeases.delete(sourceId);
+		}
+
+		const registrationsByName = new Map<string, AdaptedExtensionToolRegistration>();
+		for (const { value } of this.processCatalog.snapshot()) {
+			if (!registrationsByName.has(value.tool.name)) registrationsByName.set(value.tool.name, value);
+		}
+		this.registrations = Object.freeze([...registrationsByName.values()]);
 		this.registrationsByName = new Map(
 			this.registrations.map((registration) => [registration.tool.name, registration]),
 		);
@@ -92,9 +135,54 @@ export class CodingAgentExtensionToolRuntime {
 		};
 	}
 
+	contributePrompt(
+		draft: SystemPromptDraft,
+		input: { readonly sessionId: string; readonly activeToolNames: readonly string[] },
+	): SystemPromptDraft {
+		let nextDraft = draft;
+		const registrations = this.readRegistrationsByName(input.sessionId);
+		for (const toolName of input.activeToolNames) {
+			const registration = registrations.get(toolName);
+			const prompt = registration?.definition.prompt;
+			if (!registration || !prompt) continue;
+			const summary = prompt.summary?.trim();
+			const guidelines = (prompt.guidelines ?? []).map((value) => value.trim()).filter(Boolean);
+			const operations = [
+				...(summary
+					? [
+							{
+								type: "addBlock" as const,
+								block: extensionPromptBlock(
+									`extension.tool.${toolName}.summary`,
+									`Tool guidance for ${toolName}:\n${summary}`,
+									250,
+								),
+							},
+						]
+					: []),
+				...(guidelines.length > 0
+					? [
+							{
+								type: "addBlock" as const,
+								block: extensionPromptBlock(
+									`extension.tool.${toolName}.guidelines`,
+									`Guidelines for ${toolName}:\n${guidelines.map((value) => `- ${value}`).join("\n")}`,
+									325,
+								),
+							},
+						]
+					: []),
+			];
+			if (operations.length > 0) {
+				nextDraft = applySystemPromptOperations(nextDraft, registration.extensionPath, operations);
+			}
+		}
+		return nextDraft;
+	}
+
 	/** 原子替换单个 Session 的工具 Overlay；同名 Session 工具覆盖进程级 Extension 工具。 */
 	replaceSessionTools(sessionId: string, tools: readonly RegisteredTool[]): void {
-		const registrationsByName = new Map<string, CodingAgentRuntimeToolRegistration>();
+		const registrationsByName = new Map<string, AdaptedExtensionToolRegistration>();
 		for (const tool of tools) registrationsByName.set(tool.definition.name, this.adaptTool(tool));
 		this.sessionRegistrations.set(sessionId, {
 			registrations: Object.freeze([...registrationsByName.values()]),
@@ -145,7 +233,7 @@ export class CodingAgentExtensionToolRuntime {
 		}
 	}
 
-	private readRegistrations(sessionId: string | undefined): readonly CodingAgentRuntimeToolRegistration[] {
+	private readRegistrations(sessionId: string | undefined): readonly AdaptedExtensionToolRegistration[] {
 		if (!sessionId) return this.registrations;
 		const session = this.sessionRegistrations.get(sessionId);
 		if (!session || session.registrations.length === 0) return this.registrations;
@@ -156,21 +244,35 @@ export class CodingAgentExtensionToolRuntime {
 
 	private readRegistrationsByName(
 		sessionId: string | undefined,
-	): ReadonlyMap<string, CodingAgentRuntimeToolRegistration> {
+	): ReadonlyMap<string, AdaptedExtensionToolRegistration> {
 		if (!sessionId) return this.registrationsByName;
 		const session = this.sessionRegistrations.get(sessionId);
 		if (!session || session.registrationsByName.size === 0) return this.registrationsByName;
 		return new Map([...this.registrationsByName, ...session.registrationsByName]);
 	}
 
-	private adaptTool(registeredTool: RegisteredTool): CodingAgentRuntimeToolRegistration {
+	private adaptTool(registeredTool: RegisteredTool): AdaptedExtensionToolRegistration {
 		const { definition } = registeredTool;
+		const normalizeInput = definition.normalizeInput;
+		const validateInput = definition.validateInput;
 		return {
+			extensionPath: registeredTool.extensionPath,
+			definition,
 			tool: {
 				name: definition.name,
 				label: definition.label,
 				description: definition.description,
 				inputSchema: definition.parameters,
+				...(normalizeInput || validateInput
+					? {
+							validateInput: (input: Record<string, unknown>) => {
+								const normalized = normalizeInput ? normalizeInput(input) : input;
+								return validateInput
+									? assertObjectInput(validateInput(normalized))
+									: decodeNormalizedInput(definition.parameters, normalized);
+							},
+						}
+					: {}),
 				execute: async (request) => {
 					const runner = this.runners.get(request.sessionId);
 					if (!runner) {
@@ -192,12 +294,32 @@ export class CodingAgentExtensionToolRuntime {
 	}
 }
 
-function collectRegisteredTools(extensions: readonly CodingAgentExtensionToolSource[]): RegisteredTool[] {
-	const toolsByName = new Map<string, RegisteredTool>();
-	for (const extension of extensions) {
-		for (const tool of extension.tools.values()) {
-			if (!toolsByName.has(tool.definition.name)) toolsByName.set(tool.definition.name, tool);
-		}
+function decodeNormalizedInput(schema: TSchema, input: unknown): Readonly<Record<string, unknown>> {
+	const errors = [...Value.Errors(schema, input)];
+	if (errors.length > 0) {
+		throw new Error(errors.map((error) => `${error.path || "/"}: ${error.message}`).join("; "));
 	}
-	return [...toolsByName.values()];
+	const decoded: unknown = Value.Decode(schema, input);
+	if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) {
+		throw new Error("Extension tool input schema must decode to an object");
+	}
+	return decoded as Readonly<Record<string, unknown>>;
+}
+
+function assertObjectInput(input: unknown): Readonly<Record<string, unknown>> {
+	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+		throw new Error("Extension tool input validator must return an object");
+	}
+	return input as Readonly<Record<string, unknown>>;
+}
+
+function extensionPromptBlock(id: string, content: string, priority: number) {
+	return {
+		id,
+		type: "plugin" as const,
+		source: { kind: "plugin" as const },
+		content,
+		priority,
+		enabled: true,
+	};
 }

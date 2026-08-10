@@ -44,7 +44,7 @@ flowchart LR
   G --> T
 ```
 
-关键改进是让 Vetta native 与 Pi compat 共享 `ContributionDraft -> ContributionSet -> Catalog`，而不是让 Pi adapter 直接修改现有多个 `Map`。
+关键改进是让 Vetta native 与 Pi compat 共享 `ContributionDraft -> ContributionSet -> DynamicContributionCatalog`，而不是让 Pi adapter 直接修改现有多个 `Map`。这里复用 ADR-0062 的 Catalog；Extension adapter 只负责 identity/owner 到既有 source replacement 的转换，不实现第二个通用 Catalog。
 
 Native path 是事实源和行为基线：Pi path 只比 native path 多 module/schema/event shape 转换，不拥有 catalog transaction、Tool scheduler、prompt compiler、session transition 或 Provider lifecycle。
 
@@ -90,7 +90,7 @@ packages/coding-agent/src/extensions/
     native-registration.ts       # 现有 Vetta ExtensionAPI -> draft
     normalize.ts                 # 名称、Schema、默认值与 JSON-safe 归一化
     compiler.ts                  # draft + host profile -> immutable set/report
-    catalog-transaction.ts       # 原子 publish/replace/remove
+    catalog-adapter.ts           # typed contribution -> ADR-0062 Catalog source replacement
     conflict-policy.ts           # 同名优先级与诊断
 
   lifecycle/
@@ -253,13 +253,13 @@ Pi Extension 看到的是兼容 facade，不是 Vetta 内部对象：
 
 先从 `@vetta/coding-agent/extensions` 兼容演进 Vetta native contract：Tool input normalization/prompt metadata、原生状态事件、Provider unregister、generation/source diagnostics。现有字段保持兼容，新字段均为 optional 或新增方法，并检查所有宿主消费者。
 
-Pi 接入不需要新增 `@vetta/coding-agent/pi-compat` subpath。建议从现有入口导出窄类型：
+Pi 接入使用显式 `@vetta/coding-agent/extensions/pi-compat` subpath，避免 native Extension loader/API 意外获得 Pi facade。该入口只导出窄类型与显式 loader：
 
-- `@vetta/coding-agent/extensions`：兼容状态、报告、inspect options；
+- `@vetta/coding-agent/extensions/pi-compat`：显式 Pi loader、兼容状态、报告、inspect options；
 - `@vetta/coding-agent/bootstrap`：在现有 `extensionRequirements` 中携带 origin/profile；
 - SDK create options：只增加 `piCompatibility?: "off" | "strict" | "host-aware"`，默认是否开启由产品决策明确指定。
 
-不要公开 loader、draft、compiler class 或 Pi facade 具体实现。
+不要公开底层 module loader、draft、compiler class 或 Pi facade 具体实现；只公开按 profile 加载并返回报告的高层入口。
 
 ## 依赖方向
 
@@ -268,7 +268,7 @@ pi-compat -> extension contributions -> runtime-contracts
           -> resources contracts
           -> @vetta/ai public values（仅 adapter）
 
-composition -> pi-compat factory + catalog transaction
+composition -> pi-compat factory + catalog adapter
 runtime-*  -X-> pi-compat
 apps       -> public extension/bootstrap contracts
 ```
