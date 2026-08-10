@@ -80,7 +80,7 @@ const icons = {
 };
 
 /**
- * 画布左上角固定的工具栏（选择 / 托手 / 画框 / 缩放 / 设计体系 / 导出）。
+ * 画布底部居中固定的工具栏（选择 / 托手 / 画框 / 缩放 / 设计体系 / 导出）。
  * 视觉与动效对齐 content-creation 画布的 dock：图标方块 + 光标处放大 + 峰值项浮标签。
  */
 export function ControlBar({
@@ -231,16 +231,14 @@ export function ControlBar({
 	const peakLabel = peakSlot?.type === "item" ? peakSlot.label : null;
 
 	return (
-		// 左上角：顶部那层沉浸式标题栏（CanvasTab 里
-		// 约 58px 高的渐变遮罩，z-30）内容全部右对齐，左上角是空的；z-40 压过遮罩，
-		// 否则工具栏会被那层渐隐罩住。
+		// 底部居中；z-40 与顶部按钮组同层，压过沉浸式渐变遮罩。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
-		<div className="pointer-events-none absolute top-3 left-3 z-40">
-			{/* 放大只用 transform（origin-top），图标向下溢出 dock，chrome 本身不变高 */}
-			<div className="relative inline-flex flex-col items-start overflow-visible pb-9">
+		<div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2">
+			{/* 放大只用 transform（origin-bottom），图标向上溢出 dock，chrome 本身不变高 */}
+			<div className="relative inline-flex flex-col items-center overflow-visible pt-9">
 				{peakLabel ? (
 					<div
-						className="pointer-events-none absolute bottom-0 z-10 -translate-x-1/2 rounded-md border border-border/70 bg-popover/95 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-sm"
+						className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-border/70 bg-popover/95 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-sm"
 						style={{ left: centersRef.current?.[peakIndex] }}
 					>
 						{peakLabel}
@@ -249,7 +247,7 @@ export function ControlBar({
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar */}
 				<div
 					ref={dockRef}
-					className="pointer-events-auto relative inline-flex items-start overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
+					className="pointer-events-auto relative inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
 					style={{ gap: DOCK_GAP }}
 					// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 					// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
@@ -288,7 +286,7 @@ export function ControlBar({
 								aria-label={slot.label}
 								aria-pressed={slot.active}
 								onClick={slot.onClick}
-								className={`relative z-[1] flex shrink-0 origin-top items-center justify-center rounded-[22%] border border-transparent outline-none will-change-transform focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 ${
+								className={`relative z-[1] flex shrink-0 origin-bottom items-center justify-center rounded-[22%] border border-transparent outline-none will-change-transform focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 ${
 									slot.active || slot.accent
 										? "bg-primary/12 text-primary"
 										: "bg-muted/55 text-foreground hover:bg-muted"

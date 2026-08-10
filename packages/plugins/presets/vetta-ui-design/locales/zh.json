@@ -78,6 +78,7 @@
 	"canvas.frames.empty.desc": "用工具栏的「新建 Frame」拖出一个画框，或直接告诉 Vetta 你想设计什么。",
 	"canvas.picker.label": "设计文档",
 	"canvas.refresh": "刷新画布（重新加载所有画框的最新代码）",
+	"canvas.run": "运行",
 	"canvas.export": "导出分享",
 	"canvas.export.running": "正在构建导出…",
 	"canvas.export.done": "已导出：{{path}}",

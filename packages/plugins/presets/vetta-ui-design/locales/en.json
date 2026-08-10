@@ -78,6 +78,7 @@
 	"canvas.frames.empty.desc": "Drag one out with the frame tool in the toolbar, or just tell Vetta what you want to design.",
 	"canvas.picker.label": "Design document",
 	"canvas.refresh": "Refresh canvas (reload every frame with the latest code)",
+	"canvas.run": "Run",
 	"canvas.export": "Export & share",
 	"canvas.export.running": "Building export…",
 	"canvas.export.done": "Exported: {{path}}",
