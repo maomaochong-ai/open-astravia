@@ -149,6 +149,56 @@ it("reports the file and line so the agent can go straight there", () => {
 	expect(issues[0]).toMatchObject({ file: "components/AppShell.tsx", line: 2, rule: "fake-router" });
 });
 
+const THEME = "@theme {\n\t--color-primary: #5e6ad2;\n\t--color-surface: #08090a;\n\t--color-muted: #8a8f98;\n}";
+
+const tokenRules = (content: string, themeCss: string | null = THEME): string[] =>
+	checkSources([{ path: "frames/demo.tsx", content }], themeCss).map((issue) => issue.rule);
+
+it("catches a color token that theme.css never declares", () => {
+	// Tailwind 对解析不出的类名不生成 CSS：元素照常占位，只是没有背景色。
+	const issues = checkSources(
+		[{ path: "frames/demo.tsx", content: '<div className="bg-surface-raised p-4" />' }],
+		THEME,
+	).filter((issue) => issue.rule === "undefined-theme-token");
+	expect(issues[0]).toMatchObject({ rule: "undefined-theme-token", line: 1 });
+	expect(issues[0].message).toContain("--color-surface-raised");
+	// 报错里带上现有 token，省掉 agent 再去读一遍 theme.css
+	expect(issues[0].message).toContain("primary");
+});
+
+it("does not invent token errors out of Tailwind's own utilities", () => {
+	// 这一组全是合法的 bg-*，误报任意一条都会让 agent 去改本来正确的代码
+	expect(tokenRules('<div className="bg-primary bg-surface bg-muted" />')).not.toContain("undefined-theme-token");
+	expect(tokenRules('<div className="bg-white bg-black bg-transparent bg-current" />')).not.toContain(
+		"undefined-theme-token",
+	);
+	expect(tokenRules('<div className="bg-red-500 bg-slate-50 bg-emerald-950" />')).not.toContain("undefined-theme-token");
+	expect(tokenRules('<div className="bg-cover bg-center bg-no-repeat bg-fixed" />')).not.toContain(
+		"undefined-theme-token",
+	);
+	expect(tokenRules('<div className="bg-gradient-to-r bg-clip-text bg-blend-multiply bg-linear-to-br" />')).not.toContain(
+		"undefined-theme-token",
+	);
+});
+
+it("says nothing when there is no theme.css to check against", () => {
+	// 拿不到事实源就不做这项检查，而不是把每个 token 都当成没声明。
+	expect(tokenRules('<div className="bg-surface-raised" />', null)).not.toContain("undefined-theme-token");
+	expect(tokenRules('<div className="bg-surface-raised" />', "/* 没有 @theme 块 */")).not.toContain(
+		"undefined-theme-token",
+	);
+});
+
+it("reports each undefined token once per file", () => {
+	const content = ['<div className="bg-elevated" />', '<div className="bg-elevated" />', '<div className="bg-sunken" />'].join(
+		"\n",
+	);
+	const names = checkSources([{ path: "frames/demo.tsx", content }], THEME)
+		.filter((issue) => issue.rule === "undefined-theme-token")
+		.map((issue) => issue.message);
+	expect(names).toHaveLength(2);
+});
+
 it("stays quiet on a correctly written frame", () => {
 	const content = [
 		'export const frame = { width: 1440, height: 900, title: "商品" };',

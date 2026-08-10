@@ -6,6 +6,7 @@ import {
 	getFrameError,
 	setPendingDesignPath,
 } from "./canvas/design-runtime";
+import { captureFrameOffscreen, offscreenRasterSupported } from "./canvas/offscreen-raster";
 import { designSystemCardDescriptor } from "./cards/design-system-card";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
@@ -20,11 +21,14 @@ import type { SourceIssue } from "./vetd/check-sources";
 import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
+import { layoutIssues } from "./vetd/layout-probe";
 import { sidecarDirOf } from "./vetd/manifest-types";
 import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
+/** 与画布位图队列同一档（canvas/frame-raster.ts）：模型看的图不该比画布上的糊。 */
+const SCREENSHOT_JPEG_QUALITY = 0.92;
 /**
  * 设计画布只在「工作」模式下成立（ADR-0046）：编程模式里这些工具连同画布、
  * 全局插槽、skill 一起隔离，只留 .vetd 的文件预览。插件级 agent_mode 是硬闸、
@@ -229,8 +233,26 @@ export function registerDesignTools(ctx: PluginContext): void {
 				};
 			}
 			let dataUrl: string;
+			// 布局机检搭在出图这一次渲染上（见 vetd/layout-probe）。走离屏窗口时页面
+			// 就在手上，量一次几乎不要钱；宿主没有这个能力就照旧只出图——机检是附加
+			// 信息，不该成为截不到图的理由。
+			let probe: unknown;
 			try {
-				dataUrl = await controller.captureFrame(frameId);
+				const frameSize = controller.session.manifest.frames.find((frame) => frame.id === frameId);
+				if (offscreenRasterSupported() && frameSize) {
+					const raster = await captureFrameOffscreen({
+						port: controller.port,
+						frameId,
+						width: frameSize.width,
+						height: frameSize.height,
+						quality: SCREENSHOT_JPEG_QUALITY,
+						probeLayout: true,
+					});
+					dataUrl = raster.dataUrl;
+					probe = raster.probe;
+				} else {
+					dataUrl = await controller.captureFrame(frameId);
+				}
 			} catch (error) {
 				const reason = error instanceof Error ? error.message : String(error);
 				// 等待期间才坏掉的话，报错要带上真正的原因而不只是「超时」。
@@ -261,7 +283,12 @@ export function registerDesignTools(ctx: PluginContext): void {
 			await pruneSnapshots(host.fs, dirPath, frameId);
 			// 只带这一帧自己的违规：截图是逐帧调的，把整份设计的 issues 全塞进来会让
 			// agent 拿着别的 frame 的报错去改当前这个。
-			const frameIssues = issues.filter((issue) => issue.file === `frames/${frameId}.tsx`);
+			// 源码机检 + 渲染机检合成一份：对 agent 来说都是「这一帧被证明有问题的地方」，
+			// 分两个字段只会让它以为其中一份是可选的。
+			const frameIssues = [
+				...issues.filter((issue) => issue.file === `frames/${frameId}.tsx`),
+				...layoutIssues(probe, frameId),
+			];
 			// 搭车提醒（与 issues 同一先例）：截图是每帧必调的，这一帧有待处理的用户
 			// 备注就在这里点名，agent 不必单独巡检。
 			const framePendingNotes = pendingNotes(controller.notes.notes).filter(
@@ -280,7 +307,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				// 光说「截好了」模型会只瞟一眼就宣布完成。把该找什么写在这里：工具返回是
 				// 每次都读的，而 references/quality.md 未必被翻开。三项是实测最高频的
 				// 渲染缺陷，共同点是源码怎么读都读不出来，只有看图才能发现。
-				note: `Screenshot saved${frameIssues.length > 0 ? " — `issues` lists rule violations the checker proved in this frame's source; fix them with a targeted edit along with whatever you see in the image" : ""}. Read this path to actually look at the rendering, and inspect it for defects the source cannot reveal: (1) misalignment — edges/baselines that should line up but do not, cards of unequal height, inconsistent gutters; (2) unintended text wrapping — buttons, tabs, table headers, nav items or labels spilling onto a second line (CJK copy is wider than the English the container was sized for), and text clipped or overflowing; (3) classes that resolve to nothing — Tailwind emits no CSS for a class it cannot resolve, so the element silently keeps its default look while the source reads fine: an icon slot collapsing to empty space (a name or set that does not exist), or a surface with no background because its theme token was never defined in theme.css. Also check clipping, contrast, and whether the frame fills its declared height. Fix what you find and screenshot again — see references/quality.md for the full checklist.`,
+				note: `Screenshot saved${frameIssues.length > 0 ? " — `issues` lists what the checkers PROVED about this frame, from the source and from measuring the rendered DOM at capture time (empty icon slots, clipped text, controls wrapping to a second line, rows off by a few pixels). Each carries file:line; fix them with targeted edits" : ""}. Now read this path and actually look at the image. The checkers only report what they can prove, and they are deliberately conservative — they miss more than they catch, and they say nothing at all about these, which are yours to judge: whether the visual hierarchy leads the eye to the right thing first; whether the copy is plausible, specific and in the user's language (never Lorem ipsum or "Item 1"); whether each icon actually matches its meaning; whether text/background contrast is comfortable; whether spacing and type sizes stay on one scale; whether the frame fills its declared height; and the alignment, wrapping and empty-looking elements the measurements were too cautious to flag. Fix what you find and screenshot again — see references/quality.md for the full checklist.`,
 				// 模型不可见：宿主把顶层 cards 提到 details.cards，在消息下方渲染截图卡。
 				cards: [screenshotCardDescriptor(vetdPath, dirPath, frameId)],
 			};

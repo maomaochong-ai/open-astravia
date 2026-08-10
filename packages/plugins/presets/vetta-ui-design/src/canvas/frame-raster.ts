@@ -375,13 +375,15 @@ export function useFrameRasters({
 				}
 				// 不占 withCaptureLock：离屏窗口与 iframe 内的 html-to-image（交付物
 				// 截图）用的是两套互不竞争的资源，串行化只会平白拖慢两边。
+				// 画布刷新只要位图：布局机检是截图工具那条路的事，位图队列是后台
+				// 连续跑的，不该为每次刷新多付一次求值。
 				return captureFrameOffscreen({
 					port: context.port,
 					frameId: next,
 					width: size.width,
 					height: size.height,
 					quality: RASTER_JPEG_QUALITY,
-				});
+				}).then((result) => result.dataUrl);
 			}
 			return withCaptureLock(() =>
 				bridge.capture(next, {

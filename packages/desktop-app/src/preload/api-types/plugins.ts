@@ -862,6 +862,8 @@ export interface PluginOffscreenCaptureOptions {
 	/** 轮询到真值才截图。 */
 	readyExpression?: string;
 	settleMs?: number;
+	/** 截图同一时刻对页面求值，结果经 JSON 回传到 `probe`。求值失败不影响截图。 */
+	probeScript?: string;
 	timeoutMs?: number;
 	format?: "jpeg" | "png";
 	quality?: number;
@@ -871,6 +873,8 @@ export interface PluginOffscreenCaptureResult {
 	dataUrl: string;
 	/** 实际设备像素比：位图物理像素 = CSS 尺寸 × 此值。 */
 	scaleFactor: number;
+	/** `probeScript` 的求值结果；未传、抛错或不可序列化时为 undefined。 */
+	probe?: unknown;
 }
 
 import type { FsEntry, FsFileRef, FsStatResult } from "../fs-types.js";

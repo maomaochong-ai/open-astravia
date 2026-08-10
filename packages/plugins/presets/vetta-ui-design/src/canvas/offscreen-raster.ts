@@ -10,6 +10,7 @@
  * html-to-image 老路。
  */
 import { getPluginCtx } from "../plugin-context";
+import { LAYOUT_PROBE_SCRIPT } from "../vetd/layout-probe";
 
 export interface OffscreenRasterRequest {
 	port: number;
@@ -18,6 +19,14 @@ export interface OffscreenRasterRequest {
 	height: number;
 	/** jpeg 质量，0–1。 */
 	quality: number;
+	/** 出图的同时量一次布局（见 vetd/layout-probe）。画布自己的刷新不需要。 */
+	probeLayout?: boolean;
+}
+
+export interface OffscreenRasterResult {
+	dataUrl: string;
+	/** `probeLayout` 时探针的原始结果，交给 layoutIssues 解释；宿主不支持时为 undefined。 */
+	probe: unknown;
 }
 
 export function offscreenRasterSupported(): boolean {
@@ -32,7 +41,7 @@ function sessionKeyOf(port: number): string {
 	return `design-raster:${port}`;
 }
 
-export async function captureFrameOffscreen(request: OffscreenRasterRequest): Promise<string> {
+export async function captureFrameOffscreen(request: OffscreenRasterRequest): Promise<OffscreenRasterResult> {
 	const capture = getPluginCtx().capture;
 	if (!capture) throw new Error("offscreen capture unavailable");
 	const frameId = JSON.stringify(request.frameId);
@@ -48,11 +57,12 @@ export async function captureFrameOffscreen(request: OffscreenRasterRequest): Pr
 		// （见 engine/src/main.tsx 的 FramePainted）；图片解码另等 complete。
 		readyExpression: `window.__vetdPainted === ${frameId} && Array.from(document.images).every((img) => img.complete)`,
 		settleMs: 300,
+		...(request.probeLayout === true ? { probeScript: LAYOUT_PROBE_SCRIPT } : {}),
 		timeoutMs: 20_000,
 		format: "jpeg",
 		quality: request.quality,
 	});
-	return result.dataUrl;
+	return { dataUrl: result.dataUrl, probe: result.probe };
 }
 
 /** 释放引擎对应的离屏窗口（切设计文档 / 强制刷新时；下次截图会重新加载页面）。 */

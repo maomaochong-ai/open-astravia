@@ -15,6 +15,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `capture.offscreen` 新增 `probeScript` 与结果字段 `probe`：插件可在**截图的同一时刻**对离屏页面求值，把渲染后的 DOM 度量（换行、裁切、空图标位、边缘错位等）与位图一起取回，无需为了量一次布局再渲染一遍。结果经 JSON 往返；求值抛错或不可序列化时 `probe` 为 `undefined`，位图照常返回——探针是搭车的附加信息，不会成为截图失败的原因。
 - `conversation.sendPrompt` 返回 `SendPromptResult` 回执（ADR-0060）：空闲时整轮结束后 resolve `{ status: "sent" }`；agent streaming 中 prompt 进入会话队列并立即 resolve `{ status: "queued", queueItemId }`，队列在本轮自然停止点接力消费、被打断/出错后暂停待用户处置。`conversation.on` 新增 `queue-changed` 事件（携 `{ paused, items }`），插件可据此呈现排队条目的真实状态。原 `Promise<void>` 消费方无需改动。
 - 媒体 Provider 生成能力新增 `modeCapabilities` 与输入 `role`：Provider 可按模式声明首帧、尾帧、图片/视频/音频参考的类型和数量，以及比例、音频策略；媒体协议升级到 v4。
 - `ctx.agent.registerHook()`：ESM / Module Federation 插件可动态注册 Coding Agent 的 12 类原生 Hook 事件，并以 `Disposable` 注销。事件与返回值是判别联合；`PreToolUse`、`PermissionRequest`、`Stop` / `SubagentStop` 提供事件专属结果。新增 `agent.hooks.register` 与 `agent.hookHandler.execute` 双权限；`scope_use` 必填且 fail-closed，支持 `agent_mode` / `toolNames` 过滤、超时与 Main 边界校验（ADR-0064）。
