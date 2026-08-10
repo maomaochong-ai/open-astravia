@@ -56,6 +56,14 @@ export function TemplateGalleryDialog({
 			data-vetta-plugin-root="vetta-ui-design"
 			className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/55 px-6 py-8 backdrop-blur-[2px]"
 			onClick={onClose}
+			// portal 只逃出了 DOM，React 事件仍沿组件树冒泡：画布入口的祖先是画布根，
+			// 它在 pointerdown 里无条件 setPointerCapture，会把随后的 click 改派给画布根
+			// ——不拦下来，Dialog 里所有按钮都点不动。
+			onPointerDown={(event) => event.stopPropagation()}
+			onPointerMove={(event) => event.stopPropagation()}
+			onPointerUp={(event) => event.stopPropagation()}
+			onWheel={(event) => event.stopPropagation()}
+			onContextMenu={(event) => event.stopPropagation()}
 		>
 			{/* biome-ignore lint/a11y/noStaticElementInteractions: keeps backdrop clicks off the panel */}
 			<div
