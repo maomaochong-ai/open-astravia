@@ -38,6 +38,7 @@ function createStorage() {
 		readFile: async () => null,
 		writeFile: async () => undefined,
 		putBlob: async () => ({ id: "blob", url: "blob:test", mimeType: "application/octet-stream" }),
+		putBlobFromFile: async (input) => ({ id: input.id ?? "blob", url: "blob:test", mimeType: input.mimeType }),
 		readBlob: async () => null,
 		getBlobRef: async () => null,
 	};

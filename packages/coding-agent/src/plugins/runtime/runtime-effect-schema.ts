@@ -3,8 +3,6 @@ import { Value } from "@sinclair/typebox/value";
 import type {
 	AgentPluginContinuationResult,
 	AgentPluginHandlerResult,
-	AgentPluginHookPoint,
-	AgentPluginHookResult,
 	AgentPluginRuntimeEffect,
 } from "../../model-context/index.js";
 
@@ -136,40 +134,6 @@ const ToolHandlerResultSchema = Type.Object(
 	{ additionalProperties: false },
 );
 
-const HookContentSchema = Type.Union([
-	Type.Object({ type: Type.Literal("text"), text: Type.String() }, { additionalProperties: false }),
-	Type.Object(
-		{ type: Type.Literal("image"), data: Type.String(), mimeType: Type.String() },
-		{ additionalProperties: false },
-	),
-]);
-const HookBeforeResultSchema = Type.Union([
-	Type.Object(
-		{
-			action: Type.Literal("continue"),
-			input: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
-		},
-		{ additionalProperties: false },
-	),
-	Type.Object({ action: Type.Literal("block"), reason: Type.String() }, { additionalProperties: false }),
-]);
-const HookAfterResultSchema = Type.Union([
-	Type.Object({ action: Type.Literal("continue") }, { additionalProperties: false }),
-	Type.Object(
-		{
-			action: Type.Literal("replace"),
-			content: Type.Optional(Type.Array(HookContentSchema)),
-			details: Type.Optional(Type.Unknown()),
-		},
-		{ additionalProperties: false },
-	),
-	Type.Object({ action: Type.Literal("block"), reason: Type.String() }, { additionalProperties: false }),
-]);
-const HookErrorResultSchema = Type.Union([
-	Type.Object({ action: Type.Literal("continue") }, { additionalProperties: false }),
-	Type.Object({ action: Type.Literal("feedback"), text: Type.String() }, { additionalProperties: false }),
-]);
-
 export function validatePluginRuntimeEffects(value: unknown): readonly AgentPluginRuntimeEffect[] {
 	if (!Value.Check(RuntimeEffectsSchema, value)) {
 		throw new Error("Plugin system prompt provider returned invalid runtime effects");
@@ -191,27 +155,4 @@ export function validatePluginToolHandlerResult(value: unknown): AgentPluginHand
 		throw new Error("Plugin tool returned an invalid result");
 	}
 	return value as AgentPluginHandlerResult<unknown>;
-}
-
-export function validatePluginHookHandlerResult(
-	value: unknown,
-	point: AgentPluginHookPoint,
-): AgentPluginHandlerResult<AgentPluginHookResult | undefined> {
-	const resultSchema =
-		point === "tool.before"
-			? HookBeforeResultSchema
-			: point === "tool.after"
-				? HookAfterResultSchema
-				: HookErrorResultSchema;
-	const schema = Type.Object(
-		{
-			value: Type.Optional(resultSchema),
-			effects: RuntimeEffectsSchema,
-		},
-		{ additionalProperties: false },
-	);
-	if (!Value.Check(schema, value)) {
-		throw new Error("Plugin hook returned an invalid result");
-	}
-	return value as AgentPluginHandlerResult<AgentPluginHookResult | undefined>;
 }

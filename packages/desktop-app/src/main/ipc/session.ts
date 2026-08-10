@@ -7,8 +7,6 @@ import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
 	AgentPluginHandlerResult,
-	AgentPluginHookInvocation,
-	AgentPluginHookResult,
 	AgentPluginSystemPromptInvocation,
 	AgentPluginToolInvocation,
 	RuntimeSandboxGrantDecision,
@@ -34,6 +32,7 @@ import { getAppLogger } from "../logger.js";
 import { notify } from "../notifications/index.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
+import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
 import {
 	broadcastPluginsChanged,
 	buildAgentPluginRuntimeConfig,
@@ -475,8 +474,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
-	runtime.setPluginHookInvoker((request: AgentPluginHookInvocation, signal?: AbortSignal) => {
-		if (webContents.isDestroyed()) return Promise.resolve({ value: undefined, effects: [] });
+	setDesktopPluginHookInvoker((request, signal?: AbortSignal) => {
+		if (webContents.isDestroyed()) return Promise.resolve(undefined);
 		const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
 		if (
 			!plugin?.enabled ||
@@ -485,9 +484,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			!plugin.permissions.includes("agent.hookHandler.execute") ||
 			!plugin.grantedPermissions.includes("agent.hookHandler.execute")
 		) {
-			return Promise.resolve({ value: undefined, effects: [] });
+			return Promise.resolve(undefined);
 		}
-		return new Promise<AgentPluginHandlerResult<AgentPluginHookResult | undefined>>((resolve, reject) => {
+		return new Promise<unknown>((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
 				pluginHookMap.delete(requestId);
@@ -501,13 +500,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
 					return;
 				}
-				resolve({
-					value: (result as { value?: AgentPluginHookResult })?.value,
-					effects: normalizeDynamicSystemPromptOperations(
-						current,
-						(result as { effects?: unknown }).effects ?? [],
-					),
-				});
+				resolve((result as { value?: unknown })?.value);
 			};
 			const onAbort = (): void => {
 				pluginHookMap.delete(requestId);
@@ -669,7 +662,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
 		// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
 		// 落到项目根、看到其他 session 的子目录。
-		return { sessionId: result.sessionId, cwd: effectiveCwd };
+		return { sessionId: result.sessionId, sessionPath: result.sessionPath, cwd: effectiveCwd };
 	});
 
 	ipcMain.handle(CHANNELS.LIST_PROJECTS, async () => {
@@ -1331,7 +1324,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		unregisterQuestionResolved();
 		runtime.setUserSandboxGrantHandler(undefined);
 		runtime.setPluginToolInvoker(undefined);
-		runtime.setPluginHookInvoker(undefined);
+		setDesktopPluginHookInvoker(undefined);
 		runtime.setPluginContinuationInvoker(undefined);
 		runtime.setPluginSystemPromptInvoker(undefined);
 		// 不在此处 disposeAllSessions：共享 runtime 的 session 可能正被

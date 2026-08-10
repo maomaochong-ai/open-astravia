@@ -312,6 +312,65 @@ describe("legacy session migration", () => {
 		).rejects.toMatchObject({ code: CONVERSATION_STORAGE_ERROR_CODES.ALREADY_EXISTS });
 	});
 
+	it("reuses a deterministic target after native events were appended", async () => {
+		const root = await createTemporaryRoot();
+		const sourcePath = join(root, "legacy.jsonl");
+		const targetRootDir = join(root, "v2");
+		const sourceContent = legacyJsonLines([
+			legacyHeader("legacy-source"),
+			legacyMessage("user-1", null, userMessage("hello", 1)),
+		]);
+		await writeFile(sourcePath, sourceContent, "utf8");
+		const first = await migrateLegacySessionToV2({
+			sourcePath,
+			targetRootDir,
+			targetSessionId: "stable-target",
+			reuseIdenticalTarget: true,
+			entryNormalizer: preserveLegacyEntry,
+		});
+		const repository = new FileConversationRepository({ rootDir: targetRootDir });
+		await repository.append("stable-target", 0, [
+			{
+				type: "turn.started",
+				sessionId: "stable-target",
+				turnId: "turn-1",
+				snapshotId: "snapshot-1",
+				timestamp: 10,
+			},
+			{
+				type: "message.appended",
+				sessionId: "stable-target",
+				turnId: "turn-1",
+				message: userMessage("continued question", 11),
+				timestamp: 11,
+			},
+			{
+				type: "turn.completed",
+				sessionId: "stable-target",
+				turnId: "turn-1",
+				stopReason: "stop",
+				timestamp: 12,
+			},
+		]);
+		await repository.close();
+		const continuedContent = await readFile(first.targetPath, "utf8");
+
+		const reused = await migrateLegacySessionToV2({
+			sourcePath,
+			targetRootDir,
+			targetSessionId: "stable-target",
+			reuseIdenticalTarget: true,
+			entryNormalizer: preserveLegacyEntry,
+		});
+
+		expect(reused.created).toBe(false);
+		expect(reused.document).toMatchObject({ journalVersion: 3, revision: 2 });
+		expect(reused.document.entries).toContainEqual(
+			expect.objectContaining({ message: userMessage("continued question", 11) }),
+		);
+		expect(await readFile(first.targetPath, "utf8")).toBe(continuedContent);
+	});
+
 	it("rejects entries outside the V2 schema before publishing a target", async () => {
 		const root = await createTemporaryRoot();
 		const sourcePath = join(root, "legacy.jsonl");

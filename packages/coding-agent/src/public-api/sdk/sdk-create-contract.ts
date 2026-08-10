@@ -3,7 +3,6 @@ import type { Api, Model } from "@vetta/ai";
 import type { EcosystemHookAdapterFactory } from "@vetta/ecosystem-adapter";
 import type {
 	AgentPluginContinuationInvoker,
-	AgentPluginHookInvoker,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
@@ -132,7 +131,6 @@ export interface CreateCodingAgentSessionOptions {
 	readonly tracingMetadata?: Readonly<Record<string, unknown>>;
 	readonly agentPlugins?: AgentPluginRuntimeConfig;
 	readonly invokePluginTool?: AgentPluginToolInvoker;
-	readonly invokePluginHook?: AgentPluginHookInvoker;
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
 	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
 }

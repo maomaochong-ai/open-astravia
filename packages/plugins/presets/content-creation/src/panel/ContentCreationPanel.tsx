@@ -1,8 +1,4 @@
-import {
-	useActiveConversation,
-	usePromptAttachment,
-	useTranslation,
-} from "@vetta-org/plugin-sdk";
+import { useActivityTab, usePromptAttachment, useTranslation } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
@@ -22,7 +18,7 @@ import {
 } from "../plugin/selection-prompt-context";
 
 export function ContentCreationPanel() {
-	const { cwd } = useActiveConversation();
+	const { cwd } = useActivityTab();
 	const { t } = useTranslation();
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
 	const [error, setError] = useState<string | null>(null);

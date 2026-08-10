@@ -44,6 +44,7 @@
 			"@vetta/coding-agent/historical-sessions": [
 				"../coding-agent/src/public-api/historical-sessions.ts"
 			],
+			"@vetta/coding-agent/hooks": ["../coding-agent/src/public-api/hooks.ts"],
 			"@vetta/coding-agent/profile": ["../coding-agent/src/public-api/profile.ts"],
 			"@vetta/coding-agent/product-prompt": ["../coding-agent/src/public-api/product-prompt.ts"],
 			"@vetta/coding-agent/resources": ["../coding-agent/src/public-api/resources.ts"],

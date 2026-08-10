@@ -15,12 +15,12 @@ import type {
 	ConversationState,
 	Disposable,
 	PluginAgentActions,
-	PluginAgentHookHandler,
-	PluginAgentHookPoint,
 	PluginAgentToolApi,
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentHookHandler,
 	PluginContinuationHandler,
 	PluginConversationApi,
 	PluginDynamicSystemPromptOperation,
@@ -45,7 +45,7 @@ interface PluginAgentToolHandlerEntry {
 const agentToolHandlers = new Map<string, PluginAgentToolHandlerEntry>();
 const agentHookHandlers = new Map<
 	string,
-	{ handler: PluginAgentHookHandler<PluginAgentHookPoint>; api: PluginAgentToolApi }
+	{ handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>; api: PluginAgentToolApi }
 >();
 interface PluginAppActionHandlerEntry {
 	handler: PluginAppActionHandler;
@@ -275,7 +275,6 @@ function startHookRequestListener(): void {
 			});
 			return;
 		}
-		const execution = createAgentActions();
 		void Promise.resolve(
 			entry.handler({
 				invocationId: request.requestId,
@@ -284,22 +283,14 @@ function startHookRequestListener(): void {
 					contributionId: request.hookId,
 					settings: request.settings,
 				},
-				session: {
-					...request.session,
-					scenario: request.session.scenario as Parameters<typeof entry.handler>[0]["session"]["scenario"],
-				},
-				model: request.model,
-				conversation: request.conversation,
-				runtime: request.runtime,
-				trigger: request.trigger,
-				actions: execution.actions,
+				session: request.session as Parameters<typeof entry.handler>[0]["session"],
+				event: request.event,
 				host: entry.api,
 			}),
 		).then(
 			(value) =>
 				window.vetta.plugins.respondAgentHook(request.requestId, {
 					value,
-					effects: execution.effects,
 				}),
 			(error: unknown) =>
 				window.vetta.plugins.respondAgentHook(request.requestId, {
@@ -536,7 +527,7 @@ export function registerPluginAgentToolHandler(options: {
 export function registerPluginAgentHookHandler(options: {
 	pluginId: string;
 	handlerId: string;
-	handler: PluginAgentHookHandler<PluginAgentHookPoint>;
+	handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>;
 	api: PluginAgentToolApi;
 }): Disposable {
 	const key = handlerKey(options.pluginId, options.handlerId);

@@ -18,6 +18,7 @@ vi.mock("@xyflow/react", () => ({
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
 	usePluginShortcutScope: () => undefined,
+	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 vi.mock("../src/node/ContentNodeCard", () => ({
@@ -51,6 +52,7 @@ describe("GraphWorkspace mouse interactions", () => {
 				onRunNode={async () => undefined}
 				onImportAssets={async () => undefined}
 				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={() => undefined}
 			/>,
 		);
 
@@ -100,6 +102,7 @@ describe("GraphWorkspace mouse interactions", () => {
 				onRunNode={async () => undefined}
 				onImportAssets={async () => undefined}
 				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={() => undefined}
 			/>,
 		);
 

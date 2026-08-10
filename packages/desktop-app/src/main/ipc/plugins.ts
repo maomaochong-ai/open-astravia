@@ -1,3 +1,4 @@
+import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, type PluginCodingAgentHookEventName } from "@vetta-org/plugin-sdk";
 import { ipcMain, webContents } from "electron";
 import type { AppMonitorResourceOperation, AppMonitorResourceSource } from "../../preload/api-types/app-monitor.js";
 import type {
@@ -190,24 +191,23 @@ function asAgentToolRegistration(value: unknown): {
 
 function asAgentHookRegistration(value: unknown): {
 	id: string;
-	point: "tool.before" | "tool.after" | "tool.error";
+	eventName: PluginCodingAgentHookEventName;
 	handlerId: string;
 	activationId?: string;
 	timeoutMs?: number;
 	scope_use: string[];
 	agent_mode?: string[];
 	toolNames?: string[];
-	context?: { conversation?: "summary" | "messages" };
 } {
 	const input = asRecord(value, "agent hook registration");
-	if (input.point !== "tool.before" && input.point !== "tool.after" && input.point !== "tool.error") {
-		throw new Error("Invalid agent hook point");
+	if (!PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES.some((eventName) => eventName === input.eventName)) {
+		throw new Error("Invalid Coding Agent Hook eventName");
 	}
 	const scopeUse = asStrictOptionalStringArray(input.scope_use, "agent hook scope_use");
 	if (!scopeUse?.length) throw new Error("Agent hook scope_use must not be empty");
 	return {
 		id: asPluginId(input.id),
-		point: input.point,
+		eventName: input.eventName as PluginCodingAgentHookEventName,
 		handlerId: asPluginId(input.handlerId),
 		activationId: asOptionalStringId(input.activationId, "agent hook activation id"),
 		timeoutMs:
@@ -217,7 +217,6 @@ function asAgentHookRegistration(value: unknown): {
 		scope_use: scopeUse,
 		agent_mode: asStrictOptionalStringArray(input.agent_mode, "agent hook agent_mode"),
 		toolNames: asStrictOptionalStringArray(input.toolNames, "agent hook toolNames"),
-		context: asHandlerContext(input.context),
 	};
 }
 
@@ -770,7 +769,6 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	});
 	ipcMain.handle("vetta:plugins:agent-hook-register", (_event, pluginId: unknown, registration: unknown) => {
 		registerDynamicAgentHook(asPluginId(pluginId), asAgentHookRegistration(registration));
-		refreshAgentPlugins();
 	});
 	ipcMain.handle(
 		"vetta:plugins:agent-hook-unregister",
@@ -780,7 +778,6 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 				asPluginId(hookId),
 				asOptionalStringId(activationId, "agent hook activation id"),
 			);
-			refreshAgentPlugins();
 		},
 	);
 	ipcMain.handle(

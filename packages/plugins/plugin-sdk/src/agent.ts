@@ -200,64 +200,166 @@ export interface PluginContinuationRegistration {
 	handler: PluginContinuationHandler;
 }
 
-export type PluginAgentHookPoint = "tool.before" | "tool.after" | "tool.error";
+export const PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES = [
+	"SessionStart",
+	"SessionEnd",
+	"UserPromptSubmit",
+	"PreToolUse",
+	"PermissionRequest",
+	"PostToolUse",
+	"PostToolUseFailure",
+	"PreCompact",
+	"PostCompact",
+	"SubagentStart",
+	"SubagentStop",
+	"Stop",
+] as const;
 
-export type PluginAgentHookContent =
-	| { type: "text"; text: string }
-	| { type: "image"; data: string; mimeType: string };
+export type PluginCodingAgentHookEventName = (typeof PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES)[number];
+export type PluginCodingAgentPermissionMode =
+	| "default"
+	| "acceptEdits"
+	| "plan"
+	| "dontAsk"
+	| "bypassPermissions";
 
-export type PluginAgentHookTrigger<P extends PluginAgentHookPoint> = P extends "tool.before"
-	? {
-			kind: "tool.before";
-			timestamp: number;
-			toolCallId: string;
-			toolName: string;
-			input: Readonly<Record<string, unknown>>;
-		}
-	: P extends "tool.after"
-		? {
-				kind: "tool.after";
-				timestamp: number;
-				toolCallId: string;
-				toolName: string;
-				input: Readonly<Record<string, unknown>>;
-				result: { content: readonly PluginAgentHookContent[]; details?: unknown };
-			}
-		: {
-				kind: "tool.error";
-				timestamp: number;
-				toolCallId: string;
-				toolName: string;
-				input: Readonly<Record<string, unknown>>;
-				error: string;
-				aborted: boolean;
-			};
+export interface PluginCodingAgentHookTool {
+	hostName: string;
+	kind: "function" | "shell" | "mcp" | "file-edit" | "agent" | "custom";
+	source?: { ecosystem?: string; serverName?: string; originalName?: string };
+}
 
-export type PluginAgentHookResult<P extends PluginAgentHookPoint> = P extends "tool.before"
-	? { action: "continue"; input?: Record<string, unknown> } | { action: "block"; reason: string }
-	: P extends "tool.after"
-		?
-				| { action: "continue" }
-				| { action: "replace"; content?: PluginAgentHookContent[]; details?: unknown }
-				| { action: "block"; reason: string }
-		: { action: "continue" } | { action: "feedback"; text: string };
+interface PluginCodingAgentHookEventBase {
+	sessionId: string;
+	cwd: string;
+	model: string;
+	permissionMode: PluginCodingAgentPermissionMode;
+	subagent?: { agentId: string; agentType: string };
+}
 
-export type PluginAgentHookHandler<P extends PluginAgentHookPoint> = (
-	context: PluginAgentHandlerContext<PluginAgentHookTrigger<P>>,
-) => void | PluginAgentHookResult<P> | Promise<void | PluginAgentHookResult<P>>;
+export type PluginCodingAgentHookEvent =
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "SessionStart";
+			source: "startup" | "resume" | "clear" | "compact";
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "SessionEnd";
+			cause: "new_session" | "switch_session" | "fork_session" | "dispose";
+		})
+	| (PluginCodingAgentHookEventBase & { eventName: "UserPromptSubmit"; turnId: string; prompt: string })
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "PreToolUse";
+			turnId: string;
+			tool: PluginCodingAgentHookTool;
+			toolUseId: string;
+			toolInput: unknown;
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "PermissionRequest";
+			turnId: string;
+			tool: PluginCodingAgentHookTool;
+			toolInput: unknown;
+			runIdSuffix: string;
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "PostToolUse";
+			turnId: string;
+			tool: PluginCodingAgentHookTool;
+			toolUseId: string;
+			toolInput: unknown;
+			toolResponse: unknown;
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "PostToolUseFailure";
+			turnId: string;
+			tool: PluginCodingAgentHookTool;
+			toolUseId: string;
+			toolInput: unknown;
+			error: string;
+			isInterrupt?: boolean;
+			durationMs?: number;
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "PreCompact" | "PostCompact";
+			turnId: string;
+			trigger: "manual" | "auto";
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "SubagentStart";
+			turnId: string;
+			agentId: string;
+			agentType: string;
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "SubagentStop";
+			turnId: string;
+			agentId: string;
+			agentType: string;
+			stopHookActive: boolean;
+			lastAssistantMessage: string | null;
+		})
+	| (PluginCodingAgentHookEventBase & {
+			eventName: "Stop";
+			turnId: string;
+			stopHookActive: boolean;
+			lastAssistantMessage: string | null;
+		});
 
-export interface PluginAgentHookRegistration<P extends PluginAgentHookPoint = PluginAgentHookPoint> {
+export type PluginCodingAgentHookEventOf<E extends PluginCodingAgentHookEventName> = Extract<
+	PluginCodingAgentHookEvent,
+	{ eventName: E }
+>;
+
+interface PluginCodingAgentHookContinueResult {
+	action: "continue";
+	additionalContexts?: readonly string[];
+	feedbackMessage?: string;
+}
+
+type PluginCodingAgentHookTerminalResult =
+	| { action: "block"; reason: string }
+	| { action: "stop"; reason?: string };
+
+export type PluginCodingAgentHookResult<E extends PluginCodingAgentHookEventName> =
+	| PluginCodingAgentHookTerminalResult
+	| (PluginCodingAgentHookContinueResult &
+			(E extends "PreToolUse" ? { updatedToolInput?: Record<string, unknown> } : object) &
+			(E extends "PermissionRequest"
+				? { permissionDecision?: "allow" | "deny"; permissionMessage?: string }
+				: object))
+	| (E extends "Stop" | "SubagentStop"
+			? { action: "continue-agent"; continuationFragments: readonly string[] }
+			: never);
+
+export interface PluginCodingAgentHookHandlerContext<E extends PluginCodingAgentHookEventName> {
+	invocationId: string;
+	plugin: {
+		id: string;
+		contributionId: string;
+		settings: Readonly<Record<string, unknown>>;
+	};
+	session: { id: string; cwd: string; scenario: ConversationScenario };
+	event: PluginCodingAgentHookEventOf<E>;
+	host: PluginAgentToolApi;
+}
+
+export type PluginCodingAgentHookHandler<E extends PluginCodingAgentHookEventName> = (
+	context: PluginCodingAgentHookHandlerContext<E>,
+) => void | PluginCodingAgentHookResult<E> | Promise<void | PluginCodingAgentHookResult<E>>;
+
+export interface PluginCodingAgentHookRegistration<
+	E extends PluginCodingAgentHookEventName = PluginCodingAgentHookEventName,
+> {
 	id: string;
-	point: P;
+	eventName: E;
 	/** Hook 是可执行贡献，必须显式声明允许出现的会话场景。 */
 	scope_use: readonly ConversationScenario[];
 	/** 允许出现的工作模式；缺省/空数组表示通用。 */
 	agent_mode?: readonly string[];
-	/** 只匹配列出的工具；缺省/空数组表示所有工具。 */
+	/** 工具事件只匹配列出的宿主工具名；缺省/空数组表示所有工具。 */
 	toolNames?: readonly string[];
 	timeoutMs?: number;
-	context?: { conversation?: "summary" | "messages" };
-	handler: PluginAgentHookHandler<P>;
+	handler: PluginCodingAgentHookHandler<E>;
 }
 
 export interface PluginAgentApi {
@@ -269,6 +371,8 @@ export interface PluginAgentApi {
 	 * Return null to allow the agent to stop, or a message to continue with another turn.
 	 */
 	registerContinuationProvider(registration: PluginContinuationRegistration): Disposable;
-	/** Register a typed, dynamically removable Agent execution hook. */
-	registerHook<P extends PluginAgentHookPoint>(registration: PluginAgentHookRegistration<P>): Disposable;
+	/** Register a typed, dynamically removable Coding Agent lifecycle hook. */
+	registerHook<E extends PluginCodingAgentHookEventName>(
+		registration: PluginCodingAgentHookRegistration<E>,
+	): Disposable;
 }

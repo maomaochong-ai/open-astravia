@@ -111,7 +111,6 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 			includeAgentSkills: request.includeAgentSkills,
 			agentPlugins: request.agentPlugins,
 			invokePluginTool: request.invokePluginTool,
-			invokePluginHook: request.invokePluginHook,
 			invokePluginContinuation: request.invokePluginContinuation,
 			invokePluginSystemPrompt: request.invokePluginSystemPrompt,
 			askUserQuestion: request.askUserQuestion,

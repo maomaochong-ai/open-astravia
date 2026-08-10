@@ -6,6 +6,7 @@ All notable changes to `@vetta/ecosystem-adapter` are documented in this file.
 
 ### Added
 
+- **Callback Hook adapter 公共聚合合同**：公开 `aggregateHookDispatchOutcomes()`，`HookRunSummary.handlerType` 支持 `callback`；宿主 callback adapter 与 Codex/Claude command adapter 复用同一结果优先级、Stop 安全和运行诊断语义（ADR-0064）。
 - **可变 Hook Dispatcher 与轮次贡献**：运行时可按 `id + revision` 原子注册、替换和释放 Skill frontmatter hook；在途 dispatch 使用稳定快照，旧 lease 不会误删新版本，`once` 状态按会话保留并可在新会话重置。
 - **Hook 事件 `SessionEnd` / `PostToolUseFailure`**：中立 `HOOK_EVENT_NAMES` 与 `EcosystemHookRuntime.runSessionEnd` / `runPostToolUseFailure`；Claude profile 完整 wire（stdin reason/error、matcher、exit 2 反馈、`additionalContext`）；`SessionEnd` 不可阻断拆会话。Codex profile 仍为官方 10 事件，adapter `supports` 排除上述两项。
 - **Vitest 配置**：本包 `vitest.config.ts` + `"test": "vitest --run"`；框架依赖统一在 monorepo 根 `devDependencies`，不在子包重复安装。

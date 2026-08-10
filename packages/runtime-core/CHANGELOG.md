@@ -10,7 +10,6 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
-- **宿主动态 Plugin Hook 调用合同**：`AgentPluginRuntimeConfig` 新增可序列化的工具 Hook contribution，`RuntimeHost` 新增 `setPluginHookInvoker()` 并把调用端口传入产品 Backend。Runtime Core 不解释 Hook point、权限或聚合策略，只维持宿主与 Coding Agent 之间的产品无关生命周期边界（ADR-0062）。
 - **一次性初始化回滚事务**：新增 `InitializationRollbackScope`，按资源实际获取顺序登记、严格逆序全量回滚，并支持所有权转移时撤销旧任务；无清理错误时原样抛出初始化失败，清理也失败时以初始化错误为 `cause` 聚合诊断。Greenfield Runtime Factory 在外围初始化失败时会先关闭已创建的 Kernel Session，再释放 Composition 资源。
 - **可重试 Runtime 关闭事务**：新增 `RetryableCleanup`，按 phase 全量尝试资源释放、共享并发关闭并只保留失败任务供后续重试；Greenfield Runtime Session 在首次清理失败后保持关闭准入，同时继续释放其余资源且不重复已成功的 Kernel/assembly 清理。
 - **无损调用上下文与最终模型消息合同**：Runtime Message Envelope 新增产品无关的 opaque identity，并加入 Conversation Context Projector 与 Model Call Message Finalizer；Turn Pipeline 在压缩后按身份重建调用上下文，Agent Core 在调用级变换时保留产品消息身份、仅向 Provider 投影标准消息，使 Extension 等产品能力可在 Runtime Core 外无损适配且不改变持久化格式。

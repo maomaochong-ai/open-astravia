@@ -114,7 +114,8 @@ export default definePlugin({
 					ctx.ui.registerActivityTab({
 						id: CANVAS_TAB_ID,
 						label: "%tab.label%",
-						icon: <DesignIcon />,
+						// 与 plugin.json#icon 同源（icon.png），活动栏与插件列表品牌一致。
+						icon: <VetdFileIcon />,
 						component: CanvasTab,
 						scope_use: ["project", "conversation"],
 						// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。

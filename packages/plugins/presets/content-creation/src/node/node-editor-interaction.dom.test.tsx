@@ -25,6 +25,7 @@ vi.mock("@vetta/ui", () => ({
 		<PopoverOpenContext.Provider value={open}>{children}</PopoverOpenContext.Provider>
 	),
 	PopoverAnchor: ({ children }: { children: ReactNode }) => children,
+	PopoverTrigger: ({ children }: { children: ReactNode }) => children,
 	PopoverContent: ({ children }: { children: ReactNode }) =>
 		useContext(PopoverOpenContext) ? <div data-testid="popover-content">{children}</div> : null,
 }));
@@ -37,6 +38,19 @@ vi.mock("./ContentGenerationControls", () => ({
 
 vi.mock("./ContentReferenceInput", () => ({
 	ContentReferenceInput: () => null,
+}));
+
+vi.mock("../prompt-optimization/PromptOptimizationControl", () => ({
+	PromptOptimizationControl: () => null,
+}));
+
+vi.mock("../prompt-optimization/usePromptOptimizationModels", () => ({
+	usePromptOptimizationModels: () => ({
+		models: [],
+		selectedModelKey: "",
+		setSelectedModelKey: () => undefined,
+		isLoadingModels: false,
+	}),
 }));
 
 describe("node editor interaction boundary", () => {

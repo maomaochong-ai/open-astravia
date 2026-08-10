@@ -1,7 +1,6 @@
 import type { Message } from "@vetta/ai";
 import type {
 	AgentPluginContinuationInvoker,
-	AgentPluginHookInvoker,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
@@ -29,7 +28,6 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly includeAgentSkills?: boolean;
 	readonly agentPlugins?: AgentPluginRuntimeConfig;
 	readonly invokePluginTool?: AgentPluginToolInvoker;
-	readonly invokePluginHook?: AgentPluginHookInvoker;
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
 	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;

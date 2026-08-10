@@ -1,4 +1,5 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { ContentCreationAgentService } from "../agent/service";
 import { ContentAssetPreviewResolver } from "../generation/asset-preview-resolver";
 import { PluginContentArtifactStore } from "../generation/artifact-store";
 import { createContentProviderRegistry } from "../generation/create-provider-registry";
@@ -11,6 +12,7 @@ let workspace: ContentCreationWorkspace | null = null;
 let generationService: ContentGenerationService | null = null;
 let assetPreviewResolver: ContentAssetPreviewResolver | null = null;
 let promptOptimizationService: ContentPromptOptimizationService | null = null;
+let agentService: ContentCreationAgentService | null = null;
 let notify: PluginContext["ui"]["notify"] | null = null;
 let mediaProviderSubscription: { dispose(): void } | null = null;
 let mediaProviderRefreshVersion = 0;
@@ -23,6 +25,7 @@ async function refreshMediaProviders(ctx: PluginContext): Promise<void> {
 	});
 	if (refreshVersion !== mediaProviderRefreshVersion || !workspace) return;
 	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, ctx.jobs, mediaProviders);
+	generationService?.dispose();
 	generationService = new ContentGenerationService(
 		workspace,
 		providers,
@@ -33,6 +36,7 @@ async function refreshMediaProviders(ctx: PluginContext): Promise<void> {
 export async function initializePluginRuntime(ctx: PluginContext): Promise<ContentCreationWorkspace> {
 	mediaProviderSubscription?.dispose();
 	workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
+	agentService = new ContentCreationAgentService(workspace, () => getContentGenerationService());
 	assetPreviewResolver = new ContentAssetPreviewResolver(ctx.fs, ctx.storage);
 	promptOptimizationService = new ContentPromptOptimizationService(ctx.ai);
 	notify = ctx.ui.notify;
@@ -49,6 +53,11 @@ export function disposePluginRuntime(): void {
 	mediaProviderSubscription?.dispose();
 	mediaProviderSubscription = null;
 	generationService = null;
+	agentService = null;
+	assetPreviewResolver = null;
+	promptOptimizationService = null;
+	workspace = null;
+	notify = null;
 }
 
 export function getContentGenerationService(): ContentGenerationService {
@@ -59,6 +68,11 @@ export function getContentGenerationService(): ContentGenerationService {
 export function getContentCreationWorkspace(): ContentCreationWorkspace {
 	if (!workspace) throw new Error("content-creation runtime is not initialized");
 	return workspace;
+}
+
+export function getContentCreationAgentService(): ContentCreationAgentService {
+	if (!agentService) throw new Error("content-creation agent runtime is not initialized");
+	return agentService;
 }
 
 export function getContentAssetPreviewResolver(): ContentAssetPreviewResolver {
