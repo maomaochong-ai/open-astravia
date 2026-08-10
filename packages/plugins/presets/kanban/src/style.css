@@ -1,1 +1,41 @@
-@import "tailwindcss/utilities.css";
+/* 导入 theme 层 + utilities 层（不要 preflight，避免 reset 污染宿主全局）。
+   只 @import utilities 会漏掉依赖 theme 变量的工具类（spacing/radius/blur：
+   h-7 / gap-1.5 / rounded-lg / backdrop-blur …全部生成不出来）。 */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+/* 图标库：与宿主一致，用 iconify 的 `icon-[solar--*]` 工具类。 */
+@plugin "@iconify/tailwind4";
+
+/* 运行中卡片的呼吸光环：用主题色投影做柔和脉冲，深浅色下都成立。 */
+@keyframes kanban-running-glow {
+	0%,
+	100% {
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+	}
+	50% {
+		box-shadow:
+			0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent),
+			0 0 18px -2px color-mix(in srgb, var(--primary) 35%, transparent);
+	}
+}
+
+.kanban-running {
+	animation: kanban-running-glow 2.4s ease-in-out infinite;
+}
+
+/* 卡片入场：新卡从上方轻落，配合泳道流转有「东西在动」的活感。 */
+@keyframes kanban-card-in {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(0.985);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.kanban-card-enter {
+	animation: kanban-card-in 0.22s cubic-bezier(0.22, 0.61, 0.36, 1);
+}

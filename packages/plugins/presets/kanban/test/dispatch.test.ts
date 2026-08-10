@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { addCard, createCard, moveCard, setConcurrency, updateCard } from "../src/board/board-store";
+import { addCard, archiveCard, createCard, moveCard, setConcurrency, updateCard } from "../src/board/board-store";
 import {
 	blockedCards,
 	buildDispatchPrompt,
+	buildSendBackPrompt,
 	canDispatch,
 	dispatchableCards,
 	occupyingCards,
@@ -173,5 +174,40 @@ describe("snapshotForAgent", () => {
 		const board = updateCard(seed(2), "c2", { dependsOn: ["c1"] }, NOW);
 		const ready = snapshotForAgent(board).ready;
 		expect(ready.find((card) => card.id === "c2")).toMatchObject({ blockedBy: ["c1"], cwd: "/work" });
+	});
+});
+
+describe("buildSendBackPrompt", () => {
+	it("包含卡片标识、反馈、上一轮交付说明与再次提交要求", () => {
+		let board = seed(1);
+		board = updateCard(board, "c1", { deliveryNote: "已上线登录页" }, NOW);
+		const prompt = buildSendBackPrompt(board.cards[0], "按钮颜色不对，改成品牌色");
+		expect(prompt).toContain("c1");
+		expect(prompt).toContain("按钮颜色不对");
+		expect(prompt).toContain("已上线登录页");
+		expect(prompt).toContain("kanban_submit_task");
+	});
+
+	it("没有交付说明时不渲染对照段", () => {
+		expect(buildSendBackPrompt(seed(1).cards[0], "反馈")).not.toContain("上一轮的交付说明");
+	});
+});
+
+describe("归档卡片与派单的交互", () => {
+	it("归档卡不占 WIP 名额、不进 agent 快照", () => {
+		let board = occupy(seed(2), ["c1"]);
+		board = moveCard(board, "c1", "review", null, NOW);
+		board = archiveCard(board, "c1", NOW);
+		expect(remainingSlots(board)).toBe(5);
+		const snapshot = snapshotForAgent(board);
+		expect(snapshot.review).toHaveLength(0);
+		expect(snapshot.doing).toHaveLength(0);
+	});
+
+	it("已归档的依赖不再阻塞下游（归档 = 已交付）", () => {
+		let board = updateCard(seed(2), "c2", { dependsOn: ["c1"] }, NOW);
+		board = moveCard(board, "c1", "review", null, NOW);
+		board = archiveCard(board, "c1", NOW);
+		expect(canDispatch(board, "c2")).toMatchObject({ ok: true });
 	});
 });

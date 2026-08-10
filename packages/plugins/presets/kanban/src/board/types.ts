@@ -45,6 +45,11 @@ export interface KanbanCard {
 	updatedAt: number;
 	/** 泳道内排序键，越小越靠前。 */
 	order: number;
+	/**
+	 * 验收通过的归档时间。归档卡不再出现在任何泳道（也不占 WIP 名额、不进 agent
+	 * 快照），但保留在看板数据里可回看、可恢复——交付历史是资产，不该一验收就蒸发。
+	 */
+	archivedAt?: number;
 }
 
 export interface KanbanBoard {

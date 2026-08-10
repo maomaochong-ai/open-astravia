@@ -151,9 +151,56 @@ export function setConcurrency(board: KanbanBoard, value: number): KanbanBoard {
 	return concurrency === board.concurrency ? board : { ...board, concurrency };
 }
 
-/** 泳道内按 order 排好的卡片。 */
+/** 泳道内按 order 排好的卡片（不含已归档）。 */
 export function laneCards(board: KanbanBoard, lane: KanbanLane): KanbanCard[] {
-	return board.cards.filter((card) => card.lane === lane).sort((left, right) => left.order - right.order);
+	return board.cards
+		.filter((card) => card.lane === lane && card.archivedAt === undefined)
+		.sort((left, right) => left.order - right.order);
+}
+
+/** 已归档卡片，最近归档在前。 */
+export function archivedCards(board: KanbanBoard): KanbanCard[] {
+	return board.cards
+		.filter((card) => card.archivedAt !== undefined)
+		.sort((left, right) => (right.archivedAt ?? 0) - (left.archivedAt ?? 0));
+}
+
+/** 验收通过 → 归档。只对「待检查」里的卡片有意义；其余原样返回。 */
+export function archiveCard(board: KanbanBoard, cardId: string, now: number): KanbanBoard {
+	const card = findCard(board, cardId);
+	if (!card || card.lane !== "review" || card.archivedAt !== undefined) return board;
+	return updateCard(board, cardId, { archivedAt: now }, now);
+}
+
+/** 从归档恢复回「待检查」末尾。 */
+export function restoreCard(board: KanbanBoard, cardId: string, now: number): KanbanBoard {
+	const card = findCard(board, cardId);
+	if (!card || card.archivedAt === undefined) return board;
+	const cleared = updateCard(board, cardId, { archivedAt: undefined }, now);
+	return moveCard(cleared, cardId, "review", null, now);
+}
+
+/**
+ * 打回重做（纯状态部分）：卡片从「待检查」回到「正在处理」，重新占一个 WIP 名额。
+ * 副作用（向原会话发反馈 prompt）由 controller 做；这里只保证状态一致：
+ * 清掉 error、runState 归为 queued，deliveryNote 保留——上一轮交付说明是反馈的上下文。
+ */
+export function sendCardBack(board: KanbanBoard, cardId: string, now: number): KanbanBoard {
+	const card = findCard(board, cardId);
+	if (!card || card.lane !== "review" || card.archivedAt !== undefined) return board;
+	const moved = moveCard(board, cardId, "doing", null, now);
+	return updateCard(moved, cardId, { runState: "queued", error: undefined }, now);
+}
+
+/** 标题 / 正文 / 标签的大小写不敏感搜索；空串命中全部。 */
+export function matchesQuery(card: KanbanCard, query: string): boolean {
+	const trimmed = query.trim().toLowerCase();
+	if (!trimmed) return true;
+	return (
+		card.title.toLowerCase().includes(trimmed) ||
+		card.detail.toLowerCase().includes(trimmed) ||
+		card.tags.some((tag) => tag.toLowerCase().includes(trimmed))
+	);
 }
 
 /** 会话运行态回填：把宿主广播的 running 集合映射成卡片 runState。 */
@@ -202,6 +249,7 @@ function normalizeCard(raw: unknown, index: number): KanbanCard | null {
 		...(record.claimedBy === "agent" || record.claimedBy === "user" ? { claimedBy: record.claimedBy } : {}),
 		...(typeof record.deliveryNote === "string" ? { deliveryNote: record.deliveryNote } : {}),
 		...(typeof record.error === "string" ? { error: record.error } : {}),
+		...(typeof record.archivedAt === "number" ? { archivedAt: record.archivedAt } : {}),
 		createdAt: typeof record.createdAt === "number" ? record.createdAt : now,
 		updatedAt: typeof record.updatedAt === "number" ? record.updatedAt : now,
 		order: typeof record.order === "number" ? record.order : index,

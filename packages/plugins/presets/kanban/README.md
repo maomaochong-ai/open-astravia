@@ -20,15 +20,19 @@ src/
   register-tools.ts            # 四个 agent 工具（读板 / 加需求 / 认领 / 提交）
   board/
     types.ts                   # 卡片与看板的数据形状
-    board-store.ts             # 纯函数状态层：建卡、移动、解析、运行态回灌
-    dispatch.ts                # 纯函数规则层：WIP 闸门、依赖顺序、prompt 构造、agent 快照
+    board-store.ts             # 纯函数状态层：建卡、移动、归档、打回、搜索、运行态回灌
+    dispatch.ts                # 纯函数规则层：WIP 闸门、依赖顺序、派发/打回 prompt、agent 快照
     board-controller.ts        # 唯一真相源：加载/落盘 + 副作用（建会话、发 prompt）
+    relative-time.ts           # 卡片相对时间（纯函数）
   components/
-    BoardView.tsx              # 主视图：三泳道 + 拖拽 + 并发设置 + 快速发布
-    CardTile.tsx               # 单张卡片（三条泳道共用）
-    CardEditorDialog.tsx       # 新建 / 编辑需求
-    useBoardModel.ts           # controller → React
-test/                          # board-store 与 dispatch 的单测
+    BoardView.tsx              # 主视图：工具带 + 三泳道 + 拖拽 + 底部 Composer
+    Composer.tsx               # 与宿主 AI 输入栏同款的胶囊发布器（回车入池 / ⌘↵ 直接开工）
+    CardTile.tsx               # 单张卡片（三条泳道共用；待检查带 验收/打回）
+    CardEditorDialog.tsx       # 新建 / 编辑需求（依赖、标签、优先级）
+    FeedbackDialog.tsx         # 打回反馈框（反馈发往原会话）
+    ArchivePanel.tsx           # 已归档交付回看（恢复 / 删除）
+    useBoardModel.ts           # controller → React（搜索过滤、相对时间基准）
+test/                          # board-store / dispatch / relative-time 的单测
 ```
 
 **分层意图**：规则全在 `board-store.ts` / `dispatch.ts`，不碰存储、不碰会话、不碰 React。
@@ -42,6 +46,11 @@ UI 和 agent 工具共用同一个 `KanbanBoardController`，所以用户拖一�
 2. **派单失败必须把名额吐回来**（置为 `failed`），否则一次网络抖动会永久占住一个 WIP 位。
 
 两条都有对应测试，改动 `dispatch()` 时先看 `test/dispatch.test.ts`。
+
+另有一个渲染层的坑：插件 CSS 被 `@scope` 到 `data-vetta-plugin-root` 根节点，而
+Radix Dialog / Popover / DropdownMenu 会 portal 到 `document.body`。**每个 portaled
+content 都必须补挂 `data-vetta-plugin-root="kanban"`**（沿用 content-creation 的模式），
+否则弹层内部的工具类全部失效。
 
 ## 开发
 

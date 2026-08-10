@@ -99,6 +99,24 @@ export function buildDispatchPrompt(card: KanbanCard): string {
 	return lines.join("\n");
 }
 
+/**
+ * 打回重做的反馈 prompt。发往**原会话**——上下文都在那里，agent 不需要从头理解需求，
+ * 只需要按反馈修正。仍要求完成后再次 `kanban_submit_task`。
+ */
+export function buildSendBackPrompt(card: KanbanCard, feedback: string): string {
+	const lines = [
+		`看板卡片 \`${card.id}\`（${card.title}）的交付未通过验收，已退回「正在处理」。`,
+		"",
+		"用户的反馈：",
+		feedback.trim(),
+	];
+	if (card.deliveryNote?.trim()) {
+		lines.push("", "你上一轮的交付说明（供对照）：", card.deliveryNote.trim());
+	}
+	lines.push("", "请按反馈修正。完成后再次调用 `kanban_submit_task` 提交到「待检查」，并在 `note` 里说明这一轮改了什么。");
+	return lines.join("\n");
+}
+
 /** 给 agent 的看板快照：只含决策需要的信息，不把整块板灌进上下文。 */
 export interface BoardSnapshotForAgent {
 	concurrency: number;

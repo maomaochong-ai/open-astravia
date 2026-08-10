@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
 	addCard,
 	applyRunningSessions,
+	archiveCard,
+	archivedCards,
 	createCard,
 	findCard,
 	laneCards,
+	matchesQuery,
 	moveCard,
 	parseBoard,
 	removeCard,
+	restoreCard,
+	sendCardBack,
 	setConcurrency,
 	setIdeaState,
 	updateCard,
@@ -174,5 +179,77 @@ describe("parseBoard", () => {
 		board = updateCard(board, "c1", { tags: ["x"], dependsOn: [], priority: 2, sessionPath: "/s.jsonl" }, NOW);
 		const round = parseBoard(JSON.parse(JSON.stringify(board)));
 		expect(round.cards[0]).toMatchObject({ id: "c1", title: "a", priority: 2, tags: ["x"], sessionPath: "/s.jsonl" });
+	});
+});
+
+describe("归档与恢复", () => {
+	function reviewBoard(): KanbanBoard {
+		return moveCard(boardWith("a", "b"), "c1", "review", null, NOW);
+	}
+
+	it("只有待检查的卡片能归档；归档后不出现在任何泳道", () => {
+		const board = archiveCard(reviewBoard(), "c1", NOW + 1);
+		expect(laneCards(board, "review")).toHaveLength(0);
+		expect(archivedCards(board).map((card) => card.id)).toEqual(["c1"]);
+		// 灵感池卡片不可归档
+		expect(archiveCard(board, "c2", NOW)).toBe(board);
+	});
+
+	it("重复归档是 no-op", () => {
+		const once = archiveCard(reviewBoard(), "c1", NOW + 1);
+		expect(archiveCard(once, "c1", NOW + 2)).toBe(once);
+	});
+
+	it("恢复回待检查末尾", () => {
+		let board = archiveCard(reviewBoard(), "c1", NOW + 1);
+		board = restoreCard(board, "c1", NOW + 2);
+		expect(archivedCards(board)).toHaveLength(0);
+		expect(laneCards(board, "review").map((card) => card.id)).toEqual(["c1"]);
+	});
+
+	it("归档时间从持久化往返保留", () => {
+		const board = archiveCard(reviewBoard(), "c1", NOW + 5);
+		const round = parseBoard(JSON.parse(JSON.stringify(board)));
+		expect(archivedCards(round)[0]?.archivedAt).toBe(NOW + 5);
+	});
+
+	it("归档按时间倒序排列", () => {
+		let board = moveCard(moveCard(boardWith("a", "b"), "c1", "review", null, NOW), "c2", "review", null, NOW);
+		board = archiveCard(board, "c1", NOW + 1);
+		board = archiveCard(board, "c2", NOW + 2);
+		expect(archivedCards(board).map((card) => card.id)).toEqual(["c2", "c1"]);
+	});
+});
+
+describe("sendCardBack（打回重做）", () => {
+	it("待检查卡片回到正在处理并置为 queued，保留交付说明", () => {
+		let board = moveCard(boardWith("a"), "c1", "review", null, NOW);
+		board = updateCard(board, "c1", { runState: "done", deliveryNote: "改好了", error: "旧错误" }, NOW);
+		board = sendCardBack(board, "c1", NOW + 1);
+		const card = findCard(board, "c1");
+		expect(laneCards(board, "doing").map((item) => item.id)).toEqual(["c1"]);
+		expect(card?.runState).toBe("queued");
+		expect(card?.deliveryNote).toBe("改好了");
+		expect(card?.error).toBeUndefined();
+	});
+
+	it("非待检查或已归档的卡片打回是 no-op", () => {
+		const inbox = boardWith("a");
+		expect(sendCardBack(inbox, "c1", NOW)).toBe(inbox);
+		const archived = archiveCard(moveCard(inbox, "c1", "review", null, NOW), "c1", NOW);
+		expect(sendCardBack(archived, "c1", NOW)).toBe(archived);
+	});
+});
+
+describe("matchesQuery", () => {
+	it("命中标题 / 正文 / 标签，大小写不敏感；空串命中全部", () => {
+		let board = boardWith("登录页 Redesign");
+		board = updateCard(board, "c1", { detail: "参考 Figma 稿", tags: ["前端", "UI"] }, NOW);
+		const card = findCard(board, "c1")!;
+		expect(matchesQuery(card, "")).toBe(true);
+		expect(matchesQuery(card, "redesign")).toBe(true);
+		expect(matchesQuery(card, "figma")).toBe(true);
+		expect(matchesQuery(card, "前端")).toBe(true);
+		expect(matchesQuery(card, "后端")).toBe(false);
 	});
 });

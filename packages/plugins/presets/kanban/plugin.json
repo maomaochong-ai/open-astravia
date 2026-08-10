@@ -2,7 +2,7 @@
 	"id": "kanban",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
@@ -11,7 +11,9 @@
 		"remoteName": "kanban",
 		"expose": "./plugin"
 	},
-	"styles": ["dist/style.css"],
+	"styles": [
+		"dist/style.css"
+	],
 	"permissions": [
 		"ui.slot.workspace-view",
 		"storage.read",

@@ -2,17 +2,20 @@ import type { PluginContext } from "@vetta-org/plugin-sdk";
 import {
 	addCard,
 	applyRunningSessions,
+	archiveCard,
 	createCard,
 	findCard,
 	moveCard,
 	type NewCardInput,
 	parseBoard,
 	removeCard,
+	restoreCard,
+	sendCardBack,
 	setConcurrency,
 	setIdeaState,
 	updateCard,
 } from "./board-store";
-import { buildDispatchPrompt, canDispatch, type DispatchDecision } from "./dispatch";
+import { buildDispatchPrompt, buildSendBackPrompt, canDispatch, type DispatchDecision } from "./dispatch";
 import { createEmptyBoard, type KanbanBoard, type KanbanIdeaState, type KanbanLane } from "./types";
 
 const BOARD_STORAGE_KEY = "board";
@@ -42,11 +45,17 @@ export class KanbanBoardController {
 	private writeChain: Promise<void> = Promise.resolve();
 	private runningPaths = new Set<string>();
 	private disposeRunning: (() => void) | null = null;
+	private projects: Array<{ path: string; name?: string }> = [];
 
 	constructor(private readonly ctx: PluginContext) {}
 
 	getBoard(): KanbanBoard {
 		return this.board;
+	}
+
+	/** 已知项目列表（load 时取一次），供 Composer 的项目选择器用。 */
+	getProjects(): Array<{ path: string; name?: string }> {
+		return this.projects;
 	}
 
 	subscribe(listener: BoardListener): () => void {
@@ -67,8 +76,9 @@ export class KanbanBoardController {
 	private async load(): Promise<void> {
 		let fallbackCwd = "";
 		try {
-			const projects = await this.ctx.official.projects.list();
-			fallbackCwd = projects.projects[0]?.path ?? projects.workspacePath ?? "";
+			const snapshot = await this.ctx.official.projects.list();
+			this.projects = snapshot.projects.map((entry) => ({ path: entry.path, name: entry.name }));
+			fallbackCwd = snapshot.projects[0]?.path ?? snapshot.workspacePath ?? "";
 		} catch (error) {
 			console.warn("[kanban] failed to resolve default project", error);
 		}
@@ -220,6 +230,53 @@ export class KanbanBoardController {
 			),
 		);
 		return true;
+	}
+
+	/** 验收通过 → 归档。 */
+	archive(cardId: string): void {
+		this.commit(archiveCard(this.board, cardId, Date.now()));
+	}
+
+	/** 从归档恢复回「待检查」。 */
+	restore(cardId: string): void {
+		this.commit(restoreCard(this.board, cardId, Date.now()));
+	}
+
+	/**
+	 * 打回重做：卡片回「正在处理」，反馈发往**原会话**（上下文都在，agent 只需按
+	 * 反馈修正）。原会话不存在（被删 / 跨重启丢失 sessionId）时走重新派发：新会话 +
+	 * 完整需求 + 反馈。
+	 */
+	async sendBack(cardId: string, feedback: string): Promise<boolean> {
+		await this.ensureLoaded();
+		const card = findCard(this.board, cardId);
+		if (!card || card.lane !== "review") return false;
+		const next = sendCardBack(this.board, cardId, Date.now());
+		if (next === this.board) return false;
+		this.commit(next);
+		const target = findCard(this.board, cardId);
+		if (!target) return false;
+		try {
+			if (target.sessionId) {
+				await this.ctx.official.sessions.prompt(target.sessionId, buildSendBackPrompt(target, feedback));
+			} else {
+				const cwd = target.cwd.trim() || this.board.defaultCwd.trim();
+				if (!cwd) throw new Error(this.ctx.i18n.t("dispatch.refuse.missingCwd"));
+				const session = await this.ctx.official.sessions.create({ cwd, title: target.title });
+				this.updateCard(cardId, { sessionId: session.sessionId, sessionPath: session.sessionPath });
+				await this.ctx.official.sessions.prompt(
+					session.sessionId,
+					`${buildDispatchPrompt(target)}\n\n---\n上一轮交付被打回，用户反馈：\n${feedback.trim()}`,
+				);
+			}
+			await this.refreshRunning();
+			return true;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.updateCard(cardId, { runState: "failed", error: message });
+			this.ctx.ui.notify({ message: this.ctx.i18n.t("error.sendBack"), error });
+			return false;
+		}
 	}
 
 	/** 打断卡片对应会话的当前回合。 */

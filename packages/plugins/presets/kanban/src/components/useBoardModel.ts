@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KanbanBoardController } from "../board/board-controller";
-import { laneCards } from "../board/board-store";
+import { archivedCards, laneCards, matchesQuery } from "../board/board-store";
 import { remainingSlots, unmetDependencies } from "../board/dispatch";
 import type { KanbanBoard, KanbanCard, KanbanLane } from "../board/types";
 
@@ -12,11 +12,19 @@ export interface BoardLaneView {
 export interface BoardModel {
 	board: KanbanBoard;
 	loading: boolean;
+	/** 已按搜索词过滤的泳道内容。 */
 	lanes: Record<KanbanLane, KanbanCard[]>;
+	/** 未过滤的各泳道总数（搜索时列头仍显示真实数量）。 */
+	laneTotals: Record<KanbanLane, number>;
+	archived: KanbanCard[];
 	remainingSlots: number;
 	/** cardId → 未完成依赖的卡片标题，用于卡片上直接显示「被谁挡着」。 */
 	blockedBy: Record<string, string[]>;
 	controller: KanbanBoardController;
+	query: string;
+	setQuery: (query: string) => void;
+	/** 相对时间基准，30s 一跳，避免每张卡各自起 interval。 */
+	now: number;
 	refresh: () => void;
 }
 
@@ -27,6 +35,8 @@ export interface BoardModel {
 export function useBoardModel(controller: KanbanBoardController): BoardModel {
 	const [board, setBoard] = useState<KanbanBoard>(() => controller.getBoard());
 	const [loading, setLoading] = useState(true);
+	const [query, setQuery] = useState("");
+	const [now, setNow] = useState(() => Date.now());
 
 	useEffect(() => {
 		let cancelled = false;
@@ -44,7 +54,12 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 		};
 	}, [controller]);
 
-	const lanes = useMemo(
+	useEffect(() => {
+		const timer = setInterval(() => setNow(Date.now()), 30_000);
+		return () => clearInterval(timer);
+	}, []);
+
+	const allLanes = useMemo(
 		() => ({
 			inbox: laneCards(board, "inbox"),
 			doing: laneCards(board, "doing"),
@@ -52,6 +67,19 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 		}),
 		[board],
 	);
+	const laneTotals = useMemo(
+		() => ({ inbox: allLanes.inbox.length, doing: allLanes.doing.length, review: allLanes.review.length }),
+		[allLanes],
+	);
+	const lanes = useMemo(() => {
+		if (!query.trim()) return allLanes;
+		return {
+			inbox: allLanes.inbox.filter((card) => matchesQuery(card, query)),
+			doing: allLanes.doing.filter((card) => matchesQuery(card, query)),
+			review: allLanes.review.filter((card) => matchesQuery(card, query)),
+		};
+	}, [allLanes, query]);
+	const archived = useMemo(() => archivedCards(board), [board]);
 
 	const blockedBy = useMemo(() => {
 		const titleById = new Map(board.cards.map((card) => [card.id, card.title]));
@@ -66,5 +94,18 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 
 	const refresh = useCallback(() => setBoard(controller.getBoard()), [controller]);
 
-	return { board, loading, lanes, remainingSlots: remainingSlots(board), blockedBy, controller, refresh };
+	return {
+		board,
+		loading,
+		lanes,
+		laneTotals,
+		archived,
+		remainingSlots: remainingSlots(board),
+		blockedBy,
+		controller,
+		query,
+		setQuery,
+		now,
+		refresh,
+	};
 }
