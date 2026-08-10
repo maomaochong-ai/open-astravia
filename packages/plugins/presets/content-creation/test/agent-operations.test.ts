@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	CONTENT_AGENT_OPERATION_SCHEMA,
 	contentAgentOperationsAreDestructive,
 	parseContentAgentOperations,
 } from "../src/agent/operations";
@@ -81,18 +82,26 @@ describe("content agent operations", () => {
 		).toThrow("specific model selection requires providerId and modelId");
 	});
 
-	it("assigns stable ids to previewable duplicate, connection, and timeline commands", () => {
+	it("assigns stable ids to previewable duplicate and connection commands", () => {
 		const project = createContentProject("C:/project");
 		const commands = parseContentAgentOperations(project, [
 			{ type: "duplicate_node", nodeId: "source" },
 			{ type: "connect_nodes", source: "source", target: "target" },
-			{ type: "add_timeline_clip", nodeId: "source", start: 0, duration: 5 },
 		]);
 
 		expect(commands).toEqual([
 			expect.objectContaining({ type: "node.duplicate", id: expect.any(String) }),
 			expect.objectContaining({ type: "edge.connect", id: expect.any(String) }),
-			expect.objectContaining({ type: "timeline.clip.add", clip: expect.objectContaining({ id: expect.any(String) }) }),
 		]);
+	});
+
+	it("rejects operations outside the agent workflow surface", () => {
+		const project = createContentProject("C:/project");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties.type.enum).not.toContain("add_timeline_clip");
+		expect(() =>
+			parseContentAgentOperations(project, [
+				{ type: "add_timeline_clip", nodeId: "source", start: 0, duration: 5 },
+			]),
+		).toThrow("unsupported operation type: add_timeline_clip");
 	});
 });

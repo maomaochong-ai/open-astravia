@@ -111,10 +111,6 @@ export function registerContentCreationTools(ctx: PluginContext, agent: ContentC
 					projectId: result.project.projectId,
 					revision: result.project.revision,
 					nodeCount: result.project.graph.nodes.length,
-					clipCount: result.project.timeline.tracks.reduce(
-						(count, track) => count + track.clips.length,
-						0,
-					),
 				};
 			} catch (error) {
 				return toolError(error);

@@ -15,7 +15,7 @@ Use this pattern when product geometry and branding must remain stable.
 2. Per-shot prompts with explicit purposes.
 3. Per-shot image generators when continuity needs reference frames.
 4. Per-shot video generators.
-5. Output nodes or timeline clips in narrative order.
+5. Output generation nodes and a narrative-order sequence manifest.
 
 Do not ask one generation node to create an edited sequence unless the selected model explicitly supports that behavior.
 

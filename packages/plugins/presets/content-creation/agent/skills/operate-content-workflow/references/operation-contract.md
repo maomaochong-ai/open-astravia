@@ -3,7 +3,7 @@
 ## Inspect narrowly
 
 - `summary`: identity, workflow, counts, and currently selected nodes.
-- `project`: graph and timeline data before structural edits.
+- `project`: graph data before structural edits.
 - `capabilities`: executable providers, models, modes, input slots, ratios, durations, and resolutions.
 - `runtime`: active and historical jobs or runs.
 - `diagnostics`: blocking validation failures and actionable warnings.
@@ -25,7 +25,7 @@ Every generator node should have a purpose that states its role and changed vari
 - Text to image: prompt -> image generator -> output.
 - Image to video: prompt plus image asset/generator -> video generator -> output.
 - Shared art direction: one prompt may feed multiple intentional variants.
-- Multi-shot sequence: separate shot nodes, then add successful sources to the timeline in narrative order.
+- Multi-shot sequence: use timestamped stages inside one video prompt only when the inspected mode supports them; otherwise create separate shot nodes and record their intended order in purposes or workflow metadata.
 - Multiple formats: separate output or generator nodes when ratio, duration, or prompt must differ.
 
 Use `afterNodeId` or automatic placement. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode.
@@ -34,4 +34,4 @@ Use `afterNodeId` or automatic placement. Preserve existing IDs and edges during
 
 Keep a batch focused on one understandable change. The edit tool applies up to six non-destructive commands directly. It returns a preview instead when the batch is destructive or broader than that boundary. A preview is a pending proposal, not project state.
 
-Supported operation families include workflow updates, node add/update/rename/purpose/duplicate/delete, edge connect/delete, and timeline clip insertion. Use only fields present in the tool schema.
+Supported operation families for this skill are workflow updates, node add/update/rename/purpose/duplicate/delete, and edge connect/delete. Use only fields present in the tool schema.

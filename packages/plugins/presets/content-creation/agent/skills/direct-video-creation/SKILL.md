@@ -21,6 +21,8 @@ Read only the references needed for the task:
 - Any video task: read [references/dramaturgy-and-shot-design.md](references/dramaturgy-and-shot-design.md), [references/prompting.md](references/prompting.md), then [references/model-prompt-profiles.md](references/model-prompt-profiles.md)
 - Ready-to-fill generation structures: [references/production-prompt-skeletons.md](references/production-prompt-skeletons.md)
 - Treatment, script, storyboard, edit plan, or prompt audit: [references/role-modes-and-output-contracts.md](references/role-modes-and-output-contracts.md)
+- Any timestamped sequence, storyboard, multi-shot generation, pacing plan, or animatic: [references/generation-timeline-and-storyboard.md](references/generation-timeline-and-storyboard.md)
+- Need concrete 5-30 second product, UGC, tutorial, action, dialogue, or continuous-shot prompt timelines: [references/generation-timeline-examples.md](references/generation-timeline-examples.md)
 - Shot list, pacing, or montage timing: [references/shot-cards-and-rhythm.md](references/shot-cards-and-rhythm.md)
 - Precise framing, movement, light, transition, and sound terms: [references/camera-light-sound-vocabulary.md](references/camera-light-sound-vocabulary.md)
 - Multi-shot identity and reference handling: [references/continuity-and-references.md](references/continuity-and-references.md)
@@ -42,7 +44,7 @@ Read only the references needed for the task:
 
 Record purpose, audience, publishing surface, duration, ratio, subject, environment, style, continuity anchors, action, camera, pacing, audio intent, references, constraints, deliverables, and acceptance criteria. Infer reversible defaults; ask only when a missing choice changes cost, supplied references, or the core deliverable.
 
-Keep each generator focused on one visually coherent shot. Separate edited sequences into shot nodes and timeline clips. Name the changed variable in every intentional variation.
+Keep each generator focused on one visually coherent shot unless the inspected mode explicitly supports multiple timestamped stages or shots in one generation. In that mode, put consecutive time windows inside the video prompt. Otherwise create independent shot nodes and return their intended order. Name the changed variable in every intentional variation.
 
 ## Choose a generation mode
 

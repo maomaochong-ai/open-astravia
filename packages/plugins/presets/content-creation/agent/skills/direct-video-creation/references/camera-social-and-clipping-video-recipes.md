@@ -32,7 +32,7 @@ Platform behavior and current publishing specs can change; treat inspected/proje
 
 ## Long-form video to short clips
 
-Current Vetta can plan and arrange timeline clips, but transcription/highlight ranking or automatic face tracking may require capabilities not exposed by the content workflow. Inspect before execution.
+Current Vetta can produce a source-range selection and crop specification. Transcription, highlight ranking, automatic face tracking, trimming, or final rendering may require capabilities not exposed by the content workflow. Inspect before execution.
 
 When supported, use this pipeline:
 
@@ -41,10 +41,10 @@ When supported, use this pipeline:
 3. Score candidates on hook immediacy, emotional peak, strong opinion, revelation, conflict, quotability, story climax, and practical value.
 4. Reject duplicates/overlapping candidates; do not pad the requested count with weak clips.
 5. For each survivor record title, start/end, hook line, score/rationale, speaker, and crop needs.
-6. Create platform-native crops or timeline trims while protecting active speakers, captions, and product/demo evidence.
+6. Specify platform-native source ranges and crops while protecting active speakers, captions, and product/demo evidence; render them only when an inspected capability supports it.
 7. Review the actual clip opening, context sufficiency, ending, caption-safe area, audio, and crop tracking.
 
-When those capabilities are not supported, create a clipping plan and timeline markers from user-supplied timestamps/transcript, then state which transcription, ranking, crop, or render step remains external.
+When those capabilities are not supported, create a clipping plan from user-supplied timestamps/transcript, then state which transcription, ranking, crop, trim, or render step remains external.
 
 ## Platform preset wrapper
 
@@ -53,4 +53,3 @@ A Shorts/Reels/TikTok request is a parameter preset over the clipping pipeline, 
 ## Done criteria for clipping
 
 Return only surviving clips. Each must have a source range, a coherent hook-to-payoff arc, a reason for selection, the intended platform/ratio, and either a verified rendered artifact or an explicit pending render status.
-

@@ -10,7 +10,7 @@ Protect product geometry, label/logo, materials, offer hierarchy, and brand pale
 
 ## Cinematic product film
 
-Brief -> visual language -> shot jobs -> keyframes -> motion proofs -> final shots -> timeline.
+Brief -> visual language -> shot jobs -> keyframes -> motion proofs -> final shots -> ordered sequence manifest.
 
 Typical shot jobs: establish world, reveal product, prove material/detail, demonstrate benefit, resolve on brand frame. One shot should not perform every job.
 
@@ -40,7 +40,7 @@ Reject identity drift before multiplying assets. Change one continuity axis per 
 
 ## Storyboard to video
 
-Story objective -> beat sheet -> shot list -> continuity ledger -> composition keyframes -> selected start/end frames -> shot generation -> timeline.
+Story objective -> beat sheet -> shot list -> continuity ledger -> composition keyframes -> selected start/end frames -> timestamped shot generation -> ordered sequence manifest.
 
 Prioritize staging, screen direction, and final-frame handoffs before polish.
 
@@ -58,7 +58,7 @@ Assign each image a listing job. Parallelize views only after geometry, label, c
 
 ## Long-form distribution pack
 
-Source/transcript -> candidate spans -> score and dedupe -> selected clips -> timeline/crops -> covers/captions -> delivery manifest.
+Source/transcript -> candidate spans -> score and dedupe -> selected time ranges and crop specifications -> covers/captions -> delivery manifest.
 
 If transcription, highlight ranking, face tracking, or final render is outside inspected capabilities, produce the supported plan and state the external step.
 

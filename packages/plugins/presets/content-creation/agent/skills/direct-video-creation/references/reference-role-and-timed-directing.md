@@ -30,7 +30,7 @@ Subject/product: <visible invariants>
 Action: <one fluid state change per beat>
 Camera: <shot size, lens family, physical path, speed>
 Audio: <dialogue/voice, ambience, effects, music, silence>
-Timeline: <time ranges and one beat each>
+Generation timeline: <consecutive time ranges and one visible state change each>
 Style/finish: <grade, texture, motion energy>
 Final state: <readable last frame and handoff>
 Avoid: <task-specific failure states>
@@ -46,6 +46,8 @@ Lead with composition and authority. Put texture and micro-motion after the acti
 
 Each segment must have a visible starting state, one event, and an ending state. Do not put two location changes, a transformation, dialogue, and a product reveal into the same short segment.
 
+These ranges divide one requested generation duration. They are event budgets, not edit points: keep them consecutive and non-overlapping, give each one a visible end state, and use exact seconds only where a handoff truly matters. Use `generation-timeline-and-storyboard.md` for continuous and multi-shot prompt structures.
+
 ## Audio direction
 
 When native audio is supported, name layers independently:
@@ -56,7 +58,7 @@ When native audio is supported, name layers independently:
 - music genre, energy curve, and resolve;
 - deliberate silence where it carries the effect.
 
-When native audio is not supported, create or reserve a separate audio/timeline plan. Never bury required dialogue in a visual-only prompt and assume it will exist.
+When native audio is not supported, create a separate audio cue sheet aligned to the same generation windows and mark audio rendering or synchronization as external. Never bury required dialogue in a visual-only prompt and assume it will exist.
 
 ## First/last frame and interpolation
 
@@ -80,4 +82,3 @@ Use a composite board to consolidate character, environment, action panels, and 
 - Random audio: add explicit layers or move audio to separate production.
 - Aimless camera: give it a subject-relative path and destination.
 - Broken final frame: state the final composition and stop motion before the cut.
-

@@ -57,6 +57,7 @@ describe("content creation agent state", () => {
 
 		expect(encoded).not.toContain("secret-storage-id");
 		expect(encoded).not.toContain('"view"');
+		expect(encoded).not.toContain('"timeline"');
 		expect(state.assets).toEqual([
 			expect.objectContaining({ id: "private", name: "reference.png" }),
 			expect.objectContaining({ id: "generated", workspacePath: "output/result.png" }),

@@ -26,4 +26,4 @@ Every adjacent shot should differ in function, framing, or state. Repetition is 
 
 ## Multi-clip structure
 
-Repeat identity, wardrobe/product, location, visual system, camera grammar, light source/direction, palette, and continuity invariants in every independent generation. Match the prior final state at the next opening. Use the timeline for editorial order rather than asking one unsupported node to create a full film.
+Repeat identity, wardrobe/product, location, visual system, camera grammar, light source/direction, palette, and continuity invariants in every independent generation. Match the prior final state at the next opening. Return an ordered sequence manifest rather than asking one unsupported node to create a full film.

@@ -36,6 +36,7 @@ create-content-campaign
 | Director Brief 与镜头语言 | 视频 `reference-role-and-timed-directing.md`，并复用现有 camera/light/sound 与 shot-card references |
 | 多素材 `@image/@video/@audio` 分工 | 转成 capability 驱动的 reference manifest；不假设固定槽位或数量 |
 | 时间段提示与单动作纪律 | 写入 timed directing、表演、动作、教程和质量 gate |
+| 视频生成时间线与分镜映射 | 写入 `generation-timeline-and-storyboard.md` 和 `generation-timeline-examples.md`；时间窗保留在视频节点 Prompt 中 |
 | 先便宜候选、用户选定、再昂贵生产 | Campaign stage gates、产品广告、品牌系统和 UGC 配方 |
 | 并行 fan-out | 只在共享 authority 已通过且分支独立时并行 |
 | 失败回退 | 保留成功上游、按 causal layer 修复、提供 still/plan/external-step fallback |
@@ -58,7 +59,7 @@ create-content-campaign
 | `animal-video-generator` | 先建立拟人角色，后做自拍式单人表演、对白和环境声 | `character-performance-and-ugc-video-recipes.md` |
 | `award-ceremony-video` | winner/host 严格角色顺序、时间码事件链、姓名同时进入对白与屏幕 | `character-performance-and-ugc-video-recipes.md` |
 | `cartoon-dance-animation` | 身份/服装风格化静帧 + 动作参考单独控制 choreography | `character-performance-and-ugc-video-recipes.md` |
-| `character-story-video` | 中性角色锚点、顺序场景静帧、逐场动画、timeline 合成 | `narrative-action-and-tutorial-video-recipes.md` |
+| `character-story-video` | 中性角色锚点、顺序场景静帧、逐场动画、有序输出清单 | `narrative-action-and-tutorial-video-recipes.md` |
 | `cinema-director` | 情绪到景别/运动/光线的映射、物理可执行相机、避免冲突运动 | 现有 `camera-light-sound-vocabulary.md` + `reference-role-and-timed-directing.md` |
 | `drone-style-video` | reveal/orbit/flyover/top-down 四类路径及明确到达点 | `camera-social-and-clipping-video-recipes.md` |
 | `freeze-effect-video` | 正常运动 -> 触发 -> 静止/静音 -> 主角证明 -> 恢复后果的音画弧 | `character-performance-and-ugc-video-recipes.md` |
@@ -139,6 +140,8 @@ agent/skills/
     interface-storyboard-and-layout-recipes.md
   direct-video-creation/references/
     scenario-routing.md
+    generation-timeline-and-storyboard.md
+    generation-timeline-examples.md
     reference-role-and-timed-directing.md
     product-brand-and-logo-video-recipes.md
     character-performance-and-ugc-video-recipes.md
@@ -152,4 +155,3 @@ agent/skills/
 ## 后续边界
 
 这轮增强的是模型的判断和工作流设计能力，不等于 Vetta 已经拥有参考项目中的全部执行器。若要让长视频自动切片、精确 motion transfer、角色训练或 Provider 原生 extension 直接运行，还需要在 capability registry、Provider adapter、领域 schema 和测试中实现对应合同；在此之前 Skill 必须诚实地产出计划、可执行上游和外部步骤说明。
-

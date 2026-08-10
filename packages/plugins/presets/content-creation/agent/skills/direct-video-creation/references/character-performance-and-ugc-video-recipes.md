@@ -40,7 +40,7 @@ Create a role manifest before prompting:
 - exact spoken name and exact display copy;
 - audience/environment authority.
 
-Use an event timeline: suspenseful announcement -> reaction -> movement to stage -> handoff -> hero hold. Preserve image-slot order and mention roles by slot. Review role swaps, spelling, prop continuity, face drift, crowd artifacts, and audio/dialogue timing.
+Use a generation timeline inside the video prompt: suspenseful announcement -> reaction -> movement to stage -> handoff -> hero hold. Give every event a consecutive time window and visible end state as defined in `generation-timeline-and-storyboard.md`. Preserve image-slot order and mention roles by slot. Review role swaps, spelling, prop continuity, face drift, crowd artifacts, and audio/dialogue timing.
 
 ## Freeze-time effect
 
@@ -53,4 +53,3 @@ Define the animal/character anatomy, clothing, handheld prop, environment, perfo
 ## Identity and consent boundary
 
 Use supplied identity references only for the requested production. Do not imply generated scenes are authentic recordings. For public figures, minors, or sensitive impersonation contexts, follow active policy and avoid deceptive or harmful framing.
-

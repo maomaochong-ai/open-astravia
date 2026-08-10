@@ -56,7 +56,7 @@ Every camera move answers `what changed?`: a decision, new information, increasi
 
 ## Plan a multi-shot arc
 
-Give each shot a distinct job: hook, establish, demonstrate, escalate, reveal, proof, or resolve. Maintain screen direction and visual anchors across cuts. Put transition intent in node purposes and timeline order, not inside one overloaded generation prompt.
+Give each shot a distinct job: hook, establish, demonstrate, escalate, reveal, proof, or resolve. Maintain screen direction and visual anchors across cuts. If the mode supports timestamped multi-shot generation, express cuts and handoffs inside the generation prompt; otherwise put transition intent in node purposes and an ordered sequence specification.
 
 ## Five-anchor check
 

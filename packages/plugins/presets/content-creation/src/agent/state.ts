@@ -18,13 +18,18 @@ export function createContentCreationAgentState(
 	project: ContentProjectDocument,
 	models: readonly ContentModelDescriptor[] = [],
 ) {
-	const { view: _view, createdAt: _createdAt, updatedAt: _updatedAt, ...document } = serializeContentProject(project);
+	const document = serializeContentProject(project);
 	const assets = document.assets.map(({ source, createdAt: _assetCreatedAt, ...asset }) => ({
 		...asset,
 		...(source.storage === "workspace" ? { workspacePath: source.path } : {}),
 	}));
 	return {
-		...document,
+		format: document.format,
+		schemaVersion: document.schemaVersion,
+		revision: document.revision,
+		projectId: document.projectId,
+		workflow: document.workflow,
+		nodes: document.nodes,
 		assets,
 		runtime: {
 			nodes: project.graph.nodes.map(({ id: nodeId, status }) => ({ nodeId, status })),

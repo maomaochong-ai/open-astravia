@@ -39,17 +39,17 @@ Keep verified claims and product handling fixed across script variants. Do not s
 
 ### Character/photo story system
 
-Identity ledger -> neutral anchor -> pose/expression/environment pack -> selected keyframes -> motion clips -> timeline -> social stills/covers.
+Identity ledger -> neutral anchor -> pose/expression/environment pack -> selected keyframes -> motion clips -> ordered sequence manifest -> social stills/covers.
 
 Reject drift at the first asset where it appears. Do not use a later attractive but inconsistent image as authority without explicit reselection.
 
 ### Storyboard/tutorial production
 
-Objective/process -> beat list -> character/product and environment authorities -> storyboard/composite board -> riskiest motion proof -> step clips or supported multi-beat generation -> timeline -> delivery exports.
+Objective/process -> beat list -> character/product and environment authorities -> storyboard/composite board -> riskiest motion proof -> timestamped generation windows or ordered step prompts -> delivery exports.
 
 ### Long-form distribution
 
-Source video/transcript -> candidate highlight table -> ranked/deduped selection -> timeline trims/crops -> covers/captions -> platform delivery audit.
+Source video/transcript -> candidate highlight table -> ranked/deduped source ranges -> crop specifications -> covers/captions -> platform delivery audit.
 
 ## Stage graph rules
 
@@ -70,4 +70,3 @@ Source video/transcript -> candidate highlight table -> ranked/deduped selection
 ## Delivery manifest
 
 Return a manifest with asset/shot name, source authority, purpose, channel, ratio, duration/resolution, status, review verdict, and remaining external work. A campaign is incomplete when a file exists but its intended job, lineage, or review result is unknown.
-

@@ -14,7 +14,7 @@ Orchestrate `$develop-creative-concept`, `$direct-image-creation`, `$direct-vide
 3. Produce a small set of concept candidates that differ on one meaningful hypothesis.
 4. Review and select a master direction using [references/selection-and-gates.md](references/selection-and-gates.md).
 5. Generate dependent stills, keyframes, or proof shots from the approved master.
-6. Expand into final shots, formats, and timeline only after upstream gates pass.
+6. Expand into final shots, formats, timestamped generation prompts, and an ordered sequence manifest only after upstream gates pass.
 7. Audit completeness, continuity, safe areas, format, and delivery readiness.
 
 Read [references/production-planning.md](references/production-planning.md) before creating a campaign graph. Keep approval boundaries visible as nodes, purposes, and run batches. Do not hide an entire campaign inside one generator prompt.

@@ -67,7 +67,6 @@ describe("content creation agent cards", () => {
 							updatedNodeIds: [],
 							addedEdgeCount: 0,
 							removedEdgeCount: 1,
-							clipDelta: 0,
 							workflowChanged: false,
 						},
 					},

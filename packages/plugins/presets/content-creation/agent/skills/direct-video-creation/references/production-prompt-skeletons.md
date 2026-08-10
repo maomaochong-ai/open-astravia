@@ -16,12 +16,14 @@ Reference role: the input image defines {identity/composition/product/start stat
 
 ## Multi-shot sequence
 
+Use this only when inspected capabilities support multiple timestamped shots in one generation. Otherwise create one prompt/node per shot and return an ordered sequence specification.
+
 ```text
 Characters/subjects: {stable labeled identity blocks}.
 Master intent: {desire/goal, obstacle, geometry, emotional or information arc}.
 Global continuity: {wardrobe/product, environment, palette, light direction, screen direction, motif}.
-Shot 1 ({time}). {function}; {framing}; {physical event}; {environment/micro-action/motif}; end state {state}.
-Shot 2 ({time}). ...
+[00:00-00:03] Shot 1 — {function}; {entry state}; {framing}; {physical event}; {camera}; {audio}; end state {state}.
+[00:03-00:06] Shot 2 — {function}; begin from {prior end state}; ...
 Camera/edit rhythm: {dominant grammar; cut triggers; pause; impact}.
 Audio: {ambience, body/action sounds, dialogue, music/silence policy}.
 Final image: {mandatory composition}.

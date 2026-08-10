@@ -16,11 +16,11 @@ Use two cost gates:
 1. Cheap exploration: 3-4 hero stills varying composition/light/material story while product invariants remain fixed.
 2. User/quality selection: record the chosen hero and why.
 3. Motion proof: animate a short representative reveal with one camera move and a defined final state.
-4. Final production: upscale/rebuild the authority still if needed, render assigned shots, create audio separately or natively as supported, and order clips on the timeline.
+4. Final production: upscale/rebuild the authority still if needed, render assigned shots, create audio separately or natively as supported, and return an ordered sequence manifest.
 
 Useful shot jobs: world/need, reveal, material macro, use/benefit proof, and brand resolve. Do not ask one short shot to perform all five.
 
-Fallback: if motion fails but the selected still is strong, deliver the approved hero and a still/timeline treatment rather than replacing the product with an unstable video.
+Fallback: if motion fails but the selected still is strong, deliver the approved hero and a still-led treatment with shot order and motion notes rather than replacing the product with an unstable video.
 
 ## Jewelry or small luxury object
 
@@ -44,4 +44,3 @@ The authority still must establish scale, ground contact, perspective, and human
 ## Product campaign handoff
 
 When the request also includes listing images, social crops, ad copy, or several shots, invoke `$create-content-campaign`. The selected hero becomes the asset authority for still derivatives and video keyframes; do not regenerate the product identity independently in each branch.
-

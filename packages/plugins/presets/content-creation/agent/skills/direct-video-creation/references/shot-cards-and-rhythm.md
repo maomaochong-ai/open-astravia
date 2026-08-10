@@ -1,5 +1,7 @@
 # Shot cards and rhythm
 
+First separate dramatic beats, prompt time windows, and shots with `generation-timeline-and-storyboard.md`. This file refines creative rhythm inside a video generation or across an ordered set of generation prompts.
+
 ## Shot card
 
 Fill every field for a planned shot:
@@ -34,7 +36,7 @@ Examples:
 - anxiety: 2s, 1s, 1s, 0.5s, 0.5s, pause, 1s;
 - impact: pause, brief event, held consequence.
 
-Treat these as editorial planning, then fit them to durations actually supported by the chosen model. Do not demand sub-second actions from a model that cannot reliably honor them.
+Treat these as rhythm targets, then fit them to durations and temporal precision actually supported by the chosen mode. A prompt window is an attention and event budget, not an edit point. Do not demand sub-second state changes from a model that cannot reliably honor them; merge micro-beats into a larger physical action or use separate generation prompts.
 
 ## Density rules
 

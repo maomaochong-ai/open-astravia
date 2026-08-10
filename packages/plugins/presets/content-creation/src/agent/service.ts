@@ -20,7 +20,6 @@ export interface ContentOperationDiff {
 	updatedNodeIds: string[];
 	addedEdgeCount: number;
 	removedEdgeCount: number;
-	clipDelta: number;
 	workflowChanged: boolean;
 }
 
@@ -280,7 +279,6 @@ function createOperationDiff(current: ContentProjectDocument, next: ContentProje
 		}),
 		addedEdgeCount: next.graph.edges.filter((edge) => !currentEdgeIds.has(edge.id)).length,
 		removedEdgeCount: current.graph.edges.filter((edge) => !nextEdgeIds.has(edge.id)).length,
-		clipDelta: countClips(next) - countClips(current),
 		workflowChanged: JSON.stringify(current.workflow) !== JSON.stringify(next.workflow),
 	};
 }
@@ -322,10 +320,6 @@ function topologicalNodeOrder(project: ContentProjectDocument, nodeIds: readonly
 	}
 	if (ordered.length !== nodeIds.length) throw new Error("selected generation nodes contain a dependency cycle");
 	return ordered;
-}
-
-function countClips(project: ContentProjectDocument): number {
-	return project.timeline.tracks.reduce((count, track) => count + track.clips.length, 0);
 }
 
 function publicPreview(preview: StoredPreview): ContentOperationPreview {

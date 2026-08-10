@@ -22,7 +22,7 @@ Use explicit node purposes to represent:
 3. Selected master/reference.
 4. Dependent stills or keyframes.
 5. Motion proof or final shots.
-6. Timeline/order.
+6. Timestamped generation prompts and output order.
 7. Deliverable outputs.
 
 Dependencies should explain why an asset exists. Keep independent branches parallel and dependent work downstream. A failed or rejected upstream master makes downstream derivatives stale even if they were technically generated.

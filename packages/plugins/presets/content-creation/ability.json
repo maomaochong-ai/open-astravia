@@ -30,8 +30,8 @@
 						"icon": "solar:clapperboard-edit-linear"
 					},
 					{
-						"title": "多轨编排",
-						"description": "把内容片段加入时间线，组织视频轨和音频轨。",
+						"title": "分镜与质量检查",
+						"description": "规划镜头、参考素材和验收标准，再生成并比较候选结果。",
 						"icon": "solar:slider-vertical-minimalistic-linear"
 					},
 					{
@@ -75,8 +75,8 @@
 								"icon": "solar:clapperboard-edit-linear"
 							},
 							{
-								"title": "Multitrack arrangement",
-								"description": "Place content clips on video and audio tracks.",
+								"title": "Storyboards and quality checks",
+								"description": "Plan shots, references, and acceptance criteria before generating and comparing candidates.",
 								"icon": "solar:slider-vertical-minimalistic-linear"
 							},
 							{

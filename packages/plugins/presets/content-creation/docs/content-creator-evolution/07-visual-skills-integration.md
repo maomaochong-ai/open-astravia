@@ -9,7 +9,7 @@
 | visual-skills | Vetta | 融合方式 |
 | --- | --- | --- |
 | `image` | `direct-image-creation` | 保留 route-first、模型 Profile、通用规则、任务 reference 和交付前质量检查；输出改为节点 Prompt 与引用计划。 |
-| `video` | `direct-video-creation` | 保留导演/编剧/剪辑复合角色、戏剧检查、模型语法、镜头卡、连续性和失败修复；接入工作流与 timeline。 |
+| `video` | `direct-video-creation` | 保留导演/编剧/剪辑复合角色、戏剧检查、模型语法、镜头卡、连续性和失败修复；把时间分段写入视频生成节点 Prompt。 |
 | 外置 `creative-director` 依赖 | `develop-creative-concept` | 在 Vetta 内补齐策略、Big Idea、treatment、beat spine 和概念选择，不让模糊想法直接进入生成。 |
 
 ## Image reference 覆盖

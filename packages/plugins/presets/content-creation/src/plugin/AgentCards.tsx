@@ -165,7 +165,6 @@ function parseContentOperationPreview(value: unknown): ContentOperationPreview |
 		!isStringArray(diffCandidate.updatedNodeIds) ||
 		typeof diffCandidate.addedEdgeCount !== "number" ||
 		typeof diffCandidate.removedEdgeCount !== "number" ||
-		typeof diffCandidate.clipDelta !== "number" ||
 		typeof diffCandidate.workflowChanged !== "boolean"
 	) {
 		return null;

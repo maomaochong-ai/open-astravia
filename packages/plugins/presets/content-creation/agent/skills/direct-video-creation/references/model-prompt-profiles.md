@@ -22,7 +22,7 @@ Do not overload element count. Use reference/element features only when exposed 
 
 Use grammatical prose and explicit shot/cut markers when multi-shot behavior is known to be supported:
 
-`identity/reference role -> duration/intent -> concrete story -> style -> camera -> edit rhythm -> audio -> shot timeline -> light -> composition/final frame`
+`identity/reference role -> duration/intent -> concrete story -> style -> camera -> edit rhythm -> audio -> timestamped generation stages/shots -> light -> composition/final frame`
 
 For a simple single shot, compress to subject, motion, camera, environment, light, and style. Do not paste CLI flags into the prompt; Vetta stores executable duration/resolution separately. Use reference tags only if the active adapter exposes matching semantics.
 

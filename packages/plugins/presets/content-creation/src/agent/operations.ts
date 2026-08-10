@@ -36,7 +36,6 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 					"delete_node",
 					"connect_nodes",
 					"delete_edge",
-					"add_timeline_clip",
 				],
 			},
 			id: { type: "string" },
@@ -80,8 +79,6 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			sourceHandle: { type: "string" },
 			targetHandle: { type: "string" },
 			edgeId: { type: "string" },
-			trackId: { type: "string" },
-			start: { type: "number" },
 		},
 		required: ["type"],
 		additionalProperties: false,
@@ -178,19 +175,6 @@ function parseOperation(value: unknown, frames: PlacementFrame[]): ContentProjec
 			};
 		case "delete_edge":
 			return { type: "edge.delete", edgeId: requiredString(operation, "edgeId") };
-		case "add_timeline_clip":
-			return {
-				type: "timeline.clip.add",
-				clip: {
-					id: optionalString(operation, "id")?.trim() || crypto.randomUUID(),
-					trackId: optionalString(operation, "trackId") ?? "video-1",
-					sourceNodeId: requiredString(operation, "nodeId"),
-					start: requiredNumber(operation, "start"),
-					duration: requiredNumber(operation, "duration"),
-					sourceIn: 0,
-					speed: 1,
-				},
-			};
 		default:
 			throw new Error(`unsupported operation type: ${type}`);
 	}

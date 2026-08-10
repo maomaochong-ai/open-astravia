@@ -4,7 +4,7 @@
 
 1. Brief failure: missing or contradictory requirement -> repair objective or prompt.
 2. Reference failure: weak, dirty, conflicting, or misassigned input -> repair reference selection/role.
-3. Structure failure: overloaded shot or wrong workflow shape -> split/reorder nodes or timeline.
+3. Structure failure: overloaded shot or wrong workflow shape -> simplify timestamp windows or split/reorder generation nodes.
 4. Capability failure: mode lacks required input/output behavior -> reroute model/mode.
 5. Stochastic failure: sound setup, isolated bad sample -> retry the same node once.
 
