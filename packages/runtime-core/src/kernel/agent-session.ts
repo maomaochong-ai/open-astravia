@@ -11,7 +11,7 @@ import type {
 	TurnSessionIdentity,
 } from "./contracts.js";
 import { sessionBusyError, sessionClosedError } from "./errors.js";
-import { type ClearedSessionInputs, SessionInputQueue } from "./session-input-queue.js";
+import { type ClearedSessionInputs, SessionInputQueue, type SessionInputQueueSnapshot } from "./session-input-queue.js";
 import type { TurnPipeline } from "./turn-pipeline.js";
 
 export interface CreateAgentSessionOptions {
@@ -20,6 +20,8 @@ export interface CreateAgentSessionOptions {
 	readonly cwd?: string;
 	readonly steeringMode?: SessionInputQueueMode;
 	readonly followUpMode?: SessionInputQueueMode;
+	/** 输入队列任何可观察变化后的同步回调；宿主用于镜像广播与持久化（ADR-0060）。 */
+	readonly onQueueChange?: (snapshot: SessionInputQueueSnapshot) => void;
 }
 
 export class AgentSession {
@@ -45,6 +47,7 @@ export class AgentSession {
 		this.inputQueue = new SessionInputQueue({
 			steeringMode: options.steeringMode,
 			followUpMode: options.followUpMode,
+			onChange: options.onQueueChange,
 		});
 	}
 
@@ -195,6 +198,72 @@ export class AgentSession {
 		return this.inputQueue.clear();
 	}
 
+	listQueue(): SessionInputQueueSnapshot {
+		return this.inputQueue.list();
+	}
+
+	removeQueued(id: string): boolean {
+		return this.inputQueue.remove(id);
+	}
+
+	reorderQueuedFollowUps(ids: readonly string[]): void {
+		this.inputQueue.reorderFollowUps(ids);
+	}
+
+	/** 「立即发送」的 streaming 形态：followUp 条目提升为 steering，工具间隙注入当前 turn。 */
+	promoteQueuedToSteering(id: string): boolean {
+		return this.inputQueue.promoteToSteering(id);
+	}
+
+	restoreQueue(snapshot: SessionInputQueueSnapshot): void {
+		this.inputQueue.restore(snapshot);
+	}
+
+	/**
+	 * 「立即发送」某条排队消息：running 时**打断当前 turn**、以该条目立刻开启新 turn
+	 * （在 kernel 内原子完成 take → cancel → start，没有渲染端等待/超时竞态）；
+	 * 空闲时直接开启新 turn。其余排队条目保留并保持可消费（用户显式要继续，
+	 * 不落入 pause-on-terminal）。
+	 */
+	async sendQueuedNow(
+		id: string,
+	): Promise<{ readonly status: "missing" } | { readonly status: "started"; readonly turn: Promise<TurnResult> }> {
+		if (this.currentState === "closed" || this.currentState === "closing") {
+			throw sessionClosedError();
+		}
+		// 先取出条目再打断：确保这条消息绝不因中途失败而丢失在「已出队未发送」状态——
+		// takeById 失败即早退，成功后它只存在于本调用栈，随 startTurn 进入持久化。
+		const input = this.inputQueue.takeById(id);
+		if (!input) return { status: "missing" };
+		if (this.currentState !== "idle") {
+			await this.cancel("send queued message now");
+		}
+		await this.contextWrite;
+		// cancel 的 pause-on-terminal 会冻结其余排队条目；用户点「立即发送」表达的
+		// 是继续消费，解除暂停让它们在新 turn 的自然停止点接力。
+		this.inputQueue.resume();
+		return { status: "started", turn: this.startTurn(input) };
+	}
+
+	/**
+	 * 解除 pause-on-terminal 并继续消费队列：空闲时以 followUp 队首开启新 turn，
+	 * 其余条目由该 turn 的自然停止点接力消费；running 时仅解除暂停。
+	 */
+	async resumeQueue(): Promise<TurnResult | undefined> {
+		if (this.currentState === "closed" || this.currentState === "closing") {
+			throw sessionClosedError();
+		}
+		this.inputQueue.resume();
+		if (this.currentState !== "idle") return undefined;
+		await this.contextWrite;
+		// contextWrite 让出事件循环期间可能有别的 send 抢先起了 turn；重查状态，
+		// 已在跑就把消费交给该 turn 的自然停止点。
+		if (this.currentState !== "idle") return undefined;
+		const head = this.inputQueue.takeFollowUpHead();
+		if (!head) return undefined;
+		return this.startTurn(head);
+	}
+
 	async cancel(reason?: string): Promise<void> {
 		if (this.currentState !== "running" && this.currentState !== "cancelling") return;
 		this.currentState = "cancelling";
@@ -226,11 +295,8 @@ export class AgentSession {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
-		return {
-			status: "queued",
-			behavior,
-			pendingCount: this.inputQueue.enqueue(behavior, input),
-		};
+		const { id, pendingCount } = this.inputQueue.enqueueWithId(behavior, input);
+		return { status: "queued", behavior, pendingCount, id };
 	}
 
 	private async startTurn(
@@ -249,7 +315,16 @@ export class AgentSession {
 		this.activeTurn = turn;
 
 		try {
-			return await turn;
+			const result = await turn;
+			// pause-on-terminal（ADR-0060）：aborted/failed 收尾时冻结残留队列，
+			// 避免它们在下一个不相干的 turn 里被自然停止点突然消费。
+			if (result.status !== "completed" && this.inputQueue.pendingCount > 0) {
+				this.inputQueue.pause();
+			}
+			return result;
+		} catch (error) {
+			if (this.inputQueue.pendingCount > 0) this.inputQueue.pause();
+			throw error;
 		} finally {
 			this.finishActiveTurn();
 		}

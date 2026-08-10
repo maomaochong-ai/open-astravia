@@ -1,4 +1,4 @@
-import { EventStream, type Message } from "@vetta/ai";
+import { type AssistantMessage, EventStream, type Message } from "@vetta/ai";
 import { validateAgentRunLimits } from "./limits.js";
 import { executeRuntimeToolCalls } from "./tool-executor.js";
 import type {
@@ -119,6 +119,10 @@ async function executeRun(
 				return;
 			}
 
+			// 中断挽救路径：部分 assistant 消息已入 state.messages 并发出
+			// assistant_message 事件（宿主据此落盘），这里走统一 aborted 终止。
+			if (signal.aborted) throw abortError(signal.reason);
+
 			const toolCalls = state.lastAssistantMessage?.content.filter((block) => block.type === "toolCall") ?? [];
 			if (toolCalls.length === 0) {
 				const completed = await checkpoint(
@@ -198,6 +202,13 @@ function appendInput(state: RunState, input: PendingInput, emit: (event: AgentEx
 	}
 }
 
+/**
+ * 中断后等待 provider 交回带 `stopReason: "aborted"` 部分消息的宽限时长。
+ * provider 在同一 signal 上中止底层请求并立即收尾组装，正常在毫秒级完成；
+ * 上限只防 provider 实现不收尾时无限等待。
+ */
+const ABORT_SALVAGE_TIMEOUT_MS = 1500;
+
 async function consumeModelResponse(
 	resolved: ResolvedModelCall,
 	modelCallIndex: number,
@@ -208,17 +219,38 @@ async function consumeModelResponse(
 		(value) => ({ status: "fulfilled" as const, value }),
 		(reason: unknown) => ({ status: "rejected" as const, reason }),
 	);
-	await interruptible(
-		(async () => {
-			for await (const event of resolved.response.events) {
-				emit({ type: "model_event", modelCallIndex, event });
-			}
-		})(),
-		signal,
-	);
-	const settled = await interruptible(settledResult, signal);
-	if (settled.status === "rejected") throw settled.reason;
-	return settled.value;
+	// 事件流里的 partial 是 provider 持续累积的 assistant 消息快照；abort 挽救的
+	// 事实源。provider 在 abort 时 fail() 掉 result（如 anthropic adapter），
+	// 已流出的内容只存在于这里。
+	let lastPartial: AssistantMessage | undefined;
+	try {
+		await interruptible(
+			(async () => {
+				for await (const event of resolved.response.events) {
+					if ("partial" in event && event.partial) lastPartial = event.partial;
+					emit({ type: "model_event", modelCallIndex, event });
+				}
+			})(),
+			signal,
+		);
+		const settled = await interruptible(settledResult, signal);
+		if (settled.status === "rejected") throw settled.reason;
+		return settled.value;
+	} catch (error) {
+		if (!signal.aborted) throw error;
+		// 中断挽救：立刻放弃会让已流出的内容既不进 state.messages 也不落盘
+		// （UI 上先显示、随后被历史重放吞掉）。优先等 result 短宽限内交回完整的
+		// aborted 消息；provider 直接 reject 时退回事件流累积的 partial。
+		const salvaged = await Promise.race([
+			settledResult,
+			new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), ABORT_SALVAGE_TIMEOUT_MS)),
+		]);
+		if (salvaged?.status === "fulfilled") return salvaged.value;
+		if (lastPartial && lastPartial.content.length > 0) {
+			return { ...lastPartial, stopReason: "aborted" as const };
+		}
+		throw error;
+	}
 }
 
 async function checkpoint(

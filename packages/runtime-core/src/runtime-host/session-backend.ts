@@ -17,8 +17,10 @@ import type {
 	RuntimeSessionHistoryReader,
 	RuntimeSessionHostInteraction,
 	RuntimeSessionIdentityLifecycle,
+	RuntimeSessionMetadataController,
 	RuntimeSessionModelController,
 	RuntimeSessionModelView,
+	RuntimeSessionQueueController,
 	RuntimeSessionTodoController,
 	RuntimeSessionWorkspaceView,
 } from "./session-ports.js";
@@ -77,6 +79,9 @@ export interface RuntimeHostSessionAssembly {
 	readonly modelController: RuntimeSessionModelController;
 	readonly modelView: RuntimeSessionModelView;
 	readonly corePorts: RuntimeSessionCorePorts;
+	/** 可选能力（ADR-0060）：缺失时 RuntimeHost 相应功能静默降级，不做 no-op 伪造。 */
+	readonly queueController?: RuntimeSessionQueueController;
+	readonly metadataController?: RuntimeSessionMetadataController;
 }
 
 export const RUNTIME_HOST_SESSION_PORT_NAMES = [

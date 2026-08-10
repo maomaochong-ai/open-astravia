@@ -163,7 +163,9 @@ export {
 export {
 	type ClearedSessionInputs,
 	SessionInputQueue,
+	type SessionInputQueueEntry,
 	type SessionInputQueueOptions,
+	type SessionInputQueueSnapshot,
 } from "./session-input-queue.js";
 export {
 	RuntimeToolExecutionError,

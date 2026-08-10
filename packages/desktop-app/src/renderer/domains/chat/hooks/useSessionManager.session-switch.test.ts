@@ -50,7 +50,7 @@ vi.mock("../services/context-composition-cache", () => ({
 
 interface SessionManagerProbe {
 	openSession(cwd: string, sessionPath?: string): Promise<void>;
-	sendMessage(): Promise<void>;
+	sendMessage(): Promise<unknown>;
 }
 
 interface Deferred<T> {
@@ -137,6 +137,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 			sessionPath: config.sessionPath === firstSessionPath ? firstCanonicalPath : secondSessionPath,
 		})),
 		getFullHistory,
+		getQueueState: vi.fn(async () => ({ paused: false, entries: [] })),
 		getSessionPath: vi.fn(async (sessionId: string) =>
 			sessionId === "runtime-first" ? firstSessionPath : secondSessionPath,
 		),
@@ -174,7 +175,7 @@ it("切回仍在执行的会话时保留尚未进入历史快照的乐观用户�
 		root.render(createElement(Probe));
 	});
 
-	let sendPromise: Promise<void> | undefined;
+	let sendPromise: Promise<unknown> | undefined;
 	await act(async () => {
 		sendPromise = manager?.sendMessage();
 		await Promise.resolve();

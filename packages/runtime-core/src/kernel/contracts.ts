@@ -58,6 +58,8 @@ export interface QueuedSessionInputResult {
 	readonly status: "queued";
 	readonly behavior: SessionStreamingBehavior;
 	readonly pendingCount: number;
+	/** 队列条目 id；宿主/插件用它指认与管理这条排队消息（ADR-0060）。 */
+	readonly id?: string;
 }
 
 export interface TurnInputQueue {
@@ -705,13 +707,29 @@ export interface ConversationContinuedEvent {
 	readonly timestamp: number;
 }
 
+/** 输入队列可观察变化（入队/消费/移除/重排/暂停/恢复）。ADR-0060。 */
+export interface QueueChangedKernelEvent {
+	readonly type: "queue.changed";
+	readonly sessionId: string;
+	readonly timestamp: number;
+	readonly snapshot: {
+		readonly paused: boolean;
+		readonly entries: readonly {
+			readonly id: string;
+			readonly behavior: SessionStreamingBehavior;
+			readonly input: QueuedSessionInput;
+		}[];
+	};
+}
+
 export type KernelEvent =
 	| StoredSessionEvent
 	| TurnPipelineStageEvent
 	| ObserverFailedEvent
 	| RuntimeSessionObservationEnvelope
 	| RuntimeExecutionObservationEnvelope
-	| ConversationContinuedEvent;
+	| ConversationContinuedEvent
+	| QueueChangedKernelEvent;
 
 export interface EventSink {
 	publish(event: KernelEvent): Promise<void>;

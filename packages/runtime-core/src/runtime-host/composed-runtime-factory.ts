@@ -21,6 +21,7 @@ import {
 	resumeAgentSession,
 	type SessionContextRecord,
 	type SessionInputQueueMode,
+	type SessionInputQueueSnapshot,
 	SystemClock,
 	TurnPipeline,
 } from "../kernel/index.js";
@@ -210,17 +211,32 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 					? (result) => resources.onConversationContinued?.(result)
 					: undefined,
 			});
+			const sessionIdRef = { current: resources.sessionId };
 			const sessionOptions = {
 				id: resources.sessionId,
 				pipeline,
 				cwd: resources.identity.cwd,
 				steeringMode: resources.steeringMode,
 				followUpMode: resources.followUpMode,
+				// 队列变化以 kernel 事件广播（ADR-0060）：宿主据此镜像 UI 并持久化 sidecar。
+				onQueueChange: (snapshot: SessionInputQueueSnapshot) => {
+					void eventSink
+						.publish({
+							type: "queue.changed",
+							sessionId: sessionIdRef.current,
+							timestamp: this.clock.now(),
+							snapshot,
+						})
+						.catch((error) => {
+							console.warn("[runtime-core] failed to publish queue.changed", error);
+						});
+				},
 			};
 			const session =
 				operation === "create"
 					? await createAgentSession(sessionOptions)
 					: await resumeAgentSession(sessionOptions);
+			sessionIdRef.current = session.id;
 			rollback.defer({ id: "kernel-session", rollback: () => session.close() });
 			requestContinuation = (records) => session.requestContinuation(records);
 			if (pendingContinuationContext.length > 0) {

@@ -41,6 +41,22 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 		];
 	}
 
+	if (event.type === "queue.changed") {
+		return [
+			{
+				...baseSessionEvent(event.sessionId, "runtime-core", event.timestamp),
+				type: "queue.changed",
+				paused: event.snapshot.paused,
+				entries: event.snapshot.entries.map((entry) => ({
+					id: entry.id,
+					behavior: entry.behavior,
+					displayText: entry.input.message ? messageText(entry.input.message) : "",
+				})),
+				snapshot: event.snapshot,
+			},
+		];
+	}
+
 	if (event.type === "turn.cancelled") {
 		return [
 			mapRuntimeSessionObservationEvent(
@@ -81,6 +97,16 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 	}
 
 	return [];
+}
+
+function messageText(message: Message): string {
+	if (typeof message.content === "string") return message.content;
+	return message.content
+		.filter(
+			(part): part is Extract<(typeof message.content)[number], { readonly type: "text" }> => part.type === "text",
+		)
+		.map((part) => part.text)
+		.join("");
 }
 
 function assistantMessageObservations(

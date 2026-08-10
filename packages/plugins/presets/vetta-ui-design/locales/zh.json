@@ -33,6 +33,7 @@
 	"ds.vibe.light": "亮色体系",
 	"ds.vibe.dark": "暗色体系",
 	"ds.card.picked": "已选择",
+	"ds.card.queued": "已排队",
 	"ds.card.skip": "不使用设计系统",
 	"ds.card.skipHint": "由 Vetta 自由发挥",
 	"ds.card.more": "更多",

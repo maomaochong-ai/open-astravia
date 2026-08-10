@@ -336,7 +336,7 @@ function createConversationApi(plugin: InstalledPlugin): PluginConversationApi {
 	return {
 		sendPrompt: async (text) => {
 			permissions.require("agent.session.write");
-			await pluginHostBridge.conversation.sendPrompt(text);
+			return pluginHostBridge.conversation.sendPrompt(text);
 		},
 		insertText: (text) => {
 			permissions.require("agent.session.write");

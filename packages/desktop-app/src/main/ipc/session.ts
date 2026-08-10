@@ -122,6 +122,12 @@ const CHANNELS = {
 	PROMPT: "vetta:session:prompt",
 	CONTINUE: "vetta:session:continue",
 	ABORT: "vetta:session:abort",
+	QUEUE_STATE: "vetta:session:queue-state",
+	QUEUE_REMOVE: "vetta:session:queue-remove",
+	QUEUE_REORDER: "vetta:session:queue-reorder",
+	QUEUE_SEND_NOW: "vetta:session:queue-send-now",
+	QUEUE_RESUME: "vetta:session:queue-resume",
+	QUEUE_CLEAR: "vetta:session:queue-clear",
 	CLEAR_TODOS: "vetta:session:clear-todos",
 	SUBSCRIBE: "vetta:session:subscribe",
 	UNSUBSCRIBE: "vetta:session:unsubscribe",
@@ -684,7 +690,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			sessionId,
 			...summarizeAgentPluginRuntimeConfig(buildAgentPluginRuntimeConfig()),
 		});
-		await runtime.prompt(sessionId, req);
+		return runtime.prompt(sessionId, req);
 	});
 
 	ipcMain.handle(CHANNELS.CONTINUE, async (_event, sessionId: unknown) => {
@@ -695,6 +701,37 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.ABORT, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		await runtime.abort(sessionId);
+	});
+
+	// 输入队列管理（ADR-0060）：薄桥接，能力全部在 RuntimeHost。
+	ipcMain.handle(CHANNELS.QUEUE_STATE, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		return runtime.getQueueState(sessionId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_REMOVE, async (_event, sessionId: unknown, itemId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(itemId, "itemId");
+		return runtime.removeQueuedMessage(sessionId, itemId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_REORDER, async (_event, sessionId: unknown, itemIds: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		if (!Array.isArray(itemIds) || itemIds.some((id) => typeof id !== "string" || id.length === 0)) {
+			throw new Error("itemIds must be a non-empty-string array");
+		}
+		runtime.reorderQueuedMessages(sessionId, itemIds as string[]);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_SEND_NOW, async (_event, sessionId: unknown, itemId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(itemId, "itemId");
+		return runtime.sendQueuedMessageNow(sessionId, itemId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_RESUME, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		await runtime.resumeQueue(sessionId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_CLEAR, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		runtime.clearQueue(sessionId);
 	});
 
 	ipcMain.handle(CHANNELS.CLEAR_TODOS, async (_event, sessionId: unknown) => {

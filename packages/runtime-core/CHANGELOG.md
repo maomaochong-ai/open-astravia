@@ -10,6 +10,9 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- **Kernel 输入队列可管理化与 Desktop 打通**（ADR-0060）：`SessionInputQueue` 条目带 id，新增 `list` / `remove` / `reorderFollowUps` / `promoteToSteering` / `restore` 与变更回调；turn 以 aborted/failed 收尾时队列进入 paused（残留条目不再渗入下一个不相干 turn），`resumeQueue` / `sendQueuedNow` 提供恢复与「立即发送」（running 时在 kernel 内原子地打断当前 turn 并以该条目立刻开新 turn，空闲直接开新 turn）。`RuntimeHost.prompt` 在 streaming 中放行带 `streamingBehavior` 的请求并返回 `RuntimeTurnPromptOutcome` 回执（`queued` 携条目 id）；新增 `queue.changed` Session Event 与按会话 sidecar（`<sessionPath>.queue.json`）持久化，重启后排队消息可恢复。`SessionFacade.prompt` 返回值由 `void` 变为回执。
+- **prompt 前置失败落盘**：模型选择、hook 阻断、skill 解析等 prepare 阶段失败时（会话空闲态），以 `prompt_rejected` custom entry 记录用户原文与失败原因，历史可查，不再凭空消失。
+
 - **一次性初始化回滚事务**：新增 `InitializationRollbackScope`，按资源实际获取顺序登记、严格逆序全量回滚，并支持所有权转移时撤销旧任务；无清理错误时原样抛出初始化失败，清理也失败时以初始化错误为 `cause` 聚合诊断。Greenfield Runtime Factory 在外围初始化失败时会先关闭已创建的 Kernel Session，再释放 Composition 资源。
 - **可重试 Runtime 关闭事务**：新增 `RetryableCleanup`，按 phase 全量尝试资源释放、共享并发关闭并只保留失败任务供后续重试；Greenfield Runtime Session 在首次清理失败后保持关闭准入，同时继续释放其余资源且不重复已成功的 Kernel/assembly 清理。
 - **无损调用上下文与最终模型消息合同**：Runtime Message Envelope 新增产品无关的 opaque identity，并加入 Conversation Context Projector 与 Model Call Message Finalizer；Turn Pipeline 在压缩后按身份重建调用上下文，Agent Core 在调用级变换时保留产品消息身份、仅向 Provider 投影标准消息，使 Extension 等产品能力可在 Runtime Core 外无损适配且不改变持久化格式。
@@ -66,6 +69,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- **turn 失败不再伪装成自然结束**：`turn.failed` 只产生 error observation + `agent_end`，此前 `running-changed` 的 reason 落成 `"agent_end"`，下游（如 Desktop 队列）会把上游报错当自然结束继续派发。现在回合内的 error 事件会把 terminalReason 置为 `"error"`；重试后成功收尾的回合会清除该标记，仍报告 `agent_end`（ADR-0060）。
 - **重开已有会话恢复该会话上次使用的模型**：会话级模型只活在进程内存里（`updateSettings({modelKey})` 不落盘），宿主重启后按 `sessionPath` 重开会话时，模型会退回宿主兜底值（Desktop 是可用列表第一个），宿主再把它同步回 UI，表现为「重启后模型被重置」。现在 `createSession` 在传了 `sessionPath` 且调用方未显式指定 `model` 时，从会话历史最后一条 assistant 记录恢复模型；模型已从 catalog 移除或缺少凭证时静默保持兜底模型，不阻断开会话。复用内存中已打开的同路径会话不受影响。
 - **Greenfield 初始化发布边界**：Runtime Factory 会在最终 Assembly 投影成功后才提交初始化事务；若返回对象构造阶段抛错，已创建的 Kernel Session 与 Composition 资源仍按逆序释放。
 - **会话标题与输入预测恒为中文，英文提问也拿到中文**：`generateAutoTitle` 的提示词写死「生成一个中文短标题」、system prompt 写死「只输出一个简短中文标题」，`generateNextPromptSuggestions` 与 `provide_prompt_suggestions` 的工具描述同样通篇中文——语言由提示词写死，与用户实际使用的语言无关。三处提示词改为英文撰写并显式要求「与用户消息同语言」输出（提示词自身的语言不再是语言信号）。同时放宽 `sanitizeAutoTitle` 的截断：原先一律砍到 14 个码点，对 CJK 合适，对英文不足两个词；改为含 CJK 走 14 字、纯拉丁走 40 字符且在词边界收尾，候选行长度阈值 30 → 60。

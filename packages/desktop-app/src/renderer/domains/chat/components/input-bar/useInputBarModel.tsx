@@ -22,7 +22,12 @@ import {
 	todoItemsBySessionAtom,
 	mentionedFilesAtom,
 } from "@shared/store/atoms";
-import { getQueueForSession, messageQueueBySessionAtom } from "@shared/store/message-queue-atoms";
+import {
+	getQueueForSession,
+	isQueuePausedForSession,
+	messageQueueBySessionAtom,
+	messageQueuePausedBySessionAtom,
+} from "@shared/store/message-queue-atoms";
 import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
 import { isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
@@ -139,6 +144,8 @@ export function useInputBarModel({
 		() => getQueueForSession(queueMap, activeSession?.runtimeId ?? null),
 		[queueMap, activeSession?.runtimeId],
 	);
+	const queuePausedMap = useAtomValue(messageQueuePausedBySessionAtom);
+	const queuePaused = isQueuePausedForSession(queuePausedMap, activeSession?.runtimeId ?? null);
 	const actionBar = useInputActionBarModel();
 	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
@@ -363,7 +370,12 @@ export function useInputBarModel({
 				kind: "queue",
 				id: "queue",
 				label: t("inputBar.drawer.queueLabel"),
-				desc: t("inputBar.drawer.queueDesc", { count: queueItems.length }),
+				// abort/error 后队列暂停（ADR-0060）：抽屉标签用暂停文案 + 脉冲提醒，
+				// 避免排队消息静默滞留、用户以为已发出。
+				desc: queuePaused
+					? t("inputBar.drawer.queuePausedDesc", { count: queueItems.length })
+					: t("inputBar.drawer.queueDesc", { count: queueItems.length }),
+				pulsing: queuePaused,
 				runtimeId,
 				onSendNow: (id) => onSendQueued?.(runtimeId, id),
 			});
@@ -387,7 +399,7 @@ export function useInputBarModel({
 			onViewMore: handleTodoViewMore,
 		});
 		return items;
-	}, [activeSession, handleTodoViewMore, onSendQueued, queueItems.length, sandboxPermission, t, todoItems]);
+	}, [activeSession, handleTodoViewMore, onSendQueued, queueItems.length, queuePaused, sandboxPermission, t, todoItems]);
 
 	const handleSelectImages = useCallback(async () => {
 		if (!hasSession) return;

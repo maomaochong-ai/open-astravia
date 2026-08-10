@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve as resolvePath } from "node:path";
 import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Message } from "@vetta/ai";
@@ -12,10 +12,12 @@ import type {
 	HistoryEntry,
 	ProjectInfo,
 	PromptRequest,
+	QueueChangedEvent,
 	RuntimeQuestionItem,
 	RuntimeSandboxGrantDecision,
 	RuntimeSandboxGrantInfo,
 	RuntimeSandboxGrantRequest,
+	RuntimeTurnPromptOutcome,
 	RuntimeUserConfirmationRequest,
 	RuntimeUserQuestionRequest,
 	RuntimeUserQuestionResult,
@@ -41,6 +43,7 @@ import { baseSessionEvent, lifecycleSessionEvent } from "./session-events.js";
 import type {
 	RuntimeSessionEventStream,
 	RuntimeSessionHostInteractionContext,
+	RuntimeSessionQueueStateView,
 	RuntimeSubagentSnapshot,
 } from "./session-ports.js";
 import type {
@@ -56,6 +59,11 @@ export type { RunningChangedReason, RuntimeHostOptions } from "./types.js";
 
 const DEFAULT_RUNTIME_SCENARIO: NonNullable<SessionConfig["scenario"]> = "cli";
 
+/** 队列 sidecar 与会话文件同目录同名并列，随会话删除自然可见（ADR-0060）。 */
+function queueSidecarPath(sessionPath: string): string {
+	return `${sessionPath}.queue.json`;
+}
+
 /** 合并插件激活期间连续产生的配置更新，空闲会话只重建一次工具面。 */
 const IDLE_AGENT_PLUGIN_APPLY_DELAY_MS = 300;
 
@@ -67,6 +75,8 @@ export class RuntimeHost implements SessionFacade {
 	private sessions = new Map<string, SessionHandle>();
 	private currentTurnStartedAt = new Map<string, number>();
 	private inFlightBuffers = new Map<string, InFlightBuffer>();
+	/** 每个队列 sidecar 文件的串行写链（ADR-0060）。 */
+	private queueSidecarWrites = new Map<string, Promise<void>>();
 	private inFlightUnsubscribers = new Map<string, () => void>();
 	/**
 	 * 外部订阅者表。`subscribe()` 在挂到 Event Stream 的同时把 handler 也
@@ -438,6 +448,8 @@ export class RuntimeHost implements SessionFacade {
 			modelController,
 			modelView,
 			corePorts,
+			queueController,
+			metadataController,
 		} = await this.requireSessionBackend().createAssembly(request);
 		const sessionId = lifecycle.sessionId;
 		sessionIdRef.current = sessionId;
@@ -455,6 +467,8 @@ export class RuntimeHost implements SessionFacade {
 			modelController,
 			modelView,
 			...corePorts,
+			queueController,
+			metadataController,
 			executionMode,
 			agentPluginsEnabled: config.enableAgentPlugins === true,
 			pendingAgentPlugins: undefined,
@@ -472,6 +486,12 @@ export class RuntimeHost implements SessionFacade {
 			agentPluginsEnabled: config.enableAgentPlugins === true,
 		});
 		this.attachInFlightBuffer(sessionId, lifecycle.sessionPath, corePorts.eventStream);
+
+		// 恢复排队 sidecar（ADR-0060）：仅打开已有会话时可能存在。restore 会触发
+		// queue.changed → 重写 sidecar，幂等无害。
+		if (queueController && config.sessionPath && config.sessionPath.trim().length > 0) {
+			await this.restoreQueueSidecar(queueController, lifecycle.sessionPath);
+		}
 
 		// 打开「已有」会话且调用方没有指定模型时（Desktop 打开会话就是这条路径），
 		// 恢复该会话上一轮实际使用的模型。否则后端只会落到宿主的兜底模型（例如
@@ -537,6 +557,10 @@ export class RuntimeHost implements SessionFacade {
 		};
 		this.inFlightBuffers.set(sessionId, buffer);
 		const unsubscribe = eventStream.subscribe((event) => {
+			if (event.type === "queue.changed") {
+				this.persistQueueSidecar(sessionPath, event);
+				return;
+			}
 			if (event.type === "session.lifecycle" && event.phase === "agent_start") {
 				this.currentTurnStartedAt.set(sessionId, event.timestamp);
 				buffer.turnStartedAt = event.timestamp;
@@ -550,6 +574,13 @@ export class RuntimeHost implements SessionFacade {
 			}
 			if (event.type === "session.lifecycle" && event.phase === "aborted") {
 				buffer.terminalReason = "aborted";
+				return;
+			}
+			// turn.failed 只产生 error observation + agent_end，没有 assistant
+			// message.final；不在这里置位的话失败会伪装成 "agent_end"，下游把
+			// 错误当自然结束（例如继续派发排队消息）。ADR-0060。
+			if (event.type === "error" && buffer.isActive) {
+				buffer.terminalReason = "error";
 				return;
 			}
 			if (event.type === "session.lifecycle" && event.phase === "agent_end") {
@@ -573,6 +604,9 @@ export class RuntimeHost implements SessionFacade {
 				if (event.message.role === "assistant") {
 					if (event.message.stopReason === "aborted") buffer.terminalReason = "aborted";
 					else if (event.message.stopReason === "error") buffer.terminalReason = "error";
+					// 恢复成功的回合（ADR-0057 重试尘埃落定后正常收尾）不能残留
+					// 早前的 error 标记，否则自然结束会被误报成 "error"。
+					else buffer.terminalReason = undefined;
 				}
 				return;
 			}
@@ -626,7 +660,7 @@ export class RuntimeHost implements SessionFacade {
 		}
 	}
 
-	async prompt(sessionId: string, request: PromptRequest): Promise<void> {
+	async prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome> {
 		const handle = this.requireSession(sessionId);
 		await this.applyPendingAgentPlugins(sessionId, handle);
 		this.applyPendingAgentMode(handle);
@@ -678,10 +712,12 @@ export class RuntimeHost implements SessionFacade {
 			}
 		}
 		try {
-			if (handle.stateReader.readState().isStreaming) {
+			// streaming 中带 streamingBehavior 的请求放行到 kernel 队列（ADR-0060）；
+			// 不带 behavior 的仍视为并发误用。
+			if (handle.stateReader.readState().isStreaming && !request.streamingBehavior) {
 				throw runtimeError("SESSION_BUSY", "Session is already processing another turn.", true, "runtime");
 			}
-			await handle.turnControl.prompt({
+			const outcome = await handle.turnControl.prompt({
 				text,
 				images,
 				streamingBehavior: request.streamingBehavior,
@@ -689,6 +725,7 @@ export class RuntimeHost implements SessionFacade {
 				attachments: request.attachments,
 				metadata: request.metadata,
 			});
+			return outcome ?? { status: "completed" };
 		} catch (err) {
 			// session.prompt 在进入 agent.start 之前会做同步校验（"No model
 			// selected"、"No API key found"、"Agent is already processing"
@@ -719,6 +756,71 @@ export class RuntimeHost implements SessionFacade {
 	async abort(sessionId: string): Promise<void> {
 		const handle = this.requireSession(sessionId);
 		await handle.turnControl.abort();
+	}
+
+	// ---- 输入队列管理（ADR-0060）。backend 不具备 queueController 时静默降级为空队列。 ----
+
+	getQueueState(sessionId: string): RuntimeSessionQueueStateView {
+		const handle = this.requireSession(sessionId);
+		return handle.queueController?.readQueueState() ?? { paused: false, entries: [] };
+	}
+
+	removeQueuedMessage(sessionId: string, itemId: string): boolean {
+		const handle = this.requireSession(sessionId);
+		return handle.queueController?.removeQueued(itemId) ?? false;
+	}
+
+	reorderQueuedMessages(sessionId: string, itemIds: readonly string[]): void {
+		const handle = this.requireSession(sessionId);
+		handle.queueController?.reorderQueuedFollowUps(itemIds);
+	}
+
+	async sendQueuedMessageNow(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing"> {
+		const handle = this.requireSession(sessionId);
+		if (!handle.queueController) return "missing";
+		return handle.queueController.sendQueuedNow(itemId);
+	}
+
+	async resumeQueue(sessionId: string): Promise<void> {
+		const handle = this.requireSession(sessionId);
+		await handle.queueController?.resumeQueue();
+	}
+
+	clearQueue(sessionId: string): void {
+		const handle = this.requireSession(sessionId);
+		handle.queueController?.clear();
+	}
+
+	/** 串行化每个 sidecar 文件的写入，避免快照乱序落盘。 */
+	private persistQueueSidecar(sessionPath: string | undefined, event: QueueChangedEvent): void {
+		if (!sessionPath) return;
+		const path = queueSidecarPath(sessionPath);
+		const prev = this.queueSidecarWrites.get(path) ?? Promise.resolve();
+		const next = prev.then(async () => {
+			try {
+				if (event.entries.length === 0 && !event.paused) {
+					await rm(path, { force: true });
+					return;
+				}
+				await writeFile(path, JSON.stringify(event.snapshot), "utf8");
+			} catch (error) {
+				console.warn(`[RuntimeHost] failed to persist queue sidecar ${path}:`, error);
+			}
+		});
+		this.queueSidecarWrites.set(path, next);
+	}
+
+	private async restoreQueueSidecar(
+		queueController: NonNullable<SessionHandle["queueController"]>,
+		sessionPath: string | undefined,
+	): Promise<void> {
+		if (!sessionPath) return;
+		try {
+			const raw = await readFile(queueSidecarPath(sessionPath), "utf8");
+			queueController.restoreQueue(JSON.parse(raw));
+		} catch {
+			// 文件不存在或损坏都静默：队列 sidecar 丢失只影响排队，不损害历史。
+		}
 	}
 
 	/**

@@ -383,6 +383,9 @@
 			"queueDesc": "{{count}} 条待发",
 			"queueEmpty": "暂无排队消息",
 			"queueLabel": "队列",
+			"queuePaused": "上一轮已中断，排队消息暂停发送",
+			"queuePausedDesc": "已暂停 · {{count}} 条待发",
+			"queueResume": "继续发送",
 			"queueSendNow": "立即发送"
 		},
 		"permission": {

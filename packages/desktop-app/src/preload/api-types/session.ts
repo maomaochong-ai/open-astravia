@@ -6,6 +6,8 @@ import type {
 	RuntimeSandboxGrantDecision,
 	RuntimeSandboxGrantInfo,
 	RuntimeSandboxGrantRequest,
+	RuntimeSessionQueueStateView,
+	RuntimeTurnPromptOutcome,
 	RuntimeUserConfirmationRequest,
 	RuntimeUserQuestionRequest,
 	RuntimeUserQuestionResult,
@@ -56,9 +58,19 @@ export interface DesktopSessionApi {
 			session?: { id: string; cwd: string; firstMessage: string; modifiedAt: number };
 		}) => void,
 	): () => void;
-	prompt(sessionId: string, request: PromptRequest): Promise<void>;
+	/** 回执（ADR-0060）：streaming 中带 streamingBehavior 的请求入 kernel 队列并立即返回 queued。 */
+	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
+	/** kernel 输入队列快照（ADR-0060）。 */
+	getQueueState(sessionId: string): Promise<RuntimeSessionQueueStateView>;
+	removeQueuedMessage(sessionId: string, itemId: string): Promise<boolean>;
+	reorderQueuedMessages(sessionId: string, itemIds: string[]): Promise<void>;
+	/** streaming 中打断当前回合并立刻以该条目开新回合；空闲时直接开新回合。不等待回合结束。 */
+	sendQueuedMessageNow(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing">;
+	/** 解除 abort/error 后的队列暂停并继续逐条发送。 */
+	resumeQueue(sessionId: string): Promise<void>;
+	clearQueue(sessionId: string): Promise<void>;
 	/** 清空 session 的 todo 列表（被 scene 等 lock 时返回 false）。 */
 	clearTodos(sessionId: string): Promise<boolean>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): Promise<() => void>;

@@ -30,6 +30,7 @@ import type {
 	PluginMediaProviderSubmitRequest,
 	PluginPromptAttachment,
 	PluginSystemPromptProviderHandler,
+	SendPromptResult,
 } from "@vetta-org/plugin-sdk";
 import { __setPluginHostBridge, PluginAppActionError } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtomValue } from "jotai";
@@ -137,6 +138,16 @@ function messageText(message: Message): string {
 
 function translate(event: SessionEvent): void {
 	switch (event.type) {
+		case "queue.changed":
+			// 队列镜像（ADR-0060）：插件卡片据此呈现「已排队/已发出/被移除」。
+			emit({
+				type: "queue-changed",
+				queue: {
+					paused: event.paused,
+					items: event.entries.map((entry) => ({ id: entry.id, displayText: entry.displayText })),
+				},
+			});
+			return;
 		case "session.lifecycle":
 			if (event.phase === "agent_start") emit({ type: "turn-start" });
 			else if (event.phase === "agent_end") emit({ type: "turn-end", stopReason: "stop" });
@@ -614,15 +625,24 @@ export function registerPluginMediaProviderHandler(options: {
 // ─── Conversation actions ───
 
 /** Set by useSessionManager so sendPrompt reuses the full send path. */
-export const pluginSendMessageRef: { current: ((text: string) => Promise<void>) | null } = {
+export const pluginSendMessageRef: {
+	current:
+		| ((
+				text: string,
+				options?: { source?: "plugin" },
+		  ) => Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined>)
+		| null;
+} = {
 	current: null,
 };
 
 const conversation: PluginConversationApi = {
-	sendPrompt: async (text: string): Promise<void> => {
+	sendPrompt: async (text: string): Promise<SendPromptResult> => {
 		const send = pluginSendMessageRef.current;
 		if (!send) throw new Error("No active conversation to send to");
-		await send(text);
+		// source: "plugin" —— 不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。
+		const result = await send(text, { source: "plugin" });
+		return result ?? { status: "sent" };
 	},
 	insertText: (text: string): void => {
 		store.set(inputValueAtom, text);

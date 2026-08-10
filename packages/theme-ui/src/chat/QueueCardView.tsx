@@ -12,12 +12,20 @@ export interface QueueCardViewLabels {
 	delete: string;
 }
 
+/** abort/error 后队列暂停时的提示条：说明原因并提供「继续发送」入口。 */
+export interface QueueCardPausedBanner {
+	label: string;
+	resumeLabel: string;
+	onResume: () => void;
+}
+
 export interface QueueCardViewProps {
 	items: readonly QueueCardItem[];
 	labels: QueueCardViewLabels;
 	onReorder: (orderedIds: readonly string[]) => void;
 	onSendNow: (id: string) => void;
 	onRemove: (id: string) => void;
+	paused?: QueueCardPausedBanner;
 }
 
 export function QueueCardView({
@@ -26,6 +34,7 @@ export function QueueCardView({
 	onReorder,
 	onSendNow,
 	onRemove,
+	paused,
 }: QueueCardViewProps): JSX.Element {
 	// Reorder.Group needs a mutable array of the same value identities.
 	const reorderValues = items as QueueCardItem[];
@@ -40,6 +49,20 @@ export function QueueCardView({
 
 	return (
 		<div className="flex flex-1 flex-col overflow-y-auto">
+			{paused ? (
+				<div className="flex items-center justify-between gap-2 border-b border-border/50 bg-amber-500/10 px-2.5 py-1.5">
+					<span className="min-w-0 flex-1 truncate text-[11px] leading-snug text-amber-600 dark:text-amber-400">
+						{paused.label}
+					</span>
+					<button
+						type="button"
+						onClick={paused.onResume}
+						className="shrink-0 rounded-md bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 transition-colors hover:bg-amber-500/25 dark:text-amber-300"
+					>
+						{paused.resumeLabel}
+					</button>
+				</div>
+			) : null}
 			<Reorder.Group
 				axis="y"
 				values={reorderValues}

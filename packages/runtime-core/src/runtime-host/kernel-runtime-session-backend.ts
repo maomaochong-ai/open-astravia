@@ -23,6 +23,7 @@ import type {
 	TurnResult,
 } from "../kernel/contracts.js";
 import { sessionBusyError, sessionClosedError } from "../kernel/errors.js";
+import type { SessionInputQueueEntry, SessionInputQueueSnapshot } from "../kernel/session-input-queue.js";
 import { ConversationDocumentMutationCoordinator } from "./conversation-document-mutation-coordinator.js";
 import { mapKernelEventToSessionEvents } from "./kernel-session-events.js";
 import { RetryableCleanup } from "./retryable-cleanup.js";
@@ -228,26 +229,44 @@ export class RuntimeSession {
 		if ((this.session.state === "running" || this.session.state === "cancelling") && !request.streamingBehavior) {
 			throw sessionBusyError();
 		}
-		if (request.modelKey) {
-			await this.modelRuntime.selectModel(request.modelKey, "if-changed");
+		let prepared: RuntimePreparedPrompt;
+		try {
+			if (request.modelKey) {
+				await this.modelRuntime.selectModel(request.modelKey, "if-changed");
+			}
+			if (request.reasoning) {
+				this.modelRuntime.setThinkingLevel(request.reasoning);
+			}
+			const context = {
+				sessionId: this.sessionId,
+				queueing: this.session.state === "running" || this.session.state === "cancelling",
+			};
+			const normalized = this.normalizeImages(request);
+			const intercepted = await this.promptAdapter.intercept?.(normalized, context);
+			this.assertOpen();
+			if (intercepted?.action === "handled") {
+				return { status: "handled", sessionId: this.sessionId };
+			}
+			prepared = await this.promptAdapter.prepare(
+				intercepted?.action === "continue" ? intercepted.request : normalized,
+				context,
+			);
+		} catch (error) {
+			// prompt 在进入 turn 之前失败（模型选择、hook 阻断、skill 解析等）时，
+			// 用户消息不会经 TurnPipeline 落盘。补一条 custom entry 保住事实，
+			// 历史可查（ADR-0060）。仅空闲态写入，避免与进行中 turn 的追加冲突。
+			if (this.session.state === "idle") {
+				try {
+					await this.appendEntry("prompt_rejected", {
+						text: request.text,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				} catch (persistError) {
+					console.warn("[runtime-core] failed to persist prompt_rejected entry", persistError);
+				}
+			}
+			throw error;
 		}
-		if (request.reasoning) {
-			this.modelRuntime.setThinkingLevel(request.reasoning);
-		}
-		const context = {
-			sessionId: this.sessionId,
-			queueing: this.session.state === "running" || this.session.state === "cancelling",
-		};
-		const normalized = this.normalizeImages(request);
-		const intercepted = await this.promptAdapter.intercept?.(normalized, context);
-		this.assertOpen();
-		if (intercepted?.action === "handled") {
-			return { status: "handled", sessionId: this.sessionId };
-		}
-		const prepared = await this.promptAdapter.prepare(
-			intercepted?.action === "continue" ? intercepted.request : normalized,
-			context,
-		);
 		this.assertOpen();
 		return this.session.send(prepared.input, prepared.options ?? {});
 	}
@@ -440,6 +459,40 @@ export class RuntimeSession {
 					),
 				};
 			},
+			readQueueState: () => {
+				const snapshot = this.session.listQueue();
+				return {
+					paused: snapshot.paused,
+					entries: snapshot.entries.map((entry) => ({
+						id: entry.id,
+						behavior: entry.behavior,
+						displayText: entry.input.message ? readQueuedMessageText(entry.input.message) : "",
+					})),
+				};
+			},
+			readQueueSnapshot: () => this.session.listQueue(),
+			restoreQueue: (snapshot) => {
+				const parsed = parseQueueSnapshot(snapshot);
+				if (parsed) this.session.restoreQueue(parsed);
+			},
+			removeQueued: (id) => this.session.removeQueued(id),
+			reorderQueuedFollowUps: (ids) => this.session.reorderQueuedFollowUps(ids),
+			sendQueuedNow: async (id) => {
+				const result = await this.session.sendQueuedNow(id);
+				if (result.status === "started") {
+					// turn 结果经事件流回放（turn.completed/failed 自带落盘与广播），这里不阻塞。
+					void result.turn.catch((error) => {
+						console.warn("[runtime-core] sendQueuedNow turn crashed", error);
+					});
+					return "started";
+				}
+				return result.status;
+			},
+			resumeQueue: async () => {
+				void this.session.resumeQueue().catch((error) => {
+					console.warn("[runtime-core] resumeQueue turn crashed", error);
+				});
+			},
 		};
 		return {
 			lifecycle: {
@@ -501,7 +554,12 @@ export class RuntimeSession {
 			corePorts: {
 				turnControl: {
 					prompt: async (request) => {
-						await this.prompt(request);
+						const result = await this.prompt(request);
+						if (result.status === "handled") return { status: "handled" as const };
+						if (result.status === "queued") {
+							return { status: "queued" as const, pendingCount: result.pendingCount, queueItemId: result.id };
+						}
+						return { status: result.status };
 					},
 					continue: async () => {
 						await this.continue();
@@ -818,6 +876,23 @@ function isStoredSessionEvent(event: KernelEvent): event is StoredSessionEvent {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** sidecar 快照来自磁盘，属不可信边界：结构不符则整体丢弃，不让坏数据进 kernel。 */
+function parseQueueSnapshot(snapshot: unknown): SessionInputQueueSnapshot | undefined {
+	if (typeof snapshot !== "object" || snapshot === null) return undefined;
+	const candidate = snapshot as { paused?: unknown; entries?: unknown };
+	if (typeof candidate.paused !== "boolean" || !Array.isArray(candidate.entries)) return undefined;
+	const entries: SessionInputQueueEntry[] = [];
+	for (const entry of candidate.entries) {
+		if (typeof entry !== "object" || entry === null) return undefined;
+		const { id, behavior, input } = entry as { id?: unknown; behavior?: unknown; input?: unknown };
+		if (typeof id !== "string" || id.length === 0) return undefined;
+		if (behavior !== "steer" && behavior !== "followUp") return undefined;
+		if (typeof input !== "object" || input === null) return undefined;
+		entries.push({ id, behavior, input: input as SessionInputQueueEntry["input"] });
+	}
+	return { paused: candidate.paused, entries };
 }
 
 function readQueuedMessageText(message: SessionInput["message"]): string {

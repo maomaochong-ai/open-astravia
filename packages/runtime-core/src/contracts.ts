@@ -591,7 +591,28 @@ export type SessionEvent =
 	| CompactionStartEvent
 	| CompactionEndEvent
 	| RetryStartEvent
-	| RetryEndEvent;
+	| RetryEndEvent
+	| QueueChangedEvent;
+
+/** prompt 的即时回执（ADR-0060）：排队时立即返回，宿主/UI 据此区分「已发出」与「已排队」。 */
+export interface RuntimeTurnPromptOutcome {
+	readonly status: "completed" | "cancelled" | "failed" | "queued" | "handled";
+	readonly pendingCount?: number;
+	readonly queueItemId?: string;
+}
+
+/** 输入队列变化广播：renderer 镜像队列抽屉、插件卡片据此渲染排队状态（ADR-0060）。 */
+export interface QueueChangedEvent extends SessionEventBase {
+	type: "queue.changed";
+	paused: boolean;
+	entries: Array<{
+		id: string;
+		behavior: "steer" | "followUp";
+		displayText: string;
+	}>;
+	/** 完整可序列化快照，宿主持久化 sidecar 用；renderer 无需消费。 */
+	snapshot: unknown;
+}
 
 export interface SessionStateSnapshot {
 	sessionId: string;
@@ -804,7 +825,7 @@ export interface SessionFacade {
 	createSession(config?: SessionConfig): Promise<{ sessionId: string }>;
 	setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void>;
 	setGlobalExecutionMode(mode: SessionExecutionMode): Promise<void>;
-	prompt(sessionId: string, request: PromptRequest): Promise<void>;
+	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void;

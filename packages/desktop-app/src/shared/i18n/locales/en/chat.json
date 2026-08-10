@@ -383,6 +383,9 @@
 			"queueDesc": "{{count}} queued",
 			"queueEmpty": "No queued messages",
 			"queueLabel": "Queued",
+			"queuePaused": "Last turn was interrupted — queued messages are on hold",
+			"queuePausedDesc": "Paused · {{count}} queued",
+			"queueResume": "Resume sending",
 			"queueSendNow": "Send now"
 		},
 		"permission": {

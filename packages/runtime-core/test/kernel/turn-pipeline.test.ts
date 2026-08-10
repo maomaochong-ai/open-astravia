@@ -870,6 +870,7 @@ describe("greenfield runtime kernel", () => {
 			status: "queued",
 			behavior: "steer",
 			pendingCount: 1,
+			id: expect.any(String),
 		});
 		await expect(
 			harness.session.send(
@@ -882,6 +883,7 @@ describe("greenfield runtime kernel", () => {
 			status: "queued",
 			behavior: "followUp",
 			pendingCount: 2,
+			id: expect.any(String),
 		});
 
 		await harness.session.cancel("user cancelled");

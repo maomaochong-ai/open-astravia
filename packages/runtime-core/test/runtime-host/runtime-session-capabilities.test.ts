@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { RUNTIME_HOST_SESSION_PORT_NAMES, type RuntimeHostSessionAssembly } from "../../src/runtime-host/index.js";
+import { RUNTIME_HOST_SESSION_PORT_NAMES, type RuntimeHostSessionPortName } from "../../src/runtime-host/index.js";
 
 type CapabilityStatus = "implemented" | "missing";
 
@@ -20,7 +20,7 @@ const RUNTIME_CAPABILITY_MATRIX = {
 	modelController: "implemented",
 	modelView: "implemented",
 	corePorts: "implemented",
-} as const satisfies Record<keyof RuntimeHostSessionAssembly, CapabilityStatus>;
+} as const satisfies Record<RuntimeHostSessionPortName, CapabilityStatus>;
 
 describe("RuntimeHost capability matrix", () => {
 	it("exposes only genuinely implemented assembly capabilities", () => {

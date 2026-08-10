@@ -188,7 +188,12 @@ export type { NewSessionPageLayoutViewProps } from "./NewSessionPageLayoutView";
 export { NewSessionPageLayoutView } from "./NewSessionPageLayoutView";
 export type { ProgressGroupRowProps, ProgressGroupViewProps } from "./ProgressGroupView";
 export { ProgressGroupRow, ProgressGroupView } from "./ProgressGroupView";
-export type { QueueCardItem, QueueCardViewLabels, QueueCardViewProps } from "./QueueCardView";
+export type {
+	QueueCardItem,
+	QueueCardPausedBanner,
+	QueueCardViewLabels,
+	QueueCardViewProps,
+} from "./QueueCardView";
 export { QueueCardView } from "./QueueCardView";
 export type { ReadImageViewProps } from "./ReadImageView";
 export { ReadImageView } from "./ReadImageView";

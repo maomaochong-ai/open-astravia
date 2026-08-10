@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **中断不再丢弃已流出的部分回复**：abort 发生在模型流中途时，引擎此前立刻放弃等待——而 provider（如 anthropic adapter）在 abort 时对 result 是直接 reject，已流出的内容只存在于事件流累积的 `partial` 快照里，结果部分 assistant 消息既不进 run 结果也不发 `assistant_message` 事件（宿主无从落盘，UI 上先显示后被历史重放吞掉）。现在 abort 后优先在 1.5 秒宽限内等 result 交回完整 aborted 消息，provider 直接 reject 时退回事件流最后一个非空 `partial` 并标记 `stopReason: "aborted"`，计入 `messages`、照常发事件，随后仍以统一的 `aborted` 状态终止；无任何已流出内容时行为与原来一致。
+
 ### Changed
 
 - **Vitest 依赖上收到 monorepo 根**：本包不再声明 `devDependencies.vitest`，改用根目录统一版本；包内仍保留 `vitest.config.ts` 与 `"test": "vitest --run"`。

@@ -148,7 +148,7 @@ function assembly(sessionId: string): RuntimeHostSessionAssembly {
 			resolveApiKey: async () => undefined,
 		},
 		corePorts: {
-			turnControl: { prompt: async () => {}, continue: async () => {}, abort: async () => {} },
+			turnControl: { prompt: async () => undefined, continue: async () => {}, abort: async () => {} },
 			eventStream: { subscribe: () => () => {} },
 			stateReader: {
 				readState: () => ({

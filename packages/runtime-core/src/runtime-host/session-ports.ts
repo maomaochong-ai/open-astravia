@@ -8,6 +8,7 @@ import type {
 	PromptRequest,
 	RuntimeSandboxGrantDecision,
 	RuntimeSandboxGrantRequest,
+	RuntimeTurnPromptOutcome,
 	SessionEvent,
 	SessionExecutionMode,
 	SessionStateSnapshot,
@@ -38,7 +39,7 @@ export interface RuntimeTurnPrompt {
 
 /** 只负责启动、继续和中止 Turn。 */
 export interface RuntimeSessionTurnControl {
-	prompt(request: RuntimeTurnPrompt): Promise<void>;
+	prompt(request: RuntimeTurnPrompt): Promise<RuntimeTurnPromptOutcome | undefined>;
 	continue(): Promise<void>;
 	abort(): Promise<void>;
 }
@@ -167,12 +168,35 @@ export interface RuntimeSessionQueueView {
 	readPendingMessageCount(): number;
 }
 
+/** 队列条目的宿主视图（displayText 已抽取，UI 可直接渲染）。 */
+export interface RuntimeSessionQueueEntryView {
+	readonly id: string;
+	readonly behavior: "steer" | "followUp";
+	readonly displayText: string;
+}
+
+export interface RuntimeSessionQueueStateView {
+	readonly paused: boolean;
+	readonly entries: readonly RuntimeSessionQueueEntryView[];
+}
+
 export interface RuntimeSessionQueueController extends RuntimeSessionQueueView {
 	readSteeringMode(): RuntimeSessionInputQueueMode;
 	readFollowUpMode(): RuntimeSessionInputQueueMode;
 	readSteeringMessages(): readonly string[];
 	readFollowUpMessages(): readonly string[];
 	clear(): { readonly steering: readonly string[]; readonly followUp: readonly string[] };
+	/** 以下为 ADR-0060 的可管理队列能力。 */
+	readQueueState(): RuntimeSessionQueueStateView;
+	/** 完整可序列化快照（含 kernel 输入），宿主持久化 sidecar 用。 */
+	readQueueSnapshot(): unknown;
+	restoreQueue(snapshot: unknown): void;
+	removeQueued(id: string): boolean;
+	reorderQueuedFollowUps(ids: readonly string[]): void;
+	/** running 时打断当前 turn 并立刻以该条目开新 turn，空闲时直接开 turn；不阻塞等待 turn 结束。 */
+	sendQueuedNow(id: string): Promise<"promoted" | "started" | "missing">;
+	/** 解除 pause-on-terminal 并继续消费；不阻塞等待 turn 结束。 */
+	resumeQueue(): Promise<void>;
 }
 
 export interface RuntimeSessionContextUsage {

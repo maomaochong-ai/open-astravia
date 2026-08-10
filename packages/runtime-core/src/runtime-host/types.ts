@@ -18,8 +18,10 @@ import type {
 	RuntimeSessionHistoryReader,
 	RuntimeSessionHostInteraction,
 	RuntimeSessionIdentityLifecycle,
+	RuntimeSessionMetadataController,
 	RuntimeSessionModelController,
 	RuntimeSessionModelView,
+	RuntimeSessionQueueController,
 	RuntimeSessionStateReader,
 	RuntimeSessionTodoController,
 	RuntimeSessionTurnControl,
@@ -47,6 +49,9 @@ export interface SessionHandle {
 	turnControl: RuntimeSessionTurnControl;
 	eventStream: RuntimeSessionEventStream;
 	stateReader: RuntimeSessionStateReader;
+	/** 可选能力（ADR-0060）：backend 不提供时相应队列/落盘功能静默降级。 */
+	queueController: RuntimeSessionQueueController | undefined;
+	metadataController: RuntimeSessionMetadataController | undefined;
 	executionMode: SessionExecutionMode;
 	agentPluginsEnabled: boolean;
 	pendingAgentPlugins: AgentPluginRuntimeConfig | undefined;

@@ -42,7 +42,9 @@ export type {
 	ConversationState,
 	ConversationMessage,
 	ConversationEvent,
+	ConversationQueueState,
 	PluginConversationApi,
+	SendPromptResult,
 } from "./conversation.js";
 
 // UI slots

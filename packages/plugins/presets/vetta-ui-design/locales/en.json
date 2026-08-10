@@ -33,6 +33,7 @@
 	"ds.vibe.light": "Light system",
 	"ds.vibe.dark": "Dark system",
 	"ds.card.picked": "Picked",
+	"ds.card.queued": "Queued",
 	"ds.card.skip": "No design system",
 	"ds.card.skipHint": "Let Vetta improvise",
 	"ds.card.more": "More",

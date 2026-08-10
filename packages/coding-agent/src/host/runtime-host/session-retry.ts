@@ -3,6 +3,7 @@ import type {
 	RuntimeSession,
 	RuntimeSessionEventStream,
 	RuntimeTurnPrompt,
+	RuntimeTurnPromptOutcome,
 	SessionEvent,
 } from "@vetta/runtime-core";
 import { mapRuntimeSessionObservationEvent } from "@vetta/runtime-core";
@@ -16,6 +17,33 @@ export interface CodingAgentRuntimeHostRetrySettings {
 }
 
 type RuntimeErrorEvent = Extract<SessionEvent, { readonly type: "error" }>;
+
+/** 排队 / 拦截回执：prompt 未开启 turn 时的即时返回值（ADR-0060）。 */
+function isPromptReceipt(result: unknown): result is { status: "queued" | "handled" } {
+	return (
+		typeof result === "object" &&
+		result !== null &&
+		"status" in result &&
+		((result as { status: unknown }).status === "queued" || (result as { status: unknown }).status === "handled")
+	);
+}
+
+function mapPromptOutcome(result: unknown): RuntimeTurnPromptOutcome {
+	if (typeof result === "object" && result !== null && "status" in result) {
+		const { status } = result as { status: unknown };
+		if (status === "queued") {
+			const receipt = result as { pendingCount?: unknown; id?: unknown };
+			return {
+				status: "queued",
+				pendingCount: typeof receipt.pendingCount === "number" ? receipt.pendingCount : undefined,
+				queueItemId: typeof receipt.id === "string" ? receipt.id : undefined,
+			};
+		}
+		if (status === "handled") return { status: "handled" };
+		if (status === "completed" || status === "cancelled" || status === "failed") return { status };
+	}
+	return { status: "completed" };
+}
 
 /**
  * 为 RuntimeHost 会话补齐 Coding Agent 自动重试，并延迟失败事件直到重试结束。
@@ -32,13 +60,18 @@ export function withCodingAgentRuntimeHostRetry(
 		setEnabled: (enabled) => settings.setRetryEnabled(enabled),
 		emit: (event) => events.emitRetry(event),
 	});
-	const run = async (execute: () => Promise<unknown>): Promise<void> => {
+	const run = async (execute: () => Promise<unknown>): Promise<unknown> => {
 		try {
 			const result = await retry.run(execute, () => session.retry(), readCodingAgentFailedTurnMessage);
+			// 排队/拦截回执（ADR-0060）不是 turn 结果：立即返回，不结算 pending error，
+			// 避免误清仍在 streaming 的当前 turn 挂起的错误。
+			if (isPromptReceipt(result)) return result;
 			if (readCodingAgentFailedTurnMessage(result)) events.flushPendingError();
 			else events.clearPendingError();
+			return result;
 		} catch (error) {
 			if (!events.flushPendingError()) throw error;
+			return undefined;
 		}
 	};
 	const lifecycle = assembly.lifecycle;
@@ -56,8 +89,10 @@ export function withCodingAgentRuntimeHostRetry(
 		corePorts: {
 			...assembly.corePorts,
 			turnControl: {
-				prompt: (request: RuntimeTurnPrompt) => run(() => session.prompt(request)),
-				continue: () => run(() => session.continue()),
+				prompt: async (request: RuntimeTurnPrompt) => mapPromptOutcome(await run(() => session.prompt(request))),
+				continue: async () => {
+					await run(() => session.continue());
+				},
 				abort: async () => {
 					retry.abortRetry();
 					await session.abort();

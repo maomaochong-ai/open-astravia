@@ -48,6 +48,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **消息队列收归主进程 kernel，多处丢消息与误发路径根除**（ADR-0060）：streaming 中发送改为直发 `session.prompt`（携 `streamingBehavior: "followUp"`）进入 kernel 队列，本轮自然停止点接力消费；渲染端仅保留镜像。修复：出队后发送失败不回滚导致丢消息、「立即发送」的 abort+8 秒超时竞态导致丢消息（打断与续发下沉到 kernel 原子完成，语义不变、竞态消失）、上游报错后队列被误判自然结束继续自动派发、打断/出错后排队消息静默滞留（现队列暂停并在输入框队列抽屉脉冲提示，可「继续发送」或移除）、队列纯内存重启即丢（现随会话 sidecar 持久化）。排队消息的用户气泡改为在被实际消费时上屏，顺序与模型可见顺序严格一致。
+- **失败重发不再产生重复用户记录**：上一轮以错误收尾且重发文本与最后一条用户消息相同时，自动走 `replaceLastUserMessage` 路径回退后再发，jsonl 与下一轮模型上下文只保留一条。
+- **插件 sendPrompt 不再吞用户准备的输入**：插件发送不消费用户挂在输入框上的 promptAttachment、不清空输入预测；`sendPrompt` 返回 `sent | queued` 回执并透传队列条目 id。
 - **继续使用过的历史会话无法再次打开**：Legacy 会话首次导入后，Renderer 会采用 Runtime 返回的 canonical Conversation V2 路径；存储层同时允许复用 Import Seed 一致且已追加原生事件的迁移目标，避免切换回来时因固定 recovery 目标冲突而抛出 `Conversation already exists`。
 - **执行中的会话切走再切回时不再丢失刚发送的用户消息**：Renderer 会按 runtime session 暂存尚未被 canonical 历史确认的乐观用户气泡；会话历史水合时保留缺失气泡，待对应序号的持久化用户消息出现后自动去重并清理暂存。活动会话的队列自动派发与立即发送使用同一保护。
 - **插件工作区视频 MIME 识别**：`fs.readBinaryFile` 现在正确返回 MP4、M4V、MOV 与 WebM 类型，避免生成视频被标记为通用二进制后无法在节点中播放。

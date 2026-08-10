@@ -763,6 +763,7 @@ describe("KernelRuntimeSessionBackend", () => {
 			status: "queued",
 			behavior: "followUp",
 			pendingCount: 1,
+			id: expect.any(String),
 		});
 		await session.abort("user cancelled");
 

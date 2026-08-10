@@ -39,6 +39,7 @@ export const InputBarDrawer = memo(function InputBarDrawer({
 						label: item.label,
 						color: "bg-primary",
 						desc: item.desc,
+						pulsing: item.pulsing,
 						content: <QueueCard runtimeId={item.runtimeId} onSendNow={item.onSendNow} />,
 					};
 				}
