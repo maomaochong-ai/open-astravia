@@ -35,8 +35,9 @@ export function ContextRing({ className }: { className?: string } = {}): JSX.Ele
 					/>
 				</Button>
 			</PopoverTrigger>
-			{model.details ? (
-				<PopoverContent side="top" align="end" className="w-80 p-0">
+			<PopoverContent side="top" align="end" className="w-80 p-0">
+				{model.details ? (
+					<>
 					<div className="border-b border-border/50 px-3.5 py-3">
 						<PopoverTitle className="text-[13px]">{t("contextRing.details.title")}</PopoverTitle>
 						<div className="mt-1 truncate text-[11px] text-muted-foreground">{model.details.model}</div>
@@ -127,8 +128,17 @@ export function ContextRing({ className }: { className?: string } = {}): JSX.Ele
 							</div>
 						))}
 					</div>
-				</PopoverContent>
-			) : null}
+					</>
+				) : (
+					<div className="px-3.5 py-3">
+						<PopoverTitle className="text-[13px]">{t("contextRing.details.title")}</PopoverTitle>
+						<div className="mt-2 text-[11px] text-foreground">{model.tooltip}</div>
+						<p className="mt-1.5 text-[10px] leading-relaxed text-muted-foreground">
+							{t("contextRing.details.unavailableAfterRestart")}
+						</p>
+					</div>
+				)}
+			</PopoverContent>
 		</Popover>
 	);
 }

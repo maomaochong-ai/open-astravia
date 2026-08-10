@@ -266,6 +266,7 @@
 			"tokens": "Token",
 			"share": "占比",
 			"unknown": "未知",
+			"unavailableAfterRestart": "此会话没有可恢复的历史构成明细。发送下一条消息后，应用会生成并保存新的明细。",
 			"items": "{{count}} 项",
 			"unknownItems": "{{count}} 项未知",
 			"coverage": {

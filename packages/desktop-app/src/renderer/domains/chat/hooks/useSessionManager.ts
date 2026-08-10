@@ -93,6 +93,7 @@ import {
 	turnStartTime,
 	turnStatsCache,
 } from "../services/chat-service";
+import { resolveSessionContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
 
 /** 把 "provider/id" 形式的 modelKey 解析为 ChatMessage.model 结构 */
 function modelKeyToParts(key: string | null | undefined): { provider: string; id: string } | undefined {
@@ -396,10 +397,13 @@ export function useSessionManager(): SessionManagerResult {
 			}
 
 			const state = await statePromise;
+			const resolvedSessionPath = sessionPath ?? (await window.vetta.session.getSessionPath(sessionId)) ?? "";
+			const cachedKey = resolvedSessionPath;
+			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
 			setContextUsage({
 				percent: state.contextPercent,
 				contextWindow: state.contextWindow,
-				...(state.contextComposition ? { composition: state.contextComposition } : {}),
+				...(contextComposition ? { composition: contextComposition } : {}),
 			});
 			setModelSupportsImages(state.model?.input?.includes("image") ?? false);
 			setSessionExecutionMode(state.executionMode);
@@ -430,8 +434,6 @@ export function useSessionManager(): SessionManagerResult {
 			// Resolve the on-disk session path so that downstream features (turn
 			// stats cache, auto-title rename) can key off the actual file path even
 			// for sessions that were just created by the runtime.
-			const resolvedSessionPath = sessionPath ?? (await window.vetta.session.getSessionPath(sessionId)) ?? "";
-			const cachedKey = resolvedSessionPath;
 			setLastTurnUsage(turnStatsCache.get(cachedKey) ?? null);
 
 			// If session is still streaming, adopt the last history assistant message as draft
@@ -802,6 +804,9 @@ export function useSessionManager(): SessionManagerResult {
 					// Cache turn stats for session restore
 					const sp = activeSessionRef.current?.sessionPath;
 					if (sp != null) turnStatsCache.set(sp, turnStats);
+					if (sp && event.contextComposition) {
+						writeCachedContextComposition(sp, event.contextComposition);
+					}
 					setContextUsage({
 						percent: event.contextPercent ?? null,
 						contextWindow: event.contextWindow ?? 0,

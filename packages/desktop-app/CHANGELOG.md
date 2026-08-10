@@ -47,6 +47,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **重启后上下文圆环点击无响应**：总 Token 会从会话历史恢复，但分区构成报告此前只存在于进程内存，导致重启后圆环仍在、Popover 内容却未挂载。现在按会话缓存最新的隐私安全报告并在重启时恢复；旧会话尚无缓存时也会正常打开并说明下一次模型调用后生成明细，不再静默无响应。
 - **插件媒体任务支持页面刷新恢复**：通用 Job 与临时产物改为按稳定插件 owner 跨 renderer capability session 保留；媒体 Provider 重载后，进行中的 Job 会按稳定 Provider ID 绑定新注册实例继续查询，内容创作图片/视频节点不再永久卡在刷新前的生成状态。
 - **丢失的宿主任务停止重复轮询**：主进程重启或遗留任务导致 Job 内存记录不存在时，`job.get` / `job.cancel` 返回标准 `job-not-found` 终态，不再持续抛出 IPC handler 错误。
 - **设计画布首次打开要等很久（依赖装不完，agent 都收工了面板还在转）**：两处叠加。其一，托管运行时配置的 npm 镜像源与共享缓存（`npm_config_registry` / `npm_config_cache` / `npm_config_prefix` / `npm_config_userconfig`）只写在主进程 `process.env` 上，而插件命令的子进程环境是按白名单构造的，这几个键全被挡在外面——插件里的 `npm install` 一直在绕过镜像走默认 registry。其二，设计引擎模板只带 `package.json`，每次都要向 registry 重新解析约 190 个包的版本范围。现在白名单放行这几个 npm 配置键，引擎模板同时 materialize `package-lock.json` 并改用 `npm ci --prefer-offline`。同一台机器冷缓存实测：45.3s → 14.3s（仅镜像）→ 1.9s（镜像 + `npm ci`）。存量已装好的引擎目录不受影响，不会触发重装。

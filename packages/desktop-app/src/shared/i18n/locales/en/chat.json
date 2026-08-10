@@ -266,6 +266,7 @@
 			"tokens": "Tokens",
 			"share": "Share",
 			"unknown": "Unknown",
+			"unavailableAfterRestart": "No restorable composition details are available for this session. Send another message to generate and save a new report.",
 			"items": "{{count}} items",
 			"unknownItems": "{{count}} unknown",
 			"coverage": {
