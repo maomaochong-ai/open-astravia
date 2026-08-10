@@ -1,5 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { getPluginCtx, notify } from "../plugin-context";
 import { frameUrl, pathOfFrame } from "../vetd/frame-url";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
@@ -127,10 +128,14 @@ export function PreviewDialog({ port, frames, initialFrameId, onClose }: Preview
 		{ edge: "se", className: "-bottom-1 -right-1 size-3 cursor-nwse-resize" },
 	];
 
-	return (
+	// portal 到 body：活动面板的顶部 tablist 与面板内容是兄弟节点且后绘制，留在画布
+	// 子树里再高的 z-index 也会被它盖住。插件 CSS 以 [data-vetta-plugin-root] 为 @scope
+	// 根，portal 根必须自带该属性，样式才不会丢。
+	return createPortal(
 		// biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop
 		<div
-			className="fixed inset-0 z-50 flex overflow-auto bg-black/60 p-6"
+			data-vetta-plugin-root="vetta-ui-design"
+			className="fixed inset-0 z-[1020] flex overflow-auto bg-black/60 p-6"
 			// 画布根节点在托手/空格态会 setPointerCapture 接管平移，指针事件漏下去
 			// 会让画布跟着预览里的拖动一起跑。
 			onPointerDown={(event) => event.stopPropagation()}
@@ -184,6 +189,7 @@ export function PreviewDialog({ port, frames, initialFrameId, onClose }: Preview
 					))}
 				</div>
 			</div>
-		</div>
+		</div>,
+		document.body,
 	);
 }

@@ -270,9 +270,13 @@ single-screen designs.
    with `icon` renders one fallback everywhere, and the source reads fine.
 4. **Every touched frame screenshotted, and the PNG actually Read?**
 
-**Editing from an attachment**: the payload carries the exact
-`frames/xxx.tsx:LINE` plus DOM path/classes/text. Edit that location. If it
-points into `components/`, the change hits every frame using it — say so.
+**Editing from an attachment**: the canvas attaches the user's selection as
+structured context (`vetta.ui-design.canvas-selection`) — the selected frames
+with their absolute `file`, and for an element selection the exact
+`frames/xxx.tsx:LINE` in `source` plus DOM path/classes/text. Read every
+`screenshot` path it carries before editing (a multi-frame selection carries
+none — `vetd_screenshot` what you need). Edit that location. If it points into
+`components/`, the change hits every frame using it — say so.
 
 **Done** means: every frame you touched has been screenshotted and the image
 Read, that image is free of the three screenshot defects, and `issues` came back

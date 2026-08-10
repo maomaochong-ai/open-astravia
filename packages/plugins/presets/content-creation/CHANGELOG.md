@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Selected nodes are now named one by one on the input bar instead of collapsing into a single "N nodes" capsule, matching the host's new attachment strip.
+
 ### Fixed
 
 - Video generation now follows the first input image's aspect ratio by default, preventing portrait MiniMax H3 frames from being stretched into a landscape canvas while preserving explicit ratio choices.

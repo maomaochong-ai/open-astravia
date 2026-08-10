@@ -53,6 +53,8 @@ export function createContentSelectionPromptAttachment(
 	project: ContentProjectDocument,
 	selectedNodeIds: readonly string[],
 	label: string,
+	/** Per-entry labels the input bar renders one by one. */
+	labels: readonly string[],
 ): PluginPromptAttachment<ContentSelectionPromptPayload> | null {
 	const selectedIds = new Set(selectedNodeIds);
 	if (selectedIds.size === 0) return null;
@@ -103,6 +105,7 @@ export function createContentSelectionPromptAttachment(
 	return {
 		id: CONTENT_SELECTION_PROMPT_ATTACHMENT_ID,
 		label,
+		labels: [...labels],
 		icon: "icon-[solar--widget-2-linear]",
 		lifecycle: "sticky",
 		context: definePluginPromptContext({
@@ -118,6 +121,7 @@ export function isCurrentContentSelectionPromptAttachment(
 	next: PluginPromptAttachment<ContentSelectionPromptPayload>,
 ): boolean {
 	if (current?.id !== next.id || current.label !== next.label) return false;
+	if ((current.labels ?? []).join("\u0001") !== (next.labels ?? []).join("\u0001")) return false;
 	if (
 		current.context?.schema !== CONTENT_SELECTION_CONTEXT_SCHEMA ||
 		current.context.version !== CONTENT_SELECTION_CONTEXT_VERSION ||

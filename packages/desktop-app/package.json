@@ -33,6 +33,8 @@
 		"dev:electron": "bun run build:dev-processes && node scripts/run-dev-electron.mjs",
 		"start": "bun run prepare:windows && bun run prepare:ocr-models && bun run build && NODE_OPTIONS='--import tsx' electron src/main/main.ts",
 		"dev": "bun run prepare:windows:dev && node scripts/build-appshot-helper.js && cross-env VETTA_THEME_DEV_SERVER=1 concurrently -k --success command-electron --names \"renderer,themes,electron\" \"bun run build:presets:dev && bun run stage:themes:dev && bun ./node_modules/vite/bin/vite.js --config vite.config.ts\" \"bun run dev:themes\" \"bun run dev:electron\"",
+		"dev:isolated": "cross-env VETTA_CONFIG_DIR=.vetta-dev bun run dev",
+		"dev:home": "cross-env VETTA_CONFIG_DIR=.vetta bun run dev",
 		"dev:verify": "bun run prepare:windows:dev && node scripts/build-appshot-helper.js && concurrently -k --success command-electron --names \"renderer,electron\" \"bun run build:presets:dev && bun run build:themes && bun ./node_modules/vite/bin/vite.js --config vite.config.ts\" \"bun run dev:electron\"",
 		"verify:ui:start": "node scripts/ui-verification.mjs start",
 		"verify:ui:status": "node scripts/ui-verification.mjs status",

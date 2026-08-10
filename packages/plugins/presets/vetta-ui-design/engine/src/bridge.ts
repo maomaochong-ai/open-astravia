@@ -420,7 +420,7 @@ export function installBridge(host: BridgeHost): void {
 	};
 
 	// 元素选择开着时右键落在 iframe 里，画布那层的 contextmenu 再也收不到——而
-	// 右键菜单是「让 Vetta 调整 / 导出渲染图 / 重命名 / 删除」的唯一入口。这里把
+	// 右键菜单是「重命名 / 复制为图片 / 导出渲染图 / 删除」的唯一入口。这里把
 	// 它转发出去，坐标由画布换算回视口坐标（见 bridge-client）。
 	document.addEventListener(
 		"contextmenu",

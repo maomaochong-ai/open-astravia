@@ -13,6 +13,7 @@ import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
+import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import { InputBarToolbar } from "./InputBarToolbar";
 import { InputEditor } from "./editor/InputEditor";
 import type { InputBarViewProps } from "./types";
@@ -87,6 +88,13 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 				/>
 
 				<ActionButtonBar />
+
+				<PromptAttachmentLabels
+					labels={model.promptAttachmentLabels ?? []}
+					icon={model.promptAttachmentIcon}
+					removeLabel={model.labels.capsule.removeDefault}
+					onRemove={model.actions.removePromptAttachment}
+				/>
 
 				<InputBarDrawer
 					items={model.drawerItems}
@@ -184,28 +192,17 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 											</div>
 										)}
 
-										{(model.hasPromptAttachment || model.selectedSkill) && (
+										{/* 插件附件不画在卡片里：它是「你现在正看着什么」，画在卡片外面顶部（PromptAttachmentLabels）。 */}
+										{model.selectedSkill && (
 											<div className="flex flex-wrap items-center gap-1.5">
-												{model.hasPromptAttachment && model.promptAttachmentLabel && (
-													<InputBarCapsule
-														key="plugin-prompt-attachment"
-														icon={model.promptAttachmentIcon ?? "icon-[solar--paperclip-linear]"}
-														label={model.promptAttachmentLabel}
-														labels={model.labels.capsule}
-														tone="primary"
-														onRemove={model.actions.removePromptAttachment}
-													/>
-												)}
-												{model.selectedSkill && (
-													<InputBarCapsule
-														key="scene-capsule"
-														icon="icon-[solar--clapperboard-open-linear]"
-														label={model.selectedSkill.alias || model.selectedSkill.name}
-														labels={model.labels.capsule}
-														tone="primary"
-														onRemove={model.actions.removeSkill}
-													/>
-												)}
+												<InputBarCapsule
+													key="scene-capsule"
+													icon="icon-[solar--clapperboard-open-linear]"
+													label={model.selectedSkill.alias || model.selectedSkill.name}
+													labels={model.labels.capsule}
+													tone="primary"
+													onRemove={model.actions.removeSkill}
+												/>
 											</div>
 										)}
 									</div>

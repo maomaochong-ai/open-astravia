@@ -37,6 +37,24 @@ Normal development is isolated from packaged application data: it defaults to
 `VETTA_CONFIG_DIR` and `VETTA_DESKTOP_USER_DATA_DIR` together when a custom isolated development
 environment is required.
 
+Because the Chromium profile is derived from the config directory, switching `VETTA_CONFIG_DIR`
+switches the whole environment — data root and browser profile — with no shared state between them.
+Two scripts make the common pair explicit:
+
+```bash
+bun run dev:isolated   # ~/.vetta-dev (same as `bun dev`)
+bun run dev:home       # ~/.vetta
+```
+
+`bun run dev:home` shares `~/.vetta` with packaged builds; do not run both at the same time, since
+the single-instance lock keys on the Chromium profile and will not stop the second process. The
+project-level `<cwd>/.vetta` directory is intentionally fixed and does not follow `VETTA_CONFIG_DIR`
+(see `packages/coding-agent/src/config.ts`).
+
+Set `VETTA_CONFIG_DIR` on the command line, not in `.env.development`: the dev launcher is plain
+Node and never reads `.env` files, so a value placed there would only reach the vite-inlined main
+process and would disagree with the launcher-derived Chromium profile.
+
 Main-process sourcemaps are disabled by default to keep startup builds fast. Set
 `VETTA_MAIN_SOURCEMAP=true` when source-mapped Electron stack traces are needed.
 

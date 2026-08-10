@@ -58,10 +58,14 @@ describe("content selection prompt context", () => {
 			},
 		];
 
-		const attachment = createContentSelectionPromptAttachment(project, ["prompt-1"], "Opening prompt");
+		const attachment = createContentSelectionPromptAttachment(project, ["prompt-1"], "Opening prompt", [
+			"Opening prompt",
+		]);
 		const payload = attachment?.context?.payload;
 
 		expect(attachment?.lifecycle).toBe("sticky");
+		// 输入框逐条画出条目，所以每个选中节点都要有自己的名字，而不是一句汇总。
+		expect(attachment?.labels).toEqual(["Opening prompt"]);
 		expect(payload?.selection.nodeIds).toEqual(["prompt-1"]);
 		expect(payload?.selection.nodes).toHaveLength(1);
 		expect(payload?.selection.connections).toEqual([
@@ -87,6 +91,6 @@ describe("content selection prompt context", () => {
 	});
 
 	it("does not attach an empty selection", () => {
-		expect(createContentSelectionPromptAttachment(createContentProject(null), [], "None")).toBeNull();
+		expect(createContentSelectionPromptAttachment(createContentProject(null), [], "None", [])).toBeNull();
 	});
 });

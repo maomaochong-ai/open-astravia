@@ -615,7 +615,7 @@
     },
     "packages/plugins/presets/content-creation": {
       "name": "@vetta/plugin-content-creation",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@sinclair/typebox": "^0.34.41",
         "@vetta/toolkit": "workspace:*",
@@ -826,7 +826,7 @@
     },
     "packages/plugins/presets/vetta-ui-design": {
       "name": "@vetta/plugin-vetta-ui-design",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "dependencies": {
         "fflate": "^0.8.2",
       },
