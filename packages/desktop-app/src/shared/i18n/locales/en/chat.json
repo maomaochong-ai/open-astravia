@@ -31,7 +31,13 @@
 			"requestHistory": "Request history"
 		},
 		"todo": {
-			"empty": "No todo items"
+			"empty": "No todo items",
+			"headline": "In progress",
+			"allDone": "All done",
+			"progress": "{{done}} of {{total}} done",
+			"statusDone": "Done",
+			"statusInProgress": "In progress",
+			"statusPending": "Pending"
 		},
 		"toolCalls": {
 			"filterAll": "All",
@@ -376,9 +382,6 @@
 		"drawer": {
 			"permissionDesc": "Awaiting confirmation",
 			"permissionLabel": "Permission request",
-			"todoDesc": "{{done}}/{{total}} {{content}}",
-			"todoDescSimple": "{{done}}/{{total}}",
-			"todoLabel": "To-do",
 			"queueDelete": "Remove",
 			"queueDesc": "{{count}} queued",
 			"queueEmpty": "No queued messages",
@@ -412,6 +415,15 @@
 			"cut": "Cut",
 			"copy": "Copy",
 			"paste": "Paste"
+		},
+		"todo": {
+			"trigger": "To-do",
+			"allDone": "All done",
+			"panelTitle": "To-do list",
+			"openPanel": "Open in panel",
+			"statusDone": "Done",
+			"statusInProgress": "In progress",
+			"statusPending": "Pending"
 		}
 	},
 	"knowledgeTools": {

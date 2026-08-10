@@ -13,6 +13,7 @@ import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
+import { InputBarTodoStatus } from "./InputBarTodoStatus";
 import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import { InputBarToolbar } from "./InputBarToolbar";
 import { InputEditor } from "./editor/InputEditor";
@@ -246,6 +247,8 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					</div>
 				</SessionDropZoneView>
 
+				{/* 待办在输入卡片之外、贴着下沿；点击展开 popover 而不是抽屉。 */}
+				{model.todo && <InputBarTodoStatus todo={model.todo} />}
 			</div>
 
 			{model.contextMenu

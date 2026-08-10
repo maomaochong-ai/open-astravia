@@ -78,7 +78,7 @@ export type {
 	ScheduleTaskControlItem,
 } from "./ScheduleExecutionTabPanelView";
 export { ScheduleExecutionTabPanelView } from "./ScheduleExecutionTabPanelView";
-export type { TodoTabPanelViewProps } from "./TodoTabPanelView";
+export type { TodoTabPanelViewLabels, TodoTabPanelViewProps } from "./TodoTabPanelView";
 export { TodoTabPanelView } from "./TodoTabPanelView";
 export type {
 	ToolCallFilterOption,

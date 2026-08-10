@@ -31,7 +31,13 @@
 			"requestHistory": "请求历史"
 		},
 		"todo": {
-			"empty": "暂无待办事项"
+			"empty": "暂无待办事项",
+			"headline": "进行中",
+			"allDone": "全部完成",
+			"progress": "已完成 {{done}} / {{total}}",
+			"statusDone": "已完成",
+			"statusInProgress": "进行中",
+			"statusPending": "待办"
 		},
 		"toolCalls": {
 			"filterAll": "全部",
@@ -376,9 +382,6 @@
 		"drawer": {
 			"permissionDesc": "等待确认",
 			"permissionLabel": "权限请求",
-			"todoDesc": "{{done}}/{{total}} {{content}}",
-			"todoDescSimple": "{{done}}/{{total}}",
-			"todoLabel": "代办",
 			"queueDelete": "删除",
 			"queueDesc": "{{count}} 条待发",
 			"queueEmpty": "暂无排队消息",
@@ -412,6 +415,15 @@
 			"cut": "剪切",
 			"copy": "复制",
 			"paste": "粘贴"
+		},
+		"todo": {
+			"trigger": "待办",
+			"allDone": "全部完成",
+			"panelTitle": "待办清单",
+			"openPanel": "在面板中打开",
+			"statusDone": "已完成",
+			"statusInProgress": "进行中",
+			"statusPending": "待办"
 		}
 	},
 	"knowledgeTools": {

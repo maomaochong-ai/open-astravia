@@ -56,7 +56,7 @@ import {
 import type { TriggerMatch } from "./editor/tokens/trigger";
 import { useInputActionBarModel } from "../useInputActionBarModel";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
-import type { InputBarModel, InputBarProps, InputBarDrawerItem } from "./types";
+import type { InputBarModel, InputBarProps, InputBarDrawerItem, InputBarTodoModel } from "./types";
 
 const CONTEXT_MENU_WIDTH = 160;
 const CONTEXT_MENU_HEIGHT = 112;
@@ -340,7 +340,7 @@ export function useInputBarModel({
 		dismissedTriggerRef.current = null;
 	}, [hasSession]);
 
-	const handleTodoViewMore = useCallback(() => {
+	const handleOpenTodoPanel = useCallback(() => {
 		const cwd = activeSession?.cwd;
 		if (!cwd) return;
 		setDrawerActiveTab(null);
@@ -380,26 +380,15 @@ export function useInputBarModel({
 				onSendNow: (id) => onSendQueued?.(runtimeId, id),
 			});
 		}
-		if (todoItems.length === 0) return items;
-		const inProgressItem = todoItems.find((i) => i.status === "in_progress");
-		const doneCount = todoItems.filter((i) => i.status === "done").length;
-		items.push({
-			kind: "todo",
-			id: "todo",
-			label: t("inputBar.drawer.todoLabel"),
-			desc: inProgressItem
-				? t("inputBar.drawer.todoDesc", {
-						done: doneCount,
-						total: todoItems.length,
-						content: inProgressItem.content,
-					})
-				: t("inputBar.drawer.todoDescSimple", { done: doneCount, total: todoItems.length }),
-			pulsing: !!inProgressItem,
-			items: todoItems,
-			onViewMore: handleTodoViewMore,
-		});
 		return items;
-	}, [activeSession, handleTodoViewMore, onSendQueued, queueItems.length, queuePaused, sandboxPermission, t, todoItems]);
+	}, [activeSession, onSendQueued, queueItems.length, queuePaused, sandboxPermission, t]);
+
+	// 待办不再进抽屉：它自己是输入卡片外部下方的一条状态条。
+	const todo = useMemo(
+		(): InputBarTodoModel | null =>
+			todoItems.length > 0 ? { items: todoItems, onOpenPanel: handleOpenTodoPanel } : null,
+		[handleOpenTodoPanel, todoItems],
+	);
 
 	const handleSelectImages = useCallback(async () => {
 		if (!hasSession) return;
@@ -616,6 +605,7 @@ export function useInputBarModel({
 		atFilter,
 		drawerItems,
 		drawerActiveTab,
+		todo,
 		hasPromptAttachment: Boolean(promptAttachment),
 		promptAttachmentIcon: promptAttachment?.icon,
 		promptAttachmentLabel: promptAttachment?.label,

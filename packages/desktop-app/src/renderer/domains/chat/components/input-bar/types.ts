@@ -73,16 +73,14 @@ export type InputBarDrawerItem =
 			pulsing?: boolean;
 			runtimeId: string;
 			onSendNow: (id: string) => void;
-	  }
-	| {
-			kind: "todo";
-			id: string;
-			label: string;
-			desc: string;
-			pulsing: boolean;
-			items: readonly TodoItem[];
-			onViewMore: () => void;
 	  };
+
+/** 输入卡片下方的待办条；无待办时为 null。 */
+export interface InputBarTodoModel {
+	items: readonly TodoItem[];
+	/** 打开活动面板的待办页。 */
+	onOpenPanel: () => void;
+}
 
 export interface InputBarModel {
 	isStreaming: boolean;
@@ -120,6 +118,8 @@ export interface InputBarModel {
 	atFilter: string;
 	drawerItems: InputBarDrawerItem[];
 	drawerActiveTab: string | null;
+	/** 输入卡片外部下方的待办条。 */
+	todo: InputBarTodoModel | null;
 	hasPromptAttachment: boolean;
 	promptAttachmentIcon?: string;
 	promptAttachmentLabel?: string;
