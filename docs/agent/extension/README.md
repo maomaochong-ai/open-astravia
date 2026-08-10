@@ -21,7 +21,7 @@
 
 ## 实施方案
 
-准备进入实现时，以 [Pi Extension 兼容实施方案](spec/README.md) 为入口。方案采用 Anti-Corruption Layer 与 canonical contribution IR，详细说明兼容范围、模块划分、TypeBox/Zod 取舍、运行时生命周期、测试矩阵、分阶段交付，以及对 Pi 现有设计的保留和改进。
+准备进入实现时，以 [Pi Extension 行为子集兼容实施方案](spec/README.md) 为入口。方案采用 Vetta native-first：先增强原生 contribution catalog、Tool、生命周期、Provider ownership 和结构化交互，再通过 Anti-Corruption Layer 映射 Pi 行为子集；明确不兼容 Pi TUI，也不让兼容层拥有第二套 Runtime。方案同时说明模块划分、TypeBox/Zod 取舍、测试矩阵和分阶段交付。
 
 ## 建议如何使用本评审
 

@@ -72,6 +72,8 @@ settings.local.json
 .codex/
 prompt/
 spec/
+!docs/agent/extension/spec/
+!docs/agent/extension/spec/**
 requirement/
 .agents/
 skills-lock.json
