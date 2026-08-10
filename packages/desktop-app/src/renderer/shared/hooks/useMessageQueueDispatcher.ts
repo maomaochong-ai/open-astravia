@@ -1,4 +1,5 @@
 import { appendError, nextId } from "@domains/chat/services/chat-service";
+import { rememberOptimisticUserMessage } from "@domains/chat/services/optimistic-user-message-cache";
 import { waitForPluginHostReady } from "@domains/plugins/runtime/plugin-events";
 import { activeSessionAtom, type ChatMessage, chatMessagesAtom } from "@shared/store/atoms";
 import { bumpQueuedDispatchSeq, dequeueHeadAtom } from "@shared/store/message-queue-atoms";
@@ -35,6 +36,7 @@ export function useMessageQueueDispatcher(): void {
 					promptRef: head.request.promptRef,
 					attachments: head.request.attachments,
 				};
+				rememberOptimisticUserMessage(sessionId, msg, store.get(chatMessagesAtom));
 				store.set(chatMessagesAtom, (prev) => [...prev, msg]);
 			}
 			void (async () => {

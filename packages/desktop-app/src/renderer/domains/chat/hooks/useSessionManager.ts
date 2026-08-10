@@ -94,6 +94,10 @@ import {
 	turnStatsCache,
 } from "../services/chat-service";
 import { resolveSessionContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
+import {
+	reconcileOptimisticUserMessages,
+	rememberOptimisticUserMessage,
+} from "../services/optimistic-user-message-cache";
 
 /** 把 "provider/id" 形式的 modelKey 解析为 ChatMessage.model 结构 */
 function modelKeyToParts(key: string | null | undefined): { provider: string; id: string } | undefined {
@@ -387,7 +391,7 @@ export function useSessionManager(): SessionManagerResult {
 			const statePromise = window.vetta.session.getState(sessionId);
 
 			const history = await historyPromise;
-			const mapped = fullHistoryToChat(history);
+			const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
 			setChatMessages(mapped);
 
 			// If this session already has any prior turn (loaded from disk) we never
@@ -581,7 +585,7 @@ export function useSessionManager(): SessionManagerResult {
 								if (getQueuedDispatchSeq(sessionId) !== (turnStartDispatchSeqRef.current.get(sessionId) ?? 0)) {
 									return;
 								}
-								const mapped = fullHistoryToChat(history);
+								const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
 								if (elapsed > 0) {
 									for (let i = mapped.length - 1; i >= 0; i--) {
 										if (mapped[i].role === "assistant") {
@@ -1151,6 +1155,7 @@ export function useSessionManager(): SessionManagerResult {
 				if (settingsAssistTabId) {
 					userMsg.settingsAssistTabId = settingsAssistTabId;
 				}
+				rememberOptimisticUserMessage(session.runtimeId, userMsg, store.get(chatMessagesAtom));
 				setChatMessages((prev) => [...prev, userMsg]);
 			}
 
@@ -1412,6 +1417,7 @@ export function useSessionManager(): SessionManagerResult {
 				promptRef: item.request.promptRef,
 				attachments: item.request.attachments,
 			};
+			rememberOptimisticUserMessage(runtimeId, queuedUserMsg, store.get(chatMessagesAtom));
 			setChatMessages((prev) => [...prev, queuedUserMsg]);
 			try {
 				await waitForPluginHostReady();
