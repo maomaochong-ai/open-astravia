@@ -1,5 +1,3 @@
-import { AnimatePresence, motion } from "motion/react";
-
 interface PromptAttachmentLabelsProps {
 	/** 逐条渲染成一枚名字；空数组不渲染整行。 */
 	labels: readonly string[];
@@ -29,21 +27,13 @@ export function PromptAttachmentLabels({
 			{icon ? <span className={`${icon} h-3.5 w-3.5 shrink-0 text-muted-foreground`} /> : null}
 			{/* 条目多到放不下时整行横向滚动，不换行——它在卡片外面，换行会把输入框往下推。 */}
 			<div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-				<AnimatePresence initial={false}>
-					{labels.map((label) => (
-						<motion.span
-							key={label}
-							initial={{ opacity: 0, y: 4 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={{ opacity: 0, y: -4 }}
-							transition={{ duration: 0.15 }}
-							className="shrink-0 text-[12px] font-medium text-foreground/80"
-							title={label}
-						>
-							{label}
-						</motion.span>
-					))}
-				</AnimatePresence>
+				{/* 不做入场/退场动画：这行跟着画布选中走，选中每变一次它就得动一次，
+				    任何位移都读成「有东西飞进来」而不是「你选的东西变了」。 */}
+				{labels.map((label) => (
+					<span key={label} className="shrink-0 text-[12px] font-medium text-foreground/80" title={label}>
+						{label}
+					</span>
+				))}
 			</div>
 			<button
 				type="button"
