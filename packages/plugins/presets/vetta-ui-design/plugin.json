@@ -1,7 +1,7 @@
 {
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.1.19",
+	"version": "0.1.20",
 	"icon": "icon.png",
 	"agent_mode": ["work"],
 	"defaultLocale": "zh",
@@ -31,6 +31,8 @@
 		"capture.offscreen",
 		"fs.read",
 		"fs.write",
+		"storage.read",
+		"storage.write",
 		"shell.openExternal"
 	],
 	"commands": ["node", "npm"],

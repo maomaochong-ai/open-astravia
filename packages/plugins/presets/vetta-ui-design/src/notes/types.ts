@@ -55,13 +55,26 @@ export function noteStatus(note: DesignNote): NoteStatus {
 	return last?.author === "agent" ? "resolved" : "pending";
 }
 
-/** 待处理备注，按创建时间排序——画布气泡编号与 vetd_notes 返回列表共用这个序。 */
-export function pendingNotes(notes: readonly DesignNote[]): DesignNote[] {
-	return notes.filter((note) => noteStatus(note) === "pending").sort((a, b) => a.createdAt - b.createdAt);
+/**
+ * 备注最后一次有动静的时刻（末条消息，没有消息就退回创建时间）。
+ *
+ * 状态本来就是从末条消息推导的（user = 待处理，agent = 已处理），排序跟着末条走
+ * 才和它是同一套心智：重开一条旧备注 = 「我现在又提了一遍」，那它就是一件新的待办。
+ * 按创建时间排的话，重开的旧备注会带着最初的时间插到队首，把用户刚写下的那条挤到
+ * 后面去——而编号既显示在画布气泡上，也决定 agent 逐条处理的顺序。
+ */
+export function noteActivityAt(note: DesignNote): number {
+	return note.messages[note.messages.length - 1]?.at ?? note.createdAt;
 }
 
+/** 待处理备注，按进入待处理的时间排序——画布气泡编号与 vetd_notes 返回列表共用这个序。 */
+export function pendingNotes(notes: readonly DesignNote[]): DesignNote[] {
+	return notes.filter((note) => noteStatus(note) === "pending").sort((a, b) => noteActivityAt(a) - noteActivityAt(b));
+}
+
+/** 已处理备注，按被处理的时间排序（末条消息就是 agent 的那条回复）。 */
 export function resolvedNotes(notes: readonly DesignNote[]): DesignNote[] {
-	return notes.filter((note) => noteStatus(note) === "resolved").sort((a, b) => a.createdAt - b.createdAt);
+	return notes.filter((note) => noteStatus(note) === "resolved").sort((a, b) => noteActivityAt(a) - noteActivityAt(b));
 }
 
 /** 备注在世界坐标系里的位置（画气泡、降级换算都用它）。 */

@@ -11,6 +11,7 @@ import {
 	noteWorldPosition,
 	parseNotesFile,
 	pendingNotes,
+	resolvedNotes,
 	type DesignNote,
 } from "../src/notes/types";
 
@@ -34,7 +35,8 @@ function note(id: string, authors: ("user" | "agent")[], createdAt = 0): DesignN
 	return {
 		id,
 		anchor: { kind: "frame", frameId: "login", fx: 10, fy: 20 },
-		messages: authors.map((author, index) => ({ author, text: `m${index}`, at: index })),
+		// 与 NotesStore 一致：首条消息的时间就是创建时间，后续消息依次靠后。
+		messages: authors.map((author, index) => ({ author, text: `m${index}`, at: createdAt + index })),
 		createdAt,
 	};
 }
@@ -46,9 +48,29 @@ it("derives status from the last message author", () => {
 	expect(noteStatus(note("a", ["user", "agent", "user"]))).toBe("pending");
 });
 
-it("orders pending notes by creation time (bubble numbering = list order)", () => {
+it("orders pending notes by when they became pending (bubble numbering = list order)", () => {
 	const notes = [note("b", ["user"], 2), note("c", ["user", "agent"], 1), note("a", ["user"], 0)];
 	expect(pendingNotes(notes).map((n) => n.id)).toEqual(["a", "b"]);
+});
+
+it("重开一条旧备注不会抢走新备注的编号——它排到队尾", () => {
+	// 很久以前提的，已经处理过，刚刚（t=100）被重开。
+	const reopened = note("old", ["user", "agent"], 0);
+	reopened.messages.push({ author: "user", text: "再改一下", at: 100 });
+	// 用户在这之前（t=50）刚写下的一条。
+	const fresh = note("fresh", ["user"], 50);
+
+	// 按创建时间排的话 old 会带着 t=0 插到队首，把用户刚写的那条挤成 2 号。
+	expect(pendingNotes([reopened, fresh]).map((n) => n.id)).toEqual(["fresh", "old"]);
+});
+
+it("已处理备注按被处理的时间排，不按最初提出的时间", () => {
+	// 先提的那条后来才被处理完。
+	const slow = note("slow", ["user", "agent"], 0);
+	slow.messages[1].at = 100;
+	const quick = note("quick", ["user", "agent"], 50);
+
+	expect(resolvedNotes([slow, quick]).map((n) => n.id)).toEqual(["quick", "slow"]);
 });
 
 it("demotes a frame anchor to a free note using the frame's last rect", () => {
