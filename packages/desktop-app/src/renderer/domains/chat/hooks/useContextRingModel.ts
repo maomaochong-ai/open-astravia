@@ -56,6 +56,13 @@ export function useContextRingModel(): ContextRingModel | null {
 			runtime_context: t("contextRing.details.kind.runtime_context"),
 			user_input: t("contextRing.details.kind.user_input"),
 		},
+		group: {
+			instructions: t("contextRing.details.group.instructions"),
+			capabilities: t("contextRing.details.group.capabilities"),
+			tools: t("contextRing.details.group.tools"),
+			conversation: t("contextRing.details.group.conversation"),
+			runtime: t("contextRing.details.group.runtime"),
+		},
 	} as const;
 
 	return {

@@ -258,13 +258,16 @@
 			"usage": "Context {{percent}}% used ({{window}} window)"
 		},
 		"details": {
-			"title": "Context composition",
+			"title": "Context composition (latest call)",
 			"actual": "Actual input",
 			"estimated": "Estimated",
 			"section": "Section",
+			"category": "Category",
 			"tokens": "Tokens",
 			"share": "Share",
 			"unknown": "Unknown",
+			"items": "{{count}} items",
+			"unknownItems": "{{count}} unknown",
 			"coverage": {
 				"complete": "Estimate coverage is complete",
 				"partial": "Some sections could not be estimated",
@@ -286,6 +289,13 @@
 				"history": "History",
 				"runtime_context": "Runtime context",
 				"user_input": "Current input"
+			},
+			"group": {
+				"instructions": "Core instructions",
+				"capabilities": "Extensions",
+				"tools": "Tools",
+				"conversation": "Conversation",
+				"runtime": "Runtime context"
 			}
 		}
 	},
