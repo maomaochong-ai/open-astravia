@@ -56,12 +56,12 @@
 	position: relative;
 	display: flex;
 	align-items: center;
-	padding: 12px 20px;
+	padding: 7px 18px;
 	border: none;
 	border-radius: 999px;
 	/* 不继承宿主字号：按钮尺寸是这套观感的一部分 */
 	font-family: inherit;
-	font-size: 1rem;
+	font-size: 0.9375rem;
 	line-height: 1;
 	color: #fff;
 	cursor: pointer;
@@ -79,9 +79,18 @@
 	margin: auto;
 	z-index: -1;
 	border-radius: inherit;
-	filter: blur(0);
+	/* 静止时也常亮一层光晕，并让锥形渐变绕中心转 —— 它是画布唯一的主动作，
+	   缩矮之后只靠底色流动已经不够显眼。旋转走 transform，不触发重绘。 */
+	filter: blur(8px);
 	background: conic-gradient(#00000000 80deg, #40baf7, #f34ad7, #5bfcc4, #00000000 280deg);
-	transition: all 0.3s ease;
+	animation: vetd-ask-glow 4s linear infinite;
+	transition: filter 0.3s ease;
+}
+
+@keyframes vetd-ask-glow {
+	to {
+		transform: rotate(1turn);
+	}
 }
 
 .vetd-ask-button::after {
@@ -93,7 +102,7 @@
 	pointer-events: none;
 	box-shadow:
 		inset 0 0 5px #ffffffa9,
-		inset 0 35px 30px #000;
+		inset 0 18px 18px rgb(0 0 0 / 0.62);
 }
 
 .vetd-ask-label {
@@ -128,7 +137,7 @@
 	width: 300%;
 	background-image: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0, #5bfcc4);
 	background-size: 33.3333% 100%;
-	animation: vetd-ask-flow 6s linear infinite;
+	animation: vetd-ask-flow 3s linear infinite;
 }
 
 @keyframes vetd-ask-flow {
@@ -138,7 +147,7 @@
 }
 
 .vetd-ask-button:hover::before {
-	filter: blur(15px);
+	filter: blur(20px);
 }
 
 /* 按下：外阴影撤掉 + 整体下沉 3px，等于把按钮按进画布 */
@@ -147,9 +156,10 @@
 	box-shadow: none;
 }
 
+/* 光晕层的 transform 归旋转动画所有（动画优先级高于普通声明），
+   按下的下沉靠按钮自身的 margin-top，这里只收一收光。 */
 .vetd-ask-button:active::before {
 	filter: blur(5px);
-	transform: translateY(1px);
 }
 
 /* 输入框展开期间保持按下态，让按钮和它下面的浮层看起来是一体的 */
@@ -159,11 +169,12 @@
 }
 
 .vetd-ask-button[data-active="true"]::before {
-	filter: blur(15px);
+	filter: blur(20px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.vetd-ask-flow::before {
+	.vetd-ask-flow::before,
+	.vetd-ask-button::before {
 		animation: none;
 	}
 }

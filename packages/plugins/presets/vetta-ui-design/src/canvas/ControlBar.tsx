@@ -82,7 +82,7 @@ const icons = {
 };
 
 /**
- * 画布左下角固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部中间留给「让 Vetta 调整」。
+ * 画布顶部居中固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部中间留给「让 Vetta 调整」。
  * 视觉与动效对齐 content-creation 画布的 dock：图标方块 + 光标处放大 + 峰值项浮标签。
  */
 export function ControlBar({
@@ -234,19 +234,20 @@ export function ControlBar({
 	const peakLabel = peakSlot?.type === "item" ? peakSlot.label : null;
 
 	return (
-		// 左下角：底部中间留给「让 Vetta 调整」，顶部整条是画布自己的沉浸式标题栏
-		// （CanvasTab 里那层约 58px 高的渐变遮罩，z-30），工具栏放上去会被罩住。
+		// 顶部居中：底部中间留给「让 Vetta 调整」。顶部整条是画布自己的沉浸式标题栏
+		// （CanvasTab 里那层约 58px 高的渐变遮罩，z-30，内容全部右对齐），
+		// 所以工具栏压在遮罩下沿之下、水平居中，两边都不打架。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
 		<div
-			className={`pointer-events-none absolute bottom-6 left-6 z-30 transition-opacity duration-200 ${
+			className={`pointer-events-none absolute top-14 left-1/2 z-30 -translate-x-1/2 transition-opacity duration-200 ${
 				faded ? "opacity-0" : ""
 			}`}
 		>
-			{/* 放大只用 transform（origin-bottom），图标向上溢出 dock，chrome 本身不变高 */}
-			<div className="relative inline-flex flex-col items-start overflow-visible pt-9">
+			{/* 放大只用 transform（origin-top），图标向下溢出 dock，chrome 本身不变高 */}
+			<div className="relative inline-flex flex-col items-start overflow-visible pb-9">
 				{peakLabel ? (
 					<div
-						className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-border/70 bg-popover/95 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-sm"
+						className="pointer-events-none absolute bottom-0 z-10 -translate-x-1/2 rounded-md border border-border/70 bg-popover/95 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-sm"
 						style={{ left: centersRef.current?.[peakIndex] }}
 					>
 						{peakLabel}
@@ -255,7 +256,7 @@ export function ControlBar({
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar */}
 				<div
 					ref={dockRef}
-					className={`relative inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md ${
+					className={`relative inline-flex items-start overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md ${
 						faded ? "pointer-events-none" : "pointer-events-auto"
 					}`}
 					style={{ gap: DOCK_GAP }}
@@ -296,7 +297,7 @@ export function ControlBar({
 								aria-label={slot.label}
 								aria-pressed={slot.active}
 								onClick={slot.onClick}
-								className={`relative z-[1] flex shrink-0 origin-bottom items-center justify-center rounded-[22%] border border-transparent outline-none will-change-transform focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 ${
+								className={`relative z-[1] flex shrink-0 origin-top items-center justify-center rounded-[22%] border border-transparent outline-none will-change-transform focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 ${
 									slot.active || slot.accent
 										? "bg-primary/12 text-primary"
 										: "bg-muted/55 text-foreground hover:bg-muted"
