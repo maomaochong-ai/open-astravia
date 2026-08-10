@@ -4,6 +4,10 @@
 
 当前实施架构见 [画布交互架构](./canvas-interaction-architecture.md)、[内容生成与插件凭据架构](./generation-architecture.md) 与 [模型目录和适配器](./model-adapters.md)。
 
+Agent 工具渐进披露、专业 Skill、阶段化生产与质量评测的专项分析见
+[Content Creator 演进分析](./content-creator-evolution/README.md)。该分析综合
+Generative-Media-Skills、visual-skills 与 ViMax，给出目标架构和分阶段实施路线。
+
 ## 分析边界
 
 - 聚焦无限画布、节点或画布对象、连接关系、节点操作、属性与生成面板、模型接入、任务状态、素材回流和 Agent 操作。

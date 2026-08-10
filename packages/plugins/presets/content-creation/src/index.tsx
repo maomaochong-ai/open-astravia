@@ -11,11 +11,12 @@ import {
 import { ContentChangePreviewCard, ContentRunCard } from "./plugin/AgentCards";
 import {
 	CONTENT_CHANGE_PREVIEW_CARD_TYPE,
-	CONTENT_PREPARE_RUN_TOOL_NAME,
-	CONTENT_PREVIEW_TOOL_NAME,
+	CONTENT_EDIT_TOOL_NAME,
+	CONTENT_RUN_TOOL_NAME,
 	CONTENT_RUN_CARD_TYPE,
 	registerContentCreationTools,
 } from "./plugin/register-tools";
+import { registerContentCreationToolRouter } from "./plugin/tool-routing";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import {
 	disposePluginRuntime,
@@ -40,24 +41,39 @@ export default definePlugin({
 			icon: <PluginTabIcon />,
 			component: ContentCreationPanel,
 			scope_use: ["conversation", "project"],
-			// 默认不上栏；agent open_content_creation / 用户从「+」添加后再挂上。
+			// 默认不上栏；输入栏「内容创作」开关打开后再挂上。
 			initiallyVisible: false,
+		});
+		ctx.ui.registerInputAction({
+			id: "mode",
+			label: "%action.mode.label%",
+			icon: <span className="icon-[lucide--wand-sparkles] block size-3.5" aria-hidden="true" />,
+			defaultActive: false,
+			hardIsolation: true,
+			scope_use: ["conversation", "project"],
+			onToggle: (active) => ctx.ui.setActivityTabVisible("workspace", active),
+			decoratePrompt: () => ({
+				instructions: [
+					"Content creation mode is active. Use the relevant bundled content-creation skills and the narrowest available content_creation tool.",
+				],
+			}),
 		});
 		ctx.ui.registerCardRenderer({
 			type: CONTENT_CHANGE_PREVIEW_CARD_TYPE,
 			title: "%card.preview.title%",
 			component: ContentChangePreviewCard,
 			pendingFor: (toolCall) =>
-				toolCall.toolName === CONTENT_PREVIEW_TOOL_NAME ? { type: CONTENT_CHANGE_PREVIEW_CARD_TYPE } : null,
+				toolCall.toolName === CONTENT_EDIT_TOOL_NAME ? { type: CONTENT_CHANGE_PREVIEW_CARD_TYPE } : null,
 		});
 		ctx.ui.registerCardRenderer({
 			type: CONTENT_RUN_CARD_TYPE,
 			title: "%card.run.title%",
 			component: ContentRunCard,
 			pendingFor: (toolCall) =>
-				toolCall.toolName === CONTENT_PREPARE_RUN_TOOL_NAME ? { type: CONTENT_RUN_CARD_TYPE } : null,
+				toolCall.toolName === CONTENT_RUN_TOOL_NAME ? { type: CONTENT_RUN_CARD_TYPE } : null,
 		});
 		registerContentCreationTools(ctx, getContentCreationAgentService());
+		registerContentCreationToolRouter(ctx);
 	},
 	deactivate() {
 		publishPromptAttachment(null);

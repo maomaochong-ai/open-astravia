@@ -1,34 +1,42 @@
 ---
 name: direct-video-creation
-description: Turn a user's creative intent into a production-ready AI video brief, shot plan, node workflow, and generation prompts. Use for text-to-video, image-to-video, first/last-frame animation, reference-video transformation, product films, social videos, storyboards, camera-direction requests, or improving an existing video-generation node.
+description: Turn creative intent into a production-ready AI video brief, treatment, script/beat plan, shot cards, animatic/keyframe plan, node workflow, and model-profile prompts. Use for text-to-video, image-to-video, multi-shot or dialogue scenes, reference-video transformation, video editing or continuation, product/fashion/social/UGC films, storyboards, prompt audits, camera/light/sound direction, race/chase/kinetic montage, or improving a video-generation node.
 ---
 
 # Direct AI video creation
 
 Use `$operate-content-workflow` for all inspection and mutations. This skill supplies creative decisions; runtime capabilities remain the source of truth for what can be executed.
 
-## Build the brief
+## Route the task
 
-Infer safe defaults and record them in the workflow objective. Resolve only decisions that materially change the result:
+1. Inspect the project and capabilities.
+2. If no concept, story, or scene exists, invoke `$develop-creative-concept` first.
+3. Classify the request as treatment/script, storyboard/animatic, text-to-video, image-to-video, reference transformation, edit/continuation, single shot, or multi-shot sequence.
+4. Build the brief and shot plan before adding generation nodes.
+5. Generate a low-cost proof shot when direction is uncertain; expand only after the direction is accepted.
+6. Review the actual output with `$review-content-quality` before recommending a retry.
 
-- purpose, audience, and publishing surface;
-- target duration and aspect ratio;
-- subject, environment, visual style, and continuity anchors;
-- required action, camera behavior, pacing, and audio intent;
-- supplied reference media and non-negotiable constraints;
-- final deliverables and success criteria.
+Read only the references needed for the task:
 
-For detailed prompt construction, read [references/prompting.md](references/prompting.md). For graph patterns and model routing, read [references/workflow-patterns.md](references/workflow-patterns.md). Before recommending regeneration, read [references/quality-checklist.md](references/quality-checklist.md).
+- Any video task: read [references/dramaturgy-and-shot-design.md](references/dramaturgy-and-shot-design.md), [references/prompting.md](references/prompting.md), then [references/model-prompt-profiles.md](references/model-prompt-profiles.md)
+- Ready-to-fill generation structures: [references/production-prompt-skeletons.md](references/production-prompt-skeletons.md)
+- Treatment, script, storyboard, edit plan, or prompt audit: [references/role-modes-and-output-contracts.md](references/role-modes-and-output-contracts.md)
+- Shot list, pacing, or montage timing: [references/shot-cards-and-rhythm.md](references/shot-cards-and-rhythm.md)
+- Precise framing, movement, light, transition, and sound terms: [references/camera-light-sound-vocabulary.md](references/camera-light-sound-vocabulary.md)
+- Multi-shot identity and reference handling: [references/continuity-and-references.md](references/continuity-and-references.md)
+- Graph pattern and capability routing: [references/workflow-patterns.md](references/workflow-patterns.md)
+- Genre or montage structure: [references/genre-and-montage-patterns.md](references/genre-and-montage-patterns.md)
+- Still keyframes or animatic: [references/animatic-keyframes.md](references/animatic-keyframes.md)
+- Race, chase, drift, or kinetic speed: read [references/animatic-keyframes.md](references/animatic-keyframes.md), then [references/kinetic-speed.md](references/kinetic-speed.md)
+- Video-to-video edit, replacement, localization, or continuation: [references/video-editing-and-extension.md](references/video-editing-and-extension.md)
+- Output review: [references/quality-checklist.md](references/quality-checklist.md)
+- Failed or weak output: [references/failure-repairs.md](references/failure-repairs.md)
 
-## Plan shots before generating
+## Brief requirements
 
-Keep each generation node focused on one short, visually coherent shot. For multi-shot requests:
+Record purpose, audience, publishing surface, duration, ratio, subject, environment, style, continuity anchors, action, camera, pacing, audio intent, references, constraints, deliverables, and acceptance criteria. Infer reversible defaults; ask only when a missing choice changes cost, supplied references, or the core deliverable.
 
-1. Define a shared visual anchor prompt.
-2. Create one prompt/generator pair per shot or intentional variation.
-3. Reuse approved images as video start frames when identity or product consistency matters.
-4. State transition intent in node purposes; do not hide the full edit plan inside one long generation prompt.
-5. Add only executable nodes supported by current capabilities.
+Keep each generator focused on one visually coherent shot. Separate edited sequences into shot nodes and timeline clips. Name the changed variable in every intentional variation.
 
 ## Choose a generation mode
 
@@ -38,6 +46,4 @@ Keep each generation node focused on one short, visually coherent shot. For mult
 - Use reference-to-video or video-to-video only when the inspected input slots accept those assets.
 - Prefer a short low-cost validation shot before a larger set when creative direction is uncertain.
 
-## Preserve creative intent
-
-Keep subject identity, wardrobe/product geometry, palette, lighting direction, lens language, motion energy, and environment rules consistent across related nodes. Change one major variable per iteration so the cause of improvement or regression remains understandable.
+This method is an original Vetta adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills), and ViMax (MIT).

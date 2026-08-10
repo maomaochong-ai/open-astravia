@@ -36,6 +36,32 @@ function createAgentHarness() {
 }
 
 describe("ContentCreationAgentService", () => {
+	it("applies small safe edits and previews destructive or broad edits automatically", async () => {
+		const { agent } = createAgentHarness();
+		const applied = await agent.edit("C:/project", [
+			{ type: "add_node", id: "prompt", kind: "prompt", name: "Prompt" },
+		]);
+		expect(applied).toMatchObject({ kind: "applied", project: { graph: { nodes: [{ id: "prompt" }] } } });
+
+		const destructive = await agent.edit("C:/project", [{ type: "delete_node", nodeId: "prompt" }]);
+		expect(destructive).toMatchObject({
+			kind: "preview",
+			preview: { destructive: true, diff: { removedNodeIds: ["prompt"] } },
+		});
+
+		const broad = await agent.edit(
+			"C:/broad",
+			Array.from({ length: 7 }, (_, index) => ({
+				type: "add_node",
+				id: `prompt-${index}`,
+				kind: "prompt",
+				name: `Prompt ${index}`,
+			})),
+		);
+		expect(broad).toMatchObject({ kind: "preview", preview: { destructive: false } });
+		if (broad.kind === "preview") expect(broad.preview.diff.addedNodeIds).toHaveLength(7);
+	});
+
 	it("previews and commits destructive changes against the inspected revision", async () => {
 		const { workspace, agent } = createAgentHarness();
 		const project = await workspace.dispatch("C:/project", [

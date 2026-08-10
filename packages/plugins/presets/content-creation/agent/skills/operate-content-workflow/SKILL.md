@@ -9,16 +9,15 @@ Use the content-creation tools as the only control plane. Never edit `content-cr
 
 ## Operating loop
 
-1. Call `content_creation_inspect` with the narrowest useful scope.
-   - Use `project` before structural edits.
-   - Use `capabilities` before choosing a provider, model, mode, duration, ratio, or resolution.
-   - Use `runtime` and `diagnostics` when explaining a failure.
+1. Call `content_creation_inspect` with the narrowest useful view: `summary`, `project`, `capabilities`, `runtime`, or `diagnostics`.
 2. Convert the user's request into workflow objective, deliverables, node purposes, and typed connections.
 3. Reuse existing nodes when their purpose matches. Give every new node a stable `id`, clear `name`, and concise `purpose`.
-4. Apply small non-destructive batches with `content_creation_apply_operations` and the inspected revision.
-5. Use `content_creation_preview_operations` for deletions or any broad change the user should review. Do not claim it was applied until the user confirms the card.
-6. Call `content_creation_prepare_generation` only after diagnostics contain no blocking errors. Generation starts only when the user confirms the card.
-7. Reinspect after a revision conflict or failed run; do not blindly retry unchanged inputs.
+4. Submit edits through `content_creation_edit` with the inspected revision. Small safe batches apply immediately; destructive or broad batches return a preview card automatically.
+5. Call `content_creation_run` with `action="prepare"` only after diagnostics contain no blocking errors. Generation starts only when the user confirms the card.
+6. Use `content_creation_run` with `action="status"` or `action="cancel"` for an existing run.
+7. Reinspect after a revision conflict or failed run; diagnose before retrying.
+
+Read [references/operation-contract.md](references/operation-contract.md) before building or changing a graph. Read [references/recovery-and-safety.md](references/recovery-and-safety.md) for failures, conflicts, destructive edits, or retries.
 
 ## Rules
 
@@ -29,10 +28,3 @@ Use the content-creation tools as the only control plane. Never edit `content-cr
 - Preserve node IDs and connections when making local edits.
 - Ask a focused question only when a missing decision materially changes the deliverable, cost, or reference-media requirements.
 - Do not start quota-consuming generation without the user-facing confirmation card.
-
-## Common patterns
-
-- Text to image: prompt → image generator → output.
-- Image to video: prompt + image generator or asset → video generator → output.
-- Reusable direction: one prompt node may feed multiple generation nodes.
-- Multiple deliverables: create separate output nodes or clearly describe every workflow deliverable.

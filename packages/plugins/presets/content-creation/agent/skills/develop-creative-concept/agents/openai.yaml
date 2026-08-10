@@ -1,0 +1,4 @@
+interface:
+  display_name: "创意概念开发"
+  short_description: "将模糊需求发展为可评审的创意概念、脚本、视觉方向和执行前提"
+  default_prompt: "Use $develop-creative-concept to turn my rough idea into a reviewable creative concept."

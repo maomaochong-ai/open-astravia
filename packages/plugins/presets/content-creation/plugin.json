@@ -21,6 +21,7 @@
 		"agent.skills.control",
 		"agent.systemPrompt.write",
 		"agent.tools.register",
+		"agent.tools.control",
 		"agent.toolHandler.execute",
 		"ai.models.list",
 		"ai.complete",
@@ -94,5 +95,8 @@
 		]
 	},
 	"description": "%plugin.description%",
-	"author": "Vetta"
+	"author": "Vetta",
+	"contributionMode": {
+		"hardIsolation": true
+	}
 }

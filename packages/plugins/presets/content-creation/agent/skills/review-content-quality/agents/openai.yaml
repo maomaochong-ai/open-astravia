@@ -1,0 +1,4 @@
+interface:
+  display_name: "内容质量审查"
+  short_description: "基于成片证据审查图片与视频，并给出最小修复方案"
+  default_prompt: "Use $review-content-quality to evaluate this output against its brief and propose the smallest repair."

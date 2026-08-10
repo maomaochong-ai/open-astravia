@@ -1,0 +1,4 @@
+interface:
+  display_name: "图片创作导演"
+  short_description: "将创作意图转为可执行的图片工作流、参考计划与提示词"
+  default_prompt: "Use $direct-image-creation to turn my idea into a production-ready image workflow."

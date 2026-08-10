@@ -12,6 +12,7 @@ import { createContentCreationAgentState } from "./state";
 const PREVIEW_TTL_MS = 30 * 60 * 1000;
 const MAX_PREVIEWS = 50;
 const MAX_RUNS = 100;
+const MAX_DIRECT_EDIT_COMMANDS = 6;
 
 export interface ContentOperationDiff {
 	addedNodeIds: string[];
@@ -30,6 +31,10 @@ export interface ContentOperationPreview {
 	destructive: boolean;
 	diff: ContentOperationDiff;
 }
+
+export type ContentEditResult =
+	| { kind: "applied"; project: ContentProjectDocument }
+	| { kind: "preview"; preview: ContentOperationPreview };
 
 export type ContentRunStatus = "awaiting-confirmation" | "running" | "succeeded" | "failed" | "cancelled";
 
@@ -75,9 +80,27 @@ export class ContentCreationAgentService {
 		const project = await this.workspace.load(cwd);
 		const commands = parseContentAgentOperations(project, operations);
 		if (contentAgentOperationsAreDestructive(commands)) {
-			throw new Error("destructive operations require content_creation_preview_operations and user confirmation");
+			throw new Error("destructive operations require an operation preview and user confirmation");
 		}
 		return await this.workspace.dispatch(cwd, commands, expectedRevision);
+	}
+
+	async edit(
+		cwd: string,
+		operations: readonly unknown[],
+		expectedRevision?: number,
+	): Promise<ContentEditResult> {
+		this.prunePreviews();
+		const project = await this.workspace.load(cwd);
+		assertExpectedRevision(project, expectedRevision);
+		const commands = parseContentAgentOperations(project, operations);
+		if (contentAgentOperationsAreDestructive(commands) || commands.length > MAX_DIRECT_EDIT_COMMANDS) {
+			return { kind: "preview", preview: this.storePreview(cwd, project, commands) };
+		}
+		return {
+			kind: "applied",
+			project: await this.workspace.dispatch(cwd, commands, project.revision),
+		};
 	}
 
 	async preview(
@@ -87,10 +110,16 @@ export class ContentCreationAgentService {
 	): Promise<ContentOperationPreview> {
 		this.prunePreviews();
 		const project = await this.workspace.load(cwd);
-		if (expectedRevision !== undefined && project.revision !== expectedRevision) {
-			throw new Error(`project revision conflict: expected ${expectedRevision}, actual ${project.revision}`);
-		}
+		assertExpectedRevision(project, expectedRevision);
 		const commands = parseContentAgentOperations(project, operations);
+		return this.storePreview(cwd, project, commands);
+	}
+
+	private storePreview(
+		cwd: string,
+		project: ContentProjectDocument,
+		commands: ContentProjectCommand[],
+	): ContentOperationPreview {
 		const next = applyContentProjectCommands(project, commands);
 		const preview: StoredPreview = {
 			token: crypto.randomUUID(),
@@ -228,6 +257,12 @@ export class ContentCreationAgentService {
 
 	private emitRunChange(): void {
 		for (const listener of this.runListeners) listener();
+	}
+}
+
+function assertExpectedRevision(project: ContentProjectDocument, expectedRevision?: number): void {
+	if (expectedRevision !== undefined && project.revision !== expectedRevision) {
+		throw new Error(`project revision conflict: expected ${expectedRevision}, actual ${project.revision}`);
 	}
 }
 
