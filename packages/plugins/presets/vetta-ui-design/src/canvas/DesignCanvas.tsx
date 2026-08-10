@@ -10,6 +10,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { noteWorldPosition, pendingNotes } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
@@ -45,6 +46,7 @@ import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
 import { NOTES_PANEL_INSET, NotesDrawer } from "./NotesDrawer";
 import { type NoteDraft, NotesLayer } from "./NotesLayer";
+import { type AskMode, selectionAfterHmr } from "./selection-ask";
 import {
 	boundsOf,
 	describeSnap,
@@ -55,8 +57,8 @@ import {
 	type SnapSolution,
 	solveSnap,
 } from "./snap";
+import { SelectionAskBadge } from "./SelectionAskBadge";
 import { SnapGuides } from "./SnapGuides";
-import { useSelectionPromptAttachment } from "./useSelectionPromptAttachment";
 
 export type CanvasSelection =
 	| { kind: "frames"; ids: string[] }
@@ -294,6 +296,10 @@ export function DesignCanvas({
 	const [selection, setSelection] = useState<CanvasSelection>(null);
 	const selectionRef = useRef(selection);
 	selectionRef.current = selection;
+	/** 追问 popover 开着。开着期间选中被钉住（见 onHmrUpdated），不能被热更新清掉。 */
+	const [askOpen, setAskOpen] = useState(false);
+	const askOpenRef = useRef(askOpen);
+	askOpenRef.current = askOpen;
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
 	/** 错误态存在 design-runtime（agent 工具也要读），这里只订阅它来渲染。 */
 	const [frameErrors, setFrameErrors] = useState<ReadonlyMap<string, string>>(new Map());
@@ -780,7 +786,9 @@ export function DesignCanvas({
 			},
 			onHmrUpdated: (frameId) => {
 				notifyFrameSettled(frameId);
-				if (frameId) invalidateRaster(frameId);
+				if (!frameId) return;
+				invalidateRaster(frameId);
+				setSelection((current) => selectionAfterHmr(current, frameId, askOpenRef.current));
 			},
 			onRendered: (frameId) => {
 				// rendered 既是「可以截图了」的放行信号，也是「已截的图可能是渲染前
@@ -1305,15 +1313,23 @@ export function DesignCanvas({
 	}, [session]);
 
 	/**
-	 * 选中的画框 / 元素挂到 AI 输入框上，用户在那儿正常提问即可（不再在画布里另开
-	 * 一个输入框）。单选时顺带截一张图带上。
+	 * 追问徽标与备注面板共用同一套会话闸口：能发消息就直接发，发不了（agent 在跑、
+	 * 没有活跃会话、会话不在这个 workspace）就落一条备注。
 	 */
-	useSelectionPromptAttachment({
-		session,
-		selection,
-		frames: orderedSelection,
-		capture: captureFaithfully,
-	});
+	const { blockedReason } = useNotesHandoff(cwd);
+
+	// 选中变了就收起 popover：它描述的是上一次选中，留着只会发错对象。
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 只按选中变化收起
+	useEffect(() => setAskOpen(false), [selection]);
+
+	/**
+	 * 追问提交完成。发出去的那一条留着选中——徽标当场翻成备注入口，用户可以接着补一
+	 * 句延迟指令；落成备注的则清掉，否则新长出来的气泡正好和徽标叠在同一个点上。
+	 */
+	const handleAskSubmitted = useCallback((mode: AskMode): void => {
+		setAskOpen(false);
+		if (mode === "note") setSelection(null);
+	}, []);
 
 	const openExport = (): void => {
 		if (orderedSelection.length === 0) return;
@@ -1379,6 +1395,23 @@ export function DesignCanvas({
 	 */
 	const arrangeActive =
 		selectedIds.length >= 2 && tool === "select" && !panActive && moveDelta === null && resizeRect === null;
+
+	/**
+	 * 追问徽标出不出。抗噪条件与整理工具条同源：拖动/改尺寸/平移期间选框每帧都在动，
+	 * 徽标跟着抖不说，还会去抢正在进行的指针。
+	 */
+	const askActive =
+		selectedIds.length === 1 &&
+		tool === "select" &&
+		!panActive &&
+		!previewing &&
+		moveDelta === null &&
+		resizeRect === null;
+
+	// 徽标都不在了就别留一个悬空的 popover。
+	useEffect(() => {
+		if (!askActive) setAskOpen(false);
+	}, [askActive]);
 
 	/**
 	 * 视口裁剪：看不见的 frame 连 DOM 都不建。
@@ -1482,6 +1515,19 @@ export function DesignCanvas({
 					openNoteId={openNoteId}
 					onOpenNote={setOpenNoteId}
 					getZoom={getZoom}
+				/>
+				{/* 选框右上角的追问徽标：单选（一个画框、或画框里的一个元素）时才有。 */}
+				<SelectionAskBadge
+					session={session}
+					notes={notes}
+					selection={selection}
+					frames={manifest.frames}
+					visible={askActive}
+					blockedReason={blockedReason}
+					capture={captureFaithfully}
+					open={askOpen}
+					onOpenChange={setAskOpen}
+					onSubmitted={handleAskSubmitted}
 				/>
 				{/* 整理工具条与 gap 手柄：多选且不在拖动/缩放中才出，免得跟正在进行的操作抢指针。 */}
 				{arrangeActive && arrangeBounds ? (

@@ -282,18 +282,26 @@ user sends an explicit "handle my notes" prompt, `vetd_status` reports a
 `pendingNotes` count, and `vetd_screenshot` flags pending notes on the frame it
 just shot.
 
-**Editing from an attachment**: the canvas attaches the user's selection as
-structured context (`vetta.ui-design.canvas-selection`) — the selected frames
-with their absolute `file`, and for an element selection the exact
+Notes are also how the user talks to you **while you are working**: rather than
+interrupt your turn with a new message, they pin the request onto the canvas and
+let you pick it up. So a note can appear at any moment, including after your last
+screenshot — which is exactly why the Done check below runs `vetd_notes`
+unconditionally instead of waiting for some tool response to mention one.
+
+**Editing from an attachment**: when the user asks a question from the canvas
+with something selected, that selection rides along as structured context
+(`vetta.ui-design.canvas-selection`), and it describes **that message only** —
+one frame with its absolute `file`, and for an element selection the exact
 `frames/xxx.tsx:LINE` in `source` plus DOM path/classes/text. Read every
-`screenshot` path it carries before editing (a multi-frame selection carries
-none — `vetd_screenshot` what you need). Edit that location. If it points into
+`screenshot` path it carries before editing (it normally carries one; if it
+doesn't, `vetd_screenshot` what you need). Edit that location. If it points into
 `components/`, the change hits every frame using it — say so.
 
 **Done** means: every frame you touched has been screenshotted and the image
 Read, that image is free of the three screenshot defects, `issues` came back
-empty, and no user note is left pending — if any tool response mentioned pending
-notes, run `vetd_notes` and address them before reporting back. Not one of those three is checked for you at the end of the turn — if you
+empty, and no user note is left pending — always run `vetd_notes` once before
+reporting back, even if nothing this turn mentioned notes, and address whatever
+is still pending. Not one of those three is checked for you at the end of the turn — if you
 report back without them, whatever is broken simply stays broken. So before you
 report, name the frames you touched and confirm each one cleared all three.
 
