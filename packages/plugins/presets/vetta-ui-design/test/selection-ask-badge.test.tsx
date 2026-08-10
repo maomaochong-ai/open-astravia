@@ -88,7 +88,7 @@ interface RenderOptions {
 	capture?: () => Promise<string>;
 }
 
-const submitted: string[] = [];
+let submitted = 0;
 
 function render({ blockedReason = null, open = true, capture }: RenderOptions = {}): void {
 	act(() => {
@@ -103,7 +103,9 @@ function render({ blockedReason = null, open = true, capture }: RenderOptions = 
 				capture={capture ?? (() => Promise.resolve("data:image/png;base64,AAAA"))}
 				open={open}
 				onOpenChange={() => {}}
-				onSubmitted={(mode) => submitted.push(mode)}
+				onSubmitted={() => {
+					submitted += 1;
+				}}
 			/>,
 		);
 	});
@@ -132,10 +134,10 @@ async function settle(): Promise<void> {
 	});
 }
 
-it("能发消息时：附件先挂上，消息只发一次", async () => {
+it("能发消息时：落一条备注，附件带着它的 id 先挂上，消息只发一次", async () => {
 	render();
 	await settle();
-	submitted.length = 0;
+	submitted = 0;
 	type("把这个按钮改成圆角");
 	await settle();
 
@@ -145,21 +147,27 @@ it("能发消息时：附件先挂上，消息只发一次", async () => {
 	// 宿主同步读附件，所以它必须在 sendPrompt 之前挂上。
 	expect(setPromptAttachment.mock.invocationCallOrder[0]).toBeLessThan(sendPrompt.mock.invocationCallOrder[0]);
 
+	// 追问同样落成画布备注，agent 的回复才有地方回来。
+	expect(store.notes).toHaveLength(1);
+	expect(store.notes[0].messages[0]).toMatchObject({ author: "user", text: "把这个按钮改成圆角" });
+
 	const attachment = setPromptAttachment.mock.calls[0][0];
 	// 一次性附件：sticky 会让这次选中黏在后面每一轮上。
 	expect(attachment.lifecycle).toBeUndefined();
 	const payload = attachment.context.payload;
+	// agent 靠它认出「这条待处理备注就是我刚做完的这件事」，不会再做一遍。
+	expect(payload.noteId).toBe(store.notes[0].id);
 	expect(payload.selection.element).toMatchObject({ tag: "button", source: "frames/login.tsx:42" });
 	expect(payload.selection.frames[0].screenshot).toMatch(/\.snapshots\/ask-login-\d+\.png$/);
-	expect(submitted).toEqual(["ask"]);
+	expect(submitted).toBe(1);
 	// 发出去的截图必须留着——agent 随时会去 Read 那个路径。
 	expect(deleteFile).not.toHaveBeenCalled();
 });
 
-it("发不了消息时：落成备注，一个字都不发给 agent", async () => {
+it("发不了消息时：只落备注，一个字都不发给 agent", async () => {
 	render({ blockedReason: "Vetta 正在忙" });
 	await settle();
-	submitted.length = 0;
+	submitted = 0;
 	type("顺便把间距调大一点");
 	await settle();
 
@@ -167,7 +175,7 @@ it("发不了消息时：落成备注，一个字都不发给 agent", async () =
 	expect(setPromptAttachment).not.toHaveBeenCalled();
 	// 备注不带截图：agent 读备注时 vetd_notes 会现截一张带编号标注的。
 	expect(writeFile).not.toHaveBeenCalled();
-	expect(submitted).toEqual(["note"]);
+	expect(submitted).toBe(1);
 
 	expect(store.notes).toHaveLength(1);
 	expect(store.notes[0].messages[0]).toMatchObject({ author: "user", text: "顺便把间距调大一点" });
@@ -186,13 +194,13 @@ it("身份在打开那一刻冻结，agent 中途跑完也不会变成发送", a
 	// agent 收工：闸口放行了，但 popover 已经开着，用户正照着「添加备注」在写。
 	render({ blockedReason: null });
 	await settle();
-	submitted.length = 0;
+	submitted = 0;
 	type("这里再紧凑些");
 	await settle();
 
 	expect(sendPrompt).not.toHaveBeenCalled();
 	expect(store.notes).toHaveLength(1);
-	expect(submitted).toEqual(["note"]);
+	expect(submitted).toBe(1);
 });
 
 it("点开又关掉的截图是孤儿，删掉", async () => {

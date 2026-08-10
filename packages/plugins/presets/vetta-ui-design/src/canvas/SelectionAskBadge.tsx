@@ -2,8 +2,15 @@
  * 选框右上角的追问徽标与它的 popover。
  *
  * 选中画框或画框里的元素之后，指令就在选框边上写完发出去——不必再把视线和焦点挪
- * 到画布外的 AI 输入框。agent 正忙（或没有可用会话）时，同一枚徽标改为落一条备注：
- * 备注是被动的，agent 收尾自检时才读到，于是天然成了「延迟指令」，不会打断它这一轮。
+ * 到画布外的 AI 输入框。
+ *
+ * 两种提交都落成画布备注，区别只在于「什么时候把 agent 叫过来」：
+ * - ask：立刻发一条消息，附件里带上这条备注的 id，agent 做完 resolve 它。
+ * - note：只落盘，等 agent 自己收尾自检时来取。用在它正忙（或没有可用会话）的时候
+ *   ——备注的被动特性于是成了「延迟指令」，不打断它这一轮。
+ *
+ * 统一落成备注还有一个好处：agent 的回复通过 vetd_notes 落回气泡 thread，追问的结果
+ * 显示在它被提出的那个位置，而不是只躺在聊天记录里。
  */
 
 import { useTranslation } from "@vetta-org/plugin-sdk";
@@ -44,8 +51,8 @@ interface SelectionAskBadgeProps {
 	capture(frameId: string, options?: { keepHighlight?: boolean }): Promise<string>;
 	open: boolean;
 	onOpenChange(open: boolean): void;
-	/** 提交完成。画布据此决定选中是留是清（ask 留、note 清）。 */
-	onSubmitted(mode: AskMode): void;
+	/** 提交完成（两种提交都落了备注）。画布据此收起选中。 */
+	onSubmitted(): void;
 }
 
 export function SelectionAskBadge({
@@ -140,7 +147,7 @@ export function SelectionAskBadge({
 		return { label: name, labels: [name] };
 	};
 
-	const sendAsk = (text: string, current: AskTarget): void => {
+	const sendAsk = (text: string, current: AskTarget, noteId: string): void => {
 		sentRef.current = true;
 		const pending = screenshotRef.current;
 		void (async () => {
@@ -155,6 +162,7 @@ export function SelectionAskBadge({
 			const selected = selectionRef.current;
 			const { label, labels } = describe(current);
 			const attachment = createDesignSelectionPromptAttachment({
+				noteId,
 				vetdPath: session.vetdPath,
 				dirPath: session.dirPath,
 				frames: [frame],
@@ -177,9 +185,14 @@ export function SelectionAskBadge({
 	const submit = (text: string): void => {
 		const current = targetRef.current;
 		if (!current) return;
-		if (mode === "ask") sendAsk(text, current);
-		else notes.addNote(askNoteAnchor(selectionRef.current, current), text);
-		onSubmitted(mode);
+		/**
+		 * 两条路都落成备注：画布上的每一条指令都留下痕迹，agent 的回复也就有地方回来
+		 * ——追问的结果显示在它被提出的那个位置，而不是只躺在聊天记录里。ask 与 note
+		 * 的唯一区别是前者立刻发一条消息把 agent 叫过来，后者等它自己收尾时来取。
+		 */
+		const note = notes.addNote(askNoteAnchor(selectionRef.current, current), text);
+		if (mode === "ask") sendAsk(text, current, note.id);
+		onSubmitted();
 	};
 
 	if (!target) return null;

@@ -46,7 +46,7 @@ import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
 import { NOTES_PANEL_INSET, NotesDrawer } from "./NotesDrawer";
 import { type NoteDraft, NotesLayer } from "./NotesLayer";
-import { type AskMode, selectionAfterHmr } from "./selection-ask";
+import { selectionAfterHmr } from "./selection-ask";
 import {
 	boundsOf,
 	describeSnap,
@@ -1323,12 +1323,13 @@ export function DesignCanvas({
 	useEffect(() => setAskOpen(false), [selection]);
 
 	/**
-	 * 追问提交完成。发出去的那一条留着选中——徽标当场翻成备注入口，用户可以接着补一
-	 * 句延迟指令；落成备注的则清掉，否则新长出来的气泡正好和徽标叠在同一个点上。
+	 * 追问提交完成，收起选中：两种提交都会在选框右上角长出一个备注气泡，也就是徽标
+	 * 刚才的位置，不清掉就是两个圆叠在一起。要补充的话点那个气泡在 thread 里追加，
+	 * 补充的内容还能跟原请求归在同一条线上。
 	 */
-	const handleAskSubmitted = useCallback((mode: AskMode): void => {
+	const handleAskSubmitted = useCallback((): void => {
 		setAskOpen(false);
-		if (mode === "note") setSelection(null);
+		setSelection(null);
 	}, []);
 
 	const openExport = (): void => {

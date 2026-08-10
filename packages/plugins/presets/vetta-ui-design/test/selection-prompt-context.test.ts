@@ -38,6 +38,7 @@ const element = (overrides: Partial<SelectedElementPayload> = {}): SelectedEleme
 });
 
 const input = (overrides: Partial<DesignSelectionAttachmentInput> = {}): DesignSelectionAttachmentInput => ({
+	noteId: "note-1",
 	vetdPath: "/w/app.vetd",
 	dirPath: "/w/app.vetd.d",
 	frames: [frame("login", "登录页")],

@@ -288,6 +288,14 @@ let you pick it up. So a note can appear at any moment, including after your las
 screenshot — which is exactly why the Done check below runs `vetd_notes`
 unconditionally instead of waiting for some tool response to mention one.
 
+Every instruction the user gives from the canvas becomes a note, including the
+ones sent to you as a message right away — those arrive with a `noteId` in the
+attached selection context (see below). So when the Done check turns up a
+pending note, first look at whether its `id` is the one you were just handed: if
+so it is the request you have already been working on, not new work. Either way
+you finish by replying through `vetd_notes`'s `resolve`, which is what puts your
+answer back on the canvas where the user asked and clears the pending badge.
+
 **Editing from an attachment**: when the user asks a question from the canvas
 with something selected, that selection rides along as structured context
 (`vetta.ui-design.canvas-selection`), and it describes **that message only** —
@@ -295,7 +303,9 @@ one frame with its absolute `file`, and for an element selection the exact
 `frames/xxx.tsx:LINE` in `source` plus DOM path/classes/text. Read every
 `screenshot` path it carries before editing (it normally carries one; if it
 doesn't, `vetd_screenshot` what you need). Edit that location. If it points into
-`components/`, the change hits every frame using it — say so.
+`components/`, the change hits every frame using it — say so. The context also
+carries `noteId`: the same request is pinned on the canvas as that note, so
+`resolve` it when you are done rather than counting it as work you never started.
 
 **Done** means: every frame you touched has been screenshotted and the image
 Read, that image is free of the three screenshot defects, `issues` came back
