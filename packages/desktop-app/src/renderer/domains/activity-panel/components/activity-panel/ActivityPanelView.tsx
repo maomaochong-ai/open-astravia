@@ -1,8 +1,9 @@
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { ActivityPanelView as ThemeActivityPanelView } from "@vetta/theme-ui/activity";
-import { type ComponentType, useMemo, useState } from "react";
+import { type ComponentType, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useDockedOutlet } from "../../hooks/useDockedOutlet";
 import { PluginTabPicker } from "../PluginTabPicker";
 import { ActivityTabSurface } from "./ActivityTabSurface";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
@@ -83,15 +84,15 @@ export function ActivityPanelView({
 			model.showTabPicker,
 		],
 	);
-	const [dockedOutlet, setDockedOutlet] = useState<HTMLDivElement | null>(null);
+	const [dockedOutlet, registerDockedOutlet] = useDockedOutlet();
 
 	const panelContent = useMemo(
 		() => (
 			<div ref={model.panelRef} className="flex min-h-0 flex-1 flex-col">
-				<div ref={setDockedOutlet} className="flex min-h-0 flex-1 flex-col" />
+				<div ref={registerDockedOutlet} className="flex min-h-0 flex-1 flex-col" />
 			</div>
 		),
-		[model.panelRef],
+		[model.panelRef, registerDockedOutlet],
 	);
 
 	return (
