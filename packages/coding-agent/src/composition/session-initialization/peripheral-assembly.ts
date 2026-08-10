@@ -191,10 +191,24 @@ export async function createCodingAgentSessionPeripheralAssembly(
 	}
 	const todoRuntime = profile.createTodoRuntime?.(sessionOptions) ?? new DefaultCodingAgentTodoRuntime();
 	options.trackTodoRuntime(todoRuntime);
+	// Todo 状态是 Session 内的实时 UI 面板来源：每次变更都要立刻广播，
+	// 否则宿主只能在重新订阅（切会话）时才看到列表。
+	const unsubscribeTodoObservation = todoRuntime.subscribe((items) => {
+		void options.resourceContext
+			.reportObservation({
+				type: "todo_update",
+				items: items.map((item) => ({ ...item })),
+				source: "tool",
+			})
+			.catch((error: unknown) => {
+				console.warn("[coding-agent-runtime] failed to publish todo observation", error);
+			});
+	});
 	options.deferRollback({
 		id: "todo-runtime",
 		rollback: async () => {
 			try {
+				unsubscribeTodoObservation();
 				await todoRuntime.dispose();
 			} finally {
 				options.untrackTodoRuntime(todoRuntime);

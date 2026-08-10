@@ -8,7 +8,7 @@ export type {
 	TodoSnapshotEnvelope,
 	TodoUpdateListener,
 } from "./contracts.js";
-export { buildTodoContinuationMessages, type TodoContinuationResult } from "./todo-continuation.js";
+export { buildTodoContinuationMessages } from "./todo-continuation.js";
 export {
 	CodingAgentTodoContinuationSource,
 	type CodingAgentTodoContinuationSourceOptions,

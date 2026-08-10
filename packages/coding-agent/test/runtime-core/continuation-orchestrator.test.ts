@@ -60,29 +60,18 @@ describe("CodingAgentContinuationOrchestrator", () => {
 });
 
 describe("CodingAgentTodoContinuationSource", () => {
-	it("nudges an ad-hoc list once per pending signature and resets on a new external turn", async () => {
+	it("never nudges an unlocked list", async () => {
 		const items: TodoItem[] = [{ id: 1, content: "Implement", status: "pending" }];
-		const state = {
-			getAll: () => items,
-			isLocked: () => false,
-		};
-		const source = new CodingAgentTodoContinuationSource({ state, now: () => 42 });
+		const source = new CodingAgentTodoContinuationSource({
+			state: { getAll: () => items, isLocked: () => false },
+			now: () => 42,
+		});
 
-		const first = await source.collect(continuationContext("turn-1"));
-		const duplicate = await source.collect(continuationContext("turn-1"));
-		const nextTurn = await source.collect(continuationContext("turn-2"));
-
-		expect(messageText(first[0])).toContain("[ephemeral:todo]");
-		expect(messageText(first[0])).toContain("#1 Implement");
-		expect(first[0]?.timestamp).toBe(42);
-		expect(duplicate).toEqual([]);
-		expect(nextTurn).toEqual(first);
-
-		items[0] = { ...items[0], status: "done" };
+		await expect(source.collect(continuationContext("turn-1"))).resolves.toEqual([]);
 		await expect(source.collect(continuationContext("turn-2"))).resolves.toEqual([]);
 	});
 
-	it("keeps locked lists running and isolates nudge state between sessions", async () => {
+	it("keeps locked lists running until every item is done", async () => {
 		const lockedItems: TodoItem[] = [{ id: 1, content: "Locked work", status: "in_progress" }];
 		const locked = new CodingAgentTodoContinuationSource({
 			state: {
@@ -91,14 +80,15 @@ describe("CodingAgentTodoContinuationSource", () => {
 			},
 			now: () => 1,
 		});
-		const firstSession = todoSource("Session one");
-		const secondSession = todoSource("Session two");
 
-		expect(await locked.collect(continuationContext("turn-1"))).not.toEqual([]);
-		expect(await locked.collect(continuationContext("turn-1"))).not.toEqual([]);
-		expect(await firstSession.collect(continuationContext("turn-shared"))).not.toEqual([]);
-		expect(await firstSession.collect(continuationContext("turn-shared"))).toEqual([]);
-		expect(await secondSession.collect(continuationContext("turn-shared"))).not.toEqual([]);
+		const first = await locked.collect(continuationContext("turn-1"));
+		expect(messageText(first[0])).toContain("[ephemeral:todo]");
+		expect(messageText(first[0])).toContain("#1 Locked work");
+		expect(first[0]?.timestamp).toBe(1);
+		expect(await locked.collect(continuationContext("turn-1"))).toEqual(first);
+
+		lockedItems[0] = { ...lockedItems[0], status: "done" };
+		await expect(locked.collect(continuationContext("turn-1"))).resolves.toEqual([]);
 	});
 });
 
@@ -133,16 +123,6 @@ function source(
 ) {
 	const mock = vi.fn(async (context: ContinuationPolicyContext): Promise<readonly UserMessage[]> => collect(context));
 	return { collect: mock } satisfies CodingAgentContinuationSource;
-}
-
-function todoSource(content: string): CodingAgentTodoContinuationSource {
-	return new CodingAgentTodoContinuationSource({
-		state: {
-			getAll: () => [{ id: 1, content, status: "pending" }],
-			isLocked: () => false,
-		},
-		now: () => 1,
-	});
 }
 
 function continuationContext(

@@ -11,6 +11,7 @@ import type {
 	TodoLockSource,
 	TodoSnapshot,
 	TodoSnapshotEnvelope,
+	TodoUpdateListener,
 } from "./contracts.js";
 import { parseTodoSnapshot, TODO_SNAPSHOT_TYPE } from "./todo-snapshot.js";
 import { TodoState } from "./todo-state.js";
@@ -64,6 +65,10 @@ export class CodingAgentTodoRuntime implements CodingAgentTodoRuntimePort {
 
 	update(id: number, status: "pending" | "in_progress" | "done") {
 		return this.state.update(id, status);
+	}
+
+	subscribe(listener: TodoUpdateListener): () => void {
+		return this.state.subscribe(listener);
 	}
 
 	initializeTodoItems(contents: readonly string[], lockSource?: TodoLockSource): void {

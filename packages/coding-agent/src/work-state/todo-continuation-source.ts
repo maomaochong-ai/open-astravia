@@ -12,14 +12,12 @@ export interface CodingAgentTodoContinuationSourceOptions {
 }
 
 /**
- * Session-local Todo continuation 状态机。
+ * Session-local Todo continuation。
  *
- * 普通 Todo 的“同一待办集合只提醒一次”状态按外部 Turn 隔离；锁定列表仍会在每次
- * 自然停止时持续提醒，直到全部完成。
+ * 只有锁定列表（scene 等机制写入）会在每次自然停止时继续提醒，直到全部完成；
+ * 普通 Todo 不再产生续跑消息。
  */
 export class CodingAgentTodoContinuationSource implements CodingAgentContinuationSource {
-	private lastTurnId: string | undefined;
-	private lastNudgeSignature: string | undefined;
 	private readonly now: () => number;
 
 	constructor(private readonly options: CodingAgentTodoContinuationSourceOptions) {
@@ -28,12 +26,6 @@ export class CodingAgentTodoContinuationSource implements CodingAgentContinuatio
 
 	async collect(context: ContinuationPolicyContext): Promise<readonly UserMessage[]> {
 		if (context.signal.aborted) return [];
-		if (this.lastTurnId !== context.turnId) {
-			this.lastTurnId = context.turnId;
-			this.lastNudgeSignature = undefined;
-		}
-		const result = buildTodoContinuationMessages(this.options.state, this.lastNudgeSignature, this.now);
-		this.lastNudgeSignature = result.nextNudgeSignature;
-		return result.messages;
+		return buildTodoContinuationMessages(this.options.state, this.now);
 	}
 }

@@ -54,6 +54,7 @@
 
 ### Changed
 
+- **移除普通 Todo 的自动续跑提醒**：只有被 scene 等机制锁定的 Todo 列表才会在自然停止时驱动模型继续工作；用户自己让 Agent 建的 Todo 现在只是可见的进度面板，不再在回合结束后追加 `[ephemeral:todo]` 提醒。`buildTodoContinuationMessages` 相应简化为 `(state, now)` 并直接返回消息数组，`TodoContinuationResult` 与 nudge signature 去重状态一并删除。
 - **RuntimeHost 重试包装器透传 prompt 回执**（ADR-0060）：`withCodingAgentRuntimeHostRetry` 的 `turnControl.prompt` 不再吞掉返回值；排队/拦截回执（`queued` / `handled`）直接透传且不参与重试与 pending error 结算，避免误清仍在 streaming 的当前回合挂起的错误。
 - **模型上下文韧性与 Session 产物生命周期闭环**：普通 Coding Tool 结果统一经过可注入末端策略，超大结果落为 Session 级产物并保留头尾预览；模型调用投影按 50%/75% 上下文压力截断或清理旧 ToolResult，同时保护最近 3 个真实用户轮次。图片请求增加 16/12 MiB 高低水位，Compaction 增加四级输入降级、瞬时错误分类重试、退化摘要拒绝，并在摘要中恢复 Todo 派生计划和后台任务引用。MCP 独立策略、动态能力、持久化历史和用户可见 Tool 行为不变。
 - **宿主基础设施适配器生产化**：工具版本查询、下载重试、归档安装和受管可执行文件解析按职责收口到 `adapters/runtime-tools/executables`，Shell 发现、环境、输出解码和进程树控制收口到 `host/command-execution`；删除旧 `utils/tools-manager.ts`、`utils/shell.ts` 和只做转发的 Resolver Adapter。GitHub Release 响应改用 TypeBox 校验，新增旧基础设施文件、Adapter utility 反向依赖和迁移标签三项零残留门禁。
@@ -106,6 +107,7 @@
 
 ### Fixed
 
+- **Todo 面板实时更新**：Session 组合根现在订阅 Todo 状态并把每次变更作为 `todo_update` 观察事件广播，恢复旧 `AgentSession` 在 TodoStore 变更时发事件的行为。此前只有宿主重新订阅（切换会话）时才推送一次快照，Agent 在当前会话新建/推进 Todo 时输入框上方的面板不会出现或刷新。
 - **Standalone CLI HTML 导出资产闭包**：标准单文件编译入口现在将 HTML 模板、脚本及内置 Theme 文档注入产物 Composition Root；普通源码和多文件发行继续按原路径读盘，独立安装产物的 Greenfield RPC `export_html` 不再因缺失相邻资产而阻塞。
 - **Greenfield 真实 CLI 初始化失败闭环**：Runtime/IM/Extension 最终返回对象在成功构造后才提交初始化事务；MCP 单服务初始化失败会立即关闭其 Client/stdio 子进程，同时继续保持服务级故障隔离。真实 Vetta RPC CLI 门禁覆盖初始化中途失败后的 Extension、Hook、MCP、conversation ownership 释放与同会话重启。
 - **Greenfield 初始化失败资源回滚**：Composition Root、Runtime Factory、IM Host 与 Extension prepare/reload 统一使用一次性逆序回滚事务；部分初始化失败不再遗漏 Kernel Session、Todo/Context/Memory/Capability、MCP/Execution、Extension binding 或 conversation ownership，单项清理失败也会继续恢复其余资源，并保留原初始化错误为主因。正常 Tool、Prompt、Skill、MCP、Extension 与 Session 行为不变。
