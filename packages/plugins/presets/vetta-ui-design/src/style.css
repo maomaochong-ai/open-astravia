@@ -56,7 +56,7 @@
 	position: relative;
 	display: flex;
 	align-items: center;
-	padding: 7px 18px;
+	padding: 11px 20px;
 	border: none;
 	border-radius: 999px;
 	/* 不继承宿主字号：按钮尺寸是这套观感的一部分 */
@@ -79,17 +79,21 @@
 	margin: auto;
 	z-index: -1;
 	border-radius: inherit;
-	/* 静止时也常亮一层光晕，并让锥形渐变绕中心转 —— 它是画布唯一的主动作，
-	   缩矮之后只靠底色流动已经不够显眼。旋转走 transform，不触发重绘。 */
+	/* 静止时也常亮一层光晕。只呼吸不旋转：这层是和按钮等大的矩形，一转起来四个角
+	   就会甩到胶囊外面去（模糊也盖不住），看着像按钮漏光。 */
 	filter: blur(8px);
 	background: conic-gradient(#00000000 80deg, #40baf7, #f34ad7, #5bfcc4, #00000000 280deg);
-	animation: vetd-ask-glow 4s linear infinite;
+	animation: vetd-ask-glow 2.6s ease-in-out infinite;
 	transition: filter 0.3s ease;
 }
 
 @keyframes vetd-ask-glow {
-	to {
-		transform: rotate(1turn);
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 1;
 	}
 }
 

@@ -234,12 +234,12 @@ export function ControlBar({
 	const peakLabel = peakSlot?.type === "item" ? peakSlot.label : null;
 
 	return (
-		// 顶部居中：底部中间留给「让 Vetta 调整」。顶部整条是画布自己的沉浸式标题栏
-		// （CanvasTab 里那层约 58px 高的渐变遮罩，z-30，内容全部右对齐），
-		// 所以工具栏压在遮罩下沿之下、水平居中，两边都不打架。
+		// 左上角：底部中间留给「让 Vetta 调整」。顶部那层沉浸式标题栏（CanvasTab 里
+		// 约 58px 高的渐变遮罩，z-30）内容全部右对齐，左上角是空的；z-40 压过遮罩，
+		// 否则工具栏会被那层渐隐罩住。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
 		<div
-			className={`pointer-events-none absolute top-14 left-1/2 z-30 -translate-x-1/2 transition-opacity duration-200 ${
+			className={`pointer-events-none absolute top-3 left-3 z-40 transition-opacity duration-200 ${
 				faded ? "opacity-0" : ""
 			}`}
 		>
