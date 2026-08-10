@@ -144,7 +144,7 @@ it("连着放几条，合并成一次派活", () => {
 	expect(sendPrompt.mock.calls[0][0]).toContain("notes.prompt.all");
 });
 
-it("agent 忙时不派，这一轮结束后补上", () => {
+it("agent 正在跑时落的备注交给它自检，跑完也不补一条 prompt 去催", () => {
 	mount();
 	streaming(true);
 	act(() => {
@@ -153,7 +153,25 @@ it("agent 忙时不派，这一轮结束后补上", () => {
 	elapse();
 	expect(sendPrompt).not.toHaveBeenCalled();
 
+	// 这一轮结束。备注仍是待处理（agent 没 resolve），但不该冒出一条
+	// 「还有 N 条待处理」的继续消息——它收尾自检时本就该自己捞走。
 	streaming(false);
+	elapse();
+	expect(sendPrompt).not.toHaveBeenCalled();
+});
+
+it("没有可用会话时留着不动，会话就绪后才派", () => {
+	// 会话在别的 workspace：没有人会来自检，所以不能记成已交付。
+	mount("/other");
+	act(() => {
+		store.addNote(anchor, "等会话回来");
+	});
+	elapse();
+	expect(sendPrompt).not.toHaveBeenCalled();
+
+	act(() => {
+		emit?.({ type: "conversation-changed", conversation: { cwd: "/other", isStreaming: false } });
+	});
 	elapse();
 	expect(sendPrompt).toHaveBeenCalledTimes(1);
 });
