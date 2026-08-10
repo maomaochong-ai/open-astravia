@@ -18,6 +18,7 @@ Use the content-creation tools as the only control plane. Never edit `content-cr
 7. Reinspect after a revision conflict or failed run; diagnose before retrying.
 
 Read [references/operation-contract.md](references/operation-contract.md) before building or changing a graph. Read [references/recovery-and-safety.md](references/recovery-and-safety.md) for failures, conflicts, destructive edits, or retries.
+Read [references/workflow-discovery-and-execution.md](references/workflow-discovery-and-execution.md) when selecting between an existing graph and a new one, collecting required inputs, preparing a run, monitoring it, or returning outputs.
 
 ## Rules
 

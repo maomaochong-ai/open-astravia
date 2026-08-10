@@ -1,6 +1,6 @@
 ---
 name: direct-video-creation
-description: Turn creative intent into a production-ready AI video brief, treatment, script/beat plan, shot cards, animatic/keyframe plan, node workflow, and model-profile prompts. Use for text-to-video, image-to-video, multi-shot or dialogue scenes, reference-video transformation, video editing or continuation, product/fashion/social/UGC films, storyboards, prompt audits, camera/light/sound direction, race/chase/kinetic montage, or improving a video-generation node.
+description: Turn creative intent into a production-ready AI video brief, treatment, script/beat plan, shot cards, animatic/keyframe plan, node workflow, and model-profile prompts. Use for text-to-video, image-to-video, multi-shot or dialogue scenes, reference-video transformation, video editing or continuation, product/logo/jewelry/fashion/social/UGC films, fight scenes, character stories, cooking tutorials, music videos, award or freeze effects, talking-character clips, drone or one-shot footage, long-form-to-short clipping plans, storyboards, prompt audits, camera/light/sound direction, race/chase/kinetic montage, or improving a video-generation node.
 ---
 
 # Direct AI video creation
@@ -29,6 +29,12 @@ Read only the references needed for the task:
 - Still keyframes or animatic: [references/animatic-keyframes.md](references/animatic-keyframes.md)
 - Race, chase, drift, or kinetic speed: read [references/animatic-keyframes.md](references/animatic-keyframes.md), then [references/kinetic-speed.md](references/kinetic-speed.md)
 - Video-to-video edit, replacement, localization, or continuation: [references/video-editing-and-extension.md](references/video-editing-and-extension.md)
+- Need to choose a specialized production recipe: [references/scenario-routing.md](references/scenario-routing.md)
+- Multi-reference roles, timed beats, native audio, first/last frames, or instructional video prompting: [references/reference-role-and-timed-directing.md](references/reference-role-and-timed-directing.md)
+- Product, jewelry, giant-product, ingredient-motion, commercial, or animated-logo video: [references/product-brand-and-logo-video-recipes.md](references/product-brand-and-logo-video-recipes.md)
+- UGC, try-on, motion transfer, talking character, ceremony, freeze effect, or creator performance: [references/character-performance-and-ugc-video-recipes.md](references/character-performance-and-ugc-video-recipes.md)
+- Fight, character story, storyboard-driven tutorial, cooking sequence, or music video: [references/narrative-action-and-tutorial-video-recipes.md](references/narrative-action-and-tutorial-video-recipes.md)
+- Drone, one-shot, platform social video, or long-form clipping: [references/camera-social-and-clipping-video-recipes.md](references/camera-social-and-clipping-video-recipes.md)
 - Output review: [references/quality-checklist.md](references/quality-checklist.md)
 - Failed or weak output: [references/failure-repairs.md](references/failure-repairs.md)
 

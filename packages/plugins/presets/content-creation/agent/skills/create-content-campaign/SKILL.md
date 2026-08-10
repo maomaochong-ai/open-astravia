@@ -1,6 +1,6 @@
 ---
 name: create-content-campaign
-description: Plan and build a coherent multi-asset image/video content campaign from a brief, including concept candidates, hero selection, derivative assets, shots, and delivery formats. Use for product launches, ad creative sets, social packs, character stories, cinematic product films, UGC-style ads, storyboard-to-video work, or any request with several related deliverables.
+description: Plan and build a coherent multi-asset image/video content campaign from a brief, including concept candidates, authority assets, hero selection, derivative assets, shots, and delivery formats. Use for product launches, brand or logo systems, ecommerce listing packs, ad creative sets, social packs, character or portrait packs, cinematic product films, UGC-style ads, storyboard-to-video work, or any request with several related deliverables.
 ---
 
 # Create a content campaign
@@ -10,7 +10,7 @@ Orchestrate `$develop-creative-concept`, `$direct-image-creation`, `$direct-vide
 ## Stage gates
 
 1. Normalize the brief. If the request has no accepted creative territory, use `$develop-creative-concept` before selecting a production recipe.
-2. Select a recipe from [references/recipe-catalog.md](references/recipe-catalog.md) and create workflow metadata plus named stage/asset nodes.
+2. Select a recipe from [references/recipe-catalog.md](references/recipe-catalog.md), apply [references/scenario-composition.md](references/scenario-composition.md) when combining specialized image/video recipes, and create workflow metadata plus named stage/asset nodes.
 3. Produce a small set of concept candidates that differ on one meaningful hypothesis.
 4. Review and select a master direction using [references/selection-and-gates.md](references/selection-and-gates.md).
 5. Generate dependent stills, keyframes, or proof shots from the approved master.

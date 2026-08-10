@@ -1,6 +1,6 @@
 ---
 name: direct-image-creation
-description: Turn a creative request into a production-ready AI image brief, reference plan, node workflow, and model-profile prompt. Use for text-to-image, surgical editing, exact text or infographics, image analysis and style transfer, sketch/wireframe or dimensional translation, product/food/fashion/portrait imagery, character sheets, presentation visuals, UI/social/poster assets, multi-panel grids, storyboards, visual variants, composition changes, or improving an image-generation node.
+description: Turn a creative request into a production-ready AI image brief, reference plan, node workflow, and model-profile prompt. Use for text-to-image, surgical editing, exact text or infographics, image analysis and style transfer, logos and brand kits, ads and publishing assets, ecommerce listing sets, product/food/fashion/portrait imagery, virtual try-on and identity-preserving effects, interiors and floor plans, UI mockups, character sheets, presentation visuals, social covers and thumbnails, multi-panel grids, storyboards, visual variants, composition changes, or improving an image-generation node.
 ---
 
 # Direct AI image creation
@@ -31,6 +31,11 @@ Read only the references needed:
 - Commerce, product, food, or beverage: [references/commerce-and-food-patterns.md](references/commerce-and-food-patterns.md)
 - Fashion, portrait, or character design: [references/fashion-portrait-and-character-patterns.md](references/fashion-portrait-and-character-patterns.md)
 - Poster, illustration, UI mockup, or social asset: [references/poster-ui-and-social-patterns.md](references/poster-ui-and-social-patterns.md)
+- Need to choose a specialized production recipe: [references/scenario-routing.md](references/scenario-routing.md)
+- Logo, brand system, advertising, brochure, blog, social cover, or thumbnail: [references/brand-and-publishing-recipes.md](references/brand-and-publishing-recipes.md)
+- Ecommerce listing, product angle set, spatial design, floor plan, or interior visualization: [references/commerce-product-and-spatial-recipes.md](references/commerce-product-and-spatial-recipes.md)
+- Identity-preserving portrait pack, virtual try-on, color board, collectible, collage, or selfie effect: [references/identity-fashion-and-social-effect-recipes.md](references/identity-fashion-and-social-effect-recipes.md)
+- UI redesign, URL-to-design, dense information board, text object, or storyboard layout: [references/interface-storyboard-and-layout-recipes.md](references/interface-storyboard-and-layout-recipes.md)
 - Output review: [references/quality-checklist.md](references/quality-checklist.md)
 
 ## Brief requirements

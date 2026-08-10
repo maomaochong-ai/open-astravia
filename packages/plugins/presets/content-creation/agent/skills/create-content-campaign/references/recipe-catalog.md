@@ -43,3 +43,27 @@ Reject identity drift before multiplying assets. Change one continuity axis per 
 Story objective -> beat sheet -> shot list -> continuity ledger -> composition keyframes -> selected start/end frames -> shot generation -> timeline.
 
 Prioritize staging, screen direction, and final-frame handoffs before polish.
+
+## Brand or logo system
+
+Strategy -> mark hypotheses -> selected logo authority -> palette/type/usage system -> application proofs -> publishing assets.
+
+Keep logo exploration flat and isolated. Mockups and social outputs are descendants, not alternate logo authorities.
+
+## Ecommerce listing pack
+
+Product authority -> main image -> lifestyle proof -> verified feature graphic -> material/detail views -> optional campaign hero.
+
+Assign each image a listing job. Parallelize views only after geometry, label, color, and material fidelity pass.
+
+## Long-form distribution pack
+
+Source/transcript -> candidate spans -> score and dedupe -> selected clips -> timeline/crops -> covers/captions -> delivery manifest.
+
+If transcription, highlight ranking, face tracking, or final render is outside inspected capabilities, produce the supported plan and state the external step.
+
+## Spatial or interface concept set
+
+Source/requirements -> structural or product-state authority -> main concept -> named alternate -> desktop/mobile or view variants -> feasibility and fidelity audit.
+
+Treat generated plans, interiors, and UI as concepts until the relevant professional or implementation workflow verifies them.

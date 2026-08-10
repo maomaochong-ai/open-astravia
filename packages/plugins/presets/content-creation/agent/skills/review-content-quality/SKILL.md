@@ -17,6 +17,7 @@ Judge the rendered artifact, not the prompt's intention. Use `$operate-content-w
 6. Propose one primary repair and preserve what already works.
 
 Read [references/image-rubric.md](references/image-rubric.md) for images, [references/video-rubric.md](references/video-rubric.md) for video, and [references/repair-policy.md](references/repair-policy.md) before proposing another generation.
+Read [references/scenario-gates.md](references/scenario-gates.md) for logos and brand systems, ecommerce/product sets, identity or try-on work, spatial/UI designs, social assets, UGC, product films, action/tutorial sequences, or clipped highlights.
 
 ## Output contract
 

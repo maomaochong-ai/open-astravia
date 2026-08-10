@@ -17,6 +17,7 @@
 | [实施路线](./05-implementation-roadmap.md) | 如何在不推倒现有实现的前提下分阶段落地？ |
 | [已实施基础](./06-implemented-foundation.md) | 本轮实际落地了什么，仍有哪些边界？ |
 | [visual-skills 融合](./07-visual-skills-integration.md) | 两个 Skill 和 34 份 reference 如何逐项融入 Vetta？ |
+| [Generative-Media-Skills Library 融合](./08-generative-media-library-integration.md) | Library 下 57 个 Skill 如何逐项进入场景手册、路由和质量闸门？ |
 
 ## 分析快照
 
