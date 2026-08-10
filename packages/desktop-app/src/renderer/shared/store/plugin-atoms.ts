@@ -11,6 +11,7 @@ import type {
 	PluginPromptAttachment,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
+	PluginWorkspaceViewContribution,
 } from "@vetta-org/plugin-sdk";
 import { atom, getDefaultStore } from "jotai";
 
@@ -84,6 +85,31 @@ export interface RegisteredActivityTab {
  * 消费。注册不直接渲染——attach 记录 ∩ 此池才渲染为 tab。
  */
 export const pluginActivityTabsAtom = atom<RegisteredActivityTab[]>([]);
+
+/**
+ * 一个插件贡献的**工作区视图**（整页 surface，与自动化/知识库等内置页同级）。
+ * 由 PluginGlobalSlotHost 发布，侧边栏导航与 `/workspace/$pluginId/$viewId`
+ * 路由共同消费。
+ */
+export interface RegisteredWorkspaceView {
+	pluginId: string;
+	/** 拥有者插件展示名，作为导航项 tooltip 的副标题。 */
+	pluginName: string;
+	/** 契约 id（未命名空间化），也是路由参数。 */
+	viewId: string;
+	/** 可能是 `%catalogKey%`，由消费方按插件目录解析。 */
+	label: string;
+	/** iconify class 字符串（导航按钮直接当 className 用）。 */
+	icon?: string;
+	description?: string;
+	component: PluginWorkspaceViewContribution["component"];
+	navOrder: number;
+}
+
+/**
+ * 已注册的插件工作区视图。侧边栏据此生成导航项，路由据此挂载整页组件。
+ */
+export const pluginWorkspaceViewsAtom = atom<RegisteredWorkspaceView[]>([]);
 
 /** An input-action (toggle) contribution registered by a loaded plugin. */
 export interface RegisteredInputAction {

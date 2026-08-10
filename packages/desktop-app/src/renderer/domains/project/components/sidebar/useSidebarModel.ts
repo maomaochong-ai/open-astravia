@@ -2,6 +2,7 @@ import {
 	activeSessionAtom,
 	conversationBucketCwd,
 	defaultConversationCwdAtom,
+	pluginWorkspaceViewsAtom,
 	SIDEBAR_WIDTH_STORAGE_KEY,
 	sidebarFilterAtom,
 	sidebarWidthAtom,
@@ -10,14 +11,35 @@ import { useMatches, useNavigate } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { usePluginTextResolver } from "../../../plugins/runtime/plugin-i18n";
+import {
+	sortWorkspaceViews,
+	WORKSPACE_VIEW_ROUTE_PATH,
+	workspaceViewNavKey,
+	workspaceViewPath,
+} from "../../../plugins/runtime/workspace-view-registry";
+import {
+	canPinMore as canPinMoreKeys,
+	moveNavKeyToRegion,
+	NEW_SESSION_NAV_KEY,
+	parseSidebarNavLayout,
+	pinNavKey,
+	reorderNavKeys,
+	resolveSidebarNavLayout,
+	SIDEBAR_NAV_LAYOUT_STORAGE_KEY,
+	type SidebarNavLayout,
+	toStoredSidebarNavLayout,
+	unpinNavKey,
+} from "./sidebar-nav-layout";
 import type { NavIndicatorBounds, SidebarModel, SidebarNavItem, SidebarProps } from "./types";
 
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 400;
 
 // label 在渲染期由 t(labelKey) 解析（模块级常量不存中文，见 AGENTS.md i18n 规范）。
-// 主区域常驻：新会话 / 自动化 / 知识库 / 能力。
-const PRIMARY_NAV_ITEMS = [
+// 这里只声明「有哪些内置入口」，它们落在置顶区还是收纳区由用户布局决定
+// （见 sidebar-nav-layout.ts）；DEFAULT_PINNED_NAV_KEYS 只是首次使用时的默认分区。
+const BUILTIN_NAV_ITEMS = [
 	{
 		type: "new-session",
 		labelKey: "sidebar.nav.newSession",
@@ -42,10 +64,6 @@ const PRIMARY_NAV_ITEMS = [
 		labelKey: "sidebar.nav.skills",
 		icon: "icon-[solar--widget-5-linear]",
 	},
-] as const;
-
-// 「更多」收纳：批量任务 + 常用设置直达。插件已并入能力页（ADR-0049），不再有独立入口。
-const MORE_NAV_ITEMS = [
 	{
 		type: "route",
 		path: "/batch-tasks" as const,
@@ -72,12 +90,44 @@ const MORE_NAV_ITEMS = [
 	},
 ] as const;
 
+/** 首次使用时的置顶区默认成员（沿用改造前的常驻四项）。 */
+const DEFAULT_PINNED_NAV_KEYS = ["/automation", "/knowledge", "/abilities"];
+
+function loadStoredNavLayout(): SidebarNavLayout {
+	try {
+		const raw = localStorage.getItem(SIDEBAR_NAV_LAYOUT_STORAGE_KEY);
+		return parseSidebarNavLayout(raw ? (JSON.parse(raw) as unknown) : null);
+	} catch {
+		return parseSidebarNavLayout(null);
+	}
+}
+
+function persistNavLayout(layout: SidebarNavLayout): void {
+	try {
+		localStorage.setItem(SIDEBAR_NAV_LAYOUT_STORAGE_KEY, JSON.stringify(layout));
+	} catch {
+		// 隐私模式 / 配额不足：内存态仍可用，只是重启不保留。
+	}
+}
+
+/**
+ * 指示条坐标必须相对**导航容器**，不能用 `offsetLeft/offsetTop`：导航项为了承载
+ * 拖拽落位指示线被包了一层定位元素，`offsetParent` 因此不再是 `<nav>`，直接读
+ * offset 会得到相对包裹层的 0 而把指示条钉在左上角。改用两者的 rect 差值，与
+ * DOM 层级无关。
+ */
 function getNavIndicatorBounds(element: HTMLButtonElement): NavIndicatorBounds {
+	const container = element.closest("nav");
+	const rect = element.getBoundingClientRect();
+	if (!container) {
+		return { left: element.offsetLeft, top: element.offsetTop, width: rect.width, height: rect.height };
+	}
+	const containerRect = container.getBoundingClientRect();
 	return {
-		left: element.offsetLeft,
-		top: element.offsetTop,
-		width: element.offsetWidth,
-		height: element.offsetHeight,
+		left: rect.left - containerRect.left,
+		top: rect.top - containerRect.top,
+		width: rect.width,
+		height: rect.height,
 	};
 }
 
@@ -90,7 +140,7 @@ function isRouteActive(path: string, currentPath: string): boolean {
 }
 
 function toNavItem(
-	item: (typeof PRIMARY_NAV_ITEMS)[number] | (typeof MORE_NAV_ITEMS)[number],
+	item: (typeof BUILTIN_NAV_ITEMS)[number],
 	label: string,
 	currentPath: string,
 	badge?: string,
@@ -108,7 +158,7 @@ function toNavItem(
 	}
 	if (item.type === "new-session") {
 		return {
-			key: item.type,
+			key: NEW_SESSION_NAV_KEY,
 			type: item.type,
 			label,
 			labelKey: item.labelKey,
@@ -116,6 +166,7 @@ function toNavItem(
 			active: false,
 			title: label,
 			titleLabelKey: item.labelKey,
+			locked: true,
 		};
 	}
 	return {
@@ -127,6 +178,25 @@ function toNavItem(
 		icon: item.icon,
 		badge,
 		active: isRouteActive(item.path, currentPath),
+	};
+}
+
+/** 插件工作区视图 → 侧边栏导航项（key 与路由都由 workspace-view-registry 给出）。 */
+function toWorkspaceNavItem(
+	view: { pluginId: string; viewId: string; icon?: string; description?: string },
+	label: string,
+	pluginName: string,
+	currentPath: string,
+): SidebarNavItem {
+	const path = workspaceViewPath(view.pluginId, view.viewId);
+	return {
+		key: workspaceViewNavKey(view.pluginId, view.viewId),
+		type: "custom",
+		label,
+		icon: view.icon ?? "icon-[solar--widget-2-linear]",
+		active: currentPath === path,
+		title: view.description ? `${label} · ${view.description}` : `${label} · ${pluginName}`,
+		workspaceView: { pluginId: view.pluginId, viewId: view.viewId },
 	};
 }
 
@@ -192,17 +262,80 @@ export function useSidebarModel({
 	const widthRef = useRef(width);
 	widthRef.current = width;
 	// Resolve i18n in the model layer so theme-ui nav item stays props-driven.
-	const navItems: SidebarNavItem[] = useMemo(
-		() =>
-			PRIMARY_NAV_ITEMS.map((item) =>
+	const workspaceViews = useAtomValue(pluginWorkspaceViewsAtom);
+	const resolvePluginText = usePluginTextResolver();
+	/** 全部可用导航项（内置 + 插件工作区视图），按 key 索引；布局只存 key。 */
+	const navCatalog: SidebarNavItem[] = useMemo(
+		() => [
+			...BUILTIN_NAV_ITEMS.map((item) =>
 				toNavItem(item, t(item.labelKey), currentPath, "badgeKey" in item ? t(item.badgeKey) : undefined),
 			),
-		[currentPath, t],
+			...sortWorkspaceViews(workspaceViews).map((view) =>
+				toWorkspaceNavItem(view, resolvePluginText(view.pluginId, view.label), view.pluginName, currentPath),
+			),
+		],
+		[currentPath, resolvePluginText, t, workspaceViews],
+	);
+
+	const [storedLayout, setStoredLayout] = useState<SidebarNavLayout>(loadStoredNavLayout);
+	const resolvedLayout = useMemo(
+		() =>
+			resolveSidebarNavLayout(
+				navCatalog.map((item) => item.key),
+				storedLayout,
+				DEFAULT_PINNED_NAV_KEYS,
+			),
+		[navCatalog, storedLayout],
+	);
+	const commitLayout = useCallback((next: ReturnType<typeof resolveSidebarNavLayout>) => {
+		const stored = toStoredSidebarNavLayout(next);
+		setStoredLayout(stored);
+		persistNavLayout(stored);
+	}, []);
+
+	const itemsByKey = useMemo(() => new Map(navCatalog.map((item) => [item.key, item])), [navCatalog]);
+	const navItems: SidebarNavItem[] = useMemo(
+		() =>
+			resolvedLayout.pinned
+				.map((key) => itemsByKey.get(key))
+				.filter((item): item is SidebarNavItem => item !== undefined)
+				.map((item) => ({ ...item, pinned: true })),
+		[itemsByKey, resolvedLayout],
 	);
 	const moreNavItems: SidebarNavItem[] = useMemo(
-		() => MORE_NAV_ITEMS.map((item) => toNavItem(item, t(item.labelKey), currentPath)),
-		[currentPath, t],
+		() =>
+			resolvedLayout.more
+				.map((key) => itemsByKey.get(key))
+				.filter((item): item is SidebarNavItem => item !== undefined)
+				.map((item) => ({ ...item, pinned: false })),
+		[itemsByKey, resolvedLayout],
 	);
+
+	const pinNavItem = useCallback(
+		(key: string) => commitLayout(pinNavKey(resolvedLayout, key)),
+		[commitLayout, resolvedLayout],
+	);
+	const unpinNavItem = useCallback(
+		(key: string) => commitLayout(unpinNavKey(resolvedLayout, key)),
+		[commitLayout, resolvedLayout],
+	);
+	const moveNavItem = useCallback(
+		(key: string, region: "pinned" | "more", beforeKey: string | null) => {
+			const sameRegion =
+				region === "pinned" ? resolvedLayout.pinned.includes(key) : resolvedLayout.more.includes(key);
+			commitLayout(
+				sameRegion
+					? reorderNavKeys(resolvedLayout, region, key, beforeKey)
+					: moveNavKeyToRegion(resolvedLayout, key, region, beforeKey),
+			);
+		},
+		[commitLayout, resolvedLayout],
+	);
+	const resetNavLayout = useCallback(() => {
+		setStoredLayout({ pinned: [], more: [] });
+		persistNavLayout({ pinned: [], more: [] });
+	}, []);
+
 	const moreLabel = t("sidebar.nav.more");
 	const moreActive = moreNavItems.some((item) => item.active);
 	// 收纳项切换时触发器 label 变宽，需重测指示条。
@@ -211,16 +344,19 @@ export function useSidebarModel({
 
 	useLayoutEffect(() => {
 		// width / moreOpen / activeMoreKey 变化会影响 full-width nav button 的测量结果。
+		// navItems 也要跟：pin / unpin / 重排会改变置顶项与「更多」触发器的纵向位置，
+		// 而 activeNavIndex 在「重排的是非选中项」时并不变化。
 		void width;
 		void moreOpen;
 		void activeMoreKey;
+		void navItems;
 		const activeElement = moreActive ? moreButtonRef.current : navItemRefs.current[activeNavIndex];
 		if (!activeElement) {
 			setNavIndicatorBounds(null);
 			return;
 		}
 		setNavIndicatorBounds(getNavIndicatorBounds(activeElement));
-	}, [activeMoreKey, activeNavIndex, moreActive, moreOpen, width]);
+	}, [activeMoreKey, activeNavIndex, moreActive, moreOpen, navItems, width]);
 
 	const [imOnline, setImOnline] = useState(false);
 
@@ -280,6 +416,13 @@ export function useSidebarModel({
 				onNewChat();
 				return;
 			}
+			if (item.workspaceView) {
+				void navigate({
+					to: WORKSPACE_VIEW_ROUTE_PATH,
+					params: { pluginId: item.workspaceView.pluginId, viewId: item.workspaceView.viewId },
+				});
+				return;
+			}
 			if (item.settingsTab) {
 				void navigate({ to: "/settings/$tab", params: { tab: item.settingsTab } });
 				return;
@@ -298,6 +441,7 @@ export function useSidebarModel({
 		moreLabel,
 		moreOpen,
 		moreActive,
+		canPinMore: canPinMoreKeys(resolvedLayout),
 		navIndicatorBounds,
 		imOnline,
 		setNavItemRef,
@@ -309,6 +453,10 @@ export function useSidebarModel({
 			resize,
 			resizeEnd,
 			collapse: onCollapse,
+			pinNavItem,
+			unpinNavItem,
+			moveNavItem,
+			resetNavLayout,
 		},
 	};
 }

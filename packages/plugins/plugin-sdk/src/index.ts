@@ -50,6 +50,8 @@ export type {
 // UI slots
 export type {
 	PluginGlobalSlotContribution,
+	PluginWorkspaceViewProps,
+	PluginWorkspaceViewContribution,
 	PluginAudioMetadata,
 	PluginPreviewUrlOptions,
 	PluginPreviewFile,
@@ -172,6 +174,9 @@ export type {
 	PluginOfficialProviderDetail,
 	PluginOfficialProviderUpsertData,
 	PluginOfficialProjectEntry,
+	PluginOfficialSessionHandle,
+	PluginOfficialSessionRunningEvent,
+	PluginOfficialSessionSummary,
 	PluginOfficialPluginSummary,
 	PluginOfficialKnowledgeBase,
 	PluginOfficialKnowledgeProcessingSettings,

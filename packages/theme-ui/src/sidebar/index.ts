@@ -95,6 +95,8 @@ export type { SidebarNavItemButtonProps } from "./SidebarNavItemButton";
 export { SidebarNavItemButton } from "./SidebarNavItemButton";
 export type { SidebarNavigationProps } from "./SidebarNavigation";
 export { SidebarNavigation } from "./SidebarNavigation";
+export type { SidebarNavMorePanelLabels, SidebarNavMorePanelProps } from "./SidebarNavMorePanel";
+export { SidebarNavMorePanel } from "./SidebarNavMorePanel";
 export type { SidebarPanelProps } from "./SidebarPanel";
 export { SidebarPanel } from "./SidebarPanel";
 export type {
@@ -105,3 +107,10 @@ export type {
 export { SidebarTopBar } from "./SidebarTopBar";
 export type { SidebarUpdateIconProps } from "./SidebarUpdateIcon";
 export { SidebarUpdateIcon } from "./SidebarUpdateIcon";
+export type {
+	SidebarNavDragHandlers,
+	SidebarNavDragState,
+	SidebarNavDropTarget,
+	SidebarNavRegion,
+} from "./useSidebarNavDrag";
+export { SIDEBAR_NAV_DRAG_MIME, useSidebarNavDrag } from "./useSidebarNavDrag";

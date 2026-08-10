@@ -11,6 +11,50 @@ export interface PluginGlobalSlotContribution {
 	component: ComponentType;
 }
 
+/**
+ * Props handed to a workspace-view component. A workspace view owns the whole
+ * content area, so unlike panel slots it is addressed by its own route and can
+ * be deep-linked; the host passes back its identity so one component can serve
+ * several registered views.
+ */
+export interface PluginWorkspaceViewProps {
+	/** The contribution id as registered (NOT namespaced). */
+	viewId: string;
+	/** The owning plugin id. */
+	pluginId: string;
+}
+
+/**
+ * A **workspace view**（工作区视图）: a full-page surface a plugin contributes to
+ * the host's primary navigation. It is the plugin counterpart of a built-in page
+ * such as 自动化 / 知识库 — the host gives it its own route
+ * (`/workspace/<pluginId>/<viewId>`) and a sidebar entry, and the plugin owns the
+ * entire content area while it is open.
+ *
+ * Use it for standalone workbenches that are NOT bound to one conversation
+ * (dashboards, boards, consoles). Conversation-scoped UI belongs in an
+ * {@link PluginActivityTabContribution activity tab}; floating UI belongs in a
+ * {@link PluginGlobalSlotContribution global slot}.
+ */
+export interface PluginWorkspaceViewContribution {
+	/** Unique within the plugin; the host namespaces it as `${pluginId}:${id}`. */
+	id: string;
+	/** Sidebar entry label. Supports `%catalogKey%` i18n lookup. */
+	label: string;
+	/**
+	 * Sidebar entry icon as an **iconify class string** (e.g.
+	 * `"icon-[solar--widget-5-linear]"`) — NOT a React node, because the host
+	 * renders it inside its own nav button and persists nav layout by key.
+	 */
+	icon?: string;
+	/** Optional one-line description; shown as the nav entry tooltip. */
+	description?: string;
+	/** Zero-props aside from {@link PluginWorkspaceViewProps}. */
+	component: ComponentType<PluginWorkspaceViewProps>;
+	/** Sort hint among this plugin's own views (ascending). Defaults to 0. */
+	navOrder?: number;
+}
+
 export interface PluginAudioMetadata {
 	/** Embedded title; preview renderers should fall back to file.name. */
 	title?: string;
@@ -296,6 +340,21 @@ export interface PluginNotifyOptions {
 
 export interface PluginUiApi {
 	registerGlobalSlot(contribution: PluginGlobalSlotContribution): Disposable;
+	/**
+	 * Register a **workspace view**（工作区视图）— a full-page surface with its own
+	 * route and sidebar entry, on par with the host's built-in pages. Needs the
+	 * `ui.slot.workspace-view` permission (missing permission = **warn+noop**).
+	 *
+	 * The entry lands in the sidebar's「更多」收纳 by default; the user can pin it
+	 * to the top region or reorder it, and that layout is remembered.
+	 */
+	registerWorkspaceView(contribution: PluginWorkspaceViewContribution): Disposable;
+	/**
+	 * Navigate to one of this plugin's own workspace views. `viewId` is the
+	 * contribution id passed to {@link PluginUiApi.registerWorkspaceView}. No-op
+	 * when the view is not registered (e.g. permission missing).
+	 */
+	openWorkspaceView(viewId: string): void;
 	/**
 	 * Register a preview component keyed by file extension. The host dispatches
 	 * registered extensions before its built-in fallback renderers; first

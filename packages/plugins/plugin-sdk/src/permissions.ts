@@ -6,6 +6,7 @@ export const PLUGIN_PERMISSIONS = [
 	"ui.slot.message",
 	"ui.slot.tool-call",
 	"ui.slot.turn-card",
+	"ui.slot.workspace-view",
 	"ui.shortcuts.register",
 	"ui.file-explorer.decorations",
 	"ui.file-explorer.context-menu",

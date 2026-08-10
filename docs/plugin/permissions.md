@@ -28,6 +28,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | 权限 | 门控 | 文档 |
 | --- | --- | --- |
 | `ui.slot.global` | `ctx.ui.registerGlobalSlot()` | [ui-slots](./ui-slots.md#全局浮层-registerglobalslot) |
+| `ui.slot.workspace-view` | `ctx.ui.registerWorkspaceView()` / `openWorkspaceView()` | [ui-slots](./ui-slots.md#工作区视图-registerworkspaceview) |
 | `ui.slot.file-preview` | `ctx.ui.registerFilePreview()` | [ui-slots](./ui-slots.md#文件预览-registerfilepreview) |
 | `ui.slot.activity-tab` | `registerActivityTab` / `openActivityTab` / `setActivityTabVisible` | [ui-slots](./ui-slots.md#活动面板-tab-registeractivitytab) |
 | `ui.slot.input-action` | `registerInputAction` / `setPromptAttachment` | [ui-slots](./ui-slots.md#输入栏动作-registerinputaction) |

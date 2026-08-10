@@ -338,6 +338,31 @@ export interface PluginOfficialKnowledgeProcessingSettings {
 	ocrConcurrency?: number;
 }
 
+/** 由 `official.sessions.create` 新建的后台会话句柄。 */
+export interface PluginOfficialSessionHandle {
+	/** 进程内 runtime id，用于 prompt / abort / subscribe。重启后失效。 */
+	sessionId: string;
+	/** 会话文件绝对路径，跨重启稳定，用于持久化与跳转。 */
+	sessionPath: string;
+	/** 实际运行目录（「对话」项目会落到 per-session 子目录，见 ADR-0007）。 */
+	cwd?: string;
+}
+
+/** 会话运行态变化广播（按 sessionPath 标识，跨重启稳定）。 */
+export interface PluginOfficialSessionRunningEvent {
+	sessionPath: string;
+	running: boolean;
+	sessionId?: string;
+}
+
+/** 会话历史条目（`official.sessions.list` 返回）。 */
+export interface PluginOfficialSessionSummary {
+	path: string;
+	cwd?: string;
+	firstMessage?: string;
+	modifiedAt?: number;
+}
+
 /** 仅宿主验证为官方来源的插件可以调用；普通插件调用时由宿主拒绝。 */
 export interface PluginOfficialApi {
 	general: {
@@ -536,6 +561,28 @@ export interface PluginOfficialApi {
 		}): Promise<unknown>;
 		setLanguage(language: "zh" | "en"): Promise<unknown>;
 		listThemeIds(): string[];
+	};
+	/**
+	 * 后台会话编排。会话本体跑在主进程，创建后即使宿主停留在别的页面也会继续执行，
+	 * 因此系统插件可以据此做「多任务并发派单」类工作台（如看板）。
+	 */
+	sessions: {
+		/** 在 `cwd` 下新建一个会话；不发送任何 prompt。 */
+		create(input: { cwd: string; title?: string }): Promise<PluginOfficialSessionHandle>;
+		/** 向会话发起一轮对话。streaming 中会进入该会话的输入队列（ADR-0060）。 */
+		prompt(sessionId: string, text: string): Promise<{ status: "sent" | "queued" }>;
+		/** 中止会话当前回合。 */
+		abort(sessionId: string): Promise<void>;
+		/** 重命名会话（写入会话文件标题），用于把看板卡片标题同步到会话列表。 */
+		rename(sessionPath: string, name: string): Promise<void>;
+		/** 列出某目录下的历史会话。 */
+		list(cwd: string): Promise<PluginOfficialSessionSummary[]>;
+		/** 当前处于 agent loop 中的会话文件路径快照。 */
+		listRunning(): Promise<string[]>;
+		/** 订阅运行态翻转；返回取消订阅函数。 */
+		onRunningChanged(handler: (event: PluginOfficialSessionRunningEvent) => void): () => void;
+		/** 把宿主导航到该会话的对话页。 */
+		open(input: { cwd: string; sessionPath: string }): Promise<void>;
 	};
 	navigation: {
 		help(): unknown;

@@ -13,7 +13,8 @@
       "plugin-workbench",
       "comfyui-media-provider",
       "content-creation",
-      "remotion-renderer"
+      "remotion-renderer",
+      "kanban"
     ]
   }
 }

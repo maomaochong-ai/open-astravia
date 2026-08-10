@@ -97,6 +97,57 @@ interface PluginGlobalSlotContribution {
 
 典型用途：设置缺失引导弹窗、全局悬浮工具。一个插件可注册多个。
 
+## 工作区视图 registerWorkspaceView
+
+贡献一个**整页 surface**，与内置的「自动化」「知识库」同级：宿主给它一条自己的路由
+`/workspace/<pluginId>/<viewId>` 和一个侧边栏导航入口，打开后整个内容区都归插件。
+
+- 权限：`ui.slot.workspace-view`（缺权限 **warn+noop**）
+- 导航入口默认落在侧边栏的「更多」收纳里；用户可以拖动排序，也可以 **pin 到左上方置顶区**（含「新会话」最多 5 个），布局按 key 持久化
+- 组件收到 `{ pluginId, viewId }`，一个组件可以服务多个注册
+- `icon` 是 **iconify class 字符串**（如 `"icon-[solar--widget-4-linear]"`），不是 ReactNode——宿主要把它渲染进自己的导航按钮，并按 key 持久化布局
+
+```ts
+interface PluginWorkspaceViewContribution {
+  id: string;                       // 插件内唯一；进 URL，故限 [a-z0-9][a-z0-9._-]*
+  label: string;                    // 侧边栏文案，支持 %catalogKey%
+  icon?: string;                    // iconify class 字符串
+  description?: string;             // 导航项 tooltip
+  component: ComponentType<PluginWorkspaceViewProps>;
+  navOrder?: number;                // 同一插件内多个视图的排序
+}
+```
+
+```tsx
+ctx.ui.registerWorkspaceView({
+  id: "board",
+  label: "%view.board.label%",
+  icon: "icon-[solar--widget-4-linear]",
+  component: BoardView,
+});
+
+// 程序化跳转到自己的视图
+ctx.ui.openWorkspaceView("board");
+```
+
+**该用哪个插槽**
+
+| 场景 | 用 |
+| --- | --- |
+| 跨会话、跨项目的工作台（看板、控制台、仪表盘） | **工作区视图** |
+| 绑定当前对话的辅助面板 | [活动 Tab](#活动面板-tab-registeractivitytab) |
+| 全局浮层 / 对话框 | [全局浮层](#全局浮层-registerglobalslot) |
+
+**与面板类插槽的关键差别**：工作区视图**独占内容区**，所以它可以（也应该）自带
+页面级 header 和滚动容器，不受「面板内禁止 viewport 级浮层」的约束。但它仍在宿主
+窗口内——不要覆盖宿主 chrome（侧边栏、标题栏），顶部留一条 `drag-region` 高度以免
+盖住窗口拖拽区。
+
+插件被禁用时，它的导航入口消失；用户如果正停在该路由上，宿主会把他送回首页。
+持久化的侧边栏布局按 key 保留，插件装回来后位置复原。
+
+示例：`packages/plugins/presets/kanban`。
+
 ## 文件预览 registerFilePreview
 
 按**文件扩展名**贡献预览组件，渲染在活动面板的文件预览区。

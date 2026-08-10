@@ -190,6 +190,30 @@ function TurnCardScene(): JSX.Element {
 	);
 }
 
+/** 侧边栏多出一个入口 + 内容区整页由插件接管。 */
+function WorkspaceViewScene(): JSX.Element {
+	return (
+		<div className="flex h-full gap-2 p-3">
+			<div className="flex w-[30%] flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/20 p-2">
+				<span className="h-2.5 w-full rounded bg-muted-foreground/15" />
+				<span className="h-2.5 w-full rounded bg-muted-foreground/15" />
+				<span className="flex h-2.5 w-full items-center gap-1 rounded bg-primary/20 px-1">
+					<span className="icon-[solar--plug-circle-linear] h-2 w-2 text-primary" />
+				</span>
+				<span className="h-2.5 w-[70%] rounded bg-muted-foreground/15" />
+			</div>
+			<div className="flex-1 rounded-lg border border-primary/55 bg-primary/5 p-2 ring-1 ring-inset ring-primary/15">
+				<span className="block h-2 w-[45%] rounded-full bg-primary/35" />
+				<div className="mt-2 grid grid-cols-3 gap-1.5">
+					<span className="h-10 rounded bg-card/60" />
+					<span className="h-10 rounded bg-card/60" />
+					<span className="h-10 rounded bg-card/60" />
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function ShortcutScene(): JSX.Element {
 	return (
 		<div className="flex h-full items-center gap-4 px-5">
@@ -283,6 +307,7 @@ function UiPreviewScene({ preview }: { preview: PluginUiPreview }): JSX.Element 
 	if (preview === "message") return <MessageScene />;
 	if (preview === "toolCall") return <ToolCallScene />;
 	if (preview === "turnCard") return <TurnCardScene />;
+	if (preview === "workspaceView") return <WorkspaceViewScene />;
 	if (preview === "shortcuts") return <ShortcutScene />;
 	if (preview === "fileDecorations") return <FileDecorationsScene />;
 	if (preview === "fileContextMenu") return <FileContextMenuScene />;

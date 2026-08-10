@@ -63,6 +63,7 @@ import type {
 	PluginStorageApi,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
+	PluginWorkspaceViewContribution,
 } from "@vetta-org/plugin-sdk";
 import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
@@ -96,6 +97,11 @@ import {
 	registerPluginShortcutScopeOnHost,
 } from "./plugin-shortcut-scope";
 import { createQuickJsPluginDefinition } from "./quickjs-plugin-runtime";
+import {
+	isValidWorkspaceViewId,
+	WORKSPACE_VIEW_ID_PATTERN,
+	WORKSPACE_VIEW_ROUTE_PATH,
+} from "./workspace-view-registry";
 
 export interface LoadedPlugin {
 	id: string;
@@ -115,6 +121,7 @@ export interface LoadedPlugin {
 	cardRenderers: PluginCardRendererContribution[];
 	toolCallSlots: PluginToolCallSlotContribution[];
 	turnCards: PluginTurnCardContribution[];
+	workspaceViews: PluginWorkspaceViewContribution[];
 	dispose(): Promise<void>;
 }
 
@@ -867,6 +874,7 @@ function createContext(
 	cardRenderers: PluginCardRendererContribution[],
 	toolCallSlots: PluginToolCallSlotContribution[],
 	turnCards: PluginTurnCardContribution[],
+	workspaceViews: PluginWorkspaceViewContribution[],
 	settingsApi: PluginSettingsApi,
 	onChanged: () => void,
 	disposers: Array<() => void>,
@@ -1183,6 +1191,66 @@ function createContext(
 			},
 		};
 	};
+	/**
+	 * 工作区视图与其它插槽不同：它是**整页 surface**，由 `/workspace/$pluginId/$viewId`
+	 * 路由挂载，并在侧边栏占一个可 pin / 可排序的导航位。因此 id 必须能安全进 URL，
+	 * label 必须存在（导航项没有 fallback 文案可用）。
+	 */
+	const registerWorkspaceView = (contribution: PluginWorkspaceViewContribution): Disposable => {
+		if (!hasPermission(plugin, "ui.slot.workspace-view")) {
+			warnSkippedContribution(plugin, "ui.slot.workspace-view", "workspace view");
+			return noopDisposable;
+		}
+		const viewId = typeof contribution.id === "string" ? contribution.id.trim() : "";
+		if (!isValidWorkspaceViewId(viewId)) {
+			throw new Error(
+				`Workspace view id must match ${WORKSPACE_VIEW_ID_PATTERN.source} (got ${JSON.stringify(contribution.id)})`,
+			);
+		}
+		const label = typeof contribution.label === "string" ? contribution.label.trim() : "";
+		if (label.length === 0) {
+			throw new Error("Workspace view label is required");
+		}
+		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
+			throw new Error("Workspace view component is invalid");
+		}
+		if (workspaceViews.some((view) => view.id === viewId)) {
+			throw new Error(`Workspace view id already registered: ${viewId}`);
+		}
+		const normalized: PluginWorkspaceViewContribution = {
+			id: viewId,
+			label,
+			component: contribution.component,
+			...(typeof contribution.icon === "string" && contribution.icon.trim()
+				? { icon: contribution.icon.trim() }
+				: {}),
+			...(typeof contribution.description === "string" && contribution.description.trim()
+				? { description: contribution.description.trim() }
+				: {}),
+			navOrder: Number.isFinite(contribution.navOrder) ? Number(contribution.navOrder) : 0,
+		};
+		workspaceViews.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = workspaceViews.findIndex((view) => view.id === normalized.id);
+				if (index >= 0) workspaceViews.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const openWorkspaceView = (viewId: string): void => {
+		createPermissionApi(plugin).require("ui.slot.workspace-view");
+		const id = typeof viewId === "string" ? viewId.trim() : "";
+		if (!workspaceViews.some((view) => view.id === id)) {
+			console.warn(`[plugin:${plugin.id}] openWorkspaceView: unknown view ${JSON.stringify(viewId)}`);
+			return;
+		}
+		void router.navigate({
+			to: WORKSPACE_VIEW_ROUTE_PATH,
+			params: { pluginId: plugin.id, viewId: id },
+		});
+	};
 	const registerShortcutScope = (contribution: PluginShortcutScopeContribution): Disposable => {
 		createPermissionApi(plugin).require("ui.shortcuts.register");
 		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
@@ -1373,6 +1441,8 @@ function createContext(
 			registerCardRenderer,
 			registerToolCallSlot,
 			registerTurnCard,
+			registerWorkspaceView,
+			openWorkspaceView,
 			registerShortcutScope,
 			openActivityTab,
 			setActivityTabVisible,
@@ -1808,6 +1878,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 	const cardRenderers: PluginCardRendererContribution[] = [];
 	const toolCallSlots: PluginToolCallSlotContribution[] = [];
 	const turnCards: PluginTurnCardContribution[] = [];
+	const workspaceViews: PluginWorkspaceViewContribution[] = [];
 	const disposers: Array<() => void> = [];
 	const styleHandle = loadPluginStyles(plugin);
 	let locallyDisposed = false;
@@ -1864,6 +1935,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			cardRenderers,
 			toolCallSlots,
 			turnCards,
+			workspaceViews,
 			settingsApi,
 			onChanged,
 			disposers,
@@ -1905,6 +1977,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			cardRenderers,
 			toolCallSlots,
 			turnCards,
+			workspaceViews,
 			dispose: async () => {
 				debugPluginAgent("dispose start", { pluginId: plugin.id, activationId });
 				try {

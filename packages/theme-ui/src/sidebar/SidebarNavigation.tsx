@@ -1,10 +1,12 @@
 import { motion } from "motion/react";
-import type { JSX, RefCallback } from "react";
+import { useMemo, type JSX, type RefCallback } from "react";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import type { NavIndicatorBounds, SidebarNavItem } from "@vetta/theme-sdk/sidebar";
 import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SidebarNavItemButton } from "./SidebarNavItemButton";
+import { SidebarNavMorePanel, type SidebarNavMorePanelLabels } from "./SidebarNavMorePanel";
+import { useSidebarNavDrag } from "./useSidebarNavDrag";
 
 export interface SidebarNavigationProps {
 	className?: string;
@@ -15,29 +17,45 @@ export interface SidebarNavigationProps {
 		itemIcon?: string;
 		itemLabel?: string;
 	};
+	/** 置顶区是否还有空位；满了则「更多」里的 pin 按钮置灰。 */
+	canPinMore?: boolean;
 	indicatorBounds: NavIndicatorBounds | null;
 	items: readonly SidebarNavItem[];
 	moreActive?: boolean;
 	moreItems?: readonly SidebarNavItem[];
 	moreLabel?: string;
 	moreOpen?: boolean;
+	/** 「更多」自定义面板文案；缺省时退化为不带自定义能力的旧列表。 */
+	navCustomizeLabels?: SidebarNavMorePanelLabels;
 	onItemClick: (item: SidebarNavItem) => void;
 	onMoreOpenChange?: (open: boolean) => void;
+	onNavMove?: (key: string, region: "pinned" | "more", beforeKey: string | null) => void;
+	onPinNavItem?: (key: string) => void;
+	onResetNavLayout?: () => void;
+	onUnpinNavItem?: (key: string) => void;
 	setItemRef: (index: number) => RefCallback<HTMLButtonElement>;
 	setMoreButtonRef?: RefCallback<HTMLButtonElement>;
 }
 
+const noop = (): void => {};
+
 export function SidebarNavigation({
 	className,
 	classNames,
+	canPinMore = true,
 	indicatorBounds,
 	items,
 	moreActive = false,
 	moreItems = [],
 	moreLabel = "",
 	moreOpen = false,
+	navCustomizeLabels,
 	onItemClick,
 	onMoreOpenChange,
+	onNavMove,
+	onPinNavItem,
+	onResetNavLayout,
+	onUnpinNavItem,
 	setItemRef,
 	setMoreButtonRef,
 }: SidebarNavigationProps): JSX.Element {
@@ -49,6 +67,11 @@ export function SidebarNavigation({
 	const triggerIcon = activeMoreItem?.icon ?? "icon-[solar--alt-arrow-down-linear]";
 	// 未展开且未选中收纳项时，icon/label 降到 50% 透明度，弱化次要入口。
 	const moreIdle = !moreOpen && !activeMoreItem;
+	// 自定义能力是可选的：主题若只传了 items/moreItems，行为与改造前一致。
+	const customizable = onNavMove !== undefined && navCustomizeLabels !== undefined;
+
+	const itemsByRegion = useMemo(() => ({ pinned: items, more: moreItems }), [items, moreItems]);
+	const drag = useSidebarNavDrag(onNavMove ?? noop, itemsByRegion);
 
 	return (
 		<nav className={cn("relative flex flex-col gap-0.5 px-1.5 pb-2 pt-2", className)}>
@@ -70,20 +93,39 @@ export function SidebarNavigation({
 					<ThemeSurface slot="sidebar.navigationIndicator" />
 				</motion.span>
 			)}
-			{items.map((item, index) => (
-				<ThemeNavItemButton
-					className={classNames?.item}
-					classNames={{
-						badge: classNames?.itemBadge,
-						icon: classNames?.itemIcon,
-						label: classNames?.itemLabel,
-					}}
-					item={item}
-					key={item.key}
-					onClick={() => onItemClick(item)}
-					ref={setItemRef(index)}
-				/>
-			))}
+			{items.map((item, index) => {
+				const dragProps = customizable ? drag.itemProps(item, "pinned") : undefined;
+				return (
+					<div
+						key={item.key}
+						className={cn("relative", drag.draggingKey === item.key && "opacity-40")}
+						{...(dragProps
+							? {
+									draggable: dragProps.draggable,
+									onDragStart: dragProps.onDragStart,
+									onDragEnd: dragProps.onDragEnd,
+									onDragOver: dragProps.onDragOver,
+									onDrop: dragProps.onDrop,
+								}
+							: {})}
+					>
+						{customizable && drag.isDropBefore(item.key, "pinned") && (
+							<span aria-hidden className="pointer-events-none absolute inset-x-1 -top-px z-30 h-px bg-primary" />
+						)}
+						<ThemeNavItemButton
+							className={cn("w-full", classNames?.item)}
+							classNames={{
+								badge: classNames?.itemBadge,
+								icon: classNames?.itemIcon,
+								label: classNames?.itemLabel,
+							}}
+							item={item}
+							onClick={() => onItemClick(item)}
+							ref={setItemRef(index)}
+						/>
+					</div>
+				);
+			})}
 			{hasMore && (
 				<Popover open={moreOpen} onOpenChange={onMoreOpenChange}>
 					<PopoverTrigger asChild>
@@ -93,9 +135,7 @@ export function SidebarNavigation({
 							title={triggerLabel}
 							className={cn(
 								"no-drag relative z-20 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-[13px] transition-colors",
-								moreActive || moreOpen
-									? "font-semibold text-foreground"
-									: "text-foreground hover:bg-accent/50",
+								moreActive || moreOpen ? "font-semibold text-foreground" : "text-foreground hover:bg-accent/50",
 								classNames?.item,
 							)}
 						>
@@ -132,33 +172,50 @@ export function SidebarNavigation({
 						side="right"
 						align="start"
 						sideOffset={8}
-						className="w-[180px] gap-0.5 overflow-hidden rounded-lg border border-border p-1 shadow-md"
+						className="w-[228px] gap-0.5 overflow-hidden rounded-lg border border-border p-1 shadow-md"
 					>
-						{moreItems.map((item) => (
-							<button
-								key={item.key}
-								type="button"
-								title={item.title ?? item.label}
-								onClick={() => {
+						{customizable && navCustomizeLabels ? (
+							<SidebarNavMorePanel
+								canPinMore={canPinMore}
+								drag={drag}
+								labels={navCustomizeLabels}
+								moreItems={moreItems}
+								pinnedItems={items}
+								onItemClick={(item) => {
 									onItemClick(item);
 									onMoreOpenChange?.(false);
 								}}
-								className={cn(
-									"flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
-									item.active
-										? "bg-accent font-semibold text-foreground"
-										: "text-foreground hover:bg-accent/50",
-								)}
-							>
-								<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
-								<span className="truncate">{item.label}</span>
-								{item.badge && (
-									<span className="ml-auto rounded-full border border-primary/40 px-1.5 py-px text-[9px] font-semibold uppercase leading-tight tracking-wide text-primary">
-										{item.badge}
-									</span>
-								)}
-							</button>
-						))}
+								onPin={onPinNavItem ?? noop}
+								onUnpin={onUnpinNavItem ?? noop}
+								onReset={onResetNavLayout ?? noop}
+							/>
+						) : (
+							moreItems.map((item) => (
+								<button
+									key={item.key}
+									type="button"
+									title={item.title ?? item.label}
+									onClick={() => {
+										onItemClick(item);
+										onMoreOpenChange?.(false);
+									}}
+									className={cn(
+										"flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[13px] transition-colors",
+										item.active
+											? "bg-accent font-semibold text-foreground"
+											: "text-foreground hover:bg-accent/50",
+									)}
+								>
+									<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
+									<span className="truncate">{item.label}</span>
+									{item.badge && (
+										<span className="ml-auto rounded-full border border-primary/40 px-1.5 py-px text-[9px] font-semibold uppercase leading-tight tracking-wide text-primary">
+											{item.badge}
+										</span>
+									)}
+								</button>
+							))
+						)}
 					</PopoverContent>
 				</Popover>
 			)}

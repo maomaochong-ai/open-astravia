@@ -12,6 +12,7 @@ export const PLUGIN_PERMISSION_LABEL_KEYS = {
 	"ui.slot.message": "permission.uiSlotMessage",
 	"ui.slot.tool-call": "permission.uiSlotToolCall",
 	"ui.slot.turn-card": "permission.uiSlotTurnCard",
+	"ui.slot.workspace-view": "permission.uiSlotWorkspaceView",
 	"ui.shortcuts.register": "permission.uiShortcutsRegister",
 	"ui.file-explorer.decorations": "permission.uiFileExplorerDecorations",
 	"ui.file-explorer.context-menu": "permission.uiFileExplorerContextMenu",
@@ -63,6 +64,7 @@ export type PluginUiPreview =
 	| "message"
 	| "toolCall"
 	| "turnCard"
+	| "workspaceView"
 	| "shortcuts"
 	| "fileDecorations"
 	| "fileContextMenu"
@@ -134,6 +136,14 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 		risk: "low",
 		visual: "interface",
 		uiPreview: "turnCard",
+	},
+	"ui.slot.workspace-view": {
+		descriptionKey: "permission.description.uiSlotWorkspaceView",
+		group: "interface",
+		// 整页 surface + 一个侧边栏常驻入口，可见性远高于面板内插槽，故 medium。
+		risk: "medium",
+		visual: "interface",
+		uiPreview: "workspaceView",
 	},
 	"ui.shortcuts.register": {
 		descriptionKey: "permission.description.uiShortcutsRegister",

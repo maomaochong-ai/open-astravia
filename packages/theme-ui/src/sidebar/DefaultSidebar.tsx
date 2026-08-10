@@ -4,10 +4,13 @@ import type { SidebarClassNames, SidebarModel } from "@vetta/theme-sdk/sidebar";
 import { cn } from "@vetta/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
 import { SidebarNavigation } from "./SidebarNavigation";
+import type { SidebarNavMorePanelLabels } from "./SidebarNavMorePanel";
 import { SidebarPanel } from "./SidebarPanel";
 
 export interface DefaultSidebarProps {
 	bottomBar: ReactNode;
+	/** 「更多」自定义面板文案（宿主解析 i18n 后传入）。 */
+	navCustomizeLabels?: SidebarNavMorePanelLabels;
 	classNames?: SidebarClassNames;
 	model: SidebarModel;
 	projects: ReactNode;
@@ -22,6 +25,7 @@ export function DefaultSidebar({
 	bottomBar,
 	classNames,
 	model,
+	navCustomizeLabels,
 	projects,
 	topBar,
 }: DefaultSidebarProps): JSX.Element {
@@ -51,6 +55,8 @@ export function DefaultSidebar({
 							itemLabel: classNames?.navItemLabel,
 						}}
 						items={model.navItems}
+						canPinMore={model.canPinMore}
+						navCustomizeLabels={navCustomizeLabels}
 						indicatorBounds={model.navIndicatorBounds}
 						moreActive={model.moreActive}
 						moreItems={model.moreNavItems}
@@ -58,6 +64,10 @@ export function DefaultSidebar({
 						moreOpen={model.moreOpen}
 						onItemClick={model.actions.openNavItem}
 						onMoreOpenChange={model.actions.setMoreOpen}
+						onNavMove={model.actions.moveNavItem}
+						onPinNavItem={model.actions.pinNavItem}
+						onUnpinNavItem={model.actions.unpinNavItem}
+						onResetNavLayout={model.actions.resetNavLayout}
 						setItemRef={model.setNavItemRef}
 						setMoreButtonRef={model.setMoreButtonRef}
 					/>
