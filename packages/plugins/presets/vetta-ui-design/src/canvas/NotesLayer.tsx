@@ -9,11 +9,11 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { type DesignNote, noteStatus, noteWorldPosition, pendingNotes } from "../notes/types";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { SelectedElementPayload } from "./bridge-client";
+import { NoteAvatar } from "./NoteAvatar";
 
 /** 拖动阈值（屏幕像素）：低于它算点击（开 thread），高于它算拖动气泡。 */
 const DRAG_THRESHOLD_PX = 3;
@@ -33,7 +33,6 @@ interface NotesLayerProps {
 	frames: readonly VetdFrameEntry[];
 	/** select/note 工具下气泡可点；托手/空格/frame 工具下整层不吃指针。 */
 	interactive: boolean;
-	cwd: string | null;
 	draft: NoteDraft | null;
 	onDraftClose(): void;
 	openNoteId: string | null;
@@ -58,7 +57,6 @@ export function NotesLayer({
 	store,
 	frames,
 	interactive,
-	cwd,
 	draft,
 	onDraftClose,
 	openNoteId,
@@ -66,7 +64,6 @@ export function NotesLayer({
 	getZoom,
 }: NotesLayerProps) {
 	const { t } = useTranslation();
-	const handoff = useNotesHandoff(cwd);
 	const [version, setVersion] = useState(0);
 	useEffect(() => {
 		const handle = store.on(() => setVersion((value) => value + 1));
@@ -96,6 +93,33 @@ export function NotesLayer({
 
 	const pending = pendingNotes(store.notes);
 	const numberOf = useMemo(() => new Map(pending.map((note, index) => [note.id, index + 1])), [pending]);
+
+	/**
+	 * 刚从待处理翻成已处理的备注：播一次弹跳 + 涟漪。
+	 *
+	 * 比对上一次的已处理集合而不是监听某个事件——状态是从 thread 末条消息推导出来的，
+	 * 而 agent 的回复经 vetd_notes 落进 store，画布这边只看得到「集合变了」。
+	 * 首帧不放：打开画布时已经存在的已处理备注不该集体弹一遍。
+	 */
+	const seenResolvedRef = useRef<Set<string> | null>(null);
+	const [celebratingIds, setCelebratingIds] = useState<ReadonlySet<string>>(new Set());
+	useEffect(() => {
+		const resolvedNow = new Set(store.notes.filter((note) => noteStatus(note) === "resolved").map((note) => note.id));
+		const seen = seenResolvedRef.current;
+		seenResolvedRef.current = resolvedNow;
+		if (!seen) return;
+		const fresh = [...resolvedNow].filter((id) => !seen.has(id));
+		if (fresh.length === 0) return;
+		setCelebratingIds((current) => new Set([...current, ...fresh]));
+		const timer = window.setTimeout(() => {
+			setCelebratingIds((current) => {
+				const next = new Set(current);
+				for (const id of fresh) next.delete(id);
+				return next;
+			});
+		}, 760);
+		return () => window.clearTimeout(timer);
+	}, [store, version]);
 
 	/** 拖动中的气泡：id + 世界位移（提交前只改本地渲染）。 */
 	const [dragDelta, setDragDelta] = useState<{ id: string; dx: number; dy: number } | null>(null);
@@ -142,7 +166,7 @@ export function NotesLayer({
 	const openNote = openNoteId ? store.noteById(openNoteId) : undefined;
 
 	return (
-		<div className={interactive ? "contents" : "pointer-events-none contents"}>
+		<div className={`vetd-note ${interactive ? "contents" : "pointer-events-none contents"}`}>
 			{store.notes.map((note) => {
 				const base = noteWorldPosition(note, frameOf);
 				const delta = dragDelta?.id === note.id ? dragDelta : null;
@@ -150,6 +174,8 @@ export function NotesLayer({
 				const resolved = noteStatus(note) === "resolved";
 				const detached = note.anchor.kind === "free" && note.anchor.detachedFrom;
 				const number = numberOf.get(note.id);
+				const opened = openNoteId === note.id;
+				const celebrating = celebratingIds.has(note.id);
 				return (
 					<button
 						key={note.id}
@@ -160,33 +186,40 @@ export function NotesLayer({
 						onPointerMove={stopAll}
 						onPointerUp={stopAll}
 						// 气泡尖角钉在锚点上：整体上移一个自身高，origin 定在左下。
-						className={`absolute z-30 flex items-center justify-center rounded-full rounded-bl-[3px] border shadow-md transition-opacity ${
+						className={`vetd-note-pin absolute z-30 flex items-center justify-center rounded-full rounded-bl-[4px] ${
+							resolved ? "vetd-note-pin-resolved" : ""
+						} ${celebrating ? "vetd-note-celebrate vetd-note-ripple" : ""} ${
 							interactive ? "pointer-events-auto" : "pointer-events-none"
-						} ${
-							resolved
-								? "size-5 border-border bg-muted text-muted-foreground opacity-60 hover:opacity-90"
-								: "size-7 border-white/70 bg-[var(--vetd-accent,#6366f1)] text-white"
 						}`}
 						style={{
 							left: pos.x,
 							top: pos.y,
+							width: 28,
+							height: 28,
 							transform: `translateY(-100%) scale(${INVERSE_SCALE})`,
 							transformOrigin: "left bottom",
+							// 打开中的气泡加一圈外环，和 thread 弹层呼应。
+							outline: opened ? "2px solid color-mix(in oklab, #fff 90%, transparent)" : undefined,
+							outlineOffset: opened ? 2 : undefined,
 						}}
 					>
-						{resolved ? (
-							<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
-								<path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-							</svg>
-						) : (
-							<span className="text-[11px] font-semibold tabular-nums">{number}</span>
-						)}
+						{/* 头像即状态：待处理是提问的人，已处理是回复过的 Vetta。 */}
+						<NoteAvatar author={resolved ? "agent" : "user"} size={20} tone="onColor" />
+						{!resolved && number !== undefined ? (
+							<span
+								className="absolute -right-1 -top-1 flex min-w-[14px] items-center justify-center rounded-full px-[3px] text-[9px] font-semibold leading-[14px] tabular-nums text-[var(--vetd-note-pending,#2563eb)]"
+								style={{ background: "#fff", boxShadow: "0 1px 3px -1px rgba(0,0,0,.4)" }}
+							>
+								{number}
+							</span>
+						) : null}
 					</button>
 				);
 			})}
 
 			{draft ? (
 				<NotePanel x={draft.world.x} y={draft.world.y}>
+					<div className="p-1.5">
 					<NoteComposer
 						placeholder={t("notes.composer.placeholder")}
 						submitLabel={t("notes.composer.submit")}
@@ -211,6 +244,7 @@ export function NotesLayer({
 							onDraftClose();
 						}}
 					/>
+					</div>
 				</NotePanel>
 			) : null}
 
@@ -221,8 +255,6 @@ export function NotesLayer({
 				>
 					<NoteThread
 						note={openNote}
-						blockedReason={handoff.blockedReason}
-						onHandle={() => handoff.sendOne(openNote.id)}
 						onReply={(text) => store.appendMessage(openNote.id, "user", text)}
 						onDelete={() => {
 							onOpenNote(null);
@@ -241,7 +273,7 @@ function NotePanel({ x, y, children }: { x: number; y: number; children: ReactNo
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the panel
 		<div
-			className="pointer-events-auto absolute z-40"
+			className="vetd-note-enter pointer-events-auto absolute z-40"
 			style={{ left: x, top: y, transform: `scale(${INVERSE_SCALE})`, transformOrigin: "left top" }}
 			onPointerDown={stopAll}
 			onPointerMove={stopAll}
@@ -249,7 +281,9 @@ function NotePanel({ x, y, children }: { x: number; y: number; children: ReactNo
 			onKeyDown={(event) => event.stopPropagation()}
 			onKeyUp={(event) => event.stopPropagation()}
 		>
-			<div className="w-64 rounded-xl border border-border bg-card/95 p-2 shadow-lg backdrop-blur-md">{children}</div>
+			<div className="w-[17rem] overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-xl ring-1 ring-black/5 backdrop-blur-xl">
+				{children}
+			</div>
 		</div>
 	);
 }
@@ -292,7 +326,7 @@ function NoteComposer({
 	};
 
 	return (
-		<form onSubmit={submit} className="flex flex-col gap-1.5">
+		<form onSubmit={submit} className="rounded-xl bg-muted/40 p-1.5 ring-1 ring-border/50 focus-within:ring-ring/50">
 			<textarea
 				// biome-ignore lint/a11y/noAutofocus: 放置备注的下一步就是打字，焦点必须直达
 				autoFocus
@@ -301,12 +335,13 @@ function NoteComposer({
 				onKeyDown={onKeyDown}
 				placeholder={placeholder}
 				rows={2}
-				className="w-full resize-none rounded-lg border border-border bg-background px-2 py-1.5 text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-ring"
+				className="w-full resize-none bg-transparent px-1 py-0.5 text-xs leading-relaxed text-foreground outline-none placeholder:text-muted-foreground"
 			/>
-			<div className="flex justify-end">
+			<div className="flex items-center justify-end gap-1.5 pt-0.5">
 				<button
 					type="submit"
-					className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
+					disabled={text.trim().length === 0}
+					className="rounded-lg bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
 				>
 					{submitLabel}
 				</button>
@@ -317,15 +352,11 @@ function NoteComposer({
 
 function NoteThread({
 	note,
-	blockedReason,
-	onHandle,
 	onReply,
 	onDelete,
 	onClose,
 }: {
 	note: DesignNote;
-	blockedReason: string | null;
-	onHandle(): void;
 	onReply(text: string): void;
 	onDelete(): void;
 	onClose(): void;
@@ -333,23 +364,38 @@ function NoteThread({
 	const { t } = useTranslation();
 	const pending = noteStatus(note) === "pending";
 	const detachedFrom = note.anchor.kind === "free" ? note.anchor.detachedFrom : undefined;
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	// 追加消息后滚到底：thread 是自下而上读的。
+	useEffect(() => {
+		const element = scrollRef.current;
+		if (element) element.scrollTop = element.scrollHeight;
+	}, [note.messages.length]);
 
 	return (
-		<div className="flex flex-col gap-1.5">
-			<div className="flex items-center justify-between">
-				<span className="text-[11px] font-medium text-muted-foreground">
+		<div className="flex flex-col">
+			<header className="flex items-center gap-1.5 border-b border-border/60 px-2.5 py-2">
+				<span
+					className="size-1.5 shrink-0 rounded-full"
+					style={{
+						background: pending ? "var(--vetd-note-pending, #2563eb)" : "var(--vetd-note-resolved, #10b981)",
+					}}
+					aria-hidden
+				/>
+				<span className="text-[11px] font-medium text-foreground">
 					{pending ? t("notes.status.pending") : t("notes.status.resolved")}
-					{detachedFrom ? ` · ${t("notes.bubble.detached")}` : ""}
 				</span>
-				<div className="flex items-center gap-0.5">
+				{detachedFrom ? (
+					<span className="truncate text-[10px] text-muted-foreground">· {t("notes.bubble.detached")}</span>
+				) : null}
+				<div className="ml-auto flex items-center gap-0.5">
 					<button
 						type="button"
 						title={t("notes.delete")}
 						aria-label={t("notes.delete")}
 						onClick={onDelete}
-						className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
 					>
-						<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 							<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
 						</svg>
 					</button>
@@ -358,50 +404,55 @@ function NoteThread({
 						title={t("notes.close")}
 						aria-label={t("notes.close")}
 						onClick={onClose}
-						className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
-						<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 							<path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
 						</svg>
 					</button>
 				</div>
-			</div>
-			<div className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+			</header>
+
+			<div ref={scrollRef} className="flex max-h-56 flex-col gap-2 overflow-y-auto px-2.5 py-2.5">
 				{note.messages.map((message, index) => (
-					<div
-						// biome-ignore lint/suspicious/noArrayIndexKey: 消息只追加不重排
-						key={index}
-						className={`rounded-lg px-2 py-1 text-xs whitespace-pre-wrap ${
-							message.author === "agent" ? "bg-primary/10 text-foreground" : "bg-muted text-foreground"
-						}`}
-					>
-						<span className="mr-1 text-[10px] font-medium text-muted-foreground">
-							{message.author === "agent" ? "Vetta" : t("notes.author.user")}
-						</span>
-						{message.text}
-					</div>
+					// biome-ignore lint/suspicious/noArrayIndexKey: 消息只追加不重排
+					<NoteMessageRow key={index} author={message.author} text={message.text} />
 				))}
 			</div>
-			{pending ? (
-				<button
-					type="button"
-					disabled={blockedReason !== null}
-					title={blockedReason ?? undefined}
-					onClick={onHandle}
-					className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+
+			<div className="border-t border-border/60 p-1.5">
+				<NoteComposer
+					placeholder={pending ? t("notes.reply.placeholder") : t("notes.reopen.placeholder")}
+					submitLabel={pending ? t("notes.reply.submit") : t("notes.reopen.submit")}
+					onCancel={onClose}
+					onSubmit={onReply}
+				/>
+			</div>
+		</div>
+	);
+}
+
+/** 一条 thread 消息：头像 + 名字 + 气泡，Vetta 的用主题色底与之区分。 */
+function NoteMessageRow({ author, text }: { author: "user" | "agent"; text: string }) {
+	const { t } = useTranslation();
+	const isAgent = author === "agent";
+	return (
+		<div className="flex items-start gap-1.5">
+			<NoteAvatar author={author} size={18} />
+			<div className="min-w-0 flex-1">
+				<span className="mb-0.5 block text-[10px] font-medium text-muted-foreground">
+					{isAgent ? "Vetta" : t("notes.author.user")}
+				</span>
+				<div
+					className={`rounded-lg rounded-tl-[3px] px-2 py-1.5 text-xs leading-relaxed whitespace-pre-wrap ${
+						isAgent
+							? "bg-primary/10 text-foreground ring-1 ring-primary/15"
+							: "bg-muted/70 text-foreground ring-1 ring-border/50"
+					}`}
 				>
-					{t("notes.handle.one")}
-				</button>
-			) : null}
-			{blockedReason !== null && pending ? (
-				<p className="text-[10px] text-muted-foreground">{blockedReason}</p>
-			) : null}
-			<NoteComposer
-				placeholder={pending ? t("notes.reply.placeholder") : t("notes.reopen.placeholder")}
-				submitLabel={pending ? t("notes.reply.submit") : t("notes.reopen.submit")}
-				onCancel={onClose}
-				onSubmit={onReply}
-			/>
+					{text}
+				</div>
+			</div>
 		</div>
 	);
 }

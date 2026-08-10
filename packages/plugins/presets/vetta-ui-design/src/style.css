@@ -472,3 +472,136 @@
 		opacity: 0.8;
 	}
 }
+
+/* ---------- 备注（NotesLayer / NotesDrawer） ----------
+   两个状态色刻意写死、不跟宿主主题：备注要压在任意配色的设计稿上，
+   「待办 / 已完成」必须在任何主题任何画面上一眼可辨（同 --vetd-selected 的理由）。 */
+.vetd-note {
+	--vetd-note-pending: #2563eb;
+	--vetd-note-resolved: #10b981;
+}
+
+/* 气泡：圆形 + 左下尖角的 pin。头像装在里面，编号挂右上。 */
+.vetd-note-pin {
+	background: var(--vetd-note-pending);
+	box-shadow:
+		0 2px 8px -2px color-mix(in oklab, var(--vetd-note-pending) 70%, transparent),
+		0 0 0 2px color-mix(in oklab, #fff 85%, transparent);
+	transition:
+		background 260ms ease,
+		box-shadow 260ms ease;
+}
+.vetd-note-pin-resolved {
+	background: var(--vetd-note-resolved);
+	box-shadow:
+		0 2px 6px -2px color-mix(in oklab, var(--vetd-note-resolved) 60%, transparent),
+		0 0 0 2px color-mix(in oklab, #fff 80%, transparent);
+}
+
+/* 处理完成的正向微动效：一次弹跳 + 一圈扩散的绿色涟漪。
+   只动 transform / opacity——气泡压在跨源 iframe 上，动别的属性会让整片重新光栅化。 */
+.vetd-note-celebrate {
+	animation: vetd-note-pop 620ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 每一帧都要重写完整的 transform：气泡的内联 transform 里还有钉住锚点的
+   translateY(-100%) 和抵消画布缩放的 --vetd-lscale，animation 会整条覆盖它，
+   只写 scale() 的话一播动画气泡就跳到锚点上、还跟着画布缩放一起变大。 */
+@keyframes vetd-note-pop {
+	0% {
+		transform: translateY(-100%) scale(var(--vetd-lscale, 1));
+	}
+	38% {
+		transform: translateY(-100%) scale(calc(var(--vetd-lscale, 1) * 1.32));
+	}
+	62% {
+		transform: translateY(-100%) scale(calc(var(--vetd-lscale, 1) * 0.94));
+	}
+	100% {
+		transform: translateY(-100%) scale(var(--vetd-lscale, 1));
+	}
+}
+.vetd-note-ripple::after {
+	content: "";
+	position: absolute;
+	inset: -2px;
+	border-radius: inherit;
+	pointer-events: none;
+	box-shadow: 0 0 0 2px var(--vetd-note-resolved, #10b981);
+	animation: vetd-note-ripple 720ms ease-out forwards;
+}
+@keyframes vetd-note-ripple {
+	0% {
+		opacity: 0.9;
+		transform: scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(2.1);
+	}
+}
+
+/* 浮层入场：草稿输入框、thread 弹层、抽屉共用一套。 */
+.vetd-note-enter {
+	animation: vetd-note-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 同 vetd-note-pop：浮层内联 transform 里的 --vetd-lscale 必须逐帧带上，
+   否则入场那 180ms 里弹层会按画布缩放显示（缩到 20% 时几乎看不见）。 */
+@keyframes vetd-note-enter {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(calc(var(--vetd-lscale, 1) * 0.97));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(var(--vetd-lscale, 1));
+	}
+}
+.vetd-note-drawer-enter {
+	animation: vetd-note-drawer-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes vetd-note-drawer-enter {
+	from {
+		opacity: 0;
+		transform: translateX(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Vetta 头像：复用 .vetd-bot 的形象语言（圆头 + 双眼），静态版。 */
+.vetd-note-face {
+	position: relative;
+	display: block;
+	border-radius: 999px;
+	background: #ffffff;
+}
+.vetd-note-face::before,
+.vetd-note-face::after {
+	content: "";
+	position: absolute;
+	top: 38%;
+	width: 16%;
+	height: 22%;
+	border-radius: 999px;
+	background: currentColor;
+}
+.vetd-note-face::before {
+	left: 27%;
+}
+.vetd-note-face::after {
+	right: 27%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-note-celebrate,
+	.vetd-note-ripple::after,
+	.vetd-note-enter,
+	.vetd-note-drawer-enter {
+		animation: none;
+	}
+	.vetd-note-ripple::after {
+		display: none;
+	}
+}

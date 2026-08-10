@@ -4,6 +4,7 @@ import { useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { type DesignNote, pendingNotes, resolvedNotes } from "../notes/types";
 import type { DesignSession } from "../vetd/design-session";
+import { NoteAvatar } from "./NoteAvatar";
 
 interface NotesDrawerProps {
 	store: NotesStore;
@@ -49,46 +50,75 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 	}, [session.manifest.frames, t]);
 
 	return (
-		<div className="absolute inset-y-0 right-0 z-40 flex w-72 flex-col border-l border-border bg-card/95 shadow-lg backdrop-blur-md">
-			<div className="flex items-center justify-between border-b border-border px-3 py-2">
-				<span className="text-xs font-medium text-foreground">{t("notes.drawer.title")}</span>
+		// 悬浮而非贴边：画布是无限的，抽屉贴死右边缘会读成「面板被截断了」。
+		<div className="vetd-note vetd-note-drawer-enter pointer-events-auto absolute inset-y-3 right-3 z-40 flex w-72 flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl">
+			<header className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
+				<span className="text-xs font-semibold text-foreground">{t("notes.drawer.title")}</span>
+				{pending.length > 0 ? (
+					<span
+						className="rounded-full px-1.5 py-px text-[10px] font-semibold leading-4 text-white"
+						style={{ background: "var(--vetd-note-pending, #2563eb)" }}
+					>
+						{pending.length}
+					</span>
+				) : null}
 				<button
 					type="button"
 					title={t("notes.close")}
 					aria-label={t("notes.close")}
 					onClick={onClose}
-					className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+					className="ml-auto flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 				>
 					<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 						<path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
 					</svg>
 				</button>
-			</div>
+			</header>
 
-			<div className="min-h-0 flex-1 overflow-y-auto p-2">
+			{pending.length > 0 ? (
+				<div className="border-b border-border/60 px-2.5 py-2">
+					<button
+						type="button"
+						disabled={handoff.blockedReason !== null}
+						title={handoff.blockedReason ?? undefined}
+						onClick={() => handoff.sendAll(pending.length)}
+						className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-45"
+					>
+						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+						</svg>
+						{t("notes.handle.all")}
+					</button>
+					{handoff.blockedReason !== null ? (
+						<p className="pt-1.5 text-center text-[10px] text-muted-foreground">{handoff.blockedReason}</p>
+					) : null}
+				</div>
+			) : null}
+
+			<div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
 				{store.notes.length === 0 ? (
-					<p className="px-1 py-6 text-center text-xs text-muted-foreground">{t("notes.drawer.empty")}</p>
+					<div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
+						<svg
+							viewBox="0 0 24 24"
+							className="size-7 text-muted-foreground opacity-40"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="1.5"
+							aria-hidden
+						>
+							<path
+								d="M21 11.5a8.5 8.5 0 01-8.5 8.5H4l1.6-3.2A8.5 8.5 0 1121 11.5z"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+						<p className="text-xs leading-relaxed text-muted-foreground">{t("notes.drawer.empty")}</p>
+					</div>
 				) : null}
 
 				{pending.length > 0 ? (
 					<>
-						<div className="flex items-center justify-between px-1 pb-1.5 pt-1">
-							<span className="text-[11px] font-medium text-muted-foreground">
-								{t("notes.drawer.pending", { count: pending.length })}
-							</span>
-							<button
-								type="button"
-								disabled={handoff.blockedReason !== null}
-								title={handoff.blockedReason ?? undefined}
-								onClick={() => handoff.sendAll(pending.length)}
-								className="rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-							>
-								{t("notes.handle.all")}
-							</button>
-						</div>
-						{handoff.blockedReason !== null ? (
-							<p className="px-1 pb-1.5 text-[10px] text-muted-foreground">{handoff.blockedReason}</p>
-						) : null}
+						<SectionLabel text={t("notes.drawer.pending", { count: pending.length })} />
 						{pending.map((note, index) => (
 							<NoteRow
 								key={note.id}
@@ -105,14 +135,12 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 
 				{resolved.length > 0 ? (
 					<>
-						<div className="flex items-center justify-between px-1 pb-1.5 pt-3">
-							<span className="text-[11px] font-medium text-muted-foreground">
-								{t("notes.drawer.resolved", { count: resolved.length })}
-							</span>
+						<div className="flex items-center justify-between px-1 pb-1 pt-3">
+							<SectionLabel text={t("notes.drawer.resolved", { count: resolved.length })} bare />
 							<button
 								type="button"
 								onClick={() => store.clearResolved()}
-								className="rounded-md px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+								className="rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 							>
 								{t("notes.drawer.clearResolved")}
 							</button>
@@ -135,6 +163,18 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 	);
 }
 
+function SectionLabel({ text, bare }: { text: string; bare?: boolean }) {
+	return (
+		<span
+			className={`block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground ${
+				bare ? "" : "px-1 pb-1 pt-1"
+			}`}
+		>
+			{text}
+		</span>
+	);
+}
+
 function NoteRow({
 	note,
 	number,
@@ -154,45 +194,77 @@ function NoteRow({
 	const { t } = useTranslation();
 	const excerpt = note.messages[0]?.text ?? "";
 	const lastAgent = [...note.messages].reverse().find((message) => message.author === "agent");
+	const resolved = number === null;
 
 	return (
-		<div className="group mb-1 rounded-lg border border-transparent px-1.5 py-1.5 hover:border-border hover:bg-accent/40">
-			<button type="button" onClick={onLocate} className="flex w-full items-start gap-1.5 text-left">
-				{number !== null ? (
-					<span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full rounded-bl-[2px] bg-[var(--vetd-accent,#6366f1)] text-[9px] font-semibold text-white">
-						{number}
-					</span>
-				) : (
-					<span className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-						<svg viewBox="0 0 24 24" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden>
-							<path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-						</svg>
-					</span>
-				)}
-				<span className="min-w-0 flex-1">
-					<span className="block truncate text-xs text-foreground">{excerpt}</span>
-					{lastAgent ? (
-						<span className="block truncate text-[10px] text-muted-foreground">Vetta: {lastAgent.text}</span>
+		<div
+			className={`group relative mb-1.5 overflow-hidden rounded-xl border transition-colors ${
+				resolved
+					? "border-border/40 bg-muted/20 hover:border-border/70 hover:bg-muted/40"
+					: "border-border/60 bg-card/60 hover:border-border hover:bg-accent/40"
+			}`}
+		>
+			{/* 左侧状态色条：不占布局宽度，扫一眼就能分出两段。 */}
+			<span
+				className="absolute inset-y-0 left-0 w-[3px]"
+				style={{
+					background: resolved ? "var(--vetd-note-resolved, #10b981)" : "var(--vetd-note-pending, #2563eb)",
+					opacity: resolved ? 0.5 : 1,
+				}}
+				aria-hidden
+			/>
+			<button type="button" onClick={onLocate} className="flex w-full items-start gap-2 px-2.5 py-2 text-left">
+				<span className="relative mt-0.5 shrink-0">
+					<NoteAvatar author={resolved ? "agent" : "user"} size={20} />
+					{!resolved ? (
+						<span
+							className="absolute -right-1 -top-1 flex min-w-[13px] items-center justify-center rounded-full px-[3px] text-[9px] font-semibold leading-[13px] text-white"
+							style={{ background: "var(--vetd-note-pending, #2563eb)" }}
+						>
+							{number}
+						</span>
 					) : null}
-					<span className="block truncate text-[10px] text-muted-foreground">{location}</span>
+				</span>
+				<span className="min-w-0 flex-1">
+					<span className={`block text-xs leading-snug ${resolved ? "text-muted-foreground" : "text-foreground"} line-clamp-2`}>
+						{excerpt}
+					</span>
+					{lastAgent ? (
+						<span className="mt-1 flex items-start gap-1 text-[10px] leading-snug text-muted-foreground">
+							<span className="shrink-0 font-medium">Vetta</span>
+							<span className="min-w-0 flex-1 truncate">{lastAgent.text}</span>
+						</span>
+					) : null}
+					<span className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground/80">
+						<svg viewBox="0 0 24 24" className="size-2.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
+							<path d="M6 2v20M18 2v20M2 6h20M2 18h20" strokeLinecap="round" />
+						</svg>
+						<span className="truncate">{location}</span>
+					</span>
 				</span>
 			</button>
-			<div className="mt-1 hidden items-center justify-end gap-1 group-hover:flex">
+			{/* 行内动作：hover 才出，平时不与内容抢注意力。 */}
+			<div className="absolute bottom-1.5 right-1.5 hidden items-center gap-0.5 rounded-lg border border-border/60 bg-popover/95 p-0.5 shadow-sm backdrop-blur group-hover:flex">
 				{onHandle ? (
 					<button
 						type="button"
+						title={t("notes.handle.one")}
 						onClick={onHandle}
-						className="rounded px-1.5 py-0.5 text-[10px] text-primary hover:bg-primary/10"
+						className="rounded-md px-1.5 py-0.5 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10"
 					>
 						{t("notes.handle.one")}
 					</button>
 				) : null}
 				<button
 					type="button"
+					title={t("notes.delete")}
+					aria-label={t("notes.delete")}
 					onClick={onDelete}
-					className="rounded px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-red-500/10 hover:text-red-500"
+					className="flex size-5 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
 				>
-					{t("notes.delete")}
+					<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+						<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
+					</svg>
 				</button>
 			</div>
 		</div>

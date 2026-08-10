@@ -69,8 +69,6 @@ interface DesignCanvasProps {
 	session: DesignSession;
 	/** 当前设计的备注（与 session 同生命周期，CanvasTab 创建）。 */
 	notes: NotesStore;
-	/** 活动面板的 cwd，「让 Vetta 处理」的会话闸口用。 */
-	cwd: string | null;
 	port: number;
 	bridge: BridgeHub;
 	/**
@@ -257,7 +255,6 @@ function applyResizeSnap(
 export function DesignCanvas({
 	session,
 	notes,
-	cwd,
 	port,
 	bridge,
 	captureRef,
@@ -1469,7 +1466,6 @@ export function DesignCanvas({
 					store={notes}
 					frames={manifest.frames}
 					interactive={(tool === "select" || tool === "note") && !panActive && !previewing}
-					cwd={cwd}
 					draft={noteDraft}
 					onDraftClose={() => setNoteDraft(null)}
 					openNoteId={openNoteId}

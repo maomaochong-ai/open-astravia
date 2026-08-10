@@ -383,7 +383,6 @@ export function CanvasTab() {
 						<DesignCanvas
 							session={session}
 							notes={notesStore}
-							cwd={cwd}
 							port={phase.port}
 							bridge={bridgeRef.current}
 							captureRef={captureRef}
