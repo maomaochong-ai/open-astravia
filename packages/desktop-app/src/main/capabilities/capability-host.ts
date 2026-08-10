@@ -47,10 +47,9 @@ function createDesktopCapabilityHost(): DesktopCapabilityHost {
 			const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 			return plugin?.enabled === true && plugin.trustLevel === "official";
 		},
-		onSessionClosed: (pluginId) => {
-			jobs.disposeOwner(pluginId);
-			artifacts.disposeOwner(pluginId);
-		},
+		// Jobs and temporary artifacts are owned by the stable plugin id, not by a
+		// renderer capability session. They must survive renderer reloads so the
+		// replacement session can reconcile an in-flight media operation.
 	});
 	const themeAdapter = new ThemeCapabilityAdapter(access);
 	return {

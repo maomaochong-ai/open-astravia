@@ -148,6 +148,49 @@ describe("MediaProviderRegistry", () => {
 		await expect(pending).resolves.toMatchObject({ status: "failed", error: { code: "cancelled" } });
 		expect(registry.listProviders()).toEqual([]);
 	});
+
+	it("resumes an existing host job through a replacement provider registration", async () => {
+		const jobs = new JobManager();
+		const registry = new MediaProviderRegistry(jobs);
+		const first = registry.registerProvider({
+			descriptor: {
+				id: "plugin:video",
+				ownerId: "provider-plugin",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [{ operation: "generate", kind: "video", modes: ["text-to-video"] }],
+			},
+			submit: vi.fn().mockResolvedValue({ id: "remote-job", status: "queued" }),
+			getJob: vi.fn().mockResolvedValue({ id: "remote-job", status: "queued" }),
+		});
+		const job = await registry.submit(
+			{
+				ownerId: "consumer",
+				providerId: "plugin:video",
+				operation: "generate",
+				kind: "video",
+				mode: "text-to-video",
+				prompt: "animate",
+				inputs: [],
+			},
+			signal,
+		);
+		first.dispose();
+
+		const replacementGetJob = vi.fn().mockResolvedValue(succeededJob("remote-job"));
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:video",
+				ownerId: "provider-plugin",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [{ operation: "generate", kind: "video", modes: ["text-to-video"] }],
+			},
+			submit: vi.fn(),
+			getJob: replacementGetJob,
+		});
+
+		await expect(jobs.get("consumer", job.id, signal)).resolves.toMatchObject({ status: "succeeded" });
+		expect(replacementGetJob).toHaveBeenCalledWith("remote-job", expect.objectContaining({ ownerId: "consumer" }));
+	});
 });
 
 describe("Vetta image provider", () => {

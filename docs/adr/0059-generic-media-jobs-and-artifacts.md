@@ -26,7 +26,9 @@ Provider 用同样的判别联合声明能力。`compose` 按接受的工程 MIM
 
 媒体提交返回宿主生成的通用 `Job`：`id`、`domain`、`operation`、`status`、结构化进度、临时产物、元数据和错误。`ctx.jobs` 统一提供 `get()`、`wait()` 与 `cancel()`。
 
-Provider 自己的队列 ID 只保存在宿主 driver 闭包中，不作为公共任务身份。任务按消费插件 owner 隔离，插件不能查询或取消其他插件的任务。Provider 卸载会中止尚未完成的调用。
+Provider 自己的队列 ID 只保存在宿主 driver 闭包中，不作为公共任务身份。任务按消费插件 owner 隔离，插件不能查询或取消其他插件的任务。Job 与临时产物绑定稳定的插件 owner，而不是 renderer capability session，因此页面刷新后的新 session 可以继续查询原 Job。Provider 卸载会中止当时尚未完成的调用；同 ID Provider 重新注册后，宿主 driver 可用原队列 ID 向新实例继续查询。
+
+JobManager 仍是主进程内存状态；如果主进程重启或调用方恢复了遗留 ID，`get` / `cancel` 返回 `failed`、错误码为 `job-not-found` 的终态 Job，而不是抛出 Provider 异常或无限重试。跨主进程重启恢复远端队列不在本 ADR 的保证范围内。
 
 ### 3. 临时产物成为 Foundation Capability
 

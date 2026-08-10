@@ -1,5 +1,6 @@
 import {
 	PluginMediaError,
+	type PluginJob,
 	type PluginJobsApi,
 	type PluginMediaApi,
 	type PluginMediaArtifact,
@@ -12,6 +13,8 @@ import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
 	ContentProviderAdapter,
+	ContentProviderExecution,
+	ContentProviderGenerationContext,
 	GeneratedContent,
 } from "./types";
 
@@ -69,7 +72,10 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		return this.models;
 	}
 
-	async generate(request: ContentGenerationRequest): Promise<GeneratedContent> {
+	async generate(
+		request: ContentGenerationRequest,
+		context: ContentProviderGenerationContext,
+	): Promise<GeneratedContent> {
 		const binding = this.bindings.get(request.modelId);
 		if (!binding) throw new Error(`host media provider not found: ${request.modelId}`);
 		const { provider, outputKind } = binding;
@@ -94,25 +100,60 @@ export class HostMediaProvider implements ContentProviderAdapter {
 			durationSeconds: request.duration,
 			inputs,
 		});
-		let completed;
+		const execution: ContentProviderExecution = { kind: "host-job", jobId: job.id, outputKind };
+		await context.onExecution?.(execution);
+		return this.waitForJob(execution, context, job);
+	}
+
+	async resume(
+		execution: ContentProviderExecution,
+		context: ContentProviderGenerationContext,
+	): Promise<GeneratedContent> {
+		return this.waitForJob(execution, context);
+	}
+
+	private async waitForJob(
+		execution: ContentProviderExecution,
+		context: ContentProviderGenerationContext,
+		initial?: PluginJob,
+	): Promise<GeneratedContent> {
+		const timeoutSignal = AbortSignal.timeout(HOST_MEDIA_JOB_TIMEOUT_MS);
+		const signal = context.signal ? AbortSignal.any([context.signal, timeoutSignal]) : timeoutSignal;
+		let completed = initial;
 		try {
-			completed = await this.jobs.wait(job, {
-				pollIntervalMs: HOST_MEDIA_POLL_INTERVAL_MS,
-				signal: AbortSignal.timeout(HOST_MEDIA_JOB_TIMEOUT_MS),
-			});
-		} catch {
-			await this.jobs.cancel(job).catch(() => undefined);
+			while (!completed || !isTerminalJob(completed)) {
+				if (completed) await notifyProgress(context, completed);
+				await waitForPoll(HOST_MEDIA_POLL_INTERVAL_MS, signal);
+				try {
+					completed = await this.jobs.get(execution.jobId);
+				} catch (error) {
+					if (signal.aborted) throw error;
+					// Provider plugins are briefly unavailable while the renderer reloads.
+					// Keep the host job active and retry against the replacement registration.
+				}
+			}
+		} catch (error) {
+			if (context.signal?.aborted) throw abortError(context.signal);
+			await this.jobs.cancel(execution.jobId).catch(() => undefined);
 			throw new PluginMediaError({
 				code: "provider-timeout",
-				message: `host media job timed out: ${provider.id}`,
+				message: `host media job timed out: ${execution.jobId}`,
 				retryable: true,
 			});
 		}
+		await notifyProgress(context, completed);
 		if (completed.status === "failed") {
+			if (completed.error?.code === "job-not-found") {
+				throw new PluginMediaError({
+					code: "provider-failed",
+					message: `host media job is no longer available: ${execution.jobId}`,
+					retryable: true,
+				});
+			}
 			throw new PluginMediaError(
 				completed.error ?? {
 					code: "provider-failed",
-					message: `host media job failed: ${provider.id}`,
+					message: `host media job failed: ${execution.jobId}`,
 					retryable: true,
 				},
 			);
@@ -120,20 +161,48 @@ export class HostMediaProvider implements ContentProviderAdapter {
 		if (completed.status === "cancelled") {
 			throw new PluginMediaError({
 				code: "cancelled",
-				message: `host media job was cancelled: ${provider.id}`,
+				message: `host media job was cancelled: ${execution.jobId}`,
 				retryable: true,
 			});
 		}
-		const artifact = completed.artifacts.find((candidate) => candidate.kind === outputKind);
+		const artifact = completed.artifacts.find((candidate) => candidate.kind === execution.outputKind);
 		if (!artifact) {
 			throw new PluginMediaError({
 				code: "provider-failed",
-				message: `host media provider returned no ${outputKind} artifact: ${provider.id}`,
+				message: `host media provider returned no ${execution.outputKind} artifact: ${execution.jobId}`,
 				retryable: true,
 			});
 		}
 		return generatedContentFromArtifact(artifact);
 	}
+}
+
+function isTerminalJob(job: PluginJob): boolean {
+	return job.status === "succeeded" || job.status === "failed" || job.status === "cancelled";
+}
+
+async function notifyProgress(context: ContentProviderGenerationContext, job: PluginJob): Promise<void> {
+	if (job.status !== "queued" && job.status !== "running") return;
+	await context.onProgress?.({ status: job.status, progress: job.progress?.value });
+}
+
+function abortError(signal: AbortSignal): Error {
+	return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted", "AbortError");
+}
+
+function waitForPoll(ms: number, signal: AbortSignal): Promise<void> {
+	if (signal.aborted) return Promise.reject(abortError(signal));
+	return new Promise((resolve, reject) => {
+		const timeout = setTimeout(() => {
+			signal.removeEventListener("abort", onAbort);
+			resolve();
+		}, ms);
+		const onAbort = (): void => {
+			clearTimeout(timeout);
+			reject(abortError(signal));
+		};
+		signal.addEventListener("abort", onAbort, { once: true });
+	});
 }
 
 function createModels(provider: PluginMediaProviderDescriptor): ContentModelDescriptor[] {

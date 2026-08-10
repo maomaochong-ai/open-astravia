@@ -8,8 +8,11 @@
 
 ### Fixed
 
-- Video generation now follows the first input image's aspect ratio by default, preventing portrait MiniMax H3 frames from being stretched into a landscape canvas while preserving explicit ratio choices.
-- Video generation settings now open from a compact summary into a grouped panel for frame/reference mode, aspect ratio, resolution, duration, and audio capability.
+- Image and video generation nodes now persist their host job handle, resume status/progress polling after a renderer refresh, and finish artifact persistence instead of remaining stuck in the last saved running state.
+- Missing host jobs now become retryable generation failures instead of being polled indefinitely after recovery.
+- Video generation now follows the first input image's aspect ratio by default, including legacy assets without persisted dimensions, preventing portrait MiniMax H3 frames from being stretched into a landscape canvas while preserving explicit ratio choices.
+- Video generation settings now open from one compact summary into a correctly scoped grouped panel styled with the shared borderless Select trigger, preserving hover feedback outside either open panel, consistently bounded aspect-ratio previews, no duplicate inline controls, and stale options filtered against the selected model's capabilities.
+- Video aspect-ratio chips stay on one row without vertical overflow: ratio icons use a fixed visual budget, and the settings popover is height-capped with scroll when space is tight.
 - Strengthened the multi-node selection group outline: more visible primary fill, dashed border, and 12px inset spacing from selected cards (plus a clearer marquee while dragging).
 - Kept node editors hidden during dragging and delayed a newly selected node's editor until drag end, while preserving already mounted editor state.
 - Deferred generation-control option trees until their dropdown opens, avoiding a large first-frame mount when dragging an unselected generator node.

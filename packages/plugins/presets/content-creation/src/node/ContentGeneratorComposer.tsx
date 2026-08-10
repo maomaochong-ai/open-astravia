@@ -8,6 +8,8 @@ import {
 	slotIdForReferenceKind,
 } from "../generation/model-inputs";
 import { resolveContentAspectRatio } from "../generation/aspect-ratio";
+import { inferImageDimensionsFromUrl, type ImageDimensions } from "../generation/image-dimensions";
+import { resolveSupportedModelOption } from "../generation/model-options";
 import type {
 	ContentModelDescriptor,
 	ContentReferenceKind,
@@ -130,12 +132,19 @@ export function ContentGeneratorComposer({
 	const isRunning = status === "running" || status === "queued";
 	const resolvedPrompt = resolveContentPrompt(connectedPrompts, draft);
 	const canGenerate = Boolean(selectedModel && resolution.mode && resolvedPrompt && !isRunning);
+	const aspectRatioAssets = [...draftReferenceAssets, ...promptReferenceAssets].map(({ asset }) => asset);
+	const firstImage = kind === "video-generator" ? aspectRatioAssets.find(({ kind }) => kind === "image") : undefined;
+	const inferredImageDimensions = useInferredImageDimensions(firstImage);
 	const resolvedAspectRatio = selectedModel
 		? resolveContentAspectRatio({
 				outputKind: selectedModel.outputKind,
 				explicitAspectRatio: draft.aspectRatio,
 				supportedAspectRatios: selectedModel.aspectRatios,
-				references: [...draftReferenceAssets, ...promptReferenceAssets].map(({ asset }) => asset),
+				references: aspectRatioAssets.map((asset) =>
+					asset.id === firstImage?.id && inferredImageDimensions
+						? { ...asset, ...inferredImageDimensions }
+						: asset,
+				),
 			})
 		: undefined;
 	const minimumWidth = kind === "image-generator" ? 360 : 400;
@@ -153,6 +162,12 @@ export function ContentGeneratorComposer({
 			providerId: selectedModel.providerId,
 			modelId: selectedModel.modelId,
 			modeId: resolution.mode.id,
+			...(kind === "video-generator"
+				? {
+						duration: resolveSupportedModelOption(draft.duration, selectedModel.durations),
+						resolution: resolveSupportedModelOption(draft.resolution, selectedModel.resolutions),
+					}
+				: {}),
 		};
 		setDraft(next);
 		void onUpdate(next).then(onRunNode);
@@ -243,12 +258,42 @@ export function ContentGeneratorComposer({
 						modelId: model.modelId,
 						modeId: nextMode?.id,
 						aspectRatio,
+						...(kind === "video-generator"
+							? {
+									duration: resolveSupportedModelOption(draft.duration, model.durations),
+									resolution: resolveSupportedModelOption(draft.resolution, model.resolutions),
+								}
+							: {}),
 					});
 				}}
 				onSubmit={submit}
 			/>
 		</NodeEditorPanel>
 	);
+}
+
+function useInferredImageDimensions(asset: ContentAsset | undefined): ImageDimensions | undefined {
+	const source = asset?.previewUrl;
+	const key = asset && source ? `${asset.id}:${source}` : undefined;
+	const hasDimensions = isPositiveDimension(asset?.width) && isPositiveDimension(asset?.height);
+	const [result, setResult] = useState<{ key: string; dimensions?: ImageDimensions }>();
+
+	useEffect(() => {
+		if (!key || !source || hasDimensions) return;
+		let active = true;
+		void inferImageDimensionsFromUrl(source).then((dimensions) => {
+			if (active) setResult({ key, dimensions });
+		});
+		return () => {
+			active = false;
+		};
+	}, [hasDimensions, key, source]);
+
+	return !hasDimensions && key && result?.key === key ? result.dimensions : undefined;
+}
+
+function isPositiveDimension(value: number | undefined): value is number {
+	return Number.isFinite(value) && (value ?? 0) > 0;
 }
 
 function assignGeneratorReferences(

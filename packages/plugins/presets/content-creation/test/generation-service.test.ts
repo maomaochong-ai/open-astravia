@@ -92,6 +92,74 @@ describe("ContentGenerationService", () => {
 		});
 	});
 
+	it.each(["image-generator", "video-generator"] as const)(
+		"recovers an active host job for a %s after the page reloads",
+		async (kind) => {
+			const fixture = await createFixture(kind);
+			await fixture.workspace.dispatch("C:/project", [
+				{
+					type: "job.start",
+					job: {
+						id: "local-job",
+						nodeId: "image",
+						providerId: "mock",
+						modelId: kind === "video-generator" ? "mock-video" : "mock-image",
+						outputAssetId: "recovered-asset",
+					},
+				},
+				{
+					type: "job.attach",
+					jobId: "local-job",
+					execution: {
+						kind: "host-job",
+						jobId: "host-job",
+						outputKind: kind === "video-generator" ? "video" : "image",
+					},
+					status: "running",
+					progress: 0.4,
+				},
+			]);
+
+			await fixture.service.recoverActiveJobs("C:/project");
+
+			expect(fixture.resume).toHaveBeenCalledWith(
+				expect.objectContaining({ jobId: "host-job" }),
+				expect.objectContaining({ signal: expect.any(AbortSignal), onProgress: expect.any(Function) }),
+			);
+			expect(fixture.workspace.getSnapshot("C:/project")?.jobs[0]).toMatchObject({
+				status: "succeeded",
+				progress: 1,
+				assetId: "recovered-asset",
+			});
+			expect(fixture.releaseGenerated).toHaveBeenCalledOnce();
+		},
+	);
+
+	it("ends a legacy active job that has no resumable host handle", async () => {
+		const fixture = await createFixture();
+		await fixture.workspace.dispatch("C:/project", [
+			{
+				type: "job.start",
+				job: {
+					id: "legacy-job",
+					nodeId: "image",
+					providerId: "mock",
+					modelId: "mock-image",
+					outputAssetId: "legacy-asset",
+				},
+			},
+		]);
+
+		await fixture.service.recoverActiveJobs("C:/project");
+
+		expect(fixture.workspace.getSnapshot("C:/project")?.jobs[0]).toMatchObject({
+			status: "failed",
+			errorCode: "provider-failed",
+		});
+		expect(fixture.workspace.getSnapshot("C:/project")?.graph.nodes[0]?.status).toBe("failed");
+		expect(fixture.resume).not.toHaveBeenCalled();
+	});
+
 	it("reassigns image references when a video node carries a stale slot from another input system", async () => {
 		const fixture = await createFixture("video-generator");
 		const imported = await fixture.service.importReferences("C:/project", "image", [
@@ -141,6 +209,30 @@ describe("ContentGenerationService", () => {
 			expect.objectContaining({ modeId: "image-to-video", aspectRatio: "9:16" }),
 			expect.objectContaining({ readReference: expect.any(Function) }),
 		);
+	});
+
+	it("infers a legacy portrait image ratio when stored dimensions are missing", async () => {
+		const fixture = await createFixture("video-generator");
+		const close = vi.fn();
+		vi.stubGlobal(
+			"createImageBitmap",
+			vi.fn().mockResolvedValue({ width: 1080, height: 1920, close }),
+		);
+		fixture.readReference.mockResolvedValueOnce({ data: "AQID", mimeType: "image/webp" });
+		try {
+			await fixture.service.importReferences("C:/project", "image", [
+				{ name: "legacy-portrait.webp", mimeType: "image/webp", data: "AQID" },
+			]);
+			await fixture.service.runNode("C:/project", "image");
+
+			expect(fixture.generate).toHaveBeenLastCalledWith(
+				expect.objectContaining({ modeId: "image-to-video", aspectRatio: "9:16" }),
+				expect.objectContaining({ readReference: expect.any(Function) }),
+			);
+			expect(close).toHaveBeenCalledOnce();
+		} finally {
+			vi.unstubAllGlobals();
+		}
 	});
 
 	it("keeps an explicit landscape ratio for a portrait image", async () => {
@@ -335,6 +427,14 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 		width: kind === "video-generator" ? 1920 : undefined,
 		height: kind === "video-generator" ? 1080 : undefined,
 	});
+	const resume = vi.fn<NonNullable<ContentProviderAdapter["resume"]>>().mockResolvedValue({
+		kind: kind === "video-generator" ? "video" : "image",
+		mimeType: kind === "video-generator" ? "video/mp4" : "image/png",
+		source: { type: "host-artifact", artifactId: "recovered-artifact" },
+		duration: kind === "video-generator" ? 8 : undefined,
+		width: kind === "video-generator" ? 1920 : undefined,
+		height: kind === "video-generator" ? 1080 : undefined,
+	});
 	const provider: ContentProviderAdapter = {
 		id: "mock",
 		listModels: () => [
@@ -366,6 +466,7 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 			},
 		],
 		generate,
+		resume,
 	};
 	const providers = new ContentProviderRegistry();
 	providers.register(provider);
@@ -383,8 +484,23 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 		data: "reference-data",
 		mimeType: "image/png",
 	});
-	const service = new ContentGenerationService(workspace, providers, { putImported, putGenerated, readReference });
-	return { service, workspace, generate, putImported, putGenerated, readReference };
+	const releaseGenerated = vi.fn<ContentArtifactStore["releaseGenerated"]>().mockResolvedValue(undefined);
+	const service = new ContentGenerationService(workspace, providers, {
+		putImported,
+		putGenerated,
+		releaseGenerated,
+		readReference,
+	});
+	return {
+		service,
+		workspace,
+		generate,
+		resume,
+		putImported,
+		putGenerated,
+		releaseGenerated,
+		readReference,
+	};
 }
 
 class MemoryRepository implements ContentProjectRepository {

@@ -7,7 +7,6 @@ import { ContentVideoGenerationSettings } from "./ContentVideoGenerationSettings
 
 const AUTO_TRIGGER_CLASS = "w-fit max-w-none flex-none border-0 bg-transparent shadow-none";
 const AUTO_VALUE_CLASS = "line-clamp-none! overflow-visible! whitespace-nowrap";
-const AUTOMATIC_ASPECT_RATIO = "__automatic__";
 
 interface ContentGenerationControlsProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
@@ -38,9 +37,7 @@ export function ContentGenerationControls({
 	const [openSelect, setOpenSelect] = useState<"model" | "aspect-ratio" | "quality" | null>(null);
 	const modelValue = selectedModel ? `${selectedModel.providerId}\u0000${selectedModel.modelId}` : undefined;
 	const aspectRatios = selectedModel?.aspectRatios ?? [];
-	const aspectRatio = kind === "video-generator" && !draft.aspectRatio
-		? AUTOMATIC_ASPECT_RATIO
-		: draft.aspectRatio ?? aspectRatios[0];
+	const aspectRatio = draft.aspectRatio ?? aspectRatios[0];
 	const quality = draft.quality ?? "standard";
 
 	return (
@@ -76,36 +73,20 @@ export function ContentGenerationControls({
 					</SelectContent>
 				) : null}
 			</Select>
-			{aspectRatios.length > 0 ? (
+			{kind === "image-generator" && aspectRatios.length > 0 ? (
 				<Select
 					open={openSelect === "aspect-ratio"}
 					onOpenChange={(open) => setOpenSelect(open ? "aspect-ratio" : null)}
 					value={aspectRatio}
-					onValueChange={(nextAspectRatio) =>
-						onChange({
-							...draft,
-							aspectRatio: nextAspectRatio === AUTOMATIC_ASPECT_RATIO ? undefined : nextAspectRatio,
-						})
-					}
+					onValueChange={(nextAspectRatio) => onChange({ ...draft, aspectRatio: nextAspectRatio })}
 				>
 					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
 						<SelectValue className={AUTO_VALUE_CLASS}>
-							{aspectRatio === AUTOMATIC_ASPECT_RATIO
-								? t("option.aspectRatio.auto", {
-										ratio: resolvedAspectRatio ? t(`option.aspectRatio.${resolvedAspectRatio}`) : "",
-									})
-								: t(`option.aspectRatio.${aspectRatio}`)}
+							{t(`option.aspectRatio.${aspectRatio}`)}
 						</SelectValue>
 					</SelectTrigger>
 					{openSelect === "aspect-ratio" ? (
 						<SelectContent className="z-[100]">
-							{kind === "video-generator" ? (
-								<SelectItem value={AUTOMATIC_ASPECT_RATIO}>
-									{t("option.aspectRatio.auto", {
-										ratio: resolvedAspectRatio ? t(`option.aspectRatio.${resolvedAspectRatio}`) : "",
-									})}
-								</SelectItem>
-							) : null}
 							{aspectRatios.map((option) => (
 								<SelectItem key={option} value={option}>
 									{t(`option.aspectRatio.${option}`)}

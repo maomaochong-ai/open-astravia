@@ -3,6 +3,7 @@ import type {
 	ContentGenerationRequest,
 	ContentModelDescriptor,
 	ContentProviderAdapter,
+	ContentProviderExecution,
 	ContentProviderGenerationContext,
 	GeneratedContent,
 } from "./types";
@@ -35,5 +36,15 @@ export class ContentProviderRegistry {
 			throw new Error(`content model does not support ${request.modeId}: ${request.providerId}/${request.modelId}`);
 		}
 		return provider.generate(request, context);
+	}
+
+	async resume(
+		providerId: string,
+		execution: ContentProviderExecution,
+		context: ContentProviderGenerationContext,
+	): Promise<GeneratedContent> {
+		const provider = this.providers.get(providerId);
+		if (!provider?.resume) throw new Error(`content provider cannot resume jobs: ${providerId}`);
+		return provider.resume(execution, context);
 	}
 }

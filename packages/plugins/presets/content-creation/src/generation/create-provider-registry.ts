@@ -49,6 +49,8 @@ export function createContentProviderRegistry(
 		}),
 	);
 	const hostMediaProvider = new HostMediaProvider(media, jobs, mediaProviders);
-	if (hostMediaProvider.listModels().length > 0) registry.register(hostMediaProvider);
+	// Keep the adapter registered even during the brief provider-registration gap
+	// after a renderer reload so persisted host jobs can resume by stable ID.
+	registry.register(hostMediaProvider);
 	return registry;
 }

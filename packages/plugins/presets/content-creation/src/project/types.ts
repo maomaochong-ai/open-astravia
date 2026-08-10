@@ -114,6 +114,12 @@ export interface GenerationJob {
 	model: string;
 	status: GenerationJobStatus;
 	progress: number;
+	outputAssetId?: string;
+	execution?: {
+		kind: "host-job";
+		jobId: string;
+		outputKind: "image" | "video";
+	};
 	assetId?: string;
 	error?: string;
 	errorCode?: PluginMediaErrorCode;

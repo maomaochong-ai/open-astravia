@@ -27,7 +27,8 @@ export function createComfyUiProvider(ctx: PluginContext): PluginMediaProviderRe
 				kind: "video",
 				modes: ["image-to-video"],
 				aspectRatios: ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"],
-				durationsSeconds: [5, 10, 15],
+				// MiniMax H3 accepts continuous duration; expose every second from 4–15.
+				durationsSeconds: Array.from({ length: 12 }, (_, second) => second + 4),
 			},
 		],
 		async submit(request, context) {

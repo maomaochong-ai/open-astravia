@@ -30,6 +30,17 @@ const GenerationJobSchema = Type.Object(
 			Type.Literal("cancelled"),
 		]),
 		progress: Type.Number(),
+		outputAssetId: Type.Optional(Type.String()),
+		execution: Type.Optional(
+			Type.Object(
+				{
+					kind: Type.Literal("host-job"),
+					jobId: Type.String({ minLength: 1 }),
+					outputKind: Type.Union([Type.Literal("image"), Type.Literal("video")]),
+				},
+				{ additionalProperties: false },
+			),
+		),
 		assetId: Type.Optional(Type.String()),
 		error: Type.Optional(Type.String()),
 		errorCode: Type.Optional(Type.String()),

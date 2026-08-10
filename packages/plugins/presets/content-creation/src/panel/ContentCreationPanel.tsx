@@ -100,16 +100,19 @@ export function ContentCreationPanel() {
 		const unsubscribe = workspace.subscribe(cwd, () => {
 			if (active) setProject(workspace.getSnapshot(cwd));
 		});
-		void workspace.load(cwd).catch((loadError) => {
-			if (!active) return;
-			setError(t("error.load"));
-			notifyContentCreationError(t("error.load"), loadError);
-		});
+		void workspace
+			.load(cwd)
+			.then(() => generation.recoverActiveJobs(cwd))
+			.catch((loadError) => {
+				if (!active) return;
+				setError(t("error.load"));
+				notifyContentCreationError(t("error.load"), loadError);
+			});
 		return () => {
 			active = false;
 			unsubscribe();
 		};
-	}, [cwd, t, workspace]);
+	}, [cwd, generation, t, workspace]);
 	useEffect(() => {
 		let active = true;
 		if (!project) {

@@ -60,14 +60,32 @@ export interface GeneratedContent {
 	duration?: number;
 }
 
+export interface ContentProviderExecution {
+	kind: "host-job";
+	jobId: string;
+	outputKind: ContentGenerationOutputKind;
+}
+
+export interface ContentProviderProgress {
+	status: "queued" | "running";
+	progress?: number;
+}
+
 export interface ContentProviderAdapter {
 	readonly id: string;
 	listModels(): readonly ContentModelDescriptor[];
 	generate(request: ContentGenerationRequest, context: ContentProviderGenerationContext): Promise<GeneratedContent>;
+	resume?(
+		execution: ContentProviderExecution,
+		context: ContentProviderGenerationContext,
+	): Promise<GeneratedContent>;
 }
 
 export interface ContentProviderGenerationContext {
 	readReference(reference: ContentGenerationReference): Promise<StoredContentData>;
+	signal?: AbortSignal;
+	onExecution?(execution: ContentProviderExecution): Promise<void>;
+	onProgress?(progress: ContentProviderProgress): Promise<void>;
 }
 
 export interface StoredImportedContent {
@@ -95,6 +113,7 @@ export type ImportedContentReference = ImportedContentAsset;
 export interface ContentArtifactStore {
 	putImported(id: string, content: ImportedContentAsset): Promise<StoredImportedContent>;
 	putGenerated(cwd: string, fileName: string, content: GeneratedContent): Promise<StoredGeneratedContent>;
+	releaseGenerated(content: GeneratedContent): Promise<void>;
 	readReference(reference: ContentGenerationReference): Promise<StoredContentData | null>;
 }
 import type { PluginMediaInputSource } from "@vetta-org/plugin-sdk";

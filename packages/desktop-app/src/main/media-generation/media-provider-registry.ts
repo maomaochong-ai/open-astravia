@@ -217,28 +217,24 @@ export class MediaProviderRegistry {
 			driver: {
 				refresh: provider.registration.getJob
 					? async (refreshSignal) => {
-							if (!provider.active)
-								return failedUpdate(failure("provider-unavailable", "Media provider is unavailable"));
-							const refreshed = await this.invoke(
-								provider,
-								ownerId,
-								refreshSignal,
-								(context) =>
-									provider.registration.getJob?.(providerJob.id, context) ?? Promise.resolve(providerJob),
+							const currentProvider = this.providers.get(providerId);
+							if (!currentProvider?.registration.getJob) {
+								throw new Error(`Media provider is temporarily unavailable: ${providerId}`);
+							}
+							const refreshed = await this.invoke(currentProvider, ownerId, refreshSignal, (context) =>
+								currentProvider.registration.getJob!(providerJob.id, context),
 							);
 							return "code" in refreshed ? failedUpdate(refreshed) : normalizeProviderJob(refreshed);
 						}
 					: undefined,
 				cancel: provider.registration.cancelJob
 					? async (cancelSignal) => {
-							if (!provider.active)
-								return failedUpdate(failure("provider-unavailable", "Media provider is unavailable"));
-							const cancelled = await this.invoke(
-								provider,
-								ownerId,
-								cancelSignal,
-								(context) =>
-									provider.registration.cancelJob?.(providerJob.id, context) ?? Promise.resolve(providerJob),
+							const currentProvider = this.providers.get(providerId);
+							if (!currentProvider?.registration.cancelJob) {
+								throw new Error(`Media provider is unavailable or cannot cancel jobs: ${providerId}`);
+							}
+							const cancelled = await this.invoke(currentProvider, ownerId, cancelSignal, (context) =>
+								currentProvider.registration.cancelJob!(providerJob.id, context),
 							);
 							return "code" in cancelled ? failedUpdate(cancelled) : normalizeProviderJob(cancelled);
 						}

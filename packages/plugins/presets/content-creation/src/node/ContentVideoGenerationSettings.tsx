@@ -2,6 +2,7 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
 import type { ReactNode } from "react";
 import { useState } from "react";
+import { resolveSupportedModelOption } from "../generation/model-options";
 import type { ContentGenerationModeId, ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData } from "../project/types";
 
@@ -28,16 +29,14 @@ export function ContentVideoGenerationSettings({
 	const durations = model?.durations ?? [];
 	const resolutions = model?.resolutions ?? [];
 	const aspectRatio = draft.aspectRatio ?? AUTOMATIC_ASPECT_RATIO;
-	const duration = draft.duration ?? durations[0];
-	const resolution = draft.resolution ?? resolutions[0];
+	const duration = resolveSupportedModelOption(draft.duration, durations);
+	const resolution = resolveSupportedModelOption(draft.resolution, resolutions);
 	const availableMethods = videoMethods(model);
 	const method = resolveVideoMethod(draft.modeId, availableMethods);
 	const summary = [
 		t(`nodeEditor.videoSettings.method.${method ?? "unavailable"}`),
 		aspectRatio === AUTOMATIC_ASPECT_RATIO
-			? t("nodeEditor.videoSettings.followImageSummary", {
-					ratio: resolvedAspectRatio ?? aspectRatios[0] ?? "",
-				})
+			? resolvedAspectRatio ?? aspectRatios[0]
 			: aspectRatio,
 		resolution,
 		duration === undefined ? undefined : t("nodeEditor.videoSettings.durationSummary", { duration }),
@@ -48,26 +47,30 @@ export function ContentVideoGenerationSettings({
 			<PopoverTrigger asChild>
 				<button
 					type="button"
-					className="no-drag flex h-8 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted/65 px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+					className="no-drag pointer-events-auto flex h-7 min-w-0 max-w-full select-none items-center gap-1.5 whitespace-nowrap rounded-lg border-0 bg-transparent px-2.5 text-[12px] font-medium text-foreground shadow-none outline-none transition-colors hover:bg-accent aria-expanded:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
 					aria-label={t("nodeEditor.videoSettings.open")}
+					aria-expanded={open}
 				>
 					<span className="truncate">{summary.join(" · ")}</span>
 					<span className="text-muted-foreground" aria-hidden="true">
 						·
 					</span>
 					<span className="icon-[lucide--volume-x] block size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-					<span className="icon-[lucide--chevron-down] block size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+					<span className="icon-[lucide--chevron-down] block size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 				</button>
 			</PopoverTrigger>
 			{open ? (
 				<PopoverContent
+					data-vetta-plugin-root="content-creation"
 					align="start"
 					side="top"
 					sideOffset={10}
-					className="z-[100] w-[min(440px,calc(100vw-32px))] gap-4 rounded-2xl border-border/70 bg-popover/98 p-4 shadow-2xl backdrop-blur-xl"
+					collisionPadding={12}
+					className="z-[100] max-h-[min(420px,var(--radix-popover-content-available-height,420px))] gap-3 overflow-y-auto rounded-lg border border-border bg-popover p-2.5 text-popover-foreground shadow-md"
+					style={{ width: "min(440px, calc(100vw - 32px))" }}
 				>
 					<SettingsSection label={t("nodeEditor.videoSettings.generateMethod")}>
-						<div className="grid grid-cols-2 rounded-xl bg-muted/55 p-1">
+						<div className={optionGroupClass("grid grid-cols-2")}>
 							{(["frames", "omni"] as const).map((option) => {
 								const modeId = availableMethods[option];
 								return (
@@ -95,11 +98,18 @@ export function ContentVideoGenerationSettings({
 
 					{aspectRatios.length > 0 ? (
 						<SettingsSection label={t("nodeEditor.aspectRatio")}>
-							<div className="grid grid-cols-[repeat(auto-fit,minmax(52px,1fr))] rounded-xl bg-muted/55 p-1">
+							{/* Single row: keep every ratio chip on one line; icon height is capped so portrait frames do not blow the row. */}
+							<div
+								className={optionGroupClass("grid min-w-0")}
+								style={{ gridTemplateColumns: equalColumns(aspectRatios.length + 1) }}
+							>
 								<AspectRatioOption
-									label={t("nodeEditor.videoSettings.followImage")}
+									label={t("nodeEditor.videoSettings.followImageShort")}
 									ratio={resolvedAspectRatio ?? aspectRatios[0]}
 									selected={aspectRatio === AUTOMATIC_ASPECT_RATIO}
+									title={t("nodeEditor.videoSettings.followImageSummary", {
+										ratio: resolvedAspectRatio ?? aspectRatios[0] ?? "",
+									})}
 									onClick={() => onChange({ ...draft, aspectRatio: undefined })}
 								/>
 								{aspectRatios.map((option) => (
@@ -117,7 +127,10 @@ export function ContentVideoGenerationSettings({
 
 					{resolutions.length > 0 ? (
 						<SettingsSection label={t("nodeEditor.resolution")}>
-							<div className="grid rounded-xl bg-muted/55 p-1" style={{ gridTemplateColumns: equalColumns(resolutions.length) }}>
+							<div
+								className={optionGroupClass("grid")}
+								style={{ gridTemplateColumns: equalColumns(resolutions.length) }}
+							>
 								{resolutions.map((option) => (
 									<button
 										key={option}
@@ -135,7 +148,7 @@ export function ContentVideoGenerationSettings({
 
 					{durations.length > 0 ? (
 						<SettingsSection label={t("nodeEditor.duration")}>
-							<div className="flex min-w-0 overflow-x-auto rounded-xl bg-muted/55 p-1">
+							<div className={optionGroupClass("flex min-w-0 overflow-x-auto")}>
 								{durations.map((option) => (
 									<button
 										key={option}
@@ -155,7 +168,10 @@ export function ContentVideoGenerationSettings({
 						label={t("nodeEditor.videoSettings.generateAudio")}
 						hint={t("nodeEditor.videoSettings.audioUnsupported")}
 					>
-						<div className="grid grid-cols-2 rounded-xl bg-muted/55 p-1" title={t("nodeEditor.videoSettings.audioUnsupported")}>
+						<div
+							className={optionGroupClass("grid grid-cols-2")}
+							title={t("nodeEditor.videoSettings.audioUnsupported")}
+						>
 							<button type="button" className={segmentedOptionClass(false)} disabled>
 								{t("nodeEditor.videoSettings.audio.on")}
 							</button>
@@ -177,8 +193,8 @@ export function ContentVideoGenerationSettings({
 
 function SettingsSection({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
 	return (
-		<section className="grid gap-1.5">
-			<div className="flex items-center gap-1 px-1 text-xs font-medium text-muted-foreground">
+		<section className="grid gap-1">
+			<div className="flex items-center gap-1 px-1 text-[11px] font-medium text-muted-foreground">
 				<span>{label}</span>
 				{hint ? (
 					<span className="icon-[lucide--circle-help] block size-3.5" title={hint} aria-hidden="true" />
@@ -193,27 +209,35 @@ function AspectRatioOption({
 	label,
 	ratio,
 	selected,
+	title,
 	onClick,
 }: {
 	label: string;
 	ratio?: string;
 	selected: boolean;
+	title?: string;
 	onClick: () => void;
 }) {
 	return (
 		<button
 			type="button"
-			className={`${segmentedOptionClass(selected)} min-w-0 flex-col gap-1 px-1`}
+			className={`flex min-h-10 min-w-0 flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-[12px] font-medium outline-none transition-colors focus-visible:border-primary ${
+				selected
+					? "border-border bg-accent text-accent-foreground"
+					: "border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+			}`}
 			aria-pressed={selected}
+			title={title}
 			onClick={onClick}
 		>
-			<span className="flex h-4 items-center justify-center" aria-hidden="true">
+			{/* Fixed visual budget: landscape/portrait icons scale inside, never grow the cell. */}
+			<span className="flex h-3 w-5 shrink-0 items-center justify-center" aria-hidden="true">
 				<span
 					className="block rounded-[2px] border border-current"
 					style={aspectRatioIconStyle(ratio)}
 				/>
 			</span>
-			<span className="max-w-full truncate text-[10px]">{label}</span>
+			<span className="max-w-full truncate text-[10px] leading-none">{label}</span>
 		</button>
 	);
 }
@@ -243,9 +267,15 @@ function resolveVideoMethod(
 }
 
 function segmentedOptionClass(selected: boolean): string {
-	return `flex h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
-		selected ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+	return `flex h-9 items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] font-medium outline-none transition-colors focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 ${
+		selected
+			? "border-border bg-accent text-accent-foreground"
+			: "border-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 	}`;
+}
+
+function optionGroupClass(layout: string): string {
+	return `${layout} rounded-lg border border-border bg-card p-1`;
 }
 
 function equalColumns(count: number): string {
@@ -253,12 +283,16 @@ function equalColumns(count: number): string {
 }
 
 function aspectRatioIconStyle(ratio?: string): { width: number; height: number } {
-	if (!ratio) return { width: 16, height: 12 };
+	// Keep icons inside the fixed h-3 / w-5 slot so 9:16 frames stay level with 16:9.
+	const maxWidth = 16;
+	const maxHeight = 12;
+	const fallback = { width: 14, height: 9 };
+	if (!ratio) return fallback;
 	const [widthPart, heightPart] = ratio.split(":").map(Number);
-	if (!(widthPart > 0) || !(heightPart > 0)) return { width: 16, height: 12 };
-	const scale = 18 / Math.max(widthPart, heightPart);
+	if (!(widthPart > 0) || !(heightPart > 0)) return fallback;
+	const scale = Math.min(maxWidth / widthPart, maxHeight / heightPart);
 	return {
-		width: Math.max(5, Math.round(widthPart * scale)),
-		height: Math.max(5, Math.round(heightPart * scale)),
+		width: Math.max(6, Math.round(widthPart * scale)),
+		height: Math.max(6, Math.round(heightPart * scale)),
 	};
 }

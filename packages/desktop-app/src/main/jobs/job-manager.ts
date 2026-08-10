@@ -8,6 +8,7 @@ import type {
 	JobProgress,
 	JobStatus,
 } from "@vetta/capability-sdk";
+import { JOB_ERROR_CODES } from "@vetta/capability-sdk";
 
 const TERMINAL_STATUSES = new Set<JobStatus>(["succeeded", "failed", "cancelled"]);
 
@@ -58,7 +59,8 @@ export class JobManager {
 	}
 
 	async get(ownerId: string, id: string, signal: AbortSignal): Promise<Job> {
-		const record = this.requireRecord(ownerId, id);
+		const record = this.findRecord(ownerId, id);
+		if (!record) return this.unavailable(id, "get");
 		if (!TERMINAL_STATUSES.has(record.job.status) && record.driver?.refresh) {
 			this.apply(record, await record.driver.refresh(signal));
 		}
@@ -66,7 +68,8 @@ export class JobManager {
 	}
 
 	async cancel(ownerId: string, id: string, signal: AbortSignal): Promise<Job> {
-		const record = this.requireRecord(ownerId, id);
+		const record = this.findRecord(ownerId, id);
+		if (!record) return this.unavailable(id, "cancel");
 		if (TERMINAL_STATUSES.has(record.job.status)) return this.clone(record.job);
 		if (!record.driver?.cancel) throw new Error(`Job does not support cancellation: ${id}`);
 		this.apply(record, await record.driver.cancel(signal));
@@ -112,9 +115,29 @@ export class JobManager {
 	}
 
 	private requireRecord(ownerId: string, id: string): JobRecord {
-		const record = this.records.get(id);
-		if (!record || record.ownerId !== ownerId) throw new Error(`Job is unavailable: ${id}`);
+		const record = this.findRecord(ownerId, id);
+		if (!record) throw new Error(`Job is unavailable: ${id}`);
 		return record;
+	}
+
+	private findRecord(ownerId: string, id: string): JobRecord | undefined {
+		const record = this.records.get(id);
+		return record?.ownerId === ownerId ? record : undefined;
+	}
+
+	private unavailable(id: string, operation: "get" | "cancel"): Job {
+		return {
+			id,
+			domain: "job",
+			operation,
+			status: "failed",
+			artifacts: [],
+			error: {
+				code: JOB_ERROR_CODES.NOT_FOUND,
+				message: `Job is unavailable: ${id}`,
+				retryable: false,
+			},
+		};
 	}
 
 	private clone(job: Job): Job {

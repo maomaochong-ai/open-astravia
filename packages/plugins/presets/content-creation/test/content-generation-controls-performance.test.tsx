@@ -22,6 +22,7 @@ interface MockPopoverProps {
 	children: ReactNode;
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
+	modal?: boolean;
 }
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
@@ -37,18 +38,19 @@ vi.mock("@vetta/ui", () => ({
 			<button type="button" data-testid="select-toggle" onClick={() => onOpenChange?.(!open)}>
 				toggle
 			</button>
-			<button type="button" data-testid="select-automatic" onClick={() => onValueChange?.("__automatic__")}>
-				automatic
-			</button>
 			{children}
 		</div>
 	),
 	SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	SelectItem: ({ children }: { children: ReactNode }) => <div data-testid="select-item">{children}</div>,
-	SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	SelectTrigger: ({ children, size }: { children: ReactNode; size?: string }) => (
+		<div data-testid="select-trigger" data-size={size}>
+			{children}
+		</div>
+	),
 	SelectValue: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
-	Popover: ({ children, open, onOpenChange }: MockPopoverProps) => (
-		<div>
+	Popover: ({ children, open, onOpenChange, modal }: MockPopoverProps) => (
+		<div data-testid="popover-root" data-modal={modal ? "true" : "false"}>
 			<button type="button" data-testid="popover-toggle" onClick={() => onOpenChange?.(!open)}>
 				popover
 			</button>
@@ -56,7 +58,11 @@ vi.mock("@vetta/ui", () => ({
 		</div>
 	),
 	PopoverTrigger: ({ children }: { children: ReactNode }) => children,
-	PopoverContent: ({ children }: { children: ReactNode }) => <div data-testid="video-settings-panel">{children}</div>,
+	PopoverContent: ({ children, className }: { children: ReactNode; className?: string }) => (
+		<div data-testid="video-settings-panel" className={className}>
+			{children}
+		</div>
+	),
 }));
 
 const imageModels: readonly ContentModelDescriptor[] = [
@@ -144,10 +150,17 @@ describe("ContentGenerationControls option mounting", () => {
 		);
 
 		expect(screen.queryByTestId("video-settings-panel")).toBeNull();
+		expect(screen.getAllByTestId("select-toggle")).toHaveLength(1);
+		expect(screen.getByTestId("select-trigger").getAttribute("data-size")).toBe("sm");
+		expect(screen.getByTestId("popover-root").getAttribute("data-modal")).toBe("false");
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").className).toContain("h-7");
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").className).toContain("border-0");
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").className).toContain("pointer-events-auto");
 
 		fireEvent.click(screen.getByTestId("popover-toggle"));
 
-		expect(screen.getByTestId("video-settings-panel")).toBeTruthy();
+		expect(screen.getByTestId("video-settings-panel").className).toContain("bg-popover");
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").className).toContain("bg-transparent");
 		expect(screen.getByText("nodeEditor.videoSettings.method.frames")).toBeTruthy();
 		expect(screen.getByText("nodeEditor.videoSettings.method.omni").closest("button")).toHaveProperty("disabled", true);
 		expect(screen.getByText("option.resolution.720p")).toBeTruthy();
@@ -173,9 +186,33 @@ describe("ContentGenerationControls option mounting", () => {
 		);
 
 		fireEvent.click(screen.getByTestId("popover-toggle"));
-		fireEvent.click(screen.getByText("nodeEditor.videoSettings.followImage"));
+		expect(screen.getAllByTestId("select-toggle")).toHaveLength(1);
+		const automaticRatio = screen.getByText("nodeEditor.videoSettings.followImageShort").closest("button");
+		expect(automaticRatio?.parentElement?.style.gridTemplateColumns).toBe("repeat(3, minmax(0, 1fr))");
+		expect(automaticRatio?.className).toContain("bg-accent");
+		fireEvent.click(automaticRatio as HTMLButtonElement);
 
 		expect(onChange).toHaveBeenCalledWith({ aspectRatio: undefined, duration: 5, resolution: "720p" });
+	});
+
+	it("omits a stale resolution from the summary when the model does not expose resolutions", () => {
+		const model: ContentModelDescriptor = { ...videoModel, aspectRatios: ["16:9", "9:16"], resolutions: [] };
+		render(
+			<ContentGenerationControls
+				kind="video-generator"
+				draft={{ duration: 5, resolution: "720p" }}
+				models={[model]}
+				selectedModel={model}
+				resolvedAspectRatio="9:16"
+				isRunning={false}
+				canGenerate
+				onChange={vi.fn()}
+				onModelChange={vi.fn()}
+				onSubmit={vi.fn()}
+			/>,
+		);
+
+		expect(screen.getByLabelText("nodeEditor.videoSettings.open").textContent).not.toContain("720p");
 	});
 
 	it("switches to omni reference when the selected model supports it", () => {

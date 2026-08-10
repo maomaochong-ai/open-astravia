@@ -40,7 +40,18 @@ export type ContentProjectCommand =
 	| { type: "edge.connect"; source: string; target: string; sourceHandle?: string; targetHandle?: string }
 	| { type: "edge.delete"; edgeId: string }
 	| { type: "asset.add"; asset: ContentAsset }
-	| { type: "job.start"; job: { id: string; nodeId: string; providerId: string; modelId: string } }
+	| {
+			type: "job.start";
+			job: { id: string; nodeId: string; providerId: string; modelId: string; outputAssetId: string };
+	  }
+	| {
+			type: "job.attach";
+			jobId: string;
+			execution: NonNullable<GenerationJob["execution"]>;
+			status: "queued" | "running";
+			progress?: number;
+	  }
+	| { type: "job.update"; jobId: string; status: "queued" | "running"; progress?: number }
 	| { type: "job.succeed"; jobId: string; asset: ContentAsset }
 	| { type: "job.fail"; jobId: string; error: string; errorCode?: GenerationJob["errorCode"] }
 	| {
@@ -265,12 +276,32 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				nodeId: node.id,
 				provider: command.job.providerId,
 				model: command.job.modelId,
-				status: "running",
+				status: "queued",
 				progress: 0,
+				outputAssetId: command.job.outputAssetId,
 				createdAt: now,
 				updatedAt: now,
 			});
-			node.status = "running";
+			node.status = "queued";
+			return;
+		}
+		case "job.attach": {
+			const job = findJob(project, command.jobId);
+			if (job.status !== "queued" && job.status !== "running") return;
+			job.execution = structuredClone(command.execution);
+			job.status = command.status;
+			job.progress = normalizeJobProgress(command.progress, job.progress);
+			job.updatedAt = now;
+			findNode(project, job.nodeId).status = command.status;
+			return;
+		}
+		case "job.update": {
+			const job = findJob(project, command.jobId);
+			if (job.status !== "queued" && job.status !== "running") return;
+			job.status = command.status;
+			job.progress = normalizeJobProgress(command.progress, job.progress);
+			job.updatedAt = now;
+			findNode(project, job.nodeId).status = command.status;
 			return;
 		}
 		case "job.succeed": {
@@ -354,6 +385,11 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 	}
 }
 
+function normalizeJobProgress(progress: number | undefined, fallback: number): number {
+	if (progress === undefined || !Number.isFinite(progress)) return fallback;
+	return Math.max(0, Math.min(1, progress));
+}
+
 function defaultNodeName(project: ContentProjectDocument, kind: ContentNodeKind): string {
 	const ordinal = project.graph.nodes.filter((node) => node.kind === kind).length + 1;
 	return `${kind} ${ordinal}`;
@@ -370,6 +406,11 @@ export function applyContentProjectCommands(
 		if (command?.type === "node.update") {
 			const node = findNode(project, command.nodeId);
 			if (contentNodeDataEqual(node.data, { ...node.data, ...command.data })) return project;
+		}
+		if (command?.type === "job.update") {
+			const job = findJob(project, command.jobId);
+			const progress = normalizeJobProgress(command.progress, job.progress);
+			if (job.status === command.status && job.progress === progress) return project;
 		}
 	}
 	const next = structuredClone(project);

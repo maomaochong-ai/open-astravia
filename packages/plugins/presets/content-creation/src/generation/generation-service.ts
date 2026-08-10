@@ -5,6 +5,7 @@ import type {
 	ContentNode,
 	ContentNodeInputBinding,
 	ContentProjectDocument,
+	GenerationJob,
 } from "../project/types";
 import { isContentInputBindingAvailable, listContentNodeAssetIds } from "../node/material-assets";
 import {
@@ -29,12 +30,14 @@ import {
 	type ContentReferenceShape,
 } from "./model-inputs";
 import { resolveContentAspectRatio } from "./aspect-ratio";
+import { inferImageDimensionsFromBase64 } from "./image-dimensions";
 import type { ContentProviderRegistry } from "./provider-registry";
 import type {
 	ContentArtifactStore,
 	ContentGenerationOutputKind,
 	ContentGenerationReference,
 	ContentModelDescriptor,
+	ContentProviderGenerationContext,
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "./types";
@@ -53,11 +56,18 @@ interface ReferenceCandidate {
 }
 
 export class ContentGenerationService {
+	private readonly abortController = new AbortController();
+	private readonly activeJobIds = new Set<string>();
+
 	constructor(
 		private readonly workspace: ContentCreationWorkspace,
 		private readonly providers: ContentProviderRegistry,
 		private readonly artifacts: ContentArtifactStore,
 	) {}
+
+	dispose(): void {
+		this.abortController.abort(new DOMException("Content generation runtime was disposed", "AbortError"));
+	}
 
 	listModels(outputKind?: ContentGenerationOutputKind): ContentModelDescriptor[] {
 		return this.providers.listModels(outputKind);
@@ -252,10 +262,20 @@ export class ContentGenerationService {
 				nodeId,
 				data: { providerId: model.providerId, modelId: model.modelId, modeId: mode.id },
 			},
-			{ type: "job.start", job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId } },
+			{
+				type: "job.start",
+				job: { id: jobId, nodeId, providerId: model.providerId, modelId: model.modelId, outputAssetId: assetId },
+			},
 		]);
+		this.activeJobIds.add(jobId);
 		try {
 			const references = await this.resolveReferences(cwd, prepared.candidates, assignment.assignedSlotIds);
+			const aspectRatioReferences = await this.resolveAspectRatioReferences(
+				outputKind,
+				node.data.aspectRatio,
+				prepared.candidates,
+				references,
+			);
 			const generated = await this.providers.generate(
 				{
 					modeId: mode.id,
@@ -266,48 +286,114 @@ export class ContentGenerationService {
 						outputKind,
 						explicitAspectRatio: node.data.aspectRatio,
 						supportedAspectRatios: model.aspectRatios,
-						references: prepared.candidates.map(({ asset }) => asset),
+						references: aspectRatioReferences,
 					}),
 					quality: node.data.quality,
 					duration: node.data.duration,
 					resolution: node.data.resolution,
 					references,
 				},
-				{
-					readReference: async (reference) => {
-						const stored = await this.artifacts.readReference(reference);
-						if (!stored) throw new Error(`content reference data not found: ${reference.id}`);
-						return stored;
-					},
-				},
+				this.createProviderContext(cwd, jobId),
 			);
-			const fileName = generatedFileName(node.name, generated.kind, assetId, generated.mimeType);
-			const stored = await this.artifacts.putGenerated(cwd, fileName, generated);
-			return await this.workspace.dispatch(cwd, [
-				{
-					type: "job.succeed",
-					jobId,
-					asset: {
-						id: assetId,
-						filePath: stored.filePath,
-						kind: generated.kind,
-						name: fileName,
-						mimeType: stored.mimeType,
-						duration: generated.duration,
-						width: generated.width,
-						height: generated.height,
-						createdAt: new Date().toISOString(),
-					},
-				},
-			]);
+			return await this.completeJob(cwd, jobId, generated);
 		} catch (error) {
+			if (this.abortController.signal.aborted) throw error;
 			const message = error instanceof Error ? error.message : String(error);
 			const errorCode = error instanceof PluginMediaError ? error.code : undefined;
 			await this.workspace.dispatch(cwd, [
 				{ type: "job.fail", jobId, error: message, ...(errorCode ? { errorCode } : {}) },
 			]);
 			throw error;
+		} finally {
+			this.activeJobIds.delete(jobId);
 		}
+	}
+
+	async recoverActiveJobs(cwd: string | null): Promise<void> {
+		if (!cwd || this.abortController.signal.aborted) return;
+		const project = await this.workspace.load(cwd);
+		const activeJobs = project.jobs.filter((job) => job.status === "queued" || job.status === "running");
+		await Promise.all(activeJobs.map((job) => this.recoverJob(cwd, job)));
+	}
+
+	private async recoverJob(cwd: string, job: GenerationJob): Promise<void> {
+		if (this.activeJobIds.has(job.id)) return;
+		this.activeJobIds.add(job.id);
+		try {
+			if (!job.execution) {
+				await this.failInterruptedJob(cwd, job.id, "generation job has no resumable host execution");
+				return;
+			}
+			const generated = await this.providers.resume(
+				job.provider,
+				job.execution,
+				this.createProviderContext(cwd, job.id),
+			);
+			await this.completeJob(cwd, job.id, generated);
+		} catch (error) {
+			if (this.abortController.signal.aborted) return;
+			const message = error instanceof Error ? error.message : String(error);
+			const errorCode = error instanceof PluginMediaError ? error.code : "provider-failed";
+			await this.workspace.dispatch(cwd, [{ type: "job.fail", jobId: job.id, error: message, errorCode }]);
+		} finally {
+			this.activeJobIds.delete(job.id);
+		}
+	}
+
+	private createProviderContext(cwd: string, jobId: string): ContentProviderGenerationContext {
+		return {
+			signal: this.abortController.signal,
+			readReference: async (reference) => {
+				const stored = await this.artifacts.readReference(reference);
+				if (!stored) throw new Error(`content reference data not found: ${reference.id}`);
+				return stored;
+			},
+			onExecution: async (execution) => {
+				await this.workspace.dispatch(cwd, [
+					{ type: "job.attach", jobId, execution, status: "queued", progress: 0 },
+				]);
+			},
+			onProgress: async ({ status, progress }) => {
+				await this.workspace.dispatch(cwd, [{ type: "job.update", jobId, status, progress }]);
+			},
+		};
+	}
+
+	private async completeJob(
+		cwd: string,
+		jobId: string,
+		generated: Awaited<ReturnType<ContentProviderRegistry["generate"]>>,
+	): Promise<ContentProjectDocument> {
+		const project = await this.workspace.load(cwd);
+		const job = project.jobs.find((candidate) => candidate.id === jobId);
+		if (!job) throw new Error(`content generation job not found: ${jobId}`);
+		const node = requireNode(project, job.nodeId);
+		const assetId = job.outputAssetId ?? crypto.randomUUID();
+		const fileName = generatedFileName(node.name, generated.kind, assetId, generated.mimeType);
+		const stored = await this.artifacts.putGenerated(cwd, fileName, generated);
+		const completed = await this.workspace.dispatch(cwd, [
+			{
+				type: "job.succeed",
+				jobId,
+				asset: {
+					id: assetId,
+					filePath: stored.filePath,
+					kind: generated.kind,
+					name: fileName,
+					mimeType: stored.mimeType,
+					duration: generated.duration,
+					width: generated.width,
+					height: generated.height,
+					createdAt: new Date().toISOString(),
+				},
+			},
+		]);
+		await this.artifacts.releaseGenerated(generated);
+		return completed;
+	}
+
+	private async failInterruptedJob(cwd: string, jobId: string, error: string): Promise<void> {
+		await this.workspace.dispatch(cwd, [{ type: "job.fail", jobId, error, errorCode: "provider-failed" }]);
 	}
 
 	private async resolveReferences(
@@ -331,6 +417,31 @@ export class ContentGenerationService {
 			}),
 		);
 	}
+
+	private async resolveAspectRatioReferences(
+		outputKind: ContentGenerationOutputKind,
+		explicitAspectRatio: string | undefined,
+		candidates: readonly ReferenceCandidate[],
+		references: readonly ContentGenerationReference[],
+	) {
+		const assets = candidates.map(({ asset }) => asset);
+		if (outputKind !== "video" || explicitAspectRatio) return assets;
+		const firstImageIndex = candidates.findIndex(({ asset }) => asset.kind === "image");
+		if (firstImageIndex < 0) return assets;
+		const image = assets[firstImageIndex];
+		if (!image || (isPositiveDimension(image.width) && isPositiveDimension(image.height))) return assets;
+		const reference = references[firstImageIndex];
+		if (!reference) return assets;
+		const stored = await this.artifacts.readReference(reference).catch(() => null);
+		if (!stored) return assets;
+		const dimensions = await inferImageDimensionsFromBase64(stored.data, stored.mimeType);
+		if (!dimensions) return assets;
+		return assets.map((asset, index) => (index === firstImageIndex ? { ...asset, ...dimensions } : asset));
+	}
+}
+
+function isPositiveDimension(value: number | undefined): value is number {
+	return Number.isFinite(value) && (value ?? 0) > 0;
 }
 
 function requireOutputKind(node: ContentNode): ContentGenerationOutputKind {

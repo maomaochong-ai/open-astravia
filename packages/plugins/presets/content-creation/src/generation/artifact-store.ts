@@ -35,14 +35,16 @@ export class PluginContentArtifactStore implements ContentArtifactStore {
 			await this.fs.writeFile(outputPath, content.source.data, "base64");
 			return { filePath: relativePath, mimeType: content.mimeType };
 		}
-		try {
-			const saved = await this.artifacts.persist(content.source.artifactId, {
-				type: "workspace-file",
-				path: outputPath,
-			});
-			if (saved.type !== "workspace-file") throw new Error("Media artifact was not saved to the workspace");
-			return { filePath: relativePath, mimeType: saved.mimeType };
-		} finally {
+		const saved = await this.artifacts.persist(content.source.artifactId, {
+			type: "workspace-file",
+			path: outputPath,
+		});
+		if (saved.type !== "workspace-file") throw new Error("Media artifact was not saved to the workspace");
+		return { filePath: relativePath, mimeType: saved.mimeType };
+	}
+
+	async releaseGenerated(content: GeneratedContent): Promise<void> {
+		if (content.source.type === "host-artifact") {
 			await this.artifacts.release(content.source.artifactId).catch(() => undefined);
 		}
 	}

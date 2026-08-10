@@ -1,19 +1,24 @@
-import type { PluginMediaApi, PluginMediaProviderDescriptor } from "@vetta-org/plugin-sdk";
+import type {
+	PluginJobsApi,
+	PluginMediaApi,
+	PluginMediaProviderDescriptor,
+} from "@vetta-org/plugin-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { HostMediaProvider } from "../src/generation/host-media-provider";
-import type { ContentProviderAdapter } from "../src/generation/types";
 
 const providerDescriptor: PluginMediaProviderDescriptor = {
 	id: "host:media",
 	ownerId: "host",
-	protocolVersion: 2,
+	protocolVersion: 3,
 	capabilities: [
 		{
+			operation: "generate",
 			kind: "image",
 			modes: ["text-to-image", "image-to-image"],
 			aspectRatios: ["1:1"],
 		},
 		{
+			operation: "generate",
 			kind: "video",
 			modes: ["text-to-video", "image-to-video"],
 			aspectRatios: ["16:9"],
@@ -23,194 +28,189 @@ const providerDescriptor: PluginMediaProviderDescriptor = {
 	],
 };
 
-function createMediaApi() {
-	const listProviders = vi.fn<PluginMediaApi["listProviders"]>().mockResolvedValue([providerDescriptor]);
-	const createJob = vi.fn<PluginMediaApi["createJob"]>();
-	const getJob = vi.fn<PluginMediaApi["getJob"]>();
-	const cancelJob = vi.fn<PluginMediaApi["cancelJob"]>();
-	const saveArtifact = vi.fn<PluginMediaApi["saveArtifact"]>();
-	const releaseArtifact = vi.fn<PluginMediaApi["releaseArtifact"]>();
+function createApis() {
+	const submit = vi.fn<PluginMediaApi["submit"]>();
+	const get = vi.fn<PluginJobsApi["get"]>();
+	const cancel = vi.fn<PluginJobsApi["cancel"]>();
 	const media: PluginMediaApi = {
 		registerProvider: vi.fn(),
-		listProviders,
+		listProviders: vi.fn().mockResolvedValue([providerDescriptor]),
 		onProvidersChanged: vi.fn(),
-		createJob,
-		getJob,
-		cancelJob,
-		saveArtifact,
-		releaseArtifact,
+		submit,
 	};
-	return { media, createJob, getJob, cancelJob };
+	const jobs: PluginJobsApi = { get, cancel, wait: vi.fn() };
+	return { media, jobs, submit, get, cancel };
+}
+
+function createProvider() {
+	const apis = createApis();
+	return { ...apis, provider: new HostMediaProvider(apis.media, apis.jobs, [providerDescriptor]) };
 }
 
 describe("HostMediaProvider", () => {
 	it("exposes distinct image and video models from one host provider", () => {
-		const { media } = createMediaApi();
-		const provider = new HostMediaProvider(media, [providerDescriptor]);
-
+		const { provider } = createProvider();
 		expect(provider.listModels()).toEqual([
+			expect.objectContaining({ modelId: "host:media:image", outputKind: "image", aspectRatios: ["1:1"] }),
 			expect.objectContaining({
-				providerId: "host-media",
-				modelId: "host:media:image",
-				outputKind: "image",
-				aspectRatios: ["1:1"],
-			}),
-			expect.objectContaining({
-				providerId: "host-media",
 				modelId: "host:media:video",
 				outputKind: "video",
-				aspectRatios: ["16:9"],
 				resolutions: ["1080p"],
 				durations: [4, 8],
 			}),
 		]);
 	});
 
-	it("forwards media handles without reading bytes in the plugin", async () => {
-		const { media, createJob } = createMediaApi();
-		createJob.mockResolvedValue({
-			providerId: "host:media",
+	it("persists the host execution before returning a completed artifact", async () => {
+		const { provider, submit } = createProvider();
+		submit.mockResolvedValue({
 			id: "job-1",
+			domain: "media",
+			operation: "generate",
 			status: "succeeded",
 			artifacts: [
 				{
 					id: "artifact-1",
-					kind: "video",
-					mimeType: "video/mp4",
-					sizeBytes: 1024,
-					durationSeconds: 4,
+					kind: "image",
+					mimeType: "image/png",
+					sizeBytes: 32,
+					lifetime: "temporary",
 				},
 			],
 		});
-		const readReference = vi.fn();
-		const provider: ContentProviderAdapter = new HostMediaProvider(media, [providerDescriptor]);
+		const onExecution = vi.fn().mockResolvedValue(undefined);
 
 		await expect(
 			provider.generate(
 				{
 					providerId: "host-media",
-					modelId: "host:media:video",
-					modeId: "image-to-video",
-					prompt: "animate",
-					aspectRatio: "16:9",
-					duration: 4,
-					resolution: "1080p",
-					references: [
-						{
-							id: "reference-1",
-							slotId: "referenceImages",
-							kind: "image",
-							mimeType: "image/png",
-							source: { type: "plugin-blob", blobId: "blob-1" },
-						},
-					],
+					modelId: "host:media:image",
+					modeId: "text-to-image",
+					prompt: "draw",
+					references: [],
 				},
-				{ readReference },
+				{ readReference: vi.fn(), onExecution },
 			),
-		).resolves.toEqual({
-			kind: "video",
-			mimeType: "video/mp4",
+		).resolves.toMatchObject({
+			kind: "image",
 			source: { type: "host-artifact", artifactId: "artifact-1" },
-			width: undefined,
-			height: undefined,
-			duration: 4,
 		});
-		expect(readReference).not.toHaveBeenCalled();
-		expect(createJob).toHaveBeenCalledWith({
-			providerId: "host:media",
-			kind: "video",
-			mode: "image-to-video",
-			prompt: "animate",
-			aspectRatio: "16:9",
-			dimensions: { width: 1820, height: 1024 },
-			resolution: "1080p",
-			durationSeconds: 4,
-			references: [
-				{
-					id: "reference-1",
-					kind: "image",
-					mimeType: "image/png",
-					source: { type: "plugin-blob", blobId: "blob-1" },
-				},
-			],
-		});
+		expect(onExecution).toHaveBeenCalledWith({ kind: "host-job", jobId: "job-1", outputKind: "image" });
 	});
 
-	it("polls queued jobs and maps the completed artifact handle", async () => {
+	it("resumes a persisted queued job and reports progress", async () => {
 		vi.useFakeTimers();
 		try {
-			const { media, createJob, getJob } = createMediaApi();
-			createJob.mockResolvedValue({ providerId: "host:media", id: "job-2", status: "queued" });
-			getJob.mockResolvedValue({
-				providerId: "host:media",
-				id: "job-2",
-				status: "succeeded",
-				artifacts: [{ id: "artifact-2", kind: "image", mimeType: "image/webp", sizeBytes: 32 }],
-			});
-			const provider = new HostMediaProvider(media, [providerDescriptor]);
-			const generated = provider.generate({
-				providerId: "host-media",
-				modelId: "host:media:image",
-				modeId: "text-to-image",
-				prompt: "draw",
-				references: [],
-			});
+			const { provider, get } = createProvider();
+			get
+				.mockResolvedValueOnce({
+					id: "job-2",
+					domain: "media",
+					operation: "generate",
+					status: "running",
+					progress: { value: 0.6 },
+					artifacts: [],
+				})
+				.mockResolvedValueOnce({
+					id: "job-2",
+					domain: "media",
+					operation: "generate",
+					status: "succeeded",
+					artifacts: [
+					{
+						id: "artifact-2",
+						kind: "video",
+						mimeType: "video/mp4",
+						sizeBytes: 64,
+						lifetime: "temporary",
+					},
+					],
+				});
+			const onProgress = vi.fn().mockResolvedValue(undefined);
+			const result = provider.resume(
+				{ kind: "host-job", jobId: "job-2", outputKind: "video" },
+				{ readReference: vi.fn(), onProgress },
+			);
 
-			await vi.advanceTimersByTimeAsync(1000);
-
-			await expect(generated).resolves.toMatchObject({
-				kind: "image",
-				mimeType: "image/webp",
-				source: { type: "host-artifact", artifactId: "artifact-2" },
-			});
-			expect(getJob).toHaveBeenCalledWith({ providerId: "host:media", id: "job-2" });
+			await vi.advanceTimersByTimeAsync(2000);
+			await expect(result).resolves.toMatchObject({ kind: "video", source: { artifactId: "artifact-2" } });
+			expect(get).toHaveBeenCalledWith("job-2");
+			expect(onProgress).toHaveBeenCalledWith({ status: "running", progress: 0.6 });
 		} finally {
 			vi.useRealTimers();
 		}
 	});
 
 	it("preserves structured host failures", async () => {
-		const { media, createJob } = createMediaApi();
-		createJob.mockResolvedValue({
-			providerId: "host:media",
-			id: "job-3",
-			status: "failed",
-			error: { code: "quota-exhausted", message: "quota exhausted", retryable: false },
-		});
-		const provider = new HostMediaProvider(media, [providerDescriptor]);
-
-		await expect(
-			provider.generate({
-				providerId: "host-media",
-				modelId: "host:media:image",
-				modeId: "text-to-image",
-				prompt: "draw",
-				references: [],
-			}),
-		).rejects.toMatchObject({ code: "quota-exhausted", message: "quota exhausted", retryable: false });
+		vi.useFakeTimers();
+		try {
+			const { provider, get } = createProvider();
+			get.mockResolvedValue({
+				id: "job-3",
+				domain: "media",
+				operation: "generate",
+				status: "failed",
+				artifacts: [],
+				error: { code: "quota-exhausted", message: "quota exhausted", retryable: false },
+			});
+			const result = provider.resume(
+				{ kind: "host-job", jobId: "job-3", outputKind: "image" },
+				{ readReference: vi.fn() },
+			);
+			const rejection = expect(result).rejects.toMatchObject({
+				code: "quota-exhausted",
+				message: "quota exhausted",
+			});
+			await vi.advanceTimersByTimeAsync(1000);
+			await rejection;
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
-	it("reports the expected artifact kind when a host result is incomplete", async () => {
-		const { media, createJob } = createMediaApi();
-		createJob.mockResolvedValue({
-			providerId: "host:media",
-			id: "job-4",
-			status: "succeeded",
-			artifacts: [{ id: "artifact-image", kind: "image", mimeType: "image/png", sizeBytes: 16 }],
-		});
-		const provider = new HostMediaProvider(media, [providerDescriptor]);
+	it("fails recovery immediately when the host job no longer exists", async () => {
+		vi.useFakeTimers();
+		try {
+			const { provider, get } = createProvider();
+			get.mockResolvedValue({
+				id: "missing-job",
+				domain: "job",
+				operation: "get",
+				status: "failed",
+				artifacts: [],
+				error: { code: "job-not-found", message: "Job is unavailable: missing-job", retryable: false },
+			});
+			const result = provider.resume(
+				{ kind: "host-job", jobId: "missing-job", outputKind: "image" },
+				{ readReference: vi.fn() },
+			);
+			const rejection = expect(result).rejects.toMatchObject({
+				code: "provider-failed",
+				message: "host media job is no longer available: missing-job",
+				retryable: true,
+			});
+			await vi.advanceTimersByTimeAsync(1000);
+			await rejection;
+			expect(get).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
 
-		await expect(
-			provider.generate({
-				providerId: "host-media",
-				modelId: "host:media:video",
-				modeId: "text-to-video",
-				prompt: "animate",
-				references: [],
-			}),
-		).rejects.toMatchObject({
-			code: "provider-failed",
-			message: "host media provider returned no video artifact: host:media",
-		});
+	it("does not cancel the host job when the renderer runtime is disposed", async () => {
+		vi.useFakeTimers();
+		try {
+			const { provider, cancel } = createProvider();
+			const controller = new AbortController();
+			const result = provider.resume(
+				{ kind: "host-job", jobId: "job-4", outputKind: "video" },
+				{ readReference: vi.fn(), signal: controller.signal },
+			);
+			controller.abort(new DOMException("reload", "AbortError"));
+			await expect(result).rejects.toMatchObject({ name: "AbortError" });
+			expect(cancel).not.toHaveBeenCalled();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

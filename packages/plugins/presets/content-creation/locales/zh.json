@@ -161,6 +161,7 @@
 	"nodeEditor.videoSettings.method.unavailable": "视频生成",
 	"nodeEditor.videoSettings.method.omniHint": "使用多张图片或视频作为全能参考；是否可用取决于当前模型。",
 	"nodeEditor.videoSettings.followImage": "跟随图片",
+	"nodeEditor.videoSettings.followImageShort": "自动",
 	"nodeEditor.videoSettings.followImageSummary": "跟随图片 {{ratio}}",
 	"nodeEditor.videoSettings.durationSummary": "{{duration}} 秒",
 	"nodeEditor.videoSettings.generateAudio": "生成音频",

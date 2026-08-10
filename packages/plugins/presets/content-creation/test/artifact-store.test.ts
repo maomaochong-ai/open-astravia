@@ -1,4 +1,4 @@
-import type { PluginFsApi, PluginMediaApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
+import type { PluginArtifactsApi, PluginFsApi, PluginStorageApi } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PluginContentArtifactStore } from "../src/generation/artifact-store";
 
@@ -9,12 +9,12 @@ describe("PluginContentArtifactStore", () => {
 	const readBinaryFile = vi.fn<PluginFsApi["readBinaryFile"]>();
 	const putBlob = vi.fn<PluginStorageApi["putBlob"]>();
 	const readBlob = vi.fn<PluginStorageApi["readBlob"]>();
-	const saveArtifact = vi.fn<PluginMediaApi["saveArtifact"]>();
-	const releaseArtifact = vi.fn<PluginMediaApi["releaseArtifact"]>();
+	const persistArtifact = vi.fn<PluginArtifactsApi["persist"]>();
+	const releaseArtifact = vi.fn<PluginArtifactsApi["release"]>();
 	const fs = { createDirectory, writeFile, stat, readBinaryFile } as unknown as PluginFsApi;
 	const storage = { putBlob, readBlob } as unknown as PluginStorageApi;
-	const media = { saveArtifact, releaseArtifact } as unknown as PluginMediaApi;
-	const artifacts = new PluginContentArtifactStore(fs, storage, media);
+	const artifactApi = { persist: persistArtifact, release: releaseArtifact } as unknown as PluginArtifactsApi;
+	const artifacts = new PluginContentArtifactStore(fs, storage, artifactApi);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -23,8 +23,8 @@ describe("PluginContentArtifactStore", () => {
 		releaseArtifact.mockResolvedValue();
 	});
 
-	it("saves a host artifact directly into the workspace and always releases it", async () => {
-		saveArtifact.mockResolvedValue({
+	it("keeps a host artifact recoverable until the project commit succeeds", async () => {
+		persistArtifact.mockResolvedValue({
 			type: "workspace-file",
 			path: "C:/project/output/generated.png",
 			mimeType: "image/png",
@@ -39,17 +39,22 @@ describe("PluginContentArtifactStore", () => {
 			}),
 		).resolves.toEqual({ filePath: "output/generated.png", mimeType: "image/png" });
 		expect(createDirectory).toHaveBeenCalledWith("C:/project/output");
-		expect(saveArtifact).toHaveBeenCalledWith({
-			artifactId: "artifact-1",
-			destination: { type: "workspace-file", path: "C:/project/output/generated.png" },
+		expect(persistArtifact).toHaveBeenCalledWith("artifact-1", {
+			type: "workspace-file",
+			path: "C:/project/output/generated.png",
+		});
+		expect(releaseArtifact).not.toHaveBeenCalled();
+		await artifacts.releaseGenerated({
+			kind: "image",
+			mimeType: "image/png",
+			source: { type: "host-artifact", artifactId: "artifact-1" },
 		});
 		expect(releaseArtifact).toHaveBeenCalledWith("artifact-1");
 		expect(writeFile).not.toHaveBeenCalled();
 	});
 
-	it("releases a host artifact when persistence fails without hiding the original error", async () => {
-		saveArtifact.mockRejectedValue(new Error("disk full"));
-		releaseArtifact.mockRejectedValue(new Error("already released"));
+	it("retains a host artifact when persistence fails so a reload can retry", async () => {
+		persistArtifact.mockRejectedValue(new Error("disk full"));
 
 		await expect(
 			artifacts.putGenerated("C:/project", "generated.mp4", {
@@ -58,7 +63,7 @@ describe("PluginContentArtifactStore", () => {
 				source: { type: "host-artifact", artifactId: "artifact-2" },
 			}),
 		).rejects.toThrow("disk full");
-		expect(releaseArtifact).toHaveBeenCalledWith("artifact-2");
+		expect(releaseArtifact).not.toHaveBeenCalled();
 	});
 
 	it("keeps inline data limited to direct provider output", async () => {
@@ -70,7 +75,7 @@ describe("PluginContentArtifactStore", () => {
 			}),
 		).resolves.toEqual({ filePath: "output/direct.png", mimeType: "image/png" });
 		expect(writeFile).toHaveBeenCalledWith("C:/project/output/direct.png", "aW1hZ2U=", "base64");
-		expect(saveArtifact).not.toHaveBeenCalled();
+		expect(persistArtifact).not.toHaveBeenCalled();
 		expect(releaseArtifact).not.toHaveBeenCalled();
 	});
 

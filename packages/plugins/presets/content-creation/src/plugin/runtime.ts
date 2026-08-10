@@ -45,8 +45,10 @@ export async function initializePluginRuntime(ctx: PluginContext): Promise<Conte
 
 export function disposePluginRuntime(): void {
 	mediaProviderRefreshVersion += 1;
+	generationService?.dispose();
 	mediaProviderSubscription?.dispose();
 	mediaProviderSubscription = null;
+	generationService = null;
 }
 
 export function getContentGenerationService(): ContentGenerationService {
