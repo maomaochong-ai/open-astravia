@@ -35,9 +35,9 @@ export type ContentProjectCommand =
 	| { type: "node.move"; nodeId: string; position: CanvasPosition }
 	| { type: "node.resize"; nodeId: string; width: number; height: number; position?: CanvasPosition }
 	| { type: "node.lock"; nodeId: string; locked: boolean }
-	| { type: "node.duplicate"; nodeId: string; position?: CanvasPosition }
+	| { type: "node.duplicate"; nodeId: string; id?: string; position?: CanvasPosition }
 	| { type: "node.delete"; nodeId: string }
-	| { type: "edge.connect"; source: string; target: string; sourceHandle?: string; targetHandle?: string }
+	| { type: "edge.connect"; id?: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }
 	| { type: "edge.delete"; edgeId: string }
 	| { type: "asset.add"; asset: ContentAsset }
 	| {
@@ -192,10 +192,14 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 		case "node.duplicate": {
 			const source = findNode(project, command.nodeId);
 			const position = command.position ?? { x: source.position.x + 40, y: source.position.y + 40 };
+			const id = command.id ?? crypto.randomUUID();
 			assertPosition(position);
+			if (project.graph.nodes.some((node) => node.id === id)) {
+				throw new ContentProjectCommandError(`node already exists: ${id}`);
+			}
 			project.graph.nodes.push({
 				...structuredClone(source),
-				id: crypto.randomUUID(),
+				id,
 				position,
 				locked: false,
 				status: "idle",
@@ -219,6 +223,9 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 		}
 		case "edge.connect": {
 			if (command.source === command.target) throw new ContentProjectCommandError("a node cannot connect to itself");
+			if (command.id && project.graph.edges.some((edge) => edge.id === command.id)) {
+				throw new ContentProjectCommandError(`edge already exists: ${command.id}`);
+			}
 			const sourceNode = findNode(project, command.source);
 			const targetNode = findNode(project, command.target);
 			const connection = resolveContentConnection(
@@ -240,7 +247,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			)
 				return;
 			const edge: ContentEdge = {
-				id: crypto.randomUUID(),
+				id: command.id ?? crypto.randomUUID(),
 				source: command.source,
 				target: command.target,
 				sourceHandle: connection.sourceHandle,

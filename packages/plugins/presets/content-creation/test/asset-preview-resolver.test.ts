@@ -155,6 +155,7 @@ function createStorage(getBlobRef: PluginStorageApi["getBlobRef"]): PluginStorag
 		readFile: async () => null,
 		writeFile: async () => undefined,
 		putBlob: async (input) => ({ id: input.id ?? "blob", url: "", mimeType: input.mimeType }),
+		putBlobFromFile: async (input) => ({ id: input.id ?? "blob", url: "", mimeType: input.mimeType }),
 		readBlob: async () => null,
 		getBlobRef,
 	};

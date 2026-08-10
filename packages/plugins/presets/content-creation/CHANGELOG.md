@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Activity panel tab icon now uses the plugin's own `icon.png` instead of a generic lucide glyph.
 - MiniMax H3 视频输入改为能力驱动的两种创作模式：首尾帧显示独立的首帧/尾帧槽并跟随输入比例，全能参考接受模型声明的图片、视频和音频数量；切换模式会保留非当前模式素材，但生成时只提交当前模式输入。
 - Selected nodes are now named one by one on the input bar instead of collapsing into a single "N nodes" capsule, matching the host's new attachment strip.
 
@@ -64,6 +65,7 @@
 
 ### Added
 
+- Added an agent-native content workflow service with semantic state inspection, model capabilities, actionable diagnostics, automatic node placement, revision-safe edits, confirmation cards for destructive changes and generation, dependency-ordered execution status, and bundled workflow/video creation Skills.
 - Added a structured, persistent input-bar context for the current canvas selection so the agent receives selected node IDs, semantic v4 node data, adjacent connections, and safe asset summaries without canvas layout, jobs, timestamps, previews, or private storage IDs.
 - Added input-bound, opt-in prompt optimization through host-managed AI models with reusable node-specific profiles; successful results replace the effective prompt while preserving the structured original.
 - Added host media-provider discovery and image generation through the plugin media capability, with generated artifacts persisted as visible workspace output files.

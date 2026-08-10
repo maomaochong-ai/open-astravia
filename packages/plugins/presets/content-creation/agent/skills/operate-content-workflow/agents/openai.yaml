@@ -1,0 +1,4 @@
+interface:
+  display_name: "内容工作流操作"
+  short_description: "理解、检查、预览并安全操作 Vetta 内容创作节点工作流"
+  default_prompt: "Use $operate-content-workflow to inspect and safely update my content workflow."

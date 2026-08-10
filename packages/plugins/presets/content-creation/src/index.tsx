@@ -1,5 +1,6 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "@xyflow/react/dist/style.css";
+import pluginIconUrl from "../icon.png";
 import "./styles/index.css";
 import {
 	publishPromptAttachment,
@@ -7,26 +8,56 @@ import {
 	setPromptAttachmentController,
 	setRegisterShortcutScope,
 } from "./plugin/plugin-ui";
-import { registerContentCreationTools } from "./plugin/register-tools";
+import { ContentChangePreviewCard, ContentRunCard } from "./plugin/AgentCards";
+import {
+	CONTENT_CHANGE_PREVIEW_CARD_TYPE,
+	CONTENT_PREPARE_RUN_TOOL_NAME,
+	CONTENT_PREVIEW_TOOL_NAME,
+	CONTENT_RUN_CARD_TYPE,
+	registerContentCreationTools,
+} from "./plugin/register-tools";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
-import { disposePluginRuntime, initializePluginRuntime } from "./plugin/runtime";
+import {
+	disposePluginRuntime,
+	getContentCreationAgentService,
+	initializePluginRuntime,
+} from "./plugin/runtime";
+
+function PluginTabIcon() {
+	// 与 plugin.json#icon 同源（icon.png），活动栏与插件列表品牌一致。
+	return <img src={pluginIconUrl} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
+}
 
 export default definePlugin({
 	async activate(ctx) {
-		const workspace = await initializePluginRuntime(ctx);
+		await initializePluginRuntime(ctx);
 		setRegisterShortcutScope((contribution) => ctx.ui.registerShortcutScope(contribution));
 		setActivityPanelWidthController((width) => ctx.ui.setActivityPanelWidth(width));
 		setPromptAttachmentController((attachment) => ctx.ui.setPromptAttachment(attachment));
 		ctx.ui.registerActivityTab({
 			id: "workspace",
 			label: "%tab.workspace.label%",
-			icon: <span className="icon-[lucide--wand-sparkles] block h-4 w-4 shrink-0" aria-hidden="true" />,
+			icon: <PluginTabIcon />,
 			component: ContentCreationPanel,
 			scope_use: ["conversation", "project"],
 			// 默认不上栏；agent open_content_creation / 用户从「+」添加后再挂上。
 			initiallyVisible: false,
 		});
-		registerContentCreationTools(ctx, workspace);
+		ctx.ui.registerCardRenderer({
+			type: CONTENT_CHANGE_PREVIEW_CARD_TYPE,
+			title: "%card.preview.title%",
+			component: ContentChangePreviewCard,
+			pendingFor: (toolCall) =>
+				toolCall.toolName === CONTENT_PREVIEW_TOOL_NAME ? { type: CONTENT_CHANGE_PREVIEW_CARD_TYPE } : null,
+		});
+		ctx.ui.registerCardRenderer({
+			type: CONTENT_RUN_CARD_TYPE,
+			title: "%card.run.title%",
+			component: ContentRunCard,
+			pendingFor: (toolCall) =>
+				toolCall.toolName === CONTENT_PREPARE_RUN_TOOL_NAME ? { type: CONTENT_RUN_CARD_TYPE } : null,
+		});
+		registerContentCreationTools(ctx, getContentCreationAgentService());
 	},
 	deactivate() {
 		publishPromptAttachment(null);

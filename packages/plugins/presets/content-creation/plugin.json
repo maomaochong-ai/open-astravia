@@ -16,7 +16,10 @@
 	"permissions": [
 		"ui.slot.activity-tab",
 		"ui.slot.input-action",
+		"ui.slot.message",
 		"ui.shortcuts.register",
+		"agent.skills.control",
+		"agent.systemPrompt.write",
 		"agent.tools.register",
 		"agent.toolHandler.execute",
 		"ai.models.list",
@@ -28,6 +31,12 @@
 		"storage.read",
 		"storage.write"
 	],
+	"agent": {
+		"skillPaths": ["agent/skills"],
+		"systemPrompt": {
+			"promptPaths": ["agent/prompts/content-creation.md"]
+		}
+	},
 	"network": {
 		"allowedHosts": ["*"]
 	},
