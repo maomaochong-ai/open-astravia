@@ -28,6 +28,7 @@ import {
 	slotIdForReferenceKind,
 	type ContentReferenceShape,
 } from "./model-inputs";
+import { resolveContentAspectRatio } from "./aspect-ratio";
 import type { ContentProviderRegistry } from "./provider-registry";
 import type {
 	ContentArtifactStore,
@@ -85,6 +86,8 @@ export class ContentGenerationService {
 					kind,
 					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
 					mimeType: file.mimeType,
+					...(file.width === undefined ? {} : { width: file.width }),
+					...(file.height === undefined ? {} : { height: file.height }),
 					createdAt: new Date().toISOString(),
 				},
 			});
@@ -146,6 +149,8 @@ export class ContentGenerationService {
 					kind,
 					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
 					mimeType: file.mimeType,
+					...(file.width === undefined ? {} : { width: file.width }),
+					...(file.height === undefined ? {} : { height: file.height }),
 					createdAt: new Date().toISOString(),
 				},
 			});
@@ -194,6 +199,8 @@ export class ContentGenerationService {
 					kind,
 					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
 					mimeType: file.mimeType,
+					...(file.width === undefined ? {} : { width: file.width }),
+					...(file.height === undefined ? {} : { height: file.height }),
 					createdAt: new Date().toISOString(),
 				},
 			});
@@ -255,7 +262,12 @@ export class ContentGenerationService {
 					providerId: model.providerId,
 					modelId: model.modelId,
 					prompt,
-					aspectRatio: node.data.aspectRatio,
+					aspectRatio: resolveContentAspectRatio({
+						outputKind,
+						explicitAspectRatio: node.data.aspectRatio,
+						supportedAspectRatios: model.aspectRatios,
+						references: prepared.candidates.map(({ asset }) => asset),
+					}),
 					quality: node.data.quality,
 					duration: node.data.duration,
 					resolution: node.data.resolution,

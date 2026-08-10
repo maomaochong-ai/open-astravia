@@ -34,6 +34,12 @@ const jobArtifactType = Type.Object(
 		sizeBytes: Type.Integer({ minimum: 0 }),
 		lifetime: Type.Literal("temporary"),
 		name: Type.Optional(requiredStringType),
+		// Media jobs attach domain fields on the same artifact refs (see MediaArtifact).
+		// Keep them declared so clean/output validation never drops them.
+		kind: Type.Optional(Type.Union([Type.Literal("image"), Type.Literal("video"), Type.Literal("audio")])),
+		width: Type.Optional(Type.Integer({ minimum: 1 })),
+		height: Type.Optional(Type.Integer({ minimum: 1 })),
+		durationSeconds: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
 	},
 	{ additionalProperties: true },
 );

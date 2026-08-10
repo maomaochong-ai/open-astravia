@@ -34,4 +34,22 @@ describe("adaptMinimaxWorkflow", () => {
 		expect(result.prompt.noise.inputs.noise_seed).toBe(42);
 		expect(template.load.inputs.image).toBe("old.png");
 	});
+
+	it("maps a portrait request onto the H3 resolution selector", () => {
+		const result = adaptMinimaxWorkflow(
+			template,
+			{
+				kind: "video",
+				mode: "image-to-video",
+				prompt: "subject remains centered",
+				aspectRatio: "9:16",
+				durationSeconds: 5,
+				references: [{ id: "image-1", kind: "image" }],
+			},
+			"uploaded/portrait.png",
+			7,
+		);
+
+		expect(result.prompt.resolution.inputs.aspect_ratio).toBe("9:16 (Portrait Widescreen)");
+	});
 });

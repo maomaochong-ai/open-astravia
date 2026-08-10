@@ -1,7 +1,9 @@
 import type { ImportedContentAsset } from "../generation/types";
 
-export function createImportedMediaFile(file: File, name = file.name): ImportedContentAsset {
-	return { name, mimeType: importedMediaMimeType(file), file };
+export async function createImportedMediaFile(file: File, name = file.name): Promise<ImportedContentAsset> {
+	const mimeType = importedMediaMimeType(file);
+	const dimensions = mimeType.startsWith("image/") ? await readImageDimensions(file) : undefined;
+	return { name, mimeType, file, ...dimensions };
 }
 
 export function isImportedMediaFile(file: File): boolean {
@@ -27,4 +29,18 @@ function inferMimeType(fileName: string): string {
 	if (extension === "ogg" || extension === "oga") return "audio/ogg";
 	if (extension === "flac") return "audio/flac";
 	return "application/octet-stream";
+}
+
+async function readImageDimensions(file: File): Promise<{ width: number; height: number } | undefined> {
+	if (typeof globalThis.createImageBitmap !== "function") return undefined;
+	try {
+		const bitmap = await globalThis.createImageBitmap(file);
+		try {
+			return bitmap.width > 0 && bitmap.height > 0 ? { width: bitmap.width, height: bitmap.height } : undefined;
+		} finally {
+			bitmap.close();
+		}
+	} catch {
+		return undefined;
+	}
 }

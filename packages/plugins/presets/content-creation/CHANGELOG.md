@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Video generation now follows the first input image's aspect ratio by default, preventing portrait MiniMax H3 frames from being stretched into a landscape canvas while preserving explicit ratio choices.
+- Video generation settings now open from a compact summary into a grouped panel for frame/reference mode, aspect ratio, resolution, duration, and audio capability.
+- Strengthened the multi-node selection group outline: more visible primary fill, dashed border, and 12px inset spacing from selected cards (plus a clearer marquee while dragging).
 - Kept node editors hidden during dragging and delayed a newly selected node's editor until drag end, while preserving already mounted editor state.
 - Deferred generation-control option trees until their dropdown opens, avoiding a large first-frame mount when dragging an unselected generator node.
 - Prevented React Flow position updates from rerendering the selected node's full generation editor during canvas dragging.

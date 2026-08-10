@@ -34,7 +34,7 @@ export function ContentReferenceInput({
 		const files = Array.from(event.target.files ?? []);
 		event.target.value = "";
 		if (files.length === 0) return;
-		await onImport(files.map((file) => createImportedMediaFile(file)));
+		await onImport(await Promise.all(files.map((file) => createImportedMediaFile(file))));
 	};
 
 	return (

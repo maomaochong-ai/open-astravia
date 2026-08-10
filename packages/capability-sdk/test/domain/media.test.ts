@@ -89,6 +89,48 @@ describe("media domain capabilities", () => {
 		});
 	});
 
+	it("preserves video artifact kind through job output cleaning", () => {
+		expect(
+			DOMAIN_MEDIA_CAPABILITIES.SUBMIT.parseOutput({
+				id: "job-video",
+				domain: "media",
+				operation: "generate",
+				status: JOB_STATUSES.SUCCEEDED,
+				progress: { value: 1 },
+				artifacts: [
+					{
+						id: "artifact-video",
+						kind: "video",
+						mimeType: "video/mp4",
+						sizeBytes: 1280,
+						lifetime: "temporary",
+						width: 1280,
+						height: 720,
+						durationSeconds: 5,
+					},
+				],
+			}),
+		).toEqual({
+			id: "job-video",
+			domain: "media",
+			operation: "generate",
+			status: "succeeded",
+			progress: { value: 1 },
+			artifacts: [
+				{
+					id: "artifact-video",
+					kind: "video",
+					mimeType: "video/mp4",
+					sizeBytes: 1280,
+					lifetime: "temporary",
+					width: 1280,
+					height: 720,
+					durationSeconds: 5,
+				},
+			],
+		});
+	});
+
 	it("publishes media schemas in its catalog", () => {
 		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG).toHaveLength(2);
 		expect(DOMAIN_MEDIA_CAPABILITY_CATALOG[0]?.outputSchema).toMatchObject({ type: "array" });

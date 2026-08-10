@@ -126,7 +126,7 @@ export function ContentPromptEditor({
 		event.target.value = "";
 		if (files.length === 0) return;
 		await onUpdate(draftRef.current);
-		await onImportReferences(files.map((file) => createImportedMediaFile(file)));
+		await onImportReferences(await Promise.all(files.map((file) => createImportedMediaFile(file))));
 	};
 	const handleOptimize = async () => {
 		if (!selectedModelKey || isOptimizing) return;

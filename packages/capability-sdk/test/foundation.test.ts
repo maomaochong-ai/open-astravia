@@ -5,6 +5,7 @@ import {
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITY_CATALOG,
 	FOUNDATION_GATEWAY_CAPABILITY_CATALOG,
+	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITY_CATALOG,
 	FOUNDATION_STORAGE_CAPABILITIES,
@@ -88,10 +89,10 @@ describe("network and namespaced storage foundation capabilities", () => {
 
 	it("publishes schemas for every foundation capability", () => {
 		expect(FOUNDATION_FILESYSTEM_CAPABILITY_CATALOG).toHaveLength(10);
-		expect(FOUNDATION_STORAGE_CAPABILITY_CATALOG).toHaveLength(12);
+		expect(FOUNDATION_STORAGE_CAPABILITY_CATALOG).toHaveLength(13);
 		expect(FOUNDATION_NETWORK_CAPABILITY_CATALOG).toHaveLength(1);
 		expect(FOUNDATION_GATEWAY_CAPABILITY_CATALOG).toHaveLength(1);
-		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(24);
+		expect(FOUNDATION_CAPABILITY_CATALOG).toHaveLength(29);
 		expect(() => JSON.stringify(FOUNDATION_CAPABILITY_CATALOG)).not.toThrow();
 		expect(
 			FOUNDATION_CAPABILITY_CATALOG.every(({ inputSchema, outputSchema }) => {
@@ -131,5 +132,28 @@ describe("network and namespaced storage foundation capabilities", () => {
 				modifiedAt: 2,
 			},
 		]);
+	});
+
+	it("keeps open-object extension fields when additionalProperties is true", () => {
+		expect(
+			FOUNDATION_JOB_CAPABILITIES.GET.parseOutput({
+				id: "job-1",
+				domain: "media",
+				operation: "generate",
+				status: "succeeded",
+				artifacts: [
+					{
+						id: "artifact-1",
+						mimeType: "video/mp4",
+						sizeBytes: 10,
+						lifetime: "temporary",
+						kind: "video",
+						customExtension: "kept",
+					},
+				],
+			}),
+		).toMatchObject({
+			artifacts: [{ kind: "video", customExtension: "kept" }],
+		});
 	});
 });

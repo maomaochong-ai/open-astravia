@@ -46,7 +46,7 @@ export async function importDroppedMediaFiles(
 ): Promise<void> {
 	for (let index = 0; index < files.length; index += DROP_IMPORT_BATCH_SIZE) {
 		const batch = files.slice(index, index + DROP_IMPORT_BATCH_SIZE);
-		const importedFiles = batch.map(({ file, name }) => createImportedMediaFile(file, name));
+		const importedFiles = await Promise.all(batch.map(({ file, name }) => createImportedMediaFile(file, name)));
 		await onImport(importedFiles);
 	}
 }

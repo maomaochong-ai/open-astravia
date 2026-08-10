@@ -85,7 +85,7 @@ export interface StoredContentData {
 	mimeType: string;
 }
 
-export type ImportedContentAsset = { name: string; mimeType: string } & (
+export type ImportedContentAsset = { name: string; mimeType: string; width?: number; height?: number } & (
 	| { file: File; data?: never }
 	| { data: string; file?: never }
 );
