@@ -25,7 +25,8 @@ import { setPluginCtx } from "./plugin-context";
 import { VetdPreview } from "./preview/VetdPreview";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
-import { findVetdFiles } from "./vetd/discover";
+import { claimCanvasAutoOpen } from "./vetd/auto-open";
+import { isPureDesignProject, pickVetdFiles } from "./vetd/discover";
 
 function DesignIcon() {
 	return (
@@ -82,13 +83,27 @@ export default definePlugin({
 		/** 最近一次 conversation-changed 的 cwd，用于丢弃过期的探测结果。 */
 		let latestCwd: string | null = null;
 
-		/** cwd 里有 .vetd 才把画布 Tab 上栏。切回工作模式时也要重跑一次。 */
+		/**
+		 * cwd 里有 .vetd 才把画布 Tab 上栏。切回工作模式时也要重跑一次。
+		 *
+		 * 纯设计项目（除设计稿和 README 之类外没有别的文件）额外自动展开画布：
+		 * 这种目录打开就是为了看设计，先给面板。混合项目不抢，且每个项目只自动
+		 * 打开一次，用户关掉之后不再反复弹。
+		 */
 		const revealTabForCwd = (cwd: string | null): void => {
 			if (!cwd || !isWorkMode()) return;
-			void findVetdFiles(ctx.fs, cwd).then((found) => {
-				if (latestCwd !== cwd || !isWorkMode()) return;
-				ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found.length > 0);
-			});
+			void ctx.fs
+				.listFilesRecursive(cwd)
+				.catch(() => [])
+				.then(async (files) => {
+					if (latestCwd !== cwd || !isWorkMode()) return;
+					const found = pickVetdFiles(files);
+					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found.length > 0);
+					if (found.length === 0 || !isPureDesignProject(files)) return;
+					if (!(await claimCanvasAutoOpen(ctx.storage, cwd))) return;
+					if (latestCwd !== cwd || !isWorkMode()) return;
+					ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+				});
 		};
 
 		const syncWorkModeSlots = (mode: AgentMode): void => {
