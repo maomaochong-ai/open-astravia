@@ -509,18 +509,21 @@ export class RuntimeHost implements SessionFacade {
 		historyReader: SessionHandle["historyReader"],
 		modelController: SessionHandle["modelController"],
 	): Promise<void> {
-		const history = historyReader.readHistory();
-		for (let index = history.length - 1; index >= 0; index -= 1) {
-			const entry = history[index];
-			if (entry?.type !== "message" || entry.message.role !== "assistant") continue;
-			const { provider, model } = entry.message;
-			if (!provider || !model) return;
-			try {
+		// 整体兜底：此时 session 已注册且会话文件锁已持有，任何抛错都会让 createSession
+		// 失败并泄漏这个句柄（下一次打开同一路径将撞上 ownership conflict）。模型恢复
+		// 是锦上添花，绝不能成为开会话的失败点。
+		try {
+			const history = historyReader.readHistory();
+			for (let index = history.length - 1; index >= 0; index -= 1) {
+				const entry = history[index];
+				if (entry?.type !== "message" || entry.message.role !== "assistant") continue;
+				const { provider, model } = entry.message;
+				if (!provider || !model) return;
 				await modelController.selectModel(`${provider}/${model}`, "if-changed");
-			} catch {
-				// 凭证缺失等情况下保持兜底模型，用户仍可手动切换。
+				return;
 			}
-			return;
+		} catch {
+			// 历史读取失败、模型已下线或缺少凭证时保持宿主兜底模型，用户仍可手动切换。
 		}
 	}
 
