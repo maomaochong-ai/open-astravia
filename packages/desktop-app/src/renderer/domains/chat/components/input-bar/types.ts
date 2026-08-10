@@ -121,6 +121,8 @@ export interface InputBarModel {
 	hasPromptAttachment: boolean;
 	promptAttachmentIcon?: string;
 	promptAttachmentLabel?: string;
+	/** 逐条渲染成 `#xxx` 的条目；插件没给 `labels` 时就是 `[promptAttachmentLabel]`。 */
+	promptAttachmentLabels?: string[];
 	/** Latest user message replacement pending (applied on send). */
 	pendingMessageEdit: boolean;
 	pendingEditHint: string;

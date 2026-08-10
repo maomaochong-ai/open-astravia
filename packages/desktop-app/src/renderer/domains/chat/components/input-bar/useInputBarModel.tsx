@@ -194,11 +194,13 @@ export function useInputBarModel({
 		[actionBar],
 	);
 
-	/** 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、插件上下文、重编辑提示。 */
+	/**
+	 * 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、重编辑提示。
+	 * 插件上下文不在其中——它画在卡片外面顶部，算进来只会让卡片里展开一块空白。
+	 */
 	const hasCapsules =
 		imageAttachments.length > 0 ||
 		Boolean(selectedSkill) ||
-		Boolean(promptAttachment) ||
 		Boolean(appshotAttachment) ||
 		Boolean(pendingMessageEdit);
 
@@ -605,6 +607,8 @@ export function useInputBarModel({
 		hasPromptAttachment: Boolean(promptAttachment),
 		promptAttachmentIcon: promptAttachment?.icon,
 		promptAttachmentLabel: promptAttachment?.label,
+		promptAttachmentLabels:
+			promptAttachment?.labels ?? (promptAttachment ? [promptAttachment.label] : undefined),
 		pendingMessageEdit: Boolean(pendingMessageEdit),
 		pendingEditHint: t("messageList.edit.pendingHint"),
 		cancelPendingEditLabel: t("messageList.interrupt.cancel"),

@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "content-creation",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"detail": {
 		"blocks": [
 			{

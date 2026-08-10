@@ -27,12 +27,12 @@ interface Options {
 }
 
 /**
- * 把画布选中态挂到 AI 输入框上（与 content-creation 的节点胶囊同一套交互）：选中
- * 画框或元素 → 输入框上出现胶囊 → 用户在输入框里正常提问，选中作为结构化上下文
- * 一并发出。画布内不再自带输入框。
+ * 把画布选中态挂到 AI 输入框上：选中画框或元素 → 输入框上方出现 `#画框名` 一行
+ * 引用 → 用户在输入框里正常提问，选中作为结构化上下文一并发出。画布内不再自带
+ * 输入框。
  *
- * 用户可以在输入框上摘掉胶囊。摘掉之后不重挂，直到选中真的变了——否则截图落地
- * 时的那次重新发布会把用户刚摘掉的胶囊又贴回去。
+ * 用户可以摘掉这行引用。摘掉之后不重挂，直到选中真的变了——否则截图落地时的那次
+ * 重新发布会把它又贴回去。
  */
 export function useSelectionPromptAttachment({ session, selection, frames, capture }: Options): void {
 	const { t } = useTranslation();
@@ -74,7 +74,7 @@ export function useSelectionPromptAttachment({ session, selection, frames, captu
 					await getPluginCtx().fs.writeFile(path, base64, "base64");
 					if (!cancelled) setScreenshot({ signature, frameId: captureFrameId, path });
 				} catch (error) {
-					// 截图只是给胶囊加料，失败了胶囊照挂（agent 还能自己 vetd_screenshot），
+					// 截图只是给附件加料，失败了引用照挂（agent 还能自己 vetd_screenshot），
 					// 所以不打扰用户，只留一条诊断。
 					console.warn("[plugin:vetta-ui-design] selection screenshot failed", error);
 				}
@@ -86,13 +86,25 @@ export function useSelectionPromptAttachment({ session, selection, frames, captu
 		};
 	}, [capture, captureFrameId, keepHighlight, session.dirPath, signature]);
 
+	/**
+	 * 输入框上逐条画成 `#xxx` 的条目：选了几个画框就是几条，钻进元素时再补一条
+	 * `<tag>`——「3 个画框」这种汇总说法数不出到底是哪几个。
+	 */
+	const labels = useMemo(() => {
+		if (frames.length === 0) return [];
+		const titles = frames.map((frame) => frame.title || frame.id);
+		return element ? [...titles, `<${element.payload.tag}>`] : titles;
+		// biome-ignore lint/correctness/useExhaustiveDependencies: frames/element 每次渲染都是新对象，用 framesKey + signature 表示它们的内容
+	}, [framesKey, signature]);
+
+	/** 无障碍与回退用的单条说法（宿主在没有 labels 时用它）。 */
 	const label = useMemo(() => {
 		if (frames.length === 0) return "";
 		const primary = element ? frames.find((frame) => frame.id === element.frameId) : undefined;
 		const title = (primary ?? frames[0]).title || (primary ?? frames[0]).id;
 		if (element) return t("canvas.attach.element", { tag: element.payload.tag, name: title });
 		return frames.length === 1 ? title : t("canvas.attach.frames", { count: frames.length });
-		// biome-ignore lint/correctness/useExhaustiveDependencies: frames/element 每次渲染都是新对象，用 framesKey + signature 表示它们的内容
+		// biome-ignore lint/correctness/useExhaustiveDependencies: 同上
 	}, [framesKey, signature, t]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: 同上
@@ -108,8 +120,9 @@ export function useSelectionPromptAttachment({ session, selection, frames, captu
 						? { frameId: screenshot.frameId, path: screenshot.path }
 						: null,
 				label,
+				labels,
 			}),
-		[framesKey, label, screenshot, session.dirPath, session.vetdPath, signature],
+		[framesKey, label, labels, screenshot, session.dirPath, session.vetdPath, signature],
 	);
 
 	useEffect(() => {
@@ -143,7 +156,7 @@ export function useSelectionPromptAttachment({ session, selection, frames, captu
 		publishedRef.current = signature;
 	}, [attachment, promptAttachment, signature]);
 
-	// 画布卸载（切走 Tab、关掉设计稿）时把胶囊摘掉：它描述的是这块画布上的选中。
+	// 画布卸载（切走 Tab、关掉设计稿）时把引用摘掉：它描述的是这块画布上的选中。
 	useEffect(
 		() => () => {
 			getPluginCtx().ui.setPromptAttachment(null);

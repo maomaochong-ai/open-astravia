@@ -1234,7 +1234,16 @@ function createContext(
 		if (!attachment.id.trim() || !attachment.label.trim()) {
 			throw new Error("Prompt attachment id and label are required");
 		}
-		store.set(promptAttachmentAtom, { ...attachment, ownerPluginId: plugin.id });
+		// 逐条 label 由输入框直接渲染，先在边界上清掉空串/非字符串；清空后当作没给，
+		// 回落到单条 label，而不是让输入框上出现一个空的 `#`。
+		const labels = (attachment.labels ?? [])
+			.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+			.map((entry) => entry.trim());
+		store.set(promptAttachmentAtom, {
+			...attachment,
+			...(labels.length > 0 ? { labels } : { labels: undefined }),
+			ownerPluginId: plugin.id,
+		});
 		// An attachment activates this plugin's input action so its hidden prompt
 		// instructions are contributed to the next turn.
 		const myActionIds = store

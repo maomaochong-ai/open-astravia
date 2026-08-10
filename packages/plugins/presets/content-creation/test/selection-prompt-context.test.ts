@@ -58,7 +58,7 @@ describe("content selection prompt context", () => {
 			},
 		];
 
-		const attachment = createContentSelectionPromptAttachment(project, ["prompt-1"], "Opening prompt");
+		const attachment = createContentSelectionPromptAttachment(project, ["prompt-1"], "Opening prompt", ["Opening prompt"]);
 		const payload = attachment?.context?.payload;
 
 		expect(attachment?.lifecycle).toBe("sticky");
@@ -87,6 +87,6 @@ describe("content selection prompt context", () => {
 	});
 
 	it("does not attach an empty selection", () => {
-		expect(createContentSelectionPromptAttachment(createContentProject(null), [], "None")).toBeNull();
+		expect(createContentSelectionPromptAttachment(createContentProject(null), [], "None", [])).toBeNull();
 	});
 });

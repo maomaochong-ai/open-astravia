@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Selected nodes are now named one by one on the input bar (`#node`) instead of collapsing into a single "N nodes" capsule, matching the host's new attachment strip.
+
 ### Fixed
 
 - Kept node editors hidden during dragging and delayed a newly selected node's editor until drag end, while preserving already mounted editor state.

@@ -1164,7 +1164,7 @@ export function DesignCanvas({
 
 	/**
 	 * 选中的画框 / 元素挂到 AI 输入框上，用户在那儿正常提问即可（不再在画布里另开
-	 * 一个输入框）。单选时顺带截一张图进胶囊。
+	 * 一个输入框）。单选时顺带截一张图带上。
 	 */
 	useSelectionPromptAttachment({
 		session,

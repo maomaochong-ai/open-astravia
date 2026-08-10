@@ -1,10 +1,10 @@
 /**
- * 输入框胶囊的载荷。
+ * 输入框附件的载荷。
  *
- * 这组用例守的是「选中即上下文」这条链路的合同：胶囊里必须带得出画框源码的绝对
+ * 这组用例守的是「选中即上下文」这条链路的合同：附件里必须带得出画框源码的绝对
  * 路径与元素的插桩位置（agent 靠它定位改哪一行），截图是可选的（只有单选才截），
  * 并且同一次选中重复发布要能被识别出来——否则截图落地时的第二次发布会把用户刚
- * 摘掉的胶囊贴回去。
+ * 摘掉的引用又贴回去。
  */
 import { expect, it } from "vitest";
 import type { SelectedElementPayload } from "../src/canvas/bridge-client";
@@ -44,12 +44,17 @@ const input = (overrides: Partial<DesignSelectionAttachmentInput> = {}): DesignS
 	element: null,
 	screenshot: null,
 	label: "登录页",
+	labels: ["登录页"],
 	...overrides,
 });
 
 it("carries each selected frame's absolute source path", () => {
 	const attachment = createDesignSelectionPromptAttachment(
-		input({ frames: [frame("login", "登录页"), frame("home", "首页")], label: "2 个画框" }),
+		input({
+			frames: [frame("login", "登录页"), frame("home", "首页")],
+			label: "2 个画框",
+			labels: ["登录页", "首页"],
+		}),
 	);
 
 	expect(attachment?.context?.payload.selection.frameIds).toEqual(["login", "home"]);
@@ -61,6 +66,22 @@ it("carries each selected frame's absolute source path", () => {
 		document: "/w/app.vetd",
 		sourcesDir: "/w/app.vetd.d",
 	});
+});
+
+it("hands the input bar one label per selected entry", () => {
+	const frames = createDesignSelectionPromptAttachment(
+		input({
+			frames: [frame("login", "登录页"), frame("home", "首页")],
+			label: "2 个画框",
+			labels: ["登录页", "首页"],
+		}),
+	);
+	const withElement = createDesignSelectionPromptAttachment(
+		input({ element: { frameId: "login", payload: element() }, labels: ["登录页", "<button>"] }),
+	);
+
+	expect(frames?.labels).toEqual(["登录页", "首页"]);
+	expect(withElement?.labels).toEqual(["登录页", "<button>"]);
 });
 
 it("returns null when nothing is selected", () => {
