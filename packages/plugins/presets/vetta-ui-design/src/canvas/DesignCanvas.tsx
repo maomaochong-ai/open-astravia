@@ -11,7 +11,7 @@ import {
 	useState,
 } from "react";
 import type { NotesStore } from "../notes/notes-store";
-import { noteWorldPosition } from "../notes/types";
+import { noteWorldPosition, pendingNotes } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
 import type { VetdFrameEntry, VetdManifest } from "../vetd/manifest-types";
@@ -43,6 +43,7 @@ import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
+import { NOTES_PANEL_INSET, NotesDrawer } from "./NotesDrawer";
 import { type NoteDraft, NotesLayer } from "./NotesLayer";
 import {
 	boundsOf,
@@ -69,6 +70,8 @@ interface DesignCanvasProps {
 	session: DesignSession;
 	/** 当前设计的备注（与 session 同生命周期，CanvasTab 创建）。 */
 	notes: NotesStore;
+	/** 活动面板的 cwd，备注面板的「让 Vetta 处理」会话闸口用。 */
+	cwd: string | null;
 	port: number;
 	bridge: BridgeHub;
 	/**
@@ -99,8 +102,6 @@ interface DesignCanvasProps {
 	resolveNoteElementsRef: RefObject<
 		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
 	>;
-	/** 出口：抽屉「定位到备注」——把视口挪到气泡上并打开它的 thread。 */
-	focusNoteRef: RefObject<((noteId: string) => void) | null>;
 }
 
 interface Viewport {
@@ -255,6 +256,7 @@ function applyResizeSnap(
 export function DesignCanvas({
 	session,
 	notes,
+	cwd,
 	port,
 	bridge,
 	captureRef,
@@ -262,7 +264,6 @@ export function DesignCanvas({
 	previewTargetRef,
 	previewing,
 	resolveNoteElementsRef,
-	focusNoteRef,
 }: DesignCanvasProps) {
 	const { t } = useTranslation();
 	const containerRef = useRef<HTMLDivElement | null>(null);
@@ -557,24 +558,34 @@ export function DesignCanvas({
 		};
 	}, [resolveNoteElementsRef, resolveNoteElements]);
 
-	// 抽屉「定位到备注」：视口居中到气泡上，顺带打开它的 thread。
-	useEffect(() => {
-		focusNoteRef.current = (noteId) => {
+	// 面板「定位到备注」：视口居中到气泡上，顺带打开它的 thread。
+	const focusNote = useCallback(
+		(noteId: string): void => {
 			const note = notes.noteById(noteId);
 			if (!note) return;
 			const pos = noteWorldPosition(note, (frameId) => manifestRef.current.frames.find((f) => f.id === frameId));
 			const { width, height } = sizeRef.current;
 			const zoom = viewportRef.current.zoom;
 			panLiveRef.current = null;
-			const next = { zoom, x: width / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom };
+			// 定位只由面板里的条目发起，那时面板一定开着：按它让出的可见区域居中，
+			// 否则「居中」正好把气泡送到面板底下。
+			const visibleWidth = Math.max(width - NOTES_PANEL_INSET, width * 0.35);
+			const next = { zoom, x: visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom };
 			setViewport(next);
 			session.saveViewport(next);
 			setOpenNoteId(noteId);
-		};
-		return () => {
-			focusNoteRef.current = null;
-		};
-	}, [notes, session, focusNoteRef]);
+		},
+		[notes, session],
+	);
+
+	/** 待处理备注数，挂在 ControlBar 备注按钮的角标上。 */
+	const [pendingNoteCount, setPendingNoteCount] = useState(0);
+	useEffect(() => {
+		const update = (): void => setPendingNoteCount(pendingNotes(notes.notes).length);
+		update();
+		const handle = notes.on(update);
+		return () => handle.dispose();
+	}, [notes]);
 
 	// 快捷键 c 切到备注工具。走宿主 ShortcutScopeStack（不裸挂 keydown），
 	// not-editable：备注输入框里打字母 c 不能把工具切走。
@@ -1549,11 +1560,26 @@ export function DesignCanvas({
 				/>
 			) : null}
 
+			{/* 备注面板与备注工具是同一个状态：选中工具即弹出，切走即收起，
+			    所以它没有独立的开关，关闭按钮做的也是「退回选择工具」。
+			    NOTES_PANEL_INSET 同时用于给底部 dock 让位，两处必须同源。 */}
+			{tool === "note" ? (
+				<NotesDrawer
+					store={notes}
+					session={session}
+					cwd={cwd}
+					onLocate={focusNote}
+					onClose={() => setTool("select")}
+				/>
+			) : null}
+
 			<ControlBar
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
 				designSystemsActive={designDialogOpen}
+				pendingNotes={pendingNoteCount}
+				rightInset={tool === "note" ? NOTES_PANEL_INSET : 0}
 				onToolChange={setTool}
 				onZoomDelta={zoomBy}
 				onZoomReset={() => {

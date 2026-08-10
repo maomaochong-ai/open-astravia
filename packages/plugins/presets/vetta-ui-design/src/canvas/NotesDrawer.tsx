@@ -6,6 +6,13 @@ import { type DesignNote, pendingNotes, resolvedNotes } from "../notes/types";
 import type { DesignSession } from "../vetd/design-session";
 import { NotePin } from "./NoteAvatar";
 
+/** 面板宽度（px）。 */
+const PANEL_WIDTH = 288;
+/** 面板距画布右边缘的留白（px）——悬浮而不贴边。 */
+const PANEL_GAP = 12;
+/** 面板打开时从画布右侧占走的总宽度；底部 dock 按它左移让位。 */
+export const NOTES_PANEL_INSET = PANEL_WIDTH + PANEL_GAP * 2;
+
 interface NotesDrawerProps {
 	store: NotesStore;
 	session: DesignSession;
@@ -51,7 +58,10 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 
 	return (
 		// 悬浮而非贴边：画布是无限的，抽屉贴死右边缘会读成「面板被截断了」。
-		<div className="vetd-note vetd-note-drawer-enter pointer-events-auto absolute inset-y-3 right-3 z-40 flex w-72 flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl">
+		<div
+			className="vetd-note vetd-note-drawer-enter pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl"
+			style={{ top: PANEL_GAP, bottom: PANEL_GAP, right: PANEL_GAP, width: PANEL_WIDTH }}
+		>
 			<header className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
 				<span className="text-xs font-semibold text-foreground">{t("notes.drawer.title")}</span>
 				{pending.length > 0 ? (

@@ -11,6 +11,13 @@ interface ControlBarProps {
 	exportableCount: number;
 	/** 设计体系 Dialog 开着时高亮按钮。 */
 	designSystemsActive: boolean;
+	/** 待处理备注数，挂在备注工具按钮的右上角；0 不显示。 */
+	pendingNotes: number;
+	/**
+	 * 右侧被浮层占走的宽度（备注面板）。dock 是整块画布居中的，面板一开就会压住它的
+	 * 右端，所以按占用宽度的一半左移，改为在剩余空间里居中。
+	 */
+	rightInset: number;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
@@ -29,6 +36,8 @@ type DockSlot =
 			accent?: boolean;
 			/** 非等宽项（缩放百分比、导出）：撑开宽度而不是锁死成方块。 */
 			wide?: boolean;
+			/** 右上角角标数字（备注待处理数）。absolute 定位，不影响 dock 宽度与中心点缓存。 */
+			badge?: number;
 			onClick(): void;
 			content: ReactNode;
 	  };
@@ -97,6 +106,8 @@ export function ControlBar({
 	zoom,
 	exportableCount,
 	designSystemsActive,
+	pendingNotes,
+	rightInset,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
@@ -142,7 +153,9 @@ export function ControlBar({
 				key: "note",
 				label: t("controlbar.note"),
 				active: tool === "note",
-				onClick: () => onToolChange("note"),
+				badge: pendingNotes,
+				// 再点一次退回选择工具：备注面板跟着工具态开合，这就是关掉它的方式。
+				onClick: () => onToolChange(tool === "note" ? "select" : "note"),
 				content: icons.note,
 			},
 			{
@@ -198,6 +211,7 @@ export function ControlBar({
 	}, [
 		designSystemsActive,
 		exportableCount,
+		pendingNotes,
 		onDesignSystems,
 		onExport,
 		onToolChange,
@@ -250,7 +264,10 @@ export function ControlBar({
 	return (
 		// 底部居中；z-40 与顶部按钮组同层，压过沉浸式渐变遮罩。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
-		<div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2">
+		<div
+			className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2 transition-[margin] duration-200 ease-out"
+			style={{ marginLeft: -rightInset / 2 }}
+		>
 			{/* 放大只用 transform（origin-bottom），图标向上溢出 dock，chrome 本身不变高 */}
 			<div className="relative inline-flex flex-col items-center overflow-visible pt-9">
 				{peakLabel ? (
@@ -317,6 +334,14 @@ export function ControlBar({
 								}}
 							>
 								{slot.content}
+								{slot.badge !== undefined && slot.badge > 0 ? (
+									<span
+										className="absolute -right-1 -top-1 flex min-w-[14px] items-center justify-center rounded-full px-[3px] text-[9px] font-semibold leading-[14px] tabular-nums text-white"
+										style={{ background: "#2563eb", boxShadow: "0 1px 3px -1px rgba(0,0,0,.4)" }}
+									>
+										{slot.badge > 99 ? "99+" : slot.badge}
+									</span>
+								) : null}
 							</button>
 						);
 					})}
