@@ -473,6 +473,14 @@ export class RuntimeHost implements SessionFacade {
 		});
 		this.attachInFlightBuffer(sessionId, lifecycle.sessionPath, corePorts.eventStream);
 
+		// 打开「已有」会话且调用方没有指定模型时（Desktop 打开会话就是这条路径），
+		// 恢复该会话上一轮实际使用的模型。否则后端只会落到宿主的兜底模型（例如
+		// 可用列表第一个），宿主再把这个值 pull 回 UI，用户看到的就是"重启后模型
+		// 被重置成第一个"。会话模型本身不落盘，历史里的 assistant 记录是唯一事实源。
+		if (config.sessionPath && config.sessionPath.trim().length > 0 && !config.model) {
+			await this.restoreModelFromHistory(historyReader, modelController);
+		}
+
 		// Stale-while-revalidate：当前的远程 model 数据已就绪可用（来自启动预热
 		// 或上一次刷新），这里再 fire-and-forget 一次刷新，不 await。
 		// - loadRemoteModels 内部对 inflight 做了 dedupe，并发安全；
@@ -481,6 +489,29 @@ export class RuntimeHost implements SessionFacade {
 		// 效果：用户每次 createSession 都会触发一次"下一次会更新"的后台刷新。
 		this.sharedModelController?.refreshInBackground();
 		return { sessionId };
+	}
+
+	/**
+	 * 从会话历史里取最后一条 assistant 记录使用的模型并选回。找不到模型、模型已从
+	 * catalog 中消失或缺少凭证时静默保持宿主兜底模型——恢复失败不能挡住开会话。
+	 */
+	private async restoreModelFromHistory(
+		historyReader: SessionHandle["historyReader"],
+		modelController: SessionHandle["modelController"],
+	): Promise<void> {
+		const history = historyReader.readHistory();
+		for (let index = history.length - 1; index >= 0; index -= 1) {
+			const entry = history[index];
+			if (entry?.type !== "message" || entry.message.role !== "assistant") continue;
+			const { provider, model } = entry.message;
+			if (!provider || !model) return;
+			try {
+				await modelController.selectModel(`${provider}/${model}`, "if-changed");
+			} catch {
+				// 凭证缺失等情况下保持兜底模型，用户仍可手动切换。
+			}
+			return;
+		}
 	}
 
 	/**

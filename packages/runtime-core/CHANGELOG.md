@@ -66,6 +66,7 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Fixed
 
+- **重开已有会话恢复该会话上次使用的模型**：会话级模型只活在进程内存里（`updateSettings({modelKey})` 不落盘），宿主重启后按 `sessionPath` 重开会话时，模型会退回宿主兜底值（Desktop 是可用列表第一个），宿主再把它同步回 UI，表现为「重启后模型被重置」。现在 `createSession` 在传了 `sessionPath` 且调用方未显式指定 `model` 时，从会话历史最后一条 assistant 记录恢复模型；模型已从 catalog 移除或缺少凭证时静默保持兜底模型，不阻断开会话。复用内存中已打开的同路径会话不受影响。
 - **Greenfield 初始化发布边界**：Runtime Factory 会在最终 Assembly 投影成功后才提交初始化事务；若返回对象构造阶段抛错，已创建的 Kernel Session 与 Composition 资源仍按逆序释放。
 - **会话标题与输入预测恒为中文，英文提问也拿到中文**：`generateAutoTitle` 的提示词写死「生成一个中文短标题」、system prompt 写死「只输出一个简短中文标题」，`generateNextPromptSuggestions` 与 `provide_prompt_suggestions` 的工具描述同样通篇中文——语言由提示词写死，与用户实际使用的语言无关。三处提示词改为英文撰写并显式要求「与用户消息同语言」输出（提示词自身的语言不再是语言信号）。同时放宽 `sanitizeAutoTitle` 的截断：原先一律砍到 14 个码点，对 CJK 合适，对英文不足两个词；改为含 CJK 走 14 字、纯拉丁走 40 字符且在词边界收尾，候选行长度阈值 30 → 60。
 
