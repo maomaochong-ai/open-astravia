@@ -33,11 +33,20 @@ export type DesktopCodingAgentRuntimeCompositionDefaults = Omit<
 
 export interface DesktopRuntimeBackendPoolOptions {
 	readonly compositionDefaults: DesktopCodingAgentRuntimeCompositionDefaults;
+	readonly createHookAdapterFactories?: (
+		scope: DesktopRuntimeHookScope,
+	) => NonNullable<CodingAgentRuntimeCompositionOptions["additionalHookAdapterFactories"]>;
 	readonly createComposition?: (
 		options: CodingAgentRuntimeCompositionOptions,
 	) => Promise<CodingAgentRuntimeComposition>;
 	readonly createMcpRuntimeSource?: (scope: DesktopMcpRuntimeScope) => Promise<DesktopManagedMcpRuntimeSource>;
 	readonly resolveMcpRuntimeScope?: (scope: DesktopMcpRuntimeScope) => DesktopMcpRuntimeScope;
+}
+
+export interface DesktopRuntimeHookScope {
+	readonly cwd: string;
+	readonly agentDir?: string;
+	readonly scenario: ConversationScenario;
 }
 
 export interface DesktopMcpRuntimeScope {
@@ -179,6 +188,10 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 		});
 		const composition = await this.createComposition({
 			...this.options.compositionDefaults,
+			additionalHookAdapterFactories: [
+				...(this.options.compositionDefaults.additionalHookAdapterFactories ?? []),
+				...(this.options.createHookAdapterFactories?.(scope) ?? []),
+			],
 			...(managedMcpSource ? { mcpSource: managedMcpSource.source } : {}),
 			conversationDir: scope.conversationDir,
 			cwd: scope.cwd,

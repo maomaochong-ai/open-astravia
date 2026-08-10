@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
 import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
+import type { EcosystemHookAdapterFactory } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
@@ -183,6 +184,40 @@ describe("DesktopRuntimeBackendPool", () => {
 		await runtime.disposeAllSessions();
 		await pool.dispose();
 		expect(dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it("combines host and scope-specific Hook adapter factories for each composition", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-hook-adapter-");
+		const hostFactory: EcosystemHookAdapterFactory = async () => undefined;
+		const scopedFactory: EcosystemHookAdapterFactory = async () => undefined;
+		const createHookAdapterFactories = vi.fn(() => [scopedFactory]);
+		let capturedFactories: readonly EcosystemHookAdapterFactory[] | undefined;
+		const pool = new DesktopRuntimeBackendPool({
+			compositionDefaults: {
+				modelRegistry: modelRegistry(),
+				initialModel: MODEL,
+				initialThinkingLevel: "off",
+				additionalHookAdapterFactories: [hostFactory],
+			},
+			createHookAdapterFactories,
+			createComposition: async (options) => {
+				capturedFactories = options.additionalHookAdapterFactories;
+				return await createCodingAgentRuntimeComposition(options);
+			},
+		});
+		const runtime = new RuntimeHost({
+			sessionBackend: pool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		await runtime.createSession({ cwd, model: MODEL, scenario: "batch" });
+
+		expect(createHookAdapterFactories).toHaveBeenCalledWith(
+			expect.objectContaining({ cwd, agentDir: undefined, scenario: "batch" }),
+		);
+		expect(capturedFactories).toEqual([hostFactory, scopedFactory]);
 	});
 
 	it("reuses one MCP source across isolated runtime scopes with the same MCP scope", async () => {

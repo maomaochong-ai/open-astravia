@@ -33,6 +33,8 @@ import { DEFAULT_SERVER_URL } from "../constants.js";
 import { resolveSessionListCwd } from "../conversations/session-paths.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
+import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
+import { canInvokeDynamicAgentHook, readPluginRuntimeAgentMode } from "../plugins/plugin-store.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
 import { DesktopRuntimeBackendPool } from "./backend-pool.js";
@@ -83,6 +85,13 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 				});
 			},
 		},
+		createHookAdapterFactories: ({ scenario }) => [
+			createDesktopPluginHookAdapterFactory({
+				scenario,
+				readAgentMode: readPluginRuntimeAgentMode,
+				canInvoke: canInvokeDynamicAgentHook,
+			}),
+		],
 		createMcpRuntimeSource: async ({ cwd, agentDir }) => {
 			const resolvedAgentDir = agentDir ?? getAgentDir();
 			return await createCodingAgentMcpRuntimeToolSource({

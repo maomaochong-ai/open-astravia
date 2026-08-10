@@ -1,6 +1,5 @@
 import type {
 	AgentPluginContinuationInvoker,
-	AgentPluginHookInvoker,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
@@ -17,7 +16,6 @@ export interface CodingAgentPluginRuntimeSource {
 	readonly invokeSystemPrompt?: AgentPluginSystemPromptInvoker;
 	readonly invokeContinuation?: AgentPluginContinuationInvoker;
 	readonly invokeTool?: AgentPluginToolInvoker;
-	readonly invokeHook?: AgentPluginHookInvoker;
 }
 
 export interface CodingAgentPluginMcpRuntime {

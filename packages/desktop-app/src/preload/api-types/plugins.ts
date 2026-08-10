@@ -63,10 +63,10 @@ import type {
 	WorkspaceSettingInput,
 } from "@vetta/capability-sdk";
 import type {
-	PluginAgentHookContent,
-	PluginAgentHookPoint,
 	PluginAgentManifest,
 	PluginArtifactDestination,
+	PluginCodingAgentHookEvent,
+	PluginCodingAgentHookEventName,
 	PluginMediaCapability,
 	PluginMediaInputUploadRequest,
 	PluginMediaJob,
@@ -212,14 +212,13 @@ export interface PluginAgentToolRegistration {
 
 export interface PluginAgentHookHostRegistration {
 	id: string;
-	point: PluginAgentHookPoint;
+	eventName: PluginCodingAgentHookEventName;
 	handlerId: string;
 	activationId?: string;
 	timeoutMs?: number;
 	scope_use: readonly string[];
 	agent_mode?: readonly string[];
 	toolNames?: readonly string[];
-	context?: { conversation?: "summary" | "messages" };
 }
 
 export type PluginAppActionEffect = "read" | "write" | "execute";
@@ -291,46 +290,15 @@ export interface PluginAgentToolInvocationRequest extends PluginHandlerInvocatio
 	trigger: { kind: "tool-call"; timestamp: number; toolCallId: string };
 }
 
-interface PluginAgentHookInvocationRequestBase extends PluginHandlerInvocationBase {
+export interface PluginAgentHookInvocationRequest {
+	requestId: string;
+	pluginId: string;
+	handlerId: string;
+	settings: Record<string, unknown>;
 	hookId: string;
+	session: { id: string; cwd: string; scenario: string };
+	event: PluginCodingAgentHookEvent;
 }
-
-export type PluginAgentHookInvocationRequest = PluginAgentHookInvocationRequestBase &
-	(
-		| {
-				point: "tool.before";
-				trigger: {
-					kind: "tool.before";
-					timestamp: number;
-					toolCallId: string;
-					toolName: string;
-					input: Record<string, unknown>;
-				};
-		  }
-		| {
-				point: "tool.after";
-				trigger: {
-					kind: "tool.after";
-					timestamp: number;
-					toolCallId: string;
-					toolName: string;
-					input: Record<string, unknown>;
-					result: { content: PluginAgentHookContent[]; details?: unknown };
-				};
-		  }
-		| {
-				point: "tool.error";
-				trigger: {
-					kind: "tool.error";
-					timestamp: number;
-					toolCallId: string;
-					toolName: string;
-					input: Record<string, unknown>;
-					error: string;
-					aborted: boolean;
-				};
-		  }
-	);
 
 export interface PluginContinuationRegistration {
 	id: string;

@@ -25,14 +25,14 @@ import { showToast } from "@shared/store/toast-atoms";
 import type {
 	Disposable,
 	PluginActivityTabContribution,
-	PluginAgentHookHandler,
-	PluginAgentHookPoint,
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
 	PluginArtifactsApi,
 	PluginCaptureApi,
 	PluginCardRendererContribution,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentHookHandler,
 	PluginCommandApi,
 	PluginCommandSpawnExit,
 	PluginCommandSpawnHandle,
@@ -64,7 +64,7 @@ import type {
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
 } from "@vetta-org/plugin-sdk";
-import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
+import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
@@ -1519,12 +1519,8 @@ function createContext(
 				if (typeof registration.id !== "string" || registration.id.trim().length === 0) {
 					throw new Error("Agent hook id is required");
 				}
-				if (
-					registration.point !== "tool.before" &&
-					registration.point !== "tool.after" &&
-					registration.point !== "tool.error"
-				) {
-					throw new Error("Agent hook point is invalid");
+				if (!PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES.includes(registration.eventName)) {
+					throw new Error("Coding Agent Hook eventName is invalid");
 				}
 				if (!Array.isArray(registration.scope_use) || registration.scope_use.length === 0) {
 					throw new Error("Agent hook scope_use is required");
@@ -1537,19 +1533,18 @@ function createContext(
 				const handlerHandle = registerPluginAgentHookHandler({
 					pluginId: plugin.id,
 					handlerId,
-					handler: registration.handler as PluginAgentHookHandler<PluginAgentHookPoint>,
+					handler: registration.handler as unknown as PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>,
 					api: { fs, conversation },
 				});
 				const payload: PluginAgentHookHostRegistration = {
 					id: hookId,
-					point: registration.point,
+					eventName: registration.eventName,
 					handlerId,
 					activationId,
 					timeoutMs: registration.timeoutMs,
 					scope_use: registration.scope_use,
 					agent_mode: registration.agent_mode,
 					toolNames: registration.toolNames,
-					context: registration.context,
 				};
 				const registrationPromise = window.vetta.plugins
 					.registerAgentHook(plugin.id, payload)
@@ -1560,8 +1555,9 @@ function createContext(
 				pendingRuntimeRegistrations.push(registrationPromise);
 				return {
 					dispose: () => {
-						handlerHandle.dispose();
-						void window.vetta.plugins.unregisterAgentHook(plugin.id, hookId, activationId);
+						void window.vetta.plugins
+							.unregisterAgentHook(plugin.id, hookId, activationId)
+							.finally(() => handlerHandle.dispose());
 					},
 				};
 			},

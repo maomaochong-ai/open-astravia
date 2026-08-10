@@ -48,8 +48,8 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `agent.mcp.control` | 清单 `agent.mcpServers`（三源聚合之插件源） | [mcp](./mcp.md) |
 | `agent.tools.register` | `ctx.agent.registerTool()`（注册 shell） | [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具) |
 | `agent.toolHandler.execute` | 工具 handler 被 agent 调用时执行 | 同上 |
-| `agent.hooks.register` | `ctx.agent.registerHook()`（注册工具 Hook） | [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具-hook) |
-| `agent.hookHandler.execute` | 工具 Hook handler 在工具执行前后被调用 | 同上 |
+| `agent.hooks.register` | `ctx.agent.registerHook()`（注册 Coding Agent 生命周期 Hook） | [conversation-and-agent](./conversation-and-agent.md#注册-coding-agent-hook) |
+| `agent.hookHandler.execute` | Coding Agent 到达匹配事件时调用插件 Hook handler | 同上 |
 | `agent.tools.control` | 清单 `agent.toolPolicy` 声明式 allow/deny | [manifest](./manifest.md#agent-agent-侧贡献) |
 | `agent.systemPrompt.write` | `registerSystemPromptProvider`；仅本插件 block | [conversation-and-agent](./conversation-and-agent.md#注册动态系统提示词-provider) |
 | `agent.systemPrompt.fullControl` | 动态 provider 操作非本插件 block | 同上 |

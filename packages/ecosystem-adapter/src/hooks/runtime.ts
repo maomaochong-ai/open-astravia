@@ -406,7 +406,7 @@ export class EcosystemHookRuntime {
 				}
 			}),
 		);
-		return aggregateAdapterOutcomes(outcomes);
+		return aggregateHookDispatchOutcomes(outcomes);
 	}
 
 	private getAdapters(): Promise<readonly EcosystemHookAdapter[]> {
@@ -451,7 +451,8 @@ export function emptyHookDispatchOutcome(): HookDispatchOutcome {
 	};
 }
 
-function aggregateAdapterOutcomes(outcomes: readonly HookDispatchOutcome[]): HookDispatchOutcome {
+/** Shared deterministic aggregation for built-in and host-provided Hook adapters. */
+export function aggregateHookDispatchOutcomes(outcomes: readonly HookDispatchOutcome[]): HookDispatchOutcome {
 	const shouldStop = outcomes.some((outcome) => outcome.shouldStop);
 	const shouldBlock = !shouldStop && outcomes.some((outcome) => outcome.shouldBlock);
 	const permissionDecision = outcomes.some((outcome) => outcome.permissionDecision === "deny")

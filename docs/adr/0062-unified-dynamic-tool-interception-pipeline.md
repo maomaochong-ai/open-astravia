@@ -2,7 +2,11 @@
 
 ## 状态
 
-Accepted
+Superseded by [ADR-0064](./0064-desktop-plugins-use-coding-agent-hook-adapter.md)
+
+本 ADR 将 Desktop Plugin Hook 建模成独立的 `tool.before` / `tool.after` / `tool.error`
+产品管线，这一方向没有复用 Coding Agent 已有的 Hook 事件与聚合语义。保留本文作为历史记录；
+当前实现和新增扩展必须遵循 ADR-0064。
 
 ## 背景
 

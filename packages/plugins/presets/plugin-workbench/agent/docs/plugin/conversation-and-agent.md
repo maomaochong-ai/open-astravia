@@ -140,20 +140,28 @@ ctx.agent.registerTool({
 - `requires` 是另一条正交轴（会话能力，如 `"knowledge"`）；与 `scope_use` 取交集才激活。一般插件无需设置。
 - `agent_mode` 是第三条正交轴（工作模式，`"work"`/`"coding"`）；缺省/空 = 通用（所有模式可见）。若插件级 [manifest `agent_mode`](./manifest.md#agent_mode工作模式白名单) 也声明了，两者取交集。见 [工作模式](#工作模式agent_mode)。
 
-## 注册 Agent 工具 Hook
+## 注册 Coding Agent Hook
 
-`ctx.agent.registerHook()` 动态注册工具执行 Hook。它适合在不新增工具的情况下检查或变换输入、替换结果、阻止调用，或在失败结果中追加诊断。需要同时授权 `agent.hooks.register` 和 `agent.hookHandler.execute`；当前只对 ESM / Module Federation 插件开放，QuickJS 插件不提供动态 Agent handler。
+`ctx.agent.registerHook()` 动态注册 Coding Agent 原生生命周期 Hook。插件与内置 Codex/Claude
+adapter 进入同一个 Session Hook Runtime，使用相同的事件时机、结果聚合和 Stop 安全语义；Desktop
+不会另建一套工具 Hook。需要同时授权 `agent.hooks.register` 和 `agent.hookHandler.execute`；当前只对
+ESM / Module Federation 插件开放，QuickJS 插件不提供动态 Agent handler。
 
 ```ts
 const hook = ctx.agent.registerHook({
   id: "protect-destructive-tools",
-  point: "tool.before",
+  eventName: "PreToolUse",
   scope_use: ["conversation", "project"],
   agent_mode: ["coding"],        // 可选；缺省/空 = 所有工作模式
   toolNames: ["bash", "write"], // 可选；缺省/空 = 所有工具
   timeoutMs: 3000,
-  handler({ trigger }) {
-    if (trigger.toolName === "bash" && trigger.input.command === "rm -rf /") {
+  handler({ event }) {
+    const input = event.toolInput;
+    if (
+      event.tool.hostName === "bash" &&
+      typeof input === "object" && input !== null &&
+      "command" in input && input.command === "rm -rf /"
+    ) {
       return { action: "block", reason: "拒绝执行危险命令" };
     }
     return { action: "continue" };
@@ -164,21 +172,28 @@ const hook = ctx.agent.registerHook({
 hook.dispose();
 ```
 
-Hook point 与返回值是强类型对应关系：
+`eventName` 与 `event` 是判别联合，handler 的返回值也按事件收窄：
 
-| Hook point | 可读取 | 可返回 |
+| 事件 | 主要字段 | 事件专属结果 |
 | --- | --- | --- |
-| `tool.before` | 工具名、调用 ID、输入 | `continue`（可替换 `input`）或 `block` |
-| `tool.after` | 输入与工具结果 `content/details` | `continue`、`replace` 或 `block` |
-| `tool.error` | 输入、错误文本、取消状态 | `continue` 或 `feedback`；不能吞掉原错误 |
+| `SessionStart` / `SessionEnd` | 会话来源或结束原因 | 通用 continue / block / stop |
+| `UserPromptSubmit` | prompt、turnId | 通用结果，可追加 context / feedback |
+| `PreToolUse` | tool、toolInput、toolUseId | 可返回 `updatedToolInput` |
+| `PermissionRequest` | tool、toolInput、runIdSuffix | 可返回 allow / deny 决策与消息 |
+| `PostToolUse` / `PostToolUseFailure` | 工具响应或错误 | 通用结果 |
+| `PreCompact` / `PostCompact` | manual / auto trigger | 通用结果 |
+| `SubagentStart` / `SubagentStop` | agentId、agentType、停止信息 | `SubagentStop` 可请求继续 Agent |
+| `Stop` | 最后回复与 Stop 状态 | 可返回 `continue-agent` 与续跑片段 |
 
-执行顺序固定为：Ecosystem `PreToolUse` → Desktop Plugin `tool.before` → Coding Extension `tool_call` → Tool → Coding Extension `tool_result` → Desktop Plugin `tool.after` / `tool.error` → Ecosystem `PostToolUse` / `PostToolUseFailure`。同一插件来源内按 `pluginId + hook id` 稳定排序。
+通用结果包括 `continue`、`block` 和 `stop`；`continue` 可附加 `additionalContexts` 或
+`feedbackMessage`。事件完整字段以 `PluginCodingAgentHookEvent` 类型为准。宿主内部的 transcript 路径
+不会下发给插件。
 
 - `scope_use` 必填且 fail-closed；`agent_mode` 和 `toolNames` 是额外过滤轴。
-- 单次工具调用使用注册表快照；并发注册或注销只影响下一次工具调用。
-- handler 默认 3 秒超时，Desktop 最多接受 30 秒。异常、超时或非法返回值会记录诊断并 fail-open，不阻断原工具流程；显式 `block` 除外。
+- 单次事件 dispatch 使用注册表快照；并发注册或注销只影响下一次 dispatch。
+- handler 默认 3 秒超时，Desktop 最多接受 30 秒。异常、超时或非法返回值会记录诊断并 fail-open；只有通过事件专属校验的显式结果会改变 Agent 行为。
 - Hook 不能扩大宿主工具权限，也不能绕过 execution mode / sandbox / confirmation。
-- handler 可使用与 Agent Tool handler 相同的 `actions` 和 `host`，返回值和副作用都会在 Coding Agent 边界做结构校验。
+- handler 可使用受权限约束的 `host`；返回值会在 Main 进程首次进入 Hook 领域边界时做结构校验。
 
 ## 注册动态系统提示词 Provider
 

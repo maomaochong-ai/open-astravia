@@ -250,7 +250,7 @@ export interface HookRunSummary {
 	id: string;
 	profileId: string;
 	eventName: HookEventName;
-	handlerType: "command";
+	handlerType: "command" | "callback";
 	executionMode: "sync";
 	scope: "session" | "turn";
 	sourcePath: string;

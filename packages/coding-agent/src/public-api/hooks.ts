@@ -1,4 +1,5 @@
 export {
+	aggregateHookDispatchOutcomes,
 	type BuildDefaultHookConfigLayersOptions,
 	buildDefaultHookConfigLayers,
 	createEcosystemHookRuntime,
@@ -8,8 +9,13 @@ export {
 	type EcosystemHookHost,
 	EcosystemHookRuntime,
 	emptyHookDispatchOutcome,
+	HOOK_EVENT_NAMES,
 	type HookConfigLayer,
+	type HookDispatchEffect,
 	type HookDispatchOutcome,
+	type HookEventName,
+	type HookOutputEntry,
+	type HookRunSummary,
 } from "@vetta/ecosystem-adapter";
 export {
 	type EcosystemHookAwareTool,

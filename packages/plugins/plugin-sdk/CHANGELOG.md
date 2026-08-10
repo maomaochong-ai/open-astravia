@@ -16,7 +16,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 ### Added
 
 - 媒体 Provider 生成能力新增 `modeCapabilities` 与输入 `role`：Provider 可按模式声明首帧、尾帧、图片/视频/音频参考的类型和数量，以及比例、音频策略；媒体协议升级到 v4。
-- `ctx.agent.registerHook()`：ESM / Module Federation 插件可动态注册强类型 `tool.before`、`tool.after`、`tool.error` Hook，并以 `Disposable` 注销。新增 `agent.hooks.register` 与 `agent.hookHandler.execute` 双权限；`scope_use` 必填且 fail-closed，支持 `agent_mode` / `toolNames` 过滤、超时和受校验的 input/result/error 返回语义（ADR-0062）。
+- `ctx.agent.registerHook()`：ESM / Module Federation 插件可动态注册 Coding Agent 的 12 类原生 Hook 事件，并以 `Disposable` 注销。事件与返回值是判别联合；`PreToolUse`、`PermissionRequest`、`Stop` / `SubagentStop` 提供事件专属结果。新增 `agent.hooks.register` 与 `agent.hookHandler.execute` 双权限；`scope_use` 必填且 fail-closed，支持 `agent_mode` / `toolNames` 过滤、超时与 Main 边界校验（ADR-0064）。
 - `PluginActivityTabContribution.keepAliveWhenAvailable`：插件可让有状态 Activity Tab 在切换后继续挂载；`useActivityTab()` 新增 `active`，插件可在标签卡激活时调用既有的 `setActivityPanelWidth()` 等命令式能力。
 - 新增 `runtime: "quickjs"` 清单值与宿主声明式 UI 类型：第三方逻辑可在 QuickJS-WASM Worker 中执行，通过可序列化的布局、文本、表单和动作节点贡献 Activity Tab；QuickJS 清单禁止自带 CSS 与 Module Federation metadata（ADR-0061）。
 - `PluginStorageApi.putBlobFromFile()`：插件可把用户选择或拖入的真实文件直接交给宿主复制到私有 Blob；preload 负责从 `File` 提取路径，文件字节不进入插件 renderer、不进行 Base64 编码，仍受 `storage.write` 权限约束。

@@ -5,7 +5,6 @@ import { type Api, type AssistantMessage, type AssistantMessageEvent, EventStrea
 import type { CodingAgentPluginRuntimeSource, CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import {
 	type AgentPluginContinuationInvocation,
-	type AgentPluginHookInvocation,
 	type AgentPluginSystemPromptInvocation,
 	type AgentPluginToolInvocation,
 	RuntimeHost,
@@ -24,7 +23,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 		}
 	});
 
-	it("passes plugin prompt, tool, hook and continuation capabilities through the Desktop backend pool", async () => {
+	it("passes plugin prompt, tool and continuation capabilities through the Desktop backend pool", async () => {
 		const cwd = await temporaryDirectory("desktop-runtime-plugin-workspace-");
 		const sessionDir = await temporaryDirectory("desktop-runtime-plugin-sessions-");
 		const modelCalls: Array<{ readonly prompt?: string; readonly tools: readonly string[] }> = [];
@@ -60,14 +59,6 @@ describe("Desktop RuntimeHost capabilities", () => {
 		const toolInvocations: AgentPluginToolInvocation[] = [];
 		const systemPromptInvocations: AgentPluginSystemPromptInvocation[] = [];
 		const continuationInvocations: AgentPluginContinuationInvocation[] = [];
-		const hookInvocations: AgentPluginHookInvocation[] = [];
-		runtime.setPluginHookInvoker(async (invocation) => {
-			hookInvocations.push(invocation);
-			if (invocation.point === "tool.before") {
-				return { value: { action: "continue", input: { title: "Hooked Report" } }, effects: [] };
-			}
-			return { value: { action: "continue" }, effects: [] };
-		});
 		runtime.setPluginToolInvoker(async (invocation) => {
 			toolInvocations.push(invocation);
 			return { value: { text: "artifact created" }, effects: [] };
@@ -110,8 +101,7 @@ describe("Desktop RuntimeHost capabilities", () => {
 		await runtime.prompt(created.sessionId, { text: "create artifact" });
 
 		expect(toolInvocations).toHaveLength(1);
-		expect(toolInvocations[0]?.input).toEqual({ title: "Hooked Report" });
-		expect(hookInvocations.map((invocation) => invocation.point)).toEqual(["tool.before", "tool.after"]);
+		expect(toolInvocations[0]?.input).toEqual({ title: "Report" });
 		expect(continuationInvocations).toHaveLength(2);
 		expect(systemPromptInvocations).toHaveLength(1);
 		expect(modelCalls).toHaveLength(3);
@@ -239,24 +229,6 @@ function pluginConfiguration(): NonNullable<ReturnType<CodingAgentPluginRuntimeS
 				id: "continue",
 				handlerId: "continue-handler",
 				context: { conversation: "messages" },
-			},
-		],
-		hookContributions: [
-			{
-				pluginId: "plugin-a",
-				id: "before-artifact",
-				point: "tool.before",
-				handlerId: "before-artifact-handler",
-				scope_use: ["batch"],
-				toolNames: ["plugin_artifact"],
-			},
-			{
-				pluginId: "plugin-a",
-				id: "after-artifact",
-				point: "tool.after",
-				handlerId: "after-artifact-handler",
-				scope_use: ["batch"],
-				toolNames: ["plugin_artifact"],
 			},
 		],
 	};

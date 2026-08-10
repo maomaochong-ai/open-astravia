@@ -4,7 +4,6 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type {
 	AgentPluginContinuationContribution,
-	AgentPluginHookContribution,
 	AgentPluginMcpServerConfig,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptProviderContribution,
@@ -43,6 +42,7 @@ import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/abi
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
+import { type DesktopPluginHookRegistration, desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { normalizePluginDevServerUrls } from "./plugin-dev-protocol.js";
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 
@@ -64,7 +64,6 @@ const OFFICIAL_COMMAND_PERMISSIONS = new Set<PluginPermission>(["agent.command.r
 type PluginManifestFile = Record<string, InstalledPlugin>;
 type SystemPluginPrefs = Record<string, { enabled: boolean; disabledCommands?: string[] }>;
 type RegisteredAgentTool = Omit<AgentPluginToolContribution, "pluginId"> & { activationId?: string };
-type RegisteredAgentHook = Omit<AgentPluginHookContribution, "pluginId"> & { activationId?: string };
 type RegisteredContinuationProvider = Omit<AgentPluginContinuationContribution, "pluginId"> & {
 	activationId?: string;
 };
@@ -74,7 +73,6 @@ type RegisteredSystemPromptProvider = Omit<AgentPluginSystemPromptProviderContri
 
 const pluginLog = getAppLogger("plugin");
 const dynamicAgentTools = new Map<string, Map<string, RegisteredAgentTool>>();
-const dynamicAgentHooks = new Map<string, Map<string, RegisteredAgentHook>>();
 const dynamicContinuationProviders = new Map<string, Map<string, RegisteredContinuationProvider>>();
 const dynamicSystemPromptProviders = new Map<string, Map<string, RegisteredSystemPromptProvider>>();
 /** Plugins that hard-isolate agent contributions until contribution mode is on (ADR-0041). */
@@ -121,7 +119,6 @@ function summarizeRuntimeConfig(config: AgentPluginRuntimeConfig | undefined): R
 		skillPlugins: config?.skillPathContributions?.map((item) => item.pluginId) ?? [],
 		toolPolicyPlugins: config?.toolPolicyContributions?.map((item) => item.pluginId) ?? [],
 		toolContributions: config?.toolContributions?.map((tool) => `${tool.pluginId}:${tool.name}`) ?? [],
-		hookContributions: config?.hookContributions?.map((hook) => `${hook.pluginId}:${hook.id}:${hook.point}`) ?? [],
 		continuationContributions:
 			config?.continuationContributions?.map((provider) => `${provider.pluginId}:${provider.id}`) ?? [],
 		systemPromptProviders:
@@ -799,6 +796,21 @@ export function setPluginRuntimeAgentMode(mode: string | undefined): void {
 	currentAgentMode = mode;
 }
 
+export function readPluginRuntimeAgentMode(): string | undefined {
+	return currentAgentMode;
+}
+
+export function canInvokeDynamicAgentHook(pluginId: string): boolean {
+	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
+	return Boolean(
+		plugin?.enabled &&
+			isPluginContributionModeActive(pluginId) &&
+			pluginMatchesAgentMode(plugin) &&
+			hasGrantedPermission(plugin, "agent.hooks.register") &&
+			hasGrantedPermission(plugin, "agent.hookHandler.execute"),
+	);
+}
+
 /**
  * 插件级 agent_mode 硬闸：白名单外整个插件不可见（含 agent 贡献；UI/bundle 由 renderer 端过滤）。
  * 当前无 mode（CLI/headless）或插件未声明 = 放行。见 ADR-0046。
@@ -842,7 +854,6 @@ export function buildAgentPluginRuntimeConfig(): AgentPluginRuntimeConfig | unde
 	const toolPolicyContributions: NonNullable<AgentPluginRuntimeConfig["toolPolicyContributions"]> = [];
 	const toolContributions: NonNullable<AgentPluginRuntimeConfig["toolContributions"]> = [];
 	const continuationContributions: NonNullable<AgentPluginRuntimeConfig["continuationContributions"]> = [];
-	const hookContributions: NonNullable<AgentPluginRuntimeConfig["hookContributions"]> = [];
 	const systemPromptProviderContributions: NonNullable<AgentPluginRuntimeConfig["systemPromptProviderContributions"]> =
 		[];
 	const mcpServerContributions: McpServerContribution[] = [];
@@ -909,15 +920,6 @@ export function buildAgentPluginRuntimeConfig(): AgentPluginRuntimeConfig | unde
 	}
 
 	for (const plugin of enabledToolPlugins) {
-		if (!hasGrantedPermission(plugin, "agent.hooks.register")) continue;
-		if (!hasGrantedPermission(plugin, "agent.hookHandler.execute")) continue;
-		for (const hook of dynamicAgentHooks.get(plugin.id)?.values() ?? []) {
-			const { activationId: _activationId, ...contribution } = hook;
-			hookContributions.push({ ...contribution, pluginId: plugin.id });
-		}
-	}
-
-	for (const plugin of enabledToolPlugins) {
 		if (
 			!hasGrantedPermission(plugin, "agent.systemPrompt.write") &&
 			!hasGrantedPermission(plugin, "agent.systemPrompt.fullControl")
@@ -946,7 +948,6 @@ export function buildAgentPluginRuntimeConfig(): AgentPluginRuntimeConfig | unde
 	if (toolPolicyContributions.length > 0) config.toolPolicyContributions = toolPolicyContributions;
 	if (toolContributions.length > 0) config.toolContributions = toolContributions;
 	if (continuationContributions.length > 0) config.continuationContributions = continuationContributions;
-	if (hookContributions.length > 0) config.hookContributions = hookContributions;
 	if (systemPromptProviderContributions.length > 0) {
 		config.systemPromptProviderContributions = systemPromptProviderContributions;
 	}
@@ -962,10 +963,10 @@ export function beginDynamicAgentContributionLoad(pluginId: string, activationId
 	if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 	dynamicAgentActivations.set(pluginId, activationId);
 	const previousToolCount = dynamicAgentTools.get(pluginId)?.size ?? 0;
-	const previousHookCount = dynamicAgentHooks.get(pluginId)?.size ?? 0;
+	const previousHookCount = desktopPluginHookRegistry.count(pluginId);
 	const previousContinuationCount = dynamicContinuationProviders.get(pluginId)?.size ?? 0;
 	dynamicAgentTools.delete(pluginId);
-	dynamicAgentHooks.delete(pluginId);
+	desktopPluginHookRegistry.clear(pluginId);
 	dynamicContinuationProviders.delete(pluginId);
 	dynamicSystemPromptProviders.delete(pluginId);
 	debugPluginAgent("dynamic agent contribution activation began", {
@@ -1044,7 +1045,7 @@ export function unregisterDynamicAgentTool(pluginId: string, toolId: string, act
 	});
 }
 
-export function registerDynamicAgentHook(pluginId: string, hook: RegisteredAgentHook): void {
+export function registerDynamicAgentHook(pluginId: string, hook: DesktopPluginHookRegistration): void {
 	validatePluginId(pluginId);
 	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 	if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
@@ -1056,25 +1057,15 @@ export function registerDynamicAgentHook(pluginId: string, hook: RegisteredAgent
 	}
 	if (!hook.scope_use?.length) throw new Error("Plugin hook scope_use must not be empty");
 	const currentActivationId = dynamicAgentActivations.get(pluginId);
-	if (hook.activationId && currentActivationId && hook.activationId !== currentActivationId) return;
-	let hooks = dynamicAgentHooks.get(pluginId);
-	if (!hooks) {
-		hooks = new Map();
-		dynamicAgentHooks.set(pluginId, hooks);
-	}
-	hooks.set(hook.id, hook);
+	if (hook.activationId !== undefined && hook.activationId !== currentActivationId) return;
+	desktopPluginHookRegistry.register(pluginId, hook);
 }
 
 export function unregisterDynamicAgentHook(pluginId: string, hookId: string, activationId?: string): void {
 	validatePluginId(pluginId);
 	const currentActivationId = dynamicAgentActivations.get(pluginId);
-	if (activationId && currentActivationId && activationId !== currentActivationId) return;
-	const hooks = dynamicAgentHooks.get(pluginId);
-	if (!hooks) return;
-	const hook = hooks.get(hookId);
-	if (activationId && hook?.activationId && hook.activationId !== activationId) return;
-	hooks.delete(hookId);
-	if (hooks.size === 0) dynamicAgentHooks.delete(pluginId);
+	if (activationId !== undefined && activationId !== currentActivationId) return;
+	desktopPluginHookRegistry.unregister(pluginId, hookId, activationId);
 }
 
 export function registerDynamicContinuationProvider(pluginId: string, provider: RegisteredContinuationProvider): void {
@@ -1172,10 +1163,10 @@ export function clearDynamicAgentContributions(pluginId: string, activationId?: 
 		return;
 	}
 	const previousToolCount = dynamicAgentTools.get(pluginId)?.size ?? 0;
-	const previousHookCount = dynamicAgentHooks.get(pluginId)?.size ?? 0;
+	const previousHookCount = desktopPluginHookRegistry.count(pluginId);
 	const previousContinuationCount = dynamicContinuationProviders.get(pluginId)?.size ?? 0;
 	dynamicAgentTools.delete(pluginId);
-	dynamicAgentHooks.delete(pluginId);
+	desktopPluginHookRegistry.clear(pluginId);
 	dynamicContinuationProviders.delete(pluginId);
 	dynamicSystemPromptProviders.delete(pluginId);
 	if (!activationId || currentActivationId === activationId) {

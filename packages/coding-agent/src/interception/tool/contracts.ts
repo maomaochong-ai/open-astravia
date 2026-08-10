@@ -7,7 +7,6 @@ import type {
 
 export const CODING_AGENT_TOOL_INTERCEPTION_ORDER = {
 	ecosystem: 100,
-	plugin: 200,
 	extension: 300,
 } as const;
 

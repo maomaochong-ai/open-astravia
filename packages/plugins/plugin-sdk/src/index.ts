@@ -94,12 +94,15 @@ export type {
 	PluginAgentActions,
 	PluginAgentHandlerContext,
 	PluginAgentToolHandler,
-	PluginAgentHookContent,
-	PluginAgentHookHandler,
-	PluginAgentHookPoint,
-	PluginAgentHookRegistration,
-	PluginAgentHookResult,
-	PluginAgentHookTrigger,
+	PluginCodingAgentHookEvent,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentHookEventOf,
+	PluginCodingAgentHookHandler,
+	PluginCodingAgentHookHandlerContext,
+	PluginCodingAgentHookRegistration,
+	PluginCodingAgentHookResult,
+	PluginCodingAgentHookTool,
+	PluginCodingAgentPermissionMode,
 	PluginSystemPromptProviderHandler,
 	PluginSystemPromptProviderRegistration,
 	PluginContinuationResult,
@@ -107,6 +110,7 @@ export type {
 	PluginContinuationRegistration,
 	PluginAgentApi,
 } from "./agent.js";
+export { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES } from "./agent.js";
 
 // App actions
 export type {

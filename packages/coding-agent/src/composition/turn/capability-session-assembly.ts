@@ -26,7 +26,6 @@ import type { CodingAgentMemoryRolloverRuntime } from "../../memory/index.js";
 import { CodingAgentModelCallFrameComposer } from "../../model-context/model-call-frame-composer.js";
 import { CodingAgentModelCallMessageFinalizer } from "../../model-context/model-call-message-finalizer.js";
 import { CodingAgentPromptRuntime } from "../../model-context/prompt-runtime.js";
-import { CodingAgentPluginHookRuntime } from "../../plugins/runtime/hook-runtime.js";
 import { CodingAgentPluginRunOrchestrator } from "../../plugins/runtime/run-orchestrator.js";
 import {
 	type CodingAgentPluginToolActivation,
@@ -141,15 +140,6 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 						toPluginToolActivation(options.activation.resolve(context), options.activation.readAgentMode()),
 				})
 			: undefined;
-	const pluginHookRuntime =
-		options.pluginRuntime?.invokeHook && pluginRunOrchestrator
-			? new CodingAgentPluginHookRuntime({
-					...options.pluginRuntime,
-					readAgentPlugins: options.activation.readAgentPlugins,
-					readAgentMode: options.activation.readAgentMode,
-					runOrchestrator: pluginRunOrchestrator,
-				})
-			: undefined;
 	const continuationOrchestrator = new CodingAgentContinuationOrchestrator({
 		todo: new CodingAgentTodoContinuationSource({ state: options.todoRuntime }),
 		plugin: pluginRunOrchestrator,
@@ -181,15 +171,6 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
 		value: createEcosystemToolInterceptor(options.hookRuntime),
 	});
-	if (pluginHookRuntime) {
-		toolInterceptionCatalog.register({
-			sourceId: "desktop-plugin",
-			localId: "tool-hooks",
-			revision: "session",
-			order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.plugin,
-			value: pluginHookRuntime,
-		});
-	}
 	if (options.extensionEvents) {
 		toolInterceptionCatalog.register({
 			sourceId: "coding-extension",
