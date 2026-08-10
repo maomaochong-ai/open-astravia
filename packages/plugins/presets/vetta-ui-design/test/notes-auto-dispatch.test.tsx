@@ -93,6 +93,32 @@ afterEach(() => {
 	vi.useRealTimers();
 });
 
+it("打开设计稿时磁盘上躺着的存量备注不会凭空派出去", async () => {
+	// 上次留下的一条待处理备注。
+	const existing = {
+		version: 1,
+		notes: [{ id: "old", anchor, messages: [{ author: "user", text: "上次没做完的", at: 1 }], createdAt: 1 }],
+	};
+	const loaded = new NotesStore(
+		{ readFile: () => Promise.resolve({ content: JSON.stringify(existing) }), writeFile: () => Promise.resolve() } as unknown as PluginFsApi,
+		"/w/design.vetd.d",
+	);
+	await loaded.load();
+	store = loaded;
+
+	mount();
+	elapse();
+	// 打开画布不该凭空发起一轮工作 —— 要清存量还有面板上的手动按钮。
+	expect(sendPrompt).not.toHaveBeenCalled();
+
+	// 但重开它（追一条新消息）就是用户此刻的动作，照派。
+	act(() => {
+		store.appendMessage("old", "user", "这条还是得改");
+	});
+	elapse();
+	expect(sendPrompt).toHaveBeenCalledTimes(1);
+});
+
 it("空闲时落一条备注，自己就派出去了", () => {
 	mount();
 	act(() => {

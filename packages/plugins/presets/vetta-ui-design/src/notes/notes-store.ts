@@ -64,6 +64,14 @@ export class NotesStore {
 		} catch {
 			this.file = { version: 1, notes: [] };
 		}
+		/**
+		 * 从磁盘读到的都算存量，一律记成「已交付」——打开一个设计稿不该立刻把 agent
+		 * 支使起来，哪怕上面确实躺着几条没做完的备注。自动派活只对打开之后用户亲手
+		 * 落下或重开的备注生效；要清存量，面板上的「让 Vetta 处理」还在。
+		 *
+		 * 重开一条存量备注会追加消息、改变 dispatchKey，于是自然重新成为新任务。
+		 */
+		this.markDispatched(this.file.notes);
 		this.emit();
 	}
 
