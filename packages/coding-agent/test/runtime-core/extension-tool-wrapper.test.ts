@@ -136,4 +136,38 @@ describe("Extension events", () => {
 			}),
 		);
 	});
+
+	it("normalizes non-Error tool_call failures before blocking execution", async () => {
+		const runner = {
+			hasHandlers: (event: string) => event === "tool_call",
+			emitToolCall: vi.fn(async () => Promise.reject("broken extension")),
+			emitToolResult: vi.fn(async () => undefined),
+		} satisfies Pick<ExtensionRunner, "hasHandlers" | "emitToolCall" | "emitToolResult">;
+		const wrapped = wrapRuntimeToolsWithExtensions(
+			new Map([
+				[
+					"fixture",
+					{
+						name: "fixture",
+						label: "Fixture",
+						description: "Fixture",
+						inputSchema: { type: "object" },
+						execute: async () => ({ content: [] }),
+					} satisfies RuntimeToolDefinition,
+				],
+			]),
+			runner,
+		).get("fixture");
+		if (!wrapped) throw new Error("Expected wrapped tool");
+
+		await expect(
+			wrapped.execute({
+				sessionId: "session-1",
+				turnId: "turn-1",
+				toolCallId: "call-1",
+				input: {},
+				signal: new AbortController().signal,
+			}),
+		).rejects.toThrow("Extension failed, blocking execution: broken extension");
+	});
 });

@@ -104,7 +104,7 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		labelKey: "node.kind.video-generator",
 		descriptionKey: "node.description.video-generator",
 		accent: "blue",
-		defaultData: { aspectRatio: "16:9", duration: 5, resolution: "720p" },
+		defaultData: { duration: 5, resolution: "720p" },
 		inputs: [
 			{ id: "prompt", labelKey: "port.prompt", dataType: "prompt", multiple: true },
 			{ id: "image", labelKey: "port.imageReference", dataType: "image", multiple: true },

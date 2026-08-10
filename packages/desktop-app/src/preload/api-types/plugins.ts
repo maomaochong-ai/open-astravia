@@ -63,6 +63,8 @@ import type {
 	WorkspaceSettingInput,
 } from "@vetta/capability-sdk";
 import type {
+	PluginAgentHookContent,
+	PluginAgentHookPoint,
 	PluginAgentManifest,
 	PluginArtifactDestination,
 	PluginMediaCapability,
@@ -208,6 +210,18 @@ export interface PluginAgentToolRegistration {
 	rendersCard?: boolean;
 }
 
+export interface PluginAgentHookHostRegistration {
+	id: string;
+	point: PluginAgentHookPoint;
+	handlerId: string;
+	activationId?: string;
+	timeoutMs?: number;
+	scope_use: readonly string[];
+	agent_mode?: readonly string[];
+	toolNames?: readonly string[];
+	context?: { conversation?: "summary" | "messages" };
+}
+
 export type PluginAppActionEffect = "read" | "write" | "execute";
 
 export interface PluginAppActionApproval {
@@ -276,6 +290,47 @@ export interface PluginAgentToolInvocationRequest extends PluginHandlerInvocatio
 	input: unknown;
 	trigger: { kind: "tool-call"; timestamp: number; toolCallId: string };
 }
+
+interface PluginAgentHookInvocationRequestBase extends PluginHandlerInvocationBase {
+	hookId: string;
+}
+
+export type PluginAgentHookInvocationRequest = PluginAgentHookInvocationRequestBase &
+	(
+		| {
+				point: "tool.before";
+				trigger: {
+					kind: "tool.before";
+					timestamp: number;
+					toolCallId: string;
+					toolName: string;
+					input: Record<string, unknown>;
+				};
+		  }
+		| {
+				point: "tool.after";
+				trigger: {
+					kind: "tool.after";
+					timestamp: number;
+					toolCallId: string;
+					toolName: string;
+					input: Record<string, unknown>;
+					result: { content: PluginAgentHookContent[]; details?: unknown };
+				};
+		  }
+		| {
+				point: "tool.error";
+				trigger: {
+					kind: "tool.error";
+					timestamp: number;
+					toolCallId: string;
+					toolName: string;
+					input: Record<string, unknown>;
+					error: string;
+					aborted: boolean;
+				};
+		  }
+	);
 
 export interface PluginContinuationRegistration {
 	id: string;
@@ -655,9 +710,13 @@ export interface DesktopPluginsApi {
 	beginAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
 	registerAgentTool(pluginId: string, registration: PluginAgentToolRegistration): Promise<void>;
 	unregisterAgentTool(pluginId: string, toolId: string, activationId?: string): Promise<void>;
+	registerAgentHook(pluginId: string, registration: PluginAgentHookHostRegistration): Promise<void>;
+	unregisterAgentHook(pluginId: string, hookId: string, activationId?: string): Promise<void>;
 	clearAgentContributions(pluginId: string, activationId?: string): Promise<void>;
 	onAgentToolRequest(handler: (request: PluginAgentToolInvocationRequest) => void): () => void;
 	respondAgentTool(requestId: string, result: unknown): Promise<void>;
+	onAgentHookRequest(handler: (request: PluginAgentHookInvocationRequest) => void): () => void;
+	respondAgentHook(requestId: string, result: unknown): Promise<void>;
 	registerAppAction(pluginId: string, registration: PluginAppActionRegistration): Promise<void>;
 	commitAppActionActivation(pluginId: string, activationId: string): Promise<void>;
 	abortAppActionActivation(pluginId: string, activationId: string): Promise<void>;

@@ -317,10 +317,16 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 				ipc.invoke("vetta:plugins:agent-tool-register", pluginId, registration),
 			unregisterAgentTool: (pluginId, toolId, activationId) =>
 				ipc.invoke("vetta:plugins:agent-tool-unregister", pluginId, toolId, activationId),
+			registerAgentHook: (pluginId, registration) =>
+				ipc.invoke("vetta:plugins:agent-hook-register", pluginId, registration),
+			unregisterAgentHook: (pluginId, hookId, activationId) =>
+				ipc.invoke("vetta:plugins:agent-hook-unregister", pluginId, hookId, activationId),
 			clearAgentContributions: (pluginId, activationId) =>
 				ipc.invoke("vetta:plugins:agent-contributions-clear", pluginId, activationId),
 			onAgentToolRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:agent-tool-request", handler),
 			respondAgentTool: (requestId, result) => ipc.invoke("vetta:plugins:agent-tool-response", requestId, result),
+			onAgentHookRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:agent-hook-request", handler),
+			respondAgentHook: (requestId, result) => ipc.invoke("vetta:plugins:agent-hook-response", requestId, result),
 			registerAppAction: (pluginId, registration) =>
 				ipc.invoke("vetta:plugins:app-action-register", pluginId, registration),
 			commitAppActionActivation: (pluginId, activationId) =>

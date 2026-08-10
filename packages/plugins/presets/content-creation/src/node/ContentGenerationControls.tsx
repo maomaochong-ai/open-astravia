@@ -3,15 +3,18 @@ import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue }
 import { useState } from "react";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNodeData, ContentNodeKind } from "../project/types";
+import { ContentVideoGenerationSettings } from "./ContentVideoGenerationSettings";
 
 const AUTO_TRIGGER_CLASS = "w-fit max-w-none flex-none border-0 bg-transparent shadow-none";
 const AUTO_VALUE_CLASS = "line-clamp-none! overflow-visible! whitespace-nowrap";
+const AUTOMATIC_ASPECT_RATIO = "__automatic__";
 
 interface ContentGenerationControlsProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
 	draft: ContentNodeData;
 	models: readonly ContentModelDescriptor[];
 	selectedModel?: ContentModelDescriptor;
+	resolvedAspectRatio?: string;
 	isRunning: boolean;
 	canGenerate: boolean;
 	onChange: (data: ContentNodeData) => void;
@@ -24,6 +27,7 @@ export function ContentGenerationControls({
 	draft,
 	models,
 	selectedModel,
+	resolvedAspectRatio,
 	isRunning,
 	canGenerate,
 	onChange,
@@ -34,7 +38,9 @@ export function ContentGenerationControls({
 	const [openSelect, setOpenSelect] = useState<"model" | "aspect-ratio" | "quality" | null>(null);
 	const modelValue = selectedModel ? `${selectedModel.providerId}\u0000${selectedModel.modelId}` : undefined;
 	const aspectRatios = selectedModel?.aspectRatios ?? [];
-	const aspectRatio = draft.aspectRatio ?? aspectRatios[0];
+	const aspectRatio = kind === "video-generator" && !draft.aspectRatio
+		? AUTOMATIC_ASPECT_RATIO
+		: draft.aspectRatio ?? aspectRatios[0];
 	const quality = draft.quality ?? "standard";
 
 	return (
@@ -75,15 +81,31 @@ export function ContentGenerationControls({
 					open={openSelect === "aspect-ratio"}
 					onOpenChange={(open) => setOpenSelect(open ? "aspect-ratio" : null)}
 					value={aspectRatio}
-					onValueChange={(nextAspectRatio) => onChange({ ...draft, aspectRatio: nextAspectRatio })}
+					onValueChange={(nextAspectRatio) =>
+						onChange({
+							...draft,
+							aspectRatio: nextAspectRatio === AUTOMATIC_ASPECT_RATIO ? undefined : nextAspectRatio,
+						})
+					}
 				>
 					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
 						<SelectValue className={AUTO_VALUE_CLASS}>
-							{t(`option.aspectRatio.${aspectRatio}`)}
+							{aspectRatio === AUTOMATIC_ASPECT_RATIO
+								? t("option.aspectRatio.auto", {
+										ratio: resolvedAspectRatio ? t(`option.aspectRatio.${resolvedAspectRatio}`) : "",
+									})
+								: t(`option.aspectRatio.${aspectRatio}`)}
 						</SelectValue>
 					</SelectTrigger>
 					{openSelect === "aspect-ratio" ? (
 						<SelectContent className="z-[100]">
+							{kind === "video-generator" ? (
+								<SelectItem value={AUTOMATIC_ASPECT_RATIO}>
+									{t("option.aspectRatio.auto", {
+										ratio: resolvedAspectRatio ? t(`option.aspectRatio.${resolvedAspectRatio}`) : "",
+									})}
+								</SelectItem>
+							) : null}
 							{aspectRatios.map((option) => (
 								<SelectItem key={option} value={option}>
 									{t(`option.aspectRatio.${option}`)}
@@ -114,7 +136,12 @@ export function ContentGenerationControls({
 					) : null}
 				</Select>
 			) : (
-				<VideoControls draft={draft} model={selectedModel} onChange={onChange} />
+				<ContentVideoGenerationSettings
+					draft={draft}
+					model={selectedModel}
+					resolvedAspectRatio={resolvedAspectRatio}
+					onChange={onChange}
+				/>
 			)}
 			<Button
 				type="button"
@@ -129,72 +156,5 @@ export function ContentGenerationControls({
 				<span className="icon-[lucide--arrow-up] block size-5 shrink-0" aria-hidden="true" />
 			</Button>
 		</div>
-	);
-}
-
-function VideoControls({
-	draft,
-	model,
-	onChange,
-}: {
-	draft: ContentNodeData;
-	model?: ContentModelDescriptor;
-	onChange: (data: ContentNodeData) => void;
-}) {
-	const { t } = useTranslation();
-	const [openSelect, setOpenSelect] = useState<"duration" | "resolution" | null>(null);
-	const durations = model?.durations ?? [];
-	const resolutions = model?.resolutions ?? [];
-	const duration = String(draft.duration ?? durations[0]);
-	const resolution = draft.resolution ?? resolutions[0];
-	return (
-		<>
-			{durations.length > 0 ? (
-				<Select
-					open={openSelect === "duration"}
-					onOpenChange={(open) => setOpenSelect(open ? "duration" : null)}
-					value={duration}
-					onValueChange={(nextDuration) => onChange({ ...draft, duration: Number(nextDuration) })}
-				>
-					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS}>
-							{t("option.duration.seconds", { duration: Number(duration) })}
-						</SelectValue>
-					</SelectTrigger>
-					{openSelect === "duration" ? (
-						<SelectContent className="z-[100]">
-							{durations.map((option) => (
-								<SelectItem key={option} value={String(option)}>
-									{t("option.duration.seconds", { duration: option })}
-								</SelectItem>
-							))}
-						</SelectContent>
-					) : null}
-				</Select>
-			) : null}
-			{resolutions.length > 0 ? (
-				<Select
-					open={openSelect === "resolution"}
-					onOpenChange={(open) => setOpenSelect(open ? "resolution" : null)}
-					value={resolution}
-					onValueChange={(nextResolution) => onChange({ ...draft, resolution: nextResolution })}
-				>
-					<SelectTrigger size="sm" className={AUTO_TRIGGER_CLASS}>
-						<SelectValue className={AUTO_VALUE_CLASS}>
-							{t(`option.resolution.${resolution}`)}
-						</SelectValue>
-					</SelectTrigger>
-					{openSelect === "resolution" ? (
-						<SelectContent className="z-[100]">
-							{resolutions.map((option) => (
-								<SelectItem key={option} value={option}>
-									{t(`option.resolution.${option}`)}
-								</SelectItem>
-							))}
-						</SelectContent>
-					) : null}
-				</Select>
-			) : null}
-		</>
 	);
 }

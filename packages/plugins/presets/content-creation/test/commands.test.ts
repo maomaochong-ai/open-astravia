@@ -21,7 +21,7 @@ describe("applyContentProjectCommands", () => {
 		expect(next.graph.nodes.map((node) => node.name)).toEqual(["prompt 1", "video-generator 1"]);
 		expect(next.graph.edges).toHaveLength(1);
 		expect(next.graph.edges[0]).toMatchObject({ sourceHandle: "text", targetHandle: "prompt" });
-		expect(next.graph.nodes[1]?.data).toMatchObject({ aspectRatio: "16:9", duration: 5, resolution: "720p" });
+		expect(next.graph.nodes[1]?.data).toEqual({ duration: 5, resolution: "720p" });
 		expect(project.graph.nodes).toHaveLength(0);
 	});
 

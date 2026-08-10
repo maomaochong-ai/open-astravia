@@ -270,13 +270,15 @@ function createSessionPluginRuntime(
 		sessionOptions.agentPlugins === undefined &&
 		sessionOptions.invokePluginTool === undefined &&
 		sessionOptions.invokePluginContinuation === undefined &&
-		sessionOptions.invokePluginSystemPrompt === undefined
+		sessionOptions.invokePluginSystemPrompt === undefined &&
+		sessionOptions.invokePluginHook === undefined
 	) {
 		return undefined;
 	}
 	return {
 		readAgentPlugins: () => sessionOptions.agentPlugins,
 		invokeTool: sessionOptions.invokePluginTool,
+		invokeHook: sessionOptions.invokePluginHook,
 		invokeContinuation: sessionOptions.invokePluginContinuation,
 		invokeSystemPrompt: sessionOptions.invokePluginSystemPrompt,
 	};

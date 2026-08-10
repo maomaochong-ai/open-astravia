@@ -15,18 +15,27 @@
 	stroke-width: 28;
 }
 
-/* Selection chrome: keep the active drag discoverable, then settle into a
- * quiet theme-neutral group outline after multiple nodes are selected. */
+/* Selection chrome: marquee while dragging, then a clear group outline once
+ * multiple nodes stay selected. Primary-tinted so the frame reads against
+ * card chrome without fighting individual node selection rings. */
 .content-creation-flow .react-flow__selection {
-	border: 1px solid color-mix(in srgb, var(--primary) 38%, transparent);
+	border: 1.5px solid color-mix(in srgb, var(--primary) 55%, transparent);
 	border-radius: var(--radius-md, 8px);
-	background: color-mix(in srgb, var(--primary) 6%, transparent);
+	background: color-mix(in srgb, var(--primary) 10%, transparent);
 }
 
+/* RF sets width/height to the selected-nodes AABB. content-box padding +
+ * matching negative margin expands the dashed frame outward so it sits off
+ * the cards instead of hugging their borders. */
 .content-creation-flow .react-flow__nodesselection-rect {
-	border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+	--content-creation-selection-pad: 12px;
+	box-sizing: content-box;
+	padding: var(--content-creation-selection-pad);
+	margin: calc(var(--content-creation-selection-pad) * -1) 0 0
+		calc(var(--content-creation-selection-pad) * -1);
+	border: 1.5px dashed color-mix(in srgb, var(--primary) 58%, transparent);
 	border-radius: var(--radius-lg, 12px);
-	background: color-mix(in srgb, var(--muted) 12%, transparent);
+	background: color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
 /* Resize: selection outline stays on the card itself.

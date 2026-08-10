@@ -66,6 +66,20 @@ export interface AgentPluginSystemPromptProviderContribution {
 	};
 }
 
+export type AgentPluginHookPoint = "tool.before" | "tool.after" | "tool.error";
+
+export interface AgentPluginHookContribution {
+	pluginId: string;
+	id: string;
+	point: AgentPluginHookPoint;
+	handlerId: string;
+	timeoutMs?: number;
+	scope_use?: string[];
+	agent_mode?: string[];
+	toolNames?: string[];
+	context?: { conversation?: "summary" | "messages" };
+}
+
 export interface AgentPluginSystemPromptMessage {
 	role: string;
 	text: string;
@@ -161,6 +175,7 @@ export interface AgentPluginRuntimeConfig {
 	stateContributions?: AgentPluginStateContribution[];
 	continuationContributions?: AgentPluginContinuationContribution[];
 	systemPromptProviderContributions?: AgentPluginSystemPromptProviderContribution[];
+	hookContributions?: AgentPluginHookContribution[];
 	/** Plugin-scoped MCP (third source; never written to user mcp.json). */
 	mcpServerContributions?: McpServerContribution[];
 }
@@ -182,6 +197,66 @@ export type AgentPluginToolInvoker = (
 	invocation: AgentPluginToolInvocation,
 	signal?: AbortSignal,
 ) => Promise<AgentPluginHandlerResult<unknown>>;
+
+export type AgentPluginHookContent = { type: "text"; text: string } | { type: "image"; data: string; mimeType: string };
+
+interface AgentPluginHookInvocationBase {
+	pluginId: string;
+	hookId: string;
+	handlerId: string;
+	session: AgentPluginSystemPromptInvocation["session"];
+	model: AgentPluginSystemPromptInvocation["model"];
+	conversation: AgentPluginSystemPromptInvocation["conversation"];
+	runtime: AgentPluginSystemPromptInvocation["runtime"];
+}
+
+export type AgentPluginHookInvocation = AgentPluginHookInvocationBase &
+	(
+		| {
+				point: "tool.before";
+				trigger: {
+					kind: "tool.before";
+					timestamp: number;
+					toolCallId: string;
+					toolName: string;
+					input: Record<string, unknown>;
+				};
+		  }
+		| {
+				point: "tool.after";
+				trigger: {
+					kind: "tool.after";
+					timestamp: number;
+					toolCallId: string;
+					toolName: string;
+					input: Record<string, unknown>;
+					result: { content: AgentPluginHookContent[]; details?: unknown };
+				};
+		  }
+		| {
+				point: "tool.error";
+				trigger: {
+					kind: "tool.error";
+					timestamp: number;
+					toolCallId: string;
+					toolName: string;
+					input: Record<string, unknown>;
+					error: string;
+					aborted: boolean;
+				};
+		  }
+	);
+
+export type AgentPluginHookResult =
+	| { action: "continue"; input?: Record<string, unknown> }
+	| { action: "replace"; content?: AgentPluginHookContent[]; details?: unknown }
+	| { action: "block"; reason: string }
+	| { action: "feedback"; text: string };
+
+export type AgentPluginHookInvoker = (
+	invocation: AgentPluginHookInvocation,
+	signal?: AbortSignal,
+) => Promise<AgentPluginHandlerResult<AgentPluginHookResult | undefined>>;
 
 export interface AgentPluginContinuationInvocation {
 	pluginId: string;

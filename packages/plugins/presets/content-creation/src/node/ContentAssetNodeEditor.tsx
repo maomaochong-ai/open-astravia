@@ -37,7 +37,7 @@ export function ContentAssetNodeEditor({ name, data, assets, onUpdate, onRename,
 		try {
 			for (let index = 0; index < files.length; index += IMPORT_BATCH_SIZE) {
 				const batch = files.slice(index, index + IMPORT_BATCH_SIZE);
-				await onImport(batch.map((file) => createImportedMediaFile(file)));
+				await onImport(await Promise.all(batch.map((file) => createImportedMediaFile(file))));
 			}
 		} finally {
 			setImporting(false);

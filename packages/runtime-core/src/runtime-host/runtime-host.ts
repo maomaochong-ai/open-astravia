@@ -5,6 +5,7 @@ import type { ThinkingLevel } from "@vetta/agent-core";
 import type { Message } from "@vetta/ai";
 import type {
 	AgentPluginContinuationInvoker,
+	AgentPluginHookInvoker,
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
@@ -111,6 +112,7 @@ export class RuntimeHost implements SessionFacade {
 		| ((request: RuntimeSandboxGrantRequest, signal?: AbortSignal) => Promise<RuntimeSandboxGrantDecision>)
 		| undefined;
 	private pluginToolInvoker: AgentPluginToolInvoker | undefined;
+	private pluginHookInvoker: AgentPluginHookInvoker | undefined;
 	private pluginContinuationInvoker: AgentPluginContinuationInvoker | undefined;
 	private pluginSystemPromptInvoker: AgentPluginSystemPromptInvoker | undefined;
 
@@ -155,6 +157,10 @@ export class RuntimeHost implements SessionFacade {
 
 	setPluginToolInvoker(handler: AgentPluginToolInvoker | undefined): void {
 		this.pluginToolInvoker = handler;
+	}
+
+	setPluginHookInvoker(handler: AgentPluginHookInvoker | undefined): void {
+		this.pluginHookInvoker = handler;
 	}
 
 	setPluginContinuationInvoker(handler: AgentPluginContinuationInvoker | undefined): void {
@@ -385,6 +391,10 @@ export class RuntimeHost implements SessionFacade {
 			invokePluginTool: this.pluginToolInvoker
 				? (invocation, signal) =>
 						this.pluginToolInvoker?.(invocation, signal) ?? Promise.resolve({ value: undefined, effects: [] })
+				: undefined,
+			invokePluginHook: this.pluginHookInvoker
+				? (invocation, signal) =>
+						this.pluginHookInvoker?.(invocation, signal) ?? Promise.resolve({ value: undefined, effects: [] })
 				: undefined,
 			invokePluginContinuation: this.pluginContinuationInvoker
 				? (invocation, signal) =>

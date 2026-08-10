@@ -7,6 +7,8 @@ import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
 	AgentPluginHandlerResult,
+	AgentPluginHookInvocation,
+	AgentPluginHookResult,
 	AgentPluginSystemPromptInvocation,
 	AgentPluginToolInvocation,
 	RuntimeSandboxGrantDecision,
@@ -178,6 +180,8 @@ const CHANNELS = {
 	VIEWER_EVENT: "vetta:session:viewer-event",
 	PLUGIN_TOOL_REQUEST: "vetta:plugins:agent-tool-request",
 	PLUGIN_TOOL_RESPONSE: "vetta:plugins:agent-tool-response",
+	PLUGIN_HOOK_REQUEST: "vetta:plugins:agent-hook-request",
+	PLUGIN_HOOK_RESPONSE: "vetta:plugins:agent-hook-response",
 	PLUGIN_CONTINUATION_REQUEST: "vetta:plugins:continuation-request",
 	PLUGIN_CONTINUATION_RESPONSE: "vetta:plugins:continuation-response",
 	PLUGIN_SYSTEM_PROMPT_REQUEST: "vetta:plugins:system-prompt-request",
@@ -262,6 +266,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const questionMap = new Map<string, (result: RuntimeUserQuestionResult) => void>();
 	const sandboxGrantMap = new Map<string, (decision: RuntimeSandboxGrantDecision) => void>();
 	const pluginToolMap = new Map<string, (result: unknown) => void>();
+	const pluginHookMap = new Map<string, (result: unknown) => void>();
 	const pluginContinuationMap = new Map<string, (result: unknown) => void>();
 	const pluginSystemPromptMap = new Map<string, (result: unknown) => void>();
 	/** Track session cwd for debug file writing */
@@ -463,6 +468,58 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			if (signal) signal.addEventListener("abort", onAbort, { once: true });
 			pluginToolMap.set(requestId, finish);
 			webContents.send(CHANNELS.PLUGIN_TOOL_REQUEST, {
+				...request,
+				requestId,
+				settings: getPluginSettings(request.pluginId),
+			});
+		});
+	});
+
+	runtime.setPluginHookInvoker((request: AgentPluginHookInvocation, signal?: AbortSignal) => {
+		if (webContents.isDestroyed()) return Promise.resolve({ value: undefined, effects: [] });
+		const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
+		if (
+			!plugin?.enabled ||
+			!plugin.permissions.includes("agent.hooks.register") ||
+			!plugin.grantedPermissions.includes("agent.hooks.register") ||
+			!plugin.permissions.includes("agent.hookHandler.execute") ||
+			!plugin.grantedPermissions.includes("agent.hookHandler.execute")
+		) {
+			return Promise.resolve({ value: undefined, effects: [] });
+		}
+		return new Promise<AgentPluginHandlerResult<AgentPluginHookResult | undefined>>((resolve, reject) => {
+			const requestId = randomUUID();
+			const finish = (result: unknown): void => {
+				pluginHookMap.delete(requestId);
+				if (signal) signal.removeEventListener("abort", onAbort);
+				if (typeof result === "object" && result !== null && "error" in result) {
+					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin hook failed")));
+					return;
+				}
+				const current = listPlugins().find((candidate) => candidate.id === request.pluginId);
+				if (!current?.enabled) {
+					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+					return;
+				}
+				resolve({
+					value: (result as { value?: AgentPluginHookResult })?.value,
+					effects: normalizeDynamicSystemPromptOperations(
+						current,
+						(result as { effects?: unknown }).effects ?? [],
+					),
+				});
+			};
+			const onAbort = (): void => {
+				pluginHookMap.delete(requestId);
+				reject(new Error("Plugin hook invocation was aborted"));
+			};
+			if (signal?.aborted) {
+				reject(new Error("Plugin hook invocation was aborted"));
+				return;
+			}
+			if (signal) signal.addEventListener("abort", onAbort, { once: true });
+			pluginHookMap.set(requestId, finish);
+			webContents.send(CHANNELS.PLUGIN_HOOK_REQUEST, {
 				...request,
 				requestId,
 				settings: getPluginSettings(request.pluginId),
@@ -963,6 +1020,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		if (!resolve) return;
 		resolve(result);
 	});
+	ipcMain.handle(CHANNELS.PLUGIN_HOOK_RESPONSE, (_event, requestId: unknown, result: unknown) => {
+		assertNonEmptyString(requestId, "requestId");
+		pluginHookMap.get(requestId)?.(result);
+	});
 
 	ipcMain.handle(CHANNELS.PLUGIN_CONTINUATION_RESPONSE, (_event, requestId: unknown, result: unknown) => {
 		assertNonEmptyString(requestId, "requestId");
@@ -1151,6 +1212,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve({ error: "Plugin host renderer is unavailable" });
 		}
 		pluginToolMap.clear();
+		for (const resolve of pluginHookMap.values()) {
+			resolve({ error: "Plugin host renderer is unavailable" });
+		}
+		pluginHookMap.clear();
 		for (const resolve of pluginContinuationMap.values()) {
 			resolve({ value: null });
 		}
@@ -1253,6 +1318,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve({ error: "Plugin host renderer disposed" });
 		}
 		pluginToolMap.clear();
+		for (const resolve of pluginHookMap.values()) {
+			resolve({ error: "Plugin host renderer disposed" });
+		}
+		pluginHookMap.clear();
 		for (const resolve of pluginContinuationMap.values()) {
 			resolve({ value: null });
 		}
@@ -1262,6 +1331,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		unregisterQuestionResolved();
 		runtime.setUserSandboxGrantHandler(undefined);
 		runtime.setPluginToolInvoker(undefined);
+		runtime.setPluginHookInvoker(undefined);
 		runtime.setPluginContinuationInvoker(undefined);
 		runtime.setPluginSystemPromptInvoker(undefined);
 		// 不在此处 disposeAllSessions：共享 runtime 的 session 可能正被

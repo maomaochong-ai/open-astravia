@@ -114,6 +114,9 @@ function cleanCapabilityValueBySchema(schema: TSchema, value: unknown, parentRef
 				continue;
 			}
 			if (rejectExcess) continue;
+			// Open objects (`additionalProperties: true`) intentionally carry extension
+			// fields (e.g. media job artifacts keep `kind` / dimensions). Preserve them.
+			if (schema.additionalProperties === true) continue;
 			if (
 				KindGuard.IsSchema(schema.additionalProperties) &&
 				Value.Check(schema.additionalProperties, references, record[key])

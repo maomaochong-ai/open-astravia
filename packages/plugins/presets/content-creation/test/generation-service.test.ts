@@ -122,6 +122,50 @@ describe("ContentGenerationService", () => {
 		);
 	});
 
+	it("follows an imported portrait image ratio for video generation by default", async () => {
+		const fixture = await createFixture("video-generator");
+		const imported = await fixture.service.importReferences("C:/project", "image", [
+			{
+				name: "portrait.png",
+				mimeType: "image/png",
+				data: "reference-data",
+				width: 1080,
+				height: 1920,
+			},
+		]);
+
+		expect(imported.assets[0]).toMatchObject({ width: 1080, height: 1920 });
+		await fixture.service.runNode("C:/project", "image");
+
+		expect(fixture.generate).toHaveBeenLastCalledWith(
+			expect.objectContaining({ modeId: "image-to-video", aspectRatio: "9:16" }),
+			expect.objectContaining({ readReference: expect.any(Function) }),
+		);
+	});
+
+	it("keeps an explicit landscape ratio for a portrait image", async () => {
+		const fixture = await createFixture("video-generator");
+		await fixture.service.importReferences("C:/project", "image", [
+			{
+				name: "portrait.png",
+				mimeType: "image/png",
+				data: "reference-data",
+				width: 1080,
+				height: 1920,
+			},
+		]);
+		await fixture.workspace.dispatch("C:/project", [
+			{ type: "node.update", nodeId: "image", data: { aspectRatio: "16:9" } },
+		]);
+
+		await fixture.service.runNode("C:/project", "image");
+
+		expect(fixture.generate).toHaveBeenLastCalledWith(
+			expect.objectContaining({ aspectRatio: "16:9" }),
+			expect.objectContaining({ readReference: expect.any(Function) }),
+		);
+	});
+
 	it("prefers an explicit image when an implicit image edge exceeds the video model capacity", async () => {
 		const fixture = await createFixture("video-generator");
 		const imported = await fixture.service.importReferences("C:/project", "image", [
@@ -315,7 +359,10 @@ async function createFixture(kind: "image-generator" | "video-generator" = "imag
 								inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 1 }],
 							},
 						],
-				aspectRatios: kind === "video-generator" ? ["16:9"] : ["1:1"],
+				aspectRatios:
+					kind === "video-generator"
+						? ["1:1", "2:3", "3:2", "3:4", "4:3", "9:16", "16:9", "21:9"]
+						: ["1:1"],
 			},
 		],
 		generate,

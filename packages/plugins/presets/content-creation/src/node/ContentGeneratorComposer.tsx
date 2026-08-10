@@ -7,6 +7,7 @@ import {
 	outputKindForNodeKind,
 	slotIdForReferenceKind,
 } from "../generation/model-inputs";
+import { resolveContentAspectRatio } from "../generation/aspect-ratio";
 import type {
 	ContentModelDescriptor,
 	ContentReferenceKind,
@@ -129,6 +130,14 @@ export function ContentGeneratorComposer({
 	const isRunning = status === "running" || status === "queued";
 	const resolvedPrompt = resolveContentPrompt(connectedPrompts, draft);
 	const canGenerate = Boolean(selectedModel && resolution.mode && resolvedPrompt && !isRunning);
+	const resolvedAspectRatio = selectedModel
+		? resolveContentAspectRatio({
+				outputKind: selectedModel.outputKind,
+				explicitAspectRatio: draft.aspectRatio,
+				supportedAspectRatios: selectedModel.aspectRatios,
+				references: [...draftReferenceAssets, ...promptReferenceAssets].map(({ asset }) => asset),
+			})
+		: undefined;
 	const minimumWidth = kind === "image-generator" ? 360 : 400;
 
 	useEffect(() => setDraft(data), [data]);
@@ -216,6 +225,7 @@ export function ContentGeneratorComposer({
 				draft={draft}
 				models={availableModels}
 				selectedModel={selectedModel}
+				resolvedAspectRatio={resolvedAspectRatio}
 				isRunning={isRunning}
 				canGenerate={canGenerate}
 				onChange={commit}
@@ -225,9 +235,8 @@ export function ContentGeneratorComposer({
 						draftReferenceAssets,
 						promptReferenceKinds,
 					).mode;
-					const aspectRatio = model.aspectRatios.includes(draft.aspectRatio ?? "")
-						? draft.aspectRatio
-						: model.aspectRatios[0];
+					const aspectRatio =
+						draft.aspectRatio && model.aspectRatios.includes(draft.aspectRatio) ? draft.aspectRatio : undefined;
 					commit({
 						...draft,
 						providerId: model.providerId,

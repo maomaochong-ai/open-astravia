@@ -1,75 +1,102 @@
-import { Type } from "@sinclair/typebox";
-import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
-import type { RuntimeToolDefinition, RuntimeToolExecutionRequest, RuntimeToolResult } from "@vetta/runtime-core/kernel";
+import type { EcosystemHookRuntime, EcosystemToolDescriptor } from "@vetta/ecosystem-adapter/hooks";
+import type { RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type { EcosystemHookAwareRuntimeTool } from "../../extensions/runtime/ecosystem-hook-tool-wrapper.js";
+import { DynamicContributionCatalog } from "../../interception/contribution-catalog.js";
 import {
-	type EcosystemHookAwareRuntimeTool,
-	type EcosystemHookAwareTool,
-	wrapToolsWithEcosystemHooks,
-} from "../../extensions/runtime/ecosystem-hook-tool-wrapper.js";
+	CODING_AGENT_TOOL_INTERCEPTION_ORDER,
+	type CodingAgentToolInterceptor,
+} from "../../interception/tool/contracts.js";
+import { wrapRuntimeToolsWithInterceptionPipeline } from "../../interception/tool/pipeline.js";
 
 export type { EcosystemHookAwareRuntimeTool };
 
-/** 在最终 Model Call Frame 上应用 Ecosystem Tool Hook 的完整执行语义。 */
+/** 兼容公开辅助函数；生产组合与测试均使用同一个显式 Tool Interception Pipeline。 */
 export function wrapRuntimeToolsWithEcosystemHooks(
 	tools: ReadonlyMap<string, RuntimeToolDefinition>,
 	hooks: EcosystemHookRuntime,
 ): ReadonlyMap<string, RuntimeToolDefinition> {
-	return new Map([...tools].map(([name, tool]) => [name, wrapRuntimeTool(tool, hooks)]));
+	const catalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
+	catalog.register({
+		sourceId: "ecosystem",
+		localId: "tool-hooks",
+		revision: "session",
+		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
+		value: createEcosystemToolInterceptor(hooks),
+	});
+	return wrapRuntimeToolsWithInterceptionPipeline(tools, catalog);
 }
 
-function wrapRuntimeTool(
-	tool: EcosystemHookAwareRuntimeTool,
-	hooks: EcosystemHookRuntime,
-): EcosystemHookAwareRuntimeTool {
+export function createEcosystemToolInterceptor(hooks: EcosystemHookRuntime): CodingAgentToolInterceptor {
 	return {
-		...tool,
-		execute: (request) => executeRuntimeToolWithHooks(tool, hooks, request),
+		before: async ({ tool, request, input }) => {
+			const descriptor = toolDescriptor(tool);
+			const outcome = await hooks.runPreToolUse(request.toolCallId, descriptor, input, request.signal);
+			await hooks.recordAdditionalContexts(outcome.additionalContexts);
+			if (outcome.shouldStop || outcome.shouldBlock) {
+				return {
+					block: {
+						reason: outcome.stopReason ?? outcome.blockReason ?? "Tool execution blocked by ecosystem hook",
+					},
+				};
+			}
+			return { input: asToolInput(outcome.updatedToolInput) ?? input, state: Date.now() };
+		},
+		after: async ({ tool, request, input, result }) => {
+			const outcome = await hooks.runPostToolUse(
+				request.toolCallId,
+				toolDescriptor(tool),
+				input,
+				result,
+				request.signal,
+			);
+			await hooks.recordAdditionalContexts(outcome.additionalContexts);
+			if (outcome.shouldStop || outcome.shouldBlock) {
+				return {
+					block: {
+						reason:
+							outcome.stopReason ??
+							outcome.blockReason ??
+							outcome.feedbackMessage ??
+							"Tool result blocked by ecosystem hook",
+					},
+				};
+			}
+			return outcome.feedbackMessage === undefined
+				? undefined
+				: {
+						result: {
+							...result,
+							content: [{ type: "text", text: outcome.feedbackMessage }],
+						},
+					};
+		},
+		onError: async ({ tool, request, input, error, state }) => {
+			const message = error instanceof Error ? error.message : String(error);
+			const startedAt = typeof state === "number" ? state : undefined;
+			const outcome = await hooks.runPostToolUseFailure(request.toolCallId, toolDescriptor(tool), input, message, {
+				isInterrupt: request.signal.aborted,
+				durationMs: startedAt === undefined ? undefined : Date.now() - startedAt,
+				signal: request.signal,
+			});
+			await hooks.recordAdditionalContexts(outcome.additionalContexts);
+			return outcome.feedbackMessage ? { error: new Error(`${message}\n\n${outcome.feedbackMessage}`) } : undefined;
+		},
 	};
 }
 
-async function executeRuntimeToolWithHooks(
-	runtimeTool: EcosystemHookAwareRuntimeTool,
-	hooks: EcosystemHookRuntime,
-	request: RuntimeToolExecutionRequest,
-): Promise<RuntimeToolResult> {
-	const agentTool: EcosystemHookAwareTool = {
-		name: runtimeTool.name,
-		label: runtimeTool.label,
-		description: runtimeTool.description,
-		parameters: Type.Unsafe<Record<string, unknown>>({ ...runtimeTool.inputSchema }),
-		ecosystemHook: runtimeTool.ecosystemHook,
-		execute: async (toolCallId, input, signal, onUpdate, context) =>
-			toAgentToolResult(
-				await runtimeTool.execute({
-					sessionId: request.sessionId,
-					turnId: request.turnId,
-					toolCallId,
-					input: input as Readonly<Record<string, unknown>>,
-					messages: request.messages,
-					signal: signal ?? new AbortController().signal,
-					onUpdate: onUpdate ? (result) => onUpdate(toAgentToolResult(result)) : undefined,
-					reportPhase: context?.phase,
-				}),
-			),
-	};
-	const wrapped = wrapToolsWithEcosystemHooks([agentTool], hooks)[0];
-	if (!wrapped) return runtimeTool.execute(request);
-	const context =
-		request.reportPhase || request.messages
-			? {
-					phase: request.reportPhase ?? (() => {}),
-					messages: request.messages,
-				}
-			: undefined;
-	return wrapped.execute(request.toolCallId, request.input, request.signal, request.onUpdate, context);
+function asToolInput(value: unknown): Readonly<Record<string, unknown>> | undefined {
+	return typeof value === "object" && value !== null && !Array.isArray(value)
+		? (value as Readonly<Record<string, unknown>>)
+		: undefined;
 }
 
-function toAgentToolResult(result: RuntimeToolResult): {
-	readonly content: [...RuntimeToolResult["content"]];
-	readonly details: unknown;
-} {
-	return {
-		content: [...result.content],
-		details: result.details,
-	};
+function toolDescriptor(tool: EcosystemHookAwareRuntimeTool): EcosystemToolDescriptor {
+	const metadata = tool.ecosystemHook;
+	if (metadata) return metadata;
+	const hostName = tool.name;
+	if (hostName === "bash" || hostName === "shell") return { hostName, kind: "shell" };
+	if (hostName === "edit" || hostName === "write") return { hostName, kind: "file-edit" };
+	if (hostName === "spawn_agent") return { hostName, kind: "agent" };
+	if (hostName.startsWith("mcp_")) return { hostName, kind: "mcp" };
+	return { hostName, kind: "function" };
 }
