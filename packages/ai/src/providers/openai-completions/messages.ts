@@ -19,6 +19,7 @@ import type {
 } from "../../types.js";
 import { sanitizeSurrogates } from "../../utils/sanitize-unicode.js";
 import { transformMessages } from "../transform-messages.js";
+import { sanitizeToolParameters } from "./tool-schema.js";
 
 export function convertMessages(
 	model: Model<"openai-completions">,
@@ -206,7 +207,7 @@ export function convertTools(
 		function: {
 			name: tool.name,
 			description: tool.description,
-			parameters: tool.parameters as OpenAI.FunctionParameters,
+			parameters: sanitizeToolParameters(tool.name, tool.parameters) as OpenAI.FunctionParameters,
 			...(compat.supportsStrictMode !== false && { strict: false }),
 		},
 	}));
