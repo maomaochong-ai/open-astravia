@@ -25,5 +25,7 @@ All notable changes to `@vetta/runtime-storage` are documented in this file.
 
 ### Fixed
 
+- **Legacy 会话重复导入**：确定性迁移目标在初始 Import Seed 后追加原生 V2 事件时仍可安全复用，重复打开不再误报 `Conversation already exists`，且保留迁移后继续产生的会话历史。
+
 - **会话删除与外部产物清理保持同一可重试事务**：文件会话目录支持可注入的产物 Cleaner，并在删除 Snapshot 和会话文件前执行；清理失败时保留会话及其锁内可重试状态，Storage 不依赖具体 Tool 或 Coding Agent 实现。
 - **Conversation ownership 释放可重试**：文件 lease 仅在确认锁已释放或已不存在后停止心跳并标记完成；瞬时文件系统错误会保留释放资格，并发调用复用同一在途操作，使 Session 清理失败后可由 Runtime 最终关闭再次释放锁。

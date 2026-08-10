@@ -43,7 +43,10 @@ export interface DesktopUserQuestionResolvedEvent {
 }
 
 export interface DesktopSessionApi {
-	create(config: SessionConfig | undefined, kind: DesktopSessionKind): Promise<{ sessionId: string; cwd?: string }>;
+	create(
+		config: SessionConfig | undefined,
+		kind: DesktopSessionKind,
+	): Promise<{ sessionId: string; sessionPath: string; cwd?: string }>;
 	listProjects(): Promise<ProjectInfo[]>;
 	listSessions(cwd: string): Promise<DesktopSessionHistoryInfo[]>;
 	onSessionsChanged(

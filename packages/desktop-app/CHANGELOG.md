@@ -48,6 +48,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **继续使用过的历史会话无法再次打开**：Legacy 会话首次导入后，Renderer 会采用 Runtime 返回的 canonical Conversation V2 路径；存储层同时允许复用 Import Seed 一致且已追加原生事件的迁移目标，避免切换回来时因固定 recovery 目标冲突而抛出 `Conversation already exists`。
 - **执行中的会话切走再切回时不再丢失刚发送的用户消息**：Renderer 会按 runtime session 暂存尚未被 canonical 历史确认的乐观用户气泡；会话历史水合时保留缺失气泡，待对应序号的持久化用户消息出现后自动去重并清理暂存。活动会话的队列自动派发与立即发送使用同一保护。
 - **插件工作区视频 MIME 识别**：`fs.readBinaryFile` 现在正确返回 MP4、M4V、MOV 与 WebM 类型，避免生成视频被标记为通用二进制后无法在节点中播放。
 - **重启后上下文圆环点击无响应**：总 Token 会从会话历史恢复，但分区构成报告此前只存在于进程内存，导致重启后圆环仍在、Popover 内容却未挂载。现在按会话缓存最新的隐私安全报告并在重启时恢复；旧会话尚无缓存时也会正常打开并说明下一次模型调用后生成明细，不再静默无响应。

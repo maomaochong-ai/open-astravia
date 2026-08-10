@@ -662,7 +662,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
 		// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
 		// 落到项目根、看到其他 session 的子目录。
-		return { sessionId: result.sessionId, cwd: effectiveCwd };
+		return { sessionId: result.sessionId, sessionPath: result.sessionPath, cwd: effectiveCwd };
 	});
 
 	ipcMain.handle(CHANNELS.LIST_PROJECTS, async () => {

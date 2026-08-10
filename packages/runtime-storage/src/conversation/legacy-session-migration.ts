@@ -29,7 +29,7 @@ export interface LegacySessionMigrationOptions {
 	/** Product-owned normalization policy for official Legacy entry variants. */
 	readonly entryNormalizer: LegacySessionImportEntryNormalizer;
 	readonly targetSessionId?: string;
-	/** Reuse an existing target only when its complete serialized content is identical. */
+	/** Reuse an existing target only when its complete serialized import seed is identical. */
 	readonly reuseIdenticalTarget?: boolean;
 }
 
@@ -101,7 +101,7 @@ export async function migrateLegacySessionToV2(
 	}
 	const seed: ConversationImportSeedRecord = seedCandidate;
 	const content = [serializeConversationLine(header), serializeConversationLine(seed)].join("");
-	const document = documentFromFile(targetSessionId, parseConversationFile(content, targetSessionId));
+	let document = documentFromFile(targetSessionId, parseConversationFile(content, targetSessionId));
 
 	await mkdir(targetRootDir, { recursive: true });
 	let created = true;
@@ -109,7 +109,9 @@ export async function migrateLegacySessionToV2(
 		await publishConversationFileExclusive(targetPath, content);
 	} catch (error) {
 		if (nodeErrorCode(error) === "EEXIST") {
-			if (options.reuseIdenticalTarget && (await readFile(targetPath, "utf8")) === content) {
+			const existingContent = await readFile(targetPath, "utf8");
+			if (options.reuseIdenticalTarget && existingContent.startsWith(content)) {
+				document = documentFromFile(targetSessionId, parseConversationFile(existingContent, targetSessionId));
 				created = false;
 			} else {
 				throw new ConversationStorageError(

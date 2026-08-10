@@ -368,16 +368,18 @@ export function useSessionManager(): SessionManagerResult {
 				sessionKind,
 			);
 			const { sessionId } = createResult;
+			const canonicalSessionPath = createResult.sessionPath || sessionPath || "";
 			// ADR-0007: 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，
 			// 这里以 main 返回的 effective cwd 为准，保证 FilesPanel/调试 cwd 都指向子目录。
 			const effectiveCwd = createResult.cwd ?? cwd;
 
 			// 拿到 sessionId 就立即写 activeSession；默认再 navigate 到 ChatView。
-			// 真实 sessionPath 解析（可能还要再走一次 IPC）放到后面，等好了再补一次写入。
+			// main 返回 Runtime 实际持有的 canonical sessionPath；历史会话导入时它不同于
+			// 用户选择的 Legacy 源路径，必须立即采用，避免切回后再次触发迁移。
 			// 这样 Welcome → Chat 的转场就不会被 getFullHistory / getState / getSessionPath
 			// 的串行 IPC 拖住，体感保持瞬时。
 			// navigate:false：设置页 AI 协助等场景只后台建会话，留在当前路由，由侧栏高亮 + 飞球引导。
-			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: sessionPath ?? "", runtimeId: sessionId };
+			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: canonicalSessionPath, runtimeId: sessionId };
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
 			if (shouldNavigate) {
@@ -397,11 +399,12 @@ export function useSessionManager(): SessionManagerResult {
 			// If this session already has any prior turn (loaded from disk) we never
 			// want to auto-rename — only brand-new sessions on their first round.
 			if (sessionPath && mapped.some((m) => m.role === "user")) {
-				autoTitledSessionsRef.current.add(sessionPath);
+				autoTitledSessionsRef.current.add(canonicalSessionPath);
 			}
 
 			const state = await statePromise;
-			const resolvedSessionPath = sessionPath ?? (await window.vetta.session.getSessionPath(sessionId)) ?? "";
+			const resolvedSessionPath =
+				canonicalSessionPath || (await window.vetta.session.getSessionPath(sessionId)) || sessionPath || "";
 			const cachedKey = resolvedSessionPath;
 			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
 			setContextUsage({
