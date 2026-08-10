@@ -52,12 +52,16 @@ export function queryAbilityCatalog(items: AbilityItem[], query: AbilityCatalogQ
 		.filter((item) => !types || types.has(item.type))
 		.filter((item) => !sourceIds || sourceIds.has(sourceId(item)))
 		.sort(compareAbilities);
+	// 内置能力随 App 分发、数量有限，整组返回不参与分页：它们 downloadCount 为 0 会排在最后，
+	// 若按扁平列表切片，「Vetta 内置」分组只会出现零星几条，分组计数也跟着显示成已加载数。
+	const builtin = filtered.filter((item) => item.isBuiltin);
+	const paged = filtered.filter((item) => !item.isBuiltin);
 	const total = filtered.length;
 	return {
-		items: filtered.slice((page - 1) * pageSize, page * pageSize),
+		items: [...paged.slice((page - 1) * pageSize, page * pageSize), ...builtin],
 		total,
 		page,
 		pageSize,
-		pageCount: Math.ceil(total / pageSize),
+		pageCount: Math.ceil(paged.length / pageSize),
 	};
 }

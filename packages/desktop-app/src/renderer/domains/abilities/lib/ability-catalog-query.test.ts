@@ -44,6 +44,27 @@ describe("queryAbilityCatalog", () => {
 		expect(page.items[0]?.slug).toBe("ability-060");
 	});
 
+	it("returns every builtin ability regardless of the page window", () => {
+		const market = Array.from({ length: 80 }, (_, index) =>
+			ability(index, { downloadCount: 1000 - index, installed: true }),
+		);
+		const builtin = Array.from({ length: 12 }, (_, index) =>
+			ability(500 + index, {
+				category: "",
+				catalogSource: { kind: "builtin", id: "builtin" },
+				isBuiltin: true,
+				fromMarket: false,
+				installed: true,
+			}),
+		);
+
+		const page = queryAbilityCatalog([...market, ...builtin], { scope: "mine", page: 1, pageSize: 60 });
+
+		expect(page.total).toBe(92);
+		expect(page.items.filter((item) => item.isBuiltin)).toHaveLength(12);
+		expect(page.items.filter((item) => !item.isBuiltin)).toHaveLength(60);
+	});
+
 	it("filters locally by keyword, category, type and source", () => {
 		const github = ability(1, {
 			category: "Design",
