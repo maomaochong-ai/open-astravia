@@ -36,7 +36,7 @@ import {
 	requestMockupExport,
 	setFrameError,
 } from "./design-runtime";
-import { DesignSystemDrawer } from "./DesignSystemDrawer";
+import { DesignSystemDialog } from "./DesignSystemDialog";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
@@ -270,8 +270,8 @@ export function DesignCanvas({
 	/** 错误态存在 design-runtime（agent 工具也要读），这里只订阅它来渲染。 */
 	const [frameErrors, setFrameErrors] = useState<ReadonlyMap<string, string>>(new Map());
 	const [marquee, setMarquee] = useState<Rect | null>(null);
-	/** 底部设计体系抽屉。升起时 ControlBar 淡出让位。 */
-	const [designDrawerOpen, setDesignDrawerOpen] = useState(false);
+	/** 设计体系选择 Dialog（与会话里那张选择卡同一个宫格）。 */
+	const [designDialogOpen, setDesignDialogOpen] = useState(false);
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
 	const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -1412,8 +1412,7 @@ export function DesignCanvas({
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
-				designSystemsActive={designDrawerOpen}
-				faded={designDrawerOpen}
+				designSystemsActive={designDialogOpen}
 				onToolChange={setTool}
 				onZoomDelta={zoomBy}
 				onZoomReset={() => {
@@ -1424,14 +1423,14 @@ export function DesignCanvas({
 				onExport={openExport}
 				onDesignSystems={() => {
 					setMenuAnchor(null);
-					setDesignDrawerOpen((open) => !open);
+					setDesignDialogOpen((open) => !open);
 				}}
 			/>
 
-			<DesignSystemDrawer
+			<DesignSystemDialog
 				session={session}
-				open={designDrawerOpen}
-				onClose={() => setDesignDrawerOpen(false)}
+				open={designDialogOpen}
+				onClose={() => setDesignDialogOpen(false)}
 			/>
 		</div>
 	);

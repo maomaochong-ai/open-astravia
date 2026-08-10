@@ -9,10 +9,8 @@ interface ControlBarProps {
 	zoom: number;
 	/** Number of frames the export action would act on; 0 hides the button. */
 	exportableCount: number;
-	/** 设计体系抽屉开着时高亮按钮，同时整条工具栏淡出让位（见 faded）。 */
+	/** 设计体系 Dialog 开着时高亮按钮。 */
 	designSystemsActive: boolean;
-	/** 抽屉升起时工具栏淡出（不上推，避免布局跳动），关闭后恢复。 */
-	faded: boolean;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
@@ -90,7 +88,6 @@ export function ControlBar({
 	zoom,
 	exportableCount,
 	designSystemsActive,
-	faded,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
@@ -238,11 +235,7 @@ export function ControlBar({
 		// 约 58px 高的渐变遮罩，z-30）内容全部右对齐，左上角是空的；z-40 压过遮罩，
 		// 否则工具栏会被那层渐隐罩住。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
-		<div
-			className={`pointer-events-none absolute top-3 left-3 z-40 transition-opacity duration-200 ${
-				faded ? "opacity-0" : ""
-			}`}
-		>
+		<div className="pointer-events-none absolute top-3 left-3 z-40">
 			{/* 放大只用 transform（origin-top），图标向下溢出 dock，chrome 本身不变高 */}
 			<div className="relative inline-flex flex-col items-start overflow-visible pb-9">
 				{peakLabel ? (
@@ -256,9 +249,7 @@ export function ControlBar({
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar */}
 				<div
 					ref={dockRef}
-					className={`relative inline-flex items-start overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md ${
-						faded ? "pointer-events-none" : "pointer-events-auto"
-					}`}
+					className="pointer-events-auto relative inline-flex items-start overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
 					style={{ gap: DOCK_GAP }}
 					// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 					// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
