@@ -82,7 +82,7 @@ const icons = {
 };
 
 /**
- * 画布顶部居中固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部中间留给「让 Vetta 调整」。
+ * 画布左上角固定的工具栏（选择 / 托手 / 画框 / 缩放 / 设计体系 / 导出）。
  * 视觉与动效对齐 content-creation 画布的 dock：图标方块 + 光标处放大 + 峰值项浮标签。
  */
 export function ControlBar({
@@ -168,8 +168,8 @@ export function ControlBar({
 		];
 		if (exportableCount > 0) {
 			items.push({ type: "divider", key: "divider-export" });
-			// 纯图标方块：带文字会把 dock 撑长约 90px，窄屏直接撞上底部居中的「让 Vetta 调整」。
-			// 说明文字交给 dock 的峰值浮标签，主题色底把它和前面的工具按钮区分开。
+			// 纯图标方块：带文字会把 dock 撑长约 90px。说明文字交给 dock 的峰值浮标签，
+			// 主题色底把它和前面的工具按钮区分开。
 			items.push({
 				type: "item",
 				key: "export",
@@ -234,7 +234,7 @@ export function ControlBar({
 	const peakLabel = peakSlot?.type === "item" ? peakSlot.label : null;
 
 	return (
-		// 左上角：底部中间留给「让 Vetta 调整」。顶部那层沉浸式标题栏（CanvasTab 里
+		// 左上角：顶部那层沉浸式标题栏（CanvasTab 里
 		// 约 58px 高的渐变遮罩，z-30）内容全部右对齐，左上角是空的；z-40 压过遮罩，
 		// 否则工具栏会被那层渐隐罩住。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。

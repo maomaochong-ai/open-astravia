@@ -99,6 +99,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **Vetta UI Design 选中改为挂到 AI 输入框**：画布不再自带「让 Vetta 调整」按钮与浮层。选中画框或 Figma 式选中的 DOM 元素后，AI 输入框上直接出现一个胶囊（与内容创作插件的节点胶囊同一交互），用户在输入框里正常提问即可，选中作为结构化上下文（`vetta.ui-design.canvas-selection`：画框绝对路径/尺寸、元素的插桩源码位置与 DOM 路径）随这一轮发出。单选画框/元素时后台截一张图（元素保留高亮描边）一并带上；多选只给元数据，由 agent 按需 `vetd_screenshot`。胶囊可在输入框上摘掉，摘掉后同一次选中不再自动挂回。
 - **插件网络目标改为清单声明，命令执行收口到 official 插件**（ADR-0060）：`network.fetch` 必须配置 `network.allowedHosts`，主进程按 capability session 绑定的插件 ID 校验首跳与每次重定向；公网、私网 IP、localhost 均可显式声明，official 插件可使用 `*` 适配用户自定义服务地址。`agent.command.run` / `agent.command.spawn` 及命令授权不再对 local/community 插件生效，执行入口仍做权威 trustLevel 校验。
 - **活动面板拉到最大时给对话区留更多空间**：`ACTIVITY_PANEL_MIN_CHAT_AREA` 由 360 提到 454，消息列表最窄净宽从约 336 提到约 430。
 - **项目文件拖出系统时使用应用内文件类型图标**：原生 `startDrag` 幽灵图与文件树一致（`getFileIcon` / vscode-icons），由渲染进程栅格化为 PNG 后缓存到主进程；pointerdown / 选区变更时预取。缓存未命中时回退应用 logo，不再使用系统 `app.getFileIcon`。

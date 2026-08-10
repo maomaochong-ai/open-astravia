@@ -23,9 +23,6 @@ import {
 	type Placement,
 } from "./arrange";
 import { ArrangeToolbar } from "./ArrangeToolbar";
-import { type AskShot, buildAskPrompt } from "./ask-vetta";
-import { AskVettaButton } from "./AskVettaButton";
-import { AskVettaPopover } from "./AskVettaPopover";
 import { BridgeHub, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
@@ -55,6 +52,7 @@ import {
 	solveSnap,
 } from "./snap";
 import { SnapGuides } from "./SnapGuides";
+import { useSelectionPromptAttachment } from "./useSelectionPromptAttachment";
 
 export type CanvasSelection =
 	| { kind: "frames"; ids: string[] }
@@ -272,9 +270,7 @@ export function DesignCanvas({
 	/** 错误态存在 design-runtime（agent 工具也要读），这里只订阅它来渲染。 */
 	const [frameErrors, setFrameErrors] = useState<ReadonlyMap<string, string>>(new Map());
 	const [marquee, setMarquee] = useState<Rect | null>(null);
-	const [askOpen, setAskOpen] = useState(false);
-	const [askBusy, setAskBusy] = useState(false);
-	/** 底部设计体系抽屉。升起时 ControlBar 与「让 Vetta 调整」淡出让位。 */
+	/** 底部设计体系抽屉。升起时 ControlBar 淡出让位。 */
 	const [designDrawerOpen, setDesignDrawerOpen] = useState(false);
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
@@ -603,7 +599,7 @@ export function DesignCanvas({
 	}, [tool]);
 
 	/**
-	 * 右击 frame 弹菜单。菜单里的动作（让 Vetta 调整 / 导出渲染图）按当前选中执行，
+	 * 右击 frame 弹菜单。菜单里的动作（重命名 / 复制为图片 / 导出渲染图）按当前选中执行，
 	 * 所以右击一个没选中的 frame 要先把它选上——否则动作会落在别处，或者无从执行。
 	 * 已在选中集合里的则保持原选中（含 DOM 选中态），多选右击不打散分组。
 	 *
@@ -615,7 +611,6 @@ export function DesignCanvas({
 		setSelection((current) =>
 			selectedFrameIds(current).includes(frameId) ? current : { kind: "frames", ids: [frameId] },
 		);
-		setAskOpen(false);
 		const bounds = containerRef.current?.getBoundingClientRect();
 		setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
 	}, []);
@@ -723,7 +718,7 @@ export function DesignCanvas({
 		const container = containerRef.current;
 		if (!container) return;
 		const onKeyDown = (event: KeyboardEvent): void => {
-			// 画布里的输入框（重命名、让 Vetta 调整）也在这个容器内，事件会冒泡上来。
+			// 画布里的输入框（frame 重命名）也在这个容器内，事件会冒泡上来。
 			// 不放行的话空格会被 preventDefault 掉（打不出空格），Esc 也会顺带清空选中。
 			const target = event.target as HTMLElement | null;
 			if (target && (target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
@@ -1167,38 +1162,16 @@ export function DesignCanvas({
 		};
 	}, [session]);
 
-	/** "让 Vetta 调整"：N 张截图（DOM 选中时保留高亮）+ 元信息 + 用户建议 → sendPrompt。 */
-	const sendAskToVetta = (suggestion: string): void => {
-		if (askBusy) return;
-		// 关掉浮层是「已交出去」的反馈，不等截图落盘、更不等 Vetta 跑完：
-		// sendPrompt 复用会话的完整发送链路，要整轮结束才 resolve。
-		setAskOpen(false);
-		setAskBusy(true);
-		void (async () => {
-			try {
-				const ctx = getPluginCtx();
-				const domFrameId = selection?.kind === "dom" ? selection.frameId : null;
-				const shots: AskShot[] = [];
-				for (const frame of orderedSelection) {
-					const dataUrl = await captureFaithfully(frame.id, { keepHighlight: frame.id === domFrameId });
-					const base64 = dataUrl.split(",")[1] ?? "";
-					const screenshotPath = `${session.dirPath}/.snapshots/ask-${frame.id}-${Date.now()}.png`;
-					await ctx.fs.writeFile(screenshotPath, base64, "base64");
-					shots.push({ frameId: frame.id, screenshotPath });
-				}
-				const dom = selection?.kind === "dom" ? { frameId: selection.frameId, payload: selection.payload } : null;
-				const prompt = buildAskPrompt(session, { shots, dom }, suggestion);
-				void ctx.conversation.sendPrompt(prompt).catch((error: unknown) => {
-					notify({ message: t("canvas.ask.failed"), error });
-				});
-				notify({ message: t("canvas.ask.sent"), variant: "success", durationMs: 3000 });
-			} catch (error) {
-				notify({ message: t("canvas.ask.failed"), error });
-			} finally {
-				setAskBusy(false);
-			}
-		})();
-	};
+	/**
+	 * 选中的画框 / 元素挂到 AI 输入框上，用户在那儿正常提问即可（不再在画布里另开
+	 * 一个输入框）。单选时顺带截一张图进胶囊。
+	 */
+	useSelectionPromptAttachment({
+		session,
+		selection,
+		frames: orderedSelection,
+		capture: captureFaithfully,
+	});
 
 	const openExport = (): void => {
 		if (orderedSelection.length === 0) return;
@@ -1406,10 +1379,6 @@ export function DesignCanvas({
 			{menuAnchor ? (
 				<FrameContextMenu
 					anchor={menuAnchor}
-					onAsk={() => {
-						setMenuAnchor(null);
-						setAskOpen(true);
-					}}
 					onRename={() => startRename(menuAnchor.frameId)}
 					onCopyImage={() => copyFrameImage(menuAnchor.frameId)}
 					onExportMockup={() => {
@@ -1439,23 +1408,6 @@ export function DesignCanvas({
 				/>
 			) : null}
 
-			{askOpen ? (
-				<AskVettaPopover
-					busy={askBusy}
-					onSend={sendAskToVetta}
-					onClose={() => setAskOpen(false)}
-				/>
-			) : null}
-
-			{!panActive && !designDrawerOpen ? (
-				<AskVettaButton
-					selectedCount={orderedSelection.length}
-					elementMode={selection?.kind === "dom"}
-					active={askOpen}
-					onClick={() => setAskOpen((open) => !open)}
-				/>
-			) : null}
-
 			<ControlBar
 				tool={tool}
 				zoom={viewport.zoom}
@@ -1471,7 +1423,6 @@ export function DesignCanvas({
 				}}
 				onExport={openExport}
 				onDesignSystems={() => {
-					setAskOpen(false);
 					setMenuAnchor(null);
 					setDesignDrawerOpen((open) => !open);
 				}}
