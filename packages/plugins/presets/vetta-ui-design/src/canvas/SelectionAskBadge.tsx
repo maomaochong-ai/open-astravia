@@ -191,7 +191,11 @@ export function SelectionAskBadge({
 		 * 的唯一区别是前者立刻发一条消息把 agent 叫过来，后者等它自己收尾时来取。
 		 */
 		const note = notes.addNote(askNoteAnchor(selectionRef.current, current), text);
-		if (mode === "ask") sendAsk(text, current, note.id);
+		if (mode === "ask") {
+			// 这条已经亲手交出去了，向 store 报备，免得自动派活器等下又派一次。
+			notes.markDispatched([note]);
+			sendAsk(text, current, note.id);
+		}
 		onSubmitted();
 	};
 

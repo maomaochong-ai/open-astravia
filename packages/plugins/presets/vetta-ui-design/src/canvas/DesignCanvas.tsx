@@ -10,7 +10,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useNotesHandoff } from "../notes/handoff";
+import { useNotesAutoDispatch, useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { noteWorldPosition, pendingNotes } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
@@ -1317,6 +1317,12 @@ export function DesignCanvas({
 	 * 没有活跃会话、会话不在这个 workspace）就落一条备注。
 	 */
 	const { blockedReason } = useNotesHandoff(cwd);
+
+	/**
+	 * 备注自动派活：只要会话空闲，落下的备注就自己交给 agent。用户不必再去点「让
+	 * Vetta 处理」——那个按钮退居兜底。
+	 */
+	useNotesAutoDispatch(notes, cwd);
 
 	// 选中变了就收起 popover：它描述的是上一次选中，留着只会发错对象。
 	// biome-ignore lint/correctness/useExhaustiveDependencies: 只按选中变化收起

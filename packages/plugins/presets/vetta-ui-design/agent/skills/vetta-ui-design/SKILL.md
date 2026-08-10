@@ -275,9 +275,12 @@ onto empty canvas) — each is a request addressed to you. `vetd_notes` lists th
 pending ones: every note carries its thread, a source anchor re-resolved at read
 time (`element.source` = `frames/x.tsx:LINE` — the authoritative edit target
 unless `anchorStale`), and per-frame screenshots where numbered pins mark the
-exact spots. Address each with a targeted edit, verify with `vetd_screenshot`,
-then reply through `vetd_notes`'s `resolve` — that reply is what marks the note
-handled; never touch `.notes.json` yourself. Notes reach you three ways: the
+exact spots. Take them **one at a time**: edit for one note, verify it with
+`vetd_screenshot`, then immediately `resolve` that one note before you start the
+next — never hold the replies back until every note is done. The user is watching
+the canvas, where each bubble flips to resolved the moment you reply, and a turn
+that dies halfway has to leave the finished ones already marked. That reply is
+what marks a note handled; never touch `.notes.json` yourself. Notes reach you three ways: the
 user sends an explicit "handle my notes" prompt, `vetd_status` reports a
 `pendingNotes` count, and `vetd_screenshot` flags pending notes on the frame it
 just shot.

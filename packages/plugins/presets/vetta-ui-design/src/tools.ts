@@ -657,7 +657,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				notes: views,
 				...(unknownIds.length > 0 ? { unknownIds } : {}),
 				...(screenshots.length > 0 ? { screenshots } : {}),
-				note: "Read every screenshot path — the numbered pins mark each note's position (numbers match `number`). `element.source` (file:line) was re-resolved just now and is the authoritative edit target unless `anchorStale`. Address each note with a targeted edit, verify with vetd_screenshot, then call vetd_notes again with `resolve` to reply and mark them done.",
+				note: "Read every screenshot path — the numbered pins mark each note's position (numbers match `number`). `element.source` (file:line) was re-resolved just now and is the authoritative edit target unless `anchorStale`. Work through them ONE AT A TIME: edit for a note, verify it with vetd_screenshot, then immediately call vetd_notes with `resolve` for that single note before starting the next one. Do not batch the replies until the end — the user watches each note flip to resolved on the canvas as you go, and a turn that dies halfway must leave the finished ones already marked.",
 			};
 		},
 	});

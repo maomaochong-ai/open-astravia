@@ -91,7 +91,11 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 						type="button"
 						disabled={handoff.blockedReason !== null}
 						title={handoff.blockedReason ?? undefined}
-						onClick={() => handoff.sendAll(pending.length)}
+						onClick={() => {
+							// 手动催一次也要向 store 报备，否则自动派活器随后又派一遍。
+							store.markDispatched(pending);
+							handoff.sendAll(pending.length);
+						}}
 						className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground shadow-sm transition-opacity hover:opacity-90 disabled:opacity-45"
 					>
 						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -136,7 +140,14 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 								number={index + 1}
 								location={frameTitleOf(note)}
 								onLocate={() => onLocate(note.id)}
-								onHandle={handoff.blockedReason === null ? () => handoff.sendOne(note.id) : null}
+								onHandle={
+									handoff.blockedReason === null
+										? () => {
+												store.markDispatched([note]);
+												handoff.sendOne(note.id);
+											}
+										: null
+								}
 								onDelete={() => store.deleteNote(note.id)}
 							/>
 						))}

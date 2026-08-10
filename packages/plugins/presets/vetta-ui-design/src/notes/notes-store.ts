@@ -19,6 +19,11 @@ export function notesFilePath(dirPath: string): string {
 	return `${dirPath}/${NOTES_FILE_NAME}`;
 }
 
+/** 派活身份：同一条备注追了新消息就是一件新的事。 */
+function dispatchKey(note: DesignNote): string {
+	return `${note.id}:${note.messages.length}`;
+}
+
 let idCounter = 0;
 
 function nextNoteId(): string {
@@ -37,6 +42,16 @@ export class NotesStore {
 	private file: NotesFile = { version: 1, notes: [] };
 	private readonly listeners = new Set<() => void>();
 	private writing = Promise.resolve();
+	/**
+	 * 已经交给 agent 的备注快照（`id:消息数`）。刻意不落盘：它是运行期状态，重开画布
+	 * 重置。
+	 *
+	 * 存在的理由是防死循环——备注只要还 pending 就该被派出去，可 agent 完全可能因为
+	 * 做不了而不 resolve，那样「pending → 派活 → turn-end → 还是 pending」会一轮轮
+	 * 空转烧 token。按消息数做 key 而不是只按 id：用户重开备注（追一条新消息）就是
+	 * 一件新的事，理应重新派出去。
+	 */
+	private readonly dispatched = new Set<string>();
 
 	constructor(fs: PluginFsApi, dirPath: string) {
 		this.fs = fs;
@@ -63,6 +78,16 @@ export class NotesStore {
 
 	noteById(id: string): DesignNote | undefined {
 		return this.file.notes.find((note) => note.id === id);
+	}
+
+	/** 这条备注（当前这个版本）是否已经交给 agent 了。 */
+	isDispatched(note: DesignNote): boolean {
+		return this.dispatched.has(dispatchKey(note));
+	}
+
+	/** 记下「已经交给 agent」。自动派活、徽标直发、抽屉里的手动按钮都要报备。 */
+	markDispatched(notes: readonly DesignNote[]): void {
+		for (const note of notes) this.dispatched.add(dispatchKey(note));
 	}
 
 	on(listener: () => void): Disposable {

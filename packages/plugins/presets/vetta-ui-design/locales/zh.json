@@ -210,7 +210,7 @@
 	"notes.handoff.otherWorkspace": "当前对话不在这个工作区。",
 	"notes.handoff.streaming": "Vetta 正在处理中，本轮结束后可用。",
 	"notes.handoff.failed": "发送失败",
-	"notes.prompt.all": "请处理设计画布上的 {{count}} 条待处理备注：调用 vetd_notes 查看每条的位置、锚点与标注截图，逐条完成修改，并用它的 resolve 写回复标记已处理。",
+	"notes.prompt.all": "请处理设计画布上的 {{count}} 条待处理备注：调用 vetd_notes 查看每条的位置、锚点与标注截图，然后一条一条来——完成并验证一条，就立刻用 resolve 写回复标记这一条，再开始下一条，不要把回复攒到最后一起写。",
 	"notes.prompt.one": "请处理设计画布上的这条备注（id：{{id}}）：调用 vetd_notes（ids 传入该 id）查看它的位置、锚点与标注截图，完成修改后用 resolve 写回复标记已处理。",
 	"notes.bubble.label": "备注",
 	"notes.bubble.detached": "原画框已不存在",
