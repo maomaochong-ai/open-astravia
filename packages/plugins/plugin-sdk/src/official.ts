@@ -254,6 +254,11 @@ export interface PluginOfficialProviderSummary {
 	baseUrl?: string;
 	api?: string;
 	hasApiKey: boolean;
+	/**
+	 * true = 来自登录后服务端下发的远程目录（如 Vetta Go），凭据是账号登录态而非本地
+	 * API Key，因此不会出现在本地模型配置里，也不可用 `upsertProvider` / `removeProvider` 改。
+	 */
+	remote?: boolean;
 	modelCount: number;
 	models: PluginOfficialModelSummary[];
 }
@@ -453,6 +458,11 @@ export interface PluginOfficialApi {
 		remove(name: string): Promise<void>;
 	};
 	models: {
+		/**
+		 * 用户当前可选的全部模型：本地配置的 provider **加上**登录后服务端下发的远程目录
+		 * （Vetta Go 等，`remote: true`）。同一个 `provider/modelId` 以本地为准。
+		 * 与宿主输入栏模型选择器同一口径。
+		 */
 		list(): Promise<{ defaultModel: string | null; providers: PluginOfficialProviderSummary[] }>;
 		get(provider?: string): Promise<unknown>;
 		probe(provider: string, model: string): Promise<{ ok: boolean; message?: string; error?: string }>;

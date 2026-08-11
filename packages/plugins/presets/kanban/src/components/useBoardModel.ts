@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { KanbanBoardController } from "../board/board-controller";
+import type { KanbanBoardController, KanbanModelOption } from "../board/board-controller";
 import { archivedCards, laneCards, matchesQuery } from "../board/board-store";
 import { remainingSlots, unmetDependencies } from "../board/dispatch";
 import type { KanbanBoard, KanbanCard, KanbanLane } from "../board/types";
@@ -17,6 +17,10 @@ export interface BoardModel {
 	/** 未过滤的各泳道总数（搜索时列头仍显示真实数量）。 */
 	laneTotals: Record<KanbanLane, number>;
 	archived: KanbanCard[];
+	/** 可选模型；面板挂载时刷新一次，所以开着看板去登录 / 加 provider 后回来就能看到。 */
+	models: KanbanModelOption[];
+	/** 宿主全局默认模型的 key。 */
+	hostDefaultModelKey: string;
 	remainingSlots: number;
 	/** cardId → 未完成依赖的卡片标题，用于卡片上直接显示「被谁挡着」。 */
 	blockedBy: Record<string, string[]>;
@@ -37,6 +41,8 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 	const [loading, setLoading] = useState(true);
 	const [query, setQuery] = useState("");
 	const [now, setNow] = useState(() => Date.now());
+	const [models, setModels] = useState<KanbanModelOption[]>(() => controller.getModels());
+	const [hostDefaultModelKey, setHostDefaultModelKey] = useState(() => controller.getHostDefaultModelKey());
 
 	useEffect(() => {
 		let cancelled = false;
@@ -47,6 +53,12 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 			if (cancelled) return;
 			setBoard(next);
 			setLoading(false);
+		});
+		// 与 board 分开刷：模型清单不是看板数据，且远程目录（Vetta Go）随登录态变化。
+		void controller.refreshModels().then((next) => {
+			if (cancelled) return;
+			setModels(next);
+			setHostDefaultModelKey(controller.getHostDefaultModelKey());
 		});
 		return () => {
 			cancelled = true;
@@ -100,6 +112,8 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 		lanes,
 		laneTotals,
 		archived,
+		models,
+		hostDefaultModelKey,
 		remainingSlots: remainingSlots(board),
 		blockedBy,
 		controller,

@@ -40,7 +40,7 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 	const [draggingId, setDraggingId] = useState<string | null>(null);
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
-	const { board, lanes, laneTotals, archived, blockedBy, remainingSlots, now, query, setQuery } = model;
+	const { board, lanes, laneTotals, archived, blockedBy, models, remainingSlots, now, query, setQuery } = model;
 
 	const openEditor = useCallback((card: KanbanCard | null) => {
 		setEditorCard(card);
@@ -82,7 +82,6 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 		setFeedbackOpen(true);
 	}, []);
 
-	const models = controller.getModels();
 	/** modelKey → 显示名；卡片徽章、编辑器都按这张表把 key 还原成人能读的名字。 */
 	const modelNameByKey = useMemo(() => new Map(models.map((model) => [model.key, model.displayName])), [models]);
 	const modelLabelFor = useCallback(
@@ -360,7 +359,7 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 				<Composer
 					canDispatchNow={remainingSlots > 0}
 					defaultCwd={board.defaultCwd}
-					hostDefaultModelKey={controller.getHostDefaultModelKey()}
+					hostDefaultModelKey={model.hostDefaultModelKey}
 					modelKey={board.defaultModelKey}
 					models={models}
 					onModelKeyChange={(next) => controller.setDefaultModelKey(next)}

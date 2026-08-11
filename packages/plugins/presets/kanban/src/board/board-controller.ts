@@ -82,6 +82,31 @@ export class KanbanBoardController {
 		return this.hostDefaultModelKey;
 	}
 
+	/**
+	 * 重新拉取模型清单。清单不是看板数据（不落盘、不进 board），所以走单独的刷新口子：
+	 * 面板每次挂载都刷一次，用户开着看板去登录 / 加 provider 后回来即可看到新模型，
+	 * 不用重开应用。
+	 */
+	async refreshModels(): Promise<KanbanModelOption[]> {
+		try {
+			const catalog = await this.ctx.official.models.list();
+			this.hostDefaultModelKey = catalog.defaultModel ?? "";
+			this.models = catalog.providers.flatMap((provider) =>
+				provider.models.map((model) => ({
+					key: `${provider.id}/${model.id}`,
+					modelId: model.id,
+					providerId: provider.id,
+					providerName: provider.displayName || provider.id,
+					displayName: model.name?.trim() || model.id,
+				})),
+			);
+		} catch (error) {
+			// 模型清单拿不到不该挡住看板：选择器退化为空，派单不带模型走宿主默认。
+			console.warn("[kanban] failed to load model catalog", error);
+		}
+		return this.models;
+	}
+
 	subscribe(listener: BoardListener): () => void {
 		this.listeners.add(listener);
 		return () => {
@@ -106,22 +131,7 @@ export class KanbanBoardController {
 		} catch (error) {
 			console.warn("[kanban] failed to resolve default project", error);
 		}
-		try {
-			const catalog = await this.ctx.official.models.list();
-			this.hostDefaultModelKey = catalog.defaultModel ?? "";
-			this.models = catalog.providers.flatMap((provider) =>
-				provider.models.map((model) => ({
-					key: `${provider.id}/${model.id}`,
-					modelId: model.id,
-					providerId: provider.id,
-					providerName: provider.displayName || provider.id,
-					displayName: model.name?.trim() || model.id,
-				})),
-			);
-		} catch (error) {
-			// 模型清单拿不到不该挡住看板：选择器退化为空，派单不带模型走宿主默认。
-			console.warn("[kanban] failed to load model catalog", error);
-		}
+		await this.refreshModels();
 		try {
 			const stored = await this.ctx.storage.readJson<unknown>(BOARD_STORAGE_KEY);
 			this.board = parseBoard(stored, fallbackCwd);
