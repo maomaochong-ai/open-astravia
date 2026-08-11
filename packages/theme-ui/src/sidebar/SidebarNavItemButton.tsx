@@ -45,7 +45,8 @@ export const SidebarNavItemButton = forwardRef<HTMLButtonElement, SidebarNavItem
 				{...props}
 			>
 				<span className={cn(item.icon, "relative z-10 h-4 w-4 shrink-0", classNames?.icon)} />
-				<span className={cn("relative z-10", classNames?.label)}>{label}</span>
+				{/* min-w-0 flex-1 truncate：label 占满中间并在过长时省略，右侧角标才不会被顶出按钮（与「更多」触发器同型）。 */}
+				<span className={cn("relative z-10 min-w-0 flex-1 truncate text-left", classNames?.label)}>{label}</span>
 				{item.badge && <SidebarNavBadgeView badge={item.badge} className={classNames?.badge} />}
 			</button>
 		);

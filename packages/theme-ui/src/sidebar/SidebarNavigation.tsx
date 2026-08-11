@@ -209,7 +209,7 @@ export function SidebarNavigation({
 								>
 									<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
 									<span className="truncate">{item.label}</span>
-									{item.badge && <SidebarNavBadgeView badge={item.badge} className="ml-auto" />}
+									{item.badge && <SidebarNavBadgeView badge={item.badge} />}
 								</button>
 							))
 						)}

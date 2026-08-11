@@ -30,7 +30,9 @@ export function SidebarNavBadgeView({ badge, className }: SidebarNavBadgeViewPro
 	const tone = badge.tone ?? "default";
 
 	if (badge.kind === "dot") {
-		return <span aria-hidden className={cn("relative z-10 h-1.5 w-1.5 shrink-0 rounded-full", TONE_DOT[tone], className)} />;
+		return (
+			<span aria-hidden className={cn("relative z-10 ml-auto h-1.5 w-1.5 shrink-0 rounded-full", TONE_DOT[tone], className)} />
+		);
 	}
 
 	const text = navBadgeText(badge);
@@ -39,7 +41,9 @@ export function SidebarNavBadgeView({ badge, className }: SidebarNavBadgeViewPro
 	return (
 		<span
 			className={cn(
-				"relative z-10 shrink-0 rounded-full border px-1.5 py-px text-[9px] font-semibold leading-tight tracking-wide",
+				// ml-auto：角标一律贴导航项右缘，不跟着 label 长短漂移。三处渲染位置
+				// 都要这个行为，所以放在组件里而不是各自传。
+				"relative z-10 ml-auto shrink-0 rounded-full border px-1.5 py-px text-[9px] font-semibold leading-tight tracking-wide",
 				// 计数不做 uppercase：数字本身无所谓，但它会让 `99+` 的加号错位。
 				badge.kind === "text" && "uppercase",
 				TONE_PILL[tone],
