@@ -13,7 +13,6 @@
 	"tool.prepareGeneration.label": "准备内容生成",
 	"tool.getRun.label": "读取内容生成状态",
 	"card.preview.title": "工作流修改预览",
-	"card.preview.loading": "正在准备修改预览…",
 	"card.preview.revision": "基于项目版本 {{revision}}",
 	"card.preview.destructive": "包含删除",
 	"card.preview.nodesAdded": "新增节点",

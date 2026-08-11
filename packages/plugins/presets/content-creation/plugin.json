@@ -95,8 +95,5 @@
 		]
 	},
 	"description": "%plugin.description%",
-	"author": "Vetta",
-	"contributionMode": {
-		"hardIsolation": true
-	}
+	"author": "Vetta"
 }

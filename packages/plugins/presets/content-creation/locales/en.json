@@ -13,7 +13,6 @@
 	"tool.prepareGeneration.label": "Prepare content generation",
 	"tool.getRun.label": "Read content generation status",
 	"card.preview.title": "Workflow change preview",
-	"card.preview.loading": "Preparing a change preview…",
 	"card.preview.revision": "Based on project revision {{revision}}",
 	"card.preview.destructive": "Includes deletion",
 	"card.preview.nodesAdded": "Nodes added",

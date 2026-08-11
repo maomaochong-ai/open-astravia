@@ -11,7 +11,6 @@ import {
 import { ContentChangePreviewCard, ContentRunCard } from "./plugin/AgentCards";
 import {
 	CONTENT_CHANGE_PREVIEW_CARD_TYPE,
-	CONTENT_EDIT_TOOL_NAME,
 	CONTENT_RUN_TOOL_NAME,
 	CONTENT_RUN_CARD_TYPE,
 	registerContentCreationTools,
@@ -41,16 +40,16 @@ export default definePlugin({
 			icon: <PluginTabIcon />,
 			component: ContentCreationPanel,
 			scope_use: ["conversation", "project"],
-			// 默认不上栏；输入栏「内容创作」开关打开后再挂上。
-			initiallyVisible: false,
+			// 暂时默认上栏；硬隔离已去掉，后续再设计更合适的入口策略。
+			initiallyVisible: true,
 		});
 		ctx.ui.registerInputAction({
 			id: "mode",
 			label: "%action.mode.label%",
 			icon: <span className="icon-[lucide--wand-sparkles] block size-3.5" aria-hidden="true" />,
 			defaultActive: false,
-			hardIsolation: true,
 			scope_use: ["conversation", "project"],
+			// 软开关：只控制 tab 显隐与 prompt 装饰，不再 gate Agent 贡献。
 			onToggle: (active) => ctx.ui.setActivityTabVisible("workspace", active),
 			decoratePrompt: () => ({
 				instructions: [
@@ -62,8 +61,6 @@ export default definePlugin({
 			type: CONTENT_CHANGE_PREVIEW_CARD_TYPE,
 			title: "%card.preview.title%",
 			component: ContentChangePreviewCard,
-			pendingFor: (toolCall) =>
-				toolCall.toolName === CONTENT_EDIT_TOOL_NAME ? { type: CONTENT_CHANGE_PREVIEW_CARD_TYPE } : null,
 		});
 		ctx.ui.registerCardRenderer({
 			type: CONTENT_RUN_CARD_TYPE,

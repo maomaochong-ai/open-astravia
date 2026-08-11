@@ -9,8 +9,8 @@ export function ContentChangePreviewCard({ descriptor, pending }: PluginCardProp
 	const preview = parseContentOperationPreview(descriptor.payload);
 	const [status, setStatus] = useState<"idle" | "applying" | "applied" | "error">("idle");
 	const [error, setError] = useState<string | null>(null);
-	if (pending) return <CardShell>{t("card.preview.loading")}</CardShell>;
-	if (!preview) return null;
+	// 工具执行中不展示占位；有 preview payload 后再渲染确认卡片。
+	if (pending || !preview) return null;
 	const diff = preview.diff;
 	return (
 		<CardShell>

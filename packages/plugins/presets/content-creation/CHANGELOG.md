@@ -4,7 +4,9 @@
 
 ### Changed
 
-- Agent 贡献改为由输入栏“内容创作”模式硬隔离，模式外不再占用 Prompt、Skill 与 Tool 上下文；原 7 个画布工具收敛为 `inspect`、`edit`、`run` 三个领域工具，并按当前用户意图动态启用最小集合。
+- 编辑工作流时不再展示「正在准备修改预览…」占位卡片；工具完成后才渲染修改预览确认卡。
+- 暂时去掉 `contributionMode.hardIsolation` 与输入栏硬隔离：活动栏「内容创作」默认上栏（`initiallyVisible: true`），Agent skills/tools 在插件启用后始终贡献；输入栏开关仅作软显隐与 prompt 装饰。
+- 原 7 个画布工具收敛为 `inspect`、`edit`、`run` 三个领域工具，并按当前用户意图动态启用最小集合。
 - Agent Skill 扩展为创意概念、工作流操作、图片创作、视频创作、质量审查和多资产 Campaign 六个渐进式入口；完整融合 visual-skills 的模型 Prompt Profile、提示词骨架、文字信息设计、视觉拆解、多面板、行业配方、镜头戏剧性、角色模式、Animatic、视频编辑/延长与速度场景方法。
 - 完整审阅并融合 Generative-Media-Skills Library 的 57 个 Skill：新增品牌与发布、电商与空间、身份与试穿、UI 与分镜、产品视频、UGC 与表演、动作与教程、社媒与切片等按需场景手册，并补齐引用角色、时间码、工作流发现执行和场景质量闸门。
 - 视频生成 Prompt 补齐连续时间窗、连续单镜头、多镜头、分镜映射和 5-30 秒场景示例。
