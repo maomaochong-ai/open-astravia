@@ -45,12 +45,16 @@ afterEach(() => {
 
 describe("远端清单到货后的 UI 行为", () => {
 	it("模板 Dialog 已经打开时，新清单直接反映到宫格里", () => {
+		// 没有随包内置了，初始列表得自己建。
+		act(() => {
+			setDesignSystems([remoteSystem({ id: "old-one", name: "Old One", tagline: undefined })]);
+		});
 		act(() => {
 			root.render(
 				<TemplateGalleryDialog onApply={() => {}} onClose={() => {}} appliedId={null} busy={false} />,
 			);
 		});
-		expect(document.body.textContent).toContain("Linear");
+		expect(document.body.textContent).toContain("Old One");
 		expect(document.body.textContent).not.toContain("Brand New");
 
 		act(() => {
@@ -59,10 +63,13 @@ describe("远端清单到货后的 UI 行为", () => {
 
 		// 订阅生效：不需要重新打开 Dialog，列表已经是远端那份。
 		expect(document.body.textContent).toContain("Brand New");
-		expect(document.body.textContent).not.toContain("Linear");
+		expect(document.body.textContent).not.toContain("Old One");
 	});
 
-	it("空列表被忽略，不会把选择器变空", () => {
+	it("空列表被忽略，不会把已有的选择器清空", () => {
+		act(() => {
+			setDesignSystems([remoteSystem()]);
+		});
 		act(() => {
 			root.render(
 				<TemplateGalleryDialog onApply={() => {}} onClose={() => {}} appliedId={null} busy={false} />,
@@ -71,7 +78,7 @@ describe("远端清单到货后的 UI 行为", () => {
 		act(() => {
 			setDesignSystems([]);
 		});
-		expect(document.body.textContent).toContain("Linear");
+		expect(document.body.textContent).toContain("Brand New");
 	});
 });
 

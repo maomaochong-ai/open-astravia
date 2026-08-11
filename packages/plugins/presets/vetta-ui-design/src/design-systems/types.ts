@@ -8,11 +8,11 @@ export interface DesignSystem {
 	category: string;
 	/** 标志形态是亮底还是暗底（drawer 上的小标识，不做双套主题）。 */
 	vibe: "light" | "dark";
-	/** 给模型看的一句英文风格摘要（vetd_design_systems 的 list 用法返回它做推荐依据）。 */
+	/** 一句英文风格摘要；没有 tagline 译文时用它兜底显示。 */
 	blurb: string;
 	/**
-	 * UI 里的一句话风格摘要。内置体系不带这个字段，走 i18n 的 `ds.tagline.<id>`；
-	 * 远端条目自带译文（它的 id 不在插件 locales 里），取值统一走 `designSystemTagline`。
+	 * UI 里的一句话风格摘要，由条目自带译文——远端 id 不可能预先出现在插件 locales 里。
+	 * 缺省时由 `designSystemTagline` 回落到 blurb。
 	 */
 	tagline?: { en: string; zh: string };
 	/** 完整 theme.css 内容（含 @theme 块），应用时原样写入。 */

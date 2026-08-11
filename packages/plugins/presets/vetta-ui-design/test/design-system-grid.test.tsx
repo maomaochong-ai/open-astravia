@@ -12,7 +12,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { DesignSystemGrid } from "../src/gallery/DesignSystemGrid";
 import { buildStyleStartDraft, designNameForSystem } from "../src/gallery/start-from-system";
-import { resetDesignSystems, setDesignSystems } from "../src/design-systems/registry";
+import { markCatalogFailed, resetDesignSystems, setDesignSystems } from "../src/design-systems/registry";
 import type { DesignSystem } from "../src/design-systems/types";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -118,5 +118,30 @@ describe("从风格开新设计的文案", () => {
 		const en = buildStyleStartDraft(system("linear", "Linear"), "en");
 		expect(en).toContain("@skill:vetta-ui-design ");
 		expect(en).toContain('"Linear" system');
+	});
+});
+
+describe("目录拿不到时的状态", () => {
+	it("还在拉时给骨架，不给空白", () => {
+		resetDesignSystems();
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(document.body.querySelector('[aria-busy="true"]')).not.toBeNull();
+		expect(tiles()).toHaveLength(0);
+	});
+
+	it("拉不到时给解释和重试按钮", () => {
+		resetDesignSystems();
+		act(() => markCatalogFailed());
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(document.body.textContent).toContain("gallery.styles.offline.title");
+		expect(document.body.textContent).toContain("gallery.styles.retry");
+		expect(document.body.querySelector('[aria-busy="true"]')).toBeNull();
+	});
+
+	it("已经有内容时失败不降级，照常显示列表", () => {
+		act(() => markCatalogFailed());
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(tiles()).toHaveLength(2);
+		expect(document.body.textContent).not.toContain("gallery.styles.offline.title");
 	});
 });

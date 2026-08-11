@@ -1,8 +1,11 @@
 import type { PluginFsApi } from "@vetta-org/plugin-sdk";
 import { ensureSnapshotsIgnored } from "../cards/snapshots";
 import { manifestPathOf, type VetdManifest } from "../vetd/manifest-types";
-import { DESIGN_SYSTEMS_SOURCE, designSystemById } from "./index";
+import { designSystemById } from "./index";
 import type { DesignSystem } from "./types";
+
+/** 条目没写出处时的默认归属：资源仓库里那批的上游。 */
+const DEFAULT_SYSTEM_SOURCE = "https://github.com/VoltAgent/awesome-design-md";
 
 /**
  * 应用前的整包备份目录（固定路径，只留最近一份——新应用直接覆盖旧备份）。
@@ -28,8 +31,8 @@ export function designMdWithFrontmatter(system: DesignSystem): string {
 		"---",
 		`system: ${system.id}`,
 		`name: ${system.name}`,
-		// 远端条目自带出处与许可；内置那批统一来自上游 awesome-design-md。
-		`source: ${system.source ?? DESIGN_SYSTEMS_SOURCE}`,
+		// 条目自带出处与许可时以它为准，没写才回落到默认归属。
+		`source: ${system.source ?? DEFAULT_SYSTEM_SOURCE}`,
 		`license: ${system.license ?? "MIT"}`,
 		"---",
 		"",
@@ -113,7 +116,7 @@ export async function restoreBackup(fs: PluginFsApi, dirPath: string): Promise<v
 }
 
 /**
- * 应用一个设计体系（唯一实现，drawer 与 vetd_design_systems 的 apply 共用）：
+ * 应用一个设计体系（唯一实现，画布的体系抽屉与侧边栏风格库共用）：
  *
  * 1. 整包备份（快照兜底，不可逆操作前的安全网）；
  * 2. 写 DESIGN.md（永远插件直写——没有东西「引用」它，覆盖无损；frontmatter
@@ -143,8 +146,8 @@ export async function applyDesignSystem(fs: PluginFsApi, vetdPath: string, syste
 }
 
 /**
- * 有 frame 时发给 agent 的全量重设指令（drawer 路径用 sendPrompt 发出；tool
- * 路径直接把同样内容放进结果 note）。体系全文不进 prompt——DESIGN.md 已落盘，
+ * 有 frame 时发给 agent 的全量重设指令（画布的体系抽屉用 sendPrompt 发出）。
+ * 体系全文不进 prompt——DESIGN.md 已落盘，
  * agent 自己 Read，这正是 SKILL.md 里 DESIGN.md 优先级约定的用法。
  * 语言跟宿主 locale（与 ask-vetta 同一取舍：协议串不进 locales catalog）。
  */

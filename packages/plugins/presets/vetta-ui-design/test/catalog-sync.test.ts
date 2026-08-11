@@ -1,8 +1,7 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BUILTIN_DESIGN_SYSTEMS } from "../src/design-systems/builtin";
 import { DESIGN_CATALOG_SOURCES, isCacheFresh, refreshDesignCatalog } from "../src/design-systems/catalog-sync";
-import { designSystems, resetDesignSystems } from "../src/design-systems/registry";
+import { catalogState, designSystems, resetDesignSystems } from "../src/design-systems/registry";
 
 const NOW = Date.parse("2026-08-11T12:00:00.000Z");
 const HOUR = 60 * 60 * 1000;
@@ -150,17 +149,19 @@ describe("refreshDesignCatalog 的回退链", () => {
 		expect(writes[0]).toMatchObject({ etag: 'W/"new"', sourceUrl: DESIGN_CATALOG_SOURCES[0] });
 	});
 
-	it("网络全挂时用缓存，不回落到内置", async () => {
+	it("网络全挂时沿用缓存，不清空列表", async () => {
 		const { ctx, writes } = fakeCtx({ cached: cacheOf(["cached-one"]) });
 		await refreshDesignCatalog(ctx, NOW + 7 * HOUR);
 		expect(designSystems().map((system) => system.id)).toEqual(["cached-one"]);
 		expect(writes).toHaveLength(0);
 	});
 
-	it("缓存与网络都不可用时保持内置那份，且不抛错", async () => {
+	it("缓存与网络都不可用时标成 failed，且不抛错", async () => {
 		const { ctx } = fakeCtx({});
 		await expect(refreshDesignCatalog(ctx, NOW)).resolves.toBeUndefined();
-		expect(designSystems()).toEqual(BUILTIN_DESIGN_SYSTEMS);
+		// 没有随包兜底了：一套都没有是真实状态，必须让 UI 能说明原因。
+		expect(designSystems()).toEqual([]);
+		expect(catalogState().status).toBe("failed");
 	});
 
 	it("远端返回畸形内容时不污染当前列表", async () => {
@@ -184,7 +185,15 @@ describe("refreshDesignCatalog 的回退链", () => {
 			],
 		});
 		await refreshDesignCatalog(ctx, NOW);
-		expect(designSystems()).toEqual(BUILTIN_DESIGN_SYSTEMS);
+		expect(designSystems()).toEqual([]);
+		expect(catalogState().status).toBe("failed");
+	});
+
+	it("有缓存但网络失败时不降级成 failed——旧内容仍然可用", async () => {
+		const { ctx } = fakeCtx({ cached: cacheOf(["cached-one"]) });
+		await refreshDesignCatalog(ctx, NOW + 7 * HOUR);
+		expect(designSystems().map((system) => system.id)).toEqual(["cached-one"]);
+		expect(catalogState().status).toBe("ready");
 	});
 
 	it("缓存损坏时丢弃它并照常联网", async () => {

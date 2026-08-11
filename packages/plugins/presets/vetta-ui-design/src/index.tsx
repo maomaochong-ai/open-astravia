@@ -6,8 +6,6 @@ import {
 	type PluginPendingToolCall,
 } from "@vetta-org/plugin-sdk";
 import "./style.css";
-import { DESIGN_SYSTEM_CARD_TYPE } from "./cards/design-system-card";
-import { DesignSystemPickerCard } from "./cards/DesignSystemPickerCard";
 import { ScreenshotCard } from "./cards/ScreenshotCard";
 import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } from "./cards/screenshot-card";
 import { CanvasTab } from "./canvas/CanvasTab";
@@ -148,13 +146,6 @@ export default definePlugin({
 						title: "%card.screenshot.title%",
 						icon: <ScreenshotIcon />,
 						pendingFor: pendingScreenshotCard,
-					}),
-					// 设计体系选择卡（vetd_design_systems 的 present 用法）：候选预览 + 点选回灌。
-					ctx.ui.registerCardRenderer({
-						type: DESIGN_SYSTEM_CARD_TYPE,
-						component: DesignSystemPickerCard,
-						title: "%card.designSystems.title%",
-						icon: <DesignIcon />,
 					}),
 					// 画廊：跨项目的设计注册中心，整页 surface + 侧边栏入口。与画布标签卡
 					// 同属工作模式能力（ADR-0046），所以跟着这批插槽一起装卸。

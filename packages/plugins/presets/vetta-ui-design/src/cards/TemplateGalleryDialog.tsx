@@ -94,6 +94,12 @@ export function TemplateGalleryDialog({
 						</button>
 					</div>
 					<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+						{systems.length === 0 ? (
+							// 体系目录只来自远端，拉不到时说明原因，不给一块没有解释的空白。
+							<p className="py-10 text-center text-xs leading-relaxed text-muted-foreground">
+								{t("ds.catalog.unavailable")}
+							</p>
+						) : null}
 						<div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
 							{systems.map((system) => {
 								const isSelected = selectedId === system.id;

@@ -1,12 +1,13 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { parseRemoteCatalog } from "./remote-catalog";
-import { setDesignSystems } from "./registry";
+import { markCatalogFailed, markCatalogLoading, setDesignSystems } from "./registry";
 
 /**
  * 远端设计资源清单的同步。
  *
- * 用户不感知「源」的存在，所以这里全程静默：拉取失败、校验不通过、离线，都只是继续
- * 用上一份可用数据（缓存 → 内置），不弹提示、不显示错误态。
+ * 数据只来自这里——插件不随包内置任何一套设计体系。所以失败**不能**再静默吞掉：手上
+ * 已经有内容时（缓存命中）继续用旧的、不打扰用户；一套都没有时必须把状态标成 failed，
+ * 让 UI 给出解释和重试入口，否则用户看到的就是一块无缘无故的空白。
  *
  * 请求预算：缓存在 TTL 内**一个请求都不发**；过期后带 If-None-Match 条件请求，内容没
  * 变时服务端只回 304（几百字节）。所以稳定状态下每个用户每 TTL 最多一次轻量请求。
@@ -113,13 +114,14 @@ async function applyRemote(ctx: PluginContext, cached: CachedCatalog | null, now
 }
 
 /**
- * 刷新设计体系列表。调用方不需要 await，也不需要处理失败——任何一步不成立都只是
- * 沿用当前列表。
+ * 刷新设计体系列表。调用方不需要 await 或 try/catch：失败会被记进 registry 的 status，
+ * 由 UI 呈现，不从这里抛出去。
  *
  * `now` 是本轮唯一的时间源：新鲜度判断和写回的 `fetchedAt` 必须来自同一个读数，
  * 否则「刚写的缓存」可能立刻被判成过期。
  */
 export async function refreshDesignCatalog(ctx: PluginContext, now: number = Date.now()): Promise<void> {
+	markCatalogLoading();
 	let cached: CachedCatalog | null = null;
 	try {
 		cached = asCache(await ctx.storage.readJson<CachedCatalog>(CACHE_KEY));
@@ -139,5 +141,5 @@ export async function refreshDesignCatalog(ctx: PluginContext, now: number = Dat
 		}
 	}
 
-	await applyRemote(ctx, cached, now);
+	if (!(await applyRemote(ctx, cached, now))) markCatalogFailed();
 }

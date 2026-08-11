@@ -210,16 +210,14 @@ export function NavBar() {
 
 ## Workflow
 
-**New document**: pick the product type → `vetd_create` with it → settle the
-style.
-The plugin ships curated design systems (Linear, Stripe, Notion, Apple, …), each
-a hand-tuned `theme.css` + `DESIGN.md`; `vetd_design_systems` lists them and its
-own description explains the three usages. Two judgment calls it cannot make for
-you: when the user named a system outright, apply it directly; when they only
-described a vibe ("like a developer tool", "make it feel premium"), shortlist 2-4 by
-the blurbs and `present` them rather than picking silently. Applying on an empty
-design writes `theme.css` + `DESIGN.md` for you — do NOT rewrite them
-afterwards, just build frames that follow `DESIGN.md`.
+**New document**: pick the product type → `vetd_create` with it → start building.
+Do NOT offer the user a menu of styles: design systems are a thing the user
+opts into from the Design sidebar, not something you propose. Just design well
+for what they asked for, deriving the palette and type scale from the product
+itself.
+
+If `DESIGN.md` exists in the design document, the user has already applied a
+system — read it first and follow it, and do NOT rewrite it or `theme.css`.
 
 **Existing document**: `vetd_status` ONCE first. It returns the frame ids/sizes,
 `sharedShell` (existing `_layout.tsx` + `components/` — reuse them) and

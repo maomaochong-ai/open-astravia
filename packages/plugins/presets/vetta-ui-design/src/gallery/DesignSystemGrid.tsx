@@ -1,13 +1,17 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { DesignSystemTileContent } from "../cards/DesignSystemTileContent";
-import { useDesignSystems } from "../design-systems/index";
+import { refreshDesignCatalog, useCatalogState } from "../design-systems/index";
 import type { DesignSystem } from "../design-systems/types";
+import { getPluginCtx } from "../plugin-context";
 
 /**
  * 侧边栏「设计」页的风格库：和项目卡片同一套宫格语言，作为页面内容的一部分往下滚。
  *
  * 位置由调用方决定——画廊空着时它排在引导语下面当首屏主角，已经有设计时排在项目宫格
- * 之后、用一条分隔线隔开。列表来自 registry，远端清单到货时这里会自动跟着更新。
+ * 之后、用一条分隔线隔开。
+ *
+ * 内容全部来自远端资源仓库，所以「一套都没有」是真实状态：还在拉时给骨架，拉不到时
+ * 给解释和重试，绝不留一块没有说明的空白。
  */
 export interface DesignSystemGridProps {
 	/** 上方还有别的内容时画一条分隔线，避免和项目宫格糊成一片。 */
@@ -16,10 +20,13 @@ export interface DesignSystemGridProps {
 	onPick: (system: DesignSystem) => void;
 }
 
+const GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3";
+/** 骨架格数：填满一两行即可，不必假装有多少套。 */
+const SKELETON_COUNT = 6;
+
 export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystemGridProps) {
 	const { t } = useTranslation();
-	const systems = useDesignSystems();
-	if (systems.length === 0) return null;
+	const { systems, status } = useCatalogState();
 
 	return (
 		<section className={divided ? "mt-6 border-t border-border pt-5" : ""}>
@@ -27,20 +34,46 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 				<h2 className="shrink-0 text-sm font-medium text-foreground">{t("gallery.styles.title")}</h2>
 				<p className="min-w-0 truncate text-[11px] text-muted-foreground">{t("gallery.styles.hint")}</p>
 			</header>
-			<div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">
-				{systems.map((system) => (
+
+			{systems.length > 0 ? (
+				<div className={GRID_CLASS}>
+					{systems.map((system) => (
+						<button
+							key={system.id}
+							type="button"
+							disabled={busy}
+							onClick={() => onPick(system)}
+							aria-label={t("gallery.styles.start", { name: system.name })}
+							className="flex aspect-square min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border border-border p-2 text-left transition-all duration-200 hover:border-primary hover:shadow-sm disabled:opacity-40"
+						>
+							<DesignSystemTileContent system={system} />
+						</button>
+					))}
+				</div>
+			) : status === "loading" ? (
+				<div className={GRID_CLASS} aria-busy="true" aria-label={t("gallery.styles.loading")}>
+					{Array.from({ length: SKELETON_COUNT }, (_, index) => (
+						<div
+							key={`skeleton-${index}`}
+							className="aspect-square animate-pulse rounded-xl border border-border bg-accent/40"
+						/>
+					))}
+				</div>
+			) : (
+				<div className="flex flex-col items-start gap-2 rounded-xl border border-dashed border-border px-4 py-5">
+					<p className="text-xs text-foreground">{t("gallery.styles.offline.title")}</p>
+					<p className="text-[11px] leading-relaxed text-muted-foreground">
+						{t("gallery.styles.offline.description")}
+					</p>
 					<button
-						key={system.id}
 						type="button"
-						disabled={busy}
-						onClick={() => onPick(system)}
-						aria-label={t("gallery.styles.start", { name: system.name })}
-						className="flex aspect-square min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border border-border p-2 text-left transition-all duration-200 hover:border-primary hover:shadow-sm disabled:opacity-40"
+						onClick={() => void refreshDesignCatalog(getPluginCtx())}
+						className="rounded-lg border border-border px-2.5 py-1 text-xs text-foreground hover:bg-accent"
 					>
-						<DesignSystemTileContent system={system} />
+						{t("gallery.styles.retry")}
 					</button>
-				))}
-			</div>
+				</div>
+			)}
 		</section>
 	);
 }
