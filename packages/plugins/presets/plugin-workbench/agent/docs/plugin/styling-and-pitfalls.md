@@ -178,9 +178,9 @@ import { Button, Switch, Slider, Dialog, DialogContent, cn } from "@vetta/ui";
 
 ## 清理副作用
 
-`ctx.ui.register*` 返回的 `Disposable` 由宿主在卸载时统一处置，**无需**手动 dispose。但你自己起的副作用（`setInterval`、`window.addEventListener`、订阅等）要在 `deactivate()` 里清掉。
+`ctx.ui.register*` 返回的 `Disposable` 由宿主在卸载时统一处置，**无需**手动 dispose。自己创建的副作用（`setInterval`、`window.addEventListener`、订阅、业务运行时等）应由 `activate()` 返回 cleanup 函数或 `Disposable` 清理。
 
-> 注意 React StrictMode 下宿主可能 double-invoke load/dispose；别在 `deactivate()` 里把模块级共享引用永久置空（会让随后 re-activate 的实例读到空引用）。如需缓存模块级 `ctx`，让下一次 `activate()` 覆盖它，而不是在 `deactivate()` 里 null 掉。
+宿主热更新采用 last-known-good 替换：新 activation 准备完成后才发布，并在随后释放旧 activation。返回值 cleanup 与具体 activation 一一绑定，因此不要用模块级可变单例在新旧实例之间传递运行时所有权。模块级 `deactivate()` 仅用于兼容无重叠所有权的旧插件。
 
 ## 权限缺失的两种后果
 

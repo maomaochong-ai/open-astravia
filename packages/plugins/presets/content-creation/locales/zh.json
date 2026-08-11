@@ -203,6 +203,7 @@
 	"port.mediaReference": "素材引用",
 	"port.imageReference": "图片参考",
 	"port.videoReference": "视频参考",
+	"port.audioReference": "音频参考",
 	"port.image": "图片",
 	"port.video": "视频",
 	"port.media": "媒体",

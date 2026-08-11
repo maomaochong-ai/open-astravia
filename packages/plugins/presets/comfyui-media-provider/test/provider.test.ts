@@ -35,7 +35,7 @@ describe("ComfyUI media provider", () => {
 		expect(provider.capabilities[0]).toMatchObject({
 			modes: ["text-to-video", "image-to-video", "reference-to-video"],
 			modeCapabilities: [
-				expect.objectContaining({ mode: "text-to-video", inputs: [], maxTotalItems: 0 }),
+				expect.objectContaining({ mode: "text-to-video", inputs: [] }),
 				expect.objectContaining({ mode: "image-to-video", maxTotalItems: 2 }),
 				expect.objectContaining({
 					mode: "reference-to-video",
@@ -105,7 +105,6 @@ describe("ComfyUI media provider", () => {
 					mode: "text-to-video",
 					aspectRatioPolicy: "configurable",
 					inputs: [],
-					maxTotalItems: 0,
 				},
 				{
 					mode: "image-to-video",

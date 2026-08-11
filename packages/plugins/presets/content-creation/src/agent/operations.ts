@@ -1,3 +1,13 @@
+import {
+	CONTENT_GENERATION_SOURCE_ROLES,
+	CONTENT_VIDEO_GENERATION_INTENTS,
+	ContentGenerationIntentError,
+	planContentVideoGeneration,
+	type ContentGenerationSourceRole,
+	type ContentGenerationSourceSpec,
+	type ContentVideoGenerationIntent,
+} from "../generation/generation-intent";
+import type { ContentModelDescriptor } from "../generation/types";
 import { CONTENT_NODE_DEFINITIONS } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
 import type { ContentProjectCommand } from "../project/commands";
@@ -21,8 +31,6 @@ const AGENT_TARGET_INPUTS = [
 	"mediaSources",
 	"promptSources",
 	"referenceImages",
-	"startImages",
-	"referenceVideos",
 	"contentSources",
 ] as const;
 
@@ -45,6 +53,7 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 					"update_node",
 					"duplicate_node",
 					"bind_assets",
+					"configure_generation",
 					"delete_node",
 					"connect_nodes",
 					"delete_edge",
@@ -63,6 +72,20 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			objective: { type: "string" },
 			purpose: { type: "string" },
 			assetIds: { type: "array", items: { type: "string" } },
+			generationIntent: { type: "string", enum: CONTENT_VIDEO_GENERATION_INTENTS },
+			sources: {
+				type: "array",
+				items: {
+					type: "object",
+					properties: {
+						sourceNodeId: { type: "string" },
+						assetIds: { type: "array", items: { type: "string" } },
+						role: { type: "string", enum: CONTENT_GENERATION_SOURCE_ROLES },
+					},
+					required: ["sourceNodeId"],
+					additionalProperties: false,
+				},
+			},
 			deliverables: {
 				type: "array",
 				items: {
@@ -112,16 +135,21 @@ interface PlacementFrame {
 export function parseContentAgentOperations(
 	project: ContentProjectDocument,
 	values: readonly unknown[],
+	models: readonly ContentModelDescriptor[] = [],
 ): ContentProjectCommand[] {
 	const frames = project.graph.nodes.map(toPlacementFrame);
 	const nodeKinds = new Map(project.graph.nodes.map((node) => [node.id, node.kind]));
-	return values.map((value) => parseOperation(value, frames, nodeKinds));
+	const nodeSnapshots = new Map(project.graph.nodes.map((node) => [node.id, structuredClone(node)]));
+	return values.map((value) => parseOperation(value, project, frames, nodeKinds, nodeSnapshots, models));
 }
 
 function parseOperation(
 	value: unknown,
+	project: ContentProjectDocument,
 	frames: PlacementFrame[],
 	nodeKinds: Map<string, ContentNodeKind>,
+	nodeSnapshots: Map<string, ContentNode>,
+	models: readonly ContentModelDescriptor[],
 ): ContentProjectCommand {
 	const operation = asRecord(value);
 	const type = requiredString(operation, "type");
@@ -152,6 +180,16 @@ function parseOperation(
 			const size = getContentNodeSize(nodeKind, data.aspectRatio);
 			frames.push({ id, ...position, ...size });
 			nodeKinds.set(id, nodeKind);
+			nodeSnapshots.set(id, {
+				id,
+				kind: nodeKind,
+				name: optionalString(operation, "name"),
+				purpose: optionalString(operation, "purpose"),
+				position,
+				...size,
+				status: "idle",
+				data,
+			});
 			return {
 				type: "node.add",
 				node: {
@@ -172,16 +210,29 @@ function parseOperation(
 				nodeId: requiredString(operation, "nodeId"),
 				purpose: requiredString(operation, "purpose"),
 			};
-		case "update_node":
-			return { type: "node.update", nodeId: requiredString(operation, "nodeId"), data: parseNodeData(operation) };
-		case "delete_node":
-			return { type: "node.delete", nodeId: requiredString(operation, "nodeId") };
+		case "update_node": {
+			const nodeId = requiredString(operation, "nodeId");
+			const data = parseNodeData(operation);
+			const snapshot = nodeSnapshots.get(nodeId);
+			if (!snapshot) throw new Error(`node not found: ${nodeId}`);
+			snapshot.data = { ...snapshot.data, ...data };
+			return { type: "node.update", nodeId, data };
+		}
+		case "delete_node": {
+			const nodeId = requiredString(operation, "nodeId");
+			nodeKinds.delete(nodeId);
+			nodeSnapshots.delete(nodeId);
+			return { type: "node.delete", nodeId };
+		}
 		case "duplicate_node": {
 			const nodeId = requiredString(operation, "nodeId");
 			const sourceKind = nodeKinds.get(nodeId);
 			if (!sourceKind) throw new Error(`node not found: ${nodeId}`);
 			const id = optionalString(operation, "id")?.trim() || crypto.randomUUID();
 			nodeKinds.set(id, sourceKind);
+			const source = nodeSnapshots.get(nodeId);
+			if (!source) throw new Error(`node not found: ${nodeId}`);
+			nodeSnapshots.set(id, { ...structuredClone(source), id });
 			return {
 				type: "node.duplicate",
 				nodeId,
@@ -192,15 +243,44 @@ function parseOperation(
 			const source = requiredString(operation, "source");
 			const target = requiredString(operation, "target");
 			const targetKind = nodeKinds.get(target);
-			if (!nodeKinds.has(source)) throw new Error(`node not found: ${source}`);
+			const sourceKind = nodeKinds.get(source);
+			if (!sourceKind) throw new Error(`node not found: ${source}`);
 			if (!targetKind) throw new Error(`node not found: ${target}`);
 			const targetInput = optionalAgentTargetInput(operation.targetInput);
+			if (targetKind === "video-generator" && sourceKind !== "prompt") {
+				throw new ContentGenerationIntentError(
+					"media inputs for generation nodes must use configure_generation so their business role is explicit",
+					"generation-semantic-connection-required",
+					{ sourceNodeId: source, targetNodeId: target },
+				);
+			}
+			if (targetKind === "image-generator" && sourceKind === "asset") {
+				throw new ContentGenerationIntentError(
+					"asset inputs for image generators must use bind_assets with concrete asset IDs",
+					"generation-semantic-connection-required",
+					{ sourceNodeId: source, targetNodeId: target },
+				);
+			}
+			if (
+				targetKind === "image-generator" &&
+				sourceKind === "image-generator" &&
+				targetInput !== "referenceImages"
+			) {
+				throw new ContentGenerationIntentError(
+					"generated image references require targetInput referenceImages",
+					"generation-semantic-connection-required",
+					{ sourceNodeId: source, targetNodeId: target },
+				);
+			}
 			return {
 				type: "edge.connect",
 				id: optionalString(operation, "id")?.trim() || crypto.randomUUID(),
 				source,
 				target,
 				targetHandle: targetInput ? targetHandleForAgentInput(targetKind, targetInput) : undefined,
+				...(targetKind === "image-generator" && sourceKind === "image-generator"
+					? { role: "referenceImages" }
+					: {}),
 			};
 		}
 		case "bind_assets": {
@@ -208,8 +288,12 @@ function parseOperation(
 			const target = requiredString(operation, "target");
 			if (nodeKinds.get(source) !== "asset") throw new Error("bind_assets source must be an asset node");
 			const targetKind = nodeKinds.get(target);
-			if (targetKind !== "image-generator" && targetKind !== "video-generator") {
-				throw new Error("bind_assets target must be an image or video generator");
+			if (targetKind !== "image-generator") {
+				throw new ContentGenerationIntentError(
+					"video generator media inputs must use configure_generation",
+					"generation-semantic-connection-required",
+					{ sourceNodeId: source, targetNodeId: target },
+				);
 			}
 			const targetInput = optionalAgentTargetInput(operation.targetInput);
 			if (!targetInput) throw new Error("bind_assets requires targetInput");
@@ -225,6 +309,45 @@ function parseOperation(
 				assetIds,
 				...binding,
 			};
+		}
+		case "configure_generation": {
+			const targetNodeId = requiredString(operation, "nodeId");
+			const target = nodeSnapshots.get(targetNodeId);
+			if (!target) throw new Error(`node not found: ${targetNodeId}`);
+			const intentValue = requiredString(operation, "generationIntent");
+			if (!CONTENT_VIDEO_GENERATION_INTENTS.includes(intentValue as ContentVideoGenerationIntent)) {
+				throw new Error(`unsupported generation intent: ${intentValue}`);
+			}
+			const sources = parseGenerationSources(operation.sources);
+			const modelSelection = optionalString(operation, "modelSelection");
+			const providerId = modelSelection === "automatic"
+				? undefined
+				: optionalString(operation, "providerId") ?? target.data.providerId;
+			const modelId = modelSelection === "automatic"
+				? undefined
+				: optionalString(operation, "modelId") ?? target.data.modelId;
+			if (modelSelection === "specific" && (!providerId || !modelId)) {
+				throw new Error("specific model selection requires providerId and modelId");
+			}
+			const planningProject = {
+				...project,
+				graph: { ...project.graph, nodes: [...nodeSnapshots.values()] },
+			};
+			const plan = planContentVideoGeneration(
+				planningProject,
+				targetNodeId,
+				intentValue as ContentVideoGenerationIntent,
+				sources,
+				models,
+				{ providerId, modelId },
+			);
+			target.data = {
+				...target.data,
+				providerId: plan.providerId,
+				modelId: plan.modelId,
+				modeId: plan.modeId,
+			};
+			return { type: "node.configure-generation", targetNodeId, plan };
 		}
 		case "delete_edge":
 			return { type: "edge.delete", edgeId: requiredString(operation, "edgeId") };
@@ -245,7 +368,7 @@ function targetHandleForAgentInput(kind: ContentNodeKind, input: AgentTargetInpu
 	const mapping: Partial<Record<ContentNodeKind, Partial<Record<AgentTargetInput, string>>>> = {
 		prompt: { mediaSources: "media" },
 		"image-generator": { promptSources: "prompt", referenceImages: "reference" },
-		"video-generator": { promptSources: "prompt", startImages: "image", referenceVideos: "video" },
+		"video-generator": { promptSources: "prompt" },
 		output: { contentSources: "content" },
 	};
 	const handle = mapping[kind]?.[input];
@@ -254,19 +377,34 @@ function targetHandleForAgentInput(kind: ContentNodeKind, input: AgentTargetInpu
 }
 
 function assetBindingForAgentInput(
-	kind: "image-generator" | "video-generator",
+	kind: "image-generator",
 	input: AgentTargetInput,
 ): { targetHandle: string; slotId: string } {
 	if (kind === "image-generator" && input === "referenceImages") {
 		return { targetHandle: "reference", slotId: "referenceImages" };
 	}
-	if (kind === "video-generator" && input === "startImages") {
-		return { targetHandle: "image", slotId: "firstFrame" };
-	}
-	if (kind === "video-generator" && input === "referenceVideos") {
-		return { targetHandle: "video", slotId: "referenceVideos" };
-	}
 	throw new Error(`targetInput ${input} cannot bind assets to ${kind}`);
+}
+
+function parseGenerationSources(value: unknown): ContentGenerationSourceSpec[] {
+	if (value === undefined) return [];
+	if (!Array.isArray(value)) throw new Error("configure_generation sources must be an array");
+	return value.map((item) => {
+		const source = asRecord(item);
+		const role = optionalString(source, "role");
+		if (role && !CONTENT_GENERATION_SOURCE_ROLES.includes(role as ContentGenerationSourceRole)) {
+			throw new Error(`unsupported generation source role: ${role}`);
+		}
+		const assetIds = source.assetIds;
+		if (assetIds !== undefined && (!Array.isArray(assetIds) || !assetIds.every((id) => typeof id === "string"))) {
+			throw new Error("generation source assetIds must be an array of strings");
+		}
+		return {
+			sourceNodeId: requiredString(source, "sourceNodeId"),
+			...(assetIds ? { assetIds } : {}),
+			...(role ? { role: role as ContentGenerationSourceRole } : {}),
+		};
+	});
 }
 
 function parseNodeData(record: Record<string, unknown>): ContentNode["data"] {

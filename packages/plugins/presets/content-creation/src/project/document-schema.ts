@@ -105,8 +105,7 @@ export const WorkflowNodeSchema = Type.Union([
 		content: PromptContentSchema,
 		inputs: StrictObject({
 			promptSources: Type.Array(NodeOutputSourceSchema),
-			startImages: Type.Array(MediaInputSchema),
-			referenceVideos: Type.Array(MediaInputSchema),
+			mediaSources: Type.Array(MediaInputSchema),
 		}),
 		generation: StrictObject({
 			model: GenerationModelSchema,
@@ -280,7 +279,7 @@ function validateNodeReferences(
 			? node.inputs.mediaSources
 			: node.type === "image-generator"
 				? node.inputs.referenceImages
-				: [...node.inputs.startImages, ...node.inputs.referenceVideos];
+				: node.inputs.mediaSources;
 	if (
 		mediaInputs.some(
 			(input) =>

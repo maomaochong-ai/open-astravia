@@ -1,7 +1,7 @@
 import type { PluginMediaErrorCode } from "@vetta-org/plugin-sdk";
 
 export const CONTENT_CREATION_FORMAT = "vetta.content-workflow" as const;
-export const CONTENT_CREATION_SCHEMA_VERSION = 4 as const;
+export const CONTENT_CREATION_SCHEMA_VERSION = 5 as const;
 export const CONTENT_CREATION_RUNTIME_SCHEMA_VERSION = 1 as const;
 
 export type ContentNodeKind = "prompt" | "image-generator" | "video-generator" | "asset" | "output";
@@ -88,6 +88,8 @@ export interface ContentEdge {
 	target: string;
 	sourceHandle?: string;
 	targetHandle?: string;
+	/** Semantic generation input role. Persisted through MediaInput.role, not canvas layout. */
+	role?: string;
 }
 
 export interface ContentAsset {

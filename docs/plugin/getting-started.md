@@ -132,15 +132,14 @@ export default definePlugin({
   activate(ctx) {
     // ctx 提供全部能力出口，按需注册贡献 / 调用能力
     ctx.ui.registerGlobalSlot({ id: "root", component: MyPanel });
-  },
-  deactivate() {
-    // 可选：清理你自己起的副作用（定时器、监听等）。
-    // 注册返回的 Disposable 已由宿主在卸载时统一处置，无需手动 dispose。
+    const subscription = createMySubscription();
+    // cleanup 只属于本次 activation；热更新的新旧实例不会互相清理。
+    return () => subscription.dispose();
   },
 });
 ```
 
-`definePlugin` 只是身份函数，返回 `{ activate, deactivate? }`。也可不用它、直接 `export function activate(ctx) {}` —— 宿主两种形态都认。
+`definePlugin` 只是身份函数。`activate()` 可返回 cleanup 函数或 `Disposable`；有状态资源优先使用这种 activation-scoped cleanup。旧插件的模块级 `deactivate()` 仍兼容。也可不用它、直接 `export function activate(ctx) {}` —— 宿主两种形态都认。
 
 > **顶层禁用共享依赖（含 JSX）**：MF 的 react / jsx-runtime 是异步填充的，bootstrap 完成前为 `undefined`。模块顶层写 `const ICON = <svg/>` 会在求值时抛 `TypeError: ... is not a function`，整个插件加载失败。把这类 JSX 放进 `activate()` 或组件函数体内。详见 [styling-and-pitfalls.md](./styling-and-pitfalls.md)。
 

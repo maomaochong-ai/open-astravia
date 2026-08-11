@@ -5,6 +5,23 @@ import {
 } from "../src/agent/operations";
 import { applyContentProjectCommands } from "../src/project/commands";
 import { createContentProject } from "../src/project/types";
+import type { ContentModelDescriptor } from "../src/generation/types";
+
+const FRAME_VIDEO_MODEL: ContentModelDescriptor = {
+	providerId: "host-media",
+	modelId: "frame-video",
+	displayName: "Frame video",
+	outputKind: "video",
+	aspectRatios: ["16:9"],
+	modes: [{
+		id: "image-to-video",
+		inputs: [
+			{ id: "firstFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+			{ id: "lastFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+		],
+		minTotalItems: 1,
+	}],
+};
 
 describe("content agent operations", () => {
 	it("translates semantic edits and places new nodes without canvas coordinates", () => {
@@ -94,6 +111,53 @@ describe("content agent operations", () => {
 		]);
 		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("sourceHandle");
 		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("targetHandle");
+	});
+
+	it("compiles video intent into model-backed role bindings in the same node batch", () => {
+		const project = createContentProject("C:/project");
+		const commands = parseContentAgentOperations(project, [
+			{ type: "add_node", id: "first", kind: "image-generator" },
+			{ type: "add_node", id: "last", kind: "image-generator" },
+			{ type: "add_node", id: "video", kind: "video-generator" },
+			{
+				type: "configure_generation",
+				nodeId: "video",
+				generationIntent: "interpolate-frames",
+				sources: [{ sourceNodeId: "first" }, { sourceNodeId: "last" }],
+			},
+		], [FRAME_VIDEO_MODEL]);
+
+		const next = applyContentProjectCommands(project, commands);
+		expect(next.graph.edges).toEqual([
+			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
+			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
+		]);
+	});
+
+	it("rejects mechanical media connections to generators", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		expect(() => parseContentAgentOperations(project, [
+			{ type: "connect_nodes", source: "image", target: "video" },
+		])).toThrow("must use configure_generation");
+	});
+
+	it("keeps the unambiguous generated-image reference role explicit", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "source", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "target", kind: "image-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		const commands = parseContentAgentOperations(project, [
+			{ type: "connect_nodes", source: "source", target: "target", targetInput: "referenceImages" },
+		]);
+
+		expect(commands).toEqual([
+			expect.objectContaining({ type: "edge.connect", targetHandle: "reference", role: "referenceImages" }),
+		]);
 	});
 
 	it("rejects operations outside the agent workflow surface", () => {

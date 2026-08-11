@@ -16,7 +16,6 @@ type VideoProviderInput = PluginMediaProviderInput & { kind: Exclude<PluginMedia
 const TEXT_MODE: PluginMediaGenerationModeCapability = {
 	mode: "text-to-video",
 	inputs: [],
-	maxTotalItems: 0,
 	aspectRatioPolicy: "configurable",
 	audioGeneration: "always",
 };

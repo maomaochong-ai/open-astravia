@@ -6,7 +6,9 @@
 
 - `content_creation_edit` 现在对创建、修改、删除与连线批次执行 revision-safe 原子提交，不再创建会话预览卡或要求用户确认。
 - `content_creation_run(action="prepare")` 的授权入口从会话卡片迁移为插件全局确认弹窗；准备阶段仍不调用供应商，只有用户确认后才开始生成。
-- Agent 工作流操作改用 `targetInput` 语义输入和 `bind_assets` 素材绑定，不再要求模型猜测内部端口 handle。
+- Agent 视频工作流改为意图驱动的 `configure_generation`：区分文生视频、单图动画、首尾帧插值、多模态参考和视频转换，原子写入实际模型模式、来源引用及首帧/尾帧/图片/视频/音频角色；机械媒体连线与只有集合边、没有具体素材引用的图会被诊断并禁止运行。
+- 项目文档升级到 schema v5，视频输入由旧的 `startImages` / `referenceVideos` 分组迁移为可扩展的带角色 `mediaSources`，保留旧项目的来源与角色信息。
+- Agent 普通工作流操作继续使用 `targetInput` 语义输入，图片素材使用 `bind_assets`，不再要求模型猜测内部端口 handle。
 - `inspect` 新增 `graph` 与 `readiness` 视图，返回语义连接、连通分量、孤立节点、可运行/阻塞节点及工作流状态。
 - 暂时去掉 `contributionMode.hardIsolation` 与输入栏硬隔离：活动栏「内容创作」默认上栏（`initiallyVisible: true`），Agent skills/tools 在插件启用后始终贡献；输入栏开关仅作软显隐与 prompt 装饰。
 - 原 7 个画布工具收敛为 `inspect`、`edit`、`run` 三个领域工具，并按当前用户意图动态启用最小集合。
@@ -19,6 +21,7 @@
 
 ### Fixed
 
+- 内容创作运行时、媒体/设置订阅、快捷键桥接与运行审批队列现在绑定到具体插件 activation；热更新释放旧实例时不再清空新实例，避免 Activity Tab 启动时报 `content-creation runtime is not initialized`。
 - 连线失败现在区分端口不存在、类型不匹配、目标端口占用、自连接与成环，并返回可操作的错误代码和上下文，不再统一报错 `node ports are incompatible or would create a cycle`。
 - 未配置所需 API Key（或必要 endpoint/model）的 Provider 模型不再出现在模型列表；设置变化后画布模型选项会即时刷新。
 - Generated video nodes now preserve a playable video MIME type and preload metadata instead of rendering an unusable `0:00` player.
@@ -77,7 +80,7 @@
 ### Added
 
 - Added an agent-native content workflow service with semantic state inspection, model capabilities, actionable diagnostics, automatic node placement, revision-safe edits, a global generation approval gate, dependency-ordered execution status, and bundled workflow/video creation Skills.
-- Added a structured, persistent input-bar context for the current canvas selection so the agent receives selected node IDs, semantic v4 node data, adjacent connections, and safe asset summaries without canvas layout, jobs, timestamps, previews, or private storage IDs.
+- Added a structured, persistent input-bar context for the current canvas selection so the agent receives selected node IDs, current semantic node data, adjacent connections, and safe asset summaries without canvas layout, jobs, timestamps, previews, or private storage IDs.
 - Added input-bound, opt-in prompt optimization through host-managed AI models with reusable node-specific profiles; successful results replace the effective prompt while preserving the structured original.
 - Added host media-provider discovery and image generation through the plugin media capability, with generated artifacts persisted as visible workspace output files.
 - Added structured multimodal prompt documents with compact inline media tokens and mixed `@` prompt references, preserving editable local text while carrying referenced media into generation model compatibility checks.

@@ -5,7 +5,6 @@ import {
 	MEDIA_PROTOCOL_VERSION,
 	type MediaArtifact,
 	type MediaInput,
-	type MediaProviderDescriptor,
 	type MediaProviderJob,
 } from "@vetta/capability-sdk";
 import type {
@@ -21,7 +20,10 @@ import type {
 	PluginMediaProviderInvocationResult,
 } from "../../preload/api-types/plugins.js";
 import { getDesktopMediaRuntime } from "../capabilities/media-providers.js";
-import type { MediaProviderCallContext } from "../media-generation/media-provider-registry.js";
+import {
+	cloneMediaProviderCapabilities,
+	type MediaProviderCallContext,
+} from "../media-generation/media-provider-registry.js";
 import { listPlugins } from "../plugins/plugin-store.js";
 
 const REGISTER_CHANNEL = "vetta:plugins:media-provider-register";
@@ -128,38 +130,6 @@ function opaqueInputs(inputs: readonly MediaInput[]): {
 		return { id, role: mediaInput.role, kind: mediaInput.kind, mimeType: mediaInput.mimeType };
 	});
 	return { input, lookup };
-}
-
-function cloneCapabilities(
-	capabilities: readonly PluginMediaProviderHostRegistration["capabilities"][number][],
-): MediaProviderDescriptor["capabilities"] {
-	return capabilities.map((capability) => {
-		if (capability.operation === "generate") {
-			return {
-				...capability,
-				modes: [...capability.modes],
-				modeCapabilities: capability.modeCapabilities?.map((mode) => ({
-					...mode,
-					inputs: mode.inputs.map((input) => ({ ...input, kinds: [...input.kinds] })),
-				})),
-				aspectRatios: capability.aspectRatios ? [...capability.aspectRatios] : undefined,
-				resolutions: capability.resolutions ? [...capability.resolutions] : undefined,
-				durationsSeconds: capability.durationsSeconds ? [...capability.durationsSeconds] : undefined,
-			};
-		}
-		if (capability.operation === "compose") {
-			return {
-				...capability,
-				documentMimeTypes: [...capability.documentMimeTypes],
-				outputMimeTypes: [...capability.outputMimeTypes],
-			};
-		}
-		return {
-			...capability,
-			inputMimeTypes: [...capability.inputMimeTypes],
-			outputMimeTypes: [...capability.outputMimeTypes],
-		};
-	});
 }
 
 function normalizedTimeout(value: number | undefined): number {
@@ -306,7 +276,7 @@ export function registerPluginMediaProvidersIpc(): () => void {
 				displayName: registration.displayName?.trim() || undefined,
 				ownerId: pluginId,
 				protocolVersion: MEDIA_PROTOCOL_VERSION,
-				capabilities: cloneCapabilities(registration.capabilities),
+				capabilities: cloneMediaProviderCapabilities(registration.capabilities),
 			},
 			submit: async (input, context) => {
 				assertProviderPermission(pluginId);

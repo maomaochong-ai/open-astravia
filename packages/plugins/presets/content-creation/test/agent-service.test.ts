@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ContentCreationAgentService } from "../src/agent/service";
 import type { ContentGenerationService } from "../src/generation/generation-service";
+import type { ContentModelDescriptor } from "../src/generation/types";
 import { serializeContentProject, serializeContentProjectRuntime } from "../src/project/persistence";
 import type { ContentProjectRepository } from "../src/project/repository";
 import type { ContentProjectDocument } from "../src/project/types";
@@ -25,7 +26,7 @@ function createAgentHarness() {
 	const workspace = new ContentCreationWorkspace(createMemoryRepository());
 	const runNode = vi.fn(async (cwd: string | null, _nodeId: string) => await workspace.load(cwd));
 	const generation = {
-		listModels: () => [],
+		listModels: () => TEST_MODELS,
 		runNode,
 	} as unknown as ContentGenerationService;
 	return {
@@ -34,6 +35,29 @@ function createAgentHarness() {
 		agent: new ContentCreationAgentService(workspace, () => generation),
 	};
 }
+
+const TEST_MODELS: readonly ContentModelDescriptor[] = [
+	{
+		providerId: "test",
+		modelId: "image",
+		displayName: "Image",
+		outputKind: "image",
+		aspectRatios: ["1:1"],
+		modes: [{ id: "text-to-image", inputs: [] }],
+	},
+	{
+		providerId: "test",
+		modelId: "video",
+		displayName: "Video",
+		outputKind: "video",
+		aspectRatios: ["16:9"],
+		modes: [
+			{ id: "text-to-video", inputs: [] },
+			{ id: "image-to-video", inputs: [{ id: "firstFrame", accepts: ["image"], minItems: 1, maxItems: 1 }] },
+			{ id: "video-to-video", inputs: [{ id: "referenceVideos", accepts: ["video"], minItems: 1, maxItems: 1 }] },
+		],
+	},
+];
 
 describe("ContentCreationAgentService", () => {
 	it("applies destructive and broad edits directly without confirmation", async () => {
@@ -103,9 +127,9 @@ describe("ContentCreationAgentService", () => {
 				type: "node.add",
 				node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 }, data: { prompt: "video" } },
 			},
-			{ type: "edge.connect", source: "image", target: "video", sourceHandle: "image", targetHandle: "image" },
+			{ type: "edge.connect", source: "image", target: "video", sourceHandle: "image", targetHandle: "image", role: "firstFrame" },
 		]);
-		const run = await agent.prepareRun("C:/project", ["video", "image"], project.revision);
+		const run = await agent.prepareRun("C:/project", ["video"], project.revision);
 
 		expect(run.status).toBe("awaiting-confirmation");
 		expect(run.nodeIds).toEqual(["image", "video"]);
@@ -131,8 +155,8 @@ describe("ContentCreationAgentService", () => {
 				type: "node.add",
 				node: { id: "video-b", kind: "video-generator", position: { x: 800, y: 0 }, data: { prompt: "b" } },
 			},
-			{ type: "edge.connect", source: "image", target: "video-a", sourceHandle: "image", targetHandle: "image" },
-			{ type: "edge.connect", source: "video-a", target: "video-b", sourceHandle: "video", targetHandle: "video" },
+			{ type: "edge.connect", source: "image", target: "video-a", sourceHandle: "image", targetHandle: "image", role: "firstFrame" },
+			{ type: "edge.connect", source: "video-a", target: "video-b", sourceHandle: "video", targetHandle: "video", role: "referenceVideos" },
 		]);
 		const run = await agent.prepareRun("C:/project", undefined, project.revision);
 
@@ -142,6 +166,32 @@ describe("ContentCreationAgentService", () => {
 		expect(agent.getRun(run.id)).toMatchObject({
 			failedNodeIds: ["image"],
 			skippedNodeIds: ["video-a", "video-b"],
+		});
+	});
+
+	it("refuses to prepare a roleless mechanical media connection", async () => {
+		const { workspace, agent } = createAgentHarness();
+		const project = await workspace.dispatch("C:/project", [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 }, data: { prompt: "image" } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 }, data: { prompt: "video" } } },
+			{ type: "edge.connect", source: "image", target: "video", targetHandle: "image" },
+		]);
+
+		await expect(agent.prepareRun("C:/project", ["video"], project.revision)).rejects.toMatchObject({
+			code: "generation-plan-not-ready",
+		});
+	});
+
+	it("refuses to run a bare asset edge without concrete asset references", async () => {
+		const { workspace, agent } = createAgentHarness();
+		const project = await workspace.dispatch("C:/project", [
+			{ type: "node.add", node: { id: "assets", kind: "asset", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 400, y: 0 }, data: { prompt: "image" } } },
+			{ type: "edge.connect", source: "assets", target: "image" },
+		]);
+
+		await expect(agent.prepareRun("C:/project", ["image"], project.revision)).rejects.toMatchObject({
+			code: "generation-plan-not-ready",
 		});
 	});
 });

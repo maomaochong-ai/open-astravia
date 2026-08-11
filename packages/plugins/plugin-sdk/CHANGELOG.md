@@ -15,6 +15,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- `definePlugin().activate()` 现在可返回函数或 `Disposable`，宿主会把它绑定到本次 activation，并在对应实例被替换、停用或后续加载失败时清理；热更新中的有状态资源不再依赖无法区分新旧实例的模块级 `deactivate()`。
 - **工作区视图 `ctx.ui.registerWorkspaceView()`**（新权限 `ui.slot.workspace-view`）：插件可以贡献一个**整页 surface**，与内置的「自动化」「知识库」同级——宿主给它一条自己的路由 `/workspace/<pluginId>/<viewId>` 和一个侧边栏导航入口，打开后整个内容区归插件。用于跨会话、跨项目的工作台（看板、控制台、仪表盘）；绑定单次对话的辅助 UI 仍应使用 Activity Tab。配套 `ctx.ui.openWorkspaceView(viewId)` 做程序化跳转。视图 `id` 会进 URL 并参与侧边栏布局持久化，故限定为 `^[a-z0-9][a-z0-9._-]*$`；`icon` 是 **iconify class 字符串**而非 ReactNode（宿主要把它渲染进自己的导航按钮并按 key 持久化布局）。导航入口默认落在侧边栏「更多」收纳里，用户可拖拽排序或 pin 到左上方置顶区。见 ADR-0065。
 - **`official.sessions`**（仅 official 来源插件可用）：后台会话编排 —— `create` / `prompt` / `abort` / `rename` / `list` / `listRunning` / `onRunningChanged` / `open`。与 `ctx.conversation.*` 的分工是：后者作用于**用户当前正在看的**会话，这套 API 按 sessionId 显式寻址、与当前路由无关。会话本体跑在主进程，创建并 prompt 之后即使宿主停在别的页面、插件 UI 未挂载，agent loop 也会继续跑到自然停止点——这是「多任务并发派单」类工作台成立的前提。见 ADR-0065。
 - `capture.offscreen` 新增 `probeScript` 与结果字段 `probe`：插件可在**截图的同一时刻**对离屏页面求值，把渲染后的 DOM 度量（换行、裁切、空图标位、边缘错位等）与位图一起取回，无需为了量一次布局再渲染一遍。结果经 JSON 往返；求值抛错或不可序列化时 `probe` 为 `undefined`，位图照常返回——探针是搭车的附加信息，不会成为截图失败的原因。

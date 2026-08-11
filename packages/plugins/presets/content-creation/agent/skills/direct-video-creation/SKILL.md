@@ -54,4 +54,6 @@ Keep each generator focused on one visually coherent shot unless the inspected m
 - Use reference-to-video or video-to-video only when the inspected input slots accept those assets.
 - Prefer a short low-cost validation shot before a larger set when creative direction is uncertain.
 
+When materializing the plan on the canvas, use `$operate-content-workflow`'s `configure_generation` contract. Pass concrete asset IDs for asset collections, reference upstream image/video generators by future output, and let capability resolution compile those business roles to provider slots. Never express first frame, last frame, visual reference, motion reference, or source video as an unlabelled edge.
+
 This method is an original Vetta adaptation informed by Generative-Media-Skills (MIT), visual-skills by Serge Shima (CC BY 4.0, https://github.com/smixs/visual-skills), and ViMax (MIT).

@@ -203,6 +203,7 @@
 	"port.mediaReference": "Media references",
 	"port.imageReference": "Image reference",
 	"port.videoReference": "Video reference",
+	"port.audioReference": "Audio reference",
 	"port.image": "Image",
 	"port.video": "Video",
 	"port.media": "Media",

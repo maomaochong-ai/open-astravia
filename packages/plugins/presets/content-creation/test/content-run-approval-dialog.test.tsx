@@ -4,13 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import type { ComponentProps, ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContentRunApprovalDialog } from "../src/plugin/ContentRunApprovalDialog";
-import {
-	clearContentRunApprovals,
-	getPendingContentRunIds,
-	requestContentRunApproval,
-} from "../src/plugin/run-approval";
+import { ContentRunApprovalStore } from "../src/plugin/run-approval";
+import type { ContentCreationPluginRuntime } from "../src/plugin/runtime";
 
-const runtime = vi.hoisted(() => ({
+const runtimeCalls = vi.hoisted(() => ({
 	startRun: vi.fn(async () => undefined),
 	cancelRun: vi.fn(),
 	subscribeRuns: vi.fn(() => () => undefined),
@@ -40,8 +37,9 @@ vi.mock("@vetta/ui", () => ({
 	Button: ({ variant: _variant, children, ...props }: MockButtonProps) => <button {...props}>{children}</button>,
 }));
 
-vi.mock("../src/plugin/runtime", () => ({
-	getContentCreationAgentService: () => ({
+const runApprovals = new ContentRunApprovalStore();
+const pluginRuntime = {
+	agent: {
 		getRun: (runId: string) => ({
 			id: runId,
 			cwd: "C:/project",
@@ -53,37 +51,38 @@ vi.mock("../src/plugin/runtime", () => ({
 			failedNodeIds: [],
 			skippedNodeIds: [],
 		}),
-		startRun: runtime.startRun,
-		cancelRun: runtime.cancelRun,
-		subscribeRuns: runtime.subscribeRuns,
-	}),
-	getContentCreationWorkspace: () => ({ subscribe: runtime.subscribeProject }),
-}));
+		startRun: runtimeCalls.startRun,
+		cancelRun: runtimeCalls.cancelRun,
+		subscribeRuns: runtimeCalls.subscribeRuns,
+	},
+	workspace: { subscribe: runtimeCalls.subscribeProject },
+	runApprovals,
+} as unknown as ContentCreationPluginRuntime;
 
 describe("ContentRunApprovalDialog", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		clearContentRunApprovals();
+		runApprovals.clear();
 	});
 
 	afterEach(cleanup);
 
 	it("starts a prepared run only after global confirmation", async () => {
-		requestContentRunApproval("run-id");
-		render(<ContentRunApprovalDialog />);
+		runApprovals.request("run-id");
+		render(<ContentRunApprovalDialog runtime={pluginRuntime} />);
 
-		expect(runtime.startRun).not.toHaveBeenCalled();
+		expect(runtimeCalls.startRun).not.toHaveBeenCalled();
 		fireEvent.click(screen.getByText("runApproval.confirm"));
-		await waitFor(() => expect(runtime.startRun).toHaveBeenCalledWith("run-id"));
-		expect(getPendingContentRunIds()).toEqual([]);
+		await waitFor(() => expect(runtimeCalls.startRun).toHaveBeenCalledWith("run-id"));
+		expect(runApprovals.getSnapshot()).toEqual([]);
 	});
 
 	it("cancels a prepared run when the dialog is dismissed", () => {
-		requestContentRunApproval("run-id");
-		render(<ContentRunApprovalDialog />);
+		runApprovals.request("run-id");
+		render(<ContentRunApprovalDialog runtime={pluginRuntime} />);
 
 		fireEvent.click(screen.getByText("runApproval.cancel"));
-		expect(runtime.cancelRun).toHaveBeenCalledWith("run-id");
-		expect(getPendingContentRunIds()).toEqual([]);
+		expect(runtimeCalls.cancelRun).toHaveBeenCalledWith("run-id");
+		expect(runApprovals.getSnapshot()).toEqual([]);
 	});
 });

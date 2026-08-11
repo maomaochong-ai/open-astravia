@@ -109,6 +109,7 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 			{ id: "prompt", labelKey: "port.prompt", dataType: "prompt", multiple: true },
 			{ id: "image", labelKey: "port.imageReference", dataType: "image", multiple: true },
 			{ id: "video", labelKey: "port.videoReference", dataType: "video", multiple: true },
+			{ id: "audio", labelKey: "port.audioReference", dataType: "audio", multiple: true },
 		],
 		outputs: [{ id: "video", labelKey: "port.video", dataType: "video", multiple: true }],
 		properties: [

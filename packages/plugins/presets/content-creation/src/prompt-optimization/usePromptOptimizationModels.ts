@@ -1,18 +1,19 @@
 import { type PluginAiModel, useTranslation } from "@vetta-org/plugin-sdk";
 import { useEffect, useState } from "react";
-import {
-	getContentPromptOptimizationService,
-	notifyContentCreationError,
-} from "../plugin/runtime";
+import { useContentCreationRuntime } from "../plugin/runtime-context";
+import type { ContentPromptOptimizationService } from "./prompt-optimization-service";
 
 interface PromptOptimizationModelState {
 	models: PluginAiModel[];
 	selectedModelKey?: string;
 	setSelectedModelKey: (modelKey: string) => void;
 	isLoadingModels: boolean;
+	optimizePrompt: ContentPromptOptimizationService["optimize"];
+	reportError: (message: string, error: unknown) => void;
 }
 
 export function usePromptOptimizationModels(preferredModelKey?: string): PromptOptimizationModelState {
+	const runtime = useContentCreationRuntime();
 	const { t } = useTranslation();
 	const [models, setModels] = useState<PluginAiModel[]>([]);
 	const [selectedModelKey, setSelectedModelKey] = useState<string | undefined>(preferredModelKey);
@@ -22,7 +23,7 @@ export function usePromptOptimizationModels(preferredModelKey?: string): PromptO
 	useEffect(() => {
 		let active = true;
 		setIsLoadingModels(true);
-		void getContentPromptOptimizationService()
+		void runtime.promptOptimization
 			.listModels()
 			.then((result) => {
 				if (!active) return;
@@ -37,7 +38,7 @@ export function usePromptOptimizationModels(preferredModelKey?: string): PromptO
 				});
 			})
 			.catch((error: unknown) => {
-				if (active) notifyContentCreationError(loadErrorMessage, error);
+				if (active) runtime.notifyError(loadErrorMessage, error);
 			})
 			.finally(() => {
 				if (active) setIsLoadingModels(false);
@@ -45,7 +46,14 @@ export function usePromptOptimizationModels(preferredModelKey?: string): PromptO
 		return () => {
 			active = false;
 		};
-	}, [loadErrorMessage]);
+	}, [loadErrorMessage, runtime]);
 
-	return { models, selectedModelKey, setSelectedModelKey, isLoadingModels };
+	return {
+		models,
+		selectedModelKey,
+		setSelectedModelKey,
+		isLoadingModels,
+		optimizePrompt: (request) => runtime.promptOptimization.optimize(request),
+		reportError: (message, error) => runtime.notifyError(message, error),
+	};
 }

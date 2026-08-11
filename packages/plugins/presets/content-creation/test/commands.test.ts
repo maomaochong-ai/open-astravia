@@ -149,6 +149,38 @@ describe("applyContentProjectCommands", () => {
 		expect(disconnected.graph.nodes.find((node) => node.id === "image")?.data.inputs).toEqual([]);
 	});
 
+	it("configures first and last frame dependencies as role-specific edges", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "first", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "last", kind: "image-generator", position: { x: 0, y: 300 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+			{
+				type: "node.configure-generation",
+				targetNodeId: "video",
+				plan: {
+					intent: "interpolate-frames",
+					providerId: "host-media",
+					modelId: "frame-video",
+					modeId: "image-to-video",
+					bindings: [
+						{ sourceNodeId: "first", assetIds: [], kind: "image", slotId: "firstFrame", targetHandle: "image" },
+						{ sourceNodeId: "last", assetIds: [], kind: "image", slotId: "lastFrame", targetHandle: "image" },
+					],
+				},
+			},
+		]);
+
+		expect(project.graph.edges).toEqual([
+			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
+			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
+		]);
+		expect(project.graph.nodes.find((node) => node.id === "video")?.data).toMatchObject({
+			providerId: "host-media",
+			modelId: "frame-video",
+			modeId: "image-to-video",
+		});
+	});
+
 	it("duplicates a node with independent data and an offset position", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{

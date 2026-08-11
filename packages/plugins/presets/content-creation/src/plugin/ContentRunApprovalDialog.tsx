@@ -10,19 +10,14 @@ import {
 } from "@vetta/ui";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import type { ContentPreparedRun } from "../agent/service";
-import { getContentCreationAgentService, getContentCreationWorkspace } from "./runtime";
-import {
-	getPendingContentRunIds,
-	resolveContentRunApproval,
-	subscribeContentRunApprovals,
-} from "./run-approval";
+import type { ContentCreationPluginRuntime } from "./runtime";
 
-export function ContentRunApprovalDialog() {
+export function ContentRunApprovalDialog({ runtime }: { runtime: ContentCreationPluginRuntime }) {
 	const { t } = useTranslation();
 	const pendingRunIds = useSyncExternalStore(
-		subscribeContentRunApprovals,
-		getPendingContentRunIds,
-		getPendingContentRunIds,
+		runtime.runApprovals.subscribe,
+		runtime.runApprovals.getSnapshot,
+		runtime.runApprovals.getSnapshot,
 	);
 	const runId = pendingRunIds[0];
 	const [run, setRun] = useState<ContentPreparedRun | null>(null);
@@ -36,26 +31,26 @@ export function ContentRunApprovalDialog() {
 			setRun(null);
 			return;
 		}
-		const agent = getContentCreationAgentService();
+		const agent = runtime.agent;
 		const refresh = () => {
 			const next = agent.getRun(runId);
 			setRun(next);
-			if (!next) resolveContentRunApproval(runId);
+			if (!next) runtime.runApprovals.resolve(runId);
 		};
 		const unsubscribeRun = agent.subscribeRuns(refresh);
 		const cwd = agent.getRun(runId)?.cwd;
-		const unsubscribeProject = cwd ? getContentCreationWorkspace().subscribe(cwd, refresh) : () => undefined;
+		const unsubscribeProject = cwd ? runtime.workspace.subscribe(cwd, refresh) : () => undefined;
 		refresh();
 		return () => {
 			unsubscribeRun();
 			unsubscribeProject();
 		};
-	}, [runId]);
+	}, [runId, runtime]);
 
 	const close = () => {
 		if (!runId || starting) return;
-		getContentCreationAgentService().cancelRun(runId);
-		resolveContentRunApproval(runId);
+		runtime.agent.cancelRun(runId);
+		runtime.runApprovals.resolve(runId);
 	};
 
 	return (
@@ -87,9 +82,9 @@ export function ContentRunApprovalDialog() {
 							if (!runId) return;
 							setStarting(true);
 							setError(null);
-							void getContentCreationAgentService()
+							void runtime.agent
 								.startRun(runId)
-								.then(() => resolveContentRunApproval(runId))
+								.then(() => runtime.runApprovals.resolve(runId))
 								.catch((startError: unknown) => {
 									setStarting(false);
 									setError(startError instanceof Error ? startError.message : String(startError));

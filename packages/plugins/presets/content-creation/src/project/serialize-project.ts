@@ -130,24 +130,11 @@ function serializeNode(
 			content: serializePromptContent(node, promptSources[0]),
 			inputs: {
 				promptSources,
-				startImages: serializeMediaInputs(
-					node,
-					edges,
-					nodesById,
-					assetKinds,
-					"image",
-					"start-image",
-					"image",
-				),
-				referenceVideos: serializeMediaInputs(
-					node,
-					edges,
-					nodesById,
-					assetKinds,
-					"video",
-					"reference-video",
-					"video",
-				),
+				mediaSources: [
+					...serializeMediaInputs(node, edges, nodesById, assetKinds, "image", "firstFrame", "image"),
+					...serializeMediaInputs(node, edges, nodesById, assetKinds, "video", "referenceVideos", "video"),
+					...serializeMediaInputs(node, edges, nodesById, assetKinds, "audio", "referenceAudios", "audio"),
+				],
 			},
 			generation: {
 				model: serializeGenerationModel(node),
@@ -267,14 +254,16 @@ function serializeMediaInputs(
 		const bindings = (node.data.inputs ?? []).filter(
 			(binding) =>
 				binding.sourceNodeId === edge.source &&
+				(!edge.role || binding.slotId === edge.role) &&
 				(!assetKind || !assetKinds.has(binding.assetId) || assetKinds.get(binding.assetId) === assetKind),
 		);
 		if (bindings.length === 0) {
-			inputs.set(`${edge.source}:${output}:${defaultRole}`, {
+			const role = edge.role ?? defaultRole;
+			inputs.set(`${edge.source}:${output}:${role}`, {
 				fromNode: edge.source,
 				output,
 				assetIds: [],
-				role: defaultRole,
+				role,
 			});
 			continue;
 		}
@@ -282,7 +271,12 @@ function serializeMediaInputs(
 	}
 	for (const binding of node.data.inputs ?? []) {
 		if (assetKind && assetKinds.has(binding.assetId) && assetKinds.get(binding.assetId) !== assetKind) continue;
-		if (binding.sourceNodeId && applicableEdges.some((edge) => edge.source === binding.sourceNodeId)) continue;
+		if (
+			binding.sourceNodeId &&
+			applicableEdges.some(
+				(edge) => edge.source === binding.sourceNodeId && (!edge.role || edge.role === binding.slotId),
+			)
+		) continue;
 		addMediaBinding(inputs, binding, binding.sourceNodeId ? "media-collection" : undefined);
 	}
 	return [...inputs.values()];

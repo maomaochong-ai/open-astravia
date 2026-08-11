@@ -575,7 +575,7 @@ function listGenerationReferenceCandidates(
 		candidates.push({
 			id: `edge:${edge.id}`,
 			asset,
-			slotId: asset.kind === "image" ? "referenceImages" : "referenceVideo",
+			slotId: edge.role ?? (asset.kind === "image" ? "referenceImages" : "referenceVideo"),
 			origin: "edge",
 		});
 	}
@@ -585,7 +585,10 @@ function listGenerationReferenceCandidates(
 		}
 	}
 	return candidates.filter(
-		(candidate, index) => candidates.findIndex((current) => current.asset.id === candidate.asset.id) === index,
+		(candidate, index) =>
+			candidates.findIndex(
+				(current) => current.asset.id === candidate.asset.id && current.slotId === candidate.slotId,
+			) === index,
 	);
 }
 

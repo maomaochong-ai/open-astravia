@@ -11,6 +11,7 @@ import {
 } from "@xyflow/react";
 import {
 	type PluginShortcutBinding,
+	type PluginRegisterShortcutScope,
 	usePluginShortcutScope,
 	useTranslation,
 } from "@vetta-org/plugin-sdk";
@@ -32,7 +33,6 @@ import type {
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "../generation/types";
-import { getRegisterShortcutScope } from "../plugin/plugin-ui";
 import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
 import { shouldOpenConnectionCreateMenu } from "./connection-drop-menu";
@@ -75,6 +75,7 @@ interface GraphWorkspaceProps {
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
+	registerShortcutScope?: PluginRegisterShortcutScope | null;
 }
 
 export function GraphWorkspace({
@@ -86,6 +87,7 @@ export function GraphWorkspace({
 	onImportAssets,
 	onImportReferences,
 	onSelectedNodeIdsChange,
+	registerShortcutScope = null,
 }: GraphWorkspaceProps) {
 	const { t } = useTranslation();
 	const flowContainerRef = useRef<HTMLDivElement>(null);
@@ -603,7 +605,7 @@ export function GraphWorkspace({
 		[deleteSelection],
 	);
 
-	usePluginShortcutScope(getRegisterShortcutScope(), {
+	usePluginShortcutScope(registerShortcutScope, {
 		id: "graph-delete",
 		kind: "surface",
 		enabled: canDeleteViaShortcut,

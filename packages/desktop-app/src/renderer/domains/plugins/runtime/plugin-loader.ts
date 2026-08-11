@@ -70,6 +70,7 @@ import { getDefaultStore } from "jotai";
 import type { ComponentType } from "react";
 import { router } from "../../../router";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
+import { PluginActivationCleanupController } from "./plugin-activation-cleanup";
 import { createPluginAiApi } from "./plugin-ai";
 import {
 	getPluginFileExplorerSelection,
@@ -1901,6 +1902,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		onChanged();
 	};
 	let definition: PluginDefinition | undefined;
+	const activationCleanup = new PluginActivationCleanupController();
 	let activationStarted = false;
 	let capabilitySessionId: string | undefined;
 	const closeCapabilitySession = async (): Promise<void> => {
@@ -1944,7 +1946,8 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			capabilitySessionId,
 		);
 		activationStarted = true;
-		await definition.activate(context);
+		const cleanup = await definition.activate(context);
+		activationCleanup.set(cleanup ?? undefined);
 		debugPluginAgent("activate resolved", {
 			pluginId: plugin.id,
 			pendingRuntimeRegistrations: pendingRuntimeRegistrations.length,
@@ -1981,7 +1984,11 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			dispose: async () => {
 				debugPluginAgent("dispose start", { pluginId: plugin.id, activationId });
 				try {
-					await definition?.deactivate?.();
+					try {
+						await activationCleanup.dispose();
+					} finally {
+						await definition?.deactivate?.();
+					}
 				} finally {
 					try {
 						await window.vetta.plugins.clearAgentContributions(plugin.id, activationId);
@@ -2001,6 +2008,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		};
 	} catch (error) {
 		if (activationStarted) {
+			await activationCleanup.dispose().catch((cleanupError: unknown) => {
+				console.error(`Plugin ${plugin.id} failed to clean up after activation failure`, cleanupError);
+			});
 			await Promise.resolve(definition?.deactivate?.()).catch((deactivateError: unknown) => {
 				console.error(`Plugin ${plugin.id} failed to deactivate after activation failure`, deactivateError);
 			});

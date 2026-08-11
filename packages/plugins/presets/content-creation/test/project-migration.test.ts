@@ -22,7 +22,7 @@ describe("content project migrations", () => {
 
 		const migrated = migrateContentProjectDocument(legacy, null, "C:/project");
 
-		expect(migrated?.project.schemaVersion).toBe(4);
+		expect(migrated?.project.schemaVersion).toBe(5);
 		expect(migrated?.project.assets).toEqual([
 			{
 				id: "asset",
@@ -104,5 +104,45 @@ describe("content project migrations", () => {
 			expect.objectContaining({ assetId: "last", slotId: "lastFrame" }),
 			expect.objectContaining({ assetId: "video", slotId: "referenceVideos" }),
 		]);
+	});
+
+	it("migrates v4 video input groups into role-preserving v5 media sources", () => {
+		const current = serializeContentProject(createContentProject("C:/project", "2026-08-10T00:00:00.000Z"));
+		const legacy = {
+			...current,
+			schemaVersion: 4,
+			nodes: [{
+				id: "first",
+				name: "first",
+				purpose: "first",
+				type: "image-generator",
+				content: { versions: { original: { segments: [{ type: "text", value: "frame" }] } }, activeVersion: "original" },
+				inputs: { promptSources: [], referenceImages: [] },
+				generation: { model: { selection: "automatic" } },
+				produces: { type: "image" },
+				result: { state: "not-generated" },
+			}, {
+				id: "video",
+				name: "video",
+				purpose: "video",
+				type: "video-generator",
+				content: { versions: { original: { segments: [{ type: "text", value: "move" }] } }, activeVersion: "original" },
+				inputs: {
+					promptSources: [],
+					startImages: [{ fromNode: "first", output: "image", assetIds: [], role: "firstFrame" }],
+					referenceVideos: [],
+				},
+				generation: { model: { selection: "automatic" } },
+				produces: { type: "video" },
+				result: { state: "not-generated" },
+			}],
+			view: { nodes: { first: { x: 0, y: 0 }, video: { x: 400, y: 0 } } },
+		};
+
+		const migrated = migrateContentProjectDocument(legacy, null, "C:/project");
+		expect(migrated?.project.schemaVersion).toBe(5);
+		expect(serializeContentProject(migrated!.project).nodes[1]).toMatchObject({
+			inputs: { mediaSources: [{ fromNode: "first", output: "image", role: "firstFrame" }] },
+		});
 	});
 });

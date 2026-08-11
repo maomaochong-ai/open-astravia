@@ -1,4 +1,4 @@
-import { MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta/capability-sdk";
+import { DOMAIN_MEDIA_CAPABILITIES, MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import type { VettaGatewayRequest, VettaGatewayResponse } from "../gateway/vetta-gateway-service.js";
 import { JobManager } from "../jobs/job-manager.js";
@@ -70,6 +70,47 @@ describe("MediaProviderRegistry", () => {
 				},
 			],
 		});
+	});
+
+	it("omits undefined optional capability fields from provider list output", () => {
+		const registry = createRegistry();
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:minimax-h3",
+				displayName: undefined,
+				ownerId: "comfyui-media-provider",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [
+					{
+						operation: "generate",
+						kind: "video",
+						modes: ["text-to-video"],
+						aspectRatios: undefined,
+						resolutions: undefined,
+						durationsSeconds: undefined,
+						modeCapabilities: [
+							{
+								mode: "text-to-video",
+								inputs: [],
+								minTotalItems: undefined,
+								maxTotalItems: undefined,
+								aspectRatioPolicy: undefined,
+								audioGeneration: "always",
+							},
+						],
+					},
+				],
+			},
+			submit: vi.fn(),
+		});
+
+		const providers = registry.listProviders();
+		expect(() => DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.parseOutput(providers)).not.toThrow();
+		expect(providers).toEqual(JSON.parse(JSON.stringify(providers)));
+		expect(providers).toEqual([expect.not.objectContaining({ displayName: undefined })]);
+		expect(providers[0]?.capabilities[0]).not.toEqual(
+			expect.objectContaining({ aspectRatios: undefined, resolutions: undefined, durationsSeconds: undefined }),
+		);
 	});
 
 	it("routes submissions through a registered host provider", async () => {

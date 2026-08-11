@@ -1,7 +1,7 @@
 import type { PluginAgentToolRegistration, PluginContext } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ContentCreationAgentService } from "../src/agent/service";
-import { clearContentRunApprovals, getPendingContentRunIds } from "../src/plugin/run-approval";
+import { ContentRunApprovalStore } from "../src/plugin/run-approval";
 import {
 	CONTENT_EDIT_TOOL_NAME,
 	CONTENT_INSPECT_TOOL_NAME,
@@ -37,9 +37,11 @@ describe("content creation tool registration", () => {
 		skippedNodeIds: [],
 	}));
 	const agent = { edit, inspect, prepareRun } as unknown as ContentCreationAgentService;
+	const runApprovals = new ContentRunApprovalStore();
 	const ctx = {
 		agent: {
 			registerTool: (tool: PluginAgentToolRegistration<unknown>) => {
+				if (!tool.name) throw new Error("registered tool name is required");
 				registered.set(tool.name, tool);
 				return { dispose() {} };
 			},
@@ -50,8 +52,8 @@ describe("content creation tool registration", () => {
 	beforeEach(() => {
 		registered.clear();
 		vi.clearAllMocks();
-		clearContentRunApprovals();
-		registerContentCreationTools(ctx, agent);
+		runApprovals.clear();
+		registerContentCreationTools(ctx, agent, runApprovals);
 	});
 
 	function tool<TInput>(name: string): PluginAgentToolRegistration<TInput> {
@@ -85,6 +87,6 @@ describe("content creation tool registration", () => {
 
 		expect(result).toMatchObject({ ok: true, status: "awaiting-confirmation", run: { id: "run" } });
 		expect(result).not.toHaveProperty("cards");
-		expect(getPendingContentRunIds()).toEqual(["run"]);
+		expect(runApprovals.getSnapshot()).toEqual(["run"]);
 	});
 });

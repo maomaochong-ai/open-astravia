@@ -60,7 +60,7 @@ describe("PluginContentProjectRepository", () => {
 		expect(visible).toMatchObject({
 			format: "vetta.content-workflow",
 			projectId: project.projectId,
-			schemaVersion: 4,
+			schemaVersion: 5,
 			workflow: { title: "Untitled content workflow", objective: "", deliverables: [] },
 		});
 		expect(visible).toHaveProperty("nodes");

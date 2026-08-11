@@ -1,9 +1,10 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { CONTENT_AGENT_OPERATION_SCHEMA } from "../agent/operations";
 import type { ContentCreationAgentService } from "../agent/service";
+import { ContentGenerationIntentError } from "../generation/generation-intent";
 import { ContentProjectCommandError } from "../project/commands";
 import { ContentProjectRevisionError } from "../project/workspace";
-import { requestContentRunApproval } from "./run-approval";
+import type { ContentRunApprovalStore } from "./run-approval";
 
 export const CONTENT_INSPECT_TOOL_NAME = "content_creation_inspect";
 export const CONTENT_EDIT_TOOL_NAME = "content_creation_edit";
@@ -42,7 +43,11 @@ const revisionProperty = {
 	description: "Project revision returned by content_creation_inspect.",
 };
 
-export function registerContentCreationTools(ctx: PluginContext, agent: ContentCreationAgentService): void {
+export function registerContentCreationTools(
+	ctx: PluginContext,
+	agent: ContentCreationAgentService,
+	runApprovals: ContentRunApprovalStore,
+): void {
 	ctx.agent.registerTool<InspectInput>({
 		id: "inspect-content-creation",
 		name: CONTENT_INSPECT_TOOL_NAME,
@@ -136,7 +141,7 @@ export function registerContentCreationTools(ctx: PluginContext, agent: ContentC
 						trigger.input.nodeIds,
 						trigger.input.expectedRevision,
 					);
-					requestContentRunApproval(run.id);
+					runApprovals.request(run.id);
 					return {
 						ok: true,
 						status: "awaiting-confirmation",
@@ -212,6 +217,15 @@ function requiredRunId(runId?: string): string {
 }
 
 function toolError(error: unknown) {
+	if (error instanceof ContentGenerationIntentError) {
+		return {
+			ok: false,
+			retryable: false,
+			code: error.code,
+			error: error.message,
+			...(error.details ? { details: error.details } : {}),
+		};
+	}
 	if (error instanceof ContentProjectCommandError) {
 		return {
 			ok: false,

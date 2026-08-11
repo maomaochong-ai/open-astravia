@@ -7,7 +7,7 @@ Vetta 的系统 preset 插件，用节点画布组织提示词、素材生成与
 
 - 创作画布：提示词、图片生成、视频生成、素材、输出节点。
 - 编排工作区：首批提供视频轨、音频轨、片段添加、移动和裁剪的领域协议。
-- 项目存储：语义化 schema v4 文档写入 `<cwd>/content-creation.json`；画布布局单独放在 `view`，jobs、宿主任务句柄与临时状态保留在插件私有存储，renderer 刷新后会恢复活跃宿主任务；无工作目录时整体回退到插件私有存储。
+- 项目存储：语义化 schema v5 文档写入 `<cwd>/content-creation.json`；视频媒体输入统一保存为带业务角色的 `mediaSources`（首帧、尾帧、参考图片、参考视频或参考音频），画布布局单独放在 `view`，jobs、宿主任务句柄与临时状态保留在插件私有存储，renderer 刷新后会恢复活跃宿主任务；无工作目录时整体回退到插件私有存储。
 - Agent：插件启用后贡献内容创作 Prompt、Skill 与 `inspect`、`edit`、`run` 三个领域工具，输入栏“内容创作”开关负责软显隐和上下文装饰，动态路由再按当前意图收窄工具面。创建、编辑、删除与连线均 revision-safe 原子提交，不要求用户确认；生成计划在全局弹窗确认后才会执行。
 - Agent Skill：内置创意概念、工作流操作、图片创作、视频创作、内容质量审查和多资产 Campaign 六个 Skill；主入口保持精简，模型 Prompt Profile、提示词模板、连续性、失败修复、质量 rubric，以及品牌、电商、人物时尚、空间 UI、产品视频、UGC、动作教程、社媒切片等场景协议按任务加载。
 - 内容生产：支持 OpenAI Images、Replicate、Gemini/Veo 与 NewAPI 视频适配器；用户导入素材保存在插件私有素材存储中，生成素材写入工作区 `output/`。
@@ -26,7 +26,8 @@ UI 与 Agent 都只能通过 `ContentCreationWorkspace.dispatch()` 修改项目�
 
 Agent 返回的是去除画布视图、时间戳、预览 URL 和私有存储 ID 的语义文档，同时补充节点/任务状态、
 当前可用模型能力、语义连接、连通分量、孤立节点、可运行/阻塞节点和可执行诊断。`content_creation_edit`
-携带 `expectedRevision` 原子提交完整批次，端口由语义 `targetInput` 确定；失败会返回稳定错误代码和可用端口上下文。
+携带 `expectedRevision` 原子提交完整批次。普通拓扑边由语义 `targetInput` 确定；视频生成媒体输入通过
+`configure_generation` 将创作意图、具体素材或上游生成结果编译为模型实际支持的模式与输入角色，失败会返回稳定错误代码和能力上下文。
 图片/视频生成通过依赖排序的运行计划执行，准备阶段不调用供应商、不消耗生成额度，并通过插件全局弹窗授权运行。
 
 ## 设计分析

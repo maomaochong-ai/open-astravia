@@ -13,6 +13,15 @@ const IMAGE_MODEL: ContentModelDescriptor = {
 	aspectRatios: ["1:1"],
 };
 
+const FRAME_VIDEO_MODEL: ContentModelDescriptor = {
+	providerId: "provider",
+	modelId: "video",
+	displayName: "Video",
+	outputKind: "video",
+	modes: [{ id: "image-to-video", inputs: [{ id: "firstFrame", accepts: ["image"], minItems: 1, maxItems: 1 }] }],
+	aspectRatios: ["16:9"],
+};
+
 describe("content workflow analysis", () => {
 	it("reports explicit semantic connections and a ready workflow", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
@@ -61,7 +70,58 @@ describe("content workflow analysis", () => {
 		]);
 
 		expect(analyzeContentWorkflow(project, [IMAGE_MODEL]).issues).toEqual(
-			expect.arrayContaining([expect.objectContaining({ code: "asset-connection-unbound", nodeId: "image" })]),
+			expect.arrayContaining([
+				expect.objectContaining({ code: "asset-connection-unbound", severity: "error", nodeId: "image" }),
+			]),
+		);
+	});
+
+	it("rejects a generated media dependency whose business role is missing", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 }, data: { prompt: "hero" } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 }, data: { prompt: "move" } } },
+			{ type: "edge.connect", source: "image", target: "video", targetHandle: "image" },
+		]);
+
+		const analysis = analyzeContentWorkflow(project, [IMAGE_MODEL, FRAME_VIDEO_MODEL]);
+		expect(analysis.status).toBe("incomplete");
+		expect(analysis.issues).toEqual(
+			expect.arrayContaining([expect.objectContaining({ code: "generation-source-role-missing", nodeId: "video" })]),
+		);
+	});
+
+	it("reports configured frame roles in the semantic graph", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 }, data: { prompt: "hero" } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 }, data: { prompt: "move" } } },
+			{ type: "edge.connect", source: "image", target: "video", targetHandle: "image", role: "firstFrame" },
+		]);
+
+		expect(analyzeContentWorkflow(project, [IMAGE_MODEL, FRAME_VIDEO_MODEL]).connections).toEqual([
+			expect.objectContaining({ fromNodeId: "image", toNodeId: "video", toInput: "firstFrame" }),
+		]);
+	});
+
+	it("reports a persisted generation binding whose asset no longer exists", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: {
+					id: "image",
+					kind: "image-generator",
+					position: { x: 0, y: 0 },
+					data: {
+						prompt: "hero",
+						inputs: [{ id: "missing", assetId: "missing", slotId: "referenceImages" }],
+					},
+				},
+			},
+		]);
+
+		expect(analyzeContentWorkflow(project, [IMAGE_MODEL]).issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: "generation-source-asset-missing", severity: "error", nodeId: "image" }),
+			]),
 		);
 	});
 });

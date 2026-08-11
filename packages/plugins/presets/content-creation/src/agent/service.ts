@@ -1,4 +1,5 @@
 import type { ContentGenerationService } from "../generation/generation-service";
+import { ContentGenerationIntentError } from "../generation/generation-intent";
 import type { ContentModelDescriptor } from "../generation/types";
 import type { ContentNode, ContentProjectDocument } from "../project/types";
 import type { ContentCreationWorkspace } from "../project/workspace";
@@ -43,7 +44,7 @@ export class ContentCreationAgentService {
 	): Promise<ContentProjectDocument> {
 		const project = await this.workspace.load(cwd);
 		assertExpectedRevision(project, expectedRevision);
-		const commands = parseContentAgentOperations(project, operations);
+		const commands = parseContentAgentOperations(project, operations, this.listModels());
 		return await this.workspace.dispatch(cwd, commands, project.revision);
 	}
 
@@ -55,6 +56,21 @@ export class ContentCreationAgentService {
 		}
 		const candidates = resolveRunNodes(project, requestedNodeIds);
 		if (candidates.length === 0) throw new Error("no executable image or video generation nodes were selected");
+		const state = createContentCreationAgentState(project, this.listModels());
+		const candidateIds = new Set(candidates.map((node) => node.id));
+		const blockingIssues = state.analysis.issues.filter(
+			(issue) =>
+				issue.severity === "error" &&
+				(!issue.nodeId || candidateIds.has(issue.nodeId)) &&
+				RUN_BLOCKING_DIAGNOSTIC_CODES.has(issue.code),
+		);
+		if (blockingIssues.length > 0) {
+			throw new ContentGenerationIntentError(
+				"content generation plan is not ready",
+				"generation-plan-not-ready",
+				{ issues: blockingIssues },
+			);
+		}
 		const run: ContentPreparedRun = {
 			id: crypto.randomUUID(),
 			cwd,
@@ -165,12 +181,36 @@ function resolveRunNodes(project: ContentProjectDocument, requestedNodeIds?: rea
 			if (!project.graph.nodes.some((node) => node.id === nodeId)) throw new Error(`node not found: ${nodeId}`);
 		}
 	}
+	if (requested) {
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const edge of project.graph.edges) {
+				if (!requested.has(edge.target) || requested.has(edge.source)) continue;
+				const source = project.graph.nodes.find((node) => node.id === edge.source);
+				if (!source || (source.kind !== "image-generator" && source.kind !== "video-generator")) continue;
+				if (source.status === "succeeded" && source.data.assetId) continue;
+				requested.add(source.id);
+				changed = true;
+			}
+		}
+	}
 	return project.graph.nodes.filter(
 		(node) =>
 			(node.kind === "image-generator" || node.kind === "video-generator") &&
 			(requested ? requested.has(node.id) : node.status !== "succeeded"),
 	);
 }
+
+const RUN_BLOCKING_DIAGNOSTIC_CODES = new Set([
+	"asset-connection-unbound",
+	"generation-prompt-missing",
+	"generation-provider-unavailable",
+	"generation-source-asset-missing",
+	"selected-model-unavailable",
+	"generation-source-role-missing",
+	"generation-inputs-incompatible",
+]);
 
 function topologicalNodeOrder(project: ContentProjectDocument, nodeIds: readonly string[]): string[] {
 	const selected = new Set(nodeIds);

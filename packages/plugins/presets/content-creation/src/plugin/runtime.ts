@@ -1,4 +1,8 @@
-import type { PluginContext } from "@vetta-org/plugin-sdk";
+import type {
+	PluginContext,
+	PluginPromptAttachment,
+	PluginRegisterShortcutScope,
+} from "@vetta-org/plugin-sdk";
 import { ContentCreationAgentService } from "../agent/service";
 import { ContentAssetPreviewResolver } from "../generation/asset-preview-resolver";
 import { PluginContentArtifactStore } from "../generation/artifact-store";
@@ -7,101 +11,118 @@ import { ContentGenerationService } from "../generation/generation-service";
 import { PluginContentProjectRepository } from "../project/repository";
 import { ContentCreationWorkspace } from "../project/workspace";
 import { ContentPromptOptimizationService } from "../prompt-optimization/prompt-optimization-service";
-import { clearContentRunApprovals } from "./run-approval";
+import { ContentRunApprovalStore } from "./run-approval";
 
-let workspace: ContentCreationWorkspace | null = null;
-let generationService: ContentGenerationService | null = null;
-let assetPreviewResolver: ContentAssetPreviewResolver | null = null;
-let promptOptimizationService: ContentPromptOptimizationService | null = null;
-let agentService: ContentCreationAgentService | null = null;
-let notify: PluginContext["ui"]["notify"] | null = null;
-let mediaProviderSubscription: { dispose(): void } | null = null;
-let settingsSubscription: { dispose(): void } | null = null;
-let mediaProviderRefreshVersion = 0;
-const modelListeners = new Set<() => void>();
+/** Resources owned by one plugin activation. Instances may overlap during hot reload. */
+export class ContentCreationPluginRuntime {
+	readonly workspace: ContentCreationWorkspace;
+	readonly agent: ContentCreationAgentService;
+	readonly assetPreviewResolver: ContentAssetPreviewResolver;
+	readonly promptOptimization: ContentPromptOptimizationService;
+	readonly runApprovals = new ContentRunApprovalStore();
 
-async function refreshMediaProviders(ctx: PluginContext): Promise<void> {
-	const refreshVersion = ++mediaProviderRefreshVersion;
-	const mediaProviders = await ctx.media.listProviders().catch((error: unknown) => {
-		ctx.ui.notify({ message: ctx.i18n.t("error.mediaProviderDiscovery"), error });
-		return [];
-	});
-	if (refreshVersion !== mediaProviderRefreshVersion || !workspace) return;
-	const providers = createContentProviderRegistry(ctx.network, ctx.settings, ctx.media, ctx.jobs, mediaProviders);
-	generationService?.dispose();
-	generationService = new ContentGenerationService(
-		workspace,
-		providers,
-		new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.artifacts),
-	);
-	emitContentModelsChanged();
-}
+	private generationRuntime: ContentGenerationService | null = null;
+	private mediaProviderSubscription: { dispose(): void } | null = null;
+	private settingsSubscription: { dispose(): void } | null = null;
+	private mediaProviderRefreshVersion = 0;
+	private readonly modelListeners = new Set<() => void>();
+	private disposed = false;
 
-export async function initializePluginRuntime(ctx: PluginContext): Promise<ContentCreationWorkspace> {
-	mediaProviderSubscription?.dispose();
-	workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
-	agentService = new ContentCreationAgentService(workspace, () => getContentGenerationService());
-	assetPreviewResolver = new ContentAssetPreviewResolver(ctx.fs, ctx.storage);
-	promptOptimizationService = new ContentPromptOptimizationService(ctx.ai);
-	notify = ctx.ui.notify;
-	mediaProviderSubscription = ctx.media.onProvidersChanged(() => {
-		void refreshMediaProviders(ctx);
-	});
-	settingsSubscription = ctx.settings.onChange(() => emitContentModelsChanged());
-	await refreshMediaProviders(ctx);
-	return workspace;
-}
+	private constructor(private readonly ctx: PluginContext) {
+		this.workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
+		this.agent = new ContentCreationAgentService(this.workspace, () => this.generation);
+		this.assetPreviewResolver = new ContentAssetPreviewResolver(ctx.fs, ctx.storage);
+		this.promptOptimization = new ContentPromptOptimizationService(ctx.ai);
+	}
 
-export function disposePluginRuntime(): void {
-	clearContentRunApprovals();
-	mediaProviderRefreshVersion += 1;
-	generationService?.dispose();
-	mediaProviderSubscription?.dispose();
-	settingsSubscription?.dispose();
-	mediaProviderSubscription = null;
-	settingsSubscription = null;
-	generationService = null;
-	agentService = null;
-	assetPreviewResolver = null;
-	promptOptimizationService = null;
-	workspace = null;
-	notify = null;
-}
+	static async create(ctx: PluginContext): Promise<ContentCreationPluginRuntime> {
+		const runtime = new ContentCreationPluginRuntime(ctx);
+		try {
+			await runtime.initialize();
+			return runtime;
+		} catch (error) {
+			runtime.dispose();
+			throw error;
+		}
+	}
 
-export function subscribeContentModels(listener: () => void): () => void {
-	modelListeners.add(listener);
-	return () => modelListeners.delete(listener);
-}
+	get generation(): ContentGenerationService {
+		if (!this.generationRuntime) {
+			throw new Error("content-creation generation runtime is not available");
+		}
+		return this.generationRuntime;
+	}
 
-function emitContentModelsChanged(): void {
-	for (const listener of modelListeners) listener();
-}
+	registerShortcutScope: PluginRegisterShortcutScope = (contribution) =>
+		this.ctx.ui.registerShortcutScope(contribution);
 
-export function getContentGenerationService(): ContentGenerationService {
-	if (!generationService) throw new Error("content-creation generation runtime is not initialized");
-	return generationService;
-}
+	maximizeActivityPanel(): void {
+		this.ctx.ui.setActivityPanelWidth("max");
+	}
 
-export function getContentCreationWorkspace(): ContentCreationWorkspace {
-	if (!workspace) throw new Error("content-creation runtime is not initialized");
-	return workspace;
-}
+	publishPromptAttachment(attachment: PluginPromptAttachment | null): void {
+		this.ctx.ui.setPromptAttachment(attachment);
+	}
 
-export function getContentCreationAgentService(): ContentCreationAgentService {
-	if (!agentService) throw new Error("content-creation agent runtime is not initialized");
-	return agentService;
-}
+	notifyError(message: string, error: unknown): void {
+		this.ctx.ui.notify({ message, error });
+	}
 
-export function getContentAssetPreviewResolver(): ContentAssetPreviewResolver {
-	if (!assetPreviewResolver) throw new Error("content-creation asset runtime is not initialized");
-	return assetPreviewResolver;
-}
+	subscribeModels(listener: () => void): () => void {
+		if (this.disposed) return () => undefined;
+		this.modelListeners.add(listener);
+		return () => this.modelListeners.delete(listener);
+	}
 
-export function getContentPromptOptimizationService(): ContentPromptOptimizationService {
-	if (!promptOptimizationService) throw new Error("content-creation prompt optimization runtime is not initialized");
-	return promptOptimizationService;
-}
+	dispose(): void {
+		if (this.disposed) return;
+		this.disposed = true;
+		this.runApprovals.clear();
+		this.mediaProviderRefreshVersion += 1;
+		this.generationRuntime?.dispose();
+		this.mediaProviderSubscription?.dispose();
+		this.settingsSubscription?.dispose();
+		this.mediaProviderSubscription = null;
+		this.settingsSubscription = null;
+		this.modelListeners.clear();
+	}
 
-export function notifyContentCreationError(message: string, error: unknown): void {
-	notify?.({ message, error });
+	private async initialize(): Promise<void> {
+		this.mediaProviderSubscription = this.ctx.media.onProvidersChanged(() => {
+			void this.refreshMediaProviders();
+		});
+		this.settingsSubscription = this.ctx.settings.onChange(() => this.emitModelsChanged());
+		await this.refreshMediaProviders();
+	}
+
+	private async refreshMediaProviders(): Promise<void> {
+		const refreshVersion = ++this.mediaProviderRefreshVersion;
+		const mediaProviders = await this.ctx.media.listProviders().catch((error: unknown) => {
+			this.ctx.ui.notify({ message: this.ctx.i18n.t("error.mediaProviderDiscovery"), error });
+			return [];
+		});
+		if (this.disposed || refreshVersion !== this.mediaProviderRefreshVersion) return;
+
+		const providers = createContentProviderRegistry(
+			this.ctx.network,
+			this.ctx.settings,
+			this.ctx.media,
+			this.ctx.jobs,
+			mediaProviders,
+		);
+		const nextGenerationRuntime = new ContentGenerationService(
+			this.workspace,
+			providers,
+			new PluginContentArtifactStore(this.ctx.fs, this.ctx.storage, this.ctx.artifacts),
+		);
+		const previousGenerationRuntime = this.generationRuntime;
+		this.generationRuntime = nextGenerationRuntime;
+		previousGenerationRuntime?.dispose();
+		this.emitModelsChanged();
+	}
+
+	private emitModelsChanged(): void {
+		if (this.disposed) return;
+		for (const listener of this.modelListeners) listener();
+	}
 }
