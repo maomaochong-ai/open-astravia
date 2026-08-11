@@ -54,7 +54,11 @@ import {
 	toContentFlowNodes,
 } from "./graph-flow-adapters";
 import { CONTENT_FLOW_SOURCE_HANDLE_ID } from "./flow-handles";
-import { applySelectedNodeIdsToFlowNodes, reconcileSelectedNodeIds } from "./selection-state";
+import {
+	applySelectedNodeIdsToFlowEdges,
+	applySelectedNodeIdsToFlowNodes,
+	reconcileSelectedNodeIds,
+} from "./selection-state";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { DEFAULT_CANVAS_TOOL, getCanvasInteraction } from "./canvas-tools";
 import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "../node/dropped-media";
@@ -119,6 +123,8 @@ export function GraphWorkspace({
 	const [canvasDropActive, setCanvasDropActive] = useState(false);
 	const [importingCanvasDrop, setImportingCanvasDrop] = useState(false);
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+	const selectedNodeIdsRef = useRef<readonly string[]>([]);
+	const boxSelectionActiveRef = useRef(false);
 	const [pendingMenu, setPendingMenu] = useState<PendingConnectionMenu | null>(null);
 	const [canvasMenu, setCanvasMenu] = useState<CanvasCreateMenuState | null>(null);
 	const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(null);
@@ -126,6 +132,7 @@ export function GraphWorkspace({
 		() => selectedNodeIds.filter((nodeId) => project.graph.nodes.some((node) => node.id === nodeId)),
 		[project.graph.nodes, selectedNodeIds],
 	);
+	selectedNodeIdsRef.current = selectedNodeIds;
 	const selectedNodeIdSet = useMemo(() => new Set(activeSelectedNodeIds), [activeSelectedNodeIds]);
 	useEffect(() => {
 		onSelectedNodeIdsChange(activeSelectedNodeIds);
@@ -147,11 +154,56 @@ export function GraphWorkspace({
 		setCanvasMenu(null);
 		setContextMenu(null);
 	}, []);
+	const commitNodeSelection = useCallback((requestedNodeIds: readonly string[], synchronizeFlowNodes: boolean) => {
+		const nextNodeIds = [...new Set(requestedNodeIds)];
+		const nextNodeIdSet = new Set(nextNodeIds);
+		selectedNodeIdsRef.current = nextNodeIds;
+		setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
+
+		const instance = flowInstanceRef.current;
+		if (!instance) return;
+		if (synchronizeFlowNodes) {
+			instance.setNodes((nodes) => applySelectedNodeIdsToFlowNodes(nodes, nextNodeIdSet));
+		}
+		instance.setEdges((edges) => applySelectedNodeIdsToFlowEdges(edges, nextNodeIdSet));
+	}, []);
+	const applyNodeSelection = useCallback(
+		(requestedNodeIds: readonly string[]) => commitNodeSelection(requestedNodeIds, true),
+		[commitNodeSelection],
+	);
+	const onSelectionStart = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionStart"]>
+	>(() => {
+		boxSelectionActiveRef.current = true;
+	}, []);
+	const onSelectionChange = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionChange"]>
+	>(
+		({ nodes: selectedNodes }) => {
+			if (boxSelectionActiveRef.current) return;
+			commitNodeSelection(
+				selectedNodes.map((node) => node.id),
+				false,
+			);
+		},
+		[commitNodeSelection],
+	);
+	const finishBoxSelection = useCallback(() => {
+		if (!boxSelectionActiveRef.current) return;
+		boxSelectionActiveRef.current = false;
+		const selectedNodeIds = (flowInstanceRef.current?.getNodes() ?? [])
+			.filter((node) => node.selected)
+			.map((node) => node.id);
+		commitNodeSelection(selectedNodeIds, false);
+	}, [commitNodeSelection]);
+	const onSelectionEnd = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionEnd"]>
+	>(() => finishBoxSelection(), [finishBoxSelection]);
 
 	const actions = useMemo<ContentNodeActions>(
 		() => ({
 			onDelete: (nodeId) => {
-				setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, current.filter((id) => id !== nodeId)));
+				applyNodeSelection(selectedNodeIdsRef.current.filter((id) => id !== nodeId));
 				void onDispatch([{ type: "node.delete", nodeId }]);
 			},
 			onDuplicate: (nodeId) => void onDispatch([{ type: "node.duplicate", nodeId }]),
@@ -207,16 +259,13 @@ export function GraphWorkspace({
 					},
 				]),
 		}),
-		[onDispatch, onImportAssets, onImportReferences, onRunNode, project],
+		[applyNodeSelection, onDispatch, onImportAssets, onImportReferences, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
-		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions, assetPreviewUrls),
-		[actions, assetPreviewUrls, models, project, selectedNodeIdSet],
+		() => toContentFlowNodes(project, models, actions, assetPreviewUrls),
+		[actions, assetPreviewUrls, models, project],
 	);
-	const synchronizedEdges = useMemo(
-		() => toContentFlowEdges(project, selectedNodeIdSet),
-		[project, selectedNodeIdSet],
-	);
+	const synchronizedEdges = useMemo(() => toContentFlowEdges(project), [project]);
 	const appliedProjectSyncKeyRef = useRef(projectSyncKey);
 	const latestFlowSyncRef = useRef({
 		projectSyncKey,
@@ -233,8 +282,9 @@ export function GraphWorkspace({
 		const instance = flowInstanceRef.current;
 		if (!instance || appliedProjectSyncKeyRef.current === projectSyncKey) return;
 		appliedProjectSyncKeyRef.current = projectSyncKey;
-		instance.setNodes(synchronizedNodes);
-		instance.setEdges(synchronizedEdges);
+		const selectedNodeIdSet = new Set(selectedNodeIdsRef.current);
+		instance.setNodes(applySelectedNodeIdsToFlowNodes(synchronizedNodes, selectedNodeIdSet));
+		instance.setEdges(applySelectedNodeIdsToFlowEdges(synchronizedEdges, selectedNodeIdSet));
 	}, [projectSyncKey, synchronizedEdges, synchronizedNodes]);
 
 	const addNode = useCallback(
@@ -252,10 +302,10 @@ export function GraphWorkspace({
 			const position = { x: center.x - size.width / 2 + offset, y: center.y - size.height / 2 + offset };
 			const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
 			void onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]).then(() =>
-				setSelectedNodeIds([nodeId]),
+				applyNodeSelection([nodeId]),
 			);
 		},
-		[onDispatch, project.graph.nodes, t],
+		[applyNodeSelection, onDispatch, project.graph.nodes, t],
 	);
 
 	const handleCanvasDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
@@ -299,13 +349,13 @@ export function GraphWorkspace({
 				const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
 				closeMenus();
 				await onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]);
-				setSelectedNodeIds([nodeId]);
+				applyNodeSelection([nodeId]);
 				await importDroppedMediaFiles(files, (batch) => onImportAssets(nodeId, batch));
 			} finally {
 				setImportingCanvasDrop(false);
 			}
 		},
-		[closeMenus, onDispatch, onImportAssets, project.graph.nodes, t],
+		[applyNodeSelection, closeMenus, onDispatch, onImportAssets, project.graph.nodes, t],
 	);
 
 	const clampOverlay = useCallback((clientX: number, clientY: number, size: { width: number; height: number }) => {
@@ -416,10 +466,10 @@ export function GraphWorkspace({
 				{ type: "node.add", node: { id: nodeId, kind, name, position } },
 				{ type: "edge.connect", source: sourceNode.id, target: targetNode.id, ...connection },
 			]);
-			setSelectedNodeIds([nodeId]);
+			applyNodeSelection([nodeId]);
 			setPendingMenu(null);
 		},
-		[onDispatch, pendingMenu, project, t],
+		[applyNodeSelection, onDispatch, pendingMenu, project, t],
 	);
 
 	const selectedProjectNodes = useMemo(
@@ -449,27 +499,10 @@ export function GraphWorkspace({
 	const onInit = useCallback((instance: ReactFlowInstance<ContentFlowNode, Edge>) => {
 		flowInstanceRef.current = instance;
 		const latest = latestFlowSyncRef.current;
+		const selectedNodeIdSet = new Set(selectedNodeIdsRef.current);
 		appliedProjectSyncKeyRef.current = latest.projectSyncKey;
-		instance.setNodes(latest.nodes);
-		instance.setEdges(latest.edges);
-	}, []);
-	const applyNodeSelection = useCallback(
-		(requestedNodeIds: readonly string[]) => {
-			const requestedNodeIdSet = new Set(requestedNodeIds);
-			const nextNodeIds = project.graph.nodes
-				.filter((node) => requestedNodeIdSet.has(node.id))
-				.map((node) => node.id);
-			const nextNodeIdSet = new Set(nextNodeIds);
-			setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
-			flowInstanceRef.current?.setNodes((nodes) => applySelectedNodeIdsToFlowNodes(nodes, nextNodeIdSet));
-		},
-		[project.graph.nodes],
-	);
-	const onSelectionChange = useCallback<
-		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionChange"]>
-	>(({ nodes: selectedNodes }) => {
-		const nextNodeIds = selectedNodes.map((node) => node.id);
-		setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
+		instance.setNodes(applySelectedNodeIdsToFlowNodes(latest.nodes, selectedNodeIdSet));
+		instance.setEdges(applySelectedNodeIdsToFlowEdges(latest.edges, selectedNodeIdSet));
 	}, []);
 	const onConnect = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onConnect"]>>(
 		(connection) => {
@@ -586,10 +619,10 @@ export function GraphWorkspace({
 		void onDispatch(commands);
 		if (nodeIdsToDelete.length > 0) {
 			const removed = new Set(nodeIdsToDelete);
-			setSelectedNodeIds((current) => current.filter((nodeId) => !removed.has(nodeId)));
+			applyNodeSelection(selectedNodeIdsRef.current.filter((nodeId) => !removed.has(nodeId)));
 		}
 		return true;
-	}, [activeSelectedNodeIds, onDispatch, project.graph.nodes]);
+	}, [activeSelectedNodeIds, applyNodeSelection, onDispatch, project.graph.nodes]);
 
 	const isGraphSurfaceActive = useCallback(() => {
 		const el = flowContainerRef.current;
@@ -688,6 +721,7 @@ export function GraphWorkspace({
 				onDragOver={handleCanvasDragOver}
 				onDragLeave={handleCanvasDragLeave}
 				onDrop={(event) => void handleCanvasDrop(event)}
+				onPointerCancelCapture={finishBoxSelection}
 			>
 				<ContentCanvasSelectionProvider count={activeSelectedNodeIds.length}>
 					<ReactFlow<ContentFlowNode, Edge>
@@ -700,6 +734,8 @@ export function GraphWorkspace({
 						proOptions={PRO_OPTIONS}
 						onInit={onInit}
 						onSelectionChange={onSelectionChange}
+						onSelectionStart={onSelectionStart}
+						onSelectionEnd={onSelectionEnd}
 						onConnect={onConnect}
 						onConnectEnd={handleConnectEnd}
 						isValidConnection={isValidConnection}

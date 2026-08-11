@@ -37,7 +37,6 @@ export function getNextClipStart(project: ContentProjectDocument, trackId: strin
 
 export function toContentFlowNodes(
 	project: ContentProjectDocument,
-	selectedNodeIds: ReadonlySet<string>,
 	models: readonly ContentModelDescriptor[],
 	actions: ContentNodeActions,
 	assetPreviewUrls: ReadonlyMap<string, string>,
@@ -80,7 +79,6 @@ export function toContentFlowNodes(
 			id: node.id,
 			type: "contentNode",
 			position: node.position,
-			selected: selectedNodeIds.has(node.id),
 			draggable: !node.locked,
 			data: {
 				kind: node.kind,
@@ -115,10 +113,9 @@ export function toContentFlowNodes(
 	});
 }
 
-export function toContentFlowEdges(project: ContentProjectDocument, selectedNodeIds: ReadonlySet<string>): Edge[] {
+export function toContentFlowEdges(project: ContentProjectDocument): Edge[] {
 	return project.graph.edges.map((edge) => ({
 		...edge,
-		className: selectedNodeIds.has(edge.source) || selectedNodeIds.has(edge.target) ? "is-related" : undefined,
 		sourceHandle: CONTENT_FLOW_SOURCE_HANDLE_ID,
 		targetHandle: CONTENT_FLOW_TARGET_HANDLE_ID,
 	}));

@@ -1,7 +1,7 @@
 import { NodeResizer, NodeToolbar, Position, type Node, type NodeProps } from "@xyflow/react";
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
-import { type DragEvent, memo, useEffect, useRef, useState } from "react";
+import { type DragEvent, memo, useEffect, useMemo, useRef, useState } from "react";
 import { getContentNodeDefinition } from "./definitions";
 import type {
 	AssetKind,
@@ -92,10 +92,17 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 	const showEditor = singleSelection && editorMounted && definition.properties.length > 0;
 	const inputLabel = definition.inputs.map((port) => t(port.labelKey)).join(", ");
 	const outputLabel = definition.outputs.map((port) => t(port.labelKey)).join(", ");
-	const surfaceData =
-		data.kind === "image-generator" || data.kind === "video-generator"
-			? { ...data.nodeData, prompt: resolveContentPrompt(data.connectedPrompts, data.nodeData) }
-			: data.nodeData;
+	const surfaceData = useMemo(
+		() =>
+			data.kind === "image-generator" || data.kind === "video-generator"
+				? { ...data.nodeData, prompt: resolveContentPrompt(data.connectedPrompts, data.nodeData) }
+				: data.nodeData,
+		[data.connectedPrompts, data.kind, data.nodeData],
+	);
+	const surfaceReferenceAssets = useMemo(
+		() => data.referenceAssets.map(({ asset }) => asset),
+		[data.referenceAssets],
+	);
 
 	useEffect(
 		() => () => {
@@ -244,7 +251,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 					data={surfaceData}
 					descriptionKey={definition.descriptionKey}
 					assets={data.assets}
-					referenceAssets={data.referenceAssets.map(({ asset }) => asset)}
+					referenceAssets={surfaceReferenceAssets}
 					assetUrl={data.assetUrl}
 					assetKind={data.assetKind}
 					job={data.job}

@@ -294,4 +294,73 @@ describe("GraphWorkspace mouse interactions", () => {
 		rects.mockReturnValue([] as unknown as DOMRectList);
 		expect((selectAllScope?.enabled as () => boolean)()).toBe(false);
 	});
+
+	it("commits box selection once after the drag instead of rebuilding nodes on every move", async () => {
+		const project = createContentProject("C:\\project");
+		project.graph.nodes = [
+			{ id: "first", kind: "prompt", position: { x: 0, y: 0 }, status: "idle", data: {} },
+			{ id: "second", kind: "image-generator", position: { x: 400, y: 0 }, status: "idle", data: {} },
+		];
+		const onSelectedNodeIdsChange = vi.fn();
+		render(
+			<GraphWorkspace
+				project={project}
+				assetPreviewUrls={new Map()}
+				models={[]}
+				onDispatch={async () => undefined}
+				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
+				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={onSelectedNodeIdsChange}
+				onOpenSettings={() => undefined}
+			/>,
+		);
+
+		let flowNodes = [
+			{ id: "first", selected: false },
+			{ id: "second", selected: false },
+		];
+		const setNodes = vi.fn();
+		const setEdges = vi.fn();
+		act(() => {
+			(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
+				setNodes,
+				setEdges,
+				getNodes: () => flowNodes,
+			});
+		});
+		await waitFor(() => expect(onSelectedNodeIdsChange).toHaveBeenCalledWith([]));
+		onSelectedNodeIdsChange.mockClear();
+		setNodes.mockClear();
+		setEdges.mockClear();
+		const defaultNodes = reactFlowCapture.props?.defaultNodes;
+
+		act(() => {
+			(reactFlowCapture.props?.onSelectionStart as () => void)();
+			(reactFlowCapture.props?.onSelectionChange as (selection: Record<string, unknown>) => void)({
+				nodes: [{ id: "first" }],
+			});
+			(reactFlowCapture.props?.onSelectionChange as (selection: Record<string, unknown>) => void)({
+				nodes: [{ id: "first" }, { id: "second" }],
+			});
+		});
+
+		expect(onSelectedNodeIdsChange).not.toHaveBeenCalled();
+		expect(setNodes).not.toHaveBeenCalled();
+		expect(setEdges).not.toHaveBeenCalled();
+		expect(reactFlowCapture.props?.defaultNodes).toBe(defaultNodes);
+
+		flowNodes = [
+			{ id: "first", selected: true },
+			{ id: "second", selected: true },
+		];
+		act(() => {
+			(reactFlowCapture.props?.onSelectionEnd as () => void)();
+		});
+
+		await waitFor(() => expect(onSelectedNodeIdsChange).toHaveBeenCalledTimes(1));
+		expect(onSelectedNodeIdsChange).toHaveBeenLastCalledWith(["first", "second"]);
+		expect(setNodes).not.toHaveBeenCalled();
+		expect(setEdges).toHaveBeenCalledTimes(1);
+	});
 });

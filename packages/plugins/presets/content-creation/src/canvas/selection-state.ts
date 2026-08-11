@@ -14,6 +14,12 @@ interface SelectableFlowNode {
 	selected?: boolean;
 }
 
+interface RelatedFlowEdge {
+	source: string;
+	target: string;
+	className?: string;
+}
+
 /** Keep React Flow's internal selection in sync with programmatic canvas selection. */
 export function applySelectedNodeIdsToFlowNodes<NodeType extends SelectableFlowNode>(
 	nodes: readonly NodeType[],
@@ -27,4 +33,19 @@ export function applySelectedNodeIdsToFlowNodes<NodeType extends SelectableFlowN
 		return { ...node, selected };
 	});
 	return changed ? next : (nodes as NodeType[]);
+}
+
+/** Update selection-related edge chrome without rebuilding semantic edge data. */
+export function applySelectedNodeIdsToFlowEdges<EdgeType extends RelatedFlowEdge>(
+	edges: readonly EdgeType[],
+	selectedNodeIds: ReadonlySet<string>,
+): EdgeType[] {
+	let changed = false;
+	const next = edges.map((edge) => {
+		const className = selectedNodeIds.has(edge.source) || selectedNodeIds.has(edge.target) ? "is-related" : undefined;
+		if (edge.className === className) return edge;
+		changed = true;
+		return { ...edge, className };
+	});
+	return changed ? next : (edges as EdgeType[]);
 }

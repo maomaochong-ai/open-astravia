@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContentNodeCard, type ContentFlowNode, type ContentFlowNodeData } from "../src/node/ContentNodeCard";
 
 const editorRender = vi.hoisted(() => vi.fn());
+const surfaceRender = vi.hoisted(() => vi.fn());
 const nodeDefinition = vi.hoisted(() => ({
 	category: "generation",
 	descriptionKey: "node.description.image-generator",
@@ -60,9 +61,15 @@ vi.mock("../src/node/ContentNodeHeader", () => ({
 	ContentNodeHeader: () => null,
 }));
 
-vi.mock("../src/node/ContentNodeSurface", () => ({
-	ContentNodeSurface: () => null,
-}));
+vi.mock("../src/node/ContentNodeSurface", async () => {
+	const { memo } = await import("react");
+	return {
+		ContentNodeSurface: memo(() => {
+			surfaceRender();
+			return null;
+		}),
+	};
+});
 
 function createNodeData(): ContentFlowNodeData {
 	return {
@@ -114,6 +121,7 @@ describe("ContentNodeCard render boundary", () => {
 	afterEach(() => {
 		cleanup();
 		editorRender.mockClear();
+		surfaceRender.mockClear();
 	});
 
 	it("does not rerender the editor when only the React Flow position changes", async () => {
@@ -136,6 +144,19 @@ describe("ContentNodeCard render boundary", () => {
 		view.rerender(<ContentNodeCard {...props} data={{ ...data, name: "Updated name" }} />);
 
 		expect(editorRender).toHaveBeenCalledTimes(2);
+	});
+
+	it("keeps the node surface stable across selection chrome updates", () => {
+		const data = createNodeData();
+		const props = createNodeProps(data);
+		const view = render(<ContentNodeCard {...props} />);
+
+		expect(surfaceRender).toHaveBeenCalledTimes(1);
+
+		view.rerender(<ContentNodeCard {...props} dragging />);
+		view.rerender(<ContentNodeCard {...props} dragging={false} />);
+
+		expect(surfaceRender).toHaveBeenCalledTimes(1);
 	});
 
 	it("mounts an unselected node editor only after dragging stops", async () => {
