@@ -1,10 +1,12 @@
-import { describe, expect, test } from "vitest";
-import { buildSystemPrompt } from "../src/core/system-prompt.js";
 import {
 	createToolSearchTool,
+	createToolSearchToolRegistration,
 	scoreDeferredTools,
 	type ToolSearchResult,
-} from "../src/core/tools/tool-search/index.js";
+	type ToolSearchToolDetails,
+} from "@vetta/runtime-tools/coding";
+import { describe, expect, test } from "vitest";
+import { buildSystemPrompt } from "../src/model-context/index.js";
 
 const INDEX = [
 	{ name: "mcp_notion_create_page", description: "Create a page in a Notion database or under a parent page" },
@@ -48,27 +50,39 @@ describe("createToolSearchTool", () => {
 			alreadyActive: ["mcp_notion_query_database"],
 			totalDeferred: 4,
 		});
-		const result = await tool.execute("t1", { query: "notion" });
+		const result = await executeToolSearch(tool, "notion");
 		const text = (result.content[0] as { type: "text"; text: string }).text;
 		expect(text).toContain("Activated 1 MCP tool(s)");
 		expect(text).toContain("mcp_notion_create_page: Create a page");
 		expect(text).toContain("Already active (call directly, do not search again): mcp_notion_query_database");
-		expect(result.details.query).toBe("notion");
+		expect((result.details as ToolSearchToolDetails).query).toBe("notion");
 	});
 
 	test("reports no-match with index size and retry hint", async () => {
 		const tool = makeTool({ activated: [], alreadyActive: [], totalDeferred: 4 });
-		const result = await tool.execute("t1", { query: "nonexistent" });
+		const result = await executeToolSearch(tool, "nonexistent");
 		const text = (result.content[0] as { type: "text"; text: string }).text;
 		expect(text).toContain('No MCP tools matched "nonexistent"');
 		expect(text).toContain("4 deferred tool(s) indexed");
 	});
 
 	test("is registered but not default-active in any scenario", () => {
-		const tool = makeTool({ activated: [], alreadyActive: [], totalDeferred: 0 });
-		expect(tool.scope_use).toEqual([]);
+		const registration = createToolSearchToolRegistration({
+			search: () => ({ activated: [], alreadyActive: [], totalDeferred: 0 }),
+		});
+		expect(registration.scopeUse).toEqual([]);
 	});
 });
+
+function executeToolSearch(tool: ReturnType<typeof createToolSearchTool>, query: string) {
+	return tool.execute({
+		sessionId: "test-session",
+		turnId: "test-turn",
+		toolCallId: "test-call",
+		input: { query },
+		signal: new AbortController().signal,
+	});
+}
 
 describe("system prompt MCP deferred section", () => {
 	const mcpTools = [{ name: "mcp_notion_create_page", description: "Create a page in Notion" }];

@@ -219,6 +219,34 @@ useEffect(() => {
 }, []);
 ```
 
+### 9. 测试（**重要行为必须在测试阶段暴露错误**）
+
+本包同时包含 Node/Electron 主进程、preload 合同和 React Renderer。必须先按根目录规则判断测试是否为必选项，再按错误实际发生的层级选择工具；不能用纯函数测试或手工启动替代组件接线、IPC 或 Electron 边界测试。
+
+| 被测对象 | 必选工具与环境 | 适用重点 |
+|----------|----------------|----------|
+| 纯函数、策略、映射、校验 | Vitest，默认 `node` 环境 | 边界值、错误分支、状态转换，不加载 DOM |
+| React 组件、Hook、Jotai 与路由交互 | Vitest + `jsdom` + React Testing Library；用户输入优先 `@testing-library/user-event` | 按用户可见文本、role、label、状态和副作用断言 |
+| 依赖底层 DOM/Pointer/Drag API 的行为 | `jsdom` 中使用 React `act()`、`createRoot` 和必要的原生事件；仅在 Testing Library 无法准确表达时使用 | 拖拽、portal、尺寸或浏览器 API 适配 |
+| preload、IPC 和主进程服务 | Vitest `node` 环境，在 Electron/系统 API 边界使用窄 fake；生产者与消费者使用同一合同夹具 | channel、参数、返回值、错误和权限边界 |
+| 真实窗口、跨进程、原生菜单、打包启动 | WebdriverIO/Electron E2E | 只覆盖低层测试无法证明的关键路径 |
+| 启动连通性、UI 观感、布局和主题 | `verify:ui:*` 与截图检查 | 作为环境与视觉补充，不是功能测试 |
+
+以下 Renderer 变更必须有 React 组件或 Hook 测试，不能只测抽出的纯函数：
+
+- 条件渲染、空态、loading/error/retry、按钮可用性或权限导致的 UI 差异。
+- 点击、输入、提交、选择、键盘、焦点、Dialog/Popover、拖拽和快捷键作用域行为。
+- Router、TanStack Query、Jotai、Context、i18n 或 `window.vetta` 数据与组件之间的接线。
+- aria role/name、label、焦点恢复等会影响可访问操作的语义。
+
+组件测试应挂载满足行为所需的最小 Provider 和组件子树，优先使用 `getByRole`、`getByLabelText`、可见文案和最终用户状态查询；不要依赖 class 名、脆弱 DOM 层级或大面积快照。异步更新使用 Testing Library 的异步查询或 `waitFor`，不要用任意延时。
+
+当前包已经配置 Vitest 和 `jsdom`，但尚未在自身 `devDependencies` 声明 React Testing Library。首次新增适合上述组件测试的行为时，应在同一任务补齐 `@testing-library/react`、`@testing-library/user-event`、统一 setup，并让 Vitest 收集 `*.test.tsx`，同时更新锁文件；不得依赖其他 workspace 偶然提升的依赖。已有 `createRoot` 测试可以渐进保留，不要求为形式批量改写。
+
+`jsdom` 不实现真实布局、完整 Pointer/Drag、Electron 和原生窗口行为。此类差异会影响正确性时，必须增加对应 E2E 或 UI 验证；若要改用 `happy-dom`，应先证明其更适合目标行为并统一相关测试，不在同一类测试中随意混用环境。
+
+跑测：包内 `bun run test`，或仓库根 `bunx vitest --run <具体 test 路径>`。涉及真实 Electron 行为时运行定向 `bun run test:e2e`；需要启动连通性或视觉检查时再使用规定的 `verify:ui:*` 流程。改完至少跑通本次新增/改动测试及受影响的现有测试。
+
 ## 缓存规范
 
 主进程需要持久化可重新生成或重新下载的内容时，统一使用

@@ -17,7 +17,7 @@
  * is used automatically (syntax highlighting, line numbers, truncation warnings).
  *
  * Usage:
- *   pi -e ./tool-override.ts
+ *   vetta -e ./tool-override.ts
  */
 
 import { Type } from "@sinclair/typebox";
@@ -28,7 +28,7 @@ import { access, readFile } from "fs/promises";
 import { homedir } from "os";
 import { join, resolve } from "path";
 
-const LOG_FILE = join(homedir(), ".pi", "agent", "read-access.log");
+const LOG_FILE = join(homedir(), ".vetta", "agent", "read-access.log");
 
 // Paths that are blocked from reading
 const BLOCKED_PATTERNS = [
@@ -64,8 +64,8 @@ const readSchema = Type.Object({
 	limit: Type.Optional(Type.Number({ description: "Maximum number of lines to read" })),
 });
 
-export default function (pi: ExtensionAPI) {
-	pi.registerTool({
+export default function (api: ExtensionAPI) {
+	api.registerTool({
 		name: "read", // Same name as built-in - this will override it
 		label: "read (audited)",
 		description:
@@ -128,7 +128,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	// Also register a command to view the access log
-	pi.registerCommand("read-log", {
+	api.registerCommand("read-log", {
 		description: "View the file access log",
 		handler: async (_args, ctx) => {
 			try {

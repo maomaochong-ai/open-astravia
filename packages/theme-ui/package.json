@@ -81,6 +81,10 @@
 			"types": "./src/layout/index.ts",
 			"import": "./src/layout/index.ts"
 		},
+		"./plugin-ui": {
+			"types": "./src/plugin-ui/index.ts",
+			"import": "./src/plugin-ui/index.ts"
+		},
 		"./overlays": {
 			"types": "./src/overlays/index.ts",
 			"import": "./src/overlays/index.ts"

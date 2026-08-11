@@ -13,7 +13,10 @@
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
 		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
-		"test": "vitest --run",
+		"test": "vitest --run --config vitest.config.ts",
+		"test:unit": "vitest --run --config vitest.config.ts",
+		"test:live": "vitest --run --config vitest.live.config.ts",
+		"test:all": "vitest --run --config vitest.all.config.ts",
 		"prepublishOnly": "bun run clean && bun run build"
 	},
 	"dependencies": {

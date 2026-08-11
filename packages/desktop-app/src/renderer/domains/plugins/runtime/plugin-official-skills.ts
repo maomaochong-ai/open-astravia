@@ -22,5 +22,10 @@ export function createOfficialSkillsApi(
 			assertOfficial();
 			await skills.uninstall(capabilitySessionId, name, type);
 		},
+		installFromMarket: async (type, slug) => {
+			assertOfficial();
+			// 市场下载走主进程鉴权/匿名通道，不经 capability session。
+			return window.vetta.skills.installFromMarketSlug(type, slug);
+		},
 	};
 }

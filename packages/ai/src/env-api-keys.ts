@@ -1,7 +1,11 @@
 // NEVER convert to top-level imports - breaks browser/Vite builds
-let _existsSync: typeof import("node:fs").existsSync | null = null;
-let _homedir: typeof import("node:os").homedir | null = null;
-let _join: typeof import("node:path").join | null = null;
+import type { existsSync } from "node:fs";
+import type { homedir } from "node:os";
+import type { join } from "node:path";
+
+let _existsSync: typeof existsSync | null = null;
+let _homedir: typeof homedir | null = null;
+let _join: typeof join | null = null;
 
 // Eagerly load in Node.js/Bun environment only
 if (typeof process !== "undefined" && (process.versions?.node || process.versions?.bun)) {
@@ -55,7 +59,7 @@ function hasVertexAdcCredentials(): boolean {
  */
 export function getEnvApiKey(provider: KnownProvider): string | undefined;
 export function getEnvApiKey(provider: string): string | undefined;
-export function getEnvApiKey(provider: any): string | undefined {
+export function getEnvApiKey(provider: string): string | undefined {
 	// Fall back to environment variables
 	if (provider === "github-copilot") {
 		return process.env.COPILOT_GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_TOKEN;

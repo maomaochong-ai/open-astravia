@@ -1,4 +1,4 @@
-import type { SessionExecutionMode } from "../../../../runtime-core/src/index.js";
+import type { SessionExecutionMode } from "@vetta/runtime-core";
 import type { ExecutionModeOverride, SelectedSkillRef } from "./shared.js";
 
 export interface ScheduledTask {

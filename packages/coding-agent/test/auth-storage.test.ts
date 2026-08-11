@@ -1,11 +1,11 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { registerOAuthProvider } from "@vetta/ai";
 import lockfile from "proper-lockfile";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { AuthStorage } from "../src/core/auth-storage.js";
-import { clearConfigValueCache } from "../src/core/resolve-config-value.js";
+import { AuthStorage } from "../src/auth/index.js";
+import { clearConfigValueCache } from "../src/configuration/index.js";
 
 describe("AuthStorage", () => {
 	let tempDir: string;
@@ -55,7 +55,7 @@ describe("AuthStorage", () => {
 
 		test("apiKey with ! prefix trims whitespace from command output", async () => {
 			writeAuthJson({
-				anthropic: { type: "api_key", key: "!echo '  spaced-key  '" },
+				anthropic: { type: "api_key", key: nodeCommand("process.stdout.write('  spaced-key  ')") },
 			});
 
 			authStorage = AuthStorage.create(authJsonPath);
@@ -66,7 +66,7 @@ describe("AuthStorage", () => {
 
 		test("apiKey with ! prefix handles multiline output (uses trimmed result)", async () => {
 			writeAuthJson({
-				anthropic: { type: "api_key", key: "!printf 'line1\\nline2'" },
+				anthropic: { type: "api_key", key: nodeCommand("process.stdout.write('line1\\nline2')") },
 			});
 
 			authStorage = AuthStorage.create(authJsonPath);
@@ -146,7 +146,7 @@ describe("AuthStorage", () => {
 
 		test("apiKey command can use shell features like pipes", async () => {
 			writeAuthJson({
-				anthropic: { type: "api_key", key: "!echo 'hello world' | tr ' ' '-'" },
+				anthropic: { type: "api_key", key: '!echo hello-world | node -e "process.stdin.pipe(process.stdout)"' },
 			});
 
 			authStorage = AuthStorage.create(authJsonPath);
@@ -161,7 +161,7 @@ describe("AuthStorage", () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; echo "key-value"'`;
+				const command = counterCommand(counterFile);
 				writeAuthJson({
 					anthropic: { type: "api_key", key: command },
 				});
@@ -182,7 +182,7 @@ describe("AuthStorage", () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; echo "key-value"'`;
+				const command = counterCommand(counterFile);
 				writeAuthJson({
 					anthropic: { type: "api_key", key: command },
 				});
@@ -203,7 +203,7 @@ describe("AuthStorage", () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; echo "key-value"'`;
+				const command = counterCommand(counterFile);
 				writeAuthJson({
 					anthropic: { type: "api_key", key: command },
 				});
@@ -239,7 +239,7 @@ describe("AuthStorage", () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; exit 1'`;
+				const command = counterCommand(counterFile, true);
 				writeAuthJson({
 					anthropic: { type: "api_key", key: command },
 				});
@@ -336,6 +336,76 @@ describe("AuthStorage", () => {
 
 			const secondTry = await authStorage.getApiKey(providerId);
 			expect(secondTry).toBe("Bearer refreshed-access-token");
+		});
+	});
+
+	describe("credential document boundary", () => {
+		test("rejects invalid credential shapes without overwriting the source", () => {
+			const invalidDocument = JSON.stringify({ anthropic: { type: "api_key", key: 42 } });
+			writeFileSync(authJsonPath, invalidDocument, "utf-8");
+
+			authStorage = AuthStorage.create(authJsonPath);
+			authStorage.set("openai", { type: "api_key", key: "openai-key" });
+
+			expect(authStorage.get("anthropic")).toBeUndefined();
+			expect(authStorage.drainErrors()).toEqual([expect.any(Error)]);
+			expect(readFileSync(authJsonPath, "utf-8")).toBe(invalidDocument);
+		});
+
+		test("preserves provider-specific OAuth fields", () => {
+			writeAuthJson({
+				custom: {
+					type: "oauth",
+					refresh: "refresh-token",
+					access: "access-token",
+					expires: Date.now() + 60_000,
+					projectId: "project-1",
+				},
+			});
+
+			authStorage = AuthStorage.create(authJsonPath);
+
+			expect(authStorage.get("custom")).toMatchObject({
+				type: "oauth",
+				projectId: "project-1",
+			});
+		});
+
+		test("observes OAuth providers registered after storage creation", async () => {
+			const providerId = `dynamic-oauth-provider-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+			authStorage = AuthStorage.create(authJsonPath);
+			registerOAuthProvider({
+				id: providerId,
+				name: "Dynamic OAuth Provider",
+				async login() {
+					return {
+						refresh: "dynamic-refresh",
+						access: "dynamic-access",
+						expires: Date.now() + 60_000,
+					};
+				},
+				async refreshToken(credentials) {
+					return credentials;
+				},
+				getApiKey(credentials) {
+					return credentials.access;
+				},
+			});
+
+			await authStorage.login(providerId, {
+				onAuth: () => {},
+				onPrompt: async () => "",
+				onProgress: () => {},
+			});
+
+			expect(authStorage.getOAuthProviders()).toContainEqual(expect.objectContaining({ id: providerId }));
+			expect(await authStorage.getApiKey(providerId)).toBe("dynamic-access");
+		});
+
+		test.runIf(process.platform !== "win32")("creates the credential file with owner-only permissions", () => {
+			authStorage = AuthStorage.create(authJsonPath);
+
+			expect(statSync(authJsonPath).mode & 0o777).toBe(0o600);
 		});
 	});
 
@@ -452,3 +522,19 @@ describe("AuthStorage", () => {
 		});
 	});
 });
+
+function nodeCommand(script: string, args: readonly string[] = []): string {
+	return `!node -e "${script}" ${args.map((argument) => `"${argument}"`).join(" ")}`.trim();
+}
+
+function counterCommand(counterFile: string, fail = false): string {
+	const script = [
+		"const fs=require('node:fs')",
+		"const path=process.argv[1]",
+		"const count=Number(fs.readFileSync(path,'utf8'))",
+		"fs.writeFileSync(path,String(count+1))",
+		"process.stdout.write('key-value')",
+		...(fail ? ["process.exitCode=1"] : []),
+	].join(";");
+	return nodeCommand(script, [counterFile]);
+}

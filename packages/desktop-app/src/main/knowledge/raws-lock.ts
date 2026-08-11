@@ -14,8 +14,9 @@
 import type { Dirent } from "node:fs";
 import { chmod, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { knowledge } from "@vetta/coding-agent";
+import * as knowledge from "@vetta/runtime-knowledge";
 import { getAppLogger } from "../logger.js";
+import { getKnowledgeRoot } from "./knowledge-layout.js";
 
 const log = getAppLogger("kb-raws-lock");
 const isPosix = process.platform !== "win32";
@@ -50,14 +51,14 @@ export async function lockRaws(root?: string): Promise<void> {
 		log.warn("raws read-only lock skipped: not effective on Windows");
 		return;
 	}
-	const dir = knowledge.rawsDir(knowledge.knowledgeRoot(root));
+	const dir = knowledge.rawsDir(root ?? getKnowledgeRoot());
 	await chmodTree(dir, LOCK_DIR, LOCK_FILE);
 }
 
 /** 恢复 raws/ 整树为可写。幂等，可在启动时自愈调用。 */
 export async function unlockRaws(root?: string): Promise<void> {
 	if (!isPosix) return;
-	const dir = knowledge.rawsDir(knowledge.knowledgeRoot(root));
+	const dir = knowledge.rawsDir(root ?? getKnowledgeRoot());
 	await chmodTree(dir, UNLOCK_DIR, UNLOCK_FILE);
 }
 

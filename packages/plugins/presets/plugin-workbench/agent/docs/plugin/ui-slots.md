@@ -97,6 +97,86 @@ interface PluginGlobalSlotContribution {
 
 典型用途：设置缺失引导弹窗、全局悬浮工具。一个插件可注册多个。
 
+## 工作区视图 registerWorkspaceView
+
+贡献一个**整页 surface**，与内置的「自动化」「知识库」同级：宿主给它一条自己的路由
+`/workspace/<pluginId>/<viewId>` 和一个侧边栏导航入口，打开后整个内容区都归插件。
+
+- 权限：`ui.slot.workspace-view`（缺权限 **warn+noop**）
+- 导航入口默认落在侧边栏的「更多」收纳里；用户可以拖动排序，也可以 **pin 到左上方置顶区**（含「新会话」最多 5 个），布局按 key 持久化
+- 组件收到 `{ pluginId, viewId }`，一个组件可以服务多个注册
+- `icon` 是 **iconify class 字符串**（如 `"icon-[solar--widget-4-linear]"`），不是 ReactNode——宿主要把它渲染进自己的导航按钮，并按 key 持久化布局
+
+```ts
+interface PluginWorkspaceViewContribution {
+  id: string;                       // 插件内唯一；进 URL，故限 [a-z0-9][a-z0-9._-]*
+  label: string;                    // 侧边栏文案，支持 %catalogKey%
+  icon?: string;                    // iconify class 字符串
+  description?: string;             // 导航项 tooltip
+  badge?: PluginNavBadge;           // 导航项角标，见下
+  component: ComponentType<PluginWorkspaceViewProps>;
+  navOrder?: number;                // 同一插件内多个视图的排序
+}
+```
+
+```tsx
+ctx.ui.registerWorkspaceView({
+  id: "board",
+  label: "%view.board.label%",
+  icon: "icon-[solar--widget-4-linear]",
+  badge: { kind: "beta" },
+  component: BoardView,
+});
+
+// 程序化跳转到自己的视图
+ctx.ui.openWorkspaceView("board");
+```
+
+### 导航项角标
+
+```ts
+type PluginNavBadge =
+  | { kind: "beta" }                                   // 宿主预置，见下
+  | { kind: "text"; text: string; tone?: PluginNavBadgeTone }
+  | { kind: "count"; count: number; tone?: PluginNavBadgeTone }
+  | { kind: "dot"; tone?: PluginNavBadgeTone };
+
+type PluginNavBadgeTone = "default" | "accent" | "warning" | "danger";
+```
+
+- `beta` 是**宿主预置**：渲染成与内置「知识库」一模一样的 Beta 标识，文案由宿主按当前语言给出，插件不必自己把 "Beta" 翻译一遍
+- `text` 支持与 `label` 相同的 `%catalogKey%` 目录解析；解析后为空则不出角标
+- `count` 超过 99 显示 `99+`，**归零时角标消失**（挂一个「0」比没有更糟）
+- `tone` 只能从上述语义值里选，宿主映射到自己的主题色——插件给不了原始色值，角标因此始终与内置导航项一致
+
+运行时更新用 `setWorkspaceViewBadge`，**不要靠重新注册**——那会让整个整页 surface 重挂载，未读数变一下就丢掉视图内部状态：
+
+```ts
+ctx.ui.setWorkspaceViewBadge("board", { kind: "count", count: unread });
+ctx.ui.setWorkspaceViewBadge("board", { kind: "dot", tone: "warning" });
+ctx.ui.setWorkspaceViewBadge("board", null); // 清掉
+```
+
+认不出的角标（未知 `kind`、空文本、非有限数）一律当作「没有角标」，不会让视图注册失败。
+
+**该用哪个插槽**
+
+| 场景 | 用 |
+| --- | --- |
+| 跨会话、跨项目的工作台（看板、控制台、仪表盘） | **工作区视图** |
+| 绑定当前对话的辅助面板 | [活动 Tab](#活动面板-tab-registeractivitytab) |
+| 全局浮层 / 对话框 | [全局浮层](#全局浮层-registerglobalslot) |
+
+**与面板类插槽的关键差别**：工作区视图**独占内容区**，所以它可以（也应该）自带
+页面级 header 和滚动容器，不受「面板内禁止 viewport 级浮层」的约束。但它仍在宿主
+窗口内——不要覆盖宿主 chrome（侧边栏、标题栏），顶部留一条 `drag-region` 高度以免
+盖住窗口拖拽区。
+
+插件被禁用时，它的导航入口消失；用户如果正停在该路由上，宿主会把他送回首页。
+持久化的侧边栏布局按 key 保留，插件装回来后位置复原。
+
+示例：`packages/plugins/presets/kanban`。
+
 ## 文件预览 registerFilePreview
 
 按**文件扩展名**贡献预览组件，渲染在活动面板的文件预览区。
@@ -190,6 +270,7 @@ pdfjs.getDocument({ url: file.getUrl() });
 - **默认注册即上栏**（`initiallyVisible` 缺省 `true`）。声明 `initiallyVisible: false` 表示「出现条件我自己管」：注册只入池，之后用 `setActivityTabVisible` 静默上栏/下栏（如 git 只在仓库目录上栏、工作台跟随输入栏 toggle），或用 `openActivityTab` 上栏并抢焦点打开（如图像生成完成后跳到历史）
 - 显隐记录按 **会话 cwd** 持久化（ADR-0026）：插件表过态就听插件的，没表过态才看 `initiallyVisible`。用户随时可用减号手动隐藏
 - 插件禁用时 tab 隐藏，重新启用可回来
+- **默认按访问驻留**：首次激活后进入宿主的 warm LRU，切换时保留组件状态与 DOM；每个面板最多保留 2 个非活动 warm tab，超出的旧 tab 在浏览器空闲阶段淘汰。`retention: "active-only"` 可关闭驻留，`retention: "pinned"` 表示只要贡献可用就不参与淘汰。当前活动和浮动 tab 始终驻留。
 - **布局边界（面板内）**：与 file-preview 相同——UI 留在 Tab 面板矩形内，禁止 viewport 级 `fixed` / 超高 z-index / portal 到 `document.body`。全局浮层用 `registerGlobalSlot`，Toast 用 `notify`。见 [styling-and-pitfalls.md → 面板类 slot 布局边界](./styling-and-pitfalls.md#面板类-slot-布局边界禁止-viewport-级浮层)。
 
 ```ts
@@ -200,6 +281,9 @@ interface PluginActivityTabContribution {
   component: ComponentType;   // 零 props
   scope_use?: readonly ConversationScenario[]; // fail-closed
   initiallyVisible?: boolean;  // 缺省 true：注册即上栏；false = 出现条件由插件自己驱动
+  retention?: "active-only" | "warm" | "pinned"; // 缺省 warm
+  /** @deprecated true=pinned，false=active-only */
+  keepAliveWhenAvailable?: boolean;
 }
 ```
 
@@ -219,7 +303,8 @@ ctx.ui.registerActivityTab({
 import { useActivityTab } from "@vetta-org/plugin-sdk";
 
 function StatsPanel() {
-  const { cwd } = useActivityTab();
+  const { cwd, active } = useActivityTab();
+  // warm/pinned 会保留组件；昂贵的轮询或动画应在 active=false 时主动暂停。
   // ...
 }
 ```

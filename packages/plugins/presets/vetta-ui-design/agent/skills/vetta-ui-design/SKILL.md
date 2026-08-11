@@ -6,9 +6,11 @@ agent_mode: work
 
 # Vetta UI Design
 
+A design document is ONE directory — `login-app.vetd/` — holding everything:
+
 ```text
-login-app.vetd          ← canvas manifest. GENERATED — see below.
-login-app.vetd.d/
+login-app.vetd/
+  design.json           ← canvas manifest. GENERATED — see below.
   frames/               ← one TSX file = one canvas frame = one route
     index.tsx           ← the site root "/"
     login.tsx           ← "/login"
@@ -19,14 +21,14 @@ login-app.vetd.d/
   DESIGN.md             ← optional spec; OVERRIDES defaults in this skill
 ```
 
-You write the sidecar sources; the plugin owns the manifest and reconciles
+You write the sources; the plugin owns the manifest and reconciles
 automatically. Every save hot-reloads the canvas. Two consequences worth
 internalising before you start:
 
 - **The file name IS the route and the frame id.** Create a screen by writing
   `frames/<kebab-id>.tsx`, delete one by deleting the file. There is no
   registration step anywhere.
-- **Editing the `.vetd` manifest is pointless, not just forbidden.** It is
+- **Editing `design.json` is pointless, not just forbidden.** It is
   regenerated from your tsx declarations on every save, so any hand-edit is
   overwritten seconds later. If a frame is not showing up the way you expect,
   the answer is always in the tsx.
@@ -208,16 +210,14 @@ export function NavBar() {
 
 ## Workflow
 
-**New document**: pick the product type → `vetd_create` with it → settle the
-style.
-The plugin ships curated design systems (Linear, Stripe, Notion, Apple, …), each
-a hand-tuned `theme.css` + `DESIGN.md`; `vetd_design_systems` lists them and its
-own description explains the three usages. Two judgment calls it cannot make for
-you: when the user named a system outright, apply it directly; when they only
-described a vibe ("like a developer tool", "make it feel premium"), shortlist 2-4 by
-the blurbs and `present` them rather than picking silently. Applying on an empty
-design writes `theme.css` + `DESIGN.md` for you — do NOT rewrite them
-afterwards, just build frames that follow `DESIGN.md`.
+**New document**: pick the product type → `vetd_create` with it → start building.
+Do NOT offer the user a menu of styles: design systems are a thing the user
+opts into from the Design sidebar, not something you propose. Just design well
+for what they asked for, deriving the palette and type scale from the product
+itself.
+
+If `DESIGN.md` exists in the design document, the user has already applied a
+system — read it first and follow it, and do NOT rewrite it or `theme.css`.
 
 **Existing document**: `vetd_status` ONCE first. It returns the frame ids/sizes,
 `sharedShell` (existing `_layout.tsx` + `components/` — reuse them) and
@@ -270,13 +270,65 @@ single-screen designs.
    with `icon` renders one fallback everywhere, and the source reads fine.
 4. **Every touched frame screenshotted, and the PNG actually Read?**
 
-**Editing from an attachment**: the payload carries the exact
-`frames/xxx.tsx:LINE` plus DOM path/classes/text. Edit that location. If it
-points into `components/`, the change hits every frame using it — say so.
+**User notes on the canvas**: the user pins Figma-style notes onto frames (or
+onto empty canvas) — each is a request addressed to you. `vetd_notes` lists the
+pending ones: every note carries its thread, a source anchor re-resolved at read
+time (`element.source` = `frames/x.tsx:LINE` — the authoritative edit target
+unless `anchorStale`), and per-frame screenshots where numbered pins mark the
+exact spots. Take them **one at a time**: edit for one note, verify it with
+`vetd_screenshot`, then immediately `resolve` that one note before you start the
+next — never hold the replies back until every note is done. The user is watching
+the canvas, where each bubble flips to resolved the moment you reply, and a turn
+that dies halfway has to leave the finished ones already marked. That reply is
+what marks a note handled; never touch `.notes.json` yourself.
+
+Each `resolve` response tells you what is still pending — when notes remain it
+lists them in full, anchors and annotated screenshots included, so you can go
+straight into the next one without another lookup. Treat `pendingRemaining` as
+your loop condition: keep handling and resolving until a resolve comes back with
+`pendingRemaining: 0`. Anything that appears there but was not in your original
+list is something the user pinned while you were working. Notes reach you three ways: the
+user sends an explicit "handle my notes" prompt, `vetd_status` reports a
+`pendingNotes` count, and `vetd_screenshot` flags pending notes on the frame it
+just shot.
+
+Notes are also how the user talks to you **while you are working**: rather than
+interrupt your turn with a new message, they pin the request onto the canvas and
+let you pick it up. So a note can appear at any moment, including after your last
+screenshot — which is exactly why the Done check below runs `vetd_notes`
+unconditionally instead of waiting for some tool response to mention one. That
+check is the only way those notes ever reach you: nothing will send you a
+follow-up message about them, so a note you skip just sits there unanswered.
+
+Every instruction the user gives from the canvas becomes a note, so a message
+asking you to handle canvas notes never carries the request text itself — the
+text lives in the notes, and `vetd_notes` is where you read it. You finish each
+one by replying through `vetd_notes`'s `resolve`, which is what puts your answer
+back on the canvas where the user asked and clears the pending badge.
+
+**Everything from the canvas arrives as a note.** Whether the user pinned it with
+the note tool or typed it into the badge on a selected frame or element, it lands
+in `.notes.json` and reaches you through `vetd_notes` — there is no separate
+attachment format to learn. A note anchored to an element carries the exact
+`frames/xxx.tsx:LINE` in `element.source` (re-resolved at read time, authoritative
+unless `anchorStale`) plus its DOM path, classes and text, which is your edit
+target. If that location points into `components/`, the change hits every frame
+using it — say so in your reply.
 
 **Done** means: every frame you touched has been screenshotted and the image
-Read, that image is free of the three screenshot defects, and `issues` came back
-empty. Not one of those three is checked for you at the end of the turn — if you
+Read, that image is free of the three screenshot defects, `issues` came back
+empty, and no user note is left pending.
+
+That last one has a hard rule, because nothing outside this turn will catch a
+miss: **the final action of every turn — after the work, right before you write
+your summary — is one more `vetd_notes` call.** Run it even when nothing this
+turn mentioned notes. Anything still pending is work the user asked for while
+you were busy: do it now, `resolve` it, then check again, and only report once a
+check comes back clean. Do not report first and leave it for "next turn" — the
+user deliberately did not interrupt you with a message, precisely because you
+were going to look here, and nothing will nudge you afterwards.
+
+Not one of those three is checked for you at the end of the turn — if you
 report back without them, whatever is broken simply stays broken. So before you
 report, name the frames you touched and confirm each one cleared all three.
 

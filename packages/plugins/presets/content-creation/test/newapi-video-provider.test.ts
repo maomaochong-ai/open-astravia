@@ -3,6 +3,16 @@ import { NewApiVideoProvider } from "../src/generation/newapi-video-provider";
 import { base64Response, createSettings, jsonResponse, QueueNetwork } from "./provider-test-fixtures";
 
 describe("NewApiVideoProvider", () => {
+	it("hides a configured model while base URL or API key is missing", () => {
+		const provider = new NewApiVideoProvider(new QueueNetwork([]), createSettings({ model: "video-model" }), {
+			id: "custom-video",
+			baseUrlSetting: "base",
+			apiKeySetting: "key",
+			modelSetting: "model",
+		});
+		expect(provider.listModels()).toEqual([]);
+	});
+
 	it("exposes the configured model and maps the video-generations protocol", async () => {
 		const network = new QueueNetwork([
 			jsonResponse({ id: "task-1", video_url: "https://cdn.example/result.mp4" }),
@@ -29,6 +39,10 @@ describe("NewApiVideoProvider", () => {
 			url: "https://newapi.test/v1/video/generations",
 			headers: { Authorization: "Bearer secret" },
 		});
-		expect(result).toMatchObject({ kind: "video", data: "video-data", duration: 10 });
+		expect(result).toMatchObject({
+			kind: "video",
+			source: { type: "inline", data: "video-data" },
+			duration: 10,
+		});
 	});
 });

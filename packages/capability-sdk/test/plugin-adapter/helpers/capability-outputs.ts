@@ -19,12 +19,33 @@ import {
 	DOMAIN_WEBHOOK_CAPABILITIES,
 } from "../../../src/domain.js";
 import {
+	FOUNDATION_ARTIFACT_CAPABILITIES,
 	FOUNDATION_FILESYSTEM_CAPABILITIES,
+	FOUNDATION_JOB_CAPABILITIES,
 	FOUNDATION_NETWORK_CAPABILITIES,
 	FOUNDATION_STORAGE_CAPABILITIES,
 } from "../../../src/foundation.js";
 
 function foundationOutput(capabilityId: CapabilityId): unknown {
+	if (capabilityId === FOUNDATION_ARTIFACT_CAPABILITIES.PERSIST.id) {
+		return {
+			type: "storage-blob",
+			id: "blob",
+			url: "vetta-media://local/blob",
+			mimeType: "image/png",
+			sizeBytes: 5,
+		};
+	}
+	if (capabilityId === FOUNDATION_ARTIFACT_CAPABILITIES.RELEASE.id) return undefined;
+	if (capabilityId === FOUNDATION_JOB_CAPABILITIES.GET.id || capabilityId === FOUNDATION_JOB_CAPABILITIES.CANCEL.id) {
+		return {
+			id: "job-1",
+			domain: "media",
+			operation: "generate",
+			status: "succeeded",
+			artifacts: [],
+		};
+	}
 	if (capabilityId === FOUNDATION_FILESYSTEM_CAPABILITIES.READ_DIRECTORY.id) return [];
 	if (capabilityId === FOUNDATION_FILESYSTEM_CAPABILITIES.READ_FILE.id) {
 		return { content: "data", encoding: "utf8" };
@@ -55,21 +76,18 @@ function domainOutput(capabilityId: CapabilityId): unknown {
 			{
 				id: "desktop-app:vetta",
 				ownerId: "desktop-app",
-				protocolVersion: 1,
-				capabilities: [{ kind: "image", modes: ["text-to-image", "image-to-image"] }],
+				protocolVersion: 4,
+				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image", "image-to-image"] }],
 			},
 		];
 	}
-	if (
-		capabilityId === DOMAIN_MEDIA_CAPABILITIES.CREATE_JOB.id ||
-		capabilityId === DOMAIN_MEDIA_CAPABILITIES.GET_JOB.id ||
-		capabilityId === DOMAIN_MEDIA_CAPABILITIES.CANCEL_JOB.id
-	) {
+	if (capabilityId === DOMAIN_MEDIA_CAPABILITIES.SUBMIT.id) {
 		return {
 			id: "job-1",
-			providerId: "desktop-app:vetta",
+			domain: "media",
+			operation: "generate",
 			status: "succeeded",
-			artifacts: [{ kind: "image", mimeType: "image/png", data: "aW1hZ2U=" }],
+			artifacts: [],
 		};
 	}
 	if (

@@ -18,10 +18,51 @@ describe("applyContentProjectCommands", () => {
 		expect(next.revision).toBe(1);
 		expect(next.updatedAt).toBe("2026-01-02T00:00:00.000Z");
 		expect(next.graph.nodes).toHaveLength(2);
+		expect(next.graph.nodes.map((node) => node.name)).toEqual(["prompt 1", "video-generator 1"]);
 		expect(next.graph.edges).toHaveLength(1);
 		expect(next.graph.edges[0]).toMatchObject({ sourceHandle: "text", targetHandle: "prompt" });
-		expect(next.graph.nodes[1]?.data).toMatchObject({ aspectRatio: "16:9", duration: 5, resolution: "720p" });
+		expect(next.graph.nodes[1]?.data).toEqual({ duration: 5, resolution: "720p" });
 		expect(project.graph.nodes).toHaveLength(0);
+	});
+
+	it("persists an explicit node name and rejects empty renames", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "prompt", kind: "prompt", name: "分镜提示词", position: { x: 0, y: 0 } } },
+		]);
+		const renamed = applyContentProjectCommands(project, [
+			{ type: "node.rename", nodeId: "prompt", name: "电影提示词" },
+		]);
+
+		expect(renamed.graph.nodes[0]?.name).toBe("电影提示词");
+		expect(() =>
+			applyContentProjectCommands(renamed, [{ type: "node.rename", nodeId: "prompt", name: "  " }]),
+		).toThrow(ContentProjectCommandError);
+	});
+
+	it("stores workflow intent and semantic node purpose", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "workflow.update",
+				workflow: {
+					title: "产品发布视频",
+					objective: "生成一支介绍核心功能的短视频",
+					deliverables: [{ type: "video", fromNode: "video", description: "最终成片" }],
+				},
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "video",
+					kind: "video-generator",
+					name: "主视频",
+					purpose: "根据分镜提示词生成最终成片",
+					position: { x: 0, y: 0 },
+				},
+			},
+		]);
+
+		expect(project.workflow).toMatchObject({ title: "产品发布视频", deliverables: [{ fromNode: "video" }] });
+		expect(project.graph.nodes[0]).toMatchObject({ purpose: "根据分镜提示词生成最终成片" });
 	});
 
 	it("rejects incompatible and cyclic connections while allowing multiple prompt sources", () => {
@@ -53,7 +94,91 @@ describe("applyContentProjectCommands", () => {
 			applyContentProjectCommands(chained, [
 				{ type: "edge.connect", source: "b", target: "a", sourceHandle: "image", targetHandle: "reference" },
 			]),
-		).toThrow(ContentProjectCommandError);
+		).toThrow("connection would create a cycle: b -> a -> b");
+	});
+
+	it("returns structured connection diagnostics", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "prompt", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 300, y: 0 } } },
+		]);
+
+		try {
+			applyContentProjectCommands(project, [
+				{ type: "edge.connect", source: "prompt", target: "image", targetHandle: "reference" },
+			]);
+			throw new Error("expected connection failure");
+		} catch (error) {
+			expect(error).toBeInstanceOf(ContentProjectCommandError);
+			expect(error).toMatchObject({ code: "connection-type-mismatch" });
+		}
+	});
+
+	it("binds concrete assets and removes their bindings with the connection", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "asset.add",
+				asset: {
+					id: "asset-image",
+					kind: "image",
+					name: "reference.png",
+					mimeType: "image/png",
+					createdAt: "2026-01-01T00:00:00.000Z",
+				},
+			},
+			{
+				type: "node.add",
+				node: { id: "assets", kind: "asset", position: { x: 0, y: 0 }, data: { assetIds: ["asset-image"] } },
+			},
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 300, y: 0 } } },
+			{
+				type: "node.bind-assets",
+				sourceNodeId: "assets",
+				targetNodeId: "image",
+				assetIds: ["asset-image"],
+				targetHandle: "reference",
+				slotId: "referenceImages",
+			},
+		]);
+		const edgeId = project.graph.edges[0]?.id;
+		expect(project.graph.nodes.find((node) => node.id === "image")?.data.inputs).toEqual([
+			expect.objectContaining({ assetId: "asset-image", sourceNodeId: "assets", slotId: "referenceImages" }),
+		]);
+
+		const disconnected = applyContentProjectCommands(project, [{ type: "edge.delete", edgeId: edgeId! }]);
+		expect(disconnected.graph.nodes.find((node) => node.id === "image")?.data.inputs).toEqual([]);
+	});
+
+	it("configures first and last frame dependencies as role-specific edges", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "first", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "last", kind: "image-generator", position: { x: 0, y: 300 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+			{
+				type: "node.configure-generation",
+				targetNodeId: "video",
+				plan: {
+					intent: "interpolate-frames",
+					providerId: "host-media",
+					modelId: "frame-video",
+					modeId: "image-to-video",
+					bindings: [
+						{ sourceNodeId: "first", assetIds: [], kind: "image", slotId: "firstFrame", targetHandle: "image" },
+						{ sourceNodeId: "last", assetIds: [], kind: "image", slotId: "lastFrame", targetHandle: "image" },
+					],
+				},
+			},
+		]);
+
+		expect(project.graph.edges).toEqual([
+			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
+			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
+		]);
+		expect(project.graph.nodes.find((node) => node.id === "video")?.data).toMatchObject({
+			providerId: "host-media",
+			modelId: "frame-video",
+			modeId: "image-to-video",
+		});
 	});
 
 	it("duplicates a node with independent data and an offset position", () => {
@@ -85,6 +210,35 @@ describe("applyContentProjectCommands", () => {
 			{ type: "node.move", nodeId: "node", position: { x: 40, y: 50 } },
 		]);
 		expect(moved.graph.nodes[0]).toMatchObject({ locked: false, position: { x: 40, y: 50 } });
+	});
+
+	it("distinguishes user geometry changes from automatic layout placements", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: {
+					id: "node",
+					kind: "prompt",
+					position: { x: 0, y: 0 },
+					layoutOwnership: "automatic",
+				},
+			},
+		]);
+		const automaticallyPlaced = applyContentProjectCommands(project, [
+			{ type: "node.layout", nodeId: "node", position: { x: 200, y: 100 } },
+		]);
+		const manuallyMoved = applyContentProjectCommands(automaticallyPlaced, [
+			{ type: "node.move", nodeId: "node", position: { x: 240, y: 140 } },
+		]);
+
+		expect(automaticallyPlaced.graph.nodes[0]).toMatchObject({
+			position: { x: 200, y: 100 },
+			layoutOwnership: "automatic",
+		});
+		expect(manuallyMoved.graph.nodes[0]).toMatchObject({
+			position: { x: 240, y: 140 },
+			layoutOwnership: "user",
+		});
 	});
 
 	it("removes dependent edges and timeline clips with a node", () => {

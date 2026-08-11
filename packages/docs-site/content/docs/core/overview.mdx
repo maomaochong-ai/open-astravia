@@ -1,0 +1,70 @@
+---
+title: 理解 Vetta 的工作方式
+description: 用工作区、任务、执行、结果和复用五个概念建立完整的产品心智。
+---
+
+Vetta 不是只返回一段答案的聊天框。它把 Agent 放进一个明确的本地工作区，让模型在可检查的权限和工具边界内读取资料、修改文件、执行命令，并把过程和结果保留在会话中。
+
+<figure className="docs-media-frame docs-media-frame--wide">
+  <img src="/images/product/workspace.png" alt="Vetta 主工作区，左侧管理项目和会话，中间承载任务输入与结果" width="1920" height="1280" />
+  <figcaption>一个工作区同时容纳项目上下文、会话历史、Agent 执行和输出文件。</figcaption>
+</figure>
+
+## 五个核心对象
+
+<div className="docs-concept-map" aria-label="Vetta 核心对象关系">
+  <div><span>01</span><strong>工作区</strong><small>一组本地资料与允许操作的边界</small></div>
+  <div><span>02</span><strong>任务</strong><small>目标、上下文、约束和验收条件</small></div>
+  <div><span>03</span><strong>会话</strong><small>一次连续工作的消息、工具和状态记录</small></div>
+  <div><span>04</span><strong>执行</strong><small>模型推理、工具调用、权限确认和后台工作</small></div>
+  <div><span>05</span><strong>结果</strong><small>回复、文件、产物、测试和未解决风险</small></div>
+</div>
+
+工作区可以包含多个会话；每个会话在同一项目背景下处理一个连续目标。任务执行成功后，可以把稳定方法沉淀为技能、场景或知识，也可以交给批量任务和自动化再次运行。
+
+## 一项工作的标准闭环
+
+<Steps>
+  <Step>
+    ### 选择边界
+
+    选择现有项目、打开本地目录，或在默认「对话」工作区中开始。需要改文件时，优先使用对应项目目录。
+  </Step>
+  <Step>
+    ### 给出可执行任务
+
+    写清目标、允许处理的路径、必要约束和验收方式。使用 `@` 引用文件，使用 `/` 选择技能或场景。
+  </Step>
+  <Step>
+    ### 观察和授权
+
+    查看 Agent 的阶段性说明、待办、工具调用和后台任务。遇到权限请求时，核对动作和影响范围再决定是否允许。
+  </Step>
+  <Step>
+    ### 验收结果
+
+    不只阅读最后一段回复，还要核对文件变化、产物、测试结果、失败工具和仍需人工收尾的事项。
+  </Step>
+</Steps>
+
+## Vetta 与普通对话的区别
+
+| 维度 | 普通模型对话 | Vetta 工作流 |
+| --- | --- | --- |
+| 上下文 | 主要依赖粘贴内容 | 项目目录、引用文件、图片、知识和能力共同组成 |
+| 动作 | 生成文字建议 | 可调用本机工具、修改文件和执行确定性动作 |
+| 权限 | 通常不可见 | 沙盒、完全访问和逐次确认显式呈现 |
+| 过程 | 主要看回复 | 可检查待办、工具调用、后台任务和请求历史 |
+| 复用 | 再次复制提示词 | 可沉淀为技能、知识、批量任务和自动化 |
+
+<Callout type="info" title="模型能力不等于任务完成">
+  模型给出自信的总结不代表文件已经修改、命令已经成功或产物已经生成。以工作区中的实际文件和执行记录作为验收依据。
+</Callout>
+
+## 继续阅读
+
+<Cards>
+  <Card title="项目、工作区与会话" href="/core/workspaces-and-sessions/" description="选择正确边界，理解历史、分叉与项目指令。" />
+  <Card title="上下文、工具与权限" href="/core/context-tools-and-permissions/" description="控制 Agent 看见的内容和允许执行的动作。" />
+  <Card title="进度、结果与恢复" href="/core/progress-results-and-recovery/" description="检查过程、验证结果，并从失败中继续。" />
+</Cards>

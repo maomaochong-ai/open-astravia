@@ -1,20 +1,30 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
-import { getCanvasController, getFrameError, setPendingDesignPath } from "./canvas/design-runtime";
-import { designSystemCardDescriptor } from "./cards/design-system-card";
+import type { ElementQuery, SelectedElementPayload } from "./canvas/bridge-client";
+import {
+	type CanvasController,
+	getCanvasController,
+	getFrameError,
+	setPendingDesignPath,
+} from "./canvas/design-runtime";
+import { captureFrameOffscreen, offscreenRasterSupported } from "./canvas/offscreen-raster";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
-import { applyDesignSystem, buildRestylePrompt } from "./design-systems/apply";
-import { DESIGN_SYSTEMS, designSystemById } from "./design-systems/index";
 import { engineDiagnostics } from "./engine/engine-manager";
+import { composeNotePins } from "./notes/annotate";
+import { notesFilePath } from "./notes/notes-store";
+import { type DesignNote, type NotesFile, noteStatus, parseNotesFile, pendingNotes } from "./notes/types";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import type { SourceIssue } from "./vetd/check-sources";
 import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
+import { layoutIssues } from "./vetd/layout-probe";
 import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
 import { scaffoldDesign } from "./vetd/scaffold";
 
 const SCOPE_USE = ["project", "conversation"] as const;
+/** 与画布位图队列同一档（canvas/frame-raster.ts）：模型看的图不该比画布上的糊。 */
+const SCREENSHOT_JPEG_QUALITY = 0.92;
 /**
  * 设计画布只在「工作」模式下成立（ADR-0046）：编程模式里这些工具连同画布、
  * 全局插槽、skill 一起隔离，只留 .vetd 的文件预览。插件级 agent_mode 是硬闸、
@@ -90,7 +100,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		// 工具描述每轮都在系统提示里，所以只留「做什么 + 去哪拿规则」。规则本身归
 		// skill 正文（已验证 invoke_skill 能送达），在这里复述一遍是双份 token。
 		description:
-			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
+			"Create a new Vetta UI Design document (a `<name>.vetd/` directory holding design.json + sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -139,7 +149,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				vetdPath: result.vetdPath,
 				sourcesDir: result.dirPath,
 				defaultFrameSize,
-				note: `Design created and opened on the canvas, with NO frames yet. Its default size is ${defaultFrameSize.width}x${defaultFrameSize.height} — still declare it per frame: every frames/<id>.tsx starts with \`export const frame = { width: ${defaultFrameSize.width}, height: ${defaultFrameSize.height}, title }\`, and a screen of a different product type declares its own. Never edit the .vetd manifest. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx), then every frame as a short skeleton so the whole set reaches the canvas immediately, and only then fill them in one at a time — see the vetta-ui-design skill.`,
+				note: `Design created and opened on the canvas, with NO frames yet. Its default size is ${defaultFrameSize.width}x${defaultFrameSize.height} — still declare it per frame: every frames/<id>.tsx starts with \`export const frame = { width: ${defaultFrameSize.width}, height: ${defaultFrameSize.height}, title }\`, and a screen of a different product type declares its own. Never edit design.json. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx), then every frame as a short skeleton so the whole set reaches the canvas immediately, and only then fill them in one at a time — see the vetta-ui-design skill.`,
 			};
 		},
 	});
@@ -219,8 +229,26 @@ export function registerDesignTools(ctx: PluginContext): void {
 				};
 			}
 			let dataUrl: string;
+			// 布局机检搭在出图这一次渲染上（见 vetd/layout-probe）。走离屏窗口时页面
+			// 就在手上，量一次几乎不要钱；宿主没有这个能力就照旧只出图——机检是附加
+			// 信息，不该成为截不到图的理由。
+			let probe: unknown;
 			try {
-				dataUrl = await controller.captureFrame(frameId);
+				const frameSize = controller.session.manifest.frames.find((frame) => frame.id === frameId);
+				if (offscreenRasterSupported() && frameSize) {
+					const raster = await captureFrameOffscreen({
+						port: controller.port,
+						frameId,
+						width: frameSize.width,
+						height: frameSize.height,
+						quality: SCREENSHOT_JPEG_QUALITY,
+						probeLayout: true,
+					});
+					dataUrl = raster.dataUrl;
+					probe = raster.probe;
+				} else {
+					dataUrl = await controller.captureFrame(frameId);
+				}
 			} catch (error) {
 				const reason = error instanceof Error ? error.message : String(error);
 				// 等待期间才坏掉的话，报错要带上真正的原因而不只是「超时」。
@@ -251,15 +279,31 @@ export function registerDesignTools(ctx: PluginContext): void {
 			await pruneSnapshots(host.fs, dirPath, frameId);
 			// 只带这一帧自己的违规：截图是逐帧调的，把整份设计的 issues 全塞进来会让
 			// agent 拿着别的 frame 的报错去改当前这个。
-			const frameIssues = issues.filter((issue) => issue.file === `frames/${frameId}.tsx`);
+			// 源码机检 + 渲染机检合成一份：对 agent 来说都是「这一帧被证明有问题的地方」，
+			// 分两个字段只会让它以为其中一份是可选的。
+			const frameIssues = [
+				...issues.filter((issue) => issue.file === `frames/${frameId}.tsx`),
+				...layoutIssues(probe, frameId),
+			];
+			// 搭车提醒（与 issues 同一先例）：截图是每帧必调的，这一帧有待处理的用户
+			// 备注就在这里点名，agent 不必单独巡检。
+			const framePendingNotes = pendingNotes(controller.notes.notes).filter(
+				(note) => note.anchor.kind !== "free" && note.anchor.frameId === frameId,
+			).length;
 			return {
 				ok: true,
 				path,
+				...(framePendingNotes > 0
+					? {
+							pendingNotes: framePendingNotes,
+							notesReminder: `This frame has ${framePendingNotes} pending user note(s). Call vetd_notes to see them (annotated screenshot + source anchors) and address them before you finish.`,
+						}
+					: {}),
 				...(frameIssues.length > 0 ? { issues: frameIssues } : {}),
 				// 光说「截好了」模型会只瞟一眼就宣布完成。把该找什么写在这里：工具返回是
 				// 每次都读的，而 references/quality.md 未必被翻开。三项是实测最高频的
 				// 渲染缺陷，共同点是源码怎么读都读不出来，只有看图才能发现。
-				note: `Screenshot saved${frameIssues.length > 0 ? " — `issues` lists rule violations the checker proved in this frame's source; fix them with a targeted edit along with whatever you see in the image" : ""}. Read this path to actually look at the rendering, and inspect it for defects the source cannot reveal: (1) misalignment — edges/baselines that should line up but do not, cards of unequal height, inconsistent gutters; (2) unintended text wrapping — buttons, tabs, table headers, nav items or labels spilling onto a second line (CJK copy is wider than the English the container was sized for), and text clipped or overflowing; (3) classes that resolve to nothing — Tailwind emits no CSS for a class it cannot resolve, so the element silently keeps its default look while the source reads fine: an icon slot collapsing to empty space (a name or set that does not exist), or a surface with no background because its theme token was never defined in theme.css. Also check clipping, contrast, and whether the frame fills its declared height. Fix what you find and screenshot again — see references/quality.md for the full checklist.`,
+				note: `Screenshot saved${frameIssues.length > 0 ? " — `issues` lists what the checkers PROVED about this frame, from the source and from measuring the rendered DOM at capture time (empty icon slots, clipped text, controls wrapping to a second line, rows off by a few pixels). Each carries file:line; fix them with targeted edits" : ""}. Now read this path and actually look at the image. The checkers only report what they can prove, and they are deliberately conservative — they miss more than they catch, and they say nothing at all about these, which are yours to judge: whether the visual hierarchy leads the eye to the right thing first; whether the copy is plausible, specific and in the user's language (never Lorem ipsum or "Item 1"); whether each icon actually matches its meaning; whether text/background contrast is comfortable; whether spacing and type sizes stay on one scale; whether the frame fills its declared height; and the alignment, wrapping and empty-looking elements the measurements were too cautious to flag. Fix what you find and screenshot again — see references/quality.md for the full checklist.`,
 				// 模型不可见：宿主把顶层 cards 提到 details.cards，在消息下方渲染截图卡。
 				cards: [screenshotCardDescriptor(vetdPath, dirPath, frameId)],
 			};
@@ -296,6 +340,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 							// 外壳与组件就会在每个 frame 里重抄一遍导航栏。
 							sharedShell: shell,
 							issues,
+							// 用户在画布上留的待处理备注数。非零时先调 vetd_notes 看内容。
+							pendingNotes: pendingNotes(controller.notes.notes).length,
 							frames: controller.session.manifest.frames.map((frame) => {
 								const buildError = getFrameError(frame.id);
 								return {
@@ -315,13 +361,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		},
 	});
 
-	interface DesignSystemsInput {
-		present?: string[];
-		apply?: string;
-		design?: string;
-	}
-
-	/** apply/无画布场景下解析目标 .vetd：显式参数 > 打开的画布 > cwd 里唯一那份。 */
+	/** 无画布场景下解析目标 .vetd：显式参数 > 打开的画布 > cwd 里唯一那份。 */
 	const resolveVetdPath = async (host: { fs: PluginContext["fs"] }, cwd: string, explicit?: string) => {
 		if (explicit) return explicit;
 		const controller = getCanvasController();
@@ -335,96 +375,315 @@ export function registerDesignTools(ctx: PluginContext): void {
 		);
 	};
 
-	ctx.agent.registerTool<DesignSystemsInput>({
-		id: "vetd-design-systems",
-		name: "vetd_design_systems",
-		label: "%tool.vetd_design_systems%",
+
+	interface NotesInput {
+		ids?: string[];
+		resolve?: { id: string; reply: string }[];
+	}
+
+	/** 拿到一批待办时的干活方式。列表读取与 resolve 后的续办共用。 */
+	const NOTES_WORK_THROUGH_HINT =
+		"Read every screenshot path — the numbered pins mark each note's position (numbers match `number`). `element.source` (file:line) was re-resolved just now and is the authoritative edit target unless `anchorStale`. Work through them ONE AT A TIME: edit for a note, verify it with vetd_screenshot, then immediately call vetd_notes with `resolve` for that single note before starting the next one. Do not batch the replies until the end — the user watches each note flip to resolved on the canvas as you go, and a turn that dies halfway must leave the finished ones already marked.";
+
+	/**
+	 * resolve 之后还有待办。这条提示得把「还没完」说死：这些备注多半是用户在你干活
+	 * 期间新贴上来的，不会有任何消息通知你，这里就是它们唯一的入口。
+	 */
+	const NOTES_KEEP_GOING_HINT = `You are NOT done — \`notes\` above lists what is still pending, including anything the user pinned while you were working (nothing else will notify you about those). Keep going in this same turn: handle the next one now, resolve it, and repeat until a resolve comes back with \`pendingRemaining: 0\`. Do not report back or end your turn while notes remain. ${NOTES_WORK_THROUGH_HINT}`;
+
+	const NOTES_ALL_CLEAR_HINT =
+		"All notes are resolved — nothing is pending on the canvas. You can finish the rest of your checks and report back.";
+
+	/** vetd_notes 返回给模型的一条备注。 */
+	interface NoteView {
+		number: number;
+		id: string;
+		status: "pending" | "resolved";
+		messages: { author: string; text: string }[];
+		/** 锚在哪：frame 内（含元素）或画布空白处。 */
+		location:
+			| { kind: "frame"; frame: string; frameFile: string; x: number; y: number }
+			| { kind: "canvas"; x: number; y: number; detachedFromDeletedFrame?: string };
+		/** 元素锚（刚刚现场重解析过）；`source` 即 `frames/x.tsx:行号`。 */
+		element?: { source: string | null; domPath: string; tag: string; text: string };
+		/** true = 原锚定元素在当前 DOM 里已找不到，element 是放置时的旧快照，行号不可信。 */
+		anchorStale?: boolean;
+	}
+
+	ctx.agent.registerTool<NotesInput>({
+		id: "vetd-notes",
+		name: "vetd_notes",
+		label: "%tool.vetd_notes%",
 		description:
-			"Built-in design systems (curated theme.css + DESIGN.md presets: Linear, Stripe, Notion, Apple, Spotify, …). Three usages: (1) no arguments — list all systems with style blurbs, so you can shortlist by the user's description; (2) `present: [ids]` — render clickable preview cards in the conversation for the user to pick from (their choice arrives as a new user message; ALWAYS prefer this over choosing silently when the user hasn't named a style); (3) `apply: id` — apply a system to the design document. Apply on an EMPTY design writes theme.css + DESIGN.md directly; on a design with frames it writes DESIGN.md + a full backup, then returns restyle instructions for you to execute.",
+			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.",
 		parameters: {
 			type: "object",
 			properties: {
-				present: {
+				ids: {
 					type: "array",
 					items: { type: "string" },
-					description:
-						"System ids (2-4 recommended) to render as clickable preview cards for the user to choose from.",
+					description: "Note ids to read (default: all pending notes).",
 				},
-				apply: {
-					type: "string",
-					description: "System id to apply to the design document.",
-				},
-				design: {
-					type: "string",
-					description:
-						"Absolute path of the target .vetd (optional; defaults to the design open on the canvas, or the workspace's only .vetd).",
+				resolve: {
+					type: "array",
+					items: {
+						type: "object",
+						properties: {
+							id: { type: "string" },
+							reply: {
+								type: "string",
+								description: "What you changed, one or two sentences, in the user's language.",
+							},
+						},
+						required: ["id", "reply"],
+						additionalProperties: false,
+					},
+					description: "Mark notes resolved with a reply each. Only resolve notes you actually addressed.",
 				},
 			},
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
+		// 读取要为每个涉及的 frame 拉活体 + 截图 + 合成，逐帧 30s 的链路可能串联多次。
+		timeoutMs: 120_000,
 		handler: async ({ host, session, trigger }) => {
-			const { present, apply, design } = trigger.input;
+			const { ids, resolve } = trigger.input;
+			const controller = getCanvasController();
 
-			if (apply) {
-				const system = designSystemById(apply);
-				if (!system) {
+			// —— 回写：agent 处理完的备注在这里定点落状态（插件仍是唯一写者）。 ——
+			if (resolve && resolve.length > 0) {
+				if (controller) {
+					const unknown: string[] = [];
+					for (const entry of resolve) {
+						if (!controller.notes.appendMessage(entry.id, "agent", entry.reply)) unknown.push(entry.id);
+					}
+					await controller.notes.flush();
+					const remaining = pendingNotes(controller.notes.notes);
+					const head = {
+						ok: unknown.length === 0,
+						resolved: resolve.length - unknown.length,
+						...(unknown.length > 0 ? { unknownIds: unknown } : {}),
+						pendingRemaining: remaining.length,
+					};
+					if (remaining.length === 0) return { ...head, note: NOTES_ALL_CLEAR_HINT };
+					/**
+					 * 还有待办就连同锚点与标注图一并回给它。
+					 *
+					 * 只回一个 `pendingRemaining: 2` 是不够的——实测 agent 拿到这个数字照样
+					 * 收工报告，因为「用户交代的那件事」已经做完了。而这些备注往往是用户在
+					 * 它干活期间新贴上来的，除了这里没有别的入口能送到它眼前。把下一批活直接
+					 * 摆上来，顺带省掉它再查一次的那趟往返（那一趟同样要拉活体、截图）。
+					 */
+					const next = await readNotesLive(controller, host, remaining);
 					return {
-						ok: false,
-						error: `Unknown design system "${apply}". Valid ids: ${DESIGN_SYSTEMS.map((s) => s.id).join(", ")}`,
+						...head,
+						notes: next.notes,
+						...(next.screenshots.length > 0 ? { screenshots: next.screenshots } : {}),
+						note: NOTES_KEEP_GOING_HINT,
 					};
 				}
+				// 画布没开：没有别的写者，直接 patch 文件（同样按 id 定点，不整体重写语义）。
 				let vetdPath: string;
 				try {
-					vetdPath = await resolveVetdPath(host, session.cwd, design);
+					vetdPath = await resolveVetdPath(host, session.cwd);
 				} catch (error) {
 					return { ok: false, error: error instanceof Error ? error.message : String(error) };
 				}
-				const result = await applyDesignSystem(host.fs, vetdPath, apply);
-				if (result.mode === "direct") {
-					return {
-						ok: true,
-						mode: "direct",
-						vetdPath: result.vetdPath,
-						note: `Applied "${system.name}": theme.css and DESIGN.md written to ${result.dirPath} (the design had no frames, so nothing else changes). The canvas hot-reloads. Every frame you create from now on MUST follow ${result.dirPath}/DESIGN.md.`,
-					};
+				const dirPath = vetdPath;
+				const path = notesFilePath(dirPath);
+				const file = parseNotesFile(await host.fs.readFile(path).then((r) => r.content, () => ""));
+				const unknown: string[] = [];
+				for (const entry of resolve) {
+					const note = file.notes.find((candidate) => candidate.id === entry.id);
+					if (!note) {
+						unknown.push(entry.id);
+						continue;
+					}
+					note.messages.push({ author: "agent", text: entry.reply, at: Date.now() });
 				}
+				await host.fs.writeFile(path, `${JSON.stringify(file satisfies NotesFile, null, "\t")}\n`);
+				// 画布没开：拉不了活体，给不出保鲜锚点与标注图，只能列出冻结快照。
+				const remaining = pendingNotes(file.notes);
 				return {
-					ok: true,
-					mode: "restyle",
-					vetdPath: result.vetdPath,
-					frames: result.frames,
-					note: `DESIGN.md written and a full backup of the previous sources saved. Now execute the restyle yourself:\n\n${buildRestylePrompt(system, result, "en")}`,
+					ok: unknown.length === 0,
+					resolved: resolve.length - unknown.length,
+					...(unknown.length > 0 ? { unknownIds: unknown } : {}),
+					pendingRemaining: remaining.length,
+					...(remaining.length > 0
+						? {
+								notes: remaining.map((note, index) => toNoteView(note, index + 1, dirPath)),
+								note: NOTES_KEEP_GOING_HINT,
+							}
+						: { note: NOTES_ALL_CLEAR_HINT }),
 				};
 			}
 
-			if (present && present.length > 0) {
-				const unknown = present.filter((id) => !designSystemById(id));
-				if (unknown.length > 0) {
-					return {
-						ok: false,
-						error: `Unknown design system ids: ${unknown.join(", ")}. Valid ids: ${DESIGN_SYSTEMS.map((s) => s.id).join(", ")}`,
-					};
+			// —— 读取。画布没开时退化成纯文本锚点（截不了标注图，锚点也无法保鲜）。 ——
+			if (!controller) {
+				let vetdPath: string;
+				try {
+					vetdPath = await resolveVetdPath(host, session.cwd);
+				} catch (error) {
+					return { ok: false, error: error instanceof Error ? error.message : String(error) };
 				}
+				const dirPath = vetdPath;
+				const file = parseNotesFile(await host.fs.readFile(notesFilePath(dirPath)).then((r) => r.content, () => ""));
+				const targets = ids && ids.length > 0 ? file.notes.filter((note) => ids.includes(note.id)) : pendingNotes(file.notes);
 				return {
 					ok: true,
-					presented: present,
-					note: "Preview cards rendered in the conversation. STOP and wait — the user's pick (or their choice to skip templates) arrives as a new user message; do not choose for them.",
-					cards: [designSystemCardDescriptor(present, true)],
+					notes: targets.map((note, index) => toNoteView(note, index + 1, dirPath)),
+					note: "The design canvas is not open, so anchors are frozen snapshots (source line numbers may have drifted) and no annotated screenshots are available. Locate elements by their text/domPath if a line looks wrong.",
 				};
 			}
 
+			const all = controller.notes.notes;
+			const targets = ids && ids.length > 0 ? all.filter((note) => ids.includes(note.id)) : pendingNotes(all);
+			const unknownIds = ids?.filter((id) => !controller.notes.noteById(id)) ?? [];
+			if (targets.length === 0) {
+				return { ok: true, notes: [], ...(unknownIds.length > 0 ? { unknownIds } : {}), note: "No pending notes." };
+			}
+			const { notes: views, screenshots } = await readNotesLive(controller, host, targets);
 			return {
-				systems: DESIGN_SYSTEMS.map((system) => ({
-					id: system.id,
-					name: system.name,
-					category: system.category,
-					vibe: system.vibe,
-					blurb: system.blurb,
-				})),
-				note: "Shortlist 2-4 systems that fit the user's description and render them with `present` for the user to pick. Only call `apply` directly when the user has explicitly named a system.",
+				ok: true,
+				notes: views,
+				...(unknownIds.length > 0 ? { unknownIds } : {}),
+				...(screenshots.length > 0 ? { screenshots } : {}),
+				note: NOTES_WORK_THROUGH_HINT,
 			};
 		},
 	});
+
+	/**
+	 * 读一批备注：锚点保鲜 + 每帧标注图。画布开着才走这条（要拉活体）。
+	 *
+	 * 读取与 resolve 后的「还剩什么」共用同一条实现：agent 处理完一条后，剩下的待办
+	 * 连同标注图一并回给它，省掉一次往返，也省掉它自己想起来要再查一次。
+	 */
+	async function readNotesLive(
+		controller: CanvasController,
+		host: { fs: PluginContext["fs"] },
+		targets: readonly DesignNote[],
+	): Promise<{ notes: NoteView[]; screenshots: { frame: string; path: string }[] }> {
+		const { dirPath } = controller.session;
+		const numberOf = new Map(targets.map((note, index) => [note.id, index + 1]));
+
+		// 按 frame 分组做锚点保鲜 + 标注图；自由备注只有文本。
+		const frames = controller.session.manifest.frames;
+		const byFrame = new Map<string, DesignNote[]>();
+		for (const note of targets) {
+			const anchor = note.anchor;
+			if (anchor.kind === "free") continue;
+			if (!frames.some((frame) => frame.id === anchor.frameId)) continue;
+			const group = byFrame.get(anchor.frameId) ?? [];
+			group.push(note);
+			byFrame.set(anchor.frameId, group);
+		}
+
+		const staleIds = new Set<string>();
+		const screenshots: { frame: string; path: string }[] = [];
+		{
+			for (const [frameId, group] of byFrame) {
+				const frame = frames.find((candidate) => candidate.id === frameId);
+				if (!frame) continue;
+				// 保鲜：元素锚按 domPath 重查（行号跟着代码走），frame 锚按坐标补一次 hit-test。
+				const queries: ElementQuery[] = group.map((note) => {
+					const anchor = note.anchor;
+					if (anchor.kind === "element") return { domPath: anchor.element.domPath };
+					if (anchor.kind === "frame") return { x: anchor.fx, y: anchor.fy };
+					return { x: 0, y: 0 }; // free 不进分组，纯类型收口
+				});
+				let payloads: (SelectedElementPayload | null)[] = [];
+				try {
+					payloads = await controller.resolveNoteElements(frameId, queries);
+				} catch {
+					payloads = queries.map(() => null);
+				}
+				group.forEach((note, index) => {
+					const payload = payloads[index];
+					if (payload) {
+						controller.notes.upgradeAnchor(note.id, {
+							domPath: payload.domPath,
+							tag: payload.tag,
+							text: payload.text,
+							classes: payload.classes,
+							source: payload.source,
+						});
+					} else if (note.anchor.kind === "element") {
+						staleIds.add(note.id);
+					}
+				});
+				// 标注图：干净截图 + 编号气泡二次合成（编号与返回列表严格同号）。
+				try {
+					const dataUrl = await controller.captureFrame(frameId);
+					const annotated = await composeNotePins(
+						dataUrl,
+						{ width: frame.width, height: frame.height },
+						group.map((note) => ({
+							fx: note.anchor.kind === "free" ? 0 : note.anchor.fx,
+							fy: note.anchor.kind === "free" ? 0 : note.anchor.fy,
+							label: numberOf.get(note.id) ?? 0,
+						})),
+					);
+					const path = snapshotPath(dirPath, `notes-${frameId}`, Date.now());
+					await host.fs.writeFile(path, annotated.split(",")[1] ?? "", "base64");
+					await ensureSnapshotsIgnored(host.fs, dirPath);
+					await pruneSnapshots(host.fs, dirPath, `notes-${frameId}`);
+					screenshots.push({ frame: frameId, path });
+				} catch {
+					// 截不到图不拦整个读取：文本锚点仍然可用。
+				}
+			}
+		}
+
+		// 保鲜写回后从 store 取最新锚点。
+		const notes = targets.map((note) => {
+			const fresh = controller.notes.noteById(note.id) ?? note;
+			const view = toNoteView(fresh, numberOf.get(note.id) ?? 0, dirPath);
+			if (staleIds.has(note.id)) view.anchorStale = true;
+			return view;
+		});
+		return { notes, screenshots };
+	}
+
+	/** DesignNote → 模型视图（与画布/抽屉共享同一份状态推导）。 */
+	function toNoteView(note: DesignNote, number: number, dirPath: string): NoteView {
+		const base = {
+			number,
+			id: note.id,
+			status: noteStatus(note),
+			messages: note.messages.map((message) => ({ author: message.author, text: message.text })),
+		};
+		if (note.anchor.kind === "free") {
+			return {
+				...base,
+				location: {
+					kind: "canvas",
+					x: note.anchor.x,
+					y: note.anchor.y,
+					...(note.anchor.detachedFrom ? { detachedFromDeletedFrame: note.anchor.detachedFrom } : {}),
+				},
+			};
+		}
+		return {
+			...base,
+			location: {
+				kind: "frame",
+				frame: note.anchor.frameId,
+				frameFile: `${dirPath}/frames/${note.anchor.frameId}.tsx`,
+				x: note.anchor.fx,
+				y: note.anchor.fy,
+			},
+			...(note.anchor.kind === "element"
+				? {
+						element: {
+							source: note.anchor.element.source,
+							domPath: note.anchor.element.domPath,
+							tag: note.anchor.element.tag,
+							text: note.anchor.element.text,
+						},
+					}
+				: {}),
+		};
+	}
 }

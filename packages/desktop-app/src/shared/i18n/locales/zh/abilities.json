@@ -143,6 +143,7 @@
 		"source": {
 			"label": "来源",
 			"remote": "远程安装",
+			"npm": "npm 包",
 			"system": "系统内置",
 			"local": "本地 zip"
 		},
@@ -156,9 +157,6 @@
 			"hintAll": "在所有工作场景下都可用。"
 		},
 		"permissions": "权限",
-		"permissionsDialog": "权限配置",
-		"permissionsDialogHint": "关闭某项后，插件调用对应能力时会被拦截。",
-		"permissionsNotInstalledHint": "以下为插件声明的权限，安装后可逐项调整。",
 		"permissionsSystemHint": "系统插件自动授予，不可更改",
 		"setupDialog": "启用与权限",
 		"setupDialogHint": "插件已安装。启用并授予下列权限后点确认才会生效。",
@@ -204,6 +202,145 @@
 		}
 	},
 	"permission": {
+		"page": {
+			"open": "了解与配置权限",
+			"title": "权限与数据访问",
+			"back": "返回能力详情",
+			"description": "这里展示插件实际能够访问和执行的内容。选择任一权限可查看宿主定义的能力边界，关闭后插件的对应调用会被拦截。",
+			"toggleLabel": "切换“{{permission}}”权限",
+			"hostVerified": "Vetta 权限边界",
+			"preview": {
+				"global": "插件内容可出现在跨页面保留的应用公共区域",
+				"filePreview": "插件可在文件预览区渲染专用的内容查看器",
+				"activityTab": "插件可在右侧活动面板新增并填充一个标签页",
+				"inputAction": "插件可在对话输入栏中增加一个操作按钮",
+				"message": "插件内容可附加在指定聊天消息的下方",
+				"toolCall": "插件可用专用卡片呈现工具调用过程与结果",
+				"turnCard": "插件可扩展包含整轮对话的回合卡片",
+				"workspaceView": "插件可贡献一个整页工作区视图，并在侧边栏占一个入口",
+				"shortcuts": "插件可监听已注册的按键组合并触发对应操作",
+				"fileDecorations": "插件可在文件条目旁显示状态或类型标记",
+				"fileContextMenu": "插件操作可加入文件或文件夹的右键菜单",
+				"fileToolbar": "插件可在文件列表工具栏增加操作按钮"
+			},
+			"previewFlow": "箭头表示这项权限允许的数据或行为方向",
+			"scopeTitle": "作用范围",
+			"disabledTitle": "关闭后",
+			"status": {
+				"configureOnInstall": "安装时配置",
+				"systemGranted": "系统授予"
+			},
+			"readOnly": {
+				"install": "该插件尚未安装。这里展示它申请的权限，实际授权会在安装时确认。",
+				"system": "这是系统内置插件。权限由 Vetta 管理并自动授予，因此不能单独关闭。"
+			},
+			"summary": {
+				"requested": "申请权限",
+				"highRisk": "高风险",
+				"granted": "当前已授权",
+				"timing": "配置时机",
+				"onInstall": "安装时确认"
+			},
+			"flow": {
+				"plugin": "当前插件",
+				"data": "文件与应用数据",
+				"agent": "Agent 会话与行为",
+				"execution": "宿主受控操作",
+				"external": "外部应用或网络",
+				"intelligence": "AI 与媒体服务"
+			},
+			"scope": {
+				"interface": "只允许在指定的界面位置呈现或注册交互，不会因此自动获得文件或会话数据。",
+				"data": "限于宿主为该接口开放的数据类型；更具体的路径或记录取决于插件实际调用。",
+				"agent": "作用于宿主开放的 Agent 会话、提示词、工具或运行状态。",
+				"execution": "操作由宿主代为执行，但具体命令、页面或动作由插件发起。",
+				"external": "可离开 Vetta 打开目标或发起请求；目标地址由插件在调用时指定。",
+				"intelligence": "使用你已配置的模型或媒体服务，可能发送插件组织的输入并产生用量。"
+			},
+			"disabled": {
+				"interface": "对应入口、内容或交互不会出现，插件的其它功能仍可继续运行。",
+				"data": "插件读取或修改这类数据的调用会失败，依赖该数据的功能可能不可用。",
+				"agent": "插件无法介入对应的 Agent 行为，相关自动化或增强功能可能失效。",
+				"execution": "宿主会拦截对应操作，依赖执行结果的流程可能无法完成。",
+				"external": "插件无法完成相应的外部访问，但不会影响不依赖外部访问的功能。",
+				"intelligence": "依赖 AI 或媒体服务的生成、分析和 Provider 功能将不可用。"
+			}
+		},
+		"group": {
+			"interface": {
+				"title": "界面与交互",
+				"description": "控制插件可以在 Vetta 的哪些位置出现"
+			},
+			"projectData": {
+				"title": "项目与应用数据",
+				"description": "控制插件可以读取或修改的数据"
+			},
+			"agent": {
+				"title": "Agent 控制",
+				"description": "控制插件可以如何影响 Agent 的会话与运行方式"
+			},
+			"execution": {
+				"title": "执行与外部访问",
+				"description": "控制插件可以发起的系统操作和外部连接"
+			},
+			"intelligence": {
+				"title": "AI 与媒体",
+				"description": "控制插件可以使用或提供的智能服务"
+			}
+		},
+		"risk": {
+			"low": "低风险",
+			"medium": "需留意",
+			"high": "高风险"
+		},
+		"description": {
+			"uiSlotGlobal": "允许插件在应用级公共区域呈现界面内容，可能在多个页面持续显示。",
+			"uiSlotFilePreview": "允许插件在文件预览区域显示自定义内容或文件查看器。",
+			"uiSlotActivityTab": "允许插件在右侧活动面板中增加一个可切换的标签页。",
+			"uiSlotInputAction": "允许插件在对话输入栏附近增加可点击的操作入口。",
+			"uiSlotMessage": "允许插件在聊天消息下方补充自定义内容或操作。",
+			"uiSlotToolCall": "允许插件自定义 Agent 工具调用结果的呈现方式。",
+			"uiSlotTurnCard": "允许插件在一轮对话的卡片区域中展示状态或操作。",
+			"uiSlotWorkspaceView": "允许插件贡献一个整页工作区视图，并在侧边栏占一个可置顶的入口。",
+			"uiShortcutsRegister": "允许插件注册键盘快捷键，并在按键触发时执行插件操作。",
+			"uiFileExplorerDecorations": "允许插件为文件列表添加图标、徽标或状态提示。",
+			"uiFileExplorerContextMenu": "允许插件在文件或文件夹的右键菜单中增加操作。",
+			"uiFileExplorerToolbar": "允许插件在文件列表工具栏中增加操作入口。",
+			"workspaceRead": "查看已打开工作区、目录和文件列表等元数据，不直接读取文件正文。",
+			"agentSessionRead": "读取当前 Agent 会话中的消息、状态和相关上下文。",
+			"agentSessionWrite": "修改当前 Agent 会话的状态或内容，可能改变后续对话行为。",
+			"agentCommandRun": "通过宿主执行插件声明并发起的 Agent 命令。",
+			"agentCommandSpawn": "启动可持续运行的后台进程，直到插件或宿主将其停止。",
+			"captureOffscreen": "在不可见的页面环境中加载内容并生成截图。",
+			"agentSystemPromptRead": "读取决定 Agent 基础行为的系统提示词内容。",
+			"agentSystemPromptWrite": "向 Agent 系统提示词添加或修改插件负责的内容。",
+			"agentSystemPromptFullControl": "替换或重新组织完整系统提示词，可显著改变 Agent 行为。",
+			"agentSkillsControl": "控制 Agent 会加载哪些技能以及技能何时可用。",
+			"agentMcpControl": "向 Agent 提供由插件管理的 MCP 服务和工具。",
+			"agentToolsControl": "启用、停用或调整 Agent 当前可使用的工具。",
+			"agentToolsRegister": "向 Agent 注册新的工具名称、说明和输入结构。",
+			"agentToolHandlerExecute": "在 Agent 调用插件工具时运行插件提供的处理逻辑。",
+			"agentHooksRegister": "注册可观察或影响 Coding Agent 生命周期事件的处理器。",
+			"agentHookHandlerExecute": "在 Coding Agent 到达匹配事件时运行插件提供的 Hook 逻辑。",
+			"agentStateRead": "读取为该插件保存的 Agent 运行状态。",
+			"agentStateWrite": "更新为该插件保存的 Agent 运行状态。",
+			"agentContinuationRegister": "决定 Agent 在一轮结束后是否自动继续运行。",
+			"agentRuntimeConfigure": "调整 Agent 运行时配置，可能影响模型、工具或执行策略。",
+			"appActionsRegister": "向 Vetta 注册可由界面或其它功能调用的应用操作。",
+			"appActionHandlerExecute": "当应用操作被触发时运行插件提供的处理逻辑。",
+			"aiModelsList": "查看你已配置并可供插件使用的 AI 模型列表。",
+			"aiComplete": "向已配置的 AI 模型发送插件组织的输入并获取生成结果。",
+			"fsRead": "读取插件通过宿主文件接口指定的文件内容。",
+			"fsWrite": "创建、覆盖、移动或删除插件通过宿主文件接口指定的文件。",
+			"networkFetch": "向插件指定的网络地址发送请求，请求中可能包含插件已访问的数据。",
+			"storageRead": "读取只属于当前插件的持久化数据，其他插件不能直接访问。",
+			"storageWrite": "写入只属于当前插件的持久化数据，用于保存状态或配置。",
+			"mediaGenerate": "调用已配置的图片、音频等媒体生成服务。",
+			"mediaProviderRegister": "向 Vetta 注册插件提供的媒体生成服务。",
+			"settingsRead": "读取宿主向插件开放的应用设置。",
+			"settingsWrite": "修改宿主向插件开放的应用设置，可能改变应用行为。",
+			"shellOpenExternal": "使用系统默认浏览器或应用打开插件指定的外部链接。"
+		},
 		"uiSlotGlobal": "全局 UI Slot",
 		"uiSlotFilePreview": "文件预览 Slot",
 		"uiSlotActivityTab": "活动面板 Tab",
@@ -211,6 +348,7 @@
 		"uiSlotMessage": "消息下方 Slot",
 		"uiSlotToolCall": "工具调用渲染 Slot",
 		"uiSlotTurnCard": "回合卡片 Slot",
+		"uiSlotWorkspaceView": "工作区视图 Slot",
 		"uiShortcutsRegister": "注册键盘快捷键",
 		"uiFileExplorerDecorations": "装饰文件列表",
 		"uiFileExplorerContextMenu": "扩展文件右键菜单",
@@ -229,6 +367,8 @@
 		"agentToolsControl": "控制 Agent 工具加载",
 		"agentToolsRegister": "注册 Agent 工具",
 		"agentToolHandlerExecute": "执行插件工具处理器",
+		"agentHooksRegister": "注册 Coding Agent Hook",
+		"agentHookHandlerExecute": "执行插件 Hook 处理器",
 		"agentStateRead": "读取插件 Agent 状态",
 		"agentStateWrite": "写入插件 Agent 状态",
 		"agentContinuationRegister": "注册 Agent 自动续跑策略",
@@ -243,6 +383,7 @@
 		"storageRead": "读取插件私有数据",
 		"storageWrite": "写入插件私有数据",
 		"mediaGenerate": "调用媒体生成 Provider",
+		"mediaProviderRegister": "提供媒体生成 Provider",
 		"settingsRead": "读取设置",
 		"settingsWrite": "修改设置",
 		"shellOpenExternal": "用系统浏览器打开链接"

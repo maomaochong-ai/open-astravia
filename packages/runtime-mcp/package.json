@@ -4,13 +4,54 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./auth": {
+			"types": "./dist/auth/index.d.ts",
+			"import": "./dist/auth/index.js"
+		},
+		"./config": {
+			"types": "./dist/config/index.d.ts",
+			"import": "./dist/config/index.js"
+		},
+		"./client": {
+			"types": "./dist/client/index.d.ts",
+			"import": "./dist/client/index.js"
+		},
+		"./protocol": {
+			"types": "./dist/protocol/index.d.ts",
+			"import": "./dist/protocol/index.js"
+		},
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"import": "./dist/server/index.js"
+		},
+		"./tools": {
+			"types": "./dist/tools/index.d.ts",
+			"import": "./dist/tools/index.js"
+		},
+		"./transports/http": {
+			"types": "./dist/transports/http/index.d.ts",
+			"import": "./dist/transports/http/index.js"
+		},
+		"./transports/stdio": {
+			"types": "./dist/transports/stdio/index.d.ts",
+			"import": "./dist/transports/stdio/index.js"
+		}
+	},
 	"files": ["dist"],
 	"scripts": {
 		"clean": "rm -rf dist",
-		"build": "tsgo -p tsconfig.build.json"
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "bunx vitest --run"
 	},
 	"dependencies": {
-		"@vetta/coding-agent": "workspace:*"
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"@sinclair/typebox": "^0.34.41",
+		"@vetta/runtime-core": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.2",

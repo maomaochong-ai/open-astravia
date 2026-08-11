@@ -12,7 +12,7 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "react",
 		"noEmit": true,
-		"types": ["node", "vitest/globals"]
+		"types": ["node", "vite/client", "vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx"]
 }

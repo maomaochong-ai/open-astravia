@@ -13,7 +13,7 @@ describe("content graph flow adapters", () => {
 		]);
 
 		expect(project.graph.edges[0]).toMatchObject({ sourceHandle: "text", targetHandle: "prompt" });
-		expect(toContentFlowEdges(project, new Set())[0]).toMatchObject({
+		expect(toContentFlowEdges(project)[0]).toMatchObject({
 			sourceHandle: CONTENT_FLOW_SOURCE_HANDLE_ID,
 			targetHandle: CONTENT_FLOW_TARGET_HANDLE_ID,
 		});

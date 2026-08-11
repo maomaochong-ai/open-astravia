@@ -352,49 +352,6 @@ describe("Agent E2E Tests", () => {
 });
 
 describe("Agent.continue()", () => {
-	describe("validation", () => {
-		it("should throw when no messages in context", async () => {
-			const agent = new Agent({
-				initialState: {
-					systemPrompt: "Test",
-					model: getModel("anthropic", "claude-haiku-4-5"),
-				},
-			});
-
-			await expect(agent.continue()).rejects.toThrow("No messages to continue from");
-		});
-
-		it("should throw when last message is assistant", async () => {
-			const agent = new Agent({
-				initialState: {
-					systemPrompt: "Test",
-					model: getModel("anthropic", "claude-haiku-4-5"),
-				},
-			});
-
-			const assistantMessage: AssistantMessage = {
-				role: "assistant",
-				content: [{ type: "text", text: "Hello" }],
-				api: "anthropic-messages",
-				provider: "anthropic",
-				model: "claude-haiku-4-5",
-				usage: {
-					input: 0,
-					output: 0,
-					cacheRead: 0,
-					cacheWrite: 0,
-					totalTokens: 0,
-					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-				},
-				stopReason: "stop",
-				timestamp: Date.now(),
-			};
-			agent.replaceMessages([assistantMessage]);
-
-			await expect(agent.continue()).rejects.toThrow("Cannot continue from message role: assistant");
-		});
-	});
-
 	describe.skipIf(!process.env.ANTHROPIC_API_KEY)("continue from user message", () => {
 		const model = getModel("anthropic", "claude-haiku-4-5");
 

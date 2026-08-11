@@ -27,6 +27,7 @@ const FIELD_CLASS =
 
 interface ContentNodeEditorProps {
 	kind: ContentNodeKind;
+	name: string;
 	status: ContentNodeStatus;
 	data: ContentNodeData;
 	properties: readonly ContentNodePropertyDefinition[];
@@ -38,9 +39,10 @@ interface ContentNodeEditorProps {
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	focusPromptRequest: number;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
+	onRename: (name: string) => Promise<void>;
 	onRunNode: () => Promise<void>;
 	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
-	onImportReferences: (files: readonly ImportedContentReference[]) => Promise<void>;
+	onImportReferences: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
 
@@ -51,9 +53,11 @@ export function ContentNodeEditor(props: ContentNodeEditorProps) {
 	if (props.kind === "asset") {
 		return (
 			<ContentAssetNodeEditor
+				name={props.name}
 				data={props.data}
 				assets={props.assets}
 				onUpdate={props.onUpdate}
+				onRename={props.onRename}
 				onImport={props.onImportAssets}
 			/>
 		);
@@ -75,17 +79,21 @@ export function ContentNodeEditor(props: ContentNodeEditorProps) {
 
 function SimpleContentNodeEditor({
 	kind,
+	name,
 	data,
 	properties,
 	focusPromptRequest,
 	onUpdate,
+	onRename,
 	onAddToTimeline,
 }: ContentNodeEditorProps) {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState(data);
+	const [nameDraft, setNameDraft] = useState(name);
 	const promptInputRef = useRef<HTMLTextAreaElement>(null);
 	const preferredWidth = properties.some((property) => property.editor === "textarea") ? 360 : 260;
 	useEffect(() => setDraft(data), [data]);
+	useEffect(() => setNameDraft(name), [name]);
 	useEffect(() => {
 		if (kind !== "prompt" || focusPromptRequest === 0) return;
 		const frame = window.requestAnimationFrame(() => {
@@ -111,7 +119,14 @@ function SimpleContentNodeEditor({
 				{properties.map((property) => (
 					<label key={property.key} className="flex min-w-0 flex-col gap-1 text-[10px] font-medium text-muted-foreground">
 						<span>{t(property.labelKey)}</span>
-						{property.editor === "textarea" ? (
+						{property.key === "name" ? (
+							<input
+								className={FIELD_CLASS}
+								value={nameDraft}
+								onChange={(event) => setNameDraft(event.target.value)}
+								onBlur={() => void onRename(nameDraft)}
+							/>
+						) : property.editor === "textarea" ? (
 							<textarea
 								ref={promptInputRef}
 								className={`${FIELD_CLASS} min-h-[72px] resize-none leading-relaxed`}

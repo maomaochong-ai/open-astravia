@@ -1,0 +1,5 @@
+{
+	"plugin.name": "Security Probe",
+	"plugin.description": "Probes plugin permission gates, path isolation, host API surface, and trust boundaries. Local security audit only — do not grant all permissions against production data.",
+	"tab.label": "Security Probe"
+}

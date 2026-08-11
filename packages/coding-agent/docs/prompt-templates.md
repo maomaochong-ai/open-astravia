@@ -1,67 +1,35 @@
-> pi can create prompt templates. Ask it to build one for your workflow.
-
 # Prompt Templates
 
-Prompt templates are Markdown snippets that expand into full prompts. Type `/name` in the editor to invoke a template, where `name` is the filename without `.md`.
+Markdown 片段，以 `/文件名` 展开为完整提示。
 
-## Locations
+## 位置
 
-Pi loads prompt templates from:
+- 全局：`~/.vetta/agent/prompts/*.md`
+- 项目：`<cwd>/.vetta/prompts/*.md`
+- 包 / settings `prompts` / CLI `--prompt-template`
+- `--no-prompt-templates` 关闭发现
 
-- Global: `~/.pi/agent/prompts/*.md`
-- Project: `.pi/prompts/*.md`
-- Packages: `prompts/` directories or `pi.prompts` entries in `package.json`
-- Settings: `prompts` array with files or directories
-- CLI: `--prompt-template <path>` (repeatable)
+`prompts/` 目录 **不递归**；子目录需在 settings 或包清单中显式声明。
 
-Disable discovery with `--no-prompt-templates`.
-
-## Format
+## 格式
 
 ```markdown
 ---
-description: Review staged git changes
+description: 审查暂存改动
 ---
-Review the staged changes (`git diff --cached`). Focus on:
-- Bugs and logic errors
-- Security issues
-- Error handling gaps
+Review staged changes (`git diff --cached`). Focus on bugs and security.
 ```
 
-- The filename becomes the command name. `review.md` becomes `/review`.
-- `description` is optional. If missing, the first non-empty line is used.
+- 文件名（无 `.md`）即命令名：`review.md` → `/review`
+- `description` 可选；缺省用首个非空行
 
-## Usage
+## 参数
 
-Type `/` followed by the template name in the editor. Autocomplete shows available templates with descriptions.
+| 占位 | 含义 |
+|------|------|
+| `$1`, `$2`, … | 位置参数 |
+| `$@` / `$ARGUMENTS` | 全部参数 |
+| `${@:N}` | 从第 N 个起 |
+| `${@:N:L}` | 从 N 起取 L 个 |
 
-```
-/review                           # Expands review.md
-/component Button                 # Expands with argument
-/component Button "click handler" # Multiple arguments
-```
-
-## Arguments
-
-Templates support positional arguments and simple slicing:
-
-- `$1`, `$2`, ... positional args
-- `$@` or `$ARGUMENTS` for all args joined
-- `${@:N}` for args from the Nth position (1-indexed)
-- `${@:N:L}` for `L` args starting at N
-
-Example:
-
-```markdown
----
-description: Create a component
----
-Create a React component named $1 with features: $@
-```
-
-Usage: `/component Button "onClick handler" "disabled support"`
-
-## Loading Rules
-
-- Template discovery in `prompts/` is non-recursive.
-- If you want templates in subdirectories, add them explicitly via `prompts` settings or a package manifest.
+实现与发现：`src/resources/`。

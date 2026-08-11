@@ -1,4 +1,11 @@
-import { getWorkbenchFs, withWorkbenchFs } from "./runtime";
+import { PLUGIN_PERMISSIONS, type PluginPermission } from "@vetta-org/plugin-sdk";
+import { getWorkbenchFs, getWorkbenchPlugins, withWorkbenchFs } from "./runtime";
+
+const pluginPermissionSet = new Set<string>(PLUGIN_PERMISSIONS);
+
+function isPluginPermission(value: unknown): value is PluginPermission {
+	return typeof value === "string" && pluginPermissionSet.has(value);
+}
 
 export interface ProjectInfo {
 	dir: string;
@@ -6,7 +13,7 @@ export interface ProjectInfo {
 	name: string;
 	version: string;
 	guidingWords: string[];
-	permissions: string[];
+	permissions: PluginPermission[];
 	zipPath: string | null;
 }
 
@@ -53,7 +60,7 @@ export async function discoverProjects(cwd: string): Promise<ProjectInfo[]> {
 			? manifest.guidingWords.filter((w): w is string => typeof w === "string")
 			: [];
 		const permissions = Array.isArray(manifest.permissions)
-			? manifest.permissions.filter((p): p is string => typeof p === "string")
+			? manifest.permissions.filter(isPluginPermission)
 			: [];
 		const zipPath = joinPath(dir, "release", `${id}-${version}.zip`);
 		let zipExists = false;
@@ -76,7 +83,7 @@ export async function discoverProjects(cwd: string): Promise<ProjectInfo[]> {
 }
 
 export async function resolveWorkbenchRoot(): Promise<string> {
-	const list = await window.vetta.plugins.list();
+	const list = await getWorkbenchPlugins().list();
 	const wb = list.find((p) => p.id === "plugin-workbench");
 	if (!wb?.rootPath) throw new Error("plugin-workbench rootPath missing");
 	return wb.rootPath;

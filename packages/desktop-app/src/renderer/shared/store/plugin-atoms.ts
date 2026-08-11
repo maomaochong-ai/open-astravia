@@ -8,9 +8,11 @@ import type {
 	PluginFilePreviewContribution,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginNavBadge,
 	PluginPromptAttachment,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
+	PluginWorkspaceViewContribution,
 } from "@vetta-org/plugin-sdk";
 import { atom, getDefaultStore } from "jotai";
 
@@ -75,6 +77,10 @@ export interface RegisteredActivityTab {
 	scope_use?: PluginActivityTabContribution["scope_use"];
 	/** 注册后是否默认上栏（缺省 true）；false = 出现条件由插件自己驱动。 */
 	initiallyVisible?: PluginActivityTabContribution["initiallyVisible"];
+	/** 未激活时的驻留策略；缺省 warm。 */
+	retention?: PluginActivityTabContribution["retention"];
+	/** 未激活时仍保留组件实例，适用于内嵌浏览器、编辑器等有状态运行时。 */
+	keepAliveWhenAvailable?: PluginActivityTabContribution["keepAliveWhenAvailable"];
 }
 
 /**
@@ -82,6 +88,36 @@ export interface RegisteredActivityTab {
  * 消费。注册不直接渲染——attach 记录 ∩ 此池才渲染为 tab。
  */
 export const pluginActivityTabsAtom = atom<RegisteredActivityTab[]>([]);
+
+/**
+ * 一个插件贡献的**工作区视图**（整页 surface，与自动化/知识库等内置页同级）。
+ * 由 PluginGlobalSlotHost 发布，侧边栏导航与 `/workspace/$pluginId/$viewId`
+ * 路由共同消费。
+ */
+export interface RegisteredWorkspaceView {
+	pluginId: string;
+	/** 拥有者插件展示名，作为导航项 tooltip 的副标题。 */
+	pluginName: string;
+	/** 契约 id（未命名空间化），也是路由参数。 */
+	viewId: string;
+	/** 可能是 `%catalogKey%`，由消费方按插件目录解析。 */
+	label: string;
+	/** iconify class 字符串（导航按钮直接当 className 用）。 */
+	icon?: string;
+	description?: string;
+	/**
+	 * 导航项角标。已归一化但**尚未解析文案**：`text` 仍可能是 `%catalogKey%`，
+	 * `beta` 要换成宿主自己的 i18n 文案——都在侧边栏模型层做（与 label 同一层）。
+	 */
+	badge?: PluginNavBadge;
+	component: PluginWorkspaceViewContribution["component"];
+	navOrder: number;
+}
+
+/**
+ * 已注册的插件工作区视图。侧边栏据此生成导航项，路由据此挂载整页组件。
+ */
+export const pluginWorkspaceViewsAtom = atom<RegisteredWorkspaceView[]>([]);
 
 /** An input-action (toggle) contribution registered by a loaded plugin. */
 export interface RegisteredInputAction {
@@ -342,9 +378,9 @@ export interface RegisteredTurnCard {
 export const pluginTurnCardsAtom = atom<RegisteredTurnCard[]>([]);
 
 /**
- * Plugin-owned one-shot context for the next outgoing prompt. The host renders
- * its label/icon in the input bar, merges metadata and hidden instructions at
- * send time, then clears it. `null` when nothing is attached.
+ * Plugin-owned context for outgoing prompts. The host renders its label/icon,
+ * snapshots structured context at send time, and keeps sticky attachments until
+ * explicitly cleared. `null` when nothing is attached.
  */
 export interface RegisteredPromptAttachment extends PluginPromptAttachment {
 	ownerPluginId: string;

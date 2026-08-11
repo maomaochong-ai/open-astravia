@@ -6,26 +6,37 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { AuthStorage } from "../src/core/auth-storage.js";
-import { discoverAndLoadExtensions } from "../src/core/extensions/loader.js";
-import { ExtensionRunner } from "../src/core/extensions/runner.js";
-import { DEFAULT_KEYBINDINGS, type KeyId } from "../src/core/keybindings.js";
-import { ModelRegistry } from "../src/core/model-registry.js";
-import { SessionManager } from "../src/core/session-manager/index.js";
+import { AuthStorage } from "../src/auth/index.js";
+import {
+	discoverAndLoadExtensions,
+	type ExtensionKeybindingsConfig,
+	ExtensionRunner,
+	type ExtensionSessionView,
+	type KeyId,
+} from "../src/extensions/index.js";
+import { type CodingAgentModelRuntime, createCodingAgentModelRuntime } from "../src/models/index.js";
+import { createExtensionSessionView } from "./fixtures/extension-session-view.js";
+
+const BUILT_IN_KEYBINDINGS = {
+	interrupt: "escape",
+	clear: "ctrl+c",
+	cycleModelForward: "ctrl+p",
+	pasteImage: "ctrl+v",
+} satisfies ExtensionKeybindingsConfig;
 
 describe("ExtensionRunner", () => {
 	let tempDir: string;
 	let extensionsDir: string;
-	let sessionManager: SessionManager;
-	let modelRegistry: ModelRegistry;
+	let sessionManager: ExtensionSessionView;
+	let modelRegistry: CodingAgentModelRuntime;
 
 	beforeEach(() => {
 		tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-runner-test-"));
 		extensionsDir = path.join(tempDir, "extensions");
 		fs.mkdirSync(extensionsDir);
-		sessionManager = SessionManager.inMemory();
+		sessionManager = createExtensionSessionView(tempDir);
 		const authStorage = AuthStorage.create(path.join(tempDir, "auth.json"));
-		modelRegistry = new ModelRegistry(authStorage);
+		modelRegistry = createCodingAgentModelRuntime(authStorage);
 	});
 
 	afterEach(() => {
@@ -35,8 +46,8 @@ describe("ExtensionRunner", () => {
 	describe("shortcut conflicts", () => {
 		it("warns when extension shortcut conflicts with built-in", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+c", {
+				export default function(api) {
+					api.registerShortcut("ctrl+c", {
 						description: "Conflicts with built-in",
 						handler: async () => {},
 					});
@@ -48,7 +59,7 @@ describe("ExtensionRunner", () => {
 
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
-			const shortcuts = runner.getShortcuts(DEFAULT_KEYBINDINGS);
+			const shortcuts = runner.getShortcuts(BUILT_IN_KEYBINDINGS);
 
 			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("conflicts with built-in"));
 			expect(shortcuts.has("ctrl+c")).toBe(false);
@@ -58,8 +69,8 @@ describe("ExtensionRunner", () => {
 
 		it("allows a shortcut when the reserved set no longer contains the default key", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+p", {
+				export default function(api) {
+					api.registerShortcut("ctrl+p", {
 						description: "Uses freed default",
 						handler: async () => {},
 					});
@@ -71,7 +82,7 @@ describe("ExtensionRunner", () => {
 
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
-			const keybindings = { ...DEFAULT_KEYBINDINGS, cycleModelForward: "ctrl+n" as KeyId };
+			const keybindings = { ...BUILT_IN_KEYBINDINGS, cycleModelForward: "ctrl+n" as KeyId };
 			const shortcuts = runner.getShortcuts(keybindings);
 
 			expect(shortcuts.has("ctrl+p")).toBe(true);
@@ -82,8 +93,8 @@ describe("ExtensionRunner", () => {
 
 		it("warns but allows when extension uses non-reserved built-in shortcut", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+v", {
+				export default function(api) {
+					api.registerShortcut("ctrl+v", {
 						description: "Overrides non-reserved",
 						handler: async () => {},
 					});
@@ -95,7 +106,7 @@ describe("ExtensionRunner", () => {
 
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
-			const shortcuts = runner.getShortcuts(DEFAULT_KEYBINDINGS);
+			const shortcuts = runner.getShortcuts(BUILT_IN_KEYBINDINGS);
 
 			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("built-in shortcut for pasteImage"));
 			expect(shortcuts.has("ctrl+v")).toBe(true);
@@ -105,8 +116,8 @@ describe("ExtensionRunner", () => {
 
 		it("blocks shortcuts for reserved actions even when rebound", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+x", {
+				export default function(api) {
+					api.registerShortcut("ctrl+x", {
 						description: "Conflicts with rebound reserved",
 						handler: async () => {},
 					});
@@ -118,7 +129,7 @@ describe("ExtensionRunner", () => {
 
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
-			const keybindings = { ...DEFAULT_KEYBINDINGS, interrupt: "ctrl+x" as KeyId };
+			const keybindings = { ...BUILT_IN_KEYBINDINGS, interrupt: "ctrl+x" as KeyId };
 			const shortcuts = runner.getShortcuts(keybindings);
 
 			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("conflicts with built-in"));
@@ -129,8 +140,8 @@ describe("ExtensionRunner", () => {
 
 		it("blocks shortcuts when reserved action has multiple keys", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+y", {
+				export default function(api) {
+					api.registerShortcut("ctrl+y", {
 						description: "Conflicts with multi-key reserved",
 						handler: async () => {},
 					});
@@ -142,7 +153,7 @@ describe("ExtensionRunner", () => {
 
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
-			const keybindings = { ...DEFAULT_KEYBINDINGS, clear: ["ctrl+x", "ctrl+y"] as KeyId[] };
+			const keybindings = { ...BUILT_IN_KEYBINDINGS, clear: ["ctrl+x", "ctrl+y"] as KeyId[] };
 			const shortcuts = runner.getShortcuts(keybindings);
 
 			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("conflicts with built-in"));
@@ -153,8 +164,8 @@ describe("ExtensionRunner", () => {
 
 		it("warns but allows when non-reserved action has multiple keys", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+y", {
+				export default function(api) {
+					api.registerShortcut("ctrl+y", {
 						description: "Overrides multi-key non-reserved",
 						handler: async () => {},
 					});
@@ -166,7 +177,7 @@ describe("ExtensionRunner", () => {
 
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
-			const keybindings = { ...DEFAULT_KEYBINDINGS, pasteImage: ["ctrl+x", "ctrl+y"] as KeyId[] };
+			const keybindings = { ...BUILT_IN_KEYBINDINGS, pasteImage: ["ctrl+x", "ctrl+y"] as KeyId[] };
 			const shortcuts = runner.getShortcuts(keybindings);
 
 			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("built-in shortcut for pasteImage"));
@@ -178,16 +189,16 @@ describe("ExtensionRunner", () => {
 		it("warns when two extensions register same shortcut", async () => {
 			// Use a non-reserved shortcut
 			const extCode1 = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+shift+x", {
+				export default function(api) {
+					api.registerShortcut("ctrl+shift+x", {
 						description: "First extension",
 						handler: async () => {},
 					});
 				}
 			`;
 			const extCode2 = `
-				export default function(pi) {
-					pi.registerShortcut("ctrl+shift+x", {
+				export default function(api) {
+					api.registerShortcut("ctrl+shift+x", {
 						description: "Second extension",
 						handler: async () => {},
 					});
@@ -200,7 +211,7 @@ describe("ExtensionRunner", () => {
 
 			const result = await discoverAndLoadExtensions([], tempDir, tempDir);
 			const runner = new ExtensionRunner(result.extensions, result.runtime, tempDir, sessionManager, modelRegistry);
-			const shortcuts = runner.getShortcuts(DEFAULT_KEYBINDINGS);
+			const shortcuts = runner.getShortcuts(BUILT_IN_KEYBINDINGS);
 
 			expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("shortcut conflict"));
 			// Last one wins
@@ -214,8 +225,8 @@ describe("ExtensionRunner", () => {
 		it("collects tools from multiple extensions", async () => {
 			const toolCode = (name: string) => `
 				import { Type } from "@sinclair/typebox";
-				export default function(pi) {
-					pi.registerTool({
+				export default function(api) {
+					api.registerTool({
 						name: "${name}",
 						label: "${name}",
 						description: "Test tool",
@@ -238,8 +249,8 @@ describe("ExtensionRunner", () => {
 		it("keeps first tool when two extensions register the same name", async () => {
 			const first = `
 				import { Type } from "@sinclair/typebox";
-				export default function(pi) {
-					pi.registerTool({
+				export default function(api) {
+					api.registerTool({
 						name: "shared",
 						label: "shared",
 						description: "first",
@@ -250,8 +261,8 @@ describe("ExtensionRunner", () => {
 			`;
 			const second = `
 				import { Type } from "@sinclair/typebox";
-				export default function(pi) {
-					pi.registerTool({
+				export default function(api) {
+					api.registerTool({
 						name: "shared",
 						label: "shared",
 						description: "second",
@@ -275,8 +286,8 @@ describe("ExtensionRunner", () => {
 	describe("command collection", () => {
 		it("collects commands from multiple extensions", async () => {
 			const cmdCode = (name: string) => `
-				export default function(pi) {
-					pi.registerCommand("${name}", {
+				export default function(api) {
+					api.registerCommand("${name}", {
 						description: "Test command",
 						handler: async () => {},
 					});
@@ -295,8 +306,8 @@ describe("ExtensionRunner", () => {
 
 		it("gets command by name", async () => {
 			const cmdCode = `
-				export default function(pi) {
-					pi.registerCommand("my-cmd", {
+				export default function(api) {
+					api.registerCommand("my-cmd", {
 						description: "My command",
 						handler: async () => {},
 					});
@@ -318,8 +329,8 @@ describe("ExtensionRunner", () => {
 
 		it("filters out commands conflict with reseved", async () => {
 			const cmdCode = (name: string) => `
-				export default function(pi) {
-					pi.registerCommand("${name}", {
+				export default function(api) {
+					api.registerCommand("${name}", {
 						description: "Test command",
 						handler: async () => {},
 					});
@@ -349,8 +360,8 @@ describe("ExtensionRunner", () => {
 	describe("error handling", () => {
 		it("calls error listeners when handler throws", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.on("context", async () => {
+				export default function(api) {
+					api.on("context", async () => {
 						throw new Error("Handler error!");
 					});
 				}
@@ -377,8 +388,8 @@ describe("ExtensionRunner", () => {
 	describe("message renderers", () => {
 		it("gets message renderer by type", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerMessageRenderer("my-type", (message, options, theme) => null);
+				export default function(api) {
+					api.registerMessageRenderer("my-type", (message, options, theme) => null);
 				}
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "renderer.ts"), extCode);
@@ -397,8 +408,8 @@ describe("ExtensionRunner", () => {
 	describe("flags", () => {
 		it("collects flags from extensions", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerFlag("my-flag", {
+				export default function(api) {
+					api.registerFlag("my-flag", {
 						description: "My flag",
 						handler: async () => {},
 					});
@@ -415,8 +426,8 @@ describe("ExtensionRunner", () => {
 
 		it("keeps first flag when two extensions register the same name", async () => {
 			const first = `
-				export default function(pi) {
-					pi.registerFlag("shared-flag", {
+				export default function(api) {
+					api.registerFlag("shared-flag", {
 						description: "first",
 						type: "boolean",
 						default: true,
@@ -424,8 +435,8 @@ describe("ExtensionRunner", () => {
 				}
 			`;
 			const second = `
-				export default function(pi) {
-					pi.registerFlag("shared-flag", {
+				export default function(api) {
+					api.registerFlag("shared-flag", {
 						description: "second",
 						type: "boolean",
 						default: false,
@@ -445,8 +456,8 @@ describe("ExtensionRunner", () => {
 
 		it("can set flag values", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.registerFlag("test-flag", {
+				export default function(api) {
+					api.registerFlag("test-flag", {
 						description: "Test flag",
 						handler: async () => {},
 					});
@@ -468,8 +479,8 @@ describe("ExtensionRunner", () => {
 	describe("tool_result chaining", () => {
 		it("chains content modifications across handlers", async () => {
 			const extCode1 = `
-				export default function(pi) {
-					pi.on("tool_result", async (event) => {
+				export default function(api) {
+					api.on("tool_result", async (event) => {
 						return {
 							content: [...event.content, { type: "text", text: "ext1" }],
 						};
@@ -477,8 +488,8 @@ describe("ExtensionRunner", () => {
 				}
 			`;
 			const extCode2 = `
-				export default function(pi) {
-					pi.on("tool_result", async (event) => {
+				export default function(api) {
+					api.on("tool_result", async (event) => {
 						return {
 							content: [...event.content, { type: "text", text: "ext2" }],
 						};
@@ -515,8 +526,8 @@ describe("ExtensionRunner", () => {
 
 		it("preserves previous modifications when later handlers return partial patches", async () => {
 			const extCode1 = `
-				export default function(pi) {
-					pi.on("tool_result", async () => {
+				export default function(api) {
+					api.on("tool_result", async () => {
 						return {
 							content: [{ type: "text", text: "first" }],
 							details: { source: "ext1" },
@@ -525,8 +536,8 @@ describe("ExtensionRunner", () => {
 				}
 			`;
 			const extCode2 = `
-				export default function(pi) {
-					pi.on("tool_result", async () => {
+				export default function(api) {
+					api.on("tool_result", async () => {
 						return {
 							isError: true,
 						};
@@ -560,8 +571,8 @@ describe("ExtensionRunner", () => {
 	describe("hasHandlers", () => {
 		it("returns true when handlers exist for event type", async () => {
 			const extCode = `
-				export default function(pi) {
-					pi.on("tool_call", async () => undefined);
+				export default function(api) {
+					api.on("tool_call", async () => undefined);
 				}
 			`;
 			fs.writeFileSync(path.join(extensionsDir, "handler.ts"), extCode);

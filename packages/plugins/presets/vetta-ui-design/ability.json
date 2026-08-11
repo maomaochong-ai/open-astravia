@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "vetta-ui-design",
-	"version": "0.1.13",
+	"version": "0.4.1",
 	"detail": {
 		"blocks": [
 			{
@@ -38,6 +38,11 @@
 						"title": "导出与分享",
 						"description": "可导出设计分享包或把选中画框组合成渲染图。",
 						"icon": "solar:export-linear"
+					},
+					{
+						"title": "设计画廊",
+						"description": "侧边栏「设计」汇总所有带设计稿的项目，点卡片回到当初做它的会话。",
+						"icon": "solar:gallery-wide-linear"
 					}
 				]
 			}
@@ -78,6 +83,11 @@
 								"title": "Export and share",
 								"description": "Export a design package or compose selected frames into mockups.",
 								"icon": "solar:export-linear"
+							},
+							{
+								"title": "Design gallery",
+								"description": "The sidebar “Design” view gathers every project holding a design; open a card to land back in its session.",
+								"icon": "solar:gallery-wide-linear"
 							}
 						]
 					}

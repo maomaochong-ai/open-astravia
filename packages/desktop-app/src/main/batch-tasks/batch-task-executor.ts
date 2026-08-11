@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { AssistantMessage, Message, StopReason } from "@vetta/ai";
-import type { RuntimeHost, SessionExecutionMode } from "../../../../runtime-core/src/index.js";
+import type { RuntimeHost, SessionExecutionMode } from "@vetta/runtime-core";
 import { monitorRuntimeSession, recordBatchRunStarted } from "../app-monitor/app-monitor-service.js";
 import { resolveExecutionMode } from "../execution-mode.js";
 import { readDesktopConfig } from "../ipc/fs.js";
@@ -69,10 +69,14 @@ interface ExecutingTask {
 	timedOut: boolean;
 	startedAt: number;
 	modelKey: string | undefined;
+	runtime: RuntimeHost;
 }
 
 const executingTasks = new Map<string, ExecutingTask>();
 const eventHandlers = new Set<(event: BatchTaskEvent) => void>();
+const activeJobs = new Set<Promise<void>>();
+let acceptingJobs = true;
+let shutdownPromise: Promise<void> | undefined;
 
 // ─── Per-project concurrency scheduler ─────────────────────────────────────
 //
@@ -134,6 +138,7 @@ export function getQueuedTaskIds(projectId?: string): string[] {
 }
 
 function enqueueJob(job: PendingJob, options?: { priority?: boolean }): void {
+	if (!acceptingJobs) throw new Error("Batch task executor is shutting down");
 	const projectId = job.project.id;
 	const running = getRunningSet(projectId);
 	const queue = getPendingQueue(projectId);
@@ -159,7 +164,7 @@ function enqueueJob(job: PendingJob, options?: { priority?: boolean }): void {
 	const concurrency = Math.max(1, job.project.concurrency);
 	if (running.size < concurrency) {
 		running.add(job.task.id);
-		void startJob(job);
+		launchJob(job);
 	} else {
 		if (options?.priority) {
 			// 多个 paused 同时恢复时按 FIFO 插队首：先恢复的先在前。寻找当前
@@ -179,6 +184,15 @@ function enqueueJob(job: PendingJob, options?: { priority?: boolean }): void {
 	}
 }
 
+function launchJob(job: PendingJob): void {
+	const activeJob = startJob(job);
+	activeJobs.add(activeJob);
+	void activeJob.then(
+		() => activeJobs.delete(activeJob),
+		() => activeJobs.delete(activeJob),
+	);
+}
+
 async function startJob(job: PendingJob): Promise<void> {
 	try {
 		await runTaskInner(job.project, job.task, job.runtime, job.resumeText);
@@ -190,6 +204,7 @@ async function startJob(job: PendingJob): Promise<void> {
 }
 
 function drainQueue(projectId: string): void {
+	if (!acceptingJobs) return;
 	const queue = getPendingQueue(projectId);
 	const running = getRunningSet(projectId);
 	while (queue.length > 0) {
@@ -198,7 +213,7 @@ function drainQueue(projectId: string): void {
 		if (running.size >= concurrency) break;
 		queue.shift();
 		running.add(next.task.id);
-		void startJob(next);
+		launchJob(next);
 	}
 }
 
@@ -483,6 +498,10 @@ async function runTaskInner(
 			sessionPath = runtime.getSessionPath(sessionId);
 			monitorRuntimeSession(runtime, sessionId, "batch");
 		}
+		if (!acceptingJobs) {
+			await runtime.abort(sessionId);
+			return;
+		}
 
 		const startedAt = Date.now();
 		const timeoutMs = resolveTaskTimeoutMs(project);
@@ -501,11 +520,12 @@ async function runTaskInner(
 			timedOut: false,
 			startedAt,
 			modelKey: project.modelKey,
+			runtime,
 		});
 		log.info(`Session ${isResume ? "resumed" : "created"}: ${sessionId}, path=${sessionPath}`);
 
 		if (!isResume) {
-			runtime.renameSessionById(sessionId, `${project.name}: ${task.name}`);
+			await runtime.renameSessionById(sessionId, `${project.name}: ${task.name}`);
 		}
 
 		const runningState: BatchTaskState = {
@@ -529,6 +549,8 @@ async function runTaskInner(
 		});
 		recordBatchRunStarted();
 		log.info(`task.started emitted: ${task.id}`);
+
+		if (!acceptingJobs) return;
 
 		// 模型选择透传给 prompt — 跟 chat 走完全一致的路径（useSessionManager 也是
 		// 把 modelKey 放进 PromptRequest）。原来这里走的是 updateSettings + getState
@@ -608,10 +630,63 @@ export async function abortTask(projectId: string, taskId: string, runtime: Runt
 	log.debug(`Abort called for session ${executing.sessionId}`);
 }
 
+export async function shutdownBatchTaskExecutor(): Promise<void> {
+	acceptingJobs = false;
+	if (shutdownPromise) return await shutdownPromise;
+	shutdownPromise = (async () => {
+		for (const [projectId, queue] of pendingByProject) {
+			for (const job of queue) {
+				emitBatchTaskEvent({ type: "task.dequeued", projectId, taskId: job.task.id });
+			}
+		}
+		pendingByProject.clear();
+
+		const activeTasks = [...executingTasks.values()];
+		for (const executing of activeTasks) {
+			executingTasks.delete(executing.taskId);
+			clearTimeout(executing.timeoutHandle);
+		}
+		await Promise.allSettled(
+			activeTasks.map(async (executing) => {
+				await executing.runtime.abort(executing.sessionId);
+				executing.abortController.abort();
+			}),
+		);
+		await Promise.allSettled([...activeJobs]);
+		runningByProject.clear();
+		pendingByProject.clear();
+	})();
+	return await shutdownPromise;
+}
+
 export function isTaskRunning(taskId: string): boolean {
 	return executingTasks.has(taskId);
 }
 
 export function getExecutingTaskIds(): string[] {
 	return Array.from(executingTasks.keys());
+}
+
+export function getBatchTaskExecutorState(): {
+	readonly acceptingJobs: boolean;
+	readonly shutdownStarted: boolean;
+	readonly activeTasks: Array<{
+		readonly projectId: string;
+		readonly taskId: string;
+		readonly sessionId: string;
+		readonly sessionPath: string | undefined;
+	}>;
+	readonly queuedTaskIds: string[];
+} {
+	return {
+		acceptingJobs,
+		shutdownStarted: shutdownPromise !== undefined,
+		activeTasks: [...executingTasks.values()].map((executing) => ({
+			projectId: executing.projectId,
+			taskId: executing.taskId,
+			sessionId: executing.sessionId,
+			sessionPath: executing.sessionPath,
+		})),
+		queuedTaskIds: getQueuedTaskIds(),
+	};
 }

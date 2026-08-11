@@ -39,18 +39,21 @@ import (
 // Transport is the mock implementation. Construct via New; the zero value
 // is not usable.
 type Transport struct {
-	in  io.Reader
+	in  io.ReadCloser
 	out io.Writer
 
-	mu      sync.Mutex
-	nextMsg uint64
-	closed  atomic.Bool
-	stopCh  chan struct{}
+	mu           sync.Mutex
+	nextMsg      uint64
+	closed       atomic.Bool
+	stopCh       chan struct{}
+	stopOnce     sync.Once
+	stopInputErr error
 }
 
 // Options for New. All fields optional; defaults are os.Stdin / os.Stdout.
+// Transport owns In and closes it when stopped or when Start's context is cancelled.
 type Options struct {
-	In  io.Reader
+	In  io.ReadCloser
 	Out io.Writer
 }
 
@@ -92,6 +95,11 @@ func (t *Transport) Capabilities() transport.Capabilities {
 // Start begins reading inbound messages from t.in and dispatches each one
 // to handler. Blocks until t.in is closed or Stop is called.
 func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler) error {
+	stopContextWatch := context.AfterFunc(ctx, func() {
+		_ = t.Stop()
+	})
+	defer stopContextWatch()
+
 	scanner := bufio.NewScanner(t.in)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 
@@ -141,16 +149,23 @@ func (t *Transport) Start(ctx context.Context, handler transport.MessageHandler)
 			t.writeError(fmt.Sprintf("handler: %v", err))
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if t.closed.Load() {
+		return nil
+	}
 	return scanner.Err()
 }
 
 // Stop signals Start to return. Safe to call multiple times.
 func (t *Transport) Stop() error {
-	if t.closed.Swap(true) {
-		return nil
-	}
-	close(t.stopCh)
-	return nil
+	t.stopOnce.Do(func() {
+		t.closed.Store(true)
+		close(t.stopCh)
+		t.stopInputErr = t.in.Close()
+	})
+	return t.stopInputErr
 }
 
 // SendMessage emits a {"action":"send"} line and synthesizes a message ID

@@ -1,8 +1,26 @@
 import type { ThinkingLevel, ToolPhase } from "@vetta/agent-core";
 import type { Message, Model } from "@vetta/ai";
-import type { ConversationScenario, PromptAttachmentRef, PromptResourceRef } from "@vetta/coding-agent";
+import type { ContextCompositionReport } from "./context-composition/contracts.js";
 
-export type { PromptAttachmentRef, PromptResourceRef } from "@vetta/coding-agent";
+/** 对话场景 slug；RuntimeHost 与 Coding Profile 共享的稳定隔离轴。 */
+export type ConversationScenario =
+	| "im-claw"
+	| "conversation"
+	| "project"
+	| "batch"
+	| "automation"
+	| "kb-processing"
+	| "cli";
+
+export interface PromptResourceRef {
+	kind: "skill" | "scene";
+	name: string;
+}
+
+export interface PromptAttachmentRef {
+	kind: "file" | "directory" | "image";
+	path: string;
+}
 
 export type RuntimeEventSource = "runtime-core" | "agent" | "tool" | "mcp";
 
@@ -261,6 +279,14 @@ export interface SessionLifecycleEvent extends SessionEventBase {
 	phase: "created" | "agent_start" | "turn_start" | "turn_end" | "agent_end" | "aborted";
 }
 
+export interface SessionPathChangedEvent extends SessionEventBase {
+	type: "session.path_changed";
+	previousSessionId: string;
+	previousPath?: string;
+	path?: string;
+	reason: string;
+}
+
 export interface MessageDeltaEvent extends SessionEventBase {
 	type: "message.delta";
 	delta: string;
@@ -280,6 +306,27 @@ export interface ToolCallGeneratingEvent extends SessionEventBase {
 	type: "toolcall.start";
 	toolCallId: string;
 	toolName: string;
+}
+
+/**
+ * The model is still generating this tool call, and streaming its arguments has
+ * revealed at least one more fully-parsed key. Emitted once per key growth, not
+ * per token.
+ *
+ * Why it exists: for `edit`/`write` the expensive part is generating the
+ * arguments (a whole file body), while executing them takes milliseconds. UI
+ * keyed off {@link ToolStartEvent} therefore only learns the target once the
+ * work is essentially over. The target path is normally the first key in the
+ * argument object, so it lands here seconds earlier.
+ *
+ * Partial by construction: keys may still be missing and values of the
+ * in-flight key are not included. {@link ToolStartEvent} stays authoritative.
+ */
+export interface ToolCallArgsEvent extends SessionEventBase {
+	type: "toolcall.args";
+	toolCallId: string;
+	toolName: string;
+	args: Readonly<Record<string, unknown>>;
 }
 
 export interface ToolStartEvent extends SessionEventBase {
@@ -360,6 +407,8 @@ export interface UsageUpdateEvent extends SessionEventBase {
 	contextPercent: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
+	/** Privacy-safe breakdown for the exact provider-facing context. */
+	contextComposition?: ContextCompositionReport;
 }
 
 export interface SessionError {
@@ -542,10 +591,12 @@ export interface RuntimeSandboxGrantInfo {
 
 export type SessionEvent =
 	| SessionLifecycleEvent
+	| SessionPathChangedEvent
 	| MessageDeltaEvent
 	| ThinkingDeltaEvent
 	| MessageFinalEvent
 	| ToolCallGeneratingEvent
+	| ToolCallArgsEvent
 	| ToolStartEvent
 	| ToolUpdateEvent
 	| ToolPhaseEvent
@@ -562,7 +613,28 @@ export type SessionEvent =
 	| CompactionStartEvent
 	| CompactionEndEvent
 	| RetryStartEvent
-	| RetryEndEvent;
+	| RetryEndEvent
+	| QueueChangedEvent;
+
+/** prompt 的即时回执（ADR-0060）：排队时立即返回，宿主/UI 据此区分「已发出」与「已排队」。 */
+export interface RuntimeTurnPromptOutcome {
+	readonly status: "completed" | "cancelled" | "failed" | "queued" | "handled";
+	readonly pendingCount?: number;
+	readonly queueItemId?: string;
+}
+
+/** 输入队列变化广播：renderer 镜像队列抽屉、插件卡片据此渲染排队状态（ADR-0060）。 */
+export interface QueueChangedEvent extends SessionEventBase {
+	type: "queue.changed";
+	paused: boolean;
+	entries: Array<{
+		id: string;
+		behavior: "steer" | "followUp";
+		displayText: string;
+	}>;
+	/** 完整可序列化快照，宿主持久化 sidecar 用；renderer 无需消费。 */
+	snapshot: unknown;
+}
 
 export interface SessionStateSnapshot {
 	sessionId: string;
@@ -577,6 +649,8 @@ export interface SessionStateSnapshot {
 	contextPercent: number | null;
 	/** Total context window size in tokens */
 	contextWindow: number;
+	/** Latest model-call context composition, when a call has been prepared. */
+	contextComposition?: ContextCompositionReport;
 	/** 当前激活（模型可见）的工具名集合。renderer 据此让输入栏 badge 跟随工具 scope。 */
 	activeToolNames: string[];
 	/**
@@ -773,7 +847,7 @@ export interface SessionFacade {
 	createSession(config?: SessionConfig): Promise<{ sessionId: string }>;
 	setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void>;
 	setGlobalExecutionMode(mode: SessionExecutionMode): Promise<void>;
-	prompt(sessionId: string, request: PromptRequest): Promise<void>;
+	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): () => void;
@@ -805,7 +879,7 @@ export interface SessionFacade {
 	replaceLastUserMessage(sessionId: string, entryId: string): Promise<{ leafId: string | null }>;
 	/**
 	 * Export a fork as a new session file without leaving the current session.
-	 * Copies history up to the parent of the selected user message.
+	 * Copies history through the selected user message and that turn's complete reply.
 	 */
 	forkSession(sessionId: string, entryId: string): Promise<{ path: string; text: string }>;
 	listProjects(): Promise<ProjectInfo[]>;
@@ -813,7 +887,7 @@ export interface SessionFacade {
 	deleteSession(sessionPath: string): Promise<void>;
 	renameSession(sessionPath: string, name: string): Promise<void>;
 	getSessionPath(sessionId: string): string | undefined;
-	renameSessionById(sessionId: string, name: string): void;
+	renameSessionById(sessionId: string, name: string): Promise<void>;
 	autoTitleSession(sessionId: string, userText: string, assistantText: string): Promise<string | null>;
 	disposeSession(sessionId: string): Promise<void>;
 	disposeAllSessions(): Promise<void>;

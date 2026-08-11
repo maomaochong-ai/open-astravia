@@ -1,0 +1,86 @@
+{
+	"schemaVersion": 1,
+	"type": "plugin",
+	"slug": "kanban",
+	"version": "0.3.1",
+	"detail": {
+		"blocks": [
+			{
+				"type": "showcase",
+				"showcase": {
+					"template": "chat-over-canvas",
+					"canvas": "generic",
+					"user_prompt": "看一下看板，把待认领里能做的都做了。",
+					"assistant_reply": "我读了看板：3 条待认领，「正在处理」还剩 4 个名额。「登录页改版」被「统一设计令牌」挡着，我先做后者；另外两条无依赖，现在一起开工。做完一条我会提交到「待检查」等你验收。"
+				}
+			},
+			{
+				"type": "feature-grid",
+				"title": "对话多了也不丢全局视角",
+				"items": [
+					{
+						"title": "三条泳道一眼看清",
+						"description": "灵感池、正在处理、待检查。什么在打磨、什么在跑、什么等验收，不用再翻会话列表。",
+						"icon": "solar:widget-4-linear"
+					},
+					{
+						"title": "看板即提问入口",
+						"description": "顶部敲一行回车就记下想法，点「派发」直接建会话开跑，全程不用进任何会话页。",
+						"icon": "solar:lightbulb-bolt-linear"
+					},
+					{
+						"title": "Agent 自行认领派单",
+						"description": "标为「待认领」后 Agent 自己挑、自己决定并行还是排队；草稿它不碰。",
+						"icon": "solar:magic-stick-3-linear"
+					},
+					{
+						"title": "并发上限只管这块板",
+						"description": "默认同时最多 5 条在跑，够你跟得住；批量任务、自动化和手动会话都不受影响。",
+						"icon": "solar:sort-vertical-linear"
+					}
+				]
+			}
+		],
+		"i18n": {
+			"en": {
+				"blocks": [
+					{
+						"type": "showcase",
+						"showcase": {
+							"template": "chat-over-canvas",
+							"canvas": "generic",
+							"user_prompt": "Check the board and take everything that's ready.",
+							"assistant_reply": "Read the board: 3 ready, 4 slots left In Progress. \"Login redesign\" is blocked by \"Unify design tokens\", so I'll do that one first; the other two have no dependencies, starting both now. I'll submit each to Needs Review as it lands."
+						}
+					},
+					{
+						"type": "feature-grid",
+						"title": "Keep the big picture as conversations pile up",
+						"items": [
+							{
+								"title": "Three lanes, one glance",
+								"description": "Idea Pool, In Progress, Needs Review. What's being shaped, what's running, what's waiting on you.",
+								"icon": "solar:widget-4-linear"
+							},
+							{
+								"title": "The board is the prompt box",
+								"description": "Type one line to capture an idea; hit Dispatch to spin up a session. You never leave the board.",
+								"icon": "solar:lightbulb-bolt-linear"
+							},
+							{
+								"title": "The agent claims its own work",
+								"description": "Mark a request Ready and the agent picks it up, deciding what to parallelize. Drafts it leaves alone.",
+								"icon": "solar:magic-stick-3-linear"
+							},
+							{
+								"title": "A WIP limit scoped to this board",
+								"description": "Five running at once by default — enough to actually keep up. Batch tasks and automations are untouched.",
+								"icon": "solar:sort-vertical-linear"
+							}
+						]
+					}
+				]
+			}
+		}
+	}
+}

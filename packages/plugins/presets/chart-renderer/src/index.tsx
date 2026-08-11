@@ -9,8 +9,11 @@ const CHART_TYPES = ["line", "bar", "pie", "doughnut", "polarArea", "radar", "sc
 const parameters = {
 	type: "object",
 	properties: {
-		type: { type: "string", enum: CHART_TYPES, description: "Chart.js chart type" },
-		data: { type: "object", description: "标准 Chart.js data 对象，包含 labels 和 datasets" },
+		type: { type: "string", enum: CHART_TYPES, description: "Chart.js chart type（单图表：与 data 一起传）" },
+		data: {
+			type: "object",
+			description: "标准 Chart.js data 对象，包含 labels 和 datasets（单图表：与 type 一起传）",
+		},
 		options: { type: "object", description: "可选的标准 Chart.js options 对象" },
 		title: { type: "string", description: "图表标题" },
 		description: { type: "string", description: "图表说明" },
@@ -19,7 +22,8 @@ const parameters = {
 			type: "array",
 			minItems: 1,
 			maxItems: 4,
-			description: "最多 4 个图表；每项包含 type、data 和可选 options/title/description/height",
+			description:
+				"多图表：最多 4 个，每项包含 type、data 和可选 options/title/description/height。单图表则改传顶层 type + data，两种形式必须且只能用其一。",
 			items: {
 				type: "object",
 				properties: {
@@ -35,7 +39,9 @@ const parameters = {
 			},
 		},
 	},
-	anyOf: [{ required: ["charts"] }, { required: ["type", "data"] }],
+	// 「单图表 type+data」与「多图表 charts」的二选一只写进 description，不用顶层 anyOf：
+	// Gemini 把每个 anyOf 分支当独立 Schema 校验，裸 { required: [...] }（无 type/properties）
+	// 会让整轮请求 400，一个工具就能废掉整个会话。约束由下面的 handler 兜底并 retryable 返回。
 	additionalProperties: false,
 };
 

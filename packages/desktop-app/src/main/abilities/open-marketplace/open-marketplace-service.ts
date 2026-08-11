@@ -183,6 +183,8 @@ export class OpenMarketplaceService {
 	private readonly createTemporaryDirectory: () => Promise<string>;
 	private lastUpdateCheckAt: number | undefined;
 	private backgroundUpdate: Promise<void> | undefined;
+	/** 进程内快照：避免同会话反复 list 时对每个 ability 包做全量校验。 */
+	private memorySnapshot: OpenMarketplaceSnapshot | undefined;
 
 	constructor(options: OpenMarketplaceServiceOptions) {
 		const marketplaceCache = getApplicationCacheService().namespace("marketplace");
@@ -217,34 +219,44 @@ export class OpenMarketplaceService {
 	}
 
 	async list(): Promise<OpenMarketplaceSnapshot> {
+		if (this.memorySnapshot) {
+			this.scheduleBackgroundUpdate();
+			return this.memorySnapshot;
+		}
 		const cached = await this.readCachedSnapshot();
 		if (!cached) return this.refresh();
+		this.memorySnapshot = cached;
 		this.scheduleBackgroundUpdate();
 		return cached;
 	}
 
 	async listCached(): Promise<OpenMarketplaceSnapshot> {
-		return (
-			(await this.readCachedSnapshot()) ?? {
-				sourceId: this.sourceId,
-				abilities: [],
-				marketplaceVersion: null,
-				repository: this.repository,
-				syncedAt: null,
-				stale: true,
-			}
-		);
+		if (this.memorySnapshot) return this.memorySnapshot;
+		const cached = await this.readCachedSnapshot();
+		if (cached) {
+			this.memorySnapshot = cached;
+			return cached;
+		}
+		return {
+			sourceId: this.sourceId,
+			abilities: [],
+			marketplaceVersion: null,
+			repository: this.repository,
+			syncedAt: null,
+			stale: true,
+		};
 	}
 
 	async refresh(): Promise<OpenMarketplaceSnapshot> {
 		try {
 			const snapshot = await this.sync();
 			this.lastUpdateCheckAt = this.now().getTime();
+			this.memorySnapshot = snapshot;
 			return snapshot;
 		} catch {
-			const cached = await this.readCachedSnapshot();
-			return cached
-				? { ...cached, stale: true, error: "sync-failed" }
+			const cached = this.memorySnapshot ?? (await this.readCachedSnapshot());
+			const failed = cached
+				? { ...cached, stale: true, error: "sync-failed" as const }
 				: {
 						sourceId: this.sourceId,
 						abilities: [],
@@ -252,8 +264,10 @@ export class OpenMarketplaceService {
 						repository: this.repository,
 						syncedAt: null,
 						stale: true,
-						error: "sync-failed",
+						error: "sync-failed" as const,
 					};
+			this.memorySnapshot = failed;
+			return failed;
 		}
 	}
 
@@ -445,6 +459,7 @@ export class OpenMarketplaceService {
 			return;
 		}
 		const snapshot = await this.sync();
+		this.memorySnapshot = snapshot;
 		this.onBackgroundUpdate?.(snapshot);
 	}
 

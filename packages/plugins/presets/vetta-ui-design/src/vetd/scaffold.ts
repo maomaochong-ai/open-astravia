@@ -1,5 +1,5 @@
 import type { PluginFsApi } from "@vetta-org/plugin-sdk";
-import { emptyManifest, type FrameSize, sidecarDirOf, type VetdManifest } from "./manifest-types";
+import { emptyManifest, type FrameSize, manifestPathOf, type VetdManifest } from "./manifest-types";
 
 // 注意：这段是写进用户项目里的产物文件，不是插件 UI 文案，所以不走 locales；
 // 但也不能是中文——英文宿主的用户同样会拿到这个文件。
@@ -18,12 +18,14 @@ export const DEFAULT_THEME_CSS = `/* Shared color system for this design documen
 `;
 
 export interface ScaffoldResult {
+	/** The `x.vetd/` bundle directory. */
 	vetdPath: string;
+	/** Same directory; kept as a separate field because callers read sources from it. */
 	dirPath: string;
 }
 
 /**
- * Create a working-form design skeleton (manifest + sidecar dir). The plugin —
+ * Create a design bundle skeleton (`x.vetd/` + design.json). The plugin —
  * not the agent — always writes this scaffold (single-writer rule); the agent
  * goes through the vetd_create tool which lands here.
  *
@@ -47,17 +49,16 @@ export async function scaffoldDesign(
 		vetdPath = `${cwd}/${name}-${suffix}.vetd`;
 		suffix += 1;
 	}
-	const dirPath = sidecarDirOf(vetdPath);
-	await fs.createDirectory(`${dirPath}/frames`);
-	await fs.createDirectory(`${dirPath}/components`);
-	await fs.createDirectory(`${dirPath}/assets`);
-	await fs.writeFile(`${dirPath}/theme.css`, DEFAULT_THEME_CSS);
+	await fs.createDirectory(`${vetdPath}/frames`);
+	await fs.createDirectory(`${vetdPath}/components`);
+	await fs.createDirectory(`${vetdPath}/assets`);
+	await fs.writeFile(`${vetdPath}/theme.css`, DEFAULT_THEME_CSS);
 	const manifest: VetdManifest = {
 		...emptyManifest(),
 		...(defaultFrameSize ? { defaultFrameSize } : {}),
 	};
-	await fs.writeFile(vetdPath, `${JSON.stringify(manifest, null, "\t")}\n`);
-	return { vetdPath, dirPath };
+	await fs.writeFile(manifestPathOf(vetdPath), `${JSON.stringify(manifest, null, "\t")}\n`);
+	return { vetdPath, dirPath: vetdPath };
 }
 
 export function sanitizeDesignName(raw: string): string {

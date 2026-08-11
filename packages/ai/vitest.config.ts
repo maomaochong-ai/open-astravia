@@ -1,9 +1,10 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
+import { AI_INTEGRATION_TEST_FILES, AI_LIVE_TEST_FILES, AI_TEST_DEFAULTS } from "./vitest.suites.js";
 
 export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    testTimeout: 30000, // 30 seconds for API calls
-  }
+	test: {
+		...AI_TEST_DEFAULTS,
+		include: ["test/**/*.test.ts"],
+		exclude: [...AI_INTEGRATION_TEST_FILES, ...AI_LIVE_TEST_FILES],
+	},
 });

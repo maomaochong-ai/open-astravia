@@ -1,3 +1,5 @@
-import { main } from "@vetta/coding-agent";
+#!/usr/bin/env node
 
-await main(process.argv.slice(2));
+import { runAgentCli } from "./run-agent-cli.js";
+
+await runAgentCli(process.argv.slice(2));

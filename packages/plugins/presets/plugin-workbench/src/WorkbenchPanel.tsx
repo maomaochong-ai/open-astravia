@@ -3,7 +3,7 @@ import { Button, Switch } from "@vetta/ui";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { discoverProjects, joinPath, readJson, type ProjectInfo } from "./project";
 import { applyPluginToVetta, reinstallPluginToVetta } from "./reinstall";
-import { getWorkbenchCommand, getWorkbenchFs } from "./runtime";
+import { getWorkbenchCommand, getWorkbenchDialog, getWorkbenchFs, getWorkbenchPlugins } from "./runtime";
 
 interface InstalledInfo {
 	id: string;
@@ -126,7 +126,7 @@ export function WorkbenchPanel() {
 	const refresh = useCallback(async () => {
 		setError(null);
 		try {
-			const list = await window.vetta.plugins.list();
+			const list = await getWorkbenchPlugins().list();
 			const map = new Map<string, InstalledInfo>();
 			let wbRoot: string | null = null;
 			for (const p of list) {
@@ -160,7 +160,7 @@ export function WorkbenchPanel() {
 
 	useEffect(
 		() =>
-			window.vetta.plugins.onPluginsChanged((event) => {
+			getWorkbenchPlugins().onChanged((event) => {
 				if (event?.reason === "dev-ready" || event?.reason === "dev-status") void refresh();
 			}),
 		[refresh],
@@ -174,7 +174,7 @@ export function WorkbenchPanel() {
 			if (hotReloadUserOffRef.current.has(project.id)) continue;
 			if (hotReloadAutoAttemptedRef.current.has(project.id)) continue;
 			hotReloadAutoAttemptedRef.current.add(project.id);
-			void window.vetta.plugins
+			void getWorkbenchPlugins()
 				.startDevWatch(project.id, project.dir)
 				.then(() => refresh())
 				.catch((err) => {
@@ -250,7 +250,7 @@ export function WorkbenchPanel() {
 		setBusy(`uninstall:${id}`);
 		setError(null);
 		try {
-			await window.vetta.plugins.uninstall(id);
+			await getWorkbenchPlugins().uninstall(id);
 			hotReloadUserOffRef.current.delete(id);
 			hotReloadAutoAttemptedRef.current.delete(id);
 			window.dispatchEvent(new Event("vetta:plugins-changed"));
@@ -266,7 +266,7 @@ export function WorkbenchPanel() {
 		setBusy(`reload:${id}`);
 		setError(null);
 		try {
-			await window.vetta.plugins.reload(id);
+			await getWorkbenchPlugins().reload(id);
 			window.dispatchEvent(new Event("vetta:plugins-changed"));
 			await refresh();
 		} catch (err) {
@@ -282,11 +282,11 @@ export function WorkbenchPanel() {
 		try {
 			if (inst.devWatch) {
 				hotReloadUserOffRef.current.add(project.id);
-				await window.vetta.plugins.stopDevWatch(project.id);
+				await getWorkbenchPlugins().stopDevWatch(project.id);
 			} else {
 				hotReloadUserOffRef.current.delete(project.id);
 				hotReloadAutoAttemptedRef.current.add(project.id);
-				await window.vetta.plugins.startDevWatch(project.id, project.dir);
+				await getWorkbenchPlugins().startDevWatch(project.id, project.dir);
 			}
 			window.dispatchEvent(new Event("vetta:plugins-changed"));
 			await refresh();
@@ -328,7 +328,7 @@ export function WorkbenchPanel() {
 		setError(null);
 		try {
 			const defaultFileName = `${project.id}-${project.version}.zip`;
-			const saved = await window.vetta.dialog.saveCopy(project.zipPath, {
+			const saved = await getWorkbenchDialog().saveCopy(project.zipPath, {
 				defaultFileName,
 				title: t("panel.exportTitle"),
 				filters: [{ name: "Zip", extensions: ["zip"] }],

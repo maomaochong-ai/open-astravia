@@ -1,6 +1,10 @@
 import type { OpenMarketplaceCatalog } from "@preload/api";
 import { describe, expect, it } from "vitest";
-import { areAllAttemptedMarketSourcesUnavailable, getOpenMarketplaceLoadState } from "./ability-load-policy";
+import {
+	areAllAttemptedMarketSourcesUnavailable,
+	getOpenMarketplaceLoadState,
+	shouldReportAbilityLoadFailure,
+} from "./ability-load-policy";
 
 function catalog(overrides: Partial<OpenMarketplaceCatalog> = {}): OpenMarketplaceCatalog {
 	return {
@@ -83,5 +87,29 @@ describe("ability load policy", () => {
 			]),
 		).toBe(true);
 		expect(areAllAttemptedMarketSourcesUnavailable([{ attempted: false, usable: false }])).toBe(false);
+	});
+
+	it("reports failure for local errors or fully unavailable markets", () => {
+		expect(
+			shouldReportAbilityLoadFailure({
+				localFailed: true,
+				server: { attempted: true, usable: true },
+				open: { attempted: false, usable: false },
+			}),
+		).toBe(true);
+		expect(
+			shouldReportAbilityLoadFailure({
+				localFailed: false,
+				server: { attempted: true, usable: false },
+				open: { attempted: true, usable: false },
+			}),
+		).toBe(true);
+		expect(
+			shouldReportAbilityLoadFailure({
+				localFailed: false,
+				server: { attempted: true, usable: false },
+				open: { attempted: true, usable: true },
+			}),
+		).toBe(false);
 	});
 });

@@ -23,9 +23,20 @@ describe("createOfficialSkillsApi", () => {
 			setEnabled: vi.fn().mockResolvedValue({ name: "review", enabled: false }),
 			uninstall: vi.fn().mockResolvedValue(undefined),
 		};
+		const installFromMarketSlug = vi.fn().mockResolvedValue({
+			name: "review",
+			type: "skill",
+			version: "1.0.0",
+			updated: false,
+		});
 		Object.defineProperty(globalThis, "window", {
 			configurable: true,
-			value: { vetta: { plugins: { internalCapabilities: { skills } } } },
+			value: {
+				vetta: {
+					plugins: { internalCapabilities: { skills } },
+					skills: { installFromMarketSlug },
+				},
+			},
 		});
 		const assertOfficial = vi.fn();
 		const api = createOfficialSkillsApi(assertOfficial, "capability-session");
@@ -34,11 +45,18 @@ describe("createOfficialSkillsApi", () => {
 		await expect(api.getManifest()).resolves.toEqual(installed);
 		await expect(api.setEnabled("review", false)).resolves.toEqual({ name: "review", enabled: false });
 		await expect(api.uninstall("review")).resolves.toBeUndefined();
+		await expect(api.installFromMarket("skill", "review")).resolves.toEqual({
+			name: "review",
+			type: "skill",
+			version: "1.0.0",
+			updated: false,
+		});
 
-		expect(assertOfficial).toHaveBeenCalledTimes(4);
+		expect(assertOfficial).toHaveBeenCalledTimes(5);
 		expect(skills.list).toHaveBeenCalledWith("capability-session", "C:/workspace");
 		expect(skills.listInstalled).toHaveBeenCalledWith("capability-session");
 		expect(skills.setEnabled).toHaveBeenCalledWith("capability-session", "review", false);
 		expect(skills.uninstall).toHaveBeenCalledWith("capability-session", "review", undefined);
+		expect(installFromMarketSlug).toHaveBeenCalledWith("skill", "review");
 	});
 });

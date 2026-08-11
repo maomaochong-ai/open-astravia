@@ -10,9 +10,14 @@
  * thinkingFormat "qwen" injected — no manual compat config needed.
  */
 
-import type { AssistantMessageEventStream, Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { AssistantMessageEventStream } from "../utils/event-stream.js";
 import type { OpenAICompletionsOptions } from "./openai-completions.js";
-import { streamOpenAICompletions, streamSimpleOpenAICompletions } from "./openai-completions.js";
+import {
+	createOpenAICompatibleAdapter,
+	streamOpenAICompletions,
+	streamSimpleOpenAICompletions,
+} from "./openai-completions.js";
 
 const QWEN_COMPAT = { thinkingFormat: "qwen" as const, supportsDeveloperRole: false };
 
@@ -23,6 +28,8 @@ function withQwenCompat(model: Model<"qwen-openai-completions">): Model<"openai-
 		compat: Object.assign({}, model.compat, QWEN_COMPAT),
 	};
 }
+
+export const qwenAdapter = createOpenAICompatibleAdapter("qwen-openai-completions", withQwenCompat);
 
 export const streamQwen: StreamFunction<"qwen-openai-completions", OpenAICompletionsOptions> = (
 	model: Model<"qwen-openai-completions">,

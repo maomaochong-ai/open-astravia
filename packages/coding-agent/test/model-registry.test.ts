@@ -1,12 +1,66 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { OpenAICompletionsCompat } from "@vetta/ai";
+import type { Api, Model, OpenAICompletionsCompat } from "@vetta/ai";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { AuthStorage } from "../src/core/auth-storage.js";
-import { clearApiKeyCache, ModelRegistry } from "../src/core/model-registry.js";
+import { AuthStorage } from "../src/auth/index.js";
+import {
+	type CodingAgentModelRuntime,
+	type CreateCodingAgentModelRuntimeOptions,
+	clearApiKeyCache,
+	createCodingAgentModelRuntime as createModelRuntime,
+	type ModelCredentialStore,
+} from "../src/models/index.js";
 
-describe("ModelRegistry", () => {
+const BUILT_IN_MODELS: readonly Model<Api>[] = [
+	model("anthropic", "claude-sonnet-4"),
+	model("anthropic", "claude-opus-4"),
+	model("google", "gemini-2.5-pro", "google-generative-ai"),
+	model("openai", "gpt-5.1-codex", "openai-responses"),
+	model("openrouter", "anthropic/claude-sonnet-4", "openai-completions"),
+	model("openrouter", "anthropic/claude-opus-4", "openai-completions"),
+];
+const NO_AUTH_PLACEHOLDER = "no-auth-needed-for-local-provider";
+
+function model(provider: string, id: string, api: Api = "anthropic-messages"): Model<Api> {
+	return {
+		id,
+		name: id,
+		provider,
+		api,
+		baseUrl: `https://${provider}.example.com`,
+		reasoning: false,
+		input: ["text"],
+		cost: { input: 1, output: 2, cacheRead: 0.1, cacheWrite: 0.2 },
+		contextWindow: 100_000,
+		maxTokens: 8_000,
+	};
+}
+
+function createCodingAgentModelRuntime(
+	credentials: ModelCredentialStore,
+	options: CreateCodingAgentModelRuntimeOptions,
+): CodingAgentModelRuntime {
+	return createModelRuntime(credentials, { ...options, builtInModels: BUILT_IN_MODELS });
+}
+
+function quoteShellArgument(value: string): string {
+	if (process.platform === "win32") return `"${value.replaceAll('"', '""')}"`;
+	return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+function createNodeConfigCommand(
+	directory: string,
+	name: string,
+	source: string,
+	args: readonly string[] = [],
+): string {
+	const scriptPath = join(directory, `${name}.cjs`);
+	writeFileSync(scriptPath, source);
+	return `!${[process.execPath, scriptPath, ...args].map(quoteShellArgument).join(" ")}`;
+}
+
+describe("CodingAgentModelRuntime", () => {
 	let tempDir: string;
 	let modelsJsonPath: string;
 	let authStorage: AuthStorage;
@@ -51,8 +105,8 @@ describe("ModelRegistry", () => {
 		writeFileSync(modelsJsonPath, JSON.stringify({ providers }));
 	}
 
-	function getModelsForProvider(registry: ModelRegistry, provider: string) {
-		return registry.getAll().filter((m) => m.provider === provider);
+	function getModelsForProvider(runtime: CodingAgentModelRuntime, provider: string) {
+		return runtime.getAll().filter((m) => m.provider === provider);
 	}
 
 	/** Create a baseUrl-only override (no custom models) */
@@ -71,7 +125,7 @@ describe("ModelRegistry", () => {
 				anthropic: overrideConfig("https://my-proxy.example.com/v1"),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const anthropicModels = getModelsForProvider(registry, "anthropic");
 
 			// Should have multiple built-in models, not just one
@@ -84,7 +138,7 @@ describe("ModelRegistry", () => {
 				anthropic: overrideConfig("https://my-proxy.example.com/v1"),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const anthropicModels = getModelsForProvider(registry, "anthropic");
 
 			// All models should have the new baseUrl
@@ -100,7 +154,7 @@ describe("ModelRegistry", () => {
 				}),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const anthropicModels = getModelsForProvider(registry, "anthropic");
 
 			for (const model of anthropicModels) {
@@ -113,7 +167,7 @@ describe("ModelRegistry", () => {
 				anthropic: overrideConfig("https://my-proxy.example.com/v1"),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const googleModels = getModelsForProvider(registry, "google");
 
 			// Google models should still have their original baseUrl
@@ -133,7 +187,7 @@ describe("ModelRegistry", () => {
 				),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 
 			// Anthropic: multiple built-in models with new baseUrl
 			const anthropicModels = getModelsForProvider(registry, "anthropic");
@@ -150,7 +204,7 @@ describe("ModelRegistry", () => {
 			writeRawModelsJson({
 				anthropic: overrideConfig("https://first-proxy.example.com/v1"),
 			});
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 
 			expect(getModelsForProvider(registry, "anthropic")[0].baseUrl).toBe("https://first-proxy.example.com/v1");
 
@@ -170,7 +224,7 @@ describe("ModelRegistry", () => {
 				anthropic: providerConfig("https://my-proxy.example.com/v1", [{ id: "claude-custom" }]),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const anthropicModels = getModelsForProvider(registry, "anthropic");
 
 			expect(anthropicModels.length).toBeGreaterThan(1);
@@ -187,7 +241,7 @@ describe("ModelRegistry", () => {
 				),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 			const sonnetModels = models.filter((m) => m.id === "anthropic/claude-sonnet-4");
 
@@ -200,7 +254,7 @@ describe("ModelRegistry", () => {
 				anthropic: providerConfig("https://my-proxy.example.com/v1", [{ id: "claude-custom" }]),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 
 			expect(getModelsForProvider(registry, "google").length).toBeGreaterThan(0);
 			expect(getModelsForProvider(registry, "openai").length).toBeGreaterThan(0);
@@ -211,7 +265,7 @@ describe("ModelRegistry", () => {
 				anthropic: providerConfig("https://merged-proxy.example.com/v1", [{ id: "claude-custom" }]),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const anthropicModels = getModelsForProvider(registry, "anthropic");
 
 			for (const model of anthropicModels) {
@@ -244,7 +298,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 
 			expect(models.some((m) => m.id === "custom/openrouter-model")).toBe(true);
@@ -257,7 +311,7 @@ describe("ModelRegistry", () => {
 			writeModelsJson({
 				anthropic: providerConfig("https://first-proxy.example.com/v1", [{ id: "claude-custom" }]),
 			});
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			expect(getModelsForProvider(registry, "anthropic").some((m) => m.id === "claude-custom")).toBe(true);
 
 			// Update and refresh
@@ -276,7 +330,7 @@ describe("ModelRegistry", () => {
 			writeModelsJson({
 				anthropic: providerConfig("https://proxy.example.com/v1", [{ id: "claude-custom" }]),
 			});
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			expect(getModelsForProvider(registry, "anthropic").some((m) => m.id === "claude-custom")).toBe(true);
 
 			// Remove custom models and refresh
@@ -301,7 +355,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
@@ -325,7 +379,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
@@ -346,7 +400,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 
@@ -369,7 +423,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
@@ -393,7 +447,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 
@@ -418,7 +472,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 
 			// Should not create a new model
@@ -438,7 +492,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 
@@ -459,7 +513,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const models = getModelsForProvider(registry, "openrouter");
 			const sonnet = models.find((m) => m.id === "anthropic/claude-sonnet-4");
 
@@ -477,7 +531,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			expect(
 				getModelsForProvider(registry, "openrouter").find((m) => m.id === "anthropic/claude-sonnet-4")?.name,
 			).toBe("First Name");
@@ -510,7 +564,7 @@ describe("ModelRegistry", () => {
 				},
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const customName = getModelsForProvider(registry, "openrouter").find(
 				(m) => m.id === "anthropic/claude-sonnet-4",
 			)?.name;
@@ -553,7 +607,7 @@ describe("ModelRegistry", () => {
 				"custom-provider": providerWithApiKey("!echo test-api-key-from-command"),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
 			expect(apiKey).toBe("test-api-key-from-command");
@@ -561,10 +615,12 @@ describe("ModelRegistry", () => {
 
 		test("apiKey with ! prefix trims whitespace from command output", async () => {
 			writeRawModelsJson({
-				"custom-provider": providerWithApiKey("!echo '  spaced-key  '"),
+				"custom-provider": providerWithApiKey(
+					createNodeConfigCommand(tempDir, "spaced-key", 'process.stdout.write("  spaced-key  ");'),
+				),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
 			expect(apiKey).toBe("spaced-key");
@@ -572,46 +628,52 @@ describe("ModelRegistry", () => {
 
 		test("apiKey with ! prefix handles multiline output (uses trimmed result)", async () => {
 			writeRawModelsJson({
-				"custom-provider": providerWithApiKey("!printf 'line1\\nline2'"),
+				"custom-provider": providerWithApiKey(
+					createNodeConfigCommand(tempDir, "multiline-key", 'process.stdout.write("line1\\nline2");'),
+				),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
 			expect(apiKey).toBe("line1\nline2");
 		});
 
-		test("apiKey with ! prefix returns undefined on command failure", async () => {
+		test("apiKey with ! prefix falls back to the custom-provider placeholder on command failure", async () => {
 			writeRawModelsJson({
-				"custom-provider": providerWithApiKey("!exit 1"),
+				"custom-provider": providerWithApiKey(
+					createNodeConfigCommand(tempDir, "failed-key", "process.exitCode = 1;"),
+				),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
-			expect(apiKey).toBeUndefined();
+			expect(apiKey).toBe(NO_AUTH_PLACEHOLDER);
 		});
 
-		test("apiKey with ! prefix returns undefined on nonexistent command", async () => {
+		test("apiKey with ! prefix falls back to the custom-provider placeholder for an unknown command", async () => {
 			writeRawModelsJson({
 				"custom-provider": providerWithApiKey("!nonexistent-command-12345"),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
-			expect(apiKey).toBeUndefined();
+			expect(apiKey).toBe(NO_AUTH_PLACEHOLDER);
 		});
 
-		test("apiKey with ! prefix returns undefined on empty output", async () => {
+		test("apiKey with ! prefix falls back to the custom-provider placeholder on empty output", async () => {
 			writeRawModelsJson({
-				"custom-provider": providerWithApiKey("!printf ''"),
+				"custom-provider": providerWithApiKey(
+					createNodeConfigCommand(tempDir, "empty-key", "process.stdout.write('');"),
+				),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
-			expect(apiKey).toBeUndefined();
+			expect(apiKey).toBe(NO_AUTH_PLACEHOLDER);
 		});
 
 		test("apiKey as environment variable name resolves to env value", async () => {
@@ -623,7 +685,7 @@ describe("ModelRegistry", () => {
 					"custom-provider": providerWithApiKey("TEST_API_KEY_12345"),
 				});
 
-				const registry = new ModelRegistry(authStorage, modelsJsonPath);
+				const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 				const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
 				expect(apiKey).toBe("env-api-key-value");
@@ -644,18 +706,28 @@ describe("ModelRegistry", () => {
 				"custom-provider": providerWithApiKey("literal_api_key_value"),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
 			expect(apiKey).toBe("literal_api_key_value");
 		});
 
 		test("apiKey command can use shell features like pipes", async () => {
+			const producer = createNodeConfigCommand(
+				tempDir,
+				"pipe-producer",
+				'process.stdout.write("hello world");',
+			).slice(1);
+			const consumer = createNodeConfigCommand(
+				tempDir,
+				"pipe-consumer",
+				"process.stdin.setEncoding('utf8'); let input = ''; process.stdin.on('data', chunk => input += chunk); process.stdin.on('end', () => process.stdout.write(input.replaceAll(' ', '-')));",
+			).slice(1);
 			writeRawModelsJson({
-				"custom-provider": providerWithApiKey("!echo 'hello world' | tr ' ' '-'"),
+				"custom-provider": providerWithApiKey(`!${producer} | ${consumer}`),
 			});
 
-			const registry = new ModelRegistry(authStorage, modelsJsonPath);
+			const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 			const apiKey = await registry.getApiKeyForProvider("custom-provider");
 
 			expect(apiKey).toBe("hello-world");
@@ -667,12 +739,12 @@ describe("ModelRegistry", () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; echo "key-value"'`;
+				const command = createCounterCommand(tempDir, counterFile, "increment-counter");
 				writeRawModelsJson({
 					"custom-provider": providerWithApiKey(command),
 				});
 
-				const registry = new ModelRegistry(authStorage, modelsJsonPath);
+				const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 
 				// Call multiple times
 				await registry.getApiKeyForProvider("custom-provider");
@@ -688,16 +760,16 @@ describe("ModelRegistry", () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; echo "key-value"'`;
+				const command = createCounterCommand(tempDir, counterFile, "persisted-counter");
 				writeRawModelsJson({
 					"custom-provider": providerWithApiKey(command),
 				});
 
 				// Create multiple registry instances
-				const registry1 = new ModelRegistry(authStorage, modelsJsonPath);
+				const registry1 = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 				await registry1.getApiKeyForProvider("custom-provider");
 
-				const registry2 = new ModelRegistry(authStorage, modelsJsonPath);
+				const registry2 = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 				await registry2.getApiKeyForProvider("custom-provider");
 
 				// Command should still have only run once
@@ -709,12 +781,12 @@ describe("ModelRegistry", () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; echo "key-value"'`;
+				const command = createCounterCommand(tempDir, counterFile, "cleared-counter");
 				writeRawModelsJson({
 					"custom-provider": providerWithApiKey(command),
 				});
 
-				const registry = new ModelRegistry(authStorage, modelsJsonPath);
+				const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 				await registry.getApiKeyForProvider("custom-provider");
 
 				// Clear cache and call again
@@ -732,7 +804,7 @@ describe("ModelRegistry", () => {
 					"provider-b": providerWithApiKey("!echo key-b"),
 				});
 
-				const registry = new ModelRegistry(authStorage, modelsJsonPath);
+				const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 
 				const keyA = await registry.getApiKeyForProvider("provider-a");
 				const keyB = await registry.getApiKeyForProvider("provider-b");
@@ -741,23 +813,23 @@ describe("ModelRegistry", () => {
 				expect(keyB).toBe("key-b");
 			});
 
-			test("failed commands are cached (not retried)", async () => {
+			test("failed commands fall back and are cached without retry", async () => {
 				const counterFile = join(tempDir, "counter");
 				writeFileSync(counterFile, "0");
 
-				const command = `!sh -c 'count=$(cat ${counterFile}); echo $((count + 1)) > ${counterFile}; exit 1'`;
+				const command = createCounterCommand(tempDir, counterFile, "failed-counter", true);
 				writeRawModelsJson({
 					"custom-provider": providerWithApiKey(command),
 				});
 
-				const registry = new ModelRegistry(authStorage, modelsJsonPath);
+				const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 
-				// Call multiple times - all should return undefined
+				// Call multiple times - all should use the custom-provider fallback.
 				const key1 = await registry.getApiKeyForProvider("custom-provider");
 				const key2 = await registry.getApiKeyForProvider("custom-provider");
 
-				expect(key1).toBeUndefined();
-				expect(key2).toBeUndefined();
+				expect(key1).toBe(NO_AUTH_PLACEHOLDER);
+				expect(key2).toBe(NO_AUTH_PLACEHOLDER);
 
 				// Command should have only run once despite failures
 				const count = parseInt(readFileSync(counterFile, "utf-8").trim(), 10);
@@ -775,7 +847,7 @@ describe("ModelRegistry", () => {
 						"custom-provider": providerWithApiKey(envVarName),
 					});
 
-					const registry = new ModelRegistry(authStorage, modelsJsonPath);
+					const registry = createCodingAgentModelRuntime(authStorage, { modelsJsonPath });
 
 					const key1 = await registry.getApiKeyForProvider("custom-provider");
 					expect(key1).toBe("first-value");
@@ -796,3 +868,18 @@ describe("ModelRegistry", () => {
 		});
 	});
 });
+
+function createCounterCommand(directory: string, counterFile: string, name: string, fail = false): string {
+	return createNodeConfigCommand(
+		directory,
+		name,
+		[
+			'const { readFileSync, writeFileSync } = require("node:fs");',
+			"const counterFile = process.argv[2];",
+			'const count = Number.parseInt(readFileSync(counterFile, "utf8"), 10);',
+			'writeFileSync(counterFile, String(count + 1), "utf8");',
+			fail ? "process.exitCode = 1;" : 'process.stdout.write("key-value");',
+		].join("\n"),
+		[counterFile],
+	);
+}

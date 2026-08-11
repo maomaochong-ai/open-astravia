@@ -33,7 +33,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -120,7 +119,13 @@ func (s *session) Send(ctx context.Context, cmd hostclient.Command) (hostclient.
 	s.pendingMu.Lock()
 	if s.pending == nil {
 		s.pendingMu.Unlock()
-		return hostclient.Response{}, errors.New("hostclient/local: session is closed")
+		return hostclient.Response{}, newHostFailure(
+			hostclient.FailureCodeClientClosed,
+			commandPhase(cmd.Type),
+			hostclient.FailureUserAction,
+			"hostclient/local: session is closed",
+			nil,
+		)
 	}
 	s.pending[cmd.ID] = respCh
 	s.pendingMu.Unlock()
@@ -137,11 +142,20 @@ func (s *session) Send(ctx context.Context, cmd hostclient.Command) (hostclient.
 
 	select {
 	case resp := <-respCh:
+		if !resp.Success {
+			return resp, failureFromResponse(resp, commandPhase(cmd.Type))
+		}
 		return resp, nil
 	case <-s.exited:
-		return hostclient.Response{}, fmt.Errorf("hostclient/local: subprocess exited before response (id=%s, type=%s): %s", cmd.ID, cmd.Type, s.tailStderr())
+		return hostclient.Response{}, newHostFailure(
+			hostclient.FailureCodeProcessExited,
+			commandPhase(cmd.Type),
+			hostclient.FailureRestartSession,
+			fmt.Sprintf("hostclient/local: subprocess exited before response (id=%s, type=%s): %s", cmd.ID, cmd.Type, s.tailStderr()),
+			nil,
+		)
 	case <-ctx.Done():
-		return hostclient.Response{}, ctx.Err()
+		return hostclient.Response{}, contextFailure(ctx.Err(), cmd.Type)
 	}
 }
 
@@ -159,12 +173,24 @@ func (s *session) writeCommand(cmd hostclient.Command) error {
 	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		return fmt.Errorf("hostclient/local: marshal command: %w", err)
+		return newHostFailure(
+			hostclient.FailureCodeInvalidRequest,
+			commandPhase(cmd.Type),
+			hostclient.FailureUserAction,
+			fmt.Sprintf("hostclient/local: marshal command: %v", err),
+			err,
+		)
 	}
 	raw = append(raw, '\n')
 
 	if _, err := s.stdin.Write(raw); err != nil {
-		return fmt.Errorf("hostclient/local: write stdin: %w", err)
+		return newHostFailure(
+			hostclient.FailureCodeProcessIOFailed,
+			commandPhase(cmd.Type),
+			hostclient.FailureRestartSession,
+			fmt.Sprintf("hostclient/local: write stdin: %v", err),
+			err,
+		)
 	}
 	return nil
 }
@@ -180,6 +206,7 @@ func (s *session) SendNoReply(_ context.Context, cmd hostclient.Command) error {
 // Close implements hostclient.HostSession.
 func (s *session) Close() error {
 	s.closeOnce.Do(func() {
+		forcedKill := false
 		// Best-effort abort first; ignore errors because the subprocess
 		// may already be exiting.
 		_ = s.writeCommand(hostclient.Command{
@@ -194,6 +221,7 @@ func (s *session) Close() error {
 		select {
 		case <-s.exited:
 		case <-time.After(s.closeTimeout):
+			forcedKill = true
 			if s.cmd.Process != nil {
 				_ = s.cmd.Process.Signal(syscall.SIGKILL)
 			}
@@ -209,8 +237,22 @@ func (s *session) Close() error {
 		s.exitMu.Lock()
 		ok := s.exitOK
 		s.exitMu.Unlock()
-		if !ok {
-			s.closeErr = fmt.Errorf("hostclient/local: subprocess exited non-zero: %s", s.tailStderr())
+		if forcedKill {
+			s.closeErr = newHostFailure(
+				hostclient.FailureCodeShutdownTimeout,
+				hostclient.FailurePhaseShutdown,
+				hostclient.FailureRestartSession,
+				fmt.Sprintf("hostclient/local: shutdown timed out after %v", s.closeTimeout),
+				nil,
+			)
+		} else if !ok {
+			s.closeErr = newHostFailure(
+				hostclient.FailureCodeProcessExited,
+				hostclient.FailurePhaseShutdown,
+				hostclient.FailureRestartSession,
+				fmt.Sprintf("hostclient/local: subprocess exited non-zero: %s", s.tailStderr()),
+				nil,
+			)
 		}
 	})
 	return s.closeErr
@@ -257,12 +299,15 @@ func (s *session) readerLoop(stdout io.ReadCloser) {
 
 		// Peek at type / id without fully decoding the payload twice.
 		var head struct {
-			Type    string          `json:"type"`
-			ID      string          `json:"id"`
-			Command string          `json:"command"`
-			Success *bool           `json:"success"`
-			Error   string          `json:"error"`
-			Data    json.RawMessage `json:"data"`
+			Type           string                           `json:"type"`
+			ID             string                           `json:"id"`
+			Command        string                           `json:"command"`
+			Success        *bool                            `json:"success"`
+			Error          string                           `json:"error"`
+			ErrorCode      hostclient.FailureCode           `json:"errorCode"`
+			Phase          hostclient.FailurePhase          `json:"phase"`
+			Recoverability hostclient.FailureRecoverability `json:"recoverability"`
+			Data           json.RawMessage                  `json:"data"`
 		}
 		if err := json.Unmarshal(line, &head); err != nil {
 			// Malformed line: surface as an error event but keep the loop
@@ -276,11 +321,14 @@ func (s *session) readerLoop(stdout io.ReadCloser) {
 
 		if head.Type == "response" && head.ID != "" {
 			s.deliverResponse(head.ID, hostclient.Response{
-				ID:      head.ID,
-				Command: head.Command,
-				Success: head.Success != nil && *head.Success,
-				Error:   head.Error,
-				Data:    decodeData(head.Data),
+				ID:             head.ID,
+				Command:        head.Command,
+				Success:        head.Success != nil && *head.Success,
+				Error:          head.Error,
+				ErrorCode:      head.ErrorCode,
+				Phase:          head.Phase,
+				Recoverability: head.Recoverability,
+				Data:           decodeData(head.Data),
 			})
 			continue
 		}
@@ -334,9 +382,11 @@ func (s *session) markExited(err error) {
 	for id, ch := range s.pending {
 		select {
 		case ch <- hostclient.Response{
-			ID:      id,
-			Success: false,
-			Error:   "subprocess exited",
+			ID:             id,
+			Success:        false,
+			Error:          "subprocess exited",
+			ErrorCode:      hostclient.FailureCodeProcessExited,
+			Recoverability: hostclient.FailureRestartSession,
 		}:
 		default:
 		}

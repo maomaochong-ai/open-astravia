@@ -417,8 +417,9 @@ if (existsSync(imGatewayDistDir)) {
 // The bundled main-*.js (Vite output) contains `@vetta/coding-agent`'s JS
 // but not its on-disk package tree. Stage the full dist plus metadata into
 // Resources/coding-agent/. macOS/Linux agent-rpc-command.ts uses it as
-// VETTA_PACKAGE_DIR for assets; Windows additionally runs dist/cli.js via
-// ELECTRON_RUN_AS_NODE because GUI Electron stdio is not reliable for RPC.
+// VETTA_PACKAGE_DIR for assets; Windows additionally runs a bundled
+// cli-app Runtime Selector via ELECTRON_RUN_AS_NODE because GUI Electron
+// stdio is not reliable for RPC.
 const stagedCodingAgentDir = join(buildStageDir, "coding-agent");
 rmSync(stagedCodingAgentDir, { recursive: true, force: true });
 mkdirSync(stagedCodingAgentDir, { recursive: true });
@@ -443,7 +444,7 @@ const bundledAgentRpcCli = join(stagedCodingAgentDir, "dist", "agent-rpc-cli.mjs
 console.log(`[prepare-pack] bundling Windows agent-rpc CLI -> ${bundledAgentRpcCli}`);
 execFileSync(process.platform === "win32" ? "bun.exe" : "bun", [
 	"build",
-	join(codingAgentDir, "dist", "cli.js"),
+	join(cliAppDir, "src", "agent-rpc-cli.ts"),
 	"--target",
 	"node",
 	"--format",
@@ -485,9 +486,7 @@ for (const target of resolveCliAppCompileTargets()) {
 	mkdirSync(stagedCliAppBinDir, { recursive: true });
 	console.log(`[prepare-pack] compiling vetta CLI (${target.platformTag}) -> ${stagedCliAppBinary}`);
 	execFileSync(process.platform === "win32" ? "bun.exe" : "bun", [
-		"build",
-		join(cliAppDir, "src", "cli.ts"),
-		"--compile",
+		join(cliAppDir, "scripts", "compile-standalone.mjs"),
 		"--target",
 		target.bunTarget,
 		"--outfile",

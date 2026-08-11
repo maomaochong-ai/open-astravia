@@ -1,4 +1,5 @@
 import { isSubPath, pathBasename } from "@shared/lib/utils";
+import type { RuntimeSessionAccess } from "@vetta/runtime-core";
 import { atom } from "jotai";
 import { SCHEDULE_SESSION_MARKER } from "../../../shared/scheduled-session";
 
@@ -61,6 +62,8 @@ export interface SessionInfo {
 	name?: string;
 	firstMessage: string;
 	modifiedAt: number;
+	/** 宿主显式声明的访问能力；乐观创建的本地条目可能暂未解析。 */
+	access?: RuntimeSessionAccess;
 	/** Parent session jsonl path when this session was forked. */
 	parentSessionPath?: string;
 	/** User entry id in the parent session this fork was created from. */
@@ -81,15 +84,6 @@ export function sessionDisplayLabel(session: Pick<SessionInfo, "name" | "firstMe
 	const raw = (session.name || session.firstMessage || "").split(SCHEDULE_SESSION_MARKER).join("").trim();
 	if (!raw || raw === NO_MESSAGES_SENTINEL) return UNNAMED_SESSION_LABEL;
 	return raw;
-}
-
-/**
- * 判断一条 session 是否来自 IM（Claw）。物理来源即身份：会话 cwd 等于 im-gateway cwd
- * 就是 Claw 会话。`imCwd` 由 [[defaultImConversationCwdAtom]] 提供，空串表示 ConfigGet
- * 还没回来，此时一律视为非 IM（避免误把桌面会话归到 Claw tab）。
- */
-export function isImSession(session: Pick<SessionInfo, "cwd">, imCwd: string): boolean {
-	return imCwd !== "" && session.cwd === imCwd;
 }
 
 export type SidebarFilter = "all" | "normal" | "batch";

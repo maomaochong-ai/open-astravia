@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
 	assignContentReferenceSlots,
+	isStrictContentGenerationMode,
 	listAcceptedReferenceKinds,
 	resolveContentGenerationMode,
+	shouldResolveStrictContentGenerationMode,
 } from "../src/generation/model-inputs";
 import { REPLICATE_IMAGE_MODELS, REPLICATE_VIDEO_MODELS } from "../src/generation/model-catalog";
+import type { ContentModelDescriptor } from "../src/generation/types";
 
 describe("content model input compatibility", () => {
 	it("selects text-to-image without references and image-to-image with references", () => {
@@ -52,5 +55,65 @@ describe("content model input compatibility", () => {
 		expect(assignment.mode?.id).toBe("image-to-image");
 		expect(assignment.assignedSlotIds).toEqual(["referenceImages"]);
 		expect(assignment.references).toEqual([{ slotId: "referenceImages", kind: "image" }]);
+	});
+
+	it("keeps frame and omni-reference assignment strict after the user selects a method", () => {
+		const model: ContentModelDescriptor = {
+			providerId: "host-media",
+			modelId: "minimax-h3",
+			displayName: "MiniMax H3",
+			outputKind: "video",
+			aspectRatios: ["16:9", "9:16"],
+			modes: [
+				{
+					id: "image-to-video",
+					inputs: [
+						{ id: "firstFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+						{ id: "lastFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+					],
+					minTotalItems: 1,
+				},
+				{
+					id: "reference-to-video",
+					inputs: [
+						{ id: "referenceImages", accepts: ["image"], minItems: 0, maxItems: 9 },
+						{ id: "referenceVideos", accepts: ["video"], minItems: 0, maxItems: 3 },
+						{ id: "referenceAudios", accepts: ["audio"], minItems: 0, maxItems: 3 },
+					],
+					minTotalItems: 1,
+					maxTotalItems: 12,
+				},
+			],
+		};
+
+		expect(assignContentReferenceSlots(model, [], ["image"], "image-to-video", true).assignedSlotIds).toEqual([
+			"firstFrame",
+		]);
+		expect(
+			assignContentReferenceSlots(model, [], ["video", "audio"], "reference-to-video", true),
+		).toMatchObject({
+			mode: { id: "reference-to-video" },
+			assignedSlotIds: ["referenceVideos", "referenceAudios"],
+		});
+		expect(resolveContentGenerationMode(model, [], "image-to-video", true).reason).toBe("missing-required-input");
+	});
+
+	it("keeps text-to-video strict so retained frame inputs do not change the selected method", () => {
+		const model = REPLICATE_VIDEO_MODELS.find((candidate) => candidate.modelId === "kwaivgi/kling-v3-video");
+		expect(model).toBeDefined();
+		if (!model) return;
+
+		expect(isStrictContentGenerationMode("text-to-video")).toBe(true);
+		expect(isStrictContentGenerationMode("text-to-image")).toBe(false);
+		expect(
+			shouldResolveStrictContentGenerationMode(model, "text-to-video", [
+				{ slotId: "referenceImages", kind: "image" },
+			]),
+		).toBe(true);
+		expect(
+			shouldResolveStrictContentGenerationMode(model, "text-to-video", [
+				{ slotId: "legacyReference", kind: "image" },
+			]),
+		).toBe(false);
 	});
 });

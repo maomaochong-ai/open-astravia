@@ -1,0 +1,28 @@
+{
+	"id": "kanban",
+	"name": "%plugin.name%",
+	"icon": "icon.png",
+	"version": "0.3.1",
+	"defaultLocale": "zh",
+	"pluginApiVersion": "^1.0.0",
+	"runtime": "module-federation",
+	"entry": "dist/mf-manifest.json",
+	"moduleFederation": {
+		"remoteName": "kanban",
+		"expose": "./plugin"
+	},
+	"styles": [
+		"dist/style.css"
+	],
+	"permissions": [
+		"ui.slot.workspace-view",
+		"storage.read",
+		"storage.write",
+		"agent.tools.register",
+		"agent.toolHandler.execute",
+		"agent.session.read",
+		"agent.session.write"
+	],
+	"description": "%plugin.description%",
+	"author": "Vetta"
+}

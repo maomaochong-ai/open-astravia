@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
 import {
 	buildBuiltinMcpServers,
 	VETTA_BUILTIN_MCP_NAME,
 	VETTA_CLIENT_VERSION_HEADER,
-} from "../src/core/mcp/builtin-mcp.js";
-import type { VettaCredentials } from "../src/core/mcp/vetta-credentials.js";
+	type VettaCredentials,
+} from "@vetta/runtime-mcp";
+import { describe, expect, it } from "vitest";
 
 const CREDENTIALS: VettaCredentials = { baseUrl: "https://api.example.com", token: "tok-1" };
 

@@ -1,13 +1,8 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { loadVettaCredentials, normalizeVettaBaseUrl, vettaApiUrl, vettaCredentialsPath } from "@vetta/runtime-mcp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-	loadVettaCredentials,
-	normalizeVettaBaseUrl,
-	vettaApiUrl,
-	vettaCredentialsPath,
-} from "../src/core/mcp/vetta-credentials.js";
 
 const ENV_KEYS = ["VETTA_HOME", "VETTA_API_TOKEN", "VETTA_API_BASE_URL", "VETTA_SERVER_URL"] as const;
 
@@ -38,6 +33,22 @@ describe("vetta credentials", () => {
 		writeAuthFile({ baseUrl: "https://api.example.com", token: "tok" });
 
 		expect(loadVettaCredentials()).toEqual({ baseUrl: "https://api.example.com", token: "tok" });
+	});
+
+	it("显式运行时目录不会读取用户默认凭据", () => {
+		writeAuthFile({ baseUrl: "https://default.example.com", token: "default" });
+		const isolatedHome = join(home, "isolated");
+		mkdirSync(isolatedHome);
+
+		expect(loadVettaCredentials(isolatedHome)).toBeNull();
+		writeFileSync(
+			vettaCredentialsPath(isolatedHome),
+			JSON.stringify({ baseUrl: "https://isolated.example.com", token: "isolated" }),
+		);
+		expect(loadVettaCredentials(isolatedHome)).toEqual({
+			baseUrl: "https://isolated.example.com",
+			token: "isolated",
+		});
 	});
 
 	it("文件不存在时返回 null 而不是抛错", () => {

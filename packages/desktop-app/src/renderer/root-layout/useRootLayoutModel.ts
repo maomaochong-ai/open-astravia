@@ -9,7 +9,6 @@ import { useAppInit } from "../domains/chat/hooks/useAppInit";
 import { useSessionManager } from "../domains/chat/hooks/useSessionManager";
 import { useNotificationInit } from "../domains/message/hooks/useNotificationInit";
 import { useProjectActions } from "../domains/project/hooks/useProjects";
-import { useMessageQueueDispatcher } from "../shared/hooks/useMessageQueueDispatcher";
 import { useNarrowScreen } from "../shared/hooks/useNarrowScreen";
 import { useRunningSessionsSync } from "../shared/hooks/useRunningSessionsSync";
 import { useGlobalShortcuts } from "../shared/hooks/useShortcuts";
@@ -92,8 +91,8 @@ export function useRootLayoutModel(): RootLayoutModel {
 	// 全局 running-sessions 订阅必须挂在始终挂载的 App 上：它是 streaming 状态真值
 	// 来源之一，挂在会被卸载的 Sidebar 上会在卸载期间丢 RUNNING_CHANGED 事件。
 	useRunningSessionsSync();
-	// 全局消息队列调度：覆盖 active + 后台会话，自然结束时统一从队首出队并续发。
-	useMessageQueueDispatcher();
+	// 队列的出队/续发已收归主进程 kernel（ADR-0060）：followUp 在 turn 自然停止点
+	// 接力消费，renderer 不再需要全局出队调度器。
 	const { openSession, sendMessage } = useSessionManager();
 
 	useEffect(() => {

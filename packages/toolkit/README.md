@@ -53,6 +53,9 @@ await store.write(config);
 
 Business schemas and migrations stay in the consuming package (e.g. desktop-app pet / app-monitor).
 
+Detailed conventions and recommended consumer directory structure are documented in
+[`docs/migrations.md`](docs/migrations.md).
+
 ## Design rules
 
 - **No** Electron / desktop-app / theme dependencies.

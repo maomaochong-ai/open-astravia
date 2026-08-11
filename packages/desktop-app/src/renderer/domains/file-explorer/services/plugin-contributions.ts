@@ -19,7 +19,9 @@ export function matchesFileExplorerWhen(entry: PluginFileExplorerEntry, when?: P
 	if (when.resourceType === "file" && entry.isDirectory) return false;
 	if (when.resourceType === "directory" && !entry.isDirectory) return false;
 	if (when.extensions && when.extensions.length > 0) {
-		if (entry.isDirectory) return false;
+		// 目录也参与扩展名匹配：`x.vetd/` 这类「目录包」是一份文档，不是一堆文件，
+		// 插件要能像给文件那样给它挂图标和右键项。想只要文件就显式写
+		// `resourceType: "file"`。
 		const extension = extensionOf(entry.name);
 		if (!when.extensions.some((candidate) => candidate.replace(/^\./, "").toLowerCase() === extension)) return false;
 	}

@@ -127,7 +127,7 @@ function UserMessageTextShell({
 				{children}
 			</motion.div>
 			{canExpand && !expanded && (
-				<div className="absolute inset-x-0 bottom-0 flex h-20 items-end justify-center rounded-b-2xl bg-gradient-to-t from-secondary via-secondary/80 to-secondary/0 pb-1.5">
+				<div className="absolute inset-x-0 bottom-0 flex h-20 items-end justify-center bg-gradient-to-t from-secondary via-secondary/80 to-secondary/0 pb-1.5">
 					<button
 						type="button"
 						onClick={() => setExpanded(true)}
@@ -157,7 +157,7 @@ export function SkillBadgeView({
 		type === "scene" ? "icon-[solar--clapperboard-open-linear]" : "icon-[solar--magic-stick-linear]";
 	const label = type === "scene" ? sceneLabel : skillLabel;
 	return (
-		<span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+		<span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[13px] font-medium text-primary">
 			<span className={`${icon} h-3 w-3`} />
 			<span className="text-primary/75">{label}</span>
 			{name}
@@ -167,7 +167,7 @@ export function SkillBadgeView({
 
 export function SettingsAssistBadgeView({ label }: { label: string }): JSX.Element {
 	return (
-		<span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+		<span className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-2 py-0.5 text-[13px] font-medium text-primary">
 			<span className="icon-[solar--settings-linear] h-3 w-3" />
 			{label}
 		</span>
@@ -242,7 +242,7 @@ export function UserMessageView({
 				)}
 				{displayText && (
 					<div
-						className={`min-w-0 max-w-full cursor-text rounded-2xl rounded-br-md bg-secondary px-3.5 py-2.5 text-[13px] leading-[1.6] text-foreground ${
+						className={`min-w-0 max-w-full cursor-text rounded-2xl rounded-br-md bg-secondary px-3.5 py-2.5 text-[16px] leading-[1.6] text-foreground ${
 							isPendingEdit ? "ring-1 ring-primary/40" : ""
 						}`}
 						style={{ wordBreak: "break-word" }}
@@ -259,7 +259,7 @@ export function UserMessageView({
 				)}
 				{empty && (
 					<div
-						className="cursor-text rounded-2xl rounded-br-md bg-secondary px-3.5 py-2.5 text-[13px] leading-[1.6] text-foreground"
+						className="cursor-text rounded-2xl rounded-br-md bg-secondary px-3.5 py-2.5 text-[16px] leading-[1.6] text-foreground"
 						style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
 					>
 						{"\u2026"}

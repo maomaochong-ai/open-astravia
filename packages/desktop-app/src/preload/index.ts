@@ -20,6 +20,7 @@ import { createSystemApi } from "./apis/system.js";
 import { createTelemetryApi } from "./apis/telemetry.js";
 import { createThemesApi } from "./apis/themes.js";
 import { createWebhookApi } from "./apis/webhook.js";
+import { createHostAccessGate } from "./host-access.js";
 
 const USER_ACTIVITY_CHANNEL = "vetta:app-monitor:user-activity";
 const USER_ACTIVITY_THROTTLE_MS = 15_000;
@@ -36,7 +37,7 @@ for (const eventName of ["keydown", "mousedown", "mousemove", "touchstart", "whe
 	window.addEventListener(eventName, reportUserActivity, { capture: true, passive: true });
 }
 
-const api: DesktopApi = {
+const rawApi: Omit<DesktopApi, "hostAccess"> = {
 	...createAbilitiesApi(ipcRenderer),
 	...createActionApprovalApi(ipcRenderer),
 	...createAppLifecycleApi(ipcRenderer),
@@ -48,7 +49,7 @@ const api: DesktopApi = {
 	...createSchedulerApi(ipcRenderer),
 	...createWebhookApi(ipcRenderer),
 	...createNotificationApi(ipcRenderer),
-	...createPluginsApi(ipcRenderer),
+	...createPluginsApi(ipcRenderer, webUtils),
 	...createThemesApi(ipcRenderer),
 	...createPetApi(ipcRenderer),
 	...createQuickPanelApi(ipcRenderer),
@@ -56,6 +57,12 @@ const api: DesktopApi = {
 	...createI18nApi(ipcRenderer),
 	...createTelemetryApi(ipcRenderer),
 	...createSystemApi(ipcRenderer, webUtils),
+};
+
+const hostGate = createHostAccessGate(rawApi);
+const api: DesktopApi = {
+	hostAccess: hostGate.hostAccess,
+	...hostGate.api,
 };
 
 contextBridge.exposeInMainWorld("vetta", api);

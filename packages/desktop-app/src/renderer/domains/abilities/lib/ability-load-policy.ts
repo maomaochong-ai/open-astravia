@@ -21,3 +21,13 @@ export function areAllAttemptedMarketSourcesUnavailable(states: AbilityMarketSou
 	const attempted = states.filter((state) => state.attempted);
 	return attempted.length > 0 && attempted.every((state) => !state.usable);
 }
+
+/** 是否需要展示 loadFailed：本地失败，或已尝试的市场来源全部不可用。 */
+export function shouldReportAbilityLoadFailure(input: {
+	localFailed: boolean;
+	server: AbilityMarketSourceState;
+	open: AbilityMarketSourceState;
+}): boolean {
+	if (input.localFailed) return true;
+	return areAllAttemptedMarketSourcesUnavailable([input.server, input.open]);
+}

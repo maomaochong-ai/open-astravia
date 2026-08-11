@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { access, cp, mkdir, readdir, readFile, rename, writeFile } from "node:fs/promises";
+import { access, copyFile, cp, mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type { PluginPutBlobInput, PluginStoredBlob, PluginStoredBlobRef } from "@vetta-org/plugin-sdk";
@@ -9,6 +9,12 @@ interface BlobMetadata {
 	mimeType: string;
 	path?: string;
 	extension?: string;
+}
+
+export interface PluginBlobFile {
+	path: string;
+	mimeType: string;
+	sizeBytes: number;
 }
 
 const storageRoot = join(getVettaHomePath(), "plugin-data");
@@ -85,6 +91,13 @@ async function atomicWrite(path: string, data: string | Uint8Array): Promise<voi
 	await rename(temporaryPath, path);
 }
 
+async function atomicCopy(sourcePath: string, targetPath: string): Promise<void> {
+	await mkdir(dirname(targetPath), { recursive: true });
+	const temporaryPath = `${targetPath}.${randomUUID()}.tmp`;
+	await copyFile(sourcePath, temporaryPath);
+	await rename(temporaryPath, targetPath);
+}
+
 async function listFiles(root: string, current: string): Promise<string[]> {
 	let entries: Dirent[];
 	try {
@@ -158,6 +171,25 @@ export async function putPluginBlob(pluginId: string, input: PluginPutBlobInput)
 	return { id, url: mediaUrl(blobPath, input.mimeType), mimeType: input.mimeType };
 }
 
+export async function putPluginBlobFromFile(
+	pluginId: string,
+	input: { id?: string; path: string; mimeType: string },
+): Promise<PluginStoredBlobRef> {
+	await ensurePluginStorage(pluginId);
+	const id = input.id ?? randomUUID();
+	if (!SAFE_SEGMENT.test(id) || id === "." || id === "..") {
+		throw new Error("Invalid blob id");
+	}
+	const relativePath = `blobs/${id}.blob`;
+	const blobPath = scopedPath(pluginId, relativePath);
+	await atomicCopy(input.path, blobPath);
+	await writePluginJson(pluginId, `blob-metadata/${id}.json`, {
+		mimeType: input.mimeType,
+		path: relativePath,
+	} satisfies BlobMetadata);
+	return { id, url: mediaUrl(blobPath, input.mimeType), mimeType: input.mimeType };
+}
+
 export async function readPluginBlob(pluginId: string, id: string): Promise<PluginStoredBlob | null> {
 	const metadata = await readPluginJson<BlobMetadata>(pluginId, `blob-metadata/${id}.json`);
 	if (!metadata) return null;
@@ -170,4 +202,17 @@ export async function getPluginBlobRef(pluginId: string, id: string): Promise<Pl
 	if (!metadata) return null;
 	const blobPath = scopedPath(pluginId, metadata.path ?? `blobs/${id}.${metadata.extension ?? "blob"}`);
 	return { id, url: mediaUrl(blobPath, metadata.mimeType), mimeType: metadata.mimeType };
+}
+
+export async function getPluginBlobFile(pluginId: string, id: string): Promise<PluginBlobFile | null> {
+	const metadata = await readPluginJson<BlobMetadata>(pluginId, `blob-metadata/${id}.json`);
+	if (!metadata) return null;
+	const path = scopedPath(pluginId, metadata.path ?? `blobs/${id}.${metadata.extension ?? "blob"}`);
+	try {
+		const file = await stat(path);
+		return { path, mimeType: metadata.mimeType, sizeBytes: file.size };
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+		throw error;
+	}
 }

@@ -117,6 +117,7 @@ function installedPlugin(overrides?: Partial<InstalledPlugin>): InstalledPlugin 
 		trustLevel: "community",
 		rootPath: "",
 		...overrides,
+		allowedNetworkHosts: overrides?.allowedNetworkHosts ?? [],
 	};
 }
 

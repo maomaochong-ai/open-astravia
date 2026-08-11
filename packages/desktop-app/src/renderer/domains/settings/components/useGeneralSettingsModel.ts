@@ -32,6 +32,7 @@ export interface GeneralSettingsModel {
 }
 
 interface GeneralSettingsLabels {
+	appVersion: string;
 	debugMode: string;
 	debugModeDescription: string;
 	export: string;
@@ -194,6 +195,7 @@ export function useGeneralSettingsModel(): GeneralSettingsModel {
 				basics: t(SETTINGS_SECTION["general-basics"].titleKey),
 				developer: t(SETTINGS_SECTION["general-developer"].titleKey),
 			},
+			appVersion: t("appVersion"),
 			startAppGuide: t("startAppGuide"),
 			startAppGuideAction: t("startAppGuideAction"),
 			startAppGuideDescription: t("startAppGuideDescription"),

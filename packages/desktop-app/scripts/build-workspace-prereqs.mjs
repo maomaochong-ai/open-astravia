@@ -2,52 +2,53 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, readlink, writeFile } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const desktopRoot = join(import.meta.dirname, "..");
 const repoRoot = join(desktopRoot, "..", "..");
 const cachePath = join(desktopRoot, ".desktop-dev", "workspace-build-cache.json");
 const ignoredDirectoryNames = new Set([".git", "dist", "node_modules"]);
 
-const packages = {
-	"capability-sdk": { dir: "packages/capability-sdk", dependencies: [] },
-	"capability-runtime": { dir: "packages/capability-runtime", dependencies: ["capability-sdk"] },
-	ai: { dir: "packages/ai", dependencies: [] },
-	"runtime-telemetry": { dir: "packages/runtime-telemetry", dependencies: [] },
-	"ecosystem-adapter": { dir: "packages/ecosystem-adapter", dependencies: [] },
-	"action-rpc": { dir: "packages/action-rpc", dependencies: [] },
-	toolkit: { dir: "packages/toolkit", dependencies: [] },
-	"plugin-sdk": { dir: "packages/plugins/plugin-sdk", dependencies: [] },
-	"plugin-vite": { dir: "packages/plugins/plugin-vite", dependencies: [] },
-	agent: { dir: "packages/agent", dependencies: ["ai", "runtime-telemetry"] },
-	"coding-agent": {
-		dir: "packages/coding-agent",
-		dependencies: ["agent", "ai", "runtime-telemetry", "ecosystem-adapter"],
-	},
-	"runtime-core": { dir: "packages/runtime-core", dependencies: ["coding-agent", "agent", "ai"] },
-	"runtime-tools": { dir: "packages/runtime-tools", dependencies: ["coding-agent"] },
-	"runtime-storage": { dir: "packages/runtime-storage", dependencies: ["coding-agent"] },
-	"runtime-mcp": { dir: "packages/runtime-mcp", dependencies: ["coding-agent"] },
-	"cli-app": {
-		dir: "packages/cli-app",
-		dependencies: ["action-rpc", "coding-agent", "runtime-core"],
-	},
+export const workspacePackages = {
+	"capability-sdk": { dir: "packages/capability-sdk" },
+	"capability-runtime": { dir: "packages/capability-runtime" },
+	ai: { dir: "packages/ai" },
+	"runtime-telemetry": { dir: "packages/runtime-telemetry" },
+	"runtime-knowledge": { dir: "packages/runtime-knowledge" },
+	"ecosystem-adapter": { dir: "packages/ecosystem-adapter" },
+	"action-rpc": { dir: "packages/action-rpc" },
+	"runtime-subagents": { dir: "packages/runtime-subagents" },
+	toolkit: { dir: "packages/toolkit" },
+	"plugin-sdk": { dir: "packages/plugins/plugin-sdk" },
+	"plugin-vite": { dir: "packages/plugins/plugin-vite" },
+	agent: { dir: "packages/agent" },
+	"runtime-core": { dir: "packages/runtime-core" },
+	"coding-agent": { dir: "packages/coding-agent" },
+	"runtime-tools": { dir: "packages/runtime-tools" },
+	"runtime-storage": { dir: "packages/runtime-storage" },
+	"runtime-mcp": { dir: "packages/runtime-mcp" },
+	"cli-app": { dir: "packages/cli-app" },
 };
 
-const layers = [
+export const workspaceLayers = [
 	[
 		"capability-sdk",
 		"ai",
 		"runtime-telemetry",
+		"runtime-knowledge",
 		"ecosystem-adapter",
 		"action-rpc",
+		"runtime-subagents",
 		"toolkit",
 		"plugin-sdk",
 		"plugin-vite",
 	],
 	["capability-runtime", "agent"],
+	["runtime-core"],
+	["runtime-mcp"],
+	["runtime-tools", "runtime-storage"],
 	["coding-agent"],
-	["runtime-core", "runtime-tools", "runtime-storage", "runtime-mcp"],
 	["cli-app"],
 ];
 
@@ -91,10 +92,33 @@ async function readCache() {
 	}
 }
 
-function runBuild(name, packageDir) {
+async function resolveWorkspacePackageGraph() {
+	const entries = await Promise.all(
+		Object.entries(workspacePackages).map(async ([key, config]) => {
+			const manifest = JSON.parse(await readFile(join(repoRoot, config.dir, "package.json"), "utf8"));
+			return [key, config, manifest];
+		}),
+	);
+	const keysByPackageName = new Map(entries.map(([key, _config, manifest]) => [manifest.name, key]));
+	return Object.fromEntries(
+		entries.map(([key, config, manifest]) => {
+			const productionDependencies = {
+				...manifest.dependencies,
+				...manifest.optionalDependencies,
+			};
+			const dependencies = Object.entries(productionDependencies)
+				.filter(([_name, range]) => typeof range === "string" && range.startsWith("workspace:"))
+				.map(([name]) => keysByPackageName.get(name))
+				.filter((name) => name !== undefined);
+			return [key, { ...config, dependencies }];
+		}),
+	);
+}
+
+function runBuild(name, packageDir, script = "build") {
 	return new Promise((resolve, reject) => {
 		console.log(`[workspace-prereqs] 构建 ${name} …`);
-		const child = spawn("bun", ["run", "build"], {
+		const child = spawn("bun", ["run", script], {
 			cwd: join(repoRoot, packageDir),
 			stdio: "inherit",
 		});
@@ -113,15 +137,22 @@ async function main() {
 	const force = process.argv.includes("--force");
 	const cache = await readCache();
 	const nextCache = { version: 1, packages: {} };
-	const globalHash = await hashFiles(["package.json", "bun.lock", "tsconfig.base.json"]);
+	const globalHash = await hashFiles([
+		"package.json",
+		"bun.lock",
+		"tsconfig.base.json",
+		"packages/desktop-app/scripts/build-workspace-prereqs.mjs",
+	]);
 	const buildHashes = new Map();
+	const packageGraph = await resolveWorkspacePackageGraph();
 
-	for (const layer of layers) {
+	for (const layer of workspaceLayers) {
 		await Promise.all(
 			layer.map(async (name) => {
-				const config = packages[name];
+				const config = packageGraph[name];
 				const sourceHash = createHash("sha256");
 				sourceHash.update(globalHash);
+				sourceHash.update(config.buildScript ?? "build");
 				await hashPath(sourceHash, join(repoRoot, config.dir));
 				for (const dependency of config.dependencies) {
 					sourceHash.update(buildHashes.get(dependency));
@@ -134,7 +165,7 @@ async function main() {
 				if (unchanged) {
 					console.log(`[workspace-prereqs] 跳过 ${name}（无变更）`);
 				} else {
-					await runBuild(name, config.dir);
+					await runBuild(name, config.dir, config.buildScript);
 				}
 				nextCache.packages[name] = buildHash;
 			}),
@@ -146,4 +177,6 @@ async function main() {
 	console.log("[workspace-prereqs] workspace 前置构建完成");
 }
 
-await main();
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+	await main();
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "视频创作导演"
+  short_description: "将用户创作意图转为可执行的视频工作流、镜头设计与提示词"
+  default_prompt: "Use $direct-video-creation to turn my idea into a production-ready video workflow."

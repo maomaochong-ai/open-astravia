@@ -11,6 +11,78 @@ export interface PluginGlobalSlotContribution {
 	component: ComponentType;
 }
 
+/**
+ * Props handed to a workspace-view component. A workspace view owns the whole
+ * content area, so unlike panel slots it is addressed by its own route and can
+ * be deep-linked; the host passes back its identity so one component can serve
+ * several registered views.
+ */
+export interface PluginWorkspaceViewProps {
+	/** The contribution id as registered (NOT namespaced). */
+	viewId: string;
+	/** The owning plugin id. */
+	pluginId: string;
+}
+
+/**
+ * Badge tone. The host maps it to its own theme colors — a plugin cannot pick a
+ * raw color, so badges stay consistent with the built-in navigation entries.
+ */
+export type PluginNavBadgeTone = "accent" | "danger" | "default" | "warning";
+
+/**
+ * A badge on the plugin's sidebar navigation entry.
+ *
+ * `beta` is the host's own preset — it renders exactly like the built-in
+ * 知识库 Beta 标识, wording included (and localized by the host), so plugins do
+ * not have to spell "Beta" themselves in every locale.
+ *
+ * `count` renders `99+` past 99 and disappears at 0 — an unread badge showing
+ * "0" is worse than no badge.
+ */
+export type PluginNavBadge =
+	| { kind: "beta" }
+	| { kind: "text"; text: string; tone?: PluginNavBadgeTone }
+	| { kind: "count"; count: number; tone?: PluginNavBadgeTone }
+	| { kind: "dot"; tone?: PluginNavBadgeTone };
+
+/**
+ * A **workspace view**（工作区视图）: a full-page surface a plugin contributes to
+ * the host's primary navigation. It is the plugin counterpart of a built-in page
+ * such as 自动化 / 知识库 — the host gives it its own route
+ * (`/workspace/<pluginId>/<viewId>`) and a sidebar entry, and the plugin owns the
+ * entire content area while it is open.
+ *
+ * Use it for standalone workbenches that are NOT bound to one conversation
+ * (dashboards, boards, consoles). Conversation-scoped UI belongs in an
+ * {@link PluginActivityTabContribution activity tab}; floating UI belongs in a
+ * {@link PluginGlobalSlotContribution global slot}.
+ */
+export interface PluginWorkspaceViewContribution {
+	/** Unique within the plugin; the host namespaces it as `${pluginId}:${id}`. */
+	id: string;
+	/** Sidebar entry label. Supports `%catalogKey%` i18n lookup. */
+	label: string;
+	/**
+	 * Sidebar entry icon as an **iconify class string** (e.g.
+	 * `"icon-[solar--widget-5-linear]"`) — NOT a React node, because the host
+	 * renders it inside its own nav button and persists nav layout by key.
+	 */
+	icon?: string;
+	/** Optional one-line description; shown as the nav entry tooltip. */
+	description?: string;
+	/**
+	 * Initial badge on the sidebar entry. `{ kind: "text" }` supports the same
+	 * `%catalogKey%` i18n lookup as {@link label}. Update it at runtime with
+	 * {@link PluginUiApi.setWorkspaceViewBadge}.
+	 */
+	badge?: PluginNavBadge;
+	/** Zero-props aside from {@link PluginWorkspaceViewProps}. */
+	component: ComponentType<PluginWorkspaceViewProps>;
+	/** Sort hint among this plugin's own views (ascending). Defaults to 0. */
+	navOrder?: number;
+}
+
 export interface PluginAudioMetadata {
 	/** Embedded title; preview renderers should fall back to file.name. */
 	title?: string;
@@ -70,10 +142,18 @@ export interface PluginFilePreviewContribution {
  * tab to the "addable pool" — it renders only after the user attaches it in
  * the activity panel (scoped by session cwd).
  */
+/** Host residency policy for an activity-panel tab. */
+export type PluginActivityTabRetention = "active-only" | "warm" | "pinned";
+
 export interface PluginActivityTabContribution {
 	id: string;
 	label: string;
-	/** Tab icon as a React node (not an iconify class string). */
+	/**
+	 * Tab icon as a React node (not an iconify class string).
+	 * Omit to inherit the host-resolved brand icon from `plugin.json#icon`
+	 * (`ctx.plugin.iconUrl`). Prefer omitting for package brand icons so the
+	 * plugin never loads assets via absolute `/…` paths or host protocols.
+	 */
 	icon?: ReactNode;
 	component: ComponentType;
 	/**
@@ -89,14 +169,27 @@ export interface PluginActivityTabContribution {
 	 * 工作台跟随输入栏 toggle）。无论哪种，用户仍可用减号手动隐藏。
 	 */
 	initiallyVisible?: boolean;
+	/**
+	 * Component residency while the tab is inactive. Defaults to `"warm"`:
+	 * visited tabs stay mounted in the host's bounded LRU cache. Use
+	 * `"active-only"` for cheap, stateless content and `"pinned"` for runtimes
+	 * that must never be evicted while available.
+	 */
+	retention?: PluginActivityTabRetention;
+	/**
+	 * @deprecated Use {@link PluginActivityTabContribution.retention}. `true`
+	 * maps to `"pinned"`; `false` maps to `"active-only"`.
+	 */
+	keepAliveWhenAvailable?: boolean;
 }
 
 /** Options for {@link PluginUiApi.openActivityTab}. */
 export interface PluginOpenActivityTabOptions {
 	/**
-	 * Desired panel width as it opens: a pixel number, or `"max"` for the widest
-	 * the current window allows. The host clamps to its min/max bounds. Omit to
-	 * keep the user's current width.
+	 * Desired panel width as it opens: a pixel number, or `"max"` to track the
+	 * widest the window allows — `"max"` keeps following window resizes until the
+	 * user drags the divider. The host clamps to its min/max bounds. Omit to keep
+	 * the user's current width.
 	 */
 	width?: number | "max";
 }
@@ -290,6 +383,30 @@ export interface PluginNotifyOptions {
 export interface PluginUiApi {
 	registerGlobalSlot(contribution: PluginGlobalSlotContribution): Disposable;
 	/**
+	 * Register a **workspace view**（工作区视图）— a full-page surface with its own
+	 * route and sidebar entry, on par with the host's built-in pages. Needs the
+	 * `ui.slot.workspace-view` permission (missing permission = **warn+noop**).
+	 *
+	 * The entry lands in the sidebar's「更多」收纳 by default; the user can pin it
+	 * to the top region or reorder it, and that layout is remembered.
+	 */
+	registerWorkspaceView(contribution: PluginWorkspaceViewContribution): Disposable;
+	/**
+	 * Navigate to one of this plugin's own workspace views. `viewId` is the
+	 * contribution id passed to {@link PluginUiApi.registerWorkspaceView}. No-op
+	 * when the view is not registered (e.g. permission missing).
+	 */
+	openWorkspaceView(viewId: string): void;
+	/**
+	 * Update (or clear, with `null`) the badge on one of this plugin's workspace
+	 * view entries. Re-registering the view is NOT a way to do this — it would
+	 * remount the whole surface — so live badges (unread counts, status dots)
+	 * must come through here.
+	 *
+	 * No-op when the view is not registered (e.g. permission missing).
+	 */
+	setWorkspaceViewBadge(viewId: string, badge: PluginNavBadge | null): void;
+	/**
 	 * Register a preview component keyed by file extension. The host dispatches
 	 * registered extensions before its built-in fallback renderers; first
 	 * registrant wins on conflict.
@@ -360,8 +477,11 @@ export interface PluginUiApi {
 	 */
 	setActivityTabVisible(tabId: string, visible: boolean): void;
 	/**
-	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示当前窗口下的最大宽度（宿主仍
-	 * 会夹到自己的 min/max 内，必要时自动收起侧边栏）。
+	 * 直接设置活动面板宽度：像素值，或 `"max"` 表示「跟随窗口拉满」（宿主仍会夹到
+	 * 自己的 min/max 内，必要时自动收起侧边栏）。
+	 *
+	 * `"max"` 是一种持续状态而非一次性求值：窗口尺寸变化时面板跟着变宽变窄，直到
+	 * 用户拖动分隔条或有人写入具体像素为止。传数字则是一次性的固定宽度。
 	 *
 	 * 与 `openActivityTab(id, { width })` 的区别：那里的宽度只在标签卡首次 attach
 	 * 时生效（避免 activate 重放覆盖用户手拖的宽度）；这个是命令式的，每次调用都
@@ -369,9 +489,10 @@ export interface PluginUiApi {
 	 */
 	setActivityPanelWidth(width: number | "max"): void;
 	/**
-	 * Bind or clear plugin-owned one-shot context for the next outgoing prompt.
-	 * The host renders its label/icon, merges metadata and hidden instructions,
-	 * then clears it after send or when the user closes the capsule.
+	 * Bind or clear plugin-owned context for outgoing prompts. The host renders
+	 * its label/icon and carries a structured `context` as a versioned snapshot.
+	 * Attachments default to one-shot; `lifecycle: "sticky"` remains until the
+	 * plugin or user clears the capsule.
 	 */
 	setPromptAttachment(attachment: PluginPromptAttachment | null): void;
 	/**

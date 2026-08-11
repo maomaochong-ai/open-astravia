@@ -3,12 +3,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PACKAGE_DIR="$ROOT_DIR/packages/coding-agent"
-PACKAGE_NAME="@vetta/coding-agent"
+CLI_APP_DIR="$ROOT_DIR/packages/cli-app"
 BUN_BIN="${BUN_BIN:-bun}"
 
-if [[ ! -d "$PACKAGE_DIR" ]]; then
-	echo "Error: coding-agent package directory not found: $PACKAGE_DIR"
+if [[ ! -d "$CLI_APP_DIR" ]]; then
+	echo "Error: cli-app package directory not found: $CLI_APP_DIR"
 	exit 1
 fi
 
@@ -19,30 +18,19 @@ fi
 
 echo "Ensuring workspace dependencies with bun..."
 cd "$ROOT_DIR"
-if ! "$BUN_BIN" install; then
+if ! "$BUN_BIN" install --frozen-lockfile; then
 	echo ""
 	echo "Error: bun install failed."
 	echo "Please run 'bun install' in $ROOT_DIR and fix install errors first."
 	exit 1
 fi
 
-echo "Building workspace dependencies (ai, agent)..."
-for dep_pkg in ai agent; do
-	echo "  - $dep_pkg"
-	cd "$ROOT_DIR/packages/$dep_pkg"
-	if [[ "$dep_pkg" == "ai" ]]; then
-		echo "    (offline: skip model fetching)"
-		"$BUN_BIN" run tsgo -p tsconfig.build.json
-	else
-		"$BUN_BIN" run build
-	fi
-done
+echo "Building canonical CLI entrypoints with bun..."
+cd "$ROOT_DIR"
+"$BUN_BIN" run build:cli
+chmod +x "$CLI_APP_DIR/dist/cli.js" "$CLI_APP_DIR/dist/agent-cli.js" "$CLI_APP_DIR/dist/agent-rpc-cli.js"
 
-echo "Building coding-agent with bun..."
-cd "$PACKAGE_DIR"
-"$BUN_BIN" run build
-
-echo "Linking $PACKAGE_NAME globally..."
+echo "Linking @vetta/cli-app executables globally..."
 
 # Create a symlink in bun's global bin directory directly.
 # `bun link -g` fails with FileNotFound for workspace packages, so we bypass it.
@@ -53,10 +41,12 @@ if [[ -z "$BUN_GLOBAL_BIN" ]]; then
 fi
 
 mkdir -p "$BUN_GLOBAL_BIN"
-ln -sf "$PACKAGE_DIR/dist/cli.js" "$BUN_GLOBAL_BIN/vetta"
+ln -sf "$CLI_APP_DIR/dist/cli.js" "$BUN_GLOBAL_BIN/vetta"
+ln -sf "$CLI_APP_DIR/dist/agent-cli.js" "$BUN_GLOBAL_BIN/vetta-agent"
+ln -sf "$CLI_APP_DIR/dist/agent-rpc-cli.js" "$BUN_GLOBAL_BIN/vetta-agent-rpc"
 
 echo "Bun global bin: $BUN_GLOBAL_BIN"
 
 echo ""
-echo "Done. You can now run 'vetta' from any directory."
+echo "Done. You can now run 'vetta', 'vetta-agent', or 'vetta-agent-rpc' from any directory."
 echo "Check: vetta --help"

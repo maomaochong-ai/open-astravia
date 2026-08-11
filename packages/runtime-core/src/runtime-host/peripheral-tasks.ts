@@ -8,7 +8,7 @@ import {
 	type ToolCall,
 	Type,
 } from "@vetta/ai";
-import type { ModelRegistry } from "@vetta/coding-agent";
+import type { RuntimeSessionModelView } from "./session-ports.js";
 
 /** 周边任务最多尝试几个模型（会话模型优先，再补可用模型）。 */
 const PERIPHERAL_MAX_ATTEMPTS = 3;
@@ -24,11 +24,7 @@ export type PeripheralCandidate = {
 	key: string;
 };
 
-export type PeripheralModelSource = {
-	modelRegistry: ModelRegistry;
-	/** 当前会话模型；优先作为候选队首。 */
-	sessionModel: Model<Api> | undefined;
-};
+export type PeripheralModelSource = RuntimeSessionModelView;
 
 function peripheralModelKey(model: Model<Api>): string {
 	return `${model.provider}/${model.id}`;
@@ -53,8 +49,7 @@ function markPeripheralCooldown(key: string, ms = PERIPHERAL_COOLDOWN_MS): void 
  * 优先当前会话模型，再从可用模型补足；跳过冷却中的与无 apiKey 的。
  */
 export async function resolvePeripheralCandidates(source: PeripheralModelSource): Promise<PeripheralCandidate[]> {
-	const registry = source.modelRegistry;
-	registry.refresh();
+	source.refreshAvailableModels();
 
 	const candidates: PeripheralCandidate[] = [];
 	const seen = new Set<string>();
@@ -63,7 +58,7 @@ export async function resolvePeripheralCandidates(source: PeripheralModelSource)
 		if (!model || candidates.length >= PERIPHERAL_MAX_ATTEMPTS) return;
 		const key = peripheralModelKey(model);
 		if (seen.has(key) || isPeripheralCoolingDown(key)) return;
-		const apiKey = await registry.getApiKey(model);
+		const apiKey = await source.resolveApiKey(model);
 		if (!apiKey) return;
 		seen.add(key);
 		// 周边任务用各 API 最轻 reasoning 档，避免短答案被吞进 thinking 通道。
@@ -72,8 +67,8 @@ export async function resolvePeripheralCandidates(source: PeripheralModelSource)
 		candidates.push({ model, apiKey, reasoning, key });
 	};
 
-	await tryPush(source.sessionModel);
-	for (const model of registry.getAvailable()) {
+	await tryPush(source.readCurrentModel());
+	for (const model of source.readAvailableModels()) {
 		if (candidates.length >= PERIPHERAL_MAX_ATTEMPTS) break;
 		await tryPush(model);
 	}

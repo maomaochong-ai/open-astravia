@@ -1,15 +1,14 @@
 # Extension Examples
 
-Example extensions for pi-coding-agent.
+Coding Agent Extension 示例。扩展契约从 `@vetta/coding-agent` 导入。
+
+当前产品宿主为 print / RPC / SDK（交互式 TUI 已移除）。`ctx.ui` 方法在 RPC 宿主下会转发到 Desktop 等宿主；无 UI 宿主时多数为 no-op 或默认拒绝。
 
 ## Usage
 
 ```bash
-# Load an extension with --extension flag
-pi --extension examples/extensions/permission-gate.ts
-
-# Or copy to extensions directory for auto-discovery
-cp permission-gate.ts ~/.pi/agent/extensions/
+# 以扩展路径加载（CLI 入口因产品配置而异）
+# 或复制到 agent 扩展目录以便自动发现
 ```
 
 ## Examples
@@ -18,187 +17,108 @@ cp permission-gate.ts ~/.pi/agent/extensions/
 
 | Extension | Description |
 |-----------|-------------|
-| `permission-gate.ts` | Prompts for confirmation before dangerous bash commands (rm -rf, sudo, etc.) |
-| `protected-paths.ts` | Blocks writes to protected paths (.env, .git/, node_modules/) |
-| `confirm-destructive.ts` | Confirms before destructive session actions (clear, switch, fork) |
-| `dirty-repo-guard.ts` | Prevents session changes with uncommitted git changes |
-| `sandbox/` | OS-level sandboxing using `@anthropic-ai/sandbox-runtime` with per-project config |
+| `permission-gate.ts` | 危险 bash 命令确认 |
+| `protected-paths.ts` | 阻止写入受保护路径 |
+| `confirm-destructive.ts` | 会话破坏性操作确认 |
+| `dirty-repo-guard.ts` | 未提交变更时拦截会话切换等操作 |
 
 ### Custom Tools
 
 | Extension | Description |
 |-----------|-------------|
-| `todo.ts` | Todo list tool + `/todos` command with custom rendering and state persistence |
-| `hello.ts` | Minimal custom tool example |
-| `question.ts` | Demonstrates `ctx.ui.select()` for asking the user questions with custom UI |
-| `questionnaire.ts` | Multi-question input with tab bar navigation between questions |
-| `tool-override.ts` | Override built-in tools (e.g., add logging/access control to `read`) |
-| `built-in-tool-renderer.ts` | Custom compact rendering for built-in tools (read, bash, edit, write) while keeping original behavior |
-| `minimal-mode.ts` | Override built-in tool rendering for minimal display (only tool calls, no output in collapsed mode) |
-| `truncated-tool.ts` | Wraps ripgrep with proper output truncation (50KB/2000 lines) |
-| `antigravity-image-gen.ts` | Generate images via Google Antigravity with optional save-to-disk modes |
-| `ssh.ts` | Delegate all tools to a remote machine via SSH using pluggable operations |
-| `subagent/` | Delegate tasks to specialized subagents with isolated context windows |
+| `hello.ts` | 最小自定义工具 |
+| `tool-override.ts` | 覆盖内置 `read`（日志/访问控制） |
+| `antigravity-image-gen.ts` | 通过 Google Antigravity 生成图片 |
 
-### Commands & UI
+### Commands & Host UI
 
 | Extension | Description |
 |-----------|-------------|
-| `preset.ts` | Named presets for model, thinking level, tools, and instructions via `--preset` flag and `/preset` command |
-| `plan-mode/` | Claude Code-style plan mode for read-only exploration with `/plan` command and step tracking |
-| `tools.ts` | Interactive `/tools` command to enable/disable tools with session persistence |
-| `handoff.ts` | Transfer context to a new focused session via `/handoff <goal>` |
-| `qna.ts` | Extracts questions from last response into editor via `ctx.ui.setEditorText()` |
-| `status-line.ts` | Shows turn progress in footer via `ctx.ui.setStatus()` with themed colors |
-| `widget-placement.ts` | Shows widgets above and below the editor via `ctx.ui.setWidget()` placement |
-| `model-status.ts` | Shows model changes in status bar via `model_select` hook |
-| `snake.ts` | Snake game with custom UI, keyboard handling, and session persistence |
-| `send-user-message.ts` | Demonstrates `pi.sendUserMessage()` for sending user messages from extensions |
-| `timed-confirm.ts` | Demonstrates AbortSignal for auto-dismissing `ctx.ui.confirm()` and `ctx.ui.select()` dialogs |
-| `rpc-demo.ts` | Exercises all RPC-supported extension UI methods; pair with [`examples/rpc-extension-ui.ts`](../rpc-extension-ui.ts) |
-| `modal-editor.ts` | Custom vim-like modal editor via `ctx.ui.setEditorComponent()` |
-| `rainbow-editor.ts` | Animated rainbow text effect via custom editor |
-| `notify.ts` | Desktop notifications via OSC 777 when agent finishes (Ghostty, iTerm2, WezTerm) |
-| `titlebar-spinner.ts` | Braille spinner animation in terminal title while the agent is working |
-| `summarize.ts` | Summarize conversation with GPT-5.2 and show in transient UI |
-| `custom-footer.ts` | Custom footer with git branch and token stats via `ctx.ui.setFooter()` |
-| `custom-header.ts` | Custom header via `ctx.ui.setHeader()` |
-| `overlay-test.ts` | Test overlay compositing with inline text inputs and edge cases |
-| `overlay-qa-tests.ts` | Comprehensive overlay QA tests: anchors, margins, stacking, overflow, animation |
-| `doom-overlay/` | DOOM game running as an overlay at 35 FPS (demonstrates real-time game rendering) |
-| `shutdown-command.ts` | Adds `/quit` command demonstrating `ctx.shutdown()` |
-| `reload-runtime.ts` | Adds `/reload-runtime` and `reload_runtime` tool showing safe reload flow |
-| `interactive-shell.ts` | Run interactive commands (vim, htop) with full terminal via `user_bash` hook |
-| `inline-bash.ts` | Expands `!{command}` patterns in prompts via `input` event transformation |
+| `commands.ts` | 自定义 slash 命令 |
+| `status-line.ts` | `ctx.ui.setStatus()` 状态文案 |
+| `model-status.ts` | 模型切换时更新 status |
+| `send-user-message.ts` | `sendUserMessage` 注入用户消息 |
+| `timed-confirm.ts` | 带超时的 `confirm` / `select` |
+| `shutdown-command.ts` | `/quit` 与 `ctx.shutdown()` |
+| `reload-runtime.ts` | `/reload-runtime` 与 runtime reload 工具 |
+| `inline-bash.ts` | 提示词中展开 `!{command}` |
+| `input-transform.ts` | `input` 事件改写用户输入 |
 
 ### Git Integration
 
 | Extension | Description |
 |-----------|-------------|
-| `git-checkpoint.ts` | Creates git stash checkpoints at each turn for code restoration on fork |
-| `auto-commit-on-exit.ts` | Auto-commits on exit using last assistant message for commit message |
+| `git-checkpoint.ts` | 每轮 git stash，fork 时恢复 |
+| `auto-commit-on-exit.ts` | 退出时自动 commit |
 
 ### System Prompt & Compaction
 
 | Extension | Description |
 |-----------|-------------|
-| `pirate.ts` | Demonstrates `systemPromptAppend` to dynamically modify system prompt |
-| `claude-rules.ts` | Scans `.claude/rules/` folder and lists rules in system prompt |
-| `custom-compaction.ts` | Custom compaction that summarizes entire conversation |
-| `trigger-compact.ts` | Triggers compaction when context usage exceeds 100k tokens and adds `/trigger-compact` command |
+| `pirate.ts` | 动态改写 system prompt |
+| `claude-rules.ts` | 扫描 `.claude/rules/` 并注入提示 |
+| `system-prompt-header.ts` | 展示 system prompt 信息 |
+| `custom-compaction.ts` | 自定义 compaction 摘要 |
+| `trigger-compact.ts` | 超阈值触发 compaction |
 
-### System Integration
-
-| Extension | Description |
-|-----------|-------------|
-| `mac-system-theme.ts` | Syncs pi theme with macOS dark/light mode |
-
-### Resources
+### Resources & Events
 
 | Extension | Description |
 |-----------|-------------|
-| `dynamic-resources/` | Loads skills, prompts, and themes using `resources_discover` |
-
-### Messages & Communication
-
-| Extension | Description |
-|-----------|-------------|
-| `message-renderer.ts` | Custom message rendering with colors and expandable details via `registerMessageRenderer` |
-| `event-bus.ts` | Inter-extension communication via `pi.events` |
+| `dynamic-resources/` | `resources_discover` 动态资源 |
+| `event-bus.ts` | 扩展间 `api.events` 通信 |
+| `file-trigger.ts` | 监视触发文件并注入消息 |
 
 ### Session Metadata
 
 | Extension | Description |
 |-----------|-------------|
-| `session-name.ts` | Name sessions for the session selector via `setSessionName` |
-| `bookmark.ts` | Bookmark entries with labels for `/tree` navigation via `setLabel` |
+| `session-name.ts` | `setSessionName` |
+| `bookmark.ts` | `setLabel` 标记 entry |
 
 ### Custom Providers
 
 | Extension | Description |
 |-----------|-------------|
-| `custom-provider-anthropic/` | Custom Anthropic provider with OAuth support and custom streaming implementation |
-| `custom-provider-gitlab-duo/` | GitLab Duo provider using pi-ai's built-in Anthropic/OpenAI streaming via proxy |
-| `custom-provider-qwen-cli/` | Qwen CLI provider with OAuth device flow and OpenAI-compatible models |
+| `custom-provider-anthropic/` | 自定义 Anthropic provider |
+| `custom-provider-gitlab-duo/` | GitLab Duo provider |
+| `custom-provider-qwen-cli/` | Qwen CLI OAuth provider |
 
-### External Dependencies
+### Dependencies
 
 | Extension | Description |
 |-----------|-------------|
-| `with-deps/` | Extension with its own package.json and dependencies (demonstrates jiti module resolution) |
-| `file-trigger.ts` | Watches a trigger file and injects contents into conversation |
+| `with-deps/` | 扩展自带 `package.json` 依赖（jiti 解析） |
 
 ## Writing Extensions
 
-See [docs/extensions.md](../../docs/extensions.md) for full documentation.
+完整文档见 [docs/extensions.md](../../docs/extensions.md)。
 
 ```typescript
 import type { ExtensionAPI } from "@vetta/coding-agent";
 import { Type } from "@sinclair/typebox";
 
-export default function (pi: ExtensionAPI) {
-  // Subscribe to lifecycle events
-  pi.on("tool_call", async (event, ctx) => {
+export default function (api: ExtensionAPI) {
+  api.on("tool_call", async (event, ctx) => {
     if (event.toolName === "bash" && event.input.command?.includes("rm -rf")) {
       const ok = await ctx.ui.confirm("Dangerous!", "Allow rm -rf?");
       if (!ok) return { block: true, reason: "Blocked by user" };
     }
   });
 
-  // Register custom tools
-  pi.registerTool({
+  api.registerTool({
     name: "greet",
     label: "Greeting",
     description: "Generate a greeting",
     parameters: Type.Object({
       name: Type.String({ description: "Name to greet" }),
     }),
-    async execute(toolCallId, params, onUpdate, ctx, signal) {
+    async execute(_toolCallId, params) {
       return {
         content: [{ type: "text", text: `Hello, ${params.name}!` }],
         details: {},
       };
     },
   });
-
-  // Register commands
-  pi.registerCommand("hello", {
-    description: "Say hello",
-    handler: async (args, ctx) => {
-      ctx.ui.notify("Hello!", "info");
-    },
-  });
 }
-```
-
-## Key Patterns
-
-**Use StringEnum for string parameters** (required for Google API compatibility):
-```typescript
-import { StringEnum } from "@vetta/ai";
-
-// Good
-action: StringEnum(["list", "add"] as const)
-
-// Bad - doesn't work with Google
-action: Type.Union([Type.Literal("list"), Type.Literal("add")])
-```
-
-**State persistence via details:**
-```typescript
-// Store state in tool result details for proper forking support
-return {
-  content: [{ type: "text", text: "Done" }],
-  details: { todos: [...todos], nextId },  // Persisted in session
-};
-
-// Reconstruct on session events
-pi.on("session_start", async (_event, ctx) => {
-  for (const entry of ctx.sessionManager.getBranch()) {
-    if (entry.type === "message" && entry.message.toolName === "my_tool") {
-      const details = entry.message.details;
-      // Reconstruct state from details
-    }
-  }
-});
 ```

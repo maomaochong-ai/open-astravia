@@ -1,0 +1,34 @@
+export interface HostSettingsPort {
+	getLastChangelogVersion(): string | undefined;
+	setLastChangelogVersion(version: string): void;
+	getShellPath(): string | undefined;
+	setShellPath(path: string | undefined): void;
+	getQuietStartup(): boolean;
+	setQuietStartup(quiet: boolean): void;
+	getShellCommandPrefix(): string | undefined;
+	setShellCommandPrefix(prefix: string | undefined): void;
+	getCollapseChangelog(): boolean;
+	setCollapseChangelog(collapse: boolean): void;
+	getShowImages(): boolean;
+	setShowImages(show: boolean): void;
+	getClearOnShrink(): boolean;
+	setClearOnShrink(enabled: boolean): void;
+	getDoubleEscapeAction(): "fork" | "tree" | "none";
+	setDoubleEscapeAction(action: "fork" | "tree" | "none"): void;
+	getShowHardwareCursor(): boolean;
+	setShowHardwareCursor(enabled: boolean): void;
+	getEditorPaddingX(): number;
+	setEditorPaddingX(padding: number): void;
+	getAutocompleteMaxVisible(): number;
+	setAutocompleteMaxVisible(maxVisible: number): void;
+	getCodeBlockIndent(): string;
+	getEnableMcp(): boolean;
+	setEnableMcp(enabled: boolean): void;
+	getMcpDebug(): boolean;
+	setMcpDebug(debug: boolean): void;
+	getServerUrl(): string | undefined;
+	setServerUrl(url: string | undefined): void;
+	getServerToken(): string | undefined;
+	getServerTokenFresh(): string | undefined;
+	setServerToken(token: string | undefined): void;
+}

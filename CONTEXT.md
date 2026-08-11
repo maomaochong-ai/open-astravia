@@ -106,7 +106,7 @@ coding-agent 内置工具（`packages/coding-agent/src/core/tools/...`），仅�
 
 ### host_request / host_response
 
-agent ↔ host 之间的反向 RPC 通道，扩自 coding-agent 的 RPC 协议（`packages/coding-agent/docs/rpc.md` 待补）。形状：
+agent ↔ host 之间的反向 RPC 通道，扩自 coding-agent 的 RPC 协议（`packages/coding-agent/docs/rpc.md`、`src/modes/rpc/rpc-types.ts`）。形状：
 
 - agent → host（stdout event line）：`{"type":"host_request","id":"hr-N","method":"send_attachment","params":{...}}`
 - host → agent（stdin command line）：`{"type":"host_response","id":"hr-N","success":bool,"data":{...},"error":""}`

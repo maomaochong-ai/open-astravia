@@ -49,7 +49,7 @@ export function AbilityDetailSheet({
 				<DrawerDescription className="sr-only">{item?.description ?? ""}</DrawerDescription>
 
 				{item ? (
-					<div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-8">
+					<div className="min-h-0 flex-1 overflow-hidden">
 						<AbilityDetailView item={item} model={model} onBack={onClose} />
 					</div>
 				) : (

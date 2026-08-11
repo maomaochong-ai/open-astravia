@@ -1,9 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type {
-	PromptRequest,
-	RuntimeUserQuestionRequest,
-	RuntimeUserQuestionResult,
-} from "../../../../../runtime-core/src/index.js";
+import type { PromptRequest, RuntimeUserQuestionRequest, RuntimeUserQuestionResult } from "@vetta/runtime-core";
 import {
 	DesktopConversationError,
 	type DesktopConversationService,

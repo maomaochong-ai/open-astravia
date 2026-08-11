@@ -5,17 +5,19 @@ import {
 	activeSessionAtom,
 	batchProjectsAtom,
 	confirmDialogAtom,
+	defaultConversationCwdAtom,
 	defaultConversationFilterAtom,
 	defaultImConversationCwdAtom,
 	expandedBatchProjectsAtom,
 	inlineFilePreviewAtom,
-	isImSession,
 } from "@shared/store/atoms";
 import { useMatches, useNavigate } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { resolveDesktopSessionOpenTarget } from "@/shared/session-access";
+import { resolveProjectGoneCleanup } from "../../../../hooks/project-gone-cleanup";
 import { useProjects } from "../../../../hooks/useProjects";
 import type { BatchProjectEntry, ProjectsPanelModel, ProjectsPanelProps } from "./types";
 
@@ -57,13 +59,16 @@ export function useProjectsPanelModel({
 	const navigate = useNavigate();
 	const matches = useMatches();
 	const currentPath = matches[matches.length - 1]?.pathname ?? "/";
-	const viewerParams = matches[matches.length - 1]?.params as { path?: string } | undefined;
-	const viewerSessionPath = viewerParams?.path ? decodeURIComponent(viewerParams.path) : "";
+	const routeParams = matches[matches.length - 1]?.params as { path?: string; cwd?: string } | undefined;
+	const viewerSessionPath = routeParams?.path ? decodeURIComponent(routeParams.path) : "";
+	/** `/project/$cwd` 与 `/new-session/$cwd` 的参数值本身是编码过的（见导航处的 encodeURIComponent）。 */
+	const routeCwd = routeParams?.cwd ? decodeURIComponent(routeParams.cwd) : "";
 	const activeSessionPath = viewerSessionPath || activeSessionPathValue;
 	const batchProjects = useAtomValue(batchProjectsAtom);
 	const [expandedBatchProjects, setExpandedBatchProjects] = useAtom(expandedBatchProjectsAtom);
 	const { deleteTask: deleteBatchTask, deleteProject: deleteBatchProject } = useBatchTasks();
 	const defaultConversationFilter = useAtomValue(defaultConversationFilterAtom);
+	const defaultConversationCwd = useAtomValue(defaultConversationCwdAtom);
 
 	const expandBatchProject = useCallback(
 		(cwd: string) => {
@@ -147,13 +152,15 @@ export function useProjectsPanelModel({
 	const selectSession = useCallback(
 		(cwd: string, path: string) => {
 			const session = sessionsMap.get(cwd)?.find((item) => item.path === path);
-			if (session && isImSession(session, imCwd)) {
+			const target = session?.access ? resolveDesktopSessionOpenTarget(session.access) : "interactive";
+			if (target === "viewer") {
 				void navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } });
 				return;
 			}
+			if (target === "unavailable") return;
 			void onOpenSession(cwd, path);
 		},
-		[onOpenSession, sessionsMap, navigate, imCwd],
+		[onOpenSession, sessionsMap, navigate],
 	);
 
 	const selectBatchSession = useCallback(
@@ -168,16 +175,16 @@ export function useProjectsPanelModel({
 
 	const defaultSelectSession = useCallback(
 		(cwd: string, path: string) => {
-			if (imCwd) {
-				const prefix = imCwd.endsWith("/") ? imCwd : `${imCwd}/`;
-				if (path.startsWith(prefix)) {
-					void navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } });
-					return;
-				}
+			const session = sessionsMap.get(cwd)?.find((item) => item.path === path);
+			const target = session?.access ? resolveDesktopSessionOpenTarget(session.access) : "interactive";
+			if (target === "viewer") {
+				void navigate({ to: "/viewer/$path", params: { path: encodeURIComponent(path) } });
+				return;
 			}
+			if (target === "unavailable") return;
 			void onOpenSession(cwd, path);
 		},
-		[onOpenSession, navigate, imCwd],
+		[onOpenSession, navigate, sessionsMap],
 	);
 
 	const deletePanelSession = useCallback(
@@ -216,15 +223,31 @@ export function useProjectsPanelModel({
 
 	const cleanupAfterProjectGone = useCallback(
 		(projectCwd: string, sessionPathsInProject: string[]) => {
-			const activeBelongsToProject =
-				activeSessionCwd === projectCwd || sessionPathsInProject.includes(activeSessionPathValue);
-			if (activeBelongsToProject) setActiveSession(null);
-			const onDeletedProjectPage = currentPath === `/project/${encodeURIComponent(projectCwd)}`;
-			if (onDeletedProjectPage) {
-				void navigate({ to: "/" });
+			const { clearActiveSession, navigation } = resolveProjectGoneCleanup(projectCwd, sessionPathsInProject, {
+				currentPath,
+				routeCwd,
+				routeSessionPath: viewerSessionPath,
+				activeSessionCwd,
+				activeSessionPath: activeSessionPathValue,
+				defaultConversationCwd,
+			});
+			if (clearActiveSession) setActiveSession(null);
+			if (navigation.kind === "new-session") {
+				void navigate({ to: "/new-session/$cwd", params: { cwd: encodeURIComponent(navigation.cwd) } });
+				return;
 			}
+			if (navigation.kind === "home") void navigate({ to: "/" });
 		},
-		[activeSessionCwd, activeSessionPathValue, setActiveSession, currentPath, navigate],
+		[
+			activeSessionCwd,
+			activeSessionPathValue,
+			setActiveSession,
+			currentPath,
+			routeCwd,
+			viewerSessionPath,
+			defaultConversationCwd,
+			navigate,
+		],
 	);
 
 	const confirmDeleteBatchProject = useCallback(

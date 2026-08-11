@@ -3,7 +3,6 @@ import { contentPromptDocumentsEqual } from "./prompt-document";
 
 export function contentNodeDataEqual(left: ContentNodeData, right: ContentNodeData): boolean {
 	return (
-		left.label === right.label &&
 		left.prompt === right.prompt &&
 		optionalPromptDocumentsEqual(left.promptDocument, right.promptDocument) &&
 		promptOptimizationsEqual(left.promptOptimization, right.promptOptimization) &&

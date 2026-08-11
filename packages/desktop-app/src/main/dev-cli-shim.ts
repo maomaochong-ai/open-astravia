@@ -3,7 +3,7 @@ import { accessSync, constants } from "node:fs";
 import { access, chmod, copyFile, mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, delimiter, join } from "node:path";
 import { promisify } from "node:util";
-import { getAgentDir } from "@vetta/coding-agent";
+import { getAgentDir } from "@vetta/coding-agent/config";
 
 const execFileAsync = promisify(execFile);
 
@@ -196,7 +196,6 @@ export async function ensureDevCliShim(options: DevCliShimOptions): Promise<stri
 export async function ensureDevVettaCliShim(options: DevVettaCliShimOptions): Promise<string> {
 	const shimDir = join(options.appRoot, DEV_CLI_DIR, getCurrentPlatformArchId());
 	const sourceDir = join(options.cliAppRoot, "src");
-	const sourcePath = join(sourceDir, "cli.ts");
 	const binaryPath = join(shimDir, getVettaCliBinaryName());
 	await mkdir(shimDir, { recursive: true });
 
@@ -211,7 +210,8 @@ export async function ensureDevVettaCliShim(options: DevVettaCliShimOptions): Pr
 	}
 
 	const bunCommand = resolveBunCommand();
-	await execFileAsync(bunCommand, ["build", sourcePath, "--compile", "--outfile", binaryPath], {
+	const compileScriptPath = join(options.cliAppRoot, "scripts", "compile-standalone.mjs");
+	await execFileAsync(bunCommand, [compileScriptPath, "--outfile", binaryPath], {
 		cwd: options.appRoot,
 		windowsHide: true,
 	});

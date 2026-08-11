@@ -2,6 +2,7 @@ import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import { createOfficialAgentApi } from "./plugin-official-agent";
 import { createOfficialAppearanceApi } from "./plugin-official-appearance";
 import { createOfficialBatchTasksApi } from "./plugin-official-batch-tasks";
+import { createOfficialDialogApi } from "./plugin-official-dialog";
 import { createOfficialDownloadsApi } from "./plugin-official-downloads";
 import { createOfficialGeneralApi } from "./plugin-official-general";
 import { createOfficialImApi } from "./plugin-official-im";
@@ -12,6 +13,8 @@ import { createOfficialNavigationApi } from "./plugin-official-navigation";
 import { createOfficialPluginsApi } from "./plugin-official-plugins";
 import { createOfficialProjectsApi } from "./plugin-official-projects";
 import { createOfficialSchedulerApi } from "./plugin-official-scheduler";
+import { createOfficialSessionsApi } from "./plugin-official-sessions";
+import { createOfficialShellApi } from "./plugin-official-shell";
 import { createOfficialShortcutsApi } from "./plugin-official-shortcuts";
 import { createOfficialSkillsApi } from "./plugin-official-skills";
 import { createOfficialUpdaterApi } from "./plugin-official-updater";
@@ -27,6 +30,8 @@ export function createPluginOfficialApi(capabilitySessionId: string): PluginOffi
 		general: createOfficialGeneralApi(assertOfficial, capabilitySessionId),
 		agent: createOfficialAgentApi(assertOfficial, capabilitySessionId),
 		downloads: createOfficialDownloadsApi(assertOfficial, capabilitySessionId),
+		dialog: createOfficialDialogApi(assertOfficial),
+		shell: createOfficialShellApi(assertOfficial),
 		updater: createOfficialUpdaterApi(assertOfficial, capabilitySessionId),
 		webhook: createOfficialWebhookApi(assertOfficial, capabilitySessionId),
 		skills: createOfficialSkillsApi(assertOfficial, capabilitySessionId),
@@ -40,6 +45,7 @@ export function createPluginOfficialApi(capabilitySessionId: string): PluginOffi
 		batchTasks: createOfficialBatchTasksApi(assertOfficial, capabilitySessionId),
 		scheduler: createOfficialSchedulerApi(assertOfficial, capabilitySessionId),
 		appearance: createOfficialAppearanceApi(capabilitySessionId),
+		sessions: createOfficialSessionsApi(capabilitySessionId),
 		navigation: createOfficialNavigationApi(capabilitySessionId),
 	};
 }

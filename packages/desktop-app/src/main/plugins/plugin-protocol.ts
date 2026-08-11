@@ -104,6 +104,8 @@ export const jsxDEV = jsxDevRuntime.jsxDEV;
 		// 抛 "does not provide an export named ..." 导致整个插件加载失败。
 		return moduleResponse(`
 const sdk = globalThis.__VETTA_PLUGIN_HOST__.pluginSdk;
+export const PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES = sdk.PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES;
+export const PLUGIN_PERMISSIONS = sdk.PLUGIN_PERMISSIONS;
 export const definePlugin = sdk.definePlugin;
 export const useActiveConversation = sdk.useActiveConversation;
 export const useConversationMessages = sdk.useConversationMessages;
@@ -116,9 +118,23 @@ export const __PluginI18nContext = sdk.__PluginI18nContext;
 export const interpolatePluginText = sdk.interpolatePluginText;
 export const resolveCatalogKey = sdk.resolveCatalogKey;
 export const resolvePluginText = sdk.resolvePluginText;
+export const definePluginPromptContext = sdk.definePluginPromptContext;
 export const PluginAppActionError = sdk.PluginAppActionError;
 export const PluginMediaError = sdk.PluginMediaError;
 export const usePluginShortcutScope = sdk.usePluginShortcutScope;
+`);
+	}
+	if (moduleName === "theme-ui-plugin") {
+		// 与 packages/theme-ui/src/plugin-ui/index.ts 的运行时导出保持同步（纯类型无需列出）：
+		// 漏列会在插件模块求值时抛 "does not provide an export named ..." 导致整个插件加载失败。
+		return moduleResponse(`
+const themeUi = globalThis.__VETTA_PLUGIN_HOST__.themeUiPlugin;
+export const ModelSelectorView = themeUi.ModelSelectorView;
+export const MultiplierTag = themeUi.MultiplierTag;
+export const fmtMultiplier = themeUi.fmtMultiplier;
+export const ProviderIcon = themeUi.ProviderIcon;
+export const PROVIDER_ICONS = themeUi.PROVIDER_ICONS;
+export const getProviderIcon = themeUi.getProviderIcon;
 `);
 	}
 	if (moduleName === "ui" || moduleName === "vetta-ui") {
@@ -152,6 +168,8 @@ export const DropdownMenu = ui.DropdownMenu;
 export const DropdownMenuContent = ui.DropdownMenuContent;
 export const DropdownMenuItem = ui.DropdownMenuItem;
 export const DropdownMenuLabel = ui.DropdownMenuLabel;
+export const DropdownMenuRadioGroup = ui.DropdownMenuRadioGroup;
+export const DropdownMenuRadioItem = ui.DropdownMenuRadioItem;
 export const DropdownMenuSeparator = ui.DropdownMenuSeparator;
 export const DropdownMenuSub = ui.DropdownMenuSub;
 export const DropdownMenuSubContent = ui.DropdownMenuSubContent;

@@ -7,9 +7,21 @@
 
 import type { AgentMessage, ThinkingLevel } from "@vetta/agent-core";
 import type { ImageContent, Model } from "@vetta/ai";
-import type { SessionStats } from "../../core/agent-session.js";
-import type { BashResult } from "../../core/bash-executor.js";
-import type { CompactionResult } from "../../core/compaction/index.js";
+import type { CompactionResult } from "../../compaction/index.js";
+import type { CodingAgentSessionStats } from "../../public-api/sdk/index.js";
+import type { RpcFailureMetadata } from "./rpc-failure.js";
+import type { RpcStartupFailure } from "./rpc-startup-failure.js";
+
+export type SessionStats = CodingAgentSessionStats;
+
+/** RPC 线协议中的 Bash 执行结果；与具体宿主实现解耦。 */
+export interface RpcBashResult {
+	readonly output: string;
+	readonly exitCode: number | undefined;
+	readonly cancelled: boolean;
+	readonly truncated: boolean;
+	readonly fullOutputPath?: string;
+}
 
 // ============================================================================
 // RPC Commands (stdin)
@@ -113,6 +125,7 @@ export interface RpcSessionState {
 
 // Success responses with data
 export type RpcResponse =
+	| RpcStartupFailure
 	// Prompting (async - events follow)
 	| { id?: string; type: "response"; command: "prompt"; success: true }
 	| { id?: string; type: "response"; command: "steer"; success: true }
@@ -172,7 +185,7 @@ export type RpcResponse =
 	| { id?: string; type: "response"; command: "abort_retry"; success: true }
 
 	// Bash
-	| { id?: string; type: "response"; command: "bash"; success: true; data: BashResult }
+	| { id?: string; type: "response"; command: "bash"; success: true; data: RpcBashResult }
 	| { id?: string; type: "response"; command: "abort_bash"; success: true }
 
 	// Session
@@ -209,7 +222,15 @@ export type RpcResponse =
 	  }
 
 	// Error response (any command can fail)
-	| { id?: string; type: "response"; command: string; success: false; error: string };
+	| RpcErrorResponse;
+
+export type RpcErrorResponse = {
+	id?: string;
+	type: "response";
+	command: string;
+	success: false;
+	error: string;
+} & RpcFailureMetadata;
 
 // ============================================================================
 // Extension UI Events (stdout)
@@ -270,7 +291,7 @@ export type RpcExtensionUIResponse =
 // Enabled only with `--mode rpc --enable-host-bridge`. Lets built-in tools
 // (currently `im_send_attachment`) call back into the host process — for
 // im-gateway that means "actually send this image/file via the IM
-// transport, return the messageId or a structured error". See docs/rpc.md.
+// transport, return the messageId or a structured error". Wire types below; overview in docs/rpc.md.
 //
 // Wire shape mirrors the extension_ui_request / _response pair: stdout
 // carries `host_request`, stdin carries `host_response`, both correlate by

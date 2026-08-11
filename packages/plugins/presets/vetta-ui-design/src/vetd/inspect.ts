@@ -47,8 +47,20 @@ export async function inspectIssues(
 	dirPath: string,
 ): Promise<SourceIssue[]> {
 	const [ruleIssues, syntaxIssues] = await Promise.all([
-		collectSources(fs, dirPath).then(checkSources),
+		Promise.all([collectSources(fs, dirPath), readThemeCss(fs, dirPath)]).then(([files, themeCss]) =>
+			checkSources(files, themeCss),
+		),
 		checkSyntax(ctx, dirPath),
 	]);
 	return [...syntaxIssues, ...ruleIssues];
+}
+
+/** 设计的 theme.css，用于判定颜色 token 是否声明过。读不到返回 null（该项检查随之关闭）。 */
+async function readThemeCss(fs: PluginContext["fs"], dirPath: string): Promise<string | null> {
+	try {
+		const { content } = await fs.readFile(`${dirPath}/theme.css`);
+		return content;
+	} catch {
+		return null;
+	}
 }

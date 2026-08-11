@@ -13,6 +13,9 @@ import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
+import { InputBarFooter } from "./InputBarFooter";
+import { InputBarTodoStatus } from "./InputBarTodoStatus";
+import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import { InputBarToolbar } from "./InputBarToolbar";
 import { InputEditor } from "./editor/InputEditor";
 import type { InputBarViewProps } from "./types";
@@ -87,6 +90,13 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 				/>
 
 				<ActionButtonBar />
+
+				<PromptAttachmentLabels
+					labels={model.promptAttachmentLabels ?? []}
+					icon={model.promptAttachmentIcon}
+					removeLabel={model.labels.capsule.removeDefault}
+					onRemove={model.actions.removePromptAttachment}
+				/>
 
 				<InputBarDrawer
 					items={model.drawerItems}
@@ -184,28 +194,17 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 											</div>
 										)}
 
-										{(model.hasPromptAttachment || model.selectedSkill) && (
+										{/* 插件附件不画在卡片里：它是「你现在正看着什么」，画在卡片外面顶部（PromptAttachmentLabels）。 */}
+										{model.selectedSkill && (
 											<div className="flex flex-wrap items-center gap-1.5">
-												{model.hasPromptAttachment && model.promptAttachmentLabel && (
-													<InputBarCapsule
-														key="plugin-prompt-attachment"
-														icon={model.promptAttachmentIcon ?? "icon-[solar--paperclip-linear]"}
-														label={model.promptAttachmentLabel}
-														labels={model.labels.capsule}
-														tone="primary"
-														onRemove={model.actions.removePromptAttachment}
-													/>
-												)}
-												{model.selectedSkill && (
-													<InputBarCapsule
-														key="scene-capsule"
-														icon="icon-[solar--clapperboard-open-linear]"
-														label={model.selectedSkill.alias || model.selectedSkill.name}
-														labels={model.labels.capsule}
-														tone="primary"
-														onRemove={model.actions.removeSkill}
-													/>
-												)}
+												<InputBarCapsule
+													key="scene-capsule"
+													icon="icon-[solar--clapperboard-open-linear]"
+													label={model.selectedSkill.alias || model.selectedSkill.name}
+													labels={model.labels.capsule}
+													tone="primary"
+													onRemove={model.actions.removeSkill}
+												/>
 											</div>
 										)}
 									</div>
@@ -249,6 +248,18 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					</div>
 				</SessionDropZoneView>
 
+				{/*
+				 * 卡片下沿的附属区：出现时整条输入栏被平滑抬高，消失时落回去，动画由
+				 * InputBarFooter 用 CSS 过渡承担。待办只是第一个住户，后续元素加进 items 即可。
+				 */}
+				<InputBarFooter
+					items={[
+						{
+							id: "todo",
+							node: model.todo ? <InputBarTodoStatus todo={model.todo} /> : null,
+						},
+					]}
+				/>
 			</div>
 
 			{model.contextMenu

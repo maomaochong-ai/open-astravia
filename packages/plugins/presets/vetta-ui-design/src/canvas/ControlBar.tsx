@@ -2,17 +2,17 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type PointerEvent as ReactPointerEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DOCK_GAP, DOCK_ICON, dockMagnifyScale, dockTransition, usePrefersReducedMotion } from "./dock-magnify";
 
-export type CanvasTool = "select" | "hand" | "frame";
+export type CanvasTool = "select" | "hand" | "frame" | "note";
 
 interface ControlBarProps {
 	tool: CanvasTool;
 	zoom: number;
 	/** Number of frames the export action would act on; 0 hides the button. */
 	exportableCount: number;
-	/** 设计体系抽屉开着时高亮按钮，同时整条工具栏淡出让位（见 faded）。 */
+	/** 设计体系 Dialog 开着时高亮按钮。 */
 	designSystemsActive: boolean;
-	/** 抽屉升起时工具栏淡出（不上推，避免布局跳动），关闭后恢复。 */
-	faded: boolean;
+	/** 待处理备注数，挂在备注工具按钮的右上角；0 不显示。 */
+	pendingNotes: number;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
@@ -31,6 +31,8 @@ type DockSlot =
 			accent?: boolean;
 			/** 非等宽项（缩放百分比、导出）：撑开宽度而不是锁死成方块。 */
 			wide?: boolean;
+			/** 右上角角标数字（备注待处理数）。absolute 定位，不影响 dock 宽度与中心点缓存。 */
+			badge?: number;
 			onClick(): void;
 			content: ReactNode;
 	  };
@@ -53,6 +55,15 @@ const icons = {
 	frame: (
 		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 			<path d="M6 2v20M18 2v20M2 6h20M2 18h20" strokeLinecap="round" />
+		</svg>
+	),
+	note: (
+		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			<path
+				d="M21 11.5a8.5 8.5 0 01-8.5 8.5H4l1.6-3.2A8.5 8.5 0 1121 11.5z"
+				strokeLinecap="round"
+				strokeLinejoin="round"
+			/>
 		</svg>
 	),
 	mockup: (
@@ -82,7 +93,7 @@ const icons = {
 };
 
 /**
- * 画布左下角固定的工具栏（选择 / 托手 / 画框 / 缩放）。底部中间留给「让 Vetta 调整」。
+ * 画布底部居中固定的工具栏（选择 / 托手 / 画框 / 缩放 / 设计体系 / 导出）。
  * 视觉与动效对齐 content-creation 画布的 dock：图标方块 + 光标处放大 + 峰值项浮标签。
  */
 export function ControlBar({
@@ -90,7 +101,7 @@ export function ControlBar({
 	zoom,
 	exportableCount,
 	designSystemsActive,
-	faded,
+	pendingNotes,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
@@ -133,6 +144,16 @@ export function ControlBar({
 			},
 			{
 				type: "item",
+				key: "note",
+				label: t("controlbar.note"),
+				active: tool === "note",
+				badge: pendingNotes,
+				// 再点一次退回选择工具：备注面板跟着工具态开合，这就是关掉它的方式。
+				onClick: () => onToolChange(tool === "note" ? "select" : "note"),
+				content: icons.note,
+			},
+			{
+				type: "item",
 				key: "design-systems",
 				label: t("controlbar.designSystems"),
 				active: designSystemsActive,
@@ -168,8 +189,8 @@ export function ControlBar({
 		];
 		if (exportableCount > 0) {
 			items.push({ type: "divider", key: "divider-export" });
-			// 纯图标方块：带文字会把 dock 撑长约 90px，窄屏直接撞上底部居中的「让 Vetta 调整」。
-			// 说明文字交给 dock 的峰值浮标签，主题色底把它和前面的工具按钮区分开。
+			// 纯图标方块：带文字会把 dock 撑长约 90px。说明文字交给 dock 的峰值浮标签，
+			// 主题色底把它和前面的工具按钮区分开。
 			items.push({
 				type: "item",
 				key: "export",
@@ -184,6 +205,7 @@ export function ControlBar({
 	}, [
 		designSystemsActive,
 		exportableCount,
+		pendingNotes,
 		onDesignSystems,
 		onExport,
 		onToolChange,
@@ -234,16 +256,11 @@ export function ControlBar({
 	const peakLabel = peakSlot?.type === "item" ? peakSlot.label : null;
 
 	return (
-		// 左下角：底部中间留给「让 Vetta 调整」，顶部整条是画布自己的沉浸式标题栏
-		// （CanvasTab 里那层约 58px 高的渐变遮罩，z-30），工具栏放上去会被罩住。
+		// 底部居中；z-40 与顶部按钮组同层，压过沉浸式渐变遮罩。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
-		<div
-			className={`pointer-events-none absolute bottom-6 left-6 z-30 transition-opacity duration-200 ${
-				faded ? "opacity-0" : ""
-			}`}
-		>
+		<div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2">
 			{/* 放大只用 transform（origin-bottom），图标向上溢出 dock，chrome 本身不变高 */}
-			<div className="relative inline-flex flex-col items-start overflow-visible pt-9">
+			<div className="relative inline-flex flex-col items-center overflow-visible pt-9">
 				{peakLabel ? (
 					<div
 						className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 rounded-md border border-border/70 bg-popover/95 px-2 py-0.5 text-[11px] font-medium whitespace-nowrap text-popover-foreground shadow-sm"
@@ -255,9 +272,7 @@ export function ControlBar({
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: swallow canvas gestures under the bar */}
 				<div
 					ref={dockRef}
-					className={`relative inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md ${
-						faded ? "pointer-events-none" : "pointer-events-auto"
-					}`}
+					className="pointer-events-auto relative inline-flex items-end overflow-visible rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
 					style={{ gap: DOCK_GAP }}
 					// 托手/空格态下画布根节点会在 pointerdown 时 setPointerCapture 接管平移，
 					// 指针捕获会把 click 改派给画布根，工具栏按钮就永远点不动了（切不回选择工具）。
@@ -310,6 +325,14 @@ export function ControlBar({
 								}}
 							>
 								{slot.content}
+								{slot.badge !== undefined && slot.badge > 0 ? (
+									<span
+										className="absolute -right-1 -top-1 flex min-w-[14px] items-center justify-center rounded-full px-[3px] text-[9px] font-semibold leading-[14px] tabular-nums text-white"
+										style={{ background: "#2563eb", boxShadow: "0 1px 3px -1px rgba(0,0,0,.4)" }}
+									>
+										{slot.badge > 99 ? "99+" : slot.badge}
+									</span>
+								) : null}
 							</button>
 						);
 					})}

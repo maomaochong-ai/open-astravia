@@ -7,10 +7,10 @@
 
 import type { ExtensionAPI } from "@vetta/coding-agent";
 
-export default function (pi: ExtensionAPI) {
+export default function (api: ExtensionAPI) {
 	const protectedPaths = [".env", ".git/", "node_modules/"];
 
-	pi.on("tool_call", async (event, ctx) => {
+	api.on("tool_call", async (event, ctx) => {
 		if (event.toolName !== "write" && event.toolName !== "edit") {
 			return undefined;
 		}

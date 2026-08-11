@@ -1,0 +1,379 @@
+import { useTranslation } from "@vetta-org/plugin-sdk";
+import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { NotesStore } from "../notes/notes-store";
+import { type DesignNote, noteStatus, noteWorldPosition, pendingNotes } from "../notes/types";
+import type { VetdFrameEntry } from "../vetd/manifest-types";
+import type { SelectedElementPayload } from "./bridge-client";
+import { NoteAvatar, NotePin } from "./NoteAvatar";
+import { INVERSE_SCALE, NoteComposer, NotePanel, NotePanelHeader, NotePanelHint, stopAll } from "./NoteSurface";
+import { resolveAskMode } from "./selection-ask";
+
+/** 拖动阈值（屏幕像素）：低于它算点击（开 thread），高于它算拖动气泡。 */
+const DRAG_THRESHOLD_PX = 3;
+
+/** 备注放置的草稿：点了画布、还没提交。hit 是后台 hit-test，提交时不等它。 */
+export interface NoteDraft {
+	world: { x: number; y: number };
+	/** 落点命中的 frame；null = 自由备注。 */
+	frameId: string | null;
+	fx: number;
+	fy: number;
+	hit: Promise<SelectedElementPayload | null> | null;
+}
+
+interface NotesLayerProps {
+	store: NotesStore;
+	frames: readonly VetdFrameEntry[];
+	/** select/note 工具下气泡可点；托手/空格/frame 工具下整层不吃指针。 */
+	interactive: boolean;
+	draft: NoteDraft | null;
+	/** null = agent 空闲，落下就会被派出去；否则是等待原因（已本地化）。 */
+	blockedReason: string | null;
+	onDraftClose(): void;
+	openNoteId: string | null;
+	onOpenNote(id: string | null): void;
+	/** 指针位移换算成世界位移用（与 FrameView 同型，不把 zoom 当 prop）。 */
+	getZoom(): number;
+}
+
+/**
+ * 画布层的备注：气泡、放置草稿的输入框、点开后的 thread 弹层。挂在 world 变换里
+ * （跟着画布平移缩放），自身按 `--vetd-lscale` 反向缩放保持恒定视觉大小——与
+ * frame 标题栏、整理工具条同一套办法。截图截不到这一层（它不在 iframe 文档里），
+ * 这正是「例行截图保持干净」的实现方式；标注图由 notes/annotate.ts 二次合成。
+ */
+export function NotesLayer({
+	store,
+	frames,
+	interactive,
+	draft,
+	blockedReason,
+	onDraftClose,
+	openNoteId,
+	onOpenNote,
+	getZoom,
+}: NotesLayerProps) {
+	const { t } = useTranslation();
+	const [version, setVersion] = useState(0);
+	useEffect(() => {
+		const handle = store.on(() => setVersion((value) => value + 1));
+		return () => handle.dispose();
+	}, [store]);
+
+	const frameOf = useMemo(() => {
+		const map = new Map(frames.map((frame) => [frame.id, frame]));
+		return (frameId: string) => map.get(frameId);
+	}, [frames]);
+
+	/**
+	 * frame 消失（删除/重命名）→ 锚在它上面的备注降级为自由备注。lastRects 记住
+	 * 每个 frame 最后一次已知的位置，降级时用它换算回世界坐标。
+	 */
+	const lastRectsRef = useRef(new Map<string, { x: number; y: number }>());
+	// version 在 deps 里：store 异步 load 完成后才发现的悬空备注也要走这一遭。
+	useEffect(() => {
+		const alive = new Set(frames.map((frame) => frame.id));
+		const dangling = new Set<string>();
+		for (const note of store.notes) {
+			if (note.anchor.kind !== "free" && !alive.has(note.anchor.frameId)) dangling.add(note.anchor.frameId);
+		}
+		for (const frameId of dangling) store.demoteFrame(frameId, lastRectsRef.current.get(frameId) ?? null);
+		for (const frame of frames) lastRectsRef.current.set(frame.id, { x: frame.x, y: frame.y });
+	}, [frames, store, version]);
+
+	const pending = pendingNotes(store.notes);
+	const numberOf = useMemo(() => new Map(pending.map((note, index) => [note.id, index + 1])), [pending]);
+
+	/**
+	 * 刚从待处理翻成已处理的备注：播一次弹跳 + 涟漪。
+	 *
+	 * 比对上一次的已处理集合而不是监听某个事件——状态是从 thread 末条消息推导出来的，
+	 * 而 agent 的回复经 vetd_notes 落进 store，画布这边只看得到「集合变了」。
+	 * 首帧不放：打开画布时已经存在的已处理备注不该集体弹一遍。
+	 */
+	const seenResolvedRef = useRef<Set<string> | null>(null);
+	const [celebratingIds, setCelebratingIds] = useState<ReadonlySet<string>>(new Set());
+	useEffect(() => {
+		const resolvedNow = new Set(store.notes.filter((note) => noteStatus(note) === "resolved").map((note) => note.id));
+		const seen = seenResolvedRef.current;
+		seenResolvedRef.current = resolvedNow;
+		if (!seen) return;
+		const fresh = [...resolvedNow].filter((id) => !seen.has(id));
+		if (fresh.length === 0) return;
+		setCelebratingIds((current) => new Set([...current, ...fresh]));
+		const timer = window.setTimeout(() => {
+			setCelebratingIds((current) => {
+				const next = new Set(current);
+				for (const id of fresh) next.delete(id);
+				return next;
+			});
+		}, 760);
+		return () => window.clearTimeout(timer);
+	}, [store, version]);
+
+	/** 拖动中的气泡：id + 世界位移（提交前只改本地渲染）。 */
+	const [dragDelta, setDragDelta] = useState<{ id: string; dx: number; dy: number } | null>(null);
+
+	const beginBubbleDrag = (note: DesignNote, event: ReactPointerEvent<HTMLButtonElement>): void => {
+		if (event.button !== 0) return;
+		event.stopPropagation();
+		const target = event.currentTarget;
+		target.setPointerCapture(event.pointerId);
+		const start = { x: event.clientX, y: event.clientY };
+		let moved = false;
+
+		const onMove = (move: PointerEvent): void => {
+			const dx = move.clientX - start.x;
+			const dy = move.clientY - start.y;
+			if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+			moved = true;
+			const zoom = getZoom();
+			setDragDelta({ id: note.id, dx: dx / zoom, dy: dy / zoom });
+		};
+		const onUp = (up: PointerEvent): void => {
+			target.removeEventListener("pointermove", onMove);
+			target.removeEventListener("pointerup", onUp);
+			target.removeEventListener("pointercancel", onUp);
+			if (!moved) {
+				onOpenNote(openNoteId === note.id ? null : note.id);
+				return;
+			}
+			const zoom = getZoom();
+			const dx = (up.clientX - start.x) / zoom;
+			const dy = (up.clientY - start.y) / zoom;
+			setDragDelta(null);
+			if (note.anchor.kind === "free") {
+				store.moveNote(note.id, { x: note.anchor.x + dx, y: note.anchor.y + dy });
+			} else {
+				store.moveNote(note.id, { x: note.anchor.fx + dx, y: note.anchor.fy + dy });
+			}
+		};
+		target.addEventListener("pointermove", onMove);
+		target.addEventListener("pointerup", onUp);
+		target.addEventListener("pointercancel", onUp);
+	};
+
+	const openNote = openNoteId ? store.noteById(openNoteId) : undefined;
+
+	/**
+	 * 草稿浮层的意图与等待原因在弹出那一刻定下，之后不随 agent 忙闲翻转——正在打字时
+	 * 按钮当着用户的面改口，比文案不准更糟（与选框追问浮层同一条规矩）。
+	 */
+	const draftShownRef = useRef<NoteDraft | null>(null);
+	const draftBlockedRef = useRef<string | null>(null);
+	if (draft !== draftShownRef.current) {
+		draftShownRef.current = draft;
+		if (draft) draftBlockedRef.current = blockedReason;
+	}
+	const draftBlocked = draftBlockedRef.current;
+	const draftMode = resolveAskMode(draftBlocked);
+	const draftLabel = draft
+		? draft.frameId !== null
+			? frameOf(draft.frameId)?.title || draft.frameId
+			: t("notes.drawer.freeNote")
+		: "";
+
+	return (
+		<div className={`vetd-note ${interactive ? "contents" : "pointer-events-none contents"}`}>
+			{store.notes.map((note) => {
+				const base = noteWorldPosition(note, frameOf);
+				const delta = dragDelta?.id === note.id ? dragDelta : null;
+				const pos = delta ? { x: base.x + delta.dx, y: base.y + delta.dy } : base;
+				const resolved = noteStatus(note) === "resolved";
+				const detached = note.anchor.kind === "free" && note.anchor.detachedFrom;
+				const number = numberOf.get(note.id);
+				const opened = openNoteId === note.id;
+				const celebrating = celebratingIds.has(note.id);
+				return (
+					<button
+						key={note.id}
+						type="button"
+						title={detached ? t("notes.bubble.detached") : (note.messages[0]?.text ?? "")}
+						aria-label={t("notes.bubble.label")}
+						onPointerDown={(event) => beginBubbleDrag(note, event)}
+						onPointerMove={stopAll}
+						onPointerUp={stopAll}
+						// 气泡尖角钉在锚点上：整体上移一个自身高，origin 定在左下。
+						// 外层只管定位/缩放/动效，长相交给 NotePin（与抽屉列表共用）。
+						// 气泡可点可拖，指针要盖过画布根的 crosshair（备注工具态）。
+						className={`absolute z-30 cursor-pointer rounded-full rounded-bl-[4px] ${
+							celebrating ? "vetd-note-celebrate vetd-note-ripple" : ""
+						} ${interactive ? "pointer-events-auto" : "pointer-events-none"}`}
+						style={{
+							left: pos.x,
+							top: pos.y,
+							transform: `translateY(-100%) scale(${INVERSE_SCALE})`,
+							transformOrigin: "left bottom",
+							// 打开中的气泡加一圈外环，和 thread 弹层呼应。
+							outline: opened ? "2px solid color-mix(in oklab, #fff 90%, transparent)" : undefined,
+							outlineOffset: opened ? 2 : undefined,
+						}}
+					>
+						{/* 头像即状态：待处理是提问的人，已处理是回复过的 Vetta。 */}
+						<NotePin resolved={resolved} size={28} number={resolved ? null : (number ?? null)} />
+					</button>
+				);
+			})}
+
+			{draft ? (
+				<NotePanel x={draft.world.x} y={draft.world.y}>
+					{/* 与选框追问浮层同一副长相：两个入口落的都是同一种备注，读起来就该一样。 */}
+					<NotePanelHeader intent={draftMode} label={draftLabel} />
+					{draftMode === "note" && draftBlocked ? (
+						<NotePanelHint text={`${draftBlocked} · ${t("canvas.ask.note.hint")}`} />
+					) : null}
+					<div className="p-1.5">
+					<NoteComposer
+						placeholder={t(draftMode === "ask" ? "canvas.ask.placeholder" : "canvas.ask.note.placeholder")}
+						submitLabel={t(draftMode === "ask" ? "canvas.ask.submit" : "canvas.ask.note.submit")}
+						onCancel={onDraftClose}
+						onSubmit={(text) => {
+							const anchor =
+								draft.frameId !== null
+									? ({ kind: "frame", frameId: draft.frameId, fx: draft.fx, fy: draft.fy } as const)
+									: ({ kind: "free", x: draft.world.x, y: draft.world.y } as const);
+							const created = store.addNote(anchor, text);
+							// 后台 hit-test 落地就升级成元素锚；没命中/超时保持 frame 锚。
+							void draft.hit?.then((payload) => {
+								if (!payload) return;
+								store.upgradeAnchor(created.id, {
+									domPath: payload.domPath,
+									tag: payload.tag,
+									text: payload.text,
+									classes: payload.classes,
+									source: payload.source,
+								});
+							});
+							onDraftClose();
+						}}
+					/>
+					</div>
+				</NotePanel>
+			) : null}
+
+			{openNote ? (
+				<NotePanel
+					x={noteWorldPosition(openNote, frameOf).x + 20}
+					y={noteWorldPosition(openNote, frameOf).y}
+				>
+					<NoteThread
+						note={openNote}
+						onReply={(text) => store.appendMessage(openNote.id, "user", text)}
+						onDelete={() => {
+							onOpenNote(null);
+							store.deleteNote(openNote.id);
+						}}
+						onClose={() => onOpenNote(null)}
+					/>
+				</NotePanel>
+			) : null}
+		</div>
+	);
+}
+
+function NoteThread({
+	note,
+	onReply,
+	onDelete,
+	onClose,
+}: {
+	note: DesignNote;
+	onReply(text: string): void;
+	onDelete(): void;
+	onClose(): void;
+}) {
+	const { t } = useTranslation();
+	const pending = noteStatus(note) === "pending";
+	const detachedFrom = note.anchor.kind === "free" ? note.anchor.detachedFrom : undefined;
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	// 追加消息后滚到底：thread 是自下而上读的。
+	useEffect(() => {
+		const element = scrollRef.current;
+		if (element) element.scrollTop = element.scrollHeight;
+	}, [note.messages.length]);
+
+	return (
+		<div className="flex flex-col">
+			<header className="flex items-center gap-1.5 border-b border-border/60 px-2.5 py-2">
+				<span
+					className="size-1.5 shrink-0 rounded-full"
+					style={{
+						background: pending ? "var(--vetd-note-pending, #2563eb)" : "var(--vetd-note-resolved, #10b981)",
+					}}
+					aria-hidden
+				/>
+				<span className="text-[11px] font-medium text-foreground">
+					{pending ? t("notes.status.pending") : t("notes.status.resolved")}
+				</span>
+				{detachedFrom ? (
+					<span className="truncate text-[10px] text-muted-foreground">· {t("notes.bubble.detached")}</span>
+				) : null}
+				<div className="ml-auto flex items-center gap-0.5">
+					<button
+						type="button"
+						title={t("notes.delete")}
+						aria-label={t("notes.delete")}
+						onClick={onDelete}
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+					>
+						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" strokeLinecap="round" strokeLinejoin="round" />
+						</svg>
+					</button>
+					<button
+						type="button"
+						title={t("notes.close")}
+						aria-label={t("notes.close")}
+						onClick={onClose}
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					>
+						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+						</svg>
+					</button>
+				</div>
+			</header>
+
+			<div ref={scrollRef} className="flex max-h-56 flex-col gap-2 overflow-y-auto px-2.5 py-2.5">
+				{note.messages.map((message, index) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: 消息只追加不重排
+					<NoteMessageRow key={index} author={message.author} text={message.text} />
+				))}
+			</div>
+
+			<div className="border-t border-border/60 p-1.5">
+				<NoteComposer
+					placeholder={pending ? t("notes.reply.placeholder") : t("notes.reopen.placeholder")}
+					submitLabel={pending ? t("notes.reply.submit") : t("notes.reopen.submit")}
+					onCancel={onClose}
+					onSubmit={onReply}
+				/>
+			</div>
+		</div>
+	);
+}
+
+/** 一条 thread 消息：头像 + 名字 + 气泡，Vetta 的用主题色底与之区分。 */
+function NoteMessageRow({ author, text }: { author: "user" | "agent"; text: string }) {
+	const { t } = useTranslation();
+	const isAgent = author === "agent";
+	return (
+		<div className="flex items-start gap-1.5">
+			<NoteAvatar author={author} size={18} />
+			<div className="min-w-0 flex-1">
+				<span className="mb-0.5 block text-[10px] font-medium text-muted-foreground">
+					{isAgent ? "Vetta" : t("notes.author.user")}
+				</span>
+				<div
+					className={`rounded-lg rounded-tl-[3px] px-2 py-1.5 text-xs leading-relaxed whitespace-pre-wrap ${
+						isAgent
+							? "bg-primary/10 text-foreground ring-1 ring-primary/15"
+							: "bg-muted/70 text-foreground ring-1 ring-border/50"
+					}`}
+				>
+					{text}
+				</div>
+			</div>
+		</div>
+	);
+}

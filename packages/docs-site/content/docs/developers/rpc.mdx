@@ -1,0 +1,82 @@
+---
+title: 接入 RPC 模式
+description: 通过 stdin/stdout NDJSON 驱动独立 Agent 进程，并正确处理响应、事件、取消和 Host Bridge。
+---
+
+RPC 模式适合语言无关集成、sidecar 和需要进程隔离的宿主。每行是一个完整 JSON 帧；stdout 只用于协议，诊断信息写入 stderr。
+
+同一 TypeScript 进程内集成优先使用 [SDK](/developers/sdk/)，不必额外管理子进程和帧关联。
+
+## 启动进程
+
+```bash
+vetta-agent-rpc --mode rpc \
+  --session-dir /path/to/conversations \
+  --provider openai \
+  --model openai/gpt-4o
+```
+
+- 工作目录就是进程 `cwd`，RPC 中没有运行时修改 cwd 的命令。
+- 一个进程只有一个活动会话。
+- `--continue` 恢复目录中最近会话；`--session <path>` 打开指定会话。
+- `--no-session` 创建不落盘的临时会话。
+- 同一会话文件禁止多个 writer。
+
+## 帧模型
+
+| 方向 | 形状 |
+| --- | --- |
+| 宿主 → Agent | `{ "id"?, "type", ... }` |
+| 成功响应 | `{ "id"?, "type": "response", "command", "success": true, "data"? }` |
+| 失败响应 | `{ "id"?, "type": "response", "command", "success": false, "error", ... }` |
+| Agent → 宿主 | agent、turn、message、tool、compaction、retry 等事件 |
+
+`id` 用于将异步响应关联回请求。事件不等同于响应，宿主必须分别路由。
+
+```json
+{"id":"req-1","type":"prompt","message":"总结当前项目"}
+{"id":"req-1","type":"response","command":"prompt","success":true}
+{"type":"agent_start"}
+{"type":"message_update","assistantMessageEvent":{"type":"text_delta","delta":"项目"}}
+{"type":"agent_end"}
+```
+
+实际事件字段以 `@vetta/coding-agent/rpc` 导出的类型为准。
+
+## 命令分组
+
+| 目标 | 命令 |
+| --- | --- |
+| 输入 | `prompt`、`steer`、`follow_up`、`abort`、`new_session` |
+| 状态 | `get_state`、`get_session_stats`、`get_messages`、`get_commands` |
+| 模型 | `set_model`、`cycle_model`、`get_available_models` |
+| 思考 | `set_thinking_level`、`cycle_thinking_level` |
+| 队列 | `set_steering_mode`、`set_follow_up_mode` |
+| 上下文 | `compact`、`set_auto_compaction` |
+| 重试 | `set_auto_retry`、`abort_retry` |
+| Shell | `bash`、`abort_bash` |
+| 会话 | `switch_session`、`fork`、`set_session_name`、`export_html` 等 |
+
+## 宿主必须保留的语义
+
+1. 逐行解析，不能把 stdout 当成人类日志。
+2. 同时处理请求响应和无请求 ID 的事件。
+3. 流式正文来自 `message_update.assistantMessageEvent`，不要只等最终响应。
+4. `abort`、自动重试、压缩、工具失败和 Agent 终止都要投影到宿主状态。
+5. 进程退出时，将未完成请求统一失败并保留 stderr 诊断。
+6. 切换会话前等待切换响应，不要并发向旧会话继续写入。
+
+## Extension UI 与 Host Bridge
+
+扩展需要确认或选择时，Agent 发出 `extension_ui_request`，宿主使用 `extension_ui_response` 回答。没有 UI 的宿主应明确取消，不要无限等待。
+
+`--enable-host-bridge` 为 Agent 增加反向宿主调用，例如 IM 场景发送附件：
+
+- Agent → 宿主：`host_request`
+- 宿主 → Agent：`host_response`
+
+只在确实实现了对应方法和权限检查时启用 Host Bridge。
+
+<Callout type="warn" title="不要混写 stdout">
+  任意启动横幅、调试日志或第三方输出写入 stdout 都会破坏 NDJSON 协议。宿主和扩展的诊断必须使用 stderr 或结构化事件。
+</Callout>

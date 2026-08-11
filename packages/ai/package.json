@@ -13,6 +13,18 @@
 		"./reasoning-presets": {
 			"types": "./dist/reasoning-presets.d.ts",
 			"default": "./dist/reasoning-presets.js"
+		},
+		"./protocol": {
+			"types": "./dist/protocol/index.d.ts",
+			"default": "./dist/protocol/index.js"
+		},
+		"./testkit": {
+			"types": "./dist/testkit/index.d.ts",
+			"default": "./dist/testkit/index.js"
+		},
+		"./testing": {
+			"types": "./dist/testing/index.d.ts",
+			"default": "./dist/testing/index.js"
 		}
 	},
 	"bin": {
@@ -28,6 +40,10 @@
 		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
 		"dev:tsc": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
 		"test": "vitest --run",
+		"test:all": "vitest --run --config vitest.all.config.ts",
+		"test:integration": "vitest --run --config vitest.integration.config.ts",
+		"test:live": "vitest --run --config vitest.live.config.ts",
+		"test:unit": "vitest --run",
 		"prepublishOnly": "bun run clean && bun run build"
 	},
 	"dependencies": {

@@ -77,6 +77,25 @@ export async function discoverClaudeHookHandlers(
 	return { handlers, diagnostics };
 }
 
+export function discoverClaudeHookHandlersFromDocument(
+	configuration: unknown,
+	source: HookConfigSource,
+	options: DiscoverClaudeHookHandlersOptions = {},
+): ClaudeHookDiscoveryResult {
+	const handlers: ConfiguredHookHandler[] = [];
+	const diagnostics: HookDiagnostic[] = [];
+	appendDocument(
+		{ hooks: configuration },
+		source,
+		options.projectDir ?? process.cwd(),
+		handlers,
+		diagnostics,
+		0,
+		true,
+	);
+	return { handlers, diagnostics };
+}
+
 export function isClaudeOwnedSource(source: HookConfigSource): boolean {
 	if (source.profileId) return source.profileId.startsWith("claude-code-hooks");
 	if (source.env?.CLAUDE_PLUGIN_ROOT) return true;
@@ -134,6 +153,19 @@ async function appendSource(
 		});
 		return displayOrder;
 	}
+	return appendDocument(root, source, projectDir, handlers, diagnostics, displayOrder);
+}
+
+function appendDocument(
+	root: unknown,
+	source: HookConfigSource,
+	projectDir: string,
+	handlers: ConfiguredHookHandler[],
+	diagnostics: HookDiagnostic[],
+	displayOrder: number,
+	skipUnsupportedIf = false,
+): number {
+	const sourcePath = source.path;
 
 	const rootResult = claudeHookConfigRootSchema.safeParse(root);
 	if (!rootResult.success) {
@@ -249,7 +281,8 @@ async function appendSource(
 						message: "Claude handler `if` permission filters are not supported yet",
 						sourcePath,
 					});
-					// still load the handler; filter is best-effort in Claude and fail-open
+					if (skipUnsupportedIf) continue;
+					// Static compatibility sources keep Claude's best-effort, fail-open behavior.
 				}
 
 				const defaultTimeout = typedEvent === "UserPromptSubmit" ? 30 : 600;
@@ -291,6 +324,7 @@ async function appendSource(
 					displayOrder,
 					env,
 					pluginId: source.pluginId,
+					once: commandHandler.once === true,
 				});
 				displayOrder++;
 			}

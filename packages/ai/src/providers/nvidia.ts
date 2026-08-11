@@ -8,9 +8,14 @@
  * thinkingFormat "nvidia" injected — no manual compat config needed.
  */
 
-import type { AssistantMessageEventStream, Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { AssistantMessageEventStream } from "../utils/event-stream.js";
 import type { OpenAICompletionsOptions } from "./openai-completions.js";
-import { streamOpenAICompletions, streamSimpleOpenAICompletions } from "./openai-completions.js";
+import {
+	createOpenAICompatibleAdapter,
+	streamOpenAICompletions,
+	streamSimpleOpenAICompletions,
+} from "./openai-completions.js";
 
 const NVIDIA_COMPAT = { thinkingFormat: "nvidia" as const };
 
@@ -21,6 +26,8 @@ function withNvidiaCompat(model: Model<"nvidia-openai-responses">): Model<"opena
 		compat: Object.assign({}, model.compat, NVIDIA_COMPAT),
 	};
 }
+
+export const nvidiaAdapter = createOpenAICompatibleAdapter("nvidia-openai-responses", withNvidiaCompat);
 
 export const streamNvidia: StreamFunction<"nvidia-openai-responses", OpenAICompletionsOptions> = (
 	model: Model<"nvidia-openai-responses">,

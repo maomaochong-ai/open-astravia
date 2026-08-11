@@ -15,7 +15,7 @@ function timelineDuration(project: ContentProjectDocument): number {
 
 function clipTitle(project: ContentProjectDocument, clip: TimelineClip, fallback: string): string {
 	const source = project.graph.nodes.find((node) => node.id === clip.sourceNodeId);
-	return source?.data.label?.trim() || fallback;
+	return source?.name?.trim() || fallback;
 }
 
 export function TimelineWorkspace({ project }: { project: ContentProjectDocument }) {

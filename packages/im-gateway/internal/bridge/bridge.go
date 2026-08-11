@@ -190,7 +190,7 @@ func (b *Bridge) Run(ctx context.Context, events <-chan hostclient.AgentEvent) e
 				if err := b.flushAll(ctx); err != nil && firstErr == nil {
 					firstErr = err
 				}
-				return firstErr
+				return eventStreamClosedFailure(firstErr)
 			}
 			if err := b.handle(ctx, ev); err != nil && firstErr == nil {
 				firstErr = err
@@ -219,30 +219,30 @@ func (b *Bridge) runDeferred(ctx context.Context, events <-chan hostclient.Agent
 	// finish stops the typing indicator and emits the single digest. Called on
 	// every exit path; stopping typing before the digest avoids the indicator
 	// lingering for a heartbeat interval after the reply already landed.
-	finish := func() {
+	finish := func(allowEmpty bool) {
 		stopTyping()
-		if err := b.sendDeferredDigest(ctx); err != nil && firstErr == nil {
+		if err := b.sendDeferredDigest(ctx, allowEmpty); err != nil && firstErr == nil {
 			firstErr = err
 		}
 	}
 	for {
 		select {
 		case <-ctx.Done():
-			finish()
+			finish(true)
 			if firstErr == nil {
 				return ctx.Err()
 			}
 			return firstErr
 		case ev, ok := <-events:
 			if !ok {
-				finish()
-				return firstErr
+				finish(false)
+				return eventStreamClosedFailure(firstErr)
 			}
 			if err := b.handleDeferred(ctx, ev); err != nil && firstErr == nil {
 				firstErr = err
 			}
 			if ev.Type == hostclient.AgentEventTypeAgentEnd {
-				finish()
+				finish(true)
 				return firstErr
 			}
 		}
@@ -305,8 +305,11 @@ func (b *Bridge) handleDeferred(ctx context.Context, ev hostclient.AgentEvent) e
 // and sends it. Idempotent: subsequent calls are no-ops, so the
 // channel-closed / ctx-cancelled / agent_end paths can all call it
 // without coordinating.
-func (b *Bridge) sendDeferredDigest(ctx context.Context) error {
+func (b *Bridge) sendDeferredDigest(ctx context.Context, allowEmpty bool) error {
 	d := b.deferred
+	if !allowEmpty && d.lastAssistantText == "" && d.lastErrorText == "" {
+		return nil
+	}
 	d.mu.Lock()
 	if d.finalSent {
 		d.mu.Unlock()
@@ -344,6 +347,16 @@ func (b *Bridge) sendDeferredDigest(ctx context.Context) error {
 	}
 	_, err := b.tr.SendMessage(ctx, b.chatID, transport.OutboundMessage{Text: out})
 	return err
+}
+
+func eventStreamClosedFailure(cause error) *hostclient.HostFailure {
+	return &hostclient.HostFailure{
+		Code:           hostclient.FailureCodeProcessExited,
+		Phase:          hostclient.FailurePhaseTurn,
+		Recoverability: hostclient.FailureRestartSession,
+		Message:        "bridge: agent event stream closed before agent_end",
+		Cause:          cause,
+	}
 }
 
 func (b *Bridge) handle(ctx context.Context, ev hostclient.AgentEvent) error {

@@ -1,48 +1,58 @@
 /**
  * API Keys and OAuth
  *
- * Configure API key resolution via AuthStorage and ModelRegistry.
+ * Configure API key resolution via AuthStorage and CodingAgentModelRuntime.
  */
 
-import { AuthStorage, createAgentSession, ModelRegistry, SessionManager } from "@vetta/coding-agent";
+import {
+	AuthStorage,
+	createCodingAgentHostWithServices,
+	createCodingAgentModelRuntime,
+} from "@vetta/coding-agent/host-services";
 
-// Default: AuthStorage uses ~/.pi/agent/auth.json
-// ModelRegistry loads built-in + custom models from ~/.pi/agent/models.json
+// Default: AuthStorage uses ~/.vetta/agent/auth.json
+// CodingAgentModelRuntime loads built-in + custom models from ~/.vetta/agent/models.json
 const authStorage = AuthStorage.create();
-const modelRegistry = new ModelRegistry(authStorage);
+const modelRuntime = createCodingAgentModelRuntime(authStorage);
 
-await createAgentSession({
-	sessionManager: SessionManager.inMemory(),
+const defaultHost = createCodingAgentHostWithServices({
 	authStorage,
-	modelRegistry,
+	modelRuntime,
 });
+await defaultHost.createSession({ storage: { kind: "memory" } });
+await defaultHost.close();
 console.log("Session with default auth storage and model registry");
 
 // Custom auth storage location
 const customAuthStorage = AuthStorage.create("/tmp/my-app/auth.json");
-const customModelRegistry = new ModelRegistry(customAuthStorage, "/tmp/my-app/models.json");
-
-await createAgentSession({
-	sessionManager: SessionManager.inMemory(),
-	authStorage: customAuthStorage,
-	modelRegistry: customModelRegistry,
+const customModelRuntime = createCodingAgentModelRuntime(customAuthStorage, {
+	modelsJsonPath: "/tmp/my-app/models.json",
 });
+
+const customHost = createCodingAgentHostWithServices({
+	authStorage: customAuthStorage,
+	modelRuntime: customModelRuntime,
+});
+await customHost.createSession({ storage: { kind: "memory" } });
+await customHost.close();
 console.log("Session with custom auth storage location");
 
 // Runtime API key override (not persisted to disk)
 authStorage.setRuntimeApiKey("anthropic", "sk-my-temp-key");
-await createAgentSession({
-	sessionManager: SessionManager.inMemory(),
+const runtimeKeyHost = createCodingAgentHostWithServices({
 	authStorage,
-	modelRegistry,
+	modelRuntime,
 });
+await runtimeKeyHost.createSession({ storage: { kind: "memory" } });
+await runtimeKeyHost.close();
 console.log("Session with runtime API key override");
 
 // No models.json - only built-in models
-const simpleRegistry = new ModelRegistry(authStorage); // null = no models.json
-await createAgentSession({
-	sessionManager: SessionManager.inMemory(),
+const simpleRuntime = createCodingAgentModelRuntime(authStorage);
+const simpleHost = createCodingAgentHostWithServices({
 	authStorage,
-	modelRegistry: simpleRegistry,
+	modelRuntime: simpleRuntime,
 });
+await simpleHost.createSession({ storage: { kind: "memory" } });
+await simpleHost.close();
 console.log("Session with only built-in models");

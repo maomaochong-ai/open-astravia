@@ -35,7 +35,7 @@ export function ActivityPanelView({
 	const panelBody = (
 		<>
 			{(tabBar || tabPicker) && (
-				<div className="group/activity-tabs relative z-0 flex shrink-0 items-end pt-1">
+				<div className="group/activity-tabs relative z-20 flex shrink-0 items-end pt-1">
 					{tabBar}
 					{tabPicker}
 				</div>

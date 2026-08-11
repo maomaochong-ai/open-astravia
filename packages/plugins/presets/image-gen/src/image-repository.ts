@@ -1,7 +1,7 @@
 import type {
 	PluginImageRef,
 	PluginStorageApi,
-	PluginStoredBlob,
+	PluginStoredBlobRef,
 } from "@vetta-org/plugin-sdk";
 
 interface ImageRecord {
@@ -31,8 +31,8 @@ export interface PersistImageMetadata {
 }
 
 export interface ImageRepository {
-	persist(bytes: PluginStoredBlob, metadata: PersistImageMetadata): Promise<PluginImageRef>;
-	read(id: string): Promise<PluginStoredBlob | null>;
+	persist(blob: PluginStoredBlobRef, metadata: PersistImageMetadata): Promise<PluginImageRef>;
+	read(id: string): Promise<PluginStoredBlobRef | null>;
 	lineage(imageId: string): Promise<PluginImageRef[]>;
 	sessionLineages(sessionId: string): Promise<PluginImageRef[][]>;
 }
@@ -99,16 +99,15 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 	};
 
 	return {
-		async persist(bytes, metadata) {
+		async persist(blob, metadata) {
 			await ensureMigrated();
-			const blob = await storage.putBlob(bytes);
 			const record: ImageRecord = {
 				id: blob.id,
 				rootId: metadata.rootId ?? blob.id,
 				parent: metadata.parent,
 				sessionId: metadata.sessionId,
 				createdAt: new Date().toISOString(),
-				mimeType: bytes.mimeType,
+				mimeType: blob.mimeType,
 			};
 			await storage.writeJson(recordKey(record.id), record);
 			return {
@@ -120,7 +119,7 @@ export function createImageRepository(storage: PluginStorageApi): ImageRepositor
 		},
 		async read(id) {
 			await ensureMigrated();
-			return storage.readBlob(id);
+			return storage.getBlobRef(id);
 		},
 		async lineage(imageId) {
 			const records = await readRecords();

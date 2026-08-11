@@ -5,13 +5,13 @@ import { getApiProvider } from "./api-registry.js";
 import type {
 	Api,
 	AssistantMessage,
-	AssistantMessageEventStream,
 	Context,
 	Model,
 	ProviderStreamOptions,
 	SimpleStreamOptions,
 	StreamOptions,
 } from "./types.js";
+import type { AssistantMessageEventStream } from "./utils/event-stream.js";
 
 export { getEnvApiKey } from "./env-api-keys.js";
 

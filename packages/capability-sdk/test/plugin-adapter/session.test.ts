@@ -39,4 +39,24 @@ describe("PluginCapabilityAdapter session lifecycle", () => {
 			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.SESSION_REVOKED }),
 		);
 	});
+
+	it("resolves the owning plugin id only for active sessions", () => {
+		const adapter = new PluginCapabilityAdapter(new RecordingAccessFactory(), {
+			isOfficialPlugin: (pluginId) => pluginId === "official-plugin",
+			resolvePermissions: () => [],
+		});
+		const communitySessionId = adapter.openSession("community-plugin");
+		const officialSessionId = adapter.openSession("official-plugin");
+
+		expect(adapter.pluginIdForSession(communitySessionId)).toBe("community-plugin");
+		expect(adapter.pluginIdForSession(officialSessionId, { official: true })).toBe("official-plugin");
+		expect(() => adapter.pluginIdForSession(communitySessionId, { official: true })).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.ACCESS_DENIED }),
+		);
+
+		adapter.closeSession(communitySessionId);
+		expect(() => adapter.pluginIdForSession(communitySessionId)).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.SESSION_REVOKED }),
+		);
+	});
 });

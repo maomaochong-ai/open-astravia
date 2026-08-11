@@ -1,4 +1,5 @@
 import type { JSX } from "react";
+import { Button } from "@vetta/ui";
 
 export interface UpdateCheckerViewLabels {
 	readonly check: string;
@@ -34,84 +35,85 @@ export interface UpdateCheckerViewProps {
 	readonly statusText: string;
 }
 
-/** Matches host Button secondary/primary sizes without importing host UI. */
-const buttonBase =
-	"group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50";
-
-export function UpdateCheckerView({
+/** Settings 行右侧：与 App 引导同款 outline sm 按钮。 */
+export function UpdateCheckerAction({
 	checking,
+	labels,
+	onCheck,
+}: Pick<UpdateCheckerViewProps, "checking" | "labels" | "onCheck">): JSX.Element {
+	return (
+		<Button size="sm" variant="outline" onClick={onCheck} disabled={checking}>
+			<span className={`icon-[mdi--refresh] h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} />
+			{checking ? labels.checkingBtn : labels.check}
+		</Button>
+	);
+}
+
+/** 有新版本时的详情卡片（放在 SettingRow 下方全宽）。 */
+export function UpdateCheckerDetail({
 	currentVersion,
 	labels,
 	latestVersion,
-	onCheck,
 	onPrimary,
 	phase,
 	progress,
 	releaseNote,
-	statusText,
-}: UpdateCheckerViewProps): JSX.Element {
-	const showStatus = phase === "idle" || phase === "error" || phase === "checking";
-	const statusColor = phase === "error" ? "text-red-500" : "text-muted-foreground";
+}: Pick<
+	UpdateCheckerViewProps,
+	"currentVersion" | "labels" | "latestVersion" | "onPrimary" | "phase" | "progress" | "releaseNote"
+>): JSX.Element | null {
+	if (phase !== "available" && phase !== "downloading" && phase !== "ready") {
+		return null;
+	}
 
 	return (
-		<div className="space-y-3">
+		<div className="space-y-2 rounded-lg border border-border bg-secondary p-3">
 			<div className="flex items-center justify-between gap-3">
-				{showStatus && statusText ? (
-					<span className={`min-w-0 truncate text-[12px] ${statusColor}`}>{statusText}</span>
-				) : (
-					<span />
-				)}
-				<button
-					type="button"
-					onClick={onCheck}
-					disabled={checking}
-					className={`${buttonBase} h-8 shrink-0 gap-1.5 rounded-lg border-border bg-secondary px-3 text-[12px] text-secondary-foreground hover:bg-secondary/80`}
-				>
-					<span className={`icon-[mdi--refresh] h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} />
-					{checking ? labels.checkingBtn : labels.check}
-				</button>
-			</div>
-
-			{(phase === "available" || phase === "downloading" || phase === "ready") && (
-				<div className="space-y-2 rounded-lg border border-border bg-secondary p-3">
-					<div className="flex items-center justify-between gap-3">
-						<div className="min-w-0">
-							<span className="text-[13px] font-medium text-foreground">
-								{labels.newVersion(latestVersion ?? "")}
-							</span>
-							<span className="ml-2 text-[12px] text-muted-foreground">
-								{labels.currentVersion(currentVersion)}
-							</span>
-						</div>
-						{phase === "available" && (
-							<button
-								type="button"
-								onClick={onPrimary}
-								className={`${buttonBase} h-7 rounded-lg bg-primary px-3 text-[12px] text-primary-foreground hover:bg-primary/90`}
-							>
-								{labels.download}
-							</button>
-						)}
-						{phase === "downloading" && (
-							<span className="shrink-0 text-[12px] text-muted-foreground">
-								{labels.downloading(Math.round((progress ?? 0) * 100))}
-							</span>
-						)}
-						{phase === "ready" && (
-							<button
-								type="button"
-								onClick={onPrimary}
-								className={`${buttonBase} h-7 rounded-lg bg-primary px-3 text-[12px] text-primary-foreground hover:bg-primary/90`}
-							>
-								{labels.restart}
-							</button>
-						)}
-					</div>
-					{releaseNote && (
-						<p className="whitespace-pre-wrap text-[12px] text-muted-foreground">{releaseNote}</p>
-					)}
+				<div className="min-w-0">
+					<span className="text-[13px] font-medium text-foreground">
+						{labels.newVersion(latestVersion ?? "")}
+					</span>
+					<span className="ml-2 text-[12px] text-muted-foreground">
+						{labels.currentVersion(currentVersion)}
+					</span>
 				</div>
-			)}
+				{phase === "available" && (
+					<Button size="sm" variant="primary" onClick={onPrimary}>
+						{labels.download}
+					</Button>
+				)}
+				{phase === "downloading" && (
+					<span className="shrink-0 text-[12px] text-muted-foreground">
+						{labels.downloading(Math.round((progress ?? 0) * 100))}
+					</span>
+				)}
+				{phase === "ready" && (
+					<Button size="sm" variant="primary" onClick={onPrimary}>
+						{labels.restart}
+					</Button>
+				)}
+			</div>
+			{releaseNote && <p className="whitespace-pre-wrap text-[12px] text-muted-foreground">{releaseNote}</p>}
+		</div>
+	);
+}
+
+/** 独立使用时：动作 + 详情纵向排列。设置页请用 Action / Detail 配合 SettingRow。 */
+export function UpdateCheckerView(props: UpdateCheckerViewProps): JSX.Element {
+	return (
+		<div className="space-y-3">
+			<div className="flex justify-end">
+				<UpdateCheckerAction checking={props.checking} labels={props.labels} onCheck={props.onCheck} />
+			</div>
+			<UpdateCheckerDetail
+				currentVersion={props.currentVersion}
+				labels={props.labels}
+				latestVersion={props.latestVersion}
+				onPrimary={props.onPrimary}
+				phase={props.phase}
+				progress={props.progress}
+				releaseNote={props.releaseNote}
+			/>
 		</div>
 	);
 }

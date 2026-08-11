@@ -103,7 +103,7 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 		expect(access.invocations).toEqual([
 			{
 				capabilityId: FOUNDATION_NETWORK_CAPABILITIES.REQUEST.id,
-				input: { request: { url: "https://example.com" } },
+				input: { pluginId: "storage-user", request: { url: "https://example.com" } },
 			},
 			{
 				capabilityId: FOUNDATION_STORAGE_CAPABILITIES.READ_JSON.id,
@@ -137,5 +137,23 @@ describe("PluginCapabilityAdapter foundation permissions", () => {
 		const sessionId = adapter.openSession("writer");
 
 		await expect(adapter.writeFile(sessionId, "C:/project/empty.txt", "")).resolves.toBeUndefined();
+	});
+
+	it("binds the network capability input to the session plugin", async () => {
+		const access = new RecordingAccessFactory();
+		const adapter = new PluginCapabilityAdapter(access, {
+			isOfficialPlugin: () => false,
+			resolvePermissions: () => [PLUGIN_CAPABILITY_PERMISSIONS.NETWORK_FETCH],
+		});
+		const sessionId = adapter.openSession("network-owner");
+
+		await adapter.requestNetwork(sessionId, { url: "https://example.com" });
+
+		expect(access.invocations).toEqual([
+			{
+				capabilityId: FOUNDATION_NETWORK_CAPABILITIES.REQUEST.id,
+				input: { pluginId: "network-owner", request: { url: "https://example.com" } },
+			},
+		]);
 	});
 });

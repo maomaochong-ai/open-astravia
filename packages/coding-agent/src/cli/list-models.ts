@@ -3,7 +3,7 @@
  */
 
 import type { Api, Model } from "@vetta/ai";
-import type { ModelRegistry } from "../core/model-registry.js";
+import type { CodingAgentModelCatalogView } from "../models/index.js";
 
 /**
  * Case-insensitive subsequence match: every character of `pattern` must appear
@@ -38,7 +38,7 @@ function formatTokenCount(count: number): string {
 /**
  * List available models, optionally filtered by search pattern
  */
-export async function listModels(modelRegistry: ModelRegistry, searchPattern?: string): Promise<void> {
+export async function listModels(modelRegistry: CodingAgentModelCatalogView, searchPattern?: string): Promise<void> {
 	const models = modelRegistry.getAvailable();
 
 	if (models.length === 0) {

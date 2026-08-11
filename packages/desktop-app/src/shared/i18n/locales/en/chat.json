@@ -31,7 +31,13 @@
 			"requestHistory": "Request history"
 		},
 		"todo": {
-			"empty": "No todo items"
+			"empty": "No todo items",
+			"headline": "In progress",
+			"allDone": "All done",
+			"progress": "{{done}} of {{total}} done",
+			"statusDone": "Done",
+			"statusInProgress": "In progress",
+			"statusPending": "Pending"
 		},
 		"toolCalls": {
 			"filterAll": "All",
@@ -242,6 +248,9 @@
 		"exportButton": {
 			"title": "Export full session as HTML"
 		},
+		"newSessionButton": {
+			"title": "New session"
+		},
 		"panelButton": {
 			"closed": "Open activity panel",
 			"open": "Close activity panel"
@@ -256,6 +265,48 @@
 			"compacting": "Compacting context...",
 			"unknown": "Context window {{window}} (usage unknown)",
 			"usage": "Context {{percent}}% used ({{window}} window)"
+		},
+		"details": {
+			"title": "Context composition (latest call)",
+			"actual": "Actual input",
+			"estimated": "Estimated",
+			"section": "Section",
+			"category": "Category",
+			"tokens": "Tokens",
+			"share": "Share",
+			"unknown": "Unknown",
+			"unavailableAfterRestart": "No restorable composition details are available for this session. Send another message to generate and save a new report.",
+			"items": "{{count}} items",
+			"unknownItems": "{{count}} unknown",
+			"coverage": {
+				"complete": "Estimate coverage is complete",
+				"partial": "Some sections could not be estimated",
+				"none": "No estimate is available"
+			},
+			"owner": {
+				"core": "System",
+				"skill": "Skill",
+				"plugin": "Plugin",
+				"mcp": "MCP",
+				"extension": "Extension",
+				"runtime": "Runtime",
+				"user": "User",
+				"unknown": "Unattributed"
+			},
+			"kind": {
+				"instruction": "Instruction",
+				"tool_schema": "Tool schema",
+				"history": "History",
+				"runtime_context": "Runtime context",
+				"user_input": "Current input"
+			},
+			"group": {
+				"instructions": "Core instructions",
+				"capabilities": "Extensions",
+				"tools": "Tools",
+				"conversation": "Conversation",
+				"runtime": "Runtime context"
+			}
 		}
 	},
 	"copyButton": {
@@ -334,13 +385,13 @@
 		"drawer": {
 			"permissionDesc": "Awaiting confirmation",
 			"permissionLabel": "Permission request",
-			"todoDesc": "{{done}}/{{total}} {{content}}",
-			"todoDescSimple": "{{done}}/{{total}}",
-			"todoLabel": "To-do",
 			"queueDelete": "Remove",
 			"queueDesc": "{{count}} queued",
 			"queueEmpty": "No queued messages",
 			"queueLabel": "Queued",
+			"queuePaused": "Last turn was interrupted — queued messages are on hold",
+			"queuePausedDesc": "Paused · {{count}} queued",
+			"queueResume": "Resume sending",
 			"queueSendNow": "Send now"
 		},
 		"permission": {
@@ -367,6 +418,15 @@
 			"cut": "Cut",
 			"copy": "Copy",
 			"paste": "Paste"
+		},
+		"todo": {
+			"trigger": "To-do",
+			"allDone": "All done",
+			"panelTitle": "To-do list",
+			"openPanel": "Open in panel",
+			"statusDone": "Done",
+			"statusInProgress": "In progress",
+			"statusPending": "Pending"
 		}
 	},
 	"knowledgeTools": {

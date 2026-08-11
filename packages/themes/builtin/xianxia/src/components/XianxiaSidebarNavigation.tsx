@@ -8,12 +8,23 @@ import { useThemePagesModel } from "@vetta/theme-sdk/pages";
 import type { JSX } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
+/**
+ * 相对 `<nav>` 容器测量，而不是 `offsetLeft/offsetTop`：导航项为了承载拖拽落位
+ * 指示线被包了一层定位元素，`offsetParent` 因此不再是 `<nav>`。与宿主
+ * `useSidebarModel` 的实现保持一致。
+ */
 function getNavIndicatorBounds(element: HTMLButtonElement): NavIndicatorBounds {
+	const container = element.closest("nav");
+	const rect = element.getBoundingClientRect();
+	if (!container) {
+		return { height: rect.height, left: element.offsetLeft, top: element.offsetTop, width: rect.width };
+	}
+	const containerRect = container.getBoundingClientRect();
 	return {
-		height: element.offsetHeight,
-		left: element.offsetLeft,
-		top: element.offsetTop,
-		width: element.offsetWidth,
+		height: rect.height,
+		left: rect.left - containerRect.left,
+		top: rect.top - containerRect.top,
+		width: rect.width,
 	};
 }
 
@@ -63,13 +74,16 @@ export function XianxiaSidebarNavigation(props: SidebarNavigationProps): JSX.Ele
 	useLayoutEffect(() => {
 		void props.moreOpen;
 		void activeMoreKey;
+		// items 变化（pin / unpin / 重排）会改变纵向位置，而 activeIndex 在「重排的
+		// 是非选中项」时并不变化。
+		void items;
 		const activeElement = moreActive ? moreButtonRef.current : itemRefs.current[activeIndex];
 		if (!activeElement) {
 			setIndicatorBounds(null);
 			return;
 		}
 		setIndicatorBounds(getNavIndicatorBounds(activeElement));
-	}, [activeIndex, activeMoreKey, moreActive, props.moreOpen]);
+	}, [activeIndex, activeMoreKey, items, moreActive, props.moreOpen]);
 
 	return (
 		<SidebarNavigation

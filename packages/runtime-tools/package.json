@@ -4,15 +4,36 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./coding": {
+			"types": "./dist/coding/index.d.ts",
+			"import": "./dist/coding/index.js"
+		}
+	},
 	"files": ["dist"],
 	"scripts": {
 		"clean": "rm -rf dist",
-		"build": "tsgo -p tsconfig.build.json"
+		"build": "tsgo -p tsconfig.build.json",
+		"test": "bunx vitest --run"
 	},
 	"dependencies": {
-		"@vetta/coding-agent": "workspace:*"
+		"@silvia-odwyer/photon-node": "^0.3.4",
+		"@sinclair/typebox": "^0.34.41",
+		"@vetta/runtime-core": "workspace:*",
+		"@vetta/runtime-subagents": "workspace:*",
+		"diff": "^8.0.2",
+		"file-type": "^21.1.1",
+		"glob": "^13.0.1",
+		"ignore": "^7.0.5"
 	},
 	"devDependencies": {
+		"@vetta/ai": "workspace:*",
+		"@vetta/runtime-knowledge": "workspace:*",
+		"@types/diff": "^7.0.2",
 		"typescript": "^5.9.2",
 		"@types/node": "^22.10.5"
 	}

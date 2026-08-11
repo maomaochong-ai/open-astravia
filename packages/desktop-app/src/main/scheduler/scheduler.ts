@@ -1,21 +1,24 @@
+import type { RuntimeHost } from "@vetta/runtime-core";
 import { AsyncTask, CronJob, ToadScheduler } from "toad-scheduler";
-import type { RuntimeHost } from "../../../../runtime-core/src/index.js";
 import { getAppLogger } from "../logger.js";
 import { getSharedRuntime } from "../runtime.js";
 import { isValidCronExpression } from "./cron.js";
-import { executeTask, isTaskRunning } from "./task-executor";
+import { executeTask, isTaskRunning, shutdownSchedulerTaskExecutor } from "./task-executor";
 import type { ScheduledTask as TaskData } from "./task-storage";
 import { loadTasks, updateTaskEnabled } from "./task-storage";
 
 const _scheduler = new ToadScheduler();
 const scheduledJobs = new Map<string, CronJob>();
 const log = getAppLogger("scheduler");
+let acceptingSchedules = true;
+let shutdownPromise: Promise<void> | undefined;
 
 function getRuntime(): RuntimeHost {
 	return getSharedRuntime();
 }
 
 export async function initScheduler(): Promise<void> {
+	if (!acceptingSchedules) throw new Error("Scheduler is shutting down");
 	const tasks = await loadTasks();
 	let enabledCount = 0;
 
@@ -30,6 +33,7 @@ export async function initScheduler(): Promise<void> {
 }
 
 export function scheduleTaskInCron(task: TaskData): void {
+	if (!acceptingSchedules) throw new Error("Scheduler is shutting down");
 	unscheduleTaskInCron(task.id);
 	if (!isValidCronExpression(task.cron)) {
 		throw new Error(`Invalid cron expression: ${task.cron}`);
@@ -85,6 +89,7 @@ export function disableTaskInCron(taskId: string): void {
 }
 
 export async function rescheduleAll(): Promise<void> {
+	if (!acceptingSchedules) throw new Error("Scheduler is shutting down");
 	for (const job of scheduledJobs.values()) {
 		job.stop();
 	}
@@ -96,6 +101,18 @@ export async function rescheduleAll(): Promise<void> {
 			scheduleTaskInCron(task);
 		}
 	}
+}
+
+export async function shutdownScheduler(): Promise<void> {
+	acceptingSchedules = false;
+	if (shutdownPromise) return await shutdownPromise;
+	shutdownPromise = (async () => {
+		for (const job of scheduledJobs.values()) job.stop();
+		scheduledJobs.clear();
+		await shutdownSchedulerTaskExecutor();
+		_scheduler.stop();
+	})();
+	return await shutdownPromise;
 }
 
 export { getRuntime };

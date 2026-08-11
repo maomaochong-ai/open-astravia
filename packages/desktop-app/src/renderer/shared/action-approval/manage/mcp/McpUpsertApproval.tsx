@@ -21,9 +21,33 @@ interface McpUpsertInput {
 		args?: string[];
 		cwd?: string;
 		url?: string;
+		env?: Record<string, string>;
 		headers?: Record<string, string>;
 	};
 	approvalUi?: string;
+}
+
+function serializeKeyValueMap(map: Record<string, string> | undefined): string {
+	if (!map) return "";
+	return Object.entries(map)
+		.map(([key, value]) => `${key}=${value}`)
+		.join("\n");
+}
+
+export function parseKeyValueLines(text: string): Record<string, string> | undefined {
+	const entries: Array<[string, string]> = [];
+	for (const rawLine of text.split(/\r?\n/)) {
+		const line = rawLine.trim();
+		if (!line) continue;
+		const eq = line.indexOf("=");
+		if (eq <= 0) continue;
+		const key = line.slice(0, eq).trim();
+		const value = line.slice(eq + 1);
+		if (!key) continue;
+		entries.push([key, value]);
+	}
+	if (entries.length === 0) return undefined;
+	return Object.fromEntries(entries);
 }
 
 function parseInput(input: unknown): McpUpsertInput | null {
@@ -56,6 +80,8 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 		url: input?.data?.url ?? "",
 		cwd: input?.data?.cwd ?? "",
 		argsText: (input?.data?.args ?? []).join(" "),
+		envText: serializeKeyValueMap(input?.data?.env),
+		headersText: serializeKeyValueMap(input?.data?.headers),
 	});
 	const [serverType, setServerType] = useState<"stdio" | "http">(
 		input?.data?.type === "http" || input?.data?.url ? "http" : "stdio",
@@ -72,7 +98,11 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 				if (!existing) return;
 				if (existing.type === "http") {
 					setServerType("http");
-					setForm((prev) => ({ ...prev, url: prev.url || existing.url || "" }));
+					setForm((prev) => ({
+						...prev,
+						url: prev.url || existing.url || "",
+						headersText: prev.headersText || serializeKeyValueMap(existing.headers),
+					}));
 				} else {
 					setServerType("stdio");
 					setForm((prev) => ({
@@ -80,6 +110,7 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 						command: prev.command || existing.command || "",
 						cwd: prev.cwd || existing.cwd || "",
 						argsText: prev.argsText || (existing.args ?? []).join(" "),
+						envText: prev.envText || serializeKeyValueMap(existing.env),
 					}));
 				}
 			})
@@ -100,11 +131,15 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 		if (serverType === "http") {
 			data.type = "http";
 			if (form.url.trim()) data.url = form.url.trim();
+			const headers = parseKeyValueLines(form.headersText);
+			if (headers) data.headers = headers;
 		} else {
 			if (form.command.trim()) data.command = form.command.trim();
 			if (form.cwd.trim()) data.cwd = form.cwd.trim();
 			const args = form.argsText.trim().split(/\s+/).filter(Boolean);
 			if (args.length > 0) data.args = args;
+			const env = parseKeyValueLines(form.envText);
+			if (env) data.env = env;
 		}
 		approve({
 			operation: "upsert",
@@ -160,17 +195,37 @@ function McpUpsertApprovalContent({ approval }: { approval: ActiveActionApproval
 									onChange={(event) => setForm((prev) => ({ ...prev, cwd: event.target.value }))}
 								/>
 							</ApprovalFormField>
+							<ApprovalFormField id="mcp-env" label={t("manageApproval.fields.env")}>
+								<textarea
+									id="mcp-env"
+									className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 font-mono text-xs"
+									value={form.envText}
+									placeholder={t("manageApproval.mcp.envPlaceholder")}
+									onChange={(event) => setForm((prev) => ({ ...prev, envText: event.target.value }))}
+								/>
+							</ApprovalFormField>
 						</>
 					) : (
-						<ApprovalFormField id="mcp-url" label={t("manageApproval.fields.url")}>
-							<Input
-								id="mcp-url"
-								value={form.url}
-								onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
-							/>
-						</ApprovalFormField>
+						<>
+							<ApprovalFormField id="mcp-url" label={t("manageApproval.fields.url")}>
+								<Input
+									id="mcp-url"
+									value={form.url}
+									onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
+								/>
+							</ApprovalFormField>
+							<ApprovalFormField id="mcp-headers" label={t("manageApproval.fields.headers")}>
+								<textarea
+									id="mcp-headers"
+									className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 font-mono text-xs"
+									value={form.headersText}
+									placeholder={t("manageApproval.mcp.headersPlaceholder")}
+									onChange={(event) => setForm((prev) => ({ ...prev, headersText: event.target.value }))}
+								/>
+							</ApprovalFormField>
+						</>
 					)}
-					{input.data?.headers && (
+					{input.data?.headers && !form.headersText && (
 						<ApprovalValueList
 							rows={[{ label: t("manageApproval.fields.headers"), value: t("manageApproval.mcp.headersConfigured") }]}
 						/>

@@ -1,0 +1,121 @@
+---
+title: 创建主题模块
+description: 定义主题清单、导出 ThemeModule 并在桌面应用中验证。
+---
+
+当前流程适用于 Vetta monorepo 中的内置或策展主题。以 `packages/themes/builtin/xianxia` 为可运行参考，并保持入口文件只负责组装主题能力。
+
+## 定义主题清单
+
+`theme.json` 至少声明身份、SDK 版本、构建入口和实际能力：
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "my-theme",
+  "version": "0.1.0",
+  "sdkVersion": "^0.1.0",
+  "displayName": { "zh-CN": "我的主题", "en-US": "My Theme" },
+  "runtime": "module-federation",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "theme_my_theme",
+    "expose": "./theme"
+  },
+  "styles": ["dist/style.css"],
+  "capabilities": ["appearance"]
+}
+```
+
+## 关键字段
+
+<TypeTable
+  type={{
+    id: {
+      description: "主题稳定标识。",
+      type: "string",
+      required: true,
+    },
+    version: {
+      description: "主题版本。",
+      type: "string",
+      required: true,
+    },
+    sdkVersion: {
+      description: "兼容的主题 SDK 版本范围。",
+      type: "string",
+      required: true,
+    },
+    entry: {
+      description: "Module Federation 清单路径。",
+      type: "string",
+      required: true,
+    },
+    "moduleFederation.remoteName": {
+      description: "远程名称，须与 Vite 配置一致。",
+      type: "string",
+      required: true,
+    },
+    "moduleFederation.expose": {
+      description: "暴露入口，通常为 ./theme。",
+      type: "string",
+      required: true,
+    },
+    capabilities: {
+      description: "模块真实提供的能力，须与 ThemeModule 实现一致。",
+      type: "string[]",
+      required: true,
+    },
+  }}
+/>
+
+清单中的能力必须反映模块真实提供的内容，入口、远程名称和 expose 必须与 Vite 配置一致。
+
+## 导出模块
+
+```ts
+import type { ThemeModule } from "@vetta/theme-sdk";
+
+const theme: ThemeModule = {
+  meta: {
+    id: "my-theme",
+    name: "My Theme",
+    sdkVersion: "0.1.0",
+    version: "0.1.0"
+  },
+  appearance: {
+    colors: {
+      light: { accent: "oklch(0.58 0.12 165)" },
+      dark: { accent: "oklch(0.72 0.1 165)" }
+    }
+  }
+};
+
+export default theme;
+```
+
+先只实现 `appearance` 并验证明暗模式，再按需要增加组件、页面或运行时。大型页面与状态逻辑放在独立模块中，入口文件只组合 `ThemeModule`。
+
+## 构建与验证
+
+<Steps>
+  <Step>
+    ### 配置构建
+
+    Vite 需要暴露 `./theme`，生成 `mf-manifest.json`，并将 React、`@vetta/theme-sdk` 与宿主 UI 包配置为不重复打包的共享单例。
+  </Step>
+  <Step>
+    ### 接入桌面应用
+
+    构建后把主题接入桌面应用的策展清单。
+  </Step>
+  <Step>
+    ### 运行验证
+
+    通过根目录 `bun run verify:ui:*` 流程检查加载、切换、明暗模式、窗口尺寸和主题页面。
+  </Step>
+</Steps>
+
+<Callout title="当前没有独立 ZIP 安装" type="info">
+  当前没有独立 ZIP 安装步骤。主题随 monorepo 内置或策展流程发布。
+</Callout>

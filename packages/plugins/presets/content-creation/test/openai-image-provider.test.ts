@@ -35,7 +35,11 @@ describe("OpenAiImageProvider", () => {
 			references: [],
 		});
 
-		expect(result).toEqual({ kind: "image", data: "iVBORw0KGgoAAA", mimeType: "image/png" });
+		expect(result).toEqual({
+			kind: "image",
+			source: { type: "inline", data: "iVBORw0KGgoAAA" },
+			mimeType: "image/png",
+		});
 		expect(network.requests[0]).toMatchObject({
 			url: "https://api.openai.com/v1/images/generations",
 			method: "POST",
@@ -55,6 +59,7 @@ describe("OpenAiImageProvider", () => {
 			apiKeySetting: "apiKey",
 			modelSetting: "model",
 		});
+		expect(provider.listModels()).toEqual([]);
 
 		await expect(
 			provider.generate({

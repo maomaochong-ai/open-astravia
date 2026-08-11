@@ -923,6 +923,7 @@
   "section_pet-bubble": "气泡样式",
   "section_pet-developer": "开发调试",
   "updaterChecking": "正在检查...",
+  "appVersion": "当前版本",
   "updaterIdle": "当前已是最新版本（{{version}}）",
   "updaterCheck": "检查更新",
   "updaterCheckingBtn": "检查中...",

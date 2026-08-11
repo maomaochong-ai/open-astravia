@@ -9,7 +9,8 @@
 import type { Dirent } from "node:fs";
 import { access, cp, mkdir, readdir, rename, rm, stat } from "node:fs/promises";
 import { basename, dirname, extname, join, relative } from "node:path";
-import { knowledge } from "@vetta/coding-agent";
+import * as knowledge from "@vetta/runtime-knowledge";
+import { getKnowledgeRoot } from "./knowledge-layout.js";
 import { privilegedWrite } from "./raws-lock.js";
 
 export interface KnowledgeNodeDto {
@@ -50,7 +51,7 @@ export interface KnowledgeBaseDto {
 export const DEFAULT_KNOWLEDGE_BASE = "default_kb";
 
 function rawsRoot(): string {
-	return knowledge.rawsDir(knowledge.knowledgeRoot());
+	return knowledge.rawsDir(getKnowledgeRoot());
 }
 
 /** 校验单段名（库名 / 文件名）：非空、无路径分隔符、非 . / ..。 */

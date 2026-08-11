@@ -1,19 +1,9 @@
-import { Type } from "@sinclair/typebox";
-import type { AgentTool } from "@vetta/agent-core";
 import { describe, expect, it } from "vitest";
-import { resolveActiveToolNames } from "../src/core/session/tool-scope.js";
+import { resolveActiveToolNames, type ToolActivationMetadata } from "../src/profiles/index.js";
 
 /** 造一个仅含 scope 解析所需字段的最小工具桩。 */
-function tool(name: string, scope_use?: string[], requires?: string[]): AgentTool {
-	return {
-		name,
-		label: name,
-		description: "",
-		parameters: Type.Object({}),
-		scope_use,
-		requires,
-		execute: async () => ({ content: [], details: undefined }),
-	};
+function tool(name: string, scope_use?: string[], requires?: string[]): ToolActivationMetadata {
+	return { name, scope_use, requires };
 }
 
 describe("resolveActiveToolNames", () => {
@@ -49,5 +39,12 @@ describe("resolveActiveToolNames", () => {
 			"kb_filter",
 			"task_output",
 		]);
+	});
+
+	it("agent mode 是与场景和 capability 正交的过滤轴", () => {
+		const tools = [{ ...tool("work-only", ["cli"]), agent_mode: ["work"] }, tool("shared", ["cli"])];
+		expect(resolveActiveToolNames("cli", tools, new Set(), "work")).toEqual(["work-only", "shared"]);
+		expect(resolveActiveToolNames("cli", tools, new Set(), "coding")).toEqual(["shared"]);
+		expect(resolveActiveToolNames("cli", tools, new Set())).toEqual(["work-only", "shared"]);
 	});
 });

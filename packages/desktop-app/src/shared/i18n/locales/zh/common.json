@@ -86,14 +86,14 @@
 				"disableImpact": "该 MCP 会立即暂停；已有配置保留，不会卸载。"
 			},
 			"skills": {
-				"enableTitle": "开启技能",
-				"disableTitle": "关闭技能",
-				"enableSummary": "开启后，AI 在对话中可以按需使用该技能或场景。",
-				"disableSummary": "关闭后，该技能/场景暂时不会被调用。不会卸载或删除文件。",
+				"enableTitle": "开启能力",
+				"disableTitle": "关闭能力",
+				"enableSummary": "开启后，AI 在对话中可以按需使用该能力（skill/场景）。",
+				"disableSummary": "关闭后，该能力暂时不会被调用。不会卸载或删除文件。",
 				"enableConfirm": "确认开启",
 				"disableConfirm": "确认关闭",
-				"enableImpact": "技能将出现在可用列表中，可在对话中被使用。",
-				"disableImpact": "技能将从可用列表中暂停，配置与文件仍保留。"
+				"enableImpact": "能力将出现在可用列表中，可在对话中被使用。",
+				"disableImpact": "能力将从可用列表中暂停，配置与文件仍保留。"
 			},
 			"plugins": {
 				"enableTitle": "开启插件",
@@ -144,12 +144,22 @@
 			"config": "配置",
 			"serverName": "MCP 服务",
 			"enabled": "启用",
-			"skillName": "技能名称",
+			"skillName": "能力名称",
+			"abilitySlug": "能力 slug",
+			"skill": "Skill",
+			"scene": "场景",
+			"appId": "App ID",
+			"appSecret": "App Secret",
+			"verificationToken": "Verification Token",
+			"encryptKey": "Encrypt Key",
+			"env": "环境变量 (KEY=VALUE)",
 			"resourceType": "类型",
 			"name": "名称",
 			"newName": "新名称",
 			"path": "路径",
 			"paths": "文件路径",
+			"packageName": "npm 包",
+			"packageSpec": "请求版本",
 			"language": "语言",
 			"executionMode": "执行模式",
 			"experimental": "实验功能",
@@ -308,24 +318,33 @@
 					"warning": "删除后需重新配置才能恢复该 MCP 服务。"
 				}
 			},
-			"headersConfigured": "已包含自定义 headers（密钥已脱敏）"
+			"headersConfigured": "已包含自定义 headers（密钥已脱敏）",
+			"envPlaceholder": "每行一个 KEY=VALUE；密钥请在此手填，不要让 AI 传入",
+			"headersPlaceholder": "每行一个 HeaderName=value；密钥请在此手填"
 		},
 		"skills": {
 			"ops": {
 				"set-enabled": {
-					"title": "启用/停用技能确认",
-					"summary": "确认后将更改该技能或场景的启用状态。",
+					"title": "启用/停用能力确认",
+					"summary": "确认后将更改该能力（skill/场景）的启用状态。",
 					"confirm": "确认更改状态",
-					"badge": "技能",
-					"impact": "技能/场景启用状态将立即生效。"
+					"badge": "能力",
+					"impact": "能力启用状态将立即生效。"
 				},
 				"uninstall": {
-					"title": "卸载技能确认",
-					"summary": "卸载后本地技能文件会被移除，此操作无法撤销。",
+					"title": "卸载能力确认",
+					"summary": "卸载后本地能力文件会被移除，此操作无法撤销。",
 					"confirm": "确认卸载",
 					"badge": "卸载",
-					"impact": "本地技能文件将被卸载，无法直接恢复。",
-					"warning": "卸载后技能文件会被移除，此操作无法撤销。"
+					"impact": "本地能力文件将被卸载，无法直接恢复。",
+					"warning": "卸载后能力文件会被移除，此操作无法撤销。"
+				},
+				"install-from-market": {
+					"title": "从能力市场安装确认",
+					"summary": "确认后将从市场下载并安装该能力（skill 或场景）。",
+					"confirm": "确认安装",
+					"badge": "安装",
+					"impact": "能力将下载到本机并出现在能力页；安装后默认启用。"
 				}
 			}
 		},
@@ -546,6 +565,13 @@
 					"badge": "安装",
 					"impact": "将安装本地插件包，授予其声明的权限并启用。"
 				},
+				"install-from-npm": {
+					"title": "从 npm 安装插件确认",
+					"summary": "确认后将安装已解析的 npm 插件包，并按插件声明一次授予权限后启用。",
+					"confirm": "确认安装并授权",
+					"badge": "npm 安装",
+					"impact": "Desktop 将再次校验插件包摘要、ID 和版本，再授予其声明的权限并启用。"
+				},
 				"uninstall": {
 					"title": "卸载插件确认",
 					"summary": "卸载后插件及其本地数据将按策略移除。",
@@ -585,6 +611,13 @@
 					"confirm": "保存模型",
 					"badge": "Claw 模型",
 					"impact": "之后来自飞书/微信等渠道的对话将使用该模型；可留空表示跟随默认。"
+				},
+				"set-feishu-config": {
+					"title": "配置飞书凭证确认",
+					"summary": "在下方填写 App ID 与密钥。密钥请由你本人手填，不要依赖 AI 传入。",
+					"confirm": "保存飞书配置",
+					"badge": "飞书凭证",
+					"impact": "将更新本机飞书旁路凭证；留空的密钥字段保持不变。"
 				}
 			},
 			"enableTitle": "启用 IM 旁路",
@@ -592,6 +625,8 @@
 			"restartTarget": "本地 IM 旁路进程",
 			"channelName": "Claw（IM 旁路）",
 			"channelHint": "连接飞书、微信等外部对话渠道",
+			"feishuTarget": "飞书应用",
+			"feishuHint": "App Secret 等密钥请在下方手填",
 			"modelKeyPlaceholder": "选择模型，可清空",
 			"modelSectionTitle": "Claw 模型",
 			"modelSectionDescription": "与设置 → Claw 中的模型选择一致，支持改模型与推理档位。",

@@ -7,6 +7,8 @@ type NavigationOpenInput = {
 	target: string;
 	tab?: string;
 	section?: string;
+	/** 仅带参数的目标（如 new-session）需要：项目绝对路径。 */
+	cwd?: string;
 	approvalUi?: string;
 };
 
@@ -22,6 +24,7 @@ const openSchema: PluginJsonSchema = {
 		target: { type: "string", minLength: 1 },
 		tab: { type: "string", minLength: 1 },
 		section: { type: "string", minLength: 1 },
+		cwd: { type: "string", minLength: 1 },
 		approvalUi: { enum: ["navigation.open", "generic"] },
 	},
 	required: ["type", "target"],
@@ -59,7 +62,7 @@ export function registerNavigationActions(ctx: PluginContext): void {
 		title: "打开应用页面",
 		summary: "根据稳定页面 id 打开应用内页面；支持跳转到设置页分类和具体设置项。",
 		description:
-			'对象参数：{ "type": "open", "target": string, "tab"?: string, "section"?: string }。查询目录请用 navigation.query help。',
+			'对象参数：{ "type": "open", "target": string, "tab"?: string, "section"?: string, "cwd"?: string }。cwd 只有带参数的目标（如 new-session）才需要。查询目录请用 navigation.query help。',
 		keywords: [
 			"open",
 			"打开",
@@ -95,6 +98,7 @@ export function registerNavigationActions(ctx: PluginContext): void {
 					target: input.target,
 					tab: input.tab,
 					section: input.section,
+					cwd: input.cwd,
 				});
 			} catch (error) {
 				throwInvalidInput(error instanceof Error ? error.message : String(error), {
@@ -102,6 +106,7 @@ export function registerNavigationActions(ctx: PluginContext): void {
 					target: input.target,
 					tab: input.tab,
 					section: input.section,
+					cwd: input.cwd,
 				});
 			}
 		},
@@ -110,6 +115,7 @@ export function registerNavigationActions(ctx: PluginContext): void {
 				target: input.target,
 				tab: input.tab,
 				section: input.section,
+				cwd: input.cwd,
 			});
 		},
 	});

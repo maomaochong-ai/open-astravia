@@ -13,6 +13,10 @@
 			"types": "./dist/manifest.d.ts",
 			"import": "./dist/manifest.js"
 		},
+		"./npm-package": {
+			"types": "./dist/npm-package.d.ts",
+			"import": "./dist/npm-package.js"
+		},
 		"./tailwind-theme.css": "./src/tailwind-theme.css"
 	},
 	"files": [

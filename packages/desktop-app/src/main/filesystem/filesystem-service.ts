@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Dirent, Stats } from "node:fs";
-import { cp, mkdir, open, readdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import {
@@ -81,6 +81,33 @@ export function assertFilesystemPathWithinProject(targetPath: string): void {
 	if (!isWithinAllowedRoots(targetPath)) {
 		throw new Error("Path is outside any known project directory");
 	}
+}
+
+/** 同时解析现有祖先路径，阻止项目目录内的符号链接跳出授权根。 */
+export async function assertFilesystemRealPathWithinProject(targetPath: string): Promise<void> {
+	assertFilesystemPathWithinProject(targetPath);
+	let existingPath = resolve(targetPath);
+	while (true) {
+		try {
+			await lstat(existingPath);
+			break;
+		} catch (error: unknown) {
+			if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+			const parent = dirname(existingPath);
+			if (parent === existingPath) throw new Error("Path has no existing ancestor");
+			existingPath = parent;
+		}
+	}
+
+	const canonicalTarget = await realpath(existingPath);
+	for (const root of allowedRoots) {
+		try {
+			if (isPathWithin(await realpath(root), canonicalTarget)) return;
+		} catch {
+			// Ignore stale project roots that no longer exist.
+		}
+	}
+	throw new Error("Resolved path is outside any known project directory");
 }
 
 export function allowProjectRoot(cwd: string): void {
@@ -204,7 +231,14 @@ export async function saveEditableTextFile(
 	};
 }
 
-function detectBinaryMimeType(buffer: Buffer): string {
+const BINARY_MIME_BY_EXTENSION: Readonly<Record<string, string>> = {
+	mp4: "video/mp4",
+	m4v: "video/mp4",
+	mov: "video/quicktime",
+	webm: "video/webm",
+};
+
+function detectBinaryMimeType(buffer: Buffer, filePath: string): string {
 	if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
 		return "image/png";
 	}
@@ -214,7 +248,7 @@ function detectBinaryMimeType(buffer: Buffer): string {
 	if (buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") {
 		return "image/webp";
 	}
-	return "application/octet-stream";
+	return BINARY_MIME_BY_EXTENSION[extname(filePath).slice(1).toLowerCase()] ?? "application/octet-stream";
 }
 
 export async function readFilesystemBinaryFile(
@@ -228,7 +262,7 @@ export async function readFilesystemBinaryFile(
 	const buffer = await readFile(resolved);
 	return {
 		data: buffer.toString("base64"),
-		mimeType: detectBinaryMimeType(buffer),
+		mimeType: detectBinaryMimeType(buffer, resolved),
 		size: buffer.byteLength,
 	};
 }

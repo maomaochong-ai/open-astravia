@@ -6,20 +6,32 @@
 	"types": "./dist/index.d.ts",
 	"bin": {
 		"vetta": "dist/cli.js",
-		"vetta-cli-app": "dist/cli.js"
+		"vetta-agent": "dist/agent-cli.js",
+		"vetta-cli-app": "dist/cli.js",
+		"vetta-agent-rpc": "dist/agent-rpc-cli.js"
 	},
 	"files": ["dist"],
 	"scripts": {
 		"clean": "rm -rf dist",
-		"build": "tsgo -p tsconfig.build.json"
+		"build": "tsgo -p tsconfig.build.json",
+		"typecheck": "tsgo --noEmit -p tsconfig.json",
+		"test": "bunx vitest --run",
+		"verify:artifact:installed": "bunx vitest --run test/installed-artifact-runtime.test.ts",
+		"verify:runtime-contract": "bunx vitest --run --maxWorkers=4 contract.test.ts test/runtime-host.test.ts test/agent-runtime-selection.test.ts test/rpc-session-adapter.test.ts test/session-resource-close.test.ts test/agent-runtime-initialization-failure.test.ts test/agent-print-mode.test.ts"
 	},
 	"dependencies": {
 		"@vetta/action-rpc": "workspace:*",
 		"@vetta/coding-agent": "workspace:*",
+		"@vetta/ecosystem-adapter": "workspace:*",
 		"@vetta/runtime-core": "workspace:*",
+		"@vetta/runtime-mcp": "workspace:*",
+		"@vetta/runtime-storage": "workspace:*",
+		"@vetta/runtime-subagents": "workspace:*",
+		"@vetta/runtime-tools": "workspace:*",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@vetta/ai": "workspace:*",
 		"typescript": "^5.9.2",
 		"@types/node": "^22.10.5"
 	}

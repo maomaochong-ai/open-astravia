@@ -10,9 +10,10 @@
  *
  * Solution:
  * 1. Patch fs.readFileSync to redirect missing photon_rs_bg.wasm reads
- * 2. Copy photon_rs_bg.wasm next to the executable in build:binary
+ * 2. Use an embedded WASM path in standalone binaries, or a sidecar file in legacy builds
  */
 
+import type * as PhotonNode from "@silvia-odwyer/photon-node";
 import type { PathOrFileDescriptor } from "fs";
 import { createRequire } from "module";
 import * as path from "path";
@@ -25,12 +26,15 @@ const fs = require("fs") as typeof import("fs");
 export type { PhotonImage as PhotonImageType } from "@silvia-odwyer/photon-node";
 
 type ReadFileSync = typeof fs.readFileSync;
+type PhotonModule = typeof PhotonNode;
 
 const WASM_FILENAME = "photon_rs_bg.wasm";
+let embeddedWasmPath: string | undefined;
+let embeddedPhotonLoader: (() => Promise<unknown>) | undefined;
 
 // Lazy-loaded photon module
-let photonModule: typeof import("@silvia-odwyer/photon-node") | null = null;
-let loadPromise: Promise<typeof import("@silvia-odwyer/photon-node") | null> | null = null;
+let photonModule: PhotonModule | null = null;
+let loadPromise: Promise<PhotonModule | null> | null = null;
 
 function pathOrNull(file: PathOrFileDescriptor): string | null {
 	if (typeof file === "string") {
@@ -45,10 +49,29 @@ function pathOrNull(file: PathOrFileDescriptor): string | null {
 function getFallbackWasmPaths(): string[] {
 	const execDir = path.dirname(process.execPath);
 	return [
+		...(embeddedWasmPath ? [embeddedWasmPath] : []),
 		path.join(execDir, WASM_FILENAME),
 		path.join(execDir, "photon", WASM_FILENAME),
 		path.join(process.cwd(), WASM_FILENAME),
 	];
+}
+
+/** Install the Bun-embedded Photon asset path before the first image operation. */
+export function installPhotonWasmPath(wasmPath: string): void {
+	embeddedWasmPath = wasmPath;
+}
+
+/** Install a compile-time-visible loader so standalone binaries include the Photon module. */
+export function installPhotonModuleLoader(loader: () => Promise<unknown>): void {
+	embeddedPhotonLoader = loader;
+}
+
+function normalizePhotonModule(value: unknown): PhotonModule {
+	const candidate =
+		typeof value === "object" && value !== null && Reflect.get(value, "default")
+			? Reflect.get(value, "default")
+			: value;
+	return candidate as PhotonModule;
 }
 
 function patchPhotonWasmRead(): () => void {
@@ -113,7 +136,7 @@ function patchPhotonWasmRead(): () => void {
  * Load the photon module asynchronously.
  * Returns cached module on subsequent calls.
  */
-export async function loadPhoton(): Promise<typeof import("@silvia-odwyer/photon-node") | null> {
+export async function loadPhoton(): Promise<PhotonModule | null> {
 	if (photonModule) {
 		return photonModule;
 	}
@@ -131,7 +154,9 @@ export async function loadPhoton(): Promise<typeof import("@silvia-odwyer/photon
 			// when bundlers inline the package into an ESM host (e.g., Vite main
 			// build with "type":"module"). require keeps CJS semantics and
 			// resolves the package's own package.json (CJS by default).
-			const required = require("@silvia-odwyer/photon-node") as typeof import("@silvia-odwyer/photon-node");
+			const required = embeddedPhotonLoader
+				? normalizePhotonModule(await embeddedPhotonLoader())
+				: (require("@silvia-odwyer/photon-node") as PhotonModule);
 			photonModule = required;
 			return photonModule;
 		} catch (err) {

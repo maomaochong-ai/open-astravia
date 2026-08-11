@@ -12,7 +12,13 @@
 			"agentSettings": "Agent Settings",
 			"appearance": "Appearance",
 			"more": "More",
-			"betaBadge": "BETA"
+			"betaBadge": "BETA",
+			"pin": "Pin",
+			"unpin": "Unpin",
+			"pinFull": "Up to 5 pinned entries (including New session)",
+			"reset": "Reset order",
+			"dragHint": "Drag to reorder, or pin to the top",
+			"customize": "Customize navigation"
 		},
 		"clawConnected": "Claw connected",
 		"hide": "Hide sidebar",
@@ -145,6 +151,7 @@
 		"moreTabs": "More tabs",
 		"hiddenPanels": "Hidden panels",
 		"availablePlugins": "Add plugin panels",
+		"hideTab": "Hide tab",
 		"menu": "Tab menu"
 	},
 	"tour": {
@@ -162,5 +169,10 @@
 				"description": "Open the Capabilities page to install skills and connectors that give Vetta more expertise."
 			}
 		}
+	},
+	"workspaceView": {
+		"loading": "Loading plugins…",
+		"missing": "This workspace view no longer exists. Returning to home.",
+		"failed": "This workspace view failed to render. Check DevTools for details."
 	}
 }

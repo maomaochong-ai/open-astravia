@@ -1,4 +1,4 @@
-import type { SessionHistoryInfo } from "../../../../../runtime-core/src/index.js";
+import type { SessionHistoryInfo } from "@vetta/runtime-core";
 import {
 	DesktopConversationError,
 	type DesktopConversationService,
@@ -45,6 +45,7 @@ function mapConversationError(error: unknown): never {
 	const details = error.details as JsonValue | undefined;
 	switch (error.code) {
 		case "INVALID_SESSION_PATH":
+		case "SESSION_READ_ONLY":
 			throw new DebugError("DEBUG_INVALID_INPUT", error.message, details);
 		case "SESSION_NOT_FOUND":
 			throw new DebugError("DEBUG_CONVERSATION_NOT_FOUND", error.message, details);

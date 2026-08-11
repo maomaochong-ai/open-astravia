@@ -5,6 +5,7 @@ export {
 export { HookDispatcher, type HookDispatcherOptions } from "./dispatcher.js";
 export { NodeHookCommandExecutor, type NodeHookCommandExecutorOptions } from "./node-command-executor.js";
 export {
+	aggregateHookDispatchOutcomes,
 	type EcosystemCompactEvent,
 	type EcosystemHookAdapter,
 	type EcosystemHookEvent,
@@ -28,6 +29,7 @@ export type {
 	CompactHookRequest,
 	CompactionTrigger,
 	ConfiguredHookHandler,
+	EcosystemHookContributionSource,
 	HookCommandError,
 	HookCommandExecutionRequest,
 	HookCommandExecutor,
@@ -35,10 +37,12 @@ export type {
 	HookCompatibilityProfile,
 	HookConfigLayer,
 	HookConfigSource,
+	HookContributionLease,
 	HookDiagnostic,
 	HookDispatchEffect,
 	HookDispatchOutcome,
 	HookEventName,
+	HookHandlerContribution,
 	HookHandlerOutcome,
 	HookObserver,
 	HookOutputEntry,
@@ -62,3 +66,4 @@ export type {
 	SubagentStopHookRequest,
 	UserPromptSubmitHookRequest,
 } from "./types.js";
+export { HOOK_EVENT_NAMES } from "./types.js";

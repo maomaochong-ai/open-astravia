@@ -1,12 +1,6 @@
 import { writeSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import {
-	type ActionRpcEndpoint,
-	ActionRpcError,
-	createActionRpcClient,
-	getActionRpcEndpointFilePath,
-} from "@vetta/action-rpc";
+import { ActionRpcError, createActionRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { z } from "zod";
 
 const actionErrorCommandSchema = z.object({
@@ -39,12 +33,6 @@ const actionCommandSchema = z.discriminatedUnion("type", [
 	actionDescribeCommandSchema,
 	actionRunCommandSchema,
 ]);
-
-const actionEndpointSchema = z.object({
-	transport: z.literal("http"),
-	url: z.string(),
-	token: z.string(),
-});
 
 const searchOptionsSchema = z.object({
 	domain: z.string().optional(),
@@ -262,17 +250,6 @@ export function parseActionCommand(args: string[]): ActionCommand | undefined {
 	return definition.parse(args.slice(2));
 }
 
-async function readActionEndpoint(): Promise<ActionRpcEndpoint> {
-	const endpointFilePath = getActionRpcEndpointFilePath();
-	const raw = await readFile(endpointFilePath, "utf8");
-	const endpoint = JSON.parse(raw) as unknown;
-	const result = actionEndpointSchema.safeParse(endpoint);
-	if (!result.success) {
-		throw new Error(`Invalid action server endpoint file: ${endpointFilePath}`);
-	}
-	return result.data;
-}
-
 function isConnectionError(error: unknown): boolean {
 	return error instanceof Error && (error.message.includes("ECONNREFUSED") || error.message.includes("fetch failed"));
 }
@@ -288,7 +265,7 @@ export async function runActionCommand(command: ActionCommand): Promise<number> 
 	}
 
 	try {
-		const client = createActionRpcClient(await readActionEndpoint());
+		const client = createActionRpcClient(await readActionRpcEndpoint());
 		const definition = actionSubcommands.find((candidate) => candidate.canRun(command));
 		if (!definition) throw new Error(`Unhandled action command: ${command.type}`);
 		const result = await definition.run(client, command);

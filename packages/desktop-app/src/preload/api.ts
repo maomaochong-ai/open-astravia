@@ -73,7 +73,13 @@ export type * from "./api-types/themes.js";
 export type * from "./api-types/updater.js";
 export type * from "./api-types/webhook.js";
 
+export interface DesktopHostAccessApi {
+	/** 仅供 renderer 启动模块领取一次；插件运行前令牌已经被宿主持有。 */
+	claim(): string;
+}
+
 export interface DesktopApi {
+	hostAccess: DesktopHostAccessApi;
 	abilities: DesktopAbilitiesApi;
 	actionApproval: DesktopActionApprovalApi;
 	appLifecycle: DesktopAppLifecycleApi;

@@ -1,14 +1,54 @@
-import type { IpcRenderer, IpcRendererEvent } from "electron";
+import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { describe, expect, it, vi } from "vitest";
 import { createPluginsApi } from "./plugins";
 
 const SETTINGS_CHANGED_CHANNEL = "vetta:plugins:settings-changed";
 type IpcListener = Parameters<IpcRenderer["on"]>[1];
+const webUtils = { getPathForFile: vi.fn() } as unknown as WebUtils;
 
 describe("createPluginsApi settings events", () => {
+	it("passes capability sessions to identity-sensitive plugin IPC", async () => {
+		const harness = createIpcHarness();
+		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
+
+		await plugins.runCommand("session", "node", ["--version"]);
+		await plugins.spawnCommand("session", "node", ["server.js"]);
+		await plugins.stopCommandSpawn("session", "spawn-id");
+		await plugins.getCommandSpawnStatus("session", "spawn-id");
+		await plugins.startDevWatch("official-session", "target", "C:/plugin-project");
+		await plugins.stopDevWatch("official-session", "target");
+
+		expect(harness.invoke).toHaveBeenNthCalledWith(
+			1,
+			"vetta:plugins:command-run",
+			"session",
+			"node",
+			["--version"],
+			undefined,
+		);
+		expect(harness.invoke).toHaveBeenNthCalledWith(
+			2,
+			"vetta:plugins:command-spawn",
+			"session",
+			"node",
+			["server.js"],
+			undefined,
+		);
+		expect(harness.invoke).toHaveBeenNthCalledWith(3, "vetta:plugins:command-spawn-stop", "session", "spawn-id");
+		expect(harness.invoke).toHaveBeenNthCalledWith(4, "vetta:plugins:command-spawn-status", "session", "spawn-id");
+		expect(harness.invoke).toHaveBeenNthCalledWith(
+			5,
+			"vetta:plugins:dev-watch-start",
+			"official-session",
+			"target",
+			"C:/plugin-project",
+		);
+		expect(harness.invoke).toHaveBeenNthCalledWith(6, "vetta:plugins:dev-watch-stop", "official-session", "target");
+	});
+
 	it("multiplexes more than ten subscribers through one IPC listener", () => {
 		const harness = createIpcHarness();
-		const plugins = createPluginsApi(harness.ipc).plugins;
+		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
 		const listeners = Array.from({ length: 12 }, () => vi.fn());
 		const unsubscribers = listeners.map((listener) => plugins.onSettingsChanged(listener));
 		const payload = { pluginId: "plugin", values: { enabled: true } };
@@ -24,7 +64,7 @@ describe("createPluginsApi settings events", () => {
 
 	it("detaches the shared IPC listener after the final subscriber leaves", () => {
 		const harness = createIpcHarness();
-		const plugins = createPluginsApi(harness.ipc).plugins;
+		const plugins = createPluginsApi(harness.ipc, webUtils).plugins;
 		const first = vi.fn();
 		const second = vi.fn();
 		const unsubscribeFirst = plugins.onSettingsChanged(first);
@@ -45,6 +85,7 @@ describe("createPluginsApi settings events", () => {
 function createIpcHarness(): {
 	readonly emit: (channel: string, payload: unknown) => void;
 	readonly ipc: IpcRenderer;
+	readonly invoke: ReturnType<typeof vi.fn>;
 	readonly listenerCount: (channel: string) => number;
 	readonly on: ReturnType<typeof vi.fn>;
 	readonly removeListener: ReturnType<typeof vi.fn>;
@@ -60,14 +101,16 @@ function createIpcHarness(): {
 		listeners.get(channel)?.delete(listener);
 		return ipc;
 	});
+	const invoke = vi.fn(async () => undefined);
 	const ipc = {
-		invoke: vi.fn(async () => undefined),
+		invoke,
 		on,
 		removeListener,
 	} as unknown as IpcRenderer;
 
 	return {
 		ipc,
+		invoke,
 		on,
 		removeListener,
 		emit: (channel, payload) => {

@@ -1,6 +1,6 @@
 import { isAbsolute } from "node:path";
+import type { PromptRequest } from "@vetta/runtime-core";
 import { z } from "zod";
-import type { PromptRequest } from "../../../../runtime-core/src/index.js";
 
 export const promptResourceRefSchema = z
 	.object({

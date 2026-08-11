@@ -1,6 +1,8 @@
-import { MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta/capability-sdk";
+import { DOMAIN_MEDIA_CAPABILITIES, MEDIA_PROTOCOL_VERSION, type MediaProviderJob } from "@vetta/capability-sdk";
 import { describe, expect, it, vi } from "vitest";
 import type { VettaGatewayRequest, VettaGatewayResponse } from "../gateway/vetta-gateway-service.js";
+import { JobManager } from "../jobs/job-manager.js";
+import { MediaArtifactStore } from "./media-artifact-store.js";
 import { MediaProviderRegistry } from "./media-provider-registry.js";
 import { createVettaImageProvider } from "./vetta-image-provider.js";
 
@@ -8,85 +10,215 @@ vi.mock("../gateway/vetta-gateway-service.js", () => ({ requestVettaGateway: vi.
 
 const signal = new AbortController().signal;
 
-function succeededJob(id = "job-1"): MediaProviderJob {
+function succeededJob(id = "provider-job-1"): MediaProviderJob {
 	return {
 		id,
 		status: "succeeded",
-		artifacts: [{ kind: "image", mimeType: "image/png", data: "aW1hZ2U=" }],
+		artifacts: [
+			{
+				id: "artifact-1",
+				kind: "image",
+				mimeType: "image/png",
+				sizeBytes: 5,
+				lifetime: "temporary",
+			},
+		],
 	};
+}
+
+function createRegistry(): MediaProviderRegistry {
+	return new MediaProviderRegistry(new JobManager());
 }
 
 describe("MediaProviderRegistry", () => {
 	it("allows an empty provider registry", () => {
-		expect(new MediaProviderRegistry().listProviders()).toEqual([]);
+		expect(createRegistry().listProviders()).toEqual([]);
 	});
 
-	it("routes jobs through a registered host provider", async () => {
-		const registry = new MediaProviderRegistry();
-		const createJob = vi.fn().mockResolvedValue(succeededJob());
+	it("publishes cloned role-aware generation mode capabilities", () => {
+		const registry = createRegistry();
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:minimax-h3",
+				ownerId: "comfyui-media-provider",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [
+					{
+						operation: "generate",
+						kind: "video",
+						modes: ["image-to-video"],
+						modeCapabilities: [
+							{
+								mode: "image-to-video",
+								inputs: [{ role: "firstFrame", kinds: ["image"], minItems: 0, maxItems: 1 }],
+								minTotalItems: 1,
+								aspectRatioPolicy: "input-derived",
+							},
+						],
+					},
+				],
+			},
+			submit: vi.fn(),
+		});
+
+		expect(registry.listProviders()[0]?.capabilities[0]).toMatchObject({
+			modeCapabilities: [
+				{
+					mode: "image-to-video",
+					inputs: [{ role: "firstFrame", kinds: ["image"] }],
+					aspectRatioPolicy: "input-derived",
+				},
+			],
+		});
+	});
+
+	it("omits undefined optional capability fields from provider list output", () => {
+		const registry = createRegistry();
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:minimax-h3",
+				displayName: undefined,
+				ownerId: "comfyui-media-provider",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [
+					{
+						operation: "generate",
+						kind: "video",
+						modes: ["text-to-video"],
+						aspectRatios: undefined,
+						resolutions: undefined,
+						durationsSeconds: undefined,
+						modeCapabilities: [
+							{
+								mode: "text-to-video",
+								inputs: [],
+								minTotalItems: undefined,
+								maxTotalItems: undefined,
+								aspectRatioPolicy: undefined,
+								audioGeneration: "always",
+							},
+						],
+					},
+				],
+			},
+			submit: vi.fn(),
+		});
+
+		const providers = registry.listProviders();
+		expect(() => DOMAIN_MEDIA_CAPABILITIES.LIST_PROVIDERS.parseOutput(providers)).not.toThrow();
+		expect(providers).toEqual(JSON.parse(JSON.stringify(providers)));
+		expect(providers).toEqual([expect.not.objectContaining({ displayName: undefined })]);
+		expect(providers[0]?.capabilities[0]).not.toEqual(
+			expect.objectContaining({ aspectRatios: undefined, resolutions: undefined, durationsSeconds: undefined }),
+		);
+	});
+
+	it("routes submissions through a registered host provider", async () => {
+		const registry = createRegistry();
+		const submit = vi.fn().mockResolvedValue(succeededJob());
 		registry.registerProvider({
 			descriptor: {
 				id: "host:image",
 				ownerId: "host",
 				protocolVersion: MEDIA_PROTOCOL_VERSION,
-				capabilities: [{ kind: "image", modes: ["text-to-image"] }],
+				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image"] }],
 			},
-			createJob,
+			submit,
 		});
 
 		await expect(
-			registry.createJob(
-				{ providerId: "host:image", kind: "image", mode: "text-to-image", prompt: "draw a fox" },
+			registry.submit(
+				{
+					ownerId: "consumer",
+					providerId: "host:image",
+					operation: "generate",
+					kind: "image",
+					mode: "text-to-image",
+					prompt: "draw a fox",
+					inputs: [],
+				},
 				signal,
 			),
-		).resolves.toMatchObject({ providerId: "host:image", id: "job-1", status: "succeeded" });
-		expect(createJob).toHaveBeenCalledWith(
-			expect.objectContaining({ prompt: "draw a fox", references: [] }),
-			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		).resolves.toMatchObject({
+			domain: "media",
+			operation: "generate",
+			metadata: { providerId: "host:image" },
+			status: "succeeded",
+		});
+		expect(submit).toHaveBeenCalledWith(
+			expect.objectContaining({ prompt: "draw a fox", inputs: [] }),
+			expect.objectContaining({ ownerId: "consumer", signal: expect.any(AbortSignal) }),
 		);
 	});
 
 	it("returns stable failures for missing and unsupported providers", async () => {
-		const registry = new MediaProviderRegistry();
+		const registry = createRegistry();
 		registry.registerProvider({
 			descriptor: {
 				id: "host:image",
 				ownerId: "host",
 				protocolVersion: MEDIA_PROTOCOL_VERSION,
-				capabilities: [{ kind: "image", modes: ["text-to-image"] }],
+				capabilities: [{ operation: "generate", kind: "image", modes: ["text-to-image"] }],
 			},
-			createJob: vi.fn(),
+			submit: vi.fn(),
 		});
 
 		await expect(
-			registry.createJob({ providerId: "missing", kind: "image", mode: "text-to-image", prompt: "draw" }, signal),
+			registry.submit(
+				{
+					ownerId: "consumer",
+					providerId: "missing",
+					operation: "generate",
+					kind: "image",
+					mode: "text-to-image",
+					prompt: "draw",
+					inputs: [],
+				},
+				signal,
+			),
 		).resolves.toMatchObject({ status: "failed", error: { code: "provider-unavailable" } });
 		await expect(
-			registry.createJob(
-				{ providerId: "host:image", kind: "image", mode: "image-to-image", prompt: "edit" },
+			registry.submit(
+				{
+					ownerId: "consumer",
+					providerId: "host:image",
+					operation: "generate",
+					kind: "image",
+					mode: "image-to-image",
+					prompt: "edit",
+					inputs: [],
+				},
 				signal,
 			),
 		).resolves.toMatchObject({ status: "failed", error: { code: "operation-unsupported" } });
 	});
 
 	it("unregisters and aborts a provider through its lifecycle handle", async () => {
-		const registry = new MediaProviderRegistry();
+		const registry = createRegistry();
 		const handle = registry.registerProvider({
 			descriptor: {
 				id: "host:video",
 				ownerId: "host",
 				protocolVersion: MEDIA_PROTOCOL_VERSION,
-				capabilities: [{ kind: "video", modes: ["text-to-video"] }],
+				capabilities: [{ operation: "generate", kind: "video", modes: ["text-to-video"] }],
 			},
-			createJob: (_input, context) =>
+			submit: (_input, context) =>
 				new Promise((resolve) => {
 					context.signal.addEventListener("abort", () => resolve({ id: "job-video", status: "cancelled" }), {
 						once: true,
 					});
 				}),
 		});
-		const pending = registry.createJob(
-			{ providerId: "host:video", kind: "video", mode: "text-to-video", prompt: "animate" },
+		const pending = registry.submit(
+			{
+				ownerId: "consumer",
+				providerId: "host:video",
+				operation: "generate",
+				kind: "video",
+				mode: "text-to-video",
+				prompt: "animate",
+				inputs: [],
+			},
 			signal,
 		);
 		handle.dispose();
@@ -94,11 +226,54 @@ describe("MediaProviderRegistry", () => {
 		await expect(pending).resolves.toMatchObject({ status: "failed", error: { code: "cancelled" } });
 		expect(registry.listProviders()).toEqual([]);
 	});
+
+	it("resumes an existing host job through a replacement provider registration", async () => {
+		const jobs = new JobManager();
+		const registry = new MediaProviderRegistry(jobs);
+		const first = registry.registerProvider({
+			descriptor: {
+				id: "plugin:video",
+				ownerId: "provider-plugin",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [{ operation: "generate", kind: "video", modes: ["text-to-video"] }],
+			},
+			submit: vi.fn().mockResolvedValue({ id: "remote-job", status: "queued" }),
+			getJob: vi.fn().mockResolvedValue({ id: "remote-job", status: "queued" }),
+		});
+		const job = await registry.submit(
+			{
+				ownerId: "consumer",
+				providerId: "plugin:video",
+				operation: "generate",
+				kind: "video",
+				mode: "text-to-video",
+				prompt: "animate",
+				inputs: [],
+			},
+			signal,
+		);
+		first.dispose();
+
+		const replacementGetJob = vi.fn().mockResolvedValue(succeededJob("remote-job"));
+		registry.registerProvider({
+			descriptor: {
+				id: "plugin:video",
+				ownerId: "provider-plugin",
+				protocolVersion: MEDIA_PROTOCOL_VERSION,
+				capabilities: [{ operation: "generate", kind: "video", modes: ["text-to-video"] }],
+			},
+			submit: vi.fn(),
+			getJob: replacementGetJob,
+		});
+
+		await expect(jobs.get("consumer", job.id, signal)).resolves.toMatchObject({ status: "succeeded" });
+		expect(replacementGetJob).toHaveBeenCalledWith("remote-job", expect.objectContaining({ ownerId: "consumer" }));
+	});
 });
 
 describe("Vetta image provider", () => {
 	it("maps gateway authentication failures to unauthenticated media jobs", async () => {
-		const provider = createVettaImageProvider(async () => ({
+		const provider = createVettaImageProvider(new MediaArtifactStore(), async () => ({
 			ok: false,
 			status: 401,
 			code: -1,
@@ -106,7 +281,10 @@ describe("Vetta image provider", () => {
 		}));
 
 		await expect(
-			provider.createJob({ kind: "image", mode: "text-to-image", prompt: "draw a fox", references: [] }, { signal }),
+			provider.submit(
+				{ operation: "generate", kind: "image", mode: "text-to-image", prompt: "draw a fox", inputs: [] },
+				{ ownerId: "consumer", signal },
+			),
 		).resolves.toMatchObject({
 			status: "failed",
 			error: { code: "unauthenticated", message: "Not signed in", retryable: false },
@@ -125,19 +303,22 @@ describe("Vetta image provider", () => {
 				data: { data: "aW1hZ2U=", mime_type: "image/png", size: "1024x1024" } as T,
 			};
 		};
-		const provider = createVettaImageProvider(requestGateway);
+		const artifacts = new MediaArtifactStore();
+		const provider = createVettaImageProvider(artifacts, requestGateway);
 
-		await provider.createJob(
+		const job = await provider.submit(
 			{
+				operation: "generate",
 				kind: "image",
 				mode: "text-to-image",
 				prompt: "draw a fox",
-				references: [],
+				inputs: [],
 			},
-			{ signal },
+			{ ownerId: "consumer", signal },
 		);
 		expect(requests).toEqual([
 			expect.objectContaining({ path: "images/generate", body: { prompt: "draw a fox", size: "1024x1024" } }),
 		]);
+		await artifacts.release("consumer", job.artifacts?.[0]?.id ?? "");
 	});
 });

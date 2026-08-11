@@ -1,12 +1,6 @@
 import { writeSync } from "node:fs";
-import { readFile } from "node:fs/promises";
 import { parseArgs } from "node:util";
-import {
-	type ActionRpcEndpoint,
-	ActionRpcError,
-	createDebugRpcClient,
-	getActionRpcEndpointFilePath,
-} from "@vetta/action-rpc";
+import { ActionRpcError, createDebugRpcClient, readActionRpcEndpoint } from "@vetta/action-rpc";
 import { z } from "zod";
 
 const debugErrorCommandSchema = z.object({
@@ -30,7 +24,6 @@ const debugCommandSchema = z.discriminatedUnion("type", [
 	debugDescribeCommandSchema,
 	debugRunCommandSchema,
 ]);
-const endpointSchema = z.object({ transport: z.literal("http"), url: z.string(), token: z.string() });
 
 type DebugCommand = z.infer<typeof debugCommandSchema>;
 type DebugErrorCommand = z.infer<typeof debugErrorCommandSchema>;
@@ -140,13 +133,6 @@ export function parseDebugCommand(args: string[]): DebugCommand | undefined {
 	return argumentError(`Unknown debug subcommand: ${subcommand}`);
 }
 
-async function readEndpoint(): Promise<ActionRpcEndpoint> {
-	const endpointFilePath = getActionRpcEndpointFilePath();
-	const result = endpointSchema.safeParse(JSON.parse(await readFile(endpointFilePath, "utf8")) as unknown);
-	if (!result.success) throw new Error(`Invalid local RPC endpoint file: ${endpointFilePath}`);
-	return result.data;
-}
-
 function isConnectionError(error: unknown): boolean {
 	return error instanceof Error && (error.message.includes("ECONNREFUSED") || error.message.includes("fetch failed"));
 }
@@ -162,7 +148,7 @@ export async function runDebugCommand(command: DebugCommand): Promise<number> {
 	}
 
 	try {
-		const client = createDebugRpcClient(await readEndpoint());
+		const client = createDebugRpcClient(await readActionRpcEndpoint());
 		const result =
 			command.type === "search"
 				? await client.search({ query: command.query, category: command.category })

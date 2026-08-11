@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -39,7 +40,7 @@ func TestMock_Start_DispatchesInbound(t *testing.T) {
 			`{"chatId":"c2","userId":"u2","text":"yo"}` + "\n",
 	)
 	out := &bytes.Buffer{}
-	tr := New(Options{In: in, Out: out})
+	tr := New(Options{In: io.NopCloser(in), Out: out})
 	h := &captureHandler{}
 
 	if err := tr.Start(context.Background(), h); err != nil {
@@ -68,7 +69,7 @@ func TestMock_Start_SkipsMalformed(t *testing.T) {
 			`{"chatId":"c1","userId":"u1","text":"keeps going"}` + "\n",
 	)
 	out := &bytes.Buffer{}
-	tr := New(Options{In: in, Out: out})
+	tr := New(Options{In: io.NopCloser(in), Out: out})
 	h := &captureHandler{}
 
 	_ = tr.Start(context.Background(), h)
@@ -84,7 +85,7 @@ func TestMock_Start_SkipsMalformed(t *testing.T) {
 func TestMock_Start_RequiresFields(t *testing.T) {
 	in := strings.NewReader(`{"chatId":"c1","text":"missing user"}` + "\n")
 	out := &bytes.Buffer{}
-	tr := New(Options{In: in, Out: out})
+	tr := New(Options{In: io.NopCloser(in), Out: out})
 	h := &captureHandler{}
 	_ = tr.Start(context.Background(), h)
 	if len(h.drain()) != 0 {
@@ -94,7 +95,7 @@ func TestMock_Start_RequiresFields(t *testing.T) {
 
 func TestMock_SendMessage_AssignsID(t *testing.T) {
 	out := &bytes.Buffer{}
-	tr := New(Options{In: strings.NewReader(""), Out: out})
+	tr := New(Options{In: io.NopCloser(strings.NewReader("")), Out: out})
 
 	id1, err := tr.SendMessage(context.Background(), "c1", transport.OutboundMessage{Text: "first"})
 	if err != nil {
@@ -126,7 +127,7 @@ func TestMock_SendMessage_AssignsID(t *testing.T) {
 }
 
 func TestMock_EditMessage_NotSupported(t *testing.T) {
-	tr := New(Options{In: strings.NewReader(""), Out: &bytes.Buffer{}})
+	tr := New(Options{In: io.NopCloser(strings.NewReader("")), Out: &bytes.Buffer{}})
 	err := tr.EditMessage(context.Background(), "c1", "m1", transport.OutboundMessage{Text: "x"})
 	if err == nil {
 		t.Error("EditMessage should error since SupportsMessageEdit=false")
@@ -134,7 +135,7 @@ func TestMock_EditMessage_NotSupported(t *testing.T) {
 }
 
 func TestMock_Capabilities_Conservative(t *testing.T) {
-	tr := New(Options{In: strings.NewReader(""), Out: &bytes.Buffer{}})
+	tr := New(Options{In: io.NopCloser(strings.NewReader("")), Out: &bytes.Buffer{}})
 	caps := tr.Capabilities()
 	if caps.SupportsMessageEdit {
 		t.Error("mock SupportsMessageEdit should be false (it's the whole point)")
@@ -146,8 +147,7 @@ func TestMock_Capabilities_Conservative(t *testing.T) {
 
 func TestMock_Stop_UnblocksStart(t *testing.T) {
 	// Pipe that never closes from the writer side simulates a real stdin
-	// that never EOFs. After Stop() the next Scan should observe stopCh
-	// and Start should return.
+	// that never reaches EOF. Stop must interrupt the blocked read itself.
 	r, w := io.Pipe()
 	defer w.Close()
 
@@ -157,17 +157,41 @@ func TestMock_Stop_UnblocksStart(t *testing.T) {
 		done <- tr.Start(context.Background(), &captureHandler{})
 	}()
 
-	// Send a complete line so the scanner enters one iteration; then call
-	// Stop, then send another line so the next iteration's stopCh check
-	// fires.
-	time.Sleep(50 * time.Millisecond)
-	_, _ = w.Write([]byte(`{"chatId":"c","userId":"u","text":"go"}` + "\n"))
-	_ = tr.Stop()
-	_, _ = w.Write([]byte(`{"chatId":"c","userId":"u","text":"after stop"}` + "\n"))
+	if err := tr.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+	if err := tr.Stop(); err != nil {
+		t.Fatalf("second Stop: %v", err)
+	}
 
 	select {
-	case <-done:
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Start after Stop: %v", err)
+		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("Start did not return after Stop")
+	}
+}
+
+func TestMock_ContextCancellationUnblocksStart(t *testing.T) {
+	r, w := io.Pipe()
+	defer w.Close()
+
+	tr := New(Options{In: r, Out: &bytes.Buffer{}})
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	go func() {
+		done <- tr.Start(ctx, &captureHandler{})
+	}()
+
+	cancel()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Start after context cancellation: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Start did not return after context cancellation")
 	}
 }

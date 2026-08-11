@@ -60,10 +60,13 @@ func main() {
 
 	if *lock {
 		json.NewEncoder(os.Stdout).Encode(map[string]any{
-			"type":    "response",
-			"command": "startup",
-			"success": false,
-			"error":   "session locked",
+			"type":           "response",
+			"command":        "startup",
+			"success":        false,
+			"errorCode":      "session_locked",
+			"phase":          "startup",
+			"recoverability": "user_action",
+			"error":          "session locked",
 			"lockHolder": map[string]any{
 				"pid":      99999,
 				"hostname": "test-host",
@@ -135,11 +138,14 @@ func main() {
 			})
 		default:
 			enc.Encode(map[string]any{
-				"id":      cmd.ID,
-				"type":    "response",
-				"command": cmd.Type,
-				"success": false,
-				"error":   "unknown command in fake agent",
+				"id":             cmd.ID,
+				"type":           "response",
+				"command":        cmd.Type,
+				"success":        false,
+				"errorCode":      "command_not_supported",
+				"phase":          "command",
+				"recoverability": "user_action",
+				"error":          "unknown command in fake agent",
 			})
 		}
 	}
@@ -211,9 +217,7 @@ func TestOpenSession_HandshakeTimeout(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected handshake timeout error")
 	}
-	if !strings.Contains(err.Error(), "timed out") && !strings.Contains(err.Error(), "exited") {
-		t.Errorf("expected timeout/exit error, got: %v", err)
-	}
+	assertTypedFailure(t, err, hostclient.FailureCodeHandshakeTimeout, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe)
 }
 
 func TestOpenSession_CrashOnStart(t *testing.T) {
@@ -225,6 +229,7 @@ func TestOpenSession_CrashOnStart(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error from crashing fake")
 	}
+	assertTypedFailure(t, err, hostclient.FailureCodeProcessExited, hostclient.FailurePhaseStartup, hostclient.FailureRetrySafe)
 }
 
 func TestSession_PromptAndEvents(t *testing.T) {
@@ -308,4 +313,27 @@ func writeWrapperScript(t *testing.T, target string, extra ...string) string {
 
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func assertTypedFailure(
+	t *testing.T,
+	err error,
+	code hostclient.FailureCode,
+	phase hostclient.FailurePhase,
+	recoverability hostclient.FailureRecoverability,
+) {
+	t.Helper()
+	var failure hostclient.TypedFailure
+	if !errors.As(err, &failure) {
+		t.Fatalf("expected typed failure, got %T: %v", err, err)
+	}
+	if failure.FailureCode() != code {
+		t.Errorf("failure code: got %q, want %q", failure.FailureCode(), code)
+	}
+	if failure.FailurePhase() != phase {
+		t.Errorf("failure phase: got %q, want %q", failure.FailurePhase(), phase)
+	}
+	if failure.FailureRecoverability() != recoverability {
+		t.Errorf("failure recoverability: got %q, want %q", failure.FailureRecoverability(), recoverability)
+	}
 }

@@ -4,8 +4,10 @@ import {
 	inputValueAtom,
 	isStreamingAtom,
 	languageAtom,
+	openSessionFnRef,
 	promptAttachmentAtom,
 	selectedModelAtom,
+	sessionExecutionModeAtom,
 } from "@shared/store/atoms";
 import type { Message } from "@vetta/ai";
 import type { SessionEvent } from "@vetta/runtime-core";
@@ -13,18 +15,25 @@ import type {
 	ConversationEvent,
 	ConversationMessage,
 	ConversationState,
+	CreateSessionOptions,
 	Disposable,
 	PluginAgentActions,
 	PluginAgentToolApi,
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentHookHandler,
 	PluginContinuationHandler,
 	PluginConversationApi,
 	PluginDynamicSystemPromptOperation,
 	PluginHostBridge,
+	PluginMediaProviderJob,
+	PluginMediaProviderRegistration,
+	PluginMediaProviderSubmitRequest,
 	PluginPromptAttachment,
 	PluginSystemPromptProviderHandler,
+	SendPromptResult,
 } from "@vetta-org/plugin-sdk";
 import { __setPluginHostBridge, PluginAppActionError } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtomValue } from "jotai";
@@ -38,6 +47,10 @@ interface PluginAgentToolHandlerEntry {
 }
 
 const agentToolHandlers = new Map<string, PluginAgentToolHandlerEntry>();
+const agentHookHandlers = new Map<
+	string,
+	{ handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>; api: PluginAgentToolApi }
+>();
 interface PluginAppActionHandlerEntry {
 	handler: PluginAppActionHandler;
 	assertReady?: PluginAppActionReadyHandler;
@@ -47,6 +60,7 @@ const appActionHandlers = new Map<string, PluginAppActionHandlerEntry>();
 const appActionInvocations = new Map<string, { controller: AbortController; handlerKey: string }>();
 const continuationHandlers = new Map<string, { handler: PluginContinuationHandler; api: PluginAgentToolApi }>();
 const systemPromptHandlers = new Map<string, { handler: PluginSystemPromptProviderHandler; api: PluginAgentToolApi }>();
+const mediaProviderHandlers = new Map<string, PluginMediaProviderRegistration>();
 
 function handlerKey(pluginId: string, handlerId: string): string {
 	return `${pluginId}:${handlerId}`;
@@ -127,6 +141,16 @@ function messageText(message: Message): string {
 
 function translate(event: SessionEvent): void {
 	switch (event.type) {
+		case "queue.changed":
+			// 队列镜像（ADR-0060）：插件卡片据此呈现「已排队/已发出/被移除」。
+			emit({
+				type: "queue-changed",
+				queue: {
+					paused: event.paused,
+					items: event.entries.map((entry) => ({ id: entry.id, displayText: entry.displayText })),
+				},
+			});
+			return;
 		case "session.lifecycle":
 			if (event.phase === "agent_start") emit({ type: "turn-start" });
 			else if (event.phase === "agent_end") emit({ type: "turn-end", stopReason: "stop" });
@@ -144,6 +168,16 @@ function translate(event: SessionEvent): void {
 					text: messageText(event.message),
 					timestamp: event.timestamp,
 				},
+			});
+			return;
+		case "toolcall.args":
+			// 生成阶段的部分参数：让插件在工具真正落盘之前就能点亮目标。
+			// 与 tool.start 的 args 同属 agent.session.read 的可见面。
+			emit({
+				type: "tool-call-args",
+				toolCallId: event.toolCallId,
+				toolName: event.toolName,
+				args: event.args as Record<string, unknown>,
 			});
 			return;
 		case "tool.start":
@@ -246,6 +280,44 @@ function startToolRequestListener(): void {
 				}),
 			(error: unknown) =>
 				window.vetta.plugins.respondAgentTool(request.requestId, {
+					error: error instanceof Error ? error.message : String(error),
+				}),
+		);
+	});
+}
+
+let hookRequestListenerStarted = false;
+
+function startHookRequestListener(): void {
+	if (hookRequestListenerStarted) return;
+	hookRequestListenerStarted = true;
+	window.vetta.plugins.onAgentHookRequest((request) => {
+		const entry = agentHookHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		if (!entry) {
+			void window.vetta.plugins.respondAgentHook(request.requestId, {
+				error: `Plugin hook handler not found: ${request.pluginId}/${request.handlerId}`,
+			});
+			return;
+		}
+		void Promise.resolve(
+			entry.handler({
+				invocationId: request.requestId,
+				plugin: {
+					id: request.pluginId,
+					contributionId: request.hookId,
+					settings: request.settings,
+				},
+				session: request.session as Parameters<typeof entry.handler>[0]["session"],
+				event: request.event,
+				host: entry.api,
+			}),
+		).then(
+			(value) =>
+				window.vetta.plugins.respondAgentHook(request.requestId, {
+					value,
+				}),
+			(error: unknown) =>
+				window.vetta.plugins.respondAgentHook(request.requestId, {
 					error: error instanceof Error ? error.message : String(error),
 				}),
 		);
@@ -413,6 +485,50 @@ function startSystemPromptRequestListener(): void {
 	});
 }
 
+let mediaProviderRequestListenerStarted = false;
+
+function startMediaProviderRequestListener(): void {
+	if (mediaProviderRequestListenerStarted) return;
+	mediaProviderRequestListenerStarted = true;
+	window.vetta.plugins.onMediaProviderRequest((request) => {
+		const registration = mediaProviderHandlers.get(handlerKey(request.pluginId, request.handlerId));
+		if (!registration) {
+			void window.vetta.plugins.respondMediaProvider(request.requestId, {
+				error: `Plugin media provider handler not found: ${request.pluginId}/${request.handlerId}`,
+			});
+			return;
+		}
+		const context = {
+			invocationId: request.requestId,
+			uploadInput: <T = unknown>(
+				inputId: string,
+				input: Parameters<typeof window.vetta.plugins.uploadMediaProviderInput>[2],
+			) => window.vetta.plugins.uploadMediaProviderInput<T>(request.requestId, inputId, input),
+		};
+		let invocation: Promise<PluginMediaProviderJob> | undefined;
+		if (request.operation === "submit") {
+			invocation = registration.submit(request.input as PluginMediaProviderSubmitRequest, context);
+		} else if (request.operation === "getJob") {
+			invocation = registration.getJob?.((request.input as { jobId: string }).jobId, context);
+		} else {
+			invocation = registration.cancelJob?.((request.input as { jobId: string }).jobId, context);
+		}
+		if (!invocation) {
+			void window.vetta.plugins.respondMediaProvider(request.requestId, {
+				error: `Plugin media provider operation is unsupported: ${request.operation}`,
+			});
+			return;
+		}
+		void Promise.resolve(invocation).then(
+			(value) => window.vetta.plugins.respondMediaProvider(request.requestId, { value }),
+			(error: unknown) =>
+				window.vetta.plugins.respondMediaProvider(request.requestId, {
+					error: error instanceof Error ? error.message : String(error),
+				}),
+		);
+	});
+}
+
 export function registerPluginAgentToolHandler(options: {
 	pluginId: string;
 	toolId: string;
@@ -428,6 +544,21 @@ export function registerPluginAgentToolHandler(options: {
 			if (entry?.handler === options.handler) {
 				agentToolHandlers.delete(key);
 			}
+		},
+	};
+}
+
+export function registerPluginAgentHookHandler(options: {
+	pluginId: string;
+	handlerId: string;
+	handler: PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>;
+	api: PluginAgentToolApi;
+}): Disposable {
+	const key = handlerKey(options.pluginId, options.handlerId);
+	agentHookHandlers.set(key, { handler: options.handler, api: options.api });
+	return {
+		dispose: () => {
+			if (agentHookHandlers.get(key)?.handler === options.handler) agentHookHandlers.delete(key);
 		},
 	};
 }
@@ -490,18 +621,51 @@ export function registerPluginSystemPromptHandler(options: {
 	};
 }
 
+export function registerPluginMediaProviderHandler(options: {
+	pluginId: string;
+	handlerId: string;
+	registration: PluginMediaProviderRegistration;
+}): Disposable {
+	const key = handlerKey(options.pluginId, options.handlerId);
+	mediaProviderHandlers.set(key, options.registration);
+	return {
+		dispose: () => {
+			if (mediaProviderHandlers.get(key) === options.registration) mediaProviderHandlers.delete(key);
+		},
+	};
+}
+
 // ─── Conversation actions ───
 
 /** Set by useSessionManager so sendPrompt reuses the full send path. */
-export const pluginSendMessageRef: { current: ((text: string) => Promise<void>) | null } = {
+export const pluginSendMessageRef: {
+	current:
+		| ((
+				text: string,
+				options?: { source?: "plugin" },
+		  ) => Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined>)
+		| null;
+} = {
 	current: null,
 };
 
 const conversation: PluginConversationApi = {
-	sendPrompt: async (text: string): Promise<void> => {
+	sendPrompt: async (text: string): Promise<SendPromptResult> => {
 		const send = pluginSendMessageRef.current;
 		if (!send) throw new Error("No active conversation to send to");
-		await send(text);
+		// source: "plugin" —— 不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。
+		const result = await send(text, { source: "plugin" });
+		return result ?? { status: "sent" };
+	},
+	createSession: async (cwd: string, options?: CreateSessionOptions): Promise<ConversationState> => {
+		const open = openSessionFnRef.current;
+		if (!open) throw new Error("createSession: host session manager is not ready yet");
+		const target = cwd.trim();
+		if (!target) throw new Error("createSession: cwd is required");
+		// 执行模式取宿主当前选择，与用户在新会话页手动发送时的 openSession 入参一致。
+		await open(target, undefined, store.get(sessionExecutionModeAtom), { navigate: options?.navigate ?? true });
+		// openSession resolve 时 activeSession 已写好，所以这份快照可直接接 sendPrompt。
+		return snapshot();
 	},
 	insertText: (text: string): void => {
 		store.set(inputValueAtom, text);
@@ -583,9 +747,11 @@ let installed = false;
 export function installPluginHostBridge(): void {
 	startTranslator();
 	startToolRequestListener();
+	startHookRequestListener();
 	startAppActionRequestListener();
 	startContinuationRequestListener();
 	startSystemPromptRequestListener();
+	startMediaProviderRequestListener();
 	if (installed) return;
 	installed = true;
 	__setPluginHostBridge(pluginHostBridge);

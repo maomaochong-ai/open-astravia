@@ -1,0 +1,17 @@
+export const DISPATCH_WORKFLOWS_TOOL_DESCRIPTION = [
+	"Dispatch N parallel workflow subagents in one batch. Each workflow is an independent session that",
+	"inherits a snapshot of THIS conversation's context and starts from the todo list you assign it.",
+	"",
+	"All workflows are accepted immediately; those beyond the concurrency limit queue (status: queued)",
+	"and start automatically when a slot frees. Returns immediately — you are notified per workflow via",
+	"<subagent_notification> as each finishes. Do not block; keep working or end your turn.",
+	"",
+	"Split tasks into NON-OVERLAPPING scopes: workflows share the working directory, so two workflows",
+	"must never edit the same files. Workflows cannot spawn agents themselves (single layer).",
+	"Use interrupt_agent / send_message / followup_task with the task_name to control a workflow.",
+	"",
+	"RESUME, don't re-dispatch: an interrupted workflow keeps its full context and todo progress.",
+	"To continue it, call followup_task(target: task_name, message: 'continue the remaining todos').",
+	"Only dispatch NEW workflows for NEW scopes — dispatching again resets nothing for interrupted ones",
+	"(their names stay reserved) and would duplicate work.",
+].join("\n");

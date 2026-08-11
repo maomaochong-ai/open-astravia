@@ -1,0 +1,94 @@
+---
+title: 使用 Coding Agent SDK
+description: 在 TypeScript 进程内创建 Agent 会话、订阅事件、发送任务并正确关闭资源。
+---
+
+`@vetta/coding-agent/sdk` 是进程内集成入口。它提供类型化 Session、Host 和离线会话目录，不要求通过 CLI 或解析 stdout。
+
+## 创建最小会话
+
+```typescript
+import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
+
+const { session, diagnostics, modelFallbackMessage } =
+  await createCodingAgentSession({
+    cwd: process.cwd(),
+    storage: { kind: "memory" },
+  });
+
+for (const diagnostic of diagnostics) {
+  console.error(diagnostic.code, diagnostic.message);
+}
+
+if (modelFallbackMessage) console.warn(modelFallbackMessage);
+
+const unsubscribe = session.subscribe((event) => {
+  if (event.type === "message_update") {
+    // Consume typed session events in your own UI or logger.
+  }
+});
+
+try {
+  await session.prompt("检查当前目录并总结项目结构");
+  console.log(session.getLastAssistantText());
+} finally {
+  unsubscribe();
+  await session.close();
+}
+```
+
+如果没有通过参数、配置或宿主服务得到可用模型，创建会话会抛出带稳定错误码的 `CodingAgentSessionCreateError`。
+
+## 选择存储意图
+
+| `storage.kind` | 语义 | 必要参数 |
+| --- | --- | --- |
+| `memory` | 会话不落盘 | 无 |
+| `file-create` | 创建新的会话文件 | `conversationDir` |
+| `file-resume` | 恢复指定会话 | `conversationDir`、`sessionPath` |
+
+存储意图应在创建时明确。不要让多个活动 Session 同时写同一个会话文件。
+
+## 核心生命周期
+
+<div className="docs-lifecycle" aria-label="SDK Session 生命周期">
+  <span>create</span><b>→</b><span>subscribe</span><b>→</b><span>prompt / steer / followUp</span><b>→</b><span>abort or complete</span><b>→</b><span>close</span>
+</div>
+
+- `prompt()` 启动一个正常用户回合。
+- `steer()` 在当前执行中加入引导消息。
+- `followUp()` 将消息放入后续队列。
+- `abort()` 中止当前执行，但仍需调用 `close()` 释放会话资源。
+- `subscribe()` 返回取消订阅函数，宿主销毁时必须调用。
+
+## Session、Host 与 Catalog
+
+| API | 使用场景 |
+| --- | --- |
+| `createCodingAgentSession()` | 单个明确生命周期的活动会话 |
+| `createCodingAgentHost()` | 同一宿主中管理多个稳定 Session 生命周期 |
+| `createCodingAgentSessionCatalog()` | 离线列出、查询和管理会话元数据 |
+
+Catalog 与活动 Session 分离，不应为了展示会话列表而打开所有会话。
+
+## 可选产品能力
+
+Session 还提供模型和思考档位、工具开关、上下文压缩、自动重试、会话命名、后台任务、子 Agent、待办、MCP 重载、资源重载和 HTML 导出等能力。按需调用，不要在宿主层复制同一状态机。
+
+创建参数可提供：
+
+- `resources`、`skillSources`、`extensionSources`：静态或动态能力来源。
+- `customTools`：类型化自定义工具。
+- `askUserQuestion`：把模型提问交给宿主 UI。
+- `enableBackgroundTasks`、`enableSubagents`、`enableMcp`：显式启用对应能力。
+- `env`：传入受控环境变量，而不是修改进程全局状态。
+
+## 错误与关闭
+
+1. 在创建阶段读取 `diagnostics`，不要静默忽略扩展加载失败。
+2. 订阅 Agent、turn、message、tool、compaction 和 retry 事件，向用户保留终止语义。
+3. 宿主取消时先 `abort()`，再等待或关闭会话。
+4. 将 `close()` 放进 `finally` 或宿主生命周期钩子。
+5. 不从实现目录导入管理器来绕过公共合同。
+
+完整类型以 `@vetta/coding-agent/sdk` 的声明为准。

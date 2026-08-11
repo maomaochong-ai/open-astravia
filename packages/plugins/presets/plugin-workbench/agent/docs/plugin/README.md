@@ -14,9 +14,9 @@
 | [permissions.md](./permissions.md) | 权限完整清单、门控点、声明/授权流程 |
 | [ai.md](./ai.md) | 调用用户已配置的文本模型，模型列表、完成请求与凭据边界 |
 | [file-explorer.md](./file-explorer.md) | 文件列表右键菜单、工具栏、装饰、定位、刷新与事件 |
-| [ui-slots.md](./ui-slots.md) | **notify 全局 Toast** / 文件预览（**含大文件 getUrl 规范**）/ 全局浮层 / 活动 Tab / 输入栏动作 / **Turn 卡** / **Tool-call 槽** |
+| [ui-slots.md](./ui-slots.md) | **notify 全局 Toast** / 文件预览（**含大文件 getUrl 规范**）/ 全局浮层 / **工作区视图（整页）** / 活动 Tab / 输入栏动作 / **Turn 卡** / **Tool-call 槽** |
 | [message-cards.md](./message-cards.md) | 消息卡片：`details.cards`、`registerCardRenderer`、`pendingFor`、跨轮去重 |
-| [conversation-and-agent.md](./conversation-and-agent.md) | 对话、registerTool、**command.run**、fs、network、storage、settings、**i18n**、**工作模式 getAgentMode** |
+| [conversation-and-agent.md](./conversation-and-agent.md) | 对话、registerTool、**registerHook**、command.run、fs、network、storage、settings、i18n、工作模式 getAgentMode |
 | [app-actions.md](./app-actions.md) | 动态 App Action：JSON Schema、审批、生命周期、取消与独立发布 |
 | [system-plugins.md](./system-plugins.md) | 系统插件（presets）、租户打包 |
 | [styling-and-pitfalls.md](./styling-and-pitfalls.md) | 样式、MF 顶层 JSX 陷阱、缓存与 version bump |
@@ -29,6 +29,7 @@
 | --- | --- | --- | --- |
 | **全局 Toast / 错误通知** | `ctx.ui.notify` | 无 | [ui-slots](./ui-slots.md#全局通知-notify) |
 | 全局浮层 UI | `ctx.ui.registerGlobalSlot` | `ui.slot.global` | [ui-slots](./ui-slots.md#全局浮层-registerglobalslot) |
+| **工作区视图**（整页 + 侧边栏入口） | `ctx.ui.registerWorkspaceView` | `ui.slot.workspace-view` | [ui-slots](./ui-slots.md#工作区视图-registerworkspaceview) |
 | 文件预览 | `ctx.ui.registerFilePreview` | `ui.slot.file-preview` | [ui-slots](./ui-slots.md#文件预览-registerfilepreview) |
 | 文件列表扩展 | `ctx.fileExplorer.*` | `ui.file-explorer.*` / `workspace.read` | [file-explorer](./file-explorer.md) |
 | 活动面板 Tab | `ctx.ui.registerActivityTab` / `openActivityTab` | `ui.slot.activity-tab` | [ui-slots](./ui-slots.md#活动面板-tab-registeractivitytab) |
@@ -40,6 +41,7 @@
 | 读对话 / 事件 | hooks + `ctx.conversation.on` | `agent.session.read` | [conversation-and-agent](./conversation-and-agent.md#对话读状态) |
 | 驾驶对话 | `ctx.conversation.sendPrompt/insertText/abort` | `agent.session.write` | [conversation-and-agent](./conversation-and-agent.md#对话驾驶) |
 | 注册 Agent 工具 | `ctx.agent.registerTool` | `agent.tools.register` + `execute` | [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具) |
+| 注册 Coding Agent Hook | `ctx.agent.registerHook` | `agent.hooks.register` + `agent.hookHandler.execute` | [conversation-and-agent](./conversation-and-agent.md#注册-coding-agent-hook) |
 | 注册 App Action | `ctx.appActions.register` | `app.actions.register` + `app.actionHandler.execute` | [app-actions](./app-actions.md) |
 | 跑宿主命令 | `ctx.command.run` + 清单 `commands` | `agent.command.run` | [conversation-and-agent](./conversation-and-agent.md#命令执行-command) |
 | 长驻进程（dev server 等） | `ctx.command.spawn` + 清单 `commands` | `agent.command.spawn` | [conversation-and-agent](./conversation-and-agent.md#长驻进程-commandspawn) |

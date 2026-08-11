@@ -15,7 +15,7 @@ import { isFrameFile } from "../../engine/src/routes";
 import { parseFrameMeta } from "./frame-meta";
 
 export interface SourceIssue {
-	/** 相对 sidecar 目录的路径，如 `frames/login.tsx`。 */
+	/** 相对设计包目录的路径，如 `frames/login.tsx`。 */
 	file: string;
 	/** 1 起算；定位不到具体行时为 null。 */
 	line: number | null;
@@ -24,7 +24,7 @@ export interface SourceIssue {
 }
 
 export interface SourceFile {
-	/** 相对 sidecar 目录的路径。 */
+	/** 相对设计包目录的路径。 */
 	path: string;
 	content: string;
 }
@@ -47,7 +47,7 @@ const IMPORT_SOURCE = /^\s*(?:import|export)\b(?:[^'"]*\bfrom\s*)?["']([^"']+)["
 /**
  * 引擎 node_modules 里真实存在的东西（与 engine/package.json 的 dependencies 及
  * vite.config.mjs 的 alias 三处对齐）。设计源码 import 别的包一律构建失败——引擎是
- * 物化到 ~/.vetta/design-engine 的固定模板，agent 装不了包，也没有装包的入口。
+ * 物化到插件数据目录的固定模板，agent 装不了包，也没有装包的入口。
  *
  * `lucide-react` 在这里是**兜底**，不是推荐用法：skill 只教 Iconify 的 CSS 类，但
  * 模型对「图标」的第一反应就是去 import 它，提示词纠正不掉。既然纠不掉就接住——
@@ -85,6 +85,122 @@ const INSTALLED_ICON_SETS = ["lucide", "mdi", "simple-icons", "tabler"];
 
 /** `icon-[lucide--search]` 里的集合名。 */
 const ICONIFY_CLASS = /icon-\[([a-z0-9-]+)--/;
+
+/** theme.css 的 `@theme` 里声明的颜色 token：`--color-surface-raised: #08090a;`。 */
+const THEME_COLOR_TOKEN = /--color-([a-z][a-z0-9-]*)\s*:/g;
+
+/**
+ * `bg-` 后面跟的非颜色工具值。
+ *
+ * 这张表决定了 `undefined-theme-token` 的误报面，所以只保留 `bg-` 这一个前缀来检查：
+ * `text-`（text-sm / text-center / text-balance…）和 `border-`（border-2 / border-t /
+ * border-dashed…）里颜色与非颜色混在一起，靠名单区分必然漏，漏了就是误报。`bg-` 后面
+ * 除了下面这些就只有颜色，判据干净。
+ */
+const BG_NON_COLOR = new Set([
+	"auto",
+	"blend",
+	"bottom",
+	"center",
+	"clip",
+	"contain",
+	"cover",
+	"fixed",
+	"gradient",
+	"left",
+	"linear",
+	"local",
+	"no",
+	"none",
+	"origin",
+	"repeat",
+	"radial",
+	"repeat",
+	"right",
+	"scroll",
+	"top",
+	"conic",
+]);
+
+/** Tailwind 自带的调色板名。带数字档位的（`bg-red-500`）由 `\d` 判据先行排除。 */
+const BUILTIN_COLORS = new Set([
+	"black",
+	"current",
+	"inherit",
+	"transparent",
+	"white",
+	"amber",
+	"blue",
+	"cyan",
+	"emerald",
+	"fuchsia",
+	"gray",
+	"green",
+	"indigo",
+	"lime",
+	"neutral",
+	"orange",
+	"pink",
+	"purple",
+	"red",
+	"rose",
+	"sky",
+	"slate",
+	"stone",
+	"teal",
+	"violet",
+	"yellow",
+	"zinc",
+]);
+
+/**
+ * className 属性里出现的 `bg-<name>`。
+ *
+ * name 由纯字母段用连字符连起来，且后面不能再跟字母数字或连字符——`bg-red-500` 这类
+ * 带档位的内置色必须整条不匹配。写成 `[a-z-]*` 会在这里回溯出 `red-` 交给下游，而
+ * `red-` 不在任何名单里，于是一条完全正确的 Tailwind 类被报成未定义 token。
+ */
+const BG_TOKEN_CLASS = /\bbg-([a-z]+(?:-[a-z]+)*)(?![\w-])/g;
+
+/** theme.css 里声明了哪些颜色 token。读不到文件时返回 null——没有事实源就不做这项检查。 */
+export function themeColorTokens(themeCss: string | null): ReadonlySet<string> | null {
+	if (themeCss === null) return null;
+	const tokens = new Set<string>();
+	for (const match of themeCss.matchAll(THEME_COLOR_TOKEN)) tokens.add(match[1]);
+	return tokens.size > 0 ? tokens : null;
+}
+
+/**
+ * 用了一个 theme.css 里没有的颜色 token。
+ *
+ * Tailwind 对解析不出来的类名不生成任何 CSS——元素照常占位，只是没有背景色，源码怎么
+ * 读都是对的。截图那条链路能量出来（layout-probe 的 bg-token-undefined），但那要等到
+ * 渲染；这里在磁盘上就能判，写完就报得出来。
+ *
+ * 只在 theme.css 真的解析出了 token 时才启用：拿不到事实源就宁可不报。
+ */
+function checkThemeTokens(file: SourceFile, tokens: ReadonlySet<string>): SourceIssue[] {
+	const issues: SourceIssue[] = [];
+	const seen = new Set<string>();
+	for (const [index, line] of file.content.split("\n").entries()) {
+		if (!/className\s*=/.test(line)) continue;
+		for (const match of line.matchAll(BG_TOKEN_CLASS)) {
+			const name = match[1];
+			if (BG_NON_COLOR.has(name) || BUILTIN_COLORS.has(name) || tokens.has(name)) continue;
+			// 复合内置值（bg-gradient-to-r / bg-clip-text）第一段就在名单里，整串不是。
+			if (BG_NON_COLOR.has(name.split("-")[0])) continue;
+			if (seen.has(name)) continue;
+			seen.add(name);
+			issues.push({
+				file: file.path,
+				line: index + 1,
+				rule: "undefined-theme-token",
+				message: `Uses \`bg-${name}\`, but \`--color-${name}\` is not declared in theme.css \`@theme\`. Tailwind emits no CSS for a class it cannot resolve, so this element renders with no background at all while the source reads fine. Declare the token in theme.css, or use one that exists: ${[...tokens].slice(0, 12).join(", ")}.`,
+			});
+		}
+	}
+	return issues;
+}
 
 /** `@scope/pkg/sub` → `@scope/pkg`；`pkg/sub` → `pkg`。相对路径返回 null。 */
 function packageNameOf(source: string): string | null {
@@ -222,11 +338,13 @@ function checkFrameSize(file: SourceFile, others: readonly SourceFile[]): Source
  * 每条规则每个文件只报一次：同一个毛病在一个文件里往往命中几十行，全报出来会把
  * vetd_status 的返回撑爆，而 agent 需要的信息第一条就给全了。
  */
-export function checkSources(files: readonly SourceFile[]): SourceIssue[] {
+export function checkSources(files: readonly SourceFile[], themeCss: string | null = null): SourceIssue[] {
 	const issues: SourceIssue[] = [];
+	const tokens = themeColorTokens(themeCss);
 	for (const file of files) {
 		const sizeIssue = checkFrameSize(file, files);
 		if (sizeIssue) issues.push(sizeIssue);
+		if (tokens) issues.push(...checkThemeTokens(file, tokens));
 		const lines = file.content.split("\n");
 		const reported = new Set<string>();
 		for (const [index, line] of lines.entries()) {

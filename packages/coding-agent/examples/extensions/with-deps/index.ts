@@ -9,9 +9,9 @@ import { Type } from "@sinclair/typebox";
 import type { ExtensionAPI } from "@vetta/coding-agent";
 import ms from "ms";
 
-export default function (pi: ExtensionAPI) {
+export default function (api: ExtensionAPI) {
 	// Register a tool that uses ms
-	pi.registerTool({
+	api.registerTool({
 		name: "parse_duration",
 		label: "Parse Duration",
 		description: "Parse a human-readable duration string (e.g., '2 days', '1h', '5m') to milliseconds",

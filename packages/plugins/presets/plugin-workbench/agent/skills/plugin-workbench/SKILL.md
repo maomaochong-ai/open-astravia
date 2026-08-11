@@ -73,7 +73,7 @@ workbenchRoot = listPlugins() 中 id === "plugin-workbench" 的 rootPath
 
 1. 用户已打开输入栏 **「制作插件」** toggle（硬隔离；关着则 skill/agent 贡献不可见）。  
 2. 工程在**当前会话 cwd**（或一层子目录），无特殊工场目录。  
-3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（scaffold 默认 sdk `^0.1.1` / vite `^0.0.5`，两者版本独立；若 install 失败问用户 registry/版本）。  
+3. 用户插件依赖：`@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` 用 **registry 已发布 semver**（scaffold 默认 sdk `^0.1.1` / vite `^0.0.6`，两者版本独立；若 install 失败问用户 registry/版本）。
 4. 构建用 **托管 Node + npm**；标准脚本封装，禁止随意手搓另一套 pack（除非用户明确要求且你已读 getting-started 的打包约定）。
 
 ---
@@ -173,7 +173,7 @@ node "{workbenchRoot}/scripts/build-and-pack.mjs" "{pluginRoot}"
 
 Activity Tab「制作插件」（同样受 toggle 硬隔离）：扫描 cwd、构建、应用、卸载、重载、改 name/引导词。与对话同一规则与同一脚本。
 
-每张工程卡片有 **「热更新」开关（已安装后默认开）**：宿主把插件 dev 链接到工程目录并常驻 `vite build --watch`，保存源码即自动构建 + 自动重载（无需 bump/重打 zip/手动 reload）。适合迭代调试。
+每张工程卡片有 **「热更新」开关（已安装后默认开）**：宿主把插件 dev 链接到工程目录并常驻 `vetta-plugin dev`；React / CSS 走 HMR，其余资源定向重载（无需 bump/重打 zip/手动 reload）。适合迭代调试。
 
 已安装时还有 **「重新安装」**（与消息卡按钮同路径）：强制 build-and-pack → 把权限/命令**持久写入注册表** → **刷新整个 Vetta 窗口**。日常改代码 / 改 plugin.json 靠热更新即可（dev 会话内权限声明自动放行）；重新安装用于落盘授权或热更新异常时兜底。首次安装仍用「应用到 Vetta」。
 

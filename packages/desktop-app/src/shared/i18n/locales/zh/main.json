@@ -15,6 +15,23 @@
 	"pet": {
 		"openDevTools": "打开桌宠开发者工具"
 	},
+	"mcpOAuth": {
+		"authorizationSuccessful": "授权成功",
+		"authorizationFailed": "授权失败",
+		"returnToVetta": "你可以关闭此窗口并返回 Vetta。",
+		"closeAndRetry": "你可以关闭此窗口并返回 Vetta 重试。",
+		"missingAuthorizationCode": "缺少授权码",
+		"callbackAlreadySettled": "OAuth 回调已经结束",
+		"callbackTimedOut": "等待浏览器 OAuth 授权超时",
+		"callbackBindFailed": "无法启动 OAuth 回调服务",
+		"devicePageBindFailed": "无法启动设备码展示服务",
+		"connectGitHub": "连接 GitHub",
+		"enterDeviceCode": "请在 GitHub 页面输入此代码，然后点击授权。",
+		"copyCode": "复制代码",
+		"openGitHub": "打开 GitHub 进行授权",
+		"closeAfterAuthorization": "在 Vetta 中完成授权后即可关闭此窗口。",
+		"deviceFlowDisabled": "设备码请求失败（422）。请在 OAuth 或 GitHub App 设置中启用 Device Flow：{{details}}"
+	},
 	"updater": {
 		"errors": {
 			"developmentUnsupported": "开发模式不支持自动更新",

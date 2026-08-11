@@ -1,6 +1,7 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState } from "react";
 import { getPluginCtx, notify } from "../plugin-context";
+import { PluginPortal } from "../plugin-portal";
 import { frameUrl, pathOfFrame } from "../vetd/frame-url";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import { usePreviewBridge } from "./preview-client";
@@ -127,63 +128,67 @@ export function PreviewDialog({ port, frames, initialFrameId, onClose }: Preview
 		{ edge: "se", className: "-bottom-1 -right-1 size-3 cursor-nwse-resize" },
 	];
 
+	// portal 到 body：活动面板的顶部 tablist 与面板内容是兄弟节点且后绘制，留在画布
+	// 子树里再高的 z-index 也会被它盖住。PluginPortal 负责重新进入插件 CSS 的 @scope。
 	return (
-		// biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop
-		<div
-			className="fixed inset-0 z-50 flex overflow-auto bg-black/60 p-6"
-			// 画布根节点在托手/空格态会 setPointerCapture 接管平移，指针事件漏下去
-			// 会让画布跟着预览里的拖动一起跑。
-			onPointerDown={(event) => event.stopPropagation()}
-			onPointerMove={(event) => event.stopPropagation()}
-			onPointerUp={(event) => event.stopPropagation()}
-			onClick={onClose}
-			onContextMenu={(event) => event.preventDefault()}
-		>
-			{/* biome-ignore lint/a11y/noStaticElementInteractions: keeps backdrop clicks off the window */}
+		<PluginPortal>
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop */}
 			<div
-				className="m-auto flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-				style={{ width: viewport.width }}
-				role="dialog"
-				aria-label={t("previewMode.title")}
-				onClick={(event) => event.stopPropagation()}
+				className="fixed inset-0 z-[1020] flex overflow-auto bg-black/60 p-6"
+				// 画布根节点在托手/空格态会 setPointerCapture 接管平移，指针事件漏下去
+				// 会让画布跟着预览里的拖动一起跑。
+				onPointerDown={(event) => event.stopPropagation()}
+				onPointerMove={(event) => event.stopPropagation()}
+				onPointerUp={(event) => event.stopPropagation()}
+				onClick={onClose}
+				onContextMenu={(event) => event.preventDefault()}
 			>
-				<PreviewToolbar
-					frames={frames}
-					currentFrameId={currentFrameId}
-					path={path}
-					canBack={nav?.canBack === true}
-					canForward={nav?.canForward === true}
-					viewport={viewport}
-					onBack={() => go(-1)}
-					onForward={() => go(1)}
-					onReload={reload}
-					onPickFrame={(frameId) => navigateTo(pathOfFrame(frameId))}
-					onPickViewport={setViewport}
-					onResetViewport={resetViewport}
-					onOpenExternal={openExternal}
-					onClose={onClose}
-				/>
-				<div className="relative bg-white" style={{ height: viewport.height }}>
-					<iframe
-						ref={iframeRef}
-						title={t("previewMode.title")}
-						src={initialUrlRef.current}
-						className="h-full w-full border-0"
+				{/* biome-ignore lint/a11y/noStaticElementInteractions: keeps backdrop clicks off the window */}
+				<div
+					className="m-auto flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+					style={{ width: viewport.width }}
+					role="dialog"
+					aria-label={t("previewMode.title")}
+					onClick={(event) => event.stopPropagation()}
+				>
+					<PreviewToolbar
+						frames={frames}
+						currentFrameId={currentFrameId}
+						path={path}
+						canBack={nav?.canBack === true}
+						canForward={nav?.canForward === true}
+						viewport={viewport}
+						onBack={() => go(-1)}
+						onForward={() => go(1)}
+						onReload={reload}
+						onPickFrame={(frameId) => navigateTo(pathOfFrame(frameId))}
+						onPickViewport={setViewport}
+						onResetViewport={resetViewport}
+						onOpenExternal={openExternal}
+						onClose={onClose}
 					/>
-					{/* 拉伸手柄。压在 iframe 边缘之上，否则指针一进 iframe 事件就归它了。 */}
-					{handles.map(({ edge, className }) => (
-						// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
-						<div
-							key={edge}
-							className={`absolute z-10 ${className}`}
-							onPointerDown={(event) => beginResize(event, edge)}
-							onPointerMove={moveResize}
-							onPointerUp={endResize}
-							onPointerCancel={endResize}
+					<div className="relative bg-white" style={{ height: viewport.height }}>
+						<iframe
+							ref={iframeRef}
+							title={t("previewMode.title")}
+							src={initialUrlRef.current}
+							className="h-full w-full border-0"
 						/>
-					))}
+						{/* 拉伸手柄。压在 iframe 边缘之上，否则指针一进 iframe 事件就归它了。 */}
+						{handles.map(({ edge, className }) => (
+							// biome-ignore lint/a11y/noStaticElementInteractions: resize handle
+							<div
+								key={edge}
+								className={`absolute z-10 ${className}`}
+								onPointerDown={(event) => beginResize(event, edge)}
+								onPointerMove={moveResize}
+								onPointerUp={endResize}
+								onPointerCancel={endResize}
+							/>
+						))}
+					</div>
 				</div>
 			</div>
-		</div>
+		</PluginPortal>
 	);
 }

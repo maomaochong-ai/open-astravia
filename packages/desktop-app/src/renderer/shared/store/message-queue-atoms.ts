@@ -1,18 +1,21 @@
-import type { PromptRequest } from "@vetta/runtime-core";
 import { atom } from "jotai";
 
+/**
+ * kernel 输入队列的渲染端镜像条目（ADR-0060）。队列唯一属主是主进程 kernel 的
+ * SessionInputQueue；渲染端只消费 queue.changed 事件与 getQueueState 快照，
+ * 所有修改（移除/重排/立即发送/继续/清空）都走 IPC 回 kernel。
+ */
 export interface QueuedMessage {
 	id: string;
-	request: PromptRequest;
 	displayText: string;
+	behavior: "steer" | "followUp";
 }
 
-/**
- * streaming 期间排队的消息，按 session 的 runtimeId 隔离。
- * 纯内存，无持久化，app 重启清空。
- * Map<runtimeId, QueuedMessage[]>
- */
+/** Map<runtimeId, QueuedMessage[]>，按 session 的 runtimeId 隔离的队列镜像。 */
 export const messageQueueBySessionAtom = atom<Map<string, QueuedMessage[]>>(new Map());
+
+/** abort/error 后 kernel 队列进入 paused（pause-on-terminal），UI 据此提示「继续发送」。 */
+export const messageQueuePausedBySessionAtom = atom<Map<string, boolean>>(new Map());
 
 export function getQueueForSession(
 	map: Map<string, QueuedMessage[]>,
@@ -22,38 +25,10 @@ export function getQueueForSession(
 	return map.get(runtimeId) ?? [];
 }
 
-export const enqueueMessageAtom = atom(
-	null,
-	(get, set, { runtimeId, item }: { runtimeId: string; item: QueuedMessage }) => {
-		const prev = get(messageQueueBySessionAtom);
-		const next = new Map(prev);
-		next.set(runtimeId, [...(prev.get(runtimeId) ?? []), item]);
-		set(messageQueueBySessionAtom, next);
-	},
-);
-
-export const dequeueHeadAtom = atom(null, (get, set, runtimeId: string): QueuedMessage | null => {
-	const prev = get(messageQueueBySessionAtom);
-	const queue = prev.get(runtimeId);
-	if (!queue || queue.length === 0) return null;
-	const [head, ...rest] = queue;
-	const next = new Map(prev);
-	if (rest.length === 0) next.delete(runtimeId);
-	else next.set(runtimeId, rest);
-	set(messageQueueBySessionAtom, next);
-	return head;
-});
-
-export const removeQueuedMessageAtom = atom(null, (get, set, { runtimeId, id }: { runtimeId: string; id: string }) => {
-	const prev = get(messageQueueBySessionAtom);
-	const queue = prev.get(runtimeId);
-	if (!queue) return;
-	const rest = queue.filter((item) => item.id !== id);
-	const next = new Map(prev);
-	if (rest.length === 0) next.delete(runtimeId);
-	else next.set(runtimeId, rest);
-	set(messageQueueBySessionAtom, next);
-});
+export function isQueuePausedForSession(map: Map<string, boolean>, runtimeId: string | null | undefined): boolean {
+	if (!runtimeId) return false;
+	return map.get(runtimeId) ?? false;
+}
 
 export const setQueueForSessionAtom = atom(
 	null,
@@ -66,10 +41,37 @@ export const setQueueForSessionAtom = atom(
 	},
 );
 
+export const setQueuePausedAtom = atom(
+	null,
+	(get, set, { runtimeId, paused }: { runtimeId: string; paused: boolean }) => {
+		const prev = get(messageQueuePausedBySessionAtom);
+		if ((prev.get(runtimeId) ?? false) === paused) return;
+		const next = new Map(prev);
+		if (paused) next.set(runtimeId, true);
+		else next.delete(runtimeId);
+		set(messageQueuePausedBySessionAtom, next);
+	},
+);
+
+export const clearQueueAtom = atom(null, (get, set, runtimeId: string) => {
+	const prev = get(messageQueueBySessionAtom);
+	if (prev.has(runtimeId)) {
+		const next = new Map(prev);
+		next.delete(runtimeId);
+		set(messageQueueBySessionAtom, next);
+	}
+	const prevPaused = get(messageQueuePausedBySessionAtom);
+	if (prevPaused.has(runtimeId)) {
+		const nextPaused = new Map(prevPaused);
+		nextPaused.delete(runtimeId);
+		set(messageQueuePausedBySessionAtom, nextPaused);
+	}
+});
+
 /**
- * 队列派发序号：每当「立即发送 / 自然出队」把一条排队消息作为新一轮 prompt 真正发出时 +1。
+ * 队列派发序号：每当一条排队消息作为新一轮 prompt 真正发出时 +1。
  *
- * agent_end 会异步 getFullHistory 后整体替换消息列表以回填 entryId。但当某回合结束的同一
+ * agent_end 会异步 getFullHistory 后整体替换消息列表以回填 entryId。当某回合结束的同一
  * 时机（或结束后）发生了队列派发，这个整体替换就「跨到了下一轮」：mapped 可能已含下一条
  * 用户消息（→ 与乐观气泡重复），也可能尚不含（→ 冲掉乐观气泡并令 draft 串台）。
  *
@@ -86,11 +88,3 @@ export function bumpQueuedDispatchSeq(runtimeId: string): void {
 export function getQueuedDispatchSeq(runtimeId: string): number {
 	return queuedDispatchSeqBySession.get(runtimeId) ?? 0;
 }
-
-export const clearQueueAtom = atom(null, (get, set, runtimeId: string) => {
-	const prev = get(messageQueueBySessionAtom);
-	if (!prev.has(runtimeId)) return;
-	const next = new Map(prev);
-	next.delete(runtimeId);
-	set(messageQueueBySessionAtom, next);
-});

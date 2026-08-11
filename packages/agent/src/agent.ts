@@ -4,7 +4,6 @@
  */
 
 import {
-	getModel,
 	type ImageContent,
 	type Message,
 	type Model,
@@ -27,10 +26,13 @@ if (typeof process !== "undefined" && (process.versions?.node || process.version
 }
 
 import { agentLoop, agentLoopContinue } from "./agent-loop.js";
+import { type AgentContinuationProvider, AgentMessageQueue } from "./runtime/message-queue.js";
+import { projectAgentEvent } from "./runtime/state-projection.js";
 import type {
 	AgentContext,
 	AgentEvent,
 	AgentLoopConfig,
+	AgentLoopLimits,
 	AgentMessage,
 	AgentState,
 	AgentTool,
@@ -44,6 +46,13 @@ import type {
  */
 function defaultConvertToLlm(messages: AgentMessage[]): Message[] {
 	return messages.filter((m) => m.role === "user" || m.role === "assistant" || m.role === "toolResult");
+}
+
+function getErrorMessage(error: unknown): string {
+	if (typeof error === "object" && error !== null && "message" in error && typeof error.message === "string") {
+		return error.message;
+	}
+	return String(error);
 }
 
 export interface AgentOptions {
@@ -120,12 +129,14 @@ export interface AgentOptions {
 	 * 允许从助手正文中还原调用的工具名白名单，详见 AgentLoopConfig.salvageTextToolCalls。
 	 */
 	salvageTextToolCalls?: string[];
+
+	/** Finite execution budgets for each prompt. */
+	limits?: AgentLoopLimits;
 }
 
 export class Agent {
 	private _state: AgentState = {
 		systemPrompt: "",
-		model: getModel("google", "gemini-2.5-flash-lite-preview-06-17"),
 		thinkingLevel: "off",
 		tools: [],
 		messages: [],
@@ -139,15 +150,12 @@ export class Agent {
 	private abortController?: AbortController;
 	private convertToLlm: (messages: AgentMessage[]) => Message[] | Promise<Message[]>;
 	private transformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
-	private steeringQueue: AgentMessage[] = [];
-	private followUpQueue: AgentMessage[] = [];
-	private steeringMode: "all" | "one-at-a-time";
-	private followUpMode: "all" | "one-at-a-time";
+	private readonly messageQueue: AgentMessageQueue;
 	public streamFn: StreamFn;
 	private _sessionId?: string;
 	public getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
 	/** Called at a natural stopping point to decide whether the agent should continue. */
-	public continuationProvider?: (signal?: AbortSignal) => AgentMessage[] | Promise<AgentMessage[]>;
+	public continuationProvider?: AgentContinuationProvider;
 	private runningPrompt?: Promise<void>;
 	private resolveRunningPrompt?: () => void;
 	private _thinkingBudgets?: ThinkingBudgets;
@@ -156,13 +164,16 @@ export class Agent {
 	private tracer?: RuntimeTracer;
 	private tracing?: AgentTracingOptions;
 	private salvageTextToolCalls?: string[];
+	private limits?: AgentLoopLimits;
 
 	constructor(opts: AgentOptions = {}) {
 		this._state = { ...this._state, ...opts.initialState };
 		this.convertToLlm = opts.convertToLlm || defaultConvertToLlm;
 		this.transformContext = opts.transformContext;
-		this.steeringMode = opts.steeringMode || "one-at-a-time";
-		this.followUpMode = opts.followUpMode || "one-at-a-time";
+		this.messageQueue = new AgentMessageQueue(
+			opts.steeringMode || "one-at-a-time",
+			opts.followUpMode || "one-at-a-time",
+		);
 		this.streamFn = opts.streamFn || streamSimple;
 		this._sessionId = opts.sessionId;
 		this.getApiKey = opts.getApiKey;
@@ -172,6 +183,7 @@ export class Agent {
 		this.tracer = opts.tracer;
 		this.tracing = opts.tracing;
 		this.salvageTextToolCalls = opts.salvageTextToolCalls;
+		this.limits = opts.limits;
 	}
 
 	/**
@@ -255,19 +267,19 @@ export class Agent {
 	}
 
 	setSteeringMode(mode: "all" | "one-at-a-time") {
-		this.steeringMode = mode;
+		this.messageQueue.setSteeringMode(mode);
 	}
 
 	getSteeringMode(): "all" | "one-at-a-time" {
-		return this.steeringMode;
+		return this.messageQueue.getSteeringMode();
 	}
 
 	setFollowUpMode(mode: "all" | "one-at-a-time") {
-		this.followUpMode = mode;
+		this.messageQueue.setFollowUpMode(mode);
 	}
 
 	getFollowUpMode(): "all" | "one-at-a-time" {
-		return this.followUpMode;
+		return this.messageQueue.getFollowUpMode();
 	}
 
 	setTools(t: AgentTool<any>[]) {
@@ -287,7 +299,7 @@ export class Agent {
 	 * Delivered after current tool execution, skips remaining tools.
 	 */
 	steer(m: AgentMessage) {
-		this.steeringQueue.push(m);
+		this.messageQueue.enqueueSteering(m);
 	}
 
 	/**
@@ -295,62 +307,31 @@ export class Agent {
 	 * Delivered only when agent has no more tool calls or steering messages.
 	 */
 	followUp(m: AgentMessage) {
-		this.followUpQueue.push(m);
+		this.messageQueue.enqueueFollowUp(m);
 	}
 
 	clearSteeringQueue() {
-		this.steeringQueue = [];
+		this.messageQueue.clearSteering();
 	}
 
 	clearFollowUpQueue() {
-		this.followUpQueue = [];
+		this.messageQueue.clearFollowUp();
 	}
 
 	clearAllQueues() {
-		this.steeringQueue = [];
-		this.followUpQueue = [];
+		this.messageQueue.clear();
 	}
 
 	hasQueuedMessages(): boolean {
-		return this.steeringQueue.length > 0 || this.followUpQueue.length > 0;
+		return this.messageQueue.hasMessages();
 	}
 
 	private dequeueSteeringMessages(): AgentMessage[] {
-		if (this.steeringMode === "one-at-a-time") {
-			if (this.steeringQueue.length > 0) {
-				const first = this.steeringQueue[0];
-				this.steeringQueue = this.steeringQueue.slice(1);
-				return [first];
-			}
-			return [];
-		}
-
-		const steering = this.steeringQueue.slice();
-		this.steeringQueue = [];
-		return steering;
+		return this.messageQueue.dequeueSteering();
 	}
 
 	private async collectContinuationMessages(signal?: AbortSignal): Promise<AgentMessage[]> {
-		// Allow external policies to keep the agent running (e.g., todo continuation).
-		if (this.continuationProvider) {
-			const injected = await this.continuationProvider(signal);
-			if (injected.length > 0) {
-				this.followUpQueue.push(...injected);
-			}
-		}
-
-		if (this.followUpMode === "one-at-a-time") {
-			if (this.followUpQueue.length > 0) {
-				const first = this.followUpQueue[0];
-				this.followUpQueue = this.followUpQueue.slice(1);
-				return [first];
-			}
-			return [];
-		}
-
-		const followUp = this.followUpQueue.slice();
-		this.followUpQueue = [];
-		return followUp;
+		return this.messageQueue.collectContinuation(this.continuationProvider, signal);
 	}
 
 	clearMessages() {
@@ -371,8 +352,7 @@ export class Agent {
 		this._state.streamMessage = null;
 		this._state.pendingToolCalls = new Set<string>();
 		this._state.error = undefined;
-		this.steeringQueue = [];
-		this.followUpQueue = [];
+		this.messageQueue.clear();
 	}
 
 	/** Send a prompt with an AgentMessage */
@@ -481,6 +461,7 @@ export class Agent {
 			transport: this._transport,
 			thinkingBudgets: this._thinkingBudgets,
 			maxRetryDelayMs: this._maxRetryDelayMs,
+			limits: this.limits,
 			tracer: this.tracer,
 			tracing: {
 				...this.tracing,
@@ -517,51 +498,7 @@ export class Agent {
 				: agentLoopContinue(context, config, this.abortController.signal, this.streamFn);
 
 			for await (const event of stream) {
-				// Update internal state based on events
-				switch (event.type) {
-					case "message_start":
-						partial = event.message;
-						this._state.streamMessage = event.message;
-						break;
-
-					case "message_update":
-						partial = event.message;
-						this._state.streamMessage = event.message;
-						break;
-
-					case "message_end":
-						partial = null;
-						this._state.streamMessage = null;
-						this.appendMessage(event.message);
-						break;
-
-					case "tool_execution_start": {
-						const s = new Set(this._state.pendingToolCalls);
-						s.add(event.toolCallId);
-						this._state.pendingToolCalls = s;
-						break;
-					}
-
-					case "tool_execution_end": {
-						const s = new Set(this._state.pendingToolCalls);
-						s.delete(event.toolCallId);
-						this._state.pendingToolCalls = s;
-						break;
-					}
-
-					case "turn_end":
-						if (event.message.role === "assistant" && (event.message as any).errorMessage) {
-							this._state.error = (event.message as any).errorMessage;
-						}
-						break;
-
-					case "agent_end":
-						this._state.isStreaming = false;
-						this._state.streamMessage = null;
-						break;
-				}
-
-				// Emit to listeners
+				partial = projectAgentEvent(this._state, event, partial);
 				this.emit(event);
 			}
 
@@ -581,7 +518,8 @@ export class Agent {
 					}
 				}
 			}
-		} catch (err: any) {
+		} catch (error: unknown) {
+			const errorMessage = getErrorMessage(error);
 			const errorMsg: AgentMessage = {
 				role: "assistant",
 				content: [{ type: "text", text: "" }],
@@ -597,12 +535,12 @@ export class Agent {
 					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 				},
 				stopReason: this.abortController?.signal.aborted ? "aborted" : "error",
-				errorMessage: err?.message || String(err),
+				errorMessage,
 				timestamp: Date.now(),
 			} as AgentMessage;
 
 			this.appendMessage(errorMsg);
-			this._state.error = err?.message || String(err);
+			this._state.error = errorMessage;
 			this.emit({ type: "agent_end", messages: [errorMsg] });
 		} finally {
 			this._state.isStreaming = false;

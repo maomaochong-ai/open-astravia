@@ -4,6 +4,19 @@ import type {
 	PluginNetworkResponse,
 	PluginSettingsApi,
 } from "@vetta-org/plugin-sdk";
+import type { ContentProviderGenerationContext } from "../src/generation/types";
+
+export function createGenerationContext(
+	data: Record<string, { data: string; mimeType: string }> = {},
+): ContentProviderGenerationContext {
+	return {
+		readReference: async (reference) => {
+			const stored = data[reference.id];
+			if (!stored) throw new Error(`missing reference fixture: ${reference.id}`);
+			return stored;
+		},
+	};
+}
 
 export function createSettings(values: Record<string, unknown>): PluginSettingsApi {
 	return {

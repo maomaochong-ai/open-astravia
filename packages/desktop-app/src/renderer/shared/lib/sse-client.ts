@@ -1,4 +1,5 @@
 type SSEEventHandler = (data: unknown) => void;
+const HostEventSource = globalThis.EventSource;
 
 export type SSEConnectionState = "disconnected" | "connecting" | "connected";
 
@@ -69,7 +70,7 @@ export function createSSEClient(): SSEClient {
 		setState("connecting");
 
 		const url = `${currentBaseUrl}/events/stream?token=${encodeURIComponent(currentToken)}`;
-		const es = new EventSource(url);
+		const es = new HostEventSource(url);
 		eventSource = es;
 
 		es.addEventListener("connected", (e) => {

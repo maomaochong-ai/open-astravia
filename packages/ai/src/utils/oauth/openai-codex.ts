@@ -6,14 +6,17 @@
  */
 
 // NEVER convert to top-level imports - breaks browser/Vite builds
-let _randomBytes: typeof import("node:crypto").randomBytes | null = null;
-let _http: typeof import("node:http") | null = null;
+import type { randomBytes } from "node:crypto";
+import type { createServer } from "node:http";
+
+let _randomBytes: typeof randomBytes | null = null;
+let _createServer: typeof createServer | null = null;
 if (typeof process !== "undefined" && (process.versions?.node || process.versions?.bun)) {
 	import("node:crypto").then((m) => {
 		_randomBytes = m.randomBytes;
 	});
 	import("node:http").then((m) => {
-		_http = m;
+		_createServer = m.createServer;
 	});
 }
 
@@ -210,12 +213,12 @@ type OAuthServerInfo = {
 };
 
 function startLocalOAuthServer(state: string): Promise<OAuthServerInfo> {
-	if (!_http) {
+	if (!_createServer) {
 		throw new Error("OpenAI Codex OAuth is only available in Node.js environments");
 	}
 	let lastCode: string | null = null;
 	let cancelled = false;
-	const server = _http.createServer((req, res) => {
+	const server = _createServer((req, res) => {
 		try {
 			const url = new URL(req.url || "", "http://localhost");
 			if (url.pathname !== "/auth/callback") {

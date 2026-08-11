@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **中断不再丢弃已流出的部分回复**：abort 发生在模型流中途时，引擎此前立刻放弃等待——而 provider（如 anthropic adapter）在 abort 时对 result 是直接 reject，已流出的内容只存在于事件流累积的 `partial` 快照里，结果部分 assistant 消息既不进 run 结果也不发 `assistant_message` 事件（宿主无从落盘，UI 上先显示后被历史重放吞掉）。现在 abort 后优先在 1.5 秒宽限内等 result 交回完整 aborted 消息，provider 直接 reject 时退回事件流最后一个非空 `partial` 并标记 `stopReason: "aborted"`，计入 `messages`、照常发事件，随后仍以统一的 `aborted` 状态终止；无任何已流出内容时行为与原来一致。
+
 ### Changed
 
 - **Vitest 依赖上收到 monorepo 根**：本包不再声明 `devDependencies.vitest`，改用根目录统一版本；包内仍保留 `vitest.config.ts` 与 `"test": "vitest --run"`。
@@ -18,6 +22,9 @@
 
 ### Added
 
+- **可选模型调用上下文检查点**：`AgentLoopConfig.contextCheckpoints` 默认关闭；启用后，Agent Loop 在模型调用前、assistant 自然结果和 assistant error 后发出请求—应答事件并等待宿主完成，支持持久压缩后替换内部上下文、一次错误恢复及恢复前 steering 注入，不改变普通 Agent 调用路径。
+- 新增 `AgentToolExecutionError`：工具适配层可以向 `ToolResultMessage.details` 传递稳定错误码、可重试标记和结构化元数据，不再只能依赖错误文本判断运行时能力变化。
+- **模型调用级动态上下文**：`AgentLoopConfig.resolveCallContext` 在每次 LLM 调用前刷新 system prompt 与 tools；同一 Agent Loop 的后续模型调用可以看到受控的运行时能力变化。
 - 将 Agent 自然停止点的自动续跑钩子明确为异步 `continuationProvider`，底层 `AgentLoopConfig` 对应改为 `getContinuationMessages`；普通 `followUp()` 消息队列语义保持不变。
 - 新增平台无关 tracing 接入点：`AgentOptions` / `AgentLoopConfig` 可传入 `RuntimeTracer`，agent loop 会把 agent run、LLM generation、tool call 映射为 observation，并上报 token usage、cost、错误与工具耗时；正文捕获由 `tracing.captureContent` 显式控制。
 - 完善 tracing payload：LLM generation input 记录 system prompt、消息和工具定义结构，tool observation 记录工具描述/schema 与调用参数结构；root agent observation 改为运行摘要，避免和 generation 输入/输出重复。

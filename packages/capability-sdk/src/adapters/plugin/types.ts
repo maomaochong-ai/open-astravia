@@ -16,6 +16,7 @@ export const PLUGIN_CAPABILITY_PERMISSIONS = {
 export interface PluginCapabilityAdapterOptions {
 	readonly isOfficialPlugin: (pluginId: string) => boolean;
 	readonly resolvePermissions: (pluginId: string) => readonly string[];
+	readonly onSessionClosed?: (pluginId: string) => void;
 }
 
 export interface PluginCapabilitySession {

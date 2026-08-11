@@ -923,6 +923,7 @@
   "section_pet-bubble": "Bubble Style",
   "section_pet-developer": "Developer",
   "updaterChecking": "Checking...",
+  "appVersion": "Current Version",
   "updaterIdle": "Already on the latest version ({{version}})",
   "updaterCheck": "Check for Updates",
   "updaterCheckingBtn": "Checking...",

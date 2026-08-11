@@ -1,3 +1,4 @@
+import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, type PluginCodingAgentHookEventName } from "@vetta-org/plugin-sdk";
 import { ipcMain, webContents } from "electron";
 import type { AppMonitorResourceOperation, AppMonitorResourceSource } from "../../preload/api-types/app-monitor.js";
 import type {
@@ -30,6 +31,7 @@ import {
 } from "../plugins/offscreen-capture-service.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { startPluginDevWatch, stopPluginDevWatch } from "../plugins/plugin-dev-watch.js";
+import { parsePluginInstallOptions } from "../plugins/plugin-install-options.js";
 import {
 	beginDynamicAgentContributionLoad,
 	buildAgentPluginRuntimeConfig,
@@ -42,6 +44,7 @@ import {
 	installPluginFromUrl,
 	listPlugins,
 	pluginVisibleInAgentMode,
+	registerDynamicAgentHook,
 	registerDynamicAgentTool,
 	registerDynamicContinuationProvider,
 	registerDynamicSystemPromptProvider,
@@ -54,6 +57,7 @@ import {
 	setPluginSettings,
 	summarizeAgentPluginRuntimeConfig,
 	uninstallPlugin,
+	unregisterDynamicAgentHook,
 	unregisterDynamicAgentTool,
 	unregisterDynamicContinuationProvider,
 	unregisterDynamicSystemPromptProvider,
@@ -67,17 +71,7 @@ function asArchiveBuffer(value: unknown): ArrayBuffer | Buffer {
 }
 
 function asOptions(value: unknown): PluginInstallOptions | undefined {
-	if (value === undefined || value === null) return undefined;
-	if (typeof value !== "object") throw new Error("Invalid plugin install options");
-	const input = value as Record<string, unknown>;
-	const source = input.source === "remote" ? "remote" : input.source === "archive" ? "archive" : undefined;
-	const grantedPermissions =
-		Array.isArray(input.grantedPermissions) && input.grantedPermissions.every((item) => typeof item === "string")
-			? (input.grantedPermissions as PluginPermission[])
-			: undefined;
-	const enable = input.enable === true ? true : input.enable === false ? false : undefined;
-	const expectedSha256 = typeof input.expectedSha256 === "string" ? input.expectedSha256 : undefined;
-	return { source, grantedPermissions, enable, expectedSha256 };
+	return parsePluginInstallOptions(value);
 }
 
 function asPluginId(value: unknown): string {
@@ -125,6 +119,14 @@ function asOptionalStringArray(value: unknown): string[] | undefined {
 	if (!Array.isArray(value)) return undefined;
 	const out = value.filter((v): v is string => typeof v === "string" && v.length > 0);
 	return out.length > 0 ? out : [];
+}
+
+function asStrictOptionalStringArray(value: unknown, fieldName: string): string[] | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim().length === 0)) {
+		throw new Error(`Invalid ${fieldName}`);
+	}
+	return value.map((item) => item.trim());
 }
 
 function asHandlerContext(value: unknown): { conversation?: "summary" | "messages" } | undefined {
@@ -175,6 +177,37 @@ function asAgentToolRegistration(value: unknown): {
 		context: asHandlerContext(input.context),
 		// 渲染进程在注册时探测该工具有没有 tool-call slot；有则宿主注入 md_intro 参数。
 		rendersCard: input.rendersCard === true ? true : undefined,
+	};
+}
+
+function asAgentHookRegistration(value: unknown): {
+	id: string;
+	eventName: PluginCodingAgentHookEventName;
+	handlerId: string;
+	activationId?: string;
+	timeoutMs?: number;
+	scope_use: string[];
+	agent_mode?: string[];
+	toolNames?: string[];
+} {
+	const input = asRecord(value, "agent hook registration");
+	if (!PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES.some((eventName) => eventName === input.eventName)) {
+		throw new Error("Invalid Coding Agent Hook eventName");
+	}
+	const scopeUse = asStrictOptionalStringArray(input.scope_use, "agent hook scope_use");
+	if (!scopeUse?.length) throw new Error("Agent hook scope_use must not be empty");
+	return {
+		id: asPluginId(input.id),
+		eventName: input.eventName as PluginCodingAgentHookEventName,
+		handlerId: asPluginId(input.handlerId),
+		activationId: asOptionalStringId(input.activationId, "agent hook activation id"),
+		timeoutMs:
+			typeof input.timeoutMs === "number" && Number.isFinite(input.timeoutMs) && input.timeoutMs > 0
+				? Math.min(Math.floor(input.timeoutMs), 30_000)
+				: undefined,
+		scope_use: scopeUse,
+		agent_mode: asStrictOptionalStringArray(input.agent_mode, "agent hook agent_mode"),
+		toolNames: asStrictOptionalStringArray(input.toolNames, "agent hook toolNames"),
 	};
 }
 
@@ -364,6 +397,7 @@ function recordPluginResourceEvent(input: {
 function toAppMonitorPluginSource(source: InstalledPlugin["source"]): AppMonitorResourceSource {
 	if (source === "system") return "system";
 	if (source === "remote") return "remote";
+	if (source === "npm") return "npm";
 	return "archive";
 }
 
@@ -476,9 +510,13 @@ async function installOfficialPluginFromPath(
 	const normalized = asOptions(options);
 	const enable = normalized?.enable !== false;
 	let plugin = await installFromPath(path, {
-		source: "archive",
+		source: normalized?.source ?? "archive",
 		grantedPermissions: normalized?.grantedPermissions,
 		enable,
+		expectedSha256: normalized?.expectedSha256,
+		expectedId: normalized?.expectedId,
+		expectedVersion: normalized?.expectedVersion,
+		npm: normalized?.npm,
 	});
 	if (
 		(!normalized?.grantedPermissions || normalized.grantedPermissions.length === 0) &&
@@ -570,9 +608,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	});
 	ipcMain.handle(
 		"vetta:plugins:command-run",
-		(_event, pluginId: unknown, file: unknown, args: unknown, options: unknown) =>
+		(_event, sessionId: unknown, file: unknown, args: unknown, options: unknown) =>
 			runPluginCommand(
-				asPluginId(pluginId),
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
 				typeof file === "string" ? file : "",
 				args,
 				(options ?? undefined) as PluginCommandRunOptions | undefined,
@@ -580,19 +618,19 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	);
 	ipcMain.handle(
 		"vetta:plugins:command-spawn",
-		(_event, pluginId: unknown, file: unknown, args: unknown, options: unknown) =>
+		(_event, sessionId: unknown, file: unknown, args: unknown, options: unknown) =>
 			spawnPluginCommand(
-				asPluginId(pluginId),
+				capabilityAdapter.pluginIdForSession(asPluginId(sessionId)),
 				typeof file === "string" ? file : "",
 				args,
 				(options ?? undefined) as SpawnPluginCommandOptions | undefined,
 			),
 	);
-	ipcMain.handle("vetta:plugins:command-spawn-stop", (_event, pluginId: unknown, spawnId: unknown) =>
-		stopPluginCommandSpawn(asPluginId(pluginId), asPluginId(spawnId)),
+	ipcMain.handle("vetta:plugins:command-spawn-stop", (_event, sessionId: unknown, spawnId: unknown) =>
+		stopPluginCommandSpawn(capabilityAdapter.pluginIdForSession(asPluginId(sessionId)), asPluginId(spawnId)),
 	);
-	ipcMain.handle("vetta:plugins:command-spawn-status", (_event, pluginId: unknown, spawnId: unknown) =>
-		getPluginCommandSpawnStatus(asPluginId(pluginId), asPluginId(spawnId)),
+	ipcMain.handle("vetta:plugins:command-spawn-status", (_event, sessionId: unknown, spawnId: unknown) =>
+		getPluginCommandSpawnStatus(capabilityAdapter.pluginIdForSession(asPluginId(sessionId)), asPluginId(spawnId)),
 	);
 	ipcMain.handle("vetta:plugins:offscreen-capture", (_event, pluginId: unknown, options: unknown) =>
 		capturePluginOffscreen(asPluginId(pluginId), (options ?? undefined) as PluginOffscreenCaptureOptions | undefined),
@@ -628,16 +666,16 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
 		return reloadInstalledPlugin(id);
 	});
-	ipcMain.handle("vetta:plugins:dev-watch-start", (_event, id: unknown, projectDir: unknown) => {
+	ipcMain.handle("vetta:plugins:dev-watch-start", (_event, sessionId: unknown, id: unknown, projectDir: unknown) => {
+		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
 		const pluginId = asPluginId(id);
 		if (typeof projectDir !== "string" || projectDir.trim().length === 0) {
 			throw new Error("Invalid plugin project dir");
 		}
-		const plugin = startPluginDevWatch(pluginId, projectDir.trim());
-		refreshAgentPlugins();
-		return plugin;
+		return startPluginDevWatch(pluginId, projectDir.trim());
 	});
-	ipcMain.handle("vetta:plugins:dev-watch-stop", (_event, id: unknown) => {
+	ipcMain.handle("vetta:plugins:dev-watch-stop", (_event, sessionId: unknown, id: unknown) => {
+		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));
 		stopPluginDevWatch(asPluginId(id));
 		refreshAgentPlugins();
 	});
@@ -723,6 +761,19 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		registerDynamicAgentTool(normalizedPluginId, normalizedRegistration);
 		refreshAgentPlugins();
 	});
+	ipcMain.handle("vetta:plugins:agent-hook-register", (_event, pluginId: unknown, registration: unknown) => {
+		registerDynamicAgentHook(asPluginId(pluginId), asAgentHookRegistration(registration));
+	});
+	ipcMain.handle(
+		"vetta:plugins:agent-hook-unregister",
+		(_event, pluginId: unknown, hookId: unknown, activationId: unknown) => {
+			unregisterDynamicAgentHook(
+				asPluginId(pluginId),
+				asPluginId(hookId),
+				asOptionalStringId(activationId, "agent hook activation id"),
+			);
+		},
+	);
 	ipcMain.handle(
 		"vetta:plugins:agent-tool-unregister",
 		(_event, pluginId: unknown, toolId: unknown, activationId: unknown) => {
@@ -787,6 +838,9 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 	ipcMain.handle("vetta:plugins:storage:put-blob", (_event, sessionId: unknown, input: unknown) =>
 		capabilityAdapter.putStorageBlob(asPluginId(sessionId), input),
 	);
+	ipcMain.handle("vetta:plugins:storage:put-blob-from-file", (_event, sessionId: unknown, input: unknown) =>
+		capabilityAdapter.putStorageBlobFromFile(asPluginId(sessionId), input),
+	);
 	ipcMain.handle("vetta:plugins:storage:read-blob", (_event, sessionId: unknown, blobId: unknown) =>
 		capabilityAdapter.readStorageBlob(asPluginId(sessionId), asPluginId(blobId)),
 	);
@@ -822,6 +876,8 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:agent-contributions-begin-load");
 		ipcMain.removeHandler("vetta:plugins:agent-tool-register");
 		ipcMain.removeHandler("vetta:plugins:agent-tool-unregister");
+		ipcMain.removeHandler("vetta:plugins:agent-hook-register");
+		ipcMain.removeHandler("vetta:plugins:agent-hook-unregister");
 		ipcMain.removeHandler("vetta:plugins:agent-contributions-clear");
 		ipcMain.removeHandler("vetta:plugins:app-action-register");
 		ipcMain.removeHandler("vetta:plugins:app-action-activation-commit");
@@ -842,6 +898,7 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		ipcMain.removeHandler("vetta:plugins:storage:read-file");
 		ipcMain.removeHandler("vetta:plugins:storage:write-file");
 		ipcMain.removeHandler("vetta:plugins:storage:put-blob");
+		ipcMain.removeHandler("vetta:plugins:storage:put-blob-from-file");
 		ipcMain.removeHandler("vetta:plugins:storage:read-blob");
 		ipcMain.removeHandler("vetta:plugins:storage:get-blob-ref");
 		for (const channel of Object.values(PLUGIN_SYSTEM_CHANNELS)) ipcMain.removeHandler(channel);

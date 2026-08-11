@@ -22,11 +22,19 @@ func stubKeyring(t *testing.T, values map[string]string, hardError error) {
 	t.Cleanup(func() { keyringGet = original })
 }
 
+func setTestHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	return home
+}
+
 func TestLoadCredentials_AllSourcesEmpty(t *testing.T) {
 	stubKeyring(t, nil, nil)
 	t.Setenv("IM_GATEWAY_FEISHU_APP_ID", "")
 	t.Setenv("IM_GATEWAY_FEISHU_APP_SECRET", "")
-	t.Setenv("HOME", t.TempDir()) // ensure no real credentials.yaml interferes
+	setTestHome(t) // ensure no real credentials.yaml interferes
 
 	creds, err := LoadCredentials()
 	if err != nil {
@@ -47,7 +55,7 @@ func TestLoadCredentials_KeychainOnly(t *testing.T) {
 	}, nil)
 	t.Setenv("IM_GATEWAY_FEISHU_APP_ID", "")
 	t.Setenv("IM_GATEWAY_FEISHU_APP_SECRET", "")
-	t.Setenv("HOME", t.TempDir())
+	setTestHome(t)
 
 	creds, err := LoadCredentials()
 	if err != nil {
@@ -64,8 +72,7 @@ func TestLoadCredentials_KeychainOnly(t *testing.T) {
 func TestLoadCredentials_FileFallback(t *testing.T) {
 	stubKeyring(t, nil, nil) // empty keychain
 
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
+	tempHome := setTestHome(t)
 	t.Setenv("IM_GATEWAY_FEISHU_APP_ID", "")
 	t.Setenv("IM_GATEWAY_FEISHU_APP_SECRET", "")
 
@@ -96,8 +103,7 @@ func TestLoadCredentials_FileFallback(t *testing.T) {
 func TestLoadCredentials_EnvOverridesFile(t *testing.T) {
 	stubKeyring(t, nil, nil)
 
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
+	tempHome := setTestHome(t)
 	credsDir := filepath.Join(tempHome, ".vetta", "im-gateway")
 	if err := os.MkdirAll(credsDir, 0o700); err != nil {
 		t.Fatal(err)
@@ -132,8 +138,7 @@ func TestLoadCredentials_PermissionWarning(t *testing.T) {
 	}
 	stubKeyring(t, nil, nil)
 
-	tempHome := t.TempDir()
-	t.Setenv("HOME", tempHome)
+	tempHome := setTestHome(t)
 	t.Setenv("IM_GATEWAY_FEISHU_APP_ID", "")
 	t.Setenv("IM_GATEWAY_FEISHU_APP_SECRET", "")
 
@@ -162,7 +167,7 @@ func TestLoadCredentials_KeychainHardError_FallsThroughSilently(t *testing.T) {
 	// (and the keychain wrapper logs a stderr warning for the user).
 	hardErr := errors.New("keychain not available")
 	stubKeyring(t, nil, hardErr)
-	t.Setenv("HOME", t.TempDir())
+	setTestHome(t)
 	t.Setenv("IM_GATEWAY_FEISHU_APP_ID", "env-id")
 	t.Setenv("IM_GATEWAY_FEISHU_APP_SECRET", "env-secret")
 

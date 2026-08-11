@@ -1,0 +1,66 @@
+# Workflow operation contract
+
+## Inspect narrowly
+
+- `summary`: identity, workflow, counts, and currently selected nodes.
+- `project`: graph data before structural edits.
+- `graph`: semantic connections, connected components, and orphan node IDs.
+- `readiness`: workflow status, runnable and blocked generators, orphan nodes, and actionable issues.
+- `capabilities`: executable providers, models, modes, input slots, ratios, durations, and resolutions.
+- `runtime`: active and historical jobs or runs.
+- `diagnostics`: blocking validation failures and actionable warnings.
+
+Inspect `project` before edits and pass its revision to `content_creation_edit`. Inspect `capabilities` before setting any provider-specific value. Never infer capability support from model names.
+
+## Import local media before binding it
+
+Local file paths are host resources, not workflow sources. Use `content_creation_assets` with `action="list"` to inspect a directory, then `action="import"` with explicit file paths. Import returns an `assetNodeId`, asset IDs, and one `generationSources` entry per imported asset. Select exactly the entries required by the intent: one image for `animate-still`, two ordered images for `interpolate-frames`, or intentional references for `reference-guided`. Never put a filesystem path in `sourceNodeId` and never call `animate-still` with an empty or unfiltered `sources[]`.
+
+Directory import defaults to `directoryMode="select-one"` and returns candidates when several media files exist. Set `directoryMode="all"` only when the request intentionally needs a collection. Local discovery and import use only host-authorized roots; do not attempt to bypass a path authorization error.
+
+## Describe the outcome first
+
+Update workflow metadata so the project remains understandable without chat history:
+
+- `title`: short human-readable project name;
+- `objective`: audience, surface, creative intent, constraints, and acceptance criteria;
+- `deliverables`: output type, source node, and exact expected artifact.
+
+Every generator node should have a purpose that states its role and changed variable, for example `9:16 hook variant - faster product reveal`.
+
+## Build valid graph shapes
+
+- Text to image: prompt -> image generator -> output.
+- Image to video: prompt plus image asset/generator -> video generator -> output.
+- Shared art direction: one prompt may feed multiple intentional variants.
+- Multi-shot sequence: use timestamped stages inside one video prompt only when the inspected mode supports them; otherwise create separate shot nodes and record their intended order in purposes or workflow metadata.
+- Multiple formats: separate output or generator nodes when ratio, duration, or prompt must differ.
+
+Describe the intended topology and use `afterNodeId` only as a locality hint when useful. The edit service owns incremental canvas layout; never synthesize coordinates. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect ordinary topology with semantic `targetInput` values (`promptSources`, `referenceImages`, `contentSources`, or `mediaSources`) instead of internal handles. Use `bind_assets` to select concrete image-generator references.
+
+Video media inputs are a generation plan, not generic graph edges. Prefer one high-level `configure_video_shot` operation with `targetNodeId` set to the receiving video-generator. It selects and validates a strategy before compiling to the same capability-backed roles. Use low-level `configure_generation` only for legacy or targeted role repair. Put source image/video node IDs in `sources[]`; never use a source node as `targetNodeId`:
+
+- `text-to-video`: no sources;
+- `animate-still`: exactly one image source, treated as the initial composition/frame;
+- `interpolate-frames`: exactly two distinct image sources, optionally labelled `firstFrame` and `lastFrame`; never degrade this to a one-frame mode;
+- `reference-guided`: one or more sources, with explicit roles when the default type role is not sufficient (`referenceImages`, `referenceVideos`, or `referenceAudios`);
+- `transform-video`: exactly one video source.
+
+For asset nodes, include non-empty `assetIds` selected from that node. For image/video generator nodes, provide only `sourceNodeId` so the downstream node consumes the future generated output. `configure_generation` resolves only configured model capabilities and atomically replaces the target's prior media roles, bindings, provider, model, and mode. If no compatible configured model exists, change the plan or report the missing capability; do not fall back to raw `connect_nodes`.
+
+For `configure_video_shot`:
+
+- use `strategy="automatic"` unless the user explicitly chooses a supported method;
+- set `controlRequirements.exactEnding=true` when the requested final composition or state must be controlled; this selects first/last-frame and never degrades to `animate-still`;
+- provide `keyframes.first` and `keyframes.last` as distinct image-generator nodes with matching `image-keyframe` phases;
+- keep identity, subject count, environment, camera axis, aspect ratio, and light direction compatible across both keyframes;
+- for omni-reference, assign every source a unique `alias`, a semantic role (`identity`, `product`, `environment`, `style`, `composition`, `end`, `motion`, or `audio`), and a concrete instruction;
+- declare `requiresSceneReference=true` for choreography or spatial interaction whose environment must remain authoritative.
+
+## Edit in coherent batches
+
+Keep a batch focused on one understandable change, but include newly created nodes and all intended connections in the same batch. The edit tool validates and applies the complete revision-bound batch atomically without a confirmation step. A failure leaves project state unchanged; inspect again after revision conflicts.
+
+For Agent-authored video prompts, submit a `video-shot` plan instead of a raw `prompt`. For generated first/last frames, use `image-keyframe` plans: these record frozen visible state, composition, camera axis, environment, light direction, and continuity anchors, while the video plan records continuous motion. The edit service compiles and validates all three prompts atomically. Existing user-authored prompts remain editable in the UI; only Agent changes are gated.
+
+Supported operation families for this skill are workflow updates, node add/update/rename/purpose/duplicate/delete, semantic edge connect/delete, concrete image asset binding, and intent-driven video generation configuration. Use only fields present in the tool schema.

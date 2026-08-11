@@ -1,15 +1,11 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { getPluginCtx } from "../plugin-context";
+import { toVettaFileUrl } from "./file-url";
 import type { Snapshot } from "./snapshots";
 import { SwiperShell } from "./SwiperShell";
 
 /** Thumbnails are a fixed height; width follows the frame's real aspect ratio. */
 const ITEM_HEIGHT = "h-48";
-
-/** Static file protocol URL (ADR-0027). */
-function fileUrl(path: string): string {
-	return `vetta-file://local${encodeURI(path)}`;
-}
 
 /** 截图进行中的占位：竖屏比例的呼吸方块，占住最新一版的位置。 */
 function CaptureSkeleton() {
@@ -36,7 +32,7 @@ export function ScreenshotSwiper({
 	leadingSkeleton: boolean;
 }) {
 	const { t } = useTranslation();
-	const group = snapshots.map((snapshot) => ({ id: snapshot.path, url: fileUrl(snapshot.path) }));
+	const group = snapshots.map((snapshot) => ({ id: snapshot.path, url: toVettaFileUrl(snapshot.path) }));
 
 	return (
 		<div className="py-1">

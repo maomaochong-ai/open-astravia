@@ -3,7 +3,7 @@ import {
 	type ModuleFederation,
 	type ModuleFederationRuntimePlugin,
 } from "@module-federation/enhanced/runtime";
-import type { InstalledPlugin, PluginAgentToolRegistration } from "@preload/api";
+import type { InstalledPlugin, PluginAgentHookHostRegistration, PluginAgentToolRegistration } from "@preload/api";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import {
 	activeInputActionIdsAtom,
@@ -28,8 +28,11 @@ import type {
 	PluginAgentToolHandler,
 	PluginAppActionHandler,
 	PluginAppActionReadyHandler,
+	PluginArtifactsApi,
 	PluginCaptureApi,
 	PluginCardRendererContribution,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentHookHandler,
 	PluginCommandApi,
 	PluginCommandSpawnExit,
 	PluginCommandSpawnHandle,
@@ -46,8 +49,11 @@ import type {
 	PluginI18nApi,
 	PluginImageRef,
 	PluginInputActionContribution,
+	PluginJob,
+	PluginJobsApi,
 	PluginLocales,
 	PluginMediaApi,
+	PluginNavBadge,
 	PluginNetworkApi,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
@@ -58,12 +64,14 @@ import type {
 	PluginStorageApi,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
+	PluginWorkspaceViewContribution,
 } from "@vetta-org/plugin-sdk";
-import { resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
+import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
-import type { ComponentType } from "react";
+import { type ComponentType, createElement, type ReactNode } from "react";
 import { router } from "../../../router";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
+import { PluginActivationCleanupController } from "./plugin-activation-cleanup";
 import { createPluginAiApi } from "./plugin-ai";
 import {
 	getPluginFileExplorerSelection,
@@ -75,11 +83,14 @@ import {
 } from "./plugin-file-explorer-host";
 import {
 	pluginHostBridge,
+	registerPluginAgentHookHandler,
 	registerPluginAgentToolHandler,
 	registerPluginAppActionHandler,
 	registerPluginContinuationHandler,
+	registerPluginMediaProviderHandler,
 	registerPluginSystemPromptHandler,
 } from "./plugin-host-bridge";
+import { activateInputActionIds } from "./plugin-input-action-state";
 import { createPluginOfficialApi } from "./plugin-official-api";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 import { createPluginRuntimeShared } from "./plugin-shared-modules";
@@ -88,6 +99,13 @@ import {
 	normalizePluginShortcutBindings,
 	registerPluginShortcutScopeOnHost,
 } from "./plugin-shortcut-scope";
+import { createQuickJsPluginDefinition } from "./quickjs-plugin-runtime";
+import {
+	isValidWorkspaceViewId,
+	normalizePluginNavBadge,
+	WORKSPACE_VIEW_ID_PATTERN,
+	WORKSPACE_VIEW_ROUTE_PATH,
+} from "./workspace-view-registry";
 
 export interface LoadedPlugin {
 	id: string;
@@ -107,6 +125,7 @@ export interface LoadedPlugin {
 	cardRenderers: PluginCardRendererContribution[];
 	toolCallSlots: PluginToolCallSlotContribution[];
 	turnCards: PluginTurnCardContribution[];
+	workspaceViews: PluginWorkspaceViewContribution[];
 	dispose(): Promise<void>;
 }
 
@@ -297,6 +316,29 @@ function createPermissionApi(plugin: InstalledPlugin): PluginContext["permission
 	};
 }
 
+/**
+ * Map host-resolved `InstalledPlugin.iconUrl` into an activity-tab icon.
+ * - `icon-[…]` / legacy Iconify `set:name` → class string for TabBar
+ * - package path already resolved to `vetta-plugin://…` (or http/data) → `<img>`
+ * Protocol stays host-private; plugins only see the opaque `iconUrl` string.
+ */
+function resolvePluginBrandIcon(iconUrl: string): ReactNode {
+	const trimmed = iconUrl.trim();
+	if (!trimmed) return undefined;
+	if (trimmed.startsWith("icon-[")) return trimmed;
+	// Iconify passthrough from manifest: `solar:star-bold` → Tailwind Iconify class.
+	if (/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(trimmed) && !trimmed.includes("://")) {
+		const sep = trimmed.indexOf(":");
+		return `icon-[${trimmed.slice(0, sep)}--${trimmed.slice(sep + 1)}]`;
+	}
+	return createElement("img", {
+		src: trimmed,
+		alt: "",
+		className: "h-3.5 w-3.5 object-contain",
+		draggable: false,
+	});
+}
+
 const noopDisposable: Disposable = { dispose: () => {} };
 
 function debugPluginAgent(message: string, data?: Record<string, unknown>): void {
@@ -328,7 +370,12 @@ function createConversationApi(plugin: InstalledPlugin): PluginConversationApi {
 	return {
 		sendPrompt: async (text) => {
 			permissions.require("agent.session.write");
-			await pluginHostBridge.conversation.sendPrompt(text);
+			return pluginHostBridge.conversation.sendPrompt(text);
+		},
+		createSession: async (cwd, options) => {
+			// 与 sendPrompt 同权限：都是「让 agent 开始干活」，不另开权限位。
+			permissions.require("agent.session.write");
+			return pluginHostBridge.conversation.createSession(cwd, options);
 		},
 		insertText: (text) => {
 			permissions.require("agent.session.write");
@@ -449,25 +496,139 @@ function createNetworkApi(plugin: InstalledPlugin, capabilitySessionId: string):
 	};
 }
 
-function createMediaApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginMediaApi {
+function createMediaApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+	activationId: string,
+	disposers: Array<() => void>,
+	pendingRuntimeRegistrations: Promise<void>[],
+): PluginMediaApi {
 	const permissions = createPermissionApi(plugin);
 	const media = window.vetta.plugins.internalCapabilities.media;
 	return {
+		registerProvider: (registration) => {
+			permissions.require("media.provider.register");
+			if (typeof registration.id !== "string" || !/^[a-z0-9][a-z0-9._-]{0,63}$/.test(registration.id)) {
+				throw new Error("Media provider id must be 1-64 lowercase characters, numbers, dot, underscore, or dash");
+			}
+			if (!Array.isArray(registration.capabilities) || registration.capabilities.length === 0) {
+				throw new Error("Media provider capabilities are required");
+			}
+			if (typeof registration.submit !== "function") throw new Error("Media provider submit handler is required");
+			const handlerId = `${registration.id}:${crypto.randomUUID()}`;
+			const handlerHandle = registerPluginMediaProviderHandler({
+				pluginId: plugin.id,
+				handlerId,
+				registration,
+			});
+			const registrationPromise = window.vetta.plugins
+				.registerMediaProvider(plugin.id, {
+					id: registration.id,
+					displayName: registration.displayName?.trim() || undefined,
+					capabilities: registration.capabilities,
+					handlerId,
+					activationId,
+					hasGetJob: typeof registration.getJob === "function",
+					hasCancelJob: typeof registration.cancelJob === "function",
+				})
+				.catch((error: Error) => {
+					handlerHandle.dispose();
+					throw error;
+				});
+			pendingRuntimeRegistrations.push(registrationPromise);
+			let disposed = false;
+			const dispose = (): void => {
+				if (disposed) return;
+				disposed = true;
+				handlerHandle.dispose();
+				void window.vetta.plugins.unregisterMediaProvider(plugin.id, registration.id, activationId);
+			};
+			disposers.push(dispose);
+			return { dispose };
+		},
 		listProviders: () => {
 			permissions.require("media.generate");
 			return media.listProviders(capabilitySessionId);
 		},
-		createJob: (request) => {
+		onProvidersChanged: (listener) => {
 			permissions.require("media.generate");
-			return media.createJob(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.createJob>[1]);
+			const unsubscribe = window.vetta.plugins.onMediaProvidersChanged(listener);
+			return { dispose: unsubscribe };
 		},
-		getJob: (job) => {
+		submit: (request) => {
 			permissions.require("media.generate");
-			return media.getJob(capabilitySessionId, job);
+			return media.submit(capabilitySessionId, toJsonValue(request) as Parameters<typeof media.submit>[1]);
 		},
-		cancelJob: (job) => {
+	};
+}
+
+function abortError(signal: AbortSignal): Error {
+	return signal.reason instanceof Error ? signal.reason : new DOMException("The operation was aborted", "AbortError");
+}
+
+function waitForPoll(ms: number, signal?: AbortSignal): Promise<void> {
+	if (signal?.aborted) return Promise.reject(abortError(signal));
+	return new Promise((resolve, reject) => {
+		const timeout = window.setTimeout(() => {
+			signal?.removeEventListener("abort", onAbort);
+			resolve();
+		}, ms);
+		const onAbort = (): void => {
+			window.clearTimeout(timeout);
+			reject(signal ? abortError(signal) : new DOMException("The operation was aborted", "AbortError"));
+		};
+		signal?.addEventListener("abort", onAbort, { once: true });
+	});
+}
+
+function createJobsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginJobsApi {
+	const permissions = createPermissionApi(plugin);
+	const jobs = window.vetta.plugins.internalCapabilities.jobs;
+	const idOf = (job: string | { id: string }): string => (typeof job === "string" ? job : job.id);
+	return {
+		get: (job) => {
 			permissions.require("media.generate");
-			return media.cancelJob(capabilitySessionId, job);
+			return jobs.get(capabilitySessionId, idOf(job));
+		},
+		cancel: (job) => {
+			permissions.require("media.generate");
+			return jobs.cancel(capabilitySessionId, idOf(job));
+		},
+		wait: async <TJob extends PluginJob>(
+			job: TJob | { id: string } | string,
+			options?: Parameters<PluginJobsApi["wait"]>[1],
+		) => {
+			permissions.require("media.generate");
+			const id = idOf(job);
+			let current =
+				typeof job === "object" && "status" in job ? job : ((await jobs.get(capabilitySessionId, id)) as TJob);
+			const terminal = new Set(["succeeded", "failed", "cancelled"]);
+			while (!terminal.has(current.status)) {
+				await waitForPoll(options?.pollIntervalMs ?? 500, options?.signal);
+				current = (await jobs.get(capabilitySessionId, id)) as TJob;
+			}
+			return current;
+		},
+	};
+}
+
+function createArtifactsApi(plugin: InstalledPlugin, capabilitySessionId: string): PluginArtifactsApi {
+	const permissions = createPermissionApi(plugin);
+	const artifacts = window.vetta.plugins.internalCapabilities.artifacts;
+	return {
+		persist: async (artifact, destination) => {
+			permissions.require("media.generate");
+			const persisted = await artifacts.persist(capabilitySessionId, {
+				artifactId: typeof artifact === "string" ? artifact : artifact.id,
+				destination,
+			});
+			return persisted.type === "storage-blob"
+				? { ...persisted, type: "plugin-blob", blobId: persisted.id }
+				: { ...persisted, type: "workspace-file" };
+		},
+		release: (artifact) => {
+			permissions.require("media.generate");
+			return artifacts.release(capabilitySessionId, typeof artifact === "string" ? artifact : artifact.id);
 		},
 	};
 }
@@ -527,6 +688,10 @@ function createStorageApi(plugin: InstalledPlugin, capabilitySessionId: string):
 		putBlob: (input) => {
 			requireWrite();
 			return window.vetta.plugins.storagePutBlob(capabilitySessionId, input);
+		},
+		putBlobFromFile: (input) => {
+			requireWrite();
+			return window.vetta.plugins.storagePutBlobFromFile(capabilitySessionId, input);
 		},
 		readBlob: (id) => {
 			requireRead();
@@ -630,7 +795,11 @@ function ensureSpawnExitSubscription(): void {
 	});
 }
 
-function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>): PluginCommandApi {
+function createCommandApi(
+	plugin: InstalledPlugin,
+	capabilitySessionId: string,
+	disposers: Array<() => void>,
+): PluginCommandApi {
 	const permissions = createPermissionApi(plugin);
 	const assertCommandAllowed = (file: unknown): string => {
 		if (typeof file !== "string" || file.trim().length === 0) {
@@ -664,18 +833,18 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 		run: (file, args, options) => {
 			permissions.require("agent.command.run");
 			const allowed = assertCommandAllowed(file);
-			return window.vetta.plugins.runCommand(plugin.id, allowed, args ?? [], options);
+			return window.vetta.plugins.runCommand(capabilitySessionId, allowed, args ?? [], options);
 		},
 		spawn: async (file, args, options): Promise<PluginCommandSpawnHandle> => {
 			permissions.require("agent.command.spawn");
 			const allowed = assertCommandAllowed(file);
 			ensureSpawnExitSubscription();
-			const result = await window.vetta.plugins.spawnCommand(plugin.id, allowed, args ?? [], options);
+			const result = await window.vetta.plugins.spawnCommand(capabilitySessionId, allowed, args ?? [], options);
 			let stopped = false;
 			const stop = async (): Promise<void> => {
 				if (stopped) return;
 				stopped = true;
-				await window.vetta.plugins.stopCommandSpawn(plugin.id, result.spawnId);
+				await window.vetta.plugins.stopCommandSpawn(capabilitySessionId, result.spawnId);
 			};
 			// 插件卸载/重载时统一回收（主进程在 reload/disable/uninstall 也会兜底清扫）。
 			disposers.push(() => void stop());
@@ -684,7 +853,7 @@ function createCommandApi(plugin: InstalledPlugin, disposers: Array<() => void>)
 				pid: result.pid,
 				port: result.port,
 				stop,
-				status: () => window.vetta.plugins.getCommandSpawnStatus(plugin.id, result.spawnId),
+				status: () => window.vetta.plugins.getCommandSpawnStatus(capabilitySessionId, result.spawnId),
 				onExit: (listener) => {
 					const listeners = spawnExitListeners.get(result.spawnId) ?? new Set();
 					listeners.add(listener);
@@ -737,6 +906,7 @@ function createContext(
 	cardRenderers: PluginCardRendererContribution[],
 	toolCallSlots: PluginToolCallSlotContribution[],
 	turnCards: PluginTurnCardContribution[],
+	workspaceViews: PluginWorkspaceViewContribution[],
 	settingsApi: PluginSettingsApi,
 	onChanged: () => void,
 	disposers: Array<() => void>,
@@ -900,13 +1070,23 @@ function createContext(
 		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
 			throw new Error("Activity tab component is invalid");
 		}
+		if (
+			contribution.retention !== undefined &&
+			!(["active-only", "warm", "pinned"] as const).includes(contribution.retention)
+		) {
+			throw new Error("Activity tab retention is invalid");
+		}
+		const brandIcon =
+			contribution.icon === undefined && plugin.iconUrl ? resolvePluginBrandIcon(plugin.iconUrl) : undefined;
 		const normalized: PluginActivityTabContribution = {
 			id: contribution.id,
 			label: contribution.label,
-			icon: contribution.icon,
+			icon: contribution.icon ?? brandIcon,
 			component: contribution.component,
 			scope_use: contribution.scope_use,
 			initiallyVisible: contribution.initiallyVisible,
+			retention: contribution.retention,
+			keepAliveWhenAvailable: contribution.keepAliveWhenAvailable,
 		};
 		activityTabs.push(normalized);
 		onChanged();
@@ -1052,6 +1232,84 @@ function createContext(
 			},
 		};
 	};
+	/**
+	 * 工作区视图与其它插槽不同：它是**整页 surface**，由 `/workspace/$pluginId/$viewId`
+	 * 路由挂载，并在侧边栏占一个可 pin / 可排序的导航位。因此 id 必须能安全进 URL，
+	 * label 必须存在（导航项没有 fallback 文案可用）。
+	 */
+	const registerWorkspaceView = (contribution: PluginWorkspaceViewContribution): Disposable => {
+		if (!hasPermission(plugin, "ui.slot.workspace-view")) {
+			warnSkippedContribution(plugin, "ui.slot.workspace-view", "workspace view");
+			return noopDisposable;
+		}
+		const viewId = typeof contribution.id === "string" ? contribution.id.trim() : "";
+		if (!isValidWorkspaceViewId(viewId)) {
+			throw new Error(
+				`Workspace view id must match ${WORKSPACE_VIEW_ID_PATTERN.source} (got ${JSON.stringify(contribution.id)})`,
+			);
+		}
+		const label = typeof contribution.label === "string" ? contribution.label.trim() : "";
+		if (label.length === 0) {
+			throw new Error("Workspace view label is required");
+		}
+		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
+			throw new Error("Workspace view component is invalid");
+		}
+		if (workspaceViews.some((view) => view.id === viewId)) {
+			throw new Error(`Workspace view id already registered: ${viewId}`);
+		}
+		// 角标认不出就当没有：它是导航项上的装饰，不该让整个视图注册失败。
+		const badge = normalizePluginNavBadge(contribution.badge);
+		const normalized: PluginWorkspaceViewContribution = {
+			id: viewId,
+			label,
+			component: contribution.component,
+			...(typeof contribution.icon === "string" && contribution.icon.trim()
+				? { icon: contribution.icon.trim() }
+				: {}),
+			...(typeof contribution.description === "string" && contribution.description.trim()
+				? { description: contribution.description.trim() }
+				: {}),
+			...(badge ? { badge } : {}),
+			navOrder: Number.isFinite(contribution.navOrder) ? Number(contribution.navOrder) : 0,
+		};
+		workspaceViews.push(normalized);
+		onChanged();
+		return {
+			dispose: () => {
+				const index = workspaceViews.findIndex((view) => view.id === normalized.id);
+				if (index >= 0) workspaceViews.splice(index, 1);
+				onChanged();
+			},
+		};
+	};
+	const openWorkspaceView = (viewId: string): void => {
+		createPermissionApi(plugin).require("ui.slot.workspace-view");
+		const id = typeof viewId === "string" ? viewId.trim() : "";
+		if (!workspaceViews.some((view) => view.id === id)) {
+			console.warn(`[plugin:${plugin.id}] openWorkspaceView: unknown view ${JSON.stringify(viewId)}`);
+			return;
+		}
+		void router.navigate({
+			to: WORKSPACE_VIEW_ROUTE_PATH,
+			params: { pluginId: plugin.id, viewId: id },
+		});
+	};
+	const setWorkspaceViewBadge = (viewId: string, badge: PluginNavBadge | null): void => {
+		createPermissionApi(plugin).require("ui.slot.workspace-view");
+		const id = typeof viewId === "string" ? viewId.trim() : "";
+		const view = workspaceViews.find((candidate) => candidate.id === id);
+		if (!view) {
+			console.warn(`[plugin:${plugin.id}] setWorkspaceViewBadge: unknown view ${JSON.stringify(viewId)}`);
+			return;
+		}
+		const next = badge === null ? undefined : normalizePluginNavBadge(badge);
+		// 原地改注册项：重新注册会让整个整页 surface 重挂载，未读数变一下就丢掉
+		// 视图内部状态。onChanged 只重新发布注册表快照。
+		if (next) view.badge = next;
+		else delete view.badge;
+		onChanged();
+	};
 	const registerShortcutScope = (contribution: PluginShortcutScopeContribution): Disposable => {
 		createPermissionApi(plugin).require("ui.shortcuts.register");
 		if (typeof contribution.id !== "string" || contribution.id.trim().length === 0) {
@@ -1106,7 +1364,16 @@ function createContext(
 		if (!attachment.id.trim() || !attachment.label.trim()) {
 			throw new Error("Prompt attachment id and label are required");
 		}
-		store.set(promptAttachmentAtom, { ...attachment, ownerPluginId: plugin.id });
+		// 逐条 label 由输入框直接渲染，先在边界上清掉空串/非字符串；清空后当作没给，
+		// 回落到单条 label，而不是让输入框上出现一处空白。
+		const labels = (attachment.labels ?? [])
+			.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+			.map((entry) => entry.trim());
+		store.set(promptAttachmentAtom, {
+			...attachment,
+			...(labels.length > 0 ? { labels } : { labels: undefined }),
+			ownerPluginId: plugin.id,
+		});
 		// An attachment activates this plugin's input action so its hidden prompt
 		// instructions are contributed to the next turn.
 		const myActionIds = store
@@ -1114,11 +1381,7 @@ function createContext(
 			.filter((action) => action.pluginId === plugin.id)
 			.map((action) => action.actionId);
 		if (myActionIds.length > 0) {
-			store.set(activeInputActionIdsAtom, (prev) => {
-				const next = new Set(prev);
-				for (const id of myActionIds) next.add(id);
-				return next;
-			});
+			store.set(activeInputActionIdsAtom, (prev) => activateInputActionIds(prev, myActionIds));
 			persistCurrentInputActionState(store.get(activeSessionAtom)?.sessionPath);
 		}
 	};
@@ -1223,6 +1486,7 @@ function createContext(
 		plugin: {
 			id: plugin.id,
 			version: plugin.activeVersion,
+			...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
 		},
 		permissions,
 		ui: {
@@ -1233,6 +1497,9 @@ function createContext(
 			registerCardRenderer,
 			registerToolCallSlot,
 			registerTurnCard,
+			registerWorkspaceView,
+			openWorkspaceView,
+			setWorkspaceViewBadge,
 			registerShortcutScope,
 			openActivityTab,
 			setActivityTabVisible,
@@ -1280,8 +1547,10 @@ function createContext(
 		},
 		conversation,
 		fs,
-		command: createCommandApi(plugin, disposers),
-		media: createMediaApi(plugin, capabilitySessionId),
+		command: createCommandApi(plugin, capabilitySessionId, disposers),
+		media: createMediaApi(plugin, capabilitySessionId, activationId, disposers, pendingRuntimeRegistrations),
+		jobs: createJobsApi(plugin, capabilitySessionId),
+		artifacts: createArtifactsApi(plugin, capabilitySessionId),
 		capture: createCaptureApi(plugin, disposers),
 		agent: {
 			registerTool: (registration) => {
@@ -1362,6 +1631,60 @@ function createContext(
 						registeredAgentTools.delete(toolName);
 						if (label) setAgentToolLabel(plugin.id, toolName, null);
 						void window.vetta.plugins.unregisterAgentTool(plugin.id, toolId, activationId);
+					},
+				};
+			},
+			registerHook: (registration) => {
+				if (!hasPermission(plugin, "agent.hooks.register")) {
+					warnSkippedContribution(plugin, "agent.hooks.register", "agent hook");
+					return noopDisposable;
+				}
+				if (!hasPermission(plugin, "agent.hookHandler.execute")) {
+					warnSkippedContribution(plugin, "agent.hookHandler.execute", "agent hook handler");
+					return noopDisposable;
+				}
+				if (typeof registration.id !== "string" || registration.id.trim().length === 0) {
+					throw new Error("Agent hook id is required");
+				}
+				if (!PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES.includes(registration.eventName)) {
+					throw new Error("Coding Agent Hook eventName is invalid");
+				}
+				if (!Array.isArray(registration.scope_use) || registration.scope_use.length === 0) {
+					throw new Error("Agent hook scope_use is required");
+				}
+				if (typeof registration.handler !== "function") {
+					throw new Error("Agent hook handler is required");
+				}
+				const hookId = registration.id.trim();
+				const handlerId = `${hookId}:${crypto.randomUUID()}`;
+				const handlerHandle = registerPluginAgentHookHandler({
+					pluginId: plugin.id,
+					handlerId,
+					handler: registration.handler as unknown as PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>,
+					api: { fs, conversation },
+				});
+				const payload: PluginAgentHookHostRegistration = {
+					id: hookId,
+					eventName: registration.eventName,
+					handlerId,
+					activationId,
+					timeoutMs: registration.timeoutMs,
+					scope_use: registration.scope_use,
+					agent_mode: registration.agent_mode,
+					toolNames: registration.toolNames,
+				};
+				const registrationPromise = window.vetta.plugins
+					.registerAgentHook(plugin.id, payload)
+					.catch((error: Error) => {
+						handlerHandle.dispose();
+						console.error(`Plugin ${plugin.id} failed to register agent hook ${hookId}`, error);
+					});
+				pendingRuntimeRegistrations.push(registrationPromise);
+				return {
+					dispose: () => {
+						void window.vetta.plugins
+							.unregisterAgentHook(plugin.id, hookId, activationId)
+							.finally(() => handlerHandle.dispose());
 					},
 				};
 			},
@@ -1556,6 +1879,9 @@ async function assertPluginEntryFetchable(plugin: InstalledPlugin): Promise<void
 }
 
 async function loadPluginModule(plugin: InstalledPlugin): Promise<PluginModule> {
+	if (plugin.runtime === "quickjs") {
+		return { default: createQuickJsPluginDefinition(plugin) };
+	}
 	if (plugin.runtime !== "module-federation") {
 		return assertPluginModule(await import(/* @vite-ignore */ plugin.entryUrl));
 	}
@@ -1609,6 +1935,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 	const cardRenderers: PluginCardRendererContribution[] = [];
 	const toolCallSlots: PluginToolCallSlotContribution[] = [];
 	const turnCards: PluginTurnCardContribution[] = [];
+	const workspaceViews: PluginWorkspaceViewContribution[] = [];
 	const disposers: Array<() => void> = [];
 	const styleHandle = loadPluginStyles(plugin);
 	let locallyDisposed = false;
@@ -1631,6 +1958,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		onChanged();
 	};
 	let definition: PluginDefinition | undefined;
+	const activationCleanup = new PluginActivationCleanupController();
 	let activationStarted = false;
 	let capabilitySessionId: string | undefined;
 	const closeCapabilitySession = async (): Promise<void> => {
@@ -1665,6 +1993,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			cardRenderers,
 			toolCallSlots,
 			turnCards,
+			workspaceViews,
 			settingsApi,
 			onChanged,
 			disposers,
@@ -1673,7 +2002,8 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			capabilitySessionId,
 		);
 		activationStarted = true;
-		await definition.activate(context);
+		const cleanup = await definition.activate(context);
+		activationCleanup.set(cleanup ?? undefined);
 		debugPluginAgent("activate resolved", {
 			pluginId: plugin.id,
 			pendingRuntimeRegistrations: pendingRuntimeRegistrations.length,
@@ -1706,10 +2036,15 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			cardRenderers,
 			toolCallSlots,
 			turnCards,
+			workspaceViews,
 			dispose: async () => {
 				debugPluginAgent("dispose start", { pluginId: plugin.id, activationId });
 				try {
-					await definition?.deactivate?.();
+					try {
+						await activationCleanup.dispose();
+					} finally {
+						await definition?.deactivate?.();
+					}
 				} finally {
 					try {
 						await window.vetta.plugins.clearAgentContributions(plugin.id, activationId);
@@ -1729,6 +2064,9 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 		};
 	} catch (error) {
 		if (activationStarted) {
+			await activationCleanup.dispose().catch((cleanupError: unknown) => {
+				console.error(`Plugin ${plugin.id} failed to clean up after activation failure`, cleanupError);
+			});
 			await Promise.resolve(definition?.deactivate?.()).catch((deactivateError: unknown) => {
 				console.error(`Plugin ${plugin.id} failed to deactivate after activation failure`, deactivateError);
 			});

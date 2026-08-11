@@ -1,7 +1,7 @@
 /**
  * Tests for git-based extension updates, specifically handling force-push scenarios.
  *
- * These tests verify that DefaultPackageManager.update() handles:
+ * These tests verify that ResourcePackageRuntime.update() handles:
  * - Normal git updates (no force-push)
  * - Force-pushed remotes gracefully (currently fails, fix needed)
  */
@@ -12,8 +12,10 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DefaultPackageManager } from "../src/core/package-manager.js";
-import { SettingsManager } from "../src/core/settings-manager.js";
+import { CONFIG_DIR_NAME } from "../src/config.js";
+import { createCodingAgentResourcePackageRuntime } from "../src/host/coding-agent-resource-runtime.js";
+import type { ResourcePackageCommandPort, ResourcePackageRuntime } from "../src/resources/index.js";
+import { SettingsRuntime } from "../src/settings/index.js";
 
 // Helper to run git commands in a directory
 function git(args: string[], cwd: string): string {
@@ -45,13 +47,13 @@ function getFileContent(repoDir: string, filename: string): string {
 	return readFileSync(join(repoDir, filename), "utf-8");
 }
 
-describe("DefaultPackageManager git update", () => {
+describe("ResourcePackageRuntime git update", () => {
 	let tempDir: string;
 	let remoteDir: string; // Simulates the "remote" repository
 	let agentDir: string; // The agent directory where extensions are installed
 	let installedDir: string; // The installed extension directory
-	let settingsManager: SettingsManager;
-	let packageManager: DefaultPackageManager;
+	let settingsManager: SettingsRuntime;
+	let packageManager: ResourcePackageRuntime;
 
 	// Git source that maps to our installed directory structure.
 	// Must use "git:" prefix so parseSource() treats it as a git source
@@ -69,11 +71,11 @@ describe("DefaultPackageManager git update", () => {
 
 		mkdirSync(agentDir, { recursive: true });
 
-		settingsManager = SettingsManager.inMemory();
-		packageManager = new DefaultPackageManager({
+		settingsManager = SettingsRuntime.inMemory();
+		packageManager = createCodingAgentResourcePackageRuntime({
 			cwd: tempDir,
 			agentDir,
-			settingsManager,
+			settings: settingsManager,
 		});
 	});
 
@@ -267,17 +269,23 @@ describe("DefaultPackageManager git update", () => {
 			writeFileSync(extensionFile, "// stale");
 
 			const executedCommands: string[] = [];
-			const managerWithInternals = packageManager as unknown as {
-				runCommand: (command: string, args: string[], options?: { cwd?: string }) => Promise<void>;
+			const commands: ResourcePackageCommandPort = {
+				runSync: () => "",
+				run: async (command, args) => {
+					executedCommands.push(`${command} ${args.join(" ")}`);
+					if (command === "git" && args[0] === "reset") {
+						writeFileSync(extensionFile, "// fresh");
+					}
+				},
 			};
-			managerWithInternals.runCommand = async (command, args) => {
-				executedCommands.push(`${command} ${args.join(" ")}`);
-				if (command === "git" && args[0] === "reset") {
-					writeFileSync(extensionFile, "// fresh");
-				}
-			};
+			const runtime = createCodingAgentResourcePackageRuntime({
+				cwd: tempDir,
+				agentDir,
+				settings: settingsManager,
+				commands,
+			});
 
-			await packageManager.resolveExtensionSources([gitSource], { temporary: true });
+			await runtime.resolveAdditionalSources([gitSource], { temporary: true });
 
 			expect(executedCommands).toContain("git fetch --prune origin");
 			expect(getFileContent(cachedDir, "pi-extensions/session-breakdown.ts")).toBe("// fresh");
@@ -299,14 +307,20 @@ describe("DefaultPackageManager git update", () => {
 			writeFileSync(extensionFile, "// pinned");
 
 			const executedCommands: string[] = [];
-			const managerWithInternals = packageManager as unknown as {
-				runCommand: (command: string, args: string[], options?: { cwd?: string }) => Promise<void>;
+			const commands: ResourcePackageCommandPort = {
+				runSync: () => "",
+				run: async (command, args) => {
+					executedCommands.push(`${command} ${args.join(" ")}`);
+				},
 			};
-			managerWithInternals.runCommand = async (command, args) => {
-				executedCommands.push(`${command} ${args.join(" ")}`);
-			};
+			const runtime = createCodingAgentResourcePackageRuntime({
+				cwd: tempDir,
+				agentDir,
+				settings: settingsManager,
+				commands,
+			});
 
-			await packageManager.resolveExtensionSources([`${gitSource}@main`], { temporary: true });
+			await runtime.resolveAdditionalSources([`${gitSource}@main`], { temporary: true });
 
 			expect(executedCommands).toEqual([]);
 			expect(getFileContent(cachedDir, "pi-extensions/session-breakdown.ts")).toBe("// pinned");
@@ -321,7 +335,7 @@ describe("DefaultPackageManager git update", () => {
 			createCommit(remoteDir, "extension.ts", "// v2", "Second commit");
 
 			// The project-scope install path should not exist before or after update
-			const projectGitDir = join(tempDir, ".pi", "git", "github.com", "test", "extension");
+			const projectGitDir = join(tempDir, CONFIG_DIR_NAME, "git", "github.com", "test", "extension");
 			expect(existsSync(projectGitDir)).toBe(false);
 
 			await packageManager.update(gitSource);

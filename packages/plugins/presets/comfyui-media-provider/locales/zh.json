@@ -1,0 +1,11 @@
+{
+	"plugin.name": "ComfyUI 视频生成",
+	"plugin.description": "将本地 ComfyUI 工作流作为统一的视频生成 Provider。",
+	"provider.name": "ComfyUI · MiniMax H3",
+	"settings.baseUrl.title": "ComfyUI 服务地址",
+	"settings.baseUrl.description": "ComfyUI HTTP API 的根地址。",
+	"settings.templatePromptId.title": "首尾帧模板任务 ID",
+	"settings.templatePromptId.description": "可选。固定一个成功的 MiniMax H3 首尾帧任务作为 API Prompt 模板；留空时使用最近的兼容成功任务。",
+	"settings.referenceTemplatePromptId.title": "全能参考模板任务 ID",
+	"settings.referenceTemplatePromptId.description": "可选。固定一个成功的 MiniMax H3 全能参考任务作为 API Prompt 模板；留空时使用最近的兼容成功任务。"
+}

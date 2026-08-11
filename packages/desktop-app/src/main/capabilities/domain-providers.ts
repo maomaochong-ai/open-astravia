@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
@@ -19,6 +20,7 @@ import {
 	DOMAIN_WEBHOOK_CAPABILITIES,
 } from "@vetta/capability-sdk";
 import { getDesktopAgentSettingsService } from "../agent-settings/agent-settings-service.js";
+import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import { getDesktopBatchTaskService } from "../batch-tasks/batch-task-service.js";
 import { readDesktopConfig, writeDesktopConfig } from "../config/desktop-config-store.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
@@ -26,7 +28,9 @@ import { getDesktopDownloadService } from "../downloads/download-service.js";
 import { allowProjectRoot, createFilesystemDirectory } from "../filesystem/filesystem-service.js";
 import { getDesktopGeneralSettingsService } from "../general-settings/general-settings-service.js";
 import { getImHost } from "../im-host/index.js";
+import type { JobManager } from "../jobs/job-manager.js";
 import { getKnowledgeService } from "../knowledge/knowledge-service.js";
+import { broadcastProjectsChanged } from "../projects/project-events.js";
 import { ProjectService } from "../projects/project-service.js";
 import { getDesktopSchedulerService } from "../scheduler/scheduler-service.js";
 import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
@@ -59,7 +63,11 @@ function assertNotAborted(signal: AbortSignal): void {
 	}
 }
 
-export function registerDesktopDomainProviders(registry: CapabilityRegistry): Disposable {
+export function registerDesktopDomainProviders(
+	registry: CapabilityRegistry,
+	artifacts: ArtifactStore,
+	jobs: JobManager,
+): Disposable {
 	const agentSettings = getDesktopAgentSettingsService();
 	const batchTasks = getDesktopBatchTaskService();
 	const downloads = getDesktopDownloadService();
@@ -72,13 +80,24 @@ export function registerDesktopDomainProviders(registry: CapabilityRegistry): Di
 	const webhooks = getWebhookManager();
 	const aiRegistration = registerDesktopAiProviders(registry);
 	const mcpRegistration = registerDesktopMcpProviders(registry);
-	const mediaRegistration = registerDesktopMediaProviders(registry);
+	const mediaRegistration = registerDesktopMediaProviders(registry, artifacts, jobs);
 	const modelRegistration = registerDesktopModelProviders(registry);
 	const projects = new ProjectService({
 		allowProjectRoot,
 		createDirectory: createFilesystemDirectory,
 		readConfig: readDesktopConfig,
 		writeConfig: writeDesktopConfig,
+		broadcastChanged: broadcastProjectsChanged,
+		// 直接查磁盘：这是「能不能登记成项目」的判断，此刻该路径还不在任何授权根里，
+		// 走不了 filesystem-service 那套带 allowedRoots 断言的入口。
+		isExistingNonDirectory: async (path) => {
+			try {
+				return !(await stat(path)).isDirectory();
+			} catch {
+				// 不存在（或读不到）不算「非目录」：open 本来就允许登记一个还没建出来的目录。
+				return false;
+			}
+		},
 	});
 	const projectRegistration = registry.registerOwner(DOMAIN_PROJECT_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_PROJECT_CAPABILITIES.LIST, {

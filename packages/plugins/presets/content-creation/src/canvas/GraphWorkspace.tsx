@@ -1,6 +1,5 @@
 import {
 	type Connection,
-	Controls,
 	type Edge,
 	type FinalConnectionState,
 	type NodeTypes,
@@ -11,9 +10,11 @@ import {
 } from "@xyflow/react";
 import {
 	type PluginShortcutBinding,
+	type PluginRegisterShortcutScope,
 	usePluginShortcutScope,
+	useTranslation,
 } from "@vetta-org/plugin-sdk";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { findContentAlignmentGuides } from "./alignment-guides";
 import { listCompatibleNodeKinds, resolveContentConnection } from "../node/connections";
 import type { ContentProjectCommand } from "../project/commands";
@@ -31,7 +32,6 @@ import type {
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "../generation/types";
-import { getRegisterShortcutScope } from "../plugin/plugin-ui";
 import { AlignmentGuidesLayer, type AlignmentGuidesLayerHandle } from "./AlignmentGuidesLayer";
 import { clampCanvasOverlayPosition } from "./overlay-position";
 import { shouldOpenConnectionCreateMenu } from "./connection-drop-menu";
@@ -53,9 +53,24 @@ import {
 	toContentFlowNodes,
 } from "./graph-flow-adapters";
 import { CONTENT_FLOW_SOURCE_HANDLE_ID } from "./flow-handles";
-import { reconcileSelectedNodeIds } from "./selection-state";
+import {
+	applySelectedNodeIdsToFlowEdges,
+	applySelectedNodeIdsToFlowNodes,
+	reconcileSelectedNodeIds,
+} from "./selection-state";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { DEFAULT_CANVAS_TOOL, getCanvasInteraction } from "./canvas-tools";
+import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "../node/dropped-media";
+import { CanvasProjectMenu } from "./CanvasProjectMenu";
+import { CanvasZoomControls } from "./CanvasZoomControls";
+import {
+	DEFAULT_CONTENT_CANVAS_KEYBINDINGS,
+	type ContentCanvasKeybindings,
+} from "./canvas-keybindings";
+import {
+	DEFAULT_CONTENT_CANVAS_VIEWPORT,
+	type ContentCanvasViewportConfig,
+} from "./canvas-viewport";
 
 const nodeTypes: NodeTypes = { contentNode: ContentNodeCard };
 const CREATE_MENU_SIZE = { width: 320, height: 420 };
@@ -71,7 +86,12 @@ interface GraphWorkspaceProps {
 	onDispatch: (commands: readonly ContentProjectCommand[]) => Promise<void>;
 	onRunNode: (nodeId: string) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
-	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
+	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
+	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
+	onOpenSettings: () => void;
+	registerShortcutScope?: PluginRegisterShortcutScope | null;
+	keybindings?: Readonly<ContentCanvasKeybindings>;
+	viewportConfig?: Readonly<ContentCanvasViewportConfig>;
 }
 
 export function GraphWorkspace({
@@ -82,7 +102,13 @@ export function GraphWorkspace({
 	onRunNode,
 	onImportAssets,
 	onImportReferences,
+	onSelectedNodeIdsChange,
+	onOpenSettings,
+	registerShortcutScope = null,
+	keybindings = DEFAULT_CONTENT_CANVAS_KEYBINDINGS,
+	viewportConfig = DEFAULT_CONTENT_CANVAS_VIEWPORT,
 }: GraphWorkspaceProps) {
+	const { t } = useTranslation();
 	const flowContainerRef = useRef<HTMLDivElement>(null);
 	const flowInstanceRef = useRef<ReactFlowInstance<ContentFlowNode, Edge> | null>(null);
 	const alignmentGuidesLayerRef = useRef<AlignmentGuidesLayerHandle>(null);
@@ -92,8 +118,13 @@ export function GraphWorkspace({
 	 * opened by `onConnectEnd`.
 	 */
 	const suppressNextPaneClickRef = useRef(false);
+	const canvasDropDepthRef = useRef(0);
 	const [canvasTool, setCanvasTool] = useState(DEFAULT_CANVAS_TOOL);
+	const [canvasDropActive, setCanvasDropActive] = useState(false);
+	const [importingCanvasDrop, setImportingCanvasDrop] = useState(false);
 	const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+	const selectedNodeIdsRef = useRef<readonly string[]>([]);
+	const boxSelectionActiveRef = useRef(false);
 	const [pendingMenu, setPendingMenu] = useState<PendingConnectionMenu | null>(null);
 	const [canvasMenu, setCanvasMenu] = useState<CanvasCreateMenuState | null>(null);
 	const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(null);
@@ -101,7 +132,11 @@ export function GraphWorkspace({
 		() => selectedNodeIds.filter((nodeId) => project.graph.nodes.some((node) => node.id === nodeId)),
 		[project.graph.nodes, selectedNodeIds],
 	);
+	selectedNodeIdsRef.current = selectedNodeIds;
 	const selectedNodeIdSet = useMemo(() => new Set(activeSelectedNodeIds), [activeSelectedNodeIds]);
+	useEffect(() => {
+		onSelectedNodeIdsChange(activeSelectedNodeIds);
+	}, [activeSelectedNodeIds, onSelectedNodeIdsChange]);
 	const canvasInteraction = getCanvasInteraction(canvasTool);
 	const projectSyncKey = `${createContentProjectSyncKey(
 		{
@@ -119,17 +154,65 @@ export function GraphWorkspace({
 		setCanvasMenu(null);
 		setContextMenu(null);
 	}, []);
+	const commitNodeSelection = useCallback((requestedNodeIds: readonly string[], synchronizeFlowNodes: boolean) => {
+		const nextNodeIds = [...new Set(requestedNodeIds)];
+		const nextNodeIdSet = new Set(nextNodeIds);
+		selectedNodeIdsRef.current = nextNodeIds;
+		setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
+
+		const instance = flowInstanceRef.current;
+		if (!instance) return;
+		if (synchronizeFlowNodes) {
+			instance.setNodes((nodes) => applySelectedNodeIdsToFlowNodes(nodes, nextNodeIdSet));
+		}
+		instance.setEdges((edges) => applySelectedNodeIdsToFlowEdges(edges, nextNodeIdSet));
+	}, []);
+	const applyNodeSelection = useCallback(
+		(requestedNodeIds: readonly string[]) => commitNodeSelection(requestedNodeIds, true),
+		[commitNodeSelection],
+	);
+	const onSelectionStart = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionStart"]>
+	>(() => {
+		boxSelectionActiveRef.current = true;
+	}, []);
+	const onSelectionChange = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionChange"]>
+	>(
+		({ nodes: selectedNodes }) => {
+			if (boxSelectionActiveRef.current) return;
+			commitNodeSelection(
+				selectedNodes.map((node) => node.id),
+				false,
+			);
+		},
+		[commitNodeSelection],
+	);
+	const finishBoxSelection = useCallback(() => {
+		if (!boxSelectionActiveRef.current) return;
+		boxSelectionActiveRef.current = false;
+		const selectedNodeIds = (flowInstanceRef.current?.getNodes() ?? [])
+			.filter((node) => node.selected)
+			.map((node) => node.id);
+		commitNodeSelection(selectedNodeIds, false);
+	}, [commitNodeSelection]);
+	const onSelectionEnd = useCallback<
+		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionEnd"]>
+	>(() => finishBoxSelection(), [finishBoxSelection]);
 
 	const actions = useMemo<ContentNodeActions>(
 		() => ({
 			onDelete: (nodeId) => {
-				setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, current.filter((id) => id !== nodeId)));
+				applyNodeSelection(selectedNodeIdsRef.current.filter((id) => id !== nodeId));
 				void onDispatch([{ type: "node.delete", nodeId }]);
 			},
 			onDuplicate: (nodeId) => void onDispatch([{ type: "node.duplicate", nodeId }]),
 			onToggleLock: (nodeId) => {
 				const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
 				if (node) void onDispatch([{ type: "node.lock", nodeId, locked: !node.locked }]);
+			},
+			onRename: async (nodeId, name) => {
+				await onDispatch([{ type: "node.rename", nodeId, name }]);
 			},
 			onUpdate: async (nodeId, data) => {
 				const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
@@ -176,16 +259,13 @@ export function GraphWorkspace({
 					},
 				]),
 		}),
-		[onDispatch, onImportAssets, onImportReferences, onRunNode, project],
+		[applyNodeSelection, onDispatch, onImportAssets, onImportReferences, onRunNode, project],
 	);
 	const synchronizedNodes = useMemo(
-		() => toContentFlowNodes(project, selectedNodeIdSet, models, actions, assetPreviewUrls),
-		[actions, assetPreviewUrls, models, project, selectedNodeIdSet],
+		() => toContentFlowNodes(project, models, actions, assetPreviewUrls),
+		[actions, assetPreviewUrls, models, project],
 	);
-	const synchronizedEdges = useMemo(
-		() => toContentFlowEdges(project, selectedNodeIdSet),
-		[project, selectedNodeIdSet],
-	);
+	const synchronizedEdges = useMemo(() => toContentFlowEdges(project), [project]);
 	const appliedProjectSyncKeyRef = useRef(projectSyncKey);
 	const latestFlowSyncRef = useRef({
 		projectSyncKey,
@@ -202,8 +282,9 @@ export function GraphWorkspace({
 		const instance = flowInstanceRef.current;
 		if (!instance || appliedProjectSyncKeyRef.current === projectSyncKey) return;
 		appliedProjectSyncKeyRef.current = projectSyncKey;
-		instance.setNodes(synchronizedNodes);
-		instance.setEdges(synchronizedEdges);
+		const selectedNodeIdSet = new Set(selectedNodeIdsRef.current);
+		instance.setNodes(applySelectedNodeIdsToFlowNodes(synchronizedNodes, selectedNodeIdSet));
+		instance.setEdges(applySelectedNodeIdsToFlowEdges(synchronizedEdges, selectedNodeIdSet));
 	}, [projectSyncKey, synchronizedEdges, synchronizedNodes]);
 
 	const addNode = useCallback(
@@ -219,9 +300,62 @@ export function GraphWorkspace({
 			const size = getContentNodeSize(kind, createDefaultContentNodeData(kind).aspectRatio);
 			const offset = project.graph.nodes.length * 18;
 			const position = { x: center.x - size.width / 2 + offset, y: center.y - size.height / 2 + offset };
-			void onDispatch([{ type: "node.add", node: { id: nodeId, kind, position } }]).then(() => setSelectedNodeIds([nodeId]));
+			const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+			void onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]).then(() =>
+				applyNodeSelection([nodeId]),
+			);
 		},
-		[onDispatch, project.graph.nodes.length],
+		[applyNodeSelection, onDispatch, project.graph.nodes, t],
+	);
+
+	const handleCanvasDragEnter = useCallback((event: DragEvent<HTMLDivElement>) => {
+		if (!dataTransferHasFiles(event.dataTransfer)) return;
+		event.preventDefault();
+		canvasDropDepthRef.current += 1;
+		setCanvasDropActive(true);
+	}, []);
+	const handleCanvasDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
+		if (!dataTransferHasFiles(event.dataTransfer)) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = "copy";
+	}, []);
+	const handleCanvasDragLeave = useCallback((event: DragEvent<HTMLDivElement>) => {
+		if (!dataTransferHasFiles(event.dataTransfer)) return;
+		event.preventDefault();
+		canvasDropDepthRef.current = Math.max(0, canvasDropDepthRef.current - 1);
+		if (canvasDropDepthRef.current === 0) setCanvasDropActive(false);
+	}, []);
+	const handleCanvasDrop = useCallback(
+		async (event: DragEvent<HTMLDivElement>) => {
+			if (!dataTransferHasFiles(event.dataTransfer)) return;
+			event.preventDefault();
+			const dataTransfer = event.dataTransfer;
+			const pointer = { x: event.clientX, y: event.clientY };
+			canvasDropDepthRef.current = 0;
+			setCanvasDropActive(false);
+			const instance = flowInstanceRef.current;
+			if (!instance) return;
+
+			setImportingCanvasDrop(true);
+			try {
+				const files = await collectDroppedMediaFiles(dataTransfer);
+				if (files.length === 0) return;
+				const kind = "asset";
+				const nodeId = crypto.randomUUID();
+				const center = instance.screenToFlowPosition(pointer);
+				const data = createDefaultContentNodeData(kind);
+				const size = getContentNodeSize(kind, data.aspectRatio);
+				const position = { x: center.x - size.width / 2, y: center.y - size.height / 2 };
+				const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+				closeMenus();
+				await onDispatch([{ type: "node.add", node: { id: nodeId, kind, name, position } }]);
+				applyNodeSelection([nodeId]);
+				await importDroppedMediaFiles(files, (batch) => onImportAssets(nodeId, batch));
+			} finally {
+				setImportingCanvasDrop(false);
+			}
+		},
+		[applyNodeSelection, closeMenus, onDispatch, onImportAssets, project.graph.nodes, t],
 	);
 
 	const clampOverlay = useCallback((clientX: number, clientY: number, size: { width: number; height: number }) => {
@@ -308,7 +442,16 @@ export function GraphWorkspace({
 				x: pendingMenu.position.x - size.width / 2,
 				y: pendingMenu.position.y - size.height / 2,
 			};
-			const candidateNode: ContentNode = { id: nodeId, kind, position, ...size, status: "idle", data };
+			const name = `${t(`node.kind.${kind}`)} ${project.graph.nodes.filter((node) => node.kind === kind).length + 1}`;
+			const candidateNode: ContentNode = {
+				id: nodeId,
+				kind,
+				name,
+				position,
+				...size,
+				status: "idle",
+				data,
+			};
 			const candidateProject: ContentProjectDocument = {
 				...project,
 				graph: { ...project.graph, nodes: [...project.graph.nodes, candidateNode] },
@@ -320,13 +463,13 @@ export function GraphWorkspace({
 			const connection = resolveContentConnection(candidateProject, sourceNode, targetNode);
 			if (!connection) return;
 			void onDispatch([
-				{ type: "node.add", node: { id: nodeId, kind, position } },
+				{ type: "node.add", node: { id: nodeId, kind, name, position } },
 				{ type: "edge.connect", source: sourceNode.id, target: targetNode.id, ...connection },
 			]);
-			setSelectedNodeIds([nodeId]);
+			applyNodeSelection([nodeId]);
 			setPendingMenu(null);
 		},
-		[onDispatch, pendingMenu, project],
+		[applyNodeSelection, onDispatch, pendingMenu, project, t],
 	);
 
 	const selectedProjectNodes = useMemo(
@@ -353,19 +496,24 @@ export function GraphWorkspace({
 		(layout: ContentNodeLayout) => applyPlacements(layoutContentNodes(movableSelectedNodes, layout)),
 		[applyPlacements, movableSelectedNodes],
 	);
-	const onInit = useCallback((instance: ReactFlowInstance<ContentFlowNode, Edge>) => {
-		flowInstanceRef.current = instance;
-		const latest = latestFlowSyncRef.current;
-		appliedProjectSyncKeyRef.current = latest.projectSyncKey;
-		instance.setNodes(latest.nodes);
-		instance.setEdges(latest.edges);
-	}, []);
-	const onSelectionChange = useCallback<
-		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionChange"]>
-	>(({ nodes: selectedNodes }) => {
-		const nextNodeIds = selectedNodes.map((node) => node.id);
-		setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
-	}, []);
+	const onInit = useCallback(
+		(instance: ReactFlowInstance<ContentFlowNode, Edge>) => {
+			flowInstanceRef.current = instance;
+			const latest = latestFlowSyncRef.current;
+			const selectedNodeIdSet = new Set(selectedNodeIdsRef.current);
+			appliedProjectSyncKeyRef.current = latest.projectSyncKey;
+			instance.setNodes(applySelectedNodeIdsToFlowNodes(latest.nodes, selectedNodeIdSet));
+			instance.setEdges(applySelectedNodeIdsToFlowEdges(latest.edges, selectedNodeIdSet));
+			// Open at default zoom (100%), only pan to center content — never auto-scale to fit.
+			const zoom = viewportConfig.defaultZoom;
+			if (latest.nodes.length > 0) {
+				void instance.fitView({ minZoom: zoom, maxZoom: zoom, padding: 0.16 });
+			} else {
+				void instance.setViewport({ x: 0, y: 0, zoom });
+			}
+		},
+		[viewportConfig.defaultZoom],
+	);
 	const onConnect = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onConnect"]>>(
 		(connection) => {
 			const resolved = resolveContentFlowConnection(project, connection);
@@ -396,12 +544,12 @@ export function GraphWorkspace({
 			event.preventDefault();
 			const position = clampOverlay(event.clientX, event.clientY, CONTEXT_MENU_SIZE);
 			if (!position) return;
-			setSelectedNodeIds([node.id]);
+			applyNodeSelection([node.id]);
 			setCanvasMenu(null);
 			setPendingMenu(null);
 			setContextMenu({ type: "node", nodeId: node.id, ...position });
 		},
-		[clampOverlay],
+		[applyNodeSelection, clampOverlay],
 	);
 	const onEdgeContextMenu = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onEdgeContextMenu"]>
@@ -423,11 +571,11 @@ export function GraphWorkspace({
 				// Keep the connection-create menu opened by onConnectEnd.
 				return;
 			}
-			setSelectedNodeIds([]);
+			applyNodeSelection([]);
 			closeMenus();
 			if (event.detail === 2) openCanvasMenu(event.clientX, event.clientY);
 		},
-		[closeMenus, openCanvasMenu],
+		[applyNodeSelection, closeMenus, openCanvasMenu],
 	);
 	const onPaneContextMenu = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onPaneContextMenu"]>
@@ -481,10 +629,10 @@ export function GraphWorkspace({
 		void onDispatch(commands);
 		if (nodeIdsToDelete.length > 0) {
 			const removed = new Set(nodeIdsToDelete);
-			setSelectedNodeIds((current) => current.filter((nodeId) => !removed.has(nodeId)));
+			applyNodeSelection(selectedNodeIdsRef.current.filter((nodeId) => !removed.has(nodeId)));
 		}
 		return true;
-	}, [activeSelectedNodeIds, onDispatch, project.graph.nodes]);
+	}, [activeSelectedNodeIds, applyNodeSelection, onDispatch, project.graph.nodes]);
 
 	const isGraphSurfaceActive = useCallback(() => {
 		const el = flowContainerRef.current;
@@ -502,7 +650,7 @@ export function GraphWorkspace({
 	const deleteShortcutBindings = useMemo(
 		(): readonly PluginShortcutBinding[] => [
 			{
-				key: "delete",
+				key: keybindings.deleteSelection,
 				when: "not-editable",
 				preventDefault: false,
 				stopPropagation: false,
@@ -513,7 +661,7 @@ export function GraphWorkspace({
 				},
 			},
 			{
-				key: "backspace",
+				key: keybindings.deleteSelectionAlternative,
 				when: "not-editable",
 				preventDefault: false,
 				stopPropagation: false,
@@ -524,21 +672,66 @@ export function GraphWorkspace({
 				},
 			},
 		],
-		[deleteSelection],
+		[deleteSelection, keybindings.deleteSelection, keybindings.deleteSelectionAlternative],
 	);
 
-	usePluginShortcutScope(getRegisterShortcutScope(), {
+	usePluginShortcutScope(registerShortcutScope, {
 		id: "graph-delete",
 		kind: "surface",
 		enabled: canDeleteViaShortcut,
 		bindings: deleteShortcutBindings,
 	});
 
+	const canSelectAllViaShortcut = useCallback(
+		() => isGraphSurfaceActive() && project.graph.nodes.length > 0,
+		[isGraphSurfaceActive, project.graph.nodes.length],
+	);
+	const selectAllShortcutBindings = useMemo(
+		(): readonly PluginShortcutBinding[] => [
+			{
+				key: keybindings.selectAll,
+				when: "not-editable",
+				run: () => {
+					applyNodeSelection(project.graph.nodes.map((node) => node.id));
+					closeMenus();
+				},
+			},
+		],
+		[applyNodeSelection, closeMenus, keybindings.selectAll, project.graph.nodes],
+	);
+
+	usePluginShortcutScope(registerShortcutScope, {
+		id: "graph-select-all",
+		kind: "surface",
+		enabled: canSelectAllViaShortcut,
+		bindings: selectAllShortcutBindings,
+	});
+
+	const fitContent = useCallback(() => {
+		void flowInstanceRef.current?.fitView({ duration: 240, padding: 0.16 });
+	}, []);
+	const resetZoom = useCallback(() => {
+		void flowInstanceRef.current?.zoomTo(viewportConfig.defaultZoom, { duration: 180 });
+	}, [viewportConfig.defaultZoom]);
+	const focusNodes = useCallback((nodeIds: readonly string[]) => {
+		const instance = flowInstanceRef.current;
+		if (!instance || nodeIds.length === 0) return;
+		const requestedNodeIds = new Set(nodeIds);
+		const nodes = instance.getNodes().filter((node) => requestedNodeIds.has(node.id));
+		if (nodes.length === 0) return;
+		void instance.fitView({ nodes, duration: 240, padding: 0.28 });
+	}, []);
+
 	return (
 		<div className="flex h-full min-w-0 flex-1 flex-col">
 			<div
 				ref={flowContainerRef}
 				className="content-creation-flow relative min-h-0 flex-1 overflow-hidden bg-[color-mix(in_srgb,var(--muted)_20%,var(--background))]"
+				onDragEnter={handleCanvasDragEnter}
+				onDragOver={handleCanvasDragOver}
+				onDragLeave={handleCanvasDragLeave}
+				onDrop={(event) => void handleCanvasDrop(event)}
+				onPointerCancelCapture={finishBoxSelection}
 			>
 				<ContentCanvasSelectionProvider count={activeSelectedNodeIds.length}>
 					<ReactFlow<ContentFlowNode, Edge>
@@ -551,6 +744,8 @@ export function GraphWorkspace({
 						proOptions={PRO_OPTIONS}
 						onInit={onInit}
 						onSelectionChange={onSelectionChange}
+						onSelectionStart={onSelectionStart}
+						onSelectionEnd={onSelectionEnd}
 						onConnect={onConnect}
 						onConnectEnd={handleConnectEnd}
 						isValidConnection={isValidConnection}
@@ -558,6 +753,9 @@ export function GraphWorkspace({
 						selectionKeyCode="Control"
 						selectionMode={SelectionMode.Partial}
 						panOnDrag={canvasInteraction.panOnDrag}
+						minZoom={viewportConfig.minZoom}
+						maxZoom={viewportConfig.maxZoom}
+						defaultViewport={{ x: 0, y: 0, zoom: viewportConfig.defaultZoom }}
 						zoomOnDoubleClick={false}
 						onNodeClick={onNodeClick}
 						onNodeContextMenu={onNodeContextMenu}
@@ -566,9 +764,8 @@ export function GraphWorkspace({
 						onPaneContextMenu={onPaneContextMenu}
 						onNodeDrag={onNodeDrag}
 						onNodeDragStop={onNodeDragStop}
-						fitView
 					>
-						<Controls showInteractive={false} position="bottom-left" />
+						<CanvasZoomControls defaultZoom={viewportConfig.defaultZoom} />
 						<SelectionToolbar
 							nodeIds={activeSelectedNodeIds}
 							allLocked={selectedProjectNodes.length > 0 && selectedProjectNodes.every((node) => node.locked)}
@@ -579,7 +776,7 @@ export function GraphWorkspace({
 							}
 							onDelete={() => {
 								void onDispatch(activeSelectedNodeIds.map((nodeId) => ({ type: "node.delete", nodeId })));
-								setSelectedNodeIds([]);
+								applyNodeSelection([]);
 							}}
 							onToggleLock={() => {
 								const locked = !selectedProjectNodes.every((node) => node.locked);
@@ -589,6 +786,14 @@ export function GraphWorkspace({
 						<AlignmentGuidesLayer ref={alignmentGuidesLayerRef} />
 					</ReactFlow>
 				</ContentCanvasSelectionProvider>
+				<CanvasProjectMenu
+					project={project}
+					models={models}
+					onFitContent={fitContent}
+					onFocusNodes={focusNodes}
+					onResetZoom={resetZoom}
+					onOpenSettings={onOpenSettings}
+				/>
 				<GraphOverlayLayer
 					activeTool={canvasTool}
 					nodeCount={project.graph.nodes.length}
@@ -609,6 +814,14 @@ export function GraphWorkspace({
 					onDeleteEdge={(edgeId) => void onDispatch([{ type: "edge.delete", edgeId }])}
 					onCloseContextMenu={() => setContextMenu(null)}
 				/>
+				{canvasDropActive || importingCanvasDrop ? (
+					<div className="pointer-events-none absolute inset-3 z-30 grid place-items-center rounded-lg border border-dashed border-border/80 bg-background/55 backdrop-blur-[1px]">
+						<div className="flex items-center gap-2 rounded-lg border border-border/80 bg-popover/95 px-3 py-2 text-xs font-medium text-popover-foreground shadow-sm">
+							<span className="icon-[lucide--folder-input] block size-4 text-muted-foreground" aria-hidden="true" />
+							<span>{t(importingCanvasDrop ? "assetNode.importing" : "canvas.drop.createAsset")}</span>
+						</div>
+					</div>
+				) : null}
 			</div>
 		</div>
 	);

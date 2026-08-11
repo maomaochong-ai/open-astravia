@@ -1,4 +1,4 @@
-import type { JSX, KeyboardEvent } from "react";
+import type { FocusEventHandler, JSX, KeyboardEvent } from "react";
 import { cn } from "@vetta/ui";
 import { MotionSelect } from "./MotionSelect";
 
@@ -38,14 +38,20 @@ export function InputField({
 	disabled,
 	onBlur,
 	onKeyDown,
+	autoFocus,
+	"aria-label": ariaLabel,
+	className,
 }: {
 	value: string;
 	onChange: (v: string) => void;
 	placeholder?: string;
 	type?: string;
 	disabled?: boolean;
-	onBlur?: () => void;
+	onBlur?: FocusEventHandler<HTMLInputElement>;
 	onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+	autoFocus?: boolean;
+	"aria-label"?: string;
+	className?: string;
 }): JSX.Element {
 	return (
 		<input
@@ -56,7 +62,12 @@ export function InputField({
 			onBlur={onBlur}
 			onKeyDown={onKeyDown}
 			placeholder={placeholder}
-			className="h-8 w-full rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50"
+			autoFocus={autoFocus}
+			aria-label={ariaLabel}
+			className={cn(
+				"h-8 w-full rounded-lg border border-border bg-card px-2.5 text-[12px] font-medium text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors hover:bg-accent focus-visible:border-primary/50 disabled:cursor-not-allowed disabled:opacity-50",
+				className,
+			)}
 		/>
 	);
 }

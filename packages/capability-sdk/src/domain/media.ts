@@ -1,13 +1,28 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { createCapabilityCatalog } from "../catalog.js";
 import { CAPABILITY_LAYERS, defineCapability } from "../contracts.js";
+import { JOB_TYPE, type Job } from "../foundation/job.js";
 import { defineCapabilityInputSchema, defineCapabilityOutputSchema } from "../schema.js";
 
-export const MEDIA_PROTOCOL_VERSION = 1 as const;
+export const MEDIA_PROTOCOL_VERSION = 4 as const;
+
+export const MEDIA_OPERATIONS = {
+	GENERATE: "generate",
+	COMPOSE: "compose",
+	TRANSCODE: "transcode",
+} as const;
 
 export const MEDIA_KINDS = {
 	IMAGE: "image",
 	VIDEO: "video",
+	AUDIO: "audio",
+} as const;
+
+export const MEDIA_INPUT_KINDS = {
+	IMAGE: "image",
+	VIDEO: "video",
+	AUDIO: "audio",
+	DOCUMENT: "document",
 } as const;
 
 export const MEDIA_GENERATION_MODES = {
@@ -17,14 +32,6 @@ export const MEDIA_GENERATION_MODES = {
 	IMAGE_TO_VIDEO: "image-to-video",
 	VIDEO_TO_VIDEO: "video-to-video",
 	REFERENCE_TO_VIDEO: "reference-to-video",
-} as const;
-
-export const MEDIA_JOB_STATUSES = {
-	QUEUED: "queued",
-	RUNNING: "running",
-	SUCCEEDED: "succeeded",
-	FAILED: "failed",
-	CANCELLED: "cancelled",
 } as const;
 
 export const MEDIA_ERROR_CODES = {
@@ -41,145 +48,249 @@ export const MEDIA_ERROR_CODES = {
 } as const;
 
 const mediaEmptyInputType = Type.Object({}, { additionalProperties: false });
-const mediaKindType = Type.Union([Type.Literal(MEDIA_KINDS.IMAGE), Type.Literal(MEDIA_KINDS.VIDEO)]);
+const requiredStringType = Type.String({ minLength: 1 });
+const mediaKindType = Type.Union(Object.values(MEDIA_KINDS).map((kind) => Type.Literal(kind)));
+const mediaGenerationKindType = Type.Union([Type.Literal(MEDIA_KINDS.IMAGE), Type.Literal(MEDIA_KINDS.VIDEO)]);
+const mediaInputKindType = Type.Union(Object.values(MEDIA_INPUT_KINDS).map((kind) => Type.Literal(kind)));
 const mediaGenerationModeType = Type.Union(Object.values(MEDIA_GENERATION_MODES).map((mode) => Type.Literal(mode)));
-const mediaJobStatusType = Type.Union(Object.values(MEDIA_JOB_STATUSES).map((status) => Type.Literal(status)));
 const mediaErrorCodeType = Type.Union(Object.values(MEDIA_ERROR_CODES).map((code) => Type.Literal(code)));
 const mediaDimensionsType = Type.Object(
 	{ width: Type.Integer({ minimum: 1 }), height: Type.Integer({ minimum: 1 }) },
 	{ additionalProperties: false },
 );
-const mediaReferenceProperties = {
-	id: Type.Optional(Type.String({ minLength: 1 })),
-	kind: mediaKindType,
-	mimeType: Type.String({ minLength: 1 }),
-	data: Type.String({ minLength: 1, maxLength: 32 * 1024 * 1024 }),
-};
-const mediaReferenceType = Type.Object(mediaReferenceProperties, { additionalProperties: false });
+const mediaPluginBlobSourceType = Type.Object(
+	{
+		type: Type.Literal("plugin-blob"),
+		namespace: requiredStringType,
+		blobId: requiredStringType,
+	},
+	{ additionalProperties: false },
+);
+const mediaWorkspaceFileSourceType = Type.Object(
+	{ type: Type.Literal("workspace-file"), path: requiredStringType },
+	{ additionalProperties: false },
+);
+const mediaInputSourceType = Type.Union([mediaPluginBlobSourceType, mediaWorkspaceFileSourceType]);
+const mediaInputType = Type.Object(
+	{
+		id: Type.Optional(requiredStringType),
+		role: Type.Optional(requiredStringType),
+		kind: mediaInputKindType,
+		mimeType: Type.Optional(requiredStringType),
+		source: mediaInputSourceType,
+	},
+	{ additionalProperties: false },
+);
+const mediaProviderInputType = Type.Object(
+	{
+		id: requiredStringType,
+		role: Type.Optional(requiredStringType),
+		kind: mediaInputKindType,
+		mimeType: Type.Optional(requiredStringType),
+	},
+	{ additionalProperties: false },
+);
+const mediaOutputType = Type.Object(
+	{
+		kind: mediaKindType,
+		mimeType: requiredStringType,
+		dimensions: Type.Optional(mediaDimensionsType),
+		fps: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
+		durationSeconds: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
+		videoCodec: Type.Optional(requiredStringType),
+		audioCodec: Type.Optional(requiredStringType),
+	},
+	{ additionalProperties: false },
+);
 const mediaArtifactType = Type.Object(
 	{
-		...mediaReferenceProperties,
+		id: requiredStringType,
+		kind: mediaKindType,
+		mimeType: requiredStringType,
+		sizeBytes: Type.Integer({ minimum: 0 }),
+		lifetime: Type.Literal("temporary"),
+		name: Type.Optional(requiredStringType),
 		width: Type.Optional(Type.Integer({ minimum: 1 })),
 		height: Type.Optional(Type.Integer({ minimum: 1 })),
 		durationSeconds: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
 	},
 	{ additionalProperties: false },
 );
-const mediaCapabilityType = Type.Object(
+const mediaGenerationInputSlotType = Type.Object(
 	{
-		kind: mediaKindType,
-		modes: Type.Array(mediaGenerationModeType, { minItems: 1 }),
-		aspectRatios: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
-		resolutions: Type.Optional(Type.Array(Type.String({ minLength: 1 }))),
-		durationsSeconds: Type.Optional(Type.Array(Type.Number({ exclusiveMinimum: 0 }))),
+		role: requiredStringType,
+		kinds: Type.Array(mediaInputKindType, { minItems: 1 }),
+		minItems: Type.Integer({ minimum: 0 }),
+		maxItems: Type.Integer({ minimum: 1 }),
 	},
 	{ additionalProperties: false },
 );
+const mediaGenerationModeCapabilityType = Type.Object(
+	{
+		mode: mediaGenerationModeType,
+		inputs: Type.Array(mediaGenerationInputSlotType),
+		minTotalItems: Type.Optional(Type.Integer({ minimum: 0 })),
+		maxTotalItems: Type.Optional(Type.Integer({ minimum: 1 })),
+		aspectRatioPolicy: Type.Optional(Type.Union([Type.Literal("configurable"), Type.Literal("input-derived")])),
+		audioGeneration: Type.Optional(
+			Type.Union([Type.Literal("none"), Type.Literal("always"), Type.Literal("optional")]),
+		),
+	},
+	{ additionalProperties: false },
+);
+const mediaGenerateCapabilityType = Type.Object(
+	{
+		operation: Type.Literal(MEDIA_OPERATIONS.GENERATE),
+		kind: mediaGenerationKindType,
+		modes: Type.Array(mediaGenerationModeType, { minItems: 1 }),
+		aspectRatios: Type.Optional(Type.Array(requiredStringType)),
+		resolutions: Type.Optional(Type.Array(requiredStringType)),
+		durationsSeconds: Type.Optional(Type.Array(Type.Number({ exclusiveMinimum: 0 }))),
+		modeCapabilities: Type.Optional(Type.Array(mediaGenerationModeCapabilityType)),
+	},
+	{ additionalProperties: false },
+);
+const mediaComposeCapabilityType = Type.Object(
+	{
+		operation: Type.Literal(MEDIA_OPERATIONS.COMPOSE),
+		documentMimeTypes: Type.Array(requiredStringType, { minItems: 1 }),
+		outputMimeTypes: Type.Array(requiredStringType, { minItems: 1 }),
+	},
+	{ additionalProperties: false },
+);
+const mediaTranscodeCapabilityType = Type.Object(
+	{
+		operation: Type.Literal(MEDIA_OPERATIONS.TRANSCODE),
+		inputMimeTypes: Type.Array(requiredStringType, { minItems: 1 }),
+		outputMimeTypes: Type.Array(requiredStringType, { minItems: 1 }),
+	},
+	{ additionalProperties: false },
+);
+const mediaProviderCapabilityType = Type.Union([
+	mediaGenerateCapabilityType,
+	mediaComposeCapabilityType,
+	mediaTranscodeCapabilityType,
+]);
 const mediaProviderDescriptorType = Type.Object(
 	{
 		id: Type.String({ minLength: 1, maxLength: 129 }),
+		displayName: Type.Optional(Type.String({ minLength: 1, maxLength: 128 })),
 		ownerId: Type.String({ minLength: 1, maxLength: 128 }),
 		protocolVersion: Type.Literal(MEDIA_PROTOCOL_VERSION),
-		capabilities: Type.Array(mediaCapabilityType, { minItems: 1 }),
+		capabilities: Type.Array(mediaProviderCapabilityType, { minItems: 1 }),
 	},
 	{ additionalProperties: false },
 );
-const mediaCreateJobInputType = Type.Object(
+
+const mediaSubmitBaseProperties = {
+	ownerId: requiredStringType,
+	providerId: Type.String({ minLength: 1, maxLength: 129 }),
+	inputs: Type.Array(mediaInputType),
+};
+const mediaGenerateInputType = Type.Object(
 	{
-		providerId: Type.String({ minLength: 1, maxLength: 129 }),
-		kind: mediaKindType,
+		...mediaSubmitBaseProperties,
+		operation: Type.Literal(MEDIA_OPERATIONS.GENERATE),
+		kind: mediaGenerationKindType,
 		mode: mediaGenerationModeType,
 		prompt: Type.String({ minLength: 1, maxLength: 64 * 1024 }),
-		modelId: Type.Optional(Type.String({ minLength: 1 })),
+		modelId: Type.Optional(requiredStringType),
 		dimensions: Type.Optional(mediaDimensionsType),
-		aspectRatio: Type.Optional(Type.String({ minLength: 1 })),
-		resolution: Type.Optional(Type.String({ minLength: 1 })),
+		aspectRatio: Type.Optional(requiredStringType),
+		resolution: Type.Optional(requiredStringType),
 		durationSeconds: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
-		references: Type.Optional(Type.Array(mediaReferenceType, { maxItems: 8 })),
 	},
 	{ additionalProperties: false },
 );
+const mediaComposeInputType = Type.Object(
+	{
+		...mediaSubmitBaseProperties,
+		operation: Type.Literal(MEDIA_OPERATIONS.COMPOSE),
+		output: mediaOutputType,
+	},
+	{ additionalProperties: false },
+);
+const mediaTranscodeInputType = Type.Object(
+	{
+		...mediaSubmitBaseProperties,
+		operation: Type.Literal(MEDIA_OPERATIONS.TRANSCODE),
+		output: mediaOutputType,
+	},
+	{ additionalProperties: false },
+);
+const mediaSubmitInputType = Type.Union([mediaGenerateInputType, mediaComposeInputType, mediaTranscodeInputType]);
 const mediaFailureType = Type.Object(
 	{
 		code: mediaErrorCodeType,
-		message: Type.String({ minLength: 1 }),
+		message: requiredStringType,
 		retryable: Type.Boolean(),
 	},
 	{ additionalProperties: false },
 );
-const mediaJobType = Type.Object(
+const mediaProviderJobType = Type.Object(
 	{
-		id: Type.String({ minLength: 1 }),
-		providerId: Type.String({ minLength: 1 }),
-		status: mediaJobStatusType,
+		id: requiredStringType,
+		status: Type.Union([
+			Type.Literal("queued"),
+			Type.Literal("running"),
+			Type.Literal("succeeded"),
+			Type.Literal("failed"),
+			Type.Literal("cancelled"),
+		]),
 		progress: Type.Optional(Type.Number({ minimum: 0, maximum: 1 })),
 		artifacts: Type.Optional(Type.Array(mediaArtifactType)),
 		error: Type.Optional(mediaFailureType),
 	},
 	{ additionalProperties: false },
 );
-const mediaJobRefType = Type.Object(
-	{ providerId: Type.String({ minLength: 1 }), id: Type.String({ minLength: 1 }) },
-	{ additionalProperties: false },
-);
 
+export type MediaOperation = Static<typeof mediaSubmitInputType>["operation"];
 export type MediaKind = Static<typeof mediaKindType>;
+export type MediaInputKind = Static<typeof mediaInputKindType>;
 export type MediaGenerationMode = Static<typeof mediaGenerationModeType>;
-export type MediaJobStatus = Static<typeof mediaJobStatusType>;
 export type MediaErrorCode = Static<typeof mediaErrorCodeType>;
 export type MediaDimensions = Readonly<Static<typeof mediaDimensionsType>>;
-export type MediaReference = Readonly<Static<typeof mediaReferenceType>>;
+export type MediaInputSource = Readonly<Static<typeof mediaInputSourceType>>;
+export type MediaInput = Readonly<Static<typeof mediaInputType>>;
+export type MediaProviderInput = Readonly<Static<typeof mediaProviderInputType>>;
+export type MediaOutput = Readonly<Static<typeof mediaOutputType>>;
 export type MediaArtifact = Readonly<Static<typeof mediaArtifactType>>;
-export type MediaCapability = Readonly<Static<typeof mediaCapabilityType>>;
+export type MediaGenerationInputSlot = Readonly<Static<typeof mediaGenerationInputSlotType>>;
+export type MediaGenerationModeCapability = Readonly<Static<typeof mediaGenerationModeCapabilityType>>;
+export type MediaProviderCapability = Readonly<Static<typeof mediaProviderCapabilityType>>;
 export type MediaProviderDescriptor = Readonly<Static<typeof mediaProviderDescriptorType>>;
-export type MediaCreateJobInput = Readonly<Static<typeof mediaCreateJobInputType>>;
+export type MediaSubmitInput = Readonly<Static<typeof mediaSubmitInputType>>;
+export type MediaGenerateInput = Readonly<Static<typeof mediaGenerateInputType>>;
+export type MediaComposeInput = Readonly<Static<typeof mediaComposeInputType>>;
+export type MediaTranscodeInput = Readonly<Static<typeof mediaTranscodeInputType>>;
 export type MediaFailure = Readonly<Static<typeof mediaFailureType>>;
-export type MediaJob = Readonly<Static<typeof mediaJobType>>;
-export type MediaJobRef = Readonly<Static<typeof mediaJobRefType>>;
-export type MediaProviderCreateJobInput = Omit<MediaCreateJobInput, "providerId" | "references"> & {
-	readonly references: readonly MediaReference[];
-};
-export type MediaProviderJob = Omit<MediaJob, "providerId">;
-
+export type MediaProviderJob = Readonly<Static<typeof mediaProviderJobType>>;
+type ToMediaProviderInput<Input> = Input extends MediaSubmitInput
+	? Omit<Input, "ownerId" | "providerId" | "inputs"> & { readonly inputs: readonly MediaProviderInput[] }
+	: never;
+export type MediaProviderSubmitInput = ToMediaProviderInput<MediaSubmitInput>;
 const mediaEmptyInputSchema = defineCapabilityInputSchema(mediaEmptyInputType);
 const mediaProviderListOutputSchema = defineCapabilityOutputSchema(Type.Array(mediaProviderDescriptorType), {
 	clean: true,
 });
-const mediaCreateJobInputSchema = defineCapabilityInputSchema(mediaCreateJobInputType, { clean: true });
-const mediaJobRefInputSchema = defineCapabilityInputSchema(mediaJobRefType, { clean: true });
-const mediaJobOutputSchema = defineCapabilityOutputSchema(mediaJobType, { clean: true });
+const mediaSubmitInputSchema = defineCapabilityInputSchema(mediaSubmitInputType, { clean: true });
+const mediaJobOutputSchema = defineCapabilityOutputSchema(JOB_TYPE, { clean: true });
 
 export const DOMAIN_MEDIA_CAPABILITIES = {
 	LIST_PROVIDERS: defineCapability<Record<string, never>, MediaProviderDescriptor[]>({
 		id: "cap.domain.vetta.media.provider.list",
 		kind: "query",
 		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
+		version: 3,
 		input: mediaEmptyInputSchema,
 		output: mediaProviderListOutputSchema,
 	}),
-	CREATE_JOB: defineCapability<MediaCreateJobInput, MediaJob>({
-		id: "cap.domain.vetta.media.job.create",
+	SUBMIT: defineCapability<MediaSubmitInput, Job>({
+		id: "cap.domain.vetta.media.job.submit",
 		kind: "command",
 		layer: CAPABILITY_LAYERS.DOMAIN,
 		version: 1,
-		input: mediaCreateJobInputSchema,
-		output: mediaJobOutputSchema,
-	}),
-	GET_JOB: defineCapability<MediaJobRef, MediaJob>({
-		id: "cap.domain.vetta.media.job.get",
-		kind: "query",
-		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
-		input: mediaJobRefInputSchema,
-		output: mediaJobOutputSchema,
-	}),
-	CANCEL_JOB: defineCapability<MediaJobRef, MediaJob>({
-		id: "cap.domain.vetta.media.job.cancel",
-		kind: "command",
-		layer: CAPABILITY_LAYERS.DOMAIN,
-		version: 1,
-		input: mediaJobRefInputSchema,
+		input: mediaSubmitInputSchema,
 		output: mediaJobOutputSchema,
 	}),
 } as const;

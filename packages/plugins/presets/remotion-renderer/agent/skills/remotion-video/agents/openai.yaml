@@ -1,0 +1,5 @@
+interface:
+  display_name: "Remotion Video"
+  short_description: "Create, edit, and render Remotion videos in this conversation"
+  default_prompt: "Create or update a Remotion project in this conversation workspace, then render it to MP4 with render_remotion_video."
+

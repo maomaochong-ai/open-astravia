@@ -521,6 +521,37 @@ func TestBridge_ReturnsOnAgentEndEvenIfChannelStaysOpen(t *testing.T) {
 	}
 }
 
+func TestBridge_ChannelCloseBeforeAgentEndRequiresSessionRestart(t *testing.T) {
+	tr := newFakeTransport(transport.Capabilities{SupportsMessageEdit: false, MaxMessageLength: 1000})
+	b := New(tr, "c1")
+	events := make(chan hostclient.AgentEvent)
+	close(events)
+
+	err := b.Run(context.Background(), events)
+	var failure hostclient.TypedFailure
+	if !errors.As(err, &failure) {
+		t.Fatalf("expected typed failure, got %T: %v", err, err)
+	}
+	if failure.FailurePhase() != hostclient.FailurePhaseTurn ||
+		failure.FailureRecoverability() != hostclient.FailureRestartSession {
+		t.Fatalf("unexpected failure metadata: phase=%q recoverability=%q", failure.FailurePhase(), failure.FailureRecoverability())
+	}
+}
+
+func TestBridge_DeferredChannelCloseDoesNotEmitEmptySuccessDigest(t *testing.T) {
+	tr := newFakeTransport(deferredCaps())
+	b := New(tr, "c1")
+	events := make(chan hostclient.AgentEvent)
+	close(events)
+
+	if err := b.Run(context.Background(), events); err == nil {
+		t.Fatal("expected channel close failure")
+	}
+	if calls := sendsOnly(tr.snapshot()); len(calls) != 0 {
+		t.Fatalf("unexpected empty-turn digest before router failure response: %+v", calls)
+	}
+}
+
 func TestBridge_ContextCancellation(t *testing.T) {
 	tr := newFakeTransport(transport.Capabilities{SupportsMessageEdit: false, MaxMessageLength: 1000})
 	b := New(tr, "c1")

@@ -35,7 +35,7 @@ export function VideoPreview({ file }: { file: PluginPreviewFile }): JSX.Element
 				src={src}
 				controls
 				preload="metadata"
-				className="h-full w-full object-cover"
+				className="h-full w-full object-contain"
 				onError={() => setFailed(true)}
 			/>
 		</div>

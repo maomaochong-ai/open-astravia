@@ -1,13 +1,10 @@
 {
 	"name": "@vetta/coding-agent",
 	"version": "0.0.1",
-	"description": "Coding agent CLI with read, bash, edit, write tools and session management",
+	"description": "Coding Agent product composition, session hosting, and capability orchestration",
 	"type": "module",
 	"piConfig": {
 		"name": "vetta"
-	},
-	"bin": {
-		"vetta-agent": "dist/cli.js"
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -17,24 +14,84 @@
 			"import": "./dist/index.js"
 		},
 		"./hooks": {
-			"types": "./dist/core/hooks/index.d.ts",
-			"import": "./dist/core/hooks/index.js"
+			"types": "./dist/public-api/hooks.d.ts",
+			"import": "./dist/public-api/hooks.js"
 		},
-		"./core/settings-manager.js": {
-			"types": "./dist/core/settings-manager.d.ts",
-			"import": "./dist/core/settings-manager.js"
+		"./host-services": {
+			"types": "./dist/public-api/host-services.d.ts",
+			"import": "./dist/public-api/host-services.js"
 		},
-		"./core/mcp/index.js": {
-			"types": "./dist/core/mcp/index.d.ts",
-			"import": "./dist/core/mcp/index.js"
+		"./historical-sessions": {
+			"types": "./dist/public-api/historical-sessions.d.ts",
+			"import": "./dist/public-api/historical-sessions.js"
 		},
-		"./core/mcp/types.js": {
-			"types": "./dist/core/mcp/types.d.ts",
-			"import": "./dist/core/mcp/types.js"
+		"./bootstrap": {
+			"types": "./dist/public-api/bootstrap.d.ts",
+			"import": "./dist/public-api/bootstrap.js"
 		},
-		"./core/resolve-config-value.js": {
-			"types": "./dist/core/resolve-config-value.d.ts",
-			"import": "./dist/core/resolve-config-value.js"
+		"./cli-control": {
+			"types": "./dist/public-api/cli-control.d.ts",
+			"import": "./dist/public-api/cli-control.js"
+		},
+		"./config": {
+			"types": "./dist/config.d.ts",
+			"import": "./dist/config.js"
+		},
+		"./configuration": {
+			"types": "./dist/configuration/index.d.ts",
+			"import": "./dist/configuration/index.js"
+		},
+		"./concurrency": {
+			"types": "./dist/concurrency/index.d.ts",
+			"import": "./dist/concurrency/index.js"
+		},
+		"./extensions": {
+			"types": "./dist/public-api/extensions.d.ts",
+			"import": "./dist/public-api/extensions.js"
+		},
+		"./extensions/pi-compat": {
+			"types": "./dist/extensions/pi-compat/index.d.ts",
+			"import": "./dist/extensions/pi-compat/index.js"
+		},
+		"./export-html": {
+			"types": "./dist/public-api/export-html.d.ts",
+			"import": "./dist/public-api/export-html.js"
+		},
+		"./profile": {
+			"types": "./dist/public-api/profile.d.ts",
+			"import": "./dist/public-api/profile.js"
+		},
+		"./product-prompt": {
+			"types": "./dist/public-api/product-prompt.d.ts",
+			"import": "./dist/public-api/product-prompt.js"
+		},
+		"./resources": {
+			"types": "./dist/public-api/resources.d.ts",
+			"import": "./dist/public-api/resources.js"
+		},
+		"./rpc": {
+			"types": "./dist/public-api/rpc.d.ts",
+			"import": "./dist/public-api/rpc.js"
+		},
+		"./runtime": {
+			"types": "./dist/public-api/runtime.d.ts",
+			"import": "./dist/public-api/runtime.js"
+		},
+		"./sdk": {
+			"types": "./dist/public-api/sdk.d.ts",
+			"import": "./dist/public-api/sdk.js"
+		},
+		"./settings": {
+			"types": "./dist/public-api/settings.d.ts",
+			"import": "./dist/public-api/settings.js"
+		},
+		"./host": {
+			"types": "./dist/adapters/runtime-tools/index.d.ts",
+			"import": "./dist/adapters/runtime-tools/index.js"
+		},
+		"./composition": {
+			"types": "./dist/composition/index.d.ts",
+			"import": "./dist/composition/index.js"
 		}
 	},
 	"files": [
@@ -47,13 +104,11 @@
 	"scripts": {
 		"clean": "shx rm -rf dist",
 		"dev": "tsgo -p tsconfig.build.json --watch --preserveWatchOutput",
-		"build": "bun run generate:personas && bun run generate:modes && bun run generate:descriptions && tsgo -p tsconfig.build.json && shx chmod +x dist/cli.js && bun run copy-assets",
+		"build": "bun run generate:personas && bun run generate:modes && tsgo -p tsconfig.build.json && bun run copy-assets",
 		"generate:personas": "node scripts/generate-personas.mjs",
 		"generate:modes": "node scripts/generate-modes.mjs",
-		"generate:descriptions": "node scripts/generate-tool-descriptions.mjs",
-		"build:binary": "bun run build && bun build --compile ./dist/cli.js --outfile dist/vetta && bun run copy-binary-assets",
-		"copy-assets": "shx mkdir -p dist/modes/interactive/theme && shx cp src/modes/interactive/theme/*.json dist/modes/interactive/theme/ && shx mkdir -p dist/core/export-html/vendor && shx cp src/core/export-html/template.html src/core/export-html/template.css src/core/export-html/template.js dist/core/export-html/ && shx cp src/core/export-html/vendor/*.js dist/core/export-html/vendor/",
-		"copy-binary-assets": "shx cp package.json dist/ && shx cp README.md dist/ && shx cp CHANGELOG.md dist/ && shx mkdir -p dist/theme && shx cp src/modes/interactive/theme/*.json dist/theme/ && shx mkdir -p dist/export-html/vendor && shx cp src/core/export-html/template.html dist/export-html/ && shx cp src/core/export-html/vendor/*.js dist/export-html/vendor/ && shx cp -r docs dist/ && shx cp -r examples dist/ && shx cp ../../node_modules/@silvia-odwyer/photon-node/photon_rs_bg.wasm dist/",
+		"check:generated-prompts": "node scripts/generate-personas.mjs --check && node scripts/generate-modes.mjs --check",
+		"copy-assets": "shx mkdir -p dist/modes/interactive/theme && shx cp src/modes/interactive/theme/*.json dist/modes/interactive/theme/ && shx mkdir -p dist/export-html/vendor && shx cp src/export-html/assets/template.html src/export-html/assets/template.css src/export-html/assets/template.js dist/export-html/ && shx cp src/export-html/assets/vendor/*.js dist/export-html/vendor/",
 		"test": "vitest --run",
 		"test:coverage": "vitest --run --coverage",
 		"prepublishOnly": "bun run clean && bun run build"
@@ -67,7 +122,13 @@
 		"@vetta/agent-core": "workspace:*",
 		"@vetta/ai": "workspace:*",
 		"@vetta/ecosystem-adapter": "workspace:*",
+		"@vetta/runtime-core": "workspace:*",
+		"@vetta/runtime-mcp": "workspace:*",
+		"@vetta/runtime-knowledge": "workspace:*",
+		"@vetta/runtime-storage": "workspace:*",
+		"@vetta/runtime-subagents": "workspace:*",
 		"@vetta/runtime-telemetry": "workspace:*",
+		"@vetta/runtime-tools": "workspace:*",
 		"ajv": "^8.17.1",
 		"ajv-formats": "^3.0.1",
 		"chalk": "^5.5.0",
@@ -82,7 +143,9 @@
 		"minimatch": "^10.1.1",
 		"proper-lockfile": "^4.1.2",
 		"strip-ansi": "^7.1.0",
-		"yaml": "^2.8.2"
+		"typebox": "1.3.7",
+		"yaml": "^2.8.2",
+		"zod": "^4.4.3"
 	},
 	"overrides": {
 		"rimraf": "6.1.2",

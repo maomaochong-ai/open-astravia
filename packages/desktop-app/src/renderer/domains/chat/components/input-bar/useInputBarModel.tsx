@@ -22,7 +22,12 @@ import {
 	todoItemsBySessionAtom,
 	mentionedFilesAtom,
 } from "@shared/store/atoms";
-import { getQueueForSession, messageQueueBySessionAtom } from "@shared/store/message-queue-atoms";
+import {
+	getQueueForSession,
+	isQueuePausedForSession,
+	messageQueueBySessionAtom,
+	messageQueuePausedBySessionAtom,
+} from "@shared/store/message-queue-atoms";
 import { recordInputFilesAdded } from "@shared/lib/app-monitor-events";
 import { isImagePath } from "@shared/lib/input-tokens";
 import { pathBasename, toVettaFileUrl } from "@shared/lib/utils";
@@ -51,7 +56,7 @@ import {
 import type { TriggerMatch } from "./editor/tokens/trigger";
 import { useInputActionBarModel } from "../useInputActionBarModel";
 import type { ActiveActionCapsule } from "./ActiveActionCapsules";
-import type { InputBarModel, InputBarProps, InputBarDrawerItem } from "./types";
+import type { InputBarModel, InputBarProps, InputBarDrawerItem, InputBarTodoModel } from "./types";
 
 const CONTEXT_MENU_WIDTH = 160;
 const CONTEXT_MENU_HEIGHT = 112;
@@ -139,6 +144,8 @@ export function useInputBarModel({
 		() => getQueueForSession(queueMap, activeSession?.runtimeId ?? null),
 		[queueMap, activeSession?.runtimeId],
 	);
+	const queuePausedMap = useAtomValue(messageQueuePausedBySessionAtom);
+	const queuePaused = isQueuePausedForSession(queuePausedMap, activeSession?.runtimeId ?? null);
 	const actionBar = useInputActionBarModel();
 	const setActivityPanelOpen = useSetAtom(activityPanelOpenAtom);
 	const setTabByProject = useSetAtom(activityPanelTabByProjectAtom);
@@ -194,11 +201,13 @@ export function useInputBarModel({
 		[actionBar],
 	);
 
-	/** 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、插件上下文、重编辑提示。 */
+	/**
+	 * 仍留在输入卡片顶部的非行内附件：图片、场景、Appshot、重编辑提示。
+	 * 插件上下文不在其中——它画在卡片外面顶部，算进来只会让卡片里展开一块空白。
+	 */
 	const hasCapsules =
 		imageAttachments.length > 0 ||
 		Boolean(selectedSkill) ||
-		Boolean(promptAttachment) ||
 		Boolean(appshotAttachment) ||
 		Boolean(pendingMessageEdit);
 
@@ -331,7 +340,7 @@ export function useInputBarModel({
 		dismissedTriggerRef.current = null;
 	}, [hasSession]);
 
-	const handleTodoViewMore = useCallback(() => {
+	const handleOpenTodoPanel = useCallback(() => {
 		const cwd = activeSession?.cwd;
 		if (!cwd) return;
 		setDrawerActiveTab(null);
@@ -361,31 +370,25 @@ export function useInputBarModel({
 				kind: "queue",
 				id: "queue",
 				label: t("inputBar.drawer.queueLabel"),
-				desc: t("inputBar.drawer.queueDesc", { count: queueItems.length }),
+				// abort/error 后队列暂停（ADR-0060）：抽屉标签用暂停文案 + 脉冲提醒，
+				// 避免排队消息静默滞留、用户以为已发出。
+				desc: queuePaused
+					? t("inputBar.drawer.queuePausedDesc", { count: queueItems.length })
+					: t("inputBar.drawer.queueDesc", { count: queueItems.length }),
+				pulsing: queuePaused,
 				runtimeId,
 				onSendNow: (id) => onSendQueued?.(runtimeId, id),
 			});
 		}
-		if (todoItems.length === 0) return items;
-		const inProgressItem = todoItems.find((i) => i.status === "in_progress");
-		const doneCount = todoItems.filter((i) => i.status === "done").length;
-		items.push({
-			kind: "todo",
-			id: "todo",
-			label: t("inputBar.drawer.todoLabel"),
-			desc: inProgressItem
-				? t("inputBar.drawer.todoDesc", {
-						done: doneCount,
-						total: todoItems.length,
-						content: inProgressItem.content,
-					})
-				: t("inputBar.drawer.todoDescSimple", { done: doneCount, total: todoItems.length }),
-			pulsing: !!inProgressItem,
-			items: todoItems,
-			onViewMore: handleTodoViewMore,
-		});
 		return items;
-	}, [activeSession, handleTodoViewMore, onSendQueued, queueItems.length, sandboxPermission, t, todoItems]);
+	}, [activeSession, onSendQueued, queueItems.length, queuePaused, sandboxPermission, t]);
+
+	// 待办不再进抽屉：它自己是输入卡片外部下方的一条状态条。
+	const todo = useMemo(
+		(): InputBarTodoModel | null =>
+			todoItems.length > 0 ? { items: todoItems, onOpenPanel: handleOpenTodoPanel } : null,
+		[handleOpenTodoPanel, todoItems],
+	);
 
 	const handleSelectImages = useCallback(async () => {
 		if (!hasSession) return;
@@ -602,9 +605,12 @@ export function useInputBarModel({
 		atFilter,
 		drawerItems,
 		drawerActiveTab,
+		todo,
 		hasPromptAttachment: Boolean(promptAttachment),
 		promptAttachmentIcon: promptAttachment?.icon,
 		promptAttachmentLabel: promptAttachment?.label,
+		promptAttachmentLabels:
+			promptAttachment?.labels ?? (promptAttachment ? [promptAttachment.label] : undefined),
 		pendingMessageEdit: Boolean(pendingMessageEdit),
 		pendingEditHint: t("messageList.edit.pendingHint"),
 		cancelPendingEditLabel: t("messageList.interrupt.cancel"),

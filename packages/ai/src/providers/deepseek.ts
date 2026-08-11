@@ -14,9 +14,14 @@
  * thinkingFormat "deepseek" injected — no manual compat config needed.
  */
 
-import type { AssistantMessageEventStream, Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { AssistantMessageEventStream } from "../utils/event-stream.js";
 import type { OpenAICompletionsOptions } from "./openai-completions.js";
-import { streamOpenAICompletions, streamSimpleOpenAICompletions } from "./openai-completions.js";
+import {
+	createOpenAICompatibleAdapter,
+	streamOpenAICompletions,
+	streamSimpleOpenAICompletions,
+} from "./openai-completions.js";
 
 const DEEPSEEK_COMPAT = { thinkingFormat: "deepseek" as const };
 
@@ -27,6 +32,8 @@ function withDeepSeekCompat(model: Model<"openai-completions-deepseek">): Model<
 		compat: Object.assign({}, model.compat, DEEPSEEK_COMPAT),
 	};
 }
+
+export const deepSeekAdapter = createOpenAICompatibleAdapter("openai-completions-deepseek", withDeepSeekCompat);
 
 export const streamDeepSeek: StreamFunction<"openai-completions-deepseek", OpenAICompletionsOptions> = (
 	model: Model<"openai-completions-deepseek">,

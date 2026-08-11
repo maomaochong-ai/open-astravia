@@ -6,8 +6,8 @@ import {
 	type Disposable,
 	DOMAIN_AI_CAPABILITIES,
 } from "@vetta/capability-sdk";
+import { getOrCreateSharedModelRuntime } from "../agent-runtime/host-services.js";
 import { getDesktopModelSettingsService } from "../models/model-settings-host.js";
-import { getOrCreateSharedModelRegistry } from "../runtime.js";
 
 const DOMAIN_AI_PROVIDER_OWNER = "vetta.domain.ai";
 
@@ -23,7 +23,7 @@ function toModelKey(provider: string, modelId: string): string {
 
 export function registerDesktopAiProviders(registry: CapabilityRegistry): Disposable {
 	const models = getDesktopModelSettingsService();
-	const modelRegistry = getOrCreateSharedModelRegistry();
+	const modelRegistry = getOrCreateSharedModelRuntime();
 
 	return registry.registerOwner(DOMAIN_AI_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_AI_CAPABILITIES.LIST_MODELS, {

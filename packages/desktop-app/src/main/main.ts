@@ -16,6 +16,7 @@ import { registerAppLifecycleIpc } from "./app-lifecycle.js";
 import { initializeAppMonitor, shutdownAppMonitor } from "./app-monitor/app-monitor-service.js";
 import { consumeOAuthCallback, reopenOAuthLogin, startOAuthLogin } from "./auth/oauth-login.js";
 import { setLoopbackCallbackHandler } from "./auth/oauth-loopback.js";
+import { shutdownBatchTaskExecutor } from "./batch-tasks/batch-task-executor.js";
 import { initializeDesktopBatchTaskService } from "./batch-tasks/batch-task-service.js";
 import { parseActionCliCommand, runActionCliCommand } from "./cli/action-command.js";
 import { parseAgentRpcCommand, runAgentRpcCommand } from "./cli/agent-rpc-command.js";
@@ -46,7 +47,7 @@ import {
 } from "./ipc/index.js";
 import { syncQuickPanelTrigger } from "./ipc/quickpanel.js";
 import { registerKnowledgeIpc } from "./knowledge/ipc.js";
-import { reloadKnowledgePoller } from "./knowledge/poller.js";
+import { reloadKnowledgePoller, shutdownKnowledgePoller } from "./knowledge/poller.js";
 import { getLocalRpcServerEndpointFilePath } from "./local-rpc/endpoint-file.js";
 import { type DesktopLocalRpcServerHandle, startDesktopLocalRpcServer } from "./local-rpc/server.js";
 import { getAppLogger } from "./logger.js";
@@ -56,16 +57,17 @@ import { startPetIdleGuard } from "./pet/pet-idle-guard.js";
 import { initializePetWindow } from "./pet-window.js";
 import { stopAllPluginSpawns } from "./plugins/command-spawner.js";
 import { PluginActionService } from "./plugins/plugin-action-service.js";
+import { startConfiguredPluginDevWatches } from "./plugins/plugin-dev-bootstrap.js";
 import { stopAllPluginDevWatches } from "./plugins/plugin-dev-watch.js";
 import { PLUGIN_PROTOCOL_PRIVILEGES, registerPluginProtocols } from "./plugins/plugin-protocol.js";
 import { discoverSystemPlugins } from "./plugins/plugin-store.js";
 import { stopAllUiohookConsumers } from "./quickpanel-trigger.js";
 import { createQuickPanelWindow } from "./quickpanel-window.js";
 import { isQuitCleanupStarted, runQuitCleanup, setQuitCleanup } from "./quit-cleanup.js";
-import { disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
+import { beginSharedRuntimeShutdown, disposeSharedRuntime, getSharedRuntime } from "./runtime.js";
 import { getRuntimeManager } from "./runtimes/manager.js";
 import { initializeSandboxCapability } from "./sandbox/capability.js";
-import { initScheduler, scheduleTaskInCron, unscheduleTaskInCron } from "./scheduler/scheduler.js";
+import { initScheduler, scheduleTaskInCron, shutdownScheduler, unscheduleTaskInCron } from "./scheduler/scheduler.js";
 import { initializeDesktopSchedulerService } from "./scheduler/scheduler-service.js";
 import { initializeMainTelemetry, shutdownMainTelemetry } from "./telemetry/index.js";
 import { registerThemeProtocol, THEME_PROTOCOL_PRIVILEGE } from "./themes/theme-protocol.js";
@@ -688,6 +690,28 @@ if (!gotSingleLock) {
 		// 后台 poller 等真实内容绘制后再启动。
 		registerKnowledgeIpc();
 		appLifecycle.markReady();
+		if (!app.isPackaged) {
+			void startConfiguredPluginDevWatches(appRoot)
+				.then(({ ready, failures }) => {
+					if (ready.length > 0) {
+						mainLog.info("plugin development sessions ready", {
+							plugins: ready.map((project) => project.id),
+						});
+					}
+					if (failures.length > 0) {
+						mainLog.error("some configured plugin development sessions failed", {
+							failures: failures.map(({ project, error }) => ({
+								pluginId: project.id,
+								projectDir: project.projectDir,
+								error: error.message,
+							})),
+						});
+					}
+				})
+				.catch((error: unknown) => {
+					mainLog.error("failed to start configured plugin development sessions", error);
+				});
+		}
 
 		app.on("activate", () => {
 			showMainWindow();
@@ -698,7 +722,9 @@ if (!gotSingleLock) {
 		void startDesktopLocalRpcServer(
 			{
 				actions: createActionRpcRuntime(actionSystem.runtime),
-				debug: app.isPackaged ? undefined : createDebugRpcRuntime(createAppDebugRuntime({ rendererCdp })),
+				debug: app.isPackaged
+					? undefined
+					: createDebugRpcRuntime(createAppDebugRuntime({ rendererCdp, requestQuit: () => app.quit() })),
 			},
 			{
 				endpointFilePath: getLocalRpcServerEndpointFilePath(),
@@ -794,19 +820,41 @@ app.on("window-all-closed", () => {
 });
 
 // Critical: ensure IM sidecar is killed before the main process exits.
+// 先发起 Knowledge 中止，再等待本地 RPC 关闭。进行中的 `knowledge.manage`
+// Action 会因 Session abort 自然结束，避免 server.close() 等待活动请求而与
+// Knowledge shutdown 形成环形等待。
 // 清理实现注册到 quit-cleanup 模块，更新安装路径会在把控制权交给 Squirrel.Mac
 // 之前先调用它——原因见该模块的注释。
 setQuitCleanup(async () => {
 	mainLog.info("quit cleanup started");
+	beginSharedRuntimeShutdown();
+	const knowledgeShutdown = shutdownKnowledgePoller();
+	if (teardownSchedulerIpc) {
+		teardownSchedulerIpc();
+		teardownSchedulerIpc = undefined;
+	}
+	if (teardownBatchTasksIpc) {
+		teardownBatchTasksIpc();
+		teardownBatchTasksIpc = undefined;
+	}
 
 	// 退出前注销全部全局键盘监听消费者（快捷面板双击 + appshot 双键同按），避免 uiohook 线程残留。
 	stopAllUiohookConsumers();
 
-	// 停掉插件工作台 dev 热更新的 vite watch 子进程，避免孤儿进程。
+	// 停掉插件开发会话和插件命令拉起的长驻进程。
 	stopAllPluginDevWatches();
-
-	// 停掉插件经 ctx.command.spawn 拉起的所有长驻进程（如设计引擎 vite dev server）。
 	stopAllPluginSpawns();
+
+	const consumerShutdownResults = await Promise.allSettled([
+		shutdownScheduler(),
+		shutdownBatchTaskExecutor(),
+		knowledgeShutdown,
+	]);
+	for (const result of consumerShutdownResults) {
+		if (result.status === "rejected") {
+			mainLog.error("agent consumer shutdown failed", result.reason);
+		}
+	}
 
 	const host = getImHost();
 	if (host.getStatus().sidecarPid) {
@@ -818,11 +866,6 @@ setQuitCleanup(async () => {
 	}
 	// 退出前统一释放共享 RuntimeHost 持有的所有 session 文件锁，
 	// 避免 .lock 残留，下次启动还要靠 stale-detection 才能回收。
-	try {
-		await disposeSharedRuntime();
-	} catch (err) {
-		mainLog.error("disposeSharedRuntime failed", err);
-	}
 	if (localRpcServer) {
 		try {
 			await localRpcServer.close();
@@ -830,6 +873,11 @@ setQuitCleanup(async () => {
 			mainLog.error("local RPC server shutdown failed", err);
 		}
 		localRpcServer = undefined;
+	}
+	try {
+		await disposeSharedRuntime();
+	} catch (err) {
+		mainLog.error("disposeSharedRuntime failed", err);
 	}
 	try {
 		await ensureAppMonitorInitialized();

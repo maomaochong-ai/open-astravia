@@ -1,17 +1,34 @@
+import { getEventListeners } from "node:events";
 import { Type } from "@sinclair/typebox";
 import { describe, expect, it, vi } from "vitest";
-import { getModel } from "../src/models.js";
-import { streamSimple } from "../src/stream.js";
-import type { Tool } from "../src/types.js";
+import { streamOpenAICompletions } from "../src/providers/openai-completions.js";
+import type { Model, Tool } from "../src/types.js";
 
-const mockState = vi.hoisted(() => ({ lastParams: undefined as unknown }));
+const mockState = vi.hoisted(() => ({
+	lastParams: undefined as unknown,
+	lastSignal: undefined as AbortSignal | undefined,
+}));
+
+const baseModel: Model<"openai-completions"> = {
+	id: "gpt-4o-mini",
+	name: "GPT-4o mini",
+	api: "openai-completions",
+	provider: "openai",
+	baseUrl: "https://api.openai.com/v1",
+	reasoning: false,
+	input: ["text", "image"],
+	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+	contextWindow: 128_000,
+	maxTokens: 16_384,
+};
 
 vi.mock("openai", () => {
 	class FakeOpenAI {
 		chat = {
 			completions: {
-				create: async (params: unknown) => {
+				create: async (params: unknown, options?: { signal?: AbortSignal }) => {
 					mockState.lastParams = params;
+					mockState.lastSignal = options?.signal;
 					return {
 						async *[Symbol.asyncIterator]() {
 							yield {
@@ -34,9 +51,25 @@ vi.mock("openai", () => {
 });
 
 describe("openai-completions tool_choice", () => {
+	it("releases the turn abort listener after each streamed request", async () => {
+		const controller = new AbortController();
+
+		for (let index = 0; index < 20; index += 1) {
+			await streamOpenAICompletions(
+				baseModel,
+				{
+					messages: [{ role: "user", content: "Hello", timestamp: Date.now() }],
+				},
+				{ apiKey: "test", signal: controller.signal },
+			).result();
+			expect(getEventListeners(controller.signal, "abort")).toHaveLength(0);
+		}
+
+		expect(mockState.lastSignal).toBeDefined();
+		expect(mockState.lastSignal).not.toBe(controller.signal);
+	});
+
 	it("forwards toolChoice from simple options to payload", async () => {
-		const { compat: _compat, ...baseModel } = getModel("openai", "gpt-4o-mini")!;
-		const model = { ...baseModel, api: "openai-completions" } as const;
 		const tools: Tool[] = [
 			{
 				name: "ping",
@@ -48,8 +81,8 @@ describe("openai-completions tool_choice", () => {
 		];
 		let payload: unknown;
 
-		await streamSimple(
-			model,
+		await streamOpenAICompletions(
+			baseModel,
 			{
 				messages: [
 					{
@@ -66,7 +99,7 @@ describe("openai-completions tool_choice", () => {
 				onPayload: (params: unknown) => {
 					payload = params;
 				},
-			} as unknown as Parameters<typeof streamSimple>[2],
+			},
 		).result();
 
 		const params = (payload ?? mockState.lastParams) as { tool_choice?: string; tools?: unknown[] };
@@ -76,12 +109,10 @@ describe("openai-completions tool_choice", () => {
 	});
 
 	it("omits strict when compat disables strict mode", async () => {
-		const { compat: _compat, ...baseModel } = getModel("openai", "gpt-4o-mini")!;
-		const model = {
+		const model: Model<"openai-completions"> = {
 			...baseModel,
-			api: "openai-completions",
 			compat: { supportsStrictMode: false },
-		} as const;
+		};
 		const tools: Tool[] = [
 			{
 				name: "ping",
@@ -93,7 +124,7 @@ describe("openai-completions tool_choice", () => {
 		];
 		let payload: unknown;
 
-		await streamSimple(
+		await streamOpenAICompletions(
 			model,
 			{
 				messages: [
@@ -110,7 +141,7 @@ describe("openai-completions tool_choice", () => {
 				onPayload: (params: unknown) => {
 					payload = params;
 				},
-			} as unknown as Parameters<typeof streamSimple>[2],
+			},
 		).result();
 
 		const params = (payload ?? mockState.lastParams) as { tools?: Array<{ function?: Record<string, unknown> }> };

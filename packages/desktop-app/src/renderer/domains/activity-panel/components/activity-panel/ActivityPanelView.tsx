@@ -1,8 +1,11 @@
-import { type ComponentType, useMemo } from "react";
 import { TabBar } from "@shared/components/ui/tab-bar";
 import type { ActivityTabKey } from "@shared/lib/project-profile";
 import { ActivityPanelView as ThemeActivityPanelView } from "@vetta/theme-ui/activity";
+import { type ComponentType, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { useDockedOutlet } from "../../hooks/useDockedOutlet";
 import { PluginTabPicker } from "../PluginTabPicker";
+import { ActivityTabSurface } from "./ActivityTabSurface";
 import type { ActivityPanelFrameProps } from "./ActivityPanelFrame";
 import type { ActivityPanelActions, ActivityPanelModel } from "./types";
 
@@ -17,16 +20,24 @@ export function ActivityPanelView({
 	Frame,
 	model,
 }: ActivityPanelViewProps): JSX.Element {
+	const { t } = useTranslation("project");
+	const removeLabel = t("tabPicker.hideTab");
 	const tabBar = useMemo(
 		() =>
-			model.tabItems.length > 0 || model.showTabPicker ? (
+			model.tabItems.length > 0 || model.floatingTabs.length > 0 || model.showTabPicker ? (
 				<TabBar
 					className="min-w-0 flex-1"
 					items={model.tabItems}
+					activateOnFileDragHover
+					listRef={model.mainTabListRef}
 					value={model.activeTab}
 					onChange={actions.onTabChange}
+					onTabDragStart={model.narrowSheet ? undefined : actions.onTabDragStart}
+					onTabDragMove={model.narrowSheet ? undefined : actions.onTabDragMove}
+					onTabDragEnd={model.narrowSheet ? undefined : actions.onTabDragEnd}
 					suppressLayoutAnimation={model.isResizing}
 					onRemove={model.knowledgeHistory ? undefined : actions.onRemoveTab}
+					removeLabel={removeLabel}
 					onReorder={model.knowledgeHistory ? undefined : actions.onReorderTabs}
 					onOverflowChange={model.knowledgeHistory ? undefined : actions.onOverflowChange}
 				/>
@@ -36,9 +47,16 @@ export function ActivityPanelView({
 			actions.onRemoveTab,
 			actions.onReorderTabs,
 			actions.onTabChange,
+			actions.onTabDragEnd,
+			actions.onTabDragMove,
+			actions.onTabDragStart,
+			removeLabel,
 			model.activeTab,
 			model.isResizing,
+			model.floatingTabs.length,
 			model.knowledgeHistory,
+			model.mainTabListRef,
+			model.narrowSheet,
 			model.showTabPicker,
 			model.tabItems,
 		],
@@ -66,46 +84,60 @@ export function ActivityPanelView({
 			model.showTabPicker,
 		],
 	);
-
-	const activeIsKeepAlive = model.activeDefinition?.keepAliveWhenAvailable === true;
-	const ActiveComponent = model.activeDefinition?.component;
+	const [dockedOutlet, registerDockedOutlet] = useDockedOutlet();
 
 	const panelContent = useMemo(
 		() => (
-			<div key={model.cwd ?? "__none__"} className="flex min-h-0 flex-1 flex-col">
-				{/* 保活 tab：候选存在时始终挂载，激活用 flex、否则 hidden（避免 webview 重挂载）。 */}
-				{model.keepAliveTabs.map((tab) => {
-					const Comp = tab.definition.component;
-					const active = tab.id === model.activeTab;
-					return (
-						<div
-							key={tab.id}
-							className={active ? "flex min-h-0 flex-1 flex-col" : "hidden"}
-						>
-							<Comp />
-						</div>
-					);
-				})}
-				{!activeIsKeepAlive && ActiveComponent ? <ActiveComponent /> : null}
+			<div ref={model.panelRef} className="flex min-h-0 flex-1 flex-col">
+				<div ref={registerDockedOutlet} className="flex min-h-0 flex-1 flex-col" />
 			</div>
 		),
-		[ActiveComponent, activeIsKeepAlive, model.activeTab, model.cwd, model.keepAliveTabs],
+		[model.panelRef, registerDockedOutlet],
 	);
 
 	return (
-		<ThemeActivityPanelView
-			Frame={Frame}
-			isOpen={model.isOpen}
-			isResizing={model.isResizing}
-			width={model.width}
-			narrowSheet={model.narrowSheet}
-			bottomSheet={model.bottomSheet}
-			tabBar={tabBar}
-			tabPicker={tabPicker}
-			panelContent={panelContent}
-			onClose={actions.onClose}
-			onResize={actions.onResize}
-			onResizeEnd={actions.onResizeEnd}
-		/>
+		<>
+			<ThemeActivityPanelView
+				Frame={Frame}
+				isOpen={model.isOpen}
+				isResizing={model.isResizing}
+				width={model.width}
+				narrowSheet={model.narrowSheet}
+				bottomSheet={model.bottomSheet}
+				tabBar={tabBar}
+				tabPicker={tabPicker}
+				panelContent={panelContent}
+				onClose={actions.onClose}
+				onResize={actions.onResize}
+				onResizeEnd={actions.onResizeEnd}
+			/>
+			{model.dockPreviewBounds && (
+				<div
+					aria-hidden
+					className="pointer-events-none fixed z-30 rounded-t-lg border border-primary/50 bg-primary/10"
+					style={{
+						left: model.dockPreviewBounds.left,
+						top: model.dockPreviewBounds.top,
+						width: model.dockPreviewBounds.width,
+						height: model.dockPreviewBounds.height,
+					}}
+				/>
+			)}
+			{model.mountedTabs.map((tab) => {
+				const floating = model.floatingTabs.find((placement) => placement.key === tab.id) ?? null;
+				return (
+					<ActivityTabSurface
+						key={`${model.cwd ?? "__none__"}:${tab.id}`}
+						actions={actions}
+						dockedOutlet={dockedOutlet}
+						Frame={Frame}
+						floating={floating}
+						isActiveDocked={floating === null && tab.id === model.activeTab}
+						removeLabel={removeLabel}
+						tab={tab}
+					/>
+				);
+			})}
+		</>
 	);
 }

@@ -42,10 +42,12 @@ import { recordAbilityInstall, removeAbilityLedgerEntry } from "../abilities/abi
 import { getDesktopCredentialVault } from "../credentials/desktop-credential-vault.js";
 import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
+import { type DesktopPluginHookRegistration, desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { normalizePluginDevServerUrls } from "./plugin-dev-protocol.js";
+import { assertPluginInstallIdentity } from "./plugin-install-options.js";
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 
-export const PLUGIN_API_VERSION = "1.2.0";
+export const PLUGIN_API_VERSION = "1.3.0";
 export const CORE_ACTION_PLUGIN_ID = "vetta-actions";
 
 function supportsPluginApi(range: string): boolean {
@@ -58,6 +60,7 @@ const manifestPath = join(getVettaHomePath(), "plugins-manifest.json");
 const tmpBaseDir = join(getVettaHomePath(), "tmp", "plugins");
 // 系统插件的用户态偏好（目前仅停用开关），与用户插件注册表分离（ADR-0024）。
 const systemPrefsPath = join(getVettaHomePath(), "system-plugin-prefs.json");
+const OFFICIAL_COMMAND_PERMISSIONS = new Set<PluginPermission>(["agent.command.run", "agent.command.spawn"]);
 
 type PluginManifestFile = Record<string, InstalledPlugin>;
 type SystemPluginPrefs = Record<string, { enabled: boolean; disabledCommands?: string[] }>;
@@ -77,6 +80,19 @@ const dynamicSystemPromptProviders = new Map<string, Map<string, RegisteredSyste
 const modeGatedPluginIds = new Set<string>();
 /** Subset of mode-gated plugins currently active (toggle on). */
 const activeContributionModeIds = new Set<string>();
+
+function effectivePermissions(
+	permissions: readonly PluginPermission[],
+	trustLevel: InstalledPlugin["trustLevel"],
+): PluginPermission[] {
+	return trustLevel === "official"
+		? [...permissions]
+		: permissions.filter((permission) => !OFFICIAL_COMMAND_PERMISSIONS.has(permission));
+}
+
+function effectiveCommands(commands: readonly string[], trustLevel: InstalledPlugin["trustLevel"]): string[] {
+	return trustLevel === "official" ? [...commands] : [];
+}
 
 /**
  * Tell every renderer to re-list and re-load plugins (MF remotes + activity tabs).
@@ -252,10 +268,7 @@ function readRegistry(): PluginManifestFile {
 		const registry = JSON.parse(readFileSync(manifestPath, "utf-8")) as PluginManifestFile;
 		for (const plugin of Object.values(registry)) {
 			plugin.runtime ??= "esm";
-			plugin.permissions ??= [];
-			plugin.grantedPermissions ??= [];
-			plugin.declaredCommands ??= [];
-			plugin.grantedCommandNames ??= [];
+			plugin.allowedNetworkHosts ??= [];
 			plugin.styleUrls ??= [];
 			plugin.activeVersion ??= plugin.version;
 			plugin.defaultLocale ??= "zh";
@@ -263,7 +276,12 @@ function readRegistry(): PluginManifestFile {
 			plugin.source ??= "archive";
 			plugin.required = false;
 			// 用户可编辑的注册表不是信任根；远端签名链接入前一律按来源降为非官方。
-			plugin.trustLevel = plugin.source === "remote" ? "community" : "local";
+			plugin.trustLevel = plugin.source === "remote" || plugin.source === "npm" ? "community" : "local";
+			if (plugin.source !== "npm") plugin.distribution = undefined;
+			plugin.permissions = effectivePermissions(plugin.permissions ?? [], plugin.trustLevel);
+			plugin.grantedPermissions = effectivePermissions(plugin.grantedPermissions ?? [], plugin.trustLevel);
+			plugin.declaredCommands = effectiveCommands(plugin.declaredCommands ?? [], plugin.trustLevel);
+			plugin.grantedCommandNames = effectiveCommands(plugin.grantedCommandNames ?? [], plugin.trustLevel);
 			plugin.rootPath = computePluginRootPath(plugin.id, plugin.source, plugin.activeVersion);
 		}
 		return registry;
@@ -338,23 +356,20 @@ function installedFromManifest(
 	const entryUrl = previous?.entryUrl ?? toPluginUrl(manifest.id, activeVersion, manifest.entry);
 	const styleUrls =
 		previous?.styleUrls ?? (manifest.styles ?? []).map((style) => toPluginUrl(manifest.id, activeVersion, style));
+	const trustLevel: InstalledPlugin["trustLevel"] =
+		options?.source === "remote" || options?.source === "npm" ? "community" : "local";
+	const permissions = effectivePermissions(manifest.permissions ?? [], trustLevel);
 	const grantedPermissions = Array.from(
 		new Set(
-			(options?.grantedPermissions ?? previous?.grantedPermissions ?? []).filter((p) =>
-				manifest.permissions?.includes(p),
-			),
+			(options?.grantedPermissions ?? previous?.grantedPermissions ?? []).filter((p) => permissions.includes(p)),
 		),
 	);
 	// 与 entryUrl/styleUrls 同源：已安装过就沿用 activeVersion 的图标 URL，避免指向未生效的新版本。
 	const iconUrl = previous
 		? previous.iconUrl
 		: resolveIconUrl(manifest.icon, (path) => toPluginUrl(manifest.id, activeVersion, path));
-	const declaredCommands = manifest.commands ?? [];
-	// Fresh install enables all declared commands by default; the user can toggle
-	// any of them off later. A reinstall preserves the prior allow set.
-	const grantedCommandNames = Array.from(
-		new Set((previous?.grantedCommandNames ?? declaredCommands).filter((name) => declaredCommands.includes(name))),
-	);
+	const declaredCommands = effectiveCommands(manifest.commands ?? [], trustLevel);
+	const grantedCommandNames = effectiveCommands(previous?.grantedCommandNames ?? [], trustLevel);
 	return {
 		id: manifest.id,
 		name: manifest.name,
@@ -368,8 +383,9 @@ function installedFromManifest(
 		// 插件级工作模式白名单（agent_mode 轴）：始终跟随最新 manifest。见 ADR-0046。
 		agent_mode: manifest.agent_mode,
 		styleUrls,
-		permissions: manifest.permissions ?? [],
+		permissions,
 		grantedPermissions,
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
 		declaredCommands,
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
@@ -384,7 +400,8 @@ function installedFromManifest(
 		installedAt: previous?.installedAt ?? now,
 		updatedAt: now,
 		source: options?.source ?? "archive",
-		trustLevel: options?.source === "remote" ? "community" : "local",
+		distribution: options?.source === "npm" ? options.npm : undefined,
+		trustLevel,
 		availableVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
 		pendingVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
 		rootPath: computePluginRootPath(manifest.id, options?.source ?? "archive", activeVersion),
@@ -528,7 +545,7 @@ function pluginResourceRelativePath(plugin: InstalledPlugin, relativePath: strin
 }
 
 // =============================================================================
-// Dev 热更新链接（插件工作台）—— 纯内存态，不落注册表：App 重启即回落安装目录，
+// Dev 热更新链接——纯内存态，不落注册表：App 重启即回落安装目录，
 // 注册表始终保持可发布的安装态（避免崩溃后 entryUrl 指向不存在的工程目录）。
 // =============================================================================
 
@@ -537,6 +554,7 @@ interface PluginDevLink {
 	manifest: PluginManifest;
 	locales: PluginLocales;
 	reloadToken: string;
+	ephemeral: boolean;
 	entryUrl?: string;
 	origin?: string;
 	status: PluginDevWatchState["status"];
@@ -544,6 +562,12 @@ interface PluginDevLink {
 }
 
 const devLinks = new Map<string, PluginDevLink>();
+const ephemeralDevPlugins = new Map<string, InstalledPlugin>();
+
+export interface SetPluginDevLinkOptions {
+	/** Allow an explicitly selected development project to exist without a persisted install record. */
+	allowUninstalled?: boolean;
+}
 
 /** dev 资源 URL：直接以工程根为根（无 versions/ 段），token 变化驱动 MF 强制重注册。 */
 function toDevPluginUrl(pluginId: string, relativePath: string, token: string): string {
@@ -556,19 +580,41 @@ function toDevPluginUrl(pluginId: string, relativePath: string, token: string): 
  *
  * Dev 期额外同步安装态字段（仅内存，不写注册表）：
  * - permissions / declaredCommands / settingsSchema 跟工程 plugin.json
- * - 新声明的权限与命令在热更新会话内自动视为已授权，避免「改了 permissions
- *   却必须重新安装」的开发摩擦；关热更新或重启后仍回落注册表安装态。
+ * - 新声明的普通权限在热更新会话内自动视为已授权，避免「改了 permissions
+ *   却必须重新安装」的开发摩擦；命令权限仍只给 official 插件。
  * 正式发布 / 关热更新后的持久授权仍走「应用到 Vetta / 重新安装」。
  */
 function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 	const link = devLinks.get(plugin.id);
 	if (!link) return plugin;
+	const devWatch: PluginDevWatchState = {
+		projectDir: link.projectDir,
+		entryUrl: link.entryUrl,
+		origin: link.origin,
+		status: link.status,
+		error: link.error,
+	};
+	// Keep the installed/staged snapshot active until the candidate server has
+	// completed the versioned ready handshake.
+	if (!link.entryUrl || !link.origin) {
+		return {
+			...plugin,
+			enabled: link.ephemeral ? false : plugin.enabled,
+			devWatch,
+		};
+	}
 	const manifest = link.manifest;
-	const permissions = manifest.permissions ?? [];
-	const declaredCommands = manifest.commands ?? [];
+	const permissions = effectivePermissions(manifest.permissions ?? [], plugin.trustLevel);
+	const declaredCommands = effectiveCommands(manifest.commands ?? [], plugin.trustLevel);
 	// 热更新会话内：声明即放行（合并用户已授权集合，不收回已有授权）。
-	const grantedPermissions = Array.from(new Set([...plugin.grantedPermissions, ...permissions]));
-	const grantedCommandNames = Array.from(new Set([...(plugin.grantedCommandNames ?? []), ...declaredCommands]));
+	const grantedPermissions = effectivePermissions(
+		Array.from(new Set([...plugin.grantedPermissions, ...permissions])),
+		plugin.trustLevel,
+	);
+	const grantedCommandNames = effectiveCommands(
+		Array.from(new Set([...(plugin.grantedCommandNames ?? []), ...declaredCommands])),
+		plugin.trustLevel,
+	);
 	return {
 		...plugin,
 		name: manifest.name,
@@ -590,17 +636,13 @@ function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 		locales: link.locales,
 		permissions,
 		grantedPermissions,
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
 		declaredCommands,
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
 		rootPath: link.projectDir,
-		devWatch: {
-			projectDir: link.projectDir,
-			entryUrl: link.entryUrl,
-			origin: link.origin,
-			status: link.status,
-			error: link.error,
-		},
+		enabled: link.ephemeral ? true : plugin.enabled,
+		devWatch,
 	};
 }
 
@@ -616,22 +658,73 @@ function readDevProjectManifest(projectDir: string, expectedId: string): PluginM
 	return manifest;
 }
 
+function ephemeralInstalledFromManifest(projectDir: string, manifest: PluginManifest): InstalledPlugin {
+	if (!supportsPluginApi(manifest.pluginApiVersion)) {
+		throw new Error(`Unsupported plugin API version: ${manifest.pluginApiVersion}`);
+	}
+	const now = new Date().toISOString();
+	const permissions = effectivePermissions(manifest.permissions ?? [], "local");
+	return {
+		id: manifest.id,
+		name: manifest.name,
+		version: manifest.version,
+		activeVersion: manifest.version,
+		pluginApiVersion: manifest.pluginApiVersion,
+		runtime: manifest.runtime ?? "esm",
+		entryUrl: toDevPluginUrl(manifest.id, manifest.entry, now),
+		moduleFederation: manifest.moduleFederation,
+		agent: manifest.agent,
+		agent_mode: manifest.agent_mode,
+		styleUrls: (manifest.styles ?? []).map((style) => toDevPluginUrl(manifest.id, style, now)),
+		permissions,
+		grantedPermissions: permissions,
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
+		declaredCommands: [],
+		grantedCommandNames: [],
+		settingsSchema: manifest.contributes?.settings,
+		description: manifest.description,
+		author: manifest.author,
+		iconUrl: resolveIconUrl(manifest.icon, (path) => toDevPluginUrl(manifest.id, path, now)),
+		guidingWords: manifest.guidingWords,
+		defaultLocale: manifest.defaultLocale ?? "zh",
+		locales: loadPluginLocales(projectDir),
+		enabled: true,
+		required: false,
+		installedAt: now,
+		updatedAt: now,
+		source: "archive",
+		trustLevel: "local",
+		rootPath: projectDir,
+	};
+}
+
 function getInstalledPluginForDevLink(id: string): InstalledPlugin | undefined {
-	return discoverSystemPlugins().find((plugin) => plugin.id === id) ?? readRegistry()[id];
+	return (
+		discoverSystemPlugins().find((plugin) => plugin.id === id) ?? readRegistry()[id] ?? ephemeralDevPlugins.get(id)
+	);
 }
 
 /** 建立 dev 链接。系统插件沿用随包状态，用户插件要求已安装过一次。 */
-export function setPluginDevLink(id: string, projectDir: string): InstalledPlugin {
+export function setPluginDevLink(
+	id: string,
+	projectDir: string,
+	options: SetPluginDevLinkOptions = {},
+): InstalledPlugin {
 	validatePluginId(id);
-	const plugin = getInstalledPluginForDevLink(id);
-	if (!plugin) throw new Error(`Plugin not installed (apply it once before enabling hot reload): ${id}`);
 	const resolvedDir = resolve(projectDir);
 	const manifest = readDevProjectManifest(resolvedDir, id);
+	let plugin = getInstalledPluginForDevLink(id);
+	if (!plugin && options.allowUninstalled) {
+		plugin = ephemeralInstalledFromManifest(resolvedDir, manifest);
+		ephemeralDevPlugins.set(id, plugin);
+	}
+	if (!plugin) throw new Error(`Plugin not installed (apply it once before enabling hot reload): ${id}`);
 	devLinks.set(id, {
 		projectDir: resolvedDir,
 		manifest,
 		locales: loadPluginLocales(resolvedDir),
 		reloadToken: Date.now().toString(),
+		ephemeral: ephemeralDevPlugins.has(id),
 		status: "starting",
 	});
 	broadcastPluginsChanged({ pluginIds: [id], reload: false, reason: "dev-status" });
@@ -639,7 +732,11 @@ export function setPluginDevLink(id: string, projectDir: string): InstalledPlugi
 }
 
 export function clearPluginDevLink(id: string): void {
-	if (devLinks.delete(id)) broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
+	const changed = devLinks.delete(id) || ephemeralDevPlugins.delete(id);
+	if (changed) {
+		ephemeralDevPlugins.delete(id);
+		broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
+	}
 }
 
 export function hasPluginDevLink(id: string): boolean {
@@ -678,6 +775,19 @@ export function setPluginDevLinkServer(id: string, entryUrl: string, origin: str
 	return applyDevOverlay(plugin);
 }
 
+/** Drop an unavailable server overlay while retaining diagnostics and the stable fallback. */
+export function deactivatePluginDevLink(id: string, error: string): InstalledPlugin | undefined {
+	const link = devLinks.get(id);
+	if (!link) return undefined;
+	link.entryUrl = undefined;
+	link.origin = undefined;
+	link.status = "error";
+	link.error = error;
+	const plugin = getInstalledPluginForDevLink(id);
+	broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
+	return plugin ? applyDevOverlay(plugin) : undefined;
+}
+
 /** watcher/子进程状态回写（面板经 list() 感知）。链接不存在时静默忽略。 */
 export function setPluginDevLinkStatus(id: string, status: PluginDevWatchState["status"], error?: string): void {
 	const link = devLinks.get(id);
@@ -714,6 +824,21 @@ let currentAgentMode: string | undefined;
 /** 主进程记录当前全局工作模式，供 buildAgentPluginRuntimeConfig 的插件级硬闸使用。 */
 export function setPluginRuntimeAgentMode(mode: string | undefined): void {
 	currentAgentMode = mode;
+}
+
+export function readPluginRuntimeAgentMode(): string | undefined {
+	return currentAgentMode;
+}
+
+export function canInvokeDynamicAgentHook(pluginId: string): boolean {
+	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
+	return Boolean(
+		plugin?.enabled &&
+			isPluginContributionModeActive(pluginId) &&
+			pluginMatchesAgentMode(plugin) &&
+			hasGrantedPermission(plugin, "agent.hooks.register") &&
+			hasGrantedPermission(plugin, "agent.hookHandler.execute"),
+	);
 }
 
 /**
@@ -868,14 +993,17 @@ export function beginDynamicAgentContributionLoad(pluginId: string, activationId
 	if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 	dynamicAgentActivations.set(pluginId, activationId);
 	const previousToolCount = dynamicAgentTools.get(pluginId)?.size ?? 0;
+	const previousHookCount = desktopPluginHookRegistry.count(pluginId);
 	const previousContinuationCount = dynamicContinuationProviders.get(pluginId)?.size ?? 0;
 	dynamicAgentTools.delete(pluginId);
+	desktopPluginHookRegistry.clear(pluginId);
 	dynamicContinuationProviders.delete(pluginId);
 	dynamicSystemPromptProviders.delete(pluginId);
 	debugPluginAgent("dynamic agent contribution activation began", {
 		pluginId,
 		activationId,
 		previousToolCount,
+		previousHookCount,
 		previousContinuationCount,
 	});
 }
@@ -945,6 +1073,29 @@ export function unregisterDynamicAgentTool(pluginId: string, toolId: string, act
 		toolId,
 		remainingPluginToolCount: dynamicAgentTools.get(pluginId)?.size ?? 0,
 	});
+}
+
+export function registerDynamicAgentHook(pluginId: string, hook: DesktopPluginHookRegistration): void {
+	validatePluginId(pluginId);
+	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
+	if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
+	if (!hasGrantedPermission(plugin, "agent.hooks.register")) {
+		throw new Error("Plugin permission denied: agent.hooks.register");
+	}
+	if (!hasGrantedPermission(plugin, "agent.hookHandler.execute")) {
+		throw new Error("Plugin permission denied: agent.hookHandler.execute");
+	}
+	if (!hook.scope_use?.length) throw new Error("Plugin hook scope_use must not be empty");
+	const currentActivationId = dynamicAgentActivations.get(pluginId);
+	if (hook.activationId !== undefined && hook.activationId !== currentActivationId) return;
+	desktopPluginHookRegistry.register(pluginId, hook);
+}
+
+export function unregisterDynamicAgentHook(pluginId: string, hookId: string, activationId?: string): void {
+	validatePluginId(pluginId);
+	const currentActivationId = dynamicAgentActivations.get(pluginId);
+	if (activationId !== undefined && activationId !== currentActivationId) return;
+	desktopPluginHookRegistry.unregister(pluginId, hookId, activationId);
 }
 
 export function registerDynamicContinuationProvider(pluginId: string, provider: RegisteredContinuationProvider): void {
@@ -1042,8 +1193,10 @@ export function clearDynamicAgentContributions(pluginId: string, activationId?: 
 		return;
 	}
 	const previousToolCount = dynamicAgentTools.get(pluginId)?.size ?? 0;
+	const previousHookCount = desktopPluginHookRegistry.count(pluginId);
 	const previousContinuationCount = dynamicContinuationProviders.get(pluginId)?.size ?? 0;
 	dynamicAgentTools.delete(pluginId);
+	desktopPluginHookRegistry.clear(pluginId);
 	dynamicContinuationProviders.delete(pluginId);
 	dynamicSystemPromptProviders.delete(pluginId);
 	if (!activationId || currentActivationId === activationId) {
@@ -1053,6 +1206,7 @@ export function clearDynamicAgentContributions(pluginId: string, activationId?: 
 		pluginId,
 		activationId,
 		previousToolCount,
+		previousHookCount,
 		previousContinuationCount,
 	});
 }
@@ -1087,6 +1241,7 @@ function systemInstalledFromManifest(
 		permissions: manifest.permissions ?? [],
 		// 系统插件随包发的可信代码：声明权限全部自动授予，用户不可撤（ADR-0024）。
 		grantedPermissions: manifest.permissions ?? [],
+		allowedNetworkHosts: manifest.network?.allowedHosts ?? [],
 		declaredCommands,
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
@@ -1190,10 +1345,15 @@ export function listPlugins(): InstalledPlugin[] {
 	const system = discoverSystemPlugins();
 	const reserved = new Set(system.map((plugin) => plugin.id));
 	// id 冲突时系统插件遮蔽用户插件（ADR-0024）。
-	const userPlugins = Object.values(readRegistry())
-		.filter((plugin) => !reserved.has(plugin.id))
+	const registryPlugins = Object.values(readRegistry());
+	const userPlugins = registryPlugins.filter((plugin) => !reserved.has(plugin.id)).map(applyDevOverlay);
+	const persistedIds = new Set(registryPlugins.map((plugin) => plugin.id));
+	const ephemeralPlugins = Array.from(ephemeralDevPlugins.values())
+		.filter((plugin) => !reserved.has(plugin.id) && !persistedIds.has(plugin.id))
 		.map(applyDevOverlay);
-	return [...system.map(applyDevOverlay), ...userPlugins].sort((a, b) => a.name.localeCompare(b.name));
+	return [...system.map(applyDevOverlay), ...userPlugins, ...ephemeralPlugins].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	);
 }
 
 export async function installPluginFromArchive(
@@ -1208,6 +1368,7 @@ export async function installPluginFromArchive(
 	try {
 		const { manifest, sourceDir } = await getManifestFromDir(extractDir);
 		validatePluginPackageResources(sourceDir, manifest);
+		assertPluginInstallIdentity(manifest, options);
 		if (isSystemPluginId(manifest.id)) {
 			throw new Error(`Cannot install over a system plugin: ${manifest.id}`);
 		}
@@ -1218,7 +1379,7 @@ export async function installPluginFromArchive(
 		// Fresh install with explicit grants: if caller passed permissions, keep them.
 		// ADR-0042 agent path typically grants all declared permissions at approve time.
 		if (options?.grantedPermissions && options.grantedPermissions.length > 0) {
-			const allowed = new Set(manifest.permissions ?? []);
+			const allowed = new Set(installed.permissions);
 			installed = {
 				...installed,
 				grantedPermissions: options.grantedPermissions.filter((p) => allowed.has(p)),
@@ -1314,7 +1475,7 @@ export function grantPluginPermissions(id: string, permissions: PluginPermission
 	const registry = readRegistry();
 	const plugin = registry[id];
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
-	const allowed = new Set(plugin.permissions);
+	const allowed = new Set(effectivePermissions(plugin.permissions, plugin.trustLevel));
 	plugin.grantedPermissions = Array.from(
 		new Set([...plugin.grantedPermissions, ...permissions.filter((p) => allowed.has(p))]),
 	);
@@ -1359,16 +1520,7 @@ export function grantPluginCommands(id: string, names: string[]): InstalledPlugi
 		if (!refreshed) throw new Error(`Plugin not found: ${id}`);
 		return refreshed;
 	}
-	const registry = readRegistry();
-	const plugin = registry[id];
-	if (!plugin) throw new Error(`Plugin not found: ${id}`);
-	const declared = new Set(plugin.declaredCommands);
-	plugin.grantedCommandNames = Array.from(
-		new Set([...plugin.grantedCommandNames, ...requested.filter((name) => declared.has(name))]),
-	);
-	plugin.updatedAt = new Date().toISOString();
-	writeRegistry(registry);
-	return plugin;
+	throw new Error(`Plugin command execution is restricted to official plugins: ${id}`);
 }
 
 /** Disable declared command names. Inverse of {@link grantPluginCommands}. */
@@ -1424,6 +1576,7 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	plugin.entryUrl = `${toPluginUrl(plugin.id, plugin.activeVersion, manifest.entry)}&reload=${reloadToken}`;
 	plugin.moduleFederation = manifest.moduleFederation;
 	plugin.agent = manifest.agent;
+	plugin.allowedNetworkHosts = manifest.network?.allowedHosts ?? [];
 	plugin.styleUrls = (manifest.styles ?? []).map(
 		(style) => `${toPluginUrl(plugin.id, plugin.activeVersion, style)}&reload=${reloadToken}`,
 	);
@@ -1434,7 +1587,11 @@ export function reloadPlugin(id: string): InstalledPlugin {
 	);
 	// 重载到新版本时同步命令声明，并把用户授权裁剪到新声明集合内（避免授权指向已移除的命令、
 	// 或新增命令因 declaredCommands 陈旧而永远无法授权）。
-	plugin.declaredCommands = manifest.commands ?? [];
+	plugin.permissions = effectivePermissions(manifest.permissions ?? [], plugin.trustLevel);
+	plugin.grantedPermissions = effectivePermissions(plugin.grantedPermissions, plugin.trustLevel).filter((permission) =>
+		plugin.permissions.includes(permission),
+	);
+	plugin.declaredCommands = effectiveCommands(manifest.commands ?? [], plugin.trustLevel);
 	plugin.grantedCommandNames = (plugin.grantedCommandNames ?? []).filter((name) =>
 		plugin.declaredCommands.includes(name),
 	);

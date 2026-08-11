@@ -1,0 +1,58 @@
+---
+title: 使用指南概览
+description: 按任务选择模型、能力、知识库、批量任务、自动化与扩展。
+---
+
+Vetta 桌面端将 Agent、项目上下文和本机工具整合在一个工作空间中。以下按「要完成什么」组织，不要求先理解内部架构。
+
+第一次使用时，先阅读[理解 Vetta 的工作方式](/core/overview/)；它解释工作区、会话、工具和结果之间的关系，避免把 Vetta 当成只生成答案的聊天框。
+
+## 开始工作
+
+<Steps>
+  <Step>
+    ### 配置模型
+
+    在 [模型配置](/product/models/) 添加服务商与模型，并设为默认。
+  </Step>
+  <Step>
+    ### 运行第一个任务
+
+    按 [运行第一个任务](/getting-started/first-task/) 选择工作目录，写清目标与验收条件。
+  </Step>
+  <Step>
+    ### 按需接入能力与资料
+
+    需要外部工具时在 [能力](/product/abilities/) 中添加 MCP 或技能；需要长期资料时使用 [知识库](/product/knowledge-base/)。
+  </Step>
+</Steps>
+
+## 选择执行方式
+
+<Cards>
+  <Card title="普通会话" href="/getting-started/first-task/" description="单个开放式目标，在项目会话中执行。" />
+  <Card title="批量任务" href="/product/batch-tasks/" description="同一提示处理多个文件夹，可设并发与产物校验。" />
+  <Card title="自动化" href="/product/automation/" description="单次、每天或按小时间隔调度任务；需保持应用运行。" />
+  <Card title="Claw / IM" href="/product/claw/" description="在飞书或微信中继续对话，桌面端保持运行。" />
+  <Card title="消息推送" href="/product/webhook/" description="飞书/钉钉 Webhook，供批量任务等推送通知。" />
+</Cards>
+
+## 管理一次任务
+
+<Cards>
+  <Card title="项目、工作区与会话" href="/core/workspaces-and-sessions/" description="选择文件边界，管理历史、分叉和项目指令。" />
+  <Card title="上下文、工具与权限" href="/core/context-tools-and-permissions/" description="引用材料、选择执行模式并处理权限请求。" />
+  <Card title="进度、结果与恢复" href="/core/progress-results-and-recovery/" description="检查待办、工具、后台任务和真实产物。" />
+</Cards>
+
+## 扩展能力
+
+侧栏 **能力** 统一管理技能、场景、MCP、插件与套装。场景也可在独立路由 `/scenes` 中浏览（未必有侧栏一级入口）。开发向扩展见插件与主题文档。
+
+<Cards>
+  <Card title="能力市场" href="/product/abilities/" description="发现 / 我的、导入技能与插件、手动 MCP、外置仓库。" />
+  <Card title="MCP 连接器" href="/product/mcp/" description="推荐连接、凭证与手动 STDIO/HTTP 配置。" />
+  <Card title="插件开发" href="/plugins/overview/" description="扩展界面、消息卡片与 Agent 工具。" />
+  <Card title="主题开发" href="/themes/overview/" description="外观、组件与主题页面（策展/内置流程）。" />
+  <Card title="故障排查" href="/troubleshooting/" description="登录、模型、文件访问与插件加载。" />
+</Cards>

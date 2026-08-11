@@ -6,11 +6,14 @@ function summarizePlugin(plugin: InstalledPlugin): PluginOfficialPluginSummary {
 		id: plugin.id,
 		name: plugin.name,
 		version: plugin.version,
+		activeVersion: plugin.activeVersion,
+		pendingVersion: plugin.pendingVersion,
 		enabled: plugin.enabled,
 		required: plugin.required,
 		source: plugin.source,
 		permissions: plugin.grantedPermissions,
 		description: plugin.description,
+		rootPath: plugin.rootPath,
 		devWatch: plugin.devWatch,
 	};
 }
@@ -50,6 +53,22 @@ export function createOfficialPluginsApi(
 		reload: async (id) => {
 			assertOfficial();
 			return summarizePlugin(await pluginSystem.reload(capabilitySessionId, id));
+		},
+		grantPermissions: async (id, permissions) => {
+			assertOfficial();
+			return summarizePlugin(await window.vetta.plugins.grantPermissions(id, permissions));
+		},
+		startDevWatch: async (id, projectDir) => {
+			assertOfficial();
+			return summarizePlugin(await window.vetta.plugins.startDevWatch(capabilitySessionId, id, projectDir));
+		},
+		stopDevWatch: async (id) => {
+			assertOfficial();
+			await window.vetta.plugins.stopDevWatch(capabilitySessionId, id);
+		},
+		onChanged: (handler) => {
+			assertOfficial();
+			return window.vetta.plugins.onPluginsChanged(handler);
 		},
 	};
 }

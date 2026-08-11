@@ -5,8 +5,8 @@
 import { Type } from "@vetta/ai";
 import type { ExtensionAPI } from "@vetta/coding-agent";
 
-export default function (pi: ExtensionAPI) {
-	pi.registerTool({
+export default function (api: ExtensionAPI) {
+	api.registerTool({
 		name: "hello",
 		label: "Hello",
 		description: "A simple greeting tool",

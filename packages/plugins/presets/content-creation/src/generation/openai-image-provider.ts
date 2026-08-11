@@ -57,6 +57,11 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 	}
 
 	listModels(): readonly ContentModelDescriptor[] {
+		const apiKey = readSetting(this.settings, this.options.apiKeySetting);
+		const configuredBaseUrl = this.options.baseUrlSetting
+			? readSetting(this.settings, this.options.baseUrlSetting)
+			: this.options.baseUrl;
+		if (!apiKey || !configuredBaseUrl?.trim()) return [];
 		const configuredModel = this.options.modelSetting
 			? readSetting(this.settings, this.options.modelSetting) || this.options.defaultModel
 			: this.options.defaultModel;
@@ -109,7 +114,11 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 		const item = response.body.data?.[0];
 		if (!item) throw new Error("content provider response is missing data[0]");
 		if (item.b64_json) {
-			return { kind: "image", data: item.b64_json, mimeType: sniffImageMimeType(item.b64_json) };
+			return {
+				kind: "image",
+				source: { type: "inline", data: item.b64_json },
+				mimeType: sniffImageMimeType(item.b64_json),
+			};
 		}
 		if (!item.url) throw new Error("content provider response is missing image data");
 		const imageUrl = new URL(item.url, `${baseUrl}/`).toString();
@@ -122,6 +131,6 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 		if (!download.ok) throw new Error(`content image download returned HTTP ${download.status}`);
 		const header = download.headers["content-type"];
 		const mimeType = header?.startsWith("image/") ? header.split(";")[0]! : sniffImageMimeType(download.body);
-		return { kind: "image", data: download.body, mimeType };
+		return { kind: "image", source: { type: "inline", data: download.body }, mimeType };
 	}
 }

@@ -162,4 +162,28 @@ describe("connected prompt sources", () => {
 			"Create a quiet forest with soft morning light",
 		);
 	});
+
+	it("serializes omni-reference mentions to MiniMax H3 media tokens by kind", () => {
+		const data = {
+			promptDocument: {
+				version: 1 as const,
+				segments: [
+					{ type: "text" as const, text: "Keep " },
+					{ type: "asset-reference" as const, bindingId: "picture-2" },
+					{ type: "text" as const, text: " moving like " },
+					{ type: "asset-reference" as const, bindingId: "video-1" },
+					{ type: "text" as const, text: " with " },
+					{ type: "asset-reference" as const, bindingId: "audio-1" },
+				],
+			},
+			inputs: [
+				{ id: "picture-1", assetId: "image-1", slotId: "referenceImages" },
+				{ id: "picture-2", assetId: "image-2", slotId: "referenceImages" },
+				{ id: "video-1", assetId: "video-1", slotId: "referenceVideos" },
+				{ id: "audio-1", assetId: "audio-1", slotId: "referenceAudios" },
+			],
+		};
+
+		expect(resolveContentPrompt([], data)).toBe("Keep <Picture 2> moving like <Video 1> with <Audio 1>");
+	});
 });

@@ -2,12 +2,12 @@
  * Minimal SDK Usage
  *
  * Uses all defaults: discovers skills, extensions, tools, context files
- * from cwd and ~/.pi/agent. Model chosen from settings or first available.
+ * from cwd and ~/.vetta/agent. Model chosen from settings or first available.
  */
 
-import { createAgentSession } from "@vetta/coding-agent";
+import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
 
-const { session } = await createAgentSession();
+const { session } = await createCodingAgentSession();
 
 session.subscribe((event) => {
 	if (event.type === "message_update" && event.assistantMessageEvent.type === "text_delta") {
@@ -16,7 +16,7 @@ session.subscribe((event) => {
 });
 
 await session.prompt("What files are in the current directory?");
-session.state.messages.forEach((msg) => {
+session.messages.forEach((msg) => {
 	console.log(msg);
 });
 console.log();

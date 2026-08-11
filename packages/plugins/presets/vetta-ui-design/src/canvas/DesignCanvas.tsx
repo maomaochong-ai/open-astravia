@@ -1,17 +1,20 @@
-import { useTranslation } from "@vetta-org/plugin-sdk";
+import { usePluginShortcutScope, useTranslation } from "@vetta-org/plugin-sdk";
 import {
 	type CSSProperties,
 	type PointerEvent as ReactPointerEvent,
 	type RefObject,
 	useCallback,
 	useEffect,
-	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
 } from "react";
+import { useNotesAutoDispatch, useNotesHandoff } from "../notes/handoff";
+import type { NotesStore } from "../notes/notes-store";
+import { noteWorldPosition, pendingNotes } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
+import { classifySource, isGeneratedPath, normalizeRelative } from "../vetd/bundle-paths";
 import type { VetdFrameEntry, VetdManifest } from "../vetd/manifest-types";
 import {
 	type ArrangeItem,
@@ -23,10 +26,7 @@ import {
 	type Placement,
 } from "./arrange";
 import { ArrangeToolbar } from "./ArrangeToolbar";
-import { type AskShot, buildAskPrompt } from "./ask-vetta";
-import { AskVettaButton } from "./AskVettaButton";
-import { AskVettaPopover } from "./AskVettaPopover";
-import { BridgeHub, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
+import { BridgeHub, type ElementQuery, type FrameWheel, type SelectedElementPayload } from "./bridge-client";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ControlBar, type CanvasTool } from "./ControlBar";
 import {
@@ -39,11 +39,15 @@ import {
 	requestMockupExport,
 	setFrameError,
 } from "./design-runtime";
-import { DesignSystemDrawer } from "./DesignSystemDrawer";
+import { DesignSystemDialog } from "./DesignSystemDialog";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
+import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
+import { NOTES_PANEL_INSET, NotesDrawer } from "./NotesDrawer";
+import { type NoteDraft, NotesLayer } from "./NotesLayer";
+import { selectionAfterHmr } from "./selection-ask";
 import {
 	boundsOf,
 	describeSnap,
@@ -54,6 +58,8 @@ import {
 	type SnapSolution,
 	solveSnap,
 } from "./snap";
+import { useViewport, type Viewport } from "./use-viewport";
+import { SelectionAskBadge } from "./SelectionAskBadge";
 import { SnapGuides } from "./SnapGuides";
 
 export type CanvasSelection =
@@ -66,6 +72,10 @@ export type FrameCapture = (frameId: string) => Promise<string>;
 
 interface DesignCanvasProps {
 	session: DesignSession;
+	/** 当前设计的备注（与 session 同生命周期，CanvasTab 创建）。 */
+	notes: NotesStore;
+	/** 活动面板的 cwd，备注面板的「让 Vetta 处理」会话闸口用。 */
+	cwd: string | null;
 	port: number;
 	bridge: BridgeHub;
 	/**
@@ -89,12 +99,13 @@ interface DesignCanvasProps {
 	 * 活体 React 应用与 HMR 连接。
 	 */
 	previewing: boolean;
-}
-
-interface Viewport {
-	x: number;
-	y: number;
-	zoom: number;
+	/**
+	 * 出口：vetd_notes 的锚点保鲜。拉活体后按 domPath/坐标逐条查元素，
+	 * 与 captureRef 同型（runLive 只存在于本组件）。
+	 */
+	resolveNoteElementsRef: RefObject<
+		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
+	>;
 }
 
 interface Rect {
@@ -104,13 +115,8 @@ interface Rect {
 	height: number;
 }
 
-const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 1.2;
 /** Below this the marquee counts as a click, not a drag. */
 const MARQUEE_MIN = 4;
-/** sidecar 里的生成物，不参与「源码变了要重截」的判断。 */
-const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/"];
 /** 右键「复制为图片」的截图倍率：粘到聊天/文档里要经得起看，1 倍太糊。 */
 const COPY_PIXEL_RATIO = 2;
 /**
@@ -129,10 +135,6 @@ const MIN_HEIGHT = 80;
  * 400%，手感都是「鼠标移到差不多这么近就吸上」。
  */
 const SNAP_THRESHOLD_PX = 8;
-
-function clampZoom(zoom: number): number {
-	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
-}
 
 /** 四周同时外扩（负值即内缩）。 */
 function inflate(rect: Rect, dx: number, dy: number): Rect {
@@ -239,43 +241,51 @@ function applyResizeSnap(
 	return { rect: next, snap: applied };
 }
 
+/** 位图变化后隔多久合成封面：等一批 frame 都落定，不为每张图各合成一次。 */
+const COVER_REFRESH_DEBOUNCE_MS = 1500;
+
 export function DesignCanvas({
 	session,
+	notes,
+	cwd,
 	port,
 	bridge,
 	captureRef,
 	refreshRef,
 	previewTargetRef,
 	previewing,
+	resolveNoteElementsRef,
 }: DesignCanvasProps) {
 	const { t } = useTranslation();
-	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
 	// 下面那些交给 FrameView 的回调必须引用稳定（memo 的前提），所以它们读 ref 而不是
 	// 闭包捕获随渲染变化的 state。
 	const manifestRef = useRef(manifest);
 	manifestRef.current = manifest;
-	/** 平移进行中的实时视口。非 null 时 DOM 上的 transform 由它驱动，state 落后一步。 */
-	const panLiveRef = useRef<Viewport | null>(null);
-	const [viewport, setViewport] = useState<Viewport>(() => ({ ...session.manifest.canvas }));
-	const viewportRef = useRef(viewport);
-	// 平移途中 viewportRef 才是权威值（滚轮/拖拽逐帧写它、不进 state）。这里无条件回写
-	// 会把它打回上一次提交的 state：滚动途中只要有一次重渲染（裁剪范围重算、frame 上报
-	// 渲染完成…），下一个滚轮 tick 就从旧位置重算，画布随机弹回起点。
-	if (!panLiveRef.current) viewportRef.current = viewport;
 	const [tool, setTool] = useState<CanvasTool>("select");
+	const toolRef = useRef(tool);
+	toolRef.current = tool;
 	const [spaceHeld, setSpaceHeld] = useState(false);
+	/** 备注放置草稿（点了画布、输入框开着）与点开的备注 thread。 */
+	const [noteDraft, setNoteDraft] = useState<NoteDraft | null>(null);
+	const noteDraftRef = useRef(noteDraft);
+	noteDraftRef.current = noteDraft;
+	const [openNoteId, setOpenNoteId] = useState<string | null>(null);
+	const openNoteIdRef = useRef(openNoteId);
+	openNoteIdRef.current = openNoteId;
 	const [selection, setSelection] = useState<CanvasSelection>(null);
 	const selectionRef = useRef(selection);
 	selectionRef.current = selection;
+	/** 追问 popover 开着。开着期间选中被钉住（见 onHmrUpdated），不能被热更新清掉。 */
+	const [askOpen, setAskOpen] = useState(false);
+	const askOpenRef = useRef(askOpen);
+	askOpenRef.current = askOpen;
 	const [activity, setActivity] = useState<ReadonlyMap<string, FrameActivity>>(new Map());
 	/** 错误态存在 design-runtime（agent 工具也要读），这里只订阅它来渲染。 */
 	const [frameErrors, setFrameErrors] = useState<ReadonlyMap<string, string>>(new Map());
 	const [marquee, setMarquee] = useState<Rect | null>(null);
-	const [askOpen, setAskOpen] = useState(false);
-	const [askBusy, setAskBusy] = useState(false);
-	/** 底部设计体系抽屉。升起时 ControlBar 与「让 Vetta 调整」淡出让位。 */
-	const [designDrawerOpen, setDesignDrawerOpen] = useState(false);
+	/** 设计体系选择 Dialog（与会话里那张选择卡同一个宫格）。 */
+	const [designDialogOpen, setDesignDialogOpen] = useState(false);
 	const [menuAnchor, setMenuAnchor] = useState<FrameMenuAnchor | null>(null);
 	/** 正在就地重命名的 frame id（标题栏变输入框）。 */
 	const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -310,7 +320,6 @@ export function DesignCanvas({
 	/** 拖 gap 松手时要落盘的位置，与 layoutOverride 同源（state 读不到最新值）。 */
 	const layoutOverrideRef = useRef(layoutOverride);
 	layoutOverrideRef.current = layoutOverride;
-	const panRef = useRef<{ pointerId: number; startX: number; startY: number; origin: Viewport } | null>(null);
 	const marqueeRef = useRef<{
 		pointerId: number;
 		startX: number;
@@ -331,12 +340,6 @@ export function DesignCanvas({
 		primaryId: string;
 		targets: SnapRect[];
 	} | null>(null);
-	const rafRef = useRef<number | null>(null);
-	const wheelSettleRef = useRef<number | null>(null);
-	const worldRef = useRef<HTMLDivElement | null>(null);
-
-	/** 容器像素尺寸，视口裁剪要用。 */
-	const sizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 	/**
 	 * 当前允许渲染的世界矩形（可见区域 + CULL_MARGIN_SCREENS 屏预留）。null 表示还
 	 * 没量到容器尺寸，那时不裁剪。
@@ -344,11 +347,6 @@ export function DesignCanvas({
 	const [cullRect, setCullRect] = useState<Rect | null>(null);
 	const cullRectRef = useRef<Rect | null>(null);
 	cullRectRef.current = cullRect;
-
-	const paintViewport = useCallback((next: Viewport): void => {
-		const world = worldRef.current;
-		if (world) world.style.transform = `translate(${next.x}px, ${next.y}px) scale(${next.zoom})`;
-	}, []);
 
 	/**
 	 * 按当前视口更新裁剪矩形。够用就原地不动——这个函数在平移的每一帧、缩放的每个
@@ -358,8 +356,8 @@ export function DesignCanvas({
 	 * - 余量不足半屏：接着平移/缩小就要露出没渲染的区域了。
 	 * - 范围比需要的大一倍以上：放大之后旧矩形还按老比例留着，会一直多渲染一堆 frame。
 	 */
-	const syncCullRect = useCallback((vp: Viewport): void => {
-		const { width, height } = sizeRef.current;
+	const syncCullRect = useCallback((vp: Viewport, size: { width: number; height: number }): void => {
+		const { width, height } = size;
 		if (width === 0 || height === 0) return;
 		const worldWidth = width / vp.zoom;
 		const worldHeight = height / vp.zoom;
@@ -375,45 +373,21 @@ export function DesignCanvas({
 		setCullRect(next);
 	}, []);
 
-	/** 把高频 pointermove 折叠到每帧一次实际绘制。 */
-	const schedulePaint = useCallback((): void => {
-		if (rafRef.current !== null) return;
-		rafRef.current = window.requestAnimationFrame(() => {
-			rafRef.current = null;
-			if (!panLiveRef.current) return;
-			paintViewport(panLiveRef.current);
-			syncCullRect(panLiveRef.current);
-		});
-	}, [paintViewport, syncCullRect]);
-
-	// 缩放、平移落定、容器尺寸变化：都要按新的可见范围核对一次裁剪范围。
-	useEffect(() => {
-		syncCullRect(viewport);
-	}, [viewport, syncCullRect]);
-
-	useEffect(() => {
-		const container = containerRef.current;
-		if (!container) return;
-		const observer = new ResizeObserver(() => {
-			sizeRef.current = { width: container.clientWidth, height: container.clientHeight };
-			syncCullRect(panLiveRef.current ?? viewportRef.current);
-		});
-		observer.observe(container);
-		return () => observer.disconnect();
-	}, [syncCullRect]);
-
-	// 平移途中若因别的原因（manifest 变化、活动态更新）触发了渲染，React 会用落后
-	// 的 state 覆盖 transform 把画布弹回去；这里在提交后、绘制前再抹一次实时值。
-	useLayoutEffect(() => {
-		if (panLiveRef.current) paintViewport(panLiveRef.current);
+	/**
+	 * 视口（平移/缩放）全托管给共享控制器，只读预览画布用的是同一份实现。
+	 * 这里额外挂 onPaint：平移的每一帧都要按新的可见范围核对裁剪矩形。
+	 */
+	const view = useViewport({
+		initial: { ...session.manifest.canvas },
+		onCommit: (next) => session.saveViewport(next),
+		onPaint: syncCullRect,
 	});
+	const { viewport, viewportRef, containerRef, worldRef, sizeRef, toWorld } = view;
 
-	useEffect(
-		() => () => {
-			if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
-		},
-		[],
-	);
+	// 缩放、平移落定：都要按新的可见范围核对一次裁剪范围（尺寸变化由 onPaint 覆盖）。
+	useEffect(() => {
+		syncCullRect(viewport, sizeRef.current);
+	}, [viewport, syncCullRect, sizeRef]);
 
 	useEffect(() => {
 		const handle = session.on((change) => {
@@ -514,6 +488,91 @@ export function DesignCanvas({
 	refreshRef.current = reloadAll;
 
 	/**
+	 * 位图安静下来之后合成一次画廊封面。
+	 *
+	 * 不能只在画布卸载时合成：那与画廊的挂载是竞态——用户从画布切到画廊，合成还在
+	 * 解码 jpeg，画廊已经读过一次库了，于是「明明进过画布」却看不到封面。趁画布还
+	 * 开着先把封面写好，卸载时那次就只是补最后一版。
+	 *
+	 * 依赖 rasterOf 的引用：它随位图集合变化（useCallback over rasters），所以一批
+	 * frame 连续落定只会在末尾合成一次，而不是每张图合成一次。
+	 */
+	useEffect(() => {
+		const timer = window.setTimeout(() => {
+			void refreshCover(session.vetdPath, manifest.frames);
+		}, COVER_REFRESH_DEBOUNCE_MS);
+		return () => window.clearTimeout(timer);
+	}, [rasterOf, manifest.frames, session.vetdPath]);
+
+	/**
+	 * 备注锚定的元素查询：位图态的 frame 先经 runLive 拉回活体，再逐条问引擎 bridge。
+	 * 放置时的 hit-test 与 vetd_notes 的锚点保鲜共用这一条。
+	 */
+	const resolveNoteElements = useCallback(
+		(frameId: string, queries: ElementQuery[]): Promise<(SelectedElementPayload | null)[]> =>
+			runLive(frameId, async () => {
+				const results: (SelectedElementPayload | null)[] = [];
+				for (const query of queries) results.push(await bridge.resolveElement(frameId, query));
+				return results;
+			}),
+		[bridge, runLive],
+	);
+
+	useEffect(() => {
+		resolveNoteElementsRef.current = resolveNoteElements;
+		return () => {
+			resolveNoteElementsRef.current = null;
+		};
+	}, [resolveNoteElementsRef, resolveNoteElements]);
+
+	// 面板「定位到备注」：视口居中到气泡上，顺带打开它的 thread。
+	const focusNote = useCallback(
+		(noteId: string): void => {
+			const note = notes.noteById(noteId);
+			if (!note) return;
+			const pos = noteWorldPosition(note, (frameId) => manifestRef.current.frames.find((f) => f.id === frameId));
+			const { width, height } = sizeRef.current;
+			const zoom = viewportRef.current.zoom;
+			// 定位只由面板里的条目发起，那时面板一定开着：按它让出的可见区域（面板右边
+			// 那块）居中，否则「居中」正好把气泡送到面板底下。
+			const visibleWidth = Math.max(width - NOTES_PANEL_INSET, width * 0.35);
+			view.commitViewport({ zoom, x: width - visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom });
+			setOpenNoteId(noteId);
+		},
+		[notes, view, sizeRef, viewportRef],
+	);
+
+	/** 待处理备注数，挂在 ControlBar 备注按钮的角标上。 */
+	const [pendingNoteCount, setPendingNoteCount] = useState(0);
+	useEffect(() => {
+		const update = (): void => setPendingNoteCount(pendingNotes(notes.notes).length);
+		update();
+		const handle = notes.on(update);
+		return () => handle.dispose();
+	}, [notes]);
+
+	// 快捷键 c 切到备注工具。走宿主 ShortcutScopeStack（不裸挂 keydown），
+	// not-editable：备注输入框里打字母 c 不能把工具切走。
+	const registerShortcutScope = useMemo(() => {
+		const ui = getPluginCtx().ui;
+		return ui.registerShortcutScope.bind(ui);
+	}, []);
+	usePluginShortcutScope(registerShortcutScope, {
+		id: "note-tool",
+		kind: "surface",
+		bindings: [{ key: "c", when: "not-editable", run: () => setTool("note") }],
+	});
+
+	// 切离备注工具就收掉没提交的草稿；换设计时 thread 弹层也一并收掉。
+	useEffect(() => {
+		if (tool !== "note") setNoteDraft(null);
+	}, [tool]);
+	useEffect(() => {
+		setNoteDraft(null);
+		setOpenNoteId(null);
+	}, [session]);
+
+	/**
 	 * 位图化后 iframe 会被卸掉，也就收不到 HMR 了；agent 改完代码画布必须自己发现。
 	 *
 	 * 宿主的目录监听回调拿不到具体文件——它广播的是**被监听目录**的路径，而且所有
@@ -535,17 +594,16 @@ export function DesignCanvas({
 
 			for (const file of files) {
 				if (disposed) return;
-				const rel = file.relPath.replaceAll("\\", "/");
-				if (GENERATED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
+				const rel = normalizeRelative(file.relPath);
+				const impact = classifySource(rel);
+				if (impact.kind === "none") continue;
 				const stat = await ctx.fs.stat(file.path).catch(() => null);
 				if (!stat) continue;
 				const previous = sourceMtimesRef.current.get(rel);
 				sourceMtimesRef.current.set(rel, stat.modifiedAt);
 				if (seedOnly || previous === undefined || previous === stat.modifiedAt) continue;
-				const frameMatch = /^frames\/(.+)\.tsx$/.exec(rel);
-				// frame 自己的源码只影响它自己；theme.css、components/*、assets/* 这类
-				// 共享资源改一下可能影响任意 frame，无从判断依赖关系，只能全部重截。
-				if (frameMatch) changedFrames.add(frameMatch[1]);
+				// 影响面判定与活动态浮层共用（vetd/bundle-paths），两边不能有两套说法。
+				if (impact.kind === "frame") changedFrames.add(impact.frameId);
 				else sharedChanged = true;
 			}
 
@@ -564,7 +622,7 @@ export function DesignCanvas({
 			const dirs = [
 				root,
 				...entries
-					.filter((entry) => entry.isDirectory && !GENERATED_PREFIXES.some((p) => `${entry.name}/` === p))
+					.filter((entry) => entry.isDirectory && !isGeneratedPath(`${entry.name}/`))
 					.map((entry) => entry.path),
 			];
 			if (disposed) return;
@@ -603,7 +661,7 @@ export function DesignCanvas({
 	}, [tool]);
 
 	/**
-	 * 右击 frame 弹菜单。菜单里的动作（让 Vetta 调整 / 导出渲染图）按当前选中执行，
+	 * 右击 frame 弹菜单。菜单里的动作（重命名 / 复制为图片 / 导出渲染图）按当前选中执行，
 	 * 所以右击一个没选中的 frame 要先把它选上——否则动作会落在别处，或者无从执行。
 	 * 已在选中集合里的则保持原选中（含 DOM 选中态），多选右击不打散分组。
 	 *
@@ -615,63 +673,9 @@ export function DesignCanvas({
 		setSelection((current) =>
 			selectedFrameIds(current).includes(frameId) ? current : { kind: "frames", ids: [frameId] },
 		);
-		setAskOpen(false);
 		const bounds = containerRef.current?.getBoundingClientRect();
 		setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
 	}, []);
-
-	/**
-	 * Ctrl/⌘ + wheel → stepless zoom around the cursor; plain wheel → pan.
-	 *
-	 * 两个来源：画布容器上的 wheel，以及元素选择期间由引擎从 iframe 里转发出来的
-	 * （那时 wheel 落在跨源文档上，画布层根本收不到，见 bridge.ts）。所以这里只认
-	 * 视口坐标与滚动量，不碰事件对象本身。
-	 */
-	const applyWheel = useCallback(
-		(wheel: FrameWheel): void => {
-			const container = containerRef.current;
-			if (!container) return;
-			const bounds = container.getBoundingClientRect();
-			const current = viewportRef.current;
-			if (wheel.ctrlKey || wheel.metaKey) {
-				const cursorX = wheel.clientX - bounds.left;
-				const cursorY = wheel.clientY - bounds.top;
-				const nextZoom = clampZoom(current.zoom * Math.exp(-wheel.deltaY * 0.01));
-				const scale = nextZoom / current.zoom;
-				const next = {
-					zoom: nextZoom,
-					x: cursorX - (cursorX - current.x) * scale,
-					y: cursorY - (cursorY - current.y) * scale,
-				};
-				// 缩放要重渲染（frame 标题与手柄按 zoom 反向缩放），走 state。
-				// 先撤掉可能还挂着的滚轮平移实时值，否则 layout effect 会拿旧位置盖回去。
-				panLiveRef.current = null;
-				if (wheelSettleRef.current !== null) {
-					window.clearTimeout(wheelSettleRef.current);
-					wheelSettleRef.current = null;
-				}
-				setViewport(next);
-				session.saveViewport(next);
-			} else {
-				// 滚轮平移与托手拖拽同理：走 DOM，不逐事件进 state（触控板两指平移
-				// 同样高频）。停下来一小会儿再落 state 与磁盘。
-				const next = { ...current, x: current.x - wheel.deltaX, y: current.y - wheel.deltaY };
-				viewportRef.current = next;
-				panLiveRef.current = next;
-				schedulePaint();
-				if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
-				wheelSettleRef.current = window.setTimeout(() => {
-					wheelSettleRef.current = null;
-					const settled = panLiveRef.current;
-					if (!settled || panRef.current) return;
-					panLiveRef.current = null;
-					setViewport(settled);
-					session.saveViewport(settled);
-				}, 140);
-			}
-		},
-		[session, schedulePaint],
-	);
 
 	useEffect(() => {
 		bridge.start({
@@ -686,7 +690,9 @@ export function DesignCanvas({
 			},
 			onHmrUpdated: (frameId) => {
 				notifyFrameSettled(frameId);
-				if (frameId) invalidateRaster(frameId);
+				if (!frameId) return;
+				invalidateRaster(frameId);
+				setSelection((current) => selectionAfterHmr(current, frameId, askOpenRef.current));
 			},
 			onRendered: (frameId) => {
 				// rendered 既是「可以截图了」的放行信号，也是「已截的图可能是渲染前
@@ -700,11 +706,11 @@ export function DesignCanvas({
 			onFrameContextMenu: openFrameMenu,
 			// frame 内的滚轮与空格：跨源 iframe 把事件全吃了，画布容器上的监听收不到，
 			// 缩放/平移只能从这条路进来。
-			onFrameWheel: applyWheel,
+			onFrameWheel: view.applyWheel,
 			onFrameSpace: setSpaceHeld,
 		});
 		return () => bridge.stop();
-	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, applyWheel]);
+	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel]);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
@@ -723,7 +729,7 @@ export function DesignCanvas({
 		const container = containerRef.current;
 		if (!container) return;
 		const onKeyDown = (event: KeyboardEvent): void => {
-			// 画布里的输入框（重命名、让 Vetta 调整）也在这个容器内，事件会冒泡上来。
+			// 画布里的输入框（frame 重命名）也在这个容器内，事件会冒泡上来。
 			// 不放行的话空格会被 preventDefault 掉（打不出空格），Esc 也会顺带清空选中。
 			const target = event.target as HTMLElement | null;
 			if (target && (target.isContentEditable || target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
@@ -733,10 +739,19 @@ export function DesignCanvas({
 				event.preventDefault();
 				setSpaceHeld(true);
 			} else if (event.key === "Escape") {
-				// 焦点在画布上时的 Esc（元素选中期间焦点在 iframe 里，那时 Esc 由引擎侧
-				// 处理：逐级选父元素，到顶再发 exit-inspect 把元素选中清掉）。
-				// 到这里就是最后一级：取消 frame 选中。
-				setSelection(null);
+				// 备注态优先逐级退出：草稿 → thread 弹层 → 备注工具本身。
+				if (noteDraftRef.current) {
+					setNoteDraft(null);
+				} else if (openNoteIdRef.current) {
+					setOpenNoteId(null);
+				} else if (toolRef.current === "note") {
+					setTool("select");
+				} else {
+					// 焦点在画布上时的 Esc（元素选中期间焦点在 iframe 里，那时 Esc 由引擎侧
+					// 处理：逐级选父元素，到顶再发 exit-inspect 把元素选中清掉）。
+					// 到这里就是最后一级：取消 frame 选中。
+					setSelection(null);
+				}
 			}
 		};
 		const onKeyUp = (event: KeyboardEvent): void => {
@@ -755,22 +770,11 @@ export function DesignCanvas({
 		if (!container) return;
 		const onWheel = (event: WheelEvent): void => {
 			event.preventDefault();
-			applyWheel(event);
+			view.applyWheel(event);
 		};
 		container.addEventListener("wheel", onWheel, { passive: false });
-		return () => {
-			container.removeEventListener("wheel", onWheel);
-			if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
-		};
-	}, [applyWheel]);
-
-	const toWorld = useCallback((clientX: number, clientY: number) => {
-		const bounds = containerRef.current?.getBoundingClientRect();
-		const current = viewportRef.current;
-		const localX = clientX - (bounds?.left ?? 0);
-		const localY = clientY - (bounds?.top ?? 0);
-		return { x: (localX - current.x) / current.zoom, y: (localY - current.y) / current.zoom };
-	}, []);
+		return () => container.removeEventListener("wheel", onWheel);
+	}, [view.applyWheel]);
 
 	/**
 	 * 吸附候选：当前可见视口内、且不在 exclude 里的 frame。
@@ -808,14 +812,43 @@ export function DesignCanvas({
 		if (event.button !== 0) return;
 		if (panActive) {
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-			panRef.current = {
-				pointerId: event.pointerId,
-				startX: event.clientX,
-				startY: event.clientY,
-				origin: viewportRef.current,
-			};
+			view.beginPan(event.pointerId, event.clientX, event.clientY);
 			return;
 		}
+		// 备注工具：点哪儿就在哪儿出草稿输入框（frame 上命中就锚 frame，空白处是自由
+		// 备注）。frame 上的命中元素解析在后台跑，不阻塞输入；空内容提交即丢弃。
+		if (tool === "note") {
+			setOpenNoteId(null);
+			const world = toWorld(event.clientX, event.clientY);
+			const hitFrame =
+				[...manifestRef.current.frames]
+					.reverse()
+					.find(
+						(frame) =>
+							world.x >= frame.x &&
+							world.x <= frame.x + frame.width &&
+							world.y >= frame.y &&
+							world.y <= frame.y + frame.height,
+					) ?? null;
+			if (hitFrame) {
+				const fx = Math.round(world.x - hitFrame.x);
+				const fy = Math.round(world.y - hitFrame.y);
+				setNoteDraft({
+					world: { x: Math.round(world.x), y: Math.round(world.y) },
+					frameId: hitFrame.id,
+					fx,
+					fy,
+					hit: resolveNoteElements(hitFrame.id, [{ x: fx, y: fy }])
+						.then((results) => results[0] ?? null)
+						.catch(() => null),
+				});
+			} else {
+				setNoteDraft({ world: { x: Math.round(world.x), y: Math.round(world.y) }, frameId: null, fx: 0, fy: 0, hit: null });
+			}
+			return;
+		}
+		// 空白处起手（框选/新建）时点开的备注 thread 让位。
+		setOpenNoteId(null);
 		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		const mode = tool === "frame" ? "create" : "select";
 		marqueeRef.current = {
@@ -835,21 +868,8 @@ export function DesignCanvas({
 	};
 
 	const onBackgroundPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
-		const pan = panRef.current;
-		if (pan && event.pointerId === pan.pointerId) {
-			const next = {
-				...pan.origin,
-				x: pan.origin.x + (event.clientX - pan.startX),
-				y: pan.origin.y + (event.clientY - pan.startY),
-			};
-			// 平移只改外层那一个 transform，不进 state：过 React 的话每个 pointermove
-			// 都要重渲染整棵 frame 子树（每个 frame 一个跨源 iframe），指针事件又是
-			// 高频且会合并投递，于是渲染把合成器饿死，整窗口高频闪烁。
-			viewportRef.current = next;
-			panLiveRef.current = next;
-			schedulePaint();
-			return;
-		}
+		// 平移只改外层那一个 transform，不进 state（见 use-viewport）。
+		if (view.panMove(event.pointerId, event.clientX, event.clientY)) return;
 		const mq = marqueeRef.current;
 		if (mq && event.pointerId === mq.pointerId) {
 			const start = toWorld(mq.startX, mq.startY);
@@ -879,19 +899,7 @@ export function DesignCanvas({
 	};
 
 	const onBackgroundPointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
-		if (panRef.current && event.pointerId === panRef.current.pointerId) {
-			panRef.current = null;
-			if (rafRef.current !== null) {
-				window.cancelAnimationFrame(rafRef.current);
-				rafRef.current = null;
-			}
-			// 松手才把这一趟平移交回 state：期间 DOM 已经是最终位置，这次渲染不会跳。
-			const settled = panLiveRef.current ?? viewportRef.current;
-			panLiveRef.current = null;
-			setViewport(settled);
-			session.saveViewport(settled);
-			return;
-		}
+		if (view.endPan(event.pointerId)) return;
 		const mq = marqueeRef.current;
 		if (!mq || event.pointerId !== mq.pointerId) return;
 		marqueeRef.current = null;
@@ -924,23 +932,6 @@ export function DesignCanvas({
 			const ids = [...new Set([...base, ...hits])];
 			return { kind: "frames", ids };
 		});
-	};
-
-	const zoomBy = (direction: 1 | -1): void => {
-		const container = containerRef.current;
-		const bounds = container?.getBoundingClientRect();
-		const centerX = (bounds?.width ?? 0) / 2;
-		const centerY = (bounds?.height ?? 0) / 2;
-		const current = viewportRef.current;
-		const nextZoom = clampZoom(direction === 1 ? current.zoom * ZOOM_STEP : current.zoom / ZOOM_STEP);
-		const scale = nextZoom / current.zoom;
-		const next = {
-			zoom: nextZoom,
-			x: centerX - (centerX - current.x) * scale,
-			y: centerY - (centerY - current.y) * scale,
-		};
-		setViewport(next);
-		session.saveViewport(next);
 	};
 
 	/** Grab the placement of every frame that will travel with this drag. */
@@ -1167,38 +1158,31 @@ export function DesignCanvas({
 		};
 	}, [session]);
 
-	/** "让 Vetta 调整"：N 张截图（DOM 选中时保留高亮）+ 元信息 + 用户建议 → sendPrompt。 */
-	const sendAskToVetta = (suggestion: string): void => {
-		if (askBusy) return;
-		// 关掉浮层是「已交出去」的反馈，不等截图落盘、更不等 Vetta 跑完：
-		// sendPrompt 复用会话的完整发送链路，要整轮结束才 resolve。
+	/**
+	 * 追问徽标与备注面板共用同一套会话闸口：能发消息就直接发，发不了（agent 在跑、
+	 * 没有活跃会话、会话不在这个 workspace）就落一条备注。
+	 */
+	const { blockedReason } = useNotesHandoff(cwd);
+
+	/**
+	 * 备注自动派活：只要会话空闲，落下的备注就自己交给 agent。用户不必再去点「让
+	 * Vetta 处理」——那个按钮退居兜底。
+	 */
+	useNotesAutoDispatch(notes, cwd);
+
+	// 选中变了就收起 popover：它描述的是上一次选中，留着只会发错对象。
+	// biome-ignore lint/correctness/useExhaustiveDependencies: 只按选中变化收起
+	useEffect(() => setAskOpen(false), [selection]);
+
+	/**
+	 * 追问提交完成，收起选中：两种提交都会在选框右上角长出一个备注气泡，也就是徽标
+	 * 刚才的位置，不清掉就是两个圆叠在一起。要补充的话点那个气泡在 thread 里追加，
+	 * 补充的内容还能跟原请求归在同一条线上。
+	 */
+	const handleAskSubmitted = useCallback((): void => {
 		setAskOpen(false);
-		setAskBusy(true);
-		void (async () => {
-			try {
-				const ctx = getPluginCtx();
-				const domFrameId = selection?.kind === "dom" ? selection.frameId : null;
-				const shots: AskShot[] = [];
-				for (const frame of orderedSelection) {
-					const dataUrl = await captureFaithfully(frame.id, { keepHighlight: frame.id === domFrameId });
-					const base64 = dataUrl.split(",")[1] ?? "";
-					const screenshotPath = `${session.dirPath}/.snapshots/ask-${frame.id}-${Date.now()}.png`;
-					await ctx.fs.writeFile(screenshotPath, base64, "base64");
-					shots.push({ frameId: frame.id, screenshotPath });
-				}
-				const dom = selection?.kind === "dom" ? { frameId: selection.frameId, payload: selection.payload } : null;
-				const prompt = buildAskPrompt(session, { shots, dom }, suggestion);
-				void ctx.conversation.sendPrompt(prompt).catch((error: unknown) => {
-					notify({ message: t("canvas.ask.failed"), error });
-				});
-				notify({ message: t("canvas.ask.sent"), variant: "success", durationMs: 3000 });
-			} catch (error) {
-				notify({ message: t("canvas.ask.failed"), error });
-			} finally {
-				setAskBusy(false);
-			}
-		})();
-	};
+		setSelection(null);
+	}, []);
 
 	const openExport = (): void => {
 		if (orderedSelection.length === 0) return;
@@ -1256,7 +1240,7 @@ export function DesignCanvas({
 
 	const deletingFrame = deletingId ? manifest.frames.find((frame) => frame.id === deletingId) : undefined;
 
-	const cursor = panActive ? "grab" : tool === "frame" ? "crosshair" : "default";
+	const cursor = panActive ? "grab" : tool === "frame" || tool === "note" ? "crosshair" : "default";
 
 	/**
 	 * 整理相关的浮层出不出。拖动/改尺寸期间收起来：那时选区每帧都在动，工具条跟着
@@ -1264,6 +1248,23 @@ export function DesignCanvas({
 	 */
 	const arrangeActive =
 		selectedIds.length >= 2 && tool === "select" && !panActive && moveDelta === null && resizeRect === null;
+
+	/**
+	 * 追问徽标出不出。抗噪条件与整理工具条同源：拖动/改尺寸/平移期间选框每帧都在动，
+	 * 徽标跟着抖不说，还会去抢正在进行的指针。
+	 */
+	const askActive =
+		selectedIds.length === 1 &&
+		tool === "select" &&
+		!panActive &&
+		!previewing &&
+		moveDelta === null &&
+		resizeRect === null;
+
+	// 徽标都不在了就别留一个悬空的 popover。
+	useEffect(() => {
+		if (!askActive) setAskOpen(false);
+	}, [askActive]);
 
 	/**
 	 * 视口裁剪：看不见的 frame 连 DOM 都不建。
@@ -1287,7 +1288,7 @@ export function DesignCanvas({
 	const worldStyle = useMemo(
 		() =>
 			({
-				transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+				transform: view.worldTransform,
 				transformOrigin: "0 0",
 				// frame 标题与手柄按它反向缩放。走 CSS 变量而不是 prop：否则每个 wheel
 				// tick 都要重渲染全部 FrameView，而这里只是改一个元素的 style。
@@ -1296,7 +1297,7 @@ export function DesignCanvas({
 				// 动辄上万像素，强行提升成合成层会超出 GPU 纹理上限，合成器降级后
 				// 整窗口撕裂闪烁。让浏览器自己决定要不要提升。
 			}) as CSSProperties,
-		[viewport],
+		[view.worldTransform, viewport.zoom],
 	);
 
 	return (
@@ -1358,6 +1359,28 @@ export function DesignCanvas({
 					/>
 				) : null}
 				{snapView ? <SnapGuides guides={snapView.guides} gaps={snapView.gaps} scale={1 / viewport.zoom} /> : null}
+				<NotesLayer
+					store={notes}
+					frames={manifest.frames}
+					interactive={(tool === "select" || tool === "note") && !panActive && !previewing}
+					draft={noteDraft}
+					blockedReason={blockedReason}
+					onDraftClose={() => setNoteDraft(null)}
+					openNoteId={openNoteId}
+					onOpenNote={setOpenNoteId}
+					getZoom={getZoom}
+				/>
+				{/* 选框右上角的追问徽标：单选（一个画框、或画框里的一个元素）时才有。 */}
+				<SelectionAskBadge
+					notes={notes}
+					selection={selection}
+					frames={manifest.frames}
+					visible={askActive}
+					blockedReason={blockedReason}
+					open={askOpen}
+					onOpenChange={setAskOpen}
+					onSubmitted={handleAskSubmitted}
+				/>
 				{/* 整理工具条与 gap 手柄：多选且不在拖动/缩放中才出，免得跟正在进行的操作抢指针。 */}
 				{arrangeActive && arrangeBounds ? (
 					<>
@@ -1406,10 +1429,6 @@ export function DesignCanvas({
 			{menuAnchor ? (
 				<FrameContextMenu
 					anchor={menuAnchor}
-					onAsk={() => {
-						setMenuAnchor(null);
-						setAskOpen(true);
-					}}
 					onRename={() => startRename(menuAnchor.frameId)}
 					onCopyImage={() => copyFrameImage(menuAnchor.frameId)}
 					onExportMockup={() => {
@@ -1439,20 +1458,15 @@ export function DesignCanvas({
 				/>
 			) : null}
 
-			{askOpen ? (
-				<AskVettaPopover
-					busy={askBusy}
-					onSend={sendAskToVetta}
-					onClose={() => setAskOpen(false)}
-				/>
-			) : null}
-
-			{!panActive && !designDrawerOpen ? (
-				<AskVettaButton
-					selectedCount={orderedSelection.length}
-					elementMode={selection?.kind === "dom"}
-					active={askOpen}
-					onClick={() => setAskOpen((open) => !open)}
+			{/* 备注面板与备注工具是同一个状态：选中工具即弹出，切走即收起，
+			    所以它没有独立的开关，关闭按钮做的也是「退回选择工具」。 */}
+			{tool === "note" ? (
+				<NotesDrawer
+					store={notes}
+					session={session}
+					cwd={cwd}
+					onLocate={focusNote}
+					onClose={() => setTool("select")}
 				/>
 			) : null}
 
@@ -1460,27 +1474,24 @@ export function DesignCanvas({
 				tool={tool}
 				zoom={viewport.zoom}
 				exportableCount={orderedSelection.length}
-				designSystemsActive={designDrawerOpen}
-				faded={designDrawerOpen}
+				designSystemsActive={designDialogOpen}
+				pendingNotes={pendingNoteCount}
 				onToolChange={setTool}
-				onZoomDelta={zoomBy}
+				onZoomDelta={view.zoomBy}
 				onZoomReset={() => {
-					const next = { ...viewportRef.current, zoom: 1 };
-					setViewport(next);
-					session.saveViewport(next);
+					view.commitViewport({ ...viewportRef.current, zoom: 1 });
 				}}
 				onExport={openExport}
 				onDesignSystems={() => {
-					setAskOpen(false);
 					setMenuAnchor(null);
-					setDesignDrawerOpen((open) => !open);
+					setDesignDialogOpen((open) => !open);
 				}}
 			/>
 
-			<DesignSystemDrawer
+			<DesignSystemDialog
 				session={session}
-				open={designDrawerOpen}
-				onClose={() => setDesignDrawerOpen(false)}
+				open={designDialogOpen}
+				onClose={() => setDesignDialogOpen(false)}
 			/>
 		</div>
 	);

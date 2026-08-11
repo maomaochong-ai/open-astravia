@@ -77,6 +77,27 @@ export interface ConfiguredHookHandler {
 	displayOrder: number;
 	env?: Readonly<Record<string, string>>;
 	pluginId?: string;
+	once?: boolean;
+}
+
+export interface HookHandlerContribution {
+	id: string;
+	revision: string;
+	handlers: readonly ConfiguredHookHandler[];
+}
+
+export interface HookContributionLease {
+	release(): void;
+}
+
+export interface EcosystemHookContributionSource {
+	id: string;
+	revision: string;
+	profileId: string;
+	sourcePath: string;
+	configuration: unknown;
+	env?: Readonly<Record<string, string>>;
+	pluginId?: string;
 }
 
 export interface SubagentHookContext {
@@ -229,7 +250,7 @@ export interface HookRunSummary {
 	id: string;
 	profileId: string;
 	eventName: HookEventName;
-	handlerType: "command";
+	handlerType: "command" | "callback";
 	executionMode: "sync";
 	scope: "session" | "turn";
 	sourcePath: string;

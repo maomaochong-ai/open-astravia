@@ -4,20 +4,17 @@
  * Shows how to replace or modify the default system prompt.
  */
 
-import { createAgentSession, DefaultResourceLoader, SessionManager } from "@vetta/coding-agent";
+import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
 
 // Option 1: Replace prompt entirely
-const loader1 = new DefaultResourceLoader({
-	systemPromptOverride: () => `You are a helpful assistant that speaks like a pirate.
+const { session: session1 } = await createCodingAgentSession({
+	storage: { kind: "memory" },
+	resources: {
+		systemPrompt: `You are a helpful assistant that speaks like a pirate.
 Always end responses with "Arrr!"`,
-	// Needed to avoid DefaultResourceLoader appending APPEND_SYSTEM.md from ~/.pi/agent or <cwd>/.pi.
-	appendSystemPromptOverride: () => [],
-});
-await loader1.reload();
-
-const { session: session1 } = await createAgentSession({
-	resourceLoader: loader1,
-	sessionManager: SessionManager.inMemory(),
+	},
+	// Empty content suppresses an automatically discovered append prompt for this replacement example.
+	appendSystemPrompt: "",
 });
 
 session1.subscribe((event) => {
@@ -31,17 +28,9 @@ await session1.prompt("What is 2 + 2?");
 console.log("\n");
 
 // Option 2: Append instructions to the default prompt
-const loader2 = new DefaultResourceLoader({
-	appendSystemPromptOverride: (base) => [
-		...base,
-		"## Additional Instructions\n- Always be concise\n- Use bullet points when listing things",
-	],
-});
-await loader2.reload();
-
-const { session: session2 } = await createAgentSession({
-	resourceLoader: loader2,
-	sessionManager: SessionManager.inMemory(),
+const { session: session2 } = await createCodingAgentSession({
+	storage: { kind: "memory" },
+	appendSystemPrompt: "## Additional Instructions\n- Always be concise\n- Use bullet points when listing things",
 });
 
 session2.subscribe((event) => {

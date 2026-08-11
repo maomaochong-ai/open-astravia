@@ -22,9 +22,9 @@ IM 用户大量时间在飞书/微信聊天，但 Claw 的会话之间过去**�
 
 | 层 | 形态 | 何时进上下文 | 代码 |
 |---|---|---|---|
-| **L1 常驻记忆** `MEMORY.md` | 单文件、策展式 Markdown 条目 | 每次进程启动作为**冻结快照**注入 system prompt | `src/core/memory/memory-store.ts` |
-| **L2 会话本体** session jsonl | 当前对话的完整轨迹，rollover 时滚动到新文件 | 全程在上下文（受 rollover 控制大小） | `src/core/session-manager.ts` |
-| **L3 日期工作史** `JOURNAL.md` + 日期目录 | 按需——agent 自助翻阅 | 不常驻，agent 用 Read/ls 拉取 | `src/core/memory/memory-journal.ts` |
+| **L1 常驻记忆** `MEMORY.md` | 单文件、策展式 Markdown 条目 | 每次 Session Runtime 创建时作为**冻结快照**注入 system prompt | `src/memory/memory-store.ts` |
+| **L2 会话本体** conversation jsonl | 当前对话的完整轨迹，rollover 时续接到新文件 | 全程在上下文（受 rollover 控制大小） | `runtime-storage/src/conversation/file-conversation-repository.ts` |
+| **L3 日期工作史** `JOURNAL.md` + 日期目录 | 按需——agent 自助翻阅 | 不常驻，agent 用 Read/ls 拉取 | `src/memory/file-memory-journal.ts` |
 
 > L1 解决「跨会话记得」；L2 + rollover 解决「聊爆频繁压缩 + 连续感」；L3 解决「昨天干了什么 / 产物在哪」。
 
@@ -62,32 +62,31 @@ im-gateway 收到消息 → `router.forwardToAgent`：
 
 ### 3.2 注入 MEMORY.md（L1，冻结快照）
 
-coding-agent 启动时：
+coding-agent 创建 memory-mode Session Runtime 时：
 
-1. `AgentSession` 构造器读一次 `readMemoryContent(memoryFile)`，存进 `this._memorySnapshot`（`src/core/agent-session.ts`）。**整个进程生命周期内不再重读**。
-2. `_rebuildSystemPrompt` 调 `renderMemoryForPrompt(path, snapshot, limit)`，把记忆作为独立的 `# Persistent Memory` 段塞进 system prompt（`src/core/system-prompt.ts` 的 `memory` 选项）。
-3. rpc-mode 在 `--memory-mode` 下注册 `memory` 工具（`src/modes/rpc/rpc-mode.ts`，与 `im_send_attachment` 并入同一次 `reconfigureCustomTools`）。
+1. `CodingAgentMemoryRolloverOrchestrator` 创建 `FileMemoryStore`，只读取一次 MEMORY.md 并保存冻结快照（`src/memory/memory-rollover-runtime.ts`）。**整个 Session Runtime 生命周期内不再重读该提示词快照**。
+2. Prompt Runtime 通过 `renderMemoryForPrompt(path, snapshot, limit)` 把记忆作为独立的 `# Persistent Memory` 段注入模型调用（`src/model-context/memory-prompt.ts`、`src/adapters/runtime-core/greenfield-prompt-runtime.ts`）。
+3. Composition Root 只在 memory-mode 下组合 `runtime-tools` 提供的原生 `memory` Tool registration（`src/composition/greenfield-session-peripheral-assembly.ts`、`runtime-tools/src/coding/tools/memory/`）。
 
 > **冻结快照纪律**：agent 这一轮通过 `memory` 工具写入会立刻落盘、并由工具返回值看到更新，但 **system prompt 里的快照不变**。因为 im-gateway `closeOnIdle` 每条消息重启进程，「下次加载」≈ 下一条 IM 消息——记忆跨消息近实时生效，同时不破 Anthropic 前缀缓存（中途改写 system prompt 会令缓存失效，吃掉约 75% token 节省）。
 
 ### 3.3 一轮对话 + JOURNAL 行（L3）
 
-agent 跑完一轮（`agent_end`）→ `agent-session` 在 memory-mode 下调 `appendJournalLine(cwd, msg)`：向运行 cwd（=今日目录）的 `JOURNAL.md` 追加一行「`- HH:MM <截断的回复> — files: <write/edit 触及的文件>`」。aborted/error 轮跳过。
+Turn 完成后，Memory Runtime 通过独立 `TurnObserver` 取得该 Turn 最后的 assistant message，并调用 `FileMemoryJournal.appendTurn`：向运行 cwd（=今日目录）的 `JOURNAL.md` 追加一行「`- HH:MM <截断的回复> — files: <write/edit 触及的文件>`」。cancelled/failed/aborted/error 轮不落有效日志。
 
 ### 3.4 触发 rollover（L2，取代 Layer2 压缩）
 
-同样在 `agent_end` 后的 `_checkCompaction`：用 `_compactionSettingsFor(contextWindow)` 把 memory-mode 阈值收紧到约 70%（`minFreePercent→30` 且 `reserveTokens` 提到窗口 30%，因为 `getCompactThreshold` 取两项的 max）。超阈值进 `_runAutoCompaction`：
+`CodingAgentGreenfieldContextRuntime` 在自动压缩决策前调用 Memory Runtime 的压缩策略，把 memory-mode 阈值收紧到约 70%（`minFreePercent→30` 且 `reserveTokens` 提到窗口 30%）。超阈值后进入 Runtime Core 的压缩与 conversation continuation 管道：
 
 1. **Layer1 microcompact** 照常（免费裁旧工具输出）。
-2. **flush（L1 抢救）**：`flushMemoryBeforeRollover(...)` 用 `preparation.messagesToSummarize`（即将被丢弃的上下文）做一次 `completeSimple` LLM 调用，抽取「持久事实」逐条 `add` 进 MEMORY.md（带去重 + 字符预算，best-effort，失败不阻塞）。**只写磁盘，不动快照**（`src/core/memory/memory-flush.ts`）。
+2. **flush（L1 抢救）**：`MemoryFlushService` 用 `preparation.messagesToSummarize`（即将被丢弃的上下文），经 `AiMemoryFactExtractor` 做一次 `completeSimple` LLM 调用，抽取「持久事实」逐条 `add` 进 MEMORY.md（带去重 + 字符预算，best-effort，失败不阻塞）。**只写磁盘，不动快照**（`src/memory/{memory-flush-service,ai-memory-fact-extractor}.ts`）。
 3. **生成摘要**：复用现有 `compact()` 得到 `summary` + `firstKeptEntryId` + 保留尾巴（`keepRecentTokens` 默认 ~20k）。
-4. **appendJournalSection(cwd, summary)**：把摘要追加进今日 `JOURNAL.md`。
-5. **rolloverToNewFile()**（`src/core/session-manager.ts`）：
-   - 取当前 branch，定位最近的 compaction entry，收集「compaction + 保留尾巴」。
-   - 重链成一条极短的新链（compaction 作根），写进一个**新 jsonl**，`SessionHeader.parentSession` 指回旧文件。
-   - 切换 `sessionFile`、`_buildIndex`、`_rewriteFile`、换 lock。旧文件原样归档不再追加。
-   - `buildSessionContext` 在新文件上产出 = `摘要 + 保留尾巴`，与原地压缩的内存态**完全一致**，故 agent 状态/willRetry 不受影响。
-6. **发事件**：`_emit({type:"session_path_changed", from, to, reason:"rollover"})`。
+4. **appendRollover(cwd, summary)**：把摘要追加进今日 `JOURNAL.md`。
+5. **Conversation continuation**（`runtime-core/src/kernel/turn-pipeline.ts` + `runtime-storage/src/conversation/file-conversation-repository.ts`）：
+   - 以 compaction record 和保留尾巴创建一个新的 conversation 文件。
+   - 新文件的 `parentSessionPath` 指回旧文件；旧文件原样归档，不再追加。
+   - Runtime Core 在新 conversation 上继续同一 Turn，模型上下文仍为「摘要 + 保留尾巴」。
+6. **发事件**：宿主把 continuation 的路径变化投影为 `session_path_changed`，reason 为 `memory-rollover`。
 
 > **为何 rollover 而非照搬 Hermes 原地压缩**：Hermes 是长驻进程；im-gateway `closeOnIdle` **每条消息全量解析整条 jsonl**，而原地压缩只追加 entry、不截断文件 → jsonl 无限增长 → 每条消息冷启动解析成本随时间上涨。rollover 给单文件大小封顶。这是 im-gateway 专属、Hermes 不付的成本。
 
@@ -110,7 +109,7 @@ agent 跑完一轮（`agent_end`）→ `agent-session` 在 memory-mode 下调 `a
 自动 flush 只在 **rollover**（上下文逼近阈值）时触发。但用户在飞书/微信里 `/new` 可能发生在**远未到阈值**时——这样一个短会话若被直接丢弃，它的持久事实就没机会凝结。为此 `/new` 增加了一次显式 flush：
 
 1. im-gateway 的 `newCmd`（`internal/command/router.go`）在清空路由前调 `flushSessionMemory`：查到该 chat 当前 sessionPath → `HostPool.Acquire` 起一个一次性进程 → 发 `flush_memory` RPC（60s 超时，best-effort）→ 释放。
-2. coding-agent 收到 `flush_memory`（`src/modes/rpc/rpc-mode.ts`）→ `AgentSession.flushMemory()`：对**当前完整上下文**（`buildSessionContext().messages`）跑一次 flush 抽取，写进 MEMORY.md，返回写入条数。非 memory-mode 返回 0（no-op）。
+2. coding-agent 的 RPC dispatcher 收到 `flush_memory`（`src/modes/rpc/rpc-command-dispatcher.ts`）→ 调用 Session capability host → `CodingAgentGreenfieldMemoryController.flushMemory()`：对**当前完整上下文**跑一次 flush 抽取，写进 MEMORY.md，返回写入条数。非 memory-mode 返回 0（no-op）。
 3. 凝结成功（`written>0`）时，`/new` 回复附「已凝结 N 条记忆到长期记忆」。
 
 > 与 rollover flush 的区别：rollover flush 针对**即将被丢弃的那段**（`messagesToSummarize`），`/new` flush 针对**当前整段上下文**（rollover 已凝结过的更早内容由 flush 内的去重 + 字符预算自然挡掉）。`flush_memory` 是无副作用的可重入操作。
@@ -126,10 +125,10 @@ memory(action, content?, match?)
   remove  : 删除首条 include(match) 的条目
 ```
 
-- 条目以 `\n\n§\n\n` 分隔（`src/core/memory/memory-store.ts`），人读友好且不与正文冲突。
+- 条目以 `\n\n§\n\n` 分隔（`src/memory/memory-document.ts`），人读友好且不与正文冲突。
 - 字符预算默认 ~4000；超限的写入会**报错**，要求 agent 先 `remove`/精简——强制策展，防止无限膨胀。
 - 原子写（temp + rename）。
-- 工具描述（`src/core/tools/memory/description.txt`）明确告诉 agent：何时存（持久事实，非琐碎）、写入下个 session 生效、有预算。
+- 工具描述（`runtime-tools/src/coding/tools/memory/description.ts`）明确告诉 agent：何时存（持久事实，非琐碎）、写入下个 session 生效、有预算。
 
 `memory` 工具与 **flush** 互补：工具是 agent 主动随时写；flush 是 rollover 前的**保证写入点**，避免 MEMORY.md 长期为空。
 
@@ -139,16 +138,17 @@ memory(action, content?, match?)
 
 | 关注点 | 位置 |
 |---|---|
-| 记忆文件读/写/条目代数 | `coding-agent/src/core/memory/memory-store.ts` |
-| flush（LLM 抽取持久事实） | `coding-agent/src/core/memory/memory-flush.ts` |
-| JOURNAL 行/段 | `coding-agent/src/core/memory/memory-journal.ts` |
-| `memory` 工具 | `coding-agent/src/core/tools/memory/{index.ts,description.txt}` |
-| 快照注入 / rollover 触发 / flush+journal 接线 / 阈值 | `coding-agent/src/core/agent-session.ts`（`_memorySnapshot`、`_rebuildSystemPrompt`、`_compactionSettingsFor`、`_runAutoCompaction`、`agent_end` 处） |
-| system prompt 的 `memory` 段 | `coding-agent/src/core/system-prompt.ts` |
-| `rolloverToNewFile()` | `coding-agent/src/core/session-manager.ts` |
+| 记忆文件读/写 | `coding-agent/src/memory/memory-store.ts` |
+| 记忆条目代数与字符预算 | `coding-agent/src/memory/memory-document.ts` |
+| flush 领域服务 / LLM 持久事实抽取 | `coding-agent/src/memory/memory-flush-service.ts`、`ai-memory-fact-extractor.ts` |
+| JOURNAL 行/段 | `coding-agent/src/memory/file-memory-journal.ts` |
+| `memory` 工具 | `runtime-tools/src/coding/tools/memory/` |
+| 快照、flush+journal 接线与 70% 策略 | `coding-agent/src/memory/memory-rollover-runtime.ts` |
+| system prompt 的 `memory` 段 | `coding-agent/src/model-context/memory-prompt.ts` |
+| rollover continuation | `runtime-core/src/kernel/turn-pipeline.ts`、`runtime-storage/src/conversation/file-conversation-repository.ts` |
 | `--memory-mode` / `--memory-file` 解析 | `coding-agent/src/cli/args.ts`、贯通 `sdk.ts` / `main.ts` |
-| `/new` 显式凝结：`flush_memory` RPC + `flushMemory()` | `coding-agent/src/modes/rpc/rpc-mode.ts`、`agent-session.ts: flushMemory`；`im-gateway/internal/command/router.go: flushSessionMemory` |
-| `session_path_changed` 事件类型 | `coding-agent/src/core/agent-session.ts`（AgentSessionEvent 联合） |
+| `/new` 显式凝结：`flush_memory` RPC + `flushMemory()` | `coding-agent/src/modes/rpc/rpc-command-dispatcher.ts`、`adapters/runtime-core/greenfield-memory-controller.ts`；`im-gateway/internal/command/router.go: flushSessionMemory` |
+| `session_path_changed` 事件投影 | `cli-app/src/rpc/greenfield-im-rpc-events.ts` |
 | spawn 参数透传 | `im-gateway/internal/hostclient/local/client.go`（`MemoryMode`/`MemoryFile`） |
 | host 恒开 + 日期 cwd | `im-gateway/cmd/im-gateway/host.go`（`MemoryMode=true`、`SetDatedCwd(true)`） |
 | 日期 cwd / 路径回传 | `im-gateway/internal/router/router.go`（`agentCwd`、`SetPathChangeHandler`） |

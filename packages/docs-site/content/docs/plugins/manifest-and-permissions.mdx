@@ -1,0 +1,98 @@
+---
+title: 清单与权限
+description: 声明插件身份、加载入口、样式、权限和 Agent 贡献。
+---
+
+`plugin.json` 位于插件归档根目录。宿主在加载代码前用它校验身份、兼容性和权限，因此清单必须与构建产物一致。
+
+```json
+{
+  "id": "my-plugin",
+  "name": "My Plugin",
+  "version": "0.1.0",
+  "pluginApiVersion": "^1.0.0",
+  "runtime": "module-federation",
+  "entry": "dist/mf-manifest.json",
+  "moduleFederation": {
+    "remoteName": "my_plugin",
+    "expose": "./plugin"
+  },
+  "styles": ["dist/style.css"],
+  "permissions": ["ui.slot.global"]
+}
+```
+
+## 关键字段
+
+<TypeTable
+  type={{
+    id: {
+      description: "插件稳定标识。发布后应保持不变。",
+      type: "string",
+      required: true,
+    },
+    name: {
+      description: "面向用户显示的名称。",
+      type: "string",
+      required: true,
+    },
+    version: {
+      description: "插件版本。版本变化时同步更新清单和发布包。",
+      type: "string",
+      required: true,
+    },
+    entry: {
+      description: "Module Federation 清单路径，通常为 dist/mf-manifest.json。",
+      type: "string",
+      required: true,
+    },
+    "moduleFederation.remoteName": {
+      description: "合法且唯一的 Module Federation 远程名称，须与 Vite 配置一致。",
+      type: "string",
+      required: true,
+    },
+    "moduleFederation.expose": {
+      description: "暴露入口，须与 Vite 配置中的 expose 一致。",
+      type: "string",
+      required: true,
+    },
+    styles: {
+      description: "需要注入的样式文件列表。",
+      type: "string[]",
+    },
+    permissions: {
+      description: "插件实际使用的权限列表。声明不等于已获授权。",
+      type: "string[]",
+    },
+  }}
+/>
+
+## 最小权限原则
+
+只声明插件实际使用的权限。常见权限按用途分为 UI 插槽、Agent 提示与工具、文件系统、网络、存储、模型、导航和自动化。
+
+<Callout title="声明 ≠ 授权" type="info">
+  声明权限不等于获得权限：用户安装授权和运行时校验仍会生效。
+</Callout>
+
+开发时先从最小清单开始。调用宿主 API 报权限错误时，确认该行为确实必要，再增加对应权限并重新走安装授权。不要为了省事复制其他插件的完整权限数组。
+
+## 发布前检查
+
+<Steps>
+  <Step>
+    ### 检查归档结构
+
+    解压最终 ZIP，确认根目录包含 `plugin.json` 与 `dist/`，清单引用的入口和样式都存在。
+  </Step>
+  <Step>
+    ### 验证权限提示
+
+    使用全新安装流程验证权限提示是否与清单声明一致。
+  </Step>
+  <Step>
+    ### 逐项触发能力
+
+    再逐项触发插件能力。本地开发链接成功不能替代发布包验证。
+  </Step>
+</Steps>

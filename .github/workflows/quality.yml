@@ -28,3 +28,9 @@ jobs:
 
       - name: Test quality scripts
         run: bun run test:quality
+
+      - name: Verify runtime contract
+        run: bun run verify:runtime-contract
+
+      - name: Verify installed runtime artifact
+        run: bun run verify:artifact:installed

@@ -8,7 +8,7 @@ import {
 	DEFAULT_IM_CONVERSATION_SESSION_DIR,
 	KB_PROCESSING_CWD,
 	KB_PROCESSING_SESSION_DIR,
-} from "../ipc/fs.js";
+} from "../config/desktop-config-store.js";
 
 const SESSION_HEADER_READ_BYTES = 64 * 1024;
 
@@ -76,9 +76,14 @@ export async function readDesktopSessionHeader(sessionPath: string): Promise<Des
 		if (newline === -1 && bytesRead === buffer.length) return undefined;
 		const firstLine = newline === -1 ? text : text.slice(0, newline);
 		if (!firstLine) return undefined;
-		const header = JSON.parse(firstLine) as { type?: unknown; cwd?: unknown };
+		const header = JSON.parse(firstLine) as {
+			type?: unknown;
+			recordType?: unknown;
+			cwd?: unknown;
+		};
+		const supportedHeader = header.type === "session" || header.recordType === "conversation.header";
 		if (
-			header.type !== "session" ||
+			!supportedHeader ||
 			typeof header.cwd !== "string" ||
 			header.cwd.trim().length === 0 ||
 			!isAbsolute(header.cwd)

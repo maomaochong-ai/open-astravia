@@ -9,8 +9,8 @@ import type {
 	ToolCallUiDetails,
 	ToolImagePreview,
 } from "@shared/store/atoms";
+import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
-import type { HistoryEntry, PromptAttachmentRef, PromptResourceRef } from "../../../../../../runtime-core/src/index.js";
 import { classifyChatError } from "./classifyChatError";
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -1,13 +1,19 @@
 import type { PluginAppActionExample, PluginContext, PluginJsonSchema } from "@vetta-org/plugin-sdk";
 import { throwEntityNotFound, throwInvalidInput } from "../action-errors";
 
+/**
+ * 公共 id 仍为 skills.*（兼容既有 CLI/Agent 调用）。
+ * 产品文案统一为「能力」（能力页 / 能力市场），涵盖 skill 与 scene 两种类型。
+ */
+
 type SkillsQueryInput =
 	| { operation: "help" }
 	| { operation: "list"; cwd?: string }
 	| { operation: "manifest" };
 type SkillsManageInput =
 	| { operation: "set-enabled"; name: string; enabled: boolean }
-	| { operation: "uninstall"; name: string; type?: "skill" | "scene" };
+	| { operation: "uninstall"; name: string; type?: "skill" | "scene" }
+	| { operation: "install-from-market"; type: "skill" | "scene"; slug: string };
 
 const querySchema: PluginJsonSchema = {
 	type: "object",
@@ -46,27 +52,40 @@ const manageSchema: PluginJsonSchema = {
 			required: ["operation", "name"],
 			additionalProperties: false,
 		},
+		{
+			properties: {
+				operation: { const: "install-from-market" },
+				type: { enum: ["skill", "scene"] },
+				slug: { type: "string", minLength: 1, pattern: "\\S" },
+			},
+			required: ["operation", "type", "slug"],
+			additionalProperties: false,
+		},
 	],
 };
 
 const queryExamples: PluginAppActionExample<SkillsQueryInput>[] = [
-	{ description: "列出技能", input: { operation: "list" } },
-	{ description: "查看安装清单", input: { operation: "manifest" } },
+	{ description: "列出已可见能力（skill/scene）", input: { operation: "list" } },
+	{ description: "查看本地已安装能力清单", input: { operation: "manifest" } },
 ];
 const manageExamples: PluginAppActionExample<SkillsManageInput>[] = [
-	{ description: "停用技能", input: { operation: "set-enabled", name: "my-skill", enabled: false } },
-	{ description: "卸载技能", input: { operation: "uninstall", name: "my-skill" } },
+	{ description: "停用能力", input: { operation: "set-enabled", name: "my-skill", enabled: false } },
+	{ description: "卸载能力", input: { operation: "uninstall", name: "my-skill" } },
+	{
+		description: "从能力市场安装",
+		input: { operation: "install-from-market", type: "skill", slug: "create-skill" },
+	},
 ];
 
 export function registerSkillsActions(ctx: PluginContext): void {
 	ctx.appActions.register<SkillsQueryInput>({
 		id: "skills.query",
 		publicId: "skills.query",
-		title: "查询技能",
-		summary: "列出可见技能/场景，或读取本地安装清单。",
+		title: "查询能力",
+		summary: "列出可见能力（skill/scene），或读取本地安装清单。对应能力页。",
 		description:
-			'对象参数；operation 为 "help"、"list" 或 "manifest"。list 可传 cwd 以包含项目级 skills。市场安装需 GUI，本 Action 不提供 install。',
-		keywords: ["技能", "skill", "scene", "技能广场", "插件技能", "manifest"],
+			'对象参数；operation 为 "help"、"list" 或 "manifest"。list 可传 cwd 以包含项目级能力。安装请用 skills.manage install-from-market。',
+		keywords: ["能力", "abilities", "技能", "skill", "scene", "技能广场", "能力页", "manifest", "市场"],
 		effect: "read",
 		inputSchema: querySchema,
 		examples: queryExamples,
@@ -74,7 +93,7 @@ export function registerSkillsActions(ctx: PluginContext): void {
 			if (input.operation === "help") {
 				return {
 					guidance:
-						"从市场安装请引导用户打开技能广场或使用 GUI；Action 支持 list/manifest 与启用停用/卸载。",
+						"产品「能力页」管理 skill/scene（公共 Action id 仍为 skills.*）。list/manifest 只读；install-from-market / set-enabled / uninstall 用 skills.manage。MCP/插件能力用 mcp.* / plugins.*。",
 					actions: [
 						{ id: "skills.query", inputSchema: querySchema, examples: queryExamples },
 						{ id: "skills.manage", inputSchema: manageSchema, examples: manageExamples },
@@ -88,31 +107,47 @@ export function registerSkillsActions(ctx: PluginContext): void {
 	ctx.appActions.register<SkillsManageInput>({
 		id: "skills.manage",
 		publicId: "skills.manage",
-		title: "管理技能",
-		summary: "启用、停用或卸载已安装的技能/场景。",
-		description: '对象参数；operation 为 "set-enabled" 或 "uninstall"。仅对 manifest 中已安装条目有效。',
-		keywords: ["技能", "skill", "启用", "停用", "卸载", "uninstall"],
+		title: "管理能力",
+		summary: "从能力市场安装，或启用/停用/卸载已安装的 skill/scene。",
+		description:
+			'对象参数；operation 为 "set-enabled"、"uninstall" 或 "install-from-market"。install 传 type+slug；装完后出现在能力页与 manifest。',
+		keywords: ["能力", "abilities", "技能", "skill", "启用", "停用", "卸载", "安装", "市场", "install"],
 		effect: "write",
 		approval: {
 			defaultPresentation: "skills.set-enabled",
 			presentations: [
-				{ id: "skills.set-enabled", title: "启用/停用技能确认", description: "展示技能启用状态变更。" },
-				{ id: "skills.uninstall", title: "卸载技能确认", description: "展示待卸载技能。" },
+				{ id: "skills.set-enabled", title: "启用/停用能力确认", description: "展示能力启用状态变更。" },
+				{ id: "skills.uninstall", title: "卸载能力确认", description: "展示待卸载能力。" },
+				{
+					id: "skills.install-from-market",
+					title: "从能力市场安装确认",
+					description: "确认从市场下载并安装该能力。",
+				},
 			],
 			presentationByOperation: {
 				"set-enabled": "skills.set-enabled",
 				uninstall: "skills.uninstall",
+				"install-from-market": "skills.install-from-market",
 			},
 		},
 		inputSchema: manageSchema,
 		examples: manageExamples,
 		assertReady: async ({ input }) => {
+			if (input.operation === "install-from-market") {
+				if (!input.slug.trim()) {
+					throwInvalidInput("install-from-market requires a non-empty slug", {
+						operation: input.operation,
+						type: input.type,
+					});
+				}
+				return;
+			}
 			const manifest = await ctx.official.skills.getManifest();
 			const entry = manifest[input.name];
 			if (!entry) {
 				throwEntityNotFound({
 					operation: input.operation,
-					entity: "installed skill/scene",
+					entity: "installed ability (skill/scene)",
 					idField: "name",
 					id: input.name,
 					queryAction: "skills.query",
@@ -133,6 +168,10 @@ export function registerSkillsActions(ctx: PluginContext): void {
 			}
 		},
 		handler: async ({ input }) => {
+			if (input.operation === "install-from-market") {
+				const result = await ctx.official.skills.installFromMarket(input.type, input.slug.trim());
+				return { operation: input.operation, ...result };
+			}
 			if (input.operation === "set-enabled") {
 				return {
 					operation: input.operation,

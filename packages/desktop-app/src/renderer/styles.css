@@ -12,6 +12,19 @@
    desktop-app no longer contain className literals for Tailwind to see. */
 @source "../../../ui/src/**/*.{ts,tsx}";
 
+/* 系统插件贡献的侧边栏图标。
+ *
+ * 工作区视图的 icon 是插件在自己的源码里声明的 iconify class 字符串，宿主只是把它
+ * 原样挂到导航按钮上——而 Tailwind 只生成**它扫得到的字面量**，插件源码不在宿主的
+ * 扫描范围内，于是那条 class 没有规则、图标是个空格子。
+ *
+ * 不整目录 @source 进插件源码：那会把 preset 里成百上千个只有插件自己用的工具类
+ * 一并生成进宿主 CSS。这里按图标逐条放行，与 SOLAR_SKILL_ICON_CLASS 同一个思路
+ * （让编译器看见字面量），新增系统插件的导航图标时在这儿补一行。
+ * 第三方插件仍然只能拿到默认图标，那需要运行时渲染，不在本清单能解决的范围内。 */
+@source inline("icon-[solar--ruler-pen-linear]");
+@source inline("icon-[solar--archive-minimalistic-outline]");
+
 @custom-variant dark (&:is([data-mode="dark"] *));
 /* Radix sets data-state="open"|"closed"; @vetta/ui uses data-open:/data-closed: utilities. */
 @custom-variant data-open (&:is([data-state="open"]));

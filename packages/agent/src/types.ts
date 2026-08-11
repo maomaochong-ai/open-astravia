@@ -1,6 +1,8 @@
 import type { Static, TSchema } from "@sinclair/typebox";
 import type {
+	AssistantMessage,
 	AssistantMessageEvent,
+	Context,
 	ImageContent,
 	Message,
 	Model,
@@ -16,6 +18,57 @@ import type { RuntimeTracer } from "@vetta/runtime-telemetry";
 export type StreamFn = (
 	...args: Parameters<typeof streamSimple>
 ) => ReturnType<typeof streamSimple> | Promise<ReturnType<typeof streamSimple>>;
+
+export interface AgentCallContextRequest {
+	readonly systemPrompt: string;
+	readonly messages: readonly AgentMessage[];
+	readonly tools?: NonNullable<AgentContext["tools"]>;
+}
+
+export interface AgentCallContext {
+	readonly systemPrompt: string;
+	readonly tools?: NonNullable<AgentContext["tools"]>;
+}
+
+/** Hooks around the exact provider-facing context of a model call. */
+export interface AgentModelCallLifecycle {
+	prepared(context: Readonly<Context>, signal?: AbortSignal): Promise<void> | void;
+	completed(
+		context: Readonly<Context>,
+		message: Readonly<AssistantMessage>,
+		signal?: AbortSignal,
+	): Promise<void> | void;
+	failed(context: Readonly<Context>, error: unknown, signal?: AbortSignal): Promise<void> | void;
+}
+
+export type AgentContextCheckpointReason = "model_call" | "assistant_result" | "assistant_error";
+
+export interface AgentContextCheckpointResult {
+	/** 本次模型调用使用的消息视图。 */
+	readonly messages: readonly AgentMessage[];
+	/** 持久压缩成功后，用它替换 Agent Loop 内部上下文；缺省时保持原上下文。 */
+	readonly contextMessages?: readonly AgentMessage[];
+	/** 仅 assistant_error 检查点使用；true 表示用返回的上下文重试。 */
+	readonly retry?: boolean;
+}
+
+export interface AgentContextCheckpointRequest {
+	readonly reason: AgentContextCheckpointReason;
+	readonly messages: readonly AgentMessage[];
+	readonly assistantMessage?: AssistantMessage;
+	readonly recoveryAttempt: number;
+	complete(result?: AgentContextCheckpointResult): void;
+	fail(error: unknown): void;
+}
+
+export interface AgentLoopLimits {
+	/** Maximum number of model calls in one run, including recovery and continuation calls. */
+	readonly maxModelCalls?: number;
+	/** Maximum number of tool calls returned by models in one run. */
+	readonly maxToolCalls?: number;
+	/** Maximum time a host may leave a context checkpoint unresolved. */
+	readonly contextCheckpointTimeoutMs?: number;
+}
 
 /**
  * Configuration for the agent loop.
@@ -70,6 +123,28 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	transformContext?: (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
 
 	/**
+	 * Resolves the system prompt and tools immediately before each LLM call.
+	 *
+	 * This keeps a single agent run responsive to runtime capability changes
+	 * without mutating the message history or restarting the loop.
+	 */
+	resolveCallContext?: (context: AgentCallContextRequest, signal?: AbortSignal) => Promise<AgentCallContext>;
+
+	/** Observes the final provider-facing context and its terminal outcome. */
+	modelCallLifecycle?: AgentModelCallLifecycle;
+
+	/**
+	 * 在每次模型调用前以及 assistant error 后发出请求—应答检查点。
+	 *
+	 * 仅需要将模型循环与外部持久化 Pipeline 串行化的宿主启用。普通 Agent
+	 * 调用保持关闭，不会产生额外事件或改变既有执行顺序。
+	 */
+	contextCheckpoints?: boolean;
+
+	/** Finite execution budgets. Omitted fields use conservative library defaults. */
+	limits?: AgentLoopLimits;
+
+	/**
 	 * Resolves an API key dynamically for each LLM call.
 	 *
 	 * Useful for short-lived OAuth tokens (e.g., GitHub Copilot) that may expire
@@ -107,7 +182,7 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 * Use this for automatic continuation policies. User-queued follow-up messages
 	 * are managed separately by Agent.followUp().
 	 */
-	getContinuationMessages?: () => Promise<AgentMessage[]>;
+	getContinuationMessages?: (messages: readonly AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]>;
 
 	/**
 	 * Returns the tool set / system prompt to use for the next turn.
@@ -173,7 +248,7 @@ export type AgentMessage = Message | CustomAgentMessages[keyof CustomAgentMessag
  */
 export interface AgentState {
 	systemPrompt: string;
-	model: Model<any>;
+	model?: Model<any>;
 	thinkingLevel: ThinkingLevel;
 	tools: AgentTool<any>[];
 	messages: AgentMessage[]; // Can include attachments + custom message types
@@ -206,6 +281,8 @@ export interface ToolPhase {
 // argument so existing tools that don't take ctx keep working.
 export interface ToolExecutionContext {
 	phase: (label: string) => void;
+	/** 当前工具调用发生时的完整 Agent 消息视图，包含触发该调用的 assistant 消息。 */
+	readonly messages?: readonly AgentMessage[];
 }
 
 // AgentTool extends Tool but adds the execute function
@@ -261,6 +338,8 @@ export type AgentEvent =
 	// Only emitted for assistant messages during streaming
 	| { type: "message_update"; message: AgentMessage; assistantMessageEvent: AssistantMessageEvent }
 	| { type: "message_end"; message: AgentMessage }
+	// Host request-response checkpoint; emitted only when contextCheckpoints is enabled.
+	| { type: "context_checkpoint"; request: AgentContextCheckpointRequest }
 	// Tool execution lifecycle
 	| { type: "tool_execution_start"; toolCallId: string; toolName: string; args: any; startedAt: number }
 	| { type: "tool_execution_update"; toolCallId: string; toolName: string; args: any; partialResult: any }

@@ -4,13 +4,12 @@
  * Context files provide project-specific instructions loaded into the system prompt.
  */
 
-import { createAgentSession, DefaultResourceLoader, SessionManager } from "@vetta/coding-agent";
+import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
 
-// Disable context files entirely by returning an empty list in agentsFilesOverride.
-const loader = new DefaultResourceLoader({
-	agentsFilesOverride: (current) => ({
-		agentsFiles: [
-			...current.agentsFiles,
+const { session } = await createCodingAgentSession({
+	storage: { kind: "memory" },
+	resources: {
+		contextFiles: [
 			{
 				path: "/virtual/AGENTS.md",
 				content: `# Project Guidelines
@@ -21,20 +20,7 @@ const loader = new DefaultResourceLoader({
 - Prefer const over let`,
 			},
 		],
-	}),
-});
-await loader.reload();
-
-// Discover AGENTS.md files walking up from cwd
-const discovered = loader.getAgentsFiles().agentsFiles;
-console.log("Discovered context files:");
-for (const file of discovered) {
-	console.log(`  - ${file.path} (${file.content.length} chars)`);
-}
-
-await createAgentSession({
-	resourceLoader: loader,
-	sessionManager: SessionManager.inMemory(),
+	},
 });
 
-console.log(`Session created with ${discovered.length + 1} context files`);
+console.log("Context contribution loaded:", session.getSystemPrompt().includes("Prefer const over let"));

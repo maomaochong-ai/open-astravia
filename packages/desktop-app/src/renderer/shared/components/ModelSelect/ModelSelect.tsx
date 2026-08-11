@@ -1,4 +1,4 @@
-import { ProviderIcon } from "@shared/components/provider-icon";
+import { ProviderIcon } from "@vetta/theme-ui/shared";
 import { cn } from "@shared/lib/utils";
 import { ThemeSurface } from "@vetta/theme-ui/appearance";
 import {

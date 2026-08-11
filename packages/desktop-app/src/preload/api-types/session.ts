@@ -6,16 +6,18 @@ import type {
 	RuntimeSandboxGrantDecision,
 	RuntimeSandboxGrantInfo,
 	RuntimeSandboxGrantRequest,
+	RuntimeSessionQueueStateView,
+	RuntimeTurnPromptOutcome,
 	RuntimeUserConfirmationRequest,
 	RuntimeUserQuestionRequest,
 	RuntimeUserQuestionResult,
 	SessionConfig,
 	SessionEvent,
 	SessionExecutionMode,
-	SessionHistoryInfo,
 	SessionStateSnapshot,
 	SettingsPatch,
-} from "../../../../runtime-core/src/index.js";
+} from "@vetta/runtime-core";
+import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 
 /** 工作模式（agent_mode 轴，见 ADR-0046）。 */
 export type AgentMode = "work" | "coding";
@@ -43,9 +45,12 @@ export interface DesktopUserQuestionResolvedEvent {
 }
 
 export interface DesktopSessionApi {
-	create(config: SessionConfig | undefined, kind: DesktopSessionKind): Promise<{ sessionId: string; cwd?: string }>;
+	create(
+		config: SessionConfig | undefined,
+		kind: DesktopSessionKind,
+	): Promise<{ sessionId: string; sessionPath: string; cwd?: string }>;
 	listProjects(): Promise<ProjectInfo[]>;
-	listSessions(cwd: string): Promise<SessionHistoryInfo[]>;
+	listSessions(cwd: string): Promise<DesktopSessionHistoryInfo[]>;
 	onSessionsChanged(
 		handler: (payload: {
 			cwd: string;
@@ -53,9 +58,19 @@ export interface DesktopSessionApi {
 			session?: { id: string; cwd: string; firstMessage: string; modifiedAt: number };
 		}) => void,
 	): () => void;
-	prompt(sessionId: string, request: PromptRequest): Promise<void>;
+	/** 回执（ADR-0060）：streaming 中带 streamingBehavior 的请求入 kernel 队列并立即返回 queued。 */
+	prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome>;
 	continue(sessionId: string): Promise<void>;
 	abort(sessionId: string): Promise<void>;
+	/** kernel 输入队列快照（ADR-0060）。 */
+	getQueueState(sessionId: string): Promise<RuntimeSessionQueueStateView>;
+	removeQueuedMessage(sessionId: string, itemId: string): Promise<boolean>;
+	reorderQueuedMessages(sessionId: string, itemIds: string[]): Promise<void>;
+	/** streaming 中打断当前回合并立刻以该条目开新回合；空闲时直接开新回合。不等待回合结束。 */
+	sendQueuedMessageNow(sessionId: string, itemId: string): Promise<"promoted" | "started" | "missing">;
+	/** 解除 abort/error 后的队列暂停并继续逐条发送。 */
+	resumeQueue(sessionId: string): Promise<void>;
+	clearQueue(sessionId: string): Promise<void>;
 	/** 清空 session 的 todo 列表（被 scene 等 lock 时返回 false）。 */
 	clearTodos(sessionId: string): Promise<boolean>;
 	subscribe(sessionId: string, handler: (event: SessionEvent) => void): Promise<() => void>;
@@ -90,8 +105,6 @@ export interface DesktopSessionApi {
 	onAgentModeChanged(handler: (mode: AgentMode) => void): () => void;
 	setGlobalThinkingLevel(level: string): Promise<void>;
 	getGlobalThinkingLevel(): Promise<string>;
-	setMaxRecentImages(count: number): Promise<void>;
-	getMaxRecentImages(): Promise<number>;
 	getPersonas(): Promise<PersonaOption[]>;
 	getPersonalization(): Promise<PersonalizationConfig>;
 	setPersonalization(input: PersonalizationConfig): Promise<void>;
@@ -109,6 +122,13 @@ export interface DesktopSessionApi {
 	/** Export fork as new session file; current session unchanged. */
 	forkSession(sessionId: string, entryId: string): Promise<{ path: string; text: string }>;
 	delete(sessionPath: string): Promise<void>;
+	/**
+	 * 清空某个项目 cwd 名下的全部会话存储，用于项目硬删除。
+	 *
+	 * 会话文件在按 cwd 算出的全局分片目录里，不随项目目录删除而消失；不清理的话，
+	 * 同路径重建项目会把旧会话带回侧边栏。内置「对话」/Claw/知识库 cwd 会被拒绝。
+	 */
+	deleteAllForCwd(cwd: string): Promise<{ deleted: number; failed: string[] }>;
 	rename(sessionPath: string, name: string): Promise<void>;
 	autoTitle(sessionId: string, userText: string, assistantText: string): Promise<string | null>;
 	/**
@@ -119,6 +139,11 @@ export interface DesktopSessionApi {
 	dispose(sessionId: string): Promise<void>;
 	/** Snapshot of session paths currently in the agent loop. */
 	listRunning(): Promise<string[]>;
+	/**
+	 * 当前有会话在跑的项目 cwd（去重）。会话文件路径无法反推所属项目（默认落在
+	 * 按 cwd 编码的分片目录里，编码不可逆），需要项目粒度的运行态时用这个。
+	 */
+	listRunningCwds(): Promise<string[]>;
 	/** Subscribe to running-set changes. Fires for each toggle (running=true|false). */
 	onRunningChanged(
 		handler: (payload: {

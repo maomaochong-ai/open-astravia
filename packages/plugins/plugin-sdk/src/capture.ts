@@ -20,6 +20,18 @@ export interface PluginOffscreenCaptureOptions {
 	readyExpression?: string;
 	/** 就绪后的静置时间（毫秒），等图片解码、过渡动画落定。 */
 	settleMs?: number;
+	/**
+	 * 探针表达式。在**截图的同一时刻**（就绪 + 静置之后）对页面求值，结果经
+	 * `JSON.stringify` 回传到 `PluginOffscreenCaptureResult.probe`。
+	 *
+	 * 存在的理由：渲染是这条链上最贵的一步，而位图是它最难用的产物——「这段文字换了
+	 * 行没有」「这两条边对齐没有」在 DOM 里是确定的度量，在图里只能靠看。同一次渲染
+	 * 顺带把度量取回来，比让调用方再渲染一次或让模型看图去猜都更可靠。
+	 *
+	 * 求值失败（抛错、返回不可序列化的值）不影响截图：`probe` 为 `undefined`，
+	 * 位图照常返回。探针是搭车的附加信息，不是截图的前置条件。
+	 */
+	probeScript?: string;
 	/** 整体超时（毫秒，含加载与就绪等待），宿主按自身上限收紧。 */
 	timeoutMs?: number;
 	format?: "jpeg" | "png";
@@ -34,6 +46,11 @@ export interface PluginOffscreenCaptureResult {
 	 * 的缩放（Retina 为 2），插件不可指定——按需自行缩放位图。
 	 */
 	scaleFactor: number;
+	/**
+	 * `probeScript` 的求值结果，经 JSON 往返。没传探针、求值抛错或结果不可序列化时
+	 * 为 `undefined`——调用方无法从这里区分三者，探针本就不该承担错误报告。
+	 */
+	probe?: unknown;
 }
 
 /**

@@ -101,4 +101,9 @@ export interface DesktopConfigApi {
 	set(config: Partial<DesktopConfigData>): Promise<void>;
 	/** 全局快捷键绑定被 GUI 或 Action 更新后广播。 */
 	onShortcutsChanged(handler: (event: ShortcutsBindingsChangedEvent) => void): () => void;
+	/**
+	 * 项目列表被主进程侧的写入者（插件的 `official.projects.*`、Action 等）改动后广播，
+	 * 无载荷：收到后自行重读配置。渲染进程自己发起的增删不依赖它。
+	 */
+	onProjectsChanged(handler: () => void): () => void;
 }

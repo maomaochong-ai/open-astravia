@@ -7,13 +7,28 @@
  *
  * 为什么是 IndexedDB 而不是 ctx.storage：位图是纯派生数据，必须能删（frame 删了、
  * 设计稿删了），而 storage API 只有 readJson/writeJson/putBlob 一类的写入口，没有
- * 删除能力，拿它做缓存等于让磁盘只涨不落。也不写进 sidecar 的 .snapshots/——那是
+ * 删除能力，拿它做缓存等于让磁盘只涨不落。也不写进设计包的 .snapshots/——那是
  * 用户项目里的目录，几 MB 的派生位图不该落在那儿。
  */
 
 const DB_NAME = "vetta-ui-design";
 const STORE = "rasters";
-const DB_VERSION = 1;
+/**
+ * 画廊封面：整块画布的全景图，一份设计一张，key 就是 vetdPath。
+ *
+ * 与 frame 位图同库不同表：来源相同（都是画布截出来的派生位图）、失效条件相同
+ * （设计没了就该一起没），分表只是为了「取封面」不必扫一遍 frame 键。
+ */
+const COVER_STORE = "covers";
+/**
+ * 3 而不是 2：2 曾经发布过一版**只升版本号、没建 covers 表**的实现，那些库现在停在
+ * 「version=2 且没有 covers」的状态上。`open(name, 2)` 对已经是 v2 的库不触发升级，
+ * 不再升一版的话它们永远补不上这张表。
+ */
+const DB_VERSION = 3;
+
+/** 这个库应该有的全部表。升级时按缺什么补什么，不依赖「从哪一版升上来」。 */
+const STORES = [STORE, COVER_STORE] as const;
 
 /** `${vetdPath}::${frameId}`——设计文档之间天然隔离，同一份里按 frame 取。 */
 function keyOf(vetdPath: string, frameId: string): string {
@@ -28,7 +43,9 @@ function openDb(): Promise<IDBDatabase | null> {
 		try {
 			const request = indexedDB.open(DB_NAME, DB_VERSION);
 			request.onupgradeneeded = () => {
-				if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE);
+				for (const store of STORES) {
+					if (!request.result.objectStoreNames.contains(store)) request.result.createObjectStore(store);
+				}
 			};
 			request.onsuccess = () => resolve(request.result);
 			// 缓存不可用不该让画布挂掉：隐私模式、配额耗尽都可能走到这里，
@@ -41,13 +58,26 @@ function openDb(): Promise<IDBDatabase | null> {
 	return dbPromise;
 }
 
-function runStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T | null> {
+function runStore<T>(
+	mode: IDBTransactionMode,
+	run: (store: IDBObjectStore) => IDBRequest<T>,
+	storeName: string = STORE,
+): Promise<T | null> {
 	return openDb().then(
 		(db) =>
 			new Promise<T | null>((resolve) => {
 				if (!db) return resolve(null);
+				// 表不存在是**代码错误**（漏了建表 / 漏了升版本），不是环境问题。下面那层
+				// try/catch 会把它和「配额耗尽」一样静默咽掉——真发生过：covers 表整整一版
+				// 没被建出来，封面每次都静默丢弃，表面上只是「一直没有封面」。
+				if (!db.objectStoreNames.contains(storeName)) {
+					console.error(
+						`[vetta-ui-design] IndexedDB store "${storeName}" is missing (db v${db.version}); bump DB_VERSION so the upgrade runs.`,
+					);
+					return resolve(null);
+				}
 				try {
-					const request = run(db.transaction(STORE, mode).objectStore(STORE));
+					const request = run(db.transaction(storeName, mode).objectStore(storeName));
 					request.onsuccess = () => resolve(request.result);
 					request.onerror = () => resolve(null);
 				} catch {
@@ -94,4 +124,18 @@ export async function pruneRasters(vetdPath: string, keep: readonly string[]): P
 			await runStore("readwrite", (store) => store.delete(key));
 		}),
 	);
+}
+
+/** 读回这份设计稿的画廊封面（jpeg dataURL）。没有就是没有——画廊自己出占位。 */
+export async function loadCover(vetdPath: string): Promise<string | null> {
+	const value = await runStore<unknown>("readonly", (store) => store.get(vetdPath), COVER_STORE);
+	return typeof value === "string" ? value : null;
+}
+
+export async function saveCover(vetdPath: string, dataUrl: string): Promise<void> {
+	await runStore("readwrite", (store) => store.put(dataUrl, vetdPath), COVER_STORE);
+}
+
+export async function deleteCover(vetdPath: string): Promise<void> {
+	await runStore("readwrite", (store) => store.delete(vetdPath), COVER_STORE);
 }

@@ -1,0 +1,45 @@
+---
+title: 配置与数据路径
+description: 查找模型、设置、MCP、能力、会话和项目级配置，并理解各路径的所有权。
+---
+
+下表中的 `~` 表示当前系统用户目录。桌面界面是首选配置入口；直接编辑文件适合开发、诊断和受控迁移。
+
+## 全局路径
+
+| 路径 | 内容 |
+| --- | --- |
+| `~/.vetta/agent/settings.json` | Coding Agent 全局设置 |
+| `~/.vetta/agent/models.json` | 自定义 Provider 和模型覆盖 |
+| `~/.vetta/agent/auth.json` | 登录、OAuth 或手动凭证记录 |
+| `~/.vetta/agent/mcp.json` | MCP 服务配置 |
+| `~/.vetta/agent/sessions/` | 按安全 cwd 组织的会话文件 |
+| `~/.vetta/abilities.json` | 已安装能力索引 |
+| `~/.vetta/skills/` | 用户级技能 |
+| `~/.vetta/scene/` | 用户级场景 |
+| `~/.vetta/plugins/` | 用户级插件 |
+
+可以使用 `VETTA_CODING_AGENT_DIR` 覆盖 Agent 目录，但宿主、sidecar 和迁移工具必须使用同一值，避免会话和配置分裂。
+
+## 项目路径
+
+| 路径 | 内容 |
+| --- | --- |
+| `<cwd>/AGENTS.md` | 项目长期指令，供项目会话自动加载 |
+| `<cwd>/.vetta/settings.json` | 覆盖全局 Agent 设置 |
+| `<cwd>/.vetta/skills/` | 项目级技能 |
+| `<cwd>/.vetta/extensions/` | 项目级 Coding Agent Extension |
+
+项目设置中的相对路径相对于 `.vetta/settings.json` 所在目录解析。项目级配置优先于全局配置。
+
+## 修改和迁移原则
+
+1. 优先通过 Vetta 设置页修改，确保运行时校验和关联状态同步。
+2. 手工编辑前退出相关活动会话，避免与正在写入的进程冲突。
+3. 不让两个进程同时写同一个会话文件。
+4. 迁移时保留目录结构和文件名，不只复制单个会话正文。
+5. 删除前分清原始资料、整理结果、会话历史和产物，它们的保留语义不同。
+
+<Callout type="info" title="路径是实现事实，不是跨版本协议">
+  自动化工具应优先使用公开 SDK、RPC 或导出能力。除文档明确承诺的配置文件外，不要依赖未公开的内部目录结构。
+</Callout>

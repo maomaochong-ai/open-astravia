@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "print": {
+    "coreEventTypes": [
+      "agent_start",
+      "turn_start",
+      "message_start",
+      "message_end",
+      "message_start",
+      "message_update",
+      "message_update",
+      "message_update",
+      "message_end",
+      "turn_end",
+      "agent_end"
+    ],
+    "toolFrameTypes": ["tool_execution_start", "tool_execution_end"],
+    "retry": {
+      "requestCount": 4,
+      "frames": [
+        { "type": "auto_retry_start", "attempt": 1, "maxAttempts": 1, "delayMs": 0 },
+        { "type": "auto_retry_end", "attempt": 1, "success": true }
+      ]
+    },
+    "nonRetryableProviderFailure": {
+      "code": 0,
+      "requestCount": 1,
+      "retryFrameCount": 0,
+      "fallback": false
+    },
+    "textProviderFailure": { "code": 1, "requestCount": 1 }
+  },
+  "rpc": {
+    "streamingLifecycle": ["agent_start", "turn_start", "turn_end", "agent_end"],
+    "terminalFailureKinds": ["agent_end"]
+  },
+  "tools": {
+    "defaultNames": {
+      "win32": [
+        "current_time",
+        "dir_tree",
+        "edit",
+        "glob",
+        "grep",
+        "read",
+        "shell",
+        "task_output",
+        "task_stop",
+        "write"
+      ],
+      "posix": [
+        "bash",
+        "current_time",
+        "dir_tree",
+        "edit",
+        "glob",
+        "grep",
+        "read",
+        "task_output",
+        "task_stop",
+        "write"
+      ]
+    }
+  }
+}

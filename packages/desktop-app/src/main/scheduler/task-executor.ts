@@ -1,4 +1,4 @@
-import type { RuntimeHost, SessionEvent } from "../../../../runtime-core/src/index.js";
+import type { RuntimeHost, SessionEvent } from "@vetta/runtime-core";
 import { formatScheduleSessionName } from "../../shared/scheduled-session.js";
 import { monitorRuntimeSession, recordAutomationRunStarted } from "../app-monitor/app-monitor-service.js";
 import { resolveExecutionMode } from "../execution-mode.js";
@@ -16,16 +16,32 @@ interface ExecutingTask {
 }
 
 const executingTasks = new Map<string, ExecutingTask>();
+const activeExecutions = new Set<Promise<void>>();
+let acceptingExecutions = true;
+let shutdownPromise: Promise<void> | undefined;
 
 export interface ExecuteTaskOptions {
 	onOneTimeCompleted?: (task: ScheduledTask) => Promise<void> | void;
 }
 
-export async function executeTask(
+export function executeTask(
 	task: ScheduledTask,
 	runtime: RuntimeHost,
 	options: ExecuteTaskOptions = {},
 ): Promise<void> {
+	if (!acceptingExecutions) {
+		return Promise.reject(new Error("Scheduler task executor is shutting down"));
+	}
+	const execution = executeTaskInner(task, runtime, options);
+	activeExecutions.add(execution);
+	void execution.then(
+		() => activeExecutions.delete(execution),
+		() => activeExecutions.delete(execution),
+	);
+	return execution;
+}
+
+async function executeTaskInner(task: ScheduledTask, runtime: RuntimeHost, options: ExecuteTaskOptions): Promise<void> {
 	if (isTaskRunning(task.id)) {
 		throw new Error(`Scheduled task is already running: ${task.id}`);
 	}
@@ -71,7 +87,7 @@ export async function executeTask(
 		// 会话名 = 任务名 · 执行时间；前缀一个不可见标记，渲染端据此挂定时图标
 		// 并统一剥离标记展示（不再用可见的 "[定时]" 文字占位）。
 		const sessionName = formatScheduleSessionName(task.name, record.startedAt);
-		runtime.renameSessionById(sessionId, sessionName);
+		await runtime.renameSessionById(sessionId, sessionName);
 
 		// Get session path for navigation
 		record.sessionPath = runtime.getSessionPath(sessionId);
@@ -228,10 +244,50 @@ export async function abortTask(taskId: string): Promise<boolean> {
 	return true;
 }
 
+export async function shutdownSchedulerTaskExecutor(): Promise<void> {
+	acceptingExecutions = false;
+	if (shutdownPromise) return await shutdownPromise;
+	shutdownPromise = (async () => {
+		const activeTasks = [...executingTasks.entries()];
+		await Promise.allSettled(
+			activeTasks.map(async ([taskId, executing]) => {
+				try {
+					await executing.runtime.abort(executing.sessionId);
+				} finally {
+					executing.unsubscribe();
+					executingTasks.delete(taskId);
+				}
+			}),
+		);
+		await Promise.allSettled([...activeExecutions]);
+	})();
+	return await shutdownPromise;
+}
+
 export function isTaskRunning(taskId: string): boolean {
 	return executingTasks.has(taskId);
 }
 
 export function getRunningTaskIds(): string[] {
 	return [...executingTasks.keys()];
+}
+
+export function getSchedulerTaskExecutorState(): {
+	readonly acceptingExecutions: boolean;
+	readonly shutdownStarted: boolean;
+	readonly activeTasks: Array<{
+		readonly taskId: string;
+		readonly sessionId: string;
+		readonly sessionPath: string | undefined;
+	}>;
+} {
+	return {
+		acceptingExecutions,
+		shutdownStarted: shutdownPromise !== undefined,
+		activeTasks: [...executingTasks.entries()].map(([taskId, executing]) => ({
+			taskId,
+			sessionId: executing.sessionId,
+			sessionPath: executing.runtime.getSessionPath(executing.sessionId),
+		})),
+	};
 }

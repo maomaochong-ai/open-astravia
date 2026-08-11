@@ -68,7 +68,8 @@ export class ContentAssetPreviewResolver {
 				const path = joinContentPath(cwd, asset.filePath);
 				if (!(await this.fs.stat(path))) return null;
 				const file = await this.fs.readBinaryFile(path);
-				return `data:${file.mimeType};base64,${file.data}`;
+				const mimeType = file.mimeType === "application/octet-stream" ? asset.mimeType : file.mimeType;
+				return `data:${mimeType};base64,${file.data}`;
 			}
 			if (!asset.blobId) return null;
 			const reference = await this.storage.getBlobRef(asset.blobId);

@@ -7,9 +7,8 @@
  */
 
 import { createServer, type Server } from "node:http";
+import { HttpMcpClient, type McpHttpServerConfig } from "@vetta/runtime-mcp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { HttpMcpClient } from "../src/core/mcp/mcp-http-client.js";
-import type { McpHttpServerConfig } from "../src/core/mcp/types.js";
 
 interface RecordedRequest {
 	method: string;

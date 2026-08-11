@@ -2,46 +2,57 @@
  * Skills Configuration
  *
  * Skills provide specialized instructions loaded into the system prompt.
- * Discover, filter, merge, or replace them.
+ * Discover, filter, merge, or refresh them through stable value contracts.
  */
 
-import { createAgentSession, DefaultResourceLoader, SessionManager, type Skill } from "@vetta/coding-agent";
+import type { CodingAgentSkillSourceSnapshot } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
 
-// Or define custom skills inline
-const customSkill: Skill = {
-	name: "my-skill",
-	description: "Custom project instructions",
-	filePath: "/virtual/SKILL.md",
-	baseDir: "/virtual",
-	source: "path",
-	type: "skill",
-	disableModelInvocation: false,
+let dynamicSkills: CodingAgentSkillSourceSnapshot = {
+	revision: 1,
+	skills: [
+		{
+			name: "browser-audit",
+			description: "Audit browser changes",
+			content: "Inspect browser-visible behavior and report regressions.",
+		},
+	],
 };
 
-const loader = new DefaultResourceLoader({
-	skillsOverride: (current) => {
-		const filteredSkills = current.skills.filter((s) => s.name.includes("browser") || s.name.includes("search"));
-		return {
-			skills: [...filteredSkills, customSkill],
-			diagnostics: current.diagnostics,
-		};
+const { session } = await createCodingAgentSession({
+	storage: { kind: "memory" },
+	resources: {
+		skillPolicy: { include: { nameContains: ["browser", "search", "project"] } },
+		skills: [
+			{
+				name: "project-guidance",
+				description: "Custom project instructions",
+				content: "Preserve existing behavior and keep changes surgical.",
+			},
+		],
 	},
+	skillSources: [{ id: "live-skills", read: () => dynamicSkills }],
 });
-await loader.reload();
 
-// Discover all skills from cwd/.pi/skills, ~/.pi/agent/skills, etc.
-const { skills: allSkills, diagnostics } = loader.getSkills();
 console.log(
-	"Discovered skills:",
-	allSkills.map((s) => s.name),
+	"Visible skills:",
+	session.getSkills().map(({ name }) => name),
 );
-if (diagnostics.length > 0) {
-	console.log("Warnings:", diagnostics);
-}
 
-await createAgentSession({
-	resourceLoader: loader,
-	sessionManager: SessionManager.inMemory(),
-});
+dynamicSkills = {
+	revision: 2,
+	skills: [
+		{
+			name: "search-audit",
+			description: "Audit search changes",
+			content: "Inspect search behavior and report regressions.",
+		},
+	],
+};
+await session.reload();
 
-console.log("Session created with filtered skills");
+console.log(
+	"Refreshed skills:",
+	session.getSkills().map(({ name }) => name),
+);
+await session.close();

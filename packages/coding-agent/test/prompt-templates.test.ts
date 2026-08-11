@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, test } from "vitest";
-import { parseCommandArgs, substituteArgs } from "../src/core/prompt-templates.js";
+import { parseCommandArgs, substituteArgs } from "../src/resources/prompts/index.js";
 
 // ============================================================================
 // substituteArgs

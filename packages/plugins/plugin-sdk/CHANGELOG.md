@@ -6,8 +6,47 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Added
 
+- 新增 `tool-call-args` 会话事件（`ConversationEvent`）：模型还在生成这次工具调用，流式参数已解析出的部分键。用于「agent 正在动某个目标」这类实时 UI——`edit` / `write` 等到 `tool-call-start` 时活已经干完了。参数天然残缺，权威全量值仍取 `tool-call-start`。权限沿用 `agent.session.read`。
+
+### Breaking Changes
+
+- `network.fetch` 现在必须同时声明 `plugin.json` 的 `network.allowedHosts`；宿主按域名/IP校验首跳与重定向。私网 IP、localhost 可正常声明，`*` 仅对 official 插件生效。
+- Replaced the media protocol v2 task surface with generic operation, job, and artifact APIs: consumers now call `ctx.media.submit()` with a typed `generate | compose | transcode` request, control host-owned work through `ctx.jobs`, and persist or release temporary output through `ctx.artifacts`. Provider registration now uses `submit()`, operation-specific capability declarations, opaque `inputs`, and `uploadInput()`. The old `createJob/getJob/cancelJob/saveArtifact/releaseArtifact` methods were removed without a compatibility layer (ADR-0059).
+
+### Changed
+
+- Activity Tab 现在默认采用有界 warm 驻留：访问过的组件在切换后保留，宿主按 LRU 最多缓存 2 个非活动 tab 并在空闲阶段淘汰。新增 `PluginActivityTabContribution.retention`（`active-only | warm | pinned`）；旧 `keepAliveWhenAvailable` 保持兼容并标记弃用（`true`=`pinned`，`false`=`active-only`）。
+- `setActivityPanelWidth("max")` 与 `openActivityTab(id, { width: "max" })` 的 `"max"` 从「按当前窗口算一次宽度」改为**持续状态**：窗口尺寸变化时宿主重新求值，面板跟着一起变宽变窄，直到用户拖动分隔条或有人写入具体像素为止。传数字的行为不变（仍是一次性的固定宽度）。插件无需改动。
+- **`official.sessions.list()` 的条目新增 `access`**（`PluginOfficialSessionAccess`：`readHistory` / `interactiveResume` / `rename` / `delete`）。宿主自己点会话时就是按这几位分流的（可续聊 / 只读查看 / 完全打不开），此前插件层把它丢掉了，插件只能盲跳。缺字段一律读作 `false`（= 完全不可用）：宁可退回新建会话页，也不要把用户送进一个打不开的会话。
+
+### Added
+
+- **`official.dialog.openFiles(options)`**：打开原生文件选择框并把选中文件的**内容**（base64）一起返回。插件的 `ctx.fs` 只能读已授权的项目根，所以「选个文件再自己去读」这条路走不通；这个接口不放宽任何目录授权，插件能看到的只有用户这次亲手选中的文件。用户取消时返回空数组，单文件默认 64MB 上限。
+- **`official.shell.showItemInFolder(path)`**：在系统文件管理器里定位一个本地路径。与 `ui.openExternal` 分工明确——后者只放行 http/https，刻意不让插件用它拉起任意协议（含 `file://`）。
+- **`official.sessions.listRunningCwds()`**：当前有会话在跑的项目 cwd（去重）。需要「这个项目忙不忙」时用它，**不要**拿 `listRunning()` 的路径去比对 cwd：会话文件默认落在按 cwd 编码的分片目录里，那个编码把 `/`、`\`、`:` 全压成 `-` 且不可逆，`my-project` 与 `my/project` 会撞进同一个分片。
+- **`official.navigation.open({ target: "new-session", cwd, draft })`**：`draft` 可选，把一段文本预置到该项目新建会话页的输入框（不发送，用户可继续编辑）。文本用输入框自己的行内 token 形态书写（`@skill:名字` / `@mcp:名字` / `@/abs/path`），宿主会渲染成对应的 badge。草稿写在**跳转之前**，因此不会被新会话页的草稿恢复覆盖——「先跳转、再往输入框塞内容」这条路必然被那次恢复冲掉。该 cwd 上已有的未发送草稿会被替换。
+- **`official.navigation.open({ target: "new-session", cwd })`**：跳到某个项目的新建会话页。这是第一个**带参数**的导航目标，`PluginOfficialNavigationOpenInput` 因此新增可选 `cwd`；缺 cwd 或传相对路径会被宿主拒绝，而不是跳到一个空页面。目录（`navigation.help()`）里同步列出该目标。
+- Added the versioned `@vetta-org/plugin-sdk/npm-package` contract for validating npm plugin distribution envelopes and package-contained archive paths; official plugin install summaries now expose active/pending versions and accept host-verified npm identity metadata.
+- `ctx.plugin.iconUrl`：宿主从 `plugin.json#icon` 解析后注入的不透明品牌图标；Activity Tab 省略 `icon` 时宿主自动用它填栏。插件不要自行 `import` 包内 png 或拼宿主协议。
+- `definePlugin().activate()` 现在可返回函数或 `Disposable`，宿主会把它绑定到本次 activation，并在对应实例被替换、停用或后续加载失败时清理；热更新中的有状态资源不再依赖无法区分新旧实例的模块级 `deactivate()`。
+- **工作区视图 `ctx.ui.registerWorkspaceView()`**（新权限 `ui.slot.workspace-view`）：插件可以贡献一个**整页 surface**，与内置的「自动化」「知识库」同级——宿主给它一条自己的路由 `/workspace/<pluginId>/<viewId>` 和一个侧边栏导航入口，打开后整个内容区归插件。用于跨会话、跨项目的工作台（看板、控制台、仪表盘）；绑定单次对话的辅助 UI 仍应使用 Activity Tab。配套 `ctx.ui.openWorkspaceView(viewId)` 做程序化跳转。视图 `id` 会进 URL 并参与侧边栏布局持久化，故限定为 `^[a-z0-9][a-z0-9._-]*$`；`icon` 是 **iconify class 字符串**而非 ReactNode（宿主要把它渲染进自己的导航按钮并按 key 持久化布局）。导航入口默认落在侧边栏「更多」收纳里，用户可拖拽排序或 pin 到左上方置顶区。见 ADR-0065。
+- **`official.sessions`**（仅 official 来源插件可用）：后台会话编排 —— `create` / `prompt` / `abort` / `rename` / `list` / `listRunning` / `onRunningChanged` / `open`。与 `ctx.conversation.*` 的分工是：后者作用于**用户当前正在看的**会话，这套 API 按 sessionId 显式寻址、与当前路由无关。会话本体跑在主进程，创建并 prompt 之后即使宿主停在别的页面、插件 UI 未挂载，agent loop 也会继续跑到自然停止点——这是「多任务并发派单」类工作台成立的前提。见 ADR-0065。
+- **宿主成品 UI 组件对插件开放**：新增共享入口 `@vetta/theme-ui/plugin-ui`（Module Federation 共享域，与 `@vetta/ui` 同一机制），插件拿到的是宿主运行时的**同一份实例**，因此不是「长得像」而是同一个组件。首批开放 `ModelSelectorView`（搜索、provider 分组与图标、云端/默认/视觉徽章、推理档位子菜单）、`ProviderIcon`、`MultiplierTag`。全部为纯展示组件：数据、文案、写回逻辑经 props 注入，插件可在自己的语义下复用（看板给「某张卡」选模型，宿主输入栏给「当前会话」选模型）。清单有意收窄，见 `packages/theme-ui/src/plugin-ui`。
+- `official.models.list()` 的 provider 摘要新增 `icon`（图标 symbol），配合 `ProviderIcon` 即可渲染出与宿主一致的服务商图标。
+- `official.models.list()` 现在返回**用户实际可选的全部模型**：除本地配置的 provider 外，还包含登录后服务端下发的远程目录（Vetta Go 等，摘要上带 `remote: true`），与宿主输入栏模型选择器同一口径；同一个 `provider/modelId` 以本地为准。`assertModelKeyExists` 同步认这些远程 key（此前会误判为不存在，因为主进程只看得到本地模型配置）。
+- `official.sessions` 支持指定模型：`create({ cwd, title, modelKey })` 把模型写进新会话的**会话设置**（后续插件 prompt 与用户在对话页手动接管都用它）；`prompt(sessionId, text, { modelKey })` 只钉住这一轮、不改会话设置。两者都可省略，省略即跟随宿主全局默认模型。可选模型清单来自既有的 `official.models.list()`。
+- `capture.offscreen` 新增 `probeScript` 与结果字段 `probe`：插件可在**截图的同一时刻**对离屏页面求值，把渲染后的 DOM 度量（换行、裁切、空图标位、边缘错位等）与位图一起取回，无需为了量一次布局再渲染一遍。结果经 JSON 往返；求值抛错或不可序列化时 `probe` 为 `undefined`，位图照常返回——探针是搭车的附加信息，不会成为截图失败的原因。
+- **工作区视图导航项角标**：`PluginWorkspaceViewContribution.badge` 声明初始角标，`ctx.ui.setWorkspaceViewBadge(viewId, badge | null)` 运行时更新（权限同为 `ui.slot.workspace-view`）。`PluginNavBadge` 是判别联合：`beta`（宿主预置，渲染与内置「知识库」完全一致、文案由宿主按当前语言给出，插件不必自己翻译）、`text`（支持 `%catalogKey%`）、`count`（超 99 显示 `99+`，归零即消失）、`dot`；各带可选 `tone`（`default` / `accent` / `warning` / `danger`，宿主映射到自己的主题色，插件给不了原始色值）。运行时更新必须走 `setWorkspaceViewBadge` 而不是重新注册——后者会让整页 surface 重挂载。认不出的角标当作「没有角标」，不会让注册失败。
+- `conversation.createSession(cwd, { navigate })`（权限同 `sendPrompt`，即 `agent.session.write`）：在指定 workspace 建一个会话并设为活动会话，resolve 时已可直接 `sendPrompt`。用于宿主此刻**没有活动会话**的场景——用户停在新会话页时 `sendPrompt` 无处可发，此前插件只能干等；现在可以自己起一个。默认跳转到对话页，后台任务可传 `navigate: false`。执行模式跟随宿主当前选择。不做复用判断：已有活动会话时照样新建。与 `official.sessions.create` 的分工是后者按 sessionId 显式寻址、与当前路由无关。
+- `conversation.sendPrompt` 返回 `SendPromptResult` 回执（ADR-0060）：空闲时整轮结束后 resolve `{ status: "sent" }`；agent streaming 中 prompt 进入会话队列并立即 resolve `{ status: "queued", queueItemId }`，队列在本轮自然停止点接力消费、被打断/出错后暂停待用户处置。`conversation.on` 新增 `queue-changed` 事件（携 `{ paused, items }`），插件可据此呈现排队条目的真实状态。原 `Promise<void>` 消费方无需改动。
+- 媒体 Provider 生成能力新增 `modeCapabilities` 与输入 `role`：Provider 可按模式声明首帧、尾帧、图片/视频/音频参考的类型和数量，以及比例、音频策略；媒体协议升级到 v4。
+- `ctx.agent.registerHook()`：ESM / Module Federation 插件可动态注册 Coding Agent 的 12 类原生 Hook 事件，并以 `Disposable` 注销。事件与返回值是判别联合；`PreToolUse`、`PermissionRequest`、`Stop` / `SubagentStop` 提供事件专属结果。新增 `agent.hooks.register` 与 `agent.hookHandler.execute` 双权限；`scope_use` 必填且 fail-closed，支持 `agent_mode` / `toolNames` 过滤、超时与 Main 边界校验（ADR-0064）。
+- `PluginActivityTabContribution.keepAliveWhenAvailable`：插件可让有状态 Activity Tab 在切换后继续挂载；`useActivityTab()` 新增 `active`，插件可在标签卡激活时调用既有的 `setActivityPanelWidth()` 等命令式能力。
+- 新增 `runtime: "quickjs"` 清单值与宿主声明式 UI 类型：第三方逻辑可在 QuickJS-WASM Worker 中执行，通过可序列化的布局、文本、表单和动作节点贡献 Activity Tab；QuickJS 清单禁止自带 CSS 与 Module Federation metadata（ADR-0061）。
+- `PluginStorageApi.putBlobFromFile()`：插件可把用户选择或拖入的真实文件直接交给宿主复制到私有 Blob；preload 负责从 `File` 提取路径，文件字节不进入插件 renderer、不进行 Base64 编码，仍受 `storage.write` 权限约束。
+- `PluginPromptAttachment.context` 结构化、版本化 JSON 上下文与 `lifecycle: "sticky"`：插件可把用户当前选择等应用状态作为可校验对象附到输入栏，宿主发送时冻结快照；`definePluginPromptContext()` 提供 JSON 安全与大小校验，旧的 metadata/instructions 一次性附件保持兼容。
 - `ctx.ai` 宿主管理的文本推理能力：插件通过 `ai.models.list` 获取可用文本模型，通过 `ai.complete` 调用用户已配置的模型。模型解析、凭据注入与请求执行均留在 Desktop 主进程，插件不会接触 API Key；首版契约提供单轮 `systemPrompt + prompt` 完成、推理级别、温度、最大输出和 token 用量。
-- `ctx.media` 宿主媒体消费协议：插件用 `media.generate` 列出 Provider、创建/查询/取消图片或视频任务。Provider SPI 属于 desktop 主进程，不向插件开放注册；协议允许 Provider 列表为空，结果只传内存字节，持久化位置由消费者决定。Desktop 内置的 Vetta 图片 Provider 固定在主进程调用网关，插件拿不到 JWT，也不能传任意网关路径（ADR-0057）。
+- `ctx.media` 宿主媒体协议 v3：支持类型化的生成、工程合成和转码操作；Provider 可从远程 URL、插件 Blob 或工作区文件交付输出，由宿主统一导入为 owner 隔离的临时产物。`onProvidersChanged()` 允许并行激活的消费插件响应 Provider 增删。Desktop 内置的 Vetta 图片 Provider 仍固定在主进程调用网关，插件拿不到 JWT，也不能传任意网关路径（ADR-0059）。
 - `ctx.gateway`（`PluginGatewayApi`）：带当前登录身份调用 Vetta 服务端（ADR-0056）。插件只给出**相对 `/api/v1` 的路径**与 JSON body，服务端地址、`Authorization` 与 401 刷新重试全在宿主主进程完成——插件拿不到 token，也拼不出指向其它接口的绝对 URL；把 JWT 交给插件进程等于开放整个 `/api/v1` 的越权面，因此 SDK 不提供「取 token 自己拼」的口子。业务信封由宿主拆开，返回 `{ ok, status, code, message, data }`，配额用尽/档位无权限这类**不抛异常**（它们是常规业务分支，插件应据此渲染引导）。**该字段可选**：只对随包分发的 official 插件挂载，第三方插件读到 `undefined`，使用前必须判空。这样收口的理由不是防越权（服务端档位授权已限定可用模型、消耗的是用户自己的额度），而是防插件偷跑烧光用户配额——在缺少插件签名与审核机制前，「安装时用户确认」形同虚设。
 
 - `PluginUiApi.openExternal(url)`：把链接交给系统默认浏览器（Electron `shell.openExternal`），不是 App 内置的浏览器面板。只接受 `http:`/`https:`，其余协议宿主直接拒绝。需新权限 `shell.openExternal`。

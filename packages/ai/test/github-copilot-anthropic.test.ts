@@ -1,11 +1,27 @@
 import { describe, expect, it, vi } from "vitest";
-import { getModel } from "../src/models.js";
 import type { Context, Model } from "../src/types.js";
 
 const mockState = vi.hoisted(() => ({
 	constructorOpts: undefined as Record<string, unknown> | undefined,
 	streamParams: undefined as Record<string, unknown> | undefined,
 }));
+
+const model: Model<"anthropic-messages"> = {
+	id: "claude-sonnet-4",
+	name: "Claude Sonnet 4",
+	api: "anthropic-messages",
+	provider: "github-copilot",
+	baseUrl: "https://api.githubcopilot.com",
+	reasoning: true,
+	input: ["text", "image"],
+	cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+	contextWindow: 128_000,
+	maxTokens: 16_384,
+	headers: {
+		"User-Agent": "GitHubCopilotChat/0.26.7",
+		"Copilot-Integration-Id": "vscode-chat",
+	},
+};
 
 vi.mock("@anthropic-ai/sdk", () => {
 	const fakeStream = {
@@ -49,7 +65,6 @@ describe("Copilot Claude via Anthropic Messages", () => {
 	};
 
 	it("uses Bearer auth, Copilot headers, and valid Anthropic Messages payload", async () => {
-		const model = getModel("github-copilot", "claude-sonnet-4") as Model<"anthropic-messages">;
 		expect(model.api).toBe("anthropic-messages");
 
 		const { streamAnthropic } = await import("../src/providers/anthropic.js");
@@ -87,7 +102,6 @@ describe("Copilot Claude via Anthropic Messages", () => {
 	});
 
 	it("includes interleaved-thinking beta when reasoning is enabled", async () => {
-		const model = getModel("github-copilot", "claude-sonnet-4") as Model<"anthropic-messages">;
 		const { streamAnthropic } = await import("../src/providers/anthropic.js");
 		const s = streamAnthropic(model, context, {
 			apiKey: "tid_copilot_session_test_token",

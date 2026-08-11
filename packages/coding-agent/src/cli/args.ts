@@ -4,9 +4,16 @@
 
 import type { ThinkingLevel } from "@vetta/agent-core";
 import chalk from "chalk";
+import {
+	CODING_AGENT_BUILT_IN_TOOL_NAMES,
+	type CodingAgentBuiltInToolName,
+	isCodingAgentBuiltInToolName,
+} from "../composition/coding-agent-built-in-tool-names.js";
 import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_PACKAGE_DIR, ENV_SHARE_VIEWER_URL } from "../config.js";
-import type { ConversationScenario } from "../core/session/tool-scope.js";
-import { allTools, type ToolName } from "../core/tools/index.js";
+import { isValidThinkingLevel, VALID_THINKING_LEVELS } from "../models/index.js";
+import type { ConversationScenario } from "../profiles/index.js";
+
+export { isValidThinkingLevel };
 
 export type Mode = "text" | "json" | "rpc";
 
@@ -26,7 +33,7 @@ export interface Args {
 	session?: string;
 	sessionDir?: string;
 	models?: string[];
-	tools?: ToolName[];
+	tools?: CodingAgentBuiltInToolName[];
 	noTools?: boolean;
 	extensions?: string[];
 	noExtensions?: boolean;
@@ -45,7 +52,7 @@ export interface Args {
 	 * Enable the host-bridge channel in rpc mode. Registers the `im_send_attachment`
 	 * tool and lets it issue `host_request` events that the host (im-gateway)
 	 * answers via `host_response` commands. Only meaningful with `--mode rpc`.
-	 * See docs/rpc.md.
+	 * See docs/rpc.md and RpcHostRequest in modes/rpc/rpc-types.ts.
 	 */
 	enableHostBridge?: boolean;
 	/**
@@ -66,12 +73,6 @@ export interface Args {
 	fileArgs: string[];
 	/** Unknown flags (potentially extension flags) - map of flag name to value */
 	unknownFlags: Map<string, boolean | string>;
-}
-
-const VALID_THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh"] as const;
-
-export function isValidThinkingLevel(level: string): level is ThinkingLevel {
-	return (VALID_THINKING_LEVELS as readonly string[]).includes(level);
 }
 
 export function parseArgs(args: string[], extensionFlags?: Map<string, { type: "boolean" | "string" }>): Args {
@@ -119,13 +120,15 @@ export function parseArgs(args: string[], extensionFlags?: Map<string, { type: "
 			result.noTools = true;
 		} else if (arg === "--tools" && i + 1 < args.length) {
 			const toolNames = args[++i].split(",").map((s) => s.trim());
-			const validTools: ToolName[] = [];
+			const validTools: CodingAgentBuiltInToolName[] = [];
 			for (const name of toolNames) {
-				if (name in allTools) {
-					validTools.push(name as ToolName);
+				if (isCodingAgentBuiltInToolName(name)) {
+					validTools.push(name);
 				} else {
 					console.error(
-						chalk.yellow(`Warning: Unknown tool "${name}". Valid tools: ${Object.keys(allTools).join(", ")}`),
+						chalk.yellow(
+							`Warning: Unknown tool "${name}". Valid tools: ${CODING_AGENT_BUILT_IN_TOOL_NAMES.join(", ")}`,
+						),
 					);
 				}
 			}
@@ -231,7 +234,7 @@ ${chalk.bold("Options:")}
   --mode <mode>                  Output mode: text (default), json, or rpc
   --print, -p                    Non-interactive mode: process prompt and exit
   --continue, -c                 Continue previous session
-  --resume, -r                   Select a session to resume
+  --resume, -r                   Unsupported; use --continue or --session
   --session <path>               Use specific session file
   --session-dir <dir>            Directory for session storage and lookup
   --no-session                   Don't save session (ephemeral)
@@ -239,7 +242,7 @@ ${chalk.bold("Options:")}
                                  Supports globs (anthropic/*, *sonnet*) and fuzzy matching
   --no-tools                     Disable all built-in tools
   --tools <tools>                Comma-separated list of tools to enable (default: ${defaultToolsList})
-                                 Available: ${Object.keys(allTools).join(", ")}
+                                 Available: ${CODING_AGENT_BUILT_IN_TOOL_NAMES.join(", ")}
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh
   --extension, -e <path>         Load an extension file (can be used multiple times)
   --no-extensions, -ne           Disable extension discovery (explicit -e paths still work)

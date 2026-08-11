@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createClaudeHookAdapter } from "../src/claude-code/hooks/adapter.js";
-import { discoverClaudeHookHandlers } from "../src/claude-code/hooks/config.js";
+import { discoverClaudeHookHandlers, discoverClaudeHookHandlersFromDocument } from "../src/claude-code/hooks/config.js";
 import { expandClaudePlaceholders } from "../src/claude-code/hooks/placeholders.js";
 import { CLAUDE_CODE_HOOK_PROFILE_ID } from "../src/claude-code/hooks/profile.js";
 import { mapToolToClaude } from "../src/claude-code/hooks/tool-mapper.js";
@@ -59,6 +59,23 @@ describe("claude tool mapper", () => {
 });
 
 describe("discoverClaudeHookHandlers", () => {
+	it("skips dynamic Skill handlers whose if filter cannot be evaluated", () => {
+		const result = discoverClaudeHookHandlersFromDocument(
+			{
+				PreToolUse: [
+					{
+						matcher: "Bash",
+						hooks: [{ type: "command", command: "echo unsafe", if: "Bash(git push:*)" }],
+					},
+				],
+			},
+			{ path: "C:/skills/review/SKILL.md" },
+		);
+
+		expect(result.handlers).toHaveLength(0);
+		expect(result.diagnostics).toContainEqual(expect.objectContaining({ code: "unsupported_handler_mode" }));
+	});
+
 	it("loads SessionStart command handlers from .claude/settings.json", async () => {
 		const root = await makeTempDir();
 		const claudeDir = join(root, ".claude");
@@ -189,6 +206,87 @@ async function writeHookProject(files: Record<string, string>): Promise<{ root: 
 }
 
 describe("createClaudeHookAdapter runtime", () => {
+	it("registers turn-scoped Skill frontmatter hooks without static Claude config", async () => {
+		const root = await makeTempDir();
+		await writeFile(
+			join(root, "skill-hook.cjs"),
+			`process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: "skill hook ran" } }));\n`,
+			"utf8",
+		);
+		const runtime = createEcosystemHookRuntime({
+			host: {
+				cwd: root,
+				getSessionId: () => "skill-hook-session",
+				getTranscriptPath: () => null,
+				getModelId: () => "test-model",
+				abortCurrentRun: () => {},
+			},
+			initialSessionStartSource: "startup",
+			configLayers: [],
+		});
+		await runtime.runPendingSessionStart();
+		await runtime.runUserPromptSubmit("use the review skill");
+
+		expect(
+			await runtime.registerCurrentTurnContribution({
+				id: "skill:C:/skills/review/SKILL.md",
+				revision: "v1",
+				profileId: CLAUDE_CODE_HOOK_PROFILE_ID,
+				sourcePath: join(root, "SKILL.md"),
+				configuration: {
+					PreToolUse: [
+						{
+							matcher: "Bash",
+							hooks: [{ type: "command", command: "node skill-hook.cjs", once: true }],
+						},
+					],
+				},
+			}),
+		).toBe(true);
+
+		const first = await runtime.runPreToolUse("call-1", { hostName: "bash", kind: "shell" }, {});
+		expect(first.additionalContexts).toContain("skill hook ran");
+		expect((await runtime.runPreToolUse("call-2", { hostName: "bash", kind: "shell" }, {})).runs).toHaveLength(0);
+
+		runtime.finishCurrentTurn();
+		await runtime.runUserPromptSubmit("use it again");
+		await runtime.registerCurrentTurnContribution({
+			id: "skill:C:/skills/review/SKILL.md",
+			revision: "v1",
+			profileId: CLAUDE_CODE_HOOK_PROFILE_ID,
+			sourcePath: join(root, "SKILL.md"),
+			configuration: {
+				PreToolUse: [
+					{
+						matcher: "Bash",
+						hooks: [{ type: "command", command: "node skill-hook.cjs", once: true }],
+					},
+				],
+			},
+		});
+		expect((await runtime.runPreToolUse("call-3", { hostName: "bash", kind: "shell" }, {})).runs).toHaveLength(0);
+
+		await runtime.registerCurrentTurnContribution({
+			id: "skill:C:/skills/review/SKILL.md",
+			revision: "v2",
+			profileId: CLAUDE_CODE_HOOK_PROFILE_ID,
+			sourcePath: join(root, "SKILL.md"),
+			configuration: {
+				PreToolUse: [
+					{
+						matcher: "Bash",
+						hooks: [{ type: "command", command: "node skill-hook.cjs" }],
+					},
+				],
+			},
+		});
+		expect((await runtime.runPreToolUse("call-4", { hostName: "bash", kind: "shell" }, {})).runs).toHaveLength(1);
+
+		runtime.finishCurrentTurn();
+		await runtime.runUserPromptSubmit("start the next turn");
+		expect((await runtime.runPreToolUse("call-5", { hostName: "bash", kind: "shell" }, {})).runs).toHaveLength(0);
+	});
+
 	it("SessionStart plain stdout becomes additional context", async () => {
 		const { root, claudeDir } = await writeHookProject({
 			"session-start.cjs": `process.stdout.write("preflight context from fixture");\n`,
@@ -500,12 +598,12 @@ process.exit(2);
 });
 
 describe("createClaudeHookAdapter presence", () => {
-	it("returns undefined when no Claude sources exist", async () => {
+	it("keeps a mutable adapter available when no Claude sources exist", async () => {
 		const root = await makeTempDir();
 		const adapter = await createClaudeHookAdapter({
 			configLayers: [{ directory: join(root, "missing"), enabled: true }],
 			projectDir: root,
 		});
-		expect(adapter).toBeUndefined();
+		expect(adapter).toBeDefined();
 	});
 });

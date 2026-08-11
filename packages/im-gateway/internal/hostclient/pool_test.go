@@ -11,10 +11,10 @@ import (
 // fakeClient implements HostClient for pool tests. Keeps track of how many
 // times each path was opened so tests can verify reuse vs. fresh open.
 type fakeClient struct {
-	mu        sync.Mutex
-	opens     map[string]int
-	failOn    map[string]error // OpenSession returns this error for the given path
-	sessions  map[string]*fakeSession
+	mu       sync.Mutex
+	opens    map[string]int
+	failOn   map[string]error // OpenSession returns this error for the given path
+	sessions map[string]*fakeSession
 	// resolveEmpty, when non-empty, mirrors the real local hostclient's
 	// behavior: an empty requested sessionPath causes the agent to
 	// synthesize a fresh .jsonl and expose it via SessionPath(). Tests
@@ -64,7 +64,7 @@ func (s *fakeSession) Send(_ context.Context, _ Command) (Response, error) {
 }
 func (s *fakeSession) SendNoReply(_ context.Context, _ Command) error { return nil }
 func (s *fakeSession) Events() <-chan AgentEvent                      { return s.events }
-func (s *fakeSession) SessionPath() string       { return s.path }
+func (s *fakeSession) SessionPath() string                            { return s.path }
 func (s *fakeSession) Close() error {
 	if s.closed.Swap(true) {
 		return nil
@@ -91,6 +91,40 @@ func TestProcessPool_ReusesExistingSession(t *testing.T) {
 
 	if got := c.opensFor("/sessions/foo.jsonl"); got != 1 {
 		t.Errorf("expected 1 open, got %d", got)
+	}
+}
+
+func TestProcessPool_DiscardRemovesFailedSession(t *testing.T) {
+	c := newFakeClient()
+	pool := NewProcessPool(c, 4)
+
+	first, err := pool.Acquire(context.Background(), "/cwd", "/sessions/foo.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	failedSession := first.Session.(*fakeSession)
+	if err := first.Discard(); err != nil {
+		t.Fatalf("Discard: %v", err)
+	}
+	first.Release()
+
+	if pool.Stats().Size != 0 {
+		t.Fatalf("discarded session remained in pool: %+v", pool.Stats())
+	}
+	if !failedSession.closed.Load() {
+		t.Fatal("discarded session was not closed")
+	}
+
+	second, err := pool.Acquire(context.Background(), "/cwd", "/sessions/foo.jsonl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer second.Release()
+	if second.Session == failedSession {
+		t.Fatal("Acquire reused a discarded session")
+	}
+	if got := c.opensFor("/sessions/foo.jsonl"); got != 2 {
+		t.Fatalf("expected a fresh process after discard, got %d opens", got)
 	}
 }
 

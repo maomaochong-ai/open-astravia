@@ -164,6 +164,12 @@ const agent = new Agent({
   // Transform context before convertToLlm (for pruning, compaction)
   transformContext: async (messages, signal) => pruneOldMessages(messages),
 
+  // Refresh prompt and tools immediately before each LLM call
+  resolveCallContext: async (context, signal) => ({
+    systemPrompt: currentSystemPrompt(),
+    tools: currentTools(),
+  }),
+
   // Steering mode: "one-at-a-time" (default) or "all"
   steeringMode: "one-at-a-time",
 

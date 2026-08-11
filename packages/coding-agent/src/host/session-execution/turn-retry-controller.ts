@@ -1,0 +1,112 @@
+import { isRetryableRuntimeError } from "../../utils/retryable-error.js";
+import type { CodingAgentTurnRetryController, CodingAgentTurnRetryControllerOptions } from "./contracts.js";
+
+export class CodingAgentSessionTurnRetryController implements CodingAgentTurnRetryController {
+	private abortController: AbortController | undefined;
+	private attempt = 0;
+
+	constructor(private readonly options: CodingAgentTurnRetryControllerOptions) {}
+
+	get retryAttempt(): number {
+		return this.attempt;
+	}
+
+	get isRetrying(): boolean {
+		return this.attempt > 0;
+	}
+
+	setAutoRetryEnabled(enabled: boolean): void {
+		this.options.setEnabled(enabled);
+	}
+
+	abortRetry(): void {
+		this.abortController?.abort();
+	}
+
+	async run<T>(
+		executeInitial: () => Promise<T>,
+		executeRetry: () => Promise<T>,
+		readFailure: (result: T) => string | undefined,
+	): Promise<T> {
+		let result = await executeInitial();
+		let failure = readFailure(result);
+		while (failure && isRetryableRuntimeError(failure)) {
+			const settings = this.options.readSettings();
+			if (!settings.enabled || this.attempt >= settings.maxRetries) break;
+			this.attempt += 1;
+			const delayMs = Math.min(
+				settings.baseDelayMs * 2 ** (this.attempt - 1),
+				settings.maxDelayMs ?? Number.POSITIVE_INFINITY,
+			);
+			this.options.emit({
+				type: "auto_retry_start",
+				attempt: this.attempt,
+				maxAttempts: settings.maxRetries,
+				delayMs,
+				errorMessage: failure,
+			});
+			this.abortController = new AbortController();
+			try {
+				await waitForDelay(delayMs, this.abortController.signal);
+			} catch {
+				this.options.emit({
+					type: "auto_retry_end",
+					success: false,
+					attempt: this.attempt,
+					finalError: "Retry cancelled",
+				});
+				this.attempt = 0;
+				return result;
+			} finally {
+				this.abortController = undefined;
+			}
+			try {
+				result = await executeRetry();
+			} catch (error) {
+				this.options.emit({
+					type: "auto_retry_end",
+					success: false,
+					attempt: this.attempt,
+					finalError: error instanceof Error ? error.message : String(error),
+				});
+				this.attempt = 0;
+				throw error;
+			}
+			failure = readFailure(result);
+		}
+		if (this.attempt > 0) {
+			this.options.emit({
+				type: "auto_retry_end",
+				success: failure === undefined,
+				attempt: this.attempt,
+				...(failure ? { finalError: failure } : {}),
+			});
+			this.attempt = 0;
+		}
+		return result;
+	}
+}
+
+export function createCodingAgentTurnRetryController(
+	options: CodingAgentTurnRetryControllerOptions,
+): CodingAgentTurnRetryController {
+	return new CodingAgentSessionTurnRetryController(options);
+}
+
+function waitForDelay(delayMs: number, signal: AbortSignal): Promise<void> {
+	return new Promise((resolve, reject) => {
+		if (signal.aborted) {
+			reject(signal.reason);
+			return;
+		}
+		const timeout = setTimeout(resolve, delayMs);
+		signal.addEventListener(
+			"abort",
+			() => {
+				clearTimeout(timeout);
+				reject(signal.reason);
+			},
+			{ once: true },
+		);
+	});
+}

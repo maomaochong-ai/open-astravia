@@ -16,6 +16,7 @@ import type {
 	ImRuntimeStatus,
 	ImStatusSnapshot,
 	InstalledSkill,
+	Job,
 	KnowledgeBase,
 	KnowledgeFileStatuses,
 	KnowledgeProcessingSettings,
@@ -24,9 +25,6 @@ import type {
 	McpServerDetail,
 	McpServerSummary,
 	McpServerUpsertData,
-	MediaCreateJobInput,
-	MediaJob,
-	MediaJobRef,
 	MediaProviderDescriptor,
 	ModelConfigSnapshot,
 	ModelDefaultResult,
@@ -36,6 +34,7 @@ import type {
 	ModelProviderDetail,
 	ModelProviderUpsertData,
 	NotificationsSettingInput,
+	PersistedArtifact,
 	ProjectEntry,
 	ProjectListResult,
 	QuickPanelPostSendBehavior,
@@ -63,7 +62,22 @@ import type {
 	WebhookUpdateData,
 	WorkspaceSettingInput,
 } from "@vetta/capability-sdk";
-import type { PluginAgentManifest, PluginPermission, PluginSettingSchema } from "@vetta-org/plugin-sdk";
+import type {
+	PluginAgentManifest,
+	PluginArtifactDestination,
+	PluginCodingAgentHookEvent,
+	PluginCodingAgentHookEventName,
+	PluginMediaCapability,
+	PluginMediaInputUploadRequest,
+	PluginMediaJob,
+	PluginMediaProviderJob,
+	PluginMediaProviderSubmitRequest,
+	PluginMediaSubmitRequest,
+	PluginMediaTransferResponse,
+	PluginPermission,
+	PluginPutBlobFromFileInput,
+	PluginSettingSchema,
+} from "@vetta-org/plugin-sdk";
 
 export type {
 	PluginAgentManifest,
@@ -104,13 +118,20 @@ export interface PluginsChangedEvent {
 
 export type PluginTrustLevel = "official" | "community" | "local";
 
+export interface PluginNpmDistribution {
+	packageName: string;
+	requestedSpec: string;
+	resolvedVersion: string;
+	integrity?: string;
+}
+
 export interface InstalledPlugin {
 	id: string;
 	name: string;
 	version: string;
 	activeVersion: string;
 	pluginApiVersion: string;
-	runtime: "esm" | "module-federation";
+	runtime: "esm" | "module-federation" | "quickjs";
 	entryUrl: string;
 	moduleFederation?: {
 		remoteName: string;
@@ -122,6 +143,8 @@ export interface InstalledPlugin {
 	styleUrls: string[];
 	permissions: PluginPermission[];
 	grantedPermissions: PluginPermission[];
+	/** Normalized host/IP patterns declared in plugin.json `network.allowedHosts`. */
+	allowedNetworkHosts: string[];
 	/** Executable names declared in plugin.json `commands`. */
 	declaredCommands: string[];
 	/** Subset of declaredCommands the user currently allows (toggleable per command). */
@@ -148,7 +171,9 @@ export interface InstalledPlugin {
 	required: boolean;
 	installedAt: string;
 	updatedAt: string;
-	source: "archive" | "remote" | "system";
+	source: "archive" | "remote" | "npm" | "system";
+	/** npm distribution provenance for the currently packaged `version`. */
+	distribution?: PluginNpmDistribution;
 	/** 执行权限信任级别；与安装来源分离，不能由插件 manifest 自行声明。 */
 	trustLevel: PluginTrustLevel;
 	availableVersion?: string;
@@ -163,12 +188,16 @@ export interface InstalledPlugin {
 }
 
 export interface PluginInstallOptions {
-	source?: "archive" | "remote";
+	source?: "archive" | "remote" | "npm";
 	grantedPermissions?: PluginPermission[];
 	/** When true, enable the plugin after install (default false for GUI parity; agent path may set true). */
 	enable?: boolean;
 	/** Expected sha256 of the archive, from the market entry. Omitted for entries uploaded before digests existed. */
 	expectedSha256?: string;
+	/** npm envelope identity. The host verifies both values against plugin.json before copying files. */
+	expectedId?: string;
+	expectedVersion?: string;
+	npm?: PluginNpmDistribution;
 }
 
 export interface PluginAgentToolRegistration {
@@ -192,6 +221,17 @@ export interface PluginAgentToolRegistration {
 	 * 插件无需声明；宿主据此为它注入可选的 md_intro 参数。见 ADR-0047。
 	 */
 	rendersCard?: boolean;
+}
+
+export interface PluginAgentHookHostRegistration {
+	id: string;
+	eventName: PluginCodingAgentHookEventName;
+	handlerId: string;
+	activationId?: string;
+	timeoutMs?: number;
+	scope_use: readonly string[];
+	agent_mode?: readonly string[];
+	toolNames?: readonly string[];
 }
 
 export type PluginAppActionEffect = "read" | "write" | "execute";
@@ -261,6 +301,16 @@ export interface PluginAgentToolInvocationRequest extends PluginHandlerInvocatio
 	toolName: string;
 	input: unknown;
 	trigger: { kind: "tool-call"; timestamp: number; toolCallId: string };
+}
+
+export interface PluginAgentHookInvocationRequest {
+	requestId: string;
+	pluginId: string;
+	handlerId: string;
+	settings: Record<string, unknown>;
+	hookId: string;
+	session: { id: string; cwd: string; scenario: string };
+	event: PluginCodingAgentHookEvent;
 }
 
 export interface PluginContinuationRegistration {
@@ -388,9 +438,20 @@ export interface DesktopPluginCapabilityModelsApi {
 
 export interface DesktopPluginCapabilityMediaApi {
 	listProviders(sessionId: string): Promise<MediaProviderDescriptor[]>;
-	createJob(sessionId: string, input: MediaCreateJobInput): Promise<MediaJob>;
-	getJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
-	cancelJob(sessionId: string, input: MediaJobRef): Promise<MediaJob>;
+	submit(sessionId: string, input: PluginMediaSubmitRequest): Promise<PluginMediaJob>;
+}
+
+export interface DesktopPluginCapabilityJobsApi {
+	get(sessionId: string, id: string): Promise<Job>;
+	cancel(sessionId: string, id: string): Promise<Job>;
+}
+
+export interface DesktopPluginCapabilityArtifactsApi {
+	persist(
+		sessionId: string,
+		input: { artifactId: string; destination: PluginArtifactDestination },
+	): Promise<PersistedArtifact>;
+	release(sessionId: string, artifactId: string): Promise<void>;
 }
 
 export interface DesktopPluginCapabilityMcpApi {
@@ -529,10 +590,12 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	closeSession(sessionId: string): Promise<void>;
 	agentSettings: DesktopPluginCapabilityAgentSettingsApi;
 	ai: DesktopPluginCapabilityAiApi;
+	artifacts: DesktopPluginCapabilityArtifactsApi;
 	batchTasks: DesktopPluginCapabilityBatchTasksApi;
 	filesystem: DesktopPluginCapabilityFilesystemApi;
 	generalSettings: DesktopPluginCapabilityGeneralSettingsApi;
 	im: DesktopPluginCapabilityImApi;
+	jobs: DesktopPluginCapabilityJobsApi;
 	mcp: DesktopPluginCapabilityMcpApi;
 	media: DesktopPluginCapabilityMediaApi;
 	models: DesktopPluginCapabilityModelsApi;
@@ -547,6 +610,26 @@ export interface DesktopPluginInternalCapabilitiesApi {
 	updater: DesktopPluginCapabilityUpdaterApi;
 	webhook: DesktopPluginCapabilityWebhookApi;
 }
+
+export interface PluginMediaProviderHostRegistration {
+	id: string;
+	displayName?: string;
+	capabilities: readonly PluginMediaCapability[];
+	handlerId: string;
+	activationId: string;
+	hasGetJob: boolean;
+	hasCancelJob: boolean;
+}
+
+export interface PluginMediaProviderInvocationRequest {
+	requestId: string;
+	pluginId: string;
+	handlerId: string;
+	operation: "submit" | "getJob" | "cancelJob";
+	input: PluginMediaProviderSubmitRequest | { jobId: string };
+}
+
+export type PluginMediaProviderInvocationResult = { value: PluginMediaProviderJob } | { error: string };
 
 export interface DesktopPluginsApi {
 	readonly internalCapabilities: DesktopPluginInternalCapabilitiesApi;
@@ -568,22 +651,22 @@ export interface DesktopPluginsApi {
 	revokeCommands(id: string, names: string[]): Promise<InstalledPlugin>;
 	/** Run an allowed command for a plugin via the main process (execFile, no shell). */
 	runCommand(
-		pluginId: string,
+		sessionId: string,
 		file: string,
 		args?: string[],
 		options?: PluginCommandRunOptions,
 	): Promise<PluginCommandRunResult>;
 	/** Start an allowed long-lived command (ADR-0054). No shell; own process group. */
 	spawnCommand(
-		pluginId: string,
+		sessionId: string,
 		file: string,
 		args?: string[],
 		options?: PluginCommandSpawnOptions,
 	): Promise<PluginCommandSpawnResult>;
 	/** SIGTERM the spawned process tree (SIGKILL after a grace period). */
-	stopCommandSpawn(pluginId: string, spawnId: string): Promise<void>;
+	stopCommandSpawn(sessionId: string, spawnId: string): Promise<void>;
 	/** Liveness, port and recent output for a spawn started by this plugin. */
-	getCommandSpawnStatus(pluginId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
+	getCommandSpawnStatus(sessionId: string, spawnId: string): Promise<PluginCommandSpawnStatus>;
 	/** Subscribe to spawn exit events (all plugins; filter by pluginId/spawnId). */
 	onCommandSpawnExit(handler: (event: PluginCommandSpawnExitEvent) => void): () => void;
 	/** 主进程离屏窗口截图（真实渲染管线，`capture.offscreen` 权限）。 */
@@ -595,9 +678,9 @@ export interface DesktopPluginsApi {
 	 * 开启 dev 热更新：把插件 dev 链接到 projectDir（资源改从工程 dist 加载），
 	 * 宿主常驻 `vite build --watch` 并监听 dist，产物变化自动重载。要求插件已安装过一次。
 	 */
-	startDevWatch(id: string, projectDir: string): Promise<InstalledPlugin>;
+	startDevWatch(sessionId: string, id: string, projectDir: string): Promise<InstalledPlugin>;
 	/** 关闭 dev 热更新：停掉 vite watch 与文件监听，资源回落已安装目录。 */
-	stopDevWatch(id: string): Promise<void>;
+	stopDevWatch(sessionId: string, id: string): Promise<void>;
 	/**
 	 * Mark a plugin as contribution-mode-gated (ADR-0041). Until
 	 * {@link setContributionMode} enables it, agent contributions are stripped.
@@ -608,9 +691,13 @@ export interface DesktopPluginsApi {
 	beginAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
 	registerAgentTool(pluginId: string, registration: PluginAgentToolRegistration): Promise<void>;
 	unregisterAgentTool(pluginId: string, toolId: string, activationId?: string): Promise<void>;
+	registerAgentHook(pluginId: string, registration: PluginAgentHookHostRegistration): Promise<void>;
+	unregisterAgentHook(pluginId: string, hookId: string, activationId?: string): Promise<void>;
 	clearAgentContributions(pluginId: string, activationId?: string): Promise<void>;
 	onAgentToolRequest(handler: (request: PluginAgentToolInvocationRequest) => void): () => void;
 	respondAgentTool(requestId: string, result: unknown): Promise<void>;
+	onAgentHookRequest(handler: (request: PluginAgentHookInvocationRequest) => void): () => void;
+	respondAgentHook(requestId: string, result: unknown): Promise<void>;
 	registerAppAction(pluginId: string, registration: PluginAppActionRegistration): Promise<void>;
 	commitAppActionActivation(pluginId: string, activationId: string): Promise<void>;
 	abortAppActionActivation(pluginId: string, activationId: string): Promise<void>;
@@ -636,6 +723,16 @@ export interface DesktopPluginsApi {
 		requestId: string,
 		result: PluginHandlerInvocationResult<PluginDynamicSystemPromptOperation[]> | { error: string },
 	): Promise<void>;
+	registerMediaProvider(pluginId: string, registration: PluginMediaProviderHostRegistration): Promise<void>;
+	unregisterMediaProvider(pluginId: string, providerId: string, activationId: string): Promise<void>;
+	onMediaProvidersChanged(handler: () => void): () => void;
+	onMediaProviderRequest(handler: (request: PluginMediaProviderInvocationRequest) => void): () => void;
+	respondMediaProvider(requestId: string, result: PluginMediaProviderInvocationResult): Promise<void>;
+	uploadMediaProviderInput<T = unknown>(
+		requestId: string,
+		inputId: string,
+		request: PluginMediaInputUploadRequest,
+	): Promise<PluginMediaTransferResponse<T>>;
 	/** Effective setting values for a plugin (schema defaults merged with stored). */
 	getSettings(id: string): Promise<Record<string, unknown>>;
 	/** Persist setting values for a plugin (merged over existing). */
@@ -653,6 +750,7 @@ export interface DesktopPluginsApi {
 	storageReadFile(sessionId: string, path: string): Promise<string | null>;
 	storageWriteFile(sessionId: string, path: string, data: string): Promise<void>;
 	storagePutBlob(sessionId: string, input: PluginPutBlobInput): Promise<PluginStoredBlobRef>;
+	storagePutBlobFromFile(sessionId: string, input: PluginPutBlobFromFileInput): Promise<PluginStoredBlobRef>;
 	storageReadBlob(sessionId: string, id: string): Promise<PluginStoredBlob | null>;
 	storageGetBlobRef(sessionId: string, id: string): Promise<PluginStoredBlobRef | null>;
 }
@@ -777,6 +875,8 @@ export interface PluginOffscreenCaptureOptions {
 	/** 轮询到真值才截图。 */
 	readyExpression?: string;
 	settleMs?: number;
+	/** 截图同一时刻对页面求值，结果经 JSON 回传到 `probe`。求值失败不影响截图。 */
+	probeScript?: string;
 	timeoutMs?: number;
 	format?: "jpeg" | "png";
 	quality?: number;
@@ -786,6 +886,8 @@ export interface PluginOffscreenCaptureResult {
 	dataUrl: string;
 	/** 实际设备像素比：位图物理像素 = CSS 尺寸 × 此值。 */
 	scaleFactor: number;
+	/** `probeScript` 的求值结果；未传、抛错或不可序列化时为 undefined。 */
+	probe?: unknown;
 }
 
 import type { FsEntry, FsFileRef, FsStatResult } from "../fs-types.js";

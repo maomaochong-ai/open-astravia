@@ -12,7 +12,13 @@
 			"agentSettings": "Agent 设置",
 			"appearance": "外观",
 			"more": "更多",
-			"betaBadge": "BETA"
+			"betaBadge": "BETA",
+			"pin": "置顶",
+			"unpin": "取消置顶",
+			"pinFull": "置顶区最多 5 个（含新会话）",
+			"reset": "恢复默认顺序",
+			"dragHint": "拖动可排序，也可置顶到左上方",
+			"customize": "自定义导航"
 		},
 		"clawConnected": "Claw 已连接",
 		"hide": "隐藏侧边栏",
@@ -145,6 +151,7 @@
 		"moreTabs": "更多标签页",
 		"hiddenPanels": "已隐藏面板",
 		"availablePlugins": "可添加插件面板",
+		"hideTab": "隐藏标签页",
 		"menu": "标签页菜单"
 	},
 	"tour": {
@@ -162,5 +169,10 @@
 				"description": "点这里打开能力页，安装技能与连接器，让 Vetta 具备更多专业能力。"
 			}
 		}
+	},
+	"workspaceView": {
+		"loading": "正在加载插件…",
+		"missing": "该工作区视图已不存在，正在返回首页。",
+		"failed": "该工作区视图渲染失败，请查看开发者工具中的错误详情。"
 	}
 }

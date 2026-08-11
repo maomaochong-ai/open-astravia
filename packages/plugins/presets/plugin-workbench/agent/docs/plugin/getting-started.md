@@ -132,15 +132,14 @@ export default definePlugin({
   activate(ctx) {
     // ctx 提供全部能力出口，按需注册贡献 / 调用能力
     ctx.ui.registerGlobalSlot({ id: "root", component: MyPanel });
-  },
-  deactivate() {
-    // 可选：清理你自己起的副作用（定时器、监听等）。
-    // 注册返回的 Disposable 已由宿主在卸载时统一处置，无需手动 dispose。
+    const subscription = createMySubscription();
+    // cleanup 只属于本次 activation；热更新的新旧实例不会互相清理。
+    return () => subscription.dispose();
   },
 });
 ```
 
-`definePlugin` 只是身份函数，返回 `{ activate, deactivate? }`。也可不用它、直接 `export function activate(ctx) {}` —— 宿主两种形态都认。
+`definePlugin` 只是身份函数。`activate()` 可返回 cleanup 函数或 `Disposable`；有状态资源优先使用这种 activation-scoped cleanup。旧插件的模块级 `deactivate()` 仍兼容。也可不用它、直接 `export function activate(ctx) {}` —— 宿主两种形态都认。
 
 > **顶层禁用共享依赖（含 JSX）**：MF 的 react / jsx-runtime 是异步填充的，bootstrap 完成前为 `undefined`。模块顶层写 `const ICON = <svg/>` 会在求值时抛 `TypeError: ... is not a function`，整个插件加载失败。把这类 JSX 放进 `activate()` 或组件函数体内。详见 [styling-and-pitfalls.md](./styling-and-pitfalls.md)。
 
@@ -205,17 +204,36 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 
 ### 依赖注意（用户机）
 
-仓库内 preset 可用 `workspace:*` 链本地 SDK。**用户自建工程**应使用已发布的 `@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` **semver**（当前 sdk `^0.1.1` / vite `^0.0.5`，两者版本独立），并保证 registry 可达。
+仓库内 preset / external 可用 `workspace:*` 链本地 SDK。**用户自建工程**应使用发布到 registry 的 `@vetta-org/plugin-sdk` / `@vetta-org/plugin-vite` **semver**（sdk `^0.1.1`；版本化热更新协议对应 vite `^0.0.6`，两者版本独立）。推出包含该脚手架的 Desktop 前，必须先发布对应的 vite 版本并确认 registry 可达。
 
 ## 8. 调试闭环（dev loop）
 
-1. 首次先构建、安装并启用一次插件；dev 链接沿用这份安装记录的权限与启用状态。
-2. 在插件工作台开启「热更新」。Desktop 会启动工程内的 `vetta-plugin dev`，不需要另开 `vite build --watch`。
+1. 插件工作台制作的用户插件首次先点「应用到 Vetta」；安装、授权和启用完成后，工作台会等待工程内的 `vetta-plugin dev` 真正就绪，再把热更新标为运行中。
+2. 后续可在插件工作台开关热更新；开发进程由 Desktop 主进程持有，关闭工作台面板不会中止，不需要另开 `vite build --watch`。
 3. 修改 React 组件或 CSS 后由 Vite HMR 直接更新，组件状态在 Fast Refresh 可保留时不会丢失。
 4. 修改插件入口、`plugin.json`、locale 或 agent 资源时，宿主只替换当前插件的 activation，其他插件不重载。
 5. permissions、commands 等安装态能力需要正式同步时，再重新构建并安装 zip。
 
+宿主会一直保留安装版或系统插件 staging 作为稳定基线；工程内开发服务器确认 manifest 可访问并完成插件本地入口模块图转换后，才发送版本化 ready 握手并原子切换到源码 overlay。ready 前的依赖编译失败不会替换当前插件，运行中的服务器异常退出会先回退稳定版本并有限重启。React 等宿主共享依赖仍在 Renderer 的真实 share scope 中加载。
+
 `bun run dev` 可单独启动同一个开发服务器并输出 NDJSON 状态，主要用于宿主或工具集成；使用插件工作台时不要重复启动。安装更新版本仍会记为 **pending**，直到 `reload` 才切换正式安装态的 `activeVersion`。
+
+开发 Desktop 仓库内的 preset 时，不需要打开插件工作台。`packages/desktop-app` 的开发启动器默认会为当前
+`VETTA_TENANT` 包含的全部 preset 启动开发服务器；直接运行即可：
+
+```powershell
+bun run --cwd packages/desktop-app dev
+```
+
+需要缩小启动范围时，可显式指定逗号分隔的插件 id；显式设置为空字符串则关闭插件开发服务器，回落到
+staging 制品：
+
+```powershell
+$env:VETTA_PLUGIN_DEV="git,content-creation"
+bun run --cwd packages/desktop-app dev
+```
+
+仓库外工程使用 `VETTA_PLUGIN_DEV_ROOTS`，多个绝对路径以当前平台的 PATH 分隔符分开。该入口只在未打包的 Desktop 中生效；显式选择但尚未安装的 external 使用纯内存开发记录，退出 App 后不会写入插件注册表。
 
 ## 下一步
 

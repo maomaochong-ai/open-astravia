@@ -51,6 +51,9 @@ export function RootLayoutView({ model }: RootLayoutViewProps): JSX.Element {
 	const pageHeader =
 		pageLayout === "content" ? (
 			<PageHeader
+				// 顶栏左簇（展开侧边栏 / 新会话 / 标题）用统一的 4px 间距：
+				// 图标按钮自带内边距，默认 8px 会让两枚图标看起来散开。
+				classNames={{ left: "gap-1" }}
 				sidebarCollapsed={sidebarCollapsed}
 				narrow={narrow}
 				onExpandSidebar={actions.toggleSidebar}

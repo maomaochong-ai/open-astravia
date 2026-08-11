@@ -91,6 +91,18 @@ func (a *Acquired) Release() {
 	a.pool = nil
 }
 
+// Discard removes the acquired session from the pool and closes it. Use this
+// when a typed failure says the process must be restarted. A deferred Release
+// after Discard is a no-op.
+func (a *Acquired) Discard() error {
+	if a == nil || a.pool == nil {
+		return nil
+	}
+	pool := a.pool
+	a.pool = nil
+	return pool.discard(a.sessionPath, a.Session)
+}
+
 // Acquire returns a HostSession for the given (cwd, sessionPath). If a
 // session is already in the pool for the same sessionPath, it is reused
 // and bumped to MRU. Otherwise a new HostSession is opened (which may
@@ -210,6 +222,24 @@ func (p *ProcessPool) release(sessionPath string) {
 	p.mu.Unlock()
 }
 
+func (p *ProcessPool) discard(sessionPath string, session HostSession) error {
+	p.mu.Lock()
+	elem, ok := p.entries[sessionPath]
+	if !ok {
+		p.mu.Unlock()
+		return nil
+	}
+	ps := elem.Value.(*pooledSession)
+	if ps.session != session {
+		p.mu.Unlock()
+		return nil
+	}
+	delete(p.entries, sessionPath)
+	p.lru.Remove(elem)
+	p.mu.Unlock()
+	return session.Close()
+}
+
 // evictOldestIdleLocked removes the least-recently-used session that has no
 // in-flight requests. Caller must hold p.mu.
 func (p *ProcessPool) evictOldestIdleLocked() error {
@@ -233,9 +263,9 @@ func (p *ProcessPool) evictOldestIdleLocked() error {
 // Stats reports the pool's current population. Useful for /whoami and
 // `im-gateway status`.
 type Stats struct {
-	Size       int
-	MaxSize    int
-	InFlight   int
+	Size         int
+	MaxSize      int
+	InFlight     int
 	SessionPaths []string
 }
 

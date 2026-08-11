@@ -6,9 +6,14 @@
  *   - reasoning_effort: native level passed through verbatim when thinking is enabled
  */
 
-import type { AssistantMessageEventStream, Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { AssistantMessageEventStream } from "../utils/event-stream.js";
 import type { OpenAICompletionsOptions } from "./openai-completions.js";
-import { streamOpenAICompletions, streamSimpleOpenAICompletions } from "./openai-completions.js";
+import {
+	createOpenAICompatibleAdapter,
+	streamOpenAICompletions,
+	streamSimpleOpenAICompletions,
+} from "./openai-completions.js";
 
 const ZHIPU_COMPAT = { thinkingFormat: "zai" as const };
 
@@ -20,6 +25,8 @@ function withZhipuCompat(model: Model<"zhipu-openai-completions">): Model<"opena
 		compat: Object.assign({}, model.compat, ZHIPU_COMPAT),
 	};
 }
+
+export const zhipuAdapter = createOpenAICompatibleAdapter("zhipu-openai-completions", withZhipuCompat);
 
 export const streamZhipu: StreamFunction<"zhipu-openai-completions", OpenAICompletionsOptions> = (
 	model: Model<"zhipu-openai-completions">,

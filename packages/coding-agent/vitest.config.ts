@@ -1,6 +1,36 @@
+import { fileURLToPath } from "node:url";
 import { coverageConfigDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
+	resolve: {
+		alias: {
+			"@vetta/agent-core": fileURLToPath(new URL("../agent/src/index.ts", import.meta.url)),
+			"@vetta/ai": fileURLToPath(new URL("../ai/src/index.ts", import.meta.url)),
+			"@vetta/ecosystem-adapter/hooks": fileURLToPath(
+				new URL("../ecosystem-adapter/src/hooks/index.ts", import.meta.url),
+			),
+			"@vetta/ecosystem-adapter": fileURLToPath(new URL("../ecosystem-adapter/src/index.ts", import.meta.url)),
+			"@vetta/runtime-knowledge": fileURLToPath(new URL("../runtime-knowledge/src/index.ts", import.meta.url)),
+			"@vetta/runtime-subagents": fileURLToPath(new URL("../runtime-subagents/src/index.ts", import.meta.url)),
+			"@vetta/runtime-storage/conversation": fileURLToPath(
+				new URL("../runtime-storage/src/conversation/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-tools/coding": fileURLToPath(
+				new URL("../runtime-tools/src/coding/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-mcp": fileURLToPath(new URL("../runtime-mcp/src/index.ts", import.meta.url)),
+			"@vetta/runtime-core/kernel": fileURLToPath(
+				new URL("../runtime-core/src/kernel/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-core/conversation": fileURLToPath(
+				new URL("../runtime-core/src/conversation/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-core/sandbox": fileURLToPath(
+				new URL("../runtime-core/src/sandbox/index.ts", import.meta.url),
+			),
+			"@vetta/runtime-core": fileURLToPath(new URL("../runtime-core/src/index.ts", import.meta.url)),
+		},
+	},
 	test: {
 		globals: true,
 		environment: "node",
@@ -22,7 +52,7 @@ export default defineConfig({
 			exclude: [
 				...coverageConfigDefaults.exclude,
 				// Third-party / static assets shipped with the package, not unit-test targets.
-				"src/core/export-html/vendor/**",
+				"src/export-html/assets/vendor/**",
 			],
 		},
 	},

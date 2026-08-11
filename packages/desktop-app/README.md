@@ -31,8 +31,40 @@ Run `bun dev` from this package after installing the monorepo dependencies. The 
 builds changed workspace prerequisites, stages plugin and theme manifests, then starts the renderer,
 theme server, and Electron process in parallel.
 
+Normal development is isolated from packaged application data: it defaults to
+`VETTA_CONFIG_DIR=.vetta-dev` and stores the Chromium profile under
+`~/.vetta-dev/electron-user-data`. Packaged builds continue to use `~/.vetta`. Set
+`VETTA_CONFIG_DIR` and `VETTA_DESKTOP_USER_DATA_DIR` together when a custom isolated development
+environment is required.
+
+Because the Chromium profile is derived from the config directory, switching `VETTA_CONFIG_DIR`
+switches the whole environment — data root and browser profile — with no shared state between them.
+Two scripts make the common pair explicit:
+
+```bash
+bun run dev:isolated   # ~/.vetta-dev (same as `bun dev`)
+bun run dev:home       # ~/.vetta
+```
+
+`bun run dev:home` shares `~/.vetta` with packaged builds; do not run both at the same time, since
+the single-instance lock keys on the Chromium profile and will not stop the second process. The
+project-level `<cwd>/.vetta` directory is intentionally fixed and does not follow `VETTA_CONFIG_DIR`
+(see `packages/coding-agent/src/config.ts`).
+
+Set `VETTA_CONFIG_DIR` on the command line, not in `.env.development`: the dev launcher is plain
+Node and never reads `.env` files, so a value placed there would only reach the vite-inlined main
+process and would disagree with the launcher-derived Chromium profile.
+
 Main-process sourcemaps are disabled by default to keep startup builds fast. Set
 `VETTA_MAIN_SOURCEMAP=true` when source-mapped Electron stack traces are needed.
+
+Development automatically starts plugin dev servers for every preset selected by the active
+`VETTA_TENANT`, so preset source, manifest, locale, and agent resource changes reload without an
+App restart. Set `VETTA_PLUGIN_DEV` to a comma-separated list to limit development to specific
+plugins, or set it to an empty string to disable plugin dev servers and use staged archives only.
+Each project uses its own exported `@vetta-org/plugin-vite/cli`. The stable staged or installed
+plugin remains active until the development server completes its versioned ready handshake; an
+unexpected server exit rolls back that overlay before bounded restart attempts.
 
 ## Electron E2E (WebdriverIO)
 
@@ -54,4 +86,3 @@ Runtime sets `VETTA_E2E=1`, `VETTA_CONFIG_DIR=.vetta-e2e`, and isolates Chromium
 Day-to-day agent UI verification still uses repo-root `verify:ui:*` (Playwright); this suite targets formal E2E / CI.
 
 Current `e2e/smoke.e2e.ts` batch-1 covers boot only: main-process ready/version, main window `index.html`, config/userData isolation, and a `dialog` mock probe. It does not cover login, chat, or other product flows.
-

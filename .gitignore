@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .next/
+.astro/
 .vercel/
 *.log
 .DS_Store
@@ -71,6 +72,8 @@ settings.local.json
 .codex/
 prompt/
 spec/
+!docs/agent/extension/spec/
+!docs/agent/extension/spec/**
 requirement/
 .agents/
 skills-lock.json
@@ -80,3 +83,4 @@ mcps
 agent-tools
 .playwright-cli
 .tmp*
+.ai

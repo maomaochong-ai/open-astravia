@@ -18,8 +18,10 @@ import { type PluginShortcutMethods, pluginShortcutMethods } from "./domain/shor
 import { type PluginSkillMethods, pluginSkillMethods } from "./domain/skill.js";
 import { type PluginUpdaterMethods, pluginUpdaterMethods } from "./domain/updater.js";
 import { type PluginWebhookMethods, pluginWebhookMethods } from "./domain/webhook.js";
+import { type PluginArtifactMethods, pluginArtifactMethods } from "./foundation/artifacts.js";
 import { type PluginFilesystemMethods, pluginFilesystemMethods } from "./foundation/filesystem.js";
 import { type PluginGatewayMethods, pluginGatewayMethods } from "./foundation/gateway.js";
+import { type PluginJobMethods, pluginJobMethods } from "./foundation/jobs.js";
 import { type PluginNetworkMethods, pluginNetworkMethods } from "./foundation/network.js";
 import { type PluginStorageMethods, pluginStorageMethods } from "./foundation/storage.js";
 import { buildPluginCapabilityGrants } from "./grants.js";
@@ -32,7 +34,9 @@ import {
 } from "./types.js";
 
 export interface PluginCapabilityAdapter
-	extends PluginFilesystemMethods,
+	extends PluginArtifactMethods,
+		PluginFilesystemMethods,
+		PluginJobMethods,
 		PluginNetworkMethods,
 		PluginGatewayMethods,
 		PluginStorageMethods,
@@ -93,6 +97,7 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 		if (this.sessionIdByPlugin.get(session.pluginId) === sessionId) {
 			this.sessionIdByPlugin.delete(session.pluginId);
 		}
+		this.options.onSessionClosed?.(session.pluginId);
 	}
 
 	dispose(): void {
@@ -101,6 +106,10 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 
 	assertOfficialSession(sessionId: string): void {
 		this.session(sessionId, { official: true });
+	}
+
+	pluginIdForSession(sessionId: string, requirement: PluginCapabilityRequirement = {}): string {
+		return this.session(sessionId, requirement).pluginId;
 	}
 
 	client(sessionId: string, requirement: PluginCapabilityRequirement): CapabilityAccessHandle["client"] {
@@ -130,7 +139,9 @@ export class PluginCapabilityAdapter implements PluginCapabilitySessionAccess {
 
 Object.assign(
 	PluginCapabilityAdapter.prototype,
+	pluginArtifactMethods,
 	pluginFilesystemMethods,
+	pluginJobMethods,
 	pluginNetworkMethods,
 	pluginGatewayMethods,
 	pluginStorageMethods,

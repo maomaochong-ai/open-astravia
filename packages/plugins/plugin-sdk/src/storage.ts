@@ -15,6 +15,12 @@ export interface PluginPutBlobInput {
 	mimeType: string;
 }
 
+export interface PluginPutBlobFromFileInput {
+	id?: string;
+	file: File;
+	mimeType: string;
+}
+
 /**
  * Private persistent storage scoped to the current plugin.
  *
@@ -28,6 +34,8 @@ export interface PluginStorageApi {
 	readFile(path: string): Promise<string | null>;
 	writeFile(path: string, data: string): Promise<void>;
 	putBlob(input: PluginPutBlobInput): Promise<PluginStoredBlobRef>;
+	/** Copy a user-selected or dropped filesystem file without carrying its bytes through the renderer. */
+	putBlobFromFile(input: PluginPutBlobFromFileInput): Promise<PluginStoredBlobRef>;
 	readBlob(id: string): Promise<PluginStoredBlob | null>;
 	getBlobRef(id: string): Promise<PluginStoredBlobRef | null>;
 }

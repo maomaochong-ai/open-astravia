@@ -1,0 +1,38 @@
+---
+title: 主题系统概览
+description: 使用主题模块定制 Vetta 外观、组件、页面、区域与运行时效果。
+---
+
+主题模块不仅能覆盖颜色，也能替换宿主公开的组件、注册页面和提供主题运行时。它适合形成一致的完整体验；只修改明暗模式、配色或侧栏样式时，直接使用“设置 → 外观”即可。
+
+<figure className="docs-media-frame docs-media-frame--wide">
+  <img src="/images/product/theme-xianxia.webp" alt="Vetta 内置仙侠主题，完整改变背景、侧栏、输入区和表面装饰" width="1920" height="1280" />
+  <figcaption>主题可以改变整个工作区的视觉表达，但项目、会话和 Agent 业务状态仍由宿主拥有。</figcaption>
+</figure>
+
+## 主题可以提供什么
+
+<Cards>
+  <Card title="appearance" description="颜色令牌和表面外观。" />
+  <Card title="components" description="替换宿主公开的组件槽位。" />
+  <Card title="pages" description="增加带导航入口的主题页面。" />
+  <Card title="regions" description="填充宿主公开区域。" />
+  <Card title="runtime" description="主题激活期间持续挂载的无头逻辑。" />
+</Cards>
+
+主题通过 Module Federation 加载，React、主题 SDK 和宿主 UI 包作为共享单例。主题代码运行在桌面渲染进程内，应按可信代码对待。
+
+## 当前发布边界
+
+<Callout title="策展发布" type="info">
+  当前主题系统面向仓库内置或策展主题开发，尚未提供面向任意第三方的通用远程安装与市场分发流程。开发者应在 Vetta monorepo 中接入、构建并随桌面应用验证主题；不要向用户承诺可以直接安装外部主题包。
+</Callout>
+
+外观页的 UI 主题选择可能由功能开关控制，且只有已经随应用打包的主题才可选择。
+
+## 下一步
+
+<Cards>
+  <Card title="创建主题模块" href="/themes/getting-started/" description="定义 theme.json、导出 ThemeModule 并在桌面应用中验证。" />
+  <Card title="主题模块参考" href="/themes/module-reference/" description="选择 appearance、component、region、page、runtime 与 storage。" />
+</Cards>

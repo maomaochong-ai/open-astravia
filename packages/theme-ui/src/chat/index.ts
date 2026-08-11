@@ -10,6 +10,7 @@ import type {
 } from "./NewSession";
 import type { SceneCard } from "./SceneCard";
 import type { SkillCard } from "./SkillCard";
+import type { TodoStatusBarView } from "./TodoStatusBarView";
 
 declare module "@vetta/theme-sdk" {
 	interface ThemeComponentRegistry {
@@ -21,6 +22,7 @@ declare module "@vetta/theme-sdk" {
 		readonly "chat.newSessionSceneCarousel"?: ComponentType<NewSessionSceneCarouselProps>;
 		readonly "chat.newSessionSkillBadgeRow"?: ComponentType<NewSessionSkillBadgeRowProps>;
 		readonly "chat.newSessionSkillCard"?: typeof SkillCard;
+		readonly "chat.todoStatusBar"?: typeof TodoStatusBarView;
 	}
 }
 
@@ -170,6 +172,13 @@ export type {
 } from "./MessageSelectionContextMenuView";
 export { MessageSelectionContextMenuView } from "./MessageSelectionContextMenuView";
 export type {
+	ModelSelectorLabels,
+	ModelSelectorOptionView,
+	ModelSelectorProviderGroup,
+	ModelSelectorViewProps,
+} from "./ModelSelectorView";
+export { ModelSelectorView } from "./ModelSelectorView";
+export type {
 	NewSessionGuidingWordsGroup,
 	NewSessionGuidingWordsProps,
 	NewSessionHeroProps,
@@ -188,7 +197,12 @@ export type { NewSessionPageLayoutViewProps } from "./NewSessionPageLayoutView";
 export { NewSessionPageLayoutView } from "./NewSessionPageLayoutView";
 export type { ProgressGroupRowProps, ProgressGroupViewProps } from "./ProgressGroupView";
 export { ProgressGroupRow, ProgressGroupView } from "./ProgressGroupView";
-export type { QueueCardItem, QueueCardViewLabels, QueueCardViewProps } from "./QueueCardView";
+export type {
+	QueueCardItem,
+	QueueCardPausedBanner,
+	QueueCardViewLabels,
+	QueueCardViewProps,
+} from "./QueueCardView";
 export { QueueCardView } from "./QueueCardView";
 export type { ReadImageViewProps } from "./ReadImageView";
 export { ReadImageView } from "./ReadImageView";
@@ -244,6 +258,23 @@ export type { ThinkingBlockViewLabels, ThinkingBlockViewProps } from "./Thinking
 export { ThinkingBlockView } from "./ThinkingBlockView";
 export type { TodoCardItem, TodoCardLabels, TodoCardProps } from "./TodoCard";
 export { TodoCard } from "./TodoCard";
+export type {
+	TodoStatusItem,
+	TodoStatusSummary,
+	TodoTimelineLabels,
+	TodoTimelineProps,
+} from "./TodoProgress";
+export {
+	selectTodoStatusSummary,
+	TODO_PROGRESS_CSS,
+	TodoProgressBar,
+	TodoProgressStyles,
+	TodoStatusDot,
+	TodoTimeline,
+	todoLabelSheenStyle,
+} from "./TodoProgress";
+export type { TodoStatusBarLabels, TodoStatusBarViewProps } from "./TodoStatusBarView";
+export { TodoStatusBarView } from "./TodoStatusBarView";
 export type { ToolCallBlockViewProps } from "./ToolCallBlockView";
 export { ToolCallBlockView } from "./ToolCallBlockView";
 export type { UsageBarViewProps } from "./UsageBarView";

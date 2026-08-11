@@ -5,6 +5,8 @@ export type {
 	SidebarLabelKey,
 	SidebarModel,
 	SidebarModelInput,
+	SidebarNavBadge,
+	SidebarNavBadgeTone,
 	SidebarNavItem,
 	SidebarProps,
 	SidebarRegionProps,

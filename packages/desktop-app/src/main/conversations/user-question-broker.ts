@@ -1,4 +1,4 @@
-import type { RuntimeUserQuestionRequest, RuntimeUserQuestionResult } from "../../../../runtime-core/src/index.js";
+import type { RuntimeUserQuestionRequest, RuntimeUserQuestionResult } from "@vetta/runtime-core";
 
 type UserQuestionHandler = (
 	request: RuntimeUserQuestionRequest,

@@ -17,7 +17,7 @@ import {
 	resolveAppLanguage,
 	resources,
 } from "../../shared/i18n/resources.js";
-import { readConfigSync } from "../ipc/fs.js";
+import { readConfigSync } from "../config/desktop-config-store.js";
 
 const mainI18n = i18next.createInstance();
 let currentPreference: LanguagePreference = DEFAULT_LANGUAGE_PREFERENCE;

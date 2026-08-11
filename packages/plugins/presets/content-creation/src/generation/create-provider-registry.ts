@@ -1,4 +1,5 @@
 import type {
+	PluginJobsApi,
 	PluginMediaApi,
 	PluginMediaProviderDescriptor,
 	PluginNetworkApi,
@@ -16,6 +17,7 @@ export function createContentProviderRegistry(
 	network: PluginNetworkApi,
 	settings: PluginSettingsApi,
 	media: PluginMediaApi,
+	jobs: PluginJobsApi,
 	mediaProviders: readonly PluginMediaProviderDescriptor[],
 ): ContentProviderRegistry {
 	const registry = new ContentProviderRegistry();
@@ -46,7 +48,9 @@ export function createContentProviderRegistry(
 			modelSetting: "customVideoModel",
 		}),
 	);
-	const hostMediaProvider = new HostMediaProvider(media, mediaProviders);
-	if (hostMediaProvider.listModels().length > 0) registry.register(hostMediaProvider);
+	const hostMediaProvider = new HostMediaProvider(media, jobs, mediaProviders);
+	// Keep the adapter registered even during the brief provider-registration gap
+	// after a renderer reload so persisted host jobs can resume by stable ID.
+	registry.register(hostMediaProvider);
 	return registry;
 }

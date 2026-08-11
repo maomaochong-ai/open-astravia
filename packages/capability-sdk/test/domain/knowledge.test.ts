@@ -27,6 +27,10 @@ describe("knowledge domain capabilities", () => {
 	});
 
 	it("validates knowledge mutations and preserves explicit model clearing", () => {
+		expect(DOMAIN_KNOWLEDGE_CAPABILITIES.SCAN_NOW.parseInput({})).toEqual({});
+		expect(() => DOMAIN_KNOWLEDGE_CAPABILITIES.SCAN_NOW.parseInput({ ignored: true })).toThrowError(
+			expect.objectContaining({ code: CAPABILITY_ERROR_CODES.INVALID_INPUT }),
+		);
 		const update = DOMAIN_KNOWLEDGE_CAPABILITIES.SET_PROCESSING_SETTINGS.parseInput({
 			data: {
 				processingModelKey: null,

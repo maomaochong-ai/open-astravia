@@ -11,7 +11,8 @@
  */
 
 import { join } from "node:path";
-import { knowledge } from "@vetta/coding-agent";
+import * as knowledge from "@vetta/runtime-knowledge";
+import { getKnowledgeRoot } from "./knowledge-layout.js";
 
 export type KnowledgeProcessStatus = "processed" | "stale" | "failed" | "unprocessed";
 
@@ -23,7 +24,7 @@ export interface KnowledgeFileStatus {
 
 /** 推导全部 raws 文件的加工态，按 source_path 索引。 */
 export async function getKnowledgeFileStatuses(): Promise<Record<string, KnowledgeFileStatus>> {
-	const root = knowledge.knowledgeRoot();
+	const root = getKnowledgeRoot();
 	const [manifest, raws, failures] = await Promise.all([
 		knowledge.readManifest(root),
 		knowledge.scanRaws(root),

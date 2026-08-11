@@ -6,9 +6,14 @@
  *   - reasoning_effort: native level passed through verbatim when thinking is enabled
  */
 
-import type { AssistantMessageEventStream, Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { Context, Model, SimpleStreamOptions, StreamFunction } from "../types.js";
+import type { AssistantMessageEventStream } from "../utils/event-stream.js";
 import type { OpenAICompletionsOptions } from "./openai-completions.js";
-import { streamOpenAICompletions, streamSimpleOpenAICompletions } from "./openai-completions.js";
+import {
+	createOpenAICompatibleAdapter,
+	streamOpenAICompletions,
+	streamSimpleOpenAICompletions,
+} from "./openai-completions.js";
 
 const ZAI_COMPAT = { thinkingFormat: "zai" as const };
 
@@ -20,6 +25,8 @@ function withZaiCompat(model: Model<"zai-openai-completions">): Model<"openai-co
 		compat: Object.assign({}, model.compat, ZAI_COMPAT),
 	};
 }
+
+export const zaiAdapter = createOpenAICompatibleAdapter("zai-openai-completions", withZaiCompat);
 
 export const streamZai: StreamFunction<"zai-openai-completions", OpenAICompletionsOptions> = (
 	model: Model<"zai-openai-completions">,

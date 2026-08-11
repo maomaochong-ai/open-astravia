@@ -1,4 +1,3 @@
-import type { AgentSession, ConversationScenario, ModelRegistry } from "@vetta/coding-agent";
 import type {
 	AgentPluginRuntimeConfig,
 	RuntimeSandboxGrantDecision,
@@ -6,17 +5,59 @@ import type {
 	RuntimeUserConfirmationRequest,
 	RuntimeUserQuestionRequest,
 	RuntimeUserQuestionResult,
+	SessionConfig,
 	SessionExecutionMode,
 } from "../contracts.js";
+import type { RuntimeHostSessionBackend } from "./session-backend.js";
+import type {
+	RuntimeSessionBackgroundWorkController,
+	RuntimeSessionConfigurationController,
+	RuntimeSessionEventStream,
+	RuntimeSessionExecutionController,
+	RuntimeSessionHistoryController,
+	RuntimeSessionHistoryReader,
+	RuntimeSessionHostInteraction,
+	RuntimeSessionIdentityLifecycle,
+	RuntimeSessionMetadataController,
+	RuntimeSessionModelController,
+	RuntimeSessionModelView,
+	RuntimeSessionQueueController,
+	RuntimeSessionStateReader,
+	RuntimeSessionTodoController,
+	RuntimeSessionTurnControl,
+	RuntimeSessionWorkspaceView,
+} from "./session-ports.js";
+import type {
+	RuntimeSessionAccessResolver,
+	RuntimeSessionCatalog,
+	RuntimeSessionFileHistoryReader,
+	RuntimeSharedModelController,
+} from "./session-services.js";
 
 export interface SessionHandle {
-	session: AgentSession;
+	lifecycle: RuntimeSessionIdentityLifecycle;
+	historyReader: RuntimeSessionHistoryReader;
+	historyController: RuntimeSessionHistoryController;
+	hostInteraction: RuntimeSessionHostInteraction;
+	executionController: RuntimeSessionExecutionController;
+	workspaceView: RuntimeSessionWorkspaceView;
+	backgroundWorkController: RuntimeSessionBackgroundWorkController;
+	todoController: RuntimeSessionTodoController;
+	configurationController: RuntimeSessionConfigurationController;
+	modelController: RuntimeSessionModelController;
+	modelView: RuntimeSessionModelView;
+	turnControl: RuntimeSessionTurnControl;
+	eventStream: RuntimeSessionEventStream;
+	stateReader: RuntimeSessionStateReader;
+	/** 可选能力（ADR-0060）：backend 不提供时相应队列/落盘功能静默降级。 */
+	queueController: RuntimeSessionQueueController | undefined;
+	metadataController: RuntimeSessionMetadataController | undefined;
 	executionMode: SessionExecutionMode;
 	agentPluginsEnabled: boolean;
 	pendingAgentPlugins: AgentPluginRuntimeConfig | undefined;
 	hasPendingAgentPlugins: boolean;
 	/** 本会话解析后的对话场景（缺省回落 DEFAULT_SCENARIO），getState 回传给 renderer。 */
-	scenario: ConversationScenario;
+	scenario: NonNullable<SessionConfig["scenario"]>;
 	/** 当前生效的工作模式（agent_mode 轴）。undefined = 不过滤。见 ADR-0046。 */
 	agentMode: string | undefined;
 	/** 全局切换 mode 时挂起，于下一个 turn 边界 apply（避免 streaming 中途换工具集）。 */
@@ -57,6 +98,7 @@ export interface InFlightBuffer {
 	thinking: string;
 	toolCallStarts: Array<{ toolCallId: string; toolName: string }>;
 	isActive: boolean;
+	terminalReason: RunningChangedReason | undefined;
 }
 
 /**
@@ -67,6 +109,19 @@ export interface InFlightBuffer {
 export type RunningChangedReason = "agent_end" | "aborted" | "error";
 
 export interface RuntimeHostOptions {
+	/**
+	 * 会话组合后端。生产宿主应在 Composition Root 显式注入；未注入时只有
+	 * 不涉及创建会话的目录/历史操作可用。
+	 */
+	sessionBackend?: RuntimeHostSessionBackend;
+	/** 离线会话列表、重命名和文件删除。 */
+	sessionCatalog?: RuntimeSessionCatalog;
+	/** 不获取写锁的同步会话文件读取器。 */
+	sessionFileHistoryReader?: RuntimeSessionFileHistoryReader;
+	/** 既有会话文件到宿主可用能力的显式映射。 */
+	sessionAccessResolver?: RuntimeSessionAccessResolver;
+	/** 进程级共享模型资源。 */
+	sharedModelController?: RuntimeSharedModelController;
 	getDefaultExecutionMode?: () => SessionExecutionMode | Promise<SessionExecutionMode>;
 	additionalSkillPaths?: string[];
 	sandboxHostPath?: string;
@@ -87,13 +142,4 @@ export interface RuntimeHostOptions {
 	 * （env-injected URL）与 SDK 路径（硬编码 URL）"半边大脑"。
 	 */
 	serverUrl?: string;
-	/**
-	 * 进程级共享的 ModelRegistry。注入后每次 createSession 都复用同一份，
-	 * sdk 内部 `if (!options.modelRegistry)` 的远程 fetch 分支就会跳过——
-	 * 第一次发消息不再被 5s 的 `/providers/models.json` 阻塞。
-	 *
-	 * 仍然需要保证模型实时性：见 `createSession` 末尾的 stale-while-revalidate
-	 * 后台刷新，以及 `reloadServerAuth` 在登录/登出时的同步刷新。
-	 */
-	modelRegistry?: ModelRegistry;
 }

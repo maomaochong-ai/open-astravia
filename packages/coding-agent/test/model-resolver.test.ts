@@ -1,11 +1,11 @@
 import type { Model } from "@vetta/ai";
 import { describe, expect, test } from "vitest";
 import {
-	defaultModelPerProvider,
+	DEFAULT_MODEL_PER_PROVIDER as defaultModelPerProvider,
 	findInitialModel,
 	parseModelPattern,
 	resolveCliModel,
-} from "../src/core/model-resolver.js";
+} from "../src/models/index.js";
 
 // Mock models for testing
 const mockModels: Model<"anthropic-messages">[] = [
@@ -210,11 +210,11 @@ describe("resolveCliModel", () => {
 	test("resolves --model provider/id without --provider", () => {
 		const registry = {
 			getAll: () => allModels,
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliModel: "openai/gpt-4o",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.error).toBeUndefined();
@@ -225,12 +225,12 @@ describe("resolveCliModel", () => {
 	test("resolves fuzzy patterns within an explicit provider", () => {
 		const registry = {
 			getAll: () => allModels,
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliProvider: "openai",
 			cliModel: "4o",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.error).toBeUndefined();
@@ -241,11 +241,11 @@ describe("resolveCliModel", () => {
 	test("supports --model <pattern>:<thinking> (without explicit --thinking)", () => {
 		const registry = {
 			getAll: () => allModels,
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliModel: "sonnet:high",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.error).toBeUndefined();
@@ -256,11 +256,11 @@ describe("resolveCliModel", () => {
 	test("prefers exact model id match over provider inference (OpenRouter-style ids)", () => {
 		const registry = {
 			getAll: () => allModels,
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliModel: "openai/gpt-4o:extended",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.error).toBeUndefined();
@@ -271,12 +271,12 @@ describe("resolveCliModel", () => {
 	test("does not strip invalid :suffix as thinking level in --model (fail fast)", () => {
 		const registry = {
 			getAll: () => allModels,
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliProvider: "openai",
 			cliModel: "gpt-4o:extended",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.model).toBeUndefined();
@@ -286,12 +286,12 @@ describe("resolveCliModel", () => {
 	test("returns a clear error when there are no models", () => {
 		const registry = {
 			getAll: () => [],
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliProvider: "openai",
 			cliModel: "gpt-4o",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.model).toBeUndefined();
@@ -327,11 +327,11 @@ describe("resolveCliModel", () => {
 		};
 		const registry = {
 			getAll: () => [...allModels, zaiModel, gatewayModel],
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliModel: "zai/glm-5",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.error).toBeUndefined();
@@ -342,11 +342,11 @@ describe("resolveCliModel", () => {
 	test("resolves provider-prefixed fuzzy patterns (openrouter/qwen -> openrouter model)", () => {
 		const registry = {
 			getAll: () => allModels,
-		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof resolveCliModel>[0]["models"];
 
 		const result = resolveCliModel({
 			cliModel: "openrouter/qwen",
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.error).toBeUndefined();
@@ -376,12 +376,12 @@ describe("default model selection", () => {
 
 		const registry = {
 			getAvailable: async () => [aiGatewayModel],
-		} as unknown as Parameters<typeof findInitialModel>[0]["modelRegistry"];
+		} as unknown as Parameters<typeof findInitialModel>[0]["models"];
 
 		const result = await findInitialModel({
 			scopedModels: [],
 			isContinuing: false,
-			modelRegistry: registry,
+			models: registry,
 		});
 
 		expect(result.model?.provider).toBe("vercel-ai-gateway");

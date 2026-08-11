@@ -4,7 +4,7 @@ import type { ContentReferenceKind, ImportedContentReference } from "../generati
 import type { ContentAsset, ContentNodeInputBinding } from "../project/types";
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import { ConnectedAssetPicker, type ConnectedReferenceOption } from "./ConnectedAssetPicker";
-import { readImportedMediaFile } from "./readImportedMediaFile";
+import { createImportedMediaFile } from "./imported-media-file";
 
 interface ContentReferenceInputProps {
 	references: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
@@ -12,6 +12,7 @@ interface ContentReferenceInputProps {
 	acceptedKinds: readonly ContentReferenceKind[];
 	disabled: boolean;
 	compact?: boolean;
+	numberByKind?: boolean;
 	onImport: (files: readonly ImportedContentReference[]) => Promise<void>;
 	onRemove: (bindingId: string) => void;
 	onSelectConnected: (option: ConnectedReferenceOption) => void;
@@ -23,6 +24,7 @@ export function ContentReferenceInput({
 	acceptedKinds,
 	disabled,
 	compact = false,
+	numberByKind = false,
 	onImport,
 	onRemove,
 	onSelectConnected,
@@ -34,12 +36,15 @@ export function ContentReferenceInput({
 		const files = Array.from(event.target.files ?? []);
 		event.target.value = "";
 		if (files.length === 0) return;
-		await onImport(await Promise.all(files.map(readImportedMediaFile)));
+		await onImport(await Promise.all(files.map((file) => createImportedMediaFile(file))));
 	};
 
 	return (
 		<div className={`flex flex-wrap items-start gap-1.5 ${compact ? "min-h-10" : "min-h-14"}`}>
-			{references.map(({ binding, asset }, index) => (
+			{references.map(({ binding, asset }, index) => {
+				const kindIndex = references.slice(0, index).filter((reference) => reference.asset.kind === asset.kind).length + 1;
+				const badge = numberByKind ? `${asset.kind === "image" ? "P" : asset.kind === "video" ? "V" : "A"}${kindIndex}` : `${index + 1}`;
+				return (
 				<div
 					key={binding.id}
 					className={`group/reference relative shrink-0 overflow-hidden rounded-lg border border-border/75 bg-muted/45 ${compact ? "size-10" : "size-14"}`}
@@ -49,7 +54,7 @@ export function ContentReferenceInput({
 						className="flex h-full w-full items-center justify-center object-cover text-muted-foreground"
 					/>
 					<span className="absolute top-1 right-1 flex size-3.5 items-center justify-center rounded-full bg-black/75 text-[8px] font-semibold text-white">
-						{index + 1}
+						{badge}
 					</span>
 					<button
 						type="button"
@@ -62,7 +67,8 @@ export function ContentReferenceInput({
 						<span className="icon-[lucide--x] block size-4 shrink-0" aria-hidden="true" />
 					</button>
 				</div>
-			))}
+				);
+			})}
 			<button
 				type="button"
 				className={`flex shrink-0 items-center justify-center rounded-lg border border-dashed border-border bg-background/35 text-muted-foreground transition-colors hover:border-primary/45 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 ${compact ? "size-10" : "size-14"}`}

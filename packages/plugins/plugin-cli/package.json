@@ -1,0 +1,45 @@
+{
+	"name": "@vetta-org/plugin-cli",
+	"version": "0.1.0",
+	"description": "Install npm-distributed plugins into Vetta Desktop",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"bin": {
+		"vetta-plugin-cli": "./dist/cli.js"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"CHANGELOG.md"
+	],
+	"scripts": {
+		"clean": "rm -rf dist",
+		"build": "bun run clean && tsgo -p tsconfig.build.json && bun build src/index.ts --target node --format esm --outfile dist/index.js && bun build src/cli.ts --target node --format esm --outfile dist/cli.js",
+		"typecheck": "tsgo --noEmit -p tsconfig.json",
+		"test": "bunx vitest --run"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"@types/npm-package-arg": "^6.1.4",
+		"@vetta-org/plugin-sdk": "workspace:*",
+		"@vetta/action-rpc": "workspace:*",
+		"npm-package-arg": "^14.0.0",
+		"tar": "^7.5.22",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.4"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	}
+}

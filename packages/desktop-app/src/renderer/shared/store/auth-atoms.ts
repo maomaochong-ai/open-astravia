@@ -10,7 +10,11 @@ export interface AuthUser {
 	avatar: string;
 }
 
-export const authTokenAtom = atom<string | null>(localStorage.getItem("vetta-auth-token"));
+// 迁移旧版本遗留的明文凭据；登录 token 此后只保存在 renderer 内存与主进程凭据存储中。
+localStorage.removeItem("vetta-auth-token");
+localStorage.removeItem("vetta-refresh-token");
+
+export const authTokenAtom = atom<string | null>(null);
 export const authUserAtom = atom<AuthUser | null>(null);
 export const loginPopoverOpenAtom = atom<boolean>(false);
 

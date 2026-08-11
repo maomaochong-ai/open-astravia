@@ -1,6 +1,5 @@
 import { DrawerCard, type DrawerTab } from "@shared/components/DrawerCard";
 import { QueueCard } from "@shared/components/QueueCard";
-import { TodoCard } from "@shared/components/TodoCard";
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { memo, useMemo } from "react";
 import type { InputBarDrawerItem, InputBarLabels } from "./types";
@@ -33,22 +32,13 @@ export const InputBarDrawer = memo(function InputBarDrawer({
 						content: <SandboxPermissionCard labels={permissionLabels} request={item.request} />,
 					};
 				}
-				if (item.kind === "queue") {
-					return {
-						id: item.id,
-						label: item.label,
-						color: "bg-primary",
-						desc: item.desc,
-						content: <QueueCard runtimeId={item.runtimeId} onSendNow={item.onSendNow} />,
-					};
-				}
 				return {
 					id: item.id,
 					label: item.label,
-					color: "bg-emerald-500",
+					color: "bg-primary",
 					desc: item.desc,
 					pulsing: item.pulsing,
-					content: <TodoCard items={item.items} compact onViewMore={item.onViewMore} />,
+					content: <QueueCard runtimeId={item.runtimeId} onSendNow={item.onSendNow} />,
 				};
 			}),
 		[items, permissionLabels],

@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { type Dirent, type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
-import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent";
-import { BrowserWindow, ipcMain, type WebContents } from "electron";
+import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
+import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
 import type {
 	AgentPluginContinuationInvocation,
 	AgentPluginContinuationResult,
@@ -19,10 +19,12 @@ import type {
 	SessionEvent,
 	SessionExecutionMode,
 	SettingsPatch,
-} from "../../../../runtime-core/src/index.js";
+} from "@vetta/runtime-core";
+import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { purgeProjectSessions } from "../conversations/project-session-purge.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
 import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations/session-paths.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
@@ -32,6 +34,7 @@ import { getAppLogger } from "../logger.js";
 import { notify } from "../notifications/index.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
+import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
 import {
 	broadcastPluginsChanged,
 	buildAgentPluginRuntimeConfig,
@@ -121,6 +124,12 @@ const CHANNELS = {
 	PROMPT: "vetta:session:prompt",
 	CONTINUE: "vetta:session:continue",
 	ABORT: "vetta:session:abort",
+	QUEUE_STATE: "vetta:session:queue-state",
+	QUEUE_REMOVE: "vetta:session:queue-remove",
+	QUEUE_REORDER: "vetta:session:queue-reorder",
+	QUEUE_SEND_NOW: "vetta:session:queue-send-now",
+	QUEUE_RESUME: "vetta:session:queue-resume",
+	QUEUE_CLEAR: "vetta:session:queue-clear",
 	CLEAR_TODOS: "vetta:session:clear-todos",
 	SUBSCRIBE: "vetta:session:subscribe",
 	UNSUBSCRIBE: "vetta:session:unsubscribe",
@@ -132,6 +141,8 @@ const CHANNELS = {
 	GET_STATE: "vetta:session:get-state",
 	GET_MESSAGES: "vetta:session:get-messages",
 	DELETE: "vetta:session:delete",
+	/** 项目硬删除时清空该 cwd 名下的会话存储；会话不在项目目录内，见 project-session-purge。 */
+	DELETE_ALL_FOR_CWD: "vetta:session:delete-all-for-cwd",
 	RENAME: "vetta:session:rename",
 	AUTO_TITLE: "vetta:session:auto-title",
 	NEXT_PROMPT_SUGGESTIONS: "vetta:session:next-prompt-suggestions",
@@ -145,8 +156,6 @@ const CHANNELS = {
 	GET_SESSION_PATH: "vetta:session:get-session-path",
 	SET_GLOBAL_THINKING: "vetta:session:set-global-thinking-level",
 	GET_GLOBAL_THINKING: "vetta:session:get-global-thinking-level",
-	SET_MAX_RECENT_IMAGES: "vetta:session:set-max-recent-images",
-	GET_MAX_RECENT_IMAGES: "vetta:session:get-max-recent-images",
 	GET_PERSONAS: "vetta:session:get-personas",
 	GET_PERSONALIZATION: "vetta:session:get-personalization",
 	SET_PERSONALIZATION: "vetta:session:set-personalization",
@@ -166,6 +175,8 @@ const CHANNELS = {
 	BACKGROUND_TASKS_KILL: "vetta:session:background-tasks-kill",
 	SUBAGENT_INTERRUPT: "vetta:session:subagent-interrupt",
 	LIST_RUNNING: "vetta:session:list-running",
+	/** 有会话在跑的项目 cwd 列表；会话路径无法反推项目，见处理器上的说明。 */
+	LIST_RUNNING_CWDS: "vetta:session:list-running-cwds",
 	RUNNING_CHANGED: "vetta:session:running-changed",
 	// 某 session 是否有待回答的 ask_user_question；广播给所有窗口（侧栏 + 快捷面板）。
 	PENDING_QUESTION_CHANGED: "vetta:session:pending-question-changed",
@@ -180,6 +191,8 @@ const CHANNELS = {
 	VIEWER_EVENT: "vetta:session:viewer-event",
 	PLUGIN_TOOL_REQUEST: "vetta:plugins:agent-tool-request",
 	PLUGIN_TOOL_RESPONSE: "vetta:plugins:agent-tool-response",
+	PLUGIN_HOOK_REQUEST: "vetta:plugins:agent-hook-request",
+	PLUGIN_HOOK_RESPONSE: "vetta:plugins:agent-hook-response",
 	PLUGIN_CONTINUATION_REQUEST: "vetta:plugins:continuation-request",
 	PLUGIN_CONTINUATION_RESPONSE: "vetta:plugins:continuation-response",
 	PLUGIN_SYSTEM_PROMPT_REQUEST: "vetta:plugins:system-prompt-request",
@@ -264,6 +277,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	const questionMap = new Map<string, (result: RuntimeUserQuestionResult) => void>();
 	const sandboxGrantMap = new Map<string, (decision: RuntimeSandboxGrantDecision) => void>();
 	const pluginToolMap = new Map<string, (result: unknown) => void>();
+	const pluginHookMap = new Map<string, (result: unknown) => void>();
 	const pluginContinuationMap = new Map<string, (result: unknown) => void>();
 	const pluginSystemPromptMap = new Map<string, (result: unknown) => void>();
 	/** Track session cwd for debug file writing */
@@ -472,6 +486,52 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
+	setDesktopPluginHookInvoker((request, signal?: AbortSignal) => {
+		if (webContents.isDestroyed()) return Promise.resolve(undefined);
+		const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
+		if (
+			!plugin?.enabled ||
+			!plugin.permissions.includes("agent.hooks.register") ||
+			!plugin.grantedPermissions.includes("agent.hooks.register") ||
+			!plugin.permissions.includes("agent.hookHandler.execute") ||
+			!plugin.grantedPermissions.includes("agent.hookHandler.execute")
+		) {
+			return Promise.resolve(undefined);
+		}
+		return new Promise<unknown>((resolve, reject) => {
+			const requestId = randomUUID();
+			const finish = (result: unknown): void => {
+				pluginHookMap.delete(requestId);
+				if (signal) signal.removeEventListener("abort", onAbort);
+				if (typeof result === "object" && result !== null && "error" in result) {
+					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin hook failed")));
+					return;
+				}
+				const current = listPlugins().find((candidate) => candidate.id === request.pluginId);
+				if (!current?.enabled) {
+					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+					return;
+				}
+				resolve((result as { value?: unknown })?.value);
+			};
+			const onAbort = (): void => {
+				pluginHookMap.delete(requestId);
+				reject(new Error("Plugin hook invocation was aborted"));
+			};
+			if (signal?.aborted) {
+				reject(new Error("Plugin hook invocation was aborted"));
+				return;
+			}
+			if (signal) signal.addEventListener("abort", onAbort, { once: true });
+			pluginHookMap.set(requestId, finish);
+			webContents.send(CHANNELS.PLUGIN_HOOK_REQUEST, {
+				...request,
+				requestId,
+				settings: getPluginSettings(request.pluginId),
+			});
+		});
+	});
+
 	runtime.setPluginContinuationInvoker((request: AgentPluginContinuationInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) return Promise.resolve({ value: null, effects: [] });
 		return new Promise<AgentPluginHandlerResult<AgentPluginContinuationResult | null>>((resolve, reject) => {
@@ -614,7 +674,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// ADR-0007: 把实际 cwd（可能是「对话」per-session 子目录）返回给渲染端，
 		// 否则 activeSession.cwd 仍是用户传入的项目根，ActivityPanel 文件树会
 		// 落到项目根、看到其他 session 的子目录。
-		return { sessionId: result.sessionId, cwd: effectiveCwd };
+		return { sessionId: result.sessionId, sessionPath: result.sessionPath, cwd: effectiveCwd };
 	});
 
 	ipcMain.handle(CHANNELS.LIST_PROJECTS, async () => {
@@ -636,7 +696,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			sessionId,
 			...summarizeAgentPluginRuntimeConfig(buildAgentPluginRuntimeConfig()),
 		});
-		await runtime.prompt(sessionId, req);
+		return runtime.prompt(sessionId, req);
 	});
 
 	ipcMain.handle(CHANNELS.CONTINUE, async (_event, sessionId: unknown) => {
@@ -647,6 +707,37 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.ABORT, async (_event, sessionId: unknown) => {
 		assertNonEmptyString(sessionId, "sessionId");
 		await runtime.abort(sessionId);
+	});
+
+	// 输入队列管理（ADR-0060）：薄桥接，能力全部在 RuntimeHost。
+	ipcMain.handle(CHANNELS.QUEUE_STATE, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		return runtime.getQueueState(sessionId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_REMOVE, async (_event, sessionId: unknown, itemId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(itemId, "itemId");
+		return runtime.removeQueuedMessage(sessionId, itemId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_REORDER, async (_event, sessionId: unknown, itemIds: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		if (!Array.isArray(itemIds) || itemIds.some((id) => typeof id !== "string" || id.length === 0)) {
+			throw new Error("itemIds must be a non-empty-string array");
+		}
+		runtime.reorderQueuedMessages(sessionId, itemIds as string[]);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_SEND_NOW, async (_event, sessionId: unknown, itemId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		assertNonEmptyString(itemId, "itemId");
+		return runtime.sendQueuedMessageNow(sessionId, itemId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_RESUME, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		await runtime.resumeQueue(sessionId);
+	});
+	ipcMain.handle(CHANNELS.QUEUE_CLEAR, async (_event, sessionId: unknown) => {
+		assertNonEmptyString(sessionId, "sessionId");
+		runtime.clearQueue(sessionId);
 	});
 
 	ipcMain.handle(CHANNELS.CLEAR_TODOS, async (_event, sessionId: unknown) => {
@@ -705,27 +796,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	ipcMain.handle(CHANNELS.GET_GLOBAL_THINKING, () => {
 		const settings = readSettings();
 		return (settings.defaultThinkingLevel as string) ?? "off";
-	});
-
-	// 上下文里保留的图片张数（coding-agent images.maxRecentImages）。
-	// 0 = 不限制（保留全部）。仅写盘；运行中的 session 在下一轮 prompt 经
-	// settingsManager.reloadImageSettings() 懒重读生效，新建/重开的 session
-	// 在构造时直接读到——无需重启或广播。
-	ipcMain.handle(CHANNELS.SET_MAX_RECENT_IMAGES, (_event, count: unknown) => {
-		if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
-			throw new Error("Invalid maxRecentImages value");
-		}
-		updateSettings((settings) => {
-			const images = (settings.images as Record<string, unknown> | undefined) ?? {};
-			images.maxRecentImages = count;
-			settings.images = images;
-		});
-	});
-
-	ipcMain.handle(CHANNELS.GET_MAX_RECENT_IMAGES, () => {
-		const settings = readSettings();
-		const images = settings.images as { maxRecentImages?: number } | undefined;
-		return images?.maxRecentImages ?? 2;
 	});
 
 	// 个性化人设清单：唯一来源是 coding-agent 注册表，只下发 id/label/description，不含提示词正文。
@@ -818,6 +888,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		}
 	});
 
+	ipcMain.handle(CHANNELS.DELETE_ALL_FOR_CWD, async (_event, cwd: unknown) => {
+		assertNonEmptyString(cwd, "cwd");
+		return purgeProjectSessions(cwd, {
+			listSessions: (target) => listSessionHistory(target),
+			deleteSession: (sessionPath) => runtime.deleteSession(sessionPath),
+			// 分片目录是新会话的落点；`<项目>/.vetta/sessions` 是存量兼容位置，随项目目录
+			// 一起消失，这里不重复处理（见 composition.resolveDesktopRuntimeSessionRoots）。
+			resolveSessionDirs: (target) => [codingAgentSessionShardPath(target)],
+			removeDirectory: (dir) => rm(dir, { recursive: true, force: true }),
+			logError: (message, ...args) => sessionLog.error(message, ...args),
+		});
+	});
+
 	ipcMain.handle(CHANNELS.RENAME, async (_event, sessionPath: unknown, name: unknown) => {
 		assertNonEmptyString(sessionPath, "sessionPath");
 		assertNonEmptyString(name, "name");
@@ -858,6 +941,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.LIST_RUNNING, () => runtime.getRunningSessionPaths());
+
+	/**
+	 * 当前有会话在跑的项目 cwd（去重）。
+	 *
+	 * 为什么不让调用方拿 LIST_RUNNING 的路径自己反推：会话文件默认落在
+	 * `<agentDir>/sessions/--编码后的 cwd--/` 下，而那个编码把 `/`、`\`、`:` 全压成 `-`
+	 * 且不可逆，`my-project` 与 `my/project` 会撞进同一个分片；`<cwd>/.vetta/sessions`
+	 * 等别的布局也同时存在。唯一可靠的来源是会话头里的 cwd。
+	 * 运行中的会话通常只有个位数，逐个读头的代价可以忽略。
+	 */
+	ipcMain.handle(CHANNELS.LIST_RUNNING_CWDS, async () => {
+		const paths = runtime.getRunningSessionPaths();
+		const cwds = await Promise.all(paths.map((path) => readSessionCwdFromHeader(path).catch(() => undefined)));
+		return [...new Set(cwds.filter((cwd): cwd is string => typeof cwd === "string" && cwd.length > 0))];
+	});
 
 	ipcMain.handle(CHANNELS.CLEAR_DEFAULT_CONVERSATION, async (_event, scope: unknown) => {
 		// 物理分家后（ADR-0005）每个 scope 对应一个独立 cwd，互不干扰：
@@ -985,6 +1083,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		const resolve = pluginToolMap.get(requestId);
 		if (!resolve) return;
 		resolve(result);
+	});
+	ipcMain.handle(CHANNELS.PLUGIN_HOOK_RESPONSE, (_event, requestId: unknown, result: unknown) => {
+		assertNonEmptyString(requestId, "requestId");
+		pluginHookMap.get(requestId)?.(result);
 	});
 
 	ipcMain.handle(CHANNELS.PLUGIN_CONTINUATION_RESPONSE, (_event, requestId: unknown, result: unknown) => {
@@ -1174,6 +1276,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve({ error: "Plugin host renderer is unavailable" });
 		}
 		pluginToolMap.clear();
+		for (const resolve of pluginHookMap.values()) {
+			resolve({ error: "Plugin host renderer is unavailable" });
+		}
+		pluginHookMap.clear();
 		for (const resolve of pluginContinuationMap.values()) {
 			resolve({ value: null });
 		}
@@ -1276,6 +1382,10 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			resolve({ error: "Plugin host renderer disposed" });
 		}
 		pluginToolMap.clear();
+		for (const resolve of pluginHookMap.values()) {
+			resolve({ error: "Plugin host renderer disposed" });
+		}
+		pluginHookMap.clear();
 		for (const resolve of pluginContinuationMap.values()) {
 			resolve({ value: null });
 		}
@@ -1285,6 +1395,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		unregisterQuestionResolved();
 		runtime.setUserSandboxGrantHandler(undefined);
 		runtime.setPluginToolInvoker(undefined);
+		setDesktopPluginHookInvoker(undefined);
 		runtime.setPluginContinuationInvoker(undefined);
 		runtime.setPluginSystemPromptInvoker(undefined);
 		// 不在此处 disposeAllSessions：共享 runtime 的 session 可能正被

@@ -56,35 +56,14 @@ if [[ -n "$PLATFORM" ]]; then
 fi
 
 echo "==> Installing dependencies..."
-npm ci
-
 if [[ "$SKIP_DEPS" == "false" ]]; then
-    echo "==> Installing cross-platform native bindings..."
-    # npm ci only installs optional deps for the current platform
-    # We need all platform bindings for bun cross-compilation
-    # Use --force to bypass platform checks (os/cpu restrictions in package.json)
-    # Install all in one command to avoid npm removing packages from previous installs
-    npm install --no-save --force \
-        @mariozechner/clipboard-darwin-arm64@0.3.0 \
-        @mariozechner/clipboard-darwin-x64@0.3.0 \
-        @mariozechner/clipboard-linux-x64-gnu@0.3.0 \
-        @mariozechner/clipboard-linux-arm64-gnu@0.3.0 \
-        @mariozechner/clipboard-win32-x64-msvc@0.3.0 \
-        @img/sharp-darwin-arm64@0.34.5 \
-        @img/sharp-darwin-x64@0.34.5 \
-        @img/sharp-linux-x64@0.34.5 \
-        @img/sharp-linux-arm64@0.34.5 \
-        @img/sharp-win32-x64@0.34.5 \
-        @img/sharp-libvips-darwin-arm64@1.2.4 \
-        @img/sharp-libvips-darwin-x64@1.2.4 \
-        @img/sharp-libvips-linux-x64@1.2.4 \
-        @img/sharp-libvips-linux-arm64@1.2.4
+	bun install --frozen-lockfile --cpu="*" --os="*"
 else
-    echo "==> Skipping cross-platform native bindings (--skip-deps)"
+	bun install --frozen-lockfile
 fi
 
 echo "==> Building all packages..."
-npm run build
+bun run build
 
 echo "==> Building binaries..."
 cd packages/coding-agent
@@ -102,15 +81,11 @@ fi
 
 for platform in "${PLATFORMS[@]}"; do
     echo "Building for $platform..."
-    # Externalize koffi to avoid embedding all 18 platform .node files (~74MB)
-    # into every binary. Koffi is only used on Windows for VT input and the
-    # call site has a try/catch fallback. For Windows builds, we copy the
-    # appropriate .node file alongside the binary below.
-    if [[ "$platform" == "windows-x64" ]]; then
-        bun build --compile --external koffi --target=bun-$platform ./dist/cli.js --outfile binaries/$platform/pi.exe
-    else
-        bun build --compile --external koffi --target=bun-$platform ./dist/cli.js --outfile binaries/$platform/pi
-    fi
+	if [[ "$platform" == "windows-x64" ]]; then
+		bun ../cli-app/scripts/compile-standalone.mjs --entry agent --target=bun-$platform --outfile binaries/$platform/pi.exe
+	else
+		bun ../cli-app/scripts/compile-standalone.mjs --entry agent --target=bun-$platform --outfile binaries/$platform/pi
+	fi
 done
 
 echo "==> Creating release archives..."
@@ -123,7 +98,7 @@ for platform in "${PLATFORMS[@]}"; do
     cp ../../node_modules/@silvia-odwyer/photon-node/photon_rs_bg.wasm binaries/$platform/
     mkdir -p binaries/$platform/theme
     cp dist/modes/interactive/theme/*.json binaries/$platform/theme/
-    cp -r dist/core/export-html binaries/$platform/
+    cp -r dist/export-html binaries/$platform/
     cp -r docs binaries/$platform/
     cp -r examples binaries/$platform/
 

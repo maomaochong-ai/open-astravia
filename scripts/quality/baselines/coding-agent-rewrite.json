@@ -1,0 +1,60 @@
+{
+	"version": 13,
+	"oldImplementationEdges": [],
+	"runtimeBackedges": [],
+	"oldImplementationFiles": [],
+	"compatibilityExports": [],
+	"legacyCoreExports": [],
+	"runtimeHostExports": [],
+	"legacyExampleImports": [],
+	"oversizedStableExtensionModules": [],
+	"oversizedStableResourceModules": [],
+	"oversizedContextRuntimeModules": [],
+	"oversizedSdkSessionHostModules": [],
+	"legacyHtmlExportReferences": [],
+	"legacyMemoryReferences": [],
+	"retiredToolReferences": [],
+	"retiredRuntimeCompositionFiles": [],
+	"retiredRuntimeCompositionReferences": [],
+	"cliCompositionForwarders": [],
+	"cliCompositionPublicEdges": [],
+	"desktopCliCompositionEdges": [],
+	"retiredCliSessionHostFiles": [],
+	"retiredCliSessionHostReferences": [],
+	"codingAgentSessionHostProtocolReferences": [],
+	"retiredCliRuntimeHostFiles": [],
+	"retiredCliRuntimeHostReferences": [],
+	"runtimeHostEntryOwnershipReferences": [],
+	"cliSessionAssemblyProtocolReferences": [],
+	"compositionPublicExports": [
+		"CodingAgentActiveSessionHost",
+		"CodingAgentProcessSessionHost",
+		"CodingAgentRuntimeComposition",
+		"CodingAgentRuntimeCompositionOptions",
+		"CodingAgentRuntimeHostSessionBackend",
+		"CodingAgentRuntimeSessionOptions",
+		"CodingAgentSessionTransition",
+		"CodingAgentSessionTransitionLifecycle",
+		"CodingAgentSessionSetup",
+		"KnowledgeProcessingPageWriter",
+		"KnowledgeProcessingSession",
+		"KnowledgeProcessingSessionFactory",
+		"KnowledgeProcessingSessionRequest",
+		"KnowledgeProcessingUsage",
+		"createCodingAgentSessionSetupSeedInitializer",
+		"createCodingAgentRuntimeComposition",
+		"createKnowledgeProcessingSessionFactory",
+		"resolveSessionIdFromPath"
+	],
+	"externalCompositionDeepImports": [],
+	"codingAgentRootExportEdges": [
+		{
+			"path": "packages/coding-agent/src/index.ts",
+			"specifier": "./public-api/extensions.js",
+			"names": [
+				"*"
+			]
+		}
+	],
+	"codingAgentRootDisallowedExportEdges": []
+}

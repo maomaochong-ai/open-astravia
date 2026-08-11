@@ -1,0 +1,136 @@
+---
+title: 主题模块能力参考
+description: 理解 appearance、component、region、page、runtime、host hook 和主题存储的职责边界。
+---
+
+`ThemeModule` 是主题的公开组合合同。主题只声明自己真正提供的能力；未提供的区域继续使用默认 UI。
+
+```typescript
+import type { ThemeModule } from "@vetta/theme-sdk";
+
+const theme: ThemeModule = {
+  meta: {
+    id: "my-theme",
+    name: "My Theme",
+    sdkVersion: "0.1.0",
+    version: "0.1.0",
+  },
+  appearance: {},
+  components: {},
+  regions: {},
+  pages: [],
+  runtime: [],
+};
+
+export default theme;
+```
+
+## 能力优先级
+
+同一区域的生效顺序是：
+
+<div className="docs-lifecycle" aria-label="主题能力优先级">
+  <span>Region override</span><b>→</b><span>Component override</span><b>→</b><span>Appearance config</span><b>→</b><span>Default UI</span>
+</div>
+
+只需要改背景、边框和颜色时停在 appearance；只替换一个按钮或列表项时使用 component；只有需要重新组合整个区域时才使用 region。
+
+## appearance
+
+`ThemeAppearance` 提供：
+
+- `colorScheme`：主题激活时偏好的 `light` 或 `dark` 模式。
+- `colors.common`：明暗模式共享的 token 覆盖。
+- `colors.light` / `colors.dark`：模式专属颜色覆盖。
+- `surfaces`：在宿主登记的表面槽位上增加背景图、四角图、九宫格或水平切片装饰。
+
+appearance 不改变组件行为。表面装饰不应拦截指针事件，也不应参与内容布局。
+
+## components
+
+Component override 替换一个已登记的局部组件。实现必须与宿主 props 合同兼容：
+
+- 透传 `onClick`、`disabled`、`title`、`aria-*` 和 `data-*`。
+- 作为按钮、trigger 或焦点目标时转发 `ref`。
+- 不依赖 Desktop 内部 atom、router、IPC 或私有 hook。
+- 不吞掉默认 action，也不假设父组件未承诺的 DOM 结构。
+
+主题可以从 `@vetta/theme-sdk/app-shell`、`sidebar` 等公开子路径读取 model hook，再把 model 传给官方 props-driven view。
+
+## regions
+
+Region override 接管一个完整区域，可以重排默认组件、插入主题 UI 并复用 `@vetta/theme-ui`。它仍不拥有业务数据加载和跨领域流程。
+
+Region props 提供稳定 model、actions 和 classNames。不要在主题中重新实现项目查询、会话切换、权限确认或 IPC。
+
+## pages
+
+主题可以声明自己的页面：
+
+```typescript
+{
+  id: "sanctum",
+  title: { "zh-CN": "洞府", "en-US": "Sanctum" },
+  layout: "main",
+  component: SanctumPage,
+  nav: { order: 20 }
+}
+```
+
+| layout | 覆盖范围 |
+| --- | --- |
+| `content` | 保留应用壳与标准内容约束 |
+| `main` | 接管主内容区，保留全局壳 |
+| `app` | 使用最宽的主题页面范围 |
+
+宿主通过固定 `/theme/$themeId/$pageId` 路由承载页面。页面 ID 在主题内稳定，标题必须提供可本地化记录。
+
+## runtime
+
+`runtime` 是主题激活期间常驻的无 UI React 组件，适合把宿主公开数据同步到主题自有状态。它通常返回 `null`。
+
+不要用 runtime 绕过主题边界执行通用业务逻辑、访问私有 store 或持有无法清理的全局副作用。所有 effect 必须在卸载时释放。
+
+## 主题自有存储
+
+`useThemeStorage()` 提供按当前 `themeId` 隔离的 JSON 可序列化键值存储：
+
+```typescript
+import { useThemeStorage } from "@vetta/theme-sdk/storage";
+
+const storage = useThemeStorage();
+const value = storage.get("progress");
+storage.set("progress", { score: 42 });
+```
+
+- 只支持 `null`、布尔、数字、字符串、数组和普通对象。
+- 写入先更新内存缓存，再由宿主异步持久化。
+- 主题不能传入任意 themeId，隔离由宿主保证。
+- `clear()` 只清理当前主题的数据。
+
+数据默认落在 `~/.vetta/desktop-app/themes/<themeId>/data.json`。当前主题卸载流程不会自动清理该目录。
+
+## 包边界
+
+| 包 | 应放内容 |
+| --- | --- |
+| `@vetta/theme-sdk` | 主题协议、registry、host facade、model hook 和 props 类型 |
+| `@vetta/theme-ui` | 不绑定 Desktop 私有状态的表面、装饰和布局 primitive |
+| 具体主题包 | 主题组件、图片、样式、页面和 runtime |
+| `desktop-app` | 真实业务状态、IPC、router、host adapter 和默认 connected container |
+
+主题不得导入 `@shared/*`、`@domains/*` 或 `desktop-app/src/**`。需要新的稳定能力时，先把窄合同加入 Theme SDK，而不是深度导入宿主实现。
+
+## 验收清单
+
+1. 未启用主题时默认 UI 行为不变。
+2. 明暗模式、窗口尺寸和页面切换没有内容遮挡。
+3. component override 保留键盘、焦点和 aria 行为。
+4. region 不复制宿主数据获取或权限逻辑。
+5. runtime 和订阅在停用主题时完整清理。
+6. 用户可见文案走 i18n。
+7. 通过仓库 `verify:ui:*` 流程验证真实桌面宿主。
+
+<Callout type="info" title="当前分发边界">
+  主题仍面向内置或策展发布。远程主题市场、通用 ZIP 安装和卸载时自动清理存储尚未作为公开能力提供。
+</Callout>

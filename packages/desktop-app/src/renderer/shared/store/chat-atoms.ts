@@ -1,7 +1,7 @@
 import type { ChatErrorKind } from "@domains/chat/services/classifyChatError";
+import type { ContextCompositionReport, PromptAttachmentRef, PromptResourceRef } from "@vetta/runtime-core";
 import type { CardDescriptor } from "@vetta-org/plugin-sdk";
 import { atom } from "jotai";
-import type { PromptAttachmentRef, PromptResourceRef } from "../../../../../runtime-core/src/index.js";
 import { runningSessionPathsAtom } from "./running-sessions-atoms";
 
 // ─── Rich content blocks ───
@@ -286,6 +286,8 @@ export interface ContextUsageData {
 	percent: number | null;
 	/** Context window size in tokens */
 	contextWindow: number;
+	/** Latest privacy-safe model-call composition report. */
+	composition?: ContextCompositionReport;
 }
 
 // ─── Slash panel (skill/scene selection) ───
@@ -537,6 +539,14 @@ export interface SendMessageOptions {
 	metadata?: Record<string, unknown>;
 	/** Settings page tab id for the optimistic bubble badge (e.g. "mcp" →「MCP配置协助」). */
 	settingsAssistTabId?: string;
+	/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。 */
+	source?: "plugin";
+}
+
+/** sendMessage 的回执（ADR-0060）：streaming 中入 kernel 队列时返回 queued + 条目 id。 */
+export interface SendMessageResult {
+	status: "sent" | "queued";
+	queueItemId?: string;
 }
 
 /**
@@ -544,7 +554,7 @@ export interface SendMessageOptions {
  * openSession writes activeSessionRef so overrideText can go out immediately.
  */
 export const sendMessageFnRef: {
-	current: ((overrideText?: string, options?: SendMessageOptions) => Promise<void>) | null;
+	current: ((overrideText?: string, options?: SendMessageOptions) => Promise<SendMessageResult | undefined>) | null;
 } = {
 	current: null,
 };

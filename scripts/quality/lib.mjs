@@ -14,8 +14,10 @@ export const repoRoot = process.cwd();
 export const TESTABLE_PACKAGES = {
 	ai: "packages/ai",
 	agent: "packages/agent",
+	"runtime-mcp": "packages/runtime-mcp",
 	"coding-agent": "packages/coding-agent",
 	"ecosystem-adapter": "packages/ecosystem-adapter",
+	"plugin-cli": "packages/plugins/plugin-cli",
 };
 
 /** Short name → directory for common workspace packages. */
@@ -30,9 +32,9 @@ export const PACKAGE_DIRS = {
 	"theme-sdk": "packages/theme-sdk",
 	"theme-ui": "packages/theme-ui",
 	"runtime-core": "packages/runtime-core",
+	"runtime-knowledge": "packages/runtime-knowledge",
 	"runtime-tools": "packages/runtime-tools",
 	"runtime-storage": "packages/runtime-storage",
-	"runtime-mcp": "packages/runtime-mcp",
 	"runtime-telemetry": "packages/runtime-telemetry",
 	"action-rpc": "packages/action-rpc",
 	toolkit: "packages/toolkit",
@@ -115,6 +117,7 @@ export function packagesFromPaths(paths) {
 		if (parts[1] === "plugins") {
 			if (parts[2] === "plugin-sdk") found.add("plugin-sdk");
 			else if (parts[2] === "plugin-vite") found.add("plugin-vite");
+			else if (parts[2] === "plugin-cli") found.add("plugin-cli");
 			else if (parts[2] === "presets" && parts[3]) found.add(`presets/${parts[3]}`);
 			else if (parts[2] === "externals" && parts[3]) found.add(`externals/${parts[3]}`);
 			continue;

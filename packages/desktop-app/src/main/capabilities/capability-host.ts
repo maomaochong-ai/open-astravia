@@ -1,6 +1,8 @@
 import { type CapabilityAccessAuditEvent, CapabilityAccessController, CapabilityHub } from "@vetta/capability-runtime";
 import { PluginCapabilityAdapter } from "@vetta/capability-sdk/internal/plugin-adapter";
 import { ThemeCapabilityAdapter } from "@vetta/capability-sdk/internal/theme-adapter";
+import { ArtifactStore } from "../artifacts/artifact-store.js";
+import { JobManager } from "../jobs/job-manager.js";
 import { getAppLogger } from "../logger.js";
 import { listPlugins } from "../plugins/plugin-store.js";
 import { registerDesktopDomainProviders } from "./domain-providers.js";
@@ -30,8 +32,10 @@ function auditCapabilityAccess(event: CapabilityAccessAuditEvent): void {
 
 function createDesktopCapabilityHost(): DesktopCapabilityHost {
 	const hub = new CapabilityHub();
-	const foundationRegistration = registerDesktopFoundationProviders(hub.foundation);
-	const domainRegistration = registerDesktopDomainProviders(hub.domain);
+	const artifacts = new ArtifactStore();
+	const jobs = new JobManager();
+	const foundationRegistration = registerDesktopFoundationProviders(hub.foundation, artifacts, jobs);
+	const domainRegistration = registerDesktopDomainProviders(hub.domain, artifacts, jobs);
 	const access = new CapabilityAccessController(hub, { audit: auditCapabilityAccess });
 	const pluginAdapter = new PluginCapabilityAdapter(access, {
 		resolvePermissions: (pluginId) => {
@@ -43,6 +47,9 @@ function createDesktopCapabilityHost(): DesktopCapabilityHost {
 			const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 			return plugin?.enabled === true && plugin.trustLevel === "official";
 		},
+		// Jobs and temporary artifacts are owned by the stable plugin id, not by a
+		// renderer capability session. They must survive renderer reloads so the
+		// replacement session can reconcile an in-flight media operation.
 	});
 	const themeAdapter = new ThemeCapabilityAdapter(access);
 	return {
@@ -54,6 +61,8 @@ function createDesktopCapabilityHost(): DesktopCapabilityHost {
 			themeAdapter.dispose();
 			domainRegistration.dispose();
 			foundationRegistration.dispose();
+			jobs.dispose();
+			artifacts.dispose();
 		},
 	};
 }

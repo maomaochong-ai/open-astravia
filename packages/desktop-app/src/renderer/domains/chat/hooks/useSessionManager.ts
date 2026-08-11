@@ -48,6 +48,8 @@ import {
 	reasoningByModelAtom,
 	recordSentInputAndClearDraft,
 	retryProgressAtom,
+	type SendMessageOptions,
+	type SendMessageResult,
 	type SessionExecutionMode,
 	type SubagentTask,
 	selectedModelAtom,
@@ -61,17 +63,18 @@ import {
 } from "@shared/store/atoms";
 import {
 	bumpQueuedDispatchSeq,
-	enqueueMessageAtom,
 	getQueuedDispatchSeq,
 	getQueueForSession,
 	messageQueueBySessionAtom,
-	removeQueuedMessageAtom,
+	type QueuedMessage,
+	setQueueForSessionAtom,
+	setQueuePausedAtom,
 } from "@shared/store/message-queue-atoms";
 import { useNavigate } from "@tanstack/react-router";
-import type { ConversationScenario } from "@vetta-org/plugin-sdk";
+import type { PromptAttachmentRef, PromptRequest } from "@vetta/runtime-core";
+import type { ConversationScenario, PluginPromptContext } from "@vetta-org/plugin-sdk";
 import { getDefaultStore, useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useRef } from "react";
-import type { PromptAttachmentRef, PromptRequest } from "../../../../../../runtime-core/src/index.js";
 import {
 	adoptDraftId,
 	appendError,
@@ -93,6 +96,12 @@ import {
 	turnStartTime,
 	turnStatsCache,
 } from "../services/chat-service";
+import { resolveSessionContextComposition, writeCachedContextComposition } from "../services/context-composition-cache";
+import {
+	reconcileOptimisticUserMessages,
+	rememberOptimisticUserMessage,
+} from "../services/optimistic-user-message-cache";
+import { diffConsumedQueueEntries } from "../services/queue-mirror";
 
 /** 把 "provider/id" 形式的 modelKey 解析为 ChatMessage.model 结构 */
 function modelKeyToParts(key: string | null | undefined): { provider: string; id: string } | undefined {
@@ -114,12 +123,9 @@ interface SessionManagerResult {
 	 * options.metadata：合并进本轮 PromptRequest.metadata（仅宿主/input-pipeline 消费，不进用户气泡正文）。
 	 * options.settingsAssistTabId：乐观用户气泡打上页面对应标签（如「MCP配置协助」）。
 	 */
-	sendMessage: (
-		overrideText?: string,
-		options?: { metadata?: Record<string, unknown>; settingsAssistTabId?: string },
-	) => Promise<void>;
+	sendMessage: (overrideText?: string, options?: SendMessageOptions) => Promise<SendMessageResult | undefined>;
 	abortMessage: () => Promise<void>;
-	/** 立即发送某条排队消息：streaming 时先中止当前流、等 aborted 再发，空闲则直发。 */
+	/** 立即发送某条排队消息（ADR-0060）：streaming 时提升为 steering 注入当前回合，空闲则直发。 */
 	sendQueuedNow: (runtimeId: string, id: string) => Promise<void>;
 	openSessionRef: React.MutableRefObject<
 		| ((
@@ -363,16 +369,18 @@ export function useSessionManager(): SessionManagerResult {
 				sessionKind,
 			);
 			const { sessionId } = createResult;
+			const canonicalSessionPath = createResult.sessionPath || sessionPath || "";
 			// ADR-0007: 「对话」项目下 main 会把 cwd 改写成 per-session 子目录，
 			// 这里以 main 返回的 effective cwd 为准，保证 FilesPanel/调试 cwd 都指向子目录。
 			const effectiveCwd = createResult.cwd ?? cwd;
 
 			// 拿到 sessionId 就立即写 activeSession；默认再 navigate 到 ChatView。
-			// 真实 sessionPath 解析（可能还要再走一次 IPC）放到后面，等好了再补一次写入。
+			// main 返回 Runtime 实际持有的 canonical sessionPath；历史会话导入时它不同于
+			// 用户选择的 Legacy 源路径，必须立即采用，避免切回后再次触发迁移。
 			// 这样 Welcome → Chat 的转场就不会被 getFullHistory / getState / getSessionPath
 			// 的串行 IPC 拖住，体感保持瞬时。
 			// navigate:false：设置页 AI 协助等场景只后台建会话，留在当前路由，由侧栏高亮 + 飞球引导。
-			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: sessionPath ?? "", runtimeId: sessionId };
+			const earlySessionInfo = { cwd: effectiveCwd, sessionPath: canonicalSessionPath, runtimeId: sessionId };
 			setActiveSession(earlySessionInfo);
 			activeSessionRef.current = earlySessionInfo;
 			if (shouldNavigate) {
@@ -386,19 +394,24 @@ export function useSessionManager(): SessionManagerResult {
 			const statePromise = window.vetta.session.getState(sessionId);
 
 			const history = await historyPromise;
-			const mapped = fullHistoryToChat(history);
+			const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
 			setChatMessages(mapped);
 
 			// If this session already has any prior turn (loaded from disk) we never
 			// want to auto-rename — only brand-new sessions on their first round.
 			if (sessionPath && mapped.some((m) => m.role === "user")) {
-				autoTitledSessionsRef.current.add(sessionPath);
+				autoTitledSessionsRef.current.add(canonicalSessionPath);
 			}
 
 			const state = await statePromise;
+			const resolvedSessionPath =
+				canonicalSessionPath || (await window.vetta.session.getSessionPath(sessionId)) || sessionPath || "";
+			const cachedKey = resolvedSessionPath;
+			const contextComposition = resolveSessionContextComposition(resolvedSessionPath, state.contextComposition);
 			setContextUsage({
 				percent: state.contextPercent,
 				contextWindow: state.contextWindow,
+				...(contextComposition ? { composition: contextComposition } : {}),
 			});
 			setModelSupportsImages(state.model?.input?.includes("image") ?? false);
 			setSessionExecutionMode(state.executionMode);
@@ -429,8 +442,6 @@ export function useSessionManager(): SessionManagerResult {
 			// Resolve the on-disk session path so that downstream features (turn
 			// stats cache, auto-title rename) can key off the actual file path even
 			// for sessions that were just created by the runtime.
-			const resolvedSessionPath = sessionPath ?? (await window.vetta.session.getSessionPath(sessionId)) ?? "";
-			const cachedKey = resolvedSessionPath;
 			setLastTurnUsage(turnStatsCache.get(cachedKey) ?? null);
 
 			// If session is still streaming, adopt the last history assistant message as draft
@@ -513,6 +524,39 @@ export function useSessionManager(): SessionManagerResult {
 				// the new session's atom. activeSessionRef is updated synchronously
 				// above and reflects the latest user-facing session.
 				if (activeSessionRef.current?.runtimeId !== sessionId) return;
+				// ── kernel 队列镜像（ADR-0060）──
+				// 条目「消失且非本端主动移除」= 已被 turn 消费：此刻补用户气泡，
+				// 时序与模型可见顺序严格一致；agent_end 重拉由乐观对账按文本吸收。
+				if (event.type === "queue.changed") {
+					const queueStore = getDefaultStore();
+					const prevQueue = getQueueForSession(queueStore.get(messageQueueBySessionAtom), sessionId);
+					const nextQueue: QueuedMessage[] = event.entries.map((entry) => ({
+						id: entry.id,
+						displayText: entry.displayText,
+						behavior: entry.behavior,
+					}));
+					queueStore.set(setQueueForSessionAtom, { runtimeId: sessionId, items: nextQueue });
+					queueStore.set(setQueuePausedAtom, { runtimeId: sessionId, paused: event.paused });
+					const consumedEntries = diffConsumedQueueEntries(prevQueue, nextQueue);
+					if (consumedEntries.length > 0) {
+						// 同一 turn 内接力消费：把上一段流先落定、并切断 assistant 草稿——
+						// 否则后续 delta 仍按 draftId 续写进用户气泡**之前**的旧回复气泡里，
+						// 第二条回复会显示在它自己的用户消息上方（ADR-0060）。
+						flushDeltas();
+						resetStreamState();
+					}
+					for (const consumed of consumedEntries) {
+						const consumedMsg: ChatMessage = {
+							id: nextId("user"),
+							role: "user",
+							text: consumed.displayText,
+							timestamp: Date.now(),
+						};
+						rememberOptimisticUserMessage(sessionId, consumedMsg, queueStore.get(chatMessagesAtom));
+						setChatMessages((prev) => [...prev, consumedMsg]);
+					}
+					return;
+				}
 				// ── Lifecycle ──
 				if (event.type === "session.lifecycle") {
 					if (event.phase === "agent_start") {
@@ -578,7 +622,7 @@ export function useSessionManager(): SessionManagerResult {
 								if (getQueuedDispatchSeq(sessionId) !== (turnStartDispatchSeqRef.current.get(sessionId) ?? 0)) {
 									return;
 								}
-								const mapped = fullHistoryToChat(history);
+								const mapped = reconcileOptimisticUserMessages(sessionId, fullHistoryToChat(history));
 								if (elapsed > 0) {
 									for (let i = mapped.length - 1; i >= 0; i--) {
 										if (mapped[i].role === "assistant") {
@@ -801,9 +845,13 @@ export function useSessionManager(): SessionManagerResult {
 					// Cache turn stats for session restore
 					const sp = activeSessionRef.current?.sessionPath;
 					if (sp != null) turnStatsCache.set(sp, turnStats);
+					if (sp && event.contextComposition) {
+						writeCachedContextComposition(sp, event.contextComposition);
+					}
 					setContextUsage({
 						percent: event.contextPercent ?? null,
 						contextWindow: event.contextWindow ?? 0,
+						...(event.contextComposition ? { composition: event.contextComposition } : {}),
 					});
 					return;
 				}
@@ -908,14 +956,38 @@ export function useSessionManager(): SessionManagerResult {
 				setLastActiveSession({ cwd, sessionPath: cachedKey });
 			}
 
+			// kernel 队列镜像初始化（ADR-0060）：整体替换、不做消费差分——后台期间被
+			// 消费的条目由历史重放呈现，这里只要拿到当前真实队列与 paused 状态。
+			void window.vetta.session
+				.getQueueState(sessionId)
+				.then((state) => {
+					if (activeSessionRef.current?.runtimeId !== sessionId) return;
+					const queueStore = getDefaultStore();
+					queueStore.set(setQueueForSessionAtom, {
+						runtimeId: sessionId,
+						items: state.entries.map((entry) => ({
+							id: entry.id,
+							displayText: entry.displayText,
+							behavior: entry.behavior,
+						})),
+					});
+					queueStore.set(setQueuePausedAtom, { runtimeId: sessionId, paused: state.paused });
+				})
+				.catch((err) => {
+					console.warn("[useSessionManager] getQueueState failed", err);
+				});
+
 			// ADR-0007: 侧边栏 sessionsMap 挂在「对话」项目根；运行 cwd 可能是 UUID 子目录。
-			// 必须归一到 bucket 再 list，否则 fork/打开已有会话后侧栏不出现该条。
+			// 必须归一到 bucket 再 list，否则 fork/打开已有会话后侧栏不出现该条。这里不再
+			// 阻塞 openSession：新会话的首条 prompt 只依赖上面的订阅与运行时状态，侧边栏
+			// 对账可以在发送之后异步完成。
 			const bucketCwd = conversationBucketCwd(effectiveCwd, defaultConversationCwdRef.current);
-			await loadSessions(bucketCwd);
-			// 乐观兜底：fork 刚写出的文件若 list 未收录，再插入一次（已有则不动，避免改 modifiedAt 排序）。
-			if (cachedKey) {
-				const listed = getDefaultStore().get(sessionsMapAtom).get(bucketCwd) ?? [];
-				if (!listed.some((s) => s.path === cachedKey)) {
+			void loadSessions(bucketCwd)
+				.then(() => {
+					// 乐观兜底：fork 刚写出的文件若 list 未收录，再插入一次（已有则不动，避免改 modifiedAt 排序）。
+					if (!cachedKey) return;
+					const listed = getDefaultStore().get(sessionsMapAtom).get(bucketCwd) ?? [];
+					if (listed.some((s) => s.path === cachedKey)) return;
 					const firstUser = mapped.find((m) => m.role === "user");
 					const firstMessage =
 						(firstUser?.text ?? "").trim().slice(0, 80) || i18n.t("chat:session.emptyMessageLabel");
@@ -928,8 +1000,10 @@ export function useSessionManager(): SessionManagerResult {
 						parentSessionPath,
 						parentEntryId,
 					});
-				}
-			}
+				})
+				.catch((err) => {
+					console.warn("[useSessionManager] background session list refresh failed", err);
+				});
 		},
 		[
 			setChatMessages,
@@ -969,10 +1043,22 @@ export function useSessionManager(): SessionManagerResult {
 	openSessionFnRef.current = openSession;
 
 	const sendMessage = useCallback(
-		async (overrideText?: string, options?: { metadata?: Record<string, unknown>; settingsAssistTabId?: string }) => {
-			// 读 ref 而非 state：允许在同一 tick 内先 openSession 再立即 sendMessage
-			// （例如 NewSessionPage 的"创建会话+发送"组合调用），避免 React 闭包拿到旧 null。
-			const session = activeSessionRef.current ?? activeSession;
+		async (
+			overrideText?: string,
+			options?: {
+				metadata?: Record<string, unknown>;
+				settingsAssistTabId?: string;
+				/** 插件 sendPrompt 路径：不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。 */
+				source?: "plugin";
+			},
+		): Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined> => {
+			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
+			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
+			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
+			// ChatPage / NewSessionPage），pluginSendMessageRef 只留最后渲染者的
+			// sendMessage，而该实例的 ref 记的是「它自己最后打开的会话」，与用户当前
+			// 激活会话可能相差很久：插件派活曾因此落进另一个 workspace 的陈年会话。
+			const session = getDefaultStore().get(activeSessionAtom);
 			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
 			const inputValue = getDefaultStore().get(inputValueAtom);
 			const attachedImages = attachedImagesRef.current;
@@ -995,13 +1081,16 @@ export function useSessionManager(): SessionManagerResult {
 				return;
 			}
 			// 发出新 prompt：清空该会话的输入预测，并作废仍在飞的生成（过期判定）。
-			bumpSuggestionToken(session.runtimeId);
-			setPromptSuggestions((prev) => {
-				if (!(session.runtimeId in prev)) return prev;
-				const next = { ...prev };
-				delete next[session.runtimeId];
-				return next;
-			});
+			// 插件静默发送不动用户正在看的预测。
+			if (options?.source !== "plugin") {
+				bumpSuggestionToken(session.runtimeId);
+				setPromptSuggestions((prev) => {
+					if (!(session.runtimeId in prev)) return prev;
+					const next = { ...prev };
+					delete next[session.runtimeId];
+					return next;
+				});
+			}
 			const rawText = hasOverride ? override : inputValue.trim();
 			const images = !hasOverride && attachedImages.length > 0 ? attachedImages : undefined;
 			// 把附图落盘到会话图片缓存，改用 @路径 引用而非把 base64 塞进上下文：
@@ -1116,7 +1205,37 @@ export function useSessionManager(): SessionManagerResult {
 			// 清 todo」这些开启新一轮才该有的副作用，仅在下方组装好 promptReq 快照后入队。
 			// （输入框已在上方清空，符合「入队后清空输入框」语义。）
 			const streaming = pendingEdit ? false : getDefaultStore().get(isStreamingAtom);
+			let optimisticUserMsgId: string | undefined;
 			if (!streaming) {
+				// 失败重发去重（ADR-0060）：上一轮以错误收尾且最后一条用户消息与本次
+				// 文本相同时，先 replaceLastUserMessage 回退再发，避免 jsonl 双份 user
+				// 记录、也避免下一轮模型上下文里出现两条相同消息。
+				if (!pendingEdit) {
+					const currentMsgs = store.get(chatMessagesAtom);
+					const lastMsg = currentMsgs.at(-1);
+					let lastUserIdx = -1;
+					for (let i = currentMsgs.length - 1; i >= 0; i--) {
+						if (currentMsgs[i].role === "user") {
+							lastUserIdx = i;
+							break;
+						}
+					}
+					const lastUser = lastUserIdx >= 0 ? currentMsgs[lastUserIdx] : undefined;
+					if (
+						lastMsg?.role === "assistant" &&
+						lastMsg.blocks?.some((block) => block.type === "error") &&
+						lastUser?.entryId &&
+						lastUser.text === text
+					) {
+						try {
+							await window.vetta.session.replaceLastUserMessage(session.runtimeId, lastUser.entryId);
+							setChatMessages((prev) => prev.slice(0, lastUserIdx));
+						} catch (err) {
+							// 回退失败就按普通追加发送；宁可重复也不丢消息。
+							console.warn("[useSessionManager.sendMessage] resend dedupe failed:", err);
+						}
+					}
+				}
 				const userMsg: ChatMessage = {
 					id: nextId("user"),
 					role: "user",
@@ -1139,14 +1258,16 @@ export function useSessionManager(): SessionManagerResult {
 				if (settingsAssistTabId) {
 					userMsg.settingsAssistTabId = settingsAssistTabId;
 				}
+				rememberOptimisticUserMessage(session.runtimeId, userMsg, store.get(chatMessagesAtom));
 				setChatMessages((prev) => [...prev, userMsg]);
+				optimisticUserMsgId = userMsg.id;
 			}
 
 			// Optimistically expose this session in the sidebar before the disk file
 			// has been flushed (SessionManager only writes after the assistant's
 			// first message). Use the user's prompt prefix as a temporary label;
 			// auto-title or the next loadSessions will overwrite as appropriate.
-			const sp = activeSessionRef.current?.sessionPath;
+			const sp = session.sessionPath;
 			if (!streaming && sp) {
 				// ADR-0007：「对话」session 的 cwd 是默认项目根下的 per-session 子目录，
 				// 但侧边栏 sessionsMap / 默认列表都挂在项目根 bucket 上。乐观行必须落到根
@@ -1237,6 +1358,7 @@ export function useSessionManager(): SessionManagerResult {
 			const pluginStore = getDefaultStore();
 			const usedInputActions: Parameters<typeof recordInputActionsUsed>[0] = [];
 			const pluginInstructions: string[] = [];
+			const pluginPromptContexts: Array<PluginPromptContext & { pluginId: string }> = [];
 			const activeActionIds = pluginStore.get(activeInputActionIdsAtom);
 			if (activeActionIds.size > 0) {
 				for (const action of pluginStore.get(pluginInputActionsAtom)) {
@@ -1266,8 +1388,11 @@ export function useSessionManager(): SessionManagerResult {
 					actionKind: "builtin",
 				});
 			}
-			// Plugin-owned attachment guidance is opaque to the host and one-shot.
-			const promptAttachment = pluginStore.get(promptAttachmentAtom);
+			// Plugin-owned attachment data stays structured until the coding-agent
+			// input boundary. Legacy metadata/instructions remain supported.
+			// 插件 sendPrompt 不消费：promptAttachment 是用户为下一条手动消息挂的，
+			// 被插件静默发送吃掉会既丢附件又让用户困惑（ADR-0060）。
+			const promptAttachment = options?.source === "plugin" ? null : pluginStore.get(promptAttachmentAtom);
 			if (promptAttachment) {
 				if (promptAttachment.metadata) {
 					promptReq.metadata = { ...promptReq.metadata, ...promptAttachment.metadata };
@@ -1277,24 +1402,42 @@ export function useSessionManager(): SessionManagerResult {
 						(instruction) => typeof instruction === "string" && instruction.trim().length > 0,
 					),
 				);
-				pluginStore.set(promptAttachmentAtom, null);
+				if (promptAttachment.context) {
+					pluginPromptContexts.push({
+						pluginId: promptAttachment.ownerPluginId,
+						...structuredClone(promptAttachment.context),
+					});
+				}
+				if (promptAttachment.lifecycle !== "sticky") {
+					pluginStore.set(promptAttachmentAtom, null);
+				}
 			}
 			if (pluginInstructions.length > 0) {
 				promptReq.metadata = { ...promptReq.metadata, pluginInstructions };
 			}
-			recordInputActionsUsed(usedInputActions);
-			// streaming 中：把组装好的完整 promptReq 快照入队，等当前回合自然 agent_end 后
-			// 由 subscribe 的出队逻辑作为新一轮 prompt 发出；本次不调用 prompt。
-			if (streaming) {
-				pluginStore.set(enqueueMessageAtom, {
-					runtimeId: session.runtimeId,
-					item: { id: crypto.randomUUID(), request: promptReq, displayText: rawText },
-				});
-				return;
+			if (pluginPromptContexts.length > 0) {
+				promptReq.metadata = { ...promptReq.metadata, pluginPromptContexts };
 			}
+			recordInputActionsUsed(usedInputActions);
+			// 恒置 followUp（ADR-0060）：streaming 中入 kernel 队列、立即收 queued 回执；
+			// 空闲时 kernel 忽略该字段直接开 turn。即便 isStreamingAtom 与主进程真实状态
+			// 失步，最坏结果也是入队而非 SESSION_BUSY 丢消息。
+			promptReq.streamingBehavior = "followUp";
+			let sendResult: { status: "sent" | "queued"; queueItemId?: string } | undefined;
 			try {
 				await waitForPluginHostReady();
-				await window.vetta.session.prompt(session.runtimeId, promptReq);
+				const outcome = await window.vetta.session.prompt(session.runtimeId, promptReq);
+				if (outcome?.status === "queued") {
+					if (optimisticUserMsgId) {
+						// 以为空闲实则已在跑：消息已入 kernel 队列，撤掉抢先的乐观气泡，
+						// 待消费时经 queue.changed 重新上屏，保证顺序与模型可见一致。
+						const staleId = optimisticUserMsgId;
+						setChatMessages((prev) => prev.filter((m) => m.id !== staleId));
+					}
+					sendResult = { status: "queued", queueItemId: outcome.queueItemId };
+				} else {
+					sendResult = { status: "sent" };
+				}
 			} catch (err) {
 				// RuntimeHost.prompt 现在会先把 prompt 期同步抛错（"No model
 				// selected" / "No API key found" / "Agent is already processing"
@@ -1310,13 +1453,15 @@ export function useSessionManager(): SessionManagerResult {
 			}
 			// ADR-0007：归一回项目根 bucket，否则「对话」session 刷的是没用的子目录桶，
 			// 侧边栏默认列表（挂在根 bucket）拿不到这一轮的对账更新。
-			await loadSessions(conversationBucketCwd(session.cwd, defaultConversationCwdRef.current));
+			void loadSessions(conversationBucketCwd(session.cwd, defaultConversationCwdRef.current)).catch((err) => {
+				console.warn("[useSessionManager.sendMessage] background session list refresh failed", err);
+			});
+			return sendResult;
 		},
 		[
 			// 输入文本调用时读 store，其余输入相关值读 ref，不再入依赖，保证
 			// sendMessage 身份在打字时稳定，避免下游
 			// Virtuoso footer 重挂载（footer 内的插件 turn 卡会因此闪烁/重查）。
-			activeSession,
 			setAttachedImages,
 			setMentionedFiles,
 			setChatMessages,
@@ -1332,67 +1477,22 @@ export function useSessionManager(): SessionManagerResult {
 		await window.vetta.session.abort(activeSession.runtimeId);
 	}, [activeSession]);
 
-	// 立即发送某条排队消息（队列面板点击 / 拖拽后即时发）：取出即从队列移除；
-	// 若该会话正在 streaming，先中止当前流并等其真正停下（running-changed），再作为
-	// 普通 prompt 发出；空闲则直接发。其余排队项保留，待这条自然结束后由出队逻辑继续逐条发。
+	// 立即发送某条排队消息（队列面板点击 / 拖拽后即时发）。ADR-0060：打断与续发在
+	// kernel 内原子完成（take → cancel 当前回合 → 以该条目开新 turn），渲染端不再
+	// 等待 running-changed、没有超时竞态。用户气泡在消费时经 queue.changed 差分上屏。
 	const sendQueuedNow = useCallback(
 		async (runtimeId: string, id: string) => {
-			const store = getDefaultStore();
-			const item = getQueueForSession(store.get(messageQueueBySessionAtom), runtimeId).find((q) => q.id === id);
-			if (!item) return;
-			// 取出即移除，避免后续自然 agent_end 的出队逻辑再次发它。
-			store.set(removeQueuedMessageAtom, { runtimeId, id });
-
-			if (store.get(isStreamingAtom)) {
-				// 立即发送要 abort 掉当前回合再发新的——被 abort 回合的 agent_end 会触发整体
-				// 重拉，那次重拉已「跨到下一轮」。先 +1 序号，使其在落地时被判为过期而跳过，
-				// 避免冲掉下方乐观气泡 / 令新一轮 draft 续写到被中断的旧 assistant 上。
-				bumpQueuedDispatchSeq(runtimeId);
-				// 中止当前流并等它真正停下再发。注意 runtime 把 abort 也走 agent_end
-				// （lifecycle 从不发 "aborted" phase），所以不能等生命周期事件；但
-				// running-changed 一定会广播 running=false。用一次性监听等它，带超时兜底。
-				await new Promise<void>((resolve) => {
-					let settled = false;
-					let unsubscribe: () => void = () => {};
-					const finish = (): void => {
-						if (settled) return;
-						settled = true;
-						unsubscribe();
-						clearTimeout(timer);
-						resolve();
-					};
-					const timer = setTimeout(finish, 8000);
-					unsubscribe = window.vetta.session.onRunningChanged((p) => {
-						if (p.sessionId === runtimeId && p.running === false) finish();
-					});
-					// 订阅前可能流已停（事件已发过）：补一次检查直接放行。
-					if (!store.get(isStreamingAtom)) {
-						finish();
-						return;
-					}
-					void window.vetta.session.abort(runtimeId).catch((err) => {
-						console.error("[useSessionManager.sendQueuedNow] abort failed:", err);
-					});
-				});
-			}
-
-			const queuedUserMsg: ChatMessage = {
-				id: nextId("user"),
-				role: "user",
-				text: item.request.text,
-				timestamp: Date.now(),
-				model: modelKeyToParts(item.request.modelKey),
-				promptRef: item.request.promptRef,
-				attachments: item.request.attachments,
-			};
-			setChatMessages((prev) => [...prev, queuedUserMsg]);
+			// 被打断回合的 agent_end 整体重拉已「跨到下一轮」：+1 序号使其落地时被判
+			// 过期而跳过，避免冲掉新一轮的用户气泡（判活机制见 message-queue-atoms）。
+			bumpQueuedDispatchSeq(runtimeId);
 			try {
-				await waitForPluginHostReady();
-				await window.vetta.session.prompt(runtimeId, item.request);
+				await window.vetta.session.sendQueuedMessageNow(runtimeId, id);
 			} catch (err) {
 				const message = err instanceof Error ? err.message : String(err);
-				console.error("[useSessionManager.sendQueuedNow] prompt rejected:", err);
-				setChatMessages((prev) => appendError(prev, message));
+				console.error("[useSessionManager.sendQueuedNow] failed:", err);
+				if (activeSessionRef.current?.runtimeId === runtimeId) {
+					setChatMessages((prev) => appendError(prev, message));
+				}
 			}
 		},
 		[setChatMessages],

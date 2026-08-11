@@ -1,7 +1,0 @@
-Request Vetta Desktop UI assistance before using app-control actions.
-
-Use this tool when you want Vetta Desktop to show the user a contextual UI for an application action, such as confirming navigation, choosing appearance settings, previewing a proposed change, or filling action-specific fields.
-
-This tool is generic. Do not treat it as a yes/no prompt only. Provide the action id, your intent, the proposed action input, and a UI plan. The host may return approval, rejection, edited input, selected values, or other structured output.
-
-After the tool returns, follow the returned status and output. If it returns allowedActions, only proceed with action calls that match those returned action ids and inputs.

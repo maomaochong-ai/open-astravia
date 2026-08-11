@@ -1,0 +1,72 @@
+---
+title: CLI 与设置
+description: 用 text 或 json 模式执行脚本任务，并理解全局、项目配置和资源路径的覆盖关系。
+---
+
+CLI 适合从终端执行一次任务、输出 JSON 事件或启动 RPC。桌面应用用户通常不需要手工维护这些文件；宿主和自动化集成应使用公开参数与 Schema。
+
+## 运行一次任务
+
+```bash
+# 默认文本输出
+vetta "总结当前目录的项目结构"
+
+# 结构化 JSON 事件流
+vetta --mode json "检查 package.json 中的脚本"
+
+# 选择模型和思考档位
+vetta --model openai/gpt-4o:high "分析这个故障"
+
+# 恢复最近会话
+vetta --continue "继续上次任务"
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `--mode text|json|rpc` | 输出或协议模式 |
+| `--provider <name>` | 指定 Provider |
+| `--model <provider/id[:thinking]>` | 指定模型和可选思考档位 |
+| `--continue` | 恢复当前会话目录中的最近会话 |
+| `--session <path>` | 打开指定会话文件 |
+| `--session-dir <dir>` | 指定会话存储和查找目录 |
+| `--no-session` | 不保存本次会话 |
+
+`--resume` 已不支持，使用 `--continue` 或 `--session`。
+
+## 设置覆盖
+
+| 范围 | 路径 |
+| --- | --- |
+| 全局 | `~/.vetta/agent/settings.json` |
+| 项目 | `<cwd>/.vetta/settings.json` |
+
+项目设置覆盖全局设置。相对路径相对于各自配置文件目录解析；也支持绝对路径和 `~`。
+
+常用配置包括默认模型、思考档位、消息队列、上下文压缩、自动重试、资源路径、MCP、图片处理、个性化和 shell。完整字段以 `@vetta/coding-agent/settings` 导出的 Schema 为准。
+
+## Windows Shell
+
+Windows 默认查找 Git Bash 或 PATH 中的 `bash`。也可以显式配置：
+
+```json
+{
+  "shellPath": "C:\\Program Files\\Git\\bin\\bash.exe",
+  "shellCommandPrefix": "shopt -s expand_aliases"
+}
+```
+
+不要把 API Key 写进 `shellCommandPrefix` 或会被记录的命令。优先使用凭证配置或受控环境变量。
+
+## 安装资源包
+
+CLI 可以安装包含 extensions、skills 和 prompts 的 npm、Git 或本地资源源：
+
+```bash
+vetta install npm:@scope/package@1.2.3
+vetta install git:github.com/example/repo@v1
+vetta list
+vetta update
+vetta remove npm:@scope/package
+```
+
+资源包中的扩展可以执行代码。安装前审查来源、版本和权限，不要把不可信仓库直接加入长期配置。

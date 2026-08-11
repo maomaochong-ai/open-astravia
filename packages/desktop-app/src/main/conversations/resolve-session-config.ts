@@ -1,6 +1,6 @@
-import type { ConversationScenario } from "@vetta/coding-agent";
-import { VETTA_CLI_GUIDANCE } from "../../../../coding-agent/src/core/system-prompt.js";
-import type { SessionConfig } from "../../../../runtime-core/src/index.js";
+import { VETTA_CLI_GUIDANCE } from "@vetta/coding-agent/product-prompt";
+import type { ConversationScenario } from "@vetta/coding-agent/profile";
+import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import {

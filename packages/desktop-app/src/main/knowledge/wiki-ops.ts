@@ -7,7 +7,7 @@
  */
 
 import { mkdir, rm } from "node:fs/promises";
-import { knowledge } from "@vetta/coding-agent";
+import * as knowledge from "@vetta/runtime-knowledge";
 import { KB_PROCESSING_CWD, KB_PROCESSING_SESSION_DIR } from "../ipc/fs.js";
 import { runKnowledgeMaintenance } from "./poller.js";
 

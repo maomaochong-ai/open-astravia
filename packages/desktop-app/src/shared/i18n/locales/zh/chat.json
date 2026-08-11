@@ -31,7 +31,13 @@
 			"requestHistory": "请求历史"
 		},
 		"todo": {
-			"empty": "暂无待办事项"
+			"empty": "暂无待办事项",
+			"headline": "进行中",
+			"allDone": "全部完成",
+			"progress": "已完成 {{done}} / {{total}}",
+			"statusDone": "已完成",
+			"statusInProgress": "进行中",
+			"statusPending": "待办"
 		},
 		"toolCalls": {
 			"filterAll": "全部",
@@ -242,6 +248,9 @@
 		"exportButton": {
 			"title": "导出完整会话 HTML"
 		},
+		"newSessionButton": {
+			"title": "新会话"
+		},
 		"panelButton": {
 			"closed": "打开活动面板",
 			"open": "关闭活动面板"
@@ -256,6 +265,48 @@
 			"compacting": "正在压缩上下文...",
 			"unknown": "上下文窗口 {{window}}（使用量未知）",
 			"usage": "上下文已使用 {{percent}}%（{{window}} 窗口）"
+		},
+		"details": {
+			"title": "上下文构成（最近一次调用）",
+			"actual": "实际输入",
+			"estimated": "估算",
+			"section": "区块",
+			"category": "分类",
+			"tokens": "Token",
+			"share": "占比",
+			"unknown": "未知",
+			"unavailableAfterRestart": "此会话没有可恢复的历史构成明细。发送下一条消息后，应用会生成并保存新的明细。",
+			"items": "{{count}} 项",
+			"unknownItems": "{{count}} 项未知",
+			"coverage": {
+				"complete": "估算覆盖完整",
+				"partial": "部分区块无法估算",
+				"none": "无可用估算"
+			},
+			"owner": {
+				"core": "系统",
+				"skill": "Skill",
+				"plugin": "插件",
+				"mcp": "MCP",
+				"extension": "扩展",
+				"runtime": "运行时",
+				"user": "用户",
+				"unknown": "未归因"
+			},
+			"kind": {
+				"instruction": "指令",
+				"tool_schema": "工具 Schema",
+				"history": "历史消息",
+				"runtime_context": "运行时上下文",
+				"user_input": "当前输入"
+			},
+			"group": {
+				"instructions": "基础指令",
+				"capabilities": "扩展能力",
+				"tools": "工具",
+				"conversation": "对话",
+				"runtime": "运行时上下文"
+			}
 		}
 	},
 	"copyButton": {
@@ -334,13 +385,13 @@
 		"drawer": {
 			"permissionDesc": "等待确认",
 			"permissionLabel": "权限请求",
-			"todoDesc": "{{done}}/{{total}} {{content}}",
-			"todoDescSimple": "{{done}}/{{total}}",
-			"todoLabel": "代办",
 			"queueDelete": "删除",
 			"queueDesc": "{{count}} 条待发",
 			"queueEmpty": "暂无排队消息",
 			"queueLabel": "队列",
+			"queuePaused": "上一轮已中断，排队消息暂停发送",
+			"queuePausedDesc": "已暂停 · {{count}} 条待发",
+			"queueResume": "继续发送",
 			"queueSendNow": "立即发送"
 		},
 		"permission": {
@@ -367,6 +418,15 @@
 			"cut": "剪切",
 			"copy": "复制",
 			"paste": "粘贴"
+		},
+		"todo": {
+			"trigger": "待办",
+			"allDone": "全部完成",
+			"panelTitle": "待办清单",
+			"openPanel": "在面板中打开",
+			"statusDone": "已完成",
+			"statusInProgress": "进行中",
+			"statusPending": "待办"
 		}
 	},
 	"knowledgeTools": {

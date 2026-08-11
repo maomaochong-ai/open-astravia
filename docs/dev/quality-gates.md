@@ -8,7 +8,8 @@
 |------|------|--------|------|
 | 提交前（快） | `bun run check:precommit`（husky 自动） | 每次 commit | staged 私钥/冲突标记 + Biome `--staged --write`；格式化后重新暂存整文件 |
 | 开发中（快） | `bun run check:quick` | 一轮编辑后 | 准确合并分支已提交差异、暂存、未暂存和未跟踪文件；对变更文件运行 Biome，并运行架构守卫；不做类型检查 |
-| 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行 `tsgo`、增量 desktop `tsc`、admin `tsc` 与架构守卫 |
+| 完整本地/PR | `bun run check` | 一轮代码任务完成、交付或开 PR 前一次 | 对显式源码根运行 Biome，并行执行根 `tsgo`、CLI 显式 `tsgo`、增量 desktop `tsc`、admin `tsc` 与架构守卫 |
+| 构建声明消费 | `bun run check:types:build-surfaces` | workspace 前置声明生成后 | 按 `cli-app/tsconfig.build.json` 验证真实包声明消费；会拒绝陈旧 `dist/*.d.ts` |
 | 质量脚本测试 | `bun run test:quality` | 修改 `scripts/quality` | 变更选择、依赖传播与包边界规则 |
 | 单元测试 | `bun run test:unit` | 逻辑变更 | 当前有测试的核心包 |
 | 按包 | `bun run test:pkg <name>` | 改单包 | 例：`test:pkg ai` |
@@ -27,7 +28,10 @@ scripts/quality/
   check-quick.mjs              按完整 Git 工作区差异做快速检查
   check-private-keys.mjs       私钥形态检测
   check-conflict-markers.mjs   未解决冲突标记
+  check-build-order.mjs        workspace 正式依赖构建顺序
   check-package-boundaries.mjs 库/插件不得依赖 app 宿主
+  check-coding-agent-architecture.mjs
+                               Coding Agent 当前架构依赖与公开面
   test-pkg.mjs                 按包名跑 vitest
   test-changed.mjs             按 git 变更和依赖图选包
   quality-gates.test.mjs       质量脚本定向测试
@@ -39,7 +43,8 @@ knip.config.ts                 Knip（可选）
 | Script | 说明 |
 |--------|------|
 | `check:lint` / `check:lint:fix` | 对显式源码根执行 Biome 只读检查 / 写回，避免扫描无关目录 |
-| `check:types` | 并行执行根 `tsgo`、带持久增量缓存的 desktop `tsc`、admin `tsc -b` |
+| `check:types` | 并行执行根 `tsgo`、CLI 显式 `tsgo`、带持久增量缓存的 desktop `tsc`、admin `tsc -b` |
+| `check:types:build-surfaces` | 使用 CLI build config 验证上游 workspace `dist/*.d.ts` 的真实消费面；要求先生成当前声明 |
 | `check:guards` | 并行执行私钥、冲突标记、包边界等全量守卫 |
 | `check:staged` | 仅 staged Biome |
 | `check:precommit` | husky 使用的快路径 |
@@ -81,9 +86,52 @@ bun run --cwd packages/desktop-app test:coverage
 
 `coding-agent/examples/**` 已排除。
 
+## Coding Agent 架构规则（`check-coding-agent-architecture`）
+
+该守卫不生成全量 AST 模块图，也不启动 TypeScript TypeChecker。它只用 TypeScript AST 从
+`import`、`export ... from` 和动态 `import()` 中提取模块边，再执行声明式规则，因此不会把注释、
+字符串或同名变量误判为依赖。
+
+长期规则包括：
+
+- 合同不能反向依赖 Adapter、Composition 实现、Host 实现或公开门面；
+- 产品能力域不能依赖 Adapter、Composition 实现或公开门面；
+- Adapter 可以依赖 Composition 合同，但不能反向依赖 Composition 实现或公开门面；
+- 历史会话格式模块不能依赖 Agent 执行；格式转换与文件生命周期可以在 `sessions/legacy` 边界内按职责拆分；
+- 外部消费者只能使用 `package.json#exports` 声明的稳定子路径，支持精确和通配符导出；
+- 包根保持 Extension facade；Composition 允许扩展根级能力与合同，但不能导出内部组装实现；
+- 旧 `src/core`、`src/compat` 实现目录不得恢复。
+
+公开子路径以 manifest 为唯一事实来源，不在守卫中维护第二份符号或子路径快照。旧迁移进度基线、
+Greenfield/Legacy 名称墓碑、固定文件数量、行数阈值及实施日志格式不再进入构建门禁。
+架构规则测试位于 `scripts/quality/coding-agent-architecture.test.mjs`。
+
+## Workspace 构建顺序（`check-build-order`）
+
+根 `scripts/build.sh` 与 Desktop 的 `packages/desktop-app/scripts/build-workspace-prereqs.mjs` 都必须先构建正式 workspace 依赖，再构建依赖方。守卫会分别检查：
+
+- 根脚本中的 `build_pkg` 顺序；
+- Desktop 前置构建脚本导出的分层；
+- 各包 `dependencies`、`optionalDependencies`、`peerDependencies` 中声明的 `workspace:*` 正式依赖。
+
+Desktop 前置构建脚本只维护参与构建的包和并行层，包之间的依赖直接从 manifest 推导，不再维护第二份容易过期的手写依赖图。
+
+`devDependencies` 不参与生产构建顺序：例如 `runtime-core` 的测试会引用 `coding-agent`，但 `runtime-core/src` 不依赖它；把测试边计入会制造不存在的生产依赖环。
+
+该守卫防止构建错误地读取上一次残留的 `dist/*.d.ts` 而偶然成功。新增 workspace 依赖后仍必须执行正常的 `bun install`；`bun install --lockfile-only` 只更新锁文件，不创建包级 workspace 链接。
+
 `test:changed` 会读取可测包的 `package.json` 自动计算下游依赖闭包。`package.json`、`bun.lock`、根 TypeScript/Biome 配置和 `scripts/quality/**` 变化会触发全部核心测试；无效基线会直接失败，不会静默跳过。
 
 `check:quick` 复用同一套 Git 变更选择器，因此不会漏掉未暂存或未跟踪文件。删除文件会从 Biome 输入中排除；修改任意 `biome.json` / `biome.jsonc` 或根 `.editorconfig` 时，会自动回退为全仓 Biome，避免配置影响未被检查。它不做类型检查，不能替代任务结束时的完整 `check`。
+
+根 `tsconfig.json` 已包含 `packages/cli-app/src/**/*` 和 `packages/cli-app/test/**/*`。完整 `check`
+仍额外显式执行 `packages/cli-app` 的 `typecheck`，避免未来调整根 `include` 时静默漏掉 CLI，也让
+日志直接显示 CLI 门禁。
+
+`check:types:build-surfaces` 与源码 typecheck 是不同口径：它不使用根源码 path map，而是按真实
+workspace 包声明解析。因此，上游源码修改但 `dist/*.d.ts` 尚未重新生成时，该命令会失败。这是
+声明新鲜度问题，不应通过手改 `dist` 或把生成动作塞进只读 `check` 解决；应先按正式依赖顺序
+生成前置包声明，再运行该门禁。
 
 ## CI
 
@@ -138,10 +186,13 @@ bun run deadcode:report
 ## 核查清单
 
 - [ ] `bun run check:guards` 通过  
+- [ ] 根构建脚本和 Desktop 前置构建脚本中，所有正式 workspace 依赖都先于依赖方
 - [ ] `bun run check:quick` 覆盖已提交、暂存、未暂存和未跟踪文件  
 - [ ] `bun run test:quality` 通过  
 - [ ] `bun run check:precommit` 在有 staged 文件时行为正确  
 - [ ] `bun run test:pkg --list` 列出 4 个可测包  
 - [ ] `bun run check` 仍包含类型检查（比 pre-commit 更严）  
+- [ ] `bun run check` 输出中包含 `packages/cli-app` 的显式 `typecheck`
+- [ ] 生成当前 workspace 声明后，`bun run check:types:build-surfaces` 通过
 - [ ] husky `.husky/pre-commit` 调用的是 `check:precommit` 而非整仓慢 `check`  
 - [ ] 未新增 oxlint/oxfmt/pnpm 强制依赖  

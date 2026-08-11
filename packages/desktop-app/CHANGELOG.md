@@ -6,13 +6,40 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
-- **底层媒体生成能力与内置 Vetta 图片实现**（ADR-0057）：通用图片/视频契约下沉到 Domain Capability，Provider Registry 与 SPI 由 desktop 主进程拥有；插件只通过受 `media.generate` 门控的 `ctx.media` 消费。协议允许没有任何实现；默认 `desktop-app:vetta` Provider 固定调用 `images/generate` / `images/edit`，renderer 插件无法读取 JWT 或指定任意网关路径。`image-gen` 只负责交互与持久化，生成字节仍写入 `~/.vetta/plugin-data/image-gen/`。
+- **画布活动态浮层改挂生成阶段**：`edit` / `write` 的时间几乎全花在模型生成参数上（一整份 frame 正文），执行只要几毫秒。浮层原本挂在工具执行事件上，于是要等改动落盘之后才亮，看起来像「改完才闪一下」。宿主现在把新的 `toolcall.args`（生成中的部分参数）转译成插件事件 `tool-call-args`，插件据此在模型刚写下目标路径时就点亮对应画框，一直亮到落盘。
+
+- **设计画廊（系统插件「Vetta UI Design」新增侧边栏入口「设计」）**：所有带设计稿的项目的注册中心。它主动收集侧边栏里**项目根目录下**直接躺着 `x.vetd/` 的项目（只 readDir 一层，不递归——画廊要把每个项目都扫一遍，递归大仓库会让这个页面打不开），一个项目一张卡，卡面是**上封面下 info** 的 Figma 式版式：封面为画布全景，info 为项目名 + 最近改动相对时间 + 多设计时的「N 份设计」+ 有会话在跑时的运行中指示。点卡片跳进该项目**最近一个可续聊的会话**（只读或已被别的运行时占用的会话会被跳过，一个都没有则落到该项目的新建会话页），并直接把设计画布铺开、定位到卡面那份设计——从画廊进来是明确的「我要看这份设计」，不该再让用户自己去活动面板找标签卡。工具栏可按名字搜索、新建（只问名字，项目建在 workspace 下，随后进新会话页从提示词开始）、导入（拖 `.vetdz` 到页面，或按钮选文件）；卡片右键可导出分享包（项目里有多份设计时开子菜单让用户选，不替他挑）、在文件管理器中显示、归档项目。画廊只在**工作模式**下出现，与设计画布同属一档能力（ADR-0046）。
+- **画布封面**：用 manifest 里的 frame 坐标把画布已有的逐帧位图拼成一张**原比例全景图**存进 IndexedDB，供画廊卡片显示。素材复用画布本来就截过的那批位图，不额外起引擎、不额外截图，也不往用户项目里写派生文件。合成有两个时机：画布里位图安静下来之后（防抖）合成一次，离开设计时再补最后一版——只在卸载时合成会与画廊的挂载抢跑，出现「明明进过画布却没有封面」。画廊发现某份设计缺封面时还会**自己用缓存里的位图补一张**：原料早就在库里，有没有封面不该取决于用户离开画布的那一刻画布来不来得及写。三条路都拿不到（这台机器从没打开过这份设计的画布）才退回占位——用该设计 `theme.css` 的主色刷一个带设计名的色块。全景按原比例保存、卡片内 `object-cover` 裁切，故 frame 横排得很长的设计在卡面上只看得到中间一段。
+
+- **看板 0.3.1：侧边栏入口实时角标**：空闲时是 Beta 标识，有任务在跑时换成数量——不点开看板、不进任何会话页也知道现在有多少活在跑。计数与板上并发名额环 `n/5` 同一个口径（已派单但还没交付），已交付/失败的卡不再计入；任务清零后 Beta 标识自己回来。板面变化频繁而多数与角标无关，因此只在角标真的变了才通知宿主。
+- **侧边栏导航项角标，插件可用**（Plugin API 新增 `PluginWorkspaceViewContribution.badge` 与 `ctx.ui.setWorkspaceViewBadge()`）：此前只有内置「知识库」挂得上 Beta 标识，且样式在三处各写了一遍。现在角标是统一的判别联合——`beta`（宿主预置，插件声明一个 kind 就得到与知识库完全一致的标识，文案由宿主按当前语言给出）、`text`（支持 `%catalogKey%`）、`count`（超 99 显示 `99+`，归零即消失）、`dot`，各带可选色调（`default` / `accent` / `warning` / `danger`，插件给不了原始色值，角标因此始终与内置项一致）。未读数、状态点这类会变的角标走 `setWorkspaceViewBadge` 原地更新，不会让整页 surface 重挂载。三处重复的角标样式收敛为一个 `SidebarNavBadgeView`。
+- **看板 0.3.0：模型选择器改用宿主同款**：看板的模型选择器不再是自绘胶囊，而是**会话页输入栏的同一个组件**——`ModelSelectorView` 连同 `ProviderIcon` / `MultiplierTag` 从 desktop renderer 下沉到 `@vetta/theme-ui`，宿主改从新位置引用，并经新的共享入口 `@vetta/theme-ui/plugin-ui` 开放给插件（Module Federation 共享域，同 `@vetta/ui`）。于是搜索、按 provider 分组与图标、云端/默认/视觉徽章在两处天然一致，宿主改了看板跟着改。看板侧只适配语义差异：多一个「跟随默认」项、不接推理档位。配套把 provider 的图标 symbol 打通 capability → plugin-sdk → renderer（`model.list` 摘要新增 `icon`），否则插件那侧的选择器会缺图标。同时补上 `vetta-host://plugin-sdk` shim 漏掉的 `PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES`——插件一旦 import 它会整体加载失败；该 shim 现由合同测试逐个比对，三份清单（sdk / ui / theme-ui）都不会再漏。
+- **看板 0.3.0：自动认领**：页面右上角新增「自动认领」开关（默认关闭）。此前「待认领」只是解除了 Agent 的禁令，本身不触发任何事——不手动派发、也不在会话里让 Agent 读板，卡片就一直躺在灵感池里。打开后看板自己盯着灵感池：卡片是「待认领」、依赖已满足、名额未满、目标项目可解析时直接建会话派出去（标记为 Agent 认领）；新卡标为待认领、有任务交付腾出名额、上调并发都会立刻触发下一轮。循环串行且不可重入，一次只派一条、派完再看名额，并发上限不会被绕过；没有可用目标项目或建会话失败的卡片被跳过而不是反复重试，编辑该卡后重新参与。开关持久化，重启后会把停机期间攒下的待认领卡片接着派。`kanban_list_tasks` 快照带上 `autoClaim`，Agent 据此知道不必再逐条认领。
+- **看板：模型清单补齐 Vetta Go**：插件侧的模型清单此前只来自主进程的本地模型配置，看不到登录后服务端下发的远程目录，于是看板的模型选择器缺了 Vetta Go 一整块。现在 renderer 的 `official.models` 把两份按宿主选择器同一口径合并（同 key 本地优先），模型 key 校验也认远程 key。看板的模型清单改为每次面板挂载刷新一次，开着看板去登录或加 provider，回来即可看到新模型。
+- **看板 0.2.1：任务可指定模型**：发布器工具栏新增模型胶囊，选定后即成为看板默认，新需求按当前选择**固化**（之后改看板默认不会回头改写已有卡片）；单张卡可在编辑弹窗里单独换模型或退回「看板默认」，卡面显示模型徽章。派单时模型写进新会话的**会话设置**而不是只钉首轮，用户之后在对话页接管这个会话，用的仍是卡片上选的模型。都没选时不带模型，跟随宿主全局默认（换全局默认后板上的卡跟着走）。Agent 侧 `kanban_add_task` 新增 `model` 入参（落卡前校验模型存在，避免脏模型拖到派单当场才失败），`kanban_list_tasks` 快照带上待认领项的模型。
+- **外置插件支持 npm 分发安装（ADR-0067）**：新增 `npx @vetta-org/plugin-cli add <package>` 流程。npm 只承载标准插件 zip，CLI 禁用 lifecycle scripts、限制提取文件并通过 Action RPC 请求安装；Desktop 在落盘前再次校验 SHA-256、插件 id 与版本，npm 来源按 community trust 持久化并继续沿用权限审批和 pending/reload 生命周期。
+- **插件品牌图标由宿主注入**：`ctx.plugin.iconUrl` 来自 `plugin.json#icon`（不透明 URL/Iconify）；Activity Tab 省略 `icon` 时自动用该品牌图，插件不必 `import` 包内 png 或拼 `vetta-plugin://`。
+- **看板 0.2.0：发布器与验收闭环**：底部新增与会话页 AI 输入栏**同款胶囊发布器**（回车入灵感池、⌘回车直接开工、Shift+回车写正文，可选目标项目与优先级）——看板即对话入口在形式上也成立。「待检查」补全验收闭环：**验收通过 → 归档**（右上角面板回看/恢复/删除，归档卡不占名额、作为依赖视为已交付）与**打回重做**（反馈发往原会话，Agent 带完整上下文修正；原会话丢失时降级为重新派发）。另有搜索过滤、并发步进器（带名额用量环）、优先级左侧色条、运行中呼吸光环、相对时间与空板三步引导。修复两个首版渲染问题：插件 CSS 缺 theme 层与 iconify 插件导致图标类未生成；Radix 弹层 portal 逃出 `@scope` 导致弹层内部样式丢失（按 content-creation 模式补挂 `data-vetta-plugin-root`）。
+- **系统插件「看板」**：跨项目、跨会话的需求总览与派单入口，侧边栏「更多」→「看板」进入。三条泳道——「灵感池」（草稿 / 待认领两态，草稿是给 Agent 的明确「别动它」信号）、「正在处理」（每张卡背后是一个真实会话，点卡片即跳进对话页，卡上实时显示已派单/运行中/等待中/失败）、「待检查」（Agent 交付区，附交付说明）。看板本身就是提问入口：顶部敲一行回车即入灵感池，卡片上点「派发」直接建会话开跑，全程不用进任何会话页。右上角设置并发（默认 5），**只约束本看板「正在处理」泳道上未交付的任务数**，不影响批量任务、自动化和手动会话。Agent 侧提供 `kanban_list_tasks` / `kanban_add_task` / `kanban_claim_task` / `kanban_submit_task` 四个工具：看板只做闸门不做调度，先后与并行由 Agent 自行判断，越界时按 `wip-full` / `blocked` / `draft` 给出可执行的拒绝理由。卡片可声明依赖，被依赖项进入「待检查」前不会被派发。见 ADR-0065。
+- **侧边栏导航可自定义**：导航项现在由布局驱动而非硬编码。「更多」弹层同时是自定义面板——置顶区与收纳区都列出、都可拖拽排序、也可跨区拖动或点 pin 图标切换。「新会话」锁定在置顶区第一位（不可拖动、不可收纳），置顶区含它在内**最多 5 个**；超限项退回收纳区最前而不是丢弃。布局按 key 持久化，插件卸载不影响其它项位置，装回来自动复位。插件贡献的**工作区视图**也作为普通导航项参与其中。见 ADR-0065。
+- **插件工作区视图插槽**（Plugin API 新增 `ui.slot.workspace-view`）：插件可贡献与内置页同级的整页 surface，宿主提供 `/workspace/$pluginId/$viewId` 路由与侧边栏入口。插件停用时入口消失，用户若正停在该路由会被送回首页；插件宿主尚未加载完成时显示加载态而不是误判为「不存在」。同时新增 renderer 侧 `official.sessions`（仅 official 插件），封装既有 `window.vetta.session.*`，不新增主进程 IPC 通道。见 ADR-0065。
+
+- **会话页顶栏「新会话」按钮**：侧边栏收起（或窄屏浮层）时，展开侧边栏按钮与会话标题之间多出一个「新会话」图标，行为与侧边栏导航的「新会话」完全一致（同一套目标项目 cwd 解析），不必先展开侧边栏才能在当前项目下开新会话。侧边栏可见时该按钮不出现。
+
+- **新会话欢迎页支持右侧活动面板**：欢迎页标题栏右侧补上「窗口置顶」与「活动面板」两个按钮，面板按当前项目 cwd 取上下文（文件、调试等 tab），与会话页、项目详情页共用同一开关状态与宽度。
+
+- **媒体生成角色化输入协议 v4**：宿主在 Provider 注册、能力发现和不透明输入转发中保留模式级输入槽与 `role`，支持首帧/尾帧及图片、视频、音频参考，同时继续隔离真实素材路径。
+- **插件动态接入 Coding Agent Hook**（ADR-0064）：Plugin API 1.3.0 新增 `ctx.agent.registerHook()`，ESM / Module Federation 插件可按场景、工作模式和工具名动态注册 Coding Agent 的 12 类原生 Hook 事件。Desktop callback adapter 通过既有 `additionalHookAdapterFactories` 进入每 Session 唯一 Hook Runtime；注册、执行、注销经 preload/main/renderer IPC bridge 回到插件 handler，并受 `agent.hooks.register` + `agent.hookHandler.execute` 双权限、超时、取消与结构校验约束。插件停用、重载和卸载会停止新调用，在途 dispatch 使用稳定快照；QuickJS 继续不开放 Agent 动态 handler。
+- **App Action 能力适配与密钥弹窗补齐**：`skills.*` 文案对齐产品「能力页」（公共 id 兼容不变），`skills.manage` 新增 `install-from-market`（主进程按 slug 下载安装）；`im.manage` 新增 `set-feishu-config`，审批弹窗手填 App Secret 等密钥；`mcp.upsert` 审批支持 env/headers 手填；`models.upsert-provider` 指引 Agent 省略 apiKey。导航目录补 `abilities` / `scenes` / `knowledge`。补齐官方 API、审批解析与 vetta-actions 域单测。
+- **第三方插件可选 QuickJS-WASM Worker 沙盒**（ADR-0061）：`runtime: "quickjs"` 的入口只作为文本进入独立 Worker/QuickJS context，不可访问 DOM、Electron、Node、原生 fetch 或模块加载器；插件用宿主渲染的声明式 Activity Tab 获得布局、文本、表单和动作 UI，网络/私有存储/设置/i18n 经固定 JSON RPC allowlist 接回现有 capability session。每个上下文配置 32 MB 内存、512 KB 栈、1 秒单次执行和待处理任务上限；现有 ESM/MF 插件行为不变。
+- **底层媒体生成能力、插件 Provider SPI 与内置 Vetta 图片实现**（ADR-0057）：通用图片/视频契约下沉到 Domain Capability；插件除可通过 `media.generate` 消费外，还可用 `media.provider.register` 注册 Provider。宿主把素材引用转换为不透明 ID，负责流式上传与远程产物落盘，不向 Provider 暴露其它插件的存储路径，也不经 renderer 传 Base64；Provider 增删事件会让并行激活的消费插件刷新模型列表。默认 `desktop-app:vetta` Provider 仍固定在主进程调用 `images/generate` / `images/edit`，renderer 插件无法读取 JWT 或指定任意网关路径。新增 `comfyui-media-provider` 预设插件，将本地 ComfyUI 的成功 API Prompt 作为模板，在插件内部适配 MiniMax H3 图生视频节点、队列与输出文件，内容创作节点只传统一的提示词、比例、时长和素材引用。
 - **设计画布新增预览模式**：设计稿现在是可点的真实站点。顶栏「预览」打开一个浏览器窗口——按钮、tab、表单都是真交互，跨屏跳转走真实路由（`frames/login.tsx` 就是 `/login`，`frames/index.tsx` 就是首页 `/`），带前进/后退/刷新/地址显示/画框切换/视口预设，窗口可自由拉伸，也可以一键交给系统默认浏览器打开（该地址随设计画布关闭而失效）。预览期间画布整体降为位图，不再同时养 N 份活体渲染树。引擎因此升级到 0.2.0（引入 react-router），首次打开设计稿会重跑一次依赖安装。见 ADR-0055。
 - 插件 SDK 新增 `ui.openExternal(url)`（权限 `shell.openExternal`）：把 http/https 链接交给系统默认浏览器。
 - 图像生成插件不再有任何设置项：出图一律走 Vetta 网关，模型与计费由 admin 配置，用户无需也无法填写 API key（ADR-0056）。此前保留的「自定义 API」逃生舱一并撤掉——改图形态各家不同（官方 multipart / 聚合站 `images[].image_url`），逃生舱要能用就得在客户端重养一套 provider 适配，而同一套适配已经在服务端存在。插件因此不再直接发 HTTP，`network.fetch` 与 `ui.slot.global` 两项权限一并撤回。存量用户填过的 key 留在 CredentialVault 里不再被读取。
 - 内置插件可通过 `ctx.gateway.request()` 带登录身份调用 Vetta 服务端（ADR-0056）。新增 foundation 能力 `cap.foundation.vetta.gateway.request` 与主进程 `plugin-gateway-service`：插件只交出相对 `/api/v1` 的路径，服务端地址与 JWT 由主进程注入、401 由主进程单飞刷新后重试一次，token 不出主进程。请求默认与最大超时都是 5 分钟，与服务端 `ImageService` 的 http client 对齐——网关背后是图像生成这类长任务，客户端先超时只会让一次已经在上游跑着的生成白白丢掉。该能力**不挂可声明权限**，只按来源收口给 `trustLevel === "official"` 的插件——第三方插件在 renderer 侧读到 `ctx.gateway === undefined`，即使伪造 sessionId，主进程 capability 适配层也会再校验一次 official 属性。
 
 - **外部插件混合热更新**：插件工作台改为启动 `vetta-plugin dev` 开发服务器；React 组件与 CSS 走 Fast Refresh/HMR，入口、清单、locale 与 agent 资源变化只替换当前插件 activation，其他插件不再被整表重载。生产构建与 zip 格式不变。
+- **统一插件开发会话**：未打包 Desktop 可通过 `VETTA_PLUGIN_DEV` / `VETTA_PLUGIN_DEV_ROOTS` 显式接入 preset、仓库 external 或仓库外工程；主进程统一解析工程内 `plugin-vite`、等待版本化 ready 握手并管理生命周期。未安装的显式 external 仅创建内存记录，不写插件注册表；插件工作台首次应用后复用同一会话服务。
 
 - **预设服务商新增 Grok 与 Qwen**（同时修掉两个会让新预设显示 0 个模型的问题：models.dev 目录缓存版本 +1，老缓存里没有新家的 key 却在 TTL 内算「新鲜」，会让新增的预设服务商最长 12 小时一直是空列表；「刷新目录」在缓存新鲜时原本直接返回旧缓存、等于空操作，现在手动刷新一律强制重拉）：设置 → 模型 → 预设服务商多出 Grok（`https://api.x.ai/v1`，走 `openai-completions`）与 Qwen（DashScope 国际站 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`，走 `qwen-openai-completions`）。两家的模型清单与价格照旧走 models.dev 目录（`xai` / `alibaba`），随包快照已重新生成；Grok 滤掉 `grok-imagine-*` 图像视频模型，Qwen 只保留 qwen/qwq/qvq 系列的对话模型（ocr / asr / mt 等专用接口模型不列）。
 
@@ -41,8 +68,54 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 - **插件装完直接弹权限配置**：首次安装的插件权限默认全未授予，安装成功（市场安装 / 开源市场 / 本地 zip 导入）后自动弹出该插件的权限弹窗，省掉用户自己找「权限配置」的一步。插件数据落地后才弹，系统插件与无权限声明的插件不打扰。
 
+### Changed
+
+- **会话正文字号从 13px 提到 16px**：用户气泡与 Agent 回复的正文基线统一为 16px，Markdown 层级按同比例重排（h1/h2/h3/h4 = 22/19/17/16，行内代码、代码块、表格、文件/链接胶囊 = 14，技能与场景徽章 = 13），行高仍为 1.6。此前 13px 在长对话里偏小；层级跟着抬升是为了避免出现「h3 比正文还小」的倒挂。用户气泡的 10 行折叠阈值以 `em` 计算，字号变大后折叠行数不变。
+- **设计画廊「新建」改为从提示词开始**：输入名字后只建一个空项目，随即进入该项目的**新建会话页**，输入框里预置好 `vetta-ui-design` 的能力 badge，用户接着敲一句「要画什么」即可。此前是先预铺一份空 `.vetd` 再把画布铺开——用户还没说要画什么，画廊里就先多出一张空卡片，画布也只有一块空白；设计有几屏、多大尺寸、什么主题本来就该由第一句提示词决定，由 agent 建。设计建好后画廊照常自动扫出这张卡。导入分享包的路径不变（包里已经是成品，仍直接进画布）。
+- 活动面板 Tab 切换改为默认 warm 驻留：访问过的文件、内容创作等 Tab 不再每次切换都重建整棵组件树；每个面板最多保留 2 个非活动 Tab，超出后按 LRU 在空闲阶段淘汰，当前与浮动 Tab 不参与淘汰。浏览器等既有显式保活 Tab 继续常驻。
+- **设计文档变成一个目录，不再是「文件 + 同名旁挂目录」两个条目**：一份设计在磁盘上就是 `login-app.vetd/` 一个目录，画布 manifest 降级成包里的 `design.json`，`frames/`、`components/`、`assets/`、`theme.css` 都在同一个包内。此前是 `login-app.vetd` 和 `login-app.vetd.d/` 两个并列条目，靠一条命名约定绑在一起：移动、复制、删除、`git mv` 都要成对操作，漏一个就得到半份设计（没有源码的空画布，或丢掉全部画布坐标的一堆 tsx）。旧文档在被扫描到时**自动就地迁移**，路径不变、无需用户操作，迁移过程幂等且不存在丢内容的窗口。相应地，分享包（zip）改用 `.vetdz` 扩展名与目录形态区分，历史导出的 `-share.vetd` 仍可导入；文件树里设计包带专属图标，右键「在设计画布中打开」。Agent 侧规则同步更新：改的是 `design.json` 之外的源码，manifest 依旧由插件独写。见 ADR-0066。
+- **输入栏下沿元素进出带动画**：待办条出现时输入栏会被顶高一截，此前这是一次没有过渡的布局跳变，对话读起来很硬。现在卡片下沿是一个通用插槽，元素进出走纯 CSS 过渡（`grid-template-rows: 0fr ↔ 1fr` 加内容的淡入与 4px 上托），整条输入栏平滑抬起、落下，收回比抬起略快。动画不经主线程 JS——输入栏上方就是虚拟消息列表，抬高的同时列表要重测量，用 JS 逐帧写高度会和它抢同一帧。每个槽位各自折叠，之后下沿再挂别的元素时，某一个的增减不会让其它元素跟着跳；`prefers-reduced-motion` 下直接切换不过渡。
+- **待办展示重做**：待办从输入框内的抽屉标签移到输入卡片外部下方，成为独立一条状态栏——数字徽标换成颜色圆点（未完成时主色呼吸、全部完成时静止绿点），后面跟进度 `已完成/总数` 和当前进行中的条目，条目文字带光斑扫过效果。点击不再展开抽屉，改为与模型选择一致的 popover，里面是完整待办清单（时间线连线、进行中条目高亮），底部可跳到活动面板。右侧活动面板的待办页同步重做为「概览（圆点 + 百分比 + 进度条）+ 同款时间线清单」。
+
 ### Fixed
 
+- **删掉项目后右侧还停在这个项目的页面上**：项目消失后的路由收尾只认 `/project/$cwd` 一条路由，于是站在该项目的**新会话页**（`/new-session/$cwd`）或它名下的**会话页**上删除项目时，右侧视图原地不动——新会话页甚至还能继续发消息，把会话建回刚删掉的目录里。现在被删项目的详情页、新会话页、会话页（靠 activeSession 归属判断）和正在看它名下会话的只读查看器都会离开，统一落到默认「对话」项目的新会话页（此前是首页；默认 cwd 尚未解析出来时仍退回首页）。停在别的项目页面时不动。移除、归档、硬删除三条路径共用这段收尾。
+- **硬删除项目后，同路径重建的新项目会「继承」旧项目的会话**：会话文件不在项目目录里，而是在按 cwd 路径算出的全局分片目录（`~/.vetta/agent/sessions/--<路径>--`）。侧边栏的「删除项目」只做了摘配置 + 删项目目录两件事，全程没碰会话存储；而新项目默认建在 `~/.vetta/workspace/<名字>` 下，于是同名 = 同路径 = 同一个分片目录，重新加进配置后旧会话原样回到侧边栏，产物、snapshot 和锁文件也一并残留。现在硬删除会先按 cwd 清空该项目名下的全部会话（走与单条删除相同的回收路径：dispose 活动句柄 + 删 jsonl/snapshot/lock/产物），全删成功后连分片目录一起回收，再删项目目录——清理必须发生在项目仍在配置里的时候，分片 root 是从项目列表推导出来的。单条会话删除失败不阻断其余会话，但会保留目录而不是强拆。内置「对话」/ Claw / 知识库 cwd 由主进程侧拒绝清理。「移除项目」（不删磁盘）与归档删除的语义不变，仍保留会话。此前版本残留的孤儿分片不会被自动清理。
+- **插件派活消息发进别的会话**：`useSessionManager` 同时挂载在 RootLayout / 会话页 / 新会话页三处，`ctx.conversation.sendPrompt` 拿到的是「最后渲染那份实例」的 sendMessage，而目标会话读的是**该实例自己**上次打开的会话（实例级 ref）——它可能还停在很久以前的另一个 workspace 会话上。设计画布备注自动派活曾因此把指令发进用户昨天的「对话」会话：当时界面上的乐观气泡看着正常（消息列表是全局的），重进会话后消息却出现在别的会话里，且那个旧会话的 agent 真的开始改当前项目的文件。现在 sendMessage 一律在调用时直读共享的 `activeSessionAtom`（openSession 同步写入，同 tick「建会话+发送」不受影响），发送目标与用户当前激活会话、与插件侧的 cwd 闸口回到同一事实源。
+- 插件重复更新提示词附件时，已激活的输入 Action 不再创建等价 `Set`，避免无意义地重渲染输入栏与活动面板消费者。
+- **文件能被注册成「项目」**：`projects.open()` 只校验路径是绝对的，不校验它是不是目录。于是 v1 时代的 `x.vetd`（那时它是个 JSON **文件**）被登记进项目列表后，本身不报错，直到有人去 readdir 它才 `ENOTDIR`——而项目扫描每轮都会读一次，主进程于是反复刷同一条 error。现在登记时就挡住：路径已存在且不是目录直接拒绝；不存在的路径照旧放行（`open` 本来就允许登记一个还没建出来的目录）。已经写进配置的坏条目需要在侧边栏右键移除。
+- **插件贡献的侧边栏图标画不出来**：工作区视图的 `icon` 是插件在自己源码里声明的 iconify class，而 Tailwind 只生成它扫得到的字面量、插件源码不在宿主的扫描范围内——那条 class 没有规则，导航项是个空格子（看板的 `solar:archive-minimalistic-outline` 一直如此）。现在按图标逐条放行（`@source inline`），与既有的 `SOLAR_SKILL_ICON_CLASS` 同一个思路；不整目录扫进插件源码，那会把 preset 里只有插件自己用的成百上千个工具类一并生成进宿主 CSS。第三方插件仍只能拿到默认图标。
+- **旧格式设计稿在画廊里看不见、也永远不会被迁移**：设计文档从「`x.vetd` 文件 + `x.vetd.d/` 旁挂目录」改成单个 `x.vetd/` 包之后（ADR-0066），画布打开时会就地升级旧格式，但新的设计画廊只认目录形态——旧项目根本不出现在画廊里，用户看不到也就点不进去，那份设计等于消失了。现在画廊每次加载/刷新时同样会就地迁移（幂等、分步崩溃安全，打包分享文件靠内容嗅探放过）。
+- **迁移中断后设计彻底隐身**：升级分三步走，如果停在「旧 manifest 已删、旁挂目录还没改名」之间，磁盘上就不再有任何叫 `.vetd` 的条目，只按后缀找设计的扫描器再也看不见它。现在画布、agent 工具与画廊都会认出落单的 `x.vetd.d/` 并把最后一步补上；同名设计包已存在时不动它，避免改名撞车。
+- **画布的「刷新」不重扫设计列表**：面板开着时新出现的设计（含还没迁移的旧格式）要等切会话才被发现。现在刷新按钮同时与磁盘重新对齐；空态下也补了「重新扫描」按钮——此前那里只有「新建设计」一条路，扫不到的时候会让人以为设计丢了。
+- **主进程改动项目列表后侧边栏不刷新**：项目列表的事实源在主进程配置里，但渲染进程只在启动和用户亲手操作后重读，于是任何**不经过渲染进程**的写入（插件的 `official.projects.*`、Action）改完配置后侧边栏纹丝不动，要重启才看得到。现在 `ProjectService` 的每一次落盘都广播 `vetta:projects:changed`，渲染进程收到即重读；没落盘的调用（如 create 命中「已存在就不写」分支）不广播，不会白刷。
+- **会话不再写进用户的工程目录**：普通项目的会话产物一直存在全局的 `~/.vetta/agent/sessions/--<编码后的项目路径>--/`，7 月 29 日 Desktop Runtime 切换到新 Backend Pool 时缺省落点被写成了 `<项目>/.vetta/sessions`——于是每开一个会话，用户仓库里就多一个未跟踪目录（可能被 `git add -A` 误提交，也可能随项目分发出去）。现在缺省落点恢复为全局分片目录；批量任务与「对话」/ Claw / 知识库这些自带 `sessionDir` 的场景不受影响。这段时间已经落在项目里的会话**不需要迁移也不会丢**：项目的会话目录发现同时认全局分片与 `<项目>/.vetta/sessions` 两处，列表按 cwd 并集展示。仓库里已经产生的 `.vetta/sessions` 可自行删除。
+- **在新会话页贴设计备注不再石沉大海**：UI 设计画布的备注自动派活此前要求宿主已有活动会话，而新会话欢迎页恰恰把活动会话清空了——用户在画布上贴了备注，左侧毫无动静，也没有任何提示。现在这种情况下会先按当前项目 cwd 建一个会话（执行模式跟随页面当前选择，建完跳进对话页，与手动发送一致）再派活。真正发不出去的只剩「会话在别的工作区」与「Agent 正在跑」两种，语义不变。配套 Plugin API 新增 `conversation.createSession()`。
+- 插件热更新现在保存 `activate()` 返回的 activation-scoped cleanup，并只在对应旧实例释放时执行，避免 last-known-good 替换流程中的模块级 `deactivate()` 误清理新运行时。
+
+- **插件媒体能力列表兼容严格 JSON 校验**：宿主复制 Provider capability 时不再把缺省的分辨率、比例、时长和模式字段显式写成 `undefined`，避免内容创作读取 ComfyUI 等视频 Provider 时被 capability 输出边界拒绝。
+- **消息队列收归主进程 kernel，多处丢消息与误发路径根除**（ADR-0060）：streaming 中发送改为直发 `session.prompt`（携 `streamingBehavior: "followUp"`）进入 kernel 队列，本轮自然停止点接力消费；渲染端仅保留镜像。修复：出队后发送失败不回滚导致丢消息、「立即发送」的 abort+8 秒超时竞态导致丢消息（打断与续发下沉到 kernel 原子完成，语义不变、竞态消失）、上游报错后队列被误判自然结束继续自动派发、打断/出错后排队消息静默滞留（现队列暂停并在输入框队列抽屉脉冲提示，可「继续发送」或移除）、队列纯内存重启即丢（现随会话 sidecar 持久化）。排队消息的用户气泡改为在被实际消费时上屏，顺序与模型可见顺序严格一致。
+- **失败重发不再产生重复用户记录**：上一轮以错误收尾且重发文本与最后一条用户消息相同时，自动走 `replaceLastUserMessage` 路径回退后再发，jsonl 与下一轮模型上下文只保留一条。
+- **插件 sendPrompt 不再吞用户准备的输入**：插件发送不消费用户挂在输入框上的 promptAttachment、不清空输入预测；`sendPrompt` 返回 `sent | queued` 回执并透传队列条目 id。
+- **继续使用过的历史会话无法再次打开**：Legacy 会话首次导入后，Renderer 会采用 Runtime 返回的 canonical Conversation V2 路径；存储层同时允许复用 Import Seed 一致且已追加原生事件的迁移目标，避免切换回来时因固定 recovery 目标冲突而抛出 `Conversation already exists`。
+- **执行中的会话切走再切回时不再丢失刚发送的用户消息**：Renderer 会按 runtime session 暂存尚未被 canonical 历史确认的乐观用户气泡；会话历史水合时保留缺失气泡，待对应序号的持久化用户消息出现后自动去重并清理暂存。活动会话的队列自动派发与立即发送使用同一保护。
+- **插件工作区视频 MIME 识别**：`fs.readBinaryFile` 现在正确返回 MP4、M4V、MOV 与 WebM 类型，避免生成视频被标记为通用二进制后无法在节点中播放。
+- **重启后上下文圆环点击无响应**：总 Token 会从会话历史恢复，但分区构成报告此前只存在于进程内存，导致重启后圆环仍在、Popover 内容却未挂载。现在按会话缓存最新的隐私安全报告并在重启时恢复；旧会话尚无缓存时也会正常打开并说明下一次模型调用后生成明细，不再静默无响应。
+- `vetta-host://ui` ESM 桥接现在会同步转发全部 `@vetta/ui` 运行时导出，避免插件使用新增的下拉单选组件时在模块加载阶段报缺少导出。
+- **插件媒体任务支持页面刷新恢复**：通用 Job 与临时产物改为按稳定插件 owner 跨 renderer capability session 保留；媒体 Provider 重载后，进行中的 Job 会按稳定 Provider ID 绑定新注册实例继续查询，内容创作图片/视频节点不再永久卡在刷新前的生成状态。
+- **丢失的宿主任务停止重复轮询**：主进程重启或遗留任务导致 Job 内存记录不存在时，`job.get` / `job.cancel` 返回标准 `job-not-found` 终态，不再持续抛出 IPC handler 错误。
+- **设计画布首次打开要等很久（依赖装不完，agent 都收工了面板还在转）**：两处叠加。其一，托管运行时配置的 npm 镜像源与共享缓存（`npm_config_registry` / `npm_config_cache` / `npm_config_prefix` / `npm_config_userconfig`）只写在主进程 `process.env` 上，而插件命令的子进程环境是按白名单构造的，这几个键全被挡在外面——插件里的 `npm install` 一直在绕过镜像走默认 registry。其二，设计引擎模板只带 `package.json`，每次都要向 registry 重新解析约 190 个包的版本范围。现在白名单放行这几个 npm 配置键，引擎模板同时 materialize `package-lock.json` 并改用 `npm ci --prefer-offline`。同一台机器冷缓存实测：45.3s → 14.3s（仅镜像）→ 1.9s（镜像 + `npm ci`）。存量已装好的引擎目录不受影响，不会触发重装。
+- **重启应用后进会话，输入栏模型被重置成列表第一个**：会话用的模型只存在主进程内存里，重启后按 sessionPath 重开会话时，后端拿不到该会话的模型，落到「可用模型列表第一个」这个兜底值（`backend-pool.ts` 的 `resolveInitialModel`），渲染层再无条件把这个值 pull 回输入栏，覆盖掉本地记住的选择。同一次运行里切来切去看着正常，是因为会话 handle 还在内存里。现在重开已有会话会从会话历史里恢复上一轮实际使用的模型；该模型已被删除或没有凭证时才回落到默认模型。
+- **能力页「Vetta 内置」分组只列出几项、计数也不对**：列表分页原本先把全局按下载量排序的扁平结果切成 60 条，再对切片分组。内置能力下载量为 0 恒排在最末，第一页只捞到零星几条，分组标题旁的计数显示的也是这个已加载数（例如实际 12 个只显示「2」），要点「加载更多」才补齐。现在内置能力整组返回、不参与分页，分页只作用于市场条目，「加载更多」的剩余数量也随之只算市场条目。
+- **窗口从窄屏拉回宽屏后活动面板空白**：面板内容 portal 到一个容器里，而宽屏侧栏与窄屏 bottom sheet 各渲染一份该容器。跨断点拉宽时侧栏已挂载并登记了新容器，随后 bottom sheet 播完退场动画才卸载，其清理无条件把登记清空，portal 失去落点——面板只剩空白，要再拉窄一次才恢复。现在只在被卸载的正是当前登记的容器时才清空。
+- **活动面板拉满后不跟随窗口变宽**：面板宽度此前只存夹紧后的像素数，`"max"`（设计画布、内置浏览器、文件内嵌预览都用它）在写入那一刻就被求值成一个固定数字，窗口坐标系一变只会向下夹紧、不会回涨——拉开设计画布后把 App 拖宽，画布面板仍停在原宽度。现在存的是宽度**意图**（固定像素 / 跟随窗口拉满）：拉满态随窗口尺寸重新求值，用户拖动分隔条或任何写入具体像素即退出该态。固定宽度也一并修好：窗口变窄时夹紧、变宽时回到用户原本拖出的宽度，而不是永久留在被压缩后的值。历史 localStorage 里的裸数字按固定宽度读入。
+- **输入栏上下文构成改为分类汇总**：默认只展示基础指令、扩展能力、工具、对话和运行时上下文五类占用，点击后才展开原始区块；历史消息合并为一项并单列当前输入，避免长会话和大量工具把弹层铺成冗长明细。部分区块无法估算时保留已知 Token 合计，并明确标出未知项数量。
+- **活动面板视频预览被裁切**：内置 `media-viewer` 的视频预览原先用 `object-cover` 铺满容器会裁掉画面；改为 `object-contain`，按面板尺寸等比缩放完整显示（黑底 letterbox）。
+
+- **插件工作台热更新失败不再静默**：应用插件后会等待开发服务器 ready；CLI 缺失、版本不兼容、启动退出或超时会回传到工作台，而不是显示应用成功但源码修改无效。CLI 通过项目内 `@vetta-org/plugin-vite/cli` 公共子路径解析，兼容 ESM exports、workspace 链接与标准用户工程安装。开发工程只在版本化 ready 握手成功后原子覆盖 staging/installed 快照；启动失败保留稳定插件，运行中进程退出则回退并按 250ms/1s/3s 有限重启。批量 preset 会话限制为四路冷启动并逐插件汇总结果，单个插件失败不再把整批记为失败。
+
+- **插件官方身份校验补强**：命令执行与长驻进程接口不再接受 renderer 传入的插件 ID，改由主进程从活动 capability session 解析真实调用者；插件 dev watch 也必须携带 official session。插件 SDK 与现有插件调用方式不变。
+- **能力页首开列表转圈过久**：原先 `loading` 要等本地安装态、服务端 `/abilities/market`、开源市场三条 `allSettled` 全结束后才关，外加 `mcp.config === null` 再挡一道，网络 RTT 会直接变成整表转圈。现改为本地 IPC 就绪即出列表（内置/已装先可见），市场在后台合并；MCP 配置缺省按空表组装；开源市场同会话 `list()` 复用进程内快照，避免反复全量校验包。
 - **侧栏切换会话卡顿**。最大头不是渲染慢，是点击后被排队等了几百毫秒：点会话行会先平滑滚动把行挪进安全区、并等分栏面板的 `max-height` 过渡结束，两个等待 `Promise.all` 完（fallback 分别 800ms 与 450ms）之后才真正发起会话切换——而 `openSession` 内部本来已经做了「拿到 sessionId 就写 activeSession + navigate」的优化，全被这段等待抵消，慢机上还容易吃满 fallback。现在滚动与切换并行，点下去立刻开始切。其余是渲染层：
   - 会话行改成 memo 组件，per-row 回调（选中/重命名/右键菜单）与行视图对象的引用都稳定下来——切换会话原本只有两行的高亮变了，却会把整份列表重建一遍。
   - `<Sidebar>` 加 memo。它挂在 RootLayout 下，而 RootLayout 同时订阅了附件、提及文件、选中 skill/模型、todo 等一堆与侧栏无关的状态，此前输入框贴张图都会把整条侧栏重渲染。
@@ -89,6 +162,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Changed
 
+- **插件附件改为输入框外的引用行**：插件挂上来的上下文不再是输入卡片里的胶囊，改画在卡片**外面**顶部——来源图标 + 逐条列出的名字（右侧 hover 出移除），一次选中三个对象就是三条，而不是「3 个画框」这种数不出是哪几个的汇总。插件 SDK 的 `PluginPromptAttachment` 因此新增可选的 `labels: string[]`（省略时回落到 `[label]`），vetta-ui-design 与内容创作都已按条给名。
+- **Vetta UI Design 选中改为挂到 AI 输入框**：画布不再自带「让 Vetta 调整」按钮与浮层。选中画框或 Figma 式选中的 DOM 元素后，输入框上方直接出现画框名那一行引用，用户在输入框里正常提问即可，选中作为结构化上下文（`vetta.ui-design.canvas-selection`：画框绝对路径/尺寸、元素的插桩源码位置与 DOM 路径）随这一轮发出。单选画框/元素时后台截一张图（元素保留高亮描边）一并带上；多选只给元数据，由 agent 按需 `vetd_screenshot`。引用可随手摘掉，摘掉后同一次选中不再自动挂回。
+- **插件网络目标改为清单声明，命令执行收口到 official 插件**（ADR-0060）：`network.fetch` 必须配置 `network.allowedHosts`，主进程按 capability session 绑定的插件 ID 校验首跳与每次重定向；公网、私网 IP、localhost 均可显式声明，official 插件可使用 `*` 适配用户自定义服务地址。`agent.command.run` / `agent.command.spawn` 及命令授权不再对 local/community 插件生效，执行入口仍做权威 trustLevel 校验。
 - **活动面板拉到最大时给对话区留更多空间**：`ACTIVITY_PANEL_MIN_CHAT_AREA` 由 360 提到 454，消息列表最窄净宽从约 336 提到约 430。
 - **项目文件拖出系统时使用应用内文件类型图标**：原生 `startDrag` 幽灵图与文件树一致（`getFileIcon` / vscode-icons），由渲染进程栅格化为 PNG 后缓存到主进程；pointerdown / 选区变更时预取。缓存未命中时回退应用 logo，不再使用系统 `app.getFileIcon`。
 - **插件可选用宿主 `@vetta/ui` 单例**：Module Federation share 与 `vetta-host://ui` 提供 Button / Dialog / Switch / Slider 等 primitives，构建侧由 `@vetta-org/plugin-vite` external，避免插件自带一份 UI。可选、半稳定，不承诺跨大版本 semver；`@vetta/theme-ui` 仍不共享。见 `docs/plugin/styling-and-pitfalls.md`。
@@ -169,6 +245,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Fixed
 
+- **Desktop 验证启动依赖修复**：升级 `lucide-react` 到包含完整图标产物的版本，修复 `currency.mjs` 缓存入口缺失导致 Vite 依赖优化失败、Greenfield Runtime 进程级 Canary 无法启动的问题。
+- **Workspace 前置构建顺序修复**：前置构建依赖由各包 manifest 的正式 workspace 依赖推导，确保 `runtime-core` 先于 `coding-agent` 构建；构建图脚本本身也纳入缓存哈希，避免陈旧声明文件导致 `TS5055`。
 - **消息气泡里的 skill 胶囊退化成 slug**：输入栏刚插入时是「图标 + 别名」（如「发布能力」），消息发出后气泡里却变成 `publish-ability` + 通用魔法棒图标。根因是文本流里只留 `@skill:<slug>`（软引用的权威形态，模型要按真实 name 查 skill），别名与图标只挂在输入框的 `SkillTokenNode` 上，气泡端无从得知。新增 `lib/skill-token-meta` 承载解析口径（`skills.list()` 给别名，市场目录 / 内置静态资源给图标，与命令区同源），气泡通过 `TextBlockView` 的 `inlineTokens.getSkill` 回查。同一根因导致的**重编辑回填后输入框胶囊也退化**一并修复：`SkillTokenNode` 的胶囊改为在节点缺少别名/图标时回查。查不到（未安装 / 已卸载）时回退 slug + 默认图。
 
 - **能力广场的双语文案只显示默认语言**：两处独立缺陷叠加。① **locale 键口径不一**：admin 与分类译名写的是 `zh-CN` / `en-US`（服务端 `SupportedLocales`），插件包 `locales/*.json` 解析出的是 `zh` / `en`，而界面语言只有 `zh` / `en`，客户端此前精确匹配 `i18n[locale]`，admin 录入的译文永远命中不到。归一改在读侧（`pickLocaleValue`：精确 → 基语言 → 同基语言任一地区键），存量数据无需迁移，两条写入路径都生效。② **列表链路根本不解析译文**：`build-ability-items` 只读服务端投影到顶层的默认语言 `name`/`description`/`tags`，卡片标题、简介、标签、搜索词与详情页头部因此不跟随语言（只有正文/头图/元信息跟随）。改为在 `useAbilitiesModel` 组装入口先按当前语言归一市场行（`localizeMarketAbility`），四种 type 的组装函数保持纯函数、签名不变。另：能力标签现在支持按语言覆盖（`detail.i18n[locale].tags`，整体替换）。

@@ -8,6 +8,7 @@
 
 // Core primitives
 export type { ConversationScenario } from "./scenario.js";
+export { PLUGIN_PERMISSIONS } from "./permissions.js";
 export type { PluginPermission } from "./permissions.js";
 export type { Disposable } from "./disposable.js";
 export type {
@@ -16,6 +17,7 @@ export type {
 	PluginManifestInput,
 	PluginManifestResourceReference,
 	PluginMcpServerConfig,
+	PluginNetworkManifest,
 	PluginSettingSchema,
 } from "./manifest.js";
 
@@ -40,18 +42,26 @@ export type {
 	ConversationState,
 	ConversationMessage,
 	ConversationEvent,
+	ConversationQueueState,
+	CreateSessionOptions,
 	PluginConversationApi,
+	SendPromptResult,
 } from "./conversation.js";
 
 // UI slots
 export type {
 	PluginGlobalSlotContribution,
+	PluginNavBadge,
+	PluginNavBadgeTone,
+	PluginWorkspaceViewProps,
+	PluginWorkspaceViewContribution,
 	PluginAudioMetadata,
 	PluginPreviewUrlOptions,
 	PluginPreviewFile,
 	PluginFilePreviewProps,
 	PluginFilePreviewContribution,
 	PluginActivityTabContribution,
+	PluginActivityTabRetention,
 	PluginCaptureRegion,
 	PluginOpenActivityTabOptions,
 	PluginPromptDecoration,
@@ -92,6 +102,15 @@ export type {
 	PluginAgentActions,
 	PluginAgentHandlerContext,
 	PluginAgentToolHandler,
+	PluginCodingAgentHookEvent,
+	PluginCodingAgentHookEventName,
+	PluginCodingAgentHookEventOf,
+	PluginCodingAgentHookHandler,
+	PluginCodingAgentHookHandlerContext,
+	PluginCodingAgentHookRegistration,
+	PluginCodingAgentHookResult,
+	PluginCodingAgentHookTool,
+	PluginCodingAgentPermissionMode,
 	PluginSystemPromptProviderHandler,
 	PluginSystemPromptProviderRegistration,
 	PluginContinuationResult,
@@ -99,6 +118,7 @@ export type {
 	PluginContinuationRegistration,
 	PluginAgentApi,
 } from "./agent.js";
+export { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES } from "./agent.js";
 
 // App actions
 export type {
@@ -158,6 +178,13 @@ export type {
 	PluginOfficialProviderDetail,
 	PluginOfficialProviderUpsertData,
 	PluginOfficialProjectEntry,
+	PluginOfficialSessionHandle,
+	PluginOfficialNavigationOpenInput,
+	PluginOfficialOpenFilesOptions,
+	PluginOfficialOpenedFile,
+	PluginOfficialSessionAccess,
+	PluginOfficialSessionRunningEvent,
+	PluginOfficialSessionSummary,
 	PluginOfficialPluginSummary,
 	PluginOfficialKnowledgeBase,
 	PluginOfficialKnowledgeProcessingSettings,
@@ -189,23 +216,59 @@ export type {
 } from "./capture.js";
 export type { PluginImageRef } from "./images.js";
 export type {
+	PluginArtifactDestination,
+	PluginArtifactRef,
+	PluginArtifactsApi,
+	PluginPersistedArtifact,
+} from "./artifacts.js";
+export type {
+	PluginJob,
+	PluginJobFailure,
+	PluginJobProgress,
+	PluginJobRef,
+	PluginJobsApi,
+	PluginJobStatus,
+	PluginJobWaitOptions,
+} from "./jobs.js";
+export type {
 	PluginMediaApi,
 	PluginMediaArtifact,
 	PluginMediaCapability,
-	PluginMediaCreateJobRequest,
+	PluginMediaComposeRequest,
 	PluginMediaDimensions,
 	PluginMediaErrorCode,
 	PluginMediaFailure,
+	PluginMediaGenerateRequest,
+	PluginMediaGenerationInputSlot,
 	PluginMediaGenerationMode,
+	PluginMediaGenerationModeCapability,
+	PluginMediaInput,
+	PluginMediaInputSource,
+	PluginMediaInputUploadRequest,
 	PluginMediaJob,
-	PluginMediaJobRef,
-	PluginMediaJobStatus,
 	PluginMediaKind,
+	PluginMediaOperation,
+	PluginMediaOutput,
+	PluginMediaOutputKind,
 	PluginMediaProviderDescriptor,
-	PluginMediaReference,
+	PluginMediaProviderArtifact,
+	PluginMediaProviderArtifactSource,
+	PluginMediaProviderHandlerContext,
+	PluginMediaProviderInput,
+	PluginMediaProviderJob,
+	PluginMediaProviderRegistration,
+	PluginMediaProviderSubmitRequest,
+	PluginMediaSubmitRequest,
+	PluginMediaTranscodeRequest,
+	PluginMediaTransferResponse,
 } from "./media.js";
 export { PluginMediaError } from "./media.js";
-export type { PluginPromptAttachment } from "./prompt-attachment.js";
+export type {
+	PluginPromptAttachment,
+	PluginPromptContext,
+	PluginPromptContextJsonValue,
+} from "./prompt-attachment.js";
+export { definePluginPromptContext } from "./prompt-attachment.js";
 export type {
 	PluginNetworkApi,
 	PluginNetworkBody,
@@ -215,11 +278,32 @@ export type {
 export type { PluginGatewayApi, PluginGatewayRequest, PluginGatewayResponse } from "./gateway.js";
 export type {
 	PluginPutBlobInput,
+	PluginPutBlobFromFileInput,
 	PluginStorageApi,
 	PluginStoredBlob,
 	PluginStoredBlobRef,
 } from "./storage.js";
 export type { PluginSettingsApi } from "./settings.js";
+
+// QuickJS sandbox runtime and host-rendered declarative UI
+export type {
+	PluginDeclarativeActionEvent,
+	PluginDeclarativeButton,
+	PluginDeclarativeDivider,
+	PluginDeclarativeInput,
+	PluginDeclarativeNode,
+	PluginDeclarativeSection,
+	PluginDeclarativeSelect,
+	PluginDeclarativeSelectOption,
+	PluginDeclarativeStack,
+	PluginDeclarativeSwitch,
+	PluginDeclarativeText,
+	PluginDeclarativeTextarea,
+	PluginDeclarativeTextTone,
+	PluginQuickJsActivityTab,
+	PluginQuickJsApi,
+	PluginQuickJsContext,
+} from "./quickjs.js";
 
 // i18n
 export type {
@@ -231,7 +315,13 @@ export type {
 export { interpolatePluginText, resolveCatalogKey, resolvePluginText } from "./i18n.js";
 
 // Context & lifecycle
-export type { PluginPermissionApi, AgentMode, PluginContext, PluginDefinition } from "./context.js";
+export type {
+	PluginPermissionApi,
+	AgentMode,
+	PluginActivationCleanup,
+	PluginContext,
+	PluginDefinition,
+} from "./context.js";
 export { definePlugin } from "./context.js";
 
 // Host bridge (host-injected; plugins use hooks)

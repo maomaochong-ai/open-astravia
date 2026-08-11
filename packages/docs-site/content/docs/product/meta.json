@@ -1,0 +1,17 @@
+{
+	"title": "使用指南",
+	"pages": [
+		"overview",
+		"models",
+		"abilities",
+		"mcp",
+		"knowledge-base",
+		"batch-tasks",
+		"automation",
+		"claw",
+		"im",
+		"webhook",
+		"application-environment",
+		"desktop-pet"
+	]
+}

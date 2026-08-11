@@ -228,6 +228,27 @@ describe("OpenMarketplaceService", () => {
 		expect(icon).not.toContain("/sync-");
 	});
 
+	it("serves repeated list() from in-memory snapshot without re-reading disk packages", async () => {
+		const rootDir = await temporaryRoot();
+		const service = new OpenMarketplaceService({
+			appVersion: APP_VERSION,
+			rootDir,
+			fetchArchive: async () => response(archive()),
+			// 避免后台更新抢跑影响断言
+			updateCheckIntervalMs: 60_000,
+			now: () => new Date("2026-07-28T00:00:00.000Z"),
+		});
+
+		await service.refresh();
+		const first = await service.list();
+		// 删掉落地快照：若仍走磁盘校验，第二次 list 会失败/空。
+		await rm(join(rootDir, "snapshots"), { recursive: true, force: true });
+		const second = await service.list();
+
+		expect(second).toEqual(first);
+		expect(second.abilities).toHaveLength(1);
+	});
+
 	it("does not reuse state after the configured source identity changes", async () => {
 		const rootDir = await temporaryRoot();
 		const first = new OpenMarketplaceService({
@@ -452,12 +473,12 @@ describe("OpenMarketplaceService", () => {
 		const current = await service.list();
 
 		expect(current).toMatchObject({ marketplaceVersion: "2026.07.1" });
-		await vi.waitFor(async () => {
-			const state: unknown = JSON.parse(await readFile(join(rootDir, "state.json"), "utf-8"));
-			expect(state).toMatchObject({ marketplaceVersion: "2026.07.2" });
-		});
+		await vi.waitFor(() =>
+			expect(onBackgroundUpdate).toHaveBeenCalledWith(expect.objectContaining({ marketplaceVersion: "2026.07.2" })),
+		);
+		const state: unknown = JSON.parse(await readFile(join(rootDir, "state.json"), "utf-8"));
+		expect(state).toMatchObject({ marketplaceVersion: "2026.07.2" });
 		expect(fetchArchive).toHaveBeenCalledOnce();
-		expect(onBackgroundUpdate).toHaveBeenCalledWith(expect.objectContaining({ marketplaceVersion: "2026.07.2" }));
 		const next = await service.list();
 		expect(next).toMatchObject({ marketplaceVersion: "2026.07.2" });
 		expect(next.abilities[0]?.description).toBe("Updated");

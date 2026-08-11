@@ -1,5 +1,13 @@
 import type { PluginNetworkApi, PluginSettingsApi } from "@vetta-org/plugin-sdk";
-import type { GeneratedContent } from "./types";
+import type {
+	ContentGenerationReference,
+	ContentProviderGenerationContext,
+	GeneratedContent,
+} from "./types";
+
+export interface ResolvedContentGenerationReference extends Omit<ContentGenerationReference, "source"> {
+	data: string;
+}
 
 export function readStringSetting(settings: PluginSettingsApi, key: string): string {
 	const value = settings.get<unknown>(key);
@@ -15,16 +23,28 @@ export function requireStringSetting(settings: PluginSettingsApi, key: string, p
 export async function downloadGeneratedContent(
 	network: PluginNetworkApi,
 	url: string,
-	content: Omit<GeneratedContent, "data" | "mimeType"> & { mimeType?: string },
+	content: Omit<GeneratedContent, "source" | "mimeType"> & { mimeType?: string },
 	headers?: Record<string, string>,
 ): Promise<GeneratedContent> {
 	const response = await network.request<string>({ url, headers, responseType: "base64", timeoutMs: 330_000 });
 	if (!response.ok) throw new Error(`content provider media download returned HTTP ${response.status}`);
 	return {
 		...content,
-		data: response.body,
+		source: { type: "inline", data: response.body },
 		mimeType: response.headers["content-type"]?.split(";")[0] || content.mimeType || defaultMimeType(content.kind),
 	};
+}
+
+export async function resolveReferenceData(
+	references: readonly ContentGenerationReference[],
+	context: ContentProviderGenerationContext,
+): Promise<ResolvedContentGenerationReference[]> {
+	return await Promise.all(
+		references.map(async ({ source: _source, ...reference }) => ({
+			...reference,
+			...(await context.readReference({ ...reference, source: _source })),
+		})),
+	);
 }
 
 export function dimensionsFor(aspectRatio: string | undefined, resolution = "1024p"): { width: number; height: number } {

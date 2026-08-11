@@ -1,44 +1,126 @@
-import { useActiveConversation, useTranslation } from "@vetta-org/plugin-sdk";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useActivityTab, usePromptAttachment, useTranslation } from "@vetta-org/plugin-sdk";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
 import type { ImportedContentAsset, ImportedContentReference } from "../generation/types";
+import type { ContentCreationPluginRuntime } from "../plugin/runtime";
 import {
-	getContentCreationWorkspace,
-	getContentGenerationService,
-	getContentAssetPreviewResolver,
-	notifyContentCreationError,
-} from "../plugin/runtime";
+	ContentCreationRuntimeProvider,
+	useContentCreationRuntime,
+} from "../plugin/runtime-context";
 import { GraphWorkspace } from "../canvas/GraphWorkspace";
+import {
+	CONTENT_SELECTION_PROMPT_ATTACHMENT_ID,
+	createContentSelectionPromptAttachment,
+	isCurrentContentSelectionPromptAttachment,
+} from "../plugin/selection-prompt-context";
 
-export function ContentCreationPanel() {
-	const { cwd } = useActiveConversation();
+export function ContentCreationPanel({ runtime }: { runtime: ContentCreationPluginRuntime }) {
+	return (
+		<ContentCreationRuntimeProvider runtime={runtime}>
+			<ContentCreationPanelContent />
+		</ContentCreationRuntimeProvider>
+	);
+}
+
+function ContentCreationPanelContent() {
+	const runtime = useContentCreationRuntime();
+	const { cwd } = useActivityTab();
 	const { t } = useTranslation();
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [assetPreviewUrls, setAssetPreviewUrls] = useState<ReadonlyMap<string, string>>(new Map());
-	const workspace = getContentCreationWorkspace();
-	const generation = getContentGenerationService();
-	const assetPreviewResolver = getContentAssetPreviewResolver();
-	const models = useMemo(() => generation.listModels(), [generation]);
+	const [selectedNodeIds, setSelectedNodeIds] = useState<readonly string[]>([]);
+	const [modelRevision, setModelRevision] = useState(0);
+	const promptAttachment = usePromptAttachment();
+	const publishedSelectionRef = useRef<string | null>(null);
+	const dismissedSelectionRef = useRef<string | null>(null);
+	const previousSelectionRef = useRef("");
+	const workspace = runtime.workspace;
+	const generation = runtime.generation;
+	const assetPreviewResolver = runtime.assetPreviewResolver;
+	const models = useMemo(() => generation.listModels(), [generation, modelRevision]);
+	const selectionSignature = useMemo(
+		() => `${project?.projectId ?? ""}\u0000${[...selectedNodeIds].sort().join("\u0001")}`,
+		[project?.projectId, selectedNodeIds],
+	);
+	const selectionAttachment = useMemo(() => {
+		if (!project || selectedNodeIds.length === 0) return null;
+		const selectedNodes = project.graph.nodes.filter((node) => selectedNodeIds.includes(node.id));
+		if (selectedNodes.length === 0) return null;
+		// 输入框逐条画出条目，所以按节点给名字；label 只是没有 labels 时的回退说法。
+		const names = selectedNodes.map((node) => node.name?.trim() || t(`node.kind.${node.kind}`));
+		const label = names.length === 1 ? names[0] : t("selection.count", { count: selectedNodes.length });
+		return createContentSelectionPromptAttachment(project, selectedNodeIds, label, names);
+	}, [project, selectedNodeIds, t]);
+
+	// Match the design canvas: maximize on each tab activation, then leave resizing to the user.
+	useEffect(() => runtime.maximizeActivityPanel(), [runtime]);
+	useEffect(
+		() => runtime.subscribeModels(() => setModelRevision((revision) => revision + 1)),
+		[runtime],
+	);
+
+	useEffect(() => {
+		const selectionChanged = previousSelectionRef.current !== selectionSignature;
+		if (selectionChanged) {
+			previousSelectionRef.current = selectionSignature;
+			publishedSelectionRef.current = null;
+			dismissedSelectionRef.current = null;
+		}
+		if (!selectionAttachment) {
+			if (promptAttachment?.id === CONTENT_SELECTION_PROMPT_ATTACHMENT_ID) {
+				runtime.publishPromptAttachment(null);
+			}
+			publishedSelectionRef.current = null;
+			return;
+		}
+		if (promptAttachment && promptAttachment.id !== CONTENT_SELECTION_PROMPT_ATTACHMENT_ID) {
+			publishedSelectionRef.current = null;
+			return;
+		}
+		if (!promptAttachment && publishedSelectionRef.current === selectionSignature) {
+			dismissedSelectionRef.current = selectionSignature;
+			publishedSelectionRef.current = null;
+			return;
+		}
+		if (dismissedSelectionRef.current === selectionSignature) return;
+		if (isCurrentContentSelectionPromptAttachment(promptAttachment, selectionAttachment)) {
+			publishedSelectionRef.current = selectionSignature;
+			return;
+		}
+		runtime.publishPromptAttachment(selectionAttachment);
+		publishedSelectionRef.current = selectionSignature;
+	}, [promptAttachment, runtime, selectionAttachment, selectionSignature]);
+
+	useEffect(
+		() => () => {
+			runtime.publishPromptAttachment(null);
+		},
+		[runtime],
+	);
 
 	useEffect(() => {
 		let active = true;
 		setProject(workspace.getSnapshot(cwd));
+		setSelectedNodeIds([]);
 		setError(null);
 		const unsubscribe = workspace.subscribe(cwd, () => {
 			if (active) setProject(workspace.getSnapshot(cwd));
 		});
-		void workspace.load(cwd).catch((loadError) => {
-			if (!active) return;
-			setError(t("error.load"));
-			notifyContentCreationError(t("error.load"), loadError);
-		});
+		void workspace
+			.load(cwd)
+			.then(() => generation.recoverActiveJobs(cwd))
+			.catch((loadError) => {
+				if (!active) return;
+				setError(t("error.load"));
+				runtime.notifyError(t("error.load"), loadError);
+			});
 		return () => {
 			active = false;
 			unsubscribe();
 		};
-	}, [cwd, t, workspace]);
+	}, [cwd, generation, runtime, t, workspace]);
 	useEffect(() => {
 		let active = true;
 		if (!project) {
@@ -64,16 +146,16 @@ export function ContentCreationPanel() {
 				await workspace.dispatch(cwd, commands);
 			} catch (dispatchError) {
 				setError(t("error.save"));
-				notifyContentCreationError(t("error.save"), dispatchError);
+				runtime.notifyError(t("error.save"), dispatchError);
 			}
 		},
-		[cwd, t, workspace],
+		[cwd, runtime, t, workspace],
 	);
 	const runNode = useCallback(
 		async (nodeId: string) => {
 			if (!cwd) {
 				setError(t("error.outputWorkspaceRequired"));
-				notifyContentCreationError(t("error.outputWorkspaceRequired"), new Error("workspace is required"));
+				runtime.notifyError(t("error.outputWorkspaceRequired"), new Error("workspace is required"));
 				return;
 			}
 			try {
@@ -84,19 +166,19 @@ export function ContentCreationPanel() {
 				console.error("[plugin:content-creation] generation failed", generationError);
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation, runtime, t],
 	);
 	const importReferences = useCallback(
-		async (nodeId: string, files: readonly ImportedContentReference[]) => {
+		async (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => {
 			try {
 				setError(null);
-				await generation.importReferences(cwd, nodeId, files);
+				await generation.importReferences(cwd, nodeId, files, slotId);
 			} catch (importError) {
 				setError(t("error.importReference"));
-				notifyContentCreationError(t("error.importReference"), importError);
+				runtime.notifyError(t("error.importReference"), importError);
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation, runtime, t],
 	);
 	const importAssets = useCallback(
 		async (nodeId: string, files: readonly ImportedContentAsset[]) => {
@@ -105,10 +187,10 @@ export function ContentCreationPanel() {
 				await generation.importAssets(cwd, nodeId, files);
 			} catch (importError) {
 				setError(t("error.importAsset"));
-				notifyContentCreationError(t("error.importAsset"), importError);
+				runtime.notifyError(t("error.importAsset"), importError);
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation, runtime, t],
 	);
 
 	if (!project) {
@@ -131,10 +213,13 @@ export function ContentCreationPanel() {
 					project={project}
 					assetPreviewUrls={assetPreviewUrls}
 					models={models}
+					registerShortcutScope={runtime.registerShortcutScope}
 					onDispatch={dispatch}
 					onRunNode={runNode}
 					onImportAssets={importAssets}
 					onImportReferences={importReferences}
+					onSelectedNodeIdsChange={setSelectedNodeIds}
+					onOpenSettings={runtime.openPluginSettings}
 				/>
 			</main>
 		</div>

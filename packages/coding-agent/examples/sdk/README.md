@@ -1,99 +1,61 @@
 # SDK Examples
 
-Programmatic usage of pi-coding-agent via `createAgentSession()`.
+Programmatic usage through the stable `@vetta/coding-agent/sdk` entry. Concrete authentication, model and settings
+services use the stable Host adapter in `@vetta/coding-agent/host-services`.
 
 ## Examples
 
-| File | Description |
-|------|-------------|
-| `01-minimal.ts` | Simplest usage with all defaults |
-| `02-custom-model.ts` | Select model and thinking level |
-| `03-custom-prompt.ts` | Replace or modify system prompt |
-| `04-skills.ts` | Discover, filter, or replace skills |
-| `05-tools.ts` | Built-in tools, custom tools |
-| `06-extensions.ts` | Logging, blocking, result modification |
-| `07-context-files.ts` | AGENTS.md context files |
-| `08-slash-commands.ts` | File-based slash commands |
-| `09-api-keys-and-oauth.ts` | API key resolution, OAuth config |
-| `10-settings.ts` | Override compaction, retry, terminal settings |
-| `11-sessions.ts` | In-memory, persistent, continue, list sessions |
-| `12-full-control.ts` | Replace everything, no discovery |
+| File | API | Description |
+|------|-----|-------------|
+| `01-minimal.ts` | Stable SDK | Simplest usage with all defaults |
+| `02-custom-model.ts` | Host services | Custom provider registration through a stable Host |
+| `03-custom-prompt.ts` | Stable SDK | Replace or append the system prompt |
+| `04-skills.ts` | Stable SDK | Inline and dynamic Skill contributions with declarative filtering |
+| `05-tools.ts` | Stable SDK | Built-in tool activation by name |
+| `06-extensions.ts` | Stable SDK | Dynamic Extension path sources and event observation |
+| `07-context-files.ts` | Stable SDK | Explicit AGENTS.md-style context contribution |
+| `08-prompt-templates.ts` | Stable SDK | Inline prompt templates |
+| `09-api-keys-and-oauth.ts` | Host services | API key resolution and OAuth configuration |
+| `10-settings.ts` | Host services | Persistent and in-memory settings |
+| `11-sessions.ts` | Stable SDK | In-memory, persistent, recent and listed sessions |
 
 ## Running
 
 ```bash
 cd packages/coding-agent
-npx tsx examples/sdk/01-minimal.ts
+bun examples/sdk/01-minimal.ts
 ```
 
 ## Quick Reference
 
 ```typescript
+import { join } from "node:path";
 import { getModel } from "@vetta/ai";
 import {
-  AuthStorage,
-  createAgentSession,
-  DefaultResourceLoader,
-  ModelRegistry,
-  SessionManager,
-  SettingsManager,
-  codingTools,
-  readOnlyTools,
-  readTool, bashTool, editTool, writeTool,
-} from "@vetta/coding-agent";
+  createCodingAgentSession,
+  createCodingAgentSessionCatalog,
+} from "@vetta/coding-agent/sdk";
 
-// Auth and models setup
-const authStorage = AuthStorage.create();
-const modelRegistry = new ModelRegistry(authStorage);
-
-// Minimal
-const { session } = await createAgentSession({ authStorage, modelRegistry });
-
-// Custom model
+const cwd = process.cwd();
+const conversationDir = join(cwd, ".vetta", "conversations");
 const model = getModel("anthropic", "claude-opus-4-5");
-const { session } = await createAgentSession({ model, thinkingLevel: "high", authStorage, modelRegistry });
 
-// Modify prompt
-const loader = new DefaultResourceLoader({
-  systemPromptOverride: (base) => `${base}\n\nBe concise.`,
-});
-await loader.reload();
-const { session } = await createAgentSession({ resourceLoader: loader, authStorage, modelRegistry });
-
-// Read-only
-const { session } = await createAgentSession({ tools: readOnlyTools, authStorage, modelRegistry });
-
-// In-memory
-const { session } = await createAgentSession({
-  sessionManager: SessionManager.inMemory(),
-  authStorage,
-  modelRegistry,
-});
-
-// Full control
-const customAuth = AuthStorage.create("/my/app/auth.json");
-customAuth.setRuntimeApiKey("anthropic", process.env.MY_KEY!);
-const customRegistry = new ModelRegistry(customAuth);
-
-const resourceLoader = new DefaultResourceLoader({
-  systemPromptOverride: () => "You are helpful.",
-  extensionFactories: [myExtension],
-  skillsOverride: () => ({ skills: [], diagnostics: [] }),
-  agentsFilesOverride: () => ({ agentsFiles: [] }),
-  promptsOverride: () => ({ prompts: [], diagnostics: [] }),
-});
-await resourceLoader.reload();
-
-const { session } = await createAgentSession({
+const { session, diagnostics } = await createCodingAgentSession({
+  cwd,
   model,
-  authStorage: customAuth,
-  modelRegistry: customRegistry,
-  resourceLoader,
-  tools: [readTool, bashTool],
-  customTools: [{ tool: myTool }],
-  sessionManager: SessionManager.inMemory(),
-  settingsManager: SettingsManager.inMemory(),
+  thinkingLevel: "high",
+  storage: { kind: "file-create", conversationDir },
+  activeTools: ["read", "grep", "glob"],
+  appendSystemPrompt: "Be concise.",
+  resources: {
+    contextFiles: [{ path: join(cwd, "SDK_CONTEXT.md"), content: "Use strict TypeScript." }],
+    promptTemplates: [{ name: "review", description: "Review changes", content: "Review this diff." }],
+  },
 });
+
+const catalog = createCodingAgentSessionCatalog({ cwd, conversationDir });
+const recent = await catalog.findRecent();
+console.log({ diagnostics, recent });
 
 // Run prompts
 session.subscribe((event) => {
@@ -108,17 +70,22 @@ await session.prompt("Hello");
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `authStorage` | `AuthStorage.create()` | Credential storage |
-| `modelRegistry` | `new ModelRegistry(authStorage)` | Model registry |
 | `cwd` | `process.cwd()` | Working directory |
-| `agentDir` | `~/.pi/agent` | Config directory |
-| `model` | From settings/first available | Model to use |
-| `thinkingLevel` | From settings/"off" | off, low, medium, high |
-| `tools` | `codingTools` | Built-in tools |
-| `customTools` | `[]` | Additional tool definitions |
-| `resourceLoader` | DefaultResourceLoader | Resource loader for extensions, skills, prompts, themes |
-| `sessionManager` | `SessionManager.create(cwd)` | Persistence |
-| `settingsManager` | `SettingsManager.create(cwd, agentDir)` | Settings overrides |
+| `agentDir` | Vetta agent directory | Configuration and discovered resources |
+| `storage` | In-memory | Memory, native file creation or native file resume |
+| `model` | Settings or first available | Model value selected for the Session |
+| `thinkingLevel` | Settings default | Reasoning level |
+| `activeTools` | Scenario policy | Explicit built-in tool names |
+| `customTools` | `[]` | Session-private tool definitions |
+| `resources` | Discovered resources | Stable path and inline resource contributions |
+| `skillSources` | `[]` | Session-owned dynamic Skill contribution sources |
+| `extensionSources` | `[]` | Session-owned dynamic Extension path sources |
+| `appendSystemPrompt` | Discovered append prompt | Additional system instructions |
+
+Credential storage, custom provider registration and persistent settings are host concerns. Import `AuthStorage`,
+`ModelRegistry`, `SettingsRuntime` and `createCodingAgentHostWithServices` from
+`@vetta/coding-agent/host-services`. The Host owns its Sessions while the caller continues to own the concrete shared
+services. Complete loader and composition replacement remains on the package-root compatibility API.
 
 ## Events
 

@@ -2,7 +2,7 @@
 	"id": "image-gen",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
 	"entry": "dist/mf-manifest.json",

@@ -78,8 +78,9 @@ describe("CapabilityRegistry", () => {
 			registry.registerOwner("owner", [
 				bindCapability(DOMAIN_PROJECT_CAPABILITIES.LIST, {
 					execute: () => ({
+						workspacePath: "C:/workspace",
 						projects: [],
-						currentProjectPath: null,
+						archivedProjects: [],
 					}),
 				}),
 			]),

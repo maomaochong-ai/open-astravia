@@ -1,9 +1,0 @@
-List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 30KB (whichever is hit first).
-
-ALWAYS use this tool to list directory contents. NEVER use bash ls — this tool provides consistent output formatting.
-
-When to use `ls` vs other tools:
-- Use `ls` to list immediate contents of a single directory
-- Use `dir_tree` to visualize nested directory structure with hierarchy and counts
-- Use `find` to search for files by name pattern across directories
-- Use `grep` to search for text inside files

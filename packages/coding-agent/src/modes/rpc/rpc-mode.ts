@@ -1,40 +1,24 @@
 /**
- * RPC mode: Headless operation with JSON stdin/stdout protocol.
+ * Headless JSONL RPC host adapter.
  *
- * Used for embedding the agent in other applications.
- * Receives commands as JSON on stdin, outputs events and responses as JSON on stdout.
- *
- * Protocol:
- * - Commands: JSON objects with `type` field, optional `id` for correlation
- * - Responses: JSON objects with `type: "response"`, `command`, `success`, and optional `data`/`error`
- * - Events: AgentSessionEvent objects streamed as they occur
- * - Extension UI: Extension UI requests are emitted, client responds with extension_ui_response
+ * The wire protocol, command dispatcher and session implementation are kept
+ * separate so the transport does not depend on AgentSession internals.
  */
 
-import * as crypto from "node:crypto";
-import * as readline from "readline";
-import type { AgentSession } from "../../core/agent-session.js";
-import type {
-	ExtensionUIContext,
-	ExtensionUIDialogOptions,
-	ExtensionWidgetOptions,
-} from "../../core/extensions/index.js";
-import type { ToolDefinition } from "../../core/extensions/types.js";
-import { createImSendAttachmentTool, type ImHostBridge } from "../../core/tools/im-send-attachment/index.js";
-import { createMemoryTool } from "../../core/tools/memory/index.js";
-import { type Theme, theme } from "../interactive/theme/theme.js";
-import type {
-	RpcCommand,
-	RpcExtensionUIRequest,
-	RpcExtensionUIResponse,
-	RpcHostRequest,
-	RpcHostResponse,
-	RpcResponse,
-	RpcSessionState,
-	RpcSlashCommand,
-} from "./rpc-types.js";
+import type { Readable, Writable } from "node:stream";
+import {
+	createRpcCommandDispatcher,
+	type RpcFrameOutput,
+	rpcError,
+	rpcFailureMetadataForCommand,
+} from "./rpc-command-dispatcher.js";
+import { RpcExtensionUIBridge } from "./rpc-extension-ui-bridge.js";
+import { RPC_FAILURE_CODES } from "./rpc-failure.js";
+import { validateRpcInboundFrame } from "./rpc-frame-validator.js";
+import { RpcHostBridge } from "./rpc-host-bridge.js";
+import { RpcJsonlTransport } from "./rpc-jsonl-transport.js";
+import { assertRpcSessionCapabilities, type RpcSessionCapabilities } from "./rpc-session-capabilities.js";
 
-// Re-export types for consumers
 export type {
 	RpcCommand,
 	RpcExtensionUIRequest,
@@ -44,706 +28,209 @@ export type {
 } from "./rpc-types.js";
 
 export interface RunRpcModeOptions {
-	/** Register the im_send_attachment tool and accept host_response commands. */
+	/** Register the im_send_attachment tool and accept host_response frames. */
 	enableHostBridge?: boolean;
 }
 
-/** How long a single host_request waits before failing the tool with a timeout. */
-const HOST_REQUEST_TIMEOUT_MS = 30_000;
+interface RpcModeRuntimeOptions extends RunRpcModeOptions {
+	readonly input?: Readable;
+	readonly output?: Writable;
+	readonly exit?: (code: number) => void;
+}
 
-/**
- * Run in RPC mode.
- * Listens for JSON commands on stdin, outputs events and responses on stdout.
- */
-export async function runRpcMode(session: AgentSession, options: RunRpcModeOptions = {}): Promise<never> {
-	const output = (obj: RpcResponse | RpcExtensionUIRequest | RpcHostRequest | object) => {
-		// Use process.stdout.write directly (not console.log) so callers
-		// that patch / hijack `console.*` for diagnostics don't swallow
-		// the RPC protocol stream. Specifically, desktop-app's agent-rpc
-		// CLI mode redirects every console method to stderr to keep stdout
-		// pristine for this exact NDJSON payload.
-		process.stdout.write(`${JSON.stringify(obj)}\n`);
-	};
-
-	const success = <T extends RpcCommand["type"]>(
-		id: string | undefined,
-		command: T,
-		data?: object | null,
-	): RpcResponse => {
-		if (data === undefined) {
-			return { id, type: "response", command, success: true } as RpcResponse;
-		}
-		return { id, type: "response", command, success: true, data } as RpcResponse;
-	};
-
-	const error = (id: string | undefined, command: string, message: string): RpcResponse => {
-		return { id, type: "response", command, success: false, error: message };
-	};
-
-	// Pending extension UI requests waiting for response
-	const pendingExtensionRequests = new Map<
-		string,
-		{ resolve: (value: any) => void; reject: (error: Error) => void }
-	>();
-
-	// Shutdown request flag
+export async function runRpcModeWithCapabilities(
+	session: RpcSessionCapabilities,
+	options: RpcModeRuntimeOptions = {},
+): Promise<never> {
+	assertRpcSessionCapabilities(session, {
+		hostBridgeEnabled: options.enableHostBridge === true,
+	});
+	const transport = new RpcJsonlTransport(options.input ?? process.stdin, options.output ?? process.stdout);
+	const output: RpcFrameOutput = (frame) => transport.write(frame);
+	const extensionUI = new RpcExtensionUIBridge(output);
+	const hostBridge = options.enableHostBridge ? new RpcHostBridge(output) : undefined;
+	const backgroundTasks = new Set<Promise<void>>();
+	const longOperationController = new AbortController();
+	const dispatch = createRpcCommandDispatcher(session, output, {
+		onBackgroundTask: (task) => {
+			backgroundTasks.add(task);
+			void task.then(
+				() => backgroundTasks.delete(task),
+				() => backgroundTasks.delete(task),
+			);
+		},
+		longOperationSignal: longOperationController.signal,
+	});
+	const exit = options.exit ?? ((code: number): never => process.exit(code));
 	let shutdownRequested = false;
-
-	/** Helper for dialog methods with signal/timeout support */
-	function createDialogPromise<T>(
-		opts: ExtensionUIDialogOptions | undefined,
-		defaultValue: T,
-		request: Record<string, unknown>,
-		parseResponse: (response: RpcExtensionUIResponse) => T,
-	): Promise<T> {
-		if (opts?.signal?.aborted) return Promise.resolve(defaultValue);
-
-		const id = crypto.randomUUID();
-		return new Promise((resolve, reject) => {
-			let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-			const cleanup = () => {
-				if (timeoutId) clearTimeout(timeoutId);
-				opts?.signal?.removeEventListener("abort", onAbort);
-				pendingExtensionRequests.delete(id);
-			};
-
-			const onAbort = () => {
-				cleanup();
-				resolve(defaultValue);
-			};
-			opts?.signal?.addEventListener("abort", onAbort, { once: true });
-
-			if (opts?.timeout) {
-				timeoutId = setTimeout(() => {
-					cleanup();
-					resolve(defaultValue);
-				}, opts.timeout);
-			}
-
-			pendingExtensionRequests.set(id, {
-				resolve: (response: RpcExtensionUIResponse) => {
-					cleanup();
-					resolve(parseResponse(response));
-				},
-				reject,
-			});
-			output({ type: "extension_ui_request", id, ...request } as RpcExtensionUIRequest);
+	let beginRequestedShutdown: (() => void) | undefined;
+	let requestedShutdownScheduled = false;
+	const scheduleRequestedShutdown = (): void => {
+		if (requestedShutdownScheduled) return;
+		requestedShutdownScheduled = true;
+		queueMicrotask(() => {
+			requestedShutdownScheduled = false;
+			beginRequestedShutdown?.();
 		});
-	}
+	};
 
-	/**
-	 * Create an extension UI context that uses the RPC protocol.
-	 */
-	const createExtensionUIContext = (): ExtensionUIContext => ({
-		select: (title, options, opts) =>
-			createDialogPromise(opts, undefined, { method: "select", title, options, timeout: opts?.timeout }, (r) =>
-				"cancelled" in r && r.cancelled ? undefined : "value" in r ? r.value : undefined,
-			),
-
-		confirm: (title, message, opts) =>
-			createDialogPromise(opts, false, { method: "confirm", title, message, timeout: opts?.timeout }, (r) =>
-				"cancelled" in r && r.cancelled ? false : "confirmed" in r ? r.confirmed : false,
-			),
-
-		input: (title, placeholder, opts) =>
-			createDialogPromise(opts, undefined, { method: "input", title, placeholder, timeout: opts?.timeout }, (r) =>
-				"cancelled" in r && r.cancelled ? undefined : "value" in r ? r.value : undefined,
-			),
-
-		notify(message: string, type?: "info" | "warning" | "error"): void {
-			// Fire and forget - no response needed
-			output({
-				type: "extension_ui_request",
-				id: crypto.randomUUID(),
-				method: "notify",
-				message,
-				notifyType: type,
-			} as RpcExtensionUIRequest);
-		},
-
-		onTerminalInput(): () => void {
-			// Raw terminal input not supported in RPC mode
-			return () => {};
-		},
-
-		setStatus(key: string, text: string | undefined): void {
-			// Fire and forget - no response needed
-			output({
-				type: "extension_ui_request",
-				id: crypto.randomUUID(),
-				method: "setStatus",
-				statusKey: key,
-				statusText: text,
-			} as RpcExtensionUIRequest);
-		},
-
-		setWorkingMessage(_message?: string): void {
-			// Working message not supported in RPC mode - requires TUI loader access
-		},
-
-		setWidget(key: string, content: unknown, options?: ExtensionWidgetOptions): void {
-			// Only support string arrays in RPC mode - factory functions are ignored
-			if (content === undefined || Array.isArray(content)) {
+	try {
+		await session.initialize({
+			uiContext: extensionUI.createContext(),
+			hostBridge: hostBridge?.createBridge(),
+			onShutdownRequested: () => {
+				shutdownRequested = true;
+				scheduleRequestedShutdown();
+			},
+			onExtensionError: (error) => {
 				output({
-					type: "extension_ui_request",
-					id: crypto.randomUUID(),
-					method: "setWidget",
-					widgetKey: key,
-					widgetLines: content as string[] | undefined,
-					widgetPlacement: options?.placement,
-				} as RpcExtensionUIRequest);
-			}
-			// Component factories are not supported in RPC mode - would need TUI access
-		},
-
-		setFooter(_factory: unknown): void {
-			// Custom footer not supported in RPC mode - requires TUI access
-		},
-
-		setHeader(_factory: unknown): void {
-			// Custom header not supported in RPC mode - requires TUI access
-		},
-
-		setTitle(title: string): void {
-			// Fire and forget - host can implement terminal title control
-			output({
-				type: "extension_ui_request",
-				id: crypto.randomUUID(),
-				method: "setTitle",
-				title,
-			} as RpcExtensionUIRequest);
-		},
-
-		async custom() {
-			// Custom UI not supported in RPC mode
-			return undefined as never;
-		},
-
-		pasteToEditor(text: string): void {
-			// Paste handling not supported in RPC mode - falls back to setEditorText
-			this.setEditorText(text);
-		},
-
-		setEditorText(text: string): void {
-			// Fire and forget - host can implement editor control
-			output({
-				type: "extension_ui_request",
-				id: crypto.randomUUID(),
-				method: "set_editor_text",
-				text,
-			} as RpcExtensionUIRequest);
-		},
-
-		getEditorText(): string {
-			// Synchronous method can't wait for RPC response
-			// Host should track editor state locally if needed
-			return "";
-		},
-
-		async editor(title: string, prefill?: string): Promise<string | undefined> {
-			const id = crypto.randomUUID();
-			return new Promise((resolve, reject) => {
-				pendingExtensionRequests.set(id, {
-					resolve: (response: RpcExtensionUIResponse) => {
-						if ("cancelled" in response && response.cancelled) {
-							resolve(undefined);
-						} else if ("value" in response) {
-							resolve(response.value);
-						} else {
-							resolve(undefined);
-						}
-					},
-					reject,
+					type: "extension_error",
+					extensionPath: error.extensionPath,
+					event: error.event,
+					error: error.error,
 				});
-				output({ type: "extension_ui_request", id, method: "editor", title, prefill } as RpcExtensionUIRequest);
-			});
-		},
-
-		setEditorComponent(): void {
-			// Custom editor components not supported in RPC mode
-		},
-
-		get theme() {
-			return theme;
-		},
-
-		getAllThemes() {
-			return [];
-		},
-
-		getTheme(_name: string) {
-			return undefined;
-		},
-
-		setTheme(_theme: string | Theme) {
-			// Theme switching not supported in RPC mode
-			return { success: false, error: "Theme switching not supported in RPC mode" };
-		},
-
-		getToolsExpanded() {
-			// Tool expansion not supported in RPC mode - no TUI
-			return false;
-		},
-
-		setToolsExpanded(_expanded: boolean) {
-			// Tool expansion not supported in RPC mode - no TUI
-		},
-	});
-
-	// Pending host_request promises waiting for matching host_response on stdin.
-	const pendingHostRequests = new Map<
-		string,
-		{
-			resolve: (value: { messageId?: string }) => void;
-			reject: (error: Error) => void;
-			timer: ReturnType<typeof setTimeout>;
+			},
+		});
+	} catch (error) {
+		extensionUI.dispose();
+		hostBridge?.dispose();
+		try {
+			await session.dispose();
+		} catch (disposeError) {
+			throw new AggregateError([error, disposeError], "RPC initialization and cleanup both failed");
 		}
-	>();
-
-	// Custom tools registered for this RPC session. Both the host-bridge tool
-	// and the memory tool are IM-mode built-ins, gated independently. We collect
-	// them and call reconfigureCustomTools once so the runtime is rebuilt a
-	// single time. ToolDefinition is invariant in its TParams generic; the
-	// concrete schemas returned by the factories are narrower than the
-	// registry's `ToolDefinition<TSchema, unknown>` slot, so we cast to erase
-	// the narrowing — runtime is identical.
-	const customTools: ToolDefinition[] = [];
-
-	if (options.enableHostBridge) {
-		const bridge: ImHostBridge = {
-			sendAttachment(params) {
-				return new Promise<{ messageId?: string }>((resolve, reject) => {
-					const id = crypto.randomUUID();
-					const timer = setTimeout(() => {
-						pendingHostRequests.delete(id);
-						reject(new Error(`im_send_attachment: host did not respond within ${HOST_REQUEST_TIMEOUT_MS}ms`));
-					}, HOST_REQUEST_TIMEOUT_MS);
-					pendingHostRequests.set(id, { resolve, reject, timer });
-					output({
-						type: "host_request",
-						id,
-						method: "send_attachment",
-						params,
-					} as RpcHostRequest);
-				});
-			},
-		};
-		customTools.push(createImSendAttachmentTool(bridge) as unknown as ToolDefinition);
+		throw error;
 	}
 
-	// memory tool (ADR-0009): gated by memory-mode, independent of host-bridge.
-	if (session.memoryMode && session.memoryFile) {
-		customTools.push(createMemoryTool(session.memoryFile, session.memoryCharLimit) as unknown as ToolDefinition);
-	}
+	const unsubscribe = session.subscribe(output);
+	const inFlightHandlers = new Set<Promise<void>>();
+	let shutdownPromise: Promise<void> | undefined;
+	const shutdown = (): Promise<void> => {
+		shutdownPromise ??= session.shutdown().catch((error: unknown) => {
+			output(
+				rpcError(
+					undefined,
+					"shutdown",
+					`Failed to shut down RPC session: ${errorMessage(error)}`,
+					rpcFailureMetadataForCommand("shutdown", RPC_FAILURE_CODES.SHUTDOWN_FAILED),
+				),
+			);
+		});
+		return shutdownPromise;
+	};
+	let cleanupPromise: Promise<void> | undefined;
+	const cleanup = (): Promise<void> => {
+		cleanupPromise ??= (async () => {
+			unsubscribe();
+			extensionUI.dispose();
+			hostBridge?.dispose();
+			longOperationController.abort("RPC transport closed");
+			await Promise.allSettled([...inFlightHandlers]);
+			if (backgroundTasks.size > 0) await session.turn?.abort();
+			await shutdown();
+			await session.dispose();
+			await Promise.allSettled([...backgroundTasks]);
+		})();
+		return cleanupPromise;
+	};
+	beginRequestedShutdown = (): void => {
+		if (shutdownPromise) return;
+		void shutdown().finally(() => {
+			transport.close();
+		});
+	};
+	if (shutdownRequested) scheduleRequestedShutdown();
 
-	if (customTools.length > 0) {
-		// reconfigureCustomTools rebuilds the runtime tool list synchronously;
-		// the agent sees these in the next turn's tool dispatch.
-		session.reconfigureCustomTools(customTools);
-	}
-
-	// Set up extensions with RPC-based UI context
-	await session.bindExtensions({
-		uiContext: createExtensionUIContext(),
-		commandContextActions: {
-			waitForIdle: () => session.agent.waitForIdle(),
-			newSession: async (options) => {
-				// Delegate to AgentSession (handles setup + agent state sync)
-				const success = await session.newSession(options);
-				return { cancelled: !success };
-			},
-			fork: async (entryId) => {
-				const result = await session.fork(entryId);
-				return { cancelled: result.cancelled };
-			},
-			navigateTree: async (targetId, options) => {
-				const result = await session.navigateTree(targetId, {
-					summarize: options?.summarize,
-					customInstructions: options?.customInstructions,
-					replaceInstructions: options?.replaceInstructions,
-					label: options?.label,
-				});
-				return { cancelled: result.cancelled };
-			},
-			switchSession: async (sessionPath) => {
-				const success = await session.switchSession(sessionPath);
-				return { cancelled: !success };
-			},
-			reload: async () => {
-				await session.reload();
-			},
-		},
-		shutdownHandler: () => {
-			shutdownRequested = true;
-		},
-		onError: (err) => {
-			output({ type: "extension_error", extensionPath: err.extensionPath, event: err.event, error: err.error });
-		},
-	});
-
-	// Output all agent events as JSON
-	session.subscribe((event) => {
-		output(event);
-	});
-
-	// Handle a single command
-	const handleCommand = async (command: RpcCommand): Promise<RpcResponse> => {
-		const id = command.id;
-
-		switch (command.type) {
-			// =================================================================
-			// Prompting
-			// =================================================================
-
-			case "prompt": {
-				// Don't await - events will stream
-				// Extension commands are executed immediately, file prompt templates are expanded
-				// If streaming and streamingBehavior specified, queues via steer/followUp
-				session
-					.prompt(command.message, {
-						images: command.images,
-						streamingBehavior: command.streamingBehavior,
-						source: "rpc",
-					})
-					.catch((e) => output(error(id, "prompt", e.message)));
-				return success(id, "prompt");
-			}
-
-			case "steer": {
-				await session.steer(command.message, command.images);
-				return success(id, "steer");
-			}
-
-			case "follow_up": {
-				await session.followUp(command.message, command.images);
-				return success(id, "follow_up");
-			}
-
-			case "abort": {
-				await session.abort();
-				return success(id, "abort");
-			}
-
-			case "new_session": {
-				const options = command.parentSession ? { parentSession: command.parentSession } : undefined;
-				const cancelled = !(await session.newSession(options));
-				return success(id, "new_session", { cancelled });
-			}
-
-			// =================================================================
-			// State
-			// =================================================================
-
-			case "get_state": {
-				const state: RpcSessionState = {
-					model: session.model,
-					thinkingLevel: session.thinkingLevel,
-					isStreaming: session.isStreaming,
-					isCompacting: session.isCompacting,
-					steeringMode: session.steeringMode,
-					followUpMode: session.followUpMode,
-					sessionFile: session.sessionFile,
-					sessionId: session.sessionId,
-					sessionName: session.sessionName,
-					autoCompactionEnabled: session.autoCompactionEnabled,
-					messageCount: session.messages.length,
-					pendingMessageCount: session.pendingMessageCount,
-				};
-				return success(id, "get_state", state);
-			}
-
-			// =================================================================
-			// Model
-			// =================================================================
-
-			case "set_model": {
-				const models = await session.modelRegistry.getAvailable();
-				const model = models.find((m) => m.provider === command.provider && m.id === command.modelId);
-				if (!model) {
-					return error(id, "set_model", `Model not found: ${command.provider}/${command.modelId}`);
+	const handleLine = async (line: string): Promise<void> => {
+		try {
+			const frame = validateRpcInboundFrame(JSON.parse(line));
+			switch (frame.kind) {
+				case "extension_ui_response":
+					extensionUI.handle(frame.value);
+					return;
+				case "host_response":
+					hostBridge?.handle(frame.value);
+					return;
+				case "unknown":
+					output(
+						rpcError(
+							undefined,
+							frame.type,
+							`Unknown command: ${frame.type}`,
+							rpcFailureMetadataForCommand(frame.type, RPC_FAILURE_CODES.COMMAND_NOT_SUPPORTED),
+						),
+					);
+					return;
+				case "invalid":
+					throw new Error(frame.message);
+				case "command": {
+					try {
+						const response = await dispatch(frame.value);
+						output(response);
+					} catch (error) {
+						output(
+							rpcError(
+								frame.value.id,
+								frame.value.type,
+								errorMessage(error),
+								rpcFailureMetadataForCommand(frame.value.type, errorCode(error)),
+							),
+						);
+					}
+					if (shutdownRequested) scheduleRequestedShutdown();
+					return;
 				}
-				await session.setModel(model);
-				return success(id, "set_model", model);
 			}
-
-			case "cycle_model": {
-				const result = await session.cycleModel();
-				if (!result) {
-					return success(id, "cycle_model", null);
-				}
-				return success(id, "cycle_model", result);
-			}
-
-			case "get_available_models": {
-				const models = await session.modelRegistry.getAvailable();
-				const modelsWithSource = models.map((m) => ({
-					...m,
-					remote: session.modelRegistry.isRemote(m),
-				}));
-				return success(id, "get_available_models", { models: modelsWithSource });
-			}
-
-			// =================================================================
-			// Thinking
-			// =================================================================
-
-			case "set_thinking_level": {
-				session.setThinkingLevel(command.level);
-				return success(id, "set_thinking_level");
-			}
-
-			case "cycle_thinking_level": {
-				const level = session.cycleThinkingLevel();
-				if (!level) {
-					return success(id, "cycle_thinking_level", null);
-				}
-				return success(id, "cycle_thinking_level", { level });
-			}
-
-			// =================================================================
-			// Queue Modes
-			// =================================================================
-
-			case "set_steering_mode": {
-				session.setSteeringMode(command.mode);
-				return success(id, "set_steering_mode");
-			}
-
-			case "set_follow_up_mode": {
-				session.setFollowUpMode(command.mode);
-				return success(id, "set_follow_up_mode");
-			}
-
-			// =================================================================
-			// Compaction
-			// =================================================================
-
-			case "compact": {
-				const result = await session.compact(command.customInstructions);
-				return success(id, "compact", result);
-			}
-
-			case "set_auto_compaction": {
-				session.setAutoCompactionEnabled(command.enabled);
-				return success(id, "set_auto_compaction");
-			}
-
-			// =================================================================
-			// Memory (ADR-0009)
-			// =================================================================
-
-			case "flush_memory": {
-				const written = await session.flushMemory();
-				return success(id, "flush_memory", { written });
-			}
-
-			// =================================================================
-			// Retry
-			// =================================================================
-
-			case "set_auto_retry": {
-				session.setAutoRetryEnabled(command.enabled);
-				return success(id, "set_auto_retry");
-			}
-
-			case "abort_retry": {
-				session.abortRetry();
-				return success(id, "abort_retry");
-			}
-
-			// =================================================================
-			// Bash
-			// =================================================================
-
-			case "bash": {
-				const result = await session.executeBash(command.command);
-				return success(id, "bash", result);
-			}
-
-			case "abort_bash": {
-				session.abortBash();
-				return success(id, "abort_bash");
-			}
-
-			// =================================================================
-			// Session
-			// =================================================================
-
-			case "get_session_stats": {
-				const stats = session.getSessionStats();
-				return success(id, "get_session_stats", stats);
-			}
-
-			case "export_html": {
-				const path = await session.exportToHtml(command.outputPath);
-				return success(id, "export_html", { path });
-			}
-
-			case "switch_session": {
-				const cancelled = !(await session.switchSession(command.sessionPath));
-				return success(id, "switch_session", { cancelled });
-			}
-
-			case "fork": {
-				const result = await session.fork(command.entryId);
-				return success(id, "fork", { text: result.selectedText, cancelled: result.cancelled });
-			}
-
-			case "get_fork_messages": {
-				const messages = session.getUserMessagesForForking();
-				return success(id, "get_fork_messages", { messages });
-			}
-
-			case "get_last_assistant_text": {
-				const text = session.getLastAssistantText();
-				return success(id, "get_last_assistant_text", { text });
-			}
-
-			case "set_session_name": {
-				const name = command.name.trim();
-				if (!name) {
-					return error(id, "set_session_name", "Session name cannot be empty");
-				}
-				session.setSessionName(name);
-				return success(id, "set_session_name");
-			}
-
-			// =================================================================
-			// Messages
-			// =================================================================
-
-			case "get_messages": {
-				return success(id, "get_messages", { messages: session.messages });
-			}
-
-			// =================================================================
-			// Commands (available for invocation via prompt)
-			// =================================================================
-
-			case "get_commands": {
-				const commands: RpcSlashCommand[] = [];
-
-				// Extension commands
-				for (const { command, extensionPath } of session.extensionRunner?.getRegisteredCommandsWithPaths() ?? []) {
-					commands.push({
-						name: command.name,
-						description: command.description,
-						source: "extension",
-						path: extensionPath,
-					});
-				}
-
-				// Prompt templates (source is always "user" | "project" | "path" in coding-agent)
-				for (const template of session.promptTemplates) {
-					commands.push({
-						name: template.name,
-						description: template.description,
-						source: "prompt",
-						location: template.source as RpcSlashCommand["location"],
-						path: template.filePath,
-					});
-				}
-
-				// Skills (source is always "user" | "project" | "path" in coding-agent)
-				for (const skill of session.resourceLoader.getSkills().skills) {
-					commands.push({
-						name: `skill:${skill.name}`,
-						description: skill.description,
-						source: "skill",
-						location: skill.source as RpcSlashCommand["location"],
-						path: skill.filePath,
-					});
-				}
-
-				return success(id, "get_commands", { commands });
-			}
-
-			default: {
-				const unknownCommand = command as { type: string };
-				return error(undefined, unknownCommand.type, `Unknown command: ${unknownCommand.type}`);
-			}
+		} catch (error: unknown) {
+			output(
+				rpcError(
+					undefined,
+					"parse",
+					`Failed to parse command: ${errorMessage(error)}`,
+					rpcFailureMetadataForCommand("parse", RPC_FAILURE_CODES.INVALID_REQUEST),
+				),
+			);
 		}
 	};
 
-	/**
-	 * Check if shutdown was requested and perform shutdown if so.
-	 * Called after handling each command when waiting for the next command.
-	 */
-	async function checkShutdownRequested(): Promise<void> {
-		if (!shutdownRequested) return;
+	transport.start(
+		(line) => {
+			const task = handleLine(line);
+			inFlightHandlers.add(task);
+			void task.then(
+				() => inFlightHandlers.delete(task),
+				() => inFlightHandlers.delete(task),
+			);
+		},
+		() => {
+			void cleanup().then(
+				() => exit(0),
+				(error: unknown) => {
+					output(
+						rpcError(
+							undefined,
+							"shutdown",
+							`Failed to dispose RPC session: ${errorMessage(error)}`,
+							rpcFailureMetadataForCommand("shutdown", RPC_FAILURE_CODES.SHUTDOWN_FAILED),
+						),
+					);
+					exit(1);
+				},
+			);
+		},
+	);
 
-		const currentRunner = session.extensionRunner;
-		if (currentRunner?.hasHandlers("session_shutdown")) {
-			await currentRunner.emit({ type: "session_shutdown" });
-		}
-
-		// Close readline interface to stop waiting for input
-		rl.close();
-		process.exit(0);
-	}
-
-	// Listen for JSON input
-	const rl = readline.createInterface({
-		input: process.stdin,
-		output: process.stdout,
-		terminal: false,
-	});
-
-	rl.on("line", async (line: string) => {
-		try {
-			const parsed = JSON.parse(line);
-
-			// Handle extension UI responses
-			if (parsed.type === "extension_ui_response") {
-				const response = parsed as RpcExtensionUIResponse;
-				const pending = pendingExtensionRequests.get(response.id);
-				if (pending) {
-					pendingExtensionRequests.delete(response.id);
-					pending.resolve(response);
-				}
-				return;
-			}
-
-			// Handle host_response (reply to host_request issued by built-in tools).
-			if (parsed.type === "host_response") {
-				const response = parsed as RpcHostResponse;
-				const pending = pendingHostRequests.get(response.id);
-				if (!pending) {
-					return; // late / duplicate
-				}
-				pendingHostRequests.delete(response.id);
-				clearTimeout(pending.timer);
-				if (response.success) {
-					pending.resolve({ messageId: response.data?.messageId });
-				} else {
-					const code = response.errorCode ? ` [${response.errorCode}]` : "";
-					pending.reject(new Error(`${response.error}${code}`));
-				}
-				return;
-			}
-
-			// Handle regular commands
-			const command = parsed as RpcCommand;
-			const response = await handleCommand(command);
-			output(response);
-
-			// Check for deferred shutdown request (idle between commands)
-			await checkShutdownRequested();
-		} catch (e: any) {
-			output(error(undefined, "parse", `Failed to parse command: ${e.message}`));
-		}
-	});
-
-	// Exit when the parent closes stdin. Without this, the process keeps
-	// running indefinitely after the parent dies (the `return new Promise(() => {})`
-	// below would otherwise block forever), leaving stale session-file locks
-	// that prevent the next sidecar from reusing the same .jsonl. See ADR-0004
-	// — im-gateway depends on this for clean reattach after a sidecar restart.
-	rl.on("close", () => {
-		process.exit(0);
-	});
-
-	// Keep process alive forever
 	return new Promise(() => {});
+}
+
+function errorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
+function errorCode(error: unknown): string {
+	if (typeof error === "object" && error !== null) {
+		const code = Reflect.get(error, "code");
+		if (typeof code === "string" && code.length > 0) return code;
+	}
+	return RPC_FAILURE_CODES.COMMAND_FAILED;
 }

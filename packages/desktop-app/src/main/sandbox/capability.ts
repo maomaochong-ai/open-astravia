@@ -2,7 +2,7 @@ import { execFile, spawnSync } from "node:child_process";
 import { accessSync, constants, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { isAbsolute, join, resolve as resolvePath } from "node:path";
-import type { SessionExecutionMode } from "../../../../runtime-core/src/index.js";
+import type { SessionExecutionMode } from "@vetta/runtime-core";
 import { type LinuxSandboxBackend, resolveLinuxBubblewrapBinary } from "./binary-resolver.js";
 import { resolveWindowsSandboxHostBinary } from "./windows-binary-resolver.js";
 

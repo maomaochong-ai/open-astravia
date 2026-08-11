@@ -28,5 +28,27 @@ export function createOfficialImApi(assertOfficial: () => void, capabilitySessio
 			assertOfficial();
 			await models.validateModelKey(capabilitySessionId, modelKey, "set-agent-model");
 		},
+		setFeishuConfig: async (input) => {
+			assertOfficial();
+			const current = await window.vetta.im.getConfig();
+			const result = await window.vetta.im.setConfig({
+				enabled: input.enabled ?? current.enabled,
+				transport: "feishu",
+				feishu: {
+					appId: (input.appId ?? current.feishu.appId).trim(),
+					...(input.appSecret !== undefined && input.appSecret !== "" ? { appSecret: input.appSecret } : {}),
+					...(input.verificationToken !== undefined && input.verificationToken !== ""
+						? { verificationToken: input.verificationToken }
+						: {}),
+					...(input.encryptKey !== undefined && input.encryptKey !== "" ? { encryptKey: input.encryptKey } : {}),
+					...(input.baseUrl !== undefined
+						? { baseUrl: input.baseUrl.trim() || undefined }
+						: current.feishu.baseUrl
+							? { baseUrl: current.feishu.baseUrl }
+							: {}),
+				},
+			});
+			return { ok: result.ok, ...(result.error ? { error: result.error } : {}) };
+		},
 	};
 }

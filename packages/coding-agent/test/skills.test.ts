@@ -3,8 +3,8 @@ import { homedir, tmpdir } from "os";
 import { join, resolve } from "path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { CONFIG_DIR_NAME } from "../src/config.js";
-import type { ResourceDiagnostic } from "../src/core/diagnostics.js";
-import { formatSkillsForPrompt, loadSkills, loadSkillsFromDir, type Skill } from "../src/core/skills.js";
+import type { ResourceDiagnostic } from "../src/resources/contracts/diagnostics.js";
+import { formatSkillsForPrompt, loadSkills, loadSkillsFromDir, type Skill } from "../src/resources/skills/index.js";
 
 const fixturesDir = resolve(__dirname, "fixtures/skills");
 const collisionFixturesDir = resolve(__dirname, "fixtures/skills-collision");
@@ -218,7 +218,7 @@ describe("skills", () => {
 			expect(result).toContain("<skill>");
 			expect(result).toContain("<name>test-skill</name>");
 			expect(result).toContain("<description>A test skill.</description>");
-			expect(result).toContain("<location>/path/to/skill/SKILL.md</location>");
+			expect(result).not.toContain("<location>");
 		});
 
 		it("should include intro text before XML", () => {
@@ -238,8 +238,8 @@ describe("skills", () => {
 			const xmlStart = result.indexOf("<available_skills>");
 			const introText = result.substring(0, xmlStart);
 
-			expect(introText).toContain("The following skills provide specialized instructions");
-			expect(introText).toContain("Use the read tool to load a skill's file");
+			expect(introText).toContain("MUST call the invoke_skill tool");
+			expect(introText).toContain("Always use the invoke_skill tool");
 		});
 
 		it("should escape XML special characters", () => {

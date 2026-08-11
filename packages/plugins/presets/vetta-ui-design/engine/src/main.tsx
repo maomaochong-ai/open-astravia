@@ -9,7 +9,7 @@ import {
 	useEffect,
 	useLayoutEffect,
 } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { BrowserRouter, MemoryRouter, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router";
 import {
 	armReloadOnNextUpdate,
@@ -299,9 +299,12 @@ function App() {
 	);
 }
 
-const container = document.getElementById("root");
+type EngineRootContainer = HTMLElement & { __vetdRoot?: Root };
+
+const container = document.getElementById("root") as EngineRootContainer | null;
 if (!container) throw new Error("engine root missing");
-const root = createRoot(container);
+const root = container.__vetdRoot ?? createRoot(container);
+container.__vetdRoot = root;
 
 /**
  * 导出快照经 srcdoc 加载，没有可写的 URL——history 在 `about:srcdoc` 下用不了，

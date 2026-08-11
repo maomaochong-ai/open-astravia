@@ -11,6 +11,7 @@ import {
 	pluginInputActionsAtom,
 	pluginToolCallSlotsAtom,
 	pluginTurnCardsAtom,
+	pluginWorkspaceViewsAtom,
 	type RegisteredActivityTab,
 	type RegisteredCardRenderer,
 	type RegisteredFilePreview,
@@ -20,6 +21,7 @@ import {
 	type RegisteredInputAction,
 	type RegisteredToolCallSlot,
 	type RegisteredTurnCard,
+	type RegisteredWorkspaceView,
 	syncHardIsolationContributionModes,
 } from "@shared/store/atoms";
 import type { PluginsChangedEvent } from "@preload/api";
@@ -72,6 +74,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 	const setCardRenderers = useSetAtom(pluginCardRenderersAtom);
 	const setToolCallSlots = useSetAtom(pluginToolCallSlotsAtom);
 	const setTurnCards = useSetAtom(pluginTurnCardsAtom);
+	const setWorkspaceViews = useSetAtom(pluginWorkspaceViewsAtom);
 	const setPluginI18n = useSetAtom(pluginI18nByIdAtom);
 	const loadedPluginsRef = useRef<LoadedPlugin[]>([]);
 	const scheduledRevisionRef = useRef<number | undefined>(undefined);
@@ -242,6 +245,8 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				component: tab.component,
 				scope_use: tab.scope_use,
 				initiallyVisible: tab.initiallyVisible,
+				retention: tab.retention,
+				keepAliveWhenAvailable: tab.keepAliveWhenAvailable,
 			})),
 		);
 		if (tabs.length > 0 || !hostLoading) setActivityTabs(tabs);
@@ -325,6 +330,25 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		if (turnCards.length > 0 || !hostLoading) setTurnCards(turnCards);
 	}, [plugins, revision, hostLoading, setTurnCards]);
 
+	// Publish workspace views (full-page plugin surfaces). The sidebar turns them
+	// into pinnable nav entries; the /workspace route mounts the component.
+	useEffect(() => {
+		const workspaceViews: RegisteredWorkspaceView[] = plugins.flatMap((plugin) =>
+			plugin.workspaceViews.map((view) => ({
+				pluginId: plugin.id,
+				pluginName: plugin.name,
+				viewId: view.id,
+				label: view.label,
+				icon: view.icon,
+				description: view.description,
+				badge: view.badge,
+				component: view.component,
+				navOrder: view.navOrder ?? 0,
+			})),
+		);
+		if (workspaceViews.length > 0 || !hostLoading) setWorkspaceViews(workspaceViews);
+	}, [plugins, revision, hostLoading, setWorkspaceViews]);
+
 	// Host unmount only: clear published contributions.
 	useEffect(() => {
 		return () => {
@@ -337,6 +361,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 			setCardRenderers([]);
 			setToolCallSlots([]);
 			setTurnCards([]);
+			setWorkspaceViews([]);
 			setPluginI18n({});
 		};
 	}, [
@@ -349,6 +374,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 		setCardRenderers,
 		setToolCallSlots,
 		setTurnCards,
+		setWorkspaceViews,
 		setPluginI18n,
 	]);
 

@@ -1,5 +1,7 @@
 import type {
 	CompactionTrigger,
+	EcosystemHookContributionSource,
+	HookContributionLease,
 	HookDispatchOutcome,
 	HookPermissionMode,
 	SessionEndCause,
@@ -121,6 +123,8 @@ export interface EcosystemHookAdapter {
 	readonly id: string;
 	supports(event: EcosystemHookEvent): boolean;
 	dispatch(event: EcosystemHookEvent, signal?: AbortSignal): Promise<HookDispatchOutcome>;
+	registerContribution?(source: EcosystemHookContributionSource): Promise<HookContributionLease>;
+	resetSessionState?(): void;
 }
 
 export interface EcosystemHookHost {
@@ -152,6 +156,8 @@ export class EcosystemHookRuntime {
 	private turnSequence = 0;
 	private stopHookActive = false;
 	private stopContinuationCount = 0;
+	private readonly currentTurnContributions = new Map<string, { revision: string; lease: HookContributionLease }>();
+	private resetAdaptersBeforeSessionStart = false;
 
 	constructor(options: EcosystemHookRuntimeOptions) {
 		this.host = options.host;
@@ -163,12 +169,18 @@ export class EcosystemHookRuntime {
 	markSessionStart(source: SessionStartSource): void {
 		this.pendingSessionStart = source;
 		this.finishTurn();
+		this.resetAdaptersBeforeSessionStart = true;
 	}
 
 	async runPendingSessionStart(signal?: AbortSignal): Promise<HookDispatchOutcome | undefined> {
 		const source = this.pendingSessionStart;
 		if (!source) return undefined;
 		this.pendingSessionStart = undefined;
+		if (this.resetAdaptersBeforeSessionStart) {
+			const adapters = await this.getAdapters();
+			for (const adapter of adapters) adapter.resetSessionState?.();
+			this.resetAdaptersBeforeSessionStart = false;
+		}
 		return this.dispatch({ ...this.baseEvent(), eventName: "SessionStart", source }, signal);
 	}
 
@@ -178,16 +190,49 @@ export class EcosystemHookRuntime {
 	 * Captures session id / transcript path synchronously via {@link baseEvent}.
 	 */
 	async runSessionEnd(cause: SessionEndCause, signal?: AbortSignal): Promise<HookDispatchOutcome> {
-		this.finishTurn();
-		return this.dispatch({ ...this.baseEvent(), eventName: "SessionEnd", cause }, signal);
+		try {
+			return await this.dispatch({ ...this.baseEvent(), eventName: "SessionEnd", cause }, signal);
+		} finally {
+			this.finishTurn();
+		}
 	}
 
-	async runUserPromptSubmit(prompt: string, signal?: AbortSignal): Promise<HookDispatchOutcome> {
+	async runUserPromptSubmit(
+		prompt: string,
+		signal?: AbortSignal,
+		contributions: readonly EcosystemHookContributionSource[] = [],
+	): Promise<HookDispatchOutcome> {
 		const turnId = `${this.host.getSessionId()}:turn-${++this.turnSequence}`;
 		this.currentTurnId = turnId;
 		this.stopHookActive = false;
 		this.stopContinuationCount = 0;
-		return this.dispatch({ ...this.baseEvent(), eventName: "UserPromptSubmit", turnId, prompt }, signal);
+		for (const contribution of contributions) await this.registerCurrentTurnContribution(contribution);
+		const outcome = await this.dispatch(
+			{ ...this.baseEvent(), eventName: "UserPromptSubmit", turnId, prompt },
+			signal,
+		);
+		if (outcome.shouldStop || outcome.shouldBlock) this.finishTurn();
+		return outcome;
+	}
+
+	async registerCurrentTurnContribution(source: EcosystemHookContributionSource): Promise<boolean> {
+		this.ensureTurnId();
+		const existing = this.currentTurnContributions.get(source.id);
+		if (existing?.revision === source.revision) return true;
+
+		const adapters = await this.getAdapters();
+		const adapter = adapters.find(
+			(candidate) => candidate.id === source.profileId && candidate.registerContribution !== undefined,
+		);
+		if (!adapter?.registerContribution) return false;
+		const lease = await adapter.registerContribution(source);
+		this.currentTurnContributions.set(source.id, { revision: source.revision, lease });
+		existing?.lease.release();
+		return true;
+	}
+
+	finishCurrentTurn(): void {
+		this.finishTurn();
 	}
 
 	async runPreToolUse(
@@ -361,7 +406,7 @@ export class EcosystemHookRuntime {
 				}
 			}),
 		);
-		return aggregateAdapterOutcomes(outcomes);
+		return aggregateHookDispatchOutcomes(outcomes);
 	}
 
 	private getAdapters(): Promise<readonly EcosystemHookAdapter[]> {
@@ -388,6 +433,8 @@ export class EcosystemHookRuntime {
 	}
 
 	private finishTurn(): void {
+		for (const contribution of this.currentTurnContributions.values()) contribution.lease.release();
+		this.currentTurnContributions.clear();
 		this.currentTurnId = undefined;
 		this.stopHookActive = false;
 		this.stopContinuationCount = 0;
@@ -404,7 +451,8 @@ export function emptyHookDispatchOutcome(): HookDispatchOutcome {
 	};
 }
 
-function aggregateAdapterOutcomes(outcomes: readonly HookDispatchOutcome[]): HookDispatchOutcome {
+/** Shared deterministic aggregation for built-in and host-provided Hook adapters. */
+export function aggregateHookDispatchOutcomes(outcomes: readonly HookDispatchOutcome[]): HookDispatchOutcome {
 	const shouldStop = outcomes.some((outcome) => outcome.shouldStop);
 	const shouldBlock = !shouldStop && outcomes.some((outcome) => outcome.shouldBlock);
 	const permissionDecision = outcomes.some((outcome) => outcome.permissionDecision === "deny")

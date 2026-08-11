@@ -1,6 +1,8 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import type { ReactNode } from "react";
 import { DesignSystemPreview } from "../canvas/DesignSystemPreview";
+import { DesignSystemDemo, designSystemDemoHtml } from "../gallery/DesignSystemDemo";
+import { designSystemCategoryLabel, designSystemTagline } from "../design-systems/labels";
 import type { DesignSystem } from "../design-systems/types";
 
 /**
@@ -10,16 +12,25 @@ import type { DesignSystem } from "../design-systems/types";
 export function DesignSystemTileContent({
 	system,
 	badge,
+	demoActive = false,
 }: {
 	system: DesignSystem;
 	/** 名称右侧的状态徽标（「已选择」/「当前」），没有就不占位。 */
 	badge?: ReactNode;
+	/** 悬停态：有 demo 时让预览自动滚动。 */
+	demoActive?: boolean;
 }) {
-	const { t } = useTranslation();
+	const { t, locale } = useTranslation();
+	// 有 HTML demo 就用真实渲染当预览，没有才退回 token 色块。
+	const hasDemo = designSystemDemoHtml(system) !== null;
 	return (
 		<>
 			{/* 预览区弹性吃掉剩余高度：外层卡片是 1:1 正方形，文字两行定高在底部。 */}
-			<DesignSystemPreview system={system} className="min-h-0 flex-1" />
+			{hasDemo ? (
+				<DesignSystemDemo system={system} active={demoActive} className="min-h-0 flex-1 rounded-md" />
+			) : (
+				<DesignSystemPreview system={system} className="min-h-0 flex-1" />
+			)}
 			<div className="flex min-w-0 items-center gap-1.5 px-0.5">
 				<span
 					title={t(system.vibe === "dark" ? "ds.vibe.dark" : "ds.vibe.light")}
@@ -31,11 +42,11 @@ export function DesignSystemTileContent({
 				{badge}
 				<span className="flex-1" />
 				<span className="shrink-0 rounded-full bg-accent px-1.5 py-px text-[10px] text-muted-foreground">
-					{t(`ds.category.${system.category}`)}
+					{designSystemCategoryLabel(system, t)}
 				</span>
 			</div>
 			<div className="min-w-0 truncate px-0.5 text-[11px] leading-tight text-muted-foreground">
-				{t(`ds.tagline.${system.id}`)}
+				{designSystemTagline(system, locale, t)}
 			</div>
 		</>
 	);

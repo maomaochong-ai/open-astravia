@@ -1,4 +1,10 @@
-export type PluginMediaKind = "image" | "video";
+import type { PluginArtifactRef } from "./artifacts.js";
+import type { Disposable } from "./disposable.js";
+import type { PluginJob, PluginJobFailure } from "./jobs.js";
+
+export type PluginMediaKind = "image" | "video" | "audio" | "document";
+export type PluginMediaOutputKind = "image" | "video" | "audio";
+export type PluginMediaOperation = "generate" | "compose" | "transcode";
 
 export type PluginMediaGenerationMode =
 	| "text-to-image"
@@ -7,8 +13,6 @@ export type PluginMediaGenerationMode =
 	| "image-to-video"
 	| "video-to-video"
 	| "reference-to-video";
-
-export type PluginMediaJobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 
 export type PluginMediaErrorCode =
 	| "unauthenticated"
@@ -22,10 +26,8 @@ export type PluginMediaErrorCode =
 	| "provider-failed"
 	| "cancelled";
 
-export interface PluginMediaFailure {
+export interface PluginMediaFailure extends PluginJobFailure {
 	code: PluginMediaErrorCode;
-	message: string;
-	retryable: boolean;
 }
 
 export class PluginMediaError extends Error {
@@ -45,40 +47,39 @@ export interface PluginMediaDimensions {
 	height: number;
 }
 
-/** Base64 bytes passed between a media consumer and provider in renderer memory. */
-export interface PluginMediaReference {
+export type PluginMediaInputSource =
+	| { type: "plugin-blob"; blobId: string }
+	| { type: "workspace-file"; path: string };
+
+export interface PluginMediaInput {
 	id?: string;
+	role?: string;
 	kind: PluginMediaKind;
-	mimeType: string;
-	data: string;
+	mimeType?: string;
+	source: PluginMediaInputSource;
 }
 
-/** A generated result. Consumers decide where and how to persist these bytes. */
-export interface PluginMediaArtifact extends PluginMediaReference {
+export interface PluginMediaOutput {
+	kind: PluginMediaOutputKind;
+	mimeType: string;
+	dimensions?: PluginMediaDimensions;
+	fps?: number;
+	durationSeconds?: number;
+	videoCodec?: string;
+	audioCodec?: string;
+}
+
+export interface PluginMediaArtifact extends PluginArtifactRef {
+	kind: PluginMediaOutputKind;
 	width?: number;
 	height?: number;
 	durationSeconds?: number;
 }
 
-export interface PluginMediaCapability {
-	kind: PluginMediaKind;
-	modes: readonly PluginMediaGenerationMode[];
-	aspectRatios?: readonly string[];
-	resolutions?: readonly string[];
-	durationsSeconds?: readonly number[];
-}
-
-export interface PluginMediaProviderDescriptor {
-	/** Host-qualified provider id. */
-	id: string;
-	ownerId: string;
-	protocolVersion: number;
-	capabilities: readonly PluginMediaCapability[];
-}
-
-export interface PluginMediaCreateJobRequest {
+export interface PluginMediaGenerateRequest {
+	operation: "generate";
 	providerId: string;
-	kind: PluginMediaKind;
+	kind: "image" | "video";
 	mode: PluginMediaGenerationMode;
 	prompt: string;
 	modelId?: string;
@@ -86,26 +87,160 @@ export interface PluginMediaCreateJobRequest {
 	aspectRatio?: string;
 	resolution?: string;
 	durationSeconds?: number;
-	references?: readonly PluginMediaReference[];
+	inputs?: readonly PluginMediaInput[];
 }
 
-export interface PluginMediaJob {
+export interface PluginMediaComposeRequest {
+	operation: "compose";
 	providerId: string;
+	inputs: readonly PluginMediaInput[];
+	output: PluginMediaOutput;
+}
+
+export interface PluginMediaTranscodeRequest {
+	operation: "transcode";
+	providerId: string;
+	inputs: readonly PluginMediaInput[];
+	output: PluginMediaOutput;
+}
+
+export type PluginMediaSubmitRequest =
+	| PluginMediaGenerateRequest
+	| PluginMediaComposeRequest
+	| PluginMediaTranscodeRequest;
+
+export interface PluginMediaGenerationInputSlot {
+	role: string;
+	kinds: readonly PluginMediaKind[];
+	minItems: number;
+	maxItems: number;
+}
+
+export interface PluginMediaGenerationModeCapability {
+	mode: PluginMediaGenerationMode;
+	inputs: readonly PluginMediaGenerationInputSlot[];
+	minTotalItems?: number;
+	maxTotalItems?: number;
+	aspectRatioPolicy?: "configurable" | "input-derived";
+	audioGeneration?: "none" | "always" | "optional";
+}
+
+export type PluginMediaCapability =
+	| {
+			operation: "generate";
+			kind: "image" | "video";
+			modes: readonly PluginMediaGenerationMode[];
+			aspectRatios?: readonly string[];
+			resolutions?: readonly string[];
+			durationsSeconds?: readonly number[];
+			modeCapabilities?: readonly PluginMediaGenerationModeCapability[];
+	  }
+	| {
+			operation: "compose";
+			documentMimeTypes: readonly string[];
+			outputMimeTypes: readonly string[];
+	  }
+	| {
+			operation: "transcode";
+			inputMimeTypes: readonly string[];
+			outputMimeTypes: readonly string[];
+	  };
+
+export interface PluginMediaProviderDescriptor {
+	/** Host-qualified provider id. */
 	id: string;
-	status: PluginMediaJobStatus;
+	displayName?: string;
+	ownerId: string;
+	protocolVersion: number;
+	capabilities: readonly PluginMediaCapability[];
+}
+
+export type PluginMediaJob = Omit<PluginJob<PluginMediaArtifact>, "error"> & {
+	error?: PluginMediaFailure;
+};
+
+/** A media input exposed to its provider without revealing its storage location. */
+export interface PluginMediaProviderInput {
+	id: string;
+	role?: string;
+	kind: PluginMediaKind;
+	mimeType?: string;
+}
+
+type ProviderRequest<Request extends PluginMediaSubmitRequest> = Omit<Request, "providerId" | "inputs"> & {
+	readonly inputs: readonly PluginMediaProviderInput[];
+};
+
+export type PluginMediaProviderSubmitRequest =
+	PluginMediaSubmitRequest extends infer Request
+		? Request extends PluginMediaSubmitRequest
+			? ProviderRequest<Request>
+			: never
+		: never;
+
+export interface PluginMediaInputUploadRequest {
+	url: string;
+	fieldName: string;
+	fileName?: string;
+	fields?: Record<string, string>;
+	headers?: Record<string, string>;
+	timeoutMs?: number;
+}
+
+export interface PluginMediaTransferResponse<T = unknown> {
+	ok: boolean;
+	status: number;
+	statusText: string;
+	headers: Record<string, string>;
+	body: T;
+}
+
+export interface PluginMediaProviderHandlerContext {
+	readonly invocationId: string;
+	uploadInput<T = unknown>(
+		inputId: string,
+		request: PluginMediaInputUploadRequest,
+	): Promise<PluginMediaTransferResponse<T>>;
+}
+
+export type PluginMediaProviderArtifactSource =
+	| { type: "remote-url"; url: string; headers?: Record<string, string> }
+	| { type: "plugin-blob"; blobId: string }
+	| { type: "workspace-file"; path: string };
+
+export interface PluginMediaProviderArtifact {
+	kind: PluginMediaOutputKind;
+	mimeType?: string;
+	name?: string;
+	width?: number;
+	height?: number;
+	durationSeconds?: number;
+	source: PluginMediaProviderArtifactSource;
+}
+
+export interface PluginMediaProviderJob {
+	id: string;
+	status: PluginMediaJob["status"];
 	progress?: number;
-	artifacts?: readonly PluginMediaArtifact[];
+	artifacts?: readonly PluginMediaProviderArtifact[];
 	error?: PluginMediaFailure;
 }
 
-export interface PluginMediaJobRef {
-	providerId: string;
+export interface PluginMediaProviderRegistration {
 	id: string;
+	displayName?: string;
+	capabilities: readonly PluginMediaCapability[];
+	submit(
+		request: PluginMediaProviderSubmitRequest,
+		context: PluginMediaProviderHandlerContext,
+	): Promise<PluginMediaProviderJob>;
+	getJob?(jobId: string, context: PluginMediaProviderHandlerContext): Promise<PluginMediaProviderJob>;
+	cancelJob?(jobId: string, context: PluginMediaProviderHandlerContext): Promise<PluginMediaProviderJob>;
 }
 
 export interface PluginMediaApi {
+	registerProvider(registration: PluginMediaProviderRegistration): Disposable;
 	listProviders(): Promise<readonly PluginMediaProviderDescriptor[]>;
-	createJob(request: PluginMediaCreateJobRequest): Promise<PluginMediaJob>;
-	getJob(job: PluginMediaJobRef): Promise<PluginMediaJob>;
-	cancelJob(job: PluginMediaJobRef): Promise<PluginMediaJob>;
+	onProvidersChanged(listener: () => void): Disposable;
+	submit(request: PluginMediaSubmitRequest): Promise<PluginMediaJob>;
 }

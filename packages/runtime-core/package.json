@@ -4,17 +4,34 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./kernel": {
+			"types": "./dist/kernel/index.d.ts",
+			"import": "./dist/kernel/index.js"
+		},
+		"./conversation": {
+			"types": "./dist/conversation/index.d.ts",
+			"import": "./dist/conversation/index.js"
+		},
+		"./sandbox": {
+			"types": "./dist/sandbox/index.d.ts",
+			"import": "./dist/sandbox/index.js"
+		}
+	},
 	"files": ["dist"],
 	"scripts": {
 		"clean": "rm -rf dist",
 		"build": "tsgo -p tsconfig.build.json",
-		"test": "vitest --run"
+		"test": "bunx vitest --run"
 	},
 	"dependencies": {
 		"@vetta/action-rpc": "workspace:*",
 		"@vetta/agent-core": "workspace:*",
-		"@vetta/ai": "workspace:*",
-		"@vetta/coding-agent": "workspace:*"
+		"@vetta/ai": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.2",

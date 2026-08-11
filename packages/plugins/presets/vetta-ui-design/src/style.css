@@ -42,191 +42,6 @@
 	background: color-mix(in oklab, var(--vetd-selected) 12%, transparent);
 }
 
-/* 「让 Vetta 调整」主按钮：核心入口，静止时也要有存在感。
-   配色刻意不跟随宿主主题：它是画布上唯一的主动作，明暗两个主题下都该是同一颗。
-
-   胶囊外形，四层叠起来：
-     ::before        背后的锥形渐变，模糊后当光晕（z -1）
-     .vetd-ask-flow  流动的渐变底（z 0）
-     ::after         内阴影，压暗上半部做出质感（z 1）
-     .vetd-ask-label 图标与文字（z 2）
-   内阴影必须单独一层：CSS 先画背景和 inset 阴影、再画子元素，把它留在按钮上会被
-   流动层整个盖掉。 */
-.vetd-ask-button {
-	position: relative;
-	display: flex;
-	align-items: center;
-	padding: 12px 20px;
-	border: none;
-	border-radius: 999px;
-	/* 不继承宿主字号：按钮尺寸是这套观感的一部分 */
-	font-family: inherit;
-	font-size: 1rem;
-	line-height: 1;
-	color: #fff;
-	cursor: pointer;
-	/* 流动层没起来之前（动画未开始、reduced motion）的静态底 */
-	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
-	box-shadow: 0 5px 10px #000000cc;
-	text-shadow: 1px 1px 1px #000;
-	transition: all 0.3s ease;
-}
-
-.vetd-ask-button::before {
-	content: "";
-	position: absolute;
-	inset: 0;
-	margin: auto;
-	z-index: -1;
-	border-radius: inherit;
-	filter: blur(0);
-	background: conic-gradient(#00000000 80deg, #40baf7, #f34ad7, #5bfcc4, #00000000 280deg);
-	transition: all 0.3s ease;
-}
-
-.vetd-ask-button::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	z-index: 1;
-	border-radius: inherit;
-	pointer-events: none;
-	box-shadow:
-		inset 0 0 5px #ffffffa9,
-		inset 0 35px 30px #000;
-}
-
-.vetd-ask-label {
-	position: relative;
-	z-index: 2;
-	display: flex;
-	align-items: center;
-	gap: 5px;
-}
-
-/* 流动的渐变底。
-   动的只有 transform：一条三倍宽、每 1/3 重复一次的渐变横向平移，移过一个周期正好
-   与起点重合，看着就是无缝流动。刻意不动 background-position——按钮浮在一堆跨源
-   iframe 之上，每帧重新光栅化背景会把合成器压垮，表现为整窗口撕裂；transform 由
-   合成器独立完成，不触发重绘。
-   裁切放在这一层而不是按钮上：按钮设 overflow:hidden 会把 ::before 的光晕一起剪掉。 */
-.vetd-ask-flow {
-	position: absolute;
-	inset: 0;
-	z-index: 0;
-	overflow: hidden;
-	border-radius: inherit;
-	pointer-events: none;
-}
-
-.vetd-ask-flow::before {
-	content: "";
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	width: 300%;
-	background-image: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0, #5bfcc4);
-	background-size: 33.3333% 100%;
-	animation: vetd-ask-flow 6s linear infinite;
-}
-
-@keyframes vetd-ask-flow {
-	to {
-		transform: translateX(-33.3333%);
-	}
-}
-
-.vetd-ask-button:hover::before {
-	filter: blur(15px);
-}
-
-/* 按下：外阴影撤掉 + 整体下沉 3px，等于把按钮按进画布 */
-.vetd-ask-button:active {
-	margin-top: 3px;
-	box-shadow: none;
-}
-
-.vetd-ask-button:active::before {
-	filter: blur(5px);
-	transform: translateY(1px);
-}
-
-/* 输入框展开期间保持按下态，让按钮和它下面的浮层看起来是一体的 */
-.vetd-ask-button[data-active="true"] {
-	margin-top: 3px;
-	box-shadow: none;
-}
-
-.vetd-ask-button[data-active="true"]::before {
-	filter: blur(15px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.vetd-ask-flow::before {
-		animation: none;
-	}
-}
-
-/* 「让 Vetta 调整」输入浮层。跟按钮同一套语言：深投影、胶囊主按钮、指向按钮的
-   尖角，让它看起来是从按钮里长出来的，而不是一个通用弹窗。 */
-.vetd-ask-popover {
-	border-radius: 16px;
-	border: 1px solid var(--border, #e4e4e7);
-	background: var(--card, #fff);
-	/* 一道近、一道远：近的勾出边缘，远的把浮层从画布上托起来 */
-	box-shadow:
-		0 2px 8px rgb(0 0 0 / 0.12),
-		0 18px 40px -12px rgb(0 0 0 / 0.35);
-}
-
-/* 指向下方按钮的小尖角。浮层没有 overflow:hidden，它才能探出边界。 */
-.vetd-ask-popover::after {
-	content: "";
-	position: absolute;
-	bottom: -6px;
-	left: 50%;
-	width: 12px;
-	height: 12px;
-	transform: translateX(-50%) rotate(45deg);
-	border-right: 1px solid var(--border, #e4e4e7);
-	border-bottom: 1px solid var(--border, #e4e4e7);
-	border-bottom-right-radius: 3px;
-	background: var(--card, #fff);
-}
-
-/* 发送键：主按钮的缩小版，同一条渐变 + 同样的内阴影压暗 */
-.vetd-ask-send {
-	border-radius: 999px;
-	color: #fff;
-	background: linear-gradient(90deg, #5bfcc4, #f593e4, #71a4f0);
-	box-shadow:
-		inset 0 0 4px #ffffff80,
-		inset 0 14px 14px rgb(0 0 0 / 0.55),
-		0 2px 6px rgb(0 0 0 / 0.35);
-	text-shadow: 1px 1px 1px rgb(0 0 0 / 0.35);
-	transition: all 0.2s ease;
-}
-
-.vetd-ask-send:not(:disabled):hover {
-	filter: brightness(1.08);
-}
-
-.vetd-ask-send:not(:disabled):active {
-	transform: translateY(1px);
-	box-shadow:
-		inset 0 0 4px #ffffff80,
-		inset 0 14px 14px rgb(0 0 0 / 0.55);
-}
-
-/* 没输入内容时褪成灰：渐变还在但不再抢眼，免得像随时能点 */
-.vetd-ask-send:disabled {
-	filter: grayscale(0.85);
-	opacity: 0.55;
-	box-shadow: none;
-	text-shadow: none;
-}
-
 /* 导出预览的透明背景棋盘格 */
 .vetd-checkerboard {
 	background-image:
@@ -656,4 +471,167 @@
 	.vetd-spark {
 		opacity: 0.8;
 	}
+}
+
+/* ---------- 备注（NotesLayer / NotesDrawer） ----------
+   两个状态色刻意写死、不跟宿主主题：备注要压在任意配色的设计稿上，
+   「待办 / 已完成」必须在任何主题任何画面上一眼可辨（同 --vetd-selected 的理由）。 */
+.vetd-note {
+	--vetd-note-pending: #2563eb;
+	--vetd-note-resolved: #10b981;
+}
+
+/* 气泡：圆形 + 左下尖角的 pin。头像装在里面，编号挂右上。 */
+.vetd-note-pin {
+	background: var(--vetd-note-pending);
+	box-shadow:
+		0 2px 8px -2px color-mix(in oklab, var(--vetd-note-pending) 70%, transparent),
+		0 0 0 2px color-mix(in oklab, #fff 85%, transparent);
+	transition:
+		background 260ms ease,
+		box-shadow 260ms ease;
+}
+.vetd-note-pin-resolved {
+	background: var(--vetd-note-resolved);
+	box-shadow:
+		0 2px 6px -2px color-mix(in oklab, var(--vetd-note-resolved) 60%, transparent),
+		0 0 0 2px color-mix(in oklab, #fff 80%, transparent);
+}
+
+/* 处理完成的正向微动效：一次弹跳 + 一圈扩散的绿色涟漪。
+   只动 transform / opacity——气泡压在跨源 iframe 上，动别的属性会让整片重新光栅化。 */
+.vetd-note-celebrate {
+	animation: vetd-note-pop 620ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* 每一帧都要重写完整的 transform：气泡的内联 transform 里还有钉住锚点的
+   translateY(-100%) 和抵消画布缩放的 --vetd-lscale，animation 会整条覆盖它，
+   只写 scale() 的话一播动画气泡就跳到锚点上、还跟着画布缩放一起变大。 */
+@keyframes vetd-note-pop {
+	0% {
+		transform: translateY(-100%) scale(var(--vetd-lscale, 1));
+	}
+	38% {
+		transform: translateY(-100%) scale(calc(var(--vetd-lscale, 1) * 1.32));
+	}
+	62% {
+		transform: translateY(-100%) scale(calc(var(--vetd-lscale, 1) * 0.94));
+	}
+	100% {
+		transform: translateY(-100%) scale(var(--vetd-lscale, 1));
+	}
+}
+.vetd-note-ripple::after {
+	content: "";
+	position: absolute;
+	inset: -2px;
+	border-radius: inherit;
+	pointer-events: none;
+	box-shadow: 0 0 0 2px var(--vetd-note-resolved, #10b981);
+	animation: vetd-note-ripple 720ms ease-out forwards;
+}
+@keyframes vetd-note-ripple {
+	0% {
+		opacity: 0.9;
+		transform: scale(1);
+	}
+	100% {
+		opacity: 0;
+		transform: scale(2.1);
+	}
+}
+
+/* 浮层入场：草稿输入框、thread 弹层、抽屉共用一套。 */
+.vetd-note-enter {
+	animation: vetd-note-enter 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+/* 同 vetd-note-pop：浮层内联 transform 里的 --vetd-lscale 必须逐帧带上，
+   否则入场那 180ms 里弹层会按画布缩放显示（缩到 20% 时几乎看不见）。 */
+@keyframes vetd-note-enter {
+	from {
+		opacity: 0;
+		transform: translateY(-4px) scale(calc(var(--vetd-lscale, 1) * 0.97));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(var(--vetd-lscale, 1));
+	}
+}
+.vetd-note-drawer-enter {
+	animation: vetd-note-drawer-enter 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes vetd-note-drawer-enter {
+	from {
+		opacity: 0;
+		transform: translateX(-12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* 备注面板的列表：不出滚动条（面板高度是跟着内容走的，一条竖轨会把它读成固定抽屉），
+   还能往下滚的时候底部渐隐一段当提示。渐隐由 JS 按滚动位置挂 class，滚到底就撤。 */
+.vetd-note-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-note-scroll::-webkit-scrollbar {
+	display: none;
+}
+.vetd-note-scroll-fade {
+	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
+	mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
+}
+
+/* Vetta 头像：复用 .vetd-bot 的形象语言（圆头 + 双眼），静态版。 */
+.vetd-note-face {
+	position: relative;
+	display: block;
+	border-radius: 999px;
+	background: #ffffff;
+}
+.vetd-note-face::before,
+.vetd-note-face::after {
+	content: "";
+	position: absolute;
+	top: 38%;
+	width: 16%;
+	height: 22%;
+	border-radius: 999px;
+	background: currentColor;
+}
+.vetd-note-face::before {
+	left: 27%;
+}
+.vetd-note-face::after {
+	right: 27%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.vetd-note-celebrate,
+	.vetd-note-ripple::after,
+	.vetd-note-enter,
+	.vetd-note-drawer-enter {
+		animation: none;
+	}
+	.vetd-note-ripple::after {
+		display: none;
+	}
+}
+
+/* 备注浮层的指针形态。
+   画布根在备注/画框工具下是 crosshair，而 cursor 会继承——不接管的话浮层里
+   （面板、thread、输入框）鼠标全是十字星。插件刻意不引入 preflight，button
+   也就没有 v4 默认的 pointer，一并在作用域根上给，省得逐个元素挂类。 */
+.vetd-note-surface {
+	cursor: default;
+}
+.vetd-note-surface button:not(:disabled),
+.vetd-note-surface [role="button"]:not([aria-disabled="true"]) {
+	cursor: pointer;
+}
+.vetd-note-surface textarea,
+.vetd-note-surface input {
+	cursor: text;
 }

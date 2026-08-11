@@ -30,14 +30,59 @@ export function isImageGenerationMode(modeId: string): boolean {
 	return modeId === "text-to-image" || modeId === "image-to-image";
 }
 
+function isRoleScopedContentGenerationMode(modeId: string | undefined): boolean {
+	return modeId === "image-to-video" || modeId === "video-to-video" || modeId === "reference-to-video";
+}
+
+export function isStrictContentGenerationMode(modeId: string | undefined): boolean {
+	return modeId === "text-to-video" || isRoleScopedContentGenerationMode(modeId);
+}
+
+export function shouldResolveStrictContentGenerationMode(
+	model: ContentModelDescriptor,
+	modeId: string | undefined,
+	references: readonly ContentReferenceShape[],
+): boolean {
+	if (!isStrictContentGenerationMode(modeId)) return false;
+	return references.every(
+		(reference) =>
+			isContentReferenceSlotCompatibleWithMode(model, modeId, reference) ||
+			isContentReferenceSlotDeclared(model, reference.slotId),
+	);
+}
+
+export function isContentReferenceSlotCompatible(
+	model: ContentModelDescriptor,
+	reference: ContentReferenceShape,
+): boolean {
+	return model.modes.some((mode) => acceptsReference(mode, reference));
+}
+
+export function isContentReferenceSlotCompatibleWithMode(
+	model: ContentModelDescriptor,
+	modeId: string | undefined,
+	reference: ContentReferenceShape,
+): boolean {
+	const mode = model.modes.find((candidate) => candidate.id === modeId);
+	return mode ? acceptsReference(mode, reference) : isContentReferenceSlotCompatible(model, reference);
+}
+
+export function isContentReferenceSlotDeclared(model: ContentModelDescriptor, slotId: string): boolean {
+	return model.modes.some((mode) => mode.inputs.some((slot) => slot.id === slotId));
+}
+
 export function resolveContentGenerationMode(
 	model: ContentModelDescriptor,
 	references: readonly ContentReferenceShape[],
 	preferredModeId?: string,
+	strictPreferredMode = false,
 ): ContentModeResolution {
-	const orderedModes = preferredModeId
+	const preferredModes = preferredModeId ? model.modes.filter((mode) => mode.id === preferredModeId) : [];
+	const orderedModes = strictPreferredMode && preferredModes.length > 0
+		? preferredModes
+		: preferredModeId
 		? [
-				...model.modes.filter((mode) => mode.id === preferredModeId),
+				...preferredModes,
 				...model.modes.filter((mode) => mode.id !== preferredModeId),
 			]
 		: model.modes;
@@ -56,10 +101,13 @@ export function resolveContentGenerationMode(
 export function listAcceptedReferenceKinds(
 	model: ContentModelDescriptor,
 	references: readonly ContentReferenceShape[],
+	preferredModeId?: string,
 ): ContentReferenceKind[] {
 	const kinds: ContentReferenceKind[] = ["image", "video", "audio"];
+	const preferredModes = preferredModeId ? model.modes.filter((mode) => mode.id === preferredModeId) : [];
+	const modes = preferredModes.length > 0 ? preferredModes : model.modes;
 	return kinds.filter((kind) =>
-		model.modes.some((mode) =>
+		modes.some((mode) =>
 			mode.inputs.some((slot) =>
 				slot.accepts.includes(kind) &&
 				matchesMode(mode, [...references, { slotId: slot.id, kind }], true),
@@ -72,8 +120,11 @@ export function slotIdForReferenceKind(
 	model: ContentModelDescriptor,
 	references: readonly ContentReferenceShape[],
 	kind: ContentReferenceKind,
+	preferredModeId?: string,
 ): string | null {
-	for (const mode of model.modes) {
+	const preferredModes = preferredModeId ? model.modes.filter((mode) => mode.id === preferredModeId) : [];
+	const modes = preferredModes.length > 0 ? preferredModes : model.modes;
+	for (const mode of modes) {
 		for (const slot of mode.inputs) {
 			if (!slot.accepts.includes(kind)) continue;
 			if (matchesMode(mode, [...references, { slotId: slot.id, kind }], true)) return slot.id;
@@ -87,10 +138,14 @@ export function assignContentReferenceSlots(
 	fixedReferences: readonly ContentReferenceShape[],
 	unassignedKinds: readonly ContentReferenceKind[],
 	preferredModeId?: string,
+	strictPreferredMode = false,
 ): ContentReferenceAssignment {
-	const orderedModes = preferredModeId
+	const preferredModes = preferredModeId ? model.modes.filter((mode) => mode.id === preferredModeId) : [];
+	const orderedModes = strictPreferredMode && preferredModes.length > 0
+		? preferredModes
+		: preferredModeId
 		? [
-				...model.modes.filter((mode) => mode.id === preferredModeId),
+				...preferredModes,
 				...model.modes.filter((mode) => mode.id !== preferredModeId),
 			]
 		: model.modes;
@@ -145,10 +200,13 @@ function matchesMode(
 	allowMissingMinimums: boolean,
 ): boolean {
 	if (references.some((reference) => !acceptsReference(mode, reference))) return false;
-	return mode.inputs.every((slot) => {
+	const slotCountsMatch = mode.inputs.every((slot) => {
 		const count = references.filter((reference) => reference.slotId === slot.id).length;
 		return count <= slot.maxItems && (allowMissingMinimums || count >= slot.minItems);
 	});
+	if (!slotCountsMatch) return false;
+	if (mode.maxTotalItems !== undefined && references.length > mode.maxTotalItems) return false;
+	return allowMissingMinimums || mode.minTotalItems === undefined || references.length >= mode.minTotalItems;
 }
 
 function acceptsReference(mode: ContentGenerationMode, reference: ContentReferenceShape): boolean {

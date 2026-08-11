@@ -1,6 +1,6 @@
 {
 	"name": "@vetta/plugin-content-creation",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -9,6 +9,8 @@
 		"test": "bunx vitest --run"
 	},
 	"dependencies": {
+		"@sinclair/typebox": "^0.34.41",
+		"@vetta/toolkit": "workspace:*",
 		"@xyflow/react": "^12.10.2"
 	},
 	"devDependencies": {
@@ -19,6 +21,7 @@
 		"@types/node": "^22.10.5",
 		"@types/react": "^19.1.1",
 		"@types/react-dom": "^19.1.1",
+		"@vetta/ai": "workspace:*",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
 		"@vetta/ui": "workspace:*",

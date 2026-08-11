@@ -69,6 +69,16 @@ ctx.conversation.insertText("草稿文本");                 // 仅填输入框�
 await ctx.conversation.abort();                          // 中断当前轮
 ```
 
+`sendPrompt` 作用于**活动会话**，宿主没有活动会话时（例如用户停在新会话页）会抛错。插件若在这种状态下也要把话说出去，先建一个：
+
+```ts
+const { cwd } = state;                       // conversation-changed 给的 ConversationState
+if (!cwd) await ctx.conversation.createSession(myWorkspaceCwd); // resolve 时会话已就绪
+await ctx.conversation.sendPrompt("处理画布上新贴的备注");
+```
+
+`createSession(cwd, { navigate })` 建完即设为活动会话，默认跳转到对话页（与用户手动发送的观感一致）；后台任务可传 `navigate: false` 留在当前路由。执行模式跟随宿主当前选择。它**不做复用判断**——已有活动会话时照样新建，要不要新开由插件按自己的语义决定。与 `official.sessions.create`（按 sessionId 显式寻址、与当前路由无关的后台编排）的分工是：`createSession` 仍然是「用户当前正在看的那个会话」这条线。
+
 ## 注册 Agent 工具
 
 `ctx.agent.registerTool` 让插件用 JS 注册一个 **agent 可见的工具**：coding-agent 只看到工具 shell（schema + 描述），实际执行经 IPC 回到你的 renderer handler。需要 `agent.tools.register`（注册）+ `agent.toolHandler.execute`（执行）。返回 `Disposable`。
@@ -139,6 +149,61 @@ ctx.agent.registerTool({
 - 输入栏的开关 badge 也会跟随对应工具的 scope：工具在当前场景不出现时，对应 badge 自动隐藏（见 [ui-slots.md](./ui-slots.md#输入栏动作-registerinputaction) 的 `requiresActiveTool`）。
 - `requires` 是另一条正交轴（会话能力，如 `"knowledge"`）；与 `scope_use` 取交集才激活。一般插件无需设置。
 - `agent_mode` 是第三条正交轴（工作模式，`"work"`/`"coding"`）；缺省/空 = 通用（所有模式可见）。若插件级 [manifest `agent_mode`](./manifest.md#agent_mode工作模式白名单) 也声明了，两者取交集。见 [工作模式](#工作模式agent_mode)。
+
+## 注册 Coding Agent Hook
+
+`ctx.agent.registerHook()` 动态注册 Coding Agent 原生生命周期 Hook。插件与内置 Codex/Claude
+adapter 进入同一个 Session Hook Runtime，使用相同的事件时机、结果聚合和 Stop 安全语义；Desktop
+不会另建一套工具 Hook。需要同时授权 `agent.hooks.register` 和 `agent.hookHandler.execute`；当前只对
+ESM / Module Federation 插件开放，QuickJS 插件不提供动态 Agent handler。
+
+```ts
+const hook = ctx.agent.registerHook({
+  id: "protect-destructive-tools",
+  eventName: "PreToolUse",
+  scope_use: ["conversation", "project"],
+  agent_mode: ["coding"],        // 可选；缺省/空 = 所有工作模式
+  toolNames: ["bash", "write"], // 可选；缺省/空 = 所有工具
+  timeoutMs: 3000,
+  handler({ event }) {
+    const input = event.toolInput;
+    if (
+      event.tool.hostName === "bash" &&
+      typeof input === "object" && input !== null &&
+      "command" in input && input.command === "rm -rf /"
+    ) {
+      return { action: "block", reason: "拒绝执行危险命令" };
+    }
+    return { action: "continue" };
+  },
+});
+
+// 动态卸载；插件停用、重载或卸载时宿主也会自动清理。
+hook.dispose();
+```
+
+`eventName` 与 `event` 是判别联合，handler 的返回值也按事件收窄：
+
+| 事件 | 主要字段 | 事件专属结果 |
+| --- | --- | --- |
+| `SessionStart` / `SessionEnd` | 会话来源或结束原因 | 通用 continue / block / stop |
+| `UserPromptSubmit` | prompt、turnId | 通用结果，可追加 context / feedback |
+| `PreToolUse` | tool、toolInput、toolUseId | 可返回 `updatedToolInput` |
+| `PermissionRequest` | tool、toolInput、runIdSuffix | 可返回 allow / deny 决策与消息 |
+| `PostToolUse` / `PostToolUseFailure` | 工具响应或错误 | 通用结果 |
+| `PreCompact` / `PostCompact` | manual / auto trigger | 通用结果 |
+| `SubagentStart` / `SubagentStop` | agentId、agentType、停止信息 | `SubagentStop` 可请求继续 Agent |
+| `Stop` | 最后回复与 Stop 状态 | 可返回 `continue-agent` 与续跑片段 |
+
+通用结果包括 `continue`、`block` 和 `stop`；`continue` 可附加 `additionalContexts` 或
+`feedbackMessage`。事件完整字段以 `PluginCodingAgentHookEvent` 类型为准。宿主内部的 transcript 路径
+不会下发给插件。
+
+- `scope_use` 必填且 fail-closed；`agent_mode` 和 `toolNames` 是额外过滤轴。
+- 单次事件 dispatch 使用注册表快照；并发注册或注销只影响下一次 dispatch。
+- handler 默认 3 秒超时，Desktop 最多接受 30 秒。异常、超时或非法返回值会记录诊断并 fail-open；只有通过事件专属校验的显式结果会改变 Agent 行为。
+- Hook 不能扩大宿主工具权限，也不能绕过 execution mode / sandbox / confirmation。
+- handler 可使用受权限约束的 `host`；返回值会在 Main 进程首次进入 Hook 领域边界时做结构校验。
 
 ## 注册动态系统提示词 Provider
 

@@ -37,13 +37,15 @@ class PluginActivityTabErrorBoundary extends Component<
 export function PluginActivityTabPanel({
 	tab,
 	cwd,
+	active,
 }: {
 	tab: RegisteredActivityTab;
 	cwd: string | null;
+	active: boolean;
 }): JSX.Element {
 	const TabComponent = tab.component;
 	const tabKey = `${tab.pluginId}:${tab.tabId}`;
-	const contextValue = useMemo(() => ({ cwd }), [cwd]);
+	const contextValue = useMemo(() => ({ cwd, active }), [cwd, active]);
 	return (
 		<div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-vetta-plugin-activity-tab={tabKey}>
 			<PluginActivityTabErrorBoundary tabKey={tabKey}>

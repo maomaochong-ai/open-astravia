@@ -3,6 +3,7 @@ import { join } from "node:path";
 import postcss, { type AtRule, type Container, type Node, type Rule } from "postcss";
 import selectorParser from "postcss-selector-parser";
 import type { Plugin } from "vite";
+import { hasOpaqueResourceQuery } from "./request-query.js";
 
 const PLUGIN_ROOT_ATTRIBUTE = "data-vetta-plugin-root";
 const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
@@ -21,6 +22,14 @@ const ICONIFY_DECLARATION_VALUES: Readonly<Record<string, string>> = {
 	"mask-repeat": "no-repeat",
 };
 const ICONIFY_SVG_VALUE_PATTERN = /^url\((?:"|')?data:image\/svg\+xml,/u;
+/**
+ * 全局化的 Iconify 规则要放进一个嵌套 layer：插件样式表在宿主之后加载，
+ * 而 `icon-[…]{width:1em;height:1em}` 与宿主的 `.w-4/.h-4` 同特异性，
+ * 直接全局化会让宿主里任何同名图标退化成 1em（字号），把相邻文字挤偏。
+ * 同一 layer 内「未嵌套的规则」优先于其子 layer，因此包一层即可让显式尺寸工具类稳定胜出，
+ * 同时保留插件自身不写尺寸时的 1em 默认值。
+ */
+const ICONIFY_LAYER_NAME = "vetta-plugin-icons";
 
 function createPluginRootAttribute(pluginId: string) {
 	return selectorParser.attribute({
@@ -115,15 +124,26 @@ function createScopeRule(pluginId: string): AtRule {
 	});
 }
 
+function createIconifyLayerRule(): AtRule {
+	return postcss.atRule({ name: "layer", params: ICONIFY_LAYER_NAME });
+}
+
 function scopeRulesInContainer(container: Container, pluginId: string): void {
 	if (!container.nodes) return;
 	let currentScope: AtRule | undefined;
+	let currentIconifyLayer: AtRule | undefined;
 	for (const node of [...container.nodes]) {
 		if (node.type === "rule") {
 			if (isSafeGlobalIconifyRule(node)) {
 				currentScope = undefined;
+				if (!currentIconifyLayer) {
+					currentIconifyLayer = createIconifyLayerRule();
+					node.before(currentIconifyLayer);
+				}
+				currentIconifyLayer.append(node);
 				continue;
 			}
+			currentIconifyLayer = undefined;
 			if (!currentScope) {
 				currentScope = createScopeRule(pluginId);
 				node.before(currentScope);
@@ -133,6 +153,7 @@ function scopeRulesInContainer(container: Container, pluginId: string): void {
 		}
 
 		currentScope = undefined;
+		currentIconifyLayer = undefined;
 		if (node.type === "atrule" && !isKeyframesAtRule(node)) {
 			const atRule = node as AtRule;
 			if (atRule.nodes) scopeRulesInContainer(atRule, pluginId);
@@ -148,6 +169,19 @@ export function scopePluginCss(css: string, pluginId: string): string {
 	});
 	scopeRulesInContainer(root, pluginId);
 	return root.toString();
+}
+
+/**
+ * Vite can import a CSS file as a JavaScript resource module via queries such
+ * as `?raw`. Those requests keep the `.css` pathname, but their transform
+ * input is JavaScript and must not be parsed by PostCSS. Other queries such as
+ * `?direct` and HMR timestamps still represent stylesheet requests.
+ */
+export function isPluginStylesheetRequest(id: string): boolean {
+	const queryIndex = id.indexOf("?");
+	const pathname = queryIndex === -1 ? id : id.slice(0, queryIndex);
+	if (!pathname.endsWith(".css")) return false;
+	return !hasOpaqueResourceQuery(id);
 }
 
 function readPluginId(rootDir: string): string {
@@ -170,7 +204,7 @@ export function createPluginStyleScopePlugin(): Plugin {
 			command = config.command;
 		},
 		transform(code, id) {
-			if (command !== "serve" || !id.split("?", 1)[0].endsWith(".css")) return;
+			if (command !== "serve" || !isPluginStylesheetRequest(id)) return;
 			return {
 				code: scopePluginCss(code, pluginId),
 				map: null,

@@ -1,5 +1,5 @@
+import { getOrCreateSharedModelRuntime, syncSharedModelRuntimeCredentials } from "../agent-runtime/host-services.js";
 import { getAppLogger } from "../logger.js";
-import { getOrCreateSharedModelRegistry } from "../runtime.js";
 import { getDesktopModelCredentialStore } from "./model-credential-store.js";
 import {
 	ModelSettingsService,
@@ -19,9 +19,8 @@ export function getDesktopModelSettingsService(): ModelSettingsService {
 			writeConfig: writeModelsConfig,
 			credentials,
 			refreshRegistry: async () => {
-				const registry = getOrCreateSharedModelRegistry();
-				credentials.syncToAuthStorage(registry.authStorage, readModelsConfigSync().providers);
-				await registry.refresh();
+				syncSharedModelRuntimeCredentials(credentials, readModelsConfigSync().providers);
+				getOrCreateSharedModelRuntime().refresh();
 			},
 		});
 		void desktopModelSettingsService.getConfig().catch((error) => {

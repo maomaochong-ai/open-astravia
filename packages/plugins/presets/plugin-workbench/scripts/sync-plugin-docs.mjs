@@ -39,7 +39,10 @@ async function main() {
 		return;
 	}
 
-	await rm(destDir, { recursive: true, force: true });
+	// Windows may report ENOTEMPTY while antivirus/indexing or another build
+	// process briefly holds a file in the directory. Node retries this class of
+	// transient filesystem errors when recursive removal is configured to do so.
+	await rm(destDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 	await mkdir(destDir, { recursive: true });
 	await cp(srcDir, destDir, { recursive: true });
 

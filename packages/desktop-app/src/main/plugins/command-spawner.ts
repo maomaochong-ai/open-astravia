@@ -3,6 +3,7 @@ import { createServer } from "node:net";
 import { webContents } from "electron";
 import type { InstalledPlugin, PluginCommandSpawnStatus } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
+import { createPluginCommandEnvironment } from "./command-environment.js";
 import { spawnCrossPlatformCommand } from "./command-launcher.js";
 import { listPlugins } from "./plugin-store.js";
 
@@ -161,6 +162,9 @@ export async function spawnPluginCommand(
 	const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
 	if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 	if (!plugin.enabled) throw new Error(`Plugin disabled: ${pluginId}`);
+	if (plugin.trustLevel !== "official") {
+		throw new Error(`Plugin command execution is restricted to official plugins: ${pluginId}`);
+	}
 	if (!hasGrantedPermission(plugin, "agent.command.spawn")) {
 		throw new Error("Plugin permission denied: agent.command.spawn");
 	}
@@ -193,7 +197,7 @@ export async function spawnPluginCommand(
 
 	const child = spawnCrossPlatformCommand(file, normalizedArgs, {
 		cwd,
-		env: env ? { ...process.env, ...env } : process.env,
+		env: createPluginCommandEnvironment(env),
 		windowsHide: true,
 		// Own process group so killTree can signal children (esbuild etc.) too.
 		detached: process.platform !== "win32",

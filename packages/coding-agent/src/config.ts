@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 
 export { getVettaHomePath } from "@vetta/action-rpc";
 
+declare const VETTA_COMPILED_PACKAGE_METADATA: unknown;
+
 // =============================================================================
 // Package Detection
 // =============================================================================
@@ -124,16 +126,17 @@ export function getThemesDir(): string {
 /**
  * Get path to HTML export template directory (shipped with package)
  * - For Bun binary: export-html/ next to executable
- * - For Node.js (dist/): dist/core/export-html/
- * - For tsx (src/): src/core/export-html/
+ * - For Node.js (dist/): dist/export-html/
+ * - For tsx (src/): src/export-html/assets/
  */
 export function getExportTemplateDir(): string {
 	if (isBunBinary) {
 		return join(dirname(process.execPath), "export-html");
 	}
 	const packageDir = getPackageDir();
-	const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";
-	return join(packageDir, srcOrDist, "core", "export-html");
+	return existsSync(join(packageDir, "src"))
+		? join(packageDir, "src", "export-html", "assets")
+		: join(packageDir, "dist", "export-html");
 }
 
 /** Get path to package.json */
@@ -165,10 +168,48 @@ export function getChangelogPath(): string {
 // App Config (from package.json piConfig)
 // =============================================================================
 
-const pkg = JSON.parse(readFileSync(getPackageJsonPath(), "utf-8"));
+interface CodingAgentPackageMetadata {
+	readonly name: string;
+	readonly version: string;
+	readonly piConfig?: {
+		readonly name: string;
+	};
+}
 
-export const PACKAGE_NAME: string = pkg.name || "@vetta/coding-agent";
-export const APP_NAME: string = pkg.piConfig?.name || "vetta";
+function parsePackageMetadata(value: unknown): CodingAgentPackageMetadata | undefined {
+	if (typeof value !== "object" || value === null) return undefined;
+	const name = Reflect.get(value, "name");
+	const version = Reflect.get(value, "version");
+	if (typeof name !== "string" || typeof version !== "string") return undefined;
+	const rawPiConfig = Reflect.get(value, "piConfig");
+	const appName =
+		typeof rawPiConfig === "object" && rawPiConfig !== null ? Reflect.get(rawPiConfig, "name") : undefined;
+	return {
+		name,
+		version,
+		piConfig: typeof appName === "string" ? { name: appName } : undefined,
+	};
+}
+
+function loadPackageMetadata(): CodingAgentPackageMetadata {
+	const packageJsonPath = getPackageJsonPath();
+	if (existsSync(packageJsonPath)) {
+		const parsed: unknown = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
+		const metadata = parsePackageMetadata(parsed);
+		if (metadata) return metadata;
+		throw new Error(`Invalid coding-agent package metadata: ${packageJsonPath}`);
+	}
+	if (isBunBinary && typeof VETTA_COMPILED_PACKAGE_METADATA !== "undefined") {
+		const metadata = parsePackageMetadata(VETTA_COMPILED_PACKAGE_METADATA);
+		if (metadata) return metadata;
+	}
+	throw new Error(`Coding-agent package metadata not found: ${packageJsonPath}`);
+}
+
+const pkg = loadPackageMetadata();
+
+export const PACKAGE_NAME: string = pkg.name;
+export const APP_NAME: string = pkg.piConfig?.name ?? "vetta";
 // 项目内配置目录名（cwd/<name>），用品牌默认名，不随 VETTA_CONFIG_DIR 变化。
 // home 根目录名才受 VETTA_CONFIG_DIR 覆盖（见 action-rpc 的 getVettaHomePath）。
 export const CONFIG_DIR_NAME: string = DEFAULT_CONFIG_DIR_NAME;

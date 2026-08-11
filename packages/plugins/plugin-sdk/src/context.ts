@@ -1,6 +1,7 @@
 import type { PluginAgentApi } from "./agent.js";
 import type { PluginAiApi } from "./ai.js";
 import type { PluginAppActionsApi } from "./app-actions.js";
+import type { PluginArtifactsApi } from "./artifacts.js";
 import type { PluginCaptureApi } from "./capture.js";
 import type { PluginCommandApi } from "./command.js";
 import type { PluginConversationApi } from "./conversation.js";
@@ -9,6 +10,7 @@ import type { PluginFileExplorerApi } from "./file-explorer.js";
 import type { PluginFsApi } from "./fs.js";
 import type { PluginGatewayApi } from "./gateway.js";
 import type { PluginI18nApi } from "./i18n.js";
+import type { PluginJobsApi } from "./jobs.js";
 import type { PluginMediaApi } from "./media.js";
 import type { PluginNetworkApi } from "./network.js";
 import type { PluginOfficialApi } from "./official.js";
@@ -29,6 +31,12 @@ export interface PluginContext {
 	plugin: {
 		id: string;
 		version: string;
+		/**
+		 * Host-resolved brand icon from `plugin.json#icon` (if declared).
+		 * Opaque string for `<img src>` / Iconify — plugins must not invent
+		 * host protocols; use this or omit Activity Tab `icon` to inherit it.
+		 */
+		iconUrl?: string;
 	};
 	permissions: PluginPermissionApi;
 	ui: PluginUiApi;
@@ -41,6 +49,8 @@ export interface PluginContext {
 	fs: PluginFsApi;
 	command: PluginCommandApi;
 	media: PluginMediaApi;
+	jobs: PluginJobsApi;
+	artifacts: PluginArtifactsApi;
 	/** 主进程离屏窗口截图（`capture.offscreen` 权限）。旧宿主上为 `undefined`，使用前判空。 */
 	capture?: PluginCaptureApi;
 	network: PluginNetworkApi;
@@ -58,8 +68,15 @@ export interface PluginContext {
 	onAgentModeChanged(listener: (mode: AgentMode) => void): Disposable;
 }
 
+export type PluginActivationCleanup = Disposable | (() => void | Promise<void>);
+
 export interface PluginDefinition {
-	activate(ctx: PluginContext): void | Promise<void>;
+	/**
+	 * Activate one plugin instance. Returning a cleanup binds resource ownership to
+	 * this specific activation, including overlapping hot-reload activations.
+	 */
+	activate(ctx: PluginContext): void | PluginActivationCleanup | Promise<void | PluginActivationCleanup>;
+	/** Legacy module-level cleanup. Prefer an activation-scoped cleanup return value. */
 	deactivate?(): void | Promise<void>;
 }
 

@@ -84,62 +84,70 @@ export function PreviewToolbar({
 	const presetId =
 		VIEWPORT_PRESETS.find((preset) => preset.width === viewport.width && preset.height === viewport.height)?.id ?? "";
 	return (
-		<div className="flex items-center gap-1 border-b border-border bg-card px-2 py-1.5">
-			<IconButton label={t("previewMode.back")} disabled={!canBack} onClick={onBack}>
-				{icons.back}
-			</IconButton>
-			<IconButton label={t("previewMode.forward")} disabled={!canForward} onClick={onForward}>
-				{icons.forward}
-			</IconButton>
-			<IconButton label={t("previewMode.reload")} onClick={onReload}>
-				{icons.reload}
-			</IconButton>
-			{/* 地址栏：只读。设计稿的地址由画框文件名决定，能改的只有画框本身。 */}
-			<div className="mx-1 min-w-0 flex-1 truncate rounded-lg bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-				{path}
+		// 窗口宽度跟着画框走（手机画框只有 390px），一行摆不下整条工具栏时按两组换行：
+		// 导航+地址一组、右侧动作一组，右组整体右对齐，谁都不会被切到窗口外面去。
+		<div className="flex flex-wrap items-center gap-1 gap-y-1 border-b border-border bg-card px-2 py-1.5">
+			<div className="flex min-w-0 flex-1 basis-56 items-center gap-1">
+				<IconButton label={t("previewMode.back")} disabled={!canBack} onClick={onBack}>
+					{icons.back}
+				</IconButton>
+				<IconButton label={t("previewMode.forward")} disabled={!canForward} onClick={onForward}>
+					{icons.forward}
+				</IconButton>
+				<IconButton label={t("previewMode.reload")} onClick={onReload}>
+					{icons.reload}
+				</IconButton>
+				{/* 地址栏：只读。设计稿的地址由画框文件名决定，能改的只有画框本身。 */}
+				<div className="mx-1 min-w-0 flex-1 truncate rounded-lg bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+					{path}
+				</div>
 			</div>
-			<select
-				value={currentFrameId ?? ""}
-				onChange={(event) => onPickFrame(event.target.value)}
-				title={t("previewMode.frame")}
-				aria-label={t("previewMode.frame")}
-				className="max-w-32 shrink-0 truncate rounded-lg border-none bg-muted px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
-			>
-				{currentFrameId === null ? <option value="">—</option> : null}
-				{frames.map((frame) => (
-					<option key={frame.id} value={frame.id}>
-						{frame.title || frame.id}
+			<div className="ml-auto flex min-w-0 items-center gap-1">
+				<select
+					value={currentFrameId ?? ""}
+					onChange={(event) => onPickFrame(event.target.value)}
+					title={t("previewMode.frame")}
+					aria-label={t("previewMode.frame")}
+					className="min-w-14 max-w-32 flex-1 truncate rounded-lg border-none bg-muted px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
+				>
+					{currentFrameId === null ? <option value="">—</option> : null}
+					{frames.map((frame) => (
+						<option key={frame.id} value={frame.id}>
+							{frame.title || frame.id}
+						</option>
+					))}
+				</select>
+				<select
+					value={presetId}
+					onChange={(event) => {
+						const preset = VIEWPORT_PRESETS.find((entry) => entry.id === event.target.value);
+						if (preset) onPickViewport({ width: preset.width, height: preset.height });
+						else onResetViewport();
+					}}
+					title={t("previewMode.viewport")}
+					aria-label={t("previewMode.viewport")}
+					className="min-w-14 truncate rounded-lg border-none bg-muted px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
+				>
+					{/* 尺寸被手动拉伸过时不匹配任何预设，用当前像素值占位。 */}
+					<option value="">
+						{presetId === ""
+							? `${Math.round(viewport.width)}×${Math.round(viewport.height)}`
+							: t("previewMode.viewport.frame")}
 					</option>
-				))}
-			</select>
-			<select
-				value={presetId}
-				onChange={(event) => {
-					const preset = VIEWPORT_PRESETS.find((entry) => entry.id === event.target.value);
-					if (preset) onPickViewport({ width: preset.width, height: preset.height });
-					else onResetViewport();
-				}}
-				title={t("previewMode.viewport")}
-				aria-label={t("previewMode.viewport")}
-				className="shrink-0 rounded-lg border-none bg-muted px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
-			>
-				{/* 尺寸被手动拉伸过时不匹配任何预设，用当前像素值占位。 */}
-				<option value="">
-					{presetId === "" ? `${Math.round(viewport.width)}×${Math.round(viewport.height)}` : t("previewMode.viewport.frame")}
-				</option>
-				{VIEWPORT_PRESETS.map((preset) => (
-					<option key={preset.id} value={preset.id}>
-						{t(preset.labelKey)} {preset.width}×{preset.height}
-					</option>
-				))}
-			</select>
-			<IconButton label={t("previewMode.openExternal")} onClick={onOpenExternal}>
-				{icons.external}
-			</IconButton>
-			<div className="mx-0.5 h-5 w-px bg-border" />
-			<IconButton label={t("previewMode.close")} onClick={onClose}>
-				{icons.close}
-			</IconButton>
+					{VIEWPORT_PRESETS.map((preset) => (
+						<option key={preset.id} value={preset.id}>
+							{t(preset.labelKey)} {preset.width}×{preset.height}
+						</option>
+					))}
+				</select>
+				<IconButton label={t("previewMode.openExternal")} onClick={onOpenExternal}>
+					{icons.external}
+				</IconButton>
+				<div className="mx-0.5 h-5 w-px shrink-0 bg-border" />
+				<IconButton label={t("previewMode.close")} onClick={onClose}>
+					{icons.close}
+				</IconButton>
+			</div>
 		</div>
 	);
 }

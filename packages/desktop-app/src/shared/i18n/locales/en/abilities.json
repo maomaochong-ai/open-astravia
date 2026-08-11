@@ -143,6 +143,7 @@
 		"source": {
 			"label": "Source",
 			"remote": "Remote install",
+			"npm": "npm package",
 			"system": "Built-in",
 			"local": "Local zip"
 		},
@@ -156,9 +157,6 @@
 			"hintAll": "Available in every work mode."
 		},
 		"permissions": "Permissions",
-		"permissionsDialog": "Permission settings",
-		"permissionsDialogHint": "Turning one off blocks the plugin from using that capability.",
-		"permissionsNotInstalledHint": "Permissions declared by this plugin — adjustable once installed.",
 		"permissionsSystemHint": "Granted automatically for system plugins, not editable",
 		"setupDialog": "Enable and permissions",
 		"setupDialogHint": "The plugin is installed. Enable it and grant the permissions below, then confirm to apply.",
@@ -204,6 +202,145 @@
 		}
 	},
 	"permission": {
+		"page": {
+			"open": "Review permissions",
+			"title": "Permissions and data access",
+			"back": "Back to ability details",
+			"description": "See what this plugin can actually access and do. Select any permission for the host-defined boundary. Turning it off blocks the matching plugin calls.",
+			"toggleLabel": "Toggle the {{permission}} permission",
+			"hostVerified": "Vetta permission boundary",
+			"preview": {
+				"global": "Plugin content can appear in shared app areas that persist across pages",
+				"filePreview": "The plugin can render a specialized content viewer in the file preview area",
+				"activityTab": "The plugin can add and populate a tab in the right-side activity panel",
+				"inputAction": "The plugin can add an action button to the conversation input",
+				"message": "Plugin content can be attached below a specific chat message",
+				"toolCall": "The plugin can present tool-call progress and results in a specialized card",
+				"turnCard": "The plugin can extend the card that contains an entire conversation turn",
+				"workspaceView": "The plugin can contribute a full-page workspace view with its own sidebar entry",
+				"shortcuts": "The plugin can listen for a registered key combination and trigger its action",
+				"fileDecorations": "The plugin can show status or type markers beside file entries",
+				"fileContextMenu": "Plugin actions can appear in file and folder context menus",
+				"fileToolbar": "The plugin can add action buttons to the file explorer toolbar"
+			},
+			"previewFlow": "The arrow shows the data or action direction this permission enables",
+			"scopeTitle": "Scope",
+			"disabledTitle": "When disabled",
+			"status": {
+				"configureOnInstall": "Set during install",
+				"systemGranted": "System granted"
+			},
+			"readOnly": {
+				"install": "This plugin is not installed. These are the permissions it requests; you will confirm the actual grants during installation.",
+				"system": "This is a built-in system plugin. Vetta manages and grants its permissions automatically, so they cannot be disabled individually."
+			},
+			"summary": {
+				"requested": "Requested",
+				"highRisk": "High risk",
+				"granted": "Currently granted",
+				"timing": "When to configure",
+				"onInstall": "Confirm during install"
+			},
+			"flow": {
+				"plugin": "This plugin",
+				"data": "Files and app data",
+				"agent": "Agent sessions and behavior",
+				"execution": "Host-controlled operation",
+				"external": "External app or network",
+				"intelligence": "AI and media services"
+			},
+			"scope": {
+				"interface": "Only allows presentation or interaction in the named UI location. It does not grant file or session data by itself.",
+				"data": "Limited to the data types exposed by the host API. The exact paths or records depend on the plugin call.",
+				"agent": "Applies to host-exposed Agent sessions, prompts, tools, or runtime state.",
+				"execution": "The host performs the operation, while the plugin chooses the command, page, or action to request.",
+				"external": "Can leave Vetta to open a target or make a request. The plugin supplies the destination at call time.",
+				"intelligence": "Uses your configured model or media services, may send plugin-composed input, and may consume service usage."
+			},
+			"disabled": {
+				"interface": "The matching entry, content, or interaction will not appear. Other plugin features can continue to run.",
+				"data": "Calls to read or change this data fail, so features that depend on it may be unavailable.",
+				"agent": "The plugin cannot affect this part of Agent behavior, so related automation or enhancements may stop working.",
+				"execution": "The host blocks the operation, and workflows that depend on its result may not complete.",
+				"external": "The plugin cannot complete that external access. Features that do not need it remain available.",
+				"intelligence": "Generation, analysis, and provider features that use AI or media services become unavailable."
+			}
+		},
+		"group": {
+			"interface": {
+				"title": "Interface and interaction",
+				"description": "Where the plugin can appear inside Vetta"
+			},
+			"projectData": {
+				"title": "Project and app data",
+				"description": "What data the plugin can read or change"
+			},
+			"agent": {
+				"title": "Agent control",
+				"description": "How the plugin can affect Agent sessions and runtime"
+			},
+			"execution": {
+				"title": "Execution and external access",
+				"description": "System operations and outside connections the plugin can request"
+			},
+			"intelligence": {
+				"title": "AI and media",
+				"description": "Intelligence services the plugin can use or provide"
+			}
+		},
+		"risk": {
+			"low": "Low risk",
+			"medium": "Review",
+			"high": "High risk"
+		},
+		"description": {
+			"uiSlotGlobal": "Lets the plugin present interface content in shared app areas that may remain visible across pages.",
+			"uiSlotFilePreview": "Lets the plugin show custom content or a viewer in the file preview area.",
+			"uiSlotActivityTab": "Lets the plugin add a selectable tab to the right-side activity panel.",
+			"uiSlotInputAction": "Lets the plugin add a clickable action near the chat input.",
+			"uiSlotMessage": "Lets the plugin add custom content or actions below chat messages.",
+			"uiSlotToolCall": "Lets the plugin customize how Agent tool-call results are presented.",
+			"uiSlotTurnCard": "Lets the plugin show status or actions inside a conversation turn card.",
+			"uiSlotWorkspaceView": "Lets the plugin contribute a full-page workspace view with its own pinnable sidebar entry.",
+			"uiShortcutsRegister": "Lets the plugin register keyboard shortcuts and run plugin actions when they are pressed.",
+			"uiFileExplorerDecorations": "Lets the plugin add icons, badges, or status hints to the file explorer.",
+			"uiFileExplorerContextMenu": "Lets the plugin add actions to file and folder context menus.",
+			"uiFileExplorerToolbar": "Lets the plugin add actions to the file explorer toolbar.",
+			"workspaceRead": "Views metadata for open workspaces, folders, and file lists without directly reading file contents.",
+			"agentSessionRead": "Reads messages, state, and related context from the current Agent session.",
+			"agentSessionWrite": "Changes current Agent session state or content and may affect later conversation behavior.",
+			"agentCommandRun": "Runs Agent commands declared and requested by the plugin through the host.",
+			"agentCommandSpawn": "Starts background processes that can keep running until the plugin or host stops them.",
+			"captureOffscreen": "Loads content in a hidden page environment and captures an image of it.",
+			"agentSystemPromptRead": "Reads the system prompt that defines the Agent's baseline behavior.",
+			"agentSystemPromptWrite": "Adds or changes plugin-managed content in the Agent system prompt.",
+			"agentSystemPromptFullControl": "Replaces or reorganizes the full system prompt and can substantially change Agent behavior.",
+			"agentSkillsControl": "Controls which skills the Agent loads and when they are available.",
+			"agentMcpControl": "Provides Agent MCP services and tools managed by the plugin.",
+			"agentToolsControl": "Enables, disables, or adjusts tools currently available to the Agent.",
+			"agentToolsRegister": "Registers new Agent tool names, descriptions, and input shapes.",
+			"agentToolHandlerExecute": "Runs plugin-provided handler logic when the Agent calls a plugin tool.",
+			"agentHooksRegister": "Registers handlers that can observe or affect Coding Agent lifecycle events.",
+			"agentHookHandlerExecute": "Runs plugin-provided hook logic when Coding Agent reaches a matching event.",
+			"agentStateRead": "Reads Agent runtime state stored for this plugin.",
+			"agentStateWrite": "Updates Agent runtime state stored for this plugin.",
+			"agentContinuationRegister": "Decides whether the Agent automatically continues after a turn ends.",
+			"agentRuntimeConfigure": "Adjusts Agent runtime configuration and may affect models, tools, or execution policy.",
+			"appActionsRegister": "Registers app actions that can be called from the interface or other features.",
+			"appActionHandlerExecute": "Runs plugin-provided handler logic when an app action is triggered.",
+			"aiModelsList": "Views the AI models you configured and made available to plugins.",
+			"aiComplete": "Sends plugin-composed input to a configured AI model and receives generated output.",
+			"fsRead": "Reads the contents of files selected by the plugin through the host file API.",
+			"fsWrite": "Creates, overwrites, moves, or deletes files selected by the plugin through the host file API.",
+			"networkFetch": "Sends requests to network addresses selected by the plugin, possibly including data the plugin accessed.",
+			"storageRead": "Reads persistent data private to this plugin and not directly available to other plugins.",
+			"storageWrite": "Writes persistent data private to this plugin for state or configuration.",
+			"mediaGenerate": "Calls configured image, audio, or other media-generation services.",
+			"mediaProviderRegister": "Registers a media-generation service provided by the plugin with Vetta.",
+			"settingsRead": "Reads app settings the host exposes to plugins.",
+			"settingsWrite": "Changes app settings the host exposes to plugins and may alter app behavior.",
+			"shellOpenExternal": "Opens a plugin-selected external link in the system browser or default app."
+		},
 		"uiSlotGlobal": "Global UI slot",
 		"uiSlotFilePreview": "File preview slot",
 		"uiSlotActivityTab": "Activity panel tab",
@@ -211,6 +348,7 @@
 		"uiSlotMessage": "Below-message slot",
 		"uiSlotToolCall": "Tool call render slot",
 		"uiSlotTurnCard": "Turn card slot",
+		"uiSlotWorkspaceView": "Workspace view slot",
 		"uiShortcutsRegister": "Register keyboard shortcuts",
 		"uiFileExplorerDecorations": "Decorate the file explorer",
 		"uiFileExplorerContextMenu": "Extend file context menus",
@@ -229,6 +367,8 @@
 		"agentToolsControl": "Control agent tool loading",
 		"agentToolsRegister": "Register agent tools",
 		"agentToolHandlerExecute": "Execute plugin tool handlers",
+		"agentHooksRegister": "Register Coding Agent hooks",
+		"agentHookHandlerExecute": "Execute plugin hook handlers",
 		"agentStateRead": "Read plugin agent state",
 		"agentStateWrite": "Write plugin agent state",
 		"agentContinuationRegister": "Register agent auto-continuation policy",
@@ -243,6 +383,7 @@
 		"storageRead": "Read private plugin data",
 		"storageWrite": "Write private plugin data",
 		"mediaGenerate": "Use media generation providers",
+		"mediaProviderRegister": "Provide media generation providers",
 		"settingsRead": "Read settings",
 		"settingsWrite": "Modify settings",
 		"shellOpenExternal": "Open links in the system browser"

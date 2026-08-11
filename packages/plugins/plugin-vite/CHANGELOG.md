@@ -6,12 +6,20 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Fixed
 
+- Raised production `assetsInlineLimit` so small plugin assets (for example package `icon.png`) stay data-URL inlined; absolute `/…` asset URLs resolve against the host origin and can pick up desktop-app `public/icon.png` by mistake.
+- Kept CSS resource-module requests such as `?raw`, `?url`, and `?inline` out of the development PostCSS scoping pipeline, while preserving scoping for normal, direct, and HMR stylesheet requests.
+- Made the development ready handshake transform the plugin-local module graph before publishing the source overlay, so entry dependency compilation failures retain the stable plugin instead of surfacing later in Renderer.
+- Exposed the project-local `vetta-plugin` CLI through the stable `@vetta-org/plugin-vite/cli` subpath so ESM-only package exports can be resolved by Desktop without pretending the package has a CommonJS entry.
+- Stopped the resource watcher's initial scan from blocking the development server ready handshake after Vite was already serving the plugin entry.
 - Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.
 - Kept validated Iconify mask rules available outside plugin CSS scopes so icons render inside portalled UI components.
+- Wrapped those globally hoisted Iconify rules in a nested `vetta-plugin-icons` cascade layer so their `1em` fallback size no longer overrides the host's explicit `w-*` / `h-*` utilities, which had shrunk shared icons and misaligned neighbouring labels.
+- Packaged QuickJS plugin script entries directly instead of parsing them as Module Federation manifests.
 
 ### Added
 
-- Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and structured lifecycle events for Desktop plugin hot reload without changing production package output.
+- Added opt-in npm distribution packaging that validates `package.json#vetta` identity and writes a stable `release/vetta-plugin.zip` beside the existing versioned archive.
+- Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and versioned lifecycle events for Desktop plugin hot reload without changing production package output.
 - Added automatic injection of the public plugin-sdk Tailwind theme contract so plugins can use host semantic color utilities without importing Desktop CSS or repeating `@theme` mappings.
 
 ## [0.0.5] — 2026-08-04

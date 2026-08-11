@@ -31,9 +31,14 @@ describe("content node definitions", () => {
 	it("creates defaults from definitions without sharing mutable data", () => {
 		const first = createDefaultContentNodeData("video-generator");
 		const second = createDefaultContentNodeData("video-generator");
-		expect(first).toEqual({ aspectRatio: "16:9", duration: 5, resolution: "720p" });
+		expect(first).toEqual({ duration: 5, resolution: "720p" });
 		expect(first).not.toBe(second);
-		expect(getContentNodeDefinition("video-generator").inputs.map((port) => port.id)).toEqual(["prompt", "image", "video"]);
+		expect(getContentNodeDefinition("video-generator").inputs.map((port) => port.id)).toEqual([
+			"prompt",
+			"image",
+			"video",
+			"audio",
+		]);
 		expect(getContentNodeDefinition("prompt").inputs).toMatchObject([
 			{ id: "media", dataType: "media", multiple: true },
 		]);

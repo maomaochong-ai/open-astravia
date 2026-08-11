@@ -8,6 +8,7 @@ import {
 	allowProjectRoot,
 	createFilesystemEntry,
 	readEditableTextFile,
+	readFilesystemBinaryFile,
 	saveEditableTextFile,
 } from "./filesystem-service";
 
@@ -51,6 +52,29 @@ describe("createFilesystemEntry", () => {
 		await expect(createFilesystemEntry(projectRoot, "../outside.txt", "file")).rejects.toThrow(
 			"FILE_EXPLORER_INVALID_ENTRY_NAME:path-separator",
 		);
+	});
+});
+
+describe("binary media files", () => {
+	let projectRoot = "";
+
+	beforeEach(async () => {
+		projectRoot = await mkdtemp(join(tmpdir(), "vetta-binary-media-"));
+		allowProjectRoot(projectRoot);
+	});
+
+	afterEach(async () => {
+		if (projectRoot) await rm(projectRoot, { recursive: true, force: true });
+	});
+
+	it.each([
+		["generated.mp4", "video/mp4"],
+		["generated.webm", "video/webm"],
+	] as const)("reports the playable MIME type for %s", async (name, mimeType) => {
+		const filePath = join(projectRoot, name);
+		await writeFile(filePath, Buffer.from("generated-video"));
+
+		await expect(readFilesystemBinaryFile(filePath)).resolves.toMatchObject({ mimeType });
 	});
 });
 

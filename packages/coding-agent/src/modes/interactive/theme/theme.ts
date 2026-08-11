@@ -435,19 +435,38 @@ export class Theme {
 // Theme Loading
 // ============================================================================
 
+const BUILTIN_THEMES_KEY = Symbol.for("@vetta/coding-agent/builtin-theme-documents");
 let BUILTIN_THEMES: Record<string, ThemeJson> | undefined;
+
+/** Install built-in theme documents embedded by a standalone executable composition root. */
+export function installBuiltinThemeDocuments(documents: { readonly dark: unknown; readonly light: unknown }): void {
+	Reflect.set(globalThis, BUILTIN_THEMES_KEY, {
+		dark: parseThemeJson("embedded dark", documents.dark),
+		light: parseThemeJson("embedded light", documents.light),
+	});
+}
 
 function getBuiltinThemes(): Record<string, ThemeJson> {
 	if (!BUILTIN_THEMES) {
-		const themesDir = getThemesDir();
-		const darkPath = path.join(themesDir, "dark.json");
-		const lightPath = path.join(themesDir, "light.json");
-		BUILTIN_THEMES = {
-			dark: JSON.parse(fs.readFileSync(darkPath, "utf-8")) as ThemeJson,
-			light: JSON.parse(fs.readFileSync(lightPath, "utf-8")) as ThemeJson,
-		};
+		const installedDocuments = Reflect.get(globalThis, BUILTIN_THEMES_KEY);
+		if (isBuiltinThemeDocuments(installedDocuments)) {
+			BUILTIN_THEMES = installedDocuments;
+		} else {
+			const themesDir = getThemesDir();
+			const darkPath = path.join(themesDir, "dark.json");
+			const lightPath = path.join(themesDir, "light.json");
+			BUILTIN_THEMES = {
+				dark: JSON.parse(fs.readFileSync(darkPath, "utf-8")) as ThemeJson,
+				light: JSON.parse(fs.readFileSync(lightPath, "utf-8")) as ThemeJson,
+			};
+		}
 	}
 	return BUILTIN_THEMES;
+}
+
+function isBuiltinThemeDocuments(value: unknown): value is Record<"dark" | "light", ThemeJson> {
+	if (typeof value !== "object" || value === null) return false;
+	return validateThemeJson.Check(Reflect.get(value, "dark")) && validateThemeJson.Check(Reflect.get(value, "light"));
 }
 
 export function getAvailableThemes(): string[] {

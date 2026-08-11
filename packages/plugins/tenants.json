@@ -11,7 +11,10 @@
       "chart-renderer",
       "git",
       "plugin-workbench",
-      "content-creation"
+      "comfyui-media-provider",
+      "content-creation",
+      "remotion-renderer",
+      "kanban"
     ]
   }
 }

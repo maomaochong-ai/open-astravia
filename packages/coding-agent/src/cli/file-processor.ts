@@ -4,9 +4,8 @@
 
 import { access, readFile, stat } from "node:fs/promises";
 import type { ImageContent } from "@vetta/ai";
+import { resolveExistingPath } from "@vetta/runtime-tools/coding";
 import chalk from "chalk";
-import { resolve } from "path";
-import { resolveReadPath } from "../core/tools/path-utils.js";
 import {
 	formatDimensionNote,
 	formatImageResizeFailureNote,
@@ -33,7 +32,7 @@ export async function processFileArguments(fileArgs: string[], options?: Process
 
 	for (const fileArg of fileArgs) {
 		// Expand and resolve path (handles ~ expansion and macOS screenshot Unicode spaces)
-		const absolutePath = resolve(resolveReadPath(fileArg, process.cwd()));
+		const absolutePath = resolveExistingPath(fileArg, process.cwd());
 
 		// Check if file exists
 		try {

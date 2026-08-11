@@ -7,8 +7,8 @@ import {
 	PREFIRE_LEAD_PERCENT,
 	type PrefireCache,
 	shouldPrefire,
-} from "../src/core/compaction/index.js";
-import type { SessionEntry } from "../src/core/session-manager/index.js";
+} from "../src/compaction/index.js";
+import type { CodingAgentSessionEntry as SessionEntry } from "../src/sessions/index.js";
 
 function entry(id: string, type = "message"): SessionEntry {
 	return { id, type } as unknown as SessionEntry;

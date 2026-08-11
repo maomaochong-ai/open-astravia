@@ -3,7 +3,6 @@ import { randomUUID } from "node:crypto";
 import { homedir, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve as resolvePath } from "node:path";
 import { getVettaConfigDirName } from "@vetta/action-rpc";
-import type { ExtensionContext } from "@vetta/coding-agent";
 
 export type SandboxPermissionCapability = "file.read" | "file.write" | "network";
 
@@ -17,6 +16,40 @@ export interface SandboxPermissionRequest {
 	grantRoot?: string;
 	reason: string;
 	command?: string;
+}
+
+export interface SandboxPermissionContext {
+	hasUI: boolean;
+	ui: {
+		confirm(title: string, message: string): Promise<boolean>;
+		requestSandboxGrant?(request: SandboxPermissionPrompt): Promise<SandboxPermissionDecision>;
+	};
+	requestEcosystemPermission?(
+		request: SandboxEcosystemPermissionRequest,
+	): Promise<SandboxEcosystemPermissionResult | undefined>;
+}
+
+export interface SandboxPermissionPrompt {
+	title: string;
+	message: string;
+	toolName: string;
+	capability: SandboxPermissionCapability;
+	target: string;
+	resolvedTarget: string;
+	grantRoot?: string;
+	command?: string;
+	sensitive: boolean;
+}
+
+export interface SandboxEcosystemPermissionRequest {
+	toolName: string;
+	toolInput: unknown;
+	runIdSuffix: string;
+}
+
+export interface SandboxEcosystemPermissionResult {
+	decision?: "allow" | "deny";
+	message?: string;
 }
 
 export interface SandboxShellGrant {
@@ -420,7 +453,7 @@ export function isSensitiveSandboxRequest(request: SandboxPermissionRequest): bo
 }
 
 export async function confirmSandboxPermission(
-	ctx: ExtensionContext,
+	ctx: SandboxPermissionContext,
 	request: SandboxPermissionRequest,
 ): Promise<SandboxPermissionDecision> {
 	// Ecosystem PermissionRequest: only when host is about to show a permission UI.

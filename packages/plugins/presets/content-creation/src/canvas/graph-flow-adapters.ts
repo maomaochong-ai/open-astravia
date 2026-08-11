@@ -21,11 +21,12 @@ export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
 	onDuplicate: (nodeId: string) => void;
 	onToggleLock: (nodeId: string) => void;
+	onRename: (nodeId: string, name: string) => Promise<void>;
 	onUpdate: (nodeId: string, data: ContentNodeData) => Promise<void>;
 	onResize: (nodeId: string, position: { x: number; y: number }, width: number, height: number) => void;
 	onRunNode: (nodeId: string) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
-	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[]) => Promise<void>;
+	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onAddToTimeline: (nodeId: string) => Promise<void>;
 }
 
@@ -36,7 +37,6 @@ export function getNextClipStart(project: ContentProjectDocument, trackId: strin
 
 export function toContentFlowNodes(
 	project: ContentProjectDocument,
-	selectedNodeIds: ReadonlySet<string>,
 	models: readonly ContentModelDescriptor[],
 	actions: ContentNodeActions,
 	assetPreviewUrls: ReadonlyMap<string, string>,
@@ -79,10 +79,10 @@ export function toContentFlowNodes(
 			id: node.id,
 			type: "contentNode",
 			position: node.position,
-			selected: selectedNodeIds.has(node.id),
 			draggable: !node.locked,
 			data: {
 				kind: node.kind,
+				name: node.name?.trim() || node.kind,
 				nodeData: node.data,
 				assets,
 				connectedAssets,
@@ -98,11 +98,12 @@ export function toContentFlowNodes(
 				onDelete: () => actions.onDelete(node.id),
 				onDuplicate: () => actions.onDuplicate(node.id),
 				onToggleLock: () => actions.onToggleLock(node.id),
+				onRename: (name) => actions.onRename(node.id, name),
 				onUpdate: (data) => actions.onUpdate(node.id, data),
 				onResize: (position, width, height) => actions.onResize(node.id, position, width, height),
 				onRunNode: () => actions.onRunNode(node.id),
 				onImportAssets: (files) => actions.onImportAssets(node.id, files),
-				onImportReferences: (files) => actions.onImportReferences(node.id, files),
+				onImportReferences: (files, slotId) => actions.onImportReferences(node.id, files, slotId),
 				onAddToTimeline:
 					node.kind === "image-generator" || node.kind === "video-generator" || node.kind === "asset"
 						? () => actions.onAddToTimeline(node.id)
@@ -112,10 +113,9 @@ export function toContentFlowNodes(
 	});
 }
 
-export function toContentFlowEdges(project: ContentProjectDocument, selectedNodeIds: ReadonlySet<string>): Edge[] {
+export function toContentFlowEdges(project: ContentProjectDocument): Edge[] {
 	return project.graph.edges.map((edge) => ({
 		...edge,
-		className: selectedNodeIds.has(edge.source) || selectedNodeIds.has(edge.target) ? "is-related" : undefined,
 		sourceHandle: CONTENT_FLOW_SOURCE_HANDLE_ID,
 		targetHandle: CONTENT_FLOW_TARGET_HANDLE_ID,
 	}));

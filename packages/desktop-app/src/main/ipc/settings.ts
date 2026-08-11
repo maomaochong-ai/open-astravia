@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getAgentDir } from "@vetta/coding-agent";
+import { getAgentDir } from "@vetta/coding-agent/config";
 import { atomicWriteJSON } from "@vetta/toolkit/atomic-write";
 import { app, BrowserWindow, ipcMain, powerMonitor } from "electron";
 import lockfile from "proper-lockfile";

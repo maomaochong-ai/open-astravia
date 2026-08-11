@@ -11,12 +11,11 @@ export const pluginNetworkMethods = {
 		sessionId: string,
 		request: unknown,
 	): Promise<CapabilityJsonValue> {
-		return this.client(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.NETWORK_FETCH }).invoke(
-			FOUNDATION_NETWORK_CAPABILITIES.REQUEST,
-			{
-				request: parseCapabilityJsonValue(request),
-			},
-		);
+		const session = this.session(sessionId, { permission: PLUGIN_CAPABILITY_PERMISSIONS.NETWORK_FETCH });
+		return session.access.client.invoke(FOUNDATION_NETWORK_CAPABILITIES.REQUEST, {
+			pluginId: session.pluginId,
+			request: parseCapabilityJsonValue(request),
+		});
 	},
 };
 

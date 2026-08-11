@@ -108,7 +108,7 @@ describe("installRuntimeDirectory", () => {
 
 	// python-build-standalone 与 Node 官方包都用符号链接（python3 -> python3.13），
 	// 解引用会让运行时体积翻倍，可执行位丢失则 seed 出来的运行时直接不可用。
-	it("preserves symlinks and the executable bit", async () => {
+	it.runIf(process.platform !== "win32")("preserves symlinks and the executable bit", async () => {
 		const sourceDirectory = join(testRoot, "vendor", "python");
 		await mkdir(join(sourceDirectory, "bin"), { recursive: true });
 		const realBinary = join(sourceDirectory, "bin", "python3.13");

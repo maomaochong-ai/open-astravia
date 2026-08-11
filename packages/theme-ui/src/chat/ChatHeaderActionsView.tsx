@@ -3,10 +3,11 @@ import { Button } from "@vetta/ui";
 
 export interface ChatHeaderActionsViewProps {
 	readonly badges: ReactNode;
-	readonly exportTitle: string;
-	readonly exportDisabled: boolean;
-	readonly exporting: boolean;
-	readonly onOpenExport: () => void;
+	readonly exportTitle?: string;
+	readonly exportDisabled?: boolean;
+	readonly exporting?: boolean;
+	/** 省略即不渲染导出按钮（如新会话页尚无消息可导出）。 */
+	readonly onOpenExport?: () => void;
 	readonly pinTitle: string;
 	readonly pinned: boolean;
 	readonly onTogglePin: () => void;
@@ -31,15 +32,23 @@ export function ChatHeaderActionsView({
 	return (
 		<>
 			{badges}
-			<Button size="icon-xs" variant="ghost" title={exportTitle} disabled={exportDisabled} onClick={onOpenExport}>
-				<span
-					className={
-						exporting
-							? "icon-[mdi--loading] animate-spin text-[14px]"
-							: "icon-[solar--square-share-line-linear] text-[14px]"
-					}
-				/>
-			</Button>
+			{onOpenExport && (
+				<Button
+					size="icon-xs"
+					variant="ghost"
+					title={exportTitle}
+					disabled={exportDisabled}
+					onClick={onOpenExport}
+				>
+					<span
+						className={
+							exporting
+								? "icon-[mdi--loading] animate-spin text-[14px]"
+								: "icon-[solar--square-share-line-linear] text-[14px]"
+						}
+					/>
+				</Button>
+			)}
 			<Button
 				size="icon-xs"
 				variant="ghost"

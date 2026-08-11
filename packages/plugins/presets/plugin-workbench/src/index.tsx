@@ -48,7 +48,7 @@ interface OfferReinstallInput {
 
 export default definePlugin({
 	activate(ctx) {
-		setWorkbenchRuntime(ctx.command, ctx.fs);
+		setWorkbenchRuntime(ctx.command, ctx.fs, ctx.official.plugins, ctx.official.dialog);
 
 		ctx.ui.registerActivityTab({
 			id: "workbench",

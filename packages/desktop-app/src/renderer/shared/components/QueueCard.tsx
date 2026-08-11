@@ -16,6 +16,7 @@ export function QueueCard({ runtimeId, onSendNow }: QueueCardProps): JSX.Element
 			onReorder={model.onReorder}
 			onSendNow={onSendNow}
 			onRemove={model.onRemove}
+			paused={model.paused}
 		/>
 	);
 }

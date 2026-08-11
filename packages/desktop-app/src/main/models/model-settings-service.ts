@@ -255,6 +255,7 @@ export class ModelSettingsService {
 				...(provider.baseUrl === undefined ? {} : { baseUrl: provider.baseUrl }),
 				...(provider.api === undefined ? {} : { api: provider.api }),
 				hasApiKey: Boolean(provider.apiKey),
+				...(provider.icon === undefined ? {} : { icon: provider.icon }),
 				modelCount: provider.models?.length ?? 0,
 				models: (provider.models ?? []).map((model) => ({
 					id: model.id,

@@ -6,12 +6,15 @@ import {
 	stopDesignServer,
 } from "../engine/engine-manager";
 import { exportDesign } from "../export/export-design";
+import { NotesStore } from "../notes/notes-store";
 import { getPluginCtx, notify } from "../plugin-context";
 import { PreviewDialog } from "../preview-mode/PreviewDialog";
 import { DesignSession } from "../vetd/design-session";
-import { findVetdFiles, sniffVetdKind } from "../vetd/discover";
+import { findVetdFiles } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
-import { BridgeHub } from "./bridge-client";
+import { BridgeHub, type ElementQuery, type SelectedElementPayload } from "./bridge-client";
+import { refreshCover } from "./cover-compose";
+import { DOCK_GAP, DOCK_ICON } from "./dock-magnify";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
 import { byCanvasOrder, DesignCanvas, type FrameCapture } from "./DesignCanvas";
 import { ThemePalette } from "./ThemePalette";
@@ -36,6 +39,7 @@ export function CanvasTab() {
 	const [selectedPath, setSelectedPath] = useState<string | null>(null);
 	const [phase, setPhase] = useState<Phase>({ kind: "idle" });
 	const [session, setSession] = useState<DesignSession | null>(null);
+	const [notesStore, setNotesStore] = useState<NotesStore | null>(null);
 	const [showPalette, setShowPalette] = useState(false);
 	const [exporting, setExporting] = useState(false);
 	const [reloadNonce, setReloadNonce] = useState(0);
@@ -48,6 +52,10 @@ export function CanvasTab() {
 	const previewTargetRef = useRef<(() => string | null) | null>(null);
 	/** 预览窗口打开在哪一帧上；null 表示没开。 */
 	const [previewFrameId, setPreviewFrameId] = useState<string | null>(null);
+	/** 同 captureRef：vetd_notes 的锚点保鲜入口，画布挂载后填入。 */
+	const resolveNoteElementsRef = useRef<
+		((frameId: string, queries: ElementQuery[]) => Promise<(SelectedElementPayload | null)[]>) | null
+	>(null);
 
 	// 画布很吃宽度：每次激活本标签卡（切走会卸载，故每次都触发）把活动面板拉满，
 	// 用户之后仍可自行拖窄。
@@ -61,15 +69,9 @@ export function CanvasTab() {
 			return [];
 		}
 		const ctx = getPluginCtx();
-		const found: string[] = [];
-		for (const path of await findVetdFiles(ctx.fs, cwd)) {
-			try {
-				const head = (await ctx.fs.readFile(path)).content.slice(0, 64);
-				if (sniffVetdKind(head) === "working") found.push(path);
-			} catch {
-				// unreadable: skip
-			}
-		}
+		// 设计包是目录，认的是里面的 design.json——不再需要按内容嗅探区分工作态与
+		// 打包分享文件（后者是 `.vetdz`，压根不会出现在这个列表里）。
+		const found = await findVetdFiles(ctx.fs, cwd);
 		setFiles(found);
 		return found;
 	}, [cwd]);
@@ -97,15 +99,19 @@ export function CanvasTab() {
 	useEffect(() => {
 		if (!selectedPath || !cwd) {
 			setSession(null);
+			setNotesStore(null);
 			setPhase({ kind: "idle" });
 			return;
 		}
 		localStorage.setItem(storageKey(cwd), selectedPath);
 		const ctx = getPluginCtx();
 		const nextSession = new DesignSession(ctx, selectedPath);
+		const nextNotes = new NotesStore(ctx.fs, nextSession.dirPath);
 		let cancelled = false;
 		setPhase({ kind: "preparing", progress: { phase: "checking" } });
 		setSession(nextSession);
+		setNotesStore(nextNotes);
+		void nextNotes.load();
 		void (async () => {
 			await nextSession.open();
 			const server = await startDesignServer(ctx, nextSession.dirPath, (progress) => {
@@ -114,12 +120,18 @@ export function CanvasTab() {
 			if (cancelled) return;
 			setCanvasController({
 				session: nextSession,
+				notes: nextNotes,
 				port: server.port,
 				captureFrame: (frameId) => {
 					const capture = captureRef.current;
 					// 画布还没挂上（引擎刚就绪那一瞬），直接说清楚，别让工具卡到超时。
 					if (!capture) return Promise.reject(new Error("design canvas is not rendered yet"));
 					return capture(frameId);
+				},
+				resolveNoteElements: (frameId, queries) => {
+					const resolve = resolveNoteElementsRef.current;
+					if (!resolve) return Promise.reject(new Error("design canvas is not rendered yet"));
+					return resolve(frameId, queries);
 				},
 				openDesign: (vetdPath) => {
 					setPendingDesignPath(vetdPath);
@@ -134,12 +146,20 @@ export function CanvasTab() {
 		});
 		return () => {
 			cancelled = true;
+			// 离开这份设计（切设计稿、关面板、切会话）时留一张画廊封面。
+			// 放在拆卸时而不是每次截图后：位图落定是高频事件，而封面只要「最后那一版」。
+			// dispose 之前抄一份 frames——dispose 之后 manifest 不再更新，但读没问题；
+			// 这里先取值只是为了不依赖 dispose 的内部实现。
+			const framesSnapshot = [...nextSession.manifest.frames];
+			void refreshCover(nextSession.vetdPath, framesSnapshot);
 			nextSession.dispose();
+			nextNotes.dispose();
 			setCanvasController(null);
 			clearFrameActivity();
 			void stopDesignServer(nextSession.dirPath);
 		};
 	}, [selectedPath, cwd, t, refreshFiles, reloadNonce]);
+
 
 	const createDesign = async (): Promise<void> => {
 		if (!cwd) return;
@@ -168,6 +188,8 @@ export function CanvasTab() {
 		setExporting(true);
 		try {
 			const path = await exportDesign(getPluginCtx(), session);
+			// 用户在另存为对话框里取消：什么都没写盘，也不需要提示。
+			if (path === null) return;
 			notify({ message: t("canvas.export.done", { path }), variant: "success", durationMs: 6000 });
 		} catch (error) {
 			notify({ message: t("canvas.export.failed"), error });
@@ -197,6 +219,16 @@ export function CanvasTab() {
 					{t("canvas.empty.title")}
 				</span>
 				<p className="max-w-64 text-xs text-muted-foreground">{t("canvas.empty.desc")}</p>
+				{/* 空态里没有工具栏，重扫入口只能放这儿：目录里明明有设计却扫不到时
+				    （v1 旧格式刚被放进来、或上一次扫描时目录还没就绪），这是用户
+				    唯一能自救的按钮，否则只剩「新建」这一条会让人以为设计丢了。 */}
+				<button
+					type="button"
+					onClick={() => void refreshFiles()}
+					className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+				>
+					{t("canvas.empty.rescan")}
+				</button>
 				<button
 					type="button"
 					onClick={() => void createDesign()}
@@ -210,14 +242,20 @@ export function CanvasTab() {
 
 	return (
 		<div className="relative flex h-full flex-col">
-			{/* 沉浸式标题栏：浮在画布之上，底色由主题变量渐隐到透明。 */}
-			<div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-2 bg-gradient-to-b from-background via-background/80 to-transparent px-3 pb-6 pt-2">
-				<label className="pointer-events-auto ml-auto flex min-w-0 max-w-64 items-center gap-2 text-xs text-muted-foreground">
-					<span className="shrink-0">{t("canvas.picker.label")}</span>
+			{/* 沉浸式标题栏：浮在画布之上，底色由主题变量渐隐到透明。
+			    按钮组顶部居中，样式与底部 ControlBar 的 dock 对齐。 */}
+			<div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-center bg-gradient-to-b from-background via-background/80 to-transparent px-3 pb-6 pt-2">
+				<div
+					className="pointer-events-auto flex items-center rounded-2xl border border-border/80 bg-popover/90 px-2 py-1.5 shadow-md backdrop-blur-md"
+					style={{ gap: DOCK_GAP }}
+				>
 					<select
 						value={selectedPath ?? ""}
 						onChange={(event) => setSelectedPath(event.target.value)}
-						className="min-w-0 max-w-44 truncate rounded-md border-none bg-card px-1.5 py-1 text-xs text-foreground outline-none focus:outline-none"
+						title={t("canvas.picker.label")}
+						aria-label={t("canvas.picker.label")}
+						className="min-w-0 max-w-44 truncate rounded-[10px] border-none bg-muted/55 px-2 text-xs text-foreground outline-none hover:bg-muted focus:outline-none"
+						style={{ height: DOCK_ICON }}
 					>
 						{files.map((file) => (
 							<option key={file} value={file}>
@@ -225,62 +263,68 @@ export function CanvasTab() {
 							</option>
 						))}
 					</select>
-				</label>
-				<button
-					type="button"
-					onClick={() => void createDesign()}
-					title={t("canvas.empty.create")}
-					className="pointer-events-auto rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-accent"
-				>
-					＋
-				</button>
-				<button
-					type="button"
-					onClick={() => setShowPalette((value) => !value)}
-					title={t("canvas.theme.title")}
-					aria-pressed={showPalette}
-					className={`pointer-events-auto rounded-md px-2 py-1 text-xs ${showPalette ? "text-primary" : "text-muted-foreground"} hover:bg-accent`}
-				>
-					◐
-				</button>
-				{/* 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
-				    强制所有 frame 重新加载最新代码并重截位图。 */}
-				<button
-					type="button"
-					disabled={phase.kind !== "ready"}
-					onClick={() => refreshRef.current?.()}
-					title={t("canvas.refresh")}
-					aria-label={t("canvas.refresh")}
-					className="pointer-events-auto rounded-md px-2 py-1 text-muted-foreground hover:bg-accent disabled:opacity-50"
-				>
-					<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-						<path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" strokeLinecap="round" strokeLinejoin="round" />
-					</svg>
-				</button>
-				{/* 预览：把设计稿当成真实站点来点。带文字，它是这排里唯一一个「进入
-				    另一种模式」的动作，纯 icon 认不出来。 */}
-				<button
-					type="button"
-					disabled={phase.kind !== "ready" || (session?.manifest.frames.length ?? 0) === 0}
-					onClick={openPreview}
-					title={t("previewMode.open")}
-					className="pointer-events-auto flex items-center gap-1.5 rounded-md bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-50"
-				>
-					<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-						<path d="M6 4l12 8-12 8V4z" strokeLinejoin="round" />
-					</svg>
-					{t("previewMode.open")}
-				</button>
-				{SHOW_EXPORT_SHARE ? (
+					<span className="w-px shrink-0 self-center bg-border" style={{ height: DOCK_ICON * 0.55 }} aria-hidden />
 					<button
 						type="button"
-						disabled={exporting || phase.kind !== "ready"}
-						onClick={() => void runExport()}
-						className="pointer-events-auto rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+						onClick={() => setShowPalette((value) => !value)}
+						title={t("canvas.theme.title")}
+						aria-label={t("canvas.theme.title")}
+						aria-pressed={showPalette}
+						className={`flex shrink-0 items-center justify-center rounded-[10px] text-xs ${
+							showPalette ? "bg-primary/12 text-primary" : "bg-muted/55 text-foreground hover:bg-muted"
+						}`}
+						style={{ width: DOCK_ICON, height: DOCK_ICON }}
 					>
-						{exporting ? t("canvas.export.running") : t("canvas.export")}
+						◐
 					</button>
-				) : null}
+					{/* 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
+					    强制所有 frame 重新加载最新代码并重截位图。
+					    同时重扫一遍设计列表——这个按钮是「与磁盘重新对齐」的唯一入口，
+					    面板开着时新出现的设计（含还没迁移的 v1 旧格式）也该在这里被收进来。 */}
+					<button
+						type="button"
+						disabled={phase.kind !== "ready"}
+						onClick={() => {
+							refreshRef.current?.();
+							void refreshFiles();
+						}}
+						title={t("canvas.refresh")}
+						aria-label={t("canvas.refresh")}
+						className="flex shrink-0 items-center justify-center rounded-[10px] bg-muted/55 text-foreground hover:bg-muted disabled:opacity-50"
+						style={{ width: DOCK_ICON, height: DOCK_ICON }}
+					>
+						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path d="M20 11a8 8 0 10-2.3 5.7M20 5v6h-6" strokeLinecap="round" strokeLinejoin="round" />
+						</svg>
+					</button>
+					{SHOW_EXPORT_SHARE ? (
+						<button
+							type="button"
+							disabled={exporting || phase.kind !== "ready"}
+							onClick={() => void runExport()}
+							className="flex shrink-0 items-center rounded-[10px] bg-muted/55 px-2.5 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-50"
+							style={{ height: DOCK_ICON }}
+						>
+							{exporting ? t("canvas.export.running") : t("canvas.export")}
+						</button>
+					) : null}
+					<span className="w-px shrink-0 self-center bg-border" style={{ height: DOCK_ICON * 0.55 }} aria-hidden />
+					{/* 运行：把设计稿当成真实站点来点。带文字，它是这组里唯一一个「进入
+					    另一种模式」的动作，纯 icon 认不出来。 */}
+					<button
+						type="button"
+						disabled={phase.kind !== "ready" || (session?.manifest.frames.length ?? 0) === 0}
+						onClick={openPreview}
+						title={t("canvas.run")}
+						className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+						style={{ height: DOCK_ICON }}
+					>
+						<svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path d="M6 4l12 8-12 8V4z" strokeLinejoin="round" />
+						</svg>
+						{t("canvas.run")}
+					</button>
+				</div>
 			</div>
 
 			<div className="relative min-h-0 flex-1">
@@ -310,16 +354,19 @@ export function CanvasTab() {
 						</button>
 					</div>
 				) : null}
-				{phase.kind === "ready" && session ? (
+				{phase.kind === "ready" && session && notesStore ? (
 					<>
 						<DesignCanvas
 							session={session}
+							notes={notesStore}
+							cwd={cwd}
 							port={phase.port}
 							bridge={bridgeRef.current}
 							captureRef={captureRef}
 							refreshRef={refreshRef}
 							previewTargetRef={previewTargetRef}
 							previewing={previewFrameId !== null}
+							resolveNoteElementsRef={resolveNoteElementsRef}
 						/>
 						{showPalette ? <ThemePalette session={session} /> : null}
 						{previewFrameId !== null ? (

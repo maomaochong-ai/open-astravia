@@ -4,7 +4,7 @@
 		"noEmit": true,
 		"paths": {
 			"@vetta/coding-agent": ["./src/index.ts"],
-			"@vetta/coding-agent/hooks": ["./src/core/hooks/index.ts"],
+			"@vetta/coding-agent/hooks": ["./src/public-api/hooks.ts"],
 			"@vetta/ai": ["../ai/src/index.ts"],
 			"@sinclair/typebox": ["../../node_modules/@sinclair/typebox"]
 		},

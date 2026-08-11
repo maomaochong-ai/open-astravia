@@ -1,10 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { ImportedContentReference } from "../generation/types";
-import {
-	getContentPromptOptimizationService,
-	notifyContentCreationError,
-} from "../plugin/runtime";
 import { CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE } from "../prompt-optimization/prompt-optimization-service";
 import { serializeContentPromptForOptimization } from "../prompt-optimization/serialize-content-prompt";
 import { usePromptOptimizationModels } from "../prompt-optimization/usePromptOptimizationModels";
@@ -25,7 +21,7 @@ import type { PromptMentionOption } from "./PromptMentionMenu";
 import { PromptRichTextInput, type PromptMentionInsertion } from "./PromptRichTextInput";
 import { PROMPT_REFERENCE_SLOT_ID } from "./prompt-sources";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
-import { readImportedMediaFile } from "./readImportedMediaFile";
+import { createImportedMediaFile } from "./imported-media-file";
 
 interface ContentPromptEditorProps {
 	data: ContentNodeData;
@@ -51,8 +47,14 @@ export function ContentPromptEditor({
 	const draftRef = useRef(data);
 	const [isOptimizing, setIsOptimizing] = useState(false);
 	const [hasPromptContent, setHasPromptContent] = useState(() => hasOptimizableContent(data));
-	const { models, selectedModelKey, setSelectedModelKey, isLoadingModels } =
-		usePromptOptimizationModels(data.promptOptimization?.modelKey);
+	const {
+		models,
+		selectedModelKey,
+		setSelectedModelKey,
+		isLoadingModels,
+		optimizePrompt,
+		reportError,
+	} = usePromptOptimizationModels(data.promptOptimization?.modelKey);
 	const removeReferenceLabel = t("nodeEditor.reference.remove");
 	const assetById = useMemo(
 		() =>
@@ -126,7 +128,7 @@ export function ContentPromptEditor({
 		event.target.value = "";
 		if (files.length === 0) return;
 		await onUpdate(draftRef.current);
-		await onImportReferences(await Promise.all(files.map(readImportedMediaFile)));
+		await onImportReferences(await Promise.all(files.map((file) => createImportedMediaFile(file))));
 	};
 	const handleOptimize = async () => {
 		if (!selectedModelKey || isOptimizing) return;
@@ -141,7 +143,7 @@ export function ContentPromptEditor({
 		setIsOptimizing(true);
 		try {
 			await onUpdate(requestData);
-			const optimization = await getContentPromptOptimizationService().optimize({
+			const optimization = await optimizePrompt({
 				source: serializeContentPromptForOptimization(requestData, assetMap),
 				modelKey: selectedModelKey,
 				profile: CONTENT_PROMPT_NODE_OPTIMIZATION_PROFILE,
@@ -151,7 +153,7 @@ export function ContentPromptEditor({
 			draftRef.current = next;
 			await onUpdate(next);
 		} catch (error) {
-			notifyContentCreationError(t("error.promptOptimization"), error);
+			reportError(t("error.promptOptimization"), error);
 		} finally {
 			setIsOptimizing(false);
 		}

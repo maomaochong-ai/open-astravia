@@ -8,6 +8,8 @@ export interface ActivityTabContextValue {
 	 * active conversation may belong to another project (or be null).
 	 */
 	cwd: string | null;
+	/** Whether this tab is the selected docked tab or a visible floating tab. */
+	active: boolean;
 }
 
 /**
@@ -15,7 +17,7 @@ export interface ActivityTabContextValue {
  * Provider. Module Federation shares this single SDK instance, so the value
  * the host provides is visible to plugin components.
  */
-export const __ActivityTabContext = createContext<ActivityTabContextValue>({ cwd: null });
+export const __ActivityTabContext = createContext<ActivityTabContextValue>({ cwd: null, active: false });
 
 /** The panel scope of the activity tab this component is rendered in. */
 export function useActivityTab(): ActivityTabContextValue {

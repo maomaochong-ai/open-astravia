@@ -1,4 +1,4 @@
-import type { SessionEvent } from "../../../../runtime-core/src/index.js";
+import type { SessionEvent } from "@vetta/runtime-core";
 import { getPetActionsByGroup, type PetActionGroupId, type PetActionId } from "../../shared/pet-actions.js";
 import type { PetBubblePriority } from "../../shared/pet-ipc.js";
 

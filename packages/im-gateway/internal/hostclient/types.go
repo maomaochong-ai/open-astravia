@@ -30,7 +30,9 @@ type HostClient interface {
 type HostSession interface {
 	// Send delivers a command and waits for the matching response. The
 	// response correlates by the command's ID field; implementations must
-	// generate one if Cmd.ID is empty.
+	// generate one if Cmd.ID is empty. A wire response with Success=false
+	// is returned together with a TypedFailure; callers must not interpret
+	// it as a successful transport operation.
 	Send(ctx context.Context, cmd Command) (Response, error)
 
 	// SendNoReply delivers a command and returns immediately, without
@@ -73,12 +75,73 @@ type Command struct {
 // Response is the matching reply for a Command. Mirrors the
 // `{type:"response", ...}` shape from rpc.md.
 type Response struct {
-	ID      string
-	Command string
-	Success bool
-	Data    map[string]any
-	Error   string
+	ID             string
+	Command        string
+	Success        bool
+	Data           map[string]any
+	Error          string
+	ErrorCode      FailureCode
+	Phase          FailurePhase
+	Recoverability FailureRecoverability
 }
+
+type FailureCode string
+
+const (
+	FailureCodeClientClosed       FailureCode = "client_closed"
+	FailureCodeCommandFailed      FailureCode = "command_failed"
+	FailureCodeHandshakeTimeout   FailureCode = "handshake_timeout"
+	FailureCodeInvalidRequest     FailureCode = "invalid_request"
+	FailureCodeProcessExited      FailureCode = "process_exited"
+	FailureCodeProcessIOFailed    FailureCode = "process_io_failed"
+	FailureCodeProcessSpawnFailed FailureCode = "process_spawn_failed"
+	FailureCodeRequestCancelled   FailureCode = "request_cancelled"
+	FailureCodeRequestTimeout     FailureCode = "request_timeout"
+	FailureCodeSessionLocked      FailureCode = "session_locked"
+	FailureCodeShutdownTimeout    FailureCode = "shutdown_timeout"
+)
+
+type FailurePhase string
+
+const (
+	FailurePhaseStartup    FailurePhase = "startup"
+	FailurePhaseCommand    FailurePhase = "command"
+	FailurePhaseTurn       FailurePhase = "turn"
+	FailurePhaseTransition FailurePhase = "transition"
+	FailurePhaseShutdown   FailurePhase = "shutdown"
+)
+
+type FailureRecoverability string
+
+const (
+	FailureRetrySafe       FailureRecoverability = "retry_safe"
+	FailureContinueSession FailureRecoverability = "continue_session"
+	FailureRestartSession  FailureRecoverability = "restart_session"
+	FailureUserAction      FailureRecoverability = "user_action"
+	FailureFatal           FailureRecoverability = "fatal"
+)
+
+type TypedFailure interface {
+	error
+	FailureCode() FailureCode
+	FailurePhase() FailurePhase
+	FailureRecoverability() FailureRecoverability
+}
+
+type HostFailure struct {
+	Code           FailureCode
+	Phase          FailurePhase
+	Recoverability FailureRecoverability
+	Message        string
+	Cause          error
+}
+
+func (e *HostFailure) Error() string { return e.Message }
+func (e *HostFailure) Unwrap() error { return e.Cause }
+
+func (e *HostFailure) FailureCode() FailureCode                     { return e.Code }
+func (e *HostFailure) FailurePhase() FailurePhase                   { return e.Phase }
+func (e *HostFailure) FailureRecoverability() FailureRecoverability { return e.Recoverability }
 
 // AgentEvent is one event emitted by the agent during a session. The Type
 // matches the rpc.md "Events" section (agent_start, message_update,
@@ -150,3 +213,7 @@ func (e *ErrSessionLocked) Error() string {
 		e.Holder.PID, e.Holder.Hostname, e.Holder.OpenedAt, e.LockPath, e.SessionPath,
 	)
 }
+
+func (e *ErrSessionLocked) FailureCode() FailureCode                     { return FailureCodeSessionLocked }
+func (e *ErrSessionLocked) FailurePhase() FailurePhase                   { return FailurePhaseStartup }
+func (e *ErrSessionLocked) FailureRecoverability() FailureRecoverability { return FailureUserAction }

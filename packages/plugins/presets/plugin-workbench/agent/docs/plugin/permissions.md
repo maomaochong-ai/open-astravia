@@ -19,7 +19,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 不同注册点对「声明了但未授权」的处理不同：
 
 - **抛错（require）**：`registerInputAction`、`registerCardRenderer`、`registerToolCallSlot`、`registerTurnCard`、`registerShortcutScope`、`openActivityTab`、`setActivityTabVisible`、`setPromptAttachment`、`fileExplorer.*`、`agent.registerContinuationProvider`、`agent.registerSystemPromptProvider`、`conversation.*`、`fs.*`、`network.*`、`storage.*`、`media.*`、`ai.*`、`command.run`。缺权限直接抛 `Plugin permission denied: <permission>`，中断该次调用。
-- **跳过 + 警告（warn+noop）**：`registerGlobalSlot`、`registerFilePreview`、`registerActivityTab`、`agent.registerTool`、`appActions.register`。缺权限时静默跳过该贡献并打 `console.warn`，**不影响**插件其它已授权能力。
+- **跳过 + 警告（warn+noop）**：`registerGlobalSlot`、`registerFilePreview`、`registerActivityTab`、`agent.registerTool`、`agent.registerHook`、`appActions.register`。缺权限时静默跳过该贡献并打 `console.warn`，**不影响**插件其它已授权能力。
 
 > 设计上一个缺失权限不应拖垮插件的其它能力——`activate()` 里建议把可选能力的注册各自独立，避免一处 throw 掉整段。
 
@@ -28,6 +28,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | 权限 | 门控 | 文档 |
 | --- | --- | --- |
 | `ui.slot.global` | `ctx.ui.registerGlobalSlot()` | [ui-slots](./ui-slots.md#全局浮层-registerglobalslot) |
+| `ui.slot.workspace-view` | `ctx.ui.registerWorkspaceView()` / `openWorkspaceView()` / `setWorkspaceViewBadge()` | [ui-slots](./ui-slots.md#工作区视图-registerworkspaceview) |
 | `ui.slot.file-preview` | `ctx.ui.registerFilePreview()` | [ui-slots](./ui-slots.md#文件预览-registerfilepreview) |
 | `ui.slot.activity-tab` | `registerActivityTab` / `openActivityTab` / `setActivityTabVisible` | [ui-slots](./ui-slots.md#活动面板-tab-registeractivitytab) |
 | `ui.slot.input-action` | `registerInputAction` / `setPromptAttachment` | [ui-slots](./ui-slots.md#输入栏动作-registerinputaction) |
@@ -48,6 +49,8 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `agent.mcp.control` | 清单 `agent.mcpServers`（三源聚合之插件源） | [mcp](./mcp.md) |
 | `agent.tools.register` | `ctx.agent.registerTool()`（注册 shell） | [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具) |
 | `agent.toolHandler.execute` | 工具 handler 被 agent 调用时执行 | 同上 |
+| `agent.hooks.register` | `ctx.agent.registerHook()`（注册 Coding Agent 生命周期 Hook） | [conversation-and-agent](./conversation-and-agent.md#注册-coding-agent-hook) |
+| `agent.hookHandler.execute` | Coding Agent 到达匹配事件时调用插件 Hook handler | 同上 |
 | `agent.tools.control` | 清单 `agent.toolPolicy` 声明式 allow/deny | [manifest](./manifest.md#agent-agent-侧贡献) |
 | `agent.systemPrompt.write` | `registerSystemPromptProvider`；仅本插件 block | [conversation-and-agent](./conversation-and-agent.md#注册动态系统提示词-provider) |
 | `agent.systemPrompt.fullControl` | 动态 provider 操作非本插件 block | 同上 |
@@ -60,6 +63,7 @@ ctx.permissions.require("fs.read");  // 缺则抛 Plugin permission denied: fs.r
 | `storage.read` | `ctx.storage.readJson/list/readFile/readBlob/getBlobRef` | [conversation-and-agent](./conversation-and-agent.md#插件私有存储-api) |
 | `storage.write` | `ctx.storage.writeJson/writeFile/putBlob` | 同上 |
 | `media.generate` | `ctx.media.listProviders/createJob/getJob/cancelJob` | [media](./media.md) |
+| `media.provider.register` | `ctx.media.registerProvider`（注册媒体 Provider） | [media](./media.md#注册-provider) |
 | `ai.models.list` | `ctx.ai.listModels()` | [ai](./ai.md) |
 | `ai.complete` | `ctx.ai.complete()` | [ai](./ai.md) |
 

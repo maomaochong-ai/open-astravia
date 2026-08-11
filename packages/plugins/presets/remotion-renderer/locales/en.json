@@ -1,0 +1,19 @@
+{
+	"plugin.name": "Remotion Video",
+	"plugin.description": "Create React videos in the current conversation project and render them to MP4 with the project's local Remotion CLI.",
+	"provider.name": "Local Remotion",
+	"tool.render": "Render Remotion video",
+	"tab.studio": "Remotion",
+	"studio.title": "Remotion Studio",
+	"studio.action.restart": "Restart Studio",
+	"studio.state.starting": "Starting the project's Remotion Studio...",
+	"studio.state.noCwdTitle": "No project selected",
+	"studio.state.noCwdBody": "Open a conversation project to use Remotion Studio.",
+	"studio.state.notProjectTitle": "No Remotion project found",
+	"studio.state.notProjectBody": "Create the Remotion project in this conversation, then restart Studio.",
+	"studio.state.dependenciesTitle": "Remotion dependencies are missing",
+	"studio.state.dependenciesBody": "Install this project's dependencies, then restart Studio.",
+	"studio.state.errorTitle": "Remotion Studio could not start",
+	"studio.state.errorBody": "Check the project files and Studio output, then try again.",
+	"studio.iframeTitle": "Remotion Studio"
+}

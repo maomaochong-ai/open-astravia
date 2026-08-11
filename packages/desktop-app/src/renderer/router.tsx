@@ -4,6 +4,7 @@ import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { RootLayout } from "./App";
 import { loadNewSessionPage } from "./domains/chat/components/loadNewSessionPage";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
+import { WORKSPACE_VIEW_ROUTE_PATH } from "./domains/plugins/runtime/workspace-view-registry";
 import { THEME_PAGE_ROUTE_PATH } from "./shared/theme/pages/themePageRegistry";
 
 const ChatPage = lazy(async () => ({
@@ -36,6 +37,9 @@ const KnowledgeBasePage = lazy(async () => ({
 }));
 const KnowledgeBaseListPage = lazy(async () => ({
 	default: (await import("./domains/knowledge-base/components/KnowledgeBaseListPage")).KnowledgeBaseListPage,
+}));
+const PluginWorkspaceViewRoute = lazy(async () => ({
+	default: (await import("./domains/plugins/components/PluginWorkspaceViewRoute")).PluginWorkspaceViewRoute,
 }));
 const ThemePageRoute = lazy(async () => ({
 	default: (await import("./shared/theme/pages/ThemePageRoute")).ThemePageRoute,
@@ -170,6 +174,14 @@ const themePageRoute = createRoute({
 	component: ThemePageRoute,
 });
 
+/** 插件工作区视图整页路由（`/workspace/$pluginId/$viewId`）。 */
+const pluginWorkspaceViewRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: WORKSPACE_VIEW_ROUTE_PATH,
+	component: PluginWorkspaceViewRoute,
+	pendingComponent: NoPendingComponent,
+});
+
 const routeTree = rootRoute.addChildren([
 	indexRoute,
 	automationRoute,
@@ -185,6 +197,7 @@ const routeTree = rootRoute.addChildren([
 	projectDetailRoute,
 	newSessionRoute,
 	sessionViewerRoute,
+	pluginWorkspaceViewRoute,
 	themePageRoute,
 ]);
 

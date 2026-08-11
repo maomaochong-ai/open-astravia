@@ -5,7 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "bunx vite build",
-		"check": "bunx tsc --noEmit"
+		"check": "bunx tsc --noEmit",
+		"test": "bunx vitest --run"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",
@@ -13,9 +14,11 @@
 		"@types/react-dom": "^19.1.1",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
+		"@vetta/ui": "workspace:*",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",
 		"typescript": "^5.9.2",
-		"vite": "^7.1.7"
+		"vite": "^7.1.7",
+		"vitest": "^3.2.4"
 	}
 }

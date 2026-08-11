@@ -1,5 +1,5 @@
 {
-  "name": "pi-extension-custom-provider-anthropic",
+  "name": "vetta-extension-custom-provider-anthropic",
   "private": true,
   "version": "1.6.1",
   "type": "module",

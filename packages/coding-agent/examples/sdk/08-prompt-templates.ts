@@ -4,14 +4,13 @@
  * File-based templates that inject content when invoked with /templatename.
  */
 
-import { createAgentSession, DefaultResourceLoader, type PromptTemplate, SessionManager } from "@vetta/coding-agent";
+import type { CodingAgentPromptTemplateContribution } from "@vetta/coding-agent/sdk";
+import { createCodingAgentSession } from "@vetta/coding-agent/sdk";
 
 // Define custom templates
-const deployTemplate: PromptTemplate = {
+const deployTemplate: CodingAgentPromptTemplateContribution = {
 	name: "deploy",
 	description: "Deploy the application",
-	source: "path",
-	filePath: "/virtual/prompts/deploy.md",
 	content: `# Deploy Instructions
 
 1. Build: npm run build
@@ -19,24 +18,16 @@ const deployTemplate: PromptTemplate = {
 3. Deploy: npm run deploy`,
 };
 
-const loader = new DefaultResourceLoader({
-	promptsOverride: (current) => ({
-		prompts: [...current.prompts, deployTemplate],
-		diagnostics: current.diagnostics,
-	}),
+const { session } = await createCodingAgentSession({
+	storage: { kind: "memory" },
+	resources: { promptTemplates: [deployTemplate] },
 });
-await loader.reload();
 
-// Discover templates from cwd/.pi/prompts/ and ~/.pi/agent/prompts/
-const discovered = loader.getPrompts().prompts;
+// Includes templates discovered from the workspace and the explicit SDK contribution.
+const discovered = session.getPromptTemplates();
 console.log("Discovered prompt templates:");
 for (const template of discovered) {
 	console.log(`  /${template.name}: ${template.description}`);
 }
 
-await createAgentSession({
-	resourceLoader: loader,
-	sessionManager: SessionManager.inMemory(),
-});
-
-console.log(`Session created with ${discovered.length + 1} prompt templates`);
+console.log(`Session created with ${discovered.length} prompt templates`);

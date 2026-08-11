@@ -1,4 +1,4 @@
-import type { SessionExecutionMode } from "../../../runtime-core/src/index.js";
+import type { SessionExecutionMode } from "@vetta/runtime-core";
 
 export type ExecutionModeOverride = "inherit" | SessionExecutionMode;
 

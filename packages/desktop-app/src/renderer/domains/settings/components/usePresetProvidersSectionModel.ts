@@ -32,8 +32,6 @@ export interface PresetProviderRow {
 	isExpanded: boolean;
 	refreshing: boolean;
 	hasApiKey: boolean;
-	/** 模型数右侧的次要文案:已启用显示同步时间,未启用提示填 key。 */
-	statusLabel: string | null;
 	/** 该行最近一次拉取模型失败的原因。 */
 	modelsError: string | null;
 }
@@ -48,6 +46,7 @@ export interface PresetProvidersSectionLabels {
 	viewModels: string;
 	modelsCount: (count: number) => string;
 	collapse: string;
+	cancel: string;
 	changeKey: string;
 	remove: string;
 	enable: string;
@@ -161,7 +160,6 @@ export function usePresetProvidersSectionModel({
 
 		return [...presetRows, ...orphaned].map((row) => {
 			const adopted = config.providers[row.id]?.source === "template";
-			const syncedAt = config.providers[row.id]?.modelsSyncedAt;
 			return {
 				...row,
 				modelRows: row.models.map((model) => ({
@@ -177,15 +175,10 @@ export function usePresetProvidersSectionModel({
 				isExpanded: expandedId === row.id,
 				refreshing: refreshingId === row.id,
 				hasApiKey: Boolean(config.providers[row.id]?.apiKey),
-				statusLabel: adopted
-					? syncedAt
-						? t("syncedAt", { time: formatSyncedAt(syncedAt, i18n.language) })
-						: t("neverSynced")
-					: t("catalogModels"),
 				modelsError: modelsErrors[row.id] ?? null,
 			};
 		});
-	}, [config.providers, expandedId, i18n.language, modelsErrors, openId, presets, refreshingId, t]);
+	}, [config.providers, expandedId, modelsErrors, openId, presets, refreshingId, t]);
 
 	const handleToggleEditor = useCallback((row: PresetProviderRow): void => {
 		if (row.isOpen) {
@@ -366,6 +359,7 @@ export function usePresetProvidersSectionModel({
 			viewModels: t("viewModels"),
 			modelsCount: (count: number) => t("modelsCount", { count }),
 			collapse: t("collapse"),
+			cancel: t("cancel"),
 			changeKey: t("changeKey"),
 			remove: t("remove"),
 			enable: t("enable"),

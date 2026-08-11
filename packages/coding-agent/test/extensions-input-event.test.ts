@@ -2,11 +2,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { AuthStorage } from "../src/core/auth-storage.js";
-import { discoverAndLoadExtensions } from "../src/core/extensions/loader.js";
-import { ExtensionRunner } from "../src/core/extensions/runner.js";
-import { ModelRegistry } from "../src/core/model-registry.js";
-import { SessionManager } from "../src/core/session-manager/index.js";
+import { AuthStorage } from "../src/auth/index.js";
+import { discoverAndLoadExtensions, ExtensionRunner } from "../src/extensions/index.js";
+import { createCodingAgentModelRuntime } from "../src/models/index.js";
+import { createExtensionSessionView } from "./fixtures/extension-session-view.js";
 
 describe("Input Event", () => {
 	let tempDir: string;
@@ -28,8 +27,8 @@ describe("Input Event", () => {
 		fs.mkdirSync(extensionsDir);
 		for (let i = 0; i < extensions.length; i++) fs.writeFileSync(path.join(extensionsDir, `e${i}.ts`), extensions[i]);
 		const result = await discoverAndLoadExtensions([], tempDir, tempDir);
-		const sm = SessionManager.inMemory();
-		const mr = new ModelRegistry(AuthStorage.create(path.join(tempDir, "auth.json")));
+		const sm = createExtensionSessionView(tempDir);
+		const mr = createCodingAgentModelRuntime(AuthStorage.create(path.join(tempDir, "auth.json")));
 		return new ExtensionRunner(result.extensions, result.runtime, tempDir, sm, mr);
 	}
 

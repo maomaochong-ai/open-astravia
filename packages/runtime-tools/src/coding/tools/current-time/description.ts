@@ -1,0 +1,2 @@
+export const CURRENT_TIME_TOOL_DESCRIPTION =
+	'Get the current system date and time. Returns the time in YYYY-MM-DD HH:mm:ss format.\n\nALWAYS use this tool as your FIRST choice when you need to know the current date or time — for example to add timestamps, check deadlines, or answer time-related questions. Do NOT use bash "date" or other shell commands to get the current time. Only fall back to bash if this tool cannot fulfill the specific requirement (e.g., timezone conversion, date arithmetic).';
