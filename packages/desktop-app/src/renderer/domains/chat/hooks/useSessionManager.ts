@@ -1052,9 +1052,13 @@ export function useSessionManager(): SessionManagerResult {
 				source?: "plugin";
 			},
 		): Promise<{ status: "sent" | "queued"; queueItemId?: string } | undefined> => {
-			// 读 ref 而非 state：允许在同一 tick 内先 openSession 再立即 sendMessage
-			// （例如 NewSessionPage 的"创建会话+发送"组合调用），避免 React 闭包拿到旧 null。
-			const session = activeSessionRef.current ?? activeSession;
+			// 目标会话读共享 atom（store 直读，不走 React 闭包）：openSession 同步写入
+			// activeSessionAtom，同一 tick 内「创建会话+发送」的组合仍读得到新值。不能读
+			// 实例级 activeSessionRef——useSessionManager 同时挂载多份（RootLayout /
+			// ChatPage / NewSessionPage），pluginSendMessageRef 只留最后渲染者的
+			// sendMessage，而该实例的 ref 记的是「它自己最后打开的会话」，与用户当前
+			// 激活会话可能相差很久：插件派活曾因此落进另一个 workspace 的陈年会话。
+			const session = getDefaultStore().get(activeSessionAtom);
 			// 不订阅输入 atom；调用时读取还能覆盖“先写草稿、同一流程立即发送”的场景。
 			const inputValue = getDefaultStore().get(inputValueAtom);
 			const attachedImages = attachedImagesRef.current;
@@ -1263,7 +1267,7 @@ export function useSessionManager(): SessionManagerResult {
 			// has been flushed (SessionManager only writes after the assistant's
 			// first message). Use the user's prompt prefix as a temporary label;
 			// auto-title or the next loadSessions will overwrite as appropriate.
-			const sp = activeSessionRef.current?.sessionPath;
+			const sp = session.sessionPath;
 			if (!streaming && sp) {
 				// ADR-0007：「对话」session 的 cwd 是默认项目根下的 per-session 子目录，
 				// 但侧边栏 sessionsMap / 默认列表都挂在项目根 bucket 上。乐观行必须落到根
@@ -1458,7 +1462,6 @@ export function useSessionManager(): SessionManagerResult {
 			// 输入文本调用时读 store，其余输入相关值读 ref，不再入依赖，保证
 			// sendMessage 身份在打字时稳定，避免下游
 			// Virtuoso footer 重挂载（footer 内的插件 turn 卡会因此闪烁/重查）。
-			activeSession,
 			setAttachedImages,
 			setMentionedFiles,
 			setChatMessages,
