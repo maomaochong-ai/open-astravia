@@ -89,8 +89,11 @@ const BUILTIN_NAV_ITEMS = [
 	},
 ] as const;
 
-/** 首次使用时的置顶区默认成员（沿用改造前的常驻四项）。 */
-const DEFAULT_PINNED_NAV_KEYS = ["/automation", "/knowledge", "/abilities"];
+/**
+ * 首次使用时的置顶区默认成员：只留「能力」和设计画廊，其余入口默认收纳。
+ * 顺序由 navCatalog 决定（内置在前、插件视图在后），即「新会话 / 能力 / 设计」。
+ */
+const DEFAULT_PINNED_NAV_KEYS = ["/abilities", workspaceViewNavKey("vetta-ui-design", "gallery")];
 
 function loadStoredNavLayout(): SidebarNavLayout {
 	try {
