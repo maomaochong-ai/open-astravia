@@ -16,16 +16,20 @@ import { markCatalogFailed, markCatalogLoading, setDesignSystems } from "./regis
 /**
  * 候选源，按顺序尝试，第一个拿到且校验通过的生效。
  *
- * jsDelivr 排前面：它是专门做这件事的免费 CDN，把流量从 GitHub 挪走，国内可达性通常
- * 也比 raw 好；代价是 CDN 侧缓存 12 小时（`s-maxage=43200`），内容更新最多晚半天生效。
- * raw 兜底：5 分钟就新鲜，jsDelivr 挂了或还没回源时顶上。
+ * raw 排前面是有代价换来的结论：jsDelivr 更快、国内可达性也更好，但它对 `@main` 这种
+ * 浮动引用会缓存「分支→commit」的解析结果（`s-maxage=43200`），而 purge 单个文件刷不掉
+ * 它——实测推送后调 purge 返回 finished，内容依然是半天前的。资源要能随时更新，就不能
+ * 让首选源有一个最长 12 小时、且无法主动清除的延迟。
+ *
+ * raw 是 `max-age=300`，配合下面的 ETag 条件请求，稳定状态下每次检查只是一个 304。
+ * jsDelivr 留作兜底：raw 拉不到时，一份可能旧一点的清单也好过没有。
  *
  * 新增地址必须同时加进 plugin.json 的 `network.allowedHosts`（宿主按 host 白名单放行，
  * 且**每一跳重定向都会重新校验**，所以会跳转的地址要把跳转目标也声明上）。
  */
 export const DESIGN_CATALOG_SOURCES: readonly string[] = [
-	"https://cdn.jsdelivr.net/gh/openvetta/vetta-design-templates@main/.vetta/design-templates.json",
 	"https://raw.githubusercontent.com/openvetta/vetta-design-templates/main/.vetta/design-templates.json",
+	"https://cdn.jsdelivr.net/gh/openvetta/vetta-design-templates@main/.vetta/design-templates.json",
 ];
 
 /** 上一次成功拉取到的清单原文，存插件私有 storage。 */
@@ -51,8 +55,14 @@ export function repoRootUrl(catalogUrl: string): string {
 	}
 }
 
-/** 缓存多久之内不再发请求。设计资源不是时效内容，半天一次足够。 */
-const REFRESH_TTL_MS = 6 * 60 * 60 * 1000;
+/**
+ * 缓存多久之内不再发请求。
+ *
+ * 定得短（和 raw 的 `max-age=300` 对齐）是因为有 ETag：内容没变时一次检查就是一个
+ * 304、零字节，成本可以忽略；只有真的变了才会下载那 300 多 KB。用一个长 TTL 去省这点
+ * 开销，换来的是「明明推上去了却要等半天/要手动点刷新」——那才是真正的代价。
+ */
+const REFRESH_TTL_MS = 5 * 60 * 1000;
 
 const REQUEST_TIMEOUT_MS = 15_000;
 

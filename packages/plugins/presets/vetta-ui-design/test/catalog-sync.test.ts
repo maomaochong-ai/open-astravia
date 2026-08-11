@@ -4,6 +4,7 @@ import { DESIGN_CATALOG_SOURCES, isCacheFresh, refreshDesignCatalog, repoRootUrl
 import { catalogState, designSystems, resetDesignSystems } from "../src/design-systems/registry";
 
 const NOW = Date.parse("2026-08-11T12:00:00.000Z");
+const MINUTE = 60 * 1000;
 const HOUR = 60 * 60 * 1000;
 
 function remoteEntry(slug: string): Record<string, unknown> {
@@ -92,8 +93,9 @@ afterEach(() => {
 describe("isCacheFresh", () => {
 	it.each([
 		["刚写入", 0, true],
-		["5 小时前", 5 * HOUR, true],
-		["7 小时前（超过 TTL）", 7 * HOUR, false],
+		["3 分钟前", 3 * MINUTE, true],
+		["7 分钟前（超过 TTL）", 7 * MINUTE, false],
+		["1 小时前", HOUR, false],
 	])("%s → %s", (_label, ageMs, expected) => {
 		expect(isCacheFresh(new Date(NOW - ageMs).toISOString(), NOW)).toBe(expected);
 	});
@@ -110,7 +112,7 @@ describe("isCacheFresh", () => {
 describe("refreshDesignCatalog 的请求预算", () => {
 	it("缓存新鲜时一个请求都不发", async () => {
 		const { ctx, requests } = fakeCtx({ cached: cacheOf(["cached-one"]) });
-		await refreshDesignCatalog(ctx, NOW + HOUR);
+		await refreshDesignCatalog(ctx, NOW + MINUTE);
 		expect(requests).toHaveLength(0);
 		expect(designSystems().map((system) => system.id)).toEqual(["cached-one"]);
 	});
@@ -120,14 +122,14 @@ describe("refreshDesignCatalog 的请求预算", () => {
 			cached: cacheOf(["cached-one"]),
 			responses: [{ ok: true, status: 200, body: catalogOf(["brand-new"]) }],
 		});
-		await refreshDesignCatalog(ctx, NOW + HOUR, { force: true });
+		await refreshDesignCatalog(ctx, NOW + MINUTE, { force: true });
 		expect(requests).toHaveLength(1);
 		expect(designSystems().map((system) => system.id)).toEqual(["brand-new"]);
 	});
 
 	it("force 也先用缓存渲染，不白屏", async () => {
 		const { ctx } = fakeCtx({ cached: cacheOf(["cached-one"]) });
-		await refreshDesignCatalog(ctx, NOW + HOUR, { force: true });
+		await refreshDesignCatalog(ctx, NOW + MINUTE, { force: true });
 		// 网络这一轮失败，但缓存内容仍然在。
 		expect(designSystems().map((system) => system.id)).toEqual(["cached-one"]);
 	});
@@ -266,14 +268,21 @@ describe("refreshDesignCatalog 的回退链", () => {
 	});
 });
 
+describe("源顺序", () => {
+	it("raw 排首位：jsDelivr 对 @main 的解析缓存 purge 不掉，最长会晚 12 小时", () => {
+		expect(DESIGN_CATALOG_SOURCES[0]).toContain("raw.githubusercontent.com");
+		expect(DESIGN_CATALOG_SOURCES[1]).toContain("cdn.jsdelivr.net");
+	});
+});
+
 describe("repoRootUrl", () => {
 	it("剥掉清单自身的路径，得到仓库根", () => {
 		// 资源地址是相对仓库根的；直接拿清单地址当 base 会多出一段 .vetta/。
 		expect(repoRootUrl(DESIGN_CATALOG_SOURCES[0])).toBe(
-			"https://cdn.jsdelivr.net/gh/openvetta/vetta-design-templates@main/",
+			"https://raw.githubusercontent.com/openvetta/vetta-design-templates/main/",
 		);
 		expect(repoRootUrl(DESIGN_CATALOG_SOURCES[1])).toBe(
-			"https://raw.githubusercontent.com/openvetta/vetta-design-templates/main/",
+			"https://cdn.jsdelivr.net/gh/openvetta/vetta-design-templates@main/",
 		);
 	});
 

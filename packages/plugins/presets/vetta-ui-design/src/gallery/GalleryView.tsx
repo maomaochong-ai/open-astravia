@@ -61,6 +61,12 @@ export function GalleryView() {
 		void refresh();
 	}, [refresh]);
 
+	// 进设计页就顺带看一眼风格库有没有更新。走 TTL 节流 + ETag，内容没变时只是一个
+	// 304，所以用户不需要记得点刷新——推上去的新风格下次打开这页就在了。
+	useEffect(() => {
+		void refreshDesignCatalog(getPluginCtx());
+	}, []);
+
 	/** 导完直接进项目看设计：包里已经有成品，用户刚表达的意图就是「打开它」。 */
 	const enterCreated = useCallback(
 		async (created: CreatedDesign) => {

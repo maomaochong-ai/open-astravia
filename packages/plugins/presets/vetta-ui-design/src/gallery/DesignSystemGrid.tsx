@@ -21,7 +21,8 @@ export interface DesignSystemGridProps {
 	onPick: (system: DesignSystem) => void;
 }
 
-const GRID_CLASS = "grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3";
+/** 固定三列：预览是缩小的整页网页，卡片给得大一些才看得出风格。 */
+const GRID_CLASS = "grid grid-cols-3 gap-4";
 /** 骨架格数：填满一两行即可，不必假装有多少套。 */
 const SKELETON_COUNT = 6;
 
@@ -47,7 +48,7 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 							disabled={busy}
 							onClick={() => onPick(system)}
 							aria-label={t("gallery.styles.start", { name: system.name })}
-							className="flex aspect-square min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border border-border p-2 text-left transition-all duration-200 hover:border-primary hover:shadow-sm disabled:opacity-40"
+							className="flex aspect-[4/3] min-w-0 flex-col gap-2 overflow-hidden rounded-xl border border-border p-2.5 text-left transition-all duration-200 hover:border-primary hover:shadow-md disabled:opacity-40"
 						>
 							<DesignSystemTileContent system={system} demoActive={hovered === system.id} />
 						</button>
@@ -58,7 +59,7 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 					{Array.from({ length: SKELETON_COUNT }, (_, index) => (
 						<div
 							key={`skeleton-${index}`}
-							className="aspect-square animate-pulse rounded-xl border border-border bg-accent/40"
+							className="aspect-[4/3] animate-pulse rounded-xl border border-border bg-accent/40"
 						/>
 					))}
 				</div>
