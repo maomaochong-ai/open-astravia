@@ -1,6 +1,5 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "@xyflow/react/dist/style.css";
-import pluginIconUrl from "../icon.png";
 import "./styles/index.css";
 import { ContentRunApprovalDialog } from "./plugin/ContentRunApprovalDialog";
 import { registerContentCreationTools } from "./plugin/register-tools";
@@ -8,9 +7,17 @@ import { registerContentCreationToolRouter } from "./plugin/tool-routing";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import { ContentCreationPluginRuntime } from "./plugin/runtime";
 
-function PluginTabIcon() {
-	// 与 plugin.json#icon 同源（icon.png），活动栏与插件列表品牌一致。
-	return <img src={pluginIconUrl} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
+/**
+ * 插件包根 icon.png 的宿主协议 URL。
+ * 不可 `import "../icon.png"`：MF/Vite 常生成以 `/` 开头的绝对路径，在宿主页上
+ * 会解析成 desktop-app `public/icon.png`（应用图标），而不是插件自己的图。
+ */
+function pluginPackageIconUrl(pluginId: string, version: string, relativePath = "icon.png"): string {
+	return `vetta-plugin://${pluginId}/${relativePath}?v=${encodeURIComponent(version)}`;
+}
+
+function PluginTabIcon({ src }: { src: string }) {
+	return <img src={src} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
 }
 
 export default definePlugin({
@@ -30,7 +37,9 @@ export default definePlugin({
 			ctx.ui.registerActivityTab({
 				id: "workspace",
 				label: "%tab.workspace.label%",
-				icon: <PluginTabIcon />,
+				icon: (
+					<PluginTabIcon src={pluginPackageIconUrl(ctx.plugin.id, ctx.plugin.version)} />
+				),
 				component: WorkspacePanel,
 				scope_use: ["conversation", "project"],
 				// 暂时默认上栏；硬隔离已去掉，后续再设计更合适的入口策略。

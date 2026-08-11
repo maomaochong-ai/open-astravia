@@ -79,7 +79,12 @@ function createBuildDefaultsPlugin(entry: string): Plugin {
 		apply: "build",
 		config() {
 			return {
+				// Plugin remotes run inside the host page. Absolute asset URLs like
+				// `/icon.png` resolve against the host origin (desktop-app public/), not
+				// the remote. Prefer inlining small assets; large ones still go under
+				// assets/ and rely on MF publicPath, but never land on host public/.
 				build: {
+					assetsInlineLimit: 32 * 1024,
 					rollupOptions: {
 						input: entry,
 						// Host-provided singletons (see desktop-app plugin-shared-modules + vetta-host protocol).

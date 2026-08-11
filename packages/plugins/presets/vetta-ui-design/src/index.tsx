@@ -5,7 +5,6 @@ import {
 	type Disposable,
 	type PluginPendingToolCall,
 } from "@vetta-org/plugin-sdk";
-import vetdIconUrl from "../icon.png";
 import "./style.css";
 import { DESIGN_SYSTEM_CARD_TYPE } from "./cards/design-system-card";
 import { DesignSystemPickerCard } from "./cards/DesignSystemPickerCard";
@@ -28,6 +27,15 @@ import { registerDesignTools } from "./tools";
 import { claimCanvasAutoOpen } from "./vetd/auto-open";
 import { isPureDesignProject, pickVetdFiles } from "./vetd/discover";
 
+/**
+ * 插件包根 icon.png 的宿主协议 URL。
+ * 不可 `import "../icon.png"`：MF/Vite 常生成以 `/` 开头的绝对路径，在宿主页上
+ * 会解析成 desktop-app `public/icon.png`（应用图标），而不是插件自己的图。
+ */
+function pluginPackageIconUrl(pluginId: string, version: string, relativePath = "icon.png"): string {
+	return `vetta-plugin://${pluginId}/${relativePath}?v=${encodeURIComponent(version)}`;
+}
+
 function DesignIcon() {
 	return (
 		<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -48,8 +56,8 @@ function ScreenshotIcon() {
 	);
 }
 
-function VetdFileIcon() {
-	return <img src={vetdIconUrl} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
+function VetdFileIcon({ src }: { src: string }) {
+	return <img src={src} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
 }
 
 /**
@@ -69,6 +77,8 @@ function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor 
 export default definePlugin({
 	activate(ctx) {
 		setPluginCtx(ctx);
+		const packageIconSrc = pluginPackageIconUrl(ctx.plugin.id, ctx.plugin.version);
+		const packageIcon = <VetdFileIcon src={packageIconSrc} />;
 
 		/**
 		 * 设计画布是「工作」模式的能力（ADR-0046）。编程模式下把画布 Tab、导出用的
@@ -115,7 +125,7 @@ export default definePlugin({
 						id: CANVAS_TAB_ID,
 						label: "%tab.label%",
 						// 与 plugin.json#icon 同源（icon.png），活动栏与插件列表品牌一致。
-						icon: <VetdFileIcon />,
+						icon: packageIcon,
 						component: CanvasTab,
 						scope_use: ["project", "conversation"],
 						// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。
@@ -183,7 +193,7 @@ export default definePlugin({
 			id: "vetd-file-icon",
 			priority: 100,
 			when: { resourceType: "file", extensions: ["vetd"] },
-			provideDecoration: () => ({ icon: <VetdFileIcon /> }),
+			provideDecoration: () => ({ icon: packageIcon }),
 		});
 
 		registerDesignTools(ctx);

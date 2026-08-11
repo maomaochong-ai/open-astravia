@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- 活动栏图标改为 `vetta-plugin://` 协议加载包内 `icon.png`，修复 Vite/MF 生成 `/icon.png` 绝对路径时误显示为宿主应用图标的问题。
+
 ### Changed
 
 - `content_creation_edit` 现在对创建、修改、删除与连线批次执行 revision-safe 原子提交，不再创建会话预览卡或要求用户确认。
