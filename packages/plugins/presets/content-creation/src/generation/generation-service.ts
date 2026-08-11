@@ -1,6 +1,5 @@
 import { PluginMediaError } from "@vetta-org/plugin-sdk";
 import type {
-	AssetKind,
 	ContentAsset,
 	ContentNode,
 	ContentNodeInputBinding,
@@ -44,6 +43,11 @@ import type {
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "./types";
+import {
+	assetKindForMimeType,
+	ContentAssetImportService,
+	extensionForMimeType,
+} from "./asset-import-service";
 
 function requireNode(project: ContentProjectDocument, nodeId: string): ContentNode {
 	const node = project.graph.nodes.find((candidate) => candidate.id === nodeId);
@@ -61,12 +65,16 @@ interface ReferenceCandidate {
 export class ContentGenerationService {
 	private readonly abortController = new AbortController();
 	private readonly activeJobIds = new Set<string>();
+	private readonly assetImports: ContentAssetImportService;
 
 	constructor(
 		private readonly workspace: ContentCreationWorkspace,
 		private readonly providers: ContentProviderRegistry,
 		private readonly artifacts: ContentArtifactStore,
-	) {}
+		assetImports?: ContentAssetImportService,
+	) {
+		this.assetImports = assetImports ?? new ContentAssetImportService(workspace, artifacts);
+	}
 
 	dispose(): void {
 		this.abortController.abort(new DOMException("Content generation runtime was disposed", "AbortError"));
@@ -81,41 +89,7 @@ export class ContentGenerationService {
 		nodeId: string,
 		files: readonly ImportedContentAsset[],
 	): Promise<ContentProjectDocument> {
-		if (files.length === 0) return await this.workspace.load(cwd);
-		const project = await this.workspace.load(cwd);
-		const node = requireNode(project, nodeId);
-		if (node.kind !== "asset") throw new Error(`node does not accept content assets: ${node.kind}`);
-
-		const pending: Array<{ asset: ContentAsset; file: ImportedContentAsset }> = [];
-		for (const file of files) {
-			const kind = assetKindForMimeType(file.mimeType);
-			if (!kind) throw new Error(`unsupported content asset type: ${file.mimeType}`);
-			const assetId = crypto.randomUUID();
-			pending.push({
-				file,
-				asset: {
-					id: assetId,
-					blobId: assetId,
-					kind,
-					name: file.name.trim() || `${kind}-${assetId.slice(0, 8)}.${extensionForMimeType(file.mimeType)}`,
-					mimeType: file.mimeType,
-					...(file.width === undefined ? {} : { width: file.width }),
-					...(file.height === undefined ? {} : { height: file.height }),
-					createdAt: new Date().toISOString(),
-				},
-			});
-		}
-
-		for (const item of pending) {
-			const stored = await this.artifacts.putImported(item.asset.id, item.file);
-			item.asset.blobId = stored.blobId;
-			item.asset.mimeType = stored.mimeType;
-		}
-		const assetIds = [...listContentNodeAssetIds(node.data), ...pending.map(({ asset }) => asset.id)];
-		return await this.workspace.dispatch(cwd, [
-			...pending.map(({ asset }) => ({ type: "asset.add" as const, asset })),
-			{ type: "node.update", nodeId, data: { assetId: undefined, assetIds } },
-		]);
+		return (await this.assetImports.import(cwd, files, { targetNodeId: nodeId })).project;
 	}
 
 	async importReferences(
@@ -596,24 +570,6 @@ function referenceShapes(candidates: readonly ReferenceCandidate[]): ContentRefe
 	return candidates.flatMap((candidate) =>
 		candidate.slotId ? [{ slotId: candidate.slotId, kind: candidate.asset.kind }] : [],
 	);
-}
-
-function assetKindForMimeType(mimeType: string): AssetKind | null {
-	if (mimeType.startsWith("image/")) return "image";
-	if (mimeType.startsWith("video/")) return "video";
-	if (mimeType.startsWith("audio/")) return "audio";
-	return null;
-}
-
-function extensionForMimeType(mimeType: string): string {
-	if (mimeType === "image/jpeg") return "jpg";
-	if (mimeType === "image/webp") return "webp";
-	if (mimeType === "video/webm") return "webm";
-	if (mimeType.startsWith("video/")) return "mp4";
-	if (mimeType === "audio/wav") return "wav";
-	if (mimeType === "audio/ogg") return "ogg";
-	if (mimeType.startsWith("audio/")) return "mp3";
-	return "png";
 }
 
 function generatedFileName(label: string | undefined, kind: "image" | "video", assetId: string, mimeType: string): string {

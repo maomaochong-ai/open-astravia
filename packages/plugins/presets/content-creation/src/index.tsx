@@ -7,19 +7,6 @@ import { registerContentCreationToolRouter } from "./plugin/tool-routing";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import { ContentCreationPluginRuntime } from "./plugin/runtime";
 
-/**
- * 插件包根 icon.png 的宿主协议 URL。
- * 不可 `import "../icon.png"`：MF/Vite 常生成以 `/` 开头的绝对路径，在宿主页上
- * 会解析成 desktop-app `public/icon.png`（应用图标），而不是插件自己的图。
- */
-function pluginPackageIconUrl(pluginId: string, version: string, relativePath = "icon.png"): string {
-	return `vetta-plugin://${pluginId}/${relativePath}?v=${encodeURIComponent(version)}`;
-}
-
-function PluginTabIcon({ src }: { src: string }) {
-	return <img src={src} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
-}
-
 export default definePlugin({
 	async activate(ctx) {
 		const runtime = await ContentCreationPluginRuntime.create(ctx);
@@ -34,12 +21,10 @@ export default definePlugin({
 			// Each contribution closes over this activation's runtime instead of reading module state.
 			const WorkspacePanel = () => <ContentCreationPanel runtime={runtime} />;
 			const RunApprovalDialog = () => <ContentRunApprovalDialog runtime={runtime} />;
+			// icon 省略：宿主用 plugin.json#icon → ctx.plugin.iconUrl 填品牌图。
 			ctx.ui.registerActivityTab({
 				id: "workspace",
 				label: "%tab.workspace.label%",
-				icon: (
-					<PluginTabIcon src={pluginPackageIconUrl(ctx.plugin.id, ctx.plugin.version)} />
-				),
 				component: WorkspacePanel,
 				scope_use: ["conversation", "project"],
 				// 暂时默认上栏；硬隔离已去掉，后续再设计更合适的入口策略。
@@ -60,7 +45,7 @@ export default definePlugin({
 				}),
 			});
 			ctx.ui.registerGlobalSlot({ id: "run-approval", component: RunApprovalDialog });
-			registerContentCreationTools(ctx, runtime.agent, runtime.runApprovals);
+			registerContentCreationTools(ctx, runtime.agent, runtime.runApprovals, runtime.localAssets);
 			registerContentCreationToolRouter(ctx);
 			return cleanup;
 		} catch (error) {

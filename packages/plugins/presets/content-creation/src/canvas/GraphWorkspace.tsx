@@ -54,10 +54,19 @@ import {
 	toContentFlowNodes,
 } from "./graph-flow-adapters";
 import { CONTENT_FLOW_SOURCE_HANDLE_ID } from "./flow-handles";
-import { reconcileSelectedNodeIds } from "./selection-state";
+import { applySelectedNodeIdsToFlowNodes, reconcileSelectedNodeIds } from "./selection-state";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { DEFAULT_CANVAS_TOOL, getCanvasInteraction } from "./canvas-tools";
 import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "../node/dropped-media";
+import { CanvasProjectMenu } from "./CanvasProjectMenu";
+import {
+	DEFAULT_CONTENT_CANVAS_KEYBINDINGS,
+	type ContentCanvasKeybindings,
+} from "./canvas-keybindings";
+import {
+	DEFAULT_CONTENT_CANVAS_VIEWPORT,
+	type ContentCanvasViewportConfig,
+} from "./canvas-viewport";
 
 const nodeTypes: NodeTypes = { contentNode: ContentNodeCard };
 const CREATE_MENU_SIZE = { width: 320, height: 420 };
@@ -75,7 +84,10 @@ interface GraphWorkspaceProps {
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
+	onOpenSettings: () => void;
 	registerShortcutScope?: PluginRegisterShortcutScope | null;
+	keybindings?: Readonly<ContentCanvasKeybindings>;
+	viewportConfig?: Readonly<ContentCanvasViewportConfig>;
 }
 
 export function GraphWorkspace({
@@ -87,7 +99,10 @@ export function GraphWorkspace({
 	onImportAssets,
 	onImportReferences,
 	onSelectedNodeIdsChange,
+	onOpenSettings,
 	registerShortcutScope = null,
+	keybindings = DEFAULT_CONTENT_CANVAS_KEYBINDINGS,
+	viewportConfig = DEFAULT_CONTENT_CANVAS_VIEWPORT,
 }: GraphWorkspaceProps) {
 	const { t } = useTranslation();
 	const flowContainerRef = useRef<HTMLDivElement>(null);
@@ -438,6 +453,18 @@ export function GraphWorkspace({
 		instance.setNodes(latest.nodes);
 		instance.setEdges(latest.edges);
 	}, []);
+	const applyNodeSelection = useCallback(
+		(requestedNodeIds: readonly string[]) => {
+			const requestedNodeIdSet = new Set(requestedNodeIds);
+			const nextNodeIds = project.graph.nodes
+				.filter((node) => requestedNodeIdSet.has(node.id))
+				.map((node) => node.id);
+			const nextNodeIdSet = new Set(nextNodeIds);
+			setSelectedNodeIds((current) => reconcileSelectedNodeIds(current, nextNodeIds));
+			flowInstanceRef.current?.setNodes((nodes) => applySelectedNodeIdsToFlowNodes(nodes, nextNodeIdSet));
+		},
+		[project.graph.nodes],
+	);
 	const onSelectionChange = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onSelectionChange"]>
 	>(({ nodes: selectedNodes }) => {
@@ -474,12 +501,12 @@ export function GraphWorkspace({
 			event.preventDefault();
 			const position = clampOverlay(event.clientX, event.clientY, CONTEXT_MENU_SIZE);
 			if (!position) return;
-			setSelectedNodeIds([node.id]);
+			applyNodeSelection([node.id]);
 			setCanvasMenu(null);
 			setPendingMenu(null);
 			setContextMenu({ type: "node", nodeId: node.id, ...position });
 		},
-		[clampOverlay],
+		[applyNodeSelection, clampOverlay],
 	);
 	const onEdgeContextMenu = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onEdgeContextMenu"]>
@@ -501,11 +528,11 @@ export function GraphWorkspace({
 				// Keep the connection-create menu opened by onConnectEnd.
 				return;
 			}
-			setSelectedNodeIds([]);
+			applyNodeSelection([]);
 			closeMenus();
 			if (event.detail === 2) openCanvasMenu(event.clientX, event.clientY);
 		},
-		[closeMenus, openCanvasMenu],
+		[applyNodeSelection, closeMenus, openCanvasMenu],
 	);
 	const onPaneContextMenu = useCallback<
 		NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onPaneContextMenu"]>
@@ -580,7 +607,7 @@ export function GraphWorkspace({
 	const deleteShortcutBindings = useMemo(
 		(): readonly PluginShortcutBinding[] => [
 			{
-				key: "delete",
+				key: keybindings.deleteSelection,
 				when: "not-editable",
 				preventDefault: false,
 				stopPropagation: false,
@@ -591,7 +618,7 @@ export function GraphWorkspace({
 				},
 			},
 			{
-				key: "backspace",
+				key: keybindings.deleteSelectionAlternative,
 				when: "not-editable",
 				preventDefault: false,
 				stopPropagation: false,
@@ -602,7 +629,7 @@ export function GraphWorkspace({
 				},
 			},
 		],
-		[deleteSelection],
+		[deleteSelection, keybindings.deleteSelection, keybindings.deleteSelectionAlternative],
 	);
 
 	usePluginShortcutScope(registerShortcutScope, {
@@ -611,6 +638,46 @@ export function GraphWorkspace({
 		enabled: canDeleteViaShortcut,
 		bindings: deleteShortcutBindings,
 	});
+
+	const canSelectAllViaShortcut = useCallback(
+		() => isGraphSurfaceActive() && project.graph.nodes.length > 0,
+		[isGraphSurfaceActive, project.graph.nodes.length],
+	);
+	const selectAllShortcutBindings = useMemo(
+		(): readonly PluginShortcutBinding[] => [
+			{
+				key: keybindings.selectAll,
+				when: "not-editable",
+				run: () => {
+					applyNodeSelection(project.graph.nodes.map((node) => node.id));
+					closeMenus();
+				},
+			},
+		],
+		[applyNodeSelection, closeMenus, keybindings.selectAll, project.graph.nodes],
+	);
+
+	usePluginShortcutScope(registerShortcutScope, {
+		id: "graph-select-all",
+		kind: "surface",
+		enabled: canSelectAllViaShortcut,
+		bindings: selectAllShortcutBindings,
+	});
+
+	const fitContent = useCallback(() => {
+		void flowInstanceRef.current?.fitView({ duration: 240, padding: 0.16 });
+	}, []);
+	const resetZoom = useCallback(() => {
+		void flowInstanceRef.current?.zoomTo(viewportConfig.defaultZoom, { duration: 180 });
+	}, [viewportConfig.defaultZoom]);
+	const focusNodes = useCallback((nodeIds: readonly string[]) => {
+		const instance = flowInstanceRef.current;
+		if (!instance || nodeIds.length === 0) return;
+		const requestedNodeIds = new Set(nodeIds);
+		const nodes = instance.getNodes().filter((node) => requestedNodeIds.has(node.id));
+		if (nodes.length === 0) return;
+		void instance.fitView({ nodes, duration: 240, padding: 0.28 });
+	}, []);
 
 	return (
 		<div className="flex h-full min-w-0 flex-1 flex-col">
@@ -640,6 +707,8 @@ export function GraphWorkspace({
 						selectionKeyCode="Control"
 						selectionMode={SelectionMode.Partial}
 						panOnDrag={canvasInteraction.panOnDrag}
+						minZoom={viewportConfig.minZoom}
+						maxZoom={viewportConfig.maxZoom}
 						zoomOnDoubleClick={false}
 						onNodeClick={onNodeClick}
 						onNodeContextMenu={onNodeContextMenu}
@@ -661,7 +730,7 @@ export function GraphWorkspace({
 							}
 							onDelete={() => {
 								void onDispatch(activeSelectedNodeIds.map((nodeId) => ({ type: "node.delete", nodeId })));
-								setSelectedNodeIds([]);
+								applyNodeSelection([]);
 							}}
 							onToggleLock={() => {
 								const locked = !selectedProjectNodes.every((node) => node.locked);
@@ -671,6 +740,14 @@ export function GraphWorkspace({
 						<AlignmentGuidesLayer ref={alignmentGuidesLayerRef} />
 					</ReactFlow>
 				</ContentCanvasSelectionProvider>
+				<CanvasProjectMenu
+					project={project}
+					models={models}
+					onFitContent={fitContent}
+					onFocusNodes={focusNodes}
+					onResetZoom={resetZoom}
+					onOpenSettings={onOpenSettings}
+				/>
 				<GraphOverlayLayer
 					activeTool={canvasTool}
 					nodeCount={project.graph.nodes.length}

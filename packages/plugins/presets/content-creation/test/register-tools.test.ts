@@ -1,15 +1,18 @@
 import { validateToolArguments, type Tool } from "@vetta/ai";
 import type { PluginAgentToolRegistration, PluginContext } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ContentGenerationPromptPlanError } from "../src/agent/generation-prompt-plan";
 import { parseContentAgentOperations } from "../src/agent/operations";
 import type { ContentCreationAgentService } from "../src/agent/service";
 import { createContentCreationAgentState } from "../src/agent/state";
 import { ContentGenerationIntentError } from "../src/generation/generation-intent";
+import { ContentLocalAssetError, type ContentLocalAssetService } from "../src/generation/local-asset-service";
 import type { ContentModelDescriptor } from "../src/generation/types";
 import { applyContentProjectCommands } from "../src/project/commands";
 import { createContentProject } from "../src/project/types";
 import { ContentRunApprovalStore } from "../src/plugin/run-approval";
 import {
+	CONTENT_ASSETS_TOOL_NAME,
 	CONTENT_EDIT_TOOL_NAME,
 	CONTENT_INSPECT_TOOL_NAME,
 	CONTENT_RUN_TOOL_NAME,
@@ -66,6 +69,18 @@ describe("content creation tool registration", () => {
 		skippedNodeIds: [],
 	}));
 	const agent = { edit, inspect, prepareRun } as unknown as ContentCreationAgentService;
+	const listLocalAssets = vi.fn(async () => [
+		{ path: "C:/media/hero.png", name: "hero.png", size: 5, kind: "image" as const, mimeType: "image/png" },
+	]);
+	const importLocalAssets = vi.fn(async () => ({
+		project: { projectId: "project", revision: 1 },
+		assetNodeId: "assets",
+		assets: [{ id: "hero", name: "hero.png", kind: "image", mimeType: "image/png" }],
+	}));
+	const localAssets = {
+		list: listLocalAssets,
+		import: importLocalAssets,
+	} as unknown as ContentLocalAssetService;
 	const runApprovals = new ContentRunApprovalStore();
 	const ctx = {
 		agent: {
@@ -82,7 +97,7 @@ describe("content creation tool registration", () => {
 		registered.clear();
 		vi.clearAllMocks();
 		runApprovals.clear();
-		registerContentCreationTools(ctx, agent, runApprovals);
+		registerContentCreationTools(ctx, agent, runApprovals, localAssets);
 	});
 
 	function tool<TInput>(name: string): PluginAgentToolRegistration<TInput> {
@@ -103,12 +118,60 @@ describe("content creation tool registration", () => {
 		);
 	}
 
-	it("registers only the three domain tools", () => {
+	it("registers the four domain tools", () => {
 		expect([...registered.keys()]).toEqual([
 			CONTENT_INSPECT_TOOL_NAME,
+			CONTENT_ASSETS_TOOL_NAME,
 			CONTENT_EDIT_TOOL_NAME,
 			CONTENT_RUN_TOOL_NAME,
 		]);
+	});
+
+	it("validates and imports local media without returning file bytes", async () => {
+		const input = validateRegisteredTool(CONTENT_ASSETS_TOOL_NAME, {
+			action: "import",
+			paths: ["C:/media/hero.png"],
+			expectedRevision: 0,
+			assetNodeId: "existing-assets",
+		});
+
+		const result = await tool<Record<string, unknown>>(CONTENT_ASSETS_TOOL_NAME).handler(
+			toolContext(input as Record<string, unknown>),
+		);
+
+		expect(importLocalAssets).toHaveBeenCalledWith(expect.objectContaining({
+			projectDir: "C:/project",
+			paths: ["C:/media/hero.png"],
+			expectedRevision: 0,
+			targetNodeId: "existing-assets",
+		}));
+			expect(result).toMatchObject({
+			ok: true,
+			status: "imported",
+			assetNodeId: "assets",
+			generationSource: { sourceNodeId: "assets", assetIds: ["hero"] },
+			generationSources: [{ sourceNodeId: "assets", assetIds: ["hero"], kind: "image" }],
+		});
+		expect(JSON.stringify(result)).not.toContain("aW1hZ2U=");
+	});
+
+	it("returns actionable directory-selection errors", async () => {
+		importLocalAssets.mockRejectedValueOnce(new ContentLocalAssetError(
+			"select explicit paths",
+			"local-media-selection-required",
+			{ candidates: [{ path: "C:/media/hero.png", name: "hero.png" }] },
+		));
+
+		const result = await tool<{ action: "import"; paths: string[] }>(CONTENT_ASSETS_TOOL_NAME).handler(
+			toolContext({ action: "import", paths: ["C:/media"] }),
+		);
+
+		expect(result).toMatchObject({
+			ok: false,
+			retryable: true,
+			code: "local-media-selection-required",
+			details: { candidates: [expect.objectContaining({ name: "hero.png" })] },
+		});
 	});
 
 	it("applies edits without returning a conversation card", async () => {
@@ -158,6 +221,29 @@ describe("content creation tool registration", () => {
 		});
 	});
 
+	it("returns structured corrective context for an incomplete Agent video prompt", async () => {
+		edit.mockRejectedValueOnce(new ContentGenerationPromptPlanError(
+			"Agent-authored video prompt does not satisfy the production method",
+			"video-prompt-method-incomplete",
+			{ nodeId: "product-video", issues: ["reference-role-missing"], recommendedOperationField: "promptPlan" },
+		));
+
+		const result = await tool<{ operations: unknown[] }>(CONTENT_EDIT_TOOL_NAME).handler(
+			toolContext({ operations: [{ type: "update_node", nodeId: "product-video", prompt: "Slow push-in" }] }),
+		);
+
+		expect(result).toMatchObject({
+			ok: false,
+			retryable: true,
+			code: "video-prompt-method-incomplete",
+			details: {
+				nodeId: "product-video",
+				issues: ["reference-role-missing"],
+				recommendedOperationField: "promptPlan",
+			},
+		});
+	});
+
 	it("runs a real validated product-image-to-video batch through the tool handler", async () => {
 		let project = createContentProject("C:/project");
 		edit.mockImplementationOnce(async (_cwd, operations) => {
@@ -179,7 +265,13 @@ describe("content creation tool registration", () => {
 				},
 				{ type: "add_node", id: "prompt", kind: "prompt", prompt: "Premium product lighting" },
 				{ type: "add_node", id: "product-image", kind: "image-generator", prompt: "Product hero image" },
-				{ type: "add_node", id: "product-video", kind: "video-generator", prompt: "Slow cinematic camera move" },
+				{
+					type: "add_node",
+					id: "product-video",
+					kind: "video-generator",
+					duration: 5,
+					promptPlan: createVideoPromptPlan(),
+				},
 				{ type: "add_node", id: "output", kind: "output" },
 				{ type: "connect_nodes", source: "prompt", target: "product-image", targetInput: "prompt" },
 				{ type: "connect_nodes", source: "product-video", target: "output", targetInput: "content" },
@@ -217,3 +309,29 @@ describe("content creation tool registration", () => {
 		expect(runApprovals.getSnapshot()).toEqual(["run"]);
 	});
 });
+
+function createVideoPromptPlan() {
+	return {
+		kind: "video-shot",
+		sceneFunction: "Premium product reveal for a social advertisement",
+		referenceRole: "Use the product image as the identity and initial composition reference",
+		protectedInvariants: ["Preserve product geometry", "Preserve branding and color"],
+		initialState: "The product is centered and motionless on a dark studio surface",
+		primaryAction: "A controlled highlight travels across the product face",
+		secondaryMotion: "Fine atmospheric particles drift behind the product",
+		camera: {
+			framing: "Start in a medium product close-up",
+			movement: "a controlled dolly-in",
+			direction: "forward along the product axis",
+			speed: "slowly with gentle ease-out",
+			motivation: "revealing the logo and material finish",
+			restPoint: "a stable hero close-up with the full logo readable",
+		},
+		lighting: {
+			setup: "Soft key light with a narrow rim light",
+			behavior: "Specular highlights stay controlled and never clip",
+		},
+		finalState: "Hold the recognizable product in a clean hero frame for the final second",
+		constraints: ["No text overlays", "No product redesign"],
+	};
+}

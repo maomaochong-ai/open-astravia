@@ -204,6 +204,7 @@ export const ContentProjectFileSchema = StrictObject({
 				width: Type.Optional(Type.Number()),
 				height: Type.Optional(Type.Number()),
 				locked: Type.Optional(Type.Boolean()),
+				layoutOwnership: Type.Union([Type.Literal("automatic"), Type.Literal("user")]),
 			}),
 		),
 	}),

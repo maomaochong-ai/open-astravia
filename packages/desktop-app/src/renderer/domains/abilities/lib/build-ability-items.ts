@@ -560,7 +560,7 @@ export function buildPluginAbilities(
 			setupRequired: false,
 			busy: busyIds.has(id),
 			downloadCount: entry?.download_count ?? 0,
-			isCustom: installedPlugin?.source === "archive",
+			isCustom: installedPlugin?.source === "archive" || installedPlugin?.source === "npm",
 			isBuiltin: isSystem,
 			fromMarket: Boolean(entry),
 			origin:

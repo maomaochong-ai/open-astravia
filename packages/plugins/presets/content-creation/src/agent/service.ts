@@ -1,8 +1,11 @@
 import type { ContentGenerationService } from "../generation/generation-service";
 import { ContentGenerationIntentError } from "../generation/generation-intent";
 import type { ContentModelDescriptor } from "../generation/types";
+import { planIncrementalContentGraphLayout } from "../node/incremental-graph-layout";
+import { applyContentProjectCommands, type ContentProjectCommand } from "../project/commands";
 import type { ContentNode, ContentProjectDocument } from "../project/types";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import { assertChangedVideoPromptsUseProductionMethod } from "./generation-prompt-plan";
 import { parseContentAgentOperations } from "./operations";
 import { createContentCreationAgentState } from "./state";
 
@@ -45,7 +48,15 @@ export class ContentCreationAgentService {
 		const project = await this.workspace.load(cwd);
 		assertExpectedRevision(project, expectedRevision);
 		const commands = parseContentAgentOperations(project, operations, this.listModels());
-		return await this.workspace.dispatch(cwd, commands, project.revision);
+		const preview = applyContentProjectCommands(project, commands);
+		assertChangedVideoPromptsUseProductionMethod(project, preview);
+		const layout = planIncrementalContentGraphLayout(project, preview, addedNodeIds(commands));
+		const layoutCommands: ContentProjectCommand[] = layout.placements.map(({ nodeId, position }) => ({
+			type: "node.layout",
+			nodeId,
+			position,
+		}));
+		return await this.workspace.dispatch(cwd, [...commands, ...layoutCommands], project.revision);
 	}
 
 	async prepareRun(cwd: string, requestedNodeIds?: readonly string[], expectedRevision?: number): Promise<ContentPreparedRun> {
@@ -172,6 +183,16 @@ function assertExpectedRevision(project: ContentProjectDocument, expectedRevisio
 	if (expectedRevision !== undefined && project.revision !== expectedRevision) {
 		throw new Error(`project revision conflict: expected ${expectedRevision}, actual ${project.revision}`);
 	}
+}
+
+function addedNodeIds(commands: readonly ContentProjectCommand[]): Set<string> {
+	return new Set(
+		commands.flatMap((command) => {
+			if (command.type === "node.add" && command.node.id) return [command.node.id];
+			if (command.type === "node.duplicate" && command.id) return [command.id];
+			return [];
+		}),
+	);
 }
 
 function resolveRunNodes(project: ContentProjectDocument, requestedNodeIds?: readonly string[]): ContentNode[] {

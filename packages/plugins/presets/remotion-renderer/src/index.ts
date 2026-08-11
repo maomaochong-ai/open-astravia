@@ -14,7 +14,7 @@ export default definePlugin({
 			label: "%tab.studio%",
 			component: RemotionStudioPanel,
 			scope_use: ["conversation", "project"],
-			keepAliveWhenAvailable: true,
+			retention: "pinned",
 		});
 		ctx.media.registerProvider(createRemotionProvider(ctx));
 		registerRenderTool(ctx);

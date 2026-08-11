@@ -61,7 +61,7 @@ export type AppMonitorResourceOperation =
 	| "commands-granted"
 	| "commands-revoked";
 
-export type AppMonitorResourceSource = "market" | "custom" | "archive" | "remote" | "system";
+export type AppMonitorResourceSource = "market" | "custom" | "archive" | "remote" | "npm" | "system";
 
 export type AppMonitorSettingsTab =
 	| "general"

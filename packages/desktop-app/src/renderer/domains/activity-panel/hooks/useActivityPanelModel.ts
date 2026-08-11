@@ -26,8 +26,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ActivityPanelActions, ActivityPanelModel, ActivityPanelProps } from "../components/activity-panel/types";
 import { resolveActivityTabs } from "../registry/resolve-activity-tabs";
 import type { ActivityTabDefinition, ActivityTabId, ActivityTabMeta, ResolvedActivityTab } from "../registry/types";
-import { resolveMountedActivityTabs } from "../services/activity-tab-lifecycle";
 import { mergeDockedTabOrder } from "../services/floating-activity-tab";
+import { useActivityTabResidency } from "./useActivityTabResidency";
 import { useFloatingActivityTabs } from "./useFloatingActivityTabs";
 
 const NON_HIDEABLE_TABS = new Set<string>(["file", "knowledge-history"]);
@@ -252,10 +252,13 @@ export function useActivityPanelModel({
 		[onTabChange, floating.actions.onDockedTabDragStart],
 	);
 
-	const mountedTabs = useMemo(
-		() => resolveMountedActivityTabs(resolved.candidates, floating.model.floatingKeys, activeTab),
-		[resolved.candidates, floating.model.floatingKeys, activeTab],
-	);
+	const mountedTabs = useActivityTabResidency({
+		activeTab,
+		candidates: resolved.candidates,
+		floatingKeys: floating.model.floatingKeys,
+		scopeKey: cwd,
+		warmEligibleTabs: resolved.onBar,
+	});
 
 	const onRemoveTab = useCallback(
 		(key: ActivityTabKey) => {

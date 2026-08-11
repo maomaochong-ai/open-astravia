@@ -61,6 +61,7 @@ build_layer0() {
 build_layer1() {
   build_pkg packages/capability-runtime
   build_pkg packages/runtime-core
+  build_pkg packages/plugins/plugin-cli
 }
 
 # ── Layer 2: depends on runtime-core ──

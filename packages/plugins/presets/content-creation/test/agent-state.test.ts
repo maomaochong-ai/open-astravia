@@ -13,6 +13,15 @@ const IMAGE_MODEL: ContentModelDescriptor = {
 	aspectRatios: ["1:1"],
 };
 
+const VIDEO_MODEL: ContentModelDescriptor = {
+	providerId: "video-provider",
+	modelId: "video-model",
+	displayName: "Video Model",
+	outputKind: "video",
+	modes: [{ id: "text-to-video", inputs: [] }],
+	aspectRatios: ["16:9"],
+};
+
 describe("content creation agent state", () => {
 	it("exposes semantic, runtime, capability, and diagnostic state without private storage ids", () => {
 		let project = applyContentProjectCommands(
@@ -75,5 +84,29 @@ describe("content creation agent state", () => {
 				"deliverables-not-defined",
 			]),
 		);
+	});
+
+	it("reports actionable method gaps for an existing weak video prompt", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [{
+			type: "node.add",
+			node: {
+				id: "video",
+				kind: "video-generator",
+				position: { x: 0, y: 0 },
+				data: { prompt: "Create a premium product shot with a slow push-in." },
+			},
+		}]);
+
+		const state = createContentCreationAgentState(project, [VIDEO_MODEL]);
+		expect(state.diagnostics).toContainEqual(expect.objectContaining({
+			code: "video-prompt-method-incomplete",
+			severity: "warning",
+			nodeId: "video",
+			details: expect.objectContaining({
+				recommendedSkill: "direct-video-creation",
+				recommendedOperationField: "promptPlan",
+				issues: expect.arrayContaining(["reference-role-missing", "final-frame-missing"]),
+			}),
+		}));
 	});
 });

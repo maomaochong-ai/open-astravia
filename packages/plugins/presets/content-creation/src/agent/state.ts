@@ -3,6 +3,7 @@ import { CONTENT_NODE_DEFINITIONS } from "../node/definitions";
 import { listConnectedPromptSources, resolveContentPrompt } from "../node/prompt-sources";
 import { serializeContentProject } from "../project/persistence";
 import type { ContentNode, ContentProjectDocument, GenerationJob } from "../project/types";
+import { analyzeVideoPromptMethod, VIDEO_PROMPT_PLAN_FIELD_GUIDANCE } from "./generation-prompt-plan";
 import { analyzeContentWorkflow } from "./workflow-analysis";
 
 export type ContentAgentDiagnosticSeverity = "error" | "warning" | "info";
@@ -13,6 +14,7 @@ export interface ContentAgentDiagnostic {
 	message: string;
 	nodeId?: string;
 	retryable?: boolean;
+	details?: Record<string, unknown>;
 }
 
 export function createContentCreationAgentState(
@@ -97,6 +99,23 @@ function diagnoseGenerator(
 			nodeId: node.id,
 			message: "Generation node has no effective prompt.",
 		});
+	} else if (node.kind === "video-generator") {
+		const issues = analyzeVideoPromptMethod(prompt);
+		if (issues.length > 0) {
+			diagnostics.push({
+				code: "video-prompt-method-incomplete",
+				severity: "warning",
+				nodeId: node.id,
+				message: "The effective video prompt does not fully describe the production method.",
+				retryable: true,
+				details: {
+					issues,
+					requiredFields: VIDEO_PROMPT_PLAN_FIELD_GUIDANCE,
+					recommendedSkill: "direct-video-creation",
+					recommendedOperationField: "promptPlan",
+				},
+			});
+		}
 	}
 	const outputKind = node.kind === "image-generator" ? "image" : "video";
 	const available = models.filter((model) => model.outputKind === outputKind);

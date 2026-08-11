@@ -12,6 +12,12 @@
 
 Inspect `project` before edits and pass its revision to `content_creation_edit`. Inspect `capabilities` before setting any provider-specific value. Never infer capability support from model names.
 
+## Import local media before binding it
+
+Local file paths are host resources, not workflow sources. Use `content_creation_assets` with `action="list"` to inspect a directory, then `action="import"` with explicit file paths. Import returns an `assetNodeId`, asset IDs, and one `generationSources` entry per imported asset. Select exactly the entries required by the intent: one image for `animate-still`, two ordered images for `interpolate-frames`, or intentional references for `reference-guided`. Never put a filesystem path in `sourceNodeId` and never call `animate-still` with an empty or unfiltered `sources[]`.
+
+Directory import defaults to `directoryMode="select-one"` and returns candidates when several media files exist. Set `directoryMode="all"` only when the request intentionally needs a collection. Local discovery and import use only host-authorized roots; do not attempt to bypass a path authorization error.
+
 ## Describe the outcome first
 
 Update workflow metadata so the project remains understandable without chat history:
@@ -30,7 +36,7 @@ Every generator node should have a purpose that states its role and changed vari
 - Multi-shot sequence: use timestamped stages inside one video prompt only when the inspected mode supports them; otherwise create separate shot nodes and record their intended order in purposes or workflow metadata.
 - Multiple formats: separate output or generator nodes when ratio, duration, or prompt must differ.
 
-Use `afterNodeId` or automatic placement. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect ordinary topology with semantic `targetInput` values (`promptSources`, `referenceImages`, `contentSources`, or `mediaSources`) instead of internal handles. Use `bind_assets` to select concrete image-generator references.
+Describe the intended topology and use `afterNodeId` only as a locality hint when useful. The edit service owns incremental canvas layout; never synthesize coordinates. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect ordinary topology with semantic `targetInput` values (`promptSources`, `referenceImages`, `contentSources`, or `mediaSources`) instead of internal handles. Use `bind_assets` to select concrete image-generator references.
 
 Video media inputs are a generation plan, not generic graph edges. Use one `configure_generation` operation with `targetNodeId` set to the receiving video-generator. Put all source image/video node IDs in `sources[]`; never use a source node as `targetNodeId`:
 
@@ -45,5 +51,7 @@ For asset nodes, include non-empty `assetIds` selected from that node. For image
 ## Edit in coherent batches
 
 Keep a batch focused on one understandable change, but include newly created nodes and all intended connections in the same batch. The edit tool validates and applies the complete revision-bound batch atomically without a confirmation step. A failure leaves project state unchanged; inspect again after revision conflicts.
+
+For Agent-authored video prompts, submit `promptPlan` on a video generator or its connected Prompt node instead of a raw `prompt`. It records scene function, reference role, protected invariants, initial and final states, primary and secondary motion, motivated camera direction/rest point, lighting behavior, and optional audio/constraints. The edit service compiles this structure and validates the effective downstream video prompt atomically. Existing user-authored prompts remain editable in the UI; only Agent changes are gated.
 
 Supported operation families for this skill are workflow updates, node add/update/rename/purpose/duplicate/delete, semantic edge connect/delete, concrete image asset binding, and intent-driven video generation configuration. Use only fields present in the tool schema.

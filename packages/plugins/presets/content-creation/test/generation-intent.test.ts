@@ -121,4 +121,22 @@ describe("content generation intent planning", () => {
 			),
 		).toThrow("unique firstFrame and lastFrame roles");
 	});
+
+	it("directs an empty animate-still plan to the local asset bridge", () => {
+		try {
+			planContentVideoGeneration(projectWithGenerators(), "video", "animate-still", [], [FRAME_MODEL]);
+			throw new Error("expected generation planning to fail");
+		} catch (error) {
+			expect(error).toMatchObject({
+				code: "generation-source-required",
+				retryable: true,
+				details: {
+					intent: "animate-still",
+					requiredKind: "image",
+					requiredCount: 1,
+					suggestedTool: "content_creation_assets",
+				},
+			} satisfies Partial<ContentGenerationIntentError>);
+		}
+	});
 });

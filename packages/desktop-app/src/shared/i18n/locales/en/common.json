@@ -158,6 +158,8 @@
 			"newName": "New name",
 			"path": "Path",
 			"paths": "File paths",
+			"packageName": "npm package",
+			"packageSpec": "Requested version",
 			"language": "Language",
 			"executionMode": "Execution mode",
 			"experimental": "Experimental features",
@@ -562,6 +564,13 @@
 					"confirm": "Install and authorize",
 					"badge": "Install",
 					"impact": "The local plugin package will be installed, granted its declared permissions, and enabled."
+				},
+				"install-from-npm": {
+					"title": "Install Plugin from npm Confirmation",
+					"summary": "Install the resolved npm plugin package, grant its declared permissions once, and enable it.",
+					"confirm": "Install and authorize",
+					"badge": "npm install",
+					"impact": "Desktop will verify the package digest, plugin ID, and version again before granting declared permissions and enabling it."
 				},
 				"uninstall": {
 					"title": "Uninstall Plugin Confirmation",

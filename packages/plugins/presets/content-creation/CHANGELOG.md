@@ -2,13 +2,24 @@
 
 ## [Unreleased]
 
+### Added
+
+- 内容创作 Agent 会按最近用户意图确定性加载匹配的 Skill 与场景参考资料；视频提示词新增结构化 `promptPlan` 编译、实际生效提示词质量门禁和可操作诊断，避免模型跳过专业方法后提交泛化镜头描述。
+- 创作画布左上角新增项目菜单，集中展示当前工作区的节点、素材、可用模型与生成任务，并提供内容定位、默认缩放和插件生成服务设置入口。
+- Agent 创建和插入工作流节点时新增确定性增量拓扑布局：只整理受影响连通分量，优先保留用户位置，在空间不足时最小平移相关下游走廊，并保持锁定节点不动。
+
 ### Fixed
 
-- 活动栏图标改为 `vetta-plugin://` 协议加载包内 `icon.png`，修复 Vite/MF 生成 `/icon.png` 绝对路径时误显示为宿主应用图标的问题。
+- 创作画布现在通过宿主快捷键作用域支持 `Ctrl+A` / `Command+A` 全选全部节点；输入框仍保留原生文字全选，并同步 React Flow 与画布选择状态。
+- 活动栏品牌图标改由宿主按 `plugin.json#icon` 注入（省略 `registerActivityTab.icon`），不再 `import` 包内 png 或拼宿主协议，避免 `/icon.png` 误解析为应用图标。
 - `content_creation_edit` 不再由 JSON Schema 提前拒绝旧版或直觉式 `targetInput`；解析器会按目标节点归一化并返回可重试的领域错误。`configure_generation` 新增明确的 `targetNodeId`，错误会列出可用视频生成节点并提示将来源放入 `sources[]`。
+- 新增 `content_creation_assets` 本地素材桥接工具：可发现宿主已授权文件/目录、导入受管素材并返回可供 `configure_generation` 使用的节点和素材 ID；缺少 `animate-still` 图片来源时返回明确的恢复建议。
 
 ### Changed
 
+- 创作画布缩放范围由 50%–200% 扩展为 10%–400%，默认与重置缩放仍为 100%。
+- 项目文档升级到 schema v6，在独立 `view` 中记录节点布局所有权；旧项目位置迁移为用户所有，Agent 与本地素材工具创建的节点标记为自动布局，用户拖动、缩放或手动排列后重新取得所有权。
+- `content_creation_edit` 不再向 Agent 暴露或接受画布坐标；语义操作与布局位置在同一 revision 中原子提交。
 - `content_creation_edit` 现在对创建、修改、删除与连线批次执行 revision-safe 原子提交，不再创建会话预览卡或要求用户确认。
 - `content_creation_run(action="prepare")` 的授权入口从会话卡片迁移为插件全局确认弹窗；准备阶段仍不调用供应商，只有用户确认后才开始生成。
 - Agent 视频工作流改为意图驱动的 `configure_generation`：区分文生视频、单图动画、首尾帧插值、多模态参考和视频转换，原子写入实际模型模式、来源引用及首帧/尾帧/图片/视频/音频角色；机械媒体连线与只有集合边、没有具体素材引用的图会被诊断并禁止运行。

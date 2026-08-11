@@ -270,6 +270,7 @@ pdfjs.getDocument({ url: file.getUrl() });
 - **默认注册即上栏**（`initiallyVisible` 缺省 `true`）。声明 `initiallyVisible: false` 表示「出现条件我自己管」：注册只入池，之后用 `setActivityTabVisible` 静默上栏/下栏（如 git 只在仓库目录上栏、工作台跟随输入栏 toggle），或用 `openActivityTab` 上栏并抢焦点打开（如图像生成完成后跳到历史）
 - 显隐记录按 **会话 cwd** 持久化（ADR-0026）：插件表过态就听插件的，没表过态才看 `initiallyVisible`。用户随时可用减号手动隐藏
 - 插件禁用时 tab 隐藏，重新启用可回来
+- **默认按访问驻留**：首次激活后进入宿主的 warm LRU，切换时保留组件状态与 DOM；每个面板最多保留 2 个非活动 warm tab，超出的旧 tab 在浏览器空闲阶段淘汰。`retention: "active-only"` 可关闭驻留，`retention: "pinned"` 表示只要贡献可用就不参与淘汰。当前活动和浮动 tab 始终驻留。
 - **布局边界（面板内）**：与 file-preview 相同——UI 留在 Tab 面板矩形内，禁止 viewport 级 `fixed` / 超高 z-index / portal 到 `document.body`。全局浮层用 `registerGlobalSlot`，Toast 用 `notify`。见 [styling-and-pitfalls.md → 面板类 slot 布局边界](./styling-and-pitfalls.md#面板类-slot-布局边界禁止-viewport-级浮层)。
 
 ```ts
@@ -280,6 +281,9 @@ interface PluginActivityTabContribution {
   component: ComponentType;   // 零 props
   scope_use?: readonly ConversationScenario[]; // fail-closed
   initiallyVisible?: boolean;  // 缺省 true：注册即上栏；false = 出现条件由插件自己驱动
+  retention?: "active-only" | "warm" | "pinned"; // 缺省 warm
+  /** @deprecated true=pinned，false=active-only */
+  keepAliveWhenAvailable?: boolean;
 }
 ```
 
@@ -299,7 +303,8 @@ ctx.ui.registerActivityTab({
 import { useActivityTab } from "@vetta-org/plugin-sdk";
 
 function StatsPanel() {
-  const { cwd } = useActivityTab();
+  const { cwd, active } = useActivityTab();
+  // warm/pinned 会保留组件；昂贵的轮询或动画应在 active=false 时主动暂停。
   // ...
 }
 ```

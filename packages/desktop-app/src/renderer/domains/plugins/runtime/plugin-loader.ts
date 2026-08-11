@@ -68,7 +68,7 @@ import type {
 } from "@vetta-org/plugin-sdk";
 import { PLUGIN_CODING_AGENT_HOOK_EVENT_NAMES, resolveCatalogKey, resolvePluginText } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
-import type { ComponentType } from "react";
+import { type ComponentType, createElement, type ReactNode } from "react";
 import { router } from "../../../router";
 import { explicitTabVisibility, withPluginTabVisibility } from "./attached-tabs";
 import { PluginActivationCleanupController } from "./plugin-activation-cleanup";
@@ -313,6 +313,29 @@ function createPermissionApi(plugin: InstalledPlugin): PluginContext["permission
 			}
 		},
 	};
+}
+
+/**
+ * Map host-resolved `InstalledPlugin.iconUrl` into an activity-tab icon.
+ * - `icon-[…]` / legacy Iconify `set:name` → class string for TabBar
+ * - package path already resolved to `vetta-plugin://…` (or http/data) → `<img>`
+ * Protocol stays host-private; plugins only see the opaque `iconUrl` string.
+ */
+function resolvePluginBrandIcon(iconUrl: string): ReactNode {
+	const trimmed = iconUrl.trim();
+	if (!trimmed) return undefined;
+	if (trimmed.startsWith("icon-[")) return trimmed;
+	// Iconify passthrough from manifest: `solar:star-bold` → Tailwind Iconify class.
+	if (/^[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(trimmed) && !trimmed.includes("://")) {
+		const sep = trimmed.indexOf(":");
+		return `icon-[${trimmed.slice(0, sep)}--${trimmed.slice(sep + 1)}]`;
+	}
+	return createElement("img", {
+		src: trimmed,
+		alt: "",
+		className: "h-3.5 w-3.5 object-contain",
+		draggable: false,
+	});
 }
 
 const noopDisposable: Disposable = { dispose: () => {} };
@@ -1046,13 +1069,22 @@ function createContext(
 		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
 			throw new Error("Activity tab component is invalid");
 		}
+		if (
+			contribution.retention !== undefined &&
+			!(["active-only", "warm", "pinned"] as const).includes(contribution.retention)
+		) {
+			throw new Error("Activity tab retention is invalid");
+		}
+		const brandIcon =
+			contribution.icon === undefined && plugin.iconUrl ? resolvePluginBrandIcon(plugin.iconUrl) : undefined;
 		const normalized: PluginActivityTabContribution = {
 			id: contribution.id,
 			label: contribution.label,
-			icon: contribution.icon,
+			icon: contribution.icon ?? brandIcon,
 			component: contribution.component,
 			scope_use: contribution.scope_use,
 			initiallyVisible: contribution.initiallyVisible,
+			retention: contribution.retention,
 			keepAliveWhenAvailable: contribution.keepAliveWhenAvailable,
 		};
 		activityTabs.push(normalized);
@@ -1457,6 +1489,7 @@ function createContext(
 		plugin: {
 			id: plugin.id,
 			version: plugin.activeVersion,
+			...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
 		},
 		permissions,
 		ui: {

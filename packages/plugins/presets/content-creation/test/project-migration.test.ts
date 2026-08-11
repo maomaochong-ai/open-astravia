@@ -22,7 +22,7 @@ describe("content project migrations", () => {
 
 		const migrated = migrateContentProjectDocument(legacy, null, "C:/project");
 
-		expect(migrated?.project.schemaVersion).toBe(5);
+		expect(migrated?.project.schemaVersion).toBe(6);
 		expect(migrated?.project.assets).toEqual([
 			{
 				id: "asset",
@@ -140,9 +140,38 @@ describe("content project migrations", () => {
 		};
 
 		const migrated = migrateContentProjectDocument(legacy, null, "C:/project");
-		expect(migrated?.project.schemaVersion).toBe(5);
+		expect(migrated?.project.schemaVersion).toBe(6);
 		expect(serializeContentProject(migrated!.project).nodes[1]).toMatchObject({
 			inputs: { mediaSources: [{ fromNode: "first", output: "image", role: "firstFrame" }] },
 		});
+	});
+
+	it("marks every established v5 canvas position as user-owned", () => {
+		const project = createContentProject("C:/project", "2026-08-10T00:00:00.000Z");
+		project.graph.nodes.push({
+			id: "prompt",
+			kind: "prompt",
+			position: { x: 40, y: 80 },
+			status: "idle",
+			data: {},
+		});
+		const current = serializeContentProject(project);
+		const legacy = {
+			...current,
+			schemaVersion: 5,
+			view: {
+				nodes: Object.fromEntries(
+					Object.entries(current.view.nodes).map(([nodeId, view]) => {
+						const { layoutOwnership: _layoutOwnership, ...legacyView } = view;
+						return [nodeId, legacyView];
+					}),
+				),
+			},
+		};
+
+		const migrated = migrateContentProjectDocument(legacy, null, "C:/project");
+
+		expect(migrated?.project.schemaVersion).toBe(6);
+		expect(migrated?.project.graph.nodes.every((node) => node.layoutOwnership === "user")).toBe(true);
 	});
 });

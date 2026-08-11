@@ -65,6 +65,7 @@ export function serializeContentProject(project: ContentProjectDocument): Conten
 						...(node.width === undefined ? {} : { width: node.width }),
 						...(node.height === undefined ? {} : { height: node.height }),
 						...(node.locked === undefined ? {} : { locked: node.locked }),
+						layoutOwnership: node.layoutOwnership ?? "user",
 					},
 				]),
 			),

@@ -1,12 +1,15 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { ContentGenerationPromptPlanError } from "../agent/generation-prompt-plan";
 import { CONTENT_AGENT_OPERATION_SCHEMA } from "../agent/operations";
 import type { ContentCreationAgentService } from "../agent/service";
 import { ContentGenerationIntentError } from "../generation/generation-intent";
+import { ContentLocalAssetError, type ContentLocalAssetService } from "../generation/local-asset-service";
 import { ContentProjectCommandError } from "../project/commands";
 import { ContentProjectRevisionError } from "../project/workspace";
 import type { ContentRunApprovalStore } from "./run-approval";
 
 export const CONTENT_INSPECT_TOOL_NAME = "content_creation_inspect";
+export const CONTENT_ASSETS_TOOL_NAME = "content_creation_assets";
 export const CONTENT_EDIT_TOOL_NAME = "content_creation_edit";
 export const CONTENT_RUN_TOOL_NAME = "content_creation_run";
 
@@ -24,6 +27,17 @@ interface InspectInput extends ProjectInput {
 interface EditInput extends ProjectInput {
 	expectedRevision?: number;
 	operations: unknown[];
+}
+
+interface AssetsInput extends ProjectInput {
+	action: "list" | "import";
+	paths: string[];
+	recursive?: boolean;
+	directoryMode?: "select-one" | "all";
+	assetNodeId?: string;
+	expectedRevision?: number;
+	nodeName?: string;
+	nodePurpose?: string;
 }
 
 interface RunInput extends ProjectInput {
@@ -47,6 +61,7 @@ export function registerContentCreationTools(
 	ctx: PluginContext,
 	agent: ContentCreationAgentService,
 	runApprovals: ContentRunApprovalStore,
+	localAssets: ContentLocalAssetService,
 ): void {
 	ctx.agent.registerTool<InspectInput>({
 		id: "inspect-content-creation",
@@ -72,12 +87,82 @@ export function registerContentCreationTools(
 		},
 	});
 
+	ctx.agent.registerTool<AssetsInput>({
+		id: "manage-content-creation-assets",
+		name: CONTENT_ASSETS_TOOL_NAME,
+		label: "%tool.assets.label%",
+		description:
+			"List or import image, video, and audio files from host-authorized local paths. List directories before choosing reference media. Import copies media into managed plugin storage, creates or updates one asset node, and returns stable asset IDs for configure_generation. No confirmation is required.",
+		parameters: {
+			type: "object",
+			properties: {
+				action: { type: "string", enum: ["list", "import"] },
+				projectDir: projectDirProperty,
+				paths: {
+					type: "array",
+					minItems: 1,
+					items: { type: "string", minLength: 1 },
+					description: "Absolute file or directory paths supplied by the user or host file context.",
+				},
+				recursive: { type: "boolean", description: "Include nested directories. Defaults to false." },
+				directoryMode: {
+					type: "string",
+					enum: ["select-one", "all"],
+					description: "Import all directory media only when explicitly requested; defaults to select-one.",
+				},
+				assetNodeId: { type: "string", description: "Existing asset node to receive imported media." },
+				expectedRevision: revisionProperty,
+				nodeName: { type: "string", description: "Name for an automatically created asset node." },
+				nodePurpose: { type: "string", description: "Semantic purpose for an automatically created asset node." },
+			},
+			required: ["action", "paths"],
+			additionalProperties: false,
+		},
+		scope_use: SCOPE_USE,
+		handler: async ({ session, trigger }) => {
+			try {
+				if (trigger.input.action === "list") {
+					const candidates = await localAssets.list(trigger.input.paths, trigger.input.recursive);
+					return { ok: true, status: "listed", count: candidates.length, candidates };
+				}
+				const imported = await localAssets.import({
+					projectDir: resolveCwd(trigger.input, session.cwd),
+					paths: trigger.input.paths,
+					recursive: trigger.input.recursive,
+					directoryMode: trigger.input.directoryMode,
+					targetNodeId: trigger.input.assetNodeId,
+					expectedRevision: trigger.input.expectedRevision,
+					nodeName: trigger.input.nodeName,
+					nodePurpose: trigger.input.nodePurpose,
+				});
+				ctx.ui.openActivityTab(TAB_ID, { width: "max" });
+				const generationSources = imported.assets.map(({ id, kind }) => ({
+					sourceNodeId: imported.assetNodeId,
+					assetIds: [id],
+					kind,
+				}));
+				return {
+					ok: true,
+					status: "imported",
+					projectId: imported.project.projectId,
+					revision: imported.project.revision,
+					assetNodeId: imported.assetNodeId,
+					assets: imported.assets.map(({ id, name, kind, mimeType }) => ({ id, name, kind, mimeType })),
+					generationSources,
+					...(generationSources.length === 1 ? { generationSource: generationSources[0] } : {}),
+				};
+			} catch (error) {
+				return toolError(error);
+			}
+		},
+	});
+
 	ctx.agent.registerTool<EditInput>({
 		id: "edit-content-creation",
 		name: CONTENT_EDIT_TOOL_NAME,
 		label: "%tool.edit.label%",
 		description:
-			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Include nodes and connections in one coherent batch. For video media, call configure_generation with targetNodeId set to the receiving video-generator and put image/video inputs in sources[]. The returned readiness analysis identifies incomplete graphs.",
+			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Include nodes and connections in one coherent batch. For Agent-authored video prompts, use promptPlan so the plugin can compile and validate the production method. For video media, call configure_generation with targetNodeId set to the receiving video-generator and put image/video inputs in sources[]. The returned readiness analysis identifies incomplete graphs.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -217,6 +302,24 @@ function requiredRunId(runId?: string): string {
 }
 
 function toolError(error: unknown) {
+	if (error instanceof ContentGenerationPromptPlanError) {
+		return {
+			ok: false,
+			retryable: error.retryable,
+			code: error.code,
+			error: error.message,
+			details: error.details,
+		};
+	}
+	if (error instanceof ContentLocalAssetError) {
+		return {
+			ok: false,
+			retryable: error.retryable,
+			code: error.code,
+			error: error.message,
+			...(error.details ? { details: error.details } : {}),
+		};
+	}
 	if (error instanceof ContentGenerationIntentError) {
 		return {
 			ok: false,

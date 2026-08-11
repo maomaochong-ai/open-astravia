@@ -1,6 +1,7 @@
 import type { ConversationScenario } from "./scenario.js";
 import type { PluginNetworkRequest, PluginNetworkResponse } from "./network.js";
 import type { PluginPutBlobInput, PluginStoredBlob, PluginStoredBlobRef } from "./storage.js";
+import type { PluginActivityTabRetention } from "./ui.js";
 
 export type PluginDeclarativeTextTone = "default" | "muted" | "success" | "warning" | "danger";
 
@@ -97,6 +98,8 @@ export interface PluginQuickJsActivityTab {
 	view: PluginDeclarativeNode;
 	scope_use?: readonly ConversationScenario[];
 	initiallyVisible?: boolean;
+	/** Defaults to `"warm"`; see PluginActivityTabContribution. */
+	retention?: PluginActivityTabRetention;
 }
 
 export interface PluginDeclarativeActionEvent {
@@ -116,7 +119,7 @@ export interface PluginQuickJsApi {
 }
 
 export interface PluginQuickJsContext {
-	plugin: { id: string; version: string };
+	plugin: { id: string; version: string; iconUrl?: string };
 	permissions: { has(permission: string): boolean };
 	ui: {
 		registerActivityTab(contribution: PluginQuickJsActivityTab): void;

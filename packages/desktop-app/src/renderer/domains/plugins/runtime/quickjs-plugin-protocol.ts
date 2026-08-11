@@ -19,7 +19,7 @@ export type QuickJsHostMethod =
 export type QuickJsWorkerInboundMessage =
 	| {
 			type: "initialize";
-			plugin: { id: string; version: string };
+			plugin: { id: string; version: string; iconUrl?: string };
 			permissions: string[];
 			settings: Record<string, unknown>;
 			locale: string;
@@ -215,6 +215,7 @@ function parseActivityTab(value: unknown): PluginQuickJsActivityTab {
 		view: parseQuickJsDeclarativeNode(value.view),
 		scope_use,
 		initiallyVisible: optionalBoolean(value.initiallyVisible, "activity tab initiallyVisible"),
+		retention: assertAllowed(value.retention, ["active-only", "warm", "pinned"], "activity tab retention"),
 	};
 }
 

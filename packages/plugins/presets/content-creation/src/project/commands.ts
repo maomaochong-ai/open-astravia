@@ -5,6 +5,7 @@ import type {
 	GenerationJob,
 	ContentNode,
 	ContentNodeKind,
+	ContentNodeLayoutOwnership,
 	ContentProjectDocument,
 	ContentWorkflow,
 	TimelineClip,
@@ -29,15 +30,23 @@ export type ContentProjectCommand =
 				purpose?: string;
 				position: CanvasPosition;
 				data?: ContentNode["data"];
+				layoutOwnership?: ContentNodeLayoutOwnership;
 			};
 	  }
 	| { type: "node.rename"; nodeId: string; name: string }
 	| { type: "node.set-purpose"; nodeId: string; purpose: string }
 	| { type: "node.update"; nodeId: string; data: ContentNode["data"] }
 	| { type: "node.move"; nodeId: string; position: CanvasPosition }
+	| { type: "node.layout"; nodeId: string; position: CanvasPosition }
 	| { type: "node.resize"; nodeId: string; width: number; height: number; position?: CanvasPosition }
 	| { type: "node.lock"; nodeId: string; locked: boolean }
-	| { type: "node.duplicate"; nodeId: string; id?: string; position?: CanvasPosition }
+	| {
+			type: "node.duplicate";
+			nodeId: string;
+			id?: string;
+			position?: CanvasPosition;
+			layoutOwnership?: ContentNodeLayoutOwnership;
+	  }
 	| {
 			type: "node.bind-assets";
 			sourceNodeId: string;
@@ -167,6 +176,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				purpose: command.node.purpose?.trim() || getDefaultNodePurpose(command.node.kind),
 				position: command.node.position,
 				...size,
+				layoutOwnership: command.node.layoutOwnership ?? "user",
 				status: "idle",
 				data,
 			});
@@ -198,6 +208,14 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			const node = findNode(project, command.nodeId);
 			if (node.locked) throw new ContentProjectCommandError(`node is locked: ${command.nodeId}`);
 			node.position = command.position;
+			node.layoutOwnership = "user";
+			return;
+		}
+		case "node.layout": {
+			assertPosition(command.position);
+			const node = findNode(project, command.nodeId);
+			if (node.locked) throw new ContentProjectCommandError(`node is locked: ${command.nodeId}`);
+			node.position = command.position;
 			return;
 		}
 		case "node.resize": {
@@ -206,6 +224,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			if (node.locked) throw new ContentProjectCommandError(`node is locked: ${command.nodeId}`);
 			node.width = command.width;
 			node.height = command.height;
+			node.layoutOwnership = "user";
 			if (command.position) {
 				assertPosition(command.position);
 				node.position = command.position;
@@ -229,6 +248,7 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				id,
 				position,
 				locked: false,
+				layoutOwnership: command.layoutOwnership ?? "user",
 				status: "idle",
 			});
 			return;

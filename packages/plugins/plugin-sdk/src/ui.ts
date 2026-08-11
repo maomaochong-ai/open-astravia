@@ -142,10 +142,18 @@ export interface PluginFilePreviewContribution {
  * tab to the "addable pool" — it renders only after the user attaches it in
  * the activity panel (scoped by session cwd).
  */
+/** Host residency policy for an activity-panel tab. */
+export type PluginActivityTabRetention = "active-only" | "warm" | "pinned";
+
 export interface PluginActivityTabContribution {
 	id: string;
 	label: string;
-	/** Tab icon as a React node (not an iconify class string). */
+	/**
+	 * Tab icon as a React node (not an iconify class string).
+	 * Omit to inherit the host-resolved brand icon from `plugin.json#icon`
+	 * (`ctx.plugin.iconUrl`). Prefer omitting for package brand icons so the
+	 * plugin never loads assets via absolute `/…` paths or host protocols.
+	 */
 	icon?: ReactNode;
 	component: ComponentType;
 	/**
@@ -162,9 +170,15 @@ export interface PluginActivityTabContribution {
 	 */
 	initiallyVisible?: boolean;
 	/**
-	 * Keep the component mounted while this tab is available but inactive. Use
-	 * this for stateful embedded runtimes such as browsers or editors whose
-	 * session would otherwise be lost when the user briefly switches tabs.
+	 * Component residency while the tab is inactive. Defaults to `"warm"`:
+	 * visited tabs stay mounted in the host's bounded LRU cache. Use
+	 * `"active-only"` for cheap, stateless content and `"pinned"` for runtimes
+	 * that must never be evicted while available.
+	 */
+	retention?: PluginActivityTabRetention;
+	/**
+	 * @deprecated Use {@link PluginActivityTabContribution.retention}. `true`
+	 * maps to `"pinned"`; `false` maps to `"active-only"`.
 	 */
 	keepAliveWhenAvailable?: boolean;
 }

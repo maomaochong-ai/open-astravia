@@ -6,6 +6,8 @@ function summarizePlugin(plugin: InstalledPlugin): PluginOfficialPluginSummary {
 		id: plugin.id,
 		name: plugin.name,
 		version: plugin.version,
+		activeVersion: plugin.activeVersion,
+		pendingVersion: plugin.pendingVersion,
 		enabled: plugin.enabled,
 		required: plugin.required,
 		source: plugin.source,

@@ -12,6 +12,7 @@
 		"packages/coding-agent",
 		"packages/plugins/plugin-sdk",
 		"packages/plugins/plugin-vite",
+		"packages/plugins/plugin-cli",
 		"packages/plugins/presets/*",
 		"packages/plugins/externals/*",
 		"packages/theme-sdk",

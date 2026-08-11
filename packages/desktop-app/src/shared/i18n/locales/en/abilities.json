@@ -143,6 +143,7 @@
 		"source": {
 			"label": "Source",
 			"remote": "Remote install",
+			"npm": "npm package",
 			"system": "Built-in",
 			"local": "Local zip"
 		},
