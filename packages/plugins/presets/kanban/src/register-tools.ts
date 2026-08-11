@@ -19,7 +19,8 @@ export function registerKanbanTools(ctx: PluginContext, controller: KanbanBoardC
 		label: "%tool.list.label%",
 		description:
 			"读取看板快照：待认领需求（含优先级、依赖阻塞情况）、正在处理的任务及其运行态、待检查的交付，以及「正在处理」还剩几个并发名额。" +
-			"认领任务前先调这个，不要凭记忆假设板面状态。",
+			"认领任务前先调这个，不要凭记忆假设板面状态。" +
+			"快照里的 autoClaim=true 表示看板已开启自动认领，会自己把「待认领」派出去，你不需要再逐条认领。",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use,
 		handler: async () => {

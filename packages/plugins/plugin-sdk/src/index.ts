@@ -43,6 +43,7 @@ export type {
 	ConversationMessage,
 	ConversationEvent,
 	ConversationQueueState,
+	CreateSessionOptions,
 	PluginConversationApi,
 	SendPromptResult,
 } from "./conversation.js";

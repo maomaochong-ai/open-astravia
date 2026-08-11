@@ -1,4 +1,4 @@
-import { findCard, laneCards, resolveCardModelKey } from "./board-store";
+import { findCard, laneCards, resolveCardCwd, resolveCardModelKey } from "./board-store";
 import type { KanbanBoard, KanbanCard } from "./types";
 
 /**
@@ -77,6 +77,20 @@ export function dispatchableCards(board: KanbanBoard): KanbanCard[] {
 		.sort((left, right) => right.priority - left.priority || left.createdAt - right.createdAt);
 }
 
+/**
+ * 自动认领该派哪些卡片：按建议顺序取，最多填满剩余名额。
+ *
+ * 与 {@link dispatchableCards} 的差别是这里还要求 cwd 可解析——自动循环没有人盯着，
+ * 派不出去的卡片会被反复重试，所以先在规则层排掉必然失败的那类。
+ * 关闭自动认领时返回空数组：这层就是开关的唯一判定处，调用方不必再判一遍。
+ */
+export function autoClaimCandidates(board: KanbanBoard): KanbanCard[] {
+	if (!board.autoClaim) return [];
+	return dispatchableCards(board)
+		.filter((card) => resolveCardCwd(board, card) !== "")
+		.slice(0, remainingSlots(board));
+}
+
 /** 因依赖未完成而暂时派不出去的待认领卡片。 */
 export function blockedCards(board: KanbanBoard): Array<{ card: KanbanCard; blockedBy: string[] }> {
 	return laneCards(board, "inbox")
@@ -124,6 +138,8 @@ export function buildSendBackPrompt(card: KanbanCard, feedback: string): string 
 export interface BoardSnapshotForAgent {
 	concurrency: number;
 	remainingSlots: number;
+	/** 看板是否在自动认领。开着时 `ready` 里的卡片会被看板自己派走，你不必再抢着认领。 */
+	autoClaim: boolean;
 	/** 看板默认模型；缺省（未选）时不出现，表示派单跟随宿主全局默认模型。 */
 	defaultModelKey?: string;
 	doing: Array<{ id: string; title: string; runState?: string; sessionPath?: string }>;
@@ -137,6 +153,7 @@ export function snapshotForAgent(board: KanbanBoard): BoardSnapshotForAgent {
 	return {
 		concurrency: board.concurrency,
 		remainingSlots: remainingSlots(board),
+		autoClaim: board.autoClaim,
 		...(board.defaultModelKey.trim() ? { defaultModelKey: board.defaultModelKey.trim() } : {}),
 		doing: laneCards(board, "doing").map((card) => ({
 			id: card.id,

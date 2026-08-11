@@ -9,6 +9,7 @@ import {
 	DialogTitle,
 } from "@vetta/ui";
 import { useEffect, useState, type JSX } from "react";
+import { ModelPicker } from "./ModelPicker";
 import type { KanbanModelOption } from "../board/board-controller";
 import type { KanbanCard } from "../board/types";
 
@@ -148,25 +149,22 @@ export function CardEditorDialog({
 					</div>
 
 					{models.length > 0 && (
-						<label className="flex flex-col gap-1">
+						<div className="flex flex-col gap-1">
 							<span className="text-[11px] font-medium text-muted-foreground">{t("editor.model")}</span>
-							<select
-								className={inputClass}
+							{/* 与会话页输入栏同一个选择器；这里选的是「这张卡」的模型 */}
+							<ModelPicker
+								models={models}
 								value={draft.modelKey}
-								onChange={(event) => setDraft((prev) => ({ ...prev, modelKey: event.target.value }))}
-							>
-								<option value="">
-									{boardDefaultModel
+								onChange={(modelKey) => setDraft((prev) => ({ ...prev, modelKey }))}
+								inheritLabel={
+									boardDefaultModel
 										? t("editor.modelDefaultNamed", { name: boardDefaultModel.displayName })
-										: t("editor.modelDefault")}
-								</option>
-								{models.map((model) => (
-									<option key={model.key} value={model.key}>
-										{model.displayName} · {model.providerName}
-									</option>
-								))}
-							</select>
-						</label>
+										: t("editor.modelDefault")
+								}
+								defaultKey={defaultModelKey || undefined}
+								triggerClassName="h-8 w-full max-w-none justify-start rounded-md border-border bg-background px-2.5 text-[13px]"
+							/>
+						</div>
 					)}
 
 					<label className="flex flex-col gap-1">

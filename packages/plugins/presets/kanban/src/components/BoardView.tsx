@@ -183,6 +183,28 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 					)}
 				</label>
 
+				{/* 自动认领开关 */}
+				<button
+					type="button"
+					aria-pressed={board.autoClaim}
+					title={board.autoClaim ? t("board.autoClaimOnHint") : t("board.autoClaimOffHint")}
+					onClick={() => controller.setAutoClaim(!board.autoClaim)}
+					className={cn(
+						"flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[11px] font-medium transition-colors",
+						board.autoClaim
+							? "border-primary/40 bg-primary/10 text-primary"
+							: "border-border/70 bg-card/60 text-muted-foreground hover:border-border hover:text-foreground",
+					)}
+				>
+					<span
+						className={cn(
+							"h-3.5 w-3.5",
+							board.autoClaim ? "icon-[solar--magic-stick-3-bold]" : "icon-[solar--magic-stick-3-linear]",
+						)}
+					/>
+					{t("board.autoClaim")}
+				</button>
+
 				{/* WIP 步进器 + 用量环 */}
 				<div
 					className="flex h-8 items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-2.5"

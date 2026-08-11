@@ -345,6 +345,11 @@ function createConversationApi(plugin: InstalledPlugin): PluginConversationApi {
 			permissions.require("agent.session.write");
 			return pluginHostBridge.conversation.sendPrompt(text);
 		},
+		createSession: async (cwd, options) => {
+			// 与 sendPrompt 同权限：都是「让 agent 开始干活」，不另开权限位。
+			permissions.require("agent.session.write");
+			return pluginHostBridge.conversation.createSession(cwd, options);
+		},
 		insertText: (text) => {
 			permissions.require("agent.session.write");
 			pluginHostBridge.conversation.insertText(text);

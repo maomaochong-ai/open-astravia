@@ -12,11 +12,18 @@ import {
 	resolveCardModelKey,
 	restoreCard,
 	sendCardBack,
+	setAutoClaim,
 	setConcurrency,
 	setIdeaState,
 	updateCard,
 } from "./board-store";
-import { buildDispatchPrompt, buildSendBackPrompt, canDispatch, type DispatchDecision } from "./dispatch";
+import {
+	autoClaimCandidates,
+	buildDispatchPrompt,
+	buildSendBackPrompt,
+	canDispatch,
+	type DispatchDecision,
+} from "./dispatch";
 import { createEmptyBoard, type KanbanBoard, type KanbanIdeaState, type KanbanLane } from "./types";
 
 const BOARD_STORAGE_KEY = "board";
@@ -30,6 +37,8 @@ export interface KanbanModelOption {
 	modelId: string;
 	providerId: string;
 	providerName: string;
+	/** provider 图标 symbol；交给宿主 ProviderIcon 解析，缺省则不画图标。 */
+	providerIcon?: string;
 	displayName: string;
 }
 
@@ -60,6 +69,13 @@ export class KanbanBoardController {
 	private models: KanbanModelOption[] = [];
 	/** 宿主的全局默认模型，仅用于在选择器里标注「默认」，不写进看板数据。 */
 	private hostDefaultModelKey = "";
+	private autoClaimRunning = false;
+	private autoClaimPending = false;
+	/**
+	 * 自动认领时派不动、又还留在灵感池的卡片（例如目标项目缺失、宿主建会话报错）。
+	 * 不跳过它们，循环会盯着同一张卡无限重试。卡片被再次编辑时解除跳过。
+	 */
+	private readonly autoClaimSkip = new Set<string>();
 
 	constructor(private readonly ctx: PluginContext) {}
 
@@ -97,6 +113,7 @@ export class KanbanBoardController {
 					modelId: model.id,
 					providerId: provider.id,
 					providerName: provider.displayName || provider.id,
+					...(provider.icon ? { providerIcon: provider.icon } : {}),
 					displayName: model.name?.trim() || model.id,
 				})),
 			);
@@ -143,6 +160,8 @@ export class KanbanBoardController {
 		this.attachRunningWatch();
 		await this.refreshRunning();
 		this.emit();
+		// 开关是持久化的：上次开着自动认领、关掉应用期间攒下的待认领卡片，这里接着派。
+		this.scheduleAutoClaim();
 	}
 
 	/**
@@ -174,6 +193,8 @@ export class KanbanBoardController {
 	}
 
 	dispose(): void {
+		// 停掉自动认领的续跑：热重载会立刻建一个新 controller，旧实例不该继续派单。
+		this.autoClaimPending = false;
 		this.disposeRunning?.();
 		this.disposeRunning = null;
 		this.listeners.clear();
@@ -195,7 +216,47 @@ export class KanbanBoardController {
 			.catch((error: unknown) => {
 				this.ctx.ui.notify({ message: this.ctx.i18n.t("error.saveBoard"), error });
 			});
+		this.scheduleAutoClaim();
 		return next;
+	}
+
+	// ── 自动认领 ────────────────────────────────────────────────────────
+	//
+	// 看板本身没有「事件源」——卡片变 ready、有卡交付腾出名额、并发上调，都只是一次
+	// commit。所以自动认领挂在 commit 上统一评估，而不是在每个入口各挂一次钩子；
+	// 少一处漏挂，就少一次「明明可以派却没派」。
+
+	/**
+	 * 请求跑一轮自动认领。可重入：循环正在跑时只置 pending，由当前循环收尾时再评估，
+	 * 避免 dispatch 内部的 commit 递归触发出多条并行循环、双双看到同一个空名额。
+	 */
+	private scheduleAutoClaim(): void {
+		if (!this.loaded || !this.board.autoClaim) return;
+		this.autoClaimPending = true;
+		if (this.autoClaimRunning) return;
+		void this.runAutoClaim();
+	}
+
+	private async runAutoClaim(): Promise<void> {
+		this.autoClaimRunning = true;
+		try {
+			while (this.autoClaimPending) {
+				this.autoClaimPending = false;
+				const next = autoClaimCandidates(this.board).find((card) => !this.autoClaimSkip.has(card.id));
+				if (!next) continue;
+				// 一次只派一张、串行等结果：名额是在 dispatch 里占的，并行派会让两张卡
+				// 同时看到最后一个名额。派完再评估一轮，名额还有就继续。
+				this.autoClaimPending = true;
+				const result = await this.dispatch(next.id, "agent");
+				// 暂时性拒绝（名额满 / 被依赖挡住）不该拉黑：下一轮条件变了它还能被派。
+				const transient = result.decision.ok === false && ["wip-full", "blocked"].includes(result.decision.reason);
+				if (!result.ok && !transient && findCard(this.board, next.id)?.lane === "inbox") {
+					this.autoClaimSkip.add(next.id);
+				}
+			}
+		} finally {
+			this.autoClaimRunning = false;
+		}
 	}
 
 	// ── 用户 / agent 共用的看板操作 ───────────────────────────────────────
@@ -207,6 +268,8 @@ export class KanbanBoardController {
 	}
 
 	updateCard(cardId: string, patch: Parameters<typeof updateCard>[2]): KanbanBoard {
+		// 卡片被改过（补上目标项目等）就给它重新参与自动认领的机会。
+		this.autoClaimSkip.delete(cardId);
 		return this.commit(updateCard(this.board, cardId, patch, Date.now()));
 	}
 
@@ -215,15 +278,27 @@ export class KanbanBoardController {
 	}
 
 	moveCard(cardId: string, lane: KanbanLane, beforeCardId: string | null): KanbanBoard {
+		this.autoClaimSkip.delete(cardId);
 		return this.commit(moveCard(this.board, cardId, lane, beforeCardId, Date.now()));
 	}
 
 	setIdeaState(cardId: string, state: KanbanIdeaState): KanbanBoard {
+		this.autoClaimSkip.delete(cardId);
 		return this.commit(setIdeaState(this.board, cardId, state, Date.now()));
 	}
 
 	setConcurrency(value: number): KanbanBoard {
 		return this.commit(setConcurrency(this.board, value));
+	}
+
+	/**
+	 * 开关自动认领。开启时清空跳过名单并立即评估一轮——用户刚补完卡片信息再开开关，
+	 * 不该还记着上一轮的失败。
+	 */
+	setAutoClaim(enabled: boolean): KanbanBoard {
+		if (enabled === this.board.autoClaim) return this.board;
+		if (enabled) this.autoClaimSkip.clear();
+		return this.commit(setAutoClaim(this.board, enabled));
 	}
 
 	setDefaultCwd(cwd: string): KanbanBoard {

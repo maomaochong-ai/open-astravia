@@ -1,6 +1,6 @@
 {
 	"name": "@vetta/plugin-kanban",
-	"version": "0.2.2",
+	"version": "0.3.0",
 	"private": true,
 	"type": "module",
 	"scripts": {
@@ -17,6 +17,7 @@
 		"@types/react-dom": "^19.1.1",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
+		"@vetta/theme-ui": "workspace:*",
 		"@vetta/ui": "workspace:*",
 		"react": "19.1.1",
 		"react-dom": "19.1.1",

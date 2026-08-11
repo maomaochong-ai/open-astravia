@@ -69,6 +69,16 @@ ctx.conversation.insertText("草稿文本");                 // 仅填输入框�
 await ctx.conversation.abort();                          // 中断当前轮
 ```
 
+`sendPrompt` 作用于**活动会话**，宿主没有活动会话时（例如用户停在新会话页）会抛错。插件若在这种状态下也要把话说出去，先建一个：
+
+```ts
+const { cwd } = state;                       // conversation-changed 给的 ConversationState
+if (!cwd) await ctx.conversation.createSession(myWorkspaceCwd); // resolve 时会话已就绪
+await ctx.conversation.sendPrompt("处理画布上新贴的备注");
+```
+
+`createSession(cwd, { navigate })` 建完即设为活动会话，默认跳转到对话页（与用户手动发送的观感一致）；后台任务可传 `navigate: false` 留在当前路由。执行模式跟随宿主当前选择。它**不做复用判断**——已有活动会话时照样新建，要不要新开由插件按自己的语义决定。与 `official.sessions.create`（按 sessionId 显式寻址、与当前路由无关的后台编排）的分工是：`createSession` 仍然是「用户当前正在看的那个会话」这条线。
+
 ## 注册 Agent 工具
 
 `ctx.agent.registerTool` 让插件用 JS 注册一个 **agent 可见的工具**：coding-agent 只看到工具 shell（schema + 描述），实际执行经 IPC 回到你的 renderer handler。需要 `agent.tools.register`（注册）+ `agent.toolHandler.execute`（执行）。返回 `Disposable`。

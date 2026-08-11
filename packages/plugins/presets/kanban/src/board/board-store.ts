@@ -148,6 +148,10 @@ export function setIdeaState(board: KanbanBoard, cardId: string, state: KanbanId
 	return updateCard(board, cardId, { ideaState: state }, now);
 }
 
+export function setAutoClaim(board: KanbanBoard, enabled: boolean): KanbanBoard {
+	return board.autoClaim === enabled ? board : { ...board, autoClaim: enabled };
+}
+
 export function setConcurrency(board: KanbanBoard, value: number): KanbanBoard {
 	const concurrency = Math.min(MAX_CONCURRENCY, Math.max(MIN_CONCURRENCY, Math.round(value)));
 	return concurrency === board.concurrency ? board : { ...board, concurrency };
@@ -288,6 +292,8 @@ export function parseBoard(raw: unknown, fallbackCwd = ""): KanbanBoard {
 		concurrency,
 		defaultCwd: typeof record.defaultCwd === "string" && record.defaultCwd ? record.defaultCwd : fallbackCwd,
 		defaultModelKey: typeof record.defaultModelKey === "string" ? record.defaultModelKey : "",
+		// 只认显式的 true：老数据没有这个字段，恢复后不该突然自己开始派单。
+		autoClaim: record.autoClaim === true,
 		cards: restored,
 	};
 }

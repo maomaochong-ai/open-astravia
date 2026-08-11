@@ -11,6 +11,11 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 }));
 
 const sendPrompt = vi.fn(() => new Promise<void>(() => {}));
+/** 建完会话即广播 conversation-changed，与宿主 openSession 的行为一致。 */
+const createSession = vi.fn((cwd: string) => {
+	emit?.({ type: "conversation-changed", conversation: { cwd, isStreaming: false } });
+	return Promise.resolve({ cwd, isStreaming: false });
+});
 /** 插件订阅会话事件的那个回调，测试用它推 turn-start / turn-end。 */
 let emit: ((event: unknown) => void) | null = null;
 
@@ -18,6 +23,7 @@ vi.mock("../src/plugin-context", () => ({
 	getPluginCtx: () => ({
 		conversation: {
 			sendPrompt,
+			createSession,
 			on: (listener: (event: unknown) => void) => {
 				emit = listener;
 				return { dispose: () => {} };
@@ -292,5 +298,48 @@ it("会话不在这个 workspace 时不派", () => {
 	});
 	elapse();
 
+	expect(sendPrompt).not.toHaveBeenCalled();
+});
+
+/**
+ * 宿主停在新会话页时没有活跃会话（activeSession 被显式清空），派活闸口曾把这判成
+ * 「没有会话」直接拦死：用户在画布上贴了备注，左边毫无动静，也没有任何提示。
+ */
+it("宿主还没有会话（新会话页）时，先建会话再派活", async () => {
+	act(() => {
+		root.render(<Harness cwd="/w" />);
+	});
+	act(() => {
+		emit?.({ type: "conversation-changed", conversation: { cwd: null, isStreaming: false } });
+	});
+	act(() => {
+		store.addNote(anchor, "在新会话页贴的");
+	});
+	elapse();
+	// createSession → sendPrompt 之间隔着一个微任务。
+	await act(async () => {
+		await Promise.resolve();
+	});
+
+	expect(createSession).toHaveBeenCalledWith("/w");
+	expect(sendPrompt).toHaveBeenCalledTimes(1);
+});
+
+it("画布连 cwd 都没有时不凭空建会话", async () => {
+	act(() => {
+		root.render(<Harness cwd={null} />);
+	});
+	act(() => {
+		emit?.({ type: "conversation-changed", conversation: { cwd: null, isStreaming: false } });
+	});
+	act(() => {
+		store.addNote(anchor, "不知道该在哪儿开");
+	});
+	elapse();
+	await act(async () => {
+		await Promise.resolve();
+	});
+
+	expect(createSession).not.toHaveBeenCalled();
 	expect(sendPrompt).not.toHaveBeenCalled();
 });

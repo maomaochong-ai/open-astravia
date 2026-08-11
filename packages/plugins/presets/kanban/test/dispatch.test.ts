@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { addCard, archiveCard, createCard, moveCard, setConcurrency, updateCard } from "../src/board/board-store";
 import {
+	autoClaimCandidates,
 	blockedCards,
 	buildDispatchPrompt,
 	buildSendBackPrompt,
@@ -140,6 +141,37 @@ describe("dispatchableCards / blockedCards", () => {
 	it("WIP 满时仍列出可派卡片——闸门交给 canDispatch，避免 agent 误以为没活可干", () => {
 		const board = setConcurrency(occupy(seed(2), ["c1"]), 1);
 		expect(dispatchableCards(board).map((card) => card.id)).toEqual(["c2"]);
+	});
+});
+
+describe("autoClaimCandidates", () => {
+	const auto = (board: KanbanBoard): KanbanBoard => ({ ...board, autoClaim: true });
+
+	it("关着时不派任何卡片", () => {
+		expect(autoClaimCandidates(seed(3))).toEqual([]);
+	});
+
+	it("开着时按建议顺序取，最多填满剩余名额", () => {
+		const board = setConcurrency(auto(seed(4)), 3);
+		expect(autoClaimCandidates(occupy(board, ["c1"])).map((card) => card.id)).toEqual(["c2", "c3"]);
+	});
+
+	it("名额满时不派", () => {
+		const board = setConcurrency(auto(seed(3)), 1);
+		expect(autoClaimCandidates(occupy(board, ["c1"]))).toEqual([]);
+	});
+
+	it("草稿与被依赖挡住的卡片不进自动认领", () => {
+		let board = auto(seed(3));
+		board = updateCard(board, "c2", { ideaState: "draft" }, NOW);
+		board = updateCard(board, "c3", { dependsOn: ["c1"] }, NOW);
+		expect(autoClaimCandidates(board).map((card) => card.id)).toEqual(["c1"]);
+	});
+
+	it("解析不出 cwd 的卡片被排除——自动循环重试它只会空转", () => {
+		let board = auto(seed(2, ""));
+		board = updateCard(board, "c2", { cwd: "/other" }, NOW);
+		expect(autoClaimCandidates(board).map((card) => card.id)).toEqual(["c2"]);
 	});
 });
 

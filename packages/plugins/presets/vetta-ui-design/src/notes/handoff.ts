@@ -14,6 +14,10 @@ import { pendingNotes } from "./types";
 /**
  * 发不出去的三种原因。要分辨它们，是因为「agent 正在跑」与另外两种有本质区别：
  * 它此刻就在射程内，收尾自检时会自己把备注捞走；另外两种则根本没有人会来取。
+ *
+ * `no-conversation` 指的是连该在哪个 workspace 开会话都不知道（画布没有 cwd）。
+ * 单纯「宿主此刻没有活跃会话」不算阻断——那正是用户停在新会话页的样子，派活时
+ * 自己起一个就是了。
  */
 export type NotesHandoffBlock = "no-conversation" | "other-workspace" | "streaming";
 
@@ -43,13 +47,22 @@ export function useNotesHandoff(cwd: string | null): NotesHandoff {
 		return () => handle.dispose();
 	}, []);
 
-	const blocked: NotesHandoffBlock | null = !conversation?.cwd
-		? "no-conversation"
-		: cwd !== null && conversation.cwd !== cwd
-			? "other-workspace"
-			: conversation.isStreaming
-				? "streaming"
-				: null;
+	/**
+	 * 没有活跃会话不等于发不出去：用户停在新会话页时宿主就是这个状态，而画布自己
+	 * 知道 cwd，可以先起一个会话再说话（`sendNeedsSession`）。真正没辙的只有连
+	 * cwd 都没有——那时不知道该在哪儿开。
+	 */
+	const sendNeedsSession = !conversation?.cwd && cwd !== null;
+
+	const blocked: NotesHandoffBlock | null = sendNeedsSession
+		? null
+		: !conversation?.cwd
+			? "no-conversation"
+			: cwd !== null && conversation.cwd !== cwd
+				? "other-workspace"
+				: conversation.isStreaming
+					? "streaming"
+					: null;
 
 	const BLOCK_MESSAGES: Record<NotesHandoffBlock, string> = {
 		"no-conversation": t("notes.handoff.noConversation"),
@@ -60,9 +73,17 @@ export function useNotesHandoff(cwd: string | null): NotesHandoff {
 
 	const send = (prompt: string): void => {
 		// sendPrompt 要整轮跑完才 resolve，不 await；发送失败单独报（与设计体系 Dialog 同型）。
-		void getPluginCtx()
-			.conversation.sendPrompt(prompt)
-			.catch((error: unknown) => notify({ message: t("notes.handoff.failed"), error }));
+		const conversationApi = getPluginCtx().conversation;
+		const fail = (error: unknown): void => notify({ message: t("notes.handoff.failed"), error });
+		if (sendNeedsSession && cwd !== null) {
+			// createSession resolve 时会话已就绪，可以直接接 sendPrompt。
+			void conversationApi
+				.createSession(cwd)
+				.then(() => conversationApi.sendPrompt(prompt))
+				.catch(fail);
+			return;
+		}
+		void conversationApi.sendPrompt(prompt).catch(fail);
 	};
 
 	return {
@@ -110,7 +131,8 @@ const AUTO_DISPATCH_DEBOUNCE_MS = 1_500;
 
 /**
  * 备注自动派活：只要会话空闲，新落下的（以及重开的）备注就自己交给 agent，不必等
- * 用户去点「让 Vetta 处理」。
+ * 用户去点「让 Vetta 处理」。宿主还停在新会话页（没有活跃会话）时也照派——先建一个
+ * 会话再说话，否则「贴了备注左边却毫无动静」。
  *
  * 「新」的界限由 store 划：load 时磁盘上的存量全部记成已交付，所以打开一个设计稿
  * 不会因为上面躺着旧备注就凭空发起一轮工作。
@@ -152,8 +174,9 @@ export function useNotesAutoDispatch(notes: NotesStore, cwd: string | null): voi
 			notes.markDispatched(fresh);
 			return;
 		}
-		// 没有活跃会话 / 会话不在这个 workspace：没有人会来自检，所以留着不动，
-		// 等闸口放行的那一刻再派出去。
+		// 会话在别的 workspace（或画布连 cwd 都没有）：没有人会来自检，所以留着不动，
+		// 等闸口放行的那一刻再派出去。宿主此刻没有活跃会话不在此列——那种情况派活时
+		// 自己起一个会话（见 useNotesHandoff 的 sendNeedsSession）。
 		if (blocked !== null) return;
 		// 依赖里的 version 每次落备注都会变，于是这个计时器被清掉重设——连着放几条
 		// 就自然合并成最后那一次派活。

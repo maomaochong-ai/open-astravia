@@ -4,8 +4,10 @@ import {
 	inputValueAtom,
 	isStreamingAtom,
 	languageAtom,
+	openSessionFnRef,
 	promptAttachmentAtom,
 	selectedModelAtom,
+	sessionExecutionModeAtom,
 } from "@shared/store/atoms";
 import type { Message } from "@vetta/ai";
 import type { SessionEvent } from "@vetta/runtime-core";
@@ -13,6 +15,7 @@ import type {
 	ConversationEvent,
 	ConversationMessage,
 	ConversationState,
+	CreateSessionOptions,
 	Disposable,
 	PluginAgentActions,
 	PluginAgentToolApi,
@@ -643,6 +646,16 @@ const conversation: PluginConversationApi = {
 		// source: "plugin" —— 不清用户输入预测、不消费用户挂的 promptAttachment（ADR-0060）。
 		const result = await send(text, { source: "plugin" });
 		return result ?? { status: "sent" };
+	},
+	createSession: async (cwd: string, options?: CreateSessionOptions): Promise<ConversationState> => {
+		const open = openSessionFnRef.current;
+		if (!open) throw new Error("createSession: host session manager is not ready yet");
+		const target = cwd.trim();
+		if (!target) throw new Error("createSession: cwd is required");
+		// 执行模式取宿主当前选择，与用户在新会话页手动发送时的 openSession 入参一致。
+		await open(target, undefined, store.get(sessionExecutionModeAtom), { navigate: options?.navigate ?? true });
+		// openSession resolve 时 activeSession 已写好，所以这份快照可直接接 sendPrompt。
+		return snapshot();
 	},
 	insertText: (text: string): void => {
 		store.set(inputValueAtom, text);

@@ -69,6 +69,13 @@ export interface KanbanBoard {
 	 * 否则用户换了全局默认，板上的卡还钉在旧模型上。
 	 */
 	defaultModelKey: string;
+	/**
+	 * 自动认领：开启后，任何一张「待认领」且依赖已满足、名额未满的卡片会被看板自己
+	 * 派出去（`claimedBy: "agent"`），不需要用户先在某个会话里开口让 agent 读板。
+	 *
+	 * 默认关闭——自动建会话会真的花钱跑任务，必须是用户的显式选择。
+	 */
+	autoClaim: boolean;
 	cards: KanbanCard[];
 }
 
@@ -77,5 +84,5 @@ export const MIN_CONCURRENCY = 1;
 export const MAX_CONCURRENCY = 20;
 
 export function createEmptyBoard(defaultCwd = "", defaultModelKey = ""): KanbanBoard {
-	return { version: 1, concurrency: DEFAULT_CONCURRENCY, defaultCwd, defaultModelKey, cards: [] };
+	return { version: 1, concurrency: DEFAULT_CONCURRENCY, defaultCwd, defaultModelKey, autoClaim: false, cards: [] };
 }

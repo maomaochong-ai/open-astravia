@@ -188,6 +188,12 @@ describe("parseBoard", () => {
 		expect(round.cards[0]).toMatchObject({ id: "c1", title: "a", priority: 2, tags: ["x"], sessionPath: "/s.jsonl" });
 	});
 
+	it("旧看板没有 autoClaim 字段时默认关闭；只认显式 true", () => {
+		expect(parseBoard({ cards: [] }).autoClaim).toBe(false);
+		expect(parseBoard({ autoClaim: "yes" }).autoClaim).toBe(false);
+		expect(parseBoard({ autoClaim: true }).autoClaim).toBe(true);
+	});
+
 	it("模型选择跨落盘保留", () => {
 		let board = { ...boardWith("a"), defaultModelKey: "anthropic/claude-opus-5" };
 		board = updateCard(board, "c1", { modelKey: "openai/gpt-5" }, NOW);

@@ -22,7 +22,7 @@ src/
     types.ts                   # 卡片与看板的数据形状
     board-store.ts             # 纯函数状态层：建卡、移动、归档、打回、搜索、运行态回灌
     dispatch.ts                # 纯函数规则层：WIP 闸门、依赖顺序、派发/打回 prompt、agent 快照
-    board-controller.ts        # 唯一真相源：加载/落盘 + 副作用（建会话、发 prompt）
+    board-controller.ts        # 唯一真相源：加载/落盘 + 副作用（建会话、发 prompt）+ 自动认领循环
     relative-time.ts           # 卡片相对时间（纯函数）
   components/
     BoardView.tsx              # 主视图：工具带 + 三泳道 + 拖拽 + 底部 Composer
@@ -39,13 +39,18 @@ test/                          # board-store / dispatch / relative-time 的单�
 UI 和 agent 工具共用同一个 `KanbanBoardController`，所以用户拖一张卡、agent 下一次读板
 立刻看到；agent 认领一条需求、页面立刻亮起「运行中」。**不做双份状态**。
 
-## 两个容易踩的点
+## 三个容易踩的点
 
 1. **派单必须先占名额再发 prompt**。卡片先落到「正在处理」再调 `sessions.create`，
    否则并发派两条时两次 `canDispatch` 会看到同一个空名额、双双放行。
 2. **派单失败必须把名额吐回来**（置为 `failed`），否则一次网络抖动会永久占住一个 WIP 位。
+3. **自动认领循环必须串行且不可重入**。`scheduleAutoClaim()` 挂在 `commit()` 上（板面变化
+   的唯一出口），循环内一次只 `await` 一张卡；重入会让两张卡看到同一个空名额，
+   并行还会因为 `dispatch()` 内部的 commit 递归触发出多条循环。派不动又留在灵感池的
+   卡片会进跳过名单——否则循环会盯着同一张卡无限重试。
 
-两条都有对应测试，改动 `dispatch()` 时先看 `test/dispatch.test.ts`。
+三条都有对应测试：前两条看 `test/dispatch.test.ts`，自动认领看 `test/auto-claim.test.ts`
+（用假 ctx 驱动真实 controller，断言建会话不重叠）。
 
 另有一个渲染层的坑：插件 CSS 被 `@scope` 到 `data-vetta-plugin-root` 根节点，而
 Radix Dialog / Popover / DropdownMenu 会 portal 到 `document.body`。**每个 portaled

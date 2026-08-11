@@ -42,13 +42,35 @@ export interface SendPromptResult {
 	queueItemId?: string;
 }
 
+/** createSession 的可选项。 */
+export interface CreateSessionOptions {
+	/**
+	 * false 时会话照常创建并设为活跃，但宿主停留在当前路由（后台任务用）。
+	 * 默认 true：与用户在新会话页手动发送的观感一致，发出去就进对话页。
+	 */
+	navigate?: boolean;
+}
+
 export interface PluginConversationApi {
 	/**
 	 * Send a prompt into the active conversation (renders as a user turn).
 	 * Streaming 中会进入会话队列并立即 resolve `{ status: "queued" }`；
 	 * 队列在本轮自然停止点接力消费，abort/error 后暂停待用户处置。
+	 *
+	 * 没有活跃会话时抛错。插件若想在这种情况下也把话说出去，先 {@link createSession}。
 	 */
 	sendPrompt(text: string): Promise<SendPromptResult>;
+	/**
+	 * Create a conversation in `cwd` and make it active, resolving once it is ready
+	 * to receive prompts — `await createSession(cwd)` 后可以直接 {@link sendPrompt}。
+	 *
+	 * 用于宿主此刻没有活跃会话的场景（例如用户停在新会话页，插件侧却已经产生了要
+	 * 交给 agent 的工作）。已有活跃会话时照样新建一个，不做复用判断——要不要新开由
+	 * 插件按自己的语义决定。
+	 *
+	 * 执行模式跟随宿主当前选择，插件不感知。
+	 */
+	createSession(cwd: string, options?: CreateSessionOptions): Promise<ConversationState>;
 	/** Fill the input bar without sending; the user can edit and send. */
 	insertText(text: string): void;
 	/** Abort the active conversation's current turn. */
