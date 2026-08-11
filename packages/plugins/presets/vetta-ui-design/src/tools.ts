@@ -11,7 +11,7 @@ import { designSystemCardDescriptor } from "./cards/design-system-card";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
 import { applyDesignSystem, buildRestylePrompt } from "./design-systems/apply";
-import { DESIGN_SYSTEMS, designSystemById } from "./design-systems/index";
+import { designSystemById, designSystems } from "./design-systems/index";
 import { engineDiagnostics } from "./engine/engine-manager";
 import { composeNotePins } from "./notes/annotate";
 import { notesFilePath } from "./notes/notes-store";
@@ -421,7 +421,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				if (!system) {
 					return {
 						ok: false,
-						error: `Unknown design system "${apply}". Valid ids: ${DESIGN_SYSTEMS.map((s) => s.id).join(", ")}`,
+						error: `Unknown design system "${apply}". Valid ids: ${designSystems().map((s) => s.id).join(", ")}`,
 					};
 				}
 				let vetdPath: string;
@@ -453,7 +453,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				if (unknown.length > 0) {
 					return {
 						ok: false,
-						error: `Unknown design system ids: ${unknown.join(", ")}. Valid ids: ${DESIGN_SYSTEMS.map((s) => s.id).join(", ")}`,
+						error: `Unknown design system ids: ${unknown.join(", ")}. Valid ids: ${designSystems().map((s) => s.id).join(", ")}`,
 					};
 				}
 				return {
@@ -465,7 +465,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 			}
 
 			return {
-				systems: DESIGN_SYSTEMS.map((system) => ({
+				systems: designSystems().map((system) => ({
 					id: system.id,
 					name: system.name,
 					category: system.category,

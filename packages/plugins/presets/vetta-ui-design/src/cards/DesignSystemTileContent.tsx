@@ -1,6 +1,7 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import type { ReactNode } from "react";
 import { DesignSystemPreview } from "../canvas/DesignSystemPreview";
+import { designSystemCategoryLabel, designSystemTagline } from "../design-systems/labels";
 import type { DesignSystem } from "../design-systems/types";
 
 /**
@@ -15,7 +16,7 @@ export function DesignSystemTileContent({
 	/** 名称右侧的状态徽标（「已选择」/「当前」），没有就不占位。 */
 	badge?: ReactNode;
 }) {
-	const { t } = useTranslation();
+	const { t, locale } = useTranslation();
 	return (
 		<>
 			{/* 预览区弹性吃掉剩余高度：外层卡片是 1:1 正方形，文字两行定高在底部。 */}
@@ -31,11 +32,11 @@ export function DesignSystemTileContent({
 				{badge}
 				<span className="flex-1" />
 				<span className="shrink-0 rounded-full bg-accent px-1.5 py-px text-[10px] text-muted-foreground">
-					{t(`ds.category.${system.category}`)}
+					{designSystemCategoryLabel(system, t)}
 				</span>
 			</div>
 			<div className="min-w-0 truncate px-0.5 text-[11px] leading-tight text-muted-foreground">
-				{t(`ds.tagline.${system.id}`)}
+				{designSystemTagline(system, locale, t)}
 			</div>
 		</>
 	);

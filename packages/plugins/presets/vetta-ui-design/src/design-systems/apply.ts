@@ -28,8 +28,9 @@ export function designMdWithFrontmatter(system: DesignSystem): string {
 		"---",
 		`system: ${system.id}`,
 		`name: ${system.name}`,
-		`source: ${DESIGN_SYSTEMS_SOURCE}`,
-		"license: MIT",
+		// 远端条目自带出处与许可；内置那批统一来自上游 awesome-design-md。
+		`source: ${system.source ?? DESIGN_SYSTEMS_SOURCE}`,
+		`license: ${system.license ?? "MIT"}`,
 		"---",
 		"",
 		system.designMd,

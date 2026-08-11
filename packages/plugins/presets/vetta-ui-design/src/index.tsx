@@ -20,6 +20,7 @@ import {
 	requestMockupExport,
 	setPendingDesignPath,
 } from "./canvas/design-runtime";
+import { refreshDesignCatalog } from "./design-systems/index";
 import { stopAllDesignServers } from "./engine/engine-manager";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format";
 import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
@@ -73,6 +74,9 @@ function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor 
 export default definePlugin({
 	activate(ctx) {
 		setPluginCtx(ctx);
+		// 设计体系清单：先用打包内置那份渲染，随后静默换成缓存/远端的最新版本。
+		// 拉不到就一直用内置的，用户不感知「源」，所以这里不等待、不报错。
+		void refreshDesignCatalog(ctx);
 		// 品牌图由宿主从 plugin.json#icon 解析后注入；插件不拼宿主协议、不 import 包内 png。
 		const packageIcon = ctx.plugin.iconUrl ? <VetdFileIcon src={ctx.plugin.iconUrl} /> : undefined;
 

@@ -1,6 +1,6 @@
 import { type PluginCardProps, useTranslation } from "@vetta-org/plugin-sdk";
 import { useEffect, useMemo, useState } from "react";
-import { DESIGN_SYSTEMS, designSystemById } from "../design-systems/index";
+import { designSystemById, useDesignSystems } from "../design-systems/index";
 import { parsePreviewTokens } from "../design-systems/preview-tokens";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSystemCardPayload } from "./design-system-card";
@@ -37,6 +37,8 @@ const DESIGN_SYSTEM_CARD_FALLBACK_KEY = "vetd-design-system-card";
  */
 export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 	const { t } = useTranslation();
+	// 远端清单到货后这里会重渲染，「更多」格的数量与色点跟着更新。
+	const allSystems = useDesignSystems();
 	const payload = (descriptor.payload ?? {}) as Partial<DesignSystemCardPayload>;
 	const systems = (payload.systems ?? []).map(designSystemById).filter((system) => system !== undefined);
 	/** 已点过的选择（含 skip）。这张卡是一次性问句：选完就锁住，避免重复触发。 */
@@ -67,10 +69,10 @@ export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 	/** 「更多」格的九宫色点：取未展示体系的主色，预告 Dialog 里还有什么。 */
 	const moreSwatches = useMemo(() => {
 		const shown = new Set(systems.map((system) => system.id));
-		return DESIGN_SYSTEMS.filter((system) => !shown.has(system.id))
+		return allSystems.filter((system) => !shown.has(system.id))
 			.slice(0, 9)
 			.map((system) => ({ id: system.id, color: parsePreviewTokens(system.themeCss).colors.primary }));
-	}, [systems]);
+	}, [systems, allSystems]);
 
 	const send = (choiceId: string, prompt: string): void => {
 		if (chosen) return;
@@ -195,7 +197,7 @@ export function DesignSystemPickerCard({ descriptor }: PluginCardProps) {
 						{chosenViaGallery ? <PickedBadge label={pickedLabel} /> : null}
 					</span>
 					<span className="text-[11px] leading-tight text-muted-foreground">
-						{t("ds.card.moreHint", { count: DESIGN_SYSTEMS.length })}
+						{t("ds.card.moreHint", { count: allSystems.length })}
 					</span>
 				</button>
 			</div>

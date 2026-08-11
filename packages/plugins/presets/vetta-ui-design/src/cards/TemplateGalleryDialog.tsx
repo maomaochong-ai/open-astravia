@@ -1,6 +1,6 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type ReactNode, useEffect, useState } from "react";
-import { DESIGN_SYSTEMS, designSystemById } from "../design-systems/index";
+import { designSystemById, useDesignSystems } from "../design-systems/index";
 import { PluginPortal } from "../plugin-portal";
 import { DesignSystemTileContent } from "./DesignSystemTileContent";
 
@@ -31,6 +31,7 @@ export function TemplateGalleryDialog({
 	escDisabled,
 }: TemplateGalleryDialogProps) {
 	const { t } = useTranslation();
+	const systems = useDesignSystems();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const selected = selectedId ? designSystemById(selectedId) : undefined;
 	const applied = appliedId ? designSystemById(appliedId) : undefined;
@@ -94,7 +95,7 @@ export function TemplateGalleryDialog({
 					</div>
 					<div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
 						<div className="grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
-							{DESIGN_SYSTEMS.map((system) => {
+							{systems.map((system) => {
 								const isSelected = selectedId === system.id;
 								return (
 									<button
