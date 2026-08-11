@@ -113,6 +113,24 @@ describe("content agent operations", () => {
 		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("targetHandle");
 	});
 
+	it("normalizes legacy and internal target input names after tool validation", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "prompt", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 400, y: 0 } } },
+			{ type: "node.add", node: { id: "output", kind: "output", position: { x: 800, y: 0 } } },
+		]);
+
+		const commands = parseContentAgentOperations(project, [
+			{ type: "connect_nodes", source: "prompt", target: "image", targetInput: "prompt" },
+			{ type: "connect_nodes", source: "image", target: "output", targetInput: "content" },
+		]);
+
+		expect(commands).toEqual([
+			expect.objectContaining({ type: "edge.connect", targetHandle: "prompt" }),
+			expect.objectContaining({ type: "edge.connect", targetHandle: "content" }),
+		]);
+	});
+
 	it("compiles video intent into model-backed role bindings in the same node batch", () => {
 		const project = createContentProject("C:/project");
 		const commands = parseContentAgentOperations(project, [
@@ -121,7 +139,7 @@ describe("content agent operations", () => {
 			{ type: "add_node", id: "video", kind: "video-generator" },
 			{
 				type: "configure_generation",
-				nodeId: "video",
+				targetNodeId: "video",
 				generationIntent: "interpolate-frames",
 				sources: [{ sourceNodeId: "first" }, { sourceNodeId: "last" }],
 			},
@@ -134,15 +152,58 @@ describe("content agent operations", () => {
 		]);
 	});
 
-	it("rejects mechanical media connections to generators", () => {
+	it("turns legacy video target inputs into an actionable generation-plan error", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
 			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
 		]);
 
-		expect(() => parseContentAgentOperations(project, [
-			{ type: "connect_nodes", source: "image", target: "video" },
-		])).toThrow("must use configure_generation");
+		try {
+			parseContentAgentOperations(project, [
+				{ type: "connect_nodes", source: "image", target: "video", targetInput: "startImages" },
+			]);
+			expect.unreachable("expected semantic connection error");
+		} catch (error) {
+			expect(error).toMatchObject({
+				code: "generation-semantic-connection-required",
+				retryable: true,
+				details: {
+					targetNodeId: "video",
+					requiredOperation: "configure_generation",
+					suggestedSource: { sourceNodeId: "image" },
+				},
+			});
+		}
+	});
+
+	it("explains when configure_generation uses a source image as its target", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "product-image", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "product-video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		try {
+			parseContentAgentOperations(project, [
+				{
+					type: "configure_generation",
+					targetNodeId: "product-image",
+					generationIntent: "animate-still",
+					sources: [{ sourceNodeId: "product-image" }],
+				},
+			], [FRAME_VIDEO_MODEL]);
+			expect.unreachable("expected invalid generation target error");
+		} catch (error) {
+			expect(error).toMatchObject({
+				code: "generation-intent-target-invalid",
+				retryable: true,
+				details: {
+					targetNodeId: "product-image",
+					targetKind: "image-generator",
+					videoGeneratorNodeIds: ["product-video"],
+					suggestedSource: { sourceNodeId: "product-image" },
+				},
+			});
+		}
 	});
 
 	it("keeps the unambiguous generated-image reference role explicit", () => {

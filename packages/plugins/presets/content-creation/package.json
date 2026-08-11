@@ -21,6 +21,7 @@
 		"@types/node": "^22.10.5",
 		"@types/react": "^19.1.1",
 		"@types/react-dom": "^19.1.1",
+		"@vetta/ai": "workspace:*",
 		"@vetta-org/plugin-sdk": "workspace:*",
 		"@vetta-org/plugin-vite": "workspace:*",
 		"@vetta/ui": "workspace:*",

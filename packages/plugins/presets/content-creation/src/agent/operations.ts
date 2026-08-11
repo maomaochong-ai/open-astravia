@@ -27,14 +27,14 @@ const DELIVERABLE_TYPES: readonly ContentWorkflowDeliverable["type"][] = [
 	"content",
 ];
 
-const AGENT_TARGET_INPUTS = [
+const CANONICAL_AGENT_TARGET_INPUTS = [
 	"mediaSources",
 	"promptSources",
 	"referenceImages",
 	"contentSources",
 ] as const;
 
-type AgentTargetInput = (typeof AGENT_TARGET_INPUTS)[number];
+type AgentTargetInput = (typeof CANONICAL_AGENT_TARGET_INPUTS)[number];
 
 export const CONTENT_AGENT_OPERATION_SCHEMA = {
 	type: "array",
@@ -45,6 +45,8 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 		properties: {
 			type: {
 				type: "string",
+				description:
+					"Operation kind. Use configure_generation only for a video-generator target; put image/video sources in sources[].",
 				enum: [
 					"update_workflow",
 					"add_node",
@@ -72,9 +74,15 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			objective: { type: "string" },
 			purpose: { type: "string" },
 			assetIds: { type: "array", items: { type: "string" } },
-			generationIntent: { type: "string", enum: CONTENT_VIDEO_GENERATION_INTENTS },
+			generationIntent: {
+				type: "string",
+				enum: CONTENT_VIDEO_GENERATION_INTENTS,
+				description: "Required only for configure_generation. Classifies the requested video generation behavior.",
+			},
 			sources: {
 				type: "array",
+				description:
+					"Media sources for configure_generation. sourceNodeId identifies an asset/image-generator/video-generator source, never the target video-generator.",
 				items: {
 					type: "object",
 					properties: {
@@ -108,14 +116,22 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			providerId: { type: "string" },
 			modelId: { type: "string" },
 			modeId: { type: "string" },
-			nodeId: { type: "string" },
+			nodeId: {
+				type: "string",
+				description:
+					"Node operated on by update/rename/delete/duplicate. Legacy alias for configure_generation targetNodeId; prefer targetNodeId there.",
+			},
+			targetNodeId: {
+				type: "string",
+				description:
+					"For configure_generation only: ID of the video-generator receiving the media. Never use an image source ID here.",
+			},
 			source: { type: "string" },
 			target: { type: "string" },
 			targetInput: {
 				type: "string",
-				enum: AGENT_TARGET_INPUTS,
 				description:
-					"Optional semantic target input. Omit when source and target types identify one valid input.",
+					"Optional semantic target input for connect_nodes/bind_assets. Prefer promptSources, referenceImages, contentSources, or mediaSources. Legacy/internal names are normalized so the tool can return an actionable domain error instead of failing JSON Schema validation.",
 			},
 			edgeId: { type: "string" },
 		},
@@ -246,12 +262,18 @@ function parseOperation(
 			const sourceKind = nodeKinds.get(source);
 			if (!sourceKind) throw new Error(`node not found: ${source}`);
 			if (!targetKind) throw new Error(`node not found: ${target}`);
-			const targetInput = optionalAgentTargetInput(operation.targetInput);
+			const targetInput = resolveAgentTargetInput(targetKind, operation.targetInput);
 			if (targetKind === "video-generator" && sourceKind !== "prompt") {
 				throw new ContentGenerationIntentError(
 					"media inputs for generation nodes must use configure_generation so their business role is explicit",
 					"generation-semantic-connection-required",
-					{ sourceNodeId: source, targetNodeId: target },
+					{
+						sourceNodeId: source,
+						targetNodeId: target,
+						requiredOperation: "configure_generation",
+						suggestedSource: { sourceNodeId: source },
+						generationIntents: CONTENT_VIDEO_GENERATION_INTENTS,
+					},
 				);
 			}
 			if (targetKind === "image-generator" && sourceKind === "asset") {
@@ -295,7 +317,7 @@ function parseOperation(
 					{ sourceNodeId: source, targetNodeId: target },
 				);
 			}
-			const targetInput = optionalAgentTargetInput(operation.targetInput);
+			const targetInput = resolveAgentTargetInput(targetKind, operation.targetInput);
 			if (!targetInput) throw new Error("bind_assets requires targetInput");
 			const binding = assetBindingForAgentInput(targetKind, targetInput);
 			const assetIds = operation.assetIds;
@@ -311,9 +333,28 @@ function parseOperation(
 			};
 		}
 		case "configure_generation": {
-			const targetNodeId = requiredString(operation, "nodeId");
+			const explicitTargetNodeId = optionalString(operation, "targetNodeId");
+			const legacyTargetNodeId = optionalString(operation, "nodeId");
+			if (explicitTargetNodeId && legacyTargetNodeId && explicitTargetNodeId !== legacyTargetNodeId) {
+				throw new ContentGenerationIntentError(
+					"configure_generation targetNodeId and legacy nodeId identify different nodes",
+					"generation-intent-target-ambiguous",
+					{ targetNodeId: explicitTargetNodeId, nodeId: legacyTargetNodeId },
+				);
+			}
+			const targetNodeId = explicitTargetNodeId ?? legacyTargetNodeId;
+			if (!targetNodeId) {
+				throw new ContentGenerationIntentError(
+					"configure_generation requires targetNodeId for the receiving video-generator",
+					"generation-intent-target-required",
+					{ videoGeneratorNodeIds: listNodeIdsByKind(nodeSnapshots, "video-generator") },
+				);
+			}
 			const target = nodeSnapshots.get(targetNodeId);
 			if (!target) throw new Error(`node not found: ${targetNodeId}`);
+			if (target.kind !== "video-generator") {
+				throw invalidGenerationTarget(target, nodeSnapshots);
+			}
 			const intentValue = requiredString(operation, "generationIntent");
 			if (!CONTENT_VIDEO_GENERATION_INTENTS.includes(intentValue as ContentVideoGenerationIntent)) {
 				throw new Error(`unsupported generation intent: ${intentValue}`);
@@ -356,12 +397,23 @@ function parseOperation(
 	}
 }
 
-function optionalAgentTargetInput(value: unknown): AgentTargetInput | undefined {
+function resolveAgentTargetInput(kind: ContentNodeKind, value: unknown): AgentTargetInput | undefined {
 	if (value === undefined) return undefined;
-	if (typeof value !== "string" || !AGENT_TARGET_INPUTS.includes(value as AgentTargetInput)) {
-		throw new Error("targetInput is not supported");
+	if (typeof value !== "string") {
+		throw new ContentGenerationIntentError(
+			"targetInput must be a string",
+			"target-input-unsupported",
+			{ targetKind: kind, allowedTargetInputs: allowedTargetInputs(kind) },
+		);
 	}
-	return value as AgentTargetInput;
+	if (CANONICAL_AGENT_TARGET_INPUTS.includes(value as AgentTargetInput)) return value as AgentTargetInput;
+	const normalized = TARGET_INPUT_ALIASES[kind]?.[value];
+	if (normalized) return normalized;
+	throw new ContentGenerationIntentError(
+		`targetInput ${value} is not supported for ${kind}`,
+		"target-input-unsupported",
+		{ targetKind: kind, receivedTargetInput: value, allowedTargetInputs: allowedTargetInputs(kind) },
+	);
 }
 
 function targetHandleForAgentInput(kind: ContentNodeKind, input: AgentTargetInput): string {
@@ -372,8 +424,77 @@ function targetHandleForAgentInput(kind: ContentNodeKind, input: AgentTargetInpu
 		output: { contentSources: "content" },
 	};
 	const handle = mapping[kind]?.[input];
-	if (!handle) throw new Error(`targetInput ${input} is not valid for ${kind}`);
+	if (!handle) {
+		throw new ContentGenerationIntentError(
+			`targetInput ${input} is not valid for ${kind}`,
+			"target-input-invalid-for-node",
+			{ targetKind: kind, receivedTargetInput: input, allowedTargetInputs: allowedTargetInputs(kind) },
+		);
+	}
 	return handle;
+}
+
+const TARGET_INPUT_ALIASES: Partial<Record<ContentNodeKind, Readonly<Record<string, AgentTargetInput>>>> = {
+	prompt: {
+		media: "mediaSources",
+		image: "mediaSources",
+		video: "mediaSources",
+		audio: "mediaSources",
+	},
+	"image-generator": {
+		prompt: "promptSources",
+		text: "promptSources",
+		reference: "referenceImages",
+		image: "referenceImages",
+		startImages: "referenceImages",
+		firstFrame: "referenceImages",
+	},
+	"video-generator": {
+		prompt: "promptSources",
+		text: "promptSources",
+		image: "mediaSources",
+		video: "mediaSources",
+		audio: "mediaSources",
+		startImages: "mediaSources",
+		firstFrame: "mediaSources",
+		lastFrame: "mediaSources",
+		referenceVideos: "mediaSources",
+		referenceAudios: "mediaSources",
+	},
+	output: {
+		content: "contentSources",
+		deliverable: "contentSources",
+		image: "contentSources",
+		video: "contentSources",
+		audio: "contentSources",
+	},
+};
+
+function allowedTargetInputs(kind: ContentNodeKind): string[] {
+	return [...new Set([
+		...Object.values(TARGET_INPUT_ALIASES[kind] ?? {}),
+		...Object.keys(TARGET_INPUT_ALIASES[kind] ?? {}),
+	])];
+}
+
+function invalidGenerationTarget(
+	target: ContentNode,
+	nodes: ReadonlyMap<string, ContentNode>,
+): ContentGenerationIntentError {
+	return new ContentGenerationIntentError(
+		"configure_generation targetNodeId must identify the receiving video-generator; put image/video inputs in sources[]",
+		"generation-intent-target-invalid",
+		{
+			targetNodeId: target.id,
+			targetKind: target.kind,
+			videoGeneratorNodeIds: listNodeIdsByKind(nodes, "video-generator"),
+			suggestedSource: { sourceNodeId: target.id },
+		},
+	);
+}
+
+function listNodeIdsByKind(nodes: ReadonlyMap<string, ContentNode>, kind: ContentNodeKind): string[] {
+	return [...nodes.values()].filter((node) => node.kind === kind).map((node) => node.id);
 }
 
 function assetBindingForAgentInput(

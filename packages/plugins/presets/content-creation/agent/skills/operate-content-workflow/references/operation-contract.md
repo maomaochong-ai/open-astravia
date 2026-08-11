@@ -32,7 +32,7 @@ Every generator node should have a purpose that states its role and changed vari
 
 Use `afterNodeId` or automatic placement. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect ordinary topology with semantic `targetInput` values (`promptSources`, `referenceImages`, `contentSources`, or `mediaSources`) instead of internal handles. Use `bind_assets` to select concrete image-generator references.
 
-Video media inputs are a generation plan, not generic graph edges. Use one `configure_generation` operation for the target video node:
+Video media inputs are a generation plan, not generic graph edges. Use one `configure_generation` operation with `targetNodeId` set to the receiving video-generator. Put all source image/video node IDs in `sources[]`; never use a source node as `targetNodeId`:
 
 - `text-to-video`: no sources;
 - `animate-still`: exactly one image source, treated as the initial composition/frame;

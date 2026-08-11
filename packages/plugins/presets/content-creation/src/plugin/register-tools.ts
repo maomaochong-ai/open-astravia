@@ -77,7 +77,7 @@ export function registerContentCreationTools(
 		name: CONTENT_EDIT_TOOL_NAME,
 		label: "%tool.edit.label%",
 		description:
-			"Atomically apply a revision-bound batch of semantic workflow edits without a confirmation step. Include nodes and their connections in one coherent batch, then use the returned readiness analysis to repair incomplete graphs.",
+			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Include nodes and connections in one coherent batch. For video media, call configure_generation with targetNodeId set to the receiving video-generator and put image/video inputs in sources[]. The returned readiness analysis identifies incomplete graphs.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -220,7 +220,7 @@ function toolError(error: unknown) {
 	if (error instanceof ContentGenerationIntentError) {
 		return {
 			ok: false,
-			retryable: false,
+			retryable: error.retryable,
 			code: error.code,
 			error: error.message,
 			...(error.details ? { details: error.details } : {}),

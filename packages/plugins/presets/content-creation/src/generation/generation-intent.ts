@@ -72,6 +72,7 @@ export class ContentGenerationIntentError extends Error {
 		message: string,
 		readonly code: string,
 		readonly details?: Record<string, unknown>,
+		readonly retryable = true,
 	) {
 		super(message);
 	}
@@ -99,9 +100,16 @@ export function planContentVideoGeneration(
 	const target = requireNode(project, targetNodeId);
 	if (target.kind !== "video-generator") {
 		throw new ContentGenerationIntentError(
-			"generation intent target must be a video generator",
+			"configure_generation targetNodeId must identify the receiving video-generator; put image/video inputs in sources[]",
 			"generation-intent-target-invalid",
-			{ targetNodeId, targetKind: target.kind },
+			{
+				targetNodeId,
+				targetKind: target.kind,
+				videoGeneratorNodeIds: project.graph.nodes
+					.filter((node) => node.kind === "video-generator")
+					.map((node) => node.id),
+				suggestedSource: { sourceNodeId: targetNodeId },
+			},
 		);
 	}
 	const resolvedSources = sources.flatMap((source) => resolveSource(project, source));
@@ -146,6 +154,7 @@ export function planContentVideoGeneration(
 			requestedModelId: options.modelId,
 			availableModels: candidates.map((model) => `${model.providerId}/${model.modelId}`),
 		},
+		Boolean(options.providerId || options.modelId),
 	);
 }
 
