@@ -18,7 +18,7 @@ const MAX_ENTRIES = 200;
 const MAX_RESOURCES_PER_ENTRY = 60;
 const MAX_RESOURCE_BYTES = 8 * 1024 * 1024;
 
-const RESOURCE_ROLES = new Set<DesignResourceRole>(["spec", "theme", "preview", "package"]);
+const RESOURCE_ROLES = new Set<DesignResourceRole>(["spec", "theme", "demo", "cover", "preview", "package"]);
 
 /**
  * 资源路径会被拼成用户磁盘上的落盘路径，所以穿越必须在这里挡死：不接受绝对路径、

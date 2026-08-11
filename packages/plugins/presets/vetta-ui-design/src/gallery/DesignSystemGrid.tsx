@@ -1,4 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
+import { useState } from "react";
 import { DesignSystemTileContent } from "../cards/DesignSystemTileContent";
 import { refreshDesignCatalog, useCatalogState } from "../design-systems/index";
 import type { DesignSystem } from "../design-systems/types";
@@ -27,6 +28,8 @@ const SKELETON_COUNT = 6;
 export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystemGridProps) {
 	const { t } = useTranslation();
 	const { systems, status } = useCatalogState();
+	/** 悬停中的条目：只让它的 demo 滚动，其余保持静止。 */
+	const [hovered, setHovered] = useState<string | null>(null);
 
 	return (
 		<section className={divided ? "mt-6 border-t border-border pt-5" : ""}>
@@ -46,7 +49,7 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 							aria-label={t("gallery.styles.start", { name: system.name })}
 							className="flex aspect-square min-w-0 flex-col gap-1.5 overflow-hidden rounded-xl border border-border p-2 text-left transition-all duration-200 hover:border-primary hover:shadow-sm disabled:opacity-40"
 						>
-							<DesignSystemTileContent system={system} />
+							<DesignSystemTileContent system={system} demoActive={hovered === system.id} />
 						</button>
 					))}
 				</div>

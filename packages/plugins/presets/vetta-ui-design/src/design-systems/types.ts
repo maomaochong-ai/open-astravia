@@ -1,5 +1,5 @@
 /** 资源在一套体系里承担的角色；没有角色的就是普通参考素材（截图、参考 HTML…）。 */
-export type DesignResourceRole = "spec" | "theme" | "preview" | "package";
+export type DesignResourceRole = "spec" | "theme" | "demo" | "cover" | "preview" | "package";
 
 /**
  * 一套体系带的一份资源文件。
