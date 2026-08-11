@@ -68,7 +68,12 @@ todo.md
 settings.local.json
 
 # 本机 AI 工具配置（每个开发者各自维护）
-.claude/
+.claude/*
+!.claude/settings.json
+!.claude/hooks/
+.claude/hooks/*
+!.claude/hooks/check-file-lines.mjs
+!.claude/hooks/check-file-lines.test.mjs
 .codex/
 prompt/
 spec/

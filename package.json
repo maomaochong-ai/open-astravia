@@ -73,7 +73,7 @@
 		"check": "concurrently --names \"lint,types,guards\" --prefix-colors \"cyan,yellow,magenta\" \"bun run check:lint\" \"bun run check:types\" \"bun run check:guards\"",
 		"fix": "bun run check:lint:fix",
 		"test": "bun run --workspaces --if-present test",
-		"test:quality": "bunx vitest --run scripts/quality/quality-gates.test.mjs scripts/quality/coding-agent-architecture.test.mjs scripts/quality/coding-agent-tool-public-surface.test.mjs scripts/quality/runtime-coding-agent-independence.test.mjs scripts/quality/runtime-subagents-boundary.test.mjs scripts/quality/runtime-failure-contract.test.mjs scripts/quality/agent-ai-maintainability.test.mjs",
+		"test:quality": "bunx vitest --run .claude/hooks/check-file-lines.test.mjs scripts/quality/quality-gates.test.mjs scripts/quality/coding-agent-architecture.test.mjs scripts/quality/coding-agent-tool-public-surface.test.mjs scripts/quality/runtime-coding-agent-independence.test.mjs scripts/quality/runtime-subagents-boundary.test.mjs scripts/quality/runtime-failure-contract.test.mjs scripts/quality/agent-ai-maintainability.test.mjs",
 		"test:unit": "bun run scripts/quality/test-pkg.mjs ai agent runtime-mcp coding-agent ecosystem-adapter",
 		"test:pkg": "bun run scripts/quality/test-pkg.mjs",
 		"test:changed": "bun run scripts/quality/test-changed.mjs",
