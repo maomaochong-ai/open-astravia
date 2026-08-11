@@ -13,7 +13,7 @@ Desktop 的插件工作台和未打包开发启动都需要 React/CSS HMR，以�
 ## 决策
 
 1. 宿主始终解析插件工程模块图中的 `@vetta-org/plugin-vite/cli` 公共子路径，并用 Node 直接执行解析出的文件。不得回退到宿主或 monorepo 根工具包，也不得通过 `bunx` 隐式下载工具版本。
-2. 插件稳定 installed/staging 快照与开发会话状态分离。`starting` 和启动期 `error` 只发布诊断状态；只有 CLI 发出协议版本、插件 id 和本机同源 URL 均通过校验的 `ready` 后，宿主才一次性提交源码 dev overlay、刷新 Agent 配置并定向替换 activation。
+2. 插件稳定 installed/staging 快照与开发会话状态分离。`starting` 和启动期 `error` 只发布诊断状态；开发服务器必须先验证 manifest 可访问，并通过 Vite client transform 递归验证插件工程目录内的入口模块图。只有随后 CLI 发出协议版本、插件 id 和本机同源 URL 均通过校验的 `ready`，宿主才一次性提交源码 dev overlay、刷新 Agent 配置并定向替换 activation。React 等宿主共享依赖不属于工程本地模块图，仍由 Renderer 在真实 share scope 中完成加载和 activation 校验。
 3. ready 前失败保留稳定快照。ready 后开发进程异常退出时立即撤下不可达的 localhost overlay、回退稳定快照，并按 250ms、1s、3s 有限重启；重试耗尽后保持稳定快照与错误诊断。Vite 编译或资源 watcher 错误属于可恢复错误，只标记状态，不杀仍存活的服务器。
 4. 多插件会话彼此隔离。默认 tenant 的全部 preset 仍可启用热更新，但冷启动最多四路并发，timeout 从实际 spawn 开始计算；批量入口逐插件汇总成功与失败，单个项目失败不取消或掩盖其它项目。
 5. 开发 overlay 仅存在于未打包 Desktop 的内存中，不修改用户插件注册表、系统插件 staging 或发布 zip。未安装的显式 external 在 ready 前保持 disabled，ready 后才成为本会话可用的临时插件。
@@ -34,4 +34,5 @@ Desktop 的插件工作台和未打包开发启动都需要 React/CSS HMR，以�
 - `@vetta-org/plugin-vite` 的 `./cli` 成为 Desktop 与外部工具可依赖的公共子路径，移除或改名需要协议迁移。
 - 系统插件常态仍遵守 ADR-0024 的 staging-only 合同；源码访问是未打包 Desktop、握手成功、纯内存且可回滚的开发期例外。
 - Desktop 必须保留项目本地 CLI 解析、ready/URL 校验、失败回滚、批量隔离和重启生命周期测试。
+- `plugin-vite` 必须保留开发入口模块图探针，并区分普通 stylesheet 请求与 `?raw` / `?url` / `?inline` CSS 资源模块；后者不得进入 PostCSS scope 转换。
 - 仓库外热更新依赖包含该公共 CLI 与协议实现的 `@vetta-org/plugin-vite` 版本先发布，再由脚手架和 Desktop 对外声明。

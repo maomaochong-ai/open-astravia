@@ -1,6 +1,22 @@
 import postcss, { type Rule } from "postcss";
 import { describe, expect, it } from "vitest";
-import { scopePluginCss } from "../src/style-scope.js";
+import { isPluginStylesheetRequest, scopePluginCss } from "../src/style-scope.js";
+
+describe("isPluginStylesheetRequest", () => {
+	it.each([
+		["/src/style.css", true],
+		["/src/style.module.css", true],
+		["/src/style.css?direct", true],
+		["/src/style.css?t=123", true],
+		["/src/theme.css?raw", false],
+		["/src/theme.css?raw&t=123", false],
+		["/src/theme.css?url", false],
+		["/src/theme.css?inline", false],
+		["/src/theme.scss?raw", false],
+	])("classifies %s", (id, expected) => {
+		expect(isPluginStylesheetRequest(id)).toBe(expected);
+	});
+});
 
 describe("scopePluginCss", () => {
 	it("scopes ordinary selectors and maps root selectors to the plugin root", () => {

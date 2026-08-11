@@ -12,13 +12,24 @@ const mocks = vi.hoisted(() => ({
 	server: {
 		config: { plugins: [{ name: "vetta-plugin-dev-runtime" }] },
 		resolvedUrls: { local: ["http://127.0.0.1:4100/"] },
+		environments: {
+			client: {
+				transformRequest: vi.fn(async () => ({ code: "", map: null })),
+				moduleGraph: {
+					getModuleByUrl: vi.fn(async () => ({ importedModules: new Set() })),
+				},
+			},
+		},
 		listen: vi.fn(async () => {}),
 		close: vi.fn(async () => {}),
 	},
 }));
 
 vi.mock("chokidar", () => ({ watch: () => mocks.watcher }));
-vi.mock("vite", () => ({ createServer: async () => mocks.server }));
+vi.mock("vite", () => ({
+	createServer: async () => mocks.server,
+	isCSSRequest: (id: string) => id.split("?", 1)[0].endsWith(".css"),
+}));
 
 import { startVettaPluginDevServer } from "../src/dev-server.js";
 
@@ -58,6 +69,9 @@ describe("plugin development resource watcher", () => {
 			entryUrl: "http://127.0.0.1:4100/mf-manifest.json",
 			origin: "http://127.0.0.1:4100",
 		});
+		expect(mocks.server.environments.client.transformRequest).toHaveBeenCalledWith(
+			"virtual:vetta-plugin-dev-entry",
+		);
 		await server.close();
 	});
 });

@@ -6,6 +6,8 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Fixed
 
+- Kept CSS resource-module requests such as `?raw`, `?url`, and `?inline` out of the development PostCSS scoping pipeline, while preserving scoping for normal, direct, and HMR stylesheet requests.
+- Made the development ready handshake transform the plugin-local module graph before publishing the source overlay, so entry dependency compilation failures retain the stable plugin instead of surfacing later in Renderer.
 - Exposed the project-local `vetta-plugin` CLI through the stable `@vetta-org/plugin-vite/cli` subpath so ESM-only package exports can be resolved by Desktop without pretending the package has a CommonJS entry.
 - Stopped the resource watcher's initial scan from blocking the development server ready handshake after Vite was already serving the plugin entry.
 - Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.

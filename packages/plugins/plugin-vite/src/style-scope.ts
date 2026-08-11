@@ -3,6 +3,7 @@ import { join } from "node:path";
 import postcss, { type AtRule, type Container, type Node, type Rule } from "postcss";
 import selectorParser from "postcss-selector-parser";
 import type { Plugin } from "vite";
+import { hasOpaqueResourceQuery } from "./request-query.js";
 
 const PLUGIN_ROOT_ATTRIBUTE = "data-vetta-plugin-root";
 const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
@@ -150,6 +151,19 @@ export function scopePluginCss(css: string, pluginId: string): string {
 	return root.toString();
 }
 
+/**
+ * Vite can import a CSS file as a JavaScript resource module via queries such
+ * as `?raw`. Those requests keep the `.css` pathname, but their transform
+ * input is JavaScript and must not be parsed by PostCSS. Other queries such as
+ * `?direct` and HMR timestamps still represent stylesheet requests.
+ */
+export function isPluginStylesheetRequest(id: string): boolean {
+	const queryIndex = id.indexOf("?");
+	const pathname = queryIndex === -1 ? id : id.slice(0, queryIndex);
+	if (!pathname.endsWith(".css")) return false;
+	return !hasOpaqueResourceQuery(id);
+}
+
 function readPluginId(rootDir: string): string {
 	const manifestPath = join(rootDir, "plugin.json");
 	const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { id?: unknown };
@@ -170,7 +184,7 @@ export function createPluginStyleScopePlugin(): Plugin {
 			command = config.command;
 		},
 		transform(code, id) {
-			if (command !== "serve" || !id.split("?", 1)[0].endsWith(".css")) return;
+			if (command !== "serve" || !isPluginStylesheetRequest(id)) return;
 			return {
 				code: scopePluginCss(code, pluginId),
 				map: null,

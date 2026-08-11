@@ -215,7 +215,7 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 4. 修改插件入口、`plugin.json`、locale 或 agent 资源时，宿主只替换当前插件的 activation，其他插件不重载。
 5. permissions、commands 等安装态能力需要正式同步时，再重新构建并安装 zip。
 
-宿主会一直保留安装版或系统插件 staging 作为稳定基线；工程内开发服务器完成版本化 ready 握手后才原子切换到源码 overlay。ready 前失败不会替换当前插件，运行中的服务器异常退出会先回退稳定版本并有限重启。
+宿主会一直保留安装版或系统插件 staging 作为稳定基线；工程内开发服务器确认 manifest 可访问并完成插件本地入口模块图转换后，才发送版本化 ready 握手并原子切换到源码 overlay。ready 前的依赖编译失败不会替换当前插件，运行中的服务器异常退出会先回退稳定版本并有限重启。React 等宿主共享依赖仍在 Renderer 的真实 share scope 中加载。
 
 `bun run dev` 可单独启动同一个开发服务器并输出 NDJSON 状态，主要用于宿主或工具集成；使用插件工作台时不要重复启动。安装更新版本仍会记为 **pending**，直到 `reload` 才切换正式安装态的 `activeVersion`。
 
