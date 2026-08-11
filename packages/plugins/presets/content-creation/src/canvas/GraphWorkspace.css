@@ -100,19 +100,30 @@
 	border-color: var(--background);
 }
 
-/* Zoom / fit controls (bottom-left): match vetta popover + button chrome */
+/*
+ * Zoom / fit controls (bottom-left).
+ * Keep a single column width wide enough for "400%" — if the panel stays at
+ * icon size (26–28px) and overflow is hidden, the percent label wraps into a
+ * vertical mess (e.g. "62" over "%").
+ */
 .content-creation-flow .react-flow__controls {
+	box-sizing: border-box;
+	min-width: 40px;
 	overflow: hidden;
 	border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
 	border-radius: var(--radius-lg, 12px);
 	background: color-mix(in srgb, var(--popover) 94%, transparent);
 	box-shadow: 0 8px 24px color-mix(in srgb, black 12%, transparent);
 	backdrop-filter: blur(12px);
+	align-items: stretch;
 }
 
 .content-creation-flow .react-flow__controls-button {
-	width: 28px;
+	box-sizing: border-box;
+	width: 100%;
+	min-width: 40px;
 	height: 28px;
+	padding: 0;
 	border: 0;
 	border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
 	background: transparent;
@@ -121,8 +132,11 @@
 }
 
 .content-creation-flow .react-flow__controls-button svg {
+	width: 14px;
+	height: 14px;
 	max-width: 14px;
 	max-height: 14px;
+	flex-shrink: 0;
 	fill: currentColor;
 }
 
@@ -138,6 +152,27 @@
 
 .content-creation-flow .react-flow__controls-button path {
 	fill: currentColor;
+}
+
+.content-creation-flow .react-flow__controls-button.content-creation-zoom-percent {
+	padding: 0 4px;
+	font-size: 10px;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: -0.02em;
+	line-height: 1;
+	white-space: nowrap;
+}
+
+.content-creation-flow .react-flow__controls-button.content-creation-zoom-percent .content-creation-zoom-percent__label {
+	display: block;
+	width: 100%;
+	min-width: 3ch;
+	overflow: hidden;
+	text-align: center;
+	text-overflow: clip;
+	white-space: nowrap;
+	color: currentColor;
 }
 
 .content-creation-flow .react-flow__attribution {

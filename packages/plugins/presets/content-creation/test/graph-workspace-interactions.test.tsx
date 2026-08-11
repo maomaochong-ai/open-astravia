@@ -17,11 +17,25 @@ const shortcutScopeCapture = vi.hoisted(() => ({
 }));
 
 vi.mock("@xyflow/react", () => ({
-	Controls: () => null,
+	Controls: ({ children }: { children?: unknown }) => <>{children}</>,
+	ControlButton: ({ children }: { children?: unknown }) => <button type="button">{children}</button>,
+	useStore: (
+		selector: (state: {
+			transform: [number, number, number];
+			minZoom: number;
+			maxZoom: number;
+		}) => unknown,
+	) => selector({ transform: [0, 0, 1], minZoom: 0.1, maxZoom: 4 }),
+	useReactFlow: () => ({
+		zoomTo: vi.fn(),
+		zoomIn: vi.fn(),
+		zoomOut: vi.fn(),
+		fitView: vi.fn(),
+	}),
 	SelectionMode: { Partial: "partial" },
 	ReactFlow: (props: Record<string, unknown>) => {
 		reactFlowCapture.props = props;
-		return <div />;
+		return <div>{props.children as never}</div>;
 	},
 }));
 
@@ -107,16 +121,58 @@ describe("GraphWorkspace mouse interactions", () => {
 
 		expect(reactFlowCapture.props?.minZoom).toBe(0.2);
 		expect(reactFlowCapture.props?.maxZoom).toBe(3);
+		expect(reactFlowCapture.props?.fitView).toBeUndefined();
+		expect(reactFlowCapture.props?.defaultViewport).toEqual({ x: 0, y: 0, zoom: 1.25 });
 
 		const zoomTo = vi.fn().mockResolvedValue(true);
+		const setViewport = vi.fn().mockResolvedValue(true);
 		(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
 			setNodes: vi.fn(),
 			setEdges: vi.fn(),
 			zoomTo,
+			setViewport,
+			fitView: vi.fn(),
 		});
+		// Empty project opens at default zoom without auto-fitting scale.
+		expect(setViewport).toHaveBeenCalledWith({ x: 0, y: 0, zoom: 1.25 });
 		(projectMenuCapture.props?.onResetZoom as () => void)();
 
 		expect(zoomTo).toHaveBeenCalledWith(1.25, { duration: 180 });
+	});
+
+	it("centers existing nodes at default zoom on init without auto-scaling", () => {
+		const project = createContentProject("C:\\project");
+		project.graph.nodes.push({
+			id: "n1",
+			kind: "prompt",
+			position: { x: 120, y: 80 },
+			status: "idle",
+			data: {},
+		});
+
+		renderToStaticMarkup(
+			<GraphWorkspace
+				project={project}
+				assetPreviewUrls={new Map()}
+				models={[]}
+				onDispatch={async () => undefined}
+				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
+				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={() => undefined}
+				onOpenSettings={() => undefined}
+			/>,
+		);
+
+		const fitView = vi.fn().mockResolvedValue(true);
+		(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
+			setNodes: vi.fn(),
+			setEdges: vi.fn(),
+			setViewport: vi.fn(),
+			fitView,
+		});
+
+		expect(fitView).toHaveBeenCalledWith({ minZoom: 1, maxZoom: 1, padding: 0.16 });
 	});
 
 	it("hydrates current asset previews when React Flow initializes after preview resolution", () => {
@@ -171,7 +227,9 @@ describe("GraphWorkspace mouse interactions", () => {
 		(onInit as (instance: { setNodes: typeof setNodes; setEdges: typeof setEdges }) => void)({
 			setNodes,
 			setEdges,
-		});
+			fitView: vi.fn(),
+			setViewport: vi.fn(),
+		} as never);
 
 		expect(setNodes).toHaveBeenCalledWith(
 			expect.arrayContaining([
@@ -272,6 +330,8 @@ describe("GraphWorkspace mouse interactions", () => {
 			(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
 				setNodes,
 				setEdges: vi.fn(),
+				fitView: vi.fn(),
+				setViewport: vi.fn(),
 			});
 		});
 
@@ -327,6 +387,8 @@ describe("GraphWorkspace mouse interactions", () => {
 				setNodes,
 				setEdges,
 				getNodes: () => flowNodes,
+				fitView: vi.fn(),
+				setViewport: vi.fn(),
 			});
 		});
 		await waitFor(() => expect(onSelectedNodeIdsChange).toHaveBeenCalledWith([]));

@@ -11,15 +11,16 @@ import { NodeKindIcon } from "../node/NodeKindIcon";
 import type { CanvasTool } from "./canvas-tools";
 
 const CATEGORY_ORDER: ContentNodeCategory[] = ["input", "generation", "resource", "output"];
-const QUICK_CREATE_KINDS: readonly ContentNodeKind[] = ["prompt", "asset", "image-generator", "video-generator"];
+/** Create-first order for empty canvas; dock still reuses the same set. */
+const QUICK_CREATE_KINDS: readonly ContentNodeKind[] = [
+	"image-generator",
+	"video-generator",
+	"prompt",
+	"asset",
+];
 
-const ACCENT_CLASS: Record<ContentNodeDefinition["accent"], string> = {
-	neutral: "bg-muted text-muted-foreground",
-	violet: "bg-primary/10 text-primary",
-	blue: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-	amber: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
-	green: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-};
+/** Menu density chips only — empty starter uses bare icons. */
+const NODE_ICON_CHIP_CLASS = "bg-muted/80 text-muted-foreground";
 
 interface NodeDefinitionGridProps {
 	definitions: readonly ContentNodeDefinition[];
@@ -100,7 +101,7 @@ function NodeDefinitionButton({
 			<span
 				className={cn(
 					"grid shrink-0 place-items-center rounded-lg",
-					ACCENT_CLASS[definition.accent],
+					NODE_ICON_CHIP_CLASS,
 					compact ? "size-[30px]" : "size-[34px]",
 				)}
 			>
@@ -120,16 +121,73 @@ interface EmptyCanvasStarterProps {
 	onAdd: (kind: ContentNodeKind) => void;
 }
 
+/**
+ * First-run empty canvas — open header over a single glass choice surface.
+ * Avoids nested card-in-card chrome and per-kind icon chips (reads denser / cheaper).
+ */
 export function EmptyCanvasStarter({ onAdd }: EmptyCanvasStarterProps) {
 	const { t } = useTranslation();
-	const quickDefinitions = CONTENT_NODE_DEFINITIONS.filter((definition) =>
-		QUICK_CREATE_KINDS.includes(definition.kind),
+	const byKind = useMemo(
+		() => new Map(CONTENT_NODE_DEFINITIONS.map((definition) => [definition.kind, definition])),
+		[],
 	);
+	const quickDefinitions = QUICK_CREATE_KINDS.flatMap((kind) => {
+		const definition = byKind.get(kind);
+		return definition ? [definition] : [];
+	});
+
 	return (
-		<section className="pointer-events-auto absolute top-1/2 left-1/2 z-[5] w-[min(520px,calc(100%_-_48px))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border/60 bg-popover/80 p-5 text-center shadow-lg backdrop-blur-md">
-			<h2 className="m-0 text-[15px] font-semibold tracking-tight">{t("graph.empty.title")}</h2>
-			<p className="mb-0 mt-1.5 text-[12px] text-muted-foreground">{t("graph.empty.description")}</p>
-			<NodeDefinitionGrid definitions={quickDefinitions} onSelect={onAdd} showCategories={false} />
+		<section
+			className={cn(
+				"pointer-events-auto absolute top-1/2 left-1/2 z-[5]",
+				"w-[min(392px,calc(100%_-_48px))] -translate-x-1/2 -translate-y-1/2",
+			)}
+		>
+			<header className="mb-5 text-center">
+				<h2 className="m-0 text-[15px] font-medium tracking-[-0.01em] text-foreground">
+					{t("graph.empty.title")}
+				</h2>
+				<p className="mx-auto mb-0 mt-1.5 max-w-[18rem] text-[12px] leading-relaxed text-muted-foreground/80">
+					{t("graph.empty.description")}
+				</p>
+			</header>
+
+			<div
+				className={cn(
+					"rounded-[22px] border border-border/40 bg-popover/55 p-1.5",
+					"shadow-[0_28px_80px_-28px_rgba(0,0,0,0.55)] backdrop-blur-2xl",
+					"ring-1 ring-black/[0.03] dark:bg-popover/40 dark:ring-white/[0.05]",
+				)}
+			>
+				<div className="grid grid-cols-2 gap-0.5">
+					{quickDefinitions.map((definition) => (
+						<button
+							key={definition.kind}
+							type="button"
+							className={cn(
+								"group flex min-h-[104px] flex-col items-start justify-between gap-5 rounded-[16px] px-3.5 py-3.5 text-left",
+								"transition-[background-color,transform,color] duration-150",
+								"hover:bg-foreground/[0.045] active:scale-[0.99]",
+								"focus-visible:bg-foreground/[0.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35",
+							)}
+							onClick={() => onAdd(definition.kind)}
+						>
+							<NodeKindIcon
+								kind={definition.kind}
+								className="size-[18px] text-muted-foreground/70 transition-colors duration-150 group-hover:text-foreground"
+							/>
+							<span className="flex min-w-0 flex-col gap-1">
+								<strong className="text-[13px] font-medium tracking-[-0.01em] text-foreground">
+									{t(`node.kind.${definition.kind}`)}
+								</strong>
+								<span className="text-[11px] leading-snug text-muted-foreground/70">
+									{t(`graph.empty.hint.${definition.kind}`)}
+								</span>
+							</span>
+						</button>
+					))}
+				</div>
+			</div>
 		</section>
 	);
 }

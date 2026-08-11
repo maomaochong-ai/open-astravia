@@ -32,7 +32,6 @@ export interface ContentNodeDefinition {
 	category: ContentNodeCategory;
 	labelKey: string;
 	descriptionKey: string;
-	accent: "neutral" | "violet" | "blue" | "amber" | "green";
 	defaultData: ContentNodeData;
 	inputs: readonly ContentPortDefinition[];
 	outputs: readonly ContentPortDefinition[];
@@ -68,7 +67,6 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		category: "input",
 		labelKey: "node.kind.prompt",
 		descriptionKey: "node.description.prompt",
-		accent: "neutral",
 		defaultData: {},
 		inputs: [{ id: "media", labelKey: "port.mediaReference", dataType: "media", multiple: true }],
 		outputs: [{ id: "text", labelKey: "port.prompt", dataType: "prompt", multiple: true }],
@@ -79,7 +77,6 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		category: "generation",
 		labelKey: "node.kind.image-generator",
 		descriptionKey: "node.description.image-generator",
-		accent: "violet",
 		defaultData: { aspectRatio: "1:1", quality: "standard" },
 		inputs: [
 			{ id: "prompt", labelKey: "port.prompt", dataType: "prompt", multiple: true },
@@ -103,7 +100,6 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		category: "generation",
 		labelKey: "node.kind.video-generator",
 		descriptionKey: "node.description.video-generator",
-		accent: "blue",
 		defaultData: { duration: 5, resolution: "720p" },
 		inputs: [
 			{ id: "prompt", labelKey: "port.prompt", dataType: "prompt", multiple: true },
@@ -133,7 +129,6 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		category: "resource",
 		labelKey: "node.kind.asset",
 		descriptionKey: "node.description.asset",
-		accent: "amber",
 		defaultData: {},
 		inputs: [],
 		outputs: [{ id: "media", labelKey: "port.media", dataType: "media", multiple: true }],
@@ -144,7 +139,6 @@ export const CONTENT_NODE_DEFINITIONS: readonly ContentNodeDefinition[] = [
 		category: "output",
 		labelKey: "node.kind.output",
 		descriptionKey: "node.description.output",
-		accent: "green",
 		defaultData: {},
 		inputs: [{ id: "content", labelKey: "port.content", dataType: "content", multiple: true }],
 		outputs: [],

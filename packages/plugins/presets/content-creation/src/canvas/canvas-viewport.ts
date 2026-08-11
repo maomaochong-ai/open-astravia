@@ -9,3 +9,9 @@ export const DEFAULT_CONTENT_CANVAS_VIEWPORT: Readonly<ContentCanvasViewportConf
 	maxZoom: 4,
 	defaultZoom: 1,
 };
+
+/** Format React Flow zoom (1 = 100%) for the bottom-left controls. */
+export function formatCanvasZoomPercent(zoom: number): string {
+	if (!Number.isFinite(zoom)) return "100%";
+	return `${Math.round(zoom * 100)}%`;
+}

@@ -1,6 +1,5 @@
 import {
 	type Connection,
-	Controls,
 	type Edge,
 	type FinalConnectionState,
 	type NodeTypes,
@@ -63,6 +62,7 @@ import { SelectionToolbar } from "./SelectionToolbar";
 import { DEFAULT_CANVAS_TOOL, getCanvasInteraction } from "./canvas-tools";
 import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "../node/dropped-media";
 import { CanvasProjectMenu } from "./CanvasProjectMenu";
+import { CanvasZoomControls } from "./CanvasZoomControls";
 import {
 	DEFAULT_CONTENT_CANVAS_KEYBINDINGS,
 	type ContentCanvasKeybindings,
@@ -496,14 +496,24 @@ export function GraphWorkspace({
 		(layout: ContentNodeLayout) => applyPlacements(layoutContentNodes(movableSelectedNodes, layout)),
 		[applyPlacements, movableSelectedNodes],
 	);
-	const onInit = useCallback((instance: ReactFlowInstance<ContentFlowNode, Edge>) => {
-		flowInstanceRef.current = instance;
-		const latest = latestFlowSyncRef.current;
-		const selectedNodeIdSet = new Set(selectedNodeIdsRef.current);
-		appliedProjectSyncKeyRef.current = latest.projectSyncKey;
-		instance.setNodes(applySelectedNodeIdsToFlowNodes(latest.nodes, selectedNodeIdSet));
-		instance.setEdges(applySelectedNodeIdsToFlowEdges(latest.edges, selectedNodeIdSet));
-	}, []);
+	const onInit = useCallback(
+		(instance: ReactFlowInstance<ContentFlowNode, Edge>) => {
+			flowInstanceRef.current = instance;
+			const latest = latestFlowSyncRef.current;
+			const selectedNodeIdSet = new Set(selectedNodeIdsRef.current);
+			appliedProjectSyncKeyRef.current = latest.projectSyncKey;
+			instance.setNodes(applySelectedNodeIdsToFlowNodes(latest.nodes, selectedNodeIdSet));
+			instance.setEdges(applySelectedNodeIdsToFlowEdges(latest.edges, selectedNodeIdSet));
+			// Open at default zoom (100%), only pan to center content — never auto-scale to fit.
+			const zoom = viewportConfig.defaultZoom;
+			if (latest.nodes.length > 0) {
+				void instance.fitView({ minZoom: zoom, maxZoom: zoom, padding: 0.16 });
+			} else {
+				void instance.setViewport({ x: 0, y: 0, zoom });
+			}
+		},
+		[viewportConfig.defaultZoom],
+	);
 	const onConnect = useCallback<NonNullable<ReactFlowProps<ContentFlowNode, Edge>["onConnect"]>>(
 		(connection) => {
 			const resolved = resolveContentFlowConnection(project, connection);
@@ -745,6 +755,7 @@ export function GraphWorkspace({
 						panOnDrag={canvasInteraction.panOnDrag}
 						minZoom={viewportConfig.minZoom}
 						maxZoom={viewportConfig.maxZoom}
+						defaultViewport={{ x: 0, y: 0, zoom: viewportConfig.defaultZoom }}
 						zoomOnDoubleClick={false}
 						onNodeClick={onNodeClick}
 						onNodeContextMenu={onNodeContextMenu}
@@ -753,9 +764,8 @@ export function GraphWorkspace({
 						onPaneContextMenu={onPaneContextMenu}
 						onNodeDrag={onNodeDrag}
 						onNodeDragStop={onNodeDragStop}
-						fitView
 					>
-						<Controls showInteractive={false} position="bottom-left" />
+						<CanvasZoomControls defaultZoom={viewportConfig.defaultZoom} />
 						<SelectionToolbar
 							nodeIds={activeSelectedNodeIds}
 							allLocked={selectedProjectNodes.length > 0 && selectedProjectNodes.every((node) => node.locked)}
