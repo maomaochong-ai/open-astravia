@@ -9,6 +9,7 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 - Stopped the resource watcher's initial scan from blocking the development server ready handshake after Vite was already serving the plugin entry.
 - Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.
 - Kept validated Iconify mask rules available outside plugin CSS scopes so icons render inside portalled UI components.
+- Wrapped those globally hoisted Iconify rules in a nested `vetta-plugin-icons` cascade layer so their `1em` fallback size no longer overrides the host's explicit `w-*` / `h-*` utilities, which had shrunk shared icons and misaligned neighbouring labels.
 - Packaged QuickJS plugin script entries directly instead of parsing them as Module Federation manifests.
 
 ### Added
