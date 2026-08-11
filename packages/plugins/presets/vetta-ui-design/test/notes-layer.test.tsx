@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 /** 渲染一个「刚点下画布、草稿输入框开着」的备注层。 */
-function renderDraft(): { textarea: HTMLTextAreaElement; closed: () => number } {
+function renderDraft(blockedReason: string | null = null): { textarea: HTMLTextAreaElement; closed: () => number } {
 	let closeCount = 0;
 	act(() => {
 		root.render(
@@ -51,6 +51,7 @@ function renderDraft(): { textarea: HTMLTextAreaElement; closed: () => number } 
 				frames={[]}
 				interactive
 				draft={{ world: { x: 10, y: 20 }, frameId: null, fx: 0, fy: 0, hit: null }}
+				blockedReason={blockedReason}
 				onDraftClose={() => {
 					closeCount += 1;
 				}}
@@ -139,4 +140,33 @@ it("Shift+Enter inserts a newline instead of submitting", () => {
 	type(textarea, "第一行");
 	pressEnter(textarea, { shiftKey: true });
 	expect(store.notes).toHaveLength(0);
+});
+
+it("focuses the composer on open, and takes the focus back if something steals it", async () => {
+	const { textarea } = renderDraft();
+	expect(document.activeElement).toBe(textarea);
+	// 画布是在 pointerdown 里挂出浮层的，随后那次 mousedown 的默认动作会把焦点交给
+	// 画布容器——挂载时抢到的焦点当场被夺走。下一帧必须把它夺回来。
+	act(() => {
+		host.tabIndex = 0;
+		host.focus();
+	});
+	expect(document.activeElement).not.toBe(textarea);
+	await act(async () => {
+		await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+	});
+	expect(document.activeElement).toBe(textarea);
+});
+
+it("wears the same chrome as the selection ask popover: 落点标题 + 随闸口切换的文案", () => {
+	renderDraft();
+	expect(document.body.textContent).toContain("notes.drawer.freeNote");
+	expect(document.body.querySelector("textarea")?.placeholder).toBe("canvas.ask.placeholder");
+
+	act(() => root.unmount());
+	root = createRoot(host);
+	renderDraft("notes.handoff.streaming");
+	// agent 正忙：改口成「留个备注」，并说明为什么。
+	expect(document.body.querySelector("textarea")?.placeholder).toBe("canvas.ask.note.placeholder");
+	expect(document.body.textContent).toContain("canvas.ask.note.hint");
 });

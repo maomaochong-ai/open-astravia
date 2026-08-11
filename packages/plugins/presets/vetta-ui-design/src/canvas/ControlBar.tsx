@@ -13,11 +13,6 @@ interface ControlBarProps {
 	designSystemsActive: boolean;
 	/** 待处理备注数，挂在备注工具按钮的右上角；0 不显示。 */
 	pendingNotes: number;
-	/**
-	 * 右侧被浮层占走的宽度（备注面板）。dock 是整块画布居中的，面板一开就会压住它的
-	 * 右端，所以按占用宽度的一半左移，改为在剩余空间里居中。
-	 */
-	rightInset: number;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
@@ -107,7 +102,6 @@ export function ControlBar({
 	exportableCount,
 	designSystemsActive,
 	pendingNotes,
-	rightInset,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
@@ -264,10 +258,7 @@ export function ControlBar({
 	return (
 		// 底部居中；z-40 与顶部按钮组同层，压过沉浸式渐变遮罩。
 		// 外层不吃指针：放大溢出与浮标签留的空白区不能挡住画布手势。
-		<div
-			className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2 transition-[margin] duration-200 ease-out"
-			style={{ marginLeft: -rightInset / 2 }}
-		>
+		<div className="pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2">
 			{/* 放大只用 transform（origin-bottom），图标向上溢出 dock，chrome 本身不变高 */}
 			<div className="relative inline-flex flex-col items-center overflow-visible pt-9">
 				{peakLabel ? (

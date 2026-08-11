@@ -1,5 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNotesHandoff } from "../notes/handoff";
 import type { NotesStore } from "../notes/notes-store";
 import { type DesignNote, pendingNotes, resolvedNotes } from "../notes/types";
@@ -8,9 +8,11 @@ import { NotePin } from "./NoteAvatar";
 
 /** 面板宽度（px）。 */
 const PANEL_WIDTH = 288;
-/** 面板距画布右边缘的留白（px）——悬浮而不贴边。 */
+/** 面板距画布左边缘的留白（px）——悬浮而不贴边。 */
 const PANEL_GAP = 12;
-/** 面板打开时从画布右侧占走的总宽度；底部 dock 按它左移让位。 */
+/** 面板高度上限：内容撑多高就多高，最多吃掉画布的这个比例。 */
+const PANEL_MAX_HEIGHT = "80%";
+/** 面板打开时从画布左侧占走的总宽度；「定位到备注」按剩下的区域居中。 */
 export const NOTES_PANEL_INSET = PANEL_WIDTH + PANEL_GAP * 2;
 
 interface NotesDrawerProps {
@@ -23,7 +25,7 @@ interface NotesDrawerProps {
 }
 
 /**
- * 右侧备注抽屉：待处理/已处理两段、让 Vetta 处理（全部/单条）、清空已处理。
+ * 左侧备注抽屉：待处理/已处理两段、让 Vetta 处理（全部/单条）、清空已处理。
  * 宽度限死不推挤画布（画布本来就吃宽度），关掉即恢复。
  */
 export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDrawerProps) {
@@ -46,6 +48,32 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 	const pending = pendingNotes(store.notes);
 	const resolved = resolvedNotes(store.notes);
 
+	/**
+	 * 列表滚到底之前，底部渐隐一小段当作「下面还有」的提示——面板高度是跟着内容走的，
+	 * 没有滚动条来兜这件事。滚到底就撤掉，否则最后一条永远糊着。
+	 */
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const contentRef = useRef<HTMLDivElement | null>(null);
+	const [fadeBottom, setFadeBottom] = useState(false);
+	useEffect(() => {
+		const scroller = scrollRef.current;
+		const content = contentRef.current;
+		if (!scroller || !content) return;
+		const update = (): void => {
+			setFadeBottom(scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight > 1);
+		};
+		update();
+		scroller.addEventListener("scroll", update, { passive: true });
+		// 条目增删、面板被 80% 上限截断都会改变可滚动量，两边都盯着。
+		const observer = new ResizeObserver(update);
+		observer.observe(scroller);
+		observer.observe(content);
+		return () => {
+			scroller.removeEventListener("scroll", update);
+			observer.disconnect();
+		};
+	}, []);
+
 	const frameTitleOf = useMemo(() => {
 		const map = new Map(session.manifest.frames.map((frame) => [frame.id, frame.title || frame.id]));
 		return (note: DesignNote): string => {
@@ -57,12 +85,13 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 	}, [session.manifest.frames, t]);
 
 	return (
-		// 悬浮而非贴边：画布是无限的，抽屉贴死右边缘会读成「面板被截断了」。
+		// 悬浮而非贴边：画布是无限的，抽屉贴死左边缘会读成「面板被截断了」。
+		// 高度跟着内容走，只在超过画布 80% 时才封顶——两条备注不该占满整条边。
 		<div
 			className="vetd-note vetd-note-drawer-enter vetd-note-surface pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl"
-			style={{ top: PANEL_GAP, bottom: PANEL_GAP, right: PANEL_GAP, width: PANEL_WIDTH }}
+			style={{ top: PANEL_GAP, left: PANEL_GAP, width: PANEL_WIDTH, maxHeight: PANEL_MAX_HEIGHT }}
 		>
-			<header className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
+			<header className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2.5">
 				<span className="text-xs font-semibold text-foreground">{t("notes.drawer.title")}</span>
 				{pending.length > 0 ? (
 					<span
@@ -86,7 +115,7 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 			</header>
 
 			{pending.length > 0 ? (
-				<div className="border-b border-border/60 px-2.5 py-2">
+				<div className="shrink-0 border-b border-border/60 px-2.5 py-2">
 					<button
 						type="button"
 						disabled={handoff.blockedReason !== null}
@@ -109,76 +138,81 @@ export function NotesDrawer({ store, session, cwd, onLocate, onClose }: NotesDra
 				</div>
 			) : null}
 
-			<div className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-				{store.notes.length === 0 ? (
-					<div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
-						<svg
-							viewBox="0 0 24 24"
-							className="size-7 text-muted-foreground opacity-40"
-							fill="none"
-							stroke="currentColor"
-							strokeWidth="1.5"
-							aria-hidden
-						>
-							<path
-								d="M21 11.5a8.5 8.5 0 01-8.5 8.5H4l1.6-3.2A8.5 8.5 0 1121 11.5z"
-								strokeLinecap="round"
-								strokeLinejoin="round"
-							/>
-						</svg>
-						<p className="text-xs leading-relaxed text-muted-foreground">{t("notes.drawer.empty")}</p>
-					</div>
-				) : null}
-
-				{pending.length > 0 ? (
-					<>
-						<SectionLabel text={t("notes.drawer.pending", { count: pending.length })} />
-						{pending.map((note, index) => (
-							<NoteRow
-								key={note.id}
-								note={note}
-								number={index + 1}
-								location={frameTitleOf(note)}
-								onLocate={() => onLocate(note.id)}
-								onHandle={
-									handoff.blockedReason === null
-										? () => {
-												store.markDispatched([note]);
-												handoff.sendOne(note.id);
-											}
-										: null
-								}
-								onDelete={() => store.deleteNote(note.id)}
-							/>
-						))}
-					</>
-				) : null}
-
-				{resolved.length > 0 ? (
-					<>
-						<div className="flex items-center justify-between px-1 pb-1 pt-3">
-							<SectionLabel text={t("notes.drawer.resolved", { count: resolved.length })} bare />
-							<button
-								type="button"
-								onClick={() => store.clearResolved()}
-								className="rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+			<div
+				ref={scrollRef}
+				className={`vetd-note-scroll min-h-0 flex-1 overflow-y-auto ${fadeBottom ? "vetd-note-scroll-fade" : ""}`}
+			>
+				<div ref={contentRef} className="px-2 py-2">
+					{store.notes.length === 0 ? (
+						<div className="flex flex-col items-center gap-2 px-3 py-10 text-center">
+							<svg
+								viewBox="0 0 24 24"
+								className="size-7 text-muted-foreground opacity-40"
+								fill="none"
+								stroke="currentColor"
+								strokeWidth="1.5"
+								aria-hidden
 							>
-								{t("notes.drawer.clearResolved")}
-							</button>
+								<path
+									d="M21 11.5a8.5 8.5 0 01-8.5 8.5H4l1.6-3.2A8.5 8.5 0 1121 11.5z"
+									strokeLinecap="round"
+									strokeLinejoin="round"
+								/>
+							</svg>
+							<p className="text-xs leading-relaxed text-muted-foreground">{t("notes.drawer.empty")}</p>
 						</div>
-						{resolved.map((note) => (
-							<NoteRow
-								key={note.id}
-								note={note}
-								number={null}
-								location={frameTitleOf(note)}
-								onLocate={() => onLocate(note.id)}
-								onHandle={null}
-								onDelete={() => store.deleteNote(note.id)}
-							/>
-						))}
-					</>
-				) : null}
+					) : null}
+
+					{pending.length > 0 ? (
+						<>
+							<SectionLabel text={t("notes.drawer.pending", { count: pending.length })} />
+							{pending.map((note, index) => (
+								<NoteRow
+									key={note.id}
+									note={note}
+									number={index + 1}
+									location={frameTitleOf(note)}
+									onLocate={() => onLocate(note.id)}
+									onHandle={
+										handoff.blockedReason === null
+											? () => {
+													store.markDispatched([note]);
+													handoff.sendOne(note.id);
+												}
+											: null
+									}
+									onDelete={() => store.deleteNote(note.id)}
+								/>
+							))}
+						</>
+					) : null}
+
+					{resolved.length > 0 ? (
+						<>
+							<div className="flex items-center justify-between px-1 pb-1 pt-3">
+								<SectionLabel text={t("notes.drawer.resolved", { count: resolved.length })} bare />
+								<button
+									type="button"
+									onClick={() => store.clearResolved()}
+									className="rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+								>
+									{t("notes.drawer.clearResolved")}
+								</button>
+							</div>
+							{resolved.map((note) => (
+								<NoteRow
+									key={note.id}
+									note={note}
+									number={null}
+									location={frameTitleOf(note)}
+									onLocate={() => onLocate(note.id)}
+									onHandle={null}
+									onDelete={() => store.deleteNote(note.id)}
+								/>
+							))}
+						</>
+					) : null}
+				</div>
 			</div>
 		</div>
 	);

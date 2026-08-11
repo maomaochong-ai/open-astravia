@@ -533,10 +533,10 @@ export function DesignCanvas({
 			const pos = noteWorldPosition(note, (frameId) => manifestRef.current.frames.find((f) => f.id === frameId));
 			const { width, height } = sizeRef.current;
 			const zoom = viewportRef.current.zoom;
-			// 定位只由面板里的条目发起，那时面板一定开着：按它让出的可见区域居中，
-			// 否则「居中」正好把气泡送到面板底下。
+			// 定位只由面板里的条目发起，那时面板一定开着：按它让出的可见区域（面板右边
+			// 那块）居中，否则「居中」正好把气泡送到面板底下。
 			const visibleWidth = Math.max(width - NOTES_PANEL_INSET, width * 0.35);
-			view.commitViewport({ zoom, x: visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom });
+			view.commitViewport({ zoom, x: width - visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom });
 			setOpenNoteId(noteId);
 		},
 		[notes, view, sizeRef, viewportRef],
@@ -1364,6 +1364,7 @@ export function DesignCanvas({
 					frames={manifest.frames}
 					interactive={(tool === "select" || tool === "note") && !panActive && !previewing}
 					draft={noteDraft}
+					blockedReason={blockedReason}
 					onDraftClose={() => setNoteDraft(null)}
 					openNoteId={openNoteId}
 					onOpenNote={setOpenNoteId}
@@ -1458,8 +1459,7 @@ export function DesignCanvas({
 			) : null}
 
 			{/* 备注面板与备注工具是同一个状态：选中工具即弹出，切走即收起，
-			    所以它没有独立的开关，关闭按钮做的也是「退回选择工具」。
-			    NOTES_PANEL_INSET 同时用于给底部 dock 让位，两处必须同源。 */}
+			    所以它没有独立的开关，关闭按钮做的也是「退回选择工具」。 */}
 			{tool === "note" ? (
 				<NotesDrawer
 					store={notes}
@@ -1476,7 +1476,6 @@ export function DesignCanvas({
 				exportableCount={orderedSelection.length}
 				designSystemsActive={designDialogOpen}
 				pendingNotes={pendingNoteCount}
-				rightInset={tool === "note" ? NOTES_PANEL_INSET : 0}
 				onToolChange={setTool}
 				onZoomDelta={view.zoomBy}
 				onZoomReset={() => {

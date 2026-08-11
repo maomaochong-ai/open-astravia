@@ -3,7 +3,15 @@
  * 套长相与键盘行为——两个入口若各写一份，IME 这类坑就得各踩一次。
  */
 
-import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useRef, useState } from "react";
+import {
+	type FormEvent,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type PointerEvent as ReactPointerEvent,
+	type ReactNode,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
 /** 浮层按它反向缩放，保持恒定视觉大小（与 frame 标题栏、整理工具条同一套办法）。 */
 export const INVERSE_SCALE = "var(--vetd-lscale, 1)";
@@ -32,6 +40,42 @@ export function NotePanel({ x, y, children }: { x: number; y: number; children: 
 	);
 }
 
+/** 浮层的意图：agent 空闲时落下就派出去（ask），忙时只记成备注（note）。 */
+export type NoteIntent = "ask" | "note";
+
+/** 意图图标：徽标与两个浮层的标题共用，同一件事只有一种长相。 */
+export function NoteIntentIcon({ intent }: { intent: NoteIntent }) {
+	return (
+		<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+			{intent === "ask" ? (
+				<path d="M5 3v4M3 5h4M6 17v4m-2-2h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3z" strokeLinecap="round" strokeLinejoin="round" />
+			) : (
+				<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
+			)}
+		</svg>
+	);
+}
+
+/**
+ * 浮层标题：意图图标 + 落点凭证（画框名／元素）。追问与手动备注是同一种东西
+ * （都只落一条备注），标题也就必须是同一行。
+ */
+export function NotePanelHeader({ intent, label }: { intent: NoteIntent; label: string }) {
+	return (
+		<header className="flex items-center gap-1.5 border-b border-border/60 px-2.5 py-2">
+			<NoteIntentIcon intent={intent} />
+			<span className="truncate text-[11px] font-medium text-foreground">{label}</span>
+		</header>
+	);
+}
+
+/** 「agent 正忙，先记成备注」的说明行；与标题同宽同边框。 */
+export function NotePanelHint({ text }: { text: string }) {
+	return (
+		<p className="border-b border-border/60 px-2.5 py-1.5 text-[10px] leading-relaxed text-muted-foreground">{text}</p>
+	);
+}
+
 export function NoteComposer({
 	placeholder,
 	submitLabel,
@@ -54,6 +98,25 @@ export function NoteComposer({
 	 */
 	const composingRef = useRef(false);
 	const composedAtRef = useRef(0);
+
+	/**
+	 * 打开就能打字。
+	 *
+	 * 不能只靠 `autoFocus`：备注浮层是在画布的 pointerdown 里挂出来的，React 同步冲掉
+	 * 这次 state 之后浏览器才派发 mousedown，而 mousedown 的默认动作会把焦点交给点中的
+	 * 画布容器——挂载时抢到的焦点当场就被夺走，于是只能手点一下 textarea 才能输入。
+	 * 下一帧（mousedown 之后）再确认一次。
+	 */
+	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	useEffect(() => {
+		const textarea = textareaRef.current;
+		if (!textarea) return;
+		textarea.focus();
+		const frame = window.requestAnimationFrame(() => {
+			if (document.activeElement !== textarea) textarea.focus();
+		});
+		return () => window.cancelAnimationFrame(frame);
+	}, []);
 
 	const submit = (event?: FormEvent): void => {
 		event?.preventDefault();
@@ -86,8 +149,7 @@ export function NoteComposer({
 	return (
 		<form onSubmit={submit} className="rounded-xl bg-muted/40 p-1.5 ring-1 ring-border/50">
 			<textarea
-				// biome-ignore lint/a11y/noAutofocus: 放置备注的下一步就是打字，焦点必须直达
-				autoFocus
+				ref={textareaRef}
 				value={text}
 				onChange={(event) => setText(event.target.value)}
 				onKeyDown={onKeyDown}

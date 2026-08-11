@@ -215,8 +215,6 @@
 	"notes.handoff.failed": "发送失败",
 	"notes.bubble.label": "备注",
 	"notes.bubble.detached": "原画框已不存在",
-	"notes.composer.placeholder": "添加备注…",
-	"notes.composer.submit": "提交",
 	"notes.reply.placeholder": "补充说明…",
 	"notes.reply.submit": "发送",
 	"notes.reopen.placeholder": "重新打开并说明原因…",

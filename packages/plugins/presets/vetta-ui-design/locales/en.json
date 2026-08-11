@@ -215,8 +215,6 @@
 	"notes.handoff.failed": "Failed to send",
 	"notes.bubble.label": "Note",
 	"notes.bubble.detached": "Original frame no longer exists",
-	"notes.composer.placeholder": "Add a note…",
-	"notes.composer.submit": "Submit",
 	"notes.reply.placeholder": "Add a follow-up…",
 	"notes.reply.submit": "Send",
 	"notes.reopen.placeholder": "Reopen with a reason…",

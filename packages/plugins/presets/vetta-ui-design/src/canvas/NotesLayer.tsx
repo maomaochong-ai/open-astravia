@@ -5,7 +5,8 @@ import { type DesignNote, noteStatus, noteWorldPosition, pendingNotes } from "..
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { SelectedElementPayload } from "./bridge-client";
 import { NoteAvatar, NotePin } from "./NoteAvatar";
-import { INVERSE_SCALE, NoteComposer, NotePanel, stopAll } from "./NoteSurface";
+import { INVERSE_SCALE, NoteComposer, NotePanel, NotePanelHeader, NotePanelHint, stopAll } from "./NoteSurface";
+import { resolveAskMode } from "./selection-ask";
 
 /** 拖动阈值（屏幕像素）：低于它算点击（开 thread），高于它算拖动气泡。 */
 const DRAG_THRESHOLD_PX = 3;
@@ -26,6 +27,8 @@ interface NotesLayerProps {
 	/** select/note 工具下气泡可点；托手/空格/frame 工具下整层不吃指针。 */
 	interactive: boolean;
 	draft: NoteDraft | null;
+	/** null = agent 空闲，落下就会被派出去；否则是等待原因（已本地化）。 */
+	blockedReason: string | null;
 	onDraftClose(): void;
 	openNoteId: string | null;
 	onOpenNote(id: string | null): void;
@@ -44,6 +47,7 @@ export function NotesLayer({
 	frames,
 	interactive,
 	draft,
+	blockedReason,
 	onDraftClose,
 	openNoteId,
 	onOpenNote,
@@ -151,6 +155,24 @@ export function NotesLayer({
 
 	const openNote = openNoteId ? store.noteById(openNoteId) : undefined;
 
+	/**
+	 * 草稿浮层的意图与等待原因在弹出那一刻定下，之后不随 agent 忙闲翻转——正在打字时
+	 * 按钮当着用户的面改口，比文案不准更糟（与选框追问浮层同一条规矩）。
+	 */
+	const draftShownRef = useRef<NoteDraft | null>(null);
+	const draftBlockedRef = useRef<string | null>(null);
+	if (draft !== draftShownRef.current) {
+		draftShownRef.current = draft;
+		if (draft) draftBlockedRef.current = blockedReason;
+	}
+	const draftBlocked = draftBlockedRef.current;
+	const draftMode = resolveAskMode(draftBlocked);
+	const draftLabel = draft
+		? draft.frameId !== null
+			? frameOf(draft.frameId)?.title || draft.frameId
+			: t("notes.drawer.freeNote")
+		: "";
+
 	return (
 		<div className={`vetd-note ${interactive ? "contents" : "pointer-events-none contents"}`}>
 			{store.notes.map((note) => {
@@ -195,10 +217,15 @@ export function NotesLayer({
 
 			{draft ? (
 				<NotePanel x={draft.world.x} y={draft.world.y}>
+					{/* 与选框追问浮层同一副长相：两个入口落的都是同一种备注，读起来就该一样。 */}
+					<NotePanelHeader intent={draftMode} label={draftLabel} />
+					{draftMode === "note" && draftBlocked ? (
+						<NotePanelHint text={`${draftBlocked} · ${t("canvas.ask.note.hint")}`} />
+					) : null}
 					<div className="p-1.5">
 					<NoteComposer
-						placeholder={t("notes.composer.placeholder")}
-						submitLabel={t("notes.composer.submit")}
+						placeholder={t(draftMode === "ask" ? "canvas.ask.placeholder" : "canvas.ask.note.placeholder")}
+						submitLabel={t(draftMode === "ask" ? "canvas.ask.submit" : "canvas.ask.note.submit")}
 						onCancel={onDraftClose}
 						onSubmit={(text) => {
 							const anchor =

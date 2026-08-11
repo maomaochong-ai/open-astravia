@@ -18,7 +18,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { NotesStore } from "../notes/notes-store";
 import type { VetdFrameEntry } from "../vetd/manifest-types";
 import type { CanvasSelection } from "./DesignCanvas";
-import { INVERSE_SCALE, NoteComposer, NotePanel, stopAll } from "./NoteSurface";
+import {
+	INVERSE_SCALE,
+	NoteComposer,
+	NoteIntentIcon,
+	NotePanel,
+	NotePanelHeader,
+	NotePanelHint,
+	stopAll,
+} from "./NoteSurface";
 import {
 	type AskMode,
 	type AskTarget,
@@ -125,22 +133,17 @@ export function SelectionAskBadge({
 					onPointerUp={stopAll}
 					onClick={() => onOpenChange(!open)}
 				>
-					<BadgeIcon mode={badgeMode} />
+					<NoteIntentIcon intent={badgeMode} />
 					{t(badgeMode === "ask" ? "canvas.ask.badge" : "canvas.ask.badge.note")}
 				</button>
 			) : null}
 
 			{open ? (
 				<NotePanel x={popover.x} y={popover.y}>
-					<header className="flex items-center gap-1.5 border-b border-border/60 px-2.5 py-2">
-						<BadgeIcon mode={mode} />
-						<span className="truncate text-[11px] font-medium text-foreground">{describe(target)}</span>
-					</header>
+					<NotePanelHeader intent={mode} label={describe(target)} />
 					{/* agent 不空闲时说明一声，否则用户只会觉得按钮无端变了样。 */}
 					{mode === "note" && frozenReason ? (
-						<p className="border-b border-border/60 px-2.5 py-1.5 text-[10px] leading-relaxed text-muted-foreground">
-							{frozenReason} · {t("canvas.ask.note.hint")}
-						</p>
+						<NotePanelHint text={`${frozenReason} · ${t("canvas.ask.note.hint")}`} />
 					) : null}
 					<div className="p-1.5">
 						<NoteComposer
@@ -153,17 +156,5 @@ export function SelectionAskBadge({
 				</NotePanel>
 			) : null}
 		</>
-	);
-}
-
-function BadgeIcon({ mode }: { mode: AskMode }) {
-	return (
-		<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-			{mode === "ask" ? (
-				<path d="M5 3v4M3 5h4M6 17v4m-2-2h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3z" strokeLinecap="round" strokeLinejoin="round" />
-			) : (
-				<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" />
-			)}
-		</svg>
 	);
 }

@@ -562,12 +562,26 @@
 @keyframes vetd-note-drawer-enter {
 	from {
 		opacity: 0;
-		transform: translateX(12px);
+		transform: translateX(-12px);
 	}
 	to {
 		opacity: 1;
 		transform: translateX(0);
 	}
+}
+
+/* 备注面板的列表：不出滚动条（面板高度是跟着内容走的，一条竖轨会把它读成固定抽屉），
+   还能往下滚的时候底部渐隐一段当提示。渐隐由 JS 按滚动位置挂 class，滚到底就撤。 */
+.vetd-note-scroll {
+	scrollbar-width: none;
+	-ms-overflow-style: none;
+}
+.vetd-note-scroll::-webkit-scrollbar {
+	display: none;
+}
+.vetd-note-scroll-fade {
+	-webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
+	mask-image: linear-gradient(to bottom, #000 calc(100% - 36px), transparent 100%);
 }
 
 /* Vetta 头像：复用 .vetd-bot 的形象语言（圆头 + 双眼），静态版。 */
