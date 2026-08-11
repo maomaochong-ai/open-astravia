@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import { getAgentDir } from "@vetta/coding-agent/config";
 import {
 	createCodingAgentMcpRuntimeToolSource,
@@ -189,10 +190,15 @@ function logSessionRoute(decision: RuntimeHostSessionBackendRouteDecision): void
 
 function resolveDesktopRuntimeSessionRoots(): RuntimeConversationSessionRoot[] {
 	const config = readConfigSync();
-	const projectRoots = [...config.projects, ...config.archivedProjects].map(({ path }) => ({
-		cwd: path,
-		sessionDir: join(path, ".vetta", "sessions"),
-	}));
+	// 每个项目认两个会话目录：
+	// 1. 全局分片目录——新会话的落点（见 backend-pool 的 resolveRuntimeScope）；
+	// 2. `<项目>/.vetta/sessions`——存量兼容。会话曾短暂落在这里，直接摘掉会让用户
+	//    这段时间的历史从列表里消失。catalog 在未指定 sessionDir 时并集同一 cwd 的
+	//    全部 root，所以两处能同时列出来，不需要迁移文件。
+	const projectRoots = [...config.projects, ...config.archivedProjects].flatMap(({ path }) => [
+		{ cwd: path, sessionDir: codingAgentSessionShardPath(path) },
+		{ cwd: path, sessionDir: join(path, ".vetta", "sessions") },
+	]);
 	return [
 		{
 			cwd: DEFAULT_CONVERSATION_CWD,

@@ -1,5 +1,6 @@
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import type { Api, Model } from "@vetta/ai";
+import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import {
 	type CodingAgentRuntimeComposition,
 	type CodingAgentRuntimeCompositionOptions,
@@ -240,8 +241,11 @@ export class DesktopRuntimeBackendPool implements RuntimeHostSessionBackend {
 function resolveRuntimeScope(request: RuntimeSessionCreateRequest): DesktopRuntimeScope {
 	const cwd = resolve(request.cwd ?? process.cwd());
 	const sessionPath = request.sessionPath?.trim();
+	// 缺省落点是 agent 目录下按 cwd 编码分片的全局目录，**不是** `<cwd>/.vetta/sessions`：
+	// 会话产物是宿主状态，不该在用户工程里长出未跟踪文件（还会被 `git add -A` 误提交）。
+	// 需要落在项目里的场景（批量任务、宿主自有 conversation 根）自己传 sessionDir。
 	const conversationDir = resolve(
-		sessionPath ? dirname(sessionPath) : (request.sessionDir ?? join(cwd, ".vetta", "sessions")),
+		sessionPath ? dirname(sessionPath) : resolveCodingAgentSessionDir(cwd, request.sessionDir),
 	);
 	return {
 		cwd,

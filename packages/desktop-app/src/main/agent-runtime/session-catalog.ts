@@ -1,4 +1,4 @@
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import type { ProjectInfo, RuntimeSessionCatalog, SessionHistoryInfo } from "@vetta/runtime-core";
 import {
 	FileConversationRuntimeSessionCatalog,
@@ -14,8 +14,8 @@ export interface DesktopRuntimeSessionCatalogOptions
 /**
  * Desktop Runtime 的会话目录策略适配器。
  *
- * 文件格式识别和写操作仍由 runtime-storage 拥有；这里只补充 Desktop 动态项目根
- * 与 cwd/.vetta/sessions 默认目录，不把宿主路径规则下沉到存储包。
+ * 文件格式识别和写操作仍由 runtime-storage 拥有；这里只补充 Desktop 的动态项目根，
+ * 不把宿主路径规则下沉到存储包。
  */
 export class DesktopRuntimeSessionCatalog implements RuntimeSessionCatalog {
 	private readonly catalog: FileConversationRuntimeSessionCatalog;
@@ -35,8 +35,16 @@ export class DesktopRuntimeSessionCatalog implements RuntimeSessionCatalog {
 		return this.catalogForCurrentRoots().listProjects();
 	}
 
+	/**
+	 * 不给 `sessionDir` 兜底：底层 catalog 在缺省时会**并集**同一 cwd 的全部已注册 root，
+	 * 于是新会话（全局分片目录）与存量会话（`<项目>/.vetta/sessions`）能一起列出来。
+	 * 一旦在这里钉死某一个目录，另一处的会话就从列表里消失了。
+	 *
+	 * 走 {@link catalogForCurrentRoots}（而不是构造时那份无 root 的 catalog）：项目列表
+	 * 是动态的，缺省并集必须基于**当前**已注册的 root。
+	 */
 	listSessions(cwd: string, sessionDir?: string): Promise<readonly SessionHistoryInfo[]> {
-		return this.catalog.listSessions(cwd, sessionDir ?? join(resolve(cwd), ".vetta", "sessions"));
+		return this.catalogForCurrentRoots().listSessions(cwd, sessionDir);
 	}
 
 	renameSession(sessionPath: string, name: string): Promise<void> {

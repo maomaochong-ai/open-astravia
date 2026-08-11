@@ -1,20 +1,38 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { Api, Model } from "@vetta/ai";
+import { resolveCodingAgentSessionDir } from "@vetta/coding-agent/bootstrap";
 import { createCodingAgentRuntimeComposition } from "@vetta/coding-agent/composition";
 import type { EcosystemHookAdapterFactory } from "@vetta/coding-agent/hooks";
 import type { CodingAgentRuntimeModelSource } from "@vetta/coding-agent/host-services";
 import { RuntimeHost } from "@vetta/runtime-core";
 import type { McpRuntimeToolSource } from "@vetta/runtime-mcp";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { DesktopRuntimeBackendPool } from "./backend-pool.js";
 import { DesktopRuntimeSessionCatalog } from "./session-catalog.js";
+
+/** `getAgentDir()` 的环境变量开关；缺省会话落点由它决定，测试不得写进真实 `~/.vetta/agent`。 */
+const AGENT_DIR_ENV = "VETTA_CODING_AGENT_DIR";
 
 describe("DesktopRuntimeBackendPool", () => {
 	const directories: string[] = [];
 	const runtimes: RuntimeHost[] = [];
 	const pools: DesktopRuntimeBackendPool[] = [];
+	const previousAgentDir = process.env[AGENT_DIR_ENV];
+	let agentDir = "";
+
+	beforeAll(async () => {
+		agentDir = await mkdtemp(join(tmpdir(), "desktop-runtime-agent-dir-"));
+		process.env[AGENT_DIR_ENV] = agentDir;
+	});
+
+	afterAll(async () => {
+		if (previousAgentDir === undefined) delete process.env[AGENT_DIR_ENV];
+		else process.env[AGENT_DIR_ENV] = previousAgentDir;
+		await rm(agentDir, { recursive: true, force: true });
+	});
 
 	afterEach(async () => {
 		for (const runtime of runtimes.splice(0).reverse()) await runtime.disposeAllSessions();
@@ -59,7 +77,12 @@ describe("DesktopRuntimeBackendPool", () => {
 		expect(runtime.getState(second.sessionId).scenario).toBe("automation");
 	});
 
-	it("uses cwd/.vetta/sessions for project listing when sessionDir is omitted", async () => {
+	/**
+	 * 普通项目的会话产物**不落在用户工程目录里**：写进 `<cwd>/.vetta/sessions` 会在
+	 * 用户仓库里长出未跟踪文件（还可能被 `git add -A` 误提交）。缺省落点是 agent 目录
+	 * 下按 cwd 编码分片的全局目录，与 CLI/SDK 宿主一致。
+	 */
+	it("falls back to the global per-cwd session shard when sessionDir is omitted", async () => {
 		const cwd = await temporaryDirectory("desktop-runtime-catalog-root-");
 		const pool = createPool();
 		const runtime = new RuntimeHost({
@@ -74,8 +97,13 @@ describe("DesktopRuntimeBackendPool", () => {
 			model: MODEL,
 			scenario: "batch",
 		});
+		const globalShard = resolveCodingAgentSessionDir(cwd);
+
+		expect(dirname(runtime.getSessionPath(created.sessionId) ?? "")).toBe(globalShard);
+		expect(existsSync(join(cwd, ".vetta", "sessions"))).toBe(false);
+
 		const catalog = new DesktopRuntimeSessionCatalog({
-			resolveRoots: () => [{ cwd, sessionDir: join(cwd, ".vetta", "sessions") }],
+			resolveRoots: () => [{ cwd, sessionDir: globalShard }],
 		});
 		const sessions = await catalog.listSessions(cwd);
 
@@ -84,6 +112,24 @@ describe("DesktopRuntimeBackendPool", () => {
 			id: created.sessionId,
 			cwd,
 		});
+	});
+
+	it("still honours an explicit sessionDir (batch tasks, host-owned conversation roots)", async () => {
+		const cwd = await temporaryDirectory("desktop-runtime-explicit-dir-");
+		const sessionDir = join(cwd, "custom-sessions");
+		const pool = createPool();
+		const runtime = new RuntimeHost({
+			sessionBackend: pool,
+			getDefaultExecutionMode: () => "full-access",
+		});
+		pools.push(pool);
+		runtimes.push(runtime);
+
+		const created = await runtime.createSession({ cwd, sessionDir, model: MODEL, scenario: "batch" });
+
+		expect(dirname(runtime.getSessionPath(created.sessionId) ?? "")).toBe(sessionDir);
+		// 显式落点不该被缺省值抢走：全局分片目录里不该多出这条会话。
+		expect(await readdir(resolveCodingAgentSessionDir(cwd))).toHaveLength(0);
 	});
 
 	it("deduplicates concurrent host ownership and resumes after the backend pool is recreated", async () => {

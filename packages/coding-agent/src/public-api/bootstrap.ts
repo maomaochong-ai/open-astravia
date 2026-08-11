@@ -13,7 +13,7 @@ export {
 	prepareCodingAgentPipedStdin,
 	prepareCodingAgentPrintInvocation,
 } from "../host/coding-agent-print-invocation.js";
-export { resolveCodingAgentSessionDir } from "../host/coding-agent-session-storage.js";
+export { codingAgentSessionShardPath, resolveCodingAgentSessionDir } from "../host/coding-agent-session-storage.js";
 export type {
 	CodingAgentExtensionBootstrapContributions,
 	CodingAgentExtensionCompatibilityAssessment,
