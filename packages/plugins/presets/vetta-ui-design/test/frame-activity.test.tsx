@@ -10,6 +10,7 @@ import {
 	type CanvasController,
 	clearFrameActivity,
 	type FrameActivity,
+	notifyAgentToolArgs,
 	notifyAgentToolEnd,
 	notifyAgentToolStart,
 	onFrameActivity,
@@ -77,6 +78,33 @@ it("keeps the activity on screen for the minimum dwell even when the tool return
 	expect(seen.get("home")).toBe("updated");
 });
 
+it("lights up as soon as the streamed arguments reveal the target, not when the tool executes", () => {
+	// edit/write 真正耗时的是模型生成参数（一整份文件正文），执行只要几毫秒。
+	// 只认 tool-call-start 的话，浮层要等活干完才亮——正是用户看到的现象。
+	notifyAgentToolArgs("c1", "edit", { path: `${DIR}/frames/home.tsx` });
+	expect(seen.get("home")).toBe("modifying");
+});
+
+it("does not restart the dwell when the tool finally executes", () => {
+	// 生成阶段已经在计时了；tool-call-start 再刷一次 startedAt 的话，最短停留
+	// 会从「活干完」重新算起，等于把提前点亮的收益又还回去。
+	notifyAgentToolArgs("c1", "write", { path: `${DIR}/frames/home.tsx` });
+	act(() => {
+		vi.advanceTimersByTime(9_000);
+	});
+	notifyAgentToolStart("c1", "write", { path: `${DIR}/frames/home.tsx` });
+	expect(seen.get("home")).toBe("creating");
+	// 早就超过 2.5s 的最短停留了，收场不该再等。
+	notifyAgentToolEnd("c1", false);
+	expect(seen.get("home")).toBe("updated");
+});
+
+it("ignores streamed arguments that do not resolve to a frame yet", () => {
+	// 第一个键还没解析出来时参数是空的；别把它当成「无目标」以外的任何东西。
+	notifyAgentToolArgs("c1", "edit", {});
+	expect(seen.size).toBe(0);
+});
+
 it("lights up every frame when the agent touches shared chrome", () => {
 	// components/、theme.css、frames/_layout.tsx 影响的是每一屏，依赖关系无从判断。
 	// 新的 .vetd 目录包 + skill 要求「先写共享外壳再逐屏填充」，agent 大部分编辑
@@ -103,6 +131,35 @@ it("stays quiet for generated files — screenshots and the manifest are not sou
 it("ignores paths outside the open design", () => {
 	notifyAgentToolStart("c1", "edit", { file_path: "/w/other/src/app.tsx" });
 	expect(seen.size).toBe(0);
+});
+
+it("keeps the overlay alive through a long generation", () => {
+	// 活动态现在从「模型开始生成参数」起算，一次 write 整屏内容跑上几十秒很正常。
+	// 兜底寿命必须长过它，否则浮层会在 agent 还在干活时自己消失。
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+		cb(0);
+		return 1;
+	});
+	vi.stubGlobal("cancelAnimationFrame", () => {});
+
+	act(() => {
+		root.render(<FrameActivityOverlay activity="creating" />);
+	});
+	act(() => {
+		vi.advanceTimersByTime(30_000);
+	});
+	// 元素留在 DOM 里不算数：渐出只是把 opacity 收到 0，看的是它还亮着没有。
+	const overlay = host.querySelector(".vetd-activity-overlay") as HTMLElement | null;
+	expect(overlay?.style.opacity).toBe("1");
+
+	act(() => {
+		root.unmount();
+	});
+	host.remove();
+	vi.unstubAllGlobals();
 });
 
 it("renders the overlay with the per-kind decorations", () => {

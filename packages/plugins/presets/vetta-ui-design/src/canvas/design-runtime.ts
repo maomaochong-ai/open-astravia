@@ -135,13 +135,16 @@ function clearTimer(frameId: string): void {
 	}
 }
 
-/** tool-call-start with a file-path arg targeting a frame → 浏览中 / 修改中 / 创作中. */
-export function notifyAgentToolStart(
-	toolCallId: string,
-	toolName: string,
-	args: Record<string, unknown> | undefined,
-): void {
+/**
+ * 一次工具调用点亮目标帧：浏览中 / 修改中 / 创作中。
+ *
+ * 两个入口共用（生成阶段的部分参数、执行阶段的全量参数），谁先解析出目标就从谁
+ * 开始计时；后到的那次不再重置 `startedAt`——否则最短停留会从「活干完」重新算，
+ * 提前点亮的意义全部抵消。
+ */
+function beginActivity(toolCallId: string, toolName: string, args: Record<string, unknown> | undefined): void {
 	if (!args) return;
+	if (activeCalls.has(toolCallId)) return;
 	const candidates = [args.file_path, args.path, args.filePath, args.notebook_path];
 	for (const candidate of candidates) {
 		if (typeof candidate !== "string") continue;
@@ -154,7 +157,32 @@ export function notifyAgentToolStart(
 			activity.set(frameId, kind);
 		}
 		emitActivity();
+		return;
 	}
+}
+
+/**
+ * 模型还在生成这次调用，但流式参数已经露出了目标路径。
+ *
+ * edit / write 的开销全在生成参数上（一整份 frame 正文，动辄几十秒），执行只要
+ * 几毫秒。只听 tool-call-start 的话，浮层要等这一切结束才亮 —— 看起来就像「改完
+ * 之后才闪一下」。路径通常是参数里的第一个键，这条事件能提前几秒到。
+ */
+export function notifyAgentToolArgs(
+	toolCallId: string,
+	toolName: string,
+	args: Record<string, unknown> | undefined,
+): void {
+	beginActivity(toolCallId, toolName, args);
+}
+
+/** 工具开始执行。生成阶段没能解析出目标时（参数键顺序不定），这里是兜底入口。 */
+export function notifyAgentToolStart(
+	toolCallId: string,
+	toolName: string,
+	args: Record<string, unknown> | undefined,
+): void {
+	beginActivity(toolCallId, toolName, args);
 }
 
 /**

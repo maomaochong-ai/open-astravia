@@ -13,6 +13,7 @@ import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } 
 import { CanvasTab } from "./canvas/CanvasTab";
 import {
 	getCanvasController,
+	notifyAgentToolArgs,
 	notifyAgentToolEnd,
 	notifyAgentToolStart,
 	notifyFrameSettled,
@@ -194,6 +195,12 @@ export default definePlugin({
 				latestCwd = cwd;
 				latestSessionId = id;
 				revealTabForCwd(cwd, id);
+				return;
+			}
+			// 生成阶段就点亮：edit/write 的时间几乎全花在生成参数上，等到执行事件
+			// 才亮的话，浮层是在活干完之后才出现的。
+			if (event.type === "tool-call-args") {
+				notifyAgentToolArgs(event.toolCallId, event.toolName, event.args);
 				return;
 			}
 			if (event.type === "tool-call-start") {

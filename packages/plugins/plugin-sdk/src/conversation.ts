@@ -21,6 +21,17 @@ export type ConversationEvent =
 	| { type: "turn-end"; stopReason: string }
 	| { type: "message-added"; message: ConversationMessage }
 	| { type: "message-updated"; delta: string }
+	/**
+	 * 模型还在生成这次调用，流式参数已解析出新的键。
+	 *
+	 * 用它做「agent 正在动某个目标」这类实时 UI：`edit` / `write` 真正耗时的是
+	 * 生成参数（一整份文件正文），执行只要几毫秒，等 `tool-call-start` 到手时活
+	 * 已经干完了。目标路径通常是参数里的第一个键，所以能提前几秒拿到。
+	 *
+	 * 天然是残缺的：后面的键还没到，正在生成的那个键也不含在内。要权威全量参数
+	 * 请用 `tool-call-start`。同一次调用会随键数增长发多次，不会逐 token 发。
+	 */
+	| { type: "tool-call-args"; toolCallId: string; toolName: string; args: Record<string, unknown> }
 	| { type: "tool-call-start"; toolCallId: string; toolName: string; args?: Record<string, unknown> }
 	| { type: "tool-call-end"; toolCallId: string; toolName: string; isError: boolean }
 	| { type: "conversation-changed"; conversation: ConversationState }

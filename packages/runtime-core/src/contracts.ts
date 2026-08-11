@@ -308,6 +308,27 @@ export interface ToolCallGeneratingEvent extends SessionEventBase {
 	toolName: string;
 }
 
+/**
+ * The model is still generating this tool call, and streaming its arguments has
+ * revealed at least one more fully-parsed key. Emitted once per key growth, not
+ * per token.
+ *
+ * Why it exists: for `edit`/`write` the expensive part is generating the
+ * arguments (a whole file body), while executing them takes milliseconds. UI
+ * keyed off {@link ToolStartEvent} therefore only learns the target once the
+ * work is essentially over. The target path is normally the first key in the
+ * argument object, so it lands here seconds earlier.
+ *
+ * Partial by construction: keys may still be missing and values of the
+ * in-flight key are not included. {@link ToolStartEvent} stays authoritative.
+ */
+export interface ToolCallArgsEvent extends SessionEventBase {
+	type: "toolcall.args";
+	toolCallId: string;
+	toolName: string;
+	args: Readonly<Record<string, unknown>>;
+}
+
 export interface ToolStartEvent extends SessionEventBase {
 	type: "tool.start";
 	toolCallId: string;
@@ -575,6 +596,7 @@ export type SessionEvent =
 	| ThinkingDeltaEvent
 	| MessageFinalEvent
 	| ToolCallGeneratingEvent
+	| ToolCallArgsEvent
 	| ToolStartEvent
 	| ToolUpdateEvent
 	| ToolPhaseEvent

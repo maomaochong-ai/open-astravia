@@ -29,6 +29,13 @@ export type RuntimeSessionObservationEvent = RuntimeSessionObservationBase &
 		| { readonly type: "thinking.delta"; readonly delta: string }
 		| { readonly type: "message.final"; readonly message: Message }
 		| { readonly type: "toolcall.start"; readonly toolCallId: string; readonly toolName: string }
+		// 生成中的部分参数，见 contracts 的 ToolCallArgsEvent。
+		| {
+				readonly type: "toolcall.args";
+				readonly toolCallId: string;
+				readonly toolName: string;
+				readonly args: Readonly<Record<string, unknown>>;
+		  }
 		| {
 				readonly type: "tool.start";
 				readonly toolCallId: string;

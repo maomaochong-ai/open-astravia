@@ -82,8 +82,13 @@ const INVERSE_SCALE = "var(--vetd-lscale, 1)";
 /**
  * 浮层动画的最长寿命：万一收场信号全丢（end/HMR/turn-end 都没来），满帧动画
  * 不能一直晃眼。到点只撤浮层，标题栏 badge 留着继续报状态。
+ *
+ * 定得这么宽是因为活动态从「模型开始生成参数」起算（见 design-runtime 的
+ * notifyAgentToolArgs）：写一整屏 frame 跑上几十秒是常态，卡得紧的话浮层会在
+ * agent 还在干活时自己消失——那正是它要避免的那种「状态不可信」。真正的兜底是
+ * turn-end 的全量清扫，这里只防它也丢了的极端情况。
  */
-const OVERLAY_MAX_MS = 5_000;
+const OVERLAY_MAX_MS = 120_000;
 
 /** 渐入渐出时长，与 style.css 的 .vetd-activity-overlay transition 保持一致。 */
 const FADE_MS = 300;

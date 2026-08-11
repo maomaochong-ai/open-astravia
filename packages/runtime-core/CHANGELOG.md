@@ -4,6 +4,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- 新增 `toolcall.args` 会话事件：模型流式生成工具参数时，每多解析出一个值已完整的键就播报一次（按键数增长节流，不逐 token）。`edit` / `write` 的开销几乎全在生成参数上，只听 `tool.start` 的消费方要等工具执行完才知道目标；路径通常是第一个键，这条事件能提前拿到。`tool.start` 仍是权威全量参数。
+
 ### Breaking Changes
 
 - **Runtime Host 生产 API 移除 Greenfield 迁移命名**：Kernel 驱动的会话、模型、投影、上下文与组合工厂统一改用稳定的 `Runtime*` / `KernelRuntime*` 名称，并重命名对应生产模块；不保留旧类型别名。运行时协议值、会话持久化格式和宿主行为不变。

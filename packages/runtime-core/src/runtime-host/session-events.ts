@@ -47,6 +47,14 @@ export function mapRuntimeSessionObservationEvent(
 			return { ...base, type: event.type, message: event.message };
 		case "toolcall.start":
 			return { ...base, type: event.type, toolCallId: event.toolCallId, toolName: event.toolName };
+		case "toolcall.args":
+			return {
+				...base,
+				type: event.type,
+				toolCallId: event.toolCallId,
+				toolName: event.toolName,
+				args: event.args,
+			};
 		case "tool.start":
 			return {
 				...base,
