@@ -25,7 +25,7 @@ export function GalleryCard({ card, onOpen, onContextMenu }: GalleryCardProps) {
 			type="button"
 			onClick={onOpen}
 			onContextMenu={onContextMenu}
-			className="group flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left transition hover:border-primary/60 hover:shadow-lg"
+			className="group flex w-full flex-col overflow-hidden rounded-xl border border-border bg-card text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg"
 		>
 			<div className="relative aspect-[4/3] w-full overflow-hidden bg-muted/40">
 				{card.coverDataUrl ? (

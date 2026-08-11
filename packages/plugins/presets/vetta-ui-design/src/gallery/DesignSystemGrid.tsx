@@ -18,6 +18,7 @@ export interface DesignSystemGridProps {
 	/** 上方还有别的内容时画一条分隔线，避免和项目宫格糊成一片。 */
 	divided?: boolean;
 	busy: boolean;
+	/** 点了一张风格卡。调用方决定后续（当前是打开详情 Dialog）。 */
 	onPick: (system: DesignSystem) => void;
 }
 
@@ -47,8 +48,12 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 							type="button"
 							disabled={busy}
 							onClick={() => onPick(system)}
-							aria-label={t("gallery.styles.start", { name: system.name })}
-							className="flex aspect-[4/3] min-w-0 flex-col gap-2 overflow-hidden rounded-xl border border-border p-2.5 text-left transition-all duration-200 hover:border-primary hover:shadow-md disabled:opacity-40"
+							onMouseEnter={() => setHovered(system.id)}
+							onMouseLeave={() => setHovered((current) => (current === system.id ? null : current))}
+							onFocus={() => setHovered(system.id)}
+							onBlur={() => setHovered((current) => (current === system.id ? null : current))}
+							aria-label={t("gallery.styles.view", { name: system.name })}
+							className="flex aspect-[4/3] min-w-0 flex-col gap-2 overflow-hidden rounded-xl border border-border bg-card p-2.5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg disabled:opacity-40"
 						>
 							<DesignSystemTileContent system={system} demoActive={hovered === system.id} />
 						</button>
