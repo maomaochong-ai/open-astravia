@@ -19,6 +19,7 @@ import type {
 	PluginMediaProviderHostRegistration,
 	PluginMediaProviderInvocationResult,
 } from "../../preload/api-types/plugins.js";
+import { PLUGIN_MEDIA_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getDesktopMediaRuntime } from "../capabilities/media-providers.js";
 import {
 	cloneMediaProviderCapabilities,
@@ -26,12 +27,6 @@ import {
 } from "../media-generation/media-provider-registry.js";
 import { listPlugins } from "../plugins/plugin-store.js";
 
-const REGISTER_CHANNEL = "vetta:plugins:media-provider-register";
-const UNREGISTER_CHANNEL = "vetta:plugins:media-provider-unregister";
-const REQUEST_CHANNEL = "vetta:plugins:media-provider-request";
-const CHANGED_CHANNEL = "vetta:plugins:media-providers-changed";
-const RESPONSE_CHANNEL = "vetta:plugins:media-provider-response";
-const UPLOAD_INPUT_CHANNEL = "vetta:plugins:media-provider-input-upload";
 const PROVIDER_TIMEOUT_MS = 30 * 60_000;
 const TRANSFER_TIMEOUT_MS = 10 * 60_000;
 const MAX_TRANSFER_RESPONSE_BYTES = 4 * 1024 * 1024;
@@ -182,7 +177,7 @@ export function registerPluginMediaProvidersIpc(): () => void {
 				disposeAbort: () => context.signal.removeEventListener("abort", abort),
 			});
 			try {
-				sender.send(REQUEST_CHANNEL, { requestId, pluginId, handlerId, operation, input });
+				sender.send(PLUGIN_MEDIA_CHANNELS.REQUEST, { requestId, pluginId, handlerId, operation, input });
 			} catch (error) {
 				settlePending(requestId)?.reject(error instanceof Error ? error : new Error(String(error)));
 			}
@@ -260,7 +255,7 @@ export function registerPluginMediaProvidersIpc(): () => void {
 		}
 	};
 
-	ipcMain.handle(REGISTER_CHANNEL, (event, pluginIdValue: unknown, registrationValue: unknown) => {
+	ipcMain.handle(PLUGIN_MEDIA_CHANNELS.REGISTER, (event, pluginIdValue: unknown, registrationValue: unknown) => {
 		const pluginId = requireString(pluginIdValue, "Plugin id");
 		assertProviderPermission(pluginId);
 		const registration = registrationValue as PluginMediaProviderHostRegistration;
@@ -317,11 +312,11 @@ export function registerPluginMediaProvidersIpc(): () => void {
 				: undefined,
 		});
 		providers.set(qualifiedId, { activationId, dispose: () => handle.dispose() });
-		event.sender.send(CHANGED_CHANNEL);
+		event.sender.send(PLUGIN_MEDIA_CHANNELS.CHANGED);
 	});
 
 	ipcMain.handle(
-		UNREGISTER_CHANNEL,
+		PLUGIN_MEDIA_CHANNELS.UNREGISTER,
 		(event, pluginIdValue: unknown, providerIdValue: unknown, activationIdValue: unknown) => {
 			const pluginId = requireString(pluginIdValue, "Plugin id");
 			const qualifiedId = `${pluginId}:${requireString(providerIdValue, "Media provider id")}`;
@@ -330,11 +325,11 @@ export function registerPluginMediaProvidersIpc(): () => void {
 				return;
 			providers.delete(qualifiedId);
 			handle.dispose();
-			event.sender.send(CHANGED_CHANNEL);
+			event.sender.send(PLUGIN_MEDIA_CHANNELS.CHANGED);
 		},
 	);
 
-	ipcMain.handle(RESPONSE_CHANNEL, (event, requestIdValue: unknown, resultValue: unknown) => {
+	ipcMain.handle(PLUGIN_MEDIA_CHANNELS.RESPONSE, (event, requestIdValue: unknown, resultValue: unknown) => {
 		const requestId = requireString(requestIdValue, "Media provider request id");
 		const invocation = pending.get(requestId);
 		if (!invocation || invocation.sender.id !== event.sender.id) return;
@@ -351,7 +346,7 @@ export function registerPluginMediaProvidersIpc(): () => void {
 	});
 
 	ipcMain.handle(
-		UPLOAD_INPUT_CHANNEL,
+		PLUGIN_MEDIA_CHANNELS.UPLOAD_INPUT,
 		async (event: IpcMainInvokeEvent, requestIdValue: unknown, inputIdValue: unknown, requestValue: unknown) => {
 			const requestId = requireString(requestIdValue, "Media provider request id");
 			const invocation = pending.get(requestId);
@@ -388,7 +383,12 @@ export function registerPluginMediaProvidersIpc(): () => void {
 	);
 
 	return () => {
-		for (const channel of [REGISTER_CHANNEL, UNREGISTER_CHANNEL, RESPONSE_CHANNEL, UPLOAD_INPUT_CHANNEL]) {
+		for (const channel of [
+			PLUGIN_MEDIA_CHANNELS.REGISTER,
+			PLUGIN_MEDIA_CHANNELS.UNREGISTER,
+			PLUGIN_MEDIA_CHANNELS.RESPONSE,
+			PLUGIN_MEDIA_CHANNELS.UPLOAD_INPUT,
+		]) {
 			ipcMain.removeHandler(channel);
 		}
 		for (const invocation of pending.values())

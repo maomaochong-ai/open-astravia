@@ -3,11 +3,8 @@ import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
-import {
-	buildAgentPluginRuntimeConfig,
-	setPluginRuntimeAgentMode,
-	summarizeAgentPluginRuntimeConfig,
-} from "../plugins/plugin-store.js";
+import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
+import { buildAgentPluginRuntimeConfig, setPluginRuntimeAgentMode } from "../plugins/plugin-store.js";
 import {
 	ensureConversationSubCwd,
 	ensureSessionWorkingCwd,

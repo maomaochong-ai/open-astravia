@@ -2,6 +2,7 @@ import { type ChildProcess, execFile } from "node:child_process";
 import { createServer } from "node:net";
 import { webContents } from "electron";
 import type { InstalledPlugin, PluginCommandSpawnStatus } from "../../preload/api-types/plugins.js";
+import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getAppLogger } from "../logger.js";
 import { createPluginCommandEnvironment } from "./command-environment.js";
 import { spawnCrossPlatformCommand } from "./command-launcher.js";
@@ -115,7 +116,7 @@ function broadcastSpawnExit(record: SpawnRecord): void {
 	for (const contents of webContents.getAllWebContents()) {
 		if (contents.isDestroyed()) continue;
 		try {
-			contents.send("vetta:plugins:command-spawn-exit", {
+			contents.send(PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_EXIT, {
 				pluginId: record.pluginId,
 				spawnId: record.spawnId,
 				exitCode: record.exit?.exitCode ?? null,

@@ -21,6 +21,7 @@ import type {
 	SettingsPatch,
 } from "@vetta/runtime-core";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
+import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
@@ -35,13 +36,13 @@ import { notify } from "../notifications/index.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
+import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import {
 	broadcastPluginsChanged,
 	buildAgentPluginRuntimeConfig,
 	getPluginSettings,
 	listPlugins,
 	setPluginRuntimeAgentMode,
-	summarizeAgentPluginRuntimeConfig,
 } from "../plugins/plugin-store.js";
 import {
 	filterSystemPromptInvocationForPlugin,
@@ -189,14 +190,14 @@ const CHANNELS = {
 	VIEWER_SUBSCRIBE: "vetta:session:viewer-subscribe",
 	VIEWER_UNSUBSCRIBE: "vetta:session:viewer-unsubscribe",
 	VIEWER_EVENT: "vetta:session:viewer-event",
-	PLUGIN_TOOL_REQUEST: "vetta:plugins:agent-tool-request",
-	PLUGIN_TOOL_RESPONSE: "vetta:plugins:agent-tool-response",
-	PLUGIN_HOOK_REQUEST: "vetta:plugins:agent-hook-request",
-	PLUGIN_HOOK_RESPONSE: "vetta:plugins:agent-hook-response",
-	PLUGIN_CONTINUATION_REQUEST: "vetta:plugins:continuation-request",
-	PLUGIN_CONTINUATION_RESPONSE: "vetta:plugins:continuation-response",
-	PLUGIN_SYSTEM_PROMPT_REQUEST: "vetta:plugins:system-prompt-request",
-	PLUGIN_SYSTEM_PROMPT_RESPONSE: "vetta:plugins:system-prompt-response",
+	PLUGIN_TOOL_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REQUEST,
+	PLUGIN_TOOL_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_RESPONSE,
+	PLUGIN_HOOK_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REQUEST,
+	PLUGIN_HOOK_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.HOOK_RESPONSE,
+	PLUGIN_CONTINUATION_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_REQUEST,
+	PLUGIN_CONTINUATION_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_RESPONSE,
+	PLUGIN_SYSTEM_PROMPT_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_REQUEST,
+	PLUGIN_SYSTEM_PROMPT_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_RESPONSE,
 } as const;
 
 /** 向所有存活窗口（含独立的快捷面板窗口）广播一个事件。 */

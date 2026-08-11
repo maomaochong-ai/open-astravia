@@ -1,5 +1,11 @@
 import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
 import { PLUGIN_CAPABILITY_CHANNELS, PLUGIN_SYSTEM_CHANNELS } from "../../shared/plugin-capability-ipc.js";
+import {
+	PLUGIN_CONTRIBUTION_CHANNELS,
+	PLUGIN_EXECUTION_CHANNELS,
+	PLUGIN_MANAGEMENT_CHANNELS,
+	PLUGIN_MEDIA_CHANNELS,
+} from "../../shared/plugin-ipc.js";
 import type { DesktopApi } from "../api.js";
 import { onIpcEvent } from "./helper.js";
 
@@ -15,7 +21,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 		const subscription = { listener };
 		settingsChangedSubscriptions.add(subscription);
 		if (settingsChangedSubscriptions.size === 1) {
-			ipc.on("vetta:plugins:settings-changed", handleSettingsChanged);
+			ipc.on(PLUGIN_CONTRIBUTION_CHANNELS.SETTINGS_CHANGED, handleSettingsChanged);
 		}
 		let subscribed = true;
 		return () => {
@@ -23,7 +29,7 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 			subscribed = false;
 			settingsChangedSubscriptions.delete(subscription);
 			if (settingsChangedSubscriptions.size === 0) {
-				ipc.removeListener("vetta:plugins:settings-changed", handleSettingsChanged);
+				ipc.removeListener(PLUGIN_CONTRIBUTION_CHANNELS.SETTINGS_CHANGED, handleSettingsChanged);
 			}
 		};
 	};
@@ -282,114 +288,126 @@ export function createPluginsApi(ipc: IpcRenderer, webUtils: WebUtils): Pick<Des
 						ipc.invoke(PLUGIN_CAPABILITY_CHANNELS.WEBHOOK_ENDPOINT_SEND, sessionId, id, message),
 				},
 			},
-			list: () => ipc.invoke("vetta:plugins:list"),
-			listAll: () => ipc.invoke("vetta:plugins:list-all"),
+			list: () => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.LIST),
+			listAll: () => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.LIST_ALL),
 			installFromArchive: (archiveBuffer, options) =>
-				ipc.invoke("vetta:plugins:install-from-archive", archiveBuffer, options),
-			installFromUrl: (url, options) => ipc.invoke("vetta:plugins:install-from-url", url, options),
-			installFromPath: (path, options) => ipc.invoke("vetta:plugins:install-from-path", path, options),
-			uninstall: (id) => ipc.invoke("vetta:plugins:uninstall", id),
-			setEnabled: (id, enabled) => ipc.invoke("vetta:plugins:set-enabled", id, enabled),
-			grantPermissions: (id, permissions) => ipc.invoke("vetta:plugins:grant-permissions", id, permissions),
-			revokePermissions: (id, permissions) => ipc.invoke("vetta:plugins:revoke-permissions", id, permissions),
-			grantCommands: (id, names) => ipc.invoke("vetta:plugins:grant-commands", id, names),
-			revokeCommands: (id, names) => ipc.invoke("vetta:plugins:revoke-commands", id, names),
+				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.INSTALL_FROM_ARCHIVE, archiveBuffer, options),
+			installFromUrl: (url, options) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.INSTALL_FROM_URL, url, options),
+			installFromPath: (path, options) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.INSTALL_FROM_PATH, path, options),
+			uninstall: (id) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.UNINSTALL, id),
+			setEnabled: (id, enabled) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.SET_ENABLED, id, enabled),
+			grantPermissions: (id, permissions) =>
+				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.GRANT_PERMISSIONS, id, permissions),
+			revokePermissions: (id, permissions) =>
+				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REVOKE_PERMISSIONS, id, permissions),
+			grantCommands: (id, names) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.GRANT_COMMANDS, id, names),
+			revokeCommands: (id, names) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REVOKE_COMMANDS, id, names),
 			runCommand: (sessionId, file, args, options) =>
-				ipc.invoke("vetta:plugins:command-run", sessionId, file, args, options),
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.COMMAND_RUN, sessionId, file, args, options),
 			spawnCommand: (sessionId, file, args, options) =>
-				ipc.invoke("vetta:plugins:command-spawn", sessionId, file, args, options),
-			stopCommandSpawn: (sessionId, spawnId) => ipc.invoke("vetta:plugins:command-spawn-stop", sessionId, spawnId),
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN, sessionId, file, args, options),
+			stopCommandSpawn: (sessionId, spawnId) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_STOP, sessionId, spawnId),
 			getCommandSpawnStatus: (sessionId, spawnId) =>
-				ipc.invoke("vetta:plugins:command-spawn-status", sessionId, spawnId),
-			onCommandSpawnExit: (handler) => onIpcEvent(ipc, "vetta:plugins:command-spawn-exit", handler),
-			offscreenCapture: (pluginId, options) => ipc.invoke("vetta:plugins:offscreen-capture", pluginId, options),
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_STATUS, sessionId, spawnId),
+			onCommandSpawnExit: (handler) => onIpcEvent(ipc, PLUGIN_EXECUTION_CHANNELS.COMMAND_SPAWN_EXIT, handler),
+			offscreenCapture: (pluginId, options) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.OFFSCREEN_CAPTURE, pluginId, options),
 			offscreenRelease: (pluginId, sessionKey) =>
-				ipc.invoke("vetta:plugins:offscreen-release", pluginId, sessionKey),
-			reload: (id) => ipc.invoke("vetta:plugins:reload", id),
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.OFFSCREEN_RELEASE, pluginId, sessionKey),
+			reload: (id) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.RELOAD, id),
 			startDevWatch: (sessionId, id, projectDir) =>
-				ipc.invoke("vetta:plugins:dev-watch-start", sessionId, id, projectDir),
-			stopDevWatch: (sessionId, id) => ipc.invoke("vetta:plugins:dev-watch-stop", sessionId, id),
-			registerModeGate: (pluginId) => ipc.invoke("vetta:plugins:register-mode-gate", pluginId),
-			setContributionMode: (pluginId, active) => ipc.invoke("vetta:plugins:set-contribution-mode", pluginId, active),
+				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.DEV_WATCH_START, sessionId, id, projectDir),
+			stopDevWatch: (sessionId, id) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.DEV_WATCH_STOP, sessionId, id),
+			registerModeGate: (pluginId) => ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.REGISTER_MODE_GATE, pluginId),
+			setContributionMode: (pluginId, active) =>
+				ipc.invoke(PLUGIN_MANAGEMENT_CHANNELS.SET_CONTRIBUTION_MODE, pluginId, active),
 			beginAgentContributionsLoad: (pluginId, activationId) =>
-				ipc.invoke("vetta:plugins:agent-contributions-begin-load", pluginId, activationId),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.BEGIN_LOAD, pluginId, activationId),
 			registerAgentTool: (pluginId, registration) =>
-				ipc.invoke("vetta:plugins:agent-tool-register", pluginId, registration),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REGISTER, pluginId, registration),
 			unregisterAgentTool: (pluginId, toolId, activationId) =>
-				ipc.invoke("vetta:plugins:agent-tool-unregister", pluginId, toolId, activationId),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.TOOL_UNREGISTER, pluginId, toolId, activationId),
 			registerAgentHook: (pluginId, registration) =>
-				ipc.invoke("vetta:plugins:agent-hook-register", pluginId, registration),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REGISTER, pluginId, registration),
 			unregisterAgentHook: (pluginId, hookId, activationId) =>
-				ipc.invoke("vetta:plugins:agent-hook-unregister", pluginId, hookId, activationId),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.HOOK_UNREGISTER, pluginId, hookId, activationId),
 			clearAgentContributions: (pluginId, activationId) =>
-				ipc.invoke("vetta:plugins:agent-contributions-clear", pluginId, activationId),
-			onAgentToolRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:agent-tool-request", handler),
-			respondAgentTool: (requestId, result) => ipc.invoke("vetta:plugins:agent-tool-response", requestId, result),
-			onAgentHookRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:agent-hook-request", handler),
-			respondAgentHook: (requestId, result) => ipc.invoke("vetta:plugins:agent-hook-response", requestId, result),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.CLEAR, pluginId, activationId),
+			onAgentToolRequest: (handler) => onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REQUEST, handler),
+			respondAgentTool: (requestId, result) =>
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.TOOL_RESPONSE, requestId, result),
+			onAgentHookRequest: (handler) => onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REQUEST, handler),
+			respondAgentHook: (requestId, result) =>
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.HOOK_RESPONSE, requestId, result),
 			registerAppAction: (pluginId, registration) =>
-				ipc.invoke("vetta:plugins:app-action-register", pluginId, registration),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_REGISTER, pluginId, registration),
 			commitAppActionActivation: (pluginId, activationId) =>
-				ipc.invoke("vetta:plugins:app-action-activation-commit", pluginId, activationId),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_COMMIT, pluginId, activationId),
 			abortAppActionActivation: (pluginId, activationId) =>
-				ipc.invoke("vetta:plugins:app-action-activation-abort", pluginId, activationId),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_ABORT, pluginId, activationId),
 			unregisterAppAction: (pluginId, actionId, activationId) =>
-				ipc.invoke("vetta:plugins:app-action-unregister", pluginId, actionId, activationId),
-			onAppActionRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:app-action-request", handler),
-			onAppActionCancel: (handler) => onIpcEvent(ipc, "vetta:plugins:app-action-cancel", handler),
-			respondAppAction: (requestId, result) => ipc.invoke("vetta:plugins:app-action-response", requestId, result),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_UNREGISTER, pluginId, actionId, activationId),
+			onAppActionRequest: (handler) => onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_REQUEST, handler),
+			onAppActionCancel: (handler) => onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_CANCEL, handler),
+			respondAppAction: (requestId, result) =>
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_RESPONSE, requestId, result),
 			registerContinuationProvider: (pluginId, registration) =>
-				ipc.invoke("vetta:plugins:continuation-register", pluginId, registration),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_REGISTER, pluginId, registration),
 			unregisterContinuationProvider: (pluginId, providerId, activationId) =>
-				ipc.invoke("vetta:plugins:continuation-unregister", pluginId, providerId, activationId),
-			onContinuationRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:continuation-request", handler),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_UNREGISTER, pluginId, providerId, activationId),
+			onContinuationRequest: (handler) =>
+				onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_REQUEST, handler),
 			respondContinuation: (requestId, result) =>
-				ipc.invoke("vetta:plugins:continuation-response", requestId, result),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_RESPONSE, requestId, result),
 			registerSystemPromptProvider: (pluginId, registration) =>
-				ipc.invoke("vetta:plugins:system-prompt-provider-register", pluginId, registration),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_REGISTER, pluginId, registration),
 			unregisterSystemPromptProvider: (pluginId, providerId, activationId) =>
-				ipc.invoke("vetta:plugins:system-prompt-provider-unregister", pluginId, providerId, activationId),
-			onSystemPromptRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:system-prompt-request", handler),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_UNREGISTER, pluginId, providerId, activationId),
+			onSystemPromptRequest: (handler) =>
+				onIpcEvent(ipc, PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_REQUEST, handler),
 			respondSystemPrompt: (requestId, result) =>
-				ipc.invoke("vetta:plugins:system-prompt-response", requestId, result),
+				ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_RESPONSE, requestId, result),
 			registerMediaProvider: (pluginId, registration) =>
-				ipc.invoke("vetta:plugins:media-provider-register", pluginId, registration),
+				ipc.invoke(PLUGIN_MEDIA_CHANNELS.REGISTER, pluginId, registration),
 			unregisterMediaProvider: (pluginId, providerId, activationId) =>
-				ipc.invoke("vetta:plugins:media-provider-unregister", pluginId, providerId, activationId),
-			onMediaProvidersChanged: (handler) => onIpcEvent(ipc, "vetta:plugins:media-providers-changed", handler),
-			onMediaProviderRequest: (handler) => onIpcEvent(ipc, "vetta:plugins:media-provider-request", handler),
-			respondMediaProvider: (requestId, result) =>
-				ipc.invoke("vetta:plugins:media-provider-response", requestId, result),
+				ipc.invoke(PLUGIN_MEDIA_CHANNELS.UNREGISTER, pluginId, providerId, activationId),
+			onMediaProvidersChanged: (handler) => onIpcEvent(ipc, PLUGIN_MEDIA_CHANNELS.CHANGED, handler),
+			onMediaProviderRequest: (handler) => onIpcEvent(ipc, PLUGIN_MEDIA_CHANNELS.REQUEST, handler),
+			respondMediaProvider: (requestId, result) => ipc.invoke(PLUGIN_MEDIA_CHANNELS.RESPONSE, requestId, result),
 			uploadMediaProviderInput: (requestId, inputId, request) =>
-				ipc.invoke("vetta:plugins:media-provider-input-upload", requestId, inputId, request),
-			getSettings: (id) => ipc.invoke("vetta:plugins:get-settings", id),
-			setSettings: (id, values) => ipc.invoke("vetta:plugins:set-settings", id, values),
-			networkRequest: (sessionId, request) => ipc.invoke("vetta:plugins:network:request", sessionId, request),
-			gatewayRequest: (sessionId, request) => ipc.invoke("vetta:plugins:gateway:request", sessionId, request),
-			storageReadJson: (sessionId, key) => ipc.invoke("vetta:plugins:storage:read-json", sessionId, key),
+				ipc.invoke(PLUGIN_MEDIA_CHANNELS.UPLOAD_INPUT, requestId, inputId, request),
+			getSettings: (id) => ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.GET_SETTINGS, id),
+			setSettings: (id, values) => ipc.invoke(PLUGIN_CONTRIBUTION_CHANNELS.SET_SETTINGS, id, values),
+			networkRequest: (sessionId, request) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.NETWORK_REQUEST, sessionId, request),
+			gatewayRequest: (sessionId, request) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.GATEWAY_REQUEST, sessionId, request),
+			storageReadJson: (sessionId, key) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_JSON, sessionId, key),
 			storageWriteJson: (sessionId, key, value) =>
-				ipc.invoke("vetta:plugins:storage:write-json", sessionId, key, value),
-			storageList: (sessionId, prefix) => ipc.invoke("vetta:plugins:storage:list", sessionId, prefix),
-			storageReadFile: (sessionId, path) => ipc.invoke("vetta:plugins:storage:read-file", sessionId, path),
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_WRITE_JSON, sessionId, key, value),
+			storageList: (sessionId, prefix) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_LIST, sessionId, prefix),
+			storageReadFile: (sessionId, path) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_FILE, sessionId, path),
 			storageWriteFile: (sessionId, path, data) =>
-				ipc.invoke("vetta:plugins:storage:write-file", sessionId, path, data),
-			storagePutBlob: (sessionId, input) => ipc.invoke("vetta:plugins:storage:put-blob", sessionId, input),
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_WRITE_FILE, sessionId, path, data),
+			storagePutBlob: (sessionId, input) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_PUT_BLOB, sessionId, input),
 			storagePutBlobFromFile: (sessionId, input) => {
 				const path = webUtils.getPathForFile(input.file);
 				if (!path) return Promise.reject(new Error("Plugin blob import requires a filesystem-backed File"));
-				return ipc.invoke("vetta:plugins:storage:put-blob-from-file", sessionId, {
+				return ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_PUT_BLOB_FROM_FILE, sessionId, {
 					...(input.id === undefined ? {} : { id: input.id }),
 					path,
 					mimeType: input.mimeType,
 				});
 			},
-			storageReadBlob: (sessionId, id) => ipc.invoke("vetta:plugins:storage:read-blob", sessionId, id),
-			storageGetBlobRef: (sessionId, id) => ipc.invoke("vetta:plugins:storage:get-blob-ref", sessionId, id),
+			storageReadBlob: (sessionId, id) => ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_READ_BLOB, sessionId, id),
+			storageGetBlobRef: (sessionId, id) =>
+				ipc.invoke(PLUGIN_EXECUTION_CHANNELS.STORAGE_GET_BLOB_REF, sessionId, id),
 			onSettingsChanged,
 			onPluginsChanged: (listener) => {
 				const handler = (_event: IpcRendererEvent, payload?: Parameters<typeof listener>[0]) => listener(payload);
-				ipc.on("vetta:plugins:changed", handler);
-				return () => ipc.removeListener("vetta:plugins:changed", handler);
+				ipc.on(PLUGIN_CONTRIBUTION_CHANNELS.PLUGINS_CHANGED, handler);
+				return () => ipc.removeListener(PLUGIN_CONTRIBUTION_CHANNELS.PLUGINS_CHANGED, handler);
 			},
 		},
 	};
