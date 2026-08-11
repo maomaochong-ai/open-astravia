@@ -91,6 +91,8 @@ export type {
 	SidebarFilterSelectViewProps,
 } from "./SidebarFilterSelectView";
 export { SidebarFilterSelectView } from "./SidebarFilterSelectView";
+export type { SidebarNavBadgeViewProps } from "./SidebarNavBadgeView";
+export { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 export type { SidebarNavItemButtonProps } from "./SidebarNavItemButton";
 export { SidebarNavItemButton } from "./SidebarNavItemButton";
 export type { SidebarNavigationProps } from "./SidebarNavigation";

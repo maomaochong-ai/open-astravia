@@ -1,4 +1,5 @@
 import type { RegisteredWorkspaceView } from "@shared/store/atoms";
+import type { PluginNavBadge, PluginNavBadgeTone } from "@vetta-org/plugin-sdk";
 
 /**
  * 插件**工作区视图**（整页 surface）的路由。与主题页 `/theme/$themeId/$pageId`
@@ -52,6 +53,42 @@ export function findWorkspaceView(
 ): RegisteredWorkspaceView | undefined {
 	if (!pluginId || !viewId || !isValidWorkspaceViewId(viewId)) return undefined;
 	return views.find((view) => view.pluginId === pluginId && view.viewId === viewId);
+}
+
+const BADGE_TONES: readonly PluginNavBadgeTone[] = ["accent", "danger", "default", "warning"];
+
+function normalizeTone(value: unknown): PluginNavBadgeTone | undefined {
+	return typeof value === "string" && (BADGE_TONES as readonly string[]).includes(value)
+		? (value as PluginNavBadgeTone)
+		: undefined;
+}
+
+/**
+ * 插件给的角标是不可信输入（跨 Module Federation 边界进来的普通对象），在这里
+ * 一次性收窄：认不出的 kind、空文本、非有限数一律当「没有角标」，而不是让一个
+ * 半成品对象流到渲染层去。
+ *
+ * 计数取整并夹到 0：负数没有意义，小数会渲染成 `3.5`。
+ */
+export function normalizePluginNavBadge(badge: unknown): PluginNavBadge | undefined {
+	if (!badge || typeof badge !== "object") return undefined;
+	const kind = (badge as { kind?: unknown }).kind;
+	const tone = normalizeTone((badge as { tone?: unknown }).tone);
+	if (kind === "beta") return { kind: "beta" };
+	if (kind === "dot") return tone ? { kind: "dot", tone } : { kind: "dot" };
+	if (kind === "count") {
+		const raw = (badge as { count?: unknown }).count;
+		if (typeof raw !== "number" || !Number.isFinite(raw)) return undefined;
+		const count = Math.max(0, Math.trunc(raw));
+		return tone ? { kind: "count", count, tone } : { kind: "count", count };
+	}
+	if (kind === "text") {
+		const raw = (badge as { text?: unknown }).text;
+		const text = typeof raw === "string" ? raw.trim() : "";
+		if (!text) return undefined;
+		return tone ? { kind: "text", text, tone } : { kind: "text", text };
+	}
+	return undefined;
 }
 
 /** 注册表排序：先按插件内 navOrder，再按 viewId，最后按 pluginId，保证稳定。 */

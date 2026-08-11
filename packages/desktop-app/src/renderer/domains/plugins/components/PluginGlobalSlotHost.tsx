@@ -340,6 +340,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				label: view.label,
 				icon: view.icon,
 				description: view.description,
+				badge: view.badge,
 				component: view.component,
 				navOrder: view.navOrder ?? 0,
 			})),

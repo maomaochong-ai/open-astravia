@@ -4,6 +4,7 @@ import { useThemeComponent } from "@vetta/theme-sdk";
 import type { NavIndicatorBounds, SidebarNavItem } from "@vetta/theme-sdk/sidebar";
 import { cn, Popover, PopoverContent, PopoverTrigger } from "@vetta/ui";
 import { ThemeSurface } from "../appearance/ThemeSurface";
+import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import { SidebarNavItemButton } from "./SidebarNavItemButton";
 import { SidebarNavMorePanel, type SidebarNavMorePanelLabels } from "./SidebarNavMorePanel";
 import { useSidebarNavDrag } from "./useSidebarNavDrag";
@@ -208,11 +209,7 @@ export function SidebarNavigation({
 								>
 									<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
 									<span className="truncate">{item.label}</span>
-									{item.badge && (
-										<span className="ml-auto rounded-full border border-primary/40 px-1.5 py-px text-[9px] font-semibold uppercase leading-tight tracking-wide text-primary">
-											{item.badge}
-										</span>
-									)}
+									{item.badge && <SidebarNavBadgeView badge={item.badge} className="ml-auto" />}
 								</button>
 							))
 						)}

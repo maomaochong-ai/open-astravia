@@ -1,6 +1,7 @@
 import { forwardRef, type ComponentPropsWithoutRef, type JSX } from "react";
 import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
 import { cn } from "@vetta/ui";
+import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 
 export interface SidebarNavItemButtonProps extends Omit<ComponentPropsWithoutRef<"button">, "children"> {
 	classNames?: {
@@ -45,16 +46,7 @@ export const SidebarNavItemButton = forwardRef<HTMLButtonElement, SidebarNavItem
 			>
 				<span className={cn(item.icon, "relative z-10 h-4 w-4 shrink-0", classNames?.icon)} />
 				<span className={cn("relative z-10", classNames?.label)}>{label}</span>
-				{item.badge && (
-					<span
-						className={cn(
-							"relative z-10 shrink-0 rounded-full border border-primary/40 px-1.5 py-px text-[9px] font-semibold uppercase leading-tight tracking-wide text-primary",
-							classNames?.badge,
-						)}
-					>
-						{item.badge}
-					</span>
-				)}
+				{item.badge && <SidebarNavBadgeView badge={item.badge} className={classNames?.badge} />}
 			</button>
 		);
 	},

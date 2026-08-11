@@ -113,6 +113,7 @@ interface PluginWorkspaceViewContribution {
   label: string;                    // 侧边栏文案，支持 %catalogKey%
   icon?: string;                    // iconify class 字符串
   description?: string;             // 导航项 tooltip
+  badge?: PluginNavBadge;           // 导航项角标，见下
   component: ComponentType<PluginWorkspaceViewProps>;
   navOrder?: number;                // 同一插件内多个视图的排序
 }
@@ -123,12 +124,40 @@ ctx.ui.registerWorkspaceView({
   id: "board",
   label: "%view.board.label%",
   icon: "icon-[solar--widget-4-linear]",
+  badge: { kind: "beta" },
   component: BoardView,
 });
 
 // 程序化跳转到自己的视图
 ctx.ui.openWorkspaceView("board");
 ```
+
+### 导航项角标
+
+```ts
+type PluginNavBadge =
+  | { kind: "beta" }                                   // 宿主预置，见下
+  | { kind: "text"; text: string; tone?: PluginNavBadgeTone }
+  | { kind: "count"; count: number; tone?: PluginNavBadgeTone }
+  | { kind: "dot"; tone?: PluginNavBadgeTone };
+
+type PluginNavBadgeTone = "default" | "accent" | "warning" | "danger";
+```
+
+- `beta` 是**宿主预置**：渲染成与内置「知识库」一模一样的 Beta 标识，文案由宿主按当前语言给出，插件不必自己把 "Beta" 翻译一遍
+- `text` 支持与 `label` 相同的 `%catalogKey%` 目录解析；解析后为空则不出角标
+- `count` 超过 99 显示 `99+`，**归零时角标消失**（挂一个「0」比没有更糟）
+- `tone` 只能从上述语义值里选，宿主映射到自己的主题色——插件给不了原始色值，角标因此始终与内置导航项一致
+
+运行时更新用 `setWorkspaceViewBadge`，**不要靠重新注册**——那会让整个整页 surface 重挂载，未读数变一下就丢掉视图内部状态：
+
+```ts
+ctx.ui.setWorkspaceViewBadge("board", { kind: "count", count: unread });
+ctx.ui.setWorkspaceViewBadge("board", { kind: "dot", tone: "warning" });
+ctx.ui.setWorkspaceViewBadge("board", null); // 清掉
+```
+
+认不出的角标（未知 `kind`、空文本、非有限数）一律当作「没有角标」，不会让视图注册失败。
 
 **该用哪个插槽**
 

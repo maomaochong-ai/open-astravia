@@ -53,6 +53,7 @@ import type {
 	PluginJobsApi,
 	PluginLocales,
 	PluginMediaApi,
+	PluginNavBadge,
 	PluginNetworkApi,
 	PluginNotifyOptions,
 	PluginOpenActivityTabOptions,
@@ -99,6 +100,7 @@ import {
 import { createQuickJsPluginDefinition } from "./quickjs-plugin-runtime";
 import {
 	isValidWorkspaceViewId,
+	normalizePluginNavBadge,
 	WORKSPACE_VIEW_ID_PATTERN,
 	WORKSPACE_VIEW_ROUTE_PATH,
 } from "./workspace-view-registry";
@@ -1222,6 +1224,8 @@ function createContext(
 		if (workspaceViews.some((view) => view.id === viewId)) {
 			throw new Error(`Workspace view id already registered: ${viewId}`);
 		}
+		// 角标认不出就当没有：它是导航项上的装饰，不该让整个视图注册失败。
+		const badge = normalizePluginNavBadge(contribution.badge);
 		const normalized: PluginWorkspaceViewContribution = {
 			id: viewId,
 			label,
@@ -1232,6 +1236,7 @@ function createContext(
 			...(typeof contribution.description === "string" && contribution.description.trim()
 				? { description: contribution.description.trim() }
 				: {}),
+			...(badge ? { badge } : {}),
 			navOrder: Number.isFinite(contribution.navOrder) ? Number(contribution.navOrder) : 0,
 		};
 		workspaceViews.push(normalized);
@@ -1255,6 +1260,21 @@ function createContext(
 			to: WORKSPACE_VIEW_ROUTE_PATH,
 			params: { pluginId: plugin.id, viewId: id },
 		});
+	};
+	const setWorkspaceViewBadge = (viewId: string, badge: PluginNavBadge | null): void => {
+		createPermissionApi(plugin).require("ui.slot.workspace-view");
+		const id = typeof viewId === "string" ? viewId.trim() : "";
+		const view = workspaceViews.find((candidate) => candidate.id === id);
+		if (!view) {
+			console.warn(`[plugin:${plugin.id}] setWorkspaceViewBadge: unknown view ${JSON.stringify(viewId)}`);
+			return;
+		}
+		const next = badge === null ? undefined : normalizePluginNavBadge(badge);
+		// 原地改注册项：重新注册会让整个整页 surface 重挂载，未读数变一下就丢掉
+		// 视图内部状态。onChanged 只重新发布注册表快照。
+		if (next) view.badge = next;
+		else delete view.badge;
+		onChanged();
 	};
 	const registerShortcutScope = (contribution: PluginShortcutScopeContribution): Disposable => {
 		createPermissionApi(plugin).require("ui.shortcuts.register");
@@ -1448,6 +1468,7 @@ function createContext(
 			registerTurnCard,
 			registerWorkspaceView,
 			openWorkspaceView,
+			setWorkspaceViewBadge,
 			registerShortcutScope,
 			openActivityTab,
 			setActivityTabVisible,

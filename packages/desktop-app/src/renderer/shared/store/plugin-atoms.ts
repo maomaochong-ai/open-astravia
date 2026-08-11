@@ -8,6 +8,7 @@ import type {
 	PluginFilePreviewContribution,
 	PluginInputActionContribution,
 	PluginLocales,
+	PluginNavBadge,
 	PluginPromptAttachment,
 	PluginToolCallSlotContribution,
 	PluginTurnCardContribution,
@@ -102,6 +103,11 @@ export interface RegisteredWorkspaceView {
 	/** iconify class 字符串（导航按钮直接当 className 用）。 */
 	icon?: string;
 	description?: string;
+	/**
+	 * 导航项角标。已归一化但**尚未解析文案**：`text` 仍可能是 `%catalogKey%`，
+	 * `beta` 要换成宿主自己的 i18n 文案——都在侧边栏模型层做（与 label 同一层）。
+	 */
+	badge?: PluginNavBadge;
 	component: PluginWorkspaceViewContribution["component"];
 	navOrder: number;
 }

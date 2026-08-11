@@ -18,6 +18,7 @@ import {
 	workspaceViewNavKey,
 	workspaceViewPath,
 } from "../../../plugins/runtime/workspace-view-registry";
+import { toSidebarNavBadge } from "./sidebar-nav-badge";
 import {
 	canPinMore as canPinMoreKeys,
 	moveNavKeyToRegion,
@@ -31,7 +32,7 @@ import {
 	toStoredSidebarNavLayout,
 	unpinNavKey,
 } from "./sidebar-nav-layout";
-import type { NavIndicatorBounds, SidebarModel, SidebarNavItem, SidebarProps } from "./types";
+import type { NavIndicatorBounds, SidebarModel, SidebarNavBadge, SidebarNavItem, SidebarProps } from "./types";
 
 const MIN_WIDTH = 180;
 const MAX_WIDTH = 400;
@@ -143,7 +144,7 @@ function toNavItem(
 	item: (typeof BUILTIN_NAV_ITEMS)[number],
 	label: string,
 	currentPath: string,
-	badge?: string,
+	badge?: SidebarNavBadge,
 ): SidebarNavItem {
 	if ("settingsTab" in item) {
 		return {
@@ -187,6 +188,7 @@ function toWorkspaceNavItem(
 	label: string,
 	pluginName: string,
 	currentPath: string,
+	badge?: SidebarNavBadge,
 ): SidebarNavItem {
 	const path = workspaceViewPath(view.pluginId, view.viewId);
 	return {
@@ -196,6 +198,7 @@ function toWorkspaceNavItem(
 		icon: view.icon ?? "icon-[solar--widget-2-linear]",
 		active: currentPath === path,
 		title: view.description ? `${label} · ${view.description}` : `${label} · ${pluginName}`,
+		badge,
 		workspaceView: { pluginId: view.pluginId, viewId: view.viewId },
 	};
 }
@@ -268,10 +271,25 @@ export function useSidebarModel({
 	const navCatalog: SidebarNavItem[] = useMemo(
 		() => [
 			...BUILTIN_NAV_ITEMS.map((item) =>
-				toNavItem(item, t(item.labelKey), currentPath, "badgeKey" in item ? t(item.badgeKey) : undefined),
+				toNavItem(
+					item,
+					t(item.labelKey),
+					currentPath,
+					"badgeKey" in item ? { kind: "text", text: t(item.badgeKey) } : undefined,
+				),
 			),
 			...sortWorkspaceViews(workspaceViews).map((view) =>
-				toWorkspaceNavItem(view, resolvePluginText(view.pluginId, view.label), view.pluginName, currentPath),
+				toWorkspaceNavItem(
+					view,
+					resolvePluginText(view.pluginId, view.label),
+					view.pluginName,
+					currentPath,
+					toSidebarNavBadge(
+						view.badge,
+						(raw) => resolvePluginText(view.pluginId, raw),
+						t("sidebar.nav.betaBadge"),
+					),
+				),
 			),
 		],
 		[currentPath, resolvePluginText, t, workspaceViews],

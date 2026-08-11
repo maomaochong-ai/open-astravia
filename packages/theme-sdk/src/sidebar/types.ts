@@ -51,9 +51,24 @@ export interface SidebarRegionProps {
 	readonly onOpenSession: SidebarProps["onOpenSession"];
 }
 
+/** 角标色调；具体色值由主题决定，模型层只表达语义。 */
+export type SidebarNavBadgeTone = "accent" | "danger" | "default" | "warning";
+
+/**
+ * 导航项角标。做成判别联合而不是裸字符串：`dot` 根本没有文本，`count` 有溢出
+ * 规则（>99 显示 99+），塞进一个字符串就得让每个渲染方各自约定一遍。
+ *
+ * 文案在**模型层**解析完再进来（宿主 i18n、插件 `%key%` 目录都在那一层），视图
+ * 层只管画。宿主的「Beta」标识没有独立 kind，它就是一个 `text`。
+ */
+export type SidebarNavBadge =
+	| { readonly kind: "text"; readonly text: string; readonly tone?: SidebarNavBadgeTone }
+	| { readonly kind: "count"; readonly count: number; readonly tone?: SidebarNavBadgeTone }
+	| { readonly kind: "dot"; readonly tone?: SidebarNavBadgeTone };
+
 export interface SidebarNavItem {
 	readonly active: boolean;
-	readonly badge?: string;
+	readonly badge?: SidebarNavBadge;
 	readonly icon: string;
 	readonly key: string;
 	readonly label?: string;

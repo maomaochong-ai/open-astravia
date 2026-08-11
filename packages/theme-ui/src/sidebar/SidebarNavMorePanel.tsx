@@ -1,6 +1,7 @@
 import type { JSX } from "react";
 import type { SidebarNavItem } from "@vetta/theme-sdk/sidebar";
 import { cn } from "@vetta/ui";
+import { SidebarNavBadgeView } from "./SidebarNavBadgeView";
 import type { SidebarNavDragHandlers, SidebarNavRegion } from "./useSidebarNavDrag";
 
 export interface SidebarNavMorePanelLabels {
@@ -86,11 +87,7 @@ function NavRow({
 			>
 				<span className={cn(item.icon, "h-4 w-4 shrink-0")} />
 				<span className="truncate">{item.label}</span>
-				{item.badge && (
-					<span className="ml-auto rounded-full border border-primary/40 px-1.5 py-px text-[9px] font-semibold uppercase leading-tight tracking-wide text-primary">
-						{item.badge}
-					</span>
-				)}
+				{item.badge && <SidebarNavBadgeView badge={item.badge} className="ml-auto" />}
 			</button>
 			{onTogglePin ? (
 				<button

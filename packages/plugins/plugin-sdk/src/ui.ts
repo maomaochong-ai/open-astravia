@@ -25,6 +25,28 @@ export interface PluginWorkspaceViewProps {
 }
 
 /**
+ * Badge tone. The host maps it to its own theme colors — a plugin cannot pick a
+ * raw color, so badges stay consistent with the built-in navigation entries.
+ */
+export type PluginNavBadgeTone = "accent" | "danger" | "default" | "warning";
+
+/**
+ * A badge on the plugin's sidebar navigation entry.
+ *
+ * `beta` is the host's own preset — it renders exactly like the built-in
+ * 知识库 Beta 标识, wording included (and localized by the host), so plugins do
+ * not have to spell "Beta" themselves in every locale.
+ *
+ * `count` renders `99+` past 99 and disappears at 0 — an unread badge showing
+ * "0" is worse than no badge.
+ */
+export type PluginNavBadge =
+	| { kind: "beta" }
+	| { kind: "text"; text: string; tone?: PluginNavBadgeTone }
+	| { kind: "count"; count: number; tone?: PluginNavBadgeTone }
+	| { kind: "dot"; tone?: PluginNavBadgeTone };
+
+/**
  * A **workspace view**（工作区视图）: a full-page surface a plugin contributes to
  * the host's primary navigation. It is the plugin counterpart of a built-in page
  * such as 自动化 / 知识库 — the host gives it its own route
@@ -49,6 +71,12 @@ export interface PluginWorkspaceViewContribution {
 	icon?: string;
 	/** Optional one-line description; shown as the nav entry tooltip. */
 	description?: string;
+	/**
+	 * Initial badge on the sidebar entry. `{ kind: "text" }` supports the same
+	 * `%catalogKey%` i18n lookup as {@link label}. Update it at runtime with
+	 * {@link PluginUiApi.setWorkspaceViewBadge}.
+	 */
+	badge?: PluginNavBadge;
 	/** Zero-props aside from {@link PluginWorkspaceViewProps}. */
 	component: ComponentType<PluginWorkspaceViewProps>;
 	/** Sort hint among this plugin's own views (ascending). Defaults to 0. */
@@ -355,6 +383,15 @@ export interface PluginUiApi {
 	 * when the view is not registered (e.g. permission missing).
 	 */
 	openWorkspaceView(viewId: string): void;
+	/**
+	 * Update (or clear, with `null`) the badge on one of this plugin's workspace
+	 * view entries. Re-registering the view is NOT a way to do this — it would
+	 * remount the whole surface — so live badges (unread counts, status dots)
+	 * must come through here.
+	 *
+	 * No-op when the view is not registered (e.g. permission missing).
+	 */
+	setWorkspaceViewBadge(viewId: string, badge: PluginNavBadge | null): void;
 	/**
 	 * Register a preview component keyed by file extension. The host dispatches
 	 * registered extensions before its built-in fallback renderers; first

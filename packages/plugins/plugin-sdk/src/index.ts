@@ -51,6 +51,8 @@ export type {
 // UI slots
 export type {
 	PluginGlobalSlotContribution,
+	PluginNavBadge,
+	PluginNavBadgeTone,
 	PluginWorkspaceViewProps,
 	PluginWorkspaceViewContribution,
 	PluginAudioMetadata,

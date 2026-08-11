@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	findWorkspaceView,
 	isValidWorkspaceViewId,
+	normalizePluginNavBadge,
 	parseWorkspaceViewNavKey,
 	sortWorkspaceViews,
 	workspaceViewNavKey,
@@ -79,5 +80,37 @@ describe("sortWorkspaceViews", () => {
 		const sorted = sortWorkspaceViews(input);
 		expect(sorted.map((item) => `${item.pluginId}/${item.viewId}`)).toEqual(["a/w", "a/x", "a/y", "b/z"]);
 		expect(input[0].viewId).toBe("z");
+	});
+});
+
+describe("normalizePluginNavBadge", () => {
+	it("按 kind 收窄，并把 tone 限制在已知取值内", () => {
+		expect(normalizePluginNavBadge({ kind: "beta" })).toEqual({ kind: "beta" });
+		expect(normalizePluginNavBadge({ kind: "dot", tone: "danger" })).toEqual({ kind: "dot", tone: "danger" });
+		expect(normalizePluginNavBadge({ kind: "text", text: " Pro " })).toEqual({ kind: "text", text: "Pro" });
+		// 认不出的 tone 不该原样流到渲染层去当 class key 用。
+		expect(normalizePluginNavBadge({ kind: "dot", tone: "neon" })).toEqual({ kind: "dot" });
+	});
+
+	it("计数取整并夹到 0：负数没有意义，小数会渲染成 3.5", () => {
+		expect(normalizePluginNavBadge({ kind: "count", count: 3.7 })).toEqual({ kind: "count", count: 3 });
+		expect(normalizePluginNavBadge({ kind: "count", count: -5 })).toEqual({ kind: "count", count: 0 });
+	});
+
+	it("认不出的角标一律当没有，而不是半成品对象", () => {
+		for (const bad of [
+			null,
+			undefined,
+			"beta",
+			{},
+			{ kind: "unknown" },
+			{ kind: "text" },
+			{ kind: "text", text: "   " },
+			{ kind: "count" },
+			{ kind: "count", count: Number.NaN },
+			{ kind: "count", count: "3" },
+		]) {
+			expect(normalizePluginNavBadge(bad)).toBeUndefined();
+		}
 	});
 });
