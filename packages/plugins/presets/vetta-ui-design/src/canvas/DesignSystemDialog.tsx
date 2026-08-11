@@ -1,6 +1,5 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { TemplateGalleryDialog } from "../cards/TemplateGalleryDialog";
 import {
 	applyDesignSystem,
@@ -12,6 +11,7 @@ import {
 } from "../design-systems/apply";
 import { designSystemById } from "../design-systems/index";
 import { getPluginCtx, notify } from "../plugin-context";
+import { PluginPortal } from "../plugin-portal";
 import type { DesignSession } from "../vetd/design-session";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -29,14 +29,13 @@ type PendingAction =
 
 /**
  * 二次确认框套一层 portal：宫格 Dialog 是 body 上的 fixed 层，画布内 absolute 的
- * ConfirmDialog 会被它整个盖住。z 比宫格高一档，@scope 根属性照旧带上。
+ * ConfirmDialog 会被它整个盖住。z 比宫格高一档。
  */
 function ConfirmLayer({ children }: { children: ReactNode }) {
-	return createPortal(
-		<div data-vetta-plugin-root="vetta-ui-design" className="fixed inset-0 z-[1010]">
-			{children}
-		</div>,
-		document.body,
+	return (
+		<PluginPortal>
+			<div className="fixed inset-0 z-[1010]">{children}</div>
+		</PluginPortal>
 	);
 }
 
