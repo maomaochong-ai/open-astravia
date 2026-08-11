@@ -9,10 +9,14 @@ import {
 	DialogTitle,
 } from "@vetta/ui";
 import { useEffect, useState, type JSX } from "react";
+import { PromptTextarea } from "./PromptTextarea";
+import type { KanbanSkillOption } from "../board/board-controller";
 import type { KanbanCard } from "../board/types";
 
 export interface FeedbackDialogProps {
 	card: KanbanCard | null;
+	/** 反馈里可 `@` 提及的技能（反馈同样作为 prompt 发进会话）。 */
+	skills: KanbanSkillOption[];
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (feedback: string) => void;
@@ -22,7 +26,7 @@ export interface FeedbackDialogProps {
  * 打回重做的反馈框。反馈会发往**原会话**——agent 带着完整上下文修正，
  * 所以这里鼓励写「哪里不对、期望什么」，而不是重述整个需求。
  */
-export function FeedbackDialog({ card, onOpenChange, onSubmit, open }: FeedbackDialogProps): JSX.Element {
+export function FeedbackDialog({ card, onOpenChange, onSubmit, open, skills }: FeedbackDialogProps): JSX.Element {
 	const { t } = useTranslation();
 	const [feedback, setFeedback] = useState("");
 
@@ -53,15 +57,17 @@ export function FeedbackDialog({ card, onOpenChange, onSubmit, open }: FeedbackD
 						<p className="mt-0.5 line-clamp-4 text-[11px] leading-relaxed text-foreground/80">{card.deliveryNote}</p>
 					</div>
 				)}
-				<textarea
+				<PromptTextarea
 					value={feedback}
+					onChange={setFeedback}
+					skills={skills}
 					autoFocus
 					placeholder={t("feedback.placeholder")}
-					onChange={(event) => setFeedback(event.target.value)}
 					onKeyDown={(event) => {
 						if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) submit();
 					}}
-					className="min-h-[96px] w-full resize-y rounded-md border border-border bg-background px-2.5 py-2 text-[13px] leading-relaxed text-foreground outline-none transition-colors focus:border-primary/60"
+					className="rounded-lg border border-border bg-background transition-colors focus-within:border-primary/60"
+					textareaClassName="min-h-[96px] resize-y"
 				/>
 				<DialogFooter>
 					<Button variant="ghost" onClick={() => onOpenChange(false)}>

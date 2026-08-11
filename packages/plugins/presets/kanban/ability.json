@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "kanban",
-	"version": "0.3.1",
+	"version": "0.4.0",
 	"detail": {
 		"blocks": [
 			{

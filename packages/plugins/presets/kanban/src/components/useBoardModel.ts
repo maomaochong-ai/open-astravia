@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { KanbanBoardController, KanbanModelOption } from "../board/board-controller";
+import type { KanbanBoardController, KanbanModelOption, KanbanSkillOption } from "../board/board-controller";
 import { archivedCards, laneCards, matchesQuery } from "../board/board-store";
 import { remainingSlots, unmetDependencies } from "../board/dispatch";
 import type { KanbanBoard, KanbanCard, KanbanLane } from "../board/types";
@@ -19,6 +19,8 @@ export interface BoardModel {
 	archived: KanbanCard[];
 	/** 可选模型；面板挂载时刷新一次，所以开着看板去登录 / 加 provider 后回来就能看到。 */
 	models: KanbanModelOption[];
+	/** 正文可 `@` 提及的技能；同样每次挂载刷新。 */
+	skills: KanbanSkillOption[];
 	/** 宿主全局默认模型的 key。 */
 	hostDefaultModelKey: string;
 	remainingSlots: number;
@@ -42,6 +44,7 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 	const [query, setQuery] = useState("");
 	const [now, setNow] = useState(() => Date.now());
 	const [models, setModels] = useState<KanbanModelOption[]>(() => controller.getModels());
+	const [skills, setSkills] = useState<KanbanSkillOption[]>(() => controller.getSkills());
 	const [hostDefaultModelKey, setHostDefaultModelKey] = useState(() => controller.getHostDefaultModelKey());
 
 	useEffect(() => {
@@ -59,6 +62,9 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 			if (cancelled) return;
 			setModels(next);
 			setHostDefaultModelKey(controller.getHostDefaultModelKey());
+		});
+		void controller.refreshSkills().then((next) => {
+			if (!cancelled) setSkills(next);
 		});
 		return () => {
 			cancelled = true;
@@ -113,6 +119,7 @@ export function useBoardModel(controller: KanbanBoardController): BoardModel {
 		laneTotals,
 		archived,
 		models,
+		skills,
 		hostDefaultModelKey,
 		remainingSlots: remainingSlots(board),
 		blockedBy,

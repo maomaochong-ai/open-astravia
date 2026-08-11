@@ -29,10 +29,17 @@ describe("boardNavBadge", () => {
 		expect(boardNavBadge(board)).toEqual({ kind: "count", count: 2 });
 	});
 
-	it("任务清零后 Beta 自己回来", () => {
+	it("交付进「待检查」变成红色未读角标，验收归档后 Beta 自己回来", () => {
 		const running = doing(seed(1), "c1");
 		expect(boardNavBadge(running)).toEqual({ kind: "count", count: 1 });
-		expect(boardNavBadge(moveCard(running, "c1", "review", null, NOW))).toEqual({ kind: "beta" });
+		const review = moveCard(running, "c1", "review", null, NOW);
+		expect(boardNavBadge(review)).toEqual({ kind: "count", count: 1, tone: "danger" });
+		expect(boardNavBadge(updateCard(review, "c1", { archivedAt: NOW }, NOW))).toEqual({ kind: "beta" });
+	});
+
+	it("待检查优先于运行计数：等用户动手的事占角标位", () => {
+		const board = moveCard(doing(doing(seed(3), "c1"), "c2"), "c1", "review", null, NOW);
+		expect(boardNavBadge(board)).toEqual({ kind: "count", count: 1, tone: "danger" });
 	});
 
 	it("口径与并发名额一致：已交付/失败的卡不再算作处理中", () => {

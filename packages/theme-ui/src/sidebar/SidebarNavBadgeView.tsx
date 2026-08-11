@@ -16,7 +16,9 @@ const TONE_PILL: Record<SidebarNavBadgeTone, string> = {
 	default: "border-primary/40 text-primary",
 	accent: "border-foreground/25 text-foreground/70",
 	warning: "border-amber-500/40 text-amber-500",
-	danger: "border-destructive/40 text-destructive",
+	// danger 是未读角标语义（有事等用户处理），实心底才有「必须点掉」的分量；
+	// 描边款和旁边的信息性角标分不出轻重。
+	danger: "border-transparent bg-destructive text-destructive-foreground",
 };
 
 const TONE_DOT: Record<SidebarNavBadgeTone, string> = {

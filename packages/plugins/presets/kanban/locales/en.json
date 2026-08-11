@@ -52,7 +52,6 @@
 	"editor.tags": "Tags",
 	"editor.tagsPlaceholder": "Comma separated",
 	"editor.cwd": "Target project",
-	"editor.cwdPlaceholder": "Leave empty to use the board default",
 	"editor.model": "Model",
 	"editor.modelDefault": "Board default model",
 	"editor.modelDefaultNamed": "Board default ({{name}})",
@@ -119,5 +118,17 @@
 	"empty.step.dispatch.detail": "⌘Enter starts right away, or let the agent claim work in parallel",
 	"empty.step.review.title": "Review",
 	"empty.step.review.detail": "Finished work arrives with a delivery note: approve or send back",
-	"error.sendBack": "Could not send back"
+	"error.sendBack": "Could not send back",
+	"card.pendingReady": "Ready in {{seconds}}s",
+	"card.pendingReadyCancel": "Undo",
+	"card.pendingReadyHint": "Marked Ready when the countdown ends (auto-claim will start it right away); click to undo and keep it a draft",
+	"editor.insertSkill": "Insert skill",
+	"editor.insertSkillHint": "Insert an @skill reference at the cursor",
+	"editor.detailSkillHint": "Type @ to reference a skill; the body is sent verbatim as the first prompt on dispatch",
+	"composer.insertSkill": "Insert a skill (or just type @ in the body)",
+	"skillPicker.title": "Skills",
+	"projectPicker.customPlaceholder": "Absolute path to a project…",
+	"projectPicker.backToList": "Back to project list",
+	"projectPicker.defaultBadge": "Default",
+	"projectPicker.customPath": "Use a custom path…"
 }

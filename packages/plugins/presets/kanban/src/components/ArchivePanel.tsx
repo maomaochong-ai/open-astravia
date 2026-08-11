@@ -60,7 +60,7 @@ export function ArchivePanel({ cards, now, onDelete, onRestore, trigger }: Archi
 									onClick={() => onRestore(card.id)}
 									className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 								>
-									<span className="icon-[solar--refresh-left-square-linear] block h-3.5 w-3.5" />
+									<span className="icon-[solar--refresh-square-linear] block h-3.5 w-3.5" />
 								</button>
 								<button
 									type="button"
