@@ -3,6 +3,7 @@ import { CONTENT_NODE_DEFINITIONS } from "../node/definitions";
 import { listConnectedPromptSources, resolveContentPrompt } from "../node/prompt-sources";
 import { serializeContentProject } from "../project/persistence";
 import type { ContentNode, ContentProjectDocument, GenerationJob } from "../project/types";
+import { analyzeContentWorkflow } from "./workflow-analysis";
 
 export type ContentAgentDiagnosticSeverity = "error" | "warning" | "info";
 
@@ -19,6 +20,8 @@ export function createContentCreationAgentState(
 	models: readonly ContentModelDescriptor[] = [],
 ) {
 	const document = serializeContentProject(project);
+	const baseDiagnostics = diagnoseContentProject(project, models);
+	const analysis = analyzeContentWorkflow(project, models, baseDiagnostics);
 	const assets = document.assets.map(({ source, createdAt: _assetCreatedAt, ...asset }) => ({
 		...asset,
 		...(source.storage === "workspace" ? { workspacePath: source.path } : {}),
@@ -44,7 +47,8 @@ export function createContentCreationAgentState(
 			})),
 			models: models.map(modelForAgent),
 		},
-		diagnostics: diagnoseContentProject(project, models),
+		analysis,
+		diagnostics: analysis.issues,
 	};
 }
 

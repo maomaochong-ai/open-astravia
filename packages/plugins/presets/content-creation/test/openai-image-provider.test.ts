@@ -59,6 +59,7 @@ describe("OpenAiImageProvider", () => {
 			apiKeySetting: "apiKey",
 			modelSetting: "model",
 		});
+		expect(provider.listModels()).toEqual([]);
 
 		await expect(
 			provider.generate({

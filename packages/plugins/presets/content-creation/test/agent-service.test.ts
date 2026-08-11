@@ -36,18 +36,15 @@ function createAgentHarness() {
 }
 
 describe("ContentCreationAgentService", () => {
-	it("applies small safe edits and previews destructive or broad edits automatically", async () => {
+	it("applies destructive and broad edits directly without confirmation", async () => {
 		const { agent } = createAgentHarness();
 		const applied = await agent.edit("C:/project", [
 			{ type: "add_node", id: "prompt", kind: "prompt", name: "Prompt" },
 		]);
-		expect(applied).toMatchObject({ kind: "applied", project: { graph: { nodes: [{ id: "prompt" }] } } });
+		expect(applied.graph.nodes).toEqual([expect.objectContaining({ id: "prompt" })]);
 
-		const destructive = await agent.edit("C:/project", [{ type: "delete_node", nodeId: "prompt" }]);
-		expect(destructive).toMatchObject({
-			kind: "preview",
-			preview: { destructive: true, diff: { removedNodeIds: ["prompt"] } },
-		});
+		const deleted = await agent.edit("C:/project", [{ type: "delete_node", nodeId: "prompt" }]);
+		expect(deleted.graph.nodes).toHaveLength(0);
 
 		const broad = await agent.edit(
 			"C:/broad",
@@ -58,83 +55,41 @@ describe("ContentCreationAgentService", () => {
 				name: `Prompt ${index}`,
 			})),
 		);
-		expect(broad).toMatchObject({ kind: "preview", preview: { destructive: false } });
-		if (broad.kind === "preview") expect(broad.preview.diff.addedNodeIds).toHaveLength(7);
+		expect(broad.graph.nodes).toHaveLength(7);
 	});
 
-	it("previews and commits destructive changes against the inspected revision", async () => {
+	it("applies edits against the inspected revision and rejects stale changes", async () => {
 		const { workspace, agent } = createAgentHarness();
 		const project = await workspace.dispatch("C:/project", [
 			{ type: "node.add", node: { id: "prompt", kind: "prompt", position: { x: 0, y: 0 } } },
 		]);
-
-		await expect(
-			agent.apply("C:/project", [{ type: "delete_node", nodeId: "prompt" }], project.revision),
-		).rejects.toThrow("destructive operations require");
-		const preview = await agent.preview(
-			"C:/project",
-			[{ type: "delete_node", nodeId: "prompt" }],
-			project.revision,
-		);
-		expect(preview).toMatchObject({ destructive: true, diff: { removedNodeIds: ["prompt"] } });
-
-		const committed = await agent.commitPreview(preview.token);
-		expect(committed.graph.nodes).toHaveLength(0);
-		await expect(agent.commitPreview(preview.token)).rejects.toThrow("expired or was not found");
-	});
-
-	it("rejects a preview when the workflow changed before confirmation", async () => {
-		const { workspace, agent } = createAgentHarness();
-		const project = await workspace.dispatch("C:/project", [
-			{ type: "node.add", node: { id: "prompt", kind: "prompt", position: { x: 0, y: 0 } } },
-		]);
-		const preview = await agent.preview(
-			"C:/project",
-			[{ type: "rename_node", nodeId: "prompt", name: "新的提示词" }],
-			project.revision,
-		);
 		await workspace.dispatch("C:/project", [
 			{ type: "node.set-purpose", nodeId: "prompt", purpose: "并行修改" },
 		]);
 
-		await expect(agent.commitPreview(preview.token)).rejects.toThrow("project revision conflict");
+		await expect(
+			agent.edit("C:/project", [{ type: "delete_node", nodeId: "prompt" }], project.revision),
+		).rejects.toThrow("project revision conflict");
 	});
 
-	it("reports replaced connections as both removed and added", async () => {
-		const { workspace, agent } = createAgentHarness();
-		const project = await workspace.dispatch("C:/project", [
-			{ type: "node.add", node: { id: "first", kind: "prompt", position: { x: 0, y: 0 } } },
-			{ type: "node.add", node: { id: "second", kind: "prompt", position: { x: 0, y: 200 } } },
-			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 400, y: 0 } } },
-			{ type: "edge.connect", id: "old-edge", source: "first", target: "image" },
-		]);
-		const preview = await agent.preview(
+	it("creates nodes and semantic connections atomically", async () => {
+		const { agent } = createAgentHarness();
+		const project = await agent.edit(
 			"C:/project",
 			[
-				{ type: "delete_edge", edgeId: "old-edge" },
-				{ type: "connect_nodes", id: "new-edge", source: "second", target: "image" },
+				{ type: "add_node", id: "prompt", kind: "prompt", prompt: "Product photo" },
+				{ type: "add_node", id: "image", kind: "image-generator" },
+				{ type: "add_node", id: "output", kind: "output" },
+				{ type: "connect_nodes", source: "prompt", target: "image", targetInput: "promptSources" },
+				{ type: "connect_nodes", source: "image", target: "output", targetInput: "contentSources" },
 			],
-			project.revision,
 		);
 
-		expect(preview.diff).toMatchObject({ addedEdgeCount: 1, removedEdgeCount: 1 });
-	});
-
-	it("commits the same generated ids shown by the preview", async () => {
-		const { workspace, agent } = createAgentHarness();
-		const project = await workspace.dispatch("C:/project", [
-			{ type: "node.add", node: { id: "source", kind: "prompt", position: { x: 0, y: 0 } } },
+		expect(project.graph.nodes).toHaveLength(3);
+		expect(project.graph.edges).toEqual([
+			expect.objectContaining({ source: "prompt", target: "image", sourceHandle: "text", targetHandle: "prompt" }),
+			expect.objectContaining({ source: "image", target: "output", sourceHandle: "image", targetHandle: "content" }),
 		]);
-		const preview = await agent.preview(
-			"C:/project",
-			[{ type: "duplicate_node", nodeId: "source" }],
-			project.revision,
-		);
-
-		const duplicateId = preview.diff.addedNodeIds[0];
-		const committed = await agent.commitPreview(preview.token);
-		expect(duplicateId).toBeTruthy();
-		expect(committed.graph.nodes.some((node) => node.id === duplicateId)).toBe(true);
 	});
 
 	it("runs selected generation nodes in dependency order after explicit confirmation", async () => {

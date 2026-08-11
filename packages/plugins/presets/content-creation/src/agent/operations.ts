@@ -17,6 +17,17 @@ const DELIVERABLE_TYPES: readonly ContentWorkflowDeliverable["type"][] = [
 	"content",
 ];
 
+const AGENT_TARGET_INPUTS = [
+	"mediaSources",
+	"promptSources",
+	"referenceImages",
+	"startImages",
+	"referenceVideos",
+	"contentSources",
+] as const;
+
+type AgentTargetInput = (typeof AGENT_TARGET_INPUTS)[number];
+
 export const CONTENT_AGENT_OPERATION_SCHEMA = {
 	type: "array",
 	minItems: 1,
@@ -33,6 +44,7 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 					"set_node_purpose",
 					"update_node",
 					"duplicate_node",
+					"bind_assets",
 					"delete_node",
 					"connect_nodes",
 					"delete_edge",
@@ -76,8 +88,12 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			nodeId: { type: "string" },
 			source: { type: "string" },
 			target: { type: "string" },
-			sourceHandle: { type: "string" },
-			targetHandle: { type: "string" },
+			targetInput: {
+				type: "string",
+				enum: AGENT_TARGET_INPUTS,
+				description:
+					"Optional semantic target input. Omit when source and target types identify one valid input.",
+			},
 			edgeId: { type: "string" },
 		},
 		required: ["type"],
@@ -98,14 +114,15 @@ export function parseContentAgentOperations(
 	values: readonly unknown[],
 ): ContentProjectCommand[] {
 	const frames = project.graph.nodes.map(toPlacementFrame);
-	return values.map((value) => parseOperation(value, frames));
+	const nodeKinds = new Map(project.graph.nodes.map((node) => [node.id, node.kind]));
+	return values.map((value) => parseOperation(value, frames, nodeKinds));
 }
 
-export function contentAgentOperationsAreDestructive(commands: readonly ContentProjectCommand[]): boolean {
-	return commands.some((command) => command.type === "node.delete" || command.type === "edge.delete");
-}
-
-function parseOperation(value: unknown, frames: PlacementFrame[]): ContentProjectCommand {
+function parseOperation(
+	value: unknown,
+	frames: PlacementFrame[],
+	nodeKinds: Map<string, ContentNodeKind>,
+): ContentProjectCommand {
 	const operation = asRecord(value);
 	const type = requiredString(operation, "type");
 	switch (type) {
@@ -134,6 +151,7 @@ function parseOperation(value: unknown, frames: PlacementFrame[]): ContentProjec
 			const position = resolveNodePosition(operation, frames);
 			const size = getContentNodeSize(nodeKind, data.aspectRatio);
 			frames.push({ id, ...position, ...size });
+			nodeKinds.set(id, nodeKind);
 			return {
 				type: "node.add",
 				node: {
@@ -158,26 +176,97 @@ function parseOperation(value: unknown, frames: PlacementFrame[]): ContentProjec
 			return { type: "node.update", nodeId: requiredString(operation, "nodeId"), data: parseNodeData(operation) };
 		case "delete_node":
 			return { type: "node.delete", nodeId: requiredString(operation, "nodeId") };
-		case "duplicate_node":
+		case "duplicate_node": {
+			const nodeId = requiredString(operation, "nodeId");
+			const sourceKind = nodeKinds.get(nodeId);
+			if (!sourceKind) throw new Error(`node not found: ${nodeId}`);
+			const id = optionalString(operation, "id")?.trim() || crypto.randomUUID();
+			nodeKinds.set(id, sourceKind);
 			return {
 				type: "node.duplicate",
-				nodeId: requiredString(operation, "nodeId"),
-				id: optionalString(operation, "id")?.trim() || crypto.randomUUID(),
+				nodeId,
+				id,
 			};
-		case "connect_nodes":
+		}
+		case "connect_nodes": {
+			const source = requiredString(operation, "source");
+			const target = requiredString(operation, "target");
+			const targetKind = nodeKinds.get(target);
+			if (!nodeKinds.has(source)) throw new Error(`node not found: ${source}`);
+			if (!targetKind) throw new Error(`node not found: ${target}`);
+			const targetInput = optionalAgentTargetInput(operation.targetInput);
 			return {
 				type: "edge.connect",
 				id: optionalString(operation, "id")?.trim() || crypto.randomUUID(),
-				source: requiredString(operation, "source"),
-				target: requiredString(operation, "target"),
-				sourceHandle: optionalString(operation, "sourceHandle"),
-				targetHandle: optionalString(operation, "targetHandle"),
+				source,
+				target,
+				targetHandle: targetInput ? targetHandleForAgentInput(targetKind, targetInput) : undefined,
 			};
+		}
+		case "bind_assets": {
+			const source = requiredString(operation, "source");
+			const target = requiredString(operation, "target");
+			if (nodeKinds.get(source) !== "asset") throw new Error("bind_assets source must be an asset node");
+			const targetKind = nodeKinds.get(target);
+			if (targetKind !== "image-generator" && targetKind !== "video-generator") {
+				throw new Error("bind_assets target must be an image or video generator");
+			}
+			const targetInput = optionalAgentTargetInput(operation.targetInput);
+			if (!targetInput) throw new Error("bind_assets requires targetInput");
+			const binding = assetBindingForAgentInput(targetKind, targetInput);
+			const assetIds = operation.assetIds;
+			if (!Array.isArray(assetIds) || assetIds.length === 0 || !assetIds.every((assetId) => typeof assetId === "string")) {
+				throw new Error("bind_assets requires non-empty assetIds");
+			}
+			return {
+				type: "node.bind-assets",
+				sourceNodeId: source,
+				targetNodeId: target,
+				assetIds,
+				...binding,
+			};
+		}
 		case "delete_edge":
 			return { type: "edge.delete", edgeId: requiredString(operation, "edgeId") };
 		default:
 			throw new Error(`unsupported operation type: ${type}`);
 	}
+}
+
+function optionalAgentTargetInput(value: unknown): AgentTargetInput | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== "string" || !AGENT_TARGET_INPUTS.includes(value as AgentTargetInput)) {
+		throw new Error("targetInput is not supported");
+	}
+	return value as AgentTargetInput;
+}
+
+function targetHandleForAgentInput(kind: ContentNodeKind, input: AgentTargetInput): string {
+	const mapping: Partial<Record<ContentNodeKind, Partial<Record<AgentTargetInput, string>>>> = {
+		prompt: { mediaSources: "media" },
+		"image-generator": { promptSources: "prompt", referenceImages: "reference" },
+		"video-generator": { promptSources: "prompt", startImages: "image", referenceVideos: "video" },
+		output: { contentSources: "content" },
+	};
+	const handle = mapping[kind]?.[input];
+	if (!handle) throw new Error(`targetInput ${input} is not valid for ${kind}`);
+	return handle;
+}
+
+function assetBindingForAgentInput(
+	kind: "image-generator" | "video-generator",
+	input: AgentTargetInput,
+): { targetHandle: string; slotId: string } {
+	if (kind === "image-generator" && input === "referenceImages") {
+		return { targetHandle: "reference", slotId: "referenceImages" };
+	}
+	if (kind === "video-generator" && input === "startImages") {
+		return { targetHandle: "image", slotId: "firstFrame" };
+	}
+	if (kind === "video-generator" && input === "referenceVideos") {
+		return { targetHandle: "video", slotId: "referenceVideos" };
+	}
+	throw new Error(`targetInput ${input} cannot bind assets to ${kind}`);
 }
 
 function parseNodeData(record: Record<string, unknown>): ContentNode["data"] {

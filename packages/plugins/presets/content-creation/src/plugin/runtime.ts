@@ -7,6 +7,7 @@ import { ContentGenerationService } from "../generation/generation-service";
 import { PluginContentProjectRepository } from "../project/repository";
 import { ContentCreationWorkspace } from "../project/workspace";
 import { ContentPromptOptimizationService } from "../prompt-optimization/prompt-optimization-service";
+import { clearContentRunApprovals } from "./run-approval";
 
 let workspace: ContentCreationWorkspace | null = null;
 let generationService: ContentGenerationService | null = null;
@@ -15,7 +16,9 @@ let promptOptimizationService: ContentPromptOptimizationService | null = null;
 let agentService: ContentCreationAgentService | null = null;
 let notify: PluginContext["ui"]["notify"] | null = null;
 let mediaProviderSubscription: { dispose(): void } | null = null;
+let settingsSubscription: { dispose(): void } | null = null;
 let mediaProviderRefreshVersion = 0;
+const modelListeners = new Set<() => void>();
 
 async function refreshMediaProviders(ctx: PluginContext): Promise<void> {
 	const refreshVersion = ++mediaProviderRefreshVersion;
@@ -31,6 +34,7 @@ async function refreshMediaProviders(ctx: PluginContext): Promise<void> {
 		providers,
 		new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.artifacts),
 	);
+	emitContentModelsChanged();
 }
 
 export async function initializePluginRuntime(ctx: PluginContext): Promise<ContentCreationWorkspace> {
@@ -43,21 +47,34 @@ export async function initializePluginRuntime(ctx: PluginContext): Promise<Conte
 	mediaProviderSubscription = ctx.media.onProvidersChanged(() => {
 		void refreshMediaProviders(ctx);
 	});
+	settingsSubscription = ctx.settings.onChange(() => emitContentModelsChanged());
 	await refreshMediaProviders(ctx);
 	return workspace;
 }
 
 export function disposePluginRuntime(): void {
+	clearContentRunApprovals();
 	mediaProviderRefreshVersion += 1;
 	generationService?.dispose();
 	mediaProviderSubscription?.dispose();
+	settingsSubscription?.dispose();
 	mediaProviderSubscription = null;
+	settingsSubscription = null;
 	generationService = null;
 	agentService = null;
 	assetPreviewResolver = null;
 	promptOptimizationService = null;
 	workspace = null;
 	notify = null;
+}
+
+export function subscribeContentModels(listener: () => void): () => void {
+	modelListeners.add(listener);
+	return () => modelListeners.delete(listener);
+}
+
+function emitContentModelsChanged(): void {
+	for (const listener of modelListeners) listener();
 }
 
 export function getContentGenerationService(): ContentGenerationService {

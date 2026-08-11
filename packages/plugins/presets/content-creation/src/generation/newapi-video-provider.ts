@@ -39,7 +39,9 @@ export class NewApiVideoProvider implements ContentProviderAdapter {
 
 	listModels(): readonly ContentModelDescriptor[] {
 		const modelId = readStringSetting(this.settings, this.options.modelSetting);
-		return modelId
+		const apiKey = readStringSetting(this.settings, this.options.apiKeySetting);
+		const baseUrl = readStringSetting(this.settings, this.options.baseUrlSetting);
+		return modelId && apiKey && baseUrl
 			? [
 					{
 						providerId: this.id,

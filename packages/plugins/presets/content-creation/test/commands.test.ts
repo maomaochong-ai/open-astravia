@@ -94,7 +94,59 @@ describe("applyContentProjectCommands", () => {
 			applyContentProjectCommands(chained, [
 				{ type: "edge.connect", source: "b", target: "a", sourceHandle: "image", targetHandle: "reference" },
 			]),
-		).toThrow(ContentProjectCommandError);
+		).toThrow("connection would create a cycle: b -> a -> b");
+	});
+
+	it("returns structured connection diagnostics", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "prompt", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 300, y: 0 } } },
+		]);
+
+		try {
+			applyContentProjectCommands(project, [
+				{ type: "edge.connect", source: "prompt", target: "image", targetHandle: "reference" },
+			]);
+			throw new Error("expected connection failure");
+		} catch (error) {
+			expect(error).toBeInstanceOf(ContentProjectCommandError);
+			expect(error).toMatchObject({ code: "connection-type-mismatch" });
+		}
+	});
+
+	it("binds concrete assets and removes their bindings with the connection", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "asset.add",
+				asset: {
+					id: "asset-image",
+					kind: "image",
+					name: "reference.png",
+					mimeType: "image/png",
+					createdAt: "2026-01-01T00:00:00.000Z",
+				},
+			},
+			{
+				type: "node.add",
+				node: { id: "assets", kind: "asset", position: { x: 0, y: 0 }, data: { assetIds: ["asset-image"] } },
+			},
+			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 300, y: 0 } } },
+			{
+				type: "node.bind-assets",
+				sourceNodeId: "assets",
+				targetNodeId: "image",
+				assetIds: ["asset-image"],
+				targetHandle: "reference",
+				slotId: "referenceImages",
+			},
+		]);
+		const edgeId = project.graph.edges[0]?.id;
+		expect(project.graph.nodes.find((node) => node.id === "image")?.data.inputs).toEqual([
+			expect.objectContaining({ assetId: "asset-image", sourceNodeId: "assets", slotId: "referenceImages" }),
+		]);
+
+		const disconnected = applyContentProjectCommands(project, [{ type: "edge.delete", edgeId: edgeId! }]);
+		expect(disconnected.graph.nodes.find((node) => node.id === "image")?.data.inputs).toEqual([]);
 	});
 
 	it("duplicates a node with independent data and an offset position", () => {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
 	CONTENT_AGENT_OPERATION_SCHEMA,
-	contentAgentOperationsAreDestructive,
 	parseContentAgentOperations,
 } from "../src/agent/operations";
 import { applyContentProjectCommands } from "../src/project/commands";
@@ -70,11 +69,8 @@ describe("content agent operations", () => {
 		});
 	});
 
-	it("requires preview confirmation for deletion commands", () => {
+	it("validates model configuration without adding an edit confirmation path", () => {
 		const project = createContentProject("C:/project");
-		const commands = parseContentAgentOperations(project, [{ type: "delete_node", nodeId: "node" }]);
-
-		expect(contentAgentOperationsAreDestructive(commands)).toBe(true);
 		expect(() =>
 			parseContentAgentOperations(project, [
 				{ type: "add_node", kind: "video-generator", modelSelection: "specific" },
@@ -82,17 +78,22 @@ describe("content agent operations", () => {
 		).toThrow("specific model selection requires providerId and modelId");
 	});
 
-	it("assigns stable ids to previewable duplicate and connection commands", () => {
-		const project = createContentProject("C:/project");
+	it("assigns stable ids and maps semantic connection inputs to internal handles", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "source", kind: "prompt", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "target", kind: "image-generator", position: { x: 400, y: 0 } } },
+		]);
 		const commands = parseContentAgentOperations(project, [
 			{ type: "duplicate_node", nodeId: "source" },
-			{ type: "connect_nodes", source: "source", target: "target" },
+			{ type: "connect_nodes", source: "source", target: "target", targetInput: "promptSources" },
 		]);
 
 		expect(commands).toEqual([
 			expect.objectContaining({ type: "node.duplicate", id: expect.any(String) }),
-			expect.objectContaining({ type: "edge.connect", id: expect.any(String) }),
+			expect.objectContaining({ type: "edge.connect", id: expect.any(String), targetHandle: "prompt" }),
 		]);
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("sourceHandle");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).not.toHaveProperty("targetHandle");
 	});
 
 	it("rejects operations outside the agent workflow surface", () => {

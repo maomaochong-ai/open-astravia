@@ -8,6 +8,7 @@ import {
 	getContentGenerationService,
 	getContentAssetPreviewResolver,
 	notifyContentCreationError,
+	subscribeContentModels,
 } from "../plugin/runtime";
 import { GraphWorkspace } from "../canvas/GraphWorkspace";
 import { maximizeActivityPanel, publishPromptAttachment } from "../plugin/plugin-ui";
@@ -24,6 +25,7 @@ export function ContentCreationPanel() {
 	const [error, setError] = useState<string | null>(null);
 	const [assetPreviewUrls, setAssetPreviewUrls] = useState<ReadonlyMap<string, string>>(new Map());
 	const [selectedNodeIds, setSelectedNodeIds] = useState<readonly string[]>([]);
+	const [modelRevision, setModelRevision] = useState(0);
 	const promptAttachment = usePromptAttachment();
 	const publishedSelectionRef = useRef<string | null>(null);
 	const dismissedSelectionRef = useRef<string | null>(null);
@@ -31,7 +33,7 @@ export function ContentCreationPanel() {
 	const workspace = getContentCreationWorkspace();
 	const generation = getContentGenerationService();
 	const assetPreviewResolver = getContentAssetPreviewResolver();
-	const models = useMemo(() => generation.listModels(), [generation]);
+	const models = useMemo(() => generation.listModels(), [generation, modelRevision]);
 	const selectionSignature = useMemo(
 		() => `${project?.projectId ?? ""}\u0000${[...selectedNodeIds].sort().join("\u0001")}`,
 		[project?.projectId, selectedNodeIds],
@@ -48,6 +50,7 @@ export function ContentCreationPanel() {
 
 	// Match the design canvas: maximize on each tab activation, then leave resizing to the user.
 	useEffect(() => maximizeActivityPanel(), []);
+	useEffect(() => subscribeContentModels(() => setModelRevision((revision) => revision + 1)), []);
 
 	useEffect(() => {
 		const selectionChanged = previousSelectionRef.current !== selectionSignature;

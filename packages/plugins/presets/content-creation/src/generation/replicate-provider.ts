@@ -3,6 +3,7 @@ import {
 	delay,
 	dimensionsFor,
 	downloadGeneratedContent,
+	readStringSetting,
 	requireStringSetting,
 	resolveReferenceData,
 } from "./adapter-utils";
@@ -48,6 +49,7 @@ export class ReplicateProvider implements ContentProviderAdapter {
 	) {}
 
 	listModels(): readonly ContentModelDescriptor[] {
+		if (!readStringSetting(this.settings, this.options.apiTokenSetting)) return [];
 		return [...REPLICATE_IMAGE_MODELS, ...REPLICATE_VIDEO_MODELS];
 	}
 

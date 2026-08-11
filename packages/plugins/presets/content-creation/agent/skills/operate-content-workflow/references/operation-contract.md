@@ -4,6 +4,8 @@
 
 - `summary`: identity, workflow, counts, and currently selected nodes.
 - `project`: graph data before structural edits.
+- `graph`: semantic connections, connected components, and orphan node IDs.
+- `readiness`: workflow status, runnable and blocked generators, orphan nodes, and actionable issues.
 - `capabilities`: executable providers, models, modes, input slots, ratios, durations, and resolutions.
 - `runtime`: active and historical jobs or runs.
 - `diagnostics`: blocking validation failures and actionable warnings.
@@ -28,10 +30,10 @@ Every generator node should have a purpose that states its role and changed vari
 - Multi-shot sequence: use timestamped stages inside one video prompt only when the inspected mode supports them; otherwise create separate shot nodes and record their intended order in purposes or workflow metadata.
 - Multiple formats: separate output or generator nodes when ratio, duration, or prompt must differ.
 
-Use `afterNodeId` or automatic placement. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode.
+Use `afterNodeId` or automatic placement. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect with semantic `targetInput` values (`promptSources`, `referenceImages`, `startImages`, `referenceVideos`, `contentSources`, or `mediaSources`) instead of internal handles. Use `bind_assets` to select concrete assets for generator reference slots.
 
 ## Edit in coherent batches
 
-Keep a batch focused on one understandable change. The edit tool applies up to six non-destructive commands directly. It returns a preview instead when the batch is destructive or broader than that boundary. A preview is a pending proposal, not project state.
+Keep a batch focused on one understandable change, but include newly created nodes and all intended connections in the same batch. The edit tool validates and applies the complete revision-bound batch atomically without a confirmation step. A failure leaves project state unchanged; inspect again after revision conflicts.
 
-Supported operation families for this skill are workflow updates, node add/update/rename/purpose/duplicate/delete, and edge connect/delete. Use only fields present in the tool schema.
+Supported operation families for this skill are workflow updates, node add/update/rename/purpose/duplicate/delete, semantic edge connect/delete, and concrete asset binding. Use only fields present in the tool schema.

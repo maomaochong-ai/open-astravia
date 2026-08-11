@@ -4,7 +4,10 @@
 
 ### Changed
 
-- 编辑工作流时不再展示「正在准备修改预览…」占位卡片；工具完成后才渲染修改预览确认卡。
+- `content_creation_edit` 现在对创建、修改、删除与连线批次执行 revision-safe 原子提交，不再创建会话预览卡或要求用户确认。
+- `content_creation_run(action="prepare")` 的授权入口从会话卡片迁移为插件全局确认弹窗；准备阶段仍不调用供应商，只有用户确认后才开始生成。
+- Agent 工作流操作改用 `targetInput` 语义输入和 `bind_assets` 素材绑定，不再要求模型猜测内部端口 handle。
+- `inspect` 新增 `graph` 与 `readiness` 视图，返回语义连接、连通分量、孤立节点、可运行/阻塞节点及工作流状态。
 - 暂时去掉 `contributionMode.hardIsolation` 与输入栏硬隔离：活动栏「内容创作」默认上栏（`initiallyVisible: true`），Agent skills/tools 在插件启用后始终贡献；输入栏开关仅作软显隐与 prompt 装饰。
 - 原 7 个画布工具收敛为 `inspect`、`edit`、`run` 三个领域工具，并按当前用户意图动态启用最小集合。
 - Agent Skill 扩展为创意概念、工作流操作、图片创作、视频创作、质量审查和多资产 Campaign 六个渐进式入口；完整融合 visual-skills 的模型 Prompt Profile、提示词骨架、文字信息设计、视觉拆解、多面板、行业配方、镜头戏剧性、角色模式、Animatic、视频编辑/延长与速度场景方法。
@@ -16,6 +19,8 @@
 
 ### Fixed
 
+- 连线失败现在区分端口不存在、类型不匹配、目标端口占用、自连接与成环，并返回可操作的错误代码和上下文，不再统一报错 `node ports are incompatible or would create a cycle`。
+- 未配置所需 API Key（或必要 endpoint/model）的 Provider 模型不再出现在模型列表；设置变化后画布模型选项会即时刷新。
 - Generated video nodes now preserve a playable video MIME type and preload metadata instead of rendering an unusable `0:00` player.
 - Generated video nodes now use compact custom playback controls; the video surface remains available for dragging the React Flow node while controls stay interactive.
 - Image and video generation nodes now persist their host job handle, resume status/progress polling after a renderer refresh, and finish artifact persistence instead of remaining stuck in the last saved running state.
@@ -71,7 +76,7 @@
 
 ### Added
 
-- Added an agent-native content workflow service with semantic state inspection, model capabilities, actionable diagnostics, automatic node placement, revision-safe edits, confirmation cards for destructive changes and generation, dependency-ordered execution status, and bundled workflow/video creation Skills.
+- Added an agent-native content workflow service with semantic state inspection, model capabilities, actionable diagnostics, automatic node placement, revision-safe edits, a global generation approval gate, dependency-ordered execution status, and bundled workflow/video creation Skills.
 - Added a structured, persistent input-bar context for the current canvas selection so the agent receives selected node IDs, semantic v4 node data, adjacent connections, and safe asset summaries without canvas layout, jobs, timestamps, previews, or private storage IDs.
 - Added input-bound, opt-in prompt optimization through host-managed AI models with reusable node-specific profiles; successful results replace the effective prompt while preserving the structured original.
 - Added host media-provider discovery and image generation through the plugin media capability, with generated artifacts persisted as visible workspace output files.

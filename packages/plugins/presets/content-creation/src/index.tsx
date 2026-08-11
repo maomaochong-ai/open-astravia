@@ -8,13 +8,8 @@ import {
 	setPromptAttachmentController,
 	setRegisterShortcutScope,
 } from "./plugin/plugin-ui";
-import { ContentChangePreviewCard, ContentRunCard } from "./plugin/AgentCards";
-import {
-	CONTENT_CHANGE_PREVIEW_CARD_TYPE,
-	CONTENT_RUN_TOOL_NAME,
-	CONTENT_RUN_CARD_TYPE,
-	registerContentCreationTools,
-} from "./plugin/register-tools";
+import { ContentRunApprovalDialog } from "./plugin/ContentRunApprovalDialog";
+import { registerContentCreationTools } from "./plugin/register-tools";
 import { registerContentCreationToolRouter } from "./plugin/tool-routing";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
 import {
@@ -57,18 +52,7 @@ export default definePlugin({
 				],
 			}),
 		});
-		ctx.ui.registerCardRenderer({
-			type: CONTENT_CHANGE_PREVIEW_CARD_TYPE,
-			title: "%card.preview.title%",
-			component: ContentChangePreviewCard,
-		});
-		ctx.ui.registerCardRenderer({
-			type: CONTENT_RUN_CARD_TYPE,
-			title: "%card.run.title%",
-			component: ContentRunCard,
-			pendingFor: (toolCall) =>
-				toolCall.toolName === CONTENT_RUN_TOOL_NAME ? { type: CONTENT_RUN_CARD_TYPE } : null,
-		});
+		ctx.ui.registerGlobalSlot({ id: "run-approval", component: ContentRunApprovalDialog });
 		registerContentCreationTools(ctx, getContentCreationAgentService());
 		registerContentCreationToolRouter(ctx);
 	},

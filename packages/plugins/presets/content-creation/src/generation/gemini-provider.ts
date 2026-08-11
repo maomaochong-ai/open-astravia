@@ -4,6 +4,7 @@ import {
 	dimensionsFor,
 	downloadGeneratedContent,
 	nearestValue,
+	readStringSetting,
 	requireStringSetting,
 	resolveReferenceData,
 } from "./adapter-utils";
@@ -49,6 +50,7 @@ export class GeminiProvider implements ContentProviderAdapter {
 	) {}
 
 	listModels(): readonly ContentModelDescriptor[] {
+		if (!readStringSetting(this.settings, this.options.apiKeySetting)) return [];
 		return [...GEMINI_IMAGE_MODELS, ...GEMINI_VIDEO_MODELS];
 	}
 
