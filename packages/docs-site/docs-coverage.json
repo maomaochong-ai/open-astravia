@@ -1,0 +1,102 @@
+{
+	"schemaVersion": 1,
+	"statusValues": ["complete", "partial", "internal-only", "not-applicable"],
+	"areas": [
+		{
+			"id": "onboarding-auth",
+			"source": "packages/desktop-app/src/renderer/onboarding and domains/auth",
+			"status": "complete",
+			"pages": ["/getting-started/"]
+		},
+		{
+			"id": "core-workflow",
+			"source": "packages/desktop-app/src/renderer/domains/chat",
+			"status": "complete",
+			"pages": [
+				"/getting-started/first-task/",
+				"/core/overview/",
+				"/core/workspaces-and-sessions/",
+				"/core/context-tools-and-permissions/",
+				"/core/progress-results-and-recovery/"
+			]
+		},
+		{
+			"id": "project-files",
+			"source": "packages/desktop-app/src/renderer/domains/project and domains/file-explorer",
+			"status": "complete",
+			"pages": ["/core/workspaces-and-sessions/", "/core/progress-results-and-recovery/"]
+		},
+		{
+			"id": "models",
+			"source": "packages/desktop-app/src/renderer/domains/settings",
+			"status": "complete",
+			"pages": ["/product/models/"]
+		},
+		{
+			"id": "abilities",
+			"source": "packages/desktop-app/src/renderer/domains/abilities",
+			"status": "complete",
+			"pages": ["/product/abilities/", "/product/mcp/", "/plugins/overview/"]
+		},
+		{
+			"id": "knowledge-base",
+			"source": "packages/desktop-app/src/renderer/domains/knowledge-base",
+			"status": "complete",
+			"pages": ["/product/knowledge-base/"]
+		},
+		{
+			"id": "batch-tasks",
+			"source": "packages/desktop-app/src/renderer/domains/batch-tasks",
+			"status": "complete",
+			"pages": ["/product/batch-tasks/"]
+		},
+		{
+			"id": "automation",
+			"source": "packages/desktop-app/src/renderer/domains/scheduler",
+			"status": "complete",
+			"pages": ["/product/automation/"]
+		},
+		{
+			"id": "application-environment",
+			"source": "packages/desktop-app/src/renderer/domains/settings",
+			"status": "complete",
+			"pages": ["/product/application-environment/"]
+		},
+		{
+			"id": "claw-im",
+			"source": "packages/desktop-app/src/main/im-host",
+			"status": "complete",
+			"pages": ["/product/claw/", "/product/im/"]
+		},
+		{
+			"id": "notifications-webhook",
+			"source": "packages/desktop-app/src/renderer/domains/settings",
+			"status": "complete",
+			"pages": ["/product/webhook/"]
+		},
+		{
+			"id": "desktop-pet",
+			"source": "packages/desktop-app/src/renderer/domains/pet",
+			"status": "complete",
+			"pages": ["/product/desktop-pet/"]
+		},
+		{
+			"id": "coding-agent-public-api",
+			"source": "packages/coding-agent/package.json#exports",
+			"status": "complete",
+			"pages": ["/developers/overview/", "/developers/sdk/", "/developers/rpc/", "/developers/cli-and-settings/"]
+		},
+		{
+			"id": "themes",
+			"source": "packages/themes",
+			"status": "complete",
+			"pages": ["/themes/overview/", "/themes/getting-started/", "/themes/module-reference/"]
+		},
+		{
+			"id": "internal-operations",
+			"source": "docs/adr and docs/deploy",
+			"status": "internal-only",
+			"pages": []
+		}
+	]
+}

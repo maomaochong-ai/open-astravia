@@ -15,12 +15,13 @@ interface PageProps {
 
 const sectionLabels: Record<string, string> = {
 	"getting-started": "01 / 开始使用",
-	product: "02 / 使用指南",
-	plugins: "03 / 插件开发",
-	themes: "04 / 主题开发",
-	developers: "05 / 开发者",
-	reference: "06 / 参考",
-	troubleshooting: "07 / 支持",
+	core: "02 / 核心工作流",
+	product: "03 / 使用指南",
+	plugins: "04 / 插件开发",
+	themes: "05 / 主题开发",
+	developers: "06 / 开发者",
+	reference: "07 / 参考",
+	troubleshooting: "08 / 支持",
 };
 
 export default async function Page({ params }: PageProps) {

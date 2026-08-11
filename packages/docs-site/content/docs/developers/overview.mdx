@@ -1,0 +1,44 @@
+---
+title: 选择开发与集成路径
+description: 根据宿主边界选择插件、主题、SDK、RPC 或 CLI，避免为简单需求引入过重集成。
+---
+
+Vetta 提供从内容能力到完整宿主集成的多层扩展面。先根据目标选择最窄、最稳定的入口，再阅读对应合同。
+
+<figure className="docs-media-frame docs-media-frame--wide">
+  <img src="/images/product/plugin-workbench.webp" alt="Vetta 插件工作台同时展示移动预览和电子表格预览" width="1536" height="836" />
+  <figcaption>插件可以进入工作区、文件和消息界面；SDK 与 RPC 则用于在自己的宿主中运行 Agent。</figcaption>
+</figure>
+
+## 入口选择
+
+| 目标 | 入口 | 运行边界 |
+| --- | --- | --- |
+| 让 Agent 遵循领域流程 | Skill | Markdown 指令和可选脚本 |
+| 连接外部工具或数据 | MCP | STDIO 或 HTTP 工具服务 |
+| 扩展 Vetta 桌面 UI 和 Agent | Plugin | Vetta 插件宿主与权限模型 |
+| 改变桌面视觉和主题页面 | Theme | 受策展管理的主题模块 |
+| 在 TypeScript 进程中嵌入 Agent | SDK | 同进程、类型化 Session API |
+| 从非 TS 宿主或隔离进程驱动 Agent | RPC | 子进程 stdin/stdout NDJSON |
+| 从脚本执行一次任务 | CLI text / json | 独立命令进程 |
+
+## 决策原则
+
+1. 只有提示和步骤时使用 Skill，不要创建插件。
+2. 只需要外部工具协议时使用 MCP，不要依赖桌面内部实现。
+3. 需要 Vetta UI、文件预览、消息卡片或宿主动作时使用 Plugin。
+4. 自己拥有进程生命周期且使用 TypeScript 时优先 SDK。
+5. 需要语言无关、故障隔离或 sidecar 时使用 RPC。
+
+<Callout type="warn" title="只使用公开入口">
+  跨包集成只能使用 `package.json#exports` 声明的子路径。不要从 `@vetta/coding-agent/src/**` 或其他包的源码目录深度导入。
+</Callout>
+
+## 继续阅读
+
+<Cards>
+  <Card title="创建第一个插件" href="/plugins/getting-started/" description="构建并加载最小桌面插件。" />
+  <Card title="使用 Coding Agent SDK" href="/developers/sdk/" description="创建 Session、订阅事件并管理生命周期。" />
+  <Card title="接入 RPC 模式" href="/developers/rpc/" description="通过 NDJSON 命令与事件驱动子进程。" />
+  <Card title="CLI 与设置" href="/developers/cli-and-settings/" description="运行一次性任务并理解全局、项目配置。" />
+</Cards>

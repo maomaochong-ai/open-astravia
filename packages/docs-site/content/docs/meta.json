@@ -1,5 +1,5 @@
 {
 	"title": "Vetta 文档",
 	"description": "面向 Vetta 使用者与扩展开发者的任务指南、开发指南和参考资料。",
-	"pages": ["index", "getting-started", "product", "plugins", "themes", "developers", "reference", "troubleshooting"]
+	"pages": ["index", "getting-started", "core", "product", "plugins", "themes", "developers", "reference", "troubleshooting"]
 }

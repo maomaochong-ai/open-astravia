@@ -1,4 +1,4 @@
 {
 	"title": "开发者",
-	"pages": ["architecture"]
+	"pages": ["overview", "sdk", "rpc", "cli-and-settings", "architecture"]
 }
