@@ -223,6 +223,7 @@
 	"gallery.card.designCount": "{{count}} 份设计",
 	"gallery.card.justNow": "刚刚",
 	"gallery.create.title": "新建设计稿",
+	"gallery.create.withStyle": "新建设计稿 · {{name}} 风格",
 	"gallery.create.placeholder": "给这份设计起个名字",
 	"gallery.create.location": "将建在 {{path}}",
 	"gallery.create.confirm": "创建",

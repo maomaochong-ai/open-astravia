@@ -11,7 +11,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { DesignSystemGrid } from "../src/gallery/DesignSystemGrid";
-import { buildStyleStartDraft, designNameForSystem } from "../src/gallery/start-from-system";
+import { buildStyleStartDraft } from "../src/gallery/start-from-system";
 import { markCatalogFailed, resetDesignSystems, setDesignSystems } from "../src/design-systems/registry";
 import type { DesignSystem } from "../src/design-systems/types";
 
@@ -106,10 +106,6 @@ describe("DesignSystemGrid", () => {
 });
 
 describe("从风格开新设计的文案", () => {
-	it("项目名用体系名", () => {
-		expect(designNameForSystem(system("retro-95", "Retro 95"))).toBe("Retro 95");
-	});
-
 	it("草稿逐个点名落盘的参考资料，跟宿主语言走", () => {
 		const written = ["DESIGN.md", "theme.css", "screenshots/home.webp"];
 		const zh = buildStyleStartDraft(system("linear", "Linear"), "zh-CN", written);

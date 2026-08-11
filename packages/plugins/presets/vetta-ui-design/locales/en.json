@@ -223,6 +223,7 @@
 	"gallery.card.designCount": "{{count}} designs",
 	"gallery.card.justNow": "just now",
 	"gallery.create.title": "New design",
+	"gallery.create.withStyle": "New design · {{name}} style",
 	"gallery.create.placeholder": "Name this design",
 	"gallery.create.location": "Will be created at {{path}}",
 	"gallery.create.confirm": "Create",

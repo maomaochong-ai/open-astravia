@@ -24,11 +24,6 @@ export interface StartedFromSystem {
 	written: string[];
 }
 
-/** 项目名：直接用体系名，清洗交给 createDesignProject 里的 toProjectName。 */
-export function designNameForSystem(system: DesignSystem): string {
-	return system.name;
-}
-
 /**
  * 进会话时预置的输入框草稿：点名参考资料的位置和清单，让 agent 先读规范再动手。
  *
@@ -107,9 +102,14 @@ async function writeResources(system: DesignSystem, targetRoot: string): Promise
  *
  * 资料按体系 id 分目录：以后同一个项目里可以并存多份参考，互不覆盖。
  */
-export async function startDesignFromSystem(system: DesignSystem, locale: string): Promise<StartedFromSystem> {
+export async function startDesignFromSystem(
+	system: DesignSystem,
+	projectName: string,
+	locale: string,
+): Promise<StartedFromSystem> {
 	const ctx = getPluginCtx();
-	const { cwd } = await createDesignProject(designNameForSystem(system));
+	// 项目名由用户在对话框里给：他点的是风格，不是在给项目起名。
+	const { cwd } = await createDesignProject(projectName);
 	const resourcesDir = `${DESIGN_RESOURCES_DIR}/${system.id}`;
 	const written = await writeResources(system, `${cwd}/${resourcesDir}`);
 	await ctx.official.navigation.open({

@@ -35,6 +35,8 @@ export function GalleryView() {
 	const [keyword, setKeyword] = useState("");
 	const [menu, setMenu] = useState<CardMenuAnchor | null>(null);
 	const [creating, setCreating] = useState(false);
+	/** 已经选好、正在等用户输入项目名的风格。 */
+	const [pendingSystem, setPendingSystem] = useState<DesignSystem | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [dragging, setDragging] = useState(false);
 	const [archiveTarget, setArchiveTarget] = useState<GalleryCardData | null>(null);
@@ -85,12 +87,16 @@ export function GalleryView() {
 		[t],
 	);
 
-	/** 从风格库开一份新设计：铺好 .vetd、应用体系，再进新会话敲第一句需求。 */
-	const onPickSystem = useCallback(
-		async (system: DesignSystem) => {
+	/**
+	 * 从风格库开一份新设计：先问项目名（用户刚点的是风格，不是在给项目起名），
+	 * 确认后才建项目、落参考资料并进新会话。
+	 */
+	const onCreateFromSystem = useCallback(
+		async (system: DesignSystem, name: string) => {
 			setBusy(true);
 			try {
-				await startDesignFromSystem(system, locale);
+				await startDesignFromSystem(system, name, locale);
+				setPendingSystem(null);
 			} catch (error) {
 				notify({ message: t("gallery.styles.failed"), error });
 			} finally {
@@ -246,7 +252,7 @@ export function GalleryView() {
 								{t("gallery.empty.description", { ext: SHARE_EXTENSION })}
 							</p>
 						</div>
-						<DesignSystemGrid busy={busy} onPick={(system) => void onPickSystem(system)} />
+						<DesignSystemGrid busy={busy} onPick={setPendingSystem} />
 					</div>
 				) : (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
@@ -275,7 +281,7 @@ export function GalleryView() {
 				) : null}
 
 				{/* 已经有设计时风格库排在用户自己的作品之后，同一套宫格、跟着一起滚。 */}
-				{empty ? null : <DesignSystemGrid divided busy={busy} onPick={(system) => void onPickSystem(system)} />}
+				{empty ? null : <DesignSystemGrid divided busy={busy} onPick={setPendingSystem} />}
 			</div>
 
 
@@ -304,6 +310,16 @@ export function GalleryView() {
 					busy={busy}
 					onCreate={(name) => void onCreate(name)}
 					onClose={() => setCreating(false)}
+				/>
+			) : null}
+
+			{pendingSystem ? (
+				<CreateDesignDialog
+					workspacePath={snapshot?.workspacePath ?? ""}
+					busy={busy}
+					styleName={pendingSystem.name}
+					onCreate={(name) => void onCreateFromSystem(pendingSystem, name)}
+					onClose={() => setPendingSystem(null)}
 				/>
 			) : null}
 

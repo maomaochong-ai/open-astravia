@@ -6,12 +6,14 @@ interface CreateDesignDialogProps {
 	/** 新项目会建在哪儿，直接显示给用户看，省得建完不知道东西去了哪。 */
 	workspacePath: string;
 	busy: boolean;
+	/** 从风格库进来时带上体系名：用户刚点的是风格，得让他确认自己在给什么起名。 */
+	styleName?: string;
 	onCreate(name: string): void;
 	onClose(): void;
 }
 
 /** 新建设计稿：只问一个名字，落点固定在 workspace 下。 */
-export function CreateDesignDialog({ workspacePath, busy, onCreate, onClose }: CreateDesignDialogProps) {
+export function CreateDesignDialog({ workspacePath, busy, styleName, onCreate, onClose }: CreateDesignDialogProps) {
 	const { t } = useTranslation();
 	const [name, setName] = useState("");
 	const normalized = toProjectName(name);
@@ -43,7 +45,9 @@ export function CreateDesignDialog({ workspacePath, busy, onCreate, onClose }: C
 					if (canSubmit) onCreate(normalized);
 				}}
 			>
-				<p className="text-sm font-medium text-foreground">{t("gallery.create.title")}</p>
+				<p className="text-sm font-medium text-foreground">
+					{styleName ? t("gallery.create.withStyle", { name: styleName }) : t("gallery.create.title")}
+				</p>
 				<input
 					// biome-ignore lint/a11y/noAutofocus: 对话框只有这一个输入框，打开就该能直接敲
 					autoFocus
