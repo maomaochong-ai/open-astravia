@@ -64,12 +64,19 @@ export async function buildSnapshotHtml(ctx: PluginContext, outDir: string): Pro
 	return html;
 }
 
+export interface DesignPackage {
+	/** 建议文件名，作为另存为对话框的默认值。 */
+	fileName: string;
+	/** zip 字节的 base64 文本。 */
+	base64: string;
+}
+
 /**
- * Export the design bundle into a self-contained share file (zip):
- * manifest.json + design sources + snapshot.html. Written next to the design
- * as `<name>-share.vetdz`; returns the path.
+ * Pack the design bundle into a self-contained share file (zip):
+ * manifest.json + design sources + snapshot.html. Returns the bytes; the
+ * caller decides where they land.
  */
-export async function exportDesign(ctx: PluginContext, session: DesignSession): Promise<string> {
+export async function buildDesignPackage(ctx: PluginContext, session: DesignSession): Promise<DesignPackage> {
 	const outDir = `${session.dirPath}/${BUILD_DIR}`;
 	await buildDesign(ctx, session.dirPath, outDir);
 	const snapshotHtml = await buildSnapshotHtml(ctx, outDir);
@@ -92,10 +99,22 @@ export async function exportDesign(ctx: PluginContext, session: DesignSession): 
 		}
 	}
 	const zipped = zipSync(zipEntries, { level: 6 });
-
-	const parent = session.vetdPath.slice(0, session.vetdPath.lastIndexOf("/"));
-	const exportPath = `${parent}/${session.name}-share.${SHARE_EXTENSION}`;
-	await ctx.fs.writeFile(exportPath, base64FromBytes(zipped), "base64");
 	await ctx.fs.delete(outDir).catch(() => {});
-	return exportPath;
+	return {
+		fileName: `${session.name}-share.${SHARE_EXTENSION}`,
+		base64: base64FromBytes(zipped),
+	};
+}
+
+/**
+ * 构建分享包并让用户在系统另存为对话框里挑落点。
+ *
+ * 不写进项目目录：导出的产物是给人拿去分享的，不属于设计源码，落回工作区只会污染
+ * 文件树并被下一次导入/构建误当成内容。用户取消时返回 `null`。
+ */
+export async function exportDesign(ctx: PluginContext, session: DesignSession): Promise<string | null> {
+	const pkg = await buildDesignPackage(ctx, session);
+	return await ctx.fs.saveAs(pkg.fileName, pkg.base64, "base64", {
+		filters: [{ name: "Vetta Design", extensions: [SHARE_EXTENSION] }],
+	});
 }

@@ -66,8 +66,9 @@ export async function importDesignPackage(fileName: string, bytes: Uint8Array): 
  *
  * 要一个打开状态的 DesignSession（manifest 是打包内容的一部分），所以这里临时开一个
  * 再关掉；导出本身要跑一次引擎构建，是个「点了要等」的动作，调用方负责给进度提示。
+ * 落点由用户在系统另存为对话框里选，取消时返回 `null`。
  */
-export async function exportDesignByPath(vetdPath: string): Promise<string> {
+export async function exportDesignByPath(vetdPath: string): Promise<string | null> {
 	const ctx = getPluginCtx();
 	const session = new DesignSession(ctx, vetdPath);
 	try {

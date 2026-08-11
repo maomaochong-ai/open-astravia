@@ -188,6 +188,8 @@ export function CanvasTab() {
 		setExporting(true);
 		try {
 			const path = await exportDesign(getPluginCtx(), session);
+			// 用户在另存为对话框里取消：什么都没写盘，也不需要提示。
+			if (path === null) return;
 			notify({ message: t("canvas.export.done", { path }), variant: "success", durationMs: 6000 });
 		} catch (error) {
 			notify({ message: t("canvas.export.failed"), error });

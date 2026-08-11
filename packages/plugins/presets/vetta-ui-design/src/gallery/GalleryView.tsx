@@ -135,6 +135,8 @@ export function GalleryView() {
 			notify({ message: t("gallery.export.started", { name: design.name }) });
 			try {
 				const path = await exportDesignByPath(design.vetdPath);
+				// 用户在另存为对话框里取消：什么都没写盘，也不需要提示。
+				if (path === null) return;
 				notify({ message: t("gallery.export.done", { path }), variant: "success", durationMs: 4000 });
 			} catch (error) {
 				notify({ message: t("gallery.export.failed"), error });
