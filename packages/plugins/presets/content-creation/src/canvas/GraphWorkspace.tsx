@@ -63,6 +63,10 @@ import {
 	DEFAULT_CONTENT_CANVAS_KEYBINDINGS,
 	type ContentCanvasKeybindings,
 } from "./canvas-keybindings";
+import {
+	DEFAULT_CONTENT_CANVAS_VIEWPORT,
+	type ContentCanvasViewportConfig,
+} from "./canvas-viewport";
 
 const nodeTypes: NodeTypes = { contentNode: ContentNodeCard };
 const CREATE_MENU_SIZE = { width: 320, height: 420 };
@@ -83,6 +87,7 @@ interface GraphWorkspaceProps {
 	onOpenSettings: () => void;
 	registerShortcutScope?: PluginRegisterShortcutScope | null;
 	keybindings?: Readonly<ContentCanvasKeybindings>;
+	viewportConfig?: Readonly<ContentCanvasViewportConfig>;
 }
 
 export function GraphWorkspace({
@@ -97,6 +102,7 @@ export function GraphWorkspace({
 	onOpenSettings,
 	registerShortcutScope = null,
 	keybindings = DEFAULT_CONTENT_CANVAS_KEYBINDINGS,
+	viewportConfig = DEFAULT_CONTENT_CANVAS_VIEWPORT,
 }: GraphWorkspaceProps) {
 	const { t } = useTranslation();
 	const flowContainerRef = useRef<HTMLDivElement>(null);
@@ -662,8 +668,8 @@ export function GraphWorkspace({
 		void flowInstanceRef.current?.fitView({ duration: 240, padding: 0.16 });
 	}, []);
 	const resetZoom = useCallback(() => {
-		void flowInstanceRef.current?.zoomTo(1, { duration: 180 });
-	}, []);
+		void flowInstanceRef.current?.zoomTo(viewportConfig.defaultZoom, { duration: 180 });
+	}, [viewportConfig.defaultZoom]);
 	const focusNodes = useCallback((nodeIds: readonly string[]) => {
 		const instance = flowInstanceRef.current;
 		if (!instance || nodeIds.length === 0) return;
@@ -701,6 +707,8 @@ export function GraphWorkspace({
 						selectionKeyCode="Control"
 						selectionMode={SelectionMode.Partial}
 						panOnDrag={canvasInteraction.panOnDrag}
+						minZoom={viewportConfig.minZoom}
+						maxZoom={viewportConfig.maxZoom}
 						zoomOnDoubleClick={false}
 						onNodeClick={onNodeClick}
 						onNodeContextMenu={onNodeContextMenu}

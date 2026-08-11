@@ -85,6 +85,38 @@ describe("GraphWorkspace mouse interactions", () => {
 		expect(reactFlowCapture.props?.selectionKeyCode).toBe("Control");
 		expect(reactFlowCapture.props?.selectionMode).toBe("partial");
 		expect(reactFlowCapture.props?.panOnDrag).toBe(true);
+		expect(reactFlowCapture.props?.minZoom).toBe(0.1);
+		expect(reactFlowCapture.props?.maxZoom).toBe(4);
+	});
+
+	it("applies an injected viewport range and uses its default zoom for reset", () => {
+		renderToStaticMarkup(
+			<GraphWorkspace
+				project={createContentProject("C:\\project")}
+				assetPreviewUrls={new Map()}
+				models={[]}
+				onDispatch={async () => undefined}
+				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
+				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={() => undefined}
+				onOpenSettings={() => undefined}
+				viewportConfig={{ minZoom: 0.2, maxZoom: 3, defaultZoom: 1.25 }}
+			/>,
+		);
+
+		expect(reactFlowCapture.props?.minZoom).toBe(0.2);
+		expect(reactFlowCapture.props?.maxZoom).toBe(3);
+
+		const zoomTo = vi.fn().mockResolvedValue(true);
+		(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
+			setNodes: vi.fn(),
+			setEdges: vi.fn(),
+			zoomTo,
+		});
+		(projectMenuCapture.props?.onResetZoom as () => void)();
+
+		expect(zoomTo).toHaveBeenCalledWith(1.25, { duration: 180 });
 	});
 
 	it("hydrates current asset previews when React Flow initializes after preview resolution", () => {
