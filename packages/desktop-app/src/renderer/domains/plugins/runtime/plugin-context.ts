@@ -65,6 +65,7 @@ export function createPluginContext({
 		onChanged,
 		disposers,
 		agentContributions,
+		capabilitySessionId,
 	});
 	const permissions = createPermissionApi(plugin);
 	return {

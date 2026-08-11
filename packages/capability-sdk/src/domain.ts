@@ -172,6 +172,14 @@ export {
 	type ModelSummary,
 } from "./domain/model.js";
 export {
+	DOMAIN_NAVIGATION_CAPABILITIES,
+	DOMAIN_NAVIGATION_CAPABILITY_CATALOG,
+	HOSTED_ROUTE_SEGMENT_PATTERN,
+	type HostedRouteRef,
+	isValidHostedRouteSegment,
+	type OpenHostedRouteInput,
+} from "./domain/navigation.js";
+export {
 	DOMAIN_PROJECT_CAPABILITIES,
 	DOMAIN_PROJECT_CAPABILITY_CATALOG,
 	type ProjectCreateInput,

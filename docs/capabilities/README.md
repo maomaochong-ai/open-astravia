@@ -39,7 +39,7 @@ Plugin / Theme / Action 开发者
 宿主桥接（renderer / preload / IPC / RPC）
                  │
                  ▼
-内置系统适配层（capability-sdk/adapters）
+上层系统集成（由 Plugin / Theme / Action 所有）
   - 系统权限
   - 生命周期
   - contribution
@@ -67,7 +67,7 @@ Electron / Node.js / OS / Desktop Domain Services
 依赖方向必须保持单向：
 
 ```text
-公开系统 SDK <- 宿主桥接 -> 内置系统适配层 -> 通用能力权限层 -> 能力层
+公开系统 SDK <- 宿主桥接 -> 上层系统集成 -> 通用能力权限层 -> 能力合同
 领域能力 -> 基础能力
 ```
 
@@ -75,7 +75,7 @@ Electron / Node.js / OS / Desktop Domain Services
 
 - 基础能力依赖领域能力。
 - 能力层依赖 Plugin、Theme、Action SDK。
-- 公开系统 SDK 依赖或导出 `capability-sdk/internal/*`。
+- Capability SDK 导入或导出 Plugin、Theme、Action 的 Adapter。
 - 通用权限层导入 Plugin、Theme、Action 类型。
 - 通用权限层根据 `pluginId`、`themeId`、Action effect 或 trust level 分支。
 
@@ -433,9 +433,9 @@ Grant 可以附带不包含系统业务的通用约束，例如：
 
 ## 7. 系统适配层
 
-### 7.1 通用 AdapterContext
+### 7.1 上层系统集成
 
-各系统的内置适配器不共用业务接口，但可以共用最小运行时上下文：
+各系统集成不共用业务接口，但都依赖 Capability SDK 的通用 Access 合同：
 
 ```ts
 export interface SystemAdapterContext {
@@ -445,11 +445,13 @@ export interface SystemAdapterContext {
 }
 ```
 
-`SystemAdapterContext` 不包含 Plugin、Theme、Action 字段。各适配器按系统聚合在 `packages/capability-sdk/src/adapters/` 下，由宿主内部入口引用，不从 `capability-sdk` 根入口导出。
+`SystemAdapterContext` 不包含 Plugin、Theme、Action 字段。具体权限映射、Subject 生成和 facade 包装放在其
+所有者目录；当前 Desktop 集成位于 `packages/desktop-app/src/main/capabilities/integrations/` 及对应 Renderer
+Plugin/Theme runtime，`capability-sdk` 不提供系统 Adapter 或内部导出。
 
 适配层是完整的一层，不是散落在 Desktop IPC 目录中的辅助函数。一个系统的权限展开、Subject 生成、namespace 绑定和 Capability 调用包装应聚合在同一个系统模块中；只有当单个系统适配器本身复杂到包含多个独立职责时才继续拆分，避免按每个能力创建一个文件。
 
-系统 Adapter 的实例和生命周期由 Capability Host 统一管理。每种系统 Adapter 在宿主进程中只创建一次，IPC、RPC 等协议入口只借用 Host 持有的实例，不自行构造或销毁。这样高频调用可以复用 Adapter 内部的 AccessSession 和缓存，Host 关闭时再统一撤销 Session 并释放 Provider。
+系统集成的实例和生命周期由 Capability Host 统一管理。每种集成在宿主进程中只创建一次，IPC、RPC 等协议入口只借用 Host 持有的实例，不自行构造或销毁。这样高频调用可以复用内部 AccessSession 和缓存，Host 关闭时再统一撤销 Session 并释放 Provider。
 
 ### 7.2 系统权限到 Capability Grant 的转换
 
@@ -535,7 +537,7 @@ Plugin handler 不能继承 Action caller 的更高能力授权。
 
 ## 8. 包边界与代码组织
 
-能力契约、内置适配器、通用权限运行时和开发者 SDK 分开：
+能力合同、上层系统集成、通用权限运行时和开发者 SDK 分开：
 
 ```text
 packages/capability-sdk/
@@ -543,13 +545,13 @@ packages/capability-sdk/
   src/foundation.ts       # 基础能力契约，按层聚合
   src/domain.ts           # 领域能力契约，按层聚合
   src/access.ts           # Grant/Session 边界契约
-  src/adapters/
-    theme.ts              # 内置 Theme 系统适配器
-    plugin.ts             # 内置 Plugin 系统适配器
-    action.ts             # 后续迁移时添加
 
 packages/capability-runtime/
   src/                    # Registry、Hub、权限执行、审计
+
+packages/desktop-app/src/main/capabilities/integrations/
+  plugin/                 # Desktop Plugin 权限映射与 facade
+  theme-capability-adapter.ts
 
 packages/theme-sdk/       # Theme 开发者公开 API
 packages/plugins/plugin-sdk/ # Plugin 开发者公开 API
@@ -561,13 +563,6 @@ packages/plugins/plugin-sdk/ # Plugin 开发者公开 API
 - 输入输出 Schema。
 - ID、前缀和错误码。
 - Catalog 描述类型。
-
-`capability-sdk/internal/*` 是宿主内置实现入口：
-
-- 存放 Plugin、Theme、Action 等系统适配器。
-- 不从包根入口重新导出。
-- 不由 `plugin-sdk`、`theme-sdk` 等开发者 SDK 导入或透传。
-- 不保证作为第三方开发 API 的兼容性。
 
 普通 Plugin、Theme、Action 开发者只依赖对应的公开系统 SDK。系统 SDK 提供业务友好的 API，宿主桥接和内部适配层负责把这些 API 转换为 Capability 调用。
 
@@ -589,9 +584,10 @@ packages/desktop-app/src/main/capabilities/
   domain-providers.ts
 ```
 
-Desktop 只保留原生 Provider 和装配入口，不再保存 Plugin、Theme、Action 的适配器。Provider 文件按能力层或底层资源聚合；不为了每个 operation 单独创建文件。
+Desktop 同时拥有原生 Provider、组合根，以及当前只服务 Desktop 的 Plugin/Theme 系统集成。Provider 与系统
+集成分目录保存：前者实现能力，后者只负责上层身份、权限和 facade 到 Capability 调用的转换。
 
-`capability-host.ts` 是唯一组合根：创建 Capability Hub、权限控制器、Provider 和各系统 Adapter，并负责统一销毁。IPC、RPC、renderer bridge 等入口不得直接 `new` 系统 Adapter。
+`capability-host.ts` 是唯一组合根：创建 Capability Hub、权限控制器、Provider 和各上层系统集成，并负责统一销毁。IPC、RPC、renderer bridge 等入口不得直接构造或销毁系统集成。
 
 如果落地为新的 `packages/*` workspace 包，必须同时完成 workspace、根 TS paths、desktop TS paths 和 `build.sh` 分层接入，遵循 `docs/monorepo-new-package.md`。
 
@@ -617,8 +613,8 @@ window.vetta.capabilities.invoke({
 
 当前已经实现能力基础设施及多条端到端链路：
 
-- `packages/capability-sdk` 提供 Capability ID、Token、基础存储/文件/网络能力、Agent 设置/通用设置/IM 桥接/模型配置/MCP 配置/项目/会话/下载/调度/Webhook/知识库/批量任务/应用更新/技能管理/全局快捷键/快捷面板领域能力、Grant、稳定错误码，以及宿主内置的 Theme、Plugin Adapter。
-- Capability Token 已统一使用 TypeBox Schema 作为静态类型、运行时 parser 与 JSON Schema 的单一来源，并由 Token 生成不包含执行函数的只读 Catalog。当前已声明的 23 个 Foundation Token 和 98 个 Domain Token 已全部完成迁移；TypeBox 校验错误会转换为稳定 Capability 错误码，`undefined` 输出使用独立的无载荷 Schema，Token 定义在类型层强制提供输入和输出 Schema。
+- `packages/capability-sdk` 只提供 Capability ID、Token、基础存储/文件/网络能力、Agent 设置/通用设置/IM 桥接/模型配置/MCP 配置/项目/会话/下载/调度/Webhook/知识库/批量任务/应用更新/技能管理/全局快捷键/快捷面板领域能力、Grant 和稳定错误码；Theme、Plugin 集成已由 Desktop 上层所有。
+- Capability Token 已统一使用 TypeBox Schema 作为静态类型、运行时 parser 与 JSON Schema 的单一来源，并由 Token 生成不包含执行函数的只读 Catalog。当前已声明的 29 个 Foundation Token 和 103 个 Domain Token 已全部完成迁移；TypeBox 校验错误会转换为稳定 Capability 错误码，`undefined` 输出使用独立的无载荷 Schema，Token 定义在类型层强制提供输入和输出 Schema。
 - Foundation、Domain 聚合 Catalog 以及公开文档由 Token 自动生成；完整 Schema 见 [`catalog.json`](catalog.json)，可读目录见 [`catalog.md`](catalog.md)。质量门禁会拒绝过期的生成文件、手写 parser Token 和未发布 Catalog 的能力定义文件。
 - `packages/capability-runtime` 提供 Foundation/Domain 双 Registry、Capability Hub、Provider 原子替换、替换或卸载时的在途调用中止、Capability Module/publisher 校验、精确 Grant、AccessSession、namespace constraint 和审计事件。
 - `packages/desktop-app/src/main/capabilities` 提供 Desktop Capability Host、基础存储/文件/网络 Provider、Agent 设置/通用设置/IM 桥接/模型配置/MCP 配置/项目/会话/下载/调度/Webhook/知识库/批量任务/应用更新/技能管理/全局快捷键/快捷面板领域 Provider 和原生后端装配；已抽取领域服务的原 IPC 与 Capability Provider 复用同一实现，通用配置桥则与领域服务共享底层 config store。
@@ -643,7 +639,8 @@ window.vetta.capabilities.invoke({
 - 官方插件的技能管理已迁移为 `PluginOfficialApi skills facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Skill Capability -> SkillService`；技能发现、已安装清单、启停和卸载分别使用精确 Grant，原 Skills IPC 与 Provider 共用同一个服务单例，市场安装和自定义导入仍保留在原系统流程中。
 - 官方插件的快捷键管理已迁移为 `PluginOfficialApi shortcuts facade -> Preload/IPC 桥接 -> Plugin Adapter -> AccessSession -> Domain Shortcut/Quick Panel Capability -> ShortcutService`；绑定查询、设置、单项重置、全部重置、快捷面板触发键和发送后行为分别使用精确 Grant，原 Config/Quick Panel IPC 与 Provider 共用同一个服务单例。同步的动作目录仍由 Plugin 系统 facade 从宿主共享的静态应用目录派生，不进入能力契约。
 - `PluginOfficialApi.plugins` 属于 Plugin 系统自己的安装、启停、卸载和重载业务，不定义为 Domain Capability；当前通过绑定 `capabilitySessionId` 的 Plugin System IPC 调用，宿主侧 Plugin Adapter 在每次操作前重新校验 Session 和 official 状态，再复用 Desktop 插件管理副作用。
-- `PluginOfficialApi.appearance` 与 `PluginOfficialApi.navigation` 已迁移到独立的 Renderer Capability Host。Plugin Loader 在主进程 Capability Session 创建后使用同一个 `capabilitySessionId` 绑定 renderer Session，并在插件卸载、重载或激活失败时同步撤销；外观的 DOM/Jotai/localStorage 操作和导航目录/跳转继续保留在 renderer Plugin 系统 facade 内，但同步、异步调用都必须经过 active + official Session 校验。
+- Desktop Renderer 的 `HostedRouteService` 提供 namespace 注册、路径解析和实际导航基础设施；Capability 层以 `cap.domain.vetta.navigation.open-hosted-route` 和可序列化 `HostedRouteRef` 暴露受授权命令。Plugin/Theme Renderer Adapter 分别固定 namespace 与当前 owner，并通过精确 Grant 和可撤销 Session 调用该能力。现有 `/theme/...`、`/workspace/...` URL、React 页面 Registry、加载和 ErrorBoundary 仍由 Desktop 及来源系统拥有；Plugin Loader 继续用主进程返回的 `capabilitySessionId` 关联 Renderer Session，Theme Runtime 则随激活主题创建并撤销 Session。
+- `PluginOfficialApi.appearance` 与通用 `PluginOfficialApi.navigation` 仍属于 Renderer Plugin 系统 facade，继续通过 active + official Session 校验；它们没有因为 Hosted Page Token 的落地而被错误提升为通用 Capability。
 - `Plugin Workbench` 是随宿主发布的内置插件开发管理工具，需要安装、授权、热重载、开发监听和保存对话框等宿主管理接口，因此是普通第三方插件不得复制的显式例外；质量守卫会阻止其他 preset/external 插件直接访问 `window.vetta`。
 - Plugin Action provider 的调用边界已有回归测试：Action caller 的来源、request id 和授权上下文不会转发给 provider；provider 被禁用后调用立即被拒绝。Agent 设置、通用设置、IM 桥接、模型配置、MCP 配置、项目、下载、调度、Webhook、知识库、批量任务、应用更新、技能管理和快捷键管理相关 Action 最终只使用该 Plugin 自己的 Capability Session。
 
@@ -669,13 +666,13 @@ window.vetta.capabilities.invoke({
 ### 阶段三：Theme 试点
 
 1. 将主题存储迁移为 foundation storage 能力。
-2. 在 `capability-sdk/adapters` 中由 Theme Adapter 生成固定 namespace 约束和独立 Grant。
+2. 在 Desktop Theme 集成层生成固定 namespace 约束和独立 Grant。
 3. 保持 `useThemeStorage()` 等公开 API 不变。
 
 ### 阶段四：Plugin 迁移
 
 1. `ctx.fs`、`ctx.network` 和 `ctx.storage` 已改为使用 Foundation Capability Token；图像生成业务由插件拥有，不再保留 `ctx.images` 或宿主图像领域能力。
-2. Plugin Adapter 已将 `fs.read`、`fs.write`、`network.fetch`、`storage.read` 和 `storage.write` 展开为独立 Capability Grant；Storage Grant 使用 namespace constraint 固定到当前插件，后续权限继续按同一方式显式映射。
+2. Plugin Adapter 已将 `fs.read`、`fs.write`、`network.fetch`、`storage.read` 和 `storage.write` 展开为独立 Capability Grant；Network 与 Storage Grant 都使用 namespace constraint 固定到当前插件。插件 facade 的 `pluginId`、`plugin-blob` 在 Adapter 内转换成通用合同的 `namespace`、`storage-blob`，不会穿透到 Capability SDK 或 Runtime。
 3. `ui.slot.*`、`app.actions.register` 等继续留在 Plugin Adapter。
 4. `PluginOfficialApi.agent`、`general`、`im`、`models`、`mcp`、`projects`、`downloads`、`scheduler`、`webhook`、`knowledge`、`batchTasks`、`updater`、`skills` 和 `shortcuts` 已迁移为独立 Domain Capability；新增稳定 Desktop 领域服务时继续保留兼容 facade。
 
@@ -697,7 +694,7 @@ window.vetta.capabilities.invoke({
 - 授权不使用前缀、glob、read/write 分组或隐式继承。
 - 通用权限层源码不出现 Plugin、Theme、Action 的类型或业务分支。
 - 系统权限到 Capability Grant 的展开只发生在对应系统适配层。
-- 系统适配器集中位于 `capability-sdk/adapters`，不散落在 Desktop IPC 或公开系统 SDK 中。
+- 系统集成集中位于对应上层所有者目录，`capability-sdk` 不包含 Plugin/Theme/Action Adapter。
 - 系统 Adapter 由 Capability Host 单例持有，协议入口不直接创建或销毁 Adapter。
 - 新增 Capability 后默认没有 Grant，不会扩大现有授权。
 - Provider 热更新失败时保留旧版本，卸载后取消进行中的调用。
@@ -712,7 +709,7 @@ window.vetta.capabilities.invoke({
 -> 选择 Foundation 或 Domain Registry
 -> 实现并注册 Provider
 -> 默认保持无 Grant
--> 在需要使用它的系统 Adapter 中完成系统权限判断
+-> 在需要使用它的上层系统集成中完成权限判断
 -> Adapter 为该 Capability ID 创建独立 Grant
 -> Adapter 包装为本系统 facade
 ```
@@ -723,7 +720,7 @@ window.vetta.capabilities.invoke({
 定义系统自己的 manifest、权限和生命周期
 -> 选择需要使用的 Capability Token
 -> 将系统授权结果展开为独立 Capability Grant
--> 在 capability-sdk/adapters 中实现内置 Adapter
+-> 在该系统自己的宿主集成目录实现 Adapter
 -> 通过宿主桥接实现本系统公开 SDK 的 facade
 -> 不修改能力层和通用权限层的业务模型
 ```

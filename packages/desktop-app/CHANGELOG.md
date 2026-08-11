@@ -6,6 +6,8 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **Hosted Route 导航进入三层能力架构**（ADR-0068）：Desktop Renderer 新增通用 namespace 路由服务并继续拥有 TanStack Router、URL 与页面 Registry；Capability SDK 只发布可序列化的 `open-hosted-route` 合同，Runtime 负责精确 Grant、namespace constraint 与撤销；Plugin/Theme 各自在自己的集成层固定身份、映射权限并管理 Session。Capability SDK 中原有 Plugin/Theme Adapter 已迁回 Desktop 上层集成目录，网络和媒体合同中的 `pluginId` / `plugin-blob` 也分别收敛为通用 `namespace` / `storage-blob`，插件公开 API 保持不变。
+
 - **画布活动态浮层改挂生成阶段**：`edit` / `write` 的时间几乎全花在模型生成参数上（一整份 frame 正文），执行只要几毫秒。浮层原本挂在工具执行事件上，于是要等改动落盘之后才亮，看起来像「改完才闪一下」。宿主现在把新的 `toolcall.args`（生成中的部分参数）转译成插件事件 `tool-call-args`，插件据此在模型刚写下目标路径时就点亮对应画框，一直亮到落盘。
 
 - **设计画廊（系统插件「Vetta UI Design」新增侧边栏入口「设计」）**：所有带设计稿的项目的注册中心。它主动收集侧边栏里**项目根目录下**直接躺着 `x.vetd/` 的项目（只 readDir 一层，不递归——画廊要把每个项目都扫一遍，递归大仓库会让这个页面打不开），一个项目一张卡，卡面是**上封面下 info** 的 Figma 式版式：封面为画布全景，info 为项目名 + 最近改动相对时间 + 多设计时的「N 份设计」+ 有会话在跑时的运行中指示。点卡片跳进该项目**最近一个可续聊的会话**（只读或已被别的运行时占用的会话会被跳过，一个都没有则落到该项目的新建会话页），并直接把设计画布铺开、定位到卡面那份设计——从画廊进来是明确的「我要看这份设计」，不该再让用户自己去活动面板找标签卡。工具栏可按名字搜索、新建（只问名字，项目建在 workspace 下，随后进新会话页从提示词开始）、导入（拖 `.vetdz` 到页面，或按钮选文件）；卡片右键可导出分享包（项目里有多份设计时开子菜单让用户选，不替他挑）、在文件管理器中显示、归档项目。画廊只在**工作模式**下出现，与设计画布同属一档能力（ADR-0046）。

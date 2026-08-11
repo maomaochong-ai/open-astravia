@@ -5,8 +5,8 @@
 `@vetta/capability-runtime` 是 Capability 合同的通用执行内核。它把“某个 Token 有什么 Provider”与
 “某个 Subject 是否持有精确 Grant”组合成一次受控调用，但不定义具体能力，也不知道调用者属于哪个扩展系统。
 
-Token、Schema 和内置系统 Adapter 的边界见
-[`@vetta/capability-sdk` 的契约与 Adapter 文档](../../capability-sdk/docs/contracts-and-adapters.md)。
+Token、Schema 和上层系统集成的边界见
+[`@vetta/capability-sdk` 的合同与宿主集成文档](../../capability-sdk/docs/contracts-and-host-integration.md)。
 
 一句话边界：
 
@@ -116,21 +116,27 @@ Runtime 回答：
 不要把第一组问题下沉到 Runtime。否则每新增一种系统都要修改通用权限层，并使同一 Token 的授权行为依赖
 调用者类型。
 
-## 扩展页与导航示例
+## Hosted Route 导航示例
 
-若 `capability-sdk` 定义一个可序列化的 `open-hosted-page` Domain Token，Renderer Host 可以注册 Provider：
+`capability-sdk` 已定义可序列化的 `open-hosted-route` Domain Token，Desktop Renderer Host 注册 Provider：
 
 ```text
-HostedPageRef
+Plugin / Theme facade
       |
       v
-Access Controller -- exact Grant / owner constraint
+system adapter -- fixed namespace / owner
+      |
+      v
+Access Controller -- exact Grant
       |
       v
 Renderer Registry
       |
       v
-Desktop navigation Provider -- maps ref to TanStack Router
+Desktop navigation Provider
+      |
+      v
+HostedRouteService -- namespace / path / Router adapter
 ```
 
 Runtime 可以执行该命令，但不拥有：
@@ -140,7 +146,8 @@ Runtime 可以执行该命令，但不拥有：
 - Theme 切换、Plugin Host ready、i18n 或 ErrorBoundary。
 - 导航项 pin、排序和持久化。
 
-这些仍由系统 Adapter 与 Desktop Renderer 负责。
+其中权限映射、身份收窄和 Session 撤销由系统 Adapter 负责；namespace 注册、URL 和实际 Router 调用由
+Desktop Renderer 的通用路由服务负责。Runtime 只执行 Registry、Grant、调用和取消机制。
 
 ## 修改清单
 

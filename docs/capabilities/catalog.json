@@ -1591,11 +1591,11 @@
       "inputSchema": {
         "type": "object",
         "required": [
-          "pluginId",
+          "namespace",
           "request"
         ],
         "properties": {
-          "pluginId": {
+          "namespace": {
             "minLength": 1,
             "type": "string"
           },
@@ -1665,7 +1665,7 @@
           }
         ]
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.foundation.vetta.gateway.request",
@@ -5822,18 +5822,18 @@
                           "required": [
                             "type",
                             "namespace",
-                            "blobId"
+                            "id"
                           ],
                           "properties": {
                             "type": {
-                              "const": "plugin-blob",
+                              "const": "storage-blob",
                               "type": "string"
                             },
                             "namespace": {
                               "minLength": 1,
                               "type": "string"
                             },
-                            "blobId": {
+                            "id": {
                               "minLength": 1,
                               "type": "string"
                             }
@@ -6017,18 +6017,18 @@
                           "required": [
                             "type",
                             "namespace",
-                            "blobId"
+                            "id"
                           ],
                           "properties": {
                             "type": {
-                              "const": "plugin-blob",
+                              "const": "storage-blob",
                               "type": "string"
                             },
                             "namespace": {
                               "minLength": 1,
                               "type": "string"
                             },
-                            "blobId": {
+                            "id": {
                               "minLength": 1,
                               "type": "string"
                             }
@@ -6197,18 +6197,18 @@
                           "required": [
                             "type",
                             "namespace",
-                            "blobId"
+                            "id"
                           ],
                           "properties": {
                             "type": {
-                              "const": "plugin-blob",
+                              "const": "storage-blob",
                               "type": "string"
                             },
                             "namespace": {
                               "minLength": 1,
                               "type": "string"
                             },
-                            "blobId": {
+                            "id": {
                               "minLength": 1,
                               "type": "string"
                             }
@@ -6499,7 +6499,7 @@
           }
         }
       },
-      "version": 1
+      "version": 2
     },
     {
       "id": "cap.domain.vetta.model.list",
@@ -7136,6 +7136,36 @@
         "properties": {
           "provider": {
             "pattern": "\\S",
+            "type": "string"
+          }
+        }
+      },
+      "kind": "command",
+      "layer": "domain",
+      "outputSchema": false,
+      "version": 1
+    },
+    {
+      "id": "cap.domain.vetta.navigation.open-hosted-route",
+      "inputSchema": {
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "namespace",
+          "ownerId",
+          "pageId"
+        ],
+        "properties": {
+          "namespace": {
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$",
+            "type": "string"
+          },
+          "ownerId": {
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$",
+            "type": "string"
+          },
+          "pageId": {
+            "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$",
             "type": "string"
           }
         }

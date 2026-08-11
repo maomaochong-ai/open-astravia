@@ -4,8 +4,10 @@ import { RouteContentLoadingView } from "@vetta/theme-ui/app";
 import { RootLayout } from "./App";
 import { loadNewSessionPage } from "./domains/chat/components/loadNewSessionPage";
 import { RouteErrorPage } from "./shared/components/RouteErrorPage";
-import { WORKSPACE_VIEW_ROUTE_PATH } from "./domains/plugins/runtime/workspace-view-registry";
-import { THEME_PAGE_ROUTE_PATH } from "./shared/theme/pages/themePageRegistry";
+import {
+	PLUGIN_HOSTED_ROUTE_PATH,
+	THEME_HOSTED_ROUTE_PATH,
+} from "./shared/hosted-routes/hosted-route-descriptors";
 
 const ChatPage = lazy(async () => ({
 	default: (await import("./domains/chat/components/ChatPage")).ChatPage,
@@ -170,14 +172,14 @@ const sessionViewerRoute = createRoute({
 
 const themePageRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: THEME_PAGE_ROUTE_PATH,
+	path: THEME_HOSTED_ROUTE_PATH,
 	component: ThemePageRoute,
 });
 
 /** 插件工作区视图整页路由（`/workspace/$pluginId/$viewId`）。 */
 const pluginWorkspaceViewRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: WORKSPACE_VIEW_ROUTE_PATH,
+	path: PLUGIN_HOSTED_ROUTE_PATH,
 	component: PluginWorkspaceViewRoute,
 	pendingComponent: NoPendingComponent,
 });
