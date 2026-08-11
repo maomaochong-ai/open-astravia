@@ -2,6 +2,7 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmDialog } from "../canvas/ConfirmDialog";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "../export/share-format";
+import { refreshDesignCatalog } from "../design-systems/index";
 import { getPluginCtx, notify } from "../plugin-context";
 import { CardContextMenu, type CardMenuAnchor } from "./CardContextMenu";
 import { CreateDesignDialog } from "./CreateDesignDialog";
@@ -45,6 +46,8 @@ export function GalleryView() {
 
 	const refresh = useCallback(async () => {
 		setLoading(true);
+		// 顺带强制刷新风格库：用户点「刷新」就是要看最新的，不该被 6 小时 TTL 挡住。
+		void refreshDesignCatalog(getPluginCtx(), Date.now(), { force: true });
 		try {
 			setSnapshot(await loadGallery());
 		} catch (error) {

@@ -142,7 +142,19 @@ async function applyRemote(ctx: PluginContext, cached: CachedCatalog | null, now
  * `now` 是本轮唯一的时间源：新鲜度判断和写回的 `fetchedAt` 必须来自同一个读数，
  * 否则「刚写的缓存」可能立刻被判成过期。
  */
-export async function refreshDesignCatalog(ctx: PluginContext, now: number = Date.now()): Promise<void> {
+export interface RefreshOptions {
+	/**
+	 * 跳过 TTL 强制联网。用户主动点刷新时用——他要的就是「现在去看有没有新的」，
+	 * 这时再拿「6 小时内不打扰」挡住他就是在跟他对着干。
+	 */
+	force?: boolean;
+}
+
+export async function refreshDesignCatalog(
+	ctx: PluginContext,
+	now: number = Date.now(),
+	options: RefreshOptions = {},
+): Promise<void> {
 	markCatalogLoading();
 	let cached: CachedCatalog | null = null;
 	try {
@@ -157,7 +169,8 @@ export async function refreshDesignCatalog(ctx: PluginContext, now: number = Dat
 		if (parsed) {
 			setDesignSystems(parsed.systems);
 			// 缓存还新鲜就到此为止：这是把请求量从「每次启动」压到「每 TTL 一次」的关键。
-			if (isCacheFresh(cached.fetchedAt, now)) return;
+			// 用户主动刷新时例外——先用缓存渲染避免白屏，但一定要去问一次最新的。
+			if (!options.force && isCacheFresh(cached.fetchedAt, now)) return;
 		} else {
 			// 缓存内容已经不可用（格式变了/坏了），别拿它的 ETag 去做条件请求。
 			cached = null;

@@ -115,6 +115,23 @@ describe("refreshDesignCatalog 的请求预算", () => {
 		expect(designSystems().map((system) => system.id)).toEqual(["cached-one"]);
 	});
 
+	it("force 时无视新鲜的缓存，照样去问一次最新的", async () => {
+		const { ctx, requests } = fakeCtx({
+			cached: cacheOf(["cached-one"]),
+			responses: [{ ok: true, status: 200, body: catalogOf(["brand-new"]) }],
+		});
+		await refreshDesignCatalog(ctx, NOW + HOUR, { force: true });
+		expect(requests).toHaveLength(1);
+		expect(designSystems().map((system) => system.id)).toEqual(["brand-new"]);
+	});
+
+	it("force 也先用缓存渲染，不白屏", async () => {
+		const { ctx } = fakeCtx({ cached: cacheOf(["cached-one"]) });
+		await refreshDesignCatalog(ctx, NOW + HOUR, { force: true });
+		// 网络这一轮失败，但缓存内容仍然在。
+		expect(designSystems().map((system) => system.id)).toEqual(["cached-one"]);
+	});
+
 	it("缓存过期后带 If-None-Match 条件请求", async () => {
 		const { ctx, requests } = fakeCtx({
 			cached: cacheOf(["cached-one"]),

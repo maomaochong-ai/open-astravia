@@ -67,7 +67,7 @@ export function DesignSystemGrid({ divided = false, busy, onPick }: DesignSystem
 					</p>
 					<button
 						type="button"
-						onClick={() => void refreshDesignCatalog(getPluginCtx())}
+						onClick={() => void refreshDesignCatalog(getPluginCtx(), Date.now(), { force: true })}
 						className="rounded-lg border border-border px-2.5 py-1 text-xs text-foreground hover:bg-accent"
 					>
 						{t("gallery.styles.retry")}
