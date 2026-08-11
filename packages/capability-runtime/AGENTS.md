@@ -21,6 +21,8 @@ Desktop、Plugin、Theme 或 Action 业务。
   `theme-sdk`、Action、trust level、manifest 或系统权限名称分支。
 - Runtime 可以由 main、renderer、CLI 或测试宿主实例化；部署在 renderer 不等于可以依赖 DOM、React、
   Jotai 或 Router。具体 UI/宿主行为必须由上层 Provider 实现。
+- Main 与 Renderer 共享的 Runtime 路径使用 `globalThis.crypto`、`AbortSignal` 等标准 API；Node 专用模块
+  和兼容逻辑留在 Host/Provider，不得重新引入通用 Runtime 执行路径。
 - Capability Token 和业务 Schema 属于 `capability-sdk`；Provider 实现和组合根属于宿主；本包只拥有
   注册、路由、授权、约束求值、生命周期和调用执行机制。
 - Registry 路由依据 Token 的显式 layer 和完整 ID；前缀只用于校验、检索和诊断，不得用于隐式授权。
@@ -35,4 +37,4 @@ Desktop、Plugin、Theme 或 Action 业务。
 - Access/Grant 变化必须覆盖 allow/deny、过期、撤销、未知 Capability、精确 ID 匹配和审计事件。
 - Constraint 变化必须覆盖缺失 evaluator、合法/非法值、多个约束组合和 fail-closed 行为。
 - 生命周期和并发测试使用显式同步点与 `AbortSignal`，不得依赖任意 sleep。
-- 修改公开 Runtime API 时同步运行 `capability-sdk` Adapter 和至少一个真实宿主 Provider 的合同测试。
+- 修改公开 Runtime API 时同步运行受影响的上层系统 Adapter 和至少一个真实宿主 Provider 的合同测试。

@@ -1,4 +1,3 @@
-import { setMaxListeners } from "node:events";
 import {
 	CAPABILITY_ERROR_CODES,
 	CAPABILITY_PUBLISHERS,
@@ -32,23 +31,8 @@ export interface CapabilityModuleRegistrationOptions {
 	readonly trust?: CapabilityModuleTrustLevel;
 }
 
-function combineSignals(
-	first: AbortSignal,
-	second: AbortSignal,
-): { readonly cleanup: () => void; readonly signal: AbortSignal } {
-	const controller = new AbortController();
-	const abort = (): void => controller.abort();
-	for (const signal of [first, second]) {
-		if (signal.aborted) controller.abort();
-		else signal.addEventListener("abort", abort, { once: true });
-	}
-	return {
-		signal: controller.signal,
-		cleanup: () => {
-			first.removeEventListener("abort", abort);
-			second.removeEventListener("abort", abort);
-		},
-	};
+function combineSignals(first: AbortSignal, second: AbortSignal): AbortSignal {
+	return AbortSignal.any([first, second]);
 }
 
 export class CapabilityRegistry {
@@ -153,7 +137,6 @@ export class CapabilityRegistry {
 		}
 
 		const controller = new AbortController();
-		setMaxListeners(0, controller.signal);
 		const generation = Symbol(ownerId);
 		for (const [capabilityId, entry] of this.providers) {
 			if (entry.ownerId === ownerId && !nextIds.has(capabilityId)) this.providers.delete(capabilityId);
@@ -188,16 +171,16 @@ export class CapabilityRegistry {
 				`Capability ${capability.id} requires version ${capability.version}, provider exposes ${entry.binding.token.version}`,
 			);
 		}
-		const combined = combineSignals(context.signal, entry.controller.signal);
+		const signal = combineSignals(context.signal, entry.controller.signal);
 		try {
-			if (combined.signal.aborted) {
+			if (signal.aborted) {
 				throw new CapabilityError(
 					CAPABILITY_ERROR_CODES.ABORTED,
 					`Capability invocation aborted: ${capability.id}`,
 				);
 			}
-			const output = await entry.binding.execute(input, { ...context, signal: combined.signal });
-			if (combined.signal.aborted) {
+			const output = await entry.binding.execute(input, { ...context, signal });
+			if (signal.aborted) {
 				throw new CapabilityError(
 					CAPABILITY_ERROR_CODES.ABORTED,
 					`Capability invocation aborted: ${capability.id}`,
@@ -206,7 +189,7 @@ export class CapabilityRegistry {
 			return capability.parseOutput(output);
 		} catch (error) {
 			if (error instanceof CapabilityError) throw error;
-			if (combined.signal.aborted) {
+			if (signal.aborted) {
 				throw new CapabilityError(
 					CAPABILITY_ERROR_CODES.ABORTED,
 					`Capability invocation aborted: ${capability.id}`,
@@ -220,8 +203,6 @@ export class CapabilityRegistry {
 				`Capability provider failed: ${capability.id}`,
 				{ cause: error },
 			);
-		} finally {
-			combined.cleanup();
 		}
 	}
 }

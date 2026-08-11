@@ -12,7 +12,6 @@ import {
 	FOUNDATION_STORAGE_CAPABILITIES,
 	parseCapabilityJsonValue,
 } from "@vetta/capability-sdk";
-import { themeIdFromStorageCapabilityNamespace } from "@vetta/capability-sdk/internal/theme-adapter";
 import { persistArtifact } from "../artifacts/artifact-persistence.js";
 import type { ArtifactStore } from "../artifacts/artifact-store.js";
 import {
@@ -49,6 +48,7 @@ import {
 	removeThemeStorageValue,
 	setThemeStorageValue,
 } from "../themes/theme-data-store.js";
+import { themeIdFromStorageCapabilityNamespace } from "./integrations/theme-capability-adapter.js";
 import { registerDesktopJobProvider } from "./job-provider.js";
 
 const FOUNDATION_STORAGE_PROVIDER_OWNER = "vetta.foundation.storage";
@@ -206,10 +206,10 @@ export function registerDesktopFoundationProviders(
 	]);
 	const networkStorageRegistration = registry.registerOwner(FOUNDATION_NETWORK_STORAGE_PROVIDER_OWNER, [
 		bindCapability(FOUNDATION_NETWORK_CAPABILITIES.REQUEST, {
-			execute: async ({ pluginId, request }, context) => {
+			execute: async ({ namespace, request }, context) => {
 				assertNotAborted(context.signal);
-				const plugin = listPlugins().find((candidate) => candidate.id === pluginId);
-				if (!plugin || !plugin.enabled) throw new Error(`Plugin is not enabled: ${pluginId}`);
+				const plugin = listPlugins().find((candidate) => candidate.id === namespace);
+				if (!plugin || !plugin.enabled) throw new Error(`Network policy namespace is not enabled: ${namespace}`);
 				const response = await requestNetwork(
 					plugin,
 					request as unknown as Parameters<typeof requestNetwork>[1],

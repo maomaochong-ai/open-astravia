@@ -63,7 +63,7 @@ describe("MediaArtifactStore", () => {
 		await expect(stat(artifactPath)).rejects.toMatchObject({ code: "ENOENT" });
 	});
 
-	it("resolves workspace and plugin blob inputs only when requested", async () => {
+	it("resolves workspace and namespaced storage blob inputs only when requested", async () => {
 		const store = createStore();
 		const workspacePath = join(testRoot, "voice.mp3");
 		const blobPath = join(testRoot, "blob.data");
@@ -83,7 +83,7 @@ describe("MediaArtifactStore", () => {
 		await expect(
 			store.resolveInput({
 				kind: "image",
-				source: { type: "plugin-blob", namespace: "content-creation", blobId: "blob-1" },
+				source: { type: "storage-blob", namespace: "content-creation", id: "blob-1" },
 			}),
 		).resolves.toEqual({ data: Buffer.from("plugin image"), mimeType: "image/webp" });
 		expect(storageMocks.getPluginBlobFile).toHaveBeenCalledWith("content-creation", "blob-1");

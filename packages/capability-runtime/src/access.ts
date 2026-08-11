@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-import { setMaxListeners } from "node:events";
 import {
 	type AccessSubject,
 	type AuthorizedCapabilityClient,
@@ -52,23 +50,13 @@ function createCombinedSignal(
 	sessionSignal: AbortSignal,
 	requestSignal: AbortSignal | undefined,
 	deadline: number | undefined,
-): { readonly cleanup: () => void; readonly signal: AbortSignal } {
-	const controller = new AbortController();
+): AbortSignal {
 	const signals = requestSignal ? [sessionSignal, requestSignal] : [sessionSignal];
-	const abort = (): void => controller.abort();
-	for (const signal of signals) {
-		if (signal.aborted) controller.abort();
-		else signal.addEventListener("abort", abort, { once: true });
+	if (deadline !== undefined) {
+		const remainingMs = Math.max(0, Math.min(2_147_483_647, Math.ceil(deadline - Date.now())));
+		signals.push(AbortSignal.timeout(remainingMs));
 	}
-	const timeout =
-		deadline === undefined ? undefined : setTimeout(() => controller.abort(), Math.max(0, deadline - Date.now()));
-	return {
-		signal: controller.signal,
-		cleanup: () => {
-			if (timeout !== undefined) clearTimeout(timeout);
-			for (const signal of signals) signal.removeEventListener("abort", abort);
-		},
-	};
+	return signals.length === 1 ? sessionSignal : AbortSignal.any(signals);
 }
 
 export class CapabilityAccessController {
@@ -133,7 +121,6 @@ export class CapabilityAccessController {
 		}
 
 		const sessionController = new AbortController();
-		setMaxListeners(0, sessionController.signal);
 		let revoked = false;
 		const client: AuthorizedCapabilityClient = {
 			invoke: <Input, Output>(
@@ -207,22 +194,15 @@ export class CapabilityAccessController {
 		}
 		this.record(session.subject, capability.id, CAPABILITY_ACCESS_DECISIONS.ALLOW, CAPABILITY_ACCESS_REASONS.GRANTED);
 
-		const combined = createCombinedSignal(sessionSignal, options?.signal, options?.deadline);
-		try {
-			if (combined.signal.aborted) {
-				throw new CapabilityError(
-					CAPABILITY_ERROR_CODES.ABORTED,
-					`Capability invocation aborted: ${capability.id}`,
-				);
-			}
-			return await this.hub.invoke(capability, parsedInput, {
-				signal: combined.signal,
-				traceId: randomUUID(),
-				deadline: options?.deadline,
-			});
-		} finally {
-			combined.cleanup();
+		const signal = createCombinedSignal(sessionSignal, options?.signal, options?.deadline);
+		if (signal.aborted) {
+			throw new CapabilityError(CAPABILITY_ERROR_CODES.ABORTED, `Capability invocation aborted: ${capability.id}`);
 		}
+		return this.hub.invoke(capability, parsedInput, {
+			signal,
+			traceId: globalThis.crypto.randomUUID(),
+			deadline: options?.deadline,
+		});
 	}
 
 	private assertConstraint(

@@ -78,9 +78,9 @@ export class MediaArtifactStore {
 	}
 
 	async resolveInputFile(input: MediaInput): Promise<ResolvedMediaInputFile> {
-		if (input.source.type === "plugin-blob") {
-			const file = await getPluginBlobFile(input.source.namespace, input.source.blobId);
-			if (!file) throw new Error(`Media input blob was not found: ${input.source.blobId}`);
+		if (input.source.type === "storage-blob") {
+			const file = await getPluginBlobFile(input.source.namespace, input.source.id);
+			if (!file) throw new Error(`Media input blob was not found: ${input.source.id}`);
 			return {
 				path: file.path,
 				mimeType: input.mimeType ?? file.mimeType,

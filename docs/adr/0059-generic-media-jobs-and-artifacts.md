@@ -44,6 +44,10 @@ Provider 输入只包含不透明 input id、语义 role、kind 与 MIME。远�
 
 注册本地 Provider 不再强制 `network.fetch`。只有实际使用远程 URL 或上传时才检查网络权限；插件 Blob 和工作区文件分别检查 `storage.read` 与 `fs.read`。
 
+插件公开 facade 仍使用 `plugin-blob` 与 `blobId`，但插件集成层在进入 Domain Capability 前将其转换为
+`storage-blob`、`namespace` 与 `id`。Capability SDK 和 Runtime 只识别通用命名空间存储引用，不识别
+Plugin 身份或插件权限名称。
+
 ### 5. Remotion 作为 compose Provider
 
 Remotion Provider 声明自己接受的工程文档 MIME（例如插件私有的 `application/vnd.example.remotion-project+json`）与输出 MIME。消费方提交该文档和素材，Provider 内部负责 bundle、选择 composition、校验 props、渲染以及把输出文件交回宿主。

@@ -20,14 +20,6 @@
 		"./domain": {
 			"types": "./dist/domain.d.ts",
 			"import": "./dist/domain.js"
-		},
-		"./internal/theme-adapter": {
-			"types": "./dist/adapters/theme.d.ts",
-			"import": "./dist/adapters/theme.js"
-		},
-		"./internal/plugin-adapter": {
-			"types": "./dist/adapters/plugin/index.d.ts",
-			"import": "./dist/adapters/plugin/index.js"
 		}
 	},
 	"files": ["dist"],

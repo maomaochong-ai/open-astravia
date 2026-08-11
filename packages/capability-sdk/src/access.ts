@@ -48,7 +48,7 @@ export interface CapabilityAccessHandle {
 	revoke(): void;
 }
 
-/** Host-provided permission boundary used by built-in system adapters. */
+/** Host-provided boundary for creating authorized capability sessions. */
 export interface CapabilityAccessSessionFactory {
 	createSession(options: CapabilityAccessSessionOptions): CapabilityAccessHandle;
 }
