@@ -23,6 +23,8 @@ export interface VettaPluginFederationOptions {
 	entry?: string;
 	manifestFileName?: string;
 	remoteEntryFileName?: string;
+	/** Share the narrow host UI contract exposed by `@vetta/theme-ui/plugin-ui`. */
+	hostThemeUi?: boolean;
 	shared?: ModuleFederationOptions["shared"];
 	package?: boolean | VettaPluginPackageOptions;
 }
@@ -68,12 +70,16 @@ export function createVettaPluginFederationConfig(options: VettaPluginFederation
 				import: false,
 				requiredVersion: "*",
 			},
-			// Host-built UI components (model selector, …); same share scope, narrow export list.
-			"@vetta/theme-ui/plugin-ui": {
-				singleton: true,
-				import: false,
-				requiredVersion: "*",
-			},
+			...(options.hostThemeUi
+				? {
+						// Host-built UI components (model selector, …); opt in to keep unrelated plugins decoupled.
+						"@vetta/theme-ui/plugin-ui": {
+							singleton: true,
+							import: false,
+							requiredVersion: "*",
+						},
+					}
+				: {}),
 			...options.shared,
 		},
 	};

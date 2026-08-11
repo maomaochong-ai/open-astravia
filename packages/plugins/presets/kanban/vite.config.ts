@@ -8,6 +8,7 @@ export default defineConfig({
 		vettaPluginFederation({
 			name: "kanban",
 			entry: "./src/index.tsx",
+			hostThemeUi: true,
 		}),
 	],
 	esbuild: {
