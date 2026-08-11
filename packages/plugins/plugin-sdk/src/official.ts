@@ -308,6 +308,8 @@ export interface PluginOfficialPluginSummary {
 	id: string;
 	name: string;
 	version: string;
+	activeVersion: string;
+	pendingVersion?: string;
 	enabled: boolean;
 	required: boolean;
 	source: string;
@@ -543,7 +545,20 @@ export interface PluginOfficialApi {
 		installFromUrl(url: string): Promise<PluginOfficialPluginSummary>;
 		installFromPath(
 			path: string,
-			options?: { grantedPermissions?: string[]; enable?: boolean },
+			options?: {
+				grantedPermissions?: string[];
+				enable?: boolean;
+				source?: "archive" | "npm";
+				expectedSha256?: string;
+				expectedId?: string;
+				expectedVersion?: string;
+				npm?: {
+					packageName: string;
+					requestedSpec: string;
+					resolvedVersion: string;
+					integrity?: string;
+				};
+			},
 		): Promise<PluginOfficialPluginSummary>;
 		uninstall(id: string): Promise<void>;
 		reload(id: string): Promise<PluginOfficialPluginSummary>;

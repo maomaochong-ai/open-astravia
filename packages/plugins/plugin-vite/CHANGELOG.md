@@ -18,6 +18,7 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Added
 
+- Added opt-in npm distribution packaging that validates `package.json#vetta` identity and writes a stable `release/vetta-plugin.zip` beside the existing versioned archive.
 - Added `vetta-plugin dev`, React Fast Refresh, development CSS scoping, and versioned lifecycle events for Desktop plugin hot reload without changing production package output.
 - Added automatic injection of the public plugin-sdk Tailwind theme contract so plugins can use host semantic color utilities without importing Desktop CSS or repeating `@theme` mappings.
 

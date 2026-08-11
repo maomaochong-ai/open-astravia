@@ -158,6 +158,8 @@
 			"newName": "新名称",
 			"path": "路径",
 			"paths": "文件路径",
+			"packageName": "npm 包",
+			"packageSpec": "请求版本",
 			"language": "语言",
 			"executionMode": "执行模式",
 			"experimental": "实验功能",
@@ -562,6 +564,13 @@
 					"confirm": "确认安装并授权",
 					"badge": "安装",
 					"impact": "将安装本地插件包，授予其声明的权限并启用。"
+				},
+				"install-from-npm": {
+					"title": "从 npm 安装插件确认",
+					"summary": "确认后将安装已解析的 npm 插件包，并按插件声明一次授予权限后启用。",
+					"confirm": "确认安装并授权",
+					"badge": "npm 安装",
+					"impact": "Desktop 将再次校验插件包摘要、ID 和版本，再授予其声明的权限并启用。"
 				},
 				"uninstall": {
 					"title": "卸载插件确认",

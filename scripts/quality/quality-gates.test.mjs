@@ -130,13 +130,13 @@ describe("affected package selection", () => {
 	it("runs every core test package for global quality inputs", () => {
 		const plan = createChangedTestPlan(["bun.lock"]);
 		expect(plan.globalTriggers).toEqual(["bun.lock"]);
-		expect(plan.toTest).toEqual(["ai", "agent", "runtime-mcp", "coding-agent", "ecosystem-adapter"]);
+		expect(plan.toTest).toEqual(["ai", "agent", "runtime-mcp", "coding-agent", "ecosystem-adapter", "plugin-cli"]);
 	});
 
 	it("runs quality tests when their implementation changes", () => {
 		const plan = createChangedTestPlan(["scripts/quality/test-changed.mjs"]);
 		expect(plan.runQuality).toBe(true);
-		expect(plan.toTest).toEqual(["ai", "agent", "runtime-mcp", "coding-agent", "ecosystem-adapter"]);
+		expect(plan.toTest).toEqual(["ai", "agent", "runtime-mcp", "coding-agent", "ecosystem-adapter", "plugin-cli"]);
 	});
 
 	it("accepts both base argument forms and rejects unknown arguments", () => {

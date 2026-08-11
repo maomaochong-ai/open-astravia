@@ -370,8 +370,9 @@ export const PLUGIN_PERMISSION_PRESENTATIONS = {
 } as const satisfies Record<PluginPermission, PluginPermissionPresentation>;
 
 /** InstalledPlugin.source → i18n key。 */
-export function pluginSourceLabelKey(source: "archive" | "remote" | "system") {
+export function pluginSourceLabelKey(source: "archive" | "remote" | "npm" | "system") {
 	if (source === "remote") return "plugin.source.remote";
+	if (source === "npm") return "plugin.source.npm";
 	if (source === "system") return "plugin.source.system";
 	return "plugin.source.local";
 }

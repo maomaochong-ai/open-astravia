@@ -49,7 +49,7 @@ const RESOURCE_OPERATIONS = new Set<AppMonitorResourceOperation>([
 	"commands-granted",
 	"commands-revoked",
 ]);
-const RESOURCE_SOURCES = new Set<AppMonitorResourceSource>(["market", "custom", "archive", "remote", "system"]);
+const RESOURCE_SOURCES = new Set<AppMonitorResourceSource>(["market", "custom", "archive", "remote", "npm", "system"]);
 const SETTINGS_TABS = new Set<AppMonitorSettingsTab>([
 	"general",
 	"appearance",

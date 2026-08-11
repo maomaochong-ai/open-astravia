@@ -31,6 +31,7 @@ import {
 } from "../plugins/offscreen-capture-service.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
 import { startPluginDevWatch, stopPluginDevWatch } from "../plugins/plugin-dev-watch.js";
+import { parsePluginInstallOptions } from "../plugins/plugin-install-options.js";
 import {
 	beginDynamicAgentContributionLoad,
 	buildAgentPluginRuntimeConfig,
@@ -70,17 +71,7 @@ function asArchiveBuffer(value: unknown): ArrayBuffer | Buffer {
 }
 
 function asOptions(value: unknown): PluginInstallOptions | undefined {
-	if (value === undefined || value === null) return undefined;
-	if (typeof value !== "object") throw new Error("Invalid plugin install options");
-	const input = value as Record<string, unknown>;
-	const source = input.source === "remote" ? "remote" : input.source === "archive" ? "archive" : undefined;
-	const grantedPermissions =
-		Array.isArray(input.grantedPermissions) && input.grantedPermissions.every((item) => typeof item === "string")
-			? (input.grantedPermissions as PluginPermission[])
-			: undefined;
-	const enable = input.enable === true ? true : input.enable === false ? false : undefined;
-	const expectedSha256 = typeof input.expectedSha256 === "string" ? input.expectedSha256 : undefined;
-	return { source, grantedPermissions, enable, expectedSha256 };
+	return parsePluginInstallOptions(value);
 }
 
 function asPluginId(value: unknown): string {
@@ -406,6 +397,7 @@ function recordPluginResourceEvent(input: {
 function toAppMonitorPluginSource(source: InstalledPlugin["source"]): AppMonitorResourceSource {
 	if (source === "system") return "system";
 	if (source === "remote") return "remote";
+	if (source === "npm") return "npm";
 	return "archive";
 }
 
@@ -518,9 +510,13 @@ async function installOfficialPluginFromPath(
 	const normalized = asOptions(options);
 	const enable = normalized?.enable !== false;
 	let plugin = await installFromPath(path, {
-		source: "archive",
+		source: normalized?.source ?? "archive",
 		grantedPermissions: normalized?.grantedPermissions,
 		enable,
+		expectedSha256: normalized?.expectedSha256,
+		expectedId: normalized?.expectedId,
+		expectedVersion: normalized?.expectedVersion,
+		npm: normalized?.npm,
 	});
 	if (
 		(!normalized?.grantedPermissions || normalized.grantedPermissions.length === 0) &&

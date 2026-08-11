@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { listPluginManifestResources, parsePluginManifest, type PluginManifest } from "@vetta-org/plugin-sdk/manifest";
+import { parseVettaNpmPluginPackage } from "@vetta-org/plugin-sdk/npm-package";
 
 export interface VettaPluginPackageFile {
 	fullPath: string;
@@ -10,6 +11,7 @@ export interface VettaPluginPackageFile {
 
 export interface VettaPluginPackageResult {
 	outputPath: string;
+	npmOutputPath?: string;
 	files: VettaPluginPackageFile[];
 }
 
@@ -18,7 +20,11 @@ export interface CreateVettaPluginPackageOptions {
 	manifestPath?: string;
 	releaseDir?: string;
 	distDir?: string;
+	/** Also write the stable npm distribution artifact `release/vetta-plugin.zip`. */
+	npmArchive?: boolean;
 }
+
+export const VETTA_NPM_PLUGIN_ARCHIVE_PATH = "release/vetta-plugin.zip";
 
 const crcTable = new Uint32Array(256);
 for (let i = 0; i < 256; i += 1) {
@@ -323,10 +329,36 @@ export async function createVettaPluginPackage(
 	const pluginManifest = parsePluginManifest(parseJsonObject(await readFile(manifestPath), basename(manifestPath)));
 	const outputPath = join(releaseDir, `${pluginManifest.id}-${pluginManifest.version}.zip`);
 	const files = await collectRuntimeFiles(rootDir, manifestPath, distDir);
+	let npmOutputPath: string | undefined;
+	if (options.npmArchive === true) {
+		const packageManifest = parseVettaNpmPluginPackage(
+			parseJsonObject(await readFile(resolve(rootDir, "package.json")), "package.json"),
+		);
+		if (packageManifest.version !== pluginManifest.version) {
+			throw new Error(
+				`npm package version ${packageManifest.version} must match plugin version ${pluginManifest.version}.`,
+			);
+		}
+		if (packageManifest.vetta.pluginId !== pluginManifest.id) {
+			throw new Error(
+				`npm package plugin id ${packageManifest.vetta.pluginId} must match plugin id ${pluginManifest.id}.`,
+			);
+		}
+		if (packageManifest.vetta.archive !== VETTA_NPM_PLUGIN_ARCHIVE_PATH) {
+			throw new Error(`npm package archive must be ${VETTA_NPM_PLUGIN_ARCHIVE_PATH}.`);
+		}
+		npmOutputPath = resolve(rootDir, VETTA_NPM_PLUGIN_ARCHIVE_PATH);
+	}
 
 	await mkdir(releaseDir, { recursive: true });
 	await rm(outputPath, { force: true });
-	await writeFile(outputPath, await createZip(files));
+	const archive = await createZip(files);
+	await writeFile(outputPath, archive);
+	if (npmOutputPath && npmOutputPath !== outputPath) {
+		await mkdir(dirname(npmOutputPath), { recursive: true });
+		await rm(npmOutputPath, { force: true });
+		await writeFile(npmOutputPath, archive);
+	}
 
-	return { outputPath, files };
+	return { outputPath, npmOutputPath, files };
 }

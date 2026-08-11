@@ -18,6 +18,16 @@ type PluginsManageInput =
 			path: string;
 			grantedPermissions?: string[];
 			enable?: boolean;
+			source?: "archive" | "npm";
+			expectedSha256?: string;
+			expectedId?: string;
+			expectedVersion?: string;
+			npm?: {
+				packageName: string;
+				requestedSpec: string;
+				resolvedVersion: string;
+				integrity?: string;
+			};
 	  }
 	| { operation: "uninstall"; id: string }
 	| { operation: "reload"; id: string };
@@ -64,8 +74,34 @@ const manageSchema: PluginJsonSchema = {
 				path: { type: "string", minLength: 1 },
 				grantedPermissions: { type: "array", items: { type: "string" } },
 				enable: { type: "boolean" },
+				source: { const: "archive" },
+				expectedSha256: { type: "string", minLength: 64, maxLength: 64 },
 			},
 			required: ["operation", "path"],
+			additionalProperties: false,
+		},
+		{
+			properties: {
+				operation: { const: "install-from-path" },
+				path: { type: "string", minLength: 1 },
+				enable: { type: "boolean" },
+				source: { const: "npm" },
+				expectedSha256: { type: "string", minLength: 64, maxLength: 64 },
+				expectedId: { type: "string", minLength: 1 },
+				expectedVersion: { type: "string", minLength: 1 },
+				npm: {
+					type: "object",
+					properties: {
+						packageName: { type: "string", minLength: 1 },
+						requestedSpec: { type: "string", minLength: 1 },
+						resolvedVersion: { type: "string", minLength: 1 },
+						integrity: { type: "string", minLength: 1 },
+					},
+					required: ["packageName", "requestedSpec", "resolvedVersion"],
+					additionalProperties: false,
+				},
+			},
+			required: ["operation", "path", "source", "expectedSha256", "expectedId", "expectedVersion", "npm"],
 			additionalProperties: false,
 		},
 		{
@@ -202,6 +238,11 @@ export function registerPluginsActions(ctx: PluginContext): void {
 					plugin: await ctx.official.plugins.installFromPath(input.path, {
 						grantedPermissions: input.grantedPermissions,
 						enable: input.enable,
+						source: input.source,
+						expectedSha256: input.expectedSha256,
+						expectedId: input.expectedId,
+						expectedVersion: input.expectedVersion,
+						npm: input.npm,
 					}),
 				};
 			}

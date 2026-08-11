@@ -44,6 +44,7 @@ import { getAppLogger } from "../logger.js";
 import { verifySha256 } from "../utils/integrity.js";
 import { type DesktopPluginHookRegistration, desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
 import { normalizePluginDevServerUrls } from "./plugin-dev-protocol.js";
+import { assertPluginInstallIdentity } from "./plugin-install-options.js";
 import { PluginSettingsStore } from "./plugin-settings-store.js";
 
 export const PLUGIN_API_VERSION = "1.3.0";
@@ -275,7 +276,8 @@ function readRegistry(): PluginManifestFile {
 			plugin.source ??= "archive";
 			plugin.required = false;
 			// 用户可编辑的注册表不是信任根；远端签名链接入前一律按来源降为非官方。
-			plugin.trustLevel = plugin.source === "remote" ? "community" : "local";
+			plugin.trustLevel = plugin.source === "remote" || plugin.source === "npm" ? "community" : "local";
+			if (plugin.source !== "npm") plugin.distribution = undefined;
 			plugin.permissions = effectivePermissions(plugin.permissions ?? [], plugin.trustLevel);
 			plugin.grantedPermissions = effectivePermissions(plugin.grantedPermissions ?? [], plugin.trustLevel);
 			plugin.declaredCommands = effectiveCommands(plugin.declaredCommands ?? [], plugin.trustLevel);
@@ -354,7 +356,8 @@ function installedFromManifest(
 	const entryUrl = previous?.entryUrl ?? toPluginUrl(manifest.id, activeVersion, manifest.entry);
 	const styleUrls =
 		previous?.styleUrls ?? (manifest.styles ?? []).map((style) => toPluginUrl(manifest.id, activeVersion, style));
-	const trustLevel: InstalledPlugin["trustLevel"] = options?.source === "remote" ? "community" : "local";
+	const trustLevel: InstalledPlugin["trustLevel"] =
+		options?.source === "remote" || options?.source === "npm" ? "community" : "local";
 	const permissions = effectivePermissions(manifest.permissions ?? [], trustLevel);
 	const grantedPermissions = Array.from(
 		new Set(
@@ -397,6 +400,7 @@ function installedFromManifest(
 		installedAt: previous?.installedAt ?? now,
 		updatedAt: now,
 		source: options?.source ?? "archive",
+		distribution: options?.source === "npm" ? options.npm : undefined,
 		trustLevel,
 		availableVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
 		pendingVersion: previous && previous.version !== manifest.version ? manifest.version : undefined,
@@ -1364,6 +1368,7 @@ export async function installPluginFromArchive(
 	try {
 		const { manifest, sourceDir } = await getManifestFromDir(extractDir);
 		validatePluginPackageResources(sourceDir, manifest);
+		assertPluginInstallIdentity(manifest, options);
 		if (isSystemPluginId(manifest.id)) {
 			throw new Error(`Cannot install over a system plugin: ${manifest.id}`);
 		}

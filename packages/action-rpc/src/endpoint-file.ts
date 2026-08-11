@@ -1,5 +1,7 @@
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import type { ActionRpcEndpoint } from "./types.js";
 
 export const ACTION_RPC_ENDPOINT_FILE_ENV = "VETTA_ACTION_RPC_ENDPOINT_FILE";
 export const VETTA_HOME_ENV = "VETTA_HOME";
@@ -40,4 +42,28 @@ export function getActionRpcEndpointFilePath(): string {
 	const envPath = process.env[ACTION_RPC_ENDPOINT_FILE_ENV];
 	if (envPath) return envPath;
 	return join(getVettaHomePath(), "action-server.json");
+}
+
+function parseActionRpcEndpoint(value: unknown, endpointFilePath: string): ActionRpcEndpoint {
+	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+		throw new Error(`Invalid action server endpoint file: ${endpointFilePath}`);
+	}
+	const input = value as Record<string, unknown>;
+	if (
+		input.transport !== "http" ||
+		typeof input.url !== "string" ||
+		input.url.length === 0 ||
+		typeof input.token !== "string" ||
+		input.token.length === 0
+	) {
+		throw new Error(`Invalid action server endpoint file: ${endpointFilePath}`);
+	}
+	return { transport: "http", url: input.url, token: input.token };
+}
+
+/** Read and validate the endpoint advertised by the running Desktop host. */
+export async function readActionRpcEndpoint(): Promise<ActionRpcEndpoint> {
+	const endpointFilePath = getActionRpcEndpointFilePath();
+	const raw = await readFile(endpointFilePath, "utf8");
+	return parseActionRpcEndpoint(JSON.parse(raw) as unknown, endpointFilePath);
 }

@@ -13,6 +13,7 @@
 
 - `plugin-sdk/`：插件运行时 API 和类型。
 - `plugin-vite/`：插件 Vite 配置与 zip 打包工具。
+- `plugin-cli/`：从 npm 包、本地 zip 或 URL 安装插件的公开 CLI。
 - `presets/`：随 Vetta Desktop 发布的系统插件。
 - `externals/`：不随 App 打包的外置插件示例。
 
@@ -36,3 +37,38 @@ bun run build:presets
 开发环境会先把这些插件 staging 到 `packages/desktop-app/.artifacts/system-plugins/`，
 再默认为当前租户的全部 preset 建立内存 dev 链接并启动开发服务器；关闭 dev 链接时回落 staging。
 Preset 不会安装到 `~/.vetta/plugins`。
+
+## 通过 npm 分发外置插件
+
+外置插件仍以 Desktop 标准 zip 为安装制品，npm 包只作为分发信封。插件工程在
+`package.json` 中声明稳定制品路径，并让 `plugin-vite` 同时生成它：
+
+```json
+{
+  "name": "@example/vetta-plugin-demo",
+  "version": "1.0.0",
+  "files": ["release/vetta-plugin.zip"],
+  "vetta": {
+    "schemaVersion": 1,
+    "type": "desktop-plugin",
+    "pluginId": "demo",
+    "archive": "release/vetta-plugin.zip"
+  }
+}
+```
+
+```ts
+vettaPluginFederation({
+  name: "demo",
+  package: { npmArchive: true }
+});
+```
+
+发布 npm 包后，用户需要先启动 Vetta Desktop，再执行：
+
+```bash
+npx @vetta-org/plugin-cli add @example/vetta-plugin-demo
+```
+
+CLI 使用 `npm pack --ignore-scripts` 获取包，校验 npm 元数据后仅提取声明的 zip；
+Desktop 会再次校验摘要、插件 id 与版本，然后沿用现有授权、启用和重载流程。

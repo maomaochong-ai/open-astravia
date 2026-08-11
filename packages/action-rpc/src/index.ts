@@ -5,6 +5,7 @@ export {
 	getActionRpcEndpointFilePath,
 	getVettaConfigDirName,
 	getVettaHomePath,
+	readActionRpcEndpoint,
 	VETTA_CONFIG_DIR_ENV,
 	VETTA_HOME_ENV,
 } from "./endpoint-file.js";

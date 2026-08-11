@@ -118,6 +118,13 @@ export interface PluginsChangedEvent {
 
 export type PluginTrustLevel = "official" | "community" | "local";
 
+export interface PluginNpmDistribution {
+	packageName: string;
+	requestedSpec: string;
+	resolvedVersion: string;
+	integrity?: string;
+}
+
 export interface InstalledPlugin {
 	id: string;
 	name: string;
@@ -164,7 +171,9 @@ export interface InstalledPlugin {
 	required: boolean;
 	installedAt: string;
 	updatedAt: string;
-	source: "archive" | "remote" | "system";
+	source: "archive" | "remote" | "npm" | "system";
+	/** npm distribution provenance for the currently packaged `version`. */
+	distribution?: PluginNpmDistribution;
 	/** 执行权限信任级别；与安装来源分离，不能由插件 manifest 自行声明。 */
 	trustLevel: PluginTrustLevel;
 	availableVersion?: string;
@@ -179,12 +188,16 @@ export interface InstalledPlugin {
 }
 
 export interface PluginInstallOptions {
-	source?: "archive" | "remote";
+	source?: "archive" | "remote" | "npm";
 	grantedPermissions?: PluginPermission[];
 	/** When true, enable the plugin after install (default false for GUI parity; agent path may set true). */
 	enable?: boolean;
 	/** Expected sha256 of the archive, from the market entry. Omitted for entries uploaded before digests existed. */
 	expectedSha256?: string;
+	/** npm envelope identity. The host verifies both values against plugin.json before copying files. */
+	expectedId?: string;
+	expectedVersion?: string;
+	npm?: PluginNpmDistribution;
 }
 
 export interface PluginAgentToolRegistration {

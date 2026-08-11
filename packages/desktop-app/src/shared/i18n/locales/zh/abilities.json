@@ -143,6 +143,7 @@
 		"source": {
 			"label": "来源",
 			"remote": "远程安装",
+			"npm": "npm 包",
 			"system": "系统内置",
 			"local": "本地 zip"
 		},
