@@ -216,6 +216,19 @@ opts into from the Design sidebar, not something you propose. Just design well
 for what they asked for, deriving the palette and type scale from the product
 itself.
 
+If the **project root** has a `design-resources/<slug>/` directory, the user
+started this project from that style in the Design sidebar; it is the style
+reference pack for this project and following it is the default:
+
+- Read its `INDEX.md` (the file inventory), then its `DESIGN.md` — that spec
+  is the style contract for what you are about to design.
+- After `vetd_create`, write the pack's `theme.css` content into the design's
+  own `theme.css` before building frames.
+- Screenshots and HTML in the pack are **visual reference only** — study them
+  for layout and mood, do not copy their markup or code into frames.
+- The user outranks the pack: if they ask for a different style, follow the
+  user. Several packs side by side and no user pick: ask which one first.
+
 If `DESIGN.md` exists in the design document, the user has already applied a
 system — read it first and follow it, and do NOT rewrite it or `theme.css`.
 
