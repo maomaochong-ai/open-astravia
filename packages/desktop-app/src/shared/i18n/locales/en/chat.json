@@ -248,6 +248,9 @@
 		"exportButton": {
 			"title": "Export full session as HTML"
 		},
+		"newSessionButton": {
+			"title": "New session"
+		},
 		"panelButton": {
 			"closed": "Open activity panel",
 			"open": "Close activity panel"

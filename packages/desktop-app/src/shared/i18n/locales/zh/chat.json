@@ -248,6 +248,9 @@
 		"exportButton": {
 			"title": "导出完整会话 HTML"
 		},
+		"newSessionButton": {
+			"title": "新会话"
+		},
 		"panelButton": {
 			"closed": "打开活动面板",
 			"open": "关闭活动面板"
