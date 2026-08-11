@@ -28,11 +28,11 @@ Infer reversible creative defaults. Ask only for missing media, exact text/facts
 
 Translate the selected production recipe into named nodes with explicit purposes. Keep one shared direction/authority feeding assigned branches. Use current revision, coherent edit batches, automatic placement, and capability-backed model settings.
 
-After edits, inspect diagnostics. Do not prepare a run while blocking errors remain.
+After edits, inspect `readiness`. Verify the expected semantic connections and connected components, then repair blocking errors, orphan nodes, and unbound asset collections before preparing a run.
 
 ## Prepare and confirm
 
-`content_creation_run(action="prepare")` is a proposal boundary. Summarize the stages, expensive branches, expected outputs, and known capability limitations in the confirmation card. Do not describe a prepared run as started.
+`content_creation_run(action="prepare")` is a proposal boundary. It queues the run for the plugin's global confirmation dialog. Summarize the stages, expensive branches, expected outputs, and known capability limitations in chat, but do not add a message card and do not describe a prepared run as started.
 
 ## Monitor and recover
 
@@ -45,4 +45,3 @@ After edits, inspect diagnostics. Do not prepare a run while blocking errors rem
 ## Return outputs
 
 Report each deliverable by purpose, node/asset, status, format, and review state. Surface partial results honestly. A missing optional variant does not erase a valid master; a missing required authority or final deliverable prevents campaign completion.
-

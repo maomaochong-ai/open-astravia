@@ -57,6 +57,11 @@ export class OpenAiImageProvider implements ContentProviderAdapter {
 	}
 
 	listModels(): readonly ContentModelDescriptor[] {
+		const apiKey = readSetting(this.settings, this.options.apiKeySetting);
+		const configuredBaseUrl = this.options.baseUrlSetting
+			? readSetting(this.settings, this.options.baseUrlSetting)
+			: this.options.baseUrl;
+		if (!apiKey || !configuredBaseUrl?.trim()) return [];
 		const configuredModel = this.options.modelSetting
 			? readSetting(this.settings, this.options.modelSetting) || this.options.defaultModel
 			: this.options.defaultModel;

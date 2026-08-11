@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import electronPath from "electron";
+import { resolveTenant } from "./stage-system-plugins.mjs";
 
 const projectRoot = join(import.meta.dirname, "..");
 
@@ -33,6 +34,14 @@ export function resolveDevLaunchEnvironment(environment = process.env, homeDirec
 	return { configDir, userDataDir };
 }
 
+export function resolveDevPluginIds(environment = process.env, tenantResolver = resolveTenant) {
+	if (Object.hasOwn(environment, "VETTA_PLUGIN_DEV")) {
+		return environment.VETTA_PLUGIN_DEV ?? "";
+	}
+	const tenant = tenantResolver(environment.VETTA_TENANT);
+	return tenant.pluginIds ? Array.from(tenant.pluginIds).sort().join(",") : "";
+}
+
 async function main() {
 	const rendererPort = resolveRendererPort();
 	const rendererUrl = `http://127.0.0.1:${rendererPort}`;
@@ -47,6 +56,7 @@ async function main() {
 	}
 
 	const { configDir, userDataDir } = resolveDevLaunchEnvironment();
+	const pluginIds = resolveDevPluginIds();
 	const electronArgs = [];
 	if (process.env.VETTA_UI_VERIFICATION === "1") {
 		if (process.env.VETTA_DESKTOP_RUNTIME_CANARY === "1") {
@@ -63,6 +73,7 @@ async function main() {
 			...process.env,
 			VETTA_CONFIG_DIR: configDir,
 			VETTA_DESKTOP_DEV_URL: rendererUrl,
+			VETTA_PLUGIN_DEV: pluginIds,
 		},
 		stdio: "inherit",
 	});

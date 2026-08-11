@@ -23,6 +23,7 @@ const SelectionConnectionSchema = StrictObject({
 	toNodeId: Type.String(),
 	fromOutput: Type.Optional(Type.String()),
 	toInput: Type.Optional(Type.String()),
+	role: Type.Optional(Type.String()),
 });
 
 export const ContentSelectionPromptPayloadSchema = StrictObject({
@@ -30,7 +31,7 @@ export const ContentSelectionPromptPayloadSchema = StrictObject({
 	schemaVersion: Type.Literal(1),
 	project: StrictObject({
 		format: Type.Literal("vetta.content-workflow"),
-		schemaVersion: Type.Literal(4),
+		schemaVersion: Type.Literal(5),
 		projectId: Type.String(),
 		revision: Type.Number(),
 		workflow: StrictObject({
@@ -75,6 +76,7 @@ export function createContentSelectionPromptAttachment(
 			toNodeId: edge.target,
 			...(edge.sourceHandle ? { fromOutput: edge.sourceHandle } : {}),
 			...(edge.targetHandle ? { toInput: edge.targetHandle } : {}),
+			...(edge.role ? { role: edge.role } : {}),
 		}));
 	const nodeIds = nodes.map((node) => node.id);
 	const payload: ContentSelectionPromptPayload = {
@@ -156,7 +158,7 @@ function listReferencedAssetIds(node: Static<typeof WorkflowNodeSchema>): string
 		for (const input of node.inputs.referenceImages) ids.push(...input.assetIds);
 	}
 	if (node.type === "video-generator") {
-		for (const input of [...node.inputs.startImages, ...node.inputs.referenceVideos]) {
+		for (const input of node.inputs.mediaSources) {
 			ids.push(...input.assetIds);
 		}
 	}

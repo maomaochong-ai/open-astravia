@@ -1,39 +1,12 @@
 import type { ContentGenerationService } from "../generation/generation-service";
+import { ContentGenerationIntentError } from "../generation/generation-intent";
 import type { ContentModelDescriptor } from "../generation/types";
-import { applyContentProjectCommands, type ContentProjectCommand } from "../project/commands";
 import type { ContentNode, ContentProjectDocument } from "../project/types";
 import type { ContentCreationWorkspace } from "../project/workspace";
-import {
-	contentAgentOperationsAreDestructive,
-	parseContentAgentOperations,
-} from "./operations";
+import { parseContentAgentOperations } from "./operations";
 import { createContentCreationAgentState } from "./state";
 
-const PREVIEW_TTL_MS = 30 * 60 * 1000;
-const MAX_PREVIEWS = 50;
 const MAX_RUNS = 100;
-const MAX_DIRECT_EDIT_COMMANDS = 6;
-
-export interface ContentOperationDiff {
-	addedNodeIds: string[];
-	removedNodeIds: string[];
-	updatedNodeIds: string[];
-	addedEdgeCount: number;
-	removedEdgeCount: number;
-	workflowChanged: boolean;
-}
-
-export interface ContentOperationPreview {
-	token: string;
-	projectId: string;
-	expectedRevision: number;
-	destructive: boolean;
-	diff: ContentOperationDiff;
-}
-
-export type ContentEditResult =
-	| { kind: "applied"; project: ContentProjectDocument }
-	| { kind: "preview"; preview: ContentOperationPreview };
 
 export type ContentRunStatus = "awaiting-confirmation" | "running" | "succeeded" | "failed" | "cancelled";
 
@@ -50,14 +23,7 @@ export interface ContentPreparedRun {
 	error?: string;
 }
 
-interface StoredPreview extends ContentOperationPreview {
-	cwd: string;
-	commands: ContentProjectCommand[];
-	createdAt: number;
-}
-
 export class ContentCreationAgentService {
-	private readonly previews = new Map<string, StoredPreview>();
 	private readonly runs = new Map<string, ContentPreparedRun>();
 	private readonly runListeners = new Set<() => void>();
 
@@ -71,75 +37,15 @@ export class ContentCreationAgentService {
 		return createContentCreationAgentState(project, this.listModels());
 	}
 
-	async apply(
+	async edit(
 		cwd: string,
 		operations: readonly unknown[],
 		expectedRevision?: number,
 	): Promise<ContentProjectDocument> {
 		const project = await this.workspace.load(cwd);
-		const commands = parseContentAgentOperations(project, operations);
-		if (contentAgentOperationsAreDestructive(commands)) {
-			throw new Error("destructive operations require an operation preview and user confirmation");
-		}
-		return await this.workspace.dispatch(cwd, commands, expectedRevision);
-	}
-
-	async edit(
-		cwd: string,
-		operations: readonly unknown[],
-		expectedRevision?: number,
-	): Promise<ContentEditResult> {
-		this.prunePreviews();
-		const project = await this.workspace.load(cwd);
 		assertExpectedRevision(project, expectedRevision);
-		const commands = parseContentAgentOperations(project, operations);
-		if (contentAgentOperationsAreDestructive(commands) || commands.length > MAX_DIRECT_EDIT_COMMANDS) {
-			return { kind: "preview", preview: this.storePreview(cwd, project, commands) };
-		}
-		return {
-			kind: "applied",
-			project: await this.workspace.dispatch(cwd, commands, project.revision),
-		};
-	}
-
-	async preview(
-		cwd: string,
-		operations: readonly unknown[],
-		expectedRevision?: number,
-	): Promise<ContentOperationPreview> {
-		this.prunePreviews();
-		const project = await this.workspace.load(cwd);
-		assertExpectedRevision(project, expectedRevision);
-		const commands = parseContentAgentOperations(project, operations);
-		return this.storePreview(cwd, project, commands);
-	}
-
-	private storePreview(
-		cwd: string,
-		project: ContentProjectDocument,
-		commands: ContentProjectCommand[],
-	): ContentOperationPreview {
-		const next = applyContentProjectCommands(project, commands);
-		const preview: StoredPreview = {
-			token: crypto.randomUUID(),
-			cwd,
-			projectId: project.projectId,
-			expectedRevision: project.revision,
-			destructive: contentAgentOperationsAreDestructive(commands),
-			diff: createOperationDiff(project, next),
-			commands,
-			createdAt: Date.now(),
-		};
-		this.previews.set(preview.token, preview);
-		return publicPreview(preview);
-	}
-
-	async commitPreview(token: string): Promise<ContentProjectDocument> {
-		this.prunePreviews();
-		const preview = this.previews.get(token);
-		if (!preview) throw new Error("operation preview expired or was not found");
-		this.previews.delete(token);
-		return await this.workspace.dispatch(preview.cwd, preview.commands, preview.expectedRevision);
+		const commands = parseContentAgentOperations(project, operations, this.listModels());
+		return await this.workspace.dispatch(cwd, commands, project.revision);
 	}
 
 	async prepareRun(cwd: string, requestedNodeIds?: readonly string[], expectedRevision?: number): Promise<ContentPreparedRun> {
@@ -150,6 +56,21 @@ export class ContentCreationAgentService {
 		}
 		const candidates = resolveRunNodes(project, requestedNodeIds);
 		if (candidates.length === 0) throw new Error("no executable image or video generation nodes were selected");
+		const state = createContentCreationAgentState(project, this.listModels());
+		const candidateIds = new Set(candidates.map((node) => node.id));
+		const blockingIssues = state.analysis.issues.filter(
+			(issue) =>
+				issue.severity === "error" &&
+				(!issue.nodeId || candidateIds.has(issue.nodeId)) &&
+				RUN_BLOCKING_DIAGNOSTIC_CODES.has(issue.code),
+		);
+		if (blockingIssues.length > 0) {
+			throw new ContentGenerationIntentError(
+				"content generation plan is not ready",
+				"generation-plan-not-ready",
+				{ issues: blockingIssues },
+			);
+		}
 		const run: ContentPreparedRun = {
 			id: crypto.randomUUID(),
 			cwd,
@@ -232,18 +153,6 @@ export class ContentCreationAgentService {
 		return this.getGenerationService().listModels();
 	}
 
-	private prunePreviews(): void {
-		const cutoff = Date.now() - PREVIEW_TTL_MS;
-		for (const [token, preview] of this.previews) {
-			if (preview.createdAt < cutoff) this.previews.delete(token);
-		}
-		while (this.previews.size >= MAX_PREVIEWS) {
-			const oldest = this.previews.keys().next().value;
-			if (typeof oldest !== "string") break;
-			this.previews.delete(oldest);
-		}
-	}
-
 	private pruneRuns(): void {
 		while (this.runs.size >= MAX_RUNS) {
 			const completed = [...this.runs].find(([, run]) =>
@@ -265,29 +174,25 @@ function assertExpectedRevision(project: ContentProjectDocument, expectedRevisio
 	}
 }
 
-function createOperationDiff(current: ContentProjectDocument, next: ContentProjectDocument): ContentOperationDiff {
-	const currentNodes = new Map(current.graph.nodes.map((node) => [node.id, node]));
-	const nextNodes = new Map(next.graph.nodes.map((node) => [node.id, node]));
-	const currentEdgeIds = new Set(current.graph.edges.map((edge) => edge.id));
-	const nextEdgeIds = new Set(next.graph.edges.map((edge) => edge.id));
-	return {
-		addedNodeIds: [...nextNodes.keys()].filter((id) => !currentNodes.has(id)),
-		removedNodeIds: [...currentNodes.keys()].filter((id) => !nextNodes.has(id)),
-		updatedNodeIds: [...nextNodes.entries()].flatMap(([id, node]) => {
-			const previous = currentNodes.get(id);
-			return previous && JSON.stringify(previous) !== JSON.stringify(node) ? [id] : [];
-		}),
-		addedEdgeCount: next.graph.edges.filter((edge) => !currentEdgeIds.has(edge.id)).length,
-		removedEdgeCount: current.graph.edges.filter((edge) => !nextEdgeIds.has(edge.id)).length,
-		workflowChanged: JSON.stringify(current.workflow) !== JSON.stringify(next.workflow),
-	};
-}
-
 function resolveRunNodes(project: ContentProjectDocument, requestedNodeIds?: readonly string[]): ContentNode[] {
 	const requested = requestedNodeIds?.length ? new Set(requestedNodeIds) : null;
 	if (requested) {
 		for (const nodeId of requested) {
 			if (!project.graph.nodes.some((node) => node.id === nodeId)) throw new Error(`node not found: ${nodeId}`);
+		}
+	}
+	if (requested) {
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (const edge of project.graph.edges) {
+				if (!requested.has(edge.target) || requested.has(edge.source)) continue;
+				const source = project.graph.nodes.find((node) => node.id === edge.source);
+				if (!source || (source.kind !== "image-generator" && source.kind !== "video-generator")) continue;
+				if (source.status === "succeeded" && source.data.assetId) continue;
+				requested.add(source.id);
+				changed = true;
+			}
 		}
 	}
 	return project.graph.nodes.filter(
@@ -296,6 +201,16 @@ function resolveRunNodes(project: ContentProjectDocument, requestedNodeIds?: rea
 			(requested ? requested.has(node.id) : node.status !== "succeeded"),
 	);
 }
+
+const RUN_BLOCKING_DIAGNOSTIC_CODES = new Set([
+	"asset-connection-unbound",
+	"generation-prompt-missing",
+	"generation-provider-unavailable",
+	"generation-source-asset-missing",
+	"selected-model-unavailable",
+	"generation-source-role-missing",
+	"generation-inputs-incompatible",
+]);
 
 function topologicalNodeOrder(project: ContentProjectDocument, nodeIds: readonly string[]): string[] {
 	const selected = new Set(nodeIds);
@@ -320,16 +235,6 @@ function topologicalNodeOrder(project: ContentProjectDocument, nodeIds: readonly
 	}
 	if (ordered.length !== nodeIds.length) throw new Error("selected generation nodes contain a dependency cycle");
 	return ordered;
-}
-
-function publicPreview(preview: StoredPreview): ContentOperationPreview {
-	return {
-		token: preview.token,
-		projectId: preview.projectId,
-		expectedRevision: preview.expectedRevision,
-		destructive: preview.destructive,
-		diff: structuredClone(preview.diff),
-	};
 }
 
 function cloneRun(run: ContentPreparedRun): ContentPreparedRun {

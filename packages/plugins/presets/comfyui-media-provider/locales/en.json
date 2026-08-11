@@ -7,5 +7,5 @@
 	"settings.templatePromptId.title": "Frame template prompt ID",
 	"settings.templatePromptId.description": "Optional successful MiniMax H3 first/last-frame job to use as the API Prompt template. The latest compatible success is used when empty.",
 	"settings.referenceTemplatePromptId.title": "Omni-reference template prompt ID",
-	"settings.referenceTemplatePromptId.description": "Set a successful MiniMax H3 reference job ID to enable omni-reference mode. Keep the required image, video, and audio loader nodes in the template."
+	"settings.referenceTemplatePromptId.description": "Optional. Pin a successful MiniMax H3 omni-reference job as the API Prompt template; when empty, the latest compatible successful job is used."
 }

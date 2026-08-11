@@ -314,7 +314,13 @@ export type {
 export { interpolatePluginText, resolveCatalogKey, resolvePluginText } from "./i18n.js";
 
 // Context & lifecycle
-export type { PluginPermissionApi, AgentMode, PluginContext, PluginDefinition } from "./context.js";
+export type {
+	PluginPermissionApi,
+	AgentMode,
+	PluginActivationCleanup,
+	PluginContext,
+	PluginDefinition,
+} from "./context.js";
 export { definePlugin } from "./context.js";
 
 // Host bridge (host-injected; plugins use hooks)

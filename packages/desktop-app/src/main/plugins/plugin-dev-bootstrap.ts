@@ -7,6 +7,18 @@ export interface PluginDevProject {
 	projectDir: string;
 }
 
+export interface PluginDevBootstrapFailure {
+	project: PluginDevProject;
+	error: Error;
+}
+
+export interface PluginDevBootstrapResult {
+	ready: PluginDevProject[];
+	failures: PluginDevBootstrapFailure[];
+}
+
+const START_CONCURRENCY = 4;
+
 export interface ResolvePluginDevProjectsOptions {
 	desktopAppDir: string;
 	pluginIds: readonly string[];
@@ -76,18 +88,36 @@ function splitValues(value: string | undefined, separator: string): string[] {
 export async function startConfiguredPluginDevWatches(
 	desktopAppDir: string,
 	environment: NodeJS.ProcessEnv = process.env,
-): Promise<PluginDevProject[]> {
+): Promise<PluginDevBootstrapResult> {
 	const projects = await resolveConfiguredPluginDevProjects({
 		desktopAppDir,
 		pluginIds: splitValues(environment.VETTA_PLUGIN_DEV, ","),
 		pluginRoots: splitValues(environment.VETTA_PLUGIN_DEV_ROOTS, delimiter),
 	});
-	await Promise.all(
-		projects.map((project) =>
-			startPluginDevWatch(project.id, project.projectDir, {
-				allowUninstalled: true,
-			}),
-		),
-	);
-	return projects;
+	const ready: PluginDevProject[] = [];
+	const failures: PluginDevBootstrapFailure[] = [];
+	for (let offset = 0; offset < projects.length; offset += START_CONCURRENCY) {
+		const batch = projects.slice(offset, offset + START_CONCURRENCY);
+		const results = await Promise.allSettled(
+			batch.map((project) =>
+				Promise.resolve().then(() =>
+					startPluginDevWatch(project.id, project.projectDir, {
+						allowUninstalled: true,
+					}),
+				),
+			),
+		);
+		for (const [index, result] of results.entries()) {
+			const project = batch[index];
+			if (!project) continue;
+			if (result.status === "fulfilled") ready.push(project);
+			else {
+				failures.push({
+					project,
+					error: result.reason instanceof Error ? result.reason : new Error(String(result.reason)),
+				});
+			}
+		}
+	}
+	return { ready, failures };
 }

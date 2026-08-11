@@ -676,9 +676,7 @@ export function registerPluginsIpc(pluginActionService: PluginActionService): ()
 		if (typeof projectDir !== "string" || projectDir.trim().length === 0) {
 			throw new Error("Invalid plugin project dir");
 		}
-		const plugin = startPluginDevWatch(pluginId, projectDir.trim());
-		refreshAgentPlugins();
-		return plugin;
+		return startPluginDevWatch(pluginId, projectDir.trim());
 	});
 	ipcMain.handle("vetta:plugins:dev-watch-stop", (_event, sessionId: unknown, id: unknown) => {
 		capabilityAdapter.assertOfficialSession(asPluginId(sessionId));

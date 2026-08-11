@@ -98,7 +98,7 @@ function hydrateNode(
 			data: {
 				...hydratePromptData(
 					node.content,
-					[...node.inputs.startImages, ...node.inputs.referenceVideos],
+					node.inputs.mediaSources,
 					node.inputs.promptSources,
 				),
 				...hydrateGenerationModel(node.generation.model),
@@ -221,8 +221,7 @@ function hydrateEdges(nodes: readonly WorkflowNode[]) {
 		}
 		if (node.type === "video-generator") {
 			addNodeEdges(edges, node.id, "prompt", node.inputs.promptSources);
-			addMediaEdges(edges, node.id, "image", node.inputs.startImages);
-			addMediaEdges(edges, node.id, "video", node.inputs.referenceVideos);
+			addMediaEdges(edges, node.id, targetHandleForMediaInput, node.inputs.mediaSources);
 			continue;
 		}
 		if (node.type === "output") addNodeEdges(edges, node.id, "content", node.inputs.contentSources);
@@ -245,24 +244,34 @@ function addNodeEdges(
 function addMediaEdges(
 	edges: Map<string, ReturnType<typeof createEdge>>,
 	target: string,
-	targetHandle: string,
+	targetHandle: string | ((source: MediaInput) => string),
 	sources: readonly MediaInput[],
 ): void {
 	for (const source of sources) {
 		if (!source.fromNode || !source.output) continue;
-		const edge = createEdge(source.fromNode, target, sourceHandle(source.output), targetHandle);
+		const resolvedTargetHandle = typeof targetHandle === "function" ? targetHandle(source) : targetHandle;
+		const edge = createEdge(source.fromNode, target, sourceHandle(source.output), resolvedTargetHandle, source.role);
 		edges.set(edge.id, edge);
 	}
 }
 
-function createEdge(source: string, target: string, sourceHandle: string, targetHandle: string) {
+function createEdge(source: string, target: string, sourceHandle: string, targetHandle: string, role?: string) {
 	return {
-		id: `edge:${source}:${sourceHandle}:${target}:${targetHandle}`,
+		id: `edge:${source}:${sourceHandle}:${target}:${targetHandle}${role ? `:${role}` : ""}`,
 		source,
 		target,
 		sourceHandle,
 		targetHandle,
+		...(role ? { role } : {}),
 	};
+}
+
+function targetHandleForMediaInput(input: MediaInput): string {
+	if (input.role === "firstFrame" || input.role === "lastFrame" || input.role === "referenceImages") return "image";
+	if (input.role === "referenceAudios" || input.role === "referenceAudio") return "audio";
+	if (input.role === "referenceVideos" || input.role === "referenceVideo" || input.role === "sourceVideo") return "video";
+	if (input.output === "image" || input.output === "video") return input.output;
+	return "image";
 }
 
 function sourceHandle(output: NodeOutputSource["output"] | NonNullable<MediaInput["output"]>): string {

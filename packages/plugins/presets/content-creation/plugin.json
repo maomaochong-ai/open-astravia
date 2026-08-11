@@ -16,7 +16,7 @@
 	"permissions": [
 		"ui.slot.activity-tab",
 		"ui.slot.input-action",
-		"ui.slot.message",
+		"ui.slot.global",
 		"ui.shortcuts.register",
 		"agent.skills.control",
 		"agent.systemPrompt.write",
@@ -95,8 +95,5 @@
 		]
 	},
 	"description": "%plugin.description%",
-	"author": "Vetta",
-	"contributionMode": {
-		"hardIsolation": true
-	}
+	"author": "Vetta"
 }

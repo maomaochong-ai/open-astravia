@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
 	setLink: vi.fn(),
 	setServer: vi.fn(),
 	setStatus: vi.fn(),
+	deactivateLink: vi.fn(),
 	clearLink: vi.fn(),
 	refreshLink: vi.fn(),
 	reconfigureAgentPlugins: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("./plugin-dev-cli.js", () => ({ resolvePluginDevCliPath: mocks.resolveCl
 vi.mock("./plugin-store.js", () => ({
 	buildAgentPluginRuntimeConfig: () => ({}),
 	clearPluginDevLink: mocks.clearLink,
+	deactivatePluginDevLink: mocks.deactivateLink,
 	refreshPluginDevLink: mocks.refreshLink,
 	setPluginDevLink: mocks.setLink,
 	setPluginDevLinkServer: mocks.setServer,
@@ -26,7 +28,7 @@ vi.mock("../runtime.js", () => ({
 	getSharedRuntime: () => ({ reconfigureAgentPlugins: mocks.reconfigureAgentPlugins }),
 }));
 vi.mock("../logger.js", () => ({
-	getAppLogger: () => ({ info: vi.fn(), warn: vi.fn() }),
+	getAppLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }));
 
 import { startPluginDevWatch, stopAllPluginDevWatches } from "./plugin-dev-watch.js";
@@ -98,6 +100,42 @@ describe("plugin development watch lifecycle", () => {
 		child.emit("exit", 1, null);
 
 		await expect(started).rejects.toThrow("plugin dev server exited");
+		expect(mocks.setServer).not.toHaveBeenCalled();
+		expect(mocks.setStatus).toHaveBeenCalledWith("demo", "error", expect.stringContaining("exited"));
+	});
+
+	it("falls back to the stable plugin and schedules a restart when a running server exits", async () => {
+		vi.useFakeTimers();
+		try {
+			const child = new FakeChildProcess();
+			const restartedChild = new FakeChildProcess();
+			mocks.spawn.mockReturnValueOnce(child).mockReturnValueOnce(restartedChild);
+
+			const started = startPluginDevWatch("demo", "C:/plugin");
+			child.stdout.emit(
+				"data",
+				Buffer.from(
+					`${JSON.stringify({
+						type: "ready",
+						protocolVersion: 1,
+						pluginId: "demo",
+						entryUrl: "http://127.0.0.1:4100/mf-manifest.json",
+						origin: "http://127.0.0.1:4100",
+					})}\n`,
+				),
+			);
+			await started;
+
+			child.emit("exit", 1, null);
+			expect(mocks.deactivateLink).toHaveBeenCalledWith("demo", expect.stringContaining("exited"));
+			expect(mocks.spawn).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(250);
+			expect(mocks.spawn).toHaveBeenCalledTimes(2);
+		} finally {
+			stopAllPluginDevWatches();
+			vi.useRealTimers();
+		}
 	});
 
 	it("rejects and stops an incompatible project development server", async () => {

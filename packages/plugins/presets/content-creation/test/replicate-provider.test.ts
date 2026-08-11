@@ -9,6 +9,13 @@ import {
 } from "./provider-test-fixtures";
 
 describe("ReplicateProvider", () => {
+	it("hides catalog models until the API token is configured", () => {
+		const provider = new ReplicateProvider(new QueueNetwork([]), createSettings({}), {
+			apiTokenSetting: "token",
+		});
+		expect(provider.listModels()).toEqual([]);
+	});
+
 	it("maps a catalog image model to the Replicate prediction protocol", async () => {
 		const network = new QueueNetwork([
 			jsonResponse({ status: "succeeded", output: ["https://cdn.example/image.webp"] }),

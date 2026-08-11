@@ -1,6 +1,6 @@
 # visual-skills 融合记录
 
-本轮完整阅读 `visual-skills` 的 `image`、`video` 两个 `SKILL.md` 以及全部 34 份 reference。融合不是复制成一个常驻超级 Prompt，而是保留其“薄入口、强制基础读取、任务形状加载、模型专属语法”的方法，并适配 Vetta 的 capability registry、节点工作流、确认卡和三工具控制面。
+本轮完整阅读 `visual-skills` 的 `image`、`video` 两个 `SKILL.md` 以及全部 34 份 reference。融合不是复制成一个常驻超级 Prompt，而是保留其“薄入口、强制基础读取、任务形状加载、模型专属语法”的方法，并适配 Vetta 的 capability registry、节点工作流、全局生成确认和三工具控制面。
 
 来源：Serge Shima 的 [smixs/visual-skills](https://github.com/smixs/visual-skills)，本地快照 `3c55471`，许可证 CC BY 4.0。本项目内容经过重新组织、改写和能力边界适配；署名同时保留在相关 Skill 中。
 

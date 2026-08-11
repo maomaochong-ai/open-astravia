@@ -1,19 +1,26 @@
-import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
+
+function moduleErrorCode(error: unknown): string | undefined {
+	return error !== null && typeof error === "object" && "code" in error && typeof error.code === "string"
+		? error.code
+		: undefined;
+}
 
 export function resolvePluginDevCliPath(projectDir: string): string {
 	const resolvedProjectDir = resolve(projectDir);
 	const projectRequire = createRequire(join(resolvedProjectDir, "package.json"));
-	let packageEntry: string;
 	try {
-		packageEntry = projectRequire.resolve("@vetta-org/plugin-vite");
-	} catch {
-		throw new Error(`plugin-vite is not installed in the plugin project: ${resolvedProjectDir}`);
+		return projectRequire.resolve("@vetta-org/plugin-vite/cli");
+	} catch (error) {
+		if (moduleErrorCode(error) === "ERR_PACKAGE_PATH_NOT_EXPORTED") {
+			throw new Error(
+				`The installed plugin-vite does not expose its development CLI; update @vetta-org/plugin-vite in ${resolvedProjectDir}`,
+				{ cause: error },
+			);
+		}
+		throw new Error(`plugin-vite development CLI is not installed or built in ${resolvedProjectDir}`, {
+			cause: error,
+		});
 	}
-	const cliPath = join(dirname(packageEntry), "cli.js");
-	if (!existsSync(cliPath)) {
-		throw new Error(`plugin-vite CLI not found next to package entry: ${cliPath}`);
-	}
-	return cliPath;
 }

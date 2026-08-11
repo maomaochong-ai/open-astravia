@@ -6,6 +6,7 @@ import type {
 	MediaGenerationMode,
 	MediaInput,
 	MediaKind,
+	MediaProviderCapability,
 	MediaProviderDescriptor,
 	MediaProviderJob,
 	MediaSubmitInput,
@@ -46,6 +47,14 @@ interface RegisteredProvider {
 	active: boolean;
 }
 
+type DeepReadonly<Value> = Value extends readonly (infer Item)[]
+	? readonly DeepReadonly<Item>[]
+	: Value extends object
+		? { readonly [Key in keyof Value]: DeepReadonly<Value[Key]> }
+		: Value;
+
+type MediaProviderCapabilityInput = DeepReadonly<MediaProviderCapability>;
+
 function failure(code: MediaFailure["code"], message: string, retryable = false): MediaFailure {
 	return { code, message, retryable };
 }
@@ -61,36 +70,57 @@ function linkAbortSignal(controller: AbortController, signal: AbortSignal): () =
 	return () => signal.removeEventListener("abort", abort);
 }
 
-function cloneDescriptor(descriptor: MediaProviderDescriptor): MediaProviderDescriptor {
-	return {
-		...descriptor,
-		capabilities: descriptor.capabilities.map((capability) => {
-			if (capability.operation === "generate") {
-				return {
-					...capability,
-					modes: [...capability.modes],
-					modeCapabilities: capability.modeCapabilities?.map((mode) => ({
-						...mode,
-						inputs: mode.inputs.map((input) => ({ ...input, kinds: [...input.kinds] })),
-					})),
-					aspectRatios: capability.aspectRatios ? [...capability.aspectRatios] : undefined,
-					resolutions: capability.resolutions ? [...capability.resolutions] : undefined,
-					durationsSeconds: capability.durationsSeconds ? [...capability.durationsSeconds] : undefined,
-				};
-			}
-			if (capability.operation === "compose") {
-				return {
-					...capability,
-					documentMimeTypes: [...capability.documentMimeTypes],
-					outputMimeTypes: [...capability.outputMimeTypes],
-				};
-			}
+export function cloneMediaProviderCapabilities(
+	capabilities: readonly MediaProviderCapabilityInput[],
+): MediaProviderDescriptor["capabilities"] {
+	return capabilities.map((capability) => {
+		if (capability.operation === "generate") {
+			const { aspectRatios, durationsSeconds, modeCapabilities, resolutions, ...required } = capability;
+			return {
+				...required,
+				modes: [...capability.modes],
+				...(modeCapabilities
+					? {
+							modeCapabilities: modeCapabilities.map((mode) => {
+								const { aspectRatioPolicy, audioGeneration, maxTotalItems, minTotalItems, ...modeRequired } =
+									mode;
+								return {
+									...modeRequired,
+									inputs: mode.inputs.map((input) => ({ ...input, kinds: [...input.kinds] })),
+									...(minTotalItems !== undefined ? { minTotalItems } : {}),
+									...(maxTotalItems !== undefined ? { maxTotalItems } : {}),
+									...(aspectRatioPolicy !== undefined ? { aspectRatioPolicy } : {}),
+									...(audioGeneration !== undefined ? { audioGeneration } : {}),
+								};
+							}),
+						}
+					: {}),
+				...(aspectRatios !== undefined ? { aspectRatios: [...aspectRatios] } : {}),
+				...(resolutions !== undefined ? { resolutions: [...resolutions] } : {}),
+				...(durationsSeconds !== undefined ? { durationsSeconds: [...durationsSeconds] } : {}),
+			};
+		}
+		if (capability.operation === "compose") {
 			return {
 				...capability,
-				inputMimeTypes: [...capability.inputMimeTypes],
+				documentMimeTypes: [...capability.documentMimeTypes],
 				outputMimeTypes: [...capability.outputMimeTypes],
 			};
-		}),
+		}
+		return {
+			...capability,
+			inputMimeTypes: [...capability.inputMimeTypes],
+			outputMimeTypes: [...capability.outputMimeTypes],
+		};
+	});
+}
+
+function cloneDescriptor(descriptor: MediaProviderDescriptor): MediaProviderDescriptor {
+	const { displayName, ...required } = descriptor;
+	return {
+		...required,
+		...(displayName !== undefined ? { displayName } : {}),
+		capabilities: cloneMediaProviderCapabilities(descriptor.capabilities),
 	};
 }
 

@@ -62,8 +62,15 @@ export interface PluginContext {
 	onAgentModeChanged(listener: (mode: AgentMode) => void): Disposable;
 }
 
+export type PluginActivationCleanup = Disposable | (() => void | Promise<void>);
+
 export interface PluginDefinition {
-	activate(ctx: PluginContext): void | Promise<void>;
+	/**
+	 * Activate one plugin instance. Returning a cleanup binds resource ownership to
+	 * this specific activation, including overlapping hot-reload activations.
+	 */
+	activate(ctx: PluginContext): void | PluginActivationCleanup | Promise<void | PluginActivationCleanup>;
+	/** Legacy module-level cleanup. Prefer an activation-scoped cleanup return value. */
 	deactivate?(): void | Promise<void>;
 }
 

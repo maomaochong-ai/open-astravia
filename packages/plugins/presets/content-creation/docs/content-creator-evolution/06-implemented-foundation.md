@@ -2,13 +2,13 @@
 
 本轮落地的是路线图 Phase 1、Phase 2 和 Phase 4 的可独立交付部分，目标是先降低无关上下文、减少工具选择错误，并把“如何做好内容”变成按任务加载的专业方法。没有在同一轮修改项目持久化协议或引入尚未验证的自动评审状态机。
 
-## 贡献隔离
+## 贡献与路由
 
-- `plugin.json` 启用 `contributionMode.hardIsolation`。
-- 输入栏新增“内容创作”模式，启用后才注入插件的 Prompt、Skill、Tool 和画布入口。
-- 系统 Prompt 缩为三个领域入口、安全边界和确认语义，不再承担完整创作教程。
+- 插件启用后贡献 Prompt、Skill 和三个领域 Tool；输入栏“内容创作”模式负责软显隐和 prompt 装饰。
+- 动态路由根据当前用户文本启用 `inspect`、`edit`、`run` 的最小集合，不能切换宿主或其它插件工具。
+- 系统 Prompt 缩为三个领域入口、状态检查和运行确认语义，不再承担完整创作教程。
 
-结果：普通 Work 会话不会持续携带内容创作插件的上下文；用户进入明确模式后才加载相关能力。
+结果：模型面对稳定的领域工具面，输入模式仍能显式表达当前画布上下文，而不是承担安全隔离职责。
 
 ## 三个领域工具
 
@@ -16,11 +16,13 @@
 
 | 工具 | 职责 |
 | --- | --- |
-| `content_creation_inspect` | 读取 summary/project/capabilities/runtime/diagnostics 等窄视图 |
-| `content_creation_edit` | 提交语义 operation，由服务端决定直接应用还是返回确认预览 |
-| `content_creation_run` | prepare/status/cancel 生成运行；prepare 始终保留用户确认卡 |
+| `content_creation_inspect` | 读取 summary/project/graph/readiness/capabilities/runtime/diagnostics 等窄视图 |
+| `content_creation_edit` | 原子提交 revision-bound 语义 operation，不要求用户确认 |
+| `content_creation_run` | prepare/status/cancel 生成运行；prepare 进入插件全局确认弹窗 |
 
-`edit` 的当前风险规则是：包含删除操作或超过 6 条命令的批次返回预览；其余小型非破坏性批次在 revision 校验后直接应用。动态路由只拥有这三个工具的 allowlist，根据当前用户文本启用 inspect、edit、run 的最小集合，不能切换宿主或其它插件工具。
+`edit` 将节点、连接和素材绑定作为一个批次完成校验与提交；revision 冲突或任一命令失败时不会产生部分修改。Agent 使用稳定的 `targetInput` 语义输入，领域层负责解析真实端口，并为端口缺失、类型不匹配、端口占用和成环返回不同错误代码。
+
+`inspect` 的 graph/readiness 视图提供语义连接、连通分量、孤立节点、可运行/阻塞节点和工作流状态，使 Agent 能在创建后确定性复查实际图结构。仅已配置凭据并满足必要 endpoint/model 配置的 Provider 模型会进入 capability registry。
 
 ## Skill 资源图
 
@@ -39,8 +41,9 @@
 
 - 工具注册面固定为 3 个领域工具。
 - 只读诊断、工作流规划和端到端生成请求会得到不同的最小工具集合。
-- 小型安全修改直接应用；删除和较大批次自动进入预览。
-- destructive preview、revision conflict、生成确认与依赖排序等已有安全语义保持不变。
+- 创建、编辑、删除、语义连线和素材绑定都直接原子应用，revision conflict 不得覆盖并发修改。
+- 生成准备不消耗额度，用户必须在全局弹窗确认；运行仍按依赖排序。
+- 端口解析、成环诊断、工作流 readiness、凭据模型过滤与全局运行弹窗都有定向测试。
 - 所有 Skill 均通过官方 `skill-creator` 快速校验器。
 
 ## 尚未实施

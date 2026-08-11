@@ -3,35 +3,43 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ContentProjectCommand } from "../project/commands";
 import type { ContentProjectDocument } from "../project/types";
 import type { ImportedContentAsset, ImportedContentReference } from "../generation/types";
+import type { ContentCreationPluginRuntime } from "../plugin/runtime";
 import {
-	getContentCreationWorkspace,
-	getContentGenerationService,
-	getContentAssetPreviewResolver,
-	notifyContentCreationError,
-} from "../plugin/runtime";
+	ContentCreationRuntimeProvider,
+	useContentCreationRuntime,
+} from "../plugin/runtime-context";
 import { GraphWorkspace } from "../canvas/GraphWorkspace";
-import { maximizeActivityPanel, publishPromptAttachment } from "../plugin/plugin-ui";
 import {
 	CONTENT_SELECTION_PROMPT_ATTACHMENT_ID,
 	createContentSelectionPromptAttachment,
 	isCurrentContentSelectionPromptAttachment,
 } from "../plugin/selection-prompt-context";
 
-export function ContentCreationPanel() {
+export function ContentCreationPanel({ runtime }: { runtime: ContentCreationPluginRuntime }) {
+	return (
+		<ContentCreationRuntimeProvider runtime={runtime}>
+			<ContentCreationPanelContent />
+		</ContentCreationRuntimeProvider>
+	);
+}
+
+function ContentCreationPanelContent() {
+	const runtime = useContentCreationRuntime();
 	const { cwd } = useActivityTab();
 	const { t } = useTranslation();
 	const [project, setProject] = useState<ContentProjectDocument | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [assetPreviewUrls, setAssetPreviewUrls] = useState<ReadonlyMap<string, string>>(new Map());
 	const [selectedNodeIds, setSelectedNodeIds] = useState<readonly string[]>([]);
+	const [modelRevision, setModelRevision] = useState(0);
 	const promptAttachment = usePromptAttachment();
 	const publishedSelectionRef = useRef<string | null>(null);
 	const dismissedSelectionRef = useRef<string | null>(null);
 	const previousSelectionRef = useRef("");
-	const workspace = getContentCreationWorkspace();
-	const generation = getContentGenerationService();
-	const assetPreviewResolver = getContentAssetPreviewResolver();
-	const models = useMemo(() => generation.listModels(), [generation]);
+	const workspace = runtime.workspace;
+	const generation = runtime.generation;
+	const assetPreviewResolver = runtime.assetPreviewResolver;
+	const models = useMemo(() => generation.listModels(), [generation, modelRevision]);
 	const selectionSignature = useMemo(
 		() => `${project?.projectId ?? ""}\u0000${[...selectedNodeIds].sort().join("\u0001")}`,
 		[project?.projectId, selectedNodeIds],
@@ -47,7 +55,11 @@ export function ContentCreationPanel() {
 	}, [project, selectedNodeIds, t]);
 
 	// Match the design canvas: maximize on each tab activation, then leave resizing to the user.
-	useEffect(() => maximizeActivityPanel(), []);
+	useEffect(() => runtime.maximizeActivityPanel(), [runtime]);
+	useEffect(
+		() => runtime.subscribeModels(() => setModelRevision((revision) => revision + 1)),
+		[runtime],
+	);
 
 	useEffect(() => {
 		const selectionChanged = previousSelectionRef.current !== selectionSignature;
@@ -58,7 +70,7 @@ export function ContentCreationPanel() {
 		}
 		if (!selectionAttachment) {
 			if (promptAttachment?.id === CONTENT_SELECTION_PROMPT_ATTACHMENT_ID) {
-				publishPromptAttachment(null);
+				runtime.publishPromptAttachment(null);
 			}
 			publishedSelectionRef.current = null;
 			return;
@@ -77,15 +89,15 @@ export function ContentCreationPanel() {
 			publishedSelectionRef.current = selectionSignature;
 			return;
 		}
-		publishPromptAttachment(selectionAttachment);
+		runtime.publishPromptAttachment(selectionAttachment);
 		publishedSelectionRef.current = selectionSignature;
-	}, [promptAttachment, selectionAttachment, selectionSignature]);
+	}, [promptAttachment, runtime, selectionAttachment, selectionSignature]);
 
 	useEffect(
 		() => () => {
-			publishPromptAttachment(null);
+			runtime.publishPromptAttachment(null);
 		},
-		[],
+		[runtime],
 	);
 
 	useEffect(() => {
@@ -102,13 +114,13 @@ export function ContentCreationPanel() {
 			.catch((loadError) => {
 				if (!active) return;
 				setError(t("error.load"));
-				notifyContentCreationError(t("error.load"), loadError);
+				runtime.notifyError(t("error.load"), loadError);
 			});
 		return () => {
 			active = false;
 			unsubscribe();
 		};
-	}, [cwd, generation, t, workspace]);
+	}, [cwd, generation, runtime, t, workspace]);
 	useEffect(() => {
 		let active = true;
 		if (!project) {
@@ -134,16 +146,16 @@ export function ContentCreationPanel() {
 				await workspace.dispatch(cwd, commands);
 			} catch (dispatchError) {
 				setError(t("error.save"));
-				notifyContentCreationError(t("error.save"), dispatchError);
+				runtime.notifyError(t("error.save"), dispatchError);
 			}
 		},
-		[cwd, t, workspace],
+		[cwd, runtime, t, workspace],
 	);
 	const runNode = useCallback(
 		async (nodeId: string) => {
 			if (!cwd) {
 				setError(t("error.outputWorkspaceRequired"));
-				notifyContentCreationError(t("error.outputWorkspaceRequired"), new Error("workspace is required"));
+				runtime.notifyError(t("error.outputWorkspaceRequired"), new Error("workspace is required"));
 				return;
 			}
 			try {
@@ -154,7 +166,7 @@ export function ContentCreationPanel() {
 				console.error("[plugin:content-creation] generation failed", generationError);
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation, runtime, t],
 	);
 	const importReferences = useCallback(
 		async (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => {
@@ -163,10 +175,10 @@ export function ContentCreationPanel() {
 				await generation.importReferences(cwd, nodeId, files, slotId);
 			} catch (importError) {
 				setError(t("error.importReference"));
-				notifyContentCreationError(t("error.importReference"), importError);
+				runtime.notifyError(t("error.importReference"), importError);
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation, runtime, t],
 	);
 	const importAssets = useCallback(
 		async (nodeId: string, files: readonly ImportedContentAsset[]) => {
@@ -175,10 +187,10 @@ export function ContentCreationPanel() {
 				await generation.importAssets(cwd, nodeId, files);
 			} catch (importError) {
 				setError(t("error.importAsset"));
-				notifyContentCreationError(t("error.importAsset"), importError);
+				runtime.notifyError(t("error.importAsset"), importError);
 			}
 		},
-		[cwd, generation, t],
+		[cwd, generation, runtime, t],
 	);
 
 	if (!project) {
@@ -201,6 +213,7 @@ export function ContentCreationPanel() {
 					project={project}
 					assetPreviewUrls={assetPreviewUrls}
 					models={models}
+					registerShortcutScope={runtime.registerShortcutScope}
 					onDispatch={dispatch}
 					onRunNode={runNode}
 					onImportAssets={importAssets}

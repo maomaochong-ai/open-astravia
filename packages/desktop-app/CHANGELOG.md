@@ -80,6 +80,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **主进程改动项目列表后侧边栏不刷新**：项目列表的事实源在主进程配置里，但渲染进程只在启动和用户亲手操作后重读，于是任何**不经过渲染进程**的写入（插件的 `official.projects.*`、Action）改完配置后侧边栏纹丝不动，要重启才看得到。现在 `ProjectService` 的每一次落盘都广播 `vetta:projects:changed`，渲染进程收到即重读；没落盘的调用（如 create 命中「已存在就不写」分支）不广播，不会白刷。
 - **会话不再写进用户的工程目录**：普通项目的会话产物一直存在全局的 `~/.vetta/agent/sessions/--<编码后的项目路径>--/`，7 月 29 日 Desktop Runtime 切换到新 Backend Pool 时缺省落点被写成了 `<项目>/.vetta/sessions`——于是每开一个会话，用户仓库里就多一个未跟踪目录（可能被 `git add -A` 误提交，也可能随项目分发出去）。现在缺省落点恢复为全局分片目录；批量任务与「对话」/ Claw / 知识库这些自带 `sessionDir` 的场景不受影响。这段时间已经落在项目里的会话**不需要迁移也不会丢**：项目的会话目录发现同时认全局分片与 `<项目>/.vetta/sessions` 两处，列表按 cwd 并集展示。仓库里已经产生的 `.vetta/sessions` 可自行删除。
 - **在新会话页贴设计备注不再石沉大海**：UI 设计画布的备注自动派活此前要求宿主已有活动会话，而新会话欢迎页恰恰把活动会话清空了——用户在画布上贴了备注，左侧毫无动静，也没有任何提示。现在这种情况下会先按当前项目 cwd 建一个会话（执行模式跟随页面当前选择，建完跳进对话页，与手动发送一致）再派活。真正发不出去的只剩「会话在别的工作区」与「Agent 正在跑」两种，语义不变。配套 Plugin API 新增 `conversation.createSession()`。
+- 插件热更新现在保存 `activate()` 返回的 activation-scoped cleanup，并只在对应旧实例释放时执行，避免 last-known-good 替换流程中的模块级 `deactivate()` 误清理新运行时。
+
+- **插件媒体能力列表兼容严格 JSON 校验**：宿主复制 Provider capability 时不再把缺省的分辨率、比例、时长和模式字段显式写成 `undefined`，避免内容创作读取 ComfyUI 等视频 Provider 时被 capability 输出边界拒绝。
 - **消息队列收归主进程 kernel，多处丢消息与误发路径根除**（ADR-0060）：streaming 中发送改为直发 `session.prompt`（携 `streamingBehavior: "followUp"`）进入 kernel 队列，本轮自然停止点接力消费；渲染端仅保留镜像。修复：出队后发送失败不回滚导致丢消息、「立即发送」的 abort+8 秒超时竞态导致丢消息（打断与续发下沉到 kernel 原子完成，语义不变、竞态消失）、上游报错后队列被误判自然结束继续自动派发、打断/出错后排队消息静默滞留（现队列暂停并在输入框队列抽屉脉冲提示，可「继续发送」或移除）、队列纯内存重启即丢（现随会话 sidecar 持久化）。排队消息的用户气泡改为在被实际消费时上屏，顺序与模型可见顺序严格一致。
 - **失败重发不再产生重复用户记录**：上一轮以错误收尾且重发文本与最后一条用户消息相同时，自动走 `replaceLastUserMessage` 路径回退后再发，jsonl 与下一轮模型上下文只保留一条。
 - **插件 sendPrompt 不再吞用户准备的输入**：插件发送不消费用户挂在输入框上的 promptAttachment、不清空输入预测；`sendPrompt` 返回 `sent | queued` 回执并透传队列条目 id。
@@ -98,7 +101,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **输入栏上下文构成改为分类汇总**：默认只展示基础指令、扩展能力、工具、对话和运行时上下文五类占用，点击后才展开原始区块；历史消息合并为一项并单列当前输入，避免长会话和大量工具把弹层铺成冗长明细。部分区块无法估算时保留已知 Token 合计，并明确标出未知项数量。
 - **活动面板视频预览被裁切**：内置 `media-viewer` 的视频预览原先用 `object-cover` 铺满容器会裁掉画面；改为 `object-contain`，按面板尺寸等比缩放完整显示（黑底 letterbox）。
 
-- **插件工作台热更新失败不再静默**：应用插件后会等待开发服务器 ready；CLI 缺失、版本不兼容、启动退出或超时会回传到工作台，而不是显示应用成功但源码修改无效。CLI 改按项目模块图解析，兼容 workspace 链接与标准用户工程安装。
+- **插件工作台热更新失败不再静默**：应用插件后会等待开发服务器 ready；CLI 缺失、版本不兼容、启动退出或超时会回传到工作台，而不是显示应用成功但源码修改无效。CLI 通过项目内 `@vetta-org/plugin-vite/cli` 公共子路径解析，兼容 ESM exports、workspace 链接与标准用户工程安装。开发工程只在版本化 ready 握手成功后原子覆盖 staging/installed 快照；启动失败保留稳定插件，运行中进程退出则回退并按 250ms/1s/3s 有限重启。批量 preset 会话限制为四路冷启动并逐插件汇总结果，单个插件失败不再把整批记为失败。
 
 - **插件官方身份校验补强**：命令执行与长驻进程接口不再接受 renderer 传入的插件 ID，改由主进程从活动 capability session 解析真实调用者；插件 dev watch 也必须携带 official session。插件 SDK 与现有插件调用方式不变。
 - **能力页首开列表转圈过久**：原先 `loading` 要等本地安装态、服务端 `/abilities/market`、开源市场三条 `allSettled` 全结束后才关，外加 `mcp.config === null` 再挡一道，网络 RTT 会直接变成整表转圈。现改为本地 IPC 就绪即出列表（内置/已装先可见），市场在后台合并；MCP 配置缺省按空表组装；开源市场同会话 `list()` 复用进程内快照，避免反复全量校验包。

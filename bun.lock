@@ -632,6 +632,7 @@
         "@types/react-dom": "^19.1.1",
         "@vetta-org/plugin-sdk": "workspace:*",
         "@vetta-org/plugin-vite": "workspace:*",
+        "@vetta/ai": "workspace:*",
         "@vetta/ui": "workspace:*",
         "jsdom": "26.1.0",
         "react": "19.1.1",

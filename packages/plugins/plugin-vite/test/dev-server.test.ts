@@ -20,7 +20,7 @@ afterEach(async () => {
 	else process.env.MFE_VITE_NO_TEST_ENV_CHECK = originalFederationTestOverride;
 });
 
-async function createPluginProject(): Promise<string> {
+async function createPluginProject(options: { entrySource?: string; additionalFiles?: Record<string, string> } = {}): Promise<string> {
 	const rootDir = await mkdtemp(join(fileURLToPath(new URL(".", import.meta.url)), "tmp-dev-server-"));
 	temporaryDirectories.push(rootDir);
 	await mkdir(join(rootDir, "src"), { recursive: true });
@@ -42,12 +42,18 @@ async function createPluginProject(): Promise<string> {
 	await writeFile(join(rootDir, "locales", "en.json"), JSON.stringify({ title: "Test" }));
 	await writeFile(
 		join(rootDir, "src", "index.tsx"),
-		`import "./style.css";
+		options.entrySource ??
+			`import rawTheme from "./theme.css?raw";
+import "./style.css";
 export function Panel() { return <div className="panel">test</div>; }
-export default { activate() {} };
+export default { activate() { void rawTheme; } };
 `,
 	);
 	await writeFile(join(rootDir, "src", "style.css"), `.panel { color: red; }\n`);
+	await writeFile(join(rootDir, "src", "theme.css"), `:root { --accent: red; }\n`);
+	for (const [relativePath, content] of Object.entries(options.additionalFiles ?? {})) {
+		await writeFile(join(rootDir, relativePath), content);
+	}
 	const pluginViteEntryPath = relative(rootDir, fileURLToPath(new URL("../src/index.ts", import.meta.url))).replaceAll(
 		"\\",
 		"/",
@@ -80,12 +86,13 @@ describe("startVettaPluginDevServer", () => {
 			origin: server.origin,
 		});
 
-		const [manifest, preamble, virtualEntry, pluginEntry, cssModule] = await Promise.all([
+		const [manifest, preamble, virtualEntry, pluginEntry, cssModule, rawCssModule] = await Promise.all([
 			fetch(server.entryUrl),
 			fetch(`${server.origin}/@vetta-plugin-dev-preamble`),
 			fetch(`${server.origin}/@id/__x00__virtual:vetta-plugin-dev-entry`),
 			fetch(`${server.origin}/src/index.tsx`),
 			fetch(`${server.origin}/src/style.css`),
+			fetch(`${server.origin}/src/theme.css?raw`),
 		]);
 		expect(manifest.status).toBe(200);
 		expect(manifest.headers.get("content-type")).toContain("application/json");
@@ -96,6 +103,11 @@ describe("startVettaPluginDevServer", () => {
 		const cssText = await cssModule.text();
 		expect(cssText).toContain("@scope ([data-vetta-plugin-root=dev-server-test])");
 		expect(cssText).toContain("__vite__updateStyle");
+		expect(rawCssModule.status).toBe(200);
+		const rawCssText = await rawCssModule.text();
+		expect(rawCssText).toContain("export default");
+		expect(rawCssText).toContain(":root { --accent: red; }");
+		expect(rawCssText).not.toContain("@scope");
 	});
 
 	it("emits a targeted resource update when a locale changes", async () => {
@@ -116,5 +128,18 @@ describe("startVettaPluginDevServer", () => {
 			},
 			{ timeout: 5_000, interval: 50 },
 		);
+	});
+
+	it("rejects startup before ready when a project module cannot be transformed", async () => {
+		const rootDir = await createPluginProject({
+			entrySource: `import "./broken.ts";\nexport default { activate() {} };\n`,
+			additionalFiles: { "src/broken.ts": "export const broken = ;\n" },
+		});
+		const events: VettaPluginDevEvent[] = [];
+
+		await expect(startVettaPluginDevServer(rootDir, (event) => events.push(event))).rejects.toThrow(
+			/Plugin development module failed to transform .*broken\.ts/u,
+		);
+		expect(events).not.toContainEqual(expect.objectContaining({ type: "ready" }));
 	});
 });

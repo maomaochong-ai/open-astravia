@@ -10,7 +10,7 @@ import { useCanvasOverlayOutsideDismiss } from "./use-canvas-overlay-dismiss";
 
 const AUTOMATIC_ASPECT_RATIO = "__automatic__";
 
-type VideoGenerationMethod = "frames" | "omni";
+type VideoGenerationMethod = "text" | "frames" | "omni";
 
 interface ContentVideoGenerationSettingsProps {
 	draft: ContentNodeData;
@@ -84,8 +84,8 @@ export function ContentVideoGenerationSettings({
 					style={{ width: "min(440px, calc(100vw - 32px))" }}
 				>
 					<SettingsSection label={t("nodeEditor.videoSettings.generateMethod")}>
-						<div className={optionGroupClass("grid grid-cols-2")}>
-							{(["frames", "omni"] as const).map((option) => {
+						<div className={optionGroupClass("grid grid-cols-3")}>
+							{(["text", "frames", "omni"] as const).map((option) => {
 								const modeId = availableMethods[option];
 								return (
 									<button
@@ -281,6 +281,7 @@ function videoMethods(model?: ContentModelDescriptor): Partial<Record<VideoGener
 	if (!model) return {};
 	const modeIds = new Set(model.modes.map(({ id }) => id));
 	return {
+		...(modeIds.has("text-to-video") ? { text: "text-to-video" as const } : {}),
 		...(modeIds.has("image-to-video") ? { frames: "image-to-video" as const } : {}),
 		...(modeIds.has("reference-to-video")
 			? { omni: "reference-to-video" as const }
@@ -294,8 +295,10 @@ function resolveVideoMethod(
 	modeId: string | undefined,
 	methods: Partial<Record<VideoGenerationMethod, ContentGenerationModeId>>,
 ): VideoGenerationMethod | null {
+	if (methods.text && modeId === methods.text) return "text";
 	if (methods.frames && modeId === methods.frames) return "frames";
 	if (methods.omni && modeId === methods.omni) return "omni";
+	if (methods.text) return "text";
 	if (methods.frames) return "frames";
 	if (methods.omni) return "omni";
 	return null;

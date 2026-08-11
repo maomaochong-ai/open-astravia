@@ -1,85 +1,71 @@
 import { definePlugin } from "@vetta-org/plugin-sdk";
 import "@xyflow/react/dist/style.css";
-import pluginIconUrl from "../icon.png";
 import "./styles/index.css";
-import {
-	publishPromptAttachment,
-	setActivityPanelWidthController,
-	setPromptAttachmentController,
-	setRegisterShortcutScope,
-} from "./plugin/plugin-ui";
-import { ContentChangePreviewCard, ContentRunCard } from "./plugin/AgentCards";
-import {
-	CONTENT_CHANGE_PREVIEW_CARD_TYPE,
-	CONTENT_EDIT_TOOL_NAME,
-	CONTENT_RUN_TOOL_NAME,
-	CONTENT_RUN_CARD_TYPE,
-	registerContentCreationTools,
-} from "./plugin/register-tools";
+import { ContentRunApprovalDialog } from "./plugin/ContentRunApprovalDialog";
+import { registerContentCreationTools } from "./plugin/register-tools";
 import { registerContentCreationToolRouter } from "./plugin/tool-routing";
 import { ContentCreationPanel } from "./panel/ContentCreationPanel";
-import {
-	disposePluginRuntime,
-	getContentCreationAgentService,
-	initializePluginRuntime,
-} from "./plugin/runtime";
+import { ContentCreationPluginRuntime } from "./plugin/runtime";
 
-function PluginTabIcon() {
-	// 与 plugin.json#icon 同源（icon.png），活动栏与插件列表品牌一致。
-	return <img src={pluginIconUrl} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
+/**
+ * 插件包根 icon.png 的宿主协议 URL。
+ * 不可 `import "../icon.png"`：MF/Vite 常生成以 `/` 开头的绝对路径，在宿主页上
+ * 会解析成 desktop-app `public/icon.png`（应用图标），而不是插件自己的图。
+ */
+function pluginPackageIconUrl(pluginId: string, version: string, relativePath = "icon.png"): string {
+	return `vetta-plugin://${pluginId}/${relativePath}?v=${encodeURIComponent(version)}`;
+}
+
+function PluginTabIcon({ src }: { src: string }) {
+	return <img src={src} alt="" className="h-3.5 w-3.5 object-contain" draggable={false} />;
 }
 
 export default definePlugin({
 	async activate(ctx) {
-		await initializePluginRuntime(ctx);
-		setRegisterShortcutScope((contribution) => ctx.ui.registerShortcutScope(contribution));
-		setActivityPanelWidthController((width) => ctx.ui.setActivityPanelWidth(width));
-		setPromptAttachmentController((attachment) => ctx.ui.setPromptAttachment(attachment));
-		ctx.ui.registerActivityTab({
-			id: "workspace",
-			label: "%tab.workspace.label%",
-			icon: <PluginTabIcon />,
-			component: ContentCreationPanel,
-			scope_use: ["conversation", "project"],
-			// 默认不上栏；输入栏「内容创作」开关打开后再挂上。
-			initiallyVisible: false,
-		});
-		ctx.ui.registerInputAction({
-			id: "mode",
-			label: "%action.mode.label%",
-			icon: <span className="icon-[lucide--wand-sparkles] block size-3.5" aria-hidden="true" />,
-			defaultActive: false,
-			hardIsolation: true,
-			scope_use: ["conversation", "project"],
-			onToggle: (active) => ctx.ui.setActivityTabVisible("workspace", active),
-			decoratePrompt: () => ({
-				instructions: [
-					"Content creation mode is active. Use the relevant bundled content-creation skills and the narrowest available content_creation tool.",
-				],
-			}),
-		});
-		ctx.ui.registerCardRenderer({
-			type: CONTENT_CHANGE_PREVIEW_CARD_TYPE,
-			title: "%card.preview.title%",
-			component: ContentChangePreviewCard,
-			pendingFor: (toolCall) =>
-				toolCall.toolName === CONTENT_EDIT_TOOL_NAME ? { type: CONTENT_CHANGE_PREVIEW_CARD_TYPE } : null,
-		});
-		ctx.ui.registerCardRenderer({
-			type: CONTENT_RUN_CARD_TYPE,
-			title: "%card.run.title%",
-			component: ContentRunCard,
-			pendingFor: (toolCall) =>
-				toolCall.toolName === CONTENT_RUN_TOOL_NAME ? { type: CONTENT_RUN_CARD_TYPE } : null,
-		});
-		registerContentCreationTools(ctx, getContentCreationAgentService());
-		registerContentCreationToolRouter(ctx);
-	},
-	deactivate() {
-		publishPromptAttachment(null);
-		disposePluginRuntime();
-		setRegisterShortcutScope(null);
-		setActivityPanelWidthController(null);
-		setPromptAttachmentController(null);
+		const runtime = await ContentCreationPluginRuntime.create(ctx);
+		const cleanup = () => {
+			try {
+				runtime.publishPromptAttachment(null);
+			} finally {
+				runtime.dispose();
+			}
+		};
+		try {
+			// Each contribution closes over this activation's runtime instead of reading module state.
+			const WorkspacePanel = () => <ContentCreationPanel runtime={runtime} />;
+			const RunApprovalDialog = () => <ContentRunApprovalDialog runtime={runtime} />;
+			ctx.ui.registerActivityTab({
+				id: "workspace",
+				label: "%tab.workspace.label%",
+				icon: (
+					<PluginTabIcon src={pluginPackageIconUrl(ctx.plugin.id, ctx.plugin.version)} />
+				),
+				component: WorkspacePanel,
+				scope_use: ["conversation", "project"],
+				// 暂时默认上栏；硬隔离已去掉，后续再设计更合适的入口策略。
+				initiallyVisible: true,
+			});
+			ctx.ui.registerInputAction({
+				id: "mode",
+				label: "%action.mode.label%",
+				icon: <span className="icon-[lucide--wand-sparkles] block size-3.5" aria-hidden="true" />,
+				defaultActive: false,
+				scope_use: ["conversation", "project"],
+				// 软开关：只控制 tab 显隐与 prompt 装饰，不再 gate Agent 贡献。
+				onToggle: (active) => ctx.ui.setActivityTabVisible("workspace", active),
+				decoratePrompt: () => ({
+					instructions: [
+						"Content creation mode is active. Use the relevant bundled content-creation skills and the narrowest available content_creation tool.",
+					],
+				}),
+			});
+			ctx.ui.registerGlobalSlot({ id: "run-approval", component: RunApprovalDialog });
+			registerContentCreationTools(ctx, runtime.agent, runtime.runApprovals);
+			registerContentCreationToolRouter(ctx);
+			return cleanup;
+		} catch (error) {
+			cleanup();
+			throw error;
+		}
 	},
 });

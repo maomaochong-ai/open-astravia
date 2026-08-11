@@ -59,7 +59,7 @@ Skill 负责教模型如何判断、规划和检查；Tool 负责可信地读写
 ## 推荐优先级
 
 1. 立即启用插件贡献硬隔离，删除重复工具，先把无关会话的上下文成本降下来。
-2. 将 7 个工具收敛为 `inspect`、`edit`、`run` 三个领域工具，并由宿主自动决定 apply/preview，而不是让模型选择安全路径。
+2. 将 7 个工具收敛为 `inspect`、`edit`、`run` 三个领域工具；编辑由 revision 校验和原子命令保证一致性，只有配额生成保留全局确认 gate。
 3. 引入 `CreativeBrief`、`ProductionPlan` 和 stage/stale 状态，使画布变成计划的可编辑投影。
 4. 建立 image/video/quality-review Skill 家族及渐进 reference 目录。
 5. 上线低成本候选探索、像素级评审、用户选片、最终生成闭环。

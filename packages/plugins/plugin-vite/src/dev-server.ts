@@ -8,13 +8,15 @@ import {
 	type PluginManifest,
 } from "@vetta-org/plugin-sdk/manifest";
 import { watch } from "chokidar";
-import { createServer, type ViteDevServer } from "vite";
+import { createServer, isCSSRequest, type ViteDevServer } from "vite";
+import { VETTA_PLUGIN_DEV_ENTRY_ID } from "./dev-vite-plugins.js";
 import {
 	emitVettaPluginDevEvent,
 	setVettaPluginDevEventListener,
 	type VettaPluginDevEvent,
 	VETTA_PLUGIN_DEV_PROTOCOL_VERSION,
 } from "./dev-events.js";
+import { hasOpaqueResourceQuery } from "./request-query.js";
 
 export interface VettaPluginDevServer {
 	pluginId: string;
@@ -38,6 +40,12 @@ async function readManifest(rootDir: string): Promise<PluginManifest> {
 function isInsidePath(candidate: string, root: string): boolean {
 	const pathFromRoot = relative(root, candidate);
 	return pathFromRoot === "" || (!pathFromRoot.startsWith("..") && !isAbsolute(pathFromRoot));
+}
+
+function isPluginProjectModule(candidate: string, rootDir: string): boolean {
+	if (!isInsidePath(candidate, rootDir)) return false;
+	const pathFromRoot = relative(rootDir, candidate);
+	return pathFromRoot.split(/[\\/]/u, 1)[0] !== "node_modules";
 }
 
 async function collectWatchedResourceRoots(rootDir: string, manifest: PluginManifest): Promise<string[]> {
@@ -106,6 +114,39 @@ async function assertDevEntryAvailable(entryUrl: string): Promise<void> {
 		throw new Error(`Plugin dev entry is unavailable: ${entryUrl} returned HTTP ${response.status}`);
 	}
 	await response.body?.cancel();
+}
+
+async function assertDevModuleGraphAvailable(server: ViteDevServer, rootDir: string): Promise<void> {
+	const environment = server.environments.client;
+	const pendingUrls = [VETTA_PLUGIN_DEV_ENTRY_ID];
+	const transformedUrls = new Set<string>();
+	while (pendingUrls.length > 0) {
+		const moduleUrl = pendingUrls.pop();
+		if (moduleUrl === undefined || transformedUrls.has(moduleUrl)) continue;
+		transformedUrls.add(moduleUrl);
+		debugDevServer(`transforming ${moduleUrl}`);
+		try {
+			const result = await environment.transformRequest(moduleUrl);
+			if (result === null) throw new Error("Vite returned no transform result");
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			throw new Error(`Plugin development module failed to transform (${moduleUrl}): ${message}`);
+		}
+		if (hasOpaqueResourceQuery(moduleUrl)) continue;
+		const module = await environment.moduleGraph.getModuleByUrl(moduleUrl);
+		if (!module) throw new Error(`Plugin development module is missing from the Vite graph: ${moduleUrl}`);
+		// A CSS transform already resolves its @imports and produces the browser
+		// update module. Plugin processors such as Tailwind may attach scanned
+		// source files to importedModules even though the browser never imports
+		// them, so they must not become independent JavaScript probes.
+		if (isCSSRequest(moduleUrl)) continue;
+		for (const importedModule of module.importedModules) {
+			if (importedModule.file && isPluginProjectModule(importedModule.file, rootDir)) {
+				pendingUrls.push(importedModule.url);
+			}
+		}
+	}
+	debugDevServer(`transformed ${transformedUrls.size} plugin modules`);
 }
 
 export async function startVettaPluginDevServer(
@@ -183,6 +224,8 @@ export async function startVettaPluginDevServer(
 		entryUrl = `${origin}/mf-manifest.json`;
 		debugDevServer(`probing ${entryUrl}`);
 		await assertDevEntryAvailable(entryUrl);
+		debugDevServer("probing plugin module graph");
+		await assertDevModuleGraphAvailable(server, rootDir);
 		debugDevServer("plugin entry ready");
 	} catch (error) {
 		if (refreshTimer) clearTimeout(refreshTimer);

@@ -9,11 +9,13 @@ import type {
 	ContentWorkflow,
 	TimelineClip,
 } from "./types";
+import type { ContentVideoGenerationPlan } from "../generation/generation-intent";
 import { contentNodeDataEqual } from "../node/content-node-data-equal";
-import { resolveContentConnection } from "../node/connections";
+import { resolveContentConnectionResult } from "../node/connections";
 import { createDefaultContentNodeData } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
 import { createContentPromptDocument } from "../node/prompt-document";
+import { PROMPT_REFERENCE_SLOT_ID } from "../node/prompt-sources";
 import { getDefaultNodePurpose } from "./node-semantics";
 
 export type ContentProjectCommand =
@@ -36,8 +38,25 @@ export type ContentProjectCommand =
 	| { type: "node.resize"; nodeId: string; width: number; height: number; position?: CanvasPosition }
 	| { type: "node.lock"; nodeId: string; locked: boolean }
 	| { type: "node.duplicate"; nodeId: string; id?: string; position?: CanvasPosition }
+	| {
+			type: "node.bind-assets";
+			sourceNodeId: string;
+			targetNodeId: string;
+			assetIds: string[];
+			targetHandle: string;
+			slotId: string;
+	  }
+	| { type: "node.configure-generation"; targetNodeId: string; plan: ContentVideoGenerationPlan }
 	| { type: "node.delete"; nodeId: string }
-	| { type: "edge.connect"; id?: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }
+	| {
+			type: "edge.connect";
+			id?: string;
+			source: string;
+			target: string;
+			sourceHandle?: string;
+			targetHandle?: string;
+			role?: string;
+	  }
 	| { type: "edge.delete"; edgeId: string }
 	| { type: "asset.add"; asset: ContentAsset }
 	| {
@@ -62,7 +81,15 @@ export type ContentProjectCommand =
 	| { type: "timeline.clip.trim"; clipId: string; sourceIn: number; duration: number }
 	| { type: "timeline.clip.delete"; clipId: string };
 
-export class ContentProjectCommandError extends Error {}
+export class ContentProjectCommandError extends Error {
+	constructor(
+		message: string,
+		readonly code = "invalid-command",
+		readonly details?: Record<string, unknown>,
+	) {
+		super(message);
+	}
+}
 
 function assertFiniteNonNegative(value: number, field: string): void {
 	if (!Number.isFinite(value) || value < 0) throw new ContentProjectCommandError(`${field} must be a finite non-negative number`);
@@ -206,6 +233,145 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			});
 			return;
 		}
+		case "node.bind-assets": {
+			const source = findNode(project, command.sourceNodeId);
+			const target = findNode(project, command.targetNodeId);
+			if (source.kind !== "asset") {
+				throw new ContentProjectCommandError("asset binding source must be an asset node", "asset-binding-source-invalid");
+			}
+			if (target.kind !== "image-generator" && target.kind !== "video-generator") {
+				throw new ContentProjectCommandError(
+					"asset binding target must be an image or video generator",
+					"asset-binding-target-invalid",
+				);
+			}
+			const sourceAssetIds = new Set(source.data.assetIds ?? []);
+			for (const assetId of command.assetIds) {
+				if (!sourceAssetIds.has(assetId)) {
+					throw new ContentProjectCommandError(
+						`asset is not present in source node: ${assetId}`,
+						"asset-binding-asset-not-found",
+					);
+				}
+				const asset = project.assets.find((candidate) => candidate.id === assetId);
+				if (!asset || !assetKindMatchesSlot(asset.kind, command.slotId)) {
+					throw new ContentProjectCommandError(
+						`asset is incompatible with ${command.slotId}: ${assetId}`,
+						"asset-binding-type-mismatch",
+					);
+				}
+			}
+			applyCommand(
+				project,
+				{
+					type: "edge.connect",
+					source: source.id,
+					target: target.id,
+					targetHandle: command.targetHandle,
+					role: command.slotId,
+				},
+				now,
+			);
+			const inputs = [...(target.data.inputs ?? [])];
+			for (const assetId of command.assetIds) {
+				if (
+					inputs.some(
+						(binding) =>
+							binding.assetId === assetId &&
+							binding.sourceNodeId === source.id &&
+							binding.slotId === command.slotId,
+					)
+				) {
+					continue;
+				}
+				inputs.push({ id: crypto.randomUUID(), assetId, slotId: command.slotId, sourceNodeId: source.id });
+			}
+			target.data.inputs = inputs;
+			return;
+		}
+		case "node.configure-generation": {
+			const target = findNode(project, command.targetNodeId);
+			if (target.kind !== "video-generator") {
+				throw new ContentProjectCommandError(
+					"generation configuration target must be a video generator",
+					"generation-configuration-target-invalid",
+				);
+			}
+			project.graph.edges = project.graph.edges.filter(
+				(edge) => edge.target !== target.id || edge.targetHandle === "prompt",
+			);
+			const preservedInputs = (target.data.inputs ?? []).filter(
+				(binding) => binding.slotId === PROMPT_REFERENCE_SLOT_ID,
+			);
+			const preservedBindingIds = new Set(preservedInputs.map((binding) => binding.id));
+			if (target.data.promptDocument) {
+				target.data.promptDocument = {
+					...target.data.promptDocument,
+					segments: target.data.promptDocument.segments.filter(
+						(segment) => segment.type !== "asset-reference" || preservedBindingIds.has(segment.bindingId),
+					),
+				};
+			}
+			const nextInputs = [...preservedInputs];
+			for (const binding of command.plan.bindings) {
+				const source = findNode(project, binding.sourceNodeId);
+				const sourceKind = source.kind === "image-generator"
+					? "image"
+					: source.kind === "video-generator"
+						? "video"
+						: null;
+				if (source.kind !== "asset" && sourceKind !== binding.kind) {
+					throw new ContentProjectCommandError(
+						`generation source kind does not match ${binding.slotId}: ${source.id}`,
+						"generation-source-kind-mismatch",
+					);
+				}
+				if (source.kind === "asset") {
+					const sourceAssetIds = new Set(source.data.assetIds ?? []);
+					if (binding.assetIds.length === 0) {
+						throw new ContentProjectCommandError(
+							"asset generation sources require selected assets",
+							"generation-source-assets-required",
+						);
+					}
+					for (const assetId of binding.assetIds) {
+						const asset = project.assets.find((candidate) => candidate.id === assetId);
+						if (!sourceAssetIds.has(assetId) || asset?.kind !== binding.kind) {
+							throw new ContentProjectCommandError(
+								`generation source asset is unavailable or incompatible: ${assetId}`,
+								"generation-source-asset-invalid",
+							);
+						}
+						nextInputs.push({
+							id: crypto.randomUUID(),
+							assetId,
+							slotId: binding.slotId,
+							sourceNodeId: source.id,
+						});
+					}
+				} else if (binding.assetIds.length > 0) {
+					throw new ContentProjectCommandError(
+						"generated node sources bind their future output and cannot include asset IDs",
+						"generation-source-assets-unexpected",
+					);
+				}
+				applyCommand(project, {
+					type: "edge.connect",
+					source: source.id,
+					target: target.id,
+					targetHandle: binding.targetHandle,
+					role: binding.slotId,
+				}, now);
+			}
+			target.data = {
+				...target.data,
+				providerId: command.plan.providerId,
+				modelId: command.plan.modelId,
+				modeId: command.plan.modeId,
+				inputs: nextInputs,
+			};
+			return;
+		}
 		case "node.delete": {
 			findNode(project, command.nodeId);
 			project.graph.nodes = project.graph.nodes.filter((node) => node.id !== command.nodeId);
@@ -219,6 +385,24 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			project.workflow.deliverables = project.workflow.deliverables.filter(
 				(deliverable) => deliverable.fromNode !== command.nodeId,
 			);
+			for (const node of project.graph.nodes) {
+				const removedBindingIds = new Set(
+					(node.data.inputs ?? [])
+						.filter((binding) => binding.sourceNodeId === command.nodeId)
+						.map((binding) => binding.id),
+				);
+				node.data.inputs = (node.data.inputs ?? []).filter(
+					(binding) => binding.sourceNodeId !== command.nodeId,
+				);
+				if (node.data.promptDocument && removedBindingIds.size > 0) {
+					node.data.promptDocument = {
+						...node.data.promptDocument,
+						segments: node.data.promptDocument.segments.filter(
+							(segment) => segment.type !== "asset-reference" || !removedBindingIds.has(segment.bindingId),
+						),
+					};
+				}
+			}
 			return;
 		}
 		case "edge.connect": {
@@ -228,21 +412,39 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 			}
 			const sourceNode = findNode(project, command.source);
 			const targetNode = findNode(project, command.target);
-			const connection = resolveContentConnection(
+			const resolution = resolveContentConnectionResult(
 				project,
 				sourceNode,
 				targetNode,
 				command.sourceHandle,
 				command.targetHandle,
 			);
-			if (!connection) throw new ContentProjectCommandError("node ports are incompatible or would create a cycle");
+			if (!resolution.ok) {
+				throw new ContentProjectCommandError(
+					connectionFailureMessage(resolution.code, resolution.cyclePath),
+					`connection-${resolution.code}`,
+					{
+						sourceNodeId: sourceNode.id,
+						targetNodeId: targetNode.id,
+						...(resolution.cyclePath ? { cyclePath: resolution.cyclePath } : {}),
+						...(resolution.availableSourceHandles
+							? { availableSourceHandles: resolution.availableSourceHandles }
+							: {}),
+						...(resolution.availableTargetHandles
+							? { availableTargetHandles: resolution.availableTargetHandles }
+							: {}),
+					},
+				);
+			}
+			const connection = resolution.connection;
 			if (
 				project.graph.edges.some(
 					(edge) =>
 						edge.source === command.source &&
 						edge.target === command.target &&
 						(edge.sourceHandle ?? connection.sourceHandle) === connection.sourceHandle &&
-						(edge.targetHandle ?? connection.targetHandle) === connection.targetHandle,
+						(edge.targetHandle ?? connection.targetHandle) === connection.targetHandle &&
+						(edge.role ?? null) === (command.role ?? null),
 				)
 			)
 				return;
@@ -252,15 +454,46 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				target: command.target,
 				sourceHandle: connection.sourceHandle,
 				targetHandle: connection.targetHandle,
+				...(command.role ? { role: command.role } : {}),
 			};
 			project.graph.edges.push(edge);
 			return;
 		}
 		case "edge.delete": {
-			if (!project.graph.edges.some((edge) => edge.id === command.edgeId)) {
+			const edge = project.graph.edges.find((candidate) => candidate.id === command.edgeId);
+			if (!edge) {
 				throw new ContentProjectCommandError(`edge not found: ${command.edgeId}`);
 			}
 			project.graph.edges = project.graph.edges.filter((edge) => edge.id !== command.edgeId);
+			const target = findNode(project, edge.target);
+			if (edge.targetHandle === "prompt") {
+				if (target.data.promptSourceNodeId === edge.source) target.data.promptSourceNodeId = null;
+				if (target.data.promptDocument) {
+					target.data.promptDocument = {
+						...target.data.promptDocument,
+						segments: target.data.promptDocument.segments.filter(
+							(segment) => segment.type !== "prompt-reference" || segment.sourceNodeId !== edge.source,
+						),
+					};
+				}
+			} else {
+				const removedBindingIds = new Set(
+					(target.data.inputs ?? [])
+						.filter(
+							(binding) => binding.sourceNodeId === edge.source && (!edge.role || binding.slotId === edge.role),
+						)
+						.map((binding) => binding.id),
+				);
+				target.data.inputs = (target.data.inputs ?? []).filter((binding) => !removedBindingIds.has(binding.id));
+				if (target.data.promptDocument && removedBindingIds.size > 0) {
+					target.data.promptDocument = {
+						...target.data.promptDocument,
+						segments: target.data.promptDocument.segments.filter(
+							(segment) => segment.type !== "asset-reference" || !removedBindingIds.has(segment.bindingId),
+						),
+					};
+				}
+			}
 			return;
 		}
 		case "asset.add": {
@@ -392,9 +625,29 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 	}
 }
 
+function connectionFailureMessage(code: string, cyclePath?: readonly string[]): string {
+	if (code === "would-create-cycle") {
+		return cyclePath?.length
+			? `connection would create a cycle: ${cyclePath.join(" -> ")}`
+			: "connection would create a cycle";
+	}
+	if (code === "source-port-not-found") return "connection source port does not exist";
+	if (code === "target-port-not-found") return "connection target port does not exist";
+	if (code === "type-mismatch") return "connection node port types are incompatible";
+	if (code === "target-occupied") return "connection target port is already occupied";
+	return "a node cannot connect to itself";
+}
+
 function normalizeJobProgress(progress: number | undefined, fallback: number): number {
 	if (progress === undefined || !Number.isFinite(progress)) return fallback;
 	return Math.max(0, Math.min(1, progress));
+}
+
+function assetKindMatchesSlot(kind: ContentAsset["kind"], slotId: string): boolean {
+	if (slotId === "firstFrame" || slotId === "lastFrame" || slotId === "referenceImages") return kind === "image";
+	if (slotId === "referenceVideos" || slotId === "referenceVideo" || slotId === "sourceVideo") return kind === "video";
+	if (slotId === "referenceAudios" || slotId === "referenceAudio") return kind === "audio";
+	return false;
 }
 
 function defaultNodeName(project: ContentProjectDocument, kind: ContentNodeKind): string {

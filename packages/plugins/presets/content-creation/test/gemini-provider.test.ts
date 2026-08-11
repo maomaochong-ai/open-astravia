@@ -9,6 +9,11 @@ import {
 } from "./provider-test-fixtures";
 
 describe("GeminiProvider", () => {
+	it("hides catalog models until the API key is configured", () => {
+		const provider = new GeminiProvider(new QueueNetwork([]), createSettings({}), { apiKeySetting: "key" });
+		expect(provider.listModels()).toEqual([]);
+	});
+
 	it("uses Gemini generateContent for image models", async () => {
 		const network = new QueueNetwork([
 			jsonResponse({ candidates: [{ content: { parts: [{ inlineData: { data: "png-data", mimeType: "image/png" } }] } }] }),
