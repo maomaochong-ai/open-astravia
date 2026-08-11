@@ -193,6 +193,18 @@ React、React DOM 和 `@vetta-org/plugin-sdk` 由宿主共享。模块顶层禁�
 声明的插件 id 根节点，并将 `:root` / `:host` 映射为 `:scope`。插件作者可以正常使用
 Tailwind 或业务 CSS，不要手写插件 id 前缀，也不要依赖修改 `body`、`html` 或宿主私有 class。
 
+## 测试要求
+
+各子包遵循根目录的风险分级，并按插件层级选择测试方式：
+
+- `plugin-sdk` 的公开类型、manifest/权限 Schema、注册与释放合同发生变化时，必须使用 Vitest 合同测试覆盖合法输入、拒绝输入和兼容路径。
+- `plugin-vite` 的 Module Federation 配置、CSS scope、manifest、zip 路径或构建产物发生变化时，必须使用临时 fixture 做构建/制品集成测试；只断言内部函数或大面积快照不足以证明产物可加载。
+- Preset/External 的 React UI 行为使用该插件包显式声明的 Vitest + `jsdom`/`happy-dom` + React Testing Library；点击、表单、异步状态、权限导致的显示差异和宿主回调必须按用户行为测试。没有测试基线的插件在首次重要 UI 变更时应在同一任务补齐，不得依赖 workspace 偶然提升的依赖。
+- `activate()`/deactivate、资源注册/撤销、权限、宿主 Slot、命令和生命周期变化必须测试成功、拒绝、重复调用和清理；宿主 API 在 Plugin SDK 边界使用窄 fake。
+- 修改 `plugin.json`、共享依赖、Vite 配置或打包脚本时，除定向测试外必须运行目标插件实际 build 并检查生成 manifest/zip；纯样式且无交互变化时可以不新增单元测试，但应完成适用的视觉检查。
+
+插件测试应放在对应子包并由其 `test` script 独立运行，避免测试反向依赖 Desktop 私有实现。需要验证宿主集成的行为由 Desktop 包补充合同或 E2E 测试，不在插件测试中复制宿主实现。
+
 ## 安装、构建与验证
 
 在仓库根 workspace 安装依赖，再进入目标插件目录构建：
