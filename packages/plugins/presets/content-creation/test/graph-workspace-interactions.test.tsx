@@ -1,5 +1,8 @@
+// @vitest-environment jsdom
+
+import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createContentProject } from "../src/project/types";
 import { GraphWorkspace } from "../src/canvas/GraphWorkspace";
 
@@ -8,6 +11,9 @@ const reactFlowCapture = vi.hoisted(() => ({
 }));
 const projectMenuCapture = vi.hoisted(() => ({
 	props: null as Record<string, unknown> | null,
+}));
+const shortcutScopeCapture = vi.hoisted(() => ({
+	options: [] as Record<string, unknown>[],
 }));
 
 vi.mock("@xyflow/react", () => ({
@@ -20,7 +26,9 @@ vi.mock("@xyflow/react", () => ({
 }));
 
 vi.mock("@vetta-org/plugin-sdk", () => ({
-	usePluginShortcutScope: () => undefined,
+	usePluginShortcutScope: (_register: unknown, options: Record<string, unknown>) => {
+		shortcutScopeCapture.options.push(options);
+	},
 	useTranslation: () => ({ t: (key: string) => key }),
 }));
 
@@ -51,6 +59,11 @@ describe("GraphWorkspace mouse interactions", () => {
 	beforeEach(() => {
 		reactFlowCapture.props = null;
 		projectMenuCapture.props = null;
+		shortcutScopeCapture.options = [];
+	});
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
 	});
 
 	it("uses primary-button drag for canvas panning and Control-drag for box selection", () => {
@@ -187,5 +200,66 @@ describe("GraphWorkspace mouse interactions", () => {
 
 		(projectMenuCapture.props?.onOpenSettings as () => void)();
 		expect(onOpenSettings).toHaveBeenCalledOnce();
+	});
+
+	it("registers mod+a and selects every React Flow node while the canvas surface is visible", async () => {
+		const project = createContentProject("C:\\project");
+		project.graph.nodes = [
+			{ id: "first", kind: "prompt", position: { x: 0, y: 0 }, status: "idle", data: {} },
+			{
+				id: "locked",
+				kind: "image-generator",
+				position: { x: 400, y: 0 },
+				locked: true,
+				status: "idle",
+				data: {},
+			},
+		];
+		const visibleRects = [{ width: 900, height: 600 }] as unknown as DOMRectList;
+		const rects = vi.spyOn(HTMLElement.prototype, "getClientRects").mockReturnValue(visibleRects);
+		const onSelectedNodeIdsChange = vi.fn();
+		render(
+			<GraphWorkspace
+				project={project}
+				assetPreviewUrls={new Map()}
+				models={[]}
+				onDispatch={async () => undefined}
+				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
+				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={onSelectedNodeIdsChange}
+				onOpenSettings={() => undefined}
+			/>,
+		);
+
+		let flowNodes: Array<{ id: string; selected?: boolean }> = [];
+		const setNodes = vi.fn((next: typeof flowNodes | ((nodes: typeof flowNodes) => typeof flowNodes)) => {
+			flowNodes = typeof next === "function" ? next(flowNodes) : next;
+		});
+		act(() => {
+			(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
+				setNodes,
+				setEdges: vi.fn(),
+			});
+		});
+
+		const selectAllScope = shortcutScopeCapture.options.find((options) => options.id === "graph-select-all");
+		expect(selectAllScope).toBeDefined();
+		expect((selectAllScope?.enabled as () => boolean)()).toBe(true);
+		const binding = (selectAllScope?.bindings as Array<Record<string, unknown>>)[0];
+		expect(binding).toMatchObject({ key: "mod+a", when: "not-editable" });
+
+		act(() => {
+			(binding?.run as (event: KeyboardEvent) => void)({} as KeyboardEvent);
+		});
+
+		expect(flowNodes.map((node) => ({ id: node.id, selected: node.selected }))).toEqual([
+			{ id: "first", selected: true },
+			{ id: "locked", selected: true },
+		]);
+		await waitFor(() => expect(onSelectedNodeIdsChange).toHaveBeenLastCalledWith(["first", "locked"]));
+
+		rects.mockReturnValue([] as unknown as DOMRectList);
+		expect((selectAllScope?.enabled as () => boolean)()).toBe(false);
 	});
 });

@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- 创作画布现在通过宿主快捷键作用域支持 `Ctrl+A` / `Command+A` 全选全部节点；输入框仍保留原生文字全选，并同步 React Flow 与画布选择状态。
 - 活动栏品牌图标改由宿主按 `plugin.json#icon` 注入（省略 `registerActivityTab.icon`），不再 `import` 包内 png 或拼宿主协议，避免 `/icon.png` 误解析为应用图标。
 - `content_creation_edit` 不再由 JSON Schema 提前拒绝旧版或直觉式 `targetInput`；解析器会按目标节点归一化并返回可重试的领域错误。`configure_generation` 新增明确的 `targetNodeId`，错误会列出可用视频生成节点并提示将来源放入 `sources[]`。
 - 新增 `content_creation_assets` 本地素材桥接工具：可发现宿主已授权文件/目录、导入受管素材并返回可供 `configure_generation` 使用的节点和素材 ID；缺少 `animate-still` 图片来源时返回明确的恢复建议。
