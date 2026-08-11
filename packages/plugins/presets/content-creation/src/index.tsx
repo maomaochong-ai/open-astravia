@@ -27,22 +27,8 @@ export default definePlugin({
 				label: "%tab.workspace.label%",
 				component: WorkspacePanel,
 				scope_use: ["conversation", "project"],
-				// 暂时默认上栏；硬隔离已去掉，后续再设计更合适的入口策略。
+				// 默认上栏；工具注入由 agent.tools 与路由独立贡献，不再经输入栏开关门控。
 				initiallyVisible: true,
-			});
-			ctx.ui.registerInputAction({
-				id: "mode",
-				label: "%action.mode.label%",
-				icon: <span className="icon-[lucide--wand-sparkles] block size-3.5" aria-hidden="true" />,
-				defaultActive: false,
-				scope_use: ["conversation", "project"],
-				// 软开关：只控制 tab 显隐与 prompt 装饰，不再 gate Agent 贡献。
-				onToggle: (active) => ctx.ui.setActivityTabVisible("workspace", active),
-				decoratePrompt: () => ({
-					instructions: [
-						"Content creation mode is active. Use the relevant bundled content-creation skills and the narrowest available content_creation tool.",
-					],
-				}),
 			});
 			ctx.ui.registerGlobalSlot({ id: "run-approval", component: RunApprovalDialog });
 			registerContentCreationTools(ctx, runtime.agent, runtime.runApprovals, runtime.localAssets);
