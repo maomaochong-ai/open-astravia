@@ -14,7 +14,7 @@ import {
 } from "../builtin-skills.js";
 import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { getAppLogger } from "../logger.js";
-import { buildAgentPluginRuntimeConfig, listPlugins } from "../plugins/plugin-store.js";
+import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 
 const skillsLog = getAppLogger("skills");
 const skillsBaseDir = join(getVettaHomePath(), "skills");
@@ -113,7 +113,7 @@ export class SkillService {
 	async list(cwd?: string): Promise<ListedSkill[]> {
 		const desktopConfig = await readDesktopConfig();
 		const includeAgentSkills = desktopConfig.experimental?.agentSkills !== false;
-		const pluginRuntime = buildAgentPluginRuntimeConfig();
+		const pluginRuntime = pluginAgentContributionService.buildRuntimeConfig();
 		const skillPathContributions = pluginRuntime?.skillPathContributions ?? [];
 		const pluginSkillPaths = skillPathContributions.flatMap((contribution) => contribution.paths);
 		const builtinSkillPaths = getBuiltinSkillPaths();

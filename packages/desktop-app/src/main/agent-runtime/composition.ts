@@ -35,7 +35,7 @@ import { resolveSessionListCwd } from "../conversations/session-paths.js";
 import { getDesktopUserQuestionBroker } from "../conversations/user-question-broker.js";
 import { getAppLogger } from "../logger.js";
 import { createDesktopPluginHookAdapterFactory } from "../plugins/coding-agent-hook-adapter.js";
-import { canInvokeDynamicAgentHook, readPluginRuntimeAgentMode } from "../plugins/plugin-store.js";
+import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { getAvailableLinuxBubblewrapPath, getAvailableMacosSandboxExecPath } from "../sandbox/capability.js";
 import { resolveWindowsSandboxHostBinary } from "../sandbox/windows-binary-resolver.js";
 import { DesktopRuntimeBackendPool } from "./backend-pool.js";
@@ -89,8 +89,8 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		createHookAdapterFactories: ({ scenario }) => [
 			createDesktopPluginHookAdapterFactory({
 				scenario,
-				readAgentMode: readPluginRuntimeAgentMode,
-				canInvoke: canInvokeDynamicAgentHook,
+				readAgentMode: () => pluginAgentContributionService.getAgentMode(),
+				canInvoke: (pluginId) => pluginAgentContributionService.canInvokeHook(pluginId),
 			}),
 		],
 		createMcpRuntimeSource: async ({ cwd, agentDir }) => {

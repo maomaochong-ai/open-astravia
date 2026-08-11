@@ -6,17 +6,27 @@ import { ConnectedAssetPicker, type ConnectedReferenceOption } from "./Connected
 import { ContentAssetThumbnail } from "./ContentAssetThumbnail";
 import { ContentReferenceInput } from "./ContentReferenceInput";
 import { createImportedMediaFile } from "./imported-media-file";
+import {
+	ContentAssetPicker,
+	type ContentAssetPickerOption,
+} from "./ContentAssetPicker";
+import type { ContentAssetReferenceCandidate } from "./reference-candidates";
+import type { ContentKeyframeReference, ContentKeyframeSlotId } from "./keyframe-sources";
 
 interface ContentVideoReferenceInputProps {
 	modeId?: string;
 	model?: ContentModelDescriptor;
 	references: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	connectedReferences: readonly ConnectedReferenceOption[];
+	keyframeReferences: readonly ContentKeyframeReference[];
+	keyframeCandidates: readonly ContentAssetReferenceCandidate[];
 	acceptedKinds: readonly ("image" | "video" | "audio")[];
 	disabled: boolean;
 	onImport: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onRemove: (bindingId: string) => void;
 	onSelectConnected: (option: ConnectedReferenceOption) => void;
+	onSelectKeyframe: (slotId: ContentKeyframeSlotId, candidate: ContentAssetReferenceCandidate) => void;
+	onRemoveKeyframe: (slotId: ContentKeyframeSlotId) => void;
 }
 
 export function ContentVideoReferenceInput({
@@ -24,11 +34,15 @@ export function ContentVideoReferenceInput({
 	model,
 	references,
 	connectedReferences,
+	keyframeReferences,
+	keyframeCandidates,
 	acceptedKinds,
 	disabled,
 	onImport,
 	onRemove,
 	onSelectConnected,
+	onSelectKeyframe,
+	onRemoveKeyframe,
 }: ContentVideoReferenceInputProps) {
 	const mode = model?.modes.find((candidate) => candidate.id === modeId) ?? model?.modes[0];
 	const frameSlots = mode?.inputs.filter((slot) => slot.id === "firstFrame" || slot.id === "lastFrame") ?? [];
@@ -39,14 +53,12 @@ export function ContentVideoReferenceInput({
 					<FrameInput
 						key={slot.id}
 						slotId={slot.id as "firstFrame" | "lastFrame"}
-						reference={references.find(({ binding }) => binding.slotId === slot.id)}
-						connectedReferences={connectedReferences
-							.filter(({ asset }) => asset.kind === "image")
-							.map((option) => ({ ...option, slotId: slot.id }))}
+						reference={keyframeReferences.find((reference) => reference.slotId === slot.id)}
+						candidates={keyframeCandidates}
 						disabled={disabled}
 						onImport={onImport}
-						onRemove={onRemove}
-						onSelectConnected={onSelectConnected}
+						onRemove={onRemoveKeyframe}
+						onSelect={onSelectKeyframe}
 					/>
 				))}
 			</div>
@@ -70,19 +82,19 @@ export function ContentVideoReferenceInput({
 function FrameInput({
 	slotId,
 	reference,
-	connectedReferences,
+	candidates,
 	disabled,
 	onImport,
 	onRemove,
-	onSelectConnected,
+	onSelect,
 }: {
-	slotId: "firstFrame" | "lastFrame";
-	reference?: { binding: ContentNodeInputBinding; asset: ContentAsset };
-	connectedReferences: readonly ConnectedReferenceOption[];
+	slotId: ContentKeyframeSlotId;
+	reference?: ContentKeyframeReference;
+	candidates: readonly ContentAssetReferenceCandidate[];
 	disabled: boolean;
 	onImport: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
-	onRemove: (bindingId: string) => void;
-	onSelectConnected: (option: ConnectedReferenceOption) => void;
+	onRemove: (slotId: ContentKeyframeSlotId) => void;
+	onSelect: (slotId: ContentKeyframeSlotId, candidate: ContentAssetReferenceCandidate) => void;
 }) {
 	const { t } = useTranslation();
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -91,13 +103,23 @@ function FrameInput({
 		event.target.value = "";
 		if (file) await onImport([await createImportedMediaFile(file)], slotId);
 	};
+	const pickerOptions = candidates
+		.filter((candidate) => candidate.asset.kind === "image" && candidate.asset.id !== reference?.asset.id)
+		.map(
+			(candidate): ContentAssetPickerOption & { candidate: ContentAssetReferenceCandidate } => ({
+				id: `${candidate.origin}:${candidate.sourceNodeId ?? "project"}:${candidate.asset.id}`,
+				asset: candidate.asset,
+				source: candidate.sourceNodeId ? "workflow" : "project",
+				candidate,
+			}),
+		);
 	return (
 		<div className="min-w-0 rounded-lg border border-border/65 bg-background/30 p-1.5">
 		<div className="mb-1 flex items-center justify-between px-0.5 text-[10px] font-medium text-muted-foreground">
 			<span>{t(`nodeEditor.videoReference.${slotId}`)}</span>
 			{slotId === "lastFrame" ? <span>{t("nodeEditor.videoReference.optional")}</span> : null}
 		</div>
-		<div className="flex items-start gap-1.5">
+		<div className="flex flex-wrap items-start gap-1.5">
 			{reference ? (
 				<div className="group/frame relative h-14 min-w-0 flex-1 overflow-hidden rounded-md bg-muted/45">
 					<ContentAssetThumbnail asset={reference.asset} className="h-full w-full object-cover" />
@@ -106,7 +128,7 @@ function FrameInput({
 						className="absolute inset-0 flex items-center justify-center bg-black/45 text-white opacity-0 transition-opacity group-hover/frame:opacity-100 focus-visible:opacity-100"
 						disabled={disabled}
 						aria-label={t("nodeEditor.reference.remove")}
-						onClick={() => onRemove(reference.binding.id)}
+						onClick={() => onRemove(slotId)}
 					>
 						<span className="icon-[lucide--x] block size-4" aria-hidden="true" />
 					</button>
@@ -123,11 +145,12 @@ function FrameInput({
 				</button>
 			)}
 			{!reference ? (
-				<ConnectedAssetPicker
-					options={connectedReferences}
+				<ContentAssetPicker
+					options={pickerOptions}
 					disabled={disabled}
 					compact
-					onSelect={onSelectConnected}
+					labelKey="nodeEditor.videoReference.chooseExisting"
+					onSelect={(option) => onSelect(slotId, option.candidate)}
 				/>
 			) : null}
 		</div>

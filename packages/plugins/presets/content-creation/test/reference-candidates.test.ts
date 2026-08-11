@@ -27,6 +27,14 @@ const ASSETS: readonly ContentAsset[] = [
 		mimeType: "image/png",
 		createdAt: "2026-01-01T00:00:00.000Z",
 	},
+	{
+		id: "generated",
+		filePath: "output/generated.png",
+		kind: "image",
+		name: "Generated",
+		mimeType: "image/png",
+		createdAt: "2026-01-01T00:00:00.000Z",
+	},
 ];
 
 describe("content asset reference candidates", () => {
@@ -50,8 +58,18 @@ describe("content asset reference candidates", () => {
 					inputs: [{ id: "binding", assetId: "attached", slotId: "promptReferences" }],
 				},
 			},
+			{
+				id: "image-generator",
+				kind: "image-generator",
+				position: { x: 0, y: 300 },
+				status: "succeeded",
+				data: { assetId: "generated" },
+			},
 		);
-		project.graph.edges.push({ id: "edge", source: "materials", target: "prompt" });
+		project.graph.edges.push(
+			{ id: "asset-edge", source: "materials", target: "prompt" },
+			{ id: "generated-edge", source: "image-generator", target: "prompt" },
+		);
 
 		expect(
 			listContentAssetReferenceCandidates(project, "prompt").map(({ asset, origin }) => ({
@@ -61,6 +79,7 @@ describe("content asset reference candidates", () => {
 		).toEqual([
 			{ id: "attached", origin: "attached" },
 			{ id: "connected", origin: "connected" },
+			{ id: "generated", origin: "connected" },
 			{ id: "project", origin: "project" },
 		]);
 	});

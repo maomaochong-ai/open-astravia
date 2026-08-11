@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import Ajv, { type ErrorObject, type ValidateFunction } from "ajv";
 import type { WebContents } from "electron";
 import type { PluginAppActionRegistration } from "../../preload/api-types/plugins.js";
+import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import type { AppActionCatalog } from "../app-actions/catalog.js";
 import {
 	type ActionApprovalMetadata,
@@ -11,13 +12,11 @@ import {
 	type JsonValue,
 } from "../app-actions/types.js";
 import { getAppLogger } from "../logger.js";
-import { CORE_ACTION_PLUGIN_ID, getPluginSettings, listPlugins } from "./plugin-store.js";
+import { CORE_ACTION_PLUGIN_ID, getPluginSettings, listPlugins } from "./plugin-catalog.js";
 
 const REGISTER_PERMISSION = "app.actions.register";
 const EXECUTE_PERMISSION = "app.actionHandler.execute";
 const DEFAULT_TIMEOUT_MS = 30_000;
-const ACTION_REQUEST_CHANNEL = "vetta:plugins:app-action-request";
-const ACTION_CANCEL_CHANNEL = "vetta:plugins:app-action-cancel";
 
 const log = getAppLogger("plugin-action");
 const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
@@ -549,7 +548,7 @@ export class PluginActionService {
 			context.signal?.addEventListener("abort", pending.onAbort, { once: true });
 			this.pendingInvocations.set(requestId, pending);
 			try {
-				this.webContents.send(ACTION_REQUEST_CHANNEL, {
+				this.webContents.send(PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_REQUEST, {
 					requestId,
 					pluginId,
 					actionId: action.globalActionId,
@@ -590,7 +589,7 @@ export class PluginActionService {
 		else clearTimeout(pending.timer);
 		if (notifyRenderer && !this.webContents.isDestroyed()) {
 			try {
-				this.webContents.send(ACTION_CANCEL_CHANNEL, { requestId });
+				this.webContents.send(PLUGIN_CONTRIBUTION_CHANNELS.APP_ACTION_CANCEL, { requestId });
 			} catch (error) {
 				log.debug("failed to notify renderer about action cancellation", {
 					requestId,

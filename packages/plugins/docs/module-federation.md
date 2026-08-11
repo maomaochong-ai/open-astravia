@@ -32,6 +32,31 @@
 }
 ```
 
+## 按需共享宿主 Theme UI
+
+`@vetta/theme-ui/plugin-ui` 是宿主成品 UI 的窄公共入口，不是所有插件的基础依赖。
+只有实际导入该入口的插件才应同时完成两项声明：
+
+```ts
+vettaPluginFederation({
+  name: "my_plugin",
+  hostThemeUi: true,
+});
+```
+
+```json
+{
+  "devDependencies": {
+    "@vetta/theme-ui": "workspace:*"
+  }
+}
+```
+
+仓库外插件应把 `workspace:*` 换成已发布且与目标 Desktop 兼容的版本。配置中的
+共享键是子路径 `@vetta/theme-ui/plugin-ui`，但需要安装的 npm 包是
+`@vetta/theme-ui`。未使用该入口的插件不要开启 `hostThemeUi`，也不需要声明
+`@vetta/theme-ui`。
+
 ## `import: false` 的含义
 
 `import: false` 只表示插件生产 bundle 不提供该共享模块的本地运行时副本，
@@ -81,5 +106,8 @@ const EmptyState = <div />;
   配置；补充对应开发依赖，或改用 resource-only 构建路径。
 - `@vetta/ui` 缺失：补充 `workspace:*` 开发依赖，并确认宿主版本提供
   `vetta-host://ui` shim。
+- `@vetta/theme-ui/plugin-ui` 缺失：仅在源码确实导入该入口时开启
+  `hostThemeUi`，并安装基础包 `@vetta/theme-ui`；未使用时不要把它加入
+  `shared`。
 - 警告重复出现：通常表示多个 preset 被并行构建；按插件目录逐一检查，
   不要只修复第一个输出警告的包。

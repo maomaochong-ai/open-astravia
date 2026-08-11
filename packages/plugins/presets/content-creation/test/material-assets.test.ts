@@ -66,4 +66,47 @@ describe("material asset collections", () => {
 			}),
 		).toBe(false);
 	});
+
+	it("exposes generated outputs with their semantic edge role", () => {
+		const project = createContentProject("C:/project");
+		project.assets.push({
+			id: "generated-image",
+			filePath: "output/generated.png",
+			kind: "image",
+			name: "Generated image",
+			mimeType: "image/png",
+			createdAt: "2026-01-01T00:00:00.000Z",
+		});
+		project.graph.nodes.push(
+			{
+				id: "image-generator",
+				kind: "image-generator",
+				position: { x: 0, y: 0 },
+				status: "succeeded",
+				data: { assetId: "generated-image" },
+			},
+			{
+				id: "video-generator",
+				kind: "video-generator",
+				position: { x: 300, y: 0 },
+				status: "idle",
+				data: {},
+			},
+		);
+		project.graph.edges.push({
+			id: "first-frame-edge",
+			source: "image-generator",
+			target: "video-generator",
+			role: "firstFrame",
+		});
+
+		expect(listConnectedContentAssets(project, "video-generator")).toMatchObject([
+			{
+				sourceNodeId: "image-generator",
+				edgeId: "first-frame-edge",
+				role: "firstFrame",
+				asset: { id: "generated-image" },
+			},
+		]);
+	});
 });

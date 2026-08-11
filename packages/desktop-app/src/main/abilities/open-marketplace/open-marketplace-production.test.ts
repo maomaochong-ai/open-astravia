@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 	recordAbilityInstall: vi.fn(),
 }));
 
-vi.mock("../../plugins/plugin-store", () => ({
+vi.mock("../../plugins/plugin-catalog", () => ({
 	installPluginFromArchive: mocks.installPluginFromArchive,
 }));
 vi.mock("../ability-ledger", () => ({

@@ -111,6 +111,7 @@
         "typescript": "~5.9.3",
         "typescript-eslint": "^8.49.0",
         "vite": "^7.3.0",
+        "vitest": "^3.2.4",
       },
     },
     "packages/agent": {
@@ -278,7 +279,7 @@
     },
     "packages/desktop-app": {
       "name": "@vetta/desktop-app",
-      "version": "0.5.37",
+      "version": "0.5.38",
       "dependencies": {
         "@dagrejs/dagre": "^3.0.0",
         "@fontsource-variable/geist": "^5.2.8",
@@ -730,7 +731,7 @@
     },
     "packages/plugins/presets/kanban": {
       "name": "@vetta/plugin-kanban",
-      "version": "0.3.1",
+      "version": "0.4.0",
       "devDependencies": {
         "@iconify-json/solar": "^1.2.5",
         "@iconify/tailwind4": "^1.0.6",

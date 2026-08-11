@@ -42,6 +42,13 @@ export interface KanbanModelOption {
 	displayName: string;
 }
 
+/** 可在需求正文里以 `@skill:名字` 引用的技能，供提及选择器渲染。 */
+export interface KanbanSkillOption {
+	name: string;
+	alias?: string;
+	description: string;
+}
+
 export interface DispatchResult {
 	ok: boolean;
 	/** 失败时的机器可读原因（与 {@link DispatchDecision} 一致）。 */
@@ -67,6 +74,7 @@ export class KanbanBoardController {
 	private disposeRunning: (() => void) | null = null;
 	private projects: Array<{ path: string; name?: string }> = [];
 	private models: KanbanModelOption[] = [];
+	private skills: KanbanSkillOption[] = [];
 	/** 宿主的全局默认模型，仅用于在选择器里标注「默认」，不写进看板数据。 */
 	private hostDefaultModelKey = "";
 	private autoClaimRunning = false;
@@ -124,6 +132,33 @@ export class KanbanBoardController {
 		return this.models;
 	}
 
+	/** 已安装技能（load 时取一次），供正文编辑器的 `@` 提及选择器用。 */
+	getSkills(): KanbanSkillOption[] {
+		return this.skills;
+	}
+
+	/**
+	 * 重新拉取技能清单。与模型清单同理：不是看板数据，面板每次挂载刷一次，
+	 * 用户装了新技能回来就能在 `@` 提及里看到。
+	 */
+	async refreshSkills(): Promise<KanbanSkillOption[]> {
+		try {
+			const list = await this.ctx.official.skills.list();
+			// 只留 skill：scene 在 prompt 里没有 `@skill:` 软引用形态，混进来会插出无效 token。
+			this.skills = list
+				.filter((skill) => skill.type === "skill")
+				.map((skill) => ({
+					name: skill.name,
+					...(skill.alias ? { alias: skill.alias } : {}),
+					description: skill.description,
+				}));
+		} catch (error) {
+			// 技能清单拿不到不该挡住看板：提及选择器退化为空，正文照常写纯文本。
+			console.warn("[kanban] failed to load skill list", error);
+		}
+		return this.skills;
+	}
+
 	subscribe(listener: BoardListener): () => void {
 		this.listeners.add(listener);
 		return () => {
@@ -148,7 +183,7 @@ export class KanbanBoardController {
 		} catch (error) {
 			console.warn("[kanban] failed to resolve default project", error);
 		}
-		await this.refreshModels();
+		await Promise.all([this.refreshModels(), this.refreshSkills()]);
 		try {
 			const stored = await this.ctx.storage.readJson<unknown>(BOARD_STORAGE_KEY);
 			this.board = parseBoard(stored, fallbackCwd);

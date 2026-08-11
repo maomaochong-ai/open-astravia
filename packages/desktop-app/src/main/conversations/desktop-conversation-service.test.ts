@@ -33,10 +33,11 @@ vi.mock("../ipc/fs.js", () => ({
 	}),
 }));
 
-vi.mock("../plugins/plugin-store.js", () => ({
-	buildAgentPluginRuntimeConfig: () => undefined,
-	setPluginRuntimeAgentMode: () => undefined,
-	summarizeAgentPluginRuntimeConfig: () => ({}),
+vi.mock("../plugins/plugin-catalog.js", () => ({
+	pluginAgentContributionService: {
+		buildRuntimeConfig: () => undefined,
+		setAgentMode: () => undefined,
+	},
 }));
 
 vi.mock("../runtime.js", () => ({

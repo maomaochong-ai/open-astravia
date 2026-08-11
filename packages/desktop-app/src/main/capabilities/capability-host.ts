@@ -4,7 +4,7 @@ import { ThemeCapabilityAdapter } from "@vetta/capability-sdk/internal/theme-ada
 import { ArtifactStore } from "../artifacts/artifact-store.js";
 import { JobManager } from "../jobs/job-manager.js";
 import { getAppLogger } from "../logger.js";
-import { listPlugins } from "../plugins/plugin-store.js";
+import { listPlugins } from "../plugins/plugin-catalog.js";
 import { registerDesktopDomainProviders } from "./domain-providers.js";
 import { registerDesktopFoundationProviders } from "./foundation-providers.js";
 

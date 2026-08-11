@@ -1,19 +1,10 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { getAppLogger } from "../logger.js";
-import { getSharedRuntime } from "../runtime.js";
+import { pluginDevLinkService, type SetPluginDevLinkOptions } from "./plugin-catalog.js";
 import { resolvePluginDevCliPath } from "./plugin-dev-cli.js";
 import { type PluginDevServerEvent, parsePluginDevServerOutput } from "./plugin-dev-protocol.js";
-import {
-	buildAgentPluginRuntimeConfig,
-	clearPluginDevLink,
-	deactivatePluginDevLink,
-	refreshPluginDevLink,
-	type SetPluginDevLinkOptions,
-	setPluginDevLink,
-	setPluginDevLinkServer,
-	setPluginDevLinkStatus,
-} from "./plugin-store.js";
+import { refreshAgentPlugins } from "./plugin-runtime-service.js";
 
 const log = getAppLogger("plugin");
 const DEBOUNCE_MS = 80;
@@ -46,14 +37,6 @@ function settleInitialStartup(entry: DevWatchEntry, result: InstalledPlugin | Er
 	entry.rejectReady = null;
 }
 
-function refreshAgentPlugins(): void {
-	try {
-		getSharedRuntime().reconfigureAgentPlugins(buildAgentPluginRuntimeConfig());
-	} catch (error) {
-		log.warn("dev-watch: refresh agent plugins failed", error);
-	}
-}
-
 function scheduleRefresh(id: string, entry: DevWatchEntry): void {
 	if (entry.stopped || !entry.ready) return;
 	if (entry.debounceTimer) clearTimeout(entry.debounceTimer);
@@ -61,12 +44,12 @@ function scheduleRefresh(id: string, entry: DevWatchEntry): void {
 		entry.debounceTimer = null;
 		if (entry.stopped || !entry.ready) return;
 		try {
-			refreshPluginDevLink(id);
+			pluginDevLinkService.refresh(id);
 			refreshAgentPlugins();
 			log.info(`dev-watch: refreshed ${id}`);
 		} catch (error) {
 			log.warn(`dev-watch: reload failed for ${id}`, error);
-			setPluginDevLinkStatus(id, "error", error instanceof Error ? error.message : String(error));
+			pluginDevLinkService.setStatus(id, "error", error instanceof Error ? error.message : String(error));
 		}
 	}, DEBOUNCE_MS);
 }
@@ -92,13 +75,13 @@ function stopChild(child: ChildProcess | null): void {
 function failInitialStartup(id: string, entry: DevWatchEntry, message: string): void {
 	entry.ready = false;
 	entry.stopped = true;
-	setPluginDevLinkStatus(id, "error", message);
+	pluginDevLinkService.setStatus(id, "error", message);
 	settleInitialStartup(entry, new Error(message));
 	stopChild(entry.child);
 }
 
 function scheduleRestart(id: string, entry: DevWatchEntry, message: string): void {
-	deactivatePluginDevLink(id, message);
+	pluginDevLinkService.deactivate(id, message);
 	refreshAgentPlugins();
 	const delay = RESTART_DELAYS_MS[entry.restartAttempts];
 	if (delay === undefined) {
@@ -106,7 +89,7 @@ function scheduleRestart(id: string, entry: DevWatchEntry, message: string): voi
 		return;
 	}
 	entry.restartAttempts += 1;
-	setPluginDevLinkStatus(id, "starting");
+	pluginDevLinkService.setStatus(id, "starting");
 	log.warn(`dev-watch: restarting ${id} in ${delay}ms`, { attempt: entry.restartAttempts, error: message });
 	entry.restartTimer = setTimeout(() => {
 		entry.restartTimer = null;
@@ -142,7 +125,7 @@ function handleDevServerEvent(
 	}
 	try {
 		if (event.type === "ready") {
-			const plugin = setPluginDevLinkServer(id, event.entryUrl, event.origin);
+			const plugin = pluginDevLinkService.setServer(id, event.entryUrl, event.origin);
 			entry.ready = true;
 			entry.restartAttempts = 0;
 			if (entry.startupTimer) clearTimeout(entry.startupTimer);
@@ -162,7 +145,7 @@ function handleDevServerEvent(
 		}
 		// Vite compilation and resource watcher errors are recoverable while the
 		// server remains alive. A later successful update returns the state to running.
-		setPluginDevLinkStatus(id, "error", event.message);
+		pluginDevLinkService.setStatus(id, "error", event.message);
 	} catch (error) {
 		failAttempt(error instanceof Error ? error.message : String(error));
 	}
@@ -173,7 +156,7 @@ function spawnPluginDevServer(id: string, entry: DevWatchEntry): void {
 	entry.attempt += 1;
 	const attempt = entry.attempt;
 	entry.ready = false;
-	setPluginDevLinkStatus(id, "starting");
+	pluginDevLinkService.setStatus(id, "starting");
 
 	let cliPath: string;
 	try {
@@ -235,7 +218,7 @@ export function startPluginDevWatch(
 	options: SetPluginDevLinkOptions = {},
 ): Promise<InstalledPlugin> {
 	stopPluginDevWatch(id);
-	setPluginDevLink(id, projectDir, options);
+	pluginDevLinkService.set(id, projectDir, options);
 	return new Promise<InstalledPlugin>((resolveReady, rejectReady) => {
 		const entry: DevWatchEntry = {
 			projectDir,
@@ -267,7 +250,7 @@ export function stopPluginDevWatch(id: string): void {
 		entries.delete(id);
 		log.info(`dev-watch: stopped for ${id}`);
 	}
-	clearPluginDevLink(id);
+	pluginDevLinkService.clear(id);
 }
 
 export function stopAllPluginDevWatches(): void {

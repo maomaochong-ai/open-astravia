@@ -175,8 +175,11 @@ describe("node editor interaction boundary", () => {
 					data={{ prompt: "" }}
 					kind="image-generator"
 					mentionAssets={[]}
+					keyframeReferences={[]}
 					models={[]}
 					onImportReferences={vi.fn()}
+					onSetKeyframeSource={vi.fn()}
+					onClearKeyframeSource={vi.fn()}
 					onRunNode={vi.fn().mockResolvedValue(undefined)}
 					onUpdate={vi.fn().mockResolvedValue(undefined)}
 					referenceAssets={[]}
@@ -223,6 +226,7 @@ describe("node editor interaction boundary", () => {
 						},
 					},
 				]}
+				keyframeReferences={[]}
 				models={[
 					{
 						providerId: "test",
@@ -239,6 +243,8 @@ describe("node editor interaction boundary", () => {
 					},
 				]}
 				onImportReferences={vi.fn()}
+				onSetKeyframeSource={vi.fn()}
+				onClearKeyframeSource={vi.fn()}
 				onRunNode={vi.fn().mockResolvedValue(undefined)}
 				onUpdate={onUpdate}
 				referenceAssets={[]}

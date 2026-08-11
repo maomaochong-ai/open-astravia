@@ -52,7 +52,6 @@
 	"editor.tags": "标签",
 	"editor.tagsPlaceholder": "用逗号分隔",
 	"editor.cwd": "目标项目",
-	"editor.cwdPlaceholder": "留空则用看板默认项目",
 	"editor.model": "执行模型",
 	"editor.modelDefault": "看板默认模型",
 	"editor.modelDefaultNamed": "看板默认（{{name}}）",
@@ -119,5 +118,17 @@
 	"empty.step.dispatch.detail": "⌘回车直接开工，或让 Agent 读板自行认领、并行推进",
 	"empty.step.review.title": "验收交付",
 	"empty.step.review.detail": "完成的需求带着交付说明等你检查：通过归档，不满意打回",
-	"error.sendBack": "打回失败"
+	"error.sendBack": "打回失败",
+	"card.pendingReady": "{{seconds}}s 后待认领",
+	"card.pendingReadyCancel": "撤回",
+	"card.pendingReadyHint": "倒计时结束将标为「待认领」（自动认领开着时会直接开工）；点击撤回，保留为草稿",
+	"editor.insertSkill": "插入技能",
+	"editor.insertSkillHint": "在正文光标处插入 @skill 引用",
+	"editor.detailSkillHint": "输入 @ 可引用技能；派发时正文会原样作为首轮 prompt 发给 Agent",
+	"composer.insertSkill": "插入技能（正文里输入 @ 也可以）",
+	"skillPicker.title": "技能",
+	"projectPicker.customPlaceholder": "输入项目绝对路径…",
+	"projectPicker.backToList": "回到项目列表",
+	"projectPicker.defaultBadge": "默认",
+	"projectPicker.customPath": "使用自定义路径…"
 }

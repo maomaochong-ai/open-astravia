@@ -21,6 +21,7 @@ import type {
 	SettingsPatch,
 } from "@vetta/runtime-core";
 import { BrowserWindow, ipcMain, type WebContents } from "electron";
+import { PLUGIN_CONTRIBUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
@@ -37,12 +38,11 @@ import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
 import {
 	broadcastPluginsChanged,
-	buildAgentPluginRuntimeConfig,
 	getPluginSettings,
 	listPlugins,
-	setPluginRuntimeAgentMode,
-	summarizeAgentPluginRuntimeConfig,
-} from "../plugins/plugin-store.js";
+	pluginAgentContributionService,
+} from "../plugins/plugin-catalog.js";
+import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import {
 	filterSystemPromptInvocationForPlugin,
 	normalizeDynamicSystemPromptOperations,
@@ -189,14 +189,14 @@ const CHANNELS = {
 	VIEWER_SUBSCRIBE: "vetta:session:viewer-subscribe",
 	VIEWER_UNSUBSCRIBE: "vetta:session:viewer-unsubscribe",
 	VIEWER_EVENT: "vetta:session:viewer-event",
-	PLUGIN_TOOL_REQUEST: "vetta:plugins:agent-tool-request",
-	PLUGIN_TOOL_RESPONSE: "vetta:plugins:agent-tool-response",
-	PLUGIN_HOOK_REQUEST: "vetta:plugins:agent-hook-request",
-	PLUGIN_HOOK_RESPONSE: "vetta:plugins:agent-hook-response",
-	PLUGIN_CONTINUATION_REQUEST: "vetta:plugins:continuation-request",
-	PLUGIN_CONTINUATION_RESPONSE: "vetta:plugins:continuation-response",
-	PLUGIN_SYSTEM_PROMPT_REQUEST: "vetta:plugins:system-prompt-request",
-	PLUGIN_SYSTEM_PROMPT_RESPONSE: "vetta:plugins:system-prompt-response",
+	PLUGIN_TOOL_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_REQUEST,
+	PLUGIN_TOOL_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.TOOL_RESPONSE,
+	PLUGIN_HOOK_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.HOOK_REQUEST,
+	PLUGIN_HOOK_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.HOOK_RESPONSE,
+	PLUGIN_CONTINUATION_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_REQUEST,
+	PLUGIN_CONTINUATION_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.CONTINUATION_RESPONSE,
+	PLUGIN_SYSTEM_PROMPT_REQUEST: PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_REQUEST,
+	PLUGIN_SYSTEM_PROMPT_RESPONSE: PLUGIN_CONTRIBUTION_CHANNELS.SYSTEM_PROMPT_RESPONSE,
 } as const;
 
 /** 向所有存活窗口（含独立的快捷面板窗口）广播一个事件。 */
@@ -694,7 +694,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		);
 		pluginLog.debug("session prompt plugin snapshot", {
 			sessionId,
-			...summarizeAgentPluginRuntimeConfig(buildAgentPluginRuntimeConfig()),
+			...summarizeAgentPluginRuntimeConfig(pluginAgentContributionService.buildRuntimeConfig()),
 		});
 		return runtime.prompt(sessionId, req);
 	});
@@ -774,8 +774,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// tools/skills/prompt：pending，turn 边界 apply。
 		runtime.setGlobalAgentMode(next);
 		// 插件级硬闸：更新 gate 模式并重建插件配置（排除模式外插件），推给活跃 session。
-		setPluginRuntimeAgentMode(next);
-		await runtime.reconfigureAgentPlugins(buildAgentPluginRuntimeConfig());
+		pluginAgentContributionService.setAgentMode(next);
+		await runtime.reconfigureAgentPlugins(pluginAgentContributionService.buildRuntimeConfig());
 		for (const win of BrowserWindow.getAllWindows()) {
 			win.webContents.send(CHANNELS.AGENT_MODE_CHANGED, next);
 		}

@@ -6,7 +6,11 @@ import type {
 	ContentProjectDocument,
 	GenerationJob,
 } from "../project/types";
-import { isContentInputBindingAvailable, listContentNodeAssetIds } from "../node/material-assets";
+import {
+	isContentInputBindingAvailable,
+	listConnectedContentAssets,
+	listContentNodeAssetIds,
+} from "../node/material-assets";
 import {
 	listConnectedPromptSources,
 	PROMPT_REFERENCE_SLOT_ID,
@@ -539,17 +543,12 @@ function listGenerationReferenceCandidates(
 		const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
 		return asset ? [{ id: binding.id, asset, slotId: binding.slotId, origin: "binding" }] : [];
 	});
-	for (const edge of project.graph.edges.filter((candidate) => candidate.target === node.id)) {
-		if (edge.targetHandle === "prompt") continue;
-		const source = project.graph.nodes.find((candidate) => candidate.id === edge.source);
-		const asset = source?.data.assetId
-			? project.assets.find((candidate) => candidate.id === source.data.assetId)
-			: undefined;
+	for (const { asset, edgeId, role } of listConnectedContentAssets(project, node.id)) {
 		if (!asset || (asset.kind !== "image" && asset.kind !== "video")) continue;
 		candidates.push({
-			id: `edge:${edge.id}`,
+			id: `edge:${edgeId ?? asset.id}`,
 			asset,
-			slotId: edge.role ?? (asset.kind === "image" ? "referenceImages" : "referenceVideo"),
+			slotId: role ?? (asset.kind === "image" ? "referenceImages" : "referenceVideo"),
 			origin: "edge",
 		});
 	}

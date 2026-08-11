@@ -22,15 +22,7 @@ vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
 
-import {
-	clearPluginDevLink,
-	deactivatePluginDevLink,
-	discoverSystemPlugins,
-	listPlugins,
-	refreshPluginDevLink,
-	setPluginDevLink,
-	setPluginDevLinkServer,
-} from "./plugin-store.js";
+import { discoverSystemPlugins, listPlugins, pluginDevLinkService } from "./plugin-catalog.js";
 
 const SYSTEM_PLUGIN_ID = "system-dev-test";
 const ARCHIVE_PLUGIN_ID = "archive-dev-test";
@@ -113,7 +105,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
 	for (const id of [SYSTEM_PLUGIN_ID, ARCHIVE_PLUGIN_ID, REMOTE_PLUGIN_ID, EPHEMERAL_PLUGIN_ID])
-		clearPluginDevLink(id);
+		pluginDevLinkService.clear(id);
 	await rm(testPaths.root, { recursive: true, force: true });
 	if (originalResourcesPath) Object.defineProperty(process, "resourcesPath", originalResourcesPath);
 	else Reflect.deleteProperty(process, "resourcesPath");
@@ -121,7 +113,7 @@ afterAll(async () => {
 
 afterEach(() => {
 	for (const id of [SYSTEM_PLUGIN_ID, ARCHIVE_PLUGIN_ID, REMOTE_PLUGIN_ID, EPHEMERAL_PLUGIN_ID])
-		clearPluginDevLink(id);
+		pluginDevLinkService.clear(id);
 });
 
 describe("plugin development links", () => {
@@ -133,7 +125,7 @@ describe("plugin development links", () => {
 		"keeps the stable $source snapshot active until the development server is ready",
 		({ id, source, trustLevel }) => {
 			const projectDir = join(testPaths.root, "projects", id);
-			const linked = setPluginDevLink(id, projectDir);
+			const linked = pluginDevLinkService.set(id, projectDir);
 
 			expect(linked).toMatchObject({
 				id,
@@ -152,9 +144,9 @@ describe("plugin development links", () => {
 
 	it("atomically activates a ready server and rolls back to the stable system plugin when it exits", () => {
 		const projectDir = join(testPaths.root, "projects", SYSTEM_PLUGIN_ID);
-		setPluginDevLink(SYSTEM_PLUGIN_ID, projectDir);
+		pluginDevLinkService.set(SYSTEM_PLUGIN_ID, projectDir);
 
-		const running = setPluginDevLinkServer(
+		const running = pluginDevLinkService.setServer(
 			SYSTEM_PLUGIN_ID,
 			"http://127.0.0.1:4100/mf-manifest.json",
 			"http://127.0.0.1:4100",
@@ -166,7 +158,7 @@ describe("plugin development links", () => {
 			devWatch: { status: "running" },
 		});
 
-		const fallback = deactivatePluginDevLink(SYSTEM_PLUGIN_ID, "server exited");
+		const fallback = pluginDevLinkService.deactivate(SYSTEM_PLUGIN_ID, "server exited");
 		expect(fallback).toMatchObject({
 			name: "System installed",
 			devWatch: { status: "error", error: "server exited" },
@@ -176,13 +168,17 @@ describe("plugin development links", () => {
 
 	it("refreshes and clears a system plugin development overlay without changing its identity", async () => {
 		const projectDir = join(testPaths.root, "projects", SYSTEM_PLUGIN_ID);
-		setPluginDevLink(SYSTEM_PLUGIN_ID, projectDir);
-		setPluginDevLinkServer(SYSTEM_PLUGIN_ID, "http://127.0.0.1:4100/mf-manifest.json", "http://127.0.0.1:4100");
+		pluginDevLinkService.set(SYSTEM_PLUGIN_ID, projectDir);
+		pluginDevLinkService.setServer(
+			SYSTEM_PLUGIN_ID,
+			"http://127.0.0.1:4100/mf-manifest.json",
+			"http://127.0.0.1:4100",
+		);
 		const manifest = createManifest(SYSTEM_PLUGIN_ID, "System refreshed");
 		manifest.version = "1.1.0";
 		await writePluginProject(projectDir, manifest);
 
-		expect(refreshPluginDevLink(SYSTEM_PLUGIN_ID)).toMatchObject({
+		expect(pluginDevLinkService.refresh(SYSTEM_PLUGIN_ID)).toMatchObject({
 			name: "System refreshed",
 			version: "1.1.0",
 			source: "system",
@@ -190,7 +186,7 @@ describe("plugin development links", () => {
 			devWatch: { status: "running" },
 		});
 
-		clearPluginDevLink(SYSTEM_PLUGIN_ID);
+		pluginDevLinkService.clear(SYSTEM_PLUGIN_ID);
 		const restored = listPlugins().find((plugin) => plugin.id === SYSTEM_PLUGIN_ID);
 		expect(restored).toMatchObject({
 			name: "System installed",
@@ -205,7 +201,7 @@ describe("plugin development links", () => {
 		const projectDir = join(testPaths.root, "projects", EPHEMERAL_PLUGIN_ID);
 		await writePluginProject(projectDir, createManifest(EPHEMERAL_PLUGIN_ID, "Ephemeral development"));
 
-		const linked = setPluginDevLink(EPHEMERAL_PLUGIN_ID, projectDir, { allowUninstalled: true });
+		const linked = pluginDevLinkService.set(EPHEMERAL_PLUGIN_ID, projectDir, { allowUninstalled: true });
 
 		expect(linked).toMatchObject({
 			id: EPHEMERAL_PLUGIN_ID,
@@ -217,10 +213,14 @@ describe("plugin development links", () => {
 		expect(listPlugins().some((plugin) => plugin.id === EPHEMERAL_PLUGIN_ID)).toBe(true);
 
 		expect(
-			setPluginDevLinkServer(EPHEMERAL_PLUGIN_ID, "http://127.0.0.1:4200/mf-manifest.json", "http://127.0.0.1:4200"),
+			pluginDevLinkService.setServer(
+				EPHEMERAL_PLUGIN_ID,
+				"http://127.0.0.1:4200/mf-manifest.json",
+				"http://127.0.0.1:4200",
+			),
 		).toMatchObject({ enabled: true, rootPath: projectDir, devWatch: { status: "running" } });
 
-		clearPluginDevLink(EPHEMERAL_PLUGIN_ID);
+		pluginDevLinkService.clear(EPHEMERAL_PLUGIN_ID);
 		expect(listPlugins().some((plugin) => plugin.id === EPHEMERAL_PLUGIN_ID)).toBe(false);
 	});
 });

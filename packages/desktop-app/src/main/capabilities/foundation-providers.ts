@@ -30,6 +30,7 @@ import {
 } from "../filesystem/filesystem-service.js";
 import { requestVettaGateway as requestGateway } from "../gateway/vetta-gateway-service.js";
 import type { JobManager } from "../jobs/job-manager.js";
+import { listPlugins } from "../plugins/plugin-catalog.js";
 import { requestForPlugin as requestNetwork } from "../plugins/plugin-network-service.js";
 import {
 	getPluginBlobRef as getNamespacedBlobRef,
@@ -42,7 +43,6 @@ import {
 	writePluginFile as writeNamespacedFile,
 	writePluginJson as writeNamespacedJson,
 } from "../plugins/plugin-storage-service.js";
-import { listPlugins } from "../plugins/plugin-store.js";
 import {
 	clearThemeStorage,
 	getThemeStorageData,

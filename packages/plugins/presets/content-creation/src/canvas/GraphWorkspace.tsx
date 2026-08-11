@@ -244,6 +244,18 @@ export function GraphWorkspace({
 			onRunNode,
 			onImportAssets,
 			onImportReferences,
+			onSetKeyframeSource: (nodeId, slotId, assetId, sourceNodeId) =>
+				onDispatch([
+					{
+						type: "node.set-keyframe-source",
+						targetNodeId: nodeId,
+						slotId,
+						assetId,
+						...(sourceNodeId ? { sourceNodeId } : {}),
+					},
+				]),
+			onClearKeyframeSource: (nodeId, slotId) =>
+				onDispatch([{ type: "node.clear-keyframe-source", targetNodeId: nodeId, slotId }]),
 			onAddToTimeline: (nodeId) =>
 				onDispatch([
 					{

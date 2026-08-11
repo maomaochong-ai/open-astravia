@@ -19,6 +19,8 @@ export interface CardTileProps {
 	modelLabel: string;
 	dragging: boolean;
 	now: number;
+	/** 「标为待认领」后悔窗口的剩余秒数；null = 没在倒计时。 */
+	pendingReadySeconds: number | null;
 	onAbort: () => void;
 	onApprove: () => void;
 	onDelete: () => void;
@@ -54,11 +56,13 @@ export function CardTile({
 	onOpenSession,
 	onSendBack,
 	onToggleIdeaState,
+	pendingReadySeconds,
 }: CardTileProps): JSX.Element {
 	const { t, locale } = useTranslation();
 	const isInbox = card.lane === "inbox";
 	const isReview = card.lane === "review";
 	const isDraft = isInbox && card.ideaState === "draft";
+	const isPendingReady = isDraft && pendingReadySeconds !== null;
 	const linkable = !isInbox && Boolean(card.sessionPath);
 	const running = card.runState === "running";
 	const runMeta = card.runState ? RUN_STATE_META[card.runState] : null;
@@ -188,21 +192,50 @@ export function CardTile({
 			{/* 泳道专属动作行 */}
 			{isInbox && (
 				<div className="mt-2 flex items-center gap-1.5 border-t border-border/40 pt-2">
-					<button
-						type="button"
-						onClick={onToggleIdeaState}
-						title={t(isDraft ? "card.markReady" : "card.markDraft")}
-						aria-pressed={!isDraft}
-						className={cn(
-							"flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
-							isDraft
-								? "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
-								: "bg-primary/12 text-primary hover:bg-primary/20",
-						)}
-					>
-						<span className={cn(isDraft ? "icon-[solar--pen-new-round-linear]" : "icon-[solar--check-circle-bold]", "h-3 w-3")} />
-						{t(isDraft ? "ideaState.draft" : "ideaState.ready")}
-					</button>
+					{isPendingReady ? (
+						// 后悔窗口：倒计时结束才真正变待认领，点击立即撤回、留在草稿。
+						<button
+							type="button"
+							onClick={onToggleIdeaState}
+							title={t("card.pendingReadyHint")}
+							className="flex items-center gap-1.5 rounded-full bg-amber-500/12 px-2 py-0.5 text-[10px] font-medium text-amber-600 transition-colors hover:bg-amber-500/20 dark:text-amber-400"
+						>
+							<span className="relative h-3 w-3">
+								<svg viewBox="0 0 12 12" className="h-3 w-3 -rotate-90" aria-hidden>
+									<circle cx="6" cy="6" r="4.5" fill="none" strokeWidth="2" className="stroke-amber-500/25" />
+									<circle
+										cx="6"
+										cy="6"
+										r="4.5"
+										fill="none"
+										strokeWidth="2"
+										strokeLinecap="round"
+										strokeDasharray={`${((pendingReadySeconds ?? 0) / 5) * 28.27} 28.27`}
+										className="stroke-current transition-[stroke-dasharray] duration-200"
+									/>
+								</svg>
+							</span>
+							<span className="tabular-nums">{t("card.pendingReady", { seconds: pendingReadySeconds ?? 0 })}</span>
+							<span className="icon-[solar--undo-left-round-linear] h-3 w-3" />
+							{t("card.pendingReadyCancel")}
+						</button>
+					) : (
+						<button
+							type="button"
+							onClick={onToggleIdeaState}
+							title={t(isDraft ? "card.markReady" : "card.markDraft")}
+							aria-pressed={!isDraft}
+							className={cn(
+								"flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors",
+								isDraft
+									? "bg-muted text-muted-foreground hover:bg-accent hover:text-foreground"
+									: "bg-primary/12 text-primary hover:bg-primary/20",
+							)}
+						>
+							<span className={cn(isDraft ? "icon-[solar--pen-new-round-linear]" : "icon-[solar--check-circle-bold]", "h-3 w-3")} />
+							{t(isDraft ? "ideaState.draft" : "ideaState.ready")}
+						</button>
+					)}
 					{!isDraft && blockedBy.length === 0 && (
 						<button
 							type="button"

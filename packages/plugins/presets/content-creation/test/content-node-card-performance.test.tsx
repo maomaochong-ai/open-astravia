@@ -80,6 +80,7 @@ function createNodeData(): ContentFlowNodeData {
 		connectedAssets: [],
 		connectedPrompts: [],
 		mentionAssets: [],
+		keyframeReferences: [],
 		status: "idle",
 		locked: false,
 		models: [],
@@ -93,6 +94,8 @@ function createNodeData(): ContentFlowNodeData {
 		onRunNode: vi.fn().mockResolvedValue(undefined),
 		onImportAssets: vi.fn().mockResolvedValue(undefined),
 		onImportReferences: vi.fn().mockResolvedValue(undefined),
+		onSetKeyframeSource: vi.fn().mockResolvedValue(undefined),
+		onClearKeyframeSource: vi.fn().mockResolvedValue(undefined),
 	};
 }
 

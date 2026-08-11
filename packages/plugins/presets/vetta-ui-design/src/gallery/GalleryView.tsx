@@ -1,13 +1,17 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConfirmDialog } from "../canvas/ConfirmDialog";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "../export/share-format";
 import { refreshDesignCatalog } from "../design-systems/index";
 import { getPluginCtx, notify } from "../plugin-context";
+import { AllProjectsView } from "./AllProjectsView";
 import { CardContextMenu, type CardMenuAnchor } from "./CardContextMenu";
 import { CreateDesignDialog } from "./CreateDesignDialog";
+import { DesignSystemDetailDialog } from "./DesignSystemDetailDialog";
 import { DesignSystemGrid } from "./DesignSystemGrid";
 import { GalleryCard } from "./GalleryCard";
+import { hasMoreProjects, homeVisibleCount, PROJECT_GRID_CLASS } from "./gallery-layout";
+import { useGalleryColumns } from "./use-gallery-columns";
 import {
 	archiveProject,
 	type CreatedDesign,
@@ -36,6 +40,10 @@ export function GalleryView() {
 	const [keyword, setKeyword] = useState("");
 	const [menu, setMenu] = useState<CardMenuAnchor | null>(null);
 	const [creating, setCreating] = useState(false);
+	/** 首页（≤3 行资产 + 风格库）或全部设计列表页。 */
+	const [view, setView] = useState<"home" | "projects">("home");
+	/** 正在看详情的风格；详情里点「使用」才进入命名流程。 */
+	const [detailSystem, setDetailSystem] = useState<DesignSystem | null>(null);
 	/** 已经选好、正在等用户输入项目名的风格。 */
 	const [pendingSystem, setPendingSystem] = useState<DesignSystem | null>(null);
 	const [busy, setBusy] = useState(false);
@@ -196,8 +204,28 @@ export function GalleryView() {
 		[t],
 	);
 
-	const cards = filterGalleryProjects(snapshot?.cards ?? [], keyword);
+	// memo 不只是省一次 filter：AllProjectsView 以数组引用变化为「重置分页」的信号。
+	const cards = useMemo(() => filterGalleryProjects(snapshot?.cards ?? [], keyword), [snapshot, keyword]);
 	const empty = !loading && (snapshot?.cards.length ?? 0) === 0;
+
+	/** 首页资产宫格：量出实际列数，只铺前 3 行，其余收进列表页。 */
+	const { ref: homeGridRef, columns } = useGalleryColumns();
+	const homeCount = homeVisibleCount(cards.length, columns);
+	const overflowing = hasMoreProjects(cards.length, columns);
+
+	const openCard = useCallback((card: GalleryCardData) => {
+		void openProjectFromGallery({ cwd: card.cwd, vetdPath: card.cover.vetdPath });
+	}, []);
+
+	const openCardMenu = useCallback((event: React.MouseEvent, card: GalleryCardData) => {
+		event.preventDefault();
+		const box = rootRef.current?.getBoundingClientRect();
+		setMenu({
+			card,
+			x: event.clientX - (box?.left ?? 0),
+			y: event.clientY - (box?.top ?? 0),
+		});
+	}, []);
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: 整页都是分享包的放置区
@@ -215,29 +243,73 @@ export function GalleryView() {
 			}}
 			onDrop={onDrop}
 		>
-			<header className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2.5">
-				<span className="text-sm font-medium text-foreground">{t("gallery.title")}</span>
-				<input
-					value={keyword}
-					onChange={(event) => setKeyword(event.target.value)}
-					placeholder={t("gallery.search")}
-					aria-label={t("gallery.search")}
-					className="ml-2 w-48 rounded-lg border border-border bg-card px-2.5 py-1 text-xs text-foreground outline-none focus:border-primary"
-				/>
+			<header className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+				{view === "projects" ? (
+					<button
+						type="button"
+						onClick={() => setView("home")}
+						aria-label={t("gallery.projects.back")}
+						title={t("gallery.projects.back")}
+						className="flex size-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					>
+						<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+							<path d="M14 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+						</svg>
+					</button>
+				) : null}
+				<span className="text-sm font-semibold text-foreground">
+					{view === "projects" ? t("gallery.projects.title") : t("gallery.title")}
+				</span>
+				{view === "projects" ? (
+					<span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-muted-foreground">
+						{t("gallery.count", { count: cards.length })}
+					</span>
+				) : null}
+				<div className="relative ml-2">
+					<svg
+						viewBox="0 0 24 24"
+						className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						aria-hidden
+					>
+						<circle cx="11" cy="11" r="7" />
+						<path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+					</svg>
+					<input
+						value={keyword}
+						onChange={(event) => setKeyword(event.target.value)}
+						placeholder={t("gallery.search")}
+						aria-label={t("gallery.search")}
+						className="w-52 rounded-lg border border-border bg-card py-1.5 pl-8 pr-2.5 text-xs text-foreground outline-none transition-colors focus:border-primary"
+					/>
+				</div>
 				<div className="flex-1" />
 				<button
 					type="button"
 					onClick={() => void refresh()}
 					disabled={loading}
-					className="rounded-lg px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent disabled:opacity-40"
+					aria-label={t("gallery.action.refresh")}
+					title={t("gallery.action.refresh")}
+					className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40"
 				>
-					{t("gallery.action.refresh")}
+					<svg
+						viewBox="0 0 24 24"
+						className={`size-3.5 ${loading ? "animate-spin" : ""}`}
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						aria-hidden
+					>
+						<path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4" strokeLinecap="round" strokeLinejoin="round" />
+					</svg>
 				</button>
 				<button
 					type="button"
 					onClick={() => void onPickImport()}
 					disabled={busy}
-					className="rounded-lg px-2.5 py-1 text-xs text-foreground hover:bg-accent disabled:opacity-40"
+					className="rounded-lg border border-border px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent disabled:opacity-40"
 				>
 					{t("gallery.action.import")}
 				</button>
@@ -245,52 +317,83 @@ export function GalleryView() {
 					type="button"
 					onClick={() => setCreating(true)}
 					disabled={busy}
-					className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40"
+					className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
 				>
+					<svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+						<path d="M12 5v14M5 12h14" strokeLinecap="round" />
+					</svg>
 					{t("gallery.action.create")}
 				</button>
 			</header>
 
 			<div className="flex-1 overflow-y-auto px-4 py-4">
-				{empty ? (
+				{view === "projects" ? (
+					// 全部设计：整页宫格，滚动到底部自动翻页。
+					<>
+						<AllProjectsView cards={cards} onOpen={openCard} onCardContextMenu={openCardMenu} />
+						{cards.length === 0 ? (
+							<p className="mt-8 text-center text-xs text-muted-foreground">{t("gallery.search.noMatch")}</p>
+						) : null}
+					</>
+				) : empty ? (
 					// 空态：风格库是首屏主角。点一套风格就能开工，比对着空白画布想第一句话快。
-					<div className="flex flex-col gap-5">
-						<div className="flex flex-col items-center gap-1 text-center">
-							<p className="text-sm text-foreground">{t("gallery.empty.title")}</p>
+					<div className="flex flex-col gap-6">
+						<div className="mt-2 flex flex-col items-center gap-1.5 text-center">
+							<p className="text-sm font-medium text-foreground">{t("gallery.empty.title")}</p>
 							<p className="max-w-96 text-xs leading-relaxed text-muted-foreground">
 								{t("gallery.empty.description", { ext: SHARE_EXTENSION })}
 							</p>
 						</div>
-						<DesignSystemGrid busy={busy} onPick={setPendingSystem} />
+						<DesignSystemGrid busy={busy} onPick={setDetailSystem} />
 					</div>
 				) : (
-					<div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-						{cards.map((card) => (
-							<GalleryCard
-								key={card.cwd}
-								card={card}
-								onOpen={() => {
-									void openProjectFromGallery({ cwd: card.cwd, vetdPath: card.cover.vetdPath });
-								}}
-								onContextMenu={(event) => {
-									event.preventDefault();
-									const box = rootRef.current?.getBoundingClientRect();
-									setMenu({
-										card,
-										x: event.clientX - (box?.left ?? 0),
-										y: event.clientY - (box?.top ?? 0),
-									});
-								}}
-							/>
-						))}
-					</div>
-				)}
-				{!empty && cards.length === 0 ? (
-					<p className="mt-8 text-center text-xs text-muted-foreground">{t("gallery.search.noMatch")}</p>
-				) : null}
+					<>
+						<section>
+							<header className="mb-3 flex min-w-0 items-baseline gap-2">
+								<h2 className="shrink-0 text-sm font-medium text-foreground">{t("gallery.section.mine")}</h2>
+								<span className="text-[11px] text-muted-foreground">
+									{t("gallery.count", { count: cards.length })}
+								</span>
+								<div className="flex-1" />
+								{overflowing ? (
+									<button
+										type="button"
+										onClick={() => setView("projects")}
+										className="flex shrink-0 items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-xs text-primary transition-colors hover:bg-accent"
+									>
+										{t("gallery.section.more")}
+										<svg
+											viewBox="0 0 24 24"
+											className="size-3"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											aria-hidden
+										>
+											<path d="M10 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+										</svg>
+									</button>
+								) : null}
+							</header>
+							<div ref={homeGridRef} className={PROJECT_GRID_CLASS}>
+								{cards.slice(0, homeCount).map((card) => (
+									<GalleryCard
+										key={card.cwd}
+										card={card}
+										onOpen={() => openCard(card)}
+										onContextMenu={(event) => openCardMenu(event, card)}
+									/>
+								))}
+							</div>
+						</section>
+						{cards.length === 0 ? (
+							<p className="mt-8 text-center text-xs text-muted-foreground">{t("gallery.search.noMatch")}</p>
+						) : null}
 
-				{/* 已经有设计时风格库排在用户自己的作品之后，同一套宫格、跟着一起滚。 */}
-				{empty ? null : <DesignSystemGrid divided busy={busy} onPick={setPendingSystem} />}
+						{/* 风格库排在用户自己的作品之后，同一套宫格、跟着一起滚。 */}
+						<DesignSystemGrid divided busy={busy} onPick={setDetailSystem} />
+					</>
+				)}
 			</div>
 
 
@@ -319,6 +422,19 @@ export function GalleryView() {
 					busy={busy}
 					onCreate={(name) => void onCreate(name)}
 					onClose={() => setCreating(false)}
+				/>
+			) : null}
+
+			{detailSystem ? (
+				<DesignSystemDetailDialog
+					system={detailSystem}
+					busy={busy}
+					onUse={(system) => {
+						// 详情的使命到此为止：收起自己，把风格交给命名对话框。
+						setDetailSystem(null);
+						setPendingSystem(system);
+					}}
+					onClose={() => setDetailSystem(null)}
 				/>
 			) : null}
 

@@ -8,7 +8,7 @@ vi.mock("electron", () => ({ webContents: { getAllWebContents: () => [] } }));
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ info: () => undefined, warn: () => undefined }),
 }));
-vi.mock("./plugin-store.js", () => ({
+vi.mock("./plugin-catalog.js", () => ({
 	listPlugins: () => [
 		{
 			id: "command-test",
