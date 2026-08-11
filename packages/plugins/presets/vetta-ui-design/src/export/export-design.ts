@@ -29,25 +29,37 @@ function bytesFromBase64(base64: string): Uint8Array {
 const TEXT_EXTENSIONS = new Set(["tsx", "ts", "css", "json", "html", "svg", "md", "txt", "js", "mjs"]);
 
 /**
+ * 把 `needle` 换成 `replacement` 的**字面量**版本。
+ *
+ * `String.replace(string, string)` 会解释替换串里的 `$&`、`$'`、`` $` ``、`$1`：压缩后的
+ * react / react-router 里就有 `.replace(Rt,"$&/")` 这类代码，`$&` 会被展开成刚匹配掉的
+ * 那段 `<script … src="…"></script>`，于是 script 提前闭合，快照里剩下的 JS 全部变成
+ * 页面正文——分享包预览显示成一堆乱码就是这么来的。replacer 函数没有这层解释。
+ */
+function replaceOnce(source: string, needle: string, replacement: string): string {
+	return source.replace(needle, () => replacement);
+}
+
+/**
  * Inline the vite build output (single chunk, see engine config) into one
  * self-contained snapshot.html so packaged previews render offline without a
  * server. Relative asset references (design assets/) are a documented v1
  * limitation of packaged previews.
  */
-async function buildSnapshotHtml(ctx: PluginContext, outDir: string): Promise<string> {
+export async function buildSnapshotHtml(ctx: PluginContext, outDir: string): Promise<string> {
 	let html = (await ctx.fs.readFile(`${outDir}/index.html`)).content;
 	const scriptMatch = html.match(/<script[^>]*type="module"[^>]*src="([^"]+)"[^>]*><\/script>/);
 	if (scriptMatch) {
 		const src = scriptMatch[1].replace(/^\//, "");
 		const js = (await ctx.fs.readFile(`${outDir}/${src}`)).content.replaceAll("</script>", "<\\/script>");
-		html = html.replace(scriptMatch[0], `<script type="module">${js}</script>`);
+		html = replaceOnce(html, scriptMatch[0], `<script type="module">${js}</script>`);
 	}
 	const linkPattern = /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g;
 	const links = [...html.matchAll(linkPattern)];
 	for (const link of links) {
 		const href = link[1].replace(/^\//, "");
 		const css = (await ctx.fs.readFile(`${outDir}/${href}`)).content;
-		html = html.replace(link[0], `<style>${css}</style>`);
+		html = replaceOnce(html, link[0], `<style>${css}</style>`);
 	}
 	return html;
 }

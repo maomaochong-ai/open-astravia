@@ -2,6 +2,7 @@ import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { strFromU8, unzipSync } from "fflate";
 import { manifestPathOf } from "../vetd/manifest-types";
 import { sanitizeDesignName } from "../vetd/scaffold";
+import { repairPackagedSnapshot } from "./snapshot-repair";
 
 export interface PackagedVetd {
 	manifestJson: string;
@@ -22,7 +23,8 @@ export function parsePackagedVetd(bytes: Uint8Array): PackagedVetd {
 	}
 	return {
 		manifestJson: strFromU8(manifest),
-		snapshotHtml: entries["snapshot.html"] ? strFromU8(entries["snapshot.html"]) : null,
+		// 0.3.1 之前导出的快照可能被 `$&` 展开写坏，读回来时先还原（见 snapshot-repair）。
+		snapshotHtml: entries["snapshot.html"] ? repairPackagedSnapshot(strFromU8(entries["snapshot.html"])) : null,
 		designFiles,
 	};
 }
