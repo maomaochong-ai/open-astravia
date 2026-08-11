@@ -4,9 +4,9 @@ import {
 	assignContentReferenceSlots,
 	isContentReferenceSlotCompatibleWithMode,
 	isContentReferenceSlotDeclared,
-	isRoleScopedContentGenerationMode,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
+	shouldResolveStrictContentGenerationMode,
 	slotIdForReferenceKind,
 } from "../generation/model-inputs";
 import { resolveContentAspectRatio } from "../generation/aspect-ratio";
@@ -173,6 +173,10 @@ export function ContentGeneratorComposer({
 			})
 		: undefined;
 	const minimumWidth = kind === "image-generator" ? 360 : 400;
+	const selectedInputMode = selectedModel?.modes.find(
+		(mode) => mode.id === (resolution.mode?.id ?? draft.modeId),
+	) ?? selectedModel?.modes[0];
+	const hasReferenceInputs = (selectedInputMode?.inputs.length ?? 0) > 0;
 
 	useEffect(() => setDraft(data), [data]);
 
@@ -222,70 +226,72 @@ export function ContentGeneratorComposer({
 				onDraftChange={setDraft}
 				onCommit={commit}
 			/>
-			<div className="my-2 rounded-xl border border-border/50 bg-muted/15 px-2 py-1.5">
-				<div className="mb-1 flex items-center gap-1.5 px-0.5 text-[10px] text-muted-foreground">
-					<span className="icon-[lucide--library] block size-3" aria-hidden="true" />
-					<span>{t("nodeEditor.reference.section")}</span>
+			{hasReferenceInputs ? (
+				<div className="my-2 rounded-xl border border-border/50 bg-muted/15 px-2 py-1.5">
+					<div className="mb-1 flex items-center gap-1.5 px-0.5 text-[10px] text-muted-foreground">
+						<span className="icon-[lucide--library] block size-3" aria-hidden="true" />
+						<span>{t("nodeEditor.reference.section")}</span>
+					</div>
+					{kind === "video-generator" ? (
+						<ContentVideoReferenceInput
+							modeId={resolution.mode?.id ?? draft.modeId}
+							model={selectedModel}
+							references={activeReferenceAssets}
+							connectedReferences={connectedReferenceOptions}
+							acceptedKinds={acceptedKinds}
+							disabled={isRunning}
+							onImport={async (files, slotId) => {
+								if (!selectedModel) return;
+								const next = { ...draft, providerId: selectedModel.providerId, modelId: selectedModel.modelId };
+								setDraft(next);
+								await onUpdate(next);
+								await onImportReferences(files, slotId);
+							}}
+							onRemove={(bindingId) => {
+								commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
+							}}
+							onSelectConnected={({ sourceNodeId, asset, slotId }) => {
+								if (!slotId) return;
+								commit({
+									...draft,
+									inputs: [
+										...(draft.inputs ?? []),
+										{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
+									],
+								});
+							}}
+						/>
+					) : (
+						<ContentReferenceInput
+							compact
+							references={activeReferenceAssets}
+							connectedReferences={connectedReferenceOptions}
+							acceptedKinds={acceptedKinds}
+							disabled={isRunning}
+							onImport={async (files) => {
+								if (!selectedModel) return;
+								const next = { ...draft, providerId: selectedModel.providerId, modelId: selectedModel.modelId };
+								setDraft(next);
+								await onUpdate(next);
+								await onImportReferences(files);
+							}}
+							onRemove={(bindingId) => {
+								commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
+							}}
+							onSelectConnected={({ sourceNodeId, asset, slotId }) => {
+								if (!slotId) return;
+								commit({
+									...draft,
+									inputs: [
+										...(draft.inputs ?? []),
+										{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
+									],
+								});
+							}}
+						/>
+					)}
 				</div>
-				{kind === "video-generator" ? (
-					<ContentVideoReferenceInput
-						modeId={resolution.mode?.id ?? draft.modeId}
-						model={selectedModel}
-						references={activeReferenceAssets}
-						connectedReferences={connectedReferenceOptions}
-						acceptedKinds={acceptedKinds}
-						disabled={isRunning}
-						onImport={async (files, slotId) => {
-							if (!selectedModel) return;
-							const next = { ...draft, providerId: selectedModel.providerId, modelId: selectedModel.modelId };
-							setDraft(next);
-							await onUpdate(next);
-							await onImportReferences(files, slotId);
-						}}
-						onRemove={(bindingId) => {
-							commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
-						}}
-						onSelectConnected={({ sourceNodeId, asset, slotId }) => {
-							if (!slotId) return;
-							commit({
-								...draft,
-								inputs: [
-									...(draft.inputs ?? []),
-									{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
-								],
-							});
-						}}
-					/>
-				) : (
-				<ContentReferenceInput
-					compact
-					references={activeReferenceAssets}
-					connectedReferences={connectedReferenceOptions}
-					acceptedKinds={acceptedKinds}
-					disabled={isRunning}
-					onImport={async (files) => {
-						if (!selectedModel) return;
-						const next = { ...draft, providerId: selectedModel.providerId, modelId: selectedModel.modelId };
-						setDraft(next);
-						await onUpdate(next);
-						await onImportReferences(files);
-					}}
-					onRemove={(bindingId) => {
-						commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
-					}}
-					onSelectConnected={({ sourceNodeId, asset, slotId }) => {
-						if (!slotId) return;
-						commit({
-							...draft,
-							inputs: [
-								...(draft.inputs ?? []),
-								{ id: crypto.randomUUID(), assetId: asset.id, slotId, sourceNodeId },
-							],
-						});
-					}}
-				/>
-				)}
-			</div>
+			) : null}
 			{compatibilityMessage ? (
 				<p className="mb-2 rounded-md bg-destructive/10 px-2.5 py-1.5 text-[11px] text-destructive">
 					{compatibilityMessage}
@@ -358,7 +364,12 @@ function assignGeneratorReferences(
 	unassignedKinds: readonly ContentReferenceKind[],
 	preferredModeId?: string,
 ) {
-	const preferredMode = isRoleScopedContentGenerationMode(preferredModeId)
+	const strictPreferredMode = shouldResolveStrictContentGenerationMode(
+		model,
+		preferredModeId,
+		references.map(({ binding, asset }) => ({ slotId: binding.slotId, kind: asset.kind })),
+	);
+	const preferredMode = strictPreferredMode
 		? model.modes.find((mode) => mode.id === preferredModeId)
 		: undefined;
 	const activeReferences = references.filter(({ binding, asset }) => {
@@ -382,6 +393,6 @@ function assignGeneratorReferences(
 		fixedReferences,
 		[...reassignedKinds, ...unassignedKinds],
 		preferredModeId,
-		Boolean(preferredMode),
+		strictPreferredMode && Boolean(preferredMode),
 	);
 }

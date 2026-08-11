@@ -25,9 +25,10 @@ import {
 	assignContentReferenceSlots,
 	isContentReferenceSlotCompatibleWithMode,
 	isContentReferenceSlotDeclared,
-	isRoleScopedContentGenerationMode,
+	isStrictContentGenerationMode,
 	listAcceptedReferenceKinds,
 	outputKindForNodeKind,
+	shouldResolveStrictContentGenerationMode,
 	slotIdForReferenceKind,
 	type ContentReferenceShape,
 } from "./model-inputs";
@@ -490,7 +491,15 @@ function assignReferenceCandidates(
 	candidates: readonly ReferenceCandidate[],
 	preferredModeId?: string,
 ) {
-	const strictPreferredMode = isRoleScopedContentGenerationMode(preferredModeId);
+	const strictPreferredMode = shouldResolveStrictContentGenerationMode(
+		model,
+		preferredModeId,
+		candidates.flatMap((candidate) =>
+			candidate.origin === "binding" && candidate.slotId
+				? [{ slotId: candidate.slotId, kind: candidate.asset.kind }]
+				: [],
+		),
+	);
 	const preferredMode = strictPreferredMode ? model.modes.find((mode) => mode.id === preferredModeId) : undefined;
 	const normalizedCandidates = candidates.flatMap((candidate) => {
 		if (
@@ -507,7 +516,7 @@ function assignReferenceCandidates(
 		}
 		return [{ ...candidate, slotId: undefined }];
 	});
-	const assignment = assignCandidates(model, normalizedCandidates, preferredModeId);
+	const assignment = assignCandidates(model, normalizedCandidates, preferredModeId, strictPreferredMode);
 	const result = {
 		candidates: normalizedCandidates,
 		assignment,
@@ -523,7 +532,7 @@ function assignReferenceCandidates(
 		(candidate) => candidate.origin !== "edge" || !explicitKinds.has(candidate.asset.kind),
 	);
 	if (prioritizedCandidates.length === normalizedCandidates.length) return result;
-	const prioritizedAssignment = assignCandidates(model, prioritizedCandidates, preferredModeId);
+	const prioritizedAssignment = assignCandidates(model, prioritizedCandidates, preferredModeId, strictPreferredMode);
 	return prioritizedAssignment.mode
 		? { candidates: prioritizedCandidates, assignment: prioritizedAssignment }
 		: result;
@@ -533,6 +542,7 @@ function assignCandidates(
 	model: ContentModelDescriptor,
 	candidates: readonly ReferenceCandidate[],
 	preferredModeId?: string,
+	strictPreferredMode = isStrictContentGenerationMode(preferredModeId),
 ) {
 	const fixedReferences = referenceShapes(candidates.filter((candidate) => candidate.slotId));
 	const unassignedKinds = candidates.filter((candidate) => !candidate.slotId).map(({ asset }) => asset.kind);
@@ -541,7 +551,7 @@ function assignCandidates(
 		fixedReferences,
 		unassignedKinds,
 		preferredModeId,
-		isRoleScopedContentGenerationMode(preferredModeId) && model.modes.some((mode) => mode.id === preferredModeId),
+		strictPreferredMode && model.modes.some((mode) => mode.id === preferredModeId),
 	);
 }
 

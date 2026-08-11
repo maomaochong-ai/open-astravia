@@ -169,6 +169,7 @@
 	"nodeEditor.modelUnavailable": "No available model is configured",
 	"nodeEditor.videoSettings.open": "Open video generation settings",
 	"nodeEditor.videoSettings.generateMethod": "Generate method",
+	"nodeEditor.videoSettings.method.text": "Text",
 	"nodeEditor.videoSettings.method.frames": "Frames",
 	"nodeEditor.videoSettings.method.omni": "Omni Reference",
 	"nodeEditor.videoSettings.method.unavailable": "Video generation",

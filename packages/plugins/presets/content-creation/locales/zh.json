@@ -169,6 +169,7 @@
 	"nodeEditor.modelUnavailable": "尚未配置可用模型",
 	"nodeEditor.videoSettings.open": "打开视频生成设置",
 	"nodeEditor.videoSettings.generateMethod": "生成方式",
+	"nodeEditor.videoSettings.method.text": "文本生成",
 	"nodeEditor.videoSettings.method.frames": "首尾帧",
 	"nodeEditor.videoSettings.method.omni": "全能参考",
 	"nodeEditor.videoSettings.method.unavailable": "视频生成",

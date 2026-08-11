@@ -13,6 +13,14 @@ const outputNodes = new Map<string, string>();
 
 type VideoProviderInput = PluginMediaProviderInput & { kind: Exclude<PluginMediaKind, "document"> };
 
+const TEXT_MODE: PluginMediaGenerationModeCapability = {
+	mode: "text-to-video",
+	inputs: [],
+	maxTotalItems: 0,
+	aspectRatioPolicy: "configurable",
+	audioGeneration: "always",
+};
+
 const FRAME_MODE: PluginMediaGenerationModeCapability = {
 	mode: "image-to-video",
 	inputs: [
@@ -92,8 +100,7 @@ function isVideoProviderInput(input: PluginMediaProviderInput): input is VideoPr
 
 export function createComfyUiProvider(ctx: PluginContext): PluginMediaProviderRegistration {
 	const client = new ComfyUiClient(ctx);
-	const referenceEnabled = Boolean(ctx.settings.get<string>("referenceTemplatePromptId")?.trim());
-	const modeCapabilities = referenceEnabled ? [FRAME_MODE, REFERENCE_MODE] : [FRAME_MODE];
+	const modeCapabilities = [TEXT_MODE, FRAME_MODE, REFERENCE_MODE];
 	return {
 		id: "minimax-h3",
 		displayName: ctx.i18n.t("provider.name"),

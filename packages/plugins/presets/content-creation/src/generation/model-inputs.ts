@@ -30,8 +30,25 @@ export function isImageGenerationMode(modeId: string): boolean {
 	return modeId === "text-to-image" || modeId === "image-to-image";
 }
 
-export function isRoleScopedContentGenerationMode(modeId: string | undefined): boolean {
+function isRoleScopedContentGenerationMode(modeId: string | undefined): boolean {
 	return modeId === "image-to-video" || modeId === "video-to-video" || modeId === "reference-to-video";
+}
+
+export function isStrictContentGenerationMode(modeId: string | undefined): boolean {
+	return modeId === "text-to-video" || isRoleScopedContentGenerationMode(modeId);
+}
+
+export function shouldResolveStrictContentGenerationMode(
+	model: ContentModelDescriptor,
+	modeId: string | undefined,
+	references: readonly ContentReferenceShape[],
+): boolean {
+	if (!isStrictContentGenerationMode(modeId)) return false;
+	return references.every(
+		(reference) =>
+			isContentReferenceSlotCompatibleWithMode(model, modeId, reference) ||
+			isContentReferenceSlotDeclared(model, reference.slotId),
+	);
 }
 
 export function isContentReferenceSlotCompatible(

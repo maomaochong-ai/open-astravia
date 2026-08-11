@@ -79,19 +79,22 @@ function loaderClass(kind: UploadedMediaInput["kind"]): string {
 	return "LoadAudio";
 }
 
+function loaderInputs(kind: UploadedMediaInput["kind"], path: string): Record<string, unknown> {
+	if (kind === "image") return { image: path };
+	if (kind === "video") return { file: path };
+	return { audio: path };
+}
+
 function cloneOrCreateLoader(
 	prompt: ComfyPrompt,
 	kind: UploadedMediaInput["kind"],
 	path: string,
 	prototype?: ComfyPromptNode,
 ): [string, ComfyPromptNode] {
-	if (!prototype && kind !== "image") {
-		throw new Error(`ComfyUI reference template needs a connected ${kind} loader before Vetta can add ${kind} references`);
-	}
 	const id = nextNodeId(prompt, `${kind}_input`);
 	const node = prototype
 		? structuredClone(prototype)
-		: { class_type: loaderClass(kind), inputs: { image: path } };
+		: { class_type: loaderClass(kind), inputs: loaderInputs(kind, path) };
 	setLoaderPath(node, path, kind);
 	prompt[id] = node;
 	return [id, node];

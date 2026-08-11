@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
 	assignContentReferenceSlots,
+	isStrictContentGenerationMode,
 	listAcceptedReferenceKinds,
 	resolveContentGenerationMode,
+	shouldResolveStrictContentGenerationMode,
 } from "../src/generation/model-inputs";
 import { REPLICATE_IMAGE_MODELS, REPLICATE_VIDEO_MODELS } from "../src/generation/model-catalog";
 import type { ContentModelDescriptor } from "../src/generation/types";
@@ -94,5 +96,24 @@ describe("content model input compatibility", () => {
 			assignedSlotIds: ["referenceVideos", "referenceAudios"],
 		});
 		expect(resolveContentGenerationMode(model, [], "image-to-video", true).reason).toBe("missing-required-input");
+	});
+
+	it("keeps text-to-video strict so retained frame inputs do not change the selected method", () => {
+		const model = REPLICATE_VIDEO_MODELS.find((candidate) => candidate.modelId === "kwaivgi/kling-v3-video");
+		expect(model).toBeDefined();
+		if (!model) return;
+
+		expect(isStrictContentGenerationMode("text-to-video")).toBe(true);
+		expect(isStrictContentGenerationMode("text-to-image")).toBe(false);
+		expect(
+			shouldResolveStrictContentGenerationMode(model, "text-to-video", [
+				{ slotId: "referenceImages", kind: "image" },
+			]),
+		).toBe(true);
+		expect(
+			shouldResolveStrictContentGenerationMode(model, "text-to-video", [
+				{ slotId: "legacyReference", kind: "image" },
+			]),
+		).toBe(false);
 	});
 });

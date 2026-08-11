@@ -269,6 +269,48 @@ describe("ContentGenerationControls option mounting", () => {
 		});
 	});
 
+	it("switches explicitly between text, frame, and omni video generation", () => {
+		const onChange = vi.fn();
+		const model: ContentModelDescriptor = {
+			...videoModel,
+			modes: [
+				{ id: "text-to-video", inputs: [], aspectRatioPolicy: "configurable" },
+				...videoModel.modes,
+				{
+					id: "reference-to-video",
+					inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 8 }],
+				},
+			],
+		};
+		render(
+			<ContentGenerationControls
+				kind="video-generator"
+				draft={{ modeId: "image-to-video", duration: 5, resolution: "720p" }}
+				models={[model]}
+				selectedModel={model}
+				isRunning={false}
+				canGenerate
+				onChange={onChange}
+				onModelChange={vi.fn()}
+				onSubmit={vi.fn()}
+			/>,
+		);
+
+		fireEvent.click(screen.getByTestId("popover-toggle"));
+		fireEvent.click(screen.getByText("nodeEditor.videoSettings.method.text"));
+
+		expect(onChange).toHaveBeenCalledWith({
+			modeId: "text-to-video",
+			duration: 5,
+			resolution: "720p",
+		});
+		expect(screen.getByText("nodeEditor.videoSettings.method.frames").closest("button")).not.toHaveProperty(
+			"disabled",
+			true,
+		);
+		expect(screen.getByText("nodeEditor.videoSettings.method.omni").closest("button")).not.toHaveProperty("disabled", true);
+	});
+
 	it("uses input-derived ratio and always-on audio for a declared frame capability", () => {
 		const model: ContentModelDescriptor = {
 			...videoModel,

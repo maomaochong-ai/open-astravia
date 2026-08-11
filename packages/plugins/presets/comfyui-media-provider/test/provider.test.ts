@@ -24,19 +24,18 @@ function response<T>(body: T): PluginNetworkResponse<T> {
 }
 
 describe("ComfyUI media provider", () => {
-	it("advertises omni-reference only when its dedicated workflow template is configured", () => {
+	it("advertises text, frame, and omni-reference generation without requiring pinned template ids", () => {
 		const context = {
 			network: { request: vi.fn() },
-			settings: {
-				get: (key: string) => (key === "referenceTemplatePromptId" ? "reference-job" : undefined),
-			},
+			settings: { get: () => undefined },
 			i18n: { t: () => "ComfyUI · MiniMax H3" },
 		} as unknown as PluginContext;
 		const provider = createComfyUiProvider(context);
 
 		expect(provider.capabilities[0]).toMatchObject({
-			modes: ["image-to-video", "reference-to-video"],
+			modes: ["text-to-video", "image-to-video", "reference-to-video"],
 			modeCapabilities: [
+				expect.objectContaining({ mode: "text-to-video", inputs: [], maxTotalItems: 0 }),
 				expect.objectContaining({ mode: "image-to-video", maxTotalItems: 2 }),
 				expect.objectContaining({
 					mode: "reference-to-video",
@@ -100,8 +99,14 @@ describe("ComfyUI media provider", () => {
 		const context: PluginMediaProviderHandlerContext = { invocationId: "invocation-1", uploadInput };
 		const provider = createComfyUiProvider(ctx);
 		expect(provider.capabilities[0]).toMatchObject({
-			modes: ["image-to-video"],
+			modes: ["text-to-video", "image-to-video", "reference-to-video"],
 			modeCapabilities: [
+				{
+					mode: "text-to-video",
+					aspectRatioPolicy: "configurable",
+					inputs: [],
+					maxTotalItems: 0,
+				},
 				{
 					mode: "image-to-video",
 					aspectRatioPolicy: "input-derived",
@@ -110,6 +115,14 @@ describe("ComfyUI media provider", () => {
 						{ role: "lastFrame", maxItems: 1 },
 					],
 				},
+				expect.objectContaining({
+					mode: "reference-to-video",
+					inputs: [
+						expect.objectContaining({ role: "referenceImages", maxItems: 9 }),
+						expect.objectContaining({ role: "referenceVideos", maxItems: 3 }),
+						expect.objectContaining({ role: "referenceAudios", maxItems: 3 }),
+					],
+				}),
 			],
 		});
 
@@ -157,5 +170,45 @@ describe("ComfyUI media provider", () => {
 				},
 			],
 		});
+	});
+
+	it("uses the frame template for text-to-video without uploading or connecting images", async () => {
+		let submittedPrompt: ComfyPrompt | undefined;
+		const networkRequest = vi.fn(async (request: PluginNetworkRequest): Promise<PluginNetworkResponse<unknown>> => {
+			if (request.url.endsWith("/history?max_items=20")) {
+				return response({ template: { prompt: [0, "template", template], status: { status_str: "success" } } });
+			}
+			if (request.url.endsWith("/prompt")) {
+				const body = request.body?.type === "json" ? request.body.value : undefined;
+				submittedPrompt = (body as { prompt?: ComfyPrompt } | undefined)?.prompt;
+				return response({ prompt_id: "text-job" });
+			}
+			throw new Error(`Unexpected request: ${request.url}`);
+		});
+		const ctx = {
+			network: { request: networkRequest as PluginNetworkApi["request"] },
+			settings: { get: (key: string) => (key === "baseUrl" ? "http://comfy.local:8188" : undefined) },
+			i18n: { t: () => "ComfyUI · MiniMax H3" },
+		} as unknown as PluginContext;
+		const uploadInput = vi.fn();
+		const provider = createComfyUiProvider(ctx);
+
+		await expect(provider.submit(
+			{
+				operation: "generate",
+				kind: "video",
+				mode: "text-to-video",
+				prompt: "a quiet city at dawn",
+				aspectRatio: "16:9",
+				durationSeconds: 5,
+				inputs: [],
+			},
+			{ invocationId: "invocation-text", uploadInput },
+		)).resolves.toEqual({ id: "text-job", status: "queued" });
+
+		expect(uploadInput).not.toHaveBeenCalled();
+		expect(submittedPrompt?.generate.inputs.prompt).toBe("a quiet city at dawn");
+		expect(submittedPrompt?.generate.inputs).not.toHaveProperty("first_frame");
+		expect(submittedPrompt?.generate.inputs).not.toHaveProperty("last_frame");
 	});
 });

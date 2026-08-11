@@ -31,6 +31,14 @@ const referenceTemplate: ComfyPrompt = {
 	save: { class_type: "SaveVideo", inputs: {} },
 };
 
+const referenceTemplateWithoutMediaLoaders: ComfyPrompt = {
+	generate: {
+		class_type: "MiniMaxH3ReferenceToVideo",
+		inputs: { prompt: "old" },
+	},
+	save: { class_type: "SaveVideo", inputs: {} },
+};
+
 describe("adaptMinimaxWorkflow", () => {
 	it("connects first and last frames to their distinct MiniMax H3 inputs", () => {
 		const result = adaptMinimaxWorkflow(
@@ -93,6 +101,38 @@ describe("adaptMinimaxWorkflow", () => {
 		expect(result.prompt.vetta_image_input_1.inputs.image).toBe("uploads/image-2.png");
 		expect(result.prompt.video.inputs.video).toBe("uploads/video-1.mp4");
 		expect(result.prompt.audio.inputs.audio).toBe("uploads/audio-1.wav");
+	});
+
+	it("creates standard video and audio loaders when the reference template has no prototypes", () => {
+		const result = adaptMinimaxWorkflow(
+			referenceTemplateWithoutMediaLoaders,
+			{
+				operation: "generate",
+				kind: "video",
+				mode: "reference-to-video",
+				prompt: "use <Video 1> and <Audio 1>",
+				inputs: [],
+			},
+			[
+				{ id: "video-1", role: "referenceVideos", kind: "video", path: "uploads/video-1.mp4" },
+				{ id: "audio-1", role: "referenceAudios", kind: "audio", path: "uploads/audio-1.wav" },
+			],
+			7,
+		);
+
+		expect(result.prompt.vetta_video_input_1).toEqual({
+			class_type: "LoadVideo",
+			inputs: { file: "uploads/video-1.mp4" },
+		});
+		expect(result.prompt.vetta_audio_input_1).toEqual({
+			class_type: "LoadAudio",
+			inputs: { audio: "uploads/audio-1.wav" },
+		});
+		expect(result.prompt.generate.inputs).toMatchObject({
+			"ref_videos.ref_video_0": ["vetta_video_input_1", 0],
+			"ref_video_audios.ref_video_audio_0": ["vetta_video_input_1", 1],
+			"ref_audios.ref_audio_0": ["vetta_audio_input_1", 0],
+		});
 	});
 
 	it("recognizes only templates compatible with the selected mode", () => {

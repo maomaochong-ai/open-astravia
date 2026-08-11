@@ -14,7 +14,7 @@
 - 完整审阅并融合 Generative-Media-Skills Library 的 57 个 Skill：新增品牌与发布、电商与空间、身份与试穿、UI 与分镜、产品视频、UGC 与表演、动作与教程、社媒与切片等按需场景手册，并补齐引用角色、时间码、工作流发现执行和场景质量闸门。
 - 视频生成 Prompt 补齐连续时间窗、连续单镜头、多镜头、分镜映射和 5-30 秒场景示例。
 - Activity panel tab icon now uses the plugin's own `icon.png` instead of a generic lucide glyph.
-- MiniMax H3 视频输入改为能力驱动的两种创作模式：首尾帧显示独立的首帧/尾帧槽并跟随输入比例，全能参考接受模型声明的图片、视频和音频数量；切换模式会保留非当前模式素材，但生成时只提交当前模式输入。
+- MiniMax H3 视频输入改为能力驱动的三种创作模式：文本生成无需参考素材，首尾帧显示独立的首帧/尾帧槽并跟随输入比例，全能参考接受模型声明的图片、视频和音频数量；切换模式会保留非当前模式素材，但生成时只提交当前模式输入。
 - Selected nodes are now named one by one on the input bar instead of collapsing into a single "N nodes" capsule, matching the host's new attachment strip.
 
 ### Fixed
