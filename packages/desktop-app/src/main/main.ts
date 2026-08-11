@@ -692,10 +692,19 @@ if (!gotSingleLock) {
 		appLifecycle.markReady();
 		if (!app.isPackaged) {
 			void startConfiguredPluginDevWatches(appRoot)
-				.then((projects) => {
-					if (projects.length > 0) {
+				.then(({ ready, failures }) => {
+					if (ready.length > 0) {
 						mainLog.info("plugin development sessions ready", {
-							plugins: projects.map((project) => project.id),
+							plugins: ready.map((project) => project.id),
+						});
+					}
+					if (failures.length > 0) {
+						mainLog.error("some configured plugin development sessions failed", {
+							failures: failures.map(({ project, error }) => ({
+								pluginId: project.id,
+								projectDir: project.projectDir,
+								error: error.message,
+							})),
 						});
 					}
 				})

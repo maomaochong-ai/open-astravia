@@ -62,6 +62,9 @@ Development automatically starts plugin dev servers for every preset selected by
 `VETTA_TENANT`, so preset source, manifest, locale, and agent resource changes reload without an
 App restart. Set `VETTA_PLUGIN_DEV` to a comma-separated list to limit development to specific
 plugins, or set it to an empty string to disable plugin dev servers and use staged archives only.
+Each project uses its own exported `@vetta-org/plugin-vite/cli`. The stable staged or installed
+plugin remains active until the development server completes its versioned ready handshake; an
+unexpected server exit rolls back that overlay before bounded restart attempts.
 
 ## Electron E2E (WebdriverIO)
 

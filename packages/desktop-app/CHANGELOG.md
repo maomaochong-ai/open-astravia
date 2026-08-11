@@ -77,7 +77,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 - **输入栏上下文构成改为分类汇总**：默认只展示基础指令、扩展能力、工具、对话和运行时上下文五类占用，点击后才展开原始区块；历史消息合并为一项并单列当前输入，避免长会话和大量工具把弹层铺成冗长明细。部分区块无法估算时保留已知 Token 合计，并明确标出未知项数量。
 - **活动面板视频预览被裁切**：内置 `media-viewer` 的视频预览原先用 `object-cover` 铺满容器会裁掉画面；改为 `object-contain`，按面板尺寸等比缩放完整显示（黑底 letterbox）。
 
-- **插件工作台热更新失败不再静默**：应用插件后会等待开发服务器 ready；CLI 缺失、版本不兼容、启动退出或超时会回传到工作台，而不是显示应用成功但源码修改无效。CLI 改按项目模块图解析，兼容 workspace 链接与标准用户工程安装。
+- **插件工作台热更新失败不再静默**：应用插件后会等待开发服务器 ready；CLI 缺失、版本不兼容、启动退出或超时会回传到工作台，而不是显示应用成功但源码修改无效。CLI 通过项目内 `@vetta-org/plugin-vite/cli` 公共子路径解析，兼容 ESM exports、workspace 链接与标准用户工程安装。开发工程只在版本化 ready 握手成功后原子覆盖 staging/installed 快照；启动失败保留稳定插件，运行中进程退出则回退并按 250ms/1s/3s 有限重启。批量 preset 会话限制为四路冷启动并逐插件汇总结果，单个插件失败不再把整批记为失败。
 
 - **插件官方身份校验补强**：命令执行与长驻进程接口不再接受 renderer 传入的插件 ID，改由主进程从活动 capability session 解析真实调用者；插件 dev watch 也必须携带 official session。插件 SDK 与现有插件调用方式不变。
 - **能力页首开列表转圈过久**：原先 `loading` 要等本地安装态、服务端 `/abilities/market`、开源市场三条 `allSettled` 全结束后才关，外加 `mcp.config === null` 再挡一道，网络 RTT 会直接变成整表转圈。现改为本地 IPC 就绪即出列表（内置/已装先可见），市场在后台合并；MCP 配置缺省按空表组装；开源市场同会话 `list()` 复用进程内快照，避免反复全量校验包。

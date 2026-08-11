@@ -6,6 +6,7 @@ All notable changes to `@vetta-org/plugin-vite` are documented in this file.
 
 ### Fixed
 
+- Exposed the project-local `vetta-plugin` CLI through the stable `@vetta-org/plugin-vite/cli` subpath so ESM-only package exports can be resolved by Desktop without pretending the package has a CommonJS entry.
 - Stopped the resource watcher's initial scan from blocking the development server ready handshake after Vite was already serving the plugin entry.
 - Preserved valid React bindings when transitive CommonJS dependencies are bundled against the host-provided React singleton.
 - Kept validated Iconify mask rules available outside plugin CSS scopes so icons render inside portalled UI components.

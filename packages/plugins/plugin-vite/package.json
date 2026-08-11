@@ -12,6 +12,7 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js"
 		},
+		"./cli": "./dist/cli.js",
 		"./pack": {
 			"types": "./dist/pack.d.ts",
 			"import": "./dist/pack.js"

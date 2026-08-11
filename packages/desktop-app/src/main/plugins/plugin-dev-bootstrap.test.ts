@@ -2,9 +2,11 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./plugin-dev-watch.js", () => ({ startPluginDevWatch: vi.fn() }));
+const mocks = vi.hoisted(() => ({ startPluginDevWatch: vi.fn() }));
 
-import { resolveConfiguredPluginDevProjects } from "./plugin-dev-bootstrap.js";
+vi.mock("./plugin-dev-watch.js", () => ({ startPluginDevWatch: mocks.startPluginDevWatch }));
+
+import { resolveConfiguredPluginDevProjects, startConfiguredPluginDevWatches } from "./plugin-dev-bootstrap.js";
 
 const testRoot = join(process.cwd(), `.tmp-plugin-dev-bootstrap-${process.pid}`);
 
@@ -14,6 +16,7 @@ async function writeProject(directory: string, id: string): Promise<void> {
 }
 
 afterEach(async () => {
+	vi.clearAllMocks();
 	await rm(testRoot, { recursive: true, force: true });
 });
 
@@ -63,5 +66,27 @@ describe("plugin development bootstrap", () => {
 				pluginRoots: [firstDir, secondDir],
 			}),
 		).rejects.toThrow("Duplicate plugin development id: duplicate");
+	});
+
+	it("starts independent projects in bounded batches and reports failures without hiding successes", async () => {
+		const desktopAppDir = join(testRoot, "packages", "desktop-app");
+		const presetRoot = join(testRoot, "packages", "plugins", "presets");
+		await Promise.all([
+			mkdir(desktopAppDir, { recursive: true }),
+			...["alpha", "beta", "gamma", "delta", "epsilon"].map((id) => writeProject(join(presetRoot, id), id)),
+		]);
+		mocks.startPluginDevWatch.mockImplementation((id: string) => {
+			if (id === "beta") return Promise.reject(new Error("beta unavailable"));
+			return Promise.resolve({ id });
+		});
+
+		const result = await startConfiguredPluginDevWatches(desktopAppDir, {
+			VETTA_PLUGIN_DEV: "alpha,beta,gamma,delta,epsilon",
+		});
+
+		expect(result.ready.map((project) => project.id)).toEqual(["alpha", "gamma", "delta", "epsilon"]);
+		expect(result.failures).toHaveLength(1);
+		expect(result.failures[0]).toMatchObject({ project: { id: "beta" }, error: { message: "beta unavailable" } });
+		expect(mocks.startPluginDevWatch).toHaveBeenCalledTimes(5);
 	});
 });

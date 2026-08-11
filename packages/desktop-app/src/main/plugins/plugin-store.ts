@@ -550,6 +550,7 @@ interface PluginDevLink {
 	manifest: PluginManifest;
 	locales: PluginLocales;
 	reloadToken: string;
+	ephemeral: boolean;
 	entryUrl?: string;
 	origin?: string;
 	status: PluginDevWatchState["status"];
@@ -582,6 +583,22 @@ function toDevPluginUrl(pluginId: string, relativePath: string, token: string): 
 function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 	const link = devLinks.get(plugin.id);
 	if (!link) return plugin;
+	const devWatch: PluginDevWatchState = {
+		projectDir: link.projectDir,
+		entryUrl: link.entryUrl,
+		origin: link.origin,
+		status: link.status,
+		error: link.error,
+	};
+	// Keep the installed/staged snapshot active until the candidate server has
+	// completed the versioned ready handshake.
+	if (!link.entryUrl || !link.origin) {
+		return {
+			...plugin,
+			enabled: link.ephemeral ? false : plugin.enabled,
+			devWatch,
+		};
+	}
 	const manifest = link.manifest;
 	const permissions = effectivePermissions(manifest.permissions ?? [], plugin.trustLevel);
 	const declaredCommands = effectiveCommands(manifest.commands ?? [], plugin.trustLevel);
@@ -620,13 +637,8 @@ function applyDevOverlay(plugin: InstalledPlugin): InstalledPlugin {
 		grantedCommandNames,
 		settingsSchema: manifest.contributes?.settings,
 		rootPath: link.projectDir,
-		devWatch: {
-			projectDir: link.projectDir,
-			entryUrl: link.entryUrl,
-			origin: link.origin,
-			status: link.status,
-			error: link.error,
-		},
+		enabled: link.ephemeral ? true : plugin.enabled,
+		devWatch,
 	};
 }
 
@@ -708,6 +720,7 @@ export function setPluginDevLink(
 		manifest,
 		locales: loadPluginLocales(resolvedDir),
 		reloadToken: Date.now().toString(),
+		ephemeral: ephemeralDevPlugins.has(id),
 		status: "starting",
 	});
 	broadcastPluginsChanged({ pluginIds: [id], reload: false, reason: "dev-status" });
@@ -756,6 +769,19 @@ export function setPluginDevLinkServer(id: string, entryUrl: string, origin: str
 	if (!plugin) throw new Error(`Plugin not found: ${id}`);
 	broadcastPluginsChanged({ pluginIds: [id], reason: "dev-ready" });
 	return applyDevOverlay(plugin);
+}
+
+/** Drop an unavailable server overlay while retaining diagnostics and the stable fallback. */
+export function deactivatePluginDevLink(id: string, error: string): InstalledPlugin | undefined {
+	const link = devLinks.get(id);
+	if (!link) return undefined;
+	link.entryUrl = undefined;
+	link.origin = undefined;
+	link.status = "error";
+	link.error = error;
+	const plugin = getInstalledPluginForDevLink(id);
+	broadcastPluginsChanged({ pluginIds: [id], reason: "dev-update" });
+	return plugin ? applyDevOverlay(plugin) : undefined;
 }
 
 /** watcher/子进程状态回写（面板经 list() 感知）。链接不存在时静默忽略。 */
