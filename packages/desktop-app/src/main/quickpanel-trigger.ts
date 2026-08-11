@@ -1,14 +1,20 @@
-// 全局键盘手势共享监听器（uiohook 单例管理）。
+// 全局键盘手势共享监听器（uiohook 宿主子进程的消费者管理）。
 // Electron globalShortcut 无法监听裸功能键的双击/双键同按，这里用 uiohook-napi 做原生全局键盘监听。
-// uIOhook 是进程级单例，由两个消费者共用：
+// uIOhook 不在主进程运行：uiohook-napi ≤1.5.5 的 hook_enable() 存在启动竞态死锁，会把调用
+// 进程的主线程永久冻住（macOS 彩虹圈），故隔离到 utilityProcess（uiohook-host.ts），由
+// UiohookSupervisor 负责 spawn/看门狗/重试，键盘事件经 IPC 回传本模块的状态机。
+// 两个消费者共用同一宿主：
 //   - quickpanel：「干净双击」某个功能键唤出快捷面板；
 //   - appshot：左右同一功能键「双键同按持按 250ms」触发前台窗口捕获。
-// 活跃消费者集合管理启停：首个消费者出现时 start、集合清空时 stop（不申请权限/无开销）。
+// 活跃消费者集合管理启停：首个消费者出现时拉起宿主、集合清空时杀掉（不申请权限/无开销）。
 // macOS 首次启动监听会触发系统「输入监控」授权；未授权时收不到事件——设置页有提示。
 
-import { UiohookKey, uIOhook } from "uiohook-napi";
+import { fileURLToPath } from "node:url";
+import { utilityProcess } from "electron";
+import { UiohookKey } from "uiohook-napi";
 import type { AppshotGesture, QuickPanelTrigger } from "./config/desktop-config-store.js";
 import { getAppLogger } from "./logger.js";
+import { UiohookSupervisor } from "./uiohook-supervisor.js";
 
 const log = getAppLogger("quickpanel-trigger");
 
@@ -50,37 +56,30 @@ function appshotKeycodesFor(gesture: AppshotGesture): number[] {
 
 type UiohookConsumer = "quickpanel" | "appshot";
 
-let started = false;
-let listenersBound = false;
 const activeConsumers = new Set<UiohookConsumer>();
 
-function ensureListeners(): void {
-	if (listenersBound) return;
-	uIOhook.on("keydown", handleKeydown);
-	uIOhook.on("keyup", handleKeyup);
-	listenersBound = true;
+let supervisor: UiohookSupervisor | null = null;
+
+function getSupervisor(): UiohookSupervisor {
+	if (!supervisor) {
+		supervisor = new UiohookSupervisor({
+			forkChild: () =>
+				utilityProcess.fork(fileURLToPath(new URL("./uiohook-host.js", import.meta.url)), [], {
+					serviceName: "vetta-uiohook-host",
+				}),
+			onKeydown: handleKeydown,
+			onKeyup: handleKeyup,
+		});
+	}
+	return supervisor;
 }
 
-/** 依据活跃消费者集合启停底层监听：首个出现 start、集合空 stop。 */
+/** 依据活跃消费者集合启停宿主子进程：首个出现拉起、集合空杀掉。 */
 function syncHookLifecycle(): void {
-	const shouldRun = activeConsumers.size > 0;
-	if (shouldRun && !started) {
-		ensureListeners();
-		try {
-			uIOhook.start();
-			started = true;
-			log.info("uiohook started", { consumers: [...activeConsumers] });
-		} catch (err) {
-			log.error("failed to start uiohook (检查 macOS 输入监控权限)", err);
-		}
-	} else if (!shouldRun && started) {
-		try {
-			uIOhook.stop();
-		} catch (err) {
-			log.warn("failed to stop uiohook", err);
-		}
-		started = false;
-		log.info("uiohook stopped");
+	if (activeConsumers.size > 0) {
+		getSupervisor().ensureRunning();
+	} else {
+		supervisor?.stop();
 	}
 }
 
@@ -203,14 +202,14 @@ function handleAppshotKeyup(keycode: number): void {
 
 // ----- 事件分发 --------------------------------------------------------------
 
-function handleKeydown(e: { keycode: number }): void {
-	handleQuickPanelKeydown(e.keycode);
-	handleAppshotKeydown(e.keycode);
+function handleKeydown(keycode: number): void {
+	handleQuickPanelKeydown(keycode);
+	handleAppshotKeydown(keycode);
 }
 
-function handleKeyup(e: { keycode: number }): void {
-	handleQuickPanelKeyup(e.keycode);
-	handleAppshotKeyup(e.keycode);
+function handleKeyup(keycode: number): void {
+	handleQuickPanelKeyup(keycode);
+	handleAppshotKeyup(keycode);
 }
 
 // ----- 对外 API --------------------------------------------------------------
