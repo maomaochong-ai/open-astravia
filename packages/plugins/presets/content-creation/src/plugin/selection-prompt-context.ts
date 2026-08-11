@@ -7,6 +7,7 @@ import {
 import { AssetSchema, WorkflowNodeSchema } from "../project/document-schema";
 import { serializeContentProject } from "../project/persistence";
 import type { ContentProjectDocument } from "../project/types";
+import { CONTENT_CREATION_SCHEMA_VERSION } from "../project/types";
 
 export const CONTENT_SELECTION_PROMPT_ATTACHMENT_ID = "content-creation:node-selection";
 const CONTENT_SELECTION_CONTEXT_SCHEMA = "vetta.content-creation.node-selection";
@@ -31,7 +32,7 @@ export const ContentSelectionPromptPayloadSchema = StrictObject({
 	schemaVersion: Type.Literal(1),
 	project: StrictObject({
 		format: Type.Literal("vetta.content-workflow"),
-		schemaVersion: Type.Literal(5),
+		schemaVersion: Type.Literal(CONTENT_CREATION_SCHEMA_VERSION),
 		projectId: Type.String(),
 		revision: Type.Number(),
 		workflow: StrictObject({

@@ -58,6 +58,7 @@ import { reconcileSelectedNodeIds } from "./selection-state";
 import { SelectionToolbar } from "./SelectionToolbar";
 import { DEFAULT_CANVAS_TOOL, getCanvasInteraction } from "./canvas-tools";
 import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "../node/dropped-media";
+import { CanvasProjectMenu } from "./CanvasProjectMenu";
 
 const nodeTypes: NodeTypes = { contentNode: ContentNodeCard };
 const CREATE_MENU_SIZE = { width: 320, height: 420 };
@@ -75,6 +76,7 @@ interface GraphWorkspaceProps {
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSelectedNodeIdsChange: (nodeIds: readonly string[]) => void;
+	onOpenSettings: () => void;
 	registerShortcutScope?: PluginRegisterShortcutScope | null;
 }
 
@@ -87,6 +89,7 @@ export function GraphWorkspace({
 	onImportAssets,
 	onImportReferences,
 	onSelectedNodeIdsChange,
+	onOpenSettings,
 	registerShortcutScope = null,
 }: GraphWorkspaceProps) {
 	const { t } = useTranslation();
@@ -612,6 +615,21 @@ export function GraphWorkspace({
 		bindings: deleteShortcutBindings,
 	});
 
+	const fitContent = useCallback(() => {
+		void flowInstanceRef.current?.fitView({ duration: 240, padding: 0.16 });
+	}, []);
+	const resetZoom = useCallback(() => {
+		void flowInstanceRef.current?.zoomTo(1, { duration: 180 });
+	}, []);
+	const focusNodes = useCallback((nodeIds: readonly string[]) => {
+		const instance = flowInstanceRef.current;
+		if (!instance || nodeIds.length === 0) return;
+		const requestedNodeIds = new Set(nodeIds);
+		const nodes = instance.getNodes().filter((node) => requestedNodeIds.has(node.id));
+		if (nodes.length === 0) return;
+		void instance.fitView({ nodes, duration: 240, padding: 0.28 });
+	}, []);
+
 	return (
 		<div className="flex h-full min-w-0 flex-1 flex-col">
 			<div
@@ -671,6 +689,14 @@ export function GraphWorkspace({
 						<AlignmentGuidesLayer ref={alignmentGuidesLayerRef} />
 					</ReactFlow>
 				</ContentCanvasSelectionProvider>
+				<CanvasProjectMenu
+					project={project}
+					models={models}
+					onFitContent={fitContent}
+					onFocusNodes={focusNodes}
+					onResetZoom={resetZoom}
+					onOpenSettings={onOpenSettings}
+				/>
 				<GraphOverlayLayer
 					activeTool={canvasTool}
 					nodeCount={project.graph.nodes.length}

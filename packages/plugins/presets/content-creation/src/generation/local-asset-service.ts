@@ -124,6 +124,7 @@ export class ContentLocalAssetService {
 			expectedRevision: options.expectedRevision,
 			nodeName: options.nodeName,
 			nodePurpose: options.nodePurpose,
+			layoutOwnership: "automatic",
 		});
 	}
 

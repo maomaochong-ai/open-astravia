@@ -6,6 +6,9 @@ import { GraphWorkspace } from "../src/canvas/GraphWorkspace";
 const reactFlowCapture = vi.hoisted(() => ({
 	props: null as Record<string, unknown> | null,
 }));
+const projectMenuCapture = vi.hoisted(() => ({
+	props: null as Record<string, unknown> | null,
+}));
 
 vi.mock("@xyflow/react", () => ({
 	Controls: () => null,
@@ -37,9 +40,17 @@ vi.mock("../src/canvas/SelectionToolbar", () => ({
 	SelectionToolbar: () => null,
 }));
 
+vi.mock("../src/canvas/CanvasProjectMenu", () => ({
+	CanvasProjectMenu: (props: Record<string, unknown>) => {
+		projectMenuCapture.props = props;
+		return null;
+	},
+}));
+
 describe("GraphWorkspace mouse interactions", () => {
 	beforeEach(() => {
 		reactFlowCapture.props = null;
+		projectMenuCapture.props = null;
 	});
 
 	it("uses primary-button drag for canvas panning and Control-drag for box selection", () => {
@@ -53,6 +64,7 @@ describe("GraphWorkspace mouse interactions", () => {
 				onImportAssets={async () => undefined}
 				onImportReferences={async () => undefined}
 				onSelectedNodeIdsChange={() => undefined}
+				onOpenSettings={() => undefined}
 			/>,
 		);
 
@@ -103,6 +115,7 @@ describe("GraphWorkspace mouse interactions", () => {
 				onImportAssets={async () => undefined}
 				onImportReferences={async () => undefined}
 				onSelectedNodeIdsChange={() => undefined}
+				onOpenSettings={() => undefined}
 			/>,
 		);
 
@@ -129,5 +142,50 @@ describe("GraphWorkspace mouse interactions", () => {
 				}),
 			]),
 		);
+	});
+
+	it("routes project menu view actions through the current React Flow instance", () => {
+		const project = createContentProject("C:\\project");
+		project.graph.nodes = [
+			{ id: "first", kind: "prompt", position: { x: 0, y: 0 }, status: "idle", data: {} },
+			{ id: "second", kind: "image-generator", position: { x: 400, y: 0 }, status: "running", data: {} },
+		];
+		const onOpenSettings = vi.fn();
+		renderToStaticMarkup(
+			<GraphWorkspace
+				project={project}
+				assetPreviewUrls={new Map()}
+				models={[]}
+				onDispatch={async () => undefined}
+				onRunNode={async () => undefined}
+				onImportAssets={async () => undefined}
+				onImportReferences={async () => undefined}
+				onSelectedNodeIdsChange={() => undefined}
+				onOpenSettings={onOpenSettings}
+			/>,
+		);
+
+		const flowNodes = [{ id: "first" }, { id: "second" }];
+		const fitView = vi.fn().mockResolvedValue(true);
+		const zoomTo = vi.fn().mockResolvedValue(true);
+		(reactFlowCapture.props?.onInit as (instance: Record<string, unknown>) => void)({
+			setNodes: vi.fn(),
+			setEdges: vi.fn(),
+			getNodes: () => flowNodes,
+			fitView,
+			zoomTo,
+		});
+
+		(projectMenuCapture.props?.onFitContent as () => void)();
+		expect(fitView).toHaveBeenLastCalledWith({ duration: 240, padding: 0.16 });
+
+		(projectMenuCapture.props?.onFocusNodes as (nodeIds: readonly string[]) => void)(["second"]);
+		expect(fitView).toHaveBeenLastCalledWith({ nodes: [flowNodes[1]], duration: 240, padding: 0.28 });
+
+		(projectMenuCapture.props?.onResetZoom as () => void)();
+		expect(zoomTo).toHaveBeenCalledWith(1, { duration: 180 });
+
+		(projectMenuCapture.props?.onOpenSettings as () => void)();
+		expect(onOpenSettings).toHaveBeenCalledOnce();
 	});
 });

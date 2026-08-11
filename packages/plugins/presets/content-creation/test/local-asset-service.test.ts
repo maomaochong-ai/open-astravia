@@ -56,6 +56,7 @@ describe("ContentLocalAssetService", () => {
 				id: result.assetNodeId,
 				kind: "asset",
 				name: "Product hero",
+				layoutOwnership: "automatic",
 				data: { assetIds: [result.assets[0]?.id] },
 			}),
 		]);

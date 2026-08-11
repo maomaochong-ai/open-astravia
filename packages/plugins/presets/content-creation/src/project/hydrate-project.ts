@@ -69,6 +69,7 @@ function hydrateNode(
 		...(view.width === undefined ? {} : { width: view.width }),
 		...(view.height === undefined ? {} : { height: view.height }),
 		...(view.locked === undefined ? {} : { locked: view.locked }),
+		layoutOwnership: view.layoutOwnership,
 		status: status ?? ("idle" as const),
 	};
 	if (node.type === "prompt") {

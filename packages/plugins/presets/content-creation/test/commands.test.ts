@@ -212,6 +212,35 @@ describe("applyContentProjectCommands", () => {
 		expect(moved.graph.nodes[0]).toMatchObject({ locked: false, position: { x: 40, y: 50 } });
 	});
 
+	it("distinguishes user geometry changes from automatic layout placements", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: {
+					id: "node",
+					kind: "prompt",
+					position: { x: 0, y: 0 },
+					layoutOwnership: "automatic",
+				},
+			},
+		]);
+		const automaticallyPlaced = applyContentProjectCommands(project, [
+			{ type: "node.layout", nodeId: "node", position: { x: 200, y: 100 } },
+		]);
+		const manuallyMoved = applyContentProjectCommands(automaticallyPlaced, [
+			{ type: "node.move", nodeId: "node", position: { x: 240, y: 140 } },
+		]);
+
+		expect(automaticallyPlaced.graph.nodes[0]).toMatchObject({
+			position: { x: 200, y: 100 },
+			layoutOwnership: "automatic",
+		});
+		expect(manuallyMoved.graph.nodes[0]).toMatchObject({
+			position: { x: 240, y: 140 },
+			layoutOwnership: "user",
+		});
+	});
+
 	it("removes dependent edges and timeline clips with a node", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "source", kind: "video-generator", position: { x: 0, y: 0 } } },

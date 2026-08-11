@@ -1,7 +1,14 @@
 import { getContentNodeSize } from "../node/geometry";
 import { listContentNodeAssetIds } from "../node/material-assets";
 import type { ContentProjectCommand } from "../project/commands";
-import type { AssetKind, CanvasPosition, ContentAsset, ContentNode, ContentProjectDocument } from "../project/types";
+import type {
+	AssetKind,
+	CanvasPosition,
+	ContentAsset,
+	ContentNode,
+	ContentNodeLayoutOwnership,
+	ContentProjectDocument,
+} from "../project/types";
 import { ContentProjectRevisionError, type ContentCreationWorkspace } from "../project/workspace";
 import type { ContentArtifactStore, ImportedContentAsset } from "./types";
 
@@ -10,6 +17,7 @@ export interface ContentAssetImportOptions {
 	expectedRevision?: number;
 	nodeName?: string;
 	nodePurpose?: string;
+	layoutOwnership?: ContentNodeLayoutOwnership;
 }
 
 export interface ContentAssetImportResult {
@@ -74,6 +82,7 @@ export class ContentAssetImportService {
 							purpose: options.nodePurpose?.trim() || "Imported source media",
 							position: nextNodePosition(project.graph.nodes),
 							data: { assetIds },
+							layoutOwnership: options.layoutOwnership,
 						},
 					},
 		];

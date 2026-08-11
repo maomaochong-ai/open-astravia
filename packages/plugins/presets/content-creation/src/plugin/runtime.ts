@@ -70,6 +70,10 @@ export class ContentCreationPluginRuntime {
 		this.ctx.ui.setActivityPanelWidth("max");
 	}
 
+	openPluginSettings = (): void => {
+		this.ctx.ui.openPluginSettings();
+	};
+
 	publishPromptAttachment(attachment: PluginPromptAttachment | null): void {
 		this.ctx.ui.setPromptAttachment(attachment);
 	}

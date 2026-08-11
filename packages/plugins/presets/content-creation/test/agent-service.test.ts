@@ -114,6 +114,10 @@ describe("ContentCreationAgentService", () => {
 			expect.objectContaining({ source: "prompt", target: "image", sourceHandle: "text", targetHandle: "prompt" }),
 			expect.objectContaining({ source: "image", target: "output", sourceHandle: "image", targetHandle: "content" }),
 		]);
+		expect(project.revision).toBe(1);
+		expect(project.graph.nodes.every((node) => node.layoutOwnership === "automatic")).toBe(true);
+		expect(project.graph.nodes[1]!.position.x).toBeGreaterThan(project.graph.nodes[0]!.position.x);
+		expect(project.graph.nodes[2]!.position.x).toBeGreaterThan(project.graph.nodes[1]!.position.x);
 	});
 
 	it("runs selected generation nodes in dependency order after explicit confirmation", async () => {

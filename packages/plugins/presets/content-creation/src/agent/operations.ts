@@ -63,8 +63,6 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			},
 			id: { type: "string" },
 			kind: { type: "string", enum: NODE_KINDS },
-			x: { type: "number" },
-			y: { type: "number" },
 			afterNodeId: {
 				type: "string",
 				description: "Place a new node after this node. Prefer this or automatic placement over canvas coordinates.",
@@ -203,6 +201,7 @@ function parseOperation(
 				purpose: optionalString(operation, "purpose"),
 				position,
 				...size,
+				layoutOwnership: "automatic",
 				status: "idle",
 				data,
 			});
@@ -215,6 +214,7 @@ function parseOperation(
 					purpose: optionalString(operation, "purpose"),
 					position,
 					data,
+					layoutOwnership: "automatic",
 				},
 			};
 		}
@@ -253,6 +253,7 @@ function parseOperation(
 				type: "node.duplicate",
 				nodeId,
 				id,
+				layoutOwnership: "automatic",
 			};
 		}
 		case "connect_nodes": {
@@ -567,12 +568,6 @@ function copyOptionalString(
 }
 
 function resolveNodePosition(record: Record<string, unknown>, frames: readonly PlacementFrame[]) {
-	const x = record.x;
-	const y = record.y;
-	if (x !== undefined || y !== undefined) {
-		if (x === undefined || y === undefined) throw new Error("x and y must be provided together");
-		return { x: requiredNumber(record, "x"), y: requiredNumber(record, "y") };
-	}
 	const afterNodeId = optionalString(record, "afterNodeId");
 	const after = afterNodeId ? frames.find((frame) => frame.id === afterNodeId) : undefined;
 	if (afterNodeId && !after) throw new Error(`placement node not found: ${afterNodeId}`);
