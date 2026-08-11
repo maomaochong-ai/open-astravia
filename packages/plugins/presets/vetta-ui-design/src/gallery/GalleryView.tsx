@@ -5,6 +5,7 @@ import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "../export/share-forma
 import { getPluginCtx, notify } from "../plugin-context";
 import { CardContextMenu, type CardMenuAnchor } from "./CardContextMenu";
 import { CreateDesignDialog } from "./CreateDesignDialog";
+import { DesignSystemStrip } from "./DesignSystemStrip";
 import { GalleryCard } from "./GalleryCard";
 import {
 	archiveProject,
@@ -15,9 +16,11 @@ import {
 	isSharePackageName,
 	revealProject,
 } from "./gallery-actions";
+import type { DesignSystem } from "../design-systems/types";
 import { filterGalleryProjects, type GalleryDesign } from "./gallery-model";
 import { type GalleryCard as GalleryCardData, getCachedSnapshot, loadGallery } from "./gallery-store";
 import { openProjectFromGallery, startDesignProject } from "./open-project";
+import { startDesignFromSystem } from "./start-from-system";
 
 /**
  * 设计画廊：所有「带设计稿的项目」的注册中心。
@@ -26,7 +29,7 @@ import { openProjectFromGallery, startDesignProject } from "./open-project";
  * 免得每次进来都白屏一下。自己建/导/归档后走局部更新，不重扫。
  */
 export function GalleryView() {
-	const { t } = useTranslation();
+	const { t, locale } = useTranslation();
 	const [snapshot, setSnapshot] = useState(() => getCachedSnapshot());
 	const [loading, setLoading] = useState(!getCachedSnapshot());
 	const [keyword, setKeyword] = useState("");
@@ -80,6 +83,21 @@ export function GalleryView() {
 			}
 		},
 		[t],
+	);
+
+	/** 从风格库开一份新设计：铺好 .vetd、应用体系，再进新会话敲第一句需求。 */
+	const onPickSystem = useCallback(
+		async (system: DesignSystem) => {
+			setBusy(true);
+			try {
+				await startDesignFromSystem(system, locale);
+			} catch (error) {
+				notify({ message: t("gallery.styles.failed"), error });
+			} finally {
+				setBusy(false);
+			}
+		},
+		[t, locale],
 	);
 
 	const importBytes = useCallback(
@@ -220,11 +238,15 @@ export function GalleryView() {
 
 			<div className="flex-1 overflow-y-auto px-4 py-4">
 				{empty ? (
-					<div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-						<p className="text-sm text-foreground">{t("gallery.empty.title")}</p>
-						<p className="max-w-96 text-xs leading-relaxed text-muted-foreground">
-							{t("gallery.empty.description", { ext: SHARE_EXTENSION })}
-						</p>
+					// 空态：风格库是首屏主角。点一套风格就能开工，比对着空白画布想第一句话快。
+					<div className="flex h-full min-h-0 flex-col gap-4">
+						<div className="flex flex-col items-center gap-1 text-center">
+							<p className="text-sm text-foreground">{t("gallery.empty.title")}</p>
+							<p className="max-w-96 text-xs leading-relaxed text-muted-foreground">
+								{t("gallery.empty.description", { ext: SHARE_EXTENSION })}
+							</p>
+						</div>
+						<DesignSystemStrip variant="hero" busy={busy} onPick={(system) => void onPickSystem(system)} />
 					</div>
 				) : (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
@@ -252,6 +274,9 @@ export function GalleryView() {
 					<p className="mt-8 text-center text-xs text-muted-foreground">{t("gallery.search.noMatch")}</p>
 				) : null}
 			</div>
+
+			{/* 已经有设计时风格库退成底部一条，不跟用户自己的作品抢位置。 */}
+			{empty ? null : <DesignSystemStrip variant="strip" busy={busy} onPick={(system) => void onPickSystem(system)} />}
 
 			{menu ? (
 				<CardContextMenu
