@@ -90,6 +90,7 @@ import {
 	registerPluginMediaProviderHandler,
 	registerPluginSystemPromptHandler,
 } from "./plugin-host-bridge";
+import { activateInputActionIds } from "./plugin-input-action-state";
 import { createPluginOfficialApi } from "./plugin-official-api";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 import { createPluginRuntimeShared } from "./plugin-shared-modules";
@@ -1380,11 +1381,7 @@ function createContext(
 			.filter((action) => action.pluginId === plugin.id)
 			.map((action) => action.actionId);
 		if (myActionIds.length > 0) {
-			store.set(activeInputActionIdsAtom, (prev) => {
-				const next = new Set(prev);
-				for (const id of myActionIds) next.add(id);
-				return next;
-			});
+			store.set(activeInputActionIdsAtom, (prev) => activateInputActionIds(prev, myActionIds));
 			persistCurrentInputActionState(store.get(activeSessionAtom)?.sessionPath);
 		}
 	};
