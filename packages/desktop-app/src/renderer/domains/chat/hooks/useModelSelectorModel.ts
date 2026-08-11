@@ -7,10 +7,11 @@ import {
 	SELECTED_MODEL_STORAGE_KEY,
 	selectedModelAtom,
 } from "@shared/store/atoms";
+import type { ModelSelectorViewProps } from "@vetta/theme-ui/chat";
+import { fmtMultiplier } from "@vetta/theme-ui/shared";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { ModelSelectorViewProps } from "../components/model-selector/types";
 
 export interface ModelSelectorModel {
 	empty: boolean;
@@ -124,6 +125,21 @@ export function useModelSelectorModel(): ModelSelectorModel {
 		[setSelectedModel, activeSession],
 	);
 
+	/**
+	 * 计费倍率标的文案。视图只负责渲染，倍率口径与「免费」措辞留在宿主——
+	 * 插件复用同一个视图时不会连带继承宿主的计费文案。
+	 */
+	const multiplierLabelFor = useCallback(
+		(option: { key: string }): string | undefined => {
+			const multiplier = options.find((candidate) => candidate.key === option.key)?.multiplier;
+			if (!multiplier) return undefined;
+			return multiplier.input === 0 && multiplier.output === 0
+				? t("modelSelect.free")
+				: t("modelSelect.multiplier", { value: fmtMultiplier(multiplier.input) });
+		},
+		[options, t],
+	);
+
 	const handleReasoningSelect = useCallback(
 		(value: string) => {
 			if (!selectedModel) return;
@@ -146,6 +162,7 @@ export function useModelSelectorModel(): ModelSelectorModel {
 			})),
 			labels: {
 				clearSearch: t("modelSelect.clearSearch"),
+				multiplierLabel: multiplierLabelFor,
 				cloudOnly: t("modelSelect.cloudOnly"),
 				defaultBadge: t("modelSelect.defaultBadge"),
 				levelLabel,

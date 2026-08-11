@@ -172,6 +172,13 @@ export type {
 } from "./MessageSelectionContextMenuView";
 export { MessageSelectionContextMenuView } from "./MessageSelectionContextMenuView";
 export type {
+	ModelSelectorLabels,
+	ModelSelectorOptionView,
+	ModelSelectorProviderGroup,
+	ModelSelectorViewProps,
+} from "./ModelSelectorView";
+export { ModelSelectorView } from "./ModelSelectorView";
+export type {
 	NewSessionGuidingWordsGroup,
 	NewSessionGuidingWordsProps,
 	NewSessionHeroProps,

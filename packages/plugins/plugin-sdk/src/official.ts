@@ -254,6 +254,8 @@ export interface PluginOfficialProviderSummary {
 	baseUrl?: string;
 	api?: string;
 	hasApiKey: boolean;
+	/** 图标 symbol；配合 `ProviderIcon` 解析为内置图标，无则不画图标。 */
+	icon?: string;
 	/**
 	 * true = 来自登录后服务端下发的远程目录（如 Vetta Go），凭据是账号登录态而非本地
 	 * API Key，因此不会出现在本地模型配置里，也不可用 `upsertProvider` / `removeProvider` 改。

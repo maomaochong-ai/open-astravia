@@ -10,6 +10,7 @@ export type { MacKeyboardPreviewProps, MacKeyId } from "./MacKeyboardPreview";
 export { MacKeyboardPreview } from "./MacKeyboardPreview";
 export type { MultiplierTagProps } from "./MultiplierTag";
 export { fmtMultiplier, MultiplierTag } from "./MultiplierTag";
+export { getProviderIcon, PROVIDER_ICONS, ProviderIcon } from "./provider-icon";
 export type { ScrollFadeProps } from "./ScrollFade";
 export { ScrollFade } from "./ScrollFade";
 export type { SegmentedControlItem, SegmentedControlProps } from "./SegmentedControl";

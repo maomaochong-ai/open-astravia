@@ -1,4 +1,5 @@
 import type { ModuleFederation } from "@module-federation/enhanced/runtime";
+import * as themeUiPlugin from "@vetta/theme-ui/plugin-ui";
 import * as vettaUi from "@vetta/ui";
 import * as pluginSdk from "@vetta-org/plugin-sdk";
 import * as React from "react";
@@ -25,6 +26,13 @@ export const pluginSharedModules = {
 	// runtime is host singleton so they match App chrome. Not a frozen public API.
 	"@vetta/ui": {
 		module: vettaUi,
+		version: "0.0.1",
+		singleton: true,
+		requiredVersion: false,
+	},
+	// 宿主成品 UI 组件（模型选择器等）。清单有意收窄，见 theme-ui/src/plugin-ui。
+	"@vetta/theme-ui/plugin-ui": {
+		module: themeUiPlugin,
 		version: "0.0.1",
 		singleton: true,
 		requiredVersion: false,
@@ -94,4 +102,5 @@ export const pluginHostShimModules = {
 	jsxDevRuntime,
 	pluginSdk,
 	vettaUi,
+	themeUiPlugin,
 };

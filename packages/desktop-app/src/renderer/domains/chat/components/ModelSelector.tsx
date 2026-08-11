@@ -1,6 +1,6 @@
 import { useThemeComponent } from "@vetta/theme-sdk";
 import { useModelSelectorModel } from "../hooks/useModelSelectorModel";
-import { ModelSelectorView } from "./model-selector/ModelSelectorView";
+import { ModelSelectorView } from "@vetta/theme-ui/chat";
 
 export function ModelSelector(): JSX.Element {
 	const model = useModelSelectorModel();

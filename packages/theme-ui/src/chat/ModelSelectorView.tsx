@@ -1,9 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
-import type { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
+import type { ChangeEvent, JSX, KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MultiplierTag } from "@shared/components/ModelSelect/MultiplierTag";
-import { ProviderIcon } from "@shared/components/provider-icon";
 import {
+	cn,
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -14,9 +13,77 @@ import {
 	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 } from "@vetta/ui";
-import { cn } from "@shared/lib/utils";
-import { ThemeSurface } from "@vetta/theme-ui/appearance";
-import type { ModelSelectorViewProps } from "./types";
+import { ThemeSurface } from "../appearance/ThemeSurface";
+import { MultiplierTag } from "../shared/MultiplierTag";
+import { ProviderIcon } from "../shared/provider-icon";
+
+/**
+ * 模型选择器的视图层：搜索、按 provider 分组、推理档位子菜单、云端/默认/视觉徽章。
+ *
+ * 纯展示——模型从哪来、选中后写到哪、文案怎么翻译，全部由调用方通过 props 决定。
+ * 宿主的输入栏用它，插件（看板等）经 `@vetta/theme-ui/plugin-ui` 用的也是同一个，
+ * 两边因此不会长成两副样子。
+ */
+
+/** 选择器需要的模型字段；宿主的 ModelOption 结构上即满足它。 */
+export interface ModelSelectorOptionView {
+	/** `provider/modelId`。 */
+	readonly key: string;
+	readonly provider: string;
+	readonly modelId: string;
+	readonly displayName: string;
+	/** 参与搜索匹配的附加标签。 */
+	readonly tags?: readonly string[];
+	/** 来自远程目录（云端）；分组头会打上 `labels.cloudOnly` 徽章。 */
+	readonly remote?: boolean;
+	readonly supportsImage?: boolean;
+}
+
+export interface ModelSelectorLabels {
+	placeholder: string;
+	searchPlaceholder: string;
+	clearSearch: string;
+	noResults: string;
+	noResultsHint: string;
+	reasoningHeader: string;
+	modelHeader: string;
+	cloudOnly: string;
+	visionBadge: string;
+	defaultBadge: string;
+	levelLabel: (value: string) => string;
+	/**
+	 * 计费倍率标（如「2×」「免费」）。返回空/undefined 则不渲染——倍率含义与文案属于
+	 * 宿主的计费口径，视图不猜。
+	 */
+	multiplierLabel?: (option: ModelSelectorOptionView) => string | undefined;
+}
+
+export interface ModelSelectorProviderGroup {
+	provider: string;
+	label: string;
+	icon?: string;
+	models: readonly ModelSelectorOptionView[];
+}
+
+export interface ModelSelectorViewProps {
+	selectedModel?: string;
+	selectedOption: ModelSelectorOptionView | null;
+	currentLevel?: string;
+	menuLevels: string[];
+	groups: readonly ModelSelectorProviderGroup[];
+	defaultKey?: string;
+	labels: ModelSelectorLabels;
+	className?: string;
+	classNames?: {
+		trigger?: string;
+		content?: string;
+		contentInner?: string;
+		providerHeader?: string;
+		item?: string;
+	};
+	onModelSelect: (key: string) => void;
+	onReasoningSelect: (value: string) => void;
+}
 
 const MODEL_ITEM_SELECTOR = "[data-model-key]";
 
@@ -290,7 +357,7 @@ export function ModelSelectorView({
 													onSelect={() => handleModelSelect(model.key)}
 												>
 													<span className="min-w-0 flex-1 truncate">{model.displayName}</span>
-													<MultiplierTag multiplier={model.multiplier} />
+													<ModelMultiplier label={labels.multiplierLabel?.(model)} />
 													{model.supportsImage && (
 														<span
 															aria-label={labels.visionBadge}
@@ -326,4 +393,8 @@ export function ModelSelectorView({
 			</AnimatePresence>
 		</DropdownMenu>
 	);
+}
+
+function ModelMultiplier({ label }: { label?: string }): JSX.Element | null {
+	return label ? <MultiplierTag text={label} /> : null;
 }

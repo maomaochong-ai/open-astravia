@@ -28,6 +28,8 @@ const modelProviderSummaryType = Type.Object(
 		baseUrl: Type.Optional(Type.String()),
 		api: Type.Optional(Type.String()),
 		hasApiKey: Type.Boolean(),
+		/** 图标 symbol（见 desktop 预设服务商目录）；客户端据此解析内置图标。 */
+		icon: Type.Optional(Type.String()),
 		modelCount: Type.Number(),
 		models: Type.Array(modelSummaryType),
 	},

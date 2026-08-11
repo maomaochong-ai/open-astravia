@@ -6556,6 +6556,9 @@
                 "hasApiKey": {
                   "type": "boolean"
                 },
+                "icon": {
+                  "type": "string"
+                },
                 "modelCount": {
                   "type": "number"
                 },

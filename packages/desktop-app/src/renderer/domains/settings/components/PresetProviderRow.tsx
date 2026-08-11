@@ -1,4 +1,4 @@
-import { ProviderIcon } from "@shared/components/provider-icon";
+import { ProviderIcon } from "@vetta/theme-ui/shared";
 import { PresetProviderRowView } from "@vetta/theme-ui/settings";
 import { PresetProviderModelsList } from "./PresetProviderModelsList";
 import type {

@@ -27,6 +27,7 @@ interface RemoteProviderEntry {
 	displayName?: string;
 	api?: string;
 	baseUrl?: string;
+	icon?: string;
 	models?: RemoteModelEntry[];
 }
 
@@ -61,6 +62,7 @@ function readRemoteProviders(): PluginOfficialProviderSummary[] {
 				displayName: entry.displayName ?? (id === "vetta-go" ? "Vetta Go" : id),
 				...(entry.baseUrl ? { baseUrl: entry.baseUrl } : {}),
 				...(entry.api ? { api: entry.api } : {}),
+				...(entry.icon ? { icon: entry.icon } : {}),
 				hasApiKey: true,
 				remote: true,
 				modelCount: models.length,

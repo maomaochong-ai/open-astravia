@@ -5,7 +5,6 @@ import type { CommandPanelView } from "@domains/chat/components/command-panel/Co
 import type { SkillPickerPanelView } from "@domains/chat/components/command-panel/SkillPickerPanel";
 import type { ExecutionModeSelectorView } from "@domains/chat/components/execution-mode-selector/ExecutionModeSelectorView";
 import type { InputBarView } from "@domains/chat/components/input-bar/InputBarView";
-import type { ModelSelectorView } from "@domains/chat/components/model-selector/ModelSelectorView";
 import type { SkillCard } from "@domains/chat/components/new-session/SkillCard";
 import type { QuestionPanelView } from "@domains/chat/components/question-panel/QuestionPanelView";
 import type { FilePreviewDialogView } from "@domains/file-preview/components/FilePreviewDialogView";
@@ -33,6 +32,7 @@ import type { DrawerCard } from "@shared/components/DrawerCard";
 import type { UpdateRestartDialogView } from "@shared/components/UpdateRestartDialogView";
 import type { ConfirmDialogView } from "@shared/components/ui/ConfirmDialogView";
 import type { NewSessionHeroProps } from "@vetta/theme-ui";
+import type { ModelSelectorView } from "@vetta/theme-ui/chat";
 import type { ComponentType } from "react";
 
 declare module "@vetta/theme-sdk" {
