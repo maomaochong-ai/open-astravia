@@ -13,6 +13,7 @@ import { useSessionDropZoneModel } from "../../hooks/useSessionDropZoneModel";
 import { InputBarBackground } from "./InputBarBackground";
 import { InputBarCapsule } from "./InputBarCapsule";
 import { InputBarDrawer } from "./InputBarDrawer";
+import { InputBarFooter } from "./InputBarFooter";
 import { InputBarTodoStatus } from "./InputBarTodoStatus";
 import { PromptAttachmentLabels } from "./PromptAttachmentLabels";
 import { InputBarToolbar } from "./InputBarToolbar";
@@ -247,8 +248,18 @@ export function InputBarView({ model, className, classNames }: InputBarViewProps
 					</div>
 				</SessionDropZoneView>
 
-				{/* 待办在输入卡片之外、贴着下沿；点击展开 popover 而不是抽屉。 */}
-				{model.todo && <InputBarTodoStatus todo={model.todo} />}
+				{/*
+				 * 卡片下沿的附属区：出现时整条输入栏被平滑抬高，消失时落回去，动画由
+				 * InputBarFooter 用 CSS 过渡承担。待办只是第一个住户，后续元素加进 items 即可。
+				 */}
+				<InputBarFooter
+					items={[
+						{
+							id: "todo",
+							node: model.todo ? <InputBarTodoStatus todo={model.todo} /> : null,
+						},
+					]}
+				/>
 			</div>
 
 			{model.contextMenu
