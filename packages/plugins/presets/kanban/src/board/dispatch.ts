@@ -1,4 +1,4 @@
-import { findCard, laneCards } from "./board-store";
+import { findCard, laneCards, resolveCardModelKey } from "./board-store";
 import type { KanbanBoard, KanbanCard } from "./types";
 
 /**
@@ -34,7 +34,10 @@ export type DispatchRefusal =
 	/** 闸门放行了，但建会话 / 发 prompt 失败（网络、运行时等）。 */
 	| { reason: "session-error"; message: string };
 
-export type DispatchDecision = { ok: true; card: KanbanCard; cwd: string } | ({ ok: false } & DispatchRefusal);
+export type DispatchDecision =
+	/** `modelKey` 为空串 = 不指定模型，交给宿主的全局默认。 */
+	| { ok: true; card: KanbanCard; cwd: string; modelKey: string }
+	| ({ ok: false } & DispatchRefusal);
 
 /**
  * 未满足的依赖：被依赖卡片只要还没进「待检查」就算未完成（被删掉的依赖在
@@ -61,7 +64,7 @@ export function canDispatch(board: KanbanBoard, cardId: string): DispatchDecisio
 	if (remainingSlots(board) <= 0) return { ok: false, reason: "wip-full", concurrency: board.concurrency };
 	const cwd = card.cwd.trim() || board.defaultCwd.trim();
 	if (!cwd) return { ok: false, reason: "missing-cwd" };
-	return { ok: true, card, cwd };
+	return { ok: true, card, cwd, modelKey: resolveCardModelKey(board, card) };
 }
 
 /**
@@ -121,9 +124,11 @@ export function buildSendBackPrompt(card: KanbanCard, feedback: string): string 
 export interface BoardSnapshotForAgent {
 	concurrency: number;
 	remainingSlots: number;
+	/** 看板默认模型；缺省（未选）时不出现，表示派单跟随宿主全局默认模型。 */
+	defaultModelKey?: string;
 	doing: Array<{ id: string; title: string; runState?: string; sessionPath?: string }>;
 	review: Array<{ id: string; title: string; deliveryNote?: string }>;
-	ready: Array<{ id: string; title: string; priority: number; blockedBy: string[]; cwd: string }>;
+	ready: Array<{ id: string; title: string; priority: number; blockedBy: string[]; cwd: string; modelKey?: string }>;
 	draftCount: number;
 }
 
@@ -132,6 +137,7 @@ export function snapshotForAgent(board: KanbanBoard): BoardSnapshotForAgent {
 	return {
 		concurrency: board.concurrency,
 		remainingSlots: remainingSlots(board),
+		...(board.defaultModelKey.trim() ? { defaultModelKey: board.defaultModelKey.trim() } : {}),
 		doing: laneCards(board, "doing").map((card) => ({
 			id: card.id,
 			title: card.title,
@@ -151,6 +157,7 @@ export function snapshotForAgent(board: KanbanBoard): BoardSnapshotForAgent {
 				priority: card.priority,
 				blockedBy: unmetDependencies(board, card),
 				cwd: card.cwd.trim() || board.defaultCwd.trim(),
+				...(resolveCardModelKey(board, card) ? { modelKey: resolveCardModelKey(board, card) } : {}),
 			})),
 		draftCount: inbox.filter((card) => card.ideaState === "draft").length,
 	};

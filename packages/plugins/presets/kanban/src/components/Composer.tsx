@@ -1,12 +1,15 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@vetta/ui";
-import { useCallback, useRef, useState, type JSX, type KeyboardEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type JSX, type KeyboardEvent } from "react";
+import type { KanbanModelOption } from "../board/board-controller";
 import type { KanbanIdeaState } from "../board/types";
 
 export interface ComposerSubmitPayload {
 	title: string;
 	detail: string;
 	cwd: string;
+	/** 空串 = 不指定，派单时跟随宿主全局默认模型。 */
+	modelKey: string;
 	priority: 0 | 1 | 2;
 	ideaState: KanbanIdeaState;
 	/** true = 入池后立即派发（⌘↵）。 */
@@ -16,6 +19,12 @@ export interface ComposerSubmitPayload {
 export interface ComposerProps {
 	defaultCwd: string;
 	projects: Array<{ path: string; name?: string }>;
+	models: KanbanModelOption[];
+	/** 当前看板默认模型；发布器里的选择即写这个值（见 {@link ComposerProps.onModelKeyChange}）。 */
+	modelKey: string;
+	/** 宿主全局默认模型，仅用于在「跟随默认」项上标注它到底是谁。 */
+	hostDefaultModelKey: string;
+	onModelKeyChange: (modelKey: string) => void;
 	/** 派发直达是否可用（无名额时禁用 ⌘↵ 直达，Enter 入池不受限）。 */
 	canDispatchNow: boolean;
 	onSubmit: (payload: ComposerSubmitPayload) => void;
@@ -46,7 +55,16 @@ function projectLabel(path: string, name?: string): string {
  * - Enter        → 记入灵感池（默认草稿，鼓励先记下来再打磨）
  * - ⌘↵ / Ctrl+↵ → 标为待认领并**立即派发**（跳过打磨，直接开工）
  */
-export function Composer({ canDispatchNow, defaultCwd, onSubmit, projects }: ComposerProps): JSX.Element {
+export function Composer({
+	canDispatchNow,
+	defaultCwd,
+	hostDefaultModelKey,
+	modelKey,
+	models,
+	onModelKeyChange,
+	onSubmit,
+	projects,
+}: ComposerProps): JSX.Element {
 	const { t } = useTranslation();
 	const [text, setText] = useState("");
 	const [cwd, setCwd] = useState("");
@@ -56,6 +74,11 @@ export function Composer({ canDispatchNow, defaultCwd, onSubmit, projects }: Com
 
 	const effectiveCwd = cwd || defaultCwd;
 	const hasText = text.trim().length > 0;
+	const selectedModel = useMemo(() => models.find((model) => model.key === modelKey) ?? null, [models, modelKey]);
+	const hostDefaultModel = useMemo(
+		() => models.find((model) => model.key === hostDefaultModelKey) ?? null,
+		[models, hostDefaultModelKey],
+	);
 
 	const autoGrow = useCallback(() => {
 		const element = textareaRef.current;
@@ -74,6 +97,8 @@ export function Composer({ canDispatchNow, defaultCwd, onSubmit, projects }: Com
 				title,
 				detail,
 				cwd,
+				// 固化当前选择而不是留空跟随：之后改看板默认模型，不该回头改写已有卡片。
+				modelKey,
 				priority,
 				ideaState: dispatchNow ? "ready" : "draft",
 				dispatchNow,
@@ -82,7 +107,7 @@ export function Composer({ canDispatchNow, defaultCwd, onSubmit, projects }: Com
 			setPriority(0);
 			requestAnimationFrame(autoGrow);
 		},
-		[autoGrow, cwd, onSubmit, priority, text],
+		[autoGrow, cwd, modelKey, onSubmit, priority, text],
 	);
 
 	const handleKeyDown = useCallback(
@@ -167,6 +192,58 @@ export function Composer({ canDispatchNow, defaultCwd, onSubmit, projects }: Com
 									))}
 								</DropdownMenuContent>
 							</DropdownMenu>
+
+							{/* 执行模型：这里选的是「看板默认」，新卡片按当前值固化，单张卡可在编辑里改 */}
+							{models.length > 0 && (
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<button
+											type="button"
+											title={t("composer.model")}
+											className="flex h-6 max-w-44 items-center gap-1 rounded-full border border-border/60 px-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+										>
+											<span className="icon-[solar--cpu-bolt-linear] h-3 w-3 shrink-0" />
+											<span className="min-w-0 truncate">
+												{selectedModel?.displayName ?? hostDefaultModel?.displayName ?? t("composer.defaultModel")}
+											</span>
+											<span className="icon-[solar--alt-arrow-down-linear] h-2.5 w-2.5 shrink-0 opacity-60" />
+										</button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent data-vetta-plugin-root="kanban" align="start" className="max-h-72 w-64 overflow-y-auto">
+										<DropdownMenuItem onSelect={() => onModelKeyChange("")} className="flex items-center gap-2 text-[12px]">
+											<span
+												className={cn(
+													"icon-[solar--star-linear] h-3.5 w-3.5 shrink-0",
+													modelKey ? "text-muted-foreground" : "text-primary",
+												)}
+											/>
+											<span className="min-w-0 flex-1 truncate">
+												{hostDefaultModel ? t("composer.followHostModel", { name: hostDefaultModel.displayName }) : t("composer.defaultModel")}
+											</span>
+											{!modelKey && <span className="icon-[solar--check-read-linear] h-3.5 w-3.5 shrink-0 text-primary" />}
+										</DropdownMenuItem>
+										{models.map((model) => (
+											<DropdownMenuItem
+												key={model.key}
+												onSelect={() => onModelKeyChange(model.key)}
+												className="flex items-center gap-2 text-[12px]"
+											>
+												<span
+													className={cn(
+														"icon-[solar--cpu-bolt-linear] h-3.5 w-3.5 shrink-0",
+														model.key === modelKey ? "text-primary" : "text-muted-foreground",
+													)}
+												/>
+												<span className="min-w-0 flex-1 truncate">{model.displayName}</span>
+												<span className="shrink-0 text-[10px] text-muted-foreground/60">{model.providerName}</span>
+												{model.key === modelKey && (
+													<span className="icon-[solar--check-read-linear] h-3.5 w-3.5 shrink-0 text-primary" />
+												)}
+											</DropdownMenuItem>
+										))}
+									</DropdownMenuContent>
+								</DropdownMenu>
+							)}
 
 							{/* 优先级：点按循环 低→中→高 */}
 							<button

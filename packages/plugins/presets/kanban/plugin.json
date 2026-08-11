@@ -2,7 +2,7 @@
 	"id": "kanban",
 	"name": "%plugin.name%",
 	"icon": "icon.png",
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",

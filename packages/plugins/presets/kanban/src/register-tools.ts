@@ -28,7 +28,15 @@ export function registerKanbanTools(ctx: PluginContext, controller: KanbanBoardC
 		},
 	});
 
-	ctx.agent.registerTool<{ title: string; detail?: string; cwd?: string; priority?: 0 | 1 | 2; tags?: string[]; ready?: boolean }>(
+	ctx.agent.registerTool<{
+		title: string;
+		detail?: string;
+		cwd?: string;
+		model?: string;
+		priority?: 0 | 1 | 2;
+		tags?: string[];
+		ready?: boolean;
+	}>(
 		{
 			id: "kanban-add",
 			name: "kanban_add_task",
@@ -41,6 +49,10 @@ export function registerKanbanTools(ctx: PluginContext, controller: KanbanBoardC
 					title: { type: "string", description: "一句话需求标题" },
 					detail: { type: "string", description: "需求正文；派单时作为首轮 prompt 主体" },
 					cwd: { type: "string", description: "目标项目绝对路径；不传则用看板默认项目" },
+					model: {
+						type: "string",
+						description: "执行这条需求用的模型，格式 provider/modelId；不传则用看板默认模型。只在用户明确指定模型时才传。",
+					},
 					priority: { type: "number", enum: [0, 1, 2], description: "0=低 1=中 2=高" },
 					tags: { type: "array", items: { type: "string" } },
 					ready: { type: "boolean", description: "true = 直接落为「待认领」，可被认领" },
@@ -53,10 +65,24 @@ export function registerKanbanTools(ctx: PluginContext, controller: KanbanBoardC
 				const title = typeof input?.title === "string" ? input.title.trim() : "";
 				if (!title) return { ok: false, retryable: true, error: "title 不能为空" };
 				await controller.ensureLoaded();
+				const modelKey = typeof input?.model === "string" ? input.model.trim() : "";
+				if (modelKey) {
+					// 先校验再落卡：写进去一个不存在的模型，要等到派单当场才炸，那时卡片已经占了名额。
+					try {
+						await ctx.official.models.assertModelKeyExists(modelKey, "kanban_add_task");
+					} catch (error) {
+						return {
+							ok: false,
+							retryable: true,
+							error: `模型 ${modelKey} 不可用：${error instanceof Error ? error.message : String(error)}`,
+						};
+					}
+				}
 				const board = controller.addCard({
 					title,
 					detail: input?.detail,
 					cwd: input?.cwd,
+					modelKey,
 					priority: input?.priority,
 					tags: input?.tags,
 					ideaState: input?.ready === true ? "ready" : "draft",

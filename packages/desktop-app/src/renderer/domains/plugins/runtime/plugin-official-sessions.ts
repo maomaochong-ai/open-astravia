@@ -16,6 +16,13 @@ export function createOfficialSessionsApi(capabilitySessionId: string): PluginOf
 	const invoke = <T>(run: () => T | Promise<T>): Promise<T> =>
 		Promise.resolve(pluginRendererCapabilityHost.invokeOfficial(capabilitySessionId, run));
 
+	/** 模型是可选项：空串 / 非字符串一律当「跟随宿主默认」，不报错也不写设置。 */
+	const normalizeModelKey = (value: unknown): string | undefined => {
+		if (typeof value !== "string") return undefined;
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? trimmed : undefined;
+	};
+
 	const assertNonEmpty = (value: unknown, field: string): string => {
 		if (typeof value !== "string" || value.trim().length === 0) {
 			throw new Error(`official.sessions: ${field} is required`);
@@ -36,13 +43,22 @@ export function createOfficialSessionsApi(capabilitySessionId: string): PluginOf
 						console.warn("[official.sessions] rename after create failed", error);
 					});
 				}
+				const modelKey = normalizeModelKey(input?.modelKey);
+				if (modelKey) {
+					// 写会话设置而非只钉单轮：用户之后在对话页手动接着聊，也应该还是这个模型。
+					await window.vetta.session.updateSettings(created.sessionId, { modelKey });
+				}
 				return created;
 			}),
-		prompt: (sessionId, text) =>
+		prompt: (sessionId, text, options) =>
 			invoke(async () => {
 				assertNonEmpty(sessionId, "sessionId");
 				assertNonEmpty(text, "text");
-				const outcome = await window.vetta.session.prompt(sessionId, { text });
+				const modelKey = normalizeModelKey(options?.modelKey);
+				const outcome = await window.vetta.session.prompt(sessionId, {
+					text,
+					...(modelKey ? { modelKey } : {}),
+				});
 				// streaming 中的发送进 kernel 队列（ADR-0060）；把回执如实透出，
 				// 调用方据此区分「已发出」与「排队中」，不要当成已开始执行。
 				return { status: outcome?.status === "queued" ? "queued" : "sent" };

@@ -9,6 +9,7 @@ import {
 	type NewCardInput,
 	parseBoard,
 	removeCard,
+	resolveCardModelKey,
 	restoreCard,
 	sendCardBack,
 	setConcurrency,
@@ -21,6 +22,16 @@ import { createEmptyBoard, type KanbanBoard, type KanbanIdeaState, type KanbanLa
 const BOARD_STORAGE_KEY = "board";
 
 export type BoardListener = (board: KanbanBoard) => void;
+
+/** 可选模型的扁平列表项，供选择器直接渲染。 */
+export interface KanbanModelOption {
+	/** `provider/modelId`，与宿主 modelKey 同格式。 */
+	key: string;
+	modelId: string;
+	providerId: string;
+	providerName: string;
+	displayName: string;
+}
 
 export interface DispatchResult {
 	ok: boolean;
@@ -46,6 +57,9 @@ export class KanbanBoardController {
 	private runningPaths = new Set<string>();
 	private disposeRunning: (() => void) | null = null;
 	private projects: Array<{ path: string; name?: string }> = [];
+	private models: KanbanModelOption[] = [];
+	/** 宿主的全局默认模型，仅用于在选择器里标注「默认」，不写进看板数据。 */
+	private hostDefaultModelKey = "";
 
 	constructor(private readonly ctx: PluginContext) {}
 
@@ -56,6 +70,16 @@ export class KanbanBoardController {
 	/** 已知项目列表（load 时取一次），供 Composer 的项目选择器用。 */
 	getProjects(): Array<{ path: string; name?: string }> {
 		return this.projects;
+	}
+
+	/** 可选模型（load 时取一次），供发布器与卡片编辑器的模型选择器用。 */
+	getModels(): KanbanModelOption[] {
+		return this.models;
+	}
+
+	/** 宿主全局默认模型的 key；空串表示宿主也没配。 */
+	getHostDefaultModelKey(): string {
+		return this.hostDefaultModelKey;
 	}
 
 	subscribe(listener: BoardListener): () => void {
@@ -81,6 +105,22 @@ export class KanbanBoardController {
 			fallbackCwd = snapshot.projects[0]?.path ?? snapshot.workspacePath ?? "";
 		} catch (error) {
 			console.warn("[kanban] failed to resolve default project", error);
+		}
+		try {
+			const catalog = await this.ctx.official.models.list();
+			this.hostDefaultModelKey = catalog.defaultModel ?? "";
+			this.models = catalog.providers.flatMap((provider) =>
+				provider.models.map((model) => ({
+					key: `${provider.id}/${model.id}`,
+					modelId: model.id,
+					providerId: provider.id,
+					providerName: provider.displayName || provider.id,
+					displayName: model.name?.trim() || model.id,
+				})),
+			);
+		} catch (error) {
+			// 模型清单拿不到不该挡住看板：选择器退化为空，派单不带模型走宿主默认。
+			console.warn("[kanban] failed to load model catalog", error);
 		}
 		try {
 			const stored = await this.ctx.storage.readJson<unknown>(BOARD_STORAGE_KEY);
@@ -180,6 +220,12 @@ export class KanbanBoardController {
 		return this.commit({ ...this.board, defaultCwd: cwd });
 	}
 
+	/** 空串 = 清除看板默认模型，回到「跟随宿主全局默认」。 */
+	setDefaultModelKey(modelKey: string): KanbanBoard {
+		const next = modelKey.trim();
+		return next === this.board.defaultModelKey ? this.board : this.commit({ ...this.board, defaultModelKey: next });
+	}
+
 	/**
 	 * 派单：建会话 → 卡片移入「正在处理」→ 发出首轮 prompt。
 	 *
@@ -192,7 +238,7 @@ export class KanbanBoardController {
 		if (!decision.ok) {
 			return { ok: false, decision, message: this.describeRefusal(decision) };
 		}
-		const { card, cwd } = decision;
+		const { card, cwd, modelKey } = decision;
 		this.commit(
 			updateCard(
 				moveCard(this.board, card.id, "doing", null, Date.now()),
@@ -202,7 +248,13 @@ export class KanbanBoardController {
 			),
 		);
 		try {
-			const session = await this.ctx.official.sessions.create({ cwd, title: card.title });
+			// 模型写进会话设置（而不是只钉首轮）：用户之后接管这个会话继续聊，
+			// 用的仍是卡片上选的模型。
+			const session = await this.ctx.official.sessions.create({
+				cwd,
+				title: card.title,
+				...(modelKey ? { modelKey } : {}),
+			});
 			this.updateCard(card.id, { sessionId: session.sessionId, sessionPath: session.sessionPath });
 			await this.ctx.official.sessions.prompt(session.sessionId, buildDispatchPrompt(card));
 			await this.refreshRunning();
@@ -258,11 +310,18 @@ export class KanbanBoardController {
 		if (!target) return false;
 		try {
 			if (target.sessionId) {
+				// 不覆盖原会话的模型：它已经在派单时按卡片设过，之后若用户在对话页手动换了模型，
+				// 那是更新的意图，打回不该把它顶回去。
 				await this.ctx.official.sessions.prompt(target.sessionId, buildSendBackPrompt(target, feedback));
 			} else {
 				const cwd = target.cwd.trim() || this.board.defaultCwd.trim();
 				if (!cwd) throw new Error(this.ctx.i18n.t("dispatch.refuse.missingCwd"));
-				const session = await this.ctx.official.sessions.create({ cwd, title: target.title });
+				const modelKey = resolveCardModelKey(this.board, target);
+				const session = await this.ctx.official.sessions.create({
+					cwd,
+					title: target.title,
+					...(modelKey ? { modelKey } : {}),
+				});
 				this.updateCard(cardId, { sessionId: session.sessionId, sessionPath: session.sessionPath });
 				await this.ctx.official.sessions.prompt(
 					session.sessionId,

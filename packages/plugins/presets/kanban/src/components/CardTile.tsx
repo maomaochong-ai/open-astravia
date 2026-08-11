@@ -15,6 +15,8 @@ const RUN_STATE_META: Record<KanbanRunState, { className: string; dot?: boolean 
 export interface CardTileProps {
 	blockedBy: string[];
 	card: KanbanCard;
+	/** 卡片实际会用的模型显示名；跟随默认时为空，不显示徽章。 */
+	modelLabel: string;
 	dragging: boolean;
 	now: number;
 	onAbort: () => void;
@@ -40,6 +42,7 @@ export function CardTile({
 	blockedBy,
 	card,
 	dragging,
+	modelLabel,
 	now,
 	onAbort,
 	onApprove,
@@ -161,6 +164,15 @@ export function CardTile({
 					>
 						<span className="icon-[solar--magic-stick-3-linear] h-2.5 w-2.5" />
 						Agent
+					</span>
+				)}
+				{modelLabel && (
+					<span
+						title={t("card.model", { name: modelLabel })}
+						className="flex max-w-32 items-center gap-0.5 rounded-md bg-accent/60 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+					>
+						<span className="icon-[solar--cpu-bolt-linear] h-2.5 w-2.5 shrink-0" />
+						<span className="min-w-0 truncate">{modelLabel}</span>
 					</span>
 				)}
 				{card.tags.map((tag) => (

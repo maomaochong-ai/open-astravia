@@ -11,6 +11,7 @@ import {
 	moveCard,
 	parseBoard,
 	removeCard,
+	resolveCardModelKey,
 	restoreCard,
 	sendCardBack,
 	setConcurrency,
@@ -174,11 +175,43 @@ describe("parseBoard", () => {
 		expect(parseBoard({ concurrency: "x" }).concurrency).toBe(DEFAULT_CONCURRENCY);
 	});
 
+	it("旧看板（无模型字段）解析后模型为空，即跟随宿主默认", () => {
+		const board = parseBoard({ cards: [{ id: "c1", title: "t" }] });
+		expect(board.defaultModelKey).toBe("");
+		expect(board.cards[0].modelKey).toBe("");
+	});
+
 	it("落盘再解析后卡片信息稳定", () => {
 		let board = boardWith("a");
 		board = updateCard(board, "c1", { tags: ["x"], dependsOn: [], priority: 2, sessionPath: "/s.jsonl" }, NOW);
 		const round = parseBoard(JSON.parse(JSON.stringify(board)));
 		expect(round.cards[0]).toMatchObject({ id: "c1", title: "a", priority: 2, tags: ["x"], sessionPath: "/s.jsonl" });
+	});
+
+	it("模型选择跨落盘保留", () => {
+		let board = { ...boardWith("a"), defaultModelKey: "anthropic/claude-opus-5" };
+		board = updateCard(board, "c1", { modelKey: "openai/gpt-5" }, NOW);
+		const round = parseBoard(JSON.parse(JSON.stringify(board)));
+		expect(round.defaultModelKey).toBe("anthropic/claude-opus-5");
+		expect(round.cards[0].modelKey).toBe("openai/gpt-5");
+	});
+});
+
+describe("resolveCardModelKey", () => {
+	it("卡片模型优先，其次看板默认，都没有则为空（跟随宿主默认）", () => {
+		const base = boardWith("a");
+		expect(resolveCardModelKey(base, base.cards[0])).toBe("");
+
+		const boardDefault = { ...base, defaultModelKey: "anthropic/claude-opus-5" };
+		expect(resolveCardModelKey(boardDefault, boardDefault.cards[0])).toBe("anthropic/claude-opus-5");
+
+		const overridden = updateCard(boardDefault, "c1", { modelKey: "openai/gpt-5" }, NOW);
+		expect(resolveCardModelKey(overridden, overridden.cards[0])).toBe("openai/gpt-5");
+	});
+
+	it("只有空白的模型名等同于没选", () => {
+		const board = updateCard({ ...boardWith("a"), defaultModelKey: "  " }, "c1", { modelKey: "   " }, NOW);
+		expect(resolveCardModelKey(board, board.cards[0])).toBe("");
 	});
 });
 

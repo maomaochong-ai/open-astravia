@@ -9,12 +9,15 @@ import {
 	DialogTitle,
 } from "@vetta/ui";
 import { useEffect, useState, type JSX } from "react";
+import type { KanbanModelOption } from "../board/board-controller";
 import type { KanbanCard } from "../board/types";
 
 export interface CardDraft {
 	title: string;
 	detail: string;
 	cwd: string;
+	/** 空串 = 用看板默认模型。 */
+	modelKey: string;
 	priority: 0 | 1 | 2;
 	tags: string[];
 	dependsOn: string[];
@@ -26,6 +29,9 @@ export interface CardEditorDialogProps {
 	/** null = 新建。 */
 	card: KanbanCard | null;
 	defaultCwd: string;
+	models: KanbanModelOption[];
+	/** 看板默认模型，用于在「默认」项上标注它实际是谁。 */
+	defaultModelKey: string;
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (draft: CardDraft) => void;
@@ -39,6 +45,7 @@ function toDraft(card: KanbanCard | null): CardDraft {
 		title: card?.title ?? "",
 		detail: card?.detail ?? "",
 		cwd: card?.cwd ?? "",
+		modelKey: card?.modelKey ?? "",
 		priority: card?.priority ?? 0,
 		tags: card?.tags ?? [],
 		dependsOn: card?.dependsOn ?? [],
@@ -49,7 +56,9 @@ function toDraft(card: KanbanCard | null): CardDraft {
 export function CardEditorDialog({
 	card,
 	defaultCwd,
+	defaultModelKey,
 	dependencyOptions,
+	models,
 	onOpenChange,
 	onSubmit,
 	open,
@@ -57,6 +66,7 @@ export function CardEditorDialog({
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<CardDraft>(() => toDraft(card));
 	const [tagText, setTagText] = useState("");
+	const boardDefaultModel = models.find((model) => model.key === defaultModelKey) ?? null;
 
 	useEffect(() => {
 		if (!open) return;
@@ -136,6 +146,28 @@ export function CardEditorDialog({
 							/>
 						</label>
 					</div>
+
+					{models.length > 0 && (
+						<label className="flex flex-col gap-1">
+							<span className="text-[11px] font-medium text-muted-foreground">{t("editor.model")}</span>
+							<select
+								className={inputClass}
+								value={draft.modelKey}
+								onChange={(event) => setDraft((prev) => ({ ...prev, modelKey: event.target.value }))}
+							>
+								<option value="">
+									{boardDefaultModel
+										? t("editor.modelDefaultNamed", { name: boardDefaultModel.displayName })
+										: t("editor.modelDefault")}
+								</option>
+								{models.map((model) => (
+									<option key={model.key} value={model.key}>
+										{model.displayName} · {model.providerName}
+									</option>
+								))}
+							</select>
+						</label>
+					)}
 
 					<label className="flex flex-col gap-1">
 						<span className="text-[11px] font-medium text-muted-foreground">{t("editor.cwd")}</span>

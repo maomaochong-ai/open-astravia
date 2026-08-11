@@ -27,6 +27,11 @@ export interface KanbanCard {
 	ideaState: KanbanIdeaState;
 	/** 目标项目目录；空串表示用看板默认项目。 */
 	cwd: string;
+	/**
+	 * 执行这条需求用的模型（`provider/modelId`）；空串表示用看板默认模型。
+	 * 派单时写进新会话的设置，用户之后在对话页接手也仍是这个模型。
+	 */
+	modelKey: string;
 	/** 0 = 低，1 = 中，2 = 高。派单时高优先级先走。 */
 	priority: 0 | 1 | 2;
 	tags: string[];
@@ -58,6 +63,12 @@ export interface KanbanBoard {
 	concurrency: number;
 	/** 未指定 cwd 的卡片落到这个项目。 */
 	defaultCwd: string;
+	/**
+	 * 未指定模型的卡片用这个模型（`provider/modelId`）。空串表示连看板都没选，
+	 * 此时派单不带模型，由宿主用它的全局默认模型——看板不复制宿主的默认值，
+	 * 否则用户换了全局默认，板上的卡还钉在旧模型上。
+	 */
+	defaultModelKey: string;
 	cards: KanbanCard[];
 }
 
@@ -65,6 +76,6 @@ export const DEFAULT_CONCURRENCY = 5;
 export const MIN_CONCURRENCY = 1;
 export const MAX_CONCURRENCY = 20;
 
-export function createEmptyBoard(defaultCwd = ""): KanbanBoard {
-	return { version: 1, concurrency: DEFAULT_CONCURRENCY, defaultCwd, cards: [] };
+export function createEmptyBoard(defaultCwd = "", defaultModelKey = ""): KanbanBoard {
+	return { version: 1, concurrency: DEFAULT_CONCURRENCY, defaultCwd, defaultModelKey, cards: [] };
 }

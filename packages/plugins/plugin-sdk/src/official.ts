@@ -567,10 +567,24 @@ export interface PluginOfficialApi {
 	 * 因此系统插件可以据此做「多任务并发派单」类工作台（如看板）。
 	 */
 	sessions: {
-		/** 在 `cwd` 下新建一个会话；不发送任何 prompt。 */
-		create(input: { cwd: string; title?: string }): Promise<PluginOfficialSessionHandle>;
-		/** 向会话发起一轮对话。streaming 中会进入该会话的输入队列（ADR-0060）。 */
-		prompt(sessionId: string, text: string): Promise<{ status: "sent" | "queued" }>;
+		/**
+		 * 在 `cwd` 下新建一个会话；不发送任何 prompt。
+		 *
+		 * 传 `modelKey`（`provider/modelId`）时写入该会话的模型设置，后续无论是插件
+		 * 继续 `prompt`、还是用户在对话页手动接着聊，都用这个模型；不传则跟随宿主全局默认。
+		 */
+		create(input: { cwd: string; title?: string; modelKey?: string }): Promise<PluginOfficialSessionHandle>;
+		/**
+		 * 向会话发起一轮对话。streaming 中会进入该会话的输入队列（ADR-0060）。
+		 *
+		 * `options.modelKey` 只钉住**这一轮**用哪个模型（不改会话设置）；要让整个会话
+		 * 都用某个模型，在 `create` 时传 `modelKey`。
+		 */
+		prompt(
+			sessionId: string,
+			text: string,
+			options?: { modelKey?: string },
+		): Promise<{ status: "sent" | "queued" }>;
 		/** 中止会话当前回合。 */
 		abort(sessionId: string): Promise<void>;
 		/** 重命名会话（写入会话文件标题），用于把看板卡片标题同步到会话列表。 */

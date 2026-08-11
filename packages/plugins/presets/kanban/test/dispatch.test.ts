@@ -65,6 +65,16 @@ describe("canDispatch", () => {
 		expect(decision).toMatchObject({ ok: true, cwd: "/work" });
 	});
 
+	it("放行时带上解析后的模型：卡片 > 看板默认 > 空（宿主默认）", () => {
+		expect(canDispatch(seed(1), "c1")).toMatchObject({ ok: true, modelKey: "" });
+
+		const boardDefault = { ...seed(1), defaultModelKey: "anthropic/claude-opus-5" };
+		expect(canDispatch(boardDefault, "c1")).toMatchObject({ ok: true, modelKey: "anthropic/claude-opus-5" });
+
+		const overridden = updateCard(boardDefault, "c1", { modelKey: "openai/gpt-5" }, NOW);
+		expect(canDispatch(overridden, "c1")).toMatchObject({ ok: true, modelKey: "openai/gpt-5" });
+	});
+
 	it("卡片 cwd 覆盖看板默认 cwd", () => {
 		const board = updateCard(seed(1), "c1", { cwd: "/other" }, NOW);
 		expect(canDispatch(board, "c1")).toMatchObject({ ok: true, cwd: "/other" });
@@ -168,6 +178,16 @@ describe("snapshotForAgent", () => {
 		expect(snapshot.doing.map((card) => card.id)).toEqual(["c1"]);
 		expect(snapshot.ready.map((card) => card.id)).toEqual(["c2"]);
 		expect(snapshot.draftCount).toBe(1);
+	});
+
+	it("没选模型时快照里不出现模型字段，选了才带上", () => {
+		const plain = snapshotForAgent(seed(1));
+		expect(plain.defaultModelKey).toBeUndefined();
+		expect(plain.ready[0].modelKey).toBeUndefined();
+
+		const withModel = snapshotForAgent({ ...seed(1), defaultModelKey: "anthropic/claude-opus-5" });
+		expect(withModel.defaultModelKey).toBe("anthropic/claude-opus-5");
+		expect(withModel.ready[0].modelKey).toBe("anthropic/claude-opus-5");
 	});
 
 	it("待认领项带上阻塞者与解析后的 cwd", () => {

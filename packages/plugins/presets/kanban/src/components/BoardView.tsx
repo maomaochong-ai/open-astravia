@@ -2,7 +2,7 @@ import { useTranslation } from "@vetta-org/plugin-sdk";
 import { cn } from "@vetta/ui";
 import { useCallback, useMemo, useState, type DragEvent, type JSX } from "react";
 import type { KanbanBoardController } from "../board/board-controller";
-import { findCard } from "../board/board-store";
+import { findCard, resolveCardModelKey } from "../board/board-store";
 import { MAX_CONCURRENCY, MIN_CONCURRENCY, type KanbanCard, type KanbanLane } from "../board/types";
 import { ArchivePanel } from "./ArchivePanel";
 import { CardEditorDialog, type CardDraft } from "./CardEditorDialog";
@@ -64,6 +64,7 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 				title: payload.title,
 				detail: payload.detail,
 				cwd: payload.cwd,
+				modelKey: payload.modelKey,
 				priority: payload.priority,
 				lane: "inbox",
 				ideaState: payload.ideaState,
@@ -80,6 +81,19 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 		setFeedbackCard(card);
 		setFeedbackOpen(true);
 	}, []);
+
+	const models = controller.getModels();
+	/** modelKey → 显示名；卡片徽章、编辑器都按这张表把 key 还原成人能读的名字。 */
+	const modelNameByKey = useMemo(() => new Map(models.map((model) => [model.key, model.displayName])), [models]);
+	const modelLabelFor = useCallback(
+		(card: KanbanCard): string => {
+			const key = resolveCardModelKey(board, card);
+			if (!key) return "";
+			// catalog 里找不到（模型被删/改名）时退回展示 key 的模型段，不要显示空白。
+			return modelNameByKey.get(key) ?? key.slice(key.indexOf("/") + 1);
+		},
+		[board, modelNameByKey],
+	);
 
 	const dependencyOptions = useMemo(
 		() => board.cards.filter((card) => card.id !== editorCard?.id && card.archivedAt === undefined),
@@ -307,6 +321,7 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 											<CardTile
 												blockedBy={blockedBy[card.id] ?? []}
 												card={card}
+												modelLabel={modelLabelFor(card)}
 												dragging={draggingId === card.id}
 												now={now}
 												onAbort={() => void controller.abort(card.id)}
@@ -345,6 +360,10 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 				<Composer
 					canDispatchNow={remainingSlots > 0}
 					defaultCwd={board.defaultCwd}
+					hostDefaultModelKey={controller.getHostDefaultModelKey()}
+					modelKey={board.defaultModelKey}
+					models={models}
+					onModelKeyChange={(next) => controller.setDefaultModelKey(next)}
 					projects={controller.getProjects()}
 					onSubmit={submitComposer}
 				/>
@@ -353,6 +372,8 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 			<CardEditorDialog
 				card={editorCard}
 				defaultCwd={board.defaultCwd}
+				defaultModelKey={board.defaultModelKey}
+				models={models}
 				dependencyOptions={dependencyOptions}
 				open={editorOpen}
 				onOpenChange={setEditorOpen}

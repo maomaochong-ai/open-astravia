@@ -23,6 +23,7 @@ export interface NewCardInput {
 	lane?: KanbanLane;
 	ideaState?: KanbanIdeaState;
 	cwd?: string;
+	modelKey?: string;
 	priority?: 0 | 1 | 2;
 	tags?: string[];
 	dependsOn?: string[];
@@ -52,6 +53,7 @@ export function createCard(board: KanbanBoard, input: NewCardInput, now: number,
 		// 但仍给个确定值，避免回拖到灵感池时状态不确定。
 		ideaState: input.ideaState === "ready" ? "ready" : "draft",
 		cwd: (input.cwd ?? "").trim(),
+		modelKey: (input.modelKey ?? "").trim(),
 		priority: clampPriority(input.priority),
 		tags: stringList(input.tags),
 		dependsOn: stringList(input.dependsOn),
@@ -225,6 +227,14 @@ export function resolveCardCwd(board: KanbanBoard, card: KanbanCard): string {
 	return card.cwd.trim() || board.defaultCwd.trim();
 }
 
+/**
+ * 卡片实际使用的模型。空串是有意义的值：**不带模型派单**，由宿主用它的全局默认，
+ * 而不是由看板猜一个。
+ */
+export function resolveCardModelKey(board: KanbanBoard, card: KanbanCard): string {
+	return card.modelKey.trim() || board.defaultModelKey.trim();
+}
+
 function normalizeCard(raw: unknown, index: number): KanbanCard | null {
 	if (raw == null || typeof raw !== "object") return null;
 	const record = raw as Record<string, unknown>;
@@ -240,6 +250,7 @@ function normalizeCard(raw: unknown, index: number): KanbanCard | null {
 		lane,
 		ideaState: record.ideaState === "ready" ? "ready" : "draft",
 		cwd: typeof record.cwd === "string" ? record.cwd : "",
+		modelKey: typeof record.modelKey === "string" ? record.modelKey : "",
 		priority: clampPriority(record.priority),
 		tags: stringList(record.tags),
 		dependsOn: stringList(record.dependsOn),
@@ -276,6 +287,7 @@ export function parseBoard(raw: unknown, fallbackCwd = ""): KanbanBoard {
 		version: 1,
 		concurrency,
 		defaultCwd: typeof record.defaultCwd === "string" && record.defaultCwd ? record.defaultCwd : fallbackCwd,
+		defaultModelKey: typeof record.defaultModelKey === "string" ? record.defaultModelKey : "",
 		cards: restored,
 	};
 }
