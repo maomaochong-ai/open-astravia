@@ -6,9 +6,11 @@ agent_mode: work
 
 # Vetta UI Design
 
+A design document is ONE directory — `login-app.vetd/` — holding everything:
+
 ```text
-login-app.vetd          ← canvas manifest. GENERATED — see below.
-login-app.vetd.d/
+login-app.vetd/
+  design.json           ← canvas manifest. GENERATED — see below.
   frames/               ← one TSX file = one canvas frame = one route
     index.tsx           ← the site root "/"
     login.tsx           ← "/login"
@@ -19,14 +21,14 @@ login-app.vetd.d/
   DESIGN.md             ← optional spec; OVERRIDES defaults in this skill
 ```
 
-You write the sidecar sources; the plugin owns the manifest and reconciles
+You write the sources; the plugin owns the manifest and reconciles
 automatically. Every save hot-reloads the canvas. Two consequences worth
 internalising before you start:
 
 - **The file name IS the route and the frame id.** Create a screen by writing
   `frames/<kebab-id>.tsx`, delete one by deleting the file. There is no
   registration step anywhere.
-- **Editing the `.vetd` manifest is pointless, not just forbidden.** It is
+- **Editing `design.json` is pointless, not just forbidden.** It is
   regenerated from your tsx declarations on every save, so any hand-edit is
   overwritten seconds later. If a frame is not showing up the way you expect,
   the answer is always in the tsx.

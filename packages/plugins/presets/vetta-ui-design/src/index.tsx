@@ -18,15 +18,17 @@ import {
 	notifyAgentToolStart,
 	notifyFrameSettled,
 	requestMockupExport,
+	setPendingDesignPath,
 } from "./canvas/design-runtime";
 import { stopAllDesignServers } from "./engine/engine-manager";
+import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format";
 import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
 import { setPluginCtx } from "./plugin-context";
 import { VetdPreview } from "./preview/VetdPreview";
 import { CANVAS_TAB_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
 import { claimCanvasAutoOpen } from "./vetd/auto-open";
-import { isPureDesignProject, pickVetdFiles } from "./vetd/discover";
+import { isPureDesignProject, pickDesignPaths } from "./vetd/discover";
 
 function DesignIcon() {
 	return (
@@ -98,9 +100,11 @@ export default definePlugin({
 				.catch(() => [])
 				.then((files) => {
 					if (latestCwd !== cwd || latestSessionId !== sessionId || !isWorkMode()) return;
-					const found = pickVetdFiles(files);
-					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found.length > 0);
-					if (found.length === 0 || !isPureDesignProject(files)) return;
+					// 还没迁移的旧格式也算数：Tab 先亮出来，真正的迁移在画布打开时发生。
+					const { bundles, legacyFiles } = pickDesignPaths(files);
+					const found = bundles.length + legacyFiles.length;
+					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found > 0);
+					if (found === 0 || !isPureDesignProject(files)) return;
 					if (!claimCanvasAutoOpen(sessionId)) return;
 					ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
 				});
@@ -177,13 +181,25 @@ export default definePlugin({
 			}
 		});
 
-		// 跨模式唯一保留的能力：编程模式里也可能点开一份 .vetd 看看。
-		ctx.ui.registerFilePreview({ extensions: ["vetd"], component: VetdPreview });
+		// 跨模式唯一保留的能力：编程模式里也可能点开一份设计看看。分享包（`.vetdz`，
+		// 以及历史导出的 `.vetd` zip）是文件，走预览；设计本体是目录，走右键打开画布。
+		ctx.ui.registerFilePreview({ extensions: [...SHARE_PREVIEW_EXTENSIONS], component: VetdPreview });
 		ctx.fileExplorer.registerDecorationProvider({
 			id: "vetd-file-icon",
 			priority: 100,
-			when: { resourceType: "file", extensions: ["vetd"] },
+			when: { extensions: ["vetd", SHARE_EXTENSION] },
 			provideDecoration: () => ({ icon: <VetdFileIcon /> }),
+		});
+		ctx.fileExplorer.registerContextMenuAction({
+			id: "vetd-open-canvas",
+			label: "%fileExplorer.openCanvas%",
+			icon: <DesignIcon />,
+			when: { resourceType: "directory", extensions: ["vetd"] },
+			run: ({ entry }) => {
+				setPendingDesignPath(entry.path);
+				ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, true);
+				ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+			},
 		});
 
 		registerDesignTools(ctx);

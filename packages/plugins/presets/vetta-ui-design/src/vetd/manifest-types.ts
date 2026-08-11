@@ -18,7 +18,7 @@ export interface FrameMeta {
  */
 export interface VetdFrameEntry {
 	id: string;
-	/** Path relative to the sidecar dir, e.g. `frames/login.tsx`. */
+	/** Path relative to the bundle dir, e.g. `frames/login.tsx`. */
 	file: string;
 	x: number;
 	y: number;
@@ -62,12 +62,38 @@ export function emptyManifest(): VetdManifest {
 	};
 }
 
-/** `x.vetd` → sidecar dir `x.vetd.d` (naming-convention binding). */
-export function sidecarDirOf(vetdPath: string): string {
+/**
+ * 一份设计 = 一个 `x.vetd/` 目录（bundle）。manifest 是它里面的一个文件，不再是
+ * 目录旁边的兄弟节点：从前 `x.vetd` + `x.vetd.d/` 是两个条目，移动、复制、删除、
+ * `git mv` 都要成对操作，漏一个就剩下半份设计。
+ *
+ * 目录而不是单文件容器：引擎（vite dev server）要的是磁盘上的真实文件树，agent
+ * 也要能用普通读写工具改 tsx —— 见 ADR-0053、ADR-0066。
+ */
+export const MANIFEST_FILE = "design.json";
+
+/** `x.vetd/` → 其中的 manifest 文件。 */
+export function manifestPathOf(designPath: string): string {
+	return `${designPath}/${MANIFEST_FILE}`;
+}
+
+/** 旧格式（v1 工作态）的旁挂目录，只有迁移用得到。 */
+export function legacySidecarDirOf(vetdPath: string): string {
 	return `${vetdPath}.d`;
 }
 
-export function designNameOf(vetdPath: string): string {
-	const base = vetdPath.split("/").pop() ?? vetdPath;
+/**
+ * 一个叫 `.vetd` 的**文件**是哪种旧形态：v1 工作态 manifest 以 `{` 开头，打包
+ * 分享文件是 zip（`PK`）。v2 设计包是目录，走不到这里。
+ */
+export function sniffVetdKind(head: string): "working" | "packaged" | "unknown" {
+	const trimmed = head.trimStart();
+	if (trimmed.startsWith("{")) return "working";
+	if (head.startsWith("PK")) return "packaged";
+	return "unknown";
+}
+
+export function designNameOf(designPath: string): string {
+	const base = designPath.split("/").pop() ?? designPath;
 	return base.replace(/\.vetd$/, "");
 }

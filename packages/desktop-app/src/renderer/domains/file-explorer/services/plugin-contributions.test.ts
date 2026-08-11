@@ -25,6 +25,15 @@ describe("file explorer plugin contributions", () => {
 		expect(matchesFileExplorerWhen(file, { extensions: ["ts"] })).toBe(false);
 	});
 
+	it("matches extensions on directories too, so bundle dirs can be decorated", () => {
+		const bundle = { name: "login-app.vetd", path: "/w/login-app.vetd", isDirectory: true, size: 0, modifiedAt: 1 };
+		expect(matchesFileExplorerWhen(bundle, { resourceType: "directory", extensions: ["vetd"] })).toBe(true);
+		expect(matchesFileExplorerWhen(bundle, { extensions: ["vetd"] })).toBe(true);
+		expect(matchesFileExplorerWhen(bundle, { extensions: ["vetdz"] })).toBe(false);
+		// 显式要文件的匹配器不受影响。
+		expect(matchesFileExplorerWhen(bundle, { resourceType: "file", extensions: ["vetd"] })).toBe(false);
+	});
+
 	it("sorts actions by ascending order without mutating the registry", () => {
 		const run = vi.fn();
 		const actions: RegisteredFileExplorerContextMenuAction[] = [

@@ -2,10 +2,13 @@ import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { strToU8, zipSync, type Zippable } from "fflate";
 import { buildDesign } from "../engine/engine-manager";
 import type { DesignSession } from "../vetd/design-session";
+import { MANIFEST_FILE } from "../vetd/manifest-types";
+import { SHARE_EXTENSION } from "./share-format";
 
 const BUILD_DIR = ".vetd-build";
 // `.notes.json` 是用户和 Vetta 之间的工作批注，不是设计内容，分享包不带。
-const EXCLUDED_PREFIXES = [`${BUILD_DIR}/`, "node_modules/", ".snapshots/", ".notes.json"];
+// `design.json` 在包里单独以 manifest.json 落一份，不重复进 design/。
+const EXCLUDED_PREFIXES = [`${BUILD_DIR}/`, "node_modules/", ".snapshots/", ".notes.json", MANIFEST_FILE];
 
 function base64FromBytes(bytes: Uint8Array): string {
 	let binary = "";
@@ -50,9 +53,9 @@ async function buildSnapshotHtml(ctx: PluginContext, outDir: string): Promise<st
 }
 
 /**
- * Export the working design into a self-contained packaged .vetd (zip):
+ * Export the design bundle into a self-contained share file (zip):
  * manifest.json + design sources + snapshot.html. Written next to the design
- * as `<name>-share.vetd`; returns the path.
+ * as `<name>-share.vetdz`; returns the path.
  */
 export async function exportDesign(ctx: PluginContext, session: DesignSession): Promise<string> {
 	const outDir = `${session.dirPath}/${BUILD_DIR}`;
@@ -79,7 +82,7 @@ export async function exportDesign(ctx: PluginContext, session: DesignSession): 
 	const zipped = zipSync(zipEntries, { level: 6 });
 
 	const parent = session.vetdPath.slice(0, session.vetdPath.lastIndexOf("/"));
-	const exportPath = `${parent}/${session.name}-share.vetd`;
+	const exportPath = `${parent}/${session.name}-share.${SHARE_EXTENSION}`;
 	await ctx.fs.writeFile(exportPath, base64FromBytes(zipped), "base64");
 	await ctx.fs.delete(outDir).catch(() => {});
 	return exportPath;

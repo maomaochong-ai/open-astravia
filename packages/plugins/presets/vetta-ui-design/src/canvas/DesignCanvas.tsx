@@ -15,7 +15,7 @@ import type { NotesStore } from "../notes/notes-store";
 import { noteWorldPosition, pendingNotes } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
-import type { VetdFrameEntry, VetdManifest } from "../vetd/manifest-types";
+import { MANIFEST_FILE, type VetdFrameEntry, type VetdManifest } from "../vetd/manifest-types";
 import {
 	type ArrangeItem,
 	type GapBand,
@@ -124,9 +124,10 @@ const MAX_ZOOM = 4;
 const ZOOM_STEP = 1.2;
 /** Below this the marquee counts as a click, not a drag. */
 const MARQUEE_MIN = 4;
-/** sidecar 里的生成物，不参与「源码变了要重截」的判断。`.notes.json` 是备注数据：
-    它不影响任何 frame 的渲染，进了这个判断每写一条备注就全画布重截图。 */
-const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/", ".notes.json"];
+/** 设计包里不算源码的东西，不参与「源码变了要重截」的判断。`.notes.json` 是备注
+    数据、`design.json` 是画布 manifest（拖一下画框就重写一次）：两者都不影响任何
+    frame 的渲染，进了这个判断每写一条备注、每拖一次画框就全画布重截图。 */
+const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/", ".notes.json", MANIFEST_FILE];
 /** 右键「复制为图片」的截图倍率：粘到聊天/文档里要经得起看，1 倍太糊。 */
 const COPY_PIXEL_RATIO = 2;
 /**

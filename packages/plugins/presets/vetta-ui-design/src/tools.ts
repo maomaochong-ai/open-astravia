@@ -22,7 +22,6 @@ import { blockingSyntaxIssues, SYNTAX_RULE } from "./vetd/check-syntax";
 import { findVetdFiles } from "./vetd/discover";
 import { inspectIssues } from "./vetd/inspect";
 import { layoutIssues } from "./vetd/layout-probe";
-import { sidecarDirOf } from "./vetd/manifest-types";
 import { PRODUCT_SIZE_SUMMARY, PRODUCT_TYPES, resolveDefaultFrameSize } from "./vetd/product-size";
 import { scaffoldDesign } from "./vetd/scaffold";
 
@@ -104,7 +103,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		// 工具描述每轮都在系统提示里，所以只留「做什么 + 去哪拿规则」。规则本身归
 		// skill 正文（已验证 invoke_skill 能送达），在这里复述一遍是双份 token。
 		description:
-			"Create a new Vetta UI Design document (.vetd manifest + sidecar sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
+			"Create a new Vetta UI Design document (a `<name>.vetd/` directory holding design.json + sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -153,7 +152,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				vetdPath: result.vetdPath,
 				sourcesDir: result.dirPath,
 				defaultFrameSize,
-				note: `Design created and opened on the canvas, with NO frames yet. Its default size is ${defaultFrameSize.width}x${defaultFrameSize.height} — still declare it per frame: every frames/<id>.tsx starts with \`export const frame = { width: ${defaultFrameSize.width}, height: ${defaultFrameSize.height}, title }\`, and a screen of a different product type declares its own. Never edit the .vetd manifest. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx), then every frame as a short skeleton so the whole set reaches the canvas immediately, and only then fill them in one at a time — see the vetta-ui-design skill.`,
+				note: `Design created and opened on the canvas, with NO frames yet. Its default size is ${defaultFrameSize.width}x${defaultFrameSize.height} — still declare it per frame: every frames/<id>.tsx starts with \`export const frame = { width: ${defaultFrameSize.width}, height: ${defaultFrameSize.height}, title }\`, and a screen of a different product type declares its own. Never edit design.json. More than one screen? Write the shared chrome FIRST (components/, or frames/_layout.tsx), then every frame as a short skeleton so the whole set reaches the canvas immediately, and only then fill them in one at a time — see the vetta-ui-design skill.`,
 			};
 		},
 	});
@@ -592,7 +591,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				} catch (error) {
 					return { ok: false, error: error instanceof Error ? error.message : String(error) };
 				}
-				const dirPath = sidecarDirOf(vetdPath);
+				const dirPath = vetdPath;
 				const path = notesFilePath(dirPath);
 				const file = parseNotesFile(await host.fs.readFile(path).then((r) => r.content, () => ""));
 				const unknown: string[] = [];
@@ -629,7 +628,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 				} catch (error) {
 					return { ok: false, error: error instanceof Error ? error.message : String(error) };
 				}
-				const dirPath = sidecarDirOf(vetdPath);
+				const dirPath = vetdPath;
 				const file = parseNotesFile(await host.fs.readFile(notesFilePath(dirPath)).then((r) => r.content, () => ""));
 				const targets = ids && ids.length > 0 ? file.notes.filter((note) => ids.includes(note.id)) : pendingNotes(file.notes);
 				return {

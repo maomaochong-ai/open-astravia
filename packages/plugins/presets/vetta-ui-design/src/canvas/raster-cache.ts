@@ -7,7 +7,7 @@
  *
  * 为什么是 IndexedDB 而不是 ctx.storage：位图是纯派生数据，必须能删（frame 删了、
  * 设计稿删了），而 storage API 只有 readJson/writeJson/putBlob 一类的写入口，没有
- * 删除能力，拿它做缓存等于让磁盘只涨不落。也不写进 sidecar 的 .snapshots/——那是
+ * 删除能力，拿它做缓存等于让磁盘只涨不落。也不写进设计包的 .snapshots/——那是
  * 用户项目里的目录，几 MB 的派生位图不该落在那儿。
  */
 

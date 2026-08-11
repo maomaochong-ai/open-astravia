@@ -1,6 +1,7 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { strFromU8, unzipSync } from "fflate";
-import { sanitizeDesignName, } from "../vetd/scaffold";
+import { manifestPathOf } from "../vetd/manifest-types";
+import { sanitizeDesignName } from "../vetd/scaffold";
 
 export interface PackagedVetd {
 	manifestJson: string;
@@ -12,7 +13,7 @@ export interface PackagedVetd {
 export function parsePackagedVetd(bytes: Uint8Array): PackagedVetd {
 	const entries = unzipSync(bytes);
 	const manifest = entries["manifest.json"];
-	if (!manifest) throw new Error("packaged .vetd missing manifest.json");
+	if (!manifest) throw new Error("share file missing manifest.json");
 	const designFiles = new Map<string, Uint8Array>();
 	for (const [name, content] of Object.entries(entries)) {
 		if (name.startsWith("design/") && !name.endsWith("/")) {
@@ -36,8 +37,8 @@ function base64FromBytes(bytes: Uint8Array): string {
 }
 
 /**
- * Unpack a packaged .vetd into working form (manifest + sidecar dir) inside
- * `targetDir`. Returns the new manifest path.
+ * Unpack a share file into a working design bundle (`x.vetd/`) inside
+ * `targetDir`. Returns the new bundle path.
  */
 export async function importPackagedVetd(
 	ctx: PluginContext,
@@ -45,17 +46,16 @@ export async function importPackagedVetd(
 	targetDir: string,
 	sourceFileName: string,
 ): Promise<string> {
-	const baseName = sanitizeDesignName(sourceFileName.replace(/\.vetd$/i, "").replace(/-share$/i, ""));
+	const baseName = sanitizeDesignName(sourceFileName.replace(/\.(?:vetdz|vetd)$/i, "").replace(/-share$/i, ""));
 	let vetdPath = `${targetDir}/${baseName}.vetd`;
 	let suffix = 1;
 	while ((await ctx.fs.stat(vetdPath)) !== null) {
 		vetdPath = `${targetDir}/${baseName}-${suffix}.vetd`;
 		suffix += 1;
 	}
-	const dirPath = `${vetdPath}.d`;
 	for (const [rel, bytes] of packaged.designFiles) {
-		await ctx.fs.writeFile(`${dirPath}/${rel}`, base64FromBytes(bytes), "base64");
+		await ctx.fs.writeFile(`${vetdPath}/${rel}`, base64FromBytes(bytes), "base64");
 	}
-	await ctx.fs.writeFile(vetdPath, packaged.manifestJson);
+	await ctx.fs.writeFile(manifestPathOf(vetdPath), packaged.manifestJson);
 	return vetdPath;
 }

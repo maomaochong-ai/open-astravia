@@ -1,7 +1,7 @@
 {
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.1.25",
+	"version": "0.2.0",
 	"icon": "icon.png",
 	"agent_mode": ["work"],
 	"defaultLocale": "zh",
@@ -20,6 +20,7 @@
 		"ui.slot.message",
 		"ui.slot.input-action",
 		"ui.file-explorer.decorations",
+		"ui.file-explorer.context-menu",
 		"ui.shortcuts.register",
 		"agent.session.read",
 		"agent.session.write",

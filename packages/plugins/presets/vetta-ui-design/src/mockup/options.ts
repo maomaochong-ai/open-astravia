@@ -2,7 +2,7 @@ import type { MockupOptions } from "./types";
 
 /**
  * Export settings are a local habit, not design content — they live in
- * localStorage per design document rather than in the .vetd manifest, which
+ * localStorage per design document rather than in design.json, which
  * the canvas owns and the agent reads.
  */
 const STORAGE_PREFIX = "vetta-ui-design:mockup:";

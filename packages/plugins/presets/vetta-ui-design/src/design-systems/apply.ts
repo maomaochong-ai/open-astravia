@@ -1,6 +1,6 @@
 import type { PluginFsApi } from "@vetta-org/plugin-sdk";
 import { ensureSnapshotsIgnored } from "../cards/snapshots";
-import { sidecarDirOf, type VetdManifest } from "../vetd/manifest-types";
+import { manifestPathOf, type VetdManifest } from "../vetd/manifest-types";
 import { DESIGN_SYSTEMS_SOURCE, designSystemById } from "./index";
 import type { DesignSystem } from "./types";
 
@@ -124,8 +124,8 @@ export async function restoreBackup(fs: PluginFsApi, dirPath: string): Promise<v
 export async function applyDesignSystem(fs: PluginFsApi, vetdPath: string, systemId: string): Promise<ApplyResult> {
 	const system = designSystemById(systemId);
 	if (!system) throw new Error(`unknown design system "${systemId}"`);
-	const dirPath = sidecarDirOf(vetdPath);
-	const manifest = JSON.parse((await fs.readFile(vetdPath)).content) as VetdManifest;
+	const dirPath = vetdPath;
+	const manifest = JSON.parse((await fs.readFile(manifestPathOf(vetdPath))).content) as VetdManifest;
 	const frames = (manifest.frames ?? []).map((frame) => ({
 		id: frame.id,
 		file: frame.file,

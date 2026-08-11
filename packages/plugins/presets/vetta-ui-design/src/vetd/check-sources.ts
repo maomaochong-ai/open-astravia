@@ -15,7 +15,7 @@ import { isFrameFile } from "../../engine/src/routes";
 import { parseFrameMeta } from "./frame-meta";
 
 export interface SourceIssue {
-	/** 相对 sidecar 目录的路径，如 `frames/login.tsx`。 */
+	/** 相对设计包目录的路径，如 `frames/login.tsx`。 */
 	file: string;
 	/** 1 起算；定位不到具体行时为 null。 */
 	line: number | null;
@@ -24,7 +24,7 @@ export interface SourceIssue {
 }
 
 export interface SourceFile {
-	/** 相对 sidecar 目录的路径。 */
+	/** 相对设计包目录的路径。 */
 	path: string;
 	content: string;
 }

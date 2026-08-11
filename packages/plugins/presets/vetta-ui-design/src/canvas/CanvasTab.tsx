@@ -10,7 +10,7 @@ import { NotesStore } from "../notes/notes-store";
 import { getPluginCtx, notify } from "../plugin-context";
 import { PreviewDialog } from "../preview-mode/PreviewDialog";
 import { DesignSession } from "../vetd/design-session";
-import { findVetdFiles, sniffVetdKind } from "../vetd/discover";
+import { findVetdFiles } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
 import { BridgeHub, type ElementQuery, type SelectedElementPayload } from "./bridge-client";
 import { DOCK_GAP, DOCK_ICON } from "./dock-magnify";
@@ -68,15 +68,9 @@ export function CanvasTab() {
 			return [];
 		}
 		const ctx = getPluginCtx();
-		const found: string[] = [];
-		for (const path of await findVetdFiles(ctx.fs, cwd)) {
-			try {
-				const head = (await ctx.fs.readFile(path)).content.slice(0, 64);
-				if (sniffVetdKind(head) === "working") found.push(path);
-			} catch {
-				// unreadable: skip
-			}
-		}
+		// 设计包是目录，认的是里面的 design.json——不再需要按内容嗅探区分工作态与
+		// 打包分享文件（后者是 `.vetdz`，压根不会出现在这个列表里）。
+		const found = await findVetdFiles(ctx.fs, cwd);
 		setFiles(found);
 		return found;
 	}, [cwd]);

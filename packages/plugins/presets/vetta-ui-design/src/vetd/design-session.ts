@@ -5,7 +5,7 @@ import { FALLBACK_FRAME_SIZE, resolveFrameSizes } from "./frame-size";
 import {
 	designNameOf,
 	emptyManifest,
-	sidecarDirOf,
+	manifestPathOf,
 	type VetdCanvasViewport,
 	type VetdFrameEntry,
 	type VetdManifest,
@@ -19,15 +19,17 @@ const VIEWPORT_SAVE_DEBOUNCE_MS = 800;
 export type DesignChange = "frames" | "theme";
 
 /**
- * One open working-form design. Owns the manifest (single writer): the agent
- * and the user only touch sidecar sources; every manifest mutation flows
+ * One open design bundle (`x.vetd/`). Owns the manifest (single writer): the
+ * agent and the user only touch the sources; every manifest mutation flows
  * through this class. Reconcile rules (ADR-0053): tsx meta is the DECLARATION
  * (initial size / follow on change), the manifest is the CURRENT state (user
  * drags win until the meta changes again).
  */
 export class DesignSession {
+	/** The bundle directory. Same value as {@link dirPath} — see ADR-0066. */
 	readonly vetdPath: string;
 	readonly dirPath: string;
+	readonly manifestPath: string;
 	readonly name: string;
 	manifest: VetdManifest = emptyManifest();
 
@@ -36,6 +38,8 @@ export class DesignSession {
 	private readonly watchHandles: Disposable[] = [];
 	private readonly pendingPlacements = new Map<string, { x: number; y: number }>();
 	private reconcileTimer: number | null = null;
+	/** 上一次读到的 theme.css，用来把「真的改了色板」从自触发的监听事件里分出来。 */
+	private lastThemeCss: string | null = null;
 	private viewportTimer: number | null = null;
 	private disposed = false;
 	private writing = Promise.resolve();
@@ -43,7 +47,8 @@ export class DesignSession {
 	constructor(ctx: PluginContext, vetdPath: string) {
 		this.ctx = ctx;
 		this.vetdPath = vetdPath;
-		this.dirPath = sidecarDirOf(vetdPath);
+		this.dirPath = vetdPath;
+		this.manifestPath = manifestPathOf(vetdPath);
 		this.name = designNameOf(vetdPath);
 	}
 
@@ -58,7 +63,7 @@ export class DesignSession {
 
 	async open(): Promise<void> {
 		try {
-			const raw = await this.ctx.fs.readFile(this.vetdPath);
+			const raw = await this.ctx.fs.readFile(this.manifestPath);
 			const parsed = JSON.parse(raw.content) as VetdManifest;
 			if (parsed && parsed.type === "vetta-design" && Array.isArray(parsed.frames)) {
 				this.manifest = {
@@ -68,10 +73,11 @@ export class DesignSession {
 				};
 			}
 		} catch {
-			// Corrupt/missing manifest: rebuild from the sidecar (frames re-place).
+			// Corrupt/missing manifest: rebuild from the bundle sources (frames re-place).
 			this.manifest = emptyManifest();
 		}
 		await this.reconcile();
+		this.lastThemeCss = await this.readThemeCss();
 		const schedule = () => this.scheduleReconcile();
 		this.watchHandles.push(this.ctx.fs.watchDirectory(this.dirPath, schedule));
 		this.watchHandles.push(this.ctx.fs.watchDirectory(`${this.dirPath}/frames`, schedule));
@@ -86,17 +92,28 @@ export class DesignSession {
 		this.listeners.clear();
 	}
 
+	/**
+	 * 目录监听回调。manifest 就在被监听的包里（ADR-0066），所以**我们自己**的每一次
+	 * 落盘（拖动、平移视口）都会绕回这里；宿主的事件只带被监听的目录路径，认不出
+	 * 是哪个文件变的。因此对外的通知一律按「内容真的变了」再发：reconcile 只在
+	 * frame 集合/声明变化时 emit，theme 按内容比对。否则拖一下画框就会全画布重渲染
+	 * 加一次重截图。
+	 */
 	private scheduleReconcile(): void {
 		if (this.disposed) return;
 		if (this.reconcileTimer !== null) window.clearTimeout(this.reconcileTimer);
 		this.reconcileTimer = window.setTimeout(() => {
 			this.reconcileTimer = null;
-			void this.reconcile().then(() => {
-				// theme.css edits arrive through the same watch; re-reading the palette
-				// is cheap, so always signal it.
-				this.emit("theme");
-			});
+			void this.reconcile().then(() => this.emitThemeIfChanged());
 		}, RECONCILE_DEBOUNCE_MS);
+	}
+
+	private async emitThemeIfChanged(): Promise<void> {
+		if (this.disposed) return;
+		const css = await this.readThemeCss();
+		if (css === this.lastThemeCss) return;
+		this.lastThemeCss = css;
+		this.emit("theme");
 	}
 
 	/** Scan `frames/*.tsx`, apply the meta/manifest ownership rules, persist if changed. */
@@ -170,7 +187,8 @@ export class DesignSession {
 		if (known.size > 0) dirty = true; // deleted frames
 
 		this.manifest = { ...this.manifest, frames: nextFrames };
-		if (dirty) await this.persist();
+		if (!dirty) return;
+		await this.persist();
 		this.emit("frames");
 	}
 
@@ -272,7 +290,7 @@ export class DesignSession {
 	}
 
 	/**
-	 * 画布右键「删除 Frame」：sidecar 里的 tsx 才是真相，删掉源码后 reconcile
+	 * 画布右键「删除 Frame」：包里的 tsx 才是真相，删掉源码后 reconcile
 	 * 自然会把它从 manifest 里摘掉，不必单独改 manifest。
 	 */
 	async deleteFrame(id: string): Promise<void> {
@@ -294,7 +312,7 @@ export class DesignSession {
 		// Serialize writes so rapid drag updates cannot interleave.
 		const snapshot = `${JSON.stringify(this.manifest, null, "\t")}\n`;
 		this.writing = this.writing
-			.then(() => this.ctx.fs.writeFile(this.vetdPath, snapshot))
+			.then(() => this.ctx.fs.writeFile(this.manifestPath, snapshot))
 			.catch((error: unknown) => {
 				console.error("vetd manifest write failed", error);
 			});
