@@ -99,6 +99,14 @@ describe("DesignSystemDemo", () => {
 		expect(sandbox).not.toContain("allow-forms");
 	});
 
+	it("根节点必须带 w-full——卡片是 button，交叉轴不会 stretch", () => {
+		act(() => root.render(<DesignSystemDemo system={withDemo} active={false} />));
+		const rendered = host.firstElementChild;
+		// <button> 的 UA 默认样式是 align-items:center，而这里内部全是 absolute 子元素，
+		// 没有 in-flow 内容撑宽：少了 w-full 整块宽度会塌成 0，表现为「什么都没渲染」。
+		expect(rendered?.className).toContain("w-full");
+	});
+
 	it("预览不吃鼠标事件，点击仍然落在卡片上", () => {
 		act(() => root.render(<DesignSystemDemo system={withDemo} active={false} />));
 		expect(frame()?.className).toContain("pointer-events-none");

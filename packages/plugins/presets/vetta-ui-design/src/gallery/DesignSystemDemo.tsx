@@ -89,7 +89,10 @@ export function DesignSystemDemo({ system, active, className }: DesignSystemDemo
 	const animationName = `vetd-demo-scroll-${system.id.replace(/[^a-z0-9-]/g, "")}`;
 
 	return (
-		<div ref={boxRef} className={`relative overflow-hidden ${className ?? ""}`}>
+		// w-full 不能省：卡片是 <button>，而 button 的 UA 默认样式带 align-items:center，
+		// 交叉轴不会 stretch；这里内部又全是 absolute 子元素，没有 in-flow 内容撑宽，
+		// 少了它整块宽度会塌成 0（高度正常，所以表现为「什么都没渲染」）。
+		<div ref={boxRef} className={`relative w-full overflow-hidden ${className ?? ""}`}>
 			{/* 兜底层：iframe 起不来时用户看到的是这套体系的色板，不是一块空白。 */}
 			<DesignSystemPreview system={system} className="absolute inset-0" />
 
