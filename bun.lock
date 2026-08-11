@@ -712,7 +712,7 @@
     },
     "packages/plugins/presets/kanban": {
       "name": "@vetta/plugin-kanban",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "devDependencies": {
         "@iconify-json/solar": "^1.2.5",
         "@iconify/tailwind4": "^1.0.6",
