@@ -217,10 +217,18 @@ bunx vite build      # 产出 dist/（mf-manifest.json + remoteEntry.js + style.
 
 `bun run dev` 可单独启动同一个开发服务器并输出 NDJSON 状态，主要用于宿主或工具集成；使用插件工作台时不要重复启动。安装更新版本仍会记为 **pending**，直到 `reload` 才切换正式安装态的 `activeVersion`。
 
-开发 Desktop 仓库内的 preset / external 时，不需要打开插件工作台。通过环境变量显式选择要接入宿主的插件：
+开发 Desktop 仓库内的 preset 时，不需要打开插件工作台。`packages/desktop-app` 的开发启动器默认会为当前
+`VETTA_TENANT` 包含的全部 preset 启动开发服务器；直接运行即可：
 
 ```powershell
-$env:VETTA_PLUGIN_DEV="git,mobile-ui-preview"
+bun run --cwd packages/desktop-app dev
+```
+
+需要缩小启动范围时，可显式指定逗号分隔的插件 id；显式设置为空字符串则关闭插件开发服务器，回落到
+staging 制品：
+
+```powershell
+$env:VETTA_PLUGIN_DEV="git,content-creation"
 bun run --cwd packages/desktop-app dev
 ```
 

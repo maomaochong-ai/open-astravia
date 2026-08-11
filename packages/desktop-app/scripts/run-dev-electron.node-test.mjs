@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
-import { resolveDevLaunchEnvironment } from "./run-dev-electron.mjs";
+import { resolveDevLaunchEnvironment, resolveDevPluginIds } from "./run-dev-electron.mjs";
 
 test("isolates normal development from packaged application data", () => {
 	const homeDirectory = join("test", "home");
@@ -36,4 +36,28 @@ test("preserves explicit config and user data overrides", () => {
 		),
 		{ configDir: ".custom-vetta", userDataDir },
 	);
+});
+
+test("enables every preset from the active tenant by default", () => {
+	const resolveTenant = (tenant) => {
+		assert.equal(tenant, "tenantb");
+		return { name: tenant, pluginIds: new Set(["svg-viewer", "content-creation", "git"]) };
+	};
+
+	assert.equal(
+		resolveDevPluginIds({ VETTA_TENANT: "tenantb" }, resolveTenant),
+		"content-creation,git,svg-viewer",
+	);
+});
+
+test("preserves an explicit plugin selection or empty opt-out", () => {
+	const unexpectedTenantResolution = () => {
+		throw new Error("tenant resolution should not run for an explicit selection");
+	};
+
+	assert.equal(
+		resolveDevPluginIds({ VETTA_PLUGIN_DEV: "git,content-creation" }, unexpectedTenantResolution),
+		"git,content-creation",
+	);
+	assert.equal(resolveDevPluginIds({ VETTA_PLUGIN_DEV: "" }, unexpectedTenantResolution), "");
 });
