@@ -34,7 +34,7 @@ export default definePlugin({
 		ctx.ui.registerWorkspaceView({
 			id: "board",
 			label: "%view.board.label%",
-			icon: "icon-[solar--widget-4-linear]",
+			icon: "icon-[solar--archive-minimalistic-outline]",
 			description: "%view.board.description%",
 			component: function KanbanWorkspaceView(): JSX.Element {
 				return <BoardView controller={controller} />;
