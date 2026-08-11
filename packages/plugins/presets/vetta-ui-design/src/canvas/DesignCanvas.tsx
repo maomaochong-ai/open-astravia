@@ -14,7 +14,8 @@ import type { NotesStore } from "../notes/notes-store";
 import { noteWorldPosition, pendingNotes } from "../notes/types";
 import { getPluginCtx, notify } from "../plugin-context";
 import type { DesignSession } from "../vetd/design-session";
-import { MANIFEST_FILE, type VetdFrameEntry, type VetdManifest } from "../vetd/manifest-types";
+import { classifySource, isGeneratedPath, normalizeRelative } from "../vetd/bundle-paths";
+import type { VetdFrameEntry, VetdManifest } from "../vetd/manifest-types";
 import {
 	type ArrangeItem,
 	type GapBand,
@@ -116,10 +117,6 @@ interface Rect {
 
 /** Below this the marquee counts as a click, not a drag. */
 const MARQUEE_MIN = 4;
-/** 设计包里不算源码的东西，不参与「源码变了要重截」的判断。`.notes.json` 是备注
-    数据、`design.json` 是画布 manifest（拖一下画框就重写一次）：两者都不影响任何
-    frame 的渲染，进了这个判断每写一条备注、每拖一次画框就全画布重截图。 */
-const GENERATED_PREFIXES = [".snapshots/", ".vetd-build/", "node_modules/", ".notes.json", MANIFEST_FILE];
 /** 右键「复制为图片」的截图倍率：粘到聊天/文档里要经得起看，1 倍太糊。 */
 const COPY_PIXEL_RATIO = 2;
 /**
@@ -597,17 +594,16 @@ export function DesignCanvas({
 
 			for (const file of files) {
 				if (disposed) return;
-				const rel = file.relPath.replaceAll("\\", "/");
-				if (GENERATED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
+				const rel = normalizeRelative(file.relPath);
+				const impact = classifySource(rel);
+				if (impact.kind === "none") continue;
 				const stat = await ctx.fs.stat(file.path).catch(() => null);
 				if (!stat) continue;
 				const previous = sourceMtimesRef.current.get(rel);
 				sourceMtimesRef.current.set(rel, stat.modifiedAt);
 				if (seedOnly || previous === undefined || previous === stat.modifiedAt) continue;
-				const frameMatch = /^frames\/(.+)\.tsx$/.exec(rel);
-				// frame 自己的源码只影响它自己；theme.css、components/*、assets/* 这类
-				// 共享资源改一下可能影响任意 frame，无从判断依赖关系，只能全部重截。
-				if (frameMatch) changedFrames.add(frameMatch[1]);
+				// 影响面判定与活动态浮层共用（vetd/bundle-paths），两边不能有两套说法。
+				if (impact.kind === "frame") changedFrames.add(impact.frameId);
 				else sharedChanged = true;
 			}
 
@@ -626,7 +622,7 @@ export function DesignCanvas({
 			const dirs = [
 				root,
 				...entries
-					.filter((entry) => entry.isDirectory && !GENERATED_PREFIXES.some((p) => `${entry.name}/` === p))
+					.filter((entry) => entry.isDirectory && !isGeneratedPath(`${entry.name}/`))
 					.map((entry) => entry.path),
 			];
 			if (disposed) return;
