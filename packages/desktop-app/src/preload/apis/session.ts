@@ -52,6 +52,7 @@ const CHANNELS = {
 	GET_PERSONALIZATION: "vetta:session:get-personalization",
 	SET_PERSONALIZATION: "vetta:session:set-personalization",
 	DELETE: "vetta:session:delete",
+	DELETE_ALL_FOR_CWD: "vetta:session:delete-all-for-cwd",
 	RENAME: "vetta:session:rename",
 	AUTO_TITLE: "vetta:session:auto-title",
 	NEXT_PROMPT_SUGGESTIONS: "vetta:session:next-prompt-suggestions",
@@ -124,6 +125,7 @@ export function createSessionApi(ipc: IpcRenderer): Pick<DesktopApi, "session"> 
 				ipc.invoke(CHANNELS.REPLACE_LAST_USER_MESSAGE, sessionId, entryId),
 			forkSession: (sessionId, entryId) => ipc.invoke(CHANNELS.FORK_SESSION, sessionId, entryId),
 			delete: (sessionPath) => ipc.invoke(CHANNELS.DELETE, sessionPath),
+			deleteAllForCwd: (cwd) => ipc.invoke(CHANNELS.DELETE_ALL_FOR_CWD, cwd),
 			rename: (sessionPath, name) => ipc.invoke(CHANNELS.RENAME, sessionPath, name),
 			autoTitle: (sessionId, userText, assistantText) =>
 				ipc.invoke(CHANNELS.AUTO_TITLE, sessionId, userText, assistantText),

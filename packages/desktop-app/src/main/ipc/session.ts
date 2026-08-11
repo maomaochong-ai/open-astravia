@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { type Dirent, type FSWatcher, watch } from "node:fs";
 import { mkdir, readdir, rm } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
+import { codingAgentSessionShardPath } from "@vetta/coding-agent/bootstrap";
 import { DEFAULT_PERSONA_ID, PERSONAS } from "@vetta/coding-agent/profile";
 import type {
 	AgentPluginContinuationInvocation,
@@ -23,6 +24,7 @@ import { BrowserWindow, ipcMain, type WebContents } from "electron";
 import { stopMonitoringRuntimeSession } from "../app-monitor/app-monitor-service.js";
 import { onConversationListChanged } from "../conversations/conversation-list-events.js";
 import { getDesktopConversationService } from "../conversations/desktop-conversation-service.js";
+import { purgeProjectSessions } from "../conversations/project-session-purge.js";
 import { parsePromptRequest } from "../conversations/prompt-request-schema.js";
 import { isConversationSubCwd, readSessionCwdFromHeader } from "../conversations/session-paths.js";
 import { listRuntimeSessionProjects, listSessionHistory } from "../conversations/session-query-service.js";
@@ -139,6 +141,8 @@ const CHANNELS = {
 	GET_STATE: "vetta:session:get-state",
 	GET_MESSAGES: "vetta:session:get-messages",
 	DELETE: "vetta:session:delete",
+	/** 项目硬删除时清空该 cwd 名下的会话存储；会话不在项目目录内，见 project-session-purge。 */
+	DELETE_ALL_FOR_CWD: "vetta:session:delete-all-for-cwd",
 	RENAME: "vetta:session:rename",
 	AUTO_TITLE: "vetta:session:auto-title",
 	NEXT_PROMPT_SUGGESTIONS: "vetta:session:next-prompt-suggestions",
@@ -882,6 +886,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				sessionLog.error("failed to remove conversation sub cwd", cwdFromHeader, err);
 			});
 		}
+	});
+
+	ipcMain.handle(CHANNELS.DELETE_ALL_FOR_CWD, async (_event, cwd: unknown) => {
+		assertNonEmptyString(cwd, "cwd");
+		return purgeProjectSessions(cwd, {
+			listSessions: (target) => listSessionHistory(target),
+			deleteSession: (sessionPath) => runtime.deleteSession(sessionPath),
+			// 分片目录是新会话的落点；`<项目>/.vetta/sessions` 是存量兼容位置，随项目目录
+			// 一起消失，这里不重复处理（见 composition.resolveDesktopRuntimeSessionRoots）。
+			resolveSessionDirs: (target) => [codingAgentSessionShardPath(target)],
+			removeDirectory: (dir) => rm(dir, { recursive: true, force: true }),
+			logError: (message, ...args) => sessionLog.error(message, ...args),
+		});
 	});
 
 	ipcMain.handle(CHANNELS.RENAME, async (_event, sessionPath: unknown, name: unknown) => {

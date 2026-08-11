@@ -122,6 +122,13 @@ export interface DesktopSessionApi {
 	/** Export fork as new session file; current session unchanged. */
 	forkSession(sessionId: string, entryId: string): Promise<{ path: string; text: string }>;
 	delete(sessionPath: string): Promise<void>;
+	/**
+	 * 清空某个项目 cwd 名下的全部会话存储，用于项目硬删除。
+	 *
+	 * 会话文件在按 cwd 算出的全局分片目录里，不随项目目录删除而消失；不清理的话，
+	 * 同路径重建项目会把旧会话带回侧边栏。内置「对话」/Claw/知识库 cwd 会被拒绝。
+	 */
+	deleteAllForCwd(cwd: string): Promise<{ deleted: number; failed: string[] }>;
 	rename(sessionPath: string, name: string): Promise<void>;
 	autoTitle(sessionId: string, userText: string, assistantText: string): Promise<string | null>;
 	/**

@@ -392,6 +392,10 @@ export function useProjectActions() {
 	const deleteProjectFromDisk = useCallback(
 		async (cwd: string) => {
 			if (cwd === store.get(defaultConversationCwdAtom)) return;
+			// 会话存储在按 cwd 算出的全局分片目录里，不在项目目录内：先清会话再删目录，
+			// 否则同路径重建同名项目时旧会话会连同产物一起复活。清理必须发生在项目仍
+			// 注册于 config 时——分片 root 由 config.projects 推导（composition.ts）。
+			await window.vetta.session.deleteAllForCwd(cwd);
 			const config = await window.vetta.config.get();
 			config.projects = config.projects.filter((p) => p.path !== cwd);
 			const archived = (config.archivedProjects ?? []).filter((p) => p.path !== cwd);
