@@ -415,6 +415,14 @@ export interface PluginOfficialNavigationOpenInput {
 	section?: string;
 	/** 仅 `target: "new-session"` 使用：要新建会话的项目目录。 */
 	cwd?: string;
+	/**
+	 * 仅 `target: "new-session"` 使用：预置到输入框的草稿文本，不发送，用户可继续编辑。
+	 *
+	 * 用输入框的文本形态书写行内 token（`@skill:名字` / `@mcp:名字` / `@/abs/path`），
+	 * 宿主会把它们渲染成对应的 badge。在导航发生**之前**写入该 cwd 的新会话草稿位，
+	 * 所以不会被新会话页自己的草稿恢复覆盖；该 cwd 上已有的未发送草稿会被替换。
+	 */
+	draft?: string;
 }
 
 /** 仅宿主验证为官方来源的插件可以调用；普通插件调用时由宿主拒绝。 */

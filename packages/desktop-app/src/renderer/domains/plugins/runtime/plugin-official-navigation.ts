@@ -1,3 +1,4 @@
+import { prefillNewSessionInputDraft } from "@shared/store/session-input-draft";
 import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
 import { isAppearanceUiThemeEnabled } from "../../../../shared/feature-flags";
 import {
@@ -377,6 +378,13 @@ export function resolveOfficialNavigationOpen(input: {
 	);
 }
 
+/** `resolved` 是 unknown（对插件是不透明回执），这里收窄出新会话目标以取 cwd。 */
+function isNewSessionResolution(resolved: unknown): resolved is { kind: "new-session"; cwd: string } {
+	if (typeof resolved !== "object" || resolved === null) return false;
+	const candidate = resolved as { kind?: unknown; cwd?: unknown };
+	return candidate.kind === "new-session" && typeof candidate.cwd === "string";
+}
+
 export function openOfficialHashPath(hashPath: string): void {
 	window.location.hash = `#${hashPath}`;
 }
@@ -389,6 +397,11 @@ export function createOfficialNavigationApi(capabilitySessionId: string): Plugin
 		open: (input) =>
 			pluginRendererCapabilityHost.invokeOfficial(capabilitySessionId, async () => {
 				const target = resolveOfficialNavigationOpen(input);
+				// 草稿必须先于跳转写入：新会话页挂载时按 cwd 恢复草稿，跳转后再写会被它盖掉。
+				const draft = input.draft?.trim() ? input.draft : "";
+				if (draft && isNewSessionResolution(target.resolved)) {
+					prefillNewSessionInputDraft(target.resolved.cwd, draft);
+				}
 				openOfficialHashPath(target.hashPath);
 				return { type: "open", resolved: target.resolved };
 			}),

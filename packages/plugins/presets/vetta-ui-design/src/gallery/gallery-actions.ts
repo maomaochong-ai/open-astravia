@@ -9,7 +9,7 @@ import { importPackagedVetd, parsePackagedVetd } from "../export/import-design";
 import { SHARE_PREVIEW_EXTENSIONS } from "../export/share-format";
 import { getPluginCtx } from "../plugin-context";
 import { DesignSession } from "../vetd/design-session";
-import { sanitizeDesignName, scaffoldDesign } from "../vetd/scaffold";
+import { sanitizeDesignName } from "../vetd/scaffold";
 
 export interface CreatedDesign {
 	cwd: string;
@@ -22,17 +22,19 @@ export function toProjectName(raw: string): string {
 }
 
 /**
- * 新建：在 workspace 下建一个项目目录，并在其中铺一份空设计。
+ * 新建：在 workspace 下建一个空项目目录。
  *
  * 落点固定在 workspace，不问用户选目录——「我想画点东西」这件事不该先经过一个
- * 文件夹选择器。目录已存在时宿主的 create 是幂等的，scaffold 也会自动避让重名。
+ * 文件夹选择器。目录已存在时宿主的 create 是幂等的。
+ *
+ * 刻意**不**预铺 `.vetd`：设计稿的结构（有几屏、多大尺寸、什么主题）由用户的第一句
+ * 提示词决定，agent 会照着建。先铺一份空设计只会让画廊里多出一张永远打不开内容的
+ * 卡，还得让用户去删。
  */
-export async function createDesignProject(rawName: string): Promise<CreatedDesign> {
+export async function createDesignProject(rawName: string): Promise<{ cwd: string }> {
 	const ctx = getPluginCtx();
-	const name = toProjectName(rawName);
-	const entry = await ctx.official.projects.create(name);
-	const result = await scaffoldDesign(ctx.fs, entry.path, name);
-	return { cwd: entry.path, vetdPath: result.vetdPath };
+	const entry = await ctx.official.projects.create(toProjectName(rawName));
+	return { cwd: entry.path };
 }
 
 /** 这个文件名看起来是不是一个分享包。 */

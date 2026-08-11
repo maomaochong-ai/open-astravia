@@ -37,6 +37,29 @@ export async function openProjectFromGallery(target: OpenProjectTarget): Promise
 	await ctx.official.navigation.open({ target: "new-session", cwd: target.cwd });
 }
 
+/** 本插件随包带的 skill 名（`agent/skills/vetta-ui-design`）。 */
+const DESIGN_SKILL_NAME = "vetta-ui-design";
+
+/**
+ * 输入框的 skill 软引用文本形态：宿主解析后渲染成一枚 badge。
+ * 末尾留一个空格，光标落在 badge 之后，用户直接接着敲提示词。
+ */
+export const DESIGN_SKILL_DRAFT = `@skill:${DESIGN_SKILL_NAME} `;
+
+/**
+ * 刚建完项目：进它的新建会话页，并把设计 skill 的 badge 预置进输入框。
+ *
+ * 不预约画布展开——此刻项目里还没有任何 `.vetd`，铺开的画布只会是一块空白；
+ * 设计由用户的第一句提示词驱动 agent 创建，建好后画廊自会扫出来。
+ */
+export async function startDesignProject(cwd: string): Promise<void> {
+	await getPluginCtx().official.navigation.open({
+		target: "new-session",
+		cwd,
+		draft: DESIGN_SKILL_DRAFT,
+	});
+}
+
 /**
  * 预约「切到这个 cwd 后把画布铺开」。
  *

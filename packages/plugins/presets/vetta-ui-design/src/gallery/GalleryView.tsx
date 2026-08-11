@@ -17,7 +17,7 @@ import {
 } from "./gallery-actions";
 import { filterGalleryProjects, type GalleryDesign } from "./gallery-model";
 import { type GalleryCard as GalleryCardData, getCachedSnapshot, loadGallery } from "./gallery-store";
-import { openProjectFromGallery } from "./open-project";
+import { openProjectFromGallery, startDesignProject } from "./open-project";
 
 /**
  * 设计画廊：所有「带设计稿的项目」的注册中心。
@@ -53,7 +53,7 @@ export function GalleryView() {
 		void refresh();
 	}, [refresh]);
 
-	/** 建完/导完直接进项目：用户刚表达的意图就是「开始画这个」。 */
+	/** 导完直接进项目看设计：包里已经有成品，用户刚表达的意图就是「打开它」。 */
 	const enterCreated = useCallback(
 		async (created: CreatedDesign) => {
 			await refresh();
@@ -62,20 +62,24 @@ export function GalleryView() {
 		[refresh],
 	);
 
+	/**
+	 * 新建：只落一个空项目，然后把用户送到它的新建会话页，输入框里预置好设计 skill 的
+	 * badge。设计本身由用户的第一句提示词交给 agent 建，建完画廊自动扫出这张卡。
+	 */
 	const onCreate = useCallback(
 		async (name: string) => {
 			setBusy(true);
 			try {
 				const created = await createDesignProject(name);
 				setCreating(false);
-				await enterCreated(created);
+				await startDesignProject(created.cwd);
 			} catch (error) {
 				notify({ message: t("gallery.create.failed"), error });
 			} finally {
 				setBusy(false);
 			}
 		},
-		[enterCreated, t],
+		[t],
 	);
 
 	const importBytes = useCallback(

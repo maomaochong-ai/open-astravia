@@ -25,7 +25,11 @@ import {
 	type SelectedSkill,
 	selectedSkillAtom,
 } from "./chat-atoms";
-import { appendInputHistoryEntry, isSessionInputDraftEmpty } from "./session-input-draft-logic";
+import {
+	appendInputHistoryEntry,
+	isSessionInputDraftEmpty,
+	newSessionInputDraftKey as newSessionInputDraftKeyImpl,
+} from "./session-input-draft-logic";
 
 export {
 	appendInputHistoryEntry,
@@ -189,6 +193,21 @@ export function claimNewSessionInputDraft(sessionPath: string, newSessionKey: st
 			store.set(sessionInputDraftMapAtom, next);
 		}
 	}
+}
+
+/**
+ * 预置某个 cwd 的新会话草稿（插件 `navigation.open({ target: "new-session", draft })`）。
+ *
+ * 必须在导航之前写：新会话页挂载时会用 `switchSessionInputDraftScope` 装入该 cwd 的
+ * 草稿，先写好这里，页面恢复出来的就是这份预置内容；反过来「先跳转再写 inputValue」
+ * 会被那次恢复覆盖。用户已在该 cwd 的新会话页上时作用域不会再切，所以这里同步应用一次。
+ */
+export function prefillNewSessionInputDraft(cwd: string, text: string): void {
+	const store = getDefaultStore();
+	const key = newSessionInputDraftKeyImpl(cwd);
+	const draft: SessionInputDraft = { ...loadSessionInputDraft(key), text };
+	persistSessionInputDraft(key, draft);
+	if (store.get(activeInputDraftKeyAtom) === key) applySessionInputDraft(draft);
 }
 
 /** 发送成功后：清空工作集 + 当前 key 的 map 条目。 */
