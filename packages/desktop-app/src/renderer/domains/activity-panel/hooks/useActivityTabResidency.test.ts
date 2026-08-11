@@ -21,7 +21,7 @@ describe("useActivityTabResidency", () => {
 	let activeTab: ActivityTabKey;
 	let container: HTMLDivElement;
 	let root: Root;
-	const candidates = [tab("one"), tab("two"), tab("three")];
+	const candidates = [tab("file"), tab("todo"), tab("debug")];
 
 	function Harness(): ReturnType<typeof createElement> {
 		const residentTabs = useActivityTabResidency({
@@ -38,7 +38,7 @@ describe("useActivityTabResidency", () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-		activeTab = "one";
+		activeTab = "file";
 		container = document.createElement("div");
 		document.body.append(container);
 		root = createRoot(container);
@@ -52,15 +52,15 @@ describe("useActivityTabResidency", () => {
 
 	it("keeps visited tabs through the switch and evicts overflow after the fallback delay", () => {
 		act(() => root.render(createElement(Harness)));
-		expect(container.textContent).toBe("one");
+		expect(container.textContent).toBe("file");
 
-		activeTab = "two";
+		activeTab = "todo";
 		act(() => root.render(createElement(Harness)));
-		activeTab = "three";
+		activeTab = "debug";
 		act(() => root.render(createElement(Harness)));
-		expect(container.textContent).toBe("one,two,three");
+		expect(container.textContent).toBe("file,todo,debug");
 
 		act(() => vi.advanceTimersByTime(250));
-		expect(container.textContent).toBe("two,three");
+		expect(container.textContent).toBe("todo,debug");
 	});
 });

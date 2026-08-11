@@ -56,38 +56,38 @@ describe("activity tab residency", () => {
 	});
 
 	it("keeps visited warm tabs resident and updates their LRU order", () => {
-		const candidates = [tab("file"), tab("content"), tab("todo")];
+		const candidates = [tab("file"), tab("plugin:content"), tab("todo")];
 		let state = reconcileActivityTabResidency(createActivityTabResidencyState("C:/repo"), input(candidates, "file"));
-		state = reconcileActivityTabResidency(state, input(candidates, "content"));
-		expect(state.warmLru).toEqual(["file", "content"]);
-		expect(resolveResidentActivityTabs(state, input(candidates, "content")).map((item) => item.id)).toEqual([
+		state = reconcileActivityTabResidency(state, input(candidates, "plugin:content"));
+		expect(state.warmLru).toEqual(["file", "plugin:content"]);
+		expect(resolveResidentActivityTabs(state, input(candidates, "plugin:content")).map((item) => item.id)).toEqual([
 			"file",
-			"content",
+			"plugin:content",
 		]);
 
 		state = reconcileActivityTabResidency(state, input(candidates, "file"));
-		expect(state.warmLru).toEqual(["content", "file"]);
+		expect(state.warmLru).toEqual(["plugin:content", "file"]);
 	});
 
 	it("evicts the oldest inactive warm tab while protecting active and floating tabs", () => {
-		const candidates = [tab("one"), tab("two"), tab("three"), tab("four")];
+		const candidates = [tab("file"), tab("todo"), tab("debug"), tab("browser")];
 		let state = createActivityTabResidencyState("C:/repo");
-		for (const active of ["one", "two", "three", "four"] as ActivityTabKey[]) {
+		for (const active of ["file", "todo", "debug", "browser"] satisfies ActivityTabKey[]) {
 			state = reconcileActivityTabResidency(state, input(candidates, active));
 		}
-		const currentInput = input(candidates, "four", {
-			floatingKeys: new Set<ActivityTabKey>(["one"]),
+		const currentInput = input(candidates, "browser", {
+			floatingKeys: new Set<ActivityTabKey>(["file"]),
 		});
 		const evictions = resolveWarmTabEvictions(state, currentInput, 1);
-		expect(evictions).toEqual(["two"]);
-		expect(evictWarmActivityTabs(state, evictions).warmLru).toEqual(["one", "three", "four"]);
+		expect(evictions).toEqual(["todo"]);
+		expect(evictWarmActivityTabs(state, evictions).warmLru).toEqual(["file", "debug", "browser"]);
 	});
 
 	it("mounts pinned tabs eagerly and active-only tabs only while active or floating", () => {
 		const candidates = [
 			tab("file"),
 			tab("browser", { retention: "pinned" }),
-			tab("cheap", { retention: "active-only" }),
+			tab("plugin:cheap", { retention: "active-only" }),
 		];
 		const state = reconcileActivityTabResidency(
 			createActivityTabResidencyState("C:/repo"),
@@ -100,22 +100,22 @@ describe("activity tab residency", () => {
 		expect(
 			resolveResidentActivityTabs(
 				state,
-				input(candidates, "file", { floatingKeys: new Set<ActivityTabKey>(["cheap"]) }),
+				input(candidates, "file", { floatingKeys: new Set<ActivityTabKey>(["plugin:cheap"]) }),
 			).map((item) => item.id),
-		).toEqual(["file", "browser", "cheap"]);
+		).toEqual(["file", "browser", "plugin:cheap"]);
 	});
 
 	it("drops detached tabs and resets warm history when the project scope changes", () => {
-		const candidates = [tab("file"), tab("content")];
+		const candidates = [tab("file"), tab("plugin:content")];
 		let state = reconcileActivityTabResidency(
 			createActivityTabResidencyState("C:/one"),
 			input(candidates, "file", { scopeKey: "C:/one" }),
 		);
 		state = reconcileActivityTabResidency(
 			state,
-			input(candidates, "content", { scopeKey: "C:/one", warmEligibleTabs: [candidates[1]] }),
+			input(candidates, "plugin:content", { scopeKey: "C:/one", warmEligibleTabs: [candidates[1]] }),
 		);
-		expect(state.warmLru).toEqual(["content"]);
+		expect(state.warmLru).toEqual(["plugin:content"]);
 
 		state = reconcileActivityTabResidency(state, input(candidates, "file", { scopeKey: "C:/two" }));
 		expect(state).toEqual({ scopeKey: "C:/two", warmLru: ["file"] });
