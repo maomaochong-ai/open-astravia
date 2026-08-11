@@ -10,7 +10,7 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { DesignSystemStrip } from "../src/gallery/DesignSystemStrip";
+import { DesignSystemGrid } from "../src/gallery/DesignSystemGrid";
 import { buildStyleStartDraft, designNameForSystem } from "../src/gallery/start-from-system";
 import { resetDesignSystems, setDesignSystems } from "../src/design-systems/registry";
 import type { DesignSystem } from "../src/design-systems/types";
@@ -54,19 +54,31 @@ function tiles(): HTMLButtonElement[] {
 	return [...document.body.querySelectorAll<HTMLButtonElement>("button[aria-label]")];
 }
 
-describe("DesignSystemStrip", () => {
-	it("两种形态都列出当前生效的全部风格", () => {
-		for (const variant of ["hero", "strip"] as const) {
-			render(<DesignSystemStrip variant={variant} busy={false} onPick={() => {}} />);
-			expect(tiles()).toHaveLength(2);
-			expect(document.body.textContent).toContain("Linear");
-			expect(document.body.textContent).toContain("Stripe");
-		}
+describe("DesignSystemGrid", () => {
+	it("列出当前生效的全部风格", () => {
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(tiles()).toHaveLength(2);
+		expect(document.body.textContent).toContain("Linear");
+		expect(document.body.textContent).toContain("Stripe");
+	});
+
+	it("跟在项目宫格之后时画分隔线，当首屏主角时不画", () => {
+		render(<DesignSystemGrid divided busy={false} onPick={() => {}} />);
+		expect(document.body.querySelector("section")?.className).toContain("border-t");
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		expect(document.body.querySelector("section")?.className).not.toContain("border-t");
+	});
+
+	it("和项目卡片用同一套宫格，不是横向滚动条", () => {
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		const grid = document.body.querySelector("section > div");
+		expect(grid?.className).toContain("grid");
+		expect(grid?.className).not.toContain("overflow-x-auto");
 	});
 
 	it("点一张卡把对应的体系交回去", () => {
 		const picked: string[] = [];
-		render(<DesignSystemStrip variant="hero" busy={false} onPick={(s) => picked.push(s.id)} />);
+		render(<DesignSystemGrid busy={false} onPick={(s) => picked.push(s.id)} />);
 		act(() => {
 			tiles()[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
 		});
@@ -75,7 +87,7 @@ describe("DesignSystemStrip", () => {
 
 	it("busy 时禁用，避免重复建项目", () => {
 		const picked: string[] = [];
-		render(<DesignSystemStrip variant="strip" busy onPick={(s) => picked.push(s.id)} />);
+		render(<DesignSystemGrid busy onPick={(s) => picked.push(s.id)} />);
 		expect(tiles().every((tile) => tile.disabled)).toBe(true);
 		act(() => {
 			tiles()[0].dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -84,7 +96,7 @@ describe("DesignSystemStrip", () => {
 	});
 
 	it("每张卡都有可读的无障碍名称", () => {
-		render(<DesignSystemStrip variant="hero" busy={false} onPick={() => {}} />);
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
 		expect(tiles().map((tile) => tile.getAttribute("aria-label"))).toEqual([
 			"gallery.styles.start:Linear",
 			"gallery.styles.start:Stripe",

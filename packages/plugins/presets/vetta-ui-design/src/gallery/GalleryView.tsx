@@ -5,7 +5,7 @@ import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "../export/share-forma
 import { getPluginCtx, notify } from "../plugin-context";
 import { CardContextMenu, type CardMenuAnchor } from "./CardContextMenu";
 import { CreateDesignDialog } from "./CreateDesignDialog";
-import { DesignSystemStrip } from "./DesignSystemStrip";
+import { DesignSystemGrid } from "./DesignSystemGrid";
 import { GalleryCard } from "./GalleryCard";
 import {
 	archiveProject,
@@ -239,14 +239,14 @@ export function GalleryView() {
 			<div className="flex-1 overflow-y-auto px-4 py-4">
 				{empty ? (
 					// 空态：风格库是首屏主角。点一套风格就能开工，比对着空白画布想第一句话快。
-					<div className="flex h-full min-h-0 flex-col gap-4">
+					<div className="flex flex-col gap-5">
 						<div className="flex flex-col items-center gap-1 text-center">
 							<p className="text-sm text-foreground">{t("gallery.empty.title")}</p>
 							<p className="max-w-96 text-xs leading-relaxed text-muted-foreground">
 								{t("gallery.empty.description", { ext: SHARE_EXTENSION })}
 							</p>
 						</div>
-						<DesignSystemStrip variant="hero" busy={busy} onPick={(system) => void onPickSystem(system)} />
+						<DesignSystemGrid busy={busy} onPick={(system) => void onPickSystem(system)} />
 					</div>
 				) : (
 					<div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
@@ -273,10 +273,11 @@ export function GalleryView() {
 				{!empty && cards.length === 0 ? (
 					<p className="mt-8 text-center text-xs text-muted-foreground">{t("gallery.search.noMatch")}</p>
 				) : null}
+
+				{/* 已经有设计时风格库排在用户自己的作品之后，同一套宫格、跟着一起滚。 */}
+				{empty ? null : <DesignSystemGrid divided busy={busy} onPick={(system) => void onPickSystem(system)} />}
 			</div>
 
-			{/* 已经有设计时风格库退成底部一条，不跟用户自己的作品抢位置。 */}
-			{empty ? null : <DesignSystemStrip variant="strip" busy={busy} onPick={(system) => void onPickSystem(system)} />}
 
 			{menu ? (
 				<CardContextMenu
