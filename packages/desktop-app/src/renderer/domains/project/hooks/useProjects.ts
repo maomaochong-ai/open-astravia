@@ -33,6 +33,11 @@ let didAutoExpand = false;
 // emits a state_patch (i.e. an IM message just created or updated a session).
 let imSubscribed = false;
 let sessionListSubscribed = false;
+/**
+ * 项目列表变更广播的订阅同样每个 renderer 只装一次。它补的是「不经过本进程的写入」：
+ * 插件与 Action 走主进程的 ProjectService 改项目，渲染进程这份快照不会自己发现。
+ */
+let projectsChangedSubscribed = false;
 const sessionLoadPromises = new Map<string, Promise<void>>();
 
 /**
@@ -239,6 +244,18 @@ export function useProjectActions() {
 			setProjectsInitialized(true);
 		}
 	}, [loadSessions, setExpandedProjects, setProjects, setProjectsInitialized, store]);
+
+	// 订阅只装一次，靠 ref 拿到最新的 refreshProjects（与上面的会话订阅同一套写法）。
+	const refreshProjectsRef = useRef(refreshProjects);
+	refreshProjectsRef.current = refreshProjects;
+	useEffect(() => {
+		if (projectsChangedSubscribed) return;
+		projectsChangedSubscribed = true;
+		window.vetta.config.onProjectsChanged(() => {
+			void refreshProjectsRef.current();
+		});
+		// 同上：刻意不退订，订阅与 renderer 同寿命。
+	}, []);
 
 	/** Create a new project directory in workspace and add to config; returns resolved cwd. */
 	const createProject = useCallback(

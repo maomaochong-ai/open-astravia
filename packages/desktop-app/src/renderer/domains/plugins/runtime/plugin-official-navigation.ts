@@ -89,8 +89,32 @@ const STATIC_TARGETS: readonly StaticNavigationTarget[] = [
 	},
 ];
 
+/** 需要携带目录参数的目标：它进不了 STATIC_TARGETS，因为 hashPath 由输入算出来。 */
+const NEW_SESSION_TARGET = {
+	id: "new-session",
+	title: "新建会话",
+	description: "某个项目的新建会话页；需要 cwd（项目绝对路径）。",
+	aliases: ["新会话", "新建对话", "new session"],
+} as const;
+
 function normalizeTarget(value: string): string {
 	return value.trim().toLowerCase();
+}
+
+/**
+ * `/new-session/$cwd` 的 hash 路径。
+ *
+ * 两层 encodeURIComponent 不是笔误：路由参数取出来时会被解码一次，页面自己还会再
+ * `decodeURIComponent` 一次（见 useNewSessionPageModel）。宿主内部走
+ * `navigate({ params: { cwd: encodeURIComponent(cwd) } })` 时，路由器自己补上外面
+ * 那一层；这里是手写 URL，两层都得自己写，否则带空格或 `%` 的项目路径会解错。
+ */
+export function buildNewSessionHashPath(cwd: string): string {
+	return `/new-session/${encodeURIComponent(encodeURIComponent(cwd))}`;
+}
+
+function isAbsolutePath(value: string): boolean {
+	return value.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(value);
 }
 
 function isSettingsSectionVisible(section: SettingsSectionRegistration): boolean {
@@ -189,13 +213,22 @@ export function getOfficialNavigationHelp(): unknown {
 			},
 		],
 		catalog: {
-			pages: STATIC_TARGETS.map((target) => ({
-				id: target.id,
-				title: target.title,
-				description: target.description,
-				aliases: [...target.aliases],
-				target: { type: "open", target: target.id },
-			})),
+			pages: [
+				...STATIC_TARGETS.map((target) => ({
+					id: target.id,
+					title: target.title,
+					description: target.description,
+					aliases: [...target.aliases],
+					target: { type: "open", target: target.id },
+				})),
+				{
+					id: NEW_SESSION_TARGET.id,
+					title: NEW_SESSION_TARGET.title,
+					description: NEW_SESSION_TARGET.description,
+					aliases: [...NEW_SESSION_TARGET.aliases],
+					target: { type: "open", target: NEW_SESSION_TARGET.id, cwd: "<项目绝对路径>" },
+				},
+			],
 			settings: {
 				pageId: "settings",
 				layout: "左侧是设置分类列表，右侧是当前分类的细分设置项。",
@@ -206,11 +239,28 @@ export function getOfficialNavigationHelp(): unknown {
 	};
 }
 
-export function resolveOfficialNavigationOpen(input: { target: string; tab?: string; section?: string }): {
+export function resolveOfficialNavigationOpen(input: {
+	target: string;
+	tab?: string;
+	section?: string;
+	cwd?: string;
+}): {
 	hashPath: string;
 	resolved: unknown;
 } {
 	const target = normalizeTarget(input.target);
+	if (target === NEW_SESSION_TARGET.id) {
+		const cwd = input.cwd?.trim() ?? "";
+		if (!isAbsolutePath(cwd)) {
+			throw new Error(
+				`Refused navigation.open before user approval: target ${JSON.stringify(NEW_SESSION_TARGET.id)} requires an absolute cwd, got ${JSON.stringify(input.cwd ?? null)}.`,
+			);
+		}
+		return {
+			hashPath: buildNewSessionHashPath(cwd),
+			resolved: { kind: "new-session", id: NEW_SESSION_TARGET.id, title: NEW_SESSION_TARGET.title, cwd },
+		};
+	}
 	const staticTarget = STATIC_TARGETS.find((candidate) => candidate.id === target);
 	if (staticTarget && staticTarget.id !== "settings") {
 		return {
@@ -318,7 +368,7 @@ export function resolveOfficialNavigationOpen(input: { target: string; tab?: str
 		};
 	}
 
-	const pageIds = STATIC_TARGETS.map((item) => item.id);
+	const pageIds = [...STATIC_TARGETS.map((item) => item.id), NEW_SESSION_TARGET.id];
 	const tabIds = [...tabsByKey.keys(), "mcp"];
 	throw new Error(
 		`Refused navigation.open before user approval: unknown target=${JSON.stringify(input.target)}. Page targets: ${pageIds

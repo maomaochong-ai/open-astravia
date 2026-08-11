@@ -132,6 +132,11 @@ export interface DesktopSessionApi {
 	dispose(sessionId: string): Promise<void>;
 	/** Snapshot of session paths currently in the agent loop. */
 	listRunning(): Promise<string[]>;
+	/**
+	 * 当前有会话在跑的项目 cwd（去重）。会话文件路径无法反推所属项目（默认落在
+	 * 按 cwd 编码的分片目录里，编码不可逆），需要项目粒度的运行态时用这个。
+	 */
+	listRunningCwds(): Promise<string[]>;
 	/** Subscribe to running-set changes. Fires for each toggle (running=true|false). */
 	onRunningChanged(
 		handler: (payload: {

@@ -148,4 +148,36 @@ describe("findVetdFiles", () => {
 
 		expect(await findVetdFiles(fs, "/proj")).toEqual(["/proj/new.vetd", "/proj/old.vetd"]);
 	});
+
+	it("迁移停在「旧 manifest 已删、目录还没改名」时仍能找到并救回这份设计", async () => {
+		// 这个中间态里磁盘上没有任何叫 `.vetd` 的条目，只按后缀找设计会彻底看不见它。
+		const { fs, files } = fakeFs({
+			"/proj/app.vetd.d/design.json": MANIFEST,
+			"/proj/app.vetd.d/frames/home.tsx": "export default null;",
+		});
+
+		expect(await findVetdFiles(fs, "/proj")).toEqual(["/proj/app.vetd"]);
+		expect(files.get("/proj/app.vetd/frames/home.tsx")).toBe("export default null;");
+	});
+
+	it("旁挂目录里有 manifest 但旧文件还在时，仍走正常的 v1 迁移路径、不重复上报", async () => {
+		// 迁移停在第 1 步之后：两份 manifest 并存。这不是「落单的旁挂目录」。
+		const { fs } = fakeFs({
+			"/proj/app.vetd": MANIFEST,
+			"/proj/app.vetd.d/design.json": MANIFEST,
+			"/proj/app.vetd.d/theme.css": ":root{}",
+		});
+
+		expect(await findVetdFiles(fs, "/proj")).toEqual(["/proj/app.vetd"]);
+	});
+
+	it("同名设计包已经存在时，残留的旁挂目录不被当成另一份设计", async () => {
+		const { fs, files } = fakeFs({
+			"/proj/app.vetd/design.json": MANIFEST,
+			"/proj/app.vetd.d/design.json": MANIFEST,
+		});
+
+		expect(await findVetdFiles(fs, "/proj")).toEqual(["/proj/app.vetd"]);
+		expect(files.get("/proj/app.vetd.d/design.json")).toBe(MANIFEST);
+	});
 });

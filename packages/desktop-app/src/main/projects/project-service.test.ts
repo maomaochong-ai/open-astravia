@@ -12,6 +12,8 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 	};
 	const createDirectory = vi.fn(async () => {});
 	const allowProjectRoot = vi.fn();
+	const broadcastChanged = vi.fn();
+	const nonDirectoryPaths = new Set<string>();
 	const service = new ProjectService({
 		allowProjectRoot,
 		createDirectory,
@@ -19,9 +21,13 @@ function createFixture(initial?: Partial<DesktopConfig>) {
 		writeConfig: async (next) => {
 			config = structuredClone(next);
 		},
+		broadcastChanged,
+		isExistingNonDirectory: async (path) => nonDirectoryPaths.has(path),
 	});
 	return {
 		allowProjectRoot,
+		broadcastChanged,
+		nonDirectoryPaths,
 		createDirectory,
 		getConfig: () => config,
 		service,
@@ -60,6 +66,48 @@ describe("ProjectService", () => {
 		await fixture.service.unarchive("C:\\workspace\\demo");
 		expect(fixture.getConfig().projects).toEqual([{ path: "C:\\workspace\\demo", name: "demo" }]);
 		expect(fixture.getConfig().archivedProjects).toEqual([]);
+	});
+
+	it("broadcasts once per landed write so out-of-renderer changes reach the sidebar", async () => {
+		const fixture = createFixture();
+
+		await fixture.service.create("demo");
+		expect(fixture.broadcastChanged).toHaveBeenCalledTimes(1);
+
+		// 重复 create 命中「已存在就不写」的分支：没落盘就不该广播，否则侧边栏白刷。
+		await fixture.service.create("demo");
+		expect(fixture.broadcastChanged).toHaveBeenCalledTimes(1);
+
+		await fixture.service.archive("C:\\workspace\\demo");
+		expect(fixture.broadcastChanged).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not broadcast when the write is rejected", async () => {
+		const fixture = createFixture();
+
+		await expect(fixture.service.remove("C:\\workspace\\missing")).rejects.toThrow("Project not found");
+		expect(fixture.broadcastChanged).not.toHaveBeenCalled();
+	});
+
+	it("refuses to register a file as a project", async () => {
+		// 现场原型：v1 时代的 `x.vetd` 是个**文件**，被登记成项目后每轮扫描都 ENOTDIR。
+		const fixture = createFixture();
+		fixture.nonDirectoryPaths.add("C:\\workspace\\design.vetd");
+
+		await expect(fixture.service.open("C:\\workspace\\design.vetd")).rejects.toThrow(
+			"Project path must be a directory.",
+		);
+		expect(fixture.getConfig().projects).toEqual([]);
+		expect(fixture.broadcastChanged).not.toHaveBeenCalled();
+	});
+
+	it("still registers a path that does not exist yet", async () => {
+		const fixture = createFixture();
+
+		await expect(fixture.service.open("C:\\workspace\\later")).resolves.toEqual({
+			path: "C:\\workspace\\later",
+			name: "later",
+		});
 	});
 
 	it("removes a project from the sidebar without deleting its directory", async () => {

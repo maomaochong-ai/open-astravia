@@ -1,4 +1,5 @@
 import type { IpcRenderer, IpcRendererEvent, WebUtils } from "electron";
+import { PROJECTS_CHANNELS } from "../../shared/projects-ipc.js";
 import type { DesktopApi } from "../api.js";
 import type { DesktopThemeChangeRequest } from "../api-types/theme.js";
 import { onIpcEvent, onIpcVoidEvent } from "./helper.js";
@@ -37,6 +38,7 @@ export function createSystemApi(
 			selectFolders: () => ipc.invoke("vetta:dialog:select-folders"),
 			selectImages: () => ipc.invoke("vetta:dialog:select-images"),
 			selectFiles: (defaultPath) => ipc.invoke("vetta:dialog:select-files", defaultPath),
+			openFileContents: (options) => ipc.invoke("vetta:dialog:open-file-contents", options),
 			saveHtml: (defaultFileName, content) => ipc.invoke("vetta:dialog:save-html", defaultFileName, content),
 			saveData: (defaultFileName, content, encoding, options) =>
 				ipc.invoke("vetta:dialog:save-data", defaultFileName, content, encoding, options),
@@ -159,6 +161,7 @@ export function createSystemApi(
 			get: () => ipc.invoke("vetta:config:get"),
 			set: (config) => ipc.invoke("vetta:config:set", config),
 			onShortcutsChanged: (handler) => onIpcEvent(ipc, "vetta:shortcuts:changed", handler),
+			onProjectsChanged: (handler) => onIpcVoidEvent(ipc, PROJECTS_CHANNELS.CHANGED, handler),
 		},
 		knowledge: {
 			scanNow: () => ipc.invoke("vetta:kb:scan-now"),

@@ -23,9 +23,11 @@ import {
 import { stopAllDesignServers } from "./engine/engine-manager";
 import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format";
 import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
+import { GalleryView } from "./gallery/GalleryView";
+import { claimCanvasReveal } from "./gallery/open-project";
 import { setPluginCtx } from "./plugin-context";
 import { VetdPreview } from "./preview/VetdPreview";
-import { CANVAS_TAB_ID } from "./tab-ids";
+import { CANVAS_TAB_ID, GALLERY_VIEW_ID } from "./tab-ids";
 import { registerDesignTools } from "./tools";
 import { claimCanvasAutoOpen } from "./vetd/auto-open";
 import { isPureDesignProject, pickDesignPaths } from "./vetd/discover";
@@ -104,7 +106,14 @@ export default definePlugin({
 					const { bundles, legacyFiles } = pickDesignPaths(files);
 					const found = bundles.length + legacyFiles.length;
 					ctx.ui.setActivityTabVisible(CANVAS_TAB_ID, found > 0);
-					if (found === 0 || !isPureDesignProject(files)) return;
+					if (found === 0) return;
+					// 从画廊点进来的这一次，用户已经说清楚要看设计了：混合项目也铺开，
+					// 且不受「同一会话只弹一次」的去重影响（那是给自动判断兜底的）。
+					if (claimCanvasReveal(cwd)) {
+						ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
+						return;
+					}
+					if (!isPureDesignProject(files)) return;
 					if (!claimCanvasAutoOpen(sessionId)) return;
 					ctx.ui.openActivityTab(CANVAS_TAB_ID, { width: "max" });
 				});
@@ -141,6 +150,15 @@ export default definePlugin({
 						component: DesignSystemPickerCard,
 						title: "%card.designSystems.title%",
 						icon: <DesignIcon />,
+					}),
+					// 画廊：跨项目的设计注册中心，整页 surface + 侧边栏入口。与画布标签卡
+					// 同属工作模式能力（ADR-0046），所以跟着这批插槽一起装卸。
+					ctx.ui.registerWorkspaceView({
+						id: GALLERY_VIEW_ID,
+						label: "%gallery.nav.label%",
+						icon: "icon-[solar--ruler-pen-linear]",
+						description: "%gallery.nav.description%",
+						component: GalleryView,
 					}),
 				];
 				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。

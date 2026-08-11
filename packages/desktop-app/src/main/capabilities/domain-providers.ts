@@ -1,3 +1,4 @@
+import { stat } from "node:fs/promises";
 import { bindCapability, type CapabilityRegistry } from "@vetta/capability-runtime";
 import {
 	CAPABILITY_ERROR_CODES,
@@ -29,6 +30,7 @@ import { getDesktopGeneralSettingsService } from "../general-settings/general-se
 import { getImHost } from "../im-host/index.js";
 import type { JobManager } from "../jobs/job-manager.js";
 import { getKnowledgeService } from "../knowledge/knowledge-service.js";
+import { broadcastProjectsChanged } from "../projects/project-events.js";
 import { ProjectService } from "../projects/project-service.js";
 import { getDesktopSchedulerService } from "../scheduler/scheduler-service.js";
 import { getDesktopShortcutService } from "../shortcuts/shortcut-service.js";
@@ -85,6 +87,17 @@ export function registerDesktopDomainProviders(
 		createDirectory: createFilesystemDirectory,
 		readConfig: readDesktopConfig,
 		writeConfig: writeDesktopConfig,
+		broadcastChanged: broadcastProjectsChanged,
+		// 直接查磁盘：这是「能不能登记成项目」的判断，此刻该路径还不在任何授权根里，
+		// 走不了 filesystem-service 那套带 allowedRoots 断言的入口。
+		isExistingNonDirectory: async (path) => {
+			try {
+				return !(await stat(path)).isDirectory();
+			} catch {
+				// 不存在（或读不到）不算「非目录」：open 本来就允许登记一个还没建出来的目录。
+				return false;
+			}
+		},
 	});
 	const projectRegistration = registry.registerOwner(DOMAIN_PROJECT_PROVIDER_OWNER, [
 		bindCapability(DOMAIN_PROJECT_CAPABILITIES.LIST, {

@@ -25,11 +25,32 @@ export interface DialogSaveDataOptions {
 	filters?: Array<{ name: string; extensions: string[] }>;
 }
 
+export interface DialogOpenFileContentsOptions {
+	title?: string;
+	filters?: Array<{ name: string; extensions: string[] }>;
+	/** 允许多选，默认单选。 */
+	multiple?: boolean;
+	/** 单个文件的字节上限，超过则抛错。默认 64MB。 */
+	maxBytes?: number;
+}
+
+export interface OpenedFileContents {
+	path: string;
+	name: string;
+	/** base64 编码的文件内容。 */
+	data: string;
+}
+
 export interface DesktopDialogApi {
 	selectFolder(): Promise<string | null>;
 	selectFolders(): Promise<string[]>;
 	selectImages(): Promise<SelectedImageFile[]>;
 	selectFiles(defaultPath?: string): Promise<string[]>;
+	/**
+	 * 选文件并直接返回内容。给「拿到路径也读不了」的调用方用（插件的 fs 被限制在已授权
+	 * 项目根内），避免为读一个文件把整个目录永久加进授权根。取消时返回空数组。
+	 */
+	openFileContents(options?: DialogOpenFileContentsOptions): Promise<OpenedFileContents[]>;
 	/** 使用原生保存对话框写出单文件 HTML；取消时返回 null。 */
 	saveHtml(defaultFileName: string, content: string): Promise<string | null>;
 	/**

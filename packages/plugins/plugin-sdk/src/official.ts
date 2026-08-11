@@ -328,6 +328,24 @@ export interface PluginOfficialSaveCopyOptions {
 	filters?: Array<{ name: string; extensions: string[] }>;
 }
 
+/** `official.dialog.openFiles` 的选项。 */
+export interface PluginOfficialOpenFilesOptions {
+	title?: string;
+	filters?: Array<{ name: string; extensions: string[] }>;
+	/** 允许多选，默认单选。 */
+	multiple?: boolean;
+	/** 单个文件的字节上限，超过则抛错。默认 64MB。 */
+	maxBytes?: number;
+}
+
+/** 用户在文件对话框里选中的一个文件，内容随选择一起回传。 */
+export interface PluginOfficialOpenedFile {
+	path: string;
+	name: string;
+	/** base64 编码的文件内容。 */
+	data: string;
+}
+
 export interface PluginOfficialKnowledgeBase {
 	id: string;
 	name: string;
@@ -362,12 +380,41 @@ export interface PluginOfficialSessionRunningEvent {
 	sessionId?: string;
 }
 
-/** 会话历史条目（`official.sessions.list` 返回）。 */
+/**
+ * 会话文件此刻允许做什么。
+ *
+ * 同一份会话文件可能正被另一个运行时占用、或已不可读，宿主自己点会话时就是按这几
+ * 位分流的（可续聊 / 只读查看 / 完全打不开）。插件在跳转前必须先看它，否则会把用户
+ * 送进一个打不开的会话，且失败发生在导航之后、很难解释。
+ */
+export interface PluginOfficialSessionAccess {
+	/** 能否读取历史。为 false 时连只读查看都不行。 */
+	readHistory: boolean;
+	/** 能否在对话页续聊。 */
+	interactiveResume: boolean;
+	rename: boolean;
+	delete: boolean;
+}
+
+/** 会话历史条目（`official.sessions.list` 返回），按 `modifiedAt` 倒序。 */
 export interface PluginOfficialSessionSummary {
 	path: string;
 	cwd?: string;
 	firstMessage?: string;
 	modifiedAt?: number;
+	access: PluginOfficialSessionAccess;
+}
+
+/**
+ * 导航目标。多数目标只要 `target`；`target: "new-session"` 这类带参数的目标另需
+ * `cwd`（项目绝对路径），缺了会被宿主拒绝而不是跳到一个空页面。
+ */
+export interface PluginOfficialNavigationOpenInput {
+	target: string;
+	tab?: string;
+	section?: string;
+	/** 仅 `target: "new-session"` 使用：要新建会话的项目目录。 */
+	cwd?: string;
 }
 
 /** 仅宿主验证为官方来源的插件可以调用；普通插件调用时由宿主拒绝。 */
@@ -507,6 +554,23 @@ export interface PluginOfficialApi {
 	};
 	dialog: {
 		saveCopy(sourcePath: string, options?: PluginOfficialSaveCopyOptions): Promise<string | null>;
+		/**
+		 * 打开原生文件选择框，并把选中文件的**内容**一起返回。
+		 *
+		 * 插件的 `ctx.fs` 只能读已授权的项目根，因此「选个文件再自己去读」这条路走不通；
+		 * 这个接口不放宽任何目录授权，插件能看到的只有用户这次亲手选中的文件。
+		 * 用户取消时返回空数组。
+		 */
+		openFiles(options?: PluginOfficialOpenFilesOptions): Promise<PluginOfficialOpenedFile[]>;
+	};
+	shell: {
+		/**
+		 * 在系统文件管理器里定位并选中这个路径。
+		 *
+		 * 与 `ui.openExternal` 分工：那个只放行 http/https，用来把链接交给浏览器；
+		 * 这个只做「显示这个本地路径」，不能用来拉起任意协议。
+		 */
+		showItemInFolder(path: string): Promise<void>;
 	};
 	knowledge: {
 		list(): Promise<PluginOfficialKnowledgeBase[]>;
@@ -605,6 +669,13 @@ export interface PluginOfficialApi {
 		list(cwd: string): Promise<PluginOfficialSessionSummary[]>;
 		/** 当前处于 agent loop 中的会话文件路径快照。 */
 		listRunning(): Promise<string[]>;
+		/**
+		 * 当前有会话在跑的项目 cwd（去重）。
+		 *
+		 * 需要「这个项目忙不忙」时用它，不要拿 `listRunning()` 的路径去比对 cwd：会话文件
+		 * 默认落在按 cwd 编码的分片目录里，那个编码不可逆且会让不同项目撞进同一分片。
+		 */
+		listRunningCwds(): Promise<string[]>;
 		/** 订阅运行态翻转；返回取消订阅函数。 */
 		onRunningChanged(handler: (event: PluginOfficialSessionRunningEvent) => void): () => void;
 		/** 把宿主导航到该会话的对话页。 */
@@ -612,10 +683,10 @@ export interface PluginOfficialApi {
 	};
 	navigation: {
 		help(): unknown;
-		resolveOpen(input: { target: string; tab?: string; section?: string }): {
+		resolveOpen(input: PluginOfficialNavigationOpenInput): {
 			hashPath: string;
 			resolved: unknown;
 		};
-		open(input: { target: string; tab?: string; section?: string }): Promise<unknown>;
+		open(input: PluginOfficialNavigationOpenInput): Promise<unknown>;
 	};
 }

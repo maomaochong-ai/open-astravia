@@ -1,9 +1,11 @@
 {
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"icon": "icon.png",
-	"agent_mode": ["work"],
+	"agent_mode": [
+		"work"
+	],
 	"defaultLocale": "zh",
 	"pluginApiVersion": "^1.0.0",
 	"runtime": "module-federation",
@@ -12,9 +14,12 @@
 		"remoteName": "vetta_ui_design",
 		"expose": "./plugin"
 	},
-	"styles": ["dist/style.css"],
+	"styles": [
+		"dist/style.css"
+	],
 	"permissions": [
 		"ui.slot.global",
+		"ui.slot.workspace-view",
 		"ui.slot.activity-tab",
 		"ui.slot.file-preview",
 		"ui.slot.message",
@@ -36,9 +41,14 @@
 		"storage.write",
 		"shell.openExternal"
 	],
-	"commands": ["node", "npm"],
+	"commands": [
+		"node",
+		"npm"
+	],
 	"agent": {
-		"skillPaths": ["agent/skills/vetta-ui-design"]
+		"skillPaths": [
+			"agent/skills/vetta-ui-design"
+		]
 	},
 	"description": "%plugin.description%",
 	"author": "Vetta"

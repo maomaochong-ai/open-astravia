@@ -171,6 +171,8 @@ const CHANNELS = {
 	BACKGROUND_TASKS_KILL: "vetta:session:background-tasks-kill",
 	SUBAGENT_INTERRUPT: "vetta:session:subagent-interrupt",
 	LIST_RUNNING: "vetta:session:list-running",
+	/** 有会话在跑的项目 cwd 列表；会话路径无法反推项目，见处理器上的说明。 */
+	LIST_RUNNING_CWDS: "vetta:session:list-running-cwds",
 	RUNNING_CHANGED: "vetta:session:running-changed",
 	// 某 session 是否有待回答的 ask_user_question；广播给所有窗口（侧栏 + 快捷面板）。
 	PENDING_QUESTION_CHANGED: "vetta:session:pending-question-changed",
@@ -922,6 +924,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 	});
 
 	ipcMain.handle(CHANNELS.LIST_RUNNING, () => runtime.getRunningSessionPaths());
+
+	/**
+	 * 当前有会话在跑的项目 cwd（去重）。
+	 *
+	 * 为什么不让调用方拿 LIST_RUNNING 的路径自己反推：会话文件默认落在
+	 * `<agentDir>/sessions/--编码后的 cwd--/` 下，而那个编码把 `/`、`\`、`:` 全压成 `-`
+	 * 且不可逆，`my-project` 与 `my/project` 会撞进同一个分片；`<cwd>/.vetta/sessions`
+	 * 等别的布局也同时存在。唯一可靠的来源是会话头里的 cwd。
+	 * 运行中的会话通常只有个位数，逐个读头的代价可以忽略。
+	 */
+	ipcMain.handle(CHANNELS.LIST_RUNNING_CWDS, async () => {
+		const paths = runtime.getRunningSessionPaths();
+		const cwds = await Promise.all(paths.map((path) => readSessionCwdFromHeader(path).catch(() => undefined)));
+		return [...new Set(cwds.filter((cwd): cwd is string => typeof cwd === "string" && cwd.length > 0))];
+	});
 
 	ipcMain.handle(CHANNELS.CLEAR_DEFAULT_CONVERSATION, async (_event, scope: unknown) => {
 		// 物理分家后（ADR-0005）每个 scope 对应一个独立 cwd，互不干扰：

@@ -14,6 +14,7 @@ import { createOfficialPluginsApi } from "./plugin-official-plugins";
 import { createOfficialProjectsApi } from "./plugin-official-projects";
 import { createOfficialSchedulerApi } from "./plugin-official-scheduler";
 import { createOfficialSessionsApi } from "./plugin-official-sessions";
+import { createOfficialShellApi } from "./plugin-official-shell";
 import { createOfficialShortcutsApi } from "./plugin-official-shortcuts";
 import { createOfficialSkillsApi } from "./plugin-official-skills";
 import { createOfficialUpdaterApi } from "./plugin-official-updater";
@@ -30,6 +31,7 @@ export function createPluginOfficialApi(capabilitySessionId: string): PluginOffi
 		agent: createOfficialAgentApi(assertOfficial, capabilitySessionId),
 		downloads: createOfficialDownloadsApi(assertOfficial, capabilitySessionId),
 		dialog: createOfficialDialogApi(assertOfficial),
+		shell: createOfficialShellApi(assertOfficial),
 		updater: createOfficialUpdaterApi(assertOfficial, capabilitySessionId),
 		webhook: createOfficialWebhookApi(assertOfficial, capabilitySessionId),
 		skills: createOfficialSkillsApi(assertOfficial, capabilitySessionId),

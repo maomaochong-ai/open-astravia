@@ -1,5 +1,6 @@
 import { openSessionFnRef } from "@shared/store/atoms";
-import type { PluginOfficialApi } from "@vetta-org/plugin-sdk";
+import type { RuntimeSessionAccess } from "@vetta/runtime-core";
+import type { PluginOfficialApi, PluginOfficialSessionAccess } from "@vetta-org/plugin-sdk";
 import { pluginRendererCapabilityHost } from "./plugin-renderer-capability-host";
 
 /**
@@ -22,6 +23,17 @@ export function createOfficialSessionsApi(capabilitySessionId: string): PluginOf
 		const trimmed = value.trim();
 		return trimmed.length > 0 ? trimmed : undefined;
 	};
+
+	/**
+	 * 会话可用性按位透传。缺字段一律读作 false（= 完全不可用）而不是「假定可用」：
+	 * 调用方据此决定跳不跳，宁可退回新建会话页，也不要把用户送进一个打不开的会话。
+	 */
+	const normalizeAccess = (access: RuntimeSessionAccess | undefined): PluginOfficialSessionAccess => ({
+		readHistory: access?.readHistory === true,
+		interactiveResume: access?.interactiveResume === true,
+		rename: access?.rename === true,
+		delete: access?.delete === true,
+	});
 
 	const assertNonEmpty = (value: unknown, field: string): string => {
 		if (typeof value !== "string" || value.trim().length === 0) {
@@ -83,9 +95,11 @@ export function createOfficialSessionsApi(capabilitySessionId: string): PluginOf
 					cwd: session.cwd,
 					firstMessage: session.firstMessage,
 					modifiedAt: session.modifiedAt,
+					access: normalizeAccess(session.access),
 				}));
 			}),
 		listRunning: () => invoke(() => window.vetta.session.listRunning()),
+		listRunningCwds: () => invoke(() => window.vetta.session.listRunningCwds()),
 		onRunningChanged: (handler) => {
 			// 订阅本身是同步注册（返回取消函数），仍需先过官方校验，避免非官方插件拿到广播。
 			pluginRendererCapabilityHost.assertOfficialSession(capabilitySessionId);

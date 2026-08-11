@@ -61,3 +61,40 @@ describe("official.sessions 的模型指定", () => {
 		expect(host.updateSettings).not.toHaveBeenCalled();
 	});
 });
+
+describe("official.sessions.list 的可用性透传", () => {
+	beforeEach(() => {
+		pluginRendererCapabilityHost.bindSession(SESSION, {
+			id: "kanban",
+			enabled: true,
+			trustLevel: "official",
+		});
+	});
+
+	function stubListSessions(sessions: unknown[]): void {
+		Object.defineProperty(globalThis, "window", {
+			configurable: true,
+			value: { vetta: { session: { listSessions: vi.fn(async () => sessions) } } },
+		});
+	}
+
+	it("把宿主的 access 逐位透出，调用方据此决定跳不跳", async () => {
+		stubListSessions([
+			{
+				path: "/s.jsonl",
+				cwd: "/work",
+				firstMessage: "hi",
+				modifiedAt: 5,
+				access: { readHistory: true, interactiveResume: true, rename: true, delete: false },
+			},
+		]);
+		const [session] = await createOfficialSessionsApi(SESSION).list("/work");
+		expect(session.access).toEqual({ readHistory: true, interactiveResume: true, rename: true, delete: false });
+	});
+
+	it("缺字段读作「完全不可用」，宁可退回新建会话页也不打开一个打不开的会话", async () => {
+		stubListSessions([{ path: "/s.jsonl", modifiedAt: 5 }]);
+		const [session] = await createOfficialSessionsApi(SESSION).list("/work");
+		expect(session.access).toEqual({ readHistory: false, interactiveResume: false, rename: false, delete: false });
+	});
+});

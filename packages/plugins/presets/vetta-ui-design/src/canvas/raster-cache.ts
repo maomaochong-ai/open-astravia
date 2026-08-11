@@ -13,7 +13,14 @@
 
 const DB_NAME = "vetta-ui-design";
 const STORE = "rasters";
-const DB_VERSION = 1;
+/**
+ * 画廊封面：整块画布的全景图，一份设计一张，key 就是 vetdPath。
+ *
+ * 与 frame 位图同库不同表：来源相同（都是画布截出来的派生位图）、失效条件相同
+ * （设计没了就该一起没），分表只是为了「取封面」不必扫一遍 frame 键。
+ */
+const COVER_STORE = "covers";
+const DB_VERSION = 2;
 
 /** `${vetdPath}::${frameId}`——设计文档之间天然隔离，同一份里按 frame 取。 */
 function keyOf(vetdPath: string, frameId: string): string {
@@ -41,13 +48,17 @@ function openDb(): Promise<IDBDatabase | null> {
 	return dbPromise;
 }
 
-function runStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T | null> {
+function runStore<T>(
+	mode: IDBTransactionMode,
+	run: (store: IDBObjectStore) => IDBRequest<T>,
+	storeName: string = STORE,
+): Promise<T | null> {
 	return openDb().then(
 		(db) =>
 			new Promise<T | null>((resolve) => {
 				if (!db) return resolve(null);
 				try {
-					const request = run(db.transaction(STORE, mode).objectStore(STORE));
+					const request = run(db.transaction(storeName, mode).objectStore(storeName));
 					request.onsuccess = () => resolve(request.result);
 					request.onerror = () => resolve(null);
 				} catch {
@@ -94,4 +105,18 @@ export async function pruneRasters(vetdPath: string, keep: readonly string[]): P
 			await runStore("readwrite", (store) => store.delete(key));
 		}),
 	);
+}
+
+/** 读回这份设计稿的画廊封面（jpeg dataURL）。没有就是没有——画廊自己出占位。 */
+export async function loadCover(vetdPath: string): Promise<string | null> {
+	const value = await runStore<unknown>("readonly", (store) => store.get(vetdPath), COVER_STORE);
+	return typeof value === "string" ? value : null;
+}
+
+export async function saveCover(vetdPath: string, dataUrl: string): Promise<void> {
+	await runStore("readwrite", (store) => store.put(dataUrl, vetdPath), COVER_STORE);
+}
+
+export async function deleteCover(vetdPath: string): Promise<void> {
+	await runStore("readwrite", (store) => store.delete(vetdPath), COVER_STORE);
 }

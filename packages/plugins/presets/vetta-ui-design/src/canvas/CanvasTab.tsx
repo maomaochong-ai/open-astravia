@@ -13,6 +13,7 @@ import { DesignSession } from "../vetd/design-session";
 import { findVetdFiles } from "../vetd/discover";
 import { scaffoldDesign } from "../vetd/scaffold";
 import { BridgeHub, type ElementQuery, type SelectedElementPayload } from "./bridge-client";
+import { refreshCover } from "./cover-compose";
 import { DOCK_GAP, DOCK_ICON } from "./dock-magnify";
 import { clearFrameActivity, setCanvasController, setPendingDesignPath, takePendingDesignPath } from "./design-runtime";
 import { byCanvasOrder, DesignCanvas, type FrameCapture } from "./DesignCanvas";
@@ -145,6 +146,12 @@ export function CanvasTab() {
 		});
 		return () => {
 			cancelled = true;
+			// 离开这份设计（切设计稿、关面板、切会话）时留一张画廊封面。
+			// 放在拆卸时而不是每次截图后：位图落定是高频事件，而封面只要「最后那一版」。
+			// dispose 之前抄一份 frames——dispose 之后 manifest 不再更新，但读没问题；
+			// 这里先取值只是为了不依赖 dispose 的内部实现。
+			const framesSnapshot = [...nextSession.manifest.frames];
+			void refreshCover(nextSession.vetdPath, framesSnapshot);
 			nextSession.dispose();
 			nextNotes.dispose();
 			setCanvasController(null);
@@ -210,6 +217,16 @@ export function CanvasTab() {
 					{t("canvas.empty.title")}
 				</span>
 				<p className="max-w-64 text-xs text-muted-foreground">{t("canvas.empty.desc")}</p>
+				{/* 空态里没有工具栏，重扫入口只能放这儿：目录里明明有设计却扫不到时
+				    （v1 旧格式刚被放进来、或上一次扫描时目录还没就绪），这是用户
+				    唯一能自救的按钮，否则只剩「新建」这一条会让人以为设计丢了。 */}
+				<button
+					type="button"
+					onClick={() => void refreshFiles()}
+					className="rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
+				>
+					{t("canvas.empty.rescan")}
+				</button>
 				<button
 					type="button"
 					onClick={() => void createDesign()}
@@ -259,11 +276,16 @@ export function CanvasTab() {
 						◐
 					</button>
 					{/* 手动刷新：热更新链路（文件监听 / HMR）万一没生效时的兜底出路，
-					    强制所有 frame 重新加载最新代码并重截位图。 */}
+					    强制所有 frame 重新加载最新代码并重截位图。
+					    同时重扫一遍设计列表——这个按钮是「与磁盘重新对齐」的唯一入口，
+					    面板开着时新出现的设计（含还没迁移的 v1 旧格式）也该在这里被收进来。 */}
 					<button
 						type="button"
 						disabled={phase.kind !== "ready"}
-						onClick={() => refreshRef.current?.()}
+						onClick={() => {
+							refreshRef.current?.();
+							void refreshFiles();
+						}}
 						title={t("canvas.refresh")}
 						aria-label={t("canvas.refresh")}
 						className="flex shrink-0 items-center justify-center rounded-[10px] bg-muted/55 text-foreground hover:bg-muted disabled:opacity-50"

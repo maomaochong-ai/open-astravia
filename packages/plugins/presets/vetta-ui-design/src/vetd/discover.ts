@@ -11,6 +11,12 @@ export interface DiscoveredDesigns {
 }
 
 const BUNDLE_MANIFEST_SUFFIX = `.vetd/${MANIFEST_FILE}`;
+/**
+ * v1 旁挂目录里出现 manifest，只可能是上一次迁移停在了「manifest 已复制进旁挂目录」
+ * 之后。若此时 `x.vetd` 文件也已删掉（第 2 步做完、第 3 步没做），磁盘上就再没有任何
+ * 叫 `.vetd` 的条目了——只按 `.vetd` 找设计的扫描会彻底看不见它。
+ */
+const LEGACY_SIDECAR_MANIFEST_SUFFIX = `.vetd.d/${MANIFEST_FILE}`;
 
 /** 这个路径是否落在某个设计包内部（bundle 或 v1 旁挂目录）。 */
 function insideDesign(relPath: string): boolean {
@@ -24,6 +30,8 @@ function insideDesign(relPath: string): boolean {
 export function pickDesignPaths(files: PluginFsFileRef[]): DiscoveredDesigns {
 	const bundles: string[] = [];
 	const legacyFiles: string[] = [];
+	/** 落单的旁挂目录推出来的 `x.vetd`，等确认没有同名条目后才算数。 */
+	const orphanSidecars: string[] = [];
 	for (const file of files) {
 		const rel = file.relPath.replaceAll("\\", "/");
 		const path = file.path.replaceAll("\\", "/");
@@ -31,11 +39,21 @@ export function pickDesignPaths(files: PluginFsFileRef[]): DiscoveredDesigns {
 			bundles.push(path.slice(0, path.length - `/${MANIFEST_FILE}`.length));
 			continue;
 		}
+		if (rel.endsWith(LEGACY_SIDECAR_MANIFEST_SUFFIX)) {
+			// `…/x.vetd.d/design.json` → `…/x.vetd`
+			orphanSidecars.push(path.slice(0, path.length - `.d/${MANIFEST_FILE}`.length));
+			continue;
+		}
 		// 包内部的东西都是设计内容，不会自己又是一份设计。
 		if (insideDesign(rel)) continue;
 		if (file.name.endsWith(".vetd")) legacyFiles.push(file.path);
 	}
-	return { bundles: bundles.sort(), legacyFiles: legacyFiles.sort() };
+	// 同名的设计包或 v1 文件还在，说明迁移没停在那个窗口里，旁挂目录交给正常路径处理。
+	const claimed = new Set([...bundles, ...legacyFiles.map((path) => path.replaceAll("\\", "/"))]);
+	for (const path of orphanSidecars) {
+		if (!claimed.has(path)) legacyFiles.push(path);
+	}
+	return { bundles: bundles.sort(), legacyFiles: [...new Set(legacyFiles)].sort() };
 }
 
 /**

@@ -12,9 +12,14 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 ### Changed
 
 - `setActivityPanelWidth("max")` 与 `openActivityTab(id, { width: "max" })` 的 `"max"` 从「按当前窗口算一次宽度」改为**持续状态**：窗口尺寸变化时宿主重新求值，面板跟着一起变宽变窄，直到用户拖动分隔条或有人写入具体像素为止。传数字的行为不变（仍是一次性的固定宽度）。插件无需改动。
+- **`official.sessions.list()` 的条目新增 `access`**（`PluginOfficialSessionAccess`：`readHistory` / `interactiveResume` / `rename` / `delete`）。宿主自己点会话时就是按这几位分流的（可续聊 / 只读查看 / 完全打不开），此前插件层把它丢掉了，插件只能盲跳。缺字段一律读作 `false`（= 完全不可用）：宁可退回新建会话页，也不要把用户送进一个打不开的会话。
 
 ### Added
 
+- **`official.dialog.openFiles(options)`**：打开原生文件选择框并把选中文件的**内容**（base64）一起返回。插件的 `ctx.fs` 只能读已授权的项目根，所以「选个文件再自己去读」这条路走不通；这个接口不放宽任何目录授权，插件能看到的只有用户这次亲手选中的文件。用户取消时返回空数组，单文件默认 64MB 上限。
+- **`official.shell.showItemInFolder(path)`**：在系统文件管理器里定位一个本地路径。与 `ui.openExternal` 分工明确——后者只放行 http/https，刻意不让插件用它拉起任意协议（含 `file://`）。
+- **`official.sessions.listRunningCwds()`**：当前有会话在跑的项目 cwd（去重）。需要「这个项目忙不忙」时用它，**不要**拿 `listRunning()` 的路径去比对 cwd：会话文件默认落在按 cwd 编码的分片目录里，那个编码把 `/`、`\`、`:` 全压成 `-` 且不可逆，`my-project` 与 `my/project` 会撞进同一个分片。
+- **`official.navigation.open({ target: "new-session", cwd })`**：跳到某个项目的新建会话页。这是第一个**带参数**的导航目标，`PluginOfficialNavigationOpenInput` 因此新增可选 `cwd`；缺 cwd 或传相对路径会被宿主拒绝，而不是跳到一个空页面。目录（`navigation.help()`）里同步列出该目标。
 - **工作区视图 `ctx.ui.registerWorkspaceView()`**（新权限 `ui.slot.workspace-view`）：插件可以贡献一个**整页 surface**，与内置的「自动化」「知识库」同级——宿主给它一条自己的路由 `/workspace/<pluginId>/<viewId>` 和一个侧边栏导航入口，打开后整个内容区归插件。用于跨会话、跨项目的工作台（看板、控制台、仪表盘）；绑定单次对话的辅助 UI 仍应使用 Activity Tab。配套 `ctx.ui.openWorkspaceView(viewId)` 做程序化跳转。视图 `id` 会进 URL 并参与侧边栏布局持久化，故限定为 `^[a-z0-9][a-z0-9._-]*$`；`icon` 是 **iconify class 字符串**而非 ReactNode（宿主要把它渲染进自己的导航按钮并按 key 持久化布局）。导航入口默认落在侧边栏「更多」收纳里，用户可拖拽排序或 pin 到左上方置顶区。见 ADR-0065。
 - **`official.sessions`**（仅 official 来源插件可用）：后台会话编排 —— `create` / `prompt` / `abort` / `rename` / `list` / `listRunning` / `onRunningChanged` / `open`。与 `ctx.conversation.*` 的分工是：后者作用于**用户当前正在看的**会话，这套 API 按 sessionId 显式寻址、与当前路由无关。会话本体跑在主进程，创建并 prompt 之后即使宿主停在别的页面、插件 UI 未挂载，agent loop 也会继续跑到自然停止点——这是「多任务并发派单」类工作台成立的前提。见 ADR-0065。
 - **宿主成品 UI 组件对插件开放**：新增共享入口 `@vetta/theme-ui/plugin-ui`（Module Federation 共享域，与 `@vetta/ui` 同一机制），插件拿到的是宿主运行时的**同一份实例**，因此不是「长得像」而是同一个组件。首批开放 `ModelSelectorView`（搜索、provider 分组与图标、云端/默认/视觉徽章、推理档位子菜单）、`ProviderIcon`、`MultiplierTag`。全部为纯展示组件：数据、文案、写回逻辑经 props 注入，插件可在自己的语义下复用（看板给「某张卡」选模型，宿主输入栏给「当前会话」选模型）。清单有意收窄，见 `packages/theme-ui/src/plugin-ui`。

@@ -130,6 +130,51 @@ export function registerDialogIpc(): () => void {
 		return result.filePaths;
 	});
 
+	/**
+	 * 选文件并**连内容一起**返回。
+	 *
+	 * 为什么不复用 select-files 的「只回路径」：插件的 fs 被限制在已授权的项目根内
+	 * （filesystem-service 的 allowedRoots），用户从下载目录挑一个文件，插件拿到路径也
+	 * 读不了。让主进程当场读完回传，既不用把那个目录永久加进授权根（select-folder 就是
+	 * 那么做的，代价是整棵目录树从此可读），也不必发明按路径的一次性授权。
+	 */
+	ipcMain.handle("vetta:dialog:open-file-contents", async (_event, options: unknown) => {
+		const input = (options ?? {}) as {
+			title?: unknown;
+			filters?: unknown;
+			multiple?: unknown;
+			maxBytes?: unknown;
+		};
+		const filters = Array.isArray(input.filters)
+			? input.filters.flatMap((filter) => {
+					const candidate = filter as { name?: unknown; extensions?: unknown };
+					if (typeof candidate?.name !== "string" || !Array.isArray(candidate.extensions)) return [];
+					const extensions = candidate.extensions.filter((ext): ext is string => typeof ext === "string");
+					return extensions.length > 0 ? [{ name: candidate.name, extensions }] : [];
+				})
+			: [];
+		const properties: Array<"openFile" | "multiSelections"> =
+			input.multiple === true ? ["openFile", "multiSelections"] : ["openFile"];
+		const result = await dialog.showOpenDialog({
+			properties,
+			title: typeof input.title === "string" && input.title.trim() ? input.title : "选择文件",
+			...(filters.length > 0 ? { filters } : {}),
+		});
+		if (result.canceled || result.filePaths.length === 0) return [];
+		// 上限兜底：内容要经 IPC 以 base64 回传，一个被误选的大文件足以撑爆渲染进程。
+		const maxBytes = typeof input.maxBytes === "number" && input.maxBytes > 0 ? input.maxBytes : 64 * 1024 * 1024;
+		const files = [];
+		for (const filePath of result.filePaths) {
+			const info = await stat(filePath);
+			if (info.size > maxBytes) {
+				throw new Error(`File is too large to open: ${basename(filePath)} (${info.size} bytes)`);
+			}
+			const buffer = await readFile(filePath);
+			files.push({ path: filePath, name: basename(filePath), data: buffer.toString("base64") });
+		}
+		return files;
+	});
+
 	ipcMain.handle("vetta:dialog:save-html", async (_event, defaultFileName: unknown, content: unknown) => {
 		if (typeof defaultFileName !== "string" || !defaultFileName.trim()) {
 			throw new Error("Invalid HTML export file name");
@@ -291,6 +336,7 @@ export function registerDialogIpc(): () => void {
 		ipcMain.removeHandler("vetta:dialog:select-images");
 		ipcMain.removeHandler("vetta:dialog:select-folder");
 		ipcMain.removeHandler("vetta:dialog:select-files");
+		ipcMain.removeHandler("vetta:dialog:open-file-contents");
 		ipcMain.removeHandler("vetta:dialog:save-html");
 		ipcMain.removeHandler("vetta:dialog:save-data");
 		ipcMain.removeHandler("vetta:dialog:save-copy");
