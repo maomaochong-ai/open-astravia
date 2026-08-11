@@ -49,6 +49,7 @@ export function toPluginDefinition(
 		pluginName: trPlugin(tab.pluginId, tab.pluginName),
 		scope_use: tab.scope_use,
 		initiallyVisible: tab.initiallyVisible,
+		retention: tab.retention,
 		keepAliveWhenAvailable: tab.keepAliveWhenAvailable,
 		useMeta: () => ({
 			label: trPlugin(tab.pluginId, tab.label),

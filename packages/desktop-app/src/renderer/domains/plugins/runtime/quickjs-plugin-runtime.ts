@@ -196,6 +196,7 @@ export function createQuickJsPluginDefinition(plugin: InstalledPlugin): PluginDe
 								component: TabComponent,
 								scope_use: message.contribution.scope_use,
 								initiallyVisible: message.contribution.initiallyVisible,
+								retention: message.contribution.retention,
 							});
 							tabRegistrations.set(tabId, registration);
 							break;

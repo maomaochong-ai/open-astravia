@@ -215,6 +215,7 @@ function parseActivityTab(value: unknown): PluginQuickJsActivityTab {
 		view: parseQuickJsDeclarativeNode(value.view),
 		scope_use,
 		initiallyVisible: optionalBoolean(value.initiallyVisible, "activity tab initiallyVisible"),
+		retention: assertAllowed(value.retention, ["active-only", "warm", "pinned"], "activity tab retention"),
 	};
 }
 

@@ -17,7 +17,7 @@ export const browserTabDefinition: ActivityTabDefinition = {
 	order: 15,
 	removable: true,
 	source: "builtin",
-	keepAliveWhenAvailable: true,
+	retention: "pinned",
 	useMeta: () => {
 		const { t } = useTranslation("chat");
 		const activeSession = useAtomValue(activeSessionAtom);

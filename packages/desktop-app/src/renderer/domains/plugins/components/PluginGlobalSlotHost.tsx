@@ -245,6 +245,7 @@ export function PluginGlobalSlotHost(): JSX.Element | null {
 				component: tab.component,
 				scope_use: tab.scope_use,
 				initiallyVisible: tab.initiallyVisible,
+				retention: tab.retention,
 				keepAliveWhenAvailable: tab.keepAliveWhenAvailable,
 			})),
 		);

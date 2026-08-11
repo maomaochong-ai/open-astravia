@@ -4,6 +4,9 @@ import type { ComponentType, ReactNode } from "react";
 /** 活动面板 tab id：内置为稳定字符串，插件为 `plugin:<pluginId>:<tabId>`。 */
 export type ActivityTabId = string;
 
+/** Inactive component residency. Warm tabs participate in the bounded LRU cache. */
+export type ActivityTabRetention = "active-only" | "warm" | "pinned";
+
 /** 单帧元数据：`useMeta` 返回 null 表示本帧不参与候选。 */
 export interface ActivityTabMeta {
 	label: string;
@@ -40,8 +43,13 @@ export interface ActivityTabDefinition {
 	/** 内容组件：零 props，经 ActivityPanelContext 取 cwd 等。 */
 	component: ComponentType;
 	/**
-	 * 有 meta 时即使未激活也保持挂载（CSS 隐藏）。
-	 * 浏览器 tab 需要跨 tab 保活 webview。
+	 * 未激活时的驻留策略。缺省 warm：访问后进入有界 LRU；pinned 始终驻留。
+	 * 内部贡献优先使用此字段，新策略可在驻留服务中集中扩展。
+	 */
+	retention?: ActivityTabRetention;
+	/**
+	 * 插件 SDK 的兼容字段。true 映射为 pinned，false 映射为 active-only，
+	 * 缺省则使用默认 warm 策略。
 	 */
 	keepAliveWhenAvailable?: boolean;
 }

@@ -45,6 +45,14 @@ describe("ActivityTabSurface", () => {
 
 	beforeEach(() => {
 		(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+		vi.stubGlobal(
+			"ResizeObserver",
+			class ResizeObserver {
+				observe(): void {}
+				disconnect(): void {}
+				unobserve(): void {}
+			},
+		);
 		container = document.createElement("div");
 		dockedOutlet = document.createElement("div");
 		document.body.append(container, dockedOutlet);
@@ -55,6 +63,7 @@ describe("ActivityTabSurface", () => {
 		act(() => root.unmount());
 		container.remove();
 		dockedOutlet.remove();
+		vi.unstubAllGlobals();
 	});
 
 	it("keeps the content instance mounted while moving out and back", () => {

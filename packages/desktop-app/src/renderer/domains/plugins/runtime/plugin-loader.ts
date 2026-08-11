@@ -1069,6 +1069,12 @@ function createContext(
 		if (typeof contribution.component !== "function" && typeof contribution.component !== "object") {
 			throw new Error("Activity tab component is invalid");
 		}
+		if (
+			contribution.retention !== undefined &&
+			!(["active-only", "warm", "pinned"] as const).includes(contribution.retention)
+		) {
+			throw new Error("Activity tab retention is invalid");
+		}
 		const brandIcon =
 			contribution.icon === undefined && plugin.iconUrl ? resolvePluginBrandIcon(plugin.iconUrl) : undefined;
 		const normalized: PluginActivityTabContribution = {
@@ -1078,6 +1084,7 @@ function createContext(
 			component: contribution.component,
 			scope_use: contribution.scope_use,
 			initiallyVisible: contribution.initiallyVisible,
+			retention: contribution.retention,
 			keepAliveWhenAvailable: contribution.keepAliveWhenAvailable,
 		};
 		activityTabs.push(normalized);

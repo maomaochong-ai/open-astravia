@@ -39,4 +39,29 @@ describe("QuickJS plugin protocol", () => {
 	it("accepts worker disposal acknowledgements", () => {
 		expect(parseQuickJsWorkerMessage({ type: "disposed" })).toEqual({ type: "disposed" });
 	});
+
+	it("validates activity tab retention at the worker boundary", () => {
+		expect(
+			parseQuickJsWorkerMessage({
+				type: "registerActivityTab",
+				contribution: {
+					id: "probe",
+					label: "Probe",
+					retention: "pinned",
+					view: { type: "text", text: "Ready" },
+				},
+			}),
+		).toMatchObject({ contribution: { retention: "pinned" } });
+		expect(() =>
+			parseQuickJsWorkerMessage({
+				type: "registerActivityTab",
+				contribution: {
+					id: "probe",
+					label: "Probe",
+					retention: "forever",
+					view: { type: "text", text: "Ready" },
+				},
+			}),
+		).toThrow("Invalid QuickJS activity tab retention");
+	});
 });
