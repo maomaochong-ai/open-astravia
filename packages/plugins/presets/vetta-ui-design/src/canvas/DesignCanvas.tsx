@@ -41,6 +41,7 @@ import {
 } from "./design-runtime";
 import { DesignSystemDialog } from "./DesignSystemDialog";
 import { type FrameMenuAnchor, FrameContextMenu } from "./FrameContextMenu";
+import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
@@ -255,6 +256,9 @@ function applyResizeSnap(
 	}
 	return { rect: next, snap: applied };
 }
+
+/** 位图变化后隔多久合成封面：等一批 frame 都落定，不为每张图各合成一次。 */
+const COVER_REFRESH_DEBOUNCE_MS = 1500;
 
 export function DesignCanvas({
 	session,
@@ -543,6 +547,23 @@ export function DesignCanvas({
 	});
 
 	refreshRef.current = reloadAll;
+
+	/**
+	 * 位图安静下来之后合成一次画廊封面。
+	 *
+	 * 不能只在画布卸载时合成：那与画廊的挂载是竞态——用户从画布切到画廊，合成还在
+	 * 解码 jpeg，画廊已经读过一次库了，于是「明明进过画布」却看不到封面。趁画布还
+	 * 开着先把封面写好，卸载时那次就只是补最后一版。
+	 *
+	 * 依赖 rasterOf 的引用：它随位图集合变化（useCallback over rasters），所以一批
+	 * frame 连续落定只会在末尾合成一次，而不是每张图合成一次。
+	 */
+	useEffect(() => {
+		const timer = window.setTimeout(() => {
+			void refreshCover(session.vetdPath, manifest.frames);
+		}, COVER_REFRESH_DEBOUNCE_MS);
+		return () => window.clearTimeout(timer);
+	}, [rasterOf, manifest.frames, session.vetdPath]);
 
 	/**
 	 * 备注锚定的元素查询：位图态的 frame 先经 runLive 拉回活体，再逐条问引擎 bridge。
