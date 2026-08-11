@@ -11,6 +11,17 @@ import { DesignSystemDemo, designSystemDemoHtml } from "../src/gallery/DesignSys
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+// happy-dom 没有 IntersectionObserver；用一个立刻上报「可见」的桩，让懒挂载在测试里生效。
+class ImmediateIntersectionObserver {
+	constructor(private readonly callback: (entries: { isIntersecting: boolean }[]) => void) {}
+	observe(): void {
+		this.callback([{ isIntersecting: true }]);
+	}
+	disconnect(): void {}
+	unobserve(): void {}
+}
+vi.stubGlobal("IntersectionObserver", ImmediateIntersectionObserver);
+
 const DEMO_HTML = "<!doctype html><html><body><h1>Linear</h1></body></html>";
 
 function system(resources: DesignResource[]): DesignSystem {
@@ -101,6 +112,19 @@ describe("DesignSystemDemo", () => {
 	it("没有 demo 时什么都不渲染", () => {
 		act(() => root.render(<DesignSystemDemo system={system([])} active={false} />));
 		expect(frame()).toBeNull();
+	});
+
+	it("iframe 还没 load 时预览层是透明的，底下露着色板", () => {
+		act(() => root.render(<DesignSystemDemo system={withDemo} active={false} />));
+		expect(frame()?.parentElement?.style.opacity).toBe("0");
+	});
+
+	it("iframe load 之后预览层才淡入", () => {
+		act(() => root.render(<DesignSystemDemo system={withDemo} active={false} />));
+		act(() => {
+			frame()?.dispatchEvent(new Event("load"));
+		});
+		expect(frame()?.parentElement?.style.opacity).toBe("1");
 	});
 
 	it("内容不比视口高时不加滚动动画", () => {
