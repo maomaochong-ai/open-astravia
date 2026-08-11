@@ -134,6 +134,7 @@
 	"preview.open": "打开画布",
 	"preview.import": "导入并编辑",
 	"preview.invalid": "无法解析此设计文件",
+	"preview.fit": "适应窗口",
 	"preview.snapshot.missing": "此分享包不含渲染快照，仅显示结构信息。",
 	"previewMode.open": "预览",
 	"previewMode.title": "预览模式",

@@ -1,9 +1,11 @@
 import type { PluginPreviewFile } from "@vetta-org/plugin-sdk";
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { parsePackagedVetd, importPackagedVetd, type PackagedVetd } from "../export/import-design";
 import { getPluginCtx, notify } from "../plugin-context";
 import { setPendingDesignPath } from "../canvas/design-runtime";
+import { PreviewCanvas } from "./PreviewCanvas";
+import { inlineSnapshotAssets } from "./snapshot-assets";
 import { CANVAS_TAB_ID } from "../tab-ids";
 import { emptyManifest, type VetdManifest } from "../vetd/manifest-types";
 
@@ -11,7 +13,8 @@ type PreviewState =
 	| { kind: "loading" }
 	| { kind: "invalid" }
 	| { kind: "working"; manifest: VetdManifest }
-	| { kind: "packaged"; manifest: VetdManifest; packaged: PackagedVetd };
+	/** `snapshotHtml` 是已经把包内资源内嵌进去的版本，见 snapshot-assets。 */
+	| { kind: "packaged"; manifest: VetdManifest; packaged: PackagedVetd; snapshotHtml: string | null };
 
 function parseManifest(json: string): VetdManifest | null {
 	try {
@@ -23,73 +26,6 @@ function parseManifest(json: string): VetdManifest | null {
 		// fallthrough
 	}
 	return null;
-}
-
-/** Read-only mini canvas: frames laid out to manifest positions, fit to width. */
-function MiniCanvas({
-	manifest,
-	renderFrame,
-}: {
-	manifest: VetdManifest;
-	renderFrame: (frameId: string, scale: number) => JSX.Element;
-}) {
-	const bounds = useMemo(() => {
-		if (manifest.frames.length === 0) return { x: 0, y: 0, width: 1, height: 1 };
-		const minX = Math.min(...manifest.frames.map((frame) => frame.x));
-		const minY = Math.min(...manifest.frames.map((frame) => frame.y));
-		const maxX = Math.max(...manifest.frames.map((frame) => frame.x + frame.width));
-		const maxY = Math.max(...manifest.frames.map((frame) => frame.y + frame.height));
-		return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
-	}, [manifest.frames]);
-	const containerRef = useRef<HTMLDivElement | null>(null);
-	const [containerWidth, setContainerWidth] = useState(0);
-	useEffect(() => {
-		const element = containerRef.current;
-		if (!element) return;
-		const observer = new ResizeObserver(() => setContainerWidth(element.clientWidth));
-		observer.observe(element);
-		return () => observer.disconnect();
-	}, []);
-	const scale = containerWidth > 0 ? Math.min((containerWidth - 24) / bounds.width, 0.5) : 0.1;
-	return (
-		<div ref={containerRef} className="relative w-full overflow-auto rounded-lg vetd-canvas-bg p-3">
-			<div className="relative" style={{ width: bounds.width * scale, height: bounds.height * scale }}>
-				{manifest.frames.map((frame) => (
-					<div
-						key={frame.id}
-						className="absolute overflow-hidden rounded-sm bg-white shadow ring-1 ring-border"
-						style={{
-							left: (frame.x - bounds.x) * scale,
-							top: (frame.y - bounds.y) * scale,
-							width: frame.width * scale,
-							height: frame.height * scale,
-						}}
-						title={`${frame.title || frame.id} · ${frame.width}×${frame.height}`}
-					>
-						{renderFrame(frame.id, scale)}
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
-
-/** Packaged snapshot frame: the inlined single-file build rendered via srcdoc + show-frame message. */
-function SnapshotFrame({ html, frameId, scale }: { html: string; frameId: string; scale: number }) {
-	const ref = useRef<HTMLIFrameElement | null>(null);
-	return (
-		<iframe
-			ref={ref}
-			title={frameId}
-			srcDoc={html}
-			sandbox="allow-scripts"
-			className="origin-top-left border-0"
-			style={{ width: `${100 / scale}%`, height: `${100 / scale}%`, transform: `scale(${scale})` }}
-			onLoad={() => {
-				ref.current?.contentWindow?.postMessage({ vetd: true, type: "show-frame", id: frameId }, "*");
-			}}
-		/>
-	);
 }
 
 export function VetdPreview({ file }: { file: PluginPreviewFile }) {
@@ -109,7 +45,16 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 			if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
 				const packaged = parsePackagedVetd(bytes);
 				const manifest = parseManifest(packaged.manifestJson);
-				setState(manifest ? { kind: "packaged", manifest, packaged } : { kind: "invalid" });
+				if (!manifest) {
+					setState({ kind: "invalid" });
+					return;
+				}
+				// 图片在包里但快照引用的是构建产物路径（srcdoc 下解析不到），这里补上。
+				const snapshotHtml = packaged.snapshotHtml
+					? await inlineSnapshotAssets(packaged.snapshotHtml, packaged.designFiles)
+					: null;
+				if (cancelled) return;
+				setState({ kind: "packaged", manifest, packaged, snapshotHtml });
 				return;
 			}
 			const manifest = parseManifest(new TextDecoder().decode(bytes));
@@ -164,7 +109,7 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 
 	const badge = state.kind === "packaged" ? t("preview.packaged.badge") : t("preview.working.badge");
 	return (
-		<div className="relative flex h-full flex-col gap-2 overflow-auto p-3">
+		<div className="relative flex h-full min-h-0 flex-col gap-2 p-3">
 			<div className="flex items-center gap-2">
 				<span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
 					{badge}
@@ -191,22 +136,17 @@ export function VetdPreview({ file }: { file: PluginPreviewFile }) {
 					</button>
 				)}
 			</div>
-			{state.kind === "packaged" && !state.packaged.snapshotHtml ? (
+			{state.kind === "packaged" && !state.snapshotHtml ? (
 				<p className="text-xs text-muted-foreground">{t("preview.snapshot.missing")}</p>
 			) : null}
-			<MiniCanvas
-				manifest={state.manifest}
-				renderFrame={(frameId, scale) => {
-					if (state.kind === "packaged" && state.packaged.snapshotHtml) {
-						return <SnapshotFrame html={state.packaged.snapshotHtml} frameId={frameId} scale={scale} />;
-					}
-					return (
-						<div className="flex h-full items-center justify-center text-[9px] text-muted-foreground">
-							{frameId}
-						</div>
-					);
-				}}
-			/>
+			{/* 只读画布：与设计面板同一套平移/缩放（见 canvas/use-viewport），
+			    但不带选中、拖拽与编辑——分享包在预览里不可改。 */}
+			<div className="min-h-0 flex-1 overflow-hidden rounded-lg">
+				<PreviewCanvas
+					manifest={state.manifest}
+					snapshotHtml={state.kind === "packaged" ? state.snapshotHtml : null}
+				/>
+			</div>
 		</div>
 	);
 }

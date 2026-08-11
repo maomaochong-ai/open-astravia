@@ -134,6 +134,7 @@
 	"preview.open": "Open canvas",
 	"preview.import": "Import & edit",
 	"preview.invalid": "Cannot parse this design file",
+	"preview.fit": "Fit to view",
 	"preview.snapshot.missing": "This package has no render snapshot; showing structure only.",
 	"previewMode.open": "Preview",
 	"previewMode.title": "Preview mode",
