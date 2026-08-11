@@ -6,7 +6,7 @@ import { PLUGIN_EXECUTION_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getAppLogger } from "../logger.js";
 import { createPluginCommandEnvironment } from "./command-environment.js";
 import { spawnCrossPlatformCommand } from "./command-launcher.js";
-import { listPlugins } from "./plugin-store.js";
+import { listPlugins } from "./plugin-catalog.js";
 
 const spawnLog = getAppLogger("plugin");
 

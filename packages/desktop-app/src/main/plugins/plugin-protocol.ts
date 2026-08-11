@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { extname } from "node:path";
 import { type CustomScheme, protocol } from "electron";
-import { resolvePluginFilePath } from "./plugin-store.js";
+import { resolvePluginFilePath } from "./plugin-catalog.js";
 
 function contentTypeForPath(path: string): string {
 	switch (extname(path).toLowerCase()) {

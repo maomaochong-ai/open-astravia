@@ -36,14 +36,13 @@ import { notify } from "../notifications/index.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
-import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import {
 	broadcastPluginsChanged,
-	buildAgentPluginRuntimeConfig,
 	getPluginSettings,
 	listPlugins,
-	setPluginRuntimeAgentMode,
-} from "../plugins/plugin-store.js";
+	pluginAgentContributionService,
+} from "../plugins/plugin-catalog.js";
+import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
 import {
 	filterSystemPromptInvocationForPlugin,
 	normalizeDynamicSystemPromptOperations,
@@ -695,7 +694,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		);
 		pluginLog.debug("session prompt plugin snapshot", {
 			sessionId,
-			...summarizeAgentPluginRuntimeConfig(buildAgentPluginRuntimeConfig()),
+			...summarizeAgentPluginRuntimeConfig(pluginAgentContributionService.buildRuntimeConfig()),
 		});
 		return runtime.prompt(sessionId, req);
 	});
@@ -775,8 +774,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		// tools/skills/prompt：pending，turn 边界 apply。
 		runtime.setGlobalAgentMode(next);
 		// 插件级硬闸：更新 gate 模式并重建插件配置（排除模式外插件），推给活跃 session。
-		setPluginRuntimeAgentMode(next);
-		await runtime.reconfigureAgentPlugins(buildAgentPluginRuntimeConfig());
+		pluginAgentContributionService.setAgentMode(next);
+		await runtime.reconfigureAgentPlugins(pluginAgentContributionService.buildRuntimeConfig());
 		for (const win of BrowserWindow.getAllWindows()) {
 			win.webContents.send(CHANNELS.AGENT_MODE_CHANGED, next);
 		}

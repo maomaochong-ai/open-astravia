@@ -3,10 +3,10 @@ import { PLUGIN_SYSTEM_CHANNELS } from "../../shared/plugin-capability-ipc.js";
 import { PLUGIN_MANAGEMENT_CHANNELS } from "../../shared/plugin-ipc.js";
 import { getDesktopCapabilityHost } from "../capabilities/capability-host.js";
 import type { PluginActionService } from "../plugins/plugin-action-service.js";
+import { listPlugins, pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { startPluginDevWatch } from "../plugins/plugin-dev-watch.js";
 import { createPluginLifecycleService } from "../plugins/plugin-lifecycle-production.js";
 import { refreshAgentPlugins } from "../plugins/plugin-runtime-service.js";
-import { listPlugins, registerPluginModeGate, setPluginContributionMode } from "../plugins/plugin-store.js";
 import {
 	asArchiveBuffer,
 	asCommandNames,
@@ -34,11 +34,11 @@ export function registerPluginManagementIpc(pluginActionService: PluginActionSer
 		lifecycle.installPath(asRequiredString(path, "plugin path"), asOptions(options)),
 	);
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.REGISTER_MODE_GATE, (_event, id: unknown) => {
-		registerPluginModeGate(asPluginId(id));
+		pluginAgentContributionService.registerModeGate(asPluginId(id));
 		refreshAgentPlugins();
 	});
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.SET_CONTRIBUTION_MODE, (_event, id: unknown, active: unknown) => {
-		setPluginContributionMode(asPluginId(id), active === true);
+		pluginAgentContributionService.setContributionMode(asPluginId(id), active === true);
 		refreshAgentPlugins();
 	});
 	ipcMain.handle(PLUGIN_MANAGEMENT_CHANNELS.UNINSTALL, (_event, id: unknown) => lifecycle.uninstall(asPluginId(id)));

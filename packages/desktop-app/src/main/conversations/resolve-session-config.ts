@@ -3,8 +3,8 @@ import type { ConversationScenario } from "@vetta/coding-agent/profile";
 import type { SessionConfig } from "@vetta/runtime-core";
 import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
+import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
-import { buildAgentPluginRuntimeConfig, setPluginRuntimeAgentMode } from "../plugins/plugin-store.js";
 import {
 	ensureConversationSubCwd,
 	ensureSessionWorkingCwd,
@@ -52,8 +52,8 @@ export async function resolveDesktopSessionConfig(
 				: VETTA_CLI_GUIDANCE
 			: config?.appendSystemPrompt;
 	// 让插件级 agent_mode 硬闸的当前模式与本会话一致（纯全局态，见 ADR-0046）。
-	setPluginRuntimeAgentMode(desktopConfig.agentMode ?? "work");
-	const agentPlugins = buildAgentPluginRuntimeConfig();
+	pluginAgentContributionService.setAgentMode(desktopConfig.agentMode ?? "work");
+	const agentPlugins = pluginAgentContributionService.buildRuntimeConfig();
 	pluginLog.debug("session create plugin snapshot", {
 		kind,
 		source,

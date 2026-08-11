@@ -3,7 +3,7 @@ import type { OpenMarketplaceDetail } from "../../preload/api-types/abilities.js
 import type { InstalledPlugin } from "../../preload/api-types/plugins.js";
 import { getBuiltinSkillsDir, readBuiltinSkillsManifest } from "../builtin-skills.js";
 import { getAppLogger } from "../logger.js";
-import { listPlugins } from "../plugins/plugin-store.js";
+import { listPlugins } from "../plugins/plugin-catalog.js";
 import { loadAbilityPackagePresentation } from "./open-marketplace/open-marketplace-presentation.js";
 
 export type BuiltinAbilityPresentations = Record<string, OpenMarketplaceDetail>;

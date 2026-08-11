@@ -12,7 +12,7 @@ import {
 	type JsonValue,
 } from "../app-actions/types.js";
 import { getAppLogger } from "../logger.js";
-import { CORE_ACTION_PLUGIN_ID, getPluginSettings, listPlugins } from "./plugin-store.js";
+import { CORE_ACTION_PLUGIN_ID, getPluginSettings, listPlugins } from "./plugin-catalog.js";
 
 const REGISTER_PERMISSION = "app.actions.register";
 const EXECUTE_PERMISSION = "app.actionHandler.execute";

@@ -3,9 +3,6 @@ import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { stopAllSpawnsForPlugin } from "./command-spawner.js";
 import { destroyOffscreenSessionsForPlugin } from "./offscreen-capture-service.js";
 import type { PluginActionService } from "./plugin-action-service.js";
-import { stopPluginDevWatch } from "./plugin-dev-watch.js";
-import { type PluginLifecycleDependencies, PluginLifecycleService } from "./plugin-lifecycle-service.js";
-import { refreshAgentPlugins } from "./plugin-runtime-service.js";
 import {
 	grantPluginCommands,
 	grantPluginPermissions,
@@ -18,7 +15,10 @@ import {
 	revokePluginPermissions,
 	setPluginEnabled,
 	uninstallPlugin,
-} from "./plugin-store.js";
+} from "./plugin-catalog.js";
+import { stopPluginDevWatch } from "./plugin-dev-watch.js";
+import { type PluginLifecycleDependencies, PluginLifecycleService } from "./plugin-lifecycle-service.js";
+import { refreshAgentPlugins } from "./plugin-runtime-service.js";
 
 const dependencies: PluginLifecycleDependencies = {
 	listPlugins,

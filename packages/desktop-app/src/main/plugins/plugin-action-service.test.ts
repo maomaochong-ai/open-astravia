@@ -15,7 +15,7 @@ vi.mock("../logger.js", () => ({
 	}),
 }));
 
-vi.mock("./plugin-store.js", () => ({
+vi.mock("./plugin-catalog.js", () => ({
 	CORE_ACTION_PLUGIN_ID: "vetta-actions",
 	getPluginSettings: () => ({}),
 	listPlugins: () => [

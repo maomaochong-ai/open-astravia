@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { getVettaHomePath } from "@vetta/action-rpc";
 import type { GitHubMarketplaceOrigin } from "../../../preload/api-types/abilities.js";
-import { installPluginFromArchive } from "../../plugins/plugin-store.js";
+import { installPluginFromArchive } from "../../plugins/plugin-catalog.js";
 import {
 	getSkillBaseDir,
 	readSkillsManifest,

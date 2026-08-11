@@ -8,7 +8,7 @@ import AdmZip from "adm-zip";
 import { ipcMain } from "electron";
 import { recordAbilityInstall } from "../abilities/ability-ledger.js";
 import { getBuiltinSkillPaths } from "../builtin-skills.js";
-import { buildAgentPluginRuntimeConfig } from "../plugins/plugin-store.js";
+import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { installSkillFromMarketArchive, installSkillFromMarketSlug } from "../skills/skill-market-install.js";
 import {
 	getDesktopSkillService,
@@ -139,7 +139,8 @@ export function registerSkillsIpc(): () => void {
 		const resolvedCwd = typeof cwd === "string" && cwd.trim().length > 0 ? cwd : undefined;
 		// Plugin skill packages live under system-plugins / ~/.vetta/plugins; allow
 		// roots so slash/detail previews can read SKILL.md via fs IPC if needed.
-		const pluginSkillPaths = buildAgentPluginRuntimeConfig()?.skillPathContributions?.flatMap((c) => c.paths) ?? [];
+		const pluginSkillPaths =
+			pluginAgentContributionService.buildRuntimeConfig()?.skillPathContributions?.flatMap((c) => c.paths) ?? [];
 		for (const root of pluginSkillPaths) {
 			try {
 				allowProjectRoot(root);

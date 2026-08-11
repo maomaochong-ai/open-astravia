@@ -21,7 +21,7 @@ function sameSet(a: readonly PluginPermission[], b: readonly PluginPermission[])
 }
 
 /**
- * 装完立刻弹的启用 + 权限配置：安装本身不启用插件（plugin-store 的 enabled 默认 false），
+ * 装完立刻弹的启用 + 权限配置：安装本身不启用插件（plugin catalog 的 enabled 默认 false），
  * 权限首装也全未授予，两者都漏配就会表现为「装了但什么都没出现」。这里把两件事收进
  * 一次确认：开关先改本地草稿，点确认才落盘，直接关掉则二次确认。
  */

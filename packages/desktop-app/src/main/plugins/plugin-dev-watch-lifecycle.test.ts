@@ -15,18 +15,17 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("node:child_process", () => ({ spawn: mocks.spawn }));
 vi.mock("./plugin-dev-cli.js", () => ({ resolvePluginDevCliPath: mocks.resolveCli }));
-vi.mock("./plugin-store.js", () => ({
-	buildAgentPluginRuntimeConfig: () => ({}),
-	clearPluginDevLink: mocks.clearLink,
-	deactivatePluginDevLink: mocks.deactivateLink,
-	refreshPluginDevLink: mocks.refreshLink,
-	setPluginDevLink: mocks.setLink,
-	setPluginDevLinkServer: mocks.setServer,
-	setPluginDevLinkStatus: mocks.setStatus,
+vi.mock("./plugin-catalog.js", () => ({
+	pluginDevLinkService: {
+		clear: mocks.clearLink,
+		deactivate: mocks.deactivateLink,
+		refresh: mocks.refreshLink,
+		set: mocks.setLink,
+		setServer: mocks.setServer,
+		setStatus: mocks.setStatus,
+	},
 }));
-vi.mock("../runtime.js", () => ({
-	getSharedRuntime: () => ({ reconfigureAgentPlugins: mocks.reconfigureAgentPlugins }),
-}));
+vi.mock("./plugin-runtime-service.js", () => ({ refreshAgentPlugins: mocks.reconfigureAgentPlugins }));
 vi.mock("../logger.js", () => ({
 	getAppLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn() }),
 }));
