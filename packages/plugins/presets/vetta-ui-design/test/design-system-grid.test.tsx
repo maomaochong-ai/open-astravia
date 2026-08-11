@@ -11,11 +11,21 @@ vi.mock("@vetta-org/plugin-sdk", () => ({
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { DesignSystemGrid } from "../src/gallery/DesignSystemGrid";
-import { buildStyleStartDraft } from "../src/gallery/start-from-system";
 import { markCatalogFailed, resetDesignSystems, setDesignSystems } from "../src/design-systems/registry";
 import type { DesignSystem } from "../src/design-systems/types";
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+// happy-dom 没有 IntersectionObserver；demo 预览的懒挂载需要它存在。
+class ImmediateIntersectionObserver {
+	constructor(private readonly callback: (entries: { isIntersecting: boolean }[]) => void) {}
+	observe(): void {
+		this.callback([{ isIntersecting: true }]);
+	}
+	disconnect(): void {}
+	unobserve(): void {}
+}
+vi.stubGlobal("IntersectionObserver", ImmediateIntersectionObserver);
 
 function system(id: string, name: string): DesignSystem {
 	return {
@@ -99,32 +109,32 @@ describe("DesignSystemGrid", () => {
 	it("每张卡都有可读的无障碍名称", () => {
 		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
 		expect(tiles().map((tile) => tile.getAttribute("aria-label"))).toEqual([
-			"gallery.styles.start:Linear",
-			"gallery.styles.start:Stripe",
+			"gallery.styles.view:Linear",
+			"gallery.styles.view:Stripe",
 		]);
 	});
-});
 
-describe("从风格开新设计的文案", () => {
-	it("草稿逐个点名落盘的参考资料，跟宿主语言走", () => {
-		const written = ["DESIGN.md", "theme.css", "screenshots/home.webp"];
-		const zh = buildStyleStartDraft(system("linear", "Linear"), "zh-CN", written);
-		expect(zh).toContain("@skill:vetta-ui-design ");
-		expect(zh).toContain("Linear");
-		// 截图这类素材只有被点名，agent 才会去看。
-		expect(zh).toContain("design-resources/linear/screenshots/home.webp");
-		expect(zh).toContain("design-resources/linear/DESIGN.md");
-
-		const en = buildStyleStartDraft(system("linear", "Linear"), "en", written);
-		expect(en).toContain("@skill:vetta-ui-design ");
-		expect(en).toContain('"Linear" style');
-		expect(en).toContain("design-resources/linear/screenshots/home.webp");
-	});
-
-	it("一份资料都没落下来时不提资料，免得 agent 去读不存在的文件", () => {
-		const zh = buildStyleStartDraft(system("linear", "Linear"), "zh", []);
-		expect(zh).not.toContain("design-resources");
-		expect(zh).toContain("Linear");
+	it("悬停点燃对应卡片的 demo 预览，移开熄灭", () => {
+		const html = "<!doctype html><html><body>demo</body></html>";
+		setDesignSystems([
+			{
+				...system("linear", "Linear"),
+				resources: [{ path: "demo.html", role: "demo", encoding: "text", content: html, bytes: html.length }],
+			},
+			system("stripe", "Stripe"),
+		]);
+		render(<DesignSystemGrid busy={false} onPick={() => {}} />);
+		const active = (): number => document.body.querySelectorAll("[data-active]").length;
+		expect(active()).toBe(0);
+		// React 的 onMouseEnter/Leave 由委托的 mouseover/mouseout 驱动。
+		act(() => {
+			tiles()[0].dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+		});
+		expect(active()).toBe(1);
+		act(() => {
+			tiles()[0].dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+		});
+		expect(active()).toBe(0);
 	});
 });
 

@@ -10,6 +10,7 @@ import { CardTile } from "./CardTile";
 import { Composer, type ComposerSubmitPayload } from "./Composer";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { useBoardModel } from "./useBoardModel";
+import { usePendingReady } from "./usePendingReady";
 
 const LANES: readonly KanbanLane[] = ["inbox", "doing", "review"];
 
@@ -40,7 +41,8 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 	const [draggingId, setDraggingId] = useState<string | null>(null);
 	const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
-	const { board, lanes, laneTotals, archived, blockedBy, models, remainingSlots, now, query, setQuery } = model;
+	const { board, lanes, laneTotals, archived, blockedBy, models, skills, remainingSlots, now, query, setQuery } = model;
+	const pendingReady = usePendingReady(controller, board);
 
 	const openEditor = useCallback((card: KanbanCard | null) => {
 		setEditorCard(card);
@@ -129,6 +131,8 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 		// 拖进「正在处理」等价于用户手动派单：走同一条闸门，避免绕过并发上限。
 		const card = findCard(controller.getBoard(), cardId);
 		if (target.lane === "doing" && card?.lane === "inbox") {
+			// 亲手拖进来是明确意图，不必再等后悔倒计时——立即兑现挂起的「待认领」再派发。
+			pendingReady.commitNow(cardId);
 			void controller.dispatch(cardId, "user");
 			return;
 		}
@@ -345,6 +349,7 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 												modelLabel={modelLabelFor(card)}
 												dragging={draggingId === card.id}
 												now={now}
+												pendingReadySeconds={pendingReady.secondsFor(card.id)}
 												onAbort={() => void controller.abort(card.id)}
 												onApprove={() => controller.archive(card.id)}
 												onDelete={() => controller.removeCard(card.id)}
@@ -362,9 +367,17 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 												onEdit={() => openEditor(card)}
 												onOpenSession={() => void controller.openSession(card.id)}
 												onSendBack={() => openFeedback(card)}
-												onToggleIdeaState={() =>
-													controller.setIdeaState(card.id, card.ideaState === "draft" ? "ready" : "draft")
-												}
+												onToggleIdeaState={() => {
+													// 草稿 → 待认领要过 5 秒后悔窗口（倒计时中点击 = 撤回）；
+													// 待认领 → 草稿是收回动作，立即生效。
+													if (pendingReady.secondsFor(card.id) !== null) {
+														pendingReady.cancel(card.id);
+													} else if (card.ideaState === "draft") {
+														pendingReady.start(card.id);
+													} else {
+														controller.setIdeaState(card.id, "draft");
+													}
+												}}
 											/>
 										</div>
 									))}
@@ -384,6 +397,7 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 					hostDefaultModelKey={model.hostDefaultModelKey}
 					modelKey={board.defaultModelKey}
 					models={models}
+					skills={skills}
 					onModelKeyChange={(next) => controller.setDefaultModelKey(next)}
 					projects={controller.getProjects()}
 					onSubmit={submitComposer}
@@ -395,6 +409,8 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 				defaultCwd={board.defaultCwd}
 				defaultModelKey={board.defaultModelKey}
 				models={models}
+				skills={skills}
+				projects={controller.getProjects()}
 				dependencyOptions={dependencyOptions}
 				open={editorOpen}
 				onOpenChange={setEditorOpen}
@@ -402,6 +418,7 @@ export function BoardView({ controller }: { controller: KanbanBoardController })
 			/>
 			<FeedbackDialog
 				card={feedbackCard}
+				skills={skills}
 				open={feedbackOpen}
 				onOpenChange={setFeedbackOpen}
 				onSubmit={(feedback) => {

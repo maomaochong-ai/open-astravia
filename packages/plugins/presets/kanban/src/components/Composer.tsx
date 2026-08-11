@@ -1,8 +1,10 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
-import { cn, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@vetta/ui";
+import { cn } from "@vetta/ui";
 import { ModelPicker } from "./ModelPicker";
+import { ProjectPicker } from "./ProjectPicker";
+import { PromptTextarea, type PromptTextareaHandle } from "./PromptTextarea";
 import { useCallback, useMemo, useRef, useState, type JSX, type KeyboardEvent } from "react";
-import type { KanbanModelOption } from "../board/board-controller";
+import type { KanbanModelOption, KanbanSkillOption } from "../board/board-controller";
 import type { KanbanIdeaState } from "../board/types";
 
 export interface ComposerSubmitPayload {
@@ -21,6 +23,8 @@ export interface ComposerProps {
 	defaultCwd: string;
 	projects: Array<{ path: string; name?: string }>;
 	models: KanbanModelOption[];
+	/** 正文里可 `@` 提及的技能。 */
+	skills: KanbanSkillOption[];
 	/** 当前看板默认模型；发布器里的选择即写这个值（见 {@link ComposerProps.onModelKeyChange}）。 */
 	modelKey: string;
 	/** 宿主全局默认模型，仅用于在「跟随默认」项上标注它到底是谁。 */
@@ -37,12 +41,6 @@ const PRIORITY_META: Record<0 | 1 | 2, { icon: string; className: string }> = {
 	2: { icon: "icon-[solar--flag-bold]", className: "text-red-500" },
 };
 
-function projectLabel(path: string, name?: string): string {
-	if (name?.trim()) return name.trim();
-	const segments = path.split("/").filter(Boolean);
-	return segments[segments.length - 1] ?? path;
-}
-
 /**
  * 看板的发布器。**沿用宿主 AI 输入栏的设计语言**（同款胶囊卡片、focus 光晕、
  * 底部工具栏、⌘↵ 快捷发送），让「看板即对话入口」在形式上也成立——用户在这里
@@ -50,7 +48,7 @@ function projectLabel(path: string, name?: string): string {
  *
  * 宿主输入栏本体是 Lexical 编辑器且深度绑定会话状态，无法跨 Module Federation
  * 复用；这里按同一套 token（bg-input-bar-bg / border-primary 光晕 / rounded-[20px]）
- * 复刻其形态，功能换成看板语义：首行是标题、其余是需求正文。
+ * 复刻其形态，功能换成看板语义：首行是标题、其余是需求正文，正文里可以 `@` 技能。
  *
  * 交互模型刻意保持两档：
  * - Enter        → 记入灵感池（默认草稿，鼓励先记下来再打磨）
@@ -65,27 +63,20 @@ export function Composer({
 	onModelKeyChange,
 	onSubmit,
 	projects,
+	skills,
 }: ComposerProps): JSX.Element {
 	const { t } = useTranslation();
 	const [text, setText] = useState("");
 	const [cwd, setCwd] = useState("");
 	const [priority, setPriority] = useState<0 | 1 | 2>(0);
 	const [focused, setFocused] = useState(false);
-	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+	const textareaRef = useRef<PromptTextareaHandle | null>(null);
 
-	const effectiveCwd = cwd || defaultCwd;
 	const hasText = text.trim().length > 0;
 	const hostDefaultModel = useMemo(
 		() => models.find((model) => model.key === hostDefaultModelKey) ?? null,
 		[models, hostDefaultModelKey],
 	);
-
-	const autoGrow = useCallback(() => {
-		const element = textareaRef.current;
-		if (!element) return;
-		element.style.height = "0px";
-		element.style.height = `${Math.min(160, Math.max(44, element.scrollHeight))}px`;
-	}, []);
 
 	const submit = useCallback(
 		(dispatchNow: boolean) => {
@@ -105,9 +96,8 @@ export function Composer({
 			});
 			setText("");
 			setPriority(0);
-			requestAnimationFrame(autoGrow);
 		},
-		[autoGrow, cwd, modelKey, onSubmit, priority, text],
+		[cwd, modelKey, onSubmit, priority, text],
 	);
 
 	const handleKeyDown = useCallback(
@@ -141,57 +131,27 @@ export function Composer({
 					)}
 				>
 					<div className="relative z-10 rounded-[inherit]">
-						<textarea
+						<PromptTextarea
 							ref={textareaRef}
 							value={text}
-							rows={1}
+							onChange={setText}
+							skills={skills}
 							placeholder={t("composer.placeholder")}
-							onChange={(event) => {
-								setText(event.target.value);
-								autoGrow();
-							}}
+							paddingClassName="px-4 pt-3"
+							autoGrow={{ min: 44, max: 160 }}
+							onKeyDown={handleKeyDown}
 							onFocus={() => setFocused(true)}
 							onBlur={() => setFocused(false)}
-							onKeyDown={handleKeyDown}
-							className="block max-h-40 min-h-[44px] w-full resize-none bg-transparent px-4 pt-3 text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/50"
 						/>
 						<div className="flex items-center gap-1 px-2.5 pb-2 pt-1">
 							{/* 目标项目 */}
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<button
-										type="button"
-										title={t("composer.project")}
-										className="flex h-6 max-w-40 items-center gap-1 rounded-full border border-border/60 px-2 text-[11px] text-muted-foreground transition-colors hover:border-border hover:text-foreground"
-									>
-										<span className="icon-[solar--folder-linear] h-3 w-3 shrink-0" />
-										<span className="min-w-0 truncate">
-											{effectiveCwd ? projectLabel(effectiveCwd, projects.find((p) => p.path === effectiveCwd)?.name) : t("composer.noProject")}
-										</span>
-										<span className="icon-[solar--alt-arrow-down-linear] h-2.5 w-2.5 shrink-0 opacity-60" />
-									</button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent data-vetta-plugin-root="kanban" align="start" className="max-h-64 w-56 overflow-y-auto">
-									{projects.map((project) => (
-										<DropdownMenuItem
-											key={project.path}
-											onSelect={() => setCwd(project.path === defaultCwd ? "" : project.path)}
-											className="flex items-center gap-2 text-[12px]"
-										>
-											<span
-												className={cn(
-													"icon-[solar--folder-linear] h-3.5 w-3.5 shrink-0",
-													project.path === effectiveCwd ? "text-primary" : "text-muted-foreground",
-												)}
-											/>
-											<span className="min-w-0 flex-1 truncate">{projectLabel(project.path, project.name)}</span>
-											{project.path === effectiveCwd && (
-												<span className="icon-[solar--check-read-linear] h-3.5 w-3.5 shrink-0 text-primary" />
-											)}
-										</DropdownMenuItem>
-									))}
-								</DropdownMenuContent>
-							</DropdownMenu>
+							<ProjectPicker
+								projects={projects}
+								value={cwd}
+								defaultCwd={defaultCwd}
+								onChange={setCwd}
+								triggerClassName="h-6 max-w-40 rounded-full border border-border/60 px-2 text-[11px] hover:border-border"
+							/>
 
 							{/*
 							  * 执行模型：与会话页输入栏是**同一个组件**（宿主 theme-ui 共享域）。
@@ -221,6 +181,18 @@ export function Composer({
 							>
 								<span className={cn(priorityMeta.icon, "h-3.5 w-3.5", priorityMeta.className)} />
 							</button>
+
+							{/* 技能：插入 @skill token，正文里直接敲 @ 也可以 */}
+							{skills.length > 0 && (
+								<button
+									type="button"
+									title={t("composer.insertSkill")}
+									onClick={() => textareaRef.current?.openSkillPicker()}
+									className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+								>
+									<span className="icon-[solar--stars-minimalistic-linear] h-3.5 w-3.5" />
+								</button>
+							)}
 
 							<div className="min-w-0 flex-1" />
 

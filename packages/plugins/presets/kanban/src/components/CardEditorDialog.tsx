@@ -1,6 +1,7 @@
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import {
 	Button,
+	cn,
 	Dialog,
 	DialogContent,
 	DialogDescription,
@@ -8,9 +9,11 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@vetta/ui";
-import { useEffect, useState, type JSX } from "react";
+import { useEffect, useRef, useState, type JSX } from "react";
 import { ModelPicker } from "./ModelPicker";
-import type { KanbanModelOption } from "../board/board-controller";
+import { ProjectPicker } from "./ProjectPicker";
+import { PromptTextarea, type PromptTextareaHandle } from "./PromptTextarea";
+import type { KanbanModelOption, KanbanSkillOption } from "../board/board-controller";
 import type { KanbanCard } from "../board/types";
 
 export interface CardDraft {
@@ -30,16 +33,27 @@ export interface CardEditorDialogProps {
 	/** null = 新建。 */
 	card: KanbanCard | null;
 	defaultCwd: string;
+	projects: Array<{ path: string; name?: string }>;
 	models: KanbanModelOption[];
 	/** 看板默认模型，用于在「默认」项上标注它实际是谁。 */
 	defaultModelKey: string;
+	/** 正文里可 `@` 提及的技能。 */
+	skills: KanbanSkillOption[];
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (draft: CardDraft) => void;
 }
 
 const inputClass =
-	"w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none transition-colors focus:border-primary/60";
+	"w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-[13px] text-foreground outline-none transition-colors focus:border-primary/60";
+
+const fieldLabelClass = "text-[11px] font-medium text-muted-foreground";
+
+const PRIORITY_META: Record<0 | 1 | 2, { key: "low" | "medium" | "high"; icon: string; active: string }> = {
+	0: { key: "low", icon: "icon-[solar--flag-linear]", active: "bg-muted text-foreground" },
+	1: { key: "medium", icon: "icon-[solar--flag-bold]", active: "bg-amber-500/15 text-amber-600 dark:text-amber-400" },
+	2: { key: "high", icon: "icon-[solar--flag-bold]", active: "bg-red-500/15 text-red-600 dark:text-red-400" },
+};
 
 function toDraft(card: KanbanCard | null): CardDraft {
 	return {
@@ -63,10 +77,13 @@ export function CardEditorDialog({
 	onOpenChange,
 	onSubmit,
 	open,
+	projects,
+	skills,
 }: CardEditorDialogProps): JSX.Element {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState<CardDraft>(() => toDraft(card));
 	const [tagText, setTagText] = useState("");
+	const detailRef = useRef<PromptTextareaHandle | null>(null);
 	const boardDefaultModel = models.find((model) => model.key === defaultModelKey) ?? null;
 
 	useEffect(() => {
@@ -91,17 +108,17 @@ export function CardEditorDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent data-vetta-plugin-root="kanban" className="max-w-lg">
+			<DialogContent data-vetta-plugin-root="kanban" className="max-w-xl">
 				<DialogHeader>
 					<DialogTitle>{t(card ? "editor.editTitle" : "editor.newTitle")}</DialogTitle>
 					<DialogDescription>{t("editor.description")}</DialogDescription>
 				</DialogHeader>
 
-				<div className="flex flex-col gap-3">
+				<div className="flex flex-col gap-3.5">
 					<label className="flex flex-col gap-1">
-						<span className="text-[11px] font-medium text-muted-foreground">{t("editor.title")}</span>
+						<span className={fieldLabelClass}>{t("editor.title")}</span>
 						<input
-							className={inputClass}
+							className={cn(inputClass, "text-[14px] font-medium")}
 							value={draft.title}
 							autoFocus
 							placeholder={t("editor.titlePlaceholder")}
@@ -112,33 +129,60 @@ export function CardEditorDialog({
 						/>
 					</label>
 
-					<label className="flex flex-col gap-1">
-						<span className="text-[11px] font-medium text-muted-foreground">{t("editor.detail")}</span>
-						<textarea
-							className={`${inputClass} min-h-[120px] resize-y leading-relaxed`}
+					<div className="flex flex-col gap-1">
+						<div className="flex items-center justify-between">
+							<span className={fieldLabelClass}>{t("editor.detail")}</span>
+							{skills.length > 0 && (
+								<button
+									type="button"
+									title={t("editor.insertSkillHint")}
+									onClick={() => detailRef.current?.openSkillPicker()}
+									className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+								>
+									<span className="icon-[solar--stars-minimalistic-linear] h-3 w-3 text-primary" />
+									{t("editor.insertSkill")}
+								</button>
+							)}
+						</div>
+						<PromptTextarea
+							ref={detailRef}
 							value={draft.detail}
+							onChange={(detail) => setDraft((prev) => ({ ...prev, detail }))}
+							skills={skills}
 							placeholder={t("editor.detailPlaceholder")}
-							onChange={(event) => setDraft((prev) => ({ ...prev, detail: event.target.value }))}
+							className="rounded-lg border border-border bg-background transition-colors focus-within:border-primary/60"
+							textareaClassName="min-h-[140px] resize-y"
 						/>
-					</label>
+						{skills.length > 0 && <p className="text-[10px] text-muted-foreground/60">{t("editor.detailSkillHint")}</p>}
+					</div>
 
 					<div className="grid grid-cols-2 gap-3">
+						<div className="flex flex-col gap-1">
+							<span className={fieldLabelClass}>{t("editor.priority")}</span>
+							<div className="grid h-[34px] grid-cols-3 gap-0.5 rounded-lg border border-border bg-background p-0.5">
+								{([0, 1, 2] as const).map((level) => {
+									const meta = PRIORITY_META[level];
+									const selected = draft.priority === level;
+									return (
+										<button
+											key={level}
+											type="button"
+											aria-pressed={selected}
+											onClick={() => setDraft((prev) => ({ ...prev, priority: level }))}
+											className={cn(
+												"flex items-center justify-center gap-1 rounded-md text-[11px] font-medium transition-colors",
+												selected ? meta.active : "text-muted-foreground/70 hover:bg-accent/50 hover:text-foreground",
+											)}
+										>
+											<span className={cn(meta.icon, "h-3 w-3")} />
+											{t(`priority.${meta.key}`)}
+										</button>
+									);
+								})}
+							</div>
+						</div>
 						<label className="flex flex-col gap-1">
-							<span className="text-[11px] font-medium text-muted-foreground">{t("editor.priority")}</span>
-							<select
-								className={inputClass}
-								value={draft.priority}
-								onChange={(event) =>
-									setDraft((prev) => ({ ...prev, priority: Number(event.target.value) as 0 | 1 | 2 }))
-								}
-							>
-								<option value={0}>{t("priority.low")}</option>
-								<option value={1}>{t("priority.medium")}</option>
-								<option value={2}>{t("priority.high")}</option>
-							</select>
-						</label>
-						<label className="flex flex-col gap-1">
-							<span className="text-[11px] font-medium text-muted-foreground">{t("editor.tags")}</span>
+							<span className={fieldLabelClass}>{t("editor.tags")}</span>
 							<input
 								className={inputClass}
 								value={tagText}
@@ -148,40 +192,43 @@ export function CardEditorDialog({
 						</label>
 					</div>
 
-					{models.length > 0 && (
+					<div className="grid grid-cols-2 gap-3">
 						<div className="flex flex-col gap-1">
-							<span className="text-[11px] font-medium text-muted-foreground">{t("editor.model")}</span>
-							{/* 与会话页输入栏同一个选择器；这里选的是「这张卡」的模型 */}
-							<ModelPicker
-								models={models}
-								value={draft.modelKey}
-								onChange={(modelKey) => setDraft((prev) => ({ ...prev, modelKey }))}
-								inheritLabel={
-									boardDefaultModel
-										? t("editor.modelDefaultNamed", { name: boardDefaultModel.displayName })
-										: t("editor.modelDefault")
-								}
-								defaultKey={defaultModelKey || undefined}
-								triggerClassName="h-8 w-full max-w-none justify-start rounded-md border-border bg-background px-2.5 text-[13px]"
+							<span className={fieldLabelClass}>{t("editor.cwd")}</span>
+							<ProjectPicker
+								projects={projects}
+								value={draft.cwd}
+								defaultCwd={defaultCwd}
+								allowCustomPath
+								onChange={(cwd) => setDraft((prev) => ({ ...prev, cwd }))}
+								triggerClassName="h-[34px] w-full rounded-lg border border-border bg-background px-2.5 text-[12px]"
 							/>
 						</div>
-					)}
-
-					<label className="flex flex-col gap-1">
-						<span className="text-[11px] font-medium text-muted-foreground">{t("editor.cwd")}</span>
-						<input
-							className={inputClass}
-							value={draft.cwd}
-							placeholder={defaultCwd || t("editor.cwdPlaceholder")}
-							onChange={(event) => setDraft((prev) => ({ ...prev, cwd: event.target.value }))}
-						/>
-					</label>
+						{models.length > 0 && (
+							<div className="flex flex-col gap-1">
+								<span className={fieldLabelClass}>{t("editor.model")}</span>
+								{/* 与会话页输入栏同一个选择器；这里选的是「这张卡」的模型 */}
+								<ModelPicker
+									models={models}
+									value={draft.modelKey}
+									onChange={(modelKey) => setDraft((prev) => ({ ...prev, modelKey }))}
+									inheritLabel={
+										boardDefaultModel
+											? t("editor.modelDefaultNamed", { name: boardDefaultModel.displayName })
+											: t("editor.modelDefault")
+									}
+									defaultKey={defaultModelKey || undefined}
+									triggerClassName="h-[34px] w-full max-w-none justify-start rounded-lg border-border bg-background px-2.5 text-[12px]"
+								/>
+							</div>
+						)}
+					</div>
 
 					{dependencyOptions.length > 0 && (
 						<div className="flex flex-col gap-1">
-							<span className="text-[11px] font-medium text-muted-foreground">{t("editor.dependsOn")}</span>
+							<span className={fieldLabelClass}>{t("editor.dependsOn")}</span>
 							<p className="text-[10px] text-muted-foreground/70">{t("editor.dependsOnHint")}</p>
-							<div className="max-h-28 overflow-y-auto rounded-md border border-border/60 p-1">
+							<div className="max-h-28 overflow-y-auto rounded-lg border border-border/60 p-1">
 								{dependencyOptions.map((option) => (
 									<label
 										key={option.id}

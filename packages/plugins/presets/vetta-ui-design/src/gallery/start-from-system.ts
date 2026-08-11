@@ -25,38 +25,39 @@ export interface StartedFromSystem {
 }
 
 /**
- * 进会话时预置的输入框草稿：点名参考资料的位置和清单，让 agent 先读规范再动手。
+ * 进会话时预置的输入框草稿：只说用户的意图（用哪套风格），一句人话。
  *
- * 逐个列出实际落盘的文件而不是只给目录——截图、参考 HTML 这些只有被点名了 agent 才
- * 会去看。与 buildRestylePrompt 同一取舍：协议串跟宿主 locale 走，不进 locales catalog。
+ * 「先读 DESIGN.md、拷 theme.css、素材不抄代码」这套固定协议在 skill 的
+ * design-resources 一节里（草稿开头的 `@skill:` badge 已把它带进上下文），
+ * 文件清单在落盘时写成的 `INDEX.md` 里——两样都不该占用用户的输入框。
+ * 与 buildRestylePrompt 同一取舍：草稿跟宿主 locale 走，不进 locales catalog。
  */
-export function buildStyleStartDraft(system: DesignSystem, locale: string, written: readonly string[]): string {
-	const dir = `${DESIGN_RESOURCES_DIR}/${system.id}`;
-	const zh = locale.toLowerCase().startsWith("zh");
-	// 一份都没落下来时不提资料，免得 agent 去读不存在的文件。
-	if (written.length === 0) {
-		return zh
-			? `${DESIGN_SKILL_DRAFT}请按「${system.name}」风格设计。我想做：`
-			: `${DESIGN_SKILL_DRAFT}Design this in the "${system.name}" style. I want to build: `;
-	}
-	const list = written.map((path) => `${dir}/${path}`).join("、");
-	if (zh) {
-		return [
-			DESIGN_SKILL_DRAFT,
-			`请按「${system.name}」风格设计，参考资料：${list}。`,
-			`建好设计文档后先读 DESIGN.md，把 theme.css 的内容写进设计自己的 theme.css；`,
-			`截图、HTML 等素材作为视觉参考，不要直接复制它们的代码。`,
-			"我想做：",
-		].join("");
-	}
-	return [
-		DESIGN_SKILL_DRAFT,
-		`Design this in the "${system.name}" style. Reference material: ${written.map((path) => `${dir}/${path}`).join(", ")}. `,
-		`After creating the design document, read DESIGN.md and copy that theme.css into the design's own theme.css; `,
-		`treat screenshots and HTML as visual reference — do not copy their markup verbatim. `,
-		"I want to build: ",
-	].join("");
+export function buildStyleStartDraft(system: DesignSystem, locale: string): string {
+	return locale.toLowerCase().startsWith("zh")
+		? `${DESIGN_SKILL_DRAFT}请按「${system.name}」风格设计。我想做：`
+		: `${DESIGN_SKILL_DRAFT}Design this in the "${system.name}" style. I want to build: `;
 }
+
+/**
+ * 参考包的文件清单（`INDEX.md`），skill 指示 agent 先读它。
+ *
+ * 逐个列出**实际落盘成功**的文件而不是让 agent 自己 ls——截图这类二进制可能因网络
+ * 原因缺席，清单必须反映真实落点；顺带给翻项目的人一句「这个目录是干什么的」。
+ */
+export function buildResourceIndex(systemName: string, written: readonly string[]): string {
+	return [
+		`# ${systemName} — style reference pack`,
+		"",
+		"Written by the Vetta design sidebar when the user picked this style.",
+		"Files in this pack:",
+		"",
+		...written.map((path) => `- ${path}`),
+		"",
+	].join("\n");
+}
+
+/** 清单文件名；skill 的 design-resources 协议按这个名字点名。 */
+export const RESOURCE_INDEX_FILE = "INDEX.md";
 
 /** 下载二进制资源的超时：截图这类文件不大，卡住不如放弃。 */
 const BINARY_TIMEOUT_MS = 20_000;
@@ -112,10 +113,16 @@ export async function startDesignFromSystem(
 	const { cwd } = await createDesignProject(projectName);
 	const resourcesDir = `${DESIGN_RESOURCES_DIR}/${system.id}`;
 	const written = await writeResources(system, `${cwd}/${resourcesDir}`);
+	// 清单跟着资料走：一份都没落下来就不写，免得 skill 引着 agent 去读一个空包。
+	if (written.length > 0) {
+		await ctx.fs
+			.writeFile(`${cwd}/${resourcesDir}/${RESOURCE_INDEX_FILE}`, buildResourceIndex(system.name, written))
+			.catch(() => {});
+	}
 	await ctx.official.navigation.open({
 		target: "new-session",
 		cwd,
-		draft: buildStyleStartDraft(system, locale, written),
+		draft: buildStyleStartDraft(system, locale),
 	});
 	return { cwd, resourcesDir, written };
 }
