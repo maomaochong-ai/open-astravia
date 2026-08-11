@@ -27,6 +27,7 @@
 		"includes": [
 			"package.json",
 			"knip.config.ts",
+			".claude/hooks/**/*.mjs",
 			"scripts/quality/**/*.mjs",
 			"packages/*/src/**/*.ts",
 			"packages/*/test/**/*.ts",

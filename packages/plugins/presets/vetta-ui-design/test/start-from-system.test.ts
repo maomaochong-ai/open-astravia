@@ -56,11 +56,29 @@ describe("buildStyleStartDraft", () => {
 
 describe("buildResourceIndex", () => {
 	it("逐个列出实际落盘的文件，并说明目录来历", () => {
-		const index = buildResourceIndex("Linear", ["DESIGN.md", "theme.css", "screenshots/home.webp"]);
+		const index = buildResourceIndex("Linear", [
+			textResource("DESIGN.md", "spec"),
+			textResource("theme.css", "theme"),
+			textResource("screenshots/home.webp"),
+		]);
 		expect(index).toContain("# Linear — style reference pack");
 		expect(index).toContain("- DESIGN.md");
 		expect(index).toContain("- theme.css");
 		expect(index).toContain("- screenshots/home.webp");
+	});
+
+	it("有角色的资源带「这是什么、什么时候读」注释，demo 被点名为成品案例", () => {
+		const index = buildResourceIndex("Linear", [
+			textResource("DESIGN.md", "spec"),
+			textResource("theme.css", "theme"),
+			textResource("demo.html", "demo"),
+			textResource("notes.txt"),
+		]);
+		expect(index).toContain("- DESIGN.md — the style contract");
+		expect(index).toContain("- theme.css — theme tokens");
+		expect(index).toMatch(/- demo\.html — .*Read it before your first frame/);
+		// 没有角色的普通素材保持裸列，不硬造注释。
+		expect(index).toContain("- notes.txt\n");
 	});
 });
 
@@ -73,9 +91,10 @@ describe("协议真的住在 skill 里", () => {
 	it("SKILL.md 写明了 design-resources 参考包协议", () => {
 		expect(skillMd).toContain(`${DESIGN_RESOURCES_DIR}/`);
 		expect(skillMd).toContain(RESOURCE_INDEX_FILE);
-		// 协议的三根支柱：读规范、拷主题、素材不抄代码。
+		// 协议的四根支柱：读规范、拷主题、开工前先看 demo/截图、素材不抄代码。
 		expect(skillMd).toContain("DESIGN.md");
 		expect(skillMd).toContain("theme.css");
+		expect(skillMd).toMatch(/before your first frame.*demo/is);
 		expect(skillMd).toMatch(/visual reference only/i);
 		// 用户优先于参考包，skill 不该把风格锁死。
 		expect(skillMd).toMatch(/user outranks the pack/i);

@@ -57,9 +57,14 @@ export default defineConfig(({ mode }) => {
 		},
 		build: {
 			lib: {
-				entry: resolve(process.cwd(), "src/main/main.ts"),
+				entry: {
+					index: resolve(process.cwd(), "src/main/main.ts"),
+					// uiohook 宿主 utilityProcess 独立入口：与 index.js 同目录输出，
+					// 运行时以 new URL("./uiohook-host.js", import.meta.url) 定位。
+					"uiohook-host": resolve(process.cwd(), "src/main/uiohook-host.ts"),
+				},
 				formats: ["es"],
-				fileName: () => "index.js",
+				fileName: (_format, entryName) => `${entryName}.js`,
 			},
 			outDir: resolve(process.cwd(), "dist/main"),
 			emptyOutDir: true,

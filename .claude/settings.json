@@ -1,0 +1,17 @@
+{
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Write|Edit",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "node",
+						"args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/check-file-lines.mjs"],
+						"timeout": 10
+					}
+				]
+			}
+		]
+	}
+}

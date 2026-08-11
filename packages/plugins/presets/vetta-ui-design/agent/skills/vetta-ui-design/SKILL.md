@@ -224,10 +224,19 @@ reference pack for this project and following it is the default:
   is the style contract for what you are about to design.
 - After `vetd_create`, write the pack's `theme.css` content into the design's
   own `theme.css` before building frames.
-- Screenshots and HTML in the pack are **visual reference only** — study them
-  for layout and mood, do not copy their markup or code into frames.
+- **Before your first frame, Read the pack's demo HTML and screenshots too**
+  (`INDEX.md` marks which is which). The demo is the spec applied to a full
+  page — it answers what `DESIGN.md` alone cannot: real density, spacing
+  rhythm, component shapes, how the palette is actually distributed. Skipping
+  it is how a design ends up on-token but off-style. They are
+  **visual reference only**: study layout and mood, never copy their markup or
+  code into frames — frames are React + the tokens you just copied, not HTML.
 - The user outranks the pack: if they ask for a different style, follow the
   user. Several packs side by side and no user pick: ask which one first.
+
+The pack stays the contract in later sessions too: adding screens to a design
+that grew out of one, re-read its `DESIGN.md` (and glance at the demo) before
+designing anything new.
 
 If `DESIGN.md` exists in the design document, the user has already applied a
 system — read it first and follow it, and do NOT rewrite it or `theme.css`.

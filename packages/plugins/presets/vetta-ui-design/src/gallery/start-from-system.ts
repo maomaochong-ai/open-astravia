@@ -1,5 +1,5 @@
 import { designMdWithFrontmatter } from "../design-systems/apply";
-import type { DesignSystem } from "../design-systems/types";
+import type { DesignResource, DesignResourceRole, DesignSystem } from "../design-systems/types";
 import { getPluginCtx } from "../plugin-context";
 import { createDesignProject } from "./gallery-actions";
 import { DESIGN_SKILL_DRAFT } from "./open-project";
@@ -20,7 +20,7 @@ export interface StartedFromSystem {
 	cwd: string;
 	/** 参考资料目录（项目相对路径）。 */
 	resourcesDir: string;
-	/** 实际落盘成功的资源（相对资料目录）。 */
+	/** 实际落盘成功的资源路径（相对资料目录）。 */
 	written: string[];
 }
 
@@ -39,19 +39,36 @@ export function buildStyleStartDraft(system: DesignSystem, locale: string): stri
 }
 
 /**
+ * 每个角色在清单里的一句「这是什么、什么时候读」。skill 只给协议，具体到文件靠这里点名：
+ * agent 看到 `demo.html` 光凭文件名不知道它是规范的成品案例，角色注释补上这一层。
+ * 没有角色的资源就是普通参考素材，不硬造注释。
+ */
+const ROLE_HINTS: Partial<Record<DesignResourceRole, string>> = {
+	spec: "the style contract — read this first",
+	theme: "theme tokens — copy into the design's own theme.css after vetd_create",
+	demo: "this style applied to a full page — Read it before your first frame (reference only, do not copy its markup)",
+	cover: "style cover image — visual reference",
+	preview: "style screenshot — visual reference",
+	package: "upstream source package",
+};
+
+/**
  * 参考包的文件清单（`INDEX.md`），skill 指示 agent 先读它。
  *
- * 逐个列出**实际落盘成功**的文件而不是让 agent 自己 ls——截图这类二进制可能因网络
+ * 逐个列出**实际落盘成功**的资源而不是让 agent 自己 ls——截图这类二进制可能因网络
  * 原因缺席，清单必须反映真实落点；顺带给翻项目的人一句「这个目录是干什么的」。
  */
-export function buildResourceIndex(systemName: string, written: readonly string[]): string {
+export function buildResourceIndex(systemName: string, written: readonly DesignResource[]): string {
 	return [
 		`# ${systemName} — style reference pack`,
 		"",
 		"Written by the Vetta design sidebar when the user picked this style.",
 		"Files in this pack:",
 		"",
-		...written.map((path) => `- ${path}`),
+		...written.map((resource) => {
+			const hint = resource.role ? ROLE_HINTS[resource.role] : undefined;
+			return hint ? `- ${resource.path} — ${hint}` : `- ${resource.path}`;
+		}),
 		"",
 	].join("\n");
 }
@@ -66,11 +83,11 @@ const BINARY_TIMEOUT_MS = 20_000;
  * 把一套体系的全部资源按仓库里的目录结构落到 `targetRoot`。
  *
  * 文本随清单已经到手，直接写；二进制现下载。**单份资源失败不影响其它** —— 少一张截图
- * 也比整个流程失败强，规范和主题（文本）总是能落下来。返回实际写成功的相对路径。
+ * 也比整个流程失败强，规范和主题（文本）总是能落下来。返回实际写成功的资源。
  */
-async function writeResources(system: DesignSystem, targetRoot: string): Promise<string[]> {
+async function writeResources(system: DesignSystem, targetRoot: string): Promise<DesignResource[]> {
 	const ctx = getPluginCtx();
-	const written: string[] = [];
+	const written: DesignResource[] = [];
 	for (const resource of system.resources) {
 		const target = `${targetRoot}/${resource.path}`;
 		try {
@@ -90,7 +107,7 @@ async function writeResources(system: DesignSystem, targetRoot: string): Promise
 				if (!response.ok || typeof response.body !== "string") continue;
 				await ctx.fs.writeFile(target, response.body, "base64");
 			}
-			written.push(resource.path);
+			written.push(resource);
 		} catch {
 			// 单份资源写不下来就跳过，别让整个「从风格开工」失败。
 		}
@@ -124,5 +141,5 @@ export async function startDesignFromSystem(
 		cwd,
 		draft: buildStyleStartDraft(system, locale),
 	});
-	return { cwd, resourcesDir, written };
+	return { cwd, resourcesDir, written: written.map((resource) => resource.path) };
 }
