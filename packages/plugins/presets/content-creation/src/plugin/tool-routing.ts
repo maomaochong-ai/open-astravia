@@ -1,4 +1,5 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { renderContentMethodContext, selectContentMethodIds } from "./method-routing";
 import {
 	CONTENT_ASSETS_TOOL_NAME,
 	CONTENT_EDIT_TOOL_NAME,
@@ -43,13 +44,24 @@ export function registerContentCreationToolRouter(ctx: PluginContext): void {
 		id: "content-creation-tool-router",
 		context: { conversation: "messages" },
 		handler: ({ conversation, runtime, actions }) => {
-			const latestUserText = [...conversation.messages]
-				.reverse()
-				.find((message) => message.role === "user")?.text;
+			const recentUserMessages = conversation.messages
+				.filter((message) => message.role === "user")
+				.slice(-3);
+			const latestUserText = recentUserMessages.at(-1)?.text;
 			const selected = selectContentCreationTools(latestUserText ?? "");
 			const available = new Set(runtime.availableToolNames);
 			for (const toolName of CONTENT_CREATION_TOOL_NAMES) {
 				if (available.has(toolName)) actions.tools.setEnabled(toolName, selected.has(toolName));
+			}
+
+			const methodIds = selectContentMethodIds(recentUserMessages.map((message) => message.text).join("\n"));
+			const methodContext = renderContentMethodContext(methodIds);
+			if (methodContext) {
+				actions.systemPrompt.addBlock({
+					id: "plugin.content-creation.required-methods",
+					content: methodContext,
+					priority: 760,
+				});
 			}
 		},
 	});

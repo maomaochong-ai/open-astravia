@@ -17,6 +17,11 @@ import type {
 	ContentProjectDocument,
 	ContentWorkflowDeliverable,
 } from "../project/types";
+import {
+	compileVideoPromptPlan,
+	parseVideoPromptPlan,
+	VIDEO_PROMPT_PLAN_SCHEMA,
+} from "./generation-prompt-plan";
 
 const NODE_KINDS: readonly ContentNodeKind[] = CONTENT_NODE_DEFINITIONS.map((definition) => definition.kind);
 const DELIVERABLE_TYPES: readonly ContentWorkflowDeliverable["type"][] = [
@@ -105,7 +110,12 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 					additionalProperties: false,
 				},
 			},
-			prompt: { type: "string" },
+			prompt: {
+				type: "string",
+				description:
+					"Raw prompt. For Agent-authored video prompts, prefer promptPlan; changed video prompts are checked against the production method.",
+			},
+			promptPlan: VIDEO_PROMPT_PLAN_SCHEMA,
 			aspectRatio: { type: "string" },
 			quality: { type: "string" },
 			resolution: { type: "string" },
@@ -189,7 +199,7 @@ function parseOperation(
 			if (!NODE_KINDS.includes(kind as ContentNodeKind)) throw new Error(`unsupported node kind: ${kind}`);
 			const nodeKind = kind as ContentNodeKind;
 			const id = optionalString(operation, "id")?.trim() || crypto.randomUUID();
-			const data = parseNodeData(operation);
+			const data = parseNodeData(operation, nodeKind);
 			const position = resolveNodePosition(operation, frames);
 			const size = getContentNodeSize(nodeKind, data.aspectRatio);
 			frames.push({ id, ...position, ...size });
@@ -228,9 +238,9 @@ function parseOperation(
 			};
 		case "update_node": {
 			const nodeId = requiredString(operation, "nodeId");
-			const data = parseNodeData(operation);
 			const snapshot = nodeSnapshots.get(nodeId);
 			if (!snapshot) throw new Error(`node not found: ${nodeId}`);
+			const data = parseNodeData(operation, snapshot.kind);
 			snapshot.data = { ...snapshot.data, ...data };
 			return { type: "node.update", nodeId, data };
 		}
@@ -529,9 +539,22 @@ function parseGenerationSources(value: unknown): ContentGenerationSourceSpec[] {
 	});
 }
 
-function parseNodeData(record: Record<string, unknown>): ContentNode["data"] {
+function parseNodeData(record: Record<string, unknown>, nodeKind?: ContentNodeKind): ContentNode["data"] {
 	const data: ContentNode["data"] = {};
-	copyOptionalString(record, data, "prompt");
+	const duration = record.duration === undefined ? undefined : requiredNumber(record, "duration");
+	if (record.promptPlan !== undefined) {
+		if (record.prompt !== undefined) {
+			throw new Error("prompt and promptPlan cannot be used together");
+		}
+		if (nodeKind !== "video-generator" && nodeKind !== "prompt") {
+			throw new Error("promptPlan can only configure a video-generator or prompt node");
+		}
+		data.prompt = compileVideoPromptPlan(parseVideoPromptPlan(record.promptPlan), {
+			durationSeconds: duration,
+		});
+	} else {
+		copyOptionalString(record, data, "prompt");
+	}
 	copyOptionalString(record, data, "aspectRatio");
 	copyOptionalString(record, data, "quality");
 	copyOptionalString(record, data, "resolution");
@@ -554,7 +577,7 @@ function parseNodeData(record: Record<string, unknown>): ContentNode["data"] {
 		}
 		data.assetIds = assetIds;
 	}
-	if (record.duration !== undefined) data.duration = requiredNumber(record, "duration");
+	if (duration !== undefined) data.duration = duration;
 	return data;
 }
 

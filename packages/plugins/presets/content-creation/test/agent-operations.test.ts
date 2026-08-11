@@ -95,6 +95,45 @@ describe("content agent operations", () => {
 		).toThrow("specific model selection requires providerId and modelId");
 	});
 
+	it("compiles a structured video prompt plan through the operation parser", () => {
+		const commands = parseContentAgentOperations(createContentProject("C:/project"), [{
+			type: "add_node",
+			id: "video",
+			kind: "video-generator",
+			duration: 5,
+			promptPlan: {
+				kind: "video-shot",
+				sceneFunction: "Premium product reveal for a social ad",
+				referenceRole: "Use the supplied product image as the identity and initial composition reference",
+				protectedInvariants: ["Preserve product geometry", "Preserve branding and color"],
+				initialState: "The product is centered and motionless on a dark studio surface",
+				primaryAction: "A narrow highlight travels across the product face",
+				secondaryMotion: "Fine atmospheric particles drift slowly behind the product",
+				camera: {
+					framing: "Start in a medium product close-up",
+					movement: "a controlled dolly-in",
+					direction: "forward along the product axis",
+					speed: "slowly with gentle ease-out",
+					motivation: "revealing the logo and material finish",
+					restPoint: "a stable hero close-up with the full logo readable",
+				},
+				lighting: {
+					setup: "Soft key light with a narrow rim light",
+					behavior: "Specular highlights remain controlled and never clip",
+				},
+				finalState: "Hold the recognizable product in a clean hero frame for the final second",
+				constraints: ["No text overlays", "No product redesign"],
+			},
+		}]);
+
+		const next = applyContentProjectCommands(createContentProject("C:/project"), commands);
+		const prompt = next.graph.nodes[0]?.data.prompt;
+		expect(prompt).toContain("5-second single coherent shot");
+		expect(prompt).toContain("Reference role:");
+		expect(prompt).toContain("Final frame:");
+		expect(CONTENT_AGENT_OPERATION_SCHEMA.items.properties).toHaveProperty("promptPlan");
+	});
+
 	it("assigns stable ids and maps semantic connection inputs to internal handles", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "source", kind: "prompt", position: { x: 0, y: 0 } } },

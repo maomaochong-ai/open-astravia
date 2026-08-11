@@ -1,4 +1,5 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
+import { ContentGenerationPromptPlanError } from "../agent/generation-prompt-plan";
 import { CONTENT_AGENT_OPERATION_SCHEMA } from "../agent/operations";
 import type { ContentCreationAgentService } from "../agent/service";
 import { ContentGenerationIntentError } from "../generation/generation-intent";
@@ -161,7 +162,7 @@ export function registerContentCreationTools(
 		name: CONTENT_EDIT_TOOL_NAME,
 		label: "%tool.edit.label%",
 		description:
-			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Include nodes and connections in one coherent batch. For video media, call configure_generation with targetNodeId set to the receiving video-generator and put image/video inputs in sources[]. The returned readiness analysis identifies incomplete graphs.",
+			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Include nodes and connections in one coherent batch. For Agent-authored video prompts, use promptPlan so the plugin can compile and validate the production method. For video media, call configure_generation with targetNodeId set to the receiving video-generator and put image/video inputs in sources[]. The returned readiness analysis identifies incomplete graphs.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -301,6 +302,15 @@ function requiredRunId(runId?: string): string {
 }
 
 function toolError(error: unknown) {
+	if (error instanceof ContentGenerationPromptPlanError) {
+		return {
+			ok: false,
+			retryable: error.retryable,
+			code: error.code,
+			error: error.message,
+			details: error.details,
+		};
+	}
 	if (error instanceof ContentLocalAssetError) {
 		return {
 			ok: false,

@@ -60,6 +60,52 @@ const TEST_MODELS: readonly ContentModelDescriptor[] = [
 ];
 
 describe("ContentCreationAgentService", () => {
+	it("rejects weak Agent-authored video prompts before committing the edit", async () => {
+		const { agent } = createAgentHarness();
+
+		await expect(agent.edit("C:/project", [
+			{
+				type: "add_node",
+				id: "video",
+				kind: "video-generator",
+				prompt: "Create a premium five-second product ad with an elegant push-in.",
+			},
+		])).rejects.toMatchObject({
+			code: "video-prompt-method-incomplete",
+			retryable: true,
+			details: { nodeId: "video", recommendedSkill: "direct-video-creation" },
+		});
+
+		expect((await agent.inspect("C:/project")).nodes).toHaveLength(0);
+	});
+
+	it("compiles and accepts a structured video prompt plan", async () => {
+		const { agent } = createAgentHarness();
+		const project = await agent.edit("C:/project", [
+			{
+				type: "add_node",
+				id: "video",
+				kind: "video-generator",
+				duration: 5,
+				promptPlan: createVideoPromptPlan(),
+			},
+		]);
+
+		expect(project.graph.nodes[0]?.data.prompt).toContain("Reference role:");
+		expect(project.graph.nodes[0]?.data.prompt).toContain("Camera:");
+		expect(project.graph.nodes[0]?.data.prompt).toContain("Final frame:");
+	});
+
+	it("also validates an effective video prompt supplied through an upstream prompt node", async () => {
+		const { agent } = createAgentHarness();
+
+		await expect(agent.edit("C:/project", [
+			{ type: "add_node", id: "prompt", kind: "prompt", prompt: "Premium product reveal." },
+			{ type: "add_node", id: "video", kind: "video-generator" },
+			{ type: "connect_nodes", source: "prompt", target: "video", targetInput: "promptSources" },
+		])).rejects.toMatchObject({ code: "video-prompt-method-incomplete" });
+	});
+
 	it("applies destructive and broad edits directly without confirmation", async () => {
 		const { agent } = createAgentHarness();
 		const applied = await agent.edit("C:/project", [
@@ -199,3 +245,29 @@ describe("ContentCreationAgentService", () => {
 		});
 	});
 });
+
+function createVideoPromptPlan() {
+	return {
+		kind: "video-shot",
+		sceneFunction: "product reveal",
+		referenceRole: "the source image defines product identity and the first frame",
+		protectedInvariants: ["geometry", "materials", "existing branding"],
+		initialState: "hold the original composition with the product still",
+		primaryAction: "a highlight reveals the surface finish",
+		secondaryMotion: "one softbox reflection travels across the product",
+		camera: {
+			framing: "medium-close hero framing",
+			movement: "straight push-in",
+			direction: "toward the product center",
+			speed: "slow ease-in and ease-out",
+			motivation: "reveal material texture",
+			restPoint: "stable close hero composition",
+		},
+		lighting: {
+			setup: "controlled studio key light",
+			behavior: "background exposure remains stable",
+		},
+		finalState: "settle and hold on the existing branding",
+		constraints: ["no geometry drift", "no new text", "no flicker"],
+	};
+}

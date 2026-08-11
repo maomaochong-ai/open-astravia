@@ -5,6 +5,7 @@ import { planIncrementalContentGraphLayout } from "../node/incremental-graph-lay
 import { applyContentProjectCommands, type ContentProjectCommand } from "../project/commands";
 import type { ContentNode, ContentProjectDocument } from "../project/types";
 import type { ContentCreationWorkspace } from "../project/workspace";
+import { assertChangedVideoPromptsUseProductionMethod } from "./generation-prompt-plan";
 import { parseContentAgentOperations } from "./operations";
 import { createContentCreationAgentState } from "./state";
 
@@ -48,6 +49,7 @@ export class ContentCreationAgentService {
 		assertExpectedRevision(project, expectedRevision);
 		const commands = parseContentAgentOperations(project, operations, this.listModels());
 		const preview = applyContentProjectCommands(project, commands);
+		assertChangedVideoPromptsUseProductionMethod(project, preview);
 		const layout = planIncrementalContentGraphLayout(project, preview, addedNodeIds(commands));
 		const layoutCommands: ContentProjectCommand[] = layout.placements.map(({ nodeId, position }) => ({
 			type: "node.layout",

@@ -52,4 +52,6 @@ For asset nodes, include non-empty `assetIds` selected from that node. For image
 
 Keep a batch focused on one understandable change, but include newly created nodes and all intended connections in the same batch. The edit tool validates and applies the complete revision-bound batch atomically without a confirmation step. A failure leaves project state unchanged; inspect again after revision conflicts.
 
+For Agent-authored video prompts, submit `promptPlan` on a video generator or its connected Prompt node instead of a raw `prompt`. It records scene function, reference role, protected invariants, initial and final states, primary and secondary motion, motivated camera direction/rest point, lighting behavior, and optional audio/constraints. The edit service compiles this structure and validates the effective downstream video prompt atomically. Existing user-authored prompts remain editable in the UI; only Agent changes are gated.
+
 Supported operation families for this skill are workflow updates, node add/update/rename/purpose/duplicate/delete, semantic edge connect/delete, concrete image asset binding, and intent-driven video generation configuration. Use only fields present in the tool schema.

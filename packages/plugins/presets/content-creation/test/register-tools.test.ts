@@ -1,6 +1,7 @@
 import { validateToolArguments, type Tool } from "@vetta/ai";
 import type { PluginAgentToolRegistration, PluginContext } from "@vetta-org/plugin-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ContentGenerationPromptPlanError } from "../src/agent/generation-prompt-plan";
 import { parseContentAgentOperations } from "../src/agent/operations";
 import type { ContentCreationAgentService } from "../src/agent/service";
 import { createContentCreationAgentState } from "../src/agent/state";
@@ -220,6 +221,29 @@ describe("content creation tool registration", () => {
 		});
 	});
 
+	it("returns structured corrective context for an incomplete Agent video prompt", async () => {
+		edit.mockRejectedValueOnce(new ContentGenerationPromptPlanError(
+			"Agent-authored video prompt does not satisfy the production method",
+			"video-prompt-method-incomplete",
+			{ nodeId: "product-video", issues: ["reference-role-missing"], recommendedOperationField: "promptPlan" },
+		));
+
+		const result = await tool<{ operations: unknown[] }>(CONTENT_EDIT_TOOL_NAME).handler(
+			toolContext({ operations: [{ type: "update_node", nodeId: "product-video", prompt: "Slow push-in" }] }),
+		);
+
+		expect(result).toMatchObject({
+			ok: false,
+			retryable: true,
+			code: "video-prompt-method-incomplete",
+			details: {
+				nodeId: "product-video",
+				issues: ["reference-role-missing"],
+				recommendedOperationField: "promptPlan",
+			},
+		});
+	});
+
 	it("runs a real validated product-image-to-video batch through the tool handler", async () => {
 		let project = createContentProject("C:/project");
 		edit.mockImplementationOnce(async (_cwd, operations) => {
@@ -241,7 +265,13 @@ describe("content creation tool registration", () => {
 				},
 				{ type: "add_node", id: "prompt", kind: "prompt", prompt: "Premium product lighting" },
 				{ type: "add_node", id: "product-image", kind: "image-generator", prompt: "Product hero image" },
-				{ type: "add_node", id: "product-video", kind: "video-generator", prompt: "Slow cinematic camera move" },
+				{
+					type: "add_node",
+					id: "product-video",
+					kind: "video-generator",
+					duration: 5,
+					promptPlan: createVideoPromptPlan(),
+				},
 				{ type: "add_node", id: "output", kind: "output" },
 				{ type: "connect_nodes", source: "prompt", target: "product-image", targetInput: "prompt" },
 				{ type: "connect_nodes", source: "product-video", target: "output", targetInput: "content" },
@@ -279,3 +309,29 @@ describe("content creation tool registration", () => {
 		expect(runApprovals.getSnapshot()).toEqual(["run"]);
 	});
 });
+
+function createVideoPromptPlan() {
+	return {
+		kind: "video-shot",
+		sceneFunction: "Premium product reveal for a social advertisement",
+		referenceRole: "Use the product image as the identity and initial composition reference",
+		protectedInvariants: ["Preserve product geometry", "Preserve branding and color"],
+		initialState: "The product is centered and motionless on a dark studio surface",
+		primaryAction: "A controlled highlight travels across the product face",
+		secondaryMotion: "Fine atmospheric particles drift behind the product",
+		camera: {
+			framing: "Start in a medium product close-up",
+			movement: "a controlled dolly-in",
+			direction: "forward along the product axis",
+			speed: "slowly with gentle ease-out",
+			motivation: "revealing the logo and material finish",
+			restPoint: "a stable hero close-up with the full logo readable",
+		},
+		lighting: {
+			setup: "Soft key light with a narrow rim light",
+			behavior: "Specular highlights stay controlled and never clip",
+		},
+		finalState: "Hold the recognizable product in a clean hero frame for the final second",
+		constraints: ["No text overlays", "No product redesign"],
+	};
+}

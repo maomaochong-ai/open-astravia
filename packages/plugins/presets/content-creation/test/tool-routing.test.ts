@@ -1,11 +1,17 @@
-import { describe, expect, it } from "vitest";
+import type { PluginContext, PluginSystemPromptProviderRegistration } from "@vetta-org/plugin-sdk";
+import { describe, expect, it, vi } from "vitest";
 import {
 	CONTENT_ASSETS_TOOL_NAME,
 	CONTENT_EDIT_TOOL_NAME,
 	CONTENT_INSPECT_TOOL_NAME,
 	CONTENT_RUN_TOOL_NAME,
 } from "../src/plugin/register-tools";
-import { CONTENT_CREATION_TOOL_NAMES, selectContentCreationTools } from "../src/plugin/tool-routing";
+import {
+	CONTENT_CREATION_TOOL_NAMES,
+	registerContentCreationToolRouter,
+	selectContentCreationTools,
+} from "../src/plugin/tool-routing";
+import { renderContentMethodContext, selectContentMethodIds } from "../src/plugin/method-routing";
 
 describe("content creation tool routing", () => {
 	it("keeps read-only diagnosis on the inspect tool", () => {
@@ -45,5 +51,56 @@ describe("content creation tool routing", () => {
 			CONTENT_EDIT_TOOL_NAME,
 			CONTENT_RUN_TOOL_NAME,
 		]);
+	});
+
+	it("deterministically loads the video and product method bundle", () => {
+		const methods = selectContentMethodIds("使用产品主图制作一条 5 秒高级广告视频");
+
+		expect(methods).toEqual([
+			"operate-content-workflow",
+			"direct-video-creation",
+			"product-video-recipe",
+		]);
+		const context = renderContentMethodContext(methods);
+		expect(context).toContain("# Direct AI video creation");
+		expect(context).toContain("# Video prompting");
+		expect(context).toContain("## Premium product showcase from a source photo");
+		expect(context).toContain("promptPlan");
+	});
+
+	it("injects the selected method bundle into the real system-prompt provider", async () => {
+		let registration: PluginSystemPromptProviderRegistration | undefined;
+		const ctx = {
+			agent: {
+				registerSystemPromptProvider(value: PluginSystemPromptProviderRegistration) {
+					registration = value;
+					return { dispose() {} };
+				},
+			},
+		} as unknown as PluginContext;
+		registerContentCreationToolRouter(ctx);
+		const addBlock = vi.fn();
+		const setEnabled = vi.fn();
+
+		await registration?.handler({
+			conversation: {
+				messageCount: 1,
+				messages: [{ role: "user", text: "用产品图片创建广告视频" }],
+			},
+			runtime: {
+				availableToolNames: [...CONTENT_CREATION_TOOL_NAMES],
+				activeToolNames: [...CONTENT_CREATION_TOOL_NAMES],
+			},
+			actions: {
+				systemPrompt: { addBlock },
+				tools: { setEnabled },
+			},
+		} as unknown as Parameters<PluginSystemPromptProviderRegistration["handler"]>[0]);
+
+		expect(addBlock).toHaveBeenCalledWith(expect.objectContaining({
+			id: "plugin.content-creation.required-methods",
+			content: expect.stringContaining("product-video-recipe"),
+		}));
+		expect(setEnabled).toHaveBeenCalledWith(CONTENT_EDIT_TOOL_NAME, true);
 	});
 });
