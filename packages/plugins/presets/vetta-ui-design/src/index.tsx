@@ -31,15 +31,6 @@ import { registerDesignTools } from "./tools";
 import { claimCanvasAutoOpen } from "./vetd/auto-open";
 import { isPureDesignProject, pickDesignPaths } from "./vetd/discover";
 
-/**
- * 插件包根 icon.png 的宿主协议 URL。
- * 不可 `import "../icon.png"`：MF/Vite 常生成以 `/` 开头的绝对路径，在宿主页上
- * 会解析成 desktop-app `public/icon.png`（应用图标），而不是插件自己的图。
- */
-function pluginPackageIconUrl(pluginId: string, version: string, relativePath = "icon.png"): string {
-	return `vetta-plugin://${pluginId}/${relativePath}?v=${encodeURIComponent(version)}`;
-}
-
 function DesignIcon() {
 	return (
 		<svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
@@ -81,8 +72,8 @@ function pendingScreenshotCard(toolCall: PluginPendingToolCall): CardDescriptor 
 export default definePlugin({
 	activate(ctx) {
 		setPluginCtx(ctx);
-		const packageIconSrc = pluginPackageIconUrl(ctx.plugin.id, ctx.plugin.version);
-		const packageIcon = <VetdFileIcon src={packageIconSrc} />;
+		// 品牌图由宿主从 plugin.json#icon 解析后注入；插件不拼宿主协议、不 import 包内 png。
+		const packageIcon = ctx.plugin.iconUrl ? <VetdFileIcon src={ctx.plugin.iconUrl} /> : undefined;
 
 		/**
 		 * 设计画布是「工作」模式的能力（ADR-0046）。编程模式下把画布 Tab、导出用的
@@ -137,8 +128,7 @@ export default definePlugin({
 					ctx.ui.registerActivityTab({
 						id: CANVAS_TAB_ID,
 						label: "%tab.label%",
-						// 与 plugin.json#icon 同源（icon.png），活动栏与插件列表品牌一致。
-						icon: packageIcon,
+						// icon 省略：宿主用 plugin.json#icon → ctx.plugin.iconUrl 填品牌图。
 						component: CanvasTab,
 						scope_use: ["project", "conversation"],
 						// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。
@@ -212,12 +202,14 @@ export default definePlugin({
 		// 跨模式唯一保留的能力：编程模式里也可能点开一份设计看看。分享包（`.vetdz`，
 		// 以及历史导出的 `.vetd` zip）是文件，走预览；设计本体是目录，走右键打开画布。
 		ctx.ui.registerFilePreview({ extensions: [...SHARE_PREVIEW_EXTENSIONS], component: VetdPreview });
-		ctx.fileExplorer.registerDecorationProvider({
-			id: "vetd-file-icon",
-			priority: 100,
-			when: { extensions: ["vetd", SHARE_EXTENSION] },
-			provideDecoration: () => ({ icon: packageIcon }),
-		});
+		if (packageIcon) {
+			ctx.fileExplorer.registerDecorationProvider({
+				id: "vetd-file-icon",
+				priority: 100,
+				when: { extensions: ["vetd", SHARE_EXTENSION] },
+				provideDecoration: () => ({ icon: packageIcon }),
+			});
+		}
 		ctx.fileExplorer.registerContextMenuAction({
 			id: "vetd-open-canvas",
 			label: "%fileExplorer.openCanvas%",

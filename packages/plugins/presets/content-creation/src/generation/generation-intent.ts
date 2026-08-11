@@ -301,6 +301,18 @@ function assignBusinessRoles(
 		return [];
 	}
 	if (intent === "animate-still") {
+		if (sources.length === 0) {
+			throw new ContentGenerationIntentError(
+				"animate-still requires one imported or generated image source",
+				"generation-source-required",
+				{
+					intent,
+					requiredKind: "image",
+					requiredCount: 1,
+					suggestedTool: "content_creation_assets",
+				},
+			);
+		}
 		if (sources.length !== 1 || sources[0]?.kind !== "image") {
 			return invalidSources(intent, "animate-still requires exactly one image source");
 		}

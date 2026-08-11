@@ -12,6 +12,12 @@
 
 Inspect `project` before edits and pass its revision to `content_creation_edit`. Inspect `capabilities` before setting any provider-specific value. Never infer capability support from model names.
 
+## Import local media before binding it
+
+Local file paths are host resources, not workflow sources. Use `content_creation_assets` with `action="list"` to inspect a directory, then `action="import"` with explicit file paths. Import returns an `assetNodeId`, asset IDs, and one `generationSources` entry per imported asset. Select exactly the entries required by the intent: one image for `animate-still`, two ordered images for `interpolate-frames`, or intentional references for `reference-guided`. Never put a filesystem path in `sourceNodeId` and never call `animate-still` with an empty or unfiltered `sources[]`.
+
+Directory import defaults to `directoryMode="select-one"` and returns candidates when several media files exist. Set `directoryMode="all"` only when the request intentionally needs a collection. Local discovery and import use only host-authorized roots; do not attempt to bypass a path authorization error.
+
 ## Describe the outcome first
 
 Update workflow metadata so the project remains understandable without chat history:

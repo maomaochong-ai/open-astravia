@@ -116,7 +116,7 @@ export interface PluginQuickJsApi {
 }
 
 export interface PluginQuickJsContext {
-	plugin: { id: string; version: string };
+	plugin: { id: string; version: string; iconUrl?: string };
 	permissions: { has(permission: string): boolean };
 	ui: {
 		registerActivityTab(contribution: PluginQuickJsActivityTab): void;

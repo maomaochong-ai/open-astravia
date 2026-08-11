@@ -4,8 +4,9 @@
 
 ### Fixed
 
-- 活动栏图标改为 `vetta-plugin://` 协议加载包内 `icon.png`，修复 Vite/MF 生成 `/icon.png` 绝对路径时误显示为宿主应用图标的问题。
+- 活动栏品牌图标改由宿主按 `plugin.json#icon` 注入（省略 `registerActivityTab.icon`），不再 `import` 包内 png 或拼宿主协议，避免 `/icon.png` 误解析为应用图标。
 - `content_creation_edit` 不再由 JSON Schema 提前拒绝旧版或直觉式 `targetInput`；解析器会按目标节点归一化并返回可重试的领域错误。`configure_generation` 新增明确的 `targetNodeId`，错误会列出可用视频生成节点并提示将来源放入 `sources[]`。
+- 新增 `content_creation_assets` 本地素材桥接工具：可发现宿主已授权文件/目录、导入受管素材并返回可供 `configure_generation` 使用的节点和素材 ID；缺少 `animate-still` 图片来源时返回明确的恢复建议。
 
 ### Changed
 

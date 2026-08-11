@@ -3,6 +3,7 @@
 	"plugin.description": "Node canvas, asset production, and multitrack composition workspace",
 	"tab.workspace.label": "Content Creation",
 	"action.mode.label": "Content Creation",
+	"tool.assets.label": "Import content assets",
 	"tool.edit.label": "Edit content project",
 	"tool.run.label": "Run content generation",
 	"tool.inspect.label": "Inspect content project",

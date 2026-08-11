@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+	CONTENT_ASSETS_TOOL_NAME,
 	CONTENT_EDIT_TOOL_NAME,
 	CONTENT_INSPECT_TOOL_NAME,
 	CONTENT_RUN_TOOL_NAME,
@@ -29,9 +30,18 @@ describe("content creation tool routing", () => {
 		]);
 	});
 
-	it("limits the router allowlist to this plugin's three domain tools", () => {
+	it("enables local asset discovery for a user-supplied directory", () => {
+		expect([...selectContentCreationTools("使用 C:\\Users\\admin\\Desktop\\素材 里的图片创建视频")]).toEqual([
+			CONTENT_INSPECT_TOOL_NAME,
+			CONTENT_ASSETS_TOOL_NAME,
+			CONTENT_EDIT_TOOL_NAME,
+		]);
+	});
+
+	it("limits the router allowlist to this plugin's four domain tools", () => {
 		expect(CONTENT_CREATION_TOOL_NAMES).toEqual([
 			CONTENT_INSPECT_TOOL_NAME,
+			CONTENT_ASSETS_TOOL_NAME,
 			CONTENT_EDIT_TOOL_NAME,
 			CONTENT_RUN_TOOL_NAME,
 		]);

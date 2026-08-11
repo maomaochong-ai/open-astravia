@@ -5,9 +5,11 @@ import type {
 } from "@vetta-org/plugin-sdk";
 import { ContentCreationAgentService } from "../agent/service";
 import { ContentAssetPreviewResolver } from "../generation/asset-preview-resolver";
+import { ContentAssetImportService } from "../generation/asset-import-service";
 import { PluginContentArtifactStore } from "../generation/artifact-store";
 import { createContentProviderRegistry } from "../generation/create-provider-registry";
 import { ContentGenerationService } from "../generation/generation-service";
+import { ContentLocalAssetService } from "../generation/local-asset-service";
 import { PluginContentProjectRepository } from "../project/repository";
 import { ContentCreationWorkspace } from "../project/workspace";
 import { ContentPromptOptimizationService } from "../prompt-optimization/prompt-optimization-service";
@@ -18,6 +20,7 @@ export class ContentCreationPluginRuntime {
 	readonly workspace: ContentCreationWorkspace;
 	readonly agent: ContentCreationAgentService;
 	readonly assetPreviewResolver: ContentAssetPreviewResolver;
+	readonly localAssets: ContentLocalAssetService;
 	readonly promptOptimization: ContentPromptOptimizationService;
 	readonly runApprovals = new ContentRunApprovalStore();
 
@@ -27,12 +30,19 @@ export class ContentCreationPluginRuntime {
 	private mediaProviderRefreshVersion = 0;
 	private readonly modelListeners = new Set<() => void>();
 	private disposed = false;
+	private readonly artifacts: PluginContentArtifactStore;
+	private readonly assetImports: ContentAssetImportService;
 
 	private constructor(private readonly ctx: PluginContext) {
 		this.workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
+		const artifacts = new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.artifacts);
+		const assetImports = new ContentAssetImportService(this.workspace, artifacts);
 		this.agent = new ContentCreationAgentService(this.workspace, () => this.generation);
 		this.assetPreviewResolver = new ContentAssetPreviewResolver(ctx.fs, ctx.storage);
+		this.localAssets = new ContentLocalAssetService(ctx.fs, assetImports);
 		this.promptOptimization = new ContentPromptOptimizationService(ctx.ai);
+		this.artifacts = artifacts;
+		this.assetImports = assetImports;
 	}
 
 	static async create(ctx: PluginContext): Promise<ContentCreationPluginRuntime> {
@@ -113,7 +123,8 @@ export class ContentCreationPluginRuntime {
 		const nextGenerationRuntime = new ContentGenerationService(
 			this.workspace,
 			providers,
-			new PluginContentArtifactStore(this.ctx.fs, this.ctx.storage, this.ctx.artifacts),
+			this.artifacts,
+			this.assetImports,
 		);
 		const previousGenerationRuntime = this.generationRuntime;
 		this.generationRuntime = nextGenerationRuntime;

@@ -31,6 +31,12 @@ export interface PluginContext {
 	plugin: {
 		id: string;
 		version: string;
+		/**
+		 * Host-resolved brand icon from `plugin.json#icon` (if declared).
+		 * Opaque string for `<img src>` / Iconify — plugins must not invent
+		 * host protocols; use this or omit Activity Tab `icon` to inherit it.
+		 */
+		iconUrl?: string;
 	};
 	permissions: PluginPermissionApi;
 	ui: PluginUiApi;

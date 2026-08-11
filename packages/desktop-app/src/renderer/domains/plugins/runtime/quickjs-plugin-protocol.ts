@@ -19,7 +19,7 @@ export type QuickJsHostMethod =
 export type QuickJsWorkerInboundMessage =
 	| {
 			type: "initialize";
-			plugin: { id: string; version: string };
+			plugin: { id: string; version: string; iconUrl?: string };
 			permissions: string[];
 			settings: Record<string, unknown>;
 			locale: string;

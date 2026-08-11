@@ -252,7 +252,11 @@ export function createQuickJsPluginDefinition(plugin: InstalledPlugin): PluginDe
 			];
 			nextWorker.postMessage({
 				type: "initialize",
-				plugin: { id: plugin.id, version: plugin.activeVersion },
+				plugin: {
+					id: plugin.id,
+					version: plugin.activeVersion,
+					...(plugin.iconUrl ? { iconUrl: plugin.iconUrl } : {}),
+				},
 				permissions: plugin.permissions.filter((permission) => plugin.grantedPermissions.includes(permission)),
 				settings: context.settings.getAll(),
 				locale: context.i18n.locale,

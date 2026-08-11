@@ -5,11 +5,13 @@ import { parseContentAgentOperations } from "../src/agent/operations";
 import type { ContentCreationAgentService } from "../src/agent/service";
 import { createContentCreationAgentState } from "../src/agent/state";
 import { ContentGenerationIntentError } from "../src/generation/generation-intent";
+import { ContentLocalAssetError, type ContentLocalAssetService } from "../src/generation/local-asset-service";
 import type { ContentModelDescriptor } from "../src/generation/types";
 import { applyContentProjectCommands } from "../src/project/commands";
 import { createContentProject } from "../src/project/types";
 import { ContentRunApprovalStore } from "../src/plugin/run-approval";
 import {
+	CONTENT_ASSETS_TOOL_NAME,
 	CONTENT_EDIT_TOOL_NAME,
 	CONTENT_INSPECT_TOOL_NAME,
 	CONTENT_RUN_TOOL_NAME,
@@ -66,6 +68,18 @@ describe("content creation tool registration", () => {
 		skippedNodeIds: [],
 	}));
 	const agent = { edit, inspect, prepareRun } as unknown as ContentCreationAgentService;
+	const listLocalAssets = vi.fn(async () => [
+		{ path: "C:/media/hero.png", name: "hero.png", size: 5, kind: "image" as const, mimeType: "image/png" },
+	]);
+	const importLocalAssets = vi.fn(async () => ({
+		project: { projectId: "project", revision: 1 },
+		assetNodeId: "assets",
+		assets: [{ id: "hero", name: "hero.png", kind: "image", mimeType: "image/png" }],
+	}));
+	const localAssets = {
+		list: listLocalAssets,
+		import: importLocalAssets,
+	} as unknown as ContentLocalAssetService;
 	const runApprovals = new ContentRunApprovalStore();
 	const ctx = {
 		agent: {
@@ -82,7 +96,7 @@ describe("content creation tool registration", () => {
 		registered.clear();
 		vi.clearAllMocks();
 		runApprovals.clear();
-		registerContentCreationTools(ctx, agent, runApprovals);
+		registerContentCreationTools(ctx, agent, runApprovals, localAssets);
 	});
 
 	function tool<TInput>(name: string): PluginAgentToolRegistration<TInput> {
@@ -103,12 +117,60 @@ describe("content creation tool registration", () => {
 		);
 	}
 
-	it("registers only the three domain tools", () => {
+	it("registers the four domain tools", () => {
 		expect([...registered.keys()]).toEqual([
 			CONTENT_INSPECT_TOOL_NAME,
+			CONTENT_ASSETS_TOOL_NAME,
 			CONTENT_EDIT_TOOL_NAME,
 			CONTENT_RUN_TOOL_NAME,
 		]);
+	});
+
+	it("validates and imports local media without returning file bytes", async () => {
+		const input = validateRegisteredTool(CONTENT_ASSETS_TOOL_NAME, {
+			action: "import",
+			paths: ["C:/media/hero.png"],
+			expectedRevision: 0,
+			assetNodeId: "existing-assets",
+		});
+
+		const result = await tool<Record<string, unknown>>(CONTENT_ASSETS_TOOL_NAME).handler(
+			toolContext(input as Record<string, unknown>),
+		);
+
+		expect(importLocalAssets).toHaveBeenCalledWith(expect.objectContaining({
+			projectDir: "C:/project",
+			paths: ["C:/media/hero.png"],
+			expectedRevision: 0,
+			targetNodeId: "existing-assets",
+		}));
+			expect(result).toMatchObject({
+			ok: true,
+			status: "imported",
+			assetNodeId: "assets",
+			generationSource: { sourceNodeId: "assets", assetIds: ["hero"] },
+			generationSources: [{ sourceNodeId: "assets", assetIds: ["hero"], kind: "image" }],
+		});
+		expect(JSON.stringify(result)).not.toContain("aW1hZ2U=");
+	});
+
+	it("returns actionable directory-selection errors", async () => {
+		importLocalAssets.mockRejectedValueOnce(new ContentLocalAssetError(
+			"select explicit paths",
+			"local-media-selection-required",
+			{ candidates: [{ path: "C:/media/hero.png", name: "hero.png" }] },
+		));
+
+		const result = await tool<{ action: "import"; paths: string[] }>(CONTENT_ASSETS_TOOL_NAME).handler(
+			toolContext({ action: "import", paths: ["C:/media"] }),
+		);
+
+		expect(result).toMatchObject({
+			ok: false,
+			retryable: true,
+			code: "local-media-selection-required",
+			details: { candidates: [expect.objectContaining({ name: "hero.png" })] },
+		});
 	});
 
 	it("applies edits without returning a conversation card", async () => {

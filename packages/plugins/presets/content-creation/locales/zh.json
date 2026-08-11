@@ -3,6 +3,7 @@
 	"plugin.description": "节点画布、素材生产与多轨编排工作区",
 	"tab.workspace.label": "内容创作",
 	"action.mode.label": "内容创作",
+	"tool.assets.label": "导入内容创作素材",
 	"tool.edit.label": "编辑内容创作项目",
 	"tool.run.label": "运行内容生成",
 	"tool.inspect.label": "检查内容创作项目",

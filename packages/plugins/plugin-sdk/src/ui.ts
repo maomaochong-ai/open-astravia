@@ -145,7 +145,12 @@ export interface PluginFilePreviewContribution {
 export interface PluginActivityTabContribution {
 	id: string;
 	label: string;
-	/** Tab icon as a React node (not an iconify class string). */
+	/**
+	 * Tab icon as a React node (not an iconify class string).
+	 * Omit to inherit the host-resolved brand icon from `plugin.json#icon`
+	 * (`ctx.plugin.iconUrl`). Prefer omitting for package brand icons so the
+	 * plugin never loads assets via absolute `/…` paths or host protocols.
+	 */
 	icon?: ReactNode;
 	component: ComponentType;
 	/**
