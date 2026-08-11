@@ -40,6 +40,7 @@ import {
 	type ConnectedPromptSource,
 } from "./prompt-sources";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
+import type { ContentKeyframeReference, ContentKeyframeSlotId } from "./keyframe-sources";
 
 interface ContentGeneratorComposerProps {
 	kind: Extract<ContentNodeKind, "image-generator" | "video-generator">;
@@ -49,10 +50,17 @@ interface ContentGeneratorComposerProps {
 	connectedAssets: readonly ConnectedContentAsset[];
 	connectedPrompts: readonly ConnectedPromptSource[];
 	mentionAssets: readonly ContentAssetReferenceCandidate[];
+	keyframeReferences: readonly ContentKeyframeReference[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onRunNode: () => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
+	onSetKeyframeSource: (
+		slotId: ContentKeyframeSlotId,
+		assetId: string,
+		sourceNodeId?: string,
+	) => Promise<void>;
+	onClearKeyframeSource: (slotId: ContentKeyframeSlotId) => Promise<void>;
 }
 
 export function ContentGeneratorComposer({
@@ -63,10 +71,13 @@ export function ContentGeneratorComposer({
 	connectedAssets,
 	connectedPrompts,
 	mentionAssets,
+	keyframeReferences,
 	referenceAssets,
 	onUpdate,
 	onRunNode,
 	onImportReferences,
+	onSetKeyframeSource,
+	onClearKeyframeSource,
 }: ContentGeneratorComposerProps) {
 	const { t } = useTranslation();
 	const [draft, setDraft] = useState(data);
@@ -80,18 +91,38 @@ export function ContentGeneratorComposer({
 			new Map(
 				[
 					...referenceAssets.map(({ asset }) => asset),
+					...keyframeReferences.map(({ asset }) => asset),
 					...connectedAssets.map(({ asset }) => asset),
 					...mentionAssets.map(({ asset }) => asset),
 				].map((asset) => [asset.id, asset]),
 			),
-		[connectedAssets, mentionAssets, referenceAssets],
+		[connectedAssets, keyframeReferences, mentionAssets, referenceAssets],
 	);
-	const draftReferenceAssets = (draft.inputs ?? []).flatMap((binding) => {
+	const boundReferenceAssets = (draft.inputs ?? []).flatMap((binding) => {
 		const asset = assetById.get(binding.assetId);
 		return asset ? [{ binding, asset }] : [];
 	});
+	const resolvedKeyframeAssets = keyframeReferences.map(({ slotId, asset, sourceNodeId }) => ({
+		binding: {
+			id: `keyframe:${slotId}:${sourceNodeId ?? asset.id}`,
+			assetId: asset.id,
+			slotId,
+			...(sourceNodeId ? { sourceNodeId } : {}),
+		},
+		asset,
+	}));
+	const selectedReferenceAssets = [
+		...boundReferenceAssets,
+		...resolvedKeyframeAssets.filter(
+			({ binding }) =>
+				!boundReferenceAssets.some(
+					(reference) =>
+						reference.binding.slotId === binding.slotId && reference.asset.id === binding.assetId,
+				),
+		),
+	];
 	const selectedPromptSources = resolveConnectedPromptSources(connectedPrompts, draft);
-	const localAssetIds = new Set(draftReferenceAssets.map(({ asset }) => asset.id));
+	const localAssetIds = new Set(selectedReferenceAssets.map(({ asset }) => asset.id));
 	const promptReferenceAssets = selectedPromptSources.flatMap((source) => source.references).filter(
 		({ asset }, index, references) =>
 			!localAssetIds.has(asset.id) && references.findIndex((candidate) => candidate.asset.id === asset.id) === index,
@@ -103,21 +134,21 @@ export function ContentGeneratorComposer({
 		) ??
 		availableModels.find(
 			(model) =>
-				assignGeneratorReferences(model, draftReferenceAssets, promptReferenceKinds, draft.modeId).mode !== null,
+				assignGeneratorReferences(model, selectedReferenceAssets, promptReferenceKinds, draft.modeId).mode !== null,
 		) ??
 		availableModels[0];
 	const resolution = selectedModel
-		? assignGeneratorReferences(selectedModel, draftReferenceAssets, promptReferenceKinds, draft.modeId)
+		? assignGeneratorReferences(selectedModel, selectedReferenceAssets, promptReferenceKinds, draft.modeId)
 		: { mode: null, reason: null, references: [], assignedSlotIds: [] };
 	const referenceShapes = resolution.references;
 	const activeReferenceAssets = selectedModel
-		? draftReferenceAssets.filter(({ binding, asset }) =>
+		? selectedReferenceAssets.filter(({ binding, asset }) =>
 				isContentReferenceSlotCompatibleWithMode(selectedModel, resolution.mode?.id ?? draft.modeId, {
 					slotId: binding.slotId,
 					kind: asset.kind,
 				}),
 			)
-		: draftReferenceAssets;
+		: selectedReferenceAssets;
 	const acceptedKinds = selectedModel
 		? listAcceptedReferenceKinds(selectedModel, referenceShapes, resolution.mode?.id ?? draft.modeId)
 		: [];
@@ -239,6 +270,8 @@ export function ContentGeneratorComposer({
 							references={activeReferenceAssets}
 							connectedReferences={connectedReferenceOptions}
 							acceptedKinds={acceptedKinds}
+							keyframeReferences={keyframeReferences}
+							keyframeCandidates={mentionAssets}
 							disabled={isRunning}
 							onImport={async (files, slotId) => {
 								if (!selectedModel) return;
@@ -250,6 +283,14 @@ export function ContentGeneratorComposer({
 							onRemove={(bindingId) => {
 								commit({ ...draft, inputs: (draft.inputs ?? []).filter((binding) => binding.id !== bindingId) });
 							}}
+							onSelectKeyframe={(slotId, candidate) =>
+								void onSetKeyframeSource(
+									slotId,
+									candidate.asset.id,
+									candidate.sourceNodeId,
+								)
+							}
+							onRemoveKeyframe={(slotId) => void onClearKeyframeSource(slotId)}
 							onSelectConnected={({ sourceNodeId, asset, slotId }) => {
 								if (!slotId) return;
 								commit({
@@ -309,7 +350,7 @@ export function ContentGeneratorComposer({
 				onModelChange={(model) => {
 					const nextMode = assignGeneratorReferences(
 						model,
-						draftReferenceAssets,
+						selectedReferenceAssets,
 						promptReferenceKinds,
 					).mode;
 					const aspectRatio =

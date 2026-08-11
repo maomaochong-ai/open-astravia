@@ -9,6 +9,8 @@ import type {
 export interface ConnectedContentAsset {
 	sourceNodeId: string;
 	asset: ContentAsset;
+	edgeId?: string;
+	role?: string;
 }
 
 export function listContentNodeAssetIds(data: ContentNodeData): string[] {
@@ -31,19 +33,24 @@ export function listConnectedContentAssets(
 	project: ContentProjectDocument,
 	targetNodeId: string,
 ): ConnectedContentAsset[] {
-	const sourceNodeIds = project.graph.edges
-		.filter((edge) => edge.target === targetNodeId)
-		.map((edge) => edge.source);
-	const candidates = sourceNodeIds.flatMap((sourceNodeId) => {
-		const source = project.graph.nodes.find((node) => node.id === sourceNodeId && node.kind === "asset");
+	const candidates = project.graph.edges.filter((edge) => edge.target === targetNodeId).flatMap((edge) => {
+		const source = project.graph.nodes.find((node) => node.id === edge.source);
 		return source
-			? listContentNodeAssets(project, source).map((asset) => ({ sourceNodeId: source.id, asset }))
+			? listContentNodeAssets(project, source).map((asset) => ({
+					sourceNodeId: source.id,
+					asset,
+					edgeId: edge.id,
+					...(edge.role ? { role: edge.role } : {}),
+				}))
 			: [];
 	});
 	return candidates.filter(
 		(candidate, index) =>
 			candidates.findIndex(
-				(current) => current.sourceNodeId === candidate.sourceNodeId && current.asset.id === candidate.asset.id,
+				(current) =>
+					current.sourceNodeId === candidate.sourceNodeId &&
+					current.asset.id === candidate.asset.id &&
+					current.role === candidate.role,
 			) === index,
 	);
 }

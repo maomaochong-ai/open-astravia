@@ -25,6 +25,7 @@ import { ContentNodeSurface } from "./ContentNodeSurface";
 import { ContentNodeEditor } from "./ContentNodeEditor";
 import type { ConnectedContentAsset } from "./material-assets";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
+import type { ContentKeyframeReference, ContentKeyframeSlotId } from "./keyframe-sources";
 import { resolveContentPrompt, type ConnectedPromptSource } from "./prompt-sources";
 import { collectDroppedMediaFiles, dataTransferHasFiles, importDroppedMediaFiles } from "./dropped-media";
 import { getContentNodeFileDropBehavior } from "./drop-behaviors";
@@ -37,6 +38,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	connectedAssets: readonly ConnectedContentAsset[];
 	connectedPrompts: readonly ConnectedPromptSource[];
 	mentionAssets: readonly ContentAssetReferenceCandidate[];
+	keyframeReferences: readonly ContentKeyframeReference[];
 	assetUrl?: string;
 	assetKind?: AssetKind;
 	status: ContentNodeStatus;
@@ -53,6 +55,12 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	onRunNode: () => Promise<void>;
 	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
+	onSetKeyframeSource: (
+		slotId: ContentKeyframeSlotId,
+		assetId: string,
+		sourceNodeId?: string,
+	) => Promise<void>;
+	onClearKeyframeSource: (slotId: ContentKeyframeSlotId) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
 
@@ -295,6 +303,7 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 						connectedAssets={data.connectedAssets}
 						connectedPrompts={data.connectedPrompts}
 						mentionAssets={data.mentionAssets}
+						keyframeReferences={data.keyframeReferences}
 						referenceAssets={data.referenceAssets}
 						focusPromptRequest={focusPromptRequest}
 						onUpdate={data.onUpdate}
@@ -302,6 +311,8 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 						onRunNode={data.onRunNode}
 						onImportAssets={data.onImportAssets}
 						onImportReferences={data.onImportReferences}
+						onSetKeyframeSource={data.onSetKeyframeSource}
+						onClearKeyframeSource={data.onClearKeyframeSource}
 						onAddToTimeline={data.onAddToTimeline}
 					/>
 				</div>

@@ -21,6 +21,7 @@ import type { ConnectedContentAsset } from "./material-assets";
 import { NodeEditorPanel } from "./NodeEditorPanel";
 import type { ConnectedPromptSource } from "./prompt-sources";
 import type { ContentAssetReferenceCandidate } from "./reference-candidates";
+import type { ContentKeyframeReference, ContentKeyframeSlotId } from "./keyframe-sources";
 
 const FIELD_CLASS =
 	"min-w-0 rounded-md border border-border/70 bg-background/60 px-2.5 py-1.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus-visible:border-primary/50";
@@ -36,6 +37,7 @@ interface ContentNodeEditorProps {
 	connectedAssets: readonly ConnectedContentAsset[];
 	connectedPrompts: readonly ConnectedPromptSource[];
 	mentionAssets: readonly ContentAssetReferenceCandidate[];
+	keyframeReferences: readonly ContentKeyframeReference[];
 	referenceAssets: readonly { binding: ContentNodeInputBinding; asset: ContentAsset }[];
 	focusPromptRequest: number;
 	onUpdate: (data: ContentNodeData) => Promise<void>;
@@ -43,6 +45,12 @@ interface ContentNodeEditorProps {
 	onRunNode: () => Promise<void>;
 	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
+	onSetKeyframeSource: (
+		slotId: ContentKeyframeSlotId,
+		assetId: string,
+		sourceNodeId?: string,
+	) => Promise<void>;
+	onClearKeyframeSource: (slotId: ContentKeyframeSlotId) => Promise<void>;
 	onAddToTimeline?: () => Promise<void>;
 }
 

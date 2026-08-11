@@ -47,11 +47,15 @@ describe("ContentVideoReferenceInput", () => {
 				model={model}
 				references={[]}
 				connectedReferences={[]}
+				keyframeReferences={[]}
+				keyframeCandidates={[]}
 				acceptedKinds={["image"]}
 				disabled={false}
 				onImport={onImport}
 				onRemove={vi.fn()}
 				onSelectConnected={vi.fn()}
+				onSelectKeyframe={vi.fn()}
+				onRemoveKeyframe={vi.fn()}
 			/>,
 		);
 
@@ -74,11 +78,15 @@ describe("ContentVideoReferenceInput", () => {
 				model={model}
 				references={[]}
 				connectedReferences={[]}
+				keyframeReferences={[]}
+				keyframeCandidates={[]}
 				acceptedKinds={["image", "video", "audio"]}
 				disabled={false}
 				onImport={vi.fn()}
 				onRemove={vi.fn()}
 				onSelectConnected={vi.fn()}
+				onSelectKeyframe={vi.fn()}
+				onRemoveKeyframe={vi.fn()}
 			/>,
 		);
 
@@ -86,5 +94,91 @@ describe("ContentVideoReferenceInput", () => {
 		expect(container.querySelector<HTMLInputElement>('input[type="file"]')?.accept).toBe(
 			"image/*,video/*,audio/*",
 		);
+	});
+
+	it("selects project and connected workflow images for a keyframe slot", () => {
+		const onSelectKeyframe = vi.fn();
+		const projectCandidate = {
+			origin: "project" as const,
+			asset: {
+				id: "project-image",
+				kind: "image" as const,
+				name: "Project image",
+				mimeType: "image/png",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			},
+		};
+		const workflowCandidate = {
+			origin: "connected" as const,
+			sourceNodeId: "image-generator",
+			asset: {
+				id: "workflow-image",
+				kind: "image" as const,
+				name: "Workflow image",
+				mimeType: "image/png",
+				createdAt: "2026-01-01T00:00:00.000Z",
+			},
+		};
+		render(
+			<ContentVideoReferenceInput
+				modeId="image-to-video"
+				model={model}
+				references={[]}
+				connectedReferences={[]}
+				keyframeReferences={[]}
+				keyframeCandidates={[workflowCandidate, projectCandidate]}
+				acceptedKinds={["image"]}
+				disabled={false}
+				onImport={vi.fn()}
+				onRemove={vi.fn()}
+				onSelectConnected={vi.fn()}
+				onSelectKeyframe={onSelectKeyframe}
+				onRemoveKeyframe={vi.fn()}
+			/>,
+		);
+
+		fireEvent.click(screen.getAllByLabelText("nodeEditor.videoReference.chooseExisting")[0] as HTMLElement);
+		expect(screen.getByText("Workflow image")).toBeTruthy();
+		expect(screen.getByText("Project image")).toBeTruthy();
+		fireEvent.click(screen.getByText("Workflow image"));
+
+		expect(onSelectKeyframe).toHaveBeenCalledWith("firstFrame", workflowCandidate);
+	});
+
+	it("shows and removes a selected dynamic keyframe by slot", () => {
+		const onRemoveKeyframe = vi.fn();
+		render(
+			<ContentVideoReferenceInput
+				modeId="image-to-video"
+				model={model}
+				references={[]}
+				connectedReferences={[]}
+				keyframeReferences={[
+					{
+						slotId: "firstFrame",
+						origin: "node-output",
+						sourceNodeId: "image-generator",
+						asset: {
+							id: "generated-image",
+							kind: "image",
+							name: "Generated image",
+							mimeType: "image/png",
+							createdAt: "2026-01-01T00:00:00.000Z",
+						},
+					},
+				]}
+				keyframeCandidates={[]}
+				acceptedKinds={["image"]}
+				disabled={false}
+				onImport={vi.fn()}
+				onRemove={vi.fn()}
+				onSelectConnected={vi.fn()}
+				onSelectKeyframe={vi.fn()}
+				onRemoveKeyframe={onRemoveKeyframe}
+			/>,
+		);
+
+		fireEvent.click(screen.getByLabelText("nodeEditor.reference.remove"));
+		expect(onRemoveKeyframe).toHaveBeenCalledWith("firstFrame");
 	});
 });

@@ -2,6 +2,7 @@
 
 import { act, cleanup, render, waitFor } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createContentProject } from "../src/project/types";
 import { GraphWorkspace } from "../src/canvas/GraphWorkspace";
@@ -18,7 +19,7 @@ const shortcutScopeCapture = vi.hoisted(() => ({
 
 vi.mock("@xyflow/react", () => ({
 	Controls: ({ children }: { children?: unknown }) => <>{children}</>,
-	ControlButton: ({ children }: { children?: unknown }) => <button type="button">{children}</button>,
+	ControlButton: ({ children }: { children?: ReactNode }) => <button type="button">{children}</button>,
 	useStore: (
 		selector: (state: {
 			transform: [number, number, number];

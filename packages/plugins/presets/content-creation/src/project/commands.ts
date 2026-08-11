@@ -15,6 +15,7 @@ import { contentNodeDataEqual } from "../node/content-node-data-equal";
 import { resolveContentConnectionResult } from "../node/connections";
 import { createDefaultContentNodeData } from "../node/definitions";
 import { getContentNodeSize } from "../node/geometry";
+import type { ContentKeyframeSlotId } from "../node/keyframe-sources";
 import { createContentPromptDocument } from "../node/prompt-document";
 import { PROMPT_REFERENCE_SLOT_ID } from "../node/prompt-sources";
 import { getDefaultNodePurpose } from "./node-semantics";
@@ -55,6 +56,14 @@ export type ContentProjectCommand =
 			targetHandle: string;
 			slotId: string;
 	  }
+	| {
+			type: "node.set-keyframe-source";
+			targetNodeId: string;
+			slotId: ContentKeyframeSlotId;
+			assetId: string;
+			sourceNodeId?: string;
+	  }
+	| { type: "node.clear-keyframe-source"; targetNodeId: string; slotId: ContentKeyframeSlotId }
 	| { type: "node.configure-generation"; targetNodeId: string; plan: ContentVideoGenerationPlan }
 	| { type: "node.delete"; nodeId: string }
 	| {
@@ -307,6 +316,70 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 				inputs.push({ id: crypto.randomUUID(), assetId, slotId: command.slotId, sourceNodeId: source.id });
 			}
 			target.data.inputs = inputs;
+			return;
+		}
+		case "node.set-keyframe-source": {
+			const target = findNode(project, command.targetNodeId);
+			if (target.kind !== "video-generator") {
+				throw new ContentProjectCommandError(
+					"keyframe target must be a video generator",
+					"keyframe-target-invalid",
+				);
+			}
+			const asset = project.assets.find((candidate) => candidate.id === command.assetId);
+			if (!asset || asset.kind !== "image") {
+				throw new ContentProjectCommandError(
+					`keyframe source must be an existing image: ${command.assetId}`,
+					"keyframe-asset-invalid",
+				);
+			}
+			clearKeyframeSource(project, target, command.slotId);
+			if (!command.sourceNodeId) {
+				target.data.inputs = [
+					...(target.data.inputs ?? []),
+					{ id: crypto.randomUUID(), assetId: asset.id, slotId: command.slotId },
+				];
+				return;
+			}
+
+			const source = findNode(project, command.sourceNodeId);
+			if (source.kind === "asset") {
+				if (!new Set(source.data.assetIds ?? []).has(asset.id)) {
+					throw new ContentProjectCommandError(
+						`keyframe asset is not present in source node: ${asset.id}`,
+						"keyframe-source-asset-missing",
+					);
+				}
+				connectKeyframeSource(project, source.id, target.id, command.slotId, now);
+				target.data.inputs = [
+					...(target.data.inputs ?? []),
+					{
+						id: crypto.randomUUID(),
+						assetId: asset.id,
+						slotId: command.slotId,
+						sourceNodeId: source.id,
+					},
+				];
+				return;
+			}
+			if (source.kind !== "image-generator" || source.data.assetId !== asset.id) {
+				throw new ContentProjectCommandError(
+					"keyframe node output must be an available image-generator result",
+					"keyframe-source-node-invalid",
+				);
+			}
+			connectKeyframeSource(project, source.id, target.id, command.slotId, now);
+			return;
+		}
+		case "node.clear-keyframe-source": {
+			const target = findNode(project, command.targetNodeId);
+			if (target.kind !== "video-generator") {
+				throw new ContentProjectCommandError(
+					"keyframe target must be a video generator",
+					"keyframe-target-invalid",
+				);
+			}
+			clearKeyframeSource(project, target, command.slotId);
 			return;
 		}
 		case "node.configure-generation": {
@@ -668,6 +741,59 @@ function assetKindMatchesSlot(kind: ContentAsset["kind"], slotId: string): boole
 	if (slotId === "referenceVideos" || slotId === "referenceVideo" || slotId === "sourceVideo") return kind === "video";
 	if (slotId === "referenceAudios" || slotId === "referenceAudio") return kind === "audio";
 	return false;
+}
+
+function clearKeyframeSource(
+	project: ContentProjectDocument,
+	target: ContentNode,
+	slotId: ContentKeyframeSlotId,
+): void {
+	const removedBindingIds = new Set(
+		(target.data.inputs ?? []).filter((binding) => binding.slotId === slotId).map((binding) => binding.id),
+	);
+	target.data.inputs = (target.data.inputs ?? []).filter((binding) => binding.slotId !== slotId);
+	project.graph.edges = project.graph.edges.filter(
+		(edge) => edge.target !== target.id || edge.role !== slotId,
+	);
+	if (target.data.promptDocument && removedBindingIds.size > 0) {
+		target.data.promptDocument = {
+			...target.data.promptDocument,
+			segments: target.data.promptDocument.segments.filter(
+				(segment) => segment.type !== "asset-reference" || !removedBindingIds.has(segment.bindingId),
+			),
+		};
+	}
+}
+
+function connectKeyframeSource(
+	project: ContentProjectDocument,
+	sourceNodeId: string,
+	targetNodeId: string,
+	slotId: ContentKeyframeSlotId,
+	now: string,
+): void {
+	const rolelessEdge = project.graph.edges.find(
+		(edge) =>
+			edge.source === sourceNodeId &&
+			edge.target === targetNodeId &&
+			(edge.targetHandle ?? "image") === "image" &&
+			!edge.role,
+	);
+	if (rolelessEdge) {
+		rolelessEdge.role = slotId;
+		return;
+	}
+	applyCommand(
+		project,
+		{
+			type: "edge.connect",
+			source: sourceNodeId,
+			target: targetNodeId,
+			targetHandle: "image",
+			role: slotId,
+		},
+		now,
+	);
 }
 
 function defaultNodeName(project: ContentProjectDocument, kind: ContentNodeKind): string {

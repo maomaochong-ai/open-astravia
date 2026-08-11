@@ -16,6 +16,10 @@ import {
 } from "../node/material-assets";
 import { listConnectedPromptSources, listContentPromptReferences } from "../node/prompt-sources";
 import { listContentAssetReferenceCandidates } from "../node/reference-candidates";
+import {
+	listContentKeyframeReferences,
+	type ContentKeyframeSlotId,
+} from "../node/keyframe-sources";
 
 export interface ContentNodeActions {
 	onDelete: (nodeId: string) => void;
@@ -27,6 +31,13 @@ export interface ContentNodeActions {
 	onRunNode: (nodeId: string) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
+	onSetKeyframeSource: (
+		nodeId: string,
+		slotId: ContentKeyframeSlotId,
+		assetId: string,
+		sourceNodeId?: string,
+	) => Promise<void>;
+	onClearKeyframeSource: (nodeId: string, slotId: ContentKeyframeSlotId) => Promise<void>;
 	onAddToTimeline: (nodeId: string) => Promise<void>;
 }
 
@@ -41,6 +52,7 @@ export function toContentFlowNodes(
 	actions: ContentNodeActions,
 	assetPreviewUrls: ReadonlyMap<string, string>,
 ): ContentFlowNode[] {
+	const nodeById = new Map(project.graph.nodes.map((node) => [node.id, node]));
 	return project.graph.nodes.map((node) => {
 		const fallbackSize = getContentNodeSize(node.kind, node.data.aspectRatio);
 		const job = project.jobs.filter((candidate) => candidate.nodeId === node.id).at(-1);
@@ -60,10 +72,12 @@ export function toContentFlowNodes(
 						const asset = project.assets.find((candidate) => candidate.id === binding.assetId);
 						return asset ? [{ binding, asset: withPreview(asset) }] : [];
 					});
-		const connectedAssets = listConnectedContentAssets(project, node.id).map(({ sourceNodeId, asset }) => ({
-			sourceNodeId,
-			asset: withPreview(asset),
-		}));
+		const connectedAssets = listConnectedContentAssets(project, node.id)
+			.filter((candidate) => nodeById.get(candidate.sourceNodeId)?.kind === "asset")
+			.map((candidate) => ({
+				...candidate,
+				asset: withPreview(candidate.asset),
+			}));
 		const connectedPrompts = listConnectedPromptSources(project, node.id).map((source) => ({
 			...source,
 			references: source.references.map(({ binding, asset }) => ({ binding, asset: withPreview(asset) })),
@@ -71,6 +85,10 @@ export function toContentFlowNodes(
 		const mentionAssets = listContentAssetReferenceCandidates(project, node.id).map((candidate) => ({
 			...candidate,
 			asset: withPreview(candidate.asset),
+		}));
+		const keyframeReferences = listContentKeyframeReferences(project, node.id).map((reference) => ({
+			...reference,
+			asset: withPreview(reference.asset),
 		}));
 		return {
 			...fallbackSize,
@@ -88,6 +106,7 @@ export function toContentFlowNodes(
 				connectedAssets,
 				connectedPrompts,
 				mentionAssets,
+				keyframeReferences,
 				assetUrl: node.data.assetId ? assetPreviewUrls.get(node.data.assetId) : undefined,
 				assetKind: node.data.assetId ? project.assets.find((asset) => asset.id === node.data.assetId)?.kind : undefined,
 				status: node.status,
@@ -104,6 +123,9 @@ export function toContentFlowNodes(
 				onRunNode: () => actions.onRunNode(node.id),
 				onImportAssets: (files) => actions.onImportAssets(node.id, files),
 				onImportReferences: (files, slotId) => actions.onImportReferences(node.id, files, slotId),
+				onSetKeyframeSource: (slotId, assetId, sourceNodeId) =>
+					actions.onSetKeyframeSource(node.id, slotId, assetId, sourceNodeId),
+				onClearKeyframeSource: (slotId) => actions.onClearKeyframeSource(node.id, slotId),
 				onAddToTimeline:
 					node.kind === "image-generator" || node.kind === "video-generator" || node.kind === "asset"
 						? () => actions.onAddToTimeline(node.id)

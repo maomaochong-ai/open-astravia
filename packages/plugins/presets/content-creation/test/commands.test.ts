@@ -181,6 +181,69 @@ describe("applyContentProjectCommands", () => {
 		});
 	});
 
+	it("sets fixed and dynamic keyframe sources without mixing their ownership", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "asset.add",
+				asset: {
+					id: "project-last-frame",
+					kind: "image",
+					name: "Last frame",
+					mimeType: "image/png",
+					createdAt: "2026-01-01T00:00:00.000Z",
+				},
+			},
+			{
+				type: "asset.add",
+				asset: {
+					id: "generated-first-frame",
+					kind: "image",
+					name: "First frame",
+					mimeType: "image/png",
+					createdAt: "2026-01-01T00:00:00.000Z",
+				},
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "upstream-image",
+					kind: "image-generator",
+					position: { x: 0, y: 0 },
+					data: { assetId: "generated-first-frame" },
+				},
+			},
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+			{ type: "edge.connect", source: "upstream-image", target: "video", targetHandle: "image" },
+			{
+				type: "node.set-keyframe-source",
+				targetNodeId: "video",
+				slotId: "firstFrame",
+				assetId: "generated-first-frame",
+				sourceNodeId: "upstream-image",
+			},
+			{
+				type: "node.set-keyframe-source",
+				targetNodeId: "video",
+				slotId: "lastFrame",
+				assetId: "project-last-frame",
+			},
+		]);
+		const video = project.graph.nodes.find((node) => node.id === "video");
+
+		expect(project.graph.edges).toEqual([
+			expect.objectContaining({ source: "upstream-image", target: "video", role: "firstFrame" }),
+		]);
+		expect(video?.data.inputs).toEqual([
+			expect.objectContaining({ assetId: "project-last-frame", slotId: "lastFrame" }),
+		]);
+
+		const cleared = applyContentProjectCommands(project, [
+			{ type: "node.clear-keyframe-source", targetNodeId: "video", slotId: "firstFrame" },
+		]);
+		expect(cleared.graph.edges).toEqual([]);
+		expect(cleared.graph.nodes.find((node) => node.id === "video")?.data.inputs).toHaveLength(1);
+	});
+
 	it("duplicates a node with independent data and an offset position", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{
