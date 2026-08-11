@@ -127,7 +127,7 @@ function UserMessageTextShell({
 				{children}
 			</motion.div>
 			{canExpand && !expanded && (
-				<div className="absolute inset-x-0 bottom-0 flex h-20 items-end justify-center rounded-b-2xl bg-gradient-to-t from-secondary via-secondary/80 to-secondary/0 pb-1.5">
+				<div className="absolute inset-x-0 bottom-0 flex h-20 items-end justify-center bg-gradient-to-t from-secondary via-secondary/80 to-secondary/0 pb-1.5">
 					<button
 						type="button"
 						onClick={() => setExpanded(true)}
