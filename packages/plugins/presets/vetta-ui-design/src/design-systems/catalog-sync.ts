@@ -76,13 +76,15 @@ async function applyRemote(ctx: PluginContext, cached: CachedCatalog | null, now
 	for (const url of DESIGN_CATALOG_SOURCES) {
 		try {
 			// ETag 只在同源之间有意义：换了源，服务端不认识上一个源发的标识。
-			const conditional = cached?.sourceUrl === url && cached.etag ? { "if-none-match": cached.etag } : undefined;
+			const conditional = cached?.sourceUrl === url && cached.etag ? { "if-none-match": cached.etag } : null;
 			const response = await ctx.network.request<unknown>({
 				url,
 				method: "GET",
 				responseType: "json",
 				timeoutMs: REQUEST_TIMEOUT_MS,
-				headers: conditional,
+				// 宿主的 capability 层按 JSON 值校验入参，值为 undefined 的键会被判非法而整个
+				// 请求失败。可选字段只能「不带这个键」，不能带一个 undefined。
+				...(conditional ? { headers: conditional } : {}),
 			});
 
 			// 内容没变：不重新解析，只把「刚查过」记下来，下一个 TTL 周期前不再打扰。

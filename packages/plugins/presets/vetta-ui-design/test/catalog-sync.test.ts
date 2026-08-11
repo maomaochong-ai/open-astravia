@@ -33,9 +33,20 @@ interface FakeOptions {
 	responses?: Array<{ ok: boolean; status: number; body: unknown; headers?: Record<string, string> } | null>;
 }
 
+/** 复刻宿主 capability 层的入参约束：不接受值为 undefined 的键。 */
+function assertJsonSafe(value: Record<string, unknown>): void {
+	for (const [key, entry] of Object.entries(value)) {
+		if (entry === undefined) {
+			throw new Error(`Capability input validation failed: .${key} is undefined, which is not a JSON value`);
+		}
+	}
+}
+
 function fakeCtx(options: FakeOptions) {
 	const writes: unknown[] = [];
 	const requests: RequestLog[] = [];
+	/** 原样留存的请求对象，用来断言可选字段是「没有这个键」而不是「值为 undefined」。 */
+	const sent: Record<string, unknown>[] = [];
 	let call = 0;
 	const ctx = {
 		storage: {
@@ -46,6 +57,10 @@ function fakeCtx(options: FakeOptions) {
 		},
 		network: {
 			request: async (request: { url: string; headers?: Record<string, string> }) => {
+				// 宿主的 capability 层按 JSON 值校验入参：值为 undefined 的键会让整个请求失败
+				// （真机上就是这么炸的）。fake 复刻这条约束，否则本地全绿、装到 app 里全挂。
+				assertJsonSafe(request);
+				sent.push(request);
 				requests.push({ url: request.url, headers: request.headers });
 				const next = options.responses?.[call++];
 				if (!next) throw new Error("offline");
@@ -53,7 +68,7 @@ function fakeCtx(options: FakeOptions) {
 			},
 		},
 	} as unknown as PluginContext;
-	return { ctx, writes, requests };
+	return { ctx, writes, requests, sent };
 }
 
 function cacheOf(slugs: string[], overrides: Partial<Record<string, unknown>> = {}) {
@@ -127,6 +142,13 @@ describe("refreshDesignCatalog 的请求预算", () => {
 		await refreshDesignCatalog(ctx, NOW + 7 * HOUR);
 		expect(requests[0].url).toBe(DESIGN_CATALOG_SOURCES[0]);
 		expect(requests[0].headers).toBeUndefined();
+	});
+
+	it("没有可用 ETag 时根本不带 headers 这个键", async () => {
+		const { ctx, sent } = fakeCtx({ responses: [{ ok: true, status: 200, body: catalogOf(["fresh"]) }] });
+		await refreshDesignCatalog(ctx, NOW);
+		// 带一个 undefined 会被宿主判非法——必须是键不存在。
+		expect(Object.hasOwn(sent[0], "headers")).toBe(false);
 	});
 
 	it("首选源失败时回落到下一个源", async () => {
