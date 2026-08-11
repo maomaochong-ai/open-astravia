@@ -20,7 +20,15 @@ const STORE = "rasters";
  * （设计没了就该一起没），分表只是为了「取封面」不必扫一遍 frame 键。
  */
 const COVER_STORE = "covers";
-const DB_VERSION = 2;
+/**
+ * 3 而不是 2：2 曾经发布过一版**只升版本号、没建 covers 表**的实现，那些库现在停在
+ * 「version=2 且没有 covers」的状态上。`open(name, 2)` 对已经是 v2 的库不触发升级，
+ * 不再升一版的话它们永远补不上这张表。
+ */
+const DB_VERSION = 3;
+
+/** 这个库应该有的全部表。升级时按缺什么补什么，不依赖「从哪一版升上来」。 */
+const STORES = [STORE, COVER_STORE] as const;
 
 /** `${vetdPath}::${frameId}`——设计文档之间天然隔离，同一份里按 frame 取。 */
 function keyOf(vetdPath: string, frameId: string): string {
@@ -35,7 +43,9 @@ function openDb(): Promise<IDBDatabase | null> {
 		try {
 			const request = indexedDB.open(DB_NAME, DB_VERSION);
 			request.onupgradeneeded = () => {
-				if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE);
+				for (const store of STORES) {
+					if (!request.result.objectStoreNames.contains(store)) request.result.createObjectStore(store);
+				}
 			};
 			request.onsuccess = () => resolve(request.result);
 			// 缓存不可用不该让画布挂掉：隐私模式、配额耗尽都可能走到这里，
@@ -57,6 +67,15 @@ function runStore<T>(
 		(db) =>
 			new Promise<T | null>((resolve) => {
 				if (!db) return resolve(null);
+				// 表不存在是**代码错误**（漏了建表 / 漏了升版本），不是环境问题。下面那层
+				// try/catch 会把它和「配额耗尽」一样静默咽掉——真发生过：covers 表整整一版
+				// 没被建出来，封面每次都静默丢弃，表面上只是「一直没有封面」。
+				if (!db.objectStoreNames.contains(storeName)) {
+					console.error(
+						`[vetta-ui-design] IndexedDB store "${storeName}" is missing (db v${db.version}); bump DB_VERSION so the upgrade runs.`,
+					);
+					return resolve(null);
+				}
 				try {
 					const request = run(db.transaction(storeName, mode).objectStore(storeName));
 					request.onsuccess = () => resolve(request.result);

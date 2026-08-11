@@ -1,7 +1,7 @@
 {
 	"id": "vetta-ui-design",
 	"name": "%plugin.name%",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"icon": "icon.png",
 	"agent_mode": [
 		"work"
