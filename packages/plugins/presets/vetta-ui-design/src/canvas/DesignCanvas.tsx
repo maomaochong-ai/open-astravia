@@ -5,7 +5,6 @@ import {
 	type RefObject,
 	useCallback,
 	useEffect,
-	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -58,6 +57,7 @@ import {
 	type SnapSolution,
 	solveSnap,
 } from "./snap";
+import { useViewport, type Viewport } from "./use-viewport";
 import { SelectionAskBadge } from "./SelectionAskBadge";
 import { SnapGuides } from "./SnapGuides";
 
@@ -107,12 +107,6 @@ interface DesignCanvasProps {
 	>;
 }
 
-interface Viewport {
-	x: number;
-	y: number;
-	zoom: number;
-}
-
 interface Rect {
 	x: number;
 	y: number;
@@ -120,9 +114,6 @@ interface Rect {
 	height: number;
 }
 
-const MIN_ZOOM = 0.05;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 1.2;
 /** Below this the marquee counts as a click, not a drag. */
 const MARQUEE_MIN = 4;
 /** 设计包里不算源码的东西，不参与「源码变了要重截」的判断。`.notes.json` 是备注
@@ -147,10 +138,6 @@ const MIN_HEIGHT = 80;
  * 400%，手感都是「鼠标移到差不多这么近就吸上」。
  */
 const SNAP_THRESHOLD_PX = 8;
-
-function clampZoom(zoom: number): number {
-	return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom));
-}
 
 /** 四周同时外扩（负值即内缩）。 */
 function inflate(rect: Rect, dx: number, dy: number): Rect {
@@ -273,20 +260,11 @@ export function DesignCanvas({
 	resolveNoteElementsRef,
 }: DesignCanvasProps) {
 	const { t } = useTranslation();
-	const containerRef = useRef<HTMLDivElement | null>(null);
 	const [manifest, setManifest] = useState<VetdManifest>(session.manifest);
 	// 下面那些交给 FrameView 的回调必须引用稳定（memo 的前提），所以它们读 ref 而不是
 	// 闭包捕获随渲染变化的 state。
 	const manifestRef = useRef(manifest);
 	manifestRef.current = manifest;
-	/** 平移进行中的实时视口。非 null 时 DOM 上的 transform 由它驱动，state 落后一步。 */
-	const panLiveRef = useRef<Viewport | null>(null);
-	const [viewport, setViewport] = useState<Viewport>(() => ({ ...session.manifest.canvas }));
-	const viewportRef = useRef(viewport);
-	// 平移途中 viewportRef 才是权威值（滚轮/拖拽逐帧写它、不进 state）。这里无条件回写
-	// 会把它打回上一次提交的 state：滚动途中只要有一次重渲染（裁剪范围重算、frame 上报
-	// 渲染完成…），下一个滚轮 tick 就从旧位置重算，画布随机弹回起点。
-	if (!panLiveRef.current) viewportRef.current = viewport;
 	const [tool, setTool] = useState<CanvasTool>("select");
 	const toolRef = useRef(tool);
 	toolRef.current = tool;
@@ -345,7 +323,6 @@ export function DesignCanvas({
 	/** 拖 gap 松手时要落盘的位置，与 layoutOverride 同源（state 读不到最新值）。 */
 	const layoutOverrideRef = useRef(layoutOverride);
 	layoutOverrideRef.current = layoutOverride;
-	const panRef = useRef<{ pointerId: number; startX: number; startY: number; origin: Viewport } | null>(null);
 	const marqueeRef = useRef<{
 		pointerId: number;
 		startX: number;
@@ -366,12 +343,6 @@ export function DesignCanvas({
 		primaryId: string;
 		targets: SnapRect[];
 	} | null>(null);
-	const rafRef = useRef<number | null>(null);
-	const wheelSettleRef = useRef<number | null>(null);
-	const worldRef = useRef<HTMLDivElement | null>(null);
-
-	/** 容器像素尺寸，视口裁剪要用。 */
-	const sizeRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 });
 	/**
 	 * 当前允许渲染的世界矩形（可见区域 + CULL_MARGIN_SCREENS 屏预留）。null 表示还
 	 * 没量到容器尺寸，那时不裁剪。
@@ -379,11 +350,6 @@ export function DesignCanvas({
 	const [cullRect, setCullRect] = useState<Rect | null>(null);
 	const cullRectRef = useRef<Rect | null>(null);
 	cullRectRef.current = cullRect;
-
-	const paintViewport = useCallback((next: Viewport): void => {
-		const world = worldRef.current;
-		if (world) world.style.transform = `translate(${next.x}px, ${next.y}px) scale(${next.zoom})`;
-	}, []);
 
 	/**
 	 * 按当前视口更新裁剪矩形。够用就原地不动——这个函数在平移的每一帧、缩放的每个
@@ -393,8 +359,8 @@ export function DesignCanvas({
 	 * - 余量不足半屏：接着平移/缩小就要露出没渲染的区域了。
 	 * - 范围比需要的大一倍以上：放大之后旧矩形还按老比例留着，会一直多渲染一堆 frame。
 	 */
-	const syncCullRect = useCallback((vp: Viewport): void => {
-		const { width, height } = sizeRef.current;
+	const syncCullRect = useCallback((vp: Viewport, size: { width: number; height: number }): void => {
+		const { width, height } = size;
 		if (width === 0 || height === 0) return;
 		const worldWidth = width / vp.zoom;
 		const worldHeight = height / vp.zoom;
@@ -410,45 +376,21 @@ export function DesignCanvas({
 		setCullRect(next);
 	}, []);
 
-	/** 把高频 pointermove 折叠到每帧一次实际绘制。 */
-	const schedulePaint = useCallback((): void => {
-		if (rafRef.current !== null) return;
-		rafRef.current = window.requestAnimationFrame(() => {
-			rafRef.current = null;
-			if (!panLiveRef.current) return;
-			paintViewport(panLiveRef.current);
-			syncCullRect(panLiveRef.current);
-		});
-	}, [paintViewport, syncCullRect]);
-
-	// 缩放、平移落定、容器尺寸变化：都要按新的可见范围核对一次裁剪范围。
-	useEffect(() => {
-		syncCullRect(viewport);
-	}, [viewport, syncCullRect]);
-
-	useEffect(() => {
-		const container = containerRef.current;
-		if (!container) return;
-		const observer = new ResizeObserver(() => {
-			sizeRef.current = { width: container.clientWidth, height: container.clientHeight };
-			syncCullRect(panLiveRef.current ?? viewportRef.current);
-		});
-		observer.observe(container);
-		return () => observer.disconnect();
-	}, [syncCullRect]);
-
-	// 平移途中若因别的原因（manifest 变化、活动态更新）触发了渲染，React 会用落后
-	// 的 state 覆盖 transform 把画布弹回去；这里在提交后、绘制前再抹一次实时值。
-	useLayoutEffect(() => {
-		if (panLiveRef.current) paintViewport(panLiveRef.current);
+	/**
+	 * 视口（平移/缩放）全托管给共享控制器，只读预览画布用的是同一份实现。
+	 * 这里额外挂 onPaint：平移的每一帧都要按新的可见范围核对裁剪矩形。
+	 */
+	const view = useViewport({
+		initial: { ...session.manifest.canvas },
+		onCommit: (next) => session.saveViewport(next),
+		onPaint: syncCullRect,
 	});
+	const { viewport, viewportRef, containerRef, worldRef, sizeRef, toWorld } = view;
 
-	useEffect(
-		() => () => {
-			if (rafRef.current !== null) window.cancelAnimationFrame(rafRef.current);
-		},
-		[],
-	);
+	// 缩放、平移落定：都要按新的可见范围核对一次裁剪范围（尺寸变化由 onPaint 覆盖）。
+	useEffect(() => {
+		syncCullRect(viewport, sizeRef.current);
+	}, [viewport, syncCullRect, sizeRef]);
 
 	useEffect(() => {
 		const handle = session.on((change) => {
@@ -594,16 +536,13 @@ export function DesignCanvas({
 			const pos = noteWorldPosition(note, (frameId) => manifestRef.current.frames.find((f) => f.id === frameId));
 			const { width, height } = sizeRef.current;
 			const zoom = viewportRef.current.zoom;
-			panLiveRef.current = null;
 			// 定位只由面板里的条目发起，那时面板一定开着：按它让出的可见区域居中，
 			// 否则「居中」正好把气泡送到面板底下。
 			const visibleWidth = Math.max(width - NOTES_PANEL_INSET, width * 0.35);
-			const next = { zoom, x: visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom };
-			setViewport(next);
-			session.saveViewport(next);
+			view.commitViewport({ zoom, x: visibleWidth / 2 - pos.x * zoom, y: height / 2 - pos.y * zoom });
 			setOpenNoteId(noteId);
 		},
-		[notes, session],
+		[notes, view, sizeRef, viewportRef],
 	);
 
 	/** 待处理备注数，挂在 ControlBar 备注按钮的角标上。 */
@@ -742,59 +681,6 @@ export function DesignCanvas({
 		setMenuAnchor({ frameId, x: clientX - (bounds?.left ?? 0), y: clientY - (bounds?.top ?? 0) });
 	}, []);
 
-	/**
-	 * Ctrl/⌘ + wheel → stepless zoom around the cursor; plain wheel → pan.
-	 *
-	 * 两个来源：画布容器上的 wheel，以及元素选择期间由引擎从 iframe 里转发出来的
-	 * （那时 wheel 落在跨源文档上，画布层根本收不到，见 bridge.ts）。所以这里只认
-	 * 视口坐标与滚动量，不碰事件对象本身。
-	 */
-	const applyWheel = useCallback(
-		(wheel: FrameWheel): void => {
-			const container = containerRef.current;
-			if (!container) return;
-			const bounds = container.getBoundingClientRect();
-			const current = viewportRef.current;
-			if (wheel.ctrlKey || wheel.metaKey) {
-				const cursorX = wheel.clientX - bounds.left;
-				const cursorY = wheel.clientY - bounds.top;
-				const nextZoom = clampZoom(current.zoom * Math.exp(-wheel.deltaY * 0.01));
-				const scale = nextZoom / current.zoom;
-				const next = {
-					zoom: nextZoom,
-					x: cursorX - (cursorX - current.x) * scale,
-					y: cursorY - (cursorY - current.y) * scale,
-				};
-				// 缩放要重渲染（frame 标题与手柄按 zoom 反向缩放），走 state。
-				// 先撤掉可能还挂着的滚轮平移实时值，否则 layout effect 会拿旧位置盖回去。
-				panLiveRef.current = null;
-				if (wheelSettleRef.current !== null) {
-					window.clearTimeout(wheelSettleRef.current);
-					wheelSettleRef.current = null;
-				}
-				setViewport(next);
-				session.saveViewport(next);
-			} else {
-				// 滚轮平移与托手拖拽同理：走 DOM，不逐事件进 state（触控板两指平移
-				// 同样高频）。停下来一小会儿再落 state 与磁盘。
-				const next = { ...current, x: current.x - wheel.deltaX, y: current.y - wheel.deltaY };
-				viewportRef.current = next;
-				panLiveRef.current = next;
-				schedulePaint();
-				if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
-				wheelSettleRef.current = window.setTimeout(() => {
-					wheelSettleRef.current = null;
-					const settled = panLiveRef.current;
-					if (!settled || panRef.current) return;
-					panLiveRef.current = null;
-					setViewport(settled);
-					session.saveViewport(settled);
-				}, 140);
-			}
-		},
-		[session, schedulePaint],
-	);
-
 	useEffect(() => {
 		bridge.start({
 			onSelected: (frameId, payload) => {
@@ -824,11 +710,11 @@ export function DesignCanvas({
 			onFrameContextMenu: openFrameMenu,
 			// frame 内的滚轮与空格：跨源 iframe 把事件全吃了，画布容器上的监听收不到，
 			// 缩放/平移只能从这条路进来。
-			onFrameWheel: applyWheel,
+			onFrameWheel: view.applyWheel,
 			onFrameSpace: setSpaceHeld,
 		});
 		return () => bridge.stop();
-	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, applyWheel]);
+	}, [bridge, invalidateRaster, notifyRendered, openFrameMenu, view.applyWheel]);
 
 	/** Click / shift-click a frame. Shift toggles membership; a plain click replaces. */
 	const selectFrame = useCallback((frameId: string, additive: boolean): void => {
@@ -888,22 +774,11 @@ export function DesignCanvas({
 		if (!container) return;
 		const onWheel = (event: WheelEvent): void => {
 			event.preventDefault();
-			applyWheel(event);
+			view.applyWheel(event);
 		};
 		container.addEventListener("wheel", onWheel, { passive: false });
-		return () => {
-			container.removeEventListener("wheel", onWheel);
-			if (wheelSettleRef.current !== null) window.clearTimeout(wheelSettleRef.current);
-		};
-	}, [applyWheel]);
-
-	const toWorld = useCallback((clientX: number, clientY: number) => {
-		const bounds = containerRef.current?.getBoundingClientRect();
-		const current = viewportRef.current;
-		const localX = clientX - (bounds?.left ?? 0);
-		const localY = clientY - (bounds?.top ?? 0);
-		return { x: (localX - current.x) / current.zoom, y: (localY - current.y) / current.zoom };
-	}, []);
+		return () => container.removeEventListener("wheel", onWheel);
+	}, [view.applyWheel]);
 
 	/**
 	 * 吸附候选：当前可见视口内、且不在 exclude 里的 frame。
@@ -941,12 +816,7 @@ export function DesignCanvas({
 		if (event.button !== 0) return;
 		if (panActive) {
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-			panRef.current = {
-				pointerId: event.pointerId,
-				startX: event.clientX,
-				startY: event.clientY,
-				origin: viewportRef.current,
-			};
+			view.beginPan(event.pointerId, event.clientX, event.clientY);
 			return;
 		}
 		// 备注工具：点哪儿就在哪儿出草稿输入框（frame 上命中就锚 frame，空白处是自由
@@ -1002,21 +872,8 @@ export function DesignCanvas({
 	};
 
 	const onBackgroundPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
-		const pan = panRef.current;
-		if (pan && event.pointerId === pan.pointerId) {
-			const next = {
-				...pan.origin,
-				x: pan.origin.x + (event.clientX - pan.startX),
-				y: pan.origin.y + (event.clientY - pan.startY),
-			};
-			// 平移只改外层那一个 transform，不进 state：过 React 的话每个 pointermove
-			// 都要重渲染整棵 frame 子树（每个 frame 一个跨源 iframe），指针事件又是
-			// 高频且会合并投递，于是渲染把合成器饿死，整窗口高频闪烁。
-			viewportRef.current = next;
-			panLiveRef.current = next;
-			schedulePaint();
-			return;
-		}
+		// 平移只改外层那一个 transform，不进 state（见 use-viewport）。
+		if (view.panMove(event.pointerId, event.clientX, event.clientY)) return;
 		const mq = marqueeRef.current;
 		if (mq && event.pointerId === mq.pointerId) {
 			const start = toWorld(mq.startX, mq.startY);
@@ -1046,19 +903,7 @@ export function DesignCanvas({
 	};
 
 	const onBackgroundPointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
-		if (panRef.current && event.pointerId === panRef.current.pointerId) {
-			panRef.current = null;
-			if (rafRef.current !== null) {
-				window.cancelAnimationFrame(rafRef.current);
-				rafRef.current = null;
-			}
-			// 松手才把这一趟平移交回 state：期间 DOM 已经是最终位置，这次渲染不会跳。
-			const settled = panLiveRef.current ?? viewportRef.current;
-			panLiveRef.current = null;
-			setViewport(settled);
-			session.saveViewport(settled);
-			return;
-		}
+		if (view.endPan(event.pointerId)) return;
 		const mq = marqueeRef.current;
 		if (!mq || event.pointerId !== mq.pointerId) return;
 		marqueeRef.current = null;
@@ -1091,23 +936,6 @@ export function DesignCanvas({
 			const ids = [...new Set([...base, ...hits])];
 			return { kind: "frames", ids };
 		});
-	};
-
-	const zoomBy = (direction: 1 | -1): void => {
-		const container = containerRef.current;
-		const bounds = container?.getBoundingClientRect();
-		const centerX = (bounds?.width ?? 0) / 2;
-		const centerY = (bounds?.height ?? 0) / 2;
-		const current = viewportRef.current;
-		const nextZoom = clampZoom(direction === 1 ? current.zoom * ZOOM_STEP : current.zoom / ZOOM_STEP);
-		const scale = nextZoom / current.zoom;
-		const next = {
-			zoom: nextZoom,
-			x: centerX - (centerX - current.x) * scale,
-			y: centerY - (centerY - current.y) * scale,
-		};
-		setViewport(next);
-		session.saveViewport(next);
 	};
 
 	/** Grab the placement of every frame that will travel with this drag. */
@@ -1464,7 +1292,7 @@ export function DesignCanvas({
 	const worldStyle = useMemo(
 		() =>
 			({
-				transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.zoom})`,
+				transform: view.worldTransform,
 				transformOrigin: "0 0",
 				// frame 标题与手柄按它反向缩放。走 CSS 变量而不是 prop：否则每个 wheel
 				// tick 都要重渲染全部 FrameView，而这里只是改一个元素的 style。
@@ -1473,7 +1301,7 @@ export function DesignCanvas({
 				// 动辄上万像素，强行提升成合成层会超出 GPU 纹理上限，合成器降级后
 				// 整窗口撕裂闪烁。让浏览器自己决定要不要提升。
 			}) as CSSProperties,
-		[viewport],
+		[view.worldTransform, viewport.zoom],
 	);
 
 	return (
@@ -1654,11 +1482,9 @@ export function DesignCanvas({
 				pendingNotes={pendingNoteCount}
 				rightInset={tool === "note" ? NOTES_PANEL_INSET : 0}
 				onToolChange={setTool}
-				onZoomDelta={zoomBy}
+				onZoomDelta={view.zoomBy}
 				onZoomReset={() => {
-					const next = { ...viewportRef.current, zoom: 1 };
-					setViewport(next);
-					session.saveViewport(next);
+					view.commitViewport({ ...viewportRef.current, zoom: 1 });
 				}}
 				onExport={openExport}
 				onDesignSystems={() => {
