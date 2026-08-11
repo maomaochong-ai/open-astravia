@@ -24,6 +24,7 @@ function system(id: string, name: string): DesignSystem {
 		category: "dev",
 		vibe: "dark",
 		blurb: "blurb",
+		resources: [],
 		themeCss: "@theme { --color-primary: #000; }",
 		designMd: `# ${name}`,
 	};
@@ -109,15 +110,25 @@ describe("从风格开新设计的文案", () => {
 		expect(designNameForSystem(system("retro-95", "Retro 95"))).toBe("Retro 95");
 	});
 
-	it("草稿带 skill badge 和体系名，跟宿主语言走", () => {
-		const zh = buildStyleStartDraft(system("linear", "Linear"), "zh-CN");
+	it("草稿逐个点名落盘的参考资料，跟宿主语言走", () => {
+		const written = ["DESIGN.md", "theme.css", "screenshots/home.webp"];
+		const zh = buildStyleStartDraft(system("linear", "Linear"), "zh-CN", written);
 		expect(zh).toContain("@skill:vetta-ui-design ");
 		expect(zh).toContain("Linear");
-		expect(zh).toContain("DESIGN.md");
+		// 截图这类素材只有被点名，agent 才会去看。
+		expect(zh).toContain("design-resources/linear/screenshots/home.webp");
+		expect(zh).toContain("design-resources/linear/DESIGN.md");
 
-		const en = buildStyleStartDraft(system("linear", "Linear"), "en");
+		const en = buildStyleStartDraft(system("linear", "Linear"), "en", written);
 		expect(en).toContain("@skill:vetta-ui-design ");
-		expect(en).toContain('"Linear" system');
+		expect(en).toContain('"Linear" style');
+		expect(en).toContain("design-resources/linear/screenshots/home.webp");
+	});
+
+	it("一份资料都没落下来时不提资料，免得 agent 去读不存在的文件", () => {
+		const zh = buildStyleStartDraft(system("linear", "Linear"), "zh", []);
+		expect(zh).not.toContain("design-resources");
+		expect(zh).toContain("Linear");
 	});
 });
 

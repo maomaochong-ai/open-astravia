@@ -1,6 +1,6 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DESIGN_CATALOG_SOURCES, isCacheFresh, refreshDesignCatalog } from "../src/design-systems/catalog-sync";
+import { DESIGN_CATALOG_SOURCES, isCacheFresh, refreshDesignCatalog, repoRootUrl } from "../src/design-systems/catalog-sync";
 import { catalogState, designSystems, resetDesignSystems } from "../src/design-systems/registry";
 
 const NOW = Date.parse("2026-08-11T12:00:00.000Z");
@@ -14,7 +14,10 @@ function remoteEntry(slug: string): Record<string, unknown> {
 		category: "dev",
 		vibe: "dark",
 		blurb: "blurb",
-		content: { spec: `# ${slug}`, theme: "@theme { --color-primary: #000; }" },
+		resources: [
+			{ path: "DESIGN.md", role: "spec", encoding: "text", bytes: 8, content: `# ${slug}` },
+			{ path: "theme.css", role: "theme", encoding: "text", bytes: 34, content: "@theme { --color-primary: #000; }" },
+		],
 	};
 }
 
@@ -243,5 +246,21 @@ describe("refreshDesignCatalog 的回退链", () => {
 		} as unknown as PluginContext;
 		await expect(refreshDesignCatalog(ctx, NOW)).resolves.toBeUndefined();
 		expect(designSystems().map((system) => system.id)).toEqual(["fresh"]);
+	});
+});
+
+describe("repoRootUrl", () => {
+	it("剥掉清单自身的路径，得到仓库根", () => {
+		// 资源地址是相对仓库根的；直接拿清单地址当 base 会多出一段 .vetta/。
+		expect(repoRootUrl(DESIGN_CATALOG_SOURCES[0])).toBe(
+			"https://cdn.jsdelivr.net/gh/openvetta/vetta-design-templates@main/",
+		);
+		expect(repoRootUrl(DESIGN_CATALOG_SOURCES[1])).toBe(
+			"https://raw.githubusercontent.com/openvetta/vetta-design-templates/main/",
+		);
+	});
+
+	it("地址形状不认识时回落到清单所在目录", () => {
+		expect(repoRootUrl("https://example.com/a/b/catalog.json")).toBe("https://example.com/a/b/");
 	});
 });

@@ -1,4 +1,4 @@
-import type { DesignSystem } from "./types";
+import type { DesignResource, DesignResourceRole, DesignSystem } from "./types";
 
 /**
  * 远端设计资源清单的解析与校验（纯函数，无 I/O）。
@@ -14,6 +14,70 @@ const MAX_THEME_BYTES = 32 * 1024;
 const MAX_SHORT_TEXT = 500;
 /** 一次清单最多接受的条目数，防止畸形源撑爆选择器。 */
 const MAX_ENTRIES = 200;
+/** 单个条目最多带多少份资源，以及单份资源的体积上限。 */
+const MAX_RESOURCES_PER_ENTRY = 60;
+const MAX_RESOURCE_BYTES = 8 * 1024 * 1024;
+
+const RESOURCE_ROLES = new Set<DesignResourceRole>(["spec", "theme", "preview", "package"]);
+
+/**
+ * 资源路径会被拼成用户磁盘上的落盘路径，所以穿越必须在这里挡死：不接受绝对路径、
+ * 反斜杠、空段、`.` 和 `..`。
+ */
+function isSafeResourcePath(value: unknown): value is string {
+	if (typeof value !== "string" || value.length === 0 || value.length > 200) return false;
+	if (value.startsWith("/") || value.includes("\\")) return false;
+	return !value.split("/").some((segment) => segment === "" || segment === "." || segment === "..");
+}
+
+/** 把清单里的**相对仓库根**地址拼成可请求的绝对地址；越界或换 host 的一律丢弃。 */
+function resolveResourceUrl(raw: unknown, repoRootUrl: string): string | null {
+	if (typeof raw !== "string" || raw.length === 0) return null;
+	try {
+		const base = new URL(repoRootUrl);
+		const resolved = new URL(raw, base);
+		if (resolved.protocol !== "https:") return null;
+		if (resolved.host !== base.host) return null;
+		return resolved.toString();
+	} catch {
+		return null;
+	}
+}
+
+function parseResources(raw: unknown, repoRootUrl: string): DesignResource[] | null {
+	if (!Array.isArray(raw)) return null;
+	const out: DesignResource[] = [];
+	const seen = new Set<string>();
+	for (const item of raw.slice(0, MAX_RESOURCES_PER_ENTRY)) {
+		if (!isRecord(item)) continue;
+		if (!isSafeResourcePath(item.path)) continue;
+		if (seen.has(item.path)) continue;
+		const bytes = typeof item.bytes === "number" && item.bytes >= 0 ? item.bytes : 0;
+		if (bytes > MAX_RESOURCE_BYTES) continue;
+		const role = RESOURCE_ROLES.has(item.role as DesignResourceRole)
+			? (item.role as DesignResourceRole)
+			: undefined;
+		if (item.encoding === "text") {
+			const content = bodyText(item.content, MAX_SPEC_BYTES);
+			if (content === null) continue;
+			seen.add(item.path);
+			out.push({ path: item.path, ...(role ? { role } : {}), encoding: "text", content, bytes });
+			continue;
+		}
+		if (item.encoding === "binary") {
+			const url = resolveResourceUrl(item.url, repoRootUrl);
+			if (!url) continue;
+			seen.add(item.path);
+			out.push({ path: item.path, ...(role ? { role } : {}), encoding: "binary", url, bytes });
+		}
+	}
+	return out;
+}
+
+function textResourceByRole(resources: readonly DesignResource[], role: DesignResourceRole): string | null {
+	const hit = resources.find((resource) => resource.role === role);
+	return hit?.encoding === "text" ? hit.content : null;
+}
 
 export interface RemoteCatalogResult {
 	systems: DesignSystem[];
@@ -56,7 +120,7 @@ function isPlausibleSpec(spec: string): boolean {
 	return true;
 }
 
-function parseEntry(raw: unknown): DesignSystem | null {
+function parseEntry(raw: unknown, repoRootUrl: string): DesignSystem | null {
 	if (!isRecord(raw)) return null;
 	if (raw.kind !== "design-system") return null;
 
@@ -69,11 +133,13 @@ function parseEntry(raw: unknown): DesignSystem | null {
 	// id 会拼进文件内容（DESIGN.md frontmatter 的 `system:`）和查找键，收紧到 slug 形态。
 	if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(id)) return null;
 
-	const content = isRecord(raw.content) ? raw.content : null;
-	if (!content) return null;
-	const designMd = bodyText(content.spec, MAX_SPEC_BYTES);
-	const themeCss = bodyText(content.theme, MAX_THEME_BYTES);
+	const resources = parseResources(raw.resources, repoRootUrl);
+	if (!resources) return null;
+	// spec 与 theme 是一套体系的最小构成，其余资源（截图、参考 HTML…）都是可选的。
+	const designMd = textResourceByRole(resources, "spec");
+	const themeCss = textResourceByRole(resources, "theme");
 	if (!designMd || !themeCss || !isPlausibleSpec(designMd)) return null;
+	if (designMd.length > MAX_SPEC_BYTES || themeCss.length > MAX_THEME_BYTES) return null;
 	// theme.css 是要原样写进用户项目的样式真源，至少得是个 @theme 块。
 	if (!themeCss.includes("@theme")) return null;
 
@@ -86,6 +152,7 @@ function parseEntry(raw: unknown): DesignSystem | null {
 		category,
 		vibe,
 		blurb,
+		resources,
 		themeCss,
 		designMd,
 		tagline: localizedText(raw.tagline),
@@ -98,7 +165,7 @@ function parseEntry(raw: unknown): DesignSystem | null {
  * 把远端清单解析成可用的设计体系列表。返回 `null` 表示整包不可用（结构不对或一条
  * 都没解析出来），调用方应保持当前列表不变。
  */
-export function parseRemoteCatalog(raw: unknown): RemoteCatalogResult | null {
+export function parseRemoteCatalog(raw: unknown, repoRootUrl: string): RemoteCatalogResult | null {
 	if (!isRecord(raw)) return null;
 	if (raw.schemaVersion !== 1) return null;
 	if (!Array.isArray(raw.templates)) return null;
@@ -110,7 +177,7 @@ export function parseRemoteCatalog(raw: unknown): RemoteCatalogResult | null {
 	for (const [index, entry] of raw.templates.slice(0, MAX_ENTRIES).entries()) {
 		// 认识的 kind 才参与；未知 kind 直接跳过且不算失败，保证清单可以先于客户端演进。
 		if (isRecord(entry) && entry.kind !== "design-system") continue;
-		const parsed = parseEntry(entry);
+		const parsed = parseEntry(entry, repoRootUrl);
 		if (!parsed) {
 			const label = isRecord(entry) && typeof entry.slug === "string" ? entry.slug : `#${index}`;
 			rejected.push(label);

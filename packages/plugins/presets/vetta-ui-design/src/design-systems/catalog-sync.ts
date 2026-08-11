@@ -31,6 +31,26 @@ export const DESIGN_CATALOG_SOURCES: readonly string[] = [
 /** 上一次成功拉取到的清单原文，存插件私有 storage。 */
 const CACHE_KEY = "design-catalog/latest";
 
+/** 清单在资源仓库中的固定位置。 */
+const CATALOG_PATH_IN_REPO = ".vetta/design-templates.json";
+
+/**
+ * 由清单地址推出仓库根地址。
+ *
+ * 清单里的资源地址是**相对仓库根**的（`templates/<slug>/...`），而 `new URL(rel, base)`
+ * 是相对清单所在目录解析的——直接拿清单地址当 base 会多出一段 `.vetta/`。
+ */
+export function repoRootUrl(catalogUrl: string): string {
+	if (catalogUrl.endsWith(CATALOG_PATH_IN_REPO)) {
+		return catalogUrl.slice(0, catalogUrl.length - CATALOG_PATH_IN_REPO.length);
+	}
+	try {
+		return new URL("./", catalogUrl).toString();
+	} catch {
+		return catalogUrl;
+	}
+}
+
 /** 缓存多久之内不再发请求。设计资源不是时效内容，半天一次足够。 */
 const REFRESH_TTL_MS = 6 * 60 * 60 * 1000;
 
@@ -96,7 +116,7 @@ async function applyRemote(ctx: PluginContext, cached: CachedCatalog | null, now
 			}
 			if (!response.ok) continue;
 
-			const parsed = parseRemoteCatalog(response.body);
+				const parsed = parseRemoteCatalog(response.body, repoRootUrl(url));
 			if (!parsed) continue;
 			if (!setDesignSystems(parsed.systems)) continue;
 			await ctx.storage
@@ -132,7 +152,8 @@ export async function refreshDesignCatalog(ctx: PluginContext, now: number = Dat
 	}
 
 	if (cached) {
-		const parsed = parseRemoteCatalog(cached.catalog);
+		// 二进制资源的地址按当初拿到这份清单的源来拼；缓存里记了 sourceUrl 就用它。
+		const parsed = parseRemoteCatalog(cached.catalog, repoRootUrl(cached.sourceUrl ?? DESIGN_CATALOG_SOURCES[0]));
 		if (parsed) {
 			setDesignSystems(parsed.systems);
 			// 缓存还新鲜就到此为止：这是把请求量从「每次启动」压到「每 TTL 一次」的关键。

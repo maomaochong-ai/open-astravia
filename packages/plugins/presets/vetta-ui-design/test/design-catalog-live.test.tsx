@@ -21,6 +21,7 @@ function remoteSystem(overrides: Partial<DesignSystem> = {}): DesignSystem {
 		vibe: "dark",
 		blurb: "A style that only exists on the remote catalog.",
 		tagline: { en: "Fresh from the catalog", zh: "刚从清单来的" },
+		resources: [],
 		themeCss: "@theme { --color-primary: #123456; }",
 		designMd: "# Brand New",
 		...overrides,

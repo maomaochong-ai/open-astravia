@@ -85,6 +85,13 @@ export async function findVetdFiles(fs: PluginFsApi, cwd: string): Promise<strin
 const PURE_PROJECT_META_FILES = new Set(["readme.md", "readme", "license", "license.md", "agents.md", "claude.md"]);
 
 /**
+ * 设计参考资料目录（风格库开新设计时落的 DESIGN.md / theme.css）。它是为这份设计准备
+ * 的素材，不是「别的实质文件」——不豁免的话，从风格库开的项目会因为多了这个目录而被
+ * 判成非纯设计项目，画布不再自动展开。
+ */
+const DESIGN_RESOURCES_PREFIX = "design-resources/";
+
+/**
  * 纯设计项目：至少有一份设计稿，且没有别的实质文件。判定放在纯函数里，
  * 因为「自动打开设计面板」是会打断用户的副作用，误判代价比漏判高。
  */
@@ -101,6 +108,7 @@ export function isPureDesignProject(files: PluginFsFileRef[]): boolean {
 			hasVetd = true;
 			continue;
 		}
+		if (rel.startsWith(DESIGN_RESOURCES_PREFIX)) continue;
 		const isRootLevel = !rel.includes("/");
 		if (isRootLevel && PURE_PROJECT_META_FILES.has(file.name.toLowerCase())) continue;
 		return false;
