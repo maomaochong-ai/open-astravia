@@ -3,6 +3,7 @@ import { CONTENT_NODE_DEFINITIONS } from "../node/definitions";
 import { listConnectedPromptSources, resolveContentPrompt } from "../node/prompt-sources";
 import { serializeContentProject } from "../project/persistence";
 import type { ContentNode, ContentProjectDocument, GenerationJob } from "../project/types";
+import { contentPromptTextFromData } from "../node/prompt-document";
 import { analyzeVideoPromptMethod, VIDEO_PROMPT_PLAN_FIELD_GUIDANCE } from "./generation-prompt-plan";
 import { analyzeContentWorkflow } from "./workflow-analysis";
 
@@ -49,6 +50,9 @@ export function createContentCreationAgentState(
 			})),
 			models: models.map(modelForAgent),
 		},
+		videoPlans: project.graph.nodes
+			.filter((node) => node.kind === "video-generator")
+			.map((node) => videoPlanForAgent(project, node)),
 		analysis,
 		diagnostics: analysis.issues,
 	};
@@ -116,6 +120,7 @@ function diagnoseGenerator(
 				},
 			});
 		}
+		diagnoseVideoStrategyPromptContracts(project, node, prompt, diagnostics);
 	}
 	const outputKind = node.kind === "image-generator" ? "image" : "video";
 	const available = models.filter((model) => model.outputKind === outputKind);
@@ -150,6 +155,86 @@ function diagnoseGenerator(
 			nodeId: node.id,
 			message: truncateError(failed.error ?? "Generation failed."),
 			retryable: failed.errorCode !== "content-rejected" && failed.errorCode !== "not-entitled",
+		});
+	}
+}
+
+function videoPlanForAgent(project: ContentProjectDocument, node: ContentNode) {
+	const sourceRoles = project.graph.edges
+		.filter((edge) => edge.target === node.id && edge.targetHandle !== "prompt")
+		.flatMap((edge) => edge.role ? [edge.role] : []);
+	return {
+		nodeId: node.id,
+		strategy: inferVideoStrategy(node.data.modeId, sourceRoles),
+		modeId: node.data.modeId ?? null,
+		sourceRoles,
+	};
+}
+
+function inferVideoStrategy(modeId: string | undefined, sourceRoles: readonly string[]): string {
+	if (modeId === "reference-to-video") return "omni-reference";
+	if (modeId === "video-to-video") return "transform-video";
+	if (modeId === "image-to-video") {
+		return sourceRoles.includes("lastFrame") ? "first-last-frame" : "animate-still";
+	}
+	if (modeId === "text-to-video") return "text-to-video";
+	return "unconfigured";
+}
+
+function diagnoseVideoStrategyPromptContracts(
+	project: ContentProjectDocument,
+	node: ContentNode,
+	prompt: string,
+	diagnostics: ContentAgentDiagnostic[],
+): void {
+	const frameEdges = project.graph.edges.filter(
+		(edge) => edge.target === node.id && (edge.role === "firstFrame" || edge.role === "lastFrame"),
+	);
+	if (frameEdges.length > 0) {
+		const prompts = frameEdges.map((edge) => {
+			const source = project.graph.nodes.find((candidate) => candidate.id === edge.source);
+			return {
+				role: edge.role,
+				nodeId: edge.source,
+				prompt: source ? contentPromptTextFromData(source.data) : "",
+			};
+		});
+		for (const frame of prompts) {
+			const expected = frame.role === "firstFrame" ? "first" : "last";
+			if (!new RegExp(`keyframe phase\\s*:\\s*${expected} frame`, "i").test(frame.prompt)) {
+				diagnostics.push({
+					code: "video-keyframe-prompt-contract-missing",
+					severity: "warning",
+					nodeId: frame.nodeId,
+					message: `${frame.role} should use a static image-keyframe prompt plan instead of video directing language.`,
+					retryable: true,
+					details: { videoNodeId: node.id, role: frame.role, recommendedPromptPlanKind: "image-keyframe" },
+				});
+			}
+		}
+		if (
+			frameEdges.some((edge) => edge.role === "lastFrame") &&
+			prompts.length === 2 &&
+			prompts[0]?.prompt &&
+			prompts[0].prompt === prompts[1]?.prompt
+		) {
+			diagnostics.push({
+				code: "video-keyframe-prompts-reused",
+				severity: "warning",
+				nodeId: node.id,
+				message: "First and last frames reuse the same prompt instead of describing distinct visible states.",
+				retryable: true,
+			});
+		}
+	}
+	if (node.data.modeId === "reference-to-video" && !/^Reference manifest:/i.test(prompt)) {
+		diagnostics.push({
+			code: "video-reference-manifest-missing",
+			severity: "warning",
+			nodeId: node.id,
+			message: "Omni-reference generation should assign every media input a stable alias, semantic role, and instruction.",
+			retryable: true,
+			details: { recommendedOperation: "configure_video_shot" },
 		});
 	}
 }

@@ -53,7 +53,17 @@ const TEST_MODELS: readonly ContentModelDescriptor[] = [
 		aspectRatios: ["16:9"],
 		modes: [
 			{ id: "text-to-video", inputs: [] },
-			{ id: "image-to-video", inputs: [{ id: "firstFrame", accepts: ["image"], minItems: 1, maxItems: 1 }] },
+			{
+				id: "image-to-video",
+				inputs: [
+					{ id: "firstFrame", accepts: ["image"], minItems: 1, maxItems: 1 },
+					{ id: "lastFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+				],
+			},
+			{
+				id: "reference-to-video",
+				inputs: [{ id: "referenceImages", accepts: ["image"], minItems: 1, maxItems: 8 }],
+			},
 			{ id: "video-to-video", inputs: [{ id: "referenceVideos", accepts: ["video"], minItems: 1, maxItems: 1 }] },
 		],
 	},
@@ -104,6 +114,61 @@ describe("ContentCreationAgentService", () => {
 			{ type: "add_node", id: "video", kind: "video-generator" },
 			{ type: "connect_nodes", source: "prompt", target: "video", targetInput: "promptSources" },
 		])).rejects.toMatchObject({ code: "video-prompt-method-incomplete" });
+	});
+
+	it("atomically materializes a first/last-frame shot through the Agent service", async () => {
+		const { agent } = createAgentHarness();
+		const project = await agent.edit("C:/project", [
+			{ type: "add_node", id: "first", kind: "image-generator" },
+			{ type: "add_node", id: "last", kind: "image-generator" },
+			{ type: "add_node", id: "video", kind: "video-generator" },
+			{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				strategy: "automatic",
+				controlRequirements: { exactEnding: true },
+				aspectRatio: "16:9",
+				duration: 5,
+				promptPlan: createVideoPromptPlan(),
+				keyframes: {
+					first: { nodeId: "first", promptPlan: createKeyframePromptPlan("first") },
+					last: { nodeId: "last", promptPlan: createKeyframePromptPlan("last") },
+				},
+			},
+		]);
+
+		expect(project.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
+			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
+		]));
+		expect((await agent.inspect("C:/project")).videoPlans).toContainEqual(expect.objectContaining({
+			nodeId: "video",
+			strategy: "first-last-frame",
+		}));
+	});
+
+	it("rejects an omni shot without its required scene authority before committing", async () => {
+		const { agent } = createAgentHarness();
+
+		await expect(agent.edit("C:/project", [
+			{ type: "add_node", id: "person-a", kind: "image-generator" },
+			{ type: "add_node", id: "person-b", kind: "image-generator" },
+			{ type: "add_node", id: "video", kind: "video-generator" },
+			{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				strategy: "automatic",
+				aspectRatio: "16:9",
+				controlRequirements: { requiresSceneReference: true },
+				promptPlan: createVideoPromptPlan(),
+				sources: [
+					{ sourceNodeId: "person-a", alias: "personA", semanticRole: "identity", instruction: "Preserve identity" },
+					{ sourceNodeId: "person-b", alias: "personB", semanticRole: "identity", instruction: "Preserve identity" },
+				],
+			},
+		])).rejects.toMatchObject({ code: "video-shot-environment-reference-required" });
+
+		expect((await agent.inspect("C:/project")).nodes).toHaveLength(0);
 	});
 
 	it("applies destructive and broad edits directly without confirmation", async () => {
@@ -269,5 +334,26 @@ function createVideoPromptPlan() {
 		},
 		finalState: "settle and hold on the existing branding",
 		constraints: ["no geometry drift", "no new text", "no flicker"],
+	};
+}
+
+function createKeyframePromptPlan(phase: "first" | "last") {
+	return {
+		kind: "image-keyframe",
+		phase,
+		sceneFunction: `${phase} frame of the product reveal`,
+		referenceRole: "the product reference controls identity, geometry, materials, and branding",
+		protectedInvariants: ["product geometry", "materials", "existing branding"],
+		visibleState: phase === "first" ? "product rests in a wide hero composition" : "product fills a centered close hero composition",
+		composition: {
+			framing: phase === "first" ? "wide hero shot" : "close hero shot",
+			angle: "eye-level product angle",
+			placement: "product centered on its display surface",
+			cameraAxis: "straight along the product centerline",
+		},
+		environment: "controlled dark studio set",
+		lighting: { setup: "soft side key and narrow rim", direction: "key enters from camera left" },
+		style: "premium product photography with controlled specular highlights",
+		constraints: ["frozen readable state", "no motion blur", "no geometry drift"],
 	};
 }

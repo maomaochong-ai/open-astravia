@@ -94,7 +94,10 @@ export type ContentVideoPromptMethodIssue =
 export class ContentGenerationPromptPlanError extends Error {
 	constructor(
 		message: string,
-		readonly code: "video-prompt-plan-invalid" | "video-prompt-method-incomplete",
+		readonly code:
+			| "video-prompt-plan-invalid"
+			| "video-prompt-method-incomplete"
+			| "keyframe-prompt-plan-invalid",
 		readonly details: Record<string, unknown>,
 		readonly retryable = true,
 	) {

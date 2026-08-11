@@ -5,6 +5,7 @@ import { ContentGenerationPromptPlanError } from "../src/agent/generation-prompt
 import { parseContentAgentOperations } from "../src/agent/operations";
 import type { ContentCreationAgentService } from "../src/agent/service";
 import { createContentCreationAgentState } from "../src/agent/state";
+import { ContentVideoShotPlanError } from "../src/agent/video-shot-plan";
 import { ContentGenerationIntentError } from "../src/generation/generation-intent";
 import { ContentLocalAssetError, type ContentLocalAssetService } from "../src/generation/local-asset-service";
 import type { ContentModelDescriptor } from "../src/generation/types";
@@ -195,6 +196,32 @@ describe("content creation tool registration", () => {
 		})).not.toThrow();
 	});
 
+	it("accepts a structured omni-reference video shot through host AJV validation", () => {
+		expect(() => validateRegisteredTool(CONTENT_EDIT_TOOL_NAME, {
+			operations: [{
+				type: "configure_video_shot",
+				targetNodeId: "video",
+				strategy: "automatic",
+				controlRequirements: { requiresSceneReference: true },
+				promptPlan: createVideoPromptPlan(),
+				sources: [
+					{
+						sourceNodeId: "person",
+						alias: "dancer",
+						semanticRole: "identity",
+						instruction: "Preserve face and costume",
+					},
+					{
+						sourceNodeId: "scene",
+						alias: "ballroom",
+						semanticRole: "environment",
+						instruction: "Use the room layout and lighting",
+					},
+				],
+			}],
+		})).not.toThrow();
+	});
+
 	it("returns retryable corrective context for semantic generation mistakes", async () => {
 		edit.mockRejectedValueOnce(new ContentGenerationIntentError(
 			"configure_generation targetNodeId must identify the receiving video-generator",
@@ -241,6 +268,25 @@ describe("content creation tool registration", () => {
 				issues: ["reference-role-missing"],
 				recommendedOperationField: "promptPlan",
 			},
+		});
+	});
+
+	it("returns strategy conflicts as retryable structured tool errors", async () => {
+		edit.mockRejectedValueOnce(new ContentVideoShotPlanError(
+			"animate-still cannot satisfy an exact final-frame requirement",
+			"video-shot-strategy-conflict",
+			{ requestedStrategy: "animate-still", recommendedStrategy: "first-last-frame" },
+		));
+
+		const result = await tool<{ operations: unknown[] }>(CONTENT_EDIT_TOOL_NAME).handler(
+			toolContext({ operations: [{ type: "configure_video_shot", targetNodeId: "video" }] }),
+		);
+
+		expect(result).toMatchObject({
+			ok: false,
+			retryable: true,
+			code: "video-shot-strategy-conflict",
+			details: { requestedStrategy: "animate-still", recommendedStrategy: "first-last-frame" },
 		});
 	});
 

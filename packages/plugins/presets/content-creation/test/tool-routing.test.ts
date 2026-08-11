@@ -103,4 +103,20 @@ describe("content creation tool routing", () => {
 		}));
 		expect(setEnabled).toHaveBeenCalledWith(CONTENT_EDIT_TOOL_NAME, true);
 	});
+
+	it("loads both static-image and video methods for first/last-frame control", () => {
+		const methods = selectContentMethodIds("生成一个精准对齐首尾帧的连续产品视频");
+		const context = renderContentMethodContext(methods);
+
+		expect(methods).toEqual([
+			"operate-content-workflow",
+			"direct-image-creation",
+			"direct-video-creation",
+			"product-video-recipe",
+		]);
+		expect(context).toContain("# Image prompt framework");
+		expect(context).toContain("# Continuity and references");
+		expect(context).toContain("# Reference roles and timed directing");
+		expect(context).toContain("configure_video_shot");
+	});
 });

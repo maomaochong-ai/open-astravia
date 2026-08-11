@@ -38,7 +38,7 @@ Every generator node should have a purpose that states its role and changed vari
 
 Describe the intended topology and use `afterNodeId` only as a locality hint when useful. The edit service owns incremental canvas layout; never synthesize coordinates. Preserve existing IDs and edges during local changes. Set `modelSelection="automatic"` unless inspected requirements justify a specific provider/model/mode. Connect ordinary topology with semantic `targetInput` values (`promptSources`, `referenceImages`, `contentSources`, or `mediaSources`) instead of internal handles. Use `bind_assets` to select concrete image-generator references.
 
-Video media inputs are a generation plan, not generic graph edges. Use one `configure_generation` operation with `targetNodeId` set to the receiving video-generator. Put all source image/video node IDs in `sources[]`; never use a source node as `targetNodeId`:
+Video media inputs are a generation plan, not generic graph edges. Prefer one high-level `configure_video_shot` operation with `targetNodeId` set to the receiving video-generator. It selects and validates a strategy before compiling to the same capability-backed roles. Use low-level `configure_generation` only for legacy or targeted role repair. Put source image/video node IDs in `sources[]`; never use a source node as `targetNodeId`:
 
 - `text-to-video`: no sources;
 - `animate-still`: exactly one image source, treated as the initial composition/frame;
@@ -48,10 +48,19 @@ Video media inputs are a generation plan, not generic graph edges. Use one `conf
 
 For asset nodes, include non-empty `assetIds` selected from that node. For image/video generator nodes, provide only `sourceNodeId` so the downstream node consumes the future generated output. `configure_generation` resolves only configured model capabilities and atomically replaces the target's prior media roles, bindings, provider, model, and mode. If no compatible configured model exists, change the plan or report the missing capability; do not fall back to raw `connect_nodes`.
 
+For `configure_video_shot`:
+
+- use `strategy="automatic"` unless the user explicitly chooses a supported method;
+- set `controlRequirements.exactEnding=true` when the requested final composition or state must be controlled; this selects first/last-frame and never degrades to `animate-still`;
+- provide `keyframes.first` and `keyframes.last` as distinct image-generator nodes with matching `image-keyframe` phases;
+- keep identity, subject count, environment, camera axis, aspect ratio, and light direction compatible across both keyframes;
+- for omni-reference, assign every source a unique `alias`, a semantic role (`identity`, `product`, `environment`, `style`, `composition`, `end`, `motion`, or `audio`), and a concrete instruction;
+- declare `requiresSceneReference=true` for choreography or spatial interaction whose environment must remain authoritative.
+
 ## Edit in coherent batches
 
 Keep a batch focused on one understandable change, but include newly created nodes and all intended connections in the same batch. The edit tool validates and applies the complete revision-bound batch atomically without a confirmation step. A failure leaves project state unchanged; inspect again after revision conflicts.
 
-For Agent-authored video prompts, submit `promptPlan` on a video generator or its connected Prompt node instead of a raw `prompt`. It records scene function, reference role, protected invariants, initial and final states, primary and secondary motion, motivated camera direction/rest point, lighting behavior, and optional audio/constraints. The edit service compiles this structure and validates the effective downstream video prompt atomically. Existing user-authored prompts remain editable in the UI; only Agent changes are gated.
+For Agent-authored video prompts, submit a `video-shot` plan instead of a raw `prompt`. For generated first/last frames, use `image-keyframe` plans: these record frozen visible state, composition, camera axis, environment, light direction, and continuity anchors, while the video plan records continuous motion. The edit service compiles and validates all three prompts atomically. Existing user-authored prompts remain editable in the UI; only Agent changes are gated.
 
 Supported operation families for this skill are workflow updates, node add/update/rename/purpose/duplicate/delete, semantic edge connect/delete, concrete image asset binding, and intent-driven video generation configuration. Use only fields present in the tool schema.

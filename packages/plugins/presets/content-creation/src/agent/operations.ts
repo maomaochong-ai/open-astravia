@@ -22,6 +22,16 @@ import {
 	parseVideoPromptPlan,
 	VIDEO_PROMPT_PLAN_SCHEMA,
 } from "./generation-prompt-plan";
+import {
+	compileKeyframePromptPlan,
+	KEYFRAME_PROMPT_PLAN_SCHEMA,
+	parseKeyframePromptPlan,
+} from "./keyframe-prompt-plan";
+import { parseConfigureVideoShotOperation } from "./configure-video-shot-operation";
+import {
+	CONTENT_VIDEO_REFERENCE_SEMANTIC_ROLES,
+	CONTENT_VIDEO_SHOT_STRATEGIES,
+} from "./video-shot-plan";
 
 const NODE_KINDS: readonly ContentNodeKind[] = CONTENT_NODE_DEFINITIONS.map((definition) => definition.kind);
 const DELIVERABLE_TYPES: readonly ContentWorkflowDeliverable["type"][] = [
@@ -51,7 +61,7 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			type: {
 				type: "string",
 				description:
-					"Operation kind. Use configure_generation only for a video-generator target; put image/video sources in sources[].",
+					"Operation kind. Prefer configure_video_shot for Agent-authored video workflows; keep configure_generation for low-level or legacy role configuration.",
 				enum: [
 					"update_workflow",
 					"add_node",
@@ -61,6 +71,7 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 					"duplicate_node",
 					"bind_assets",
 					"configure_generation",
+					"configure_video_shot",
 					"delete_node",
 					"connect_nodes",
 					"delete_edge",
@@ -82,6 +93,21 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 				enum: CONTENT_VIDEO_GENERATION_INTENTS,
 				description: "Required only for configure_generation. Classifies the requested video generation behavior.",
 			},
+			strategy: {
+				type: "string",
+				enum: CONTENT_VIDEO_SHOT_STRATEGIES,
+				description:
+					"High-level strategy for configure_video_shot. automatic selects from explicit control requirements and reference roles without silently degrading exact controls.",
+			},
+			controlRequirements: {
+				type: "object",
+				properties: {
+					exactOpening: { type: "boolean" },
+					exactEnding: { type: "boolean" },
+					requiresSceneReference: { type: "boolean" },
+				},
+				additionalProperties: false,
+			},
 			sources: {
 				type: "array",
 				description:
@@ -92,10 +118,37 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 						sourceNodeId: { type: "string" },
 						assetIds: { type: "array", items: { type: "string" } },
 						role: { type: "string", enum: CONTENT_GENERATION_SOURCE_ROLES },
+						alias: { type: "string" },
+						semanticRole: { type: "string", enum: CONTENT_VIDEO_REFERENCE_SEMANTIC_ROLES },
+						instruction: { type: "string" },
 					},
 					required: ["sourceNodeId"],
 					additionalProperties: false,
 				},
+			},
+			keyframes: {
+				type: "object",
+				properties: {
+					first: {
+						type: "object",
+						properties: {
+							nodeId: { type: "string" },
+							promptPlan: KEYFRAME_PROMPT_PLAN_SCHEMA,
+						},
+						required: ["nodeId", "promptPlan"],
+						additionalProperties: false,
+					},
+					last: {
+						type: "object",
+						properties: {
+							nodeId: { type: "string" },
+							promptPlan: KEYFRAME_PROMPT_PLAN_SCHEMA,
+						},
+						required: ["nodeId", "promptPlan"],
+						additionalProperties: false,
+					},
+				},
+				additionalProperties: false,
 			},
 			deliverables: {
 				type: "array",
@@ -115,7 +168,7 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 				description:
 					"Raw prompt. For Agent-authored video prompts, prefer promptPlan; changed video prompts are checked against the production method.",
 			},
-			promptPlan: VIDEO_PROMPT_PLAN_SCHEMA,
+			promptPlan: { anyOf: [VIDEO_PROMPT_PLAN_SCHEMA, KEYFRAME_PROMPT_PLAN_SCHEMA] },
 			aspectRatio: { type: "string" },
 			quality: { type: "string" },
 			resolution: { type: "string" },
@@ -132,7 +185,7 @@ export const CONTENT_AGENT_OPERATION_SCHEMA = {
 			targetNodeId: {
 				type: "string",
 				description:
-					"For configure_generation only: ID of the video-generator receiving the media. Never use an image source ID here.",
+					"For configure_generation/configure_video_shot: ID of the video-generator receiving the media. Never use an image source ID here.",
 			},
 			source: { type: "string" },
 			target: { type: "string" },
@@ -164,7 +217,10 @@ export function parseContentAgentOperations(
 	const frames = project.graph.nodes.map(toPlacementFrame);
 	const nodeKinds = new Map(project.graph.nodes.map((node) => [node.id, node.kind]));
 	const nodeSnapshots = new Map(project.graph.nodes.map((node) => [node.id, structuredClone(node)]));
-	return values.map((value) => parseOperation(value, project, frames, nodeKinds, nodeSnapshots, models));
+	return values.flatMap((value) => {
+		const parsed = parseOperation(value, project, frames, nodeKinds, nodeSnapshots, models);
+		return Array.isArray(parsed) ? parsed : [parsed];
+	});
 }
 
 function parseOperation(
@@ -174,7 +230,7 @@ function parseOperation(
 	nodeKinds: Map<string, ContentNodeKind>,
 	nodeSnapshots: Map<string, ContentNode>,
 	models: readonly ContentModelDescriptor[],
-): ContentProjectCommand {
+): ContentProjectCommand | ContentProjectCommand[] {
 	const operation = asRecord(value);
 	const type = requiredString(operation, "type");
 	switch (type) {
@@ -401,6 +457,8 @@ function parseOperation(
 			};
 			return { type: "node.configure-generation", targetNodeId, plan };
 		}
+		case "configure_video_shot":
+			return parseConfigureVideoShotOperation(operation, project, nodeSnapshots, models);
 		case "delete_edge":
 			return { type: "edge.delete", edgeId: requiredString(operation, "edgeId") };
 		default:
@@ -546,12 +604,20 @@ function parseNodeData(record: Record<string, unknown>, nodeKind?: ContentNodeKi
 		if (record.prompt !== undefined) {
 			throw new Error("prompt and promptPlan cannot be used together");
 		}
-		if (nodeKind !== "video-generator" && nodeKind !== "prompt") {
-			throw new Error("promptPlan can only configure a video-generator or prompt node");
+		const promptPlan = asRecord(record.promptPlan);
+		if (promptPlan.kind === "image-keyframe") {
+			if (nodeKind !== "image-generator") {
+				throw new Error("image-keyframe promptPlan can only configure an image-generator node");
+			}
+			data.prompt = compileKeyframePromptPlan(parseKeyframePromptPlan(promptPlan));
+		} else {
+			if (nodeKind !== "video-generator" && nodeKind !== "prompt") {
+				throw new Error("video-shot promptPlan can only configure a video-generator or prompt node");
+			}
+			data.prompt = compileVideoPromptPlan(parseVideoPromptPlan(promptPlan), {
+				durationSeconds: duration,
+			});
 		}
-		data.prompt = compileVideoPromptPlan(parseVideoPromptPlan(record.promptPlan), {
-			durationSeconds: duration,
-		});
 	} else {
 		copyOptionalString(record, data, "prompt");
 	}

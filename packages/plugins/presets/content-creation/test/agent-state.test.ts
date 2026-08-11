@@ -109,4 +109,52 @@ describe("content creation agent state", () => {
 			}),
 		}));
 	});
+
+	it("exposes the actual first/last-frame strategy and diagnoses reused frame prompts", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "node.add",
+				node: { id: "first", kind: "image-generator", position: { x: 0, y: 0 }, data: { prompt: "Same frame" } },
+			},
+			{
+				type: "node.add",
+				node: { id: "last", kind: "image-generator", position: { x: 0, y: 300 }, data: { prompt: "Same frame" } },
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "video",
+					kind: "video-generator",
+					position: { x: 400, y: 0 },
+					data: { modeId: "image-to-video", prompt: completeVideoPrompt() },
+				},
+			},
+			{ type: "edge.connect", source: "first", target: "video", targetHandle: "image", role: "firstFrame" },
+			{ type: "edge.connect", source: "last", target: "video", targetHandle: "image", role: "lastFrame" },
+		]);
+
+		const state = createContentCreationAgentState(project, [VIDEO_MODEL]);
+		expect(state.videoPlans).toContainEqual({
+			nodeId: "video",
+			strategy: "first-last-frame",
+			modeId: "image-to-video",
+			sourceRoles: ["firstFrame", "lastFrame"],
+		});
+		expect(state.diagnostics.map(({ code }) => code)).toEqual(expect.arrayContaining([
+			"video-keyframe-prompt-contract-missing",
+			"video-keyframe-prompts-reused",
+		]));
+	});
 });
+
+function completeVideoPrompt(): string {
+	return [
+		"Reference role: supplied frames define identity and composition.",
+		"Protected invariants: identity and environment.",
+		"Initial state: subjects begin apart.",
+		"Primary action: subjects move together. Secondary motion: fabric responds.",
+		"Camera: wide shot, moving toward center, motivated by the meeting; the camera rests at a centered two-shot.",
+		"Lighting: warm side key. Light behavior: exposure remains stable.",
+		"Final frame: subjects meet at center.",
+	].join("\n");
+}

@@ -2,6 +2,7 @@ import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { ContentGenerationPromptPlanError } from "../agent/generation-prompt-plan";
 import { CONTENT_AGENT_OPERATION_SCHEMA } from "../agent/operations";
 import type { ContentCreationAgentService } from "../agent/service";
+import { ContentVideoShotPlanError } from "../agent/video-shot-plan";
 import { ContentGenerationIntentError } from "../generation/generation-intent";
 import { ContentLocalAssetError, type ContentLocalAssetService } from "../generation/local-asset-service";
 import { ContentProjectCommandError } from "../project/commands";
@@ -162,7 +163,7 @@ export function registerContentCreationTools(
 		name: CONTENT_EDIT_TOOL_NAME,
 		label: "%tool.edit.label%",
 		description:
-			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Include nodes and connections in one coherent batch. For Agent-authored video prompts, use promptPlan so the plugin can compile and validate the production method. For video media, call configure_generation with targetNodeId set to the receiving video-generator and put image/video inputs in sources[]. The returned readiness analysis identifies incomplete graphs.",
+			"Atomically apply a revision-bound batch of semantic workflow edits without confirmation. Prefer configure_video_shot for Agent-authored video work: it selects text, single-frame, first/last-frame, omni-reference, or transform strategy from explicit control requirements, compiles distinct static keyframe and continuous video prompts, and configures references without silent degradation. Keep configure_generation for low-level or legacy media-role configuration. The returned readiness analysis identifies incomplete graphs.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -302,6 +303,15 @@ function requiredRunId(runId?: string): string {
 }
 
 function toolError(error: unknown) {
+	if (error instanceof ContentVideoShotPlanError) {
+		return {
+			ok: false,
+			retryable: error.retryable,
+			code: error.code,
+			error: error.message,
+			details: error.details,
+		};
+	}
 	if (error instanceof ContentGenerationPromptPlanError) {
 		return {
 			ok: false,

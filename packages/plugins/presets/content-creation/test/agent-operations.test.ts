@@ -13,14 +13,25 @@ const FRAME_VIDEO_MODEL: ContentModelDescriptor = {
 	displayName: "Frame video",
 	outputKind: "video",
 	aspectRatios: ["16:9"],
-	modes: [{
-		id: "image-to-video",
-		inputs: [
-			{ id: "firstFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
-			{ id: "lastFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
-		],
-		minTotalItems: 1,
-	}],
+	modes: [
+		{
+			id: "image-to-video",
+			inputs: [
+				{ id: "firstFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+				{ id: "lastFrame", accepts: ["image"], minItems: 0, maxItems: 1 },
+			],
+			minTotalItems: 1,
+		},
+		{
+			id: "reference-to-video",
+			inputs: [
+				{ id: "referenceImages", accepts: ["image"], minItems: 0, maxItems: 9 },
+				{ id: "referenceVideos", accepts: ["video"], minItems: 0, maxItems: 3 },
+				{ id: "referenceAudios", accepts: ["audio"], minItems: 0, maxItems: 3 },
+			],
+			minTotalItems: 1,
+		},
+	],
 };
 
 describe("content agent operations", () => {
@@ -193,6 +204,132 @@ describe("content agent operations", () => {
 		]);
 	});
 
+	it("materializes distinct static keyframes and a continuous video prompt atomically", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "first", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "last", kind: "image-generator", position: { x: 0, y: 300 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+		const commands = parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			strategy: "automatic",
+			aspectRatio: "16:9",
+			duration: 5,
+			controlRequirements: { exactOpening: true, exactEnding: true },
+			promptPlan: createVideoPromptPlan(),
+			keyframes: {
+				first: { nodeId: "first", promptPlan: createKeyframePlan("first") },
+				last: { nodeId: "last", promptPlan: createKeyframePlan("last") },
+			},
+		}], [FRAME_VIDEO_MODEL]);
+
+		const next = applyContentProjectCommands(project, commands);
+		const firstPrompt = next.graph.nodes.find((node) => node.id === "first")?.data.prompt;
+		const lastPrompt = next.graph.nodes.find((node) => node.id === "last")?.data.prompt;
+		const videoPrompt = next.graph.nodes.find((node) => node.id === "video")?.data.prompt;
+		expect(firstPrompt).toContain("Keyframe phase: first frame.");
+		expect(lastPrompt).toContain("Keyframe phase: last frame.");
+		expect(firstPrompt).not.toBe(lastPrompt);
+		expect(videoPrompt).toContain("Primary action:");
+		expect(videoPrompt).not.toContain("Keyframe phase:");
+		expect(next.graph.edges).toEqual(expect.arrayContaining([
+			expect.objectContaining({ source: "first", target: "video", role: "firstFrame" }),
+			expect.objectContaining({ source: "last", target: "video", role: "lastFrame" }),
+		]));
+	});
+
+	it("compiles an omni-reference manifest into stable media tokens", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "person-a", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "person-b", kind: "image-generator", position: { x: 0, y: 300 } } },
+			{ type: "node.add", node: { id: "scene", kind: "image-generator", position: { x: 0, y: 600 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+		const commands = parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			strategy: "automatic",
+			aspectRatio: "16:9",
+			controlRequirements: { requiresSceneReference: true },
+			promptPlan: createVideoPromptPlan(),
+			sources: [
+				{ sourceNodeId: "person-a", alias: "dancerA", semanticRole: "identity", instruction: "Preserve face and costume" },
+				{ sourceNodeId: "person-b", alias: "dancerB", semanticRole: "identity", instruction: "Preserve face and costume" },
+				{ sourceNodeId: "scene", alias: "ballroom", semanticRole: "environment", instruction: "Use the room layout and lighting" },
+			],
+		}], [FRAME_VIDEO_MODEL]);
+
+		const next = applyContentProjectCommands(project, commands);
+		const video = next.graph.nodes.find((node) => node.id === "video");
+		expect(video?.data.modeId).toBe("reference-to-video");
+		expect(video?.data.prompt).toContain("<Picture 1>: dancerA (identity). Preserve face and costume.");
+		expect(video?.data.prompt).toContain("<Picture 3>: ballroom (environment). Use the room layout and lighting.");
+		expect(next.graph.edges.filter((edge) => edge.target === "video")).toHaveLength(3);
+	});
+
+	it("numbers attached assets before generated references to match runtime input order", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{
+				type: "asset.add",
+				asset: { id: "scene-image", kind: "image", name: "scene", mimeType: "image/png", createdAt: "now" },
+			},
+			{
+				type: "node.add",
+				node: {
+					id: "scene-assets",
+					kind: "asset",
+					position: { x: 0, y: 0 },
+					data: { assetIds: ["scene-image"] },
+				},
+			},
+			{ type: "node.add", node: { id: "person", kind: "image-generator", position: { x: 0, y: 300 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+		const commands = parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			strategy: "omni-reference",
+			aspectRatio: "16:9",
+			controlRequirements: { requiresSceneReference: true },
+			promptPlan: createVideoPromptPlan(),
+			sources: [
+				{ sourceNodeId: "person", alias: "actor", semanticRole: "identity", instruction: "Preserve identity" },
+				{
+					sourceNodeId: "scene-assets",
+					assetIds: ["scene-image"],
+					alias: "ballroom",
+					semanticRole: "environment",
+					instruction: "Use the room layout",
+				},
+			],
+		}], [FRAME_VIDEO_MODEL]);
+
+		const next = applyContentProjectCommands(project, commands);
+		const prompt = next.graph.nodes.find((node) => node.id === "video")?.data.prompt;
+		expect(prompt).toContain("<Picture 1>: ballroom (environment). Use the room layout.");
+		expect(prompt).toContain("<Picture 2>: actor (identity). Preserve identity.");
+	});
+
+	it("requires one explicit fixed aspect ratio for omni-reference generation", () => {
+		const project = applyContentProjectCommands(createContentProject("C:/project"), [
+			{ type: "node.add", node: { id: "person", kind: "image-generator", position: { x: 0, y: 0 } } },
+			{ type: "node.add", node: { id: "scene", kind: "image-generator", position: { x: 0, y: 300 } } },
+			{ type: "node.add", node: { id: "video", kind: "video-generator", position: { x: 400, y: 0 } } },
+		]);
+
+		expect(() => parseContentAgentOperations(project, [{
+			type: "configure_video_shot",
+			targetNodeId: "video",
+			strategy: "omni-reference",
+			promptPlan: createVideoPromptPlan(),
+			sources: [
+				{ sourceNodeId: "person", alias: "person", semanticRole: "identity", instruction: "Preserve identity" },
+				{ sourceNodeId: "scene", alias: "scene", semanticRole: "environment", instruction: "Use the scene" },
+			],
+		}], [FRAME_VIDEO_MODEL])).toThrowError(expect.objectContaining({ code: "video-shot-aspect-ratio-required" }));
+	});
+
 	it("turns legacy video target inputs into an actionable generation-plan error", () => {
 		const project = applyContentProjectCommands(createContentProject("C:/project"), [
 			{ type: "node.add", node: { id: "image", kind: "image-generator", position: { x: 0, y: 0 } } },
@@ -272,3 +409,50 @@ describe("content agent operations", () => {
 		).toThrow("unsupported operation type: add_timeline_clip");
 	});
 });
+
+function createKeyframePlan(phase: "first" | "last") {
+	return {
+		kind: "image-keyframe",
+		phase,
+		sceneFunction: `${phase} frame for one continuous dance shot`,
+		referenceRole: "Preserve dancer identities and ballroom layout",
+		protectedInvariants: ["same dancers", "same costumes", "same ballroom"],
+		visibleState: phase === "first" ? "The dancers begin far apart" : "The dancers meet at center frame",
+		composition: {
+			framing: "Wide full-body two-shot",
+			angle: "Eye-level",
+			placement: phase === "first" ? "one dancer on each side" : "both dancers centered",
+			cameraAxis: "Facing the stage along the center aisle",
+		},
+		environment: "Warm ballroom with a polished floor",
+		lighting: { setup: "Soft evening key", direction: "From camera left" },
+		style: "Natural cinematic photography",
+		constraints: ["frozen readable pose", "no motion blur"],
+	};
+}
+
+function createVideoPromptPlan() {
+	return {
+		kind: "video-shot",
+		sceneFunction: "One continuous dance encounter",
+		referenceRole: "References define dancer identity, costume and ballroom layout",
+		protectedInvariants: ["same dancers", "same costumes", "same ballroom"],
+		initialState: "Dancer A begins on the left while dancer B waits in the distance",
+		primaryAction: "Dancer A crosses the floor with a flowing waltz and meets dancer B at center",
+		secondaryMotion: "Costume fabric and chandelier reflections respond naturally to the movement",
+		camera: {
+			framing: "Wide full-body two-shot",
+			movement: "a restrained tracking move",
+			direction: "from left toward center stage",
+			speed: "matching the dancers with a gentle ease-out",
+			motivation: "keeping both faces and the meeting gesture readable",
+			restPoint: "a balanced centered two-shot",
+		},
+		lighting: {
+			setup: "Warm ballroom practicals with a soft side key",
+			behavior: "Exposure and light direction remain stable throughout the move",
+		},
+		finalState: "Both dancers meet at center frame and hold eye contact",
+		constraints: ["one continuous shot", "no identity drift", "no scene change"],
+	};
+}
