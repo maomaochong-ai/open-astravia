@@ -19,7 +19,15 @@ export function ChatHeaderNewSessionButton(): JSX.Element | null {
 
 	const title = t("chatView.newSessionButton.title");
 	return (
-		<Button variant="ghost" size="icon-sm" title={title} aria-label={title} onClick={onNewChat}>
+		<Button
+			variant="ghost"
+			size="icon-sm"
+			// 与展开侧边栏按钮保持 4px 紧邻，到标题再多让出 4px，让两枚图标读作一组。
+			className="mr-1"
+			title={title}
+			aria-label={title}
+			onClick={onNewChat}
+		>
 			<span className="icon-[solar--pen-new-square-linear] h-4 w-4" />
 		</Button>
 	);
