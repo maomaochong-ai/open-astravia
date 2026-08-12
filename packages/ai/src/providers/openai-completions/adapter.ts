@@ -263,11 +263,10 @@ function findReasoningField(delta: CompatibleDelta): "reasoning_content" | "reas
 	return null;
 }
 
-function mapStopReason(reason: ChatCompletionChunk.Choice["finish_reason"]): StopReason {
-	if (reason === null) return "stop";
+// Compatible endpoints emit vendor-specific finish reasons outside the OpenAI enum; an unknown
+// terminal reason must end the turn normally rather than abort it.
+function mapStopReason(reason: string | null | undefined): StopReason {
 	switch (reason) {
-		case "stop":
-			return "stop";
 		case "length":
 			return "length";
 		case "function_call":
@@ -275,9 +274,7 @@ function mapStopReason(reason: ChatCompletionChunk.Choice["finish_reason"]): Sto
 			return "toolUse";
 		case "content_filter":
 			return "error";
-		default: {
-			const exhaustive: never = reason;
-			throw new Error(`Unhandled stop reason: ${exhaustive}`);
-		}
+		default:
+			return "stop";
 	}
 }
