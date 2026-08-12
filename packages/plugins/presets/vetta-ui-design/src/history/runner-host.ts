@@ -7,15 +7,14 @@
  * runner 压缩后仍有上百 KB，而 Windows 单个环境变量上限 32767 字符。所以分块写。
  */
 import type { PluginContext } from "@vetta-org/plugin-sdk";
+import runnerSource from "../../history-runner/dist/runner.mjs?raw";
 
-/**
- * runner 源码有 ~380KB，静态引入会把它压进插件主 chunk，让每次插件加载都付这笔钱。
- * 动态引入让它独立成块，只在第一次真的要物化时才取。
+/*
+ * runner 源码 ~380KB，静态引入把它压进插件主 chunk（421KB → 801KB）。动态引入能让
+ * 它独立成块、按需加载，但这个插件目前没有任何自己的动态 import 先例——异步 chunk
+ * 能否经 vetta-plugin:// 取到没有被验证过，而它一旦取不到，表现是历史对所有人静默
+ * 失效。等有人在真实 Electron 里验证过之后再拆。
  */
-async function loadRunnerSource(): Promise<string> {
-	const module = await import("../../history-runner/dist/runner.mjs?raw");
-	return module.default;
-}
 
 /** 一块 base64 的大小。留足余量给脚本本身与其它环境变量。 */
 const CHUNK_CHARS = 16_000;
@@ -95,7 +94,6 @@ export function ensureRunner(ctx: PluginContext): Promise<string> {
 
 async function materialize(ctx: PluginContext): Promise<string> {
 	const home = await resolveHome(ctx);
-	const runnerSource = await loadRunnerSource();
 	const hash = sourceHash(runnerSource);
 	const dir = `${home}/.vetta/plugin-data/vetta-ui-design/history-runner/${hash}`;
 	const file = `${dir}/runner.mjs`;

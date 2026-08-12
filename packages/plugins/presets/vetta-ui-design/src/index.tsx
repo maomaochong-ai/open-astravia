@@ -24,6 +24,7 @@ import { SHARE_EXTENSION, SHARE_PREVIEW_EXTENSIONS } from "./export/share-format
 import { ExportMockupDialog } from "./mockup/ExportMockupDialog";
 import { GalleryView } from "./gallery/GalleryView";
 import { claimCanvasReveal } from "./gallery/open-project";
+import { registerTurnHistory } from "./history/turn-history";
 import { setPluginCtx } from "./plugin-context";
 import { VetdPreview } from "./preview/VetdPreview";
 import { CANVAS_TAB_ID, GALLERY_VIEW_ID } from "./tab-ids";
@@ -156,6 +157,9 @@ export default definePlugin({
 						description: "%gallery.nav.description%",
 						component: GalleryView,
 					}),
+					// 设计版本历史的自动提交（ADR-0069）。跟画布同生命周期：编程模式下
+					// 不该有任何东西往用户的设计目录里写提交。
+					...registerTurnHistory(ctx),
 				];
 				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。
 				revealTabForCwd(latestCwd, latestSessionId);
