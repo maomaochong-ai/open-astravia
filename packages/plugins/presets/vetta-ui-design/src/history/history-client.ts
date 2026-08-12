@@ -29,11 +29,16 @@ export async function commitHistory(
 	ctx: PluginContext,
 	designDir: string,
 	title: string,
+	options: {
+		/** 只有 design.json 变了就不落版本——画框位置的高频写入不该占满历史。 */
+		skipManifestOnly?: boolean;
+	} = {},
 ): Promise<HistoryCommit | null> {
 	const result = await runHistoryCommand<{ committed: boolean; commit: HistoryCommit | null }>(ctx, {
 		cmd: "commit",
 		dir: designDir,
 		title,
+		...(options.skipManifestOnly ? { skipManifestOnly: true } : {}),
 	});
 	return result.committed ? result.commit : null;
 }

@@ -17,6 +17,7 @@ import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { MANIFEST_FILE } from "../vetd/manifest-types";
 import type { DesignSession } from "../vetd/design-session";
 import { commitHistory, listHistory } from "./history-client";
+import { notifyHistoryChanged } from "./history-events";
 import { historyDirOf } from "./history-paths";
 import { runHistoryCommand } from "./runner-host";
 
@@ -90,7 +91,10 @@ export async function enterPeek(
 	const changed = await pendingChanges(ctx, session.dirPath);
 	// design.json 之外还有东西没提交，才值得落一个版本——那是真的会被覆盖掉的工作。
 	const needsCommit = changed.some((file) => file !== MANIFEST_FILE);
-	if (needsCommit) await commitHistory(ctx, session.dirPath, "查看历史前的状态");
+	if (needsCommit) {
+		await commitHistory(ctx, session.dirPath, "查看历史前的状态");
+		notifyHistoryChanged(session.dirPath);
+	}
 	const manifest = changed.includes(MANIFEST_FILE)
 		? await ctx.fs
 				.readFile(`${session.dirPath}/${MANIFEST_FILE}`)

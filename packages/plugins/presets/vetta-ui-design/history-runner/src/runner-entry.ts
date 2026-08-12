@@ -37,6 +37,9 @@ const IGNORED_TOP_LEVEL = new Set([
 
 const AUTHOR = { name: "Vetta", email: "design@vetta.local" };
 
+/** 画布 manifest。它是生成物式的高频写入，单独变化不构成一个版本。 */
+const MANIFEST_FILE = "design.json";
+
 /** 画布正在查看旧版本的标记（插件侧读写，这里只需知道它不算历史内容）。 */
 const PEEK_FILE = "peek.json";
 
@@ -176,11 +179,25 @@ async function stageAll(dir: string): Promise<string[]> {
 	return changed.sort();
 }
 
-async function commit(dir: string, title: string, restoredFrom?: string): Promise<HistoryCommit | null> {
+/**
+ * @param skipManifestOnly 只有 design.json 变了就不落版本。
+ *
+ * 画布拖一下画框、平移一次视口就会重写 design.json，于是「工作区是脏的」几乎恒成立。
+ * 不加这条，每个回合、每次新对话都会多出一条只含 design.json 的版本——用户看到的
+ * 就是一串莫名其妙的「手动修改」。这些位置不会丢：它们躺在磁盘上，下一次真有源码
+ * 改动时一起进那个版本。
+ */
+async function commit(
+	dir: string,
+	title: string,
+	restoredFrom?: string,
+	skipManifestOnly = false,
+): Promise<HistoryCommit | null> {
 	const gitdir = gitdirOf(dir);
 	await ensureRepository(dir);
 	const changed = await stageAll(dir);
 	if (changed.length === 0) return null;
+	if (skipManifestOnly && changed.every((file) => file === MANIFEST_FILE)) return null;
 
 	const message = buildMessage(title, { files: changed, restoredFrom });
 	const timestamp = Date.now();
@@ -296,6 +313,7 @@ interface Request {
 	limit?: number;
 	out?: string;
 	from?: string;
+	skipManifestOnly?: boolean;
 }
 
 async function dispatch(request: Request): Promise<unknown> {
@@ -305,7 +323,7 @@ async function dispatch(request: Request): Promise<unknown> {
 			return { initialized: true, hasCommits: await hasCommits(request.dir) };
 		}
 		case "commit": {
-			const result = await commit(request.dir, request.title ?? "更新设计");
+			const result = await commit(request.dir, request.title ?? "更新设计", undefined, request.skipManifestOnly === true);
 			return { committed: result !== null, commit: result };
 		}
 		case "log":

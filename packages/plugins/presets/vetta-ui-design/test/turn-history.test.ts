@@ -42,6 +42,8 @@ describe("commitTurn", () => {
 		await commitTurn(makeCtx(), "/w", "改导航栏");
 		expect(commitHistory.mock.calls.map((call) => call[1])).toEqual(["/w/a.vetd", "/w/b.vetd"]);
 		expect(commitHistory.mock.calls[0]?.[2]).toBe("改导航栏");
+		// 只有 design.json 变了不算一个版本，否则每次拖画框都留下一条「手动修改」噪音。
+		expect(commitHistory.mock.calls[0]?.[3]).toEqual({ skipManifestOnly: true });
 	});
 
 	it("没有设计时什么都不做", async () => {
@@ -89,7 +91,7 @@ describe("hook 接线", () => {
 		const session = { id: "s", cwd: "/w" };
 		await hooks.get("UserPromptSubmit")?.handler({ session, event: { prompt: "把导航栏改到左侧\n再说" } });
 		await hooks.get("Stop")?.handler({ session, event: {} });
-		expect(commitHistory).toHaveBeenLastCalledWith(ctx, "/w/a.vetd", "把导航栏改到左侧");
+		expect(commitHistory).toHaveBeenLastCalledWith(ctx, "/w/a.vetd", "把导航栏改到左侧", { skipManifestOnly: true });
 	});
 
 	it("新一轮开始前先封存上一轮被中断的改动", async () => {
@@ -98,7 +100,9 @@ describe("hook 接线", () => {
 		await hooks.get("UserPromptSubmit")?.handler({ session, event: { prompt: "把导航栏改到左侧" } });
 		// 用户按了停止：Stop 不触发，改动留在工作区。下一句话进来时必须先封存。
 		await hooks.get("UserPromptSubmit")?.handler({ session, event: { prompt: "算了，改回去" } });
-		expect(commitHistory).toHaveBeenLastCalledWith(expect.anything(), "/w/a.vetd", "把导航栏改到左侧（未完成）");
+		expect(commitHistory).toHaveBeenLastCalledWith(expect.anything(), "/w/a.vetd", "把导航栏改到左侧（未完成）", {
+			skipManifestOnly: true,
+		});
 	});
 
 	it("会话结束后不再拿旧标题", async () => {
@@ -107,6 +111,6 @@ describe("hook 接线", () => {
 		await hooks.get("UserPromptSubmit")?.handler({ session, event: { prompt: "把导航栏改到左侧" } });
 		await hooks.get("SessionEnd")?.handler({ session, event: {} });
 		await hooks.get("Stop")?.handler({ session, event: {} });
-		expect(commitHistory).toHaveBeenLastCalledWith(expect.anything(), "/w/a.vetd", "更新设计");
+		expect(commitHistory).toHaveBeenLastCalledWith(expect.anything(), "/w/a.vetd", "更新设计", { skipManifestOnly: true });
 	});
 });

@@ -9,6 +9,7 @@ import { installDesignDependencies } from "../engine/engine-manager";
 import { PACKAGE_FILE } from "../vetd/design-package";
 import type { DesignSession } from "../vetd/design-session";
 import { type HistoryCommit, commitHistory, restoreHistory } from "./history-client";
+import { notifyHistoryChanged } from "./history-events";
 import { PRE_RESTORE_TITLE, restoreTitle } from "./turn-title";
 
 export interface RestoreOutcome {
@@ -61,6 +62,7 @@ export async function restoreDesign(
 		reinstalled = true;
 	}
 
+	if (restored) notifyHistoryChanged(designDir);
 	if (restored && session) {
 		onProgress?.("reloading");
 		await session.reload();

@@ -18,6 +18,7 @@ vi.mock("../src/plugin-context", () => ({ getPluginCtx: () => ({ fs: { readDir: 
 
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { notifyHistoryChanged } from "../src/history/history-events";
 import { HistoryDrawer } from "../src/history/HistoryDrawer";
 import type { DesignSession } from "../src/vetd/design-session";
 
@@ -41,7 +42,7 @@ function commits() {
 async function render(): Promise<void> {
 	await act(async () => {
 		root.render(
-			<HistoryDrawer session={session} peekSha={null} onPeek={onPeek} onRestored={onRestored} onClose={() => {}} />,
+			<HistoryDrawer session={session} peekSha={null} onPeek={onPeek} onRestored={onRestored} offsetTop={0} onClose={() => {}} />,
 		);
 	});
 }
@@ -89,9 +90,21 @@ describe("HistoryDrawer", () => {
 		expect(rows()[0]?.querySelector("button")).toBeNull();
 	});
 
-	it("变更文件跟在时间后面——原话没信息量时靠它认版本", async () => {
+	it("变更文件用短名跟在时间后面——原话没信息量时靠它认版本", async () => {
 		await render();
-		expect(rows()[1]?.textContent).toContain("frames/login.tsx");
+		// 展示的是 `login` 而不是 `frames/login.tsx`：窄面板里路径前缀挤掉了真正有用的名字。
+		expect(rows()[1]?.textContent).toContain("login");
+		expect(rows()[1]?.textContent).not.toContain("frames/");
+	});
+
+	it("design.json 不进变更列表——它每次都在里面，列出来只是噪音", async () => {
+		listHistory.mockResolvedValue([
+			{ sha: "c2", title: "改了点东西", timestamp: Date.now(), files: ["design.json", "frames/login.tsx"] },
+			{ sha: "c1", title: "初始状态", timestamp: Date.now() - 3_600_000, files: ["design.json"] },
+		]);
+		await render();
+		expect(rows()[0]?.textContent).not.toContain("design");
+		expect(rows()[0]?.textContent).toContain("login");
 	});
 
 	it("恢复要先过二次确认", async () => {
@@ -160,6 +173,29 @@ describe("HistoryDrawer", () => {
 			buttonsWithText("history.confirm.ok")[0]?.click();
 		});
 		expect(listHistory).toHaveBeenCalledTimes(2);
+	});
+
+	it("别处落了版本就自己刷新——不用关掉面板重开", async () => {
+		await render();
+		expect(rows()).toHaveLength(3);
+		listHistory.mockResolvedValue([
+			{ sha: "c4", title: "agent 刚改完", timestamp: Date.now(), files: ["frames/home.tsx"] },
+			...commits(),
+		]);
+		await act(async () => {
+			notifyHistoryChanged("/w/a.vetd");
+		});
+		expect(rows()).toHaveLength(4);
+		expect(rows()[0]?.getAttribute("aria-label")).toBe("agent 刚改完");
+	});
+
+	it("别的设计落了版本不打扰这个面板", async () => {
+		await render();
+		listHistory.mockClear();
+		await act(async () => {
+			notifyHistoryChanged("/w/别的.vetd");
+		});
+		expect(listHistory).not.toHaveBeenCalled();
 	});
 
 	it("恢复完成后通知画布硬重载——整份内容换掉了，增量热更新指望不上", async () => {

@@ -293,5 +293,6 @@
 	"history.peek.exit": "Exit",
 	"history.peek.exiting": "Exiting…",
 	"history.peek.failed": "Could not open that version",
-	"history.peek.alreadyCurrent": "That is already the current version"
+	"history.peek.alreadyCurrent": "That is already the current version",
+	"history.loading": "Loading…"
 }

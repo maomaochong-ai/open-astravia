@@ -293,5 +293,6 @@
 	"history.peek.exit": "退出查看",
 	"history.peek.exiting": "退出中…",
 	"history.peek.failed": "查看历史版本失败",
-	"history.peek.alreadyCurrent": "这已经是当前版本了"
+	"history.peek.alreadyCurrent": "这已经是当前版本了",
+	"history.loading": "读取中…"
 }

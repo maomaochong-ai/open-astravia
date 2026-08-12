@@ -8,6 +8,7 @@
 import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
 import { pickDesignPaths } from "../vetd/discover";
 import { commitHistory } from "./history-client";
+import { notifyHistoryChanged } from "./history-events";
 import { readPeekState } from "./peek";
 import { carryOverTitle, commitTitleFromPrompt } from "./turn-title";
 
@@ -36,7 +37,10 @@ export async function commitTurn(ctx: PluginContext, cwd: string, title: string)
 			// 正在被查看的设计，工作区里装的是一份旧版本。此刻提交会把旧版本记成新
 			// 版本，历史从此说谎。跳过它——查看模式本来就是只读的。
 			if (await readPeekState(ctx, designDir)) continue;
-			await commitHistory(ctx, designDir, title);
+			// 只有 design.json 变了不算一个版本，否则每次拖画框都会留下一条噪音。
+			const commit = await commitHistory(ctx, designDir, title, { skipManifestOnly: true });
+			// 面板可能正开着：hook 与它没有父子关系，不广播的话它会一直停在旧列表上。
+			if (commit) notifyHistoryChanged(designDir);
 		} catch (error) {
 			// 一份设计提交失败不该连累其它设计，更不该让回合结束报错。
 			console.warn("[vetta-ui-design] 设计版本提交失败", designDir, error);

@@ -13,14 +13,11 @@ interface ControlBarProps {
 	designSystemsActive: boolean;
 	/** 待处理备注数，挂在备注工具按钮的右上角；0 不显示。 */
 	pendingNotes: number;
-	/** 版本历史抽屉开着时高亮按钮。 */
-	historyActive: boolean;
 	onToolChange(tool: CanvasTool): void;
 	onZoomDelta(direction: 1 | -1): void;
 	onZoomReset(): void;
 	onExport(): void;
 	onDesignSystems(): void;
-	onHistory(): void;
 }
 
 type DockSlot =
@@ -69,13 +66,6 @@ const icons = {
 			/>
 		</svg>
 	),
-	history: (
-		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-			<path d="M3 12a9 9 0 1 0 3-6.7L3 8" strokeLinecap="round" strokeLinejoin="round" />
-			<path d="M3 4v4h4" strokeLinecap="round" strokeLinejoin="round" />
-			<path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
-		</svg>
-	),
 	mockup: (
 		<svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
 			<rect x="4" y="2" width="7" height="20" rx="2" />
@@ -112,13 +102,11 @@ export function ControlBar({
 	exportableCount,
 	designSystemsActive,
 	pendingNotes,
-	historyActive,
 	onToolChange,
 	onZoomDelta,
 	onZoomReset,
 	onExport,
 	onDesignSystems,
-	onHistory,
 }: ControlBarProps) {
 	const { t } = useTranslation();
 	const dockRef = useRef<HTMLDivElement>(null);
@@ -172,14 +160,6 @@ export function ControlBar({
 				onClick: onDesignSystems,
 				content: icons.swatches,
 			},
-			{
-				type: "item",
-				key: "history",
-				label: t("controlbar.history"),
-				active: historyActive,
-				onClick: onHistory,
-				content: icons.history,
-			},
 			{ type: "divider", key: "divider-zoom" },
 			{
 				type: "item",
@@ -224,8 +204,6 @@ export function ControlBar({
 		return items;
 	}, [
 		designSystemsActive,
-		historyActive,
-		onHistory,
 		exportableCount,
 		pendingNotes,
 		onDesignSystems,

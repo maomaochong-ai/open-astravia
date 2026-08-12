@@ -45,6 +45,7 @@ import { refreshCover } from "./cover-compose";
 import { useFrameRasters } from "./frame-raster";
 import { type FrameDragEdge, FrameView } from "./FrameView";
 import { GapHandles } from "./GapHandles";
+import { HistoryButton } from "../history/HistoryButton";
 import { HistoryDrawer } from "../history/HistoryDrawer";
 import type { HistoryCommit } from "../history/history-client";
 import { PeekBanner } from "../history/PeekBanner";
@@ -248,6 +249,8 @@ function applyResizeSnap(
 
 /** 位图变化后隔多久合成封面：等一批 frame 都落定，不为每张图各合成一次。 */
 const COVER_REFRESH_DEBOUNCE_MS = 1500;
+/** 查看模式横幅的高度，右上角的历史按钮与面板据此让位。 */
+const PEEK_BANNER_HEIGHT = 40;
 
 export function DesignCanvas({
 	session,
@@ -1503,6 +1506,12 @@ export function DesignCanvas({
 				/>
 			) : null}
 
+			<HistoryButton
+				open={historyOpen}
+				offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
+				onToggle={() => setHistoryOpen((open) => !open)}
+			/>
+
 			{peek ? (
 				<PeekBanner
 					title={peek.title}
@@ -1545,6 +1554,7 @@ export function DesignCanvas({
 						});
 					}}
 					onRestored={reloadAll}
+					offsetTop={peek ? PEEK_BANNER_HEIGHT : 0}
 					onClose={() => setHistoryOpen(false)}
 				/>
 			) : null}
@@ -1555,7 +1565,6 @@ export function DesignCanvas({
 				exportableCount={orderedSelection.length}
 				designSystemsActive={designDialogOpen}
 				pendingNotes={pendingNoteCount}
-				historyActive={historyOpen}
 				onToolChange={setTool}
 				onZoomDelta={view.zoomBy}
 				onZoomReset={() => {
@@ -1566,7 +1575,6 @@ export function DesignCanvas({
 					setMenuAnchor(null);
 					setDesignDialogOpen((open) => !open);
 				}}
-				onHistory={() => setHistoryOpen((open) => !open)}
 			/>
 
 			<DesignSystemDialog
