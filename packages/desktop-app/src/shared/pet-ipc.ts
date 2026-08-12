@@ -26,8 +26,12 @@ export interface PetBubbleNotice {
 	/** i18n key resolved at the main-process command boundary. */
 	readonly messageKey?: string;
 	readonly params?: Readonly<Record<string, string | number>>;
+	/** Dynamic, sanitized content takes precedence over the i18n fallback. */
+	readonly body?: string;
 	/** Legacy/custom text fallback for callers that do not use i18n. */
 	readonly text?: string;
+	/** Keep the running-session notice visible until a terminal notice replaces it. */
+	readonly persistent?: boolean;
 	readonly ttlMs?: number;
 	readonly priority?: PetBubblePriority;
 	readonly dedupeKey?: string;

@@ -48,4 +48,14 @@ describe("createPetBubbleCommand", () => {
 		});
 		expect(mocks.mainT).not.toHaveBeenCalled();
 	});
+
+	it("prefers dynamic body over the translated fallback", () => {
+		const command = createPetBubbleCommand({
+			body: "已经完成配置迁移",
+			messageKey: "notice.lifecycle.completed",
+		});
+
+		expect(command).toMatchObject({ type: "show-bubble", text: "已经完成配置迁移" });
+		expect(mocks.mainT).not.toHaveBeenCalled();
+	});
 });

@@ -30,9 +30,13 @@ export function usePetBubble(): {
 
 	useEffect(() => {
 		const current = state.current;
-		if (!current) return;
+		if (!current || (current.persistent && state.pending.length === 0)) return;
 		const elapsedMs = Date.now() - current.shownAt;
-		const displayMs = state.pending.length > 0 ? Math.min(current.ttlMs, PET_BUBBLE_MIN_HOLD_MS) : current.ttlMs;
+		const displayMs = current.persistent
+			? PET_BUBBLE_MIN_HOLD_MS
+			: state.pending.length > 0
+				? Math.min(current.ttlMs, PET_BUBBLE_MIN_HOLD_MS)
+				: current.ttlMs;
 		const timer = window.setTimeout(
 			() => dispatch({ type: "advance", messageId: current.id, now: Date.now() }),
 			Math.max(0, displayMs - elapsedMs),

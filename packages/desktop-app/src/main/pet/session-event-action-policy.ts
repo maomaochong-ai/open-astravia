@@ -26,6 +26,7 @@ interface SessionPetActionRule {
 }
 
 const MAX_TOOL_BUBBLE_TEXT_LENGTH = 48;
+const MAX_BODY_TEXT_LENGTH = 120;
 
 const DEFAULT_ACTION_BY_GROUP = {
 	idle: "stoat_spin_color_hula_hoop",
@@ -37,7 +38,13 @@ const DEFAULT_ACTION_BY_GROUP = {
 const LIFECYCLE_INTENTS: Partial<Record<SessionLifecyclePhase, PetPresentationIntent>> = {
 	agent_start: {
 		action: { groupId: "working" },
-		bubble: { kind: "status", messageKey: "notice.lifecycle.started", ttlMs: 3_000, dedupeKey: "session-status" },
+		bubble: {
+			kind: "status",
+			messageKey: "notice.lifecycle.started",
+			persistent: true,
+			ttlMs: 3_000,
+			dedupeKey: "session-status",
+		},
 	},
 	agent_end: {
 		action: { groupId: "feedback", actionId: "stoat_stand_lift_barbell_one_hand_fast" },
@@ -57,12 +64,19 @@ const LIFECYCLE_INTENTS: Partial<Record<SessionLifecyclePhase, PetPresentationIn
 const EVENT_TYPE_INTENTS: Partial<Record<SessionEvent["type"], PetPresentationIntent>> = {
 	"compaction.start": {
 		action: { groupId: "resting" },
-		bubble: { kind: "status", messageKey: "notice.context.compacting", ttlMs: 3_000, dedupeKey: "session-status" },
+		bubble: {
+			kind: "status",
+			messageKey: "notice.context.compacting",
+			persistent: true,
+			ttlMs: 3_000,
+			dedupeKey: "session-status",
+		},
 	},
 	error: {
 		action: { groupId: "feedback", actionId: "stoat_wave_backflip_smoke_fade_exit" },
 		bubble: {
 			kind: "error",
+			body: undefined,
 			messageKey: "notice.error.generic",
 			ttlMs: 5_000,
 			priority: "high",
@@ -81,20 +95,43 @@ function truncateBubbleText(text: string): string {
 	return text.length <= MAX_TOOL_BUBBLE_TEXT_LENGTH ? text : `${text.slice(0, MAX_TOOL_BUBBLE_TEXT_LENGTH - 1)}…`;
 }
 
+function normalizeBodyText(value: string, maxLength = MAX_BODY_TEXT_LENGTH): string | undefined {
+	const normalized = value.replace(/\s+/g, " ").trim();
+	if (!normalized) return undefined;
+	return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength - 1)}…`;
+}
+
+function getAssistantBody(event: Extract<SessionEvent, { type: "message.final" }>): string | undefined {
+	if (event.message.role !== "assistant" || !Array.isArray(event.message.content)) return undefined;
+	const text = event.message.content
+		.filter((part): part is { type: "text"; text: string } => {
+			const record = getRecord(part);
+			return record?.type === "text" && typeof record.text === "string";
+		})
+		.map((part) => part.text)
+		.join(" ");
+	return normalizeBodyText(text);
+}
+
+function getToolResultBody(event: Extract<SessionEvent, { type: "tool.end" }>): string | undefined {
+	return typeof event.result === "string" ? normalizeBodyText(event.result) : undefined;
+}
+
 function getToolBubbleNotice(event: Extract<SessionEvent, { type: "tool.start" }>): PetBubbleNotice {
 	const args = getRecord(event.args);
 	const description = typeof args?.description === "string" ? args.description.trim() : "";
 	return description
 		? {
 				kind: "tool",
-				messageKey: "notice.tool.runningWithDescription",
-				params: { description: truncateBubbleText(description) },
+				body: truncateBubbleText(description),
+				persistent: true,
 				ttlMs: 3_000,
 				dedupeKey: "session-status",
 			}
 		: {
 				kind: "tool",
 				messageKey: "notice.tool.running",
+				persistent: true,
 				ttlMs: 3_000,
 				dedupeKey: "session-status",
 			};
@@ -161,8 +198,83 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 				: null,
 	},
 	{
+		name: "assistant-final-body",
+		resolve: (event) => {
+			if (event.type !== "message.final") return null;
+			const body = getAssistantBody(event);
+			return body
+				? {
+						bubble: {
+							kind: "success",
+							body,
+							messageKey: "notice.lifecycle.completed",
+							ttlMs: 3_000,
+							dedupeKey: "session-status",
+						},
+					}
+				: null;
+		},
+	},
+	{
+		name: "tool-phase",
+		resolve: (event) =>
+			event.type === "tool.phase"
+				? {
+						action: { groupId: "working" },
+						bubble: {
+							kind: "tool",
+							body: normalizeBodyText(event.label, MAX_TOOL_BUBBLE_TEXT_LENGTH),
+							persistent: true,
+							ttlMs: 3_000,
+							dedupeKey: "session-status",
+						},
+					}
+				: null,
+	},
+	{
+		name: "tool-end",
+		resolve: (event) =>
+			event.type === "tool.end"
+				? {
+						action: { groupId: event.isError ? "feedback" : "working" },
+						bubble: {
+							kind: event.isError ? "error" : "success",
+							body: event.isError ? getToolResultBody(event) : undefined,
+							messageKey: event.isError ? "notice.error.generic" : "notice.tool.completed",
+							ttlMs: event.isError ? 5_000 : 3_000,
+							priority: event.isError ? "high" : "normal",
+							dedupeKey: "session-status",
+						},
+					}
+				: null,
+	},
+	{
+		name: "retry",
+		resolve: (event) =>
+			event.type === "retry.start"
+				? {
+						action: { groupId: "working" },
+						bubble: {
+							kind: "warning",
+							body: normalizeBodyText(event.errorMessage),
+							messageKey: "notice.retry.running",
+							params: { attempt: event.attempt, maxAttempts: event.maxAttempts },
+							persistent: true,
+							ttlMs: 3_000,
+							dedupeKey: "session-status",
+						},
+					}
+				: null,
+	},
+	{
 		name: "event-type",
-		resolve: (event) => EVENT_TYPE_INTENTS[event.type] ?? null,
+		resolve: (event) => {
+			const intent = EVENT_TYPE_INTENTS[event.type];
+			if (event.type === "error" && intent?.bubble) {
+				return { ...intent, bubble: { ...intent.bubble, body: normalizeBodyText(event.error.message) } };
+			}
+			return intent ?? null;
+		},
 	},
 ];
 

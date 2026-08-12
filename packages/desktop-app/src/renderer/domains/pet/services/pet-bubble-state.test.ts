@@ -4,7 +4,13 @@ import { INITIAL_PET_BUBBLE_QUEUE_STATE, type PetBubbleQueueState, reducePetBubb
 function show(
 	state: PetBubbleQueueState,
 	text: string,
-	options: { dedupeKey?: string; sessionId?: string; priority?: "normal" | "high"; source?: "app" | "user" } = {},
+	options: {
+		dedupeKey?: string;
+		sessionId?: string;
+		priority?: "normal" | "high";
+		source?: "app" | "user";
+		persistent?: boolean;
+	} = {},
 	now = 0,
 ): PetBubbleQueueState {
 	return reducePetBubbleQueue(state, { type: "show", now, input: { text, ...options } });
@@ -16,7 +22,7 @@ describe("reducePetBubbleQueue", () => {
 			dedupeKey: "session-status",
 			sessionId: "s1",
 		});
-		const working = show(started, "正在读取文件", { dedupeKey: "session-status", sessionId: "s1" }, 2_000);
+		const working = show(started, "正在读取文件", { dedupeKey: "session-status", sessionId: "s1" }, 3_000);
 
 		expect(working.current?.text).toBe("正在读取文件");
 		expect(working.pending).toEqual([]);
@@ -26,7 +32,7 @@ describe("reducePetBubbleQueue", () => {
 	it("refreshes repeated legacy text in place", () => {
 		const first = show(INITIAL_PET_BUBBLE_QUEUE_STATE, "相同消息");
 		const waiting = show(first, "相同消息", {}, 1_000);
-		const refreshed = show(waiting, "相同消息", {}, 2_000);
+		const refreshed = show(waiting, "相同消息", {}, 3_000);
 
 		expect(refreshed.current?.text).toBe("相同消息");
 		expect(refreshed.current?.id).not.toBe(first.current?.id);
@@ -81,5 +87,29 @@ describe("reducePetBubbleQueue", () => {
 
 		expect(user.current?.text).toBe("用户消息");
 		expect(user.pending).toEqual([]);
+	});
+
+	it("keeps a running notice until a terminal notice replaces it", () => {
+		const running = show(
+			INITIAL_PET_BUBBLE_QUEUE_STATE,
+			"正在执行",
+			{
+				dedupeKey: "session-status",
+				sessionId: "s1",
+				persistent: true,
+			},
+			0,
+		);
+		const completed = show(
+			running,
+			"已完成配置迁移",
+			{
+				dedupeKey: "session-status",
+				sessionId: "s1",
+			},
+			1_000,
+		);
+
+		expect(completed.current?.text).toBe("已完成配置迁移");
 	});
 });

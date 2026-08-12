@@ -101,8 +101,10 @@
 		},
 		"tool": {
 			"running": "Running a tool",
-			"runningWithDescription": "{{description}}"
+			"runningWithDescription": "{{description}}",
+			"completed": "Tool completed"
 		},
+		"retry": { "running": "Retrying ({{attempt}}/{{maxAttempts}})" },
 		"background": {
 			"running": "Background task is running",
 			"completed": "Background task completed",

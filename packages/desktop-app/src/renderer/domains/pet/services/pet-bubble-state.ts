@@ -9,7 +9,7 @@ import type {
 export const DEFAULT_PET_BUBBLE_TTL_MS = 4_000;
 export const MIN_PET_BUBBLE_TTL_MS = 1_000;
 export const MAX_PET_BUBBLE_TTL_MS = 15_000;
-export const PET_BUBBLE_MIN_HOLD_MS = 2_000;
+export const PET_BUBBLE_MIN_HOLD_MS = 3_000;
 const MAX_PENDING_PET_BUBBLES = 3;
 
 export interface ShowPetBubbleInput extends PetBubbleNotice {
@@ -25,9 +25,11 @@ export interface PetBubbleMessage {
 	readonly kind?: PetBubbleKind;
 	readonly messageKey?: string;
 	readonly params?: Readonly<Record<string, string | number>>;
+	readonly body?: string;
 	readonly dedupeKey?: string;
 	readonly sessionId?: string;
 	readonly ttlMs: number;
+	readonly persistent: boolean;
 	readonly shownAt: number;
 }
 
@@ -91,8 +93,10 @@ function createMessage(
 		...(input.kind === undefined ? {} : { kind: input.kind }),
 		...(input.messageKey === undefined ? {} : { messageKey: input.messageKey }),
 		...(input.params === undefined ? {} : { params: input.params }),
+		...(input.body === undefined ? {} : { body: input.body }),
 		...(input.dedupeKey === undefined ? {} : { dedupeKey: input.dedupeKey }),
 		...(input.sessionId === undefined ? {} : { sessionId: input.sessionId }),
+		persistent: input.persistent === true,
 	};
 }
 
@@ -137,6 +141,9 @@ export function reducePetBubbleQueue(state: PetBubbleQueueState, action: PetBubb
 	const identity = getDedupeIdentity(next);
 	const updatesCurrent = state.current && isSameMessageSlot(state.current, next);
 	if (updatesCurrent) {
+		if (state.current.persistent && !next.persistent) {
+			return { ...nextState, current: next, pending: [] };
+		}
 		if (next.priority === "high" || action.now - state.current.shownAt >= PET_BUBBLE_MIN_HOLD_MS) {
 			return {
 				...nextState,
