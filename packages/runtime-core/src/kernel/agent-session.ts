@@ -1,9 +1,12 @@
 import type {
 	AgentSessionState,
+	QueuedSessionInput,
 	QueuedSessionInputResult,
+	RuntimeInputRequestPreparer,
 	SessionContextRecord,
 	SessionInput,
 	SessionInputQueueMode,
+	SessionInputRequest,
 	SessionSendOptions,
 	SessionSendResult,
 	SessionStreamingBehavior,
@@ -30,9 +33,10 @@ export class AgentSession {
 	private readonly inputQueue: SessionInputQueue;
 	private currentState: AgentSessionState = "idle";
 	private activeController: AbortController | undefined;
-	private activeTurn: Promise<TurnResult> | undefined;
+	private activeTurn: Promise<SessionSendResult> | undefined;
 	private continuationRequested = false;
 	private continuationDrain: Promise<void> | undefined;
+	private inputRequestPreparer: RuntimeInputRequestPreparer | undefined;
 	private readonly continuationContext: SessionContextRecord[] = [];
 	private readonly nextTurnContext: SessionContextRecord[] = [];
 	private contextWrite: Promise<void> = Promise.resolve();
@@ -113,6 +117,22 @@ export class AgentSession {
 
 		const trailingContext = [...(input.trailingContext ?? []), ...this.nextTurnContext.splice(0)];
 		return this.startTurn(trailingContext.length > 0 ? { ...input, trailingContext } : input);
+	}
+
+	async sendRequest(
+		request: SessionInputRequest,
+		options: SessionSendOptions = {},
+		preparer?: RuntimeInputRequestPreparer,
+	): Promise<SessionSendResult> {
+		await this.contextWrite;
+		if (preparer) this.inputRequestPreparer = preparer;
+		if (this.currentState === "closed" || this.currentState === "closing") throw sessionClosedError();
+		if (this.currentState !== "idle") {
+			if (!options.streamingBehavior) throw sessionBusyError();
+			const { id, pendingCount } = this.inputQueue.enqueueRequestWithId(options.streamingBehavior, request);
+			return { status: "queued", behavior: options.streamingBehavior, pendingCount, id };
+		}
+		return this.startRequest(request, preparer ?? this.inputRequestPreparer);
 	}
 
 	async continue(): Promise<TurnResult> {
@@ -227,7 +247,9 @@ export class AgentSession {
 	 */
 	async sendQueuedNow(
 		id: string,
-	): Promise<{ readonly status: "missing" } | { readonly status: "started"; readonly turn: Promise<TurnResult> }> {
+	): Promise<
+		{ readonly status: "missing" } | { readonly status: "started"; readonly turn: Promise<SessionSendResult> }
+	> {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
@@ -242,14 +264,14 @@ export class AgentSession {
 		// cancel 的 pause-on-terminal 会冻结其余排队条目；用户点「立即发送」表达的
 		// 是继续消费，解除暂停让它们在新 turn 的自然停止点接力。
 		this.inputQueue.resume();
-		return { status: "started", turn: this.startTurn(input) };
+		return { status: "started", turn: this.startQueuedInput(input) };
 	}
 
 	/**
 	 * 解除 pause-on-terminal 并继续消费队列：空闲时以 followUp 队首开启新 turn，
 	 * 其余条目由该 turn 的自然停止点接力消费；running 时仅解除暂停。
 	 */
-	async resumeQueue(): Promise<TurnResult | undefined> {
+	async resumeQueue(): Promise<SessionSendResult | undefined> {
 		if (this.currentState === "closed" || this.currentState === "closing") {
 			throw sessionClosedError();
 		}
@@ -261,7 +283,7 @@ export class AgentSession {
 		if (this.currentState !== "idle") return undefined;
 		const head = this.inputQueue.takeFollowUpHead();
 		if (!head) return undefined;
-		return this.startTurn(head);
+		return this.startQueuedInput(head);
 	}
 
 	async cancel(reason?: string): Promise<void> {
@@ -328,6 +350,35 @@ export class AgentSession {
 		} finally {
 			this.finishActiveTurn();
 		}
+	}
+
+	private async startRequest(
+		request: SessionInputRequest,
+		preparer?: RuntimeInputRequestPreparer,
+	): Promise<SessionSendResult> {
+		this.currentState = "running";
+		const controller = new AbortController();
+		this.activeController = controller;
+		const turn = this.pipeline.runRequest(this.identity, request, controller.signal, this.inputQueue, preparer);
+		this.activeTurn = turn;
+		try {
+			const result = await turn;
+			if (result.status !== "completed" && result.status !== "handled" && this.inputQueue.pendingCount > 0) {
+				this.inputQueue.pause();
+			}
+			return result;
+		} catch (error) {
+			if (this.inputQueue.pendingCount > 0) this.inputQueue.pause();
+			throw error;
+		} finally {
+			this.finishActiveTurn();
+		}
+	}
+
+	private startQueuedInput(input: QueuedSessionInput): Promise<SessionSendResult> {
+		if (input.request) return this.startRequest(input.request, this.inputRequestPreparer);
+		if (input.message) return this.startTurn(input as SessionInput);
+		throw new Error("Queued input does not contain a message or request");
 	}
 
 	private async drainRequestedContinuations(): Promise<void> {

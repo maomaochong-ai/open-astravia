@@ -48,6 +48,9 @@ describe("McpDynamicServerRuntimeToolSource", () => {
 					getPid: () => undefined,
 					isClientInitialized: () => true,
 				},
+				acquireLease() {
+					return { client: this.client, view: this.view, release: async () => {} };
+				},
 			},
 		]);
 		const source = createMcpDynamicServerRuntimeToolSource(port, {

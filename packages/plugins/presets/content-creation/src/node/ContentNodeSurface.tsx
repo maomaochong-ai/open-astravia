@@ -8,6 +8,8 @@ import type {
 	ContentNodeStatus,
 	GenerationJob,
 } from "../project/types";
+import { ImageEditWorkspace } from "../image-edit/ImageEditWorkspace";
+import type { ContentImageEditRegion } from "../image-edit/image-edit-document";
 import { ContentAssetNodeSurface } from "./ContentAssetNodeSurface";
 import { ContentAssetKindIcon } from "./ContentAssetKindIcon";
 import { NodeKindIcon } from "./NodeKindIcon";
@@ -24,6 +26,10 @@ interface ContentNodeSurfaceProps {
 	assets?: readonly ContentAsset[];
 	referenceAssets?: readonly ContentAsset[];
 	job?: GenerationJob;
+	imageEditActive?: boolean;
+	imageEditRegions?: readonly ContentImageEditRegion[];
+	onApplyImageEdit?: (regions: ContentImageEditRegion[]) => void;
+	onCloseImageEdit?: () => void;
 }
 
 /**
@@ -100,6 +106,10 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 	assets = [],
 	referenceAssets = [],
 	job,
+	imageEditActive = false,
+	imageEditRegions = [],
+	onApplyImageEdit,
+	onCloseImageEdit,
 }: ContentNodeSurfaceProps) {
 	const { t } = useTranslation();
 	const isMedia = kind === "image-generator" || kind === "video-generator";
@@ -152,14 +162,18 @@ export const ContentNodeSurface = memo(function ContentNodeSurface({
 				{assetUrl && assetKind === "video" ? (
 					<ContentVideoPreview src={assetUrl} />
 				) : assetUrl ? (
-					<img
-						className="block h-full w-full border-0 bg-background object-contain"
-						src={assetUrl}
-						alt={t("node.generatedPreview")}
-						loading="lazy"
-						decoding="async"
-						draggable={false}
-					/>
+					imageEditActive && onApplyImageEdit && onCloseImageEdit ? (
+						<ImageEditWorkspace imageUrl={assetUrl} regions={imageEditRegions} onApply={onApplyImageEdit} onClose={onCloseImageEdit} />
+					) : (
+						<img
+							className="block h-full w-full border-0 bg-background object-contain"
+							src={assetUrl}
+							alt={t("node.generatedPreview")}
+							loading="lazy"
+							decoding="async"
+							draggable={false}
+						/>
+					)
 				) : (
 					<MediaPlaceholder kind={kind} descriptionKey={descriptionKey} prompt={data.prompt} />
 				)}

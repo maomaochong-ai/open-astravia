@@ -1,7 +1,16 @@
 import type { AgentPluginRuntimeConfig } from "@vetta/runtime-core";
 import { validatePluginId } from "@vetta-org/plugin-sdk/manifest";
 import type { InstalledPlugin, PluginPermission } from "../../preload/api-types/plugins.js";
-import type { DesktopPluginHookRegistration, DesktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
+import type {
+	DesktopPluginAgentHandlerKind,
+	DesktopPluginAgentHandlerRegistry,
+	DesktopPluginAgentHandlerReleasedEvent,
+} from "./coding-agent-handler-registry.js";
+import type {
+	DesktopPluginHookRegistration,
+	DesktopPluginHookRegistry,
+	DesktopPluginHookReleasedHandler,
+} from "./coding-agent-hook-registry.js";
 import {
 	PluginAgentContributionRegistry,
 	type RegisteredAgentTool,
@@ -23,6 +32,7 @@ export interface PluginAgentContributionServiceDependencies {
 	resolveFilePath(pluginId: string, relativePath: string): string;
 	logger: PluginAgentContributionLogger;
 	hooks: DesktopPluginHookRegistry;
+	handlers: DesktopPluginAgentHandlerRegistry;
 }
 
 export class PluginAgentContributionService {
@@ -70,6 +80,46 @@ export class PluginAgentContributionService {
 		);
 	}
 
+	readHookInvocationRejection(pluginId: string, handlerId: string, activationId?: string): string | undefined {
+		return this.dependencies.hooks.readInvocationRejection(pluginId, handlerId, activationId);
+	}
+
+	readHandlerInvocationRejection(
+		kind: DesktopPluginAgentHandlerKind,
+		pluginId: string,
+		handlerId: string,
+		activationId?: string,
+	): string | undefined {
+		return this.dependencies.handlers.readInvocationRejection(kind, pluginId, handlerId, activationId);
+	}
+
+	hardRevokeHandlers(
+		pluginId: string,
+		reason: string,
+		kinds?: readonly (DesktopPluginAgentHandlerKind | "hook")[],
+	): number {
+		validatePluginId(pluginId);
+		const selected = new Set<DesktopPluginAgentHandlerKind | "hook">(
+			kinds ?? ["tool", "hook", "continuation", "system-prompt"],
+		);
+		return (
+			(selected.has("hook") ? this.dependencies.hooks.hardRevoke(pluginId, reason) : 0) +
+			this.dependencies.handlers.hardRevoke(pluginId, reason, selected)
+		);
+	}
+
+	onHookHandlerReleased(listener: (handler: DesktopPluginHookReleasedHandler) => void): () => void {
+		return this.dependencies.hooks.onHandlerReleased(listener);
+	}
+
+	onAgentHandlerReleased(listener: (handler: DesktopPluginAgentHandlerReleasedEvent) => void): () => void {
+		return this.dependencies.handlers.onReleased(listener);
+	}
+
+	bindAgentHandlersForTurn(agentPlugins: AgentPluginRuntimeConfig | undefined) {
+		return this.dependencies.handlers.acquire(agentPlugins);
+	}
+
 	buildRuntimeConfig(): AgentPluginRuntimeConfig | undefined {
 		return buildPluginRuntimeConfig({
 			plugins: this.dependencies.listPlugins(),
@@ -98,6 +148,15 @@ export class PluginAgentContributionService {
 		});
 	}
 
+	commitLoad(pluginId: string, activationId: string): void {
+		this.requirePlugin(pluginId);
+		if (!this.registry.commit(pluginId, activationId)) {
+			throw new Error(`Plugin Agent contribution activation is stale: ${pluginId}/${activationId}`);
+		}
+		this.syncPublishedHandlers(pluginId);
+		this.debug("dynamic agent contribution activation committed", { pluginId, activationId });
+	}
+
 	registerTool(pluginId: string, tool: RegisteredAgentTool): void {
 		const plugin = this.requirePlugin(pluginId);
 		if (!hasGrantedPermission(plugin, "agent.tools.register")) {
@@ -112,6 +171,7 @@ export class PluginAgentContributionService {
 			});
 			return;
 		}
+		if (tool.activationId === undefined) this.syncPublishedHandlers(pluginId);
 		this.debug("dynamic tool registered", {
 			pluginId,
 			toolId: tool.id,
@@ -124,10 +184,13 @@ export class PluginAgentContributionService {
 
 	unregisterTool(pluginId: string, toolId: string, activationId?: string): void {
 		validatePluginId(pluginId);
+		const staged = activationId !== undefined && this.registry.isPendingActivation(pluginId, activationId);
+		const handlerId = this.registry.getTools(pluginId).find((tool) => tool.id === toolId)?.handlerId;
 		if (!this.registry.unregisterTool(pluginId, toolId, activationId)) {
 			this.debug("ignore stale dynamic tool unregister", { pluginId, toolId, activationId });
 			return;
 		}
+		if (handlerId && !staged) this.dependencies.handlers.unregister("tool", pluginId, handlerId);
 		this.debug("dynamic tool unregistered", {
 			pluginId,
 			toolId,
@@ -157,12 +220,18 @@ export class PluginAgentContributionService {
 		if (!hasGrantedPermission(plugin, "agent.continuation.register")) {
 			throw new Error("Plugin permission denied: agent.continuation.register");
 		}
-		this.registry.registerContinuation(pluginId, provider);
+		if (!this.registry.registerContinuation(pluginId, provider)) return;
+		if (provider.activationId === undefined) this.syncPublishedHandlers(pluginId);
 	}
 
 	unregisterContinuation(pluginId: string, providerId: string, activationId?: string): void {
 		validatePluginId(pluginId);
-		this.registry.unregisterContinuation(pluginId, providerId, activationId);
+		const staged = activationId !== undefined && this.registry.isPendingActivation(pluginId, activationId);
+		const handlerId = this.registry
+			.getContinuations(pluginId)
+			.find((provider) => provider.id === providerId)?.handlerId;
+		if (!this.registry.unregisterContinuation(pluginId, providerId, activationId)) return;
+		if (handlerId && !staged) this.dependencies.handlers.unregister("continuation", pluginId, handlerId);
 	}
 
 	registerSystemPrompt(pluginId: string, provider: RegisteredSystemPromptProvider): void {
@@ -174,6 +243,7 @@ export class PluginAgentContributionService {
 			throw new Error("Plugin permission denied: agent.systemPrompt.write");
 		}
 		if (!this.registry.registerSystemPrompt(pluginId, provider)) return;
+		if (provider.activationId === undefined) this.syncPublishedHandlers(pluginId);
 		this.dependencies.logger.debug("[plugin-system-prompt] provider registered", {
 			pluginId,
 			providerId: provider.id,
@@ -186,7 +256,12 @@ export class PluginAgentContributionService {
 
 	unregisterSystemPrompt(pluginId: string, providerId: string, activationId?: string): void {
 		validatePluginId(pluginId);
+		const staged = activationId !== undefined && this.registry.isPendingActivation(pluginId, activationId);
+		const handlerId = this.registry
+			.getSystemPrompts(pluginId)
+			.find((provider) => provider.id === providerId)?.handlerId;
 		if (!this.registry.unregisterSystemPrompt(pluginId, providerId, activationId)) return;
+		if (handlerId && !staged) this.dependencies.handlers.unregister("system-prompt", pluginId, handlerId);
 		this.dependencies.logger.debug("[plugin-system-prompt] provider unregistered", {
 			pluginId,
 			providerId,
@@ -197,11 +272,16 @@ export class PluginAgentContributionService {
 
 	clear(pluginId: string, activationId?: string): void {
 		validatePluginId(pluginId);
+		const discardedCandidate =
+			activationId !== undefined && this.registry.isPendingActivation(pluginId, activationId);
+		const pending = activationId !== undefined ? this.registry.readPending(pluginId, activationId) : undefined;
 		const previous = this.registry.clear(pluginId, activationId);
 		if (!previous) {
 			this.debug("ignore stale dynamic tools clear", { pluginId, activationId });
 			return;
 		}
+		if (discardedCandidate && pending) this.releaseUnpublishedHandlers(pluginId, pending);
+		else this.dependencies.handlers.clear(pluginId);
 		this.debug("dynamic agent contributions cleared", {
 			pluginId,
 			activationId,
@@ -215,6 +295,71 @@ export class PluginAgentContributionService {
 		return plugin.source === "system" || this.dependencies.isDevLinked(plugin.id)
 			? relativePath
 			: versionedPluginPath(plugin.activeVersion, relativePath);
+	}
+
+	private syncPublishedHandlers(pluginId: string): void {
+		this.dependencies.handlers.clear(pluginId);
+		for (const tool of this.registry.getTools(pluginId)) {
+			this.dependencies.handlers.register({
+				kind: "tool",
+				pluginId,
+				handlerId: tool.handlerId,
+				activationId: tool.activationId,
+			});
+		}
+		for (const provider of this.registry.getContinuations(pluginId)) {
+			this.dependencies.handlers.register({
+				kind: "continuation",
+				pluginId,
+				handlerId: provider.handlerId,
+				activationId: provider.activationId,
+			});
+		}
+		for (const provider of this.registry.getSystemPrompts(pluginId)) {
+			this.dependencies.handlers.register({
+				kind: "system-prompt",
+				pluginId,
+				handlerId: provider.handlerId,
+				activationId: provider.activationId,
+			});
+		}
+	}
+
+	private releaseUnpublishedHandlers(
+		pluginId: string,
+		pending: NonNullable<ReturnType<PluginAgentContributionRegistry["readPending"]>>,
+	): void {
+		for (const tool of pending.tools) {
+			this.dependencies.handlers.releaseUnpublished({
+				kind: "tool",
+				pluginId,
+				handlerId: tool.handlerId,
+				activationId: tool.activationId,
+			});
+		}
+		for (const hook of pending.hooks) {
+			this.dependencies.hooks.releaseUnpublished({
+				pluginId,
+				handlerId: hook.handlerId,
+				activationId: hook.activationId,
+			});
+		}
+		for (const provider of pending.continuations) {
+			this.dependencies.handlers.releaseUnpublished({
+				kind: "continuation",
+				pluginId,
+				handlerId: provider.handlerId,
+				activationId: provider.activationId,
+			});
+		}
+		for (const provider of pending.systemPrompts) {
+			this.dependencies.handlers.releaseUnpublished({
+				kind: "system-prompt",
+				pluginId,
+				handlerId: provider.handlerId,
+				activationId: provider.activationId,
+			});
+		}
 	}
 
 	private findPlugin(pluginId: string): InstalledPlugin | undefined {

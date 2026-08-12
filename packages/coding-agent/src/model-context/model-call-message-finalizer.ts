@@ -1,6 +1,10 @@
 import type { AgentMessage } from "@vetta/agent-core";
 import type { Message, TextContent } from "@vetta/ai";
-import type { ModelCallMessageFinalizationInput, ModelCallMessageFinalizer } from "@vetta/runtime-core/kernel";
+import type {
+	ModelCallMessageFinalizationInput,
+	ModelCallMessageFinalizer,
+	RuntimeSnapshotAcquireContext,
+} from "@vetta/runtime-core/kernel";
 import { applyImageBudget } from "./image-budget.js";
 import { type ModelInputImageProcessor, normalizeModelInputImages } from "./image-normalization.js";
 
@@ -19,9 +23,28 @@ export class CodingAgentModelCallMessageFinalizer implements ModelCallMessageFin
 		private readonly imageProcessor?: ModelInputImageProcessor,
 	) {}
 
+	bindForTurn(context: RuntimeSnapshotAcquireContext): ModelCallMessageFinalizer {
+		context.signal.throwIfAborted();
+		this.settings?.reloadImageSettings?.();
+		const imageAutoResize = this.settings?.getImageAutoResize?.();
+		const blockImages = this.settings?.getBlockImages?.();
+		const highWatermarkBytes = this.settings?.getImageRequestHighWatermarkBytes?.();
+		const lowWatermarkBytes = this.settings?.getImageRequestLowWatermarkBytes?.();
+		return new CodingAgentModelCallMessageFinalizer(
+			{
+				...(imageAutoResize === undefined ? {} : { getImageAutoResize: () => imageAutoResize }),
+				...(blockImages === undefined ? {} : { getBlockImages: () => blockImages }),
+				...(highWatermarkBytes === undefined
+					? {}
+					: { getImageRequestHighWatermarkBytes: () => highWatermarkBytes }),
+				...(lowWatermarkBytes === undefined ? {} : { getImageRequestLowWatermarkBytes: () => lowWatermarkBytes }),
+			},
+			this.imageProcessor,
+		);
+	}
+
 	async finalize(input: ModelCallMessageFinalizationInput, signal: AbortSignal): Promise<readonly Message[]> {
 		signal.throwIfAborted();
-		this.settings?.reloadImageSettings?.();
 		const normalized =
 			this.settings?.getImageAutoResize?.() === false
 				? [...input.messages]

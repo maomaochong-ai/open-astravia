@@ -198,7 +198,6 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 			const pipeline = new TurnPipeline({
 				repository: resources.repository,
 				snapshotProvider: resources.snapshotProvider,
-				modelBindingProvider: resources.modelRuntime,
 				turnEngine,
 				eventSink,
 				clock: this.clock,
@@ -256,7 +255,6 @@ export class ComposedRuntimeFactory<TCreateOptions> implements KernelRuntimeFact
 						repository: resources.repository,
 						conversationDocumentReader: resources.conversationDocumentStore,
 						snapshotProvider: resources.snapshotProvider,
-						modelBindingProvider: resources.modelRuntime,
 						contextRuntime: resources.contextRuntime,
 						committer: contextCompactionCommitter,
 					})

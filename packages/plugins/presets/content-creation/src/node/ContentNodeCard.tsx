@@ -1,7 +1,7 @@
 import { NodeResizer, NodeToolbar, Position, type Node, type NodeProps } from "@xyflow/react";
 import { useTranslation } from "@vetta-org/plugin-sdk";
 import { Button } from "@vetta/ui";
-import { type DragEvent, memo, useEffect, useMemo, useRef, useState } from "react";
+import { type DragEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getContentNodeDefinition } from "./definitions";
 import type {
 	AssetKind,
@@ -18,6 +18,11 @@ import type {
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "../generation/types";
+import {
+	findImageEditModel,
+	type ContentImageEditRegion,
+	type ContentImageEditRequest,
+} from "../image-edit/image-edit-document";
 import { useContentCanvasSelectionCount } from "../canvas/ContentCanvasSelectionContext";
 import { ContentNodeHeader } from "./ContentNodeHeader";
 import { ContentNodeHandle } from "./ContentNodeHandle";
@@ -53,6 +58,7 @@ export interface ContentFlowNodeData extends Record<string, unknown> {
 	onUpdate: (data: ContentNodeData) => Promise<void>;
 	onResize: (position: CanvasPosition, width: number, height: number) => void;
 	onRunNode: () => Promise<void>;
+	onRunImageEdit: (edit: ContentImageEditRequest) => Promise<void>;
 	onImportAssets: (files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSetKeyframeSource: (
@@ -91,6 +97,8 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 	const [importingDrop, setImportingDrop] = useState(false);
 	const [focusPromptRequest, setFocusPromptRequest] = useState(0);
 	const [editorMounted, setEditorMounted] = useState(false);
+	const [imageEditActive, setImageEditActive] = useState(false);
+	const [imageEditRegions, setImageEditRegions] = useState<ContentImageEditRegion[]>([]);
 	const definition = getContentNodeDefinition(data.kind);
 	const fileDropBehavior = getContentNodeFileDropBehavior(data.kind);
 	const title = data.name || t(`node.kind.${data.kind}`);
@@ -98,6 +106,9 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 	const showQuickToolbar = singleSelection || (hovered && selectionCount === 0);
 	const isResizable = !data.locked && (definition.category === "generation" || definition.category === "resource");
 	const showEditor = singleSelection && editorMounted && definition.properties.length > 0;
+	const imageEditModel = data.kind === "image-generator" && data.assetUrl
+		? findImageEditModel(data.models, data.nodeData.providerId, data.nodeData.modelId)
+		: undefined;
 	const inputLabel = definition.inputs.map((port) => t(port.labelKey)).join(", ");
 	const outputLabel = definition.outputs.map((port) => t(port.labelKey)).join(", ");
 	const surfaceData = useMemo(
@@ -111,6 +122,22 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 		() => data.referenceAssets.map(({ asset }) => asset),
 		[data.referenceAssets],
 	);
+	const applyImageEdit = useCallback(
+		(regions: ContentImageEditRegion[]) => {
+			setImageEditRegions(regions);
+			setImageEditActive(false);
+			if (imageEditModel && data.nodeData.assetId) {
+				void data.onRunImageEdit({
+					sourceAssetId: data.nodeData.assetId,
+					regions,
+					providerId: imageEditModel.providerId,
+					modelId: imageEditModel.modelId,
+				});
+			}
+		},
+		[data.nodeData.assetId, data.onRunImageEdit, imageEditModel],
+	);
+	const closeImageEdit = useCallback(() => setImageEditActive(false), []);
 
 	useEffect(
 		() => () => {
@@ -201,6 +228,20 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 					onMouseEnter={keepQuickToolbar}
 					onMouseLeave={scheduleQuickToolbarClose}
 				>
+					{data.kind === "image-generator" ? (
+						<Button
+							type="button"
+							size="icon-xs"
+							variant="ghost"
+							className="nodrag"
+							disabled={!imageEditModel || data.status === "running" || data.status === "queued"}
+							onClick={() => { setImageEditRegions([]); setImageEditActive(true); }}
+							title={t("imageEdit.open")}
+							aria-label={t("imageEdit.open")}
+						>
+							<span className="icon-[lucide--wand-sparkles] block size-4 shrink-0" aria-hidden="true" />
+						</Button>
+					) : null}
 					<Button
 						type="button"
 						size="icon-xs"
@@ -263,6 +304,10 @@ export const ContentNodeCard = memo(function ContentNodeCard({ data, dragging, s
 					assetUrl={data.assetUrl}
 					assetKind={data.assetKind}
 					job={data.job}
+					imageEditActive={imageEditActive}
+					imageEditRegions={imageEditRegions}
+					onApplyImageEdit={applyImageEdit}
+					onCloseImageEdit={closeImageEdit}
 				/>
 				{fileDropBehavior?.action === "append-assets" && (dropActive || importingDrop) ? (
 					<div className="pointer-events-none absolute inset-1 z-30 grid place-items-center rounded-lg border border-dashed border-primary/55 bg-background/90 text-center backdrop-blur-sm">

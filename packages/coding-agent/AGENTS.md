@@ -65,8 +65,8 @@
 - 围绕稳定职责组织模块，不围绕一次需求、页面或临时调用者组织代码。
 - 稳定合同与易变实现分离；业务语义通过领域类型表达，不使用通用 `Record`、字符串约定或共享 metadata 隐藏依赖。
 - 组合优于继承。具体实现只在 Composition Root 选择，领域代码依赖窄 Port。
-- 动态 Tool、MCP、Skill、Plugin 和 Prompt 在模型调用边界读取最新状态；不要把可删除、可注册的能力冻结成长期全局快照。
-- Turn 级一致性绑定只固定本次执行需要稳定的对象，不阻止后续调用观察合法的运行时变化。
+- 动态 Tool、MCP、Skill、Plugin、Prompt 与模型策略在 Turn admission 绑定同一个不可变 generation；普通外部更新只对后续 Turn 可见，不得在同一 Turn 的模型调用、工具执行或 Hook dispatch 中读取新的 current revision。
+- Model Call 仍可观察本 Turn 自己产生的消息、工具结果、Todo、usage 与 deferred activation；不要把该 Turn-local state 误当成外部 generation，也不要把 snapshot 固定到整个 Session。
 - ConversationDocument 和持久化事件是 canonical 事实；上下文裁剪、图片预算和 microcompact 应优先实现为模型调用视图的纯投影。
 - 公共合同按兼容方式演进；需要破坏性变化时，使用显式版本和迁移器，不以双执行路径或永久 Adapter 掩盖迁移。
 - 一次架构修改只解决一个清晰问题。不要顺带重写无关模块或改变用户可观察功能。
@@ -113,7 +113,7 @@
 - 不引入公开的 `next()` Middleware 让任意 Feature 修改 messages、tools、instructions 或终止结果。
 - 新上下文来源使用 Context Provider；模型调用级动态能力使用 Contribution Provider；上下文预算使用 Context Strategy；权限使用 Tool Policy；非关键后处理使用 Observer。
 - Feature 不得持有可变 Session 内部对象，不得通过共享对象互相通信，不得静默覆盖同名 Tool 或资源。
-- 注册、移除或替换动态能力必须定义下一次模型调用何时可见，以及在途调用如何完成、拒绝或取消。
+- 注册、移除或替换动态能力默认从下一 Turn 可见；普通 retirement 允许持有旧 generation lease 的在途调用完成，只有携带 reason 与审计信息的 hard revoke 可以在安全检查点立即拒绝或取消。
 - 失败、取消和关闭必须沿 `AbortSignal` 与生命周期合同传播；资源创建与释放必须成对并可在部分初始化失败时回滚。
 
 ## 功能兼容与数据边界

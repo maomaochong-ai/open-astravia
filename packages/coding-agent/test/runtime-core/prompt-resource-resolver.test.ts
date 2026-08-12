@@ -6,6 +6,7 @@ import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core
 import { createCodingAgentPromptResourceResolver } from "../../src/resources/prompt-resource-resolver.js";
 import type { Skill } from "../../src/resources/skills/index.js";
 import { CodingAgentTodoRuntime } from "../../src/work-state/todo-runtime.js";
+import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent prompt resource resolver", () => {
 	let root: string;
@@ -40,7 +41,8 @@ describe("Coding Agent prompt resource resolver", () => {
 			}),
 		});
 
-		const first = await adapter.prepare(
+		const first = await preparePrompt(
+			adapter,
 			{ text: "review this", promptRef: { kind: "skill", name: "review" } },
 			{ sessionId: "session-1", queueing: false },
 		);
@@ -50,14 +52,16 @@ describe("Coding Agent prompt resource resolver", () => {
 		});
 
 		writeFileSync(skillPath, skillDocument("review", "updated instructions"));
-		const updated = await adapter.prepare(
+		const updated = await preparePrompt(
+			adapter,
 			{ text: "review again", promptRef: { kind: "skill", name: "review" } },
 			{ sessionId: "session-1", queueing: false },
 		);
 		expect(updated.input.context?.[0]?.content).toEqual(expect.stringContaining("updated instructions"));
 
 		unlinkSync(skillPath);
-		const deleted = await adapter.prepare(
+		const deleted = await preparePrompt(
+			adapter,
 			{ text: "review once more", promptRef: { kind: "skill", name: "review" } },
 			{ sessionId: "session-1", queueing: false },
 		);
@@ -93,7 +97,8 @@ describe("Coding Agent prompt resource resolver", () => {
 			}),
 		});
 
-		const prepared = await adapter.prepare(
+		const prepared = await preparePrompt(
+			adapter,
 			{ text: "ship it", promptRef: { kind: "scene", name: "deploy" } },
 			{ sessionId: "session-1", queueing: false },
 		);

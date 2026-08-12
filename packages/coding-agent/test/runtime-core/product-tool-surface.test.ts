@@ -87,7 +87,7 @@ describe("Coding Agent product tool surface", () => {
 		}
 	});
 
-	it("refreshes skill visibility per call and resolves the current file at execution", async () => {
+	it("freezes skill visibility and content per Turn", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "coding-agent-invoke-skill-"));
 		temporaryDirectories.push(directory);
 		const filePath = join(directory, "SKILL.md");
@@ -109,12 +109,29 @@ describe("Coding Agent product tool surface", () => {
 		const feature = await definition.prepare({ signal });
 
 		try {
-			expect((await feature.contribute({ profileId: "test", signal })).tools).toBeUndefined();
+			const contribution = await feature.contribute({ profileId: "test", signal });
+			const provider = contribution.modelCallProviders?.[0];
+			if (!provider?.bindForTurn) throw new Error("Expected a Turn-bindable invoke_skill provider");
+			const bind = (turnId: string) =>
+				provider.bindForTurn?.({
+					sessionId: "session-1",
+					operationId: turnId,
+					reason: "turn",
+					signal,
+				});
+			const contribute = (bound: Awaited<ReturnType<NonNullable<typeof provider.bindForTurn>>>, turnId: string) =>
+				bound.contribute({ sessionId: "session-1", turnId, signal });
+			const emptyTurn = await bind("turn-empty");
+			if (!emptyTurn) throw new Error("Expected empty Turn provider");
+			expect((await contribute(emptyTurn, "turn-empty")).tools).toBeUndefined();
 			skills = [skill(filePath, directory)];
-			const workContribution = await feature.contribute({ profileId: "test", signal });
+			const workTurn = await bind("turn-work");
+			if (!workTurn) throw new Error("Expected work Turn provider");
+			const workContribution = await contribute(workTurn, "turn-work");
 			const tool = workContribution.tools?.[0];
 			expect(tool?.name).toBe("invoke_skill");
 			if (!tool) throw new Error("Expected invoke_skill tool");
+			await writeFile(filePath, "---\nname: sample\ndescription: sample\n---\nChanged after admission.\n", "utf8");
 			const result = await tool.execute({
 				sessionId: "session-1",
 				turnId: "turn-1",
@@ -128,11 +145,16 @@ describe("Coding Agent product tool surface", () => {
 			});
 
 			mode = "coding";
-			expect((await feature.contribute({ profileId: "test", signal })).tools).toBeUndefined();
+			expect((await contribute(workTurn, "turn-work")).tools?.[0]?.name).toBe("invoke_skill");
+			const codingTurn = await bind("turn-coding");
+			if (!codingTurn) throw new Error("Expected coding Turn provider");
+			expect((await contribute(codingTurn, "turn-coding")).tools).toBeUndefined();
 			mode = "work";
 			skills = [];
-			expect((await feature.contribute({ profileId: "test", signal })).tools).toBeUndefined();
-			expect(refreshCount).toBeGreaterThanOrEqual(5);
+			const removedTurn = await bind("turn-removed");
+			if (!removedTurn) throw new Error("Expected removed Turn provider");
+			expect((await contribute(removedTurn, "turn-removed")).tools).toBeUndefined();
+			expect(refreshCount).toBe(4);
 		} finally {
 			await feature.dispose();
 		}

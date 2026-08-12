@@ -10,6 +10,7 @@ import { PluginContentArtifactStore } from "../generation/artifact-store";
 import { createContentProviderRegistry } from "../generation/create-provider-registry";
 import { ContentGenerationService } from "../generation/generation-service";
 import { ContentLocalAssetService } from "../generation/local-asset-service";
+import { PluginContentProjectHistoryRepository } from "../project/history-repository";
 import { PluginContentProjectRepository } from "../project/repository";
 import { ContentCreationWorkspace } from "../project/workspace";
 import { ContentPromptOptimizationService } from "../prompt-optimization/prompt-optimization-service";
@@ -28,13 +29,21 @@ export class ContentCreationPluginRuntime {
 	private mediaProviderSubscription: { dispose(): void } | null = null;
 	private settingsSubscription: { dispose(): void } | null = null;
 	private mediaProviderRefreshVersion = 0;
+	private historyPersistenceErrorNotified = false;
 	private readonly modelListeners = new Set<() => void>();
 	private disposed = false;
 	private readonly artifacts: PluginContentArtifactStore;
 	private readonly assetImports: ContentAssetImportService;
 
 	private constructor(private readonly ctx: PluginContext) {
-		this.workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage));
+		this.workspace = new ContentCreationWorkspace(new PluginContentProjectRepository(ctx.fs, ctx.storage), {
+			historyRepository: new PluginContentProjectHistoryRepository(ctx.storage),
+			onHistoryPersistenceError: (error) => {
+				if (this.historyPersistenceErrorNotified) return;
+				this.historyPersistenceErrorNotified = true;
+				ctx.ui.notify({ message: ctx.i18n.t("error.historyPersistence"), error });
+			},
+		});
 		const artifacts = new PluginContentArtifactStore(ctx.fs, ctx.storage, ctx.artifacts);
 		const assetImports = new ContentAssetImportService(this.workspace, artifacts);
 		this.agent = new ContentCreationAgentService(this.workspace, () => this.generation);

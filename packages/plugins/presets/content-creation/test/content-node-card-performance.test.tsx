@@ -92,6 +92,7 @@ function createNodeData(): ContentFlowNodeData {
 		onUpdate: vi.fn().mockResolvedValue(undefined),
 		onResize: vi.fn(),
 		onRunNode: vi.fn().mockResolvedValue(undefined),
+		onRunImageEdit: vi.fn().mockResolvedValue(undefined),
 		onImportAssets: vi.fn().mockResolvedValue(undefined),
 		onImportReferences: vi.fn().mockResolvedValue(undefined),
 		onSetKeyframeSource: vi.fn().mockResolvedValue(undefined),

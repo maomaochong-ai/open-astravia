@@ -3,6 +3,7 @@ import { Value } from "@sinclair/typebox/value";
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import {
@@ -19,6 +20,7 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 } from "../../runtime-contracts/index.js";
 import type { RegisteredTool } from "../index.js";
+import { ExtensionRunnerGenerationOwner } from "./extension-runner-generations.js";
 
 export interface CodingAgentExtensionToolSurface {
 	readonly frame: ModelCallFrame;
@@ -37,6 +39,7 @@ interface AdaptedExtensionToolRegistration extends CodingAgentRuntimeToolRegistr
  * 解析到对应 Session Runner。工具只在当前模型调用 Frame 中覆盖同名能力，不进入 Runtime Core。
  */
 export class CodingAgentExtensionToolRuntime {
+	readonly runnerGenerations = new ExtensionRunnerGenerationOwner();
 	private readonly processCatalog = new DynamicContributionCatalog<AdaptedExtensionToolRegistration>();
 	private readonly processSourceLeases = new Map<string, ContributionLease>();
 	private processRevision = 0;
@@ -110,16 +113,58 @@ export class CodingAgentExtensionToolRuntime {
 		return selectCodingToolRegistrations(this.readRegistrations(sessionId), activation).map(({ tool }) => tool.name);
 	}
 
+	bindForTurn(context: RuntimeSnapshotAcquireContext) {
+		context.signal.throwIfAborted();
+		const runnerLease = this.runnerGenerations.acquire(context.sessionId, context.operationId);
+		const registrations = Object.freeze(
+			this.readRegistrations(context.sessionId).map((registration) =>
+				runnerLease ? bindRegistrationToRunner(registration, runnerLease.runner) : registration,
+			),
+		);
+		const registrationsByName = new Map(registrations.map((registration) => [registration.tool.name, registration]));
+		const bound = {
+			bindForTurn: () => bound,
+			releaseTurnBinding: () => runnerLease?.release(),
+			compose: (
+				compositionContext: ModelCallFrameCompositionContext,
+				baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+				activation: CodingToolActivation,
+			) =>
+				this.composeRegistrations(
+					registrations,
+					registrationsByName,
+					compositionContext,
+					baseAvailableTools,
+					activation,
+				),
+			contributePrompt: (
+				draft: SystemPromptDraft,
+				input: { readonly sessionId: string; readonly activeToolNames: readonly string[] },
+			) => this.contributePromptRegistrations(registrationsByName, draft, input.activeToolNames),
+		};
+		return bound;
+	}
+
 	compose(
+		context: ModelCallFrameCompositionContext,
+		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+		activation: CodingToolActivation,
+	): CodingAgentExtensionToolSurface {
+		const registrations = this.readRegistrations(context.sessionId);
+		const registrationsByName = this.readRegistrationsByName(context.sessionId);
+		return this.composeRegistrations(registrations, registrationsByName, context, baseAvailableTools, activation);
+	}
+
+	private composeRegistrations(
+		registrations: readonly AdaptedExtensionToolRegistration[],
+		registrationsByName: ReadonlyMap<string, AdaptedExtensionToolRegistration>,
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
 		activation: CodingToolActivation,
 	): CodingAgentExtensionToolSurface {
 		const availableTools = new Map(baseAvailableTools);
 		const activeTools = new Map<string, RuntimeToolDefinition>();
-		const registrations = this.readRegistrations(context.sessionId);
-		const registrationsByName = this.readRegistrationsByName(context.sessionId);
-		const selected = new Set(this.readActiveToolNames(activation, context.sessionId));
+		const selected = new Set(selectCodingToolRegistrations(registrations, activation).map(({ tool }) => tool.name));
 
 		for (const { tool } of registrations) {
 			availableTools.set(tool.name, tool);
@@ -139,9 +184,17 @@ export class CodingAgentExtensionToolRuntime {
 		draft: SystemPromptDraft,
 		input: { readonly sessionId: string; readonly activeToolNames: readonly string[] },
 	): SystemPromptDraft {
-		let nextDraft = draft;
 		const registrations = this.readRegistrationsByName(input.sessionId);
-		for (const toolName of input.activeToolNames) {
+		return this.contributePromptRegistrations(registrations, draft, input.activeToolNames);
+	}
+
+	private contributePromptRegistrations(
+		registrations: ReadonlyMap<string, AdaptedExtensionToolRegistration>,
+		draft: SystemPromptDraft,
+		activeToolNames: readonly string[],
+	): SystemPromptDraft {
+		let nextDraft = draft;
+		for (const toolName of activeToolNames) {
 			const registration = registrations.get(toolName);
 			const prompt = registration?.definition.prompt;
 			if (!registration || !prompt) continue;
@@ -198,16 +251,14 @@ export class CodingAgentExtensionToolRuntime {
 		sessionId: string,
 		runner: CodingAgentExtensionRunnerPort,
 		options: { readonly replaceExisting?: boolean } = {},
-	): () => void {
-		const current = this.runners.get(sessionId);
-		if (current && current !== runner && options.replaceExisting !== true) {
-			throw new Error(`Extension tool runner is already bound: ${sessionId}`);
-		}
+	): () => Promise<void> {
+		const releaseGeneration = this.runnerGenerations.bind(sessionId, runner, options);
 		this.runners.set(sessionId, runner);
-		return () => {
+		return async () => {
 			for (const [boundSessionId, candidate] of this.runners) {
 				if (candidate === runner) this.runners.delete(boundSessionId);
 			}
+			await releaseGeneration();
 		};
 	}
 
@@ -292,6 +343,26 @@ export class CodingAgentExtensionToolRuntime {
 			category: resolveToolCategory(definition.category),
 		};
 	}
+}
+
+function bindRegistrationToRunner(
+	registration: AdaptedExtensionToolRegistration,
+	runner: CodingAgentExtensionRunnerPort,
+): AdaptedExtensionToolRegistration {
+	return {
+		...registration,
+		tool: {
+			...registration.tool,
+			execute: (request) =>
+				registration.definition.execute(
+					request.toolCallId,
+					request.input as Static<TSchema>,
+					request.signal,
+					request.onUpdate,
+					runner.createContext(),
+				),
+		},
+	};
 }
 
 function decodeNormalizedInput(schema: TSchema, input: unknown): Readonly<Record<string, unknown>> {

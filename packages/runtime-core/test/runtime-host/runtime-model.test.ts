@@ -96,16 +96,53 @@ describe("RuntimeModel", () => {
 		expect(refresh).toHaveBeenCalledOnce();
 		expect(refreshAuth).toHaveBeenCalledWith("token");
 
-		const firstBinding = runtime.bind();
+		const firstBinding = await runtime.bind();
 		expect(Object.isFrozen(firstBinding)).toBe(true);
-		expect(firstBinding).toEqual({ model: INITIAL_MODEL, reasoning: undefined });
+		expect(firstBinding).toMatchObject({ model: INITIAL_MODEL, reasoning: undefined });
+		expect(await firstBinding.credential?.resolve()).toBe("test-key");
 
 		await runtime.selectModel("test/alternate", "always");
 		runtime.setThinkingLevel("medium");
-		const secondBinding = runtime.bind();
+		const secondBinding = await runtime.bind();
 
-		expect(firstBinding).toEqual({ model: INITIAL_MODEL, reasoning: undefined });
-		expect(secondBinding).toEqual({ model: alternate, reasoning: "medium" });
+		expect(firstBinding).toMatchObject({ model: INITIAL_MODEL, reasoning: undefined });
+		expect(secondBinding).toMatchObject({ model: alternate, reasoning: "medium" });
+		expect(await firstBinding.credential?.resolve()).toBe("test-key");
+		expect(await secondBinding.credential?.resolve()).toBe("test-key");
+	});
+
+	it("captures thinking policy before asynchronous credential resolution yields", async () => {
+		let releaseCredential: () => void = () => {};
+		const credentialBarrier = new Promise<void>((resolve) => {
+			releaseCredential = resolve;
+		});
+		const runtime = createRuntime({
+			credentials: {
+				resolve: async () => {
+					await credentialBarrier;
+					return "test-key";
+				},
+				refreshAuth: async () => {},
+			},
+		});
+
+		const firstBinding = runtime.bind();
+		runtime.setThinkingLevel("custom-max");
+		releaseCredential();
+
+		const bound = await firstBinding;
+		expect(bound).toMatchObject({ model: INITIAL_MODEL, reasoning: undefined });
+		expect(await bound.credential?.resolve()).toBe("test-key");
+	});
+
+	it("invalidates admitted credentials when authentication is explicitly revoked", async () => {
+		const runtime = createRuntime();
+		const binding = await runtime.bind();
+		expect(await binding.credential?.resolve()).toBe("test-key");
+
+		await runtime.refreshAuth(undefined);
+
+		expect(await binding.credential?.resolve()).toBeUndefined();
 	});
 });
 

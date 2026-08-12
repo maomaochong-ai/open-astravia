@@ -89,5 +89,27 @@
 	"video": {
 		"missingTitle": "Pet video",
 		"missingSubtitle": "Not provided"
+	},
+	"notice": {
+		"lifecycle": {
+			"started": "I'll take care of this",
+			"completed": "All done",
+			"paused": "Paused until you continue"
+		},
+		"context": {
+			"compacting": "Let me tidy up the context"
+		},
+		"tool": {
+			"running": "Running a tool",
+			"runningWithDescription": "{{description}}"
+		},
+		"background": {
+			"running": "Background task is running",
+			"completed": "Background task completed",
+			"failed": "Background task ran into a problem"
+		},
+		"error": {
+			"generic": "This step ran into a problem"
+		}
 	}
 }

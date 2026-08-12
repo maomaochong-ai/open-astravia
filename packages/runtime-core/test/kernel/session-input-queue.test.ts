@@ -51,8 +51,8 @@ describe("SessionInputQueue", () => {
 		const cleared = queue.clear();
 
 		expect(visibleSteering).toHaveLength(1);
-		expect(cleared.steering.map(({ message }) => message.content)).toEqual(["steer"]);
-		expect(cleared.followUps.map(({ message }) => message.content)).toEqual(["follow-up"]);
+		expect(cleared.steering.flatMap(({ message }) => (message ? [message.content] : []))).toEqual(["steer"]);
+		expect(cleared.followUps.flatMap(({ message }) => (message ? [message.content] : []))).toEqual(["follow-up"]);
 		expect(queue.pendingCount).toBe(0);
 	});
 

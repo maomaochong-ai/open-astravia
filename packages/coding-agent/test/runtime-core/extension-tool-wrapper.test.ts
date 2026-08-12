@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { wrapRuntimeToolsWithExtensions } from "../../src/adapters/runtime-core/extension-tool-wrapper.js";
 import { CodingAgentPromptRequestAdapter } from "../../src/adapters/runtime-core/prompt-request-adapter.js";
 import type { ExtensionRunner, ToolCallEvent, ToolResultEvent } from "../../src/extensions/index.js";
+import { admitPrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Extension events", () => {
 	it("transforms input before prompt resource expansion and can handle it without a turn", async () => {
@@ -21,14 +22,13 @@ describe("Extension events", () => {
 		});
 		const context = { sessionId: "session-1", queueing: false };
 
-		const intercepted = await adapter.intercept(
+		const admitted = await admitPrompt(
+			adapter,
 			{ text: "original", promptRef: { kind: "skill", name: "fixture" } },
 			context,
 		);
-		expect(intercepted.action).toBe("continue");
-		if (intercepted.action !== "continue") throw new Error("Expected transformed prompt");
-		await adapter.prepare(intercepted.request, context);
-		await expect(adapter.intercept({ text: "stop" }, context)).resolves.toEqual({ action: "handled" });
+		expect(admitted.action).toBe("continue");
+		await expect(admitPrompt(adapter, { text: "stop" }, context)).resolves.toEqual({ action: "handled" });
 
 		expect(order).toEqual(["input:rpc:original:0", "resource:transformed", "input:rpc:stop:0"]);
 	});

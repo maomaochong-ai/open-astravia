@@ -113,6 +113,7 @@ export class CodingAgentRuntimeHostSessionBackend implements RuntimeHostSessionB
 			invokePluginTool: request.invokePluginTool,
 			invokePluginContinuation: request.invokePluginContinuation,
 			invokePluginSystemPrompt: request.invokePluginSystemPrompt,
+			pluginTurnHandlerLeaseProvider: request.pluginTurnHandlerLeaseProvider,
 			askUserQuestion: request.askUserQuestion,
 			sandboxHostPath: request.sandboxHostPath,
 			linuxBubblewrapPath: request.linuxBubblewrapPath,

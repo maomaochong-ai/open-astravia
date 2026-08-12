@@ -1,6 +1,6 @@
 import type { SessionEvent } from "@vetta/runtime-core";
 import { getPetActionsByGroup, type PetActionGroupId, type PetActionId } from "../../shared/pet-actions.js";
-import type { PetBubblePriority } from "../../shared/pet-ipc.js";
+import type { PetBubbleNotice } from "../../shared/pet-ipc.js";
 
 type SessionLifecyclePhase = Extract<SessionEvent, { type: "session.lifecycle" }>["phase"];
 type BackgroundTasksEvent = Extract<SessionEvent, { type: "background_tasks_update" }>;
@@ -10,20 +10,14 @@ interface PetActionIntent {
 	readonly actionId?: PetActionId;
 }
 
-export interface PetBubbleIntent {
-	readonly text: string;
-	readonly ttlMs?: number;
-	readonly priority?: PetBubblePriority;
-}
-
 interface PetPresentationIntent {
 	readonly action?: PetActionIntent;
-	readonly bubble?: PetBubbleIntent;
+	readonly bubble?: PetBubbleNotice;
 }
 
 export interface PetPresentation {
 	readonly actionId?: PetActionId;
-	readonly bubble?: PetBubbleIntent;
+	readonly bubble?: PetBubbleNotice;
 }
 
 interface SessionPetActionRule {
@@ -43,26 +37,37 @@ const DEFAULT_ACTION_BY_GROUP = {
 const LIFECYCLE_INTENTS: Partial<Record<SessionLifecyclePhase, PetPresentationIntent>> = {
 	agent_start: {
 		action: { groupId: "working" },
-		bubble: { text: "开始处理", ttlMs: 3_000 },
+		bubble: { kind: "status", messageKey: "notice.lifecycle.started", ttlMs: 3_000, dedupeKey: "session-status" },
 	},
 	agent_end: {
 		action: { groupId: "feedback", actionId: "stoat_stand_lift_barbell_one_hand_fast" },
-		bubble: { text: "处理完成", ttlMs: 4_000 },
+		bubble: {
+			kind: "success",
+			messageKey: "notice.lifecycle.completed",
+			ttlMs: 4_000,
+			dedupeKey: "session-status",
+		},
 	},
 	aborted: {
 		action: { groupId: "resting", actionId: "stoat_sleep_lie_on_cushion" },
-		bubble: { text: "已暂停", ttlMs: 4_000 },
+		bubble: { kind: "warning", messageKey: "notice.lifecycle.paused", ttlMs: 4_000, dedupeKey: "session-status" },
 	},
 };
 
 const EVENT_TYPE_INTENTS: Partial<Record<SessionEvent["type"], PetPresentationIntent>> = {
 	"compaction.start": {
 		action: { groupId: "resting" },
-		bubble: { text: "整理上下文", ttlMs: 3_000 },
+		bubble: { kind: "status", messageKey: "notice.context.compacting", ttlMs: 3_000, dedupeKey: "session-status" },
 	},
 	error: {
 		action: { groupId: "feedback", actionId: "stoat_wave_backflip_smoke_fade_exit" },
-		bubble: { text: "遇到错误", ttlMs: 5_000, priority: "high" },
+		bubble: {
+			kind: "error",
+			messageKey: "notice.error.generic",
+			ttlMs: 5_000,
+			priority: "high",
+			dedupeKey: "session-status",
+		},
 	},
 };
 
@@ -76,10 +81,23 @@ function truncateBubbleText(text: string): string {
 	return text.length <= MAX_TOOL_BUBBLE_TEXT_LENGTH ? text : `${text.slice(0, MAX_TOOL_BUBBLE_TEXT_LENGTH - 1)}…`;
 }
 
-function getToolBubbleText(event: Extract<SessionEvent, { type: "tool.start" }>): string {
+function getToolBubbleNotice(event: Extract<SessionEvent, { type: "tool.start" }>): PetBubbleNotice {
 	const args = getRecord(event.args);
 	const description = typeof args?.description === "string" ? args.description.trim() : "";
-	return description ? truncateBubbleText(description) : "正在执行工具";
+	return description
+		? {
+				kind: "tool",
+				messageKey: "notice.tool.runningWithDescription",
+				params: { description: truncateBubbleText(description) },
+				ttlMs: 3_000,
+				dedupeKey: "session-status",
+			}
+		: {
+				kind: "tool",
+				messageKey: "notice.tool.running",
+				ttlMs: 3_000,
+				dedupeKey: "session-status",
+			};
 }
 
 const BACKGROUND_TASK_INTENTS: readonly {
@@ -89,21 +107,32 @@ const BACKGROUND_TASK_INTENTS: readonly {
 	{
 		intent: {
 			action: { groupId: "working" },
-			bubble: { text: "后台任务运行中", ttlMs: 3_000 },
+			bubble: { kind: "status", messageKey: "notice.background.running", ttlMs: 3_000, dedupeKey: "background" },
 		},
 		matches: (event) => event.tasks.some((task) => task.status === "running"),
 	},
 	{
 		intent: {
 			action: { groupId: "feedback", actionId: "stoat_wave_backflip_smoke_fade_exit" },
-			bubble: { text: "后台任务失败", ttlMs: 5_000, priority: "high" },
+			bubble: {
+				kind: "error",
+				messageKey: "notice.background.failed",
+				ttlMs: 5_000,
+				priority: "high",
+				dedupeKey: "background",
+			},
 		},
 		matches: (event) => event.tasks.some((task) => task.status === "failed" || task.status === "killed"),
 	},
 	{
 		intent: {
 			action: { groupId: "feedback", actionId: "stoat_stand_lift_barbell_one_hand_fast" },
-			bubble: { text: "后台任务完成", ttlMs: 4_000 },
+			bubble: {
+				kind: "success",
+				messageKey: "notice.background.completed",
+				ttlMs: 4_000,
+				dedupeKey: "background",
+			},
 		},
 		matches: (event) => event.tasks.length > 0 && event.tasks.every((task) => task.status === "completed"),
 	},
@@ -127,7 +156,7 @@ const sessionPetActionRules: readonly SessionPetActionRule[] = [
 			event.type === "tool.start"
 				? {
 						action: { groupId: "working" },
-						bubble: { text: getToolBubbleText(event), ttlMs: 3_000 },
+						bubble: getToolBubbleNotice(event),
 					}
 				: null,
 	},

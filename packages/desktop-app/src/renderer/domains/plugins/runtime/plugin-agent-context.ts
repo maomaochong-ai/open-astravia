@@ -123,6 +123,7 @@ export function createPluginAgentApi({
 				pluginId: plugin.id,
 				toolId,
 				handlerId,
+				activationId,
 				handler: registration.handler as PluginAgentToolHandler,
 				api: { fs, conversation },
 			});
@@ -169,7 +170,6 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					handlerHandle.dispose();
 					registeredAgentTools.delete(toolName);
 					if (label) setAgentToolLabel(plugin.id, toolName, null);
 					void window.vetta.plugins.unregisterAgentTool(plugin.id, toolId, activationId);
@@ -202,6 +202,7 @@ export function createPluginAgentApi({
 			const handlerHandle = registerPluginAgentHookHandler({
 				pluginId: plugin.id,
 				handlerId,
+				activationId,
 				handler: registration.handler as unknown as PluginCodingAgentHookHandler<PluginCodingAgentHookEventName>,
 				api: { fs, conversation },
 			});
@@ -224,9 +225,9 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					void window.vetta.plugins
-						.unregisterAgentHook(plugin.id, hookId, activationId)
-						.finally(() => handlerHandle.dispose());
+					// Main owns the generation lease. The renderer handler is released only
+					// after the last admitted Turn drops that lease.
+					void window.vetta.plugins.unregisterAgentHook(plugin.id, hookId, activationId);
 				},
 			};
 		},
@@ -243,6 +244,7 @@ export function createPluginAgentApi({
 			const handlerHandle = registerPluginContinuationHandler({
 				pluginId: plugin.id,
 				handlerId,
+				activationId,
 				handler: registration.handler,
 				api: { fs, conversation },
 			});
@@ -261,7 +263,6 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					handlerHandle.dispose();
 					void window.vetta.plugins.unregisterContinuationProvider(plugin.id, providerId, activationId);
 				},
 			};
@@ -284,6 +285,7 @@ export function createPluginAgentApi({
 			const handlerHandle = registerPluginSystemPromptHandler({
 				pluginId: plugin.id,
 				handlerId,
+				activationId,
 				handler: registration.handler,
 				api: { fs, conversation },
 			});
@@ -302,7 +304,6 @@ export function createPluginAgentApi({
 			pendingRuntimeRegistrations.push(registrationPromise);
 			return {
 				dispose: () => {
-					handlerHandle.dispose();
 					void window.vetta.plugins.unregisterSystemPromptProvider(plugin.id, providerId, activationId);
 				},
 			};

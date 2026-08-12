@@ -11,6 +11,9 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Added
 
+- **Turn-bound Tool Catalog lease 与显式 hard revoke**：Turn admission 捕获不可变 Catalog 与具体
+  implementation binding；普通 disable/unregister/reload 只影响后续 Turn，旧 binding 保留到最后一个
+  Turn lease 释放。`revoke` 强制要求 reason 与 audit id，并可取消在途执行。
 - **原生 Subagent 控制 Tool**：新增 `spawn_agent`、`dispatch_workflows`、`wait_agent`、`list_agents`、`interrupt_agent`、`send_message` 与 `followup_task` 的 TypeBox Schema、TS 描述和 Registration；工具协议与用户可见行为保持不变，执行只依赖 `runtime-subagents` 的协调端口。
 - **原生 Knowledge 写页 Tool**：新增 `kb_write_page` 的 TypeBox Schema、TS 描述、Registration 与知识写入窄 Operations Port；工具名称、scope、输入、输出和移动提示保持不变。
 - **原生 IM 附件 Tool**：新增 `im_send_attachment` 的 TypeBox Schema、TS 描述、Registration 与宿主发送/文件访问窄 Port；工具名称、scope、输入、输出及错误语义保持不变。

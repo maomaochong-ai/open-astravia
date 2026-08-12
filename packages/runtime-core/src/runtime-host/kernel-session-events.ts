@@ -50,7 +50,9 @@ export function mapKernelEventToSessionEvents(event: KernelEvent): SessionEvent[
 				entries: event.snapshot.entries.map((entry) => ({
 					id: entry.id,
 					behavior: entry.behavior,
-					displayText: entry.input.message ? messageText(entry.input.message) : "",
+					displayText: entry.input.message
+						? messageText(entry.input.message)
+						: (entry.input.request?.displayText ?? ""),
 				})),
 				snapshot: event.snapshot,
 			},

@@ -1,6 +1,11 @@
 import type { ThinkingLevel } from "@vetta/agent-core";
 import { type Api, type Model, modelsAreEqual, supportsXhigh } from "@vetta/ai";
-import type { RuntimeTurnModelBinding, RuntimeTurnModelBindingProvider } from "../kernel/contracts.js";
+import type {
+	RuntimeSnapshotAcquireContext,
+	RuntimeTurnCredentialBinding,
+	RuntimeTurnModelBinding,
+	RuntimeTurnModelBindingProvider,
+} from "../kernel/contracts.js";
 import type {
 	RuntimeModelSelectionStrategy,
 	RuntimeSessionModelController,
@@ -48,6 +53,8 @@ export class RuntimeModel implements RuntimeModelRuntime {
 	private readonly credentials: RuntimeModelCredentialResolver;
 	private currentModel: Model<Api>;
 	private thinkingLevel: ThinkingLevel;
+	private configurationRevision = 0;
+	private credentialRevocationRevision = 0;
 
 	constructor(options: RuntimeModelOptions) {
 		this.catalog = options.catalog;
@@ -57,30 +64,27 @@ export class RuntimeModel implements RuntimeModelRuntime {
 	}
 
 	async selectModel(modelKey: string, strategy: RuntimeModelSelectionStrategy): Promise<void> {
-		const [provider, ...rest] = modelKey.split("/");
-		const modelId = rest.join("/");
-		const model =
-			this.catalog
-				.listAvailable()
-				.find((candidate) => candidate.provider === provider && candidate.id === modelId) ??
-			this.catalog.find(provider, modelId);
+		const model = this.findModel(modelKey);
 		if (!model) return;
 		if (strategy === "if-changed" && modelsAreEqual(this.currentModel, model)) return;
 
+		const revision = ++this.configurationRevision;
 		const apiKey = await this.credentials.resolve(model);
 		if (!apiKey) {
 			throw new Error(`No API key for ${model.provider}/${model.id}`);
 		}
-
+		if (revision !== this.configurationRevision) return;
 		this.currentModel = model;
-		this.thinkingLevel = this.clampThinkingLevel(this.thinkingLevel);
+		this.thinkingLevel = clampThinkingLevelForModel(this.thinkingLevel, model);
 	}
 
 	setThinkingLevel(level: ThinkingLevel): void {
+		this.configurationRevision += 1;
 		this.thinkingLevel = this.clampThinkingLevel(level);
 	}
 
 	async refreshAuth(token: string | undefined): Promise<void> {
+		if (token === undefined) this.credentialRevocationRevision += 1;
 		await this.credentials.refreshAuth(token);
 	}
 
@@ -104,32 +108,86 @@ export class RuntimeModel implements RuntimeModelRuntime {
 		return this.credentials.resolve(model);
 	}
 
-	bind(): RuntimeTurnModelBinding {
+	async bind(context?: RuntimeSnapshotAcquireContext): Promise<RuntimeTurnModelBinding> {
+		const requested = context?.request?.model;
+		if (!requested?.key && requested?.reasoning === undefined) {
+			const model = this.currentModel;
+			const thinkingLevel = this.thinkingLevel;
+			return createModelBinding(model, thinkingLevel, await this.bindCredential(model));
+		}
+
+		const revision = ++this.configurationRevision;
+		const model = requested.key ? (this.findModel(requested.key) ?? this.currentModel) : this.currentModel;
+		const requestedThinkingLevel = (requested.reasoning ?? this.thinkingLevel) as ThinkingLevel;
+		const apiKey = await this.credentials.resolve(model);
+		if (requested.key && !modelsAreEqual(model, this.currentModel)) {
+			if (!apiKey) throw new Error(`No API key for ${model.provider}/${model.id}`);
+		}
+		const thinkingLevel = clampThinkingLevelForModel(requestedThinkingLevel, model);
+		if (revision === this.configurationRevision) {
+			this.currentModel = model;
+			this.thinkingLevel = thinkingLevel;
+		}
+		return createModelBinding(model, thinkingLevel, this.createCredentialBinding(apiKey));
+	}
+
+	private async bindCredential(model: Model<Api>): Promise<RuntimeTurnCredentialBinding> {
+		return this.createCredentialBinding(await this.credentials.resolve(model));
+	}
+
+	private createCredentialBinding(apiKey: string | undefined): RuntimeTurnCredentialBinding {
+		const revision = this.credentialRevocationRevision;
 		return Object.freeze({
-			model: this.currentModel,
-			reasoning: this.thinkingLevel === "off" ? undefined : this.thinkingLevel,
+			resolve: () => (revision === this.credentialRevocationRevision ? apiKey : undefined),
 		});
 	}
 
+	private findModel(modelKey: string): Model<Api> | undefined {
+		const [provider, ...rest] = modelKey.split("/");
+		const modelId = rest.join("/");
+		return (
+			this.catalog
+				.listAvailable()
+				.find((candidate) => candidate.provider === provider && candidate.id === modelId) ??
+			this.catalog.find(provider, modelId)
+		);
+	}
+
 	private clampThinkingLevel(level: ThinkingLevel): ThinkingLevel {
-		const availableLevels = this.availableThinkingLevels();
-		if (!THINKING_LEVELS_WITH_XHIGH.includes(level)) return level;
-		if (availableLevels.includes(level)) return level;
-
-		const requestedIndex = THINKING_LEVELS_WITH_XHIGH.indexOf(level);
-		for (let index = requestedIndex; index < THINKING_LEVELS_WITH_XHIGH.length; index++) {
-			const candidate = THINKING_LEVELS_WITH_XHIGH[index];
-			if (availableLevels.includes(candidate)) return candidate;
-		}
-		for (let index = requestedIndex - 1; index >= 0; index--) {
-			const candidate = THINKING_LEVELS_WITH_XHIGH[index];
-			if (availableLevels.includes(candidate)) return candidate;
-		}
-		return availableLevels[0] ?? "off";
+		return clampThinkingLevelForModel(level, this.currentModel);
 	}
+}
 
-	private availableThinkingLevels(): readonly ThinkingLevel[] {
-		if (!this.currentModel.reasoning) return ["off"];
-		return supportsXhigh(this.currentModel) ? THINKING_LEVELS_WITH_XHIGH : THINKING_LEVELS;
+function createModelBinding(
+	model: Model<Api>,
+	thinkingLevel: ThinkingLevel,
+	credential: RuntimeTurnCredentialBinding,
+): RuntimeTurnModelBinding {
+	return Object.freeze({
+		model,
+		reasoning: thinkingLevel === "off" ? undefined : thinkingLevel,
+		credential,
+	});
+}
+
+function clampThinkingLevelForModel(level: ThinkingLevel, model: Model<Api>): ThinkingLevel {
+	const availableLevels = availableThinkingLevelsForModel(model);
+	if (!THINKING_LEVELS_WITH_XHIGH.includes(level)) return level;
+	if (availableLevels.includes(level)) return level;
+
+	const requestedIndex = THINKING_LEVELS_WITH_XHIGH.indexOf(level);
+	for (let index = requestedIndex; index < THINKING_LEVELS_WITH_XHIGH.length; index++) {
+		const candidate = THINKING_LEVELS_WITH_XHIGH[index];
+		if (availableLevels.includes(candidate)) return candidate;
 	}
+	for (let index = requestedIndex - 1; index >= 0; index--) {
+		const candidate = THINKING_LEVELS_WITH_XHIGH[index];
+		if (availableLevels.includes(candidate)) return candidate;
+	}
+	return availableLevels[0] ?? "off";
+}
+
+function availableThinkingLevelsForModel(model: Model<Api>): readonly ThinkingLevel[] {
+	if (!model.reasoning) return ["off"];
+	return supportsXhigh(model) ? THINKING_LEVELS_WITH_XHIGH : THINKING_LEVELS;
 }

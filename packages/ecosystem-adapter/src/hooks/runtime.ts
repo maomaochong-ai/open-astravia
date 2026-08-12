@@ -201,8 +201,8 @@ export class EcosystemHookRuntime {
 		prompt: string,
 		signal?: AbortSignal,
 		contributions: readonly EcosystemHookContributionSource[] = [],
+		turnId = `${this.host.getSessionId()}:turn-${++this.turnSequence}`,
 	): Promise<HookDispatchOutcome> {
-		const turnId = `${this.host.getSessionId()}:turn-${++this.turnSequence}`;
 		this.currentTurnId = turnId;
 		this.stopHookActive = false;
 		this.stopContinuationCount = 0;

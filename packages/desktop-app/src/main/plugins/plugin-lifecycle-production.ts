@@ -10,6 +10,7 @@ import {
 	installPluginFromPath,
 	installPluginFromUrl,
 	listPlugins,
+	pluginAgentContributionService,
 	reloadPlugin,
 	revokePluginCommands,
 	revokePluginPermissions,
@@ -36,6 +37,9 @@ const dependencies: PluginLifecycleDependencies = {
 	stopDevWatch: stopPluginDevWatch,
 	stopSpawns: stopAllSpawnsForPlugin,
 	destroyOffscreenSessions: destroyOffscreenSessionsForPlugin,
+	hardRevokeAgentHandlers: (id, reason, kinds) => {
+		pluginAgentContributionService.hardRevokeHandlers(id, reason, kinds);
+	},
 	refreshRuntime: refreshAgentPlugins,
 	recordEvent: recordAppMonitorEvent,
 };

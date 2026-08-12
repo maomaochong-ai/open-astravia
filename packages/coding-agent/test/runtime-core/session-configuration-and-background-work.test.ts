@@ -5,7 +5,7 @@ import { CodingAgentSessionConfigurationState } from "../../src/host/session-con
 import { CodingAgentBackgroundWorkController } from "../../src/host/session-execution/background-work-controller.js";
 
 describe("Coding Agent session configuration and background work", () => {
-	it("shares mutable agent and plugin configuration while binding queue modes to the Kernel session", async () => {
+	it("publishes immutable agent and plugin configuration revisions while binding queue modes", async () => {
 		const setSteeringMode = vi.fn();
 		const setFollowUpMode = vi.fn();
 		const state = new CodingAgentSessionConfigurationState("work", () => ({
@@ -25,6 +25,32 @@ describe("Coding Agent session configuration and background work", () => {
 		expect(setFollowUpMode).toHaveBeenCalledWith("one-at-a-time");
 		expect(state.readAgentMode()).toBe("plan");
 		expect(state.readAgentPlugins()).toBeUndefined();
+		expect(state.captureRevision().revision).toBe(2);
+	});
+
+	it("keeps an admitted revision isolated from later configuration publications", async () => {
+		const state = new CodingAgentSessionConfigurationState("work", () => ({
+			toolContributions: [
+				{ pluginId: "plugin", id: "v1", name: "tool", description: "v1", parameters: {}, handlerId: "v1" },
+			],
+		}));
+		const controller = state.createController({} as unknown as AgentSession);
+		const admitted = state.captureRevision();
+
+		controller.setAgentMode("plan");
+		await controller.reconfigureAgentPlugins({
+			toolContributions: [
+				{ pluginId: "plugin", id: "v2", name: "tool", description: "v2", parameters: {}, handlerId: "v2" },
+			],
+		});
+		state.setActiveToolNamesOverride(["tool"]);
+		const next = state.captureRevision();
+
+		expect(admitted).toMatchObject({ revision: 0, agentMode: "work" });
+		expect(admitted.agentPlugins?.toolContributions?.[0]?.id).toBe("v1");
+		expect(Object.isFrozen(admitted.agentPlugins?.toolContributions?.[0])).toBe(true);
+		expect(next).toMatchObject({ revision: 3, agentMode: "plan", activeToolNamesOverride: ["tool"] });
+		expect(next.agentPlugins?.toolContributions?.[0]?.id).toBe("v2");
 	});
 
 	it("commits plugin configuration only after the session-local MCP reconfiguration succeeds", async () => {

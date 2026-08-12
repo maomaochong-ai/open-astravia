@@ -4,6 +4,7 @@ import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
 	RuntimeSessionAskUserQuestionCapability,
 	SessionConfig,
 	SessionExecutionMode,
@@ -30,6 +31,7 @@ export interface CodingAgentRuntimeSessionOptions {
 	readonly invokePluginTool?: AgentPluginToolInvoker;
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
 	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
+	readonly pluginTurnHandlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
 	readonly askUserQuestion?: RuntimeSessionAskUserQuestionCapability;
 	readonly sandboxHostPath?: string;
 	readonly linuxBubblewrapPath?: string;

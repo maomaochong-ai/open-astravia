@@ -467,6 +467,16 @@ function applyCommand(project: ContentProjectDocument, command: ContentProjectCo
 		}
 		case "node.delete": {
 			findNode(project, command.nodeId);
+			if (
+				project.jobs.some(
+					(job) => job.nodeId === command.nodeId && (job.status === "queued" || job.status === "running"),
+				)
+			) {
+				throw new ContentProjectCommandError(
+					`node has an active generation job: ${command.nodeId}`,
+					"node-active-generation",
+				);
+			}
 			project.graph.nodes = project.graph.nodes.filter((node) => node.id !== command.nodeId);
 			project.graph.edges = project.graph.edges.filter(
 				(edge) => edge.source !== command.nodeId && edge.target !== command.nodeId,

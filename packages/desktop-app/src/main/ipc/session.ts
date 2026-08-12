@@ -33,6 +33,7 @@ import { getDesktopUserQuestionBroker } from "../conversations/user-question-bro
 import { type DebugRequestData, writeDebugRequest } from "../debug-writer.js";
 import { getAppLogger } from "../logger.js";
 import { notify } from "../notifications/index.js";
+import { createPetBubbleCommand } from "../pet/pet-bubble-command.js";
 import { mapSessionEventToPetPresentation } from "../pet/session-event-action-policy.js";
 import { sendPetCommandToWindow } from "../pet-window.js";
 import { setDesktopPluginHookInvoker } from "../plugins/coding-agent-hook-invocation.js";
@@ -301,7 +302,6 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		let lastStopReason: string | undefined;
 		let aborted = false;
 		let lastPetActionId: string | undefined;
-		let lastPetBubbleKey: string | undefined;
 		const unsubscribe = runtime.subscribe(sessionId, (ev: SessionEvent) => {
 			const petPresentation = mapSessionEventToPetPresentation(ev);
 			const petActionId = petPresentation?.actionId;
@@ -311,19 +311,8 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			}
 			const petBubble = petPresentation?.bubble;
 			if (petBubble) {
-				const nextBubbleKey = `${petBubble.text}:${petBubble.ttlMs ?? ""}:${petBubble.priority ?? ""}`;
-				if (nextBubbleKey !== lastPetBubbleKey) {
-					lastPetBubbleKey = nextBubbleKey;
-					sendPetCommandToWindow({
-						type: "show-bubble",
-						text: petBubble.text,
-						source: "app",
-						...(petBubble.ttlMs === undefined ? {} : { ttlMs: petBubble.ttlMs }),
-						...(petBubble.priority === undefined ? {} : { priority: petBubble.priority }),
-					});
-				}
-			} else {
-				lastPetBubbleKey = undefined;
+				const command = createPetBubbleCommand(petBubble, sessionId);
+				if (command) sendPetCommandToWindow(command);
 			}
 
 			if (ev.type === "message.final") {
@@ -445,10 +434,21 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		});
 	});
 
+	runtime.setPluginTurnHandlerLeaseProvider({
+		bindForTurn: (agentPlugins) => pluginAgentContributionService.bindAgentHandlersForTurn(agentPlugins),
+	});
+
 	runtime.setPluginToolInvoker((request: AgentPluginToolInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) {
 			return Promise.reject(new Error("Plugin host renderer is unavailable"));
 		}
+		const rejection = pluginAgentContributionService.readHandlerInvocationRejection(
+			"tool",
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise<AgentPluginHandlerResult<unknown>>((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -458,9 +458,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin tool failed")));
 					return;
 				}
+				const currentRejection = pluginAgentContributionService.readHandlerInvocationRejection(
+					"tool",
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
+					return;
+				}
 				const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-				if (!plugin || !plugin.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				if (!plugin) {
+					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
 				resolve({
@@ -488,16 +498,12 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	setDesktopPluginHookInvoker((request, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) return Promise.resolve(undefined);
-		const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-		if (
-			!plugin?.enabled ||
-			!plugin.permissions.includes("agent.hooks.register") ||
-			!plugin.grantedPermissions.includes("agent.hooks.register") ||
-			!plugin.permissions.includes("agent.hookHandler.execute") ||
-			!plugin.grantedPermissions.includes("agent.hookHandler.execute")
-		) {
-			return Promise.resolve(undefined);
-		}
+		const rejection = pluginAgentContributionService.readHookInvocationRejection(
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise<unknown>((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -507,9 +513,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin hook failed")));
 					return;
 				}
-				const current = listPlugins().find((candidate) => candidate.id === request.pluginId);
-				if (!current?.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				const currentRejection = pluginAgentContributionService.readHookInvocationRejection(
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
 					return;
 				}
 				resolve((result as { value?: unknown })?.value);
@@ -534,6 +544,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 
 	runtime.setPluginContinuationInvoker((request: AgentPluginContinuationInvocation, signal?: AbortSignal) => {
 		if (webContents.isDestroyed()) return Promise.resolve({ value: null, effects: [] });
+		const rejection = pluginAgentContributionService.readHandlerInvocationRejection(
+			"continuation",
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise<AgentPluginHandlerResult<AgentPluginContinuationResult | null>>((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -544,9 +561,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					return;
 				}
 				const value = (result as { value?: unknown })?.value;
+				const currentRejection = pluginAgentContributionService.readHandlerInvocationRejection(
+					"continuation",
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
+					return;
+				}
 				const plugin = listPlugins().find((item) => item.id === request.pluginId);
-				if (!plugin || !plugin.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				if (!plugin) {
+					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
 				const effects = normalizeDynamicSystemPromptOperations(
@@ -598,6 +625,13 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 			});
 			return Promise.resolve([]);
 		}
+		const rejection = pluginAgentContributionService.readHandlerInvocationRejection(
+			"system-prompt",
+			request.pluginId,
+			request.handlerId,
+			request.activationId,
+		);
+		if (rejection) return Promise.reject(new Error(rejection));
 		return new Promise((resolve, reject) => {
 			const requestId = randomUUID();
 			const finish = (result: unknown): void => {
@@ -613,9 +647,19 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 					reject(new Error(String((result as { error?: unknown }).error ?? "Plugin system prompt failed")));
 					return;
 				}
+				const currentRejection = pluginAgentContributionService.readHandlerInvocationRejection(
+					"system-prompt",
+					request.pluginId,
+					request.handlerId,
+					request.activationId,
+				);
+				if (currentRejection) {
+					reject(new Error(currentRejection));
+					return;
+				}
 				const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-				if (!plugin || !plugin.enabled) {
-					reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				if (!plugin) {
+					reject(new Error(`Plugin not found: ${request.pluginId}`));
 					return;
 				}
 				const operations = normalizeDynamicSystemPromptOperations(plugin, (result as { value?: unknown })?.value);
@@ -647,9 +691,9 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 				messageCount: request.conversation.messageCount,
 			});
 			const plugin = listPlugins().find((candidate) => candidate.id === request.pluginId);
-			if (!plugin || !plugin.enabled) {
+			if (!plugin) {
 				pluginSystemPromptMap.delete(requestId);
-				reject(new Error(`Plugin not found or disabled: ${request.pluginId}`));
+				reject(new Error(`Plugin not found: ${request.pluginId}`));
 				return;
 			}
 			const filteredRequest = filterSystemPromptInvocationForPlugin(plugin, request);
@@ -1398,6 +1442,7 @@ export function registerSessionIpc(webContents: WebContents): () => void {
 		setDesktopPluginHookInvoker(undefined);
 		runtime.setPluginContinuationInvoker(undefined);
 		runtime.setPluginSystemPromptInvoker(undefined);
+		runtime.setPluginTurnHandlerLeaseProvider(undefined);
 		// 不在此处 disposeAllSessions：共享 runtime 的 session 可能正被
 		// scheduler/batch-tasks 在后台使用。全进程 session 释放由 main.ts
 		// 的 before-quit 负责（见 disposeSharedRuntime）。

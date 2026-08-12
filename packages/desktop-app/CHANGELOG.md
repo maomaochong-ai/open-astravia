@@ -6,6 +6,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **执行模式与 Plugin Hook 采用 Turn 边界生效**：活动 Agent 运行时修改全局 Execution Mode 不再报 busy，
+  当前 Turn 保持原沙盒/全访问实现并在下一 Turn 应用；Desktop Plugin Hook 按 `turnId` 固定首次捕获的
+  binding 集合，普通注册/注销只影响后续 Turn。
 - **Hosted Route 导航进入三层能力架构**（ADR-0068）：Desktop Renderer 新增通用 namespace 路由服务并继续拥有 TanStack Router、URL 与页面 Registry；Capability SDK 只发布可序列化的 `open-hosted-route` 合同，Runtime 负责精确 Grant、namespace constraint 与撤销；Plugin/Theme 各自在自己的集成层固定身份、映射权限并管理 Session。Capability SDK 中原有 Plugin/Theme Adapter 已迁回 Desktop 上层集成目录，网络和媒体合同中的 `pluginId` / `plugin-blob` 也分别收敛为通用 `namespace` / `storage-blob`，插件公开 API 保持不变。
 
 - **画布活动态浮层改挂生成阶段**：`edit` / `write` 的时间几乎全花在模型生成参数上（一整份 frame 正文），执行只要几毫秒。浮层原本挂在工具执行事件上，于是要等改动落盘之后才亮，看起来像「改完才闪一下」。宿主现在把新的 `toolcall.args`（生成中的部分参数）转译成插件事件 `tool-call-args`，插件据此在模型刚写下目标路径时就点亮对应画框，一直亮到落盘。
@@ -73,6 +76,7 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 ### Changed
 
 - **Work 模式重新保留思考过程**：此前 work 渲染把 thinking 块整块丢弃（ADR-0047 原决策），过程里模型的推理无处可查。现在 thinking 与工具行同列收在所属阶段组内，按原顺序排列，展开阶段后才可见；标题只报一句「正在思考」，不像 coding 模式那样报行数——work 的受众不需要这个数字。默认收起的阶段标题行不受影响，信息密度不变。
+- **桌宠消息改为结构化、可调度的纯文字通知**：会话状态、工具进度、后台任务和错误不再直接竞争同一个文本气泡；同一会话的连续进度原地更新，多会话普通消息短队列展示，高优先级错误即时抢占并清理过时状态，用户主动消息继续优先。协议同时携带消息类型、i18n key、参数、去重键与会话来源，为后续展示扩展保留稳定合同，当前视觉仍只显示文字。
 - **会话正文字号从 16px 调整为 14px**：用户气泡与 Agent 回复的正文基线统一为 14px，Markdown 层级按同比例收敛（h1/h2/h3/h4 = 20/17/15/14，行内代码、代码块、表格、文件/链接胶囊 = 13，技能与场景徽章 = 12），行高仍为 1.6。用户气泡的 10 行折叠阈值以 `em` 计算，字号调整后折叠行数不变。
 - **设计画廊「新建」改为从提示词开始**：输入名字后只建一个空项目，随即进入该项目的**新建会话页**，输入框里预置好 `vetta-ui-design` 的能力 badge，用户接着敲一句「要画什么」即可。此前是先预铺一份空 `.vetd` 再把画布铺开——用户还没说要画什么，画廊里就先多出一张空卡片，画布也只有一块空白；设计有几屏、多大尺寸、什么主题本来就该由第一句提示词决定，由 agent 建。设计建好后画廊照常自动扫出这张卡。导入分享包的路径不变（包里已经是成品，仍直接进画布）。
 - 活动面板 Tab 切换改为默认 warm 驻留：访问过的文件、内容创作等 Tab 不再每次切换都重建整棵组件树；每个面板最多保留 2 个非活动 Tab，超出后按 LRU 在空闲阶段淘汰，当前与浮动 Tab 不参与淘汰。浏览器等既有显式保活 Tab 继续常驻。

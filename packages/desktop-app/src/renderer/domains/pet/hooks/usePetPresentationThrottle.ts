@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { PetActionId } from "../../../../shared/pet-actions";
-import type { ShowPetBubbleInput } from "./usePetBubble";
 
 export const PET_APP_PRESENTATION_MIN_HOLD_MS = 2_000;
 
 export type PetAppActionUpdate = { type: "set"; actionId: PetActionId } | { type: "random" };
-export type PetAppBubbleUpdate = { type: "show"; input: ShowPetBubbleInput } | { type: "hide" };
 
 interface LatestHeldQueueOptions<T> {
 	minHoldMs: number;
@@ -17,7 +15,6 @@ interface PetPresentationThrottleOptions {
 	minHoldMs?: number;
 	canApplyAction: () => boolean;
 	applyAction: (update: PetAppActionUpdate) => void;
-	applyBubble: (update: PetAppBubbleUpdate) => void;
 	onActionQueued?: (update: PetAppActionUpdate) => void;
 }
 
@@ -96,11 +93,9 @@ export function usePetPresentationThrottle({
 	minHoldMs = PET_APP_PRESENTATION_MIN_HOLD_MS,
 	canApplyAction,
 	applyAction,
-	applyBubble,
 	onActionQueued,
 }: PetPresentationThrottleOptions): {
 	queueAppAction: (update: PetAppActionUpdate) => void;
-	queueAppBubble: (update: PetAppBubbleUpdate) => void;
 	clearPresentationThrottle: () => void;
 } {
 	const actionQueue = useLatestHeldQueue({
@@ -108,11 +103,6 @@ export function usePetPresentationThrottle({
 		canApply: canApplyAction,
 		apply: applyAction,
 	});
-	const bubbleQueue = useLatestHeldQueue({
-		minHoldMs,
-		apply: applyBubble,
-	});
-
 	const queueAppAction = useCallback(
 		(update: PetAppActionUpdate) => {
 			onActionQueued?.(update);
@@ -121,26 +111,12 @@ export function usePetPresentationThrottle({
 		[actionQueue.queue, onActionQueued],
 	);
 
-	const queueAppBubble = useCallback(
-		(update: PetAppBubbleUpdate) => {
-			if (update.type === "hide") {
-				bubbleQueue.clear();
-				applyBubble(update);
-				return;
-			}
-			bubbleQueue.queue(update);
-		},
-		[applyBubble, bubbleQueue.clear, bubbleQueue.queue],
-	);
-
 	const clearPresentationThrottle = useCallback(() => {
 		actionQueue.clear();
-		bubbleQueue.clear();
-	}, [actionQueue.clear, bubbleQueue.clear]);
+	}, [actionQueue.clear]);
 
 	return {
 		queueAppAction,
-		queueAppBubble,
 		clearPresentationThrottle,
 	};
 }

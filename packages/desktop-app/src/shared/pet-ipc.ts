@@ -19,6 +19,20 @@ export const PET_SET_VIDEO_HITBOX_CHANNEL = "vetta:pet:set-video-hitbox";
 export type PetResizeCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type PetCommandSource = "app" | "user" | "config";
 export type PetBubblePriority = "normal" | "high";
+export type PetBubbleKind = "status" | "tool" | "success" | "warning" | "error";
+
+export interface PetBubbleNotice {
+	readonly kind?: PetBubbleKind;
+	/** i18n key resolved at the main-process command boundary. */
+	readonly messageKey?: string;
+	readonly params?: Readonly<Record<string, string | number>>;
+	/** Legacy/custom text fallback for callers that do not use i18n. */
+	readonly text?: string;
+	readonly ttlMs?: number;
+	readonly priority?: PetBubblePriority;
+	readonly dedupeKey?: string;
+	readonly sessionId?: string;
+}
 
 export type PetVideoHitbox = {
 	x: number;
@@ -83,7 +97,8 @@ export type PetCommand =
 	  }
 	| {
 			type: "show-bubble";
-			text: string;
+			text?: string;
+			notice?: PetBubbleNotice;
 			source?: PetCommandSource;
 			ttlMs?: number;
 			priority?: PetBubblePriority;

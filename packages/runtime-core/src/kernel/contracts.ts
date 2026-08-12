@@ -41,9 +41,21 @@ export interface SessionInput {
 	readonly trailingContext?: readonly SessionContextRecord[];
 }
 
+/** 可序列化的宿主输入；只在 Turn admission 后由已绑定的 Preparer 转换为 SessionInput。 */
+export interface SessionInputRequest {
+	readonly payload: unknown;
+	readonly displayText: string;
+	/** 可选的本 Turn 模型覆盖；由模型绑定 Provider 在同一次 snapshot acquire 中解释。 */
+	readonly model?: {
+		readonly key?: string;
+		readonly reasoning?: string;
+	};
+}
+
 export interface QueuedSessionInput {
 	readonly message?: UserMessage;
 	readonly context?: readonly SessionContextRecord[];
+	readonly request?: SessionInputRequest;
 }
 
 export type SessionInputQueueMode = "all" | "one-at-a-time";
@@ -94,7 +106,17 @@ export interface RuntimeToolDefinition<TInput extends object = Readonly<Record<s
 	readonly contextCategory?: string;
 	/** 模型工具数组中的可选稳定顺序；未声明时保持贡献顺序并排在已声明工具之后。 */
 	readonly modelOrder?: number;
+	/**
+	 * 在 Turn admission 获取实现身份及其 owner lease；普通 reload 只退休旧实体。
+	 * Lease 不保证进程、连接或远端服务健康，物理失败仍由 execute() 传播。
+	 */
+	readonly bindForTurn?: (context: RuntimeSnapshotAcquireContext) => RuntimeToolTurnBinding<TInput>;
 	execute(request: RuntimeToolExecutionRequest<TInput>): Promise<RuntimeToolResult>;
+}
+
+export interface RuntimeToolTurnBinding<TInput extends object = Readonly<Record<string, unknown>>> {
+	readonly tool: RuntimeToolDefinition<TInput>;
+	release(): Promise<void> | void;
 }
 
 export interface RuntimeToolExecutionRequest<TInput extends object = Readonly<Record<string, unknown>>> {
@@ -194,6 +216,8 @@ export interface ConversationContextProjector {
 }
 
 export interface ContextStrategy {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): Promise<ContextStrategy> | ContextStrategy;
+	releaseTurnBinding?(): Promise<void> | void;
 	prepare(input: ContextPreparationInput, signal: AbortSignal): Promise<PreparedContext>;
 	onCompactionCommitted?(
 		record: ContextCompactionRecord,
@@ -272,6 +296,10 @@ export interface ModelCallContextTransformationInput {
 
 /** 每次 LLM 调用前运行的 transient 消息变换；结果不直接写入会话历史。 */
 export interface ModelCallContextTransformer {
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<ModelCallContextTransformer> | ModelCallContextTransformer;
+	releaseTurnBinding?(): Promise<void> | void;
 	transform(input: ModelCallContextTransformationInput, signal: AbortSignal): Promise<readonly Message[]>;
 }
 
@@ -284,6 +312,9 @@ export interface ModelCallMessageFinalizationInput {
 
 /** Context/压缩完成后、实际调用模型前的最终消息策略。 */
 export interface ModelCallMessageFinalizer {
+	/** 在 Turn admission 捕获图片策略等外部设置。 */
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): Promise<ModelCallMessageFinalizer> | ModelCallMessageFinalizer;
+	releaseTurnBinding?(): Promise<void> | void;
 	finalize(input: ModelCallMessageFinalizationInput, signal: AbortSignal): Promise<readonly Message[]>;
 }
 
@@ -305,6 +336,12 @@ export interface ModelCallContribution {
 
 export interface ModelCallContributionProvider {
 	readonly id: string;
+	/** 在 Turn admission 捕获外部状态；返回值只能读取该次捕获和 Turn-local state。 */
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<ModelCallContributionProvider> | ModelCallContributionProvider;
+	/** 释放本次 Turn 捕获的外部代际；由 RuntimeSnapshotLease 保证至多调用一次。 */
+	releaseTurnBinding?(): Promise<void> | void;
 	contribute(context: ModelCallContributionContext): Promise<ModelCallContribution>;
 }
 
@@ -337,6 +374,9 @@ export interface ModelCallFrameCompositionContext {
  * Frame 编译成该产品最终交给模型的 Prompt 与工具集合。
  */
 export interface ModelCallFrameComposer {
+	/** 在 Turn admission 捕获产品级 Prompt、Catalog 与扩展状态。 */
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): Promise<ModelCallFrameComposer> | ModelCallFrameComposer;
+	releaseTurnBinding?(): Promise<void> | void;
 	compose(context: ModelCallFrameCompositionContext): Promise<ModelCallFrame>;
 }
 
@@ -360,6 +400,8 @@ export interface AgentRunPreparationResult {
 
 /** 显式用户输入启动 Agent Run 前的一次性产品准备边界。 */
 export interface AgentRunPreparer {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): Promise<AgentRunPreparer> | AgentRunPreparer;
+	releaseTurnBinding?(): Promise<void> | void;
 	prepare(context: AgentRunPreparationContext): Promise<AgentRunPreparationResult | undefined>;
 }
 
@@ -383,6 +425,9 @@ export interface ContinuationMessage {
  * follow-up 队列的用户消息。
  */
 export interface ContinuationPolicy {
+	/** 在 Turn admission 捕获续跑来源及其外部代际。 */
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): Promise<ContinuationPolicy> | ContinuationPolicy;
+	releaseTurnBinding?(): Promise<void> | void;
 	collect(context: ContinuationPolicyContext): Promise<readonly (UserMessage | ContinuationMessage)[]>;
 }
 
@@ -394,6 +439,7 @@ export interface RuntimeSnapshot {
 	readonly tools: ReadonlyMap<string, RuntimeToolDefinition>;
 	readonly modelCallProviders?: readonly ModelCallContributionProvider[];
 	readonly modelCallFrameComposer?: ModelCallFrameComposer;
+	readonly inputRequestPreparer?: RuntimeInputRequestPreparer;
 	readonly contextCompositionPublisher?: ContextCompositionPublisher;
 	readonly agentRunPreparer?: AgentRunPreparer;
 	readonly continuationPolicy?: ContinuationPolicy;
@@ -410,21 +456,72 @@ export interface RuntimeSnapshot {
 
 export interface RuntimeSnapshotLease {
 	readonly snapshot: RuntimeSnapshot;
+	/** 与 snapshot 在同一次 acquisition 中捕获的模型绑定。 */
+	readonly modelBinding?: RuntimeTurnModelBinding;
 	release(): Promise<void>;
 }
 
+export type RuntimeSnapshotAcquireReason = "turn" | "manual_compaction" | "preview";
+
+/**
+ * Turn binder 的原子性依赖各实现被调用后、第一次 await 前同步捕获 published pointer。
+ * 后续异步物化只能读取已捕获值；不得在 await 后重新读取 current/latest。
+ */
+export interface RuntimeSnapshotAcquireContext {
+	readonly sessionId: string;
+	readonly operationId: string;
+	readonly reason: RuntimeSnapshotAcquireReason;
+	readonly signal: AbortSignal;
+	readonly input?: SessionInput;
+	readonly request?: SessionInputRequest;
+}
+
 export interface RuntimeSnapshotProvider {
-	acquire(): Promise<RuntimeSnapshotLease>;
+	acquire(context: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease>;
 }
 
 /** 单次 Turn 使用的不可变模型选择；运行时切模只影响后续 bind。 */
 export interface RuntimeTurnModelBinding {
 	readonly model: Model<Api>;
 	readonly reasoning?: SimpleStreamOptions["reasoning"];
+	/** admission 时绑定的不透明凭证 lease；不得持久化、记录或暴露其 secret。 */
+	readonly credential?: RuntimeTurnCredentialBinding;
+}
+
+/**
+ * 固定 credential identity、scope 与 endpoint policy 的不透明执行端口。
+ * 同身份 token 可以由 provider 实时轮换；显式撤销必须让后续 resolve fail-closed。
+ */
+export interface RuntimeTurnCredentialBinding {
+	resolve(): Promise<string | undefined> | string | undefined;
 }
 
 export interface RuntimeTurnModelBindingProvider {
-	bind(): RuntimeTurnModelBinding;
+	bind(context?: RuntimeSnapshotAcquireContext): RuntimeTurnModelBinding | Promise<RuntimeTurnModelBinding>;
+}
+
+export interface RuntimeInputRequestPreparationContext {
+	readonly sessionId: string;
+	readonly turnId: string;
+	readonly signal: AbortSignal;
+	readonly queueing: boolean;
+	readonly modelBinding?: RuntimeTurnModelBinding;
+}
+
+export type RuntimeInputRequestPreparationResult =
+	| { readonly action: "continue"; readonly input: SessionInput }
+	| { readonly action: "handled" };
+
+/** 宿主请求到 Kernel SessionInput 的 Turn-bound 反腐层。 */
+export interface RuntimeInputRequestPreparer {
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<RuntimeInputRequestPreparer> | RuntimeInputRequestPreparer;
+	releaseTurnBinding?(): Promise<void> | void;
+	prepare(
+		request: SessionInputRequest,
+		context: RuntimeInputRequestPreparationContext,
+	): Promise<RuntimeInputRequestPreparationResult>;
 }
 
 export interface FeaturePrepareContext {
@@ -464,6 +561,7 @@ export interface AgentProfile {
 	readonly features: readonly AgentFeatureDefinition[];
 	readonly observers?: readonly TurnObserver[];
 	readonly modelCallFrameComposer?: ModelCallFrameComposer;
+	readonly inputRequestPreparer?: RuntimeInputRequestPreparer;
 	readonly contextCompositionPublisher?: ContextCompositionPublisher;
 	readonly agentRunPreparer?: AgentRunPreparer;
 	readonly continuationPolicy?: ContinuationPolicy;
@@ -845,4 +943,9 @@ export type TurnResult =
 			readonly messages: readonly Message[];
 	  };
 
-export type SessionSendResult = TurnResult | QueuedSessionInputResult;
+export interface HandledSessionInputResult {
+	readonly status: "handled";
+	readonly sessionId: string;
+}
+
+export type SessionSendResult = TurnResult | QueuedSessionInputResult | HandledSessionInputResult;

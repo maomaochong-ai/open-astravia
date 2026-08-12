@@ -161,6 +161,7 @@ function createSnapshot(
 		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
 		modelCallProviders: Object.freeze(modelCallProviders),
 		modelCallFrameComposer: profile.modelCallFrameComposer,
+		inputRequestPreparer: profile.inputRequestPreparer,
 		contextCompositionPublisher: profile.contextCompositionPublisher,
 		agentRunPreparer: profile.agentRunPreparer,
 		continuationPolicy: profile.continuationPolicy,

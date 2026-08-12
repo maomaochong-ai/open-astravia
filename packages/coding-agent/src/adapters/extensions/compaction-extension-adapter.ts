@@ -32,10 +32,14 @@ type CompactionExtensionRunner = Pick<CodingAgentExtensionRunnerPort, "emit" | "
 
 export function createCodingAgentCompactionExtensionRuntime(
 	readRunner: () => CompactionExtensionRunner | undefined,
+	captured?: { readonly runner: CompactionExtensionRunner | undefined },
 ): CodingAgentCompactionExtensionRuntime {
 	return {
+		bindForTurn() {
+			return createCodingAgentCompactionExtensionRuntime(readRunner, { runner: readRunner() });
+		},
 		async beforeCompaction(input) {
-			const runner = readRunner();
+			const runner = captured ? captured.runner : readRunner();
 			if (!runner) return undefined;
 			if (!runner.hasHandlers("session_before_compact")) return undefined;
 			return (await runner.emit({
@@ -47,7 +51,7 @@ export function createCodingAgentCompactionExtensionRuntime(
 			})) as SessionBeforeCompactResult | undefined;
 		},
 		async afterCompaction(input) {
-			const runner = readRunner();
+			const runner = captured ? captured.runner : readRunner();
 			if (!runner) return;
 			if (!runner.hasHandlers("session_compact")) return;
 			await runner.emit({

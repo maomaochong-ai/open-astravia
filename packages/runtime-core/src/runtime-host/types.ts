@@ -53,16 +53,20 @@ export interface SessionHandle {
 	queueController: RuntimeSessionQueueController | undefined;
 	metadataController: RuntimeSessionMetadataController | undefined;
 	executionMode: SessionExecutionMode;
+	/** 宿主已接受、等待下一 Turn 发布到 Session runtime 的统一配置 overlay。 */
+	pendingConfiguration: {
+		executionMode: SessionExecutionMode | undefined;
+		hasExecutionMode: boolean;
+		agentMode: string | undefined;
+		hasAgentMode: boolean;
+		agentPlugins: AgentPluginRuntimeConfig | undefined;
+		hasAgentPlugins: boolean;
+	};
 	agentPluginsEnabled: boolean;
-	pendingAgentPlugins: AgentPluginRuntimeConfig | undefined;
-	hasPendingAgentPlugins: boolean;
 	/** 本会话解析后的对话场景（缺省回落 DEFAULT_SCENARIO），getState 回传给 renderer。 */
 	scenario: NonNullable<SessionConfig["scenario"]>;
 	/** 当前生效的工作模式（agent_mode 轴）。undefined = 不过滤。见 ADR-0046。 */
 	agentMode: string | undefined;
-	/** 全局切换 mode 时挂起，于下一个 turn 边界 apply（避免 streaming 中途换工具集）。 */
-	pendingAgentMode: string | undefined;
-	hasPendingAgentMode: boolean;
 	/**
 	 * 空闲期提前 apply 挂起插件配置的合并定时器。插件 activate 会逐个工具打
 	 * reconfigure，这里做防抖，避免一次激活重建 N 次 runtime。

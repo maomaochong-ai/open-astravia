@@ -5,8 +5,16 @@ export interface CodingAgentPluginReconfiguration {
 	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<void>;
 }
 
-/** Session-local 动态配置事实源；Prompt、Plugin 与宿主 Controller 共享同一实例。 */
+export interface CodingAgentSessionConfigurationRevision {
+	readonly revision: number;
+	readonly agentMode: string | undefined;
+	readonly agentPlugins: AgentPluginRuntimeConfig | undefined;
+	readonly activeToolNamesOverride: readonly string[] | undefined;
+}
+
+/** Session-local 配置发布器；写入发布新版本，Turn admission 只消费不可变副本。 */
 export class CodingAgentSessionConfigurationState {
+	private revision = 0;
 	private agentMode: string | undefined;
 	private pluginOverride: AgentPluginRuntimeConfig | undefined;
 	private hasPluginOverride = false;
@@ -31,8 +39,22 @@ export class CodingAgentSessionConfigurationState {
 		return this.activeToolNamesOverride ? [...this.activeToolNamesOverride] : undefined;
 	}
 
+	captureRevision(): CodingAgentSessionConfigurationRevision {
+		return Object.freeze({
+			revision: this.revision,
+			agentMode: this.agentMode,
+			agentPlugins: cloneAndFreeze(this.readAgentPlugins()),
+			activeToolNamesOverride: this.activeToolNamesOverride
+				? Object.freeze([...this.activeToolNamesOverride])
+				: undefined,
+		});
+	}
+
 	setActiveToolNamesOverride(toolNames: readonly string[]): void {
-		this.activeToolNamesOverride = [...new Set(toolNames)];
+		const next = [...new Set(toolNames)];
+		if (sameStrings(this.activeToolNamesOverride, next)) return;
+		this.activeToolNamesOverride = next;
+		this.revision += 1;
 	}
 
 	createController(
@@ -46,10 +68,29 @@ export class CodingAgentSessionConfigurationState {
 				await pluginReconfiguration?.reconfigureAgentPlugins(agentPlugins);
 				this.pluginOverride = agentPlugins;
 				this.hasPluginOverride = true;
+				this.revision += 1;
 			},
 			setAgentMode: (mode) => {
+				if (this.agentMode === mode) return;
 				this.agentMode = mode;
+				this.revision += 1;
 			},
 		};
 	}
+}
+
+function sameStrings(left: readonly string[] | undefined, right: readonly string[]): boolean {
+	return left?.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function cloneAndFreeze<T>(value: T): T {
+	if (value === undefined) return value;
+	return deepFreeze(structuredClone(value), new WeakSet<object>());
+}
+
+function deepFreeze<T>(value: T, seen: WeakSet<object>): T {
+	if (typeof value !== "object" || value === null || seen.has(value)) return value;
+	seen.add(value);
+	for (const child of Object.values(value)) deepFreeze(child, seen);
+	return Object.freeze(value);
 }

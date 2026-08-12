@@ -11,7 +11,7 @@ export interface CodingAgentExtensionToolHostPort {
 		sessionId: string,
 		runner: CodingAgentExtensionRunnerPort,
 		options?: { readonly replaceExisting?: boolean },
-	): () => void;
+	): () => Promise<void>;
 	refresh(extensions: readonly CodingAgentExtensionToolSource[]): void;
 	replaceSessionTools(sessionId: string, tools: readonly CodingAgentSessionToolRegistration[]): void;
 	clearSessionTools(sessionId: string): void;
@@ -30,13 +30,13 @@ export function createCodingAgentRuntimeExtensionControls(
 		bindExtensionRunner(sessionId, runner, bindingOptions) {
 			const bridge = options.indexes.extensionEventBridges.get(sessionId);
 			if (!bridge) throw new Error(`Extension run adapter not found: ${sessionId}`);
-			const unbindEvents = bridge.bind(runner, bindingOptions);
+			const unbindEvents = bridge.bind(runner, { ...bindingOptions, sessionId });
 			const unbindTools = options.extensionToolRuntime?.bindRunner(sessionId, runner, bindingOptions);
 			return {
 				readSystemPrompt: () => bridge.readSystemPrompt(),
-				dispose() {
-					unbindTools?.();
-					unbindEvents();
+				ownsTurn: (turnId) => bridge.ownsTurn(turnId, runner),
+				async dispose() {
+					await Promise.all([unbindTools?.(), unbindEvents()]);
 				},
 			};
 		},

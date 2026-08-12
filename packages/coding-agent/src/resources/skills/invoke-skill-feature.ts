@@ -1,10 +1,15 @@
 import type { EcosystemHookContributionSource, EcosystemHookRuntime } from "@vetta/ecosystem-adapter";
-import type { AgentFeatureDefinition, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type {
+	AgentFeatureDefinition,
+	ModelCallContributionProvider,
+	RuntimeSnapshotAcquireContext,
+	RuntimeToolDefinition,
+} from "@vetta/runtime-core/kernel";
 import { createInvokeSkillToolRegistration } from "@vetta/runtime-tools/coding";
 import { matchesAgentMode } from "../../profiles/index.js";
 import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/prompt-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
-import type { Skill } from "./index.js";
+import { readSkillContent, type Skill } from "./index.js";
 import { createSkillHookContribution, readSkillInvocationDocument } from "./skill-document.js";
 
 export interface CodingAgentInvokeSkillFeatureOptions {
@@ -19,10 +24,8 @@ export interface CodingAgentInvokeSkillFeature extends AgentFeatureDefinition {
 }
 
 /**
- * Session 级动态 Skill 能力。
- *
- * 每个模型调用边界重新刷新资源；执行时再次解析当前可见 Skill，避免把已删除或已切换模式的
- * 本地 Skill 固化在 Session/Turn 之外的快照中。
+ * Session 级 Skill 能力。每个 Turn admission 捕获一次可见集合和正文；同一 Turn 的模型调用与
+ * invoke_skill 执行共享该内存代，普通文件更新从下一 Turn 生效。
  */
 export function createCodingAgentInvokeSkillFeature(
 	options: CodingAgentInvokeSkillFeatureOptions,
@@ -38,19 +41,38 @@ export function createCodingAgentInvokeSkillFeature(
 			);
 	};
 	const pendingActivations = new Map<string, EcosystemHookContributionSource>();
-	const registration = createInvokeSkillToolRegistration({
-		getSkills: readVisibleSkills,
-		readBody: (skill, request) => {
-			const document = readSkillInvocationDocument(skill);
-			const activation = createSkillHookContribution(skill, document);
-			if (options.hookRuntime && activation) {
-				pendingActivations.set(request.toolCallId, activation);
-			} else {
-				pendingActivations.delete(request.toolCallId);
-			}
-			return document.body;
+	const createRegistration = (getSkills: () => Skill[]) =>
+		createInvokeSkillToolRegistration({
+			getSkills,
+			readBody: (skill, request) => {
+				const document = readSkillInvocationDocument(skill);
+				const activation = createSkillHookContribution(skill, document);
+				if (options.hookRuntime && activation) {
+					pendingActivations.set(request.toolCallId, activation);
+				} else {
+					pendingActivations.delete(request.toolCallId);
+				}
+				return document.body;
+			},
+			modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.invokeSkill,
+		});
+	const registration = createRegistration(readVisibleSkills);
+	const createProvider = (
+		providerRegistration: ReturnType<typeof createInvokeSkillToolRegistration>,
+		readSkills: () => Skill[],
+	): ModelCallContributionProvider => ({
+		id: "coding-agent.invoke-skill",
+		bindForTurn(_context: RuntimeSnapshotAcquireContext) {
+			const skills = captureVisibleSkills(readVisibleSkills());
+			return createProvider(
+				createRegistration(() => skills),
+				() => skills,
+			);
 		},
-		modelOrder: CODING_AGENT_MODEL_TOOL_ORDER.invokeSkill,
+		async contribute(contributionContext) {
+			contributionContext.signal.throwIfAborted();
+			return readSkills().length > 0 ? { tools: [providerRegistration.tool] } : {};
+		},
 	});
 
 	return {
@@ -79,10 +101,18 @@ export function createCodingAgentInvokeSkillFeature(
 			return {
 				async contribute(contributionContext) {
 					contributionContext.signal.throwIfAborted();
-					return readVisibleSkills().length > 0 ? { tools: [registration.tool] } : {};
+					return { modelCallProviders: [createProvider(registration, readVisibleSkills)] };
 				},
 				async dispose() {},
 			};
 		},
 	};
+}
+
+function captureVisibleSkills(skills: readonly Skill[]): Skill[] {
+	return skills.map((skill) => ({
+		...skill,
+		agentMode: skill.agentMode ? [...skill.agentMode] : undefined,
+		content: readSkillContent(skill),
+	}));
 }

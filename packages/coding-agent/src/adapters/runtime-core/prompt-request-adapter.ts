@@ -1,14 +1,15 @@
 import type { ImageContent, UserMessage } from "@vetta/ai";
 import type { EcosystemHookRuntime } from "@vetta/ecosystem-adapter/hooks";
+import type { PromptAttachmentRef, PromptRequest, RuntimePromptAdapter } from "@vetta/runtime-core";
 import type {
-	PromptAttachmentRef,
-	PromptRequest,
-	RuntimePreparedPrompt,
-	RuntimePromptAdapter,
-	RuntimePromptInterceptionResult,
-	RuntimePromptPreparationContext,
-} from "@vetta/runtime-core";
-import type { SessionContextRecord } from "@vetta/runtime-core/kernel";
+	RuntimeInputRequestPreparationContext,
+	RuntimeInputRequestPreparationResult,
+	RuntimeInputRequestPreparer,
+	RuntimeSnapshotAcquireContext,
+	SessionContextRecord,
+	SessionInput,
+	SessionInputRequest,
+} from "@vetta/runtime-core/kernel";
 import type { InputEventResult, InputSource } from "../../extensions/index.js";
 import {
 	PROMPT_ATTACHMENT_CONTEXT_TYPE,
@@ -37,15 +38,17 @@ export interface CodingAgentPromptRequestAdapterOptions {
 	readonly hookRuntime?: EcosystemHookRuntime;
 	readonly extensionEvents?: CodingAgentPromptInputInterceptor;
 	readonly inputSource?: Exclude<InputSource, "extension">;
+	readonly onPrepared?: () => Promise<void> | void;
 }
 
 /** 将 coding-agent 宿主语义翻译成业务无关的 Kernel 输入。 */
-export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
+export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter, RuntimeInputRequestPreparer {
 	private readonly now: () => number;
 	private readonly resolvePromptResource: CodingAgentPromptResourceResolver | undefined;
 	private readonly hookRuntime: EcosystemHookRuntime | undefined;
 	private readonly extensionEvents: CodingAgentPromptInputInterceptor | undefined;
 	private readonly inputSource: Exclude<InputSource, "extension">;
+	private readonly onPrepared: (() => Promise<void> | void) | undefined;
 
 	constructor(options: CodingAgentPromptRequestAdapterOptions = {}) {
 		this.now = options.now ?? Date.now;
@@ -53,12 +56,49 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 		this.hookRuntime = options.hookRuntime;
 		this.extensionEvents = options.extensionEvents;
 		this.inputSource = options.inputSource ?? "rpc";
+		this.onPrepared = options.onPrepared;
 	}
 
-	async intercept(
+	createRequest(request: PromptRequest): SessionInputRequest {
+		return Object.freeze({
+			payload: structuredClone(request),
+			displayText: request.text,
+			...(request.modelKey || request.reasoning
+				? { model: { key: request.modelKey, reasoning: request.reasoning } }
+				: {}),
+		});
+	}
+
+	bindForTurn(_context: RuntimeSnapshotAcquireContext): RuntimeInputRequestPreparer {
+		return new CodingAgentPromptRequestAdapter({
+			now: this.now,
+			resolvePromptResource: this.resolvePromptResource?.bindForTurn?.() ?? this.resolvePromptResource,
+			hookRuntime: this.hookRuntime,
+			extensionEvents: this.extensionEvents?.bindForTurn?.(_context) ?? this.extensionEvents,
+			inputSource: this.inputSource,
+			onPrepared: this.onPrepared,
+		});
+	}
+
+	releaseTurnBinding(): Promise<void> | void {
+		return this.extensionEvents?.releaseTurnBinding?.();
+	}
+
+	async prepare(
+		inputRequest: SessionInputRequest,
+		context: RuntimeInputRequestPreparationContext,
+	): Promise<RuntimeInputRequestPreparationResult> {
+		const request = normalizeImagesForModel(readPromptRequest(inputRequest.payload), context);
+		const intercepted = await this.intercept(request);
+		if (intercepted.action === "handled") return intercepted;
+		const input = await this.preparePrompt(intercepted.request, context);
+		await this.onPrepared?.();
+		return { action: "continue", input };
+	}
+
+	private async intercept(
 		request: PromptRequest,
-		_context: RuntimePromptPreparationContext,
-	): Promise<RuntimePromptInterceptionResult> {
+	): Promise<{ readonly action: "continue"; readonly request: PromptRequest } | { readonly action: "handled" }> {
 		const intercepted = await this.extensionEvents?.interceptInput(
 			request.text,
 			request.images,
@@ -76,9 +116,17 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 		};
 	}
 
-	async prepare(request: PromptRequest, context: RuntimePromptPreparationContext): Promise<RuntimePreparedPrompt> {
+	private async preparePrompt(
+		request: PromptRequest,
+		context: RuntimeInputRequestPreparationContext,
+	): Promise<SessionInput> {
 		const expansion = await this.expandPrompt(request, context);
-		const hookContexts = await this.runPromptHooks(expansion.text, expansion.skillHookContribution);
+		const hookContexts = await this.runPromptHooks(
+			expansion.text,
+			expansion.skillHookContribution,
+			context.turnId,
+			context.signal,
+		);
 		const timestamp = this.now();
 		const attachmentContext = request.attachments?.length
 			? buildPromptAttachmentContext(request.attachments)
@@ -108,20 +156,19 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 					...this.buildContext(request, expansion, pluginPromptContexts),
 				];
 		return {
-			input: {
-				message,
-				...(contextRecords.length > 0 ? { context: contextRecords } : {}),
-			},
-			options: { streamingBehavior: request.streamingBehavior },
+			message,
+			...(contextRecords.length > 0 ? { context: contextRecords } : {}),
 		};
 	}
 
 	private async runPromptHooks(
 		prompt: string,
 		skillHookContribution: CodingAgentPromptResourceExpansion["skillHookContribution"],
+		turnId: string,
+		signal: AbortSignal,
 	): Promise<readonly string[]> {
 		if (!this.hookRuntime) return [];
-		const sessionStart = await this.hookRuntime.runPendingSessionStart();
+		const sessionStart = await this.hookRuntime.runPendingSessionStart(signal);
 		if (sessionStart?.shouldStop || sessionStart?.shouldBlock) {
 			throw new Error(
 				sessionStart.stopReason ?? sessionStart.blockReason ?? "Session start blocked by ecosystem hook",
@@ -129,8 +176,9 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 		}
 		const promptSubmit = await this.hookRuntime.runUserPromptSubmit(
 			prompt,
-			undefined,
+			signal,
 			skillHookContribution ? [skillHookContribution] : [],
+			turnId,
 		);
 		if (promptSubmit.shouldStop || promptSubmit.shouldBlock) {
 			throw new Error(promptSubmit.stopReason ?? promptSubmit.blockReason ?? "Prompt blocked by ecosystem hook");
@@ -140,7 +188,7 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 
 	private async expandPrompt(
 		request: PromptRequest,
-		context: RuntimePromptPreparationContext,
+		context: RuntimeInputRequestPreparationContext,
 	): Promise<CodingAgentPromptResourceExpansion> {
 		if (!request.promptRef) return { text: request.text };
 		if (/^\/(?:skill|scene):/.test(request.text)) {
@@ -225,7 +273,31 @@ export class CodingAgentPromptRequestAdapter implements RuntimePromptAdapter {
 	}
 }
 
+function normalizeImagesForModel(
+	request: PromptRequest,
+	context: RuntimeInputRequestPreparationContext,
+): PromptRequest {
+	if (
+		!request.images ||
+		request.images.length === 0 ||
+		!context.modelBinding ||
+		context.modelBinding.model.input.includes("image")
+	) {
+		return request;
+	}
+	return {
+		...request,
+		images: undefined,
+		text:
+			request.text === "(see attached images)"
+				? "(User attempted to send images, but the current model does not support image input. Please inform the user that this model cannot process images.)"
+				: request.text,
+	};
+}
+
 interface CodingAgentPromptInputInterceptor {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentPromptInputInterceptor;
+	releaseTurnBinding?(): Promise<void> | void;
 	interceptInput(text: string, images: ImageContent[] | undefined, source: InputSource): Promise<InputEventResult>;
 }
 
@@ -251,6 +323,13 @@ function buildPromptAttachmentContext(attachments: readonly PromptAttachmentRef[
 
 function isNonEmptyString(value: unknown): value is string {
 	return typeof value === "string" && value.trim().length > 0;
+}
+
+function readPromptRequest(value: unknown): PromptRequest {
+	if (typeof value !== "object" || value === null || !("text" in value) || typeof value.text !== "string") {
+		throw new Error("Invalid Turn-bound Prompt request");
+	}
+	return value as PromptRequest;
 }
 
 const KNOWLEDGE_MODE_INSTRUCTION =

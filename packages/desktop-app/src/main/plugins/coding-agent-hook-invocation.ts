@@ -5,6 +5,7 @@ export interface DesktopPluginHookInvocation {
 	readonly pluginId: string;
 	readonly hookId: string;
 	readonly handlerId: string;
+	readonly activationId?: string;
 	readonly session: { readonly id: string; readonly cwd: string; readonly scenario: string };
 	readonly event: PluginCodingAgentHookEvent;
 }
@@ -32,6 +33,7 @@ export async function invokeDesktopPluginHook(
 			pluginId: binding.pluginId,
 			hookId: binding.id,
 			handlerId: binding.handlerId,
+			activationId: binding.activationId,
 			session,
 			event,
 		},

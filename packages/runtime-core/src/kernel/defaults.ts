@@ -6,9 +6,12 @@ import type {
 	IdGenerator,
 	PreparedContext,
 	RuntimeSnapshot,
+	RuntimeSnapshotAcquireContext,
 	RuntimeSnapshotLease,
 	RuntimeSnapshotProvider,
+	RuntimeTurnModelBindingProvider,
 } from "./contracts.js";
+import { bindRuntimeSnapshotForTurn } from "./runtime-snapshot-provider.js";
 
 export class SystemClock implements Clock {
 	now(): number {
@@ -37,12 +40,18 @@ export class PassthroughContextStrategy implements ContextStrategy {
 }
 
 export class StaticRuntimeSnapshotProvider implements RuntimeSnapshotProvider {
-	constructor(private readonly snapshot: RuntimeSnapshot) {}
+	constructor(
+		private readonly snapshot: RuntimeSnapshot,
+		private readonly modelBindingProvider?: RuntimeTurnModelBindingProvider,
+	) {}
 
-	async acquire(): Promise<RuntimeSnapshotLease> {
+	async acquire(_context?: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease> {
+		const modelBinding = await this.modelBindingProvider?.bind(_context);
+		const bound = _context ? await bindRuntimeSnapshotForTurn(this.snapshot, _context) : undefined;
 		return {
-			snapshot: this.snapshot,
-			async release() {},
+			snapshot: bound?.snapshot ?? this.snapshot,
+			...(modelBinding ? { modelBinding } : {}),
+			release: bound?.release ?? (async () => {}),
 		};
 	}
 }

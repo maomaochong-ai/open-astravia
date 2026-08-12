@@ -6,6 +6,7 @@ import type {
 	AgentPluginRuntimeConfig,
 	AgentPluginSystemPromptInvoker,
 	AgentPluginToolInvoker,
+	AgentPluginTurnHandlerLeaseProvider,
 	ConversationScenario,
 } from "@vetta/runtime-core";
 import type { RuntimeTracer } from "@vetta/runtime-telemetry";
@@ -133,6 +134,7 @@ export interface CreateCodingAgentSessionOptions {
 	readonly invokePluginTool?: AgentPluginToolInvoker;
 	readonly invokePluginContinuation?: AgentPluginContinuationInvoker;
 	readonly invokePluginSystemPrompt?: AgentPluginSystemPromptInvoker;
+	readonly pluginTurnHandlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
 }
 
 export interface CodingAgentSessionDiagnostic {

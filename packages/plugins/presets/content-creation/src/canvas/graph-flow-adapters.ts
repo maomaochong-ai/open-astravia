@@ -7,6 +7,7 @@ import type {
 	ImportedContentAsset,
 	ImportedContentReference,
 } from "../generation/types";
+import type { ContentImageEditRequest } from "../image-edit/image-edit-document";
 import type { ContentFlowNode } from "../node/ContentNodeCard";
 import { resolveContentConnection, type ResolvedContentConnection } from "../node/connections";
 import {
@@ -29,6 +30,7 @@ export interface ContentNodeActions {
 	onUpdate: (nodeId: string, data: ContentNodeData) => Promise<void>;
 	onResize: (nodeId: string, position: { x: number; y: number }, width: number, height: number) => void;
 	onRunNode: (nodeId: string) => Promise<void>;
+	onRunImageEdit: (nodeId: string, edit: ContentImageEditRequest) => Promise<void>;
 	onImportAssets: (nodeId: string, files: readonly ImportedContentAsset[]) => Promise<void>;
 	onImportReferences: (nodeId: string, files: readonly ImportedContentReference[], slotId?: string) => Promise<void>;
 	onSetKeyframeSource: (
@@ -121,6 +123,7 @@ export function toContentFlowNodes(
 				onUpdate: (data) => actions.onUpdate(node.id, data),
 				onResize: (position, width, height) => actions.onResize(node.id, position, width, height),
 				onRunNode: () => actions.onRunNode(node.id),
+				onRunImageEdit: (edit) => actions.onRunImageEdit(node.id, edit),
 				onImportAssets: (files) => actions.onImportAssets(node.id, files),
 				onImportReferences: (files, slotId) => actions.onImportReferences(node.id, files, slotId),
 				onSetKeyframeSource: (slotId, assetId, sourceNodeId) =>

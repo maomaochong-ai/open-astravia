@@ -293,5 +293,6 @@ function createSessionPluginRuntime(
 		invokeTool: sessionOptions.invokePluginTool,
 		invokeContinuation: sessionOptions.invokePluginContinuation,
 		invokeSystemPrompt: sessionOptions.invokePluginSystemPrompt,
+		handlerLeaseProvider: sessionOptions.pluginTurnHandlerLeaseProvider,
 	};
 }
