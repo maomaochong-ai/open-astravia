@@ -226,7 +226,7 @@ export function AssistantMessageView({
 						</div>
 					) : (
 						<div
-							className="text-[16px] leading-[1.6] text-foreground"
+							className="text-[14px] leading-[1.6] text-foreground"
 							style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
 						>
 							{fallbackText || "\u2026"}
