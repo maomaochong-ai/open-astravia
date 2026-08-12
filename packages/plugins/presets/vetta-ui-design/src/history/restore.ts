@@ -38,25 +38,30 @@ function dependenciesChanged(commit: HistoryCommit | null): boolean {
  */
 export async function restoreDesign(
 	ctx: PluginContext,
-	session: DesignSession,
+	designDir: string,
 	target: HistoryCommit,
-	onProgress?: (phase: "stashing" | "restoring" | "installing" | "reloading") => void,
+	options: {
+		/** 画布上打开的正是这份设计时传进来，写回后要整份重载。没打开就没有画布要刷。 */
+		session?: DesignSession | null;
+		onProgress?: (phase: "stashing" | "restoring" | "installing" | "reloading") => void;
+	} = {},
 ): Promise<RestoreOutcome> {
+	const { session = null, onProgress } = options;
 	onProgress?.("stashing");
-	const stashed = await commitHistory(ctx, session.dirPath, PRE_RESTORE_TITLE);
+	const stashed = await commitHistory(ctx, designDir, PRE_RESTORE_TITLE);
 
 	onProgress?.("restoring");
-	const restored = await restoreHistory(ctx, session.dirPath, target.sha, restoreTitle(target.title));
+	const restored = await restoreHistory(ctx, designDir, target.sha, restoreTitle(target.title));
 
 	let reinstalled = false;
 	if (dependenciesChanged(restored)) {
 		onProgress?.("installing");
 		// 空包名列表 = 纯 `npm install`，把 node_modules 对齐到刚写回来的那份清单。
-		await installDesignDependencies(ctx, session.dirPath, [], () => {});
+		await installDesignDependencies(ctx, designDir, [], () => {});
 		reinstalled = true;
 	}
 
-	if (restored) {
+	if (restored && session) {
 		onProgress?.("reloading");
 		await session.reload();
 	}

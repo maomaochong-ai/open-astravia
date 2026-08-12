@@ -88,7 +88,7 @@ export function HistoryDrawer({ session, onClose }: HistoryDrawerProps) {
 		setConfirming(null);
 		setBusy(target.sha);
 		try {
-			await restoreDesign(getPluginCtx(), session, target);
+			await restoreDesign(getPluginCtx(), session.dirPath, target, { session });
 			await refresh();
 		} catch {
 			setFailed(true);

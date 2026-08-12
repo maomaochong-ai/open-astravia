@@ -282,5 +282,7 @@
 	"history.confirm.cancel": "取消",
 	"history.time.now": "刚刚",
 	"history.time.minutes": "{{count}} 分钟前",
-	"history.time.hours": "{{count}} 小时前"
+	"history.time.hours": "{{count}} 小时前",
+	"tool.vetd_history": "设计版本历史",
+	"tool.vetd_restore": "恢复设计版本"
 }

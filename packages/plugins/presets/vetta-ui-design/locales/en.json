@@ -282,5 +282,7 @@
 	"history.confirm.cancel": "Cancel",
 	"history.time.now": "just now",
 	"history.time.minutes": "{{count}} min ago",
-	"history.time.hours": "{{count}} h ago"
+	"history.time.hours": "{{count}} h ago",
+	"tool.vetd_history": "Design history",
+	"tool.vetd_restore": "Restore design version"
 }

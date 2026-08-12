@@ -9,6 +9,7 @@ import {
 import { captureFrameOffscreen, offscreenRasterSupported } from "./canvas/offscreen-raster";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
 import { pruneSnapshots, snapshotPath } from "./cards/snapshots";
+import { registerHistoryTools } from "./history/history-tools";
 import { ensureDesignIgnored } from "./vetd/design-ignore";
 import { ENGINE_PROVIDED_PACKAGES } from "./engine/engine-files";
 import { engineDiagnostics, installDesignDependencies } from "./engine/engine-manager";
@@ -463,6 +464,9 @@ export function registerDesignTools(ctx: PluginContext): void {
 			}
 		},
 	});
+
+	// 版本历史的两个工具在 history/history-tools.ts：历史相关的东西全归那一处。
+	registerHistoryTools(ctx, { resolveVetdPath, scopeUse: SCOPE_USE, agentMode: AGENT_MODE });
 
 	interface NotesInput {
 		ids?: string[];
