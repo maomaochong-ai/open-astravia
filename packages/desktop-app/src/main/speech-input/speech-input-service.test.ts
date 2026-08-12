@@ -63,6 +63,30 @@ class FakeSpeechHostChild {
 }
 
 describe("SpeechInputService", () => {
+	it("preloads the recognizer before the first session", async () => {
+		const child = new FakeSpeechHostChild();
+		const events: SpeechInputEvent[] = [];
+		const modelManager: SpeechModelAccess = {
+			supported: true,
+			modelDirectory: "C:/cache/model",
+			getStatus: vi.fn(async () => READY_STATUS),
+		};
+		const service = new SpeechInputService({
+			sendEvent: (event) => events.push(event),
+			forkChild: () => child,
+			modelManager,
+		});
+
+		await service.preload();
+		expect(child.commands.map((command) => command.type)).toEqual(["initialize"]);
+		expect(events.at(-1)).toMatchObject({ type: "status", status: { phase: "ready" } });
+
+		const { sessionId } = await service.start();
+		expect(child.commands.map((command) => command.type)).toEqual(["initialize", "start"]);
+		await service.stop(sessionId);
+		service.dispose();
+	});
+
 	it("coordinates initialization, one session, audio, final text, and stop", async () => {
 		const child = new FakeSpeechHostChild();
 		const events: SpeechInputEvent[] = [];

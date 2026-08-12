@@ -1,5 +1,15 @@
 import type { InputSegment } from "@shared/lib/input-tokens";
-import { $getSelection, $isRangeSelection, $nodesOfType, type LexicalEditor, type LexicalNode } from "lexical";
+import {
+	$createRangeSelection,
+	$getNodeByKey,
+	$getSelection,
+	$isRangeSelection,
+	$isTextNode,
+	$nodesOfType,
+	$setSelection,
+	type LexicalEditor,
+	type LexicalNode,
+} from "lexical";
 import {
 	$createConnectorTokenNode,
 	$createFileTokenNode,
@@ -20,9 +30,11 @@ import { $removeTriggerBeforeCaret } from "./tokens/trigger";
  * 未挂载时所有操作静默 no-op——批量任务 dialog 用的是自己的 textarea。
  */
 let current: LexicalEditor | null = null;
+let speechRange: { key: string; start: number; end: number } | null = null;
 
 export function setInputEditor(editor: LexicalEditor | null): void {
 	current = editor;
+	if (!editor) speechRange = null;
 }
 
 export function getInputEditor(): LexicalEditor | null {
@@ -108,4 +120,38 @@ export function insertPlainText(text: string): void {
 		const selection = $getSelection();
 		if ($isRangeSelection(selection)) selection.insertText(text);
 	});
+}
+
+/** 流式语音文本：后续 partial 替换上一次识别片段，而不是不断追加。 */
+export function replaceSpeechText(text: string): void {
+	if (!text) return;
+	current?.update(() => {
+		const selection = $getSelection();
+		const previous = speechRange;
+		const previousNode = previous ? $getNodeByKey(previous.key) : null;
+		const canReplace =
+			previous &&
+			$isTextNode(previousNode) &&
+			$isRangeSelection(selection) &&
+			selection.isCollapsed() &&
+			selection.anchor.key === previous.key &&
+			selection.anchor.offset === previous.end;
+		if (canReplace) {
+			const range = $createRangeSelection();
+			range.setTextNodeRange(previousNode, previous.start, previousNode, previous.end);
+			$setSelection(range);
+		}
+		const nextSelection = $getSelection();
+		if (!$isRangeSelection(nextSelection)) {
+			speechRange = null;
+			return;
+		}
+		nextSelection.insertText(text);
+		const end = nextSelection.anchor.offset;
+		speechRange = { key: nextSelection.anchor.key, start: end - text.length, end };
+	});
+}
+
+export function clearSpeechText(): void {
+	speechRange = null;
 }

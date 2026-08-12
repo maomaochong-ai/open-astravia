@@ -5,7 +5,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-	insertPlainText: vi.fn(),
+	replaceSpeechText: vi.fn(),
+	clearSpeechText: vi.fn(),
 	focusInputEditor: vi.fn(),
 	captureStart: vi.fn(),
 	captureStop: vi.fn(),
@@ -19,7 +20,8 @@ vi.mock("react-i18next", () => ({
 	}),
 }));
 vi.mock("./editor/inputEditorHandle", () => ({
-	insertPlainText: mocks.insertPlainText,
+	replaceSpeechText: mocks.replaceSpeechText,
+	clearSpeechText: mocks.clearSpeechText,
 	focusInputEditor: mocks.focusInputEditor,
 }));
 vi.mock("../../services/microphone-pcm-capture", () => ({
@@ -76,9 +78,10 @@ describe("useSpeechInput", () => {
 		await waitFor(() => expect(mocks.captureStart).toHaveBeenCalledOnce());
 
 		act(() => emit({ type: "partial", sessionId: "session-1", text: "你好" }));
-		expect(result.current.statusText).toBe("你好");
+		expect(mocks.replaceSpeechText).toHaveBeenCalledWith("你好");
 		act(() => emit({ type: "final", sessionId: "session-1", text: "你好世界" }));
-		expect(mocks.insertPlainText).toHaveBeenCalledWith("你好世界");
+		expect(mocks.replaceSpeechText).toHaveBeenCalledWith("你好世界");
+		expect(mocks.clearSpeechText).toHaveBeenCalledOnce();
 		expect(mocks.focusInputEditor).toHaveBeenCalledOnce();
 	});
 

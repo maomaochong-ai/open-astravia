@@ -3,7 +3,7 @@ import { isWindows } from "@shared/lib/platform";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { MicrophonePcmCapture } from "../../services/microphone-pcm-capture";
-import { focusInputEditor, insertPlainText } from "./editor/inputEditorHandle";
+import { clearSpeechText, focusInputEditor, replaceSpeechText } from "./editor/inputEditorHandle";
 import type { SpeechInputModel } from "./types";
 
 const INITIAL_STATUS: SpeechInputStatus = {
@@ -15,7 +15,6 @@ const INITIAL_STATUS: SpeechInputStatus = {
 export function useSpeechInput(enabled: boolean): SpeechInputModel {
 	const { t } = useTranslation("chat");
 	const [status, setStatus] = useState<SpeechInputStatus>(INITIAL_STATUS);
-	const [partialText, setPartialText] = useState("");
 	const captureRef = useRef<MicrophonePcmCapture | null>(null);
 	const sessionIdRef = useRef<string | null>(null);
 	const busyRef = useRef(false);
@@ -26,10 +25,10 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 		const unsubscribe = window.vetta.speechInput.onEvent((event) => {
 			if (!active) return;
 			if (event.type === "status") setStatus(event.status);
-			if (event.type === "partial") setPartialText(event.text);
+			if (event.type === "partial") replaceSpeechText(event.text);
 			if (event.type === "final" && event.text) {
-				setPartialText("");
-				insertPlainText(event.text);
+				replaceSpeechText(event.text);
+				clearSpeechText();
 				focusInputEditor();
 			}
 			if (event.type === "error") {
@@ -44,6 +43,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			unsubscribe();
 			void captureRef.current?.stop();
 			if (sessionIdRef.current) void window.vetta.speechInput.cancel(sessionIdRef.current);
+			clearSpeechText();
 		};
 	}, []);
 
@@ -54,7 +54,7 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 		captureRef.current = null;
 		await capture?.stop();
 		if (sessionId) await window.vetta.speechInput.stop(sessionId);
-		setPartialText("");
+		clearSpeechText();
 	}, []);
 
 	const toggle = useCallback(async (): Promise<void> => {
@@ -126,9 +126,8 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			stopping: t("inputBar.speech.states.stopping"),
 			error: errorText(status.errorCode),
 		};
-		const statusText = partialText
-			? partialText
-			: status.phase === "loading" || status.phase === "stopping"
+		const statusText =
+			status.phase === "loading" || status.phase === "stopping"
 				? titleByPhase[status.phase]
 				: status.phase === "error" || status.phase === "unavailable"
 					? titleByPhase[status.phase]
@@ -142,5 +141,5 @@ export function useSpeechInput(enabled: boolean): SpeechInputModel {
 			statusText,
 			onToggle: () => void toggle(),
 		};
-	}, [enabled, errorText, partialText, status, t, toggle]);
+	}, [enabled, errorText, status, t, toggle]);
 }

@@ -68,6 +68,7 @@ export class SpeechInputService {
 	private sessionWaiter: Deferred | null = null;
 	private activeSessionId: string | null = null;
 	private transientStatus: SpeechInputStatus | null = null;
+	private preloadPromise: Promise<void> | null = null;
 
 	constructor(options: SpeechInputServiceOptions) {
 		this.sendEvent = options.sendEvent;
@@ -95,6 +96,33 @@ export class SpeechInputService {
 		if (this.transientStatus && ["loading", "listening", "stopping"].includes(this.transientStatus.phase))
 			return this.transientStatus;
 		return this.modelManager.getStatus();
+	}
+
+	/**
+	 * 在用户点击录音前启动识别宿主并加载模型，避免首次录音承担初始化延迟。
+	 * 模型校验失败时不启动子进程，状态仍由现有 getStatus/事件链路负责展示。
+	 */
+	async preload(): Promise<void> {
+		if (!this.modelManager.supported) return;
+		if (this.preloadPromise) return this.preloadPromise;
+
+		this.preloadPromise = (async () => {
+			try {
+				const status = await this.modelManager.getStatus();
+				if (status.phase !== "ready") return;
+				this.publishTransient("loading");
+				await this.ensureInitialized();
+				if (!this.activeSessionId) this.publishTransient("ready");
+			} catch {
+				this.publishTransient("error", "recognizer-start-failed");
+			}
+		})();
+
+		try {
+			await this.preloadPromise;
+		} finally {
+			this.preloadPromise = null;
+		}
 	}
 
 	async start(): Promise<{ sessionId: string }> {

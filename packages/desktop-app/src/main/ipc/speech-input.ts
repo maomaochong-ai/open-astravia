@@ -46,6 +46,9 @@ export function registerSpeechInputIpc(webContents: WebContents): () => void {
 		return typeof sessionId === "string" ? service.cancel(sessionId) : undefined;
 	});
 
+	// IPC 注册后立即预热模型；首次点击语音输入时宿主通常已经完成初始化。
+	void service.preload();
+
 	return () => {
 		service.dispose();
 		ipcMain.removeListener(SPEECH_INPUT_CHANNELS.AUDIO, handleAudio);
