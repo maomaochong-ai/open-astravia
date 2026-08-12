@@ -104,6 +104,13 @@ export function HistoryDrawer({ session, peekSha, onPeek, onClose }: HistoryDraw
 		<div
 			className="vetd-note vetd-note-drawer-enter vetd-note-surface pointer-events-auto absolute z-40 flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-popover/95 shadow-2xl ring-1 ring-black/5 backdrop-blur-xl"
 			style={{ top: PANEL_GAP, right: PANEL_GAP, width: PANEL_WIDTH, maxHeight: PANEL_MAX_HEIGHT }}
+			// 截断指针事件：画布根上的 onPointerDown 会 setPointerCapture 到容器，把
+			// 后续事件全部重定向走，落在这里的按钮就永远收不到 click。备注抽屉不需要
+			// 这一手，是因为它只在备注工具下渲染，而那条分支在捕获之前就 return 了；
+			// 这个面板在默认的选择工具下开着，正好落进框选分支。同 ControlBar。
+			onPointerDown={(event) => event.stopPropagation()}
+			onPointerMove={(event) => event.stopPropagation()}
+			onPointerUp={(event) => event.stopPropagation()}
 		>
 			<header className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2.5">
 				<span className="text-xs font-semibold text-foreground">{t("history.drawer.title")}</span>

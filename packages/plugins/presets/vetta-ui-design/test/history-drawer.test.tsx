@@ -105,6 +105,25 @@ describe("HistoryDrawer", () => {
 		expect(restoreDesign.mock.calls[0]?.[2]).toMatchObject({ sha: "c2" });
 	});
 
+	it("指针事件不冒泡到画布——画布根会 setPointerCapture，冒过去按钮就点不动了", async () => {
+		// 这条不是形式检查：漏掉它时的表现是「查看」和「恢复到此」全都毫无反应，
+		// 没有报错、没有 toast，看起来像按钮坏了。ControlBar / ConfirmDialog 同此约定。
+		// 画布根必须是 React 根容器的**祖先**：React 18 把合成监听器挂在根容器上，
+		// 挂在同一个元素上的原生监听器 stopPropagation 本来就拦不住（那要 stopImmediate）。
+		const canvas = document.createElement("div");
+		canvas.append(host);
+		document.body.append(canvas);
+		const onCanvasPointerDown = vi.fn();
+		canvas.addEventListener("pointerdown", onCanvasPointerDown);
+		await render();
+		const button = buttonsWithText("history.peek")[0];
+		await act(async () => {
+			button?.dispatchEvent(new Event("pointerdown", { bubbles: true, cancelable: true }));
+		});
+		expect(onCanvasPointerDown).not.toHaveBeenCalled();
+		canvas.remove();
+	});
+
 	it("查看是另一个按钮，不写历史", async () => {
 		await render();
 		await act(async () => {
