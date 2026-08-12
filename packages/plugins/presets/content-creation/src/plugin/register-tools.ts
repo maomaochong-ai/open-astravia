@@ -93,7 +93,7 @@ export function registerContentCreationTools(
 		name: CONTENT_ASSETS_TOOL_NAME,
 		label: "%tool.assets.label%",
 		description:
-			"List or import image, video, and audio files from host-authorized local paths. List directories before choosing reference media. Import copies media into managed plugin storage, creates or updates one asset node, and returns stable source IDs for configure_video_shot or low-level configure_generation. No confirmation is required.\nDo NOT use to read or move media that belongs to the user's codebase — assets a repository ships (public/, assets/, src/) stay where they are and are handled with the ordinary file tools instead.\nOnly for media that becomes an input of a content generation project.",
+			"List or import image, video, and audio files from host-authorized local paths. List directories before choosing reference media. Import copies media into managed plugin storage, creates or updates one asset node, and returns stable source IDs for configure_video_shot or low-level configure_generation. No confirmation is required.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -163,7 +163,7 @@ export function registerContentCreationTools(
 		name: CONTENT_EDIT_TOOL_NAME,
 		label: "%tool.edit.label%",
 		description:
-			"Atomically apply a revision-bound batch of typed workflow operations. The first call in a session asks the user to confirm, because this writes into their workspace. Each operation has its own required fields. Ordinary connections use sourceNodeId/targetNodeId/optional edgeId. Prefer configure_video_shot for Agent-authored video work; declare video media only in its sources or keyframes, never as duplicate connect_nodes operations. It selects text, single-frame, first/last-frame, omni-reference, or transform strategy, composes connected Prompt nodes with the directing plan, and configures roles without silent degradation. Keep configure_generation for low-level compatibility or role repair. The returned readiness analysis identifies incomplete graphs.\nDo NOT use to build an application feature, a page or any other software: this writes a content project file tree into the workspace — write code in the repo's own framework instead.\nOnly for authoring an image/video generation workflow the user asked for.",
+			"Atomically apply a revision-bound batch of typed workflow operations. The first call in a session asks the user to confirm, because this writes into their workspace. Each operation has its own required fields. Ordinary connections use sourceNodeId/targetNodeId/optional edgeId. Prefer configure_video_shot for Agent-authored video work; declare video media only in its sources or keyframes, never as duplicate connect_nodes operations. It selects text, single-frame, first/last-frame, omni-reference, or transform strategy, composes connected Prompt nodes with the directing plan, and configures roles without silent degradation. Keep configure_generation for low-level compatibility or role repair. The returned readiness analysis identifies incomplete graphs.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -205,7 +205,7 @@ export function registerContentCreationTools(
 		name: CONTENT_RUN_TOOL_NAME,
 		label: "%tool.run.label%",
 		description:
-			"Prepare a revision-bound image/video generation run, inspect its status, or cancel it. Prepare never spends quota and opens a global confirmation dialog; only the user can start generation from that dialog.\nDo NOT use to preview, test or render anything that is not a content project node — a running app, a page or a chart is produced by its own tooling instead; a started run is billed and cannot be un-billed.\nOnly for generating media the user explicitly asked this project to produce.",
+			"Prepare a revision-bound image/video generation run, inspect its status, or cancel it. Prepare never spends quota and opens a global confirmation dialog; only the user can start generation from that dialog.",
 		parameters: {
 			type: "object",
 			properties: {

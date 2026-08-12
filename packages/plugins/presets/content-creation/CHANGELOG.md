@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- 移除 `content_creation_assets` / `content_creation_edit` / `content_creation_run` 工具描述中的反向触发段（Do NOT / Only for）。误调防线回落到 heavy 首调确认闸（edit 会话内首调确认）与 run 自带的全局确认对话框。
+
 ### Added
 
 - Agent 编辑操作改为按 `type` 判别的严格合同，普通连线统一为 `sourceNodeId` / `targetNodeId` / `edgeId`；高层视频配置吸收重复媒体连线、组合动态 Prompt 与导演计划，并提供与当前操作一致的恢复建议和遮蔽诊断。
