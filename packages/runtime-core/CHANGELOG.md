@@ -6,6 +6,10 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ### Added
 
+- **Turn-bound Runtime Generation**（ADR-0069）：`RuntimeSnapshotProvider.acquire` 接收 Session/operation
+  context，并在同一次 lease 中绑定 Snapshot、模型和动态 Model Call 组件；Turn 释放时精确释放其外部
+  generation lease。Execution Mode 更新不再因活动 Session 被拒绝，而是进入统一 Session 配置 overlay，
+  在下一 Turn 前应用。
 - 新增 `toolcall.args` 会话事件：模型流式生成工具参数时，每多解析出一个值已完整的键就播报一次（按键数增长节流，不逐 token）。`edit` / `write` 的开销几乎全在生成参数上，只听 `tool.start` 的消费方要等工具执行完才知道目标；路径通常是第一个键，这条事件能提前拿到。`tool.start` 仍是权威全量参数。
 
 ### Breaking Changes

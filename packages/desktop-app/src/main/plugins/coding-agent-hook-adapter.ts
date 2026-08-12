@@ -24,25 +24,51 @@ export interface DesktopPluginHookAdapterFactoryOptions {
 export function createDesktopPluginHookAdapterFactory(
 	options: DesktopPluginHookAdapterFactoryOptions,
 ): EcosystemHookAdapterFactory {
-	return async (context) => ({
-		id: DESKTOP_PLUGIN_HOOK_ADAPTER_ID,
-		supports: (event) => desktopPluginHookRegistry.hasEvent(event.eventName),
-		dispatch: async (event, signal) => {
-			const bindings = desktopPluginHookRegistry
-				.snapshot()
-				.filter((binding) => matchesBinding(binding, event, options));
-			if (bindings.length === 0) return emptyHookDispatchOutcome();
-			const outcomes = await Promise.all(
-				bindings.map((binding) => dispatchBinding(binding, event, options.scenario, signal)),
-			);
-			for (const outcome of outcomes) {
-				for (const run of outcome.runs) {
-					if (run.status === "Failed") context.onFailedRun(run);
-				}
+	return async (context) => {
+		const turnBindings = new Map<string, readonly DesktopPluginHookBinding[]>();
+		const readBindings = (event: EcosystemHookEvent): readonly DesktopPluginHookBinding[] => {
+			const turnId = readTurnId(event);
+			if (!turnId) {
+				return desktopPluginHookRegistry.snapshot().filter((binding) => matchesBindingScope(binding, options));
 			}
-			return aggregateHookDispatchOutcomes(outcomes);
-		},
-	});
+			const existing = turnBindings.get(turnId);
+			if (existing) return existing;
+			// A Session executes one Agent Turn at a time. Retire stale membership when
+			// the next turn is first observed, then bind the current published registry.
+			turnBindings.clear();
+			const captured = Object.freeze(
+				desktopPluginHookRegistry.snapshot().filter((binding) => matchesBindingScope(binding, options)),
+			);
+			turnBindings.set(turnId, captured);
+			return captured;
+		};
+		return {
+			id: DESKTOP_PLUGIN_HOOK_ADAPTER_ID,
+			supports: (event) => readBindings(event).some((binding) => matchesBindingEvent(binding, event)),
+			dispatch: async (event, signal) => {
+				const bindings = readBindings(event).filter((binding) => matchesBindingEvent(binding, event));
+				if (bindings.length === 0) {
+					if (event.eventName === "Stop") turnBindings.delete(event.turnId);
+					if (event.eventName === "SessionEnd") turnBindings.clear();
+					return emptyHookDispatchOutcome();
+				}
+				try {
+					const outcomes = await Promise.all(
+						bindings.map((binding) => dispatchBinding(binding, event, options.scenario, signal)),
+					);
+					for (const outcome of outcomes) {
+						for (const run of outcome.runs) {
+							if (run.status === "Failed") context.onFailedRun(run);
+						}
+					}
+					return aggregateHookDispatchOutcomes(outcomes);
+				} finally {
+					if (event.eventName === "Stop") turnBindings.delete(event.turnId);
+					if (event.eventName === "SessionEnd") turnBindings.clear();
+				}
+			},
+		};
+	};
 }
 
 async function dispatchBinding(
@@ -78,18 +104,26 @@ async function dispatchBinding(
 	}
 }
 
-function matchesBinding(
+function matchesBindingScope(
 	binding: DesktopPluginHookBinding,
-	event: EcosystemHookEvent,
 	options: DesktopPluginHookAdapterFactoryOptions,
 ): boolean {
-	if (!options.canInvoke(binding.pluginId) || binding.eventName !== event.eventName) return false;
+	if (!options.canInvoke(binding.pluginId)) return false;
 	if (!binding.scope_use.includes(options.scenario)) return false;
 	const agentMode = options.readAgentMode();
 	if (agentMode && binding.agent_mode?.length && !binding.agent_mode.includes(agentMode)) return false;
+	return true;
+}
+
+function matchesBindingEvent(binding: DesktopPluginHookBinding, event: EcosystemHookEvent): boolean {
+	if (binding.eventName !== event.eventName) return false;
 	if (!binding.toolNames?.length) return true;
 	const toolName = toolEventName(event);
 	return toolName !== undefined && binding.toolNames.includes(toolName);
+}
+
+function readTurnId(event: EcosystemHookEvent): string | undefined {
+	return "turnId" in event && typeof event.turnId === "string" ? event.turnId : undefined;
 }
 
 function toolEventName(event: EcosystemHookEvent): string | undefined {

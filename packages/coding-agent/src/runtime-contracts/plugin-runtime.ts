@@ -7,6 +7,7 @@ import type {
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { McpRuntimeToolSnapshot, McpRuntimeToolView } from "@vetta/runtime-mcp";
@@ -18,12 +19,8 @@ export interface CodingAgentPluginRuntimeSource {
 	readonly invokeTool?: AgentPluginToolInvoker;
 }
 
-export interface CodingAgentPluginMcpRuntime {
-	reconfigure(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<boolean>;
-	refresh(): Promise<McpRuntimeToolSnapshot>;
-	snapshot(): McpRuntimeToolSnapshot;
-	view(): McpRuntimeToolView;
-	isManagedTool(toolName: string): boolean;
+export interface CodingAgentPluginMcpToolComposer {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentPluginMcpToolComposer;
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
@@ -35,5 +32,13 @@ export interface CodingAgentPluginMcpRuntime {
 		readonly frame: ModelCallFrame;
 		readonly availableTools: ReadonlyMap<string, RuntimeToolDefinition>;
 	};
+}
+
+export interface CodingAgentPluginMcpRuntime extends CodingAgentPluginMcpToolComposer {
+	reconfigure(agentPlugins: AgentPluginRuntimeConfig | undefined): Promise<boolean>;
+	refresh(): Promise<McpRuntimeToolSnapshot>;
+	snapshot(): McpRuntimeToolSnapshot;
+	view(): McpRuntimeToolView;
+	isManagedTool(toolName: string): boolean;
 	dispose(): Promise<void>;
 }

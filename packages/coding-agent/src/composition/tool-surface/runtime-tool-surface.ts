@@ -91,9 +91,6 @@ export async function createCodingAgentRuntimeToolSurface(
 				configuration?.readActiveToolNamesOverride(),
 			);
 		},
-		refreshCatalog: async (context) => {
-			await mcpCoordinator.refreshCatalogForModelCall(context.sessionId);
-		},
 		filterRegistration: (registration, context) => {
 			const executionRuntime = options.indexes.executionRuntimes.get(context.sessionId);
 			if (executionRuntime?.ownsTool(registration.tool.name)) return false;

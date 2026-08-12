@@ -8,6 +8,7 @@ import type {
 } from "../runtime-contracts/index.js";
 import type { CodingAgentSystemPromptOptions } from "./model-call-frame-composer.js";
 import type { AgentPluginRuntimeConfig } from "./plugin-runtime.js";
+import { capturePromptResourceSource, capturePromptSettingsSource } from "./prompt-snapshot.js";
 import { resolveSystemPromptOptionsFromSources } from "./system-prompt-sources.js";
 
 export type {
@@ -39,11 +40,25 @@ export class CodingAgentPromptRuntime {
 		this.resolveSystemPromptOptions = (context) => this.resolve(context);
 	}
 
+	bindForTurn(): (context: CodingAgentModelCallPromptContext) => CodingAgentSystemPromptOptions {
+		const resourceLoader = capturePromptResourceSource(this.options.resourceLoader);
+		const settingsManager = capturePromptSettingsSource(this.options.settingsManager);
+		const agentMode = this.options.readAgentMode?.();
+		const memory = this.options.readMemory?.();
+		const agentPlugins = this.options.readAgentPlugins?.();
+		const runtime = new CodingAgentPromptRuntime({
+			...this.options,
+			resourceLoader,
+			settingsManager,
+			readAgentMode: () => agentMode,
+			readMemory: () => memory,
+			readAgentPlugins: () => agentPlugins,
+		});
+		return (context) => runtime.resolve(context);
+	}
+
 	resolve(context: CodingAgentModelCallPromptContext): CodingAgentSystemPromptOptions {
 		context.signal.throwIfAborted();
-		this.options.resourceLoader.refreshContextResourcesIfChanged();
-		this.options.resourceLoader.refreshSkillsIfChanged();
-		this.options.settingsManager.reloadPersonalizationSettings();
 		const memory = this.options.readMemory?.();
 		const promptOptions = resolveSystemPromptOptionsFromSources({
 			toolNames: context.activeToolNames,

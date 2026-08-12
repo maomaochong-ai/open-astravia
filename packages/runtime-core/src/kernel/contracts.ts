@@ -305,6 +305,12 @@ export interface ModelCallContribution {
 
 export interface ModelCallContributionProvider {
 	readonly id: string;
+	/** 在 Turn admission 捕获外部状态；返回值只能读取该次捕获和 Turn-local state。 */
+	bindForTurn?(
+		context: RuntimeSnapshotAcquireContext,
+	): Promise<ModelCallContributionProvider> | ModelCallContributionProvider;
+	/** 释放本次 Turn 捕获的外部代际；由 RuntimeSnapshotLease 保证至多调用一次。 */
+	releaseTurnBinding?(): Promise<void> | void;
 	contribute(context: ModelCallContributionContext): Promise<ModelCallContribution>;
 }
 
@@ -337,6 +343,9 @@ export interface ModelCallFrameCompositionContext {
  * Frame 编译成该产品最终交给模型的 Prompt 与工具集合。
  */
 export interface ModelCallFrameComposer {
+	/** 在 Turn admission 捕获产品级 Prompt、Catalog 与扩展状态。 */
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): Promise<ModelCallFrameComposer> | ModelCallFrameComposer;
+	releaseTurnBinding?(): Promise<void> | void;
 	compose(context: ModelCallFrameCompositionContext): Promise<ModelCallFrame>;
 }
 
@@ -410,11 +419,23 @@ export interface RuntimeSnapshot {
 
 export interface RuntimeSnapshotLease {
 	readonly snapshot: RuntimeSnapshot;
+	/** 与 snapshot 在同一次 acquisition 中捕获的模型绑定。 */
+	readonly modelBinding?: RuntimeTurnModelBinding;
 	release(): Promise<void>;
 }
 
+export type RuntimeSnapshotAcquireReason = "turn" | "manual_compaction" | "preview";
+
+export interface RuntimeSnapshotAcquireContext {
+	readonly sessionId: string;
+	readonly operationId: string;
+	readonly reason: RuntimeSnapshotAcquireReason;
+	readonly signal: AbortSignal;
+	readonly input?: SessionInput;
+}
+
 export interface RuntimeSnapshotProvider {
-	acquire(): Promise<RuntimeSnapshotLease>;
+	acquire(context: RuntimeSnapshotAcquireContext): Promise<RuntimeSnapshotLease>;
 }
 
 /** 单次 Turn 使用的不可变模型选择；运行时切模只影响后续 bind。 */

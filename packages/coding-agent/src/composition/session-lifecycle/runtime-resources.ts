@@ -75,23 +75,28 @@ export function createCodingAgentSessionRuntimeResources(
 ): RuntimeResources {
 	const stateActivation = createStateActivation(options);
 	const pluginMcpRuntime = options.pluginMcpRuntime;
+	const snapshotProvider: RuntimeResources["snapshotProvider"] = {
+		async acquire(context) {
+			// External catalogs publish first; only then may the capability composition
+			// capture one immutable Turn generation.
+			await options.refreshSessionMcp(options.session.readSessionId(), true);
+			return options.turnCapabilityAssembly.capabilities.acquire(context);
+		},
+	};
 	return {
 		sessionId: options.session.initialSessionId,
 		repository: options.conversation.repository,
 		conversationDocumentStore: options.conversation.documentStore,
 		conversationContinuationStore: options.conversation.continuationStore,
 		promptAdapter: {
-			async intercept(request, context) {
-				await options.refreshSessionMcp(options.session.readSessionId(), true);
-				return options.turnCapabilityAssembly.promptAdapter.intercept(request, context);
-			},
+			intercept: (request, context) => options.turnCapabilityAssembly.promptAdapter.intercept(request, context),
 			async prepare(request, context) {
 				const prepared = await options.turnCapabilityAssembly.promptAdapter.prepare(request, context);
 				await options.todoRuntime.flush();
 				return prepared;
 			},
 		},
-		snapshotProvider: options.turnCapabilityAssembly.capabilities,
+		snapshotProvider,
 		modelRuntime: options.modelRuntime,
 		documentParticipants: [
 			options.todoRuntime,

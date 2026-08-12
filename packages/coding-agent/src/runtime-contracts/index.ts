@@ -10,7 +10,11 @@ export type {
 	CodingAgentSessionToolRegistration,
 } from "./extension-runtime.js";
 export type { CodingAgentRuntimeModelSource } from "./model-runtime.js";
-export type { CodingAgentPluginMcpRuntime, CodingAgentPluginRuntimeSource } from "./plugin-runtime.js";
+export type {
+	CodingAgentPluginMcpRuntime,
+	CodingAgentPluginMcpToolComposer,
+	CodingAgentPluginRuntimeSource,
+} from "./plugin-runtime.js";
 export type {
 	CodingAgentModelCallPromptContext,
 	CodingAgentPromptResourceExpansion,

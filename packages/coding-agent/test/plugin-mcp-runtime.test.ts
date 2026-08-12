@@ -1,5 +1,9 @@
 import type { Api, Message, Model } from "@vetta/ai";
-import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type {
+	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
+	RuntimeToolDefinition,
+} from "@vetta/runtime-core/kernel";
 import type {
 	McpClientHandle,
 	McpResourceReadResult,
@@ -85,6 +89,27 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		await runtime.dispose();
 	});
 
+	it("keeps a Turn-bound plugin MCP catalog stable across ordinary reconfiguration", async () => {
+		const clients = new FakeClientFactory();
+		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
+		await runtime.reconfigure(pluginConfig("alpha", "coding"));
+		const admitted = runtime.bindForTurn(acquireContext());
+
+		await runtime.reconfigure(pluginConfig("beta", "coding"));
+		const admittedSurface = admitted.compose(compositionContext(), new Map(), {
+			agentMode: "coding",
+			isToolVisible: () => true,
+		});
+		const nextSurface = runtime.compose(compositionContext(), new Map(), {
+			agentMode: "coding",
+			isToolVisible: () => true,
+		});
+
+		expect([...admittedSurface.frame.tools.keys()]).toEqual(["mcp_plugin-alpha-docs_lookup"]);
+		expect([...nextSurface.frame.tools.keys()]).toEqual(["mcp_plugin-beta-docs_lookup"]);
+		await runtime.dispose();
+	});
+
 	it("applies the configured result policy to dynamic plugin MCP tools", async () => {
 		const clients = new FakeClientFactory();
 		const resultPolicy: McpToolResultPolicy = {
@@ -120,6 +145,15 @@ describe("CodingAgentPluginMcpRuntime", () => {
 		await runtime.dispose();
 	});
 });
+
+function acquireContext(): RuntimeSnapshotAcquireContext {
+	return {
+		sessionId: "session",
+		operationId: "turn",
+		reason: "turn",
+		signal: new AbortController().signal,
+	};
+}
 
 function pluginConfig(name: string, agentMode: string, command = name): AgentPluginRuntimeConfig {
 	return {

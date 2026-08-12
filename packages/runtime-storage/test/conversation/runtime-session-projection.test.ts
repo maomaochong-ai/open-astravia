@@ -184,8 +184,7 @@ async function createAssembly(
 	});
 	const pipeline = new TurnPipeline({
 		repository,
-		snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot()),
-		modelBindingProvider: modelRuntime,
+		snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot(), modelRuntime),
 		turnEngine,
 		eventSink,
 		clock: { now: () => Date.now() },

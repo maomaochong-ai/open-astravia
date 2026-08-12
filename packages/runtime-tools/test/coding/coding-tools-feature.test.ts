@@ -10,6 +10,7 @@ import {
 	PassthroughContextStrategy,
 	type RuntimeSnapshot,
 	resolveModelCallFrame,
+	StaticRuntimeSnapshotProvider,
 	type TurnEngineEvent,
 } from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
@@ -194,6 +195,15 @@ async function resolveTools(runtimeSnapshot: RuntimeSnapshot): Promise<readonly 
 		signal: new AbortController().signal,
 	});
 	return [...frame.tools.keys()];
+}
+
+async function acquireTurnSnapshot(runtimeSnapshot: RuntimeSnapshot, turnId: string) {
+	return new StaticRuntimeSnapshotProvider(runtimeSnapshot).acquire({
+		sessionId: "session-1",
+		operationId: turnId,
+		reason: "turn",
+		signal: new AbortController().signal,
+	});
 }
 
 describe("greenfield coding tools feature", () => {
@@ -449,7 +459,7 @@ describe("greenfield coding tools feature", () => {
 		}
 	});
 
-	it("reflects catalog membership changes without recompiling the feature", async () => {
+	it("keeps catalog membership stable within a Turn and refreshes the next Turn", async () => {
 		const directory = mkdtempSync(join(tmpdir(), "runtime-tools-feature-catalog-"));
 		try {
 			const registry = new InMemoryCodingToolRegistry([
@@ -460,14 +470,21 @@ describe("greenfield coding tools feature", () => {
 			]);
 			const compiled = await compileCatalogSnapshot(registry);
 
-			expect(await resolveTools(compiled.snapshot)).toEqual(["current_time", "read"]);
+			expect(compiled.snapshot.modelCallProviders?.[0]?.bindForTurn).toBeTypeOf("function");
+			const firstTurn = await acquireTurnSnapshot(compiled.snapshot, "turn-1");
+			expect(firstTurn.snapshot).not.toBe(compiled.snapshot);
+			expect(await resolveTools(firstTurn.snapshot)).toEqual(["current_time", "read"]);
 			expect(registry.unregister("read")).toBe(true);
 			registry.register({
 				...createLsToolRegistration(directory),
 				scopeUse: ["project"],
 			});
 
-			expect(await resolveTools(compiled.snapshot)).toEqual(["current_time", "ls"]);
+			expect(await resolveTools(firstTurn.snapshot)).toEqual(["current_time", "read"]);
+			await firstTurn.release();
+			const secondTurn = await acquireTurnSnapshot(compiled.snapshot, "turn-2");
+			expect(await resolveTools(secondTurn.snapshot)).toEqual(["current_time", "ls"]);
+			await secondTurn.release();
 			expect(compiled.snapshot.id).toBe("snapshot-1");
 			await compiled.dispose();
 		} finally {
@@ -475,7 +492,7 @@ describe("greenfield coding tools feature", () => {
 		}
 	});
 
-	it("rejects a tool removed after advertisement and refreshes the next model call", async () => {
+	it("lets an advertised binding finish after ordinary removal and keeps the Turn catalog stable", async () => {
 		const directory = mkdtempSync(join(tmpdir(), "runtime-tools-feature-live-removal-"));
 		try {
 			writeFileSync(join(directory, "message.txt"), "must not be read");
@@ -512,7 +529,9 @@ describe("greenfield coding tools feature", () => {
 				},
 			});
 
-			const events = await collectEngineEvents(engine, compiled.snapshot);
+			const turn = await acquireTurnSnapshot(compiled.snapshot, "turn-1");
+			const events = await collectEngineEvents(engine, turn.snapshot);
+			await turn.release();
 			const toolResult = events.find(
 				(
 					event,
@@ -521,17 +540,13 @@ describe("greenfield coding tools feature", () => {
 				} => event.type === "message" && event.message.role === "toolResult",
 			)?.message;
 
-			expect(advertisedTools).toEqual([["current_time", "read"], ["current_time"]]);
+			expect(advertisedTools).toEqual([
+				["current_time", "read"],
+				["current_time", "read"],
+			]);
 			expect(toolResult).toMatchObject({
-				isError: true,
-				content: [{ type: "text", text: "Coding tool is no longer available: read" }],
-				details: {
-					code: "coding_tool_unavailable",
-					retryable: true,
-					metadata: {
-						toolName: "read",
-					},
-				},
+				isError: false,
+				content: [{ type: "text", text: expect.stringContaining("must not be read") }],
 			});
 			await compiled.dispose();
 		} finally {

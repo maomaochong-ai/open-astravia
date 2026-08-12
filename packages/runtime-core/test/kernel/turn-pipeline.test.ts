@@ -235,8 +235,10 @@ async function createHarness(options?: {
 	const eventSink = options?.eventSink ?? new CollectingEventSink();
 	const pipeline = new TurnPipeline({
 		repository,
-		snapshotProvider: new StaticRuntimeSnapshotProvider(options?.runtimeSnapshot ?? snapshot(contextStrategy)),
-		modelBindingProvider: options?.modelBindingProvider,
+		snapshotProvider: new StaticRuntimeSnapshotProvider(
+			options?.runtimeSnapshot ?? snapshot(contextStrategy),
+			options?.modelBindingProvider,
+		),
 		turnEngine,
 		eventSink,
 		clock: new TestClock(),

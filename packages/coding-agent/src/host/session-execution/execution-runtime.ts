@@ -258,6 +258,10 @@ class SwappableCodingToolCatalog implements CodingToolCatalog {
 		return this.current.snapshot();
 	}
 
+	acquireSnapshot(): ReturnType<CodingToolCatalog["acquireSnapshot"]> {
+		return this.current.acquireSnapshot();
+	}
+
 	resolve(toolName: string): CodingToolCatalogEntry | undefined {
 		return this.current.resolve(toolName);
 	}

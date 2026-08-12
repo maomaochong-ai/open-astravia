@@ -2,7 +2,8 @@
 
 ## 状态
 
-Accepted
+Superseded in part by [ADR-0069](./0069-turn-bound-runtime-generations.md)。Hook 单一领域模型和 Adapter
+分层继续有效；动态注册的可见性与资源生命周期改由 ADR-0069 定义。
 
 ## 背景
 
@@ -39,9 +40,9 @@ EcosystemHookRuntime（每 Session 唯一）
 
 ## 生命周期与安全语义
 
-- 注册、替换和注销对下一次 dispatch 可见；dispatch 开始时读取不可变、有序快照。
+- 注册、替换和注销对下一次 Turn 可见；Turn admission 绑定不可变、有序 Hook generation。
 - 同一 `pluginId + hookId` 的新 activation 原子替换旧 activation；旧 activation 的 dispose 不得删除新注册。
-- 插件卸载先从 Main 注册表移除，再释放 renderer handler，已经进入 dispatch 的调用可以完成。
+- 插件卸载先从新 Turn 的可见注册表移除；旧 generation 的 renderer handler 在活动 Turn lease 归零后释放。
 - 每次调用同时复核插件启用状态、模式与 `agent.hooks.register` / `agent.hookHandler.execute` 权限。
 - handler 异常、超时、缺失或非法输出 fail-open，并记录 `handlerType: "callback"` 的失败 run；
   只有通过事件专属校验的显式结果才能 block、stop、修改工具输入、决定权限或请求 Stop 续跑。

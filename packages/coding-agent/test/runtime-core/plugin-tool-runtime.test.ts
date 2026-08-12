@@ -1,6 +1,7 @@
 import type { Api, Message, Model } from "@vetta/ai";
 import type {
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 	RuntimeToolExecutionError,
 } from "@vetta/runtime-core/kernel";
@@ -76,6 +77,24 @@ describe("CodingAgentPluginToolRuntime", () => {
 		const otherSurface = otherRuntime.compose(compositionContext("turn-2", new Map(), "session-2"), new Map());
 		expect([...otherSurface.frame.tools.keys()]).toEqual(["other"]);
 		expect(surface.availableTools.has("other")).toBe(false);
+	});
+
+	it("keeps Turn-bound plugin tools stable while a new config is published", () => {
+		let config: AgentPluginRuntimeConfig = { toolContributions: [pluginTool("plugin", "before")] };
+		const runtime = new CodingAgentPluginToolRuntime({
+			readAgentPlugins: () => config,
+			invokeTool: async () => ({ value: "ok", effects: [] }),
+			runOrchestrator: createOrchestrator(() => config),
+			resolveActivation: () => ({ mode: "explicit", toolNames: ["before", "after"] }),
+		});
+		const admitted = runtime.bindForTurn(acquireContext("turn-1"));
+		config = { toolContributions: [pluginTool("plugin", "after")] };
+
+		const admittedSurface = admitted.compose(compositionContext("turn-1", new Map()), new Map());
+		const nextSurface = runtime.compose(compositionContext("turn-2", new Map()), new Map());
+
+		expect([...admittedSurface.frame.tools.keys()]).toEqual(["before"]);
+		expect([...nextSurface.frame.tools.keys()]).toEqual(["after"]);
 	});
 
 	it("preserves invocation, md_intro, card formatting and same-turn effects", async () => {
@@ -257,6 +276,15 @@ describe("CodingAgentPluginToolRuntime", () => {
 		);
 	});
 });
+
+function acquireContext(operationId: string): RuntimeSnapshotAcquireContext {
+	return {
+		sessionId: "session-1",
+		operationId,
+		reason: "turn",
+		signal: new AbortController().signal,
+	};
+}
 
 function createOrchestrator(
 	readAgentPlugins: () => AgentPluginRuntimeConfig | undefined,

@@ -1,5 +1,9 @@
 import { Type } from "@sinclair/typebox";
-import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type {
+	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
+	RuntimeToolDefinition,
+} from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import type {
 	Extension,
@@ -180,6 +184,19 @@ describe("CodingAgentExtensionToolRuntime", () => {
 		expect(runtime.readAvailableTools().get("extension_echo")?.description).toBe("second-refreshed");
 	});
 
+	it("keeps a Turn-bound Extension catalog stable while refresh publishes the next revision", () => {
+		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("before", echoTool("before"))]);
+		const bound = runtime.bindForTurn(acquireContext());
+		runtime.refresh([extensionWithTool("after", echoTool("after"))]);
+		const context = compositionContext(new Map());
+
+		const admitted = bound.compose(context, context.frame.tools, { mode: "scope" });
+		const next = runtime.compose(context, context.frame.tools, { mode: "scope" });
+
+		expect(admitted.frame.tools.get("extension_echo")?.description).toBe("before");
+		expect(next.frame.tools.get("extension_echo")?.description).toBe("after");
+	});
+
 	it("isolates Session overlays and lets Session tools override process Extension tools", () => {
 		const runtime = new CodingAgentExtensionToolRuntime([extensionWithTool("extension", echoTool("extension"))]);
 		runtime.replaceSessionTools("session-1", [registeredTool("<sdk-1>", echoTool("session-1"))]);
@@ -219,6 +236,15 @@ describe("CodingAgentExtensionToolRuntime", () => {
 		});
 	});
 });
+
+function acquireContext(): RuntimeSnapshotAcquireContext {
+	return {
+		sessionId: "session-1",
+		operationId: "turn-1",
+		reason: "turn",
+		signal: new AbortController().signal,
+	};
+}
 
 function echoTool(description: string): ToolDefinition {
 	return {

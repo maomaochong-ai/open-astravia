@@ -88,6 +88,8 @@ export type {
 	RuntimeExecutionObservationEnvelope,
 	RuntimeSessionObservationEnvelope,
 	RuntimeSnapshot,
+	RuntimeSnapshotAcquireContext,
+	RuntimeSnapshotAcquireReason,
 	RuntimeSnapshotLease,
 	RuntimeSnapshotProvider,
 	RuntimeToolDefinition,

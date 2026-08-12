@@ -5,7 +5,6 @@ import type {
 	ConversationRepository,
 	ManualContextCompactionRuntime,
 	RuntimeSnapshotProvider,
-	RuntimeTurnModelBindingProvider,
 } from "../kernel/contracts.js";
 import { sessionBusyError } from "../kernel/errors.js";
 import type {
@@ -20,7 +19,6 @@ export interface RuntimeSessionContextControllerOptions {
 	readonly repository: ConversationRepository;
 	readonly conversationDocumentReader: ConversationDocumentReader;
 	readonly snapshotProvider: RuntimeSnapshotProvider;
-	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
 	readonly contextRuntime: ManualContextCompactionRuntime;
 	readonly committer: ContextCompactionCommitter;
 }
@@ -49,7 +47,12 @@ export class KernelRuntimeSessionContextController implements RuntimeSessionCont
 		try {
 			await this.options.session.cancel("Manual context compaction");
 			controller.signal.throwIfAborted();
-			lease = await this.options.snapshotProvider.acquire();
+			lease = await this.options.snapshotProvider.acquire({
+				sessionId: this.options.session.id,
+				operationId: `${this.options.session.id}:manual-compaction`,
+				reason: "manual_compaction",
+				signal: controller.signal,
+			});
 			const [conversation, document] = await Promise.all([
 				this.options.repository.load(this.options.session.id),
 				this.options.conversationDocumentReader.readDocument(this.options.session.id),
@@ -57,7 +60,7 @@ export class KernelRuntimeSessionContextController implements RuntimeSessionCont
 			const input = {
 				sessionId: this.options.session.id,
 				document,
-				modelBinding: this.options.modelBindingProvider?.bind(),
+				modelBinding: lease.modelBinding,
 				customInstructions: request.customInstructions,
 			};
 			const record = await this.options.contextRuntime.compactManual(input, controller.signal);

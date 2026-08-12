@@ -4,11 +4,12 @@ import type {
 	ModelCallFrame,
 	ModelCallFrameComposer,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type {
-	CodingAgentPluginMcpRuntime,
+	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../runtime-contracts/index.js";
 import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./product-prompt.js";
@@ -23,10 +24,13 @@ export type {
 
 export interface CodingAgentModelCallFrameComposerOptions {
 	readonly resolveSystemPromptOptions: CodingAgentSystemPromptOptionsResolver;
+	readonly bindSystemPromptOptions?: (
+		context: RuntimeSnapshotAcquireContext,
+	) => CodingAgentSystemPromptOptionsResolver;
 	readonly readMcpPromptState?: () => CodingAgentMcpPromptState;
 	readonly readAvailableTools?: () => ReadonlyMap<string, RuntimeToolDefinition>;
 	readonly readActiveToolNamesOverride?: () => readonly string[] | undefined;
-	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
+	readonly pluginMcpRuntime?: CodingAgentPluginMcpToolComposer;
 	readonly readAgentMode?: () => string | undefined;
 	readonly isMcpToolVisible?: (toolName: string) => boolean;
 	readonly pluginRunOrchestrator?: CodingAgentModelCallPluginRunPort;
@@ -37,6 +41,9 @@ export interface CodingAgentModelCallFrameComposerOptions {
 	readonly extensionEvents?: CodingAgentModelCallExtensionEvents;
 	readonly extensionToolRuntime?: CodingAgentModelCallExtensionToolPort;
 	readonly resolveExtensionToolActivation?: (context: ModelCallFrameCompositionContext) => CodingToolActivation;
+	readonly bindExtensionToolActivation?: (
+		context: RuntimeSnapshotAcquireContext,
+	) => (context: ModelCallFrameCompositionContext) => CodingToolActivation;
 	readonly onPromptDiagnostics?: (diagnostics: SystemPromptDiagnostics) => void;
 }
 
@@ -58,6 +65,7 @@ export interface CodingAgentModelCallExtensionEvents {
 }
 
 export interface CodingAgentModelCallExtensionToolPort {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentModelCallExtensionToolPort;
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
@@ -70,6 +78,7 @@ export interface CodingAgentModelCallExtensionToolPort {
 }
 
 export interface CodingAgentModelCallPluginToolPort {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentModelCallPluginToolPort;
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
@@ -77,6 +86,7 @@ export interface CodingAgentModelCallPluginToolPort {
 }
 
 export interface CodingAgentModelCallPluginRunPort {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentModelCallPluginRunPort;
 	compose(input: {
 		readonly context: ModelCallFrameCompositionContext;
 		readonly availableTools: ReadonlyMap<string, RuntimeToolDefinition>;
@@ -100,6 +110,35 @@ export type CodingAgentModelCallToolWrapper = (
  */
 export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer {
 	constructor(private readonly options: CodingAgentModelCallFrameComposerOptions) {}
+
+	bindForTurn(context: RuntimeSnapshotAcquireContext): ModelCallFrameComposer {
+		context.signal.throwIfAborted();
+		const availableTools = this.options.readAvailableTools ? new Map(this.options.readAvailableTools()) : undefined;
+		const activeToolNamesOverride = this.options.readActiveToolNamesOverride?.();
+		const mcpPromptState = this.options.readMcpPromptState?.();
+		const agentMode = this.options.readAgentMode?.();
+		const visibleMcpTools = availableTools
+			? new Set([...availableTools.keys()].filter((toolName) => this.options.isMcpToolVisible?.(toolName) ?? true))
+			: undefined;
+		return new CodingAgentModelCallFrameComposer({
+			...this.options,
+			pluginRunOrchestrator:
+				this.options.pluginRunOrchestrator?.bindForTurn?.(context) ?? this.options.pluginRunOrchestrator,
+			pluginToolRuntime: this.options.pluginToolRuntime?.bindForTurn?.(context) ?? this.options.pluginToolRuntime,
+			pluginMcpRuntime: this.options.pluginMcpRuntime?.bindForTurn?.(context) ?? this.options.pluginMcpRuntime,
+			extensionToolRuntime:
+				this.options.extensionToolRuntime?.bindForTurn?.(context) ?? this.options.extensionToolRuntime,
+			resolveExtensionToolActivation:
+				this.options.bindExtensionToolActivation?.(context) ?? this.options.resolveExtensionToolActivation,
+			resolveSystemPromptOptions:
+				this.options.bindSystemPromptOptions?.(context) ?? this.options.resolveSystemPromptOptions,
+			readAvailableTools: availableTools ? () => availableTools : undefined,
+			readActiveToolNamesOverride: () => activeToolNamesOverride,
+			readMcpPromptState: mcpPromptState ? () => mcpPromptState : undefined,
+			readAgentMode: () => agentMode,
+			isMcpToolVisible: visibleMcpTools ? (toolName) => visibleMcpTools.has(toolName) : undefined,
+		});
+	}
 
 	async compose(context: ModelCallFrameCompositionContext): Promise<ModelCallFrame> {
 		const prepared = await this.prepare(context);

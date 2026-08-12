@@ -54,12 +54,13 @@ createCodingToolsFeature({
 
 ## 动态注册语义
 
-Registry 支持 `register()` 和 `unregister()`。Feature 保持长期存在的模型调用贡献 Provider，
-并在每次模型调用前读取最新的版本化工具成员关系，因此工具变化不会重建 Runtime Snapshot，
-也不会重新初始化无关 Feature。
+Registry 支持 `register()` 和 `unregister()`。外部工具成员关系在 Turn admission 绑定为不可变 generation；
+Feature 的模型调用贡献 Provider 可以在该固定 catalog 内按 Turn-local state 选择工具，但不得重新读取新的
+Registry revision，因此普通工具变化只对后续 Turn 可见，也不会重新初始化无关 Feature。
 
-模型看到的工具会在执行前再次按当前 Catalog 解析。工具被移除时返回可恢复的工具错误；
-同名工具替换不会把旧 Schema 的调用路由到新实现。下一次模型调用会收到更新后的工具列表。
+模型看到的工具按同一 generation 的 implementation binding 执行。普通移除或同名替换不会使活动 Turn
+已经获得的 binding 失效，也不会把旧 Schema 调用路由到新实现；显式 hard revoke 除外。下一个 Turn
+会收到更新后的工具列表。
 
 ## 行为兼容
 

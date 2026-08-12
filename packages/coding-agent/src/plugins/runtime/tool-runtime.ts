@@ -1,6 +1,7 @@
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 	RuntimeToolExecutionRequest,
 	RuntimeToolResult,
@@ -34,11 +35,13 @@ export interface CodingAgentPluginToolRuntimeOptions {
 	readonly invokeTool?: AgentPluginToolInvoker;
 	readonly runOrchestrator: CodingAgentPluginRunOrchestrator;
 	readonly resolveActivation: (context: ModelCallFrameCompositionContext) => CodingAgentPluginToolActivation;
+	readonly bindActivation?: () => (context: ModelCallFrameCompositionContext) => CodingAgentPluginToolActivation;
 	/**
 	 * 标记在既有注册顺序中晚于 Plugin Tool 的宿主工具。
 	 * 这些工具发生同名冲突时保留宿主实现，例如动态 MCP Tool。
 	 */
 	readonly shouldPreserveBaseTool?: (toolName: string) => boolean;
+	readonly bindPreservedBaseToolNames?: () => ReadonlySet<string>;
 	readonly now?: () => number;
 }
 
@@ -58,6 +61,20 @@ export class CodingAgentPluginToolRuntime {
 
 	constructor(private readonly options: CodingAgentPluginToolRuntimeOptions) {
 		this.now = options.now ?? Date.now;
+	}
+
+	bindForTurn(context: RuntimeSnapshotAcquireContext): CodingAgentPluginToolRuntime {
+		context.signal.throwIfAborted();
+		const agentPlugins = this.options.readAgentPlugins();
+		const preservedBaseToolNames = this.options.bindPreservedBaseToolNames?.();
+		return new CodingAgentPluginToolRuntime({
+			...this.options,
+			readAgentPlugins: () => agentPlugins,
+			resolveActivation: this.options.bindActivation?.() ?? this.options.resolveActivation,
+			shouldPreserveBaseTool: preservedBaseToolNames
+				? (toolName) => preservedBaseToolNames.has(toolName)
+				: this.options.shouldPreserveBaseTool,
+		});
 	}
 
 	compose(

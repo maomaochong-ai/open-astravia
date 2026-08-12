@@ -202,8 +202,8 @@ export class RuntimeHost implements SessionFacade {
 				debugPluginAgent("runtime reconfigure skip: plugins disabled", { sessionId });
 				continue;
 			}
-			handle.pendingAgentPlugins = nextAgentPlugins;
-			handle.hasPendingAgentPlugins = true;
+			handle.pendingConfiguration.agentPlugins = nextAgentPlugins;
+			handle.pendingConfiguration.hasAgentPlugins = true;
 			debugPluginAgent("runtime reconfigure deferred until prompt", { sessionId });
 			this.scheduleIdleAgentPluginApply(sessionId, handle);
 		}
@@ -354,8 +354,8 @@ export class RuntimeHost implements SessionFacade {
 				}
 				if (config.enableAgentPlugins === true && !existing.handle.agentPluginsEnabled) {
 					existing.handle.agentPluginsEnabled = true;
-					existing.handle.pendingAgentPlugins = this.withAdditionalSkillPaths(config.agentPlugins);
-					existing.handle.hasPendingAgentPlugins = true;
+					existing.handle.pendingConfiguration.agentPlugins = this.withAdditionalSkillPaths(config.agentPlugins);
+					existing.handle.pendingConfiguration.hasAgentPlugins = true;
 					this.scheduleIdleAgentPluginApply(existing.sessionId, existing.handle);
 				}
 				await existing.handle.hostInteraction.bind(
@@ -470,13 +470,17 @@ export class RuntimeHost implements SessionFacade {
 			queueController,
 			metadataController,
 			executionMode,
+			pendingConfiguration: {
+				executionMode: undefined,
+				hasExecutionMode: false,
+				agentMode: undefined,
+				hasAgentMode: false,
+				agentPlugins: undefined,
+				hasAgentPlugins: false,
+			},
 			agentPluginsEnabled: config.enableAgentPlugins === true,
-			pendingAgentPlugins: undefined,
-			hasPendingAgentPlugins: false,
 			scenario: config.scenario ?? DEFAULT_RUNTIME_SCENARIO,
 			agentMode: config.agentMode,
-			pendingAgentMode: undefined,
-			hasPendingAgentMode: false,
 			idleAgentPluginTimer: undefined,
 			agentPluginApplyInFlight: undefined,
 			lastBroadcastActiveToolNames: undefined,
@@ -621,25 +625,22 @@ export class RuntimeHost implements SessionFacade {
 
 	async setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void> {
 		const handle = this.requireSession(sessionId);
-		if (handle.executionMode === mode) return;
-		this.assertCanSwitchExecutionMode(handle);
-
-		await handle.executionController.reconfigure({
-			mode,
-			sessionId,
-			sandboxHostPath: this.sandboxHostPath,
-			linuxBubblewrapPath: this.linuxBubblewrapPath,
-			macosSandboxExecPath: this.macosSandboxExecPath,
-		});
-		handle.executionMode = mode;
+		if (handle.executionMode === mode) {
+			handle.pendingConfiguration.executionMode = undefined;
+			handle.pendingConfiguration.hasExecutionMode = false;
+			return;
+		}
+		if (handle.executionController.isBusy()) {
+			handle.pendingConfiguration.executionMode = mode;
+			handle.pendingConfiguration.hasExecutionMode = true;
+			return;
+		}
+		await this.applyExecutionMode(sessionId, handle, mode);
 	}
 
 	async setGlobalExecutionMode(mode: SessionExecutionMode): Promise<void> {
-		const pending = Array.from(this.sessions.entries()).filter(([, handle]) => handle.executionMode !== mode);
-		for (const [, handle] of pending) {
-			this.assertCanSwitchExecutionMode(handle);
-		}
-		for (const [sessionId] of pending) {
+		const pending = Array.from(this.sessions.keys());
+		for (const sessionId of pending) {
 			await this.setExecutionMode(sessionId, mode);
 		}
 	}
@@ -651,17 +652,18 @@ export class RuntimeHost implements SessionFacade {
 	setGlobalAgentMode(mode: string): void {
 		for (const handle of this.sessions.values()) {
 			if (handle.agentMode === mode) {
-				handle.pendingAgentMode = undefined;
-				handle.hasPendingAgentMode = false;
+				handle.pendingConfiguration.agentMode = undefined;
+				handle.pendingConfiguration.hasAgentMode = false;
 				continue;
 			}
-			handle.pendingAgentMode = mode;
-			handle.hasPendingAgentMode = true;
+			handle.pendingConfiguration.agentMode = mode;
+			handle.pendingConfiguration.hasAgentMode = true;
 		}
 	}
 
 	async prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome> {
 		const handle = this.requireSession(sessionId);
+		await this.applyPendingExecutionMode(sessionId, handle);
 		await this.applyPendingAgentPlugins(sessionId, handle);
 		this.applyPendingAgentMode(handle);
 
@@ -748,6 +750,7 @@ export class RuntimeHost implements SessionFacade {
 
 	async continue(sessionId: string): Promise<void> {
 		const handle = this.requireSession(sessionId);
+		await this.applyPendingExecutionMode(sessionId, handle);
 		await this.applyPendingAgentPlugins(sessionId, handle);
 		this.applyPendingAgentMode(handle);
 		await handle.turnControl.continue();
@@ -1274,7 +1277,7 @@ export class RuntimeHost implements SessionFacade {
 				// 失败由发起方记录；这里仅等待并发中的配置应用完成。
 			});
 		}
-		if (!handle.agentPluginsEnabled || !handle.hasPendingAgentPlugins) return;
+		if (!handle.agentPluginsEnabled || !handle.pendingConfiguration.hasAgentPlugins) return;
 		if (handle.executionController.isBusy()) return;
 		const apply = this.applyPendingAgentPluginsOnce(sessionId, handle);
 		handle.agentPluginApplyInFlight = apply.then(
@@ -1290,15 +1293,15 @@ export class RuntimeHost implements SessionFacade {
 
 	private async applyPendingAgentPluginsOnce(sessionId: string, handle: SessionHandle): Promise<void> {
 		debugPluginAgent("runtime deferred reconfigure apply", { sessionId });
-		const pendingAgentPlugins = handle.pendingAgentPlugins;
-		handle.pendingAgentPlugins = undefined;
-		handle.hasPendingAgentPlugins = false;
+		const pendingAgentPlugins = handle.pendingConfiguration.agentPlugins;
+		handle.pendingConfiguration.agentPlugins = undefined;
+		handle.pendingConfiguration.hasAgentPlugins = false;
 		try {
 			await handle.configurationController.reconfigureAgentPlugins(pendingAgentPlugins);
 		} catch (error) {
-			if (!handle.hasPendingAgentPlugins) {
-				handle.pendingAgentPlugins = pendingAgentPlugins;
-				handle.hasPendingAgentPlugins = true;
+			if (!handle.pendingConfiguration.hasAgentPlugins) {
+				handle.pendingConfiguration.agentPlugins = pendingAgentPlugins;
+				handle.pendingConfiguration.hasAgentPlugins = true;
 			}
 			throw error;
 		}
@@ -1310,22 +1313,45 @@ export class RuntimeHost implements SessionFacade {
 	 * streaming / bash 运行中不 apply，留到再下一个 turn 边界。见 ADR-0046。
 	 */
 	private applyPendingAgentMode(handle: SessionHandle): void {
-		if (!handle.hasPendingAgentMode) return;
+		if (!handle.pendingConfiguration.hasAgentMode) return;
 		if (handle.executionController.isBusy()) return;
-		const pendingAgentMode = handle.pendingAgentMode;
-		handle.pendingAgentMode = undefined;
-		handle.hasPendingAgentMode = false;
+		const pendingAgentMode = handle.pendingConfiguration.agentMode;
+		handle.pendingConfiguration.agentMode = undefined;
+		handle.pendingConfiguration.hasAgentMode = false;
 		handle.agentMode = pendingAgentMode;
 		handle.configurationController.setAgentMode(pendingAgentMode);
 	}
 
-	private assertCanSwitchExecutionMode(handle: SessionHandle): void {
-		if (handle.executionController.isBusy()) {
-			throw runtimeError(
-				"EXECUTION_MODE_SWITCH_BLOCKED",
-				"Cannot switch execution mode while the agent is running.",
-				true,
-			);
+	private async applyExecutionMode(
+		sessionId: string,
+		handle: SessionHandle,
+		mode: SessionExecutionMode,
+	): Promise<void> {
+		await handle.executionController.reconfigure({
+			mode,
+			sessionId,
+			sandboxHostPath: this.sandboxHostPath,
+			linuxBubblewrapPath: this.linuxBubblewrapPath,
+			macosSandboxExecPath: this.macosSandboxExecPath,
+		});
+		handle.executionMode = mode;
+	}
+
+	/** 应用运行中发布的执行模式；失败时保留 pending，供下一次 Turn 重试。 */
+	private async applyPendingExecutionMode(sessionId: string, handle: SessionHandle): Promise<void> {
+		if (!handle.pendingConfiguration.hasExecutionMode || handle.executionController.isBusy()) return;
+		const pendingExecutionMode = handle.pendingConfiguration.executionMode;
+		if (!pendingExecutionMode) return;
+		handle.pendingConfiguration.executionMode = undefined;
+		handle.pendingConfiguration.hasExecutionMode = false;
+		try {
+			await this.applyExecutionMode(sessionId, handle, pendingExecutionMode);
+		} catch (error) {
+			if (!handle.pendingConfiguration.hasExecutionMode) {
+				handle.pendingConfiguration.executionMode = pendingExecutionMode;
+				handle.pendingConfiguration.hasExecutionMode = true;
+			}
+			throw error;
 		}
 	}
 

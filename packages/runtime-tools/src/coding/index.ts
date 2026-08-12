@@ -9,6 +9,7 @@ export {
 	type CodingToolCatalog,
 	type CodingToolCatalogEntry,
 	type CodingToolCatalogSnapshot,
+	type CodingToolCatalogSnapshotLease,
 	type CodingToolRegistry,
 	type CodingToolRevokeOptions,
 	InMemoryCodingToolRegistry,

@@ -18,15 +18,18 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 			received.push(invocation.event);
 			return { action: "continue" };
 		});
-		const adapter = await createAdapter();
-
-		for (const event of allHookEvents()) {
+		const events = allHookEvents();
+		for (const [index, event] of events.entries()) {
 			desktopPluginHookRegistry.register("plugin-a", {
-				id: "all-events",
+				id: `all-events-${index}`,
 				eventName: event.eventName,
-				handlerId: "handler-1",
+				handlerId: `handler-${index}`,
 				scope_use: ["cli"],
 			});
+		}
+		const adapter = await createAdapter();
+
+		for (const event of events) {
 			await adapter.dispatch(event);
 		}
 
@@ -75,7 +78,7 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 		expect(outcome.runs).toMatchObject([{ handlerType: "callback", status: "Completed" }]);
 	});
 
-	it("keeps an in-flight snapshot stable and applies unregister to the next dispatch", async () => {
+	it("keeps Hook membership stable for the Turn and applies unregister to the next Turn", async () => {
 		desktopPluginHookRegistry.register("plugin-a", {
 			id: "guard",
 			eventName: "PreToolUse",
@@ -98,7 +101,9 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 		complete?.({ action: "block", reason: "blocked" });
 
 		expect((await running).shouldBlock).toBe(true);
-		expect((await adapter.dispatch(preToolEvent())).runs).toHaveLength(0);
+		setDesktopPluginHookInvoker(async () => ({ action: "continue" }));
+		expect((await adapter.dispatch(preToolEvent())).runs).toHaveLength(1);
+		expect((await adapter.dispatch(preToolEvent("turn-2"))).runs).toHaveLength(0);
 	});
 
 	it("fails open for malformed renderer results and records a failed callback run", async () => {
@@ -184,7 +189,7 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 			timeoutMs: 1_000,
 		});
 		const controller = new AbortController();
-		const cancelledPromise = adapter.dispatch(preToolEvent(), controller.signal);
+		const cancelledPromise = adapter.dispatch(preToolEvent("turn-2"), controller.signal);
 		controller.abort(new Error("parent cancelled"));
 		const cancelled = await cancelledPromise;
 
@@ -270,11 +275,11 @@ function allHookEvents(): EcosystemHookEvent[] {
 	];
 }
 
-function preToolEvent(): EcosystemHookEvent {
+function preToolEvent(turnId = "turn-1"): EcosystemHookEvent {
 	return {
 		eventName: "PreToolUse",
 		sessionId: "session-1",
-		turnId: "turn-1",
+		turnId,
 		cwd: "C:/workspace",
 		transcriptPath: "C:/sessions/session-1.jsonl",
 		model: "test-model",

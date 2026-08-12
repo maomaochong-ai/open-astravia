@@ -22,7 +22,6 @@ import type {
 	RuntimeSnapshotLease,
 	RuntimeSnapshotProvider,
 	RuntimeTurnModelBinding,
-	RuntimeTurnModelBindingProvider,
 	SessionContextRecord,
 	SessionInput,
 	StoredConversation,
@@ -48,7 +47,6 @@ import type { RuntimeSessionContextBuffer } from "./session-context-buffer.js";
 export interface TurnPipelineOptions {
 	readonly repository: ConversationRepository;
 	readonly snapshotProvider: RuntimeSnapshotProvider;
-	readonly modelBindingProvider?: RuntimeTurnModelBindingProvider;
 	readonly turnEngine: TurnEnginePort;
 	readonly eventSink: EventSink;
 	readonly clock: Clock;
@@ -84,7 +82,6 @@ interface ContextCheckpointPreparation {
 export class TurnPipeline {
 	private readonly repository: ConversationRepository;
 	private readonly snapshotProvider: RuntimeSnapshotProvider;
-	private readonly modelBindingProvider: RuntimeTurnModelBindingProvider | undefined;
 	private readonly turnEngine: TurnEnginePort;
 	private readonly eventSink: EventSink;
 	private readonly clock: Clock;
@@ -101,7 +98,6 @@ export class TurnPipeline {
 	constructor(options: TurnPipelineOptions) {
 		this.repository = options.repository;
 		this.snapshotProvider = options.snapshotProvider;
-		this.modelBindingProvider = options.modelBindingProvider;
 		this.turnEngine = options.turnEngine;
 		this.eventSink = options.eventSink;
 		this.clock = options.clock;
@@ -216,9 +212,15 @@ export class TurnPipeline {
 			signal.throwIfAborted();
 
 			await this.enterStage(state.sessionId, turnId, "snapshot_binding");
-			snapshotLease = await this.snapshotProvider.acquire();
+			snapshotLease = await this.snapshotProvider.acquire({
+				sessionId: state.sessionId,
+				operationId: turnId,
+				reason: "turn",
+				signal,
+				...(input ? { input } : {}),
+			});
 			const snapshot = snapshotLease.snapshot;
-			const modelBinding = this.modelBindingProvider?.bind();
+			const modelBinding = snapshotLease.modelBinding;
 			state.snapshot = snapshot;
 			signal.throwIfAborted();
 

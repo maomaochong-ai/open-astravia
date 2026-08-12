@@ -97,10 +97,11 @@ describe("coding tool registry", () => {
 		expect(result.content).toEqual([{ type: "text", text: "class-tool" }]);
 	});
 
-	it("does not route an advertised call to a replacement with the same name", async () => {
+	it("keeps an advertised implementation stable after replacement", async () => {
 		let replacementExecutions = 0;
 		const registry = new InMemoryCodingToolRegistry([registration("replaceable", ["project"])]);
-		const advertised = registry.resolve("replaceable");
+		const lease = registry.acquireSnapshot();
+		const advertised = lease.snapshot.entries[0];
 		if (!advertised) throw new Error("Missing advertised registration");
 		const guarded = guardCodingToolRegistration(registry, advertised);
 
@@ -117,19 +118,13 @@ describe("coding tool registry", () => {
 			},
 		});
 
-		await expect(
-			guarded.execute({
-				sessionId: "session-1",
-				turnId: "turn-1",
-				toolCallId: "tool-call-1",
-				input: {},
-				signal: new AbortController().signal,
-			}),
-		).rejects.toMatchObject({
-			code: CODING_TOOL_AVAILABILITY_ERROR_CODES.DEFINITION_CHANGED,
-			toolName: "replaceable",
-		});
+		expect((await execute(guarded)).content).toEqual([{ type: "text", text: "replaceable" }]);
 		expect(replacementExecutions).toBe(0);
+
+		lease.release();
+		await expect(execute(guarded)).rejects.toMatchObject({
+			code: CODING_TOOL_AVAILABILITY_ERROR_CODES.UNAVAILABLE,
+		});
 	});
 
 	it("uses stable binding values instead of catalog entry object identity", async () => {
@@ -158,7 +153,7 @@ describe("coding tool registry", () => {
 		expect(result.content).toEqual([{ type: "text", text: "stable" }]);
 	});
 
-	it("deactivates future calls without invalidating the stable revision", async () => {
+	it("deactivates future acquisitions without invalidating an advertised binding", async () => {
 		const registry = new InMemoryCodingToolRegistry([registration("toggle", ["project"])]);
 		const advertised = registry.resolve("toggle");
 		if (!advertised) throw new Error("Missing toggle entry");
@@ -166,13 +161,7 @@ describe("coding tool registry", () => {
 
 		expect(registry.deactivate("toggle")).toBe(true);
 		expect(registry.snapshot().registrations).toEqual([]);
-		await expect(execute(guarded)).rejects.toMatchObject({
-			code: CODING_TOOL_AVAILABILITY_ERROR_CODES.DEACTIVATED,
-			details: {
-				code: CODING_TOOL_AVAILABILITY_ERROR_CODES.DEACTIVATED,
-				retryable: true,
-			},
-		});
+		expect((await execute(guarded)).content).toEqual([{ type: "text", text: "toggle" }]);
 
 		expect(registry.activate("toggle")).toBe(true);
 		expect(registry.resolve("toggle")?.binding).toEqual(advertised.binding);
@@ -205,7 +194,12 @@ describe("coding tool registry", () => {
 		const execution = execute(guarded);
 
 		await started;
-		expect(registry.revoke("revocable", { reason: "security policy changed" })).toBe(true);
+		expect(
+			registry.revoke("revocable", {
+				reason: "security policy changed",
+				auditId: "audit-revocable",
+			}),
+		).toBe(true);
 		await expect(execution).rejects.toMatchObject({
 			code: CODING_TOOL_AVAILABILITY_ERROR_CODES.REVOKED,
 			details: {
@@ -213,6 +207,7 @@ describe("coding tool registry", () => {
 				retryable: false,
 			},
 		});
+		expect(registry.activate("revocable")).toBe(false);
 		expect(registry.resolve("revocable")?.binding.revision).not.toBe(advertised.binding.revision);
 	});
 
@@ -244,7 +239,12 @@ describe("coding tool registry", () => {
 		const execution = execute(guardCodingToolRegistration(registry, advertised));
 
 		await started;
-		expect(registry.revoke("ignores-cancellation")).toBe(true);
+		expect(
+			registry.revoke("ignores-cancellation", {
+				reason: "security policy changed",
+				auditId: "audit-ignores-cancellation",
+			}),
+		).toBe(true);
 		finish?.();
 
 		await expect(execution).rejects.toMatchObject({

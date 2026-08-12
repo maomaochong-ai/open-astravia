@@ -65,6 +65,12 @@ export interface CodingAgentTurnCapabilityActivationPort {
 	readonly readAgentMode: () => string | undefined;
 	readonly readAgentPlugins: () => AgentPluginRuntimeConfig | undefined;
 	readonly readActiveToolNamesOverride: () => readonly string[] | undefined;
+	readonly bindForTurn?: () => {
+		readonly resolve: (context: ModelCallContributionContext) => CodingToolActivation;
+		readonly agentMode: string | undefined;
+		readonly agentPlugins: AgentPluginRuntimeConfig | undefined;
+		readonly activeToolNamesOverride: readonly string[] | undefined;
+	};
 }
 
 export interface CodingAgentTurnCapabilityPromptOptions {
@@ -138,6 +144,16 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 						options.extensionToolRuntime?.hasTool(toolName, options.session.readSessionId()) === true,
 					resolveActivation: (context) =>
 						toPluginToolActivation(options.activation.resolve(context), options.activation.readAgentMode()),
+					bindActivation: () => {
+						const bound = readBoundActivation(options.activation);
+						return (context) => toPluginToolActivation(bound.resolve(context), bound.agentMode);
+					},
+					bindPreservedBaseToolNames: () =>
+						new Set([
+							...(options.pluginMcpRuntime?.view().tools.map(({ tool }) => tool.name) ?? []),
+							...(options.extensionToolRuntime?.readAvailableTools(options.session.readSessionId()).keys() ??
+								[]),
+						]),
 				})
 			: undefined;
 	const continuationOrchestrator = new CodingAgentContinuationOrchestrator({
@@ -156,6 +172,21 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	const modelCallMessageFinalizer = new CodingAgentModelCallMessageFinalizer(
 		options.prompt.settingsSource ?? promptRuntime?.readSettingsSource(),
 	);
+	const enhanceSystemPromptOptions = async (
+		resolver: CodingAgentSystemPromptOptionsResolver,
+		context: Parameters<CodingAgentSystemPromptOptionsResolver>[0],
+		agentPlugins: AgentPluginRuntimeConfig | undefined,
+		memory: string | undefined,
+	) => {
+		const promptOptions = await resolver(context);
+		return {
+			...promptOptions,
+			cwd: promptOptions.cwd ?? options.session.cwd,
+			agentPlugins: promptOptions.agentPlugins ?? agentPlugins,
+			appendSystemPrompt: joinPromptAddons(promptOptions.appendSystemPrompt, options.session.systemPromptAddon),
+			...(memory ? { memory } : {}),
+		};
+	};
 	const invokeSkillFeature = promptResourceSource
 		? createCodingAgentInvokeSkillFeature({
 				resourceSource: promptResourceSource,
@@ -223,15 +254,19 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		extensionEvents: options.extensionEvents,
 		extensionToolRuntime: options.extensionToolRuntime,
 		resolveExtensionToolActivation: options.activation.resolve,
-		resolveSystemPromptOptions: async (context) => {
-			const promptOptions = await resolveSystemPromptOptions(context);
-			return {
-				...promptOptions,
-				cwd: promptOptions.cwd ?? options.session.cwd,
-				agentPlugins: promptOptions.agentPlugins ?? options.activation.readAgentPlugins(),
-				appendSystemPrompt: joinPromptAddons(promptOptions.appendSystemPrompt, options.session.systemPromptAddon),
-				...(options.memoryRuntime ? { memory: options.memoryRuntime.renderPromptMemory() } : {}),
-			};
+		bindExtensionToolActivation: () => readBoundActivation(options.activation).resolve,
+		resolveSystemPromptOptions: (context) =>
+			enhanceSystemPromptOptions(
+				resolveSystemPromptOptions,
+				context,
+				options.activation.readAgentPlugins(),
+				options.memoryRuntime?.renderPromptMemory(),
+			),
+		bindSystemPromptOptions: () => {
+			const resolver = promptRuntime?.bindForTurn() ?? resolveSystemPromptOptions;
+			const agentPlugins = options.activation.readAgentPlugins();
+			const memory = options.memoryRuntime?.renderPromptMemory();
+			return (context) => enhanceSystemPromptOptions(resolver, context, agentPlugins, memory);
 		},
 	});
 	const profile: AgentProfile = {
@@ -260,6 +295,7 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 	const capabilities = await RuntimeCapabilityComposition.create({
 		initialProfile: profile,
 		compiler: options.codingTools.compiler,
+		modelBindingProvider: options.modelRuntime,
 	});
 	const promptAdapter = new CodingAgentPromptRequestAdapter({
 		resolvePromptResource:
@@ -286,14 +322,27 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 			pluginSession.id = sessionId;
 		},
 		async previewInitialSystemPrompt() {
-			const initialSnapshotLease = await capabilities.acquire();
+			const sessionId = options.session.readSessionId();
+			const operationId = `${sessionId}:extension-context-preview`;
+			const signal = new AbortController().signal;
+			const initialSnapshotLease = await capabilities.acquire({
+				sessionId,
+				operationId,
+				reason: "preview",
+				signal,
+			});
 			try {
-				await modelCallFrameComposer.previewSystemPrompt({
-					sessionId: options.session.readSessionId(),
-					turnId: `${options.session.readSessionId()}:extension-context-preview`,
-					signal: new AbortController().signal,
+				const admittedComposer = initialSnapshotLease.snapshot.modelCallFrameComposer;
+				const previewComposer =
+					admittedComposer instanceof CodingAgentModelCallFrameComposer
+						? admittedComposer
+						: modelCallFrameComposer;
+				await previewComposer.previewSystemPrompt({
+					sessionId,
+					turnId: operationId,
+					signal,
 					messages: [],
-					modelBinding: options.modelRuntime.bind(),
+					modelBinding: initialSnapshotLease.modelBinding ?? options.modelRuntime.bind(),
 					frame: {
 						instructions: initialSnapshotLease.snapshot.instructions,
 						tools: initialSnapshotLease.snapshot.tools,
@@ -352,6 +401,19 @@ function toPluginToolActivation(
 		additionallyEnabledToolNames: activation.additionallyEnabledToolNames,
 		agentMode,
 	};
+}
+
+function readBoundActivation(
+	activation: CodingAgentTurnCapabilityActivationPort,
+): ReturnType<NonNullable<CodingAgentTurnCapabilityActivationPort["bindForTurn"]>> {
+	return (
+		activation.bindForTurn?.() ?? {
+			resolve: activation.resolve,
+			agentMode: activation.readAgentMode(),
+			agentPlugins: activation.readAgentPlugins(),
+			activeToolNamesOverride: activation.readActiveToolNamesOverride(),
+		}
+	);
 }
 
 function joinPromptAddons(base: string | undefined, addon: string | undefined): string | undefined {

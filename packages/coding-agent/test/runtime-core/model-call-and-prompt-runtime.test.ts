@@ -396,7 +396,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 		]);
 	});
 
-	it("reads mutable Resource, Settings, Mode and Memory state per model call without sharing sessions", () => {
+	it("freezes Resource, Settings, Mode and Memory per Turn without sharing sessions", () => {
 		let firstBasePrompt = "First session prompt v1";
 		let firstPersonalization = "First persona v1";
 		let firstMode: string | undefined = "work";
@@ -456,13 +456,15 @@ describe("Coding Agent model call and prompt runtime", () => {
 			activeToolNames: ["read"],
 		};
 
-		const firstCall = first.resolve(context);
+		const firstTurn = first.bindForTurn();
+		const firstCall = firstTurn(context);
 		firstBasePrompt = "First session prompt v2";
 		firstPersonalization = "First persona v2";
 		firstMode = undefined;
 		firstMemory = "First memory v2";
-		const secondCall = first.resolve(context);
-		const isolatedCall = second.resolve({ ...context, sessionId: "second" });
+		const secondCall = firstTurn(context);
+		const nextTurnCall = first.bindForTurn()({ ...context, turnId: "turn-2" });
+		const isolatedCall = second.bindForTurn()({ ...context, sessionId: "second" });
 
 		expect(firstCall).toMatchObject({
 			customPrompt: "First session prompt v1",
@@ -473,11 +475,17 @@ describe("Coding Agent model call and prompt runtime", () => {
 		});
 		expect(firstCall.modePrompt).toBeTruthy();
 		expect(secondCall).toMatchObject({
+			customPrompt: "First session prompt v1",
+			memory: expect.stringContaining("First memory v1"),
+			personalization: "First persona v1",
+		});
+		expect(secondCall.modePrompt).toBeTruthy();
+		expect(nextTurnCall).toMatchObject({
 			customPrompt: "First session prompt v2",
 			memory: expect.stringContaining("First memory v2"),
 			personalization: "First persona v2",
 		});
-		expect(secondCall.modePrompt).toBe("");
+		expect(nextTurnCall.modePrompt).toBe("");
 		expect(isolatedCall).toMatchObject({
 			customPrompt: "Second session prompt",
 			personalization: "Second persona",

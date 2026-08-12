@@ -240,7 +240,7 @@ function createBackend(
 					let turnIndex = 0;
 					const repository = new InMemoryConversationRepository();
 					const details = runtimeAssemblyDetails(options.id);
-					const snapshotProvider = new StaticRuntimeSnapshotProvider(snapshot());
+					const snapshotProvider = new StaticRuntimeSnapshotProvider(snapshot(), details.modelRuntime);
 					const clock = { now: () => Date.now() };
 					const contextCompactionCommitter = new ContextCompactionCommitter({
 						repository,
@@ -251,7 +251,6 @@ function createBackend(
 					const pipeline = new TurnPipeline({
 						repository,
 						snapshotProvider,
-						modelBindingProvider: details.modelRuntime,
 						turnEngine,
 						eventSink,
 						clock,
@@ -270,7 +269,6 @@ function createBackend(
 								repository,
 								conversationDocumentReader: repository,
 								snapshotProvider,
-								modelBindingProvider: details.modelRuntime,
 								contextRuntime,
 								committer: contextCompactionCommitter,
 							})
@@ -615,8 +613,7 @@ describe("KernelRuntimeSessionBackend", () => {
 			const details = runtimeAssemblyDetails(options.id);
 			const pipeline = new TurnPipeline({
 				repository,
-				snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot()),
-				modelBindingProvider: details.modelRuntime,
+				snapshotProvider: new StaticRuntimeSnapshotProvider(snapshot(), details.modelRuntime),
 				turnEngine: new CompletingTurnEngine(),
 				eventSink,
 				clock: { now: () => 3 },

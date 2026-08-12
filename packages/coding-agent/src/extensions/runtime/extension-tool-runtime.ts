@@ -3,6 +3,7 @@ import { Value } from "@sinclair/typebox/value";
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import {
@@ -110,16 +111,52 @@ export class CodingAgentExtensionToolRuntime {
 		return selectCodingToolRegistrations(this.readRegistrations(sessionId), activation).map(({ tool }) => tool.name);
 	}
 
+	bindForTurn(context: RuntimeSnapshotAcquireContext) {
+		context.signal.throwIfAborted();
+		const registrations = Object.freeze([...this.readRegistrations(context.sessionId)]);
+		const registrationsByName = new Map(registrations.map((registration) => [registration.tool.name, registration]));
+		const bound = {
+			bindForTurn: () => bound,
+			compose: (
+				compositionContext: ModelCallFrameCompositionContext,
+				baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+				activation: CodingToolActivation,
+			) =>
+				this.composeRegistrations(
+					registrations,
+					registrationsByName,
+					compositionContext,
+					baseAvailableTools,
+					activation,
+				),
+			contributePrompt: (
+				draft: SystemPromptDraft,
+				input: { readonly sessionId: string; readonly activeToolNames: readonly string[] },
+			) => this.contributePromptRegistrations(registrationsByName, draft, input.activeToolNames),
+		};
+		return bound;
+	}
+
 	compose(
+		context: ModelCallFrameCompositionContext,
+		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+		activation: CodingToolActivation,
+	): CodingAgentExtensionToolSurface {
+		const registrations = this.readRegistrations(context.sessionId);
+		const registrationsByName = this.readRegistrationsByName(context.sessionId);
+		return this.composeRegistrations(registrations, registrationsByName, context, baseAvailableTools, activation);
+	}
+
+	private composeRegistrations(
+		registrations: readonly AdaptedExtensionToolRegistration[],
+		registrationsByName: ReadonlyMap<string, AdaptedExtensionToolRegistration>,
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
 		activation: CodingToolActivation,
 	): CodingAgentExtensionToolSurface {
 		const availableTools = new Map(baseAvailableTools);
 		const activeTools = new Map<string, RuntimeToolDefinition>();
-		const registrations = this.readRegistrations(context.sessionId);
-		const registrationsByName = this.readRegistrationsByName(context.sessionId);
-		const selected = new Set(this.readActiveToolNames(activation, context.sessionId));
+		const selected = new Set(selectCodingToolRegistrations(registrations, activation).map(({ tool }) => tool.name));
 
 		for (const { tool } of registrations) {
 			availableTools.set(tool.name, tool);
@@ -139,9 +176,17 @@ export class CodingAgentExtensionToolRuntime {
 		draft: SystemPromptDraft,
 		input: { readonly sessionId: string; readonly activeToolNames: readonly string[] },
 	): SystemPromptDraft {
-		let nextDraft = draft;
 		const registrations = this.readRegistrationsByName(input.sessionId);
-		for (const toolName of input.activeToolNames) {
+		return this.contributePromptRegistrations(registrations, draft, input.activeToolNames);
+	}
+
+	private contributePromptRegistrations(
+		registrations: ReadonlyMap<string, AdaptedExtensionToolRegistration>,
+		draft: SystemPromptDraft,
+		activeToolNames: readonly string[],
+	): SystemPromptDraft {
+		let nextDraft = draft;
+		for (const toolName of activeToolNames) {
 			const registration = registrations.get(toolName);
 			const prompt = registration?.definition.prompt;
 			if (!registration || !prompt) continue;
