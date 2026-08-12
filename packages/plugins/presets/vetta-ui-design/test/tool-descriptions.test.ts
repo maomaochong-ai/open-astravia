@@ -12,15 +12,18 @@ import { registerDesignTools } from "../src/tools";
 interface Registration {
 	name: string;
 	description?: string;
+	side_effect?: "light" | "heavy";
 }
 
 const descriptions = new Map<string, string>();
+const sideEffects = new Map<string, string | undefined>();
 
 beforeAll(() => {
 	const ctx = {
 		agent: {
 			registerTool: (registration: Registration) => {
 				descriptions.set(registration.name, registration.description ?? "");
+				sideEffects.set(registration.name, registration.side_effect);
 				return { dispose: () => {} };
 			},
 		},
@@ -51,5 +54,14 @@ describe("重工具描述", () => {
 		expect(description).toMatch(/existing codebase/);
 		// 排除段必须给出替代做法，否则模型只知道不能用这个，不知道该走哪条路。
 		expect(description).toMatch(/implement the page directly in that repo's own framework instead/);
+	});
+
+	it("在工作区建目录树的工具在注册处声明 heavy，其余不声明（缺省 light）", () => {
+		expect(sideEffects.get("vetd_create")).toBe("heavy");
+		expect(sideEffects.get("vetd_install")).toBe("heavy");
+		// screenshot/status/notes 只读或只改会话内状态；restore 可自愈（恢复前自动落一版历史）。
+		expect(sideEffects.get("vetd_screenshot")).toBeUndefined();
+		expect(sideEffects.get("vetd_status")).toBeUndefined();
+		expect(sideEffects.get("vetd_notes")).toBeUndefined();
 	});
 });

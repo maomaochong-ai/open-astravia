@@ -211,6 +211,12 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		capability: options.askUserQuestion,
 		resolveSideEffect: createCodingAgentToolSideEffectResolver({
 			readDeclarations: () => [
+				// 核心工具在 runtime-tools 注册处的定义级声明（如 im_send_attachment 判 heavy）。
+				// registry 内容随 Execution Mode 等动态变化，按需 snapshot 而不是快照一次。
+				...options.codingTools.registry.snapshot().registrations.map((registration) => ({
+					name: registration.tool.name,
+					sideEffect: registration.sideEffect,
+				})),
 				...options.productToolRegistrations.map((registration) => ({
 					name: registration.tool.name,
 					sideEffect: registration.sideEffect,

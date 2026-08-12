@@ -1,3 +1,4 @@
+import { createImSendAttachmentToolRegistration } from "@vetta/runtime-tools/coding";
 import { describe, expect, it } from "vitest";
 import { isToolSideEffect, normalizeToolSideEffect } from "../src/profiles/index.js";
 import {
@@ -61,6 +62,20 @@ describe("createCodingAgentToolSideEffectResolver", () => {
 		expect(resolve("content_creation_assets")).toBe("light");
 		// 只读。
 		expect(resolve("content_creation_inspect")).toBe("light");
+	});
+
+	it("honors definition-site declarations carried by runtime-tools registrations", () => {
+		// im_send_attachment 不在兜底清单里，heavy 判定完全来自注册处的 sideEffect 声明；
+		// 组装层把 registry snapshot 的注册对象接进 readDeclarations 后，这条链路必须成立。
+		const registration = createImSendAttachmentToolRegistration({
+			sender: { sendAttachment: async () => ({}) },
+		});
+		const resolve = createCodingAgentToolSideEffectResolver({
+			readDeclarations: () => [{ name: registration.tool.name, sideEffect: registration.sideEffect }],
+		});
+
+		expect(registration.sideEffect).toBe("heavy");
+		expect(resolve("im_send_attachment")).toBe("heavy");
 	});
 
 	it("lets an explicit declaration win over the fallback list", () => {

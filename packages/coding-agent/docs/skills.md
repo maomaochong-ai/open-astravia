@@ -30,7 +30,7 @@ description: 一句话说明何时使用
 ```
 
 - `name` / `description` 建议符合规范；校验宽松，违规会告警。
-- 可选：`agent_mode`（主推的工作模式；纯排序偏好，不会在其它模式下隐藏该 Skill）、`disable-model-invocation`。
+- 可选：`disable-model-invocation`。`agent_mode` 已废弃（ADR-0071）：容忍存在但无任何运行时语义，不排序、不过滤，请不要在新 Skill 里写它。
 - 安全：Skill 可指示执行任意操作，安装前审查内容。
 
 ## 调用

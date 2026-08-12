@@ -91,6 +91,11 @@ describe("image generation media tools", () => {
 		},
 	);
 
+	// 外部计费工具在注册处声明 heavy，由宿主首调确认闸兜底。
+	it.each(["generate-image", "edit-image"])("%s declares heavy side effect at registration", (id) => {
+		expect(tool(id).side_effect).toBe("heavy");
+	});
+
 	it("saves the generated artifact as a plugin blob and releases the temporary handle", async () => {
 		createJob.mockResolvedValue({
 			providerId: "desktop-app:vetta",

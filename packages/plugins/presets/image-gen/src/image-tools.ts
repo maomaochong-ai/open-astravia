@@ -203,6 +203,8 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		parameters: generateParameters,
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,
+		// 调用外部计费的图像模型，一经调用即产生费用。
+		side_effect: "heavy",
 		handler: async ({ session, trigger }) => {
 			let blob: PluginStoredBlobRef;
 			try {
@@ -226,6 +228,8 @@ export function registerImageTools(ctx: PluginContext, repository: ImageReposito
 		parameters: editParameters,
 		timeoutMs: 300_000,
 		scope_use: SCOPE_USE,
+		// 同 generate_image：外部计费。
+		side_effect: "heavy",
 		handler: async ({ session, trigger }) => {
 			const input = trigger.input;
 			if (!input.sourceImageId && !input.sourceImagePath) {

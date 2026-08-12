@@ -109,6 +109,9 @@ export function registerKanbanTools(ctx: PluginContext, controller: KanbanBoardC
 			additionalProperties: false,
 		},
 		scope_use,
+		// 跨会话拉起独立的后台 agent 循环并产生模型计费，且描述鼓励批量认领；
+		// 与 spawn_agent 不同，它不在本会话预算内、无 task_stop 可回收。
+		side_effect: "heavy",
 		handler: async ({ trigger: { input } }) => {
 			const cardId = typeof input?.cardId === "string" ? input.cardId : "";
 			if (!cardId) return { ok: false, retryable: true, error: "cardId 不能为空" };

@@ -74,6 +74,8 @@ export function registerRenderTool(ctx: PluginContext): void {
 		},
 		timeoutMs: 30 * 60_000,
 		scope_use: SCOPE_USE,
+		// 启动完整浏览器渲染管线并往工作区写 out/。
+		side_effect: "heavy",
 		handler: async ({ host, session, trigger }) => {
 			const compositionId = trigger.input.compositionId.trim();
 			const entryPoint = normalizeEntryPoint(trigger.input.entryPoint);

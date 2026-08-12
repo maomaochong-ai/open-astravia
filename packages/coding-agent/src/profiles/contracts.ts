@@ -53,9 +53,10 @@ export interface ToolActivationMetadata {
  *   heavy 工具在会话内首次调用前需要用户确认，见 tool-policy/heavy-tool-confirmation.ts。
  *
  * 判定优先级：工具/插件自己的显式声明 > DEFAULT_HEAVY_TOOL_NAMES 兜底清单 > light。
- * 兜底清单不是重副作用工具的完备分类——它只兜「声明通道接通前就存在的核心工具」；
- * 按标准该判 heavy 但刻意不列入的工具，必须在清单旁写就近理由（自带确认、可自愈、
- * 边界由其它机制承担）。命令执行（bash/shell）的边界由 Execution Mode 承担，不归本闸。
+ * 核心工具在 runtime-tools 注册处声明 `sideEffect`，插件工具注册时声明 `side_effect`，
+ * 兜底清单只兜仍未声明的存量插件工具。按标准像 heavy 但刻意豁免的工具，在定义处显式
+ * 声明 `"light"` 并就近注释理由（自带确认、可自愈、边界由其它机制承担）。命令执行
+ * （bash/shell）的边界由 Execution Mode 承担，不归本闸。
  */
 export type ToolSideEffect = "light" | "heavy";
 

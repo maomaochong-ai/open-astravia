@@ -128,6 +128,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
+		// 在用户工作区落一整棵 .vetd 工程目录。
+		side_effect: "heavy",
 		handler: async ({ host, session, trigger }) => {
 			// 硬闸而不是默认值：品类是这一步唯一需要判断的东西，而它在这一刻最清楚。
 			// 从前这里没有参数，兜底就写死成桌面 1440x900，于是「用户要移动 App」在整条
@@ -421,6 +423,8 @@ export function registerDesignTools(ctx: PluginContext): void {
 			additionalProperties: false,
 		},
 		scope_use: SCOPE_USE,
+		// 往设计工程的 node_modules 写依赖树（落在用户工作区的 .vetd 目录内）。
+		side_effect: "heavy",
 		handler: async ({ host, session, trigger }) => {
 			const packages = trigger.input.packages ?? [];
 			if (packages.length === 0) {

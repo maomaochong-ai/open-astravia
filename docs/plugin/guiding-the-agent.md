@@ -80,6 +80,10 @@ with the ordinary file tools instead.
   具体插件）；你的反向触发段把自己归入类别（"standalone visual exploration"），两边就接上了。
   这是插件与模式之间唯一的、也是刻意设计的接口：**自然语言归类，而不是字段注册**。
 
+反向触发段的义务与副作用等级挂钩，负担与破坏半径成正比：**heavy 工具（见杠杆 5）必须有
+反向触发段**——误调的代价是工作区多一棵目录或一笔费用，禁令加替代路径是第一道防线；
+显然 light 的只读工具不必写，误调代价只有几个 token，防御性堆砌反而稀释 description。
+
 ### 4. 工具返回值：被低估的最强引导面
 
 description 只在选择时读一次，**返回值在选择之后每次都被完整阅读**——它是你在会话中途
@@ -107,8 +111,10 @@ Heavy 是执行层的**可回收兜底闸**：声明了 `side_effect: "heavy"` �
 任何硬闸挡在门外的前提。
 
 判定链路（`tool-policy/tool-side-effect.ts`）：**工具/插件自己的显式声明 > 宿主兜底清单
-`DEFAULT_HEAVY_TOOL_NAMES` > 缺省 light**。兜底清单只覆盖声明通道接通前就存在的核心工具，
-不是完备分类——新工具靠你自己声明。
+`DEFAULT_HEAVY_TOOL_NAMES` > 缺省 light**。核心工具在 runtime-tools 注册处声明 `sideEffect`，
+插件工具注册时声明 `side_effect`；兜底清单只兜仍未声明的存量插件工具，不是完备分类——
+新工具靠你自己声明。缺省即 light：显然轻的工具不用填表，只在判 heavy 或「像 heavy 但刻意
+豁免」时显式声明（豁免须就近注释理由）。
 
 #### 什么时候声明 heavy
 

@@ -19,5 +19,7 @@ export function createKbWritePageToolRegistration(
 		requires: KB_WRITE_PAGE_TOOL_REQUIRES,
 		modelOrder: options.modelOrder,
 		category: KB_WRITE_PAGE_TOOL_CATEGORY,
+		// 写入宿主托管的知识库而非用户工作区，且页面可编辑恢复，不判 heavy。
+		sideEffect: "light",
 	};
 }

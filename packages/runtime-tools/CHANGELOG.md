@@ -15,6 +15,7 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 
 ### Added
 
+- **注册级副作用声明 `CodingToolRegistration.sideEffect`**：核心工具可在定义处声明 `"light" | "heavy"`（缺省 light），产品宿主的 heavy 首调确认闸消费该声明。`im_send_attachment` 声明 heavy（外发不可撤回且无自带确认）；bash/shell（边界归 Execution Mode）、subagent 三件套（会话内计费、可回收）与 `kb_write_page`（写宿主知识库非工作区）显式声明 light 并就近注释豁免理由。
 - **Turn-bound Tool Catalog lease 与显式 hard revoke**：Turn admission 捕获不可变 Catalog 与具体
   implementation binding；普通 disable/unregister/reload 只影响后续 Turn，旧 binding 保留到最后一个
   Turn lease 释放。`revoke` 强制要求 reason 与 audit id，并可取消在途执行。

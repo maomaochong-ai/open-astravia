@@ -5,6 +5,7 @@
 ### Changed
 
 - 移除 `content_creation_assets` / `content_creation_edit` / `content_creation_run` 工具描述中的反向触发段（Do NOT / Only for）。误调防线回落到 heavy 首调确认闸（edit 会话内首调确认）与 run 自带的全局确认对话框。
+- `content_creation_edit` 在注册处显式声明 `side_effect: "heavy"`（往用户工作区写内容工程文件树），不再依赖宿主兜底清单；行为不变（首调确认此前已由清单兜住）。
 
 ### Added
 
