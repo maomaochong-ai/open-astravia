@@ -78,7 +78,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | `contributes.settings` | ❌ | object[] | 插件设置项 schema，见 [配置项](#contributessettings配置项)。 |
 | `agent` | ❌ | object | Agent 侧贡献（prompt / skill / **MCP** / toolPolicy），见 [Agent 清单](#agent-agent-侧贡献)。 |
 | `contributionMode` | ❌ | object | 贡献硬隔离，见 [contributionMode](#contributionmode)。 |
-| `agent_mode` | ❌ | string \| string[] | **工作模式白名单**（Work/Coding）。声明后，白名单外的模式下整个插件不可见，见 [agent_mode](#agent_mode工作模式白名单)。 |
+| `agent_mode` | ❌ | string \| string[] | **工作模式偏好**（Work/Coding）。只影响排序与提示词详略，不隐藏插件，见 [agent_mode](#agent_mode工作模式偏好)。 |
 
 ## 运行时（runtime）
 
@@ -118,7 +118,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 - 通常配合 `registerInputAction({ hardIsolation: true })` 作为用户开关（ADR-0041）。
 - **用户自建插件默认不要开**；模式型系统插件（如插件工作台）使用。
 
-## agent_mode（工作模式白名单）
+## agent_mode（工作模式偏好）
 
 工作模式（agent_mode 轴，ADR-0046）把 agent 分成 **Work（工作/文档）** 与 **Coding（编程）** 两种，与对话场景（`scope_use`）、会话能力（`requires`）正交。
 
@@ -126,10 +126,11 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 "agent_mode": ["coding"]
 ```
 
-- **插件级（本字段）是硬闸**：声明后，当前工作模式不在白名单内时，整个插件被**彻底隐藏**——tools / MCP / skills / systemPrompt 均不注入，插件的 UI / bundle 也不加载（`vetta 无法感知这个插件`）。
-- **缺省 / 空 = 全局通用**：不写该字段的插件在所有工作模式下都可用。
+- **本字段是纯偏好声明，不是闸**（ADR-0046 于 2026-08 修订）。声明后，插件在**所有**工作模式下都照常加载：UI 面板、侧边栏入口、命令、bundle 与 agent 贡献一律常驻，Hook 也照常触发。宿主只把它当作排序与提示词详略的偏好——非主推模式下，该插件的 tools / MCP 工具会被排到清单末尾，但仍然可调用。
+- **缺省 / 空 = 全局通用**：视为在所有模式下都主推。
 - 值可写单个字符串（`"coding"`）或数组（`["work","coding"]`）。合法值目前为 `"work"` / `"coding"`；插件只能引用已有模式，不能自创。
-- **子资源可再收窄**：即使插件级通用，也可给单个 tool / MCP server / skill 各自声明 `agent_mode`（见下方 [agent 清单](#agent-agent-侧贡献) 与 [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具)）。两级取**交集**：插件级是硬上界，子资源只能在其内进一步收窄。
+- **子资源可各自声明**：单个 tool / MCP server / skill 也可写 `agent_mode`（见下方 [agent 清单](#agent-agent-侧贡献) 与 [conversation-and-agent](./conversation-and-agent.md#注册-agent-工具)），同样只影响排序。插件级与子资源级不再存在「硬上界 / 取交集」关系。
+- 需要按模式**真正改变行为**时，在 handler 内用 `ctx.getAgentMode()` 自行判断；靠 `agent_mode` 让贡献消失的做法已不再成立。
 - 运行时可用 `ctx.getAgentMode()` / `ctx.onAgentModeChanged()` 读取当前模式做定制，见 [conversation-and-agent](./conversation-and-agent.md#工作模式agent_mode)。
 
 ## i18n
@@ -204,7 +205,7 @@ Schema 只描述 `plugin.json` 数据本身；Plugin API 版本是否兼容、�
 | 字段 | 说明 |
 | --- | --- |
 | `agent.systemPrompt.promptPaths` | 追加进系统提示词的提示片段文件路径。需 `agent.systemPrompt.write`（或 fullControl）。 |
-| `agent.skillPaths` | 加入 agent 资源图的 skill 文件 / 目录。需 `agent.skills.control`。单个 skill 可在其 `SKILL.md` frontmatter 写 `agent_mode` 限定工作模式（见 [agent_mode](#agent_mode工作模式白名单)）。 |
+| `agent.skillPaths` | 加入 agent 资源图的 skill 文件 / 目录。需 `agent.skills.control`。单个 skill 可在其 `SKILL.md` frontmatter 写 `agent_mode` 声明主推工作模式（只影响排序，见 [agent_mode](#agent_mode工作模式偏好)）。 |
 | `agent.mcpServers` | **插件内聚 MCP**（三源聚合之插件源）：相对路径 `.mcp.json` 或内联 map。需 `agent.mcp.control`。**内联 map** 的每个 server 可加 `agent_mode` 限定工作模式，见 [mcp.md](./mcp.md)。 |
 | `agent.toolPolicy.allow` / `.deny` | 声明式工具可见性策略（注册后的工具 id）。需 `agent.tools.control`。 |
 

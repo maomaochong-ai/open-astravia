@@ -1,10 +1,4 @@
-import {
-	type AgentMode,
-	type CardDescriptor,
-	definePlugin,
-	type Disposable,
-	type PluginPendingToolCall,
-} from "@vetta-org/plugin-sdk";
+import { type CardDescriptor, definePlugin, type PluginPendingToolCall } from "@vetta-org/plugin-sdk";
 import "./style.css";
 import { ScreenshotCard } from "./cards/ScreenshotCard";
 import { SCREENSHOT_CARD_TYPE, SCREENSHOT_TOOL_NAME, screenshotCardDescriptor } from "./cards/screenshot-card";
@@ -15,7 +9,6 @@ import {
 	notifyAgentToolEnd,
 	notifyAgentToolStart,
 	notifyFrameSettled,
-	requestMockupExport,
 	setPendingDesignPath,
 } from "./canvas/design-runtime";
 import { refreshDesignCatalog } from "./design-systems/index";
@@ -79,16 +72,6 @@ export default definePlugin({
 		// 品牌图由宿主从 plugin.json#icon 解析后注入；插件不拼宿主协议、不 import 包内 png。
 		const packageIcon = ctx.plugin.iconUrl ? <VetdFileIcon src={ctx.plugin.iconUrl} /> : undefined;
 
-		/**
-		 * 设计画布是「工作」模式的能力（ADR-0046）。编程模式下把画布 Tab、导出用的
-		 * 全局插槽、截图消息卡一起摘掉；tools 与 skill 各自声明 agent_mode 由宿主过滤。
-		 * 唯一跨模式保留的是 .vetd 文件预览——编程模式里仍可能点开一份设计稿看看。
-		 *
-		 * 不用清单里的插件级 agent_mode：那是硬闸，会连预览带 bundle 一起藏掉。
-		 */
-		let workModeSlots: Disposable[] = [];
-		const isWorkMode = (): boolean => ctx.getAgentMode() === "work";
-
 		/** 最近一次 conversation-changed 的 cwd 与会话 id，用于丢弃过期的探测结果。 */
 		let latestCwd: string | null = null;
 		let latestSessionId: string | null = null;
@@ -101,12 +84,12 @@ export default definePlugin({
 		 * 会话都展开一次，同一会话内关掉后不再反复弹。
 		 */
 		const revealTabForCwd = (cwd: string | null, sessionId: string | null): void => {
-			if (!cwd || !isWorkMode()) return;
+			if (!cwd) return;
 			void ctx.fs
 				.listFilesRecursive(cwd)
 				.catch(() => [])
 				.then((files) => {
-					if (latestCwd !== cwd || latestSessionId !== sessionId || !isWorkMode()) return;
+					if (latestCwd !== cwd || latestSessionId !== sessionId) return;
 					// 还没迁移的旧格式也算数：Tab 先亮出来，真正的迁移在画布打开时发生。
 					const { bundles, legacyFiles } = pickDesignPaths(files);
 					const found = bundles.length + legacyFiles.length;
@@ -124,57 +107,41 @@ export default definePlugin({
 				});
 		};
 
-		const syncWorkModeSlots = (mode: AgentMode): void => {
-			const wanted = mode === "work";
-			if (wanted === workModeSlots.length > 0) return;
-			if (wanted) {
-				workModeSlots = [
-					ctx.ui.registerActivityTab({
-						id: CANVAS_TAB_ID,
-						label: "%tab.label%",
-						// icon 省略：宿主用 plugin.json#icon → ctx.plugin.iconUrl 填品牌图。
-						component: CanvasTab,
-						scope_use: ["project", "conversation"],
-						// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。
-						initiallyVisible: false,
-					}),
-					// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
-					// 判断圆角/边框需要整窗口的预览面积。
-					ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog }),
-					ctx.ui.registerCardRenderer({
-						type: SCREENSHOT_CARD_TYPE,
-						component: ScreenshotCard,
-						title: "%card.screenshot.title%",
-						icon: <ScreenshotIcon />,
-						pendingFor: pendingScreenshotCard,
-					}),
-					// 画廊：跨项目的设计注册中心，整页 surface + 侧边栏入口。与画布标签卡
-					// 同属工作模式能力（ADR-0046），所以跟着这批插槽一起装卸。
-					ctx.ui.registerWorkspaceView({
-						id: GALLERY_VIEW_ID,
-						label: "%gallery.nav.label%",
-						icon: "icon-[solar--ruler-pen-linear]",
-						description: "%gallery.nav.description%",
-						component: GalleryView,
-					}),
-					// 设计版本历史的自动提交（ADR-0069）。跟画布同生命周期：编程模式下
-					// 不该有任何东西往用户的设计目录里写提交。
-					...registerTurnHistory(ctx),
-				];
-				// 注册只是入池：切回工作模式时补跑一次探测，否则要等下次切会话才上栏。
-				revealTabForCwd(latestCwd, latestSessionId);
-				return;
-			}
-			for (const slot of workModeSlots) slot.dispose();
-			workModeSlots = [];
-			// Tab 卸载时 CanvasTab 自己会停引擎，但模式切走属于「这个插件不该再有存在感」，
-			// 兜底收干净：别在编程模式里留一个 vite dev server 跑着。
-			requestMockupExport(null);
-			void stopAllDesignServers();
-		};
-
-		syncWorkModeSlots(ctx.getAgentMode());
-		ctx.onAgentModeChanged(syncWorkModeSlots);
+		/**
+		 * 这批 UI 一律常驻，不按工作模式装卸（见 ADR-0046 修订：模式只做提示词软引导，
+		 * 系统里不再有任何模式硬闸）。是否露出由「cwd 里有没有 .vetd」决定——那本来
+		 * 就是比模式更准的条件：在代码仓库里写着写着要看设计稿，画布就该在。
+		 */
+		ctx.ui.registerActivityTab({
+			id: CANVAS_TAB_ID,
+			label: "%tab.label%",
+			// icon 省略：宿主用 plugin.json#icon → ctx.plugin.iconUrl 填品牌图。
+			component: CanvasTab,
+			scope_use: ["project", "conversation"],
+			// 出现条件由插件驱动：cwd 里有 .vetd 才上栏；vetd_create / 预览「打开画布」也会拉起。
+			initiallyVisible: false,
+		});
+		// 导出渲染图的 dialog 走全局插槽：设计画布在活动面板里太窄，
+		// 判断圆角/边框需要整窗口的预览面积。
+		ctx.ui.registerGlobalSlot({ id: "export-mockup-dialog", component: ExportMockupDialog });
+		ctx.ui.registerCardRenderer({
+			type: SCREENSHOT_CARD_TYPE,
+			component: ScreenshotCard,
+			title: "%card.screenshot.title%",
+			icon: <ScreenshotIcon />,
+			pendingFor: pendingScreenshotCard,
+		});
+		// 画廊：跨项目的设计注册中心，整页 surface + 侧边栏入口。
+		ctx.ui.registerWorkspaceView({
+			id: GALLERY_VIEW_ID,
+			label: "%gallery.nav.label%",
+			icon: "icon-[solar--ruler-pen-linear]",
+			description: "%gallery.nav.description%",
+			component: GalleryView,
+		});
+		// 设计版本历史的自动提交（ADR-0069）。commitTurn 只遍历 cwd 下真实存在的
+		// .vetd 目录，纯代码仓库里是空操作，所以无条件注册不会产生噪音提交。
+		registerTurnHistory(ctx);
 
 		ctx.conversation.on((event) => {
 			if (event.type === "conversation-changed") {

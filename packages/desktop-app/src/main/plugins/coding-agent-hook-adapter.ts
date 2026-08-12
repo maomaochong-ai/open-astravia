@@ -21,7 +21,6 @@ const DEFAULT_TIMEOUT_MS = 3_000;
 
 export interface DesktopPluginHookAdapterFactoryOptions {
 	readonly scenario: string;
-	readonly readAgentMode: () => string | undefined;
 	readonly canInvoke: (pluginId: string) => boolean;
 }
 
@@ -125,11 +124,10 @@ function matchesBindingScope(
 	binding: DesktopPluginHookBinding,
 	options: DesktopPluginHookAdapterFactoryOptions,
 ): boolean {
+	// 工作模式不再过滤 hook（用户决策：零硬闸）。binding.agent_mode 仅保留为声明，
+	// hook 是否触发只由 canInvoke、scope_use 以及自身的事件/工具 matcher 决定。
 	if (!options.canInvoke(binding.pluginId)) return false;
-	if (!binding.scope_use.includes(options.scenario)) return false;
-	const agentMode = options.readAgentMode();
-	if (agentMode && binding.agent_mode?.length && !binding.agent_mode.includes(agentMode)) return false;
-	return true;
+	return binding.scope_use.includes(options.scenario);
 }
 
 function matchesBindingEvent(binding: DesktopPluginHookBinding, event: EcosystemHookEvent): boolean {

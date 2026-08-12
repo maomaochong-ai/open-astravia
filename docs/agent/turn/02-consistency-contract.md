@@ -102,7 +102,7 @@ candidate 解析、校验或物化失败时不替换 current。UI 和诊断必�
 | 状态 | 普通更新何时可见 | 活动 Turn 行为 | Hard revoke 行为 |
 | --- | --- | --- | --- |
 | Model/reasoning | 下一个 Turn | 保持 Turn model binding | 凭证撤销可使调用失败 |
-| Agent Mode | 下一个 Turn | Prompt/Tool/Skill/Plugin mode 都保持旧值 | 组织策略可立即禁止某 mode 的能力 |
+| Agent Mode | 会话创建时固化，会话内不可更新（2026-08 起，见 ADR-0046 修订） | Prompt/Tool/Skill/Plugin mode 都保持会话创建时的值 | 不适用：mode 已不控制能力集合，只做排序与提示词偏好 |
 | Execution Mode | 下一个 Turn | 旧 sandbox/full-access policy 保持 | 新 deny/kill switch 可立即收紧 |
 | Sandbox base policy | 下一个 Turn | 保持旧 policy；本 Turn 显式授权可写入 grant ledger | 敏感路径 deny 可立即生效 |
 | Settings/persona | 下一个 Turn | system prompt 不改变 | 不适用 |

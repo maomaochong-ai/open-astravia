@@ -134,11 +134,12 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 		expect(failedRuns).toHaveLength(1);
 	});
 
-	it("filters dynamic hooks by plugin state, scenario, agent mode and tool name", async () => {
+	it("filters dynamic hooks by plugin state, scenario and tool name, never by agent mode", async () => {
 		for (const registration of [
 			{ id: "allowed", scope_use: ["cli"], agent_mode: ["coding"], toolNames: ["bash"] },
+			// 声明了另一个模式，但零硬闸决策下仍然触发。
+			{ id: "other-mode", scope_use: ["cli"], agent_mode: ["work"], toolNames: ["bash"] },
 			{ id: "wrong-scope", scope_use: ["project"], agent_mode: ["coding"], toolNames: ["bash"] },
-			{ id: "wrong-mode", scope_use: ["cli"], agent_mode: ["work"], toolNames: ["bash"] },
 			{ id: "wrong-tool", scope_use: ["cli"], agent_mode: ["coding"], toolNames: ["write"] },
 		] as const) {
 			desktopPluginHookRegistry.register("plugin-a", {
@@ -159,8 +160,9 @@ describe("Desktop Plugin Coding Agent Hook adapter", () => {
 
 		await adapter.dispatch(preToolEvent());
 
-		expect(invoker).toHaveBeenCalledOnce();
+		expect(invoker).toHaveBeenCalledTimes(2);
 		expect(invoker).toHaveBeenCalledWith(expect.objectContaining({ hookId: "allowed" }), expect.any(AbortSignal));
+		expect(invoker).toHaveBeenCalledWith(expect.objectContaining({ hookId: "other-mode" }), expect.any(AbortSignal));
 	});
 
 	it("propagates timeout and parent cancellation while failing open", async () => {
@@ -213,7 +215,6 @@ async function createAdapter(
 ) {
 	const factory = createDesktopPluginHookAdapterFactory({
 		scenario: "cli",
-		readAgentMode: () => "coding",
 		canInvoke,
 	});
 	const adapter = await factory({

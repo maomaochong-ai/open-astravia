@@ -133,6 +133,11 @@ export interface BuildSystemPromptOptions {
 	cwd?: string;
 	/** Pre-loaded context files. */
 	contextFiles?: Array<{ path: string; content: string }>;
+	/**
+	 * 会话创建时探测到的工作区性质事实（`detectWorkspaceFacts` 的渲染结果）。
+	 * 与 contextFiles 同属 `core.context` 块，排在项目指令文件之前；会话内固定，不逐轮重算。
+	 */
+	workspaceFacts?: string;
 	/** Pre-loaded skills. */
 	skills?: ProductPromptSkill[];
 	/** MCP tools available (from Model Context Protocol servers). */
@@ -167,6 +172,20 @@ export function renderMcpToolsSection(mcpTools: McpToolInfo[], markdownTools: bo
 	return renderMcpToolsPromptSection(mcpTools, { deferred: mcpDeferred, markdown: markdownTools });
 }
 
+/**
+ * `core.context` 块正文：工作区事实在前（客观事实），项目指令文件在后。
+ * 两者都为空时返回空串，块随之禁用。
+ */
+function renderContextSection(
+	workspaceFacts: string | undefined,
+	contextFiles: Array<{ path: string; content: string }>,
+): string {
+	const sections = [workspaceFacts?.trim(), renderContextFilesSection(contextFiles)].filter(
+		(section): section is string => Boolean(section),
+	);
+	return sections.join("\n\n");
+}
+
 function renderContextFilesSection(contextFiles: Array<{ path: string; content: string }>): string {
 	if (contextFiles.length === 0) {
 		return "";
@@ -182,7 +201,7 @@ function renderContextFilesSection(contextFiles: Array<{ path: string; content: 
 }
 
 function renderFooter(dateTime: string, cwd: string): string {
-	return `Current date and time: ${dateTime}
+	return `Current date: ${dateTime}
 Current working directory: ${cwd}${OUTPUT_LOCATION_GUIDANCE}`;
 }
 
@@ -193,6 +212,10 @@ function applySystemPromptContributions(draft: SystemPromptDraft, config: AgentP
 	}
 }
 
+/**
+ * 只到天粒度。带时/分/秒会让 `core.footer` 每分钟变一次内容，
+ * 从而使整个 system 前缀缓存跨分钟必然 miss；需要精确时间的场景由 `current_time` 工具提供。
+ */
 function buildDateTime(): string {
 	const now = new Date();
 	return now.toLocaleString("en-US", {
@@ -200,10 +223,6 @@ function buildDateTime(): string {
 		year: "numeric",
 		month: "long",
 		day: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-		second: "2-digit",
-		timeZoneName: "short",
 	});
 }
 
@@ -301,6 +320,11 @@ function buildToolDescriptions(
 	return descriptions;
 }
 
+/**
+ * 解析本次调用真正可用的工具名。工具清单本身不再进系统提示词（与 `params.tools` 的
+ * description 完全重复），但这份名单仍决定 guidelines 的条件分支与 skills 段落是否启用，
+ * 因此 `buildToolDescriptions` 仍作为「工具名是否存在」的字典使用。
+ */
 function resolvePromptTools(
 	selectedTools: string[] | undefined,
 	defaultCommandTool: string,
@@ -309,10 +333,6 @@ function resolvePromptTools(
 	return (selectedTools || ["read", defaultCommandTool, "edit", "write", "dir_tree"]).filter(
 		(tool) => tool in toolDescriptionsByName,
 	);
-}
-
-function renderToolsList(tools: string[], toolDescriptionsByName: Record<string, string>): string {
-	return tools.length > 0 ? tools.map((tool) => `- ${tool}: ${toolDescriptionsByName[tool]}`).join("\n") : "(none)";
 }
 
 /** Build the structured prompt draft with tools, guidelines, and context. */
@@ -325,6 +345,7 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 		appendSystemPrompt,
 		cwd,
 		contextFiles: providedContextFiles,
+		workspaceFacts,
 		skills: providedSkills,
 		mcpTools: providedMcpTools,
 		memory,
@@ -342,7 +363,6 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 	const mcpTools = providedMcpTools ?? [];
 	const resolvedToolDescriptions = buildToolDescriptions(agentPlugins, runtimeToolDescriptions);
 	const tools = resolvePromptTools(selectedTools, defaultCommandTool, resolvedToolDescriptions);
-	const toolsList = renderToolsList(tools, resolvedToolDescriptions);
 	const blocks: SystemPromptBlock[] = [];
 	const hasInvokeSkill = tools.includes("invoke_skill");
 	const hasRead = tools.includes("read");
@@ -350,11 +370,12 @@ export function buildSystemPromptDraft(options: BuildSystemPromptOptions = {}): 
 
 	blocks.push(coreBlock("core.subconscious", "subconscious", SUBCONSCIOUS, 100));
 	blocks.push(coreBlock("core.base", "base", customPrompt ?? "", 150));
-	blocks.push(coreBlock("core.tools", "tools", `Available tools:\n${toolsList}`, 200));
+	// 不再渲染 `core.tools` 工具清单：其 `- name: description` 与 params.tools 中每个 tool 的
+	// description 是同一份字符串，模型会读到两遍。增量信息只有下面的 guidelines。
 	blocks.push(coreBlock("core.mcp", "mcp", renderMcpToolsSection(mcpTools, false, mcpDeferred), 250));
 	blocks.push(coreBlock("core.guidelines", "guidelines", `Guidelines:\n${buildGuidelines(tools, scenario)}\n`, 300));
 	blocks.push(coreBlock("core.append", "append", appendSystemPrompt ?? "", 400));
-	blocks.push(coreBlock("core.context", "context", renderContextFilesSection(contextFiles), 500));
+	blocks.push(coreBlock("core.context", "context", renderContextSection(workspaceFacts, contextFiles), 500));
 	blocks.push(coreBlock("core.memory", "memory", memory ?? "", 600));
 	blocks.push(coreBlock("core.skills", "skills", skillsSection, 700));
 	blocks.push(coreBlock("core.mode", "mode", modePrompt ?? "", 850));

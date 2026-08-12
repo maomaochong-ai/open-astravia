@@ -8,6 +8,7 @@
 - 新增 `openai-completions-deepseek` provider 变体（DeepSeek 直连），照搬 qwen/nvidia 的 thinkingFormat 模式：v4 统一模型（deepseek-v4-flash / deepseek-v4-pro）通过 `thinking: { type: "enabled" | "disabled", reasoning_effort }` 控制思考，`reasoning_effort` 取值 `high`/`max` 按模型配置透传；无推理请求时下发 `thinking: { type: "disabled" }`。reasoning 输出（`reasoning_content`）与工具轮的 reasoning 回传规则复用既有 `openai-completions` 逻辑。同时新增 `deepseek` KnownProvider 与 `DEEPSEEK_API_KEY` 环境变量识别。
 - 新增 `@vetta/ai/protocol` 稳定协议子路径，集中导出 Provider 中立的消息、工具、usage、reasoning、终止原因、流事件与结构化 AI 错误类型；旧根入口保持兼容 re-export。
 - 新增隔离的 `LanguageModelAdapter`/`AdapterRegistry`、`@vetta/ai/testing` 脚本模型与可控 Provider transport；OpenAI Completions 和 Anthropic 试点增加 TypeBox wire 校验及无网络 conformance 覆盖。
+- `Context` 新增可选字段 `systemPromptStableLength`：声明 `systemPrompt` 中会话内逐字不变的前缀长度。Anthropic provider 据此把 system 拆成「稳定前缀（打 `cache_control`）+ 易变尾段（不打）」两个 text block，使会话内变化的模式/人设/日期段落不再作废整段 system 前缀缓存；OAuth 分支同样生效。未声明该字段、或 `cacheRetention: "none"`、或切分点落在正文两端时保持单 block 原行为，其他 provider 忽略该字段。
 
 ### Changed
 
@@ -19,6 +20,8 @@
 
 ### Fixed
 
+- 修复 OpenAI 兼容中转返回 `finish_reason: ""` 时整轮对话失败、界面只剩一条空消息的问题。此前 `openai-completions` 的 chunk 校验强制要求 `finish_reason` 落在 OpenAI 枚举内，且 `index` / `delta` 必填，而中转在非终止 chunk 上普遍下发空字符串（实测某中转下的 `hy3`、`kimi-k2.7` 每个中间 chunk 均为 `""`），首包即抛 `AI_RESPONSE_VALIDATION_FAILED`。现在 chunk schema 只强制适配器真正消费的字段：`finish_reason` 允许任意字符串或 `null` 且可缺省，`index`（从不读取）与 `delta`（运行时已有守卫）改为可选；枚举外的终止原因（如 `eos`、`end_turn`）折叠为正常 `stop` 而非抛错。结构性畸形（如 `choices` 不是数组）仍然拒绝。
+- `AI_RESPONSE_VALIDATION_FAILED` 的 `metadata.errors` 新增 `received` 字段，携带失败路径上的实际取值（截断至 120 字符，不含周边 payload），使中转格式偏差可以直接从日志定位。
 - 修复单个工具的畸形参数 schema 就能让整轮对话 400 的问题。`openai-completions` 下发 tools 前会剔除只带约束关键字、没有 `type`/`properties` 的 `anyOf`/`oneOf` 分支（如 `anyOf: [{ required: ["a"] }]`）：这类分支在 OpenAI 侧只是软提示，但 Gemini 会把每个分支当独立 Schema 校验并整体拒绝请求（`parameters.required: only allowed for OBJECT type`），命中时整个会话发不出去，报错里又只有工具下标。剔除时按工具名打一次 warn。
 - 修复 Google/Vertex 缺失 `finishReason`、terminal 后继续输出和畸形 Gemini chunk 被错误视为成功的问题；修复 cached input 同时计入 `input` 与 `cacheRead` 导致的 token/成本重复计算。Gemini CLI 畸形 SSE JSON 不再静默跳过，非重试型 4xx 不再误重试，HTTP status 进入稳定错误分类。
 - 修复 Anthropic/Bedrock 空流、缺失 `message_stop`/`messageStop`、未闭合或乱序 content block 被错误视为成功的问题；Bedrock streamed exception 与 AWS SDK `$metadata.httpStatusCode` 现在会保留状态码并映射到稳定错误类型，调用前和流中取消通过原生失败通道拒绝。

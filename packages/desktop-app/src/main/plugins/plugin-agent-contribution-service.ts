@@ -17,7 +17,6 @@ import {
 	type RegisteredContinuationProvider,
 	type RegisteredSystemPromptProvider,
 } from "./plugin-agent-contribution-registry.js";
-import { pluginVisibleInAgentMode } from "./plugin-agent-mode-policy.js";
 import { versionedPluginPath } from "./plugin-package.js";
 import { buildPluginRuntimeConfig } from "./plugin-runtime-config-builder.js";
 
@@ -39,7 +38,6 @@ export class PluginAgentContributionService {
 	private readonly registry: PluginAgentContributionRegistry;
 	private readonly modeGatedPluginIds = new Set<string>();
 	private readonly activeContributionModeIds = new Set<string>();
-	private currentAgentMode: string | undefined;
 
 	constructor(private readonly dependencies: PluginAgentContributionServiceDependencies) {
 		this.registry = new PluginAgentContributionRegistry(dependencies.hooks);
@@ -61,20 +59,17 @@ export class PluginAgentContributionService {
 		return !this.modeGatedPluginIds.has(pluginId) || this.activeContributionModeIds.has(pluginId);
 	}
 
-	setAgentMode(mode: string | undefined): void {
-		this.currentAgentMode = mode;
-	}
-
-	getAgentMode(): string | undefined {
-		return this.currentAgentMode;
-	}
-
+	/**
+	 * 工作模式不参与判定：hook 是否可调用只取决于启用状态、贡献模式与权限。
+	 *
+	 * 本服务刻意不持有「当前工作模式」——模式在会话创建时固化到 SessionConfig，
+	 * 一份可变的全局模式态只会引诱下游重新按模式过滤贡献。
+	 */
 	canInvokeHook(pluginId: string): boolean {
 		const plugin = this.findPlugin(pluginId);
 		return Boolean(
 			plugin?.enabled &&
 				this.isContributionModeActive(pluginId) &&
-				pluginVisibleInAgentMode(plugin, this.currentAgentMode) &&
 				hasGrantedPermission(plugin, "agent.hooks.register") &&
 				hasGrantedPermission(plugin, "agent.hookHandler.execute"),
 		);
@@ -123,7 +118,6 @@ export class PluginAgentContributionService {
 	buildRuntimeConfig(): AgentPluginRuntimeConfig | undefined {
 		return buildPluginRuntimeConfig({
 			plugins: this.dependencies.listPlugins(),
-			agentMode: this.currentAgentMode,
 			isContributionModeActive: (pluginId) => this.isContributionModeActive(pluginId),
 			contributions: this.registry,
 			resolveResource: (plugin, relativePath) =>

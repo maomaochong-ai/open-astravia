@@ -619,6 +619,62 @@ describe("AgentCoreTurnEngine", () => {
 		expect(composerMessages).toEqual([["user", "assistant", "toolResult"]]);
 	});
 
+	it("forwards the composed system prompt cache breakpoint to the provider context", async () => {
+		const contexts: Context[] = [];
+		const engine = new AgentCoreTurnEngine({
+			model: model(),
+			streamFn: (_model, context) => {
+				contexts.push(context);
+				return new RecordedAssistantStream(assistantMessage([{ type: "text", text: "done" }]));
+			},
+		});
+
+		await collect(
+			engine,
+			snapshot({
+				modelCallFrameComposer: {
+					async compose(context) {
+						return { ...context.frame, systemPromptStableLength: "Base instruction".length };
+					},
+				},
+			}),
+		);
+
+		expect(contexts[0]?.systemPrompt).toBe("Base instruction\n\nFeature instruction");
+		expect(contexts[0]?.systemPromptStableLength).toBe("Base instruction".length);
+	});
+
+	it("drops the cache breakpoint when instructionOverride replaces the prompt", async () => {
+		const contexts: Context[] = [];
+		const engine = new AgentCoreTurnEngine({
+			model: model(),
+			streamFn: (_model, context) => {
+				contexts.push(context);
+				return new RecordedAssistantStream(assistantMessage([{ type: "text", text: "done" }]));
+			},
+		});
+
+		for await (const _event of engine.execute({
+			sessionId: "session-1",
+			turnId: "turn-1",
+			snapshot: snapshot({
+				modelCallFrameComposer: {
+					async compose(context) {
+						return { ...context.frame, systemPromptStableLength: 4 };
+					},
+				},
+			}),
+			messages: [userMessage("hello")],
+			instructionOverride: [{ id: "override", content: "run prompt", priority: 0 }],
+			signal: new AbortController().signal,
+		})) {
+			// Exhaust the engine stream.
+		}
+
+		expect(contexts[0]?.systemPrompt).toBe("run prompt");
+		expect(contexts[0]?.systemPromptStableLength).toBeUndefined();
+	});
+
 	it("applies the session context transformer before every model call without mutating persisted messages", async () => {
 		const transformedRoles: string[][] = [];
 		const contexts: Context[] = [];

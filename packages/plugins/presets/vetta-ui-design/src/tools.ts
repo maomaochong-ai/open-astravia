@@ -103,8 +103,10 @@ export function registerDesignTools(ctx: PluginContext): void {
 		label: "%tool.vetd_create%",
 		// 工具描述每轮都在系统提示里，所以只留「做什么 + 去哪拿规则」。规则本身归
 		// skill 正文（已验证 invoke_skill 能送达），在这里复述一遍是双份 token。
+		// 反向触发段（Do NOT / Only for）是误调防线的第一层：这个工具会在用户工作区
+		// 里建一整棵目录，模型在「写个页面」这种指令上最容易把它当成实现路径。
 		description:
-			"Create a new Vetta UI Design document (a `<name>.vetd/` directory holding design.json + sources) in the current workspace and open it on the design canvas. Use when the user asks to start a UI design / mockup. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.",
+			"Create a new Vetta UI Design document (a `<name>.vetd/` directory holding design.json + sources) in the current workspace and open it on the design canvas. Requires the product type (or an explicit frame size) — that is what the design defaults to, so decide it from the user's request BEFORE calling. Each frames/<id>.tsx is one canvas frame AND one route — invoke the vetta-ui-design skill for the rules before writing any of them.\nDo NOT use when the user is writing or modifying code in an existing codebase — implement the page directly in that repo's own framework instead.\nOnly for standalone visual exploration decoupled from any codebase, when the user asked for a design/mockup rather than working code.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -163,7 +165,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: SCREENSHOT_TOOL_NAME,
 		label: "%tool.vetd_screenshot%",
 		description:
-			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually. Also machine-checks the sources first: a frame that does not parse returns the syntax error instead of an image, and `issues` carries any rule violations found in that frame. This is the checkpoint after writing a frame — screenshot before revising it, never revise blind.",
+			"Capture a rendered screenshot of one design frame from the open design canvas. Returns a PNG file path — call the Read tool on that path to actually see the rendering and verify your design changes visually. Also machine-checks the sources first: a frame that does not parse returns the syntax error instead of an image, and `issues` carries any rule violations found in that frame. This is the checkpoint after writing a frame — screenshot before revising it, never revise blind.\nDo NOT use to capture anything that is not a frame of an open .vetd design — a dev server, a website, or an app you are building in the repo; drive those with the browser tooling instead.\nOnly for verifying frames of the design document currently open on the canvas.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -319,7 +321,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_status",
 		label: "%tool.vetd_status%",
 		description:
-			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (files that do not parse, plus rule violations found in your sources) and engine diagnostics. Call it ONCE before editing an existing design, to learn what is already there. Afterwards you do not need it for `issues` — vetd_screenshot returns them per frame.",
+			"Inspect the Vetta UI Design state: workspace designs, the design open on the canvas, its frames (id/size/title/`buildError`), its `sharedShell` (existing _layout.tsx + components/ to reuse), `issues` (files that do not parse, plus rule violations found in your sources) and engine diagnostics. Call it ONCE before editing an existing design, to learn what is already there. Afterwards you do not need it for `issues` — vetd_screenshot returns them per frame.\nDo NOT use to survey a code repository, locate its UI source files or read its build state — use the ordinary file search and read tools instead.\nOnly for .vetd design documents and the design canvas.",
 		parameters: { type: "object", properties: {}, additionalProperties: false },
 		scope_use: SCOPE_USE,
 		agent_mode: AGENT_MODE,
@@ -409,7 +411,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_install",
 		label: "%tool.vetd_install%",
 		description:
-			"Install npm packages INTO this design (they land in the design's own package.json + node_modules, and travel with it). Use when a screen genuinely needs a library the design does not have — charts, markdown rendering, a rich text editor, an animation library. Do NOT use it for icons (those are Iconify CSS classes, always available) or for anything Tailwind utilities and plain React state already do well: every dependency is weight the design carries forever. Import the package normally once this returns.",
+			"Install npm packages INTO this design (they land in the design's own package.json + node_modules, and travel with it). Use when a screen genuinely needs a library the design does not have — charts, markdown rendering, a rich text editor, an animation library. Import the package normally once this returns.\nDo NOT use to add a dependency to the user's own project, nor for icons (Iconify CSS classes are always available) or anything Tailwind utilities and plain React state already do well — run the repo's own package manager in a terminal for project dependencies instead.\nOnly for packages that frames of a .vetd design import.",
 		parameters: {
 			type: "object",
 			properties: {
@@ -507,7 +509,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 		name: "vetd_notes",
 		label: "%tool.vetd_notes%",
 		description:
-			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.",
+			"User notes pinned on the design canvas (Figma-style comments addressed to you). No args: list PENDING notes — each with its thread, a freshly re-resolved source anchor (`element.source` = file:line, authoritative unless `anchorStale`), and per-frame screenshots where numbered pins mark note positions (numbers match `number`). `ids`: read specific notes instead. `resolve`: after fixing, reply per note to mark it resolved — this is the ONLY way to write notes; never edit .notes.json directly.\nDo NOT use for what the user wrote to you in this conversation, for code review comments or for issue trackers — act on those directly instead.\nOnly for notes pinned on the design canvas of an open .vetd design.",
 		parameters: {
 			type: "object",
 			properties: {

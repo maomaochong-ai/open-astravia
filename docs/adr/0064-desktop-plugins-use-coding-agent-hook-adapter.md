@@ -30,8 +30,9 @@ EcosystemHookRuntime（每 Session 唯一）
 ```
 
 - Plugin SDK 的 `eventName` 与 Coding Agent 的 12 类 Hook 事件一一对应；事件与返回值用判别联合约束。
-- Desktop adapter 只负责权限复核、`scope_use` / `agent_mode` / `toolNames` 匹配、IPC callback、
+- Desktop adapter 只负责权限复核、`scope_use` / `toolNames` 匹配、IPC callback、
   超时、边界校验和 callback run 诊断，不重新实现 Hook 调度时机或全局聚合策略。
+  （2026-08 修订：原文中的 `agent_mode` 匹配已随 ADR-0046 的软化一并移除，Hook 不再按工作模式过滤。）
 - `runtime-core` 保持产品无关，不暴露 Plugin Hook contribution 或 invoker。
 - Coding Extension 的工具事件不是 Coding Agent Hook，不改名也不伪装成 Hook；现有强类型工具
   interception pipeline 只负责 Extension 与工具 wrapper 的明确顺序。

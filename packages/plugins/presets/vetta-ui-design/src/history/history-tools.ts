@@ -78,7 +78,7 @@ ctx.agent.registerTool<RestoreInput>({
 	name: "vetd_restore",
 	label: "%tool.vetd_restore%",
 	description:
-		"Restore the design to one of the versions from vetd_history. The files go back to how they were at that version, and the restore itself is saved as a new version — so nothing is lost and you can restore again if the user says you picked the wrong one. Call vetd_history first; never guess a version id.",
+		"Restore the design to one of the versions from vetd_history. The files go back to how they were at that version, and the restore itself is saved as a new version — so nothing is lost and you can restore again if the user says you picked the wrong one. Call vetd_history first; never guess a version id.\nDo NOT use to undo changes in the user's own repository — that is the repo's own version control, reached through git in a terminal.\nOnly for rolling a .vetd design document back to one of its own saved versions.",
 	parameters: {
 		type: "object",
 		properties: {

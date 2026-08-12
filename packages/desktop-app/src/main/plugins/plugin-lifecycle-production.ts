@@ -1,5 +1,4 @@
 import { recordAppMonitorEvent } from "../app-monitor/app-monitor-service.js";
-import { readDesktopConfig } from "../config/desktop-config-store.js";
 import { stopAllSpawnsForPlugin } from "./command-spawner.js";
 import { destroyOffscreenSessionsForPlugin } from "./offscreen-capture-service.js";
 import type { PluginActionService } from "./plugin-action-service.js";
@@ -23,7 +22,6 @@ import { refreshAgentPlugins } from "./plugin-runtime-service.js";
 
 const dependencies: PluginLifecycleDependencies = {
 	listPlugins,
-	readAgentMode: async () => (await readDesktopConfig()).agentMode,
 	installFromArchive: installPluginFromArchive,
 	installFromUrl: installPluginFromUrl,
 	installFromPath: installPluginFromPath,

@@ -1232,7 +1232,7 @@ function normalizeProviderValue(value: unknown, currentFixture: AgentRpcFixture)
 	if (typeof value === "string") {
 		return value
 			.replaceAll(currentFixture.root, "<fixture-root>")
-			.replace(/^Current date and time: .*$/gm, "Current date and time: <turn-time>");
+			.replace(/^Current date: .*$/gm, "Current date: <turn-date>");
 	}
 	if (Array.isArray(value)) return value.map((entry) => normalizeProviderValue(entry, currentFixture));
 	if (typeof value !== "object" || value === null) return value;

@@ -108,8 +108,9 @@ export interface PluginAbility extends AbilityBase {
 	type: "plugin";
 	plugin: InstalledPlugin | null;
 	/**
-	 * 插件声明的工作模式白名单（agent_mode 轴，ADR-0046），已归一化为数组；
-	 * 空数组 = 通用（全部模式可用）。未安装的市场条目无此信息，恒为空数组。
+	 * 插件声明的模式偏好（agent_mode 轴），已归一化为数组；空数组 = 未声明偏好。
+	 * 不是白名单：插件在所有模式下都可用，这里只影响 agent 的优先级。
+	 * 未安装的市场条目无此信息，恒为空数组。
 	 */
 	agentModes: string[];
 	/** manifest 声明的权限（未装时取市场快照）。 */

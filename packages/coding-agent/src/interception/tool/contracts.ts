@@ -8,6 +8,8 @@ import type {
 export const CODING_AGENT_TOOL_INTERCEPTION_ORDER = {
 	ecosystem: 100,
 	extension: 300,
+	/** 副作用确认闸排在最内层：策略类拦截器先有机会直接拒绝，避免为注定失败的调用打扰用户。 */
+	sideEffectConfirmation: 500,
 } as const;
 
 export interface ToolInterceptionBlock {

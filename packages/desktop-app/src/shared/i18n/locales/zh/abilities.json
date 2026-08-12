@@ -149,12 +149,12 @@
 		},
 		"reloadable": "可重载到 {{version}}",
 		"agentMode": {
-			"title": "适用工作场景",
-			"all": "全部场景",
+			"title": "模式偏好",
+			"none": "无偏好",
 			"work": "工作",
 			"coding": "编程",
-			"hint": "切换到其它工作场景时，该插件的功能入口不会出现。",
-			"hintAll": "在所有工作场景下都可用。"
+			"hint": "插件在所有工作模式下都可用；在这些模式下，agent 会更优先考虑它。",
+			"hintNone": "插件在所有工作模式下都可用，没有声明模式偏好。"
 		},
 		"permissions": "权限",
 		"permissionsSystemHint": "系统插件自动授予，不可更改",

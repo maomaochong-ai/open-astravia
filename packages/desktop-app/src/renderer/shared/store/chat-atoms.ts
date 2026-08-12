@@ -387,11 +387,22 @@ function getStoredExecutionMode(): SessionExecutionMode {
 export const sessionExecutionModeAtom = atom<SessionExecutionMode>(getStoredExecutionMode());
 
 /**
- * 当前工作模式（agent_mode 轴，纯全局态，见 ADR-0046）。真源在主进程 desktop-config，
- * 本 atom 于 app 初始化时由 config.get() 水合、并跟随主进程广播更新。默认 "work"。
+ * 新会话的默认工作模式（agent_mode 轴）。真源在主进程 desktop-config 的
+ * defaultAgentMode，本 atom 于新会话页读取时由 config.get() 水合、并跟随主进程广播更新。
+ *
+ * 注意语义：这里只是「下一个新会话用哪个模式」。会话的模式在创建时固化、会话内不可变，
+ * 改这个值不会影响任何已存在的会话。
  */
 export type AgentMode = "work" | "coding";
-export const agentModeAtom = atom<AgentMode>("work");
+export const defaultAgentModeAtom = atom<AgentMode>("work");
+
+/**
+ * 当前打开会话的工作模式，来自 SessionStateSnapshot.agentMode（会话创建时固化）。
+ * 与 defaultAgentModeAtom 的区别：这个是「本会话是什么」，那个是「下一个新会话用什么」。
+ * 凡是按会话渲染的地方（如回答分组样式）都必须读这个，否则改默认值会串改已打开的会话。
+ * null = 会话未打开或未指定模式。
+ */
+export const sessionAgentModeAtom = atom<AgentMode | null>(null);
 
 /** Per-turn stats (speed, duration) for the last completed turn */
 export const lastTurnUsageAtom = atom<TurnUsageData | null>(null);

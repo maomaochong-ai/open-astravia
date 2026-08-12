@@ -84,7 +84,7 @@
 
 ## 工作模式（agent_mode）
 
-**内联 map** 的每个 server 可加 `agent_mode` 限定它出现的工作模式（Work/Coding，ADR-0046），缺省/空 = 通用：
+**内联 map** 的每个 server 可加 `agent_mode` 声明它主推的工作模式（Work/Coding，ADR-0046），缺省/空 = 通用：
 
 ```json
 "agent": {
@@ -94,9 +94,9 @@
 }
 ```
 
-- 白名单外的工作模式下，该 server 的工具不进入会话。
-- 与插件级 [manifest `agent_mode`](./manifest.md#agent_mode工作模式白名单) 取**交集**（插件级是硬上界）。
-- `.mcp.json` **路径形式**为保持社区标准不扩展该字段，其下的 server 只**继承插件级** `agent_mode`。要按 server 分模式请用内联 map。
+- **不是闸**（ADR-0046 于 2026-08 修订）：非主推模式下该 server 的工具**仍然进入会话、仍然可调用**，只是在工具清单里被排到末尾。真正决定工具是否进入会话的仍是可见性开关与 `scope_use` / `requires`。
+- 与插件级 [manifest `agent_mode`](./manifest.md#agent_mode工作模式偏好) 各自独立，不再取交集。
+- `.mcp.json` **路径形式**为保持社区标准不扩展该字段，其下的 server 只**继承插件级** `agent_mode`。要按 server 分别声明偏好请用内联 map。
 
 ## 权限与生命周期
 

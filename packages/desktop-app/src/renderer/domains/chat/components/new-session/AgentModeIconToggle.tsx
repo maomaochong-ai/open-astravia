@@ -1,16 +1,24 @@
-import { AGENT_MODES, AGENT_MODE_ICONS } from "@shared/components/AgentModeSwitcher";
-import { useAgentMode } from "@shared/hooks/useAgentMode";
+import { useDefaultAgentMode } from "@shared/hooks/useDefaultAgentMode";
 import { cn } from "@shared/lib/utils";
+import type { AgentMode } from "@shared/store/atoms";
 import { useTranslation } from "react-i18next";
 
+export const AGENT_MODES: readonly AgentMode[] = ["work", "coding"];
+
+export const AGENT_MODE_ICONS: Record<AgentMode, string> = {
+	work: "icon-[solar--case-minimalistic-linear]",
+	coding: "icon-[solar--code-linear]",
+};
+
 /**
- * 新会话欢迎区专用：胶囊形工作/编程切换。
+ * 新会话欢迎区的胶囊形工作/编程切换，也是工作模式在整个 App 里唯一的调整入口。
+ * 写的是「新会话默认模式」：会话创建时把它固化进 SessionConfig，之后会话内不可变，
+ * 所以侧边栏与设置菜单都不再提供切换入口。
  * 当前选中段在 icon 右侧展示 Label（Work/Coding）；未选中仅 icon。
- * 不改动共享 AgentModeSwitcher（设置菜单等仍用带文案的分段样式）。
  */
 export function AgentModeIconToggle({ className }: { className?: string }): JSX.Element {
 	const { t } = useTranslation("settings");
-	const { agentMode, setAgentMode } = useAgentMode();
+	const { defaultAgentMode, setDefaultAgentMode } = useDefaultAgentMode();
 
 	return (
 		<div
@@ -22,13 +30,13 @@ export function AgentModeIconToggle({ className }: { className?: string }): JSX.
 			)}
 		>
 			{AGENT_MODES.map((mode) => {
-				const active = mode === agentMode;
+				const active = mode === defaultAgentMode;
 				const label = t(`agentMode.${mode}`);
 				return (
 					<button
 						key={mode}
 						type="button"
-						onClick={() => void setAgentMode(mode)}
+						onClick={() => void setDefaultAgentMode(mode)}
 						aria-label={label}
 						aria-pressed={active}
 						title={label}
@@ -47,4 +55,3 @@ export function AgentModeIconToggle({ className }: { className?: string }): JSX.
 		</div>
 	);
 }
-

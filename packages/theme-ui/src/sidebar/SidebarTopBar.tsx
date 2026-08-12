@@ -15,8 +15,6 @@ export interface SidebarTopBarLabels {
 }
 
 export interface SidebarTopBarProps {
-	/** 顶栏 actions 区插槽（如工作模式徽章 popover）。渲染在折叠按钮之前。 */
-	agentModeSlot?: ReactNode;
 	/** Optional host-provided brand icon; omit for text-only brand. */
 	brandIcon?: ReactNode;
 	/** Host-provided brand trailing content (e.g. connected SidebarUpdateButton). */
@@ -31,7 +29,6 @@ export interface SidebarTopBarProps {
 }
 
 export function SidebarTopBar({
-	agentModeSlot,
 	brandIcon,
 	brandTrailing,
 	className,
@@ -64,11 +61,9 @@ export function SidebarTopBar({
 				</div>
 			)}
 			{/*
-			 * flex-1：actions 始终吃掉剩余宽度。
-			 * 这样 badge 收成 icon 后父级宽度仍随侧栏拉宽而变大，才能恢复全文案。
+			 * flex-1：actions 始终吃掉剩余宽度，宿主放进来的自适应按钮才能随侧栏拉宽恢复完整文案。
 			 */}
 			<div className={cn("flex min-w-0 flex-1 items-center justify-end gap-1", classNames?.actions)}>
-				{agentModeSlot}
 				{imOnline && (
 					<button
 						type="button"

@@ -41,6 +41,7 @@ export async function resolveModelCallFrame(
 		composed.instructions,
 		[...composed.tools.values()],
 		composed.contextCompositionSections,
+		composed.systemPromptStableLength,
 	);
 }
 
@@ -48,6 +49,7 @@ function createModelCallFrame(
 	instructionValues: readonly InstructionBlock[],
 	toolValues: readonly RuntimeToolDefinition[],
 	contextCompositionSections?: readonly ContextCompositionSectionInput[],
+	systemPromptStableLength?: number,
 ): ModelCallFrame {
 	const instructions = uniqueValues("instruction", instructionValues, ({ id }) => id)
 		.sort(compareInstruction)
@@ -57,6 +59,7 @@ function createModelCallFrame(
 	return Object.freeze({
 		instructions: Object.freeze(instructions),
 		tools: new ImmutableReadonlyMap(tools.map((tool) => [tool.name, tool])),
+		systemPromptStableLength,
 		contextCompositionSections: contextCompositionSections
 			? Object.freeze(
 					contextCompositionSections.map((section) =>

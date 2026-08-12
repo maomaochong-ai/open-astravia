@@ -1,5 +1,5 @@
 import type { InstalledPlugin } from "@preload/api";
-import { agentModeAtom } from "@shared/store/atoms";
+import { defaultAgentModeAtom } from "@shared/store/atoms";
 import type { PluginContext, PluginSettingsApi } from "@vetta-org/plugin-sdk";
 import { getDefaultStore } from "jotai";
 import { createPluginAgentApi, createPluginAppActionsApi } from "./plugin-agent-context";
@@ -103,10 +103,12 @@ export function createPluginContext({
 		storage: createStorageApi(plugin, capabilitySessionId),
 		settings: settingsApi,
 		i18n: createI18nApi(plugin),
-		getAgentMode: () => getDefaultStore().get(agentModeAtom),
+		// 模式已不再过滤任何插件能力：插件面板、命令、hook 在所有模式下都常驻。这里给出的是
+		// 「新会话默认模式」，只适合做展示层的软性定制，不要用它隐藏功能入口。
+		getAgentMode: () => getDefaultStore().get(defaultAgentModeAtom),
 		onAgentModeChanged: (listener) => {
 			const store = getDefaultStore();
-			const unsub = store.sub(agentModeAtom, () => listener(store.get(agentModeAtom)));
+			const unsub = store.sub(defaultAgentModeAtom, () => listener(store.get(defaultAgentModeAtom)));
 			return { dispose: unsub };
 		},
 	};

@@ -148,7 +148,8 @@ describe("Coding Agent product tool surface", () => {
 			expect((await contribute(workTurn, "turn-work")).tools?.[0]?.name).toBe("invoke_skill");
 			const codingTurn = await bind("turn-coding");
 			if (!codingTurn) throw new Error("Expected coding Turn provider");
-			expect((await contribute(codingTurn, "turn-coding")).tools).toBeUndefined();
+			// agent_mode 是软引导：work Skill 在 coding 模式下仍然可见（旧的 fail-closed 实现会移除 invoke_skill）。
+			expect((await contribute(codingTurn, "turn-coding")).tools?.[0]?.name).toBe("invoke_skill");
 			mode = "work";
 			skills = [];
 			const removedTurn = await bind("turn-removed");

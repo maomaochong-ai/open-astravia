@@ -19,6 +19,7 @@ import {
 	type DesktopSessionKind,
 	resolveDesktopSessionConfig,
 } from "./resolve-session-config.js";
+import { recordSessionAgentMode } from "./session-agent-mode-store.js";
 import {
 	isConversationCwd,
 	readDesktopSessionHeader,
@@ -123,6 +124,9 @@ export class DesktopConversationService {
 			if (!sessionPath) {
 				throw new DesktopConversationError("TURN_FAILED", "Runtime did not expose the created session path.");
 			}
+			// 工作模式在这里固化：新会话写入当前默认值，历史会话补写回落值。
+			// 已有记录不覆盖，所以之后改默认值不会改写任何已存在会话。
+			await recordSessionAgentMode(sessionPath, resolvedConfig.agentMode);
 			monitorRuntimeSession(this.runtime, result.sessionId, "interactive");
 			log.info("session created", {
 				sessionId: result.sessionId,

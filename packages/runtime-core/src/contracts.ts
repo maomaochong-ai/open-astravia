@@ -142,6 +142,11 @@ export interface AgentPluginToolContribution {
 	scope_use?: string[];
 	/** 需要的会话能力 slug（如 "knowledge"）。 */
 	requires?: string[];
+	/**
+	 * 副作用等级（"light" | "heavy"，缺省 = light）。宿主侧元数据，不进 LLM schema。
+	 * heavy 工具在会话内首次调用前需要用户确认。
+	 */
+	side_effect?: string;
 	context?: { conversation?: "summary" | "messages" };
 }
 
@@ -680,6 +685,12 @@ export interface SessionStateSnapshot {
 	 * coding-agent 的 DEFAULT_SCENARIO（"cli"）。
 	 */
 	scenario: ConversationScenario;
+	/**
+	 * 本会话的工作模式，创建时固化、会话内不可变（见 ADR-0046 修订）。renderer 据此按
+	 * 本会话而非全局默认值渲染；改新会话默认模式不影响已打开的会话。
+	 * undefined = 未指定（CLI/headless 缺省，不做任何模式偏向）。
+	 */
+	agentMode?: string;
 	/** Parent session jsonl path when this session was forked. */
 	parentSessionPath?: string;
 	/** User entry id in the parent session this fork was created from. */
@@ -721,7 +732,11 @@ export interface SessionConfig {
 	 * DEFAULT_SCENARIO("cli")。desktop 各入口（普通对话/项目/批量/自动化）显式传入。
 	 */
 	scenario?: ConversationScenario;
-	/** 工作模式（agent_mode 正交轴）。纯全局态，desktop 从 desktop-config 读入。缺省=不过滤。见 ADR-0046。 */
+	/**
+	 * 工作模式（agent_mode 轴）。会话创建时固化、会话内不可变；纯提示词软引导与排序偏好，
+	 * 不排除任何工具/Skill/MCP/插件。desktop 从 desktop-config 的 defaultAgentMode 读入，
+	 * 缺省 = 不做任何模式偏向。见 ADR-0046 修订。
+	 */
 	agentMode?: string;
 	/** 追加到 system prompt 末尾的文本，不会被上下文压缩 */
 	appendSystemPrompt?: string;

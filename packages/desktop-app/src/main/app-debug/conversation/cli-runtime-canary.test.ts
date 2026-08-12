@@ -48,7 +48,7 @@ vi.mock("../../ipc/fs.js", () => ({
 	KB_PROCESSING_CWD: "C:/vetta/knowledge",
 	KB_PROCESSING_SESSION_DIR: "C:/vetta/knowledge/.vetta/sessions",
 	readDesktopConfig: async () => ({
-		agentMode: "work",
+		defaultAgentMode: "work",
 		defaultExecutionMode: "full-access",
 		experimental: { agentSkills: false },
 	}),
@@ -57,7 +57,6 @@ vi.mock("../../ipc/fs.js", () => ({
 vi.mock("../../plugins/plugin-catalog.js", () => ({
 	pluginAgentContributionService: {
 		buildRuntimeConfig: () => undefined,
-		setAgentMode: () => undefined,
 	},
 }));
 

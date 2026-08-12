@@ -81,6 +81,16 @@ describe("image generation media tools", () => {
 		return registration as PluginAgentToolRegistration<TInput>;
 	}
 
+	// 两个工具每次调用都产生外部计费且不可撤销，描述必须自带排除段（改造方案 1.1）。
+	it.each(["generate-image", "edit-image"])(
+		"%s describes when NOT to use it and its only legitimate scenario",
+		(id) => {
+			const description = tool(id).description ?? "";
+			expect(description).toMatch(/\bDo NOT use\b/);
+			expect(description).toMatch(/\bOnly for\b/);
+		},
+	);
+
 	it("saves the generated artifact as a plugin blob and releases the temporary handle", async () => {
 		createJob.mockResolvedValue({
 			providerId: "desktop-app:vetta",

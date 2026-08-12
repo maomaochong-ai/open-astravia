@@ -20,7 +20,7 @@ import { createCodingAgentMcpToolResultPolicy } from "../../mcp/runtime/result-p
 import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } from "../../mcp/runtime/supervisor.js";
 import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
-import { matchesAgentMode } from "../../profiles/index.js";
+import { sortByAgentModePreference } from "../../profiles/index.js";
 import type {
 	CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort,
 	CodingAgentPluginMcpToolComposer,
@@ -168,26 +168,33 @@ function composePluginMcpSurface(
 ): CodingAgentPluginMcpToolSurface {
 	const availableTools = new Map(baseAvailableTools);
 	const activeTools = new Map(context.frame.tools);
-	for (const [name, tool] of tools) {
-		availableTools.set(name, tool);
-		if (options.isToolVisible(name) && matchesToolMode(serverModes, name, options.agentMode)) {
-			activeTools.set(name, tool);
-		} else {
-			activeTools.delete(name);
-		}
+	const entries = [...tools];
+	for (const [name, tool] of entries) availableTools.set(name, tool);
+	// 可见性仍是硬闸；agent_mode 只做软引导，把非本模式主推的 server 工具排到清单末尾。
+	const visible: Array<[string, RuntimeToolDefinition]> = [];
+	for (const entry of entries) {
+		if (options.isToolVisible(entry[0])) visible.push(entry);
+		else activeTools.delete(entry[0]);
+	}
+	for (const [name, tool] of sortByAgentModePreference(visible, options.agentMode, ([toolName]) =>
+		resolveServerModes(serverModes, toolName),
+	)) {
+		// 先删后插，保证降权工具真正落到 Map 末尾（Map 的 set 不会移动已存在的键）。
+		activeTools.delete(name);
+		activeTools.set(name, tool);
 	}
 	return { frame: { instructions: context.frame.instructions, tools: activeTools }, availableTools };
 }
 
-function matchesToolMode(
+/** 找出该工具所属 plugin MCP server 声明的 agent_mode；未匹配到 server 视为通用。 */
+function resolveServerModes(
 	serverModes: ReadonlyMap<string, readonly string[]>,
 	toolName: string,
-	agentMode: string | undefined,
-): boolean {
+): readonly string[] | undefined {
 	for (const [serverName, modes] of serverModes) {
-		if (toolName.startsWith(`mcp_${serverName}_`)) return matchesAgentMode(modes, agentMode);
+		if (toolName.startsWith(`mcp_${serverName}_`)) return modes;
 	}
-	return true;
+	return undefined;
 }
 
 function fingerprintPluginMcpServers(servers: ReadonlyMap<string, McpServerConfig>): string {

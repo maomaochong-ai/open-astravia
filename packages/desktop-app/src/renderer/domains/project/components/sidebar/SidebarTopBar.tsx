@@ -1,6 +1,5 @@
 import { SidebarTopBar as ThemeSidebarTopBar } from "@vetta/theme-ui/sidebar";
 import { useTranslation } from "react-i18next";
-import { AgentModeBadgeDropdown } from "./AgentModeBadgeDropdown";
 
 interface SidebarTopBarProps {
 	className?: string;
@@ -13,13 +12,12 @@ interface SidebarTopBarProps {
 	onCollapse?: () => void;
 }
 
-/** Desktop adapter: i18n + 工作模式徽章 popover。 */
+/** Desktop adapter: 只做 i18n 文案注入。 */
 export function SidebarTopBar({ className, classNames, floating, onCollapse }: SidebarTopBarProps): JSX.Element {
 	const { t } = useTranslation("project");
 
 	return (
 		<ThemeSidebarTopBar
-			agentModeSlot={<AgentModeBadgeDropdown />}
 			className={className}
 			classNames={classNames}
 			floating={floating}

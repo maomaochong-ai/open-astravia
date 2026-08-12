@@ -7,6 +7,7 @@ export interface DesktopPluginHookRegistration {
 	readonly activationId?: string;
 	readonly timeoutMs?: number;
 	readonly scope_use: readonly string[];
+	/** 插件声明的偏好模式，仅作元数据保留：不再用于过滤 hook 触发。 */
 	readonly agent_mode?: readonly string[];
 	readonly toolNames?: readonly string[];
 }

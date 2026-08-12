@@ -97,7 +97,7 @@ describe("coding tools dynamic activation", () => {
 		}
 	});
 
-	it("filters mode-specific tools at each model-call boundary", async () => {
+	it("keeps mode-specific tools active in every agent mode", async () => {
 		const regular = createCurrentTimeToolRegistration();
 		const workOnly = {
 			...regular,
@@ -124,9 +124,11 @@ describe("coding tools dynamic activation", () => {
 				"current_time",
 				"work_only",
 			]);
+			// agent_mode 是软引导：切到未声明的模式后工具依然在清单里，模型仍可调用。
 			agentMode = "coding";
 			expect((await provider.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([
 				"current_time",
+				"work_only",
 			]);
 		} finally {
 			await feature.dispose();
@@ -141,7 +143,6 @@ describe("coding tools dynamic activation", () => {
 			agentModes: ["work"] as const,
 		};
 		const capabilities = new Set(["enabled"]);
-		let agentMode = "work";
 		let filterEnabled = true;
 		const registry = new InMemoryCodingToolRegistry([regular, workOnly]);
 		const definition = createCodingToolsFeature({
@@ -149,7 +150,6 @@ describe("coding tools dynamic activation", () => {
 			resolveActivation: () => ({
 				mode: "scope",
 				scope: "cli",
-				agentMode,
 				capabilities,
 			}),
 			filterRegistration: ({ tool }) => tool.name !== "work_only" || filterEnabled,
@@ -174,7 +174,6 @@ describe("coding tools dynamic activation", () => {
 				"current_time",
 				"work_only",
 			]);
-			agentMode = "coding";
 			filterEnabled = false;
 			capabilities.clear();
 			expect((await firstTurn.contribute(modelCallContext(signal))).tools?.map(({ name }) => name)).toEqual([

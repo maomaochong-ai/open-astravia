@@ -5,11 +5,9 @@ import type {
 } from "../../preload/api-types/app-monitor.js";
 import type { InstalledPlugin, PluginInstallOptions, PluginPermission } from "../../preload/api-types/plugins.js";
 import type { PluginActionService } from "./plugin-action-service.js";
-import { pluginVisibleInAgentMode } from "./plugin-agent-mode-policy.js";
 
 export interface PluginLifecycleDependencies {
 	listPlugins(): InstalledPlugin[];
-	readAgentMode(): Promise<string | undefined>;
 	installFromArchive(buffer: ArrayBuffer | Buffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromPath(path: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;
@@ -38,9 +36,9 @@ export class PluginLifecycleService {
 		private readonly dependencies: PluginLifecycleDependencies,
 	) {}
 
-	async listVisible(): Promise<InstalledPlugin[]> {
-		const mode = (await this.dependencies.readAgentMode()) ?? "work";
-		return this.dependencies.listPlugins().filter((plugin) => pluginVisibleInAgentMode(plugin, mode));
+	/** 已安装插件一律返回：工作模式不再隐藏任何插件（零硬闸决策）。 */
+	list(): InstalledPlugin[] {
+		return this.dependencies.listPlugins();
 	}
 
 	async installArchive(buffer: ArrayBuffer | Buffer, options?: PluginInstallOptions): Promise<InstalledPlugin> {

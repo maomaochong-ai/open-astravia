@@ -348,6 +348,13 @@ export interface ModelCallContributionProvider {
 export interface ModelCallFrame {
 	readonly instructions: readonly InstructionBlock[];
 	readonly tools: ReadonlyMap<string, RuntimeToolDefinition>;
+	/**
+	 * `instructions` 合成后的系统提示词中，稳定前缀的字符长度。Provider 可据此切出缓存断点。
+	 *
+	 * 语义由本 Frame 的 `instructions` 定义：`instructionOverride` 替换 instructions 时该值失效，
+	 * 消费方必须丢弃，否则断点会切在另一段文本的错误偏移上。
+	 */
+	readonly systemPromptStableLength?: number;
 	/** Call-scoped sensitive inputs; reporters must not expose their content. */
 	readonly contextCompositionSections?: readonly ContextCompositionSectionInput[];
 }

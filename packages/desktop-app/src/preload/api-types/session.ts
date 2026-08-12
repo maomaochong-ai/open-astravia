@@ -19,7 +19,7 @@ import type {
 } from "@vetta/runtime-core";
 import type { DesktopSessionHistoryInfo } from "../../shared/session-access.js";
 
-/** 工作模式（agent_mode 轴，见 ADR-0046）。 */
+/** 工作模式（agent_mode 轴）。会话创建时固化，会话内不可变。 */
 export type AgentMode = "work" | "coding";
 
 /** 个性化人设选项（由 coding-agent 注册表下发，不含提示词正文）。 */
@@ -99,9 +99,12 @@ export interface DesktopSessionApi {
 	updateSettings(sessionId: string, partialSettings: SettingsPatch): Promise<void>;
 	setExecutionMode(sessionId: string, mode: SessionExecutionMode): Promise<void>;
 	setGlobalExecutionMode(mode: SessionExecutionMode): Promise<void>;
-	/** 全局切换工作模式（agent_mode 轴，纯全局态）。见 ADR-0046。 */
+	/**
+	 * 写入「新会话默认工作模式」（desktop-config 的 defaultAgentMode）。
+	 * 通道名保留历史名字；它不影响任何已存在的会话。
+	 */
 	setGlobalAgentMode(mode: AgentMode): Promise<void>;
-	/** 订阅工作模式变更广播（多窗口同步 badge/atom）。 */
+	/** 订阅默认工作模式变更广播：仅用于多窗口新会话页 toggle 同步显示。 */
 	onAgentModeChanged(handler: (mode: AgentMode) => void): () => void;
 	setGlobalThinkingLevel(level: string): Promise<void>;
 	getGlobalThinkingLevel(): Promise<string>;

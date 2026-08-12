@@ -50,16 +50,22 @@ function createService(installed: InstalledPlugin) {
 }
 
 describe("PluginAgentContributionService", () => {
-	it("applies both contribution mode and agent mode before hook invocation", () => {
+	it("applies the contribution mode gate before hook invocation", () => {
 		const service = createService(plugin({ agent_mode: ["work"] }));
 		service.registerModeGate("demo");
-		service.setAgentMode("work");
 		expect(service.canInvokeHook("demo")).toBe(false);
 
 		service.setContributionMode("demo", true);
 		expect(service.canInvokeHook("demo")).toBe(true);
-		service.setAgentMode("chat");
-		expect(service.canInvokeHook("demo")).toBe(false);
+	});
+
+	it("never gates hook invocation on the declared agent mode", () => {
+		// 声明了 agent_mode 的插件在任何工作模式下都能触发 hook（零硬闸决策），
+		// 服务本身也不再持有「当前模式」这个可过滤的状态。
+		const service = createService(plugin({ agent_mode: ["work"] }));
+
+		expect(service.canInvokeHook("demo")).toBe(true);
+		expect("setAgentMode" in service).toBe(false);
 	});
 
 	it("rejects tool registration when the permission is not granted", () => {

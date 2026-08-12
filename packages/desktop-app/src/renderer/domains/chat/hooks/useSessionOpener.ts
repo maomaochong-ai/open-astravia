@@ -24,6 +24,7 @@ import {
 	retryProgressAtom,
 	type SessionExecutionMode,
 	selectedModelAtom,
+	sessionAgentModeAtom,
 	sessionExecutionModeAtom,
 	sessionsMapAtom,
 } from "@shared/store/atoms";
@@ -77,6 +78,7 @@ export function useSessionOpener(): SessionOpenerController {
 	const setSessionExecutionMode = useSetAtom(sessionExecutionModeAtom);
 	const setActiveToolNames = useSetAtom(activeToolNamesAtom);
 	const setCurrentScenario = useSetAtom(currentScenarioAtom);
+	const setSessionAgentMode = useSetAtom(sessionAgentModeAtom);
 	const setIsCompacting = useSetAtom(isCompactingAtom);
 	const setRetryProgress = useSetAtom(retryProgressAtom);
 	const setInlineFilePreview = useSetAtom(inlineFilePreviewAtom);
@@ -142,6 +144,8 @@ export function useSessionOpener(): SessionOpenerController {
 			setActiveToolNames(null);
 			// 场景同样置未知（null）→ 插件插槽 fail-closed 暂不显示，等 getState 回填后按场景显隐。
 			setCurrentScenario(null);
+			// 本会话工作模式同样置未知，等 getState 回填；绝不回退到全局默认值。
+			setSessionAgentMode(null);
 
 			const isBatchSession =
 				sessionPath !== undefined &&
@@ -217,6 +221,8 @@ export function useSessionOpener(): SessionOpenerController {
 			setActiveToolNames(new Set(state.activeToolNames));
 			// 对话场景 → 会话页插件插槽按对话类型 fail-closed 显隐。
 			setCurrentScenario(state.scenario);
+			// 本会话固化的工作模式 → 按会话而非全局默认值渲染（见 ADR-0046 修订）。
+			setSessionAgentMode(state.agentMode === "work" || state.agentMode === "coding" ? state.agentMode : null);
 			// Fork lineage from session header (parentSession / parentEntryId).
 			const parentSessionPath = state.parentSessionPath;
 			const parentEntryId = state.parentEntryId;
@@ -396,6 +402,7 @@ export function useSessionOpener(): SessionOpenerController {
 			setSessionExecutionMode,
 			setActiveToolNames,
 			setCurrentScenario,
+			setSessionAgentMode,
 			setSelectedModel,
 			createSessionEventHandler,
 			setInlineFilePreview,

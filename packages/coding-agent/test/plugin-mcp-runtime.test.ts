@@ -18,7 +18,7 @@ import type { AgentPluginRuntimeConfig } from "../src/model-context/index.js";
 import { createCodingAgentPluginMcpRuntime } from "../src/plugins/runtime/mcp-runtime.js";
 
 describe("CodingAgentPluginMcpRuntime", () => {
-	it("isolates dynamic servers, preserves metadata and filters tools by session agent mode", async () => {
+	it("isolates dynamic servers, preserves metadata and keeps off-mode tools active", async () => {
 		const clients = new FakeClientFactory();
 		const first = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
 		const second = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
@@ -35,7 +35,7 @@ describe("CodingAgentPluginMcpRuntime", () => {
 			agentMode: "coding",
 			isToolVisible: () => true,
 		});
-		const hidden = first.compose(compositionContext(), new Map(), {
+		const offMode = first.compose(compositionContext(), new Map(), {
 			agentMode: "work",
 			isToolVisible: () => true,
 		});
@@ -46,14 +46,53 @@ describe("CodingAgentPluginMcpRuntime", () => {
 			kind: "mcp",
 			source: { ecosystem: "mcp", serverName: "plugin-alpha-docs", originalName: "lookup" },
 		});
-		expect(hidden.frame.tools.has("mcp_plugin-alpha-docs_lookup")).toBe(false);
-		expect(hidden.availableTools.has("mcp_plugin-alpha-docs_lookup")).toBe(true);
+		// 旧实现在此把 coding 声明的工具从 work 模式的 frame 中移除；现在 agent_mode 只做软引导。
+		expect(offMode.frame.tools.has("mcp_plugin-alpha-docs_lookup")).toBe(true);
+		expect(offMode.availableTools.has("mcp_plugin-alpha-docs_lookup")).toBe(true);
+		// 可见性仍是硬闸。
+		const invisible = first.compose(compositionContext(), new Map(), {
+			agentMode: "coding",
+			isToolVisible: () => false,
+		});
+		expect(invisible.frame.tools.has("mcp_plugin-alpha-docs_lookup")).toBe(false);
 
 		await first.dispose();
 		expect(clients.first("plugin-alpha-docs").closeCalls).toBe(1);
 		expect(clients.first("plugin-beta-docs").closeCalls).toBe(0);
 		await second.dispose();
 		expect(clients.first("plugin-beta-docs").closeCalls).toBe(1);
+	});
+
+	it("orders off-mode plugin MCP tools last while keeping same-rank order stable", async () => {
+		const clients = new FakeClientFactory();
+		const runtime = await createCodingAgentPluginMcpRuntime({ clientFactory: clients.create });
+		await runtime.reconfigure({
+			mcpServerContributions: [
+				...(pluginConfig("alpha", "coding").mcpServerContributions ?? []),
+				...(pluginConfig("beta", "work").mcpServerContributions ?? []),
+				...(pluginConfig("gamma", "coding").mcpServerContributions ?? []),
+			],
+		});
+
+		const compose = (agentMode: string) => [
+			...runtime
+				.compose(compositionContext(), new Map(), { agentMode, isToolVisible: () => true })
+				.frame.tools.keys(),
+		];
+
+		const coding = compose("coding");
+		expect(coding).toEqual([
+			"mcp_plugin-alpha-docs_lookup",
+			"mcp_plugin-gamma-docs_lookup",
+			"mcp_plugin-beta-docs_lookup",
+		]);
+		expect(compose("coding")).toEqual(coding);
+		expect(compose("work")).toEqual([
+			"mcp_plugin-beta-docs_lookup",
+			"mcp_plugin-alpha-docs_lookup",
+			"mcp_plugin-gamma-docs_lookup",
+		]);
+		await runtime.dispose();
 	});
 
 	it("reconciles only real changes and lets a session plugin server override a base tool", async () => {

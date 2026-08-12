@@ -303,6 +303,7 @@ async function initializeSession<TOwnershipBinding>(
 			mcpController,
 			extensionEvents,
 			extensionToolRuntime: options.extensionToolRuntime,
+			askUserQuestion: sessionOptions.askUserQuestion,
 		});
 		options.registry.trackTurnCapabilityAssembly(turnCapabilityAssembly);
 		rollback.defer({

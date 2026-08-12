@@ -67,7 +67,7 @@ export interface SkillFrontmatter {
 	name?: string;
 	alias?: string;
 	description?: string;
-	/** 工作模式白名单（agent_mode 轴）。缺省/空 = 通用。字符串或字符串数组。见 ADR-0046。 */
+	/** 主推的工作模式（agent_mode 轴）。缺省/空 = 通用。字符串或字符串数组。纯排序偏好，不排除 Skill。见 ADR-0046 修订。 */
 	agent_mode?: string | string[];
 	"disable-model-invocation"?: boolean;
 	hooks?: unknown;
@@ -88,7 +88,7 @@ export interface Skill {
 	baseDir: string;
 	source: string;
 	type: SkillType;
-	/** 工作模式白名单（agent_mode 轴）。undefined/空 = 通用。见 ADR-0046。 */
+	/** 主推的工作模式（agent_mode 轴）。undefined/空 = 通用。纯排序偏好，不排除 Skill。见 ADR-0046 修订。 */
 	agentMode?: string[];
 	disableModelInvocation: boolean;
 	/** SDK 等内联来源可直接持有正文；文件来源保持 undefined。 */

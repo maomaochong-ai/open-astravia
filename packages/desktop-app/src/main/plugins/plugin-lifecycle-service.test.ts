@@ -36,7 +36,6 @@ function createHarness(plugin = installedPlugin()) {
 	const actions = { clear: vi.fn(() => events.push("clear-actions")) };
 	const dependencies = {
 		listPlugins: () => [current],
-		readAgentMode: async () => "work",
 		installFromArchive: async () => current,
 		installFromUrl: async () => current,
 		installFromPath: async () => current,
@@ -101,6 +100,12 @@ describe("PluginLifecycleService", () => {
 			"refresh-runtime",
 			"record-event",
 		]);
+	});
+
+	it("lists plugins whose declared agent_mode does not match the current mode", () => {
+		const harness = createHarness(installedPlugin({ agent_mode: ["coding"] }));
+
+		expect(harness.service.list().map((item) => item.id)).toEqual(["demo"]);
 	});
 
 	it("records only newly granted permissions", () => {

@@ -47,7 +47,7 @@ export function registerRenderTool(ctx: PluginContext): void {
 		name: "render_remotion_video",
 		label: "%tool.render%",
 		description:
-			"Render a Remotion composition from the current conversation workspace to an MP4 file. The workspace itself is the Remotion project. Invoke the remotion-video skill before creating or changing the project, ensure dependencies are installed, then call this tool after the composition code is complete.",
+			"Render a Remotion composition from the current conversation workspace to an MP4 file. The workspace itself is the Remotion project. Invoke the remotion-video skill before creating or changing the project, ensure dependencies are installed, then call this tool after the composition code is complete.\nDo NOT use to build, preview or screenshot a web application that happens to live in the workspace — this boots a full browser render pipeline and writes out/; use the project's own build and preview tooling instead.\nOnly for producing a video from a finished Remotion composition.",
 		parameters: {
 			type: "object",
 			properties: {

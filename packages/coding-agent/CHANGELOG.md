@@ -13,8 +13,17 @@
 - **退役 Runtime 包兼容子路径**：移除 `@vetta/coding-agent/compat/runtime-storage` 与 `@vetta/coding-agent/compat/runtime-tools`；两个 Runtime 包根现直接暴露各自独立实现，生产依赖图不再形成反向循环。
 - **Composition 公共面去迁移命名并收口**：`@vetta/coding-agent/composition` 的公开导出由 34 项收敛为 19 项，删除无外部消费者的辅助类型，并将 `Greenfield*` 公共名称替换为稳定的 `CodingAgent*` / 中性名称；工作区调用方已迁移且不保留旧名称别名，Session、CLI、Desktop 与 IM 的运行时行为不变。
 
+### Changed
+
+- **`agent_mode` 从 fail-closed 过滤降级为排序偏好**：工作模式不再排除任何工具、Skill 或插件 MCP 工具。声明了 `agent_mode` 的条目在非匹配模式下**仍然激活、仍然可调用**，只是被稳定地排到清单末尾（同权重内保持原有顺序，不影响 system prompt 前缀缓存）。
+  - **动机**：硬闸让用户在「工作」模式下遇到编程类需求时工具整组消失，模型只能干说不能干活；模式的正确定位是引导而不是权限。
+  - **行为变化**：`resolveActiveToolNames`、system prompt 的 Skill 清单、`invoke_skill` 可调用集合、插件 MCP 工具的 Model Call Frame 都不再按模式排除条目。`matchesAgentMode` 保留但语义改为「是否为本模式主推」，新增 `agentModePreferenceRank` 与 `sortByAgentModePreference`。
+  - **未变**：`scope_use` 与 `requires` 仍是真正的 fail-closed 轴；插件 MCP 工具的可见性开关仍是硬闸。
+
 ### Added
 
+- **工作区性质事实进系统提示词**：会话创建时探测 `cwd`（`.git`、`package.json` 及其依赖、`go.mod` / `Cargo.toml` / `pyproject.toml` 等标记文件），把「当前工作区是一个已有的 X 代码仓库、在其中沿用既有技术栈实现、不要另起独立工程」写入 `core.context` 块（排在项目指令文件之前）。事实比规则更强：模型收到「写一个前台页面」时手上直接有消歧依据，不必先 ls。探测结果在会话内固化、不逐轮重算（否则造成前缀缓存抖动），探测失败静默降级为不注入，绝不阻断会话创建。没有 `AGENTS.md` 的工作区同样会得到该段落。
+- **工具副作用分级与 heavy 工具首调确认闸**：工具元数据新增 `sideEffect: "light" | "heavy"`（宿主侧注册用 `sideEffect`，插件贡献与 manifest 用 `side_effect`，均不进 LLM schema）。被判定为 heavy 的工具（在工作区创建目录/文件树、产生外部计费、发起不可撤销外部动作）在会话内首次调用前先经 `ask_user_question` 向用户确认：确认后本会话免确认，拒绝则该次调用失败且不产生副作用，light 工具不受影响。未声明时按内置兜底清单（`vetd_create`、`vetd_install`、`generate_image`、`edit_image`、`render_remotion_video`、`content_creation_edit`）判定；`content_creation_run`（自带全局确认对话框，再加一层就是双重确认）、`content_creation_assets`（落插件托管存储而非用户工作区）与只读的 `content_creation_inspect` 刻意不在清单内，源码就近记有理由。「会话内已确认」是执行状态而非逻辑合同，按 `docs/agent/turn/08-binding-boundaries.md` 1.2 保持实时读取，不进 Turn binding。
 - **Turn 级外部状态隔离**（ADR-0069）：Prompt、AGENTS、Skill 内容、Personalization、Agent Mode、Tool、
   Plugin Tool/Provider、Plugin MCP 与 Extension Tool 在 Turn admission 捕获不可变版本；MCP 先发布目录再
   原子捕获，普通热更新只影响下一 Turn。Session 配置新增不可变 revision snapshot，模型绑定与 Runtime
@@ -59,6 +68,9 @@
 
 ### Changed
 
+- **系统提示词不再复述工具清单**：删除 `core.tools` 块渲染的 `- name: description` 列表——它与 `params.tools` 中每个 tool 的 `description` 是同一份字符串，模型读两遍。工具集仍决定 `core.guidelines` 的条件分支与 `core.skills` 的启用条件，行为不变；`SystemPromptBlockType` 保留 `"tools"` 成员供插件贡献使用。
+- **系统提示词页脚只到天粒度**：`Current date and time: <含时分秒与时区>` 改为 `Current date: <星期, 年月日>`。原先精确到秒会让整段 system 每分钟自动失效、连带作废其后全部消息前缀缓存；需要精确时间的场景由 `current_time` 工具提供（相关 guideline 已强制优先使用它）。
+- **模型调用 Frame 声明系统提示词缓存断点**：`compileSystemPromptDraft` 新增返回 `stableLength`（`priority < 800` 的启用块 join 后的字符长度，块间分隔符归属其后的块），经 `ModelCallFrame.systemPromptStableLength` 传到 `Context`，供支持缓存断点的 Provider 把稳定段与易变段（mode / personalization / footer）分开。提示词正文本身逐字不变。
 - **移除普通 Todo 的自动续跑提醒**：只有被 scene 等机制锁定的 Todo 列表才会在自然停止时驱动模型继续工作；用户自己让 Agent 建的 Todo 现在只是可见的进度面板，不再在回合结束后追加 `[ephemeral:todo]` 提醒。`buildTodoContinuationMessages` 相应简化为 `(state, now)` 并直接返回消息数组，`TodoContinuationResult` 与 nudge signature 去重状态一并删除。
 - **RuntimeHost 重试包装器透传 prompt 回执**（ADR-0060）：`withCodingAgentRuntimeHostRetry` 的 `turnControl.prompt` 不再吞掉返回值；排队/拦截回执（`queued` / `handled`）直接透传且不参与重试与 pending error 结算，避免误清仍在 streaming 的当前回合挂起的错误。
 - **模型上下文韧性与 Session 产物生命周期闭环**：普通 Coding Tool 结果统一经过可注入末端策略，超大结果落为 Session 级产物并保留头尾预览；模型调用投影按 50%/75% 上下文压力截断或清理旧 ToolResult，同时保护最近 3 个真实用户轮次。图片请求增加 16/12 MiB 高低水位，Compaction 增加四级输入降级、瞬时错误分类重试、退化摘要拒绝，并在摘要中恢复 Todo 派生计划和后台任务引用。MCP 独立策略、动态能力、持久化历史和用户可见 Tool 行为不变。

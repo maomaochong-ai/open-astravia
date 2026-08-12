@@ -10,7 +10,6 @@ import type {
 import { normalizePluginAgentModes, parsePluginMcpServerConfig } from "@vetta-org/plugin-sdk/manifest";
 import type { InstalledPlugin, PluginMcpServerConfig, PluginPermission } from "../../preload/api-types/plugins.js";
 import type { PluginAgentContributionRegistry } from "./plugin-agent-contribution-registry.js";
-import { pluginVisibleInAgentMode } from "./plugin-agent-mode-policy.js";
 
 interface PluginRuntimeConfigLogger {
 	debug(message: string, data?: Record<string, unknown>): void;
@@ -19,7 +18,6 @@ interface PluginRuntimeConfigLogger {
 
 export interface PluginRuntimeConfigDependencies {
 	plugins: readonly InstalledPlugin[];
-	agentMode: string | undefined;
 	isContributionModeActive(pluginId: string): boolean;
 	contributions: PluginAgentContributionRegistry;
 	resolveResource(plugin: InstalledPlugin, relativePath: string): string;
@@ -50,18 +48,13 @@ export function buildPluginMcpRuntimeName(pluginId: string, localName: string): 
 export function buildPluginRuntimeConfig(
 	dependencies: PluginRuntimeConfigDependencies,
 ): AgentPluginRuntimeConfig | undefined {
+	// 工作模式不再排除任何插件贡献（零硬闸决策）：manifest 的 agent_mode 只是偏好声明，
+	// 由下游按模式做排序与详略处理，这里一律放行。
 	const enabledPlugins = dependencies.plugins.filter(
-		(plugin) =>
-			plugin.enabled &&
-			plugin.agent &&
-			dependencies.isContributionModeActive(plugin.id) &&
-			pluginVisibleInAgentMode(plugin, dependencies.agentMode),
+		(plugin) => plugin.enabled && plugin.agent && dependencies.isContributionModeActive(plugin.id),
 	);
 	const enabledToolPlugins = dependencies.plugins.filter(
-		(plugin) =>
-			plugin.enabled &&
-			dependencies.isContributionModeActive(plugin.id) &&
-			pluginVisibleInAgentMode(plugin, dependencies.agentMode),
+		(plugin) => plugin.enabled && dependencies.isContributionModeActive(plugin.id),
 	);
 	dependencies.logger.debug("build runtime config start", {
 		agentPlugins: enabledPlugins.map((plugin) => plugin.id),

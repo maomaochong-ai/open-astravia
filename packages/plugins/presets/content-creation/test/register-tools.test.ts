@@ -119,6 +119,17 @@ describe("content creation tool registration", () => {
 		);
 	}
 
+	// 会写项目文件树、拷贝媒体或产生外部计费的工具，必须自带排除段（改造方案 1.1）：
+	// 只读的 inspect 不在其中，它误调的代价只有几个 token。
+	it.each([CONTENT_ASSETS_TOOL_NAME, CONTENT_EDIT_TOOL_NAME, CONTENT_RUN_TOOL_NAME])(
+		"%s describes when NOT to use it and its only legitimate scenario",
+		(name) => {
+			const description = tool(name).description ?? "";
+			expect(description).toMatch(/\bDo NOT use\b/);
+			expect(description).toMatch(/\bOnly for\b/);
+		},
+	);
+
 	it("registers the four domain tools", () => {
 		expect([...registered.keys()]).toEqual([
 			CONTENT_INSPECT_TOOL_NAME,

@@ -33,7 +33,7 @@ function plugin(overrides: Partial<InstalledPlugin> = {}): InstalledPlugin {
 }
 
 describe("buildPluginRuntimeConfig", () => {
-	it("combines mode, contribution gate, permission and dynamic registration filters", () => {
+	it("keeps contributions of plugins whose declared agent_mode does not match the current mode", () => {
 		const contributions = new PluginAgentContributionRegistry(new DesktopPluginHookRegistry());
 		contributions.beginLoad("demo", "activation");
 		contributions.registerTool("demo", {
@@ -47,26 +47,47 @@ describe("buildPluginRuntimeConfig", () => {
 		contributions.commit("demo", "activation");
 		const logger = { debug: vi.fn(), warn: vi.fn() };
 
-		const visible = buildPluginRuntimeConfig({
+		const config = buildPluginRuntimeConfig({
 			plugins: [plugin({ agent_mode: ["work"] })],
-			agentMode: "work",
 			isContributionModeActive: () => true,
 			contributions,
 			resolveResource: (_plugin, path) => path,
 			resolveMcpRoot: (value) => value.rootPath,
 			logger,
 		});
-		expect(visible?.toolContributions).toEqual([expect.objectContaining({ pluginId: "demo", name: "demo_tool" })]);
+		expect(config?.toolContributions).toEqual([expect.objectContaining({ pluginId: "demo", name: "demo_tool" })]);
+	});
 
-		const hidden = buildPluginRuntimeConfig({
-			plugins: [plugin({ agent_mode: ["work"] })],
-			agentMode: "coding",
-			isContributionModeActive: () => true,
-			contributions,
-			resolveResource: (_plugin, path) => path,
-			resolveMcpRoot: (value) => value.rootPath,
-			logger,
+	it("still applies the contribution gate and permission filters", () => {
+		const contributions = new PluginAgentContributionRegistry(new DesktopPluginHookRegistry());
+		contributions.registerTool("demo", {
+			id: "tool",
+			name: "demo_tool",
+			description: "Demo tool",
+			parameters: {},
+			handlerId: "handler",
 		});
-		expect(hidden).toBeUndefined();
+		const logger = { debug: vi.fn(), warn: vi.fn() };
+		const shared = {
+			contributions,
+			resolveResource: (_plugin: InstalledPlugin, path: string) => path,
+			resolveMcpRoot: (value: InstalledPlugin) => value.rootPath,
+			logger,
+		};
+
+		expect(
+			buildPluginRuntimeConfig({
+				...shared,
+				plugins: [plugin({ agent_mode: ["work"] })],
+				isContributionModeActive: () => false,
+			}),
+		).toBeUndefined();
+		expect(
+			buildPluginRuntimeConfig({
+				...shared,
+				plugins: [plugin({ grantedPermissions: [] })],
+				isContributionModeActive: () => true,
+			}),
+		).toBeUndefined();
 	});
 });

@@ -138,7 +138,7 @@ export interface InstalledPlugin {
 		expose: string;
 	};
 	agent?: PluginAgentManifest;
-	/** 插件级工作模式白名单（agent_mode 轴，见 ADR-0046）。缺省/空 = 全局通用。 */
+	/** 插件声明的偏好工作模式。纯偏好，不排除：插件在任何模式下都会加载与展示。 */
 	agent_mode?: string | string[];
 	styleUrls: string[];
 	permissions: PluginPermission[];
@@ -213,7 +213,7 @@ export interface PluginAgentToolRegistration {
 	scope_use?: readonly string[];
 	/** 需要的会话能力 slug。 */
 	requires?: string[];
-	/** 允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
+	/** 偏好的工作模式 slug；只影响排序与详略，不排除该工具。 */
 	agent_mode?: readonly string[];
 	context?: { conversation?: "summary" | "messages" };
 	/**
@@ -642,9 +642,9 @@ export type PluginMediaProviderInvocationResult = { value: PluginMediaProviderJo
 
 export interface DesktopPluginsApi {
 	readonly internalCapabilities: DesktopPluginInternalCapabilitiesApi;
-	/** 当前工作模式（agent_mode 轴）下可见的插件；工作台与 UI 贡献用它。见 ADR-0046。 */
+	/** 全部已装插件；工作台与 UI 贡献用它。工作模式不再隐藏任何插件。 */
 	list(): Promise<InstalledPlugin[]>;
-	/** 全部已装插件，不按工作模式过滤；能力市场「我的」用它，避免另一模式的插件看起来像丢了。 */
+	/** 与 `list()` 等价的完整清单；能力市场「我的」在用。 */
 	listAll(): Promise<InstalledPlugin[]>;
 	installFromArchive(archiveBuffer: ArrayBuffer, options?: PluginInstallOptions): Promise<InstalledPlugin>;
 	installFromUrl(url: string, options?: PluginInstallOptions): Promise<InstalledPlugin>;

@@ -280,7 +280,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 					priority: 0,
 				},
 			]);
-			expect(frame.instructions[0]?.content).toContain("- read: Read a file");
+			expect(frame.instructions[0]?.content).toContain("Guidelines:");
 			expect([...frame.tools.keys()]).toEqual(["read"]);
 			const composition = frame.contextCompositionSections ?? [];
 			expect(composition).toEqual(
@@ -338,11 +338,11 @@ describe("Coding Agent model call and prompt runtime", () => {
 			composer.compose({
 				...context,
 				frame: {
-					instructions: [{ id: "core.tools", content: "collision", priority: 1 }],
+					instructions: [{ id: "core.guidelines", content: "collision", priority: 1 }],
 					tools: new Map(),
 				},
 			}),
-		).rejects.toThrow("Duplicate Coding Agent system prompt block id: core.tools");
+		).rejects.toThrow("Duplicate Coding Agent system prompt block id: core.guidelines");
 	});
 
 	it("reports final prompt diagnostics after feature contributions", async () => {

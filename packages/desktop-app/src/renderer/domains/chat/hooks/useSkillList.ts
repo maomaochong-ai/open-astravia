@@ -1,6 +1,4 @@
 import type { AppMonitorPromptRefUsageMap, SkillInfo } from "@preload/api";
-import { agentModeAtom } from "@shared/store/atoms";
-import { useAtomValue } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { filterSkills, sortSkillsForPanel } from "../lib/skill-ranking";
@@ -25,17 +23,17 @@ interface SkillListData {
  * 因此预取一次并缓存，展开时先用缓存立即出内容。
  *
  * 键带语言：内置 skill 的展示文案由主进程按当前语言给出，切语言后不能复用旧缓存。
- * 键带工作模式：插件贡献的 skill 受插件级 agent_mode 硬闸过滤（见 ADR-0046），切模式后列表不同。
+ * 不带工作模式：agent_mode 只是排序与详略偏好，主进程返回的 skill 清单不再随模式增减。
  */
 const cache = new Map<string, SkillListData>();
 const inflight = new Map<string, Promise<SkillListData>>();
 
-function cacheKey(cwd: string | undefined, language: string, agentMode: string): string {
-	return `${agentMode}|${language}|${cwd ?? ""}`;
+function cacheKey(cwd: string | undefined, language: string): string {
+	return `${language}|${cwd ?? ""}`;
 }
 
-async function load(cwd: string | undefined, language: string, agentMode: string): Promise<SkillListData> {
-	const key = cacheKey(cwd, language, agentMode);
+async function load(cwd: string | undefined, language: string): Promise<SkillListData> {
+	const key = cacheKey(cwd, language);
 	const running = inflight.get(key);
 	if (running) return running;
 	const task = Promise.all([
@@ -83,8 +81,7 @@ export function useSkillList({
 }): SkillListModel {
 	const { i18n } = useTranslation();
 	const language = i18n.language;
-	const agentMode = useAtomValue(agentModeAtom);
-	const cached = cache.get(cacheKey(cwd, language, agentMode));
+	const cached = cache.get(cacheKey(cwd, language));
 	const [skills, setSkills] = useState<SkillInfo[]>(cached?.skills ?? []);
 	const [usage, setUsage] = useState<AppMonitorPromptRefUsageMap>(cached?.usage ?? {});
 	const [loading, setLoading] = useState(false);
@@ -93,9 +90,9 @@ export function useSkillList({
 	// 刻意不等 requestIdleCallback：冷启动那几秒主线程被插件与主题占满，idle 会一路拖到
 	// 超时才跑，预取赶不上第一次展开就等于没预取。IPC 本身是异步的，挂载即发起不阻塞渲染。
 	useEffect(() => {
-		if (!prefetch || open || cache.has(cacheKey(cwd, language, agentMode))) return;
-		void load(cwd, language, agentMode).catch(() => undefined);
-	}, [agentMode, cwd, language, open, prefetch]);
+		if (!prefetch || open || cache.has(cacheKey(cwd, language))) return;
+		void load(cwd, language).catch(() => undefined);
+	}, [cwd, language, open, prefetch]);
 
 	useEffect(() => {
 		if (!open) return;
@@ -106,7 +103,7 @@ export function useSkillList({
 			setUsage(data.usage);
 		};
 		const refresh = (): void => {
-			void load(cwd, language, agentMode)
+			void load(cwd, language)
 				.then(apply)
 				.catch((error) => {
 					console.error("[useSkillList] load failed:", error);
@@ -115,7 +112,7 @@ export function useSkillList({
 					if (!cancelled) setLoading(false);
 				});
 		};
-		const seeded = cache.get(cacheKey(cwd, language, agentMode));
+		const seeded = cache.get(cacheKey(cwd, language));
 		if (!seeded) {
 			setLoading(true);
 			refresh();
@@ -132,7 +129,7 @@ export function useSkillList({
 			cancelled = true;
 			cancelIdle();
 		};
-	}, [agentMode, cwd, language, open]);
+	}, [cwd, language, open]);
 
 	const ranked = useMemo(() => sortSkillsForPanel(skills, usage), [skills, usage]);
 	const items = useMemo(() => filterSkills(ranked, filter), [filter, ranked]);

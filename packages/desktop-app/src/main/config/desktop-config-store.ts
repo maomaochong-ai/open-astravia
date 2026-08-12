@@ -32,7 +32,8 @@ export interface DesktopConfig {
 	vettaCliAppPath?: string;
 	notificationsEnabled?: boolean;
 	language?: LanguagePreference;
-	agentMode?: "work" | "coding";
+	/** 新建会话的默认工作模式。会话创建时固化进会话，改这里只影响之后新建的会话。 */
+	defaultAgentMode?: "work" | "coding";
 	experimental?: ExperimentalConfig;
 	knowledgeBase?: KnowledgeBaseConfig;
 	shortcuts?: ShortcutsConfig;
@@ -76,7 +77,7 @@ const DEFAULT_CONFIG: DesktopConfig = {
 	archivedProjects: [],
 	workspacePath: join(getVettaHomePath(), "workspace"),
 	defaultExecutionMode: "full-access",
-	agentMode: "work",
+	defaultAgentMode: "work",
 	debugMode: false,
 	notificationsEnabled: true,
 	experimental: { vettaCli: true, agentSkills: true },
@@ -197,7 +198,8 @@ function parseDesktopConfig(parsed: Record<string, unknown>): DesktopConfig {
 				? expandTildePath(parsed.workspacePath)
 				: DEFAULT_CONFIG.workspacePath,
 		defaultExecutionMode: normalizeExecutionMode(parsed.defaultExecutionMode),
-		agentMode: normalizeAgentMode(parsed.agentMode),
+		// 兼容 0.x 的旧字段名 agentMode（当时语义是全局工作模式），老用户配置不丢。
+		defaultAgentMode: normalizeAgentMode(parsed.defaultAgentMode ?? parsed.agentMode),
 		debugMode: typeof parsed.debugMode === "boolean" ? parsed.debugMode : false,
 		vettaAppPath: typeof parsed.vettaAppPath === "string" ? parsed.vettaAppPath : undefined,
 		vettaCliAppPath: typeof parsed.vettaCliAppPath === "string" ? parsed.vettaCliAppPath : undefined,

@@ -42,7 +42,8 @@ Desktop Plugin API 首期只开放 `tool.before`、`tool.after`、`tool.error`�
 - Plugin handler 经 renderer IPC 执行，受 `agent.hooks.register` 与 `agent.hookHandler.execute` 双权限约束，输入和输出在边界做结构校验。
 - handler 异常、超时或返回非法结构时 fail-open 并记录诊断；显式 `block` 才阻断执行。
 - `tool.error` 只能追加反馈，不能吞掉原错误；取消信号继续向 handler 和工具传播。
-- `scope_use` 必须显式声明且 fail-closed；`agent_mode` 与 `toolNames` 只进一步收窄匹配范围。
+- `scope_use` 必须显式声明且 fail-closed；`toolNames` 只进一步收窄匹配范围。
+  （2026-08 修订：原文中的 `agent_mode` 已随 ADR-0046 的软化退出匹配，不再收窄 Hook 范围。）
 
 ## 后果
 

@@ -70,6 +70,8 @@ export class CodingAgentSessionConfigurationState {
 				this.hasPluginOverride = true;
 				this.revision += 1;
 			},
+			// 只剩 SDK 宿主（sdk-session）这一条调用路径：Desktop 的工作模式在会话创建时
+			// 固化、会话内不可变，Runtime Host 已不再向活跃会话推送模式。
 			setAgentMode: (mode) => {
 				if (this.agentMode === mode) return;
 				this.agentMode = mode;

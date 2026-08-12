@@ -9,6 +9,10 @@ All notable changes to `@vetta/runtime-tools` are documented in this file.
 - **CodingToolCatalog 执行仲裁合同**：`resolve(toolName)` 返回带稳定 Capability Binding 的 Catalog Entry，只读 Catalog 新增 `execute(binding, request)`；Coding Tools 不再写入编译期 `RuntimeSnapshot.tools`，改为通过 Model Call Contribution 在每次模型调用前物化。
 - **退役 Coding Agent 工具兼容根**：包根改为暴露与 `@vetta/runtime-tools/coding` 相同的原生 Runtime Tool API，不再提供旧工具单例集合与旧工厂转发。
 
+### Changed
+
+- **`agentModes` 不再参与工具激活选择（行为变化）**：`selectCodingToolRegistrations` / `selectCodingTools` 删除 agent_mode 过滤分支。声明了 `agentModes: ["work"]` 的内置工具（`doc_to_pdf`、`html_to_pdf`、`extract_text_from_pdf`、`extract_text_from_img`、`render_pdf_page`、`progress`）现在在任意工作模式下都会被激活并出现在模型工具清单里。工作模式的定位是引导模型该先用什么，不是决定工具存不存在；`scopeUse` 与 `requires` 仍是仅有的两条 fail-closed 轴。`CodingToolRegistration.agentModes` 与 `CodingToolActivation.agentMode` 字段保留为偏好声明，供宿主做排序与提示词详略。
+
 ### Added
 
 - **Turn-bound Tool Catalog lease 与显式 hard revoke**：Turn admission 捕获不可变 Catalog 与具体

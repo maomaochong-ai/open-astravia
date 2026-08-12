@@ -480,8 +480,6 @@ export class RuntimeHost implements SessionFacade {
 			pendingConfiguration: {
 				executionMode: undefined,
 				hasExecutionMode: false,
-				agentMode: undefined,
-				hasAgentMode: false,
 				agentPlugins: undefined,
 				hasAgentPlugins: false,
 			},
@@ -652,27 +650,10 @@ export class RuntimeHost implements SessionFacade {
 		}
 	}
 
-	/**
-	 * 全局切换工作模式（agent_mode 轴，纯全局态）。对每个 mode 不同的活跃 session 写 pending，
-	 * 于各自下一个 turn 边界（prompt 入口）apply，避免 streaming 中途换工具集。见 ADR-0046。
-	 */
-	setGlobalAgentMode(mode: string): void {
-		for (const handle of this.sessions.values()) {
-			if (handle.agentMode === mode) {
-				handle.pendingConfiguration.agentMode = undefined;
-				handle.pendingConfiguration.hasAgentMode = false;
-				continue;
-			}
-			handle.pendingConfiguration.agentMode = mode;
-			handle.pendingConfiguration.hasAgentMode = true;
-		}
-	}
-
 	async prompt(sessionId: string, request: PromptRequest): Promise<RuntimeTurnPromptOutcome> {
 		const handle = this.requireSession(sessionId);
 		await this.applyPendingExecutionMode(sessionId, handle);
 		await this.applyPendingAgentPlugins(sessionId, handle);
-		this.applyPendingAgentMode(handle);
 
 		// Session cwd (esp. desktop ADR-0007 per-session dirs) may have been deleted
 		// while the handle stayed open (clear-artifacts, manual cleanup). Heal before tools run.
@@ -726,7 +707,6 @@ export class RuntimeHost implements SessionFacade {
 		const handle = this.requireSession(sessionId);
 		await this.applyPendingExecutionMode(sessionId, handle);
 		await this.applyPendingAgentPlugins(sessionId, handle);
-		this.applyPendingAgentMode(handle);
 		await handle.turnControl.continue();
 	}
 
@@ -959,6 +939,7 @@ export class RuntimeHost implements SessionFacade {
 			...(state.contextComposition ? { contextComposition: state.contextComposition } : {}),
 			activeToolNames: [...state.activeToolNames],
 			scenario: handle.scenario,
+			...(handle.agentMode !== undefined ? { agentMode: handle.agentMode } : {}),
 			parentSessionPath: state.parentSessionPath,
 			parentEntryId: state.parentEntryId,
 		};
@@ -1280,20 +1261,6 @@ export class RuntimeHost implements SessionFacade {
 			throw error;
 		}
 		this.broadcastActiveToolNames(sessionId, handle);
-	}
-
-	/**
-	 * 在 turn 边界应用挂起的工作模式切换（仿 applyPendingAgentPlugins）。
-	 * streaming / bash 运行中不 apply，留到再下一个 turn 边界。见 ADR-0046。
-	 */
-	private applyPendingAgentMode(handle: SessionHandle): void {
-		if (!handle.pendingConfiguration.hasAgentMode) return;
-		if (handle.executionController.isBusy()) return;
-		const pendingAgentMode = handle.pendingConfiguration.agentMode;
-		handle.pendingConfiguration.agentMode = undefined;
-		handle.pendingConfiguration.hasAgentMode = false;
-		handle.agentMode = pendingAgentMode;
-		handle.configurationController.setAgentMode(pendingAgentMode);
 	}
 
 	private async applyExecutionMode(

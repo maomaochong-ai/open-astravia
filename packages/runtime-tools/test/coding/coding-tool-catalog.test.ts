@@ -362,6 +362,42 @@ describe("coding tool activation", () => {
 			}).map(({ name }) => name),
 		).toEqual(["default-cli"]);
 	});
+
+	it("activates mode-declaring tools under every agent mode", () => {
+		// agent_mode 是软引导偏好，不是激活轴：换模式不能让工具从清单里消失。
+		const workOnly = { ...registration("work-only", ["cli"]), agentModes: ["work"] };
+		for (const agentMode of [undefined, "work", "coding", "unknown-mode"]) {
+			expect(
+				selectCodingTools([...registrations, workOnly], {
+					mode: "scope",
+					scope: "cli",
+					...(agentMode ? { agentMode } : {}),
+				}).map(({ name }) => name),
+			).toEqual(["default-cli", "work-only"]);
+		}
+	});
+
+	it("keeps scope_use and requires fail-closed", () => {
+		const guarded = { ...registration("guarded", ["cli"]), requires: ["kb"] };
+		expect(
+			selectCodingTools([guarded], { mode: "scope", scope: "cli", agentMode: "work" }).map(({ name }) => name),
+		).toEqual([]);
+		expect(
+			selectCodingTools([guarded], {
+				mode: "scope",
+				scope: "cli",
+				capabilities: new Set(["kb"]),
+				agentMode: "work",
+			}).map(({ name }) => name),
+		).toEqual(["guarded"]);
+		expect(
+			selectCodingTools([guarded], {
+				mode: "scope",
+				scope: "project",
+				capabilities: new Set(["kb"]),
+			}).map(({ name }) => name),
+		).toEqual([]);
+	});
 });
 
 function registration(name: string, scopeUse: readonly CodingToolScope[]): CodingToolRegistration {

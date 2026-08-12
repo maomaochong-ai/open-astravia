@@ -4,12 +4,21 @@ All notable changes to `@vetta/runtime-core` are documented in this file.
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- **移除 `RuntimeHost.setGlobalAgentMode` 与 agent_mode 的 Turn 边界 pending 通道**：Agent Mode 现在只在
+  `createSession` 时固化，会话内不可变，宿主不再能向活跃会话推送模式。Session 配置 overlay
+  （`pendingConfiguration`）只保留 Execution Mode 与 Agent Plugins 两条通道。
+
 ### Added
 
 - **Turn-bound Runtime Generation**（ADR-0069）：`RuntimeSnapshotProvider.acquire` 接收 Session/operation
   context，并在同一次 lease 中绑定 Snapshot、模型和动态 Model Call 组件；Turn 释放时精确释放其外部
   generation lease。Execution Mode 更新不再因活动 Session 被拒绝，而是进入统一 Session 配置 overlay，
   在下一 Turn 前应用。
+- `SessionStateSnapshot` 新增可选字段 `agentMode`：回传本会话创建时固化的工作模式，供宿主按会话而非
+  全局默认值渲染。未指定模式的会话（CLI/headless）不带该字段。
+- `ModelCallFrame` 新增可选字段 `systemPromptStableLength`：由 Profile 的 Frame Composer 声明系统提示词稳定前缀长度，`resolveModelCallFrame` 原样透传，Turn Engine 写入 `Context.systemPromptStableLength` 供 Provider 切缓存断点。`instructionOverride` 生效时该值被显式丢弃（override 替换了整段 Prompt，偏移不再成立）。
 - 新增 `toolcall.args` 会话事件：模型流式生成工具参数时，每多解析出一个值已完整的键就播报一次（按键数增长节流，不逐 token）。`edit` / `write` 的开销几乎全在生成参数上，只听 `tool.start` 的消费方要等工具执行完才知道目标；路径通常是第一个键，这条事件能提前拿到。`tool.start` 仍是权威全量参数。
 
 ### Breaking Changes

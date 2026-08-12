@@ -8,7 +8,11 @@ import {
 	type RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { McpDeferredToolController } from "@vetta/runtime-mcp";
-import { type CodingToolActivation, guardCodingToolRegistration } from "@vetta/runtime-tools/coding";
+import {
+	type AskUserQuestionCapability,
+	type CodingToolActivation,
+	guardCodingToolRegistration,
+} from "@vetta/runtime-tools/coding";
 import type { CodingAgentContextRuntime } from "../../adapters/runtime-core/context-runtime/index.js";
 import { createEcosystemToolInterceptor } from "../../adapters/runtime-core/ecosystem-hook-tool-wrapper.js";
 import type { CodingAgentExtensionRunAdapter } from "../../adapters/runtime-core/extension-run-adapter.js";
@@ -42,6 +46,11 @@ import type {
 	CodingAgentRuntimeToolRegistration,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../../runtime-contracts/index.js";
+import {
+	createHeavyToolConfirmationInterceptor,
+	HeavyToolConfirmationLedger,
+} from "../../tool-policy/heavy-tool-confirmation.js";
+import { createCodingAgentToolSideEffectResolver } from "../../tool-policy/tool-side-effect.js";
 import type { CodingAgentTodoRuntime } from "../../work-state/contracts.js";
 import { CodingAgentTodoContinuationSource } from "../../work-state/todo-continuation-source.js";
 import type { CodingAgentSubagentRuntime } from "../subagent/runtime.js";
@@ -103,6 +112,8 @@ export interface CodingAgentTurnCapabilitySessionAssemblyOptions {
 	readonly mcpController?: McpDeferredToolController;
 	readonly extensionEvents: CodingAgentExtensionRunAdapter;
 	readonly extensionToolRuntime?: CodingAgentExtensionToolRuntime;
+	/** 宿主提问能力，heavy 工具首调确认闸的后端；缺省时确认闸走降级路径。 */
+	readonly askUserQuestion?: AskUserQuestionCapability;
 }
 
 export interface CodingAgentTurnCapabilitySessionAssembly {
@@ -194,6 +205,22 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				hookRuntime: options.hookRuntime,
 			})
 		: undefined;
+	// 「会话内已确认」是执行状态而非逻辑合同（见 docs/agent/turn/08-binding-boundaries.md 1.2），
+	// 因此台账与确认闸都实时读写，Turn 绑定不复制它。
+	const heavyToolConfirmationLedger = new HeavyToolConfirmationLedger();
+	const heavyToolConfirmationInterceptor = createHeavyToolConfirmationInterceptor({
+		ledger: heavyToolConfirmationLedger,
+		capability: options.askUserQuestion,
+		resolveSideEffect: createCodingAgentToolSideEffectResolver({
+			readDeclarations: () => [
+				...options.productToolRegistrations.map((registration) => ({
+					name: registration.tool.name,
+					sideEffect: registration.sideEffect,
+				})),
+				...(options.activation.readAgentPlugins()?.toolContributions ?? []),
+			],
+		}),
+	});
 	const toolInterceptionCatalog = new DynamicContributionCatalog<CodingAgentToolInterceptor>();
 	toolInterceptionCatalog.register({
 		sourceId: "ecosystem",
@@ -201,6 +228,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 		revision: "session",
 		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.ecosystem,
 		value: createEcosystemToolInterceptor(options.hookRuntime),
+	});
+	toolInterceptionCatalog.register({
+		sourceId: "tool-policy",
+		localId: "heavy-tool-confirmation",
+		revision: "session",
+		order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.sideEffectConfirmation,
+		value: heavyToolConfirmationInterceptor,
 	});
 	if (options.extensionEvents) {
 		toolInterceptionCatalog.register({
@@ -269,6 +303,13 @@ export async function createCodingAgentTurnCapabilitySessionAssembly(
 				revision: "turn",
 				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.extension,
 				value: boundExtensionEvents.createToolInterceptor(),
+			});
+			catalog.register({
+				sourceId: "tool-policy",
+				localId: "heavy-tool-confirmation",
+				revision: "turn",
+				order: CODING_AGENT_TOOL_INTERCEPTION_ORDER.sideEffectConfirmation,
+				value: heavyToolConfirmationInterceptor,
 			});
 			return {
 				wrapTools: (tools, frameContext) => {

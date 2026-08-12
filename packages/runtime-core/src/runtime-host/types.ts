@@ -57,15 +57,16 @@ export interface SessionHandle {
 	pendingConfiguration: {
 		executionMode: SessionExecutionMode | undefined;
 		hasExecutionMode: boolean;
-		agentMode: string | undefined;
-		hasAgentMode: boolean;
 		agentPlugins: AgentPluginRuntimeConfig | undefined;
 		hasAgentPlugins: boolean;
 	};
 	agentPluginsEnabled: boolean;
 	/** 本会话解析后的对话场景（缺省回落 DEFAULT_SCENARIO），getState 回传给 renderer。 */
 	scenario: NonNullable<SessionConfig["scenario"]>;
-	/** 当前生效的工作模式（agent_mode 轴）。undefined = 不过滤。见 ADR-0046。 */
+	/**
+	 * 本会话创建时固化的工作模式（见 ADR-0046 修订）。会话内不可变，getState 回传给
+	 * renderer，供其按本会话而非全局默认值渲染。undefined = 未指定（CLI/headless 缺省）。
+	 */
 	agentMode: string | undefined;
 	/**
 	 * 空闲期提前 apply 挂起插件配置的合并定时器。插件 activate 会逐个工具打

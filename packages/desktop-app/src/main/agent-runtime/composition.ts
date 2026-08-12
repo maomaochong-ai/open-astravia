@@ -89,7 +89,6 @@ export function createDesktopRuntimeComposition(): DesktopRuntimeComposition {
 		createHookAdapterFactories: ({ scenario }) => [
 			createDesktopPluginHookAdapterFactory({
 				scenario,
-				readAgentMode: () => pluginAgentContributionService.getAgentMode(),
 				canInvoke: (pluginId) => pluginAgentContributionService.canInvokeHook(pluginId),
 			}),
 		],

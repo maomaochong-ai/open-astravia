@@ -29,8 +29,13 @@ export interface AgentPluginToolContribution {
 	scope_use?: string[];
 	/** 需要的会话能力 slug（如 "knowledge"）。 */
 	requires?: string[];
-	/** 允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
+	/** 主推的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。纯排序偏好，不排除工具。见 ADR-0046 修订。 */
 	agent_mode?: string[];
+	/**
+	 * 副作用等级（"light" | "heavy"，缺省 = light）。宿主侧元数据，不进 LLM schema。
+	 * heavy 工具在会话内首次调用前需要用户确认，见 tool-policy/heavy-tool-confirmation.ts。
+	 */
+	side_effect?: string;
 	context?: { conversation?: "summary" | "messages" };
 	/**
 	 * 该工具带有宿主自渲染卡片（插件注册了 tool-call slot），其结果是用户当作答案来读的
@@ -153,7 +158,7 @@ export interface McpServerContribution {
 	/** Unique runtime key; must not contain `_` (tool name adapter constraint). */
 	runtimeName: string;
 	config: AgentPluginMcpServerConfig;
-	/** 该 server 的工具允许出现的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。见 ADR-0046。 */
+	/** 该 server 的工具主推的工作模式 slug（agent_mode 轴，缺省/空 = 通用）。纯排序偏好，不排除工具。见 ADR-0046 修订。 */
 	agent_mode?: string[];
 }
 

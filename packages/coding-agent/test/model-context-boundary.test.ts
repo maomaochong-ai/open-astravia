@@ -80,9 +80,9 @@ describe("Coding Agent model context", () => {
 	it("rebuilds product prompt and skill index from current inputs", () => {
 		const readPrompt = buildSystemPrompt({ selectedTools: ["read"], skills: [] });
 		const writePrompt = buildSystemPrompt({ selectedTools: ["write"], skills: [] });
-		expect(readPrompt).toContain("- read:");
-		expect(readPrompt).not.toContain("- write:");
-		expect(writePrompt).toContain("- write:");
+		// 工具清单已不进提示词，随工具集变化的是 guidelines。
+		expect(readPrompt).not.toContain("Use write only for new files");
+		expect(writePrompt).toContain("Use write only for new files or complete rewrites");
 
 		expect(
 			formatSkillsForProductPrompt([

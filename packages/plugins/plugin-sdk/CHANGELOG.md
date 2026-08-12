@@ -15,6 +15,7 @@ All notable changes to `@vetta-org/plugin-sdk` are documented in this file.
 
 ### Changed
 
+- **`agent_mode` 由硬闸降级为纯偏好声明（行为变化）**：`plugin.json#agent_mode`、`registerTool({ agent_mode })` 与 `registerHook({ agent_mode })` 不再排除任何贡献。插件在任何工作模式下都会加载，声明的 Hook 在任何模式下都会按 `scope_use` 与工具 matcher 触发；宿主只把该字段当作排序与提示词详略的偏好。需要按模式定制行为的插件请在 handler 内用 `ctx.getAgentMode()` 自行判断。
 - Activity Tab 现在默认采用有界 warm 驻留：访问过的组件在切换后保留，宿主按 LRU 最多缓存 2 个非活动 tab 并在空闲阶段淘汰。新增 `PluginActivityTabContribution.retention`（`active-only | warm | pinned`）；旧 `keepAliveWhenAvailable` 保持兼容并标记弃用（`true`=`pinned`，`false`=`active-only`）。
 - `setActivityPanelWidth("max")` 与 `openActivityTab(id, { width: "max" })` 的 `"max"` 从「按当前窗口算一次宽度」改为**持续状态**：窗口尺寸变化时宿主重新求值，面板跟着一起变宽变窄，直到用户拖动分隔条或有人写入具体像素为止。传数字的行为不变（仍是一次性的固定宽度）。插件无需改动。
 - **`official.sessions.list()` 的条目新增 `access`**（`PluginOfficialSessionAccess`：`readHistory` / `interactiveResume` / `rename` / `delete`）。宿主自己点会话时就是按这几位分流的（可续聊 / 只读查看 / 完全打不开），此前插件层把它丢掉了，插件只能盲跳。缺字段一律读作 `false`（= 完全不可用）：宁可退回新建会话页，也不要把用户送进一个打不开的会话。

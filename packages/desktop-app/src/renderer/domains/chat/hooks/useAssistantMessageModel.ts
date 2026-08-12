@@ -1,5 +1,10 @@
 import type { ChatMessage, TextBlock } from "@shared/store/atoms";
-import { activeSessionAtom, agentModeAtom, pluginToolCallSlotsAtom, promptPredictingAtom } from "@shared/store/atoms";
+import {
+	activeSessionAtom,
+	pluginToolCallSlotsAtom,
+	promptPredictingAtom,
+	sessionAgentModeAtom,
+} from "@shared/store/atoms";
 import { useAtomValue } from "jotai";
 import { selectAtom } from "jotai/utils";
 import { useMemo } from "react";
@@ -44,7 +49,9 @@ export function useAssistantMessageModel({
 	const isRuntimePredicting = useAtomValue(isPredictingAtom);
 	const customToolNames = useMemo(() => new Set(toolCallSlots.map((slot) => slot.toolName)), [toolCallSlots]);
 	const isCurrentlyStreaming = isTailMessage && isStreaming;
-	const isWorkMode = useAtomValue(agentModeAtom) === "work";
+	// 按「本会话固化的模式」渲染，不是全局默认值——改新会话默认模式不该动到已打开的会话。
+	// 会话未打开/未指定模式时回落 work（与 DEFAULT_AGENT_MODE 一致）。
+	const isWorkMode = (useAtomValue(sessionAgentModeAtom) ?? "work") === "work";
 	const foldData = useMemo(
 		() => getAssistantFoldData(message.blocks ?? [], customToolNames),
 		[message.blocks, customToolNames],

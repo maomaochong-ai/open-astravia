@@ -6,7 +6,7 @@ import type {
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import { createInvokeSkillToolRegistration } from "@vetta/runtime-tools/coding";
-import { matchesAgentMode } from "../../profiles/index.js";
+import { sortByAgentModePreference } from "../../profiles/index.js";
 import type { CodingAgentPromptResourceSource } from "../../runtime-contracts/prompt-runtime.js";
 import { CODING_AGENT_MODEL_TOOL_ORDER } from "../../tool-policy/model-tool-order.js";
 import { readSkillContent, type Skill } from "./index.js";
@@ -33,12 +33,11 @@ export function createCodingAgentInvokeSkillFeature(
 	const readVisibleSkills = (): Skill[] => {
 		options.resourceSource.refreshSkillsIfChanged();
 		const mode = options.readAgentMode?.();
-		return options.resourceSource
+		const invocable = options.resourceSource
 			.getSkills()
-			.skills.filter(
-				(skill) =>
-					!skill.disableModelInvocation && skill.type !== "scene" && matchesAgentMode(skill.agentMode, mode),
-			);
+			.skills.filter((skill) => !skill.disableModelInvocation && skill.type !== "scene");
+		// agent_mode 是软引导：非本模式主推的 skill 依然可被模型调用，只是排在候选列表末尾。
+		return sortByAgentModePreference(invocable, mode, (skill) => skill.agentMode);
 	};
 	const pendingActivations = new Map<string, EcosystemHookContributionSource>();
 	const createRegistration = (getSkills: () => Skill[]) =>

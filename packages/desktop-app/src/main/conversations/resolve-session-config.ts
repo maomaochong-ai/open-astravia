@@ -5,6 +5,7 @@ import { allowProjectRoot, readDesktopConfig } from "../ipc/fs.js";
 import { getAppLogger } from "../logger.js";
 import { pluginAgentContributionService } from "../plugins/plugin-catalog.js";
 import { summarizeAgentPluginRuntimeConfig } from "../plugins/plugin-runtime-config-builder.js";
+import { type DesktopAgentMode, LEGACY_SESSION_AGENT_MODE, readSessionAgentMode } from "./session-agent-mode-store.js";
 import {
 	ensureConversationSubCwd,
 	ensureSessionWorkingCwd,
@@ -22,6 +23,22 @@ export interface ResolvedDesktopSessionConfig {
 	cwd: string;
 	scenario: ConversationScenario;
 	includeAgentSkills: boolean;
+	/** 本会话固化的工作模式；创建后由调用方落盘，会话内不可变。 */
+	agentMode: DesktopAgentMode;
+}
+
+/**
+ * 工作模式的唯一来源：
+ * - 新建会话取 desktop-config 的 defaultAgentMode（新会话默认值）；
+ * - 恢复已有会话取该会话创建时固化的记录，缺记录时回落常量，绝不回落当前默认值，
+ *   否则改默认值会连带改写历史会话的模式。
+ */
+async function resolveSessionAgentMode(
+	existingSessionPath: string | undefined,
+	defaultAgentMode: DesktopAgentMode,
+): Promise<DesktopAgentMode> {
+	if (!existingSessionPath) return defaultAgentMode;
+	return (await readSessionAgentMode(existingSessionPath)) ?? LEGACY_SESSION_AGENT_MODE;
 }
 
 export async function resolveDesktopSessionConfig(
@@ -51,8 +68,7 @@ export async function resolveDesktopSessionConfig(
 				? `${config.appendSystemPrompt}\n\n${VETTA_CLI_GUIDANCE}`
 				: VETTA_CLI_GUIDANCE
 			: config?.appendSystemPrompt;
-	// 让插件级 agent_mode 硬闸的当前模式与本会话一致（纯全局态，见 ADR-0046）。
-	pluginAgentContributionService.setAgentMode(desktopConfig.agentMode ?? "work");
+	const agentMode = await resolveSessionAgentMode(config?.sessionPath, desktopConfig.defaultAgentMode ?? "work");
 	const agentPlugins = pluginAgentContributionService.buildRuntimeConfig();
 	pluginLog.debug("session create plugin snapshot", {
 		kind,
@@ -67,7 +83,7 @@ export async function resolveDesktopSessionConfig(
 			cwd: effectiveCwd,
 			sessionDir: injectedSessionDir ?? config?.sessionDir,
 			scenario,
-			agentMode: desktopConfig.agentMode ?? "work",
+			agentMode,
 			appendSystemPrompt,
 			askUserQuestion,
 			enableBackgroundTasks,
@@ -78,5 +94,6 @@ export async function resolveDesktopSessionConfig(
 		cwd: effectiveCwd,
 		scenario,
 		includeAgentSkills,
+		agentMode,
 	};
 }

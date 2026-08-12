@@ -192,7 +192,61 @@ describe("model call frame", () => {
 
 		expect([...ordered.tools.keys()]).toEqual(["early", "late", "plugin-first", "plugin-second"]);
 	});
+
+	it("passes the composer's system prompt cache breakpoint through to the frozen frame", async () => {
+		const frame = await resolve(composerSnapshot(11));
+
+		expect(frame.systemPromptStableLength).toBe(11);
+		expect(Object.isFrozen(frame)).toBe(true);
+	});
+
+	it("leaves the cache breakpoint undefined when the composer declares none", async () => {
+		expect((await resolve(composerSnapshot(undefined))).systemPromptStableLength).toBeUndefined();
+	});
+
+	it("leaves the cache breakpoint undefined without a composer", async () => {
+		const frame = await resolve({
+			...baseSnapshot(),
+			instructions: [{ id: "base", content: "base prompt", priority: 100 }],
+		});
+
+		expect(frame.systemPromptStableLength).toBeUndefined();
+	});
 });
+
+function baseSnapshot(): Parameters<typeof resolveModelCallFrame>[0] {
+	return {
+		id: "snapshot-1",
+		instructions: [],
+		tools: new Map(),
+		modelCallProviders: [],
+		contextProviders: [],
+		contextStrategy: new PassthroughContextStrategy(),
+		toolPolicy: {
+			async authorize() {
+				return true;
+			},
+		},
+		tokenBudget: 8_000,
+		reservedOutputTokens: 1_000,
+		observers: [],
+	};
+}
+
+function composerSnapshot(systemPromptStableLength: number | undefined): Parameters<typeof resolveModelCallFrame>[0] {
+	return {
+		...baseSnapshot(),
+		modelCallFrameComposer: {
+			async compose() {
+				return {
+					instructions: [{ id: "final", content: "stable part\n\nvolatile", priority: 0 }],
+					tools: new Map(),
+					systemPromptStableLength,
+				};
+			},
+		},
+	};
+}
 
 function resolve(snapshot: Parameters<typeof resolveModelCallFrame>[0]) {
 	return resolveModelCallFrame(snapshot, {
