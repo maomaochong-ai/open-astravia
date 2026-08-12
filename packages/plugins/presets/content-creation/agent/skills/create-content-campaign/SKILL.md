@@ -1,7 +1,6 @@
 ---
 name: create-content-campaign
 description: Plan and build a coherent multi-asset image/video content campaign from a brief, including concept candidates, authority assets, hero selection, derivative assets, shots, and delivery formats. Use for product launches, brand or logo systems, ecommerce listing packs, ad creative sets, social packs, character or portrait packs, cinematic product films, UGC-style ads, storyboard-to-video work, or any request with several related deliverables.
-agent_mode: work
 ---
 
 # Create a content campaign

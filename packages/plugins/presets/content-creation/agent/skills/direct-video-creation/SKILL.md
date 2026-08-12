@@ -1,7 +1,6 @@
 ---
 name: direct-video-creation
 description: Turn creative intent into a production-ready AI video brief, treatment, script/beat plan, shot cards, animatic/keyframe plan, node workflow, and model-profile prompts. Use for text-to-video, image-to-video, multi-shot or dialogue scenes, reference-video transformation, video editing or continuation, product/logo/jewelry/fashion/social/UGC films, fight scenes, character stories, cooking tutorials, music videos, award or freeze effects, talking-character clips, drone or one-shot footage, long-form-to-short clipping plans, storyboards, prompt audits, camera/light/sound direction, race/chase/kinetic montage, or improving a video-generation node.
-agent_mode: work
 ---
 
 # Direct AI video creation

@@ -79,9 +79,9 @@ describe("hook 接线", () => {
 		return new Map(calls.map(([registration]) => [registration.eventName, registration]));
 	}
 
-	it("只在工作模式生效", () => {
+	it("不声明工作模式（ADR-0071：hook 在任何模式下都按 scope_use 触发）", () => {
 		for (const registration of registered(makeCtx()).values()) {
-			expect(registration.agent_mode).toEqual(["work"]);
+			expect(registration.agent_mode).toBeUndefined();
 		}
 	});
 

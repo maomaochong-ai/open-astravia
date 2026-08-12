@@ -1,7 +1,6 @@
 ---
 name: review-content-quality
 description: Evaluate generated images and videos against their creative brief, delivery requirements, continuity rules, and technical quality, then propose the smallest evidence-based repair. Use when the user asks whether an output is good, requests critique or selection among variants, reports weak or broken media, or before expanding an approved direction into more assets.
-agent_mode: work
 ---
 
 # Review content quality

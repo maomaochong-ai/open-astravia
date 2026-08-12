@@ -26,7 +26,7 @@
 
 - `plugin.json` 增加 `contributionMode.hardIsolation`。
 - 注册显式内容创作 input action，并与贡献模式同步。
-- 保留 `agent_mode: ["work"]` 与 `scope_use`。
+- 保留 `scope_use`。（`agent_mode` 已随 ADR-0071 废弃，不再保留。）
 - 删除 `content_creation_get_state`，统一使用 inspect。
 - 把打开 Activity Tab 合并到 edit/run 成功结果或 UI action，删除 `open_content_creation` 模型工具。
 - 将 prepared run 纳入 inspect/runtime 或 run/status，删除独立 get-run。

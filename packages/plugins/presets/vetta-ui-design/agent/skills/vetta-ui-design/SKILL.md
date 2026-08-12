@@ -1,7 +1,6 @@
 ---
 name: vetta-ui-design
 description: "Build and edit design documents (.vetd) on the Vetta design canvas — app screens, landing pages, slides, posters, infographics. Use when the user asks for a UI design, mockup, screen, deck, or poster, or attaches a design frame/element from the canvas. Frames are real React (TSX) routes, not pictures."
-agent_mode: work
 ---
 
 # Vetta UI Design

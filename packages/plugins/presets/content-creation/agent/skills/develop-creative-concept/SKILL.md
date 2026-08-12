@@ -1,7 +1,6 @@
 ---
 name: develop-creative-concept
 description: Develop a vague content request into a reviewable creative strategy, big idea, treatment, script spine, visual system, and acceptance criteria before image or video production. Use when the user has a goal, product, theme, or audience but no concrete image, scene, campaign concept, narrative, or production-ready brief; also use to compare creative directions before building a workflow.
-agent_mode: work
 ---
 
 # Develop a creative concept

@@ -1,7 +1,6 @@
 ---
 name: direct-image-creation
 description: Turn a creative request into a production-ready AI image brief, reference plan, node workflow, and model-profile prompt. Use for text-to-image, surgical editing, exact text or infographics, image analysis and style transfer, logos and brand kits, ads and publishing assets, ecommerce listing sets, product/food/fashion/portrait imagery, virtual try-on and identity-preserving effects, interiors and floor plans, UI mockups, character sheets, presentation visuals, social covers and thumbnails, multi-panel grids, storyboards, visual variants, composition changes, or improving an image-generation node.
-agent_mode: work
 ---
 
 # Direct AI image creation

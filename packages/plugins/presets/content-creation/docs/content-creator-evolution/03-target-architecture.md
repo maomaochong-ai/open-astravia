@@ -42,7 +42,7 @@
 - `plugin.json` 增加 `contributionMode.hardIsolation: true`；
 - 提供 input action 打开/关闭内容创作模式；
 - 未打开时 tools、skills、system prompt 和 Activity Tab 都不进入会话；
-- `agent_mode: ["work"]` 继续作为上层硬界。
+- ~~`agent_mode: ["work"]` 继续作为上层硬界。~~（已失效：agent_mode 随 ADR-0071 废弃，误调防线改由 heavy 首调确认与 run 自带确认承担。）
 
 这直接解决无关 Work 对话被污染的问题。
 

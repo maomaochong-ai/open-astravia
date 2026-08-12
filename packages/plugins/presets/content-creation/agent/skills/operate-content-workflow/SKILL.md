@@ -1,7 +1,6 @@
 ---
 name: operate-content-workflow
 description: Inspect, diagnose, create, edit, connect, and run Vetta content-creation node workflows. Use when the user asks to build or modify a content workflow, refers to selected canvas nodes, wants to understand workflow or generation status, needs an image/video generation failure diagnosed, or asks the agent to operate the content-creation canvas.
-agent_mode: work
 ---
 
 # Operate a content workflow
