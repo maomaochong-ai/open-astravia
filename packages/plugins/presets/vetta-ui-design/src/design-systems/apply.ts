@@ -1,5 +1,5 @@
 import type { PluginFsApi } from "@vetta-org/plugin-sdk";
-import { ensureSnapshotsIgnored } from "../cards/snapshots";
+import { ensureDesignIgnored } from "../vetd/design-ignore";
 import { manifestPathOf, type VetdManifest } from "../vetd/manifest-types";
 import { designSystemById } from "./index";
 import type { DesignSystem } from "./types";
@@ -85,7 +85,7 @@ export async function snapshotBeforeApply(fs: PluginFsApi, dirPath: string): Pro
 		await fs.createDirectory(parent);
 		await fs.writeFile(target, content);
 	}
-	await ensureSnapshotsIgnored(fs, dirPath);
+	await ensureDesignIgnored(fs, dirPath);
 }
 
 export async function hasBackup(fs: PluginFsApi, dirPath: string): Promise<boolean> {

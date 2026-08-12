@@ -1,5 +1,6 @@
 import type { Disposable, PluginContext } from "@vetta-org/plugin-sdk";
 import { isFrameFile } from "../../engine/src/routes";
+import { bootstrapHistory } from "../history/history-bootstrap";
 import { type ParsedFrameMeta, parseFrameMeta, sameMeta, sanitizeFrameTitle, withFrameTitle } from "./frame-meta";
 import { FALLBACK_FRAME_SIZE, resolveFrameSizes } from "./frame-size";
 import {
@@ -77,6 +78,10 @@ export class DesignSession {
 			this.manifest = emptyManifest();
 		}
 		await this.reconcile();
+		// 版本历史在这里接上（ADR-0069）。放在 reconcile 之后：基础版本应该包含
+		// 已经收敛的 design.json，而不是打开瞬间的中间态。不等它——历史不可用
+		// 时设计照常打开。
+		void bootstrapHistory(this.ctx, this.dirPath);
 		this.lastThemeCss = await this.readThemeCss();
 		const schedule = () => this.scheduleReconcile();
 		this.watchHandles.push(this.ctx.fs.watchDirectory(this.dirPath, schedule));
