@@ -1,3 +1,4 @@
+import { capturePromptSkills } from "../model-context/prompt-snapshot.js";
 import type { CodingAgentPromptResourceResolver } from "../runtime-contracts/prompt-runtime.js";
 import type { SessionResourceRuntime } from "./contracts/resource-runtime.js";
 import {
@@ -21,7 +22,7 @@ export interface CodingAgentPromptResourceResolverOptions {
 export function createCodingAgentPromptResourceResolver(
 	options: CodingAgentPromptResourceResolverOptions,
 ): CodingAgentPromptResourceResolver {
-	return (text, promptRef) => {
+	const resolver: CodingAgentPromptResourceResolver = (text, promptRef) => {
 		options.resourceLoader.refreshSkillsIfChanged();
 		return expandPromptResourceReference(text, promptRef, {
 			resourceLoader: options.resourceLoader,
@@ -29,4 +30,15 @@ export function createCodingAgentPromptResourceResolver(
 			emitError: options.emitError,
 		});
 	};
+	resolver.bindForTurn = () => {
+		const skills = capturePromptSkills(options.resourceLoader);
+		return createCodingAgentPromptResourceResolver({
+			...options,
+			resourceLoader: {
+				getSkills: () => ({ skills: [...skills], diagnostics: [] }),
+				refreshSkillsIfChanged: () => false,
+			},
+		});
+	};
+	return resolver;
 }

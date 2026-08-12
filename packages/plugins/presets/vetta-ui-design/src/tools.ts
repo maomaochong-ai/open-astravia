@@ -8,7 +8,9 @@ import {
 } from "./canvas/design-runtime";
 import { captureFrameOffscreen, offscreenRasterSupported } from "./canvas/offscreen-raster";
 import { screenshotCardDescriptor, SCREENSHOT_TOOL_NAME } from "./cards/screenshot-card";
-import { ensureSnapshotsIgnored, pruneSnapshots, snapshotPath } from "./cards/snapshots";
+import { pruneSnapshots, snapshotPath } from "./cards/snapshots";
+import { registerHistoryTools } from "./history/history-tools";
+import { ensureDesignIgnored } from "./vetd/design-ignore";
 import { ENGINE_PROVIDED_PACKAGES } from "./engine/engine-files";
 import { engineDiagnostics, installDesignDependencies } from "./engine/engine-manager";
 import { composeNotePins } from "./notes/annotate";
@@ -277,7 +279,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 			const { dirPath, vetdPath } = controller.session;
 			const path = snapshotPath(dirPath, frameId, Date.now());
 			await host.fs.writeFile(path, base64, "base64");
-			await ensureSnapshotsIgnored(host.fs, dirPath);
+			await ensureDesignIgnored(host.fs, dirPath);
 			await pruneSnapshots(host.fs, dirPath, frameId);
 			// 只带这一帧自己的违规：截图是逐帧调的，把整份设计的 issues 全塞进来会让
 			// agent 拿着别的 frame 的报错去改当前这个。
@@ -462,6 +464,9 @@ export function registerDesignTools(ctx: PluginContext): void {
 			}
 		},
 	});
+
+	// 版本历史的两个工具在 history/history-tools.ts：历史相关的东西全归那一处。
+	registerHistoryTools(ctx, { resolveVetdPath, scopeUse: SCOPE_USE, agentMode: AGENT_MODE });
 
 	interface NotesInput {
 		ids?: string[];
@@ -714,7 +719,7 @@ export function registerDesignTools(ctx: PluginContext): void {
 					);
 					const path = snapshotPath(dirPath, `notes-${frameId}`, Date.now());
 					await host.fs.writeFile(path, annotated.split(",")[1] ?? "", "base64");
-					await ensureSnapshotsIgnored(host.fs, dirPath);
+					await ensureDesignIgnored(host.fs, dirPath);
 					await pruneSnapshots(host.fs, dirPath, `notes-${frameId}`);
 					screenshots.push({ frame: frameId, path });
 				} catch {

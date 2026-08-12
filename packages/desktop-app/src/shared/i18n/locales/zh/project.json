@@ -137,6 +137,15 @@
 		"failedTitle": "导出失败",
 		"failedConfirm": "好的"
 	},
+	"newProjectDialog": {
+		"title": "新建项目",
+		"description": "将在工作目录下创建一个新的项目文件夹。",
+		"placeholder": "输入项目名称",
+		"cancel": "取消",
+		"create": "创建",
+		"emptyError": "请输入项目名称",
+		"invalidError": "项目名称不能包含特殊字符"
+	},
 	"update": {
 		"newVersion": "发现新版本 {{version}}，点击后台下载",
 		"downloading": "正在下载 {{version}}（{{pct}}%）",

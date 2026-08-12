@@ -56,7 +56,10 @@ export class ContentCreationAgentService {
 			nodeId,
 			position,
 		}));
-		return await this.workspace.dispatch(cwd, [...commands, ...layoutCommands], project.revision);
+		return await this.workspace.dispatch(cwd, [...commands, ...layoutCommands], project.revision, {
+			origin: "agent",
+			action: { kind: "agent.edit", count: operations.length },
+		});
 	}
 
 	async prepareRun(cwd: string, requestedNodeIds?: readonly string[], expectedRevision?: number): Promise<ContentPreparedRun> {

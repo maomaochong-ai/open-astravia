@@ -106,7 +106,7 @@ async function initializeSession<TOwnershipBinding>(
 			activeOwnership = undefined;
 		},
 	});
-	const extensionEvents = new CodingAgentExtensionRunAdapter();
+	const extensionEvents = new CodingAgentExtensionRunAdapter(options.extensionToolRuntime?.runnerGenerations);
 	options.registry.indexes.resourceContexts.set(activeSessionId, resourceContext);
 	rollback.defer({
 		id: "resource-context-binding",
@@ -256,10 +256,25 @@ async function initializeSession<TOwnershipBinding>(
 				systemPromptAddon: sessionOptions.systemPromptAddon,
 			},
 			activation: {
-				resolve: (context) => options.resolveActivation(context, configurationState.readAgentMode()),
+				resolve: (context) =>
+					options.resolveActivation(
+						context,
+						configurationState.readAgentMode(),
+						configurationState.readActiveToolNamesOverride(),
+					),
 				readAgentMode: () => configurationState.readAgentMode(),
 				readAgentPlugins: () => configurationState.readAgentPlugins(),
 				readActiveToolNamesOverride: () => configurationState.readActiveToolNamesOverride(),
+				bindForTurn: () => {
+					const revision = configurationState.captureRevision();
+					return {
+						resolve: (context) =>
+							options.resolveActivation(context, revision.agentMode, revision.activeToolNamesOverride),
+						agentMode: revision.agentMode,
+						agentPlugins: revision.agentPlugins,
+						activeToolNamesOverride: revision.activeToolNamesOverride,
+					};
+				},
 			},
 			prompt: {
 				systemPromptOptionsResolver:

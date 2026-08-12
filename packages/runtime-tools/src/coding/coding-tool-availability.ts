@@ -43,7 +43,7 @@ export function guardCodingToolRegistration(
 	return {
 		...entry.registration.tool,
 		modelOrder: entry.registration.modelOrder ?? entry.registration.tool.modelOrder,
-		execute: (request) => catalog.execute(entry.binding, request),
+		execute: (request) => catalog.execute(entry.binding, request, entry.registration.tool),
 	};
 }
 

@@ -39,15 +39,27 @@ export class McpServerRuntimeToolSource implements McpRuntimeToolSource {
 			const client = binding.client;
 			if (!client) continue;
 			for (const mcpTool of binding.view.tools) {
-				const baseTool = createMcpRuntimeTool(mcpTool, client, binding.view.name, {
-					resultPolicy,
-				});
-				const tool = this.options.decorateTool
-					? this.options.decorateTool(baseTool, {
-							serverName: binding.view.name,
-							toolName: mcpTool.name,
-						})
-					: baseTool;
+				const createTool = (boundClient: typeof client): RuntimeToolDefinition => {
+					const baseTool = createMcpRuntimeTool(mcpTool, boundClient, binding.view.name, { resultPolicy });
+					return this.options.decorateTool
+						? this.options.decorateTool(baseTool, {
+								serverName: binding.view.name,
+								toolName: mcpTool.name,
+							})
+						: baseTool;
+				};
+				const decorated = createTool(client);
+				const tool: RuntimeToolDefinition = {
+					...decorated,
+					bindForTurn: () => {
+						const lease = binding.acquireLease();
+						if (!lease.client) {
+							void lease.release();
+							throw new Error(`MCP server connection is unavailable: ${binding.view.name}`);
+						}
+						return { tool: createTool(lease.client), release: () => lease.release() };
+					},
+				};
 				tools.push(
 					Object.freeze({
 						tool,

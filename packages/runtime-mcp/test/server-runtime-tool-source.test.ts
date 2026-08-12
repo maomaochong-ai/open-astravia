@@ -91,6 +91,42 @@ describe("McpServerRuntimeToolSource", () => {
 			},
 		});
 	});
+
+	it("propagates a leased generation failure instead of falling through to a replacement", async () => {
+		const retiredClient = new FakeClient(new Error("retired transport failed"));
+		const replacementClient = new FakeClient();
+		const port = new MutableServerRuntimePort([binding(retiredClient, 1)]);
+		const source = createMcpServerRuntimeToolSource(port);
+		const published = (await source.refresh()).tools[0]?.tool;
+		const turnBinding = published?.bindForTurn?.({
+			sessionId: "session",
+			operationId: "turn",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		expect(turnBinding).toBeDefined();
+
+		port.bindings = [binding(replacementClient, 2)];
+		await source.refresh();
+		const result = await turnBinding?.tool.execute({
+			sessionId: "session",
+			turnId: "turn",
+			toolCallId: "call",
+			input: { query: "value" },
+			signal: new AbortController().signal,
+		});
+		await turnBinding?.release();
+
+		expect(result).toEqual({
+			content: [{ type: "text", text: "Error calling MCP tool 'lookup': retired transport failed" }],
+			details: {
+				content: [{ type: "text", text: "retired transport failed" }],
+				isError: true,
+			},
+		});
+		expect(retiredClient.calls).toEqual([{ name: "lookup", input: { query: "value" } }]);
+		expect(replacementClient.calls).toEqual([]);
+	});
 });
 
 class MutableServerRuntimePort implements McpServerRuntimePort {
@@ -117,8 +153,8 @@ class FakeClient implements McpClientHandle {
 	}
 
 	async callTool(name: string, input?: Record<string, unknown>) {
-		if (this.callError) throw this.callError;
 		this.calls.push({ name, input });
+		if (this.callError) throw this.callError;
 		return { content: [{ type: "text" as const, text: "result" }] };
 	}
 
@@ -166,21 +202,23 @@ class RecordingRegistry implements McpRuntimeToolRegistry {
 }
 
 function binding(client: McpClientHandle, startedAt: number): McpServerBinding {
+	const view: McpServerBinding["view"] = {
+		name: "search",
+		config: { command: "search" },
+		status: "ready",
+		startedAt,
+		tools: [
+			{
+				name: "lookup",
+				description: "Lookup a value",
+				inputSchema: { type: "object", properties: { query: { type: "string" } } },
+			},
+		],
+		resources: [],
+	};
 	return {
 		client,
-		view: {
-			name: "search",
-			config: { command: "search" },
-			status: "ready",
-			startedAt,
-			tools: [
-				{
-					name: "lookup",
-					description: "Lookup a value",
-					inputSchema: { type: "object", properties: { query: { type: "string" } } },
-				},
-			],
-			resources: [],
-		},
+		view,
+		acquireLease: () => ({ client, view, release: async () => {} }),
 	};
 }

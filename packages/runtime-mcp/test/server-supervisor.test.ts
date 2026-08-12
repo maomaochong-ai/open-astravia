@@ -57,7 +57,62 @@ describe("McpServerSupervisor", () => {
 			errorServers: 1,
 			totalTools: 1,
 			totalResources: 2,
+			retiredServers: 0,
+			activeLeases: 0,
 		});
+	});
+
+	it("keeps a replaced connection alive until the admitted Turn releases its lease", async () => {
+		const source = new MutableConfigSource({ docs: stdio("docs-v1") });
+		const clients = new FakeClientFactory();
+		const supervisor = createSupervisor(source, clients.create);
+		await supervisor.initialize();
+		const oldBinding = supervisor.getServerBinding("docs");
+		if (!oldBinding?.client) throw new Error("Missing initial MCP binding");
+		const oldClient = oldBinding.client as FakeClient;
+		const lease = oldBinding.acquireLease();
+
+		source.servers = { docs: stdio("docs-v2") };
+		source.signature = "files-v2";
+		expect(await supervisor.reloadIfChanged()).toBe(true);
+
+		expect(oldClient.closed).toBe(false);
+		expect(supervisor.getServerBinding("docs")?.client).not.toBe(oldClient);
+		expect(supervisor.getStats()).toMatchObject({ retiredServers: 1, activeLeases: 1 });
+
+		await lease.release();
+
+		expect(oldClient.closed).toBe(true);
+		expect(supervisor.getStats()).toMatchObject({ retiredServers: 0, activeLeases: 0 });
+		await supervisor.shutdown();
+	});
+
+	it("keeps the complete last-known-good server set when one candidate fails", async () => {
+		const source = new MutableConfigSource({
+			stable: stdio("stable"),
+			changed: stdio("changed-v1"),
+			removed: stdio("removed"),
+		});
+		const clients = new FakeClientFactory();
+		const supervisor = createSupervisor(source, clients.create);
+		await supervisor.initialize();
+		const changedClient = supervisor.getServerBinding("changed")?.client;
+		const removedClient = supervisor.getServerBinding("removed")?.client;
+
+		clients.initializeErrors.set("changed", new Error("candidate failed"));
+		source.servers = {
+			stable: stdio("stable"),
+			changed: stdio("changed-v2"),
+			added: stdio("added"),
+		};
+		source.signature = "files-v2";
+
+		expect(await supervisor.reloadIfChanged()).toBe(false);
+		expect(supervisor.getServerBinding("changed")?.client).toBe(changedClient);
+		expect(supervisor.getServerBinding("removed")?.client).toBe(removedClient);
+		expect(supervisor.getServerBinding("added")).toBeUndefined();
+		expect(clients.clients.filter((client) => client.name === "added").at(-1)?.closed).toBe(true);
+		await supervisor.shutdown();
 	});
 
 	it("diff-reconciles file config and retains live state when loading fails", async () => {

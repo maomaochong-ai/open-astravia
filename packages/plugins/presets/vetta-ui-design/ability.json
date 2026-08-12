@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"type": "plugin",
 	"slug": "vetta-ui-design",
-	"version": "0.6.0",
+	"version": "0.6.4",
 	"detail": {
 		"blocks": [
 			{

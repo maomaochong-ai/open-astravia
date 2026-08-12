@@ -245,31 +245,84 @@ export class CodingAgentSessionExecutionRuntime {
 }
 
 class SwappableCodingToolCatalog implements CodingToolCatalog {
+	private currentGeneration: SwappableCatalogGeneration;
+	private readonly generations = new Set<SwappableCatalogGeneration>();
+
 	constructor(
-		private current: InMemoryCodingToolRegistry,
+		initial: InMemoryCodingToolRegistry,
 		private readonly resolveAvailabilityErrorCode: (toolName: string) => CodingToolAvailabilityErrorCode | undefined,
-	) {}
+	) {
+		this.currentGeneration = { catalog: initial, activeLeases: 0, retired: false };
+		this.generations.add(this.currentGeneration);
+	}
 
 	swap(next: InMemoryCodingToolRegistry): void {
-		this.current = next;
+		this.currentGeneration.retired = true;
+		this.currentGeneration = { catalog: next, activeLeases: 0, retired: false };
+		this.generations.add(this.currentGeneration);
+		this.pruneGenerations();
 	}
 
 	snapshot(): CodingToolCatalogSnapshot {
-		return this.current.snapshot();
+		return this.currentGeneration.catalog.snapshot();
+	}
+
+	acquireSnapshot(
+		context?: Parameters<CodingToolCatalog["acquireSnapshot"]>[0],
+	): ReturnType<CodingToolCatalog["acquireSnapshot"]> {
+		const generation = this.currentGeneration;
+		generation.activeLeases += 1;
+		const lease = generation.catalog.acquireSnapshot(context);
+		let released = false;
+		return {
+			snapshot: lease.snapshot,
+			release: async () => {
+				if (released) return;
+				released = true;
+				try {
+					await lease.release();
+				} finally {
+					generation.activeLeases -= 1;
+					this.pruneGenerations();
+				}
+			},
+		};
 	}
 
 	resolve(toolName: string): CodingToolCatalogEntry | undefined {
-		return this.current.resolve(toolName);
+		return this.currentGeneration.catalog.resolve(toolName);
 	}
 
 	async execute(
 		binding: Parameters<CodingToolCatalog["execute"]>[0],
 		request: Parameters<CodingToolCatalog["execute"]>[1],
+		implementation?: Parameters<CodingToolCatalog["execute"]>[2],
 	): ReturnType<CodingToolCatalog["execute"]> {
 		const errorCode = this.resolveAvailabilityErrorCode(binding.capabilityId);
-		if (errorCode) throw new CodingToolAvailabilityError(errorCode, binding);
-		return this.current.execute(binding, request);
+		if (errorCode === CODING_TOOL_AVAILABILITY_ERROR_CODES.REVOKED) {
+			throw new CodingToolAvailabilityError(errorCode, binding);
+		}
+		const generation = [...this.generations].find((candidate) => {
+			const entry = candidate.catalog.resolve(binding.capabilityId);
+			return entry ? sameBinding(entry.binding, binding) : false;
+		});
+		if (!generation) {
+			throw new CodingToolAvailabilityError(CODING_TOOL_AVAILABILITY_ERROR_CODES.UNAVAILABLE, binding);
+		}
+		return generation.catalog.execute(binding, request, implementation);
 	}
+
+	private pruneGenerations(): void {
+		for (const generation of this.generations) {
+			if (generation.retired && generation.activeLeases === 0) this.generations.delete(generation);
+		}
+	}
+}
+
+interface SwappableCatalogGeneration {
+	readonly catalog: InMemoryCodingToolRegistry;
+	activeLeases: number;
+	retired: boolean;
 }
 
 const SESSION_EXECUTION_TOOL_NAMES = ["bash", "shell", "read", "write", "edit", "task_output", "task_stop"] as const;

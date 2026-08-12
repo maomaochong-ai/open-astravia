@@ -20,6 +20,45 @@ import { COMPACTION_SUMMARY_PREFIX, COMPACTION_SUMMARY_SUFFIX } from "../../src/
 import type { CodingAgentCompactionExtensionRuntime } from "../../src/runtime-contracts/index.js";
 
 describe("CodingAgentContextRuntime", () => {
+	it("keeps admitted compaction settings for every model call in the Turn", async () => {
+		let enabled = true;
+		const generateCompaction = vi.fn(async (preparation: CompactionPreparation) => ({
+			summary: "summary",
+			firstKeptEntryId: preparation.firstKeptEntryId,
+			tokensBefore: preparation.tokensBefore,
+		}));
+		const runtime = new CodingAgentContextRuntime({
+			hookRuntime: createHookRuntime(),
+			resolveApiKey: () => "key",
+			resolveSettings: () => ({ ...compactingSettings(), enabled }),
+			generateCompaction,
+		});
+		const bound = await runtime.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		enabled = false;
+		const history = [
+			userMessage("old request".repeat(40), 1),
+			assistantMessage("old response", 90, 2),
+			userMessage("kept request", 3),
+		] satisfies Message[];
+		const input = {
+			...preparationInput(documentFromMessages(history), history, history, []),
+			reason: "model_call" as const,
+		};
+
+		const admitted = await bound.prepare(input, new AbortController().signal);
+		const nextTurn = await runtime.prepare(input, new AbortController().signal);
+
+		expect(admitted.compaction).toBeDefined();
+		expect(nextTurn.compaction).toBeUndefined();
+		expect(generateCompaction).toHaveBeenCalledOnce();
+		await bound.releaseTurnBinding?.();
+	});
+
 	it("persists a threshold compaction while keeping transient turn input outside the summary", async () => {
 		const history = [
 			userMessage("old request".repeat(40), 1),

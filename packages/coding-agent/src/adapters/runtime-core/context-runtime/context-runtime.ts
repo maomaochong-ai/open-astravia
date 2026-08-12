@@ -12,6 +12,7 @@ import type {
 	ModelCallContextTransformationInput,
 	ModelCallContextTransformer,
 	PreparedContext,
+	RuntimeSnapshotAcquireContext,
 	StoredSessionEvent,
 	TurnObserver,
 } from "@vetta/runtime-core/kernel";
@@ -91,16 +92,54 @@ export class CodingAgentContextRuntime
 		this.refreshUsage(document);
 	}
 
+	async bindForTurn(context: RuntimeSnapshotAcquireContext): Promise<ContextStrategy & ModelCallContextTransformer> {
+		context.signal.throwIfAborted();
+		const settings = Object.freeze({ ...this.readSettings() });
+		const transformBinding = this.options.bindTransformAgentContext?.(context);
+		const extensionRuntime = (await this.extensionRuntime?.bindForTurn?.(context)) ?? this.extensionRuntime;
+		let released = false;
+		return {
+			prepare: (input, signal) => this.prepareWithPolicy(input, signal, settings, extensionRuntime),
+			onCompactionCommitted: (record, input, signal, document) =>
+				this.onCompactionCommittedWithExtension(record, input, signal, document, extensionRuntime),
+			onCompactionContinuationCommitted: (record, input, result, signal) =>
+				this.onCompactionContinuationCommittedWithExtension(record, input, result, signal, extensionRuntime),
+			onCompactionContinuationFailed: () => this.onCompactionContinuationFailed(),
+			transform: (input, signal) =>
+				this.transformWith(input, signal, transformBinding?.transform ?? this.options.transformAgentContext),
+			async releaseTurnBinding() {
+				if (released) return;
+				released = true;
+				const results = await Promise.allSettled([
+					extensionRuntime?.releaseTurnBinding?.(),
+					transformBinding?.release(),
+				]);
+				const errors = results
+					.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+					.map(({ reason }) => reason);
+				if (errors.length > 0) throw new AggregateError(errors, "Failed to release Turn-bound context resources");
+			},
+		};
+	}
+
 	onDocumentChanged(document: ConversationDocument): void {
 		this.refreshUsage(document);
 	}
 
 	async prepare(input: ContextPreparationInput, signal: AbortSignal): Promise<PreparedContext> {
+		return this.prepareWithPolicy(input, signal, this.readSettings(), this.extensionRuntime);
+	}
+
+	private async prepareWithPolicy(
+		input: ContextPreparationInput,
+		signal: AbortSignal,
+		baseSettings: CompactionSettings,
+		extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined,
+	): Promise<PreparedContext> {
 		signal.throwIfAborted();
 		const reason = input.reason ?? "turn_start";
 		const model = input.modelBinding?.model;
 		const contextWindow = model?.contextWindow ?? input.tokenBudget;
-		const baseSettings = this.readSettings();
 		const settings =
 			this.options.memoryRollover?.adjustCompactionSettings(baseSettings, contextWindow) ?? baseSettings;
 		if (reason === "assistant_error" && input.triggeringAssistantMessage) {
@@ -141,7 +180,9 @@ export class CodingAgentContextRuntime
 		const entries = toCompactionSessionEntries(input.compactionSourceDocument ?? input.document);
 		if (reason === "assistant_error" && !overflow) return unchanged(callMessages, assembledTokens);
 		if (!overflow && !shouldCompact(estimate.tokens, contextWindow, settings)) {
-			if (shouldPrefire(estimate.tokens, contextWindow, settings)) this.prefire.start(entries, settings, model);
+			if (shouldPrefire(estimate.tokens, contextWindow, settings)) {
+				this.prefire.start(entries, settings, model, input.modelBinding?.credential);
+			}
 			return unchanged(callMessages, assembledTokens);
 		}
 		if (!this.circuitBreaker.canAttempt()) return unchanged(callMessages, assembledTokens);
@@ -149,7 +190,9 @@ export class CodingAgentContextRuntime
 		const compactionReason = overflow ? "overflow" : "threshold";
 		await input.reportObservation({ type: "compaction.start", reason: compactionReason, source: "agent" });
 		try {
-			const apiKey = await this.options.resolveApiKey(model);
+			const apiKey = input.modelBinding?.credential
+				? await input.modelBinding.credential.resolve()
+				: await this.options.resolveApiKey(model);
 			if (!apiKey) {
 				await input.reportObservation({
 					type: "compaction.end",
@@ -177,7 +220,7 @@ export class CodingAgentContextRuntime
 			}
 			await this.options.memoryRollover?.beforeCompaction({ preparation, model, apiKey, signal });
 
-			const extensionResult = await this.extensionRuntime?.beforeCompaction({
+			const extensionResult = await extensionRuntime?.beforeCompaction({
 				preparation,
 				branchEntries: entries,
 				signal,
@@ -222,7 +265,19 @@ export class CodingAgentContextRuntime
 		signal: AbortSignal,
 		document?: ConversationDocument,
 	) {
-		if (!this.options.memoryRollover) return this.finalizeAutomaticCompaction(record, signal, document);
+		return this.onCompactionCommittedWithExtension(record, _input, signal, document, this.extensionRuntime);
+	}
+
+	private async onCompactionCommittedWithExtension(
+		record: ContextCompactionRecord,
+		_input: ContextPreparationInput,
+		signal: AbortSignal,
+		document: ConversationDocument | undefined,
+		extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined,
+	) {
+		if (!this.options.memoryRollover) {
+			return this.finalizeAutomaticCompaction(record, signal, document, extensionRuntime);
+		}
 		this.options.memoryRollover.beforeContinuation(record);
 		return { continueExecution: true, continuation: this.options.memoryRollover.continuationAfterCompaction() };
 	}
@@ -233,7 +288,17 @@ export class CodingAgentContextRuntime
 		result: ConversationContinuationResult,
 		signal: AbortSignal,
 	) {
-		return this.finalizeAutomaticCompaction(record, signal, result.seedDocument, true);
+		return this.onCompactionContinuationCommittedWithExtension(record, _input, result, signal, this.extensionRuntime);
+	}
+
+	private onCompactionContinuationCommittedWithExtension(
+		record: ContextCompactionRecord,
+		_input: ContextPreparationInput,
+		result: ConversationContinuationResult,
+		signal: AbortSignal,
+		extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined,
+	) {
+		return this.finalizeAutomaticCompaction(record, signal, result.seedDocument, extensionRuntime, true);
 	}
 
 	async onCompactionContinuationFailed(): Promise<void> {
@@ -244,7 +309,9 @@ export class CodingAgentContextRuntime
 		signal.throwIfAborted();
 		const model = input.modelBinding?.model;
 		if (!model) throw new Error("No model selected");
-		const apiKey = await this.options.resolveApiKey(model);
+		const apiKey = input.modelBinding?.credential
+			? await input.modelBinding.credential.resolve()
+			: await this.options.resolveApiKey(model);
 		if (!apiKey) throw new Error(`No API key for ${model.provider}`);
 
 		const entries = toCompactionSessionEntries(input.document);
@@ -279,7 +346,7 @@ export class CodingAgentContextRuntime
 		signal: AbortSignal,
 		document?: ConversationDocument,
 	): Promise<void> {
-		await this.notifyExtensionCommitted(record, document);
+		await this.notifyExtensionCommitted(record, document, this.extensionRuntime);
 		await this.options.hookRuntime.runPostCompact("manual", signal);
 		this.options.hookRuntime.markSessionStart("compact");
 	}
@@ -293,7 +360,15 @@ export class CodingAgentContextRuntime
 	}
 
 	async transform(input: ModelCallContextTransformationInput, signal: AbortSignal): Promise<readonly Message[]> {
-		const projected = await projectModelCallContext(input, this.options.transformAgentContext, signal);
+		return this.transformWith(input, signal, this.options.transformAgentContext);
+	}
+
+	private async transformWith(
+		input: ModelCallContextTransformationInput,
+		signal: AbortSignal,
+		transformAgentContext: CodingAgentContextRuntimeOptions["transformAgentContext"],
+	): Promise<readonly Message[]> {
+		const projected = await projectModelCallContext(input, transformAgentContext, signal);
 		this.currentTokens = projected.estimatedTokens;
 		return projected.messages;
 	}
@@ -364,9 +439,10 @@ export class CodingAgentContextRuntime
 	private async notifyExtensionCommitted(
 		record: ContextCompactionRecord,
 		document: ConversationDocument | undefined,
+		extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined,
 		allowRemappedFirstKept = false,
 	): Promise<void> {
-		if (!this.extensionRuntime || !document) return;
+		if (!extensionRuntime || !document) return;
 		const entry = [...toCompactionSessionEntries(document)]
 			.reverse()
 			.find(
@@ -376,7 +452,7 @@ export class CodingAgentContextRuntime
 					(allowRemappedFirstKept || candidate.firstKeptEntryId === record.firstKeptEntryId),
 			);
 		if (!entry) return;
-		await this.extensionRuntime.afterCompaction({
+		await extensionRuntime.afterCompaction({
 			compactionEntry: entry,
 			fromExtension: record.fromHook === true,
 		});
@@ -386,10 +462,11 @@ export class CodingAgentContextRuntime
 		record: ContextCompactionRecord,
 		signal: AbortSignal,
 		document: ConversationDocument | undefined,
+		extensionRuntime: CodingAgentCompactionExtensionRuntime | undefined,
 		allowRemappedFirstKept = false,
 	) {
 		try {
-			await this.notifyExtensionCommitted(record, document, allowRemappedFirstKept);
+			await this.notifyExtensionCommitted(record, document, extensionRuntime, allowRemappedFirstKept);
 			const outcome = await this.options.hookRuntime.runPostCompact("auto", signal);
 			this.options.hookRuntime.markSessionStart("compact");
 			this.circuitBreaker.recordSuccess();

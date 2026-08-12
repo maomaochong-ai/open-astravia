@@ -9,7 +9,11 @@ import type {
 import { aggregateHookDispatchOutcomes, emptyHookDispatchOutcome } from "@vetta/coding-agent/hooks";
 import type { PluginCodingAgentHookEvent, PluginCodingAgentHookEventName } from "@vetta-org/plugin-sdk";
 import { invokeDesktopPluginHook } from "./coding-agent-hook-invocation.js";
-import { type DesktopPluginHookBinding, desktopPluginHookRegistry } from "./coding-agent-hook-registry.js";
+import {
+	type DesktopPluginHookBinding,
+	type DesktopPluginHookSnapshotLease,
+	desktopPluginHookRegistry,
+} from "./coding-agent-hook-registry.js";
 import { parseDesktopPluginHookResult } from "./coding-agent-hook-result.js";
 
 const DESKTOP_PLUGIN_HOOK_ADAPTER_ID = "desktop-plugin-hooks/1";
@@ -24,25 +28,64 @@ export interface DesktopPluginHookAdapterFactoryOptions {
 export function createDesktopPluginHookAdapterFactory(
 	options: DesktopPluginHookAdapterFactoryOptions,
 ): EcosystemHookAdapterFactory {
-	return async (context) => ({
-		id: DESKTOP_PLUGIN_HOOK_ADAPTER_ID,
-		supports: (event) => desktopPluginHookRegistry.hasEvent(event.eventName),
-		dispatch: async (event, signal) => {
-			const bindings = desktopPluginHookRegistry
-				.snapshot()
-				.filter((binding) => matchesBinding(binding, event, options));
-			if (bindings.length === 0) return emptyHookDispatchOutcome();
-			const outcomes = await Promise.all(
-				bindings.map((binding) => dispatchBinding(binding, event, options.scenario, signal)),
-			);
-			for (const outcome of outcomes) {
-				for (const run of outcome.runs) {
-					if (run.status === "Failed") context.onFailedRun(run);
+	return async (context) => {
+		const leases = new Map<string, DesktopPluginHookSnapshotLease>();
+		const leaseKey = (event: EcosystemHookEvent): string => readTurnId(event) ?? `session:${event.eventName}`;
+		const releaseLease = (event: EcosystemHookEvent): void => {
+			const key = leaseKey(event);
+			leases.get(key)?.release();
+			leases.delete(key);
+		};
+		const releaseAll = (): void => {
+			for (const lease of leases.values()) lease.release();
+			leases.clear();
+		};
+		const readBindings = (event: EcosystemHookEvent): readonly DesktopPluginHookBinding[] => {
+			const turnId = readTurnId(event);
+			const key = leaseKey(event);
+			const existing = leases.get(key);
+			if (existing) return existing.bindings;
+			// A Session executes one Agent Turn at a time. Retire stale membership when
+			// the next turn is first observed, then bind the current published registry.
+			if (turnId) releaseAll();
+			const captured = desktopPluginHookRegistry.acquireSnapshot((binding) => matchesBindingScope(binding, options));
+			leases.set(key, captured);
+			return captured.bindings;
+		};
+		return {
+			id: DESKTOP_PLUGIN_HOOK_ADAPTER_ID,
+			supports: (event) => {
+				const supported = readBindings(event).some((binding) => matchesBindingEvent(binding, event));
+				if (!supported && !readTurnId(event)) releaseLease(event);
+				return supported;
+			},
+			dispatch: async (event, signal) => {
+				const bindings = readBindings(event).filter((binding) => matchesBindingEvent(binding, event));
+				if (bindings.length === 0) {
+					if (event.eventName === "Stop") releaseLease(event);
+					if (!readTurnId(event)) releaseLease(event);
+					if (event.eventName === "SessionEnd") releaseAll();
+					return emptyHookDispatchOutcome();
 				}
-			}
-			return aggregateHookDispatchOutcomes(outcomes);
-		},
-	});
+				try {
+					const outcomes = await Promise.all(
+						bindings.map((binding) => dispatchBinding(binding, event, options.scenario, signal)),
+					);
+					for (const outcome of outcomes) {
+						for (const run of outcome.runs) {
+							if (run.status === "Failed") context.onFailedRun(run);
+						}
+					}
+					return aggregateHookDispatchOutcomes(outcomes);
+				} finally {
+					if (event.eventName === "Stop") releaseLease(event);
+					if (!readTurnId(event)) releaseLease(event);
+					if (event.eventName === "SessionEnd") releaseAll();
+				}
+			},
+			resetSessionState: releaseAll,
+		};
+	};
 }
 
 async function dispatchBinding(
@@ -78,18 +121,26 @@ async function dispatchBinding(
 	}
 }
 
-function matchesBinding(
+function matchesBindingScope(
 	binding: DesktopPluginHookBinding,
-	event: EcosystemHookEvent,
 	options: DesktopPluginHookAdapterFactoryOptions,
 ): boolean {
-	if (!options.canInvoke(binding.pluginId) || binding.eventName !== event.eventName) return false;
+	if (!options.canInvoke(binding.pluginId)) return false;
 	if (!binding.scope_use.includes(options.scenario)) return false;
 	const agentMode = options.readAgentMode();
 	if (agentMode && binding.agent_mode?.length && !binding.agent_mode.includes(agentMode)) return false;
+	return true;
+}
+
+function matchesBindingEvent(binding: DesktopPluginHookBinding, event: EcosystemHookEvent): boolean {
+	if (binding.eventName !== event.eventName) return false;
 	if (!binding.toolNames?.length) return true;
 	const toolName = toolEventName(event);
 	return toolName !== undefined && binding.toolNames.includes(toolName);
+}
+
+function readTurnId(event: EcosystemHookEvent): string | undefined {
+	return "turnId" in event && typeof event.turnId === "string" ? event.turnId : undefined;
 }
 
 function toolEventName(event: EcosystemHookEvent): string | undefined {

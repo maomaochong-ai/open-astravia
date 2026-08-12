@@ -4,6 +4,7 @@ import type {
 	SessionContextRecord,
 	SessionInput,
 	SessionInputQueueMode,
+	SessionInputRequest,
 	SessionStreamingBehavior,
 	TurnInputQueue,
 } from "./contracts.js";
@@ -16,8 +17,8 @@ export interface SessionInputQueueOptions {
 }
 
 export interface ClearedSessionInputs {
-	readonly steering: readonly SessionInput[];
-	readonly followUps: readonly SessionInput[];
+	readonly steering: readonly QueuedSessionInput[];
+	readonly followUps: readonly QueuedSessionInput[];
 }
 
 /** 带身份的队列条目：id 贯穿 kernel → 宿主 → UI，使排队消息可被指认与管理。 */
@@ -92,6 +93,14 @@ export class SessionInputQueue implements TurnInputQueue {
 	/** 与 enqueue 相同，但把生成的条目 id 交还给调用方（用于回执与后续指认）。 */
 	enqueueWithId(behavior: SessionStreamingBehavior, input: SessionInput): { id: string; pendingCount: number } {
 		const id = this.enqueueEntry(behavior, input);
+		return { id, pendingCount: this.pendingCount };
+	}
+
+	enqueueRequestWithId(
+		behavior: SessionStreamingBehavior,
+		request: SessionInputRequest,
+	): { id: string; pendingCount: number } {
+		const id = this.enqueueEntry(behavior, { request });
 		return { id, pendingCount: this.pendingCount };
 	}
 
@@ -197,24 +206,24 @@ export class SessionInputQueue implements TurnInputQueue {
 	}
 
 	/** 按 id 显式取出一条完整输入（「立即发送」在空闲态直接开 turn 用）；无视 paused。 */
-	takeById(id: string): SessionInput | undefined {
+	takeById(id: string): QueuedSessionInput | undefined {
 		for (const queue of [this.steeringQueue, this.followUpQueue]) {
-			const index = queue.findIndex((slot) => slot.id === id && isSessionInput(slot.input));
+			const index = queue.findIndex((slot) => slot.id === id && isExecutableInput(slot.input));
 			if (index < 0) continue;
 			const [slot] = queue.splice(index, 1);
 			this.notifyChange();
-			return slot.input as SessionInput;
+			return slot.input;
 		}
 		return undefined;
 	}
 
 	/** 显式取出 followUp 队首一条完整输入（resumeQueue 以队首开启新 turn 用）。 */
-	takeFollowUpHead(): SessionInput | undefined {
-		const index = this.followUpQueue.findIndex((slot) => isSessionInput(slot.input));
+	takeFollowUpHead(): QueuedSessionInput | undefined {
+		const index = this.followUpQueue.findIndex((slot) => isExecutableInput(slot.input));
 		if (index < 0) return undefined;
 		const [slot] = this.followUpQueue.splice(index, 1);
 		this.notifyChange();
-		return slot.input as SessionInput;
+		return slot.input;
 	}
 
 	enqueueFollowUps(messages: readonly SessionInput["message"][]): void {
@@ -232,8 +241,8 @@ export class SessionInputQueue implements TurnInputQueue {
 			this.notifyChange();
 		}
 		return {
-			steering: steering.map((slot) => slot.input).filter(isSessionInput),
-			followUps: followUps.map((slot) => slot.input).filter(isSessionInput),
+			steering: steering.map((slot) => slot.input),
+			followUps: followUps.map((slot) => slot.input),
 		};
 	}
 
@@ -270,4 +279,8 @@ function removeById(queue: QueueSlot[], id: string): boolean {
 
 function isSessionInput(input: QueuedSessionInput): input is SessionInput {
 	return input.message !== undefined;
+}
+
+function isExecutableInput(input: QueuedSessionInput): boolean {
+	return input.message !== undefined || input.request !== undefined;
 }

@@ -100,6 +100,13 @@ export function createCodingAgentSessionContextAssembly(
 		extensionRuntime: profile.createCompactionExtensionRuntime?.(sessionOptions),
 		memoryRollover: peripherals.memoryRuntime,
 		transformAgentContext: (messages) => options.extensionEvents.transformContext(messages),
+		bindTransformAgentContext: (context) => {
+			const bound = options.extensionEvents.bindAdapterForTurn(context);
+			return {
+				transform: (messages) => bound.transformContext(messages),
+				release: () => bound.releaseTurnBinding(),
+			};
+		},
 		readCompactionWorkState: () => ({
 			todos: peripherals.todoRuntime.getAll().map((item) => ({ ...item })),
 			backgroundTasks: peripherals.executionRuntime.backgroundService.list().map((task) => ({

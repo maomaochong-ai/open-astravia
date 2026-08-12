@@ -15,6 +15,10 @@
 
 ### Added
 
+- **Turn 级外部状态隔离**（ADR-0069）：Prompt、AGENTS、Skill 内容、Personalization、Agent Mode、Tool、
+  Plugin Tool/Provider、Plugin MCP 与 Extension Tool 在 Turn admission 捕获不可变版本；MCP 先发布目录再
+  原子捕获，普通热更新只影响下一 Turn。Session 配置新增不可变 revision snapshot，模型绑定与 Runtime
+  Snapshot 来自同一次 acquisition。
 - **`@vetta/coding-agent/bootstrap` 新增 `codingAgentSessionShardPath(cwd)`**：返回某个工作目录对应的全局会话分片目录（`<agentDir>/sessions/--<编码后的 cwd>--`），纯路径计算、不建目录。供只需要知道落点的宿主（会话目录发现、清理、诊断）使用，避免枚举全部项目时用 `resolveCodingAgentSessionDir` 顺手撒一堆空目录。后者改为复用它，行为不变。
 - **Vetta native Tool 扩展与 Pi host-neutral ACL**：Extension Tool 新增输入 normalize/custom validator 和 active-tool-only 结构化 Prompt contribution，进程级 Tool refresh 复用 generation-safe Contribution Catalog；新增显式 `@vetta/coding-agent/extensions/pi-compat` 入口，以隔离的 `typebox@1.3.7` facade 兼容 Pi current/legacy namespace 的顺序 Tool、`prepareArguments` 与 prompt metadata。Pi TUI renderer/shortcut 明确剥离，parallel Tool、未落地事实事件和未具备 owner/unregister 的 Provider fail closed（ADR-0063）。
 - **Desktop Plugin 复用原生 Hook Runtime**：`@vetta/coding-agent/hooks` 补齐 callback adapter 所需的事件、结果聚合与运行摘要公共类型；Desktop Plugin 通过既有 `additionalHookAdapterFactories` 接入每 Session 唯一 `EcosystemHookRuntime`。移除平行的 Plugin Hook Runtime 和工具拦截阶段，Coding Extension 工具事件与既有顺序不变（ADR-0064）。

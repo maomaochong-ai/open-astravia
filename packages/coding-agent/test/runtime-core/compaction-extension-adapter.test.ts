@@ -34,6 +34,33 @@ describe("createCodingAgentCompactionExtensionRuntime", () => {
 		expect(first.events).toEqual(["session_before_compact", "session_compact"]);
 		expect(second.events).toEqual(["session_before_compact", "session_compact"]);
 	});
+
+	it("keeps the admitted runner after the live runner changes", async () => {
+		const first = createRunner();
+		const second = createRunner();
+		let current: CompactionRunner | undefined = first.runner;
+		const runtime = createCodingAgentCompactionExtensionRuntime(() => current);
+		const bound = await runtime.bindForTurn?.({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+		current = second.runner;
+
+		await bound?.beforeCompaction({
+			preparation: {} as CompactionPreparation,
+			branchEntries: [],
+			signal: new AbortController().signal,
+		});
+		await bound?.afterCompaction({
+			compactionEntry: {} as CodingAgentCompactionEntry,
+			fromExtension: false,
+		});
+
+		expect(first.events).toEqual(["session_before_compact", "session_compact"]);
+		expect(second.events).toEqual([]);
+	});
 });
 
 function createRunner(): { readonly runner: CompactionRunner; readonly events: string[] } {

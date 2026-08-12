@@ -4,10 +4,15 @@ import type {
 	AgentRunPreparationContext,
 	AgentRunPreparationResult,
 	AgentRunPreparer,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 	SessionInput,
 } from "@vetta/runtime-core/kernel";
 import type { InputEventResult, InputSource } from "../../extensions/index.js";
+import type {
+	ExtensionRunnerGenerationOwner,
+	ExtensionRunnerLease,
+} from "../../extensions/runtime/extension-runner-generations.js";
 import type { CodingAgentToolInterceptor } from "../../interception/tool/contracts.js";
 import type { CodingAgentExtensionRunnerPort } from "../../runtime-contracts/index.js";
 import { createExtensionToolInterceptor, wrapRuntimeToolsWithExtensions } from "./extension-tool-wrapper.js";
@@ -20,18 +25,54 @@ import { createExtensionToolInterceptor, wrapRuntimeToolsWithExtensions } from "
  */
 export class CodingAgentExtensionRunAdapter implements AgentRunPreparer {
 	private runner: CodingAgentExtensionRunnerPort | undefined;
+	private runnerLease: ExtensionRunnerLease | undefined;
 	private baseSystemPrompt = "";
 	private systemPrompt = "";
 	private runSystemPromptOverride: string | undefined;
 
-	bind(runner: CodingAgentExtensionRunnerPort, options: { readonly replaceExisting?: boolean } = {}): () => void {
+	constructor(private readonly runnerGenerations?: ExtensionRunnerGenerationOwner) {}
+
+	bind(
+		runner: CodingAgentExtensionRunnerPort,
+		options: { readonly replaceExisting?: boolean; readonly sessionId?: string } = {},
+	): () => Promise<void> {
 		if (this.runner && this.runner !== runner && options.replaceExisting !== true) {
 			throw new Error("Extension run adapter is already bound");
 		}
+		const sessionId = options.sessionId ?? this.boundSessionId;
+		this.boundSessionId = sessionId;
+		const releaseGeneration = sessionId ? this.runnerGenerations?.bind(sessionId, runner, options) : undefined;
 		this.runner = runner;
-		return () => {
+		return async () => {
 			if (this.runner === runner) this.runner = undefined;
+			await releaseGeneration?.();
 		};
+	}
+
+	private boundSessionId: string | undefined;
+
+	bindForTurn(context: RuntimeSnapshotAcquireContext): CodingAgentExtensionRunAdapter {
+		return this.bindAdapterForTurn(context);
+	}
+
+	bindAdapterForTurn(context: RuntimeSnapshotAcquireContext): CodingAgentExtensionRunAdapter {
+		this.boundSessionId ??= context.sessionId;
+		const lease = this.runnerGenerations?.acquire(context.sessionId, context.operationId);
+		const bound = new CodingAgentExtensionRunAdapter();
+		bound.runner = lease?.runner ?? this.runner;
+		bound.runnerLease = lease;
+		return bound;
+	}
+
+	releaseTurnBinding(): void {
+		this.runnerLease?.release();
+		this.runnerLease = undefined;
+	}
+
+	ownsTurn(turnId: string, runner: CodingAgentExtensionRunnerPort): boolean {
+		return this.boundSessionId
+			? (this.runnerGenerations?.ownsTurn(this.boundSessionId, turnId, runner) ?? this.runner === runner)
+			: this.runner === runner;
 	}
 
 	async interceptInput(

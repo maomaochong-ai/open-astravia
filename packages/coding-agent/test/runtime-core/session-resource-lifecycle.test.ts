@@ -191,7 +191,6 @@ function createIndexes(): CodingAgentSessionResourceIndexes {
 		memoryControllers: new InMemoryCodingAgentSessionValueIndex<CodingAgentMemoryController>(),
 		hookSessionControllers: new InMemoryCodingAgentSessionValueIndex(),
 		mcpRefreshObservedSessions: new InMemoryCodingAgentSessionMarkerIndex(),
-		mcpPromptRefreshReuseSessions: new InMemoryCodingAgentSessionMarkerIndex(),
 	};
 }
 

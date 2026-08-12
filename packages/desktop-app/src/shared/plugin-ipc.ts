@@ -40,6 +40,7 @@ export const PLUGIN_EXECUTION_CHANNELS = {
 
 export const PLUGIN_CONTRIBUTION_CHANNELS = {
 	BEGIN_LOAD: "vetta:plugins:agent-contributions-begin-load",
+	COMMIT_LOAD: "vetta:plugins:agent-contributions-commit-load",
 	TOOL_REGISTER: "vetta:plugins:agent-tool-register",
 	TOOL_UNREGISTER: "vetta:plugins:agent-tool-unregister",
 	TOOL_REQUEST: "vetta:plugins:agent-tool-request",
@@ -48,6 +49,7 @@ export const PLUGIN_CONTRIBUTION_CHANNELS = {
 	HOOK_UNREGISTER: "vetta:plugins:agent-hook-unregister",
 	HOOK_REQUEST: "vetta:plugins:agent-hook-request",
 	HOOK_RESPONSE: "vetta:plugins:agent-hook-response",
+	HANDLER_RELEASE: "vetta:plugins:agent-handler-release",
 	CLEAR: "vetta:plugins:agent-contributions-clear",
 	APP_ACTION_REGISTER: "vetta:plugins:app-action-register",
 	APP_ACTION_COMMIT: "vetta:plugins:app-action-activation-commit",

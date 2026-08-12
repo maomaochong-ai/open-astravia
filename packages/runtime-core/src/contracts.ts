@@ -136,6 +136,7 @@ export interface AgentPluginToolContribution {
 	description: string;
 	parameters: JsonSchema;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	/** 允许出现的对话场景 slug（fail-closed：缺省/空 = 所有场景都不激活）。由插件 registerTool 声明。 */
 	scope_use?: string[];
@@ -156,6 +157,7 @@ export interface AgentPluginContinuationContribution {
 	pluginId: string;
 	id: string;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	context?: { conversation?: "summary" | "messages" };
 }
@@ -164,6 +166,7 @@ export interface AgentPluginSystemPromptProviderContribution {
 	pluginId: string;
 	id: string;
 	handlerId: string;
+	activationId?: string;
 	timeoutMs?: number;
 	context?: {
 		systemPrompt?: "none" | "blocks" | "rendered" | "full";
@@ -182,6 +185,7 @@ export interface AgentPluginSystemPromptInvocation {
 	pluginId: string;
 	providerId: string;
 	handlerId: string;
+	activationId?: string;
 	session: { id: string; cwd: string; scenario: string };
 	model: {
 		provider: string;
@@ -227,11 +231,27 @@ export interface AgentPluginRuntimeConfig {
 	mcpServerContributions?: McpServerContribution[];
 }
 
+export interface AgentPluginTurnHandlerLease {
+	release(): Promise<void> | void;
+}
+
+export interface AgentPluginTurnHandlerLeaseProvider {
+	bindForTurn(
+		config: AgentPluginRuntimeConfig | undefined,
+		context: {
+			readonly sessionId: string;
+			readonly turnId: string;
+			readonly signal: AbortSignal;
+		},
+	): Promise<AgentPluginTurnHandlerLease> | AgentPluginTurnHandlerLease;
+}
+
 export interface AgentPluginToolInvocation {
 	pluginId: string;
 	toolId: string;
 	toolName: string;
 	handlerId: string;
+	activationId?: string;
 	input: unknown;
 	session: AgentPluginSystemPromptInvocation["session"];
 	model: AgentPluginSystemPromptInvocation["model"];
@@ -249,6 +269,7 @@ export interface AgentPluginContinuationInvocation {
 	pluginId: string;
 	providerId: string;
 	handlerId: string;
+	activationId?: string;
 	session: AgentPluginSystemPromptInvocation["session"];
 	model: AgentPluginSystemPromptInvocation["model"];
 	conversation: AgentPluginSystemPromptInvocation["conversation"];
@@ -840,6 +861,7 @@ export interface SessionFacade {
 	setPluginToolInvoker(handler: AgentPluginToolInvoker | undefined): void;
 	setPluginContinuationInvoker(handler: AgentPluginContinuationInvoker | undefined): void;
 	setPluginSystemPromptInvoker(handler: AgentPluginSystemPromptInvoker | undefined): void;
+	setPluginTurnHandlerLeaseProvider(provider: AgentPluginTurnHandlerLeaseProvider | undefined): void;
 	reconfigureAgentPlugins(agentPlugins: AgentPluginRuntimeConfig | undefined): void;
 	listSandboxGrants(sessionId: string): RuntimeSandboxGrantInfo[];
 	revokeSandboxGrant(sessionId: string, grantId: string): boolean;

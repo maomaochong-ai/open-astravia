@@ -44,6 +44,7 @@ describe("buildPluginRuntimeConfig", () => {
 			handlerId: "handler",
 			activationId: "activation",
 		});
+		contributions.commit("demo", "activation");
 		const logger = { debug: vi.fn(), warn: vi.fn() };
 
 		const visible = buildPluginRuntimeConfig({

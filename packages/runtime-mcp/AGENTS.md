@@ -4,8 +4,8 @@
 
 ## 职责范围
 
-MCP（Model Context Protocol）的独立 Runtime Feature：定义当前工具视图 Source Port、增量同步、
-渐进披露和模型调用级 Prompt/Tool 物化。
+MCP（Model Context Protocol）的独立 Runtime Feature：定义版本化工具视图 Source Port、增量同步、
+Turn generation 内的渐进披露和模型调用级 Prompt/Tool 物化。
 
 ## 注意事项
 
@@ -18,5 +18,5 @@ MCP（Model Context Protocol）的独立 Runtime Feature：定义当前工具视
 ## 测试要求
 
 - 使用 Vitest Node 测试和本地 fake transport/server，不默认连接真实 MCP 服务、OAuth Provider 或用户配置。
-- Tool/Resource/Prompt 发现、增量同步或渐进披露变化时，必须覆盖新增、删除、替换、未变化复用、乱序/重复通知、失败保持、取消和下一次模型调用可见性。
+- Tool/Resource/Prompt 发现、增量同步或渐进披露变化时，必须覆盖新增、删除、替换、未变化复用、乱序/重复通知、失败保持、取消、活动 Turn 保持旧 generation 和下一 Turn 可见性。
 - stdio/HTTP、OAuth、Schema 或公开 Port 变化必须增加对应合同或传输集成测试，验证协议错误、清理和重连；产品目录与交互授权行为留给 Coding Agent/Desktop 测试。

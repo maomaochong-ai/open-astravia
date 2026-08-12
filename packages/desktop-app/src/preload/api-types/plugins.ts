@@ -279,6 +279,7 @@ export interface PluginHandlerInvocationBase {
 	requestId: string;
 	pluginId: string;
 	handlerId: string;
+	activationId?: string;
 	settings: Record<string, unknown>;
 	session: { id: string; cwd: string; scenario: string };
 	model: {
@@ -307,10 +308,18 @@ export interface PluginAgentHookInvocationRequest {
 	requestId: string;
 	pluginId: string;
 	handlerId: string;
+	activationId?: string;
 	settings: Record<string, unknown>;
 	hookId: string;
 	session: { id: string; cwd: string; scenario: string };
 	event: PluginCodingAgentHookEvent;
+}
+
+export interface PluginAgentHandlerReleasedEvent {
+	kind: "tool" | "hook" | "continuation" | "system-prompt";
+	pluginId: string;
+	handlerId: string;
+	activationId?: string;
 }
 
 export interface PluginContinuationRegistration {
@@ -689,6 +698,7 @@ export interface DesktopPluginsApi {
 	/** Enable/disable a mode-gated plugin's agent contributions (ADR-0041). */
 	setContributionMode(pluginId: string, active: boolean): Promise<void>;
 	beginAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
+	commitAgentContributionsLoad(pluginId: string, activationId: string): Promise<void>;
 	registerAgentTool(pluginId: string, registration: PluginAgentToolRegistration): Promise<void>;
 	unregisterAgentTool(pluginId: string, toolId: string, activationId?: string): Promise<void>;
 	registerAgentHook(pluginId: string, registration: PluginAgentHookHostRegistration): Promise<void>;
@@ -697,6 +707,7 @@ export interface DesktopPluginsApi {
 	onAgentToolRequest(handler: (request: PluginAgentToolInvocationRequest) => void): () => void;
 	respondAgentTool(requestId: string, result: unknown): Promise<void>;
 	onAgentHookRequest(handler: (request: PluginAgentHookInvocationRequest) => void): () => void;
+	onAgentHandlerReleased(handler: (event: PluginAgentHandlerReleasedEvent) => void): () => void;
 	respondAgentHook(requestId: string, result: unknown): Promise<void>;
 	registerAppAction(pluginId: string, registration: PluginAppActionRegistration): Promise<void>;
 	commitAppActionActivation(pluginId: string, activationId: string): Promise<void>;

@@ -1,5 +1,9 @@
 import type { Api, Message, Model } from "@vetta/ai";
-import type { ModelCallFrameCompositionContext, RuntimeToolDefinition } from "@vetta/runtime-core/kernel";
+import type {
+	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
+	RuntimeToolDefinition,
+} from "@vetta/runtime-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
 	type AgentPluginRuntimeConfig,
@@ -13,6 +17,31 @@ import {
 } from "../../src/plugins/runtime/run-orchestrator.js";
 
 describe("CodingAgentPluginRunOrchestrator", () => {
+	it("uses the plugin provider revision admitted for the Turn", async () => {
+		let config: AgentPluginRuntimeConfig = {
+			systemPromptProviderContributions: [{ pluginId: "plugin", id: "before", handlerId: "before" }],
+		};
+		const invoked: string[] = [];
+		const orchestrator = new CodingAgentPluginRunOrchestrator({
+			session: { id: "session-1", cwd: "C:\\workspace", scenario: "cli" },
+			readAgentPlugins: () => config,
+			invokeSystemPrompt: async (invocation) => {
+				invoked.push(invocation.handlerId);
+				return [];
+			},
+		});
+		orchestrator.bindForTurn(acquireContext("turn-1"));
+		config = {
+			systemPromptProviderContributions: [{ pluginId: "plugin", id: "after", handlerId: "after" }],
+		};
+
+		await orchestrator.compose(compositionInput("turn-1"));
+		orchestrator.bindForTurn(acquireContext("turn-2"));
+		await orchestrator.compose(compositionInput("turn-2"));
+
+		expect(invoked).toEqual(["before", "after"]);
+	});
+
 	it("orders providers, applies prompt/tool effects once per turn and queues requested continuations", async () => {
 		const providerCalls: string[] = [];
 		const failures: CodingAgentPluginProviderFailure[] = [];
@@ -161,6 +190,15 @@ describe("CodingAgentPluginRunOrchestrator", () => {
 		expect(renderSystemPromptDraft(nextTurn.draft)).toContain("Next turn effect");
 	});
 });
+
+function acquireContext(operationId: string): RuntimeSnapshotAcquireContext {
+	return {
+		sessionId: "session-1",
+		operationId,
+		reason: "turn",
+		signal: new AbortController().signal,
+	};
+}
 
 function compositionInput(turnId: string): {
 	readonly context: ModelCallFrameCompositionContext;

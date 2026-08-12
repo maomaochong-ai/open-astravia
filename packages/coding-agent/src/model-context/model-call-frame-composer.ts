@@ -1,14 +1,20 @@
-import type { ContextCompositionSectionInput } from "@vetta/runtime-core";
+import type {
+	AgentPluginRuntimeConfig,
+	AgentPluginTurnHandlerLease,
+	AgentPluginTurnHandlerLeaseProvider,
+	ContextCompositionSectionInput,
+} from "@vetta/runtime-core";
 import type {
 	InstructionBlock,
 	ModelCallFrame,
 	ModelCallFrameComposer,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type { CodingToolActivation } from "@vetta/runtime-tools/coding";
 import type {
-	CodingAgentPluginMcpRuntime,
+	CodingAgentPluginMcpToolComposer,
 	CodingAgentSystemPromptOptionsResolver,
 } from "../runtime-contracts/index.js";
 import { type BuildSystemPromptOptions, buildSystemPromptDraft } from "./product-prompt.js";
@@ -23,21 +29,34 @@ export type {
 
 export interface CodingAgentModelCallFrameComposerOptions {
 	readonly resolveSystemPromptOptions: CodingAgentSystemPromptOptionsResolver;
+	readonly bindSystemPromptOptions?: (
+		context: RuntimeSnapshotAcquireContext,
+	) => CodingAgentSystemPromptOptionsResolver;
 	readonly readMcpPromptState?: () => CodingAgentMcpPromptState;
 	readonly readAvailableTools?: () => ReadonlyMap<string, RuntimeToolDefinition>;
 	readonly readActiveToolNamesOverride?: () => readonly string[] | undefined;
-	readonly pluginMcpRuntime?: CodingAgentPluginMcpRuntime;
+	readonly pluginMcpRuntime?: CodingAgentPluginMcpToolComposer;
 	readonly readAgentMode?: () => string | undefined;
 	readonly isMcpToolVisible?: (toolName: string) => boolean;
 	readonly pluginRunOrchestrator?: CodingAgentModelCallPluginRunPort;
 	readonly pluginToolRuntime?: CodingAgentModelCallPluginToolPort;
+	readonly readAgentPlugins?: () => AgentPluginRuntimeConfig | undefined;
+	readonly pluginHandlerLeaseProvider?: AgentPluginTurnHandlerLeaseProvider;
 	/** 系统提示词额外公布、但不加入可执行 Tool Frame 的既有宿主工具名称。 */
 	readonly systemPromptAdvertisedToolNames?: readonly string[];
 	readonly wrapTools?: CodingAgentModelCallToolWrapper;
+	readonly bindToolWrapper?: (context: RuntimeSnapshotAcquireContext) => {
+		readonly wrapTools: CodingAgentModelCallToolWrapper;
+		release(): Promise<void> | void;
+	};
 	readonly extensionEvents?: CodingAgentModelCallExtensionEvents;
 	readonly extensionToolRuntime?: CodingAgentModelCallExtensionToolPort;
 	readonly resolveExtensionToolActivation?: (context: ModelCallFrameCompositionContext) => CodingToolActivation;
+	readonly bindExtensionToolActivation?: (
+		context: RuntimeSnapshotAcquireContext,
+	) => (context: ModelCallFrameCompositionContext) => CodingToolActivation;
 	readonly onPromptDiagnostics?: (diagnostics: SystemPromptDiagnostics) => void;
+	readonly releaseTurnBinding?: () => Promise<void> | void;
 }
 
 export interface CodingAgentMcpPromptState {
@@ -58,6 +77,8 @@ export interface CodingAgentModelCallExtensionEvents {
 }
 
 export interface CodingAgentModelCallExtensionToolPort {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentModelCallExtensionToolPort;
+	releaseTurnBinding?(): Promise<void> | void;
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
@@ -70,6 +91,7 @@ export interface CodingAgentModelCallExtensionToolPort {
 }
 
 export interface CodingAgentModelCallPluginToolPort {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentModelCallPluginToolPort;
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
@@ -77,6 +99,7 @@ export interface CodingAgentModelCallPluginToolPort {
 }
 
 export interface CodingAgentModelCallPluginRunPort {
+	bindForTurn?(context: RuntimeSnapshotAcquireContext): CodingAgentModelCallPluginRunPort;
 	compose(input: {
 		readonly context: ModelCallFrameCompositionContext;
 		readonly availableTools: ReadonlyMap<string, RuntimeToolDefinition>;
@@ -100,6 +123,68 @@ export type CodingAgentModelCallToolWrapper = (
  */
 export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer {
 	constructor(private readonly options: CodingAgentModelCallFrameComposerOptions) {}
+
+	async bindForTurn(context: RuntimeSnapshotAcquireContext): Promise<ModelCallFrameComposer> {
+		context.signal.throwIfAborted();
+		const agentPlugins = this.options.readAgentPlugins?.();
+		const pluginHandlerLeaseResult = this.options.pluginHandlerLeaseProvider?.bindForTurn(agentPlugins, {
+			sessionId: context.sessionId,
+			turnId: context.operationId,
+			signal: context.signal,
+		});
+		const availableTools = this.options.readAvailableTools ? new Map(this.options.readAvailableTools()) : undefined;
+		const activeToolNamesOverride = this.options.readActiveToolNamesOverride?.();
+		const mcpPromptState = this.options.readMcpPromptState?.();
+		const agentMode = this.options.readAgentMode?.();
+		const visibleMcpTools = availableTools
+			? new Set([...availableTools.keys()].filter((toolName) => this.options.isMcpToolVisible?.(toolName) ?? true))
+			: undefined;
+		const pluginMcpRuntime = this.options.pluginMcpRuntime?.bindForTurn?.(context) ?? this.options.pluginMcpRuntime;
+		const extensionToolRuntime =
+			this.options.extensionToolRuntime?.bindForTurn?.(context) ?? this.options.extensionToolRuntime;
+		const boundToolWrapper = this.options.bindToolWrapper?.(context);
+		const pluginRunOrchestrator =
+			this.options.pluginRunOrchestrator?.bindForTurn?.(context) ?? this.options.pluginRunOrchestrator;
+		const pluginToolRuntime =
+			this.options.pluginToolRuntime?.bindForTurn?.(context) ?? this.options.pluginToolRuntime;
+		const resolveExtensionToolActivation =
+			this.options.bindExtensionToolActivation?.(context) ?? this.options.resolveExtensionToolActivation;
+		const resolveSystemPromptOptions =
+			this.options.bindSystemPromptOptions?.(context) ?? this.options.resolveSystemPromptOptions;
+		let pluginHandlerLease: AgentPluginTurnHandlerLease | undefined;
+		try {
+			pluginHandlerLease = await pluginHandlerLeaseResult;
+			context.signal.throwIfAborted();
+		} catch (error) {
+			await Promise.allSettled([
+				pluginMcpRuntime?.releaseTurnBinding?.(),
+				extensionToolRuntime?.releaseTurnBinding?.(),
+				boundToolWrapper?.release(),
+			]);
+			throw error;
+		}
+		return new CodingAgentModelCallFrameComposer({
+			...this.options,
+			pluginRunOrchestrator,
+			pluginToolRuntime,
+			pluginMcpRuntime,
+			extensionToolRuntime,
+			resolveExtensionToolActivation,
+			resolveSystemPromptOptions,
+			readAvailableTools: availableTools ? () => availableTools : undefined,
+			readActiveToolNamesOverride: () => activeToolNamesOverride,
+			readMcpPromptState: mcpPromptState ? () => mcpPromptState : undefined,
+			readAgentMode: () => agentMode,
+			isMcpToolVisible: visibleMcpTools ? (toolName) => visibleMcpTools.has(toolName) : undefined,
+			wrapTools: boundToolWrapper?.wrapTools ?? this.options.wrapTools,
+			releaseTurnBinding: () =>
+				releaseTurnBindings(pluginMcpRuntime, pluginHandlerLease, extensionToolRuntime, boundToolWrapper),
+		});
+	}
+
+	releaseTurnBinding(): Promise<void> | void {
+		return this.options.releaseTurnBinding?.();
+	}
 
 	async compose(context: ModelCallFrameCompositionContext): Promise<ModelCallFrame> {
 		const prepared = await this.prepare(context);
@@ -221,6 +306,26 @@ export class CodingAgentModelCallFrameComposer implements ModelCallFrameComposer
 			createDraft,
 		};
 	}
+}
+
+async function releaseTurnBindings(
+	pluginMcpRuntime: CodingAgentPluginMcpToolComposer | undefined,
+	pluginHandlerLease: AgentPluginTurnHandlerLease | undefined,
+	extensionToolRuntime: CodingAgentModelCallExtensionToolPort | undefined,
+	boundToolWrapper:
+		| { readonly wrapTools: CodingAgentModelCallToolWrapper; release(): Promise<void> | void }
+		| undefined,
+): Promise<void> {
+	const results = await Promise.allSettled([
+		pluginMcpRuntime?.releaseTurnBinding?.(),
+		pluginHandlerLease?.release(),
+		extensionToolRuntime?.releaseTurnBinding?.(),
+		boundToolWrapper?.release(),
+	]);
+	const errors = results
+		.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+		.map(({ reason }) => reason);
+	if (errors.length > 0) throw new AggregateError(errors, "Failed to release Plugin Turn resources");
 }
 
 function composeContextSections(

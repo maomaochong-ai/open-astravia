@@ -281,6 +281,16 @@ Then, for a multi-screen product, write in two passes:
 
 Single screens, posters and slides skip the skeleton pass — just write the file.
 
+**Going back**: every design keeps its own version history — one version per turn
+that changed it, saved automatically, titled with what the user asked for. So
+"undo that", "go back to before the nav bar moved", "restore the previous
+version" is `vetd_history` then `vetd_restore`, NOT you editing files until they
+resemble the old version from memory. Restoring is safe in both directions: it
+is saved as a new version too, so a wrong pick is one more `vetd_restore` away
+from being corrected — the response tells you where the pre-restore state went.
+The user can also do it themselves from the canvas's history panel, where the
+versions carry thumbnails.
+
 **Verify visually**: `vetd_screenshot` every frame you created or changed, then
 Read the returned PNG to actually see it. You are looking for rendering defects
 the code cannot show you — run the checklist in `references/quality.md`, which

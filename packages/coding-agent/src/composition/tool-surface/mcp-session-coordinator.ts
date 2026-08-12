@@ -17,7 +17,6 @@ export interface CodingAgentMcpSessionIndexes {
 	readonly resourceContexts: CodingAgentSessionValueIndex<RuntimeResourceContext>;
 	readonly mcpControllers: CodingAgentSessionValueIndex<McpDeferredToolController>;
 	readonly mcpRefreshObservedSessions: CodingAgentSessionMarkerIndex;
-	readonly mcpPromptRefreshReuseSessions: CodingAgentSessionMarkerIndex;
 }
 
 export interface CodingAgentMcpSessionCoordinatorOptions {
@@ -35,7 +34,6 @@ export interface CodingAgentMcpSessionControllerOptions {
 export interface CodingAgentMcpSessionCoordinator {
 	readonly sharedRuntimeAvailable: boolean;
 	createSessionController(options: CodingAgentMcpSessionControllerOptions): McpDeferredToolController | undefined;
-	refreshCatalogForModelCall(sessionId: string): Promise<void>;
 	refreshSession(sessionId: string, reportPromptBoundary: boolean): Promise<McpRuntimeToolSnapshot | undefined>;
 	readInheritedToolView(pluginRuntime?: CodingAgentPluginMcpRuntime): Promise<McpRuntimeToolView>;
 	dispose(): void;
@@ -79,7 +77,6 @@ export async function createCodingAgentMcpSessionCoordinator(
 				await resourceContext.reportObservation({ type: "mcp.reload.end", changed, source: "agent" });
 			}
 			if (reportPromptBoundary) options.indexes.mcpRefreshObservedSessions.add(sessionId);
-			if (reportPromptBoundary) options.indexes.mcpPromptRefreshReuseSessions.add(sessionId);
 			return snapshot;
 		} catch (error) {
 			if (reportPromptBoundary && resourceContext) {
@@ -112,10 +109,6 @@ export async function createCodingAgentMcpSessionCoordinator(
 			const snapshot = mergeMcpSnapshots(synchronizer?.snapshot(), controllerOptions.pluginRuntime?.snapshot());
 			if (snapshot) controller.refresh(snapshot);
 			return controller;
-		},
-		async refreshCatalogForModelCall(sessionId) {
-			if (options.indexes.mcpPromptRefreshReuseSessions.delete(sessionId)) return;
-			await refreshSession(sessionId, false);
 		},
 		refreshSession,
 		async readInheritedToolView(pluginRuntime) {

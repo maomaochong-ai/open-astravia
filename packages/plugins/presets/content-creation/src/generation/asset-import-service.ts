@@ -1,6 +1,7 @@
 import { getContentNodeSize } from "../node/geometry";
 import { listContentNodeAssetIds } from "../node/material-assets";
 import type { ContentProjectCommand } from "../project/commands";
+import type { ContentHistoryMetadata } from "../project/history";
 import type {
 	AssetKind,
 	CanvasPosition,
@@ -18,6 +19,7 @@ export interface ContentAssetImportOptions {
 	nodeName?: string;
 	nodePurpose?: string;
 	layoutOwnership?: ContentNodeLayoutOwnership;
+	history?: ContentHistoryMetadata;
 }
 
 export interface ContentAssetImportResult {
@@ -86,7 +88,7 @@ export class ContentAssetImportService {
 						},
 					},
 		];
-		const next = await this.workspace.dispatch(cwd, commands, project.revision);
+		const next = await this.workspace.dispatch(cwd, commands, project.revision, options.history);
 		return { project: next, assetNodeId, assets: importedAssets };
 	}
 }

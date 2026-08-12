@@ -20,6 +20,7 @@ describe("PluginAgentContributionRegistry", () => {
 				activationId: "first",
 			}),
 		).toBe(true);
+		expect(registry.commit("demo", "first")).toBe(true);
 
 		expect(registry.beginLoad("demo", "second")).toEqual({ toolCount: 1, hookCount: 0, continuationCount: 0 });
 		expect(
@@ -32,7 +33,20 @@ describe("PluginAgentContributionRegistry", () => {
 				activationId: "first",
 			}),
 		).toBe(false);
-		expect(registry.getTools("demo")).toEqual([]);
+		expect(registry.getTools("demo")).toMatchObject([{ id: "first-tool" }]);
+		expect(
+			registry.registerTool("demo", {
+				id: "second-tool",
+				name: "second_tool",
+				description: "second",
+				parameters: {},
+				handlerId: "second-handler",
+				activationId: "second",
+			}),
+		).toBe(true);
+		expect(registry.getTools("demo")).toMatchObject([{ id: "first-tool" }]);
+		expect(registry.commit("demo", "second")).toBe(true);
+		expect(registry.getTools("demo")).toMatchObject([{ id: "second-tool" }]);
 	});
 
 	it("does not let a stale clear remove the current activation", () => {
@@ -43,10 +57,41 @@ describe("PluginAgentContributionRegistry", () => {
 			handlerId: "handler",
 			activationId: "current",
 		});
+		registry.commit("demo", "current");
 
 		expect(registry.clear("demo", "stale")).toBeUndefined();
 		expect(registry.getContinuations("demo")).toHaveLength(1);
 		expect(registry.clear("demo", "current")).toEqual({ toolCount: 0, hookCount: 0, continuationCount: 1 });
 		expect(registry.getContinuations("demo")).toEqual([]);
+	});
+
+	it("discards a failed candidate without disturbing the published last-known-good activation", () => {
+		const registry = createRegistry();
+		registry.beginLoad("demo", "published");
+		registry.registerTool("demo", {
+			id: "tool",
+			name: "published_tool",
+			description: "published",
+			parameters: {},
+			handlerId: "shared-handler",
+			activationId: "published",
+		});
+		registry.commit("demo", "published");
+		registry.beginLoad("demo", "candidate");
+		registry.registerTool("demo", {
+			id: "tool",
+			name: "candidate_tool",
+			description: "candidate",
+			parameters: {},
+			handlerId: "shared-handler",
+			activationId: "candidate",
+		});
+
+		expect(registry.clear("demo", "candidate")).toEqual({
+			toolCount: 1,
+			hookCount: 0,
+			continuationCount: 0,
+		});
+		expect(registry.getTools("demo")).toMatchObject([{ name: "published_tool", activationId: "published" }]);
 	});
 });

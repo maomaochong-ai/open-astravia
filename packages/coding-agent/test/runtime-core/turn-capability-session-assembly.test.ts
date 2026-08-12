@@ -68,7 +68,7 @@ describe("Coding Agent Turn Capability session assembly", () => {
 			conversationContextProjector: {
 				project: () => [],
 			} satisfies ConversationContextProjector,
-			modelRuntime: {} as RuntimeModel,
+			modelRuntime: { bind: () => undefined } as unknown as RuntimeModel,
 			hookRuntime: {} as unknown as EcosystemHookRuntime,
 			extensionEvents,
 		});

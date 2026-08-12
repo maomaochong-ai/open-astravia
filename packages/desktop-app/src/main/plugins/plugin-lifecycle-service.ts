@@ -23,6 +23,11 @@ export interface PluginLifecycleDependencies {
 	stopDevWatch(id: string): void;
 	stopSpawns(id: string): void;
 	destroyOffscreenSessions(id: string): void;
+	hardRevokeAgentHandlers(
+		id: string,
+		reason: string,
+		kinds?: readonly ("tool" | "hook" | "continuation" | "system-prompt")[],
+	): void;
 	refreshRuntime(): void;
 	recordEvent(input: AppMonitorEvent): void;
 }
@@ -65,6 +70,7 @@ export class PluginLifecycleService {
 
 	uninstall(id: string): void {
 		const plugin = this.dependencies.listPlugins().find((candidate) => candidate.id === id);
+		this.dependencies.hardRevokeAgentHandlers(id, "Plugin was uninstalled");
 		this.stopPluginResources(id, true);
 		this.dependencies.uninstall(id);
 		this.actionService.clear(id);
@@ -94,6 +100,26 @@ export class PluginLifecycleService {
 	revokePermissions(id: string, permissions: PluginPermission[]): InstalledPlugin {
 		const previous = this.findPlugin(id)?.grantedPermissions ?? [];
 		const plugin = this.dependencies.revokePermissions(id, permissions);
+		const revokedKinds: Array<"tool" | "hook" | "continuation" | "system-prompt"> = [];
+		if (
+			!plugin.grantedPermissions.includes("agent.tools.register") ||
+			!plugin.grantedPermissions.includes("agent.toolHandler.execute")
+		)
+			revokedKinds.push("tool");
+		if (
+			!plugin.grantedPermissions.includes("agent.hooks.register") ||
+			!plugin.grantedPermissions.includes("agent.hookHandler.execute")
+		)
+			revokedKinds.push("hook");
+		if (!plugin.grantedPermissions.includes("agent.continuation.register")) revokedKinds.push("continuation");
+		if (
+			!plugin.grantedPermissions.includes("agent.systemPrompt.write") &&
+			!plugin.grantedPermissions.includes("agent.systemPrompt.fullControl")
+		)
+			revokedKinds.push("system-prompt");
+		if (revokedKinds.length > 0) {
+			this.dependencies.hardRevokeAgentHandlers(id, "Plugin Agent permission was revoked", revokedKinds);
+		}
 		if (
 			!plugin.grantedPermissions.includes("app.actions.register") ||
 			!plugin.grantedPermissions.includes("app.actionHandler.execute")

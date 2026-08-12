@@ -74,7 +74,7 @@ export async function loadPlugin(plugin: InstalledPlugin, onChanged: () => void)
 			activationId,
 		});
 		await Promise.all(pendingRuntimeRegistrations);
-		await window.vetta.plugins.commitAppActionActivation(plugin.id, activationId);
+		await window.vetta.plugins.commitAgentContributionsLoad(plugin.id, activationId);
 		debugPluginAgent("load complete", {
 			pluginId: plugin.id,
 			runtimeContributionsRegistered: pendingRuntimeRegistrations.length,

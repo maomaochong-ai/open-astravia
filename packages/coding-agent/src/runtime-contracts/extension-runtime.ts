@@ -19,5 +19,7 @@ export type CodingAgentSessionToolRegistration = RegisteredTool;
 
 export interface CodingAgentExtensionEventBinding {
 	readSystemPrompt(): string;
-	dispose(): void;
+	/** 仅让持有该 Runner 代际 lease 的 Turn 投递执行观察事件。 */
+	ownsTurn?(turnId: string): boolean;
+	dispose(): Promise<void> | void;
 }

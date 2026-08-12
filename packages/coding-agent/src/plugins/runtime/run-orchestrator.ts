@@ -3,6 +3,7 @@ import type {
 	ContinuationPolicy,
 	ContinuationPolicyContext,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import type {
@@ -75,6 +76,7 @@ interface RequestedContinuation {
 
 interface PluginTurnState {
 	readonly turnId: string;
+	readonly agentPlugins: AgentPluginRuntimeConfig | undefined;
 	readonly runIndex: number;
 	readonly promptEffects: AppliedPromptEffects[];
 	readonly toolEffects: AppliedToolEffect[];
@@ -97,6 +99,7 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 	private readonly seenContinuationKeys = new Set<string>();
 	private readonly pendingNextTurnEffects: PendingEffects[] = [];
 	private activeTurn: PluginTurnState | undefined;
+	private readonly admittedAgentPlugins = new Map<string, AgentPluginRuntimeConfig | undefined>();
 	private nextRunIndex = 0;
 
 	constructor(private readonly options: CodingAgentPluginRunOrchestratorOptions) {
@@ -106,6 +109,12 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 
 	readActiveToolNames(): readonly string[] | undefined {
 		return this.activeTurn ? [...this.activeTurn.lastActiveToolNames] : undefined;
+	}
+
+	bindForTurn(context: RuntimeSnapshotAcquireContext): CodingAgentPluginRunOrchestrator {
+		context.signal.throwIfAborted();
+		this.admittedAgentPlugins.set(context.operationId, this.options.readAgentPlugins());
+		return this;
 	}
 
 	readSession(): CodingAgentPluginRunOrchestratorOptions["session"] {
@@ -176,7 +185,7 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 
 		const invoke = this.options.invokeContinuation;
 		if (!invoke) return [];
-		const contributions = sortContributions(this.options.readAgentPlugins()?.continuationContributions ?? []);
+		const contributions = sortContributions(state.agentPlugins?.continuationContributions ?? []);
 		for (const contribution of contributions) {
 			if (context.signal.aborted) return [];
 			try {
@@ -210,8 +219,10 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 	}
 
 	private createTurnState(turnId: string): PluginTurnState {
+		const hasAdmittedPlugins = this.admittedAgentPlugins.has(turnId);
 		const state: PluginTurnState = {
 			turnId,
+			agentPlugins: hasAdmittedPlugins ? this.admittedAgentPlugins.get(turnId) : this.options.readAgentPlugins(),
 			runIndex: this.nextRunIndex,
 			promptEffects: [],
 			toolEffects: [],
@@ -220,6 +231,7 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 			lastActiveToolNames: [],
 			lastAvailableToolNames: [],
 		};
+		this.admittedAgentPlugins.delete(turnId);
 		this.nextRunIndex += 1;
 		return state;
 	}
@@ -244,7 +256,7 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 	): Promise<void> {
 		const invoke = this.options.invokeSystemPrompt;
 		if (!invoke) return;
-		const providers = sortContributions(this.options.readAgentPlugins()?.systemPromptProviderContributions ?? []);
+		const providers = sortContributions(state.agentPlugins?.systemPromptProviderContributions ?? []);
 		const baseActiveToolNames = [...input.context.frame.tools.keys()];
 		const baseDraft = input.createDraft(baseActiveToolNames);
 		for (const provider of providers) {
@@ -290,6 +302,7 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 			pluginId: provider.pluginId,
 			providerId: provider.id,
 			handlerId: provider.handlerId,
+			activationId: provider.activationId,
 			session: this.options.session,
 			model: toPluginModel(context),
 			conversation: toPluginConversation(context.messages, conversationMode === "messages"),
@@ -318,6 +331,7 @@ export class CodingAgentPluginRunOrchestrator implements ContinuationPolicy {
 			pluginId: contribution.pluginId,
 			providerId: contribution.id,
 			handlerId: contribution.handlerId,
+			activationId: contribution.activationId,
 			session: this.options.session,
 			model: toPluginModel(context),
 			conversation: toPluginConversation(context.messages, contribution.context?.conversation === "messages"),

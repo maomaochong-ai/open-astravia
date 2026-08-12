@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type {
 	ModelCallFrame,
 	ModelCallFrameCompositionContext,
+	RuntimeSnapshotAcquireContext,
 	RuntimeToolDefinition,
 } from "@vetta/runtime-core/kernel";
 import {
@@ -20,7 +21,10 @@ import { type CodingAgentMcpSupervisorOptions, createCodingAgentMcpSupervisor } 
 import { decorateCodingAgentMcpRuntimeTool } from "../../mcp/runtime/tool-source.js";
 import type { AgentPluginRuntimeConfig } from "../../model-context/index.js";
 import { matchesAgentMode } from "../../profiles/index.js";
-import type { CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort } from "../../runtime-contracts/index.js";
+import type {
+	CodingAgentPluginMcpRuntime as CodingAgentPluginMcpRuntimePort,
+	CodingAgentPluginMcpToolComposer,
+} from "../../runtime-contracts/index.js";
 
 export interface CodingAgentPluginMcpRuntimeOptions
 	extends Pick<CodingAgentMcpSupervisorOptions, "agentDir" | "clientFactory" | "debug"> {
@@ -93,25 +97,44 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 		return this.tools.has(toolName);
 	}
 
+	bindForTurn(context: RuntimeSnapshotAcquireContext): CodingAgentPluginMcpToolComposer {
+		context.signal.throwIfAborted();
+		const leases: Array<{ release(): Promise<void> | void }> = [];
+		const tools = new Map<string, RuntimeToolDefinition>();
+		try {
+			for (const [name, tool] of this.tools) {
+				const lease = tool.bindForTurn?.(context);
+				if (lease) leases.push(lease);
+				tools.set(name, lease?.tool ?? tool);
+			}
+		} catch (error) {
+			for (const lease of leases.reverse()) void lease.release();
+			throw error;
+		}
+		const serverModes = new Map(this.serverModes);
+		let released = false;
+		return {
+			bindForTurn: () => this.bindForTurn(context),
+			async releaseTurnBinding() {
+				if (released) return;
+				released = true;
+				const results = await Promise.allSettled(leases.map((lease) => lease.release()));
+				const errors = results
+					.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+					.map(({ reason }) => reason);
+				if (errors.length > 0) throw new AggregateError(errors, "Failed to release plugin MCP Turn binding");
+			},
+			compose: (compositionContext, baseAvailableTools, options) =>
+				composePluginMcpSurface(tools, serverModes, compositionContext, baseAvailableTools, options),
+		};
+	}
+
 	compose(
 		context: ModelCallFrameCompositionContext,
 		baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
 		options: CodingAgentPluginMcpCompositionOptions,
 	): CodingAgentPluginMcpToolSurface {
-		const availableTools = new Map(baseAvailableTools);
-		const activeTools = new Map(context.frame.tools);
-		for (const [name, tool] of this.tools) {
-			availableTools.set(name, tool);
-			if (options.isToolVisible(name) && this.matchesToolMode(name, options.agentMode)) {
-				activeTools.set(name, tool);
-			} else {
-				activeTools.delete(name);
-			}
-		}
-		return {
-			frame: { instructions: context.frame.instructions, tools: activeTools },
-			availableTools,
-		};
+		return composePluginMcpSurface(this.tools, this.serverModes, context, baseAvailableTools, options);
 	}
 
 	async dispose(): Promise<void> {
@@ -119,13 +142,6 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 		this.disposed = true;
 		this.synchronizer.dispose();
 		await this.supervisor.shutdown();
-	}
-
-	private matchesToolMode(toolName: string, agentMode: string | undefined): boolean {
-		for (const [serverName, modes] of this.serverModes) {
-			if (toolName.startsWith(`mcp_${serverName}_`)) return matchesAgentMode(modes, agentMode);
-		}
-		return true;
 	}
 
 	private logServerOutcomes(): void {
@@ -141,6 +157,37 @@ export class CodingAgentPluginMcpRuntime implements CodingAgentPluginMcpRuntimeP
 	private log(message: string): void {
 		if (this.debug) console.error(`[MCPManager] ${message}`);
 	}
+}
+
+function composePluginMcpSurface(
+	tools: ReadonlyMap<string, RuntimeToolDefinition>,
+	serverModes: ReadonlyMap<string, readonly string[]>,
+	context: ModelCallFrameCompositionContext,
+	baseAvailableTools: ReadonlyMap<string, RuntimeToolDefinition>,
+	options: CodingAgentPluginMcpCompositionOptions,
+): CodingAgentPluginMcpToolSurface {
+	const availableTools = new Map(baseAvailableTools);
+	const activeTools = new Map(context.frame.tools);
+	for (const [name, tool] of tools) {
+		availableTools.set(name, tool);
+		if (options.isToolVisible(name) && matchesToolMode(serverModes, name, options.agentMode)) {
+			activeTools.set(name, tool);
+		} else {
+			activeTools.delete(name);
+		}
+	}
+	return { frame: { instructions: context.frame.instructions, tools: activeTools }, availableTools };
+}
+
+function matchesToolMode(
+	serverModes: ReadonlyMap<string, readonly string[]>,
+	toolName: string,
+	agentMode: string | undefined,
+): boolean {
+	for (const [serverName, modes] of serverModes) {
+		if (toolName.startsWith(`mcp_${serverName}_`)) return matchesAgentMode(modes, agentMode);
+	}
+	return true;
 }
 
 function fingerprintPluginMcpServers(servers: ReadonlyMap<string, McpServerConfig>): string {

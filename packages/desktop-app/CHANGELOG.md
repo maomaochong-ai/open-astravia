@@ -6,6 +6,9 @@ All notable changes to `@vetta/desktop-app` are documented in this file.
 
 ### Added
 
+- **执行模式与 Plugin Hook 采用 Turn 边界生效**：活动 Agent 运行时修改全局 Execution Mode 不再报 busy，
+  当前 Turn 保持原沙盒/全访问实现并在下一 Turn 应用；Desktop Plugin Hook 按 `turnId` 固定首次捕获的
+  binding 集合，普通注册/注销只影响后续 Turn。
 - **Hosted Route 导航进入三层能力架构**（ADR-0068）：Desktop Renderer 新增通用 namespace 路由服务并继续拥有 TanStack Router、URL 与页面 Registry；Capability SDK 只发布可序列化的 `open-hosted-route` 合同，Runtime 负责精确 Grant、namespace constraint 与撤销；Plugin/Theme 各自在自己的集成层固定身份、映射权限并管理 Session。Capability SDK 中原有 Plugin/Theme Adapter 已迁回 Desktop 上层集成目录，网络和媒体合同中的 `pluginId` / `plugin-blob` 也分别收敛为通用 `namespace` / `storage-blob`，插件公开 API 保持不变。
 
 - **画布活动态浮层改挂生成阶段**：`edit` / `write` 的时间几乎全花在模型生成参数上（一整份 frame 正文），执行只要几毫秒。浮层原本挂在工具执行事件上，于是要等改动落盘之后才亮，看起来像「改完才闪一下」。宿主现在把新的 `toolcall.args`（生成中的部分参数）转译成插件事件 `tool-call-args`，插件据此在模型刚写下目标路径时就点亮对应画框，一直亮到落盘。

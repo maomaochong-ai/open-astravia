@@ -15,9 +15,11 @@ import type {
 	ConversationRepository,
 	EventSink,
 	KernelEvent,
+	QueuedSessionInput,
+	RuntimeInputRequestPreparer,
 	SessionInput,
 	SessionInputQueueMode,
-	SessionSendOptions,
+	SessionInputRequest,
 	SessionSendResult,
 	StoredSessionEvent,
 	TurnResult,
@@ -58,34 +60,11 @@ import type {
 	RuntimeSessionToolController,
 } from "./session-ports.js";
 
-export interface RuntimePromptPreparationContext {
-	readonly sessionId: string;
-	readonly queueing: boolean;
-}
+export type RuntimePromptResult = SessionSendResult;
 
-export interface RuntimePreparedPrompt {
-	readonly input: SessionInput;
-	readonly options?: SessionSendOptions;
-}
-
-export type RuntimePromptInterceptionResult =
-	| { readonly action: "continue"; readonly request: PromptRequest }
-	| { readonly action: "handled" };
-
-export interface RuntimeHandledPromptResult {
-	readonly status: "handled";
-	readonly sessionId: string;
-}
-
-export type RuntimePromptResult = SessionSendResult | RuntimeHandledPromptResult;
-
-/** 外部 PromptRequest 到 Kernel 输入的必需反腐层；Backend 不静默忽略宿主字段。 */
-export interface RuntimePromptAdapter {
-	intercept?(
-		request: PromptRequest,
-		context: RuntimePromptPreparationContext,
-	): Promise<RuntimePromptInterceptionResult>;
-	prepare(request: PromptRequest, context: RuntimePromptPreparationContext): Promise<RuntimePreparedPrompt>;
+/** 把公开 PromptRequest 封装为等待 Turn admission 的 Kernel 请求。 */
+export interface RuntimePromptAdapter extends RuntimeInputRequestPreparer {
+	createRequest(request: PromptRequest): SessionInputRequest;
 }
 
 export interface KernelRuntimeAssembly {
@@ -229,27 +208,15 @@ export class RuntimeSession {
 		if ((this.session.state === "running" || this.session.state === "cancelling") && !request.streamingBehavior) {
 			throw sessionBusyError();
 		}
-		let prepared: RuntimePreparedPrompt;
 		try {
-			if (request.modelKey) {
-				await this.modelRuntime.selectModel(request.modelKey, "if-changed");
-			}
-			if (request.reasoning) {
-				this.modelRuntime.setThinkingLevel(request.reasoning);
-			}
-			const context = {
-				sessionId: this.sessionId,
-				queueing: this.session.state === "running" || this.session.state === "cancelling",
-			};
-			const normalized = this.normalizeImages(request);
-			const intercepted = await this.promptAdapter.intercept?.(normalized, context);
+			const inputRequest = this.promptAdapter.createRequest(request);
 			this.assertOpen();
-			if (intercepted?.action === "handled") {
-				return { status: "handled", sessionId: this.sessionId };
-			}
-			prepared = await this.promptAdapter.prepare(
-				intercepted?.action === "continue" ? intercepted.request : normalized,
-				context,
+			return await this.session.sendRequest(
+				inputRequest,
+				{
+					...(request.streamingBehavior ? { streamingBehavior: request.streamingBehavior } : {}),
+				},
+				this.promptAdapter,
 			);
 		} catch (error) {
 			// prompt 在进入 turn 之前失败（模型选择、hook 阻断、skill 解析等）时，
@@ -267,8 +234,6 @@ export class RuntimeSession {
 			}
 			throw error;
 		}
-		this.assertOpen();
-		return this.session.send(prepared.input, prepared.options ?? {});
 	}
 
 	async continue(): Promise<TurnResult> {
@@ -446,17 +411,13 @@ export class RuntimeSession {
 			readPendingMessageCount: () => this.session.pendingMessageCount,
 			readSteeringMode: () => this.session.steeringMode,
 			readFollowUpMode: () => this.session.followUpMode,
-			readSteeringMessages: () => this.session.getSteeringMessages().map(readQueuedMessageText),
-			readFollowUpMessages: () => this.session.getFollowUpMessages().map(readQueuedMessageText),
+			readSteeringMessages: () => this.readQueuedTexts("steer"),
+			readFollowUpMessages: () => this.readQueuedTexts("followUp"),
 			clear: () => {
 				const cleared = this.session.clearQueue();
 				return {
-					steering: cleared.steering.flatMap((input) =>
-						input.message === undefined ? [] : [readQueuedMessageText(input.message)],
-					),
-					followUp: cleared.followUps.flatMap((input) =>
-						input.message === undefined ? [] : [readQueuedMessageText(input.message)],
-					),
+					steering: cleared.steering.map(readQueuedInputText),
+					followUp: cleared.followUps.map(readQueuedInputText),
 				};
 			},
 			readQueueState: () => {
@@ -466,7 +427,7 @@ export class RuntimeSession {
 					entries: snapshot.entries.map((entry) => ({
 						id: entry.id,
 						behavior: entry.behavior,
-						displayText: entry.input.message ? readQueuedMessageText(entry.input.message) : "",
+						displayText: readQueuedInputText(entry.input),
 					})),
 				};
 			},
@@ -577,6 +538,13 @@ export class RuntimeSession {
 		};
 	}
 
+	private readQueuedTexts(behavior: "steer" | "followUp"): readonly string[] {
+		const snapshot = this.session.listQueue();
+		return snapshot.entries
+			.filter((entry) => entry.behavior === behavior)
+			.map(({ input }) => readQueuedInputText(input));
+	}
+
 	/**
 	 * 暴露给宿主组合根的候选 Assembly。缺失能力保持缺失，由上层完整性门禁决定
 	 * 是否允许接入 RuntimeHost；这里不使用 no-op 伪造功能。
@@ -613,20 +581,6 @@ export class RuntimeSession {
 
 	private assertOpen(): void {
 		if (this.disposed) throw sessionClosedError();
-	}
-
-	private normalizeImages(request: PromptRequest): PromptRequest {
-		if (!request.images || request.images.length === 0) return request;
-		const model = this.modelRuntime.readCurrentModel();
-		if (model?.input?.includes("image")) return request;
-		return {
-			...request,
-			images: undefined,
-			text:
-				request.text === "(see attached images)"
-					? "(User attempted to send images, but the current model does not support image input. Please inform the user that this model cannot process images.)"
-					: request.text,
-		};
 	}
 
 	private async executeDocumentCommand(
@@ -903,6 +857,10 @@ function readQueuedMessageText(message: SessionInput["message"]): string {
 		)
 		.map((part) => part.text)
 		.join("");
+}
+
+function readQueuedInputText(input: QueuedSessionInput): string {
+	return input.message ? readQueuedMessageText(input.message) : (input.request?.displayText ?? "");
 }
 
 function createContextDeliveryController(session: AgentSession): RuntimeSessionContextDeliveryController {

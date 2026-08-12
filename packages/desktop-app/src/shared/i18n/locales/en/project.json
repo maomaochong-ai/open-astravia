@@ -137,6 +137,15 @@
 		"failedTitle": "Export failed",
 		"failedConfirm": "OK"
 	},
+	"newProjectDialog": {
+		"title": "New Project",
+		"description": "A new project folder will be created in the workspace directory.",
+		"placeholder": "Enter project name",
+		"cancel": "Cancel",
+		"create": "Create",
+		"emptyError": "Please enter a project name",
+		"invalidError": "Project name cannot contain special characters"
+	},
 	"update": {
 		"newVersion": "New version {{version}} available — click to download in the background",
 		"downloading": "Downloading {{version}} ({{pct}}%)",

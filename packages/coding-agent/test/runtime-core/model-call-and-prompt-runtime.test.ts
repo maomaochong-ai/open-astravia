@@ -12,8 +12,46 @@ import {
 	CODING_AGENT_MODEL_TOOL_ORDER,
 	CODING_AGENT_SUBAGENT_MODEL_TOOL_ORDER_STEP,
 } from "../../src/tool-policy/model-tool-order.js";
+import { preparePrompt } from "./prompt-adapter-test-fixture.js";
 
 describe("Coding Agent model call and prompt runtime", () => {
+	it("holds the Desktop Plugin handler lease for the complete Turn composer binding", async () => {
+		const release = vi.fn();
+		const config = {
+			toolContributions: [
+				{
+					pluginId: "demo",
+					id: "tool",
+					name: "demo_tool",
+					description: "Demo",
+					parameters: { type: "object" },
+					handlerId: "handler-1",
+				},
+			],
+		};
+		const bindForTurn = vi.fn(() => ({ release }));
+		const composer = new CodingAgentModelCallFrameComposer({
+			resolveSystemPromptOptions: async () => ({ cwd: "C:/workspace", scenario: "cli" }),
+			readAgentPlugins: () => config,
+			pluginHandlerLeaseProvider: { bindForTurn },
+		});
+
+		const bound = await composer.bindForTurn({
+			sessionId: "session-1",
+			operationId: "turn-1",
+			reason: "turn",
+			signal: new AbortController().signal,
+		});
+
+		expect(bindForTurn).toHaveBeenCalledWith(config, {
+			sessionId: "session-1",
+			turnId: "turn-1",
+			signal: expect.any(AbortSignal),
+		});
+		await bound.releaseTurnBinding?.();
+		expect(release).toHaveBeenCalledOnce();
+	});
+
 	it("adapts the live model runtime to catalog, credentials and auth refresh ports", async () => {
 		const refresh = vi.fn();
 		const getApiKey = vi.fn(async () => "test-key");
@@ -43,7 +81,8 @@ describe("Coding Agent model call and prompt runtime", () => {
 
 	it("maps basic prompt fields without adding synthetic context", async () => {
 		const adapter = new CodingAgentPromptRequestAdapter({ now: () => 42 });
-		const prepared = await adapter.prepare(
+		const prepared = await preparePrompt(
+			adapter,
 			{
 				text: "inspect image",
 				images: [{ type: "image", data: "base64", mimeType: "image/png" }],
@@ -65,7 +104,6 @@ describe("Coding Agent model call and prompt runtime", () => {
 					timestamp: 42,
 				},
 			},
-			options: { streamingBehavior: "followUp" },
 		});
 	});
 
@@ -78,7 +116,8 @@ describe("Coding Agent model call and prompt runtime", () => {
 				skillInjection: "<skill>review</skill>",
 			}),
 		});
-		const prepared = await adapter.prepare(
+		const prepared = await preparePrompt(
+			adapter,
 			{
 				text: "review this",
 				promptRef: { kind: "skill", name: " review " },
@@ -115,7 +154,8 @@ describe("Coding Agent model call and prompt runtime", () => {
 
 	it("keeps unavailable resources model-invisible and flattens queued injections like the legacy path", async () => {
 		const unavailable = new CodingAgentPromptRequestAdapter({ now: () => 42 });
-		const prepared = await unavailable.prepare(
+		const prepared = await preparePrompt(
+			unavailable,
 			{ text: "use it", promptRef: { kind: "skill", name: "missing" }, attachments: [] },
 			{ sessionId: "session-1", queueing: false },
 		);
@@ -132,7 +172,8 @@ describe("Coding Agent model call and prompt runtime", () => {
 				sceneInjection: "<scene>deploy</scene>",
 			}),
 		});
-		const queuedPrompt = await queued.prepare(
+		const queuedPrompt = await preparePrompt(
+			queued,
 			{
 				text: "now",
 				promptRef: { kind: "scene", name: "deploy" },
@@ -396,7 +437,7 @@ describe("Coding Agent model call and prompt runtime", () => {
 		]);
 	});
 
-	it("reads mutable Resource, Settings, Mode and Memory state per model call without sharing sessions", () => {
+	it("freezes Resource, Settings, Mode and Memory per Turn without sharing sessions", () => {
 		let firstBasePrompt = "First session prompt v1";
 		let firstPersonalization = "First persona v1";
 		let firstMode: string | undefined = "work";
@@ -456,13 +497,15 @@ describe("Coding Agent model call and prompt runtime", () => {
 			activeToolNames: ["read"],
 		};
 
-		const firstCall = first.resolve(context);
+		const firstTurn = first.bindForTurn();
+		const firstCall = firstTurn(context);
 		firstBasePrompt = "First session prompt v2";
 		firstPersonalization = "First persona v2";
 		firstMode = undefined;
 		firstMemory = "First memory v2";
-		const secondCall = first.resolve(context);
-		const isolatedCall = second.resolve({ ...context, sessionId: "second" });
+		const secondCall = firstTurn(context);
+		const nextTurnCall = first.bindForTurn()({ ...context, turnId: "turn-2" });
+		const isolatedCall = second.bindForTurn()({ ...context, sessionId: "second" });
 
 		expect(firstCall).toMatchObject({
 			customPrompt: "First session prompt v1",
@@ -473,11 +516,17 @@ describe("Coding Agent model call and prompt runtime", () => {
 		});
 		expect(firstCall.modePrompt).toBeTruthy();
 		expect(secondCall).toMatchObject({
+			customPrompt: "First session prompt v1",
+			memory: expect.stringContaining("First memory v1"),
+			personalization: "First persona v1",
+		});
+		expect(secondCall.modePrompt).toBeTruthy();
+		expect(nextTurnCall).toMatchObject({
 			customPrompt: "First session prompt v2",
 			memory: expect.stringContaining("First memory v2"),
 			personalization: "First persona v2",
 		});
-		expect(secondCall.modePrompt).toBe("");
+		expect(nextTurnCall.modePrompt).toBe("");
 		expect(isolatedCall).toMatchObject({
 			customPrompt: "Second session prompt",
 			personalization: "Second persona",

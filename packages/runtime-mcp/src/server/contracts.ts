@@ -25,6 +25,17 @@ export interface McpServerView {
 export interface McpServerBinding {
 	readonly view: McpServerView;
 	readonly client?: McpClientHandle;
+	/**
+	 * 为一个 Turn 固定当前连接/进程 generation；普通重配不得主动关闭该 lease。
+	 * Lease 不保证 transport 或进程存活，物理故障仍可使调用失败。
+	 */
+	acquireLease(): McpServerBindingLease;
+}
+
+export interface McpServerBindingLease {
+	readonly view: McpServerView;
+	readonly client?: McpClientHandle;
+	release(): Promise<void>;
 }
 
 export interface McpServerSupervisorState {
@@ -40,6 +51,8 @@ export interface McpServerSupervisorStats {
 	readonly errorServers: number;
 	readonly totalTools: number;
 	readonly totalResources: number;
+	readonly retiredServers: number;
+	readonly activeLeases: number;
 }
 
 /** Complete replacement set supplied by a dynamic capability source such as plugins. */
