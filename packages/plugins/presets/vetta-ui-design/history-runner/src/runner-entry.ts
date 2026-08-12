@@ -11,7 +11,8 @@
 import { createHash } from "node:crypto";
 import fs, { type Dirent } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { unzipSync, zipSync } from "fflate";
 import git from "isomorphic-git";
 
 /** gitdir 不叫 `.git`：叫 `.git` 会让放进代码仓库的设计变成 embedded repository。 */
@@ -208,6 +209,47 @@ export function contentDigest(text: string): string {
 	return createHash("sha1").update(text).digest("hex").slice(0, 12);
 }
 
+/**
+ * 把 `.history/` 打成一个 zip 落到 `out`（导出 `.vetdz` 用）。
+ *
+ * 为什么必须在 node 侧做：插件的递归列举跳过所有 `.` 开头的条目，`.history/` 对导出
+ * 代码根本不可见。落成单个文件而不是从 stdout 回传，是因为它可能有几 MB。
+ */
+function packHistory(dir: string, out: string): number {
+	const gitdir = gitdirOf(dir);
+	if (!fs.existsSync(gitdir)) return 0;
+	const entries: Record<string, Uint8Array> = {};
+	const walk = (relative: string): void => {
+		for (const entry of fs.readdirSync(join(gitdir, relative), { withFileTypes: true })) {
+			const rel = relative ? `${relative}/${entry.name}` : entry.name;
+			// 缩略图不进分享包：它是本机画布位图的副产品，收包方自己会重新截。
+			if (rel === "thumbs" || rel.startsWith("thumbs/")) continue;
+			if (entry.isDirectory()) walk(rel);
+			else if (entry.isFile()) entries[rel] = new Uint8Array(fs.readFileSync(join(gitdir, rel)));
+		}
+	};
+	walk("");
+	const zipped = zipSync(entries, { level: 6 });
+	fs.writeFileSync(out, zipped);
+	return zipped.byteLength;
+}
+
+/** 从 zip 还原 `.history/`。已经有历史就不覆盖——导入产生的是一份新设计。 */
+function unpackHistory(dir: string, from: string): number {
+	const gitdir = gitdirOf(dir);
+	if (fs.existsSync(join(gitdir, "HEAD"))) return 0;
+	const entries = unzipSync(new Uint8Array(fs.readFileSync(from)));
+	let written = 0;
+	for (const [rel, bytes] of Object.entries(entries)) {
+		if (rel.endsWith("/")) continue;
+		const target = join(gitdir, rel);
+		fs.mkdirSync(dirname(target), { recursive: true });
+		fs.writeFileSync(target, bytes);
+		written++;
+	}
+	return written;
+}
+
 interface Request {
 	cmd: string;
 	dir: string;
@@ -215,6 +257,8 @@ interface Request {
 	sha?: string;
 	filepath?: string;
 	limit?: number;
+	out?: string;
+	from?: string;
 }
 
 async function dispatch(request: Request): Promise<unknown> {
@@ -233,6 +277,14 @@ async function dispatch(request: Request): Promise<unknown> {
 			if (!request.sha) throw new Error("restore requires sha");
 			const result = await restore(request.dir, request.sha, request.title ?? "恢复到历史版本");
 			return { committed: result !== null, commit: result };
+		}
+		case "pack": {
+			if (!request.out) throw new Error("pack requires out");
+			return { size: packHistory(request.dir, request.out) };
+		}
+		case "unpack": {
+			if (!request.from) throw new Error("unpack requires from");
+			return { files: unpackHistory(request.dir, request.from) };
 		}
 		case "show": {
 			if (!request.sha || !request.filepath) throw new Error("show requires sha and filepath");

@@ -1,6 +1,7 @@
 import type { PluginContext } from "@vetta-org/plugin-sdk";
 import { strToU8, zipSync, type Zippable } from "fflate";
 import { buildDesign } from "../engine/engine-manager";
+import { HISTORY_ENTRY, packHistoryForShare } from "../history/history-transfer";
 import type { DesignSession } from "../vetd/design-session";
 import { MANIFEST_FILE } from "../vetd/manifest-types";
 import { SHARE_EXTENSION } from "./share-format";
@@ -98,6 +99,16 @@ export async function buildDesignPackage(ctx: PluginContext, session: DesignSess
 			zipEntries[`design/${rel}`] = bytesFromBase64(binary.data);
 		}
 	}
+	// 版本历史跟着分享包走（ADR-0069）：收包方导入后能看到这份设计是怎么长成这样的。
+	const history = await packHistoryForShare(ctx, session.dirPath);
+	if (history.kind === "ok") zipEntries[HISTORY_ENTRY] = bytesFromBase64(history.base64);
+	if (history.kind === "too-large") {
+		ctx.ui.notify({
+			variant: "warning",
+			message: `版本历史有 ${Math.round(history.bytes / 1024 / 1024)}MB，超过分享包能携带的上限，本次导出不含历史。设计内容是完整的。`,
+		});
+	}
+
 	const zipped = zipSync(zipEntries, { level: 6 });
 	await ctx.fs.delete(outDir).catch(() => {});
 	return {

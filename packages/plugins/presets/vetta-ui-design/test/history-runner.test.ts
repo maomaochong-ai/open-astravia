@@ -136,4 +136,45 @@ describe("history runner", () => {
 	it("恢复不动 node_modules", async () => {
 		expect(existsSync(join(dir, "node_modules", "recharts", "index.js"))).toBe(true);
 	});
+
+	it("打包再还原到另一份设计，历史完整跟过去", async () => {
+		const pack = join(dir, ".history-pack.zip");
+		const packed = await run({ cmd: "pack", dir, out: pack });
+		expect(packed.ok).toBe(true);
+		expect(existsSync(pack)).toBe(true);
+
+		// 收包方那一侧：只有源码，没有 .history/。
+		const target = await mkdtemp(join(tmpdir(), "vetd-history-import-"));
+		await mkdir(join(target, "frames"), { recursive: true });
+		await writeFile(join(target, "frames", "login.tsx"), "export default function Login(){return null}\n");
+		const unpacked = await run({ cmd: "unpack", dir: target, from: pack });
+		expect(unpacked.ok).toBe(true);
+
+		const before = await run({ cmd: "log", dir });
+		const after = await run({ cmd: "log", dir: target });
+		expect(after.commits?.map((commit) => commit.sha)).toEqual(before.commits?.map((commit) => commit.sha));
+		await rm(target, { recursive: true, force: true });
+	});
+
+	it("缩略图不进分享包——收包方自己会重新截", async () => {
+		const log = await run({ cmd: "log", dir });
+		const sha = log.commits?.[0]?.sha ?? "";
+		await mkdir(join(dir, ".history", "thumbs", sha), { recursive: true });
+		await writeFile(join(dir, ".history", "thumbs", sha, "index.jpg"), "x".repeat(2048));
+
+		const withThumbs = join(dir, ".history-pack-2.zip");
+		await run({ cmd: "pack", dir, out: withThumbs });
+		const target = await mkdtemp(join(tmpdir(), "vetd-history-thumbs-"));
+		await run({ cmd: "unpack", dir: target, from: withThumbs });
+		expect(existsSync(join(target, ".history", "thumbs"))).toBe(false);
+		expect(existsSync(join(target, ".history", "HEAD"))).toBe(true);
+		await rm(target, { recursive: true, force: true });
+	});
+
+	it("目标已经有历史时不覆盖", async () => {
+		const pack = join(dir, ".history-pack-3.zip");
+		await run({ cmd: "pack", dir, out: pack });
+		const result = await run({ cmd: "unpack", dir, from: pack });
+		expect(result.files).toBe(0);
+	});
 });
